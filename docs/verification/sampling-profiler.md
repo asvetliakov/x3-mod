@@ -762,21 +762,47 @@ is also on, the Input phase of the last completed loop
 (`game_phases::last_input_us`) replaces `pre_render` as `input`. Install is the
 shared transaction (`src/proxy/stamp_install.h`: preflight, in-order claim,
 reverse rollback, `install_window_closed`/`late_claim`) plus `frame_phases_off`;
-`loop_phase_mode` and six `loop_phase_site` lines record it.
+`loop_phase_mode` and one `loop_phase_site` line per site (ten since
+2026-09-29) record it.
+
+**Region stamps (2026-09-29).** Run380 showed the four sector intervals flat
+at ~0.75 ms while `input` grew from 5.4 to 17.9 ms, so four more stamps
+bracket the three calls of `input_part=0` itself, in the same group and
+install transaction (`src/proxy/loop_phase_sites.h` indices 6-9):
+`region_cutevent` `0x00403b12` (`call 0x0048f550`, rel32 at offset 1),
+`region_containers` `0x00403b17` (`call 0x0043a360`, rel32 at offset 1),
+`region_sweep` `0x00403b1c` (plain copy of `mov eax,[0x0060850c]`) and
+`region_end` `0x00403b40` (`jne 0x00403db8`, rel32 at offset 2). The region's
+own end `0x00403b3a` is the installed `game_phase_input_body` site, so the
+sweep closes on the `jne` right after it, which all three region exits reach
+(pause gate `0x00403b10`, empty list `0x00403b26`, walk fall-through); its
+incoming flags are the end marker's `cmp`, carried through the stub's
+`pushfd`/`popfd` to the replayed `jne`. The four stamps form a second chain in
+the accumulator, independent of the sector chain nested inside `containers`:
+cutevent = 6 -> 7, containers = 7 -> 8 (the whole driver, so it contains
+`sum`), sweep = 8 -> 9; the pause edge reaches site 9 with nothing open,
+which is not an orphan. Each chain keeps its own largest interval and owner.
+Four dispatches per frame (not per sector): 0.37 us per frame (CPU fixture,
+measured). Safety argument and the measured motivation:
+`docs/reverse-engineering/main-loop-input-region.md` §6.
 
 Per 300-frame window one line, microseconds, nearest-rank percentiles over
 per-frame sums:
 
 ```
-loop_phases qpc= frame=N frames=300 sectors_p50= containers_p50= collide_p50_us= collide_p95_us= simulate_p50_us= simulate_p95_us= post_p50_us= post_p95_us= passb_p50_us= passb_p95_us= sum_p50_us= input_p50_us= self_p50_us= dispatch_cost_ns= max_interval_us= max_interval_owner= slow= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
+loop_phases qpc= frame=N frames=300 sectors_p50= containers_p50= collide_p50_us= collide_p95_us= simulate_p50_us= simulate_p95_us= post_p50_us= post_p95_us= passb_p50_us= passb_p95_us= cutevent_p50_us= cutevent_p95_us= containers_p50_us= containers_p95_us= sweep_p50_us= sweep_p95_us= sum_p50_us= region_p50_us= input_p50_us= self_p50_us= dispatch_cost_ns= max_interval_us= max_interval_owner= region_max_us= region_max_owner= slow= orphans= clock_errors= clock_failures= unmatched= dropped= early= foreign=
 ```
 
-and, for each of the first 64 frames of the window whose `sum` exceeds 50 ms
-(`slow` counts all of them):
+and, for each of the first 64 frames of the window whose `sum` or `region`
+exceeds 50 ms (`slow` counts all of them):
 
 ```
-loop_phases_slow qpc= frame= dt_us= sectors= containers= collide_us= simulate_us= post_us= passb_us= sum_us= input_us= max_interval_us= max_interval_owner=
+loop_phases_slow qpc= frame= dt_us= sectors= containers= collide_us= simulate_us= post_us= passb_us= cutevent_us= containers_us= sweep_us= sum_us= region_us= input_us= max_interval_us= max_interval_owner= region_max_us= region_max_owner=
 ```
+
+`containers_p50` (a count: containers pass B walked) and `containers_p50_us`
+(the time of the driver call) are different fields; the suffix tells them
+apart.
 
 | Field | Interval | Contains |
 | --- | --- | --- |
@@ -785,9 +811,14 @@ loop_phases_slow qpc= frame= dt_us= sectors= containers= collide_us= simulate_us
 | `post` | `sector_post` -> `sector_pass_a_end` | `0x0045b720`: the global object chain walk seeded by `0x0044e600` |
 | `passb` | `sector_economy` -> `sector_pass_b_end` | `0x004596e0` (own time accumulator, catch-up work) **and** `0x004526b0` (a seventh site would split them) |
 | `sum` | | the four intervals per frame |
+| `cutevent` | `region_cutevent` -> `region_containers` | `0x0048f550`: the cut-scene / `CutEvent` script driver, once per frame |
+| `containers` | `region_containers` -> `region_sweep` | the whole driver `0x0043a360`, once per frame: `sum` plus its two list walks, the gate checks of skipped containers and the sector stamps' own cost |
+| `sweep` | `region_sweep` -> `region_end` | the deferred-delete walk over the universe container list with `0x0045b660` per class-1 container, plus the `game_phase_input_body` dispatch when `--game-phases` is on |
+| `region` | | cutevent + containers + sweep: the whole `input_part=0` region (the pause `test`/`jne` excepted) |
 | `input` | | the same frame's `pre_render` (`frame_phases`), or the `--game-phases` Input phase of the last completed loop when that group is on |
 | `self` | | `dispatches * dispatch_cost_ns / 1000`, the stamps' own estimated cost, not subtracted |
-| `max_interval` | | the largest single interval of the frame (window line: of the window) and its owner (`collide`/`simulate`/`post`/`passb`) |
+| `max_interval` | | the largest single sector-chain interval of the frame (window line: of the window) and its owner (`collide`/`simulate`/`post`/`passb`) |
+| `region_max` | | the largest region-chain interval of the frame (window line: of the window) and its owner (`cutevent`/`containers`/`sweep`) |
 
 Reading it, with run94 as the yardstick (`input_part=0` p50 391,500 us on the
 slow sector):
@@ -797,7 +828,14 @@ slow sector):
   `0x0045b660`, both list walks and (when `input` is `pre_render`) everything
   else between the Present return and the render routine. If the residual
   carries the stall, the driver was not the owner and the note's §3 ranking
-  is wrong.
+  is wrong (run380: it was, see the RE note §6).
+* Since the region stamps, `region_p50_us` is the `input_part=0` region
+  itself: `input_p50_us - region_p50_us` is time outside it (with `input` =
+  `pre_render`: clock, pump, channels, pending VM, services, the rest of the
+  Input phase, simulation and cockpits), `containers_p50_us - sum_p50_us` is
+  the driver's un-stamped remainder plus the nested sector stamps' own cost (about 92 ns per walk-site stamp, on the order of 100 us at 200 sectors); a difference of two p50s, not the p50 of the difference (list walks and skipped-container gates),
+  and whichever of `cutevent_p50_us`/`containers_p50_us`/`sweep_p50_us`
+  tracks the growth owns it; `region_max_owner` names it for the worst frame.
 * The interval whose p95 tracks `sum_p95` names the callee; on a slow frame
   `max_interval_owner` says which routine, and `max_interval_us` against
   `sum_us` says whether one sector or every sector carries it (`sectors` and
@@ -815,8 +853,9 @@ slow sector):
   `dispatch_cost_ns` is 91, the fixture refuses a constant more than 2x off).
   Implied cost per frame: 0.54 us for 1 active sector (6 dispatches), 108 us
   for 200 active sectors (1,200 dispatches), plus 0.18 us per skipped
-  container. Off, nothing is installed and the frame boundary is one relaxed
-  load.
+  container, plus 0.37 us for the four region stamps (2026-09-29:
+  `region_dispatch_ns=92.3` on the mirrored region, 20 dispatches per call).
+  Off, nothing is installed and the frame boundary is one relaxed load.
 * arena: with every optional group on (resource reader, 47 game-phase sites,
   10 frame, 4 pass, 6 loop, chase camera/transition/lead/aim/fire, voice DMO
   fallback, 12 loading probes) the modelled use is 15,752 of 16,384 B, 632 B
@@ -846,6 +885,7 @@ slow sector):
 | Date | Change | Checks | Result |
 | --- | --- | --- | --- |
 | 2026-09-16 | Loop-phase group added (six sites, shared lean stub, `--loop-phases`) | `verify_loop_phase_sites.py` PASS, `source_present: true`; `run_game_phase_cpu.py` under X3: 8274 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=89.7 implied_frame_us_1_sector=0.54 implied_frame_us_200_sectors=108`, fixture arena 17980/32768 B; host `test_loop_phases` 9 tests OK (`loop_phases_host` 40 checks); DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations with `_x3m_loop_phase_enter` walked (492 reachable functions). Both DLL figures were measured on the worktree build (31c0c79 plus the uncommitted change), and the fixture record has `fixture_sha256: null` because that run used `--no-build`. The run 33 install candidate re-measured both on committed main a3cafd5 (DLL `03c0c9f4`): `check_no_x87.py` 0 violations, 74 roots / 492 reachable functions with `_x3m_loop_phase_enter` and `_x3m_pass_phase_enter` walked, and `run_game_phase_cpu.py` with a build (`fixture_sha256 377ac95e`) PASS at 8274 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=90.9 implied_frame_us_1_sector=0.55 implied_frame_us_200_sectors=109`; record `verification/results/run33-candidate-build.json`. The run 34 candidate on committed main ee5a406 (DLL `7102a2f1`) repeated both: `check_no_x87.py` 0 violations, 76 roots / 494 reachable, and `run_game_phase_cpu.py` PASS at 8521 checks, 0 failures, `LOOP PHASE BENCH dispatch_ns=88.6 implied_frame_us_1_sector=0.53 implied_frame_us_200_sectors=106`, fixture arena 19,448/32,768 B; record `verification/results/run34-candidate-build.json` | not yet run in the game |
+| 2026-09-29 | Four region stamps around the `input_part=0` calls (`region_cutevent` `0x00403b12`, `region_containers` `0x00403b17`, `region_sweep` `0x00403b1c`, `region_end` `0x00403b40`); second accumulator chain; new fields `cutevent`/`containers`/`sweep` p50/p95 (`_us`), `region_p50_us`, `region_max_us`/`region_max_owner`, the same in `loop_phases_slow`; slow frames by `sum` or `region` | `verify_loop_phase_sites.py` PASS (ten sites; main loop `0x00403840` decoded whole, no direct edge onto the four spans, region exits, region ESP, callee returns, main-loop single caller `0x0040373a`, disjoint from 74 sites of the game/frame/pass/residual/submit/light/media-cue tables); `run_game_phase_cpu.py --no-build` under X3 (fixture built by `build_game_phase_cpu.py` just before, so `fixture_sha256` is null): PASS, 12,114 checks, 0 failures, `loop_cases=10`, `LOOP PHASE BENCH dispatch_ns=90.7 region_dispatch_ns=92.3 region_stamps_frame_us=0.37`, fixture arena 30,504/32,768 B; host `test_loop_phases` 10 tests OK (`loop_phases_host` 55 checks), `test_game_phase_sites` 19 OK (modelled arena 18,200/24,576 B with every optional group, 6,376 B free), `test_media_cue`, `test_residual_phases` OK; DLL RelWithDebInfo 0 warnings, `check_no_x87.py` 0 violations (726 reachable). Worktree build, uncommitted | not yet run in the game |
 
 ## Residual phases (`X3M_RESIDUAL_PHASES=1`)
 

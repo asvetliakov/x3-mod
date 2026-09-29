@@ -205,7 +205,7 @@ class SourceAndReplay(unittest.TestCase):
         # chase_transition carries 16 rows since 123f98d added the seven
         # byte-verified chase view restore sites.
         self.assertEqual({name:len(value) for name,value in families.items()},
-                         {'resource_reader':1,'game_phases':33,'frame_phases':10,'pass_phases':4,'loop_phases':6,'residual_phases':2,'submit_phases':22,'media_cue':1,'chase_camera':1,
+                         {'resource_reader':1,'game_phases':33,'frame_phases':10,'pass_phases':4,'loop_phases':10,'residual_phases':2,'submit_phases':22,'media_cue':1,'chase_camera':1,
                           'chase_transition':16,'chase_lead':9,'chase_aim_trace':4,'chase_fire':1,'voice_dmo_fallback':1,
                           'loading_probes':12})
         lead_rows=probe.common.parse_source_specs(source_text(ROOT/'src/proxy/chase_lead.cpp'))
@@ -251,8 +251,9 @@ class SourceAndReplay(unittest.TestCase):
         self.assertEqual(capacity-used,12812)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
-        # Every optional group on: the six loop stamps (claims of 6/6/6/5/6/5
-        # bytes, 6 * 24, plus 6 * 124) with X3M_LOOP_PHASES=1, the two residual
+        # Every optional group on: the ten loop stamps (claims of 6/6/6/5/6/5
+        # bytes for the driver and 5/5/5/6 around the input_part=0 calls,
+        # 10 * 24, plus 10 * 124) with X3M_LOOP_PHASES=1, the two residual
         # stamps (claims of 8/9 bytes, 2 * 28, plus 2 * 124) with
         # X3M_RESIDUAL_PHASES=1, the twenty-two submit stamps (claims of 5-10
         # bytes, 22 * 24 or 28, plus 22 * 128 for the context stub) with
@@ -272,13 +273,14 @@ class SourceAndReplay(unittest.TestCase):
         for length in families['loading_probes']:
             everything.extend(((length+23,claim_used(length)),emitted['loading_probes']))
         accepted_all,used_all=admit(capacity,everything)
-        self.assertTrue(accepted_all);self.assertEqual(used_all,17608)
-        self.assertEqual(capacity-used_all,6968)
-        self.assertEqual(sum(used for _,used in everything)-sum(used for _,used in operations),5844)
-        # 6,968 B left since the audio witnesses went (2026-09-25; 4,824 B
-        # before). The arena grew by one page for the media-cue gate and by
-        # another with the residual group as headroom for later groups;
-        # 24,576 holds two further six-site lean groups with a second gate each.
+        self.assertTrue(accepted_all);self.assertEqual(used_all,18200)
+        self.assertEqual(capacity-used_all,6376)
+        self.assertEqual(sum(used for _,used in everything)-sum(used for _,used in operations),6436)
+        # 6,376 B left since the four region loop stamps (2026-09-29, 592 B;
+        # 6,968 B after the audio witnesses went 2026-09-25, 4,824 B before).
+        # The arena grew by one page for the media-cue gate and by another
+        # with the residual group as headroom for later groups; 24,576 holds
+        # two further six-site lean groups with a second gate each.
         self.assertGreaterEqual(capacity-used_all,max(reserve for reserve,_ in everything))
         self.assertGreaterEqual(capacity-used_all,2*(6*(24+124)+(24+300))+max(reserve for reserve,_ in everything))
         self.assertLess(16384-used_all,max(reserve for reserve,_ in everything))

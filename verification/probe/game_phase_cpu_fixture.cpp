@@ -1308,23 +1308,39 @@ static void pass_benchmark() {
 // terminator the driver never processes (`cmp [esi],0` on the new esi). One
 // body call therefore fires 16 stamps: 3 x 2 pass-A calls, 4 pass-A ends,
 // 2 economy, 4 pass-B ends.
+//
+// The main loop's part-0 region 0x00403b09..0x00403b46 is mirrored byte for
+// byte around it (docs/reverse-engineering/main-loop-input-region.md section
+// 1): the pause `test`/`jne`, `call` cut-event (a no-argument `ret` callee),
+// `call` the synthetic driver, `mov eax,[root_global]`, the sweep walk over
+// the same container list with its `push edi; call` sweep (`ret 4`), the end
+// marker `cmp [esi+0x4d8],ebp` and the region-end `jne rel32`, whose two
+// targets record which way the replayed flags sent it. EBX = 0, EBP = 1 and
+// ESI = a fixture state object as in the game. The walk visits node0, node1
+// and node3 (class 1; the skip bit is not the sweep's gate) and stops on the
+// terminator: one region call fires 20 stamps (the driver's 16 and 4 region).
 namespace loop = x3m::loop_phases;
 namespace loop_marker = x3m::loop_phases::sites;
 extern "C" {
-std::uint32_t loop_native_calls[5]{}, loop_native_args[5][4]{}, loop_spin_iterations = 0;
+std::uint32_t loop_native_calls[7]{}, loop_native_args[7][4]{}, loop_spin_iterations = 0, loop_sweep_spin = 0;
 void loop_callee_collide();
 void loop_callee_simulate();
 void loop_callee_post();
 void loop_callee_economy();
 void loop_callee_attach();
+void loop_callee_cutevent();
+void loop_callee_sweep();
 __attribute__((force_align_arg_pointer)) void __cdecl loop_record(unsigned callee, std::uint32_t argument) {
-    if (callee < 5) {
+    if (callee < 7) {
         if (loop_native_calls[callee] < 4) loop_native_args[callee][loop_native_calls[callee]] = argument;
         ++loop_native_calls[callee];
     }
     if (callee == 1)
         for (volatile std::uint32_t i = 0; i < loop_spin_iterations; ++i) {} // simulate is the pathological routine of
                                                                              // the replay check
+    if (callee == 6)
+        for (volatile std::uint32_t i = 0; i < loop_sweep_spin; ++i) {} // a slow sweep owns the region's largest
+                                                                        // interval
 }
 }
 // Each callee is `stdcall` of one argument (`ret 4`) like the five real ones,
@@ -1333,10 +1349,17 @@ __attribute__((force_align_arg_pointer)) void __cdecl loop_record(unsigned calle
     ".globl _" #name "\n_" #name ":\n pushl %eax\n pushl %ecx\n pushl %edx\n pushl 16(%esp)\n pushl $" #index          \
     "\n call _loop_record\n addl $8,%esp\n popl %edx\n popl %ecx\n popl %eax\n ret $4\n"
 asm(".text\n" LOOP_CALLEE(loop_callee_collide, 0) LOOP_CALLEE(loop_callee_simulate, 1) LOOP_CALLEE(loop_callee_post, 2)
-        LOOP_CALLEE(loop_callee_economy, 3) LOOP_CALLEE(loop_callee_attach, 4));
+        LOOP_CALLEE(loop_callee_economy, 3) LOOP_CALLEE(loop_callee_attach, 4) LOOP_CALLEE(loop_callee_sweep, 6));
+// The cut-event driver 0x0048f550 takes no argument and ends in a plain `ret`.
+asm(".text\n.globl _loop_callee_cutevent\n_loop_callee_cutevent:\n pushl %eax\n pushl %ecx\n pushl %edx\n pushl $0\n"
+    " pushl $5\n call _loop_record\n addl $8,%esp\n popl %edx\n popl %ecx\n popl %eax\n ret\n");
 static std::uint32_t loop_root[4]{}, loop_root_global = 0; // the root object ([+4] pass-A gate, [+8] list head) and the
                                                            // global that points at it (0x0060850c in the game)
 alignas(16) static unsigned char loop_nodes[5][0x150]{};
+// The main-loop object ESI points at in the region: [+0x4a0] bit 0 = paused,
+// [+0x4d8] == 1 falls through the region-end `jne`.
+alignas(16) static unsigned char loop_region_state[0x4e0]{};
+static std::uint32_t loop_region_fall = 0, loop_region_skip = 0;
 struct LoopBody {
     void* body = nullptr;
     void* spans[loop_marker::Count]{};
@@ -1344,7 +1367,14 @@ struct LoopBody {
     void* loop_b = nullptr;
     void* pass_b = nullptr;
     unsigned length = 0;
+    void* region_entry = nullptr; // callable wrapper: saves EBX/EBP/ESI/EDI, sets them, runs the region
+    void* region = nullptr;       // the mirrored 0x00403b09
+    unsigned region_length = 0;   // entry through ret
 };
+static void loop_region_state_set(bool paused, bool fall) {
+    loop_region_state[0x4a0] = paused ? 1 : 0;
+    *reinterpret_cast<std::uint32_t*>(loop_region_state + 0x4d8) = fall ? 1 : 0;
+}
 static void loop_nodes_setup() {
     std::memset(loop_nodes, 0, sizeof loop_nodes);
     for (unsigned i = 0; i < 4; ++i)
@@ -1441,6 +1471,61 @@ static LoopBody make_loop_body() {
     e.byte(0xc3); // pop edi; pop esi; pop ebx; ret
     r.length = unsigned(static_cast<unsigned char*>(e.here()) - static_cast<unsigned char*>(r.body));
     if (!e.finish()) r.body = nullptr;
+    if (!r.body) return r;
+    // The part-0 region, 0x00403b09..0x00403b46, around the driver.
+    loop_region_state_set(false, true);
+    patch::Emitter g(112);
+    r.region_entry = g.here();
+    g.byte(0x53);
+    g.byte(0x55);
+    g.byte(0x56);
+    g.byte(0x57); // push ebx; push ebp; push esi; push edi
+    g.byte(0xbb);
+    g.dword(0); // mov ebx,0
+    g.byte(0xbd);
+    g.dword(1); // mov ebp,1
+    g.byte(0xbe);
+    g.dword(std::uint32_t(address(loop_region_state))); // mov esi,&state  (*0x0057fc60 in the game)
+    r.region = g.here();
+    const unsigned char pause_gate[] = {0xf6, 0x86, 0xa0, 0x04, 0x00, 0x00, 0x01, 0x75, 0x28};
+    g.bytes(pause_gate, sizeof pause_gate); // test BYTE PTR [esi+0x4a0],1; jne end_marker
+    r.spans[loop_marker::RegionCutEvent] = g.here();
+    call(g, reinterpret_cast<void*>(&loop_callee_cutevent));
+    r.spans[loop_marker::RegionContainers] = g.here();
+    call(g, r.body);
+    r.spans[loop_marker::RegionSweep] = g.here();
+    g.byte(0xa1);
+    g.dword(std::uint32_t(address(&loop_root_global)));   // mov eax,ds:[root_global]  (0x0060850c in the game)
+    const unsigned char walk[] = {0x8b, 0x78, 0x08,       // mov edi,[eax+8]
+                                  0x39, 0x1f, 0x74, 0x12, // cmp [edi],ebx; je end_marker
+                                  0x66, 0x39, 0x6f, 0x48, // cmp WORD PTR [edi+0x48],bp
+                                  0x75, 0x06, 0x57};      // jne next; push edi
+    g.bytes(walk, sizeof walk);
+    call(g, reinterpret_cast<void*>(&loop_callee_sweep));
+    const unsigned char tail[] = {0x8b, 0x3f, 0x39, 0x1f, 0x75, 0xee,  // next: mov edi,[edi]; cmp [edi],ebx; jne
+                                  0x39, 0xae, 0xd8, 0x04, 0x00, 0x00}; // end_marker: cmp [esi+0x4d8],ebp
+    g.bytes(tail, sizeof tail);
+    r.spans[loop_marker::RegionEnd] = g.here();
+    g.byte(0x0f);
+    g.byte(0x85);
+    g.rel32(static_cast<unsigned char*>(g.here()) + 4 + 12); // jne skip (0x00403db8 in the game)
+    g.byte(0xc7);
+    g.byte(0x05);
+    g.dword(std::uint32_t(address(&loop_region_fall)));
+    g.dword(1); // mov dword [fall],1 (no flag write: the end marker's flags reach the snapshot)
+    g.byte(0xeb);
+    g.byte(0x0a); // jmp out
+    g.byte(0xc7);
+    g.byte(0x05);
+    g.dword(std::uint32_t(address(&loop_region_skip)));
+    g.dword(1); // skip: mov dword [skip],1
+    g.byte(0x5f);
+    g.byte(0x5e);
+    g.byte(0x5d);
+    g.byte(0x5b);
+    g.byte(0xc3); // out: pop edi; pop esi; pop ebp; pop ebx; ret
+    r.region_length = unsigned(static_cast<unsigned char*>(g.here()) - static_cast<unsigned char*>(r.region_entry));
+    if (!g.finish()) r.body = nullptr;
     return r;
 }
 // The layout must reproduce the routine's offsets exactly, or the reused rel8
@@ -1448,22 +1533,27 @@ static LoopBody make_loop_body() {
 // only the four call rel32 fields (offset 2) are fixture-relocated.
 static bool loop_specs(const LoopBody& r, patch::SiteSpec* specs) {
     const auto offset = [&](const void* p) { return unsigned(address(p) - address(r.body)); };
+    const auto region_offset = [&](const void* p) { return unsigned(address(p) - address(r.region)); };
     bool okay = r.length == 0x75 && offset(r.loop_a) == 0x20 && offset(r.pass_b) == 0x47 && offset(r.loop_b) == 0x50;
+    okay = okay && r.region &&
+           region_offset(static_cast<unsigned char*>(r.region_entry) + r.region_length) == 0x3d + 27;
     for (unsigned k = 0; k < loop_marker::Count; ++k) {
         specs[k] = loop_marker::kSites[k];
         specs[k].address = address(r.spans[k]);
-        okay = okay && offset(r.spans[k]) == loop_marker::kSites[k].address - 0x0043a360;
+        const bool in_region = k >= loop_marker::RegionCutEvent;
+        okay = okay && (in_region ? region_offset(r.spans[k]) == loop_marker::kSites[k].address - 0x00403b09
+                                  : offset(r.spans[k]) == loop_marker::kSites[k].address - 0x0043a360);
         const auto* bytes = static_cast<const unsigned char*>(r.spans[k]);
         std::memcpy(specs[k].expected, bytes, specs[k].length);
-        const unsigned field = loop_marker::kSites[k].rel32_offset;
+        // The rel32 fields, and the sweep span's disp32 (the root global), are fixture-relocated.
+        const unsigned field = k == loop_marker::RegionSweep ? 1 : loop_marker::kSites[k].rel32_offset;
         for (unsigned i = 0; i < specs[k].length; ++i) {
             if (field && i >= field && i < field + 4) continue;
             okay = okay && bytes[i] == loop_marker::kSites[k].expected[i];
         }
     }
-    check(
-        okay,
-        "synthetic driver reproduces the routine layout and the proved span opcodes except the relocated call fields");
+    check(okay, "synthetic driver and region reproduce the routine layouts and the proved span opcodes except the "
+                "relocated call/branch/global fields");
     return okay;
 }
 // Entry into the driver at one span with its frame in place (the three pushes,
@@ -1493,6 +1583,9 @@ static bool loop_calls_are(std::uint32_t collide, std::uint32_t simulate, std::u
                            std::uint32_t attach) {
     return loop_native_calls[0] == collide && loop_native_calls[1] == simulate && loop_native_calls[2] == post &&
            loop_native_calls[3] == economy && loop_native_calls[4] == attach;
+}
+static bool loop_region_calls_are(std::uint32_t cutevent, std::uint32_t sweep) {
+    return loop_native_calls[5] == cutevent && loop_native_calls[6] == sweep;
 }
 static DWORD WINAPI loop_foreign_thread(LPVOID body) {
     reinterpret_cast<void (*)()>(body)();
@@ -1524,11 +1617,40 @@ static void loop_replay_checks() {
     loop_reset_calls();
     invoke(entry_mid, baseline_mid);
     check(loop_calls_are(1, 2, 2, 2, 2), "simulate entry baseline runs the rest of the chain");
+    // The region, natively: fall-through, the taken region-end `jne`, and paused.
+    unsigned char region_original[112];
+    std::memcpy(region_original, r.region_entry, r.region_length);
+    Snapshot region_fall{}, region_skip{}, region_paused{};
+    loop_region_fall = loop_region_skip = 0;
+    loop_region_state_set(false, true);
+    loop_reset_calls();
+    invoke(r.region_entry, region_fall);
+    check(loop_calls_are(2, 2, 2, 2, 2) && loop_region_calls_are(1, 3) && loop_region_fall == 1 &&
+              loop_region_skip == 0,
+          "region baseline runs cut-event, the driver, three sweeps and falls through the region end");
+    check(loop_native_args[6][0] == address(loop_nodes[0]) && loop_native_args[6][1] == address(loop_nodes[1]) &&
+              loop_native_args[6][2] == address(loop_nodes[3]),
+          "sweep receives every class-1 container, the terminator excluded");
+    loop_region_fall = loop_region_skip = 0;
+    loop_region_state_set(false, false);
+    loop_reset_calls();
+    invoke(r.region_entry, region_skip);
+    check(loop_region_calls_are(1, 3) && loop_region_skip == 1 && loop_region_fall == 0,
+          "region baseline takes the region-end jne");
+    check(region_skip.regs[8] != region_fall.regs[8], "the two region-end paths leave different end-marker flags");
+    loop_region_fall = loop_region_skip = 0;
+    loop_region_state_set(true, true);
+    loop_reset_calls();
+    invoke(r.region_entry, region_paused);
+    check(loop_calls_are(0, 0, 0, 0, 0) && loop_region_calls_are(0, 0) && loop_region_fall == 1,
+          "paused region baseline skips all three calls");
     const char* status = nullptr;
     check(loop::fixture_install(specs, &status), "loop group installed on the synthetic spans");
     check(status && !std::strcmp(status, "ok"), "loop install status ok");
     check(loop::active, "loop group active after install");
-    check(std::memcmp(original, r.body, r.length) != 0, "loop spans carry the patch jumps");
+    check(std::memcmp(original, r.body, r.length) != 0 &&
+              std::memcmp(region_original, r.region_entry, r.region_length) != 0,
+          "loop and region spans carry the patch jumps");
     const auto* gate = loop::fixture_gate();
     const auto* accumulator = loop::fixture_accumulator();
     // Before the first frame boundary no thread is admitted: early, ignored.
@@ -1594,13 +1716,66 @@ static void loop_replay_checks() {
     check(loop_calls_are(1, 2, 2, 2, 2), "entry on the simulate stub runs the rest of the chain");
     check(accumulator->orphans == 1 && accumulator->sectors == 4, "mid-chain entry is one orphan");
     loop::frame(3, true, 0, 0);
+    // The region around the driver: nested chains, the slow sweep owns the
+    // region's largest interval, containers covers the whole sector chain.
+    const auto orphans = accumulator->orphans;
+    loop_region_state_set(false, true);
+    loop_sweep_spin = 200000;
+    loop_region_fall = loop_region_skip = 0;
+    loop_reset_calls();
+    invoke(r.region_entry, after);
+    loop_sweep_spin = 0;
+    compare(region_fall, after);
+    check(loop_calls_are(2, 2, 2, 2, 2) && loop_region_calls_are(1, 3) && loop_region_fall == 1 &&
+              loop_region_skip == 0,
+          "instrumented region executes exactly the native calls and falls through");
+    check(accumulator->dispatches == 20 && accumulator->sectors == 2 && accumulator->containers == 4 &&
+              accumulator->open == loop::detail::none && accumulator->region_open == loop::detail::none &&
+              accumulator->orphans == orphans && accumulator->clock_errors == 0 && accumulator->clock_failures == 0,
+          "region call: twenty dispatches, both chains closed, no orphan");
+    check(accumulator->ticks[4] > 0 && accumulator->ticks[6] > accumulator->ticks[5] &&
+              accumulator->ticks[5] >=
+                  accumulator->ticks[0] + accumulator->ticks[1] + accumulator->ticks[2] + accumulator->ticks[3] &&
+              accumulator->region_max_owner == 6 && accumulator->max_owner != loop::detail::none,
+          "cutevent, containers (covering the sector chain) and the slow sweep accumulate");
+    loop::frame(4, true, 900, 800);
+    check(loop::fixture_last_sample(&s) && s.dispatches == 20 && s.region_us > 0 &&
+              s.region_us == s.interval_us[4] + s.interval_us[5] + s.interval_us[6] && s.region_max_owner == 6 &&
+              s.interval_us[5] >= s.sum_us,
+          "region sample: region_us is the three region intervals, sweep owns it");
+    // The taken region-end jne: the flags of the end marker's cmp survive the stub.
+    loop_region_state_set(false, false);
+    loop_region_fall = loop_region_skip = 0;
+    loop_reset_calls();
+    invoke(r.region_entry, after);
+    compare(region_skip, after);
+    check(loop_region_calls_are(1, 3) && loop_region_skip == 1 && loop_region_fall == 0 &&
+              accumulator->dispatches == 20 && accumulator->region_open == loop::detail::none &&
+              accumulator->orphans == orphans,
+          "region-end stub replays the jne with the end marker's live flags (taken)");
+    // Paused: the pause edge reaches the region end with nothing open.
+    loop_region_state_set(true, true);
+    loop_region_fall = loop_region_skip = 0;
+    loop_reset_calls();
+    invoke(r.region_entry, after);
+    compare(region_paused, after);
+    check(loop_region_calls_are(0, 0) && loop_region_fall == 1 && accumulator->dispatches == 21 &&
+              accumulator->orphans == orphans && accumulator->region_open == loop::detail::none,
+          "paused region fires only the region end, not an orphan");
+    loop_region_state_set(false, true);
+    loop::frame(5, true, 0, 0);
     check(loop::fixture_uninstall(), "loop group rollback restores every span");
-    check(!std::memcmp(original, r.body, r.length), "loop spans byte-identical after rollback");
+    check(!std::memcmp(original, r.body, r.length) && !std::memcmp(region_original, r.region_entry, r.region_length),
+          "loop and region spans byte-identical after rollback");
     check(!loop::active, "loop group inactive after rollback");
     loop_reset_calls();
     invoke(r.body, after);
     compare(baseline, after);
     check(loop_calls_are(2, 2, 2, 2, 2), "restored driver runs natively");
+    loop_reset_calls();
+    invoke(r.region_entry, after);
+    compare(region_fall, after);
+    check(loop_region_calls_are(1, 3), "restored region runs natively");
     // Byte mismatch: one corrupted opcode refuses the whole group before any claim.
     LoopBody c = make_loop_body();
     check(c.body != nullptr, "second synthetic driver body emitted");
@@ -1608,9 +1783,16 @@ static void loop_replay_checks() {
     patch::SiteSpec corrupt[loop_marker::Count];
     if (!loop_specs(c, corrupt)) return;
     unsigned char corrupted[160];
+    check(c.region_length <= 112, "region wrapper fits its snapshot buffer");
     std::memcpy(corrupted, c.body, c.length);
     corrupt[3].expected[0] ^= 1;
     check(!loop::fixture_install(corrupt, &status), "loop install refused on a byte mismatch");
+    check(status && !std::strcmp(status, "preflight_bytes"), "loop byte mismatch reported as preflight_bytes");
+    corrupt[3].expected[0] ^= 1;
+    corrupt[loop_marker::RegionEnd].expected[1] ^= 1;
+    check(!loop::fixture_install(corrupt, &status), "loop install refused on a region-end byte mismatch");
+    corrupt[loop_marker::RegionEnd].expected[1] ^= 1;
+    corrupt[3].expected[0] ^= 1;
     check(status && !std::strcmp(status, "preflight_bytes"), "loop byte mismatch reported as preflight_bytes");
     check(!std::memcmp(corrupted, c.body, c.length), "no loop span patched after the preflight refusal");
     check(!loop::active, "loop group stays inactive after refusal");
@@ -1625,6 +1807,18 @@ static void loop_replay_checks() {
     check(status && !std::strcmp(status, "bytes_mismatch"),
           "loop duplicate claim reported with the claim's own reason");
     check(!std::memcmp(corrupted, c.body, c.length), "loop partial install rolled back to original bytes");
+    // A duplicate at the last region site: nine patched sites roll back.
+    unsigned char region_corrupted[112];
+    std::memcpy(region_corrupted, c.region_entry, c.region_length);
+    check(!loop::active, "loop group inactive after partial rollback");
+    loop::fixture_uninstall();
+    std::memcpy(partial, corrupt, sizeof partial);
+    partial[loop_marker::RegionEnd] = partial[loop_marker::RegionSweep];
+    check(!loop::fixture_install(partial, &status), "loop install refused on a duplicate region claim");
+    check(status && !std::strcmp(status, "bytes_mismatch"),
+          "loop duplicate claim reported with the claim's own reason");
+    check(!std::memcmp(corrupted, c.body, c.length) && !std::memcmp(region_corrupted, c.region_entry, c.region_length),
+          "loop partial install rolled back to original bytes");
     check(!loop::active, "loop group inactive after partial rollback");
     loop::fixture_uninstall();
 }
@@ -1634,28 +1828,34 @@ static void loop_late_window_checks() { // after the frame checks closed the ins
     if (!r.body) return;
     patch::SiteSpec specs[loop_marker::Count];
     if (!loop_specs(r, specs)) return;
-    unsigned char original[160];
+    unsigned char original[160], region_original[112];
     std::memcpy(original, r.body, r.length);
+    std::memcpy(region_original, r.region_entry, r.region_length);
     const char* status = nullptr;
     check(!loop::fixture_install(specs, &status), "loop install refused after the install window closed");
     check(status && !std::strcmp(status, "install_window_closed"),
           "late loop install reported as install_window_closed");
     check(!std::memcmp(original, r.body, r.length), "no loop span touched by the late refusal");
+    check(r.region_entry && !std::memcmp(region_original, r.region_entry, r.region_length),
+          "no region span touched by the late refusal");
     loop::fixture_uninstall();
 }
 // Per-dispatch cost of the lean stub on the driver: the body (16 dispatches
 // over two active and two skipped containers) unhooked against hooked, best of
 // `trials`. A frame costs 6 dispatches per active sector plus 2 per skipped
-// container; the row states 1 and 200 active sectors.
+// container; the row states 1 and 200 active sectors. The region wrapper
+// (the driver plus the four region stamps, 20 dispatches) is timed the same
+// way; its four stamps are the per-frame cost the region split adds.
 static void loop_benchmark() {
-    constexpr unsigned loops = 20000, trials = 7, dispatches = 16;
+    constexpr unsigned loops = 20000, trials = 7, dispatches = 16, region_dispatches = 20;
     LoopBody r = make_loop_body();
     check(r.body != nullptr, "benchmark driver body emitted");
     if (!r.body) return;
     LARGE_INTEGER frequency{};
     check(QueryPerformanceFrequency(&frequency) && frequency.QuadPart > 0, "loop benchmark QPC frequency");
-    const auto body = reinterpret_cast<void (*)()>(r.body);
-    const auto timed = [&](std::uint64_t& best) {
+    loop_region_state_set(false, true);
+    const auto timed = [&](void* target, std::uint64_t& best) {
+        const auto body = reinterpret_cast<void (*)()>(target);
         best = ~std::uint64_t(0);
         for (unsigned t = 0; t < trials; ++t) {
             LARGE_INTEGER start{}, end{};
@@ -1667,31 +1867,42 @@ static void loop_benchmark() {
         }
         return true;
     };
-    std::uint64_t baseline = 0, hooked = 0;
-    check(timed(baseline), "loop benchmark baseline timed");
+    std::uint64_t baseline = 0, hooked = 0, region_baseline = 0, region_hooked = 0;
+    check(timed(r.body, baseline), "loop benchmark baseline timed");
+    check(timed(r.region_entry, region_baseline), "region benchmark baseline timed");
     patch::SiteSpec specs[loop_marker::Count];
     if (!loop_specs(r, specs)) return;
     const char* status = nullptr;
     check(loop::fixture_install(specs, &status), "loop benchmark group installed");
     loop::frame(1, false, 0, 0);
-    check(timed(hooked), "loop benchmark hooked timed");
+    check(timed(r.body, hooked), "loop benchmark hooked timed");
     loop::frame(2, true, 0, 0);
     loop::detail::Sample s{};
     check(loop::fixture_last_sample(&s) && s.dispatches == loops * trials * dispatches &&
               s.sectors == loops * trials * 2,
           "hooked benchmark loop counted every dispatch and sector");
+    check(timed(r.region_entry, region_hooked), "region benchmark hooked timed");
+    loop::frame(3, true, 0, 0);
+    check(loop::fixture_last_sample(&s) && s.dispatches == loops * trials * region_dispatches,
+          "hooked region benchmark counted every dispatch");
     check(loop::fixture_uninstall(), "loop benchmark group rolled back");
     const double ns_per_tick = 1e9 / number(std::uint64_t(frequency.QuadPart));
     const double baseline_ns = number(baseline) * ns_per_tick / loops, hooked_ns = number(hooked) * ns_per_tick / loops;
     const double dispatch_ns = (hooked_ns - baseline_ns) / dispatches;
+    const double region_baseline_ns = number(region_baseline) * ns_per_tick / loops,
+                 region_hooked_ns = number(region_hooked) * ns_per_tick / loops;
+    const double region_dispatch_ns = (region_hooked_ns - region_baseline_ns) / region_dispatches;
     std::printf(
-        "LOOP PHASE BENCH loops=%u trials=%u dispatches_per_loop=%u baseline_ns_per_loop=%.1f hooked_ns_per_loop=%.1f dispatch_ns=%.1f implied_frame_us_1_sector=%.2f implied_frame_us_200_sectors=%.0f documented_dispatch_ns=%llu arena_used=%u arena_capacity=%u\n",
+        "LOOP PHASE BENCH loops=%u trials=%u dispatches_per_loop=%u baseline_ns_per_loop=%.1f hooked_ns_per_loop=%.1f dispatch_ns=%.1f implied_frame_us_1_sector=%.2f implied_frame_us_200_sectors=%.0f region_dispatches_per_loop=%u region_baseline_ns_per_loop=%.1f region_hooked_ns_per_loop=%.1f region_dispatch_ns=%.1f region_stamps_frame_us=%.2f documented_dispatch_ns=%llu arena_used=%u arena_capacity=%u\n",
         loops, trials, dispatches, baseline_ns, hooked_ns, dispatch_ns, dispatch_ns * 6 / 1000,
-        dispatch_ns * 1200 / 1000, static_cast<unsigned long long>(loop::detail::dispatch_cost_ns), patch::arena_used(),
-        patch::arena_capacity());
+        dispatch_ns * 1200 / 1000, region_dispatches, region_baseline_ns, region_hooked_ns, region_dispatch_ns,
+        region_dispatch_ns * 4 / 1000, static_cast<unsigned long long>(loop::detail::dispatch_cost_ns),
+        patch::arena_used(), patch::arena_capacity());
     const double documented = number(loop::detail::dispatch_cost_ns);
     check(dispatch_ns > 0 && documented >= dispatch_ns * 0.5 && documented <= dispatch_ns * 2.0,
           "documented loop dispatch cost within 2x of the measured cost");
+    check(region_dispatch_ns > 0 && documented >= region_dispatch_ns * 0.5 && documented <= region_dispatch_ns * 2.0,
+          "documented loop dispatch cost within 2x of the measured region cost");
 }
 
 // Residual phases (X3M_RESIDUAL_PHASES=1): the two exact residual spans on a
@@ -2886,7 +3097,7 @@ int main(int argc, char** argv) {
     residual_late_window_checks();
     media_late_window_checks();
     std::printf(
-        "GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u residual_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=7 residual_cases=6 media_cases=11 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",
+        "GAME PHASE CPU stubs=%u frame_sites=%u pass_sites=%u loop_sites=%u residual_sites=%u media_sites=%u replay_cases=13 actual_target_handler_cases=5 frame_cases=4 pass_cases=5 loop_cases=10 residual_cases=6 media_cases=11 arena_used=%u arena_capacity=%u checks=%u failures=%u\n",
         unsigned(marker::Count), unsigned(frame_marker::Count), unsigned(pass_marker::Count),
         unsigned(loop_marker::Count), unsigned(residual_marker::Count), unsigned(media_marker::Count),
         patch::arena_used(), patch::arena_capacity(), checks, failures);

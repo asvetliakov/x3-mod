@@ -105,6 +105,10 @@ frame created; `0x0043a360` is the only item running five routines totalling
 makes `0x0043a360` the owner with high confidence, and it is the level the
 stamps below measure.**
 
+**Corrected by run380 (§6):** the four stamped sector intervals stay flat at
+~0.75 ms while the measured `input` grows to 17.9 ms, so `0x0043a360`'s five
+routines do not own the growing frame time there.
+
 **Not established:** which of the five. The leading static candidate is
 `0x00452ad0` (27,390 bytes, 401 calls, per object, per frame); `0x0045d250`'s
 collision pass is second (its `0x0045cab0` query is the only place an O(n²)
@@ -210,6 +214,120 @@ still preferable if the container count is the full sector list.
   object (so O(n₀·N) overall), and `0x0045d250` additionally holds an explicit
   O(N²) pair loop over the class buckets. `0x00452ad0` was
   surveyed by call histogram and string xrefs only; it was not decompiled.
+
+## 6. Run380 (2026-09-29): the sector intervals are not the owner
+
+Measured, run380, Mayhem 3 battle sector, `--perf --config` with
+`loop_phases = 1` (no `game_phases`). Per 300-frame window, p50 in ms; `input`
+is the loop-phase line's `input_p50_us`, `pre_render`/`views`/`scene_end`/
+`dt` the same window's `frame_phases` line, `draws` the `frame_timing` p50.
+Produced by `verification/results/run380-loop-phases/loop_vs_phases.py <log>`
+(output `loop_vs_phases_out.txt` beside it).
+
+| frame | dt | pre_render | views | scene_end | collide | simulate | post | passb | sum | input | self | draws |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 300 | 7.2 | 5.4 | 1.6 | 0.02 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 5.41 | 0.00 | 56 |
+| 600 | 15.1 | 4.7 | 7.7 | 0.15 | 0.52 | 0.02 | 0.01 | 0.14 | 0.69 | 4.72 | 0.00 | 337 |
+| 900 | 16.5 | 5.5 | 8.1 | 0.24 | 0.56 | 0.02 | 0.01 | 0.15 | 0.75 | 5.51 | 0.00 | 337 |
+| 1200 | 17.3 | 6.2 | 8.0 | 0.23 | 0.55 | 0.02 | 0.01 | 0.15 | 0.74 | 6.23 | 0.00 | 338 |
+| 1500 | 18.3 | 7.4 | 7.9 | 0.23 | 0.57 | 0.02 | 0.01 | 0.15 | 0.76 | 7.42 | 0.00 | 338 |
+| 1800 | 20.1 | 8.5 | 8.6 | 0.23 | 0.56 | 0.03 | 0.01 | 0.17 | 0.78 | 8.48 | 0.00 | 338 |
+| 2100 | 20.8 | 9.2 | 8.5 | 0.23 | 0.56 | 0.04 | 0.01 | 0.19 | 0.81 | 9.18 | 0.00 | 338 |
+| 2400 | 21.2 | 10.3 | 8.2 | 0.23 | 0.61 | 0.04 | 0.01 | 0.18 | 0.86 | 10.25 | 0.00 | 338 |
+| 2700 | 16.2 | 10.7 | 4.3 | 0.24 | 0.58 | 0.04 | 0.01 | 0.19 | 0.83 | 10.66 | 0.00 | 58 |
+| 3000 | 23.2 | 12.3 | 8.2 | 0.22 | 0.57 | 0.04 | 0.01 | 0.17 | 0.80 | 12.30 | 0.00 | 335 |
+| 3300 | 23.9 | 13.0 | 8.1 | 0.19 | 0.56 | 0.02 | 0.01 | 0.14 | 0.77 | 12.97 | 0.00 | 335 |
+| 3600 | 24.6 | 13.6 | 8.1 | 0.19 | 0.56 | 0.02 | 0.01 | 0.14 | 0.74 | 13.64 | 0.00 | 335 |
+| 3900 | 24.8 | 14.0 | 8.1 | 0.19 | 0.55 | 0.02 | 0.01 | 0.14 | 0.73 | 14.02 | 0.00 | 335 |
+| 4200 | 19.5 | 14.6 | 3.8 | 0.23 | 0.57 | 0.02 | 0.01 | 0.15 | 0.76 | 14.61 | 0.00 | 51 |
+| 4500 | 24.9 | 15.0 | 7.8 | 0.22 | 0.58 | 0.02 | 0.01 | 0.15 | 0.77 | 14.99 | 0.00 | 330 |
+| 4800 | 26.2 | 15.5 | 8.1 | 0.23 | 0.57 | 0.03 | 0.01 | 0.14 | 0.75 | 15.47 | 0.00 | 334 |
+| 5100 | 26.8 | 15.8 | 8.3 | 0.18 | 0.54 | 0.02 | 0.01 | 0.14 | 0.71 | 15.82 | 0.00 | 338 |
+| 5400 | 22.1 | 16.5 | 4.1 | 0.20 | 0.56 | 0.02 | 0.01 | 0.14 | 0.73 | 16.50 | 0.00 | 49 |
+| 5700 | 28.1 | 16.8 | 8.7 | 0.18 | 0.58 | 0.02 | 0.01 | 0.14 | 0.75 | 16.78 | 0.00 | 335 |
+| 6000 | 28.4 | 17.2 | 8.4 | 0.19 | 0.57 | 0.02 | 0.01 | 0.14 | 0.74 | 17.25 | 0.00 | 335 |
+| 6300 | 24.3 | 17.9 | 4.4 | 0.19 | 0.58 | 0.03 | 0.01 | 0.14 | 0.76 | 17.92 | 0.00 | 70 |
+
+**What it shows (measured).** `input` grows monotonically from 4.7 to
+17.9 ms over 6,000 frames while the four sector intervals stay at
+0.69-0.86 ms and `self` is 0; the growth continues through the low-draw
+windows (2700, 4200, 5400, 6300: 49-70 draws, `views` about half), so it
+follows elapsed time, not the scene being drawn (inferred).
+
+**Corrected conclusion.** §3's "`0x0043a360` is the owner with high
+confidence" is contradicted at runtime: collide, simulate, post and passb
+(all five routines of the driver) carry ~0.75 ms flat. Two further points:
+
+* `input` here is **not** the `input_part=0` region. `loop_phases.cpp` takes
+  the game-phase Input phase only when `--game-phases` is on and otherwise
+  uses the frame's `pre_render`; `input` equals `pre_render` to 0.01 ms in
+  all 21 windows, so this run had it off (inferred from the equality, which
+  holds by construction in that case). `pre_render` spans the Present return
+  to the render prologue: clock, pump, channels, pending VM, services, the
+  whole Input phase (of which `input_part=0` is the first 49 bytes),
+  simulation `0x00416750` and cockpits.
+* The growing ~16 ms therefore lies somewhere in `pre_render` outside the four
+  sector intervals: in `0x0048f550`, in `0x0045b660`'s sweep, in the
+  driver's un-stamped list walks, or outside `input_part=0` altogether.
+  Which one is not established by this run.
+
+**Region stamps.** Four more `--loop-phases` stamps (same group and lean
+stub, `src/proxy/loop_phase_sites.h` indices 6-9) settle it with a second
+accumulator chain, once per frame:
+
+| # | Name | Address | Bytes | Len | rel32 off / target | Interval |
+| --- | --- | --- | --- | ---: | --- | --- |
+| 6 | `region_cutevent` | `0x00403b12` | `e8 39 ba 08 00` | 5 | 1 / `0x0048f550` | opens cutevent |
+| 7 | `region_containers` | `0x00403b17` | `e8 44 68 03 00` | 5 | 1 / `0x0043a360` | closes cutevent, opens containers (the whole driver, sites 0-5 nested) |
+| 8 | `region_sweep` | `0x00403b1c` | `a1 0c 85 60 00` | 5 | — | closes containers, opens sweep (walk + `0x0045b660` per class-1 container) |
+| 9 | `region_end` | `0x00403b40` | `0f 85 72 02 00 00` | 6 | 2 / `0x00403db8` | closes sweep |
+
+`ret_pop` is 0 for all four. Why each is safe (mechanised in
+`verify_loop_phase_sites.py`, which now decodes the main loop
+`0x00403840`-`0x00404278` whole):
+
+* **Boundaries and edges.** All four spans are whole instructions of the
+  gap-free main-loop decode; no direct branch in the main loop lands on any of
+  them (sites 6-8 follow the pause gate's fall-through, site 9 follows the
+  end marker), and the raw-encoding sweep of all `.text` finds no encoding
+  into a span interior; no data reference to a span byte.
+* **Why site 9 is after the region.** The region's end `0x00403b3a` (`cmp
+  [esi+0x4d8],ebp`, 6 bytes) is the installed `game_phase_input_body` site,
+  so the sweep closes on the next instruction, the `jne 0x00403db8`. All three
+  exits of the region reach it: the pause edge `0x00403b10` and the empty-list
+  edge `0x00403b26` land on `0x00403b3a` (the only two direct edges there) and
+  the walk's back edge `0x00403b38` falls through to it. The sweep interval
+  therefore also contains the `cmp` and, with `--game-phases`, that site's
+  dispatch (~0.1 us, inferred).
+* **Registers and flags.** Sites 6 and 7: incoming flags are dead (the pause
+  `jne` consumed them; each callee clobbers them). Site 8: EAX and flags dead
+  (the span writes EAX, the walk's `cmp [edi],ebx` rewrites the flags).
+  Site 9: flags live-in from the end marker's `cmp`; the lean stub's
+  `pushfd`...`popfd` returns them unchanged and the replayed `jne` in the tail
+  consumes them (the fixture checks both directions: the taken and the
+  fall-through path leave different flags and each matches native). EBX = 0,
+  EBP = 1, ESI = `*0x0057fc60`, EDI are live across all four and preserved by
+  the stub (EAX/ECX/EDX saved, the handler is cdecl).
+* **ESP.** The region's only stack write is the `push edi` at `0x00403b2e`,
+  removed by `0x0045b660`'s `ret 4` (`0x0045b712`); `0x0048f550` (`ret` at
+  `0x0048f692`) and `0x0043a360` (`ret` at `0x0043a3d4`) take no argument. ESP
+  is the main loop's frame at all four sites; the displaced calls run in the
+  claim tail at the game's exact ESP and return to the tail (arena return
+  address, the game_phase clock/pump/channels contract).
+* **Thread.** `0x00403840` has one caller (`0x0040373a`); the main loop runs
+  on the thread that also issues Present, which the stamp gate admits;
+  anything else is counted `foreign` and dropped.
+* **Paused frames.** The pause edge reaches site 9 with nothing open; the
+  accumulator treats that like the pass-end walk sites, not as an orphan.
+
+New fields (`docs/verification/sampling-profiler.md`, "Loop phases"):
+`cutevent_p50_us`/`_p95_us`, `containers_p50_us`/`_p95_us`,
+`sweep_p50_us`/`_p95_us`, `region_p50_us` (the three summed) and
+`region_max_us`/`region_max_owner`. Reading the next flight:
+`input_p50_us - region_p50_us` is the part of `pre_render` outside
+`input_part=0`; `containers_p50_us - sum_p50_us` is the driver's un-stamped
+remainder; the region interval that grows with `input` is the owner. Not yet
+run in the game.
 
 ## Reproduce
 
