@@ -329,6 +329,10 @@ New fields (`docs/verification/sampling-profiler.md`, "Loop phases"):
 remainder; the region interval that grows with `input` is the owner. Not yet
 run in the game.
 
+Run381 then put the growth in `cutevent`; `0x0048f550` is the scene-graph animation
+tick, not a script scheduler, and its structure, the real scheduler `0x0049f770` and
+the probe set that splits the growth are in [script-task-scheduler.md](script-task-scheduler.md).
+
 ## Reproduce
 
 ```sh
