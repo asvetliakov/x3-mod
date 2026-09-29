@@ -290,6 +290,9 @@ struct Shaders {
     // gain variant of the ORIGINAL pixel program; its VS and its baseline are
     // mode 0, the untransformed original pair with the MRTs disabled.
     float hull_gain = 0.0f;
+    // --hull-emission-gain G C: X3M_EMISSION_SOURCE_CLAMP C baked into the
+    // same mode-12 variant (0 = none).
+    float hull_clamp = 0.0f;
     // --hull-lightmap-gain G K (hull-self-illumination.md 5): mode 13 is the
     // hull light-map gain variant of the ORIGINAL pixel program composed with
     // the fill K (K=0: the motion PS plus the gain); its VS is mode 1's and its
@@ -325,7 +328,7 @@ struct Shaders {
         char buffer[128];
         if (mode == 12) {
             if (!pixel) return key(c, 0, false);
-            std::snprintf(buffer, sizeof buffer, "%s_12_hull_%.9g", id, hull_gain);
+            std::snprintf(buffer, sizeof buffer, "%s_12_hull_%.9g_%.9g", id, hull_gain, hull_clamp);
             return buffer;
         }
         if (mode == 13 || mode == 14) {
@@ -372,10 +375,15 @@ struct Shaders {
                             LinearEmissionResult::Applied &&
                         identity == original,
                     "gain 1 is the original program");
-            require(linear_emission_hull_source_gain_variant(original.data(), original.size(), hull_gain, output) ==
-                        LinearEmissionResult::Applied,
+            const bool normalized = linear_emission_clamp_normalizes(hull_clamp);
+            require(linear_emission_hull_source_gain_variant(original.data(), original.size(), hull_gain, output,
+                                                             hull_clamp, normalized) == LinearEmissionResult::Applied,
                     "hull emitter gain transform");
-            require(output.size() == original.size() + 10, "one DEF and one MUL added");
+            if (hull_clamp == 0.0f)
+                require(output.size() == original.size() + 10, "one DEF and one MUL added");
+            else
+                require(output.size() == original.size() + (normalized ? 18 : 14),
+                        "one DEF, one MUL, one MIN (and the t / C MUL) added");
             require(original == before, "original mutated");
             return output;
         }
@@ -1139,6 +1147,40 @@ struct Gpu {
         };
         const auto base = pass(0);
         const auto gained = pass(12);
+        // The card over a lit disc: the target cleared to 1.0 (the engine
+        // disc the screen pair already drew), then the card blended ADD ONE/ONE
+        // as the game draws it. Native: the original program under ONE/ONE.
+        // Gained: the variant under the proxy's law for this clamp
+        // (renderer::linear_emission_clamp_saturates: DESTBLEND INVSRCCOLOR
+        // substituted for a clamp <= 1, else the native ONE/ONE).
+        // A clamp below 1 (the 8-bit BLENDFACTOR value) runs over a 0.9 disc
+        // (230/255) and adds SRCBLEND BLENDFACTOR (C, C, C, 1) to the normalized
+        // variant; the proxy keeps the scene alpha law with separate alpha
+        // (the application's ONE/ONE/ADD as the alpha factors).
+        const bool normalized = linear_emission_clamp_normalizes(shaders.hull_clamp);
+        const D3DCOLOR disc_colour = normalized ? 0x80e6e6e6u : 0x80ffffffu;
+        auto disc = [&](unsigned mode, bool saturate) {
+            state(c16, mode);
+            api(d->Clear(0, nullptr, D3DCLEAR_TARGET, disc_colour, 1, 0));
+            api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE));
+            api(d->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, saturate ? TRUE : FALSE));
+            api(d->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE));
+            api(d->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE));
+            api(d->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD));
+            api(d->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD));
+            api(d->SetRenderState(D3DRS_BLENDFACTOR, linear_emission_blend_factor(shaders.hull_clamp)));
+            api(d->SetRenderState(D3DRS_SRCBLEND, saturate && normalized ? D3DBLEND_BLENDFACTOR : D3DBLEND_ONE));
+            api(d->SetRenderState(D3DRS_DESTBLEND, saturate ? D3DBLEND_INVSRCCOLOR : D3DBLEND_ONE));
+            draw(c16);
+            auto result = read(color[1].p, D3DFMT_A16B16G16R16F);
+            api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE));
+            api(d->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE));
+            api(d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE));
+            api(d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO));
+            return result;
+        };
+        const auto disc_native = disc(0, false);
+        const auto disc_gained = disc(12, x3m::renderer::linear_emission_clamp_saturates(shaders.hull_clamp));
         unsigned alpha_bad = 0, rgb_bad = 0, identical = 0, positive = 0;
         for (unsigned i = 0; i < width * width; ++i) {
             for (unsigned k = 0; k < 3; ++k) {
@@ -1149,8 +1191,9 @@ struct Gpu {
             alpha_bad += std::memcmp(&base[i].f[3], &gained[i].f[3], 4) != 0;
             identical += std::memcmp(&base[i], &gained[i], 16) == 0;
         }
-        std::printf("HULLGAIN id=%u pair=%u pixels=%u alpha_bad=%u rgb_bad=%u identical=%u positive=%u gain=%.9g\n",
-                    c.id, c.pair, width * width, alpha_bad, rgb_bad, identical, positive, shaders.hull_gain);
+        std::printf(
+            "HULLGAIN id=%u pair=%u pixels=%u alpha_bad=%u rgb_bad=%u identical=%u positive=%u gain=%.9g clamp=%.9g\n",
+            c.id, c.pair, width * width, alpha_bad, rgb_bad, identical, positive, shaders.hull_gain, shaders.hull_clamp);
         require(!alpha_bad && !rgb_bad, "hull emitter gain: native alpha and finite non-negative RGB");
         for (unsigned y : {width / 4, width / 2, 3 * width / 4})
             for (unsigned x : {width / 4, width / 2, 3 * width / 4}) {
@@ -1158,6 +1201,10 @@ struct Gpu {
                 const auto& g = gained[y * width + x];
                 std::printf("HULLSAMPLE id=%u x=%u y=%u base=%.9g,%.9g,%.9g,%.9g gained=%.9g,%.9g,%.9g,%.9g\n", c.id, x,
                             y, b.f[0], b.f[1], b.f[2], b.f[3], g.f[0], g.f[1], g.f[2], g.f[3]);
+                const auto& n = disc_native[y * width + x];
+                const auto& s = disc_gained[y * width + x];
+                std::printf("HULLDISC id=%u x=%u y=%u native=%.9g,%.9g,%.9g,%.9g gained=%.9g,%.9g,%.9g,%.9g\n", c.id, x,
+                            y, n.f[0], n.f[1], n.f[2], n.f[3], s.f[0], s.f[1], s.f[2], s.f[3]);
             }
     }
     // --hull-lightmap-gain G K: the fill variant (K>0: mode 5; K=0: the plain
@@ -1514,12 +1561,18 @@ int main(int argc, char** argv) {
         require(!original_fill_mode || (original_fill_end && *original_fill_end == '\0' &&
                                         std::isfinite(original_fill) && original_fill > 0.0f && original_fill <= 0.5f),
                 "original fill must be finite and in (0,0.5]");
-        const bool hull_gain_mode = argc == 5 && std::strcmp(argv[3], "--hull-emission-gain") == 0;
+        const bool hull_gain_mode = (argc == 5 || argc == 6) && std::strcmp(argv[3], "--hull-emission-gain") == 0;
         char* hull_gain_end = nullptr;
+        char* hull_clamp_end = nullptr;
         const float hull_gain = hull_gain_mode ? std::strtof(argv[4], &hull_gain_end) : 0.0f;
+        const float hull_clamp = hull_gain_mode && argc == 6 ? std::strtof(argv[5], &hull_clamp_end) : 0.0f;
         require(!hull_gain_mode || (hull_gain_end && *hull_gain_end == '\0' && std::isfinite(hull_gain) &&
                                     hull_gain > 1.0f && hull_gain <= 8.0f),
                 "hull emitter gain must be finite and within (1,8]");
+        require(!hull_gain_mode || argc == 5 ||
+                    (hull_clamp_end && *hull_clamp_end == '\0' &&
+                     x3m::renderer::linear_emission_source_clamp_valid(hull_clamp) && hull_clamp != 0.0f),
+                "hull emitter clamp must be finite and within [0.25,8]");
         const bool hull_lightmap_mode = argc == 6 && std::strcmp(argv[3], "--hull-lightmap-gain") == 0;
         char* lightmap_gain_end = nullptr;
         char* lightmap_fill_end = nullptr;
@@ -1587,6 +1640,10 @@ int main(int argc, char** argv) {
                             : hull_lightmap_mode ? lightmap_fill
                                                  : original_fill,
                             hull_gain, lightmap_gain);
+            shaders.hull_clamp = linear_emission_blend_factor_clamp(hull_clamp); // as the proxy's configure does
+            require(!linear_emission_clamp_normalizes(shaders.hull_clamp) ||
+                        (shaders.caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0,
+                    "blend-factor cap");
             std::printf("CAPS mrt=%lu vs_slots=%lu ps_slots=%lu\n", shaders.caps.NumSimultaneousRTs,
                         shaders.caps.MaxVertexShader30InstructionSlots, shaders.caps.MaxPixelShader30InstructionSlots);
             require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");

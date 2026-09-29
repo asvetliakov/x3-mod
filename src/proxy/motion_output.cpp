@@ -875,19 +875,31 @@ void MotionOutput::configure_linear_emissions(bool requested, float gain) noexce
     linear_emission_config_ = {gain, true};
     linear_emission_requested_ = requested && renderer::linear_emission_config_valid(linear_emission_config_);
 }
-void MotionOutput::configure_emission_source_gain(float gain) noexcept {
+void MotionOutput::configure_emission_source_gain(float gain, float clamp) noexcept {
     if (device_) return; // Creation-time shader variant: immutable after attach.
-    // One gain for all twenty pairs; gain 1 keeps the native bytes (no
-    // variant, no admission, no substitution).
-    emission_source_gain_requested_ = renderer::linear_emission_source_gain_valid(gain) && gain != 1.f;
+    // One gain for all twenty pairs; gain 1 without a clamp keeps the native
+    // bytes (no variant, no admission, no substitution). A clamp is baked into
+    // the variant (one MIN); gain 1 with a clamp builds the clamp-only variant.
+    const bool valid = renderer::linear_emission_source_gain_valid(gain) &&
+                       renderer::linear_emission_source_clamp_valid(clamp);
+    clamp = renderer::linear_emission_blend_factor_clamp(clamp); // C < 1: the 8-bit BLENDFACTOR value k/255
+    emission_source_gain_requested_ = valid && (gain != 1.f || clamp != 0.f);
     emission_source_gain_ = emission_source_gain_requested_ ? gain : 1.f;
+    emission_source_clamp_ = emission_source_gain_requested_ ? clamp : 0.f;
+    source_gain_substitute_screen_ = emission_source_gain_requested_ && emission_source_gain_ != 1.f &&
+                                     !renderer::linear_emission_clamp_saturates(emission_source_clamp_);
 }
-void MotionOutput::configure_hull_emission_gain(float gain) noexcept {
+void MotionOutput::configure_hull_emission_gain(float gain, float clamp) noexcept {
     if (device_) return; // Creation-time shader variant: immutable after attach.
-    // Emitter plan phase 3: gain 1 keeps the native bytes (no variant, no
-    // admission, no per-draw predicate beyond the entry's false flag).
-    hull_emission_gain_requested_ = renderer::linear_emission_source_gain_valid(gain) && gain != 1.f;
+    // Emitter plan phase 3: gain 1 without a clamp keeps the native bytes (no
+    // variant, no admission, no per-draw predicate beyond the entry's false flag).
+    const bool valid = renderer::linear_emission_source_gain_valid(gain) &&
+                       renderer::linear_emission_source_clamp_valid(clamp);
+    clamp = renderer::linear_emission_blend_factor_clamp(clamp); // C < 1: the 8-bit BLENDFACTOR value k/255
+    hull_emission_gain_requested_ = valid && (gain != 1.f || clamp != 0.f);
     hull_emission_gain_ = hull_emission_gain_requested_ ? gain : 1.f;
+    hull_emission_clamp_ = hull_emission_gain_requested_ ? clamp : 0.f;
+    hull_gain_saturate_ = hull_emission_gain_requested_ && renderer::linear_emission_clamp_saturates(hull_emission_clamp_);
 }
 void MotionOutput::configure_linear_distance_fade(bool requested) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
@@ -3095,6 +3107,31 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     id_ = device_id;
     caps_ = caps;
     requested_ = requested;
+    {
+        // X3M_EMISSION_SOURCE_CLAMP < 1 saturates at C through SRCBLEND
+        // BLENDFACTOR; without the documented cap the draws fall back to the
+        // C = 1 screen law (the stacked sum then saturates at 1), one row says so.
+        const bool factor = (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0;
+        const bool source = emission_source_gain_requested_ &&
+                            renderer::linear_emission_clamp_normalizes(emission_source_clamp_);
+        const bool hull = hull_emission_gain_requested_ && renderer::linear_emission_clamp_normalizes(hull_emission_clamp_);
+        // The hull substitution keeps the scene alpha law through separate
+        // alpha blending; without that documented cap the cards stay ONE/ONE
+        // (the source cap alone applies) and one row says so.
+        const bool separate = (caps.PrimitiveMiscCaps & D3DPMISCCAPS_SEPARATEALPHABLEND) != 0;
+        hull_gain_saturate_ = hull_emission_gain_requested_ &&
+                              renderer::linear_emission_clamp_saturates(hull_emission_clamp_) && separate;
+        if (hull_emission_gain_requested_ && renderer::linear_emission_clamp_saturates(hull_emission_clamp_) && !separate)
+            log("emission_clamp_separate_alpha_unavailable device=%llu hull_clamp=%g saturate=0", device_id,
+                double(hull_emission_clamp_));
+        source_gain_normalized_ = source && factor;
+        hull_gain_normalized_ = hull && factor && hull_gain_saturate_;
+        source_gain_factor_value_ = renderer::linear_emission_blend_factor(emission_source_clamp_);
+        hull_gain_factor_value_ = renderer::linear_emission_blend_factor(hull_emission_clamp_);
+        if ((source || hull) && !factor)
+            log("emission_clamp_blend_factor_unavailable device=%llu clamp=%g hull_clamp=%g saturates_at=1", device_id,
+                double(emission_source_clamp_), double(hull_emission_clamp_));
+    }
     // Bolts through the TAA (bolts-through-taa.md): the MRT post-pixel-shader
     // blending cap decides the lane flag's base term (g = base + K * add with
     // it, K * add without; the test g > 1 is robust to both), logged once per
@@ -4373,12 +4410,13 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         }
         // Source-only encoded gain (linear-emission-cost.md, "Implemented"):
         // the same ten PS2 emission programs with one colour MUL, one variant
-        // per original program at the one gain (never 1 here); created once,
+        // per original program at the one gain (1 only with a clamp); created once,
         // selected per draw by the bound pair in refresh_linear_emission_contract.
         if (emission_source_gain_requested_) {
             std::vector<std::uint32_t> words;
             const auto result = renderer::linear_emission_source_gain_variant(
-                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, emission_source_gain_, words);
+                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, emission_source_gain_, words,
+                emission_source_clamp_, source_gain_normalized_);
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::LinearEmissionResult::Applied)
@@ -4389,11 +4427,12 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             else
                 release(variant);
             if (result != renderer::LinearEmissionResult::UnsupportedShader)
-                log("emission_source_gain_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g",
-                    id_, hash, unsigned(result), hr, unsigned(words.size()), double(emission_source_gain_));
+                log("emission_source_gain_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g clamp=%g normalized=%u",
+                    id_, hash, unsigned(result), hr, unsigned(words.size()), double(emission_source_gain_),
+                    double(emission_source_clamp_), unsigned(source_gain_normalized_));
         }
         // Hull-emitter gain (emitter plan phase 3): one whole-output variant
-        // per covered hull program at the one gain (never 1 here), created
+        // per covered hull program at the one gain (1 only with a clamp), created
         // once, keyed on the PS alone; selected per ONE/ONE draw in
         // prepare_hull_gain. A covered original whose transform or creation
         // fails keeps hull_program set with no variant: fail closed, the
@@ -4401,7 +4440,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         if (hull_emission_gain_requested_ && renderer::linear_emission_hull_program_reviewed(hash)) {
             std::vector<std::uint32_t> words;
             const auto result = renderer::linear_emission_hull_source_gain_variant(
-                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, hull_emission_gain_, words);
+                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, hull_emission_gain_, words,
+                hull_emission_clamp_, hull_gain_normalized_);
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (result == renderer::LinearEmissionResult::Applied)
@@ -4412,9 +4452,10 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             else
                 release(variant);
             entry.hull_program = true;
-            log("hull_emission_variant device=%llu original=%016llx program=%u transform=%u create=%08lx words=%u gain=%g",
+            log("hull_emission_variant device=%llu original=%016llx program=%u transform=%u create=%08lx words=%u gain=%g clamp=%g normalized=%u",
                 id_, hash, renderer::linear_emission_hull_program_index(hash), unsigned(result), hr,
-                unsigned(words.size()), double(hull_emission_gain_));
+                unsigned(words.size()), double(hull_emission_gain_), double(hull_emission_clamp_),
+                unsigned(hull_gain_normalized_));
         }
         // Step C (screen-emission-region.md): the promoted PackedScreen
         // producer of one of the six SM1 screen pixel shaders, from the
@@ -7533,6 +7574,7 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
     known = state_known(5) && known;
     for (unsigned i = 0; i < 3; ++i)
         known = blend_known(i) && known; // the colour triple gates; sepalpha and the alpha triple are logged only
+    if (source_gain_normalized_) known = blend_known(7) && known; // BLENDFACTOR: restored after the draw
     if (!known) {
         ++source_gain_counts_.refused_unknown;
         return;
@@ -7551,7 +7593,12 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         }
         return;
     }
-    const bool screen = verdict == renderer::SourceGainBlend::Screen;
+    // Gain 1 (a clamp-only variant, min(s, C) <= s) or a saturating clamp
+    // C <= 1: the gained colour stays <= 1, so the native screen law
+    // `s + bg*(1-s)` stays non-negative and saturates like the native target;
+    // the draw keeps INVSRCCOLOR and nothing is substituted. Only a gain above
+    // 1 without such a clamp needs DESTBLEND ONE.
+    const bool screen = verdict == renderer::SourceGainBlend::Screen && source_gain_substitute_screen_;
     {
         const HRESULT held = acquire_restore(route);
         if (FAILED(held)) {
@@ -7580,6 +7627,23 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         }
         route.source_gain_screen = true;
     }
+    if (source_gain_normalized_) {
+        // Clamp C < 1 (never with the screen substitution: C <= 1 keeps the
+        // native DESTBLEND): the variant emits t / C and SRCBLEND BLENDFACTOR
+        // multiplies it back, so a screen draw saturates at C
+        // (t + d (1 - t / C)) and a ONE/ONE draw stays t + d.
+        const HRESULT applied = apply_clamp_factor(route, source_gain_factor_value_);
+        if (FAILED(applied)) {
+            ++source_gain_counts_.bind_failures;
+            if (source_gain_logged_[2] < failure_log_limit) {
+                ++source_gain_logged_[2];
+                log("emission_source_gain_bind_failed device=%llu frame=%llu ps=%016llx what=factor result=%08lx", id_,
+                    frame_, shadow_.ps_hash, applied);
+            }
+            return;
+        }
+        route.source_gain_factor = true;
+    }
     const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.source_gain_eligible_variant);
     if (FAILED(hr)) {
         // A failed setter may have mutated the binding: put the application's
@@ -7594,6 +7658,11 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
             route.source_gain_screen = false;
             if (SUCCEEDED(restored) && FAILED(back)) restored = back;
             if (FAILED(back)) invalidate_render_states();
+        }
+        if (route.source_gain_factor) {
+            route.source_gain_factor = false;
+            const HRESULT back = restore_clamp_factor();
+            if (SUCCEEDED(restored) && FAILED(back)) restored = back;
         }
         if (FAILED(restored)) {
             if (!motion_state_lost_) {
@@ -7642,6 +7711,11 @@ void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
             invalidate_render_states();
             if (SUCCEEDED(first)) first = back;
         }
+    }
+    if (route.source_gain_factor) {
+        route.source_gain_factor = false;
+        const HRESULT back = restore_clamp_factor();
+        if (SUCCEEDED(first) && FAILED(back)) first = back;
     }
     if (FAILED(first)) {
         if (!motion_state_lost_) {
@@ -7706,6 +7780,8 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
     bool known = state_known(5);
     for (unsigned i = 0; i < 3; ++i)
         known = blend_known(i) && known; // the colour triple gates; the alpha triple is native either way
+    if (hull_gain_saturate_) // the separate-alpha states and BLENDFACTOR the substitution restores
+        for (unsigned i = 3; i < 8; ++i) known = blend_known(i) && known;
     if (!known) {
         ++hull_gain_counts_.refused_unknown;
         return;
@@ -7744,13 +7820,39 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
         ++hull_gain_counts_.bind_failures;
         return;
     } // nothing applied: the draw stays native
+    if (hull_gain_saturate_) {
+        // Saturating clamp (X3M_EMISSION_SOURCE_CLAMP <= 1): the FP16 target
+        // cannot saturate the ADD ONE/ONE sum the way the native 8-bit one
+        // does, so this draw uses the screen law (DESTBLEND INVSRCCOLOR;
+        // SRCBLEND ONE and ADD are the admitted state): `d + t (1 - d)` stays
+        // <= 1 for t, d <= 1. For C < 1 the variant emits t / C and SRCBLEND
+        // BLENDFACTOR (C, C, C, 1) gives `t + d (1 - t / C)`, which saturates
+        // at C. The scene alpha keeps the application's law (the bloom
+        // extract and the resolve read it): with SEPARATEALPHABLENDENABLE off
+        // the draw gets it on with the application's own colour factors as
+        // the alpha factors. apply_hull_clamp_blend unwinds a partial set; the
+        // draw then stays native, counted as a bind failure.
+        const HRESULT applied = apply_hull_clamp_blend(route);
+        if (FAILED(applied)) {
+            ++hull_gain_counts_.bind_failures;
+            if (hull_gain_logged_[1] < failure_log_limit) {
+                ++hull_gain_logged_[1];
+                log("hull_emission_bind_failed device=%llu frame=%llu ps=%016llx what=saturate result=%08lx", id_,
+                    frame_, shadow_.ps_hash, applied);
+            }
+            return;
+        }
+    }
     const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_hull_gain_variant);
     if (FAILED(hr)) {
         // A failed setter may have mutated the binding: put the application's
-        // program back before the native draw goes out; a failed restore is
-        // the same lost-state condition as a failed route restore.
+        // program back (and the substituted blend states) before the native
+        // draw goes out; a failed restore is the same lost-state condition as
+        // a failed route restore.
         ++hull_gain_counts_.bind_failures;
-        const HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
+        HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
+        const HRESULT back = restore_hull_clamp_blend(route);
+        if (SUCCEEDED(restored) && FAILED(back)) restored = back;
         if (FAILED(restored)) {
             if (!motion_state_lost_) {
                 motion_state_lost_ = true;
@@ -7820,9 +7922,87 @@ void MotionOutput::log_hull_emission_draw(const MotionDrawCall& call, unsigned p
 // After the native draw: the application's program back (the shadowed
 // pointer; nothing of the application's runs between prepare and finish,
 // both sit under the hook mutex of one draw). Mirrors finish_source_gain.
+HRESULT MotionOutput::apply_clamp_factor(MotionRoute& route, DWORD factor) noexcept {
+    HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_BLENDFACTOR, factor);
+    if (SUCCEEDED(hr)) hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_SRCBLEND, D3DBLEND_BLENDFACTOR);
+    if (SUCCEEDED(hr)) return hr;
+    const HRESULT back = restore_clamp_factor(); // a failed setter may have applied its value
+    if (FAILED(back)) clamp_state_lost(route, back);
+    return hr;
+}
+HRESULT MotionOutput::restore_clamp_factor() noexcept {
+    HRESULT first = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_SRCBLEND, shadow_.composition_blend[0]);
+    const HRESULT second = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_BLENDFACTOR, shadow_.composition_blend[7]);
+    if (SUCCEEDED(first)) first = second;
+    if (FAILED(first)) invalidate_render_states();
+    return first;
+}
+HRESULT MotionOutput::apply_hull_clamp_blend(MotionRoute& route) noexcept {
+    const auto set = [this](D3DRENDERSTATETYPE state, DWORD value) noexcept {
+        return direct_call<SetRenderStateFn>(SetRenderState, state, value);
+    };
+    HRESULT hr = S_OK;
+    if (!shadow_.composition_blend[3]) { // SEPARATEALPHABLENDENABLE off: keep the alpha law A_s + A_d
+        route.hull_gain_alpha = true;     // before the first set: the unwind covers a partial set
+        hr = set(D3DRS_SRCBLENDALPHA, shadow_.composition_blend[0]);
+        if (SUCCEEDED(hr)) hr = set(D3DRS_DESTBLENDALPHA, shadow_.composition_blend[1]);
+        if (SUCCEEDED(hr)) hr = set(D3DRS_BLENDOPALPHA, shadow_.composition_blend[2]);
+        if (SUCCEEDED(hr)) hr = set(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
+    }
+    if (SUCCEEDED(hr) && hull_gain_normalized_) {
+        route.hull_gain_factor = true;
+        hr = set(D3DRS_BLENDFACTOR, hull_gain_factor_value_);
+        if (SUCCEEDED(hr)) hr = set(D3DRS_SRCBLEND, D3DBLEND_BLENDFACTOR);
+    }
+    if (SUCCEEDED(hr)) {
+        route.hull_gain_saturate = true;
+        hr = set(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+    }
+    if (SUCCEEDED(hr)) return hr;
+    const HRESULT back = restore_hull_clamp_blend(route);
+    if (FAILED(back)) clamp_state_lost(route, back);
+    return hr;
+}
+HRESULT MotionOutput::restore_hull_clamp_blend(MotionRoute& route) noexcept {
+    HRESULT first = S_OK;
+    const auto put = [this, &first](D3DRENDERSTATETYPE state, DWORD value) noexcept {
+        const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, state, value);
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    };
+    if (route.hull_gain_saturate) put(D3DRS_DESTBLEND, shadow_.composition_blend[1]);
+    if (route.hull_gain_factor) {
+        put(D3DRS_SRCBLEND, shadow_.composition_blend[0]);
+        put(D3DRS_BLENDFACTOR, shadow_.composition_blend[7]);
+    }
+    if (route.hull_gain_alpha) {
+        put(D3DRS_SEPARATEALPHABLENDENABLE, shadow_.composition_blend[3]);
+        put(D3DRS_SRCBLENDALPHA, shadow_.composition_blend[4]);
+        put(D3DRS_DESTBLENDALPHA, shadow_.composition_blend[5]);
+        put(D3DRS_BLENDOPALPHA, shadow_.composition_blend[6]);
+    }
+    route.hull_gain_saturate = route.hull_gain_factor = route.hull_gain_alpha = false;
+    if (FAILED(first)) invalidate_render_states();
+    return first;
+}
+void MotionOutput::clamp_state_lost(MotionRoute& route, HRESULT hr) noexcept {
+    if (!motion_state_lost_) {
+        motion_state_lost_ = true;
+        motion_state_error_ = hr;
+    }
+    route.submit = false;
+    route.submission_error = motion_state_error_;
+    ++counters_.restore_failures;
+    invalidate_taa(TaaInvalidateSite::RestoreFailed);
+}
 void MotionOutput::finish_hull_gain(MotionRoute& route) noexcept {
     route.hull_gain = false;
-    const HRESULT first = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
+    HRESULT first = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
+    {
+        // The application's DESTBLEND ONE, SRCBLEND ONE, BLENDFACTOR and
+        // separate-alpha states (the shadowed values the admission read).
+        const HRESULT back = restore_hull_clamp_blend(route);
+        if (SUCCEEDED(first) && FAILED(back)) first = back;
+    }
     if (FAILED(first)) {
         if (!motion_state_lost_) {
             motion_state_lost_ = true;

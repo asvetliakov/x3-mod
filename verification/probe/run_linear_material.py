@@ -1272,6 +1272,9 @@ def validate_original_fill_report(text, cases, fill):
 # twelve programs.
 HULL_GAIN_PAIRS = (40, 41, 50, 51, 60, 61, 150, 151, 152, 153)
 HULL_GAINS = (2.0, 4.0)
+# X3M_EMISSION_SOURCE_CLAMP runs (gain, clamp): the card capped at native white; with a clamp <= 1 the
+# gained card is also drawn over the 1.0 disc with the proxy's saturating DESTBLEND INVSRCCOLOR.
+HULL_RUNS = tuple((g, 0.0) for g in HULL_GAINS) + ((2.0, 1.0), (2.0, 0.7))
 
 
 def hull_gain_cases():
@@ -1301,20 +1304,44 @@ def hull_gain_cases():
         add('emitter', diffuse=[.5, .25, .75, .75], material=[1., 1., 1.],
             dir0=[.375, .25, .5], normal=[0., 0., 1.], glow=0.)
         add('black', material=[1., 1., 1.], dir0=[.375, .25, .5], normal=[0., 0., 1.], glow=0.)
+        # A bright card (the run364 nozzle card, program 7 = pair 40) whose native output is 0.9: under a
+        # white unit light the standard_lighting programs (pairs 40..61) return 2 x diffuse and the
+        # XT_standard_lighting ones (150..153) 1.174 x diffuse (measured 2026-09-29, report-hull-2).
+        texel = .45 if pair < 100 else .7666
+        add('bright_emitter', diffuse=[texel, texel, texel, .75], material=[1., 1., 1.],
+            dir0=[1., 1., 1.], normal=[0., 0., 1.], glow=0.)
     return result
 
 
-def validate_hull_gain_report(text, cases, gain):
+def validate_hull_gain_report(text, cases, gain, clamp=0.0):
     """The emitter face (diffuse-authored, lightmap black) scales by G within
-    one FP16 code; the black face is bit-identical; alpha is exact in both."""
+    one FP16 code (capped at the clamp C when one is set); the black face is
+    bit-identical; alpha is exact in both. Over the 1.0 disc (HULLDISC) the
+    native card adds (1 + s) and the gained card adds (1 + t, t = G s or
+    min(G s, C)), except that a clamp C <= 1 draws the saturating screen law
+    t + 1 (1 - t) = 1."""
     lines = text.splitlines()
     assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}'
     assert not any('FAIL' in line for line in lines)
-    rows = re.findall(r'^HULLGAIN id=(\d+) pair=(\d+) pixels=256 alpha_bad=0 rgb_bad=0 identical=(\d+) positive=(\d+) gain=(\S+)$', text, re.M)
+    rows = re.findall(r'^HULLGAIN id=(\d+) pair=(\d+) pixels=256 alpha_bad=0 rgb_bad=0 identical=(\d+) positive=(\d+) gain=(\S+) clamp=(\S+)$', text, re.M)
     assert [int(cid) for cid, *_ in rows] == list(range(len(cases))), 'one reported row per case'
     assert {row[4] for row in rows} == {'%.9g' % gain}, 'the fixture ran the requested gain'
-    identical = {int(cid): int(count) for cid, _, count, _, _ in rows}
-    positive = {int(cid): int(count) for cid, _, _, count, _ in rows}
+    # A clamp below 1 is the 8-bit BLENDFACTOR value k/255 (linear_emission_blend_factor_clamp), drawn over a
+    # 230/255 disc as t + d (1 - t / C); C = 1 over the 1.0 disc as t + d (1 - t).
+    requested = clamp
+    if 0.0 < clamp < 1.0:
+        f32 = lambda v: struct.unpack('<f', struct.pack('<f', v))[0]
+        clamp = f32(math.floor(f32(f32(clamp) * 255) + .5) / 255)  # lround(C * 255.0f) in float, as the C++ helper
+    assert {float(row[5]) for row in rows} == {float('%.9g' % clamp)}, ('the fixture ran the requested clamp', requested, rows[0][5])
+    saturate = 0.0 < clamp <= 1.0
+    normalized = 0.0 < clamp < 1.0
+    disc_value = ref.half(230 / 255) if normalized else 1.0
+    discs = {(int(cid), int(x), int(y)): (tuple(map(float, n.split(','))), tuple(map(float, g.split(','))))
+             for cid, x, y, n, g in re.findall(r'^HULLDISC id=(\d+) x=(\d+) y=(\d+) native=(\S+) gained=(\S+)$', text, re.M)}
+    assert len(discs) == 9 * len(cases), 'one disc sample per case sample'
+    disc_codes = 0; bright = None
+    identical = {int(cid): int(count) for cid, _, count, *_ in rows}
+    positive = {int(cid): int(count) for cid, _, _, count, *_ in rows}
     samples = re.findall(r'^HULLSAMPLE id=(\d+) x=(\d+) y=(\d+) base=(\S+) gained=(\S+)$', text, re.M)
     assert len(samples) == 9 * len(cases)
     parsed = {}
@@ -1336,21 +1363,38 @@ def validate_hull_gain_report(text, cases, gain):
             for y in (4, 8, 12):
                 base, gained = parsed[(c['id'], x, y)]
                 assert base[3] == gained[3], (c['id'], 'alpha')
+                native_disc, gained_disc = discs[(c['id'], x, y)]
+                assert native_disc[3] == gained_disc[3], (c['id'], 'disc alpha law kept', native_disc[3], gained_disc[3])
                 for k in range(3):
                     want = gain * base[k] if emitter else base[k]
-                    codes = abs(_half_code(gained[k]) - _half_code(ref.half(want)))
+                    if clamp:
+                        want = min(want, clamp)
+                    # The normalized variant (C < 1) writes t / C; the draw's BLENDFACTOR multiplies it back.
+                    written = want / clamp if normalized else want
+                    codes = abs(_half_code(gained[k]) - _half_code(ref.half(written)))
                     assert codes <= 1, (c['id'], c['label'], k, base[k], gained[k], want, codes)
                     max_codes = max(max_codes, codes)
                     if emitter:
                         assert base[k] > 0, (c['id'], 'emitter face sample is positive')
+                    # Over the disc d: native ONE/ONE d + s; gained d + t or, saturating, t + d (1 - t / C) (C = 1: t + d (1 - t)).
+                    law = want + disc_value * (1.0 - want / (clamp if normalized else 1.0)) if saturate else disc_value + want
+                    for value, wanted in ((native_disc[k], disc_value + base[k]), (gained_disc[k], law)):
+                        codes = abs(_half_code(value) - _half_code(ref.half(wanted)))
+                        assert codes <= 1, (c['id'], c['label'], k, base[k], value, wanted, codes, 'disc law')
+                        disc_codes = max(disc_codes, codes)
+                    if c['label'] == 'hull_gain_bright_emitter' and c['pair'] == 40 and (x, y) == (8, 8) and k == 0:
+                        bright = dict(case=c['id'], pair=c['pair'], program=PAIRS[40][1], x=x, y=y, card=base[0], card_written=gained[0],
+                                      disc=disc_value, disc_native=native_disc[0], disc_gained=gained_disc[0])
                 checked += 1
-    allowed = ('CAPS ', 'CREATE ', 'HULLGAIN ', 'HULLSAMPLE ', 'RESULT PASS ')
+    allowed = ('CAPS ', 'CREATE ', 'HULLGAIN ', 'HULLSAMPLE ', 'HULLDISC ', 'RESULT PASS ')
     assert all(line.startswith(allowed) for line in lines), 'unexpected hull-gain output row'
     creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
     gained_ps = sorted({key for stage, key, *_ in creates if stage == 'ps' and '_12_hull_' in key})
     assert len(gained_ps) == len(HULL_GAIN_PAIRS), 'one gain variant per covered program'
     return dict(cases=len(cases), programs=len(HULL_GAIN_PAIRS), emitter_cases=emitters, control_cases=controls,
-                samples=checked, gain=gain, fp16_code_tolerance=1, max_fp16_code_error=max_codes,
+                samples=checked, gain=gain, clamp_requested=requested, clamp=clamp, saturate=saturate, normalized=normalized,
+                disc=disc_value, disc_alpha='exact', max_disc_fp16_code_error=disc_codes,
+                bright_red_sample=bright, fp16_code_tolerance=1, max_fp16_code_error=max_codes,
                 bit_identical_control_pixels=sum(identical[c['id']] for c in cases if not c['label'].endswith('emitter')),
                 alpha='exact', variants=len(gained_ps))
 
@@ -1371,20 +1415,26 @@ def run_hull_gain(args):
                          'of the whole colour output into oC0.xyz, and gain 1 is required byte-identical at creation. Detached; no '
                          'live route, no blend-keyed admission and no native Windows proof. Pairs 148/149 are excluded: no fixture '
                          'mode submits their original DEFAULT linkage.')
-                        % (len(HULL_GAIN_PAIRS), list(HULL_GAINS)),
+                        % (len(HULL_GAIN_PAIRS), list(HULL_GAINS))
+                        + (' X3M_EMISSION_SOURCE_CLAMP runs %s (gain, clamp): the variant adds one MIN into oC0.xyz; every case is also '
+                           'drawn over a 1.0 disc under ADD ONE/ONE (native) and, for a clamp <= 1, the gained card with DESTBLEND '
+                           'INVSRCCOLOR substituted as the proxy does.') % [list(r) for r in HULL_RUNS if r[1]],
                   timing_scope='No benchmark in the bounded hull-emitter correctness slice.',
-                  gains=list(HULL_GAINS), original_sha256=inputs, executable_sha256=sha(args.exe),
+                  gains=list(HULL_GAINS), runs_gain_clamp=[list(r) for r in HULL_RUNS], original_sha256=inputs, executable_sha256=sha(args.exe),
                   code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS}, runs={})
     wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
     try:
-        for gain in HULL_GAINS:
-            report = args.raw_dir / ('report-hull-%g.txt' % gain)
+        for gain, clamp in HULL_RUNS:
+            tag = '%g' % gain + ('-clamp-%g' % clamp if clamp else '')
+            report = args.raw_dir / ('report-hull-%s.txt' % tag)
             command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file),'--hull-emission-gain',repr(gain)]
-            with report.open('w') as out,(args.raw_dir/('wine-hull-%g.log' % gain)).open('w') as err:
+            if clamp:
+                command.append(repr(clamp))
+            with report.open('w') as out,(args.raw_dir/('wine-hull-%s.log' % tag)).open('w') as err:
                 process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1200)
             assert process.returncode==0, 'fixture failed; see '+str(report)
-            result['runs'][repr(gain)] = dict(raw_report=str(report), exit_code=process.returncode,
-                                              **validate_hull_gain_report(report.read_text(), cases, gain))
+            result['runs'][repr(gain) + (',clamp=%r' % clamp if clamp else '')] = dict(raw_report=str(report), exit_code=process.returncode,
+                                              **validate_hull_gain_report(report.read_text(), cases, gain, clamp))
         assert sha(args.exe)==result['executable_sha256'], 'executable changed'
         assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'
         assert all(sha(args.programs/name)==value for name,value in inputs.items()), 'original changed'

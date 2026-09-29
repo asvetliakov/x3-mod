@@ -50,6 +50,7 @@
 #include "compositor_owner.h"
 #include "../renderer/bloom_programs.h"
 #include "../renderer/gpu_sync_timing.h"
+#include "../renderer/linear_emission.h"
 #include "../renderer/shader_population.h"
 #include "../renderer/material_motion.h"
 #include "chase_camera.h"
@@ -163,6 +164,8 @@ bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: 
 float screen_emission_gain = 1.f; // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 float emission_source_gain = 1.f; // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive/screen
                                   // emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
+float emission_source_clamp = 0.f; // X3M_EMISSION_SOURCE_CLAMP: per-channel cap of the gained colour in both gain
+                                   // families (engine space), 0 = off, else finite 0.25..8 (requires X3M_HDR=1)
 float hull_emission_gain = 1.f;   // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE
                                   // draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only;
                                   // independent of the effects gain; its Ctrl+Shift+F4 key was removed 2026-09-26)
@@ -3245,8 +3248,9 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_linear_emissions(linear_emission_requested, emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_screen_emission(screen_emission_requested, screen_emission_gain);
-    hooked.motion_output.configure_emission_source_gain(emission_source_gain);
-    hooked.motion_output.configure_hull_emission_gain(hull_emission_gain);
+    hooked.motion_output.configure_emission_source_gain(emission_source_gain,
+                                                        linear_emission_requested ? 0.f : emission_source_clamp);
+    hooked.motion_output.configure_hull_emission_gain(hull_emission_gain, emission_source_clamp);
     hooked.motion_output.configure_original_fill(original_fill);
     hooked.motion_output.configure_hull_lightmap_gain(hull_lightmap_gain);
     if (lightmap_far_fade_requested) {
@@ -4443,6 +4447,29 @@ void initialize_log(HMODULE module) {
                 screen_emission_requested, screen_hdr, taa_requested, screen_ownership, linear_material_requested,
                 double(screen_emission_gain), unsigned(gain_valid));
     }
+    // X3M_EMISSION_SOURCE_CLAMP=<c>: per-channel cap of the gained colour in
+    // engine (pre-decode) space, baked into both gain families' variants (the
+    // twenty effects programs and the twelve hull programs) as one MIN after
+    // the gain MUL: 0 (unset) is off, else finite 0.25..8; 1 = native white.
+    // A clamp with gain 1 still builds the clamp-only variant. Needs X3M_HDR=1
+    // like the gains; unparsable or out of range keeps 0 and is logged on the
+    // two gain mode rows (clamp_valid=0).
+    bool clamp_valid = true;
+    {
+        emission_source_clamp = 0.f;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD clamp_length = x3m::config::get(L"X3M_EMISSION_SOURCE_CLAMP", setting, 32);
+        if (clamp_length || GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            wchar_t* end = nullptr;
+            const float value = clamp_length && clamp_length < 32 ? wcstof(setting, &end) : -1.f;
+            if (clamp_length && clamp_length < 32 && end != setting && !*end &&
+                (value == 0.f || (std::isfinite(value) && value >= 0.25f && value <= 8.f)))
+                emission_source_clamp = value;
+            else
+                clamp_valid = false;
+        }
+        if (!hdr_requested) emission_source_clamp = 0.f;
+    }
     // X3M_EMISSION_SOURCE_GAIN=<g>: source-only encoded gain of the twenty
     // PS2 emission pairs (engine glow, gate, impact, muzzle and explosion
     // sprites alike; docs/architecture/linear-emission-cost.md, "Implemented"
@@ -4471,10 +4498,13 @@ void initialize_log(HMODULE module) {
         // pair of options, the DLL refuses with the reason logged.
         const bool excluded = linear_emission_requested;
         if (!hdr_requested || excluded) emission_source_gain = 1.f;
-        if (!gain_valid || value != 1.f)
-            log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",
-                emission_source_gain != 1.f, hdr_requested, unsigned(excluded), double(emission_source_gain),
-                unsigned(gain_valid), excluded ? " refused=linear_emissions" : "");
+        const float clamp = excluded ? 0.f : emission_source_clamp;
+        if (!gain_valid || value != 1.f || clamp != 0.f || !clamp_valid)
+            log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u clamp=%g clamp_valid=%u screen_substitution=%u%s",
+                emission_source_gain != 1.f || clamp != 0.f, hdr_requested, unsigned(excluded),
+                double(emission_source_gain), unsigned(gain_valid), double(clamp), unsigned(clamp_valid),
+                unsigned(emission_source_gain != 1.f && !x3m::renderer::linear_emission_clamp_saturates(clamp)),
+                excluded ? " refused=linear_emissions" : "");
     }
     // X3M_HULL_EMISSION_GAIN=<g>: a source gain over the twelve hull programs'
     // ADD ONE/ONE emitter draws (emitter plan phase 3): finite 1..8, 1 is
@@ -4507,10 +4537,12 @@ void initialize_log(HMODULE module) {
         }
         const bool excluded = !hdr_requested;
         if (excluded) hull_emission_gain = 1.f;
-        if (!gain_valid || value != 1.f)
-            log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u%s",
-                hull_emission_gain != 1.f, double(emission_source_gain), double(hull_emission_gain),
-                unsigned(gain_valid), excluded ? " refused=hdr" : "");
+        if (!gain_valid || value != 1.f || emission_source_clamp != 0.f || !clamp_valid)
+            log("hull_emission_gain_mode requested=1 enabled=%u source_gain=%g gain=%g gain_valid=%u clamp=%g clamp_valid=%u saturate=%u%s",
+                hull_emission_gain != 1.f || emission_source_clamp != 0.f, double(emission_source_gain),
+                double(hull_emission_gain), unsigned(gain_valid), double(emission_source_clamp),
+                unsigned(clamp_valid), unsigned(x3m::renderer::linear_emission_clamp_saturates(emission_source_clamp)),
+                excluded ? " refused=hdr" : "");
     }
     // X3M_ORIGINAL_FILL=<k>: fill in linear light inside the ORIGINAL hull
     // pixel programs (docs/architecture/original-shading-critique.md 1a,

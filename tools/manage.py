@@ -1050,6 +1050,7 @@ def main():
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --hdr-tonemap and the scene hook; --no-hdr-bloom = off; not sent under --vanilla] Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; DLL default off)')
     parser.add_argument('--no-hdr-bloom', dest='hdr_bloom', action='store_false', help='Turn the --hdr-bloom launcher default off')
+    parser.add_argument('--emission-source-clamp', type=float, default=None, metavar='C', help='[no launcher default; not sent under --vanilla] Per-channel cap of the gained emitter colour in engine (pre-decode) space (X3M_EMISSION_SOURCE_CLAMP=C, 0 = no cap, else finite 0.25..8; requires --hdr): baked into the same pixel program variants as the --emission-source-gain (the twenty engine/effects pairs and the twelve hull guide-light programs) as one MIN after the gain, so dim exhaust texels still gain while the cores stop at C. C = 1 is the native 8-bit white; with gain 1 a clamp still builds the clamp-only variant (a screen draw then keeps its native blend). Absent = no cap, the stock look')
     parser.add_argument('--bloom-source-clamp', type=float, default=None, metavar='C', help='[launcher default since 2026-09-25: 1.0 on every modded launch with --hdr-bloom; --no-bloom-source-clamp = off; not sent under --vanilla] Decoded-space ceiling on the bloom extraction source only (X3M_BLOOM_SOURCE_CLAMP=C, finite 0 < C <= 64; requires --hdr-bloom; absent keeps today\'s unbounded feed). The pyramid then sees at most code C, so an over-bright emitter (additive bolts at gain 5, overlapping sprites) can no longer feed tens or hundreds of units into the halo and saturate it into a white disk; the presented scene keeps its full HDR value and every source at code C or below is bit-identical to today. Recommended value 1.0, the ceiling of the native A8R8G8B8 scene map the original compositor read (docs/architecture/bloom-falloff.md)')
     parser.add_argument('--no-bloom-source-clamp', dest='bloom_source_clamp', action='store_const', const=PROMOTED_OFF, help='Turn the --bloom-source-clamp launcher default off')
     parser.add_argument('--hdr-decode', choices=['gamma2.2', 'pow22', 'srgb', 'none'], default='gamma2.2', help='Engine-space decode before the tonemap and the meter (X3M_HDR_DECODE; requires --hdr-tonemap): gamma2.2 (default; pow22 is the same curve), srgb, or none for the A/B against the decoded transform')
@@ -1582,6 +1583,11 @@ def main():
         parser.error('--emission-source-gain requires --hdr.')
     if args.emission_source_gain is not None and not (math.isfinite(args.emission_source_gain) and 1.0 <= args.emission_source_gain <= 8.0):
         parser.error('--emission-source-gain must be finite and within [1, 8].')
+    if args.emission_source_clamp is not None and not args.hdr:
+        parser.error('--emission-source-clamp requires --hdr.')
+    if args.emission_source_clamp is not None and not (args.emission_source_clamp == 0.0 or (
+            math.isfinite(args.emission_source_clamp) and 0.25 <= args.emission_source_clamp <= 8.0)):
+        parser.error('--emission-source-clamp must be 0 (no cap) or finite and within [0.25, 8].')
     if args.original_fill is not None and not args.hdr:
         parser.error('--original-fill requires --hdr.')
     if args.original_fill is not None and not (math.isfinite(args.original_fill) and 0.0 <= args.original_fill <= 0.5):
@@ -1997,6 +2003,11 @@ def main():
         # an --emission-source-gain above 1 hands them its value, so one option
         # covers engines, effects and guide lights.
         env['X3M_HULL_EMISSION_GAIN'] = repr(args.emission_source_gain if hull_emitters_requested(args) else 1.0)
+        # Absent means no cap: drop an inherited value rather than exporting it.
+        if args.emission_source_clamp is not None:
+            env['X3M_EMISSION_SOURCE_CLAMP'] = repr(args.emission_source_clamp)
+        else:
+            env.pop('X3M_EMISSION_SOURCE_CLAMP', None)
         # Explicit off value so a stale shell value cannot enable the original fill.
         env['X3M_ORIGINAL_FILL'] = repr(args.original_fill if args.original_fill is not None else 0.0)
         if args.original_fill is None:

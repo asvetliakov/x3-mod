@@ -483,7 +483,7 @@ def validate_hull_emission(text, trace, gain):
         assert len(hull) == 2 and all(l.startswith('hull_emission_gain_toggle ') and ' accepted=0 enabled=1 requested=0 ' in l for l in hull), hull
     else:
         # No effects gain in this run: the hull population stands alone.
-        assert modes == ['hull_emission_gain_mode requested=1 enabled=1 source_gain=1 gain=%g gain_valid=1' % gain], modes
+        assert modes == ['hull_emission_gain_mode requested=1 enabled=1 source_gain=1 gain=%g gain_valid=1 clamp=0 clamp_valid=1 saturate=0' % gain], modes
         assert not any(l.startswith('emission_source_gain') for l in traces)
         assert len(variants) == 1 and (variants[0]['original'], int(variants[0]['program']), variants[0]['transform'], variants[0]['create']) == ('7c83ed50c9894e44', HULL_PROGRAM_INDEX, '0', '00000000'), variants
         assert float(variants[0]['gain']) == gain, variants

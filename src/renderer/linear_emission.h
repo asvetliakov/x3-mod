@@ -60,8 +60,36 @@ LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t* original
 // (byte identity with no option). Gain is finite 1..8. Failure leaves output
 // intact; input may alias output. No D3D calls or per-draw work here.
 bool linear_emission_source_gain_valid(float gain) noexcept;
+// Optional cap of the gained colour (X3M_EMISSION_SOURCE_CLAMP): 0 = off,
+// otherwise finite 0.25..8 in engine (pre-decode) space. With a clamp C the
+// DEF carries C in .y and one `min r0.xyz, r0, c31.y` follows the gain MUL
+// (at gain 1 the MUL is omitted and the MIN alone remains: G=1 with a clamp
+// still clamps). Baked at creation, like the gain: no per-draw work.
+bool linear_emission_source_clamp_valid(float clamp) noexcept;
+// A clamp 0 < C <= 1 keeps every gained colour at or below native white, so
+// the saturating screen law (ONE/INVSRCCOLOR/ADD: d + s (1 - d)) never exceeds
+// 1 over d <= 1 and equals the native 8-bit min(1, d + s) at s = 0, d = 0 or
+// s + d >= 1 with either at 1. Shared by the proxy and the GPU fixtures: the
+// hull ONE/ONE cards then draw with DESTBLEND INVSRCCOLOR substituted, and the
+// effects screen draws keep their native INVSRCCOLOR (no DESTBLEND ONE
+// substitution) even above gain 1. Above 1 (or 0 = off) the screen law is not
+// used: s > 1 would drive s (1 - d) negative.
+bool linear_emission_clamp_saturates(float clamp) noexcept;
+// A clamp 0 < C < 1 saturates at C, not at 1, where the device has
+// D3DPBLENDCAPS_BLENDFACTOR (SrcBlendCaps): the variant is built `normalized`
+// (it emits t / C, t = min(G s, C), with 1/C in the DEF's .z and one more MUL)
+// and the draw runs SRCBLEND BLENDFACTOR with BLENDFACTOR (C, C, C, 1), so
+// the screen law becomes C t/C + d (1 - t/C) = t + d (1 - t/C): C over d = C
+// and never above max(d, C). BLENDFACTOR is a D3DCOLOR, so C is used as its
+// 8-bit value: linear_emission_blend_factor_clamp rounds C to k/255 (the
+// variant and the factor then agree exactly); linear_emission_blend_factor
+// is the D3DCOLOR (alpha 255: the alpha lane keeps a ONE source factor).
+bool linear_emission_clamp_normalizes(float clamp) noexcept; // 0 < C < 1
+float linear_emission_blend_factor_clamp(float clamp) noexcept;
+std::uint32_t linear_emission_blend_factor(float clamp) noexcept;
 LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* original, std::size_t words, float gain,
-                                                         std::vector<std::uint32_t>& output) noexcept;
+                                                         std::vector<std::uint32_t>& output,
+                                                         float clamp = 0.0f, bool normalized = false) noexcept;
 // Colour blend admission of the source-gain draw, shared by the proxy and the
 // GPU fixture. Inputs are the D3DRS_ALPHABLENDENABLE / SRGBWRITEENABLE values
 // and the colour triple SRCBLEND / DESTBLEND / BLENDOP (raw D3DBLEND and
@@ -111,6 +139,11 @@ SourceGainBlend linear_emission_hull_source_gain_blend(std::uint32_t blend_enabl
 // other tail, any use of c223 and any relative addressing fail closed.
 // Failure leaves output intact; input may alias output. No D3D calls or
 // per-draw work here.
+// Clamp C (linear_emission_source_clamp_valid, 0 = off): the DEF carries C in
+// .y, the gain MUL writes r0.xyz (_pp kept) and one `min oC0.xyz, r0, c223.y`
+// with the original destination token follows; at gain 1 the MUL is omitted
+// and the colour instruction's r0 feeds the MIN directly.
 LinearEmissionResult linear_emission_hull_source_gain_variant(const std::uint32_t* original, std::size_t words,
-                                                              float gain, std::vector<std::uint32_t>& output) noexcept;
+                                                              float gain, std::vector<std::uint32_t>& output,
+                                                              float clamp = 0.0f, bool normalized = false) noexcept;
 } // namespace x3m::renderer

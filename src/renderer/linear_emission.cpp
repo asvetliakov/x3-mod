@@ -386,11 +386,20 @@ const HullProfile* hull_profile_of(const Word* original, std::size_t count) noex
 // `transformed`: the colour instruction writes r0.xyz (its _pp and mask kept)
 // and the gain MUL writes oC0.xyz with the original destination token.
 const Word hull_colour_destination = dst(output, 0, 7) | pp;
-bool hull_tail(const Word* code, const HullProfile& profile, bool transformed = false) noexcept {
+// `gained`/`clamped` select the appended MUL and MIN; the last appended
+// instruction carries the original destination token, an earlier one r0.xyz.
+bool hull_tail(const Word* code, const HullProfile& profile, bool transformed = false, bool gained = true,
+               bool clamped = false, bool normalized = false) noexcept {
     const Word colour_destination = transformed ? (dst(temporary, hull_emission_temporary, 7) | pp)
                                                 : hull_colour_destination;
-    const Word gain[] = {(3u << 24) | mul, hull_colour_destination, src(temporary, hull_emission_temporary),
-                         lane(constant, hull_gain_constant, 0)};
+    const Word gain[] = {(3u << 24) | mul,
+                         clamped ? dst(temporary, hull_emission_temporary, 7) | pp : hull_colour_destination,
+                         src(temporary, hull_emission_temporary), lane(constant, hull_gain_constant, 0)};
+    const Word cap[] = {(3u << 24) | minimum,
+                        normalized ? dst(temporary, hull_emission_temporary, 7) | pp : hull_colour_destination,
+                        src(temporary, hull_emission_temporary), lane(constant, hull_gain_constant, 1)};
+    const Word scale[] = {(3u << 24) | mul, hull_colour_destination, src(temporary, hull_emission_temporary),
+                          lane(constant, hull_gain_constant, 2)};
     const Word alpha[] = {(3u << 24) | mul, dst(output, 0, 8) | pp, lane(temporary, 2, 3), lane(color, 0, 3)};
     std::size_t at = profile.emission;
     if (profile.modulated) {
@@ -404,9 +413,17 @@ bool hull_tail(const Word* code, const HullProfile& profile, bool transformed = 
         if (!std::equal(std::begin(site), std::end(site), code + at)) return false;
         at += sizeof site / sizeof site[0];
     }
-    if (transformed) {
+    if (transformed && gained) {
         if (!std::equal(std::begin(gain), std::end(gain), code + at)) return false;
         at += sizeof gain / sizeof gain[0];
+    }
+    if (transformed && clamped) {
+        if (!std::equal(std::begin(cap), std::end(cap), code + at)) return false;
+        at += sizeof cap / sizeof cap[0];
+    }
+    if (transformed && normalized) {
+        if (!std::equal(std::begin(scale), std::end(scale), code + at)) return false;
+        at += sizeof scale / sizeof scale[0];
     }
     return std::equal(std::begin(alpha), std::end(alpha), code + at) &&
            at + sizeof alpha / sizeof alpha[0] == profile.words - 1;
@@ -418,6 +435,23 @@ bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept {
 }
 bool linear_emission_source_gain_valid(float gain) noexcept {
     return std::isfinite(gain) && gain >= 1 && gain <= 8;
+}
+bool linear_emission_source_clamp_valid(float clamp) noexcept {
+    return clamp == 0 || (std::isfinite(clamp) && clamp >= 0.25f && clamp <= 8);
+}
+bool linear_emission_clamp_saturates(float clamp) noexcept {
+    return clamp > 0 && clamp <= 1;
+}
+bool linear_emission_clamp_normalizes(float clamp) noexcept {
+    return clamp > 0 && clamp < 1;
+}
+float linear_emission_blend_factor_clamp(float clamp) noexcept {
+    if (!linear_emission_clamp_normalizes(clamp)) return clamp;
+    return float(std::lround(clamp * 255.0f)) / 255.0f; // 0.25..<1 -> 64..255
+}
+std::uint32_t linear_emission_blend_factor(float clamp) noexcept {
+    const std::uint32_t k = linear_emission_clamp_normalizes(clamp) ? std::uint32_t(std::lround(clamp * 255.0f)) : 255u;
+    return 0xff000000u | (k << 16) | (k << 8) | k; // D3DCOLOR_ARGB(255, k, k, k)
 }
 SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable, std::uint32_t srgb_write,
                                                   std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept {
@@ -487,9 +521,11 @@ LinearEmissionResult linear_emission_pixel_variant(const Word* original, std::si
     }
 }
 LinearEmissionResult linear_emission_source_gain_variant(const Word* original, std::size_t count, float gain,
-                                                         Words& output_words) noexcept {
+                                                         Words& output_words, float clamp, bool normalized) noexcept {
     if (!original || count < 2) return LinearEmissionResult::InvalidInput;
-    if (!linear_emission_source_gain_valid(gain)) return LinearEmissionResult::InvalidConfig;
+    if (!linear_emission_source_gain_valid(gain) || !linear_emission_source_clamp_valid(clamp) ||
+        (normalized && !linear_emission_clamp_normalizes(clamp)))
+        return LinearEmissionResult::InvalidConfig;
     if (count > 1108) return LinearEmissionResult::UnsupportedShader;
     const auto hash = fingerprint(original, count);
     const Profile* selected = nullptr;
@@ -506,22 +542,29 @@ LinearEmissionResult linear_emission_source_gain_variant(const Word* original, s
         return LinearEmissionResult::ProfileMismatch;
     try {
         Words result;
-        if (gain == 1) {
+        if (gain == 1 && clamp == 0) {
             // Byte identity: the option at gain 1 is the native program.
             result.assign(original, original + count);
             output_words.swap(result);
             return LinearEmissionResult::Applied;
         }
-        result.reserve(count + 10);
+        const unsigned added = (gain != 1 ? 1u : 0u) + (clamp != 0 ? 1u : 0u) + (normalized ? 1u : 0u);
+        result.reserve(count + 6 + 4 * added);
         result.insert(result.end(), original, original + profile.declaration);
-        emit(result, def, {dst(constant, 31, 15), bits(gain), bits(0), bits(0), bits(0)});
+        emit(result, def,
+             {dst(constant, 31, 15), bits(gain), bits(clamp), bits(normalized ? 1.0f / clamp : 0.0f), bits(0)});
         result.insert(result.end(), original + profile.declaration, original + profile.native_output);
         // Colour lanes only; the native alpha in r0.w reaches oC0 unchanged.
-        emit(result, mul, {dst(temporary, 0), src(temporary, 0), lane(constant, 31, 0)});
+        if (gain != 1) emit(result, mul, {dst(temporary, 0), src(temporary, 0), lane(constant, 31, 0)});
+        // The cap of the gained colour, per channel, before the blend.
+        if (clamp != 0) emit(result, minimum, {dst(temporary, 0), src(temporary, 0), lane(constant, 31, 1)});
+        // Blend-factor form (C < 1): t / C; the draw multiplies it back by C.
+        if (normalized) emit(result, mul, {dst(temporary, 0), src(temporary, 0), lane(constant, 31, 2)});
         result.insert(result.end(), original + profile.native_output, original + count);
         Shape transformed;
-        if (!structure(result.data(), result.size(), transformed, profile.model) || transformed.outputs != 1u ||
-            transformed.texture != 1 || transformed.arithmetic != original_structure.arithmetic + 1u)
+        if (result.size() != count + 6 + 4 * added ||
+            !structure(result.data(), result.size(), transformed, profile.model) || transformed.outputs != 1u ||
+            transformed.texture != 1 || transformed.arithmetic != original_structure.arithmetic + added)
             return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;
@@ -546,9 +589,12 @@ SourceGainBlend linear_emission_hull_source_gain_blend(std::uint32_t blend_enabl
     return SourceGainBlend::Admit;
 }
 LinearEmissionResult linear_emission_hull_source_gain_variant(const Word* original, std::size_t count, float gain,
-                                                              Words& output_words) noexcept {
+                                                              Words& output_words, float clamp,
+                                                              bool normalized) noexcept {
     if (!original || count < 2) return LinearEmissionResult::InvalidInput;
-    if (!linear_emission_source_gain_valid(gain)) return LinearEmissionResult::InvalidConfig;
+    if (!linear_emission_source_gain_valid(gain) || !linear_emission_source_clamp_valid(clamp) ||
+        (normalized && !linear_emission_clamp_normalizes(clamp)))
+        return LinearEmissionResult::InvalidConfig;
     const auto* selected = hull_profile_of(original, count);
     if (!selected) return LinearEmissionResult::UnsupportedShader;
     const auto& profile = *selected;
@@ -559,15 +605,19 @@ LinearEmissionResult linear_emission_hull_source_gain_variant(const Word* origin
         return LinearEmissionResult::ProfileMismatch;
     try {
         Words result;
-        if (gain == 1) {
+        const bool gained = gain != 1, clamped = clamp != 0;
+        if (!gained && !clamped) {
             // Byte identity: the option at gain 1 is the native program.
             result.assign(original, original + count);
             output_words.swap(result);
             return LinearEmissionResult::Applied;
         }
-        result.reserve(count + 10);
+        const unsigned added = (gained ? 1u : 0u) + (clamped ? 1u : 0u) + (normalized ? 1u : 0u);
+        result.reserve(count + 6 + 4 * added);
         result.insert(result.end(), original, original + profile.definition);
-        emit(result, def, {dst(constant, hull_gain_constant, 15), bits(gain), bits(0), bits(0), bits(0)});
+        emit(result, def,
+             {dst(constant, hull_gain_constant, 15), bits(gain), bits(clamp),
+              bits(normalized ? 1.0f / clamp : 0.0f), bits(0)});
         result.insert(result.end(), original + profile.definition, original + profile.emission);
         // Whole colour output of the draw: the final colour instruction keeps
         // its opcode, _pp, mask and operands but writes r0.xyz (r0 is dead
@@ -580,19 +630,32 @@ LinearEmissionResult linear_emission_hull_source_gain_variant(const Word* origin
         result.push_back(original[profile.emission]);
         result.push_back(dst(temporary, hull_emission_temporary, 7) | pp);
         result.insert(result.end(), original + profile.emission + 2, original + profile.emission + site);
-        emit(result, mul,
-             {hull_colour_destination, src(temporary, hull_emission_temporary), lane(constant, hull_gain_constant, 0)});
+        // With a clamp the MUL (if any) writes r0.xyz and the MIN, the cap
+        // of the gained colour per channel, writes the original destination.
+        if (gained)
+            emit(result, mul,
+                 {clamped ? dst(temporary, hull_emission_temporary, 7) | pp : hull_colour_destination,
+                  src(temporary, hull_emission_temporary), lane(constant, hull_gain_constant, 0)});
+        if (clamped)
+            emit(result, minimum,
+                 {normalized ? dst(temporary, hull_emission_temporary, 7) | pp : hull_colour_destination,
+                  src(temporary, hull_emission_temporary), lane(constant, hull_gain_constant, 1)});
+        // Blend-factor form (C < 1): t / C into oC0.xyz; the draw multiplies it back by C.
+        if (normalized)
+            emit(result, mul,
+                 {hull_colour_destination, src(temporary, hull_emission_temporary),
+                  lane(constant, hull_gain_constant, 2)});
         result.insert(result.end(), original + profile.emission + site, original + count);
         std::size_t transformed_declaration = 0;
         unsigned transformed_instructions = 0;
         HullProfile moved = profile;
         moved.definition = profile.definition;
         moved.emission = profile.emission + 6;
-        moved.words = profile.words + 10;
-        if (result.size() != count + 10 ||
+        moved.words = profile.words + 6 + 4 * added;
+        if (result.size() != count + 6 + 4 * added ||
             !hull_structure(result.data(), result.size(), transformed_declaration, transformed_instructions, false) ||
-            transformed_declaration != profile.definition || transformed_instructions != instructions + 2 ||
-            !hull_tail(result.data(), moved, true))
+            transformed_declaration != profile.definition || transformed_instructions != instructions + 1 + added ||
+            !hull_tail(result.data(), moved, true, gained, clamped, normalized))
             return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;

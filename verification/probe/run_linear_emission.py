@@ -436,6 +436,23 @@ ORIGINAL_VS = ('d5e1c75351ed3f04','32e75459998d0388','089091aab2d5eb13',
 ORIGINAL_GAINS = (0.,.25,1.,4.,16.)
 SOURCE_GAINS = (1.,2.,3.5,8.)  # source-only encoded gain variants (gain 1 = original bytes)
 SCREEN_GAINS = (1.,2.,5.,8.)  # the screen-substitution cases' variant slots (gain 1 = nothing substituted, the toggle-off image)
+# X3M_EMISSION_SOURCE_CLAMP cases (flag 16384): slots (gain, clamp) = identity, gain 2 uncapped, gain 2 capped at 1,
+# the clamp-only gain-1 variant capped at 0.5 (0 = no clamp); the source texel is 0.9.
+CLAMP_GAINS = (1.,2.,2.,1.)
+CLAMP_CLAMPS = (0.,0.,1.,.5)
+CLAMP_SOURCE = .9
+# Blend-factor cases (flag 128): slots identity, gain 2 uncapped, gain 2 capped at 1, gain 2 capped at 0.7, over
+# black and the 0.9 disc (230/255, background 3: flag 32768 inside the flag-128 group). A clamp below 1 is the 8-bit BLENDFACTOR value k/255
+# (quantized()), its variant emits t / C and the draw runs SRCBLEND BLENDFACTOR: additive t + bg, screen t + bg (1 - t/C).
+FACTOR_GAINS = (1.,2.,2.,2.)
+FACTOR_CLAMPS = (0.,0.,1.,.7)
+
+
+def quantized(clamp):
+    """The clamp the proxy uses: below 1 it is the 8-bit BLENDFACTOR value (linear_emission_blend_factor_clamp)."""
+    if not 0<clamp<1:return clamp
+    f32=lambda v:struct.unpack('<f',struct.pack('<f',v))[0]
+    return f32(math.floor(f32(f32(clamp)*255)+.5)/255)  # lround(C * 255.0f) in float, as the C++ helper
 
 
 # Pair index is carried in the existing high flag bits. The first five values
@@ -814,12 +831,41 @@ def source_gain_cases():
     for profile in range(20):
         for background in (0,2):
             add(profile,sources[1],1,background,kind=2,label='source_gain_screen')
+    # X3M_EMISSION_SOURCE_CLAMP: a flat 0.9 source over black (additive) and
+    # the screen blend over black and grey; a clamp <= 1 keeps the screen
+    # draw's native INVSRCCOLOR even at gain 2 (only the uncapped gain-2 slot
+    # substitutes DESTBLEND ONE).
+    bright=op(rect=(0,0,1,1),color=(CLAMP_SOURCE,CLAMP_SOURCE,CLAMP_SOURCE,.5),fade=1.,gain=1.)
+    for profile in range(20):
+        add(profile,bright,0,0,label='source_gain_clamp')
+        for background in (0,2):
+            add(profile,bright,0,background,kind=2,label='source_gain_clamp_screen')
+    # Blend-factor form (clamp 0.7): the 0.9 source over black and over the 0.9 disc, additive and screen.
+    for profile in range(20):
+        for kind,label in ((1,'source_gain_clamp_factor'),(2,'source_gain_clamp_factor_screen')):
+            for background in (0,3):
+                add(profile,bright,0,background,kind=kind,label=label)
+    for c in cases:
+        c['clamp']=int(c['label'].startswith('source_gain_clamp'))
+        c['factor']=int(c['label'].startswith('source_gain_clamp_factor'))
+        if c['clamp']:c['flags']|=16384
+        if c['factor']:c['flags']|=128
     return cases
 
 
 def effective_gains(c):
     """The gain each variant slot of a case draws with."""
-    return list(SCREEN_GAINS if c['screen'] else SOURCE_GAINS)
+    return list(FACTOR_GAINS if c.get('factor') else CLAMP_GAINS if c.get('clamp') else SCREEN_GAINS if c['screen'] else SOURCE_GAINS)
+
+
+def effective_clamps(c):
+    """The clamp each variant slot of a case draws with (0 = none)."""
+    return list(FACTOR_CLAMPS if c.get('factor') else CLAMP_CLAMPS if c.get('clamp') else (0.,)*4)
+
+
+def substitutes(c,g,clamp):
+    """The proxy's screen rule: DESTBLEND ONE only above gain 1 without a saturating clamp (0 < C <= 1)."""
+    return bool(c['screen']) and g!=1 and not (0<clamp<=1)
 
 
 def half_bits(value):
@@ -857,7 +903,8 @@ def validate_source_gain_report(text,data,cases):
         assert r['admission']==('screen' if c['screen'] else 'admit'),(c['id'],r['admission'])
         assert (int(r['src']),int(r['dst']))==(2,4 if c['screen'] else 2),(c['id'],r['src'],r['dst'])
         assert int(r['sepalpha'])==c['separate_alpha'],(c['id'],r['sepalpha'])
-        assert int(r['substituted'])==(3 if c['screen'] else 0),(c['id'],r['substituted'])
+        assert int(r['substituted'])==sum(substitutes(c,g,k) for g,k in zip(effective_gains(c),effective_clamps(c))),(c['id'],r['substituted'])
+        assert [float(v) for v in r['clamps'].split(',')]==effective_clamps(c),(c['id'],r['clamps'])
         if c['separate_alpha']:assert (int(r['srcalpha']),int(r['dstalpha']))==(5,6),(c['id'],r['srcalpha'],r['dstalpha'])
         assert [float(v) for v in r['effective'].split(',')]==effective_gains(c),(c['id'],r['effective'])
     assert any(line.startswith('SOURCE_GAIN_RESULT pass') for line in lines),'fixture result line'
@@ -868,6 +915,7 @@ def validate_source_gain_report(text,data,cases):
     separate=dict(cases=0,colour_channels=0,exact=0,alpha_channels_exact=0,alpha_blended_pixels=0)
     screen=dict(cases=0,identity_channels=0,native_law_channels=0,native_law_exact=0,per_gain={g:dict(channels=0,exact=0,within_one=0,max_codes=0,max_value=0.,brighter_than_native=0,alpha_channels=0,alpha_exact=0) for g in SCREEN_GAINS[1:]})
     dark_native={}  # (pair, label) -> native image over the zero background: the source s itself
+    clamp_stats={}  # 'g,C,add|screen' -> channels, codes, capped count and one 0.9-source sample
     for i,c in enumerate(cases):
         base=i*record;(cid,)=struct.unpack_from('<I',data,base);assert cid==c['id']
         images=[struct.unpack_from(f'<{n}f',data,base+4+4*n*k) for k in range(6)]
@@ -878,6 +926,35 @@ def validate_source_gain_report(text,data,cases):
         assert covered,(c['id'],'native draw covered no pixel')
         covered_total+=len(covered)
         if c['background']==0:dark_native[c['actual_profile'],c['label']]=native
+        if c['clamp']:
+            # Law per slot (g, C): gained source t = min(g s, C) (C = 0: g s)
+            # with s the pair's native readback over black; additive `t + bg`,
+            # screen `t + bg (1 - t)` unless the slot substituted (`t + bg`).
+            source=dark_native[c['actual_profile'],c['label']]
+            for g,k,image in zip(effective_gains(c)[1:],effective_clamps(c)[1:],gained):
+                key='%g,%g,%s'%(g,k,'screen' if c['screen'] else 'add')
+                stat=clamp_stats.setdefault(key,dict(channels=0,exact=0,max_codes=0,max_value=0.,capped=0,bright_samples=[],disc_samples=[]))
+                screen_law=c['screen'] and not substitutes(c,g,k)
+                k=quantized(k);scale=k if 0<k<1 else 1.  # the screen law's divisor: t + bg (1 - t / C) below 1
+                for p in range(WIDTH*HEIGHT):
+                    if not c['screen']:assert image[4*p+3]==native[4*p+3],(c['id'],g,k,p,'alpha changed')
+                    for ch in range(3):
+                        bg,s,v=cleared[4*p+ch],source[4*p+ch],image[4*p+ch]
+                        assert math.isfinite(v),(c['id'],g,k,p,ch,'nonfinite')
+                        lo,hi=half_interval(s)
+                        t_lo,t_hi=(min(g*lo,k),min(g*hi,k)) if k else (g*lo,g*hi)
+                        low,high=(half(t_lo+bg*(1-t_lo/scale)),half(t_hi+bg*(1-t_hi/scale))) if screen_law else (half(t_lo+bg),half(t_hi+bg))
+                        low,high=min(low,high),max(low,high)
+                        codes=0 if low<=v<=high else min(abs(half_bits(v)-half_bits(low)),abs(half_bits(v)-half_bits(high)))
+                        assert codes<=1,(c['id'],g,k,p,ch,v,(low,high),codes,'clamp law')
+                        if k:assert v<=half(max(bg,k) if screen_law and scale<1 else k+bg*(1-k) if screen_law else k+bg)+1e-3,(c['id'],g,k,p,ch,v,'above the cap')
+                        stat['channels']+=1;stat['exact']+=codes==0;stat['max_codes']=max(stat['max_codes'],codes)
+                        stat['max_value']=max(stat['max_value'],v);stat['capped']+=bool(k) and g*s>k
+                        if abs(s-CLAMP_SOURCE)<.002 and len(stat['bright_samples'])<1 and bg==0:
+                            stat['bright_samples'].append(dict(case=c['id'],source=s,background=bg,value=v))
+                        if abs(s-CLAMP_SOURCE)<.002 and len(stat['disc_samples'])<1 and bg>.85:
+                            stat['disc_samples'].append(dict(case=c['id'],source=s,background=bg,value=v))
+            continue
         if c['screen']:
             # Substituted: the gained slots are additive `G s + bg`; the
             # gain-1 slot (nothing substituted, the toggle-off image) is the
@@ -949,12 +1026,23 @@ def validate_source_gain_report(text,data,cases):
                         assert v==s,(c['id'],g,p,k,'uncovered channel changed')
                     if c['separate_alpha']:separate['colour_channels']+=1;separate['exact']+=codes==0
                 if c['separate_alpha']:separate['alpha_channels_exact']+=1
-    assert separate['cases']==sum(c['separate_alpha'] for c in cases) and screen['cases']==sum(c['screen'] for c in cases)
+    assert separate['cases']==sum(c['separate_alpha'] for c in cases) and screen['cases']==sum(c['screen'] and not c['clamp'] for c in cases)
     assert separate['alpha_blended_pixels']>0,'separate alpha cases never blended alpha'
     assert screen['cases']==40 and all(v['channels']==screen['cases']*WIDTH*HEIGHT*3 for v in screen['per_gain'].values()),'screen case coverage'
+    assert sum(c['clamp'] for c in cases)==140 and sum(c['factor'] for c in cases)==80 and len(clamp_stats)==8,'clamp case coverage'
+    for key in ('2,1,add','2,0,add','2,0.7,add','2,0.7,screen'):
+        assert clamp_stats[key]['bright_samples'],(key,'no 0.9 source sample')
+    for key in ('2,0.7,screen','2,0.7,add','2,1,screen'):
+        assert clamp_stats[key]['disc_samples'],(key,'no 0.9 source over the 0.9 disc')
     return dict(cases=len(cases),reviewed_pairs=20,source_gains=list(SOURCE_GAINS),screen_gains=list(SCREEN_GAINS),identity_channels=identity_channels,alpha_channels_exact=alpha_channels,
                 covered_pixels=covered_total,per_gain={str(g):v for g,v in per_gain.items()},separate_alpha=separate,
                 screen_substituted=dict(screen,per_gain={str(g):v for g,v in screen['per_gain'].items()}),
+                clamp=dict(slots=[dict(gain=g,clamp=k) for g,k in zip(CLAMP_GAINS,CLAMP_CLAMPS)],
+                           factor_slots=[dict(gain=g,clamp=k,effective=quantized(k)) for g,k in zip(FACTOR_GAINS,FACTOR_CLAMPS)],
+                           source=CLAMP_SOURCE,disc=230/255,per_slot=clamp_stats,
+                           law='t = min(G s, C) with C < 1 the 8-bit BLENDFACTOR value; additive t + bg; screen t + bg (1 - t) for C = 1 '
+                               '(native INVSRCCOLOR kept when C <= 1 or G = 1) and t + bg (1 - t / C) for C < 1 (variant t / C, SRCBLEND BLENDFACTOR); '
+                               'screen t + bg with DESTBLEND ONE substituted for the uncapped gain-2 slot'),
                 law='gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native; '
                     'separate alpha blend admitted (rgb-only law); screen ONE/INVSRCCOLOR admitted with DESTBLEND ONE substituted for the gained draw '
                     '(G s + bg with s the native readback over black, alpha a + bg.a as separate alpha is off; the gain-1 slot is the native screen draw s + bg (1 - s))')
@@ -1123,7 +1211,7 @@ def main():
             targets=dict(A='FP16 scene target (cleared background, native and gained images)',depth='D24S8',msaa=False,srgb=False),
             tolerance=dict(zero_background='G x native within one FP16 code',nonzero_background='native half-ULP interval propagated through bg + G (native - bg), widened by one code',alpha='exact binary16',gain_1='exact image'),
             timing_scope='No timing pass: the option adds one MUL per fragment and two native SetPixelShader calls per admitted draw, plus two native SetRenderState calls per substituted screen draw',
-            source_shader_model='Eight unchanged original VS2; ten exact PS2.0/PS2.x programs versus 50 source-gain variants (10 identical at gain 1)',
+            source_shader_model='Eight unchanged original VS2; ten exact PS2.0/PS2.x programs versus 70 source-gain variants (10 identical at gain 1; 20 with the X3M_EMISSION_SOURCE_CLAMP MIN)',
             limitations=['Fixture blend state is the admitted native ADD/ONE/ONE or the screen ADD/ONE/INVSRCCOLOR with the substitution applied per draw; the live admission predicate (blend shadow, HDR redirect active) and the post-draw restore are exercised by the DLL, not here',
                 'Finite texture/affine/fade inputs only; sources near the FP16 cap are not exercised (clipping refuses the case)',
                 'Native Windows untested; the variant is documented PS 2.0 bytecode'])
