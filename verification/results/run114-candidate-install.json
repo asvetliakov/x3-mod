@@ -1,0 +1,204 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run114-candidate/build/d3d9.dll",
+  "sha256": "41ff9b41f1020d393df92f941d2bd9dba173e0be4f7c455fd97ded5be8ce5802",
+  "bytes": 57835230,
+  "commit": "f43ac51f",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree (X3M_SOURCE_COMMIT f43ac51f9d8306ee9d9aa67e79cc482e25cc875d, no dirty diff)",
+  "gates": "build 0 warnings; x87 0 violations (734 reachable functions); generate --check PASS (247 settings, 99 in the template); ui-scale site_verifier_summary PASS 75/75 checks (10,331 instructions, 161 claims considered, EXE identity shipped LAA CheckSum 0, sha256 fdbf3418...); text-density site_verifier_summary PASS 72/72 checks (4,008 instructions, 170 claims considered, same EXE identity); verify_cull_small_parts_site PASS 20/20 checks (site 0x47d2a2, 373 function instructions); verify_lens_flare_cull_site PASS 13/13 checks (42 body names); verify_dust_leak_fix_site PASS 27/27 checks (site 0x41f4d1, 473 function instructions); host suite 280 modules / 2,945 tests / 0 failing (102.1 s wall, 12 jobs); generate_fonts.py --out build/fonts wrote 16 files under build/fonts/F, sha256 identical to /Users/asvetl/x3-mod/build/fonts/F (16/16); manage.py launch --dry-run --direct --debug --ui-scale 1.25 exit 0 with X3M_UI_SCALE \"1.25\" and X3M_TEXT_DENSITY \"auto\"; --text-density 4 refused (exit 2, out of range); no Wine run; X3AP not running before build and suite",
+  "changes": [
+   "f43ac51f text_density: sharp in-game text under ui_scale through the engine's -fontscale path at d = ceil(s) (auto|1|2|3, --text-density, X3M_TEXT_DENSITY): cfg+0x784 written at CreateDevice, font-open detour 0x0048cdc0 (size, cell, y offset x d with a loose-file guard), Materials call redirect 0x0048af71 flagging the 35 writable generated rows MPF_FONTSCALE (NOFILTERING cleared when s != d, 8 file-backed rows unflagged), blit detours 0x0048c090/0x0048c460 with a d-times shadow cache per source, style imm32 for d = 3, D3DCAPS fit, fonts-present gate (all four family pairs) with refusal, debug text_density_draw rows; manage.py install copies build/fonts/F into <game>/f with an incremental manifest (rollback keeps fonts, uninstall removes); verifier 72/72, host suite 280/2,945/0; two review rounds, fixes applied; docs/architecture/text-density.md, docs/verification/text-density.md",
+   "82c140f0 fonts: generator for X3AP bitmap fonts at density 2 and 3 (tools/fonts/generate_fonts.py: v5 .abc + 32-bit TGA, stock code sets and layout targets in stock_fonts.json, Noto Sans for Tahoma, Exo 2 for Zekton/ZektonES/Harrier, OFL texts bundled under assets/fonts); test_font_generator 5 OK; host suite 279/2,935/0; docs/architecture/font-assets.md",
+   "8e9cf177 Run 113 A completed (run391): bracket click selection works under --ui-scale 1.25 with claims G/H; ui_scale layout accepted; text density next",
+   "738c1911 RE: font rendering (docs/reverse-engineering/font-rendering.md): v5 .abc/.tga font format (u16 code map, 24-byte glyph records, band S-1 rows from v0 + yoff, A/B/C advance), the -fontscale N path (43 readers; layout x N only on MPF_FONTSCALE textures, KC measures / N, style table always doubled, missing 1xxxx variants fall back to NONE_BLACK), assets needed (Tahoma13, Zekton26; language variants), ranked plan: d = ceil(s) through the native path with four hooks; 12 labels",
+   "3aeea955 Run113 candidate built from 9939e5a0 (DLL 44208d1f… 57,717,456 B; host suite 278/2,930/0, x87 0, ui-scale verifier 75/75, verifiers 20/13/27) and installed 2026-09-30; Run 112 A completed (run390: scaling/menus/map/main menu correct, bracket clicks dead, text soft); Run 113 A queued (bracket click selection); rollback Run112"
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-09-30; git log --oneline 9939e5a0..f43ac51f --no-merges; shasum -a 256; hashlib over build/fonts/F; build/site/suite/fonts/dry-run logs local under /tmp/x3-run114-candidate/",
+  "fonts": [
+   {
+    "name": "Harrier48.abc",
+    "sha256": "198299c98980ecbf593c03e4caa0dfbbe0802a85770ed5ec1f6581939810e48d",
+    "bytes": 10102
+   },
+   {
+    "name": "Harrier48.tga",
+    "sha256": "fb1308251ef4508a2808493dd43490e7d807b01dae6c1c740a650f0fb2ab2829",
+    "bytes": 2097170
+   },
+   {
+    "name": "Harrier72.abc",
+    "sha256": "50644f99dc1a32a4fc55587805ec234670d876fb2af85f27fdc8044ffcc0563e",
+    "bytes": 10102
+   },
+   {
+    "name": "Harrier72.tga",
+    "sha256": "a6463b942dbaecec7dae2619ba1b24c20641bb3c19bee06c4eca2cf935af2e71",
+    "bytes": 4194322
+   },
+   {
+    "name": "Tahoma26.abc",
+    "sha256": "db659a77317be9a290cdac042bef9573f56b09e98aa63f174edb102157d44db3",
+    "bytes": 17054
+   },
+   {
+    "name": "Tahoma26.tga",
+    "sha256": "7c33f86259065e3af314fb858eaa68b14f702af79e08c309567e9dbc5a796f5b",
+    "bytes": 1048594
+   },
+   {
+    "name": "Tahoma39.abc",
+    "sha256": "cde74b0ffc68e18a3ce32ea536f5e64904b20f8f098fc52a028ff6e861bd52b8",
+    "bytes": 17054
+   },
+   {
+    "name": "Tahoma39.tga",
+    "sha256": "fb913ffe4e52baf12a14fdf0df05b14ae4d0ae52010a922f5b16032758299718",
+    "bytes": 4194322
+   },
+   {
+    "name": "Zekton52.abc",
+    "sha256": "e316fb8c9ea97f2ab5408745e32ca9d49cfc282da0295dbc4bb5612d24a71ecd",
+    "bytes": 7628
+   },
+   {
+    "name": "Zekton52.tga",
+    "sha256": "ad3b1591a6a1897a97b8a013d31823c72bf8921ce954b4dbad0e1e30e43c1c63",
+    "bytes": 2097170
+   },
+   {
+    "name": "Zekton78.abc",
+    "sha256": "124f6a05bd5ac3c9252035a266e2787efb3f6d4fe9dbdf4f2c78b4f3c4a3459f",
+    "bytes": 7628
+   },
+   {
+    "name": "Zekton78.tga",
+    "sha256": "f2ca0093ad57d44835981cc59b86992f33e421c66ff87a3139d947b6bf276d60",
+    "bytes": 4194322
+   },
+   {
+    "name": "ZektonES52.abc",
+    "sha256": "9170b02732a348ee37e2ec9d02218d452fcbfd8ed2ffc35329da72e74850f9ae",
+    "bytes": 24750
+   },
+   {
+    "name": "ZektonES52.tga",
+    "sha256": "0f1fdb3966450761db7b99f9ccb6379cb5c580aad511f19ca4a5b5d3de1eb613",
+    "bytes": 2097170
+   },
+   {
+    "name": "ZektonES78.abc",
+    "sha256": "b991a407f8c0b68da9b0ec9f3618a26f20c9dd349873ee865eaa151f8aefde55",
+    "bytes": 24750
+   },
+   {
+    "name": "ZektonES78.tga",
+    "sha256": "c4eee62d0c7bbe4d1b41059f332493b2872d8407429881cdafd6ae1f50d402ef",
+    "bytes": 4194322
+   }
+  ]
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run114-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run114-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-09-30T05:20+0400",
+ "installed": {
+  "sha256": "41ff9b41f1020d393df92f941d2bd9dba173e0be4f7c455fd97ded5be8ce5802",
+  "bytes": 57835230,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; 16 font files + x3m-fonts.json manifest in <game>/f (Tahoma26.abc sha db659a77… equals the candidate's); launch --dry-run rc 0 for --direct --config --debug --ui-scale 1.25 (X3M_UI_SCALE=1.25; text_density resolves auto in the DLL under player mode)"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "198299c98980ecbf593c03e4caa0dfbbe0802a85770ed5ec1f6581939810e48d",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "fb1308251ef4508a2808493dd43490e7d807b01dae6c1c740a650f0fb2ab2829",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "50644f99dc1a32a4fc55587805ec234670d876fb2af85f27fdc8044ffcc0563e",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "a6463b942dbaecec7dae2619ba1b24c20641bb3c19bee06c4eca2cf935af2e71",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "db659a77317be9a290cdac042bef9573f56b09e98aa63f174edb102157d44db3",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "7c33f86259065e3af314fb858eaa68b14f702af79e08c309567e9dbc5a796f5b",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "cde74b0ffc68e18a3ce32ea536f5e64904b20f8f098fc52a028ff6e861bd52b8",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "fb913ffe4e52baf12a14fdf0df05b14ae4d0ae52010a922f5b16032758299718",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "e316fb8c9ea97f2ab5408745e32ca9d49cfc282da0295dbc4bb5612d24a71ecd",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "ad3b1591a6a1897a97b8a013d31823c72bf8921ce954b4dbad0e1e30e43c1c63",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "124f6a05bd5ac3c9252035a266e2787efb3f6d4fe9dbdf4f2c78b4f3c4a3459f",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "f2ca0093ad57d44835981cc59b86992f33e421c66ff87a3139d947b6bf276d60",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "9170b02732a348ee37e2ec9d02218d452fcbfd8ed2ffc35329da72e74850f9ae",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "0f1fdb3966450761db7b99f9ccb6379cb5c580aad511f19ca4a5b5d3de1eb613",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "b991a407f8c0b68da9b0ec9f3618a26f20c9dd349873ee865eaa151f8aefde55",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "c4eee62d0c7bbe4d1b41059f332493b2872d8407429881cdafd6ae1f50d402ef",
+   "bytes": 4194322
+  }
+ ],
+ "unchanged": {
+  "X3AP.exe": "fdbf3418…",
+  "x3m.ini": "the user's file kept (9b183759…)",
+  "cxbottle.conf": "sha 3a70e875… before and after",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run113",
+  "dll_sha256": "44208d1fdc1d0a9f8fc4efd0bc5c71814b88b6c41e419b07d8d8e840d513d72e",
+  "path": "/tmp/x3-run113-candidate/build/d3d9.dll",
+  "then": "Run112 ea3ad671…, Run111 = release 0.8.1 e123b7ed… at /tmp/x3m-release-0.8.1/d3d9.dll"
+ },
+ "run": "Run 114 A queued: sharp text (text_density auto = 2) under --ui-scale 1.25 with --debug; docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}

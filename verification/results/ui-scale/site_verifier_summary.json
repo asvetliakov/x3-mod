@@ -17,7 +17,7 @@
     "width": []
   },
   "checks": 75,
-  "claims_considered": 159,
+  "claims_considered": 161,
   "claims_in_windows": [
     [
       "submit_phase_world_return_a",
