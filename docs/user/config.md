@@ -56,7 +56,7 @@ glow layers add: at 1, two half-bright layers give 0.75 instead of 1; below 1 th
 clamp (a clamp below 1 is used in steps of 1/255, so `0.7` acts as 179/255 = 0.702).
 
 `lens_flare_gain` dims the game's own lens flares (the halos around engines and lights, and the sun's flare), for
-mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` none; the default is `0.3` (since
+mods that draw them very large: `1` is the game's own brightness, `0.5` half, `0` the flares are not drawn at all; the default is `0.3` (since
 2026-09-29).
 
 ## Checking what was loaded

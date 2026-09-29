@@ -510,3 +510,18 @@ The committed record's source hash of `run_sun_occlusion.py` predates that runne
 violations (722 functions), host modules test_launcher_defaults 9 / test_config_schema 17 / test_sun_occlusion 27 OK.
 
 **Default 2026-09-29 (user decision after Run 103 A):** Run 103 A flew `lens_flare_gain 0.5` with `emission_source_clamp 0.7` and was accepted ("working now, no issues"; run365 `object_lifetime_stats peak_live=44913` past the old 16,384 confirmed the capacity cause, figure from the run triage). The user chose `lens_flare_gain = 0.3` as the default: schema default `0.3` (bare DLL and template) and the launcher fills `--lens-flare-gain 0.3` on every modded `--motion-output` launch, sent as `0.3` (fixed-point, trailing zeros dropped; explicit values too, e.g. `0.5`, no longer `0.5000`). The lens bracket's two redirects therefore install on every modded launch, observe-only under `--no-sun-occlusion`; `--lens-flare-gain 1` is the opt-out. The `lens_flare_gain_frame` row now appears in every default flight. Measured: host modules test_launcher_defaults 9, test_config_schema 17, test_sun_occlusion 27 OK; build 0 warnings, x87 0 violations; no Wine run (the GPU fixture compiles `lens_flare_gain.h` with explicit gains; fixtures run `X3M_CONFIG=bare`).
+
+## 2026-09-29: lens-flare gain 0 skips the draw (worktree, not installed, not flown)
+
+At `lens_flare_gain 0` an admitted lens draw (bracket open, route on, not recording, plain, state known, ONE / ONE /
+ADD) is no longer submitted with SRCBLEND ZERO: the hook returns S_OK without the native call and without a setter
+(`Law::skip`, `apply_lens_gain`); `lens_flare_gain_frame` gains `skipped=`. G > 0 paths unchanged. Purpose: one flight
+compares frame time at 0 against 0.3 to price the lens chain's ~170 submits per frame (run375). Design:
+`docs/architecture/sun-partial-occlusion.md`, "Lens-flare gain". `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/run_sun_occlusion.py` PASS (measured): hook 74/0, GPU
+137 checks / 0 failed (two new: `lens_gain_occlusion_query`, `lens_gain_zero_not_issued`). Over a 26,51,77 background
+the zero case reads back 0.102,0.200,0.302 with 0 issued draws and 0 occlusion-query samples; off / half /
+half_wrapped issue one draw each with 256 samples. The fixture mirrors the production decision on the header's law;
+the `MotionOutput` integration through the draw hooks still has no fixture. Build 0 warnings, x87 0 violations (726
+reachable functions), `generate.py --check` PASS, host modules test_sun_occlusion / test_launcher_defaults /
+test_config_schema / test_logging_tiers 63 tests OK.

@@ -1673,9 +1673,10 @@ private:
     lens_flare_gain::Law lens_gain_{};
     bool lens_gain_caps_ = false;
     unsigned lens_gained_ = 0, lens_gain_refused_ = 0, lens_gain_logged_ = 0;
-    // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, refused
-    // per reason since the last row. Counters only.
-    unsigned lens_gain_window_frames_ = 0, lens_gain_window_draws_ = 0, lens_gain_window_gained_ = 0;
+    // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, skipped
+    // (G = 0: admitted and not submitted), refused per reason since the last row. Counters only.
+    unsigned lens_gain_window_frames_ = 0, lens_gain_window_draws_ = 0, lens_gain_window_gained_ = 0,
+             lens_gain_window_skipped_ = 0;
     unsigned lens_gain_window_refused_[lens_flare_gain::refusal_count]{};
     void log_lens_gain_window() noexcept;
     void apply_lens_gain(MotionRoute& route, bool plain) noexcept;

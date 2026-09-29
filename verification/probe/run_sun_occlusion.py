@@ -24,7 +24,7 @@ SOURCES = ('src/proxy/engine_memory.cpp', 'src/proxy/sun_occlusion.cpp', 'src/pr
            'verification/probe/sun_occlusion_hook_fixture.cpp', 'verification/probe/sun_occlusion_fixture.cpp', 'verification/probe/build_sun_occlusion.py',
            'verification/probe/run_sun_occlusion.py', 'src/proxy/lens_flare_gain.h')
 EXPECTED_HOOK_CHECKS = 74   # a run that skips a section is not a pass
-EXPECTED_GPU_CHECKS = 135  # with both optional RT2 formats available; each SKIPPED format line takes one off (128 + 7 lens-flare gain)
+EXPECTED_GPU_CHECKS = 137  # with both optional RT2 formats available; each SKIPPED format line takes one off (128 + 9 lens-flare gain)
 LENS_GAIN_CASES = {'off', 'half', 'zero', 'half_wrapped'}
 SCENES = ('open', 'covered', 'half', 'three_quarter', 'quarter', 'screen_edge_open', 'screen_edge_covered')
 
@@ -106,7 +106,10 @@ def accept_gpu(record):
             and set(record['jitter_visibility']) == {'x', 'y'} and len(record['jitter_phase']) == 16 and len(record['clip_jitter_phase']) == 8
             and all(v.get('corrected_invariant') == 1 and v.get('uncorrected_distinct', 0) >= 2 for v in record['jitter_visibility'].values())
             and record['clip_jitter'] and record['clip_jitter'].get('distinct') == 2 and record['clip_jitter'].get('max_delta_measured', 1) <= .23
-            and set(record['lens_gain']) == LENS_GAIN_CASES and all(c.get('restored') == 1 for c in record['lens_gain'].values()))
+            and set(record['lens_gain']) == LENS_GAIN_CASES and all(c.get('restored') == 1 for c in record['lens_gain'].values())
+            # G = 0: the admitted draw is not issued (no draw, no rasterised sample); every G > 0 case issues one that passes samples
+            and all((c.get('issued'), c.get('skipped')) == ((0, 1) if name == 'zero' else (1, 0)) and (c.get('samples') == 0 if name == 'zero' else c.get('samples', 0) > 0)
+                    for name, c in record['lens_gain'].items()))
 
 
 def main():
@@ -159,7 +162,7 @@ def main():
                           'jitter_visibility': {k: (v.get('unjittered'), v.get('corrected_invariant'), v.get('uncorrected_distinct')) for k, v in gpu['jitter_visibility'].items()},
                           'jitter_uncorrected': {k: sorted({p['uncorrected'] for p in gpu['jitter_phase'] if p.get('axis') == k}) for k in gpu['jitter_visibility']},
                           'clip_jitter': gpu['clip_jitter'],
-                          'lens_gain': {k: (v.get('r'), v.get('g'), v.get('b'), v.get('expected_r'), v.get('restored')) for k, v in gpu['lens_gain'].items()},
+                          'lens_gain': {k: (v.get('r'), v.get('g'), v.get('b'), v.get('expected_r'), v.get('restored'), v.get('issued'), v.get('samples')) for k, v in gpu['lens_gain'].items()},
                           'lens_gain_cost': gpu['lens_gain_cost']}
     print(json.dumps(summary, indent=1))
     sys.exit(0 if record['passed'] else 1)

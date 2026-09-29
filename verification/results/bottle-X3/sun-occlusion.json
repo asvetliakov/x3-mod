@@ -25,10 +25,10 @@
   "src/renderer/sun_visibility_taps_inc.h": "d893b7d2592d8e240ce18a99ccec7c1f06d78885e51f7bf9961570aca16dbcbf",
   "src/temporal/sun_visibility_ps.hlsl": "8c98f92dfe78015e687bccdd03fb5acd13b5c29ae7b4375405207f2a9b4ef541",
   "verification/probe/sun_occlusion_hook_fixture.cpp": "4cd1e0b87050c43521ea44c1b6a1d9e13d73d71d6f86e49da80904e9c41f8818",
-  "verification/probe/sun_occlusion_fixture.cpp": "11f4d89d305afc8fa87f13f0bf4046718eb5c9706e1ecdae2939afe866c80aa2",
+  "verification/probe/sun_occlusion_fixture.cpp": "7f154969e4a8b238dedf36780972f1ebd01c1566e27db110d9afb9b104f6eb32",
   "verification/probe/build_sun_occlusion.py": "494a9d758101bf1b18bd3be423a0ca1fbd4a13cac6c8eaa96a14e45ebd29d8aa",
-  "verification/probe/run_sun_occlusion.py": "904e506fab88667e1e6137d64e4b5b061cc8e1731017f2a75fe9916edef669d7",
-  "src/proxy/lens_flare_gain.h": "90ccffca36a591a1d24dfb1271b566611dd0c21a0e403bac7d05c419a9f09220"
+  "verification/probe/run_sun_occlusion.py": "67535e536616b7805fb829ea37d84fb098a6df72cc79d1496778e89959218f7e",
+  "src/proxy/lens_flare_gain.h": "a1aad55d38aeedc64bbc03d29c8f3d7ebddf736da1ff9d706c79ddda357b19c5"
  },
  "module_audit": {
   "probe_thunk": [
@@ -79,14 +79,14 @@
   },
   "failure_lines": [],
   "exit_status": 0,
-  "elapsed_s": 5.2,
-  "executable_sha256": "ec324f303cfca7689f5c3544e48b288b474b8fcba1354317dfb6709c9c273cc7"
+  "elapsed_s": 7.9,
+  "executable_sha256": "2376c5974a8086688fca505883050197f0a1a8a92d6cbf53eb8e6e5e65607bf7"
  },
  "gpu": {
-  "checks": 135,
+  "checks": 137,
   "failed_checks": [],
   "result": {
-   "checks": 135,
+   "checks": 137,
    "failures": 0,
    "verdict": "PASS"
   },
@@ -605,62 +605,74 @@
     "gain": 1.0,
     "applied": 1.0,
     "wrap": 0,
-    "r": 0.8,
-    "g": 0.6,
-    "b": 0.4,
-    "expected_r": 0.8,
-    "expected_g": 0.6,
-    "expected_b": 0.4,
-    "restored": 1
+    "r": 0.902,
+    "g": 0.8,
+    "b": 0.702,
+    "expected_r": 0.902,
+    "expected_g": 0.8,
+    "expected_b": 0.702,
+    "restored": 1,
+    "issued": 1,
+    "skipped": 0,
+    "samples": 256
    },
    "half": {
     "name": "half",
     "gain": 0.5,
     "applied": 0.502,
     "wrap": 0,
-    "r": 0.4,
-    "g": 0.302,
-    "b": 0.2,
-    "expected_r": 0.4016,
-    "expected_g": 0.3012,
-    "expected_b": 0.2008,
-    "restored": 1
+    "r": 0.502,
+    "g": 0.502,
+    "b": 0.502,
+    "expected_r": 0.5035,
+    "expected_g": 0.5012,
+    "expected_b": 0.5027,
+    "restored": 1,
+    "issued": 1,
+    "skipped": 0,
+    "samples": 256
    },
    "zero": {
     "name": "zero",
     "gain": 0.0,
     "applied": 0.0,
     "wrap": 0,
-    "r": 0.0,
-    "g": 0.0,
-    "b": 0.0,
-    "expected_r": 0.0,
-    "expected_g": 0.0,
-    "expected_b": 0.0,
-    "restored": 1
+    "r": 0.102,
+    "g": 0.2,
+    "b": 0.302,
+    "expected_r": 0.102,
+    "expected_g": 0.2,
+    "expected_b": 0.302,
+    "restored": 1,
+    "issued": 0,
+    "skipped": 1,
+    "samples": 0
    },
    "half_wrapped": {
     "name": "half_wrapped",
     "gain": 0.5,
     "applied": 0.502,
     "wrap": 1,
-    "r": 0.2,
-    "g": 0.149,
-    "b": 0.102,
-    "expected_r": 0.2008,
-    "expected_g": 0.1506,
-    "expected_b": 0.1004,
-    "restored": 1
+    "r": 0.302,
+    "g": 0.349,
+    "b": 0.4039,
+    "expected_r": 0.3027,
+    "expected_g": 0.3506,
+    "expected_b": 0.4024,
+    "restored": 1,
+    "issued": 1,
+    "skipped": 0,
+    "samples": 256
    }
   },
   "lens_gain_cost": {
    "draws_per_frame": 113,
    "frames": 200,
    "calls_per_draw": 4,
-   "us_per_frame": 4.81
+   "us_per_frame": 5.0
   },
   "exit_status": 0,
-  "elapsed_s": 8.2,
-  "executable_sha256": "6945e68f4ca869c1db18865ba064bb23cf12efc24cbfe7c6d16bf51166a8bd5c"
+  "elapsed_s": 8.6,
+  "executable_sha256": "60dafb8e8c7bfd35ca86ad4abd112ee313b88072783d0db44299fab2679a6d10"
  }
 }

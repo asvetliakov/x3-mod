@@ -311,7 +311,7 @@ void MotionOutput::finish_lens(MotionRoute& route) noexcept {
     }
 }
 // Lens-flare gain (src/proxy/lens_flare_gain.h), one lens-scene draw that goes out: SRCBLEND = BLENDFACTOR with the
-// quantised G in every lane (ZERO at G = 0), on the admitted ONE / ONE / ADD law only. Everything is checked before the
+// quantised G in every lane (at G = 0 the draw is not submitted), on the admitted ONE / ONE / ADD law only. Everything is checked before the
 // first setter; the values put back after the draw are the route's shadow of the application's own (blend_known: the
 // setter hooks' shadow, or this draw's Get* cache with the hooks off, which begin_draw_reads refreshed for this draw
 // because the route is on). Direct calls: the setter hook's shadow keeps the application's values. Integer only.
@@ -338,6 +338,15 @@ void MotionOutput::apply_lens_gain(MotionRoute& route, bool plain) noexcept {
         return refuse_lens_gain(lfg::StateUnknown);
     if (!lfg::admits(enable, shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2]))
         return refuse_lens_gain(lfg::BlendLaw);
+    if (lens_gain_.skip) {
+        // G = 0: 0 * src + dst is dst, so the admitted draw is not submitted at all. The hook returns S_OK to the game
+        // without the native call (the lens_suppress_ drop's contract); no state was changed, after_draw restores only
+        // what the route and the sun wrap applied.
+        route.submit = false;
+        route.submission_error = D3D_OK;
+        ++lens_gain_window_skipped_;
+        return;
+    }
     D3DRENDERSTATETYPE states[2]{};
     DWORD values[2]{};
     const unsigned count = lfg::steps(lens_gain_, states, values);
@@ -354,11 +363,11 @@ void MotionOutput::apply_lens_gain(MotionRoute& route, bool plain) noexcept {
 // Every 300 frames while G < 1, in every logging tier (the plain flight's evidence that the gain acted).
 void MotionOutput::log_lens_gain_window() noexcept {
     const unsigned* r = lens_gain_window_refused_;
-    log("lens_flare_gain_frame device=%llu frame=%llu frames=%u gain=%.4f draws=%u gained=%u refused_caps=%u refused_route=%u refused_recording=%u refused_routed_draw=%u refused_state_unknown=%u refused_blend_law=%u refused_device=%u",
-        id_, frame_, lens_gain_window_frames_, double(lens_gain_.gain), lens_gain_window_draws_, lens_gain_window_gained_,
+    log("lens_flare_gain_frame device=%llu frame=%llu frames=%u gain=%.4f draws=%u gained=%u skipped=%u refused_caps=%u refused_route=%u refused_recording=%u refused_routed_draw=%u refused_state_unknown=%u refused_blend_law=%u refused_device=%u",
+        id_, frame_, lens_gain_window_frames_, double(lens_gain_.gain), lens_gain_window_draws_, lens_gain_window_gained_, lens_gain_window_skipped_,
         r[lens_flare_gain::Caps], r[lens_flare_gain::Route], r[lens_flare_gain::Recording], r[lens_flare_gain::RoutedDraw],
         r[lens_flare_gain::StateUnknown], r[lens_flare_gain::BlendLaw], r[lens_flare_gain::Device]);
-    lens_gain_window_frames_ = lens_gain_window_draws_ = lens_gain_window_gained_ = 0;
+    lens_gain_window_frames_ = lens_gain_window_draws_ = lens_gain_window_gained_ = lens_gain_window_skipped_ = 0;
     for (unsigned& v : lens_gain_window_refused_) v = 0;
 }
 void MotionOutput::restore_lens_gain(MotionRoute& route) noexcept {

@@ -439,8 +439,17 @@ user-verified 2026-09-29). `lens_flare_gain` / `X3M_LENS_FLARE_GAIN` / `--lens-f
 - **Mechanism** (`src/proxy/lens_flare_gain.h`, `MotionOutput::apply_lens_gain` in
   `motion_output_sun_occlusion_inc.h`): inside the lens bracket every draw that goes out with blending on and
   ONE / ONE / ADD is drawn with `D3DRS_SRCBLEND = D3DBLEND_BLENDFACTOR` and `D3DRS_BLENDFACTOR = G` in every lane
-  (quantised once to 8 bits: 0.5 is 128/255), or `SRCBLEND = ZERO` at G = 0; the draw's program, textures and
-  DESTBLEND are untouched, so the frame receives G x src + dst. Both states are put back from the route's shadow of
+  (quantised once to 8 bits: 0.5 is 128/255); the draw's program, textures and DESTBLEND are untouched, so the frame
+  receives G x src + dst.
+- **G = 0: the flares are not drawn at all** (2026-09-29, `Law::skip`). A draw that passes every admission check
+  above (bracket open, route on, not recording, plain, state known, ONE / ONE / ADD) is not submitted: the draw hook
+  skips the native call and returns S_OK to the game with no state changed (the same `route.submit = false`,
+  `submission_error = D3D_OK` contract as the sun wrap's dropped draws), since 0 x src + dst is dst. No setter, no
+  cap needed. `after_draw` still runs (it restores only what the sun wrap applied), as do `scene_depth.after_draw`
+  and the capture's draw record with S_OK; `frame_end draws=` still counts the skipped draw (it counts the game's
+  draw calls at hook entry, not submissions), and so does the frame-timing draw/primitive count. A refused draw
+  goes out native exactly as at G > 0. Purpose: one flight measures the submit cost of the lens chain (run375,
+  Mayhem 3: 169 of 352 draws per frame) as frame time at 0 against 0.3. Both states are put back from the route's shadow of
   the application's values in `after_draw`, before the sun wrap's `lens_end` (G < 1 turns the blend-state shadow on
   by itself, `blend_shadow_requested()`, so SRCBLEND and BLENDFACTOR are known without the emission features). Documented D3D9 only;
   `D3DPBLENDCAPS_BLENDFACTOR` is read once at attach (one `lens_flare_gain_device` row), and without it every lens
@@ -456,15 +465,17 @@ user-verified 2026-09-29). `lens_flare_gain` / `X3M_LENS_FLARE_GAIN` / `--lens-f
   G = 1, unset or invalid: nothing installed for it, no per-draw test beyond the existing bracket flag. One
   `lens_flare_gain value= configured= reason= bracket=` row at start-up (`unset`, `one`, `ok`, `invalid`,
   `route_off`, `bracket_unavailable`); `sun_lens_bracket` (log only) carries `gained=` / `gain_refused=`.
-- **Cost:** two setters and two restores per admitted lens draw (one each at G = 0); the fixture's timing of
+- **Cost:** two setters and two restores per admitted lens draw (none at G = 0, where the draw itself goes); the fixture's timing of
   113 draws x 4 calls without the draw is in the ledger (`docs/verification/sun-occlusion.md`, 2026-09-29). The
   admission reads the blend state from the route's shadow: with the setter hooks on, no native call; with them off
   (per-draw Get* cache), up to five native GetRenderState per admitted draw (SRCBLEND, DESTBLEND, BLENDOP,
   BLENDFACTOR, ALPHABLENDENABLE) when the sun occlusion is off or not wrapping in that frame, one (BLENDFACTOR) in a
   frame where its wrap is active, since it has already read the other four for the same draw.
 - **Plain-flight evidence:** one `lens_flare_gain_frame` row every 300 frames while G < 1, in every logging tier:
-  lens draws seen, gained, refused per reason since the last row.
+  lens draws seen, gained, `skipped=` (G = 0: admitted and not submitted), refused per reason since the last row.
 - **Coverage:** the GPU fixture (`run_sun_occlusion.py`) runs the header's law and steps on a real device, alone
-  and over the ghost wrap, with the hostile application BLENDFACTOR restored. The `MotionOutput` integration
+  and over the ghost wrap, with the hostile application BLENDFACTOR restored, over a known background; at G = 0 it
+  checks the background reads back unchanged and that the draw was not issued (a D3D9 occlusion query around the
+  transaction counts 0 samples, 256 for every issued case). The `MotionOutput` integration
   (`prepare_lens` -> `after_draw` through the draw hooks) has no fixture: the lens bracket opens only from the
   engine thunk, which the motion-output seam does not drive.
