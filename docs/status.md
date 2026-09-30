@@ -1,24 +1,29 @@
 # Project status
 
-The single current-state file (updated 2026-09-30, Run116 = ui_scale + text_density with the heavier HUD font over release 0.8.1). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-09-30, Run117 = release 0.9.0). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
-Run116 = candidate DLL SHA-256 `68bd5f4135c53c96b8d07dc086d9e78d416a8d495e6a8a239b76035d96fdd565` (57,849,156 bytes, unstripped),
-built once from clean main `846f9c16` (host suite 280/2,947/0, 0 warnings, x87 0, ui-scale verifier 75/75, text-density verifier 72/72,
-cull/flare/dust verifiers 20/13/27, generate --check 247/99, stem coverage PASS; [build record](../verification/results/run116-candidate-build.json)),
-installed 2026-09-30 with the 16 generated font files in `<game>/f/` ([install](../verification/results/run116-candidate-install.json)).
-Renderer code equal to release 0.8.1 (Run111, `f4439590`) plus the opt-in `ui_scale` (claims A-H) and `text_density` (auto = ceil(ui_scale),
-inert at ui_scale 1). Release 0.8.1: stripped DLL `e123b7ed…` (39,550,860 bytes), zip `/tmp/x3m-release-0.8.1/x3m-0.8.1.zip` (`17f75b31…`),
-[release record](../verification/results/release-0.8.1.json). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini` and the 0.8.0
-`x3m-regenerate` binaries unchanged.
+Run117 = **release 0.9.0**: stripped DLL SHA-256 `72db0628651f7afac8bd5073e9a93a8317d3988d7c6c2bb9dc1aadeb30d96d0f`
+(39,610,685 bytes; unstripped `89fd0e0b…`, debug file `bd63b95b…` under `/tmp/x3m-release-0.9.0/`), built once from clean
+main `c1baa169` (host suite 280/2,950/0, 0 warnings, x87 0 on both DLLs, strip identity PASS, zip entries exactly 22, regenerate
+binaries reused from 0.8.0; [release record](../verification/results/release-0.9.0.json)), installed 2026-09-30 with the zip's
+16 font files in `<game>/f/` ([install](../verification/results/run117-release-install.json)). Renderer code equal to Run116
+(`846f9c16`) plus the 0.9.0 defaults: `ui_scale = auto` (height/1080 rounded to the nearest half: 1440 -> 1.5, 2160 -> 2) and
+`text_density = auto`. Zip `/tmp/x3m-release-0.9.0/x3m-0.9.0.zip` (`068ab902…`, 59,642,766 bytes: d3d9.dll, x3m.ini,
+x3m-regenerate.exe, f/<16 fonts>, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
+and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run116 `68bd5f41…` at `/tmp/x3-run116-candidate/build/d3d9.dll`, then Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
+Run117 = 0.9.0 over Run116: defaults `ui_scale = auto` and `text_density = auto` (the bare DLL and the launcher default flight
+both scale the UI now; `--vanilla` unaffected), the density fonts committed under `assets/fonts/generated/F` and shipped in the zip
+with the OFL texts, version 0.9.0. Run 116 A (run394 at 1.25, run395 at 1.5) accepted the text readability; the user prefers 1.5
+at 5120x1440 and made it the 1440-row auto value; the fractional engine font scale is not pursued (large blast radius).
 Run116 over Run115: Run 115 A (run393) had every letter present but uneven stroke weight (2-texel stems on 1.25 screen px under the
 1.6x minification; the engine's samplers were already anisotropic/linear, so the override now raises POINT only). The Tahoma family
 default is now Noto wght 600 with the grey stroke floor (stems ~2.66 texels, antialiased edges; chosen from simulated minification
@@ -74,15 +79,15 @@ being 4.7x+ the drawn geometry on Mayhem turrets, and `frame_end` carries `issue
 sprites (stock bodies `objects/v/00752..00766`, ~8 per engine) + 82 Split turret props (76 under 4 px) + 28 ship hulls +
 25 carrier + 14 station + 10 engine glows + 5 sky + 9 HUD.
 
-Last release: **0.8.1** from `f4439590` ([release record](../verification/results/release-0.8.1.json)); 0.8.0 from `a3c85e37` before it.
+Last release: **0.9.0** from `c1baa169` ([release record](../verification/results/release-0.9.0.json)); 0.8.1 from `f4439590` before it.
 
 ## Main beyond the installed build
 
-Nothing beyond the installed Run116 (`846f9c16`); release 0.8.1 (`f4439590`) is the last packaged build.
+Nothing beyond the installed Run117 (`c1baa169`); release 0.9.0 is the last packaged build; release 0.8.1 (`f4439590`) is the last packaged build.
 
 ## Run queue
 
-Run 116 A completed (run394/395): readability accepted; 1.5 preferred and made the 1440-row auto value; release 0.9.0 in preparation (defaults auto/auto, fonts in the zip). Run 115 A completed (run393): all letters present, stroke weight uneven (addressed by Run116). Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
+Run 117 A queued (Run117 = release 0.9.0 installed): plain confirmation flight on the defaults (auto = 1.5 at 1440 rows, density 2). Run 115 A completed (run393): all letters present, stroke weight uneven (addressed by Run116). Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
 Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under

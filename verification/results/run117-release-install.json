@@ -1,0 +1,34 @@
+{
+ "release": "0.9.0",
+ "commit": "c1baa169",
+ "release_record": "verification/results/release-0.9.0.json",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3m-release-0.9.0/zip-extract/d3d9.dll --fonts-dir /tmp/x3m-release-0.9.0/zip-extract/f",
+ "exit": 0,
+ "installed_at": "2026-09-30T12:30+0400",
+ "installed": {
+  "sha256": "72db0628651f7afac8bd5073e9a93a8317d3988d7c6c2bb9dc1aadeb30d96d0f",
+  "bytes": 39610685,
+  "stripped": true,
+  "verified": "sha256 and size read back after install; equals the release record's shipped DLL; pgrep X3AP empty before; the zip's 16 f/ files installed (Tahoma26.tga ef536bbb…), manifest x3m-fonts.json; launch --dry-run --direct sends X3M_UI_SCALE=auto and X3M_TEXT_DENSITY=auto, --config sends neither (player mode, the DLL resolves auto)"
+ },
+ "zip": {
+  "path": "/tmp/x3m-release-0.9.0/x3m-0.9.0.zip",
+  "sha256": "068ab9021acf6ae71411ff63cd10362db1324fa5d8c230e88ad1d7c3cc5d5f2f",
+  "bytes": 59642766,
+  "entries": 22
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418…",
+  "x3m.ini": "the user's file kept (9b183759…)",
+  "cxbottle.conf": "sha 3a70e875… before and after",
+  "x3m-regenerate": "0.8.0 binaries kept (the zip's exe is the same d7f8d687…)"
+ },
+ "previous": {
+  "run": "Run116",
+  "dll_sha256": "68bd5f4135c53c96b8d07dc086d9e78d416a8d495e6a8a239b76035d96fdd565",
+  "path": "/tmp/x3-run116-candidate/build/d3d9.dll (fonts under its build/fonts/F, identical to the zip's)",
+  "then": "Run115 fe31263b…, Run114 41ff9b41…, Run111 = release 0.8.1 e123b7ed… at /tmp/x3m-release-0.8.1/d3d9.dll"
+ },
+ "run": "Run 117 A queued: plain confirmation flight on the 0.9.0 defaults (ui_scale auto = 1.5, text_density auto = 2); docs/verification/user-runs.md",
+ "producer": "main session (this record)"
+}

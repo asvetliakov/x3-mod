@@ -1,0 +1,150 @@
+{
+ "schema": 2,
+ "version": "0.9.0",
+ "complete": true,
+ "tool_record": "/private/tmp/x3m-release-0.9.0/release-0.9.0.json (local, untracked; fields below copied from it)",
+ "command": "python3 tools/release/release.py --out /tmp/x3m-release-0.9.0 --regenerate-dir /tmp/x3m-release-0.8.0/regenerate (regenerate sources unchanged since a3c85e37: git diff --stat a3c85e37..HEAD -- tools/regenerate tools/analysis/lod_*.py tools/build empty; 0.8.0 binaries reused)",
+ "commit": "c1baa1698b4c3ddd2d55027f3c29bbebafe27857",
+ "dirty": false,
+ "toolchain": {
+  "mingw_gcc": "i686-w64-mingw32-gcc (GCC) 16.2.0",
+  "mingw_objcopy": "GNU objcopy (GNU Binutils) 2.47.20260726",
+  "cmake": "cmake version 4.4.3",
+  "python": "3.9.6 (/Library/Developer/CommandLineTools/usr/bin/python3)"
+ },
+ "source_commit_marker": "c1baa1698b4c3ddd2d55027f3c29bbebafe27857",
+ "dll": {
+  "sha256": "72db0628651f7afac8bd5073e9a93a8317d3988d7c6c2bb9dc1aadeb30d96d0f",
+  "bytes": 39610685
+ },
+ "dll_unstripped": {
+  "sha256": "89fd0e0b0e50b192dfae2e04b396c84f2e1f4ce9b739de25573c3f6870fb88a3",
+  "bytes": 57849168
+ },
+ "debug_file": {
+  "sha256": "bd63b95b3418a552545b5c20f9ccdfbfe554ac6253dbb161e69ef4c3cd8c7ff7",
+  "bytes": 19194704
+ },
+ "regenerate_source": "reused",
+ "regenerate": {
+  "x3m-regenerate": {
+   "sha256": "28d3e915e7aeb9294a3a2e6abddcbce829404d52d6f1add8dc42338ff9fbe287",
+   "bytes": 12273696
+  },
+  "x3m-regenerate.exe": {
+   "sha256": "d7f8d687eb1437aff518d4da7e64cadd4a91f9798357a6cbc394ef89d2869afd",
+   "bytes": 29748230
+  }
+ },
+ "zip": {
+  "name": "x3m-0.9.0.zip",
+  "sha256": "068ab9021acf6ae71411ff63cd10362db1324fa5d8c230e88ad1d7c3cc5d5f2f",
+  "bytes": 59642766,
+  "entries": {
+   "d3d9.dll": [
+    39610685,
+    "72db0628651f7afa"
+   ],
+   "x3m.ini": [
+    18468,
+    "c82eaa16db47476c"
+   ],
+   "x3m-regenerate.exe": [
+    29748230,
+    "d7f8d687eb1437af"
+   ],
+   "f/Harrier48.abc": [
+    10102,
+    "bfe708cd4c832d6e"
+   ],
+   "f/Harrier48.tga": [
+    2097170,
+    "b0e5db2922e7b7d8"
+   ],
+   "f/Harrier72.abc": [
+    10102,
+    "807a78585316503f"
+   ],
+   "f/Harrier72.tga": [
+    4194322,
+    "7e6db52e670aa17e"
+   ],
+   "f/Tahoma26.abc": [
+    17054,
+    "18cca779096a9e41"
+   ],
+   "f/Tahoma26.tga": [
+    1048594,
+    "ef536bbb89ca5792"
+   ],
+   "f/Tahoma39.abc": [
+    17054,
+    "abbe3241884774a0"
+   ],
+   "f/Tahoma39.tga": [
+    4194322,
+    "42596156cf468d1c"
+   ],
+   "f/Zekton52.abc": [
+    7628,
+    "7a52633c0a936aa7"
+   ],
+   "f/Zekton52.tga": [
+    2097170,
+    "cff8eb745fdb0fba"
+   ],
+   "f/Zekton78.abc": [
+    7628,
+    "3960f3cf197336c8"
+   ],
+   "f/Zekton78.tga": [
+    4194322,
+    "212b87b9e2610142"
+   ],
+   "f/ZektonES52.abc": [
+    24750,
+    "96c229be61d9ea26"
+   ],
+   "f/ZektonES52.tga": [
+    2097170,
+    "bb01d1d12b9293a9"
+   ],
+   "f/ZektonES78.abc": [
+    24750,
+    "496fabf863183563"
+   ],
+   "f/ZektonES78.tga": [
+    4194322,
+    "79140644e51f02a5"
+   ],
+   "OFL-NotoSans.txt": [
+    4396,
+    "cee9892f9f0cc8fe"
+   ],
+   "OFL-Exo2.txt": [
+    4386,
+    "7f95a8eeecc6904f"
+   ],
+   "README.txt": [
+    3378,
+    "368b6892c1717fba"
+   ]
+  }
+ },
+ "gates": "generate --check PASS (247 settings, 99 in the template); DLL warnings 0; check_no_x87 PASS 0 violations 737 reachable (unstripped and stripped); strip identity PASS 10 sections 17 exports marker once 9 debug sections removed, debuglink; regenerate smoke not run (binaries reused from 0.8.0, hashes identical to release-0.8.0.json); zip entries exactly 22 (d3d9.dll, x3m.ini, x3m-regenerate.exe, f/<16 fonts>, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt), re-hashed; extracted to /tmp/x3m-release-0.9.0/zip-extract/: 16/16 f/ files = assets/fonts/generated/F, both OFL files = assets/fonts/, x3m.ini = assets/x3m.ini, d3d9.dll = shipped DLL 72db0628..., x3m-regenerate.exe = reused; README.txt names 0.9.0 and commit c1baa169 and carries the UI size and text paragraph; site verifiers on the installed EXE (identity digest 9d8ddf43..., shipped LAA): ui-scale 75/75 PASS, text-density 72/72 PASS; manage.py launch --dry-run --direct prints X3M_UI_SCALE=auto and X3M_TEXT_DENSITY=auto; full host suite on c1baa169: 280 modules, 2950 tests, 0 failing, 102.5 s (12 jobs)",
+ "changes_since_0.8.1": [
+  "ui_scale: --ui-scale S|auto enlarges the in-game 2D UI through engine claims in one transaction (22dc0e91), click selection under the scaled UI (da8b0df8); auto = height/1080 rounded to the nearest half, default auto (39ce0efb)",
+  "text_density: sharp text under ui_scale through the engine -fontscale path at d = ceil(s) (f43ac51f), linear sampling for scaled text quads (6900c8bd, d36684e8), default auto, turns itself off when a font family pair is missing (39ce0efb, c1baa169)",
+  "fonts: density 2/3 bitmap font generator (82c140f0); 16 generated fonts committed under assets/fonts/generated/F and shipped in the zip under f/ with OFL-NotoSans.txt and OFL-Exo2.txt (39ce0efb)",
+  "version 0.9.0 with the x3m.ini template regenerated (39ce0efb)"
+ ],
+ "wall_seconds": {
+  "tree": 0.0,
+  "config": 0.0,
+  "dll": 52.1,
+  "regenerate": 0.0,
+  "package": 1.8,
+  "total": 54.1,
+  "host_suite": 102.5
+ }
+}
