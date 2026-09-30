@@ -114,7 +114,7 @@ RESTORE_RE = re.compile(r'\bui_scale_restore status=(?P<status>restored|restore_
 def auto_scale(height):
     if not height:
         return 1.0
-    s = (height * 4 // 1080) / 4
+    s = ((height * 2 + 540) // 1080) / 2  # nearest half step of height/1080, a tie rounds up
     return min(3.0, max(1.0, s))
 
 
@@ -422,7 +422,7 @@ def inspect(data, instructions, core_text, claims, xmm=()):
     report['entry_claims'] = entry_claims
     # Source constants and the arithmetic twins.
     checks['source_constants'] = source_ok(core_text)
-    checks['auto_mapping'] = [auto_scale(h) for h in (720, 1080, 1200, 1440, 1600, 2160, 4320, 8640)] == [1.0, 1.0, 1.0, 1.25, 1.25, 2.0, 3.0, 3.0]
+    checks['auto_mapping'] = [auto_scale(h) for h in (720, 1080, 1200, 1440, 1600, 2160, 4320, 8640)] == [1.0, 1.0, 1.0, 1.5, 1.5, 2.0, 3.0, 3.0]
     checks['fixed_point'] = (inverse16(1.25), inverse16(1.5), inverse16(2), inverse16(3), fixed256(1.25), fixed256(1.5)) == (52429, 43691, 32768, 21845, 320, 384) and \
         (virtual_size(5120, inverse16(1.25)), virtual_size(1440, inverse16(1.25)), virtual_size(5120, inverse16(1.5)), virtual_size(1440, inverse16(3))) == (4096, 1152, 3413, 480) and \
         virtual_size(5120, 65536) == 5120 and mouse_step(3, 65536, 0) == (3, 0) and cursor_real(2048, fixed256(1.25)) == 2560

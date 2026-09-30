@@ -8,7 +8,7 @@ text colour (a baked black shadow adds nothing). Per glyph:
   column metric = median over inked columns of the column's white sum (horizontal bars, - T)
 Rule: every metric >= d for every checked character the font maps (the stock target: a 1-px
 stock stroke is d texels). Reads the stock fonts from the installed catalogues in memory when
-available and the generated pairs from build/fonts/F; writes stem_coverage.json, numbers only.
+available and the generated pairs from assets/fonts/generated/F; writes stem_coverage.json, numbers only.
 
   python3 verification/results/font-rendering/stem_coverage.py [--gen DIR] [--before DIR]
 """
@@ -90,7 +90,7 @@ def generated(gen_dir, ff):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--gen', default=str(ROOT / 'build/fonts/F'))
+    ap.add_argument('--gen', default=str(ROOT / 'assets/fonts/generated/F'))
     ap.add_argument('--before', help='an earlier generated F directory, for a before/after table')
     a = ap.parse_args()
     ff = _font_files()

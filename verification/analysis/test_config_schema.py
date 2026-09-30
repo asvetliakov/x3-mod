@@ -147,6 +147,17 @@ class ConfigSchema(unittest.TestCase):
         self.assertEqual(flight, bare_dll)
         self.assertEqual({s for _, s in resolve.resolve(sent).values()}, {'env'})  # bare: nothing from the defaults
 
+    def test_ui_scale_and_text_density_default_to_auto(self):
+        """0.9.0 (user decision 2026-09-30): with no environment and no file the DLL resolves both to auto; the generated
+        table the DLL's resolver reads carries the same defaults, and ui_scale.cpp reads the name through config::get."""
+        self.assertEqual((schema.BY_ENV['X3M_UI_SCALE']['default'], schema.BY_ENV['X3M_TEXT_DENSITY']['default']), ('auto', 'auto'))
+        self.assertEqual((resolve.value(resolve.resolve({}), 'X3M_UI_SCALE'), resolve.value(resolve.resolve({}), 'X3M_TEXT_DENSITY')),
+                         ('auto', 'auto'))
+        table = (ROOT / 'src/config/config_schema_inc.h').read_text()
+        self.assertIn('{"X3M_UI_SCALE", "ui_scale", Type::Float, "auto",', table)
+        self.assertIn('{"X3M_TEXT_DENSITY", "text_density", Type::Enum, "auto",', table)
+        self.assertIn('x3m::config::get(L"X3M_UI_SCALE"', (ROOT / 'src/proxy/ui_scale.cpp').read_text())
+
     def test_hull_emission_gain_follows_the_effects_gain(self):
         """Unset in file and environment, the guide-light gain takes the resolved emission_source_gain (the launcher's
         rule, tools/manage.py); an explicit value from the file or the environment wins."""

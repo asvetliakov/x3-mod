@@ -142,6 +142,9 @@ class ReleaseScript(unittest.TestCase):
                 self.assertFalse(out.exists())
                 self.assertIn('wine_lock.py build.py --windows', text)
                 self.assertIn('gcc 1', text)
+                # the plan names every zip entry, the fonts and their licences among them
+                self.assertIn('entries exactly d3d9.dll, x3m.ini, x3m-regenerate.exe, f/Harrier48.abc, f/Harrier48.tga, ', text)
+                self.assertIn('f/ZektonES78.tga, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt;', text)
                 with mock.patch.object(self.release, 'windows_state', return_value=(False, 'bottle X3M-Build absent')):
                     code, text, _ = quiet(self.release.main, ['--out', str(out), '--dry-run'])
                 self.assertEqual(code, 1)
@@ -251,7 +254,11 @@ class ReleaseScript(unittest.TestCase):
                 self.assertIn(step, record['wall_seconds'])
             zip_path = Path(record['zip']['path'])
             self.assertEqual(record['zip']['sha256'], hashlib.sha256(zip_path.read_bytes()).hexdigest())
-            self.assertEqual([e['name'] for e in record['zip']['entries']], ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'README.txt'])
+            fonts = [f'f/{stem}.{ext}' for stem in ('Harrier48', 'Harrier72', 'Tahoma26', 'Tahoma39', 'Zekton52', 'Zekton78',
+                                                    'ZektonES52', 'ZektonES78') for ext in ('abc', 'tga')]
+            self.assertEqual([e['name'] for e in record['zip']['entries']],
+                             ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', *fonts, 'OFL-NotoSans.txt', 'OFL-Exo2.txt', 'README.txt'])
+            self.assertEqual({e['name']: e['sha256'] for e in record['zip']['entries']}['f/Tahoma26.tga'][:8], 'ef536bbb')
             with zipfile.ZipFile(zip_path) as archive:
                 self.assertEqual(archive.read('d3d9.dll'), STRIPPED_PE)
                 self.assertIn(f'the matching d3d9.debug (SHA-256 {sha(DEBUG_FILE)})', archive.read('README.txt').decode())

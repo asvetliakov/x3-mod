@@ -50,7 +50,8 @@ in the template; bottle, dll-source, dry-run, vanilla, install and voice-decoder
 `src/proxy/config.{h,cpp}` with a resolver `config::get` that is a drop-in for `GetEnvironmentVariableW`,
 loaded first thing in `initialize_log` (inside `load_backend`, before any device), immutable afterwards;
 renderer tunables take their constants from the generated header; four migration steps below. (6) Zip =
-`d3d9.dll`, `x3m.ini`, `x3m-regenerate.exe`, `README.txt`; the DLL runs without the file; unknown keys are
+`d3d9.dll`, `x3m.ini`, `x3m-regenerate.exe`, the 16 density fonts under `f/` and their two OFL texts (since
+0.9.0), `README.txt`; the DLL runs without the file; unknown keys are
 logged once and ignored, so an old file keeps working under a new DLL.
 
 ## Current state (measured at `da84d232`)
@@ -204,7 +205,7 @@ value is harmless):
 | `[hdr]` | `hdr`, `hdr_tonemap`, `hdr_look`, `hdr_exposure`, `hdr_ev`, `hdr_ev_manual`, `hdr_key`, `hdr_ev_min/max`, `hdr_adapt_up/down`, `hdr_dither`, `hdr_bloom`, `bloom_source_clamp`, `emission_source_gain`, `screen_emission_additive` |
 | `[shadows]` | `sun_shadow_lane`, `shadow_replay_depth`, `sun_shadow_apply`, `shadow_cascades`, `shadow_cascade_sizes`, `shadow_cascade_records`, `shadow_cascade_drop_order`, `shadow_cascade_adaptive_c0`, `shadow_alpha_casters`, `shadow_caster_retention`, `sun_shadow_bias_*` |
 | `[fog]` | `volumetric_fog`, `volumetric_fog_anisotropy`, `volumetric_fog_cards`, `volumetric_fog_range`, `volumetric_fog_march_scale`, `fog_motes_max_px`, `fog_docked`, `fog_handover_step/coldfill/prefill` |
-| `[camera]` | `camera`, `fov`, `ui_scale` (1..3 or `auto`, default 1; [ui-scale.md](ui-scale.md)), `text_density` (`auto`, 1, 2, 3, default `auto` = ceil(`ui_scale`); [text-density.md](text-density.md)), `chase_pitch_down_deg`, `chase_offset_y`, `chase_distance_scale`, `chase_view_restore`, `sun_occlusion` |
+| `[camera]` | `camera`, `fov`, `ui_scale` (1..3 or `auto`, default `auto` = height / 1080 to the nearest half since 0.9.0; [ui-scale.md](ui-scale.md)), `text_density` (`auto`, 1, 2, 3, default `auto` = ceil(`ui_scale`); [text-density.md](text-density.md)), `chase_pitch_down_deg`, `chase_offset_y`, `chase_distance_scale`, `chase_view_restore`, `sun_occlusion` |
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
@@ -294,10 +295,15 @@ after 2 without leaving the file half-working.
 
 ## 6. Release packaging and the upgrade story
 
-The zip holds exactly four files: `d3d9.dll` (stripped of its DWARF sections, see below), `x3m.ini` (the generated
-template, all values commented, the header line naming the version/commit it was generated from),
-`x3m-regenerate.exe` (from `tools/regenerate/build.py --windows`), and `README.txt` (a short version of `docs/user/`: unpack next to `X3AP.exe`, run `x3m-regenerate.exe` once,
-edit `x3m.ini` to change a setting, send `x3m.log` when reporting a problem). The DLL must run without the
+The zip holds exactly the entries of `package.py`'s `ZIP_ENTRIES`, in order: `d3d9.dll` (stripped of its DWARF
+sections, see below), `x3m.ini` (the generated template, all values commented, the header line naming the
+version/commit it was generated from), `x3m-regenerate.exe` (from `tools/regenerate/build.py --windows`), since 0.9.0
+the 16 committed density fonts as `f/<Name><S*d>.abc/.tga` (`assets/fonts/generated/F`,
+[font-assets.md](font-assets.md); the directory must hold exactly those 16) and `OFL-NotoSans.txt`, `OFL-Exo2.txt`
+(their source fonts' SIL OFL 1.1 texts, which the licence requires with a derivative), and `README.txt` (a short
+version of `docs/user/`: unpack next to `X3AP.exe`, run `x3m-regenerate.exe` once, edit `x3m.ini` to change a setting,
+what `ui_scale`/`text_density` do and that both are `auto`, that `f/` goes next to `X3AP.exe`, the font licence, send
+`x3m.log` when reporting a problem). `release.py` re-hashes the zip's fonts against the committed files. The DLL must run without the
 file, and does: every default is compiled in from the schema; the template only documents them. A packaging
 script `tools/release/package.py` (new) assembles the zip from `build/d3d9.dll`, `assets/x3m.ini` and the
 regenerate bundle, records the DLL hash and source commit in the zip's `README.txt` (with `--debug-file`, one more

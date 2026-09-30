@@ -5,3 +5,6 @@ verification/results/**/*.log -text whitespace=cr-at-eol
 verification/results/**/*.txt -text whitespace=cr-at-eol
 # objdump emits a trailing space on continuation-byte lines; preserve its hash.
 verification/results/application-admission-abi-object.txt whitespace=cr-at-eol,-blank-at-eol
+
+# The committed density fonts (tools/fonts/generate_fonts.py): exact bytes, shipped as they are.
+assets/fonts/generated/F/* binary

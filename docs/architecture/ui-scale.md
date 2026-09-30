@@ -1,6 +1,7 @@
 # UI scale: enlarging the in-game 2D UI
 
-`--ui-scale S|auto` / `X3M_UI_SCALE` / `ui_scale` in `x3m.ini` (default `1` = off).
+`--ui-scale S|auto` / `X3M_UI_SCALE` / `ui_scale` in `x3m.ini` (default `auto` since 0.9.0,
+user decision 2026-09-30; `1` = off).
 Implements strategy (b) of [gui-scale.md](../reverse-engineering/gui-scale.md)
 section 5: the in-game 2D UI (menus, sidebars, HUD panels, message ticker,
 gravidar: every scene instance carrying node flag `0x200`) is drawn `S` times
@@ -15,8 +16,9 @@ that already grows with the screen height. Source: `src/proxy/ui_scale.cpp`,
 ## The scale
 
 - `S` in [1, 3] with up to four decimals, or `auto` = back-buffer height / 1080
-  snapped down to quarter steps and clamped (1080 -> 1, 1440 -> 1.25,
-  2160 -> 2, 4320 -> 3). `auto` is resolved from the presentation parameters at
+  rounded to the nearest half (a tie rounds up) and clamped to [1, 3]
+  (1080 -> 1, 1200 -> 1, 1440 -> 1.5, 1600 -> 1.5, 2160 -> 2, 4320 -> 3;
+  quarter steps rounded down before 0.9.0, 1440 -> 1.25). `auto` is resolved from the presentation parameters at
   `CreateDevice`, never earlier; a `Reset` with another height re-derives it
   into the data cells (no code is rewritten). `1`, unset or empty patches
   nothing.

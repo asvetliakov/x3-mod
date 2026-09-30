@@ -455,7 +455,7 @@ correctly into the text texture.
 ```sh
 python3 verification/results/font-rendering/font_files.py          # -> font_files.json
 python3 verification/results/font-rendering/font_static_checks.py  # -> font_static_checks.json (capstone)
-python3 verification/results/font-rendering/stem_coverage.py [build/fonts/F] [d]  # -> stem_coverage.json (section 5)
+python3 verification/results/font-rendering/stem_coverage.py [assets/fonts/generated/F] [d]  # -> stem_coverage.json (section 5)
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
   /opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless <proj-dir> <proj> \
   -process X3AP.exe -readOnly -noanalysis -scriptPath tools/analysis \

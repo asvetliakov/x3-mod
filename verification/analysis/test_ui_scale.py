@@ -168,7 +168,7 @@ class UiScaleCore(unittest.TestCase):
                        'menu_y_window', 'menu_callee', 'cursor_pre', 'cursor_post']
             self.assertEqual([bytes.fromhex(l) for l in lines[9:21]], [verifier.WINDOWS[w][1] for w in windows])
             self.assertEqual([int(v, 16) for v in lines[21].split()], [verifier.SITES[s][0] for s in sites] + [0x4be24b, 0x4074f1])
-            self.assertEqual(lines[22].split(), ['1', '1', '1', '1', '1.25', '1.25', '2', '3', '3'])
+            self.assertEqual(lines[22].split(), ['1', '1', '1', '1', '1.5', '1.5', '2', '3', '3'])
             self.assertEqual(lines[23].split(), ['65536/256', '52429/320', '43691/384', '32768/512', '21845/768'])
             self.assertEqual(lines[24].split(), ['4096', '1152', '3413', '480', '5120', '1440'])
             self.assertEqual(lines[25].split(), ['7', '10926', '-7', '54610', '4', '0', '-32768', '32768', '32767', '32768'])
@@ -250,7 +250,7 @@ class UiScaleCore(unittest.TestCase):
                 self.assertFalse(mnemonics & {'pop', 'call', 'ret'} or any(m.startswith('f') for m in mnemonics), name)
 
     def test_python_twins_and_line_parsers(self):
-        self.assertEqual([verifier.auto_scale(h) for h in (0, 720, 1080, 1200, 1440, 1600, 2160, 4320, 8640)], [1, 1, 1, 1, 1.25, 1.25, 2, 3, 3])
+        self.assertEqual([verifier.auto_scale(h) for h in (0, 720, 1080, 1200, 1440, 1600, 2160, 4320, 8640)], [1, 1, 1, 1, 1.5, 1.5, 2, 3, 3])
         self.assertEqual((verifier.inverse16(1.25), verifier.fixed256(1.25), verifier.virtual_size(5120, 52429), verifier.cursor_real(2048, 320)),
                          (52429, 320, 4096, 2560))
         self.assertEqual(verifier.mouse_step(-1, 43691, 0), (-1, 21845))
@@ -316,9 +316,9 @@ class UiScaleCore(unittest.TestCase):
         # The schema entry and the template.
         schema = source_text(ROOT / 'tools/config/schema.py')
         self.assertIn("entry('ui_scale', 'float', 'camera'", schema)
-        self.assertIn("'1', range=(1.0, 3.0), choices=('auto',), launcher='--ui-scale')", schema)
-        self.assertIn(';ui_scale = 1', (ROOT / 'assets/x3m.ini').read_text())
-        self.assertIn('"X3M_UI_SCALE", "ui_scale", Type::Float, "1"', (ROOT / 'src/config/config_schema_inc.h').read_text())
+        self.assertIn("'auto', range=(1.0, 3.0), choices=('auto',), launcher='--ui-scale')", schema)  # auto since 0.9.0
+        self.assertIn(';ui_scale = auto', (ROOT / 'assets/x3m.ini').read_text())
+        self.assertIn('"X3M_UI_SCALE", "ui_scale", Type::Float, "auto"', (ROOT / 'src/config/config_schema_inc.h').read_text())
 
 
 @unittest.skipUnless(EXE.is_file(), 'installed executable not present')
@@ -389,8 +389,8 @@ class UiScaleLaunchOption(unittest.TestCase):
 
     def test_default_explicit_values_vanilla_and_player_mode(self):
         with tempfile.TemporaryDirectory() as directory:
-            self.assertEqual(self.value(directory), '1')
-            self.assertEqual(self.value(directory, inherited={self.NAME: '2'}), '1')  # a stale value never travels
+            self.assertEqual(self.value(directory), 'auto')  # the default since 0.9.0
+            self.assertEqual(self.value(directory, inherited={self.NAME: '2'}), 'auto')  # a stale value never travels
             self.assertEqual(self.value(directory, '--ui-scale', 'auto'), 'auto')
             self.assertEqual(self.value(directory, '--ui-scale', '1.5'), '1.5')
             self.assertEqual(self.value(directory, '--ui-scale', '1.25', inherited={self.NAME: 'auto'}), '1.25')

@@ -400,7 +400,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TELEMETRY_DRAW", "telemetry_draw", Type::Bool, nullptr, nullptr, 108, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TERRAN_STATION_LOD", "terran_station_lod", Type::Enum, "size", nullptr, 108, 0, 21, 0, 0, "size|distance", 0, -1},
     {"X3M_TEXT_DENSITY", "text_density", Type::Enum, "auto", nullptr, 108, 0, 21, 0, 0, "auto|1|2|3", 0, -1},
-    {"X3M_UI_SCALE", "ui_scale", Type::Float, "1", nullptr, 108, 1, 21, 0, 0, "auto", 0, -1},
+    {"X3M_UI_SCALE", "ui_scale", Type::Float, "auto", nullptr, 108, 1, 21, 0, 0, "auto", 0, -1},
     {"X3M_VOICE_DMO_FALLBACK", "voice_dmo_fallback", Type::Bool, "1", nullptr, 109, 0, 21, 0, 0, "", 0, -1},
     {"X3M_VOLUMETRIC_FOG", "volumetric_fog", Type::Bool, "1", nullptr, 109, 0, 21, 0, 0, "", 0, -1},
     {"X3M_VOLUMETRIC_FOG_CARDS", "volumetric_fog_cards", Type::Enum, "replace", nullptr, 109, 0, 21, 0, 0, "replace|keep", 0, -1},
@@ -532,7 +532,7 @@ constexpr const char taa_thin_vote[] = "on";
 constexpr const char taa_unmatched_static[] = "node";
 constexpr const char terran_station_lod[] = "size";
 constexpr const char text_density[] = "auto";
-constexpr float ui_scale = 1.0f;
+constexpr const char ui_scale[] = "auto";
 constexpr bool voice_dmo_fallback = true;
 constexpr bool volumetric_fog = true;
 constexpr const char volumetric_fog_cards[] = "replace";

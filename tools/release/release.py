@@ -23,9 +23,11 @@ Steps, in order (each one stops the release on failure):
               --regenerate-dir PATH ships existing binaries instead (no build, no smoke test);
               --skip-windows builds and smoke-tests the host binary only and produces no zip (the zip requires
               x3m-regenerate.exe)
-  5. package  tools/release/package.py, then the zip is listed, its entries must be exactly d3d9.dll, x3m.ini,
-              x3m-regenerate.exe and README.txt (no macOS binary, no CrossOver voice decoder), and its d3d9.dll and
-              x3m-regenerate.exe are re-hashed against steps 3 and 4
+  5. package  tools/release/package.py, then the zip is listed, its entries must be exactly package.py's ZIP_ENTRIES
+              in order: d3d9.dll, x3m.ini, x3m-regenerate.exe, the 16 density fonts f/<Name><S*d>.abc/.tga,
+              OFL-NotoSans.txt, OFL-Exo2.txt and README.txt (no macOS binary, no CrossOver voice decoder); its
+              d3d9.dll and x3m-regenerate.exe are re-hashed against steps 3 and 4 and its fonts against the committed
+              assets/fonts/generated/F
   6. record   DIR/release-<version>.json (schema 2: commit, dirty, toolchain, hashes of the shipped and the unstripped
               DLL and of the debug file, the strip identity check, check results, wall times)
 
@@ -49,6 +51,7 @@ sys.path.insert(0, str(ROOT / 'tools/config'))
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 sys.path.insert(0, str(ROOT / 'tools'))
 import generate  # noqa: E402
+import importlib.util  # noqa: E402
 
 TOOLCHAIN = ROOT / 'cmake/mingw-i686.cmake'
 BUILD_PY = ROOT / 'tools/regenerate/build.py'
@@ -59,7 +62,16 @@ WINE_LOCK_PY = ROOT / 'verification/probe/wine_lock.py'
 GCC = 'i686-w64-mingw32-gcc'
 OBJCOPY = 'i686-w64-mingw32-objcopy'  # binutils of the cmake/mingw-i686.cmake toolchain (i686-w64-mingw32-g++)
 SCHEMA = 2
-ZIP_ENTRIES = ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'README.txt']  # package.py's order
+
+def _load_package():
+    spec = importlib.util.spec_from_file_location('x3m_release_package', PACKAGE_PY)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+PACKAGE = _load_package()
+ZIP_ENTRIES = list(PACKAGE.ZIP_ENTRIES)  # package.py's order: d3d9.dll, x3m.ini, x3m-regenerate.exe, f/<16>, OFL x2, README.txt
 MARKER = b'X3M_SOURCE_COMMIT='  # proxy_identity.cpp; tools/manage.py reads it at install
 BOTTLE_SETUP = ('The Windows x3m-regenerate.exe is built in the CrossOver bottle X3M-Build. Set it up once with '
                 '`python3 tools/regenerate/build.py --windows` (creates the bottle from the win10_64 template, installs '
@@ -291,7 +303,7 @@ def plan(args, out, version):
         steps.append('5 package  SKIPPED (--skip-windows: no x3m-regenerate.exe)')
     else:
         steps.append(f'5 package  package.py -> {out / f"x3m-{version}.zip"}; entries exactly {", ".join(ZIP_ENTRIES)}; '
-                     're-hash d3d9.dll and x3m-regenerate.exe')
+                     're-hash d3d9.dll, x3m-regenerate.exe and the fonts')
     steps.append(f'6 record   {out / f"release-{version}.json"}')
     return steps
 
@@ -484,9 +496,13 @@ class Release:
             raise ReleaseError('the zip\'s d3d9.dll does not match the built DLL')
         if hashes['x3m-regenerate.exe'] != self.record['regenerate'].get('x3m-regenerate.exe', {}).get('sha256'):
             raise ReleaseError(f'the zip\'s x3m-regenerate.exe does not match {self.regenerate_dir / "x3m-regenerate.exe"}')
+        fonts = [name for name in PACKAGE.FONT_FILES if hashes[f'f/{name}'] != sha256_file(PACKAGE.FONTS_DIR / name)]
+        if fonts:
+            raise ReleaseError(f'the zip\'s fonts {fonts} do not match {PACKAGE.FONTS_DIR}')
         self.record['zip'] = {'path': str(zip_path), 'sha256': sha256_file(zip_path), 'bytes': zip_path.stat().st_size,
                               'entries': [{'name': n, 'bytes': b, 'sha256': d} for n, b, d in listing]}
-        print(f'zip verified: exactly {", ".join(ZIP_ENTRIES)}; d3d9.dll and x3m-regenerate.exe match the built files')
+        print(f'zip verified: exactly {", ".join(ZIP_ENTRIES)}; d3d9.dll and x3m-regenerate.exe match the built files, '
+              f'the {len(PACKAGE.FONT_FILES)} fonts match {PACKAGE.FONTS_DIR.relative_to(ROOT)}')
 
     def execute(self):
         self.out.mkdir(parents=True, exist_ok=True)
