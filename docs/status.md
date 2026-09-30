@@ -82,7 +82,7 @@ Nothing beyond the installed Run116 (`846f9c16`); release 0.8.1 (`f4439590`) is 
 
 ## Run queue
 
-Run 116 A queued (Run116 installed): readability of the heavier HUD font under `--ui-scale 1.25`. Run 115 A completed (run393): all letters present, stroke weight uneven (addressed by Run116). Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
+Run 116 A completed (run394/395): readability accepted; 1.5 preferred and made the 1440-row auto value; release 0.9.0 in preparation (defaults auto/auto, fonts in the zip). Run 115 A completed (run393): all letters present, stroke weight uneven (addressed by Run116). Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
 Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under
