@@ -3,9 +3,11 @@
 Generates Tahoma and Zekton at d = 2 into a temp dir, parses them back with the reader that
 measured the stock fonts (verification/results/font-rendering/font_files.py) and checks the
 engine constraints of docs/reverse-engineering/font-rendering.md sections 1 and 4 plus the
-metric ratios against the stock values in font_files.json.
+metric ratios against the stock values in font_files.json. CommittedFontsTest regenerates the
+default set (every font, d = 2 and 3) and compares it with the committed assets/fonts/generated/F.
 """
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -190,6 +192,25 @@ class FontGeneratorTest(unittest.TestCase):
             yoff = st['yoff']
             self.assertLessEqual(abs((rows[-1] - rows[0] + 1) - D * (s1 - s0 + 1)), 1, name)
             self.assertLessEqual(abs(rows[-1] + 1 - (yoff * D + D * (s1 + 1 - yoff))), 1, name)
+
+
+@unittest.skipUnless(HAVE_FT, 'Pillow with FreeType required')
+class CommittedFontsTest(unittest.TestCase):
+    """The committed density fonts (what install and the release zip ship) are exactly what the generator writes by
+    default: the default run into a temp dir reproduces every committed file byte for byte (sha256), and nothing else."""
+
+    def test_regeneration_reproduces_the_committed_files(self):
+        committed = ROOT / 'assets/fonts/generated/F'
+        gen = _load('generate_fonts_committed', ROOT / 'tools/fonts/generate_fonts.py')
+        digest = lambda d: {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(d.iterdir()) if p.is_file()}
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib.redirect_stdout(io.StringIO()):
+                gen.main(['--out', tmp])
+            regenerated = digest(Path(tmp) / 'F')
+        expected = digest(committed)
+        self.assertEqual(len(expected), 16)
+        self.assertEqual(expected['Tahoma26.tga'][:8], 'ef536bbb')
+        self.assertEqual(regenerated, expected)
 
 
 if __name__ == '__main__':

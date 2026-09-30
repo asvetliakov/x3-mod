@@ -10,15 +10,22 @@ specified in font-rendering.md §1 and not repeated here.
 ## Output
 
 `python3 tools/fonts/generate_fonts.py` writes, for each density in `--density` (default 2 and 3),
-eight files under `--out` (default `build/fonts`), in the folder layout the install step copies
-into the game's `f/` folder unchanged:
+eight files under `--out` (default `assets/fonts/generated`), in the folder layout the install
+step copies into the game's `f/` folder unchanged:
 
 ```text
-build/fonts/F/Tahoma{13d}.abc/.tga    HUD font, all languages     (Tahoma26, Tahoma39)
-build/fonts/F/Zekton{26d}.abc/.tga    LARGE, default               (Zekton52, Zekton78)
-build/fonts/F/ZektonES{26d}.abc/.tga  LARGE, -L034 Spanish         (ZektonES52, ZektonES78)
-build/fonts/F/Harrier{24d}.abc/.tga   LARGE, -L007 Russian         (Harrier48, Harrier72)
+assets/fonts/generated/F/Tahoma{13d}.abc/.tga    HUD font, all languages     (Tahoma26, Tahoma39)
+assets/fonts/generated/F/Zekton{26d}.abc/.tga    LARGE, default               (Zekton52, Zekton78)
+assets/fonts/generated/F/ZektonES{26d}.abc/.tga  LARGE, -L034 Spanish         (ZektonES52, ZektonES78)
+assets/fonts/generated/F/Harrier{24d}.abc/.tga   LARGE, -L007 Russian         (Harrier48, Harrier72)
 ```
+
+Since 0.9.0 the 16 files (about 23 MB) are committed as ordinary repository files (no LFS,
+marked `binary` in `.gitattributes`): `tools/manage.py install` copies them from there by
+default (`--fonts-dir`), and the release zip (`tools/release/package.py`) ships them as `f/`,
+to be extracted next to `X3AP.exe`. A default regeneration rewrites them in place;
+`test_font_generator` (`CommittedFontsTest`) regenerates into a temp dir and requires every
+committed file to match by sha256.
 
 Measured at d = 2 / 3: atlases 256×1024 / 1024×1024 (Tahoma), 512×1024 / 1024×1024 (the LARGE
 fonts); TGA 1.0–4.2 MB each; the `.abc` files are byte-for-byte the size of their stock
@@ -118,13 +125,14 @@ keep the substitute's proportions (within ±15 %), and the space is 7–17 % nar
 Noto Sans (Version 2.015) and Exo 2 (Version 2.010), both SIL OFL 1.1, from the Google Fonts
 repository at commit `23e54b51`; files, hashes and licence texts in
 [assets/fonts/README.md](../../assets/fonts/README.md). The generated fonts are OFL derivatives:
-ship the two `OFL-*.txt` files with them. Neither reserved font name is used for the generated
+ship the two `OFL-*.txt` files with them. The release zip does: it carries `OFL-NotoSans.txt`
+and `OFL-Exo2.txt` beside `f/`, and its README.txt names the licence. Neither reserved font name is used for the generated
 files (`Tahoma`, `Zekton`, `ZektonES`, `Harrier` are the names the engine asks for).
 
 ## Regenerate
 
 ```sh
-python3 tools/fonts/generate_fonts.py --out build/fonts            # 16 files, d = 2 and 3
+python3 tools/fonts/generate_fonts.py            # 16 files, d = 2 and 3, into assets/fonts/generated/F
 python3 tools/fonts/generate_fonts.py --density 2 --font Tahoma \
     --preview /tmp/font-preview --report /tmp/fonts.json          # subset, PNG previews, ratios
 python3 tools/fonts/extract_stock_codes.py [game_root]             # only if the stock set changes
@@ -133,7 +141,11 @@ PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_fon
 
 Needs Pillow with FreeType (variable-font axes) and numpy. The output is deterministic for a
 given Pillow/FreeType build (measured with Pillow 11.3.0, FreeType 2.13.3). The test regenerates
-Tahoma and Zekton at d = 2 and checks format, band, ranges, code set, shadow and the ratios.
+Tahoma and Zekton at d = 2 and checks format, band, ranges, code set, shadow and the ratios, and
+regenerates the full default set to compare it with the committed files byte for byte (about 12 s,
+measured). A Pillow/FreeType build that changes the bytes fails that comparison: regenerate, check
+the stem coverage (`verification/results/font-rendering/stem_coverage.py`) and commit the new files
+together.
 
 ## Readability under minification (experiment, 2026-09-30)
 

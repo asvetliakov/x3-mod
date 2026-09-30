@@ -259,13 +259,14 @@ SETTINGS = [
           '(the same on every screen shape). game = the game\'s own field of view.', '90', range=(70.0, 100.0), choices=('game',),
           launcher='--fov'),
     entry('ui_scale', 'float', 'camera', 'Size of the in-game menus, sidebars and HUD panels (not the main menu). 1 = the '
-          'game\'s own size, 1.5 = one and a half times, up to 3; auto = from the screen height (1440 lines = 1.25, '
-          '2160 = 2). Text is enlarged with the picture, so it looks softer at sizes that are not whole numbers.',
-          '1', range=(1.0, 3.0), choices=('auto',), launcher='--ui-scale'),
+          'game\'s own size, 1.5 = one and a half times, up to 3; auto = from the screen height (1080 lines = 1, 1440 = 1.5, '
+          '2160 = 2). Text is drawn sharper by text_density.',
+          'auto', range=(1.0, 3.0), choices=('auto',), launcher='--ui-scale'),
     entry('text_density', 'enum', 'camera', 'Sharpness of the in-game text under ui_scale: the text is drawn at this whole-number '
           'density and shrunk to the UI size instead of being enlarged from the game\'s 1x fonts. auto = the smallest whole number '
-          'at or above ui_scale (1 when ui_scale is 1: nothing changes), or 1, 2, 3. Needs the density fonts in the game\'s f '
-          'folder (manage.py install copies them); a font that is missing is opened at 1x.', 'auto', choices=('auto', '1', '2', '3'),
+          'at or above ui_scale (1 when ui_scale is 1: nothing changes), or 1, 2, 3. Uses the mod\'s font files in the f folder '
+          'next to X3AP.exe (shipped in the mod\'s zip and installed by manage.py install); if any of them is missing, the '
+          'setting turns itself off and the log says which file.', 'auto', choices=('auto', '1', '2', '3'),
           launcher='--text-density'),
     entry('chase_pitch_down_deg', 'float', 'camera', 'How far the chase camera looks down on your ship, in degrees. 0 to 30.', '0.5',
           range=(0.0, 30.0), requires=('camera',), launcher='--chase-pitch-down-deg'),

@@ -138,7 +138,7 @@ with its duration).
 
 `d = 2` needs `f\Tahoma26` and the LARGE font of the language (`Zekton52`, `ZektonES52`
 for `-L034`, `Harrier48` for `-L007`); `d = 3` `Tahoma39` / `Zekton78` / `ZektonES78` /
-`Harrier72`. `tools/manage.py install` copies every `.abc`/`.tga` from `build/fonts/F`
+`Harrier72`. `tools/manage.py install` copies every `.abc`/`.tga` from `assets/fonts/generated/F`
 (`--fonts-dir`) into `<game>/f` before the DLL goes in, creating the folder, and records
 the copied names and hashes in `<game>/f/x3m-fonts.json` (rewritten after every copy,
 so a copy that fails half-way leaves nothing unowned) and in the install record

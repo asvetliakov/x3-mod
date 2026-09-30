@@ -1,6 +1,7 @@
 """The release zip (tools/release/package.py, docs/architecture/config-file.md section 6): its manifest, its README's
-build line, its determinism and its refusals. The zip is exactly four entries; the host x3m-regenerate binary and
-the CrossOver voice decoder never ship. Host only: fake DLL and regenerate binaries."""
+build line, its determinism and its refusals. The zip is exactly ENTRIES (d3d9.dll, x3m.ini, x3m-regenerate.exe, the 16
+committed density fonts under f/, the two OFL texts, README.txt); the host x3m-regenerate binary and the CrossOver voice
+decoder never ship. Host only: fake DLL and regenerate binaries, the real committed fonts."""
 import contextlib
 import hashlib
 import importlib.util
@@ -12,6 +13,10 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
+FONTS = [f'{stem}.{ext}' for stem in ('Harrier48', 'Harrier72', 'Tahoma26', 'Tahoma39', 'Zekton52', 'Zekton78', 'ZektonES52',
+                                      'ZektonES78') for ext in ('abc', 'tga')]
+ENTRIES = ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', *(f'f/{name}' for name in FONTS), 'OFL-NotoSans.txt', 'OFL-Exo2.txt',
+           'README.txt']
 
 
 def load_package():
@@ -52,8 +57,14 @@ class ReleasePackage(unittest.TestCase):
             self.assertEqual(code, 0)
             with zipfile.ZipFile(path) as archive:
                 # the host (macOS) binary sits in the dist directory but never ships; no voice decoder tree either
-                self.assertEqual(archive.namelist(), ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'README.txt'])
+                self.assertEqual(archive.namelist(), ENTRIES)
+                self.assertEqual(self.package.ZIP_ENTRIES, ENTRIES)
                 self.assertEqual(archive.read('x3m.ini'), (ROOT / 'assets/x3m.ini').read_bytes())
+                for name in FONTS:
+                    self.assertEqual(archive.read(f'f/{name}'), (ROOT / 'assets/fonts/generated/F' / name).read_bytes(), name)
+                for name in ('OFL-NotoSans.txt', 'OFL-Exo2.txt'):
+                    self.assertEqual(archive.read(name), (ROOT / 'assets/fonts' / name).read_bytes())
+                    self.assertIn(b'SIL OPEN FONT LICENSE', archive.read(name).upper())
                 self.assertEqual(archive.read('d3d9.dll'), b'MZ fake proxy')
                 readme = archive.read('README.txt').decode()
                 self.assertIn(hashlib.sha256(b'MZ fake proxy').hexdigest(), readme)
@@ -61,6 +72,9 @@ class ReleasePackage(unittest.TestCase):
                 self.assertIn('\r\n', readme)
                 for word in ('macOS', 'voice-decoder', 'Speech', 'stripped'):
                     self.assertNotIn(word, readme)
+                for text in ('ui_scale', 'text_density', 'Both are auto', 'next to X3AP.exe', 'SIL Open Font',
+                             'OFL-NotoSans.txt, OFL-Exo2.txt'):
+                    self.assertIn(text, readme)
                 self.assertEqual(archive.getinfo('x3m-regenerate.exe').external_attr >> 16, 0o755)
             first = path.read_bytes()
             self.assertEqual(self.build(directory, source_commit=lambda: 'f' * 40)[0], 0)
@@ -73,7 +87,7 @@ class ReleasePackage(unittest.TestCase):
             code, path = self.build(directory, mac=False, debug=debug, source_commit=lambda: 'unknown')
             self.assertEqual(code, 0)
             with zipfile.ZipFile(path) as archive:
-                self.assertEqual(archive.namelist(), ['d3d9.dll', 'x3m.ini', 'x3m-regenerate.exe', 'README.txt'])
+                self.assertEqual(archive.namelist(), ENTRIES)
                 self.assertIn('d3d9.dll is stripped of debug information; the developer keeps the matching d3d9.debug '
                               f'(SHA-256 {hashlib.sha256(b"split debug").hexdigest()}).', archive.read('README.txt').decode())
             code, _ = self.build(directory, debug=Path(directory) / 'absent.debug', source_commit=lambda: 'unknown')
@@ -89,6 +103,21 @@ class ReleasePackage(unittest.TestCase):
             code, path = self.build(directory, source_commit=lambda: 'unknown')
             self.assertEqual(code, 1)
             self.assertFalse(path.exists())
+
+    def test_font_set_is_exact(self):
+        # A fonts directory with one file missing or one stray file refuses the zip.
+        committed = ROOT / 'assets/fonts/generated/F'
+        for change in ('missing', 'extra'):
+            with tempfile.TemporaryDirectory() as directory:
+                fonts = Path(directory) / 'F'
+                fonts.mkdir()
+                for name in FONTS[1:] if change == 'missing' else FONTS:
+                    (fonts / name).write_bytes((committed / name).read_bytes())
+                if change == 'extra':
+                    (fonts / 'Tahoma52.tga').write_bytes(b'stray')
+                code, path = self.build(directory, FONTS_DIR=fonts, source_commit=lambda: 'unknown')
+                self.assertEqual(code, 1, change)
+                self.assertFalse(path.exists(), change)
 
 
 if __name__ == '__main__':

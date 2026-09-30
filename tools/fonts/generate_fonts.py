@@ -6,10 +6,12 @@ metric mapping: docs/architecture/font-assets.md. Sources are the OFL fonts bund
 assets/fonts/; the stock code sets and layout targets come from tools/fonts/stock_fonts.json
 (derived facts, written by extract_stock_codes.py), so no game install is needed.
 
-  python3 tools/fonts/generate_fonts.py [--out build/fonts] [--density 2 3] [--font Tahoma ...]
+  python3 tools/fonts/generate_fonts.py [--out assets/fonts/generated] [--density 2 3] [--font Tahoma ...]
       [--preview DIR] [--report FILE]
 
-Needs Pillow with FreeType (variable-font support).
+Needs Pillow with FreeType (variable-font support). The default run rewrites the committed
+files under assets/fonts/generated/F (the ones install and the release zip ship); the host test
+test_font_generator pins that a regeneration reproduces them byte for byte.
 """
 import argparse
 import hashlib
@@ -627,7 +629,7 @@ SAMPLES = {'Tahoma': 'Hull 98% | Shields 120 MJ | Argon Prime — Ägypten, Mañ
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument('--out', default=str(ROOT / 'build' / 'fonts'))
+    ap.add_argument('--out', default=str(ROOT / 'assets' / 'fonts' / 'generated'))
     ap.add_argument('--density', type=int, nargs='+', default=[2, 3])
     ap.add_argument('--font', nargs='+', choices=sorted(SOURCES), default=list(SOURCES))
     ap.add_argument('--preview', help='write atlas and sample-line PNGs here')

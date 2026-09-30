@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(x3_modern_renderer VERSION 0.8.1 LANGUAGES CXX)
+project(x3_modern_renderer VERSION 0.9.0 LANGUAGES CXX)
 if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
   message(FATAL_ERROR "Build for 32-bit Windows using cmake/mingw-i686.cmake")
 endif()

@@ -125,15 +125,15 @@
 namespace x3m::ui_scale::sites {
 // ---- the scale ----
 constexpr double scale_min = 1.0, scale_max = 3.0, scale_off = 1.0;
-constexpr unsigned auto_reference_height = 1080, auto_steps_per_unit = 4; // quarter steps of height/1080
+constexpr unsigned auto_reference_height = 1080, auto_steps_per_unit = 2; // half steps of height/1080
 inline bool in_range(double s) {
     return std::isfinite(s) && s >= scale_min && s <= scale_max;
 }
-// auto: the back-buffer height over 1080, snapped down to a quarter step, clamped to [1, 3]
-// (1080 -> 1, 1440 -> 1.25, 2160 -> 2, 4320 -> 3).
+// auto: the back-buffer height over 1080, rounded to the nearest half step (a tie rounds up), clamped to
+// [1, 3] (1080 -> 1, 1200 -> 1, 1440 -> 1.5, 1600 -> 1.5, 2160 -> 2, 4320 -> 3).
 inline double auto_scale(unsigned height) {
     if (!height) return scale_off;
-    const double steps = std::floor(double(height) * auto_steps_per_unit / auto_reference_height);
+    const double steps = std::floor((double(height) * auto_steps_per_unit + auto_reference_height / 2) / auto_reference_height);
     const double s = steps / auto_steps_per_unit;
     return s < scale_min ? scale_min : s > scale_max ? scale_max : s;
 }
