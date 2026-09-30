@@ -87,7 +87,7 @@ Nothing beyond the installed Run117 (`c1baa169`); release 0.9.0 is the last pack
 
 ## Run queue
 
-Run 117 A queued (Run117 = release 0.9.0 installed): plain confirmation flight on the defaults (auto = 1.5 at 1440 rows, density 2). Run 115 A completed (run393): all letters present, stroke weight uneven (addressed by Run116). Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
+Run 117 A completed (run400): release 0.9.0 confirmed on the auto defaults (ui_scale 1.5 at 1440 rows, text density 2). No run open. Run 115 A completed (run393): all letters present, stroke weight uneven (addressed by Run116). Run 114 A completed (run392): mechanism worked, narrow glyphs vanished (fixed in Run115). Run 113 A completed (run391): bracket click selection works; the ui_scale layout path is accepted at 1.25. Run 112 A completed (run390): UI scaled correctly, menus/map/main menu fine; bracket clicks dead (fixed in Run113), text soft/broken (open).
 Run 110 A completed (run386-389, [results](../verification/results/run386-389-cull-ab/)): at one carrier
 view without `--perf`, the dock-port cull (12 px) saves 2.4-3.7 ms per frame (about 57 fps against 47-50 with it off,
 measured from 300-frame clock windows, one run per setting); the engine-side flare cull saves 0 ± 0.5 ms (1.2 ms under
