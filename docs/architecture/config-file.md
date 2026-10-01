@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade` |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `engine_effects` (`native`/`off`/`plumes`, read once at load), `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade` |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player

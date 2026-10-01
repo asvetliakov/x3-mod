@@ -1,0 +1,5 @@
+host arm64 Darwin
+BENCH iterations=4000000 suppressed=4000000 ns_per_draw=16.29 sink=2459528192.000
+BENCH iterations=4000000 suppressed=4000000 ns_per_draw=11.63 sink=2459528192.000
+BENCH iterations=4000000 suppressed=4000000 ns_per_draw=10.66 sink=2459528192.000
+PARSE ok=1 count=253 refused=0 fault=0 bytes=272401 generator_bodies=253 missing=16

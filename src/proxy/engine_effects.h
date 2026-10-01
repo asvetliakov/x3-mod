@@ -1,0 +1,44 @@
+#pragma once
+#include <cstdint>
+#include "engine_effects_core.h"
+
+// Engine effects, phase 1a (docs/architecture/engine-effects-modern.md sections 1, 2 and 5): the process-wide part of
+// the glow-jet suppression. The option X3M_ENGINE_EFFECTS=native|off|plumes (ini engine_effects, default native) is
+// read once at load and never toggled (a switch mid-flight would freeze native sprites and trails); plumes acts as
+// off in this phase and says so in one row. The per-draw recogniser, the record ring and the census rows live in the
+// motion route (motion_output_engine_effects_inc.h), which reads the shadow it already keeps. This module owns:
+// - the executable identity gate (object_trace::executable_verified(), evaluated at initialize): without it nothing
+//   is suppressed (fail closed);
+// - the body table <EXE directory>\x3m\engine_bodies.json (X3M_ENGINE_BODIES overrides the path, 0 or none disables),
+//   loaded once on the render thread at the first begin_frame, like the fog family table; a malformed file leaves
+//   count 0 (every record unknown_body) and one engine_effects_bodies row;
+// - the names -> ids resolution over the engine's body table (the lens_flare_cull recipe) at begin_frame: the table
+//   header every frame, at most 32 mapped dynamic names re-read per frame round-robin, a scan when the table moves,
+//   shrinks, grows or re-binds a name. Render thread only (the one that draws), so no synchronisation.
+namespace x3m::engine_effects {
+// Load path (initialize_log, after the config resolver): parses the option, checks the identity, logs one
+// engine_effects_mode row (and engine_effects_plumes for plumes). LastError preserved.
+void initialize();
+core::Mode mode();
+// The motion route's gates: hook = the per-draw recogniser runs (off|plumes with the identity verified, or native
+// under --debug for the census); suppress = a recognised draw is not forwarded.
+bool hook_wanted();
+bool suppress();
+const char* status();
+// Present path, render thread, only while hook_wanted(): the table load on the first call, then the resolution.
+void begin_frame(unsigned long long frame);
+// Per draw: the table entry of a model id (-1 unknown) and the entry itself (null for -1).
+int body_for_model(std::uint32_t model);
+const core::Body* body(int index);
+struct Stats {
+    unsigned bodies, refused, resolved, mapped, scanned, restarts;
+    bool table_loaded;
+};
+Stats stats();
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+// Fixture seams (the motion seam DLL): the identity treated as verified before initialize, and a synthetic body
+// manager's global in the fixture's own memory.
+void fixture_identity(bool verified);
+void fixture_body_global(std::uintptr_t va);
+#endif
+}

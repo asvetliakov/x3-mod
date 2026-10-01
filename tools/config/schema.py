@@ -321,6 +321,10 @@ SETTINGS = [
           launcher='--collide-box-cull'),
     entry('lod_occlusion', 'enum', 'engine', 'Keeps stations\' shading correct on their simplified distant models. all = on, '
           'record0 = the game\'s own behaviour, off = none.', 'all', choices=('off', 'record0', 'all'), launcher='--lod-occlusion'),
+    entry('engine_effects', 'enum', 'engine', 'Ship engine glow. native = the game\'s own, off = the glowing engine jets are hidden '
+          '(engine flares and exhaust trails stay for now), plumes = the modern engine plumes, not finished yet: behaves as off. '
+          'Read when the game starts.',
+          'native', choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',
@@ -461,6 +465,8 @@ SETTINGS = [
     dev('shadow_caster_retention_eps', 'float', 'shadows', 'Retention match tolerance.', launcher='--shadow-caster-retention-eps', range=(1e-4, 100)),
     # Fog, camera, audio, window, engine internals.
     dev('fog_families', 'path', 'fog', 'Fog family file override (0 or none = disabled; default <game>\\x3m\\fog-families.bin).'),
+    dev('engine_bodies', 'path', 'engine', 'Engine body table override (0 or none = disabled; default <game>\\x3m\\engine_bodies.json).',
+        since='2026-10-01'),
     dev('volumetric_fog_timing', 'bool', 'logging', 'Fog cost rows (member of the perf group).'),
     dev('chase_combat_tightness', 'float', 'camera', 'Chase combat tightening (unverified in game).', '0.0',
         launcher='--chase-combat-tightness', range=(0, 1)),

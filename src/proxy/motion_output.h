@@ -38,6 +38,7 @@
 #include "../renderer/gpu_sync_timing_core.h"
 #include "../renderer/sun_occlusion_pass.h"
 #include "lens_flare_gain.h"
+#include "engine_effects_core.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
 #include "fog_prefill.h"
@@ -1103,7 +1104,7 @@ public:
     // lens-flare gain (its SRCBLEND / BLENDFACTOR restore values).
     bool blend_shadow_requested() const noexcept {
         return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ ||
-               screen_additive_requested_ || fog_cards_replace_ || lens_gain_.active;
+               screen_additive_requested_ || fog_cards_replace_ || lens_gain_.active || engine_hook_;
     }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept {
@@ -1175,6 +1176,13 @@ public:
     // Lens-flare gain (X3M_LENS_FLARE_GAIN, src/proxy/lens_flare_gain.h): process-start value, validated by the caller;
     // 1 = off (no per-draw work). The blend-constant cap is checked at attach.
     void configure_lens_flare_gain(float gain) noexcept { lens_gain_ = lens_flare_gain::law(gain); }
+    // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
+    // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
+    // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
+    // is allocated here (allocation failure leaves the hook off). Never changed per frame.
+    void configure_engine_effects(bool hook, bool suppress, bool census) noexcept;
+    // The frame's recorded glow-jet draws (phase 2's stage reads them inside the resolve); null while off.
+    const engine_effects::core::Ring* engine_effects_ring() const noexcept { return engine_hook_ ? engine_ring_ : nullptr; }
     // Small-prop cull (X3M_CULL_SMALL_PROPS=on with X3M_CULL_SMALL_PARTS_PX, cull_small_props_core.h): process-start
     // values validated by the caller; off = one bool test per scene draw.
     void configure_cull_small_props(bool on, float px) noexcept {
@@ -1418,6 +1426,9 @@ public:
     void fixture_emission_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_setter_result(HRESULT result, unsigned slot, unsigned selector) noexcept;
     unsigned fixture_emission_status(unsigned key) const noexcept;
+    // Engine effects seam (x3m_engine_effects_fixture_status / _record): this frame's counts and records.
+    unsigned fixture_engine_status(unsigned key) const noexcept;
+    bool fixture_engine_record(unsigned index, void* out, unsigned size) const noexcept;
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
     // Stage 2 exposure state: ev (consumed), ev_adapted, ev_target,
@@ -1585,6 +1596,10 @@ private:
         bool rows_known[motion_matrix_windows_max]{};
         float vs_reserved[16]{}; // application c252-255, restored only if written
         bool vs_reserved_written = false;
+        // c4-6 as the application last set them, kept while the engine-effects hook is on: the effects pair's world
+        // rows (engine-effects-modern.md section 2); bit r = c(4 + r) known.
+        float world46[12]{};
+        std::uint8_t world46_known = 0;
         float ps_reserved[12]{}; // application c216-217 (c218 too with the thin vote)
         bool ps_reserved_written = false;
         int integer0[4]{};
@@ -1679,6 +1694,17 @@ private:
     // Lens-flare gain: the configured law, the device's BLENDFACTOR cap (attach), this bracket's counts and the
     // refusal reasons already logged (one row per reason and device).
     lens_flare_gain::Law lens_gain_{};
+    // Engine effects (motion_output_engine_effects_inc.h): the gates, the frame's ring and counts, the pinned c4-6
+    // order, the census caps (64 engine_draw rows per frame, rows in the first 8 frames that have any).
+    bool engine_hook_ = false, engine_suppress_ = false, engine_census_ = false, engine_device_logged_ = false;
+    engine_effects::core::Ring* engine_ring_ = nullptr;
+    engine_effects::core::FrameCounts engine_counts_{};
+    engine_effects::core::Order engine_order_ = engine_effects::core::Order::a;
+    unsigned engine_rows_ = 0, engine_rows_more_ = 0, engine_row_frames_ = 0;
+    static constexpr unsigned engine_row_cap = 64, engine_row_frame_cap = 8;
+    bool engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    void engine_effects_frame_begin() noexcept;
+    void engine_effects_frame_end() noexcept;
     bool lens_gain_caps_ = false;
     unsigned lens_gained_ = 0, lens_gain_refused_ = 0, lens_gain_logged_ = 0;
     // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, skipped

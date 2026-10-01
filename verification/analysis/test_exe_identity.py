@@ -40,7 +40,8 @@ NOT_READ = {0x0059695f: 'collide_memo_core.h: end of the root block comment',
 # Modules that call executable_verified() and patch nothing: they only read
 # engine globals, which the gate anchors.
 READ_ONLY = {'camera_state.cpp', 'capture.cpp', 'sun_light_poll.cpp', 'motion_output_shadow_adaptive_inc.h',
-             'motion_output_cull_small_props_inc.h'}  # the small-prop draw skip: reads only, no engine write
+             'motion_output_cull_small_props_inc.h',  # the small-prop draw skip: reads only, no engine write
+             'engine_effects.cpp'}  # the glow-jet skip: reads the body table global 0x00608518 (anchored), no engine write
 SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(|sites::install\(')
 
 

@@ -1,0 +1,217 @@
+{
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "programs": {
+    "vs": {
+      "path": "/tmp/x3-shader-sweep/programs/vs_d5e1c75351ed3f04.bin",
+      "sha256": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114"
+    },
+    "ps": {
+      "path": "/tmp/x3-shader-sweep/programs/ps_8360f422de08b5bd.bin",
+      "sha256": "ce26e0a8fca24b311324ca1c6d210cf6a7757af44c07525e51435dbaf4a36c7d"
+    }
+  },
+  "game_launched": false,
+  "build": {
+    "log": "verification/probe/build/engine-effects-build.log",
+    "warnings": 0
+  },
+  "binaries": {
+    "fixture_sha256": "eb9f19222c59a30c137f21febb3a4933eef7a0842e5d0d62cbd7392bd15e12af",
+    "seam_sha256": "61c65082e5ffcb77445dbdca7fbcb4eec4c07f78f4d1e3182a060f173120af01",
+    "dll_sha256": "ab70725c6da6f1baf7b1b793c88503a4281a9af641df353b253e00f6991220f4"
+  },
+  "runs": {
+    "main": {
+      "exit": 0,
+      "checks": 164,
+      "failed": [],
+      "result": "RESULT PASS checks=164 failures=0",
+      "mode_row": {
+        "setting": "off",
+        "mode": "off",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "bodies": {
+        "event": "loaded",
+        "reason": "ok",
+        "bodies": "3",
+        "named": "2",
+        "smalljet": "1",
+        "refused": "0",
+        "bytes": "1328",
+        "fault": "0",
+        "frame": "1"
+      },
+      "resolve": {
+        "bodies": "3",
+        "resolved": "2",
+        "mapped": "2",
+        "scanned": "2",
+        "dynamic_mappings": "1",
+        "fixed": "11000",
+        "dynamic": "2",
+        "restarts": "0",
+        "frame": "1"
+      },
+      "engine_draw_rows": 106,
+      "engine_draw_frames": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "engine_frame_rows": 12,
+      "frame1_rows": [
+        {
+          "model": "20000",
+          "name": "effects\\engines\\fx_engine_test_red",
+          "z": "1.50000",
+          "s": "0.71429",
+          "order": "invalid",
+          "cluster": "red",
+          "pair": "other",
+          "za_basis": "0.00000",
+          "zb_basis": "0.00000"
+        },
+        {
+          "model": "20000",
+          "name": "effects\\engines\\fx_engine_test_red",
+          "z": "0.25000",
+          "s": "0.00000",
+          "order": "a",
+          "cluster": "red",
+          "pair": "effect",
+          "za_basis": "1.00000",
+          "zb_basis": "-0.04904"
+        },
+        {
+          "model": "566",
+          "name": "v\\00566",
+          "z": "1.12500",
+          "s": "0.50000",
+          "order": "a",
+          "cluster": "grey",
+          "pair": "effect",
+          "za_basis": "1.00000",
+          "zb_basis": "-0.65681"
+        },
+        {
+          "model": "777",
+          "name": "-",
+          "z": "2.00000",
+          "s": "1.00000",
+          "order": "b",
+          "cluster": "white",
+          "pair": "effect",
+          "za_basis": "0.50253",
+          "zb_basis": "1.00000"
+        }
+      ],
+      "records": [
+        "RECORD record_a frame=1 origin=100,200,300 axis=-0.5933638,-0.3894183,-0.7044663 size=999.9999 s=0.0000000 z=0.2500000 ratio=0.2500000 body=0 flags=2060 serial=501",
+        "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
+        "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
+      ],
+      "directory": "verification/probe/build/engine-effects-main-20261001-170736-060298"
+    },
+    "native": {
+      "exit": 0,
+      "checks": 11,
+      "failed": [],
+      "result": "RESULT PASS checks=11 failures=0",
+      "mode_row": {
+        "setting": "native",
+        "mode": "native",
+        "status": "native",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "0",
+        "census": "1"
+      },
+      "bodies": {
+        "event": "loaded",
+        "reason": "ok",
+        "bodies": "3",
+        "named": "2",
+        "smalljet": "1",
+        "refused": "0",
+        "bytes": "1328",
+        "fault": "0",
+        "frame": "1"
+      },
+      "resolve": {
+        "bodies": "3",
+        "resolved": "2",
+        "mapped": "2",
+        "scanned": "2",
+        "dynamic_mappings": "1",
+        "fixed": "11000",
+        "dynamic": "2",
+        "restarts": "0",
+        "frame": "1"
+      },
+      "engine_draw_rows": 12,
+      "engine_draw_frames": [
+        1,
+        2
+      ],
+      "engine_frame_rows": 3,
+      "directory": "verification/probe/build/engine-effects-native-20261001-170744-841121"
+    },
+    "unverified": {
+      "exit": 0,
+      "checks": 6,
+      "failed": [],
+      "result": "RESULT PASS checks=6 failures=0",
+      "mode_row": {
+        "setting": "off",
+        "mode": "off",
+        "status": "executable_mismatch",
+        "identity": "0",
+        "hook": "0",
+        "suppress": "0",
+        "census": "0"
+      },
+      "directory": "verification/probe/build/engine-effects-unverified-20261001-170752-778362"
+    },
+    "timing": {
+      "exit": 0,
+      "checks": 5,
+      "failed": [],
+      "result": "RESULT PASS checks=5 failures=0",
+      "mode_row": {
+        "setting": "off",
+        "mode": "off",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "0"
+      },
+      "timing": {
+        "suppressed": 0.572,
+        "not_jet": 1.226,
+        "not_candidate": 1.063
+      },
+      "directory": "verification/probe/build/engine-effects-timing-20261001-170800-855838"
+    }
+  },
+  "problems": [],
+  "passed": true
+}

@@ -20,6 +20,8 @@
 #include "sun_light_poll.h"
 #include "chase_camera.h"
 #include "sun_occlusion.h"
+#include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
+#include "log_tiers.h"      // the engine census rows are the --debug tier
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
@@ -407,6 +409,7 @@ MotionOutput::MotionOutput() noexcept = default;
 MotionOutput::~MotionOutput() {
     release_resources();
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
+    delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
 }
 
 unsigned MotionOutput::device_references() const noexcept {
@@ -4987,6 +4990,12 @@ void MotionOutput::set_vertex_constants_f(UINT start, const float* data, UINT co
         // A partial row update keeps prior knowledge of the other rows.
         shadow_.rows_known[w] = shadow_.rows_known[w] || (lo == base && hi == base_end);
     }
+    // c4-6 for the engine-effects records (the effects pair's world rows), only with that hook on.
+    if (engine_hook_ && start < 7 && end > 4) {
+        const UINT lo = start > 4 ? start : 4, hi = end < 7 ? end : 7;
+        std::memcpy(shadow_.world46 + (lo - 4) * 4, data + (lo - start) * 4, (hi - lo) * 16);
+        for (UINT r = lo; r < hi; ++r) shadow_.world46_known |= std::uint8_t(1u << (r - 4));
+    }
     // Reserved c252-255: remember the application values so a routed draw can put them back.
     if (start < 256 && end > 252) {
         const UINT lo = start > 252 ? start : 252, hi = end < 256 ? end : 256;
@@ -5125,6 +5134,10 @@ void MotionOutput::resync_shadow() noexcept {
             native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_windows.base[w], shadow_.rows[w], 4));
     shadow_.vs_reserved_written = SUCCEEDED(
         native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
+    if (engine_hook_)
+        shadow_.world46_known = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 4, shadow_.world46, 3))
+                                    ? std::uint8_t(7)
+                                    : std::uint8_t(0);
     shadow_.integer0_known = SUCCEEDED(
         native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
     shadow_.ps_reserved_written = SUCCEEDED(
@@ -5248,6 +5261,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     bolt_early_dropped_ = bolt_late_ = 0; // single copy: per scene frame (a Reset's repeated begin restarts it)
     engine_memory::next_frame();          // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
+    if (engine_hook_) engine_effects_frame_begin(); // the frame's record ring and census counts
     sun_frame_ = {};
     sun_stamps_ = sun_stamp_refused_ = sun_stamp_prims_ = 0;
     sun_coverage_current_ = sun_composition_completed_ = false;
@@ -5833,6 +5847,9 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     if (composition_published_ && hdr_state_ != HdrState::Off &&
         (composition_main_sampler_mask_ || !composition_readers_known_))
         composition_export();
+    // Engine effects (X3M_ENGINE_EFFECTS=off|plumes): a recognised glow-jet draw is recorded and not forwarded
+    // (route.submit = false, D3D_OK) before any route work; one bool test with the option off.
+    if (engine_hook_ && engine_effects_draw(call, route)) return route;
     route.evaluated = true;
     route.sun_color_writer = sun_lane_active_ && call.primitives &&
                              selector_.state() == renderer::BoundaryState::Scene && !counters_.hook_scene_end &&
@@ -10000,6 +10017,7 @@ void MotionOutput::log_screen_additive_frame() noexcept {
         unsigned(bolt_flag_frame_), unsigned(bolt_flag_refused_frame_));
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
+    if (engine_hook_) engine_effects_frame_end(); // --debug: the engine_frame row of the presented frame
     if (bolt_copy_more_) { // capture frames only: the bullet draws beyond the frame's bolt_copy cap
         log("bolt_copy_more device=%llu frame=%llu more=%u", id_, frame_, bolt_copy_more_);
         bolt_copy_more_ = 0;
@@ -12244,4 +12262,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_fog_inc.h"
 #include "motion_output_sun_occlusion_inc.h"
 #include "motion_output_cull_small_props_inc.h"
+#include "motion_output_engine_effects_inc.h"
 } // namespace x3m

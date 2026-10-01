@@ -25,6 +25,7 @@
 #include "sun_occlusion.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
+#include "engine_effects.h"
 #include "cull_small_parts_core.h"
 #include "cull_small_props_core.h"
 #include "frame_timing.h"
@@ -2037,6 +2038,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     cull_small_parts::begin_frame();       // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's
                                            // projection (else the registry F) and the back-buffer width
+    engine_effects::begin_frame(ctx.frame);  // X3M_ENGINE_EFFECTS hook only: engine_bodies.json once, then its names
+                                             // -> ids over the engine's body table (the lens_flare_cull recipe)
     lens_flare_cull::begin_frame(ctx.frame); // X3M_LENS_FLARE_GAIN=0 only: the flare body set from the engine's body
                                              // table (the header and the mapped dynamic names per frame, a scan only
                                              // when the table moves, grows or re-binds a name)
@@ -3246,6 +3249,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
                                                   sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
     hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value); // 1 unless the bracket is installed for it
+    hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
+                                                  log_tier::cached_debug); // X3M_ENGINE_EFFECTS: off = one bool per draw
     hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless configured
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);
@@ -5414,6 +5419,8 @@ void initialize_log(HMODULE module) {
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at
                                       // 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other
                                       // cull/LOD pass claims
+    engine_effects::initialize();     // X3M_ENGINE_EFFECTS=native|off|plumes, unset = native: read once here, never
+                                      // toggled; nothing patched (the glow-jet draws are skipped in the motion route)
     lod_occlusion::initialize();      // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0
                                  // occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the
                                  // point-light site in the same function
@@ -5704,6 +5711,26 @@ extern "C" __declspec(dllexport) void x3m_linear_emission_fixture_fault(IDirect3
     x3m::CaptureLock lock;
     const auto it = x3m::devices.find(device);
     if (it != x3m::devices.end()) it->second->motion_output.fixture_emission_fault(kind, count);
+}
+// Engine effects seam (verification/probe/engine_effects_fixture.cpp): the identity treated as verified (before the
+// first Direct3DCreate9, which runs initialize), a synthetic body manager, this frame's counts and records.
+extern "C" __declspec(dllexport) void x3m_engine_effects_fixture_identity(int verified) {
+    x3m::engine_effects::fixture_identity(verified != 0);
+}
+extern "C" __declspec(dllexport) void x3m_engine_effects_fixture_body_global(std::uintptr_t va) {
+    x3m::CaptureLock lock;
+    x3m::engine_effects::fixture_body_global(va);
+}
+extern "C" __declspec(dllexport) unsigned x3m_engine_effects_fixture_status(IDirect3DDevice9* device, unsigned key) {
+    x3m::CaptureLock lock;
+    const auto it = x3m::devices.find(device);
+    return it == x3m::devices.end() ? 0u : it->second->motion_output.fixture_engine_status(key);
+}
+extern "C" __declspec(dllexport) int x3m_engine_effects_fixture_record(IDirect3DDevice9* device, unsigned index, void* out,
+                                                                       unsigned size) {
+    x3m::CaptureLock lock;
+    const auto it = x3m::devices.find(device);
+    return it != x3m::devices.end() && it->second->motion_output.fixture_engine_record(index, out, size) ? 1 : 0;
 }
 extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDirect3DDevice9* device, unsigned key) {
     x3m::CaptureLock lock;

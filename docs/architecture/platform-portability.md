@@ -840,6 +840,18 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-10-01: engine effects phase 1a (`--engine-effects`, default native)
+
+The glow-jet recogniser ([engine-effects-modern.md](engine-effects-modern.md) sections 1-2) adds no D3D call on the
+draw path: the effect pair, Z-write and blend come from the proxy's state shadow, c4-6 from the
+`SetVertexShaderConstantF` shadow (one documented `GetVertexShaderConstantF(4, ..., 3)` at the shadow's resync), and a
+suppressed draw returns `D3D_OK` without reaching the device. The body table `<game>\x3m\engine_bodies.json` is read
+with `GetModuleFileNameW`, `CreateFileW`, `GetFileSizeEx`, `ReadFile` (no bottle path or Wine export); the engine's
+body table and the render node are read through `engine_memory` (`VirtualQuery`), the same bytes on both targets,
+behind the executable identity (fail closed: no suppression). Cross-compiled with MinGW i686 / SSE2 (0 warnings,
+`check_no_x87.py` PASS); the seam fixture passed under Wine on bottle X3 ([engine-effects.md](../verification/engine-effects.md));
+native Windows execution unverified.
+
 ## 2026-09-23: data-driven fog families (`<game>/x3m/fog-families.bin`)
 
 The fog family table ([fog-family-data.md](fog-family-data.md), "Implementation") is read with
