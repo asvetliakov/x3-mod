@@ -222,9 +222,25 @@ planned.
 | --- | --- | --- |
 | 0 (**done** 2026-10-01) | engine-effects.md §7 (both sites, ABI, `&pos`, list readers, `v/00566`, the registry bit) and `tools/effects/engine_bodies.py` (`c7f6c05a`); left for phase 1: the body-name resolver generalised from `lens_flare_cull_core.h` | — |
 | 1 | `implement-deep`: recogniser, record, suppression, the c4–6 shadow window, the resolver, census rows; `implement-deep`: the two redirects (class-7 skip, class-10 forward, install-window claim) with the hook fixture; `implement`: the load-time option (`engine_effects=native|off|plumes`, default native until flown), launcher, ledger; one review; flight A (suppression only, F8 set 1–6) | 3 + review |
-| 2 | `implement-deep`: the stage pass, plume programs, GPU fixture, timing; `implement`: strength presets as `x3m.ini` keys; review; flight B | 2 + review |
+| 2 (**built** 2026-10-01, not flown) | `implement-deep`: the stage pass, plume programs, GPU fixture, timing; `implement`: strength presets as `x3m.ini` keys; review; flight B | 2 + review |
 | 3 | `implement-deep`: ribbons (ring buffer core, program, fixture rows), fog law, SETA/cut rules; `implement`: RCS puffs, docs; review; flight C | 2 + review |
 | 4 (optional, on evidence) | emitter-site anchor records (stock capitals, per-race stock tint); engine-side JET cull for the engine's per-draw time; texture-key fallback for unscoped draws; reactive mark | 1–2 each |
+
+**Phase 2 as built (2026-10-01; ledger [engine-effects.md](../verification/engine-effects.md), "Phase 2").** Code:
+`src/proxy/engine_plumes_core.h` (presets, the F6 latch, the CPU builder), `src/renderer/engine_plumes_pass.{h,cpp}`,
+`src/effects/engine_plume_{vs,ps}.hlsl` (vs 11 / ps 93 slots [m]), `src/proxy/motion_output_engine_plumes_inc.h`
+(arming, census) and `TemporalPass::FrameInputs::stage_callback`. Where the phase-2 brief set numbers that differ from
+section 3 above, the brief's are built: core radius 0.15 value (not 0.12) tapering to 0 at L, halo `exp(-d/sigma)` with
+sigma 0.5 value at the nozzle (half at the tip), a camera-facing disc of diameter 0.5 value, the flicker evaluated per
+nozzle on the CPU (+-10 %, 8-frame value-noise cells), presets scaling I_core, I_halo and sigma (not the ribbon's T),
+and a Ctrl+Alt+F6 preset key (risk 3 above said none). Decisions of the build: the near-camera cap holds the plume's
+projected **width** (2 sigma at the axis point nearest the camera) to 0.12 H by shrinking the whole plume about the
+nozzle, radiance 1 -> 0.5 over the last 20 % (a bounding-sphere rule shrank every long side-on plume); the occlusion
+depth of a pixel is that of the nearest axis point (the billboard's own depth would let the halo behind the nozzle
+pass in front of the hull at a tilt), pulled 0.5 value x max(0, axis . to_camera) towards the camera so a tail-on
+exhaust clears its own hull; RCS records draw unlengthened with radiance x z and are skipped below z 0.02; the screen
+minimums (core radius 1.5 px, main-jet L 6 px, cull under 1.5 px) apply after the cap. The record's c4-6 origin and
+axis are taken to be in the camera latch's world (`camera_scene_` rows) [i: settled by flight B's first frame].
 
 **Native Windows.** Documented D3D9 only: dynamic VBs, `DrawIndexedPrimitive`, vs_3_0/ps_3_0, `tex2Dlod` on the
 lane, FP16 post-pixel-shader blending behind `CheckDeviceFormat` (the motes' query), no VTF, instancing, point

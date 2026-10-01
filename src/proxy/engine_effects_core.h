@@ -250,7 +250,8 @@ struct Body {
     std::uint8_t cluster;      // Cluster
     std::uint8_t extent;       // Extent
     std::uint8_t lists;        // ListBit
-    std::uint8_t reserved;
+    std::uint8_t colour;       // 1: mean and peak below carry the table's mean_linear / peak_linear (phase 2's tint)
+    float mean[3], peak[3];    // linear colours, each divided by its largest channel at parse (white when that is 0)
 };
 struct BodyTable {
     Body bodies[body_capacity];
@@ -432,8 +433,31 @@ inline std::uint8_t extent_from(const char* s) noexcept {
                         : !std::strcmp(s, "both")     ? extent_both
                                                       : extent_none);
 }
+// A colour: [r, g, b] (three numbers) or null; true with *present when parsed, false on malformed input.
+inline bool parse_colour(json::Cursor& c, float out[3], bool* present) noexcept {
+    *present = false;
+    if (c.literal("null")) return true;
+    if (!c.expect('[')) return false;
+    for (unsigned i = 0; i < 3; ++i) {
+        if (!c.number(&out[i])) return false;
+        if (i < 2 && !c.expect(',')) return false;
+    }
+    if (!c.expect(']')) return false;
+    *present = true;
+    return true;
+}
+// Divides a colour by its largest channel (negative or non-finite channels read as 0); an all-zero colour is white.
+inline void normalise_colour(float c[3]) noexcept {
+    float m = 0.f;
+    for (unsigned i = 0; i < 3; ++i) {
+        if (!(c[i] > 0.f) || !finite_f(c[i])) c[i] = 0.f;
+        if (c[i] > m) m = c[i];
+    }
+    for (unsigned i = 0; i < 3; ++i) c[i] = m > 0.f ? c[i] / m : 1.f;
+}
 // One body object: {"id": N|null, "lists": [...], "value": N, "z_min": N|null, "z_max": N|null, "z_extent": "...",
-// "half_width": [x, y]|null, "cluster": "..."|null, ...}; other fields skipped.
+// "half_width": [x, y]|null, "cluster": "..."|null, "mean_linear": [r, g, b]|null, "peak_linear": [r, g, b]|null, ...};
+// other fields skipped. The colours count (colour = 1) only when both are present; they are normalised by the caller.
 inline bool parse_body(json::Cursor& c, Body* b) noexcept {
     if (!c.expect('{')) return false;
     if (c.accept('}')) return true;
@@ -475,6 +499,10 @@ inline bool parse_body(json::Cursor& c, Body* b) noexcept {
                     if (c.accept(']')) break;
                     if (!c.expect(',')) return false;
                 }
+        } else if (!std::strcmp(key, "mean_linear") || !std::strcmp(key, "peak_linear")) {
+            bool present = false;
+            if (!parse_colour(c, key[0] == 'm' ? b->mean : b->peak, &present)) return false;
+            b->colour = std::uint8_t(b->colour | (present ? (key[0] == 'm' ? 1u : 2u) : 0u));
         } else if (!std::strcmp(key, "cluster") || !std::strcmp(key, "z_extent")) {
             if (c.literal("null")) {
                 if (key[0] == 'c') b->cluster = default_cluster;
@@ -527,6 +555,9 @@ inline bool parse_body_table(const char* text, std::size_t length, BodyTable* ou
                         bool name_fits;
                         if (!c.string(b.name, sizeof b.name, &name_fits) || !c.expect(':') || !parse_body(c, &b))
                             return fail();
+                        b.colour = b.colour == 3u ? 1u : 0u; // both colours or none
+                        normalise_colour(b.mean);
+                        normalise_colour(b.peak);
                         if (!name_fits || !b.name[0] || out->count >= body_capacity)
                             ++out->refused;
                         else

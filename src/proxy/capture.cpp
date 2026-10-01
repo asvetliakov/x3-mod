@@ -507,6 +507,7 @@ struct Device : Hooks {
     std::uint64_t fog_ready_frame = 0;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     bool key_down = false;
+    engine_plumes::PresetKey plumes_key; // Ctrl+Alt+F6's F6 latch (X3M_ENGINE_EFFECTS=plumes only)
     explicit Device(void* object, size_t size)
         : Hooks(object, size) {}
 };
@@ -2035,6 +2036,17 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         ctx.remaining = capture_count ? capture_count : 1;
     ctx.key_down = down;
     ctx.capture = ctx.remaining > 0;
+    // Ctrl+Alt+F6 (comparison-hotkeys.md, "Engine plume presets"): polled only with X3M_ENGINE_EFFECTS=plumes on this
+    // device; a fresh F6 press asks for the modifiers and the focus, the press edge cycles the plume preset (one
+    // engine_plumes_preset row). The native/off/plumes mode itself is never toggled.
+    if (ctx.motion_output.engine_plumes_requested()) {
+        const bool f6 = (GetAsyncKeyState(VK_F6) & 0x8000) != 0;
+        const bool fresh = f6 && !ctx.plumes_key.f6_down;
+        if (ctx.plumes_key.step(fresh && comparison_foreground(), fresh && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0,
+                                fresh && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0,
+                                fresh && (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0, f6))
+            ctx.motion_output.engine_plumes_cycle_preset();
+    }
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     cull_small_parts::begin_frame();       // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's
@@ -3252,6 +3264,9 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value); // 1 unless the bracket is installed for it
     hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
                                                   log_tier::cached_debug); // X3M_ENGINE_EFFECTS: off = one bool per draw
+    hooked.motion_output.configure_engine_plumes(engine_effects::mode() == engine_effects::core::Mode::plumes &&
+                                                     engine_effects::suppress(),
+                                                 engine_effects::preset()); // plumes: the stage in the resolve
     hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless configured
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);

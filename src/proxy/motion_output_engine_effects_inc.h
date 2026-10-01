@@ -45,8 +45,19 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
     engine_partial_logged_ = partial;
     if (engine_rows_) ++engine_row_frames_; // the previous frame wrote rows: one of the first eight spent
     engine_rows_ = engine_rows_more_ = 0;
+    // The plume stage's per-frame report (engine_stage row; motion_output_engine_plumes_inc.h).
+    plumes_ran_ = plumes_fenced_ = plumes_evaluated_ = false;
+    plumes_report_ = {};
+    plumes_stage_us_ = 0.f;
 }
 void MotionOutput::engine_effects_frame_end() noexcept {
+    // Plumes requested on a frame with records whose resolve never asked for the stage: a device that cannot arm by
+    // configuration (no --taa or --hdr, or the suppression off) says so once in engine_plumes_state; the glow stays
+    // suppressed (the off look). Frames whose resolve was merely skipped show ran=0 in engine_stage instead.
+    if (plumes_requested_ && !plumes_evaluated_ && engine_ring_->count) {
+        if (!engine_redirects_) note_engine_plumes_state(false, "suppression_off");
+        else if (!taa_enabled_ || !hdr_requested_) note_engine_plumes_state(false, "hdr_taa_path");
+    }
     if (!engine_census_) return; // configure: census = the --debug tier
     const auto& c = engine_counts_;
     namespace ee = engine_effects::core;
@@ -70,6 +81,7 @@ void MotionOutput::engine_effects_frame_end() noexcept {
         static_cast<unsigned long>(c.match[2]), static_cast<unsigned long>(c.match[3]),
         static_cast<unsigned long>(c.match[4]), engine_order_ == ee::Order::b ? "b" : "a", stats.bodies, stats.mapped,
         engine_rows_, engine_rows_more_);
+    if (plumes_requested_) log_engine_stage(); // the plume stage's row at the same cadence
 }
 bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept {
     namespace ee = engine_effects::core;

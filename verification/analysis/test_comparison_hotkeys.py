@@ -1,6 +1,7 @@
-"""In-game keys (comparison-hotkeys.md, "Removed 2026-09-26"): F8 is the only
-key the proxy reads, and only under X3M_DEBUG=1. Focused host execution: no
-Wine, game, shader compiler or DLL build."""
+"""In-game keys (comparison-hotkeys.md, "Removed 2026-09-26" and "Engine plume
+presets"): F8, only under X3M_DEBUG=1, and Ctrl+Alt+F6, only with
+X3M_ENGINE_EFFECTS=plumes (the plume preset; test_engine_plumes executes that
+block). Focused host execution: no Wine, game, shader compiler or DLL build."""
 import argparse
 import ast
 import contextlib
@@ -22,6 +23,8 @@ from source_text import source_text
 ROOT = Path(__file__).resolve().parents[2]
 F8_BEGIN = '    // F8 is the one in-game key'
 F8_END = 'ctx.key_down=down; ctx.capture=ctx.remaining>0;\n'
+F6_BEGIN = '    // Ctrl+Alt+F6 (comparison-hotkeys.md'
+F6_END = 'ctx.motion_output.engine_plumes_cycle_preset();\n    }\n'
 
 
 def f8_block(capture):
@@ -29,14 +32,26 @@ def f8_block(capture):
     return capture[start:capture.end(F8_END, start)]
 
 
+def f6_block(capture):
+    start = capture.index(F6_BEGIN)
+    return capture[start:capture.end(F6_END, start)]
+
+
 class InGameKeys(unittest.TestCase):
     def test_f8_is_the_only_key_and_only_under_debug(self):
         sources = {path: source_text(path) for path in (ROOT / 'src').rglob('*') if path.suffix in ('.cpp', '.h')}
         pollers = {str(path.relative_to(ROOT)): text.count('GetAsyncKeyState(')
                    for path, text in sources.items() if 'GetAsyncKeyState(' in text}
-        self.assertEqual(pollers, {'src/proxy/capture.cpp': 1})
+        # F8 (one poll) and the plume preset's Ctrl+Alt+F6 block (four polls, gated on plumes being requested).
+        self.assertEqual(pollers, {'src/proxy/capture.cpp': 5})
+        plumes = f6_block(sources[ROOT / 'src/proxy/capture.cpp'])
+        self.assertEqual(plumes.count('GetAsyncKeyState('), 4)
+        self.assertIn('if (ctx.motion_output.engine_plumes_requested()) {', plumes)
         for path, text in sources.items():
-            for absent in ('GetKeyState(', 'VK_CONTROL', 'VK_SHIFT', 'VK_MENU', 'ComparisonControls', 'comparison_begin_frame',
+            outside = str(text).replace(str(plumes), '') if path == ROOT / 'src/proxy/capture.cpp' else text
+            for modifier in ('VK_CONTROL', 'VK_SHIFT', 'VK_MENU'):
+                self.assertNotIn(modifier, outside, (path, modifier))
+            for absent in ('GetKeyState(', 'ComparisonControls', 'comparison_begin_frame',
                            'telemetry_phase_marker', 'fps_overlay_toggle', 'sun_shadow_toggle', 'renderer_comparison',
                            'screen_emission_additive_toggle', 'emission_source_gain_toggle', 'capture_armed', 'X3M_CAPTURE_DELAY'):
                 self.assertNotIn(absent, text, (path, absent))

@@ -323,8 +323,13 @@ SETTINGS = [
           'record0 = the game\'s own behaviour, off = none.', 'all', choices=('off', 'record0', 'all'), launcher='--lod-occlusion'),
     entry('engine_effects', 'enum', 'engine', 'Ship engine effects. native = the game\'s own engine glow, flares and exhaust '
           'trails; off = none of them on ships, and missiles lose their engine glow but keep their sprites and trails for now; '
-          'plumes = the modern engine plumes and trails for ships and missiles, not finished yet: behaves as off. Read when the '
-          'game starts.', builtin='native', choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
+          'plumes = the mod draws its own engine plumes instead (ships and missiles; needs the HDR and TAA defaults, otherwise '
+          'it looks like off; the trails come later). Read when the game starts.', builtin='native',
+          choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
+    entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
+          'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Ctrl+Alt+F6 switches '
+          'between them in flight.', builtin='default', choices=('restrained', 'default', 'strong'),
+          launcher='--engine-effects-preset', since='2026-10-01'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

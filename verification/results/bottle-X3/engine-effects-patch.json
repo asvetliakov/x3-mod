@@ -10,7 +10,7 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "fbdf57edf9c9ce1e9bc38c30ef5dbc1100526977",
+  "commit": "526a741c626a7c0b1ec00a308855f8fd2867e1b2",
   "production_sources_dirty": false,
   "dirty_paths": [],
   "sha256": {
@@ -34,7 +34,7 @@
  },
  "exit_status": 0,
  "elapsed_s": 5.2,
- "executable_sha256": "def77f889ea9458ef3a6eb228c4aec8eb214148c0a60c6acf285d9fdc41be26a",
+ "executable_sha256": "093b1ea9b61ad260bfdf0040ba92b9d60c8575b5ac8449b4eda21bfd50f7cadd",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect": [],

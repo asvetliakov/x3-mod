@@ -16,6 +16,7 @@ namespace {
 namespace core = x3m::engine_effects::core;
 namespace lfc = x3m::lens_flare_cull::core;
 core::Mode mode_ = core::Mode::native;
+x3m::engine_plumes::Preset preset_ = x3m::engine_plumes::default_preset;
 bool identity_ = false, hook_ = false, initialized_ = false;
 const char* status_ = "not_initialized";
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -190,12 +191,29 @@ void initialize() {
     log("engine_effects_mode setting=%s mode=%s status=%s identity=%u hook=%u suppress=%u census=%u",
         length ? setting : "-", core::mode_name(mode_), status_, unsigned(identity_), unsigned(hook_),
         unsigned(hook_ && core::suppresses(mode_)), unsigned(hook_ && debug));
-    if (mode_ == core::Mode::plumes)
-        log("engine_effects_plumes behaves=off phase=1a reason=no_stage_yet"); // the plume stage arrives in phase 2
+    if (mode_ == core::Mode::plumes) {
+        // The plume stage's starting preset: exactly restrained|default|strong; unset = default, anything else refused
+        // (default, status invalid_setting).
+        wchar_t word[16]{};
+        const DWORD n = x3m::config::get(L"X3M_ENGINE_EFFECTS_PRESET", word, 16);
+        char shown[16]{};
+        for (DWORD i = 0; i < n && i < 15; ++i) shown[i] = word[i] > 0x20 && word[i] < 0x7f ? char(word[i]) : '?';
+        x3m::engine_plumes::Preset parsed = x3m::engine_plumes::default_preset;
+        const bool ok = !n || (n < 16 && x3m::engine_plumes::parse_preset(word, n, &parsed));
+        preset_ = ok ? parsed : x3m::engine_plumes::default_preset;
+        // One row: the stage arms per device at the resolve (the suppression, --motion-output --hdr --taa, FP16
+        // blending); a device that cannot arm says so in engine_plumes_state and keeps the phase-1 look (off).
+        log("engine_effects_plumes preset=%s setting=%s status=%s stage=%s cycle=ctrl+alt+f6",
+            x3m::engine_plumes::preset_name(preset_), n ? shown : "-", ok ? "ok" : n >= 16 ? "too_long" : "invalid_setting",
+            hook_ ? "requested" : "off");
+    }
     SetLastError(error);
 }
 core::Mode mode() {
     return mode_;
+}
+x3m::engine_plumes::Preset preset() {
+    return preset_;
 }
 bool hook_wanted() {
     return hook_;
