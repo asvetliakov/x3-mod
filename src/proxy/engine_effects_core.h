@@ -213,6 +213,10 @@ static_assert(sizeof(Record) == 64, "the fixed 64-byte record");
 constexpr unsigned ring_capacity = 1024;
 struct Ring {
     Record records[ring_capacity];
+    // Beside each record (the record stays 64 bytes): the object scope's camera handle (0 unknown) and whether the draw
+    // came in the scene phase of the scene-boundary selector (the plume stage draws only the scene view's records).
+    std::uint32_t camera[ring_capacity];
+    std::uint8_t scene[ring_capacity];
     unsigned count = 0;
     void clear() noexcept { count = 0; }
     bool full() const noexcept { return count >= ring_capacity; }

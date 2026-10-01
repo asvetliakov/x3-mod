@@ -9,6 +9,13 @@
 //   unverified X3M_ENGINE_EFFECTS=off without the identity seam: refused, everything forwarded
 //   unpatched  X3M_ENGINE_EFFECTS=off, identity verified, the call redirects not live: forwarded_patch_missing
 //   timing     X3M_ENGINE_EFFECTS=off, no census: per-draw cost of the suppressed, not_jet and non-candidate paths
+//   plumes     X3M_ENGINE_EFFECTS=plumes without --hdr --taa: suppressed as off, the stage refuses to arm
+//   armed      X3M_ENGINE_EFFECTS=plumes with X3M_HDR=1 X3M_TAA=1 X3M_MOTION_JITTER=1 and the fixture camera: frames in the
+//              scene-boundary pattern (initial Clear, background draw, depth-only Clear, a depth writer, SetDepth null,
+//              the bloom StretchRect where the resolve runs); the production stage arms, attaches inside the resolve and
+//              draws the scene view's records (two of four: one of another camera, one from the background phase); a
+//              forced draw fault disarms 64 frames, three consecutive ones refuse until Reset; Reset releases and the
+//              next armed frame recreates the pass; taa_references unchanged across the cycle
 // Output: CHECK <label> PASS|FAIL lines, FRAME / RECORD / TIMING lines, RESULT PASS|FAIL. Original synthetic content
 // only; no game bytes are written or redistributed.
 #include <windows.h>
@@ -54,7 +61,15 @@ using BodyGlobal = void (*)(std::uintptr_t);
 using Status = unsigned (*)(IDirect3DDevice9*, unsigned);
 using RecordFn = int (*)(IDirect3DDevice9*, unsigned, void*, unsigned);
 using EmissionStatus = unsigned (*)(IDirect3DDevice9*, unsigned);
+using PlumesFault = int (*)(IDirect3DDevice9*, unsigned);
+using CameraInstall = void (*)(const float* const*, const float* const*);
 using Create9 = IDirect3D9*(WINAPI*)(UINT);
+// The armed mode's engine camera globals (camera_state::fixture_install reads them like *0x00608a38 / *0x00608a40):
+// identity view (world = view), the game's projection terms (m00 0.8, m11 4/3, near 6).
+float camera_projection[16] = {.8f, 0, 0, 0, 0, 4.f / 3.f, 0, 0, 0, 0, 1.000003f, 1.f, 0, 0, -6.0000184f, 0};
+float camera_view[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+const float* camera_projection_slot = camera_projection;
+const float* camera_view_slot = camera_view;
 
 // Synthetic engine body manager: fixed 11000 slots, two dynamic ones (the global at manager_global -> manager).
 struct BodyManager {
@@ -143,16 +158,23 @@ struct Fixture {
     Status status = nullptr;
     RecordFn record = nullptr;
     EmissionStatus emission = nullptr;
+    PlumesFault plumes_fault = nullptr;
+    IDirect3DTexture9* bloom = nullptr;          // armed: the application's bloom source (the resolve's copy target)
+    IDirect3DSurface9* bloom_surface = nullptr;
+    IDirect3DSurface9* back = nullptr;           // armed: the back buffer and the auto depth surface
+    IDirect3DSurface9* depth = nullptr;
+    bool armed = false;
     x3m::MotionOutputFixtureConfig config{};
     Node node_d, node_e; // not_jet (flags 0x200) and the fixed-function JET node
     Jet a, b, c;
 
-    void scope(const Node* node, std::uint64_t serial) {
+    void scope(const Node* node, std::uint64_t serial, std::uint32_t camera_handle = 0) {
         config.scope = {};
         if (node) {
             config.scope.known = 1;
             config.scope.node = reinterpret_cast<std::uintptr_t>(node->words);
             config.scope.node_serial = serial;
+            config.scope.camera_handle = camera_handle;
         }
         configure(&config);
     }
@@ -170,7 +192,9 @@ struct Fixture {
         pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
         pp.BackBufferWidth = 64;
         pp.BackBufferHeight = 64;
-        pp.BackBufferFormat = D3DFMT_X8R8G8B8;
+        pp.BackBufferFormat = armed ? D3DFMT_A8R8G8B8 : D3DFMT_X8R8G8B8; // armed: the selector's main target format
+        pp.EnableAutoDepthStencil = armed;
+        pp.AutoDepthStencilFormat = D3DFMT_D24X8;
         pp.hDeviceWindow = window;
         pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
         api(d3d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &device), "CreateDevice");
@@ -203,18 +227,34 @@ struct Fixture {
         api(quad_vb->Lock(0, 0, &p, 0), "quad VB lock");
         std::memcpy(p, quad, sizeof quad);
         quad_vb->Unlock();
-        api(device->CreateOffscreenPlainSurface(64, 64, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &readback, nullptr), "readback surface");
+        api(device->CreateOffscreenPlainSurface(64, 64, pp.BackBufferFormat, D3DPOOL_SYSTEMMEM, &readback, nullptr), "readback surface");
+        if (armed) swapchain_surfaces();
     }
-    DWORD pixel() {
-        IDirect3DSurface9* back = nullptr;
-        api(device->GetRenderTarget(0, &back), "GetRenderTarget");
-        api(device->GetRenderTargetData(back, readback), "GetRenderTargetData");
-        back->Release();
+    DWORD pixel(int x = 32, int y = 32) {
+        IDirect3DSurface9* target = nullptr;
+        api(device->GetRenderTarget(0, &target), "GetRenderTarget");
+        api(device->GetRenderTargetData(target, readback), "GetRenderTargetData");
+        target->Release();
         D3DLOCKED_RECT lr{};
         api(readback->LockRect(&lr, nullptr, D3DLOCK_READONLY), "readback lock");
-        const DWORD v = reinterpret_cast<const DWORD*>(static_cast<const char*>(lr.pBits) + 32 * lr.Pitch)[32] & 0xffffffu;
+        const DWORD v = reinterpret_cast<const DWORD*>(static_cast<const char*>(lr.pBits) + y * lr.Pitch)[x] & 0xffffffu;
         readback->UnlockRect();
         return v;
+    }
+    // armed: the back buffer, the auto depth surface and the bloom source (DEFAULT: released before Reset).
+    void swapchain_surfaces() {
+        api(device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back), "GetBackBuffer");
+        api(device->GetDepthStencilSurface(&depth), "GetDepthStencilSurface");
+        api(device->CreateTexture(64, 64, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom, nullptr), "bloom texture");
+        api(bloom->GetSurfaceLevel(0, &bloom_surface), "bloom level");
+    }
+    void release_swapchain_surfaces() {
+        for (IUnknown** p : {reinterpret_cast<IUnknown**>(&bloom_surface), reinterpret_cast<IUnknown**>(&bloom),
+                             reinterpret_cast<IUnknown**>(&back), reinterpret_cast<IUnknown**>(&depth)})
+            if (*p) {
+                (*p)->Release();
+                *p = nullptr;
+            }
     }
     void fixed_function(bool blend, bool zwrite) {
         device->SetVertexShader(nullptr);
@@ -263,10 +303,10 @@ struct Fixture {
         node_d.set(0xd4, 20001, other_flags, 1.f, ident, origin);
         node_e.set(0xe5, 20000, jet, 1.5f, ident, origin);
     }
-    void jet_draw(const Jet& j, bool zwrite, bool scoped) {
+    void jet_draw(const Jet& j, bool zwrite, bool scoped, std::uint32_t camera_handle = 0) {
         effect_state(zwrite);
         device->SetVertexShaderConstantF(4, j.rows, 3);
-        scope(scoped ? &j.node : nullptr, j.serial);
+        scope(scoped ? &j.node : nullptr, j.serial, camera_handle);
         api(draw(1), "effect draw");
     }
     struct Counts { unsigned v[25]; };
@@ -363,6 +403,167 @@ struct Fixture {
         api(device->EndScene(), "EndScene");
         api(device->Present(nullptr, nullptr, nullptr, nullptr), "Present");
     }
+    // armed: four jets 100 units ahead (value 10, z 2.0, axis -x: the plume runs left of the nozzle); the window pixels
+    // of the nozzles (m00 0.8, m11 4/3 at 64x64).
+    Jet p1, p2, p3, p4;
+    static constexpr std::uint32_t scene_camera = 0x77, other_camera = 0x99;
+    struct Px { int x, y; };
+    void make_armed_jets() {
+        const float r[9] = {0, 0, -1, 0, 1, 0, 1, 0, 0}; // model x = -z, y = y, z = x: the axis -(model z) = -x
+        const float t[4][3] = {{0, 0, 100}, {-50, 30, 100}, {50, -30, 100}, {50, 30, 100}};
+        Jet* jets[4] = {&p1, &p2, &p3, &p4};
+        const int origin[3] = {0, 0, 0};
+        for (unsigned i = 0; i < 4; ++i) {
+            Jet& j = *jets[i];
+            std::memcpy(j.r, r, sizeof r);
+            j.k = 10.f;
+            j.z = 2.f;
+            std::memcpy(j.t, t[i], sizeof j.t);
+            j.order_b = false;
+            j.serial = 600 + i;
+            j.model = 20000;
+            j.node.set(0xf0 + i, j.model, jet, j.z, j.r, origin);
+            rows_of(j.r, j.k, j.z, j.t, false, j.rows);
+        }
+    }
+    struct Armed {
+        unsigned armed, ran, result, nozzles, skipped, drew, references, taa_references, failures, refused, records,
+            suppressed, resolved;
+        DWORD px[4];
+    };
+    // One frame in the scene-boundary pattern: p4 in the background phase, p1 / p2 (the scene camera) and p3 (another
+    // camera) in the scene phase, the resolve at the bloom copy; the statuses and the nozzle pixels after the copy.
+    Armed armed_frame() {
+        static const Px nozzle_px[4] = {{32, 32}, {19, 19}, {45, 45}, {45, 19}};
+        api(device->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0), "Clear initial");
+        api(device->BeginScene(), "BeginScene");
+        effect_state(false); // background: an unscoped effect-pair draw (WVP zero: no pixel); the sentinel fill runs here
+        scope(nullptr, 0);
+        api(draw(1), "background draw");
+        jet_draw(p4, false, true, scene_camera);
+        api(device->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1.f, 0), "Clear depth"); // the scene phase; the camera latch
+        effect_state(true); // the scene's depth writer (unscoped: forwarded)
+        device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+        scope(nullptr, 0);
+        api(draw(1), "depth writer");
+        jet_draw(p1, false, true, scene_camera);
+        jet_draw(p2, false, true, scene_camera);
+        jet_draw(p3, false, true, other_camera);
+        api(device->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
+        api(device->StretchRect(back, nullptr, bloom_surface, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
+        Armed a{};
+        const unsigned keys[12] = {25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 2, 3};
+        unsigned* out[12] = {&a.armed, &a.ran, &a.result, &a.nozzles, &a.skipped, &a.drew, &a.references, &a.taa_references,
+                             &a.failures, &a.refused, &a.records, &a.suppressed};
+        for (unsigned i = 0; i < 12; ++i) *out[i] = status(device, keys[i]);
+        a.resolved = emission(device, 97); // this frame's resolve ran and its copy-back succeeded
+        for (unsigned i = 0; i < 4; ++i) a.px[i] = pixel(nozzle_px[i].x, nozzle_px[i].y);
+        api(device->EndScene(), "EndScene");
+        api(device->SetDepthStencilSurface(depth), "SetDepthStencilSurface rebind");
+        api(device->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+        return a;
+    }
+    static unsigned sum(DWORD v) { return ((v >> 16) & 0xff) + ((v >> 8) & 0xff) + (v & 0xff); }
+    static bool lit(DWORD v) { return sum(v) >= 96; }
+    static bool dark(DWORD v) { return sum(v) <= 6; }
+    static void print_armed(const char* phase, unsigned frame, const Armed& a) {
+        std::printf("ARMED phase=%s frame=%u armed=%u ran=%u result=%08x nozzles=%u skipped_other_view=%u drew=%u references=%u taa_references=%u failures=%u refused=%u records=%u suppressed=%u resolved=%u px=%06lx,%06lx,%06lx,%06lx\n",
+                    phase, frame, a.armed, a.ran, a.result, a.nozzles, a.skipped, a.drew, a.references, a.taa_references,
+                    a.failures, a.refused, a.records, a.suppressed, a.resolved, static_cast<unsigned long>(a.px[0]),
+                    static_cast<unsigned long>(a.px[1]), static_cast<unsigned long>(a.px[2]), static_cast<unsigned long>(a.px[3]));
+    }
+    // A frame that drew the scene view's records: p1 / p2 lit, p3 (another camera) and p4 (background phase) dark.
+    static bool drawn_frame(const Armed& a) {
+        return a.armed && a.ran && a.result == 0 && a.nozzles == 2 && a.skipped == 2 && a.drew && a.references == 5 &&
+               a.records == 4 && a.suppressed == 4 && a.resolved && lit(a.px[0]) && lit(a.px[1]) && dark(a.px[2]) && dark(a.px[3]);
+    }
+    // Frames until the stage is armed (at most `limit`): the unarmed frames before it; the armed frame in *last;
+    // *glow_dark counts the unarmed frames that drew nothing while the four records stayed suppressed.
+    unsigned until_armed(unsigned limit, unsigned* frame, Armed* last, unsigned* glow_dark) {
+        unsigned unarmed = 0;
+        *glow_dark = 0;
+        for (unsigned i = 0; i < limit; ++i) {
+            *last = armed_frame();
+            ++*frame;
+            if (last->armed) return unarmed;
+            ++unarmed;
+            *glow_dark += dark(last->px[0]) && dark(last->px[1]) && !last->ran && last->suppressed == 4;
+        }
+        return unarmed;
+    }
+    void armed_script() {
+        make_armed_jets();
+        unsigned frame = 1, glow_dark = 0;
+        Armed a{};
+        // Warm-up: the first frames latch the main target, the jitter and the camera.
+        const unsigned warm = until_armed(8, &frame, &a, &glow_dark);
+        print_armed("first", frame, a);
+        check(a.armed && warm < 8, "armed_arms_within_8_frames");
+        check(drawn_frame(a), "armed_first_frame_draws_scene_view");
+        unsigned drawn = 0;
+        for (unsigned i = 0; i < 3; ++i) {
+            a = armed_frame();
+            ++frame;
+            drawn += drawn_frame(a);
+        }
+        print_armed("steady", frame, a);
+        check(drawn == 3, "armed_three_frames_draw");
+        const unsigned taa_before = a.taa_references;
+        // One forced draw fault (the pass's fixture fault reports the draw failed after submitting it, so the frame may
+        // still show the plume): the resolve goes on and resolves, the stage disarms for 64 frames (63 after the failed
+        // one, the plumes gone), then re-arms and draws again (failures back to 0).
+        check(plumes_fault(device, 2) == 1, "armed_fault_once_set");
+        a = armed_frame();
+        ++frame;
+        print_armed("fault_once", frame, a);
+        check(a.ran && a.result == 0x80004005u && !a.drew && a.failures == 1 && !a.refused && a.resolved,
+              "armed_fault_once_fails_stage_only");
+        unsigned disarmed = until_armed(80, &frame, &a, &glow_dark);
+        print_armed("rearmed", frame, a);
+        std::printf("DISARMED cycle=once frames=%u glow_dark=%u\n", disarmed, glow_dark);
+        check(disarmed == 63 && glow_dark == 63, "armed_disarmed_63_frames_after_the_failed_one");
+        check(drawn_frame(a) && a.failures == 0, "armed_rearmed_draws_failures_cleared");
+        // Persistent fault: three consecutive failed stage frames (no drawn frame between) refuse until Reset.
+        check(plumes_fault(device, 4) == 1, "armed_fault_persistent_set");
+        unsigned cycles = 0, gaps_ok = 0;
+        for (unsigned c = 0; c < 3; ++c) {
+            if (c) {
+                disarmed = until_armed(80, &frame, &a, &glow_dark);
+                std::printf("DISARMED cycle=persistent_%u frames=%u glow_dark=%u\n", c, disarmed, glow_dark);
+                gaps_ok += disarmed == 63 && glow_dark == 63;
+            } else {
+                a = armed_frame();
+                ++frame;
+            }
+            print_armed("fault_persistent", frame, a);
+            cycles += a.ran && a.result == 0x80004005u && !a.drew && a.failures == c + 1 && a.refused == (c == 2 ? 1u : 0u);
+        }
+        check(cycles == 3 && gaps_ok == 2, "armed_three_consecutive_failures_63_frame_gaps");
+        unsigned refused_frames = 0;
+        for (unsigned i = 0; i < 70; ++i) {
+            a = armed_frame();
+            ++frame;
+            refused_frames += !a.armed && !a.ran && a.refused && dark(a.px[0]) && a.suppressed == 4;
+        }
+        print_armed("refused", frame, a);
+        check(refused_frames == 70, "armed_refused_until_reset_70_frames");
+        // Reset: every pass object released, the refusal and the failure count cleared; the next armed frame recreates
+        // the pass (5 objects) and draws; the TAA reference count is back where it was.
+        check(plumes_fault(device, 0) == 1, "armed_faults_cleared");
+        const unsigned held = status(device, 31);
+        release_swapchain_surfaces();
+        api(device->Reset(&pp), "Reset");
+        std::printf("RESET PASS\n");
+        const unsigned released = status(device, 31), refused_after = status(device, 34), failures_after = status(device, 33);
+        swapchain_surfaces();
+        const unsigned warm_after = until_armed(8, &frame, &a, &glow_dark);
+        print_armed("after_reset", frame, a);
+        std::printf("RESET_CYCLE held=%u released=%u refused_after=%u failures_after=%u warm=%u references=%u taa_before=%u taa_after=%u\n",
+                    held, released, refused_after, failures_after, warm_after, a.references, taa_before, a.taa_references);
+        check(held == 5 && released == 0 && !refused_after && !failures_after, "armed_reset_releases_and_clears");
+        check(drawn_frame(a), "armed_after_reset_recreated_and_draws");
+        check(a.taa_references == taa_before, "armed_taa_references_delta_0");
+    }
     void overflow_frame(unsigned frame) {
         api(device->BeginScene(), "BeginScene");
         const unsigned before = primitive_calls();
@@ -415,7 +616,7 @@ struct Fixture {
 
 int main(int argc, char** argv) {
     if (argc != 4) {
-        std::printf("usage: engine_effects_fixture <vs_effect.bin> <ps_effect.bin> main|native|unverified|unpatched|timing\n");
+        std::printf("usage: engine_effects_fixture <vs_effect.bin> <ps_effect.bin> main|native|unverified|unpatched|timing|plumes|armed\n");
         return 2;
     }
     const std::string mode = argv[3];
@@ -437,7 +638,10 @@ int main(int argc, char** argv) {
     f.status = reinterpret_cast<Status>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_status")));
     f.record = reinterpret_cast<RecordFn>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_record")));
     f.emission = reinterpret_cast<EmissionStatus>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_linear_emission_fixture_status")));
-    if (!f.configure || !identity || !redirects || !body_global || !f.status || !f.record || !f.emission) {
+    f.plumes_fault = reinterpret_cast<PlumesFault>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_plumes_fixture_fault")));
+    const auto camera_install = reinterpret_cast<CameraInstall>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_camera_state_fixture_install")));
+    if (!f.configure || !identity || !redirects || !body_global || !f.status || !f.record || !f.emission || !f.plumes_fault ||
+        !camera_install) {
         std::printf("RESULT FAIL seam_exports\n");
         return 2;
     }
@@ -446,6 +650,8 @@ int main(int argc, char** argv) {
     body_global(reinterpret_cast<std::uintptr_t>(&manager.global));
     if (mode != "unverified") identity(1); // before Direct3DCreate9, which runs initialize
     if (mode != "unpatched") redirects(1);  // the fixture EXE has no engine sites: the patch module stays native
+    f.armed = mode == "armed";
+    if (f.armed) camera_install(&camera_projection_slot, &camera_view_slot);
     f.create(mode == "timing");
     f.resources(vs_bytes, ps_bytes);
     f.make_jets();
@@ -469,6 +675,9 @@ int main(int argc, char** argv) {
         // (the runner checks the engine_plumes_state / engine_stage rows).
         check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 1, "plumes_hook_and_suppress_armed");
         for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "plumes", true, true);
+    } else if (mode == "armed") {
+        check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 1, "armed_hook_and_suppress_armed");
+        f.armed_script();
     } else if (mode == "native") {
         check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 0, "native_census_hook_without_suppression");
         for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "native", false, false);
@@ -503,6 +712,7 @@ int main(int argc, char** argv) {
         std::printf("RESULT FAIL mode\n");
         return 2;
     }
+    f.release_swapchain_surfaces();
     if (f.readback) f.readback->Release();
     if (f.quad_vb) f.quad_vb->Release();
     if (f.effect_vb) f.effect_vb->Release();

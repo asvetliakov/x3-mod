@@ -14,9 +14,12 @@
 // - the axial billboard: it contains the plume axis (record.axis = -(model z), the side the glow mesh extends to) and
 //   is turned about that axis to face the camera; local (u along the axis from the nozzle, w across), length
 //   L = z * value (the engine's own law, z the raw node+0x88 scale), core radius 0.15 value at the nozzle tapering to
-//   0 at L, halo sigma 0.5 value (x the preset); the quad reaches 3 sigma past every edge of the core;
+//   0 at L, halo sigma 0.5 value (x the preset) tapering to half at the tip; the quad is a trapezoid that reaches
+//   2.25 sigma (the local sigma) past every edge of the core and of the segment nozzle..tip, where the pixel program's
+//   halo window reaches 0;
 // - the nozzle disc: camera-facing (the view plane), hot core of diameter 0.5 value, the same halo, weighted by
-//   |axis . to_camera| (it carries the look where the axial quad degenerates, head-on and tail-on).
+//   |axis . to_camera| (it carries the look where the axial quad degenerates, head-on and tail-on); drawn only from a
+//   weight of 0.15, its radiance fading in over 0.15..0.3 (a side view draws no disc).
 // value = record.size (|model x| of the c4-6 rows: the body's LOD-0 value x the context scale). RCS jets (v/00566,
 // flag_steering) take the same quad with L = z * value (short by construction: z runs 0.01..1.0 on steering) and
 // their radiance x min(z, 1); below z 0.02 they are not drawn.
@@ -24,8 +27,12 @@
 // main jet's L at least 6 px (the 3x3-clip survival rule of the motes); the plume's projected width (2 sigma at the
 // axis point nearest the camera) is clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades
 // 1 -> 0.5 over the last 20 % before the clamp (the own ship's plume in chase view; any plume that close).
-// Occlusion depth (the pixel program): the nearest axis point's view depth (local u clamped to [0, L] moved along the
-// axis's view z, intensity[2]), pulled towards the camera by 0.5 value x max(0, axis . to_camera).
+// Occlusion depth (the pixel program): the nearest axis point's view depth, the nozzle's view z (intensity[3]) plus
+// the axis's view z component (intensity[2]) x local u clamped to [0, L] (exact anywhere on the billboard, whose side
+// vector has a view z component off-centre), pulled towards the camera by 0.5 value x max(0, axis . to_camera).
+// View filter: only the records of the scene view are drawn (ViewFilter: recorded in the scene phase with the scene
+// view's camera handle, the frame's most frequent handle among the scene-phase records); the rest are counted
+// skipped_other_view (a target-monitor view would otherwise be projected with the scene camera).
 namespace x3m::engine_plumes {
 namespace ee = x3m::engine_effects::core;
 
@@ -92,7 +99,9 @@ constexpr float halo_low = .3f, halo_high = .8f;  // I_halo(s) = lerp(0.3, 0.8, 
 constexpr float flicker_amplitude = .1f;    // +-10 % on the core
 constexpr unsigned flicker_frames = 8;      // one noise cell per 8 frames (7.5 Hz at 60 fps)
 constexpr float soft_core = .15f, soft_halo = 1.f; // SOFT x value (the pixel program's lane terms)
-constexpr float halo_reach = 3.f;           // the quads reach 3 sigma past the core
+constexpr float halo_reach = 2.25f;         // the quads reach 2.25 local sigma past the core (the halo window's zero)
+constexpr float disc_min_weight = .15f;     // |axis . to_camera| under which no disc is drawn
+constexpr float disc_fade_band = .15f;      // its radiance fades in over 0.15..0.3
 constexpr float occlusion_bias = .5f;       // x value x max(0, axis . to_camera): the exhaust facing the camera clears its hull
 constexpr float chase_cap = .12f;           // x H: the largest projected plume
 constexpr float chase_fade_band = .2f;      // the last 20 % before the cap
@@ -119,7 +128,8 @@ struct Vertex {
     float position[3];  // view space (x right, y up, z forward), before the jittered projection
     float local[4];     // u | x, w | y (world units), L, core radius r0 at the nozzle
     float shape[4];     // halo sigma at the nozzle, value (the SOFT base), occlusion bias (view units), kind (0 axial, 1 disc)
-    float intensity[4]; // I_core (x flicker x weights), I_halo (x weights), the axis's view z component (axial), 0
+    float intensity[4]; // I_core (x flicker x weights), I_halo (x weights), the axis's view z component (axial), the
+                        // nozzle's view z
     std::uint32_t tint; // 0xAARRGGBB of the mean colour, largest channel 255
     std::uint32_t peak; // 0xAARRGGBB of the peak colour (the core centre)
 };
@@ -136,7 +146,39 @@ struct View {
 struct BuildStats {
     unsigned nozzles = 0, vertices = 0, discs = 0, steering = 0, capped = 0, faded = 0;
     unsigned culled_rows = 0, culled_behind = 0, culled_small = 0, culled_idle = 0, culled_capacity = 0;
+    unsigned skipped_other_view = 0;
 };
+// The per-record view tags beside the records (engine_effects_core.h Ring camera / scene) and the scene view's camera
+// handle: a record is drawn when it was recorded in the scene phase with that handle.
+struct ViewFilter {
+    const std::uint32_t* camera = nullptr;
+    const std::uint8_t* scene = nullptr;
+    std::uint32_t handle = 0;
+};
+// The scene view's camera handle: the most frequent handle among the scene-phase records (ties: the first seen; at
+// most 8 distinct handles are tallied, later ones count against nothing). False when no record is in the scene phase.
+inline bool scene_view_camera(const std::uint32_t* camera, const std::uint8_t* scene, unsigned count,
+                              std::uint32_t* out) noexcept {
+    std::uint32_t handles[8];
+    unsigned votes[8], distinct = 0;
+    for (unsigned i = 0; i < count; ++i) {
+        if (!scene[i]) continue;
+        unsigned k = 0;
+        while (k < distinct && handles[k] != camera[i]) ++k;
+        if (k == distinct) {
+            if (distinct == 8) continue;
+            handles[distinct] = camera[i];
+            votes[distinct++] = 0;
+        }
+        ++votes[k];
+    }
+    if (!distinct) return false;
+    unsigned best = 0;
+    for (unsigned k = 1; k < distinct; ++k)
+        if (votes[k] > votes[best]) best = k;
+    *out = handles[best];
+    return true;
+}
 
 // The record's colours: the body's normalised mean / peak (engine_bodies.json mean_linear / peak_linear), else the
 // cluster tint for both.
@@ -321,10 +363,15 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         detail::cross(a, a[1] * a[1] < .81f ? up : right, n);
         detail::normalise(n, &nl);
     }
+    // The axial trapezoid: the halo window reaches 0 at 2.25 local sigma from the segment nozzle..tip (sigma tapering to
+    // half at the tip), the core tapers from r0 to 0; the width is linear in u through (0, max(reach0, r0) + 1 px) and
+    // (front, reach_tip + 1 px), which covers the nozzle's half disc, the side band and the tip's half disc.
     const float pixel = 1.f / ppu;
-    const float across = (halo_reach * sigma > r0 + pixel ? halo_reach * sigma : r0 + pixel);
-    const float back = halo_reach * sigma + pixel, front = L + halo_reach * sigma + pixel;
-    const float corners[4][2] = {{-back, -across}, {-back, across}, {front, -across}, {front, across}};
+    const float reach0 = halo_reach * sigma, reach_tip = .5f * reach0;
+    const float back = reach0 + pixel, front = L + reach_tip + pixel;
+    const float width0 = (reach0 > r0 ? reach0 : r0) + pixel, width_front = reach_tip + pixel;
+    const float width_back = width0 + (width0 - width_front) * back / front;
+    const float corners[4][2] = {{-back, -width_back}, {-back, width_back}, {front, -width_front}, {front, width_front}};
     for (unsigned c = 0; c < 4; ++c) {
         Vertex& v = out[c];
         const float u = corners[c][0], w = corners[c][1];
@@ -340,13 +387,16 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.intensity[0] = i_core;
         v.intensity[1] = i_halo;
         v.intensity[2] = a[2];
-        v.intensity[3] = 0.f;
+        v.intensity[3] = o[2];
         v.tint = tint;
         v.peak = hot;
     }
-    // The disc, weighted by |a . e|; a side view (weight under 2 %) collapses it to one point (no pixel).
-    const float dw = facing < 0.f ? -facing : facing;
-    const bool disc_drawn = dw >= .02f;
+    // The disc, weighted by |a . e| and faded in over 0.15..0.3; under 0.15 it collapses to one point (no pixel).
+    const float facing_abs = facing < 0.f ? -facing : facing;
+    const bool disc_drawn = facing_abs >= disc_min_weight;
+    float fade_in = (facing_abs - disc_min_weight) * (1.f / disc_fade_band);
+    fade_in = fade_in < 0.f ? 0.f : fade_in > 1.f ? 1.f : fade_in;
+    const float dw = facing_abs * fade_in;
     const float half = (halo_reach * sigma > disc + pixel ? halo_reach * sigma : disc + pixel) * (disc_drawn ? 1.f : 0.f);
     const float dc[4][2] = {{-half, -half}, {-half, half}, {half, -half}, {half, half}};
     for (unsigned c = 0; c < 4; ++c) {
@@ -365,7 +415,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.intensity[0] = i_core * dw;
         v.intensity[1] = i_halo * dw;
         v.intensity[2] = 0.f;
-        v.intensity[3] = 0.f;
+        v.intensity[3] = o[2];
         v.tint = tint;
         v.peak = hot;
     }
@@ -375,10 +425,11 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
 }
 
 // The frame's records into `out` (capacity in nozzles); returns the nozzles written (8 vertices each). `body` maps a
-// record's table index to its entry (null: none).
+// record's table index to its entry (null: none); `filter` (null: every record) keeps the scene view's records.
 using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
-                      std::uint32_t frame, Vertex* out, unsigned capacity, BuildStats* stats) noexcept {
+                      std::uint32_t frame, Vertex* out, unsigned capacity, BuildStats* stats,
+                      const ViewFilter* filter = nullptr) noexcept {
     BuildStats local{};
     BuildStats& st = stats ? *stats : local;
     st = BuildStats{};
@@ -392,6 +443,10 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
         if (written >= capacity || written >= max_nozzles) {
             st.culled_capacity += count - i;
             break;
+        }
+        if (filter && (!filter->scene[i] || filter->camera[i] != filter->handle)) {
+            ++st.skipped_other_view;
+            continue;
         }
         const ee::Record& r = records[i];
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;

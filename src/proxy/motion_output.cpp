@@ -2406,12 +2406,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Engine plumes (motion_output_engine_plumes_inc.h): the armed stage draws the frame's glow-jet records as
             // the first act of the run's bracket, on the FP16 route only (RT0 is the texture the resolve reads); it
             // reads the lane the run reads.
-            if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr) && engine_ring_->count) {
+            if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
+                engine_ring_->count) {
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
                 in.stage_context = this;
-                plumes_lane_ = depth;
-                plumes_width_ = in.width;
-                plumes_height_ = in.height;
             }
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
@@ -4108,10 +4106,13 @@ void MotionOutput::before_reset() noexcept {
     sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
     // Engine plumes: every device object of the pass goes (programs, declaration, DEFAULT buffers); the next armed
-    // resolve after a successful Reset recreates them; the attach refusal and the disarm window start over.
+    // resolve after a successful Reset recreates them; the attach refusal, the disarm window and the failure count
+    // start over.
     if (plumes_) taa_call([&] { plumes_->before_reset(); });
     plumes_attach_failed_ = false;
     plumes_disarmed_until_ = 0;
+    plumes_failures_ = 0;
+    plumes_failed_out_ = false;
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
     fog_sector_ = {};

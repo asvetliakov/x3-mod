@@ -145,6 +145,14 @@ the hull. A `glow_through` tunable (0–0.3 of the halo drawn regardless of the 
 knob if the user wants the game-like shine-through. Two-pass alternatives (a per-nozzle visibility probe like the
 engine's flare test, or a depth pre-pass of the plumes) buy nothing over the lane and were not taken.
 
+Lane precision: the `R32F` fallback stores z/w = m22 + m32 / z (m22 ≈ 1, m32 ≈ −6), so one float step near 1
+(≈ 6e-8) is a view-depth step of about z² · 6e-8 / 6: ≈ 0.04 units at 2 km, ≈ 4 units at 20 km [i]. Against the
+halo's SOFT of one `value` that is harmless for ship-sized values, but a small value far away gets a coarse cut;
+the four-channel lane (`.b` = view depth, the sun lane's form, the user's launch) has no such loss and is the
+preferred source. Jitter: the plumes are rasterised under the scene's jitter (the routed draws' projection, as the
+sun pass does), so they land where the lane and the scene's own pixels are; section 5's "unrouted sentinel pixels"
+describes their history handling in the resolve, not an unjittered raster (a wording deviation, built this way).
+
 Interactions: the ship's own LOD draws write the lane whatever LOD they are at (the lane covers the conventional
 opaque union [m, material-coverage]); the suppressed jets write nothing. Unrouted near-pass opaque draws do not
 occlude (the motes' accepted gap). Fog: the stage runs after fog, so a plume is not fogged; phase 3 applies the
@@ -228,7 +236,7 @@ planned.
 
 **Phase 2 as built (2026-10-01; ledger [engine-effects.md](../verification/engine-effects.md), "Phase 2").** Code:
 `src/proxy/engine_plumes_core.h` (presets, the F6 latch, the CPU builder), `src/renderer/engine_plumes_pass.{h,cpp}`,
-`src/effects/engine_plume_{vs,ps}.hlsl` (vs 11 / ps 93 slots [m]), `src/proxy/motion_output_engine_plumes_inc.h`
+`src/effects/engine_plume_{vs,ps}.hlsl` (vs 10 / ps 92 slots after the review fixes [m]), `src/proxy/motion_output_engine_plumes_inc.h`
 (arming, census) and `TemporalPass::FrameInputs::stage_callback`. Where the phase-2 brief set numbers that differ from
 section 3 above, the brief's are built: core radius 0.15 value (not 0.12) tapering to 0 at L, halo `exp(-d/sigma)` with
 sigma 0.5 value at the nozzle (half at the tip), a camera-facing disc of diameter 0.5 value, the flicker evaluated per
@@ -241,6 +249,19 @@ pass in front of the hull at a tilt), pulled 0.5 value x max(0, axis . to_camera
 exhaust clears its own hull; RCS records draw unlengthened with radiance x z and are skipped below z 0.02; the screen
 minimums (core radius 1.5 px, main-jet L 6 px, cull under 1.5 px) apply after the cap. The record's c4-6 origin and
 axis are taken to be in the camera latch's world (`camera_scene_` rows) [i: settled by flight B's first frame].
+
+Review fixes (2026-10-01, ledger "Phase 2 review fixes"): the nearest axis point's depth is the nozzle's view z plus
+the axis's view z x clamp(u, 0, L) (the billboard's side vector has a view z component off-centre; its omission let
+the core show through a hull near the screen edge); records carry the scope's camera handle and whether they were
+recorded in the scene phase, and only the scene view's are drawn (the frame's most frequent camera handle among the
+scene-phase records; the rest count `skipped_other_view`) [i: whether a target-monitor view issues glow jets at all is
+settled by flight B's F8 with a target selected]; the lane's size and format are checked at arming (reason `lane`);
+three consecutive failed stage frames refuse until Reset (`failed_until_reset`, the third `engine_plumes_failed` row
+final=1); the pass's own reset-pending flag fails the stage with `E_FAIL` (only the stage is skipped, the resolve goes
+on; lost codes the device returned still fail the resolve); NEAR is the latch's -m32/m22 (6 in the game, not 1); the
+axial quad is a trapezoid reaching 2.25 local sigma (the halo window, now linear in d / (2.25 sigma), reaches 0 there)
+and the disc is drawn only from |axis . to_camera| 0.15, fading in to 0.3: half the rasterised area [m, host] and
+0.276 -> 0.158 ms (1080p) / 0.281 -> 0.060 ms (5120x1440) at 100 nozzles [m].
 
 **Native Windows.** Documented D3D9 only: dynamic VBs, `DrawIndexedPrimitive`, vs_3_0/ps_3_0, `tex2Dlod` on the
 lane, FP16 post-pixel-shader blending behind `CheckDeviceFormat` (the motes' query), no VTF, instancing, point

@@ -10,7 +10,7 @@ struct Input {
     float3 position : POSITION;   // view space
     float4 local : TEXCOORD0;     // u | x, w | y (world units), L, core radius at the nozzle
     float4 shape : TEXCOORD1;     // halo sigma at the nozzle, value, occlusion bias, kind (0 axial, 1 disc)
-    float4 intensity : TEXCOORD2; // I_core, I_halo, the axis's view z component (axial), unused
+    float4 intensity : TEXCOORD2; // I_core, I_halo, the axis's view z component (axial), the nozzle's view z
     float4 tint : COLOR0;         // mean colour, largest channel 1
     float4 peak : COLOR1;         // peak colour (the core centre)
 };
@@ -18,7 +18,7 @@ struct Output {
     float4 position : POSITION;
     float4 local : TEXCOORD0;
     float4 shape : TEXCOORD1;
-    float4 view : TEXCOORD2;      // view z, I_core, I_halo, the axis's view z component
+    float4 view : TEXCOORD2;      // the nozzle's view z, I_core, I_halo, the axis's view z component
     float3 tint : TEXCOORD3;
     float3 peak : TEXCOORD4;
 };
@@ -29,7 +29,7 @@ Output main(Input i) {
                         0.5 * (z - limits.x), z);
     o.local = i.local;
     o.shape = i.shape;
-    o.view = float4(z, i.intensity.xyz);
+    o.view = float4(i.intensity.w, i.intensity.xyz);
     o.tint = i.tint.rgb;
     o.peak = i.peak.rgb;
     return o;

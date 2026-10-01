@@ -34,6 +34,7 @@ struct EnginePlumesFrame {
     const engine_effects::core::Record* records = nullptr;
     unsigned record_count = 0;
     engine_plumes::BodyLookup body = nullptr;
+    engine_plumes::ViewFilter filter{};     // null tags: every record is drawn
     engine_plumes::Preset preset = engine_plumes::default_preset;
     std::uint32_t frame = 0;                // the flicker's clock
 };
@@ -65,13 +66,15 @@ public:
         return device_ && caps_.enabled && !reset_pending_ && vs_ && ps_ && declaration_ && vb_ && ib_;
     }
     // Draws the frame's records (see the header comment for the state contract). S_FALSE with no device call when no
-    // record is drawable; a failed call leaves the report's failed step; D3DERR_DEVICELOST codes are passed through.
+    // record is drawable; a failed call leaves the report's failed step; D3DERR_DEVICELOST codes the device returned are
+    // passed through (the internal reset-pending flag fails with E_FAIL: only the stage is skipped, not the resolve).
     HRESULT run(const EnginePlumesFrame&, EnginePlumesReport*) noexcept;
     unsigned references() const noexcept;
     static constexpr UINT vertex_bytes = engine_plumes::max_vertices * UINT(sizeof(engine_plumes::Vertex));
     static constexpr UINT index_bytes = engine_plumes::max_nozzles * engine_plumes::indices_per_nozzle * 2u;
-#ifdef X3M_ENGINE_PLUMES_FIXTURE
-    // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the draw once.
+#if defined(X3M_ENGINE_PLUMES_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
+    // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the draw once, bit 2 fails
+    // every draw.
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
 #endif
 private:
