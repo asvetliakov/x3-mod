@@ -221,6 +221,12 @@ SHADERS = {
     'fog_dust_motes_look': dict(source=ROOT / 'src/fog/fog_dust_motes_look_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_dust_motes_look_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-dust-motes-look-program.json'),
+    # Engine plumes, phase 2 (docs/architecture/engine-effects-modern.md section 3; X3M_ENGINE_EFFECTS=plumes): the
+    # stage's vertex and pixel program (one indexed draw for every nozzle, the lane's soft occlusion in the pixel program).
+    'engine_plume_vs': dict(source=ROOT / 'src/effects/engine_plume_vs.hlsl', header=ROOT / 'src/renderer/engine_plume_vertex_program_inc.h',
+                            provenance=ROOT / 'verification/results/engine-plume-vertex-program.json', target='vs_3_0'),
+    'engine_plume_ps': dict(source=ROOT / 'src/effects/engine_plume_ps.hlsl', header=ROOT / 'src/renderer/engine_plume_pixel_program_inc.h',
+                            provenance=ROOT / 'verification/results/engine-plume-pixel-program.json'),
     'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
                                     header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
                                     provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),

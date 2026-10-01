@@ -538,6 +538,7 @@ void MotionOutput::release_resources() noexcept {
         fog_.reset();
         fog_frame_ = ~std::uint64_t(0);
     }
+    release_engine_plumes(); // the plume stage's programs and DEFAULT buffers (motion_output_engine_plumes_inc.h)
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ =
         false; // a new pass may be refused for another reason
     fog_motes_drawn_ = false;
@@ -2402,6 +2403,16 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.caller_scene_open = scene_open_;
             in.caller_stateblock_recording = shadow_.recording;
             in.caller_queries_idle = active_queries_ == 0;
+            // Engine plumes (motion_output_engine_plumes_inc.h): the armed stage draws the frame's glow-jet records as
+            // the first act of the run's bracket, on the FP16 route only (RT0 is the texture the resolve reads); it
+            // reads the lane the run reads.
+            if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr) && engine_ring_->count) {
+                in.stage_callback = &MotionOutput::engine_plumes_callback;
+                in.stage_context = this;
+                plumes_lane_ = depth;
+                plumes_width_ = in.width;
+                plumes_height_ = in.height;
+            }
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
             taa_->configure_timing(telemetry_);
@@ -2446,6 +2457,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             }
             release(composition_mask);
             const std::uint64_t run_ticks = stamp() - run_begin;
+            plumes_lane_ = nullptr; // borrowed for the callback only
             const auto diagnostics = taa_->diagnostics();
             t.result = injected ? hr : diagnostics.operation;
             t.restore = diagnostics.restoration;
@@ -4095,6 +4107,13 @@ void MotionOutput::before_reset() noexcept {
     lens_hold_ = {};
     sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
+    // Engine plumes: every device object of the pass goes (programs, declaration, DEFAULT buffers); the next armed
+    // resolve after a successful Reset recreates them; the attach refusal and the disarm window start over.
+    if (plumes_) taa_call([&] { plumes_->before_reset(); });
+    plumes_attach_failed_ = false;
+    plumes_disarmed_until_ = 0;
+    plumes_lane_ = nullptr;
+    plumes_armed_ = false;
     fog_sector_ = {};
     fog_cards_ = {};
     fog_card_ready_checked_ = fog_card_ready_ = false;
@@ -4130,6 +4149,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
         fog_->after_reset(result);
         fog_frame_ = ~std::uint64_t(0);
     }
+    if (plumes_) plumes_->after_reset(result);
     sun_apply_frame_ = ~std::uint64_t(0);
     depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the
                                                // quad may run again
@@ -12263,4 +12283,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_sun_occlusion_inc.h"
 #include "motion_output_cull_small_props_inc.h"
 #include "motion_output_engine_effects_inc.h"
+#include "motion_output_engine_plumes_inc.h"
 } // namespace x3m

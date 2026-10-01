@@ -302,6 +302,17 @@ struct FrameInputs {
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query
+    // Stage (docs/architecture/engine-effects-modern.md section 3, the engine plumes; the dropped effects stage's slot):
+    // when set, called once inside the run's state bracket, after normalize (RT1+ and the depth surface unbound, RT0
+    // still the caller's target, every stream and sampler in the pass's state) and after the scene is open (the
+    // caller's or the pass's own), before any resolve draw. The callback draws into RT0 with documented calls only and
+    // returns its own HRESULT: S_FALSE means it touched no render state (the pass then skips its second normalize);
+    // anything else makes the pass normalize again so every later step sees the state it expects. A lost-device code
+    // fails the run; any other failure is reported in Diagnostics::stage_result and the run continues. Meant for the
+    // FP16 route (`color` is RT0's texture, so the draw is what the resolve reads). Null: the run is bit for bit the
+    // run without the field.
+    HRESULT (*stage_callback)(void* context, IDirect3DDevice9* device) noexcept = nullptr;
+    void* stage_context = nullptr;
 };
 struct Output {
     // Borrowed native objects; no AddRef. Valid only until next run, invalidate,
@@ -404,6 +415,11 @@ struct Diagnostics {
                                         // history
     std::uint64_t ticks_draw = 0;       // normalize, scene bracket, decoder/resolve/mask quads
     std::uint64_t ticks_apply = 0;      // binding restoration plus state block Apply
+    // Stage (FrameInputs::stage_callback): whether the last run called it, its HRESULT (S_FALSE when not called) and
+    // the callback's QPC ticks (timed runs only; the engine plumes time their own run).
+    bool stage_ran = false;
+    HRESULT stage_result = S_FALSE;
+    std::uint64_t ticks_stage = 0;
 };
 class TemporalPass {
 public:

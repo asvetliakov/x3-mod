@@ -12,6 +12,9 @@ engine_effects_fixture.exe, then runs the fixture four times in the selected bot
   unpatched   off + --debug with the identity but without the call redirects (engine_effects_patch not installed):
               every glow-jet draw forwarded as forwarded_patch_missing, nothing recorded
   timing      off without the census: per-draw microseconds of the suppressed, not_jet and non-candidate paths
+  plumes      plumes + preset strong + --debug on a device without --hdr --taa: suppressed as off (records, pixels),
+              the plume stage refuses to arm with one engine_plumes_state row (reason hdr_taa_path, glow suppressed),
+              engine_stage rows at the engine_frame cadence (armed=0, nothing drawn, preset strong)
 Each run's directory holds x3m/engine_bodies.json, written here by tools/effects/engine_bodies.py's dumps() for the
 synthetic body manager the fixture builds (default path: <EXE directory>\\x3m\\engine_bodies.json). The effects pair's
 program bytes are local inputs (/tmp/x3-shader-sweep/programs, never in the repository). The fixture's CHECK lines and
@@ -46,13 +49,15 @@ PROGRAMS = {'vs': Path('/tmp/x3-shader-sweep/programs/vs_d5e1c75351ed3f04.bin'),
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2']
 MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X3M_ENGINE_EFFECTS='native', X3M_DEBUG='1'),
          'unverified': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'unpatched': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'),
-         'timing': dict(X3M_ENGINE_EFFECTS='off')}
+         'timing': dict(X3M_ENGINE_EFFECTS='off'),
+         'plumes': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1')}
 SCENARIO_FRAMES = (1, 2, 3, 5, 6, 7, 8, 9, 10, 11)
 OVERFLOW_FRAME, RING = 4, 1024
 # The production sources the fixture exercises: their content hashes and the checkout's commit go into the record
 # (test_engine_effects compares them with the tree).
 PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.h', 'src/proxy/engine_effects_core.h',
-                      'src/proxy/engine_effects_option.h', 'src/proxy/motion_output_engine_effects_inc.h')
+                      'src/proxy/engine_effects_option.h', 'src/proxy/motion_output_engine_effects_inc.h',
+                      'src/proxy/motion_output_engine_plumes_inc.h', 'src/proxy/engine_plumes_core.h')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
 
@@ -142,7 +147,8 @@ def validate(mode, r):
         problems.append(f'{mode}: engine_effects_partial row with the route on')
     modes = rows(log, 'engine_effects_mode')
     out['mode_row'] = modes[0] if modes else None
-    expected_status = {'main': 'armed', 'native': 'native', 'unverified': 'executable_mismatch', 'unpatched': 'armed', 'timing': 'armed'}[mode]
+    expected_status = {'main': 'armed', 'native': 'native', 'unverified': 'executable_mismatch', 'unpatched': 'armed', 'timing': 'armed',
+                       'plumes': 'armed'}[mode]
     if len(modes) != 1 or modes[0].get('status') != expected_status:
         problems.append(f'{mode}: engine_effects_mode {modes}')
     if mode == 'timing':
@@ -151,6 +157,30 @@ def validate(mode, r):
             problems.append('timing: census rows without --debug')
         if len(out['timing']) != 3:
             problems.append(f'timing: {out["timing"]}')
+        return problems, out
+    plume_rows = rows(log, 'engine_effects_plumes') + rows(log, 'engine_plumes_state') + rows(log, 'engine_stage')
+    if mode != 'plumes' and plume_rows:
+        problems.append(f'{mode}: plume rows outside plumes: {plume_rows[:2]}')
+    if mode == 'plumes':
+        # Suppressed as off; the stage refuses to arm by configuration (no --hdr --taa in the seam) in one row and
+        # writes engine_stage at the engine_frame cadence; nothing drawn.
+        plumes = rows(log, 'engine_effects_plumes')
+        state = rows(log, 'engine_plumes_state')
+        stage = {int(r['frame']): r for r in rows(log, 'engine_stage')}
+        frames = {int(f['frame']): f for f in rows(log, 'engine_frame')}
+        out.update(plumes_row=plumes[0] if plumes else None, state_rows=state, stage_frames=sorted(stage))
+        if [(r.get('preset'), r.get('setting'), r.get('status'), r.get('stage')) for r in plumes] != [('strong', 'strong', 'ok', 'requested')]:
+            problems.append(f'plumes: engine_effects_plumes {plumes}')
+        if [(r.get('armed'), r.get('reason'), r.get('glow'), r.get('drawn')) for r in state] != [('0', 'hdr_taa_path', 'suppressed', 'none')]:
+            problems.append(f'plumes: engine_plumes_state {state}')
+        for frame in (1, 2):
+            f, g = frames.get(frame, {}), stage.get(frame, {})
+            if (f.get('mode'), f.get('records'), f.get('suppressed')) != ('plumes', '4', '4'):
+                problems.append(f'plumes: engine_frame {frame} {f}')
+            if (g.get('armed'), g.get('ran'), g.get('nozzles'), g.get('records'), g.get('preset')) != ('0', '0', '0', '4', 'strong'):
+                problems.append(f'plumes: engine_stage {frame} {g}')
+        if sorted(stage) != sorted(frames):
+            problems.append(f'plumes: engine_stage frames {sorted(stage)} != engine_frame frames {sorted(frames)}')
         return problems, out
     if mode == 'unverified':
         if rows(log, 'engine_draw') or rows(log, 'engine_frame') or rows(log, 'engine_effects_device'):

@@ -140,12 +140,12 @@ class GpuSyncTimingWiring(unittest.TestCase):
              'Meter': (1, 1, 0), 'HdrReadback': (1, 1, 0), 'Bloom': (2, 2, 0), 'Present': (1, 1, 0),
              'TaaCopy': (1, 1, 0), 'TaaMask': (1, 1, 0), 'TaaBox': (1, 1, 0), 'TaaResolve': (1, 1, 0), 'TaaDisplay': (1, 1, 0),
              'FogMarch': (0, 0, 1), 'FogComposite': (0, 0, 1), 'FogRepair': (0, 0, 1),
-             'TaaMaskTests': (0, 0, 1), 'TaaMaskX': (0, 0, 1), 'TaaMaskY': (0, 0, 1)}
+             'TaaMaskTests': (0, 0, 1), 'TaaMaskX': (0, 0, 1), 'TaaMaskY': (0, 0, 1), 'EnginePlumes': (1, 1, 0)}
 
     def test_every_pass_has_begin_and_end_sites_in_production(self):
         sources = ''.join(source_text(ROOT / path) for path in (
             'src/proxy/capture.cpp', 'src/proxy/motion_output.cpp', 'src/proxy/motion_output_fog_inc.h', 'src/renderer/hdr_pass.cpp', 'src/renderer/fog_pass.cpp',
-            'src/renderer/temporal_pass.cpp'))
+            'src/renderer/temporal_pass.cpp', 'src/proxy/motion_output_engine_plumes_inc.h'))
         names = re.findall(r'^\s+(\w+)(?: = 0)?,\s+//', source_text(CORE).split('enum Pass')[1].split('pass_count')[0], re.M)
         self.assertEqual(names, list(self.SITES))
         for name in names:

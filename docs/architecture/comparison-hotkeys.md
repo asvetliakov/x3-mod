@@ -28,6 +28,18 @@ executed with and without the debug tier). Ledger lines (`docs/verification/`): 
 `directional-shadows.md`, `volumetric-fog.md`, `telemetry.md`, `window-and-cursor.md`, `screen-emission.md`,
 `hdr-scene-path.md`.
 
+## Engine plume presets (2026-10-01)
+
+**Ctrl+Alt+F6** (Shift up) cycles the strength preset of the proxy's engine plumes, restrained → default → strong →
+restrained ([engine-effects-modern.md](engine-effects-modern.md), section 6; ini `engine_effects_preset`, launch value
+via `--engine-effects-preset`). Added by the phase-2 brief after the 2026-09-26 removal: it is the only key besides F8,
+and it is polled only on a device with `engine_effects = plumes` requested (otherwise no key state is read). F6 is read
+every frame; the modifiers and the foreground window only on a fresh F6 edge (`engine_plumes::PresetKey`: a held F6
+never becomes a press by changing modifiers, an unfocused press does not arm). Each press logs one
+`engine_plumes_preset` row (`preset=`, `previous=`, `source=hotkey`). The native/off/plumes mode is load-time and has
+no key. Host proof: `verification/analysis/test_engine_plumes.py` (`PresetHotkey`: the production block executed with
+stubbed keys) and `test_comparison_hotkeys.py` (F8 plus exactly this block poll keys).
+
 The sections below are the history of the keys before their removal.
 
 ## History: same-run exposure and bloom comparisons

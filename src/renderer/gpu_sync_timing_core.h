@@ -55,6 +55,9 @@ enum Pass : unsigned {
                   // also writes the depth history (S1)
     TaaMaskX,     // the separable maxima / minima along x
     TaaMaskY,     // the separable maxima / minima along y and the composition
+    // The engine plumes stage (TemporalPass's stage callback, the first act of the resolve bracket), appended likewise:
+    // its pair adds its sync floor to Taa.
+    EnginePlumes, // the plume stage's VB build and its one indexed draw
     pass_count
 };
 constexpr unsigned boundary_count = 2 * pass_count; // one event query per boundary (begin, end) of every pass
@@ -66,7 +69,8 @@ inline const char* pass_name(unsigned pass) noexcept {
         "fog_fill",      "fog_route",    "motes",          "taa",         "hdr_writeback",
         "meter",         "hdr_readback", "bloom",          "present",     "taa_copy",
         "taa_mask",      "taa_box",      "taa_resolve",    "taa_display", "fog_march",
-        "fog_composite", "fog_repair",   "taa_mask_tests", "taa_mask_x",  "taa_mask_y"};
+        "fog_composite", "fog_repair",   "taa_mask_tests", "taa_mask_x",  "taa_mask_y",
+        "engine_plumes"};
     return pass < pass_count ? names[pass] : "?";
 }
 constexpr bool once_per_frame(unsigned pass) noexcept {

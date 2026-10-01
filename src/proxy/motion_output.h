@@ -39,6 +39,7 @@
 #include "../renderer/sun_occlusion_pass.h"
 #include "lens_flare_gain.h"
 #include "engine_effects_core.h"
+#include "../renderer/engine_plumes_pass.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
 #include "fog_prefill.h"
@@ -1183,6 +1184,14 @@ public:
     void configure_engine_effects(bool hook, bool suppress, bool census) noexcept;
     // The frame's recorded glow-jet draws (phase 2's stage reads them inside the resolve); null while off.
     const engine_effects::core::Ring* engine_effects_ring() const noexcept { return engine_hook_ ? engine_ring_ : nullptr; }
+    // Engine plumes, phase 2 (motion_output_engine_plumes_inc.h; docs/architecture/engine-effects-modern.md sections
+    // 3-6): requested = X3M_ENGINE_EFFECTS=plumes with the suppression on (configure_engine_effects' suppress), the
+    // load-time preset. Process-start values; the stage arms per frame at the resolve.
+    void configure_engine_plumes(bool requested, engine_plumes::Preset preset) noexcept;
+    bool engine_plumes_requested() const noexcept { return plumes_requested_; }
+    // Ctrl+Alt+F6: the next preset (restrained -> default -> strong -> restrained), one engine_plumes_preset row; the
+    // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
+    int engine_plumes_cycle_preset() noexcept;
     // Small-prop cull (X3M_CULL_SMALL_PROPS=on with X3M_CULL_SMALL_PARTS_PX, cull_small_props_core.h): process-start
     // values validated by the caller; off = one bool test per scene draw.
     void configure_cull_small_props(bool on, float px) noexcept {
@@ -1710,6 +1719,30 @@ private:
     bool engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
+    // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one
+    // engine_plumes_state row per change of the armed state or its reason; refused at attach until Reset; a failed
+    // stage frame disarms 64 frames with one engine_plumes_failed row), the lane the callback borrows, the frame's
+    // report and timing for the engine_stage row.
+    bool plumes_requested_ = false, plumes_attach_failed_ = false, plumes_armed_ = false, plumes_ran_ = false;
+    bool plumes_state_logged_ = false, plumes_logged_armed_ = false, plumes_fenced_ = false;
+    bool plumes_evaluated_ = false; // this frame's resolve took the arming decision
+    const char* plumes_reason_ = "pending";
+    const char* plumes_logged_reason_ = "";
+    engine_plumes::Preset plumes_preset_ = engine_plumes::default_preset;
+    std::unique_ptr<renderer::EnginePlumesPass> plumes_;
+    renderer::EnginePlumesReport plumes_report_{};
+    IDirect3DTexture9* plumes_lane_ = nullptr; // the completed RT2 the resolve reads (borrowed for the callback)
+    UINT plumes_width_ = 0, plumes_height_ = 0;
+    std::uint64_t plumes_disarmed_until_ = 0;
+    float plumes_stage_us_ = 0.f;
+    static constexpr std::uint64_t plumes_disarm_frames = 64;
+    bool engine_plumes_arm(bool fp16_route) noexcept; // this frame's arming decision (at the resolve)
+    bool attach_engine_plumes() noexcept;
+    void release_engine_plumes() noexcept;
+    void note_engine_plumes_state(bool armed, const char* reason) noexcept;
+    static HRESULT engine_plumes_callback(void* context, IDirect3DDevice9*) noexcept;
+    HRESULT run_engine_plumes() noexcept;
+    void log_engine_stage() noexcept;
     bool lens_gain_caps_ = false;
     unsigned lens_gained_ = 0, lens_gain_refused_ = 0, lens_gain_logged_ = 0;
     // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, skipped

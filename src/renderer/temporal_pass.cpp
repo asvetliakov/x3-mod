@@ -711,6 +711,9 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
                                                              .ticks_copy_depth = diagnostics_
                                                                                      .ticks_draw = diagnostics_
                                                                                                        .ticks_apply = 0;
+    diagnostics_.stage_ran = false;
+    diagnostics_.stage_result = S_FALSE;
+    diagnostics_.ticks_stage = 0;
     auto fail = [&](HRESULT hr) {
         invalidate();
         diagnostics_.operation = hr;
@@ -1098,6 +1101,19 @@ HRESULT TemporalPass::run(const FrameInputs& in, Output* out) noexcept {
     if (SUCCEEDED(hr) && !in.caller_scene_open) {
         hr = call<SceneFn>(BeginScene)(d);
         own_scene = SUCCEEDED(hr);
+    }
+    // Stage (FrameInputs::stage_callback): the caller's draw into the still-bound RT0, the first act of the bracket once
+    // the scene is open; normalize again unless it touched nothing (S_FALSE). A lost device fails the run through hr;
+    // any other failure is the caller's to report and the resolve goes on.
+    if (SUCCEEDED(hr) && in.stage_callback) {
+        const std::uint64_t stage_mark = stamp();
+        diagnostics_.stage_ran = true;
+        diagnostics_.stage_result = in.stage_callback(in.stage_context, d);
+        if (diagnostics_.stage_result == D3DERR_DEVICELOST || diagnostics_.stage_result == D3DERR_DEVICENOTRESET)
+            hr = diagnostics_.stage_result;
+        else if (diagnostics_.stage_result != S_FALSE)
+            hr = normalize(in.width, in.height);
+        diagnostics_.ticks_stage = stamp() - stage_mark;
     }
     // Enhanced RT2 retains R32F histories. The identity program point-samples
     // the two- or four-channel source; R32F stores only .r, exactly preserving

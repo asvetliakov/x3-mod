@@ -464,6 +464,11 @@ int main(int argc, char** argv) {
         for (unsigned frame = 9; frame <= 11; ++frame) f.scenario(frame, "main", true, true); // past the census's eight frames
         // Frames 12..316 without a candidate: engine_frame rows at most once per 300 such frames (frames 0 and 300).
         for (unsigned frame = 12; frame <= 316; ++frame) f.warmup();
+    } else if (mode == "plumes") {
+        // plumes on a device without --hdr --taa: suppressed exactly as off (records, pixels), the stage refuses to arm
+        // (the runner checks the engine_plumes_state / engine_stage rows).
+        check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 1, "plumes_hook_and_suppress_armed");
+        for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "plumes", true, true);
     } else if (mode == "native") {
         check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 0, "native_census_hook_without_suppression");
         for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "native", false, false);

@@ -840,6 +840,18 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-10-01: engine plumes, phase 2 (`--engine-effects plumes`)
+
+The plume stage ([engine-effects-modern.md](engine-effects-modern.md) sections 3-6) uses documented D3D9 only: one
+DEFAULT `DYNAMIC | WRITEONLY` vertex buffer locked with `D3DLOCK_DISCARD`, a static 16-bit index buffer, one
+`DrawIndexedPrimitive`, vs_3_0 / ps_3_0 (`VPOS`, `dsx`/`dsy`, `texldl` of the lane), `D3DDECLTYPE_D3DCOLOR`, ONE/ONE
+blending gated by `CheckDeviceFormat(..., D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING, D3DFMT_A16B16G16R16F)` against the
+adapter's display format (the motes' query); no instancing, VTF, point sprites or MRT. A refused capability leaves
+the stage off with one row (the glow stays suppressed: the off look). The Ctrl+Alt+F6 preset key reads
+`GetAsyncKeyState`, `GetForegroundWindow` and `GetWindowThreadProcessId`. Cross-compiled (0 warnings, x87 PASS);
+the GPU fixture passed under Wine on bottle X3 ([engine-effects.md](../verification/engine-effects.md), "Phase 2");
+native Windows execution unverified.
+
 ## 2026-10-01: engine effects phase 1a (`--engine-effects`, unset = native)
 
 The glow-jet recogniser ([engine-effects-modern.md](engine-effects-modern.md) sections 1-2) adds no D3D call on the

@@ -1,11 +1,12 @@
 #pragma once
 #include <cstdint>
 #include "engine_effects_core.h"
+#include "engine_plumes_core.h"
 
-// Engine effects, phase 1a (docs/architecture/engine-effects-modern.md sections 1, 2 and 5): the process-wide part of
+// Engine effects, phases 1a and 2 (docs/architecture/engine-effects-modern.md sections 1-6): the process-wide part of
 // the glow-jet suppression. The option X3M_ENGINE_EFFECTS=native|off|plumes (ini engine_effects, default native) is
-// read once at load and never toggled (a switch mid-flight would freeze native sprites and trails); plumes acts as
-// off in this phase and says so in one row. The per-draw recogniser, the record ring and the census rows live in the
+// read once at load and never toggled (a switch mid-flight would freeze native sprites and trails); plumes suppresses
+// like off and arms the proxy's plume stage (motion_output_engine_plumes_inc.h) with the preset read here. The per-draw recogniser, the record ring and the census rows live in the
 // motion route (motion_output_engine_effects_inc.h), which reads the shadow it already keeps. This module owns:
 // - the executable identity gate (object_trace::executable_verified(), evaluated at initialize): without it nothing
 //   is suppressed (fail closed);
@@ -17,9 +18,13 @@
 //   shrinks, grows or re-binds a name. Render thread only (the one that draws), so no synchronisation.
 namespace x3m::engine_effects {
 // Load path (initialize_log, after the config resolver): parses the option, checks the identity, logs one
-// engine_effects_mode row (and engine_effects_plumes for plumes). LastError preserved.
+// engine_effects_mode row (and, for plumes, one engine_effects_plumes row with the preset). LastError preserved.
 void initialize();
 core::Mode mode();
+// X3M_ENGINE_EFFECTS_PRESET=restrained|default|strong (ini engine_effects_preset), read once at initialize (only with
+// plumes); unset, refused or another mode = default. The plume stage's starting preset (Ctrl+Alt+F6 cycles it per
+// device).
+engine_plumes::Preset preset();
 // The motion route's gates: hook = the per-draw recogniser runs (off|plumes with the identity verified, or native
 // under --debug for the census); suppress = a recognised draw is not forwarded.
 bool hook_wanted();

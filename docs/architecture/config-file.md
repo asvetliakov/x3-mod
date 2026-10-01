@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects` (2026-10-01, see the end of this note) |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01, see the end of this note) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player
@@ -565,8 +565,10 @@ engine glow jets, emitter sprites, engine lens flares and engine trails, nothing
 on ships and nothing drawn instead (the phase-1 flight state). Missile engine glow jets are suppressed under `off` too
 (class 10 reaches the same JET child walk, and the draw-path recogniser has no class gate), while missile emitter
 sprites and trails stay native until a later phase (the call redirects skip only class 7); weapon trails are untouched.
-`plumes` = reserved for the proxy's own plumes and ribbons (phase 2, where missiles get plumes like ships) and treated
-as `off` until then. The DLL's value when nothing sets the key is
+`plumes` = `off` plus the proxy's own engine plumes (phase 2, ships and missiles: one batched draw in the TAA resolve's
+step-0 bracket, softly occluded by the depth lane; ribbons arrive in phase 3); on a device that cannot arm the stage
+(no `--hdr --taa`, no FP16 blending, the suppression off) it degrades to the `off` look with one `engine_plumes_state`
+row. The DLL's value when nothing sets the key is
 `native`, and the launcher's default flight sends nothing, so the bare DLL still equals the default flight; the
 launcher drops an inherited shell value unless the option is given, refuses the option under `--vanilla`, and in player
 mode (`--config`) sends it only when given. Both suppressing values read `<game>/x3m/engine_bodies.json` (generated
@@ -578,3 +580,15 @@ redirects are live (`engine_effects_patch::installed()`); otherwise every glow-j
 `forwarded_patch_missing`, so the glow never disappears while the native sprites and trails stay. The launch prints `engine bodies: missing | unreadable |
 ok (N bodies, M listed but not loadable, ...)` only for `off` and `plumes`. The template entry and its section come
 from the schema (`tools/config/schema.py`, regenerated with `generate.py`).
+
+## `engine_effects_preset` (2026-10-01, engine-effects phase 2)
+
+Key `engine_effects_preset`, environment `X3M_ENGINE_EFFECTS_PRESET`, launcher `--engine-effects-preset
+restrained|default|strong` ([engine-effects-modern.md](engine-effects-modern.md), sections 3 and 6). The strength of the
+proxy's engine plumes under `engine_effects = plumes`: `restrained`, `default` and `strong` scale the core and halo
+radiance and the halo width by 0.6, 1 and 1.5. Exactly one of the three words in lower case; anything else is refused
+to `default` with `status=invalid_setting` on the `engine_effects_plumes` row. Read once at load and only with
+`plumes`; the DLL's value when nothing sets it is `default`, and the launcher sends it only when given (an inherited
+shell value is dropped, refused under `--vanilla`). In flight **Ctrl+Alt+F6** cycles restrained → default → strong
+per device (one `engine_plumes_preset` row per press, [comparison-hotkeys.md](comparison-hotkeys.md)); the
+native/off/plumes mode itself is never toggled.
