@@ -1,12 +1,14 @@
 # x3m-regenerate: rebuild the mod-dependent data after installing mods
 
-x3-modern ships two kinds of data that depend on the game files, including any
+x3-modern ships three kinds of data that depend on the game files, including any
 mods: the **fog families** (volumetric fog colours for nebula types the renderer
-does not know, `x3m/fog-families.bin`) and the **merged-LOD overlay** (simplified
+does not know, `x3m/fog-families.bin`), the **merged-LOD overlay** (simplified
 distant versions of ships and stations, the `addon/NN.cat/.dat` catalogues with an
 `.x3m-lod.json` marker, plus `addon/mods/<mod>-x3m-lod.cat/.dat` for a mod
-selected in the start menu). After you install, update or remove a mod, run
-`x3m-regenerate` once. It regenerates both and overwrites the previous results.
+selected in the start menu) and the **engine body table** (size and colour of
+every engine glow body, `x3m/engine_bodies.json`, read by the `engine_effects`
+setting). After you install, update or remove a mod, run `x3m-regenerate` once.
+It regenerates all three and overwrites the previous results.
 
 ## Use
 
@@ -55,6 +57,9 @@ Game directories with longer paths, such as Steam's default, are not affected. D
   catalogues pushes the overlay to the next free numbers; old slots become empty
   catalogues (`retired`) or are removed.
 - `LOD summary` / `fog summary`: the counts.
+- `engine bodies summary: N bodies (<colour> n, ...), M listed but not loadable`:
+  the engine glow bodies of the game's body list with their colour groups; the
+  log names each body that could not be read (`engine body not loadable: ...`).
 - `recovered interrupted write of addon/NN.cat`: the previous run was killed
   while writing (window closed, power loss); the previous overlay was put back
   and the run continued normally.
@@ -88,6 +93,7 @@ With the game closed, delete in the game directory:
 
 - `x3m/fog-families.bin`, `x3m/fog-families.json` and their `.previous` copies
   (the renderer falls back to its 14 built-in fog families);
+- `x3m/engine_bodies.json` and `x3m/engine_bodies.json.previous`;
 - every `addon/NN.cat` / `addon/NN.dat` that has an `addon/NN.x3m-lod.json` marker
   beside it, the marker itself, and `addon/x3m-lod-batch.json`,
   `addon/x3m-lod-batch-summary.txt` and `addon/x3m-lod-batch-bodies.txt`;

@@ -12,7 +12,10 @@ double-click it. It starts at once, needs no answers, and runs, in order:
   2. LOD overlay    = tools/analysis/lod_overlay.py --batch --sync --mod auto --install
                       (addon/NN.cat/.dat + marker, the derived addon/mods/<mod>-x3m-lod copy; bodies whose
                       inputs and tool settings are unchanged are reused, every other one is rebaked)
-  3. fog check      = fog_families.py --check: step 2 changes the numbered catalogues, so the fog record's
+  3. engine bodies  = tools/effects/engine_bodies.py on the installed view (the x3m LOD overlay slots excluded):
+                      <game>/x3m/engine_bodies.json, the per-body jet table --engine-effects off|plumes reads,
+                      one .previous kept
+  4. fog check      = fog_families.py --check: step 2 changes the numbered catalogues, so the fog record's
                       launch fingerprint is refreshed (otherwise the launcher reports the fog file stale)
 
 Every console line (timestamped) goes to <game>/x3m-regenerate.log too (rewritten each run); the tools'
@@ -48,7 +51,7 @@ GAME_EXE = 'x3ap.exe'
 
 if not getattr(sys, 'frozen', False):      # source checkout: the tools live beside this directory
     _ROOT = Path(__file__).resolve().parents[2]
-    for _path in (_ROOT / 'tools' / 'analysis', _ROOT / 'tools', _ROOT / 'tools' / 'build',
+    for _path in (_ROOT / 'tools' / 'analysis', _ROOT / 'tools', _ROOT / 'tools' / 'build', _ROOT / 'tools' / 'effects',
                   _ROOT / 'verification' / 'probe'):
         if str(_path) not in sys.path:
             sys.path.insert(0, str(_path))
@@ -343,6 +346,33 @@ def lod_step(log, game, jobs, name, where, memory_budget=None):
             + (f"; mod {pkg['name']}: {pkg['built']} baked + {pkg['reused']} unchanged" if pkg else ''))
 
 
+ENGINE_BODIES_FILE = 'engine_bodies.json'   # tools/manage.py ENGINE_BODIES_GAME_FILE, read by the DLL
+
+
+def engine_step(log, game):
+    """<game>/x3m/engine_bodies.json from engine_bodies.generate on the installed view (overlay slots excluded, so the
+    LOD step before it does not change the table): written to a .tmp beside it and renamed, the previous table kept
+    as engine_bodies.json.previous."""
+    import engine_bodies as eb
+    log.say('engine bodies: reading types/Bodies and the engine jet bodies')
+    try:
+        table = eb.generate(game)
+    except (eb.GenerateError, ValueError) as exc:
+        raise StepFailed(f'engine_bodies: {exc}') from None
+    target = game / 'x3m' / ENGINE_BODIES_FILE
+    target.parent.mkdir(exist_ok=True)
+    tmp = target.with_name(target.name + '.tmp')
+    tmp.write_text(eb.dumps(table))
+    if target.is_file():
+        os.replace(target, target.with_name(target.name + '.previous'))
+    os.replace(tmp, target)
+    for m in table['missing']:
+        log.detail(f"engine body not loadable: {m['name']} ({m['reason']})")
+    c = table['counts']
+    log.say(f"engine bodies summary: {c['bodies']} bodies ({', '.join(f'{k} {n}' for k, n in sorted(c['cluster'].items()))}),"
+            f" {c['missing']} listed but not loadable; wrote x3m/{ENGINE_BODIES_FILE}")
+
+
 def fog_check_step(log, game):
     import fog_families as ff
     try:
@@ -390,7 +420,8 @@ def run(game, jobs, log, memory_budget=None):
     name, where = selected_mod(game)
     package_cat = package_layer(game, name)
     for label, step in (('fog families', lambda: fog_step(log, game, jobs, package_cat)),
-                        ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget))):
+                        ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget)),
+                        ('engine bodies', lambda: engine_step(log, game))):
         log.say(f'== {label}')
         t0 = time.monotonic()
         try:
@@ -403,7 +434,7 @@ def run(game, jobs, log, memory_budget=None):
             failed.append(label)
             log.say(f'{label}: FAILED with an unexpected error:')
             log.say(traceback.format_exc().rstrip())
-    if not failed:
+    if not {'fog families', 'LOD overlay'} & set(failed):      # the engine table does not touch the catalogues
         log.say('== fog families check')
         fog_check_step(log, game)
     minutes = (time.monotonic() - started) / 60
@@ -411,7 +442,7 @@ def run(game, jobs, log, memory_budget=None):
         log.say(f'FAILED: {", ".join(failed)} after {minutes:.1f} min; a failed step keeps its previous results'
                 f' (details above and in {LOG_NAME})')
     else:
-        log.say(f'all done: fog families and LOD overlay regenerated in {minutes:.1f} min')
+        log.say(f'all done: fog families, LOD overlay and engine bodies regenerated in {minutes:.1f} min')
     return failed
 
 

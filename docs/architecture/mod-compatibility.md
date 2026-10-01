@@ -65,13 +65,47 @@ markers, catalogue stats, the small `.cat` hashes and `ModName` (about 50 ms,
 no `.dat` read), with the rebake command when stale
 ([lod-overlay-mods.md](lod-overlay-mods.md), "Implementation (2026-09-25)").
 
+## Engine bodies
+
+`--engine-effects off|plumes` ([engine-effects-modern.md](engine-effects-modern.md))
+reads `<game>/x3m/engine_bodies.json`, the per-body table that
+`tools/effects/engine_bodies.py` derives from the installed tree (every catalogue
+and loose file as the engine mounts them, the x3m LOD overlay slots excluded):
+one entry per loadable body of the `SBTYPE_JET` and `SBTYPE_SMALLJET` lists of
+the winning `types/Bodies`, with LOD-0 size, extent, blend and colour cluster.
+Entries are keyed by the `types/Bodies` spelling, not by file path: a name token
+as written (`effects\engines\fx_engine_argon_M3`, case and `\` kept; the proxy
+compares ASCII case-insensitively) and a number N as the engine's slot name
+`v\%05d`, the key the proxy resolves against the engine's body table at run
+time. A mod that changes `types/Bodies` or replaces jet bodies therefore needs
+the table regenerated: `manage.py install` writes it (and `uninstall` removes
+it), `x3m-regenerate` rewrites it with one `.previous` kept, and a launch with
+`--engine-effects off|plumes` prints `engine bodies: missing | unreadable | ok
+(N bodies, ...)`. The table gives size and tint only: a JET-flagged draw whose
+body has no entry is still suppressed (counted `unknown_body`, recorded with
+the default tint cluster); what stays native is a draw without the JET flag and
+the legacy `v\00114`, which the loader refuses. Three cases
+measured on 2026-10-01 against the census
+(`verification/results/engine-effects-census/table_vs_census.py`): Mayhem 3
+scenes place three glow bodies that are on neither list
+(`fx_engine_paranid_m6_axeface`, `fx_engine_xtraotas_ts1`, `_ts3`) plus the
+`fx_engine_emitter01/02` anchors; none resolves to a body resource, and a body
+on neither list never gets the JET flag (`0x00434620`), so the proxy leaves
+them to the engine. `v\00114`, a numeric JET entry placed on 2 ships in either view, is a
+legacy MATERIAL3 text body the generator cannot describe; it is listed under
+`missing` and, refused by the loader with no flag path, stays native. The stock `fx_engine_xtc_*` bodies Mayhem
+overrides carry twice the Mayhem LOD-0 value in the stock view (98 of the 99
+shared xtc bodies within 1 % of 2x, `fx_engine_xtc_boron_m8` equal), so a
+table generated on the stock tree is not interchangeable with a Mayhem one:
+generate it on the tree that is played.
+
 ## User flow: the regenerate executable
 
-For players the two tools above collapse into one step: with the mods installed,
+For players the tools above collapse into one step: with the mods installed,
 run `x3m-regenerate` (one bundled file, no Python needed) from the game
 directory. It rolls back an interrupted previous overlay write, runs the fog families install (with the
 selected package as an extra layer), the LOD batch with `--sync --mod
-auto --install` and a fog `--check` that refreshes the fog record's launch
+auto --install`, the engine body table and a fog `--check` that refreshes the fog record's launch
 fingerprint after the overlay changed the numbered catalogues, overwriting the
 previous results; console and `x3m-regenerate.log` carry one line per family and
 per baked body, the refusals, the slot plan and the totals. User guide:

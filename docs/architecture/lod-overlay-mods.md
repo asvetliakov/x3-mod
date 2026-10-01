@@ -361,9 +361,13 @@ guide [docs/user/regenerate.md](../user/regenerate.md), ledger [lod-overlay.md](
   (`tasklist /FO CSV /NH` on Windows, `game_guard` over `ps` elsewhere; an unreadable process table refuses too);
   the same check replaces both tools' `running_game`, so their pre-write re-checks use it. Steps: (1)
   `fog_families.main(--install --replace)`; (2) `lod_overlay.main(--batch --sync --mod auto --install)`; (3)
-  `fog_families --check`, which passes and refreshes the fog record's `launch_inputs` after step 2 changed the
-  numbered catalogues (without it every run would end with the launcher's `fog families: stale`). A failing step
-  is logged with its traceback and the next step still runs; step 3 only after both succeeded. Exit 0 only
+  `engine_bodies.generate(game)` (2026-10-01, `tools/effects/engine_bodies.py` on the installed view with the x3m
+  overlay slots excluded, so step 2 does not change it) written as `x3m/engine_bodies.json` (`.tmp` + `os.replace`,
+  the previous table kept as `.previous`), console line `engine bodies summary: N bodies (<cluster> n, ...), M
+  listed but not loadable`, each unloadable body in the log only; (4) `fog_families --check`, which passes and
+  refreshes the fog record's `launch_inputs` after step 2 changed the numbered catalogues (without it every run
+  would end with the launcher's `fog families: stale`). A failing step is logged with its traceback and the next
+  step still runs; step 4 only after steps 1 and 2 succeeded (step 3 does not touch the catalogues). Exit 0 only
   when every step succeeded; the run always ends at the key wait (`msvcrt.getch`, a raw tty read, else
   `input()`) unless `--no-wait`.
 - **Console and log.** Each console line is timestamped and teed into `<game>/x3m-regenerate.log` (rewritten
@@ -399,7 +403,8 @@ guide [docs/user/regenerate.md](../user/regenerate.md), ledger [lod-overlay.md](
   above the previous overlay (no aside) that was half written stays and reads as an orphan or mod catalogue
   until the next run replaces it. The fog pair is
   written as `.tmp` + `os.replace` with the previous pair moved to `.previous` and restored on failure.
-- **Bundle.** `tools/regenerate/x3m_regenerate.spec` (PyInstaller one-file, console) with the tool modules as
+- **Bundle.** `tools/regenerate/x3m_regenerate.spec` (PyInstaller one-file, console) with the tool modules
+  (since 2026-10-01 also `engine_bodies` from `tools/effects`; a bundle built before that has no step 3) as
   hidden imports and the hashed sources (`lod_overlay.TOOL_FILES`, `lod_recipes.py`, `fog_families.py`,
   `bake_fog_fields.py`, `fog_field_recipe.py`) as data beside them, so the frozen tool records the same
   `tool_sha256` / baker / recipe hashes as a source checkout (measured: identical records and outputs on the
