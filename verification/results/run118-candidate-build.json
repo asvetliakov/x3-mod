@@ -1,0 +1,111 @@
+{
+  "dll": "/tmp/x3-run118-candidate/build/d3d9.dll",
+  "sha256": "924d12bdd9f4e26d8968cdd564561324bc59a3196ab340e689ee86eaae9ecb10",
+  "bytes": 58008081,
+  "commit": "526a741c",
+  "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree (X3M_SOURCE_COMMIT 526a741c626a7c0b1ec00a308855f8fd2867e1b2, no dirty diff); clean configure+build wall time 42 s",
+  "gates": "build 0 warnings; x87 0 violations (743 reachable functions); generate --check PASS (249 settings, 100 in the template); on the installed X3AP.exe (read-only, sha256 fdbf3418..., shipped LAA CheckSum 0, unchanged after the gates): verify_ui_scale_sites PASS 75/75 checks (10,331 instructions, 163 claims considered), verify_text_density_sites PASS 72/72 checks (4,008 instructions, 172 claims considered), verify_cull_small_parts_site PASS 20/20 (site 0x47d2a2, 373 function instructions), verify_lens_flare_cull_site PASS 13/13 (42 body names), verify_dust_leak_fix_site PASS 27/27 (site 0x41f4d1, 473 function instructions), verify_engine_effects_sites PASS 20/20 (routine 240, callee A 156, callee B 167 instructions; 172 other claims); executable-identity/run_verifiers.py PASS (45 anchors; 27/27 on shipped, LAA-cleared, NTCore 4gb and unknown-hash variants; different_build 27/27 refused; 9 corrupt-site negatives FAIL as required, incl. engine_effects A and B; 43 s wall); host suite 284 modules / 2,990 tests / 0 failing (112.5 s wall, 12 jobs); engine-effects Wine fixtures not rerun: run_engine_effects.py and run_engine_effects_patch.py take no DLL path (they test the seam DLL and a standalone fixture built from the tree), and their tracked bottle-X3 records (bound to fbdf57ed: main 164, native 11, unverified 6, unpatched 11, timing 5 PASS; patch 54/54) name 11 production-source SHA-256s, all equal in this tree, with git diff fbdf57ed 526a741c -- src empty; generate_fonts.py --out build/fonts wrote 16 files under build/fonts/F, sha256 identical to assets/fonts/generated/F (16/16) and to the Run116 record (16/16, Tahoma26.tga ef536bbb...); stem_coverage.py --gen build/fonts/F PASS; manage.py launch --dry-run --direct --config exit 0, no X3M_ENGINE_EFFECTS; --direct --config --debug --engine-effects off exit 0, X3M_ENGINE_EFFECTS \"off\" and the engine bodies: line printed (missing before install); --vanilla --engine-effects off exit 2 (refused); no Wine run; X3AP not running before build and suite",
+  "changes": [
+    "526a741c Engine effects review fixes: fixture records bound to fbdf57ed, ledger row, logging-tiers engine_frame cadence",
+    "fbdf57ed Engine effects phase 1 review fixes: one exact-lowercase X3M_ENGINE_EFFECTS parser shared by draw path and redirects; engine_effects_partial row; engine_frame cadence; x3m-regenerate keeps a foreign engine_bodies.json; runner source binding",
+    "09312fa1 Design note: fallback row matches phase 1",
+    "ee771010 Engine effects phase 1a: glow-jet recogniser, 64-byte records, suppression and census (X3M_ENGINE_EFFECTS=native|off|plumes, default native)",
+    "7f789dbf Engine effects phase 1b: X3M_ENGINE_EFFECTS redirects the two calls of 0x00414590",
+    "13959dfc Engine effects phase 1c: launcher --engine-effects native|off|plumes (sent only when given; refused with --vanilla)",
+    "2e2f86b0 / 0bbdceb2 / c83deafe engine-effects design and RE notes; c7f6c05a tools/effects/engine_bodies.py",
+    "3f513015 Run 117 A completed; 3242ebd9 release 0.9.0 from c1baa169 (installed as Run117)"
+  ],
+  "engine_bodies": {
+    "path": "/tmp/x3-run118-candidate/engine_bodies.json",
+    "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+    "bytes": 272401,
+    "bodies": 253,
+    "missing": 16,
+    "view": "installed",
+    "command": "python3 tools/effects/engine_bodies.py --game-root <X3 bottle>/drive_c/X3 --out /tmp/x3-run118-candidate/engine_bodies.json (read-only on the game tree, 3.6 s)",
+    "install_to": "<game>/x3m/engine_bodies.json"
+  },
+  "fonts": [
+    {
+      "name": "Harrier48.abc",
+      "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+      "bytes": 10102
+    },
+    {
+      "name": "Harrier48.tga",
+      "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+      "bytes": 2097170
+    },
+    {
+      "name": "Harrier72.abc",
+      "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+      "bytes": 10102
+    },
+    {
+      "name": "Harrier72.tga",
+      "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+      "bytes": 4194322
+    },
+    {
+      "name": "Tahoma26.abc",
+      "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+      "bytes": 17054
+    },
+    {
+      "name": "Tahoma26.tga",
+      "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+      "bytes": 1048594
+    },
+    {
+      "name": "Tahoma39.abc",
+      "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+      "bytes": 17054
+    },
+    {
+      "name": "Tahoma39.tga",
+      "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+      "bytes": 4194322
+    },
+    {
+      "name": "Zekton52.abc",
+      "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+      "bytes": 7628
+    },
+    {
+      "name": "Zekton52.tga",
+      "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+      "bytes": 2097170
+    },
+    {
+      "name": "Zekton78.abc",
+      "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+      "bytes": 7628
+    },
+    {
+      "name": "Zekton78.tga",
+      "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+      "bytes": 4194322
+    },
+    {
+      "name": "ZektonES52.abc",
+      "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+      "bytes": 24750
+    },
+    {
+      "name": "ZektonES52.tga",
+      "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+      "bytes": 2097170
+    },
+    {
+      "name": "ZektonES78.abc",
+      "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+      "bytes": 24750
+    },
+    {
+      "name": "ZektonES78.tga",
+      "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+      "bytes": 4194322
+    }
+  ],
+  "producer": "Claude Code implement agent (Opus 5.5), 2026-10-01; git log --oneline --no-merges c1baa169..526a741c (12 commits); shasum -a 256; hashlib over build/fonts/F; build/site/identity/suite/fonts/stem/bodies/dry-run logs local under /tmp/x3-run118-candidate/"
+}

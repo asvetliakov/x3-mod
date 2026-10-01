@@ -1,12 +1,20 @@
 # Project status
 
-The single current-state file (updated 2026-09-30, Run117 = release 0.9.0). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-01, Run118 = engine effects phase 1 over release 0.9.0). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**, game tree modded with **Mayhem 3** since 2026-09-28 (user install,
 `addon/05..12.cat` plus loose `addon/` files; 0.7.0 LOD overlay and fog families regenerated 2026-09-29 03:33).
+Run118 = **engine effects phase 1** (design [engine-effects-modern.md](architecture/engine-effects-modern.md), user go 2026-10-01): DLL SHA-256
+`924d12bdd9f4e26d8968cdd564561324bc59a3196ab340e689ee86eaae9ecb10` (58,008,081 bytes, unstripped) built once from clean main `526a741c`
+(host suite 284/2,990/0, 0 warnings, x87 0, 27 verifiers PASS incl. `verify_engine_effects_sites` 20/20; [candidate](../verification/results/run118-candidate-build.json)),
+installed 2026-10-01 17:49 with the engine body table `<game>/x3m/engine_bodies.json` (253 bodies, `45a1215b…`; [install](../verification/results/run118-candidate-install.json)).
+Renderer equal to Run117 on the default flight: the new option `engine_effects` (`--engine-effects native|off|plumes`, ini key) defaults to `native` and the
+launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
+plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
+([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
 Run117 = **release 0.9.0**: stripped DLL SHA-256 `72db0628651f7afac8bd5073e9a93a8317d3988d7c6c2bb9dc1aadeb30d96d0f`
 (39,610,685 bytes; unstripped `89fd0e0b…`, debug file `bd63b95b…` under `/tmp/x3m-release-0.9.0/`), built once from clean
 main `c1baa169` (host suite 280/2,950/0, 0 warnings, x87 0 on both DLLs, strip identity PASS, zip entries exactly 22, regenerate
@@ -17,7 +25,7 @@ binaries reused from 0.8.0; [release record](../verification/results/release-0.9
 x3m-regenerate.exe, f/<16 fonts>, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
 and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run116 `68bd5f41…` at `/tmp/x3-run116-candidate/build/d3d9.dll`, then Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run117 = release 0.9.0 `72db0628…` at `/tmp/x3m-release-0.9.0/zip-extract/d3d9.dll`, then Run116 `68bd5f41…` at `/tmp/x3-run116-candidate/build/d3d9.dll`, then Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
 Run117 = 0.9.0 over Run116: defaults `ui_scale = auto` and `text_density = auto` (the bare DLL and the launcher default flight
