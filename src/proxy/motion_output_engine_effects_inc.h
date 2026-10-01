@@ -140,6 +140,8 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
                 for (unsigned i = 0; i < 3; ++i) std::memcpy(scope.basis + i * 3, node + 0xc0 / 4 + i * 4, 12);
             }
             serial = f.node_serial;
+            scope.camera_handle = f.camera_handle;
+            if (f.camera_handle) scope.valid |= object_trace::Camera;
         }
     } else
 #endif
@@ -190,7 +192,12 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
                         verdict == ee::Verdict::suppressed ? &engine_counts_ : nullptr);
     }
     if (verdict == ee::Verdict::suppressed) {
+        const unsigned slot = engine_ring_->count;
         *engine_ring_->push() = record; // not full: classify saw room
+        // The view tags (the plume stage draws the scene view's records only): the scope's camera handle and the
+        // scene phase.
+        engine_ring_->camera[slot] = (scope.valid & object_trace::Camera) ? scope.camera_handle : 0u;
+        engine_ring_->scene[slot] = selector_.state() == renderer::BoundaryState::Scene ? 1u : 0u;
         ++engine_counts_.suppressed;
         if (!entry) ++engine_counts_.unknown_body;
         if (record.flags & ee::flag_steering) ++engine_counts_.steering;
@@ -247,7 +254,10 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
 // 0 candidates, 1 not_jet, 2 records (ring), 3 suppressed, 4..10 forwarded (unscoped, snapshot, opaque, state,
 // overflow, native, patch_missing), 11 unknown_body, 12 steering, 13 rows_unknown, 14..18 order a/b/ambiguous/mismatch/
 // invalid, 19 hook, 20 suppress, 21 the c4-6 known mask, 22 pinned order (1 = b), 23 census rows this frame,
-// 24 redirects live (this frame's cached signal).
+// 24 redirects live (this frame's cached signal); the plume stage (this frame's report until the next frame begins):
+// 25 armed, 26 ran, 27 the stage's result, 28 nozzles, 29 skipped_other_view, 30 drew, 31 the pass's references,
+// 32 taa_references, 33 consecutive failures, 34 refused until Reset, 35 the record's camera tag of index 0, 36 its
+// scene tag.
 unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     const auto& c = engine_counts_;
     if (key == 0) return c.candidates;
@@ -265,7 +275,24 @@ unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     if (key == 22) return engine_order_ == engine_effects::core::Order::b ? 1u : 0u;
     if (key == 23) return engine_rows_;
     if (key == 24) return engine_redirects_ ? 1u : 0u;
+    if (key == 25) return plumes_armed_ ? 1u : 0u;
+    if (key == 26) return plumes_ran_ ? 1u : 0u;
+    if (key == 27) return unsigned(plumes_report_.operation);
+    if (key == 28) return plumes_report_.stats.nozzles;
+    if (key == 29) return plumes_report_.stats.skipped_other_view;
+    if (key == 30) return plumes_report_.drew ? 1u : 0u;
+    if (key == 31) return plumes_ ? plumes_->references() : 0u;
+    if (key == 32) return taa_references_;
+    if (key == 33) return plumes_failures_;
+    if (key == 34) return plumes_failed_out_ ? 1u : 0u;
+    if (key == 35) return engine_ring_ && engine_ring_->count ? engine_ring_->camera[0] : 0u;
+    if (key == 36) return engine_ring_ && engine_ring_->count ? engine_ring_->scene[0] : 0u;
     return 0;
+}
+bool MotionOutput::fixture_plumes_fault(unsigned faults) noexcept {
+    if (!plumes_) return false;
+    plumes_->set_faults(faults);
+    return true;
 }
 bool MotionOutput::fixture_engine_record(unsigned index, void* out, unsigned size) const noexcept {
     if (!engine_ring_ || !out || size != sizeof(engine_effects::core::Record) || index >= engine_ring_->count) return false;

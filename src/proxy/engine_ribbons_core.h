@@ -27,6 +27,10 @@
 //   pool by itself. Cleared whole on the resolve's camera cut, on a change of the object_lifetime load epoch and on
 //   Reset (the pass's before_reset); a head that moved more than 8 value since the last update restarts its ribbon (a
 //   jump with an unchanged identity: no bridge).
+// View: the plumes' scene-view filter (engine_plumes_core.h ViewFilter) applies to the records first: a record of
+// another view (a target monitor) takes no ribbon and does not keep one alive.
+// Depth: every strip point carries its own centre-line view z (shape[1]), the per-vertex form of the plumes' corrected
+// nearest-axis depth (a ribbon point lies on its own centre line, so no axis offset applies).
 // Geometry: a camera-facing strip through the nozzle (the live head, so there is never a gap at the nozzle) and the
 // samples, newest first, cut at L (the last point interpolated); half-width 0.6 x the nozzle's half-width (0.5 value)
 // at the nozzle tapering linearly to 0 at the tail, never under 1.5 px (a 3 px strip); radiance
@@ -98,7 +102,7 @@ struct Ribbon {
     }
 };
 struct UpdateStats {
-    unsigned records = 0, matched = 0, created = 0, overflow = 0, duplicates = 0, skipped = 0;
+    unsigned records = 0, matched = 0, created = 0, overflow = 0, duplicates = 0, skipped = 0, skipped_other_view = 0;
     unsigned appended = 0, evicted = 0, jumps = 0, live = 0, fading = 0;
     bool cut_clear = false, load_clear = false;
 };
@@ -175,10 +179,12 @@ inline void estimate_speed(const Ribbon& r, const float head[3], float now, floa
 }
 
 // The frame's records into the pool. `now` in seconds (any epoch, monotonic), `cut` the resolve's camera cut,
-// `load_epoch` the object_lifetime load epoch (0 when unknown: never a change), `preset_scale` 0.6 / 1 / 1.5 on T.
+// `load_epoch` the object_lifetime load epoch (0 when unknown: never a change), `preset_scale` 0.6 / 1 / 1.5 on T,
+// `filter` (null: every record) the plumes' scene-view filter: a record of another view takes no ribbon.
 using BodyLookup = ep::BodyLookup;
 inline void update(Pool& pool, const ee::Record* records, unsigned count, double now_seconds, bool cut,
-                   std::uint64_t load_epoch, BodyLookup body, float preset_scale, UpdateStats* stats) noexcept {
+                   std::uint64_t load_epoch, BodyLookup body, float preset_scale, UpdateStats* stats,
+                   const ep::ViewFilter* filter = nullptr) noexcept {
     UpdateStats local{};
     UpdateStats& st = stats ? *stats : local;
     st = UpdateStats{};
@@ -233,6 +239,10 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
     for (unsigned i = 0; i < count && records; ++i) {
         const ee::Record& rec = records[i];
         ++st.records;
+        if (filter && (!filter->scene[i] || filter->camera[i] != filter->handle)) {
+            ++st.skipped_other_view;
+            continue;
+        }
         if ((rec.flags & (ee::flag_rows_unknown | ee::flag_steering)) || !detail::finite3(rec.origin) ||
             !ee::finite_f(rec.size) || !(rec.size > 0.f) || !ee::finite_f(rec.s)) {
             ++st.skipped;

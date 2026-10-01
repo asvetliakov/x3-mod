@@ -755,7 +755,7 @@ void reset_case(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS& pp, rr::EnginePlumes
                 before, live_before, released, live_after, static_cast<unsigned long long>(ribbons.pool().reset_clears - clears),
                 pending, reset, ensured, after, unsigned(a.last.drew), double(pk));
     report("reset_released_and_cleared", before == 5 && live_before == 1 && released == 0 && live_after == 0 &&
-                                             ribbons.pool().reset_clears == clears + 1 && pending == D3DERR_DEVICENOTRESET);
+                                             ribbons.pool().reset_clears == clears + 1 && pending == E_FAIL);
     report("reset_recreated", SUCCEEDED(reset) && SUCCEEDED(ensured) && after == 5 && a.last.drew && pk > .5f);
 }
 

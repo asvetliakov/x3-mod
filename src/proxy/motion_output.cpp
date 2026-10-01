@@ -2408,12 +2408,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // reads the lane the run reads.
             // Phase 3: a frame without records still runs while ribbons fade; every cut reaches the ribbon pool.
             if (in.cut && ribbons_) ribbons_->note_cut();
-            if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr) && (engine_ring_->count || engine_ribbons_live())) {
+            if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
+                (engine_ring_->count || engine_ribbons_live())) {
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
                 in.stage_context = this;
-                plumes_lane_ = depth;
-                plumes_width_ = in.width;
-                plumes_height_ = in.height;
             }
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
@@ -4110,12 +4108,15 @@ void MotionOutput::before_reset() noexcept {
     sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
     // Engine plumes: every device object of the pass goes (programs, declaration, DEFAULT buffers); the next armed
-    // resolve after a successful Reset recreates them; the attach refusal and the disarm window start over.
+    // resolve after a successful Reset recreates them; the attach refusal, the disarm window and the failure count
+    // start over.
     if (plumes_) taa_call([&] { plumes_->before_reset(); });
     if (ribbons_) taa_call([&] { ribbons_->before_reset(); }); // phase 3: the ribbon pass's objects and its pool
     ribbons_attach_failed_ = false;
     plumes_attach_failed_ = false;
     plumes_disarmed_until_ = 0;
+    plumes_failures_ = 0;
+    plumes_failed_out_ = false;
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
     fog_sector_ = {};

@@ -64,7 +64,7 @@ public:
     unsigned references() const noexcept;
     static constexpr UINT vertex_bytes = engine_ribbons::max_vertices * UINT(sizeof(engine_ribbons::Vertex));
     static constexpr UINT index_bytes = engine_ribbons::max_ribbons * engine_ribbons::indices_per_ribbon * 2u;
-#ifdef X3M_ENGINE_PLUMES_FIXTURE
+#if defined(X3M_ENGINE_PLUMES_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
     // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the draw once.
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
 #endif

@@ -464,8 +464,9 @@ void resolve_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlume
             }
         }
     const double ratio = den > 0 ? num / den : 0;
-    // Trail: behind the tip's drawn edge (tip - 3 sigma - 1 px), the farthest pixel whose resolved plume share exceeds
-    // 5 % of I_core, on the rows the core and its halo cover.
+    // Trail: behind tip - halo_reach x sigma (nozzle) - 1 px (since the 2.25-sigma trapezoid, 1.125 sigma past the drawn
+    // tip edge; with 3 sigma it was the edge itself), the farthest pixel whose resolved plume share exceeds 5 % of
+    // I_core, on the rows the core and its halo cover.
     const int edge = ix - int(std::ceil(Lpx + ep::halo_reach * sigma_px + 1.f));
     int trail = 0;
     float trail_max = 0.f;
@@ -561,6 +562,49 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
         char label[64];
         std::snprintf(label, sizeof label, "tailon_core_over_own_hull_%s_%u", four ? "4ch" : "r32f", t.w);
         report(label, on_hull >= .5f * open_peak);
+    }
+    // Off-centre (review fix 1): the nozzle at 90 % of the width (near the horizontal screen edge, where the camera-
+    // facing billboard's side vector has a large view z component), the axis tilted 20 degrees towards the uncovered
+    // side (up); a plane at the nozzle depth over the rows y >= edge (the nozzle 10 px inside it). The core inside the
+    // silhouette hidden, the axis past the edge visible.
+    {
+        const float a = 20.f * 3.14159265f / 180.f, value = 90.f / ppu;
+        const float X = (2.f * .9f - 1.f) * Z / t.m00();
+        float ox, oy;
+        t.window(X, 0, Z, 0, 0, ox, oy);
+        const int jx = int(std::floor(ox + .5f)), jy = int(std::floor(oy + .5f)), edge_y = jy - 10;
+        const float ay = std::sin(a), az = std::cos(a);
+        const ee::Record r = record(X, 0, Z, 0, ay, az, value, 2.f);
+        scene.frame(0, float(edge_y), float(t.w), float(t.h), Z);
+        draw(d, pass, frame_for(t, four, &r, 1));
+        const auto cut = t.read(d);
+        const float inside = peak(cut, t.w, t.h, jx - 60, edge_y, jx + 61, jy + 61);
+        // Along the projected axis above the edge (perspective moves it towards the centre as it recedes).
+        const float L = 2.f * value;
+        float beyond = 0.f;
+        int visible = 0, last_row = -1;
+        float tip_x = 0.f, tip_y = 0.f;
+        t.window(X, ay * L, Z + az * L, 0, 0, tip_x, tip_y);
+        for (unsigned k = 0; k <= 4000; ++k) {
+            const float u = L * float(k) / 4000.f;
+            float px, py;
+            t.window(X, ay * u, Z + az * u, 0, 0, px, py);
+            const int ix2 = int(std::floor(px + .5f)), iy2 = int(std::floor(py + .5f));
+            if (iy2 >= edge_y - 4 || iy2 <= int(tip_y) + 4 || ix2 < 1 || ix2 + 1 >= int(t.w) || iy2 < 0) continue;
+            const float l = peak(cut, t.w, t.h, ix2 - 1, iy2, ix2 + 2, iy2 + 1);
+            beyond = std::max(beyond, l);
+            if (iy2 != last_row) {
+                last_row = iy2;
+                visible += l >= .5f * core;
+            }
+        }
+        std::printf("OCCLUSION_OFFCENTRE width=%u lane=%s nozzle_px=%d,%d inside_max=%.5f beyond_max=%.3f core_visible_px=%d projected_tip_px=%.1f,%.1f\n",
+                    t.w, four ? "4ch" : "r32f", jx, jy, double(inside), double(beyond), visible, double(tip_x), double(tip_y));
+        char label[64];
+        std::snprintf(label, sizeof label, "offcentre_core_hidden_inside_%s_%u", four ? "4ch" : "r32f", t.w);
+        report(label, inside <= 1e-3f);
+        std::snprintf(label, sizeof label, "offcentre_core_visible_outside_%s_%u", four ? "4ch" : "r32f", t.w);
+        report(label, beyond >= .9f * core && visible >= 10);
     }
 }
 
@@ -695,7 +739,7 @@ void reset_case(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS& pp, rr::EnginePlumes
     const float pk = peak(t->read(d), t->w, t->h, int(cx) - 20, int(cy) - 3, int(cx) + 1, int(cy) + 4);
     std::printf("RESET before=%u released=%u pending=%08lx reset=%08lx ensured=%08lx after=%u drew=%u peak=%.3f\n", before,
                 released, pending, reset, ensured, after, unsigned(rep.drew), double(pk));
-    report("reset_released", before == 5 && released == 0 && pending == D3DERR_DEVICENOTRESET);
+    report("reset_released", before == 5 && released == 0 && pending == E_FAIL); // internal flag: not a device code
     report("reset_recreated", SUCCEEDED(reset) && SUCCEEDED(ensured) && after == 5 && rep.drew && pk > 1.f);
 }
 

@@ -86,7 +86,11 @@ int main() {
         const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
         const unsigned n = build(&r, 1, nullptr, v, Preset::standard, 5, out.data(), 16, &st);
         expect(n == 1 && st.nozzles == 1 && st.vertices == 8 && st.discs == 0 && st.capped == 0 && st.faded == 0, "side view: one nozzle, no disc");
-        const float L = 2.f * V, sigma = .5f * V, r0 = .15f * V, px = 1.f / ppu(Z), across = 3.f * sigma > r0 + px ? 3.f * sigma : r0 + px;
+        const float L = 2.f * V, sigma = .5f * V, r0 = .15f * V, px = 1.f / ppu(Z);
+        // The trapezoid: 2.25 sigma (+1 px) behind the nozzle and past the tip's 1.125 sigma, width linear in u through
+        // (0, max(2.25 sigma, r0) + 1 px) and (front, 1.125 sigma + 1 px).
+        const float back = 2.25f * sigma + px, front = L + 1.125f * sigma + px, w0 = (2.25f * sigma > r0 ? 2.25f * sigma : r0) + px,
+                    wf = 1.125f * sigma + px, wb = w0 + (w0 - wf) * back / front;
         bool layout = true, plane = true;
         const float a[3] = {-1, 0, 0};
         float nrm[3] = {out[1].position[0] - out[0].position[0], out[1].position[1] - out[0].position[1], out[1].position[2] - out[0].position[2]};
@@ -99,9 +103,21 @@ int main() {
             layout = layout && near(x.local[2], L) && near(x.local[3], r0) && near(x.shape[0], sigma) && near(x.shape[1], V) && x.shape[2] == 0.f && x.shape[3] == 0.f;
         }
         expect(layout && plane, "axial quad: position = origin + axis u + side w, L = z value, r0 0.15 value, sigma 0.5 value, kind 0");
-        expect(near(out[0].local[0], -(3.f * sigma + px)) && near(out[2].local[0], L + 3.f * sigma + px) && near(std::fabs(out[0].local[1]), across), "axial extents: 3 sigma past the core");
+        expect(near(out[0].local[0], -back) && near(out[1].local[0], -back) && near(out[2].local[0], front) && near(out[3].local[0], front) &&
+               near(std::fabs(out[0].local[1]), wb) && near(std::fabs(out[1].local[1]), wb) && near(std::fabs(out[2].local[1]), wf) &&
+               near(std::fabs(out[3].local[1]), wf), "axial extents: the 2.25 local sigma trapezoid");
+        // The halo window's support (2.25 local sigma from the segment) and the core (+1 px) inside the trapezoid.
+        bool covered = true;
+        for (float u = -2.25f * sigma; u <= L + 1.125f * sigma; u += L / 64.f) {
+            const float t = u < 0.f ? 0.f : u > L ? 1.f : u / L, reach = 2.25f * sigma * (1.f - .5f * t);
+            const float du = u < 0.f ? -u : u > L ? u - L : 0.f, halo = du < reach ? std::sqrt(reach * reach - du * du) : 0.f;
+            const float core = u >= 0.f && u <= L ? r0 * (1.f - u / L) + px : 0.f, need = halo > core ? halo : core;
+            covered = covered && need <= wb + (wf - wb) * (u + back) / (front + back) + 1e-3f;
+        }
+        expect(covered, "the trapezoid covers the halo window and the core");
         const float f = flick(r, 5);
-        expect(near(out[0].intensity[0], 4.f * f) && near(out[0].intensity[1], .8f) && out[0].intensity[2] == 0.f, "I_core 4 x flicker, I_halo 0.8 at s 1; the axis's view z");
+        expect(near(out[0].intensity[0], 4.f * f) && near(out[0].intensity[1], .8f) && out[0].intensity[2] == 0.f &&
+               out[0].intensity[3] == Z && out[4].intensity[3] == Z, "I_core 4 x flicker, I_halo 0.8 at s 1; the axis's view z; the nozzle's view z");
         expect(out[0].tint == 0xffffffffu && out[0].peak == 0xffffffffu, "cluster white: neutral tint");
         bool collapsed = true;
         for (unsigned c = 5; c < 8; ++c) for (unsigned j = 0; j < 3; ++j) collapsed = collapsed && out[c].position[j] == out[4].position[j];
@@ -125,7 +141,7 @@ int main() {
     {
         const ee::Record away = rec(0, 0, Z, 0, 0, 1, V, 2.f), at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
         build(&away, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
-        const float sigma = .5f * V, half = 3.f * sigma;
+        const float sigma = .5f * V, half = 2.25f * sigma;
         bool disc = st.discs == 1 && out[4].shape[3] == 1.f && near(out[4].intensity[0], out[0].intensity[0]) && near(out[4].local[3], .25f * V);
         for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half) && near(std::fabs(out[c].position[1]), half) && out[c].position[2] == Z;
         bool finite = true;
@@ -136,6 +152,30 @@ int main() {
         const ee::Record tilt = rec(0, 0, Z, -.5f, 0, .8660254f, V, 2.f);
         build(&tilt, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
         expect(near(out[4].intensity[0], out[0].intensity[0] * .8660254f, 1e-3f), "disc weight |axis . to_camera|");
+        // Under 0.15 no disc; over 0.15..0.3 its radiance fades in.
+        const ee::Record grazing = rec(0, 0, Z, -.99498744f, 0, .1f, V, 2.f), low = rec(0, 0, Z, -.9797959f, 0, .2f, V, 2.f);
+        build(&grazing, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
+        expect(st.discs == 0 && out[4].position[0] == out[5].position[0] && out[4].position[1] == out[6].position[1], "facing 0.1: no disc");
+        build(&low, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
+        expect(st.discs == 1 && near(out[4].intensity[0], out[0].intensity[0] * .2f * (.05f / .15f), 1e-3f), "facing 0.2: the disc faded in to a third");
+    }
+    // ----------------------------------------------------------- the view filter: the scene view's records only
+    {
+        const ee::Record rs[5] = {rec(0, 0, Z, -1, 0, 0, V, 2.f), rec(0, 0, Z, -1, 0, 0, V, 2.f), rec(0, 0, Z, -1, 0, 0, V, 2.f),
+                                  rec(0, 0, Z, -1, 0, 0, V, 2.f), rec(0, 0, Z, -1, 0, 0, V, 2.f)};
+        const std::uint32_t cam[5] = {0x77, 0x99, 0x77, 0x77, 0x99};
+        const std::uint8_t scene[5] = {1, 1, 0, 1, 1};
+        std::uint32_t handle = 0;
+        expect(scene_view_camera(cam, scene, 5, &handle) && handle == 0x77, "scene camera: the most frequent scene-phase handle");
+        const std::uint8_t none[5] = {};
+        expect(!scene_view_camera(cam, none, 5, &handle), "no scene-phase record: no scene camera");
+        const std::uint32_t tie[2] = {0x99, 0x77};
+        const std::uint8_t both[2] = {1, 1};
+        expect(scene_view_camera(tie, both, 2, &handle) && handle == 0x99, "a tie: the first seen");
+        ViewFilter vf; vf.camera = cam; vf.scene = scene; vf.handle = 0x77;
+        expect(build(rs, 5, nullptr, v, Preset::standard, 0, out.data(), 16, &st, &vf) == 2 && st.skipped_other_view == 3 && st.nozzles == 2,
+               "filter: two scene-view records drawn, another camera and the background phase skipped");
+        expect(build(rs, 5, nullptr, v, Preset::standard, 0, out.data(), 16, &st) == 5 && st.skipped_other_view == 0, "no filter: every record");
     }
     // ----------------------------------------------------------- screen minimums and culls
     {
@@ -382,8 +422,9 @@ class Wiring(unittest.TestCase):
         self.assertIn('configure_engine_plumes(engine_effects::mode()==engine_effects::core::Mode::plumes&&engine_effects::suppress(),'
                       'engine_effects::preset());', capture)
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
-        self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr)&&(engine_ring_->count||engine_ribbons_live())){'
-                      'in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
+        self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
+                      '(engine_ring_->count||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
+        self.assertIn('plumes_failures_=0;plumes_failed_out_=false;plumes_lane_=nullptr;', motion)  # before_reset
         self.assertIn('if(plumes_)taa_call([&]{plumes_->before_reset();});', motion)
         self.assertIn('if(plumes_)plumes_->after_reset(result);', motion)
         self.assertIn('release_engine_plumes();', motion)
@@ -392,6 +433,19 @@ class Wiring(unittest.TestCase):
         self.assertIn('plumes_disarmed_until_=frame_+plumes_disarm_frames;', inc)
         self.assertIn('static constexpr std::uint64_t plumes_disarm_frames=64;', source_text(ROOT / 'src/proxy/motion_output.h'))
         self.assertIn('glow=suppressed drawn=%s', inc)
+        # Review fixes (2026-10-01): the lane checked at arming, three consecutive failures refuse until Reset, the near
+        # plane from the latch, the scene view's records only.
+        self.assertIn('lane_desc.Width!=width||lane_desc.Height!=height||lane_desc.Format!=lane_depth_format()', inc)
+        self.assertIn('const bool final=++plumes_failures_>=plumes_failure_limit;', inc)
+        self.assertIn('note_engine_plumes_state(false,"failed_until_reset");', inc)
+        self.assertIn('in.view.near_z=-in.m32/in.m22;', inc)
+        self.assertIn('in.filter.handle=scene_camera;', inc)
+        self.assertIn('static constexpr unsigned plumes_failure_limit=3;', source_text(ROOT / 'src/proxy/motion_output.h'))
+        effects = source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h')
+        self.assertIn('engine_ring_->scene[slot]=selector_.state()==renderer::BoundaryState::Scene?1u:0u;', effects)
+        passes = source_text(ROOT / 'src/renderer/engine_plumes_pass.cpp')
+        self.assertIn('if(reset_pending_)return refuse(EnginePlumesStep::Validate,E_FAIL);', passes)
+        self.assertIn('caps.MaxVertexIndex<engine_plumes::max_vertices-1u', passes)
         temporal = source_text(ROOT / 'src/renderer/temporal_pass.cpp')
         self.assertLess(temporal.index('hr=call<SceneFn>(BeginScene)(d);'), temporal.index('in.stage_callback(in.stage_context,d)'))
         self.assertIn('src/renderer/engine_plumes_pass.cpp', (ROOT / 'CMakeLists.txt').read_text())

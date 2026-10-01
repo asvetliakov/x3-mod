@@ -131,7 +131,7 @@ HRESULT EngineRibbonsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
         return refuse("blend_caps");
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLNONE)) return refuse("cull_none");
-    if (caps.MaxVertexShaderConst < 2 || caps.MaxStreams < 1 || caps.MaxVertexIndex < engine_ribbons::max_vertices ||
+    if (caps.MaxVertexShaderConst < 2 || caps.MaxStreams < 1 || caps.MaxVertexIndex < engine_ribbons::max_vertices - 1u ||
         caps.MaxPrimitiveCount < engine_ribbons::triangles_per_ribbon * engine_ribbons::max_ribbons)
         return refuse("limits");
     IDirect3D9* api = nullptr;
@@ -191,7 +191,7 @@ HRESULT EngineRibbonsPass::create_objects(bool* programs) noexcept {
 }
 HRESULT EngineRibbonsPass::ensure_resources() noexcept {
     if (!device_ || !caps_.enabled) return E_INVALIDARG;
-    if (reset_pending_) return D3DERR_DEVICENOTRESET;
+    if (reset_pending_) return E_FAIL; // waiting for a Reset: not a device code (the resolve goes on), as the plume pass
     if (resources_ready()) return S_OK;
     PreserveCpuState guard;
     return create_objects(nullptr);
@@ -223,10 +223,10 @@ HRESULT EngineRibbonsPass::run(const EngineRibbonsFrame& frame, EngineRibbonsRep
     float scale = 1.f;
     engine_plumes::preset_scale(f.preset, &scale);
     engine_ribbons::update(pool_, f.records, f.record_count, frame.seconds, frame.cut || cut_pending_, frame.load_epoch, f.body,
-                           scale, &r.update);
+                           scale, &r.update, f.filter.camera && f.filter.scene ? &f.filter : nullptr); // the plumes' view filter
     cut_pending_ = false;
     r.updated = true;
-    if (reset_pending_) return refuse(EngineRibbonsStep::Validate, D3DERR_DEVICENOTRESET);
+    if (reset_pending_) return refuse(EngineRibbonsStep::Validate, E_FAIL);
     if (!pool_.live) return finish(S_FALSE);
     HRESULT hr = ensure_resources();
     if (FAILED(hr)) return refuse(EngineRibbonsStep::Resources, hr);

@@ -1439,6 +1439,7 @@ public:
     // Engine effects seam (x3m_engine_effects_fixture_status / _record): this frame's counts and records.
     unsigned fixture_engine_status(unsigned key) const noexcept;
     bool fixture_engine_record(unsigned index, void* out, unsigned size) const noexcept;
+    bool fixture_plumes_fault(unsigned faults) noexcept; // EnginePlumesPass::set_faults; false before the first arming
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
     // Stage 2 exposure state: ev (consumed), ev_adapted, ev_target,
@@ -1722,8 +1723,8 @@ private:
     void engine_effects_frame_end() noexcept;
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one
     // engine_plumes_state row per change of the armed state or its reason; refused at attach until Reset; a failed
-    // stage frame disarms 64 frames with one engine_plumes_failed row), the lane the callback borrows, the frame's
-    // report and timing for the engine_stage row.
+    // stage frame disarms 64 frames with one engine_plumes_failed row; the third consecutive failure refuses until
+    // Reset), the lane the callback borrows, the frame's report and timing for the engine_stage row.
     bool plumes_requested_ = false, plumes_attach_failed_ = false, plumes_armed_ = false, plumes_ran_ = false;
     bool plumes_state_logged_ = false, plumes_logged_armed_ = false, plumes_fenced_ = false;
     bool plumes_evaluated_ = false; // this frame's resolve took the arming decision
@@ -1737,7 +1738,12 @@ private:
     std::uint64_t plumes_disarmed_until_ = 0;
     float plumes_stage_us_ = 0.f;
     static constexpr std::uint64_t plumes_disarm_frames = 64;
-    bool engine_plumes_arm(bool fp16_route) noexcept; // this frame's arming decision (at the resolve)
+    unsigned plumes_failures_ = 0;      // consecutive failed stage frames (a drawn frame clears it)
+    bool plumes_failed_out_ = false;    // plumes_failure_limit reached: refused until Reset
+    static constexpr unsigned plumes_failure_limit = 3;
+    // This frame's arming decision (at the resolve); `lane` is the completed RT2 the resolve reads, checked against
+    // the target's size and the lane format.
+    bool engine_plumes_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
     bool attach_engine_plumes() noexcept;
     void release_engine_plumes() noexcept;
     void note_engine_plumes_state(bool armed, const char* reason) noexcept;

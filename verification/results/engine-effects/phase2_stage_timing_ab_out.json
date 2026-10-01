@@ -1,0 +1,70 @@
+{
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "rounds": 3,
+ "gpu_ms": {
+  "1920x1080_100": {
+   "before_ms": [
+    0.2763,
+    0.2836,
+    0.2744
+   ],
+   "after_ms": [
+    0.158,
+    0.1548,
+    0.1637
+   ],
+   "before_median": 0.2763,
+   "after_median": 0.158
+  },
+  "1920x1080_30": {
+   "before_ms": [
+    0.1543,
+    0.1454,
+    0.1496
+   ],
+   "after_ms": [
+    0.1448,
+    0.1498,
+    0.1363
+   ],
+   "before_median": 0.1496,
+   "after_median": 0.1448
+  },
+  "5120x1440_100": {
+   "before_ms": [
+    0.2807,
+    0.2811,
+    0.279
+   ],
+   "after_ms": [
+    0.1387,
+    0.0596,
+    0.046
+   ],
+   "before_median": 0.2807,
+   "after_median": 0.0596
+  },
+  "5120x1440_30": {
+   "before_ms": [
+    0.0233,
+    0.0263,
+    0.0241
+   ],
+   "after_ms": [
+    0.0295,
+    0.0255,
+    0.0254
+   ],
+   "before_median": 0.0241,
+   "after_median": 0.0255
+  }
+ }
+}

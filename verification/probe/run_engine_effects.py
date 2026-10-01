@@ -2,7 +2,7 @@
 """Engine effects phase 1a fixture (X3M_ENGINE_EFFECTS; docs/architecture/engine-effects-modern.md sections 1, 2, 5).
 
 Builds the proxy (the worktree's CMake build, incremental), the motion seam DLL (build_motion_output.sh) and
-engine_effects_fixture.exe, then runs the fixture four times in the selected bottle through the seam DLL as d3d9.dll:
+engine_effects_fixture.exe, then runs the fixture once per mode in the selected bottle through the seam DLL as d3d9.dll:
   main        off + --debug: scenario frames (a suppressed and a not_jet fixed-function draw with a pixel check, three
               effect-pair JET draws at z 0.25 / 1.125 / 2.0, an opaque JET draw, an unscoped pair draw, an opaque
               non-candidate draw), a ring-overflow frame, a Reset, frames past the census's eight, 305 candidate-free frames (engine_frame
@@ -15,6 +15,11 @@ engine_effects_fixture.exe, then runs the fixture four times in the selected bot
   plumes      plumes + preset strong + --debug on a device without --hdr --taa: suppressed as off (records, pixels),
               the plume stage refuses to arm with one engine_plumes_state row (reason hdr_taa_path, glow suppressed),
               engine_stage rows at the engine_frame cadence (armed=0, nothing drawn, preset strong)
+  armed       plumes + preset strong + --debug with --hdr --taa (X3M_HDR, X3M_TAA, X3M_MOTION_JITTER) and the fixture
+              camera, frames in the scene-boundary pattern: the production stage arms, attaches inside the resolve and
+              draws the scene view's two records (one of another camera and one from the background phase skipped); a
+              forced draw fault disarms 64 frames with one engine_plumes_failed row, three consecutive ones refuse until
+              Reset (final=1), Reset releases the pass and the next armed frame recreates it; taa_references delta 0
 Each run's directory holds x3m/engine_bodies.json, written here by tools/effects/engine_bodies.py's dumps() for the
 synthetic body manager the fixture builds (default path: <EXE directory>\\x3m\\engine_bodies.json). The effects pair's
 program bytes are local inputs (/tmp/x3-shader-sweep/programs, never in the repository). The fixture's CHECK lines and
@@ -50,7 +55,9 @@ FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath
 MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X3M_ENGINE_EFFECTS='native', X3M_DEBUG='1'),
          'unverified': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'unpatched': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'),
          'timing': dict(X3M_ENGINE_EFFECTS='off'),
-         'plumes': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1')}
+         'plumes': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1'),
+         'armed': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1', X3M_HDR='1', X3M_TAA='1',
+                       X3M_MOTION_JITTER='1')}
 SCENARIO_FRAMES = (1, 2, 3, 5, 6, 7, 8, 9, 10, 11)
 OVERFLOW_FRAME, RING = 4, 1024
 # The production sources the fixture exercises: their content hashes and the checkout's commit go into the record
@@ -58,6 +65,7 @@ OVERFLOW_FRAME, RING = 4, 1024
 PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.h', 'src/proxy/engine_effects_core.h',
                       'src/proxy/engine_effects_option.h', 'src/proxy/motion_output_engine_effects_inc.h',
                       'src/proxy/motion_output_engine_plumes_inc.h', 'src/proxy/engine_plumes_core.h',
+                      'src/renderer/engine_plumes_pass.cpp', 'src/renderer/engine_plumes_pass.h',
                       'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
@@ -149,7 +157,7 @@ def validate(mode, r):
     modes = rows(log, 'engine_effects_mode')
     out['mode_row'] = modes[0] if modes else None
     expected_status = {'main': 'armed', 'native': 'native', 'unverified': 'executable_mismatch', 'unpatched': 'armed', 'timing': 'armed',
-                       'plumes': 'armed'}[mode]
+                       'plumes': 'armed', 'armed': 'armed'}[mode]
     if len(modes) != 1 or modes[0].get('status') != expected_status:
         problems.append(f'{mode}: engine_effects_mode {modes}')
     if mode == 'timing':
@@ -160,7 +168,7 @@ def validate(mode, r):
             problems.append(f'timing: {out["timing"]}')
         return problems, out
     plume_rows = rows(log, 'engine_effects_plumes') + rows(log, 'engine_plumes_state') + rows(log, 'engine_stage')
-    if mode != 'plumes' and plume_rows:
+    if mode not in ('plumes', 'armed') and plume_rows:
         problems.append(f'{mode}: plume rows outside plumes: {plume_rows[:2]}')
     if mode == 'plumes':
         # Suppressed as off; the stage refuses to arm by configuration (no --hdr --taa in the seam) in one row and
@@ -182,6 +190,40 @@ def validate(mode, r):
                 problems.append(f'plumes: engine_stage {frame} {g}')
         if sorted(stage) != sorted(frames):
             problems.append(f'plumes: engine_stage frames {sorted(stage)} != engine_frame frames {sorted(frames)}')
+        return problems, out
+    if mode == 'armed':
+        # The armed production path: the fixture's CHECK lines carry the per-frame statuses and pixels; the session log
+        # carries one attach row, one engine_plumes_failed row per failed stage frame (consecutive 1, 1, 2, 3; the last
+        # final=1 retry=reset), the state rows of the cycle and the engine_stage rows of the drawn frames.
+        failed_rows = rows(log, 'engine_plumes_failed')
+        state = [(r.get('armed'), r.get('reason')) for r in rows(log, 'engine_plumes_state')]
+        devices = rows(log, 'engine_plumes_device')
+        stage = rows(log, 'engine_stage')
+        drawn = [g for g in stage if (g.get('armed'), g.get('ran'), g.get('nozzles'), g.get('skipped_other_view'), g.get('result')) ==
+                 ('1', '1', '2', '2', '00000000')]
+        out.update(failed_rows=[{k: f.get(k) for k in ('frame', 'result', 'step', 'consecutive', 'until', 'final', 'retry')} for f in failed_rows],
+                   state_rows=state, device_rows=len(devices), stage_rows=len(stage), stage_drawn=len(drawn),
+                   armed_lines=[fields(l) for l in lines if l.startswith(('ARMED ', 'DISARMED ', 'RESET_CYCLE '))])
+        if [(f.get('result'), f.get('step'), f.get('consecutive'), f.get('final'), f.get('retry')) for f in failed_rows] != [
+                ('80004005', '5', '1', '0', 'frames'), ('80004005', '5', '1', '0', 'frames'), ('80004005', '5', '2', '0', 'frames'),
+                ('80004005', '5', '3', '1', 'reset')]:
+            problems.append(f'armed: engine_plumes_failed {out["failed_rows"]}')
+        if [(d.get('attached'), d.get('reason')) for d in devices] != [('1', 'ok')]:
+            problems.append(f'armed: engine_plumes_device {devices}')
+        # The cycle from the first arming: armed / disarmed x3, armed, refused until Reset; after the Reset (any
+        # warm-up refusals by path or camera) armed again, the last row.
+        warm = {'hdr_taa_path', 'camera', 'lane', 'pending'}
+        first = next((i for i, s in enumerate(state) if s == ('1', 'armed')), None)
+        cycle = state[first:first + 8] if first is not None else []
+        tail = state[first + 8:] if first is not None else []
+        if (first is None or any(s[1] not in warm for s in state[:first]) or
+                cycle != [('1', 'armed'), ('0', 'disarmed')] * 3 + [('1', 'armed'), ('0', 'failed_until_reset')] or
+                not tail or tail[-1] != ('1', 'armed') or any(s[1] not in warm for s in tail[:-1])):
+            problems.append(f'armed: engine_plumes_state {state}')
+        if len(drawn) < 6:  # first + 3 steady + re-armed + after Reset
+            problems.append(f'armed: engine_stage drawn rows {len(drawn)}')
+        if not rows(log, 'motion_output_reset'):
+            problems.append('armed: no motion_output_reset row')
         return problems, out
     if mode == 'unverified':
         if rows(log, 'engine_draw') or rows(log, 'engine_frame') or rows(log, 'engine_effects_device'):

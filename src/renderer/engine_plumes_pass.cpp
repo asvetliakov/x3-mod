@@ -132,7 +132,7 @@ HRESULT EnginePlumesPass::attach(D d, void* const* native, const D3DCAPS9& caps,
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
         return refuse("blend_caps");
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLNONE)) return refuse("cull_none");
-    if (caps.MaxVertexShaderConst < 2 || caps.MaxStreams < 1 || caps.MaxVertexIndex < engine_plumes::max_vertices ||
+    if (caps.MaxVertexShaderConst < 2 || caps.MaxStreams < 1 || caps.MaxVertexIndex < engine_plumes::max_vertices - 1u ||
         caps.MaxPrimitiveCount < 4u * engine_plumes::max_nozzles)
         return refuse("limits");
     // FP16 post-pixel-shader blending on the scene format (the motes' query): ONE/ONE onto A16B16G16R16F.
@@ -194,7 +194,7 @@ HRESULT EnginePlumesPass::create_objects(bool* programs) noexcept {
 }
 HRESULT EnginePlumesPass::ensure_resources() noexcept {
     if (!device_ || !caps_.enabled) return E_INVALIDARG;
-    if (reset_pending_) return D3DERR_DEVICENOTRESET;
+    if (reset_pending_) return E_FAIL; // waiting for a Reset: not a device code (the resolve goes on)
     if (resources_ready()) return S_OK;
     PreserveCpuState guard;
     return create_objects(nullptr);
@@ -215,7 +215,7 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
         return finish(hr);
     };
     if (!device_ || !caps_.enabled) return refuse(EnginePlumesStep::Validate, E_INVALIDARG);
-    if (reset_pending_) return refuse(EnginePlumesStep::Validate, D3DERR_DEVICENOTRESET);
+    if (reset_pending_) return refuse(EnginePlumesStep::Validate, E_FAIL);
     if (!f.width || !f.height || !f.lane || (f.record_count && !f.records) || !finite(f.view.m00) || !(f.view.m00 > 0.f) ||
         !finite(f.view.m11) || !(f.view.m11 > 0.f) || !finite(f.m20) || !finite(f.m21) || !finite(f.m22) ||
         !finite(f.m32) || !(f.view.near_z > 0.f) || !(f.view.height > 0.f))
@@ -240,7 +240,8 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
         return refuse(EnginePlumesStep::Lock, hr);
     }
     const unsigned nozzles = engine_plumes::build(f.records, f.record_count, f.body, f.view, f.preset, f.frame,
-                                                  static_cast<engine_plumes::Vertex*>(mapping), capacity, &r.stats);
+                                                  static_cast<engine_plumes::Vertex*>(mapping), capacity, &r.stats,
+                                                  f.filter.camera && f.filter.scene ? &f.filter : nullptr);
     hr = vb_->Unlock();
     if (FAILED(hr)) return refuse(EnginePlumesStep::Lock, hr);
     if (!nozzles) return finish(S_FALSE); // nothing drawable: no render state touched
@@ -282,7 +283,7 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     if (SUCCEEDED(hr)) {
         HRESULT draw = call<DrawIndexedFn>(DrawIndexedPrimitive)(d, D3DPT_TRIANGLELIST, 0, 0,
                                                                  nozzles * engine_plumes::vertices_per_nozzle, 0, nozzles * 4u);
-        if (faults_ & 2u) {
+        if (faults_ & 6u) {
             faults_ &= ~2u;
             draw = E_FAIL;
         }

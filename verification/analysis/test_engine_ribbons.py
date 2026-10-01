@@ -215,6 +215,15 @@ int main() {
         expect(st.created == 2 && st.duplicates == 1 && st.skipped == 2, "serial key (bit 63) and handle+model key; a duplicate identity; RCS and rowless records skipped");
         expect(record_key(a) == (77ull | (1ull << 63)) && record_key(c) == ((20000ull << 32) | 5u), "keys");
     }
+    // ------------------------------------------------------------------ the plumes' scene-view filter
+    {
+        static Pool pool; pool.clear(); UpdateStats st{};
+        const ee::Record rs[3] = {rec(0, 0, 40000.f, 1000.f, 1.f, 1), rec(100, 0, 40000.f, 1000.f, 1.f, 2), rec(200, 0, 40000.f, 1000.f, 1.f, 3)};
+        const std::uint32_t camera[3] = {5, 9, 5}; const std::uint8_t scene[3] = {1, 1, 0};
+        ep::ViewFilter filter; filter.camera = camera; filter.scene = scene; filter.handle = 5;
+        update(pool, rs, 3, 1.0, false, 0, nullptr, 1.f, &st, &filter);
+        expect(st.created == 1 && st.skipped_other_view == 2 && pool.live == 1 && only(pool)->head[0] == 0.f, "only the scene view's records take a ribbon");
+    }
     // ------------------------------------------------------------------ the clock re-base
     {
         static Pool pool; pool.clear(); UpdateStats st{}; double now = 7.0; float x = 0.f;
@@ -320,8 +329,11 @@ class Wiring(unittest.TestCase):
     def test_wiring(self):
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('if(in.cut&&ribbons_)ribbons_->note_cut();', motion)
-        self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr)&&(engine_ring_->count||engine_ribbons_live())){'
-                      'in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
+        self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
+                      '(engine_ring_->count||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
+        # the ribbons take the plumes' scene-view filter
+        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr);',
+                      source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp'))
         self.assertIn('if(ribbons_)taa_call([&]{ribbons_->before_reset();});', motion)
         self.assertIn('if(ribbons_)ribbons_->after_reset(result);', motion)
         self.assertIn('#include "motion_output_engine_ribbons_inc.h"', motion)

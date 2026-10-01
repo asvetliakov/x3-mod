@@ -5756,6 +5756,13 @@ extern "C" __declspec(dllexport) int x3m_engine_effects_fixture_record(IDirect3D
     const auto it = x3m::devices.find(device);
     return it != x3m::devices.end() && it->second->motion_output.fixture_engine_record(index, out, size) ? 1 : 0;
 }
+// Engine plumes seam (engine_effects_fixture.cpp "armed"): EnginePlumesPass fixture faults (bit 1 one failed draw, bit 2
+// every draw); 0 before the stage's first arming created the pass.
+extern "C" __declspec(dllexport) int x3m_engine_plumes_fixture_fault(IDirect3DDevice9* device, unsigned faults) {
+    x3m::CaptureLock lock;
+    const auto it = x3m::devices.find(device);
+    return it != x3m::devices.end() && it->second->motion_output.fixture_plumes_fault(faults) ? 1 : 0;
+}
 extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDirect3DDevice9* device, unsigned key) {
     x3m::CaptureLock lock;
     const auto it = x3m::devices.find(device);

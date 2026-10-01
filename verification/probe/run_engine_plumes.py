@@ -6,7 +6,8 @@ Builds verification/probe/engine_plumes_fixture.cpp with the production EnginePl
 engine-plume-*-program.json must match its source and header), runs it once in the selected bottle with builtin D3D9
 and writes <results>/engine-plumes/summary.json: bottle, the checkout's commit and the production sources' hashes,
 the build, every CHECK, and the numbers of each case (lengths for s = 0 / 0.5 / 1, core survival and trail through the
-real resolve at 0 / 4 / 8 px per frame over the dark and the flickering sky, the occlusion cuts and rim widths, the
+real resolve at 0 / 4 / 8 px per frame over the dark and the flickering sky, the occlusion cuts and rim widths (centred
+and off-centre at 90 % of the width), the
 chase cap, the presets, Reset, the FP16 refusal, the EVENT-fenced stage cost at 30 / 100 nozzles and the CPU build).
 The fixture's stdout stays under verification/probe/build/engine-plumes/. Run through wine_lock.py with
 X3M_FIXTURE_BOTTLE=X3. Never launches the game.
@@ -93,7 +94,7 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
-            'OCCLUSION_TAILON', 'CHASE', 'PRESETS', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING', 'BUILD')
+            'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'PRESETS', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING', 'BUILD')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
