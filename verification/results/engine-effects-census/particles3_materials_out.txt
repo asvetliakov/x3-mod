@@ -1,0 +1,120 @@
+== stock: 40 ids
+    1 SHIP ships=275 mats=[1198] flags=['PEDF_2D'] :: 
+    2      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+    3      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+    4      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+    5      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+    6      ships=  0 mats=[155] flags=['PEDF_2D|PEDF_TRAIL'] :: 
+    7      ships=  0 mats=[395] flags=['PEDF_2D'] :: 
+    8      ships=  0 mats=[392] flags=['PEDF_2D'] :: 
+    9      ships=  0 mats=[1165] flags=['PEDF_2D'] :: 
+   10      ships=  0 mats=[382] flags=['PEDF_2D'] :: 
+   11      ships=  0 mats=[380] flags=['PEDF_2D'] :: 
+   12      ships=  0 mats=[406, 412] flags=['PEDF_2D'] :: 
+   13      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+   14 SHIP ships=  6 mats=[395, 406] flags=['PEDF_2D'] :: 
+   15      ships=  0 mats=[180] flags=['PEDF_2D'] :: 
+   16      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+   17      ships=  0 mats=[406] flags=['PEDF_2D'] :: 
+   18      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+   19      ships=  0 mats=[616] flags=['PEDF_2D'] :: 
+   20      ships=  0 mats=[1165] flags=['PEDF_2D'] :: 
+   21      ships=  0 mats=[1192] flags=['PEDF_2D'] :: 
+   22      ships=  0 mats=[1192] flags=['PEDF_2D'] :: 
+   23      ships=  0 mats=[1192] flags=['PEDF_2D'] :: 
+   24      ships=  0 mats=[382] flags=['PEDF_2D'] :: 
+   25      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+   26      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+   27      ships=  0 mats=[1192] flags=['PEDF_2D'] :: smaller 21 for PL impacts
+   28      ships=  0 mats=[392, 406] flags=['PEDF_2D'] :: 
+   29      ships=  0 mats=[406] flags=['PEDF_2D'] :: 
+   30      ships=  0 mats=[406] flags=['PEDF_2D|PEDF_TRAIL'] :: 
+   31      ships=  0 mats=[406] flags=['PEDF_2D'] :: 
+   32      ships=  0 mats=[406] flags=['PEDF_2D|PEDF_TRAIL'] :: 
+   33      ships=  0 mats=[406, 1192] flags=['PEDF_2D'] :: 
+   34      ships=  0 mats=[395, 406] flags=['PEDF_2D'] :: 
+   35      ships=  0 mats=[395, 1192] flags=['PEDF_2D'] :: Incendiary Bomb trail
+   36      ships=  0 mats=[406] flags=['PEDF_2D'] :: 
+   37      ships=  0 mats=[406] flags=['PEDF_2D'] :: 
+   38      ships=  0 mats=[406, 1192] flags=['PEDF_2D'] :: 
+   39      ships=  0 mats=[406, 1192] flags=['PEDF_2D'] :: 
+   40      ships=  0 mats=[406] flags=['PEDF_2D'] :: 
+  material -> ids:
+    155: ship=[] other=[6]
+    180: ship=[] other=[15]
+    380: ship=[] other=[11]
+    382: ship=[] other=[10, 24]
+    392: ship=[] other=[8, 28]
+    395: ship=[14] other=[2, 3, 4, 5, 7, 13, 16, 18, 25, 26, 34, 35]
+    406: ship=[14] other=[2, 3, 4, 5, 12, 13, 16, 17, 18, 25, 26, 28, 29, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40]
+    412: ship=[] other=[12]
+    616: ship=[] other=[19]
+    1165: ship=[] other=[9, 20]
+    1192: ship=[] other=[21, 22, 23, 27, 33, 35, 38, 39]
+    1198: ship=[1] other=[]
+== mayhem: 62 ids
+    1 SHIP ships=  5 mats=[406] flags=['PEDF_2D'] :: idx 1  (Argon);;;Density;Density Var;DirX;DirY;DirZ;Speed Min;Speed Ma
+    2 SHIP ships=  4 mats=[406] flags=['PEDF_2D'] :: idx 2  (Boron);;;;;;;;;;;;;;;;;
+    3 SHIP ships=  5 mats=[406] flags=['PEDF_2D'] :: idx 3  (Split);;;;;;;;;;;;;;;;;
+    4 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 4  (Paranid);;;;;;;;;;;;;;;;;
+    5 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 5  (Teladi);;;;;;;;;;;;;;;;;
+    6 SHIP ships=  1 mats=[406] flags=['PEDF_2D'] :: idx 6  (Terran);;;;;;;;;;;;;;;;;
+    7 SHIP ships=  3 mats=[406] flags=['PEDF_2D'] :: idx 7  (ATF);;;;;;;;;;;;;;;;;
+    8 SHIP ships=  1 mats=[406] flags=['PEDF_2D'] :: idx 8  (Xenon);;;;;;;;;;;;;;;;;
+    9 SHIP ships= 13 mats=[406] flags=['PEDF_2D'] :: idx 9  (Pirate and Yaki);;;;;;;;;;;;;;;;;
+   10 SHIP ships=  1 mats=[406] flags=['PEDF_2D'] :: idx 10  (Kha'ak);;;;;;;;;;;;;;;;;
+   11 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 11  (Argon);;;Density;Density Var;DirX;DirY;DirZ;Speed Min;Speed M
+   12 SHIP ships=  7 mats=[406] flags=['PEDF_2D'] :: idx 12  (Boron);;;;;;;;;;;;;;;;;
+   13 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 13  (Split);;;;;;;;;;;;;;;;;
+   14 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 14  (Paranid);;;;;;;;;;;;;;;;;
+   15 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 15  (Teladi);;;;;;;;;;;;;;;;;
+   16 SHIP ships=  4 mats=[406] flags=['PEDF_2D'] :: idx 16  (Terran);;;;;;;;;;;;;;;;;
+   17 SHIP ships=  3 mats=[406] flags=['PEDF_2D'] :: idx 17  (ATF);;;;;;;;;;;;;;;;;
+   18 SHIP ships=  3 mats=[406] flags=['PEDF_2D'] :: idx 18  (Xenon);;;;;;;;;;;;;;;;;
+   19 SHIP ships= 14 mats=[406] flags=['PEDF_2D'] :: idx 19  (Pirate and Yaki);;;;;;;;;;;;;;;;;
+   20 SHIP ships=  1 mats=[406] flags=['PEDF_2D'] :: idx 20  (Kha'ak);;;;;;;;;;;;;;;;;
+   21 SHIP ships=  9 mats=[406] flags=['PEDF_2D'] :: idx 21  (Argon);;;Density;Density Var;DirX;DirY;DirZ;Speed Min;Speed M
+   22 SHIP ships=  9 mats=[406] flags=['PEDF_2D'] :: idx 22  (Boron);;;;;;;;;;;;;;;;;
+   23 SHIP ships= 11 mats=[406] flags=['PEDF_2D'] :: idx 23  (Split);;;;;;;;;;;;;;;;;
+   24 SHIP ships=  8 mats=[406] flags=['PEDF_2D'] :: idx 24  (Paranid);;;;;;;;;;;;;;;;;
+   25 SHIP ships=  9 mats=[406] flags=['PEDF_2D'] :: idx 25  (Teladi);;;;;;;;;;;;;;;;;
+   26 SHIP ships=  8 mats=[406] flags=['PEDF_2D'] :: idx 26  (Terran);;;;;;;;;;;;;;;;;
+   27 SHIP ships=  5 mats=[406] flags=['PEDF_2D'] :: idx 27  (ATF);;;;;;;;;;;;;;;;;
+   28 SHIP ships=  2 mats=[406] flags=['PEDF_2D'] :: idx 28  (Xenon);;;;;;;;;;;;;;;;;
+   29 SHIP ships= 21 mats=[406] flags=['PEDF_2D'] :: idx 29  (Pirate and Yaki);;;;;;;;;;;;;;;;;
+   30 SHIP ships=  5 mats=[406] flags=['PEDF_2D'] :: idx 30  (Kha'ak);;;;;;;;;;;;;;;;;
+   31 SHIP ships= 24 mats=[406] flags=['PEDF_2D'] :: idx 31  (Argon);;;Density;Density Var;DirX;DirY;DirZ;Speed Min;Speed M
+   32 SHIP ships= 25 mats=[406] flags=['PEDF_2D'] :: idx 32  (Boron);;;;;;;;;;;;;;;;;
+   33 SHIP ships= 24 mats=[406] flags=['PEDF_2D'] :: idx 33  (Split);;;;;;;;;;;;;;;;;
+   34 SHIP ships= 34 mats=[406] flags=['PEDF_2D'] :: idx 34  (Paranid);;;;;;;;;;;;;;;;;
+   35 SHIP ships= 24 mats=[406] flags=['PEDF_2D'] :: idx 35  (Teladi);;;;;;;;;;;;;;;;;
+   36 SHIP ships= 22 mats=[406] flags=['PEDF_2D'] :: idx 36  (Terran);;;;;;;;;;;;;;;;;
+   37 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 37  (ATF);;;;;;;;;;;;;;;;;
+   38 SHIP ships=  6 mats=[406] flags=['PEDF_2D'] :: idx 38  (Xenon);;;;;;;;;;;;;;;;;
+   39 SHIP ships= 14 mats=[406] flags=['PEDF_2D'] :: idx 39  (Pirate and Yaki);;;;;;;;;;;;;;;;;
+   40 SHIP ships=  1 mats=[406] flags=['PEDF_2D'] :: idx 40  (Kha'ak);;;;;;;;;;;;;;;;;
+   41 SHIP ships=  4 mats=[406] flags=['PEDF_2D'] :: idx 41  (Fighterdrones);;;;;;;;;;;;;;;;;
+   42      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 42  (MAML);;;;;;;;;;;;;;;;;;;;Density;Density Var;DirX;DirY;DirZ;S
+   43      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 43  (PSP);;;;;;;;;;;;;;;;;
+   44      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 44  (FBL);;;;;;;;;;;;;;;;;
+   45      ships=  0 mats=[407] flags=['PEDF_2D'] :: idx 45  (IPG);;;;;;;;;;;;;;;;;
+   46      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 46  (SSC);;;;;;;;;;;;;;;;;
+   47      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 47  (FAA);;;;;;;;;;;;;;;;;
+   48      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 48  (IBL);;;;;;;;;;;;;;;;;
+   49      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 49  (GC);;;;;;;;;;;;;;;;;
+   50      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 50  (CFA);;;;;;;;;;;;;;;;;
+   51      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 51  (IC);;;;;;;;;;;;;;;;;
+   52      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 52  (Yellow);;;;;;;;;;;;;;;;;
+   53      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 53  (Orange);;;;;;;;;;;;;;;;;
+   54      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 54  (Red);;;;;;;;;;;;;;;;;
+   55      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 55  (Purple);;;;;;;;;;;;;;;;;
+   56      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 56  (Green);;;;;;;;;;;;;;;;;
+   57      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 57  (Blue);;;;;;;;;;;;;;;;;
+   58 SHIP ships=  1 mats=[406] flags=['PEDF_2D'] :: idx 58  (Goner);;;Density;Density Var;DirX;DirY;DirZ;Speed Min;Speed M
+   59 SHIP ships=  2 mats=[406] flags=['PEDF_2D'] :: idx 59  (Goner);;;Density;Density Var;DirX;DirY;DirZ;Speed Min;Speed M
+   60 SHIP ships=  5 mats=[406] flags=['PEDF_2D'] :: idx 60  (Goner);;;Density;Density Var;DirX;DirY;DirZ;Speed Min;Speed M
+   61      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 61  (Paranid);;;;;;;;;;;;;;;;;
+   62      ships=  0 mats=[406] flags=['PEDF_2D'] :: idx 62  (White Mosquito Trail);;;;;;;;;;;;;;;;;
+  material -> ids:
+    406: ship=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 58, 59, 60] other=[42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 61, 62]
+    407: ship=[] other=[45]

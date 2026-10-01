@@ -1,0 +1,55 @@
+1. types/Bodies jet lists
+  installed addon/12.cat 4e9da259ad6d JET entries=269 (named 247, numeric 22) SMALLJET=['566']
+            JET under effects/engines: 247, fx_engine_emitter listed: True
+  stock     addon/01.cat 5793a0ae80f4 JET entries=247 (named 225, numeric 22) SMALLJET=['566']
+            JET under effects/engines: 225, fx_engine_emitter listed: True
+2. ship scene engine parts (text scenes under objects/ships)
+  installed scenes=861 with engine parts=622 glow parts=2858 emitter parts=1510
+            glow C values: [('0x7001', 2840), ('0x0', 7), ('0x3001', 6), ('0xf001', 5)]
+            emitter C values: [('0x1', 826), ('0x0', 664), ('0x2', 18), ('0x3', 1), ('0x4', 1)]
+            glow key rotation: {'identity': 2627, 'rotated': 231}
+            per scene: glow parts median 3 max 66, emitters median 2 max 28
+  stock     scenes=385 with engine parts=214 glow parts=432 emitter parts=242
+            glow C values: [('0x7001', 416), ('0x3001', 6), ('0xf001', 5), ('0x0', 5)]
+            emitter C values: [('0x1', 162), ('0x0', 66), ('0x2', 12), ('0x3', 1), ('0x4', 1)]
+            glow key rotation: {'identity': 367, 'rotated': 65}
+            per scene: glow parts median 1 max 66, emitters median 1 max 8
+3. TShips engine columns and the rows they reference
+  installed TShips addon/12.cat rows=525; Effects addon/10.cat ddceac8da54d ids=99; Particles3 addon/07.cat bf9a79f86366 ids=62
+            col11 engine effect: distinct=32 top=[('727', 65), ('724', 43), ('722', 41), ('709', 35), ('706', 34), ('718', 33)]
+            col49 trail particles: distinct=45 zero=145 top=[('0', 145), ('34', 34), ('32', 25), ('31', 24), ('33', 24), ('35', 24)]
+            Effects 727: ['EEDF_SPEEDDEPENDENT|EEDF_RELATIVESIZE;I3DF_2D;', '11;0.0;0.065;-1;0.15;0.0;0.0;-0.04;-1;0;0.4;0;', 'EEDF_SPEEDDEPENDENT|EEDF_RELATIVESIZE|EEDF_LENSFLARE;I3DF_HASLENSFLARE;', '-1;0.0;0.03;-1;0.1;0.0;0.0;-0.04;36;10;0.4;0;']
+            Effects 724: ['EEDF_SPEEDDEPENDENT|EEDF_RELATIVESIZE;I3DF_2D;', '11;0.0;0.065;-1;0.15;0.0;0.0;-0.04;-1;0;0.4;0;', 'EEDF_SPEEDDEPENDENT|EEDF_RELATIVESIZE|EEDF_LENSFLARE;I3DF_HASLENSFLARE;', '-1;0.0;0.03;-1;0.1;0.0;0.0;-0.04;33;10;0.4;0;']
+            Particles3 34: [{'flags': 'PEDF_2D', 'mat': '406', 'density': '0.4', 'speed': ('10', '1000'), 'life': '1500', 'size': ('4000', '12000')}, {'flags': 'PEDF_2D', 'mat': '406', 'density': '0.38', 'speed': ('10', '1000'), 'life': '750', 'size': ('1429', '4286')}]
+            Particles3 32: [{'flags': 'PEDF_2D', 'mat': '406', 'density': '0.4', 'speed': ('10', '1000'), 'life': '1500', 'size': ('4000', '12000')}, {'flags': 'PEDF_2D', 'mat': '406', 'density': '0.38', 'speed': ('10', '1000'), 'life': '750', 'size': ('1429', '4286')}]
+            trail emitter material ids (weighted by particle ids in use): {'406': 88}
+            Raptor row: scene=ships\split\split_m1_raptor_scene speed(col7)=77440 col11=720 col12=0 col49=0
+  stock     TShips addon/03.cat rows=404; Effects addon/01.cat 3d33ef26dc0b ids=81; Particles3 addon/01.cat b97b50b8e960 ids=40
+            col11 engine effect: distinct=22 top=[('5', 293), ('11', 26), ('3', 17), ('13', 13), ('12', 7), ('10', 7)]
+            col49 trail particles: distinct=8 zero=116 top=[('1', 276), ('0', 116), ('14', 6), ('44', 2), ('41', 1), ('47', 1)]
+            Effects 5: ['EEDF_SPEEDDEPENDENT|EEDF_LIGHT; 0;', '118; 0.153; 0.153;   -1; 0.100;     0;     0; -6553;  -1;   0; 0.750;    0;']
+            Effects 11: ['EEDF_SPEEDDEPENDENT|EEDF_RELATIVESIZE; I3DF_2D;', '11; 0.000; 0.020;   -1; 0.100; 0.000; 0.000;-0.050;  -1;   0; 0.40;    0;', 'EEDF_SPEEDDEPENDENT|EEDF_LIGHT; 0;', '118; 0.153; 0.153;   -1; 0.100;     0;     0; -6553;  -1;   0; 0.750;    0;']
+            Particles3 1: [{'flags': 'PEDF_2D', 'mat': '1198', 'density': '0.5', 'speed': ('1000', '10000'), 'life': '500', 'size': ('1000', '3000')}]
+            Particles3 14: [{'flags': 'PEDF_2D', 'mat': '395', 'density': '0.5', 'speed': ('1000', '10000'), 'life': '3600', 'size': ('6000', '7000')}, {'flags': 'PEDF_2D', 'mat': '406', 'density': '0.4', 'speed': ('1000', '10000'), 'life': '3000', 'size': ('5400', '6400')}, {'flags': 'PEDF_2D', 'mat': '406', 'density': '0.4', 'speed': ('1000', '8000'), 'life': '800', 'size': ('3000', '4000')}]
+            trail emitter material ids (weighted by particle ids in use): {'1198': 1, '395': 1, '406': 2}
+4. bodies under objects/effects/engines
+  stems installed=251 stock=229 installed-only=22 stock-only=0; examples added: ['objects/effects/engines/fx_engine_xtc_darkblue_big4', 'objects/effects/engines/fx_engine_xtc_green_big4', 'objects/effects/engines/fx_engine_xtc_lightblue_big4', 'objects/effects/engines/fx_engine_xtc_lightblue_verytiny']
+  installed resolved materials (effect, blend, zwrite): [(('engine.fx', 'ONE/INVSRCCOLOR', 'no-zwrite'), 163), (('effects.fx', 'ONE/INVSRCCOLOR', 'no-zwrite'), 52), (('engine.fx', 'ONE/ONE', 'no-zwrite'), 21), (('standard_lighting.fx', 'off', 'zwrite'), 9), (('effects.fx', 'ONE/ONE', 'no-zwrite'), 8), (('standard_lighting.fx', 'ONE/ONE', 'no-zwrite'), 6), (('terran.fx', 'off', 'zwrite'), 4), (('standard_lighting.fx', 'SRCALPHA/INVSRCALPHA', 'zwrite'), 2)] parse errors=0
+            distinct diffuse textures=26 top=[('-79.tga', 120), ('fx_engine_lightblue.dds', 12), ('fx_engine_darkblue.dds', 11), ('fx_engine_green.dds', 11), ('fx_engine_lime.dds', 11)]
+  stock     resolved materials (effect, blend, zwrite): [(('legacy', '-', '-'), 99), (('effects.fx', 'ONE/INVSRCCOLOR', 'no-zwrite'), 52), (('engine.fx', 'ONE/INVSRCCOLOR', 'no-zwrite'), 41), (('engine.fx', 'ONE/ONE', 'no-zwrite'), 21), (('standard_lighting.fx', 'off', 'zwrite'), 9), (('effects.fx', 'ONE/ONE', 'no-zwrite'), 8), (('standard_lighting.fx', 'ONE/ONE', 'no-zwrite'), 6), (('terran.fx', 'off', 'zwrite'), 4)] parse errors=2
+            distinct diffuse textures=15 top=[('-79.tga', 120), ('-79.dds', 5), ('unique\\khaak\\khaak_cockpit_diff.tga', 2), ('unique\\khaak\\khaak_01_diff.tga', 2), ('unique\\khaak\\khaak_03_diff.tga', 2)]
+  shared stems whose resolved bytes differ (Mayhem overrides): 100 of 229; examples ['objects/effects/engines/fx_engine_xtc_darkblue_big', 'objects/effects/engines/fx_engine_xtc_darkblue_big2', 'objects/effects/engines/fx_engine_xtc_darkblue_big3', 'objects/effects/engines/fx_engine_xtc_darkblue_huge']
+5. glow geometry along node z (installed winners), and emitter sprite bodies
+  installed z-extent classes: {('z-longest', 'neg'): 43, ('z-longest', 'both'): 159, ('xy-longest', 'neg'): 40, ('xy-longest', 'both'): 9}
+  example ('fx_engine_argon_m3', 'radius', 4170, 'z', (-65536, 0), 'x', (-11981, 11981))
+  example ('fx_engine_xtc_red_big2', 'radius', 9366, 'z', (-65536, 65536), 'x', (-32768, 32768))
+  installed v\00011 01.cat:objects/v/00011.pbd FormatError in bob1; materials=['MATERIAL3: 0;369; 0;36;16;  0;111;49;  229;229;229; 0;0;25;5; 0;0;0; 100; 0;0; 0;0;'] size=['600'] parts=['B_GLOW']
+  stock     v\00011 01.cat:objects/v/00011.pbd FormatError in bob1; materials=['MATERIAL3: 0;369; 0;36;16;  0;111;49;  229;229;229; 0;0;25;5; 0;0;0; 100; 0;0; 0;0;'] size=['600'] parts=['B_GLOW']
+  installed v\00213 01.cat:objects/v/00213.pbd FormatError in bob1; materials=['MATERIAL3: 0;368; 0;36;16;  0;111;49;  229;229;229; 0;0;25;5; 0;0;0; 100; 0;0; 0;0;'] size=['600'] parts=['B_GLOW']
+  stock     v\00213 01.cat:objects/v/00213.pbd FormatError in bob1; materials=['MATERIAL3: 0;368; 0;36;16;  0;111;49;  229;229;229; 0;0;25;5; 0;0;0; 100; 0;0; 0;0;'] size=['600'] parts=['B_GLOW']
+6. trail / sprite textures (installed view)
+  tex/true/406.jpg 01.cat (512, 512) 5037b11560d5
+  tex/true/395.jpg 01.cat (256, 256) f825d6df4376
+  tex/true/369.jpg 01.cat (256, 256) a1636ee04270
+  tex/true/368.jpg 01.cat (256, 256) 7b42709b1eda
+  textures/others/trail1_diff.jpg 01.cat (256, 256) 3602b1450021

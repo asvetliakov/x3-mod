@@ -1,0 +1,930 @@
+view,row,id,class,race,speed,col11_engine_effect,col12_engine_glow,col49_engine_trail,scene,glow_parts,emitter_parts,rcs_parts,hull_engine_mats,glow_bodies,glow_tint,glow_cluster,glow_len_z,glow_width,nozzle_min_z,hull_len_z,hull_value,part_C_values,part_frame_flags
+stock,0,SS_SH_A_TL,TL,1,29185,11,373,0,ships\argon\argon_TL_scene,0,0,0,5,,,,,,,1212786,606393,,
+stock,1,SS_SH_A_TS,TS,1,25000,5,89,1,ships\argon\argon_TS_storage_S_scene,1,0,0,3,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-13038,27604,13802,28673,0x2002
+stock,2,SS_SH_A_TS_1,TS,1,25000,5,89,1,ships\argon\argon_TS_liquid_S_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-13031,27606,13803,28673,0x2002
+stock,3,SS_SH_A_TS_2,TS,1,20000,5,89,1,ships\argon\argon_TS_storage_M_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-19660,40848,20424,28673,0x2002
+stock,4,SS_SH_A_TS_3,TS,1,16250,5,89,1,ships\argon\argon_TS_liquid_M_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-19385,41286,20643,28673,0x2002
+stock,5,SS_SH_A_TS_4,TS,1,19250,5,89,1,ships\argon\argon_TS_liquidstorage_M_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-19978,41486,20743,28673,0x2002
+stock,6,SS_SH_A_TS_5,TS,1,18000,5,89,1,ships\argon\argon_TS_liquidstorage_L_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-33301,68134,34067,28673,0x2002
+stock,7,SS_SH_A_TP,TP,1,30000,5,89,1,ships\argon\argon_TP_S_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-19670,41486,20743,28673,0x2002
+stock,8,SS_SH_A_TP_1,TP,1,33000,5,89,1,ships\argon\argon_TP_L_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-33000,68514,34257,28673,0x2002
+stock,9,SS_SH_A_TM,TM,1,27500,5,89,1,ships\tm\Argon_TM_scene,1,0,0,5,fx_engine_argon_tmx1,#265163,cyan,11076,11970,-31747,66115,33416,28673,0x2002
+stock,10,SS_SH_A_M1,M1,1,24720,11,373,0,ships\argon\argon_M1_scene,0,0,0,5,,,,,,,1022186,511093,,
+stock,11,SS_SH_A_M2,M2,1,17500,11,373,0,ships\argon\argon_M2_scene,0,0,0,5,,,,,,,1056844,528422,,
+stock,12,SS_SH_A_M3,M3,1,30000,5,11,1,ships\argon\argon_M3_scene,1,1,16,0,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-5043,10018,5009,1 132 136 16 28673 32 68 72,0x2002
+stock,13,SS_SH_A_M3_1,M3,1,38100,5,11,1,ships\argon\argon_M3_var1_scene,1,1,16,,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-4882,,,1 132 136 16 28673 32 68 72,0x2002
+stock,14,SS_SH_A_M3_2,M3,1,33000,5,11,1,ships\argon\argon_M3_var2_scene,1,1,16,,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-4913,,,1 132 136 16 28673 32 68 72,0x2002
+stock,15,SS_SH_A_M3_3,M3,1,24600,5,11,1,ships\argon\argon_M3_var3_scene,1,1,16,0,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-4777,10212,5106,1 132 136 16 28673 32 68 72,0x2002
+stock,16,SS_SH_A_M3P,M3,1,26000,5,11,1,ships\patch2_ships\argon_M3_plus_scene,1,2,16,,fx_engine_argon_m3plusx1,#265163,cyan,7176,3946,-11465,,,1 132 136 16 2 28673 32 68 72,0x2002
+stock,17,SS_SH_A_M4,M4,1,31405,5,11,1,ships\argon\argon_M4_scene,1,1,16,0,fx_engine_argon_m4x1,#265163,cyan,1443,669,-2806,5845,3307,1 132 136 16 28673 32 68 72,0x2002
+stock,18,SS_SH_A_M4_1,M4,1,39884,5,11,1,ships\argon\argon_M4_var1_scene,1,1,16,0,fx_engine_argon_m4x1,#265163,cyan,1443,669,-2112,6868,3434,1 132 136 16 28673 32 68 72,0x2002
+stock,19,SS_SH_A_M4_2,M4,1,34545,5,11,1,ships\argon\argon_M4_var2_scene,1,1,16,0,fx_engine_argon_m4x1,#265163,cyan,1443,669,-3298,6436,3218,1 132 136 16 28673 32 68 72,0x2002
+stock,20,SS_SH_A_M4_3,M4,1,25752,5,11,1,ships\argon\argon_M4_var3_scene,1,1,32,0,fx_engine_argon_m4x1,#265163,cyan,1443,669,-1903,6420,3210,1 132 136 16 28673 32 68 72,0x2002
+stock,21,SS_SH_A_M4P,M4,1,32000,5,11,1,ships\M4\argon_M4p_scene,2,1,18,,fx_engine_argon_m4p_lowerx1 fx_engine_argon_m4p_upperx1,#265163,cyan,3743,1664,-4904,,,1 132 136 16 28673 32 68 72,0x2002
+stock,22,SS_SH_A_M5,M5,1,49450,5,11,1,ships\argon\argon_M5_scene,1,1,16,0,fx_engine_argon_m5x1,#265163,cyan,6658,1164,-3718,7792,4001,1 132 136 16 28673 32 68 72,0x2002
+stock,23,SS_SH_A_M5_1,M5,1,62801,5,11,1,ships\argon\argon_M5_var1_scene,1,1,16,0,fx_engine_argon_m5x1,#265163,cyan,6658,1164,-3814,7882,3941,1 132 136 16 28673 32 68 72,0x2002
+stock,24,SS_SH_A_M5_2,M5,1,51922,5,11,1,ships\argon\argon_M5_var2_scene,1,1,16,0,fx_engine_argon_m5x1,#265163,cyan,6658,1164,-3760,7786,3998,1 132 136 16 28673 32 68 72,0x2002
+stock,25,SS_SH_A_M5_3,M5,1,54395,5,11,1,ships\argon\argon_M5_var3_scene,1,1,16,0,fx_engine_argon_m5x1,#265163,cyan,6658,1164,-3755,7812,3906,1 132 136 16 28673 32 68 72,0x2002
+stock,26,SS_SH_A_M6,M6,1,30750,5,373,1,ships\argon\argon_M6_scene,0,0,0,5,,,,,,,64424,32212,,
+stock,27,SS_SH_A_M6M,M6,1,28750,5,373,0,ships\mm6\Argon_MM6_scene,0,4,0,,,,,,,-28225,,,None,0x2002
+stock,28,SS_SH_A_M7,M7,1,28250,11,373,0,ships\m7\argon_m7_scene,0,0,0,5,,,,,,,717976,401434,,
+stock,29,SS_SH_A_M7M,M7,1,20588,13,384,0,ships\M7\Argon_M7M_scene,0,0,0,5,,,,,,,413882,206941,,
+stock,30,SS_SH_A_M8,M8,1,31250,5,373,1,ships\M8\argon_M8_scene,2,2,0,0,fx_engine_argon_m8_middlex1 fx_engine_argon_m8_topbottomx1,#265163,cyan,5349,5157,-11448,25468,12734,1 28673,0x2002
+stock,31,SS_SH_A_MK2DRONE,OBJ_FIGHTDRONE2,1,100000,5,89,1,ships\others\fightdrone_MK2_scene,0,1,0,0,,,,,,-1379,2576,1288,1,0x2002
+stock,32,SS_SH_PLACEHOLDER_4,TL,1,14750,5,373,14,0,0,0,0,,,,,,,,,,,
+stock,33,SS_SH_PLACEHOLDER_5,TL,1,13500,5,373,14,0,0,0,0,,,,,,,,,,,
+stock,34,SS_SH_PLACEHOLDER_3,TL,1,13500,5,373,14,0,0,0,0,,,,,,,,,,,
+stock,35,SS_SH_PLACEHOLDER_6,TL,1,13500,5,373,14,0,0,0,0,,,,,,,,,,,
+stock,36,SS_SH_PLACEHOLDER_2,TL,1,13500,5,373,14,0,0,0,0,,,,,,,,,,,
+stock,37,SS_SH_PLACEHOLDER_1,TL,1,13500,5,373,14,0,0,0,0,,,,,,,,,,,
+stock,38,SS_SH_A_OWP_1,M1,1,0,3,200,0,ships\owp\owp_small_scene,0,0,0,5,,,,,,,500995,404579,,
+stock,39,SS_SH_A_OWP_2,M1,1,0,3,200,0,ships\owp\owp_medium_scene,0,0,0,5,,,,,,,727609,483401,,
+stock,40,SS_SH_A_OWP_3,M1,1,0,3,200,0,ships\owp\owp_large_scene,0,0,0,,,,,,,,,,,
+stock,41,SS_SH_S_TL,TL,3,43980,12,351,0,ships\split\split_TL_scene,0,0,0,,,,,,,,,,,
+stock,42,SS_SH_S_TS,TS,3,34720,5,30,1,ships\split\split_TS_storage_S_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-12426,31940,15970,28673,0x2002
+stock,43,SS_SH_S_TS_1,TS,3,34720,5,30,1,ships\split\split_TS_liquid_S_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-12320,31692,15846,28673,0x2002
+stock,44,SS_SH_S_TS_2,TS,3,27776,5,30,1,ships\split\split_TS_storage_M_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-18927,44939,22470,28673,0x2002
+stock,45,SS_SH_S_TS_3,TS,3,22568,5,30,1,ships\split\split_TS_liquid_M_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-19167,45406,22703,28673,0x2002
+stock,46,SS_SH_S_TS_4,TS,3,26734,5,30,1,ships\split\split_TS_liquidstorage_M_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-19144,45379,22690,28673,0x2002
+stock,47,SS_SH_S_TS_5,TS,3,24998,5,30,1,ships\split\split_TS_liquidstorage_L_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-32519,71889,35945,28673,0x2002
+stock,48,SS_SH_S_TS_6,TS,3,25000,5,30,1,ships\split\split_TS_storage_M_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-18927,44939,22470,28673,0x2002
+stock,49,SS_SH_S_TP,TP,3,44735,5,30,1,ships\split\split_TP_S_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-19431,45715,22858,28673,0x2002
+stock,50,SS_SH_S_TP_1,TP,3,49208,5,30,1,ships\split\split_TP_L_scene,2,0,0,0,fx_engine_split2_tsx1 fx_engine_split_tsx1,#265163,cyan,3524,2737,-32920,72692,36346,28673,0x2002
+stock,51,SS_SH_S_TM,TM,3,43055,5,30,1,ships\tm\Split_TM_scene,2,0,0,5,fx_engine_split2_tmx1 fx_engine_split_tmx1,#265163,cyan,8752,3423,-41015,73721,45434,28673,0x2002
+stock,52,SS_SH_S_M1,M1,3,30365,12,351,0,ships\split\split_M1_scene,0,0,0,0,,,,,,,1079572,539786,,
+stock,53,SS_SH_S_M2,M2,3,24775,12,351,0,ships\split\split_M2_scene,0,0,0,0,,,,,,,1068160,534080,,
+stock,54,SS_SH_S_M3,M3,3,42000,5,12,1,ships\split\split_m3_scene,1,1,16,0,fx_engine_split_m3x1,#265163,cyan,6280,734,-7024,14594,7297,1 132 136 16 28673 32 68 72,0x2002
+stock,55,SS_SH_S_M3_1,M3,3,53340,5,12,1,ships\split\split_M3_var1_scene,1,1,16,0,fx_engine_split_m3x1,#265163,cyan,6280,734,-7038,14440,7220,1 132 136 16 28673 32 68 72,0x2002
+stock,56,SS_SH_S_M3_2,M3,3,46200,5,12,1,ships\split\split_M3_var2_scene,1,1,16,0,fx_engine_split_m3x1,#265163,cyan,6280,734,-7184,15590,7795,1 132 136 16 28673 32 68 72,0x2002
+stock,57,SS_SH_S_M3_3,M3,3,34440,5,12,1,ships\split\split_M3_var3_scene,1,1,16,0,fx_engine_split_m3x1,#265163,cyan,6280,734,-7081,14502,7251,1 132 136 16 28673 32 68 72,0x2002
+stock,58,SS_SH_S_M3P,M3,3,36400,5,12,1,ships\patch2_ships\split_m3_plus_scene,1,1,16,0,fx_engine_split_m3plusx1,#265163,cyan,5310,1705,-8302,19746,9873,1 132 136 16 28673 32 68 72,0x2002
+stock,59,SS_SH_S_M4,M4,3,38965,5,12,1,ships\split\split_m4_scene,1,1,16,0,fx_engine_split_m4x1,#265163,cyan,3854,953,-6192,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+stock,60,SS_SH_S_M4_1,M4,3,49485,5,12,1,ships\split\split_m4_var1_scene,1,1,16,0,fx_engine_split_m4x1,#265163,cyan,3854,953,-6337,13436,6718,1 132 136 16 28673 32 68 72,0x2002
+stock,61,SS_SH_S_M4_2,M4,3,42861,5,12,1,ships\split\split_m4_var2_scene,1,1,16,0,fx_engine_split_m4x1,#265163,cyan,3854,953,-6157,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+stock,62,SS_SH_S_M4_3,M4,3,31951,5,12,1,ships\split\split_m4_var3_scene,1,1,16,0,fx_engine_split_m4x1,#265163,cyan,3854,953,-6077,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+stock,63,SS_SH_S_M4P,M4,3,37500,5,12,1,ships\M4\split_m4p_scene,2,1,14,,fx_engine_split_m4p_middlex1 fx_engine_split_m4px1,#265163,cyan,5380,1591,-6612,,,1 132 136 16 28673 32 68 72,0x2002
+stock,64,SS_SH_S_M5,M5,3,67090,5,12,1,ships\split\split_m5_scene,1,1,16,0,fx_engine_split_m5x1,#265163,cyan,6210,813,-5662,12542,6271,1 132 136 16 28673 32 68 72,0x2002
+stock,65,SS_SH_S_M5_1,M5,3,85204,5,12,1,ships\split\split_m5_var1_scene,1,1,16,0,fx_engine_split_m5x1,#265163,cyan,6210,813,-5457,13562,6781,1 132 136 16 28673 32 68 72,0x2002
+stock,66,SS_SH_S_M5_2,M5,3,70444,5,12,1,ships\split\split_m5_var2_scene,1,1,16,0,fx_engine_split_m5x1,#265163,cyan,6210,813,-5702,12724,6362,1 132 136 16 28673 32 68 72,0x2002
+stock,67,SS_SH_S_M5_3,M5,3,73799,5,12,1,ships\split\split_m5_var3_scene,1,1,16,,fx_engine_split_m5x1,#265163,cyan,6210,813,-5674,,,1 132 136 16 28673 32 68 72,0x2002
+stock,68,SS_SH_S_M6,M6,3,45315,5,351,1,ships\split\split_m6_scene,0,0,0,0,,,,,,,88224,44112,,
+stock,69,SS_SH_S_M6M,M6,3,42368,5,351,0,ships\mm6\Split_MM6_scene,0,2,0,,,,,,,3316,,,None,0x2002
+stock,70,SS_SH_S_M7,M7,3,33800,12,351,0,ships\m7\split_m7_scene,0,0,0,0,,,,,,,845272,422636,,
+stock,71,SS_SH_S_M7M,M7,3,28823,13,384,0,ships\M7\Split_M7M_scene,0,0,0,0,,,,,,,417681,208882,,
+stock,72,SS_SH_S_M8,M8,3,43750,5,373,1,ships\M8\Split_M8_scene,1,0,0,0,fx_engine_split_m8x1,#265163,cyan,3583,10054,4309,35402,17780,28673,0x2002
+stock,73,SS_SH_P_TL,TL,4,32205,9,378,0,ships\paranid\paranid_TL_scene,0,0,0,0,,,,,,,888926,444463,,
+stock,74,SS_SH_P_TS,TS,4,27500,5,214,1,ships\paranid\paranid_TS_storage_S_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-14476,32368,16184,28673,0x2002
+stock,75,SS_SH_P_TS_1,TS,4,27500,5,214,1,ships\paranid\paranid_TS_liquid_S_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-14476,32368,16184,28673,0x2002
+stock,76,SS_SH_P_TS_2,TS,4,22000,5,214,1,ships\paranid\paranid_TS_storage_M_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-21105,45626,22813,28673,0x2002
+stock,77,SS_SH_P_TS_3,TS,4,29425,5,214,1,ships\paranid\paranid_TS_storage_S_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-14476,32368,16184,28673,0x2002
+stock,78,SS_SH_P_TS_4,TS,4,21175,5,214,1,ships\paranid\paranid_TS_liquidstorage_M_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-21283,45980,22990,28673,0x2002
+stock,79,SS_SH_P_TS_5,TS,4,19800,5,214,1,ships\paranid\paranid_TS_liquidstorage_L_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-34735,72886,36443,28673,0x2002
+stock,80,SS_SH_P_TP,TP,4,18750,5,214,1,ships\paranid\paranid_TP_S_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-24290,46288,25996,28673,0x2002
+stock,81,SS_SH_P_TP_1,TP,4,20625,5,214,1,ships\paranid\paranid_TP_L_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-34743,72890,36445,28673,0x2002
+stock,82,SS_SH_P_TM,TM,4,30250,5,214,1,ships\tm\Paranid_TM_scene,1,0,0,1,fx_engine_paranid_tmx1,#265163,cyan,8863,7657,-42117,75958,44464,28673,0x2002
+stock,83,SS_SH_P_M1,M1,4,25650,9,378,0,ships\paranid\Paranid_M1_scene,0,0,0,,,,,,,,,,,
+stock,84,SS_SH_P_M2,M2,4,16145,9,378,0,ships\paranid\Paranid_M2_scene,0,0,0,0,,,,,,,924566,462283,,
+stock,85,SS_SH_P_M3,M3,4,37500,5,9,1,ships\paranid\paranid_M3_scene,1,1,16,0,fx_engine_paranid_m3x1,#265163,cyan,3913,2099,-6159,12830,6415,1 132 136 16 28673 32 68 72,0x2002
+stock,86,SS_SH_P_M3_1,M3,4,47636,5,9,1,ships\paranid\paranid_M3_var1_scene,1,1,16,0,fx_engine_paranid_m3_var1x1,#265163,cyan,3499,1673,-6471,12970,6485,1 132 136 16 28673 32 68 72,0x2002
+stock,87,SS_SH_P_M3_2,M3,4,41250,5,9,1,ships\paranid\paranid_M3_var1_scene,1,1,16,0,fx_engine_paranid_m3_var1x1,#265163,cyan,3499,1673,-6471,12970,6485,1 132 136 16 28673 32 68 72,0x2002
+stock,88,SS_SH_P_M3_3,M3,4,30750,5,9,1,ships\paranid\paranid_M3_var3_scene,1,1,16,0,fx_engine_paranid_m3x1,#265163,cyan,3913,2099,-6266,12818,6409,1 132 136 16 28673 32 68 72,0x2002
+stock,89,SS_SH_P_M3P,M3,4,32500,5,9,1,ships\patch2_ships\paranid_M3_plus_scene,1,2,16,0,fx_engine_paranid_m3plusx1,#265163,cyan,6000,4625,-7491,15678,7839,1 132 136 16 28673 32 68 72,0x2002
+stock,90,SS_SH_P_M4,M4,4,31720,5,9,1,ships\paranid\paranid_M4_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4581,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+stock,91,SS_SH_P_M4_1,M4,4,40284,5,9,1,ships\paranid\paranid_M4_var1_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4666,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+stock,92,SS_SH_P_M4_2,M4,4,34892,5,9,1,ships\paranid\paranid_M4_var2_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4707,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+stock,93,SS_SH_P_M4_3,M4,4,26010,5,9,1,ships\paranid\paranid_M4_var3_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4628,8906,4453,1 132 136 16 28673 32 68 72,0x2002
+stock,94,SS_SH_P_M4P,M4,4,31720,5,9,1,ships\M4\Paranid_M4p_scene,2,1,16,,fx_engine_paranid_m4px1 fx_engine_paranid_m4p_upperx1,#265163,cyan,4546,721,-3481,,,1 132 136 16 28673 32 68 72,0x2002 0xe082
+stock,95,SS_SH_P_M5,M5,4,53670,5,9,1,ships\paranid\paranid_M5_scene,1,1,16,0,fx_engine_paranid_m5x1,#265163,cyan,2733,5286,-3561,7121,4766,1 132 136 16 28673 32 68 72,0x2002
+stock,96,SS_SH_P_M5_1,M5,4,68160,5,9,1,ships\paranid\paranid_M5_var1_scene,1,1,16,0,fx_engine_paranid_m5_var1x1,#265163,cyan,2879,3757,-3561,7160,4792,1 132 136 16 28673 32 68 72,0x2002
+stock,97,SS_SH_P_M5_2,M5,4,59037,5,9,1,ships\paranid\paranid_M5_var2_scene,1,1,16,0,fx_engine_paranid_m5_var2x1,#265163,cyan,2733,5286,-3561,7151,4516,1 132 136 16 28673 32 68 72,0x2002
+stock,98,SS_SH_P_M5_3,M5,4,44009,5,9,1,ships\paranid\paranid_M5_var3_scene,1,1,16,0,fx_engine_paranid_m5_var3x1,#265163,cyan,2733,3878,-3561,7513,4310,1 132 136 16 28673 32 68 72,0x2002
+stock,99,SS_SH_P_M6,M6,4,33825,5,378,1,ships\paranid\paranid_M6_scene,0,0,0,0,,,,,,,90564,45282,,
+stock,100,SS_SH_P_M6M,M6,4,31125,5,373,0,ships\mm6\Paranid_MM6_scene,1,0,0,0,fx_engine_paranid_m6mx1,#265163,cyan,6813,8906,-35785,106568,53284,28673,0x2002
+stock,101,SS_SH_P_M7,M7,4,31750,9,378,0,ships\M7\Paranid_M7_scene,0,0,0,,,,,,,,,,,
+stock,102,SS_SH_P_M7M,M7,4,22648,13,384,0,ships\M7\Paranid_M7M_scene,0,0,0,0,,,,,,,913754,456877,,
+stock,103,SS_SH_P_M8,M8,4,34375,5,373,1,ships\M8\paranid_M8_scene,2,0,0,0,fx_engine_paranid_m81x1 fx_engine_paranid_m82x1,#265163,cyan,3825,6426,-16816,35428,17714,28673,0x2002
+stock,104,SS_SH_B_TL,TL,2,36950,13,37,0,ships\boron\boron_TL_scene,0,0,0,0,,,,,,,1428204,714102,,
+stock,105,SS_SH_B_TS,TS,2,20830,5,37,1,ships\boron\boron_TS_storage_S_scene,2,0,0,0,fx_engine_boron_ts_bx1 fx_engine_boron_ts_ax1,#265163,cyan,3506,9078,-14042,28228,14114,28673,0x2002
+stock,106,SS_SH_B_TS_1,TS,2,20830,5,37,1,ships\boron\boron_TS_liquid_S_scene,2,0,0,0,fx_engine_boron_ts_bx1 fx_engine_boron_ts_ax1,#265163,cyan,3506,9078,-14044,28228,14114,28673,0x2002
+stock,107,SS_SH_B_TS_2,TS,2,16664,5,37,1,ships\boron\boron_TS_storage_M_scene,2,0,0,0,fx_engine_boron_ts_ax1 fx_engine_boron_ts_bx1,#265163,cyan,3506,9078,-23700,48378,24189,28673,0x2002
+stock,108,SS_SH_B_TS_3,TS,2,13539,5,37,1,ships\boron\boron_TS_liquid_M_scene,2,0,0,0,fx_engine_boron_ts_ax1 fx_engine_boron_ts_bx1,#265163,cyan,3506,9078,-23700,48378,24189,28673,0x2002
+stock,109,SS_SH_B_TS_4,TS,2,16039,5,37,1,ships\boron\boron_TS_liquidstorage_M_scene,2,0,0,0,fx_engine_boron_ts_ax1 fx_engine_boron_ts_bx1,#265163,cyan,3506,9078,-23703,48378,24189,28673,0x2002
+stock,110,SS_SH_B_TS_5,TS,2,14997,5,37,1,ships\boron\boron_TS_liquidstorage_L_scene,2,0,0,0,fx_engine_boron_ts_ax1 fx_engine_boron_ts_bx1,#265163,cyan,3506,9078,-37158,75288,37644,28673,0x2002
+stock,111,SS_SH_B_TP_SPECIAL,TP,2,43100,5,37,1,ships\TS\Boron_QY_scene,3,0,0,0,v/00114x2 fx_engine_boron_qyx1,#265163,cyan,4276,7673,-29857,61768,30884,28673 None,0x2002
+stock,112,SS_SH_B_TP,TP,2,18330,5,37,1,ships\boron\boron_TP_S_scene,2,0,0,0,fx_engine_boron_ts_ax1 fx_engine_boron_ts_bx1,#265163,cyan,3506,9078,-23703,48378,24189,28673,0x2002
+stock,113,SS_SH_B_TP_1,TP,2,20163,5,37,1,ships\boron\boron_TP_L_scene,2,0,0,0,fx_engine_boron_ts_ax1 fx_engine_boron_ts_bx1,#265163,cyan,3506,9078,-36998,75288,37644,28673,0x2002
+stock,114,SS_SH_B_TM,TM,2,36668,5,37,1,ships\tm\Boron_TM_scene,2,0,0,5,fx_engine_boron_tm_bx1 fx_engine_boron_tm_ax1,#265163,cyan,8768,11352,-38366,77894,38947,28673,0x2002
+stock,115,SS_SH_B_M1,M1,2,27350,13,384,0,ships\boron\boron_M1_scene,0,0,0,0,,,,,,,1461402,730701,,
+stock,116,SS_SH_B_M2,M2,2,20505,13,384,0,ships\boron\boron_M2_scene,0,0,0,0,,,,,,,1450094,725047,,
+stock,117,SS_SH_B_M3,M3,2,36000,5,13,1,ships\boron\boron_M3_scene,1,1,16,0,fx_engine_boron_m3x1,#3e393e,white/grey,3753,938,-3010,10400,5200,1 132 136 16 28673 32 68 72,0x2002
+stock,118,SS_SH_B_M3_1,M3,2,45720,5,13,1,ships\boron\boron_M3_var1_scene,1,1,16,,fx_engine_boron_m3x1,#3e393e,white/grey,3753,938,-3159,,,1 132 136 16 28673 32 68 72,0x2002
+stock,119,SS_SH_B_M3_2,M3,2,39600,5,13,1,ships\boron\boron_M3_var2_scene,1,1,16,,fx_engine_boron_m3x1,#3e393e,white/grey,3753,938,-2936,,,1 132 136 16 28673 32 68 72,0x2002
+stock,120,SS_SH_B_M3_3,M3,2,29520,5,13,1,ships\boron\boron_M3_var3_scene,1,1,16,,fx_engine_boron_m3x1,#3e393e,white/grey,3753,938,-3094,,,1 132 136 16 28673 32 68 72,0x2002
+stock,121,SS_SH_B_M3P,M3,2,31200,5,13,1,ships\M3\Boron_M3P_Scene,1,1,18,0,fx_engine_boron_m3px1,#265163,cyan,4706,977,1112,20910,10455,132 136 16 28673 32 68 72 None,0x2002
+stock,122,SS_SH_B_M4,M4,2,33850,5,13,1,ships\boron\boron_M4_scene,1,1,16,,fx_engine_boron_m4x1,#265163,cyan,1126,497,-4348,,,1 132 136 16 28673 32 68 72,0x2002
+stock,123,SS_SH_B_M4_1,M4,2,42989,5,13,1,ships\boron\boron_M4_var1_scene,1,1,16,0,fx_engine_boron_m4x1,#265163,cyan,1126,497,-4944,10322,5161,1 132 136 16 28673 32 68 72,0x2002
+stock,124,SS_SH_B_M4_2,M4,2,37235,5,13,1,ships\boron\boron_M4_var2_scene,1,1,16,0,fx_engine_boron_m4x1,#265163,cyan,1126,497,-4232,8958,4545,1 132 136 16 28673 32 68 72,0x2002
+stock,125,SS_SH_B_M4_3,M4,2,27757,5,13,1,ships\boron\boron_M4_var3_scene,1,1,16,0,fx_engine_boron_m4x1,#265163,cyan,1126,497,-4445,9200,4600,1 132 136 16 28673 32 68 72,0x2002
+stock,126,SS_SH_B_M4P,M4,2,32500,219,0,44,ships\X3AP\boron\XTC_boron_m4p_scene,6,1,16,0,fx_engine_xtc_darkblue_tinyx6,#3e393e,white/grey,1001,500,-5693,14396,7198,1 132 136 16 28673 32 68 72,0x2002
+stock,127,SS_SH_B_M5,M5,2,71315,5,13,1,ships\boron\boron_M5_scene,3,2,16,,fx_engine_boron_m3x2 fx_engine_boron_m5x1,#36414a,blue,4972,1356,-3853,,,1 132 136 16 28673 32 68 72,0x2002
+stock,128,SS_SH_B_M5_1,M5,2,90570,5,15,1,ships\boron\boron_M5_var1_scene,2,2,16,,fx_engine_boron_m3x2,#3e393e,white/grey,3753,938,-3537,,,1 132 136 16 28673 32 68 72,0x2002
+stock,129,SS_SH_B_M5_2,M5,2,78446,5,13,1,ships\boron\boron_M5_var2_scene,2,2,16,,fx_engine_boron_m3x2,#3e393e,white/grey,3753,938,-2965,,,1 132 136 16 28673 32 68 72,0x2002
+stock,130,SS_SH_B_M5_3,M5,2,58478,5,13,1,ships\boron\boron_M5_var3_scene,2,2,16,,fx_engine_boron_m3x2,#3e393e,white/grey,3753,938,-2965,,,1 132 136 16 28673 32 68 72,0x2002
+stock,131,SS_SH_B_M6,M6,2,30750,5,384,1,ships\boron\boron_M6_scene,0,0,0,0,,,,,,,75524,37762,,
+stock,132,SS_SH_B_M6M,M6,2,43125,5,384,1,ships\M6\Boron_M6X_Scene,8,0,0,,v/00114x8,,,,,-24132,,,12289,0x2002
+stock,133,SS_SH_B_M7,M7,2,32725,13,384,0,ships\m7\boron_m7_scene,0,0,0,0,,,,,,,1093026,715431,,
+stock,134,SS_SH_B_M7M,M7,2,24705,13,384,0,ships\M7\Boron_M7M_scene,0,0,0,0,,,,,,,616170,308085,,
+stock,135,SS_SH_B_M8,M8,2,37500,219,0,0,ships\X3AP\boron\XTC_boron_m8_scene,5,3,0,0,fx_engine_xtc_darkblue_nor2x3 fx_engine_xtc_darkblue_norx2,#3e393e,white/grey,4003,2000,-15702,37308,18654,1 28673,0x2002
+stock,136,SS_SH_T_TL,TL,5,29355,10,217,0,ships\teladi\teladi_TL_scene,0,0,0,0,,,,,,,1805690,902859,,
+stock,137,SS_SH_T_TS,TS,5,22220,5,217,1,ships\teladi\teladi_TS_storage_S_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-14773,31786,15893,28673,0x2002
+stock,138,SS_SH_T_TS_1,TS,5,22220,5,217,1,ships\teladi\teladi_TS_liquid_S_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-15524,33188,16594,28673,0x2002
+stock,139,SS_SH_T_TS_2,TS,5,17776,5,217,1,ships\teladi\teladi_TS_storage_M_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-21251,44732,22366,28673,0x2002
+stock,140,SS_SH_T_TS_3,TS,5,23775,5,217,1,ships\teladi\teladi_TS_liquid_M_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-22385,46910,23455,28673,0x2002
+stock,141,SS_SH_T_TS_4,TS,5,17109,5,217,1,ships\teladi\teladi_TS_liquidstorage_M_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-22072,46378,23189,28673,0x2002
+stock,142,SS_SH_T_TS_5,TS,5,15998,5,217,1,ships\teladi\teladi_TS_liquidstorage_L_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-35158,72458,36229,28673,0x2002
+stock,143,SS_SH_T_TP,TP,5,25000,5,217,1,ships\teladi\teladi_TP_S_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-22539,47218,23609,28673,0x2002
+stock,144,SS_SH_T_TP_1,TP,5,27500,5,217,1,ships\teladi\teladi_TP_L_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-35734,73704,36852,28673,0x2002
+stock,145,SS_SH_T_TM,TM,5,24445,5,217,1,ships\tm\Teladi_TM_scene,1,0,0,5,fx_engine_teladi_tmx1,#265163,cyan,8748,3176,-40895,78187,42365,28673,0x2002
+stock,146,SS_SH_T_M1,M1,5,23070,10,217,0,ships\teladi\teladi_M1_scene,0,0,0,0,,,,,,,1047926,523963,,
+stock,147,SS_SH_T_M2,M2,5,11980,10,217,0,ships\teladi\teladi_M2_scene,0,0,0,0,,,,,,,2378440,1189220,,
+stock,148,SS_SH_T_M3,M3,5,27273,5,10,1,ships\teladi\teladi_M3_scene,1,1,16,0,fx_engine_teladi_m3x1,#265163,cyan,3808,2886,-7748,16082,8041,1 132 136 16 28673 32 68 72,0x2002
+stock,149,SS_SH_T_M3_1,M3,5,30000,5,10,1,ships\teladi\teladi_M3_var1_scene,1,1,16,0,fx_engine_teladi_m3_var1x1,#265163,cyan,7618,3088,-8388,17582,8791,1 132 136 16 28673 32 68 72,0x2002
+stock,150,SS_SH_T_M3_2,M3,5,22363,5,10,1,ships\teladi\teladi_M3_var2_scene,1,1,16,0,fx_engine_teladi_m3_var2x1,#265163,cyan,3670,2995,-8306,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+stock,151,SS_SH_T_M3_3,M3,5,24545,5,10,1,ships\teladi\teladi_M3_var3_scene,1,1,16,0,fx_engine_teladi_m3_var3x1,#265163,cyan,7796,3087,-8740,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+stock,152,SS_SH_T_M3P,M3,5,20800,5,10,1,ships\m3\Teladi_M3P_scene,1,1,16,0,fx_engine_teladi_m3pxtmx1,#265163,cyan,4143,3687,-7693,17856,8928,1 12289 132 136 16 32 68 72,0x2002
+stock,153,SS_SH_T_M4,M4,5,26130,5,10,1,ships\teladi\teladi_M4_scene,3,3,16,0,fx_engine_teladi_m4mx2 fx_engine_teladi_m4sx1,#265163,cyan,2276,561,-4739,10096,5048,1 132 136 16 28673 32 68 72,0x2002
+stock,154,SS_SH_T_M4_1,M4,5,27959,5,10,1,ships\teladi\teladi_M4_var1_scene,4,1,16,0,fx_engine_teladi_m4sx2 fx_engine_teladi_m4mx2,#265163,cyan,2276,561,-5352,10716,5358,1 132 136 16 28673 32 68 72,0x2002
+stock,155,SS_SH_T_M4_2,M4,5,28743,5,10,1,ships\teladi\teladi_M4_var2_scene,3,1,16,0,fx_engine_teladi_m4mx2 fx_engine_teladi_m4sx1,#265163,cyan,2276,561,-5336,10824,5412,1 132 136 16 28673 32 68 72,0x2002
+stock,156,SS_SH_T_M4_3,M4,5,21426,5,10,1,ships\teladi\teladi_M4_var3_scene,4,1,16,0,fx_engine_teladi_m4sx4,#265163,cyan,1949,486,-5336,10786,5393,1 132 136 16 28673 32 68 72,0x2002
+stock,157,SS_SH_T_M4P,M4,5,26130,5,10,1,ships\m4\teladi_M4p_scene,3,3,16,0,fx_engine_teladi_m4px1 fx_engine_teladi_m4p_topx1 fx_engine_teladi_m4p_middlex1,#265163,cyan,4743,2819,-6816,14294,7147,1 132 136 16 28673 32 68 72,0x2002 0x2003 0xe082
+stock,158,SS_SH_T_M5,M5,5,56000,5,10,1,ships\teladi\teladi_M5_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-3913,7730,3865,1 132 136 16 28673 32 68 72,0x2002
+stock,159,SS_SH_T_M5_1,M5,5,49000,5,10,1,ships\teladi\teladi_M5_var1_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-3958,7742,3871,1 132 136 16 28673 32 68 72,0x2002
+stock,160,SS_SH_T_M5_2,M5,5,60000,5,10,1,ships\teladi\teladi_M5_var2_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-4021,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+stock,161,SS_SH_T_M5_3,M5,5,45500,5,10,1,ships\teladi\teladi_M5_var3_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-4036,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+stock,162,SS_SH_T_M5P,M5,5,86500,5,10,1,ships\teladi\teladi_m5p_scene,1,1,18,,fx_engine_teladi_m5px1,#265163,cyan,4499,561,-6228,,,132 136 16 28673 32 68 72 None,0x2002
+stock,163,SS_SH_T_M6,M6,5,24600,5,217,1,ships\teladi\teladi_M6_scene,0,0,0,0,,,,,,,86588,43294,,
+stock,164,SS_SH_T_M6M,M6,5,20910,5,217,0,ships\mm6\Teladi_MM6_scene,0,2,0,,,,,,,-18124,,,None,0x2002
+stock,165,SS_SH_T_M7,M7,5,32030,13,384,0,ships\m7\teladi_m7_scene,0,0,0,,,,,,,,,,,
+stock,166,SS_SH_T_M7M,M7,5,16470,13,384,0,ships\M7\Teladi_M7M_scene,0,0,0,0,,,,,,,423250,211625,,
+stock,167,SS_SH_T_M8,M8,5,25000,5,373,1,ships\M8\teladi_M8_scene,1,0,0,0,fx_engine_teladi_m8x1,#265163,cyan,4475,5455,-13991,29868,15317,28673,0x2002
+stock,168,SS_SH_X_M1,M1,6,22360,14,200,0,ships\xenon\Xenon_Carrier_scene,0,0,0,0,,,,,,,1196828,598414,,
+stock,169,SS_SH_X_M2,M2,6,16005,14,200,0,ships\xenon\xenon_M1_scene,0,0,0,0,,,,,,,1144786,572393,,
+stock,170,SS_SH_X_M3,M3,6,35870,5,14,1,ships\xenon\xenon_M3_scene,1,0,0,0,fx_engine_xenon_m3x1,#265163,cyan,3946,5824,-5109,13042,6521,28673,0x2002
+stock,171,SS_SH_X_M3P,M3,6,31088,5,14,1,ships\patch2_ships\xenon_M3_plus_scene,1,0,0,0,fx_engine_xenon_m3plusx1,#265163,cyan,2948,5283,-5107,13042,6521,28673,0x2002
+stock,172,SS_SH_X_M4,M4,6,30020,5,14,1,ships\xenon\xenon_m4_scene,1,0,0,0,fx_engine_xenon_m5x1,#265163,cyan,5184,2986,-3019,6896,3448,28673,0x2002
+stock,173,SS_SH_X_M5,M5,6,60120,5,14,1,ships\xenon\xenon_m5_scene,1,0,0,0,fx_engine_xenon_m5x1,#265163,cyan,5184,2986,-499,7946,3973,28673,0x2002
+stock,174,SS_SH_X_M6,M6,6,29413,5,89,1,ships\xenon\xenon_m6_scene,1,0,0,0,fx_engine_xenon_m6x1,#265163,cyan,18673,37478,-26470,84986,42493,28673,0x2002
+stock,175,SS_SH_X_M6M,M6,6,27500,5,89,1,ships\xenon\xenon_M6M_scene,3,0,0,0,fx_engine_xenon_m6mtopx1 fx_engine_xenon_m6mmidx1 fx_engine_xenon_m6mlowx1,#265163,cyan,27584,39692,-42677,87979,52520,28673,0x2002
+stock,176,SS_SH_X_M7,M7,6,40633,10,217,0,ships\xenon\xenon_m7_scene,0,0,0,0,,,,,,,452436,226218,,
+stock,177,SS_SH_PI_TM_P,TM,8,28750,5,89,1,ships\tm\Pirate_TM_scene,2,0,0,5,fx_engine_teladi_tmx1 fx_engine_pirate_tmx1,#265163,cyan,8748,11970,-40895,78187,42365,28673,0x2002
+stock,178,SS_SH_PI_TS_P,TS_PIRATE,8,22500,5,268,1,ships\argon\argon_TS_liquidstorage_M_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-19978,41486,20743,28673,0x2002
+stock,179,SS_SH_T_M3_P,M3,5,28360,12,12,1,ships\teladi\teladi_M3_var3_scene,1,1,16,0,fx_engine_teladi_m3_var3x1,#265163,cyan,7796,3087,-8740,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+stock,180,SS_SH_A_M3_P_1,M3,1,29070,5,9,1,ships\argon\argon_M3_scene,1,1,16,0,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-5043,10018,5009,1 132 136 16 28673 32 68 72,0x2002
+stock,181,SS_SH_A_M3_P_2,M3,1,19413,5,9,1,ships\argon\argon_M3_scene,1,1,16,0,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-5043,10018,5009,1 132 136 16 28673 32 68 72,0x2002
+stock,182,SS_SH_T_M3_P_3,M3,5,31196,5,12,1,ships\teladi\teladi_M3_var2_scene,1,1,16,0,fx_engine_teladi_m3_var2x1,#265163,cyan,3670,2995,-8306,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+stock,183,SS_SH_A_M3P_P,M3,1,25000,5,9,0,ships\m3\argon_M3PP_scene,1,3,18,0,fx_engine_argon_m3pxtmx1,#265163,cyan,6218,5005,-4939,17711,9982,12289 132 136 16 32 68 72 None,0x2002
+stock,184,SS_SH_T_M3P_P,M3,5,19500,5,12,0,ships\m3\Teladi_M3PI_scene,1,1,16,0,fx_engine_teladi_m3pxtmx1,#265163,cyan,4143,3687,-7693,17856,8928,1 12289 132 136 16 32 68 72,0x2002
+stock,185,SS_SH_PI_M3P_P,M3,8,26000,5,12,0,ships\m3\Pirate_m3p_scene,2,2,16,0,fx_engine_pirate_m3px1 fx_engine_pirate_m3p_middlex1,#265163,cyan,7040,7129,-6122,14848,7424,1 132 136 16 28673 32 68 72,0x2002
+stock,186,SS_SH_A_M4_P,M4,1,39860,5,9,1,ships\argon\argon_m4_var2_scene,1,1,16,0,fx_engine_argon_m4x1,#265163,cyan,1443,669,-3298,6436,3218,1 132 136 16 28673 32 68 72,0x2002
+stock,187,SS_SH_T_M4_P_1,M4,5,43640,5,12,1,ships\teladi\teladi_M4_var3_scene,4,1,16,0,fx_engine_teladi_m4sx4,#265163,cyan,1949,486,-5336,10786,5393,1 132 136 16 28673 32 68 72,0x2002
+stock,188,SS_SH_A_M4_P_2,M4,1,24823,5,9,1,ships\argon\argon_m4_scene,1,1,16,0,fx_engine_argon_m4x1,#265163,cyan,1443,669,-2806,5845,3307,1 132 136 16 28673 32 68 72,0x2002
+stock,189,SS_SH_T_M4_P_3,M4,5,43846,5,12,1,ships\teladi\teladi_M4_var1_scene,4,1,16,0,fx_engine_teladi_m4sx2 fx_engine_teladi_m4mx2,#265163,cyan,2276,561,-5352,10716,5358,1 132 136 16 28673 32 68 72,0x2002
+stock,190,SS_SH_S_M4_P,M4,3,43000,5,9,1,ships\m4\split_m4_pirate_scene,1,1,16,0,fx_engine_split_m4_piratex1,#265163,cyan,1366,479,-6675,13580,6790,1 132 136 16 28673 32 68 72,0x2002
+stock,191,SS_SH_A_M4P_P,M4,1,30000,5,9,1,ships\M4\argon_M4p_pirate_scene,2,1,18,,fx_engine_argon_m4p_lowerx1 fx_engine_argon_m4p_upperx1,#265163,cyan,3743,1664,-4948,,,1 132 136 16 28673 32 68 72,0x2002
+stock,192,SS_SH_T_M5_P,M5,5,75135,5,12,1,ships\teladi\teladi_M5_var2_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-4021,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+stock,193,SS_SH_T_M5_P_1,M5,5,75140,5,12,1,ships\teladi\teladi_M5_var1_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-3958,7742,3871,1 132 136 16 28673 32 68 72,0x2002
+stock,194,SS_SH_T_M5_P_2,M5,5,43576,5,12,1,ships\teladi\teladi_M5_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-3913,7730,3865,1 132 136 16 28673 32 68 72,0x2002
+stock,195,SS_SH_T_M5_P_3,M5,5,72880,5,12,1,ships\teladi\teladi_M5_var3_scene,2,2,16,0,fx_engine_teladi_m5x2,#265163,cyan,3424,375,-4036,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+stock,196,SS_SH_T_M5P_P,M5,5,90750,5,10,1,ships\teladi\teladi_m5p_pirate_scene,1,1,18,,fx_engine_teladi_m5px1,#265163,cyan,4499,561,-6228,,,132 136 16 28673 32 68 72 None,0x2002
+stock,197,SS_SH_A_M6_P,M6,1,31500,5,373,1,ships\M6\Argon_m6_pirate_scene,0,0,0,5,,,,,,,64424,32212,,
+stock,198,SS_SH_T_M6_P,M6,5,25750,5,217,1,ships\M6\Teladi_m6_pirate_scene,0,0,0,0,,,,,,,86498,43249,,
+stock,199,SS_SH_PI_M7_P,M7,8,29500,11,373,1,ships\Pirate\Pirate_M7_scene,0,0,0,5,,,,,,,471058,235529,,
+stock,200,SS_SH_TR_M1,M1,17,21250,3,200,0,ships\terran\terran_M2_scene,0,0,0,,,,,,,,,,,
+stock,201,SS_SH_TR_M2,M2,17,16000,3,200,0,ships\m2\terran_m2tyr_scene,0,0,0,0,,,,,,,887111,458387,,
+stock,202,SS_SH_TR_M3,M3,17,49000,5,89,1,ships\terran\atf_M3_scene,1,3,16,0,fx_engine_atf_m3x1,#265163,cyan,5455,5934,-3865,11914,5957,1 132 136 16 28673 32 68 72,0x2002
+stock,203,SS_SH_TR_M3H,M3,17,47500,5,89,1,ships\terran\atf_M3p_scene,1,2,16,0,fx_engine_atf_m3px1,#265163,cyan,6309,3777,-5487,14358,7179,1 132 136 16 28673 32 68 72,0x2002
+stock,204,SS_SH_TR_M4,M4,17,52500,5,89,1,ships\terran\terran_M5_scene,1,1,0,0,fx_engine_terran_m5x1,#265163,cyan,1989,3437,-2785,9386,4693,1 28673,0x2002
+stock,205,SS_SH_TR_M5,M5,17,67250,5,89,1,ships\terran\terran_M5_scene,1,1,0,0,fx_engine_terran_m5x1,#265163,cyan,1989,3437,-2785,9386,4693,1 28673,0x2002
+stock,206,SS_SH_TR_M6,M6,17,32000,5,89,1,ships\M6\Terran_M6_scene,1,0,0,0,fx_engine_terran_m6x1,#265163,cyan,10154,3649,-32423,65874,32937,28673,0x2002
+stock,207,SS_SH_TR_M6M,M6,17,27500,5,89,1,ships\terran\atf_M6M_scene,2,3,0,0,fx_engine_atf_m6mx1 fx_engine_atf_m6m_sidesx1,#265163,cyan,28041,22532,-46891,90832,45416,1 28673,0x2002
+stock,208,SS_SH_TR_M7,M7,17,33000,3,200,0,ships\m7\terran_m7_scene,0,0,0,0,,,,,,,632228,316114,,
+stock,209,SS_SH_TR_M7M,M7,17,22750,3,200,0,ships\terran\atf_m7m_scene,0,0,0,0,,,,,,,323478,161739,,
+stock,210,SS_SH_TR_M1H,M1,17,22500,3,200,0,ships\terran\atf_m1_scene,0,0,0,0,,,,,,,948332,474166,,
+stock,211,SS_SH_TR_M0,M2,17,7500,3,200,0,ships\terran\atf_m0_scene,0,0,0,0,,,,,,,1291042,1090107,,
+stock,212,SS_SH_USC_TS,TS,18,27500,5,89,1,ships\usc\terran_ts_scene,2,0,0,0,fx_engine_usc_ts_ax1 fx_engine_usc_ts_bx1,#265163,cyan,4346,18024,-24228,53620,26810,28673,0x2002
+stock,213,SS_SH_USC_TP,TP,18,33000,5,89,1,ships\usc\Terran_TP_scene,1,0,0,0,fx_engine_usc_tpx1,#265163,cyan,2210,8884,-20280,40067,20808,28673,0x2002
+stock,214,SS_SH_USC_M1,M1,18,29000,3,200,0,ships\usc\terran_m1_scene,0,0,0,,,,,,,,,,,
+stock,215,SS_SH_USC_M2,M2,18,18000,3,200,0,ships\usc\terran_m2_scene,0,0,0,0,,,,,,,921860,595398,,
+stock,216,SS_SH_USC_M3,M3,18,49750,5,89,0,ships\usc\terran_M3_scene,1,2,16,0,fx_engine_usc_m3x1,#265163,cyan,3082,5142,-8444,17648,8824,1 132 136 16 28673 32 68 72,0x2002
+stock,217,SS_SH_USC_M3P,M3,18,43250,5,89,0,ships\usc\terran_m3p_scene,1,2,16,0,fx_engine_usc_m3px1,#265163,cyan,2761,7749,-10140,21344,10672,1 132 136 16 28673 32 68 72,0x2002
+stock,218,SS_SH_USC_M4,M4,18,55000,5,89,0,ships\usc\terran_M4_scene,1,2,16,0,fx_engine_usc_m4x1,#265163,cyan,1473,4218,-5791,12242,6121,1 132 136 16 28673 32 68 72,0x2002
+stock,219,SS_SH_USC_M5,M5,18,65500,5,89,0,ships\usc\terran_M5_scene,1,3,16,0,fx_engine_usc_m5x1,#265163,cyan,1386,2451,-5121,10784,5392,1 132 136 16 28673 32 68 72,0x2002
+stock,220,SS_SH_USC_DRONE,OBJ_FIGHTDRONEUSC,18,90000,5,89,1,ships\usc\terran_drone_scene,1,0,0,0,fx_engine_usc_fightdronex1,#265163,cyan,397,149,-1299,2927,1589,28673,0x2002
+stock,221,SS_SH_USC_M6,M6,18,34000,5,89,0,ships\usc\terran_m6_scene,0,4,0,0,,,,,,-39414,82435,41218,None,0x2002
+stock,222,SS_SH_USC_M7,M7,18,28000,3,200,0,ships\usc\terran_m7_scene,0,0,0,0,,,,,,,235876,117939,,
+stock,223,SS_SH_USC_M8,M8,18,34500,5,373,1,ships\usc\terran_m8_scene,1,0,0,0,fx_engine_usc_m8x1,#265163,cyan,2146,9500,-18056,37070,18535,28673,0x2002
+stock,224,SS_SH_LOST_M3H,M3,18,56500,5,89,1,ships\lc\lc_M3_scene,2,3,16,0,fx_engine_lc_m3_middlex1 fx_engine_lc_m3x1,#265163,cyan,5941,7994,-3583,10344,5172,1 132 136 16 28673 32 68 72,0x2002
+stock,225,SS_SH_LOST_M6H,M6,18,45000,5,89,1,ships\lc\lc_M6_scene,1,2,0,0,fx_engine_lc_m6x1,#265163,cyan,32180,6430,-7073,89060,44530,1 28673,0x2002
+stock,226,SS_SH_TERRAFORMER1,M1,18,9000,14,200,0,ships\terraformer\terraformer_cpu_scene,0,0,0,0,,,,,,,1962784,981392,,
+stock,227,SS_SH_TERRAFORMER2,M3,18,26830,5,200,1,ships\terraformer\terraformer_M3_scene,2,4,16,0,fx_engine_terraformer_m3_bottomx1 fx_engine_terraformer_m3_topx1,#265163,cyan,2485,4818,-5517,12012,6009,1 132 136 16 2 28673 3 32 4 68 72,0x2002
+stock,228,SS_SH_Y_TM,TM,19,38500,5,89,1,ships\tm\Yaki_TM_scene,2,0,0,1,fx_engine_paranid_tmx1 fx_engine_teladi_tmx1,#265163,cyan,8863,7657,-42117,83169,44464,28673,0x2002
+stock,229,SS_SH_Y_M3,M3,19,47500,5,12,1,ships\paranid\paranid_M3_yaki_scene,1,1,16,0,fx_engine_paranid_m3x1,#265163,cyan,3913,2099,-6159,12830,6415,1 132 136 16 28673 32 68 72,0x2002
+stock,230,SS_SH_Y_M3_1,M3,19,60000,5,12,1,ships\paranid\paranid_M3_var1_yaki_scene,1,1,16,0,fx_engine_paranid_m3_var1x1,#265163,cyan,3499,1673,-6471,12970,6485,1 132 136 16 28673 32 68 72,0x2002
+stock,231,SS_SH_Y_M3_2,M3,19,42500,5,12,1,ships\paranid\paranid_M3_var1_yaki_scene,1,1,16,0,fx_engine_paranid_m3_var1x1,#265163,cyan,3499,1673,-6471,12970,6485,1 132 136 16 28673 32 68 72,0x2002
+stock,232,SS_SH_Y_M3P,M3,19,45500,5,12,0,ships\m3\Yaki_M3P_Scene,1,1,18,0,fx_engine_yaki_m3pxtmx1,#265163,cyan,3709,2492,-10970,22204,11102,12289 132 136 16 32 68 72 None,0x2002
+stock,233,SS_SH_Y_M4,M4,19,34892,5,12,1,ships\paranid\paranid_M4_yaki_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4581,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+stock,234,SS_SH_Y_M4_1,M4,19,26010,5,12,1,ships\paranid\paranid_M4_var2_yaki_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4707,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+stock,235,SS_SH_Y_M4_2,M4,19,40284,5,12,1,ships\paranid\paranid_M4_var3_yaki_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4628,8906,4453,1 132 136 16 28673 32 68 72,0x2002
+stock,236,SS_SH_Y_M4P,M4,19,40000,5,12,1,ships\paranid\paranid_M4_yaki_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4581,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+stock,237,SS_SH_Y_M5,M5,19,59037,5,12,1,ships\paranid\paranid_M5_yaki_scene,1,1,16,,fx_engine_paranid_m5x1,#265163,cyan,2733,5286,-3561,,,1 132 136 16 28673 32 68 72,0x2002
+stock,238,SS_SH_Y_M5_1,M5,19,68160,5,12,1,ships\paranid\paranid_M5_var2_yaki_scene,1,1,16,0,fx_engine_paranid_m5_var2x1,#265163,cyan,2733,5286,-3561,7151,4516,1 132 136 16 28673 32 68 72,0x2002
+stock,239,SS_SH_Y_M5_2,M5,19,68160,5,12,1,ships\paranid\paranid_M5_var2_yaki_scene,1,1,16,0,fx_engine_paranid_m5_var2x1,#265163,cyan,2733,5286,-3561,7151,4516,1 132 136 16 28673 32 68 72,0x2002
+stock,240,SS_SH_Y_M6M,M6,19,29250,5,373,0,ships\mm6\Argon_MM6_scene,0,4,0,,,,,,,-28225,,,None,0x2002
+stock,241,SS_SH_K_M1,M1,7,32330,3,200,0,4213,0,0,0,,,,,,,,,,,
+stock,242,SS_SH_K_M2,M2,7,22320,3,200,0,4212,0,0,0,,,,,,,,,,,
+stock,243,SS_SH_K_M3,M3,7,25564,5,200,0,4211,0,0,0,,,,,,,,,,,
+stock,244,SS_SH_K_M4,M4,7,33540,5,200,0,4210,0,0,0,,,,,,,,,,,
+stock,245,SS_SH_K_M5,M5,7,39400,5,200,0,4209,0,0,0,,,,,,,,,,,
+stock,246,SS_SH_K_M6,M6,7,42700,5,200,0,ships\m6\khaak_m6_scene,0,0,0,0,,,,,,,29284,14642,,
+stock,247,SS_SH_K_HIVEGUARD,M1,7,0,5,200,1,ships\khaak\khaak_hive_base_scene,0,0,0,1,,,,,,,386503,193253,,
+stock,248,SS_SH_K_QUEEN,M1,7,32330,3,200,0,4213,0,0,0,,,,,,,,,,,
+stock,249,SS_SH_GO_TL,TL,9,28150,11,373,1,ships\TL\Goner_TL_scene,0,0,0,,,,,,,,,,,
+stock,250,SS_SH_GO_MSY,M1,9,4350,5,373,0,ships\MX\Goner_MSY_scene,2,0,0,,v/00127x2,,,,,-924470,,,None,0x2002
+stock,251,SS_SH_GONER,GONER,9,14030,5,89,1,ships\others\goner_M3_scene,1,0,0,0,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-4450,10212,5106,28673,0x2002
+stock,252,SS_SH_OTAS_M2,M2,1,21000,11,373,0,ships\M2\Otas_M2R_scene,0,0,0,5,,,,,,,670580,335290,,
+stock,253,SS_SH_OTAS_M3,M3,1,39000,5,11,1,ships\M3\Otas_M3_scene,2,1,14,0,fx_engine_otas_m3_upperx1 fx_engine_otas_m3_lowerx1,#265163,cyan,2338,1899,-6736,14290,7145,1 132 136 16 28673 32 68 72,0x2002
+stock,254,SS_SH_OTAS_M3P,M3,1,33800,5,11,1,ships\m3\argon_M3P_scene,1,3,18,0,fx_engine_argon_m3pxtmx1,#265163,cyan,6218,5005,-4939,17711,9982,12289 132 136 16 32 68 72 None,0x2002
+stock,255,SS_SH_OTAS_M4,M4,1,40000,5,11,1,ships\M4\Otas_M4_scene,1,1,12,0,fx_engine_otas_m4x1,#265163,cyan,2970,2514,-3283,10841,7178,1 136 16 28673 32 68,0x2002
+stock,256,SS_SH_OTAS_M4P,M4,1,37500,5,11,1,ships\M4\Otas_M4p_scene,2,3,8,0,fx_engine_otas_m4px1 fx_engine_otas_m4p_sidesx1,#265163,cyan,5706,3430,-4504,9587,5064,1 132 136 28673 68 72,0x2002 0xe082
+stock,257,SS_SH_OTAS_TM,TM,1,35000,5,89,1,ships\TM\Otas_TM_scene,3,0,0,5,fx_engine_otas_tm1x1 fx_engine_otas_tm2x1 fx_engine_otas_tm3x1,#265163,cyan,8845,12970,-53000,107065,53533,28673,0x2002
+stock,258,SS_SH_OTAS_M6M,M6,1,37250,5,373,0,ships\mm6\Otas_M6M_scene,0,2,0,5,,,,,,-13848,86469,43235,1,0x2002
+stock,259,SS_SH_OTAS_M7,M7,1,36750,11,373,1,ships\m7\argon_m7_scene,0,0,0,5,,,,,,,717976,401434,,
+stock,260,SS_SH_OTAS_M7M,M7,1,27000,13,384,0,ships\M7\Otas_M7M_scene,0,0,0,5,,,,,,,444394,222197,,
+stock,261,SS_SH_OTAS_M8,M8,1,26225,5,373,1,ships\M8\argon_M8_scene,2,2,0,0,fx_engine_argon_m8_middlex1 fx_engine_argon_m8_topbottomx1,#265163,cyan,5349,5157,-11448,25468,12734,1 28673,0x2002
+stock,262,SS_SH_OTAS_HCF,M7,1,32725,13,384,0,ships\M7\Otas_M7M_scene,0,0,0,5,,,,,,,444394,222197,,
+stock,263,SS_SH_THINKER,KHAAKCLUSTER,7,28500,5,200,1,4700,0,0,0,,,,,,,,,,,
+stock,264,SS_SH_THINKER6,KHAAKCLUSTER,7,28500,5,200,1,4704,0,0,0,,,,,,,,,,,
+stock,265,SS_SH_THINKER14,KHAAKCLUSTER,7,28500,5,200,1,4702,0,0,0,,,,,,,,,,,
+stock,266,SS_SH_THINKER27,KHAAKCLUSTER,7,28500,5,200,1,4706,0,0,0,,,,,,,,,,,
+stock,267,SS_SH_ASTRON,ASTRONAUT,1,7000,5,89,1,ships\others\astronaut_scene,0,0,0,0,,,,,,,391,491,,
+stock,268,SS_SH_ROBOT,0,1,18000,5,89,1,0,0,0,0,,,,,,,,,,,
+stock,269,SS_SH_GATE,0,1,3000,5,89,1,0,0,0,0,,,,,,,,,,,
+stock,270,SS_SH_SAT,OBJ_SATELLITE,1,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,271,SS_SH_MINE_1,OBJ_MINE,1,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,272,SS_SH_FIGHTDRONE,OBJ_FIGHTDRONE,1,200000,5,89,1,ships\others\fightdrone_scene,0,1,0,0,,,,,,-625,1258,629,1,0x2002
+stock,273,SS_SH_ORBITALLASER,OBJ_ORBITALLASER,1,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,274,SS_SH_UFO,UFO,1,150000,5,89,1,4145,0,0,0,,,,,,,,,,,
+stock,275,SS_SH_SPACEFLY,OBJ_SPACEFLY,1,90000,5,89,1,0,0,0,0,,,,,,,,,,,
+stock,276,SS_SH_R1,M5,1,142500,5,378,1,ships\argon\argon_M5_scene,1,1,16,0,fx_engine_argon_m5x1,#265163,cyan,6658,1164,-3718,7792,4001,1 132 136 16 28673 32 68 72,0x2002
+stock,277,SS_SH_R2,M5,1,165000,5,214,1,ships\boron\boron_M5_scene,3,2,16,,fx_engine_boron_m3x2 fx_engine_boron_m5x1,#36414a,blue,4972,1356,-3853,,,1 132 136 16 28673 32 68 72,0x2002
+stock,278,SS_SH_SAT2,OBJ_SATELLITE2,1,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,279,SS_SH_CAMERADRONE,M5,1,27000,5,89,1,0,0,0,0,,,,,,,,,,,
+stock,280,SS_SH_BEACON,OBJ_BEACON,1,0,5,0,1,4774,0,0,0,,,,,,,,,,,
+stock,281,SS_SH_TAXI,0,1,28500,0,0,1,4279,0,0,0,,,,,,,,,,,
+stock,282,SS_SH_MOD_TL,0,1,28500,0,0,1,4280,0,0,0,,,,,,,,,,,
+stock,283,SS_SH_DUMMY,0,1,0,0,0,1,4281,0,0,0,,,,,,,,,,,
+stock,284,SS_SH_REPAIRDRONE,0,1,34564,5,89,1,0,0,0,0,,,,,,,,,,,
+stock,285,SS_SH_SEC_TRANSPORT,M6,1,45000,5,89,1,4438,0,0,0,,,,,,,,,,,
+stock,286,SS_SH_TL_P,TL,19,22500,10,117,1,ships\others\pirate_TL_var2_scene,0,0,0,5,,,,,,,1246614,623307,,
+stock,287,SS_SH_ADV_ASTRON,ASTRONAUT,1,12000,5,89,1,ships\others\astronaut_scene,0,0,0,0,,,,,,,391,491,,
+stock,288,SS_SH_ADV_ASTRONAUT_CRACK,ASTRONAUT,1,18000,5,89,1,ships\others\astronaut_scene,0,0,0,0,,,,,,,391,491,,
+stock,289,SS_SH_TLS,M6,1,30000,5,89,1,ships\others\goner_M6_var1_scene,0,0,0,5,,,,,,,64424,32212,,
+stock,290,SS_SH_TURRET,M5,1,1,0,0,1,4446,0,0,0,,,,,,,,,,,
+stock,291,SS_SH_TL_P2,TL,19,22500,10,117,1,ships\others\pirate_TL_var2_scene,0,0,0,5,,,,,,,1246614,623307,,
+stock,292,SS_SH_SARGON,M3,6,28343,5,268,1,ships\others\sargon_scene,0,0,0,5,,,,,,,24772,12386,,
+stock,293,SS_SH_A_MDEMO,M1,1,24720,11,373,0,ships\argon\argonMdemo_scene,0,0,0,5,,,,,,,1022022,511093,,
+stock,294,SS_SH_FREIGHTDRONE,OBJ_FREIGHTDRONE,1,42000,5,89,1,ships\others\TSdrone_container_scene,0,0,0,2,,,,,,,16896,8448,,
+stock,295,SS_SH_A_M7_SPECIAL,M7,1,34500,11,373,1,ships\m7\argon_m7s_scene,0,0,0,4,,,,,,,215080,107899,,
+stock,296,SS_SH_S_M7_SPECIAL,M7,3,33800,12,351,0,ships\m7\split_m7s_scene,0,0,0,0,,,,,,,885456,659918,,
+stock,297,SS_SH_P_M7_SPECIAL,M7,4,31750,9,378,0,ships\m7\paranid_m7s_scene,0,0,0,,,,,,,,,,,
+stock,298,SS_SH_T_M7_SPECIAL,M7,5,32030,10,217,0,ships\m7\teladi_m7_scene,0,0,0,,,,,,,,,,,
+stock,299,SS_SH_PI_TL_P,TL,8,29185,11,373,0,ships\argon\argon_TL_scene,0,0,0,5,,,,,,,1212786,606393,,
+stock,300,SS_SH_PI_M1_P,M1,8,26000,11,373,0,ships\pirate\Pirate_M1_scene,0,0,0,5,,,,,,,904216,452108,,
+stock,301,SS_SH_PI_M2_P,M2,8,18500,11,373,0,ships\pirate\Pirate_M2_scene,0,0,0,3,,,,,,,1057430,528715,,
+stock,302,SS_SH_Y_M0,M1,19,24720,11,373,0,ships\argon\argon_M1_scene,0,0,0,5,,,,,,,1022186,511093,,
+stock,303,SS_SH_Y_TL,TL,19,40000,11,373,0,ships\Yaki\Yaki_TL_scene,0,0,0,5,,,,,,,1344848,747555,,
+stock,304,SS_SH_Y_M1,M1,19,35000,11,373,0,ships\yaki\yaki_M1_scene,0,0,0,5,,,,,,,1462682,731341,,
+stock,305,SS_SH_Y_M2,M2,19,24000,11,373,0,ships\yaki\yaki_M2_scene,0,0,0,5,,,,,,,1629302,814651,,
+stock,306,SS_SH_Y_M7_1,M7,19,36150,11,373,1,ships\m7\argon_m7_scene,0,0,0,5,,,,,,,717976,401434,,
+stock,307,SS_SH_Y_M7_2,M7,19,27815,11,373,1,ships\M7\Paranid_M7_scene,0,0,0,,,,,,,,,,,
+stock,308,SS_SH_Y_M7M,M7,19,20588,13,384,0,ships\M7\Argon_M7M_scene,0,0,0,5,,,,,,,413882,206941,,
+stock,309,SS_SH_OTAS_TS,TS,1,32500,5,89,1,ships\TS\Otas_TS_small_scene,1,0,0,5,fx_engine_otas_ts_smallx1,#265163,cyan,7383,8805,-25640,54886,28137,28673,0x2002
+stock,310,SS_SH_OTAS_TS_1,TS,1,19500,5,89,1,ships\TS\Otas_TS_scene,6,0,0,,fx_engine_otas_ts1x4 fx_engine_otas_ts2x1 fx_engine_otas_ts3x1,#265163,cyan,6077,19096,-39221,,,28673,0x2002
+stock,311,SS_SH_TROOPTRAINER,TL,1,29185,11,373,0,ships\argon\argon_TL_scene,0,0,0,5,,,,,,,1212786,606393,,
+stock,312,SS_SH_BIGCIV_1,TL,1,29185,11,373,0,ships\argon\argon_TL_scene,0,0,0,5,,,,,,,1212786,606393,,
+stock,313,SS_SH_BIGCIV_2,TL,1,29185,11,373,0,ships\argon\argon_TL_scene,0,0,0,5,,,,,,,1212786,606393,,
+stock,314,SS_SH_BIGCIV_3,TL,1,29185,11,373,0,ships\argon\argon_TL_scene,0,0,0,5,,,,,,,1212786,606393,,
+stock,315,SS_SH_BIGCIV_4,TL,1,29185,11,373,0,ships\argon\argon_TL_scene,0,0,0,5,,,,,,,1212786,606393,,
+stock,316,SS_SH_REPAIRSHIP,M1,9,4350,5,373,0,ships\MX\Goner_MSY_scene,2,0,0,,v/00127x2,,,,,-924470,,,None,0x2002
+stock,317,SS_SH_LIFEFORM,UFO,14,150000,5,89,1,4145,0,0,0,,,,,,,,,,,
+stock,318,SS_SH_LIFEFORM_1,UFO,14,150000,5,89,1,4145,0,0,0,,,,,,,,,,,
+stock,319,SS_SH_TR_MINE,OBJ_MINETR,17,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,320,SS_SH_MINE_2,OBJ_MINE2,1,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,321,SS_SH_MINE_3,OBJ_MINE3,1,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,322,SS_SH_UFO_1,UFO,1,150000,5,89,1,4145,0,0,0,,,,,,,,,,,
+stock,323,SS_SH_UFO_2,UFO,1,150000,5,89,1,4145,0,0,0,,,,,,,,,,,
+stock,324,SS_SH_RECONDRONE,OBJ_RECONDRONE,1,326000,5,89,1,ships\others\fightdrone_MK2_scene,0,1,0,0,,,,,,-1379,2576,1288,1,0x2002
+stock,325,SS_SH_PI_M6_P,M6,8,26225,5,373,1,ships\M6\Argon_m6_pirate_scene,0,0,0,5,,,,,,,64424,32212,,
+stock,326,SS_SH_USC_TL,TL,18,37500,11,373,0,ships\terran\terran_TL_atmolifter_scene,0,0,0,0,,,,,,,309881,372590,,
+stock,327,SS_SH_USC_TL_MINING,TL,18,29185,11,373,0,ships\terran\terran_TL_mining_scene,0,0,0,0,,,,,,,1377340,895481,,
+stock,328,SS_SH_P_M6_ADV,M6,4,33825,5,378,1,ships\patch2_ships\paranid_M7_plus_scene,1,4,0,0,fx_engine_paranid_m6plusx1,#265163,cyan,14610,16746,-53294,101360,50680,1 28673,0x2002
+stock,329,SS_SH_A_M3P_PROTO,M3,1,24000,5,11,1,ships\m3\argon_M3P_scene,1,3,18,0,fx_engine_argon_m3pxtmx1,#265163,cyan,6218,5005,-4939,17711,9982,12289 132 136 16 32 68 72 None,0x2002
+stock,330,SS_SH_A_M3_PROTO,M3,1,37500,5,11,1,ships\argon\argon_M3_var2_scene,1,1,16,,fx_engine_argon_m3x1,#265163,cyan,4170,1525,-4913,,,1 132 136 16 28673 32 68 72,0x2002
+stock,331,SS_SH_A_TP_ADV,TP,1,34000,5,89,1,ships\argon\argon_TP_L_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-33000,68514,34257,28673,0x2002
+stock,332,SS_SH_A_TS_ENH,TS,1,27500,5,89,1,ships\argon\argon_TS_liquid_M_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-19385,41286,20643,28673,0x2002
+stock,333,SS_SH_A_TS_PROTO,TS,1,30000,5,89,1,ships\argon\argon_TS_liquid_M_scene,1,0,0,4,fx_engine_argon_tsx1,#265163,cyan,4463,9574,-19385,41286,20643,28673,0x2002
+stock,334,SS_SH_A_M6M_PROTO,M6,1,38500,5,373,0,ships\mm6\Argon_MM6_scene,0,4,0,,,,,,,-28225,,,None,0x2002
+stock,335,SS_SH_A_M5_ADV,M5,1,62500,5,11,1,ships\argon\argon_M5_scene,1,1,16,0,fx_engine_argon_m5x1,#265163,cyan,6658,1164,-3718,7792,4001,1 132 136 16 28673 32 68 72,0x2002
+stock,336,SS_SH_A_M4P_ENH,M4,1,36000,5,11,1,ships\M4\argon_M4p_scene,2,1,18,,fx_engine_argon_m4p_lowerx1 fx_engine_argon_m4p_upperx1,#265163,cyan,3743,1664,-4904,,,1 132 136 16 28673 32 68 72,0x2002
+stock,337,SS_SH_S_M3_ADV,M3,3,53000,5,12,1,ships\split\split_M3_var3_scene,1,1,16,0,fx_engine_split_m3x1,#265163,cyan,6280,734,-7081,14502,7251,1 132 136 16 28673 32 68 72,0x2002
+stock,338,SS_SH_S_M4_PROTO,M4,3,57500,5,12,1,ships\split\split_m4_var3_scene,1,1,16,0,fx_engine_split_m4x1,#265163,cyan,3854,953,-6077,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+stock,339,SS_SH_S_M3P_ENH,M3,3,32500,5,12,1,ships\patch2_ships\split_m3_plus_scene,1,1,16,0,fx_engine_split_m3plusx1,#265163,cyan,5310,1705,-8302,19746,9873,1 132 136 16 28673 32 68 72,0x2002
+stock,340,SS_SH_S_M5_ENH,M5,3,86000,5,12,1,ships\split\split_m5_var1_scene,1,1,16,0,fx_engine_split_m5x1,#265163,cyan,6210,813,-5457,13562,6781,1 132 136 16 28673 32 68 72,0x2002
+stock,341,SS_SH_P_M3P_PROTO,M3,4,34000,5,9,1,ships\patch2_ships\paranid_M3_plus_scene,1,2,16,0,fx_engine_paranid_m3plusx1,#265163,cyan,6000,4625,-7491,15678,7839,1 132 136 16 28673 32 68 72,0x2002
+stock,342,SS_SH_P_TS_PROTO,TS,4,32500,5,214,1,ships\paranid\paranid_TS_storage_M_scene,1,0,0,0,fx_engine_paranid_tsx1,#265163,cyan,3499,5600,-21105,45626,22813,28673,0x2002
+stock,343,SS_SH_P_M3_ADV,M3,4,47500,5,9,1,ships\paranid\paranid_M3_var1_scene,1,1,16,0,fx_engine_paranid_m3_var1x1,#265163,cyan,3499,1673,-6471,12970,6485,1 132 136 16 28673 32 68 72,0x2002
+stock,344,SS_SH_P_M4_ENH,M4,4,45000,5,9,1,ships\paranid\paranid_M4_var1_scene,1,1,16,0,fx_engine_paranid_m4x1,#265163,cyan,7268,1783,-4666,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+stock,345,SS_SH_B_M3P_PROTO,M3,2,36000,5,13,1,ships\M3\Boron_M3P_Scene,1,1,18,0,fx_engine_boron_m3px1,#265163,cyan,4706,977,1112,20910,10455,132 136 16 28673 32 68 72 None,0x2002
+stock,346,SS_SH_B_TS_ENH,TS,2,28500,5,37,1,ships\boron\boron_TS_liquidstorage_M_scene,2,0,0,0,fx_engine_boron_ts_ax1 fx_engine_boron_ts_bx1,#265163,cyan,3506,9078,-23703,48378,24189,28673,0x2002
+stock,347,SS_SH_B_M3_ADV,M3,2,45500,5,13,1,ships\boron\boron_M3_var2_scene,1,1,16,,fx_engine_boron_m3x1,#3e393e,white/grey,3753,938,-2936,,,1 132 136 16 28673 32 68 72,0x2002
+stock,348,SS_SH_B_M4_PROTO,M4,2,45000,5,13,1,ships\boron\boron_M4_var2_scene,1,1,16,0,fx_engine_boron_m4x1,#265163,cyan,1126,497,-4232,8958,4545,1 132 136 16 28673 32 68 72,0x2002
+stock,349,SS_SH_B_M3_PROTO,M3,2,38000,5,13,1,ships\boron\boron_M3_var2_scene,1,1,16,,fx_engine_boron_m3x1,#3e393e,white/grey,3753,938,-2936,,,1 132 136 16 28673 32 68 72,0x2002
+stock,350,SS_SH_T_M3P_ENH,M3,5,24000,5,10,1,ships\m3\Teladi_M3P_scene,1,1,16,0,fx_engine_teladi_m3pxtmx1,#265163,cyan,4143,3687,-7693,17856,8928,1 12289 132 136 16 32 68 72,0x2002
+stock,351,SS_SH_T_TS_PROTO,TS,5,26500,5,217,1,ships\teladi\teladi_TS_liquid_M_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-22385,46910,23455,28673,0x2002
+stock,352,SS_SH_T_TP_PROTO,TP,5,29000,5,217,1,ships\teladi\teladi_TP_L_scene,1,0,0,0,fx_engine_teladi_tsx1,#265163,cyan,3502,2697,-35734,73704,36852,28673,0x2002
+stock,353,SS_SH_T_M3_PROTO,M3,5,30000,5,10,1,ships\teladi\teladi_M3_var2_scene,1,1,16,0,fx_engine_teladi_m3_var2x1,#265163,cyan,3670,2995,-8306,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+stock,354,SS_SH_T_M4_ENH,M4,5,27000,5,10,1,ships\m4\teladi_M4pp_scene,3,3,16,,fx_engine_teladi_m4p_topx1 fx_engine_teladi_m4px1 fx_engine_teladi_m4p_middlex1,#265163,cyan,4743,2819,-6816,,,1 132 136 16 28673 32 68 72,0x2002 0x2003 0xe082
+stock,355,SS_SH_T_M5P_ADV,M5,5,86500,5,10,1,ships\teladi\teladi_m5p_scene,1,1,18,,fx_engine_teladi_m5px1,#265163,cyan,4499,561,-6228,,,132 136 16 28673 32 68 72 None,0x2002
+stock,356,SS_SH_A_M3P_ADV_P,M3,8,22500,5,9,0,ships\m3\argon_M3PP_scene,1,3,18,0,fx_engine_argon_m3pxtmx1,#265163,cyan,6218,5005,-4939,17711,9982,12289 132 136 16 32 68 72 None,0x2002
+stock,357,SS_SH_PI_M3P_PROTO_P,M3,8,28500,5,12,0,ships\m3\Pirate_m3p_scene,2,2,16,0,fx_engine_pirate_m3px1 fx_engine_pirate_m3p_middlex1,#265163,cyan,7040,7129,-6122,14848,7424,1 132 136 16 28673 32 68 72,0x2002
+stock,358,SS_SH_Y_M3_PROTO,M3,19,44500,5,12,1,ships\paranid\paranid_M3_var1_yaki_scene,1,1,16,0,fx_engine_paranid_m3_var1x1,#265163,cyan,3499,1673,-6471,12970,6485,1 132 136 16 28673 32 68 72,0x2002
+stock,359,SS_SH_JUMP_BEACON,OBJ_JUMPBEACON,1,0,5,0,1,4774,0,0,0,,,,,,,,,,,
+stock,360,SS_SH_MESSAGEDRONE,M5,1,175000,5,89,1,ships\others\TSdrone_container_scene,0,0,0,2,,,,,,,16896,8448,,
+stock,361,SS_SH_TERRAFORMER3,M4,18,32000,5,14,1,ships\terraformer\terraformer_m4_scene,1,2,16,0,fx_engine_terraformer_m4x1,#265163,cyan,2502,2081,-4165,8640,4320,1 132 136 16 2 28673 32 68 72,0x2002
+stock,362,SS_SH_TERRAFORMER4,M5,18,60120,5,14,1,ships\terraformer\terraformer_m5_scene,1,2,16,0,fx_engine_terraformer_m5x1,#265163,cyan,2679,1537,-2878,7286,3643,1 132 136 16 2 28673 32 68 72,0x2002
+stock,363,SS_SH_TR_FREIGHTDRONE1,M5,18,42000,5,89,1,ships\terran\terran_supplydrone_scene,1,1,0,0,fx_engine_terran_transportdronex1,#265163,cyan,700,1664,-3407,7324,3662,1 None,0x2002
+stock,364,SS_SH_TR_FREIGHTDRONE1_2,M5,18,42000,5,89,1,ships\terran\terran_transportdrone_scene,1,1,0,0,fx_engine_terran_transportdronex1,#265163,cyan,700,1664,-2629,5820,2910,1 None,0x2002
+stock,365,SS_SH_TR_FREIGHTDRONE2,M5,18,42000,5,89,1,ships\terran\terran_transportdrone_small_scene,1,1,0,0,fx_engine_terran_transportdrone_smallx1,#265163,cyan,1332,1038,-1443,2814,1407,1 None,0x2002
+stock,366,SS_SH_K_WP_1,M1,1,0,3,200,0,ships\khaak\khaak_hive_base_scene,0,0,0,1,,,,,,,386503,193253,,
+stock,367,SS_SH_TR_FREIGHTDRONE2_2,M5,18,42000,5,89,1,ships\terran\terran_transportdrone_small_scene,1,1,0,0,fx_engine_terran_transportdrone_smallx1,#265163,cyan,1332,1038,-1443,2814,1407,1 None,0x2002
+stock,368,SS_SH_TR_TURRET,M1,18,0,3,200,0,ships\terran\terran_turret_scene,0,0,0,,,,,,,,,,,
+stock,369,SS_SH_TR_ORBITALLASER,OBJ_ORBITALLASER2,18,0,5,0,1,0,0,0,0,,,,,,,,,,,
+stock,370,SS_SH_USC_TS_1,TS,18,26000,5,89,1,patch20\terran_ts_miner_scene,0,0,0,0,,,,,,,53620,26810,,
+stock,371,SS_SH_Y_TM_1,TM,19,39000,5,89,1,patch20\yaki_gs_TM_scene,2,0,0,1,fx_engine_paranid_tmx1 fx_engine_teladi_tmx1,#265163,cyan,8863,7657,-39386,83168,41584,28673,0x2002
+stock,372,SS_SH_X_SHUTTLE,M3,18,64200,5,89,1,ships\patch2_ships\xpshuttle_scene,1,0,0,0,fx_xpshuttlex1,#265163,cyan,10208,19556,-6370,21424,10718,28673,0x2002
+stock,373,SS_SH_A_HYBRID,M3,1,36000,5,11,1,ships\m3\argon_hybrid_scene,1,3,18,0,fx_engine_argon_m3pxtmx1,#265163,cyan,6218,5005,-4939,17711,9982,12289 132 136 16 32 68 72 None,0x2002
+stock,374,SS_SH_ALDRIN_M6,M6,13,34250,232,0,0,ships\X3AP\aldrin\XTC_aldrin_m6_scene,6,0,0,,v/00127x4 v/00105x2,,,,,-15857,,,12289 None,0x2002
+stock,375,SS_SH_A_TPP,TP,1,41000,216,0,0,ships\X3AP\argon\XTC_argon_tp_plus_scene,10,2,0,4,fx_engine_xtc_lightblue_nor2x6 fx_engine_xtc_lightblue_nor3x2 fx_engine_xtc_lightblue_norx2,#3e393e,white/grey,8006,4000,-38498,78031,39536,28673 None,0x2002
+stock,376,SS_SH_B_TSP,TS,2,20000,219,0,0,ships\X3AP\boron\XTC_boron_ts_plus_scene,3,3,0,0,fx_engine_xtc_darkblue_nor2x3,#3e393e,white/grey,4003,2000,-35903,72668,36685,1 2 28673,0x2002
+stock,377,SS_SH_B_M2P,M2,2,16250,221,0,0,ships\X3AP\boron\XTC_boron_m2_plus_scene,7,7,0,0,fx_engine_xtc_darkblue_big3x7,#3e393e,white/grey,37528,18750,-752069,1899990,1035310,1 2 28673,0x2002
+stock,378,SS_SH_S_TSP,TS,3,29050,228,0,0,ships\X3AP\split\XTC_split_ts_plus_scene,2,2,0,0,fx_engine_xtc_red_nor3x2,#3e393e,white/grey,8006,4000,-30088,82569,46087,28673 None,0x2002
+stock,379,SS_SH_S_TPP,TP,3,51500,229,0,0,ships\X3AP\split\XTC_split_tp_plus_scene,4,1,0,0,fx_engine_xtc_red_nor3x2 fx_engine_xtc_red_nor2x2,#3e393e,white/grey,8006,4000,-37982,77686,38843,28673 None,0x2002
+stock,380,SS_SH_T_TSP,TS,5,19050,210,0,0,ships\X3AP\teladi\XTC_teladi_ts_plus_scene,6,4,0,0,fx_engine_xtc_green_nor3x6,#3e393e,white/grey,8006,4000,-31330,76712,39613,1 28673,0x2002
+stock,381,SS_SH_T_TPP,TP,5,37000,210,0,0,ships\X3AP\teladi\XTC_teladi_tp_plus_scene,7,2,0,0,fx_engine_xtc_green_nor2x3 fx_engine_xtc_green_nor3x2 fx_engine_xtc_green_norx2,#3e393e,white/grey,8006,4000,-38957,77912,38956,28673 None,0x2002
+stock,382,SS_SH_TR_TSP,TS,18,24175,234,0,0,ships\X3AP\usc\XTC_terran_ts_plus_scene,5,5,0,0,fx_engine_xtc_white_nor2x5,#393939,white/grey,4003,2000,-43188,86726,43363,28673 None,0x2002
+stock,383,SS_SH_TR_TPP,TP,18,48000,234,0,0,ships\X3AP\usc\XTC_terran_tp_plus_scene,4,4,0,0,fx_engine_xtc_white_nor3x2 fx_engine_xtc_white_nor2x2,#393939,white/grey,8006,4000,-28852,53335,28723,28673 None,0x2002
+stock,384,SS_SH_TR_M2P,M2,18,15300,236,0,0,ships\X3AP\usc\XTC_usc_m2plus_scene,3,3,0,,fx_engine_xtc_white_hugex3,#393939,white/grey,187985,93922,-1164109,,,28673 None,0x2002
+stock,385,SS_SH_TR_TM,TM,18,30000,235,0,0,ships\X3AP\usc\xtc_terran_tm_scene,2,2,0,0,fx_engine_xtc_white_bigx2,#393939,white/grey,12509,6250,-47853,96222,48111,28673 None,0x2002
+stock,386,SS_SH_X_M2P,M2,6,16325,227,0,0,ships\X3AP\xenon\XTC_xenon_M2_plus_scene,14,8,0,0,fx_engine_xtc_magenta_hugex8 fx_engine_xtc_magenta_big3x6,#3e393e,white/grey,187985,93922,-578809,1741969,964505,28673 None,0x2002
+stock,387,SS_SH_P_TSP,TS,4,25950,234,0,0,ships\X3AP\paranid\XTC_paranid_ts_plus_scene,3,3,0,0,fx_engine_xtc_yellow_nor2x3,#3e393e,white/grey,4003,2000,-32908,69392,35409,28673 None,0x2002
+stock,388,SS_SH_P_DC,M7,4,33900,235,0,0,ships\X3AP\paranid\XTC_paranid_m7s_scene,6,4,0,0,fx_engine_xtc_yellow_bigx4 fx_engine_xtc_yellow_big2x2,#3e393e,white/grey,18745,9366,-89770,220946,121635,1 28673,0x2002
+stock,389,SS_SH_A_DRONE,M4,1,225000,216,0,0,ships\X3AP\argon\XTC_argon_drone_scene,1,1,0,0,fx_engine_xtc_lightblue_norx1,,,,,-3948,10020,5020,1 28673,0x2002
+stock,390,SS_SH_B_DRONE,M4,2,125000,219,0,44,ships\X3AP\boron\XTC_boron_drone_scene,2,2,0,0,fx_engine_xtc_darkblue_tinyx2,#3e393e,white/grey,1001,500,-874,8395,4201,1 28673,0x2002
+stock,391,SS_SH_TR_DRONE,M4,18,157500,234,0,41,ships\X3AP\usc\XTC_terran_drone_scene,1,1,0,0,fx_engine_xtc_white_norx1,#393939,white/grey,2001,1000,-3719,8781,4767,28673 None,0x2002
+stock,392,SS_SH_P_DRONE,M4,4,155000,234,0,47,ships\X3AP\paranid\XTC_paranid_drone_scene,1,1,0,0,fx_engine_xtc_yellow_tinyx1,#3e393e,white/grey,1001,500,-1444,8072,5746,1 28673,0x2002
+stock,393,SS_SH_S_DRONE,M4,3,300000,228,0,46,ships\X3AP\split\XTC_split_drone_scene,1,1,16,0,fx_engine_xtc_red_norx1,#3e393e,white/grey,2001,1000,-2725,9493,4847,1 132 136 16 28673 32 68 72,0x2002
+stock,394,SS_SH_T_DRONE,M4,5,110000,210,0,45,ships\X3AP\teladi\XTC_teladi_drone_scene,1,1,0,0,fx_engine_xtc_green_norx1,#3e393e,white/grey,2001,1000,-3849,7754,3877,28673 None,0x2002
+stock,395,SS_SH_TR_DC,M7,18,40625,235,0,0,ships\X3AP\usc\XTC_terran_DC_scene,5,5,0,0,fx_engine_xtc_white_big2x5,#393939,white/grey,18745,9366,-241113,529798,282591,1 28673,0x2002
+stock,396,SS_SH_A_DC,M7,1,28250,217,0,0,ships\m7\argon_m7s_scene,0,0,0,4,,,,,,,215080,107899,,
+stock,397,SS_SH_B_DC,M7,2,38825,221,0,0,ships\X3AP\boron\XTC_boron_m7drone_scene,66,2,0,0,fx_engine_xtc_darkblue_nor2x32 fx_engine_xtc_darkblue_nor3x32 fx_engine_xtc_darkblue_bigx2,#3e393e,white/grey,12509,6250,-210777,421734,210867,28673 None,0x2002
+stock,398,SS_SH_S_DC,M7,3,33800,229,0,0,ships\m7\split_m7s_scene,0,0,0,0,,,,,,,885456,659918,,
+stock,399,SS_SH_T_DC,M7,5,33850,211,0,0,ships\X3AP\teladi\XTC_teladi_dc_scene,5,1,0,0,fx_engine_xtc_green_big3x5,#3e393e,white/grey,37528,18750,-276902,632312,316156,28673 None,0x2002
+stock,400,SS_SH_A_POA,M6,1,39250,5,89,1,ships\X3AP\argon\PrideOfAlbion_scene,2,2,0,1,fx_engine_argon_m3x2,#265163,cyan,4170,1525,-7607,21744,10872,1 28673,0x2002
+stock,401,SS_SH_S_M6_SPECIAL,M6,3,50000,5,378,1,ships\XTC\split\XTC_split_m6turbo_scene,3,1,0,0,xtc_split_m6turbo_fx_midx1 xtc_split_m6turbo_fx_outx1 fx_engine_xtc_red_nor3_disablex1,,,,,-59500,62728,36357,28673 None,0x2002
+stock,402,SS_SH_S_M2P,M2,3,25000,12,351,0,ships\split\KG_Split_M2+_scene,0,0,0,0,,,,,,,1258644,629322,,
+stock,403,SS_SH_A_TSP,TS,1,20600,216,0,0,ships\argon\XTC_argon_ts_plus_scene,8,2,0,4,fx_engine_xtc_lightblue_norx6 fx_engine_xtc_lightblue_nor3x2,#3e393e,white/grey,8006,4000,-24724,64223,36021,1 28673,0x2002
+mayhem,0,SS_SH_A_TL,TL,1,56500,711,0,0,ships\argon\argon_TL_Mammoth_scene,2,2,0,5,fx_engine_xtc_darkblue_huge2x2,#0f0f34,blue,141281,141175,-451804,1212786,606393,1 28673,0x2002
+mayhem,1,SS_SH_A_TS,TS,1,62000,709,0,31,ships\argon\argon_TS_Mercury_scene,8,3,0,3,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-13475,27604,13802,1 28673,0x2002
+mayhem,2,SS_SH_A_TS_1,TS,1,42498,709,0,31,ships\argon\argon_TS_Mercury_Tanker_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-13620,27606,13803,1 28673,0x2002
+mayhem,3,SS_SH_A_TS_2,TS,1,52639,709,0,31,ships\argon\argon_TS_Mercury_Hauler_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-19890,40848,20424,1 28673,0x2002
+mayhem,4,SS_SH_A_TS_3,TS,1,41271,709,0,31,ships\argon\argon_TS_Mercury_Tanker_XL_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-20076,41286,20643,1 28673,0x2002
+mayhem,5,SS_SH_A_TS_4,TS,1,53860,709,0,31,ships\argon\argon_TS_Mercury_SF_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-20044,41486,20743,1 28673,0x2002
+mayhem,6,SS_SH_A_TS_5,TS,1,60000,709,0,31,ships\argon\argon_TS_Mercury_SF_XL_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-33528,68134,34067,1 28673,0x2002
+mayhem,7,SS_SH_A_TP,TP,1,71500,709,0,31,ships\argon\argon_TP_Express_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-19778,41486,20743,1 28673,0x2002
+mayhem,8,SS_SH_A_TP_1,TP,1,69680,709,0,31,ships\argon\argon_TP_Express_Hauler_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-33691,68514,34257,1 28673,0x2002
+mayhem,9,SS_SH_A_TM,TM,1,175000,710,0,31,ships\argon\argon_TM_Magnetar_scene,8,2,0,5,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-32456,66115,33416,1 28673,0x2002
+mayhem,10,SS_SH_A_M1,M1,1,56500,711,0,0,ships\argon\argon_M1_Colossus_scene,2,2,0,5,fx_engine_xtc_darkblue_big4x2,#0f0f34,blue,47307,47272,-414550,1022186,511093,1 28673,0x2002
+mayhem,11,SS_SH_A_M2,M2,1,55000,711,0,0,ships\argon\argon_M2_titan_scene,2,2,0,5,fx_engine_xtc_darkblue_big4x2,#0f0f34,blue,47307,47272,-414602,1056844,528422,1 28673,0x2002
+mayhem,12,SS_SH_A_M3,M3,1,123750,709,0,21,ships\argon\argon_m3_nova_scene,3,1,16,0,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-5043,10018,5009,1 132 136 16 28673 32 68 72,0x2002
+mayhem,13,SS_SH_A_M3_1,M3,1,133650,709,0,21,ships\argon\argon_m3_nova_raider_scene,3,1,16,,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-4916,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,14,SS_SH_A_M3_2,M3,1,123750,709,0,21,ships\argon\argon_m3_nova_vanguard_scene,3,1,16,,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-4913,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,15,SS_SH_A_M3_3,M3,1,123750,709,0,21,ships\argon\argon_m3_nova_sentinel_scene,3,1,16,0,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-4780,10212,5106,1 132 136 16 28673 32 68 72,0x2002
+mayhem,16,SS_SH_A_M3P,M3,1,112500,709,0,21,ships\argon\argon_m3_eclipse_scene,4,2,16,,fx_engine_xtc_darkblue_norx4,#0f0f34,blue,1001,1000,-11789,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,17,SS_SH_A_M4,M4,1,191875,709,0,11,ships\argon\argon_M4_Buster_scene,1,1,16,0,fx_engine_xtc_darkblue_norx1,#0f0f34,blue,1001,1000,-2821,5845,3307,1 132 136 16 28673 32 68 72,0x2002
+mayhem,18,SS_SH_A_M4_1,M4,1,207250,709,0,11,ships\argon\argon_M4_Buster_Raider_scene,1,1,16,0,fx_engine_xtc_darkblue_norx1,#0f0f34,blue,1001,1000,-2112,6868,3434,1 132 136 16 28673 32 68 72,0x2002
+mayhem,19,SS_SH_A_M4_2,M4,1,191875,709,0,11,ships\argon\argon_M4_Buster_Vanguard_scene,1,1,16,0,fx_engine_xtc_darkblue_norx1,#0f0f34,blue,1001,1000,-3298,6436,3218,1 132 136 16 28673 32 68 72,0x2002
+mayhem,20,SS_SH_A_M4_3,M4,1,168784,709,0,11,ships\argon\argon_M4_Buster_Sentinel_scene,1,1,32,0,fx_engine_xtc_darkblue_norx1,#0f0f34,blue,1001,1000,-1903,6420,3210,1 132 136 16 28673 32 68 72,0x2002
+mayhem,21,SS_SH_A_M4P,M4,1,190375,709,0,11,ships\argon\argon_m4_elite_scene,6,1,18,,fx_engine_xtc_darkblue_tinyx6,#0f0f34,blue,504,500,-4904,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,22,SS_SH_A_M5,M5,1,266000,709,0,1,ships\argon\argon_m5_discoverer_scene,3,1,16,0,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-3718,7792,4001,1 132 136 16 28673 32 68 72,0x2002
+mayhem,23,SS_SH_A_M5_1,M5,1,287300,709,0,1,ships\argon\argon_m5_discoverer_raider_scene,3,1,16,0,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-3814,7882,3941,1 132 136 16 28673 32 68 72,0x2002
+mayhem,24,SS_SH_A_M5_2,M5,1,266000,709,0,1,ships\argon\argon_m5_discoverer_hauler_scene,3,1,17,0,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-3759,7786,3998,1 132 136 16 28673 32 68 72,0x2002
+mayhem,25,SS_SH_A_M5_3,M5,1,298850,709,0,1,ships\argon\argon_m5_discoverer_vanguard_scene,3,1,16,0,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-3755,7812,3906,1 132 136 16 28673 32 68 72,0x2002
+mayhem,26,SS_SH_A_M6,M6,1,90000,710,0,31,ships\argon\argon_M6_Centaur_scene,4,4,0,2,fx_engine_xtc_darkblue_nor2x4,#0f0f34,blue,2001,2000,-30000,64424,32212,1 28673,0x2002
+mayhem,27,SS_SH_A_M6M,M6,1,95500,710,0,31,ships\argon\argon_m6_heavy_centaur_scene,7,4,0,1,fx_engine_xtc_darkblue_nor2x7,#0f0f34,blue,2001,2000,-28225,63292,31646,28673 None,0x2002
+mayhem,28,SS_SH_A_M7,M7,1,57500,711,0,0,ships\argon\argon_m7_Cerberus_scene,2,2,0,1,fx_engine_xtc_darkblue_big4x2,#0f0f34,blue,47307,47272,-325900,705628,389086,1 28673,0x2002
+mayhem,29,SS_SH_A_M7M,M7,1,95500,711,0,0,ships\argon\argon_m7_minotaur_scene,6,5,0,4,fx_engine_xtc_darkblue_big3x3 fx_engine_xtc_darkblue_bigx3,#0f0f34,blue,18764,18750,-170650,413882,206941,1 28673,0x2002
+mayhem,30,SS_SH_A_M8,M8,1,99500,710,0,31,ships\argon\argon_m8_gladiator_scene,6,2,0,0,fx_engine_xtc_darkblue_norx4 fx_engine_xtc_darkblue_nor2x2,#0f0f34,blue,2001,2000,-11761,25468,12734,1 28673,0x2002
+mayhem,31,SS_SH_A_MK2DRONE,OBJ_FIGHTDRONE2,12,60447,727,0,41,ships\others\fighter_drone_mkii_scene,1,1,0,0,fx_engine_xtc_white_tinyx1,#131313,white/grey,504,500,-1379,2576,1288,1 28673,0x2002
+mayhem,32,SS_SH_TR_TS_BALDRIC_SF,TS,18,52250,727,0,36,ships\terran\terran_ts_baldric_sf_scene,6,4,0,0,fx_engine_xtc_white_nor3x6,#131313,white/grey,4003,4000,-43129,90444,45222,1 28673,0x2002
+mayhem,33,SS_SH_A_TS_NEXUS,TS,1,55000,709,0,31,ships\argon\argon_TS_Nexus_scene,2,2,0,2,fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-26237,51449,26251,1 28673,0x2002
+mayhem,34,SS_SH_A_TS_NEXUS_SF,TS,19,80000,727,0,39,ships\argon\argon_TS_Nexus_SF_scene,2,2,0,3,fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-36837,74946,38041,1 28673,0x2002
+mayhem,35,SS_SH_B_M4_GUPPY,M4,2,149188,706,0,12,ships\boron\boron_m4_guppy_scene,6,1,16,0,fx_engine_xtc_lightblue_tinyx6,#04191e,cyan,504,500,-5693,14396,7198,1 132 136 16 28673 32 68 72,0x2002
+mayhem,36,SS_SH_A_M2P_EXCALIBUR,M2,1,69500,711,0,0,ships\argon\argon_m2p_excalibur_scene,2,2,0,6,fx_engine_xtc_darkblue_huge3x2,#0f0f34,blue,211920,211762,-1188189,2487136,1269506,1 28673,0x2002
+mayhem,37,SS_SH_T_M2_PTERANODON,M2,5,37800,702,0,0,ships\teladi\teladi_M2_Pteranodon_scene,10,10,0,0,fx_engine_xtc_green_big2x6 fx_engine_xtc_green_big3x4,#091910,green,18764,18750,-262672,1433764,716882,1 28673,0x2002
+mayhem,38,SS_SH_A_OWP_1,M1,12,0,390,200,0,ships\others\owp_small_scene,0,0,0,2,,,,,,,500995,404579,,
+mayhem,39,SS_SH_A_OWP_2,M1,12,0,390,200,0,ships\others\owp_medium_scene,0,0,0,1,,,,,,,727609,483401,,
+mayhem,40,SS_SH_A_OWP_3,M1,12,0,390,200,0,ships\others\owp_large_scene,0,0,0,,,,,,,,,,,
+mayhem,41,SS_SH_S_TL,TL,3,66560,720,0,0,ships\split\split_tl_elephant_scene,3,3,0,,fx_engine_xtc_red_big2x2 fx_engine_xtc_red_big3x1,#290a0a,red,18764,18750,-546837,,,28673 None,0x2002
+mayhem,42,SS_SH_S_TS,TS,3,79360,718,0,33,ships\split\split_ts_caiman_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-12667,31940,15970,28673 None,0x2002
+mayhem,43,SS_SH_S_TS_1,TS,3,57765,718,0,33,ships\split\split_ts_caiman_tanker_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-12546,31692,15846,28673 None,0x2002
+mayhem,44,SS_SH_S_TS_2,TS,3,87500,718,0,33,ships\split\split_ts_caiman_advanced_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-19170,44939,22470,28673 None,0x2002
+mayhem,45,SS_SH_S_TS_3,TS,3,53843,718,0,33,ships\split\split_ts_caiman_tanker_xl_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-19405,45406,22703,28673 None,0x2002
+mayhem,46,SS_SH_S_TS_4,TS,3,73260,718,0,33,ships\split\split_ts_caiman_sf_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-19386,45379,22690,28673 None,0x2002
+mayhem,47,SS_SH_S_TS_5,TS,3,82433,718,0,33,ships\split\split_ts_caiman_sf_xl_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-32643,71889,35945,28673 None,0x2002
+mayhem,48,SS_SH_S_TS_6,TS,3,79360,718,0,33,ships\split\split_ts_caiman_advanced_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-19170,44939,22470,28673 None,0x2002
+mayhem,49,SS_SH_S_TP,TP,3,77000,718,0,33,ships\split\split_tp_iguana_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-19542,45715,22858,28673 None,0x2002
+mayhem,50,SS_SH_S_TP_1,TP,3,99848,718,0,33,ships\split\split_tp_iguana_vanguard_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-33019,72692,36346,28673 None,0x2002
+mayhem,51,SS_SH_S_TM,TM,3,224000,719,0,33,ships\split\split_tm_boa_scene,6,1,0,1,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-41151,73721,45434,28673 None,0x2002
+mayhem,52,SS_SH_S_M1,M1,3,77440,720,0,0,ships\split\split_m1_raptor_scene,3,3,0,0,fx_engine_xtc_red_big2x2 fx_engine_xtc_red_big3x1,#290a0a,red,18764,18750,-521985,1079572,539786,28673 None,0x2002
+mayhem,53,SS_SH_S_M2,M2,3,61440,720,0,0,ships\split\split_m2_python_scene,3,3,0,0,fx_engine_xtc_red_big2x2 fx_engine_xtc_red_big3x1,#290a0a,red,18764,18750,-518006,1068160,534080,28673 None,0x2002
+mayhem,54,SS_SH_S_M3,M3,3,192480,718,0,23,ships\split\split_m3_mamba_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-6602,14594,7297,1 132 136 16 28673 32 68 72,0x2002
+mayhem,55,SS_SH_S_M3_1,M3,3,207887,718,0,23,ships\split\split_m3_mamba_raider_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-6542,14440,7220,1 132 136 16 28673 32 68 72,0x2002
+mayhem,56,SS_SH_S_M3_2,M3,3,192480,718,0,23,ships\split\split_m3_mamba_vanguard_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-6706,15590,7795,1 132 136 16 28673 32 68 72,0x2002
+mayhem,57,SS_SH_S_M3_3,M3,3,192480,718,0,23,ships\split\split_m3_mamba_sentinel_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-6575,14502,7251,1 132 136 16 28673 32 68 72,0x2002
+mayhem,58,SS_SH_S_M3P,M3,3,154080,718,0,23,ships\split\split_m3_chimera_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-8301,19746,9873,1 132 136 16 28673 32 68 72,0x2002
+mayhem,59,SS_SH_S_M4,M4,3,213920,718,0,13,ships\split\split_m4_scorpion_scene,2,1,16,0,fx_engine_xtc_red_tinyx1 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-6125,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+mayhem,60,SS_SH_S_M4_1,M4,3,231000,718,0,13,ships\split\split_m4_scorpion_raider_scene,2,1,16,0,fx_engine_xtc_red_tinyx1 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-6266,13436,6718,1 132 136 16 28673 32 68 72,0x2002
+mayhem,61,SS_SH_S_M4_2,M4,3,213920,718,0,13,ships\split\split_m4_scorpion_vanguard_scene,2,1,16,0,fx_engine_xtc_red_tinyx1 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-6010,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+mayhem,62,SS_SH_S_M4_3,M4,3,189914,718,0,13,ships\split\split_m4_scorpion_sentinel_scene,2,1,16,0,fx_engine_xtc_red_tinyx1 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-5770,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+mayhem,63,SS_SH_S_M4P,M4,3,247520,718,0,13,ships\split\split_m4_asp_scene,4,1,14,,fx_engine_xtc_red_tinyx3 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-6483,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,64,SS_SH_S_M5,M5,3,360960,718,0,3,ships\split\split_m5_jaguar_scene,3,1,16,0,fx_engine_xtc_red_tinyx3,#290a0a,red,504,500,-5394,12542,6271,1 132 136 16 28673 32 68 72,0x2002
+mayhem,65,SS_SH_S_M5_1,M5,3,389850,718,0,3,ships\split\split_m5_jaguar_raider_scene,3,1,16,0,fx_engine_xtc_red_tinyx3,#290a0a,red,504,500,-5074,13562,6781,1 132 136 16 28673 32 68 72,0x2002
+mayhem,66,SS_SH_S_M5_2,M5,3,360960,718,0,3,ships\split\split_m5_jaguar_hauler_scene,3,1,16,0,fx_engine_xtc_red_tinyx3,#290a0a,red,504,500,-5427,12724,6362,1 132 136 16 28673 32 68 72,0x2002
+mayhem,67,SS_SH_S_M5_3,M5,3,316969,718,0,3,ships\split\split_m5_jaguar_vanguard_scene,3,1,16,0,fx_engine_xtc_red_tinyx3,#290a0a,red,504,500,-5394,12470,6235,1 132 136 16 28673 32 68 72,0x2002
+mayhem,68,SS_SH_S_M6,M6,3,122240,719,0,33,ships\split\split_m6_dragon_scene,1,1,0,0,fx_engine_xtc_red_nor3x1,#290a0a,red,4003,4000,-35223,88224,44112,1 28673,0x2002
+mayhem,69,SS_SH_S_M6M,M6,3,129920,719,0,33,ships\split\split_m6_heavy_dragon_scene,4,4,0,,fx_engine_xtc_red_nor3x4,#290a0a,red,4003,4000,-42707,,,28673 None,0x2002
+mayhem,70,SS_SH_S_M7,M7,3,67200,720,0,0,ships\split\split_m7_tiger_scene,10,4,0,0,fx_engine_xtc_red_big2x4 fx_engine_xtc_red_nor3x4 fx_engine_xtc_red_big3x2,#290a0a,red,18764,18750,-415310,845272,422636,28673 None,0x2002
+mayhem,71,SS_SH_S_M7M,M7,3,104960,720,0,0,ships\split\split_m7_cobra_scene,2,2,0,0,fx_engine_xtc_red_bigx2,#290a0a,red,6255,6250,-171326,417681,208882,28673 None,0x2002
+mayhem,72,SS_SH_S_M8,M8,3,137600,719,0,33,ships\split\split_m8_viper_scene,2,2,0,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,4328,35402,17780,1 28673,0x2002
+mayhem,73,SS_SH_P_TL,TL,4,55000,726,0,0,ships\paranid\paranid_tl_hercules_scene,26,4,0,0,fx_engine_xtc_yellow_nor3x8 fx_engine_xtc_yellow_big3x6 fx_engine_xtc_yellow_bigx4 fx_engine_xtc_yellow_big2x4 fx_engine_xtc_yellow_nor2x4,#151500,yellow,18764,18750,-260705,888926,444463,28673 None,0x2002
+mayhem,74,SS_SH_P_TS,TS,4,65000,724,0,34,ships\paranid\paranid_ts_demeter_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-14555,32368,16184,28673 None,0x2002
+mayhem,75,SS_SH_P_TS_1,TS,4,42813,724,0,34,ships\paranid\paranid_ts_demeter_tanker_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-14534,32368,16184,28673 None,0x2002
+mayhem,76,SS_SH_P_TS_2,TS,4,75000,724,0,34,ships\paranid\paranid_ts_demeter_advanced_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-21186,45626,22813,28673 None,0x2002
+mayhem,77,SS_SH_P_TS_3,TS,4,65000,724,0,34,ships\paranid\paranid_ts_demeter_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-14555,32368,16184,28673 None,0x2002
+mayhem,78,SS_SH_P_TS_4,TS,4,54951,724,0,34,ships\paranid\paranid_ts_demeter_sf_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-21319,45980,22990,28673 None,0x2002
+mayhem,79,SS_SH_P_TS_5,TS,4,63711,724,0,34,ships\paranid\paranid_ts_demeter_sf_xl_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-34800,72886,36443,28673 None,0x2002
+mayhem,80,SS_SH_P_TP,TP,4,74500,724,0,34,ships\paranid\paranid_tp_hermes_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-24866,46288,25996,28673 None,0x2002
+mayhem,81,SS_SH_P_TP_1,TP,4,71724,724,0,34,ships\paranid\paranid_tp_hermes_hauler_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-34828,72890,36445,28673 None,0x2002
+mayhem,82,SS_SH_P_TM,TM,4,175000,725,0,34,ships\paranid\paranid_tm_helios_scene,6,2,0,1,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-42006,75958,44464,28673 None,0x2002
+mayhem,83,SS_SH_P_M1,M1,4,42000,726,0,0,ships\paranid\paranid_m1_zeus_scene,26,4,0,,fx_engine_xtc_yellow_nor3x8 fx_engine_xtc_yellow_big3x6 fx_engine_xtc_yellow_bigx4 fx_engine_xtc_yellow_big2x4 fx_engine_xtc_yellow_nor2x4,#151500,yellow,18764,18750,-204127,,,28673 None,0x2002
+mayhem,84,SS_SH_P_M2,M2,4,52000,726,0,0,ships\paranid\paranid_m2_odysseus_scene,26,4,0,0,fx_engine_xtc_yellow_nor3x8 fx_engine_xtc_yellow_big3x6 fx_engine_xtc_yellow_bigx4 fx_engine_xtc_yellow_big2x4 fx_engine_xtc_yellow_nor2x4,#151500,yellow,18764,18750,-222125,924566,462283,28673 None,0x2002
+mayhem,85,SS_SH_P_M3,M3,4,123750,724,0,24,ships\paranid\paranid_m3_perseus_scene,3,1,16,0,fx_engine_xtc_yellow_tinyx2 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-5978,12830,6415,132 136 16 28673 32 68 72 None,0x2002
+mayhem,86,SS_SH_P_M3_1,M3,4,133650,724,0,24,ships\paranid\paranid_m3_perseus_raider_scene,2,1,16,0,fx_engine_xtc_yellow_norx2,#151500,yellow,1001,1000,-6124,12970,6485,132 136 16 28673 32 68 72 None,0x2002
+mayhem,87,SS_SH_P_M3_2,M3,4,123750,724,0,24,ships\paranid\paranid_m3_perseus_vanguard_scene,3,1,16,0,fx_engine_xtc_yellow_tinyx2 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-5978,12818,6409,132 136 16 28673 32 68 72 None,0x2002
+mayhem,88,SS_SH_P_M3_3,M3,4,123750,724,0,24,ships\paranid\paranid_m3_perseus_sentinel_scene,3,1,16,0,fx_engine_xtc_yellow_tinyx2 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-6164,12818,6409,132 136 16 28673 32 68 72 None,0x2002
+mayhem,89,SS_SH_P_M3P,M3,4,120375,724,0,24,ships\paranid\paranid_m3_medusa_scene,5,2,16,0,fx_engine_xtc_yellow_norx5,#151500,yellow,1001,1000,-7291,15678,7839,1 132 136 16 28673 32 68 72,0x2002
+mayhem,90,SS_SH_P_M4,M4,4,203125,724,0,14,ships\paranid\paranid_m4_pericles_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+mayhem,91,SS_SH_P_M4_1,M4,4,219400,724,0,14,ships\paranid\paranid_m4_pericles_raider_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+mayhem,92,SS_SH_P_M4_2,M4,4,203125,724,0,14,ships\paranid\paranid_m4_pericles_vanguard_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+mayhem,93,SS_SH_P_M4_3,M4,4,149776,724,0,14,ships\paranid\paranid_m4_pericles_sentinel_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4158,8906,4453,1 132 136 16 28673 32 68 72,0x2002
+mayhem,94,SS_SH_P_M4P,M4,4,191875,724,0,14,ships\paranid\paranid_m4_theseus_scene,2,1,16,,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-3308,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,95,SS_SH_P_M5,M5,4,274500,724,0,4,ships\paranid\paranid_m5_pegasus_scene,11,1,16,0,fx_engine_xtc_yellow_tinyx10 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-3561,7121,4766,132 136 16 28673 32 68 72 None,0x2002
+mayhem,96,SS_SH_P_M5_1,M5,4,296500,724,0,4,ships\paranid\paranid_m5_pegasus_raider_scene,7,1,16,0,fx_engine_xtc_yellow_tinyx6 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-3561,7160,4792,1 132 136 16 28673 32 68 72,0x2002
+mayhem,97,SS_SH_P_M5_2,M5,4,274500,724,0,4,ships\paranid\paranid_m5_pegasus_vanguard_scene,13,1,16,0,fx_engine_xtc_yellow_tinyx12 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-3561,7151,4516,1 132 136 16 28673 32 68 72,0x2002
+mayhem,98,SS_SH_P_M5_3,M5,4,236223,724,0,4,ships\paranid\paranid_m5_pegasus_sentinel_scene,13,1,16,0,fx_engine_xtc_yellow_tinyx12 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-3637,7513,4310,1 132 136 16 28673 32 68 72,0x2002
+mayhem,99,SS_SH_P_M6,M6,4,82500,725,0,34,ships\paranid\paranid_m6_nemesis_scene,9,2,0,0,fx_engine_xtc_yellow_nor2x5 fx_engine_xtc_yellow_nor3x2 fx_engine_xtc_yellow_norx2,#151500,yellow,4003,4000,-42862,90564,45282,28673 None,0x2002
+mayhem,100,SS_SH_P_M6M,M6,4,83250,725,0,34,ships\paranid\paranid_m6_heavy_nemesis_scene,16,2,0,0,fx_engine_xtc_yellow_tinyx8 fx_engine_xtc_yellow_norx6 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-36518,106568,53284,28673 None,0x2002
+mayhem,101,SS_SH_P_M7,M7,4,100500,726,0,0,ships\paranid\paranid_m7_deimos_scene,14,2,0,,fx_engine_xtc_yellow_nor3x8 fx_engine_xtc_yellow_big2x6,#151500,yellow,9373,9366,-209701,,,28673 None,0x2002
+mayhem,102,SS_SH_P_M7M,M7,4,57500,726,0,0,ships\paranid\paranid_m7_ares_scene,16,2,0,0,fx_engine_xtc_yellow_big2x12 fx_engine_xtc_yellow_nor3x4,#151500,yellow,9373,9366,-282945,913754,456877,28673 None,0x2002
+mayhem,103,SS_SH_P_M8,M8,4,81000,725,0,34,ships\paranid\paranid_m8_hades_scene,10,2,0,0,fx_engine_xtc_yellow_norx9 fx_engine_xtc_yellow_nor2x1,#151500,yellow,2001,2000,-16816,35428,17714,28673 None,0x2002
+mayhem,104,SS_SH_B_TL,TL,2,32340,708,0,0,ships\boron\boron_tl_orca_scene,5,3,0,0,fx_engine_xtc_lightblue_hugex5,#04191e,cyan,93992,93922,-661913,1428204,714102,1 28673,0x2002
+mayhem,105,SS_SH_B_TS,TS,2,59675,706,0,32,ships\boron\boron_ts_dolphin_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-13302,28228,14114,1 28673,0x2002
+mayhem,106,SS_SH_B_TS_1,TS,2,32592,706,0,32,ships\boron\boron_ts_dolphin_tanker_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-13300,28228,14114,1 28673,0x2002
+mayhem,107,SS_SH_B_TS_2,TS,2,59675,706,0,32,ships\boron\boron_ts_dolphin_hauler_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-23700,48378,24189,1 28673,0x2002
+mayhem,108,SS_SH_B_TS_3,TS,2,29169,706,0,32,ships\boron\boron_ts_dolphin_tanker_xl_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-23679,48378,24189,1 28673,0x2002
+mayhem,109,SS_SH_B_TS_4,TS,2,39260,706,0,32,ships\boron\boron_ts_dolphin_sf_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-23703,48378,24189,1 28673,0x2002
+mayhem,110,SS_SH_B_TS_5,TS,2,44203,706,0,32,ships\boron\boron_ts_dolphin_sf_xl_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-37157,75288,37644,1 28673,0x2002
+mayhem,111,SS_SH_B_TP_SPECIAL,TP,2,90090,706,0,32,ships\boron\boron_tp_angel_scene,6,2,0,0,fx_engine_xtc_lightblue_nor3x4 v/00114x2,#04191e,cyan,4003,4000,-30113,61768,30884,1 28673 None,0x2002
+mayhem,112,SS_SH_B_TP,TP,2,57750,706,0,32,ships\boron\boron_tp_manta_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-23703,48378,24189,1 28673,0x2002
+mayhem,113,SS_SH_B_TP_1,TP,2,48911,706,0,32,ships\boron\boron_tp_manta_hauler_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-36998,75288,37644,28673 None,0x2002
+mayhem,114,SS_SH_B_TM,TM,2,134750,707,0,32,ships\boron\boron_tm_pleco_scene,4,1,0,1,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-38366,77894,38947,1 28673,0x2002
+mayhem,115,SS_SH_B_M1,M1,2,42350,708,0,0,ships\boron\boron_m1_shark_scene,5,3,0,0,fx_engine_xtc_lightblue_big3x5,#04191e,cyan,18764,18750,-680555,1461402,730701,1 28673,0x2002
+mayhem,116,SS_SH_B_M2,M2,2,42350,708,0,0,ships\boron\boron_m2_ray_scene,5,3,0,0,fx_engine_xtc_lightblue_big3x5,#04191e,cyan,18764,18750,-669555,1450094,725047,1 28673,0x2002
+mayhem,117,SS_SH_B_M3,M3,2,115789,706,0,22,ships\boron\boron_m3_barracuda_scene,1,1,16,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-3010,10400,5200,1 132 136 16 28673 32 68 72,0x2002
+mayhem,118,SS_SH_B_M3_1,M3,2,125057,706,0,22,ships\boron\boron_m3_barracuda_raider_scene,1,1,16,,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-3159,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,119,SS_SH_B_M3_2,M3,2,115789,706,0,22,ships\boron\boron_m3_barracuda_vanguard_scene,1,1,16,,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-2596,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,120,SS_SH_B_M3_3,M3,2,115789,706,0,22,ships\boron\boron_m3_barracuda_sentinel_scene,1,1,16,,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-3094,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,121,SS_SH_B_M3P,M3,2,118388,706,0,22,ships\boron\boron_m3_skate_scene,1,1,18,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,1168,20910,10455,1 132 136 16 28673 32 68 72,0x2002
+mayhem,122,SS_SH_B_M4,M4,2,126088,706,0,12,ships\boron\boron_m4_mako_scene,1,1,16,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-3986,8825,4494,1 132 136 16 28673 32 68 72,0x2002
+mayhem,123,SS_SH_B_M4_1,M4,2,136200,706,0,12,ships\boron\boron_m4_mako_raider_scene,1,1,16,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-4622,10322,5161,1 132 136 16 28673 32 68 72,0x2002
+mayhem,124,SS_SH_B_M4_2,M4,2,126088,706,0,12,ships\boron\boron_m4_mako_vanguard_scene,1,1,16,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-4037,8958,4545,1 132 136 16 28673 32 68 72,0x2002
+mayhem,125,SS_SH_B_M4_3,M4,2,114435,706,0,12,ships\boron\boron_m4_mako_sentinel_scene,1,1,16,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-4214,9200,4600,1 132 136 16 28673 32 68 72,0x2002
+mayhem,126,SS_SH_B_M4P,M4,2,146589,706,0,12,ships\boron\boron_m4_mako_scene,1,1,16,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-3986,8825,4494,1 132 136 16 28673 32 68 72,0x2002
+mayhem,127,SS_SH_B_M5,M5,2,211365,706,0,2,ships\boron\boron_m5_octopus_scene,2,2,16,,fx_engine_xtc_lightblue_norx2,#04191e,cyan,1001,1000,-3537,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,128,SS_SH_B_M5_1,M5,2,228250,706,0,2,ships\boron\boron_m5_octopus_raider_scene,2,2,16,,fx_engine_xtc_lightblue_norx2,#04191e,cyan,1001,1000,-3537,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,129,SS_SH_B_M5_2,M5,2,211365,706,0,2,ships\boron\boron_m5_octopus_vanguard_scene,2,2,16,,fx_engine_xtc_lightblue_norx2,#04191e,cyan,1001,1000,-2965,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,130,SS_SH_B_M5_3,M5,2,182274,706,0,2,ships\boron\boron_m5_octopus_sentinel_scene,2,2,16,,fx_engine_xtc_lightblue_norx2,#04191e,cyan,1001,1000,-2965,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,131,SS_SH_B_M6,M6,2,73535,707,0,32,ships\boron\boron_m6_hydra_scene,3,2,0,0,fx_engine_xtc_lightblue_bigx2 fx_engine_xtc_lightblue_nor3x1,#04191e,cyan,6255,6250,-28664,75524,37762,1 28673,0x2002
+mayhem,132,SS_SH_B_M6M,M6,2,74882,707,0,32,ships\boron\boron_m6_heavy_hydra_scene,4,2,0,,fx_engine_xtc_lightblue_nor3x4,#04191e,cyan,4003,4000,-22578,,,1 28673,0x2002
+mayhem,133,SS_SH_B_M7,M7,2,63140,708,0,0,ships\boron\boron_m7_thresher_scene,3,3,0,0,fx_engine_xtc_lightblue_big2x2 fx_engine_xtc_lightblue_bigx1,#04191e,cyan,9373,9366,-381515,1093026,715431,1 28673,0x2002
+mayhem,134,SS_SH_B_M7M,M7,2,55055,708,0,0,ships\boron\boron_m7_kraken_scene,1,1,0,0,fx_engine_xtc_lightblue_big3x1,#04191e,cyan,18764,18750,-296862,616170,308085,1 28673,0x2002
+mayhem,135,SS_SH_P_M2P_CYCLOPS,M2,4,60500,726,0,0,ships\paranid\paranid_m2p_cyclops_scene,9,5,0,0,fx_engine_xtc_yellow_big3x9,#151500,yellow,18764,18750,-1110000,2296058,1148029,28673 None,0x2002
+mayhem,136,SS_SH_T_TL,TL,5,37800,702,0,0,ships\teladi\teladi_tl_albatross_scene,8,4,0,0,fx_engine_xtc_green_big3x8,#091910,green,18764,18750,-575554,1805690,902859,28673 None,0x2002
+mayhem,137,SS_SH_T_TS,TS,5,67500,700,0,35,ships\teladi\teladi_ts_vulture_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-14982,31786,15893,28673 None,0x2002
+mayhem,138,SS_SH_T_TS_1,TS,5,36158,700,0,35,ships\teladi\teladi_ts_vulture_tanker_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-15681,33188,16594,28673 None,0x2002
+mayhem,139,SS_SH_T_TS_2,TS,5,77500,700,0,35,ships\teladi\teladi_ts_vulture_advanced_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-21470,44732,22366,28673 None,0x2002
+mayhem,140,SS_SH_T_TS_3,TS,5,67500,700,0,35,ships\teladi\teladi_ts_vulture_hauler_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-22556,46910,23455,28673 None,0x2002
+mayhem,141,SS_SH_T_TS_4,TS,5,45398,700,0,35,ships\teladi\teladi_ts_vulture_sf_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-22297,46378,23189,28673 None,0x2002
+mayhem,142,SS_SH_T_TS_5,TS,5,51071,700,0,35,ships\teladi\teladi_ts_vulture_sf_xl_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-35319,72458,36229,28673 None,0x2002
+mayhem,143,SS_SH_T_TP,TP,5,65500,700,0,35,ships\teladi\teladi_tp_toucan_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-22714,47218,23609,28673 None,0x2002
+mayhem,144,SS_SH_T_TP_1,TP,5,54134,700,0,35,ships\teladi\teladi_tp_toucan_hauler_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-35952,73704,36852,28673 None,0x2002
+mayhem,145,SS_SH_T_TM,TM,5,157500,701,0,35,ships\teladi\teladi_tm_pelican_scene,3,3,0,1,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-40864,78187,42365,28673 None,0x2002
+mayhem,146,SS_SH_T_M1,M1,5,46800,702,0,0,ships\teladi\teladi_m1_condor_scene,4,2,0,0,fx_engine_xtc_green_big3x4,#091910,green,18764,18750,-335715,1047926,523963,28673 None,0x2002
+mayhem,147,SS_SH_T_M2,M2,5,50850,702,0,0,ships\teladi\teladi_m2_phoenix_scene,4,2,0,0,fx_engine_xtc_green_big3x4,#091910,green,18764,18750,-982673,2378440,1189220,28673 None,0x2002
+mayhem,148,SS_SH_T_M3,M3,5,124875,700,0,25,ships\teladi\teladi_m3_falcon_scene,3,1,16,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-8024,16082,8041,1 132 136 16 28673 32 68 72,0x2002
+mayhem,149,SS_SH_T_M3_1,M3,5,134900,700,0,25,ships\teladi\teladi_m3_falcon_hauler_scene,4,2,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-8469,17582,8791,1 132 136 16 28673 32 68 72,0x2002
+mayhem,150,SS_SH_T_M3_2,M3,5,124875,700,0,25,ships\teladi\teladi_m3_falcon_vanguard_scene,4,2,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-8578,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+mayhem,151,SS_SH_T_M3_3,M3,5,124875,700,0,25,ships\teladi\teladi_m3_falcon_sentinel_scene,3,1,16,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-8637,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+mayhem,152,SS_SH_T_M3P,M3,5,138038,700,0,25,ships\teladi\teladi_m3_kea_scene,4,4,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-8017,17856,8928,132 136 16 28673 32 68 72 None,0x2002
+mayhem,153,SS_SH_T_M4,M4,5,171350,700,0,15,ships\teladi\teladi_m4_buzzard_scene,3,2,16,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-4643,10096,5048,1 132 136 16 28673 32 68 72,0x2002
+mayhem,154,SS_SH_T_M4_1,M4,5,185050,700,0,15,ships\teladi\teladi_m4_buzzard_hauler_scene,4,2,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-5021,10716,5358,1 132 136 16 28673 32 68 72,0x2002
+mayhem,155,SS_SH_T_M4_2,M4,5,171338,700,0,15,ships\teladi\teladi_m4_buzzard_vanguard_scene,3,2,16,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-5063,10824,5412,1 132 136 16 28673 32 68 72,0x2002
+mayhem,156,SS_SH_T_M4_3,M4,5,125177,700,0,15,ships\teladi\teladi_m4_buzzard_sentinel_scene,4,2,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-5214,10786,5393,1 132 136 16 28673 32 68 72,0x2002
+mayhem,157,SS_SH_T_M4P,M4,5,184500,700,0,15,ships\teladi\teladi_m4_kite_scene,5,5,16,0,fx_engine_xtc_green_norx5,#091910,green,1001,1000,-6637,14294,7147,132 136 16 28673 32 68 72 None,0x2002
+mayhem,158,SS_SH_T_M5,M5,5,245250,700,0,5,ships\teladi\teladi_m5_harrier_scene,2,2,16,0,fx_engine_xtc_green_norx2,#091910,green,1001,1000,-3825,7730,3865,1 132 136 16 28673 32 68 72,0x2002
+mayhem,159,SS_SH_T_M5_1,M5,5,264850,700,0,5,ships\teladi\teladi_m5_harrier_hauler_scene,2,2,16,0,fx_engine_xtc_green_norx2,#091910,green,1001,1000,-3825,7742,3871,1 132 136 16 28673 32 68 72,0x2002
+mayhem,160,SS_SH_T_M5_2,M5,5,245250,700,0,5,ships\teladi\teladi_m5_harrier_vanguard_scene,2,2,16,0,fx_engine_xtc_green_norx2,#091910,green,1001,1000,-3952,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+mayhem,161,SS_SH_T_M5_3,M5,5,201432,700,0,5,ships\teladi\teladi_m5_harrier_sentinel_scene,2,2,16,0,fx_engine_xtc_green_norx2,#091910,green,1001,1000,-3952,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+mayhem,162,SS_SH_T_M5P,M5,5,265500,700,0,5,ships\teladi\teladi_m5_kestrel_scene,1,1,18,,fx_engine_xtc_green_norx1,#091910,green,1001,1000,-6228,,,132 136 16 28673 32 68 72 None,0x2002
+mayhem,163,SS_SH_T_M6,M6,5,89775,701,0,35,ships\teladi\teladi_m6_osprey_scene,4,4,0,0,fx_engine_xtc_green_nor3x4,#091910,green,4003,4000,-24803,86588,43294,28673 None,0x2002
+mayhem,164,SS_SH_T_M6M,M6,5,97650,701,0,35,ships\teladi\teladi_m6_heavy_osprey_scene,6,6,0,,fx_engine_xtc_green_bigx6,#091910,green,6255,6250,-27357,,,28673 None,0x2002
+mayhem,165,SS_SH_T_M7,M7,5,83250,702,0,0,ships\teladi\teladi_m7_shrike_scene,4,4,0,,fx_engine_xtc_green_big2x4,#091910,green,9373,9366,-252251,,,28673 None,0x2002
+mayhem,166,SS_SH_T_M7M,M7,5,83250,702,0,0,ships\teladi\teladi_m7_gannet_scene,3,3,0,0,fx_engine_xtc_green_big2x2 fx_engine_xtc_green_big3x1,#091910,green,18764,18750,-188594,423250,211625,28673 None,0x2002
+mayhem,167,SS_SH_T_M8,M8,5,105300,701,0,35,ships\teladi\teladi_m8_peregrine_scene,4,4,0,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-13887,29868,15317,28673 None,0x2002
+mayhem,168,SS_SH_X_M1,M1,6,52000,717,0,0,ships\xenon\xenon_m1_j_scene,8,8,0,0,fx_engine_xtc_magenta_big2x8,#1f0b1e,magenta,9373,9366,-483273,1196828,598414,1 28673,0x2002
+mayhem,169,SS_SH_X_M2,M2,6,52000,717,0,0,ships\xenon\xenon_m2_k_scene,8,8,0,0,fx_engine_xtc_magenta_big2x8,#1f0b1e,magenta,9373,9366,-363676,1144786,572393,1 28673,0x2002
+mayhem,170,SS_SH_X_M3,M3,6,153750,715,0,28,ships\xenon\xenon_m3_l_scene,12,2,0,0,fx_engine_xtc_magenta_tinyx8 fx_engine_xtc_magenta_norx4,#1f0b1e,magenta,1001,1000,-5558,13042,6521,1 28673,0x2002
+mayhem,171,SS_SH_X_M3P,M3,6,168750,715,0,28,ships\xenon\xenon_m3_lx_scene,20,2,0,0,fx_engine_xtc_magenta_tinyx16 fx_engine_xtc_magenta_norx4,#1f0b1e,magenta,1001,1000,-5629,13042,6521,1 28673,0x2002
+mayhem,172,SS_SH_X_M4,M4,6,160375,715,0,18,ships\xenon\xenon_m4_m_scene,12,4,0,0,fx_engine_xtc_magenta_tinyx12,#1f0b1e,magenta,504,500,-3034,6894,3447,1 28673,0x2002
+mayhem,173,SS_SH_X_M5,M5,6,255000,715,0,8,ships\xenon\xenon_m5_n_scene,12,1,0,0,fx_engine_xtc_magenta_tinyx12,#1f0b1e,magenta,504,500,-524,7946,3973,1 28673,0x2002
+mayhem,174,SS_SH_X_M6,M6,6,88750,716,0,38,ships\xenon\xenon_m6_p_scene,16,8,0,0,fx_engine_xtc_magenta_nor3x16,#1f0b1e,magenta,4003,4000,-30470,84986,42493,1 28673,0x2002
+mayhem,175,SS_SH_X_M6M,M6,16,101500,716,0,38,ships\xenon\xenon_m6_px_scene,22,12,0,0,fx_engine_xtc_magenta_nor3x22,#1f0b1e,magenta,4003,4000,-40826,87979,52520,1 28673,0x2002
+mayhem,176,SS_SH_X_M7,M7,6,71500,717,0,0,ships\xenon\xenon_m7_q_scene,24,12,0,0,fx_engine_xtc_magenta_big2x24,#1f0b1e,magenta,9373,9366,-174400,452436,226218,1 28673,0x2002
+mayhem,177,SS_SH_PI_TM,TM,19,175000,728,0,39,ships\pirate\pirate_tm_caravel_scene,9,3,0,1,fx_engine_xtc_peach_norx9,#151211,orange,1001,1000,-40964,78187,42365,28673 None,0x2002
+mayhem,178,SS_SH_ATF_M2P_FORSETI,M2,18,69500,723,0,0,ships\atf\atf_m2p_forseti_scene,8,8,0,0,fx_engine_xtc_orange_hugex4 fx_engine_xtc_orange_huge2x4,#210f06,orange,141281,141175,-1296775,2998486,1499243,28673 None,0x2002
+mayhem,179,SS_SH_PI_M3_FALCON_HAULER,M3,19,112650,727,0,29,ships\pirate\pirate_m3_falcon_hauler_scene,3,1,16,0,fx_engine_xtc_peach_norx3,#151211,orange,1001,1000,-8024,16082,8041,1 132 136 16 28673 32 68 72,0x2002
+mayhem,180,SS_SH_PI_M3_NOVA_RAIDER,M3,19,133650,727,0,29,ships\pirate\pirate_m3_nova_raider_scene,3,1,16,,fx_engine_xtc_peach_norx3,#151211,orange,1001,1000,-4916,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,181,SS_SH_PI_M3_NOVA,M3,19,123750,727,0,29,ships\pirate\pirate_M3_nova_scene,3,1,16,0,fx_engine_xtc_peach_norx3,#151211,orange,1001,1000,-5043,10018,5009,1 132 136 16 28673 32 68 72,0x2002
+mayhem,182,SS_SH_PI_M3_FALCON_VANGUARD,M3,19,145500,727,0,29,ships\pirate\pirate_m3_falcon_vanguard_scene,4,2,16,0,fx_engine_xtc_peach_norx4,#151211,orange,1001,1000,-8578,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+mayhem,183,SS_SH_PI_M3_PENATRON,M3,19,163125,727,0,29,ships\pirate\pirate_m3_penatron_scene,4,3,0,0,fx_engine_xtc_peach_norx4,#151211,orange,1001,1000,-5334,11203,5926,28673 None,0x2002
+mayhem,184,SS_SH_PI_M3_KEA,M3,19,151875,727,0,29,ships\pirate\pirate_m3_kea_scene,4,4,16,0,fx_engine_xtc_peach_norx4,#151211,orange,1001,1000,-8017,17856,8928,1 132 136 16 28673 32 68 72,0x2002
+mayhem,185,SS_SH_PI_M3_BLASTCLAW,M3,19,168750,727,0,29,ships\pirate\pirate_m3_blastclaw_scene,4,3,16,0,fx_engine_xtc_peach_norx4,#151211,orange,1001,1000,-5997,14848,7424,1 132 136 16 28673 32 68 72,0x2002
+mayhem,186,SS_SH_PI_M4_BUSTER,M4,19,200000,727,0,19,ships\pirate\pirate_m4_buster_scene,1,1,16,0,fx_engine_xtc_peach_norx1,#151211,orange,1001,1000,-2821,5845,3307,1 132 136 16 28673 32 68 72,0x2002
+mayhem,187,SS_SH_PI_M4_BUZZARD_VANGUARD,M4,19,180109,727,0,19,ships\pirate\pirate_m4_buzzard_vanguard_scene,3,2,16,0,fx_engine_xtc_peach_norx3,#151211,orange,1001,1000,-5063,10824,5412,1 132 136 16 28673 32 68 72,0x2002
+mayhem,188,SS_SH_PI_M4_MAKO_SENTINEL,M4,19,146252,727,0,19,ships\pirate\pirate_M4_mako_raider_scene,1,1,16,0,fx_engine_xtc_peach_norx1,#151211,orange,1001,1000,-4622,10322,5161,1 132 136 16 28673 32 68 72,0x2002
+mayhem,189,SS_SH_PI_M4_SABRE_RAIDER,M4,19,234222,727,0,19,ships\pirate\pirate_m4_sabre_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-5791,12242,6121,1 132 136 16 28673 32 68 72,0x2002
+mayhem,190,SS_SH_PI_M4_BUSTER_HAULER,M4,19,177786,727,0,19,ships\pirate\pirate_m4_buster_hauler_scene,1,1,16,0,fx_engine_xtc_peach_norx1,#151211,orange,1001,1000,-3298,6436,3218,1 132 136 16 28673 32 68 72,0x2002
+mayhem,191,SS_SH_PI_M4_BUZZARD,M4,19,190375,727,0,19,ships\pirate\pirate_m4_buzzard_scene,3,2,16,0,fx_engine_xtc_peach_norx3,#151211,orange,1001,1000,-4643,10096,5048,1 132 136 16 28673 32 68 72,0x2002
+mayhem,192,SS_SH_PI_M5_HARRIER,M5,19,272500,727,0,9,ships\pirate\pirate_m5_harrier_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-3825,7730,3865,1 132 136 16 28673 32 68 72,0x2002
+mayhem,193,SS_SH_PI_M5_HARRIER_VANGUARD,M5,19,290320,727,0,9,ships\pirate\pirate_M5_harrier_vanguard_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-3952,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+mayhem,194,SS_SH_PI_M5_HARRIER_SENTINEL,M5,19,231173,727,0,9,ships\pirate\pirate_m5_harrier_raider_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-3952,7988,3994,1 132 136 16 28673 32 68 72,0x2002
+mayhem,195,SS_SH_PI_M5_OCTOPUS_RAIDER,M5,19,354886,727,0,9,ships\pirate\pirate_M5_octopus_raider_scene,2,2,16,,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-3537,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,196,SS_SH_PI_M5_JAGUAR_HAULER,M5,19,202534,727,0,9,ships\pirate\pirate_m5_jaguar_raider_scene,3,1,16,0,fx_engine_xtc_peach_tinyx3,#151211,orange,504,500,-5074,13562,6781,1 132 136 16 28673 32 68 72,0x2002
+mayhem,197,SS_SH_PI_M6_CENTAUR,M6,19,90000,728,0,39,ships\pirate\pirate_m6_centaur_scene,4,4,0,2,fx_engine_xtc_peach_bigx4,#151211,orange,6255,6250,-30000,64424,32212,1 28673,0x2002
+mayhem,198,SS_SH_PI_M6_OSPREY,M6,19,99750,728,0,39,ships\pirate\pirate_m6_osprey_scene,4,4,0,0,fx_engine_xtc_peach_nor3x4,#151211,orange,4003,4000,-24803,86588,43294,28673 None,0x2002
+mayhem,199,SS_SH_PI_M7_CARRACK,M7,19,82000,728,0,0,ships\Pirate\pirate_m7_carrack_scene,12,3,0,4,fx_engine_xtc_peach_nor3x9 fx_engine_xtc_peach_big3x3,#151211,orange,18764,18750,-194250,471058,235529,1 28673,0x2002
+mayhem,200,SS_SH_ATF_M1,M1,18,42000,723,0,0,ships\atf\atf_m1_odin_scene,12,4,0,,fx_engine_xtc_orange_big3x12,#210f06,orange,18764,18750,-328837,,,28673 None,0x2002
+mayhem,201,SS_SH_ATF_M2,M2,18,48000,723,0,0,ships\atf\atf_m2_tyr_scene,12,4,0,0,fx_engine_xtc_orange_big3x12,#210f06,orange,18764,18750,-363128,887111,458387,28673 None,0x2002
+mayhem,202,SS_SH_ATF_M3,M3,18,127125,721,0,27,ships\atf\atf_m3_thor_scene,3,3,16,0,fx_engine_xtc_orange_norx3,#210f06,orange,1001,1000,-3515,11914,5957,132 136 16 28673 32 68 72 None,0x2002
+mayhem,203,SS_SH_ATF_M3H,M3,18,106875,721,0,27,ships\atf\atf_m3_fenrir_scene,2,2,16,0,fx_engine_xtc_orange_norx2,#210f06,orange,1001,1000,-4335,14358,7179,1 132 136 16 28673 32 68 72,0x2002
+mayhem,204,SS_SH_ATF_M4,M4,18,167125,721,0,17,ships\atf\atf_m5_mjollnir_scene,2,2,0,0,fx_engine_xtc_orange_norx2,#210f06,orange,1001,1000,-2467,9386,4693,1 28673,0x2002
+mayhem,205,SS_SH_ATF_M5,M5,18,290000,721,0,7,ships\atf\atf_m5_mjollnir_scene,2,2,0,0,fx_engine_xtc_orange_norx2,#210f06,orange,1001,1000,-2467,9386,4693,1 28673,0x2002
+mayhem,206,SS_SH_ATF_M6,M6,18,85750,722,0,37,ships\atf\atf_m6_vidar_scene,5,2,0,0,fx_engine_xtc_orange_norx5,#210f06,orange,1001,1000,-32268,65874,32937,28673 None,0x2002
+mayhem,207,SS_SH_ATF_M6M,M6,18,93500,722,0,37,ships\atf\atf_m6_vali_scene,3,3,0,0,fx_engine_xtc_orange_nor3x2 fx_engine_xtc_orange_bigx1,#210f06,orange,6255,6250,-43500,90832,45416,28673 None,0x2002
+mayhem,208,SS_SH_ATF_M7,M7,18,100500,723,0,0,ships\atf\atf_m7_aegir_scene,7,1,0,0,fx_engine_xtc_orange_big3x7,#210f06,orange,18764,18750,-249617,632228,316114,28673 None,0x2002
+mayhem,209,SS_SH_ATF_M7M,M7,18,92500,723,0,0,ships\atf\atf_m7_skirnir_scene,2,2,0,0,fx_engine_xtc_orange_big3x2,#210f06,orange,18764,18750,-72121,323478,161739,28673 None,0x2002
+mayhem,210,SS_SH_ATF_M1H,M1,18,48000,723,0,0,ships\atf\atf_m1_woden_scene,12,4,0,0,fx_engine_xtc_orange_big3x12,#210f06,orange,18764,18750,-305491,948332,474166,28673 None,0x2002
+mayhem,211,SS_SH_ATF_VALHALLA,M2,18,60500,723,0,0,ships\atf\atf_m0_valhalla_scene,12,12,0,0,fx_engine_xtc_orange_hugex12,#210f06,orange,93992,93922,-966211,2180214,1090107,28673 None,0x2002
+mayhem,212,SS_SH_TR_TS,TS,18,80000,727,0,36,ships\terran\terran_ts_baldric_scene,6,6,0,0,fx_engine_xtc_white_nor3x6,#131313,white/grey,4003,4000,-23888,53617,26810,1 28673,0x2002
+mayhem,213,SS_SH_TR_TP,TP,18,107500,727,0,36,ships\terran\terran_tp_scabbard_scene,6,6,0,0,fx_engine_xtc_white_nor2x4 fx_engine_xtc_white_norx2,#131313,white/grey,2001,2000,-20159,40067,20808,1 28673,0x2002
+mayhem,214,SS_SH_TR_M1,M1,18,60500,729,0,0,ships\terran\terran_m1_tokyo_scene,4,4,0,,fx_engine_xtc_white_big3x4,#131313,white/grey,18764,18750,-668578,,,1 28673,0x2002
+mayhem,215,SS_SH_TR_M2,M2,18,52000,729,0,0,ships\terran\terran_m2_osaka_scene,16,16,0,0,fx_engine_xtc_white_big3x8 fx_engine_xtc_white_big2x8,#131313,white/grey,18764,18750,-324623,921860,595398,1 28673,0x2002
+mayhem,216,SS_SH_TR_M3,M3,18,147000,727,0,26,ships\terran\terran_m3_scimitar_scene,2,2,16,0,fx_engine_xtc_white_norx2,#131313,white/grey,1001,1000,-8444,17648,8824,1 132 136 16 28673 32 68 72,0x2002
+mayhem,217,SS_SH_TR_M3P,M3,18,123750,727,0,26,ships\terran\terran_m3_cutlass_scene,2,2,16,0,fx_engine_xtc_white_norx2,#131313,white/grey,1001,1000,-10400,21344,10672,1 132 136 16 28673 32 68 72,0x2002
+mayhem,218,SS_SH_TR_M4,M4,18,158125,727,0,16,ships\terran\terran_m4_sabre_scene,2,2,16,0,fx_engine_xtc_white_norx2,#131313,white/grey,1001,1000,-5791,12242,6121,1 132 136 16 28673 32 68 72,0x2002
+mayhem,219,SS_SH_TR_M5,M5,18,282000,727,0,6,ships\terran\terran_m5_rapier_scene,3,3,16,0,fx_engine_xtc_white_norx3,#131313,white/grey,1001,1000,-5121,10784,5392,1 132 136 16 28673 32 68 72,0x2002
+mayhem,220,SS_SH_USC_DRONE,OBJ_FIGHTDRONEUSC,12,65447,727,0,41,ships\others\keris_scene,1,1,0,0,fx_engine_xtc_white_tinyx1,#131313,white/grey,504,500,-1299,2927,1589,28673 None,0x2002
+mayhem,221,SS_SH_TR_M6,M6,18,87500,728,0,36,ships\terran\terran_m6_katana_scene,4,4,0,0,fx_engine_xtc_white_bigx4,#131313,white/grey,6255,6250,-39414,82435,41218,28673 None,0x2002
+mayhem,222,SS_SH_TR_M7,M7,18,71500,729,0,0,ships\terran\terran_m7_yokohama_scene,8,8,0,0,fx_engine_xtc_white_bigx8,#131313,white/grey,6255,6250,-114546,235876,117939,1 28673,0x2002
+mayhem,223,SS_SH_TR_M8,M8,18,113000,728,0,36,ships\terran\terran_m8_claymore_scene,8,8,0,0,fx_engine_xtc_white_norx8,#131313,white/grey,1001,1000,-18175,37070,18535,28673 None,0x2002
+mayhem,224,SS_SH_G_SPITFYRE,M3,9,120375,703,0,59,ships\goner\goner_m3_spitfyre_scene,3,3,16,0,fx_engine_xtc_lime_norx3,#041e04,green,1001,1000,-3395,10344,5172,1 132 136 16 28673 32 68 72,0x2002
+mayhem,225,SS_SH_G_SPRINGBLOSSOM,M6,9,81000,704,0,60,ships\goner\goner_m6_springblossom_scene,2,2,0,0,fx_engine_xtc_lime_nor3x2,#041e04,green,4003,4000,-3621,89060,44530,1 28673,0x2002
+mayhem,226,SS_SH_TERRAFORMER1,M1,16,60500,723,0,0,ships\terraformer\terraformer_m1_deca_scene,13,1,0,0,fx_engine_xtc_orange_hugex12 fx_engine_xtc_orange_huge2x1,#210f06,orange,141281,141175,-909210,1962784,981392,28673 None,0x2002
+mayhem,227,SS_SH_TERRAFORMER2,M3,16,138750,721,0,27,ships\terraformer\terraformer_m3_cefa_scene,4,4,16,0,fx_engine_xtc_orange_norx4,#210f06,orange,1001,1000,-5578,12012,6009,132 136 16 28673 32 68 72 None,0x2002
+mayhem,228,SS_SH_Y_TM,TM,19,200000,725,0,39,ships\yaki\yaki_tm_chokaro_scene,5,2,0,1,fx_engine_xtc_yellow_nor2x3 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-42170,83169,44464,1 28673,0x2002
+mayhem,229,SS_SH_Y_M3,M3,19,127500,724,0,29,ships\yaki\yaki_M3_susanowa_scene,3,1,16,0,fx_engine_xtc_yellow_tinyx2 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-5978,12830,6415,132 136 16 28673 32 68 72 None,0x2002
+mayhem,230,SS_SH_Y_M3_1,M3,19,137700,724,0,29,ships\yaki\yaki_M3_susanowa_raider_scene,2,1,16,0,fx_engine_xtc_yellow_norx2,#151500,yellow,1001,1000,-6087,12970,6485,132 136 16 28673 32 68 72 None,0x2002
+mayhem,231,SS_SH_Y_M3_2,M3,19,127500,724,0,29,ships\yaki\yaki_M3_susanowa_hauler_scene,3,1,16,0,fx_engine_xtc_yellow_tinyx2 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-5978,12818,6409,132 136 16 28673 32 68 72 None,0x2002
+mayhem,232,SS_SH_Y_M3P,M3,19,106875,724,0,29,ships\yaki\yaki_m3_tenjin_scene,3,1,18,0,fx_engine_xtc_yellow_norx2 fx_engine_xtc_yellow_nor3x1,#151500,yellow,4003,4000,-10921,22204,11102,132 136 16 28673 32 68 72 None,0x2002
+mayhem,233,SS_SH_Y_M4,M4,19,199000,724,0,19,ships\yaki\yaki_M4_raijin_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+mayhem,234,SS_SH_Y_M4_1,M4,19,214900,724,0,19,ships\yaki\yaki_M4_raijin_sentinel_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+mayhem,235,SS_SH_Y_M4_2,M4,19,199000,724,0,19,ships\yaki\yaki_M4_raijin_raider_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,8906,4453,1 132 136 16 28673 32 68 72,0x2002
+mayhem,236,SS_SH_Y_M4P,M4,19,193750,724,0,19,ships\yaki\yaki_M4_tonbo_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+mayhem,237,SS_SH_Y_M5,M5,19,272500,724,0,9,ships\yaki\yaki_M5_fujin_scene,11,1,16,,fx_engine_xtc_yellow_tinyx10 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-3561,,,132 136 16 28673 32 68 72 None,0x2002
+mayhem,238,SS_SH_Y_M5_1,M5,19,294300,724,0,9,ships\yaki\yaki_M5_fujin_sentinel_scene,13,1,16,0,fx_engine_xtc_yellow_tinyx12 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-3561,7151,4516,1 132 136 16 28673 32 68 72,0x2002
+mayhem,239,SS_SH_Y_M5_2,M5,19,272500,724,0,9,ships\yaki\yaki_M5_fujin_raider_scene,7,1,16,0,fx_engine_xtc_yellow_tinyx6 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-3561,7160,4792,1 132 136 16 28673 32 68 72,0x2002
+mayhem,240,SS_SH_K_M2P_HIVEQUEEN,M2,7,74400,714,0,0,ships\khaak\khaak_m2p_hivequeen_scene,6,4,0,0,fx_engine_xtc_purple_big3x6,#190e1e,purple,18764,18750,-430000,950846,475423,1 28673,0x2002
+mayhem,241,SS_SH_K_M1,M1,7,54000,714,0,0,ships\khaak\khaak_m1_carrier_scene,4,4,0,0,fx_engine_xtc_purple_big3x4,#190e1e,purple,18764,18750,-68000,106782,59462,1 28673,0x2002
+mayhem,242,SS_SH_K_M2,M2,7,54000,714,0,0,ships\khaak\khaak_m2_destroyer_scene,1,1,0,0,fx_engine_xtc_purple_big3x1,#190e1e,purple,18764,18750,-45000,106782,54229,1 28673,0x2002
+mayhem,243,SS_SH_K_M3,M3,7,160400,712,0,30,4211,0,0,0,,,,,,,,,,,
+mayhem,244,SS_SH_K_M4,M4,7,178150,712,0,20,4210,0,0,0,,,,,,,,,,,
+mayhem,245,SS_SH_K_M5,M5,7,270500,712,0,10,4209,0,0,0,,,,,,,,,,,
+mayhem,246,SS_SH_K_M6,M6,7,101500,713,0,40,ships\khaak\khaak_m6_corvette_scene,1,1,0,0,fx_engine_xtc_purple_big3x1,#190e1e,purple,18764,18750,-18100,29284,14642,1 28673,0x2002
+mayhem,247,SS_SH_B_M2P_MEGALODON,M2,2,46585,708,0,0,ships\boron\boron_m2p_megalodon_scene,7,7,0,0,fx_engine_xtc_lightblue_big3x7,#04191e,cyan,18764,18750,-752069,1899990,1035310,1 2 28673,0x2002
+mayhem,248,SS_SH_S_M2P_OCELOT,M2,3,72320,720,0,0,ships\split\split_m2p_ocelot_scene,10,10,0,0,fx_engine_xtc_red_big3x8 fx_engine_xtc_red_hugex2,#290a0a,red,93992,93922,-908640,1837367,925654,28673 None,0x2002
+mayhem,249,SS_SH_G_TL,TL,9,52000,705,0,0,ships\goner\goner_tl_ozias_scene,3,3,0,,fx_engine_xtc_lime_big3x3,#041e04,green,18764,18750,-434937,,,1 28673,0x2002
+mayhem,250,SS_SH_G_ARAN,M1,9,30250,705,0,0,ships\goner\goner_m1_aran_scene,2,2,0,,fx_engine_xtc_lime_huge3x2,#041e04,green,211920,211762,-770000,,,28673 None,0x2002
+mayhem,251,SS_SH_G_RANGER,M5,9,280500,703,0,58,ships\goner\goner_m5_ranger_scene,2,2,0,0,fx_engine_xtc_lime_tinyx2,#041e04,green,504,500,124,5020,2510,28673 None,0x2002
+mayhem,252,SS_SH_OTAS_M2,M2,1,35000,729,0,0,ships\otas\otas_m2_boreas_scene,6,6,0,3,fx_engine_xtc_white_big3x6,#131313,white/grey,18764,18750,-313462,670580,335290,28673 None,0x2002
+mayhem,253,SS_SH_OTAS_M3_VENTI,M3,1,147000,727,0,26,ships\otas\otas_m3_venti_scene,5,1,14,0,fx_engine_xtc_white_tinyx3 fx_engine_xtc_white_norx2,#131313,white/grey,1001,1000,-6866,14290,7145,132 136 16 28673 32 68 72 None,0x2002
+mayhem,254,SS_SH_OTAS_M3P,M3,1,127500,727,0,26,ships\otas\otas_m3_notus_scene,4,3,18,0,fx_engine_xtc_white_norx2 fx_engine_xtc_white_nor2x2,#131313,white/grey,2001,2000,-9510,17711,9982,132 136 16 28673 32 68 72 None,0x2002
+mayhem,255,SS_SH_OTAS_M4,M4,1,167500,727,0,16,ships\otas\otas_m4_eurus_scene,4,2,12,0,fx_engine_xtc_white_norx4,#131313,white/grey,1001,1000,-3306,10841,7178,136 16 28673 32 68 None,0x2002
+mayhem,256,SS_SH_OTAS_M4P,M4,1,187000,727,0,16,ships\otas\otas_m4_solano_scene,8,1,8,0,fx_engine_xtc_white_tinyx8,#131313,white/grey,504,500,-4317,9587,5064,132 136 28673 68 72 None,0x2002
+mayhem,257,SS_SH_OTAS_TM,TM,1,200000,728,0,36,ships\otas\otas_tm_zephyrus_scene,8,2,0,3,fx_engine_xtc_white_norx4 fx_engine_xtc_white_bigx2 fx_engine_xtc_white_nor2x2,#131313,white/grey,6255,6250,-52540,107065,53533,1 28673,0x2002
+mayhem,258,SS_SH_OTAS_M6,M6,1,81000,728,0,36,ships\otas\otas_m6_skiron_scene,7,2,0,4,fx_engine_xtc_white_nor2x5 fx_engine_xtc_white_bigx2,#131313,white/grey,6255,6250,-24904,86469,43235,1 28673,0x2002
+mayhem,259,SS_SH_X_M2_Z,M2,6,55000,717,0,0,ships\Xenon\xenon_m2_Z_scene,14,6,0,0,fx_engine_xtc_magenta_big2x8 fx_engine_xtc_magenta_big3x6,#1f0b1e,magenta,18764,18750,-628854,1449527,829777,1 28673,0x2002
+mayhem,260,SS_SH_OTAS_M7M,M7,1,92500,729,0,0,ships\otas\otas_m7_aquilo_scene,5,3,0,4,fx_engine_xtc_white_big2x2 fx_engine_xtc_white_nor3x2 fx_engine_xtc_white_big3x1,#131313,white/grey,18764,18750,-189388,444394,222197,28673 None,0x2002
+mayhem,261,SS_SH_T_M1_EMEUS,M1,5,49500,702,0,0,ships\Teladi\teladi_M1_Emeus_scene,7,4,0,0,fx_engine_xtc_green_big3x4 fx_engine_xtc_green_big2x3,#091910,green,18764,18750,-703701,1702930,851465,1 28673,0x2002
+mayhem,262,SS_SH_TR_M1_NAGOYA,M1,18,52000,729,0,0,ships\terran\terran_m1_nagoya_scene,12,8,0,0,fx_engine_xtc_white_big3x4 fx_engine_xtc_white_big2x4 fx_engine_xtc_white_nor3x4,#131313,white/grey,18764,18750,-675456,1339717,691287,1 28673,0x2002
+mayhem,263,SS_SH_THINKER,KHAAKCLUSTER,7,68981,712,0,30,4700,0,0,0,,,,,,,,,,,
+mayhem,264,SS_SH_THINKER6,KHAAKCLUSTER,7,63586,712,0,30,4704,0,0,0,,,,,,,,,,,
+mayhem,265,SS_SH_THINKER14,KHAAKCLUSTER,7,68140,712,0,30,4702,0,0,0,,,,,,,,,,,
+mayhem,266,SS_SH_THINKER27,KHAAKCLUSTER,7,71784,712,0,30,4706,0,0,0,,,,,,,,,,,
+mayhem,267,SS_SH_ASTRON,ASTRONAUT,12,64494,390,89,0,ships\others\astronaut_scene,0,0,0,0,,,,,,,328,491,,
+mayhem,268,SS_SH_PI_M1_POLACCA,M1,19,35000,729,0,0,ships\pirate\pirate_m1_polacca_scene,13,6,0,0,fx_engine_xtc_peach_big3x13,#151211,orange,18764,18750,-309302,694526,347263,1 28673,0x2002
+mayhem,269,SS_SH_PI_M2_EXTERMINATOR,M2,19,35000,729,0,0,ships\pirate\pirate_m2_Exterminator_scene,24,8,0,0,fx_engine_xtc_peach_big2x24,#151211,orange,9373,9366,-256264,648951,379468,1 28673,0x2002
+mayhem,270,SS_SH_SAT,OBJ_SATELLITE,12,0,390,0,0,ships\others\navigational_relay_satellite_scene,0,0,0,0,,,,,,,1851,1999,,
+mayhem,271,SS_SH_MINE_1,OBJ_MINE,12,0,390,0,0,ships\others\mine_scene,0,0,0,0,,,,,,,998,499,,
+mayhem,272,SS_SH_FIGHTDRONE,OBJ_FIGHTDRONE,12,61463,727,0,41,ships\others\fighter_drone_scene,1,1,0,0,fx_engine_xtc_white_tinyx1,#131313,white/grey,504,500,-625,1258,629,1 28673,0x2002
+mayhem,273,SS_SH_ORBITALLASER,OBJ_ORBITALLASER,12,0,390,0,0,ships\others\lasertower_scene,0,0,0,0,,,,,,,19998,9999,,
+mayhem,274,SS_SH_UFO,UFO,9,61367,390,89,0,4145,0,0,0,,,,,,,,,,,
+mayhem,275,SS_SH_SPACEFLY,OBJ_SPACEFLY,12,65479,390,89,0,ships\others\spacefly_scene,0,0,0,0,,,,,,,989,625,,
+mayhem,276,SS_SH_P_M2_PATROCLUS,M2,4,42000,725,0,0,ships\paranid\paranid_m2_Patroclus_scene,3,3,0,0,fx_engine_xtc_yellow_bigx2 fx_engine_xtc_yellow_big3x1,#151500,yellow,18764,18750,-266119,724439,362283,28673 None,0x2002
+mayhem,277,SS_SH_TR_M2_SOLARIS,M2,18,42000,729,0,0,ships\terran\terran_M2_Solaris_scene,12,4,0,0,fx_engine_xtc_white_big3x4 fx_engine_xtc_white_big2x4 fx_engine_xtc_white_nor3x4,#131313,white/grey,18764,18750,-430421,981274,490637,1 28673,0x2002
+mayhem,278,SS_SH_SAT2,OBJ_SATELLITE2,12,0,390,0,0,ships\others\advanced_satellite_scene,0,0,0,0,,,,,,,3941,3999,,
+mayhem,279,SS_SH_S_M2_TAIPAN,M2,3,70400,720,0,0,ships\Split\split_M2_Taipan_scene,7,3,0,0,fx_engine_xtc_red_nor3x4 fx_engine_xtc_red_big2x2 fx_engine_xtc_red_big3x1,#290a0a,red,18764,18750,-525944,1262947,723185,1 28673,0x2002
+mayhem,280,SS_SH_BEACON,OBJ_BEACON,12,0,390,0,0,ships\others\navigational_beacon_scene,0,0,0,0,,,,,,,2840,2490,,
+mayhem,281,SS_SH_T_M2_CORMORANT,M2,5,43200,702,0,0,ships\teladi\teladi_m2_Cormorant_scene,8,4,0,0,fx_engine_xtc_green_big3x8,#091910,green,18764,18750,-527450,1344753,696133,28673 None,0x2002
+mayhem,282,SS_SH_S_M3_COUGAR,M3,3,144000,718,0,23,ships\Split\split_M3_Cougar_scene,4,4,0,0,fx_engine_xtc_red_tinyx4,#290a0a,red,504,500,-9337,21862,10931,1 28673,0x2002
+mayhem,283,SS_SH_TR_M3_FALCHION,M3,18,106875,727,0,26,ships\terran\terran_M3_Falchion_scene,2,2,0,0,fx_engine_xtc_white_norx2,#131313,white/grey,1001,1000,-9641,20510,10255,1 28673,0x2002
+mayhem,284,SS_SH_ATF_M3_VERDANDI,M3,18,133500,721,0,27,ships\atf\atf_m3_verdandi_scene,4,2,0,0,fx_engine_xtc_orange_norx4,#210f06,orange,1001,1000,-3025,9384,9318,1 28673,0x2002
+mayhem,285,SS_SH_ATF_M4_HEL,M4,18,167125,721,0,17,ships\atf\atf_m4_hel_scene,2,2,0,0,fx_engine_xtc_orange_norx2,#210f06,orange,1001,1000,-3275,9149,9955,1 28673,0x2002
+mayhem,286,SS_SH_X_M4_O,M4,16,193750,715,0,18,ships\xenon\xenon_m4_O_scene,12,4,0,0,fx_engine_xtc_magenta_tinyx12,#1f0b1e,magenta,504,500,-3991,8743,4430,1 28673,0x2002
+mayhem,287,SS_SH_TR_M4_SHAMSHIR,M4,18,163750,727,0,16,ships\terran\terran_M4_Shamshir_scene,3,3,14,,fx_engine_xtc_white_norx3,#131313,white/grey,1001,1000,-5857,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,288,SS_SH_ATF_M5_MANI,M5,18,290000,721,0,7,ships\atf\atf_m5_mani_scene,2,2,0,0,fx_engine_xtc_orange_norx2,#210f06,orange,1001,1000,-600,11556,5778,1 28673,0x2002
+mayhem,289,SS_SH_G_M6,M6,9,60000,704,0,60,ships\goner\goner_m6_truelight_seeker_scene,4,4,0,2,fx_engine_xtc_lime_bigx4,#041e04,green,6255,6250,-30095,64424,32212,28673 None,0x2002
+mayhem,290,SS_SH_PI_M6_MACANA,M6,19,103750,728,0,39,ships\pirate\pirate_m6_Macana_scene,2,2,0,0,fx_engine_xtc_peach_nor3x2,#151211,orange,4003,4000,-36259,106522,53261,1 28673,0x2002
+mayhem,291,SS_SH_B_M6_MARLIN,M6,2,62370,707,0,32,ships\boron\boron_m6_marlin_scene,8,4,0,0,fx_engine_xtc_lightblue_nor3x4 fx_engine_xtc_lightblue_nor2x4,#04191e,cyan,4003,4000,-40361,87141,44102,1 28673,0x2002
+mayhem,292,SS_SH_P_M6_PROTEUS,M6,4,99750,725,0,34,ships\paranid\paranid_m6_Proteus_scene,16,3,0,0,fx_engine_xtc_yellow_nor2x6 fx_engine_xtc_yellow_norx6 fx_engine_xtc_yellow_nor3x3 fx_engine_paranid_m6_axefacex1,#151500,yellow,4003,4000,-31904,87151,53579,1 28673,0x2002
+mayhem,293,SS_SH_A_M7_MANDALAY,M7,1,63000,711,0,0,ships\argon\argon_m7_mandalay_scene,27,11,0,4,fx_engine_xtc_darkblue_big2x12 fx_engine_xtc_darkblue_big3x11 fx_engine_xtc_darkblue_bigx4,#0f0f34,blue,18764,18750,-335005,670008,362599,28673 None,0x2002
+mayhem,294,SS_SH_FREIGHTDRONE,OBJ_FREIGHTDRONE,12,63243,727,0,41,ships\others\freight_drone_scene,0,0,0,2,,,,,,,16896,8448,,
+mayhem,295,SS_SH_A_M7_SPECIAL,M7,1,82000,711,0,0,ships\argon\argon_m7_griffon_scene,6,2,0,3,fx_engine_xtc_darkblue_big2x4 fx_engine_xtc_darkblue_bigx2,#0f0f34,blue,9373,9366,-78690,215080,107899,1 28673,0x2002
+mayhem,296,SS_SH_S_M7_SPECIAL,M7,3,80640,720,0,0,ships\split\split_m7_panther_scene,3,3,0,0,fx_engine_xtc_red_big2x2 fx_engine_xtc_red_big3x1,#290a0a,red,18764,18750,-207483,885456,659918,28673 None,0x2002
+mayhem,297,SS_SH_P_M7_SPECIAL,M7,4,82000,726,0,0,ships\paranid\paranid_m7_agamemnon_scene,6,2,0,,fx_engine_xtc_yellow_big2x4 fx_engine_xtc_yellow_big3x2,#151500,yellow,18764,18750,-190566,,,28673 None,0x2002
+mayhem,298,SS_SH_S_M6_APPALLOX,M6,3,119680,719,0,33,ships\Split\split_M6_Appallox_scene,4,2,0,0,fx_engine_xtc_red_nor2x2 fx_engine_xtc_red_nor3x2,#290a0a,red,4003,4000,-36672,105574,52787,1 28673,0x2002
+mayhem,299,SS_SH_B_M8_AQUATA,M8,2,79310,707,0,32,ships\boron\boron_m8_aquata_scene,5,3,0,0,fx_engine_xtc_lightblue_nor2x3 fx_engine_xtc_lightblue_norx2,#04191e,cyan,2001,2000,-15702,37308,18654,1 28673,0x2002
+mayhem,300,SS_SH_PI_M1_GALLEON,M1,19,48000,729,0,0,ships\pirate\pirate_m1_galleon_scene,3,1,0,5,fx_engine_xtc_peach_bigx2 fx_engine_xtc_peach_big3x1,#151211,orange,18764,18750,-392055,904216,452108,1 28673,0x2002
+mayhem,301,SS_SH_PI_M2_BRIGANTINE,M2,19,48000,729,0,0,ships\pirate\pirate_m2_brigantine_scene,2,1,0,3,fx_engine_xtc_peach_big3x1 fx_engine_xtc_peach_bigx1,#151211,orange,18764,18750,-453509,1057430,528715,28673 None,0x2002
+mayhem,302,SS_SH_ATF_M6_LOGICH,M6,18,108750,722,0,37,ships\atf\atf_m6_logich_scene,36,8,0,0,fx_engine_xtc_orange_norx24 fx_engine_xtc_orange_nor2x12,#210f06,orange,2001,2000,-34202,75733,41002,28673 None,0x2002
+mayhem,303,SS_SH_Y_TL,TL,19,60500,726,0,0,ships\Yaki\yaki_tl_ryu_scene,8,4,0,4,fx_engine_xtc_yellow_hugex4 fx_engine_xtc_yellow_big2x4,#151500,yellow,93992,93922,-536661,1344848,747555,1 28673,0x2002
+mayhem,304,SS_SH_Y_M1,M1,19,56500,726,0,0,ships\yaki\yaki_m1_hoshi_scene,4,4,0,5,fx_engine_xtc_yellow_hugex4,#151500,yellow,93992,93922,-641000,1462682,731341,1 28673,0x2002
+mayhem,305,SS_SH_Y_M2,M2,19,55000,726,0,0,ships\yaki\yaki_m2_tenshi_scene,4,4,0,5,fx_engine_xtc_yellow_hugex4,#151500,yellow,93992,93922,-720000,1629302,814651,1 28673,0x2002
+mayhem,306,SS_SH_TR_M6_SHURI,M6,18,106500,728,0,36,ships\terran\terran_m6_Shuri_scene,4,4,0,0,fx_engine_xtc_white_bigx2 fx_engine_xtc_white_big2x2,#131313,white/grey,9373,9366,-46505,92212,48429,1 28673,0x2002
+mayhem,307,SS_SH_Y_M6_SENSHI,M6,19,90500,725,0,39,ships\yaki\yaki_m6_Senshi_scene,21,11,0,3,fx_engine_xtc_yellow_nor2x18 fx_engine_xtc_yellow_norx2 fx_engine_xtc_yellow_bigx1,#151500,yellow,6255,6250,-21443,66691,40836,1 28673,0x2002
+mayhem,308,SS_SH_OTAS_M6_SIROKOS,M6,1,87500,728,0,36,ships\otas\otas_m6_sirokos_scene,28,8,0,4,fx_engine_xtc_white_nor2x16 fx_engine_xtc_white_bigx8 fx_engine_xtc_white_nor3x4,#131313,white/grey,6255,6250,-33737,77042,38521,28673 None,0x2002
+mayhem,309,SS_SH_OTAS_TS,TS,1,46500,727,0,36,ships\otas\otas_ts_mistral_scene,2,2,0,4,fx_engine_xtc_white_nor3x2,#131313,white/grey,4003,4000,-25022,54886,28137,28673 None,0x2002
+mayhem,310,SS_SH_OTAS_TS_1,TS,1,54353,727,0,36,ships\otas\otas_ts_mistral_sf_scene,8,8,0,,fx_engine_xtc_white_nor3x8,#131313,white/grey,4003,4000,-38160,,,28673 None,0x2002
+mayhem,311,SS_SH_S_M7_ACINONYX,M7,3,73600,720,0,0,ships\Split\split_M7_Acinonyx_scene,3,3,0,0,fx_engine_xtc_red_big2x2 fx_engine_xtc_red_big3x1,#290a0a,red,18764,18750,-289424,647106,323553,1 28673,0x2002
+mayhem,312,SS_SH_P_M7_ARIADNE,M7,4,63000,726,0,0,ships\paranid\paranid_m7_Ariadne_scene,6,4,0,0,fx_engine_xtc_yellow_bigx4 fx_engine_xtc_yellow_big2x2,#151500,yellow,9373,9366,-89760,187484,121635,1 28673,0x2002
+mayhem,313,SS_SH_OTAS_M7_AUSTER,M7,1,100500,728,0,0,ships\otas\otas_m7_auster_scene,2,2,0,4,fx_engine_xtc_white_big3x2,#131313,white/grey,18764,18750,-297054,606860,303430,28673 None,0x2002
+mayhem,314,SS_SH_X_M7_C,M7,6,82000,717,0,0,ships\xenon\xenon_M7_C_scene,24,6,0,0,fx_engine_xtc_magenta_big3x24,#1f0b1e,magenta,18764,18750,-113969,702357,355565,1 28673,0x2002
+mayhem,315,SS_SH_TR_M7_CHIKYU,M7,18,109500,729,0,0,ships\terran\terran_M7_Chikyu_scene,7,4,0,0,fx_engine_xtc_white_big2x4 fx_engine_xtc_white_nor3x3,#131313,white/grey,9373,9366,-127014,333742,170840,1 28673,0x2002
+mayhem,316,SS_SH_B_M7_COELACANTH,M7,2,48510,708,0,0,ships\boron\boron_m7_coelacanth_scene,6,6,0,0,fx_engine_xtc_lightblue_big3x6,#04191e,cyan,18764,18750,-417591,894534,447267,28673 None,0x2002
+mayhem,317,SS_SH_T_M7_GEOCHEN,M7,5,47250,702,0,0,ships\Teladi\teladi_M7_Geochen_scene,8,4,0,0,fx_engine_xtc_green_big3x4 fx_engine_xtc_green_bigx4,#091910,green,18764,18750,-172701,430258,215129,1 28673,0x2002
+mayhem,318,SS_SH_K_M7_GUARDIAN,M7,7,81000,713,0,0,ships\khaak\khaak_m7_Guardian_scene,5,1,0,0,fx_engine_xtc_purple_big3x5,#190e1e,purple,18764,18750,-211000,414040,207020,1 28673,0x2002
+mayhem,319,SS_SH_TR_MINE,OBJ_MINETR,12,0,390,0,0,ships\others\mine_scene,0,0,0,0,,,,,,,998,499,,
+mayhem,320,SS_SH_MINE_2,OBJ_MINE2,12,0,390,89,0,ships\others\navigational_beacon_scene,0,0,0,0,,,,,,,2840,2490,,
+mayhem,321,SS_SH_MINE_3,OBJ_MINE3,12,0,390,0,0,ships\others\mine_scene,0,0,0,0,,,,,,,998,499,,
+mayhem,322,SS_SH_TR_M7_HAYABUSA,M7,18,92500,729,0,0,ships\terran\terran_M7_Hayabusa_scene,5,5,0,0,fx_engine_xtc_white_big2x5,#131313,white/grey,9373,9366,-244113,529798,282591,1 28673,0x2002
+mayhem,323,SS_SH_TR_M7_KARIUDO,M7,18,82000,729,0,0,ships\terran\terran_M7_Kariudo_scene,13,4,0,0,fx_engine_xtc_white_big2x6 fx_engine_xtc_white_big3x4 fx_engine_xtc_white_nor3x3,#131313,white/grey,18764,18750,-132185,319763,174655,1 28673,0x2002
+mayhem,324,SS_SH_TR_TL,TL,18,69500,729,0,0,ships\terran\terran_tl_atmospheric_lifter_scene,16,16,0,0,fx_engine_xtc_white_big3x16,#131313,white/grey,18764,18750,-145149,309881,372590,1 28673,0x2002
+mayhem,325,SS_SH_TR_TL_MINING,TL,18,35000,729,0,0,ships\terran\terran_tl_mobile_mining_base-ship_scene,32,8,0,0,fx_engine_xtc_white_bigx16 fx_engine_xtc_white_big3x8 fx_engine_xtc_white_big2x8,#131313,white/grey,18764,18750,-455048,1382071,911460,1 28673,0x2002
+mayhem,326,SS_SH_P_M6_ADV,M6,4,103750,725,0,34,ships\paranid\paranid_m6_hyperion_scene,5,2,0,0,fx_engine_xtc_yellow_nor3x4 fx_engine_xtc_yellow_big2x1,#151500,yellow,9373,9366,-48767,101360,50680,1 28673,0x2002
+mayhem,327,SS_SH_A_M3P_PROTO,M3,1,123496,709,0,21,ships\argon\argon_m3_eclipse_scene,4,2,16,,fx_engine_xtc_darkblue_norx4,#0f0f34,blue,1001,1000,-11789,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,328,SS_SH_A_M3_PROTO,M3,1,175938,709,0,21,ships\argon\argon_m3_nova_vanguard_scene,3,1,16,,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-4913,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,329,SS_SH_A_TP_ADV,TP,1,85506,709,0,31,ships\argon\argon_tp_express_hauler_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-33691,68514,34257,1 28673,0x2002
+mayhem,330,SS_SH_A_TS_ENH,TS,1,52705,709,0,31,ships\argon\argon_TS_Mercury_Tanker_XL_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-20076,41286,20643,1 28673,0x2002
+mayhem,331,SS_SH_A_TS_PROTO,TS,1,63653,709,0,31,ships\argon\argon_TS_Mercury_SF_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-20044,41486,20743,1 28673,0x2002
+mayhem,332,SS_SH_A_M6M_PROTO,M6,1,101581,710,0,31,ships\argon\argon_m6_heavy_centaur_scene,7,4,0,1,fx_engine_xtc_darkblue_nor2x7,#0f0f34,blue,2001,2000,-28225,63292,31646,28673 None,0x2002
+mayhem,333,SS_SH_A_M5_ADV,M5,1,294296,709,0,1,ships\argon\argon_m5_discoverer_scene,3,1,16,0,fx_engine_xtc_darkblue_norx3,#0f0f34,blue,1001,1000,-3718,7792,4001,1 132 136 16 28673 32 68 72,0x2002
+mayhem,334,SS_SH_A_M4P_ENH,M4,1,167664,709,0,11,ships\argon\argon_m4_elite_scene,6,1,18,,fx_engine_xtc_darkblue_tinyx6,#0f0f34,blue,504,500,-4904,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,335,SS_SH_S_M3_ADV,M3,3,200200,718,0,23,ships\split\split_m3_mamba_sentinel_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-6575,14502,7251,1 132 136 16 28673 32 68 72,0x2002
+mayhem,336,SS_SH_S_M4_PROTO,M4,3,252061,718,0,13,ships\split\split_m4_scorpion_sentinel_scene,2,1,16,0,fx_engine_xtc_red_tinyx1 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-5770,12488,6244,1 132 136 16 28673 32 68 72,0x2002
+mayhem,337,SS_SH_S_M3P_ENH,M3,3,171364,718,0,23,ships\split\split_m3_chimera_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-8301,19746,9873,1 132 136 16 28673 32 68 72,0x2002
+mayhem,338,SS_SH_S_M5_ENH,M5,3,303903,718,0,3,ships\split\split_m5_jaguar_raider_scene,3,1,16,0,fx_engine_xtc_red_tinyx3,#290a0a,red,504,500,-5074,13562,6781,1 132 136 16 28673 32 68 72,0x2002
+mayhem,339,SS_SH_P_M3P_PROTO,M3,4,167500,724,0,24,ships\paranid\paranid_m3_medusa_scene,5,2,16,0,fx_engine_xtc_yellow_norx5,#151500,yellow,1001,1000,-7291,15678,7839,1 132 136 16 28673 32 68 72,0x2002
+mayhem,340,SS_SH_P_TS_PROTO,TS,4,65624,724,0,34,ships\paranid\paranid_ts_demeter_prototype_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-21388,45980,22990,28673 None,0x2002
+mayhem,341,SS_SH_P_M3_ADV,M3,4,128700,724,0,24,ships\paranid\paranid_m3_perseus_raider_scene,2,1,16,0,fx_engine_xtc_yellow_norx2,#151500,yellow,1001,1000,-6124,12970,6485,132 136 16 28673 32 68 72 None,0x2002
+mayhem,342,SS_SH_P_M4_ENH,M4,4,188009,724,0,14,ships\paranid\paranid_m4_pericles_raider_scene,2,1,16,0,fx_engine_xtc_yellow_norx1 fx_engine_xtc_yellow_tinyx1,#151500,yellow,1001,1000,-4276,9170,4585,1 132 136 16 28673 32 68 72,0x2002
+mayhem,343,SS_SH_B_M3P_PROTO,M3,2,111326,706,0,22,ships\boron\boron_m3_skate_scene,1,1,18,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,1168,20910,10455,1 132 136 16 28673 32 68 72,0x2002
+mayhem,344,SS_SH_B_TS_ENH,TS,2,42224,706,0,32,ships\boron\boron_ts_dolphin_sf_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-23703,48378,24189,1 28673,0x2002
+mayhem,345,SS_SH_B_M3_ADV,M3,2,133150,706,0,22,ships\boron\boron_m3_barracuda_vanguard_scene,1,1,16,,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-2596,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,346,SS_SH_B_M4_PROTO,M4,2,151670,706,0,12,ships\boron\boron_m4_mako_vanguard_scene,1,1,16,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-4037,8958,4545,1 132 136 16 28673 32 68 72,0x2002
+mayhem,347,SS_SH_B_M3_PROTO,M3,2,132749,706,0,22,ships\boron\boron_m3_barracuda_sentinel_scene,1,1,16,,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,-3094,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,348,SS_SH_T_M3P_ENH,M3,5,114179,700,0,25,ships\teladi\teladi_m3_kea_scene,4,4,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-8017,17856,8928,132 136 16 28673 32 68 72 None,0x2002
+mayhem,349,SS_SH_T_TS_PROTO,TS,5,56641,700,0,35,ships\teladi\teladi_ts_vulture_hauler_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-22556,46910,23455,28673 None,0x2002
+mayhem,350,SS_SH_T_TP_PROTO,TP,19,90000,727,0,39,ships\teladi\teladi_tp_toucan_hauler_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-35952,73704,36852,28673 None,0x2002
+mayhem,351,SS_SH_T_M3_PROTO,M3,5,134903,700,0,25,ships\teladi\teladi_m3_falcon_sentinel_scene,3,1,16,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-8637,17206,8603,1 132 136 16 28673 32 68 72,0x2002
+mayhem,352,SS_SH_T_M4_ENH,M4,5,131395,700,0,15,ships\teladi\teladi_m4_kite_vanguard_scene,5,5,16,,fx_engine_xtc_green_norx5,#091910,green,1001,1000,-6637,,,132 136 16 28673 32 68 72 None,0x2002
+mayhem,353,SS_SH_T_M5P_ADV,M5,5,275000,700,0,5,ships\teladi\teladi_m5_kestrel_scene,1,1,18,,fx_engine_xtc_green_norx1,#091910,green,1001,1000,-6228,,,132 136 16 28673 32 68 72 None,0x2002
+mayhem,354,SS_SH_PI_M3_PENATRON_ADV,M3,19,155736,727,0,29,ships\pirate\Pirate_m3_Penatron_scene,4,3,0,0,fx_engine_xtc_peach_norx4,#151211,orange,1001,1000,-5334,11203,5926,28673 None,0x2002
+mayhem,355,SS_SH_PI_M3_BLASTCLAW_PRO,M3,19,160364,727,0,29,ships\pirate\pirate_m3_blastclaw_scene,4,3,16,0,fx_engine_xtc_peach_norx4,#151211,orange,1001,1000,-5997,14848,7424,1 132 136 16 28673 32 68 72,0x2002
+mayhem,356,SS_SH_Y_M3_PROTO,M3,19,171039,724,0,29,ships\yaki\yaki_m3_susanowa_prototype_scene,3,1,16,0,fx_engine_xtc_yellow_tinyx2 fx_engine_xtc_yellow_norx1,#151500,yellow,1001,1000,-5978,12818,6409,132 136 16 28673 32 68 72 None,0x2002
+mayhem,357,SS_SH_B_M7_KRAIT,M7,2,44275,708,0,0,ships\boron\boron_m7_krait_scene,4,4,0,0,fx_engine_xtc_lightblue_big2x2 fx_engine_xtc_lightblue_bigx2,#04191e,cyan,9373,9366,-246179,611964,332772,1 28673,0x2002
+mayhem,358,SS_SH_TERRAFORMER3,M4,16,193750,721,0,17,ships\terraformer\terraformer_m4_deaf_scene,2,2,16,0,fx_engine_xtc_orange_norx2,#210f06,orange,1001,1000,-4134,8640,4320,132 136 16 28673 32 68 72 None,0x2002
+mayhem,359,SS_SH_JUMP_BEACON,OBJ_JUMPBEACON,12,0,390,0,0,ships\others\navigational_beacon_scene,0,0,0,0,,,,,,,2840,2490,,
+mayhem,360,SS_SH_TERRAFORMER4,M5,16,255000,721,0,7,ships\terraformer\terraformer_m5_fade_scene,4,2,16,0,fx_engine_xtc_orange_tinyx4,#210f06,orange,504,500,-2878,7286,3643,132 136 16 28673 32 68 72 None,0x2002
+mayhem,361,SS_SH_ATF_M7_KVASIR,M7,18,82000,723,0,0,ships\atf\atf_m7_kvasir_scene,15,3,0,0,fx_engine_xtc_orange_big3x15,#210f06,orange,18764,18750,-182515,434028,217014,1 28673,0x2002
+mayhem,362,SS_SH_PI_M7_MARAUDER,M7,19,92500,728,0,0,ships\pirate\pirate_m7_Marauder_scene,5,3,0,0,fx_engine_xtc_peach_big3x3 fx_engine_xtc_peach_big2x2,#151211,orange,18764,18750,-252616,545352,272676,1 28673,0x2002
+mayhem,363,SS_SH_PI_M6_MORRIGU,M6,19,106500,728,0,39,ships\pirate\pirate_m6_Morrigu_scene,5,3,0,0,fx_engine_xtc_peach_bigx3 fx_engine_xtc_peach_nor3x2,#151211,orange,6255,6250,-48523,109070,54535,1 28673,0x2002
+mayhem,364,SS_SH_T_M7_RAVEN,M7,5,64350,702,0,0,ships\Teladi\teladi_M7_Raven_scene,14,4,0,0,fx_engine_xtc_green_big2x12 fx_engine_xtc_green_big3x2,#091910,green,18764,18750,-230643,553910,276955,1 28673,0x2002
+mayhem,365,SS_SH_T_M7_TERN,M7,5,90450,702,0,0,ships\teladi\teladi_m7_Tern_scene,5,1,0,0,fx_engine_xtc_green_big3x5,#091910,green,18764,18750,-275119,632312,316156,28673 None,0x2002
+mayhem,366,SS_SH_TR_M2P_TOBOSAKU,M2,18,52000,729,0,0,ships\terran\terran_M2p_Tobosaku_scene,14,4,0,0,fx_engine_xtc_white_big3x6 fx_engine_xtc_white_hugex4 fx_engine_xtc_white_big2x4,#131313,white/grey,93992,93922,-1225630,2440241,1282210,1 28673,0x2002
+mayhem,367,SS_SH_TR_M6_TOUKON,M6,18,97250,728,0,36,ships\terran\terran_M6_Toukon_scene,13,4,0,0,fx_engine_xtc_white_nor2x6 fx_engine_xtc_white_nor3x4 fx_engine_xtc_white_norx3,#131313,white/grey,4003,4000,-35725,85174,45613,1 28673,0x2002
+mayhem,368,SS_SH_Y_M7_WASHI,M7,19,52500,726,0,0,ships\yaki\yaki_m7_Washi_scene,4,4,0,4,fx_engine_xtc_yellow_big3x4,#151500,yellow,18764,18750,-368020,816515,434834,1 28673,0x2002
+mayhem,369,SS_SH_TR_ORBITALLASER,M0,12,0,5,0,0,0,0,0,0,,,,,,,,,,,
+mayhem,370,SS_SH_TR_TS_1,TS,18,80000,727,0,36,ships\terran\terran_ts_baldric_hauler_scene,2,2,0,0,fx_engine_xtc_white_nor3x2,#131313,white/grey,4003,4000,-23908,53618,26810,28673 None,0x2002
+mayhem,371,SS_SH_Y_TM_1,TM,19,200000,725,0,39,ships\yaki\yaki_tm_chokaro_advanced_scene,5,2,0,0,fx_engine_xtc_yellow_nor2x3 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-40870,83168,41584,1 28673,0x2002
+mayhem,372,SS_SH_X_M7_G,M7,16,82000,717,0,0,ships\Xenon\xenon_M7_G_scene,8,8,0,0,fx_engine_xtc_magenta_big2x8,#1f0b1e,magenta,9373,9366,-83194,491651,248896,1 28673,0x2002
+mayhem,373,SS_SH_A_HYBRID,M3,1,138750,709,0,21,ships\argon\argon_m3_aamon_scene,4,3,18,0,fx_engine_xtc_darkblue_norx2 fx_engine_xtc_darkblue_nor2x2,#0f0f34,blue,2001,2000,-9510,17711,9982,132 136 16 28673 32 68 72 None,0x2002
+mayhem,374,SS_SH_X_M7_R,M7,16,71500,717,0,0,ships\xenon\xenon_m7_R_scene,8,8,0,0,fx_engine_xtc_magenta_big2x8,#1f0b1e,magenta,9373,9366,-56738,599076,359211,1 28673,0x2002
+mayhem,375,SS_SH_TR_TL_TEPUKEI,TL,18,48000,729,0,0,ships\terran\terran_TL_Tepukei_scene,8,4,0,0,fx_engine_xtc_white_big3x4 fx_engine_xtc_white_big2x4,#131313,white/grey,18764,18750,-342150,856851,495343,1 28673,0x2002
+mayhem,376,SS_SH_TR_TM_AKUREI,TM,18,150000,728,0,36,ships\terran\terran_TM_Akurei_scene,4,4,0,0,fx_engine_xtc_white_norx4,#131313,white/grey,1001,1000,-44411,94252,47126,1 28673,0x2002
+mayhem,377,SS_SH_ATF_TM_LOFN,TM,18,150000,722,0,37,ships\atf\atf_tm_lofn_scene,14,2,0,0,fx_engine_xtc_orange_nor2x14,#210f06,orange,2001,2000,-30311,77260,38630,1 28673,0x2002
+mayhem,378,SS_SH_TR_TS_BRAGI,TS,18,87000,727,0,36,ships\terran\terran_ts_Bragi_scene,5,5,0,0,fx_engine_xtc_white_nor2x5,#131313,white/grey,2001,2000,-43188,86726,43363,28673 None,0x2002
+mayhem,379,SS_SH_T_TS_DRAKE,TS,5,72000,700,0,35,ships\teladi\teladi_ts_Drake_scene,6,6,0,0,fx_engine_xtc_green_nor2x6,#091910,green,2001,2000,-38679,76712,39613,1 28673,0x2002
+mayhem,380,SS_SH_S_TS_ORINOCO,TS,3,116480,718,0,33,ships\split\split_ts_orinoco_scene,2,2,0,0,fx_engine_xtc_red_nor3x2,#290a0a,red,4003,4000,-31088,82569,46087,1 28673,0x2002
+mayhem,381,SS_SH_B_TS_STURGEON,TS,2,62370,706,0,32,ships\boron\boron_ts_Sturgeon_scene,3,3,0,0,fx_engine_xtc_lightblue_nor2x3,#04191e,cyan,2001,2000,-35903,72668,36685,1 28673,0x2002
+mayhem,382,SS_SH_PI_M3_BARRACUDA,M3,19,159000,727,0,29,ships\pirate\pirate_M3_barracuda_scene,1,1,16,0,fx_engine_xtc_peach_norx1,#151211,orange,1001,1000,-3010,10400,5200,1 132 136 16 28673 32 68 72,0x2002
+mayhem,383,SS_SH_PI_M4_SCORPION,M4,19,167125,727,0,19,ships\pirate\pirate_m4_scorpion_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-6800,13580,6790,1 132 136 16 28673 32 68 72,0x2002
+mayhem,384,SS_SH_PI_M4_ELITE,M4,19,198000,727,0,19,ships\pirate\pirate_m4_elite_scene,6,1,18,,fx_engine_xtc_peach_tinyx6,#151211,orange,504,500,-4904,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,385,SS_SH_PI_M5_HARRIER_TANKER,M5,19,235520,727,0,9,ships\pirate\pirate_m5_harrier_hauler_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-3825,7742,3871,1 132 136 16 28673 32 68 72,0x2002
+mayhem,386,SS_SH_PI_M5_KESTREL,M5,19,282000,727,0,9,ships\pirate\pirate_m5_kestrel_scene,1,1,18,0,fx_engine_xtc_peach_norx1,#151211,orange,1001,1000,-6228,13452,6726,132 136 16 28673 32 68 72 None,0x2002
+mayhem,387,SS_SH_PI_M3_MAMBA,M3,19,147000,727,0,29,ships\pirate\pirate_m3_mamba_scene,2,1,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-6602,14594,7297,1 132 136 16 28673 32 68 72,0x2002
+mayhem,388,SS_SH_PI_M5_OCTOPUS,M5,19,274500,727,0,9,ships\pirate\pirate_M5_octopus_scene,2,2,16,,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-3537,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,389,SS_SH_PI_M3_SCIMITAR,M3,19,150375,727,0,29,ships\pirate\pirate_M3_scimitar_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-8444,17648,8824,1 132 136 16 28673 32 68 72,0x2002
+mayhem,390,SS_SH_PI_M3_CUTLASS,M3,19,123750,727,0,29,ships\pirate\pirate_M3_cutlass_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-10400,21344,10672,1 132 136 16 28673 32 68 72,0x2002
+mayhem,391,SS_SH_PI_M4_MAKO,M4,19,158125,727,0,19,ships\pirate\pirate_M4_mako_scene,1,1,16,,fx_engine_xtc_peach_norx1,#151211,orange,1001,1000,-3986,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,392,SS_SH_PI_M4_SABRE,M4,19,163750,727,0,19,ships\pirate\pirate_m4_sabre_scene,2,2,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-5791,12242,6121,1 132 136 16 28673 32 68 72,0x2002
+mayhem,393,SS_SH_PI_M5_JAGUAR,M5,19,282000,727,0,9,ships\pirate\pirate_m5_jaguar_scene,3,1,16,0,fx_engine_xtc_peach_tinyx3,#151211,orange,504,500,-5394,12542,6271,1 132 136 16 28673 32 68 72,0x2002
+mayhem,394,SS_SH_OTAS_M2_ASTRAEUS,M2,1,48000,729,0,0,ships\otas\otas_m2_astraeus_scene,3,3,0,5,fx_engine_xtc_white_big3x3,#131313,white/grey,18764,18750,-447152,1062653,595282,28673 None,0x2002
+mayhem,395,SS_SH_PI_M2_BAYAMON,M2,19,52000,729,0,0,ships\pirate\pirate_m2_bayamon_scene,8,2,0,2,fx_engine_xtc_peach_big2x4 fx_engine_xtc_peach_big3x2 fx_engine_xtc_peach_bigx2,#151211,orange,18764,18750,-260191,674927,405977,28673 None,0x2002
+mayhem,396,SS_SH_X_M2_V,M2,16,69500,716,0,0,ships\Xenon\xenon_m2_V_scene,28,28,0,1,fx_engine_xtc_magenta_big2x28,#1f0b1e,magenta,9373,9366,-661514,1574464,884478,1 28673,0x2002
+mayhem,397,SS_SH_PI_M3_BARRACUDA_SENTINEL,M3,19,121500,727,0,29,ships\pirate\pirate_m3_barracuda_raider_scene,1,1,16,,fx_engine_xtc_peach_norx1,#151211,orange,1001,1000,-3159,,,1 132 136 16 28673 32 68 72,0x2002
+mayhem,398,SS_SH_PI_M3_MAMBA_PROTO,M3,19,169050,727,0,29,ships\pirate\pirate_m3_mamba_raider_scene,2,1,16,0,fx_engine_xtc_peach_norx2,#151211,orange,1001,1000,-6542,14440,7220,1 132 136 16 28673 32 68 72,0x2002
+mayhem,399,SS_SH_PI_M5_RAPIER,M5,19,270500,727,0,9,ships\pirate\pirate_m5_rapier_scene,3,3,16,0,fx_engine_xtc_peach_norx3,#151211,orange,1001,1000,-5121,10784,5392,1 132 136 16 28673 32 68 72,0x2002
+mayhem,400,SS_SH_A_M6_QUASAR,M6,1,90500,710,0,31,ships\argon\argon_m6_quasar_scene,12,11,0,0,fx_engine_xtc_darkblue_nor2x12,#0f0f34,blue,2001,2000,-34800,80268,43502,28673 None,0x2002
+mayhem,401,SS_SH_TR_M6_SETANTA,M6,18,85750,728,0,36,ships\terran\terran_m6_setanta_scene,3,3,0,0,fx_engine_xtc_white_nor3x2 fx_engine_xtc_white_bigx1,#131313,white/grey,6255,6250,-20703,72801,39179,28673 None,0x2002
+mayhem,402,SS_SH_OTAS_M3_STARBURST,M3,1,133500,727,0,26,ships\otas\otas_m3_starburst_scene,6,6,0,0,fx_engine_xtc_white_norx6,#131313,white/grey,1001,1000,-8378,30786,19990,28673 None,0x2002
+mayhem,403,SS_SH_TR_M3_ARROW,M3,18,118125,727,0,26,ships\terran\terran_m3_arrow_scene,6,6,0,0,fx_engine_xtc_white_norx6,#131313,white/grey,1001,1000,-6935,19646,12007,28673 None,0x2002
+mayhem,404,SS_SH_A_M2_ATLAS,M2,1,52000,711,0,0,ships\argon\argon_m2_atlas_scene,40,6,0,2,fx_engine_xtc_darkblue_big3x24 fx_engine_xtc_darkblue_bigx10 fx_engine_xtc_darkblue_big2x4 fx_engine_xtc_darkblue_big4x2,#0f0f34,blue,47307,47272,-482009,1200457,690976,28673 None,0x2002
+mayhem,405,SS_SH_X_M2_T,M2,16,69500,717,0,0,ships\xenon\xenon_m2_t_scene,22,6,0,1,fx_engine_xtc_magenta_big3x16 fx_engine_xtc_magenta_hugex6,#1f0b1e,magenta,93992,93922,-861542,1750378,875189,28673 None,0x2002
+mayhem,406,SS_SH_A_M6_PHANTOM,M6,1,116500,710,0,31,ships\argon\argon_m6_phantom_scene,10,2,0,4,fx_engine_xtc_darkblue_nor2x6 fx_engine_xtc_darkblue_nor3x2 fx_engine_xtc_darkblue_norx2,#0f0f34,blue,4003,4000,-38498,78031,39536,28673 None,0x2002
+mayhem,407,SS_SH_TR_M2_KYOTO,M2,18,69500,729,0,0,ships\terran\terran_m2_kyoto_scene,3,3,0,0,fx_engine_xtc_white_big4x3,#131313,white/grey,47307,47272,-1164109,2396437,1214893,28673 None,0x2002
+mayhem,408,SS_SH_A_M3_ALBIONPRIDE,M3,1,123750,709,0,21,ships\argon\argon_m3_albion_pride_scene,2,2,0,1,fx_engine_xtc_darkblue_nor2x2,#0f0f34,blue,2001,2000,-7607,21744,10872,1 28673,0x2002
+mayhem,409,SS_SH_G_M6_APGUNNER,M6,1,146000,704,0,59,ships\goner\goner_m6_ap_gunner_scene,4,4,0,3,fx_engine_xtc_lime_nor2x4,#041e04,green,2001,2000,-14810,33450,16725,1 28673,0x2002
+mayhem,410,SS_SH_A_TS_LOTAN,TS,1,71500,709,0,31,ships\argon\argon_ts_lotan_scene,8,2,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_nor3x2,#0f0f34,blue,4003,4000,-24724,64223,36021,1 28673,0x2002
+mayhem,411,SS_SH_B_M7_SEGARIS,M7,2,40425,708,0,0,ships\boron\boron_m7_segaris_scene,66,2,0,0,fx_engine_xtc_lightblue_nor2x32 fx_engine_xtc_lightblue_nor3x32 fx_engine_xtc_lightblue_bigx2,#04191e,cyan,6255,6250,-210777,421734,210867,28673 None,0x2002
+mayhem,412,SS_SH_P_TS_SNOTRA,TS,4,66500,724,0,34,ships\paranid\paranid_ts_snotra_scene,3,3,0,0,fx_engine_xtc_yellow_nor2x3,#151500,yellow,2001,2000,-32908,69392,35409,28673 None,0x2002
+mayhem,413,SS_SH_S_M6_TEMPESTINE,M6,3,105600,719,0,23,ships\split\split_m6_tempestine_scene,2,2,0,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-24700,62728,36357,1 28673,0x2002
+mayhem,414,SS_SH_X_M2_I,M2,6,56500,717,0,0,ships\xenon\xenon_M2_i_scene,14,8,0,0,fx_engine_xtc_magenta_big3x8 fx_engine_xtc_magenta_big2x6,#1f0b1e,magenta,18764,18750,-575500,1741969,964505,28673 None,0x2002
+mayhem,415,SS_SH_S_TP_NOMAD,TP,3,120960,719,0,33,ships\split\split_tp_nomad_scene,4,1,0,0,fx_engine_xtc_red_nor3x2 fx_engine_xtc_red_nor2x2,#290a0a,red,4003,4000,-37982,77686,38843,28673 None,0x2002
+mayhem,416,SS_SH_T_TP_NAUCELL,TP,5,81900,701,0,35,ships\teladi\teladi_tp_naucell_scene,7,2,0,0,fx_engine_xtc_green_nor2x3 fx_engine_xtc_green_nor3x2 fx_engine_xtc_green_norx2,#091910,green,4003,4000,-38957,77912,38956,28673 None,0x2002
+mayhem,417,SS_SH_TR_TP_MEGNIR,TP,18,113000,728,0,36,ships\terran\terran_tp_magnir_scene,4,4,0,0,fx_engine_xtc_white_nor3x2 fx_engine_xtc_white_nor2x2,#131313,white/grey,4003,4000,-28412,53335,28723,28673 None,0x2002
+mayhem,418,SS_SH_X_M4_OX,M4,16,184050,715,0,18,ships\xenon\xenon_m4_O_scene,12,4,0,0,fx_engine_xtc_magenta_tinyx12,#1f0b1e,magenta,504,500,-3991,8743,4430,1 28673,0x2002
+mayhem,419,SS_SH_A_TS_MERCURY_MINER,TS,1,62000,709,0,31,ships\argon\argon_TS_Mercury_Miner_scene,8,3,0,4,fx_engine_xtc_darkblue_norx6 fx_engine_xtc_darkblue_bigx1 fx_engine_xtc_darkblue_nor3x1,#0f0f34,blue,6255,6250,-13620,27606,13803,1 28673,0x2002
+mayhem,420,SS_SH_A_TS_NEXUS_MINER,TS,1,55000,709,0,31,ships\argon\argon_TS_Nexus_Miner_scene,4,0,0,2,fx_engine_xtraotas_ts1x2 fx_engine_xtraotas_ts3x2,,,,,-26237,51449,26251,28673,0x2002
+mayhem,421,SS_SH_B_TS_MINER,TS,2,59675,706,0,32,ships\boron\boron_ts_dolphin_miner_scene,4,1,0,0,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-13300,48378,24189,1 28673,0x2002
+mayhem,422,SS_SH_P_TS_MINER,TS,4,65000,724,0,34,ships\paranid\paranid_ts_demeter_miner_scene,6,2,0,0,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-14534,32368,16184,28673 None,0x2002
+mayhem,423,SS_SH_T_TS_MINER,TS,5,67500,700,0,35,ships\teladi\teladi_ts_vulture_miner_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-15681,33188,16594,28673 None,0x2002
+mayhem,424,SS_SH_TR_TS_MINER,TS,18,80000,727,0,36,ships\terran\terran_ts_baldric_miner_scene,2,2,0,0,fx_engine_xtc_white_nor3x2,#131313,white/grey,4003,4000,-23908,53618,26810,28673 None,0x2002
+mayhem,425,SS_SH_S_TS_MINER,TS,3,79360,718,0,33,ships\split\split_ts_caiman_tanker_xl_scene,6,1,0,0,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-19405,45406,22703,28673 None,0x2002
+mayhem,426,SS_SH_Y_TS_MINER,TS,19,74500,727,0,39,ships\teladi\teladi_ts_vulture_miner_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-15681,33188,16594,28673 None,0x2002
+mayhem,427,SS_SH_Y_TS,TS,19,74500,727,0,39,ships\teladi\teladi_ts_vulture_scene,3,3,0,0,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-14982,31786,15893,28673 None,0x2002
+mayhem,428,SS_SH_B_M3P_1,M3,2,118388,706,0,22,ships\boron\boron_m3_skate_scene,1,1,18,0,fx_engine_xtc_lightblue_norx1,#04191e,cyan,1001,1000,1168,20910,10455,1 132 136 16 28673 32 68 72,0x2002
+mayhem,429,SS_SH_P_M3P_1,M3,4,120375,724,0,24,ships\paranid\paranid_m3_medusa_scene,5,2,16,0,fx_engine_xtc_yellow_norx5,#151500,yellow,1001,1000,-7291,15678,7839,1 132 136 16 28673 32 68 72,0x2002
+mayhem,430,SS_SH_S_M3P_1,M3,3,154080,718,0,23,ships\split\split_m3_chimera_scene,2,1,16,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,-8301,19746,9873,1 132 136 16 28673 32 68 72,0x2002
+mayhem,431,SS_SH_S_M3_COUGAR_1,M3,3,155500,718,0,23,ships\Split\split_M3_Cougar_scene,4,4,0,0,fx_engine_xtc_red_tinyx4,#290a0a,red,504,500,-9337,21862,10931,1 28673,0x2002
+mayhem,432,SS_SH_T_M3P_1,M3,5,138038,700,0,25,ships\teladi\teladi_m3_kea_scene,4,4,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-8017,17856,8928,132 136 16 28673 32 68 72 None,0x2002
+mayhem,433,SS_SH_Y_M3P_1,M3,19,106875,724,0,29,ships\yaki\yaki_m3_tenjin_scene,3,1,18,0,fx_engine_xtc_yellow_norx2 fx_engine_xtc_yellow_nor3x1,#151500,yellow,4003,4000,-10921,22204,11102,132 136 16 28673 32 68 72 None,0x2002
+mayhem,434,SS_SH_A_M6M_1,M6,1,99300,710,0,31,ships\argon\argon_m6_heavy_centaur_scene,7,4,0,1,fx_engine_xtc_darkblue_nor2x7,#0f0f34,blue,2001,2000,-28225,63292,31646,28673 None,0x2002
+mayhem,435,SS_SH_B_M6_1,M6,2,73535,707,0,32,ships\boron\boron_m6_hydra_scene,3,2,0,0,fx_engine_xtc_lightblue_bigx2 fx_engine_xtc_lightblue_nor3x1,#04191e,cyan,6255,6250,-28664,75524,37762,1 28673,0x2002
+mayhem,436,SS_SH_B_M6_2,M6,2,73535,707,0,32,ships\boron\boron_m6_hydra_scene,3,2,0,0,fx_engine_xtc_lightblue_bigx2 fx_engine_xtc_lightblue_nor3x1,#04191e,cyan,6255,6250,-28664,75524,37762,1 28673,0x2002
+mayhem,437,SS_SH_B_M6M_1,M6,2,82400,707,0,32,ships\boron\boron_m6_heavy_hydra_scene,4,2,0,,fx_engine_xtc_lightblue_nor3x4,#04191e,cyan,4003,4000,-22578,,,1 28673,0x2002
+mayhem,438,SS_SH_B_M6_MARLIN_1,M6,2,64757,707,0,32,ships\boron\boron_m6_marlin_scene,8,4,0,0,fx_engine_xtc_lightblue_nor3x4 fx_engine_xtc_lightblue_nor2x4,#04191e,cyan,4003,4000,-40361,87141,44102,1 28673,0x2002
+mayhem,439,SS_SH_P_M6_1,M6,4,82500,725,0,34,ships\paranid\paranid_m6_nemesis_scene,9,2,0,0,fx_engine_xtc_yellow_nor2x5 fx_engine_xtc_yellow_nor3x2 fx_engine_xtc_yellow_norx2,#151500,yellow,4003,4000,-42862,90564,45282,28673 None,0x2002
+mayhem,440,SS_SH_P_M6_2,M6,4,82500,725,0,34,ships\paranid\paranid_m6_nemesis_scene,9,2,0,0,fx_engine_xtc_yellow_nor2x5 fx_engine_xtc_yellow_nor3x2 fx_engine_xtc_yellow_norx2,#151500,yellow,4003,4000,-42862,90564,45282,28673 None,0x2002
+mayhem,441,SS_SH_P_M6M_1,M6,4,95750,725,0,34,ships\paranid\paranid_m6_heavy_nemesis_scene,16,2,0,0,fx_engine_xtc_yellow_tinyx8 fx_engine_xtc_yellow_norx6 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-36518,106568,53284,28673 None,0x2002
+mayhem,442,SS_SH_P_M6_PROTEUS_1,M6,4,107750,725,0,34,ships\paranid\paranid_m6_Proteus_scene,16,3,0,0,fx_engine_xtc_yellow_nor2x6 fx_engine_xtc_yellow_norx6 fx_engine_xtc_yellow_nor3x3 fx_engine_paranid_m6_axefacex1,#151500,yellow,4003,4000,-31904,87151,53579,1 28673,0x2002
+mayhem,443,SS_SH_G_SPRINGBLOSSOM_1,M6,9,87500,704,0,60,ships\goner\goner_m6_springblossom_scene,2,2,0,0,fx_engine_xtc_lime_nor3x2,#041e04,green,4003,4000,-3621,89060,44530,1 28673,0x2002
+mayhem,444,SS_SH_S_M6_1,M6,3,122240,719,0,33,ships\split\split_m6_dragon_scene,1,1,0,0,fx_engine_xtc_red_nor3x1,#290a0a,red,4003,4000,-35223,88224,44112,1 28673,0x2002
+mayhem,445,SS_SH_S_M6_2,M6,3,122240,719,0,33,ships\split\split_m6_dragon_scene,1,1,0,0,fx_engine_xtc_red_nor3x1,#290a0a,red,4003,4000,-35223,88224,44112,1 28673,0x2002
+mayhem,446,SS_SH_S_M6M_1,M6,3,135100,719,0,33,ships\split\split_m6_heavy_dragon_scene,4,4,0,,fx_engine_xtc_red_nor3x4,#290a0a,red,4003,4000,-42707,,,28673 None,0x2002
+mayhem,447,SS_SH_T_M6_1,M6,5,89775,701,0,35,ships\teladi\teladi_m6_osprey_scene,4,4,0,0,fx_engine_xtc_green_nor3x4,#091910,green,4003,4000,-24803,86588,43294,28673 None,0x2002
+mayhem,448,SS_SH_T_M6_2,M6,5,89775,701,0,35,ships\teladi\teladi_m6_osprey_scene,4,4,0,0,fx_engine_xtc_green_nor3x4,#091910,green,4003,4000,-24803,86588,43294,28673 None,0x2002
+mayhem,449,SS_SH_T_M6_3,M6,5,89775,701,0,35,ships\teladi\teladi_m6_osprey_scene,4,4,0,0,fx_engine_xtc_green_nor3x4,#091910,green,4003,4000,-24803,86588,43294,28673 None,0x2002
+mayhem,450,SS_SH_T_M6M_1,M6,5,101550,701,0,35,ships\teladi\teladi_m6_heavy_osprey_scene,6,6,0,,fx_engine_xtc_green_bigx6,#091910,green,6255,6250,-27357,,,28673 None,0x2002
+mayhem,451,SS_SH_ATF_M6_LOGICH_1,M6,18,117450,722,0,37,ships\atf\atf_m6_logich_scene,36,8,0,0,fx_engine_xtc_orange_norx24 fx_engine_xtc_orange_nor2x12,#210f06,orange,2001,2000,-34202,75733,41002,28673 None,0x2002
+mayhem,452,SS_SH_X_M6_1,M6,6,95850,716,0,38,ships\xenon\xenon_m6_p_scene,16,8,0,0,fx_engine_xtc_magenta_nor3x16,#1f0b1e,magenta,4003,4000,-30470,84986,42493,1 28673,0x2002
+mayhem,453,SS_SH_X_M6_2,M6,6,88750,716,0,38,ships\xenon\xenon_m6_p_scene,16,8,0,0,fx_engine_xtc_magenta_nor3x16,#1f0b1e,magenta,4003,4000,-30470,84986,42493,1 28673,0x2002
+mayhem,454,SS_SH_Y_M6_SENSHI_1,M6,19,97750,725,0,39,ships\yaki\yaki_m6_Senshi_scene,21,11,0,3,fx_engine_xtc_yellow_nor2x18 fx_engine_xtc_yellow_norx2 fx_engine_xtc_yellow_bigx1,#151500,yellow,6255,6250,-21443,66691,40836,1 28673,0x2002
+mayhem,455,SS_SH_A_M8_1,M8,1,99500,710,0,31,ships\argon\argon_m8_gladiator_scene,6,2,0,0,fx_engine_xtc_darkblue_norx4 fx_engine_xtc_darkblue_nor2x2,#0f0f34,blue,2001,2000,-11761,25468,12734,1 28673,0x2002
+mayhem,456,SS_SH_B_M8_AQUATA_1,M8,2,79310,707,0,32,ships\boron\boron_m8_aquata_scene,5,3,0,0,fx_engine_xtc_lightblue_nor2x3 fx_engine_xtc_lightblue_norx2,#04191e,cyan,2001,2000,-15702,37308,18654,1 28673,0x2002
+mayhem,457,SS_SH_P_M8_1,M8,4,87500,725,0,34,ships\paranid\paranid_m8_hades_scene,10,2,0,0,fx_engine_xtc_yellow_norx9 fx_engine_xtc_yellow_nor2x1,#151500,yellow,2001,2000,-16816,35428,17714,28673 None,0x2002
+mayhem,458,SS_SH_S_M8_1,M8,3,137600,719,0,33,ships\split\split_m8_viper_scene,2,2,0,0,fx_engine_xtc_red_norx2,#290a0a,red,1001,1000,4328,35402,17780,1 28673,0x2002
+mayhem,459,SS_SH_T_M8_1,M8,5,105300,701,0,35,ships\teladi\teladi_m8_peregrine_scene,4,4,0,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-13887,29868,15317,28673 None,0x2002
+mayhem,460,SS_SH_TR_M8_1,M8,18,122050,728,0,36,ships\terran\terran_m8_claymore_scene,8,8,0,0,fx_engine_xtc_white_norx8,#131313,white/grey,1001,1000,-18175,37070,18535,28673 None,0x2002
+mayhem,461,SS_SH_OTAS_TM_1,TM,1,208000,728,0,36,ships\otas\otas_tm_zephyrus_scene,8,2,0,3,fx_engine_xtc_white_norx4 fx_engine_xtc_white_bigx2 fx_engine_xtc_white_nor2x2,#131313,white/grey,6255,6250,-52540,107065,53533,1 28673,0x2002
+mayhem,462,SS_SH_B_TM_1,TM,2,134750,707,0,32,ships\boron\boron_tm_pleco_scene,4,1,0,1,fx_engine_xtc_lightblue_nor2x2 fx_engine_xtc_lightblue_nor3x2,#04191e,cyan,4003,4000,-38366,77894,38947,1 28673,0x2002
+mayhem,463,SS_SH_P_TM_1,TM,4,175000,725,0,34,ships\paranid\paranid_tm_helios_scene,6,2,0,1,fx_engine_xtc_yellow_tinyx4 fx_engine_xtc_yellow_nor3x2,#151500,yellow,4003,4000,-42006,75958,44464,28673 None,0x2002
+mayhem,464,SS_SH_S_TM_1,TM,3,224000,719,0,33,ships\split\split_tm_boa_scene,6,1,0,1,fx_engine_xtc_red_tinyx5 fx_engine_xtc_red_norx1,#290a0a,red,1001,1000,-41151,73721,45434,28673 None,0x2002
+mayhem,465,SS_SH_T_TM_1,TM,5,157500,701,0,35,ships\teladi\teladi_tm_pelican_scene,3,3,0,1,fx_engine_xtc_green_norx3,#091910,green,1001,1000,-40864,78187,42365,28673 None,0x2002
+mayhem,466,SS_SH_ATF_TM_LOFN_1,TM,18,175000,722,0,37,ships\atf\atf_tm_lofn_scene,14,2,0,0,fx_engine_xtc_orange_nor2x14,#210f06,orange,2001,2000,-30311,77260,38630,1 28673,0x2002
+mayhem,467,SS_SH_B_TP_SPECIAL_1,TP,2,93700,706,0,32,ships\boron\boron_tp_angel_scene,6,2,0,0,fx_engine_xtc_lightblue_nor3x4 v/00114x2,#04191e,cyan,4003,4000,-30113,61768,30884,1 28673 None,0x2002
+mayhem,468,SS_SH_S_TP_NOMAD_1,TP,3,125800,719,0,33,ships\split\split_tp_nomad_scene,4,1,0,0,fx_engine_xtc_red_nor3x2 fx_engine_xtc_red_nor2x2,#290a0a,red,4003,4000,-37982,77686,38843,28673 None,0x2002
+mayhem,469,SS_SH_T_TP_NAUCELL_1,TP,5,85200,701,0,35,ships\teladi\teladi_tp_naucell_scene,7,2,0,0,fx_engine_xtc_green_nor2x3 fx_engine_xtc_green_nor3x2 fx_engine_xtc_green_norx2,#091910,green,4003,4000,-38957,77912,38956,28673 None,0x2002
+mayhem,470,SS_SH_TR_TP_MEGNIR_1,TP,18,117500,728,0,36,ships\terran\terran_tp_magnir_scene,4,4,0,0,fx_engine_xtc_white_nor3x2 fx_engine_xtc_white_nor2x2,#131313,white/grey,4003,4000,-28412,53335,28723,28673 None,0x2002
+mayhem,471,SS_SH_B_TS_STURGEON_1,TS,2,64850,706,0,32,ships\boron\boron_ts_Sturgeon_scene,3,3,0,0,fx_engine_xtc_lightblue_nor2x3,#04191e,cyan,2001,2000,-35903,72668,36685,1 28673,0x2002
+mayhem,472,SS_SH_P_TS_SNOTRA_1,TS,4,69160,724,0,34,ships\paranid\paranid_ts_snotra_scene,3,3,0,0,fx_engine_xtc_yellow_nor2x3,#151500,yellow,2001,2000,-32908,69392,35409,28673 None,0x2002
+mayhem,473,SS_SH_S_TS_ORINOCO_1,TS,3,121160,718,0,33,ships\split\split_ts_orinoco_scene,2,2,0,0,fx_engine_xtc_red_nor3x2,#290a0a,red,4003,4000,-31088,82569,46087,1 28673,0x2002
+mayhem,474,SS_SH_T_TS_DRAKE_1,TS,5,74900,700,0,35,ships\teladi\teladi_ts_Drake_scene,6,6,0,0,fx_engine_xtc_green_nor2x6,#091910,green,2001,2000,-38679,76712,39613,1 28673,0x2002
+mayhem,475,SS_SH_TR_TS_BRAGI_1,TS,18,90500,727,0,36,ships\terran\terran_ts_Bragi_scene,5,5,0,0,fx_engine_xtc_white_nor2x5,#131313,white/grey,2001,2000,-43188,86726,43363,28673 None,0x2002
+mayhem,476,SS_SH_G_TL_RECYCLER,TL,9,52000,705,0,0,ships\goner\goner_tl_ozias_scene,3,3,0,,fx_engine_xtc_lime_big3x3,#041e04,green,18764,18750,-434937,,,1 28673,0x2002
+mayhem,477,SS_SH_G_M1_MACHINESCIENCE,M1,15,73800,722,0,0,ships\stellaris\machineScience_scene,3,3,0,0,fx_engine_xtc_orange_big4x3,#210f06,orange,47307,47272,-449834,946445,501068,28673 None,0x2002
+mayhem,478,SS_SH_G_M4_MACHINEFIGHTER,M4,15,151500,722,0,4,ships\stellaris\machineFighter_scene,5,1,0,0,fx_engine_xtc_orange_tinyx4 fx_engine_xtc_orange_norx1,#210f06,orange,1001,1000,-3999,9343,5301,28673 None,0x2002
+mayhem,479,SS_SH_G_TL_MACHINECOLONY,TL,15,63500,722,0,0,ships\stellaris\machineColony_scene,4,4,0,0,fx_engine_xtc_orange_big4x4,#210f06,orange,47307,47272,-425655,961363,519110,28673 None,0x2002
+mayhem,480,SS_SH_G_M6_MACHINECORVETTE_A,M6,15,98850,722,0,34,ships\stellaris\machineCorvetteA_scene,3,3,0,0,fx_engine_xtc_orange_nor2x3,#210f06,orange,2001,2000,-29950,77352,45331,28673 None,0x2002
+mayhem,481,SS_SH_G_M6_MACHINECORVETTE_B,M6,15,103500,722,0,34,ships\stellaris\machineCorvetteB_scene,3,3,0,0,fx_engine_xtc_orange_nor2x3,#210f06,orange,2001,2000,-29471,75818,44386,28673 None,0x2002
+mayhem,482,SS_SH_G_M6_MACHINECORVETTE_C,M6,15,115850,722,0,34,ships\stellaris\machineCorvetteC_scene,3,3,0,0,fx_engine_xtc_orange_nor2x3,#210f06,orange,2001,2000,-34438,84662,49290,28673 None,0x2002
+mayhem,483,SS_SH_G_TS_MACHINEFREIGHTER_A,TS,15,71400,722,0,34,ships\stellaris\machineFreighterA_scene,3,3,0,0,fx_engine_xtc_orange_nor2x3,#210f06,orange,2001,2000,-31497,80665,48259,28673 None,0x2002
+mayhem,484,SS_SH_G_TS_MACHINEFREIGHTER_B,TS,15,80000,722,0,34,ships\stellaris\machineFreighterB_scene,2,2,0,0,fx_engine_xtc_orange_nor2x2,#210f06,orange,2001,2000,-26405,78569,47589,28673 None,0x2002
+mayhem,485,SS_SH_G_M8_MACHINEMISSILECOR,M8,15,91000,722,0,34,ships\stellaris\machineMissileCor_scene,4,4,0,0,fx_engine_xtc_orange_nor2x3 fx_engine_xtc_orange_norx1,#210f06,orange,2001,2000,-26824,68748,41342,28673 None,0x2002
+mayhem,486,SS_SH_G_M7_MACHINEFRIGATE_A,M7,15,53660,722,0,0,ships\stellaris\machineFrigateA_scene,5,5,0,0,fx_engine_xtc_orange_big3x3 fx_engine_xtc_orange_big2x2,#210f06,orange,18764,18750,-242005,339792,308917,28673 None,0x2002
+mayhem,487,SS_SH_G_M7_MACHINEFRIGATE_B,M7,15,51095,722,0,0,ships\stellaris\machineFrigateB_scene,5,5,0,0,fx_engine_xtc_orange_big3x3 fx_engine_xtc_orange_big2x2,#210f06,orange,18764,18750,-242005,357475,326620,28673 None,0x2002
+mayhem,488,SS_SH_G_M7_MACHINEFRIGATE_C,M7,15,52527,722,0,0,ships\stellaris\machineFrigateC_scene,4,4,0,0,fx_engine_xtc_orange_big3x3 fx_engine_xtc_orange_big2x1,#210f06,orange,18764,18750,-242005,354841,323965,28673 None,0x2002
+mayhem,489,SS_SH_G_M7_MACHINEFRIGATE_D,M7,15,55068,722,0,0,ships\stellaris\machineFrigateD_scene,5,5,0,0,fx_engine_xtc_orange_big2x4 fx_engine_xtc_orange_big3x1,#210f06,orange,18764,18750,-175848,225718,236944,28673 None,0x2002
+mayhem,490,SS_SH_G_M7_MACHINEFRIGATE_E,M7,15,58031,722,0,0,ships\stellaris\machineFrigateE_scene,5,5,0,0,fx_engine_xtc_orange_big2x4 fx_engine_xtc_orange_big3x1,#210f06,orange,18764,18750,-175848,215651,226231,28673 None,0x2002
+mayhem,491,SS_SH_G_M7_MACHINEFRIGATE_F,M7,15,58473,722,0,0,ships\stellaris\machineFrigateF_scene,5,5,0,0,fx_engine_xtc_orange_big3x3 fx_engine_xtc_orange_big2x2,#210f06,orange,18764,18750,-198357,230757,241356,28673 None,0x2002
+mayhem,492,SS_SH_G_M2_MACHINECRUISER_A,M2,15,66600,722,0,0,ships\stellaris\machineCruiserA_scene,4,4,0,0,fx_engine_xtc_orange_big3x3 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-294014,301096,301096,28673 None,0x2002
+mayhem,493,SS_SH_G_M1_MACHINECRUISER_B,M1,15,63100,722,0,0,ships\stellaris\machineCruiserB_scene,4,4,0,0,fx_engine_xtc_orange_big3x3 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-294014,330168,330168,28673 None,0x2002
+mayhem,494,SS_SH_G_M2_MACHINECRUISER_C,M2,15,69000,722,0,0,ships\stellaris\machineCruiserC_scene,6,6,0,0,fx_engine_xtc_orange_big3x5 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-294014,301096,301096,28673 None,0x2002
+mayhem,495,SS_SH_G_M2_MACHINECRUISER_D,M2,15,63500,722,0,0,ships\stellaris\machineCruiserD_scene,8,8,0,0,fx_engine_xtc_orange_big3x7 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-294014,323246,323246,28673 None,0x2002
+mayhem,496,SS_SH_G_TM_MACHINESALVAGE,TM,15,150000,722,0,34,ships\stellaris\machineSalvage_scene,3,3,0,0,fx_engine_xtc_orange_bigx3,#210f06,orange,6255,6250,-57809,111248,59889,28673 None,0x2002
+mayhem,497,SS_SH_G_M1_MACHINECRUISER_E,M1,15,58350,722,0,0,ships\stellaris\machineCruiserE_scene,8,8,0,0,fx_engine_xtc_orange_big3x7 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-294014,381628,351625,28673 None,0x2002
+mayhem,498,SS_SH_G_M2_MACHINETITAN_A,M2,15,58500,722,0,0,ships\stellaris\machineTitanA_scene,10,10,0,0,fx_engine_xtc_orange_big4x8 fx_engine_xtc_orange_hugex2,#210f06,orange,93992,93922,-972272,1565702,1267727,28673 None,0x2002
+mayhem,499,SS_SH_G_M2_MACHINECRUISER_F,M2,15,68000,722,0,0,ships\stellaris\machineCruiserF_scene,6,6,0,0,fx_engine_xtc_orange_big3x3 fx_engine_xtc_orange_big2x2 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-294935,381628,351625,28673 None,0x2002
+mayhem,500,SS_SH_G_M3_MACHINE_JUGGERNAUT,M3,15,104621,722,0,4,ships\stellaris\machineJuggernaut_scene,11,2,0,0,fx_engine_xtc_orange_tinyx9 fx_engine_xtc_orange_norx2,#210f06,orange,1001,1000,-2522,6624,9215,28673 None,0x2002
+mayhem,501,SS_SH_G_M2_AUTO_DREADNOUGHT,M2,15,61500,722,0,0,ships\stellaris\automatedDreadnought_scene,10,10,0,0,fx_engine_xtc_orange_big3x9 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-601904,1240988,620494,28673 None,0x2002
+mayhem,502,SS_SH_G_M2_MACHINEBATTLESHIP_A,M2,15,46100,722,0,0,ships\stellaris\machineBattleshipA_scene,6,6,0,0,fx_engine_xtc_orange_big4x4 fx_engine_xtc_orange_big3x2,#210f06,orange,47307,47272,-523938,615718,542369,28673 None,0x2002
+mayhem,503,SS_SH_G_M2_MACHINEBATTLESHIP_B,M2,15,51000,722,0,0,ships\stellaris\machineBattleshipB_scene,10,10,0,0,fx_engine_xtc_orange_big3x6 fx_engine_xtc_orange_big4x4,#210f06,orange,47307,47272,-534366,615718,542369,28673 None,0x2002
+mayhem,504,SS_SH_G_TP_MACHINESHUTTLE,TP,15,94750,722,0,34,ships\stellaris\machineShuttle_scene,3,3,0,0,fx_engine_xtc_orange_nor3x3,#210f06,orange,4003,4000,-26836,77254,47268,28673 None,0x2002
+mayhem,505,SS_SH_G_M1_MACHINEBATTLESHIP_C,M1,15,49650,722,0,0,ships\stellaris\machineBattleshipC_scene,6,6,0,0,fx_engine_xtc_orange_big4x4 fx_engine_xtc_orange_big3x2,#210f06,orange,47307,47272,-523938,449046,375706,28673 None,0x2002
+mayhem,506,SS_SH_G_M2_MACHINEBATTLESHIP_D,M2,15,46300,722,0,0,ships\stellaris\machineBattleshipD_scene,4,4,0,0,fx_engine_xtc_orange_big4x4,#210f06,orange,47307,47272,-537257,546430,473069,28673 None,0x2002
+mayhem,507,SS_SH_G_M2_MACHINEBATTLESHIP_E,M2,15,42300,722,0,0,ships\stellaris\machineBattleshipE_scene,12,12,0,0,fx_engine_xtc_orange_big3x11 fx_engine_xtc_orange_big4x1,#210f06,orange,47307,47272,-446350,661988,381653,28673 None,0x2002
+mayhem,508,SS_SH_G_M2_MACHINEBATTLESHIP_F,M2,15,41600,722,0,0,ships\stellaris\machineBattleshipF_scene,9,9,0,0,fx_engine_xtc_orange_big3x5 fx_engine_xtc_orange_big4x4,#210f06,orange,47307,47272,-450937,644533,364095,28673 None,0x2002
+mayhem,509,SS_SH_G_M1_MACHINE_FLAGSHIP,M1,15,33500,722,0,0,ships\stellaris\machineFlagship_scene,10,8,0,0,fx_engine_xtc_orange_big4x4 fx_engine_xtc_orange_hugex4 fx_engine_xtc_orange_big3x2,#210f06,orange,93992,93922,-1479926,1269974,2291548,28673 None,0x2002
+mayhem,510,SS_SH_G_M1_OWP_1_STARPORT,M1,15,1000,390,0,0,stations\stellaris\owp_starport_scene,0,0,0,0,,,,,,,887012,897419,,
+mayhem,511,SS_SH_G_M1_OWP_2_STARHOLD,M1,15,1000,390,0,0,stations\stellaris\owp_starhold_scene,0,0,0,0,,,,,,,1402618,1506868,,
+mayhem,512,SS_SH_G_TS_MACHINEMINER_A,TS,15,71400,722,0,34,ships\stellaris\machineFreighterMinerA_scene,3,3,0,0,fx_engine_xtc_orange_nor2x3,#210f06,orange,2001,2000,-31497,80665,48259,28673 None,0x2002
+mayhem,513,SS_SH_G_TS_MACHINEMINER_B,TS,15,80000,722,0,34,ships\stellaris\machineFreighterB_scene,2,2,0,0,fx_engine_xtc_orange_nor2x2,#210f06,orange,2001,2000,-26405,78569,47589,28673 None,0x2002
+mayhem,514,SS_SH_X_TS_F,TS,6,60500,716,0,38,ships\xenon\xenon_ts_f_scene,4,4,0,0,fx_engine_xtc_magenta_bigx4,#1f0b1e,magenta,6255,6250,-32201,80800,40520,1 28673,0x2002
+mayhem,515,SS_SH_X_M7_H,M7,6,64000,716,0,0,ships\xenon\xenon_m7_h_scene,10,10,0,0,fx_engine_xtc_magenta_big2x10,#1f0b1e,magenta,9373,9366,-225352,498211,253809,1 28673,0x2002
+mayhem,516,SS_SH_X_TS_XENONMINER,TS,6,60500,716,0,38,ships\xenon\xenon_ts_f_scene,4,4,0,0,fx_engine_xtc_magenta_bigx4,#1f0b1e,magenta,6255,6250,-32201,80800,40520,1 28673,0x2002
+mayhem,517,SS_SH_X_TL,TL,6,49000,717,0,0,ships\xenon\xenon_m1_j_scene,8,8,0,0,fx_engine_xtc_magenta_big2x8,#1f0b1e,magenta,9373,9366,-483273,1196828,598414,1 28673,0x2002
+mayhem,518,SS_SH_M3_VENTI_ADV,M3,1,152900,727,0,26,ships\otas\otas_m3_venti_scene,5,1,14,0,fx_engine_xtc_white_tinyx3 fx_engine_xtc_white_norx2,#131313,white/grey,1001,1000,-6866,14290,7145,132 136 16 28673 32 68 72 None,0x2002
+mayhem,519,SS_SH_T_M3P_ADV,M3,5,143550,700,0,25,ships\teladi\teladi_m3_kea_scene,4,4,16,0,fx_engine_xtc_green_norx4,#091910,green,1001,1000,-8017,17856,8928,132 136 16 28673 32 68 72 None,0x2002
+mayhem,520,SS_SH_ATF_M3_ADV,M3,18,132250,721,0,27,ships\atf\atf_m3_thor_scene,3,3,16,0,fx_engine_xtc_orange_norx3,#210f06,orange,1001,1000,-3515,11914,5957,132 136 16 28673 32 68 72 None,0x2002
+mayhem,521,SS_SH_Y_M8,M8,19,92500,729,0,39,ships\paranid\paranid_m8_hades_scene,10,2,0,0,fx_engine_xtc_yellow_norx9 fx_engine_xtc_yellow_nor2x1,#151500,yellow,2001,2000,-16816,35428,17714,28673 None,0x2002
+mayhem,522,SS_SH_Y_M7M,M7,19,100500,726,0,0,ships\argon\argon_m7_minotaur_scene,6,5,0,4,fx_engine_xtc_darkblue_big3x3 fx_engine_xtc_darkblue_bigx3,#0f0f34,blue,18764,18750,-170650,413882,206941,1 28673,0x2002
+mayhem,523,SS_SH_G_TS,TS,9,81000,704,0,60,ships\goner\XTC_goner_ts_scene,1,1,0,2,fx_engine_xtc_lime_nor3x1,#041e04,green,4003,4000,-36455,79820,39913,1 28673,0x2002
+mayhem,524,SS_SH_G_TP,TP,9,99190,704,0,60,ships\goner\XTC_goner_tp_plus_scene,4,4,0,6,fx_engine_xtc_lime_nor3x4,#041e04,green,4003,4000,-37743,82044,41022,1 28673,0x2002
