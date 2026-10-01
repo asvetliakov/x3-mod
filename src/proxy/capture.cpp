@@ -12,6 +12,7 @@
 #include "pause_key_only.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
+#include "engine_effects_patch.h"
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
@@ -5417,6 +5418,10 @@ void initialize_log(HMODULE module) {
     lod_occlusion::initialize();      // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0
                                  // occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the
                                  // point-light site in the same function
+    engine_effects_patch::initialize(); // X3M_ENGINE_EFFECTS=native|off|plumes, unset = native: off/plumes redirect the
+                                        // per-ship engine effect routine's two calls (0x004147eb effect instance,
+                                        // 0x0041482c trail generator) to class-7 skip stubs, both or none, same window,
+                                        // disjoint from every other claim
     fov::initialize(); // X3M_FOV=game|N (the game's degrees 70..100, horizontal on 16:9), unset = game: the registry
                        // constructor's imm32 at 0x0041c9dc becomes F'(N) and INS_SetFocus's MOV EDX at 0x0042dbf8 is
                        // claimed for the remap stub (both or neither), plus a one-off registry+0x24 write when the
