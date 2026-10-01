@@ -74,3 +74,5 @@ tools/voice-decoder/v4/registry/
 
 # GPU backend A/B fixture: summary.json and table.py are tracked; the raw fixture transcript stays local.
 verification/results/bottle-*/gpu-backend-ab/fixture.txt
+# game-derived engine body tables (tools/effects/engine_bodies.py); where they ship is the owner's call
+verification/results/engine-effects-census/engine_bodies.*.json

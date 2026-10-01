@@ -17,6 +17,8 @@ catalogue and loose file except the x3m LOD overlay slots addon/13..15 (`lod_ove
 | `class_body.csv` | class x main glow body x ships |
 | `class_tier.csv` | class x Mayhem glow size tier (body name suffix) with the tier's LOD0 value |
 | `summary.json` | counts, column validation, Effects / Particles3 / LensFlares chains, colour clusters by race, size ranges by class, Mayhem-vs-stock diff, trail search (query with `jq`) |
+| `engine_bodies.{mayhem,stock}.json` | untracked (game-derived): `tools/effects/engine_bodies.py --out …` (`--stock-only` for stock), the per-body table of every loadable types/Bodies JET / SMALLJET body (rules in the tool's docstring) |
+| `engine_bodies_counts.py` | counts of the two tables and their overlap with the scene-referenced bodies of `engine_bodies.csv` (2026-10-01: Mayhem 253 loaded / 16 missing, scene-referenced 80 `engine.fx` in 11 clusters + 2 `standard_lighting` incl. `v\00566`; stock 224 / 23, scene-referenced 140 = 110 cyan + 28 legacy grey + 2 near-black `standard_lighting`) |
 
 Column choice (X3 Editor 2 TShips layout, 0-based): 11 engine effect -> `types/Effects`, 12 engine glow,
 16 ship scene, 45 race, 46 hull strength, 49 engine trail -> `types/Particles3`, 52 class. Validated by
