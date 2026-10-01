@@ -9,6 +9,7 @@
 #include "window_trace.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
+#include "engine_effects_patch.h"
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
@@ -468,6 +469,9 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
             x3m::terran_station_lod::shutdown(); // same rule: the two reader bytes back only on FreeLibrary
         if (reserved == nullptr)
             x3m::lod_occlusion::shutdown(); // same rule: the four rel32 bytes back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::engine_effects_patch::shutdown(); // same rule: the two engine-effect calls back only on FreeLibrary,
+                                                   // only over our calls
         if (reserved == nullptr)
             x3m::fov::shutdown(); // same rule: the constructor's imm32 back only on FreeLibrary, only over our value
         if (reserved == nullptr)
