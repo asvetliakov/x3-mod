@@ -1698,6 +1698,10 @@ private:
     // order, the census caps (64 engine_draw rows per frame, rows in the first 8 frames that have any).
     bool engine_hook_ = false, engine_suppress_ = false, engine_census_ = false, engine_device_logged_ = false;
     bool engine_redirects_ = false; // engine_effects::redirects_live(), read at configure and once per frame
+    bool engine_partial_logged_ = false; // the engine_effects_partial row (route off, redirects on) was written
+    bool engine_quiet_logged_ = false;   // an engine_frame row of a frame without candidates was written ...
+    std::uint64_t engine_quiet_frame_ = 0; // ... at this frame; the next quiet row waits engine_quiet_interval frames
+    static constexpr std::uint64_t engine_quiet_interval = 300;
     engine_effects::core::Ring* engine_ring_ = nullptr;
     engine_effects::core::FrameCounts engine_counts_{};
     engine_effects::core::Order engine_order_ = engine_effects::core::Order::a;

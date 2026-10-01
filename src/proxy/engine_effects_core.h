@@ -4,6 +4,7 @@
 #include <cstring>
 #include "sse_scalar.h"
 #include "lens_flare_cull_core.h"
+#include "engine_effects_option.h"
 
 // Portable core of the engine-effects phase 1a (docs/architecture/engine-effects-modern.md sections 1, 2 and 5;
 // docs/reverse-engineering/engine-effects.md sections 2-4): the glow-jet recogniser's truth table, the throttle and
@@ -19,29 +20,11 @@ namespace census = x3m::cull_census::core;
 // --------------------------------------------------------------------------- option
 // X3M_ENGINE_EFFECTS=native|off|plumes (ini engine_effects), read once at load. native = the game's draws; off = a
 // recognised glow-jet draw is recorded and not forwarded; plumes = off in this phase (the stage arrives in phase 2).
-enum class Mode : std::uint8_t { native, off, plumes };
-inline const char* mode_name(Mode m) noexcept {
-    return m == Mode::off ? "off" : m == Mode::plumes ? "plumes" : "native";
-}
-// The exact word, ASCII case folded; anything else (empty, longer, another word) is refused.
-inline bool parse_mode(const char* text, std::size_t n, Mode* out) noexcept {
-    static const char* const words[3] = {"native", "off", "plumes"};
-    for (unsigned w = 0; w < 3; ++w) {
-        const std::size_t len = std::strlen(words[w]);
-        if (n != len) continue;
-        bool same = true;
-        for (std::size_t i = 0; i < n && same; ++i) {
-            char c = text[i];
-            if (c >= 'A' && c <= 'Z') c = char(c + ('a' - 'A'));
-            same = c == words[w][i];
-        }
-        if (same) {
-            *out = Mode(w);
-            return true;
-        }
-    }
-    return false;
-}
+// The enum, names and the exact-lowercase parser (mixed case refused) live in engine_effects_option.h, shared with
+// the redirect module (engine_effects_sites.h).
+using option::Mode;
+using option::mode_name;
+using option::parse_mode;
 inline bool suppresses(Mode m) noexcept {
     return m != Mode::native;
 }

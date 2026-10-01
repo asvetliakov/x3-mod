@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <cstring>
+#include "engine_effects_option.h"
 
 // Portable core of the engine-effects call redirects (docs/reverse-engineering/engine-effects.md section 7,
 // docs/architecture/engine-effects-modern.md phase 1b): the two verified windows inside the per-ship engine effect
@@ -79,31 +80,12 @@ constexpr std::uint16_t ship_class = 7;                // TShips; 10 (missiles) 
 // X3M_ENGINE_EFFECTS: native = the engine's bytes (unset or empty: the DLL default); off and plumes = both
 // redirects (plumes adds the draw-path plumes, which arm only when both redirects are live); anything else
 // (1..15 characters) is refused, 16 or more is too_long.
-enum class Mode : unsigned char { native = 0, off = 1, plumes = 2 };
+// The enum, names and the exact-lowercase parser are shared with the draw-path module (engine_effects_option.h).
+using x3m::engine_effects::option::Mode;
+using x3m::engine_effects::option::mode_name;
+using x3m::engine_effects::option::parse_mode;
 constexpr Mode default_mode = Mode::native;
 constexpr unsigned setting_capacity = 16;
-inline const char* mode_name(Mode m) {
-    return m == Mode::off ? "off" : m == Mode::plumes ? "plumes" : "native";
-}
-// Exactly "native", "off" or "plumes" (lower case, nothing else).
-template <class Char> inline bool parse_mode(const Char* text, Mode* out) {
-    if (!text) return false;
-    auto equals = [text](const char* word) {
-        unsigned i = 0;
-        for (; word[i]; ++i)
-            if (text[i] != Char(word[i])) return false;
-        return text[i] == Char(0);
-    };
-    if (equals("native"))
-        *out = Mode::native;
-    else if (equals("off"))
-        *out = Mode::off;
-    else if (equals("plumes"))
-        *out = Mode::plumes;
-    else
-        return false;
-    return true;
-}
 // The install decision on the bytes read at each window: nullptr when it is exactly the engine's, else the
 // refusal reason (an already redirected or otherwise changed window is refused).
 inline const char* plan_a(const unsigned char current[window_a_length]) {

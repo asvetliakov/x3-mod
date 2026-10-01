@@ -347,19 +347,33 @@ def lod_step(log, game, jobs, name, where, memory_budget=None):
 
 
 ENGINE_BODIES_FILE = 'engine_bodies.json'   # tools/manage.py ENGINE_BODIES_GAME_FILE, read by the DLL
+ENGINE_BODIES_MARK = 'tools/effects/engine_bodies.py'  # tools/manage.py ENGINE_BODIES_MARK: the table's own tool field
+
+
+def engine_bodies_owned(path):
+    """True when path holds a table the generator wrote (its tool field and a bodies object), as manage.py's
+    _read_engine_bodies decides; an unreadable or foreign file is not ours to move or overwrite."""
+    try:
+        table = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return False
+    return isinstance(table, dict) and table.get('tool') == ENGINE_BODIES_MARK and isinstance(table.get('bodies'), dict)
 
 
 def engine_step(log, game):
     """<game>/x3m/engine_bodies.json from engine_bodies.generate on the installed view (overlay slots excluded, so the
     LOD step before it does not change the table): written to a .tmp beside it and renamed, the previous table kept
-    as engine_bodies.json.previous."""
+    as engine_bodies.json.previous. A file already there that the generator did not write is left alone (one line)."""
     import engine_bodies as eb
+    target = game / 'x3m' / ENGINE_BODIES_FILE
+    if target.exists() and not engine_bodies_owned(target):
+        log.say(f'engine bodies: kept x3m/{ENGINE_BODIES_FILE} (a file the generator did not write is in place)')
+        return
     log.say('engine bodies: reading types/Bodies and the engine jet bodies')
     try:
         table = eb.generate(game)
     except (eb.GenerateError, ValueError) as exc:
         raise StepFailed(f'engine_bodies: {exc}') from None
-    target = game / 'x3m' / ENGINE_BODIES_FILE
     target.parent.mkdir(exist_ok=True)
     tmp = target.with_name(target.name + '.tmp')
     tmp.write_text(eb.dumps(table))

@@ -322,8 +322,9 @@ SETTINGS = [
     entry('lod_occlusion', 'enum', 'engine', 'Keeps stations\' shading correct on their simplified distant models. all = on, '
           'record0 = the game\'s own behaviour, off = none.', 'all', choices=('off', 'record0', 'all'), launcher='--lod-occlusion'),
     entry('engine_effects', 'enum', 'engine', 'Ship engine effects. native = the game\'s own engine glow, flares and exhaust '
-          'trails; off = none of them; plumes = the modern engine plumes and trails, not finished yet: behaves as off. Read when '
-          'the game starts.', builtin='native', choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
+          'trails; off = none of them on ships, and missiles lose their engine glow but keep their sprites and trails for now; '
+          'plumes = the modern engine plumes and trails for ships and missiles, not finished yet: behaves as off. Read when the '
+          'game starts.', builtin='native', choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

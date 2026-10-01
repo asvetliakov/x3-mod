@@ -5,7 +5,8 @@ Builds the proxy (the worktree's CMake build, incremental), the motion seam DLL 
 engine_effects_fixture.exe, then runs the fixture four times in the selected bottle through the seam DLL as d3d9.dll:
   main        off + --debug: scenario frames (a suppressed and a not_jet fixed-function draw with a pixel check, three
               effect-pair JET draws at z 0.25 / 1.125 / 2.0, an opaque JET draw, an unscoped pair draw, an opaque
-              non-candidate draw), a ring-overflow frame, a Reset, frames past the census's eight
+              non-candidate draw), a ring-overflow frame, a Reset, frames past the census's eight, 305 candidate-free frames (engine_frame
+              rows at frames 0 and 300 only)
   native      native + --debug: nothing suppressed or recorded, the census counts forwarded_native
   unverified  off without the identity seam: refused, every draw forwarded
   unpatched   off + --debug with the identity but without the call redirects (engine_effects_patch not installed):
@@ -48,11 +49,27 @@ MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X
          'timing': dict(X3M_ENGINE_EFFECTS='off')}
 SCENARIO_FRAMES = (1, 2, 3, 5, 6, 7, 8, 9, 10, 11)
 OVERFLOW_FRAME, RING = 4, 1024
+# The production sources the fixture exercises: their content hashes and the checkout's commit go into the record
+# (test_engine_effects compares them with the tree).
+PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.h', 'src/proxy/engine_effects_core.h',
+                      'src/proxy/engine_effects_option.h', 'src/proxy/motion_output_engine_effects_inc.h')
+QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
 
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def source_binding():
+    """The checkout's commit (-dirty when tracked files differ from it), whether the exercised production sources
+    differ, and their content hashes."""
+    def git(*args):
+        return subprocess.run(['git', '-C', str(ROOT), *args], capture_output=True, text=True, check=True).stdout
+    changed = [line[3:] for line in git('status', '--porcelain', '--', *PRODUCTION_SOURCES).splitlines()]
+    commit = git('rev-parse', 'HEAD').strip() + ('-dirty' if git('status', '--porcelain', '--untracked-files=no').strip() else '')
+    return {'commit': commit, 'production_sources_dirty': bool(changed), 'dirty_paths': changed,
+            'sha256': {path: sha(ROOT / path) for path in PRODUCTION_SOURCES}}
 
 
 def fields(line):
@@ -121,6 +138,8 @@ def validate(mode, r):
     if r['exit'] != 0 or failed or not result or not result[-1].startswith('RESULT PASS'):
         problems.append(f'{mode}: exit={r["exit"]} failed={failed} result={result[-1] if result else None}')
     log = r['session']
+    if rows(log, 'engine_effects_partial'):  # the route is on in every mode: never the route-off partial state
+        problems.append(f'{mode}: engine_effects_partial row with the route on')
     modes = rows(log, 'engine_effects_mode')
     out['mode_row'] = modes[0] if modes else None
     expected_status = {'main': 'armed', 'native': 'native', 'unverified': 'executable_mismatch', 'unpatched': 'armed', 'timing': 'armed'}[mode]
@@ -185,8 +204,12 @@ def validate(mode, r):
         cos = float(d['za_basis'] if d['order'] == 'a' else d['zb_basis'])
         if cos < 0.9999:
             problems.append(f'main: basis cross-check {d["model"]} {cos}')
-    if min(frames) != 0 or max(frames) < 11:
+    # engine_frame: every frame with a candidate (1..11); the candidate-free frames 0 and 12..316 at most once per 300
+    # (frames 0 and 300).
+    if sorted(frames) != [*range(0, 12), QUIET_ROW_FRAME] or any(frames[f].get('candidates') != '0' for f in (0, QUIET_ROW_FRAME)):
         problems.append(f'main: engine_frame rows {sorted(frames)}')
+    if any('ring_overflow' in f for f in frames.values()):
+        problems.append('main: engine_frame still carries ring_overflow=')
     for frame in SCENARIO_FRAMES:
         f = frames.get(frame, {})
         want = dict(candidates='7', not_jet='1', records='4', suppressed='4', forwarded_unscoped='1', forwarded_opaque='1', forwarded_overflow='0',
@@ -195,8 +218,8 @@ def validate(mode, r):
         if {k: f.get(k) for k in want} != want:
             problems.append(f'main: engine_frame {frame} {f}')
     o = frames.get(OVERFLOW_FRAME, {})
-    if (o.get('records'), o.get('suppressed'), o.get('forwarded_overflow'), o.get('ring_overflow'), o.get('rows'), o.get('rows_more')) != (
-            str(RING), str(RING), '6', '6', '64', str(RING + 6 - 64)):
+    if (o.get('records'), o.get('suppressed'), o.get('forwarded_overflow'), o.get('rows'), o.get('rows_more')) != (
+            str(RING), str(RING), '6', '64', str(RING + 6 - 64)):
         problems.append(f'main: overflow engine_frame {o}')
     if len(rows(log, 'engine_effects_device')) != 1:
         problems.append('main: engine_effects_device rows')
@@ -222,7 +245,7 @@ def main():
     results = bottle.results_dir(ROOT) / 'engine-effects'
     results.mkdir(parents=True, exist_ok=True)
     record = {'bottle': bottle.describe(), 'programs': {k: {'path': str(p), 'sha256': sha(p)} for k, p in PROGRAMS.items()},
-              'game_launched': False}
+              'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(), 'game_launched': False}
     if not args.no_build:
         record['build'] = build()
     record['binaries'] = {'fixture_sha256': sha(EXE), 'seam_sha256': sha(SEAM), 'dll_sha256': sha(ROOT / 'build/d3d9.dll')}

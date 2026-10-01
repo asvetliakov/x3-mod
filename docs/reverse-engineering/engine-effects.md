@@ -458,7 +458,9 @@ dialog has no item for it. The bit therefore comes from the default and the regi
   expression for the z-axis length; one capture of a glow draw at two speeds settles it.
 - The gate `*(*0x0060850c)` and which ships get a flight variation (`TShips+0xa8`). The engine-flag bit is
   `VideoD3DFlags` bit 30, set by default and by the registry (§7).
-- Whether `0x00414590` can run before the first Present (the B site's non-atomic write relies on it), the
+- Whether `0x00414590` can run before the first d3d9 export call (the B site's non-atomic write relies on it; the
+  install runs there, in `load_backend` under InitOnce, before any device or frame, and a later claim is refused as
+  `late_claim`, so the precondition is met unless the effect routine runs outside the frame loop [i]), the
   docking path, and indirect access to the two lists through a copied pointer (§7).
 - The function that turns the particle pool into the renderer's batches, the particle blend per material flag, and
   whether the 256² particle texture of the historical capture (particle-motion-inputs.md) is a trail material.

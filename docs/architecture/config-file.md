@@ -562,8 +562,11 @@ Windows.
 Key `engine_effects`, environment `X3M_ENGINE_EFFECTS`, launcher `--engine-effects native|off|plumes`
 ([engine-effects-modern.md](engine-effects-modern.md), "Decision" and sections 1–2). `native` = the game draws its
 engine glow jets, emitter sprites, engine lens flares and engine trails, nothing patched; `off` = all four suppressed
-and nothing drawn instead (the phase-1 flight state; weapon and missile trails untouched); `plumes` = reserved for the
-proxy's own plumes and ribbons (phase 2) and treated as `off` until then. The DLL's value when nothing sets the key is
+on ships and nothing drawn instead (the phase-1 flight state). Missile engine glow jets are suppressed under `off` too
+(class 10 reaches the same JET child walk, and the draw-path recogniser has no class gate), while missile emitter
+sprites and trails stay native until a later phase (the call redirects skip only class 7); weapon trails are untouched.
+`plumes` = reserved for the proxy's own plumes and ribbons (phase 2, where missiles get plumes like ships) and treated
+as `off` until then. The DLL's value when nothing sets the key is
 `native`, and the launcher's default flight sends nothing, so the bare DLL still equals the default flight; the
 launcher drops an inherited shell value unless the option is given, refuses the option under `--vanilla`, and in player
 mode (`--config`) sends it only when given. Both suppressing values read `<game>/x3m/engine_bodies.json` (generated

@@ -9,6 +9,7 @@ its fail-closed cases, the name -> id resolution over a synthetic engine body ta
 dynamic slot), and times the per-draw core (classify + record + ring push). With the installed Mayhem 3 tree the real
 generated table is parsed by the C++ core and compared entry for entry with Python's json.
 """
+import hashlib
 import importlib.util
 import json
 import math
@@ -100,7 +101,10 @@ int main(int argc, char** argv) {
     if (argc == 3 && !std::strcmp(argv[1], "parse")) return parse_file(argv[2]);
     // Option words.
     Mode m = Mode::off;
-    expect(parse_mode("native", 6, &m) && m == Mode::native && parse_mode("OFF", 3, &m) && m == Mode::off && parse_mode("Plumes", 6, &m) && m == Mode::plumes, "the three words, case folded");
+    expect(parse_mode("native", 6, &m) && m == Mode::native && parse_mode("off", 3, &m) && m == Mode::off && parse_mode("plumes", 6, &m) && m == Mode::plumes, "the three words, exact lower case");
+    m = Mode::plumes;
+    expect(!parse_mode("OFF", 3, &m) && !parse_mode("Off", 3, &m) && !parse_mode("Plumes", 6, &m) && !parse_mode("NATIVE", 6, &m) && m == Mode::plumes, "mixed case refused, as in the redirect module");
+    expect(parse_mode("off", &m) && m == Mode::off && !parse_mode("Off", &m), "the shared NUL-terminated form agrees");
     expect(!parse_mode("", 0, &m) && !parse_mode("of", 2, &m) && !parse_mode("offf", 4, &m) && !parse_mode("on", 2, &m) && !parse_mode("native ", 7, &m) && !parse_mode("plume", 5, &m), "other words refused");
     expect(!suppresses(Mode::native) && suppresses(Mode::off) && suppresses(Mode::plumes), "plumes suppresses like off");
     expect(effect_pair(0xd5e1c75351ed3f04ull, 0x8360f422de08b5bdull) && effect_pair(0x89193868c61c3846ull, 0x8360f422de08b5bdull) && !effect_pair(0xd5e1c75351ed3f04ull, 1) && !effect_pair(1, 0x8360f422de08b5bdull), "the effects pair");
@@ -414,6 +418,43 @@ class EngineEffectsOption(unittest.TestCase):
         self.assertIn('object_trace::executable_verified()', module)
         self.assertIn('return engine_effects_patch::installed();', module)  # the suppression's arming signal
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_EFFECTS"', module)), 1)  # read once, at initialize
+        # Route off with the redirects live: one engine_effects_partial row; engine_frame only on frames with a
+        # candidate, else once per 300 frames; forwarded_overflow= is the only overflow field.
+        self.assertIn('const bool partial = engine_suppress_ && engine_redirects_ && !enabled_;', inc)
+        self.assertIn('engine_effects_partial device=%llu frame=%llu route=off redirects=on', inc)
+        self.assertIn('if (engine_quiet_logged_ && frame_ - engine_quiet_frame_ < engine_quiet_interval) return;', inc)
+        self.assertNotIn('ring_overflow=', inc)
+        self.assertIn('engine_quiet_interval = 300;', (ROOT / 'src/proxy/motion_output.h').read_text())
+        # One option parser for both modules.
+        for header in ('engine_effects_core.h', 'engine_effects_sites.h'):
+            text = (ROOT / 'src/proxy' / header).read_text()
+            self.assertIn('#include "engine_effects_option.h"', text)
+            self.assertNotIn('bool parse_mode(', text)
+
+
+class EngineEffectsFixtureRecord(unittest.TestCase):
+    """The tracked Wine record of run_engine_effects.py, bound to the production sources it exercised."""
+    PATH = ROOT / 'verification/results/bottle-X3/engine-effects/summary.json'
+
+    def setUp(self):
+        self.record = json.loads(self.PATH.read_text())
+
+    def test_passed(self):
+        r = self.record
+        self.assertTrue(r['passed'])
+        self.assertFalse(r['game_launched'])
+        self.assertEqual(r['bottle']['name'], 'X3')
+        self.assertEqual(r['problems'], [])
+        self.assertEqual(r['runs']['main']['engine_frame_rows'], 13)  # frames 0..11 and the quiet row at 300
+
+    def test_bound_to_its_production_sources(self):
+        sys.path.insert(0, str(ROOT / 'verification/probe'))
+        import run_engine_effects as runner
+        source = self.record['source']
+        self.assertEqual(self.record['production_sources'], list(runner.PRODUCTION_SOURCES))
+        self.assertRegex(source['commit'], r'^[0-9a-f]{40}(-dirty)?$')
+        now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
+        self.assertEqual(now, source['sha256'], 'production sources changed since the record: rerun run_engine_effects.py')
 
 
 if __name__ == '__main__':

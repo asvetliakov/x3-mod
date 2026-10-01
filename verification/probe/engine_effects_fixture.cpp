@@ -462,6 +462,8 @@ int main(int argc, char** argv) {
         check(f.status(f.device, 19) == 1, "reset_hook_kept");
         for (unsigned frame = 6; frame <= 8; ++frame) f.scenario(frame, "main", true, true);
         for (unsigned frame = 9; frame <= 11; ++frame) f.scenario(frame, "main", true, true); // past the census's eight frames
+        // Frames 12..316 without a candidate: engine_frame rows at most once per 300 such frames (frames 0 and 300).
+        for (unsigned frame = 12; frame <= 316; ++frame) f.warmup();
     } else if (mode == "native") {
         check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 0, "native_census_hook_without_suppression");
         for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "native", false, false);

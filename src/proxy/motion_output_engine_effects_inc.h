@@ -12,6 +12,7 @@
 // the census is on.
 void MotionOutput::configure_engine_effects(bool hook, bool suppress, bool census) noexcept {
     engine_hook_ = engine_suppress_ = engine_census_ = false;
+    engine_partial_logged_ = engine_quiet_logged_ = false;
     if (!hook) return;
     if (!engine_ring_) engine_ring_ = new (std::nothrow) engine_effects::core::Ring;
     if (!engine_ring_) {
@@ -34,6 +35,14 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
     engine_ring_->clear();
     engine_counts_ = {};
     engine_redirects_ = engine_effects::redirects_live(); // one call per frame; the redirects arm once at load
+    // off|plumes with the redirects live but the motion route off on this device: the redirects (process-wide) hide
+    // the engine's sprites and trails while before_draw returns before this hook, so the glow jets stay native. One
+    // row each time the device enters that state.
+    const bool partial = engine_suppress_ && engine_redirects_ && !enabled_;
+    if (partial && !engine_partial_logged_)
+        log("engine_effects_partial device=%llu frame=%llu route=off redirects=on suppress=1 glow=native sprites=off trails=off",
+            id_, frame_);
+    engine_partial_logged_ = partial;
     if (engine_rows_) ++engine_row_frames_; // the previous frame wrote rows: one of the first eight spent
     engine_rows_ = engine_rows_more_ = 0;
 }
@@ -41,15 +50,21 @@ void MotionOutput::engine_effects_frame_end() noexcept {
     if (!engine_census_) return; // configure: census = the --debug tier
     const auto& c = engine_counts_;
     namespace ee = engine_effects::core;
+    // A frame with a candidate writes its row; frames without one write at most one row per 300 frames.
+    if (!c.candidates) {
+        if (engine_quiet_logged_ && frame_ - engine_quiet_frame_ < engine_quiet_interval) return;
+        engine_quiet_logged_ = true;
+        engine_quiet_frame_ = frame_;
+    }
     const auto stats = engine_effects::stats();
     if (log_tier::cached_debug)
-        log("engine_frame device=%llu frame=%llu mode=%s candidates=%lu not_jet=%lu records=%u suppressed=%lu forwarded_unscoped=%lu forwarded_snapshot=%lu forwarded_opaque=%lu forwarded_state=%lu forwarded_overflow=%lu forwarded_native=%lu forwarded_patch_missing=%lu redirects=%u ring_overflow=%lu unknown_body=%lu steering=%lu rows_unknown=%lu order_a=%lu order_b=%lu order_ambiguous=%lu order_mismatch=%lu order_invalid=%lu pinned=%s bodies=%u mapped=%u rows=%u rows_more=%u",
+        log("engine_frame device=%llu frame=%llu mode=%s candidates=%lu not_jet=%lu records=%u suppressed=%lu forwarded_unscoped=%lu forwarded_snapshot=%lu forwarded_opaque=%lu forwarded_state=%lu forwarded_overflow=%lu forwarded_native=%lu forwarded_patch_missing=%lu redirects=%u unknown_body=%lu steering=%lu rows_unknown=%lu order_a=%lu order_b=%lu order_ambiguous=%lu order_mismatch=%lu order_invalid=%lu pinned=%s bodies=%u mapped=%u rows=%u rows_more=%u",
         id_, frame_, ee::mode_name(engine_effects::mode()), static_cast<unsigned long>(c.candidates),
         static_cast<unsigned long>(c.not_jet), engine_ring_->count, static_cast<unsigned long>(c.suppressed),
         static_cast<unsigned long>(c.forwarded[0]), static_cast<unsigned long>(c.forwarded[1]),
         static_cast<unsigned long>(c.forwarded[2]), static_cast<unsigned long>(c.forwarded[3]),
         static_cast<unsigned long>(c.forwarded[4]), static_cast<unsigned long>(c.forwarded[5]),
-        static_cast<unsigned long>(c.forwarded[6]), unsigned(engine_redirects_), static_cast<unsigned long>(c.forwarded[4]), static_cast<unsigned long>(c.unknown_body),
+        static_cast<unsigned long>(c.forwarded[6]), unsigned(engine_redirects_), static_cast<unsigned long>(c.unknown_body),
         static_cast<unsigned long>(c.steering), static_cast<unsigned long>(c.rows_unknown),
         static_cast<unsigned long>(c.match[0]), static_cast<unsigned long>(c.match[1]),
         static_cast<unsigned long>(c.match[2]), static_cast<unsigned long>(c.match[3]),

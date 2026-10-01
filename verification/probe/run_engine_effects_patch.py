@@ -26,6 +26,7 @@ import verify_engine_effects_sites as verifier
 ROOT = Path(__file__).resolve().parents[2]
 NAME = 'engine-effects-patch.json'
 PRODUCTION_SOURCES = ('src/proxy/engine_effects_patch.cpp', 'src/proxy/engine_effects_patch.h', 'src/proxy/engine_effects_sites.h',
+                      'src/proxy/engine_effects_option.h',
                       'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h')
 
 

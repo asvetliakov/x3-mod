@@ -52,6 +52,9 @@ int main() {
     check(parse_mode("native", &m) && m == Mode::native && parse_mode("off", &m) && m == Mode::off &&
           parse_mode("plumes", &m) && m == Mode::plumes, "the three modes");
     check(parse_mode(L"off", &m) && m == Mode::off && parse_mode(L"plumes", &m) && m == Mode::plumes, "wide");
+    m = Mode::native;
+    check(!parse_mode(L"Off", &m) && !parse_mode(L"PLUMES", &m) && !parse_mode("oFf", &m) && m == Mode::native, "mixed case refused");
+    check(!parse_mode("Off", 3, &m) && parse_mode("off", 3, &m) && m == Mode::off, "the draw-path form agrees");
     const char* rejected[] = {"", "Native", "OFF", " off", "off ", "plume", "plumess", "on", "0", "1", "none", "off,plumes", "native\n"};
     for (const char* t : rejected) { m = Mode::plumes; check(!parse_mode(t, &m) && m == Mode::plumes, t); }
     check(!parse_mode(static_cast<const char*>(nullptr), &m), "null");

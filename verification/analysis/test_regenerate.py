@@ -143,6 +143,22 @@ class Regenerate(unittest.TestCase):
             self.assertEqual((game / regen.LOG_NAME).read_text().count('x3m-regenerate: game directory'), 1)
             self.assertFalse(list(game.rglob('*.x3m-replaced')) + list(game.rglob('*.tmp')))
 
+    def test_foreign_engine_bodies_kept(self):
+        # A table the generator did not write (another tool field, or not JSON) is neither moved nor overwritten;
+        # the run still passes and says so once. A generator-written one is replaced (test_full_run_and_rerun).
+        for foreign in ('{"tool": "someone-else", "bodies": {}}\n', 'not json\n'):
+            with self.subTest(foreign=foreign), tempfile.TemporaryDirectory() as folder:
+                game = make_root(folder)
+                (game / 'x3m').mkdir(exist_ok=True)
+                (game / 'x3m/engine_bodies.json').write_text(foreign)
+                code, text = run(['--game-dir', str(game), '--no-wait', '--jobs', '1'])
+                self.assertEqual(code, 0, (game / regen.LOG_NAME).read_text())
+                self.assertEqual((game / 'x3m/engine_bodies.json').read_text(), foreign)
+                self.assertFalse((game / 'x3m/engine_bodies.json.previous').exists())
+                self.assertFalse((game / 'x3m/engine_bodies.json.tmp').exists())
+                self.assertEqual(text.count('engine bodies: kept x3m/engine_bodies.json (a file the generator did not write is in place)'), 1)
+                self.assertNotIn('engine bodies summary', text)
+
     def test_interrupted_write_recovered(self):
         with tempfile.TemporaryDirectory() as folder:
             game = make_root(folder)
