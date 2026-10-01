@@ -15,6 +15,14 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+**Run119 candidate, not installed** (built 2026-10-01 from clean `bfe68791` = engine effects phases 2 + 3: plume stage and ribbon trails in the TAA
+resolve's step-0 bracket, fog transmittance, presets `--engine-effects-preset restrained|default|strong` with Ctrl+Alt+F6, two reviews with fixes):
+DLL `582270816fabd97b719c9c87f08770abc1fde76691099829eceb575fe9da8c04` (58,400,309 bytes) at `/tmp/x3-run119-candidate/build/d3d9.dll`
+([candidate](../verification/results/run119-candidate-build.json): host suite 286/3,005/0, shader checks 50 + 9, 27 verifiers, fixtures plumes 72/72,
+ribbons 44/44, effects armed 15, patch 54/54). Default `native`; it waits for the Run 118 A verdict (flight A), then installs as Run119 and
+flight B = `--engine-effects plumes` with the F8 set of the design note (own ship at rest/full speed in chase, capital from behind and from the
+front, fighters over a starfield, one F8 with a target selected for `engine_stage view_rule=`/`skipped_other_view=`).
+
 Run117 = **release 0.9.0**: stripped DLL SHA-256 `72db0628651f7afac8bd5073e9a93a8317d3988d7c6c2bb9dc1aadeb30d96d0f`
 (39,610,685 bytes; unstripped `89fd0e0b…`, debug file `bd63b95b…` under `/tmp/x3m-release-0.9.0/`), built once from clean
 main `c1baa169` (host suite 280/2,950/0, 0 warnings, x87 0 on both DLLs, strip identity PASS, zip entries exactly 22, regenerate
