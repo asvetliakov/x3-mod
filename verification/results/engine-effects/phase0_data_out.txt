@@ -1,0 +1,49 @@
+[stock] Bodies addon/01.cat: 566 in JET=True in SMALLJET=True SMALLJET=['566']
+  TShips rows=404 {'max_A_sites_per_ship': 8, 'max_walked_jets_per_ship': 68, 'ships_reaching_A': 191, 'A_calls_per_frame': 325, 'ships_reaching_B_if_flag': 150, 'B_calls_per_frame_if_flag': 199, 'scene_unread': 41}
+  col11    5: ships no_glow= 10 with_glow=153 | Effect 5 argon engine effect(bright blue) | SPEEDDEPENDENT|LIGHT:118
+  col11   12: ships no_glow=  0 with_glow=  1 | Effect 12 - big split engine effect(red) | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|LIGHT:119
+  col11  210: ships no_glow=  0 with_glow=  3 | MISSING | 
+  col11  211: ships no_glow=  0 with_glow=  1 | MISSING | 
+  col11  216: ships no_glow=  0 with_glow=  3 | MISSING | 
+  col11  219: ships no_glow=  0 with_glow=  4 | MISSING | 
+  col11  221: ships no_glow=  0 with_glow=  2 | MISSING | 
+  col11  227: ships no_glow=  0 with_glow=  1 | MISSING | 
+  col11  228: ships no_glow=  0 with_glow=  2 | MISSING | 
+  col11  229: ships no_glow=  0 with_glow=  1 | MISSING | 
+  col11  232: ships no_glow=  0 with_glow=  1 | MISSING | 
+  col11  234: ships no_glow=  0 with_glow=  5 | MISSING | 
+  col11  235: ships no_glow=  0 with_glow=  3 | MISSING | 
+  col11  236: ships no_glow=  0 with_glow=  1 | MISSING | 
+  TMissiles addon/02.cat version=50 rows=36 {'rows': 36, 'with_walked_jets': 36, 'reach_A': 35, 'reach_B_if_flag': 36}
+[mayhem] Bodies addon/12.cat: 566 in JET=True in SMALLJET=True SMALLJET=['566']
+  TShips rows=525 {'ships_reaching_A': 498, 'A_calls_per_frame': 1508, 'max_A_sites_per_ship': 28, 'max_walked_jets_per_ship': 68, 'ships_reaching_B_if_flag': 371, 'B_calls_per_frame_if_flag': 875, 'scene_unread': 9}
+  col11  700: ships no_glow=  0 with_glow= 33 | Engine, Emitter - Green, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  701: ships no_glow=  0 with_glow= 12 | Engine, Emitter - Green, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  702: ships no_glow=  0 with_glow= 11 | Engine, Emitter - Green, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  703: ships no_glow=  0 with_glow=  2 | Engine, Emitter - Lime, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  704: ships no_glow=  0 with_glow=  6 | Engine, Emitter - Lime, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  705: ships no_glow=  0 with_glow=  3 | Engine, Emitter - Lime, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  706: ships no_glow=  0 with_glow= 34 | Engine, Emitter - Cyan, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  707: ships no_glow=  0 with_glow= 11 | Engine, Emitter - Cyan, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  708: ships no_glow=  0 with_glow=  9 | Engine, Emitter - Cyan, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  709: ships no_glow=  0 with_glow= 34 | Engine, Emitter - Blue, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  710: ships no_glow=  0 with_glow=  9 | Engine, Emitter - Blue, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  711: ships no_glow=  0 with_glow=  9 | Engine, Emitter - Blue, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  713: ships no_glow=  0 with_glow=  2 | Engine, Emitter - Purple, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  714: ships no_glow=  0 with_glow=  3 | Engine, Emitter - Purple, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  715: ships no_glow=  0 with_glow=  6 | Engine, Emitter - Magenta, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  716: ships no_glow=  0 with_glow=  8 | Engine, Emitter - Magenta, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  717: ships no_glow=  0 with_glow= 10 | Engine, Emitter - Magenta, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  718: ships no_glow=  0 with_glow= 33 | Engine, Emitter - Red, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  719: ships no_glow=  0 with_glow= 13 | Engine, Emitter - Red, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  720: ships no_glow=  0 with_glow=  9 | Engine, Emitter - Red, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  721: ships no_glow=  0 with_glow= 11 | Engine, Emitter - Orange, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  722: ships no_glow=  0 with_glow= 41 | Engine, Emitter - Orange, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  723: ships no_glow=  0 with_glow=  9 | Engine, Emitter - Orange, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  724: ships no_glow=  0 with_glow= 43 | Engine, Emitter - Yellow, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  725: ships no_glow=  0 with_glow= 17 | Engine, Emitter - Yellow, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  726: ships no_glow=  0 with_glow= 13 | Engine, Emitter - Yellow, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  727: ships no_glow=  0 with_glow= 64 | Engine, Emitter - White, Small | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  728: ships no_glow=  0 with_glow= 21 | Engine, Emitter - White, Medium | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  col11  729: ships no_glow=  0 with_glow= 22 | Engine, Emitter - White, Large | SPEEDDEPENDENT|RELATIVESIZE:11 SPEEDDEPENDENT|RELATIVESIZE|LENSFLARE:-1
+  TMissiles addon/12.cat version=50 rows=36 {'rows': 36, 'with_walked_jets': 36, 'reach_A': 35, 'reach_B_if_flag': 1}

@@ -17,7 +17,8 @@
     "docs/reverse-engineering/field-of-view.md",
     "docs/reverse-engineering/object-lifetimes.md",
     "docs/reverse-engineering/gui-scale.md",
-    "docs/reverse-engineering/font-rendering.md"
+    "docs/reverse-engineering/font-rendering.md",
+    "docs/reverse-engineering/engine-effects.md"
   ],
   "labels": {
     "0x00402710": {
@@ -60,6 +61,10 @@
       "label": "vector add (EAX = out, ECX/[ESP] = operands; 16.16)",
       "source": "external-camera.md"
     },
+    "0x0040e780": {
+      "label": "16.16 scalar x vector (ESI = scalar, EDI = vector, ECX = out; 3 dwords)",
+      "source": "engine-effects.md"
+    },
     "0x0040e880": {
       "label": "current cockpit-scene camera accessor (cockpit+8 via the registry *0x00608504)",
       "source": "external-camera.md"
@@ -80,9 +85,65 @@
       "label": "fixed-point divide trunc(a*65536/b), 0 for b=0",
       "source": "field-of-view.md"
     },
+    "0x004124c0": {
+      "label": "16.16 per-axis vector multiply with rounding (ESI = scale, EDI = vector, ECX = out; writes 3 dwords)",
+      "source": "engine-effects.md"
+    },
+    "0x004126d0": {
+      "label": "types/Effects loader: 1,000 rows at 0x00580068, stride 0x14 (+0 count, +4 flags, +0x10 elements, stride 0x70, EEDF flags +0x3c); row index = header field 1",
+      "source": "engine-effects.md"
+    },
+    "0x00412c80": {
+      "label": "effects reset: frees all effect instances (0x00416fe0), the Effects element arrays and the trail-link header *0x00607cf4",
+      "source": "engine-effects.md"
+    },
     "0x00412d00": {
-      "label": "universe teardown/reset candidate (103 bytes)",
-      "source": "loading-orchestration.md"
+      "label": "universe teardown/reset candidate (103 bytes); resets effects (0x00412c80), allocates the trail-link header *0x00607cf4 and reloads types/Effects (0x004126d0)",
+      "source": "loading-orchestration.md, engine-effects.md"
+    },
+    "0x00412d70": {
+      "label": "trail generator find-or-create, __stdcall (k, Particles3 id, obj, &pos), ret 0x10: link list *0x00607cf4 keyed (obj, k), generator into *(0x00608518)+0x6318",
+      "source": "engine-effects.md"
+    },
+    "0x00412f80": {
+      "label": "frees every trail link and generator (*0x00607cf4 list)",
+      "source": "engine-effects.md"
+    },
+    "0x00414590": {
+      "label": "per-object engine effect routine, cdecl (obj), classes 0/7/10: per JET child with C & 0xffe == 0 calls 0x004148a0 at 0x004147eb (unless C & 0x4000) and 0x00412d70 at 0x0041482c (unless C & 0x2000, VideoD3DFlags & 0x40000000); class 0 at 0x004146c0/0x004146fa",
+      "source": "engine-effects.md"
+    },
+    "0x004148a0": {
+      "label": "effect instance find-or-create, cdecl 10 args (kind, k, Effects id, obj, a5, a6, a7, &pos, lifetime, &orientation): list 0x0057b0f8 keyed (obj, kind, k), 0xc0-byte instance; return value unused at 0x004147eb",
+      "source": "engine-effects.md"
+    },
+    "0x00414c10": {
+      "label": "effect instance first init (clears element slots, +0x28 = time + offset) then 0x00414cf0",
+      "source": "engine-effects.md"
+    },
+    "0x00414c60": {
+      "label": "effect instance re-arm on refresh (resets elements without EEDF_NOREINIT, +0x28 = time + offset) then 0x00414cf0; ret 4",
+      "source": "engine-effects.md"
+    },
+    "0x00414cf0": {
+      "label": "effect instance update (creates/updates element nodes: sprite, lens flare, light, EEDF_PARTICLEGENERATOR links via 0x004151c3); returns 0 when finished",
+      "source": "engine-effects.md"
+    },
+    "0x00416750": {
+      "label": "per-frame effect and trail update (main loop 0x00403f2a): instance list 0x0057b0f8 via 0x00414cf0, then every trail link while VideoD3DFlags & 0x40000000 (0x0046c170)",
+      "source": "engine-effects.md"
+    },
+    "0x00416e10": {
+      "label": "drops every effect instance and trail link of a removed object (from 0x0044abb8)",
+      "source": "engine-effects.md"
+    },
+    "0x00416fe0": {
+      "label": "frees every effect instance (list 0x0057b0f8)",
+      "source": "engine-effects.md"
+    },
+    "0x00417100": {
+      "label": "frees list 0x0057b0ec, then every trail link (0x00412f80)",
+      "source": "engine-effects.md"
     },
     "0x0041c8f0": {
       "label": "registers the INS_ command module (dispatcher 0x0042d340, name table 0x0057aef0)",
@@ -172,6 +233,10 @@
       "label": "INS_ script command dispatcher (switch over the INS_Cockpit*/INS_* index; cases inline the cockpit fields)",
       "source": "external-camera.md"
     },
+    "0x00434620": {
+      "label": "scene node classification by model id: JET list -> +0x130 |= 0x4000001 (0x00434708), SMALLJET -> |= 0x4000000, +0x1d8 = 5 (0x00434730), TURRET -> +0x1d8 = 10",
+      "source": "engine-effects.md"
+    },
     "0x00434e40": {
       "label": "type-table load (addon\\types\\*, TBullets..TShipsWrecks; O(n^2) scan at 0x004381c2)",
       "source": "loading-orchestration.md"
@@ -179,6 +244,10 @@
     "0x00439530": {
       "label": "universe teardown/reset candidate (1,100 bytes)",
       "source": "loading-orchestration.md"
+    },
+    "0x0043a360": {
+      "label": "sector update loop: 0x004596e0 for every class-1 object of *(0x0060850c)+8 (0x0043a3bf)",
+      "source": "engine-effects.md"
     },
     "0x0043ce30": {
       "label": "type-table object construction: type lookup 0x00492970, node create 0x00486d10, per-part loop (+0x50, stride 0x44) via 0x0043d1d0",
@@ -204,8 +273,8 @@
       "source": "external-camera.md"
     },
     "0x0044aab0": {
-      "label": "universe construction callee of 0x0043f420",
-      "source": "loading-orchestration.md"
+      "label": "universe construction callee of 0x0043f420; thiscall ECX = obj object-removal notification: clears references to obj in the sector objects, then 0x00416e10 drops its effect instances and trail links (0x0044abb8)",
+      "source": "loading-orchestration.md, engine-effects.md"
     },
     "0x0044c620": {
       "label": "orientation/rotation math (fsin/fcos/fpatan, helper 0x0052b5d0; from 0x0042fb20)",
@@ -214,6 +283,10 @@
     "0x0044ccc0": {
       "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20)",
       "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004596e0": {
+      "label": "sector object update (32 object lists): engine jet z-scale drive, calls 0x00414590 per object at 0x0045ac7d behind *(*0x0060850c) != 0",
+      "source": "engine-effects.md"
     },
     "0x00469a30": {
       "label": "muldiv trunc(a*b/c), 0 for c=0",
@@ -238,6 +311,10 @@
     "0x00470f50": {
       "label": "render-manager clear: releases cut instances, scenes and every node on the unattached list R+0x28 (0x00471050)",
       "source": "object-lifetimes.md"
+    },
+    "0x00473e10": {
+      "label": "per-view particle pass: walks the generator list *(0x00608518)+0x6318 (0x00474949)",
+      "source": "engine-effects.md"
     },
     "0x00479010": {
       "label": "B3D save writer: counts unattached R+0x28 nodes without +0x130 bit 0x400 as INST records, scenes R+0x18 as SCEN",
@@ -506,8 +583,8 @@
       "source": "constant-uploads.md"
     },
     "0x004b6f60": {
-      "label": "settings load from HKCU\\Software\\EGOSOFT\\<app> (VideoD3DFlags2 -> *0x00606f34+0x100 at 0x004b7291)",
-      "source": "alternative-video-playback.md"
+      "label": "settings load from HKCU\\Software\\EGOSOFT\\<app> (VideoD3DFlags2 -> *0x00606f34+0x100 at 0x004b7291; VideoD3DFlags -> +0xfc at 0x004b725c over the default 0x4213ad5f stored earlier at 0x004b6d16)",
+      "source": "alternative-video-playback.md, engine-effects.md"
     },
     "0x004b7b40": {
       "label": "settings save to HKCU\\Software\\EGOSOFT\\<app> (VideoD3DFlags2 as 4-byte REG_BINARY at 0x004b7e4b)",

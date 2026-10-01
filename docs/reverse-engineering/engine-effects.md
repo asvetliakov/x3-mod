@@ -240,12 +240,226 @@ boundary-safe; preserving LastError and x87 state is the stub's duty as at `0x00
   [i]. A nozzle radius has to come from the glow mesh (its x/y extent × body scale) or from the world rows' x/y
   basis lengths at draw time [i].
 
+## 7. Phase 0: the two call sites
+
+Phase 0 of [engine-effects-modern.md](../architecture/engine-effects-modern.md) (sections 1–2, unknown 1 and 4).
+Same EXE and Ghidra import as above, plus
+[`phase0_sites.py`](../../verification/results/engine-effects/phase0_sites.py) →
+[`phase0_sites_out.txt`](../../verification/results/engine-effects/phase0_sites_out.txt) (bytes, qwords, every E8
+caller, pointer and branch scans; 0.2 s) and
+[`phase0_data.py`](../../verification/results/engine-effects/phase0_data.py) →
+[`phase0_data_out.txt`](../../verification/results/engine-effects/phase0_data_out.txt) (Bodies lists, spawn sites
+per ship and missile, the col-11 rows reached; 3 s).
+
+**Answer.** Both calls are plain 5-byte `E8 rel32` instructions on the game-update path, with no register input,
+results ignored, and only EAX/ECX/EDX/EFLAGS dead afterwards. A stub that skips them reproduces exactly the
+`C & 0x4000` / `C & 0x2000` paths. Two facts change the design: **missiles (class 10) reach both sites**, so each
+stub must forward every object whose class word is not 7. And the **B site's five bytes straddle an aligned qword**,
+so its write is the plain-copy path of `engine_patch`, safe only inside the install window. The eff allowlist of
+the design (stock rows 3, 9–14) is never reached through site A: the only stock row reached by ships without glow
+parts is row 5, which holds an `EEDF_LIGHT` element only.
+
+### Routine `0x00414590` [m: listing `0x00414590..0x0041489a`]
+
+`int __cdecl f(obj)`, single caller `0x0045ac7d` in `0x004596e0` (once per object per sector-update pass, behind the
+`*(*0x0060850c) != 0` gate at `0x0045ac6d`). No x87 or SSE instruction. Prologue `and esp,-16; sub esp,0x84`, then
+`push ebx/esi/edi`; frame slots used below, as `[esp+n]` with no outstanding pushes: `+0x10` = k, `+0x14` = eff,
+`+0x18` = trail, `+0x20..+0x2c` = pos.
+
+| class (`obj+0x48`) | eff, trail | path |
+| --- | --- | --- |
+| 0 (table `*0x00606fb8`) | `+0x74`, `+0x84` | `0x0041469e`: one call `0x004148a0` at **`0x004146c0`** (k = 0, pos = 0) and one `0x00412d70` at **`0x004146fa`** (also needs `VideoD3DFlags2 & 2`, `+0x100`); not redirected |
+| 7 TShips (`*0x00606fd4`) | `+0x54`, `+0xc4` | child walk `0x0041470b` |
+| 10 (`*0x00606fe0`, loader case `0x00437ab1`) | `+0x64`, `+0x84` | **the same child walk**. The loader's field order is measured; the column numbers (col 15, and col 22 for file version ≥ 0x31) assume that the class block starts at col 7 as in TShips, and the class name TMissiles is also inferred [i] |
+| any other | — | returns 0 at `0x00414621` |
+
+Child walk: for each direct child of the root (`root+0xc` list) with `+0x130 & 1` (JET bit), `k` counts every JET
+child (`0x0041487f`, including RCS jets and glow parts); the position is computed and the two calls are made only
+when `C & 0xffe == 0` (`0x0041472f`). The loop register is EBX = the child node.
+
+### Site A: `0x004147eb`, effect instance
+
+| item | value |
+| --- | --- |
+| bytes [m] | `E8 B0 00 00 00` → `0x004148a0`; the instruction ends at `0x004147f0` (`add esp,0x28`) |
+| guard before it [m] | `0x004147bc` eff `> 0`; `0x004147c4` `test [ebx+0x260],0x4000; jne 0x004147f3`, the same target the stub path reaches |
+| verification window [m] | `0x004147c4..0x004147f2`, 47 bytes, whole instructions (`phase0_sites_out.txt`) |
+| ABI [m] | `__cdecl`, 10 dwords, plain `ret`, caller pops `0x28`. No register input; the callee sets up its own SEH frame |
+| stack at stub entry [m] | `[esp+4]` 0 (kind, instance `+0x20`), `+8` k (`+0x24`), `+0xc` **eff** (Effects row id, an integer), `+0x10` **obj** (`+0x10`), `+0x14/+0x18/+0x1c` 0 (`+0x14/+0x18/+0x1c`), `+0x20` **&pos** (copied to `+0x30..+0x3c`), `+0x24` 0 (lifetime offset to `0x00414c10`/`0x00414c60`), `+0x28` 0 (no orientation; `0x004f0270` default into `+0x40..+0x6c`) |
+| stack alignment [m] | ESP is `16n + 8` at the call, so `16n + 4` at stub entry: not 16-aligned (`-mincoming-stack-boundary=2` applies) |
+| return [m] | instance pointer in EAX, **unused**: `0x004147f3` reloads EAX. Any EAX works; 0 is the natural answer |
+| dead after return [m] | EAX (`0x004147f3`), ECX and EDX (every path writes them before reading: `0x0041480b`, `0x00414820`, `0x00414757`, `0x00414798`, `0x0041484f`, `0x00414870`), EFLAGS (`add esp` at `0x004147f0`, then `test` at `0x004147f7`) |
+| live across [m] | EBX (child node: `0x004147ff`, `0x00414884`), EBP (frame), ESP. ESI and EDI are callee-saved by the convention; their caller values are dead (`0x0041487c`, `0x00414749`) but a stub must preserve them anyway |
+| per frame [m] | once per spawn site, i.e. per JET child with `C & 0xffe == 0` and no `0x4000`; no second path to this site. Data: stock 325 sites on 191 TShips rows (max 8 per ship), Mayhem 1,508 on 498 rows (max 28) [m, per row, not per frame] |
+| atomic write [m] | all five bytes lie in the aligned qword `0x004147e8..0x004147ef` (page `0x00414000`): one `lock cmpxchg8b` (`engine_patch::claim_call`, `write=atomic`) |
+| other references [m] | no direct branch (70,000 scanned) lands on `0x004147ec..0x004147ef`; no image dword equals an address in the window; 10 E8 callers of `0x004148a0` in all, the other nine (`0x004135ab`, `0x00413a24`, `0x00413a66`, `0x00413c2f`, `0x0041409b`, `0x004143de`, `0x004146c0`, `0x00414af8`, `0x00414b27`) are untouched by a call-site redirect |
+
+`0x004148a0` [m, `0x004148a0..0x00414a62`]: it walks `*0x0057b0f8` for an instance with `+0x10 == obj`,
+`+0x20 == kind` and `+0x24 == k` (eff is **not** part of the key). When it finds one, it copies pos to `+0x30`,
+re-arms the instance (`0x00414c60`, which resets elements unless `EEDF_NOREINIT`) and updates it. Otherwise it
+allocates `0xc0` bytes, sets `+0x8 = 0x00580068 + eff·0x14`, builds the element array (`0x00414ba0`, only when the
+row's count is non-zero), appends to the list (sentinel `0x0057b0fc`, tail `0x0057b100`) and runs the first update
+`0x00414c10` → `0x00414cf0`, which creates the sprite and lens-flare nodes. It reads no global state the caller
+needs and writes nothing into `obj` on this path: `+0x14`/`+0x18` are 0, so the `EEDF_WRECK` write
+`obj+0x40 |= 0x400` is not taken [i: decompiler].
+
+**Skipped call = `C & 0x4000` [m].** Both paths continue at `0x004147f3` with the same EBX, EBP and frame. The
+stub path also executes the ten pushes, which write dead stack below ESP, and leaves EAX/ECX/EDX holding values
+that are dead. Skipped in both cases: the list search, the `0xc0` and element allocations, the
+`0x006085f4`/`0x006085f8` memory counters, the list append, the position refresh and the first instance update
+with its node creation. The engine already runs this state every frame for every `0x7001` glow part.
+
+### Site B: `0x0041482c`, trail generator
+
+| item | value |
+| --- | --- |
+| bytes [m] | `E8 3F E5 FF FF` → `0x00412d70`; next instruction `0x00414831 jmp 0x0041487c` |
+| guard before it [m] | `0x004147f3` trail `> 0`; `0x004147ff` `test [ebx+0x260],0x2000; jne 0x0041487c`; `0x0041480b..0x0041481b` `*(0x00606f34)+0xfc & 0x40000000`, else `je 0x0041487c` (the stub's continuation, too) |
+| verification window [m] | `0x004147ff..0x00414830`, 50 bytes, whole instructions |
+| ABI [m] | **`__stdcall`, 4 dwords, `ret 0x10`** (`0x00412e5e`, `0x00412f77`); the caller does not pop. A stub must `ret 0x10` |
+| stack at stub entry [m] | `[esp+4]` k (link `+0xc`), `+8` **trail** (Particles3 id → generator `+0xc`, type `*(0x00608518)+0x6328 + id·0x10`), `+0xc` **obj** (link `+0x10`), `+0x10` **&pos** (generator `+0x10..+0x1c`) |
+| stack alignment [m] | ESP is `16n` at the call, `16n + 12` at stub entry |
+| return [m] | link pointer, unused (`0x0041487c` path: EAX next written at `0x00414720` or `0x00414891`) |
+| dead after return [m] | EAX, ECX, EDX (written before read on every path from `0x0041487c`), EFLAGS (`add` at `0x0041487f`) |
+| live across [m] | EBX (child node), EBP, ESP; ESI is reloaded at `0x0041487c`; ESI/EDI callee-saved by convention |
+| per frame [m] | once per spawn site with no `0x2000` while the bit is set: stock 199 sites on 150 rows, Mayhem 875 on 371 rows [m, per row] |
+| atomic write [m] | **no**: the rel32 `0x0041482d..0x00414830` straddles the qword boundary at `0x00414830` (qword `0x00414828..0x0041482f` holds four of the five bytes). `claim_call` takes the plain copy (`atomic_write=false`); the install window (claims only on the backend-load path, before the first Present) is what makes it safe. That `0x00414590` cannot run before the first Present is [i] |
+| other references [m] | no branch target inside, no image dword pointing in; E8 callers of `0x00412d70`: `0x004146fa` (class 0), `0x0041482c`, `0x004151c3` (effect elements with `EEDF_PARTICLEGENERATOR`, link k > 300) |
+
+`0x00412d70` [m listing, i decompiler]: it walks the link list `*0x00607cf4` (header `{first, sentinel, last}`,
+allocated by `0x00412d00`) for `+0x10 == obj` and `+0xc == k`. When it finds one, it refreshes the generator's pos
+(`gen+0x10..+0x1c`) and returns. Otherwise it allocates a link (`0x14`) and a generator (`0xb0`) and sets
+`gen+0x50 = speed/vmax` (`0x00450b30`, `0x00412450`), `gen+0x60..+0x6c` = the root's `+0x30..+0x3c` and the spawn
+time `+0x80`. It inserts the generator into `*(0x00608518)+0x6318` (sentinel `+0x631c`, tail `+0x6320`), registers
+a handle (`0x004efcc0`, registry `+0x6324`) and allocates the per-emitter state `+0xa4`. A skipped call is the same
+state as `C & 0x2000` or a clear engine bit: no link, no generator, nothing in the particle pool [m: same
+continuation `0x0041487c`].
+
+### Stub contract (both sites)
+
+At entry `[esp+0x10]` (A) or `[esp+0xc]` (B) is obj, non-null and already dereferenced by the caller (`obj+0x70`
+at `0x004145ac`, `obj+0x48` at `0x0041460c`). Skip only when `*(int16_t*)(obj+0x48) == 7`. Every other class (10
+in practice) must jump to the original callee with the stack and registers untouched (`jmp 0x004148a0` /
+`jmp 0x00412d70`). The skip path is `xor eax,eax; ret` (A) or `xor eax,eax; ret 0x10` (B). It changes only EAX and
+EFLAGS, both dead; it makes no Win32 call (LastError untouched), uses no x87/SSE (the caller has none live) and
+leaves DF alone (the callee relies on `rep movs`). ECX and EDX are free on both paths: neither callee takes a
+register input and both are dead at the caller. A phase-4 recorder that calls C code therefore needs to preserve
+only EBX, ESI, EDI and EBP (the C ABI does) plus LastError and the FPU state by the project rule.
+
+**Reentrancy and thread [m for the call graph, i for the threading]:** main loop `0x00403840` → `0x00403b17` →
+`0x0043a360` (per sector object of class 1) → `0x0043a3bf` → `0x004596e0` → `0x0045ac7d` → `0x00414590`. Neither
+callee reaches `0x00414590` again: `0x004148a0` → `0x00414c10`/`0x00414c60` → `0x00414cf0` → `0x004151c3` →
+`0x00412d70` is a different call site. A stub is not re-entered through its own site.
+
+**Arm once, at install.** Instances live until their object is removed (`0x00416e10`) or until `0x00414cf0` returns
+0 with every element finished; engine rows have no `EEDF_TIMEOUT` element. A trail generator keeps emitting from its
+last position until its object is removed. Switching a stub on in mid-flight therefore leaves the existing
+sprites and trails alive, frozen at their last refresh [i: decompiler of `0x00416750`, `0x00414cf0`]. The
+redirects should be decided before the first sector loads, which the install window already enforces.
+
+### `&pos` (question 3)
+
+`&pos` points to the caller's 16-byte local `[esp+0x20]` of `0x00414590`, which is dead after the call [m]. It
+holds `pos = node+0x30..+0x38` (the jet's base translation, signed integer scene units, the part key position
+relative to the root; camera-state-and-frame-routine.md calls the same triple the "base" translation) times the
+root's per-axis scale `+0x80/+0x84/+0x88` (16.16, rounded: `0x004124c0`, ESI = scale, EDI = vector, ECX = out).
+When the child has `+0x12c & 0x40`, it is first multiplied by the root's scalar `+0x70` (`0x0040e780`) [m].
+`pos.w` (`[esp+0x2c]`) is **uninitialised** stack: `0x004124c0` writes three dwords and the caller copies four [m].
+The position is in the ship model frame, unrotated and untranslated, not world. A phase-4 recorder must copy x, y, z
+and transform them with the root's matrix itself.
+
+Reading `obj` from the stub is safe for ships [m unless marked]. `obj+0x10` (current speed, integer) is read by
+`0x004596e0` on the same object in the same pass (`0x0045ad8b`). `obj+0x4a` (subtype) has just been used to index
+TShips (`0x0041464c..0x00414661` reads `+0x54` and `+0xc4` of the same `0xdb8` record), so
+`*(0x00606fd4) + (int16_t)obj+0x4a · 0xdb8 + 0x44` (max speed) is a valid read. `obj+0x50` is the extension with the
+engine bonus `+0x274` (`0x00416cc0`). The validation a stub needs is `obj+0x48 == 7` and
+`0 ≤ obj+0x4a < *0x00607054` (TShips count) [i: bound not tested by the engine here].
+
+### Readers of the two lists (question 4) [m listing; i where marked]
+
+Every code reference to `0x0057b0f8` (5), `0x0057b0fc`/`0x0057b100` (4, all in `0x004148a0`) and `0x00607cf4` (10),
+and every `+0x631c/+0x6320` access, from a full-listing grep:
+
+| address (function) | role | instance absent |
+| --- | --- | --- |
+| `0x004148bb` (`0x004148a0`) | find-or-create | creates; site A skipped means none exists |
+| `0x00416a6c` (`0x00416750`, per frame from `0x00403f2a`) | update every instance (`0x00414cf0`); remove it when obj is 0 or every element has finished | walks only existing instances |
+| `0x00416c07` (`0x00416750`) | duplicate check before killing a **class 0x1b** object whose last instance ended (`obj+0x40 \|= 0x8000000`, `0x0044aab0`) | ships are class 7, never reached |
+| `0x00416e14`, `0x00416ee4` (`0x00416e10`, from `0x0044abb8` in `0x0044aab0`, the object removal with 18 callers) | unlink and free every instance and link whose obj is the removed object; clears instance `+0x14` back-references | no match, nothing done |
+| `0x00416fe4` (`0x00416fe0`, from `0x00412c83`, `0x00404566`) | free all instances | — |
+| `0x00412cd0..0x00412ce8` (`0x00412c80`), `0x00412d43/0x00412d56` (`0x00412d00`, from `0x0043f432`, `0x0040389c`, `0x004039b3`) | reset: free the instances, the Effects element arrays and the link header; allocate a new header and reload `types/Effects` (`0x004126d0`) | — |
+| `0x00412d71` (`0x00412d70`) | find-or-create trail link | as site A |
+| `0x00412f80` (from `0x00417165`; `0x0041715a` in `0x00417100` tests the header first) | free every link and generator | — |
+| `0x00416459` (`0x00414cf0`) | when an `EEDF_PARTICLEGENERATOR` element times out: remove the links of the same obj with **k > 300** (the effect-spawned ones from `0x004151c3`) | no match; engine links have small k |
+| `0x00416c87` (`0x00416750`) | per frame while the engine bit is set: for every link, `gen+0x50 = speed/vmax`, `gen+0xa0` = root `+0x1c`, emit (`0x0046c170`); dereferences `link+8` without a test | walks only existing links |
+| `0x00474949` (`0x00473e10`, per view from `0x00472585`) | walk the generator list, look the handle up in the view's table | only existing generators |
+| `0x00412ec7` / `0x004780fa` | generator inserts (`0x00412d70` / `0x00476140`, the other particle sources) | — |
+
+Neither call site stores the returned pointer, and no ship field receives an instance or link pointer: both
+return values are discarded [m]. Docking, SETA and destruction have no instance-specific code. Destruction goes
+through `0x00416e10`, which tolerates zero matches [m]. Docking was not traced; it only stops the refresh [u].
+**No reader assumes that a ship with emitter parts has an instance or a link** [m for the references listed;
+indirect access through a copied list pointer was not found and is not excluded, i].
+
+### RCS body `v/00566` (question 5) [m]
+
+`types/Bodies` lists body `566` **twice**: as a numeric entry of `SBTYPE_JET` (one of 22 numeric ids) and as the
+single `SBTYPE_SMALLJET` entry, identically on stock (`addon/01.cat`) and Mayhem (`addon/12.cat`).
+`0x00434620` tests the JET list first: `0x00434708` sets `+0x130 |= 0x4000001` and falls through to the SMALLJET
+loop at `0x00434712`, whose match `0x00434730` adds `0x4000000` (already set) and **`+0x1d8 = 5`**. RCS nodes
+therefore carry the full JET flag: they are driven by `0x004596e0` (§2 rules for non-main jets), counted in
+`0x00414590`'s k (never a spawn site, since their `C` has steering bits), start at z 0.005 and get no collision
+tree. The design's recogniser `flags130 & 0x4000001 == 0x4000001` matches them. `SBTYPE_SMALLJET` alone (a
+body only on that list) would give `0x4000000` without bit 0; no such body exists in either view.
+
+`+0x1d8 = 5` in the small-object cull `0x0047d2a2..0x0047d2c3`: limit = `max(node+0x1d8, parent+0x1d8)`; when
+`limit > 0` and the measure `r·W/D` (ESI, [lod-selection.md](lod-selection.md)) is below it, `+0x12c &= ~2` and the
+node is not rendered this pass. An RCS jet therefore disappears below measure 5. Other jets have `+0x1d8 = 0` and
+fall only under the root's own threshold and the generic `+0x1dc`/`< 0x14` rules above `0x0047d2a2`.
+
+### `eff` and the allowlist (question 6)
+
+`eff` is the raw TShips col 11 integer on the stack (`[esp+0xc]` at entry), not a pointer [m]. `0x004148a0` turns
+it into `0x00580068 + eff·0x14` only when it creates an instance (`0x0041493f..0x0041494c`) and does not
+bound-check it. The table has 1,000 rows (`0x00580068..0x00584e88`, cleared at `0x00412700`). The row index is the
+first field of the `types/Effects` row header, range-checked `0 ≤ id < 1000` by the loader (`0x00412829..0x00412837`).
+Entry layout: `+0` element count, `+4` row flags, `+8` int, `+0xc` float, `+0x10` elements (stride `0x70`, EEDF
+flags at `+0x3c`: `0x00414c86` NOREINIT, `0x00416b2c` TIMEOUT, `0x00416466` PARTICLEGENERATOR) [m]. EEDF bits
+(`0x005530b8`): `LENSFLARE 4`, `LIGHT 0x80`, `PARTICLEGENERATOR 0x10000` [m].
+
+Rows reached through site A (spawn sites = JET children with `C & 0xffe == 0`, no `0x4000`, col 11 > 0) [m,
+`phase0_data_out.txt`]:
+
+| view | rows reached; ships with / without glow parts | |
+| --- | --- | --- |
+| stock | **5**: 153 / **10** (`SPEEDDEPENDENT\|LIGHT` body 118 only: a dynamic light, no sprite, no flare); 12: 1 / 0 (sprite 11 + light 119); 210–236: 27 / 0 (AP rows absent from the stock table 0–199, so empty instances [i]) | rows 3, 9, 10, 11, 13, 14 (71 TShips rows) are **never reached**: their scenes have no emitter dummies, so the engine look is in the hull materials. 41 stock scenes are not readable text (34 with col 11 = 5, 3 with 3, 4 with 0) |
+| Mayhem | 700–729, every ship with glow parts; none without | allowlist **empty**; 9 scenes unread (col 11 712 ×7, 390, 5) |
+
+So the allowlist in the design (stock rows 3, 9–14) never applies. The only stock ships whose whole engine
+look is a col-11 effect are the 10 rows with row 5. That effect is an engine **light** on the hull, which a plume
+does not double. If it is kept, the rule is "let a row through when none of its elements has a body sprite or
+`LENSFLARE`", evaluated once from the engine's own table. On stock that is row 5, on Mayhem none [i: recommendation].
+
+### Engine-flag bit (question 2) [m]
+
+`*(0x00606f34)+0xfc` is the **`VideoD3DFlags`** registry word (compositor-and-glow.md §1). Whole-word writers:
+the built-in default `0x4213ad5f` at `0x004b6d16` (bit 30 set), the registry load
+`HKCU\Software\EGOSOFT\X3AP\VideoD3DFlags` at `0x004b725c` (in `0x004b6f60`), and the `P_` script module's command 8
+at `0x00497c4d` (jump table `0x00498054`; command 7 at `0x00497c1d` reads the word; the names
+`P_GetSysD3DFlags`/`P_SetSysD3DFlags` are inferred from commands 9/10). The read-modify-write sites (`0x00497ceb`,
+`0x004ccf1f`, `0x004cd0c6`, `0x004d8aea`, `0x004d92e4`, `0x004d940a`, `0x004ecf62`, `0x004ecf86`) touch other bits.
+No instruction in `.text` sets or clears `0x40000000` on this word with an immediate, and the Graphic Settings
+dialog has no item for it. The bit therefore comes from the default and the registry only. The bottle X3 value is
+`0x523bad5e` (`user.reg`), bit set: trails are on. Class-0 trails also need `VideoD3DFlags2 & 2` (`0x004146e5`).
+
 ## Unknown
 
 - The c4–c6 index order of the glow draw (which register holds which world column) and therefore the exact
   expression for the z-axis length; one capture of a glow draw at two speeds settles it.
-- The gate `*(*0x0060850c)`, the engine-flag bit `0x40000000` at `*(0x00606f34)+0xfc` (which UI or script sets it),
-  and which ships get a flight variation (`TShips+0xa8`).
+- The gate `*(*0x0060850c)` and which ships get a flight variation (`TShips+0xa8`). The engine-flag bit is
+  `VideoD3DFlags` bit 30, set by default and by the registry (§7).
+- Whether `0x00414590` can run before the first Present (the B site's non-atomic write relies on it), the
+  docking path, and indirect access to the two lists through a copied pointer (§7).
 - The function that turns the particle pool into the renderer's batches, the particle blend per material flag, and
   whether the 256² particle texture of the historical capture (particle-motion-inputs.md) is a trail material.
 - How the legacy-material emitter sprite (`objects/v/00011`) is drawn, and the lens-flare path of `EEDF_LENSFLARE`
@@ -258,11 +472,19 @@ boundary-safe; preserving LastError and x87 state is the stub's duty as at `0x00
 ```sh
 python3 verification/results/engine-effects/engine_effects_data.py \
   > verification/results/engine-effects/engine_effects_data_out.txt        # about 1 s, bottle X3, read-only
+python3 verification/results/engine-effects/phase0_sites.py <X3AP.exe> <local objdump listing> \
+  > verification/results/engine-effects/phase0_sites_out.txt               # 0.2 s, §7
+python3 verification/results/engine-effects/phase0_data.py \
+  > verification/results/engine-effects/phase0_data_out.txt                # 3 s, §7
 # Ghidra (raw output stays local): -import X3AP.exe into a scratch project, then
 #   -postScript X3DecompileFunctions.java <out> 004596e0 00414590 00434620 0043d1d0 0048eb40 00488270 \
 #     00412d70 00416750 0046c170 0046ba20 004bf4c0 0043a690 00450b30 0043ffa0
 #   -postScript verification/results/engine-effects/X3DecContaining.java <out> 4c2e5e 451cd5 43c4c1 45f890 413394
+#   §7: X3DecContaining <out> 412cd0 412d43 416459 416e14 416ee4 416fe4 41715a 474949 4149e2 412f80 44abb8 414cf0
 # objdump windows (verification/results/engine-effects/listing_range.py <listing> <start> <end>):
 #   0x0045aca3..0x0045b0b0, 0x00434680..0x00434750, 0x0042fb20..0x0042fbc0, 0x004373e9..0x00437730,
 #   0x00491efb..0x004920c0, 0x004be253..0x004be3e8, 0x004c2e46..0x004c2f60, 0x004c3ff0..0x004c4070
+#   §7: 0x00414590..0x0041489b, 0x004148a0..0x00414a63, 0x00414c10..0x00414ce7, 0x00412d70..0x00412dc0,
+#   0x004124c0..0x00412541, 0x0040e780..0x0040e7ff, 0x004346a0..0x00434760, 0x0047d200..0x0047d2e0,
+#   0x00437b03..0x00437b90, 0x004127c0..0x004128d8, 0x004b71f0..0x004b7270, 0x004d8a60..0x004d8b00
 ```

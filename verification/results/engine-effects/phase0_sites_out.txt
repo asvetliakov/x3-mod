@@ -1,0 +1,13 @@
+X3AP.exe sha256 fdbf3418d8f0a897 base 0x00400000
+E8 callers of 0x00414590: ['0x45ac7d']
+A effect instance 0x004148a0: site 0x004147eb bytes e8 b0 00 00 00 -> 0x004148a0 ok=True
+  rel32 at 0x004147ec..0x004147ef; aligned qword 0x004147e8..0x004147ef holds all five bytes: True; page 0x00414000 (window crosses page: False)
+  verification window 0x004147c4..0x004147f2 (47 bytes): f783600200000040000075238b55086a006a008d4c2428516a006a006a0052508b442430506a00e8b000000083c428
+  all E8 callers of 0x004148a0 (10): 0x4135ab 0x413a24 0x413a66 0x413c2f 0x41409b 0x4143de 0x4146c0 0x4147eb 0x414af8 0x414b27
+  image dwords equal to an address in [0x4147eb, 0x4147ef]: none
+B trail generator 0x00412d70: site 0x0041482c bytes e8 3f e5 ff ff -> 0x00412d70 ok=True
+  rel32 at 0x0041482d..0x00414830; aligned qword 0x00414828..0x0041482f holds all five bytes: False; page 0x00414000 (window crosses page: False)
+  verification window 0x004147ff..0x00414830 (50 bytes): f783600200000020000075718b0d346f6000f781fc00000000000040745f8b4d088d542420528b542414515052e83fe5ffff
+  all E8 callers of 0x00412d70 (3): 0x4146fa 0x41482c 0x4151c3
+  image dwords equal to an address in [0x41482c, 0x414830]: none
+direct branches scanned: 70000; targets strictly inside a window: {'A effect instance 0x004148a0': [], 'B trail generator 0x00412d70': []}
