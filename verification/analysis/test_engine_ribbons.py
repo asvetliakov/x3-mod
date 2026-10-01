@@ -206,6 +206,19 @@ int main() {
         expect(pool.live == 256 && st.created == 256 && st.overflow == 44 && pool.overflows == 44, "cap 256, overflow counted");
         update(pool, rs.data(), unsigned(rs.size()), 1.0 + dt, false, 0, nullptr, 1.f, &st);
         expect(st.matched == 256 && st.overflow == 44 && st.created == 0, "the map finds every ribbon again");
+        // At the cap a new identity takes the slot of the oldest fading ribbon before it is refused.
+        update(pool, rs.data(), 228, 1.0 + 2 * dt, false, 0, nullptr, 1.f, &st); // 228..255 fade from 1.0 + dt
+        std::vector<ee::Record> c2(rs.begin(), rs.begin() + 200);              // 200..227 fade from 1.0 + 2 dt
+        for (unsigned i = 0; i < 30; ++i) c2.push_back(rec(float(i) * 100.f, 500.f, 40000.f, 1000.f, 1.f, 5000 + i));
+        update(pool, c2.data(), unsigned(c2.size()), 1.0 + 3 * dt, false, 0, nullptr, 1.f, &st);
+        const auto present = [&](unsigned lo, unsigned hi) { unsigned n = 0; for (unsigned i = lo; i < hi; ++i) n += detail::find(pool, record_key(rs[i])) >= 0; return n; };
+        expect(st.created == 30 && st.evicted == 30 && st.overflow == 0 && pool.live == 256 && present(228, 256) == 0 && present(200, 228) == 26,
+               "full pool: 30 new nozzles evict the 30 oldest fading ribbons (all 28 of the older group first)");
+        for (unsigned i = 0; i < 40; ++i) c2.push_back(rec(float(i) * 100.f, 900.f, 40000.f, 1000.f, 1.f, 6000 + i));
+        update(pool, c2.data(), unsigned(c2.size()), 1.0 + 4 * dt, false, 0, nullptr, 1.f, &st);
+        expect(st.created == 26 && st.evicted == 26 && st.overflow == 14 && pool.live == 256 && present(200, 228) == 0, "no fading ribbon left: the rest overflow");
+        update(pool, c2.data(), unsigned(c2.size()), 1.0 + 5 * dt, false, 0, nullptr, 1.f, &st);
+        expect(st.matched == 256 && st.created == 0 && st.overflow == 14 && st.evicted == 0, "after the early evictions the map still finds every live ribbon");
         pool.clear();
         ee::Record a = rec(0, 0, 40000.f, 1000.f, 1.f, 5, 77), b = rec(10, 0, 40000.f, 1000.f, 1.f, 6, 77), c = rec(20, 0, 40000.f, 1000.f, 1.f, 5, 0);
         ee::Record steer = c; steer.flags |= ee::flag_steering; steer.node_handle = 9;

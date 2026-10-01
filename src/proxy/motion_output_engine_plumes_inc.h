@@ -137,15 +137,30 @@ const engine_effects::core::Body* engine_plumes_body(int index) {
     return engine_effects::body(index);
 }
 }
+// The performance-counter frequency, read once per device (qpc_frequency_, shared with the other timers; fixed at
+// boot): the plume stage's timing and the ribbons' clock take it without a call per frame.
+std::uint64_t MotionOutput::engine_qpc_frequency() noexcept {
+    if (!qpc_frequency_) {
+        LARGE_INTEGER f{};
+        if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart);
+    }
+    return qpc_frequency_;
+}
 HRESULT MotionOutput::run_engine_plumes() noexcept {
     plumes_ran_ = true;
     if (!plumes_ || !plumes_armed_ || !plumes_lane_ || !engine_ring_ || (!engine_ring_->count && !engine_ribbons_live()))
         return S_FALSE; // phase 3: a frame without records still runs while ribbons fade
-    // The scene view: the most frequent camera handle among the scene-phase records; no scene-phase record, nothing
-    // to draw (no device call) unless ribbons are fading (they then take no record: every one fails the filter).
+    // The scene view: the camera handle the own ship's jets were recorded under, else the most frequent camera handle
+    // among the scene-phase records; no scene-phase record, nothing to draw (no device call) unless ribbons are fading
+    // (they then take no record: every one fails the filter).
     std::uint32_t scene_camera = 0;
-    if (!engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->count, &scene_camera) &&
-        !engine_ribbons_live()) {
+    const bool viewed = engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->own,
+                                                         engine_ring_->count, &scene_camera, &plumes_view_rule_);
+    if (plumes_view_rule_ == engine_plumes::ViewRule::own)
+        ++plumes_view_own_total_;
+    else if (plumes_view_rule_ == engine_plumes::ViewRule::majority)
+        ++plumes_view_majority_total_;
+    if (!viewed && !engine_ribbons_live()) {
         plumes_report_ = {};
         plumes_report_.stats.skipped_other_view = engine_ring_->count;
         return S_FALSE;
@@ -185,7 +200,7 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     // so it includes the GPU's completion of the draw.
     plumes_fenced_ = gpu_sync_ != nullptr;
     if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::EnginePlumes);
-    LARGE_INTEGER begin{}, end{}, frequency{};
+    LARGE_INTEGER begin{}, end{};
     QueryPerformanceCounter(&begin);
     renderer::EnginePlumesReport report{};
     HRESULT hr = plumes_->run(in, &report);
@@ -197,8 +212,8 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     }
     if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::EnginePlumes);
     QueryPerformanceCounter(&end);
-    QueryPerformanceFrequency(&frequency);
-    plumes_stage_us_ = frequency.QuadPart ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency.QuadPart)) : 0.f;
+    const std::uint64_t frequency = engine_qpc_frequency();
+    plumes_stage_us_ = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
     plumes_report_ = report;
     if (FAILED(hr) && hr != D3DERR_DEVICELOST && hr != D3DERR_DEVICENOTRESET) {
         // A failed stage frame: this frame's plumes are lost (the glow stays suppressed) and the stage disarms for 64
@@ -224,10 +239,11 @@ void MotionOutput::log_engine_stage() noexcept {
     const engine_ribbons::Pool* pool = ribbons_ ? &ribbons_->pool() : nullptr;
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
             s.nozzles, s.vertices, s.discs, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
-            s.culled_idle, s.skipped_other_view, plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
+            s.culled_idle, s.skipped_other_view, engine_plumes::view_rule_name(plumes_view_rule_),
+            total(plumes_view_own_total_), total(plumes_view_majority_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
             double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,
             rb.samples, ru.live, ru.fading, ru.created, ru.appended, ru.overflow, ru.skipped_other_view, ru.evicted, unsigned(ru.cut_clear),
             unsigned(ru.load_clear), ribbons_report_.operation, unsigned(ribbons_report_.failed), ribbons_report_.calls,

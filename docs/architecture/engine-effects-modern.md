@@ -176,6 +176,10 @@ planned.
   distance-sampled (0.5 · value per sample), so SETA stretches nothing: samples just advance faster; the length cap
   `T(value) · v · s` is evaluated from the positions themselves (speed = displacement per frame from the records),
   and a strip whose first segment exceeds 8 · value in one frame (a jump, a cut, a load) is cleared.
+  Under sustained SETA the ribbon's length in world units grows with `v_est` (measured over wall-clock time, so the
+  game's faster motion reads as a higher speed); the sampling does not change (still one sample per spacing moved).
+  In pause the ribbon shrinks to the head within a second (`v_est` falls as the newest sample ages with no motion) and
+  returns one frame after resume.
 - **Cuts, docking, death, eviction:** a record is a per-frame fact; a plume is drawn only for a record this frame.
   The ring buffer is keyed by node serial in an open-addressed map (512 entries, O(visible nozzles)); an entry not
   seen this frame fades its ribbon over 0.3 s at its last positions, then is evicted; the resolve's cut verdict
@@ -253,8 +257,9 @@ axis are taken to be in the camera latch's world (`camera_scene_` rows) [i: sett
 Review fixes (2026-10-01, ledger "Phase 2 review fixes"): the nearest axis point's depth is the nozzle's view z plus
 the axis's view z x clamp(u, 0, L) (the billboard's side vector has a view z component off-centre; its omission let
 the core show through a hull near the screen edge); records carry the scope's camera handle and whether they were
-recorded in the scene phase, and only the scene view's are drawn (the frame's most frequent camera handle among the
-scene-phase records; the rest count `skipped_other_view`) [i: whether a target-monitor view issues glow jets at all is
+recorded in the scene phase, and only the scene view's are drawn (the camera handle the own ship's jets were recorded
+under in the scene phase, else the frame's most frequent camera handle among the scene-phase records, `engine_stage
+view_rule=own|majority`; the rest count `skipped_other_view`) [i: whether a target-monitor view issues glow jets at all is
 settled by flight B's F8 with a target selected]; the lane's size and format are checked at arming (reason `lane`);
 three consecutive failed stage frames refuse until Reset (`failed_until_reset`, the third `engine_plumes_failed` row
 final=1); the pass's own reset-pending flag fails the stage with `E_FAIL` (only the stage is skipped, the resolve goes
@@ -287,8 +292,9 @@ phase-3 brief's numbers are built where they differ from section 3 above:
   records passing the plumes' scene-view filter take a ribbon (`ribbon_skipped_other_view`).
   Presets scale the radiance and `T` (0.6 / 1 / 1.5).
 - *Lifetime.* Fade 1 -> 0 over 0.3 s at the last positions, then eviction (evictions run first in every update, so a
-  stage gap of 0.3 s empties the pool); clears on the resolve's cut (`FrameInputs::cut`, delivered by `note_cut` on
-  every resolve), on Reset (`before_reset`), on a change of the object_lifetime load epoch read with the jet's serial,
+  stage gap of 0.3 s empties the pool); clears on the resolve's cut (`FrameInputs::cut = counters_.cut ||
+  decision.cut || chase_snap`, the TAA cut verdict; `note_cut` fires only on a resolve with that verdict set, drawn
+  or not), on Reset (`before_reset`), on a change of the object_lifetime load epoch read with the jet's serial,
   and per ribbon on a jump of more than 8 value in one update (section 5's guard).
 - *Fog (section 4).* Not the 13 -> 22.5 km fade alone: the mean transmittance of the look's column,
   `T_rgb(d) = exp(-k_rgb x sigma_eff x rho_mean x D(d))`, `D` the integral of the column weight (1 to 65,000 units,

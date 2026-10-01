@@ -1719,6 +1719,7 @@ private:
     unsigned engine_rows_ = 0, engine_rows_more_ = 0, engine_row_frames_ = 0;
     static constexpr unsigned engine_row_cap = 64, engine_row_frame_cap = 8;
     bool engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    bool engine_record_own(std::uintptr_t node, std::uint32_t handle, bool parent_known, std::uint32_t parent) noexcept;
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one
@@ -1737,6 +1738,11 @@ private:
     UINT plumes_width_ = 0, plumes_height_ = 0;
     std::uint64_t plumes_disarmed_until_ = 0;
     float plumes_stage_us_ = 0.f;
+    // The rule that chose this frame's scene view (engine_plumes::ViewRule: none, own ship, majority) and the session
+    // count of each, for the engine_stage row.
+    engine_plumes::ViewRule plumes_view_rule_ = engine_plumes::ViewRule::none;
+    std::uint64_t plumes_view_own_total_ = 0, plumes_view_majority_total_ = 0;
+    std::uint64_t engine_qpc_frequency() noexcept; // qpc_frequency_, read once
     static constexpr std::uint64_t plumes_disarm_frames = 64;
     unsigned plumes_failures_ = 0;      // consecutive failed stage frames (a drawn frame clears it)
     bool plumes_failed_out_ = false;    // plumes_failure_limit reached: refused until Reset

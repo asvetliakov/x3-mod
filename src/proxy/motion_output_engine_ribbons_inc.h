@@ -4,8 +4,9 @@
 // recorded main-jet nozzle, from the pass's ring buffers, after the plumes inside the same resolve bracket; and the fog
 // law both draws take.
 //
-// Lifetime signals: the resolve's camera cut (FrameInputs::cut, the counters' cut, the cut detector's verdict and the
-// chase snap) reaches the pass through note_cut on every resolve, drawn or not, and clears the pool at its next update;
+// Lifetime signals: the resolve's camera cut (FrameInputs::cut = counters_.cut || decision.cut || chase_snap, the TAA
+// cut verdict) reaches the pass through note_cut only on a resolve with that verdict set, drawn or not, and clears the
+// pool at its next update;
 // Reset clears it in before_reset; the object_lifetime load epoch the recogniser read with the jet's node serial
 // (engine_load_epoch_) clears it when it changes; and a stage gap of 0.3 s evicts every ribbon by itself.
 
@@ -45,12 +46,12 @@ bool MotionOutput::attach_engine_ribbons() noexcept {
 HRESULT MotionOutput::run_engine_ribbons(const renderer::EnginePlumesFrame& in) noexcept {
     ribbons_report_ = {};
     if (!ribbons_ || !ribbons_->caps().enabled) return S_FALSE;
-    LARGE_INTEGER now{}, frequency{};
+    LARGE_INTEGER now{};
     QueryPerformanceCounter(&now);
-    QueryPerformanceFrequency(&frequency);
+    const std::uint64_t frequency = engine_qpc_frequency();
     renderer::EngineRibbonsFrame f{};
     f.base = &in;
-    f.seconds = frequency.QuadPart ? double(now.QuadPart) / double(frequency.QuadPart) : 0.;
+    f.seconds = frequency ? double(now.QuadPart) / double(frequency) : 0.;
     f.cut = false; // note_cut at the resolve
     f.load_epoch = engine_load_epoch_;
     return ribbons_->run(f, &ribbons_report_);

@@ -50,6 +50,7 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
     plumes_report_ = {};
     ribbons_report_ = {}; // phase 3: the ribbons' share of the engine_stage row
     plumes_stage_us_ = 0.f;
+    plumes_view_rule_ = engine_plumes::ViewRule::none;
 }
 void MotionOutput::engine_effects_frame_end() noexcept {
     // Plumes requested on a frame with records whose resolve never asked for the stage: a device that cannot arm by
@@ -83,6 +84,24 @@ void MotionOutput::engine_effects_frame_end() noexcept {
         static_cast<unsigned long>(c.match[4]), engine_order_ == ee::Order::b ? "b" : "a", stats.bodies, stats.mapped,
         engine_rows_, engine_rows_more_);
     if (plumes_requested_) log_engine_stage(); // the plume stage's row at the same cadence
+}
+// The own-ship tag of a suppressed record: the jet node is the own ship's root (node and handle) or hangs directly
+// under it (parent +0x18 = the root: every engine part's parent, docs/reverse-engineering/engine-effects.md section 4).
+// The own ship is resolved once per frame (resolve_own_ship: the cockpit registry walk, LastError preserved); one
+// bounded read of node+0x18 per record while an own ship exists (none in the fixture, whose node block is already read).
+bool MotionOutput::engine_record_own(std::uintptr_t node, std::uint32_t handle, bool parent_known,
+                                     std::uint32_t parent) noexcept {
+    if (!node) return false;
+    resolve_own_ship();
+    if (!own_ship_node_) return false;
+    if (node == own_ship_node_) return handle == own_ship_handle_;
+    if (!parent_known) {
+        const DWORD error = GetLastError();
+        parent_known = engine_memory::read(node + 0x18, &parent, sizeof parent);
+        SetLastError(error);
+        if (!parent_known) return false;
+    }
+    return parent && std::uintptr_t(parent) == own_ship_node_;
 }
 bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept {
     namespace ee = engine_effects::core;
@@ -119,6 +138,8 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
     facts.redirects = engine_redirects_;
     facts.ring_full = engine_ring_->full();
     std::uint64_t serial = 0;
+    std::uint32_t scope_parent = 0; // node+0x18, read only for a suppressed record (the own-ship tag)
+    bool parent_known = false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_configured_) {
         // The seam's scope: the fixture's node block read through engine_memory exactly as object_trace reads a node
@@ -132,6 +153,8 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
             if (engine_memory::read(f.node, node, sizeof node)) {
                 scope.valid |= object_trace::Node;
                 scope.node_handle = node[0x28 / 4];
+                scope_parent = node[0x18 / 4];
+                parent_known = true;
                 scope.model = node[0x140 / 4];
                 scope.flags130 = node[0x130 / 4];
                 std::memcpy(scope.position, node + 0xb0 / 4, sizeof scope.position);
@@ -198,6 +221,7 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         // scene phase.
         engine_ring_->camera[slot] = (scope.valid & object_trace::Camera) ? scope.camera_handle : 0u;
         engine_ring_->scene[slot] = selector_.state() == renderer::BoundaryState::Scene ? 1u : 0u;
+        engine_ring_->own[slot] = engine_record_own(scope.node, scope.node_handle, parent_known, scope_parent) ? 1u : 0u;
         ++engine_counts_.suppressed;
         if (!entry) ++engine_counts_.unknown_body;
         if (record.flags & ee::flag_steering) ++engine_counts_.steering;

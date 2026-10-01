@@ -25,19 +25,15 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "cc6bace24fae330701259dda903262fac6e47954-dirty",
+    "commit": "78d6917ae6c71a9601e01a0c2f4e8f1157672bef-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/engine_effects_core.h",
       "src/proxy/engine_plumes_core.h",
-      "src/proxy/engine_ribbons_core.h",
-      "src/renderer/engine_plumes_pass.cpp",
-      "src/renderer/engine_plumes_pass.h",
-      "src/renderer/engine_ribbons_pass.cpp",
-      "src/renderer/engine_ribbons_pass.h"
+      "src/proxy/engine_ribbons_core.h"
     ],
     "sha256": {
-      "src/proxy/engine_ribbons_core.h": "9d7bca457526d6f62fb1b72d8ee7aacc413012394d956d6fb9b01b775be96041",
+      "src/proxy/engine_ribbons_core.h": "b60b32db71b149f29d0002b928d6b1a675ea3e8cb821bae05572931dd14ef737",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
       "src/renderer/engine_ribbons_pass.h": "21f948c1c898fdd3b8ea0fa8ce6401b3f417efe950fec962dea2131d4d2b0fa1",
       "src/renderer/engine_ribbons_pass.cpp": "ebbad70398bb1ebca1454b7387e8a1237271765df9d1e6ac649d804d9896dca9",
@@ -45,8 +41,8 @@
       "src/effects/engine_ribbon_ps.hlsl": "13b45c39a518de0b64485713138726243ad41899b8f406075b6cadf83e296ea8",
       "src/renderer/engine_ribbon_vertex_program_inc.h": "5651c07896aeb97820ef1dd204ce3218ec06d7ecd3cbe3594ef65c3e75530091",
       "src/renderer/engine_ribbon_pixel_program_inc.h": "9e04c634362f8416d3a06428dfdb7e2c009116554810a28214c8a54aa7689029",
-      "src/proxy/engine_plumes_core.h": "5c228fd114d4f14c523aafa74008df716aae7022570cf7e249588b5d3943ee70",
-      "src/proxy/engine_effects_core.h": "5a49da307cfb96ac350a82d6689769d06755a605cf7c80ec92569cd9bde6cdf2",
+      "src/proxy/engine_plumes_core.h": "6d258bad0d3da20f398c45fec438cbd0d066597a6d02a8cd2712dcf46fa7510e",
+      "src/proxy/engine_effects_core.h": "1293b14520f81a75a99f2198de65da25a0ef35990bdcf04884358400ab798702",
       "src/renderer/engine_plumes_pass.h": "a3291e5a3d78b3dab81d2ec4a1e9bacf138d0834431bfc3d6770bb2b3dca3073",
       "src/renderer/engine_plumes_pass.cpp": "0ee220889908e4dbf66b9f9d164c5658f079b7bb024ab2ec37f8f3da81e1b3a0",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
@@ -110,12 +106,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a05fb9f824e7e93a9/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a20a8d72fd9d8e976/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "f0fba4318cb38d29bae60a7b635083782c3d7ee7cdd1a2357d3097f42709b408"
+    "executable_sha256": "d88610e0cb80002e5724302ccf9ef14a1be6f60b7c7fb11775cf3d62d74e8793"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -417,11 +413,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.9724,
-        "fenced_off_ms": 0.882,
-        "submit_ms": 0.054,
-        "chain_ms": 0.0904,
-        "gpu_ms": 0.0364,
+        "fenced_on_ms": 0.9597,
+        "fenced_off_ms": 0.8777,
+        "submit_ms": 0.0506,
+        "chain_ms": 0.082,
+        "gpu_ms": 0.0314,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -432,11 +428,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.1123,
-        "fenced_off_ms": 0.8848,
-        "submit_ms": 0.0833,
-        "chain_ms": 0.2275,
-        "gpu_ms": 0.1442,
+        "fenced_on_ms": 1.1124,
+        "fenced_off_ms": 0.8752,
+        "submit_ms": 0.0844,
+        "chain_ms": 0.2372,
+        "gpu_ms": 0.1528,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -447,11 +443,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.7304,
-        "fenced_off_ms": 1.6559,
-        "submit_ms": 0.0509,
-        "chain_ms": 0.0745,
-        "gpu_ms": 0.0236,
+        "fenced_on_ms": 1.7249,
+        "fenced_off_ms": 1.6543,
+        "submit_ms": 0.0527,
+        "chain_ms": 0.0706,
+        "gpu_ms": 0.0179,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -462,11 +458,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7604,
-        "fenced_off_ms": 1.6533,
-        "submit_ms": 0.0842,
-        "chain_ms": 0.1071,
-        "gpu_ms": 0.0229,
+        "fenced_on_ms": 1.7606,
+        "fenced_off_ms": 1.6539,
+        "submit_ms": 0.0848,
+        "chain_ms": 0.1067,
+        "gpu_ms": 0.0219,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -476,15 +472,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.59,
-        "min_us": 7.27,
+        "median_us": 7.81,
+        "min_us": 7.32,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 24.67,
-        "min_us": 23.45,
+        "median_us": 25.27,
+        "min_us": 24.7,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -689,10 +685,10 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0364,
-      "1920x1080_100": 0.1442,
-      "5120x1440_30": 0.0236,
-      "5120x1440_100": 0.0229
+      "1920x1080_30": 0.0314,
+      "1920x1080_100": 0.1528,
+      "5120x1440_30": 0.0179,
+      "5120x1440_100": 0.0219
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
@@ -701,8 +697,8 @@
       "5120x1440_100": true
     },
     "cpu_us": {
-      "30": 7.59,
-      "100": 24.67
+      "30": 7.81,
+      "100": 25.27
     },
     "cpu_100_within": true,
     "fog": [

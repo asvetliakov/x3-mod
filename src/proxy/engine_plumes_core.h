@@ -32,7 +32,8 @@
 // the axis's view z component (intensity[2]) x local u clamped to [0, L] (exact anywhere on the billboard, whose side
 // vector has a view z component off-centre), pulled towards the camera by 0.5 value x max(0, axis . to_camera).
 // View filter: only the records of the scene view are drawn (ViewFilter: recorded in the scene phase with the scene
-// view's camera handle, the frame's most frequent handle among the scene-phase records); the rest are counted
+// view's camera handle: the one the own ship's jets were recorded under, else the frame's most frequent handle among
+// the scene-phase records); the rest are counted
 // skipped_other_view (a target-monitor view would otherwise be projected with the scene camera).
 // Fog (phase 3): with View::fog on, both colours are multiplied per channel by the stored-density look's mean
 // transmittance at the nozzle's distance (renderer/fog_transmittance.h), the same factor the nozzle's ribbon takes.
@@ -161,14 +162,21 @@ struct ViewFilter {
     const std::uint8_t* scene = nullptr;
     std::uint32_t handle = 0;
 };
-// The scene view's camera handle: the most frequent handle among the scene-phase records (ties: the first seen; at
-// most 8 distinct handles are tallied, later ones count against nothing). False when no record is in the scene phase.
-inline bool scene_view_camera(const std::uint32_t* camera, const std::uint8_t* scene, unsigned count,
-                              std::uint32_t* out) noexcept {
+// The scene view's camera handle. Own rule first: the most frequent handle among the scene-phase records tagged as the
+// own ship's jets (Ring::own; the own ship flies in the main view, so its camera is the scene view even when a target
+// monitor's jets, recorded in the scene phase too, outnumber them). Majority rule only without such a record: the
+// most frequent handle among all scene-phase records. Ties: the first seen; at most 8 distinct handles are tallied,
+// later ones count against nothing. False when no record is in the scene phase. `own` may be null (no tags).
+enum class ViewRule : std::uint8_t { none = 0, own = 1, majority = 2 };
+inline const char* view_rule_name(ViewRule r) noexcept {
+    return r == ViewRule::own ? "own" : r == ViewRule::majority ? "majority" : "none";
+}
+inline bool tally_scene_view(const std::uint32_t* camera, const std::uint8_t* scene, const std::uint8_t* own,
+                             unsigned count, std::uint32_t* out) noexcept {
     std::uint32_t handles[8];
     unsigned votes[8], distinct = 0;
     for (unsigned i = 0; i < count; ++i) {
-        if (!scene[i]) continue;
+        if (!scene[i] || (own && !own[i])) continue;
         unsigned k = 0;
         while (k < distinct && handles[k] != camera[i]) ++k;
         if (k == distinct) {
@@ -184,6 +192,16 @@ inline bool scene_view_camera(const std::uint32_t* camera, const std::uint8_t* s
         if (votes[k] > votes[best]) best = k;
     *out = handles[best];
     return true;
+}
+inline bool scene_view_camera(const std::uint32_t* camera, const std::uint8_t* scene, const std::uint8_t* own,
+                              unsigned count, std::uint32_t* out, ViewRule* rule = nullptr) noexcept {
+    ViewRule chosen = ViewRule::none;
+    if (own && tally_scene_view(camera, scene, own, count, out))
+        chosen = ViewRule::own;
+    else if (tally_scene_view(camera, scene, nullptr, count, out))
+        chosen = ViewRule::majority;
+    if (rule) *rule = chosen;
+    return chosen != ViewRule::none;
 }
 
 // The record's colours: the body's normalised mean / peak (engine_bodies.json mean_linear / peak_linear), else the

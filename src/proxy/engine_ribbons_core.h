@@ -11,7 +11,8 @@
 // dependency (the host tests compile it); no x87 (SSE scalars, no float returned by value from an out-of-line
 // function).
 //
-// Pool: 256 ribbons (cap; a nozzle without a free ribbon draws its plume only and counts as overflow), each 16 samples
+// Pool: 256 ribbons (cap; a new nozzle at the cap takes the slot of the oldest fading ribbon, evicted early; with
+// none fading it draws its plume only and counts as overflow), each 16 samples
 // of world position + half-width + time, keyed by the record's identity (the object_lifetime node serial when the
 // record carries one, else node handle + model) through a 512-slot open-addressed map rebuilt at each update.
 // - Distance sampling: a sample is appended when the nozzle moved at least
@@ -157,6 +158,32 @@ inline void insert(Pool& pool, std::uint64_t key, unsigned index) noexcept {
     while (pool.map[slot]) slot = (slot + 1) & (map_slots - 1);
     pool.map[slot] = std::uint16_t(index + 1);
 }
+// Removes ribbon `index` from the map (linear probing: backward-shift deletion keeps every other key findable).
+inline void erase(Pool& pool, unsigned index) noexcept {
+    constexpr unsigned mask = map_slots - 1;
+    unsigned hole = key_slot(pool.ribbons[index].key);
+    for (unsigned probe = 0; probe < map_slots && pool.map[hole] != index + 1; ++probe) hole = (hole + 1) & mask;
+    if (pool.map[hole] != index + 1) return;
+    pool.map[hole] = 0;
+    for (unsigned next = (hole + 1) & mask; pool.map[next]; next = (next + 1) & mask) {
+        const unsigned home = key_slot(pool.ribbons[pool.map[next] - 1].key);
+        // The entry at `next` may fill the hole when its home is not cyclically within (hole, next].
+        const bool stays = hole <= next ? (hole < home && home <= next) : (hole < home || home <= next);
+        if (stays) continue;
+        pool.map[hole] = pool.map[next];
+        pool.map[next] = 0;
+        hole = next;
+    }
+}
+// The fading ribbon (live, not seen in this update) seen longest ago, or -1.
+inline int oldest_fading(const Pool& pool) noexcept {
+    int best = -1;
+    for (unsigned i = 0; i < max_ribbons; ++i) {
+        const Ribbon& r = pool.ribbons[i];
+        if (r.live && r.seen != pool.serial && (best < 0 || r.last_seen < pool.ribbons[best].last_seen)) best = int(i);
+    }
+    return best;
+}
 } // namespace detail
 
 // v_est: the path from `head` (at time `now`) back through the samples, over their age (0 without a sample older
@@ -236,6 +263,7 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         }
     detail::rebuild_map(pool);
     unsigned free_hint = 0;
+    bool no_fading = false;
     for (unsigned i = 0; i < count && records; ++i) {
         const ee::Record& rec = records[i];
         ++st.records;
@@ -256,12 +284,24 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         }
         if (index < 0) {
             while (free_hint < max_ribbons && pool.ribbons[free_hint].live) ++free_hint;
-            if (free_hint >= max_ribbons) {
-                ++st.overflow;
-                ++pool.overflows;
-                continue;
+            if (free_hint < max_ribbons)
+                index = int(free_hint);
+            else {
+                // Full: a live nozzle takes the slot of the oldest fading ribbon (evicted early) before it is refused.
+                index = no_fading ? -1 : detail::oldest_fading(pool);
+                if (index < 0) {
+                    no_fading = true; // nothing fades this update: later identities are refused without a scan
+                    ++st.overflow;
+                    ++pool.overflows;
+                    continue;
+                }
+                detail::erase(pool, unsigned(index));
+                pool.ribbons[index].live = false;
+                pool.ribbons[index].count = 0;
+                --pool.live;
+                ++st.evicted;
+                ++pool.evictions;
             }
-            index = int(free_hint);
             Ribbon& fresh = pool.ribbons[index];
             fresh.key = key;
             fresh.count = 0;

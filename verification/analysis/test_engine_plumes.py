@@ -166,12 +166,28 @@ int main() {
         const std::uint32_t cam[5] = {0x77, 0x99, 0x77, 0x77, 0x99};
         const std::uint8_t scene[5] = {1, 1, 0, 1, 1};
         std::uint32_t handle = 0;
-        expect(scene_view_camera(cam, scene, 5, &handle) && handle == 0x77, "scene camera: the most frequent scene-phase handle");
+        ViewRule rule = ViewRule::none;
         const std::uint8_t none[5] = {};
-        expect(!scene_view_camera(cam, none, 5, &handle), "no scene-phase record: no scene camera");
+        expect(scene_view_camera(cam, scene, nullptr, 5, &handle, &rule) && handle == 0x77 && rule == ViewRule::majority,
+               "scene camera: the most frequent scene-phase handle (majority rule)");
+        expect(scene_view_camera(cam, scene, none, 5, &handle, &rule) && handle == 0x77 && rule == ViewRule::majority,
+               "no own-ship record: the majority rule");
+        expect(!scene_view_camera(cam, none, none, 5, &handle, &rule) && rule == ViewRule::none, "no scene-phase record: no scene camera");
         const std::uint32_t tie[2] = {0x99, 0x77};
         const std::uint8_t both[2] = {1, 1};
-        expect(scene_view_camera(tie, both, 2, &handle) && handle == 0x99, "a tie: the first seen");
+        expect(scene_view_camera(tie, both, nullptr, 2, &handle) && handle == 0x99, "a tie: the first seen");
+        // Own rule: a target monitor (0x99) recorded in the scene phase with more jets than the main view (0x55) whose
+        // one own-ship jet decides; an own-ship jet outside the scene phase does not.
+        const std::uint32_t mon[5] = {0x99, 0x99, 0x55, 0x99, 0x77};
+        const std::uint8_t mon_scene[5] = {1, 1, 1, 1, 0};
+        const std::uint8_t mon_own[5] = {0, 0, 1, 0, 0};
+        expect(scene_view_camera(mon, mon_scene, mon_own, 5, &handle, &rule) && handle == 0x55 && rule == ViewRule::own,
+               "own rule: the own ship's camera beats a larger target-monitor view");
+        const std::uint8_t own_background[5] = {0, 0, 0, 0, 1};
+        expect(scene_view_camera(mon, mon_scene, own_background, 5, &handle, &rule) && handle == 0x99 && rule == ViewRule::majority,
+               "an own-ship record outside the scene phase: the majority rule");
+        expect(!std::strcmp(view_rule_name(ViewRule::own), "own") && !std::strcmp(view_rule_name(ViewRule::majority), "majority"),
+               "rule names");
         ViewFilter vf; vf.camera = cam; vf.scene = scene; vf.handle = 0x77;
         expect(build(rs, 5, nullptr, v, Preset::standard, 0, out.data(), 16, &st, &vf) == 2 && st.skipped_other_view == 3 && st.nozzles == 2,
                "filter: two scene-view records drawn, another camera and the background phase skipped");
