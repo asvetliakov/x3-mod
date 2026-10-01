@@ -281,6 +281,7 @@ bytes on Windows and are validated at exact sites. Unverified natively like the 
 | 6 | Trails of bright plumes over real starfields; the meter's response to many cores | Flight B/C |
 | 7 | The body-unit to world-unit factor (hull lengths are in LOD-0 units); every law above is relative to `value`, so nothing depends on it | The F8's `object_bounds` against a known ship |
 | 8 | Native Windows behaviour | Not verifiable by the user |
+| 9 | Whether glow jets drawn in another view (target monitor) reach the record ring inside the Scene phase; phase 2 draws only the frame's most frequent scene-phase camera handle and counts the rest `skipped_other_view` | Flight B: one F8 with a target selected; `engine_stage skipped_other_view=` |
 
 ## Options considered and why they lose
 
