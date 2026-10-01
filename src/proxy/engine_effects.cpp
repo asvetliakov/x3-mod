@@ -1,4 +1,5 @@
 #include "engine_effects.h"
+#include "engine_effects_patch.h"
 #include "capture.h"
 #include "config.h"
 #include "engine_memory.h"
@@ -18,7 +19,7 @@ core::Mode mode_ = core::Mode::native;
 bool identity_ = false, hook_ = false, initialized_ = false;
 const char* status_ = "not_initialized";
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-bool fixture_identity_ = false;
+bool fixture_identity_ = false, fixture_redirects_ = false;
 std::uintptr_t body_global_ = lfc::census::body_global_va;
 #else
 constexpr std::uintptr_t body_global_ = lfc::census::body_global_va;
@@ -205,6 +206,12 @@ bool suppress() {
 const char* status() {
     return status_;
 }
+bool redirects_live() {
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (fixture_redirects_) return true;
+#endif
+    return engine_effects_patch::installed();
+}
 void begin_frame(unsigned long long frame) {
     if (!hook_) return;
     const DWORD error = GetLastError();
@@ -234,6 +241,9 @@ Stats stats() {
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 void fixture_identity(bool verified) {
     fixture_identity_ = verified;
+}
+void fixture_redirects(bool live) {
+    fixture_redirects_ = live;
 }
 void fixture_body_global(std::uintptr_t va) {
     body_global_ = va;

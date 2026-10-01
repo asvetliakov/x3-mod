@@ -209,7 +209,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_EMISSION_SOURCE_CLAMP", "emission_source_clamp", Type::Float, "0.7", nullptr, 19, 2, 2, 0, 0, "", 0, -1},
     {"X3M_EMISSION_SOURCE_GAIN", "emission_source_gain", Type::Float, "1.0", nullptr, 21, 1, 2, 0, 0, "", 0, -1},
     {"X3M_ENGINE_BODIES", "engine_bodies", Type::Path, nullptr, nullptr, 22, 0, 2, 0, 0, "", 1, -1},
-    {"X3M_ENGINE_EFFECTS", "engine_effects", Type::Enum, "native", nullptr, 22, 0, 2, 0, 0, "native|off|plumes", 0, -1},
+    {"X3M_ENGINE_EFFECTS", "engine_effects", Type::Enum, nullptr, nullptr, 22, 0, 2, 0, 0, "native|off|plumes", 0, -1},
     {"X3M_FADE_ROUTE", "fade_route", Type::String, nullptr, nullptr, 22, 0, 2, 0, 0, "", 1, -1},
     {"X3M_FADE_RT2_OWNER", "fade_rt2_owner", Type::Enum, "on", nullptr, 22, 0, 2, 0, 0, "on|off", 1, -1},
     {"X3M_FADE_RT2_OWNER_DEFAULT", "fade_rt2_owner_default", Type::Bool, "1", nullptr, 22, 0, 2, 0, 0, "", 3, 48},
@@ -446,7 +446,6 @@ constexpr bool dat_handles = true;
 constexpr const char dust_leak_fix[] = "on";
 constexpr float emission_source_clamp = 0.7f;
 constexpr float emission_source_gain = 1.0f;
-constexpr const char engine_effects[] = "native";
 constexpr const char fade_rt2_owner[] = "on";
 constexpr bool fog_docked = true;
 constexpr const char fog_dust_motes[] = "1300,3,128";

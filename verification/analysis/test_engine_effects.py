@@ -2,7 +2,7 @@
 portable core src/proxy/engine_effects_core.h compiled on the host, the option, the launcher and the wiring.
 
 The harness checks the option words, the recogniser's truth table against a Python twin (every combination of the
-effect pair, the shadowed Z-write and blend states, scope, node read, JET flags, mode and ring), the throttle formula,
+effect pair, the shadowed Z-write and blend states, scope, node read, JET flags, mode, call redirects and ring), the throttle formula,
 the c4-6 order selection (order a, order b, ambiguous, mismatch, invalid) with origin / axis / size within 1e-5, the
 record flags, the engine_bodies.json parser on documents written by tools/effects/engine_bodies.py's own dumps() and
 its fail-closed cases, the name -> id resolution over a synthetic engine body table (by id, by scan, a re-bound
@@ -105,14 +105,14 @@ int main(int argc, char** argv) {
     expect(!suppresses(Mode::native) && suppresses(Mode::off) && suppresses(Mode::plumes), "plumes suppresses like off");
     expect(effect_pair(0xd5e1c75351ed3f04ull, 0x8360f422de08b5bdull) && effect_pair(0x89193868c61c3846ull, 0x8360f422de08b5bdull) && !effect_pair(0xd5e1c75351ed3f04ull, 1) && !effect_pair(1, 0x8360f422de08b5bdull), "the effects pair");
     // Truth table: bits 0 pair, 1 zwrite_known, 2 zwrite, 3 blend_known, 4 blend, 5 scoped, 6 snapshot, 7-8 flags (0 none,
-    // 1 0x4000000 only, 2 0x4000001, 3 0x0000001 only), 9 suppress, 10 ring_full.
-    for (unsigned bits = 0; bits < (1u << 11); ++bits) {
+    // 1 0x4000000 only, 2 0x4000001, 3 0x0000001 only), 9 suppress, 10 ring_full, 11 redirects live.
+    for (unsigned bits = 0; bits < (1u << 12); ++bits) {
         DrawState s; Facts f;
         s.pair = bits & 1; s.zwrite_known = bits & 2; s.zwrite = (bits >> 2) & 1; s.blend_known = bits & 8; s.blend = (bits >> 4) & 1;
         f.scoped = bits & 32; f.snapshot = bits & 64;
         const unsigned k = (bits >> 7) & 3;
         f.flags130 = k == 1 ? 0x4000000u : k == 2 ? 0x4000001u | 0x200u : k == 3 ? 1u : 0x80u;
-        f.suppress = bits & 512; f.ring_full = bits & 1024;
+        f.suppress = bits & 512; f.ring_full = bits & 1024; f.redirects = bits & 2048;
         std::printf("TRUTH %u %s\n", bits, verdict_name(classify(s, f)));
     }
     // Throttle: z = scale3 / 65536, s = clamp((z - 0.25) / 1.75).
@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
     // Per-draw cost of the core: classify + fill_record (geometry from c4-6, four square roots) + ring push.
     static Ring ring; ring.clear();
     DrawState s; s.pair = true; s.zwrite_known = true; s.zwrite = 0; s.blend_known = true; s.blend = 1;
-    Facts f; f.scoped = true; f.snapshot = true; f.flags130 = jet_flags; f.suppress = true;
+    Facts f; f.scoped = true; f.snapshot = true; f.flags130 = jet_flags; f.suppress = true; f.redirects = true;
     volatile std::uint32_t jitter = 0x1b333;
     const unsigned iterations = 4000000;
     float sink = 0.f; unsigned suppressed = 0;
@@ -235,13 +235,13 @@ int main(int argc, char** argv) {
 '''
 
 VERDICTS = ('none', 'not_jet', 'suppressed', 'forwarded_unscoped', 'forwarded_snapshot', 'forwarded_opaque', 'forwarded_state',
-            'forwarded_overflow', 'forwarded_native')
+            'forwarded_overflow', 'forwarded_native', 'forwarded_patch_missing')
 
 
 def twin(bits):
     """The recogniser's truth table, written independently of the header (engine-effects-modern.md section 1)."""
     pair, zk, zw, bk, bl = bits & 1, bits & 2, (bits >> 2) & 1, bits & 8, (bits >> 4) & 1
-    scoped, snapshot, kind, suppress, full = bits & 32, bits & 64, (bits >> 7) & 3, bits & 512, bits & 1024
+    scoped, snapshot, kind, suppress, full, redirects = bits & 32, bits & 64, (bits >> 7) & 3, bits & 512, bits & 1024, bits & 2048
     flags = {0: 0x80, 1: 0x4000000, 2: 0x4000201, 3: 1}[kind]
     if not (pair or (bk and bl and zk and not zw)):
         return 'none'
@@ -257,6 +257,8 @@ def twin(bits):
         return 'forwarded_opaque'
     if not suppress:
         return 'forwarded_native'
+    if not redirects:  # off|plumes arm only with both call redirects live (engine_effects_patch::installed())
+        return 'forwarded_patch_missing'
     return 'forwarded_overflow' if full else 'suppressed'
 
 
@@ -295,9 +297,9 @@ class EngineEffectsCore(unittest.TestCase):
 
     def test_truth_table_matches_the_twin(self):
         rows = self.rows('TRUTH')
-        self.assertEqual(len(rows), 2048)
+        self.assertEqual(len(rows), 4096)
         table = {int(b): v for b, v in rows}
-        self.assertEqual(table, {b: twin(b) for b in range(2048)})
+        self.assertEqual(table, {b: twin(b) for b in range(4096)})
         self.assertEqual(set(table.values()), set(VERDICTS))  # every verdict is reachable
 
     def test_throttle(self):
@@ -375,17 +377,18 @@ class EngineEffectsInstalledTable(unittest.TestCase):
 class EngineEffectsOption(unittest.TestCase):
     def test_schema_entry(self):
         e = schema.BY_KEY['engine_effects']
-        self.assertEqual((e['env'], e['type'], e['section'], e['default'], e['choices'], e['launcher'], e['developer']),
-                         ('X3M_ENGINE_EFFECTS', 'enum', 'engine', 'native', ('native', 'off', 'plumes'), '--engine-effects', False))
+        # The launcher sends it only when given: no schema default, the DLL's built-in native.
+        self.assertEqual((e['env'], e['type'], e['section'], e['default'], e['builtin'], e['choices'], e['launcher'], e['developer']),
+                         ('X3M_ENGINE_EFFECTS', 'enum', 'engine', None, 'native', ('native', 'off', 'plumes'), '--engine-effects', False))
         self.assertTrue(schema.BY_KEY['engine_bodies']['developer'])
         table = (ROOT / 'src/config/config_schema_inc.h').read_text()
-        self.assertIn('{"X3M_ENGINE_EFFECTS", "engine_effects", Type::Enum, "native",', table)
-        self.assertIn('engine_effects = native', (ROOT / 'assets/x3m.ini').read_text())
+        self.assertIn('{"X3M_ENGINE_EFFECTS", "engine_effects", Type::Enum, nullptr,', table)
+        self.assertIn(';engine_effects = native', (ROOT / 'assets/x3m.ini').read_text())
 
     def test_launcher(self):
         module, game, wine, directory = hermetic_launcher()
         with directory:
-            self.assertEqual(launch_env(module, game, wine)['X3M_ENGINE_EFFECTS'], 'native')
+            self.assertNotIn('X3M_ENGINE_EFFECTS', launch_env(module, game, wine))  # the default flight sends nothing: native
             self.assertEqual(launch_env(module, game, wine, '--engine-effects', 'off')['X3M_ENGINE_EFFECTS'], 'off')
             self.assertEqual(launch_env(module, game, wine, '--config', '--engine-effects', 'plumes')['X3M_ENGINE_EFFECTS'], 'plumes')
             self.assertNotIn('X3M_ENGINE_EFFECTS', launch_env(module, game, wine, '--config'))
@@ -409,6 +412,7 @@ class EngineEffectsOption(unittest.TestCase):
         self.assertIn('../../src/proxy/engine_effects.cpp', (ROOT / 'verification/probe/build_motion_output.sh').read_text())
         module = (ROOT / 'src/proxy/engine_effects.cpp').read_text()
         self.assertIn('object_trace::executable_verified()', module)
+        self.assertIn('return engine_effects_patch::installed();', module)  # the suppression's arming signal
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_EFFECTS"', module)), 1)  # read once, at initialize
 
 

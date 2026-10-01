@@ -79,24 +79,29 @@ enum class Verdict : std::uint8_t {
     opaque,     // forwarded_opaque: a JET node drawn with Z-write on (nozzle geometry) - effect pair only
     state,      // forwarded_state: Z-write unknown in the shadow - effect pair only
     overflow,   // forwarded_overflow: the frame's ring is full
-    native      // forwarded_native: mode native (the census counts what off would suppress)
+    native,     // forwarded_native: mode native (the census counts what off would suppress)
+    patch_missing // forwarded_patch_missing: off|plumes without both call redirects live (engine_effects_patch.h):
+                  // the glow is never hidden while the native sprites, flares and trails stay
 };
-constexpr unsigned forward_reasons = 6; // unscoped .. native, in this order
+constexpr unsigned forward_reasons = 7; // unscoped .. patch_missing, in this order
 inline unsigned forward_index(Verdict v) noexcept {
     return v >= Verdict::unscoped ? unsigned(v) - unsigned(Verdict::unscoped) : forward_reasons;
 }
 inline const char* verdict_name(Verdict v) noexcept {
     static const char* const names[] = {"none", "not_jet", "suppressed", "forwarded_unscoped", "forwarded_snapshot",
-                                        "forwarded_opaque", "forwarded_state", "forwarded_overflow", "forwarded_native"};
+                                        "forwarded_opaque", "forwarded_state", "forwarded_overflow", "forwarded_native",
+                                        "forwarded_patch_missing"};
     return unsigned(v) < sizeof names / sizeof names[0] ? names[unsigned(v)] : "none";
 }
 // What the hot path learned about the draw, in the order it learns it (each later field is read only when the
-// earlier ones did not decide): scope present, node snapshot readable, the node's +0x130, the mode, the ring.
+// earlier ones did not decide): scope present, node snapshot readable, the node's +0x130, the mode, the two call
+// redirects, the ring.
 struct Facts {
     bool scoped = false;
     bool snapshot = false;
     std::uint32_t flags130 = 0;
     bool suppress = false;
+    bool redirects = false; // engine_effects_patch::installed(): both call redirects live
     bool ring_full = false;
 };
 inline Verdict classify(const DrawState& s, const Facts& f) noexcept {
@@ -107,6 +112,7 @@ inline Verdict classify(const DrawState& s, const Facts& f) noexcept {
     if (!s.zwrite_known) return Verdict::state;
     if (s.zwrite) return Verdict::opaque;
     if (!f.suppress) return Verdict::native;
+    if (!f.redirects) return Verdict::patch_missing;
     if (f.ring_full) return Verdict::overflow;
     return Verdict::suppressed;
 }

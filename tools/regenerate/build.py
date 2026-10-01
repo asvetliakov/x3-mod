@@ -58,7 +58,7 @@ PY_URL = f'https://www.python.org/ftp/python/{PY_VERSION}/python-{PY_VERSION}-am
 DOWNLOADS = Path('/tmp/x3m-build')
 WIN_PACKAGES = ['pyinstaller', 'numpy==2.0.2', 'pillow']
 EXPECTED = ('processing fog zzpkg', 'fog layers:', 'processing model ships/x/good', 'refused model ships/x/badtext',
-            'slot plan: addon/01', 'fog families: check passed', 'all done')
+            'slot plan: addon/01', 'engine bodies summary:', 'fog families: check passed', 'all done')
 
 
 def run(cmd, **kw):

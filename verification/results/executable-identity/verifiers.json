@@ -1,6 +1,6 @@
 {
- "commit": "3ee2fe20a955b8e7c866d3d0a294d629cf4a5454-dirty",
- "anchors": 41,
+ "commit": "0bbdceb251c66c154d3bcadb2dd781c6d41f765c-dirty",
+ "anchors": 45,
  "shipped": {
   "info": {
    "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
@@ -61,12 +61,6 @@
     "known": "shipped (LAA set, CheckSum 0)"
    },
    "verify_cull_census_sites": {
-    "result": "PASS",
-    "rc": 0,
-    "laa": true,
-    "known": "shipped (LAA set, CheckSum 0)"
-   },
-   "verify_lod_scale_site": {
     "result": "PASS",
     "rc": 0,
     "laa": true,
@@ -151,6 +145,12 @@
     "known": "shipped (LAA set, CheckSum 0)"
    },
    "verify_sun_flare_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_engine_effects_sites": {
     "result": "PASS",
     "rc": 0,
     "laa": true,
@@ -241,12 +241,6 @@
     "laa": false,
     "known": "LAA cleared (CheckSum 0)"
    },
-   "verify_lod_scale_site": {
-    "result": "PASS",
-    "rc": 0,
-    "laa": false,
-    "known": "LAA cleared (CheckSum 0)"
-   },
    "verify_game_phase_sites": {
     "result": "PASS",
     "rc": 0,
@@ -326,6 +320,12 @@
     "known": "LAA cleared (CheckSum 0)"
    },
    "verify_sun_flare_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_engine_effects_sites": {
     "result": "PASS",
     "rc": 0,
     "laa": false,
@@ -416,12 +416,6 @@
     "laa": true,
     "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
    },
-   "verify_lod_scale_site": {
-    "result": "PASS",
-    "rc": 0,
-    "laa": true,
-    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
-   },
    "verify_game_phase_sites": {
     "result": "PASS",
     "rc": 0,
@@ -501,6 +495,12 @@
     "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
    },
    "verify_sun_flare_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_engine_effects_sites": {
     "result": "PASS",
     "rc": 0,
     "laa": true,
@@ -591,12 +591,6 @@
     "laa": true,
     "known": null
    },
-   "verify_lod_scale_site": {
-    "result": "PASS",
-    "rc": 0,
-    "laa": true,
-    "known": null
-   },
    "verify_game_phase_sites": {
     "result": "PASS",
     "rc": 0,
@@ -681,6 +675,12 @@
     "laa": true,
     "known": null
    },
+   "verify_engine_effects_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
    "verify_light_phase_sites": {
     "result": "PASS",
     "rc": 0,
@@ -704,14 +704,6 @@
  "site_corrupt": {
   "verify_chase_camera_site": {
    "va": "0x00420e0f",
-   "identity_ok": true,
-   "result": "FAIL",
-   "rc": 1,
-   "laa": true,
-   "known": null
-  },
-  "verify_lod_scale_site": {
-   "va": "0x0047d44d",
    "identity_ok": true,
    "result": "FAIL",
    "rc": 1,
@@ -760,6 +752,22 @@
   },
   "verify_sun_flare_site": {
    "va": "0x0047e392",
+   "identity_ok": true,
+   "result": "FAIL",
+   "rc": 1,
+   "laa": true,
+   "known": null
+  },
+  "verify_engine_effects_sites": {
+   "va": "0x004147ec",
+   "identity_ok": true,
+   "result": "FAIL",
+   "rc": 1,
+   "laa": true,
+   "known": null
+  },
+  "verify_engine_effects_sites@b": {
+   "va": "0x0041482d",
    "identity_ok": true,
    "result": "FAIL",
    "rc": 1,
@@ -824,12 +832,6 @@
     "laa": true,
     "known": null
    },
-   "verify_lod_scale_site": {
-    "result": "FAIL",
-    "rc": 1,
-    "laa": true,
-    "known": null
-   },
    "verify_game_phase_sites": {
     "result": "FAIL",
     "rc": 1,
@@ -909,6 +911,12 @@
     "known": null
    },
    "verify_sun_flare_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_engine_effects_sites": {
     "result": "FAIL",
     "rc": 1,
     "laa": true,

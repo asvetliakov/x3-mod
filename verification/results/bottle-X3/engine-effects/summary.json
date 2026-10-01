@@ -24,9 +24,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "eb9f19222c59a30c137f21febb3a4933eef7a0842e5d0d62cbd7392bd15e12af",
-    "seam_sha256": "61c65082e5ffcb77445dbdca7fbcb4eec4c07f78f4d1e3182a060f173120af01",
-    "dll_sha256": "ab70725c6da6f1baf7b1b793c88503a4281a9af641df353b253e00f6991220f4"
+    "fixture_sha256": "7cf379f33db90b7a0f8fa6b583c4233efaa2aee86cf1e9d38dfe7bfc7fe5e2c1",
+    "seam_sha256": "13fe4fa04c6a775b64b4b9fdbd5b37efc32885049da17fca1ca0b43e6822119d",
+    "dll_sha256": "17efcea8e9a995c2312e9cdbf084860486296b13efb86a58126a5ab5761aa1b7"
   },
   "runs": {
     "main": {
@@ -128,7 +128,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261001-170736-060298"
+      "directory": "verification/probe/build/engine-effects-main-20261001-171654-179792"
     },
     "native": {
       "exit": 0,
@@ -172,7 +172,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261001-170744-841121"
+      "directory": "verification/probe/build/engine-effects-native-20261001-171703-456054"
     },
     "unverified": {
       "exit": 0,
@@ -188,7 +188,51 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261001-170752-778362"
+      "directory": "verification/probe/build/engine-effects-unverified-20261001-171711-327826"
+    },
+    "unpatched": {
+      "exit": 0,
+      "checks": 11,
+      "failed": [],
+      "result": "RESULT PASS checks=11 failures=0",
+      "mode_row": {
+        "setting": "off",
+        "mode": "off",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "bodies": {
+        "event": "loaded",
+        "reason": "ok",
+        "bodies": "3",
+        "named": "2",
+        "smalljet": "1",
+        "refused": "0",
+        "bytes": "1328",
+        "fault": "0",
+        "frame": "1"
+      },
+      "resolve": {
+        "bodies": "3",
+        "resolved": "2",
+        "mapped": "2",
+        "scanned": "2",
+        "dynamic_mappings": "1",
+        "fixed": "11000",
+        "dynamic": "2",
+        "restarts": "0",
+        "frame": "1"
+      },
+      "engine_draw_rows": 12,
+      "engine_draw_frames": [
+        1,
+        2
+      ],
+      "engine_frame_rows": 3,
+      "directory": "verification/probe/build/engine-effects-unpatched-20261001-171719-221186"
     },
     "timing": {
       "exit": 0,
@@ -205,11 +249,11 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.572,
-        "not_jet": 1.226,
-        "not_candidate": 1.063
+        "suppressed": 0.575,
+        "not_jet": 1.21,
+        "not_candidate": 1.07
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261001-170800-855838"
+      "directory": "verification/probe/build/engine-effects-timing-20261001-171727-018556"
     }
   },
   "problems": [],

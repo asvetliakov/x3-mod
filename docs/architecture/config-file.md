@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `engine_effects` (`native`/`off`/`plumes`, read once at load), `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade` |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects` (2026-10-01, see the end of this note) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player
@@ -556,3 +556,22 @@ installation's `X3M_VOICE_DMO_FALLBACK=1` on bottle X3, `--config /some/path` ad
 `x3m.ini` (14,053 B), `x3m-regenerate.exe`, `x3m-regenerate`, `README.txt` (2,027 B). Not verified: a flight of the
 player mode (`x3run --config`, the shipped template untouched) compared with a default launch by `proxy_options`; native
 Windows.
+
+## `engine_effects` (2026-10-01, engine-effects phase 1)
+
+Key `engine_effects`, environment `X3M_ENGINE_EFFECTS`, launcher `--engine-effects native|off|plumes`
+([engine-effects-modern.md](engine-effects-modern.md), "Decision" and sections 1–2). `native` = the game draws its
+engine glow jets, emitter sprites, engine lens flares and engine trails, nothing patched; `off` = all four suppressed
+and nothing drawn instead (the phase-1 flight state; weapon and missile trails untouched); `plumes` = reserved for the
+proxy's own plumes and ribbons (phase 2) and treated as `off` until then. The DLL's value when nothing sets the key is
+`native`, and the launcher's default flight sends nothing, so the bare DLL still equals the default flight; the
+launcher drops an inherited shell value unless the option is given, refuses the option under `--vanilla`, and in player
+mode (`--config`) sends it only when given. Both suppressing values read `<game>/x3m/engine_bodies.json` (generated
+by `tools/effects/engine_bodies.py` from the installed game tree; `manage.py install` writes it, `manage.py uninstall`
+removes it, `x3m-regenerate` rewrites it after mod changes, see [mod-compatibility.md](mod-compatibility.md), "Engine
+bodies") for size and tint; a JET-flagged draw whose body has no entry is still suppressed (counted `unknown_body`,
+default tint cluster), and only draws without the JET flag and the legacy `v\00114` (refused by the loader) stay native. The glow-jet suppression arms only while both call
+redirects are live (`engine_effects_patch::installed()`); otherwise every glow-jet draw is forwarded and counted
+`forwarded_patch_missing`, so the glow never disappears while the native sprites and trails stay. The launch prints `engine bodies: missing | unreadable |
+ok (N bodies, M listed but not loadable, ...)` only for `off` and `plumes`. The template entry and its section come
+from the schema (`tools/config/schema.py`, regenerated with `generate.py`).

@@ -97,6 +97,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
                 # handler, once per process on the game's init thread; its row is formatted behind call_preserved
                 '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',
+                # engine-effect call redirects (src/proxy/engine_effects_patch.cpp, X3M_ENGINE_EFFECTS=off|plumes): the two class-test
+                # stubs on 0x004147eb and 0x0041482c, per spawn site per frame on the game thread; integer only, no call
+                '_x3m_engine_effects_stub_a', '_x3m_engine_effects_stub_b',
                 # the window-thread message hooks (src/proxy/window_trace.cpp, X3M_WINDOW_TRACE=1 / X3M_CURSOR_REASSERT=1): run inside
                 # user32's message dispatch under LightCallBoundary; their ring writes and cursor_reassert::observe hold no floating point
                 '_x3m_window_hook_call@12', '_x3m_window_hook_ret@12', '_x3m_window_hook_get@12',

@@ -21,17 +21,19 @@ void MotionOutput::configure_engine_effects(bool hook, bool suppress, bool censu
     engine_ring_->clear();
     engine_hook_ = true;
     engine_suppress_ = suppress;
+    engine_redirects_ = engine_effects::redirects_live();
     engine_census_ = census;
 }
 void MotionOutput::engine_effects_frame_begin() noexcept {
     if (!engine_device_logged_) {
         engine_device_logged_ = true;
-        log("engine_effects_device device=%llu frame=%llu hook=1 suppress=%u census=%u route=%u ring=%u record_bytes=%u",
-            id_, frame_, unsigned(engine_suppress_), unsigned(engine_census_), unsigned(enabled_),
+        log("engine_effects_device device=%llu frame=%llu hook=1 suppress=%u redirects=%u census=%u route=%u ring=%u record_bytes=%u",
+            id_, frame_, unsigned(engine_suppress_), unsigned(engine_effects::redirects_live()), unsigned(engine_census_), unsigned(enabled_),
             engine_effects::core::ring_capacity, unsigned(sizeof(engine_effects::core::Record)));
     }
     engine_ring_->clear();
     engine_counts_ = {};
+    engine_redirects_ = engine_effects::redirects_live(); // one call per frame; the redirects arm once at load
     if (engine_rows_) ++engine_row_frames_; // the previous frame wrote rows: one of the first eight spent
     engine_rows_ = engine_rows_more_ = 0;
 }
@@ -41,13 +43,13 @@ void MotionOutput::engine_effects_frame_end() noexcept {
     namespace ee = engine_effects::core;
     const auto stats = engine_effects::stats();
     if (log_tier::cached_debug)
-        log("engine_frame device=%llu frame=%llu mode=%s candidates=%lu not_jet=%lu records=%u suppressed=%lu forwarded_unscoped=%lu forwarded_snapshot=%lu forwarded_opaque=%lu forwarded_state=%lu forwarded_overflow=%lu forwarded_native=%lu ring_overflow=%lu unknown_body=%lu steering=%lu rows_unknown=%lu order_a=%lu order_b=%lu order_ambiguous=%lu order_mismatch=%lu order_invalid=%lu pinned=%s bodies=%u mapped=%u rows=%u rows_more=%u",
+        log("engine_frame device=%llu frame=%llu mode=%s candidates=%lu not_jet=%lu records=%u suppressed=%lu forwarded_unscoped=%lu forwarded_snapshot=%lu forwarded_opaque=%lu forwarded_state=%lu forwarded_overflow=%lu forwarded_native=%lu forwarded_patch_missing=%lu redirects=%u ring_overflow=%lu unknown_body=%lu steering=%lu rows_unknown=%lu order_a=%lu order_b=%lu order_ambiguous=%lu order_mismatch=%lu order_invalid=%lu pinned=%s bodies=%u mapped=%u rows=%u rows_more=%u",
         id_, frame_, ee::mode_name(engine_effects::mode()), static_cast<unsigned long>(c.candidates),
         static_cast<unsigned long>(c.not_jet), engine_ring_->count, static_cast<unsigned long>(c.suppressed),
         static_cast<unsigned long>(c.forwarded[0]), static_cast<unsigned long>(c.forwarded[1]),
         static_cast<unsigned long>(c.forwarded[2]), static_cast<unsigned long>(c.forwarded[3]),
         static_cast<unsigned long>(c.forwarded[4]), static_cast<unsigned long>(c.forwarded[5]),
-        static_cast<unsigned long>(c.forwarded[4]), static_cast<unsigned long>(c.unknown_body),
+        static_cast<unsigned long>(c.forwarded[6]), unsigned(engine_redirects_), static_cast<unsigned long>(c.forwarded[4]), static_cast<unsigned long>(c.unknown_body),
         static_cast<unsigned long>(c.steering), static_cast<unsigned long>(c.rows_unknown),
         static_cast<unsigned long>(c.match[0]), static_cast<unsigned long>(c.match[1]),
         static_cast<unsigned long>(c.match[2]), static_cast<unsigned long>(c.match[3]),
@@ -86,6 +88,7 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
     object_trace::Snapshot scope{};
     ee::Facts facts;
     facts.suppress = engine_suppress_;
+    facts.redirects = engine_redirects_;
     facts.ring_full = engine_ring_->full();
     std::uint64_t serial = 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -211,25 +214,27 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
     return verdict == ee::Verdict::suppressed;
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-// 0 candidates, 1 not_jet, 2 records (ring), 3 suppressed, 4..9 forwarded (unscoped, snapshot, opaque, state,
-// overflow, native), 10 unknown_body, 11 steering, 12 rows_unknown, 13..17 order a/b/ambiguous/mismatch/invalid,
-// 18 hook, 19 suppress, 20 the c4-6 known mask, 21 pinned order (1 = b), 22 census rows this frame.
+// 0 candidates, 1 not_jet, 2 records (ring), 3 suppressed, 4..10 forwarded (unscoped, snapshot, opaque, state,
+// overflow, native, patch_missing), 11 unknown_body, 12 steering, 13 rows_unknown, 14..18 order a/b/ambiguous/mismatch/
+// invalid, 19 hook, 20 suppress, 21 the c4-6 known mask, 22 pinned order (1 = b), 23 census rows this frame,
+// 24 redirects live (this frame's cached signal).
 unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     const auto& c = engine_counts_;
     if (key == 0) return c.candidates;
     if (key == 1) return c.not_jet;
     if (key == 2) return engine_ring_ ? engine_ring_->count : 0u;
     if (key == 3) return c.suppressed;
-    if (key >= 4 && key < 10) return c.forwarded[key - 4];
-    if (key == 10) return c.unknown_body;
-    if (key == 11) return c.steering;
-    if (key == 12) return c.rows_unknown;
-    if (key >= 13 && key < 18) return c.match[key - 13];
-    if (key == 18) return engine_hook_ ? 1u : 0u;
-    if (key == 19) return engine_suppress_ ? 1u : 0u;
-    if (key == 20) return shadow_.world46_known;
-    if (key == 21) return engine_order_ == engine_effects::core::Order::b ? 1u : 0u;
-    if (key == 22) return engine_rows_;
+    if (key >= 4 && key < 11) return c.forwarded[key - 4];
+    if (key == 11) return c.unknown_body;
+    if (key == 12) return c.steering;
+    if (key == 13) return c.rows_unknown;
+    if (key >= 14 && key < 19) return c.match[key - 14];
+    if (key == 19) return engine_hook_ ? 1u : 0u;
+    if (key == 20) return engine_suppress_ ? 1u : 0u;
+    if (key == 21) return shadow_.world46_known;
+    if (key == 22) return engine_order_ == engine_effects::core::Order::b ? 1u : 0u;
+    if (key == 23) return engine_rows_;
+    if (key == 24) return engine_redirects_ ? 1u : 0u;
     return 0;
 }
 bool MotionOutput::fixture_engine_record(unsigned index, void* out, unsigned size) const noexcept {

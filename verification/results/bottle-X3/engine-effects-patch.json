@@ -1,0 +1,711 @@
+{
+ "fixture": "verification/probe/engine_effects_patch_fixture.cpp",
+ "runner": "verification/probe/run_engine_effects_patch.py",
+ "production_sources": [
+  "src/proxy/engine_effects_patch.cpp",
+  "src/proxy/engine_effects_patch.h",
+  "src/proxy/engine_effects_sites.h",
+  "src/proxy/engine_patch.cpp",
+  "src/proxy/engine_patch.h"
+ ],
+ "source": {
+  "commit": "ee77101022d8a9729766d4d03c0802bc3260314a",
+  "production_sources_dirty": true,
+  "dirty_paths": [
+   "src/proxy/engine_effects_patch.cpp",
+   "src/proxy/engine_effects_patch.h",
+   "src/proxy/engine_effects_sites.h"
+  ],
+  "sha256": {
+   "src/proxy/engine_effects_patch.cpp": "fbea0deafab10f98158861c2a974c1c4dfbfc27faee91f5ab37439f2fbf1e933",
+   "src/proxy/engine_effects_patch.h": "71a691a372718d6606c9ccffa346b80e9476cc83129d7b523b928c2e52f2c90b",
+   "src/proxy/engine_effects_sites.h": "0b16fba127ff658fe488a874515453da9dd5b00acd3f3d51ae5c1beb893fcd4d",
+   "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+   "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
+  }
+ },
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "exit_status": 0,
+ "elapsed_s": 6.0,
+ "executable_sha256": "7d36e7d26bfcf74e4ad3745c961a5e5b5599ce0c8a7d2ab3cd4037ebddb1ade3",
+ "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+ "build_audit": {
+  "module_imports_own_protect": [],
+  "module_calls_seam": [
+   "virtual_protect",
+   "fixture_read_code",
+   "fixture_restore_call"
+  ],
+  "engine_patch_lock_cmpxchg8b": 1,
+  "stub_a": [
+   "push",
+   "mov",
+   "cmp",
+   "pop",
+   "je",
+   "jmp",
+   "xor",
+   "ret"
+  ],
+  "stub_b": [
+   "push",
+   "mov",
+   "cmp",
+   "pop",
+   "je",
+   "jmp",
+   "xor",
+   "ret"
+  ],
+  "stubs_ok": true,
+  "module_x87": [],
+  "symbols": {
+   "_ee_code_page": "00414000",
+   "_ee_window_a": "004147c4",
+   "_ee_window_b": "004147ff",
+   "_ee_join": "0041487c",
+   "_ee_callee_a": "004148a0",
+   "_ee_callee_b_page": "00412000",
+   "_ee_callee_b": "00412d70",
+   "_ee_data_page": "00606000",
+   "_ee_d3d_slot": "00606f34"
+  },
+  "pages": {
+   ".x3meec": {
+    "va": "00414000",
+    "size": 4096,
+    "ok": true
+   },
+   ".x3meeb": {
+    "va": "00412000",
+    "size": 4096,
+    "ok": true
+   },
+   ".x3meed": {
+    "va": "00606000",
+    "size": 4096,
+    "ok": true
+   }
+  },
+  "overlapping_sections": [],
+  "highest_other_section_end": "0023b008"
+ },
+ "check_count": 54,
+ "pass_count": 54,
+ "checks": [
+  {
+   "name": "layout_at_engine_addresses",
+   "pass": true
+  },
+  {
+   "name": "windows_are_header_windows",
+   "pass": true
+  },
+  {
+   "name": "sites_call_callees",
+   "pass": true
+  },
+  {
+   "name": "code_page_execute_read",
+   "pass": true
+  },
+  {
+   "name": "vanilla_contract",
+   "pass": true
+  },
+  {
+   "name": "vanilla_contract",
+   "pass": true
+  },
+  {
+   "name": "vanilla_contract",
+   "pass": true
+  },
+  {
+   "name": "unset_is_native",
+   "pass": true
+  },
+  {
+   "name": "native_is_native",
+   "pass": true
+  },
+  {
+   "name": "word_refused",
+   "pass": true
+  },
+  {
+   "name": "case_refused",
+   "pass": true
+  },
+  {
+   "name": "long_refused",
+   "pass": true
+  },
+  {
+   "name": "executable_mismatch_refused",
+   "pass": true
+  },
+  {
+   "name": "private_page",
+   "pass": true
+  },
+  {
+   "name": "changed_window_a_refused",
+   "pass": true
+  },
+  {
+   "name": "changed_window_b_refused",
+   "pass": true
+  },
+  {
+   "name": "copy_a_unwritten",
+   "pass": true
+  },
+  {
+   "name": "invalid_site_refused",
+   "pass": true
+  },
+  {
+   "name": "b_target_mismatch_rolls_back_a",
+   "pass": true
+  },
+  {
+   "name": "roview_mapped",
+   "pass": true
+  },
+  {
+   "name": "b_protect_failed_rolls_back_a",
+   "pass": true
+  },
+  {
+   "name": "roview_unwritten",
+   "pass": true
+  },
+  {
+   "name": "a_readback_rolled_back",
+   "pass": true
+  },
+  {
+   "name": "b_readback_rolls_back_both",
+   "pass": true
+  },
+  {
+   "name": "readback_faults_taken",
+   "pass": true
+  },
+  {
+   "name": "a_rollback_failed_registered",
+   "pass": true
+  },
+  {
+   "name": "registered_refuses_reinstall",
+   "pass": true
+  },
+  {
+   "name": "a_alone_skips_only_a",
+   "pass": true
+  },
+  {
+   "name": "registered_a_restored",
+   "pass": true
+  },
+  {
+   "name": "a_restore_refused_registered",
+   "pass": true
+  },
+  {
+   "name": "refused_a_restored_at_shutdown",
+   "pass": true
+  },
+  {
+   "name": "installed_a_atomic_b_plain",
+   "pass": true
+  },
+  {
+   "name": "second_initialize_silent",
+   "pass": true
+  },
+  {
+   "name": "ship_skips_both",
+   "pass": true
+  },
+  {
+   "name": "non_ship_forwarded_unchanged",
+   "pass": true
+  },
+  {
+   "name": "non_ship_forwarded_unchanged",
+   "pass": true
+  },
+  {
+   "name": "restored",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "installed_a_atomic_b_plain",
+   "pass": true
+  },
+  {
+   "name": "second_initialize_silent",
+   "pass": true
+  },
+  {
+   "name": "ship_skips_both",
+   "pass": true
+  },
+  {
+   "name": "non_ship_forwarded_unchanged",
+   "pass": true
+  },
+  {
+   "name": "non_ship_forwarded_unchanged",
+   "pass": true
+  },
+  {
+   "name": "restored",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "reinstalled",
+   "pass": true
+  },
+  {
+   "name": "foreign_bytes_not_restored",
+   "pass": true
+  },
+  {
+   "name": "not_owned_stays_registered",
+   "pass": true
+  },
+  {
+   "name": "retried_detach_restores",
+   "pass": true
+  },
+  {
+   "name": "late_claim_refused",
+   "pass": true
+  }
+ ],
+ "runs": [
+  {
+   "phase": "vanilla",
+   "object": "ship",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "vanilla",
+   "object": "missile",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "vanilla",
+   "object": "class_0107",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "off",
+   "object": "ship",
+   "calls_a": "0",
+   "calls_b": "0",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "00000000",
+   "eflags": "00000646",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "0",
+   "a_return": "00000000",
+   "b_esp_delta": "0",
+   "b_return": "00000000"
+  },
+  {
+   "phase": "off",
+   "object": "missile",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "off",
+   "object": "class_0107",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "plumes",
+   "object": "ship",
+   "calls_a": "0",
+   "calls_b": "0",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "00000000",
+   "eflags": "00000646",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "0",
+   "a_return": "00000000",
+   "b_esp_delta": "0",
+   "b_return": "00000000"
+  },
+  {
+   "phase": "plumes",
+   "object": "missile",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "plumes",
+   "object": "class_0107",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f914",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  }
+ ],
+ "rows": [
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "native",
+   "reason": "native",
+   "mode": "native",
+   "setting": "-",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "native",
+   "reason": "native",
+   "mode": "native",
+   "setting": "-",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "native",
+   "reason": "native",
+   "mode": "native",
+   "setting": "native",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "native",
+   "reason": "native",
+   "mode": "native",
+   "setting": "native",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "invalid_setting",
+   "reason": "invalid_setting",
+   "mode": "-",
+   "setting": "on",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "invalid_setting",
+   "reason": "invalid_setting",
+   "mode": "-",
+   "setting": "on",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "invalid_setting",
+   "reason": "invalid_setting",
+   "mode": "-",
+   "setting": "Off",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "invalid_setting",
+   "reason": "invalid_setting",
+   "mode": "-",
+   "setting": "Off",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "too_long",
+   "reason": "too_long",
+   "mode": "-",
+   "setting": "?",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "too_long",
+   "reason": "too_long",
+   "mode": "-",
+   "setting": "?",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "executable_mismatch",
+   "reason": "executable_mismatch",
+   "mode": "off",
+   "setting": "off",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "executable_mismatch",
+   "reason": "executable_mismatch",
+   "mode": "off",
+   "setting": "off",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "active",
+   "reason": "ok",
+   "mode": "off",
+   "setting": "off",
+   "write": "atomic",
+   "active": true
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "active",
+   "reason": "ok",
+   "mode": "off",
+   "setting": "off",
+   "write": "plain",
+   "active": true
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "active",
+   "reason": "ok",
+   "mode": "plumes",
+   "setting": "plumes",
+   "write": "atomic",
+   "active": true
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "active",
+   "reason": "ok",
+   "mode": "plumes",
+   "setting": "plumes",
+   "write": "plain",
+   "active": true
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "active",
+   "reason": "ok",
+   "mode": "off",
+   "setting": "off",
+   "write": "atomic",
+   "active": true
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "active",
+   "reason": "ok",
+   "mode": "off",
+   "setting": "off",
+   "write": "plain",
+   "active": true
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "late_claim",
+   "reason": "late_claim",
+   "mode": "off",
+   "setting": "off",
+   "write": "none",
+   "active": false
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "late_claim",
+   "reason": "late_claim",
+   "mode": "off",
+   "setting": "off",
+   "write": "none",
+   "active": false
+  }
+ ],
+ "result": {
+  "checks": 54,
+  "failures": 0
+ },
+ "passed": true
+}

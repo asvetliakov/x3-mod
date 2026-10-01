@@ -24,6 +24,10 @@ core::Mode mode();
 // under --debug for the census); suppress = a recognised draw is not forwarded.
 bool hook_wanted();
 bool suppress();
+// The arming signal of the suppression: both call redirects of engine_effects_patch live (installed()). The motion
+// route reads it once per frame; without it a recognised draw is forwarded (forwarded_patch_missing), so the glow never
+// disappears while the native sprites, lens flares and trails stay.
+bool redirects_live();
 const char* status();
 // Present path, render thread, only while hook_wanted(): the table load on the first call, then the resolution.
 void begin_frame(unsigned long long frame);
@@ -39,6 +43,7 @@ Stats stats();
 // Fixture seams (the motion seam DLL): the identity treated as verified before initialize, and a synthetic body
 // manager's global in the fixture's own memory.
 void fixture_identity(bool verified);
+void fixture_redirects(bool live); // the redirects treated as live (the fixture EXE has no engine sites)
 void fixture_body_global(std::uintptr_t va);
 #endif
 }

@@ -1697,6 +1697,7 @@ private:
     // Engine effects (motion_output_engine_effects_inc.h): the gates, the frame's ring and counts, the pinned c4-6
     // order, the census caps (64 engine_draw rows per frame, rows in the first 8 frames that have any).
     bool engine_hook_ = false, engine_suppress_ = false, engine_census_ = false, engine_device_logged_ = false;
+    bool engine_redirects_ = false; // engine_effects::redirects_live(), read at configure and once per frame
     engine_effects::core::Ring* engine_ring_ = nullptr;
     engine_effects::core::FrameCounts engine_counts_{};
     engine_effects::core::Order engine_order_ = engine_effects::core::Order::a;

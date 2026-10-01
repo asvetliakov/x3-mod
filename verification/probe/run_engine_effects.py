@@ -8,6 +8,8 @@ engine_effects_fixture.exe, then runs the fixture four times in the selected bot
               non-candidate draw), a ring-overflow frame, a Reset, frames past the census's eight
   native      native + --debug: nothing suppressed or recorded, the census counts forwarded_native
   unverified  off without the identity seam: refused, every draw forwarded
+  unpatched   off + --debug with the identity but without the call redirects (engine_effects_patch not installed):
+              every glow-jet draw forwarded as forwarded_patch_missing, nothing recorded
   timing      off without the census: per-draw microseconds of the suppressed, not_jet and non-candidate paths
 Each run's directory holds x3m/engine_bodies.json, written here by tools/effects/engine_bodies.py's dumps() for the
 synthetic body manager the fixture builds (default path: <EXE directory>\\x3m\\engine_bodies.json). The effects pair's
@@ -42,7 +44,8 @@ PROGRAMS = {'vs': Path('/tmp/x3-shader-sweep/programs/vs_d5e1c75351ed3f04.bin'),
             'ps': Path('/tmp/x3-shader-sweep/programs/ps_8360f422de08b5bd.bin')}
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2']
 MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X3M_ENGINE_EFFECTS='native', X3M_DEBUG='1'),
-         'unverified': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'timing': dict(X3M_ENGINE_EFFECTS='off')}
+         'unverified': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'unpatched': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'),
+         'timing': dict(X3M_ENGINE_EFFECTS='off')}
 SCENARIO_FRAMES = (1, 2, 3, 5, 6, 7, 8, 9, 10, 11)
 OVERFLOW_FRAME, RING = 4, 1024
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
@@ -120,7 +123,7 @@ def validate(mode, r):
     log = r['session']
     modes = rows(log, 'engine_effects_mode')
     out['mode_row'] = modes[0] if modes else None
-    expected_status = {'main': 'armed', 'native': 'native', 'unverified': 'executable_mismatch', 'timing': 'armed'}[mode]
+    expected_status = {'main': 'armed', 'native': 'native', 'unverified': 'executable_mismatch', 'unpatched': 'armed', 'timing': 'armed'}[mode]
     if len(modes) != 1 or modes[0].get('status') != expected_status:
         problems.append(f'{mode}: engine_effects_mode {modes}')
     if mode == 'timing':
@@ -150,14 +153,16 @@ def validate(mode, r):
     out['engine_draw_rows'] = len(draws)
     out['engine_draw_frames'] = sorted(per_frame)
     out['engine_frame_rows'] = len(frames)
-    if mode == 'native':
+    if mode in ('native', 'unpatched'):
+        verdict = 'forwarded_native' if mode == 'native' else 'forwarded_patch_missing'
+        redirects = '1' if mode == 'native' else '0'  # native: the fixture's seam marks them live; nothing is suppressed anyway
         for frame in (1, 2):
-            want = collections.Counter(forwarded_native=4, forwarded_opaque=1, forwarded_unscoped=1)
+            want = collections.Counter({verdict: 4, 'forwarded_opaque': 1, 'forwarded_unscoped': 1})
             if per_frame[frame] != want:
-                problems.append(f'native: frame {frame} rows {dict(per_frame[frame])}')
+                problems.append(f'{mode}: frame {frame} rows {dict(per_frame[frame])}')
             f = frames.get(frame, {})
-            if (f.get('records'), f.get('suppressed'), f.get('forwarded_native')) != ('0', '0', '4'):
-                problems.append(f'native: engine_frame {frame} {f}')
+            if (f.get('records'), f.get('suppressed'), f.get(verdict), f.get('redirects')) != ('0', '0', '4', redirects):
+                problems.append(f'{mode}: engine_frame {frame} {f}')
         return problems, out
     # main: rows in the first eight frames that have any (1..8), none after; 64 in the overflow frame.
     if sorted(per_frame) != list(range(1, 9)):
@@ -185,6 +190,7 @@ def validate(mode, r):
     for frame in SCENARIO_FRAMES:
         f = frames.get(frame, {})
         want = dict(candidates='7', not_jet='1', records='4', suppressed='4', forwarded_unscoped='1', forwarded_opaque='1', forwarded_overflow='0',
+                    forwarded_patch_missing='0', redirects='1',
                     unknown_body='1', steering='1', rows_unknown='1', order_a='2', order_b='1', order_mismatch='0', order_invalid='1')
         if {k: f.get(k) for k in want} != want:
             problems.append(f'main: engine_frame {frame} {f}')

@@ -570,6 +570,108 @@ def lod_overlay_line(game):
         return f'lod overlay: check failed ({type(error).__name__}: {error})'
 
 
+# Engine body table (docs/architecture/engine-effects-modern.md section 2): the DLL reads <game>/x3m/engine_bodies.json
+# for --engine-effects off|plumes. `manage.py install` generates it from the installed game tree (x3m-regenerate does
+# the same after mod changes); a file is ours when its `tool` field names the generator, whichever of the two wrote it.
+ENGINE_BODIES_GAME_FILE = Path('x3m/engine_bodies.json')
+ENGINE_BODIES_TOOL = ROOT / 'tools/effects/engine_bodies.py'
+ENGINE_BODIES_MARK = 'tools/effects/engine_bodies.py'  # the table's own `tool` field
+ENGINE_BODIES_PREVIOUS = '.previous'  # x3m-regenerate keeps one previous table beside it
+
+
+def _read_engine_bodies(path):
+    """The parsed table when `path` holds one written by the generator, else None (absent, unreadable, foreign)."""
+    try:
+        table = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+    if isinstance(table, dict) and table.get('tool') == ENGINE_BODIES_MARK and isinstance(table.get('bodies'), dict):
+        return table
+    return None
+
+
+def engine_bodies_line(game, mode):
+    """The `engine bodies:` launch line for --engine-effects off|plumes (None for native or unset): missing,
+    unreadable or ok with the body count. Informational, never blocks the launch."""
+    if mode not in ('off', 'plumes'):
+        return None
+    path = game / ENGINE_BODIES_GAME_FILE
+    if not path.is_file():
+        return (f'engine bodies: missing ({path}); JET-flagged draws are still suppressed, each counted unknown_body '
+                'with the default tint cluster; run `python3 tools/manage.py install` or x3m-regenerate')
+    table = _read_engine_bodies(path)
+    if table is None:
+        return (f'engine bodies: unreadable or not written by {ENGINE_BODIES_MARK} ({path}); JET-flagged draws are '
+                'still suppressed, each counted unknown_body with the default tint cluster')
+    counts = table.get('counts') if isinstance(table.get('counts'), dict) else {}
+    view = table.get('generated_from', {}).get('view', '?') if isinstance(table.get('generated_from'), dict) else '?'
+    return (f"engine bodies: ok ({len(table['bodies'])} bodies, {counts.get('missing', '?')} listed but not loadable, "
+            f"schema {table.get('schema')}, view {view})")
+
+
+def install_engine_bodies(game, run=subprocess.run):
+    """Generates the table from the installed game tree with tools/effects/engine_bodies.py into a temporary directory
+    (the generator refuses an output inside the game root) and moves it to <game>/x3m/engine_bodies.json through a
+    temporary file in x3m/ and a rename. A file already there that the generator did not write is left alone.
+    Returns {'status': installed|unchanged|retained|failed, 'path', 'sha256', 'bodies', 'missing', 'reason'}."""
+    import tempfile
+    game = Path(game)
+    destination = game / ENGINE_BODIES_GAME_FILE
+    result = {'status': 'failed', 'path': str(destination), 'sha256': None, 'bodies': None, 'missing': None, 'reason': None}
+    if destination.exists() and _read_engine_bodies(destination) is None:
+        result.update(status='retained', reason='a file the generator did not write is in place')
+        return result
+    with tempfile.TemporaryDirectory(prefix='x3m-engine-bodies-') as scratch:
+        generated = Path(scratch) / 'engine_bodies.json'
+        try:
+            done = run([sys.executable, str(ENGINE_BODIES_TOOL), '--game-root', str(game), '--out', str(generated)],
+                       capture_output=True, text=True, timeout=900)
+        except (OSError, subprocess.SubprocessError) as error:
+            result['reason'] = f'{type(error).__name__}: {error}'
+            return result
+        table = _read_engine_bodies(generated) if done.returncode == 0 else None
+        if table is None:
+            lines = (done.stderr or done.stdout or '').strip().splitlines()
+            result['reason'] = f'generator exit {done.returncode}' + (f': {lines[-1]}' if lines else '')
+            return result
+        data = generated.read_bytes()
+    counts = table.get('counts') if isinstance(table.get('counts'), dict) else {}
+    result.update(sha256=hashlib.sha256(data).hexdigest(), bodies=len(table['bodies']), missing=counts.get('missing'))
+    if destination.is_file() and destination.read_bytes() == data:
+        result['status'] = 'unchanged'
+        return result
+    destination.parent.mkdir(exist_ok=True)
+    temporary = destination.with_name(destination.name + '.tmp')
+    temporary.write_bytes(data)
+    os.replace(temporary, destination)
+    result['status'] = 'installed'
+    return result
+
+
+def remove_engine_bodies(game):
+    """`uninstall` only (a previous DLL ignores the file, so `rollback` leaves it): removes engine_bodies.json and its
+    .previous when the generator wrote them, then x3m/ if that left it empty. Returns {'removed': [...],
+    'retained': [...]} as paths relative to the game directory."""
+    game = Path(game)
+    removed, retained = [], []
+    current = game / ENGINE_BODIES_GAME_FILE
+    for path in (current, current.with_name(current.name + ENGINE_BODIES_PREVIOUS)):
+        if not path.is_file():
+            continue
+        name = path.relative_to(game).as_posix()
+        if _read_engine_bodies(path) is None:
+            retained.append(name)
+            continue
+        path.unlink()
+        removed.append(name)
+    if removed:
+        try:
+            current.parent.rmdir()  # only when empty: fog families and the voice decoder stay
+        except OSError:
+            pass
+    return {'removed': removed, 'retained': retained}
+
+
 def fog_families_command(argv):
     """`manage.py fog-families`: the argv that runs tools/analysis/fog_families.py on the bottle's
     game directory. --bottle/--game-dir are consumed; everything else is forwarded verbatim;
@@ -1207,7 +1309,7 @@ def main():
     parser.add_argument('--voice-decoder', default=None, metavar='DIR', help='launch only. Default on a modded launch: the first valid of <game dir>/x3m/voice-decoder and the repository copy tools/voice-decoder/v4 (a candidate failing the checks below is skipped with a note; none found = no decoder; no discovery under --vanilla); --voice-decoder none = off (the literal word; pass ./none for a directory named none); an explicit DIR must be valid or the launch is refused. Deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing (explicit or discovered; a dry run creates nothing for a discovered directory and reports that the registry will be created; the registry cache is rebuilt on first launch). The dry run prints the chosen directory and why, or "voice decoder: none". Also sets X3M_VOICE_DMO_FALLBACK=1 so the proxy re-initialises the DMO wrapper the game creates with the registered WMA decoder DMO when the speech decoder class is unregistered (byte-verified hook at 0x004cfd46, inert where Init succeeds; docs/architecture/voice-decoder-adapter.md)')
     parser.add_argument('--terran-station-lod', choices=('size', 'distance'), default=None, help='How Terran stations pick their mesh LOD (X3M_TERRAN_STATION_LOD; default size on every modded launch, also the DLL default when the variable is unset; refused under --vanilla, where the proxy is not loaded). size = the reader of bit 31 of the station root\'s node+0x12c in the cull/LOD pass (0x0047d01c, je -> jmp to the same target, two bytes, verified before the write) is bypassed, so Terran TDocks/TFactories subtrees select by screen size like every other object and can reach the merged-LOD overlay records; distance = the engine\'s fixed-distance branch (7/15.5/21/28.5 km bands), nothing patched. Saves are unchanged either way')
     parser.add_argument('--lod-occlusion', choices=('off', 'record0', 'all'), default=None, help='Which mesh LOD records bind their material\'s occlusion map (t_OcclusionTexture) (X3M_LOD_OCCLUSION; default all on every modded launch since Run 81 (user decision 2026-09-24), marked X3M_LOD_OCCLUSION_DEFAULT=1; the DLL default when the variable is unset stays record0; refused under --vanilla, where the proxy is not loaded). off = record0 = the engine: only LOD record 0 binds the map, every lower record binds the NONE_OCCL_DECAL placeholder (no occlusion), nothing patched; all = the gate in the material submission (jne at 0x004c34f7, its rel32 set to 0 so both outcomes continue on the LOD-0 path, four bytes, verified before the write) is bypassed, so merged-LOD coarse records keep the station\'s occlusion. Side effect of all: vanilla lower records get occlusion too, through a second UV set about 1 %% off the occlusion unwrap and partly outside [0, 1], so they may show misplaced occlusion (docs/reverse-engineering/texture-lookup.md section 12). Saves are unchanged either way')
-    parser.add_argument('--engine-effects', choices=('native', 'off', 'plumes'), default=None, help='Ship engine glow jets (X3M_ENGINE_EFFECTS; default native on every modded launch, refused under --vanilla; read once at load, never toggled in flight). native = the game\'s draws; off = every glow-jet draw the proxy recognises (a draw inside the object scope whose node carries the JET flags node+0x130 & 0x4000001, blended with Z-write off or with the engine.fx pair bound) is recorded (throttle, nozzle origin/axis/size from c4-6, identity, engine_bodies.json entry) and not forwarded; plumes = off in phase 1a (one engine_effects_plumes row). Emitter sprites, engine lens flares and Particles3 trails stay native until the call redirects land. With --debug: engine_draw rows (first 64 per frame, first 8 frames) and one engine_frame row per frame (docs/architecture/engine-effects-modern.md)')
+    parser.add_argument('--engine-effects', choices=('native', 'off', 'plumes'), default=None, help='Who draws the ship engine effects (X3M_ENGINE_EFFECTS; nothing is sent unless given, i.e. native, also the DLL default when the variable is unset; an inherited shell value is dropped; refused under --vanilla, where the proxy is not loaded). native = the game\'s engine glow jets, emitter sprites, engine lens flares and engine trails, nothing patched; off = all four suppressed and nothing drawn instead (glow-jet draws recognised by the JET node flag and skipped, the sprite/flare and trail creation calls in 0x00414590 redirected; weapon and missile trails untouched); plumes = reserved for the proxy\'s own plumes and ribbons (phase 2), treated as off until then. off and plumes read <game>/x3m/engine_bodies.json (written by `manage.py install` and x3m-regenerate from the installed game tree) for size and tint; a JET-flagged draw whose body has no entry is still suppressed (counted unknown_body, default tint cluster), only bodies off the JET list and the legacy v\\00114 (refused by the loader) stay native. The launch line "engine bodies: missing|ok" reports the table (docs/architecture/engine-effects-modern.md)')
     parser.add_argument('--sun-flare-fix', choices=('on', 'off'), default=None, help='Keep the sun\'s lens flare when a far sun is near the view centre on wide displays by saturating the lens collector\'s overflowing horizontal bound (X3M_SUN_FLARE_FIX; default on for every modded launch, refused under --vanilla; off, or the variable unset, leaves the engine\'s bytes untouched; the first multiply of the same test still wraps for tan(F/2) >= 2, F >= 126.9 deg, which the --fov range never reaches, only script cameras; docs/reverse-engineering/field-of-view.md section 9.1)')
     parser.add_argument('--dust-leak-fix', choices=('on', 'off'), default=None, help='Stop the engine\'s dust-scene fill 0x0041efc0 from leaking one scene node per missing dust body per frame (X3M_DUST_LEAK_FIX; default on for every modded launch, also the DLL default when the variable is unset; refused under --vanilla). on claims the loop tail\'s SUB at 0x0041f4d1 through engine_patch: a node whose dust body failed to load is released with the engine\'s own node release 0x00487be0 and the fill stops for that frame (at most one failed attempt per frame); off leaves the engine\'s bytes. Sectors on backgrounds with missing dust bodies (170 Mayhem 3 rows, 1 stock) otherwise grow by NumDustInstances nodes per frame until the next load (docs/reverse-engineering/object-lifetimes.md, Run383)')
     parser.add_argument('--fov', default=None, metavar='N|game', help='Field of view as the game counts it, like X4: N is the horizontal angle in degrees on a 16:9 screen, 70..100 (the in-game FOV menu\'s range; decimals allowed), default 90 on every modded launch; or game. The vertical angle is derived (70 -> 43.0 deg, 80 -> 50.5, 90 -> 58.7, 100 -> 67.7) and stays the same on every display at least as wide as 4:3, so wider screens get more width: at 90, 21:9 shows 106 deg (2560x1080; 107 on 3440x1440) and 32:9 127 (5120x1440). The in-game FOV menu always starts from its own 90 whatever --fov is (the game keeps that number in its script and never sees --fov), so its first press jumps to the value of 91 (or 89); from then on the menu works in the same units as --fov (its number is remapped the same way: engine focus of N 50..130 through a table; other values unchanged). game keeps the vanilla model, where the number is the horizontal angle of the central 4:3 area (90 = 73.74 deg vertical, 106 horizontal on 16:9, 139 on 32:9), and patches nothing. --fov seeds a new game; after a savegame load the savegame\'s own value wins, as with the menu: a save written without the patch (or under --fov game) that holds the game\'s number N is converted to the same units on load (its 90 means 90 whatever --fov is), a save written with the patch loads as saved (a decimal --fov that would land on such a number is moved by 1/65536 of a turn so its saves do too); saves are written in the units in play, so a patched save loads narrower under --fov game. The DLL writes the registry constructor\'s default (0x0041c9dc) and hooks the INS_SetFocus store (0x0042dbf8) and the savegame load store (0x0041c8c1), all three verified or none (refused under --vanilla, where the proxy is not loaded); zoom scales the result; displays narrower than 4:3 get a slightly larger vertical angle (docs/reverse-engineering/field-of-view.md)')
@@ -1818,12 +1920,12 @@ def main():
         parser.error('--terran-station-lod cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the LOD reader never runs')
     if args.vanilla and args.lod_occlusion is not None:
         parser.error('--lod-occlusion cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the occlusion gate never runs')
+    if args.vanilla and args.engine_effects is not None:
+        parser.error('--engine-effects cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that suppresses the engine effects never runs')
     if args.camera != 'chase' and args.chase_fov_compensate is not None:
         parser.error('--chase-fov-compensate requires --camera chase.')
     if args.vanilla and args.chase_fov_compensate is not None:
         parser.error('--chase-fov-compensate cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy chase camera never runs')
-    if args.vanilla and args.engine_effects is not None:
-        parser.error('--engine-effects cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that skips the glow-jet draws never runs')
     if args.vanilla and args.sun_flare_fix is not None:
         parser.error('--sun-flare-fix cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the lens collector never runs')
     if args.vanilla and args.dust_leak_fix is not None:
@@ -1943,6 +2045,16 @@ def main():
                         print(f'  {name} sha256={fonts["files"][name]}')
                     if fonts['retained']:
                         print('Left unowned font files in place: ' + ', '.join(fonts['retained']))
+                # The engine body table after the proxy (game data the DLL reads for --engine-effects off|plumes); a
+                # failed generation leaves the installed proxy and any previous table in place and is reported.
+                bodies = install_engine_bodies(game)
+                if bodies['status'] in ('installed', 'unchanged'):
+                    print(f"Engine body table {bodies['status']}: {bodies['path']} ({bodies['bodies']} bodies, "
+                          f"{bodies['missing']} listed but not loadable, sha256={bodies['sha256']}).")
+                else:
+                    print(f"warning: engine body table {bodies['status']} ({bodies['reason']}): {bodies['path']}; "
+                          '--engine-effects off|plumes still suppresses JET-flagged draws, counted unknown_body with the '
+                          'default tint cluster', file=sys.stderr)
             elif args.action == 'uninstall':
                 retained = media_package.uninstall(game)
                 print('Removed owned proxy and manifest; captures and originals retained.')
@@ -1952,9 +2064,13 @@ def main():
                 if fonts['removed'] or fonts['retained']:
                     print(f'Removed {len(fonts["removed"])} density font file(s) from {game / "f"}'
                           + ('; left changed: ' + ', '.join(fonts['retained']) if fonts['retained'] else '') + '.')
+                bodies = remove_engine_bodies(game)
+                if bodies['removed'] or bodies['retained']:
+                    print(f"Removed engine body table: {', '.join(bodies['removed']) or 'none'}"
+                          + ('; left (not written by the generator): ' + ', '.join(bodies['retained']) if bodies['retained'] else '') + '.')
             elif args.action == 'rollback':
                 media_package.rollback(game)
-                print('Restored previous owned proxy and selection; density fonts (if any) left in place.')
+                print('Restored previous owned proxy and selection; density fonts and the engine body table (if any) left in place.')
             else:
                 media_package.recover(game)
                 print('Recovered verified pre-transaction proxy and selection.')
@@ -2259,12 +2375,12 @@ def main():
         else:
             env['X3M_LOD_OCCLUSION'] = {'off': 'record0', None: 'all'}.get(args.lod_occlusion, args.lod_occlusion)
             env['X3M_LOD_OCCLUSION_DEFAULT'] = '1' if args.lod_occlusion is None else '0'
-        # Engine effects: always explicit on a modded launch (native unless --engine-effects), so a stale shell value
-        # cannot hide the glow; dropped under --vanilla (an explicit value is refused above).
-        if args.vanilla:
+        # Engine effects: sent only when given (the default flight is the DLL's native), so an inherited shell value
+        # cannot switch the game's engine effects off; dropped under --vanilla (an explicit value is refused above).
+        if args.vanilla or args.engine_effects is None:
             env.pop('X3M_ENGINE_EFFECTS', None)
         else:
-            env['X3M_ENGINE_EFFECTS'] = args.engine_effects or 'native'
+            env['X3M_ENGINE_EFFECTS'] = args.engine_effects
         # Sun flare fix: always explicit on a modded launch (on unless --sun-flare-fix off), so a stale shell
         # value cannot decide the lens collector's bound; dropped under --vanilla (an explicit value is refused above).
         if args.vanilla:
@@ -2428,6 +2544,10 @@ def main():
         lod_overlay = None if args.vanilla else lod_overlay_line(game)
         if lod_overlay is not None:
             print(lod_overlay, file=sys.stderr)
+        # Engine body table, only when the launch asks for --engine-effects off|plumes (informational).
+        engine_bodies = None if args.vanilla else engine_bodies_line(game, args.engine_effects)
+        if engine_bodies is not None:
+            print(engine_bodies, file=sys.stderr)
         if voice_root is not None:
             plugins, registry = voice_root / 'runtime/plugins', voice_root / 'registry'
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
@@ -2477,6 +2597,7 @@ def main():
                                       'voice_decoder': voice_line,
                                       'fog_families': fog_families,
                                       'lod_overlay': lod_overlay,
+                                      'engine_bodies': engine_bodies,
                                       'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')},
                                               **voice_env}}, indent=2))
                     return

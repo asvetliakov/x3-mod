@@ -7,6 +7,7 @@
 //   main       X3M_ENGINE_EFFECTS=off, X3M_DEBUG=1: the scenario frames, ring overflow, a Reset, the records
 //   native     X3M_ENGINE_EFFECTS=native, X3M_DEBUG=1: the census counts, nothing suppressed or recorded
 //   unverified X3M_ENGINE_EFFECTS=off without the identity seam: refused, everything forwarded
+//   unpatched  X3M_ENGINE_EFFECTS=off, identity verified, the call redirects not live: forwarded_patch_missing
 //   timing     X3M_ENGINE_EFFECTS=off, no census: per-draw cost of the suppressed, not_jet and non-candidate paths
 // Output: CHECK <label> PASS|FAIL lines, FRAME / RECORD / TIMING lines, RESULT PASS|FAIL. Original synthetic content
 // only; no game bytes are written or redistributed.
@@ -268,16 +269,16 @@ struct Fixture {
         scope(scoped ? &j.node : nullptr, j.serial);
         api(draw(1), "effect draw");
     }
-    struct Counts { unsigned v[23]; };
+    struct Counts { unsigned v[25]; };
     Counts counts() {
         Counts c{};
-        for (unsigned k = 0; k < 23; ++k) c.v[k] = status(device, k);
+        for (unsigned k = 0; k < 25; ++k) c.v[k] = status(device, k);
         return c;
     }
     void print_frame(unsigned frame, const Counts& c, unsigned submitted, const char* tag) {
-        std::printf("FRAME %s frame=%u candidates=%u not_jet=%u records=%u suppressed=%u forwarded_unscoped=%u forwarded_snapshot=%u forwarded_opaque=%u forwarded_state=%u forwarded_overflow=%u forwarded_native=%u unknown_body=%u steering=%u rows_unknown=%u order_a=%u order_b=%u order_ambiguous=%u order_mismatch=%u order_invalid=%u hook=%u suppress=%u world46=%u pinned_b=%u rows=%u submitted=%u\n",
+        std::printf("FRAME %s frame=%u candidates=%u not_jet=%u records=%u suppressed=%u forwarded_unscoped=%u forwarded_snapshot=%u forwarded_opaque=%u forwarded_state=%u forwarded_overflow=%u forwarded_native=%u forwarded_patch_missing=%u unknown_body=%u steering=%u rows_unknown=%u order_a=%u order_b=%u order_ambiguous=%u order_mismatch=%u order_invalid=%u hook=%u suppress=%u world46=%u pinned_b=%u rows=%u redirects=%u submitted=%u\n",
                     tag, frame, c.v[0], c.v[1], c.v[2], c.v[3], c.v[4], c.v[5], c.v[6], c.v[7], c.v[8], c.v[9], c.v[10], c.v[11], c.v[12], c.v[13], c.v[14], c.v[15],
-                    c.v[16], c.v[17], c.v[18], c.v[19], c.v[20], c.v[21], c.v[22], submitted);
+                    c.v[16], c.v[17], c.v[18], c.v[19], c.v[20], c.v[21], c.v[22], c.v[23], c.v[24], submitted);
     }
     // One scenario frame: the pixel pair (a suppressed fixed-function JET draw leaves the target black, a not_jet one
     // writes white), the three effect-pair JET draws at z 0.25 / 1.125 / 2.0, an opaque JET draw (pair, Z-write on), an
@@ -314,17 +315,20 @@ struct Fixture {
         if (suppressing) {
             check(submitted == 5, named("submitted_5_of_9"));
             check(n.v[0] == 7 && n.v[1] == 1 && n.v[2] == 4 && n.v[3] == 4, named("candidates7_notjet1_records4_suppressed4"));
-            check(n.v[4] == 1 && n.v[5] == 0 && n.v[6] == 1 && n.v[7] == 0 && n.v[8] == 0 && n.v[9] == 0, named("forwarded_unscoped1_opaque1"));
-            check(n.v[10] == 1 && n.v[11] == 1 && n.v[12] == 1, named("unknown_body1_steering1_rows_unknown1"));
-            check(n.v[13] == 2 && n.v[14] == 1 && n.v[15] == 0 && n.v[16] == 0 && n.v[17] == 1, named("order_a2_b1_invalid1"));
-            check(n.v[20] == 7, named("c46_known"));
+            check(n.v[4] == 1 && n.v[5] == 0 && n.v[6] == 1 && n.v[7] == 0 && n.v[8] == 0 && n.v[9] == 0 && n.v[10] == 0, named("forwarded_unscoped1_opaque1"));
+            check(n.v[11] == 1 && n.v[12] == 1 && n.v[13] == 1, named("unknown_body1_steering1_rows_unknown1"));
+            check(n.v[14] == 2 && n.v[15] == 1 && n.v[16] == 0 && n.v[17] == 0 && n.v[18] == 1, named("order_a2_b1_invalid1"));
+            check(n.v[21] == 7 && n.v[24] == 1, named("c46_known_redirects_live"));
         } else {
             check(submitted == 9, named("submitted_9_of_9"));
             check(n.v[2] == 0 && n.v[3] == 0, named("nothing_recorded"));
-            if (n.v[18]) // native under --debug: the census counts what off would suppress
-                check(n.v[0] == 7 && n.v[1] == 1 && n.v[9] == 4 && n.v[4] == 1 && n.v[6] == 1, named("forwarded_native4_unscoped1_opaque1"));
+            if (n.v[19] && n.v[20]) // off without the redirects: every JET draw forwarded, nothing hidden
+                check(n.v[0] == 7 && n.v[1] == 1 && n.v[10] == 4 && n.v[9] == 0 && n.v[4] == 1 && n.v[6] == 1 && n.v[24] == 0,
+                      named("forwarded_patch_missing4_unscoped1_opaque1"));
+            else if (n.v[19]) // native under --debug: the census counts what off would suppress
+                check(n.v[0] == 7 && n.v[1] == 1 && n.v[9] == 4 && n.v[10] == 0 && n.v[4] == 1 && n.v[6] == 1, named("forwarded_native4_unscoped1_opaque1"));
             else // refused: the hook never runs
-                check(n.v[0] == 0 && n.v[9] == 0, named("hook_off_counts_nothing"));
+                check(n.v[0] == 0 && n.v[9] == 0 && n.v[10] == 0, named("hook_off_counts_nothing"));
         }
         if (suppressing && expect_records) {
             ee::Record r[4]{};
@@ -411,7 +415,7 @@ struct Fixture {
 
 int main(int argc, char** argv) {
     if (argc != 4) {
-        std::printf("usage: engine_effects_fixture <vs_effect.bin> <ps_effect.bin> main|native|unverified|timing\n");
+        std::printf("usage: engine_effects_fixture <vs_effect.bin> <ps_effect.bin> main|native|unverified|unpatched|timing\n");
         return 2;
     }
     const std::string mode = argv[3];
@@ -429,10 +433,11 @@ int main(int argc, char** argv) {
     f.configure = reinterpret_cast<Configure>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_motion_output_fixture_configure")));
     const auto identity = reinterpret_cast<Identity>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_identity")));
     const auto body_global = reinterpret_cast<BodyGlobal>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_body_global")));
+    const auto redirects = reinterpret_cast<Identity>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_redirects")));
     f.status = reinterpret_cast<Status>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_status")));
     f.record = reinterpret_cast<RecordFn>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_record")));
     f.emission = reinterpret_cast<EmissionStatus>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_linear_emission_fixture_status")));
-    if (!f.configure || !identity || !body_global || !f.status || !f.record || !f.emission) {
+    if (!f.configure || !identity || !redirects || !body_global || !f.status || !f.record || !f.emission) {
         std::printf("RESULT FAIL seam_exports\n");
         return 2;
     }
@@ -440,28 +445,32 @@ int main(int argc, char** argv) {
     manager.build();
     body_global(reinterpret_cast<std::uintptr_t>(&manager.global));
     if (mode != "unverified") identity(1); // before Direct3DCreate9, which runs initialize
+    if (mode != "unpatched") redirects(1);  // the fixture EXE has no engine sites: the patch module stays native
     f.create(mode == "timing");
     f.resources(vs_bytes, ps_bytes);
     f.make_jets();
     f.configure(&f.config);
     f.warmup(); // frame 0: the first Present loads engine_bodies.json and resolves the names
     if (mode == "main") {
-        const unsigned h = f.status(f.device, 18), s = f.status(f.device, 19);
+        const unsigned h = f.status(f.device, 19), s = f.status(f.device, 20);
         check(h == 1 && s == 1, "main_hook_and_suppress_armed");
         for (unsigned frame = 1; frame <= 3; ++frame) f.scenario(frame, "main", true, true);
         f.overflow_frame(4);
         f.scenario(5, "main", true, true);
         f.reset();
         // After the Reset: the shadow resynchronised from the device (c4-6 read back), the hook still armed.
-        check(f.status(f.device, 18) == 1, "reset_hook_kept");
+        check(f.status(f.device, 19) == 1, "reset_hook_kept");
         for (unsigned frame = 6; frame <= 8; ++frame) f.scenario(frame, "main", true, true);
         for (unsigned frame = 9; frame <= 11; ++frame) f.scenario(frame, "main", true, true); // past the census's eight frames
     } else if (mode == "native") {
-        check(f.status(f.device, 18) == 1 && f.status(f.device, 19) == 0, "native_census_hook_without_suppression");
+        check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 0, "native_census_hook_without_suppression");
         for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "native", false, false);
     } else if (mode == "unverified") {
-        check(f.status(f.device, 18) == 0, "unverified_hook_off");
+        check(f.status(f.device, 19) == 0, "unverified_hook_off");
         f.scenario(1, "unverified", false, false);
+    } else if (mode == "unpatched") {
+        check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 1 && f.status(f.device, 24) == 0, "unpatched_armed_without_redirects");
+        for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "unpatched", false, false);
     } else if (mode == "timing") {
         // Warm the three paths, then five frames of 1000 draws each per class; the median per-draw microseconds.
         const unsigned n = 1000;
