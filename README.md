@@ -38,7 +38,7 @@ and what is still open are in [status](docs/status.md).
    (macOS) and `README.txt`.
 2. Run `x3m-regenerate` once from that folder. It rebuilds the data that depends on
    the installed game and mods: the fog colours of nebula types the renderer does not
-   know and the merged-LOD overlay. It asks nothing and ends with `all done`. Run it
+   know, the merged-LOD overlay and the engine body table. It asks nothing and ends with `all done`. Run it
    again after installing, updating or removing a mod
    ([user guide](docs/user/regenerate.md)).
 3. Start the game as usual. Under CrossOver, Wine prefers its built-in `d3d9` unless

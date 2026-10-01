@@ -26,6 +26,7 @@ import lod_overlay  # noqa: E402
 import x3m_regenerate as regen  # noqa: E402
 from sector_fog_census import write_catalogue  # noqa: E402
 from test_bob1 import atlas_textures, atlas_tree_lod0  # noqa: E402
+from test_engine_bodies import body as jet_body, dds_rgba, effect_material, red_blue  # noqa: E402
 from test_fog_families import background_line, body, dds_rgb24  # noqa: E402
 from test_lod_overlay_batch import mixed_tree, packed, reg, with_threshold  # noqa: E402
 
@@ -60,12 +61,20 @@ def package_fog_members():
             ('dds/tex_p.pck', dds_rgb24(np.full((8, 8, 3), [150, 30, 200], np.uint8)))]
 
 
+def engine_members():
+    """types/Bodies with two JET entries (one loadable glow body, one absent) and the glow body's texture."""
+    bodies = b'SBTYPE_JET;2;\r\neffects\\engines\\fx_t;effects\\engines\\gone;\r\nSBTYPE_SMALLJET;0;\r\n'
+    plume = jet_body(effect_material(b'tex_jet.dds'), 1000, [((-32768, 32768), (-16384, 16384), (-65536, 0))])
+    return [('types/Bodies.txt', bodies), ('objects/effects/engines/fx_t.bob', plume),
+            ('dds/tex_jet.dds', dds_rgba(red_blue()))]
+
+
 def make_root(folder, mod='Big'):
     """The game directory <folder>/drive_c/X3; with mod, addon/mods/<mod>.cat selected in <folder>/user.reg."""
     game = Path(folder) / 'drive_c' / 'X3'
     game.mkdir(parents=True)
     (game / 'X3AP.exe').write_bytes(b'MZ stub')
-    write_catalogue(game / '01.cat', atlas_textures() + fog_members())
+    write_catalogue(game / '01.cat', atlas_textures() + fog_members() + engine_members())
     write_catalogue(game / '02.cat', [
         ('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
         ('objects/ships/x/mixed.pbb', packed(mixed_tree())),
@@ -110,6 +119,10 @@ class Regenerate(unittest.TestCase):
             self.assertIn('refused model ships/x/badtext: text_parse_error', text)
             self.assertIn('refused model stations/y/good: texel_floor', text)   # production texel floor
             self.assertIn('slot plan: addon/01 2 bodies', text)
+            self.assertIn('engine bodies summary: 1 bodies (red 1), 1 listed but not loadable; wrote x3m/engine_bodies.json', text)
+            self.assertIn('engine body not loadable: effects\\engines\\gone (not_found)', log)  # log only
+            engine = json.loads((game / 'x3m/engine_bodies.json').read_text())
+            self.assertEqual((engine['tool'], sorted(engine['bodies'])), ('tools/effects/engine_bodies.py', ['effects\\engines\\fx_t']))
             self.assertIn('fog families: check passed after the LOD overlay', text)
             self.assertIn('all done', text)
             self.assertIn('   | batch: game', log)                           # the tool detail, log only
@@ -126,6 +139,7 @@ class Regenerate(unittest.TestCase):
             self.assertIn('0 baked + 2 unchanged = 2 in the overlay', text)
             self.assertEqual((game / 'addon/01.dat').read_bytes(), first)
             self.assertTrue((game / 'x3m/fog-families.bin.previous').is_file())
+            self.assertEqual((game / 'x3m/engine_bodies.json.previous').read_text(), (game / 'x3m/engine_bodies.json').read_text())
             self.assertEqual((game / regen.LOG_NAME).read_text().count('x3m-regenerate: game directory'), 1)
             self.assertFalse(list(game.rglob('*.x3m-replaced')) + list(game.rglob('*.tmp')))
 
