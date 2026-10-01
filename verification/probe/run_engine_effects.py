@@ -57,7 +57,8 @@ OVERFLOW_FRAME, RING = 4, 1024
 # (test_engine_effects compares them with the tree).
 PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.h', 'src/proxy/engine_effects_core.h',
                       'src/proxy/engine_effects_option.h', 'src/proxy/motion_output_engine_effects_inc.h',
-                      'src/proxy/motion_output_engine_plumes_inc.h', 'src/proxy/engine_plumes_core.h')
+                      'src/proxy/motion_output_engine_plumes_inc.h', 'src/proxy/engine_plumes_core.h',
+                      'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
 

@@ -242,6 +242,7 @@ public:
                                          // pass when one is attached
     Pass* fog_ = nullptr;
     Pass* plumes_ = nullptr; // engine plumes (phase 2): after_reset forwards to the pass when one is attached
+    Pass* ribbons_ = nullptr; // engine ribbons (phase 3): likewise
     std::uint64_t fog_frame_ = ~std::uint64_t(0);
     unsigned fog_failures_ = 0;
     bool fog_attach_failed_ = false; // volumetric fog: the same forwarding and per-frame marker

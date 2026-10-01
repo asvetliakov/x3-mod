@@ -222,6 +222,7 @@ renderer::SunShadowApplyPass::~SunShadowApplyPass() = default; // likewise: only
 renderer::FogPass::~FogPass() = default;                       // likewise
 renderer::SunOcclusionPass::~SunOcclusionPass() = default;     // likewise (partial sun occlusion, 855fc1bc)
 renderer::EnginePlumesPass::~EnginePlumesPass() = default;     // likewise (engine plumes, phase 2)
+renderer::EngineRibbonsPass::~EngineRibbonsPass() = default;   // likewise (engine ribbons, phase 3)
 // The scene-end apply quad is gated on sun_apply_requested_, which no scenario
 // here sets; inert so it cannot perturb the recorded call sequences.
 void MotionOutput::run_sun_shadow_apply() noexcept {}

@@ -48,6 +48,7 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
     // The plume stage's per-frame report (engine_stage row; motion_output_engine_plumes_inc.h).
     plumes_ran_ = plumes_fenced_ = plumes_evaluated_ = false;
     plumes_report_ = {};
+    ribbons_report_ = {}; // phase 3: the ribbons' share of the engine_stage row
     plumes_stage_us_ = 0.f;
 }
 void MotionOutput::engine_effects_frame_end() noexcept {
@@ -159,8 +160,10 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
             (scope.valid & (object_trace::Camera | object_trace::Registry)) == (object_trace::Camera | object_trace::Registry)) {
             object_lifetime::Snapshot life{};
             if (object_lifetime::current(scope.registry, scope.node, scope.node_handle, scope.camera, scope.camera_handle, &life) &&
-                life.known)
+                life.known) {
                 serial = life.node_serial;
+                engine_load_epoch_ = life.load_epoch; // phase 3: a change clears the ribbon pool (a load)
+            }
         }
     // The record (built for a suppressed draw, and for the census row of a forwarded JET draw).
     ee::Record record{};

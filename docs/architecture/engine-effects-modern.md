@@ -223,7 +223,7 @@ planned.
 | 0 (**done** 2026-10-01) | engine-effects.md §7 (both sites, ABI, `&pos`, list readers, `v/00566`, the registry bit) and `tools/effects/engine_bodies.py` (`c7f6c05a`); left for phase 1: the body-name resolver generalised from `lens_flare_cull_core.h` | — |
 | 1 (**built and installed** 2026-10-01 as Run118, `526a741c`; reviewed; Run 118 A queued = flight A) | `implement-deep`: recogniser, record, suppression, the c4–6 shadow window, the resolver, census rows; `implement-deep`: the two redirects (class-7 skip, class-10 forward, install-window claim) with the hook fixture; `implement`: the load-time option (`engine_effects=native|off|plumes`, default native until flown), launcher, ledger; one review; flight A (suppression only, F8 set 1–6) | 3 + review |
 | 2 (**built** 2026-10-01, not flown) | `implement-deep`: the stage pass, plume programs, GPU fixture, timing; `implement`: strength presets as `x3m.ini` keys; review; flight B | 2 + review |
-| 3 | `implement-deep`: ribbons (ring buffer core, program, fixture rows), fog law, SETA/cut rules; `implement`: RCS puffs, docs; review; flight C | 2 + review |
+| 3 (ribbons, fog law, SETA/cut rules **built** 2026-10-01, not flown; RCS puffs not built) | `implement-deep`: ribbons (ring buffer core, program, fixture rows), fog law, SETA/cut rules; `implement`: RCS puffs, docs; review; flight C | 2 + review |
 | 4 (optional, on evidence) | emitter-site anchor records (stock capitals, per-race stock tint); engine-side JET cull for the engine's per-draw time; texture-key fallback for unscoped draws; reactive mark | 1–2 each |
 
 **Phase 2 as built (2026-10-01; ledger [engine-effects.md](../verification/engine-effects.md), "Phase 2").** Code:
@@ -241,6 +241,40 @@ pass in front of the hull at a tilt), pulled 0.5 value x max(0, axis . to_camera
 exhaust clears its own hull; RCS records draw unlengthened with radiance x z and are skipped below z 0.02; the screen
 minimums (core radius 1.5 px, main-jet L 6 px, cull under 1.5 px) apply after the cap. The record's c4-6 origin and
 axis are taken to be in the camera latch's world (`camera_scene_` rows) [i: settled by flight B's first frame].
+
+**Phase 3 as built (2026-10-01; ledger [engine-effects.md](../verification/engine-effects.md), "Phase 3").** Code:
+`src/proxy/engine_ribbons_core.h` (pool, length law, strip builder), `src/renderer/engine_ribbons_pass.{h,cpp}` (the
+second draw and the pool's owner), `src/effects/engine_ribbon_{vs,ps}.hlsl` (vs 8 / ps 34 slots [m]),
+`src/proxy/motion_output_engine_ribbons_inc.h` (attach, run, the fog law) and `src/renderer/fog_transmittance.h`. The
+phase-3 brief's numbers are built where they differ from section 3 above:
+- *Pool and sampling.* 256 ribbons x 16 samples (position, half-width, time), keyed by the node serial (bit 63) or
+  node handle + model, a 512-slot map rebuilt per update; main jets only (RCS and rowless records skipped). A sample is
+  appended when the nozzle moved at least `max(1.5 m, 0.02 value, L / 15)`: 1.5 m = 7.5 render units at the fog
+  look's 5 units per metre; the `L / 15` term (not in the brief) keeps the 16 samples covering `L` when a frame's
+  motion exceeds the fixed spacing (at 8 px per frame and value 30 px the fixed spacing alone covers 15 frames, half
+  of `T`). The strip starts at the live nozzle, so there is never a gap at the nozzle.
+- *Length.* `L = T(value) x preset x v_est x s` with **T 0.5 s below value 2,000, 0.8 s to 20,000, 1.2 s above**
+  (the brief's thresholds, not 1,500 / 8,000; value in the record's scene units); `v_est` = the path from the nozzle
+  back through the samples of at least the last 0.1 s, never across a pause of more than 0.25 s, over their age. The
+  strip is cut at `L` (the last point interpolated) or ends at the oldest sample when the history is shorter (after a
+  SETA burst the path flown, not the extrapolated `L`). No `60 x value` cap.
+- *Look.* Half-width `0.6 x the nozzle's half-width` = 0.3 value at the nozzle tapering linearly to 0, held at 1.5 px
+  (a 3 px strip, no radiance compensation); radiance `I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u)` with
+  a `(1 - a^2)^2` profile across (not `0.6 (1 - u)^2`); the plume's near-camera rule per strip point (width held to
+  0.12 H, radiance 1 -> 0.5 over the last 20 %); occlusion the halo's SOFT 1.0 value at the centre line's view depth.
+  Presets scale the radiance and `T` (0.6 / 1 / 1.5).
+- *Lifetime.* Fade 1 -> 0 over 0.3 s at the last positions, then eviction (evictions run first in every update, so a
+  stage gap of 0.3 s empties the pool); clears on the resolve's cut (`FrameInputs::cut`, delivered by `note_cut` on
+  every resolve), on Reset (`before_reset`), on a change of the object_lifetime load epoch read with the jet's serial,
+  and per ribbon on a jump of more than 8 value in one update (section 5's guard).
+- *Fog (section 4).* Not the 13 -> 22.5 km fade alone: the mean transmittance of the look's column,
+  `T_rgb(d) = exp(-k_rgb x sigma_eff x rho_mean x D(d))`, `D` the integral of the column weight (1 to 65,000 units,
+  smoothstep to 0 at 112,500), `sigma_eff` the march's own extinction (family sigma x density_scale x ready_far x 8),
+  `rho_mean` the look's mean shaped density (0.05613 at occupancy 0.12, 0.10980 at 0.24 [m,
+  `verification/results/engine-effects/phase3_fog_mean_density.py`], linear between), `k = 1 + 0.6 (1 - chroma)`;
+  per nozzle at its distance, on the plume's and the ribbon's colours; on only on frames whose density composite
+  applied. Bluewell at 1.0x: T 0.978 at 4 km, 0.905 at the cap [m, host]. A plume inside a cloud is attenuated less
+  than the hull behind it, one in a gap more (a mean, not the march).
 
 **Native Windows.** Documented D3D9 only: dynamic VBs, `DrawIndexedPrimitive`, vs_3_0/ps_3_0, `tex2Dlod` on the
 lane, FP16 post-pixel-shader blending behind `CheckDeviceFormat` (the motes' query), no VTF, instancing, point

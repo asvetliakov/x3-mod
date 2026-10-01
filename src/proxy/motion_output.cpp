@@ -2406,7 +2406,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Engine plumes (motion_output_engine_plumes_inc.h): the armed stage draws the frame's glow-jet records as
             // the first act of the run's bracket, on the FP16 route only (RT0 is the texture the resolve reads); it
             // reads the lane the run reads.
-            if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr) && engine_ring_->count) {
+            // Phase 3: a frame without records still runs while ribbons fade; every cut reaches the ribbon pool.
+            if (in.cut && ribbons_) ribbons_->note_cut();
+            if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr) && (engine_ring_->count || engine_ribbons_live())) {
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
                 in.stage_context = this;
                 plumes_lane_ = depth;
@@ -4110,6 +4112,8 @@ void MotionOutput::before_reset() noexcept {
     // Engine plumes: every device object of the pass goes (programs, declaration, DEFAULT buffers); the next armed
     // resolve after a successful Reset recreates them; the attach refusal and the disarm window start over.
     if (plumes_) taa_call([&] { plumes_->before_reset(); });
+    if (ribbons_) taa_call([&] { ribbons_->before_reset(); }); // phase 3: the ribbon pass's objects and its pool
+    ribbons_attach_failed_ = false;
     plumes_attach_failed_ = false;
     plumes_disarmed_until_ = 0;
     plumes_lane_ = nullptr;
@@ -4150,6 +4154,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
         fog_frame_ = ~std::uint64_t(0);
     }
     if (plumes_) plumes_->after_reset(result);
+    if (ribbons_) ribbons_->after_reset(result);
     sun_apply_frame_ = ~std::uint64_t(0);
     depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the
                                                // quad may run again
@@ -12284,4 +12289,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_cull_small_props_inc.h"
 #include "motion_output_engine_effects_inc.h"
 #include "motion_output_engine_plumes_inc.h"
+#include "motion_output_engine_ribbons_inc.h"
 } // namespace x3m

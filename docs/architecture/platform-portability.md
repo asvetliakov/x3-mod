@@ -840,6 +840,17 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-10-01: engine ribbons and the plumes' fog, phase 3 (`--engine-effects plumes`)
+
+The ribbon draw ([engine-effects-modern.md](engine-effects-modern.md) sections 3-5) is the plume stage's second
+`DrawIndexedPrimitive` with the same documented D3D9 set: its own DEFAULT `DYNAMIC | WRITEONLY` vertex buffer
+(`D3DLOCK_DISCARD`), a static 16-bit index buffer, vs_3_0 / ps_3_0 (`VPOS`, `texldl` of the lane), the same
+`CheckDeviceFormat` FP16 post-pixel-shader blending query at attach. The ring buffers are CPU state of the pass
+(no Windows dependency); the clock is `QueryPerformanceCounter`. The fog transmittance is CPU arithmetic on the fog
+pass's own family constants (no device call). Cross-compiled (0 warnings, x87 PASS); the GPU fixture passed under
+Wine on bottle X3 ([engine-effects.md](../verification/engine-effects.md), "Phase 3"); native Windows execution
+unverified.
+
 ## 2026-10-01: engine plumes, phase 2 (`--engine-effects plumes`)
 
 The plume stage ([engine-effects-modern.md](engine-effects-modern.md) sections 3-6) uses documented D3D9 only: one

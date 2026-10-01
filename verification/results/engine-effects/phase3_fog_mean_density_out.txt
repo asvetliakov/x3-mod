@@ -1,0 +1,2 @@
+occupancy=0.12 rho_mean=0.12000 shaped_mean_dc-0.12=0.06052 shaped_mean_dc0=0.05598 shaped_mean_dc+0.12=0.05187 shaped_mean_avg=0.05613
+occupancy=0.24 rho_mean=0.24000 shaped_mean_dc-0.12=0.11881 shaped_mean_dc0=0.10949 shaped_mean_dc+0.12=0.10110 shaped_mean_avg=0.10980

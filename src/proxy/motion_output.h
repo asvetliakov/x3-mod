@@ -40,6 +40,7 @@
 #include "lens_flare_gain.h"
 #include "engine_effects_core.h"
 #include "../renderer/engine_plumes_pass.h"
+#include "../renderer/engine_ribbons_pass.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
 #include "fog_prefill.h"
@@ -1743,6 +1744,20 @@ private:
     static HRESULT engine_plumes_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_engine_plumes() noexcept;
     void log_engine_stage() noexcept;
+    // Engine ribbons, phase 3 (motion_output_engine_ribbons_inc.h): the second draw of the plume stage, attached with the
+    // plume pass (refused alone with one engine_ribbons_device row: the plumes draw without ribbons until Reset); the
+    // frame's report (the resolve's camera cut reaches the pass through note_cut), the object_lifetime load epoch the
+    // recogniser last saw, and the frame whose density fog composite applied (the plumes' and ribbons' fog
+    // transmittance is on only then).
+    std::unique_ptr<renderer::EngineRibbonsPass> ribbons_;
+    bool ribbons_attach_failed_ = false;
+    renderer::EngineRibbonsReport ribbons_report_{};
+    std::uint64_t engine_load_epoch_ = 0;
+    std::uint64_t fog_density_applied_frame_ = ~std::uint64_t(0);
+    bool attach_engine_ribbons() noexcept;
+    bool engine_ribbons_live() const noexcept { return ribbons_ && ribbons_->live() != 0; }
+    HRESULT run_engine_ribbons(const renderer::EnginePlumesFrame& frame) noexcept;
+    void engine_plumes_fog(x3m::renderer::FogTransmittanceLaw* law) noexcept;
     bool lens_gain_caps_ = false;
     unsigned lens_gained_ = 0, lens_gain_refused_ = 0, lens_gain_logged_ = 0;
     // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, skipped

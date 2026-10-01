@@ -11,6 +11,7 @@
   "production_sources": [
     "src/proxy/engine_plumes_core.h",
     "src/proxy/engine_effects_core.h",
+    "src/renderer/fog_transmittance.h",
     "src/renderer/engine_plumes_pass.h",
     "src/renderer/engine_plumes_pass.cpp",
     "src/effects/engine_plume_vs.hlsl",
@@ -21,23 +22,16 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "526a741c626a7c0b1ec00a308855f8fd2867e1b2-dirty",
+    "commit": "f8568972bace31dcc317577f18cdc154f8555a99-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/engine_effects_core.h",
-      "src/renderer/temporal_pass.cpp",
-      "src/renderer/temporal_pass.h",
-      "src/effects/engine_plume_ps.hlsl",
-      "src/effects/engine_plume_vs.hlsl",
       "src/proxy/engine_plumes_core.h",
-      "src/renderer/engine_plume_pixel_program_inc.h",
-      "src/renderer/engine_plume_vertex_program_inc.h",
-      "src/renderer/engine_plumes_pass.cpp",
-      "src/renderer/engine_plumes_pass.h"
+      "src/renderer/fog_transmittance.h"
     ],
     "sha256": {
-      "src/proxy/engine_plumes_core.h": "d0a4243dd8b58d1bc65b25ecb25c776809a69bb4d236cd64a999b9eeb1633285",
+      "src/proxy/engine_plumes_core.h": "5d89c77020dc4999cd46308d2f73b20b1209a4673aaeb87c9ba9a67c3208d2f6",
       "src/proxy/engine_effects_core.h": "7ba270a9e3763d23d4413f38b3bd587ccf10ebcae7e20a7ea273a384c4aaea2b",
+      "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
       "src/renderer/engine_plumes_pass.h": "f5f4df67977d9a8705ebcc5777d51226ba2c76e1829c0dd573f71dc5253dbc3f",
       "src/renderer/engine_plumes_pass.cpp": "542e41dbd8a4e19ae2f3d9420043991e160040aad90bdaae1d77e4a2fbe1528e",
       "src/effects/engine_plume_vs.hlsl": "62c2e01f93166b2c3320ef7c1ae58c834d13f75ff81fb384fc17447ae81b7003",
@@ -92,12 +86,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a45b1fa0da4f57b38/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a05fb9f824e7e93a9/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "032bcfff785feee8a218ee8b0466a70266ac5e487c2f99e3cd89e1a703cb6024"
+    "executable_sha256": "5569e676c9be4274155f537a2a0bdadda1e76cd930337b68a30069f055a9766a"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -544,11 +538,11 @@
         "height": 1080,
         "nozzles": 30,
         "drawn": 30,
-        "fenced_on_ms": 1.0797,
-        "fenced_off_ms": 0.881,
-        "submit_ms": 0.0423,
-        "chain_ms": 0.1987,
-        "gpu_ms": 0.1564,
+        "fenced_on_ms": 1.0789,
+        "fenced_off_ms": 0.8839,
+        "submit_ms": 0.0432,
+        "chain_ms": 0.195,
+        "gpu_ms": 0.1518,
         "samples": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -558,11 +552,11 @@
         "height": 1080,
         "nozzles": 100,
         "drawn": 100,
-        "fenced_on_ms": 1.2125,
-        "fenced_off_ms": 0.8878,
-        "submit_ms": 0.0511,
-        "chain_ms": 0.3247,
-        "gpu_ms": 0.2736,
+        "fenced_on_ms": 1.2139,
+        "fenced_off_ms": 0.8913,
+        "submit_ms": 0.0512,
+        "chain_ms": 0.3226,
+        "gpu_ms": 0.2714,
         "samples": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -572,11 +566,11 @@
         "height": 1440,
         "nozzles": 30,
         "drawn": 30,
-        "fenced_on_ms": 1.7232,
-        "fenced_off_ms": 1.6559,
-        "submit_ms": 0.0436,
-        "chain_ms": 0.0673,
-        "gpu_ms": 0.0237,
+        "fenced_on_ms": 1.7178,
+        "fenced_off_ms": 1.6554,
+        "submit_ms": 0.0402,
+        "chain_ms": 0.0624,
+        "gpu_ms": 0.0222,
         "samples": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -586,11 +580,11 @@
         "height": 1440,
         "nozzles": 100,
         "drawn": 100,
-        "fenced_on_ms": 1.8617,
-        "fenced_off_ms": 1.5311,
-        "submit_ms": 0.0514,
-        "chain_ms": 0.3306,
-        "gpu_ms": 0.2792,
+        "fenced_on_ms": 1.861,
+        "fenced_off_ms": 1.6228,
+        "submit_ms": 0.0488,
+        "chain_ms": 0.2382,
+        "gpu_ms": 0.1894,
         "samples": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -600,22 +594,22 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 1.71,
+        "median_us": 1.7,
         "min_us": 1.69,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 5.96,
-        "min_us": 5.92,
+        "median_us": 6.02,
+        "min_us": 5.84,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 64.94,
-        "min_us": 64.21,
+        "median_us": 66.16,
+        "min_us": 64.01,
         "method": "qpc_50x41"
       }
     ],
@@ -907,10 +901,10 @@
       "5120_8px": 13
     },
     "stage_gpu_ms": {
-      "1920x1080_30": 0.1564,
-      "1920x1080_100": 0.2736,
-      "5120x1440_30": 0.0237,
-      "5120x1440_100": 0.2792
+      "1920x1080_30": 0.1518,
+      "1920x1080_100": 0.2714,
+      "5120x1440_30": 0.0222,
+      "5120x1440_100": 0.1894
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": false,
@@ -919,9 +913,9 @@
       "5120x1440_100": false
     },
     "build_us": {
-      "30": 1.71,
-      "100": 5.96,
-      "1024": 64.94
+      "30": 1.7,
+      "100": 6.02,
+      "1024": 66.16
     },
     "build_100_within": true
   },

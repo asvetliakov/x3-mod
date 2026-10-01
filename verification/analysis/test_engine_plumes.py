@@ -382,7 +382,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('configure_engine_plumes(engine_effects::mode()==engine_effects::core::Mode::plumes&&engine_effects::suppress(),'
                       'engine_effects::preset());', capture)
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
-        self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr)&&engine_ring_->count){'
+        self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr)&&(engine_ring_->count||engine_ribbons_live())){'
                       'in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
         self.assertIn('if(plumes_)taa_call([&]{plumes_->before_reset();});', motion)
         self.assertIn('if(plumes_)plumes_->after_reset(result);', motion)

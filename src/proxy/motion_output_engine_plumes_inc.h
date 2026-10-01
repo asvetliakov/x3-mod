@@ -77,6 +77,10 @@ void MotionOutput::release_engine_plumes() noexcept {
         taa_call([&] { plumes_->detach(); });
         plumes_.reset();
     }
+    if (ribbons_) { // phase 3: the ribbon pass and its pool (motion_output_engine_ribbons_inc.h)
+        taa_call([&] { ribbons_->detach(); });
+        ribbons_.reset();
+    }
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
 }
@@ -99,6 +103,7 @@ bool MotionOutput::engine_plumes_arm(bool fp16_route) noexcept {
         note_engine_plumes_state(false, plumes_ && plumes_->caps().reason ? plumes_->caps().reason : "attach");
         return false;
     }
+    attach_engine_ribbons(); // phase 3: a refusal leaves the plumes drawing without ribbons
     if (frame_ < plumes_disarmed_until_) {
         note_engine_plumes_state(false, "disarmed");
         return false;
@@ -116,7 +121,8 @@ const engine_effects::core::Body* engine_plumes_body(int index) {
 }
 HRESULT MotionOutput::run_engine_plumes() noexcept {
     plumes_ran_ = true;
-    if (!plumes_ || !plumes_armed_ || !plumes_lane_ || !engine_ring_ || !engine_ring_->count) return S_FALSE;
+    if (!plumes_ || !plumes_armed_ || !plumes_lane_ || !engine_ring_ || (!engine_ring_->count && !engine_ribbons_live()))
+        return S_FALSE; // phase 3: a frame without records still runs while ribbons fade
     renderer::EnginePlumesFrame in{};
     in.width = plumes_width_;
     in.height = plumes_height_;
@@ -142,6 +148,7 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     in.body = &engine_plumes_body;
     in.preset = plumes_preset_;
     in.frame = std::uint32_t(frame_);
+    engine_plumes_fog(&in.view.fog); // phase 3: the density fog's mean transmittance per nozzle, off unless it applied
     // stage_us: the build and the draw; with --gpu-sync-timing the EnginePlumes pair fences both sides (EVENT queries),
     // so it includes the GPU's completion of the draw.
     plumes_fenced_ = gpu_sync_ != nullptr;
@@ -149,7 +156,13 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     LARGE_INTEGER begin{}, end{}, frequency{};
     QueryPerformanceCounter(&begin);
     renderer::EnginePlumesReport report{};
-    const HRESULT hr = plumes_->run(in, &report);
+    HRESULT hr = plumes_->run(in, &report);
+    if (SUCCEEDED(hr)) {
+        // Phase 3: the ribbons, the stage's second draw after the plumes (motion_output_engine_ribbons_inc.h); a failed
+        // ribbon draw fails the stage frame.
+        const HRESULT ribbons = run_engine_ribbons(in);
+        if (FAILED(ribbons) || ribbons == S_OK) hr = ribbons;
+    }
     if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::EnginePlumes);
     QueryPerformanceCounter(&end);
     QueryPerformanceFrequency(&frequency);
@@ -159,18 +172,29 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
         // A failed stage frame: this frame's plumes are lost (the glow stays suppressed) and the stage disarms for 64
         // frames; one row per failure.
         plumes_disarmed_until_ = frame_ + plumes_disarm_frames;
-        log("engine_plumes_failed device=%llu frame=%llu result=%08lx step=%u calls=%u until=%llu", id_, frame_, hr,
-            unsigned(report.failed), report.calls, static_cast<unsigned long long>(plumes_disarmed_until_));
+        log("engine_plumes_failed device=%llu frame=%llu result=%08lx step=%u calls=%u ribbon_step=%u until=%llu", id_, frame_,
+            hr, unsigned(report.failed), report.calls, unsigned(ribbons_report_.failed),
+            static_cast<unsigned long long>(plumes_disarmed_until_));
     }
     return hr;
 }
 // --debug, at the engine_frame cadence (engine_effects_frame_end): the frame's stage.
 void MotionOutput::log_engine_stage() noexcept {
     const auto& s = plumes_report_.stats;
+    // Phase 3: the ribbons (this frame's update and draw; the pool's session totals) and the fog transmittance.
+    const auto& ru = ribbons_report_.update;
+    const auto& rb = ribbons_report_.stats;
+    const engine_ribbons::Pool* pool = ribbons_ ? &ribbons_->pool() : nullptr;
+    const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
             s.nozzles, s.vertices, s.discs, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
             s.culled_idle, plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
-            double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_));
+            double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,
+            rb.samples, ru.live, ru.fading, ru.created, ru.appended, ru.overflow, ru.evicted, unsigned(ru.cut_clear),
+            unsigned(ru.load_clear), ribbons_report_.operation, unsigned(ribbons_report_.failed), ribbons_report_.calls,
+            total(pool ? pool->evictions : 0), total(pool ? pool->cut_clears : 0), total(pool ? pool->load_clears : 0),
+            total(pool ? pool->reset_clears : 0), total(pool ? pool->jumps : 0), total(pool ? pool->overflows : 0),
+            unsigned(fog_density_applied_frame_ == frame_), s.fogged + rb.fogged, double(s.fog_min));
 }

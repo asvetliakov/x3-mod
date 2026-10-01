@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "sse_scalar.h"
 #include "engine_effects_core.h"
+#include "../renderer/fog_transmittance.h"
 
 // Portable core of the engine plumes, phase 2 (docs/architecture/engine-effects-modern.md sections 3-6): the strength
 // presets and their parser, the Ctrl+Alt+F6 press latch, the tint of a record, and the CPU builder that turns the
@@ -26,6 +27,8 @@
 // 1 -> 0.5 over the last 20 % before the clamp (the own ship's plume in chase view; any plume that close).
 // Occlusion depth (the pixel program): the nearest axis point's view depth (local u clamped to [0, L] moved along the
 // axis's view z, intensity[2]), pulled towards the camera by 0.5 value x max(0, axis . to_camera).
+// Fog (phase 3): with View::fog on, both colours are multiplied per channel by the stored-density look's mean
+// transmittance at the nozzle's distance (renderer/fog_transmittance.h), the same factor the nozzle's ribbon takes.
 namespace x3m::engine_plumes {
 namespace ee = x3m::engine_effects::core;
 
@@ -132,10 +135,13 @@ struct View {
     float m00 = 0.f, m11 = 0.f;
     float height = 0.f;
     float near_z = 1.f;
+    x3m::renderer::FogTransmittanceLaw fog{}; // phase 3: off unless this frame's density composite applied
 };
 struct BuildStats {
     unsigned nozzles = 0, vertices = 0, discs = 0, steering = 0, capped = 0, faded = 0;
     unsigned culled_rows = 0, culled_behind = 0, culled_small = 0, culled_idle = 0, culled_capacity = 0;
+    unsigned fogged = 0;        // nozzles whose colours took the fog transmittance (phase 3)
+    float fog_min = 1.f;        // the smallest channel transmittance applied this frame
 };
 
 // The record's colours: the body's normalised mean / peak (engine_bodies.json mean_linear / peak_linear), else the
@@ -302,6 +308,16 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     const float i_halo = (halo_low + (halo_high - halo_low) * s) * scale * weight;
     float mean[3], peak[3];
     record_tint(r, body, mean, peak);
+    if (view.fog.on) {
+        float t[3];
+        x3m::renderer::fog_transmittance(view.fog, x3m::scalar::sqrt(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]), t);
+        for (unsigned i = 0; i < 3; ++i) {
+            mean[i] *= t[i];
+            peak[i] *= t[i];
+            stats->fog_min = t[i] < stats->fog_min ? t[i] : stats->fog_min;
+        }
+        ++stats->fogged;
+    }
     const std::uint32_t tint = pack_colour(mean), hot = pack_colour(peak);
     // Facing: e = unit vector from the nozzle to the camera; the axial quad's side n = a x e, a fallback when the axis
     // points along the line of sight.

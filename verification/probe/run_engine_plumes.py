@@ -34,7 +34,8 @@ SOURCES = ('verification/probe/engine_plumes_fixture.cpp', 'src/renderer/engine_
            'src/renderer/temporal_pass.cpp')
 # The production sources the fixture exercises: their content hashes and the checkout's commit go into the record
 # (test_engine_plumes compares them with the tree).
-PRODUCTION_SOURCES = ('src/proxy/engine_plumes_core.h', 'src/proxy/engine_effects_core.h', 'src/renderer/engine_plumes_pass.h',
+PRODUCTION_SOURCES = ('src/proxy/engine_plumes_core.h', 'src/proxy/engine_effects_core.h', 'src/renderer/fog_transmittance.h',
+                      'src/renderer/engine_plumes_pass.h',
                       'src/renderer/engine_plumes_pass.cpp', 'src/effects/engine_plume_vs.hlsl', 'src/effects/engine_plume_ps.hlsl',
                       'src/renderer/engine_plume_vertex_program_inc.h', 'src/renderer/engine_plume_pixel_program_inc.h',
                       'src/renderer/temporal_pass.h', 'src/renderer/temporal_pass.cpp')

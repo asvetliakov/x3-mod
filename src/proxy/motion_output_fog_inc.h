@@ -636,6 +636,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
             }
         } else if (hr == S_OK && out.applied) {
             fog_failures_ = 0; ++fog_applied_frames_;
+            if (in.density) fog_density_applied_frame_ = frame_; // the engine plumes' fog transmittance (phase 3) is on this frame
         }
     }
     release(depth); release(rt0);

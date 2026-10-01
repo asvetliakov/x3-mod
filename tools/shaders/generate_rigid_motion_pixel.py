@@ -227,6 +227,18 @@ SHADERS = {
                             provenance=ROOT / 'verification/results/engine-plume-vertex-program.json', target='vs_3_0'),
     'engine_plume_ps': dict(source=ROOT / 'src/effects/engine_plume_ps.hlsl', header=ROOT / 'src/renderer/engine_plume_pixel_program_inc.h',
                             provenance=ROOT / 'verification/results/engine-plume-pixel-program.json'),
+    # Engine ribbons, phase 3 (the same note, sections 3-5): the stage's second indexed draw, a camera-facing strip per
+    # nozzle through its ring buffer of positions.
+    'engine_ribbon_vs': dict(source=ROOT / 'src/effects/engine_ribbon_vs.hlsl', header=ROOT / 'src/renderer/engine_ribbon_vertex_program_inc.h',
+                             provenance=ROOT / 'verification/results/engine-ribbon-vertex-program.json', target='vs_3_0'),
+    'engine_ribbon_ps': dict(source=ROOT / 'src/effects/engine_ribbon_ps.hlsl', header=ROOT / 'src/renderer/engine_ribbon_pixel_program_inc.h',
+                             provenance=ROOT / 'verification/results/engine-ribbon-pixel-program.json'),
+    # Engine ribbons, phase 3 (the same note, sections 3-5): the stage's second indexed draw, a camera-facing strip per
+    # nozzle through its ring buffer of positions.
+    'engine_ribbon_vs': dict(source=ROOT / 'src/effects/engine_ribbon_vs.hlsl', header=ROOT / 'src/renderer/engine_ribbon_vertex_program_inc.h',
+                             provenance=ROOT / 'verification/results/engine-ribbon-vertex-program.json', target='vs_3_0'),
+    'engine_ribbon_ps': dict(source=ROOT / 'src/effects/engine_ribbon_ps.hlsl', header=ROOT / 'src/renderer/engine_ribbon_pixel_program_inc.h',
+                             provenance=ROOT / 'verification/results/engine-ribbon-pixel-program.json'),
     'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
                                     header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
                                     provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),

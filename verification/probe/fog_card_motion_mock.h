@@ -337,6 +337,7 @@ struct MotionOutput {
     unsigned fog_failures_ = 0, fog_logs_ = 0, fog_card_logs_ = 0;
     std::uint64_t fog_applied_frames_ = 0, fog_card_last_report_ = 0, fog_card_observed_total_ = 0,
                   fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0, fog_card_logged_frame_ = 0;
+    std::uint64_t fog_density_applied_frame_ = ~std::uint64_t(0); // the engine plumes' fog transmittance (phase 3)
     const char* fog_last_reason_ = "";
     bool fog_requested_ = true, fog_enabled_ = true, fog_disabled_ = false, fog_attach_failed_ = false,
          fog_cards_replace_ = true;
