@@ -316,7 +316,7 @@ bytes on Windows and are validated at exact sites. Unverified natively like the 
 | # | Unknown | Settles it |
 | ---: | --- | --- |
 | 1 | Whether `0x00414590` can run before the first d3d9 export call, where the redirects install (`load_backend`, InitOnce, before any device or frame; the B site's plain write relies on that window, met as long as the effect routine runs only in the frame loop [i]); the docking path; an indirect reader of the two lists through a copied pointer (none found) | The hook fixture cannot; a loading-trace row at the first Present (phase 1) and the flight's `engine_frame` counts settle the first two |
-| 2 | The c4–6 register order of the glow draw (needed only for the cross-check and the census) | F8 1–2; the Snapshot's `scale[3]` carries `z` regardless |
+| 2 (**settled** run401: order a on 117,442 records, 0 b, 1 mismatch) | The c4–6 register order of the glow draw (needed only for the cross-check and the census) | F8 1–2; the Snapshot's `scale[3]` carries `z` regardless |
 | 3 | Whether every JET-flagged draw has an object scope (by construction yes: the jet takes the ordinary path [m]) | Census `scoped=` |
 | 4 | Settled: `v/00566` is on both lists, flag `0x4000001` plus `+0x1d8 = 5` [m, §7] | — |
 | 5 | Interaction with the x3m small-parts cull (launcher default 4 px): a culled jet gives no record, so a distant plume disappears with the native glow; exempting JET nodes costs one flag test in the stub | Cull census of model ids at a station view; decide in phase 1 |

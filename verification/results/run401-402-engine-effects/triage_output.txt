@@ -1,0 +1,122 @@
+== /tmp/x3-bottleX3-run401/session-20261003-021004-212.log
+engine_frame rows 12821 records min/median/max 0 12 35 frames_with_records 11829 overflow_frames 0
+  total candidates 429877
+  total forwarded_native 0
+  total forwarded_opaque 0
+  total forwarded_overflow 0
+  total forwarded_patch_missing 0
+  total forwarded_snapshot 0
+  total forwarded_state 0
+  total forwarded_unscoped 0
+  total not_jet 297366
+  total order_a 117442
+  total order_ambiguous 140
+  total order_b 0
+  total order_invalid 14928
+  total order_mismatch 1
+  total pinned=a 12821
+  total rows_more 0
+  total rows_unknown 14928
+  total steering 14928
+  total suppressed 132511
+  total unknown_body 0
+engine_draw rows 136 frames [771, 772, 773, 774, 775, 776, 777, 778]
+    88 model=566 v\00566 z 0.047..0.838 s 0.000..0.336
+    16 model=20405 effects\engines\fx_engine_xtc_red_big3 z 1.884..1.906 s 0.934..0.947
+    16 model=20407 effects\engines\fx_engine_xtc_red_huge z 1.884..1.906 s 0.934..0.947
+     8 model=20400 effects\engines\fx_engine_xtc_red_nor z 0.250..0.250 s 0.000..0.000
+     8 model=20399 effects\engines\fx_engine_xtc_red_tiny z 0.250..0.250 s 0.000..0.000
+  frame 771: rows 6 z 0.250..1.906 median 1.906
+  frame 772: rows 14 z 0.250..1.894 median 0.838
+  frame 773: rows 22 z 0.250..1.890 median 0.550
+  frame 774: rows 22 z 0.198..1.889 median 0.470
+  frame 775: rows 22 z 0.134..1.888 median 0.406
+  frame 776: rows 18 z 0.047..1.886 median 0.250
+  frame 777: rows 18 z 0.059..1.885 median 0.198
+  frame 778: rows 14 z 0.114..1.884 median 0.142
+   pair {'effect': 48, 'other': 88}
+   flags130 {'04180041': 16, '04000041': 16, '04000001': 104}
+   order {'a': 48, 'invalid': 88}
+   blend {'1': 136}
+   src {'2': 136}
+   dst {'4': 48, '2': 88}
+   zwrite {'0': 136}
+   scope_depth {'1': 136}
+   handle {'0005b567': 8, '0005b566': 8, '0005b569': 8, '0005b568': 8, '0000c1d6': 8, '0000c1cf': 8, '0000c1e1': 7, '0000c1df': 7, '0000c1e6': 7, '0000c1e4': 7, '0000c1db': 7, '0000c1dc': 7, '0000c1d7': 7, '0000c1d8': 7, '0000c1d9': 4, '0000c1da': 4, '0000c1e0': 4, '0000c1e5': 4, '0000c1dd': 4, '0000c1de': 4, '0000c1e2': 4, '0000c1e3': 4}
+   cluster {'red': 48, 'grey': 88}
+   verdict {'suppressed': 136}
+  node absent/zero: 0 body unknown: 0
+selector tuples (selector_state,scene_open,end_source,end_check,scene_hook):
+   11829 ('9', '0', 'hook', '1', '1')
+   994 ('9', '0', 'none', '0', '1')
+   1 ('0', '0', 'none', '0', '1')
+frame_end dt_ms rows 12823
+  frames 1000-1200: n=200 median_dt=14.00 p90=14.00
+  frames 1200-1500: n=300 median_dt=14.00 p90=15.00
+  frames 1500-2000: n=500 median_dt=14.00 p90=14.00
+  frames 2000-5000: n=3000 median_dt=14.00 p90=16.00
+  frames 5000-9000: n=4000 median_dt=16.00 p90=22.00
+  frames 9000-13000: n=3824 median_dt=17.00 p90=20.00
+engine row names {'engine_effects_mode': 1, 'engine_effects_patch': 2, 'engine_memory': 504, 'engine_effects_device': 1, 'engine_frame': 12821, 'engine_effects_bodies': 1, 'engine_effects_resolve': 2, 'engine_draw': 136}
+error/refusal row names {'hull_emission_refused_state': 16, 'bloom_refusal': 1, 'screen_emission_additive_refused_window': 42, 'chase_view_restore_arm_refused': 1, 'emission_source_gain_refused_state': 16, 'shadow_replay_depth_refused': 8}
+== /tmp/x3-bottleX3-run402/session-20261003-021551-216.log
+engine_frame rows 9100 records min/median/max 0 0.0 0 frames_with_records 0 overflow_frames 0
+  total candidates 1367058
+  total forwarded_native 77862
+  total forwarded_opaque 0
+  total forwarded_overflow 0
+  total forwarded_patch_missing 0
+  total forwarded_snapshot 0
+  total forwarded_state 0
+  total forwarded_unscoped 0
+  total not_jet 1289196
+  total order_a 0
+  total order_ambiguous 0
+  total order_b 0
+  total order_invalid 0
+  total order_mismatch 0
+  total pinned=a 9100
+  total rows_more 0
+  total rows_unknown 0
+  total steering 0
+  total suppressed 0
+  total unknown_body 0
+engine_draw rows 48 frames [574, 575, 576, 577, 578, 579, 580, 581]
+    16 model=20407 effects\engines\fx_engine_xtc_red_huge z 1.884..1.906 s 0.933..0.947
+    12 model=20405 effects\engines\fx_engine_xtc_red_big3 z 1.886..1.906 s 0.935..0.947
+     8 model=20400 effects\engines\fx_engine_xtc_red_nor z 0.250..0.250 s 0.000..0.000
+     8 model=20399 effects\engines\fx_engine_xtc_red_tiny z 0.250..0.250 s 0.000..0.000
+     4 model=566 v\00566 z 0.027..0.027 s 0.000..0.000
+  frame 574: rows 6 z 0.250..1.906 median 1.906
+  frame 575: rows 6 z 0.250..1.894 median 1.894
+  frame 576: rows 6 z 0.250..1.891 median 1.891
+  frame 577: rows 6 z 0.250..1.889 median 1.889
+  frame 578: rows 10 z 0.027..1.889 median 0.250
+  frame 579: rows 6 z 0.250..1.886 median 1.886
+  frame 580: rows 4 z 0.250..1.885 median 1.067
+  frame 581: rows 4 z 0.250..1.884 median 1.067
+   pair {'effect': 44, 'other': 4}
+   flags130 {'04180041': 12, '04000041': 16, '04000001': 20}
+   order {'a': 44, 'invalid': 4}
+   blend {'1': 48}
+   src {'2': 48}
+   dst {'4': 44, '2': 4}
+   zwrite {'0': 48}
+   scope_depth {'1': 48}
+   handle {'0005b567': 6, '0005b566': 6, '0005b569': 8, '0005b568': 8, '0000c1d6': 8, '0000c1cf': 8, '0000c1da': 1, '0000c1d9': 1, '0000c1de': 1, '0000c1dd': 1}
+   cluster {'red': 44, 'grey': 4}
+   verdict {'forwarded_native': 48}
+  node absent/zero: 0 body unknown: 0
+selector tuples (selector_state,scene_open,end_source,end_check,scene_hook):
+   8275 ('9', '0', 'hook', '1', '1')
+   827 ('9', '0', 'none', '0', '1')
+   1 ('0', '0', 'none', '0', '1')
+frame_end dt_ms rows 9102
+  frames 1000-1200: n=200 median_dt=16.00 p90=19.00
+  frames 1200-1500: n=300 median_dt=18.00 p90=34.00
+  frames 1500-2000: n=500 median_dt=18.00 p90=21.00
+  frames 2000-5000: n=3000 median_dt=17.00 p90=20.00
+  frames 5000-9000: n=4000 median_dt=22.00 p90=25.00
+  frames 9000-13000: n=103 median_dt=9.00 p90=12.00
+engine row names {'engine_effects_mode': 1, 'engine_effects_patch': 2, 'engine_memory': 387, 'engine_effects_device': 1, 'engine_frame': 9100, 'engine_effects_bodies': 1, 'engine_effects_resolve': 2, 'engine_draw': 48}
+error/refusal row names {'hull_emission_refused_state': 16, 'bloom_refusal': 1, 'screen_emission_additive_refused_window': 30, 'chase_view_restore_arm_refused': 1, 'emission_source_gain_refused_state': 16, 'bolt_footprint_refused': 1, 'shadow_replay_depth_refused': 8}

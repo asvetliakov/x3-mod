@@ -129,3 +129,14 @@ ghost past the tail through the resolve), the fog law against the march in a rea
 per-pixel march), the stage's in-game cost (`engine_stage stage_us` with `--gpu-sync-timing`). RCS puffs (phase 3's
 `implement` task) are closed: phase 2 already draws the RCS records as short quads (radiance x z, unlengthened); they
 take no ribbon. Native Windows: cross-compiled only.
+
+## Flight A (Run 118 A, run401 `off` / run402 `native`, 2026-10-03)
+
+User verdict: "don't see engines, trails etc"; accepted, Run119 installed. Triage ([results](../../verification/results/run401-402-engine-effects/), measured):
+both sites active (A atomic, B plain), redirects=1 route=1, bodies 253 (named 245, refused 0), 253/253 resolved at frame 3; 12,821 `engine_frame` rows,
+records per frame median 12 / max 35, suppressed 132,511, every forwarded_* reason 0, unknown_body 0, no overflow; c4-6 order a 117,442 / b 0 /
+ambiguous 140 / mismatch 1 (invalid 14,928 = the RCS rows), so unknown 2 is settled: order a. `engine_draw` (frames 771-778 only): main jets z 0.25 and
+1.88-1.91 (s 0 and 0.93-0.95), RCS z 0.05-0.84, every row scoped, dst 4 on main jets / 2 on RCS. Scene-boundary selector tuples identical in kind and
+share between the runs (9/0/hook/1 on 92 % of frames in both); session_end clean, no late_claim, no partial/failure rows. Frame time median 14-16 ms vs
+17-22 ms (windows matched by frame number only; weak). Gap: `engine_draw` samples only the first 8 frames, so own-ship z on the F8 frames is not in the
+log; a next candidate should also sample `engine_draw` on capture frames.
