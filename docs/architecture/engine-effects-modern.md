@@ -352,3 +352,18 @@ bytes on Windows and are validated at exact sites. Unverified natively like the 
 - **H. A cone mesh per nozzle or a sprite strip**: more vertices or per-instance transforms for no look the
   analytic quad pair does not give; a soft-particle depth fade was not requested and the lane term already
   softens the silhouette.
+
+## Plume look redesign (2026-10-03, after flight B)
+
+Flight B (run403) rejected the analytic cone as static. The look is redesigned in an offline WebGL mock-up (`tools/effects/engine_exhaust_lab.html`,
+published as the Engine Exhaust Lab artifact) with the same throttle law, and the user chose, with licence for fine-tuning:
+
+```
+exhaust: bulge=1.15 taper=0.45 tail=0.7 ring=0.6 turb=0.6 flow=3 erode=0.57 pulse=0.25 shock=0.5 period=0.16 cfade=0.6 heat=0.7 core=0.45 halo=1.1 hb=0.35 exp=1 tint=Split
+```
+
+Meaning (all relative to the nozzle width `value` and the game length `L = z·value`): a mouth bulge of 1.15 then a near-cylindrical section tapering
+(0.45 between cylinder and cone), a soft tail (0.7), a bright ring at the nozzle mouth (0.6); 3-octave value-noise turbulence (0.6) flowing away from
+the nozzle at 3 lengths/s with edge erosion 0.57 and a 25 % length pulse; shock diamonds of strength 0.5 at a period 0.16·L fading along the plume
+(0.6); a white-hot core (heat 0.7) of radius 0.45 nozzle widths cooling into the race tint; halo 1.1 wide at 0.35. The mock-up's `plume()` function is
+the reference for the ps_3_0 port; presets keep scaling I_core, I_halo and sigma.
