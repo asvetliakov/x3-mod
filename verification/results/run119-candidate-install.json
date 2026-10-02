@@ -1,0 +1,27 @@
+{
+ "run": "Run119",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run119-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run119-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-03T02:20+0400",
+ "commit": "bfe68791",
+ "candidate_record": "verification/results/run119-candidate-build.json",
+ "installed": {
+  "sha256": "582270816fabd97b719c9c87f08770abc1fde76691099829eceb575fe9da8c04",
+  "bytes": 58400309,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; 16 font files unchanged; engine_bodies.json kept (45a1215b\u2026, equal to the Run118 table, tools/effects unchanged)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418...",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run118",
+  "dll_sha256": "924d12bdd9f4e26d8968cdd564561324bc59a3196ab340e689ee86eaae9ecb10",
+  "path": "/tmp/x3-run118-candidate/build/d3d9.dll",
+  "then": "Run117 = release 0.9.0 72db0628... at /tmp/x3m-release-0.9.0/zip-extract/d3d9.dll, Run116 68bd5f41..."
+ },
+ "trigger": "Run 118 A completed (run401 off: 'don't see engines, trails etc'; run402 native reference)",
+ "producer": "main session (Fable 5.1)"
+}
