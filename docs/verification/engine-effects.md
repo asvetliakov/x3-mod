@@ -140,3 +140,13 @@ ambiguous 140 / mismatch 1 (invalid 14,928 = the RCS rows), so unknown 2 is sett
 share between the runs (9/0/hook/1 on 92 % of frames in both); session_end clean, no late_claim, no partial/failure rows. Frame time median 14-16 ms vs
 17-22 ms (windows matched by frame number only; weak). Gap: `engine_draw` samples only the first 8 frames, so own-ship z on the F8 frames is not in the
 log; a next candidate should also sample `engine_draw` on capture frames.
+
+## Flight B (Run 119 A, run403 `plumes`, 2026-10-03)
+
+User verdict: plumes and ribbons visible, look rejected as static ("just a static cone"; wants a living rocket exhaust like Everspace 2 / X4). Mechanics
+([triage](../../verification/results/run403-engine-plumes/), measured): armed once at frame 415 and never disarmed, no `engine_plumes_failed`, no refusals;
+13,562 nozzle frames, nozzles median 8 / max 24, ribbons drawn median 8, `view_rule=own` on every nozzle frame, skipped_other_view 0 (unknown 9 settled for
+this flight), suppression 136,695 / forwarded 0; stage_us median 115 / p90 200 (one 10 ms outlier); frame dt median 15 ms vs 16 ms in run401 `off`
+(different scenes). Presets cycled by hotkey 24 times (strong 7,218 frames, default 5,943, restrained 601). Fog never active on an armed frame (untested).
+Gaps: on F8 frames 2-8 ribbons drawn is 0 while live > 0 (capture stalls the clock or the segment floor; unverified), ribbon samples appended median 2 per
+frame. Next: a look redesign of the plume pixel law (animated turbulence, shock cells, hot core), tuned in the offline mock-up before the next candidate.

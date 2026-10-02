@@ -1,0 +1,80 @@
+stage rows 14174 armed 13762 first armed 415 armed->0 after arm 0
+reasons Counter({'armed': 13762, 'pending': 412})
+engine_plumes_failed 0 nonzero step 0 ribbon_step!=0 0 result Counter({'00000000': 13562, '00000001': 200}) ribbon_result Counter({'00000000': 12943, '00000001': 819})
+nozzles min/med/p90/max/sum (0.0, 8.0, 14.0, 24.0, 118257.0)
+records min/med/p90/max/sum (0.0, 11.0, 16.0, 33.0, 136695.0)
+ribbons min/med/p90/max/sum (0.0, 8.0, 14.0, 19.0, 109886.0)
+ribbons_live min/med/p90/max/sum (0.0, 9.0, 14.0, 27.0, 121227.0)
+ribbons_fading min/med/p90/max/sum (0.0, 0.0, 0.0, 11.0, 2970.0)
+ribbon_samples min/med/p90/max/sum (0.0, 78.0, 151.0, 235.0, 1110745.0)
+ribbon_created min/med/p90/max/sum (0.0, 0.0, 0.0, 16.0, 515.0)
+ribbon_appended min/med/p90/max/sum (0.0, 2.0, 10.0, 23.0, 52342.0)
+ribbon_evicted min/med/p90/max/sum (0.0, 0.0, 0.0, 16.0, 510.0)
+ribbon_cut_clear min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+ribbon_load_clear min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+ribbon_overflow min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+skipped_other_view min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+ribbon_skipped_other_view min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+capped min/med/p90/max/sum (0.0, 0.0, 2.0, 5.0, 7866.0)
+faded min/med/p90/max/sum (0.0, 1.0, 3.0, 5.0, 13493.0)
+culled_small min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+culled_behind min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+culled_idle min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+fogged min/med/p90/max/sum (0.0, 0.0, 0.0, 0.0, 0.0)
+stage_us min/med/p90/max/sum (0.0, 113.4, 200.1, 10016.6, 2005677.9000000027)
+nozzles>0 frames 13562 ribbons>0 frames 12943
+totals {'view_own_total': '13562', 'view_majority_total': '0', 'ribbon_evictions_total': '510', 'ribbon_cut_clears_total': '0', 'ribbon_load_clears_total': '0', 'ribbon_reset_clears_total': '0', 'ribbon_jumps_total': '204', 'ribbon_overflow_total': '0'}
+view_rule Counter({'own': 13562, 'none': 200})
+fog Counter({'0': 13762}) fog_min range (1.0, 1.0, 1.0, 1.0, 13762.0)
+frames fogged>0 0 fog_min on those None
+preset dist Counter({'strong': 7218, 'default': 5943, 'restrained': 601})
+stage_us nozzles>0 med/p90/p99/max (114.5, 200.5, 308.0, 10016.6)
+capture frames [1421, 1422, 1423, 1424, 1425, 1426, 1427, 1428, 2072, 2073, 2074, 2075, 2076, 2077, 2078, 2079, 5618, 5619, 5620, 5621, 5622, 5623, 5624, 5625, 7165, 7166, 7167, 7168, 7169, 7170, 7171, 7172, 10906, 10907, 10908, 10909, 10910, 10911, 10912, 10913] events/frame [165, 160, 165, 160, 160, 160, 161, 161, 161, 161, 161, 161, 161, 161, 161, 166, 247, 247, 247, 247, 247, 247, 247, 252, 395, 395, 398, 399, 412, 399, 402, 401, 87, 87, 87, 87, 87, 87, 90, 91]
+frame_end capture!=0 [1421, 1422, 1423, 1424, 1425, 1426, 1427, 1428, 2072, 2073, 2074, 2075, 2076, 2077, 2078, 2079, 5618, 5619, 5620, 5621, 5622, 5623, 5624, 5625, 7165, 7166, 7167, 7168, 7169, 7170, 7171, 7172, 10906, 10907, 10908, 10909, 10910, 10911, 10912, 10913]
+cap 1421 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 1422 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 1423 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 1424 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 1425 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 1426 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 1427 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 1428 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 2072 nozzles 4 ribbons 2 live 4 view own suppressed 4 records 4
+cap 2073 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 2074 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 2075 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 2076 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 2077 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 2078 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 2079 nozzles 4 ribbons 0 live 4 view own suppressed 4 records 4
+cap 5618 nozzles 12 ribbons 6 live 12 view own suppressed 12 records 12
+cap 5619 nozzles 12 ribbons 0 live 12 view own suppressed 12 records 12
+cap 5620 nozzles 12 ribbons 0 live 12 view own suppressed 12 records 12
+cap 5621 nozzles 12 ribbons 0 live 12 view own suppressed 12 records 12
+cap 5622 nozzles 12 ribbons 0 live 12 view own suppressed 12 records 12
+cap 5623 nozzles 12 ribbons 0 live 12 view own suppressed 12 records 12
+cap 5624 nozzles 12 ribbons 0 live 12 view own suppressed 12 records 12
+cap 5625 nozzles 12 ribbons 0 live 12 view own suppressed 12 records 12
+cap 7165 nozzles 14 ribbons 10 live 14 view own suppressed 14 records 14
+cap 7166 nozzles 14 ribbons 0 live 14 view own suppressed 14 records 14
+cap 7167 nozzles 15 ribbons 0 live 15 view own suppressed 15 records 15
+cap 7168 nozzles 16 ribbons 0 live 16 view own suppressed 16 records 16
+cap 7169 nozzles 16 ribbons 0 live 16 view own suppressed 16 records 16
+cap 7170 nozzles 16 ribbons 0 live 16 view own suppressed 16 records 16
+cap 7171 nozzles 15 ribbons 0 live 15 view own suppressed 15 records 15
+cap 7172 nozzles 14 ribbons 0 live 14 view own suppressed 14 records 14
+cap 10906 nozzles 5 ribbons 5 live 5 view own suppressed 5 records 5
+cap 10907 nozzles 5 ribbons 0 live 5 view own suppressed 5 records 5
+cap 10908 nozzles 5 ribbons 0 live 5 view own suppressed 5 records 5
+cap 10909 nozzles 5 ribbons 0 live 5 view own suppressed 5 records 5
+cap 10910 nozzles 5 ribbons 0 live 5 view own suppressed 5 records 5
+cap 10911 nozzles 5 ribbons 0 live 5 view own suppressed 5 records 5
+cap 10912 nozzles 8 ribbons 0 live 8 view own suppressed 8 records 8
+cap 10913 nozzles 9 ribbons 0 live 9 view own suppressed 9 records 9
+other err/refus/fail heads {'volumetric_fog_march_scale': 1, 'text_density': 1, 'loading_probe_site': 1, 'telemetry_span': 1, 'telemetry_metric': 5105, 'loading_metric': 967, 'window_mode': 1, 'ui_scale_install': 1, 'window_trace_hooks': 1, 'hdr_device': 1, 'motion_output_device': 1, 'screen_emission_additive_frame': 14177, 'fade_route_frame': 14177, 'motion_output_frame': 14177, 'camera_state': 14177, 'thin_vote_frame': 14177, 'shadow_lease_retirement': 14177, 'hdr_frame': 14177, 'chase_fire_window': 88, 'chase_camera': 88, 'chase_aim_window': 88, 'chase_view_restore_state': 88, 'chase_transition_window': 88, 'chase_central_hud_window': 88, 'engine_effects_bodies': 1, 'dat_handle_pool_metric': 34, 'mesh_adjacency_metric': 176, 'hull_emission_refused_state': 16, 'bloom_refusal': 1, 'hull_emission_frame': 14171, 'voice_dmo_fallback': 6, 'log_writer': 30, 'gz_buffer_file': 4, 'screen_emission_additive_refused_window': 47, 'bolt_footprint': 47, 'lens_flare_gain_frame': 47, 'media_cue_window': 47, 'frame_phases': 47, 'crypt_cache': 2, 'chase_view_restore_arm_refused': 1, 'sun_shadow_lane_frame': 13562, 'shadow_replay_sun': 13562, 'shadow_replay_candidates': 13562, 'shadow_alpha_casters': 13562, 'shadow_retention_frame': 13562, 'volumetric_fog_frame': 24, 'volumetric_fog_cards': 24, 'emission_source_gain_frame': 11672, 'hull_lightmap_widen_frame': 13562, 'emission_source_gain_refused_state': 16, 'motion_unmatched_static_frame': 252, 'chase_transition_detail': 9, 'bolt_footprint_refused': 1, 'shadow_replay_depth_refused': 8}
+suppressed total 136695 forwarded_* {'forwarded_unscoped': 0, 'forwarded_snapshot': 0, 'forwarded_opaque': 0, 'forwarded_state': 0, 'forwarded_overflow': 0, 'forwarded_native': 0, 'forwarded_patch_missing': 0}
+dt window (capture frames excluded) (500, 12823)
+run403 n 12284 median 15.0 p90 19.0 p99 24.0
+run401 n 12276 median 16.0 p90 20.0 p99 25.0
+run403 whole session n 14137 median 15.0 p90 19.0
+armed frames with nozzles 13562 ribbons drawn 0 while live>0 619 ribbon_appended==0 2696
