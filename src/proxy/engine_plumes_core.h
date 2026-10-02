@@ -11,23 +11,28 @@
 // dependency: the host tests compile it. No x87: float work through SSE scalars, no float returned by value from a
 // function that may stay out of line.
 //
-// Per nozzle, two quads (8 vertices, 12 indices) in the camera's view space, projected by the vertex program:
+// Per nozzle, two quads (8 vertices, 12 indices) in the camera's view space, projected by the vertex program; the look
+// is the Engine Exhaust Lab's (docs/architecture/engine-effects-modern.md "Plume look redesign", the constants in
+// Look below), drawn analytically by src/effects/engine_plume_ps.hlsl:
 // - the axial billboard: it contains the plume axis (record.axis = -(model z), the side the glow mesh extends to) and
-//   is turned about that axis to face the camera; local (u along the axis from the nozzle, w across), length
-//   L = z * value (the engine's own law, z the raw node+0x88 scale), core radius 0.15 value at the nozzle tapering to
-//   0 at L, halo sigma 0.5 value (x the preset) tapering to half at the tip; the quad is a trapezoid that reaches
-//   2.25 sigma (the local sigma) past every edge of the core and of the segment nozzle..tip, where the pixel program's
-//   halo window reaches 0;
-// - the nozzle disc: camera-facing (the view plane), hot core of diameter 0.5 value, the same halo, weighted by
-//   |axis . to_camera| (it carries the look where the axial quad degenerates, head-on and tail-on); drawn only from a
-//   weight of 0.15, its radiance fading in over 0.15..0.3 (a side view draws no disc).
+//   is turned about that axis to face the camera; local (x along the axis from the nozzle, y across) in world units,
+//   the nozzle width n = Look::nozzle_width x value, the length L = z x value x the length pulse (a per-nozzle value
+//   noise of the stage's clock, 1 +- Look::pulse). The quad is a trapezoid, linear in x, that encloses the body (its
+//   edge, eroded outwards by up to 0.48 erode of the local width), the halo's window (halo_reach local halo sigma, the
+//   sigma following the local width) and the nozzle ring, through the linear upper bound of the width profile (the
+//   cylinder-to-cone line), plus one pixel;
+// - the nozzle disc: camera-facing (the view plane), the same law end-on (the body at u = Look::disc_u, the ring, the
+//   halo about the nozzle), weighted by |axis . to_camera| (it carries the look where the axial quad degenerates,
+//   head-on and tail-on); drawn only from a weight of 0.15, its radiance fading in over 0.15..0.3 (a side view draws
+//   no disc).
 // value = record.size (|model x| of the c4-6 rows: the body's LOD-0 value x the context scale). RCS jets (v/00566,
-// flag_steering) take the same quad with L = z * value (short by construction: z runs 0.01..1.0 on steering) and
+// flag_steering) take the same quads with L = z * value (short by construction: z runs 0.01..1.0 on steering) and
 // their radiance x min(z, 1); below z 0.02 they are not drawn.
-// Screen rules: a nozzle whose value projects under 1.5 px is not drawn; the core is at least 1.5 px in radius and a
-// main jet's L at least 6 px (the 3x3-clip survival rule of the motes); the plume's projected width (2 sigma at the
-// axis point nearest the camera) is clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades
-// 1 -> 0.5 over the last 20 % before the clamp (the own ship's plume in chase view; any plume that close).
+// Screen rules: a nozzle whose value projects under 1.5 px is not drawn; the nozzle width is at least 3 px and a main
+// jet's L at least 6 px (the 3x3-clip survival rule of the motes); the plume's projected width (2 cap_sigma = 1 value
+// x the preset at the axis point nearest the camera: the first look's reference, unchanged) is clamped to 0.12 H by
+// shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the clamp (the own ship's
+// plume in chase view; any plume that close).
 // Occlusion depth (the pixel program): the nearest axis point's view depth, the nozzle's view z (intensity[3]) plus
 // the axis's view z component (intensity[2]) x local u clamped to [0, L] (exact anywhere on the billboard, whose side
 // vector has a view z component off-centre), pulled towards the camera by 0.5 value x max(0, axis . to_camera).
@@ -35,8 +40,9 @@
 // view's camera handle: the one the own ship's jets were recorded under, else the frame's most frequent handle among
 // the scene-phase records); the rest are counted
 // skipped_other_view (a target-monitor view would otherwise be projected with the scene camera).
-// Fog (phase 3): with View::fog on, both colours are multiplied per channel by the stored-density look's mean
-// transmittance at the nozzle's distance (renderer/fog_transmittance.h), the same factor the nozzle's ribbon takes.
+// Fog (phase 3): with View::fog on, the tint is multiplied per channel by the stored-density look's mean transmittance
+// at the nozzle's distance (renderer/fog_transmittance.h), the same factor the nozzle's ribbon takes, and the vertex
+// carries that transmittance for the pixel program's white-hot core and ring colours.
 namespace x3m::engine_plumes {
 namespace ee = x3m::engine_effects::core;
 
@@ -95,27 +101,84 @@ struct PresetKey {
 };
 
 // --------------------------------------------------------------------------- look
-constexpr float core_radius = .15f;         // x value, at the nozzle
-constexpr float halo_sigma = .5f;           // x value, at the nozzle (x the preset)
-constexpr float disc_radius = .25f;         // x value: the hot disc's diameter is 0.5 value
-constexpr float core_low = 1.5f, core_high = 4.f; // I_core(s) = lerp(1.5, 4.0, s)
-constexpr float halo_low = .3f, halo_high = .8f;  // I_halo(s) = lerp(0.3, 0.8, s)
-constexpr float flicker_amplitude = .1f;    // +-10 % on the core
-constexpr unsigned flicker_frames = 8;      // one noise cell per 8 frames (7.5 Hz at 60 fps)
-constexpr float soft_core = .15f, soft_halo = 1.f; // SOFT x value (the pixel program's lane terms)
-constexpr float halo_reach = 2.25f;         // the quads reach 2.25 local sigma past the core (the halo window's zero)
+// The plume look: the Engine Exhaust Lab's settings the user chose (tools/effects/engine_exhaust_lab.html: "bulge=1.15
+// taper=0.45 tail=0.7 ring=0.6 turb=0.6 flow=3 erode=0.57 pulse=0.25 shock=0.5 period=0.16 cfade=0.6 heat=0.7 core=0.45
+// halo=1.1 hb=0.35"), in one block: the CPU builder reads it and the pass uploads it to the pixel program (c3..c7,
+// pixel_constants). Lengths across are in nozzle widths, lengths along in L.
+struct Look {
+    // The mock-up's nozzle width in value: its length law is L = 4 (0.25 + 1.75 s) nozzle widths and the game's
+    // L = z value with z = 0.25 + 1.75 s, so a nozzle width of value / 4 keeps the chosen proportions (the first look's
+    // core, 0.3 value across, is the mock-up's "current" cone of one nozzle width).
+    float nozzle_width = .25f;
+    float bulge = 1.2f;   // the mouth bulge, x the nozzle width (chosen 1.15; tuned: 1.15 measured 1.044 x at u 0.1)
+    float taper = .45f;   // 0 cylinder .. 1 cone
+    float tail = .7f;     // tail softness
+    float ring = .6f;     // nozzle ring brightness
+    float turb = .6f;     // turbulence (radiance modulation)
+    float flow = 3.f;     // flow speed (the noise scrolls 0.35 flow L per second)
+    float erode = .57f;   // edge erosion
+    float pulse = .25f;   // length pulse: L x (1 +- pulse), mean 1
+    float shock = .5f;    // shock diamond strength
+    float period = .16f;  // their period, x L
+    float cfade = .6f;    // their fade along the plume
+    float heat = .7f;     // the white-hot core
+    float core = .45f;    // core radius, x the local width
+    float halo = 1.1f;    // halo width: e-fold 0.5 halo nozzle widths at the nozzle (x the preset)
+    float hb = .35f;      // halo brightness
+    // Ported, not mock-up knobs: the tail narrowing (the mock-up's 0.6 in w x (1 - narrowing taper smoothstep(0.6, 1,
+    // u))) and the halo sigma following the local width (the first look's halo halved towards the tip; the mock-up's
+    // kept the nozzle's), so the tail reads as a taper and not as the halo's band (docs, "Ported").
+    float tail_narrowing = 1.6f;
+    float core_low = 1.2f, core_high = 4.f; // I(s) = lerp(1.2, 4.0, s)
+    float halo_low = .3f, halo_high = 1.f;  // the halo x lerp(0.3, 1, s)
+    float ring_low = .4f, ring_high = 1.f;  // the ring x lerp(0.4, 1, s)
+    float disc_u = .16f;                    // the disc's end-on body: the law at this u (one shock cell in)
+    float ring_falloff = 14.f;              // the ring's axial falloff, per nozzle width
+    float pulse_rate = 3.f;                 // the length pulse's noise, per second
+};
+constexpr Look default_look{};
+constexpr float cap_sigma = .5f;            // x value x the preset: the near-camera cap's reference width (2 cap_sigma)
+constexpr float soft_core = .15f, soft_halo = 1.f; // SOFT x value (the pixel program's lane terms: body and ring, halo)
+constexpr float halo_reach = 2.25f;         // the halo window's zero, x the local halo sigma (the quads reach it)
 constexpr float disc_min_weight = .15f;     // |axis . to_camera| under which no disc is drawn
 constexpr float disc_fade_band = .15f;      // its radiance fades in over 0.15..0.3
 constexpr float occlusion_bias = .5f;       // x value x max(0, axis . to_camera): the exhaust facing the camera clears its hull
 constexpr float chase_cap = .12f;           // x H: the largest projected plume
 constexpr float chase_fade_band = .2f;      // the last 20 % before the cap
 constexpr float chase_fade_floor = .5f;     // the radiance at and past the cap
-constexpr float min_core_px = 1.5f, min_length_px = 6.f, cull_px = 1.5f;
+constexpr float min_nozzle_px = 3.f, min_length_px = 6.f, cull_px = 1.5f;
 constexpr float steering_min_z = .02f;
+constexpr float clock_wrap = 1024.f;        // seconds: the pixel program's clock wraps (float precision of the flow)
 constexpr unsigned max_nozzles = ee::ring_capacity; // 1,024: one ring
 constexpr unsigned vertices_per_nozzle = 8, indices_per_nozzle = 12;
 constexpr unsigned max_vertices = max_nozzles * vertices_per_nozzle; // 8,192: 16-bit indices
 static_assert(max_vertices <= 65536u, "16-bit indices");
+// The width profile (nozzle widths): w(u) = min(line(u), bulge(u)) x narrowing(u), line(u) the cylinder-to-cone line
+// 0.5 bulge + (0.04 - 0.5 bulge) taper u, an upper bound of w on [0, 1] (the quad follows it); w(0) and w(1).
+inline void width_line(const Look& k, float u, float* out) noexcept {
+    *out = .5f * k.bulge + (.04f - .5f * k.bulge) * k.taper * u;
+}
+inline void width_at_nozzle(const Look& k, float* out) noexcept {
+    const float line = .5f * k.bulge, bulge = .5f * k.bulge * (1.f - .55f) + .5f * k.bulge * k.taper;
+    *out = line < bulge ? line : bulge;
+}
+inline void width_at_tip(const Look& k, float* out) noexcept { // the bulge term's exp(-9) neglected: the line is lower
+    float line = 0.f;
+    width_line(k, 1.f, &line);
+    const float narrowing = 1.f - k.tail_narrowing * k.taper;
+    *out = line * (narrowing > .05f ? narrowing : .05f);
+}
+// The pixel program's look constants c3..c7 (engine_plume_ps.hlsl), 20 floats.
+inline void pixel_constants(const Look& k, float out[20]) noexcept {
+    float w0 = 0.f;
+    width_at_nozzle(k, &w0);
+    const float c[20] = {.5f * k.bulge, (.04f - .5f * k.bulge) * k.taper, .5f * k.bulge * k.taper, k.tail_narrowing * k.taper,
+                         .35f * k.flow, k.erode * 1.6f * .6f, k.turb * 2.2f, .75f + (.25f - .75f) * k.tail,
+                         k.shock, 6.2831853f / k.period, 5.f * k.cfade, 1.2f * k.tail,
+                         k.heat, 1.f / (1.4f * k.core), .46f * k.bulge, 1.f / 240.f,
+                         1.f / w0, k.disc_u, k.ring_falloff, 2.f};
+    for (unsigned i = 0; i < 20; ++i) out[i] = c[i];
+}
 
 // Normalised linear tints of the clusters (tools/effects/engine_bodies.py CLUSTERS through the sRGB EOTF, divided by
 // the largest channel), for a record without a table colour; grey and white are neutral.
@@ -127,17 +190,19 @@ inline const float* cluster_tint(unsigned cluster) noexcept {
     return tints[cluster < ee::cluster_count ? cluster : ee::default_cluster];
 }
 
-// One vertex of the stage's VB: 68 bytes (FLOAT3, 3 x FLOAT4, 2 x D3DCOLOR).
+// One vertex of the stage's VB: 72 bytes (FLOAT3, 3 x FLOAT4, 3 x D3DCOLOR).
 struct Vertex {
     float position[3];  // view space (x right, y up, z forward), before the jittered projection
-    float local[4];     // u | x, w | y (world units), L, core radius r0 at the nozzle
-    float shape[4];     // halo sigma at the nozzle, value (the SOFT base), occlusion bias (view units), kind (0 axial, 1 disc)
-    float intensity[4]; // I_core (x flicker x weights), I_halo (x weights), the axis's view z component (axial), the
-                        // nozzle's view z
-    std::uint32_t tint; // 0xAARRGGBB of the mean colour, largest channel 255
-    std::uint32_t peak; // 0xAARRGGBB of the peak colour (the core centre)
+    float local[4];     // x, y (world units), L (pulsed, world), the nozzle width n (world)
+    float shape[4];     // halo sigma at the nozzle (nozzle widths, x the preset), value (the SOFT base), occlusion bias
+                        // (view units), kind (0 axial, 1 disc)
+    float intensity[4]; // I_core (x weights), I_halo (x weights), the axis's view z component (axial), the nozzle's view z
+    std::uint32_t tint;   // 0xAARRGGBB of the mean colour, largest channel 255
+    std::uint32_t params; // 0xAARRGGBB: R the throttle s, G the noise seed, B I_ring / I_core / 2, A 255
+    std::uint32_t fog;    // 0xAARRGGBB of the fog transmittance per channel (white without fog): the white-hot core's
+                          // and the ring's colours take it (the tint carries it already)
 };
-static_assert(sizeof(Vertex) == 68, "the stage's vertex stride");
+static_assert(sizeof(Vertex) == 72, "the stage's vertex stride");
 
 // The camera of the frame: world -> view rows (view_j = dot(p, rows[j].xyz) + rows[j].w), the projection's scale terms
 // (the jitter terms move, they do not size) and the target height.
@@ -226,7 +291,6 @@ inline std::uint32_t pack_colour(const float c[3]) noexcept {
     }
     return out;
 }
-// Slow value noise in [-1, 1] of (seed, frame): a hash per cell of flicker_frames frames, smoothstep between cells.
 inline std::uint32_t hash32(std::uint32_t x) noexcept {
     x ^= x >> 16;
     x *= 0x7feb352du;
@@ -235,17 +299,95 @@ inline std::uint32_t hash32(std::uint32_t x) noexcept {
     x ^= x >> 16;
     return x;
 }
-inline void flicker(std::uint32_t seed, std::uint32_t frame, float* out) noexcept {
-    const std::uint32_t cell = frame / flicker_frames;
-    const float f = float(frame % flicker_frames) * (1.f / float(flicker_frames));
-    const float a = float(hash32(seed ^ hash32(cell)) >> 8) * (2.f / 16777216.f) - 1.f;
-    const float b = float(hash32(seed ^ hash32(cell + 1u)) >> 8) * (2.f / 16777216.f) - 1.f;
-    const float s = f * f * (3.f - 2.f * f);
-    *out = 1.f + flicker_amplitude * (a + (b - a) * s);
-}
 inline std::uint32_t record_seed(const ee::Record& r) noexcept {
     return hash32(std::uint32_t(r.serial) ^ std::uint32_t(r.serial >> 32) ^ hash32(r.node_handle) ^ (r.model * 0x9e3779b9u));
 }
+// The mock-up's value noise on the CPU (the pixel program's vnoise / fbm, engine_plume_ps.hlsl): the hash
+// frac(x y z (x + y + z)) of p' = frac(p 0.3183099 + (.1, .2, .3)) 17, smoothstep-trilinear between the lattice corners,
+// three octaves (0.5, 0.25, 0.125; fbm in [0, 0.875]). For |p| < 2^31 (scalar::floor).
+namespace noise {
+inline void frac(float x, float* out) noexcept {
+    *out = x - float(x3m::scalar::floor(double(x)));
+}
+inline void hash(float x, float y, float z, float* out) noexcept {
+    float a = 0.f, b = 0.f, c = 0.f;
+    frac(x * .3183099f + .1f, &a);
+    frac(y * .3183099f + .2f, &b);
+    frac(z * .3183099f + .3f, &c);
+    a *= 17.f;
+    b *= 17.f;
+    c *= 17.f;
+    frac(a * b * c * (a + b + c), out);
+}
+inline void value(const float p[3], float* out) noexcept {
+    float i[3], f[3];
+    for (unsigned k = 0; k < 3; ++k) {
+        i[k] = float(x3m::scalar::floor(double(p[k])));
+        f[k] = p[k] - i[k];
+        f[k] = f[k] * f[k] * (3.f - 2.f * f[k]);
+    }
+    float h[8];
+    for (unsigned c = 0; c < 8; ++c) hash(i[0] + float(c & 1u), i[1] + float((c >> 1) & 1u), i[2] + float(c >> 2), &h[c]);
+    float x[4];
+    for (unsigned c = 0; c < 4; ++c) x[c] = h[2 * c] + (h[2 * c + 1] - h[2 * c]) * f[0];
+    const float y0 = x[0] + (x[1] - x[0]) * f[1], y1 = x[2] + (x[3] - x[2]) * f[1];
+    *out = y0 + (y1 - y0) * f[2];
+}
+inline void fbm(const float p[3], float* out) noexcept {
+    float a = 0.f, b = 0.f, c = 0.f;
+    value(p, &a);
+    const float p2[3] = {p[0] * 2.03f + 1.7f, p[1] * 2.03f + 1.7f, p[2] * 2.03f + 1.7f};
+    value(p2, &b);
+    const float p3[3] = {p[0] * 4.1f + 3.1f, p[1] * 4.1f + 3.1f, p[2] * 4.1f + 3.1f};
+    value(p3, &c);
+    *out = .5f * a + .25f * b + .125f * c;
+}
+} // namespace noise
+// The nozzle's noise seed (the pixel program's offset: G of params, x 1,861.5 in the noise's third axis).
+inline unsigned seed_byte(const ee::Record& r) noexcept {
+    return (record_seed(r) >> 8) & 255u;
+}
+// The length pulse of a nozzle at the stage's clock `seconds`: 1 + pulse (2 fbm / 0.875 - 1), in [1 - pulse,
+// 1 + pulse] with mean 1 (the mock-up's fbm(3 t, side, 0) recentred, so the throttle's length law holds on average).
+inline void length_pulse(const Look& k, unsigned seed, float seconds, float* out) noexcept {
+    const float p[3] = {seconds * k.pulse_rate, float(seed) * 7.3f, 0.f};
+    float f = 0.f;
+    noise::fbm(p, &f);
+    *out = 1.f + k.pulse * (f * (2.f / .875f) - 1.f);
+}
+
+// --------------------------------------------------------------------------- the stage's clock
+// Seconds for the plumes' flow and pulse and the ribbons' pool: the performance counter between stage runs, except
+// that a step ending on an F8 capture frame or on the frame after one advances by at most the last ordinary step
+// (itself held to 0.1 s). The capture's readbacks stall the wall clock by seconds; counted in full, that evicted every
+// ribbon (0.3 s fade) on capture frames 2-8 (run403) and jumped the flow. Every other gap (a load screen, frames the
+// stage does not run) advances in full, so the ribbons' 0.3 s gap rule is unchanged.
+struct StageClock {
+    double seconds = 0.;
+    std::uint64_t last = 0;
+    double ordinary_step = 1. / 60.;
+    bool started = false, last_capture = false;
+    static constexpr double max_capture_step = .1;
+    void step(std::uint64_t counter, std::uint64_t frequency, bool capture) noexcept {
+        if (!frequency) return;
+        if (started && counter >= last) {
+            double dt = double(counter - last) / double(frequency);
+            if (capture || last_capture)
+                dt = dt < ordinary_step ? dt : ordinary_step;
+            else
+                ordinary_step = dt < max_capture_step ? dt : max_capture_step;
+            seconds += dt;
+        }
+        started = true;
+        last = counter;
+        last_capture = capture;
+    }
+    // The pixel program's time: wrapped at clock_wrap seconds (one discontinuity of the noise per wrap).
+    void wrapped(float* out) const noexcept {
+        const double w = double(clock_wrap);
+        *out = float(seconds - w * x3m::scalar::floor(seconds / w));
+    }
+};
 
 namespace detail {
 inline void to_view(const View& v, const float p[3], float out[3]) noexcept {
@@ -286,9 +428,9 @@ inline void write_indices(std::uint16_t* out, unsigned nozzles) noexcept {
     }
 }
 
-// One nozzle's eight vertices. False: not drawn (stats says why).
-inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& view, float scale, std::uint32_t frame,
-                         Vertex* out, BuildStats* stats) noexcept {
+// One nozzle's eight vertices. False: not drawn (stats says why). `seconds` the stage's clock (the length pulse).
+inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& view, const Look& look, float scale,
+                         float seconds, Vertex* out, BuildStats* stats) noexcept {
     if ((r.flags & ee::flag_rows_unknown) || !detail::finite3(r.origin) || !detail::finite3(r.axis) ||
         !ee::finite_f(r.size) || !(r.size > 0.f) || !ee::finite_f(r.z) || !ee::finite_f(r.s)) {
         ++stats->culled_rows;
@@ -308,12 +450,28 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         return false;
     }
     float value = r.size;
-    float L = (r.z > 0.f ? r.z : 0.f) * value;
-    float sigma = halo_sigma * value * scale;
-    // Behind the camera: the whole axial quad (nozzle to tip, plus the halo reach) on the far side of the near plane.
-    const float reach = halo_reach * sigma;
+    const unsigned seed = seed_byte(r);
+    float pulse = 1.f;
+    length_pulse(look, seed, seconds, &pulse);
+    float L = (r.z > 0.f ? r.z : 0.f) * value * pulse;
+    const float sigma_cap = cap_sigma * value * scale;
+    // The quad's reach per nozzle width over the width line: the body's eroded edge (1 + 0.48 erode of the local width)
+    // or the halo window (halo_reach x sigma, sigma0 at the nozzle following the local width), whichever is wider, and
+    // at the nozzle the ring (its radius plus three of its sigmas).
+    float w0 = 0.f, line0 = 0.f, w_tip = 0.f;
+    width_at_nozzle(look, &w0);
+    width_line(look, 0.f, &line0);
+    width_at_tip(look, &w_tip);
+    const float sigma0 = .5f * look.halo * scale; // nozzle widths
+    const float body_reach = 1.f + .48f * look.erode;
+    const float ring_outer = .46f * look.bulge + 3.f * .0645497f;
+    float spread = halo_reach * sigma0 / w0;
+    spread = spread > body_reach ? spread : body_reach;
+    if (spread * line0 < ring_outer) spread = ring_outer / line0;
+    // Behind the camera: the whole axial quad (nozzle to tip, plus its widest half-width) beyond the near plane.
+    const float margin = spread * line0 * look.nozzle_width * value;
     const float tip_z = o[2] + a[2] * L;
-    if ((o[2] < view.near_z && tip_z < view.near_z) && (o[2] + reach < view.near_z && tip_z + reach < view.near_z)) {
+    if ((o[2] < view.near_z && tip_z < view.near_z) && (o[2] + margin < view.near_z && tip_z + margin < view.near_z)) {
         ++stats->culled_behind;
         return false;
     }
@@ -323,17 +481,17 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         ++stats->culled_small;
         return false;
     }
-    // The near-camera cap (the own ship in chase view): the plume's projected width, the halo's 1/e diameter 2 sigma at
-    // the axis point nearest the camera (the tip when the exhaust approaches it), is held to 0.12 H by shrinking the
-    // whole plume about the nozzle; its radiance fades 1 -> 0.5 over the last 20 % before the cap. Its length is
-    // free: a distant capital's long plume is not shortened.
+    // The near-camera cap (the own ship in chase view): the plume's reference width 2 cap_sigma (1 value x the preset)
+    // at the axis point nearest the camera (the tip when the exhaust approaches it) is held to 0.12 H by shrinking the
+    // whole plume about the nozzle; its radiance fades 1 -> 0.5 over the last 20 % before the cap. Its length is free:
+    // a distant capital's long plume is not shortened.
     float k = 1.f, near_weight = 1.f;
     {
         const float f = view.m11 * view.height * .5f, cap = chase_cap * view.height;
         const float toward = a[2] < 0.f ? -a[2] : 0.f; // approach to the camera per unit of length
         float near_depth = o[2] - toward * L;
         if (near_depth < view.near_z) near_depth = view.near_z;
-        const float q = 2.f * sigma * f / near_depth / cap;
+        const float q = 2.f * sigma_cap * f / near_depth / cap;
         if (q > 1.f - chase_fade_band) {
             float t = (q - (1.f - chase_fade_band)) * (1.f / chase_fade_band);
             t = t > 1.f ? 1.f : t;
@@ -342,7 +500,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         }
         if (q > 1.f) {
             // Shrinking also moves the tip away: solve 2 sigma k f / (o_z - toward L k) = cap for k.
-            const float denominator = 2.f * sigma * f + cap * toward * L;
+            const float denominator = 2.f * sigma_cap * f + cap * toward * L;
             float kk = denominator > 0.f && o[2] > view.near_z ? cap * o[2] / denominator : 0.f;
             if (!(kk > 0.f) || kk > 1.f) kk = 1.f / q;
             k = kk;
@@ -351,34 +509,32 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     }
     value *= k;
     L *= k;
-    sigma *= k;
     // Minimum screen sizes (after the cap: a capped plume is large anyway).
-    float r0 = core_radius * value;
-    if (r0 * ppu < min_core_px) r0 = min_core_px / ppu;
+    float n = look.nozzle_width * value;
+    if (n * ppu < min_nozzle_px) n = min_nozzle_px / ppu;
     if (!steering && L * ppu < min_length_px) L = min_length_px / ppu;
-    float disc = disc_radius * value;
-    if (disc * ppu < min_core_px) disc = min_core_px / ppu;
-    // Radiance: I(s) x preset, the core's slow flicker, the RCS weight z, the chase fade.
+    // Radiance: I(s) x preset, the RCS weight z, the chase fade; the halo and the ring relative to it.
     const float s = r.s < 0.f ? 0.f : r.s > 1.f ? 1.f : r.s;
-    float fl = 1.f;
-    flicker(record_seed(r), frame, &fl);
     float weight = near_weight;
     if (steering) weight *= r.z < 1.f ? r.z : 1.f;
-    const float i_core = (core_low + (core_high - core_low) * s) * scale * fl * weight;
-    const float i_halo = (halo_low + (halo_high - halo_low) * s) * scale * weight;
-    float mean[3], peak[3];
+    const float level = look.core_low + (look.core_high - look.core_low) * s;
+    const float i_core = level * scale * weight;
+    const float i_halo = look.hb * (look.halo_low + (look.halo_high - look.halo_low) * s) * scale * weight;
+    float ring = look.ring * (look.ring_low + (look.ring_high - look.ring_low) * s) / level * .5f;
+    ring = ring < 0.f ? 0.f : ring > 1.f ? 1.f : ring;
+    const std::uint32_t params = 0xff000000u | (std::uint32_t(int(s * 255.f + .5f)) << 16) | (seed << 8) |
+                                 std::uint32_t(int(ring * 255.f + .5f));
+    float mean[3], peak[3], transmittance[3] = {1.f, 1.f, 1.f};
     record_tint(r, body, mean, peak);
     if (view.fog.on) {
-        float t[3];
-        x3m::renderer::fog_transmittance(view.fog, x3m::scalar::sqrt(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]), t);
+        x3m::renderer::fog_transmittance(view.fog, x3m::scalar::sqrt(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]), transmittance);
         for (unsigned i = 0; i < 3; ++i) {
-            mean[i] *= t[i];
-            peak[i] *= t[i];
-            stats->fog_min = t[i] < stats->fog_min ? t[i] : stats->fog_min;
+            mean[i] *= transmittance[i];
+            stats->fog_min = transmittance[i] < stats->fog_min ? transmittance[i] : stats->fog_min;
         }
         ++stats->fogged;
     }
-    const std::uint32_t tint = pack_colour(mean), hot = pack_colour(peak);
+    const std::uint32_t tint = pack_colour(mean), fog = pack_colour(transmittance);
     // Facing: e = unit vector from the nozzle to the camera; the axial quad's side n = a x e, a fallback when the axis
     // points along the line of sight.
     float e[3] = {-o[0], -o[1], -o[2]}, el = 0.f;
@@ -389,32 +545,40 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     }
     const float facing = a[0] * e[0] + a[1] * e[1] + a[2] * e[2]; // +1: the exhaust points at the camera
     const float bias = occlusion_bias * value * (facing > 0.f ? facing : 0.f);
-    float n[3], nl = 0.f;
-    detail::cross(a, e, n);
-    detail::normalise(n, &nl);
-    if (!(nl > 1e-4f)) {
+    float side[3], sl = 0.f;
+    detail::cross(a, e, side);
+    detail::normalise(side, &sl);
+    if (!(sl > 1e-4f)) {
         const float up[3] = {0.f, 1.f, 0.f}, right[3] = {1.f, 0.f, 0.f};
-        detail::cross(a, a[1] * a[1] < .81f ? up : right, n);
-        detail::normalise(n, &nl);
+        detail::cross(a, a[1] * a[1] < .81f ? up : right, side);
+        detail::normalise(side, &sl);
     }
-    // The axial trapezoid: the halo window reaches 0 at 2.25 local sigma from the segment nozzle..tip (sigma tapering to
-    // half at the tip), the core tapers from r0 to 0; the width is linear in u through (0, max(reach0, r0) + 1 px) and
-    // (front, reach_tip + 1 px), which covers the nozzle's half disc, the side band and the tip's half disc.
+    // The axial trapezoid, linear in x: spread x n x the width line (+1 px) extended behind the nozzle by the halo's
+    // reach there (and the ring's 0.05 nozzle widths) and past the tip by the tip's halo reach, the front no narrower
+    // than that reach; a plume shorter than its back reach takes the nozzle's width over the whole quad.
     const float pixel = 1.f / ppu;
-    const float reach0 = halo_reach * sigma, reach_tip = .5f * reach0;
-    const float back = reach0 + pixel, front = L + reach_tip + pixel;
-    const float width0 = (reach0 > r0 ? reach0 : r0) + pixel, width_front = reach_tip + pixel;
-    const float width_back = width0 + (width0 - width_front) * back / front;
+    const float slope = (.04f - .5f * look.bulge) * look.taper; // d line / d u
+    const float back_units = halo_reach * sigma0 > .05f ? halo_reach * sigma0 : .05f;
+    const float back = n * back_units + pixel;
+    const float reach_tip = halo_reach * sigma0 * (w_tip / w0) * n;
+    const float front = L + reach_tip + pixel;
+    const float width0 = spread * n * line0 + pixel;
+    float width_back = width0, width_front = width0;
+    if (back < L) {
+        width_back = spread * n * (line0 - slope * back / L) + pixel;
+        width_front = spread * n * (line0 + slope * front / L) + pixel;
+    }
+    if (width_front < reach_tip + pixel) width_front = reach_tip + pixel;
     const float corners[4][2] = {{-back, -width_back}, {-back, width_back}, {front, -width_front}, {front, width_front}};
     for (unsigned c = 0; c < 4; ++c) {
         Vertex& v = out[c];
-        const float u = corners[c][0], w = corners[c][1];
-        for (unsigned j = 0; j < 3; ++j) v.position[j] = o[j] + a[j] * u + n[j] * w;
-        v.local[0] = u;
-        v.local[1] = w;
+        const float x = corners[c][0], y = corners[c][1];
+        for (unsigned j = 0; j < 3; ++j) v.position[j] = o[j] + a[j] * x + side[j] * y;
+        v.local[0] = x;
+        v.local[1] = y;
         v.local[2] = L;
-        v.local[3] = r0;
-        v.shape[0] = sigma;
+        v.local[3] = n;
+        v.shape[0] = sigma0;
         v.shape[1] = value;
         v.shape[2] = bias;
         v.shape[3] = 0.f;
@@ -423,7 +587,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.intensity[2] = a[2];
         v.intensity[3] = o[2];
         v.tint = tint;
-        v.peak = hot;
+        v.params = params;
+        v.fog = fog;
     }
     // The disc, weighted by |a . e| and faded in over 0.15..0.3; under 0.15 it collapses to one point (no pixel).
     const float facing_abs = facing < 0.f ? -facing : facing;
@@ -431,7 +596,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     float fade_in = (facing_abs - disc_min_weight) * (1.f / disc_fade_band);
     fade_in = fade_in < 0.f ? 0.f : fade_in > 1.f ? 1.f : fade_in;
     const float dw = facing_abs * fade_in;
-    const float half = (halo_reach * sigma > disc + pixel ? halo_reach * sigma : disc + pixel) * (disc_drawn ? 1.f : 0.f);
+    const float half = width0 * (disc_drawn ? 1.f : 0.f);
     const float dc[4][2] = {{-half, -half}, {-half, half}, {half, -half}, {half, half}};
     for (unsigned c = 0; c < 4; ++c) {
         Vertex& v = out[4 + c];
@@ -441,8 +606,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.local[0] = dc[c][0];
         v.local[1] = dc[c][1];
         v.local[2] = L;
-        v.local[3] = disc;
-        v.shape[0] = sigma;
+        v.local[3] = n;
+        v.shape[0] = sigma0;
         v.shape[1] = value;
         v.shape[2] = bias;
         v.shape[3] = 1.f;
@@ -451,7 +616,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.intensity[2] = 0.f;
         v.intensity[3] = o[2];
         v.tint = tint;
-        v.peak = hot;
+        v.params = params;
+        v.fog = fog;
     }
     if (disc_drawn) ++stats->discs;
     if (steering) ++stats->steering;
@@ -459,17 +625,20 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
 }
 
 // The frame's records into `out` (capacity in nozzles); returns the nozzles written (8 vertices each). `body` maps a
-// record's table index to its entry (null: none); `filter` (null: every record) keeps the scene view's records.
+// record's table index to its entry (null: none); `seconds` the stage's clock (wrapped, StageClock::wrapped); `filter`
+// (null: every record) keeps the scene view's records; `look` (null: default_look) the plume look.
 using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
-                      std::uint32_t frame, Vertex* out, unsigned capacity, BuildStats* stats,
-                      const ViewFilter* filter = nullptr) noexcept {
+                      float seconds, Vertex* out, unsigned capacity, BuildStats* stats, const ViewFilter* filter = nullptr,
+                      const Look* look = nullptr) noexcept {
     BuildStats local{};
     BuildStats& st = stats ? *stats : local;
     st = BuildStats{};
     if (!records || !out || !(view.m11 > 0.f) || !(view.height > 0.f) || !(view.near_z > 0.f)) return 0;
     for (unsigned i = 0; i < 12; ++i)
         if (!ee::finite_f(view.rows[i])) return 0;
+    if (!ee::finite_f(seconds)) seconds = 0.f;
+    const Look& k = look ? *look : default_look;
     float scale = 1.f;
     preset_scale(preset, &scale);
     unsigned written = 0;
@@ -484,7 +653,7 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
         }
         const ee::Record& r = records[i];
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;
-        if (build_nozzle(r, b, view, scale, frame, out + written * vertices_per_nozzle, &st)) ++written;
+        if (build_nozzle(r, b, view, k, scale, seconds, out + written * vertices_per_nozzle, &st)) ++written;
     }
     st.nozzles = written;
     st.vertices = written * vertices_per_nozzle;

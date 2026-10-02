@@ -25,12 +25,12 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "78d6917ae6c71a9601e01a0c2f4e8f1157672bef-dirty",
+    "commit": "f4585e8f144dbfb9597cb578c2d31ee1a7a7d704-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/engine_effects_core.h",
       "src/proxy/engine_plumes_core.h",
-      "src/proxy/engine_ribbons_core.h"
+      "src/renderer/engine_plumes_pass.cpp",
+      "src/renderer/engine_plumes_pass.h"
     ],
     "sha256": {
       "src/proxy/engine_ribbons_core.h": "b60b32db71b149f29d0002b928d6b1a675ea3e8cb821bae05572931dd14ef737",
@@ -41,10 +41,10 @@
       "src/effects/engine_ribbon_ps.hlsl": "13b45c39a518de0b64485713138726243ad41899b8f406075b6cadf83e296ea8",
       "src/renderer/engine_ribbon_vertex_program_inc.h": "5651c07896aeb97820ef1dd204ce3218ec06d7ecd3cbe3594ef65c3e75530091",
       "src/renderer/engine_ribbon_pixel_program_inc.h": "9e04c634362f8416d3a06428dfdb7e2c009116554810a28214c8a54aa7689029",
-      "src/proxy/engine_plumes_core.h": "6d258bad0d3da20f398c45fec438cbd0d066597a6d02a8cd2712dcf46fa7510e",
+      "src/proxy/engine_plumes_core.h": "89b84680816f8c26dd0098a2f98e79549145e79d9a8e8466a5a3155848c63eaf",
       "src/proxy/engine_effects_core.h": "1293b14520f81a75a99f2198de65da25a0ef35990bdcf04884358400ab798702",
-      "src/renderer/engine_plumes_pass.h": "a3291e5a3d78b3dab81d2ec4a1e9bacf138d0834431bfc3d6770bb2b3dca3073",
-      "src/renderer/engine_plumes_pass.cpp": "0ee220889908e4dbf66b9f9d164c5658f079b7bb024ab2ec37f8f3da81e1b3a0",
+      "src/renderer/engine_plumes_pass.h": "2e47d46e9ae8278551f6ac03021d8c1bb3ff3136e47858d10d394f6ff2f85dd6",
+      "src/renderer/engine_plumes_pass.cpp": "6042bf407ec655e89bde018d4144a45fbb1ef5854c0f34e4c4935e1fb61caabc",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
       "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b"
     }
@@ -52,14 +52,14 @@
   "programs": {
     "engine_plume_vs": {
       "source": "src/effects/engine_plume_vs.hlsl",
-      "word_count": 120,
-      "bytecode_sha256": "47f78e51d7167c833098c1b1454c6e6f63227c4ab46b90dfbeaa4f17500a004c",
+      "word_count": 129,
+      "bytecode_sha256": "db170040a0fb278863e4455b2d4bd57c026d88b8c4faefc280a22adde5aff94b",
       "target": "vs_3_0"
     },
     "engine_plume_ps": {
       "source": "src/effects/engine_plume_ps.hlsl",
-      "word_count": 453,
-      "bytecode_sha256": "4c40af267b7370d307453a895f8d425f1b2acc4ed7a4b7422f451c0792eb5270",
+      "word_count": 1674,
+      "bytecode_sha256": "52d2bad4107e80656dbd0a7a546530c191741d6b119522419462cc5e1a7dc6e9",
       "target": "ps_3_0"
     },
     "engine_ribbon_vs": {
@@ -106,12 +106,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a20a8d72fd9d8e976/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a338ed4a986600050/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "d88610e0cb80002e5724302ccf9ef14a1be6f60b7c7fb11775cf3d62d74e8793"
+    "executable_sha256": "30cabea7cdb669dce697a2c7be4c94a10e2d4914c1a064ae6c64c3dc6dfd6ca4"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -165,8 +165,8 @@
         "length_px": 117,
         "resolved_length_px": 118,
         "gaps": 0,
-        "at_nozzle": 0.8906,
-        "survival": 1.0242,
+        "at_nozzle": 0.8828,
+        "survival": 1.0196,
         "ribbons": 1,
         "samples": 14,
         "live": 1,
@@ -182,8 +182,8 @@
         "length_px": 234,
         "resolved_length_px": 235,
         "gaps": 0,
-        "at_nozzle": 0.8945,
-        "survival": 1.0198,
+        "at_nozzle": 0.8828,
+        "survival": 1.0216,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -199,8 +199,8 @@
         "length_px": 117,
         "resolved_length_px": 161,
         "gaps": 0,
-        "at_nozzle": 0.8906,
-        "survival": 1.0372,
+        "at_nozzle": 0.8828,
+        "survival": 1.0176,
         "ribbons": 1,
         "samples": 14,
         "live": 1,
@@ -216,8 +216,8 @@
         "length_px": 234,
         "resolved_length_px": 321,
         "gaps": 0,
-        "at_nozzle": 0.8945,
-        "survival": 1.0211,
+        "at_nozzle": 0.8906,
+        "survival": 1.0079,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -233,8 +233,8 @@
         "length_px": 117,
         "resolved_length_px": 118,
         "gaps": 0,
-        "at_nozzle": 0.8906,
-        "survival": 1.0235,
+        "at_nozzle": 0.8828,
+        "survival": 1.0188,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -250,8 +250,8 @@
         "length_px": 234,
         "resolved_length_px": 235,
         "gaps": 0,
-        "at_nozzle": 0.8945,
-        "survival": 1.02,
+        "at_nozzle": 0.8828,
+        "survival": 1.0214,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -268,7 +268,7 @@
         "resolved_length_px": 160,
         "gaps": 0,
         "at_nozzle": 0.8828,
-        "survival": 1.0536,
+        "survival": 1.0191,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -284,8 +284,8 @@
         "length_px": 234,
         "resolved_length_px": 329,
         "gaps": 0,
-        "at_nozzle": 0.8906,
-        "survival": 1.0355,
+        "at_nozzle": 0.8828,
+        "survival": 1.0124,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -370,8 +370,8 @@
         "width": 1920,
         "distance": 2046.9,
         "expected_T": 0.4919,
-        "core": "5.5352,2.7129",
-        "core_ratio": 0.4901,
+        "core": "5.6211,2.7559",
+        "core_ratio": 0.4903,
         "trail": "0.1499,0.0735",
         "trail_ratio": 0.4902
       }
@@ -413,11 +413,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.9597,
-        "fenced_off_ms": 0.8777,
-        "submit_ms": 0.0506,
-        "chain_ms": 0.082,
-        "gpu_ms": 0.0314,
+        "fenced_on_ms": 0.6586,
+        "fenced_off_ms": 0.5789,
+        "submit_ms": 0.053,
+        "chain_ms": 0.0797,
+        "gpu_ms": 0.0267,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -428,11 +428,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.1124,
-        "fenced_off_ms": 0.8752,
-        "submit_ms": 0.0844,
-        "chain_ms": 0.2372,
-        "gpu_ms": 0.1528,
+        "fenced_on_ms": 0.7935,
+        "fenced_off_ms": 0.5728,
+        "submit_ms": 0.083,
+        "chain_ms": 0.2207,
+        "gpu_ms": 0.1377,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -443,11 +443,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.7249,
-        "fenced_off_ms": 1.6543,
-        "submit_ms": 0.0527,
-        "chain_ms": 0.0706,
-        "gpu_ms": 0.0179,
+        "fenced_on_ms": 1.7015,
+        "fenced_off_ms": 1.6263,
+        "submit_ms": 0.0523,
+        "chain_ms": 0.0752,
+        "gpu_ms": 0.0229,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -458,11 +458,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7606,
-        "fenced_off_ms": 1.6539,
-        "submit_ms": 0.0848,
-        "chain_ms": 0.1067,
-        "gpu_ms": 0.0219,
+        "fenced_on_ms": 1.7539,
+        "fenced_off_ms": 1.622,
+        "submit_ms": 0.0849,
+        "chain_ms": 0.1319,
+        "gpu_ms": 0.047,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -472,15 +472,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.81,
-        "min_us": 7.32,
+        "median_us": 7.78,
+        "min_us": 7.26,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 25.27,
-        "min_us": 24.7,
+        "median_us": 25.01,
+        "min_us": 23.56,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -671,7 +671,7 @@
     "failed_checks": []
   },
   "gates_met": {
-    "near_survival_min": 1.0198,
+    "near_survival_min": 1.0079,
     "near_survival": true,
     "length_ratio": {
       "1920_dark_4px": 0.975,
@@ -685,10 +685,10 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0314,
-      "1920x1080_100": 0.1528,
-      "5120x1440_30": 0.0179,
-      "5120x1440_100": 0.0219
+      "1920x1080_30": 0.0267,
+      "1920x1080_100": 0.1377,
+      "5120x1440_30": 0.0229,
+      "5120x1440_100": 0.047
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
@@ -697,14 +697,14 @@
       "5120x1440_100": true
     },
     "cpu_us": {
-      "30": 7.81,
-      "100": 25.27
+      "30": 7.78,
+      "100": 25.01
     },
     "cpu_100_within": true,
     "fog": [
       {
         "expected_T": 0.4919,
-        "core_ratio": 0.4901,
+        "core_ratio": 0.4903,
         "trail_ratio": 0.4902
       }
     ]

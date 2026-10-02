@@ -150,3 +150,27 @@ this flight), suppression 136,695 / forwarded 0; stage_us median 115 / p90 200 (
 (different scenes). Presets cycled by hotkey 24 times (strong 7,218 frames, default 5,943, restrained 601). Fog never active on an armed frame (untested).
 Gaps: on F8 frames 2-8 ribbons drawn is 0 while live > 0 (capture stalls the clock or the segment floor; unverified), ribbon samples appended median 2 per
 frame. Next: a look redesign of the plume pixel law (animated turbulence, shock cells, hot core), tuned in the offline mock-up before the next candidate.
+
+## Plume look port (2026-10-03, worktree build, not a candidate)
+
+The Engine Exhaust Lab law in the plume pixel program ([design note, "Ported"](../architecture/engine-effects-modern.md#plume-look-redesign-2026-10-03-after-flight-b)),
+the stage's capture-aware clock and `engine_draw` rows on F8 frames. All measured unless marked.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build` (worktree, MinGW i686), `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings; x87 0 violations, 751 reachable functions |
+| Programs | `tools/shaders/generate_rigid_motion_pixel.py --check` (Wine) | PASS, 50 programs; engine_plume ps 92 -> 391 slots, vs 10 -> 11 |
+| Plume fixture | `run_engine_plumes.py` | PASS 88/88 (was 72); law vs CPU replica max 0.09 % of I_core; length and u = 0.5 width equal to the replica's at s = 0 / 0.5 / 1; core survival min 0.957, dark trail 0 px, flicker trail 2 / 22 px (1080, 4 / 8 px per frame), 4 / 20 px (5120); occlusion, presets 0.600 / 1.500, Reset, fault unchanged; chase extent 30 / 39 px under the 129.6 / 172.8 px cap, fade 0.500 against the unfaded nozzle |
+| (a) temporal | 30 frames at 60 fps, 3x3 box at u = 0.2 | CV 0.181 (gate 0.05..0.4), mean / design 1.026 (gate 10 %), largest frame step 43 % of the mean; through the resolve CV 0.128 |
+| (b) shape | 30 frames 0.1 s apart, no pulse, value 100 px | half-width / nozzle half-width 1.097 at u = 0.1 (gate >= 1.05), 0.299 at u = 0.9 (gate <= 0.35); bulge 1.15 gave 1.044 |
+| (c) shock cells | axis profile to u = 0.6, s = 1 | 3 maxima at u 0.155 / 0.315 / 0.465 (still look), 6 with turbulence |
+| (d) stage cost | EVENT-fenced frame tail, gpu_ms 1080p 30 / 100, 5120x1440 30 / 100 | before (old code, this session) 0.033 / 0.144 / 0.030 / 0.142; after 0.126 / 0.144 / 0.027 / 0.028 and 0.241 / 0.137 / 0.045 / 0.027 (two runs): within the method's +-0.1 ms noise; quad area 0.09-0.19 of the first look's (`verification/results/engine-effects/plume_look_area.py`); CPU build 100 records 6.1 -> 20.4 us (the per-nozzle fbm pulse) |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44; plume fog core ratio 0.490 vs T 0.492 (the first port run failed it at 0.657: the white-hot core bypassed the fog; fixed with the transmittance on the vertex) |
+| Effects | `run_engine_effects.py` (all modes) | PASS: main 164, native 11, unverified 6, unpatched 11, timing 5, plumes 33, armed 15 |
+| Host | `test_engine_*` (6 modules) | 49 tests OK (StageClock: capture steps held, a 0.5 s gap in full, wrap at 1,024 s; pulse 0.83..1.18 mean 1.000; area rows) |
+
+Capture fix (run403 triage, `verification/results/run403-engine-plumes/`): on capture frames 2-8 every ribbon was evicted and recreated (created =
+evicted = nozzles, stage_us 3-10 ms): the capture stall exceeded the 0.3 s fade on the wall clock. The stage's clock now holds a step on or after a
+capture frame to the last ordinary step; verified on the host (`StageClock`), not in flight. `engine_draw` rows are written on every F8 frame (64 per
+frame cap unchanged); wiring asserted on the host, not exercised by a fixture (the effects fixture has no capture frame). Open: the look in flight
+(the nozzle width = value / 4 reading, the tuned bulge and tail), the temporal smoothing through the real history, native Windows (cross-compiled only).

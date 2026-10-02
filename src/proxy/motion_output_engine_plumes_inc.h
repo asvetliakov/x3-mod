@@ -138,7 +138,7 @@ const engine_effects::core::Body* engine_plumes_body(int index) {
 }
 }
 // The performance-counter frequency, read once per device (qpc_frequency_, shared with the other timers; fixed at
-// boot): the plume stage's timing and the ribbons' clock take it without a call per frame.
+// boot): the plume stage's timing and its clock (engine_clock_) take it without a call per frame.
 std::uint64_t MotionOutput::engine_qpc_frequency() noexcept {
     if (!qpc_frequency_) {
         LARGE_INTEGER f{};
@@ -194,7 +194,12 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     in.filter.scene = engine_ring_->scene;
     in.filter.handle = scene_camera;
     in.preset = plumes_preset_;
-    in.frame = std::uint32_t(frame_);
+    // The stage's clock (the plumes' flow and pulse, the ribbons' pool): the performance counter between stage runs, a
+    // step on or after an F8 capture frame held to the last ordinary one (engine_plumes_core.h StageClock).
+    LARGE_INTEGER counter{};
+    QueryPerformanceCounter(&counter);
+    engine_clock_.step(std::uint64_t(counter.QuadPart), engine_qpc_frequency(), capture_);
+    engine_clock_.wrapped(&in.seconds);
     engine_plumes_fog(&in.view.fog); // phase 3: the density fog's mean transmittance per nozzle, off unless it applied
     // stage_us: the build and the draw; with --gpu-sync-timing the EnginePlumes pair fences both sides (EVENT queries),
     // so it includes the GPU's completion of the draw.

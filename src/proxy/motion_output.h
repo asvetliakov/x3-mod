@@ -1706,7 +1706,8 @@ private:
     // refusal reasons already logged (one row per reason and device).
     lens_flare_gain::Law lens_gain_{};
     // Engine effects (motion_output_engine_effects_inc.h): the gates, the frame's ring and counts, the pinned c4-6
-    // order, the census caps (64 engine_draw rows per frame, rows in the first 8 frames that have any).
+    // order, the census caps (64 engine_draw rows per frame, rows in the first 8 frames that have any and on every F8
+    // capture frame).
     bool engine_hook_ = false, engine_suppress_ = false, engine_census_ = false, engine_device_logged_ = false;
     bool engine_redirects_ = false; // engine_effects::redirects_live(), read at configure and once per frame
     bool engine_partial_logged_ = false; // the engine_effects_partial row (route off, redirects on) was written
@@ -1743,6 +1744,7 @@ private:
     engine_plumes::ViewRule plumes_view_rule_ = engine_plumes::ViewRule::none;
     std::uint64_t plumes_view_own_total_ = 0, plumes_view_majority_total_ = 0;
     std::uint64_t engine_qpc_frequency() noexcept; // qpc_frequency_, read once
+    engine_plumes::StageClock engine_clock_{};     // the plume stage's clock (flow, pulse, the ribbons' pool)
     static constexpr std::uint64_t plumes_disarm_frames = 64;
     unsigned plumes_failures_ = 0;      // consecutive failed stage frames (a drawn frame clears it)
     bool plumes_failed_out_ = false;    // plumes_failure_limit reached: refused until Reset

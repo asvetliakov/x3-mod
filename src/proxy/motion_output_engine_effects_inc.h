@@ -232,7 +232,8 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         if (reason < ee::forward_reasons) ++engine_counts_.forwarded[reason];
     }
     if (engine_census_) {
-        if (engine_row_frames_ >= engine_row_frame_cap) {
+        // The first eight frames with rows, and every F8 capture frame (the own ship's z in the log of each capture).
+        if (engine_row_frames_ >= engine_row_frame_cap && !capture_) {
         } else if (engine_rows_ >= engine_row_cap)
             ++engine_rows_more_;
         else {

@@ -8,7 +8,8 @@
 // cut verdict) reaches the pass through note_cut only on a resolve with that verdict set, drawn or not, and clears the
 // pool at its next update;
 // Reset clears it in before_reset; the object_lifetime load epoch the recogniser read with the jet's node serial
-// (engine_load_epoch_) clears it when it changes; and a stage gap of 0.3 s evicts every ribbon by itself.
+// (engine_load_epoch_) clears it when it changes; and a stage gap of 0.3 s on the stage's clock (engine_clock_: an F8
+// capture's stall is not a gap) evicts every ribbon by itself.
 
 // The ribbon pass, attached at the arming latch with the plume pass (programs and buffers at the arming, not at the
 // first ribbon); refused until Reset on failure with one engine_ribbons_device row, the plumes drawing without ribbons.
@@ -46,12 +47,9 @@ bool MotionOutput::attach_engine_ribbons() noexcept {
 HRESULT MotionOutput::run_engine_ribbons(const renderer::EnginePlumesFrame& in) noexcept {
     ribbons_report_ = {};
     if (!ribbons_ || !ribbons_->caps().enabled) return S_FALSE;
-    LARGE_INTEGER now{};
-    QueryPerformanceCounter(&now);
-    const std::uint64_t frequency = engine_qpc_frequency();
     renderer::EngineRibbonsFrame f{};
     f.base = &in;
-    f.seconds = frequency ? double(now.QuadPart) / double(frequency) : 0.;
+    f.seconds = engine_clock_.seconds; // the stage's clock (run_engine_plumes stepped it): a capture stall is not a gap
     f.cut = false; // note_cut at the resolve
     f.load_epoch = engine_load_epoch_;
     return ribbons_->run(f, &ribbons_report_);

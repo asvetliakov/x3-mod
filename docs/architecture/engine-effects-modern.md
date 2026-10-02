@@ -367,3 +367,27 @@ Meaning (all relative to the nozzle width `value` and the game length `L = z·va
 the nozzle at 3 lengths/s with edge erosion 0.57 and a 25 % length pulse; shock diamonds of strength 0.5 at a period 0.16·L fading along the plume
 (0.6); a white-hot core (heat 0.7) of radius 0.45 nozzle widths cooling into the race tint; halo 1.1 wide at 0.35. The mock-up's `plume()` function is
 the reference for the ps_3_0 port; presets keep scaling I_core, I_halo and sigma.
+
+**Ported (2026-10-03).** `src/effects/engine_plume_ps.hlsl` is the mock-up's `plume()` (modern branch) in ps_3_0, the constants in one block,
+`engine_plumes_core.h` `Look`, uploaded per frame to c3..c7 (one `SetPixelShaderConstantF` of eight registers with the lane terms and the clock). The
+readback matches a CPU replica of the law within 0.1 % of I_core (fixture `law_*`). Final numbers: the user's fifteen with **bulge 1.20** (tuned from
+1.15: the mean half-width at u = 0.1 measured 1.044 x the nozzle half-width at 1.15 against the 1.05 acceptance, 1.097 at 1.20); taper 0.45, tail 0.7,
+ring 0.6, turb 0.6, flow 3, erode 0.57, pulse 0.25, shock 0.5, period 0.16, cfade 0.6, heat 0.7, core 0.45, halo 1.1, hb 0.35 unchanged. Port decisions:
+- *Nozzle width = value / 4.* The mock-up's length is L = 4 (0.25 + 1.75 s) nozzle widths and the game's z value with z = 0.25 + 1.75 s, so value / 4
+  keeps the chosen proportions (the first look's core, 0.3 value across, is the mock-up's one-nozzle "current" cone). Reading "nozzle width = value"
+  literally would draw a plume 4 x stubbier than the one chosen. One constant (`Look::nozzle_width`).
+- *Tail.* The mock-up's tail kept its halo at the nozzle's width (0.73 x the nozzle half-width at u = 0.9 with the halo); the port lets the halo
+  sigma follow the local width (the first look halved it towards the tip) and narrows the tail harder (`tail_narrowing` 1.6, the mock-up's 0.6):
+  0.299 x at u = 0.9 (acceptance 0.35); nothing changes before u = 0.6.
+- *Length pulse* on the CPU per nozzle and frame, recentred to mean 1 (1 + 0.25 (2 fbm / 0.875 - 1); measured 0.83..1.18 over 66 s, mean 1.000), so
+  the throttle's length law holds on average and the quad follows each frame's length.
+- *Halo* about the segment nozzle..tip (no cut at u < 0 or u > 1 as in the mock-up), windowed at 2.25 local sigma. *Ring* Gaussian widened to the
+  pixel footprint (energy kept). *Shock mask* the mock-up's `1 - smoothstep(0, 0.8, radial)`. *Disc* (head-on / tail-on): the same law end-on at
+  u = 0.16 (one cell in, the cell's crest). *Fog*: the white-hot core and the ring take the transmittance too (a third vertex colour; the vertex is
+  72 bytes).
+- *Unchanged:* the soft lane occlusion, the near-camera cap (its reference width stays 2 x 0.5 value x the preset), the near fade, the presets
+  (I_core, I_halo and the halo sigma x 0.6 / 1 / 1.5), ONE/ONE on FP16. The flicker of the first look is gone (the turbulence replaces it).
+- *Clock:* `StageClock`, the performance counter between stage runs, a step on or after an F8 capture frame held to the last ordinary step (at most
+  0.1 s); wrapped at 1,024 s for the pixel program. The ribbons' pool takes the same clock (the run403 capture-frame eviction).
+Cost: ps 92 -> 391 slots, vs 10 -> 11 (measured); the axial quad's area at value 100 px is 0.09 / 0.15 / 0.19 of the first look's at s = 0 / 0.5 / 1
+(`verification/results/engine-effects/plume_look_area.py`); the fenced stage cost stays within the method's noise (ledger).

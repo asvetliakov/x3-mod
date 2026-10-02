@@ -42,7 +42,6 @@ static ee::Record rec(float x, float y, float z, float ax, float ay, float az, f
     r.size = value; r.z = zs; float s = (zs - .25f) / 1.75f; r.s = s < 0 ? 0 : s > 1 ? 1 : s; r.body = -1; r.flags = std::uint16_t(flags); r.node_handle = 7; r.model = 20000;
     return r;
 }
-static float flick(const ee::Record& r, std::uint32_t frame) { float f = 1; flicker(record_seed(r), frame, &f); return f; }
 static ee::Body* g_body = nullptr;
 static const ee::Body* lookup(int) { return g_body; }
 int main() {
@@ -81,16 +80,14 @@ int main() {
     const float Z = 2000.f, V = 100.f / ppu(Z);
     std::vector<Vertex> out(8 * 16);
     BuildStats st{};
-    // ----------------------------------------------------------- side view: the axial quad
+    // ----------------------------------------------------------- side view: the axial quad (no length pulse)
+    Look flat = default_look;
+    flat.pulse = 0.f;
     {
         const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
-        const unsigned n = build(&r, 1, nullptr, v, Preset::standard, 5, out.data(), 16, &st);
+        const unsigned n = build(&r, 1, nullptr, v, Preset::standard, 5.f, out.data(), 16, &st, nullptr, &flat);
         expect(n == 1 && st.nozzles == 1 && st.vertices == 8 && st.discs == 0 && st.capped == 0 && st.faded == 0, "side view: one nozzle, no disc");
-        const float L = 2.f * V, sigma = .5f * V, r0 = .15f * V, px = 1.f / ppu(Z);
-        // The trapezoid: 2.25 sigma (+1 px) behind the nozzle and past the tip's 1.125 sigma, width linear in u through
-        // (0, max(2.25 sigma, r0) + 1 px) and (front, 1.125 sigma + 1 px).
-        const float back = 2.25f * sigma + px, front = L + 1.125f * sigma + px, w0 = (2.25f * sigma > r0 ? 2.25f * sigma : r0) + px,
-                    wf = 1.125f * sigma + px, wb = w0 + (w0 - wf) * back / front;
+        const float L = 2.f * V, nw = .25f * V, px = 1.f / ppu(Z);
         bool layout = true, plane = true;
         const float a[3] = {-1, 0, 0};
         float nrm[3] = {out[1].position[0] - out[0].position[0], out[1].position[1] - out[0].position[1], out[1].position[2] - out[0].position[2]};
@@ -100,53 +97,107 @@ int main() {
         for (unsigned c = 0; c < 4; ++c) {
             const Vertex& x = out[c];
             for (unsigned j = 0; j < 3; ++j) layout = layout && near(x.position[j], r.origin[j] + a[j] * x.local[0] + nrm[j] * x.local[1], 1e-4f);
-            layout = layout && near(x.local[2], L) && near(x.local[3], r0) && near(x.shape[0], sigma) && near(x.shape[1], V) && x.shape[2] == 0.f && x.shape[3] == 0.f;
+            layout = layout && near(x.local[2], L) && near(x.local[3], nw) && near(x.shape[0], .55f) && near(x.shape[1], V) && x.shape[2] == 0.f && x.shape[3] == 0.f;
         }
-        expect(layout && plane, "axial quad: position = origin + axis u + side w, L = z value, r0 0.15 value, sigma 0.5 value, kind 0");
-        expect(near(out[0].local[0], -back) && near(out[1].local[0], -back) && near(out[2].local[0], front) && near(out[3].local[0], front) &&
-               near(std::fabs(out[0].local[1]), wb) && near(std::fabs(out[1].local[1]), wb) && near(std::fabs(out[2].local[1]), wf) &&
-               near(std::fabs(out[3].local[1]), wf), "axial extents: the 2.25 local sigma trapezoid");
-        // The halo window's support (2.25 local sigma from the segment) and the core (+1 px) inside the trapezoid.
+        expect(layout && plane, "axial quad: position = origin + axis x + side y, L = z value, n = value / 4, halo sigma0 0.55 nozzle widths, kind 0");
+        // The body's eroded edge (1 + 0.48 erode of w(u)), the halo window (2.25 sigma, sigma = 0.55 w(u) / w(0); half
+        // discs behind the nozzle and past the tip) and the ring (u near 0) inside the trapezoid, linear in x.
+        auto ss = [](float e0, float e1, float x) { float t = (x - e0) / (e1 - e0); t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+        auto w_of = [&](float u) {
+            const float b = .6f * (1 - .55f * std::exp(-9 * u)) * (1 + .35f * ss(0, .25f, u) * std::exp(-4 * u));
+            const float line = .6f + (.04f - .6f) * .45f * u;
+            return (line < b + .6f * .45f ? line : b + .6f * .45f) * std::max(1 - 1.6f * .45f * ss(.6f, 1, u), .05f);
+        };
+        const float w0 = w_of(0), x0 = out[0].local[0], x1 = out[2].local[0], h0 = std::fabs(out[0].local[1]), h1 = std::fabs(out[2].local[1]);
         bool covered = true;
-        for (float u = -2.25f * sigma; u <= L + 1.125f * sigma; u += L / 64.f) {
-            const float t = u < 0.f ? 0.f : u > L ? 1.f : u / L, reach = 2.25f * sigma * (1.f - .5f * t);
-            const float du = u < 0.f ? -u : u > L ? u - L : 0.f, halo = du < reach ? std::sqrt(reach * reach - du * du) : 0.f;
-            const float core = u >= 0.f && u <= L ? r0 * (1.f - u / L) + px : 0.f, need = halo > core ? halo : core;
-            covered = covered && need <= wb + (wf - wb) * (u + back) / (front + back) + 1e-3f;
+        float worst = 1e9f;
+        for (float x = x0; x <= x1; x += (x1 - x0) / 512.f) {
+            const float u = x / L, uc = u < 0 ? 0 : u > 1 ? 1 : u, w = w_of(uc), reach = 2.25f * .55f * w / w0 * nw;
+            float need = 0;
+            if (u >= 0 && u <= 1) need = std::max(1.f + .48f * .57f, 2.25f * .55f / w0) * w * nw;
+            else {
+                const float d = u < 0 ? -x : x - L;
+                need = d < reach ? std::sqrt(reach * reach - d * d) : 0.f;
+            }
+            if (x >= -.05f * nw && x <= .3f * nw) need = std::max(need, (.46f * 1.2f + 3.f * .0645497f) * nw);
+            const float have = h0 + (h1 - h0) * (x - x0) / (x1 - x0);
+            covered = covered && need <= have + 1e-3f;
+            worst = std::min(worst, have - need);
         }
-        expect(covered, "the trapezoid covers the halo window and the core");
-        const float f = flick(r, 5);
-        expect(near(out[0].intensity[0], 4.f * f) && near(out[0].intensity[1], .8f) && out[0].intensity[2] == 0.f &&
-               out[0].intensity[3] == Z && out[4].intensity[3] == Z, "I_core 4 x flicker, I_halo 0.8 at s 1; the axis's view z; the nozzle's view z");
-        expect(out[0].tint == 0xffffffffu && out[0].peak == 0xffffffffu, "cluster white: neutral tint");
+        expect(covered && x0 <= -2.25f * .55f * nw && x1 >= L, "the trapezoid covers the body, the halo window and the ring");
+        // Overdraw against the first look's trapezoid (sigma 0.5 value, 2.25 sigma reach, r0 0.15 value).
+        for (const float zs : {.25f, 1.125f, 2.f}) {
+            const ee::Record q = rec(0, 0, Z, -1, 0, 0, V, zs);
+            build(&q, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &flat);
+            const float area = (std::fabs(out[0].local[1]) + std::fabs(out[2].local[1])) * (out[2].local[0] - out[0].local[0]);
+            const float sg = .5f * V, Lo = zs * V, back = 2.25f * sg + px, front = Lo + 1.125f * sg + px, wfirst = std::max(2.25f * sg, .15f * V) + px,
+                        wf = 1.125f * sg + px, wb = wfirst + (wfirst - wf) * back / front, old_area = (wb + wf) * (back + front);
+            std::printf("AREA z=%.3f old_px2=%.0f new_px2=%.0f ratio=%.3f\n", double(zs), double(old_area * ppu(Z) * ppu(Z)), double(area * ppu(Z) * ppu(Z)), double(area / old_area));
+        }
+        build(&r, 1, nullptr, v, Preset::standard, 5.f, out.data(), 16, &st, nullptr, &flat);
+        expect(near(out[0].intensity[0], 4.f) && near(out[0].intensity[1], .35f) && out[0].intensity[2] == 0.f &&
+               out[0].intensity[3] == Z && out[4].intensity[3] == Z, "I_core 4, I_halo 0.35 (hb x lerp(0.3, 1, 1)) at s 1; the axis's view z; the nozzle's view z");
+        expect(out[0].tint == 0xffffffffu, "cluster white: neutral tint");
+        expect((out[0].params >> 24) == 255u && ((out[0].params >> 16) & 255u) == 255u && ((out[0].params >> 8) & 255u) == seed_byte(r) &&
+               (out[0].params & 255u) == unsigned(int(.6f / 4.f * .5f * 255.f + .5f)), "params: s 1, the seed, I_ring / I_core / 2");
         bool collapsed = true;
         for (unsigned c = 5; c < 8; ++c) for (unsigned j = 0; j < 3; ++j) collapsed = collapsed && out[c].position[j] == out[4].position[j];
         expect(collapsed, "side view: the disc collapses to one point");
-        std::printf("GEOMETRY side L=%.4f r0=%.4f sigma=%.4f flicker=%.4f\n", double(out[0].local[2]), double(out[0].local[3]), double(out[0].shape[0]), double(f));
+        std::printf("GEOMETRY side L=%.4f n=%.4f sigma0=%.4f back=%.4f front=%.4f half_back=%.4f half_front=%.4f margin_min=%.4f\n", double(out[0].local[2]),
+                    double(out[0].local[3]), double(out[0].shape[0]), double(-x0), double(x1), double(h0), double(h1), double(worst));
+    }
+    // ----------------------------------------------------------- the length pulse: 1 +- 0.25 about the game's L, mean 1
+    {
+        const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
+        float lo = 9, hi = 0, sum = 0, step = 0, prev = -1;
+        const unsigned count = 4000;
+        for (unsigned i = 0; i < count; ++i) {
+            build(&r, 1, nullptr, v, Preset::standard, float(i) / 60.f, out.data(), 16, &st);
+            const float k = out[0].local[2] / (2.f * V);
+            lo = std::min(lo, k); hi = std::max(hi, k); sum += k;
+            if (prev >= 0) step = std::max(step, std::fabs(k - prev));
+            prev = k;
+        }
+        float again = 0;
+        length_pulse(default_look, seed_byte(r), 7.25f, &again);
+        float twice = 0;
+        length_pulse(default_look, seed_byte(r), 7.25f, &twice);
+        expect(lo >= .75f - 1e-4f && hi <= 1.25f + 1e-4f && hi - lo > .2f && std::fabs(sum / count - 1.f) < .05f && step < .05f && again == twice,
+               "pulse: within 1 +- 0.25, mean 1 within 5 %, no step over 5 % per 1/60 s, deterministic");
+        std::printf("PULSE min=%.4f max=%.4f mean=%.4f max_step=%.4f\n", double(lo), double(hi), double(sum / count), double(step));
+        float f = 0, fl = 9, fh = 0, fs = 0;
+        for (unsigned i = 0; i < 20000; ++i) {
+            const float p[3] = {float(i) * .37f, float(i % 97) * 1.3f, float(i % 13) * 2.1f};
+            noise::fbm(p, &f); fl = std::min(fl, f); fh = std::max(fh, f); fs += f;
+        }
+        expect(fl >= 0.f && fh <= .875f + 1e-5f && std::fabs(fs / 20000.f - .4375f) < .03f, "fbm in [0, 0.875], mean 0.4375 within 0.03");
+        std::printf("FBM min=%.4f max=%.4f mean=%.4f\n", double(fl), double(fh), double(fs / 20000.f));
     }
     // ----------------------------------------------------------- throttle law and presets (value 60 px: strong's
-    // 2 sigma = 90 px stays under the fade band of the 0.12 H cap)
+    // 2 cap_sigma = 90 px stays under the fade band of the 0.12 H cap)
     for (const float zs : {.25f, 1.125f, 2.f})
         for (unsigned pr = 0; pr < 3; ++pr) {
             const float V = 60.f / ppu(Z);
             const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, zs);
-            build(&r, 1, nullptr, v, Preset(pr), 9, out.data(), 16, &st);
-            const float s = r.s, f = flick(r, 9);
-            const bool ok = near(out[0].local[2], zs * V) && near(out[0].shape[0], .5f * V * sc[pr]) &&
-                            near(out[0].intensity[0], (1.5f + 2.5f * s) * sc[pr] * f) && near(out[0].intensity[1], (.3f + .5f * s) * sc[pr]);
+            build(&r, 1, nullptr, v, Preset(pr), 9.f, out.data(), 16, &st);
+            const float s = r.s;
+            float pulse = 0;
+            length_pulse(default_look, seed_byte(r), 9.f, &pulse);
+            const bool ok = near(out[0].local[2], zs * V * pulse) && near(out[0].shape[0], .55f * sc[pr]) &&
+                            near(out[0].intensity[0], (1.2f + 2.8f * s) * sc[pr]) && near(out[0].intensity[1], .35f * (.3f + .7f * s) * sc[pr]);
             char what[96]; std::snprintf(what, sizeof what, "law z=%.3f preset=%s", double(zs), preset_name(Preset(pr)));
             expect(ok, what);
         }
     // ----------------------------------------------------------- head-on and tail-on: the disc and the bias
     {
         const ee::Record away = rec(0, 0, Z, 0, 0, 1, V, 2.f), at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
-        build(&away, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
-        const float sigma = .5f * V, half = 2.25f * sigma;
-        bool disc = st.discs == 1 && out[4].shape[3] == 1.f && near(out[4].intensity[0], out[0].intensity[0]) && near(out[4].local[3], .25f * V);
-        for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half) && near(std::fabs(out[c].position[1]), half) && out[c].position[2] == Z;
+        build(&away, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st);
+        const float nw = .25f * V, half = std::max(1.f + .48f * .57f, 2.25f * .55f / .54f) * nw * .6f + 1.f / ppu(Z);
+        bool disc = st.discs == 1 && out[4].shape[3] == 1.f && near(out[4].intensity[0], out[0].intensity[0]) && near(out[4].local[3], nw);
+        for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half, 1e-3f) && near(std::fabs(out[c].position[1]), half, 1e-3f) && out[c].position[2] == Z;
         bool finite = true;
         for (unsigned c = 0; c < 4; ++c) for (unsigned j = 0; j < 3; ++j) finite = finite && std::isfinite(out[c].position[j]);
-        expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f), "head-on: full disc weight, finite side axis, no bias");
+        expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f), "head-on: full disc weight, the nozzle's width, finite side axis, no bias");
         build(&at, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
         expect(near(out[0].shape[2], .5f * V) && near(out[4].shape[2], .5f * V) && near(out[0].intensity[2], -1.f), "tail-on: the occlusion bias 0.5 value");
         const ee::Record tilt = rec(0, 0, Z, -.5f, 0, .8660254f, V, 2.f);
@@ -197,8 +248,8 @@ int main() {
     {
         const float zf = 20000.f, vp = 4.f / ppu(zf);
         const ee::Record r = rec(0, 0, zf, -1, 0, 0, vp, .25f);
-        expect(build(&r, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st) == 1 && near(out[0].local[3] * ppu(zf), 1.5f) &&
-               near(out[0].local[2] * ppu(zf), 6.f) && near(out[4].local[3] * ppu(zf), 1.5f), "minimums: core radius 1.5 px, length 6 px");
+        expect(build(&r, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st) == 1 && near(out[0].local[3] * ppu(zf), 3.f) &&
+               near(out[0].local[2] * ppu(zf), 6.f) && near(out[4].local[3] * ppu(zf), 3.f), "minimums: nozzle width 3 px, length 6 px");
         const ee::Record tiny = rec(0, 0, zf, -1, 0, 0, 1.f / ppu(zf), 2.f);
         expect(build(&tiny, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st) == 0 && st.culled_small == 1, "under 1.5 px: not drawn");
         const ee::Record behind = rec(0, 0, -50.f, 0, 0, -1, 1.f, 2.f);
@@ -216,8 +267,10 @@ int main() {
         const unsigned steer = (unsigned(ee::white) << ee::cluster_shift) | ee::flag_steering;
         const ee::Record idle = rec(0, 0, Z, -1, 0, 0, 20.f / ppu(Z), .01f, steer), puff = rec(0, 0, Z, -1, 0, 0, 20.f / ppu(Z), .1f, steer);
         expect(build(&idle, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st) == 0 && st.culled_idle == 1, "RCS below z 0.02: not drawn");
-        expect(build(&puff, 1, nullptr, v, Preset::standard, 3, out.data(), 16, &st) == 1 && st.steering == 1 && near(out[0].local[2], .1f * 20.f / ppu(Z)) &&
-               near(out[0].intensity[0], 1.5f * .1f * flick(puff, 3)) && near(out[0].intensity[1], .3f * .1f), "RCS: L = z value unlengthened, radiance x z");
+        float pulse = 0;
+        length_pulse(default_look, seed_byte(puff), 3.f, &pulse);
+        expect(build(&puff, 1, nullptr, v, Preset::standard, 3.f, out.data(), 16, &st) == 1 && st.steering == 1 && near(out[0].local[2], .1f * 20.f / ppu(Z) * pulse) &&
+               near(out[0].intensity[0], 1.2f * .1f) && near(out[0].intensity[1], .35f * .3f * .1f), "RCS: L = z value x the pulse, unlengthened, radiance x z");
     }
     // ----------------------------------------------------------- the near-camera cap and fade
     {
@@ -229,20 +282,20 @@ int main() {
         for (const float q : {.7f, .9f, 1.f, 3.f, 40.f}) {
             const float zo = 400.f, val = at_q(q, zo);
             const ee::Record r = rec(0, 0, zo, 0, 0, -1, val, 2.f);
-            build(&r, 1, nullptr, v, Preset::standard, 4, out.data(), 16, &st);
+            build(&r, 1, nullptr, v, Preset::standard, 4.f, out.data(), 16, &st, nullptr, &flat);
             const float weight = q <= .8f ? 1.f : q >= 1.f ? .5f : 1.f - .5f * (q - .8f) / .2f;
-            const float sigma = out[0].shape[0], L = out[0].local[2];
+            const float sigma = cap_sigma * out[0].shape[1], L = out[0].local[2]; // the cap's reference width, x k
             const float width = 2.f * sigma * f / (zo - L);
-            const bool ok = near(out[0].intensity[0], 4.f * flick(r, 4) * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : st.capped == 0 && near(sigma, .5f * val)) &&
-                            st.faded == (q > .8f ? 1u : 0u);
+            const bool ok = near(out[0].intensity[0], 4.f * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : st.capped == 0 && near(out[0].shape[1], val)) &&
+                            st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .25f * out[0].shape[1]);
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
-            std::printf("CAP q=%.2f weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / (4.f * flick(r, 4))), double(width), double(cap), double(out[0].shape[1] / val));
+            std::printf("CAP q=%.2f weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 4.f), double(width), double(cap), double(out[0].shape[1] / val));
         }
         // Side view: the length is free (a long plume across the screen keeps its length).
         const float val = 100.f / ppu(Z);
         const ee::Record lng = rec(0, 0, Z, -1, 0, 0, val, 9.f);
-        build(&lng, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
+        build(&lng, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &flat);
         expect(st.capped == 0 && near(out[0].local[2], 9.f * val), "a long plume (brake flare 9 value) is not shortened");
     }
     // ----------------------------------------------------------- capacity
@@ -256,10 +309,10 @@ int main() {
         std::memcpy(b.mean, m, sizeof m); std::memcpy(b.peak, pk, sizeof pk); g_body = &b;
         ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f, unsigned(ee::red) << ee::cluster_shift); r.body = 3;
         build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(out[0].tint == pack_colour(m) && out[0].peak == pack_colour(pk) && out[0].tint == 0xff3380ffu, "the body's mean and peak");
+        expect(out[0].tint == pack_colour(m) && out[0].tint == 0xff3380ffu, "the body's mean");
         r.body = -1;
         build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(out[0].tint == pack_colour(cluster_tint(ee::red)) && out[0].peak == out[0].tint && out[0].tint == 0xffff1212u, "no body: the cluster's tint");
+        expect(out[0].tint == pack_colour(cluster_tint(ee::red)) && out[0].tint == 0xffff1212u, "no body: the cluster's tint");
         b.colour = 0; r.body = 3;
         build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
         expect(out[0].tint == pack_colour(cluster_tint(ee::red)), "a body without colours: the cluster's tint");
@@ -275,13 +328,40 @@ int main() {
         const char* bad = "{\"schema\": 1, \"bodies\": {\"a\": {\"mean_linear\": [0.1, 0.4]}}}";
         expect(!ee::parse_body_table(bad, std::strlen(bad), &t) && t.count == 0, "a two-channel colour is malformed");
     }
-    // ----------------------------------------------------------- flicker
+    // ----------------------------------------------------------- the stage's clock: an F8 capture's stall is no gap
     {
-        const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
-        float lo = 2, hi = 0, step = 0, prev = flick(r, 0);
-        for (std::uint32_t fr = 1; fr < 4000; ++fr) { const float x = flick(r, fr); lo = x < lo ? x : lo; hi = x > hi ? x : hi; step = std::fabs(x - prev) > step ? std::fabs(x - prev) : step; prev = x; }
-        expect(lo >= .9f && hi <= 1.1f && hi - lo > .1f && step <= .2f * 1.5f / 8.f + 1e-4f && flick(r, 77) == flick(r, 77), "flicker: within +-10 %, slow (8-frame cells), deterministic");
-        std::printf("FLICKER min=%.4f max=%.4f max_step=%.4f\n", double(lo), double(hi), double(step));
+        const std::uint64_t hz = 1000000;
+        StageClock c;
+        c.step(5 * hz, 0, false);
+        expect(!c.started && c.seconds == 0., "no frequency: no step");
+        c.step(5 * hz, hz, false);
+        expect(c.started && c.seconds == 0., "the first step starts the clock");
+        std::uint64_t t = 5 * hz;
+        for (unsigned i = 0; i < 10; ++i) c.step(t += hz / 60, hz, false);
+        const double ordinary = c.seconds;
+        expect(std::fabs(ordinary - 10. / 60.) < 1e-4, "ordinary steps: the counter");
+        c.step(t += hz / 60, hz, true);       // the first capture frame
+        c.step(t += 2 * hz, hz, true);        // the stall after it: one ordinary step
+        c.step(t += 3 * hz, hz, false);       // the stall after the last capture frame: one ordinary step
+        expect(std::fabs(c.seconds - ordinary - 3. / 60.) < 1e-4, "capture frames: the stall advances one ordinary step");
+        const double before_gap = c.seconds;
+        c.step(t += hz / 2, hz, false);       // a load screen: 0.5 s in full
+        expect(std::fabs(c.seconds - before_gap - .5) < 1e-6, "an ordinary gap advances in full (the ribbons' 0.3 s rule)");
+        c.step(t += 5 * hz, hz, true);        // a capture after the long gap: the ordinary step is held to 0.1 s
+        expect(std::fabs(c.seconds - before_gap - .6) < 1e-6, "the capture step is held to 0.1 s");
+        c.step(t - hz, hz, false);            // the counter went back: no step
+        expect(std::fabs(c.seconds - before_gap - .6) < 1e-6, "a counter going back does not step");
+        StageClock w; w.seconds = 1024. * 3 + 7.5; float wrapped = 0; w.wrapped(&wrapped);
+        expect(wrapped == 7.5f, "the pixel program's clock wraps at 1,024 s");
+    }
+    // ----------------------------------------------------------- the pixel program's look constants
+    {
+        float c[20];
+        pixel_constants(default_look, c);
+        expect(near(c[0], .6f) && near(c[1], (.04f - .6f) * .45f) && near(c[3], 1.6f * .45f) && near(c[4], 1.05f) && near(c[5], .57f * .96f) &&
+               near(c[6], 1.32f) && near(c[7], .4f) && near(c[8], .5f) && near(c[9], 6.2831853f / .16f) && near(c[10], 3.f) && near(c[11], .84f) &&
+               near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .552f) && near(c[16], 1.f / .54f) && near(c[17], .16f) && c[19] == 2.f,
+               "look constants c3..c7 from the chosen settings");
     }
     // ----------------------------------------------------------- cost of the build
     for (const unsigned count : {30u, 100u, 1024u}) {
@@ -294,7 +374,7 @@ int main() {
         unsigned drawn = 0;
         for (unsigned rep = 0; rep < 31; ++rep) {
             const auto a = std::chrono::steady_clock::now();
-            for (unsigned k = 0; k < 20; ++k) drawn = build(rs.data(), count, nullptr, v, Preset::standard, rep * 20 + k, vb.data(), count, nullptr);
+            for (unsigned k = 0; k < 20; ++k) drawn = build(rs.data(), count, nullptr, v, Preset::standard, float(rep * 20 + k) / 60.f, vb.data(), count, nullptr);
             us.push_back(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - a).count() / 20.);
         }
         std::sort(us.begin(), us.end());
@@ -456,6 +536,13 @@ class Wiring(unittest.TestCase):
         self.assertIn('note_engine_plumes_state(false,"failed_until_reset");', inc)
         self.assertIn('in.view.near_z=-in.m32/in.m22;', inc)
         self.assertIn('in.filter.handle=scene_camera;', inc)
+        # The plume look (2026-10-03): the stage's clock steps once per stage run, held on F8 capture frames; the ribbons
+        # take the same clock; the census writes engine_draw rows on capture frames too.
+        self.assertIn('engine_clock_.step(std::uint64_t(counter.QuadPart),engine_qpc_frequency(),capture_);'
+                      'engine_clock_.wrapped(&in.seconds);', inc)
+        self.assertIn('f.seconds=engine_clock_.seconds;', source_text(ROOT / 'src/proxy/motion_output_engine_ribbons_inc.h'))
+        self.assertIn('if(engine_row_frames_>=engine_row_frame_cap&&!capture_){',
+                      source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
         self.assertIn('static constexpr unsigned plumes_failure_limit=3;', source_text(ROOT / 'src/proxy/motion_output.h'))
         effects = source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h')
         self.assertIn('engine_ring_->scene[slot]=selector_.state()==renderer::BoundaryState::Scene?1u:0u;', effects)
@@ -486,6 +573,13 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         self.assertLessEqual(g['trail_dark_px_max'], 3)
         self.assertEqual(len(r['report']['resolve']), 12)  # 2 sizes x 2 skies x 3 speeds
         self.assertEqual(len(r['report']['timing']), 4)    # 2 sizes x 30 / 100 nozzles
+        # The plume look (2026-10-03): alive, bulge and taper, shock cells at both sizes.
+        for case in ('temporal', 'shape', 'shock'):
+            self.assertEqual(len(r['report'][case]), 2, case)
+        self.assertTrue(all(.05 <= x['raw_cv'] <= .4 and abs(x['mean_over_design'] - 1) <= .1 for x in r['report']['temporal']))
+        self.assertTrue(all(x['half_width_u01_over_nozzle_half'] >= 1.05 and x['half_width_u09_over_nozzle_half'] <= .35
+                            for x in r['report']['shape']))
+        self.assertTrue(all(x['still_maxima'] >= 3 for x in r['report']['shock']))
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))

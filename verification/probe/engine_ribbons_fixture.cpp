@@ -238,7 +238,7 @@ rr::EnginePlumesFrame frame_for(Targets& t, const ee::Record* records, unsigned 
     f.records = records;
     f.record_count = count;
     f.preset = preset;
-    f.frame = clock;
+    f.seconds = float(clock) / 60.f; // the plume stage's clock: the frame at 60 fps
     return f;
 }
 float luma(const std::vector<float>& px, UINT w, int x, int y) {

@@ -1,13 +1,13 @@
 #pragma once
 // Engine plumes, phase 2 (docs/architecture/engine-effects-modern.md sections 3-6): the GPU side of the proxy's own
 // engine plumes. One class owns the vs_3_0 / ps_3_0 pair (src/effects/engine_plume_{vs,ps}.hlsl), their declaration,
-// one dynamic vertex buffer (DEFAULT, DYNAMIC | WRITEONLY, 1,024 nozzles x 8 vertices x 68 B, one DISCARD lock per
+// one dynamic vertex buffer (DEFAULT, DYNAMIC | WRITEONLY, 1,024 nozzles x 8 vertices x 72 B, one DISCARD lock per
 // frame) and the static quad index buffer, all created at attach (the arming latch, not the first plume) and all
 // released before Reset; ensure_resources() recreates them after a successful Reset.
 //
 // run() builds the frame's vertices straight into the locked buffer (engine_plumes_core.h build(): the glow-jet records
-// of the frame, the camera's view rows and the preset) and draws every nozzle with one DrawIndexedPrimitive inside the
-// caller's state bracket: the temporal resolve calls it through FrameInputs::stage_callback after its normalize (RT0 the
+// of the frame, the camera's view rows, the preset, the stage's clock and the look) and draws every nozzle with one
+// DrawIndexedPrimitive inside the caller's state bracket: the temporal resolve calls it through FrameInputs::stage_callback after its normalize (RT0 the
 // FP16 scene the resolve reads, RT1+ and the depth surface unbound, every render state at the pass's baseline, the
 // scene open) and normalizes again afterwards, so this pass sets only what it draws with: the programs, declaration,
 // stream, indices, constants, the lane at s0 (point, clamp), CLIPPING, CULLMODE NONE, Z off, ONE/ONE additive. No
@@ -36,7 +36,8 @@ struct EnginePlumesFrame {
     engine_plumes::BodyLookup body = nullptr;
     engine_plumes::ViewFilter filter{};     // null tags: every record is drawn
     engine_plumes::Preset preset = engine_plumes::default_preset;
-    std::uint32_t frame = 0;                // the flicker's clock
+    float seconds = 0.f;                    // the stage's clock, wrapped (engine_plumes::StageClock::wrapped)
+    const engine_plumes::Look* look = nullptr; // null: engine_plumes::default_look (fixtures override it)
 };
 enum class EnginePlumesStep : unsigned { None, Validate, Resources, Lock, State, Draw };
 struct EnginePlumesReport {
