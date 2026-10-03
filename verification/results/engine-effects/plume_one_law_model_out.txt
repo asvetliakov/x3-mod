@@ -1,0 +1,11 @@
+# k0 = 3.74 (the core radius x k0 at d 0: the side energy equal to the slab law's at s 1, L / n 4)
+d | E/slab s 1.0 L/n 4.0 | E/slab s 0.5 L/n 2.25 | E/slab s 0.0 L/n 1.0 | hw/slab u 0.2
+0.0 | 1.000 | 0.996 | 0.992 | 0.98
+0.043 | 0.984 | 0.983 | 0.982 | 0.97
+0.25 | 0.903 | 0.919 | 0.932 | 0.97
+0.5 | 0.796 | 0.831 | 0.860 | 0.99
+0.75 | 0.673 | 0.722 | 0.762 | 1.02
+0.9 | 0.590 | 0.642 | 0.686 | 1.04
+1.0 | 0.532 | 0.583 | 0.627 | 1.05
+# disc kappa (energy-matched, s 1, L / n 4; the samples with the sheath): d 0 1.843, d 1 1.470 (without the sheath in the samples: d 1 8.198)
+# d 1 gates (model; fixture calibration: axis 0.161 <-> 0.157, red rim 0.49 <-> 0.53): e1 0.532, e05 0.583, axis 0.161, rim 0.549, radial 3.927, hw_lo 0.895, hw_hi 1.000, radial_half 4.007, rise 0.007

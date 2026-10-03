@@ -1,0 +1,13 @@
+# src/renderer/engine_plume_pixel_program_inc.h: 4065 words, 921 slots (ps3_program_slots)
+region | slots | instructions | largest contributors (slots)
+shared | 195 | 181 | mul 51, mad 27, add 25, lrp 20, frc 15, mov 13, rcp 12, cmp 9
+disc | 496 | 496 | mul 269, mad 151, add 33, exp 19, rcp 10, max 7, cmp 3, mov 2
+axial | 230 | 223 | mul 105, mad 58, rcp 13, add 12, exp 10, max 10, sincos 8, mov 4
+# a disc pixel runs 691 slots, an axial pixel 425
+
+# before: 8eb0514b's program (the header at 8eb0514b into /tmp/ps_8eb_inc.h; python3 plume_slot_tally.py /tmp/ps_8eb_inc.h): 3564 words, 800 slots
+region | slots | instructions | largest contributors (slots)
+shared | 190 | 177 | mul 51, mad 26, add 24, lrp 18, frc 15, mov 12, rcp 11, cmp 10
+disc | 398 | 396 | mul 211, mad 123, add 22, exp 19, rcp 9, cmp 4, lrp 4, mov 2
+axial | 212 | 205 | mul 93, mad 61, rcp 11, add 10, exp 10, sincos 8, mov 5, max 4
+# a disc pixel runs 588 slots, an axial pixel 402

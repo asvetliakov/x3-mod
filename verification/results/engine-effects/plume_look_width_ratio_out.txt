@@ -1,19 +1,19 @@
 band | hw before px | hw after px | after / before
 01a red s=0 | 24 | 14 | 0.58
-01a red s=0.5 | 28 | 16 | 0.57
-01a red s=1 | 38 | 27 | 0.71
-01b blue s=0 | 36 | 17 | 0.47
-01b blue s=0.5 | 40 | 18 | 0.45
-01b blue s=1 | 41 | 29 | 0.71
-03a capital t0 | 46 | 28 | 0.61
-03a capital t+100ms | 44 | 28 | 0.64
-03c fighter t0 | 43 | 28 | 0.65
-03c fighter t+100ms | 46 | 28 | 0.61
-04 restrained | 42 | 19 | 0.45
-04 default | 42 | 27 | 0.64
-04 strong | 48 | 32 | 0.67
-05 n40 uncapped | 21 | 15 | 0.71
-08 normal | 43 | 28 | 0.65
-08 warp6 | 44 | 28 | 0.64
-09 ribbon n40 uncapped | 20 | 16 | 0.80
-# s = 1 capped bands: 0.45 (04 restrained) .. 0.71 (01a red s=1); in 0.6..0.7: 8 of 11
+01a red s=0.5 | 28 | 17 | 0.61
+01a red s=1 | 38 | 36 | 0.95
+01b blue s=0 | 36 | 16 | 0.44
+01b blue s=0.5 | 40 | 21 | 0.53
+01b blue s=1 | 41 | 38 | 0.93
+03a capital t0 | 46 | 37 | 0.80
+03a capital t+100ms | 44 | 37 | 0.84
+03c fighter t0 | 43 | 37 | 0.86
+03c fighter t+100ms | 46 | 36 | 0.78
+04 restrained | 42 | 22 | 0.52
+04 default | 42 | 34 | 0.81
+04 strong | 48 | 41 | 0.85
+05 n40 uncapped | 21 | 19 | 0.90
+08 normal | 43 | 36 | 0.84
+08 warp6 | 44 | 38 | 0.86
+09 ribbon n40 uncapped | 20 | 20 | 1.00
+# s = 1 capped bands: 0.52 (04 restrained) .. 0.95 (01a red s=1); in 0.6..0.7: 0 of 11

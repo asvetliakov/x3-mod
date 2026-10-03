@@ -25,8 +25,8 @@
 //   one pixel;
 // - the nozzle disc: camera-facing (the view plane), the end-on representation of the whole plume (after flight C): the
 //   body integrated along the axis (8 samples of the law, Look tables), its radiance I x the view integration
-//   disc_kappa x L / n x |axis . to_camera|, a halo of the nozzle's sigma carrying disc_halo x L / n, the ring at
-//   disc_ring x its side radiance; the
+//   kappa(detail) x L / n x |axis . to_camera|, a halo of the nozzle's sigma carrying disc_halo x L / n, the ring at
+//   1 + (max(1, disc_ring min(1, (L / n) / 2)) - 1) x the detail level times its side radiance; the
 //   total soft-capped at disc_cap x the side view's peak (the body's crest one shock period in). Facing f =
 //   |axis . to_camera|: the disc's weight smoothstep(0.3, 0.7, f) (none under 0.3: a side view draws no disc), the
 //   axial quad's 1 - (1 - axial_floor) x that weight (half from 0.7 up: the foreshortened plume keeps its length), so the
@@ -133,7 +133,7 @@ struct PresetKey {
 // The plume look: the Engine Exhaust Lab's settings the user chose (tools/effects/engine_exhaust_lab.html: "bulge=1.15
 // taper=0.45 tail=0.7 ring=0.6 turb=0.6 flow=3 erode=0.57 pulse=0.25 shock=0.5 period=0.16 cfade=0.6 heat=0.7 core=0.45
 // halo=1.1 hb=0.35"; after flight C the ring 0.3 and the nozzle 0.5; after flight E hb 0.20), in one block: the CPU builder reads it and the
-// pass uploads it to the pixel program (c3..c17, pixel_constants). Lengths across are in nozzle widths, lengths along
+// pass uploads it to the pixel program (c3..c19, pixel_constants). Lengths across are in nozzle widths, lengths along
 // in L. Since the revised look law (docs/architecture/engine-exhaust-look-critique.md section 3 and "Implemented") the
 // knobs keep their numbers and directions, five with a new mapping: turb weights the streaks by the radius (the core
 // steady), erode drives the streaks' erosion growing along the plume and the tail's tongues, shock sets the cells'
@@ -160,11 +160,18 @@ struct Look {
     float core = .45f;    // the hot core's radius: exp(-(radial / (0.45 core))^2), sigma 0.2 of the local width
     float halo = 1.1f;    // halo width: e-fold halo_sigma (0.32) x halo nozzle widths (x the preset)
     float hb = .20f;      // halo brightness (after flight E: 0.35 -> 0.20, the plume's and the disc's halo)
-    // The outer flame (the tuning pass after the revised law: its peaked profile read as a needle): a sheath of the darker
-    // tint added to the side view's profile, 4 outer m (1 - m) with m = smoothstep(0.25, 0.9, radial) (the colour's own
-    // rim window), outer at radial 0.575, 0.06 of it at 0.35 (the carved lane) and nothing on the axis; inside the eroded
-    // edge, so the visible width follows the bulge and taper. Not in the end-on disc's samples (it would bury the ring).
-    float outer = .32f;
+    // The outer flame (the single law, docs/architecture/engine-exhaust-look-critique.md section 6, "One law"): a sheath
+    // of the darker, more saturated tint (0.5 tint^2 / its largest channel x the tint's), 4 outer m (1 - m) with
+    // m = smoothstep(0.1, 1.2, radial), inside its own eroded edge 1 - smoothstep(0.65, 1.2, radial), growing along the
+    // plume 0.6 + 0.4 smoothstep(0.1, 0.5, u), x the detail level: the fat saturated flame around the thin hot core
+    // (plume_one_law_model.py: the 10 % half-width at u 0.2 0.90..1.0 of the slab law's at the 40 px bands). In the
+    // end-on disc's samples it is the annulus around the hot centre.
+    float outer = 1.25f;
+    // The core's radius at the detail level 0, x the revised law's (the peaked profile's 0.32 and the hot core's 0.45
+    // core): k(d) = core_widen + (1 - core_widen) d. 3.74: the d-0 law's side energy equal to the previous slab law's at
+    // s 1, L / n 4 (0.99..1.00 at s 0 / 0.5 / 1, the 10 % half-width 0.98 of it; plume_one_law_model.py), so the far
+    // dots keep the slab law's energy by the widening, not by a gain.
+    float core_widen = 3.74f;
     // The mock-up's tail narrowing, w x (1 - 0.6 taper smoothstep(0.6, 1, u)); the halo keeps the nozzle's sigma along
     // the whole plume, as in the mock-up.
     float tail_narrowing = .6f;
@@ -185,15 +192,27 @@ struct Look {
     // disc's halo energy to the side view's, 6.3, kept for the tight halo); the total soft-capped at disc_cap x the side
     // view's peak; the ring seen end-on at disc_ring x its side radiance (3: the ring shows between the integrated body
     // and the halo; at the doubled width x 1.8 left no bump on the cyan disc, FP16 gate 1.00, and x 2.7 none on the
-    // resolved 02b image). The facing band: the
+    // resolved 02b image). Since the single law (docs/architecture/engine-exhaust-look-critique.md section 6, "One law")
+    // the disc's samples carry the outer sheath as the end-on annulus around the hot centre, and kappa runs from
+    // disc_kappa_smooth at the detail level 0 (the widened smooth profile: 1.84, the slab law's 1.8 recovered) to
+    // disc_kappa at 1 (energy-matched 1.47 with the sheath in the samples; 3.0: past it the soft cap saturates the
+    // centre, 3.6 added 0.02 of the end-on energy), the ring's x disc_ring x min(1, (L / n) / 2) (short plumes: the
+    // ring no longer dominates; at least x 1) and its width disc_ring_width blend in with the detail level (a detail-0
+    // disc: the ring x 1 at the side's width). The facing band: the
     // disc from disc_low to full at disc_high; the axial quad's weight there drops to axial_floor.
-    float disc_kappa = 4.13f;
+    float disc_kappa = 3.f;
+    float disc_kappa_smooth = 1.84f;
+    // The end-on annulus's own weight: the outer sheath in the disc's samples x disc_sheath, so the annulus, not the
+    // centre (under the soft cap and the hue bound), carries the end-on energy: the end-on total 0.74 of the detail-0
+    // law's at the same size (gate 0.7..0.9; 2.0 gave 0.75 and broke the 20 px disc's rim variation).
+    float disc_sheath = 1.6f;
     float disc_halo = 2.82f;
     float disc_cap = 1.5f;
-    float disc_ring = 3.f;
-    // The end-on ring's width (the tuning pass: the x 3 ring at the side's sigma read as a drawn outline): its Gaussian
-    // disc_ring_width x the side's sigma (0.0645 nozzle widths), a glowing rim reaching into the hot centre.
-    float disc_ring_width = 2.f;
+    // The end-on ring at the side's width since the single law (the sheath's annulus fills what read as a dark annulus
+    // under the tuning pass's narrow x 3 ring; the doubled width left no bump on the cyan disc over the annulus): x 8
+    // its side radiance, ring gate cyan 1.21 / red 1.76 on the FP16 frame.
+    float disc_ring = 8.f;
+    float disc_ring_width = 1.f;
     // The L / n of the disc's body and halo gains is held to disc_length_max: a thin nozzle (X3M_ENGINE_PLUME_NOZZLE
     // 0.1: L / n 20 at full throttle) would otherwise saturate the soft cap into a flat disc. 8 = twice the default
     // 0.5's 4 at full throttle; the nozzle 0.25 reaches it at full throttle.
@@ -218,15 +237,14 @@ struct Look {
     // the radiance of a plume whose projected nozzle width is under far_px_full scales by far_low + (1 - far_low) x
     // smoothstep(far_px_min, far_px_full, px) (distance_weight), so far ships read as faint sparks.
     float far_px_min = 2.f, far_px_full = 12.f, far_low = .15f;
-    // The revised look law's detail level (docs/architecture/engine-exhaust-look-critique.md "Implemented"): by the
-    // drawn nozzle width in px (after the near-camera cap, before the dot floor), smoothstep(detail_px_min,
-    // detail_px_max, px), carried in the tint's alpha; 0 keeps the previous law's smooth radial shape (no streaks or
-    // cells), 1 the peaked profile and structure. A thin core and pixel-scale structure on a plume a few pixels wide
-    // lose their peak in the resolve when the plume moves (core survival 0.76 at 8 px a frame on a 15 px nozzle), and
-    // the far dots kept their brightness only on the slab's energy (the revised body carries 0.30 of it). The halo
-    // follows: under the detail level the previous law's (e-fold 0.5 halo, exp(-2.2 u), the disc's gain 3), which keeps
-    // the end-on disc's energy near the side view's on a slab body (0.77 against 0.55 with the tight halo, model).
-    float detail_px_min = 16.f, detail_px_max = 40.f;
+    // The detail level d of the single law (docs/architecture/engine-exhaust-look-critique.md section 6, "One law"): by
+    // the drawn nozzle width in px (after the near-camera cap, before the dot floor), smoothstep(detail_px_min,
+    // detail_px_max, px), carried in the tint's alpha. One law at every d: the core radius x core_widen at 0 to the
+    // revised law's at 1, the structure (cells, streak turbulence, erosion, tongues, the rim and tail darkening, the
+    // outer sheath) and the head colour x d, so at 0 a smooth soft profile of the slab law's width and energy (a thin
+    // core and pixel-scale structure on a plume a few pixels wide lose their peak in the resolve when it moves). The
+    // halo follows: at 0 the previous law's e-fold 0.5 halo, exp(-2.2 u), the disc's gain 3.
+    float detail_px_min = 8.f, detail_px_max = 40.f;
     // Phase 2 of the gap analysis (docs/architecture/engine-exhaust-gap-analysis.md, gaps 4, 5, 3, 10).
     // Gap 4, the flow in world units: a nozzle of value flow_reference keeps flow_rate (2.625 nozzle widths per second at
     // the default nozzle), a larger one scrolls flow_reference / value of it, at least flow_slow, a smaller one never
@@ -248,6 +266,7 @@ constexpr float halo_reach = 2.25f;         // the halo window's zero, x the hal
                                             // tapers over its last 0.5 sigma (the halo is the mock-up's inside it)
 constexpr float halo_sigma = .32f;          // the halo's e-fold at the nozzle, x Look::halo nozzle widths (x the preset;
                                             // the revised law: 0.35 nozzle widths at halo 1.1, 0.5 x halo before)
+constexpr float outer_reach = 1.2f;         // the outer sheath's edge ends at this radial (engine_plume_ps.hlsl)
 constexpr float shock_gap = 1.7f;           // the cells' gap depth min(1, shock_gap x Look::shock): 0.85 at shock 0.5;
                                             // with the half-period ramp-in the first gap is 0.33 of the crest, 0.74 by
                                             // u 0.4 (the critique's 0.8 over a whole period left the body lane's gap at
@@ -394,11 +413,9 @@ inline void core_boost(float u, float* out) noexcept {
 constexpr unsigned disc_samples = 8, peak_steps = 8, peak_u_samples = 512;
 struct LookTables {
     float disc[disc_samples][4]{};
-    float axis_peak[peak_steps + 1]{};
-    // The previous law's side peak (1.6 x max of tail x (1 + s x its cosine cell, ramped in over half a period as the
-    // carving)): the disc's cap at the detail level 0,
-    // where its body is the previous law's integrated slab (Look::detail_px_min).
-    float axis_peak_previous[peak_steps + 1]{};
+    // The side peak per I_core on the axis by the throttle (j / peak_steps) and the detail level (i / peak_steps; the
+    // cells carve x the level): max over u of boost x tail x (1 - s d carve), bilinear in peak_axis_at.
+    float axis_peak[peak_steps + 1][peak_steps + 1]{};
 };
 inline void look_tables(const Look& k, LookTables* out) noexcept {
     for (unsigned i = 0; i < disc_samples; ++i) {
@@ -410,41 +427,40 @@ inline void look_tables(const Look& k, LookTables* out) noexcept {
         law::cell(k, u, &out->disc[i][2]);
         law::heat(k, u, &out->disc[i][3]);
     }
-    for (unsigned j = 0; j <= peak_steps; ++j) out->axis_peak[j] = out->axis_peak_previous[j] = 0.f;
+    for (unsigned j = 0; j <= peak_steps; ++j)
+        for (unsigned d = 0; d <= peak_steps; ++d) out->axis_peak[j][d] = 0.f;
     for (unsigned i = 0; i <= peak_u_samples; ++i) {
         const float u = float(i) / float(peak_u_samples);
-        float tl = 0.f, cl = 0.f, boost = 0.f, c = 0.f, e = 0.f, ramp = 0.f;
+        float tl = 0.f, cl = 0.f, boost = 0.f;
         law::tail(k, u, &tl);
         law::cell(k, u, &cl);
         law::core_boost(u, &boost);
-        law::cos(6.2831853f * u / k.period, &c);
-        law::exp_neg(u * 5.f * k.cfade, &e);
-        law::smooth(0.f, .5f * k.period, u, &ramp);
-        const float previous = k.shock * c * e * ramp; // the detail-0 cosine cells on the carving's envelope
-        for (unsigned j = 0; j <= peak_steps; ++j) {
-            const float sj = float(j) / float(peak_steps);
-            const float v = boost * tl * (1.f - sj * cl), vp = 1.6f * tl * (1.f + sj * previous);
-            if (v > out->axis_peak[j]) out->axis_peak[j] = v;
-            if (vp > out->axis_peak_previous[j]) out->axis_peak_previous[j] = vp;
-        }
+        for (unsigned j = 0; j <= peak_steps; ++j)
+            for (unsigned d = 0; d <= peak_steps; ++d) {
+                const float sd = float(j) / float(peak_steps) * float(d) / float(peak_steps);
+                const float v = boost * tl * (1.f - sd * cl);
+                if (v > out->axis_peak[j][d]) out->axis_peak[j][d] = v;
+            }
     }
 }
-// `detail` the nozzle's detail level: the revised peak at 1, the previous law's at 0, linear between.
+// The side view's axis peak per I_core at throttle s and the detail level, bilinear in the table.
 inline void peak_axis_at(const LookTables& t, float s, float* out, float detail = 1.f) noexcept {
     const float x = (s < 0.f ? 0.f : s > 1.f ? 1.f : s) * float(peak_steps);
-    unsigned j = unsigned(x);
+    const float y = (detail < 0.f ? 0.f : detail > 1.f ? 1.f : detail) * float(peak_steps);
+    unsigned j = unsigned(x), d = unsigned(y);
     if (j >= peak_steps) j = peak_steps - 1u;
-    const float f = x - float(j);
-    const float revised = t.axis_peak[j] + (t.axis_peak[j + 1] - t.axis_peak[j]) * f;
-    const float previous = t.axis_peak_previous[j] + (t.axis_peak_previous[j + 1] - t.axis_peak_previous[j]) * f;
-    *out = previous + (revised - previous) * detail;
+    if (d >= peak_steps) d = peak_steps - 1u;
+    const float f = x - float(j), g = y - float(d);
+    const float a = t.axis_peak[j][d] + (t.axis_peak[j + 1][d] - t.axis_peak[j][d]) * f;
+    const float b = t.axis_peak[j][d + 1] + (t.axis_peak[j + 1][d + 1] - t.axis_peak[j][d + 1]) * f;
+    *out = a + (b - a) * g;
 }
 // The pixel program's look constants c3..c18 (engine_plume_ps.hlsl), 64 floats (the flow phase is the nozzle's, in the
 // vertex; the halo's sigma the nozzle's): c3..c7 the law, c8..c15 the disc's samples, c16 the mouth ramp (dip, end) and
 // the spill's glow_through and 1 / (spill_depth), c17 the spill's inner and outer reach (nozzle widths), 1 /
-// spill_depth_max (world units), the tail's tongues (erode x 0.35 / 0.57: 0.35 at the chosen erode); c18 the previous
-// law's cosine cell amplitude (shock) at the detail level 0, the outer sheath's weight 4 outer, the end-on ring's radial
-// scale 1 / disc_ring_width, 0.
+// spill_depth_max (world units), the tail's tongues (erode x 0.35 / 0.57: 0.35 at the chosen erode); c18 the core's
+// widening at the detail level 0 (core_widen), the outer sheath's weight 4 outer, the end-on ring's radial scale
+// 1 / disc_ring_width (at the detail level 1), the end-on annulus's weight disc_sheath.
 constexpr unsigned pixel_constant_floats = 64;
 // `t` look_tables(k), computed once where the look is fixed (the proxy at load: MotionOutput::plumes_tables_).
 inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_constant_floats]) noexcept {
@@ -464,10 +480,10 @@ inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_
     out[57] = k.spill_reach > k.spill_inner + 1e-3f ? k.spill_reach : k.spill_inner + 1e-3f;
     out[58] = k.spill_depth_max > 1e-3f ? 1.f / k.spill_depth_max : 1e3f;
     out[59] = k.erode * (.35f / .57f);
-    out[60] = k.shock;
+    out[60] = k.core_widen > 1e-3f ? k.core_widen : 1e-3f;
     out[61] = 4.f * k.outer;
     out[62] = k.disc_ring_width > 1e-3f ? 1.f / k.disc_ring_width : 1e3f;
-    out[63] = 0.f;
+    out[63] = k.disc_sheath > 0.f ? k.disc_sheath : 0.f;
 }
 inline void pixel_constants(const Look& k, float out[pixel_constant_floats]) noexcept {
     LookTables t;
@@ -1108,9 +1124,10 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // the nozzle passes the culls.
     float flow_speed = 1.f;
     if (dynamics) flow_factor(look, value, &flow_speed);
-    // The quad's reach in nozzle widths: the body's eroded edge, radial < 1 + 0.7 erode (0.6 + 0.8 u) of the local
-    // width (the streaks' erosion 1.6 erode S2 (0.6 + 0.8 u) at S2's minimum -0.4375), bounded by the line in u
-    // edge(u) = edge0 + edge_slope u >= (1 + 0.42 erode) line(u) + 0.56 erode u line0 (line(u) <= line0), at the nozzle
+    // The quad's reach in nozzle widths: the body's eroded edge, radial < R + 0.7 erode (0.6 + 0.8 u) of the local
+    // width, R = outer_reach (the outer sheath's own edge ends at radial 1.2; the core's at 1) (the streaks' erosion
+    // 1.6 erode S2 (0.6 + 0.8 u) at S2's minimum -0.4375), bounded by the line in u
+    // edge(u) = edge0 + edge_slope u >= (R + 0.42 erode) line(u) + 0.56 erode u line0 (line(u) <= line0), at the nozzle
     // at least the ring (its radius plus three of its sigmas); the halo window's reach (halo_reach x sigma0 (the
     // previous law's 0.5 halo, the widest the detail level gives, for the culling margin; the quad below takes the
     // nozzle's own), the
@@ -1126,9 +1143,9 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     if (spread * line0 < ring_outer) spread = ring_outer / line0;
     const float erode = look.erode > 0.f ? look.erode : 0.f;
     const float slope = (.04f - .5f * look.bulge) * look.taper; // d line / d u
-    float edge0 = (1.f + .42f * erode) * line0;
+    float edge0 = (outer_reach + .42f * erode) * line0;
     if (edge0 < ring_outer) edge0 = ring_outer;
-    const float edge_slope = (1.f + .42f * erode) * slope + .56f * erode * line0;
+    const float edge_slope = (outer_reach + .42f * erode) * slope + .56f * erode * line0;
     const float edge1 = edge0 + edge_slope;
     float extent = edge0 > edge1 ? edge0 : edge1;
     if (extent < halo_reach * sigma_widest) extent = halo_reach * sigma_widest;
@@ -1273,7 +1290,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     const float back = n * (halo_units > .05f ? halo_units : .05f) + pixel;
     const float front = L + reach + pixel;
     float body_back = n * (edge0 > edge1 ? edge0 : edge1), body_front = body_back;
-    float disc_edge = (1.f + .7f * erode) * line0; // the disc's erosion at the along-mean growth 1, w_k <= line0
+    // The disc's erosion at the along-mean growth 1, w_k <= line0; the outer sheath's annulus to outer_reach.
+    float disc_edge = (outer_reach + .7f * erode) * line0;
     const float disc_ring_outer = .46f * look.bulge + 3.f * .0645497f * (look.disc_ring_width > 1.f ? look.disc_ring_width : 1.f);
     if (disc_edge < disc_ring_outer) disc_edge = disc_ring_outer;
     const float width0 = (n * disc_edge > reach ? n * disc_edge : reach) + pixel;
@@ -1317,13 +1335,19 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     const float half = width0 * (disc_drawn ? 1.f : 0.f);
     float length_widths = n > 0.f ? L / n : 0.f;
     if (length_widths > look.disc_length_max) length_widths = look.disc_length_max;
-    float axis_peak = 0.f;
-    peak_axis_at(tables, s, &axis_peak, detail);
+    float axis_peak = 0.f; // the cap's side peak: only a drawn disc reads it (the bilinear lookup costs ~25 ns a nozzle)
+    if (disc_drawn) peak_axis_at(tables, s, &axis_peak, detail);
     const float disc_level = disc_weight * (near_weight < chase_disc_floor ? chase_disc_floor / near_weight : 1.f);
-    const float disc_body = disc_level * i_core * look.disc_kappa * length_widths * facing_abs;
+    // kappa by the detail level: the smooth law's at 0, the structured law's at 1 (Look::disc_kappa_smooth, disc_kappa).
+    const float kappa = look.disc_kappa_smooth + (look.disc_kappa - look.disc_kappa_smooth) * detail;
+    const float disc_body = disc_level * i_core * kappa * length_widths * facing_abs;
     const float disc_halo = disc_level * i_halo * (3.f + (look.disc_halo - 3.f) * detail) * length_widths * facing_abs;
     const float disc_cap = disc_level * look.disc_cap * i_core * axis_peak;
-    const float disc_ring = disc_level * i_core * ring * 2.f * look.disc_ring;
+    // The end-on ring: x 1 at the detail level 0 (the smooth law's), x disc_ring x min(1, (L / n) / 2) at 1 (at least
+    // x 1: a short plume's ring no longer dominates its disc); the pixel program widens it by the same level.
+    float ring_end_on = look.disc_ring * (length_widths < 2.f ? .5f * length_widths : 1.f);
+    if (ring_end_on < 1.f) ring_end_on = 1.f;
+    const float disc_ring = disc_level * i_core * ring * 2.f * (1.f + (ring_end_on - 1.f) * detail);
     const float dc[4][2] = {{-half, -half}, {-half, half}, {half, -half}, {half, half}};
     for (unsigned c = 0; c < 4; ++c) {
         Vertex& v = out[4 + c];

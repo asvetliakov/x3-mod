@@ -294,6 +294,13 @@ ep::Look make_nospill() {
     return k;
 }
 const ep::Look still = make_still(), body_only = make_body(), nospill = make_nospill();
+// `k` held at the detail level 0 at every size (the threshold far past any drawn nozzle): the previous (slab) law at the
+// same size, the reference of the review fixes' energy cases.
+ep::Look slab_of(ep::Look k) {
+    k.detail_px_min = 1e6f;
+    k.detail_px_max = 2e6f;
+    return k;
+}
 // The flow accumulator at the stage clock's `seconds` (the proxy advances it per frame at a constant rate: the same
 // value); each nozzle's phase is it x the nozzle's flow_factor (the builder's).
 double flow_at(float seconds, const ep::Look* look) {
@@ -387,30 +394,35 @@ float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1
     const float b = c[0] * (1.f - .55f * std::exp(-9.f * uc)) * (1.f + .35f * smooth(0.f, .25f, uc) * std::exp(-4.f * uc));
     const float w = std::min(c[0] + c[1] * uc, b + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, uc), .05f);
     (void)n1;
+    // The single law at the detail level d (engine_plume_ps.hlsl): the core's radius x k = lerp(c18.x, 1, d), the
+    // structure x d, the outer sheath x d.
+    const float d = in.detail, kc = c[60] + (1.f - c[60]) * d;
     const float radial = r / w, S2 = n2 - .4375f;
-    const float edge = 1.f - smooth(.45f, 1.f, radial + c[5] * S2 * (.6f + .8f * uc));
-    const float tail = (1.f - smooth(c[7], 1.f, u + c[59] * S2 * in.detail)) * std::exp(-u * c[11]) * (1.f - c[52] * (1.f - smooth(0.f, c[53], u)));
+    const float erosion = c[5] * d * S2 * (.6f + .8f * uc);
+    const float edge = 1.f - smooth(.55f - .1f * d, 1.f, radial + erosion);
+    const float tail = (1.f - smooth(c[7], 1.f, u + c[59] * std::max(S2, 0.f) * d)) * std::exp(-u * c[11]) *
+                       (1.f - c[52] * (1.f - smooth(0.f, c[53], u)));
     const float inside = u >= 0.f && u <= 1.f ? 1.f : 0.f;
     const float crest = .5f + .5f * std::cos(c[9] * u);
-    const float envelope = std::exp(-u * c[10]) * smooth(0.f, 1.f, u * c[4]) * (1.f - smooth(.3f, .9f, radial)) * in.s;
+    const float envelope = std::exp(-u * c[10]) * smooth(0.f, 1.f, u * c[4]) * (1.f - smooth(.3f, .9f, radial)) * in.s * d;
     const float cells = 1.f - c[8] * envelope * (1.f - crest * crest * crest);
-    const float turbulence = 1.f + c[6] * S2 * (.4f + .6f * std::min(radial, 1.f));
-    const float rc = radial * c[13], rp = radial / .32f;
-    const float rim_window = smooth(.25f, .9f, radial);
-    const float hot = std::exp(-rc * rc), profile = .08f + .92f * std::exp(-rp * rp) + c[61] * rim_window * (1.f - rim_window);
-    // The colour's red channel for a white tint and head: the tail's darker stop, the rim's half tint (both x the detail
-    // level), white by the heat; the body the slab's radial shape under detail 1.
-    const float tone = 1.f - .4f * in.detail * smooth(.6f, 1.f, uc) * smooth(.2f, .5f, uc);
-    const float rim = tone + (.5f - tone) * in.detail * rim_window;
+    const float turbulence = 1.f + c[6] * d * S2 * (.4f + .6f * std::min(radial, 1.f));
+    const float rc = radial * c[13] / kc, rp = radial / (.32f * kc);
+    const float hot = std::exp(-rc * rc);
+    // The colour's red channel for a white tint and head: the tail's darker stop, the rim's half tint (both x d), white
+    // by the heat; the outer sheath's darker saturated tint (white: 0.5 x the tail's darkening).
+    const float darken = 1.f - .4f * d * smooth(.6f, 1.f, uc);
+    const float tone = 1.f + (darken - 1.f) * smooth(.2f, .5f, uc);
+    const float rim = tone + (.5f - tone) * d * smooth(.25f, .9f, radial);
     const float heat = c[12] * hot * (1.f - smooth(.05f, .3f, u)), red = rim + (1.f - rim) * heat;
-    const float slab = (1.f - smooth(.55f, 1.f, radial)) * (1.f + .6f * (1.f - smooth(0.f, 1.f, radial * c[13] * .3214286f))) *
-                       (1.f + c[60] * envelope * (2.f * crest - 1.f));
-    const float peaked = edge * cells * profile * (1.f + .6f * hot * (1.f - .5f * smooth(.2f, .8f, uc)));
-    const float body = in.i_core * tail * inside * (slab + (peaked - slab) * in.detail) * turbulence * red;
-    const float du = x - std::min(std::max(x, 0.f), L), d = std::sqrt(du * du + r * r);
-    const float dn = d / std::max(in.sigma0, 1e-4f);
+    const float core = edge * cells * (.08f + .92f * std::exp(-rp * rp)) * (1.f + .6f * hot * (1.f - .5f * smooth(.2f, .8f, uc)));
+    const float m = smooth(.1f, 1.2f, radial);
+    const float outer = d * c[61] * m * (1.f - m) * (1.f - smooth(.65f, 1.2f, radial + erosion)) * cells * (.6f + .4f * smooth(.1f, .5f, uc));
+    const float body = in.i_core * tail * inside * turbulence * (core * red + .5f * darken * outer);
+    const float du = x - std::min(std::max(x, 0.f), L), dist = std::sqrt(du * du + r * r);
+    const float dn = dist / std::max(in.sigma0, 1e-4f);
     const float window = std::min(std::max(2.f * (ep::halo_reach - dn), 0.f), 1.f);
-    const float halo = in.i_halo * std::exp(-dn) * std::exp(-(2.2f + 1.8f * in.detail) * uc) * window;
+    const float halo = in.i_halo * std::exp(-dn) * std::exp(-(2.2f + 1.8f * d) * uc) * window;
     const float s2 = c[15] + .25f * in.aa * in.aa, rr2 = r - c[14];
     const float ring = in.i_core * in.ring2 * c[19] * std::sqrt(c[15] / s2) * std::exp(-rr2 * rr2 / (2.f * s2)) *
                        std::exp(-std::max(x, 0.f) * c[18]) * (x >= -.05f ? 1.f : 0.f);
@@ -662,8 +674,11 @@ Sequence run_sequence(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineP
     }
     return out;
 }
-void resolve_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, float speed_px, bool flicker) {
-    const float Z = 2000.f, ppu = t.ppu(Z), value = 30.f / ppu; // value 30 px: L 60 px at s = 1, nozzle width 15 px
+// `nozzle_px` 15: the detail level 0.12 (the single law near its smooth end); 40 (review fix F11): the detail level 1, the
+// thin core and structure through the same resolve.
+void resolve_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, float speed_px, bool flicker,
+                  float nozzle_px = 15.f) {
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 2.f * nozzle_px / ppu; // 15 px: value 30 px, L 60 px at s = 1
     const ee::Record base = record(0, 0, Z, -1, 0, 0, value, 2.f);
     const unsigned frames = 16;
     const Sequence s = run_sequence(d, t, scene, pass, speed_px, flicker, base, Z, frames);
@@ -699,14 +714,17 @@ void resolve_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlume
             trail_max = std::max(trail_max, v);
             if (v > .05f * core) trail = std::max(trail, edge - x);
         }
-    std::printf("RESOLVE width=%u height=%u sky=%s speed_px=%.0f config=%s frames=%u core_survival=%.4f trail_px=%d trail_max=%.4f core=%.3f length_px=%.1f\n",
+    const float detail = float(b.v[0].tint >> 24) / 255.f;
+    std::printf("RESOLVE width=%u height=%u sky=%s speed_px=%.0f config=%s frames=%u core_survival=%.4f trail_px=%d trail_max=%.4f core=%.3f length_px=%.1f nozzle_px=%.0f detail=%.3f\n",
                 t.w, t.h, flicker ? "flicker" : "dark", double(speed_px), flown ? "flown" : "camera_only", frames, ratio,
-                trail, double(trail_max), double(core), double(Lpx));
+                trail, double(trail_max), double(core), double(Lpx), double(nozzle_px), double(detail));
     char label[64];
-    std::snprintf(label, sizeof label, "resolve_core_%s_%.0fpx_%u", flicker ? "flicker" : "dark", double(speed_px), t.w);
+    char size[16] = "";
+    if (nozzle_px != 15.f) std::snprintf(size, sizeof size, "_n%.0f", double(nozzle_px));
+    std::snprintf(label, sizeof label, "resolve_core_%s_%.0fpx%s_%u", flicker ? "flicker" : "dark", double(speed_px), size, t.w);
     report(label, ratio >= .9);
     if (!flicker) {
-        std::snprintf(label, sizeof label, "resolve_trail_dark_%.0fpx_%u", double(speed_px), t.w);
+        std::snprintf(label, sizeof label, "resolve_trail_dark_%.0fpx%s_%u", double(speed_px), size, t.w);
         report(label, trail <= 3);
     }
 }
@@ -847,6 +865,7 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
 // the length pulse's maximum (z 2.5: L 2.5 value), pointing at the camera: not faded, not capped; its projected body
 // width and q (the body key and the earlier halo key) reported. The fixture's m11 1.7 against the flight's 1 / 0.5625:
 // the depth scaled by 1.7 x 0.5625 projects the same.
+double total_of(const std::vector<float>& px, UINT w, UINT h);
 int extent_px(const std::vector<float>& px, UINT w, UINT h, float* peak_out) {
     float pk = 0.f;
     for (UINT y = 0; y < h; ++y)
@@ -899,6 +918,27 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     draw(d, pass, of);
     float own_peak = 0.f;
     const int own_extent = extent_px(t.read(d), t.w, t.h, &own_peak);
+    // Review fix F2: the own ship from behind with the production look at its drawn size (the detail level the builder
+    // gives it) against the same draw held at the detail level 0 (the previous law): the frame's total, peak and extent.
+    {
+        const ep::Look slab = slab_of(ep::default_look);
+        double total[2] = {};
+        float pk_own[2] = {};
+        int ext[2] = {};
+        for (unsigned law = 0; law < 2; ++law) {
+            const rr::EnginePlumesFrame lf = frame_for(t, true, &own, 1, ep::Preset::standard, 10.f, 0.f, 0.f, law ? nullptr : &slab);
+            scene.frame(0, 0, 0, 0, 500);
+            draw(d, pass, lf);
+            const auto img = t.read(d);
+            total[law] = total_of(img, t.w, t.h);
+            ext[law] = extent_px(img, t.w, t.h, &pk_own[law]);
+        }
+        const Built lb = build_cpu(frame_for(t, true, &own, 1, ep::Preset::standard, 10.f));
+        std::printf("CHASE_OWN_LOOK width=%u height=%u nozzle_px=%.1f detail=%.3f total=%.1f total_slab=%.1f total_ratio=%.4f peak=%.3f peak_slab=%.3f peak_ratio=%.4f extent_px=%d extent_slab_px=%d extent_ratio=%.4f\n",
+                    t.w, t.h, double(lb.v[0].local[3] * t.ppu(depth)), double(float(lb.v[0].tint >> 24) / 255.f), total[1], total[0],
+                    total[0] > 0 ? total[1] / total[0] : 0., double(pk_own[1]), double(pk_own[0]),
+                    pk_own[0] > 0.f ? double(pk_own[1] / pk_own[0]) : 0., ext[1], ext[0], ext[0] > 0 ? double(ext[1]) / double(ext[0]) : 0.);
+    }
     float line0 = 0.f;
     ep::width_line(body_only, 0.f, &line0);
     const float spread = std::max(1.f + .48f * body_only.erode, (.46f * body_only.bulge + 3.f * .0645497f) / line0);
@@ -1253,10 +1293,107 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
             tot[j] = total_of(img, t.w, t.h);
             pks[j] = peak(img, t.w, t.h, 0, 0, int(t.w), int(t.h));
         }
-        std::printf("END_ON_NOZZLE width=%u height=%u nozzle=%.2f L_over_n=%.1f", t.w, t.h, double(nozzle), double(2.f / nozzle));
+        // Review fix F2: the end-on ratio without the ring (side and end-on), which separates the ring's share; the
+        // nozzle's detail level (the 1.0 nozzle is 40 px: detail 1).
+        ep::Look kr = k;
+        kr.ring = 0.f;
+        double tot_ring_off[2] = {};
+        for (unsigned j = 0; j < 2; ++j) {
+            const float a = (j ? 0.f : 90.f) * 3.14159265f / 180.f;
+            const ee::Record q = record(0, 0, Z, -std::sin(a), 0, -std::cos(a), value, 2.f);
+            scene.frame(0, 0, 0, 0, 500);
+            draw(d, pass, frame_for(t, true, &q, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &kr));
+            tot_ring_off[j] = total_of(t.read(d), t.w, t.h);
+        }
+        const ee::Record q0 = record(0, 0, Z, -1, 0, 0, value, 2.f);
+        const Built nb = build_cpu(frame_for(t, true, &q0, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &k));
+        std::printf("END_ON_NOZZLE width=%u height=%u nozzle=%.2f L_over_n=%.1f detail=%.3f", t.w, t.h, double(nozzle), double(2.f / nozzle),
+                    double(float(nb.v[0].tint >> 24) / 255.f));
         for (unsigned j = 0; j < 4; ++j)
             std::printf(" ratio_%.0f=%.4f peak_%.0f=%.3f", double(degrees[j]), tot[0] > 0 ? tot[j] / tot[0] : 0., double(degrees[j]), pks[j]);
+        std::printf(" ratio_0_ring_off=%.4f ring_share_0=%.4f\n", tot_ring_off[0] > 0 ? tot_ring_off[1] / tot_ring_off[0] : 0.,
+                    tot[3] > 0 ? 1. - tot_ring_off[1] / tot[3] : 0.);
+    }
+    // Review fix F2: the same angles at the detail level 1 (nozzle 40 and 48 px, value 80 / 96 px, under the near fade
+    // band at both sizes), the still look, s = 1: the end-on energy against the side view's within 0.7..1.5 as above, and
+    // the end-on (0 degrees) total against the same draw held at the detail level 0 (the smooth law, the previous law's
+    // energy, at the same size) within 0.7..0.9 (the user's relaxation of 2026-10-04).
+    const ep::Look slab = slab_of(still);
+    for (const float n_px : {40.f, 48.f}) {
+        const float v = 2.f * n_px / ppu;
+        double tot[4] = {}, tot_slab[4] = {}, pks[4] = {};
+        unsigned fade = 0;
+        for (unsigned j = 0; j < 4; ++j) {
+            const float a = degrees[j] * 3.14159265f / 180.f;
+            const ee::Record q = record(0, 0, Z, -std::sin(a), 0, -std::cos(a), v, 2.f);
+            for (unsigned law = 0; law < 2; ++law) {
+                scene.frame(0, 0, 0, 0, 500);
+                const auto rep = draw(d, pass, frame_for(t, true, &q, 1, ep::Preset::standard, 0.f, 0.f, 0.f, law ? &still : &slab));
+                const auto img = t.read(d);
+                (law ? tot : tot_slab)[j] = total_of(img, t.w, t.h);
+                if (law) pks[j] = peak(img, t.w, t.h, 0, 0, int(t.w), int(t.h));
+                fade += rep.stats.faded;
+            }
+        }
+        const ee::Record q0 = record(0, 0, Z, -1, 0, 0, v, 2.f);
+        const Built nb = build_cpu(frame_for(t, true, &q0, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still));
+        const float detail = float(nb.v[0].tint >> 24) / 255.f;
+        std::printf("END_ON_DETAIL width=%u height=%u nozzle_px=%.0f detail=%.3f faded=%u", t.w, t.h, double(n_px), double(detail), fade);
+        for (unsigned j = 0; j < 4; ++j)
+            std::printf(" total_%.0f=%.1f slab_%.0f=%.1f ratio_%.0f=%.4f over_slab_%.0f=%.4f peak_%.0f=%.3f", double(degrees[j]), tot[j],
+                        double(degrees[j]), tot_slab[j], double(degrees[j]), tot[0] > 0 ? tot[j] / tot[0] : 0., double(degrees[j]),
+                        tot_slab[j] > 0 ? tot[j] / tot_slab[j] : 0., double(degrees[j]), pks[j]);
         std::printf("\n");
+        bool ok = detail > .999f && fade == 0;
+        for (unsigned j = 1; j < 4; ++j) ok = ok && tot[0] > 0 && tot[j] / tot[0] >= .7 && tot[j] / tot[0] <= 1.5;
+        std::snprintf(label, sizeof label, "end_on_energy_detail1_n%.0f_%u", double(n_px), t.w);
+        report(label, ok);
+        const double over = tot_slab[3] > 0 ? tot[3] / tot_slab[3] : 0.;
+        std::snprintf(label, sizeof label, "end_on_over_slab_n%.0f_%u", double(n_px), t.w);
+        report(label, detail > .999f && over >= .7 && over <= .9);
+        std::snprintf(label, sizeof label, "end_on_peak_bounded_detail1_n%.0f_%u", double(n_px), t.w);
+        report(label, pks[0] > 0. && pks[1] <= 1.5 * pks[0] && pks[2] <= 1.5 * pks[0] && pks[3] <= 1.5 * pks[0]);
+    }
+}
+// Review fix F1 (docs/architecture/engine-exhaust-look-critique.md section 6, "One law"): the side view across the
+// detail level, the still look, the nozzle 12 / 20 / 28 / 34 / 40 / 60 px (detail 0.04, 0.32, 0.68, 0.91, 1, 1; past the
+// far law's 12 px, under the near fade band), s = 1 and 0.5: the frame's total (every pixel's largest channel) rises with
+// the size (the hard gate), and its energy per nozzle px^2 at 40 px is 0.5..1.0 of the 12 px value (the slab law's), at
+// both throttles. 0.5, not the first 0.8: the structured law at the detail level 1 carries about 0.55..0.6 of the slab
+// law's energy per px^2, and the hue and contrast gates win over the 0.8 figure, which was an orchestrator estimate, not
+// a user requirement (the coordinator's decision of 2026-10-04; plume_outer_flame_model_out.txt: the ceiling 0.58..0.61).
+void energy_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float Z = 2000.f, ppu = t.ppu(Z);
+    const float sizes[6] = {12.f, 20.f, 28.f, 34.f, 40.f, 60.f};
+    char label[64];
+    for (const float zs : {2.f, 1.125f}) {
+        double totals[6] = {}, per[6] = {};
+        float details[6] = {};
+        unsigned fade = 0;
+        for (unsigned k = 0; k < 6; ++k) {
+            const float n_px = sizes[k], value = 2.f * n_px / ppu, Lpx = zs * 2.f * n_px;
+            const ee::Record r = record(.5f * Lpx / ppu, 0, Z, -1, 0, 0, value, zs);
+            const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+            scene.frame(0, 0, 0, 0, 500);
+            const auto rep = draw(d, pass, f);
+            totals[k] = total_of(t.read(d), t.w, t.h);
+            per[k] = totals[k] / double(n_px * n_px);
+            details[k] = float(build_cpu(f).v[0].tint >> 24) / 255.f;
+            fade += rep.stats.faded + rep.stats.capped;
+        }
+        bool rising = true;
+        for (unsigned k = 1; k < 6; ++k) rising = rising && totals[k] > totals[k - 1];
+        const double ratio = per[0] > 0 ? per[4] / per[0] : 0.;
+        std::printf("ENERGY width=%u height=%u s=%.2f faded=%u rising=%u per_px2_40_over_12=%.4f", t.w, t.h, double((zs - .25f) / 1.75f), fade,
+                    unsigned(rising), ratio);
+        for (unsigned k = 0; k < 6; ++k)
+            std::printf(" total_%.0f=%.1f per_px2_%.0f=%.4f detail_%.0f=%.3f", double(sizes[k]), totals[k], double(sizes[k]), per[k],
+                        double(sizes[k]), double(details[k]));
+        std::printf("\n");
+        std::snprintf(label, sizeof label, "energy_rising_s%.1f_%u", double((zs - .25f) / 1.75f), t.w);
+        report(label, rising && fade == 0);
+        std::snprintf(label, sizeof label, "energy_40_over_12_s%.1f_%u", double((zs - .25f) / 1.75f), t.w);
+        report(label, ratio >= .5 && ratio <= 1.0 && details[0] < .05f && details[4] > .999f);
     }
 }
 // The ship floor at the shipped scale (engine_plume_floor 0.5 since flight E): side views (axis -x), the still look,
@@ -1436,18 +1573,23 @@ void distance_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlum
 // After the gap analysis (docs/architecture/engine-exhaust-gap-analysis.md, phases 2 and 3).
 
 // Gap 3, the nozzle spill. Head-on (the exhaust pointing away, axis +z), behind a plane at the nozzle depth over
-// x >= edge (the nozzle 10 px inside it), value 192 px (the nozzle 96 px), s = 1. On the plane pixels at screen distance
-// d (nozzle widths) from the nozzle: (a) the law, the still look without the ring and with the disc's soft cap out of
-// the way (disc_cap 50, the open halo compressed under 0.5 %): the cut frame over the open one (no plane) in 0.65..0.8 n (past the still body's 0.56 n,
-// inside the spill's full reach) is glow_through 0.15, at most 0.15 in the taper 0.8..1.0 n, nothing past 1.0 n (the ratio
-// where the open frame is above 0.01: the revised law's halo window ends at 0.79 n, and under that the soft cap's
-// 1 - exp(-x) at x ~1e-5 leaves the cut / open ratio a few % off on the GPU);
-// (b) the still look with the production cap: 0.15 +- 0.02 in 0.72..0.8 n (the soft cap compresses the open halo more
-// than the spilled one), nothing past 1.0 n; without the ring, which the hull cuts with the body (since the tuning pass
-// the end-on ring's Gaussian is twice as wide, reaches 0.92 n and would fill the open frame in the band); (c) the depth guard: the plane 3 value in front of the nozzle (another
-// object, not its hull): nothing through it.
-void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, bool four) {
-    const float Z = 2000.f, ppu = t.ppu(Z), value = 192.f / ppu, n_px = 96.f;
+// x >= edge (the nozzle 10 px inside it), s = 1, the nozzle `n_px` wide: 12 px (the detail level 0.04: nearly the
+// previous law's halo, e-fold 0.54 n, its window reaching 1.22 n past the spill's 1.0 n) and 60 px (the detail level 1: e-fold 0.352 n,
+// the window ending at 0.79 n, before the spill's taper; under the near fade band at both sizes, so the plume is drawn
+// at the size asked). On the plane pixels at screen distance d (nozzle widths) from the nozzle: (a) the law, the still
+// look without the ring and with the disc's soft cap out of the way (disc_cap 50, the open halo compressed under
+// 0.5 %): the cut frame over the open one (no plane) in 0.65 n (past the still body's 0.56 n) .. min(0.8 n, the
+// window's reach - 2 px) is glow_through 0.15; at the detail level 0 the taper 0.8..1.0 n reads at most 0.15 with its
+// mean 0.05..0.10 (0.15 x the smoothstep's falling half, area-weighted), at the detail level 1 the open frame is dark
+// past the window's reach (no taper to read); nothing past 1.0 n (the ratio where the open frame is above 0.01);
+// (b) the still look with the production cap: 0.15 +- 0.02 in 0.72 n .. the band's end (the soft cap compresses the open
+// halo more than the spilled one), nothing past 1.0 n; without the ring, which the hull cuts with the body (since the
+// tuning pass the end-on ring's Gaussian is twice as wide, reaches 0.92 n and would fill the open frame in the band);
+// (c) the depth guard: the plane 3 value in front of the nozzle (another object, not its hull): nothing through it.
+// Each band's measured pixels are at least 95 % of the band's pixels on the plane (the open frame above 0.01 over the
+// whole band). `near_plate` also runs the near plate below (once per size and lane).
+void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, bool four, float n_px, bool near_plate) {
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 2.f * n_px / ppu;
     float cx, cy;
     t.window(0, 0, Z, 0, 0, cx, cy);
     const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f)), edge = ix - 10;
@@ -1457,10 +1599,14 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     ep::Look capped = still;
     capped.ring = 0.f;
     linear.disc_cap = 50.f; // total / cap about 0.01: under 0.5 % compression, no 1 - exp(-x) cancellation on the GPU
+    const Built sb = build_cpu(frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &linear));
+    const float detail = float(sb.v[4].tint >> 24) / 255.f, reach = ep::halo_reach * sb.v[4].shape[0]; // nozzle widths
+    const float band_end = std::min(.8f, reach - 2.f / n_px);
+    const ep::Look& lk = ep::default_look;
     const int span = int(1.3f * n_px);
     struct Measure {
-        double band_median = 0, band_max = 0, taper_max = 0, beyond_max = 0;
-        unsigned band_px = 0;
+        double band_median = 0, band_max = 0, taper_max = 0, taper_mean = 0, beyond_max = 0, open_past_reach = 0;
+        unsigned band_px = 0, band_all = 0, taper_px = 0, taper_all = 0;
         double bin_sum[13] = {}, bin_max[13] = {}; // the ratio by screen distance, 0.1 n bins to 1.3 n
         unsigned bin_n[13] = {};
     };
@@ -1472,6 +1618,7 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
         draw(d, pass, frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, look));
         const auto cut = t.read(d);
         std::vector<double> ratios;
+        double taper_sum = 0.;
         for (int y = iy - span; y <= iy + span; ++y)
             for (int x = edge; x <= ix + span; ++x) {
                 if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) continue;
@@ -1483,44 +1630,70 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
                     out->bin_max[bin] = std::max(out->bin_max[bin], double(c / o));
                     ++out->bin_n[bin];
                 }
+                if (dn > reach + 1.5f / n_px) out->open_past_reach = std::max(out->open_past_reach, double(o));
                 if (dn > 1.f + 1.5f / n_px) out->beyond_max = std::max(out->beyond_max, double(c));
-                else if (dn >= band_low && dn <= band_high && o > 1e-2f) ratios.push_back(double(c / o));
-                else if (dn > band_high && dn <= 1.f && o > 1e-2f) out->taper_max = std::max(out->taper_max, double(c / o));
+                else if (dn >= band_low && dn <= band_high) {
+                    ++out->band_all;
+                    if (o > 1e-2f) ratios.push_back(double(c / o));
+                } else if (dn >= lk.spill_inner && dn <= lk.spill_reach && dn < reach - 1.5f / n_px) {
+                    ++out->taper_all;
+                    if (o > 1e-2f) {
+                        out->taper_max = std::max(out->taper_max, double(c / o));
+                        taper_sum += double(c / o);
+                        ++out->taper_px;
+                    }
+                }
             }
+        out->taper_mean = out->taper_px ? taper_sum / out->taper_px : 0.;
         std::sort(ratios.begin(), ratios.end());
         out->band_px = unsigned(ratios.size());
         out->band_median = ratios.empty() ? 0. : ratios[ratios.size() / 2];
         out->band_max = ratios.empty() ? 0. : ratios.back();
     };
     Measure law{}, look{}, guard{};
-    measure(&linear, .65f, .8f, Z, &law);
-    measure(&capped, .72f, .8f, Z, &look);
-    measure(&still, .65f, .8f, Z - 3.f * value, &guard);
-    std::printf("SPILL width=%u lane=%s nozzle_px=%.0f law_band_px=%u law_median=%.4f law_max=%.4f law_taper_max=%.4f law_beyond_max=%.6f look_band_px=%u look_median=%.4f look_max=%.4f look_beyond_max=%.6f guard_max=%.6f\n",
-                t.w, four ? "4ch" : "r32f", double(n_px), law.band_px, law.band_median, law.band_max, law.taper_max, law.beyond_max,
-                look.band_px, look.band_median, look.band_max, look.beyond_max, std::max(guard.band_max, guard.beyond_max));
+    measure(&linear, .65f, band_end, Z, &law);
+    measure(&capped, .72f, band_end, Z, &look);
+    measure(&still, .65f, band_end, Z - 3.f * value, &guard);
+    std::printf("SPILL width=%u lane=%s nozzle_px=%.0f detail=%.3f reach_n=%.3f band_end_n=%.3f law_band_px=%u law_band_all=%u law_median=%.4f law_max=%.4f "
+                "law_taper_px=%u law_taper_all=%u law_taper_max=%.4f law_taper_mean=%.4f law_beyond_max=%.6f law_open_past_reach=%.6f "
+                "look_band_px=%u look_band_all=%u look_median=%.4f look_max=%.4f look_beyond_max=%.6f guard_max=%.6f\n",
+                t.w, four ? "4ch" : "r32f", double(n_px), double(detail), double(reach), double(band_end), law.band_px, law.band_all,
+                law.band_median, law.band_max, law.taper_px, law.taper_all, law.taper_max, law.taper_mean, law.beyond_max,
+                law.open_past_reach, look.band_px, look.band_all, look.band_median, look.band_max, look.beyond_max,
+                std::max(guard.band_max, guard.beyond_max));
     for (const Measure* m : {&law, &look}) {
-        std::printf("SPILL_PROFILE width=%u lane=%s look=%s", t.w, four ? "4ch" : "r32f", m == &law ? "law" : "still");
+        std::printf("SPILL_PROFILE width=%u lane=%s nozzle_px=%.0f look=%s", t.w, four ? "4ch" : "r32f", double(n_px), m == &law ? "law" : "still");
         for (unsigned b = 0; b < 13; ++b)
             std::printf(" mean_%u=%.4f max_%u=%.4f", b, m->bin_n[b] ? m->bin_sum[b] / m->bin_n[b] : 0., b, m->bin_max[b]);
         std::printf("\n");
     }
     char label[64];
-    std::snprintf(label, sizeof label, "spill_law_0.15_%s_%u", four ? "4ch" : "r32f", t.w);
-    report(label, law.band_px > 100 && std::fabs(law.band_median - .15) <= .003 && law.band_max <= .1515 && law.taper_max <= .1515);
-    std::snprintf(label, sizeof label, "spill_none_past_1n_%s_%u", four ? "4ch" : "r32f", t.w);
+    const bool low_detail = detail < .1f; // 12 px: d 0.043, the window (e-fold 0.54 n) reaching 1.22 n
+    std::snprintf(label, sizeof label, "spill_law_0.15_%s_n%.0f_%u", four ? "4ch" : "r32f", double(n_px), t.w);
+    report(label, law.band_all > 50 && law.band_px >= .95 * law.band_all && std::fabs(law.band_median - .15) <= .003 && law.band_max <= .1515);
+    // The taper: read at a low detail level (the window reaches past it); at 1 the window ends before it (dark there).
+    std::snprintf(label, sizeof label, "spill_taper_%s_n%.0f_%u", four ? "4ch" : "r32f", double(n_px), t.w);
+    if (low_detail)
+        report(label, reach > lk.spill_reach && law.taper_all > 50 && law.taper_px >= .95 * law.taper_all && law.taper_max <= .1515 &&
+                          law.taper_mean >= .05 && law.taper_mean <= .1);
+    else
+        report(label, detail > .999f && reach < lk.spill_inner && law.taper_all == 0 && law.open_past_reach <= 1e-5);
+    std::snprintf(label, sizeof label, "spill_none_past_1n_%s_n%.0f_%u", four ? "4ch" : "r32f", double(n_px), t.w);
     report(label, law.beyond_max <= 1e-5 && look.beyond_max <= 1e-5);
-    std::snprintf(label, sizeof label, "spill_look_0.15_pm_0.02_%s_%u", four ? "4ch" : "r32f", t.w);
-    report(label, look.band_px > 50 && std::fabs(look.band_median - .15) <= .02 && look.band_max <= .17);
-    std::snprintf(label, sizeof label, "spill_depth_guard_%s_%u", four ? "4ch" : "r32f", t.w);
+    std::snprintf(label, sizeof label, "spill_look_0.15_pm_0.02_%s_n%.0f_%u", four ? "4ch" : "r32f", double(n_px), t.w);
+    report(label, look.band_all > 20 && look.band_px >= .95 * look.band_all && std::fabs(look.band_median - .15) <= .02 && look.band_max <= .17);
+    std::snprintf(label, sizeof label, "spill_depth_guard_%s_n%.0f_%u", four ? "4ch" : "r32f", double(n_px), t.w);
     report(label, guard.band_max <= 1e-5 && guard.beyond_max <= 1e-5);
+    if (!near_plate) return;
     // The production look head-on behind a plate 1.5 value in front of the nozzle (over the whole frame: a near
     // occluder, not the hull around the nozzle), the nozzle 96 px wide at values 100 and 1,000 (the depth scaled with
     // the value): the core (within 0.5 n of the nozzle) and the rim (0.5..1.0 n) against the open frame. At 100 the guard
     // is 2 value = 200 units (the spill x saturate(1 - 150 / 200) = 0.25: at most 0.15 anywhere); at 1,000 it is held to
     // 300 units (1,500 in front: none).
+    const float near_px = 96.f;
+    const int near_span = int(1.3f * near_px);
     for (const float V : {100.f, 1000.f}) {
-        const float Zv = V * t.ppu(1.f) / 192.f; // value V projects 192 px (the nozzle 96 px)
+        const float Zv = V * t.ppu(1.f) / (2.f * near_px); // value V projects 192 px (the nozzle 96 px)
         const ee::Record rv = record(0, 0, Zv, 0, 0, 1, V, 2.f);
         float vx, vy;
         t.window(0, 0, Zv, 0, 0, vx, vy);
@@ -1531,10 +1704,10 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
         draw(d, pass, frame_for(t, four, &rv, 1, ep::Preset::standard, 10.f));
         const auto cut = t.read(d);
         double core_max = 0, rim_max = 0, cut_max = 0, open_core = 0;
-        for (int y = int(vy) - span; y <= int(vy) + span; ++y)
-            for (int x = int(vx) - span; x <= int(vx) + span; ++x) {
+        for (int y = int(vy) - near_span; y <= int(vy) + near_span; ++y)
+            for (int x = int(vx) - near_span; x <= int(vx) + near_span; ++x) {
                 if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) continue;
-                const float dx = vx - float(x), dy = float(y) - vy, dn = std::sqrt(dx * dx + dy * dy) / n_px;
+                const float dx = vx - float(x), dy = float(y) - vy, dn = std::sqrt(dx * dx + dy * dy) / near_px;
                 const float c = luma(cut, t.w, x, y), o = luma(open, t.w, x, y);
                 cut_max = std::max(cut_max, double(c));
                 if (o <= 1e-3f || dn > 1.f) continue;
@@ -1721,7 +1894,8 @@ void flow_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPa
 // (the body alone), a body whose table colours are the red cluster's (mean 1, 0.15, 0.15; peak 1, 0.81, 0.81): the
 // colour (each channel over the largest) at u = 0.1 / 0.5 / 0.9 on the axis and at 0.7 of the local half-width (outside
 // the white-hot core) against the CPU replica, lerp(lerp(head, mean, smoothstep(0.3, 1, u)), white, heat) with the
-// vertex's 8-bit colours, within 1 % per channel.
+// vertex's 8-bit colours, within 1 % per channel; since the single law the outer sheath's deep tint mixed in by its
+// radiance (the 0.7 rows).
 ee::Body colour_body{};
 const ee::Body* colour_lookup(int) {
     return &colour_body;
@@ -1771,10 +1945,19 @@ void colour_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
             const float heat = c[12] * hot * (1.f - smooth(.05f, .3f, u)), mix = smooth(.2f, .5f, uc);
             const float darker = 1.f - .4f * smooth(.6f, 1.f, uc), rim = smooth(.25f, .9f, radial);
             const float white[3] = {1.f, .97f, .9f};
+            // The single law at the detail level 1 (value 100 px: the nozzle 50 px): the core's colour weighted by its
+            // radiance and the outer sheath's deep tint (tint^2 scaled to the tint's largest channel) by its own; the
+            // cells, the tail and I_core are common factors.
+            const float rp = radial / .32f, mo = smooth(.1f, 1.2f, radial);
+            const float core_w = (1.f - smooth(.45f, 1.f, radial)) * (.08f + .92f * std::exp(-rp * rp)) * (1.f + .6f * hot * (1.f - .5f * smooth(.2f, .8f, uc)));
+            const float outer_w = c[61] * mo * (1.f - mo) * (1.f - smooth(.65f, 1.2f, radial)) * (.6f + .4f * smooth(.1f, .5f, uc));
+            const float tmax = std::max(tail[0], std::max(tail[1], tail[2]));
+            const float t2max = std::max(tail[0] * tail[0], std::max(tail[1] * tail[1], tail[2] * tail[2]));
             float want[3], got[3], wm = 0.f, gm = 0.f;
             for (unsigned i = 0; i < 3; ++i) {
                 const float tone = head[i] + (tail[i] * darker - head[i]) * mix, across_tone = tone + (.5f * tail[i] - tone) * rim;
-                want[i] = across_tone + (white[i] - across_tone) * heat;
+                const float deep = tail[i] * tail[i] * tmax / std::max(t2max, 1e-6f);
+                want[i] = (across_tone + (white[i] - across_tone) * heat) * core_w + .5f * darker * deep * outer_w;
                 got[i] = px[(std::size_t(Y) * t.w + std::size_t(X)) * 4 + i];
                 wm = std::max(wm, want[i]);
                 gm = std::max(gm, got[i]);
@@ -3000,6 +3183,9 @@ int main(int argc, char** argv) {
             if (wanted("resolve"))
                 for (const bool flicker : {false, true})
                     for (const float speed : {0.f, 4.f, 8.f}) resolve_case(d, *t, *scene, pass, speed, flicker);
+            if (wanted("resolve"))
+                for (const bool flicker : {false, true})
+                    for (const float speed : {4.f, 8.f}) resolve_case(d, *t, *scene, pass, speed, flicker, 40.f);
             if (wanted("occlusion")) {
                 occlusion_case(d, *t, *scene, pass, true);
                 if (size.first == 1920) occlusion_case(d, *t, *scene, pass, false);
@@ -3010,14 +3196,16 @@ int main(int argc, char** argv) {
             if (wanted("shape")) shape_case(d, *t, *scene, pass);
             if (wanted("shock")) shock_case(d, *t, *scene, pass);
             if (wanted("end_on")) end_on_case(d, *t, *scene, pass);
+            if (wanted("energy")) energy_case(d, *t, *scene, pass);
             if (wanted("floor")) floor_case(d, *t, *scene, pass);
             if (wanted("mouth")) mouth_case(d, *t, *scene, pass);
             if (wanted("distance")) distance_case(d, *t, *scene, pass);
             // After the gap analysis, phases 2 and 3.
-            if (wanted("spill")) {
-                spill_case(d, *t, *scene, pass, true);
-                if (size.first == 1920) spill_case(d, *t, *scene, pass, false);
-            }
+            if (wanted("spill"))
+                for (const float n_px : {12.f, 60.f}) {
+                    spill_case(d, *t, *scene, pass, true, n_px, n_px > 50.f);
+                    if (size.first == 1920) spill_case(d, *t, *scene, pass, false, n_px, n_px > 50.f);
+                }
             if (wanted("flow")) flow_case(d, *t, *scene, pass);
             if (wanted("colour")) colour_case(d, *t, *scene, pass);
             if (wanted("structure")) structure_case(d, *t, *scene, pass);

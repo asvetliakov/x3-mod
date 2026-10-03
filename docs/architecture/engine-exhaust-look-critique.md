@@ -2,7 +2,8 @@
 
 Owning note for the plume look after the fixture's look images
 (`verification/results/engine-effects/look-images/`, `README.md` there lists every band). Implemented on 2026-10-03 with
-the deviations and measured gates of section 6; sections 1-5 are the design as written (section 1's images are the
+the deviations and measured gates of section 6 (since its "One law" the blend with the slab law is one law
+parameterised by the detail level, the 40 / 12 px energy gate 0.5 by decision); sections 1-5 are the design as written (section 1's images are the
 previous law's, the look images now show the revised one). The law under critique is `src/effects/engine_plume_ps.hlsl` with `engine_plumes_core.h` `Look` (the user's lab
 settings, [engine-effects-modern.md](engine-effects-modern.md) "Plume look redesign" and after), the references are X4 and
 Everspace 2 as described in [engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md) section 1.
@@ -247,8 +248,68 @@ records, slab = e51872be's images; `plume_look_width_ratio.py` -> `plume_look_wi
 | Radial contrast, display, s 1 bands (>= 2.0) | 1.77-2.47, five under 2.0 | 2.46-6.65, none under 2.0 (09 moving 1.89, before 2.47) |
 | Far dots 2 / 6 px of the slab law | 1.08 / 1.01 | 1.08 / 1.01 (the detail level keeps them); 40 px 0.40 (0.33) |
 | Mouth; core survival; end-on 60 / 30 / 0 deg | 0.65 / 0.67 / 0.76; 0.957; 0.87-0.88 / 0.91 / 0.81 | unchanged; 0.957; 0.88-0.89 / 0.92 / 0.81 |
-| Energy, model (detail 1, s 1, of the slab law) | body 0.33, luma 0.31 / 0.39, axis peak 0.67 / 0.80 | body 0.41 (`plume_look_proposal_model.py`; side 0.40 in `plume_end_on_model.py`), luma 0.37 / 0.45, axis peak unchanged; end-on / side energy 0.78 at L / n 4 (0.91: the brighter disc body meets the soft cap) |
+| Energy, model (detail 1, s 1, of the slab law) | body 0.33, luma 0.31 / 0.39, axis peak 0.67 / 0.80 | body 0.41 (`plume_look_proposal_model.py`; side 0.40 in `plume_end_on_model.py`), luma 0.37 / 0.45, axis peak unchanged; end-on / side energy 0.78 at L / n 4 (0.91: the brighter disc body meets the soft cap) [model; the fixture's end-on rows above are a 20 px nozzle, detail 0.074, the slab law: corrected from detail-1 measurements in "One law"] |
 | Slots | 797 | 800 (the end-on ring's inner-side select dropped to make room) |
+
+### One law: the review fixes (2026-10-04, worktree build on 8eb0514b, not a candidate)
+
+The review of the tuning pass found that the revised law's lower energy dims a plume per pixel as it grows through the
+detail blend (16 -> 40 px), that the end-on gate and the spill taper ran where the slab law draws, and that the own
+ship's from-behind look lost most of its light. Three designs followed, each measured; the user's decision replaced the
+blend with one law. Ledger: [engine-effects.md](../verification/engine-effects.md), "Revised law review fixes: one law".
+Models: `plume_energy_compensation.py`, `plume_outer_flame_model.py`, `plume_one_law_model.py` (with their `_out.txt`).
+
+1. A uniform gain g(s) = 1.91 + 0.45 s on the revised body met the energy gates (40 / 12 px per px^2 0.828 / 0.850,
+   end-on 0.922 of the slab law) and failed the hue gate: the 40 px cyan axis at u 0.5 rose from 3.31 to 7.45 linear,
+   whiteness 0.157 -> 0.024 (gate 0.15), the rims of the capped bands 0.43-0.49 (gate 0.5) [measured]. The coordinator
+   kept the hue gate.
+2. Moving the compensation into the outer flame (gain on radial > 0.25..0.3, the axis gain <= 1.3, a wider sheath):
+   with the axis brightest and no bright band (a monotone profile, the hue, rim and contrast gates, the half-width
+   0.8..1.0 of the slab law's) the energy at 40 px tops out at 0.58..0.61 of the slab law's; relaxing the rim gate to
+   0.4 or letting the outer flame start late along the plume moves it to 0.61 [model, `plume_outer_flame_model_out.txt`].
+   The contrast gate (the axis 3x the luma at 0.6 of the half-width) and the hue gate together bound it: the slab law is
+   flat-topped, so its energy in a profile with a thin bright core needs a fat flame at core brightness, which AgX whitens.
+3. The user's design change: one law, no blend and no gain, parameterised by the detail level.
+
+The law as built (`src/effects/engine_plume_ps.hlsl`, `engine_plumes_core.h` `Look`):
+
+| Term | As built |
+| --- | --- |
+| Detail level d | smoothstep(8, 40, drawn nozzle px) (was 16..40), in the tint's alpha |
+| Core radius | the peaked profile's 0.32 and the hot core's 0.45 core x k(d) = 3.74 + (1 - 3.74) d (`Look::core_widen`, c18.x): at d 0 a smooth soft profile of the slab law's side energy (0.99..1.00 at s 0 / 0.5 / 1) and width (0.98) [model]; the edge 1 - smoothstep(0.55 - 0.1 d, 1, radial) |
+| Structure x d | the cells' depth, the streak turbulence and erosion, the tongues (on max(S2, 0): the fade complete at the tip), the rim and tail darkening; the head colour from the mean tint at 0 |
+| Outer sheath x d | 4 x 1.25 m (1 - m), m = smoothstep(0.1, 1.2, radial), inside its own edge 1 - smoothstep(0.65, 1.2, radial + erosion), carved by the cells, growing 0.6 + 0.4 smoothstep(0.1, 0.5, u), coloured 0.5 x tint^2 (scaled to the tint's largest channel) x the tail's darkening: the fat saturated flame around the thin hot core, no gain (refined in `plume_outer_flame_model.py`, NOGAIN) |
+| End-on disc | the samples at the core's radius and d, plus the sheath as the annulus x 1.6 (`Look::disc_sheath`, c18.w) in its deep tint; kappa 1.84 (d 0, the slab law's 1.8 recovered) -> 3.0 (d 1) on the CPU (energy-matched 1.47 with the sheath; past 3.0 the soft cap saturates the centre); the ring x 1 + (max(1, 8 min(1, (L / n) / 2)) - 1) d at the side's width (the sheath fills what read as a dark annulus; the doubled width left no bump on the cyan disc); the cap 1.5 x the side's axis peak from a table by throttle and detail level (the cells x d enter the peak non-linearly); the slab-fit disc removed |
+| Constants | c18 = (core_widen, 4 outer, 1 / disc_ring_width, disc_sheath); c19 and the gain removed; the slab branch removed |
+| Unchanged | the halo's e-fold and fall by d, the far law (`far_low` 0.15 at 2..12 px), the 2 x 4 px floor, the mouth ramp, the side ring, the spill |
+
+Measured (bottle X3; `run_engine_plumes.py` PASS 286/286; before = 8eb0514b with the new cases; images re-dumped, display
+figures before -> after in `plume_look_metrics_compare_out.txt`):
+
+| Gate | Before (8eb0514b) | After (one law) |
+| --- | --- | --- |
+| Side energy per px^2, 40 over 12 px (0.5..1.0; first 0.8), s 1 / 0.5 | 0.364 / 0.414 | 0.533 / 0.589; per px^2 over 12 / 20 / 28 / 34 / 40 / 60 px at s 1: 1.00 / 0.87 / 0.71 / 0.59 / 0.53 / 0.53; totals rise at both throttles |
+| End-on total at d 1 over the d-0 law's at the same size (0.7..0.9, the user's relaxation) | 0.416 | 0.740 |
+| End-on / side (0.7..1.5): 40 / 48 px, 60 / 30 / 0 deg; 20 px (d 0.32) | 0.98-1.01 / 1.04-1.06 / 0.91; 0.88 / 0.92 / 0.81 | 1.09-1.12 / 1.20-1.22 / 1.02; 0.87 / 0.84 / 0.71 |
+| Nozzle 1.0 (40 px, L / n 2): end-on / side, without the ring, the ring's share | 1.375, 0.930, 0.33 | 1.74, 1.33, 0.24 (reported) |
+| Own ship from behind over d 0: total / peak / extent, 1080 (34 px) and 1440 (45 px) | 0.476 / 0.865 / 0.731, 0.407 / 0.834 / 0.708 | 0.702 / 0.971 / 0.652, 0.695 / 0.972 / 0.648 |
+| Core survival (>= 0.9): 15 px moving 4 / 8 px a frame; 40 px | 0.957-1.000; 0.979-1.011 | 0.984-0.997; 0.978-1.010; trail 0 on the dark sky |
+| Hue: axis u 0.5 (>= 0.15); rim (>= 0.5) | 0.157-0.53; 0.53-0.88 | 0.169-0.551; 0.525-0.866 |
+| Radial; lane; gaps; anisotropy (FP16) | 3.76-4.65; 0.40-0.57; 0.47-0.56; 7.5-17.3 | 3.62-6.65; 0.40-0.57; 0.45-0.54; 5.3-13.0 |
+| Disc ring FP16 cyan / red (>= 1.05); hot centre | 1.14-1.17 / 1.43-1.48; 1.00 | 1.21 / 1.76; 1.00 |
+| Mouth (<= 0.85) at s 1 / 0.5 / 0 | 0.65 / 0.67 / 0.76 | 0.69 / 0.70 / 0.76 |
+| Spill 12 px: band median; taper mean / max | 0.1501; 0.0788 / 0.1456 | 0.1502; 0.0788 / 0.1457 (d 0.043, the window to 1.22 n) |
+| Display (images): radial u 0.2 on the s 1 capped bands; body whiteness u 0.5; 10 % half-width / slab law's | 4.3-6.7; 0.36-0.38; 0.61-0.71 | 5.4-8.4; 0.35-0.38; 0.78-0.95 (the restrained preset 0.52) |
+| Display: 02b ring cyan / red (>= 1.05); far dots 2 / 6 px of the slab law's (0.7..1.3); the 40 px plume | 1.11 / 1.46; 1.08 / 1.01; 0.40 | 1.04 FAIL / 1.38; 1.21 / 1.07; 0.55 |
+| Slots (shared + disc + axial) | 800 (190 + 398 + 212) | 921 (195 + 496 + 230), advisory 1,024: the disc's annulus and the sheath add, the slab branch's removal does not pay for them |
+| CPU build 30 / 100 / 1,024 records | 3.40 / 10.94 / 116.3 us | 3.75 / 12.09 / 128.3 us (the cap's lookup only for a drawn disc: 145.8 before that) |
+
+The 40 / 12 px energy gate: 12 px is d 0.043 (the slab law's energy), 40 px is d 1, the thin-core law, whose energy the
+hue and contrast gates bound near 0.6 of the slab law's (item 2); the single law measures 0.533 / 0.589, the model
+0.532 / 0.583. Decision (the coordinator, 2026-10-04): the gate is 0.5..1.0 per px^2, and the total energy rising with
+the size is the hard gate. The structured law carries about 0.55..0.6 of the slab law's energy per px^2, and the hue
+and contrast gates win over the first 0.8, which was an orchestrator estimate, not a user requirement. Energy per px^2
+falls smoothly from 12 to 40 px (no step) and the total rises with the size.
 
 ## Unknown, and what settles it
 
@@ -259,7 +320,8 @@ records, slab = e51872be's images; `plume_look_width_ratio.py` -> `plume_look_wi
   (0.15) so the dot end alone compensates; the law's shape stays.
 - TAA on the finer striations through the three-frame dump; a ghost or a crawl on the 0.22 n across structure would
   show as anisotropy below 3 on the resolved images while the FP16 frame passes.
-- The native slot count of the proposed program (unknown until a Windows build; the 800 gate is checked on both).
+- The native slot count of the proposed program (unknown until a Windows build; since the review fixes the count is
+  logged against an advisory 1,024, not gated).
 - The end-on kappa and cap for the new profile: `plume_end_on_model.py` rerun with the new radial law gives the number;
   the disc's chase floor (0.6) is unaffected.
 - How the look moves: the images are single frames; the lab shows the flow. If the user finds the 4.5 : 1 streaks too

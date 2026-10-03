@@ -5,30 +5,34 @@
 // Look::nozzle_width x value): x along the axis from the nozzle, y across, r = |y|; u = x / L with L the pulsed length
 // (the CPU pulses it per nozzle and frame). The constants come from engine_plumes_core.h Look through c3..c15 (one block,
 // uploaded per frame).
-// Body (the axial quad; the revised law of docs/architecture/engine-exhaust-look-critique.md section 3, "Implemented"):
-// width w(u) (the mouth bulge, a near-cylinder tapering towards the tail, the tail narrowing), radial = r / w; the
-// streak field S2 = fbm(2.2 p + (5, 2, 1)) - 0.4375, p = ((x - phase) 1.0, 4.5 y, seed + 0.7 t) (aspect 4.5 : 1 along
-// the axis, advected by the nozzle's flow phase: shape.w, the frame's accumulator x the nozzle's flow_factor,
-// engine_plumes_core.h nozzle_phase, so the world speed is one from value 500 up and capitals crawl). A peaked radial
-// profile 0.08 + 0.92 exp(-(radial / 0.32)^2) plus the outer sheath 4 outer m (1 - m), m = smoothstep(0.25, 0.9, radial)
-// (the tuning pass: the darker tint's layer carrying the visible width; c18.y, side view only) with a thin hot core
-// exp(-(radial / (0.45 core))^2) (x (1 + 0.6 core),
-// the core's boost cooling to half over smoothstep(0.2, 0.8, u): the axis at u 0.5 keeps its hue under AgX);
-// the edge 1 - smoothstep(0.45, 1, radial + erosion), the erosion from the streaks growing along the plume
-// (erode 1.6 S2 (0.6 + 0.8 u): tongues lick the outline, the tail frays); the tail's fade on u + tongue S2 (the end
-// breaks into tongues); shock cells that carve the body, 1 - a (1 - c), c = (0.5 + 0.5 cos(2 pi u / period))^3,
-// a = gap exp(-5 cfade u) smoothstep(0, period / 2, u) (1 - smoothstep(0.3, 0.9, radial)) s (crests at the body's
-// level, dark gaps; ramped in over the first half period); the turbulence 1 + 2.2 turb S2 (0.4 + 0.6 radial)
-// (a steady core, a boiling sheath); the heat in the core and the first 0.3 L only; the colour core -> tint ->
-// darker tint: the head colour (peak.rgb) to the tint over smoothstep(0.2, 0.5, u), the tint darkening to 0.6 of
-// itself over smoothstep(0.6, 1, u), across to 0.5 of the tint over smoothstep(0.25, 0.9, radial), white by the heat;
-// the mouth ramp (after flight D): the body x (1 - dip (1 - smoothstep(0, ramp, u))), c16, so the nozzle reads no
+// Body (the axial quad; one law at every detail level d, docs/architecture/engine-exhaust-look-critique.md section 6,
+// "One law"): width w(u) (the mouth bulge, a near-cylinder tapering towards the tail, the tail narrowing), radial = r / w;
+// the streak field S2 = fbm(2.2 p + (5, 2, 1)) - 0.4375, p = ((x - phase) 1.0, 4.5 y, seed + 0.7 t) (aspect 4.5 : 1
+// along the axis, advected by the nozzle's flow phase: shape.w, the frame's accumulator x the nozzle's flow_factor,
+// engine_plumes_core.h nozzle_phase, so the world speed is one from value 500 up and capitals crawl). The detail level
+// d (tint.a, the CPU's smoothstep(8, 40) of the projected nozzle width in px) sets the core's radius, x k = lerp(k0, 1,
+// d) (c18.x, Look::core_widen 3.74: at d 0 a smooth soft profile of the slab law's width and energy, a plume a few
+// pixels wide stays TAA-stable when it moves and the far dots keep their brightness), and the structure's amplitudes,
+// x d: the cells, the streak turbulence and erosion, the tongues, the rim and tail darkening, the outer sheath; the
+// head colour runs from the mean tint at 0 to the two-tone head at 1. The core: a peaked radial profile
+// 0.08 + 0.92 exp(-(radial / (0.32 k))^2) with a hot core exp(-(radial / (0.45 core k))^2) (x (1 + 0.6 hot), the boost
+// cooling to half over smoothstep(0.2, 0.8, u): the axis at u 0.5 keeps its hue under AgX), inside the edge
+// 1 - smoothstep(0.55 - 0.1 d, 1, radial + erosion), the erosion from the streaks growing along the plume (1.6 erode S2
+// (0.6 + 0.8 u) d: tongues lick the outline, the tail frays); the tail's fade on u + tongue max(S2, 0) d (the end breaks
+// into tongues that only pull the fade earlier, so the fade is complete at the tip); shock cells that carve the body,
+// 1 - a (1 - c), c = (0.5 + 0.5 cos(2 pi u / period))^3, a = gap exp(-5 cfade u) smoothstep(0, period / 2, u)
+// (1 - smoothstep(0.3, 0.9, radial)) s d (crests at the body's level, dark gaps; ramped in over the first half period);
+// the turbulence 1 + 2.2 turb S2 (0.4 + 0.6 radial) d (a steady core, a boiling sheath); the heat in the core and the
+// first 0.3 L only; the colour core -> tint -> darker tint: the head colour to the tint over smoothstep(0.2, 0.5, u), the
+// tint darkening to 0.6 of itself over smoothstep(0.6, 1, u) (x d), across to 0.5 of the tint over smoothstep(0.25, 0.9,
+// radial) (x d), white by the heat. The outer sheath (the fat saturated flame around the thin hot core; c18.y = 4
+// outer): 4 outer m (1 - m), m = smoothstep(0.1, 1.2, radial), inside its own edge 1 - smoothstep(0.65, 1.2, radial +
+// erosion), carved by the cells, growing along the plume 0.6 + 0.4 smoothstep(0.1, 0.5, u), x d, coloured by the darker
+// saturated tint 0.5 tint^2 (scaled to the tint's largest channel) x the tail's darkening.
+// The mouth ramp (after flight D): the body x (1 - dip (1 - smoothstep(0, ramp, u))), c16, so the nozzle reads no
 // brighter than 0.85 of the body's peak at any throttle (the disc's samples carry the same factor in their tail column).
-// Detail level (tint.a, the CPU's smoothstep(16, 40) of the projected nozzle width in px): the body is
-// lerp(slab, revised, detail), the slab the previous law's smooth radial shape and cosine cells without streaks (a plume a few
-// pixels wide stays TAA-stable when it moves and keeps the far dots' brightness), and the colour's rim and tail stops,
-// the tongues scale with it; the halo's falloff along runs from the previous law's exp(-2.2 u) to exp(-4 u) (the CPU
-// sets its e-fold and the disc's halo gain by the same level). The turbulence stays at every level.
+// The halo's falloff along runs from the previous law's exp(-2.2 u) at d 0 to exp(-4 u) at 1 (the CPU sets its e-fold
+// and the disc's halo gain by the same level).
 // Halo: exp(-d / sigma) x exp(-4 u), d the distance to the segment nozzle..tip, sigma the nozzle's (0.32 halo, the
 // preset's), a glow at the mouth, tapered to 0 over the last 0.5 sigma before the quad's reach (`look.z` sigma).
 // Nozzle ring: a thin ring at the mouth, its Gaussian widened to the pixel footprint (energy kept).
@@ -37,13 +41,16 @@
 // the disc is drawn the axial quad hands its mouth over to it: x (1 - disc weight x (1 - smoothstep(0.3, 0.8, d))), d the
 // screen-plane distance from the nozzle in nozzle widths.
 // Disc (kind 1, the camera-facing nozzle disc; after flight C the end-on plume): the body integrated along the axis, the
-// mean over the 8 samples u_k of c8..c15 (1 / w, tail, carve, heat) of the law at radial = rho / w_k (the hot centre,
-// the peaked body, the cells carving rings in radial 0.3..0.9), its colour the samples' three stops weighted by their
-// radiance; its streaks in polar form, the direction on a circle of radius 2.5 in the noise (seamless: no atan2 cut)
+// mean over the 8 samples u_k of c8..c15 (1 / w, tail, carve, heat) of the law at radial = rho / w_k and the detail
+// level (the hot centre, the peaked body, the cells carving rings in radial 0.3..0.9, all at the core's radius x k; the
+// outer sheath as the end-on annulus around the hot centre, in its deep tint), its colour the samples' three stops and
+// the sheath's tint weighted by their radiance; its streaks in polar form, the direction on a circle of radius 2.5 in the noise (seamless: no atan2 cut)
 // and 4.5 rho - 1.6 phase radially (spokes scrolling outward, the flow along the line of sight), the erosion at the
-// along-mean growth 1, the turbulence at radial 2 rho; the halo radially about the nozzle; the ring (its end-on
-// radiance x Look::disc_ring, the CPU's; its Gaussian Look::disc_ring_width x the side's, c18.z); the total soft-capped, cap x (1 - exp(-total / cap)) (view.w; the CPU set the
-// radiances and the cap, engine_plumes_core.h build_nozzle).
+// along-mean growth 1 and the turbulence at radial 2 rho, both x d; the halo radially about the nozzle; the ring (its
+// end-on radiance the CPU's, 1 + (max(1, disc_ring min(1, (L / n) / 2)) - 1) d x the side's; its Gaussian
+// 1 + (disc_ring_width - 1) d x the side's, c18.z the inverse width at 1: a detail-0 disc keeps the previous law's
+// ring); the total soft-capped, cap x (1 - exp(-total / cap)) (view.w; the CPU set the radiances, kappa by the detail
+// level, and the cap, engine_plumes_core.h build_nozzle).
 // Soft occlusion against the completed lane (RT2 at s0, point sampled at the pixel): .b the view depth on the
 // four-channel lane, z/w in .r inverted with m32 / (d - m22) on the R32F lane; .r outside [0, 1] (the sentinel) = no
 // occluder; a non-finite or non-positive depth occludes. The plume's depth is that of the nearest axis point (the
@@ -67,8 +74,9 @@ float4 halo_k : register(c7);     // hand-over inner, outer (nozzle widths), the
 float4 disc_k[8] : register(c8);  // the disc's samples u_k = (k + 0.5) / 8: 1 / w, tail (with the mouth ramp), carve a (1 - c) (without the throttle), heat
 float4 mouth_k : register(c16);   // the mouth ramp: dip, end (x L); the spill: glow_through, 1 / spill_depth (x value)
 float4 spill_k : register(c17);   // the spill's inner and outer reach (nozzle widths, screen plane), 1 / spill_depth_max, the tail's tongues
-float4 detail_k : register(c18);  // the previous law's cosine cell amplitude (shock) at the detail level 0, the outer sheath's
-                                  // weight (4 outer), the end-on ring's radial scale (1 / disc_ring_width), unused
+float4 detail_k : register(c18);  // the core's radius at the detail level 0 (x the revised law's: Look::core_widen), the outer
+                                  // sheath's weight (4 outer), the end-on ring's radial scale at detail 1 (1 / disc_ring_width),
+                                  // the end-on annulus's weight (Look::disc_sheath, x the sheath's in the disc's samples)
 struct Input {
     float4 local : TEXCOORD0;     // x, y (world), L (pulsed, world; the disc: the ring's radiance), n (nozzle width, world)
     float4 shape : TEXCOORD1;     // halo sigma0 (nozzle widths), value, occlusion bias, the nozzle's flow phase (nozzle widths)
@@ -126,10 +134,14 @@ float4 main(Input i) : COLOR0 {
     const float aa = fwidth(q.y);
     const float s2 = core_k.w + 0.25 * aa * aa;
     const float ring_gain = sqrt(core_k.w / s2);
-    // The detail level (the CPU's, by the projected nozzle width): 0 the slab law's smooth radial shape, 1 the revised
-    // law's peaked profile and structure.
+    // The detail level (the CPU's, by the projected nozzle width): 0 the smooth soft profile of the slab law's width and
+    // energy, 1 the thin hot core, the structure and the outer sheath; one law between.
     const float3 tint = i.tint.rgb;
     const float detail = i.tint.a;
+    // The detail level's terms: the core's radius x kc (its inverse ik), the head colour from the mean tint at 0.
+    const float kc = lerp(detail_k.x, 1.0, detail);
+    const float ik = 1.0 / kc;
+    const float3 head = lerp(tint, i.peak.rgb, detail);
     const float3 ring_colour = lerp(tint, i.fog.rgb * float3(1.0, 0.95, 0.85), 0.6);
     const float3 white = i.fog.rgb * float3(1.0, 0.97, 0.9);
     // The lane's soft occlusion.
@@ -152,43 +164,49 @@ float4 main(Input i) : COLOR0 {
         // The body integrated along the axis: the law at the 8 samples; its colour accumulated per sample as the head
         // colour's, the tint's and white's weights (A, M, H; the along stops smoothstep(0.2, 0.5, u_k) and
         // 1 - 0.4 smoothstep(0.6, 1, u_k) are constants per sample).
-        const float erosion = fire_k.y * S2;
-        const float turbulence = 1.0 + fire_k.z * S2 * (0.4 + 0.6 * saturate(2.0 * rho));
-        float B = 0.0, H = 0.0, A = 0.0, M = 0.0;
+        const float erosion = fire_k.y * detail * S2;
+        const float turbulence = 1.0 + fire_k.z * detail * S2 * (0.4 + 0.6 * saturate(2.0 * rho));
+        const float edge_in = 0.55 - 0.1 * detail;
+        // Per-sample products hoisted: rho x the core's two inverse radii, the cells' depth x s d, the darkening x d.
+        const float rho_c = rho * core_k.y * ik, rho_p = rho * (ik / 0.32), sd = s * detail, dk = 0.4 * detail;
+        const float sheath = detail * detail_k.y * detail_k.w; // the outer sheath x d x the annulus's own weight: the end-on annulus
+        float B = 0.0, H = 0.0, A = 0.0, M = 0.0, O = 0.0, D = 0.0;
         [unroll] for (int k = 0; k < 8; ++k) {
             const float4 d = disc_k[k];
             const float uk = (k + 0.5) / 8.0;
             const float radial = rho * d.x;
-            const float edge = 1.0 - smoothstep(0.45, 1.0, radial + erosion);
-            const float rc = radial * core_k.y, rp = radial * (1.0 / 0.32);
+            const float edge = 1.0 - smoothstep(edge_in, 1.0, radial + erosion);
+            const float rc = rho_c * d.x, rp = rho_p * d.x;
             const float hot = exp(-rc * rc);
-            const float b = d.y * edge * (1.0 - d.z * s * (1.0 - smoothstep(0.3, 0.9, radial))) * (0.08 + 0.92 * exp(-rp * rp)) *
-                            (1.0 + 0.6 * hot * (1.0 - 0.5 * smoothstep(0.2, 0.8, uk)));
+            const float carve = 1.0 - d.z * sd * (1.0 - smoothstep(0.3, 0.9, radial));
+            const float b = d.y * edge * carve * (0.08 + 0.92 * exp(-rp * rp)) * (1.0 + 0.6 * hot * (1.0 - 0.5 * smoothstep(0.2, 0.8, uk)));
+            // The outer sheath at this sample (its growth along the plume a constant per sample), coloured by the deep tint.
+            const float ms = smoothstep(0.1, 1.2, radial);
+            const float o = d.y * sheath * ms * (1.0 - ms) * (1.0 - smoothstep(0.65, 1.2, radial + erosion)) * carve *
+                            (0.6 + 0.4 * smoothstep(0.1, 0.5, uk));
+            O += o;
+            D += o * 0.5 * (1.0 - dk * smoothstep(0.6, 1.0, uk));
             const float bh = b * d.w * hot;
-            const float rim = smoothstep(0.25, 0.9, radial), g = smoothstep(0.2, 0.5, uk);
+            const float rim = detail * smoothstep(0.25, 0.9, radial), g = smoothstep(0.2, 0.5, uk);
             const float bc = (b - bh) * (1.0 - rim);
             B += b;
             H += bh;
             A += bc * (1.0 - g);
-            M += bc * g * (1.0 - 0.4 * smoothstep(0.6, 1.0, uk)) + (b - bh) * 0.5 * rim;
+            M += bc * g * (1.0 - dk * smoothstep(0.6, 1.0, uk)) + (b - bh) * 0.5 * rim;
         }
-        // As the detail level falls below 1 the slab law's integrated profile takes over: a fit of the previous law's 8-sample mean at
-        // s = 1 (plume_slab_disc_fit.py, rho scaled by the bulge), x 1.8 / 4.13 (its kappa over the current one: 0.448 x 1.8 / 4.13); its
-        // colour the revised samples' mean hue.
-        const float rs = rho * (0.575 / shape_k.x);
-        const float slab = 0.1953 * (1.0 - smoothstep(0.24, 0.52, rs)) * (1.0 + 0.7 * (1.0 - smoothstep(0.0, 0.3, rs)));
-        const float body = i.view.y * turbulence * soft_body * lerp(slab, 0.125 * B, detail);
-        // The hue: the revised samples' three stops at detail 1; at 0 the head and the tint halved, white by the heat (no
-        // rim or tail darkening, as the axial quad's slab).
-        const float inv = B > 1e-6 ? 1.0 / B : 0.0;
-        const float3 hue = lerp(lerp(lerp(i.peak.rgb, tint, 0.5), white, H * inv), B > 1e-6 ? (A * i.peak.rgb + M * tint + H * white) * inv : tint,
-                                detail);
+        // The radiance of the core and the sheath; the hue: the samples' three stops (the head, the tint with its
+        // darkening, white by the heat) and the sheath's deep tint.
+        const float3 t2 = tint * tint;
+        const float3 deep = t2 * (max(max(tint.r, tint.g), tint.b) / max(max(max(t2.r, t2.g), t2.b), 1e-6));
+        const float BO = B + O;
+        const float body = i.view.y * turbulence * soft_body * 0.125 * BO;
+        const float3 hue = BO > 1e-6 ? (A * head + M * tint + H * white + D * deep) / BO : tint;
         const float3 coloured = body * hue;
         const float dn = rho / max(i.shape.x, 1e-4);
         const float halo = i.view.z * exp(-dn) * saturate(2.0 * (look.z - dn)) * soft_halo;
-        // The end-on ring: its Gaussian disc_ring_width x the side's (rr x its inverse), a glowing rim that reaches into
-        // the hot centre instead of a drawn outline over a dark annulus.
-        const float rr = (rho - core_k.z) * detail_k.z;
+        // The end-on ring: its Gaussian disc_ring_width x the side's at the detail level 1 (rr x its inverse), a glowing
+        // rim that reaches into the hot centre instead of a drawn outline over a dark annulus; the side's width at 0.
+        const float rr = (rho - core_k.z) * lerp(1.0, detail_k.z, detail);
         const float ring = i.local.z * ring_gain * exp(-rr * rr / (2.0 * s2)) * soft_body;
         const float4 mouth = soft_max(ring, ring_colour, halo, tint);
         const float total = body + mouth.w;
@@ -204,30 +222,30 @@ float4 main(Input i) : COLOR0 {
         const float b = shape_k.x * (1.0 - 0.55 * exp(-9.0 * uc)) * (1.0 + 0.35 * smoothstep(0.0, 0.25, uc) * exp(-4.0 * uc));
         const float w = min(shape_k.x + shape_k.y * uc, b + shape_k.z) * max(1.0 - shape_k.w * smoothstep(0.6, 1.0, uc), 0.05);
         const float radial = r / w;
-        const float edge = 1.0 - smoothstep(0.45, 1.0, radial + fire_k.y * S2 * (0.6 + 0.8 * uc));
-        const float tail = (1.0 - smoothstep(fire_k.w, 1.0, u + spill_k.w * S2 * detail)) * exp(-u * cell_k.w) *
+        const float erosion = fire_k.y * detail * S2 * (0.6 + 0.8 * uc);
+        const float edge = 1.0 - smoothstep(0.55 - 0.1 * detail, 1.0, radial + erosion);
+        const float tail = (1.0 - smoothstep(fire_k.w, 1.0, u + spill_k.w * max(S2, 0.0) * detail)) * exp(-u * cell_k.w) *
                            (1.0 - mouth_k.x * (1.0 - smoothstep(0.0, mouth_k.y, u)));
         const float inside = (u >= 0.0 && u <= 1.0) ? 1.0 : 0.0;
         const float crest = 0.5 + 0.5 * cos(cell_k.y * u);
-        const float envelope = exp(-u * cell_k.z) * smoothstep(0.0, 1.0, u * fire_k.x) * (1.0 - smoothstep(0.3, 0.9, radial)) * s;
+        const float envelope = exp(-u * cell_k.z) * smoothstep(0.0, 1.0, u * fire_k.x) * (1.0 - smoothstep(0.3, 0.9, radial)) * s * detail;
         const float cells = 1.0 - cell_k.x * envelope * (1.0 - crest * crest * crest);
-        const float rc = radial * core_k.y, rp = radial * (1.0 / 0.32);
+        const float rc = radial * core_k.y * ik, rp = radial * (ik / 0.32);
         const float hot = exp(-rc * rc);
-        const float turbulence = 1.0 + fire_k.z * S2 * (0.4 + 0.6 * saturate(radial));
+        const float turbulence = 1.0 + fire_k.z * detail * S2 * (0.4 + 0.6 * saturate(radial));
         const float heat = core_k.x * hot * (1.0 - smoothstep(0.05, 0.3, u));
-        const float3 tone = lerp(i.peak.rgb, tint * (1.0 - 0.4 * detail * smoothstep(0.6, 1.0, uc)), smoothstep(0.2, 0.5, uc));
+        const float darken = 1.0 - 0.4 * detail * smoothstep(0.6, 1.0, uc);
+        const float3 tone = lerp(head, tint * darken, smoothstep(0.2, 0.5, uc));
         const float rim = smoothstep(0.25, 0.9, radial);
         const float3 colour = lerp(lerp(tone, 0.5 * tint, detail * rim), white, heat);
-        // As the detail level falls below 1 the previous law takes over: its radial shape (the edge 0.55..1, the core
-        // 1 + 0.6 (1 - smoothstep(0, 1.4 core, radial))) and its cosine cells 1 + shock cos(2 pi u / period) on the
-        // carving's envelope (the fade, the half-period ramp, the radial mask 0.3..0.9, s), without the streaks.
-        const float slab = (1.0 - smoothstep(0.55, 1.0, radial)) * (1.0 + 0.6 * (1.0 - smoothstep(0.0, 1.0, radial * core_k.y * 0.3214286))) *
-                           (1.0 + detail_k.x * envelope * (2.0 * crest - 1.0));
-        // The outer sheath (the tuning pass): the darker tint's layer over the same window as its colour, weight
-        // detail_k.y, outside the lane and the hot core (0.06 of it at radial 0.35), so the visible width follows the
-        // bulge and taper while the axis peak and the carved lane stay.
-        const float peaked = edge * cells * (0.08 + 0.92 * exp(-rp * rp) + detail_k.y * rim * (1.0 - rim)) * (1.0 + 0.6 * hot * (1.0 - 0.5 * smoothstep(0.2, 0.8, uc)));
-        const float body = i.view.y * tail * inside * lerp(slab, peaked, detail) * turbulence * soft_body;
+        const float core = edge * cells * (0.08 + 0.92 * exp(-rp * rp)) * (1.0 + 0.6 * hot * (1.0 - 0.5 * smoothstep(0.2, 0.8, uc)));
+        // The outer sheath: the fat saturated flame around the thin hot core, x d (c18.y = 4 outer).
+        const float m = smoothstep(0.1, 1.2, radial);
+        const float outer = detail * detail_k.y * m * (1.0 - m) * (1.0 - smoothstep(0.65, 1.2, radial + erosion)) * cells *
+                            (0.6 + 0.4 * smoothstep(0.1, 0.5, uc));
+        const float3 t2 = tint * tint;
+        const float3 deep = t2 * (max(max(tint.r, tint.g), tint.b) / max(max(max(t2.r, t2.g), t2.b), 1e-6));
+        const float body = i.view.y * tail * inside * turbulence * soft_body;
         // Halo about the segment nozzle..tip, the nozzle's sigma; the window saturate((reach - d) / (0.5 sigma)) only
         // tapers its outer part.
         const float du = x - clamp(x, 0.0, L);
@@ -239,7 +257,7 @@ float4 main(Input i) : COLOR0 {
         // The mouth's hand-over to the disc: inside the disc's footprint (the screen-plane distance from the nozzle,
         // (x sin(view), y)) the axial quad gives way by the disc's weight, so the two draws do not stack at the mouth.
         const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen));
-        result = (colour * body + soft_max(ring, ring_colour, halo, tint).rgb) * handover;
+        result = ((colour * core + 0.5 * darken * deep * outer) * body + soft_max(ring, ring_colour, halo, tint).rgb) * handover;
     }
     return float4(max(result, 0.0), 0.0);
 }

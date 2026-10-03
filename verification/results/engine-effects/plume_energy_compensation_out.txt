@@ -1,0 +1,31 @@
+# g(s): the revised body's gain so the side total at detail 1 = 0.9 x the slab law's (body + halo)
+s 0.0 L/n 1.0: slab body 0.508 halo 0.061 total 0.568; revised body 0.255 halo 0.023 total 0.278 (ratio 0.489); g = 1.915
+s 1.0 L/n 4.0: slab body 6.800 halo 0.432 total 7.233; revised body 2.690 halo 0.166 total 2.856 (ratio 0.395); g = 2.358
+# g(s) = 1.91 + (2.36 - 1.91) s
+  check s 0.0 L/n 1.0: g 1.910, compensated side total / slab 0.898 (uncompensated 0.489)
+  check s 1.0 L/n 4.0: g 2.360, compensated side total / slab 0.901 (uncompensated 0.395)
+  check s 0.5 L/n 2.25: g 2.135, compensated side total / slab 0.917 (uncompensated 0.444)
+  check s 1.0 L/n 2.0: g 2.360, compensated side total / slab 0.891 (uncompensated 0.394)
+  check s 1.0 L/n 8.0: g 2.360, compensated side total / slab 0.905 (uncompensated 0.395)
+
+# the end-on disc: soft-capped total at detail 1 over the slab law's (body, ring, halo before the cap); kappa x boost, the ring x 3 x g (ring_gain g) or x 3 (ring_gain 1)
+ring x g False, boost 1.0: s1.0/Ln4.0 0.815  s1.0/Ln2.0 0.918  s0.5/Ln2.25 0.901  s0.0/Ln1.0 1.132  s1.0/Ln8.0 0.775
+ring x g False, boost 1.1: s1.0/Ln4.0 0.848  s1.0/Ln2.0 0.960  s0.5/Ln2.25 0.939  s0.0/Ln1.0 1.180  s1.0/Ln8.0 0.800
+ring x g False, boost 1.2: s1.0/Ln4.0 0.879  s1.0/Ln2.0 1.000  s0.5/Ln2.25 0.975  s0.0/Ln1.0 1.226  s1.0/Ln8.0 0.823
+ring x g False, boost 1.3: s1.0/Ln4.0 0.908  s1.0/Ln2.0 1.037  s0.5/Ln2.25 1.010  s0.0/Ln1.0 1.270  s1.0/Ln8.0 0.845
+ring x g False, boost 1.4: s1.0/Ln4.0 0.935  s1.0/Ln2.0 1.073  s0.5/Ln2.25 1.042  s0.0/Ln1.0 1.312  s1.0/Ln8.0 0.865
+ring x g  True, boost 1.0: s1.0/Ln4.0 1.010  s1.0/Ln2.0 1.250  s0.5/Ln2.25 1.159  s0.0/Ln1.0 1.535  s1.0/Ln8.0 0.880
+ring x g  True, boost 1.1: s1.0/Ln4.0 1.042  s1.0/Ln2.0 1.292  s0.5/Ln2.25 1.197  s0.0/Ln1.0 1.583  s1.0/Ln8.0 0.905
+ring x g  True, boost 1.2: s1.0/Ln4.0 1.073  s1.0/Ln2.0 1.331  s0.5/Ln2.25 1.232  s0.0/Ln1.0 1.628  s1.0/Ln8.0 0.928
+ring x g  True, boost 1.3: s1.0/Ln4.0 1.101  s1.0/Ln2.0 1.368  s0.5/Ln2.25 1.266  s0.0/Ln1.0 1.672  s1.0/Ln8.0 0.949
+ring x g  True, boost 1.4: s1.0/Ln4.0 1.128  s1.0/Ln2.0 1.404  s0.5/Ln2.25 1.299  s0.0/Ln1.0 1.714  s1.0/Ln8.0 0.969
+
+# s 1 L/n 4 before the compensation: end-on total tuned / slab 0.458 (body 2.69 ring 0.97 halo 1.04 against 6.80 / 0.16 / 2.70)
+# L/n 2 (nozzle 1.0) before: end-on total / side total 1.356; end-on ring energy / end-on body energy 0.720 (the slab law's 0.047)
+
+# the ring gate on the capped fighter disc (detail 1, s 1, L/n 4; FP16 linear / display): ring bump, centre / max
+  ring x 3 x 1.00, boost 1.0: argon-blue 1.000 / 1.000 (centre 1.00 / 1.00); split-red 1.092 / 1.085 (centre 1.00 / 1.00)
+  ring x 3 x 1.00, boost 1.3: argon-blue 1.000 / 1.000 (centre 1.00 / 1.00); split-red 1.000 / 1.000 (centre 1.00 / 1.00)
+  ring x 3 x 2.36, boost 1.0: argon-blue 1.135 / 1.059 (centre 1.00 / 1.00); split-red 1.283 / 1.143 (centre 1.00 / 1.00)
+  ring x 3 x 2.36, boost 1.3: argon-blue 1.068 / 1.030 (centre 1.00 / 1.00); split-red 1.183 / 1.095 (centre 1.00 / 1.00)
+  uncompensated: argon-blue 1.089 / 1.058 (centre 1.00 / 1.00); split-red 1.373 / 1.288 (centre 1.00 / 1.00)
