@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor` (2026-10-03; all three at the end of this note) |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor`, `engine_light` (2026-10-03; all four at the end of this note) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player
@@ -618,4 +618,15 @@ Default **1** (the anchors as chosen); **0** turns the floor off. One plain deci
 point; no sign, exponent or padding); anything else is refused to 1 with `floor_status=invalid_setting` on the
 `engine_effects_plumes` row, which also prints `floor=` and `floor_setting=`. Read once at load and only with
 `plumes`. The launcher sends it only when given (finite 0..3, as a plain decimal); an inherited shell value is
+dropped, and it is refused under `--vanilla`.
+
+## `engine_light` (2026-10-03, engine light on the hull)
+
+Key `engine_light`, environment `X3M_ENGINE_LIGHT`, launcher `--engine-light on|off`
+([engine-light.md](engine-light.md)). Under `engine_effects = plumes` each ship's brightest main engine lights the hull
+plates around its nozzles: a point light 0.5 x the jet's value behind the nozzle, radius 3 x value, the plume's tint x
+its throttle intensity, through engine-light twins of the original-shading hull programs. Default **on**; `off` creates
+no twin and uploads nothing (every program is today's). Exactly `on` or `off` (lowercase); anything else is refused to
+on with `status=invalid_setting` on the `engine_light_mode` row. Read once per device at attach and only with
+`plumes`; not applied under linear materials. The launcher sends it only when given; an inherited shell value is
 dropped, and it is refused under `--vanilla`.

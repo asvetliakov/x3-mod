@@ -39,6 +39,7 @@
 #include "../renderer/sun_occlusion_pass.h"
 #include "lens_flare_gain.h"
 #include "engine_effects_core.h"
+#include "engine_light_core.h"
 #include "../renderer/engine_plumes_pass.h"
 #include "../renderer/engine_ribbons_pass.h"
 #include "fog_card_policy.h"
@@ -163,6 +164,10 @@ struct MotionRoute {
                                 // route).
     bool hull_lightmap_widen = false; // The widened light-map variant (per-draw texel footprint lanes in c217.yz)
                                       // selected instead of the gained one.
+    // Engine light (motion_output_engine_light_inc.h): the scope node's parent (node+0x18, from the block sample_scope
+    // read; 0 unknown), whether the node carries a light this frame (constants ready) and whether its twin was bound.
+    std::uint32_t scope_parent = 0;
+    bool engine_light_want = false, engine_light = false;
     bool widen_filter_set = false; // The light-map stage's MINFILTER raised to ANISOTROPIC for this widened draw (undo
                                    // restores widen_filter_saved).
     std::uint8_t widen_filter_stage = 0;
@@ -1195,6 +1200,10 @@ public:
     // Ctrl+Alt+F6: the next preset (restrained -> default -> strong -> restrained), one engine_plumes_preset row; the
     // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
     int engine_plumes_cycle_preset() noexcept;
+    // Engine light on the hull (motion_output_engine_light_inc.h; docs/architecture/engine-light.md): plumes = the
+    // plume stage is requested (X3M_ENGINE_EFFECTS=plumes with the suppression on); reads X3M_ENGINE_LIGHT=on|off
+    // (default on) once, after the material options, and allocates the tables (about 0.4 MB) when it applies.
+    void configure_engine_light(bool plumes) noexcept;
     // Small-prop cull (X3M_CULL_SMALL_PROPS=on with X3M_CULL_SMALL_PARTS_PX, cull_small_props_core.h): process-start
     // values validated by the caller; off = one bool test per scene draw.
     void configure_cull_small_props(bool on, float px) noexcept {
@@ -1480,6 +1489,9 @@ private:
         IDirect3DPixelShader9* sun_original_lightmap_widen_variant = nullptr;
         IDirect3DPixelShader9* hull_lightmap_widen_variant = nullptr;
         std::uint8_t hull_lightmap_stage = 0; // the light-map sampler stage (2/3) of a widened program; 0 = none
+        // Engine light twins (motion_output_engine_light_inc.h), one per original-shading kind: the plain motion
+        // variant, fill, gained, gained widened, share, share gained, share gained widened; null = none.
+        IDirect3DPixelShader9* engine_twin[7]{};
         // XT DEFAULT is pair-specific: the shared VS retains
         // its generic objects for every earlier exact pair.
         IUnknown* xt_default_ordinary_variant = nullptr;
@@ -1562,6 +1574,14 @@ private:
         IDirect3DPixelShader9* ps_hull_lightmap_widen = nullptr;
         IDirect3DPixelShader9* ps_sun_original_lightmap_widen = nullptr;
         std::uint8_t hull_lightmap_stage = 0;
+        // Engine light: the bound PS's twins (ShaderEntry::engine_twin), the pair predicate and the bound VS's row
+        // layout (refreshed with the pair identities), and the world / view-inverse rows of both layouts as last set
+        // (c7-9, c13-15, c28-30, c34-36; kept while the light is configured; bit r = row r known).
+        IDirect3DPixelShader9* engine_twin[7]{};
+        bool engine_light_pair = false;
+        engine_light::core::VertexLayout engine_layout{};
+        float engine_rows[4][12]{};
+        std::uint8_t engine_rows_known[4]{};
         IDirect3DPixelShader9* ps_screen_variant = nullptr;
         // Exact SM1 screen pair (screen_emission_admission.h) and its created
         // packed producer; shader eligibility only, admission is per draw.
@@ -1735,6 +1755,34 @@ private:
     unsigned engine_radius_next_ = 0;                           // the slot the next miss replaces (oldest first)
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
+    // Engine light (motion_output_engine_light_inc.h): the request, the tables (allocated at configure), the twins'
+    // kinds and the per-draw steps.
+    static constexpr unsigned engine_light_kinds = 7;
+    static constexpr unsigned engine_light_world_bases[4] = {7, 13, 28, 34}; // both VS layouts' world / view-inverse rows
+    struct EngineLightState {
+        engine_light::core::ShipTable ships;
+        engine_light::core::NodeTable nodes;
+        engine_light::core::DrawLog log;
+        engine_light::core::FrameCounts counts{};
+        std::uint64_t built_frame = ~std::uint64_t(0);
+        unsigned twins = 0; // created on this device (session count)
+        float constants[12]{};
+    };
+    bool engine_light_requested_ = false;
+    EngineLightState* engine_light_ = nullptr;
+    void engine_light_create_twins(ShaderEntry& entry, const void* code, UINT bytes, std::uint64_t hash) noexcept;
+    void engine_light_release(ShaderEntry& entry) noexcept;
+    IDirect3DPixelShader9* engine_light_twin(IDirect3DPixelShader9* ps) const noexcept;
+    void engine_light_shadow_rows(UINT start, const float* data, UINT count) noexcept;
+    const float* engine_light_rows(unsigned base) const noexcept;
+    void refresh_engine_light_pair() noexcept;
+    void engine_light_frame() noexcept;
+    void engine_light_prepare(MotionRoute& route, bool material) noexcept;
+    HRESULT engine_light_upload() noexcept;
+    void engine_light_clear_twins() noexcept {
+        for (auto*& twin : shadow_.engine_twin) twin = nullptr;
+        shadow_.engine_light_pair = false;
+    }
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one
     // engine_plumes_state row per change of the armed state or its reason; refused at attach until Reset; a failed
     // stage frame disarms 64 frames with one engine_plumes_failed row; the third consecutive failure refuses until

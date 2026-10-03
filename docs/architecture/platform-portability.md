@@ -840,6 +840,15 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-10-03: engine light on the hull (`engine_light`, default on with `--engine-effects plumes`)
+
+The engine light ([engine-light.md](engine-light.md)) is ps_3_0 arithmetic inside the existing original-shading
+variants (twins created with `CreatePixelShader` at registration), one `SetPixelShaderConstantF(200, ..., 3)` per lit
+draw in the route's apply chain, and the world / view-inverse rows from the `SetVertexShaderConstantF` shadow
+(`GetVertexShaderConstantF` at the shadow's resync). No new resource, state, capability or Wine export; the tables are
+CPU state. Cross-compiled (0 warnings, x87 PASS); the detached GPU fixture passed under Wine on bottle X3
+([engine-light.md](../verification/engine-light.md)); native Windows execution unverified.
+
 ## 2026-10-01: engine ribbons and the plumes' fog, phase 3 (`--engine-effects plumes`)
 
 The ribbon draw ([engine-effects-modern.md](engine-effects-modern.md) sections 3-5) is the plume stage's second

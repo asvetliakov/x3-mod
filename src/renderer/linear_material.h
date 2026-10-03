@@ -227,6 +227,39 @@ LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(
     const std::uint32_t* original, std::size_t words, float fill, float gain, std::vector<std::uint32_t>& output,
     bool current_depth, bool& fill_applied, bool& gain_applied, bool dynamic = false,
     const HullLightmapWiden* widen = nullptr, bool* widen_applied = nullptr) noexcept;
+// Engine light on the hull (docs/architecture/engine-light.md): the twin of the
+// original-shading variant the entry points above build with the same options
+// (share selects the share producer, lightmap_gain 1 none, widen as there),
+// plus one point light in linear light at the lobe-sum site: an 18-instruction
+// block (22 weighted slots) computing E = colour x saturate(N . l) x
+// saturate(1 - d^2 / R^2)^2 from the eye (v2), the geometric normal (v3) and
+// the depth interpolator's w, and in the fill block (emitted with K = 0 too,
+// the C0 decode then left out) r12 += min(E, saturate(1 - r12)) before the
+// encode; one shader-local `def c199`. The caller MUST upload
+// EngineLightAbi::pixel_constant_count registers at pixel_constant on every
+// draw that binds the twin. Refusals (no lobe-sum site, the motion variant
+// without depth, an asteroid layout, inputs other than TEXCOORD1 -> v2 and
+// TEXCOORD2 -> v3, r14/r15 or c199-c202 used by the original) report
+// engine_applied = false; the output is then the plain option variant and
+// must not be bound as a twin. Pure, allocation-bounded, no D3D; failure
+// leaves output intact.
+struct EngineLightAbi {
+    static constexpr unsigned pixel_constant = 200; // c200 (L - cam, R^2), c201 (colour, 1/R^2), c202 (F, 0)
+    static constexpr unsigned pixel_constant_count = 3;
+    static constexpr unsigned definition_constant = 199; // shader-local (cap 1, guards)
+    static constexpr unsigned block_slots = 22, add_slots = 3;
+};
+struct OriginalVariantOptions {
+    float fill = 0.f;
+    bool share = false;
+    float lightmap_gain = 1.f;
+    bool lightmap_dynamic = false;
+    const HullLightmapWiden* widen = nullptr;
+};
+LinearMaterialResult linear_material_original_engine_light_pixel_variant(
+    const std::uint32_t* original, std::size_t words, const OriginalVariantOptions& options,
+    std::vector<std::uint32_t>& output, bool current_depth, bool& engine_applied, bool* share_applied = nullptr,
+    bool* lightmap_gain_applied = nullptr, bool* widen_applied = nullptr) noexcept;
 // The light-map sampler stage of a reviewed hull/palette/XT pixel program (2 for
 // DEFAULT layouts, 3 for BUMPMAP), 0 for a program without the term (glass,
 // asteroid) or an unreviewed one. Table lookup only, no bytecode.

@@ -3341,6 +3341,10 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
         log("hull_emissive_widening_configured accepted=%u k=%g b=%g", unsigned(accepted),
             double(hull_emissive_widening[0]), double(hull_emissive_widening[1]));
     }
+    // X3M_ENGINE_LIGHT (engine_light_core.h): the hull light from the plume records, after the material options the
+    // twins compose with; effective only with engine_effects = plumes.
+    hooked.motion_output.configure_engine_light(engine_effects::mode() == engine_effects::core::Mode::plumes &&
+                                                engine_effects::suppress());
     hooked.motion_output.configure_screen_emission_additive(
         screen_emission_additive_requested, screen_emission_additive_gain, screen_emission_additive_alpha_requested,
         screen_emission_additive_alpha);

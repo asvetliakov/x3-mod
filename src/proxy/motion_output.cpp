@@ -410,6 +410,7 @@ MotionOutput::~MotionOutput() {
     release_resources();
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
     delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
+    delete engine_light_; // plain CPU tables (engine_light_core.h), no device object
 }
 
 unsigned MotionOutput::device_references() const noexcept {
@@ -456,6 +457,8 @@ unsigned MotionOutput::device_references() const noexcept {
         if (entry.second.sun_original_lightmap_variant) ++count;
         if (entry.second.hull_lightmap_widen_variant) ++count;
         if (entry.second.sun_original_lightmap_widen_variant) ++count;
+        for (const auto* twin : entry.second.engine_twin)
+            if (twin) ++count;
     }
     return count;
 }
@@ -480,6 +483,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.ps_sun_original_lightmap_widen = nullptr;
     shadow_.ps_hull_lightmap_widen = nullptr;
     shadow_.hull_lightmap_stage = 0;
+    engine_light_clear_twins();
     shadow_.original_share_pair = false;
     shadow_.original_share_refused = false;
     shadow_.material_contract = {};
@@ -600,6 +604,7 @@ void MotionOutput::release_resources() noexcept {
         release(entry.second.sun_original_lightmap_variant);
         release(entry.second.hull_lightmap_widen_variant);
         release(entry.second.sun_original_lightmap_widen_variant);
+        engine_light_release(entry.second);
         entry.second.hull_lightmap_stage = 0;
     }
     shadow_.vs_variant = nullptr;
@@ -4364,6 +4369,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         shadow_.ps_sun_original_lightmap_widen = nullptr;
         shadow_.ps_hull_lightmap_widen = nullptr;
         shadow_.hull_lightmap_stage = 0;
+        engine_light_clear_twins();
         shadow_.original_share_pair = false;
         shadow_.original_share_refused = false;
     }
@@ -4371,6 +4377,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     try {
         auto& entry = pixel_[shader];
         entry.registered = false;
+        engine_light_release(entry);
         release(entry.variant);
         release(entry.sun_motion_variant);
         release(entry.sun_material_variant);
@@ -4786,6 +4793,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     }
                 }
             }
+            // Engine light (motion_output_engine_light_inc.h): the twins of the original-shading variants above.
+            engine_light_create_twins(entry, code, bytes, hash);
             if (linear_material_requested_ && entry.variant) {
                 words.clear();
                 bool fill_applied = false;
@@ -4955,6 +4964,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_sun_original_lightmap_widen = nullptr;
     shadow_.ps_hull_lightmap_widen = nullptr;
     shadow_.hull_lightmap_stage = 0;
+    engine_light_clear_twins();
     shadow_.original_share_pair = false;
     shadow_.original_share_refused = false;
     shadow_.fog_card_pair = false;
@@ -4999,6 +5009,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_sun_extraction = it->second.sun_extraction;
     shadow_.ps_sun_original = it->second.sun_original_variant;
     shadow_.ps_sun_original_lightmap = it->second.sun_original_lightmap_variant;
+    for (unsigned k = 0; k < engine_light_kinds; ++k) shadow_.engine_twin[k] = it->second.engine_twin[k];
     shadow_.ps_xt_default_ordinary = static_cast<IDirect3DPixelShader9*>(it->second.xt_default_ordinary_variant);
     refresh_linear_material_contract();
     refresh_linear_emission_contract();
@@ -5022,6 +5033,8 @@ void MotionOutput::set_vertex_constants_f(UINT start, const float* data, UINT co
         std::memcpy(shadow_.world46 + (lo - 4) * 4, data + (lo - start) * 4, (hi - lo) * 16);
         for (UINT r = lo; r < hi; ++r) shadow_.world46_known |= std::uint8_t(1u << (r - 4));
     }
+    // Engine light: the world and view-inverse rows of both VS layouts.
+    if (engine_light_requested_) engine_light_shadow_rows(start, data, count);
     // Reserved c252-255: remember the application values so a routed draw can put them back.
     if (start < 256 && end > 252) {
         const UINT lo = start > 252 ? start : 252, hi = end < 256 ? end : 256;
@@ -5164,6 +5177,13 @@ void MotionOutput::resync_shadow() noexcept {
         shadow_.world46_known = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 4, shadow_.world46, 3))
                                     ? std::uint8_t(7)
                                     : std::uint8_t(0);
+    if (engine_light_requested_) // the engine light's world / view-inverse rows of both VS layouts
+        for (unsigned w = 0; w < 4; ++w)
+            shadow_.engine_rows_known[w] =
+                SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, engine_light_world_bases[w],
+                                                                            shadow_.engine_rows[w], 3))
+                    ? std::uint8_t(7)
+                    : std::uint8_t(0);
     shadow_.integer0_known = SUCCEEDED(
         native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
     shadow_.ps_reserved_written = SUCCEEDED(
@@ -5287,6 +5307,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     bolt_early_dropped_ = bolt_late_ = 0; // single copy: per scene frame (a Reset's repeated begin restarts it)
     engine_memory::next_frame();          // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
+    if (engine_light_requested_) engine_light_frame(); // the previous frame's ring and draws, before the ring clears
     if (engine_hook_) engine_effects_frame_begin(); // the frame's record ring and census counts
     sun_frame_ = {};
     sun_stamps_ = sun_stamp_refused_ = sun_stamp_prims_ = 0;
@@ -5546,6 +5567,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
     if (!history_available_) return false;
     object_trace::Snapshot scope{};
     if (!object_trace::current(&scope, capture_)) return false; // matrices are capture-frame diagnostics
+    route.scope_parent = (scope.valid & object_trace::Node) ? scope.parent : 0u; // engine light: node+0x18
     constexpr std::uint32_t required = object_trace::Node | object_trace::Camera | object_trace::Registry;
     if ((scope.valid & required) != required || !scope.node || !scope.camera) return false;
     object_lifetime::Snapshot lifetime{};
@@ -7300,6 +7322,7 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
     }
 }
 void MotionOutput::refresh_linear_material_contract() noexcept {
+    refresh_engine_light_pair(); // engine light: the pair predicate and the VS's row layout (false while off)
     // Pair identity and complete corrected availability are computed only
     // at binding/registration. No stage-wide DEFAULT substitution is safe.
     shadow_.xt_default_pair = linear_material_requested_ &&
@@ -7537,6 +7560,16 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
             widen = true;
         }
     }
+    // Engine light: the twin of the program chosen above (motion_output_engine_light_inc.h); a kind without one
+    // stays unlit.
+    bool engine = false;
+    if (route.engine_light_want && !material) {
+        if (IDirect3DPixelShader9* twin = engine_light_twin(ps)) {
+            ps = twin;
+            engine = true;
+        } else
+            ++engine_light_->counts.no_twin;
+    }
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -7583,6 +7616,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     if (fill && SUCCEEDED(hr)) route.original_fill = true;
     if (lightmap && SUCCEEDED(hr)) route.hull_lightmap = true;
     if (widen && SUCCEEDED(hr)) route.hull_lightmap_widen = true;
+    route.engine_light = engine && SUCCEEDED(hr);
     return hr;
 }
 
@@ -8470,6 +8504,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
             }
         }
     }
+    engine_light_prepare(route, material); // engine light: log the draw, decide whether its node is lit
     HRESULT hr = bind_variant_pair(route, material);
     if (SUCCEEDED(hr)) {
         route.vs_constants_set = true;
@@ -8495,6 +8530,9 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         } // the uploaded registers only
 #endif
     }
+    // Engine light: the twin reads c200-c202 (EngineLightAbi); uploaded only when bind_variant_pair bound it, in the
+    // same apply chain (a failure rolls the route back to the native draw).
+    if (SUCCEEDED(hr) && route.engine_light) hr = engine_light_upload();
     if (SUCCEEDED(hr)) hr = bind_targets(route);
     if (SUCCEEDED(hr)) hr = apply_wrap_states(route, *shadow_.vs_row);
     route.ticks = draw_stamp() - apply_begin;
@@ -12291,4 +12329,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_engine_effects_inc.h"
 #include "motion_output_engine_plumes_inc.h"
 #include "motion_output_engine_ribbons_inc.h"
+#include "motion_output_engine_light_inc.h"
 } // namespace x3m

@@ -83,6 +83,7 @@ struct MotionRoute {
     std::uint8_t widen_filter_stage = 0;
     DWORD widen_filter_saved = 0; // hull emissive widening: MINFILTER raised for the draw (never here: the option is
                                   // off)
+    bool engine_light_want = false, engine_light = false; // engine light: never requested here
     // Scoped owned restoration references taken once per routed draw.
     Shader *restore_vs = nullptr, *restore_ps = nullptr;
     bool restore_held = false;
@@ -302,6 +303,14 @@ public:
     bool ensure_widen_filter(MotionRoute&) {
         return false;
     } // hull emissive widening off: never called (widen_draw is false without the footprint lanes)
+    // Engine light off: no node is lit (engine_light_want stays false), so neither is reached.
+    struct EngineLightCounts {
+        unsigned no_twin = 0;
+    };
+    struct EngineLightState {
+        EngineLightCounts counts;
+    }* engine_light_ = nullptr;
+    Shader* engine_light_twin(Shader*) const { return nullptr; }
     HRESULT bind_target(unsigned, void*) { return S_OK; }
     // Mirrors motion_output.h; the bind path reads it for the original-fill gate.
     enum class HdrState { Off, Active, Suspended };

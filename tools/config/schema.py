@@ -340,6 +340,9 @@ SETTINGS = [
           'ships\' main engines stay as they are. This number scales those shares: 1 = the chosen ones, 0 turns it off; '
           '0 to 3. Read when the game starts.',
           builtin='1', range=(0.0, 3.0), launcher='--engine-plume-floor', since='2026-10-03'),
+    entry('engine_light', 'enum', 'engine', 'Engine light on the hull (engine_effects = plumes): each ship\'s brightest main '
+          'engine lights the hull plates around its nozzles in the engine\'s colour, brighter at full throttle. on or off. '
+          'Read when the game starts.', builtin='on', choices=('on', 'off'), launcher='--engine-light', since='2026-10-03'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

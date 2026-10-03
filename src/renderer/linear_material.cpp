@@ -2054,19 +2054,27 @@ void original_fill_definition(Words& out, float fill) {
     emit(out, def,
          {dst(constant, fill_constant, xyzw), bits(fill), bits(original_fill_epsilon), bits(2.2f), bits(1.0f / 2.2f)});
 }
-void original_fill_block(Words& out, unsigned sum, unsigned light) {
+// With the engine light (linear_engine_light_inc.h) the capped term in r14 is
+// added after the fill MAD (engine_light_add, 3 instructions); with K = 0 and
+// the light the C0 decode and the MAD are left out (fill_term false).
+void engine_light_add(Words& out);
+void original_fill_block(Words& out, unsigned sum, unsigned light, bool fill_term = true, bool engine = false) {
     emit(out, max_op, {dst(temp, 12), src(temp, sum), lane(constant, fill_constant, 1)});
     for (unsigned c = 0; c < 3; ++c)
         emit(out, pow_op, {dst(temp, 12, 1u << c), lane(temp, 12, c), lane(constant, fill_constant, 2)});
-    emit(out, mov, {dst(temp, 13), src(constant, light)});
-    emit(out, max_op, {dst(temp, 13), src(temp, 13), lane(constant, fill_constant, 1)});
-    for (unsigned c = 0; c < 3; ++c)
-        emit(out, pow_op, {dst(temp, 13, 1u << c), lane(temp, 13, c), lane(constant, fill_constant, 2)});
-    emit(out, mad, {dst(temp, 12), src(temp, 13), lane(constant, fill_constant, 0), src(temp, 12)});
+    if (fill_term) {
+        emit(out, mov, {dst(temp, 13), src(constant, light)});
+        emit(out, max_op, {dst(temp, 13), src(temp, 13), lane(constant, fill_constant, 1)});
+        for (unsigned c = 0; c < 3; ++c)
+            emit(out, pow_op, {dst(temp, 13, 1u << c), lane(temp, 13, c), lane(constant, fill_constant, 2)});
+        emit(out, mad, {dst(temp, 12), src(temp, 13), lane(constant, fill_constant, 0), src(temp, 12)});
+    }
+    if (engine) engine_light_add(out);
     emit(out, max_op, {dst(temp, 12), src(temp, 12), lane(constant, fill_constant, 1)});
     for (unsigned c = 0; c < 3; ++c)
         emit(out, pow_op, {dst(temp, sum, 1u << c), lane(temp, 12, c), lane(constant, fill_constant, 3)});
 }
+#include "linear_engine_light_inc.h"
 // Original-shading share producer (docs/architecture/legacy-sun-application.md
 // 1, "Share producer"): sun_plan's forward propagation over the ORIGINAL
 // program's operands. r16-r22 shadow r0-r6, r23 carries S, the final RGB
@@ -2098,7 +2106,7 @@ bool original_share_resources_free(const Word* code, const Structure& s) noexcep
 // block (r12/r13 scratch, its sum register, c215 and the light constant).
 // Checked on the actual emitted words, not inferred from the emitters.
 bool original_share_range_free(const Word* code, std::size_t begin, std::size_t end, bool fill_block, unsigned sum,
-                               unsigned light) noexcept {
+                               unsigned light, bool engine = false) noexcept {
     for (std::size_t at = begin; at < end;) {
         const Word token = code[at];
         const unsigned op = token & 0xffff, n = length(token);
@@ -2107,10 +2115,11 @@ bool original_share_range_free(const Word* code, std::size_t begin, std::size_t 
             const unsigned last = op == def ? 1 : n;
             for (unsigned q = 1; q <= last; ++q) {
                 const auto t = kind(code[at + q]), r = index(code[at + q]);
-                if (t == temp && (fill_block ? (r != 12 && r != 13 && r != sum) : r >= original_share_total))
+                if (t == temp && (fill_block ? (r != 12 && r != 13 && r != sum && !(engine && r == 14))
+                                             : r >= original_share_total))
                     return false;
                 if (t == constant &&
-                    (fill_block ? (r != fill_constant && r != light)
+                    (fill_block ? (r != fill_constant && r != light && !(engine && r == 199))
                                 : (r == original_share_domain || r == sun_constant || r == fill_constant)))
                     return false;
             }
@@ -2273,8 +2282,10 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                                              bool current_depth, bool& fill_applied, bool* share_applied = nullptr,
                                              float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr,
                                              bool lightmap_dynamic = false, const HullLightmapWiden* widen = nullptr,
-                                             bool* widen_applied = nullptr) noexcept {
+                                             bool* widen_applied = nullptr, bool engine_light = false,
+                                             bool* engine_light_applied = nullptr) noexcept {
     fill_applied = false;
+    if (engine_light_applied) *engine_light_applied = false;
     if (share_applied) *share_applied = false;
     if (lightmap_gain_applied) *lightmap_gain_applied = false;
     if (widen_applied) *widen_applied = false;
@@ -2326,6 +2337,13 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         if (fill_site && (light >= 212u || light == fill_constant))
             fill_site = false; // never our own or the motion range
         const bool fill_on = fill > 0.0f && fill_site;
+        // Engine light (linear_engine_light_inc.h): the same site, the depth
+        // export (its interpolator carries w), not an asteroid layout, the eye
+        // and normal inputs declared as proved, r14/r15 and c199-c202 free.
+        const bool engine_on = engine_light && fill_site && (xt || !p->asteroid_layout) &&
+                               material_motion_pixel_writes_depth(*row, current_depth) &&
+                               engine_light_inputs(original, s, row->pixel_depth_input_register);
+        const bool block_on = fill_on || engine_on;
         // Share plan on the original: seeds are the profile's sun-colour
         // operands (hull rows color_source[0..1]; XT lights with value 6).
         std::vector<SunEdit> edits;
@@ -2377,7 +2395,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             } else
                 seeds = {p->color_source[0], p->color_source[1]};
             share = original_share_resources_free(original, s) &&
-                    original_sun_plan(original, s, seeds, final_rgb, fill_on ? site : 0u, sum, edits,
+                    original_sun_plan(original, s, seeds, final_rgb, block_on ? site : 0u, sum, edits,
                                       final_destination);
             if (!share) edits.clear();
         }
@@ -2394,13 +2412,19 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             for (const auto& i : insertions)
                 if (!original_share_range_free(motion.data(), i.begin, i.end, false, 0, 0))
                     return LinearMaterialResult::ResourceLimit;
-        if (fill_on) {
+        if (block_on) {
             Words block;
-            original_fill_block(block, sum, light);
-            if (!original_share_range_free(block.data(), 0, block.size(), true, sum, light))
+            original_fill_block(block, sum, light, fill_on, engine_on);
+            if (!original_share_range_free(block.data(), 0, block.size(), true, sum, light, engine_on))
                 return LinearMaterialResult::ResourceLimit;
         }
-        if (!fill_on && !share && !lightmap_on) {
+        if (engine_on) {
+            Words block;
+            engine_light_block(block, row->pixel_depth_input_register);
+            if (!engine_light_range_free(block.data(), 0, block.size(), row->pixel_depth_input_register))
+                return LinearMaterialResult::ResourceLimit;
+        }
+        if (!block_on && !share && !lightmap_on) {
             output.swap(motion);
             return LinearMaterialResult::Applied;
         }
@@ -2422,7 +2446,8 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                 combined.insert(combined.end(), motion.begin() + i.begin, motion.begin() + i.end);
             }
             if (at == s.first_declaration) {
-                if (fill_on) original_fill_definition(combined, fill);
+                if (block_on) original_fill_definition(combined, fill);
+                if (engine_on) engine_light_definition_words(combined);
                 if (share) {
                     emit(combined, def,
                          {dst(constant, original_share_domain, xyzw), bits(2.2f), bits(0.0f), bits(65504.0f),
@@ -2445,14 +2470,17 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                 continue;
             }
             const unsigned n = length(original[at]);
-            if (fill_on && at == site) {
+            if (block_on && at == site) {
+                // The engine light's term into r14 first: both fill blocks of
+                // the share twin add the same capped term.
+                if (engine_on) engine_light_block(combined, row->pixel_depth_input_register);
                 // Fill twin: S_sum' = fill(sum) - fill(sum - S_sum), evaluated
                 // on r23 (free until the final RGB instruction writes it).
                 if (share)
                     emit(combined, add, {dst(temp, sun_final), src(temp, sum), src(temp, sun_base + sum, identity, 1)});
-                original_fill_block(combined, sum, light);
+                original_fill_block(combined, sum, light, fill_on, engine_on);
                 if (share) {
-                    original_fill_block(combined, sun_final, light);
+                    original_fill_block(combined, sun_final, light, fill_on, engine_on);
                     emit(combined, add, {dst(temp, sun_base + sum), src(temp, sum), src(temp, sun_final, identity, 1)});
                 }
             }
@@ -2584,8 +2612,23 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                 (widen_on ? widened != int(widen_reg) : widened != -1))
                 return LinearMaterialResult::ProfileMismatch;
         }
+        if (engine_on) {
+            // The emitted program re-proves the light: c200-c202 never defined
+            // and read only by the block (2, 2 and 1 reads), c199 defined once
+            // and read by the block (3) and each fill block (1, twice with the
+            // share twin).
+            unsigned definitions = 0, reads = 0;
+            const unsigned expected[3] = {2, 2, 1};
+            for (unsigned k = 0; k < 3; ++k) {
+                constant_uses(combined.data(), final_structure, engine_light_constant + k, definitions, reads);
+                if (definitions != 0 || reads != expected[k]) return LinearMaterialResult::ProfileMismatch;
+            }
+            constant_uses(combined.data(), final_structure, engine_light_definition, definitions, reads);
+            if (definitions != 1 || reads != (share ? 5u : 4u)) return LinearMaterialResult::ProfileMismatch;
+        }
         output.swap(combined);
         fill_applied = fill_on;
+        if (engine_light_applied) *engine_light_applied = engine_on;
         if (share_applied) *share_applied = share;
         if (lightmap_gain_applied) *lightmap_gain_applied = lightmap_on;
         if (widen_applied) *widen_applied = widen_on;
@@ -2636,6 +2679,17 @@ LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const Word
                                                                       bool* widen_applied) noexcept {
     return original_fill_transform(original, words, fill, output, current_depth, fill_applied, nullptr, gain,
                                    &gain_applied, dynamic, widen, widen_applied);
+}
+LinearMaterialResult linear_material_original_engine_light_pixel_variant(
+    const Word* original, std::size_t words, const OriginalVariantOptions& options, Words& output, bool current_depth,
+    bool& engine_applied, bool* share_applied, bool* lightmap_gain_applied, bool* widen_applied) noexcept {
+    bool fill_applied = false, share = false;
+    const auto result = original_fill_transform(original, words, options.fill, output, current_depth, fill_applied,
+                                                options.share ? &share : nullptr, options.lightmap_gain,
+                                                lightmap_gain_applied, options.lightmap_dynamic, options.widen,
+                                                widen_applied, true, &engine_applied);
+    if (share_applied) *share_applied = share;
+    return result;
 }
 unsigned linear_material_hull_lightmap_stage(std::uint64_t pixel, std::size_t words) noexcept {
     if (words >= 1561) {
