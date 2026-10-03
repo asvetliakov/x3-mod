@@ -33,12 +33,15 @@
 //   (gap analysis, docs/architecture/engine-exhaust-gap-analysis.md phases 2 and 3)
 //   length        also the idle floor (gap 10): the drawn length at s = 0 is 0.5 value
 //   spill         gap 3: head-on behind a plane at the nozzle depth, the halo through the plane / the open halo 0.15 in
-//                 0.65..0.8 n, nothing past 1.0 n, nothing through a plane 3 value in front
+//                 0.65..0.8 n, nothing past 1.0 n, nothing through a plane 3 value in front; the production look behind a
+//                 plate 1.5 value in front (values 100 and 1,000): the core hidden, the rim at most 0.15, none at 1,000
+//                 (the guard's 300-unit bound)
 //   flow          gap 4: the noise's displacement between two flow steps in world units against the law (value 100 /
-//                 600 / 1,500 / 10,000), 600 and 1,500 at one world speed; the lag-1 correlation at 100 and 10,000
+//                 600 / 1,500 / 10,000), 600 and 1,500 at one world speed; the lag-1 correlation at 100 and 10,000; a
+//                 nozzle whose value doubles every other frame after an hour keeps lag-1 >= 0.5 on its own phase
 //   colour        gap 5: the colour at u 0.1 / 0.5 / 0.9 (axis and 0.7 of the half-width) against the replica, 1 %
 //   attack        gap 6: an RCS puff and a brake flare z rise through the attack memory, frame 2 at 1.3..1.5x steady,
-//                 back within 150 ms; a main jet unchanged
+//                 back within 150 ms; a main jet unchanged; a main jet pushed into brake in one frame (z 1 -> 5) flares
 //   travel        gap 7: the SETA decode and ramp at warp 6 reach weight 1: length 2x, radiance 1.25x
 //   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 / 1,024
 //                 records (the look's tables cached), plain and with the plume floor; with X3M_PLUMES_FIXTURE_DISC_AB=1 the
@@ -1487,6 +1490,45 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     report(label, look.band_px > 50 && std::fabs(look.band_median - .15) <= .02 && look.band_max <= .17);
     std::snprintf(label, sizeof label, "spill_depth_guard_%s_%u", four ? "4ch" : "r32f", t.w);
     report(label, guard.band_max <= 1e-5 && guard.beyond_max <= 1e-5);
+    // The production look head-on behind a plate 1.5 value in front of the nozzle (over the whole frame: a near
+    // occluder, not the hull around the nozzle), the nozzle 96 px wide at values 100 and 1,000 (the depth scaled with
+    // the value): the core (within 0.5 n of the nozzle) and the rim (0.5..1.0 n) against the open frame. At 100 the guard
+    // is 2 value = 200 units (the spill x saturate(1 - 150 / 200) = 0.25: at most 0.15 anywhere); at 1,000 it is held to
+    // 300 units (1,500 in front: none).
+    for (const float V : {100.f, 1000.f}) {
+        const float Zv = V * t.ppu(1.f) / 192.f; // value V projects 192 px (the nozzle 96 px)
+        const ee::Record rv = record(0, 0, Zv, 0, 0, 1, V, 2.f);
+        float vx, vy;
+        t.window(0, 0, Zv, 0, 0, vx, vy);
+        scene.frame(0, 0, 0, 0, 500);
+        draw(d, pass, frame_for(t, four, &rv, 1, ep::Preset::standard, 10.f));
+        const auto open = t.read(d);
+        scene.frame(0, 0, float(t.w), float(t.h), Zv - 1.5f * V);
+        draw(d, pass, frame_for(t, four, &rv, 1, ep::Preset::standard, 10.f));
+        const auto cut = t.read(d);
+        double core_max = 0, rim_max = 0, cut_max = 0, open_core = 0;
+        for (int y = int(vy) - span; y <= int(vy) + span; ++y)
+            for (int x = int(vx) - span; x <= int(vx) + span; ++x) {
+                if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) continue;
+                const float dx = vx - float(x), dy = float(y) - vy, dn = std::sqrt(dx * dx + dy * dy) / n_px;
+                const float c = luma(cut, t.w, x, y), o = luma(open, t.w, x, y);
+                cut_max = std::max(cut_max, double(c));
+                if (o <= 1e-3f || dn > 1.f) continue;
+                if (dn <= .5f) {
+                    core_max = std::max(core_max, double(c / o));
+                    open_core = std::max(open_core, double(o));
+                } else
+                    rim_max = std::max(rim_max, double(c / o));
+            }
+        std::printf("SPILL_NEAR width=%u lane=%s value=%.0f plate=%.0f guard=%.0f open_core_max=%.4f core_ratio_max=%.5f rim_ratio_max=%.5f cut_max=%.6f\n",
+                    t.w, four ? "4ch" : "r32f", double(V), double(1.5f * V), double(std::min(2.f * V, 300.f)), open_core, core_max,
+                    rim_max, cut_max);
+        std::snprintf(label, sizeof label, "spill_near_plate_value%.0f_%s_%u", double(V), four ? "4ch" : "r32f", t.w);
+        if (V < 150.f)
+            report(label, open_core > .1 && core_max <= .15 && rim_max <= .15);
+        else
+            report(label, open_core > .1 && cut_max <= 1e-5);
+    }
 }
 
 // Gap 4, the flow in world units. A side view (axis -x, z 4: L = 8 nozzle widths) of a nozzle of value 100 / 600 /
@@ -1606,6 +1648,49 @@ void flow_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPa
         std::snprintf(label, sizeof label, "flow_lag1_value%.0f_%u", double(V), t.w);
         report(label, lag1 >= .5);
     }
+    // The per-nozzle phase (review P1): after an hour (flow at 3,600 s) a nozzle whose value doubles every other frame
+    // (1,000 <-> 2,000: flow factor 0.5 <-> 0.3, the floor's radius flipping), the depth doubled with it so the frame is
+    // the same 60 px nozzle (the image changes only through the noise), 30 frames at 60 fps through the pass with the
+    // memory: the box's lag-1 correlation at least 0.5. The same frames without the memory (the shared phase, flow x
+    // factor, jumping about 1,900 nozzle widths per flip) reported beside it.
+    {
+        double lags[2] = {0, 0};
+        unsigned changes = 0;
+        for (unsigned keyed = 0; keyed < 2; ++keyed) {
+            static ep::Transients memory;
+            memory.clear();
+            std::vector<double> raw;
+            for (unsigned n = 0; n < 30; ++n) {
+                const float V = n & 1u ? 2000.f : 1000.f;
+                const float ppu = n_px / (.5f * V), Z = m11 * float(t.h) * .5f / ppu, L0px = 2.f * 2.f * n_px;
+                ee::Record r = record(L0px * .5f / ppu, 0, Z, -1, 0, 0, V, 2.f);
+                float cx, cy;
+                t.window(r.origin[0], 0, Z, 0, 0, cx, cy);
+                const int bx = int(std::floor(cx - .2f * L0px + .5f)), by = int(std::floor(cy + .5f));
+                const float seconds = 3600.f + float(n) / 60.f;
+                rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, seconds - 3072.f); // wrapped clock
+                f.flow = flow_at(seconds, nullptr);
+                f.step = 1.f / 60.f;
+                f.game_ms = 1000.f / 60.f;
+                if (keyed) f.transients = &memory;
+                scene.frame(0, 0, 0, 0, 500);
+                check("flow keyed begin", d->BeginScene());
+                rr::EnginePlumesReport rep{};
+                pass.run(f, &rep);
+                check("flow keyed end", d->EndScene());
+                if (keyed) changes += rep.stats.flow_factor_changes;
+                const auto box = read_region(d, t, nullptr, bx - 1, by - 1, bx + 2, by + 2);
+                double m = 0;
+                for (float v : box) m += v;
+                raw.push_back(m / 9.);
+            }
+            lags[keyed] = lag1_of(raw);
+        }
+        std::printf("FLOW_KEYED width=%u height=%u values=1000,2000 seconds=3600 frames=30 lag1_keyed=%.4f lag1_shared=%.4f factor_changes=%u\n",
+                    t.w, t.h, lags[1], lags[0], changes);
+        std::snprintf(label, sizeof label, "flow_keyed_phase_value_flip_lag1_%u", t.w);
+        report(label, lags[1] >= .5 && changes == 29);
+    }
 }
 
 // Gap 5, two-tone colour: a side view (axis -x, s = 1, value 100 px), the still look without the halo and the ring
@@ -1699,15 +1784,21 @@ void attack_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         float z[3];
         std::uint16_t flags;
     };
-    const Kind kinds[3] = {{"steering", {.01f, .505f, 1.f}, std::uint16_t(ee::flag_steering)},
+    // main_to_brake (review P2): a main jet at z 1 pushed into brake (z 5) in one frame, then held: the brake body's
+    // first frame flares from the main jet's remembered z (frame 1 at 1.3..1.5x steady, back within 150 ms of it).
+    const Kind kinds[4] = {{"steering", {.01f, .505f, 1.f}, std::uint16_t(ee::flag_steering)},
                            {"brake", {2.2f, 2.6f, 3.f}, std::uint16_t(ee::flag_brake)},
-                           {"main", {.25f, 1.125f, 2.f}, 0}};
+                           {"main", {.25f, 1.125f, 2.f}, 0},
+                           {"main_to_brake", {1.f, 5.f, 5.f}, 0}};
     for (const Kind& kind : kinds) {
         memory.clear();
         std::vector<double> totals;
         for (unsigned n = 0; n < 15; ++n) {
-            ee::Record r = record(.5f * 2.f * value, 0, Z, -1, 0, 0, value, kind.z[n < 3 ? n : 2]);
-            r.flags = std::uint16_t((unsigned(ee::white) << ee::cluster_shift) | kind.flags);
+            const float zn = kind.z[n < 3 ? n : 2];
+            ee::Record r = record(.5f * 2.f * value, 0, Z, -1, 0, 0, value, zn);
+            // The recogniser's rule: a main jet above 2.0 is a brake body.
+            const unsigned brake = !(kind.flags & ee::flag_steering) && zn > 2.f + 1e-3f ? unsigned(ee::flag_brake) : 0u;
+            r.flags = std::uint16_t((unsigned(ee::white) << ee::cluster_shift) | kind.flags | brake);
             rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
             f.transients = &memory;
             f.step = 1.f / 60.f;
@@ -1729,7 +1820,14 @@ void attack_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         std::snprintf(label, sizeof label, "attack_%s_%u", kind.name, t.w);
         if (kind.flags)
             report(label, peak2 >= 1.3 && peak2 <= 1.5 * 1.003 && back_ms <= 150. && totals[3] < totals[2]);
-        else
+        else if (kind.z[2] > 2.f) {
+            const double peak1 = steady > 0 ? totals[1] / steady : 0.;
+            unsigned back1 = 1;
+            while (back1 < totals.size() && std::fabs(totals[back1] / steady - 1.) > .005) ++back1;
+            const double back1_ms = double(back1 - 1) * 1000. / 60.;
+            std::printf("ATTACK_CROSSING width=%u kind=%s frame1=%.4f back_ms=%.1f\n", t.w, kind.name, peak1, back1_ms);
+            report(label, peak1 >= 1.3 && peak1 <= 1.5 * 1.003 && back1_ms <= 150. && totals[2] < totals[1]);
+        } else
             report(label, std::fabs(peak2 - 1.) <= .003);
     }
 }

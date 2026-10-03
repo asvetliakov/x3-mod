@@ -520,6 +520,47 @@ int main() {
             expect(near(out[0].shape[3], wb), "value 10,000: phase = flow x 0.3");
         }
     }
+    // ----------------------------------------------------------- the per-nozzle phase (review P1)
+    // A nozzle's phase in the memory advances by the accumulator's step x this frame's factor: a value that doubles
+    // between frames (factor 0.5 -> 0.3) changes the speed, not the position; a new key starts at the shared phase; a
+    // factor change is counted; the read-only lookup (the shimmer's) gives the same phase; without the memory the shared
+    // phase jumps by flow x the factor's change.
+    {
+        float rate = 0;
+        flow_rate(default_look, &rate);
+        static Transients mem; mem.clear();
+        const double flow0 = 9450.; // an hour at 2.625 nozzle widths per second
+        const ee::Record a = rec(0, 0, Z * 20.f, -1, 0, 0, 1000.f, 2.f), b = rec(0, 0, Z * 40.f, -1, 0, 0, 2000.f, 2.f);
+        float phases[6]; unsigned changes = 0;
+        for (unsigned i = 0; i < 6; ++i) {
+            Dynamics dy; dy.transients = &mem; dy.step = 1.f / 60.f; dy.game_ms = 1000.f / 60.f; dy.flow = flow0 + double(i) * rate / 60.;
+            build(i & 1u ? &b : &a, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat, nullptr, nullptr, &dy);
+            phases[i] = out[0].shape[3];
+            changes += st.flow_factor_changes;
+        }
+        float start = 0; nozzle_phase(flow0, .5f, &start);
+        bool steady = near(phases[0], start, 1e-6f);
+        for (unsigned i = 1; i < 6; ++i) {
+            const float want = rate / 60.f * (i & 1u ? .3f : .5f);
+            float step = phases[i] - phases[i - 1];
+            if (step < 0.f) step += 4096.f;
+            steady = steady && std::fabs(step - want) < 2e-3f;
+        }
+        float shared = 0; nozzle_phase(flow0 + rate / 60., .3f, &shared);
+        float looked = -1;
+        const bool found = mem.phase_of(identity_key(b), flow0 + 5. * rate / 60., .3f, &looked);
+        expect(steady && changes == 5 && found && near(looked, phases[5], 1e-6f) && std::fabs(shared - phases[1]) > 100.f,
+               "keyed phase: the first frame at flow x factor, each step rate x this frame's factor / 60 while the value flips (5 counted); the shared phase would jump");
+        std::printf("FLOW_KEYED_HOST step_main=%.5f step_doubled=%.5f shared_jump=%.1f changes=%u\n", double(phases[2] - phases[1]),
+                    double(phases[1] - phases[0]), double(std::fabs(shared - phases[1])), changes);
+        // Without a slot (key 0 cannot occur; a full window): the shared phase, counted overflow.
+        static Transients full; full.clear(); full.begin(1.f / 60.f);
+        for (auto& sl : full.slots) { sl.key = 0x7fffffffffffull; sl.idle = 0.f; }
+        Dynamics df; df.transients = &full; df.step = 0.f; df.flow = 1234.5;
+        build(&a, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat, nullptr, nullptr, &df);
+        float want = 0; nozzle_phase(1234.5, .5f, &want);
+        expect(near(out[0].shape[3], want) && st.transient_overflow == 1, "a full window: the shared phase, one overflow");
+    }
     // ----------------------------------------------------------- gap 5: two-tone colour
     {
         ee::Body b{}; b.colour = 1; const float m[3] = {1.f, .15f, .15f}, pk[3] = {1.f, .81f, .81f};
@@ -587,6 +628,29 @@ int main() {
         for (unsigned i = 0; i < 16; ++i) slow[i] = .1f + .004f * 1000.f / 60.f * .5f * float(i);
         run(steer, slow, 16, si);
         expect(near(si[8] / plain(slow[8], steer), 1.25f, 1e-3f), "z rising at half the game's rate: x 1.25 (gain 0.5 x 0.5)");
+        // Review P2: a main jet pushed into brake in one frame (z 1 -> 5) rises from its remembered z: the flash.
+        float cz[16], ci[16];
+        cz[0] = 1.f; for (unsigned i = 1; i < 16; ++i) cz[i] = 5.f;
+        run(unsigned(ee::white) << ee::cluster_shift, cz, 16, ci);
+        expect(near(ci[1] / ci[15], 1.5f) && ci[2] < ci[1] && near(ci[2] / ci[15], 1.f + .5f * (1.f - 1.f / 60.f / .12f)),
+               "main jet z 1 -> brake z 5 in one frame: the brake body flares from the main jet's z");
+        // Review P5: the rise over the time since the key was last seen. A puff at z 0.3 seen again after 0.4 s at z 0.8
+        // (dz 0.5 over 400 game ms: 0.5 / 1.6 = 0.3125 of the full rise): x 1.156, not 1.5; past the 0.5 s hold the key is
+        // new (no attack).
+        {
+            static Transients gap; gap.clear();
+            float f0 = 0, f1 = 0, f2 = 0;
+            gap.begin(1.f / 60.f); gap.attack(42, .3f, 1000.f / 60.f, &f0);
+            for (unsigned i = 0; i < 24; ++i) gap.begin(1.f / 60.f); // 0.4 s unseen
+            gap.attack(42, .8f, 1000.f / 60.f, &f1);
+            static Transients gone; gone.clear();
+            gone.begin(1.f / 60.f); gone.attack(43, .3f, 1000.f / 60.f, &f2);
+            for (unsigned i = 0; i < 36; ++i) gone.begin(1.f / 60.f); // 0.6 s unseen
+            gone.attack(43, .8f, 1000.f / 60.f, &f2);
+            expect(f0 == 1.f && near(f1, 1.f + .5f * (.5f / (.004f * 400.f)), 2e-3f) && f2 == 1.f,
+                   "a nozzle seen again after 0.4 s: the rise over 400 game ms (x 1.156, not 1.5); after 0.6 s a new key, no attack");
+            std::printf("ATTACK_GAP factor_0.4s=%.4f factor_0.6s=%.4f\n", double(f1), double(f2));
+        }
         // Capacity: 600 identities in one frame; eviction after the hold.
         static Transients mem; mem.clear(); mem.begin(1.f / 60.f);
         float factor = 0; unsigned stored = 0;
@@ -619,8 +683,8 @@ int main() {
         for (unsigned i = 0; i < 12; ++i) changes += t.step(false, 1.f / 60.f); // 0.2 s at 1.0
         for (unsigned i = 0; i < 3; ++i) changes += t.step(true, 1.f / 60.f);
         expect(changes == 1 && t.engaged, "a 0.2 s dip to 1.0 inside the hold: still engaged");
-        changes += t.step(false, 5.f); // a stall: held to 0.1 s
-        expect(changes == 1 && t.engaged && near(t.released, .1f), "a 5 s stall at 1.0 counts 0.1 s of the hold");
+        changes += t.step(false, .1f);
+        expect(changes == 1 && t.engaged && near(t.released, .1f), "0.1 s at 1.0 counts 0.1 s of the hold");
         for (unsigned i = 0; i < 11; ++i) changes += t.step(false, 1.f / 60.f);
         const bool held = t.engaged && changes == 1;
         for (unsigned i = 0; i < 2; ++i) changes += t.step(false, 1.f / 60.f);
@@ -630,6 +694,13 @@ int main() {
         expect(w == 0.f, "back to 0 after the ramp");
         TravelRamp u; const bool flipped = u.step(false, .1f); float wu = 1; u.weight(&wu);
         expect(!flipped && !u.engaged && wu == 0.f, "a 0.1 s stall frame at 1.0: no trigger");
+        // Review P3: a gap without plume frames (the stage clock's one long step) with SETA off releases a full ramp at
+        // once; with SETA on a stall is held to 0.1 s (no completed rise).
+        TravelRamp g; for (unsigned i = 0; i < 40; ++i) g.step(true, 1.f / 60.f);
+        const bool released = g.step(false, 2.f); float wg = 1; g.weight(&wg);
+        TravelRamp h; h.step(true, 5.f);
+        expect(released && !g.engaged && wg == 0.f && near(h.linear, .2f, 1e-5f) && h.engaged,
+               "a 2 s gap at 1.0 releases a full ramp at once (weight 0); a 5 s stall under SETA rises 0.1 s (0.2)");
         // The look at weight 1 (warp 6 after the ramp): a main jet's L x 2 and radiance x 1.25; RCS unchanged.
         const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
         Dynamics d0, d1; d1.travel = 1.f;
@@ -688,8 +759,9 @@ int main() {
                near(c[10], 3.f) && near(c[11], .84f) && near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .529f) &&
                c[16] == .3f && c[17] == .8f && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f && default_look.ring == .3f,
                "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail; ring 0.3 after flight C; c4.x 1 / period)");
-        expect(pixel_constant_floats == 60 && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && c[58] == 0.f && c[59] == 0.f,
-               "the spill (gap 3): c16.zw glow_through 0.15, 1 / spill_depth 0.5; c17.xy inner 0.8, reach 1.0 nozzle widths");
+        expect(pixel_constant_floats == 60 && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && near(c[58], 1.f / 300.f) &&
+                   c[59] == 0.f && default_look.spill_depth_max == 300.f,
+               "the spill (gap 3): c16.zw glow_through 0.15, 1 / spill_depth 0.5; c17.xyz inner 0.8, reach 1.0 nozzle widths, 1 / 300 world units (the guard's bound)");
         // c8..c15: the law at u_k = (k + 0.5) / 8 against an independent replica (std::exp / std::cos).
         auto ss = [](float e0, float e1, float x) { float q = (x - e0) / (e1 - e0); q = q < 0 ? 0 : q > 1 ? 1 : q; return q * q * (3 - 2 * q); };
         float worst = 0.f;
@@ -890,8 +962,13 @@ int main() {
         std::vector<float> radii(count);
         for (unsigned i = 0; i < count; ++i) radii[i] = rs[i].size * (5.f + 10.f * rnd());
         std::vector<Vertex> vb(std::size_t(count) * 8);
-        std::vector<double> us, fl;
-        unsigned drawn = 0, drawn_floor = 0;
+        // The proxy's path (review P1): the floor and the per-nozzle memory (every record its own identity; past 512
+        // drawn nozzles the window overflows), begun each frame.
+        std::vector<ee::Record> rm = rs;
+        for (unsigned i = 0; i < count; ++i) rm[i].node_handle = 100u + i;
+        static Transients memory; memory.clear();
+        std::vector<double> us, fl, mm;
+        unsigned drawn = 0, drawn_floor = 0, drawn_memory = 0;
         for (unsigned rep = 0; rep < 31; ++rep) {
             auto a = std::chrono::steady_clock::now();
             for (unsigned k = 0; k < 20; ++k) drawn = build(rs.data(), count, nullptr, v, Preset::standard, float(rep * 20 + k) / 60.f, vb.data(), count, nullptr, nullptr, nullptr, &cached);
@@ -899,11 +976,19 @@ int main() {
             a = std::chrono::steady_clock::now();
             for (unsigned k = 0; k < 20; ++k) drawn_floor = build(rs.data(), count, nullptr, v, Preset::standard, float(rep * 20 + k) / 60.f, vb.data(), count, nullptr, nullptr, nullptr, &cached, radii.data());
             fl.push_back(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - a).count() / 20.);
+            a = std::chrono::steady_clock::now();
+            for (unsigned k = 0; k < 20; ++k) {
+                Dynamics dy; dy.transients = &memory; dy.step = 1.f / 60.f; dy.game_ms = 1000.f / 60.f; dy.flow = double(rep * 20 + k) * .04375;
+                drawn_memory = build(rm.data(), count, nullptr, v, Preset::standard, float(rep * 20 + k) / 60.f, vb.data(), count, nullptr, nullptr, nullptr, &cached, radii.data(), &dy);
+            }
+            mm.push_back(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - a).count() / 20.);
         }
         std::sort(us.begin(), us.end());
         std::sort(fl.begin(), fl.end());
+        std::sort(mm.begin(), mm.end());
         std::printf("BUILD records=%u drawn=%u median_us=%.2f\n", count, drawn, us[us.size() / 2]);
         std::printf("BUILD_FLOOR records=%u drawn=%u median_us=%.2f\n", count, drawn_floor, fl[fl.size() / 2]);
+        std::printf("BUILD_MEMORY records=%u drawn=%u median_us=%.2f overflow=%u\n", count, drawn_memory, mm[mm.size() / 2], memory.overflow);
     }
     std::printf("engine_plumes_core checks=%u failed=%u\n", checks, failed);
     return failed ? 1 : 0;
@@ -1153,11 +1238,23 @@ class Wiring(unittest.TestCase):
         self.assertIn('}else if(!engine_plumes::seta_decode(warp,mult,&engaged,&seta_warp_,&seta_rate_)){++seta_invalid_;', inc)
         self.assertIn('log("engine_seta device=%llu frame=%llu event=%s state=%s read=%s', inc)
         self.assertIn('if(!log_tier::cached_debug||(!changed&&!status_changed))return;', inc)
+        # Review P3 / P7: the ramp starts over on a load epoch change and at Reset (one reset_load / reset_device row when
+        # it was not at rest); valid is 0 for a refused read too.
+        self.assertIn('if(engine_load_epoch_!=engine_travel_epoch_){if(engine_travel_.engaged||engine_travel_.linear>0.f)'
+                      'engine_travel_reset_="reset_load";engine_travel_=engine_plumes::TravelRamp{};'
+                      'engine_travel_epoch_=engine_load_epoch_;}', inc)
+        self.assertIn('if(engine_travel_.engaged||engine_travel_.linear>0.f)engine_travel_reset_="reset_device";'
+                      'engine_travel_=engine_plumes::TravelRamp{};engine_travel_weight_=0.f;', motion)
+        self.assertIn('seta_valid_=status==engine_effects::SetaStatus::ok;', inc)
+        self.assertIn('flow_factor_changes=%u', inc)
         self.assertIn('if(plumes_requested_&&!engine_transients_)engine_transients_.reset(new(std::nothrow)engine_plumes::Transients);', inc)
         effects_module = source_text(ROOT / 'src/proxy/engine_effects.cpp')
         self.assertIn('if(!identity_)return SetaStatus::identity;', effects_module)
-        self.assertIn('seta_site_state_=x3m::engine_memory::read(seta_site_,bytes,sizeof bytes)&&'
-                      '!std::memcmp(bytes,ep::expected_seta_site,sizeof bytes)?1:2;', effects_module)
+        # Review P6: a failed read of the site refuses that frame (status read) and is retried; only a byte mismatch
+        # latches the refusal (the effects fixture's armed mode executes both).
+        self.assertIn('if(x3m::engine_memory::read(seta_site_,bytes,sizeof bytes))'
+                      'seta_site_state_=!std::memcmp(bytes,ep::expected_seta_site,sizeof bytes)?1:2;', effects_module)
+        self.assertIn('if(!seta_site_state_)status=SetaStatus::read;else if(seta_site_state_!=1)status=SetaStatus::site;', effects_module)
         self.assertIn('else if(!x3m::engine_memory::read(seta_slot_,&cfg,sizeof cfg)||!cfg)status=SetaStatus::pointer;'
                       'else if(!x3m::engine_memory::read(std::uintptr_t(cfg)+ep::seta_warp_offset,pair,sizeof pair))'
                       'status=SetaStatus::read;', effects_module)
@@ -1270,9 +1367,21 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         self.assertTrue(len(r['report']['flow_lag']) == 4 and all(x['lag1'] >= .5 for x in r['report']['flow_lag']))
         self.assertTrue(len(r['report']['colour']) == 12 and all(x['error'] <= .01 for x in r['report']['colour']))
         attack = {(x['width'], x['kind']): x for x in r['report']['attack']}
-        self.assertEqual(len(attack), 6)
-        self.assertTrue(all(1.3 <= x['frame2'] <= 1.5 * 1.003 and x['back_ms'] <= 150 for k, x in attack.items() if k[1] != 'main'))
+        self.assertEqual(len(attack), 8)
+        self.assertTrue(all(1.3 <= x['frame2'] <= 1.5 * 1.003 and x['back_ms'] <= 150 for k, x in attack.items()
+                            if k[1] in ('steering', 'brake')))
         self.assertTrue(all(abs(x['frame2'] - 1) <= .003 for k, x in attack.items() if k[1] == 'main'))
+        # The review fixes: a main jet pushed into brake flares on its first brake frame (P2); the per-nozzle phase
+        # keeps a value flip's frames correlated (P1); a near plate 1.5 value in front lets at most 0.15 of the rim
+        # through at value 100 and nothing at 1,000 (P4: the guard's 300-unit bound).
+        self.assertTrue(len(r['report']['attack_crossing']) == 2 and all(
+            1.3 <= x['frame1'] <= 1.5 * 1.003 and x['back_ms'] <= 150 for x in r['report']['attack_crossing']))
+        self.assertTrue(len(r['report']['flow_keyed']) == 2 and all(
+            x['lag1_keyed'] >= .5 and x['factor_changes'] == 29 for x in r['report']['flow_keyed']))
+        near = r['report']['spill_near']
+        self.assertEqual(len(near), 6)
+        self.assertTrue(all(x['core_ratio_max'] <= .15 and x['rim_ratio_max'] <= .15 for x in near if x['value'] == 100))
+        self.assertTrue(all(x['cut_max'] <= 1e-5 for x in near if x['value'] == 1000))
         self.assertTrue(len(r['report']['travel']) == 2 and all(
             x['weight'] == 1 and abs(x['L_ratio'] - 2) < 1e-3 and abs(x['I_ratio'] - 1.25) < 1e-3 and abs(x['drawn_ratio'] - 2) <= .06 and
             abs(x['peak_ratio'] - 1.25) <= .025 for x in r['report']['travel']))

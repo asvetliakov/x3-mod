@@ -93,11 +93,26 @@ void MotionOutput::release_engine_shimmer() noexcept {
         shimmer_.reset();
     }
 }
+// A frame that drew no shimmer: the scratch (an FP16 copy at the target's size, 59 MB at 5120x1440) goes at once when the
+// shimmer is toggled off, and after shimmer_idle_limit (300) consecutive frames without a drawn shimmer (no nozzle
+// qualified); the next drawn frame recreates it. Never while a revert is pending. Inside the resolve's taa_call, whose
+// reference accounting covered the creation.
+void MotionOutput::idle_engine_shimmer(bool off) noexcept {
+    if (shimmer_idle_frames_ < shimmer_idle_limit) ++shimmer_idle_frames_;
+    if (!shimmer_ || !shimmer_->scratch_width() || shimmer_->revert_pending()) return;
+    if (!off && shimmer_idle_frames_ < shimmer_idle_limit) return;
+    shimmer_->release_scratch();
+    if (!shimmer_->scratch_width()) ++shimmer_scratch_releases_;
+}
 // Reset: the block and the scratch go (the target, the TAA history, goes with the pass's own before_reset); a refusal or
 // a failure is retried after it.
 void MotionOutput::engine_shimmer_before_reset() noexcept {
     if (shimmer_) taa_call([&] { shimmer_->before_reset(); });
     shimmer_attach_failed_ = shimmer_failed_ = false;
+    shimmer_idle_frames_ = 0;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (fixture_shimmer_probe_.stage >= 2 && fixture_shimmer_probe_.stage < 5) fixture_shimmer_probe_ = {}; // the texture goes
+#endif
 }
 void MotionOutput::engine_shimmer_after_reset(HRESULT result) noexcept {
     if (shimmer_) shimmer_->after_reset(result);
@@ -120,13 +135,14 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
                                                                          : nullptr;
     if (idle) {
         shimmer_report_.skipped = idle;
+        idle_engine_shimmer(!shimmer_on_);
         return;
     }
     LARGE_INTEGER begin{}, end{};
     QueryPerformanceCounter(&begin);
     // The plume stage's inputs (motion_output_engine_plumes_inc.h run_engine_plumes): the scene camera's view rows, the
     // scene view's records, the preset, the look, the stage's clock and its dynamics (the flow accumulator and the SETA
-    // travel weight, advanced by this frame's stage; its attack memory stays the stage's).
+    // travel weight, advanced by this frame's stage; its per-nozzle memory read for the phases, never written).
     engine_plumes::View view{};
     for (unsigned j = 0; j < 3; ++j) {
         view.rows[j * 4] = camera_scene_.r[j];
@@ -153,6 +169,7 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     if (!engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->own, engine_ring_->count,
                                           &scene_camera, &rule)) {
         shimmer_report_.skipped = "no_scene_view";
+        idle_engine_shimmer(false);
         return;
     }
     engine_plumes::ViewFilter filter{};
@@ -164,6 +181,7 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     engine_plumes::Dynamics dynamics{};
     dynamics.flow = engine_flow_.nozzle_widths;
     dynamics.travel = engine_travel_weight_;
+    dynamics.transients = engine_transients_.get(); // read only: each rect's nozzle phase as the stage advanced it
     const unsigned count = engine_shimmer::collect(engine_ring_->records, engine_ring_->count, &engine_plumes_body, view,
                                                    projection, plumes_preset_, seconds, &filter, &plumes_look_,
                                                    &plumes_tables_, engine_ring_->parent_radius, shimmer_rects_,
@@ -184,11 +202,30 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
         f.seconds = seconds;
         f.caller_scene_open = scene_open_;
         f.caller_stateblock_recording = shadow_.recording;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        const bool probing = fixture_shimmer_probe_.stage == 1;
+        const std::uint64_t pre = probing ? fixture_shimmer_hash(output) : 0;
+#endif
         hr = shimmer_->run(f, &shimmer_report_);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if (probing && shimmer_report_.drew) {
+            auto& p = fixture_shimmer_probe_;
+            p.pre = pre;
+            p.drawn = fixture_shimmer_hash(output);
+            p.texture = output;
+            p.frame = frame_;
+            p.rects = count;
+            p.stage = 2;
+        }
+#endif
         if (shimmer_report_.stale_revert) ++shimmer_stale_reverts_;
         if (FAILED(shimmer_report_.restore)) invalidate_render_states();
         if (FAILED(hr) && hr != D3DERR_DEVICELOST && hr != D3DERR_DEVICENOTRESET) fail_engine_shimmer("run", hr);
     }
+    if (shimmer_report_.drew)
+        shimmer_idle_frames_ = 0;
+    else
+        idle_engine_shimmer(false);
     QueryPerformanceCounter(&end);
     const std::uint64_t frequency = engine_qpc_frequency();
     shimmer_us_ = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
@@ -204,6 +241,12 @@ void MotionOutput::revert_engine_shimmer() noexcept {
     QueryPerformanceCounter(&begin);
     shimmer_revert_ = shimmer_->revert();
     QueryPerformanceCounter(&end);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (fixture_shimmer_probe_.stage == 2 && shimmer_revert_ == S_OK) {
+        fixture_shimmer_probe_.reverted = fixture_shimmer_hash(fixture_shimmer_probe_.texture);
+        fixture_shimmer_probe_.stage = 3;
+    }
+#endif
     const std::uint64_t frequency = engine_qpc_frequency();
     shimmer_revert_us_ = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
     if (FAILED(shimmer_revert_) && shimmer_revert_ != D3DERR_DEVICELOST && shimmer_revert_ != D3DERR_DEVICENOTRESET) {
@@ -211,16 +254,92 @@ void MotionOutput::revert_engine_shimmer() noexcept {
         fail_engine_shimmer("revert", shimmer_revert_);
     }
 }
-// --debug, at the engine_frame cadence (after engine_effects_frame_end: a frame with a candidate, or its quiet row).
+// --debug, at the engine_frame cadence (after engine_effects_frame_end: a frame with a candidate, or its quiet row). A
+// frame whose resolve did not reach the shimmer (no successful FP16 resolve this frame) says skipped=no_resolve.
 void MotionOutput::log_engine_shimmer() noexcept {
     if (!shimmer_requested_ || !engine_census_ || !log_tier::cached_debug) return;
     if (!engine_counts_.candidates && engine_quiet_frame_ != frame_) return;
     const bool ran = shimmer_frame_ == frame_;
     const engine_shimmer::Stats s = ran ? shimmer_stats_ : engine_shimmer::Stats{};
     const renderer::EngineShimmerReport r = ran ? shimmer_report_ : renderer::EngineShimmerReport{};
-    log("engine_shimmer device=%llu frame=%llu on=%u failed=%u ran=%u rects=%u candidates=%u small=%u behind=%u refused=%u offscreen=%u capped=%u scissor_px=%u copy_px=%u drew=%u px=%.2f result=%08lx step=%u skipped=%s calls=%u cpu_us=%.1f revert=%08lx revert_us=%.1f stale_reverts=%u",
+    log("engine_shimmer device=%llu frame=%llu on=%u failed=%u ran=%u rects=%u candidates=%u small=%u behind=%u refused=%u offscreen=%u capped=%u scissor_px=%u copy_px=%u drew=%u px=%.2f result=%08lx step=%u skipped=%s calls=%u cpu_us=%.1f revert=%08lx revert_us=%.1f stale_reverts=%u scratch=%u scratch_releases=%u",
         id_, frame_, unsigned(shimmer_on_), unsigned(shimmer_failed_ || shimmer_attach_failed_), unsigned(ran), s.kept,
         s.candidates, s.small, s.behind, s.refused, s.offscreen, s.capped, r.scissor_px, r.copy_px, unsigned(r.drew),
-        double(shimmer_px_), r.operation, unsigned(r.failed), r.skipped ? r.skipped : "-", r.calls,
-        double(ran ? shimmer_us_ : 0.f), shimmer_revert_, double(shimmer_revert_us_), shimmer_stale_reverts_);
+        double(shimmer_px_), r.operation, unsigned(r.failed), r.skipped ? r.skipped : ran ? "-" : "no_resolve", r.calls,
+        double(ran ? shimmer_us_ : 0.f), shimmer_revert_, double(shimmer_revert_us_), shimmer_stale_reverts_,
+        unsigned(shimmer_ && shimmer_->scratch_width()), shimmer_scratch_releases_);
 }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+// The two-frame history probe (engine_effects_fixture.cpp "armed"; x3m_engine_shimmer_fixture_probe / _status): armed,
+// it hashes the resolved image before and after the next drawn shimmer and after that frame's revert (frame N), then
+// the same texture before the next resolve and that resolve's history use (frame N+1). Keys: 0 the stage (5 done), 1..4
+// the low 32 bits of the hashes (pre, drawn, reverted, history), 5..8 the equalities pre == reverted, pre != drawn,
+// reverted == history, hashes read, 9 frame N+1's resolve used history, 10 its output is the other texture (the
+// history it read is frame N's), 11 frame N's rects, 12 the frames between N and N+1's resolve.
+std::uint64_t MotionOutput::fixture_shimmer_hash(IDirect3DTexture9* texture) noexcept {
+    if (!texture) return 0;
+    D3DSURFACE_DESC desc{};
+    IDirect3DSurface9* level = nullptr;
+    IDirect3DSurface9* copy = nullptr;
+    std::uint64_t h = 0;
+    HRESULT hr = texture->GetLevelDesc(0, &desc);
+    if (SUCCEEDED(hr)) hr = texture->GetSurfaceLevel(0, &level);
+    if (SUCCEEDED(hr))
+        hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, desc.Width, desc.Height, desc.Format,
+                                                                    D3DPOOL_SYSTEMMEM, &copy, nullptr);
+    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, level, copy);
+    D3DLOCKED_RECT lock{};
+    if (SUCCEEDED(hr)) hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
+    if (SUCCEEDED(hr)) {
+        const unsigned bytes = desc.Format == D3DFMT_A16B16G16R16F ? 8u : 4u;
+        h = 1469598103934665603ull;
+        for (UINT y = 0; y < desc.Height; ++y) {
+            const auto* row = static_cast<const unsigned char*>(lock.pBits) + std::size_t(y) * lock.Pitch;
+            for (std::size_t x = 0; x < std::size_t(desc.Width) * bytes; ++x) h = (h ^ row[x]) * 1099511628211ull;
+        }
+        copy->UnlockRect();
+        ++fixture_shimmer_probe_.hashed;
+    }
+    release(copy);
+    release(level);
+    return h;
+}
+void MotionOutput::fixture_shimmer_probe(bool arm) noexcept {
+    fixture_shimmer_probe_ = {};
+    fixture_shimmer_probe_.stage = arm ? 1u : 0u;
+}
+unsigned MotionOutput::fixture_shimmer_status(unsigned key) const noexcept {
+    const auto& p = fixture_shimmer_probe_;
+    switch (key) {
+    case 0: return p.stage;
+    case 1: return unsigned(p.pre);
+    case 2: return unsigned(p.drawn);
+    case 3: return unsigned(p.reverted);
+    case 4: return unsigned(p.history);
+    case 5: return p.stage >= 3 && p.pre == p.reverted ? 1u : 0u;
+    case 6: return p.stage >= 3 && p.pre != p.drawn ? 1u : 0u;
+    case 7: return p.stage >= 4 && p.reverted == p.history ? 1u : 0u;
+    case 8: return p.hashed;
+    case 9: return p.used_history;
+    case 10: return p.other_target;
+    case 11: return p.rects;
+    case 12: return unsigned(p.next_frame - p.frame);
+    }
+    return 0;
+}
+// The resolve's hooks: before taa_->run (frame N+1: frame N's image as the resolve finds it) and after it.
+void MotionOutput::fixture_shimmer_before_resolve() noexcept {
+    auto& p = fixture_shimmer_probe_;
+    if (p.stage != 3) return;
+    p.history = fixture_shimmer_hash(p.texture);
+    p.stage = 4;
+}
+void MotionOutput::fixture_shimmer_after_resolve(HRESULT hr, bool used_history, IDirect3DTexture9* color) noexcept {
+    auto& p = fixture_shimmer_probe_;
+    if (p.stage != 4) return;
+    p.used_history = SUCCEEDED(hr) && used_history ? 1u : 0u;
+    p.other_target = SUCCEEDED(hr) && color && color != p.texture ? 1u : 0u;
+    p.next_frame = frame_;
+    p.stage = 5;
+}
+#endif

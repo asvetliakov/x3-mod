@@ -5791,6 +5791,18 @@ extern "C" __declspec(dllexport) void x3m_engine_far_jets_fixture_call(std::uint
 // Engine plumes seam (engine_effects_fixture.cpp "armed", "armed_refused"): EnginePlumesPass fixture faults (bit 0 the
 // FP16 refusal at attach, bit 1 one failed draw, bit 2 every draw); before the stage's first arming the call creates the
 // (unattached) pass so that the first attach takes the fault; 0 when it cannot.
+// Engine heat shimmer seam (engine_effects_fixture.cpp "armed"): the two-frame history probe (arm 1 / off 0) and its
+// keys (motion_output_engine_shimmer_inc.h fixture_shimmer_status).
+extern "C" __declspec(dllexport) void x3m_engine_shimmer_fixture_probe(IDirect3DDevice9* device, int arm) {
+    x3m::CaptureLock lock;
+    const auto it = x3m::devices.find(device);
+    if (it != x3m::devices.end()) it->second->motion_output.fixture_shimmer_probe(arm != 0);
+}
+extern "C" __declspec(dllexport) unsigned x3m_engine_shimmer_fixture_status(IDirect3DDevice9* device, unsigned key) {
+    x3m::CaptureLock lock;
+    const auto it = x3m::devices.find(device);
+    return it == x3m::devices.end() ? 0u : it->second->motion_output.fixture_shimmer_status(key);
+}
 extern "C" __declspec(dllexport) int x3m_engine_plumes_fixture_fault(IDirect3DDevice9* device, unsigned faults) {
     x3m::CaptureLock lock;
     const auto it = x3m::devices.find(device);

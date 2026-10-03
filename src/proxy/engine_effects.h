@@ -56,8 +56,9 @@ Stats stats();
 // The plume stage's travel look (gap 7 of docs/architecture/engine-exhaust-gap-analysis.md; the read of
 // docs/reverse-engineering/engine-effects.md section 8): this frame's SETA dwords, warp = cfg+0xcc and mult = cfg+0xd0
 // (16.16) with cfg = *0x00606f34, through engine_memory::read: the pointer, then one 8-byte read. Refused without the
-// executable identity, when the 12-byte compare of the tick's reads at 0x004d1ef0 (done once, at the first call)
-// differs, on a null pointer or a failed read; the caller then uses 1.0 (engine_plumes_core.h seta_decode validates the
+// executable identity, when the 12-byte compare of the tick's reads at 0x004d1ef0 (latched at the first readable call)
+// differs, on a null pointer or a failed read (of the site too: retried at the next call); the caller then uses 1.0
+// (engine_plumes_core.h seta_decode validates the
 // values). Render thread only (the Present path; the writers are the game's main thread, the same one). LastError kept.
 enum class SetaStatus : std::uint8_t { ok = 0, identity = 1, site = 2, pointer = 3, read = 4 };
 const char* seta_status_name(SetaStatus);

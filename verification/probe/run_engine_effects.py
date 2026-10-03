@@ -23,7 +23,9 @@ engine_effects_fixture.exe, then runs the fixture once per mode in the selected 
               forced draw fault disarms 64 frames with one engine_plumes_failed row, three consecutive ones refuse until
               Reset (final=1), Reset releases the pass and the next armed frame recreates it; taa_references delta 0; the
               disarmed and refused frames forward the four glow jets natively (engine_frame forwarded_stage_off=4, 259
-              frames)
+              frames); the SETA site unreadable on the first armed frame (refused as read, retried, then ok); the heat
+              shimmer's two-frame history (frame N's history byte-equal to its unshimmered resolve after the revert,
+              frame N+1's resolve reads it)
   armed_refused  as armed with the FP16 refusal staged before the first attach: one engine_plumes_device attached=0
               reason=fp16_blending row, engine_plumes_state reason=fp16_blending glow=native, engine_frame
               forwarded_stage_off=4 on the 40 refused frames, then Reset, attached=1 and armed
@@ -77,7 +79,9 @@ PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.
                       'src/renderer/engine_plumes_pass.cpp', 'src/renderer/engine_plumes_pass.h',
                       'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h',
                       'src/proxy/motion_output.h', 'src/proxy/capture.cpp', 'src/proxy/engine_far_jets.cpp',
-                      'src/proxy/engine_far_jets.h', 'src/proxy/engine_far_jets_core.h')
+                      'src/proxy/engine_far_jets.h', 'src/proxy/engine_far_jets_core.h',
+                      'src/proxy/motion_output_engine_shimmer_inc.h', 'src/proxy/engine_shimmer_core.h',
+                      'src/renderer/engine_shimmer_pass.cpp', 'src/renderer/engine_shimmer_pass.h')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
 
@@ -247,17 +251,29 @@ def validate(mode, r):
         if len(stage_off) != 3 * 63 + 70 or any((f.get('forwarded_stage_off'), f.get('suppressed'), f.get('records')) != ('4', '0', '0')
                                                 for f in stage_off):
             problems.append(f'armed: forwarded_stage_off frames {len(stage_off)}')
-        # The travel look (gap 7): the SETA read through the seam, one row at the first read (ok, 1.0), one engage at
-        # warp 6, one release after the 0.3 s hold; every drawn stage frame read once, none refused or invalid.
+        # The travel look (gap 7): the SETA read through the seam. The site's page is unreadable on the first armed frame:
+        # that read is refused as `read` (valid 0, not latched; review P6) and the next, after the commit, reads ok; one
+        # engage at warp 6, one release after the 0.3 s hold; every drawn stage frame read once, exactly one refused,
+        # none invalid.
         seta = [(r.get('event'), r.get('state'), r.get('read'), r.get('valid'), r.get('warp')) for r in rows(log, 'engine_seta')]
         reads = [int(g.get('seta_reads', 0)) for g in stage]
         out.update(seta_rows=seta, seta_reads_last=reads[-1] if reads else None,
                    seta_refused_last=stage[-1].get('seta_refused') if stage else None)
-        if seta != [('read', 'off', 'ok', '1', '1.000'), ('engage', 'on', 'ok', '1', '6.000'), ('release', 'off', 'ok', '1', '1.000')]:
+        if seta != [('read', 'off', 'read', '0', '1.000'), ('read', 'off', 'ok', '1', '1.000'), ('engage', 'on', 'ok', '1', '6.000'),
+                    ('release', 'off', 'ok', '1', '1.000')]:
             problems.append(f'armed: engine_seta rows {seta}')
-        if not stage or (stage[-1].get('seta_refused'), stage[-1].get('seta_invalid'), stage[-1].get('seta_read')) != ('0', '0', 'ok') or \
+        if not stage or (stage[-1].get('seta_refused'), stage[-1].get('seta_invalid'), stage[-1].get('seta_read')) != ('1', '0', 'ok') or \
                 not reads or reads[-1] < 10:
             problems.append(f'armed: engine_stage seta counts {out["seta_reads_last"]} {out["seta_refused_last"]}')
+        # The heat shimmer's two-frame history (review S1): the fixture's SHIMMER_HISTORY line (its CHECKs carry the
+        # verdict) and the session's shimmer rows: attached once, drawn on the probe's frames.
+        history = [fields(l) for l in lines if l.startswith('SHIMMER_HISTORY ')]
+        shimmer_devices = [(d.get('attached'), d.get('reason')) for d in rows(log, 'engine_shimmer_device')]
+        shimmer_drawn = [r for r in rows(log, 'engine_shimmer') if r.get('drew') == '1']
+        out.update(shimmer_history=history[-1] if history else None, shimmer_device_rows=shimmer_devices,
+                   shimmer_drawn_rows=len(shimmer_drawn))
+        if not history or history[-1].get('stage') != '5' or shimmer_devices != [('1', 'ok')] or len(shimmer_drawn) < 2:
+            problems.append(f'armed: shimmer history {history} devices {shimmer_devices} drawn rows {len(shimmer_drawn)}')
         return problems, out
     if mode == 'armed_refused':
         # The refusal at the first attach: one refused device row then, after the Reset, one attached row; the state rows

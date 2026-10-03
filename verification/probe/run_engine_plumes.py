@@ -110,8 +110,8 @@ def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
             'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
             'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
-            'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'FLOW', 'FLOW_SAME', 'FLOW_LAG', 'COLOUR', 'COLOUR_HEAD',
-            'ATTACK', 'TRAVEL')
+            'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'SPILL_NEAR', 'FLOW', 'FLOW_SAME', 'FLOW_LAG',
+            'FLOW_KEYED', 'COLOUR', 'COLOUR_HEAD', 'ATTACK', 'ATTACK_CROSSING', 'TRAVEL')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -154,6 +154,11 @@ def gates(r):
     out['flow_world_over_law'] = {f"{x['width']}_{x['value']:.0f}": x['ratio'] for x in r['flow']}
     out['flow_600_over_1500'] = {str(x['width']): x['ratio'] for x in r['flow_same']}
     out['flow_lag1'] = {f"{x['width']}_{x['value']:.0f}": x['lag1'] for x in r['flow_lag']}
+    # The review fixes: the per-nozzle phase under a value flip, the near plate's spill, the main-to-brake flare.
+    out['flow_keyed'] = {str(x['width']): {k: x[k] for k in ('lag1_keyed', 'lag1_shared', 'factor_changes')} for x in r['flow_keyed']}
+    out['spill_near'] = {f"{x['width']}_{x['lane']}_{x['value']:.0f}": {k: x[k] for k in ('core_ratio_max', 'rim_ratio_max', 'cut_max')}
+                         for x in r['spill_near']}
+    out['attack_crossing'] = {str(x['width']): {'frame1': x['frame1'], 'back_ms': x['back_ms']} for x in r['attack_crossing']}
     out['colour_error_max'] = max((x['error'] for x in r['colour']), default=None)
     out['attack'] = {f"{x['width']}_{x['kind']}": {'frame2': x['frame2'], 'back_ms': x['back_ms']} for x in r['attack']}
     out['travel'] = {str(x['width']): {k: x[k] for k in ('weight', 'L_ratio', 'I_ratio', 'drawn_ratio', 'peak_ratio')} for x in r['travel']}
@@ -376,7 +381,8 @@ def main():
                       'distance_ratio_gpu': g['distance_ratio_gpu'], 'ps_slots': g['ps_slots'],
                       'idle_L_over_value': g['idle_L_over_value'], 'spill': g['spill'],
                       'flow_world_over_law': g['flow_world_over_law'], 'flow_600_over_1500': g['flow_600_over_1500'],
-                      'flow_lag1': g['flow_lag1'], 'colour_error_max': g['colour_error_max'], 'attack': g['attack'],
+                      'flow_lag1': g['flow_lag1'], 'flow_keyed': g['flow_keyed'], 'spill_near': g['spill_near'],
+                      'colour_error_max': g['colour_error_max'], 'attack': g['attack'], 'attack_crossing': g['attack_crossing'],
                       'travel': g['travel'], 'results': str(results.relative_to(ROOT))}, indent=1))
     return 0 if record['passed'] else 1
 

@@ -304,15 +304,17 @@ SetaStatus seta_read(std::uint32_t* warp, std::uint32_t* mult) {
     if (!identity_) return SetaStatus::identity;
     const DWORD error = GetLastError();
     SetaStatus status = SetaStatus::ok;
+    // The site's whole-instruction compare: a mismatch latches the refusal for the session; a failed read of the site
+    // refuses this frame only (status read) and is retried on the next.
     if (!seta_site_state_) {
         unsigned char bytes[ep::seta_site_length]{};
-        seta_site_state_ = x3m::engine_memory::read(seta_site_, bytes, sizeof bytes) &&
-                                   !std::memcmp(bytes, ep::expected_seta_site, sizeof bytes)
-                               ? 1
-                               : 2;
+        if (x3m::engine_memory::read(seta_site_, bytes, sizeof bytes))
+            seta_site_state_ = !std::memcmp(bytes, ep::expected_seta_site, sizeof bytes) ? 1 : 2;
     }
     std::uint32_t cfg = 0, pair[2] = {0, 0};
-    if (seta_site_state_ != 1)
+    if (!seta_site_state_)
+        status = SetaStatus::read;
+    else if (seta_site_state_ != 1)
         status = SetaStatus::site;
     else if (!x3m::engine_memory::read(seta_slot_, &cfg, sizeof cfg) || !cfg)
         status = SetaStatus::pointer;

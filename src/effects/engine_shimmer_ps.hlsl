@@ -9,9 +9,9 @@
 // (outside every mask, occluded) is the copy point-sampled at its own centre: bit for bit the input.
 // Mask of a rect (engine_shimmer_core.h mask_at): s along the screen axis from the nozzle, t across;
 // smoothstep(-back, 0, s) (1 - smoothstep(0, length, s)) (1 - smoothstep(0.35 half-width, half-width, |t|)), 0 on the
-// border. Occlusion: the lane's device depth d (s2, point) in [0, depth) is nearer than the plume: no shimmer there (the
-// sky's -1 never occludes).
-// Compiled with tools/shaders/generate_rigid_motion_pixel.py.
+// border. Occlusion: the lane's device depth d (s2, point) in [0, depth) is nearer than the plume: the shimmer fades out
+// over a small view-depth band in front of it, x saturate(1 - (depth - d) x fade) (the sky's -1 never occludes).
+// Compiled with tools/shaders/generate_engine_shimmer_program.py.
 sampler2D scene_linear : register(s0);
 sampler2D scene_point : register(s1);
 sampler2D lane : register(s2);
@@ -20,7 +20,8 @@ float4 frame : register(c1);     // amplitude (px), rect count, 0, the clock x b
 float4 grid : register(c2);      // 1 / cell (cells per nozzle width), 0, 0, 0
 float4 rect_a[16] : register(c4);  // origin (px), unit axis
 float4 rect_b[16] : register(c20); // length (px ahead), half-width (px), back (px behind), 1 / nozzle width (px)
-float4 rect_c[16] : register(c36); // seed (x 61.7), occlusion depth (device; 0 none), the nozzle's flow phase / cell, 0
+float4 rect_c[16] : register(c36); // seed (x 61.7), occlusion depth (device; 0 none), the nozzle's flow phase / cell, the
+                                   // occlusion fade (1 / the band's device-depth span)
 // The plume's value noise and its gradient in x and y: (d/dx, d/dy) of the smoothstep-trilinear interpolation.
 float2 vnoise_gradient(float3 p) {
     const float3 f = frac(p);
@@ -52,10 +53,10 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         const float s = dot(rel, a.zw);
         const float t = dot(rel, float2(-a.w, a.z));
         const float at = abs(t);
-        const bool occluded = depth >= 0.0 && depth < c.y;
-        [branch] if (i < frame.y && s > -b.z && s < b.x && at < b.y && !occluded) {
+        const float visible = depth >= 0.0 ? saturate(1.0 - (c.y - depth) * c.w) : 1.0;
+        [branch] if (i < frame.y && s > -b.z && s < b.x && at < b.y && visible > 0.0) {
             const float mask = smoothstep(-b.z, 0.0, s) * (1.0 - smoothstep(0.0, b.x, s)) *
-                               (1.0 - smoothstep(0.35 * b.y, b.y, at));
+                               (1.0 - smoothstep(0.35 * b.y, b.y, at)) * visible;
             // Nozzle widths -> cells; the field moves away from the nozzle with the flow.
             const float2 q = float2(s, t) * (b.w * grid.x);
             const float3 cell = float3(q.x - c.z, q.y, c.x + frame.w);

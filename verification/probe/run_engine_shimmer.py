@@ -36,7 +36,7 @@ PRODUCTION_SOURCES = ('src/proxy/engine_shimmer_core.h', 'src/proxy/engine_plume
                       'src/effects/engine_shimmer_ps.hlsl', 'src/renderer/engine_shimmer_pixel_program_inc.h',
                       'src/renderer/quad_vertex_program.h', 'src/renderer/quad_vertex_program_inc.h')
 PROGRAM = ('verification/results/engine-shimmer-pixel-program.json', 'src/renderer/engine_shimmer_pixel_program_inc.h')
-TAGS = ('ATTACH', 'SIZE', 'DISPLACE', 'GATE', 'OCCLUSION', 'STATE', 'REFUSAL', 'FAULT', 'RESET', 'TIMING')
+TAGS = ('ATTACH', 'SIZE', 'DISPLACE', 'GATE', 'OCCLUSION', 'STATE', 'SCRATCH', 'REFUSAL', 'FAULT', 'RESET', 'TIMING')
 
 
 def sha(path):

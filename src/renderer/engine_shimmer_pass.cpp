@@ -23,11 +23,11 @@ bool lost(HRESULT hr) noexcept {
 enum Slot : unsigned {
     GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, StretchRect = 34, SetRenderTarget = 37,
     GetRenderTarget = 38, SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
-    SetViewport = 47, GetViewport = 48, SetRenderState = 57, CreateStateBlock = 59, SetTexture = 65,
+    SetViewport = 47, GetViewport = 48, SetRenderState = 57, BeginStateBlock = 60, EndStateBlock = 61, SetTexture = 65,
     SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
     CreateVertexDeclaration = 86, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
-    CreateVertexShader = 91, SetVertexShader = 92, SetStreamSourceFreq = 102, SetIndices = 104, CreatePixelShader = 106,
-    SetPixelShader = 107, SetPixelShaderConstantF = 109
+    CreateVertexShader = 91, SetVertexShader = 92, SetStreamSource = 100, SetStreamSourceFreq = 102, SetIndices = 104,
+    CreatePixelShader = 106, SetPixelShader = 107, SetPixelShaderConstantF = 109
 };
 // clang-format on
 using D = IDirect3DDevice9*;
@@ -43,7 +43,9 @@ using SceneFn = HRESULT(WINAPI*)(D);
 using SetViewportFn = HRESULT(WINAPI*)(D, const D3DVIEWPORT9*);
 using GetViewportFn = HRESULT(WINAPI*)(D, D3DVIEWPORT9*);
 using SetRsFn = HRESULT(WINAPI*)(D, D3DRENDERSTATETYPE, DWORD);
-using CreateBlockFn = HRESULT(WINAPI*)(D, D3DSTATEBLOCKTYPE, IDirect3DStateBlock9**);
+using BeginBlockFn = HRESULT(WINAPI*)(D);
+using EndBlockFn = HRESULT(WINAPI*)(D, IDirect3DStateBlock9**);
+using SetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9*, UINT, UINT);
 using SetTextureFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DBaseTexture9*);
 using SetStageFn = HRESULT(WINAPI*)(D, DWORD, D3DTEXTURESTAGESTATETYPE, DWORD);
 using SetSamplerFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD);
@@ -77,9 +79,10 @@ bool lane_format(D3DFORMAT f) noexcept {
 constexpr UINT samplers = 3; // s0 the copy (linear), s1 the copy (point), s2 the lane (point)
 } // namespace
 
-// Everything the draw touches beyond the state block: the render targets and depth, viewport and scissor rect
-// (SetRenderTarget resets both) and the vertex input mode (a D3DSBT_ALL block records the declaration, but a caller
-// without one, in FVF mode, is restored through its FVF). The sun-shadow apply pass's shape.
+// Everything the draw touches beyond the recorded state block (set_states: exactly the states the draw sets, so its
+// Capture and Apply cost those states only): the render targets and depth, viewport and scissor rect (SetRenderTarget
+// resets both) and the vertex input mode (the declaration, or a caller in FVF mode restored through its FVF). The
+// sun-shadow apply pass's shape.
 struct EngineShimmerPass::SavedState {
     const EngineShimmerPass& pass;
     IDirect3DStateBlock9* block;
@@ -181,6 +184,13 @@ unsigned EngineShimmerPass::references() const noexcept {
         n += p != nullptr;
     return n;
 }
+void EngineShimmerPass::release_scratch() noexcept {
+    if (pending_) return; // a revert still reads it
+    PreserveCpuState guard;
+    drop(scratch_surface_);
+    drop(scratch_);
+    scratch_width_ = scratch_height_ = 0;
+}
 HRESULT EngineShimmerPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMAT format) noexcept {
     PreserveCpuState guard;
     detach();
@@ -226,7 +236,6 @@ HRESULT EngineShimmerPass::attach(D d, void* const* native, const D3DCAPS9& caps
     }
     if (hr != D3D_OK) return refuse("fp16_filter", D3DERR_NOTAVAILABLE);
     render_targets_ = caps.NumSimultaneousRTs ? caps.NumSimultaneousRTs : 1;
-    streams_ = caps.MaxStreams;
     hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(quad_vertex_program()), &vs_);
     if (SUCCEEDED(hr)) hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, quad_declaration, &declaration_);
     if (SUCCEEDED(hr)) hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(ps_words), &ps_);
@@ -236,11 +245,21 @@ HRESULT EngineShimmerPass::attach(D d, void* const* native, const D3DCAPS9& caps
     caps_.reason = "ok";
     return S_OK;
 }
-// The state block and the scratch at the target's size (A16B16G16R16F render-target texture, one level).
+// The state block and the scratch at the target's size (A16B16G16R16F render-target texture, one level). The block is
+// recorded (BeginStateBlock / EndStateBlock) from set_states with placeholder values and the pixel constants the draw
+// uploads, so it holds exactly the states the draw sets: Capture takes the caller's values of those, Apply puts them
+// back (documented D3D9: a recorded block captures and applies only its recorded states). Recording applies nothing.
 HRESULT EngineShimmerPass::ensure_scratch(UINT width, UINT height) noexcept {
     HRESULT hr = S_OK;
     if (!block_) {
-        hr = call<CreateBlockFn>(CreateStateBlock)(device_, D3DSBT_ALL, &block_);
+        hr = call<BeginBlockFn>(BeginStateBlock)(device_);
+        if (FAILED(hr)) return hr;
+        static const float zeros[engine_shimmer::constant_vectors * 4] = {};
+        HRESULT recorded = set_states(nullptr, nullptr);
+        if (SUCCEEDED(recorded))
+            recorded = call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_, 0, zeros, engine_shimmer::constant_vectors);
+        hr = call<EndBlockFn>(EndStateBlock)(device_, &block_);
+        if (SUCCEEDED(hr) && FAILED(recorded)) hr = recorded;
         if (SUCCEEDED(hr) && !block_) hr = E_FAIL;
         if (FAILED(hr)) {
             drop(block_);
@@ -271,25 +290,24 @@ HRESULT EngineShimmerPass::ensure_scratch(UINT width, UINT height) noexcept {
     scratch_height_ = height;
     return S_OK;
 }
-// The draw's whole device state: the target alone (depth and the other targets unbound, RT0 before its full viewport),
-// the quad program pair, no blending, the scissor at the rects' union, point samplers on the lane and the copy's own
-// pixel, linear on the copy's displaced sample.
-HRESULT EngineShimmerPass::normalize(IDirect3DSurface9* target, UINT w, UINT h, const int scissor[4]) noexcept {
+// The draw's recordable states (the state block holds exactly these; ensure_scratch records them with null programs):
+// the program's three samplers unbound (the pixel program samples s0..s2 only; the draw's own bindings follow), the
+// quad program pair, no index buffer and stream 0 unbound (DrawPrimitiveUP resets stream 0: the block restores the
+// caller's), stream 0 at frequency 1 (the declaration reads stream 0 only), no blending, the scissor test, point samplers
+// on the lane and the copy's own pixel, linear on the copy's displaced sample.
+HRESULT EngineShimmerPass::set_states(IDirect3DVertexShader9* vs, IDirect3DPixelShader9* ps) noexcept {
     D d = device_;
 #define STEP(call)                                                                                                     \
     do {                                                                                                               \
         const HRESULT hresult = (call);                                                                                \
         if (FAILED(hresult)) return hresult;                                                                           \
     } while (false)
-    for (UINT i = 0; i < 16; ++i) STEP(call<SetTextureFn>(SetTexture)(d, i, nullptr));
-    STEP(call<SetDepthFn>(SetDepthStencilSurface)(d, nullptr));
-    for (UINT i = 1; i < render_targets_ && i < 4; ++i) STEP(call<SetRtFn>(SetRenderTarget)(d, i, nullptr));
-    STEP(call<SetRtFn>(SetRenderTarget)(d, 0, target));
-    STEP(call<SetDeclarationFn>(SetVertexDeclaration)(d, declaration_));
-    STEP(call<SetVsFn>(SetVertexShader)(d, vs_));
-    STEP(call<SetPsFn>(SetPixelShader)(d, ps_));
+    for (UINT i = 0; i < samplers; ++i) STEP(call<SetTextureFn>(SetTexture)(d, i, nullptr));
+    STEP(call<SetVsFn>(SetVertexShader)(d, vs));
+    STEP(call<SetPsFn>(SetPixelShader)(d, ps));
     STEP(call<SetIndicesFn>(SetIndices)(d, nullptr));
-    for (UINT i = 0; i < streams_; ++i) STEP(call<SetFreqFn>(SetStreamSourceFreq)(d, i, 1));
+    STEP(call<SetStreamFn>(SetStreamSource)(d, 0, nullptr, 0, 0));
+    STEP(call<SetFreqFn>(SetStreamSourceFreq)(d, 0, 1));
     for (auto state : {D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_STENCILENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE,
                        D3DRS_SEPARATEALPHABLENDENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_CLIPPLANEENABLE,
                        D3DRS_LIGHTING, D3DRS_INDEXEDVERTEXBLENDENABLE, D3DRS_POINTSPRITEENABLE, D3DRS_DITHERENABLE,
@@ -316,6 +334,18 @@ HRESULT EngineShimmerPass::normalize(IDirect3DSurface9* target, UINT w, UINT h, 
         STEP(call<SetSamplerFn>(SetSamplerState)(d, i, D3DSAMP_MAXMIPLEVEL, 0));
         STEP(call<SetSamplerFn>(SetSamplerState)(d, i, D3DSAMP_MIPMAPLODBIAS, 0));
     }
+    return S_OK;
+}
+// The draw's whole device state: the recordable states (set_states), then the target alone (depth and the other
+// targets unbound, RT0 before its full viewport), the quad declaration, the viewport and the scissor at the rects'
+// union.
+HRESULT EngineShimmerPass::normalize(IDirect3DSurface9* target, UINT w, UINT h, const int scissor[4]) noexcept {
+    D d = device_;
+    STEP(set_states(vs_, ps_));
+    STEP(call<SetDepthFn>(SetDepthStencilSurface)(d, nullptr));
+    for (UINT i = 1; i < render_targets_ && i < 4; ++i) STEP(call<SetRtFn>(SetRenderTarget)(d, i, nullptr));
+    STEP(call<SetRtFn>(SetRenderTarget)(d, 0, target));
+    STEP(call<SetDeclarationFn>(SetVertexDeclaration)(d, declaration_));
     const D3DVIEWPORT9 viewport{0, 0, w, h, 0.f, 1.f};
     STEP(call<SetViewportFn>(SetViewport)(d, &viewport));
     const RECT rect{scissor[0], scissor[1], scissor[2], scissor[3]};
@@ -355,7 +385,8 @@ HRESULT EngineShimmerPass::run(const EngineShimmerFrame& f, EngineShimmerReport*
         return finish(S_FALSE);
     };
     if (!device_ || !caps_.enabled) return refuse(EngineShimmerStep::Validate, E_INVALIDARG);
-    if (reset_pending_) return refuse(EngineShimmerStep::Validate, E_FAIL);
+    // A lost device waits for its Reset: no device call, no failure (before_reset forgets a pending revert).
+    if (reset_pending_) return skip("reset_pending");
     if (!f.width || !f.height || !f.target || !f.target_surface || (f.rect_count && !f.rects) ||
         f.rect_count > engine_shimmer::max_rects || !finite(f.amplitude_px) || !finite(f.seconds))
         return refuse(EngineShimmerStep::Validate, E_INVALIDARG);

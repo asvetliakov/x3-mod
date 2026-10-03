@@ -33,8 +33,9 @@
 // camera by the bias when the exhaust faces it: vis = saturate((lane - (z_axis - bias)) / SOFT), SOFT 0.15 value for the
 // body and the ring and 1.0 value for the halo, so a plume behind a hull shows only past its silhouette.
 // Nozzle spill (gap 3): the halo's visibility is at least glow_through (c16.z) within spill_inner nozzle widths of the
-// nozzle in the screen plane, tapering to 0 at spill_reach (c17.xy), x saturate(1 + gap / (spill_depth value)) (c16.w:
-// only an occluder near the nozzle's depth, its own hull, lets it through); the body and the ring unchanged.
+// nozzle in the screen plane, tapering to 0 at spill_reach (c17.xy), x saturate(1 + gap / min(spill_depth value,
+// spill_depth_max)) (c16.w, c17.z: only an occluder near the nozzle's depth, its own hull, lets it through; the guard at
+// most 300 world units, so a ship passing in front of a capital's nozzle does not); the body and the ring unchanged.
 // Compiled with tools/shaders/generate_rigid_motion_pixel.py.
 sampler2D lane_sampler : register(s0);
 float4 lane_sizes : register(c0); // 1/W, 1/H of the target, unused x2
@@ -47,7 +48,7 @@ float4 core_k : register(c6);     // heat, 1 / (1.4 core), ring radius, ring sig
 float4 halo_k : register(c7);     // hand-over inner, outer (nozzle widths), the ring's axial falloff, 2 (params.z: I_ring / I_core / 2)
 float4 disc_k[8] : register(c8);  // the disc's samples u_k = (k + 0.5) / 8: w, tail (with the mouth ramp), cell (without the throttle), heat
 float4 mouth_k : register(c16);   // the mouth ramp: dip, end (x L); the spill: glow_through, 1 / spill_depth (x value)
-float4 spill_k : register(c17);   // the spill's inner and outer reach (nozzle widths, screen plane), 0, 0
+float4 spill_k : register(c17);   // the spill's inner and outer reach (nozzle widths, screen plane), 1 / spill_depth_max, 0
 struct Input {
     float4 local : TEXCOORD0;     // x, y (world), L (pulsed, world; the disc: the ring's radiance), n (nozzle width, world)
     float4 shape : TEXCOORD1;     // halo sigma0 (nozzle widths), value, occlusion bias, the nozzle's flow phase (nozzle widths)
@@ -120,7 +121,7 @@ float4 main(Input i) : COLOR0 {
     // mouth's hand-over and the nozzle spill.
     const float d_screen = sqrt(q.x * q.x * (disc ? 1.0 : i.fog.w * i.fog.w) + q.y * q.y);
     const float spill = mouth_k.z * (1.0 - smoothstep(spill_k.x, spill_k.y, d_screen)) *
-                        saturate(1.0 + gap * mouth_k.w / max(i.shape.y, 1e-4));
+                        saturate(1.0 + gap * max(mouth_k.w / max(i.shape.y, 1e-4), spill_k.z));
     const float soft_halo = occluder ? valid * max(saturate(gap / max(look.y * i.shape.y, 1e-4)), spill) : 1.0;
     float3 result;
     [branch] if (disc) {

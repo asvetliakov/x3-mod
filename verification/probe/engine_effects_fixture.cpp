@@ -19,8 +19,12 @@
 //              taa_references unchanged across the cycle; far copies (the small-parts cull's handler) drawn by their view
 //              handle whatever the selector's phase, another view's skipped, duplicates dropped, a draw-free frame's
 //              scene view the most frequent far handle (512x512: one nozzle over the distance law's 12 px);
-//              the SETA read through its seam (a synthetic tick site and configuration block): warp 6 engages
-//              the travel look, 1.0 for 0.96 s releases it (engine_seta rows)
+//              the SETA read through its seam (a synthetic tick site and configuration block): the site unreadable at
+//              first (a reserved page: the read refused, status read, not latched), committed after the first armed
+//              frame (read ok); warp 6 engages the travel look, 1.0 for 0.96 s releases it (engine_seta rows);
+//              the heat shimmer's two-frame history: p2 raised to a 34 px nozzle, frame N's resolved image hashed
+//              before and after the shimmer and after its revert (unshimmered bytes back), frame N+1's resolve reads
+//              that texture as its history (x3m_engine_shimmer_fixture_probe)
 //   armed_refused  as armed with the FP16 refusal staged before the first attach: the glow jets forwarded natively
 //              (forwarded_stage_off 4 per frame) from the frame after the refusal until Reset; then attached and drawn
 // Output: CHECK <label> PASS|FAIL lines, FRAME / RECORD / TIMING lines, RESULT PASS|FAIL. Original synthetic content
@@ -70,6 +74,8 @@ using RecordFn = int (*)(IDirect3DDevice9*, unsigned, void*, unsigned);
 using EmissionStatus = unsigned (*)(IDirect3DDevice9*, unsigned);
 using PlumesFault = int (*)(IDirect3DDevice9*, unsigned);
 using FarCall = void (*)(std::uint32_t, std::int32_t, std::uint32_t);
+using ShimmerProbe = void (*)(IDirect3DDevice9*, int);
+using ShimmerStatus = unsigned (*)(IDirect3DDevice9*, unsigned);
 using CameraInstall = void (*)(const float* const*, const float* const*);
 using Create9 = IDirect3D9*(WINAPI*)(UINT);
 // The armed mode's engine camera globals (camera_state::fixture_install reads them like *0x00608a38 / *0x00608a40):
@@ -90,6 +96,10 @@ struct SetaBlock {
 };
 SetaBlock seta_block{{}, 0x10000u, 0x10000u};
 std::uint32_t seta_slot = 0;
+// The armed mode's tick site lives in a reserved (unreadable) page until the first armed frame has read it once: a
+// failed read of the site refuses that frame only and is retried (review P6); the page is then committed with the
+// site's bytes.
+unsigned char* seta_page = nullptr;
 
 // Synthetic engine body manager: fixed 11000 slots, two dynamic ones (the global at manager_global -> manager).
 struct BodyManager {
@@ -180,6 +190,8 @@ struct Fixture {
     EmissionStatus emission = nullptr;
     PlumesFault plumes_fault = nullptr;
     FarCall far_call = nullptr; // the small-parts cull stub's far-jet call (x3m_engine_far_jet) on a synthetic node
+    ShimmerProbe shimmer_probe = nullptr;
+    ShimmerStatus shimmer_status = nullptr;
     IDirect3DTexture9* bloom = nullptr;          // armed: the application's bloom source (the resolve's copy target)
     IDirect3DSurface9* bloom_surface = nullptr;
     IDirect3DSurface9* back = nullptr;           // armed: the back buffer and the auto depth surface
@@ -661,6 +673,11 @@ struct Fixture {
         check(a.armed && warm < 8, "armed_arms_within_8_frames");
         check(drawn_frame(a), "armed_first_frame_draws_scene_view");
         check(rose(a, 0), "armed_first_frame_far_nozzle_rises_from_dark_history");
+        // The SETA site becomes readable now (its first read on the armed frame above failed: status read, retried).
+        const bool committed = seta_page && VirtualAlloc(seta_page, 4096, MEM_COMMIT, PAGE_READWRITE) == seta_page;
+        if (committed) std::memcpy(seta_page, seta_site, sizeof seta_site);
+        std::printf("SETA_SITE committed=%u frame=%u\n", unsigned(committed), frame);
+        check(committed, "armed_seta_site_committed_after_a_failed_read");
         unsigned drawn = 0;
         for (unsigned i = 0; i < 3; ++i) {
             a = armed_frame();
@@ -815,6 +832,31 @@ struct Fixture {
         check(drawn_frame(a), "armed_after_reset_recreated_and_draws");
         check(rose(a, 0), "armed_after_reset_far_nozzle_rises_from_dark_history");
         check(a.taa_references == taa_before, "armed_taa_references_delta_0");
+        // The heat shimmer's two-frame history (review S1): p2 raised to value 20 (a 34 px nozzle, over the 24 px gate),
+        // two frames to settle, the probe armed; frame N draws the shimmer into the resolved image and reverts it before
+        // Present, frame N+1's resolve reads that texture as its history.
+        p2.k = 20.f;
+        rows_of(p2.r, p2.k, p2.z, p2.t, false, p2.rows);
+        for (unsigned i = 0; i < 2; ++i) {
+            a = armed_frame();
+            ++frame;
+        }
+        shimmer_probe(device, 1);
+        unsigned shimmer_drawn = 0;
+        for (unsigned i = 0; i < 2; ++i) {
+            a = armed_frame();
+            ++frame;
+            shimmer_drawn += a.drew;
+        }
+        unsigned k[13];
+        for (unsigned i = 0; i < 13; ++i) k[i] = shimmer_status(device, i);
+        shimmer_probe(device, 0);
+        std::printf("SHIMMER_HISTORY frame=%u stage=%u rects=%u pre=%08x drawn=%08x reverted=%08x history=%08x pre_eq_reverted=%u pre_ne_drawn=%u reverted_eq_history=%u hashes=%u used_history=%u other_texture=%u frames_apart=%u plume_frames=%u\n",
+                    frame, k[0], k[11], k[1], k[2], k[3], k[4], k[5], k[6], k[7], k[8], k[9], k[10], k[12], shimmer_drawn);
+        check(k[0] == 5 && k[11] >= 1 && k[8] == 4 && shimmer_drawn == 2, "armed_shimmer_probe_two_frames_drawn");
+        check(k[6] == 1, "armed_shimmer_frame_n_displaced_the_resolved_image");
+        check(k[5] == 1, "armed_shimmer_frame_n_history_byte_equal_to_unshimmered_resolve_after_revert");
+        check(k[7] == 1 && k[9] == 1 && k[10] == 1 && k[12] == 1, "armed_shimmer_frame_n1_resolve_reads_the_reverted_history");
     }
     // armed_refused: the pass refuses at its first attach (the FP16 blending fault staged before the first arming): the
     // refusing frame's records stay suppressed (decided before its resolve), every later frame forwards the four glow
@@ -957,8 +999,10 @@ int main(int argc, char** argv) {
     f.far_call = reinterpret_cast<FarCall>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_far_jets_fixture_call")));
     const auto camera_install = reinterpret_cast<CameraInstall>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_camera_state_fixture_install")));
     const auto seta = reinterpret_cast<SetaSeam>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_seta")));
+    f.shimmer_probe = reinterpret_cast<ShimmerProbe>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_shimmer_fixture_probe")));
+    f.shimmer_status = reinterpret_cast<ShimmerStatus>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_shimmer_fixture_status")));
     if (!f.configure || !identity || !redirects || !body_global || !f.status || !f.record || !f.emission || !f.plumes_fault ||
-        !f.far_call || !camera_install || !seta) {
+        !f.far_call || !camera_install || !seta || !f.shimmer_probe || !f.shimmer_status) {
         std::printf("RESULT FAIL seam_exports\n");
         return 2;
     }
@@ -971,7 +1015,8 @@ int main(int argc, char** argv) {
     if (f.armed) camera_install(&camera_projection_slot, &camera_view_slot);
     if (mode == "armed") {
         seta_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(&seta_block));
-        seta(reinterpret_cast<std::uintptr_t>(seta_site), reinterpret_cast<std::uintptr_t>(&seta_slot));
+        seta_page = static_cast<unsigned char*>(VirtualAlloc(nullptr, 4096, MEM_RESERVE, PAGE_NOACCESS));
+        seta(reinterpret_cast<std::uintptr_t>(seta_page), reinterpret_cast<std::uintptr_t>(&seta_slot));
     }
     f.create(mode == "timing");
     f.resources(vs_bytes, ps_bytes);
