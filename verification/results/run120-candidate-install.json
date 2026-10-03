@@ -1,0 +1,28 @@
+{
+ "run": "Run120",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run120-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run120-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-03T04:29+0400",
+ "commit": "0cc93fa8",
+ "candidate_record": "verification/results/run120-candidate-build.json",
+ "installed": {
+  "sha256": "c44a0887262e0ae03ec9392e9c798e9971fd372a46adc0e8c6c03032c7493527",
+  "bytes": 58432188,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; 16 font files unchanged; engine_bodies.json kept (45a1215b\u2026)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418...",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run118",
+  "dll_sha256": "924d12bdd9f4e26d8968cdd564561324bc59a3196ab340e689ee86eaae9ecb10",
+  "path": "/tmp/x3-run118-candidate/build/d3d9.dll",
+  "note": "the Run119 candidate worktree (/tmp/x3-run119-candidate, DLL 58227081\u2026) was removed by mistake after this install; Run119 is rebuildable from bfe68791 but not retained",
+  "then": "Run117 = release 0.9.0 72db0628... at /tmp/x3m-release-0.9.0/zip-extract/d3d9.dll"
+ },
+ "trigger": "Run 119 A: look rejected as static (run403); plume look redesign ported and reviewed",
+ "producer": "main session (Fable 5.1)"
+}
