@@ -648,6 +648,10 @@ int main(int argc, char** argv) {
         factory.reset();
         DestroyWindow(window);
         std::printf("TEARDOWN done\n");
+        // Every object is released (device references 0). The process exit itself hung under Wine/FEX on 2 of 5 runs
+        // after this point (2026-10-03, the runner's timeout); end the process without the loader's detach path.
+        std::fflush(stdout);
+        TerminateProcess(GetCurrentProcess(), 0);
     } catch (const std::exception& e) {
         std::printf("FAIL %s\n", e.what());
         return 1;

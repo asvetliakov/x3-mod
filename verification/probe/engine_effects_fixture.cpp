@@ -18,7 +18,9 @@
 //              meanwhile: forwarded_stage_off); Reset releases and the next armed frame recreates the pass;
 //              taa_references unchanged across the cycle; far copies (the small-parts cull's handler) drawn by their view
 //              handle whatever the selector's phase, another view's skipped, duplicates dropped, a draw-free frame's
-//              scene view the most frequent far handle (512x512: one nozzle over the distance law's 12 px)
+//              scene view the most frequent far handle (512x512: one nozzle over the distance law's 12 px);
+//              the SETA read through its seam (a synthetic tick site and configuration block): warp 6 engages
+//              the travel look, 1.0 for 0.96 s releases it (engine_seta rows)
 //   armed_refused  as armed with the FP16 refusal staged before the first attach: the glow jets forwarded natively
 //              (forwarded_stage_off 4 per frame) from the frame after the refusal until Reset; then attached and drawn
 // Output: CHECK <label> PASS|FAIL lines, FRAME / RECORD / TIMING lines, RESULT PASS|FAIL. Original synthetic content
@@ -76,6 +78,18 @@ float camera_projection[16] = {.8f, 0, 0, 0, 0, 4.f / 3.f, 0, 0, 0, 0, 1.000003f
 float camera_view[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 const float* camera_projection_slot = camera_projection;
 const float* camera_view_slot = camera_view;
+// The armed mode's SETA read (gap 7 of docs/architecture/engine-exhaust-gap-analysis.md; x3m_engine_effects_fixture_seta):
+// a synthetic tick site with the two whole instructions the read binds (mov edx,[ecx+0xd0]; mov eax,[ecx+0xcc]) and a
+// configuration block whose +0xcc / +0xd0 hold the warp and the governor (16.16), behind a pointer slot like 0x00606f34.
+// armed_refused leaves the seam alone: the read is refused (site_mismatch) and fails closed to 1.0.
+using SetaSeam = void (*)(std::uintptr_t, std::uintptr_t);
+const unsigned char seta_site[12] = {0x8b, 0x91, 0xd0, 0x00, 0x00, 0x00, 0x8b, 0x81, 0xcc, 0x00, 0x00, 0x00};
+struct SetaBlock {
+    unsigned char before[0xcc];
+    volatile std::uint32_t warp, mult;
+};
+SetaBlock seta_block{{}, 0x10000u, 0x10000u};
+std::uint32_t seta_slot = 0;
 
 // Synthetic engine body manager: fixed 11000 slots, two dynamic ones (the global at manager_global -> manager).
 struct BodyManager {
@@ -655,6 +669,22 @@ struct Fixture {
         }
         print_armed("steady", frame, a);
         check(drawn == 3, "armed_three_frames_draw");
+        // The travel look (gap 7): warp 6.0 in the synthetic configuration block engages on the next stage frame (one
+        // engine_seta engage row); 1.0 again over sixteen frames 60 ms apart (0.96 s: past the 0.3 s hold, one release row,
+        // and past the ramp down, so the far-jet frames below start at travel weight 0). The stage draws throughout.
+        seta_block.warp = 0x60000u;
+        a = armed_frame();
+        ++frame;
+        unsigned seta_drawn = drawn_frame(a);
+        seta_block.warp = 0x10000u;
+        for (unsigned i = 0; i < 16; ++i) {
+            Sleep(60);
+            a = armed_frame();
+            ++frame;
+            seta_drawn += drawn_frame(a);
+        }
+        std::printf("SETA frame=%u drawn=%u\n", frame, seta_drawn);
+        check(seta_drawn == 17, "armed_seta_frames_draw");
         // Far jets (after flight E; the review fixes): the cull stub's copies become records of the view whose handle they
         // carry, whatever the selector's phase when the pass met them; nothing is submitted to the device. Each far frame
         // follows two plain frames (the far probes' TAA history settles), and its far nozzle must rise against the
@@ -926,8 +956,9 @@ int main(int argc, char** argv) {
     f.plumes_fault = reinterpret_cast<PlumesFault>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_plumes_fixture_fault")));
     f.far_call = reinterpret_cast<FarCall>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_far_jets_fixture_call")));
     const auto camera_install = reinterpret_cast<CameraInstall>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_camera_state_fixture_install")));
+    const auto seta = reinterpret_cast<SetaSeam>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_seta")));
     if (!f.configure || !identity || !redirects || !body_global || !f.status || !f.record || !f.emission || !f.plumes_fault ||
-        !f.far_call || !camera_install) {
+        !f.far_call || !camera_install || !seta) {
         std::printf("RESULT FAIL seam_exports\n");
         return 2;
     }
@@ -938,6 +969,10 @@ int main(int argc, char** argv) {
     if (mode != "unpatched") redirects(1);  // the fixture EXE has no engine sites: the patch module stays native
     f.armed = mode == "armed" || mode == "armed_refused";
     if (f.armed) camera_install(&camera_projection_slot, &camera_view_slot);
+    if (mode == "armed") {
+        seta_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(&seta_block));
+        seta(reinterpret_cast<std::uintptr_t>(seta_site), reinterpret_cast<std::uintptr_t>(&seta_slot));
+    }
     f.create(mode == "timing");
     f.resources(vs_bytes, ps_bytes);
     f.make_jets();

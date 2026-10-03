@@ -626,3 +626,37 @@ what the cull saves; 100 far jets would cost about 1 ms) and draw them as faint 
   jet over a plain culled node (64-node tree, `run_cull_small_parts.py`). The CPU build at 300 records (250 far):
   29.9 us, 32.3 us with the floor. The stage's GPU at 300 nozzles of which 250 are far: 0.84 ms at 1080p, 0.26 ms at
   5120x1440 (EVENT-fenced tail; 100 nozzles of the old crowd: 0.36 / 0.14 ms).
+
+**After flight E, the gap analysis' phases 2 and 3 (2026-10-03, worktree build, not flown).** Gaps 4, 5, 3, 10, 6 and 7
+of [engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md) (section 5 there has the measured numbers; ledger
+[engine-effects.md](../verification/engine-effects.md)). Every new term is bounded; none brightens the cruise look.
+- *Flow in world units (gap 4).* The frame's flow accumulator (`FlowPhase`, flow_rate 2.625 nozzle widths per second,
+  unwrapped in double) x the nozzle's `flow_factor` = `flow_reference` 500 / value clamped to [`flow_slow` 0.3, 1]
+  (value: the floored value before the near cap), wrapped at 4,096 per nozzle in double and written per vertex
+  (`shape.w`; the kind moved to the new colour's alpha). One world speed, 656.25 per second, from value 500 to 1,667;
+  smaller nozzles keep today's rate in nozzle widths (no strobing), capitals crawl at 0.3.
+- *Two-tone colour (gap 5).* The body's colour is lerp(lerp(head, mean, smoothstep(0.3, 1, u)), white, heat); the head is
+  the table's peak colour scaled to the mean's Rec. 709 luminance when brighter (`head_colour`: the peak is the whiter
+  colour at 1.0-3.6x the mean's luminance, so the head turns whiter, not brighter); a fourth D3DCOLOR in the vertex (76 B).
+  The disc integrates the same split exactly (the tail weight per sample, a compile-time constant). Halo and ring keep
+  the mean. Without table colours head = mean (today's look).
+- *Nozzle spill (gap 3).* The halo's lane visibility is max(soft, spill) with spill = `glow_through` 0.15 x (1 -
+  smoothstep(`spill_inner` 0.8, `spill_reach` 1.0, d)) x saturate(1 + gap / (`spill_depth` 2 x value)), d the
+  screen-plane distance from the nozzle in nozzle widths (the hand-over's): around the nozzle rim only, and only through
+  an occluder within 2 value in front of the nozzle (its own hull, not a ship passing in front). Body and ring unchanged.
+- *Idle floor (gap 10).* A main jet's L = max(z, `idle_length` 0.5) x value: 1 nozzle width at idle (was 0.5); RCS keeps
+  z value.
+- *RCS puff attack and retro flare (gap 6).* `Transients`: 512 slots of the last z per steering or brake record, keyed like
+  the ribbon pool (serial, else node handle + model), probed 8 from the key's home, free after 0.5 s unseen; a rising z
+  multiplies the radiance by 1 + `attack_gain` 0.5 x saturate(dz / (0.004 x dt_game_ms)) (the game's own rate limit,
+  dt in game ms = wall x the SETA rate), decaying linearly to 1 over `attack_decay` 120 ms; updated before the idle cull
+  so a puff from z 0.01 is seen; no shape change; main jets unaffected. Overflow draws without the attack (counted).
+- *Travel look under SETA (gap 7).* One bounded read per stage frame (`engine_effects::seta_read`): `*0x00606f34`, then 8
+  bytes at +0xcc (warp, governor), bound once by the 12-byte compare of the tick's `mov edx,[ecx+0xd0]; mov eax,[ecx+0xcc]`
+  at 0x004d1ef0; refused without the identity, on a mismatch, a null pointer or a failed read; values outside
+  0 < warp <= 0x640000, 0x4ccc <= mult <= 0x10000 count invalid; both fail closed to 1.0. `TravelRamp`: engaged at once
+  when the warp is above 1.0, released after 0.3 s at 1.0, weight 0 -> 1 over 0.5 s (smoothstep), steps held to 0.1 s.
+  At weight 1: a main jet's L x 2, its radiance x 1.25, the ribbons' T x 2, the flow x 1.5. `engine_seta` rows under
+  --debug ([logging-tiers.md](logging-tiers.md)).
+- *Lab.* `tools/effects/engine_exhaust_lab.html` mirrors the flow factor (a nozzle-value slider), the two-tone head and
+  the idle floor; the spill, the distance law, the attack and the travel look are game-only.

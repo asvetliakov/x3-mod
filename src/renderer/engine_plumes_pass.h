@@ -1,7 +1,7 @@
 #pragma once
 // Engine plumes, phase 2 (docs/architecture/engine-effects-modern.md sections 3-6): the GPU side of the proxy's own
 // engine plumes. One class owns the vs_3_0 / ps_3_0 pair (src/effects/engine_plume_{vs,ps}.hlsl), their declaration,
-// one dynamic vertex buffer (DEFAULT, DYNAMIC | WRITEONLY, 1,024 nozzles x 8 vertices x 72 B, one DISCARD lock per
+// one dynamic vertex buffer (DEFAULT, DYNAMIC | WRITEONLY, 1,024 nozzles x 8 vertices x 76 B, one DISCARD lock per
 // frame) and the static quad index buffer, all created at attach (the arming latch, not the first plume) and all
 // released before Reset; ensure_resources() recreates them after a successful Reset.
 //
@@ -37,7 +37,12 @@ struct EnginePlumesFrame {
     engine_plumes::ViewFilter filter{};     // null tags: every record is drawn
     engine_plumes::Preset preset = engine_plumes::default_preset;
     float seconds = 0.f;                    // the stage's clock, wrapped (engine_plumes::StageClock::wrapped)
-    float phase = 0.f;                      // the flow phase, nozzle widths (engine_plumes::FlowPhase::wrapped)
+    double flow = 0.;                       // the flow accumulator, nozzle widths (engine_plumes::FlowPhase; each nozzle's
+                                            // phase is it x its flow_factor)
+    float travel = 0.f;                     // the SETA travel weight 0..1 (engine_plumes::TravelRamp; the ribbons' T too)
+    float step = 0.f;                       // this frame's stage-clock step, seconds (the attack memory's clock)
+    float game_ms = 0.f;                    // this frame's step in game ms (step x the SETA rate): the attack's scale
+    engine_plumes::Transients* transients = nullptr; // the RCS / brake attack memory (null: no attack); begun per run
     const engine_plumes::Look* look = nullptr; // null: engine_plumes::default_look (the proxy's carries the nozzle knob)
     const engine_plumes::LookTables* tables = nullptr; // look_tables(*look) cached at load (null: computed per run)
     const float* radii = nullptr;           // beside the records (Ring::parent_radius): the plume floor; null: none

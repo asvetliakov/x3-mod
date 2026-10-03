@@ -374,3 +374,31 @@ Measured unless marked.
 | Cull fixture | `build_cull_small_parts.py`, then `run_cull_small_parts.py` | 256 checks, 0 failures (scene-tag checks gone; device count through the production API added); far copy 5.6 ns per culled jet |
 | Plume fixture | `run_engine_plumes.py` | PASS 128/128; distance ratios 0.15 / 0.4492 / 1 / 1 at both sizes |
 | Host | `unittest discover -p 'test_engine_*.py'`, `-p 'test_cull_*.py'`, `-p 'test_check_no_x87.py'` | 57 + 34 + 5 tests OK; new `test_engine_far_jets` (dedupe: repeated pair, other view / node, zero handle, 1,024 colliding pairs, generation wrap; device count: once per device, owner-only clear, old device's teardown, last withdrawal) |
+
+## Gap analysis phases 2 and 3: flow, two-tone, spill, idle floor, attack, travel (2026-10-03, worktree build, not a candidate)
+
+Gaps 4, 5, 3, 10, 6 and 7 of [engine-exhaust-gap-analysis.md](../architecture/engine-exhaust-gap-analysis.md) (section 5:
+the table of laws and results; the constants in [engine-effects-modern.md](../architecture/engine-effects-modern.md),
+"After flight E, the gap analysis' phases 2 and 3"). Built on c6ca2842 in a worktree; records bound to
+9f7266b2-dirty (the production sources' hashes in each record). Numbers changed legitimately: the s = 0 length (0.5 value),
+mouth / body at s = 0 0.752 (was 0.761), the occlusion cases' core-hidden checks now draw with `glow_through` 0 (the
+spill is measured in its own case), the shape case's noise replica takes the nozzle's phase. Measured unless marked.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build -j8` (configured with `-DPython3_EXECUTABLE=/usr/bin/python3`); `check_no_x87.py build/d3d9.dll` | 0 warnings; x87 0 violations, 755 reachable |
+| Shaders | `generate_rigid_motion_pixel.py --check` (wine_lock, X3) | PASS, 50 programs; engine_plume_ps 3,167 words, 734 slots (was 687); vs 138 words, 12 slots |
+| Peak vs mean | `python3 verification/results/engine-effects/plume_two_tone_colours.py <installed engine_bodies.json>` | `plume_two_tone_colours_out.txt`: 13 of 253 bodies within 5 % (white 11, grey 2); per-cluster median channel difference 0.08-0.66; peak luminance 1.0-3.6x the mean's: the table's peak is used, luminance-matched |
+| Plume fixture | `run_engine_plumes.py` | PASS 178/178 (was 128). Idle: L / value 0.5 at s = 0. Spill: law 0.1501 (max 0.1503) in 0.65-0.8 n, production cap 0.1517 / 0.1544 (1080p / 5120), 0 past 1.0 n, 0 through a plane 3 value in front, both lanes. Flow: world / law 0.9999-1.0000 at 100 / 600 / 1,500 / 10,000; 600 / 1,500 ratio 0.9999 (131.24 / 131.25 per 0.2 s, reference 131.25); 100 / 10,000 0.033 (the clamp); lag-1 0.901 / 0.946. Colour: worst 0.00053 over 12 samples. Attack: steering and brake frame 2 at 1.500x, back 133 ms; main 1.000. Travel: weight 1, L 2.000x, I 1.250x, drawn 2.010x, peak 1.2505x. Mouth / body 0.580 / 0.645 / 0.752 at s = 1 / 0.5 / 0. Core survival min 0.945. Build 300 records 31.8 us (1,024: 111.6); stage GPU 300 (250 far) 0.80 / 0.28 ms |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 (fog 0.4902 against 0.4919) |
+| Effects fixture | `run_engine_effects.py` (all modes) | PASS, 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 21, armed_refused 7). Armed: the SETA read through the seam, `engine_seta` rows read (1.000) / engage (6.000) / release (1.000), 23 reads, 0 refused; armed_refused: one row `read=site_mismatch`, every read refused, never engaged. Per suppressed draw 0.693 us |
+| Cull fixture | `run_cull_small_parts.py` | 255 checks, 0 failures; far copy 6.2 ns per culled jet |
+| Host | `test_engine_*`, `test_cull_small_parts`, `test_check_no_x87`; `run_host_suite.py` | 79 tests OK; suite 286 modules, 3,011 tests, 1 failing module (`test_exe_identity`: `engine_effects.cpp` now compares a site, so it left the read-only list, and the SETA bound 0x640000 is a value in the address range: both list entries updated), then `test_exe_identity` alone 24 OK |
+
+**Merged with main 47735fb9 (the far-jet review fixes).** `engine_stage` carries both field sets (`far_duplicates`,
+`view_rule=far` and the attack / SETA fields); the armed effects fixture runs the SETA frames (now 16 release frames 60
+ms apart, so the travel weight is back at 0 before the far-jet frames' rise checks) before main's far-jet frames. Rerun
+on the merge (records bound to b963d3c4-dirty): DLL 0 warnings, x87 0 violations (754 reachable); shaders `--check` PASS
+50; plumes 178/178 (734 ps slots; every gap number above unchanged; build 300 records 31.5 us, GPU 300 / 250 far 0.79 /
+0.28 ms); ribbons 44/44; effects PASS 8 modes (armed 28 checks, SETA rows read / engage 6.000 / release, 44 reads, 0
+refused; armed_refused `site_mismatch`); cull 256/256 (far copy 5.7 ns). Measured.

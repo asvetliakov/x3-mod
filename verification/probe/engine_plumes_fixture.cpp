@@ -30,6 +30,16 @@
 //   off_path      no record: S_FALSE and no device call; an idle callback leaves the resolve byte-identical
 //   fault         a failed draw reports its step; the next frame draws
 //   reset         every object released before Reset, recreated after; the next frame draws
+//   (gap analysis, docs/architecture/engine-exhaust-gap-analysis.md phases 2 and 3)
+//   length        also the idle floor (gap 10): the drawn length at s = 0 is 0.5 value
+//   spill         gap 3: head-on behind a plane at the nozzle depth, the halo through the plane / the open halo 0.15 in
+//                 0.65..0.8 n, nothing past 1.0 n, nothing through a plane 3 value in front
+//   flow          gap 4: the noise's displacement between two flow steps in world units against the law (value 100 /
+//                 600 / 1,500 / 10,000), 600 and 1,500 at one world speed; the lag-1 correlation at 100 and 10,000
+//   colour        gap 5: the colour at u 0.1 / 0.5 / 0.9 (axis and 0.7 of the half-width) against the replica, 1 %
+//   attack        gap 6: an RCS puff and a brake flare z rise through the attack memory, frame 2 at 1.3..1.5x steady,
+//                 back within 150 ms; a main jet unchanged
+//   travel        gap 7: the SETA decode and ramp at warp 6 reach weight 1: length 2x, radiance 1.25x
 //   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 / 1,024
 //                 records (the look's tables cached), plain and with the plume floor; with X3M_PLUMES_FIXTURE_DISC_AB=1 the
 //                 stage cost with the end-on disc drawn and not drawn, three interleaved rounds
@@ -267,15 +277,22 @@ ep::Look make_body() {
     k.ring = 0.f;
     return k;
 }
-const ep::Look still = make_still(), body_only = make_body();
-// The flow phase of the stage clock's `seconds` (the proxy advances it per frame at a constant rate: the same value).
-float phase_at(float seconds, const ep::Look* look) {
-    float rate = 0.f, out = 0.f;
+// The production look with the nozzle spill (gap 3) off: the occlusion cases' core-hidden checks (the spill lets 0.15 of
+// the halo through within one nozzle width of the nozzle; spill_case measures it).
+ep::Look make_nospill() {
+    ep::Look k = ep::default_look;
+    k.glow_through = 0.f;
+    return k;
+}
+const ep::Look still = make_still(), body_only = make_body(), nospill = make_nospill();
+// The flow accumulator at the stage clock's `seconds` (the proxy advances it per frame at a constant rate: the same
+// value); each nozzle's phase is it x the nozzle's flow_factor (the builder's).
+double flow_at(float seconds, const ep::Look* look) {
+    float rate = 0.f;
     ep::flow_rate(look ? *look : ep::default_look, &rate);
     ep::FlowPhase phase;
     phase.advance(double(seconds), rate);
-    phase.wrapped(&out);
-    return out;
+    return phase.nozzle_widths;
 }
 rr::EnginePlumesFrame frame_for(Targets& t, bool four, const ee::Record* records, unsigned count,
                                 ep::Preset preset = ep::Preset::standard, float seconds = 0.f, float jx = 0.f,
@@ -300,7 +317,7 @@ rr::EnginePlumesFrame frame_for(Targets& t, bool four, const ee::Record* records
     f.body = nullptr;
     f.preset = preset;
     f.seconds = seconds;
-    f.phase = phase_at(seconds, look);
+    f.flow = flow_at(seconds, look);
     f.look = look;
     return f;
 }
@@ -310,9 +327,15 @@ struct Built {
     ep::BuildStats stats;
     unsigned nozzles = 0;
 };
+// The frame's flow accumulator and travel weight; not its attack memory (the pass's run advanced it already: a CPU
+// copy compares against Transients copies of its own).
 Built build_cpu(const rr::EnginePlumesFrame& f) {
     Built b{};
-    b.nozzles = ep::build(f.records, f.record_count, f.body, f.view, f.preset, f.seconds, b.v, 1, &b.stats, nullptr, f.look);
+    ep::Dynamics dynamics;
+    dynamics.flow = f.flow;
+    dynamics.travel = f.travel;
+    b.nozzles = ep::build(f.records, f.record_count, f.body, f.view, f.preset, f.seconds, b.v, 1, &b.stats, nullptr, f.look,
+                          nullptr, nullptr, &dynamics);
     return b;
 }
 // The CPU replica of the pixel program's law (src/effects/engine_plume_ps.hlsl) for the axial quad and a white tint:
@@ -446,7 +469,7 @@ void attach_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, rr
 void length_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
     const float Z = 2000.f, ppu = t.ppu(Z), value = 100.f / ppu;
     for (const float zs : {.25f, 1.125f, 2.f}) {
-        const float Lpx = zs * value * ppu;
+        const float Lpx = std::max(zs, still.idle_length) * value * ppu; // the idle floor (gap 10): 0.5 value at s = 0
         const float x0 = (Lpx * .5f) / ppu; // the nozzle right of centre by half the plume
         const ee::Record r = record(x0, 0, Z, -1, 0, 0, value, zs);
         const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
@@ -499,6 +522,14 @@ void length_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         report(label, std::fabs(width - want_width) <= 2.f);
         std::snprintf(label, sizeof label, "law_s%.2f_%u", double(r.s), t.w);
         report(label, worst <= .03f);
+        if (zs < .5f) {
+            // Gap 10: the idle floor, the drawn length at s = 0 is 0.5 value (z 0.25 gave 0.25 value).
+            std::printf("IDLE width=%u height=%u z=%.3f value_px=%.1f L_px=%.1f L_over_value=%.4f measured_px=%.0f expected_px=%.0f before_px=%.1f\n",
+                        t.w, t.h, double(zs), double(value * ppu), double(b.v[0].local[2] * ppu), double(b.v[0].local[2] / value),
+                        double(measured), double(expected), double(zs * value * ppu));
+            std::snprintf(label, sizeof label, "idle_floor_length_s0_%u", t.w);
+            report(label, std::fabs(b.v[0].local[2] / value - .5f) < 1e-4f && std::fabs(measured - expected) <= std::max(2.f, .03f * Lpx));
+        }
     }
 }
 
@@ -667,13 +698,14 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
     // Head-on: the exhaust points away (axis +z), behind the plane; the disc carries the look. Value 192 px: the nozzle
     // 48 px wide (the first look's case had value 48 px, its halo sigma 24 px).
     {
+        // The core's cut with the nozzle spill off (gap 3 lets 0.15 of the halo through around the nozzle: spill_case).
         const float value = 192.f / ppu;
         const ee::Record r = record(0, 0, Z, 0, 0, 1, value, 2.f);
         scene.frame(0, 0, 0, 0, 500);
-        draw(d, pass, frame_for(t, four, &r, 1));
+        draw(d, pass, frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &nospill));
         const auto open = t.read(d);
         scene.frame(float(edge), 0, float(t.w), float(t.h), Z);
-        draw(d, pass, frame_for(t, four, &r, 1));
+        draw(d, pass, frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &nospill));
         const auto cut = t.read(d);
         const float open_peak = peak(open, t.w, t.h, ix - 3, iy - 3, ix + 4, iy + 4);
         const float inside = peak(cut, t.w, t.h, edge, iy - 40, ix + 60, iy + 41);
@@ -696,10 +728,10 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
         const float a = 20.f * 3.14159265f / 180.f, value = 90.f / ppu;
         const ee::Record r = record(0, 0, Z, -std::sin(a), 0, std::cos(a), value, 2.f);
         scene.frame(float(edge), 0, float(t.w), float(t.h), Z);
-        draw(d, pass, frame_for(t, four, &r, 1));
+        draw(d, pass, frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &nospill));
         const auto cut = t.read(d);
         // After flight C the axial quad takes 1 - 0.5 x the disc's weight (facing 0.94: half): the core's thresholds scale with it.
-        const float axial = build_cpu(frame_for(t, four, &r, 1)).v[0].intensity[0] / core;
+        const float axial = build_cpu(frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &nospill)).v[0].intensity[0] / core;
         float tx, ty;
         t.window(-std::sin(a) * 2.f * value, 0, Z + std::cos(a) * 2.f * value, 0, 0, tx, ty);
         const float inside = peak(cut, t.w, t.h, edge, iy - 40, ix + 60, iy + 41);
@@ -747,9 +779,9 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
         const float ay = std::sin(a), az = std::cos(a);
         const ee::Record r = record(X, 0, Z, 0, ay, az, value, 2.f);
         scene.frame(0, float(edge_y), float(t.w), float(t.h), Z);
-        draw(d, pass, frame_for(t, four, &r, 1));
+        draw(d, pass, frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &nospill));
         const auto cut = t.read(d);
-        const float axial = build_cpu(frame_for(t, four, &r, 1)).v[0].intensity[0] / core; // the axial quad's facing weight
+        const float axial = build_cpu(frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &nospill)).v[0].intensity[0] / core; // the axial quad's facing weight
         const float inside = peak(cut, t.w, t.h, jx - 60, edge_y, jx + 61, jy + 61);
         // Along the projected axis above the edge (perspective moves it towards the centre as it recedes).
         const float L = 2.f * value;
@@ -1047,7 +1079,7 @@ void shape_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
                 sum[c][std::size_t(i)] += col[std::size_t(i)];
                 const float y = (float(by - rows + i) - cy) / in.n_px;
                 float n1 = 0.f, n2 = 0.f;
-                noise_at(in, x, y, f.phase, seconds, n1, n2);
+                noise_at(in, x, y, b.v[0].shape[3], seconds, n1, n2);
                 want[c][std::size_t(i)] += replica(body_only, in, x, y, n1, n2);
             }
         }
@@ -1263,7 +1295,8 @@ void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     report(label, std::fabs(cpu_value[1] - 100.f) < .5f && std::fabs(length[1] - length[2] * 100.f / 140.f) <= 3.f);
 }
 // The mouth against the body: side view (axis -x), the still look, value 60 px (the nozzle 30 px), at s = 1 / 0.5 / 0
-// (L 120 / 67.5 / 15 px): the peak of the frame within 0.1 L of the nozzle (every pixel centre at that distance, the
+// (L 120 / 67.5 / 30 px: the idle floor 0.5 value at s = 0, re-gated after the gap analysis' phase 2): the peak of the
+// frame within 0.1 L of the nozzle (every pixel centre at that distance, the
 // ring, halo and core included; the window ends before the first crest at u = period) and the value at u ~ 0 (the
 // nozzle's pixel) against the peak at u 0.1..0.4 (the body's first crests): after flight D at most 0.85 of it at s = 1,
 // 0.5 and 0 (the mouth ramp and the mouth terms on the body's throttle curve). Then the same nozzle end-on at s = 1 (the
@@ -1274,7 +1307,7 @@ void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     float body_s1 = 0.f;
     char label[64];
     for (unsigned k = 0; k < 3; ++k) {
-        const float Lpx = zs[k] * value * ppu;
+        const float Lpx = std::max(zs[k], still.idle_length) * value * ppu;
         const ee::Record side = record(.5f * Lpx / ppu, 0, Z, -1, 0, 0, value, zs[k]);
         scene.frame(0, 0, 0, 0, 500);
         draw(d, pass, frame_for(t, true, &side, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still));
@@ -1372,6 +1405,374 @@ void distance_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlum
     std::snprintf(label, sizeof label, "distance_dot_floor_%u", t.w);
     report(label, b.nozzles == 1 && std::fabs(n_drawn - 2.f) < 1e-3f && std::fabs(L_drawn - 4.f) < 1e-3f &&
                       std::fabs(b.v[0].intensity[0] - .15f * level) < 1e-4f && rep.drew && total > 0.);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// After the gap analysis (docs/architecture/engine-exhaust-gap-analysis.md, phases 2 and 3).
+
+// Gap 3, the nozzle spill. Head-on (the exhaust pointing away, axis +z), behind a plane at the nozzle depth over
+// x >= edge (the nozzle 10 px inside it), value 192 px (the nozzle 96 px), s = 1. On the plane pixels at screen distance
+// d (nozzle widths) from the nozzle: (a) the law, the still look without the ring and with the disc's soft cap out of
+// the way (disc_cap 50, the open halo compressed under 0.5 %): the cut frame over the open one (no plane) in 0.65..0.8 n (past the still body's 0.56 n,
+// inside the spill's full reach) is glow_through 0.15, at most 0.15 in the taper 0.8..1.0 n, nothing past 1.0 n;
+// (b) the still look (the production cap and ring): 0.15 +- 0.02 in 0.72..0.8 n (the soft cap compresses the open halo
+// more than the spilled one), nothing past 1.0 n; (c) the depth guard: the plane 3 value in front of the nozzle (another
+// object, not its hull): nothing through it.
+void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, bool four) {
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 192.f / ppu, n_px = 96.f;
+    float cx, cy;
+    t.window(0, 0, Z, 0, 0, cx, cy);
+    const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f)), edge = ix - 10;
+    const ee::Record r = record(0, 0, Z, 0, 0, 1, value, 2.f);
+    ep::Look linear = still;
+    linear.ring = 0.f;
+    linear.disc_cap = 50.f; // total / cap about 0.01: under 0.5 % compression, no 1 - exp(-x) cancellation on the GPU
+    const int span = int(1.3f * n_px);
+    struct Measure {
+        double band_median = 0, band_max = 0, taper_max = 0, beyond_max = 0;
+        unsigned band_px = 0;
+        double bin_sum[13] = {}, bin_max[13] = {}; // the ratio by screen distance, 0.1 n bins to 1.3 n
+        unsigned bin_n[13] = {};
+    };
+    auto measure = [&](const ep::Look* look, float band_low, float band_high, float plane_z, Measure* out) {
+        scene.frame(0, 0, 0, 0, 500);
+        draw(d, pass, frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, look));
+        const auto open = t.read(d);
+        scene.frame(float(edge), 0, float(t.w), float(t.h), plane_z);
+        draw(d, pass, frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, look));
+        const auto cut = t.read(d);
+        std::vector<double> ratios;
+        for (int y = iy - span; y <= iy + span; ++y)
+            for (int x = edge; x <= ix + span; ++x) {
+                if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) continue;
+                const float dx = cx - float(x), dy = float(y) - cy, dn = std::sqrt(dx * dx + dy * dy) / n_px;
+                const float c = luma(cut, t.w, x, y), o = luma(open, t.w, x, y);
+                const unsigned bin = unsigned(dn * 10.f);
+                if (bin < 13 && o > 1e-3f) {
+                    out->bin_sum[bin] += double(c / o);
+                    out->bin_max[bin] = std::max(out->bin_max[bin], double(c / o));
+                    ++out->bin_n[bin];
+                }
+                if (dn > 1.f + 1.5f / n_px) out->beyond_max = std::max(out->beyond_max, double(c));
+                else if (dn >= band_low && dn <= band_high && o > 1e-3f) ratios.push_back(double(c / o));
+                else if (dn > band_high && dn <= 1.f && o > 1e-3f) out->taper_max = std::max(out->taper_max, double(c / o));
+            }
+        std::sort(ratios.begin(), ratios.end());
+        out->band_px = unsigned(ratios.size());
+        out->band_median = ratios.empty() ? 0. : ratios[ratios.size() / 2];
+        out->band_max = ratios.empty() ? 0. : ratios.back();
+    };
+    Measure law{}, look{}, guard{};
+    measure(&linear, .65f, .8f, Z, &law);
+    measure(&still, .72f, .8f, Z, &look);
+    measure(&still, .65f, .8f, Z - 3.f * value, &guard);
+    std::printf("SPILL width=%u lane=%s nozzle_px=%.0f law_band_px=%u law_median=%.4f law_max=%.4f law_taper_max=%.4f law_beyond_max=%.6f look_band_px=%u look_median=%.4f look_max=%.4f look_beyond_max=%.6f guard_max=%.6f\n",
+                t.w, four ? "4ch" : "r32f", double(n_px), law.band_px, law.band_median, law.band_max, law.taper_max, law.beyond_max,
+                look.band_px, look.band_median, look.band_max, look.beyond_max, std::max(guard.band_max, guard.beyond_max));
+    for (const Measure* m : {&law, &look}) {
+        std::printf("SPILL_PROFILE width=%u lane=%s look=%s", t.w, four ? "4ch" : "r32f", m == &law ? "law" : "still");
+        for (unsigned b = 0; b < 13; ++b)
+            std::printf(" mean_%u=%.4f max_%u=%.4f", b, m->bin_n[b] ? m->bin_sum[b] / m->bin_n[b] : 0., b, m->bin_max[b]);
+        std::printf("\n");
+    }
+    char label[64];
+    std::snprintf(label, sizeof label, "spill_law_0.15_%s_%u", four ? "4ch" : "r32f", t.w);
+    report(label, law.band_px > 100 && std::fabs(law.band_median - .15) <= .003 && law.band_max <= .1515 && law.taper_max <= .1515);
+    std::snprintf(label, sizeof label, "spill_none_past_1n_%s_%u", four ? "4ch" : "r32f", t.w);
+    report(label, law.beyond_max <= 1e-5 && look.beyond_max <= 1e-5);
+    std::snprintf(label, sizeof label, "spill_look_0.15_pm_0.02_%s_%u", four ? "4ch" : "r32f", t.w);
+    report(label, look.band_px > 50 && std::fabs(look.band_median - .15) <= .02 && look.band_max <= .17);
+    std::snprintf(label, sizeof label, "spill_depth_guard_%s_%u", four ? "4ch" : "r32f", t.w);
+    report(label, guard.band_max <= 1e-5 && guard.beyond_max <= 1e-5);
+}
+
+// Gap 4, the flow in world units. A side view (axis -x, z 4: L = 8 nozzle widths) of a nozzle of value 100 / 600 /
+// 1,500 / 10,000 (record units: the fixture's world units) at the depth that projects the nozzle 60 px wide; two frames
+// 0.2 s apart in the flow accumulator with the clock (the noise's time axis) held, the look's static terms flattened (no
+// pulse, shock cells, tail, mouth dip, halo or ring) and each frame divided by its envelope (the same frame without
+// turbulence and erosion): the noise field's displacement along the axis, by normalised cross-correlation of the axis
+// band (|y| <= 0.12 n, u 0.1..0.75; parabolic sub-pixel peak), in world units against the law (0.2 s x flow_rate x
+// flow_factor x n) within 5 %; 600 and 1,500 (inside the clamp) within 5 % of each other and of 0.2 s x 656.25. Then 30
+// frames at 60 fps (the clock and the flow advancing, the production look) at value 100 and 10,000: the lag-1
+// correlation of a 3x3 box at u = 0.2 at least 0.5.
+void flow_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    ep::Look flow_look = ep::default_look;
+    flow_look.pulse = 0.f;
+    flow_look.shock = 0.f;
+    flow_look.tail = 0.f;
+    flow_look.mouth_dip = 0.f;
+    flow_look.hb = 0.f;
+    flow_look.ring = 0.f;
+    ep::Look envelope = flow_look;
+    envelope.turb = 0.f;
+    envelope.erode = 0.f;
+    float rate = 0.f;
+    ep::flow_rate(flow_look, &rate);
+    const float n_px = 60.f, zs = 4.f, dt = .2f;
+    const float values[4] = {100.f, 600.f, 1500.f, 10000.f};
+    double world[4] = {}, expected[4] = {};
+    char label[64];
+    for (unsigned k = 0; k < 4; ++k) {
+        const float V = values[k], ppu = n_px / (.5f * V), Z = m11 * float(t.h) * .5f / ppu, Lpx = zs * 2.f * n_px;
+        const ee::Record r = record(.5f * Lpx / ppu, 0, Z, -1, 0, 0, V, zs);
+        float cx, cy;
+        t.window(r.origin[0], 0, Z, 0, 0, cx, cy);
+        const int iy = int(std::floor(cy + .5f)), band = int(.12f * n_px);
+        const int x_near = int(std::floor(cx - .1f * Lpx)), x_far = int(std::ceil(cx - .75f * Lpx));
+        auto profile = [&](const ep::Look* look, double flow) {
+            rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 10.f, 0.f, 0.f, look);
+            f.flow = flow;
+            scene.frame(0, 0, 0, 0, 500);
+            draw(d, pass, f);
+            const auto px = read_region(d, t, nullptr, x_far, iy - band, x_near + 1, iy + band + 1);
+            const int columns = x_near + 1 - x_far;
+            std::vector<double> out(std::size_t(columns), 0.);
+            for (int c = 0; c < columns; ++c) {
+                double sum = 0;
+                for (int y = 0; y <= 2 * band; ++y) sum += px[std::size_t(y * columns + c)];
+                out[std::size_t(columns - 1 - c)] = sum; // index 0 at the nozzle's end: local x increasing
+            }
+            return out;
+        };
+        const double flow1 = flow_at(10.f, &flow_look), flow2 = flow1 + double(rate) * dt;
+        const auto env = profile(&envelope, flow1), p1 = profile(&flow_look, flow1), p2 = profile(&flow_look, flow2);
+        std::vector<double> a(p1.size()), b(p2.size());
+        for (std::size_t i = 0; i < p1.size(); ++i) {
+            a[i] = env[i] > 1e-6 ? p1[i] / env[i] : 0.;
+            b[i] = env[i] > 1e-6 ? p2[i] / env[i] : 0.;
+        }
+        // b[i] = a[i - s]: the field moved s px towards the tail.
+        const int smin = -20, smax = 70, lo = smax, hi = int(a.size()) - 20;
+        auto corr = [&](int s) {
+            double ma = 0, mb = 0;
+            const int count = hi - lo;
+            for (int i = lo; i < hi; ++i) { ma += a[std::size_t(i - s)]; mb += b[std::size_t(i)]; }
+            ma /= count; mb /= count;
+            double num = 0, da = 0, db = 0;
+            for (int i = lo; i < hi; ++i) {
+                const double x = a[std::size_t(i - s)] - ma, y = b[std::size_t(i)] - mb;
+                num += x * y; da += x * x; db += y * y;
+            }
+            return da > 0 && db > 0 ? num / std::sqrt(da * db) : 0.;
+        };
+        int best = smin;
+        double best_c = -2.;
+        for (int s = smin; s <= smax; ++s) {
+            const double c = corr(s);
+            if (c > best_c) { best_c = c; best = s; }
+        }
+        double shift = best;
+        if (best > smin && best < smax) {
+            const double cm = corr(best - 1), cp = corr(best + 1), den = cm - 2. * best_c + cp;
+            if (den < 0.) shift += .5 * (cm - cp) / den;
+        }
+        float factor = 0.f;
+        ep::flow_factor(flow_look, V, &factor);
+        world[k] = shift / double(ppu);
+        expected[k] = double(dt) * double(rate) * double(factor) * .5 * double(V);
+        std::printf("FLOW width=%u height=%u value=%.0f factor=%.4f nozzle_px=%.0f shift_px=%.3f peak_corr=%.4f world=%.3f expected=%.3f ratio=%.4f speed_per_s=%.2f\n",
+                    t.w, t.h, double(V), double(factor), double(n_px), shift, best_c, world[k], expected[k], world[k] / expected[k],
+                    world[k] / double(dt));
+        std::snprintf(label, sizeof label, "flow_world_law_value%.0f_%u", double(V), t.w);
+        report(label, best_c >= .9 && std::fabs(world[k] / expected[k] - 1.) <= .05);
+    }
+    const double reference = double(dt) * 656.25;
+    std::printf("FLOW_SAME width=%u height=%u world_600=%.3f world_1500=%.3f ratio=%.4f reference=%.3f world_100=%.3f world_10000=%.3f ratio_100_10000=%.4f\n",
+                t.w, t.h, world[1], world[2], world[1] / world[2], reference, world[0], world[3], world[0] / world[3]);
+    std::snprintf(label, sizeof label, "flow_same_world_speed_600_1500_%u", t.w);
+    report(label, std::fabs(world[1] / world[2] - 1.) <= .05 && std::fabs(world[1] / reference - 1.) <= .05 &&
+                      std::fabs(world[2] / reference - 1.) <= .05);
+    // The lag-1 correlation over 30 frames at 60 fps (the TEMPORAL case's box at u = 0.2), value 100 and 10,000.
+    for (const float V : {100.f, 10000.f}) {
+        const float ppu = n_px / (.5f * V), Z = m11 * float(t.h) * .5f / ppu, L0px = 2.f * 2.f * n_px;
+        const ee::Record r = record(L0px * .5f / ppu, 0, Z, -1, 0, 0, V, 2.f);
+        float cx, cy;
+        t.window(r.origin[0], 0, Z, 0, 0, cx, cy);
+        const int bx = int(std::floor(cx - .2f * L0px + .5f)), by = int(std::floor(cy + .5f));
+        std::vector<double> raw;
+        for (unsigned n = 0; n < 30; ++n) {
+            scene.frame(0, 0, 0, 0, 500);
+            draw(d, pass, frame_for(t, true, &r, 1, ep::Preset::standard, 10.f + float(n) / 60.f));
+            const auto box = read_region(d, t, nullptr, bx - 1, by - 1, bx + 2, by + 2);
+            double m = 0;
+            for (float v : box) m += v;
+            raw.push_back(m / 9.);
+        }
+        const double lag1 = lag1_of(raw), cv = cv_of(raw);
+        std::printf("FLOW_LAG width=%u height=%u value=%.0f frames=30 lag1=%.4f cv=%.4f\n", t.w, t.h, double(V), lag1, cv);
+        std::snprintf(label, sizeof label, "flow_lag1_value%.0f_%u", double(V), t.w);
+        report(label, lag1 >= .5);
+    }
+}
+
+// Gap 5, two-tone colour: a side view (axis -x, s = 1, value 100 px), the still look without the halo and the ring
+// (the body alone), a body whose table colours are the red cluster's (mean 1, 0.15, 0.15; peak 1, 0.81, 0.81): the
+// colour (each channel over the largest) at u = 0.1 / 0.5 / 0.9 on the axis and at 0.7 of the local half-width (outside
+// the white-hot core) against the CPU replica, lerp(lerp(head, mean, smoothstep(0.3, 1, u)), white, heat) with the
+// vertex's 8-bit colours, within 1 % per channel.
+ee::Body colour_body{};
+const ee::Body* colour_lookup(int) {
+    return &colour_body;
+}
+void colour_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    colour_body = ee::Body{};
+    colour_body.colour = 1;
+    const float mean[3] = {1.f, .15f, .15f}, peak_c[3] = {1.f, .81f, .81f};
+    std::memcpy(colour_body.mean, mean, sizeof mean);
+    std::memcpy(colour_body.peak, peak_c, sizeof peak_c);
+    ep::Look k = still;
+    k.hb = 0.f;
+    k.ring = 0.f;
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 100.f / ppu, Lpx = 2.f * value * ppu;
+    ee::Record r = record(.5f * Lpx / ppu, 0, Z, -1, 0, 0, value, 2.f);
+    r.body = 0;
+    rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &k);
+    f.body = &colour_lookup;
+    scene.frame(0, 0, 0, 0, 500);
+    draw(d, pass, f);
+    const auto px = t.read(d);
+    const Built b = build_cpu(f);
+    const LawInputs in = law_of(b.v[0], ppu);
+    auto unpack = [](std::uint32_t c, float out[3]) {
+        for (unsigned i = 0; i < 3; ++i) out[i] = float((c >> (16u - 8u * i)) & 255u) / 255.f;
+    };
+    float head[3], tail[3];
+    unpack(b.v[0].peak, head);
+    unpack(b.v[0].tint, tail);
+    float c[ep::pixel_constant_floats];
+    ep::pixel_constants(k, c);
+    float cx, cy;
+    t.window(r.origin[0], 0, Z, 0, 0, cx, cy);
+    const int iy = int(std::floor(cy + .5f));
+    float worst = 0.f;
+    char label[64];
+    for (const float u0 : {.1f, .5f, .9f})
+        for (const float across : {0.f, .7f}) {
+            const float uc0 = u0;
+            const float bb = c[0] * (1.f - .55f * std::exp(-9.f * uc0)) * (1.f + .35f * smooth(0.f, .25f, uc0) * std::exp(-4.f * uc0));
+            const float w0 = std::min(c[0] + c[1] * uc0, bb + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, uc0), .05f);
+            const int X = int(std::floor(cx - u0 * Lpx + .5f)), Y = iy + int(std::floor(across * w0 * in.n_px + .5f));
+            const float x = (cx - float(X)) / in.n_px, y = (float(Y) - cy) / in.n_px, u = x / in.L, uc = std::min(std::max(u, 0.f), 1.f);
+            const float b2 = c[0] * (1.f - .55f * std::exp(-9.f * uc)) * (1.f + .35f * smooth(0.f, .25f, uc) * std::exp(-4.f * uc));
+            const float w = std::min(c[0] + c[1] * uc, b2 + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, uc), .05f);
+            const float radial = std::fabs(y) / w, core_mask = 1.f - smooth(0.f, 1.f, radial * c[13]);
+            const float heat = c[12] * core_mask * (1.f - smooth(0.f, .55f, u)), mix = smooth(.3f, 1.f, u);
+            const float white[3] = {1.f, .97f, .9f};
+            float want[3], got[3], wm = 0.f, gm = 0.f;
+            for (unsigned i = 0; i < 3; ++i) {
+                const float tone = head[i] + (tail[i] - head[i]) * mix;
+                want[i] = tone + (white[i] - tone) * heat;
+                got[i] = px[(std::size_t(Y) * t.w + std::size_t(X)) * 4 + i];
+                wm = std::max(wm, want[i]);
+                gm = std::max(gm, got[i]);
+            }
+            float err = 0.f;
+            for (unsigned i = 0; i < 3; ++i) err = std::max(err, std::fabs(got[i] / gm - want[i] / wm));
+            worst = std::max(worst, err);
+            std::printf("COLOUR width=%u height=%u u=%.2f across=%.1f u_px=%.4f heat=%.4f got=%.4f,%.4f,%.4f want=%.4f,%.4f,%.4f error=%.5f level=%.4f\n",
+                        t.w, t.h, double(u0), double(across), double(u), double(heat), double(got[0] / gm), double(got[1] / gm),
+                        double(got[2] / gm), double(want[0] / wm), double(want[1] / wm), double(want[2] / wm), double(err), double(gm));
+            std::snprintf(label, sizeof label, "colour_u%.1f_across%.1f_%u", double(u0), double(across), t.w);
+            report(label, gm > 0.f && err <= .01f);
+        }
+    float head_cpu[3];
+    ep::head_colour(mean, peak_c, head_cpu);
+    std::printf("COLOUR_HEAD width=%u head=%.4f,%.4f,%.4f vertex_head=%.4f,%.4f,%.4f tail=%.4f,%.4f,%.4f worst=%.5f\n", t.w,
+                double(head_cpu[0]), double(head_cpu[1]), double(head_cpu[2]), double(head[0]), double(head[1]), double(head[2]),
+                double(tail[0]), double(tail[1]), double(tail[2]), double(worst));
+}
+
+// Gap 6, the RCS puff attack and retro flare: a steering record (value 100 px, side view, the still look) whose z goes
+// 0.01 -> 0.505 -> 1.0 over three frames, then holds 1.0 for 12 frames, at 60 fps through the pass's attack memory
+// (step 1/60 s, 16.67 game ms): the frame's total radiance at frame 2 between 1.3x and 1.5x the steady value (the last
+// frame; 1.5 within the FP16 target's rounding), back within 0.5 % of it at most 150 ms after frame 2. A brake body
+// (z 2.2 -> 2.6 -> 3.0, then 3.0) the same; a main jet whose z rises 0.25 -> 1.125 -> 2.0 none (frame 2 = steady).
+void attack_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 100.f / ppu;
+    static ep::Transients memory;
+    char label[64];
+    struct Kind {
+        const char* name;
+        float z[3];
+        std::uint16_t flags;
+    };
+    const Kind kinds[3] = {{"steering", {.01f, .505f, 1.f}, std::uint16_t(ee::flag_steering)},
+                           {"brake", {2.2f, 2.6f, 3.f}, std::uint16_t(ee::flag_brake)},
+                           {"main", {.25f, 1.125f, 2.f}, 0}};
+    for (const Kind& kind : kinds) {
+        memory.clear();
+        std::vector<double> totals;
+        for (unsigned n = 0; n < 15; ++n) {
+            ee::Record r = record(.5f * 2.f * value, 0, Z, -1, 0, 0, value, kind.z[n < 3 ? n : 2]);
+            r.flags = std::uint16_t((unsigned(ee::white) << ee::cluster_shift) | kind.flags);
+            rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+            f.transients = &memory;
+            f.step = 1.f / 60.f;
+            f.game_ms = 1000.f / 60.f;
+            scene.frame(0, 0, 0, 0, 500);
+            check("attack begin", d->BeginScene());
+            rr::EnginePlumesReport rep{};
+            const HRESULT hr = pass.run(f, &rep);
+            check("attack end", d->EndScene());
+            totals.push_back(SUCCEEDED(hr) && rep.drew ? total_of(t.read(d), t.w, t.h) : 0.);
+        }
+        const double steady = totals.back(), peak2 = steady > 0 ? totals[2] / steady : 0.;
+        unsigned back = 2;
+        while (back < totals.size() && std::fabs(totals[back] / steady - 1.) > .005) ++back;
+        const double back_ms = double(back - 2) * 1000. / 60.;
+        std::printf("ATTACK width=%u height=%u kind=%s frame1=%.4f frame2=%.4f frame3=%.4f frame5=%.4f back_frame=%u back_ms=%.1f\n", t.w,
+                    t.h, kind.name, steady > 0 ? totals[1] / steady : 0., peak2, steady > 0 ? totals[3] / steady : 0.,
+                    steady > 0 ? totals[5] / steady : 0., back, back_ms);
+        std::snprintf(label, sizeof label, "attack_%s_%u", kind.name, t.w);
+        if (kind.flags)
+            report(label, peak2 >= 1.3 && peak2 <= 1.5 * 1.003 && back_ms <= 150. && totals[3] < totals[2]);
+        else
+            report(label, std::fabs(peak2 - 1.) <= .003);
+    }
+}
+
+// Gap 7, the travel look: the production SETA decode and ramp (engine_plumes_core.h seta_decode, TravelRamp) fed the
+// factor through the fixture's seam (warp 6.0 = 0x60000, the governor 1.0) for 31 frames at 60 fps reach weight 1; a
+// side view main jet (value 60 px, s = 1, the still look) drawn at that weight against weight 0: the builder's L x 2 and
+// I_core x 1.25 exactly; the drawn length (20 % of I_core from the nozzle) 2x within 3 %; the axis's peak 1.25x within 2 %.
+void travel_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    ep::TravelRamp ramp;
+    float weight = 0.f, requested = 0.f, rate = 0.f;
+    bool engaged = false;
+    const bool decoded = ep::seta_decode(0x60000u, 0x10000u, &engaged, &requested, &rate);
+    unsigned changes = 0;
+    for (unsigned n = 0; n < 31; ++n) changes += ramp.step(engaged, 1.f / 60.f);
+    ramp.weight(&weight);
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 60.f / ppu;
+    const ee::Record r = record(1.5f * 2.f * value, 0, Z, -1, 0, 0, value, 2.f);
+    float cx, cy;
+    t.window(r.origin[0], 0, Z, 0, 0, cx, cy);
+    const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f));
+    float length[2], top[2], L[2], I[2];
+    for (unsigned k = 0; k < 2; ++k) {
+        rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+        f.travel = k ? weight : 0.f;
+        scene.frame(0, 0, 0, 0, 500);
+        draw(d, pass, f);
+        const auto px = t.read(d);
+        const Built b = build_cpu(f);
+        L[k] = b.v[0].local[2];
+        I[k] = b.v[0].intensity[0];
+        const float threshold = .2f * I[k];
+        int left = ix;
+        while (left > 0 && luma(px, t.w, left - 1, iy) >= threshold) --left;
+        length[k] = float(ix - left);
+        top[k] = peak(px, t.w, t.h, left, iy - 2, ix + 1, iy + 3);
+    }
+    std::printf("TRAVEL width=%u height=%u warp=%.2f rate=%.2f engaged=%u changes=%u weight=%.4f L_ratio=%.4f I_ratio=%.4f drawn_px=%.0f,%.0f drawn_ratio=%.4f peak_ratio=%.4f\n",
+                t.w, t.h, double(requested), double(rate), unsigned(engaged), changes, double(weight), double(L[1] / L[0]),
+                double(I[1] / I[0]), double(length[0]), double(length[1]), double(length[1] / length[0]), double(top[1] / top[0]));
+    char label[64];
+    std::snprintf(label, sizeof label, "travel_warp6_weight1_%u", t.w);
+    report(label, decoded && engaged && changes == 1 && weight == 1.f);
+    std::snprintf(label, sizeof label, "travel_length_2x_intensity_1.25x_%u", t.w);
+    report(label, std::fabs(L[1] / L[0] - 2.f) < 1e-4f && std::fabs(I[1] / I[0] - 1.25f) < 1e-4f &&
+                      std::fabs(length[1] / length[0] - 2.f) <= .06f && std::fabs(top[1] / top[0] - 1.25f) <= .025f);
 }
 
 void off_path_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
@@ -1706,6 +2107,15 @@ int main(int argc, char** argv) {
             if (wanted("floor")) floor_case(d, *t, *scene, pass);
             if (wanted("mouth")) mouth_case(d, *t, *scene, pass);
             if (wanted("distance")) distance_case(d, *t, *scene, pass);
+            // After the gap analysis, phases 2 and 3.
+            if (wanted("spill")) {
+                spill_case(d, *t, *scene, pass, true);
+                if (size.first == 1920) spill_case(d, *t, *scene, pass, false);
+            }
+            if (wanted("flow")) flow_case(d, *t, *scene, pass);
+            if (wanted("colour")) colour_case(d, *t, *scene, pass);
+            if (wanted("attack")) attack_case(d, *t, *scene, pass);
+            if (wanted("travel")) travel_case(d, *t, *scene, pass);
             if (wanted("timing"))
                 for (const unsigned n : {30u, 100u}) {
                     if (disc_ab)

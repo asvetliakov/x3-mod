@@ -115,20 +115,45 @@ work and is not re-planned here.
 | Phase | Changes | Fixture (acceptance) | Verdict type |
 | --- | --- | --- | --- |
 | 1 (in flight) | Far-jet records, distance law, halo 0.20, floor 0.5 | the in-flight agent's | Run 123, user's eye |
-| 2 "physics and colour" | Gaps 4, 5, 3, 10 together: world-unit flow, two-tone colour, nozzle spill 0.15 over 1 nozzle width, idle floor | `run_engine_plumes.py` new cases: (a) two values 100 and 10,000 px: the noise field's displacement between frames in world units within 5 % of each other and of the reference speed (the CPU replica); (b) colour at u 0.1 / 0.5 / 0.9 against the replica within 1 %; (c) the occluded-mouth case: halo over the hull at the nozzle = 0.15 +- 0.02 of unoccluded, 0 past 1.5 nozzle widths; (d) idle length 1 nozzle width. Host: the per-vertex phase wrap over 10^4 s, the kind/sign packing round trip. Gates: ps slots <= 700, the fenced stage within noise, `test_engine_*` OK | 4 and 10 clearly right in direction; 3 and 5 by the eye. One launch |
-| 3 "transients" | Gaps 6 and 7 | Plumes fixture: a steering record with z 0.01 -> 1 over three frames: radiance peak at frame 2 >= 1.3x and <= 1.5x steady, back within 150 ms; a brake body the same. SETA: a host test of the detector (ratio 6x, hysteresis, no false trigger on a 0.1 s stall); `run_engine_effects.py` counts the read; the read's safety by a `disassemble` task on `*(0x00606f34)+0xcc` (the SETA factor, 16.16; `+0x718` is the absolute game clock, RE §8) first | the user's eye, two launches (SETA on/off is the same launch) |
+| 2 "physics and colour" (**built 2026-10-03**, section 5) | Gaps 4, 5, 3, 10 together: world-unit flow, two-tone colour, nozzle spill 0.15 over 1 nozzle width, idle floor | `run_engine_plumes.py` new cases: (a) two values 100 and 10,000 px: the noise field's displacement between frames in world units within 5 % of each other and of the reference speed (the CPU replica); (b) colour at u 0.1 / 0.5 / 0.9 against the replica within 1 %; (c) the occluded-mouth case: halo over the hull at the nozzle = 0.15 +- 0.02 of unoccluded, 0 past 1.5 nozzle widths; (d) idle length 1 nozzle width. Host: the per-vertex phase wrap over 10^4 s, the kind/sign packing round trip. Gates: ps slots <= 700, the fenced stage within noise, `test_engine_*` OK | 4 and 10 clearly right in direction; 3 and 5 by the eye. One launch |
+| 3 "transients" (**built 2026-10-03**, section 5) | Gaps 6 and 7 | Plumes fixture: a steering record with z 0.01 -> 1 over three frames: radiance peak at frame 2 >= 1.3x and <= 1.5x steady, back within 150 ms; a brake body the same. SETA: a host test of the detector (ratio 6x, hysteresis, no false trigger on a 0.1 s stall); `run_engine_effects.py` counts the read; the read's safety by a `disassemble` task on `*(0x00606f34)+0xcc` (the SETA factor, 16.16; `+0x718` is the absolute game clock, RE §8) first | the user's eye, two launches (SETA on/off is the same launch) |
 | 4 "hull light" | Gap 8 | The converted-material fixture with a synthetic engine light: the lit plate's radiance against the law within 1 %; byte-identical programs at light 0; per-draw cost by the hull pass's existing timing | `implement-deep`; the eye. **Built 2026-10-03** ([engine-light.md](engine-light.md)), not flown: twins of the 104 hull/palette/XT/glass programs, +25 slots (+28 on the share producer), not the +8-10 inferred above; lit radiance within 0.28 % of the law, unlit pixels bit-identical, light-off programs unchanged; 34 ns per lit draw, 3.7 ns per unlit routed draw; the term costs 50.9 us per full-screen hull draw at 5120x1440 and only on lit draws (all measured, [engine-light ledger](../verification/engine-light.md)) |
 | 5 "shimmer" | Gap 9, opt-in | A fixture over the resolved target: a known plume rect, measured offset <= 2 px, zero outside the rect, cost per rect size | the eye; last |
 
 Clearly right, do now (phase 2): the world-unit flow and the idle floor. Needs the user's eye: everything else.
 
+## 5. Built: phases 2 and 3 (2026-10-03, worktree build on c6ca2842, not flown)
+
+The laws and constants are in [engine-effects-modern.md](engine-effects-modern.md) ("After flight E, the gap analysis'
+phases 2 and 3"); the checks in the ledger [engine-effects.md](../verification/engine-effects.md). Numbers are measured
+(the X3 bottle, `run_engine_plumes.py` 178/178, both sizes identical unless given) unless marked.
+
+| Gap | As built | Fixture result |
+| --- | --- | --- |
+| 4 flow | phase = accumulator x clamp(500 / value, 0.3, 1), per vertex | displacement over 0.2 s in world units / the law: 0.9999-1.0000 at value 100 / 600 / 1,500 / 10,000; 600 and 1,500 at 131.24 / 131.25 against 131.25 (656.25 per s), ratio 0.9999; lag-1 0.901 (100) and 0.946 (10,000) |
+| 5 two-tone | head = the table's peak at the mean's luminance, mean towards the tail | 240 of 253 bodies' peak and mean differ by more than 5 % (median per cluster 0.08-0.66 of a channel; white identical), the peak 1.0-3.6x the mean's luminance (`verification/results/engine-effects/plume_two_tone_colours.py`): the table's peak is used, luminance-matched, no derived tail; colour against the replica at u 0.1 / 0.5 / 0.9, axis and 0.7 of the half-width: worst 0.00053 |
+| 3 spill | 0.15 within 0.8 n, 0 at 1.0 n, only through an occluder within 2 value of the nozzle | head-on behind a plane at the nozzle: law 0.1501 (max 0.1503) in 0.65-0.8 n; the production soft cap 0.152 / 0.154 (1080p / 5120, max 0.155: the open halo is compressed more than the spilled one); 0 past 1.0 n; 0 through a plane 3 value in front |
+| 10 idle floor | L = max(z, 0.5) value | L / value 0.5 at s = 0; mouth / body at s = 0 / 0.5 / 1: 0.752 / 0.645 / 0.580 (was 0.761 / 0.645 / 0.580; gate 0.85) |
+| 6 attack | 512 slots, x (1 + 0.5 saturate(dz / (0.004 dt_game))), 120 ms linear decay | steering z 0.01 -> 0.505 -> 1: frame 2 at 1.500x steady, back at 133 ms; brake 2.2 -> 3.0 the same; a main jet 1.000 |
+| 7 travel | one read per stage frame, ramp 0.5 s, hold 0.3 s; L x 2, I x 1.25, ribbon T x 2, flow x 1.5 | warp 6 through the production decode and ramp: weight 1; L 2.000x, I_core 1.250x, drawn length 2.010x, peak 1.2505x; the effects fixture's armed mode reads through the seam (rows read / engage at 6.000 / release; 23 reads, 0 refused), armed_refused fails closed (`site_mismatch`) |
+
+Cost: ps 734 slots (687 before, gate 800); vertex 76 B; CPU build at 300 records 31.8 us (29.9 / 30.8 in the two runs
+before; 1,024 records 111.6 against 108.3); stage GPU at 300 nozzles (250 far) 0.80 ms at 1080p, 0.28 ms at 5120x1440
+(0.28-0.84 / 0.26-0.27 in the two runs before: within their spread) [m, fixture timings, not game FPS]. Deviations from the brief: the flow fixture's "value 100 and 10,000 within 5 % of each
+other" cannot hold under the brief's own clamp (their world speeds differ 30x by design, 26.25 vs 787.4 per 0.2 s), so
+the equal-speed check runs at 600 and 1,500 inside the clamp and 100 / 10,000 are checked against their law; the spill
+gained the depth guard and a 0.8-1.0 n taper (both bounded, documented); the head colour is luminance-matched so the
+plume does not brighten (red's head is 0.39x the raw peak). Needs the user's eye: the spill amount, the two-tone, the
+attack's 1.5x and the travel look.
+
 ## Unknown, and what settles it
 
 - Whether the bodies' peak and mean colours differ enough for gap 5 to show: `tools/effects/engine_bodies.py` output
   (`engine_bodies.json` mean_linear / peak_linear) for the Mayhem glow family, a five-line Python; the cluster tints
-  are identical for both and would need a second table.
+  are identical for both and would need a second table. *Settled 2026-10-03 (section 5): they differ.*
 - Whether `*(0x00606f34)+0xcc` (the SETA factor, 16.16; `+0x718` is the absolute game clock, RE §8) is readable every frame as the game-time step and what it holds under pause and SETA:
-  a `disassemble` task on the drive's reader (`0x004596e0`, RE note section 2) before gap 7.
+  a `disassemble` task on the drive's reader (`0x004596e0`, RE note section 2) before gap 7. *Settled by the RE note's
+  section 8 (the factor `+0xcc`, not a step; main-thread writers; the block lives to exit) and built in section 5.*
 - Whether the hull programs can carry a second light without exceeding the ps_2_x/3_0 budget of the converted
   families and where the light position would be uploaded: the fill-light note's per-draw path and
   [hull-emissive-widening.md](hull-emissive-widening.md) section 2 settle the mechanism; a fixture settles the cost.
