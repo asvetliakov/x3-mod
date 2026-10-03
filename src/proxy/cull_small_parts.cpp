@@ -1,6 +1,8 @@
 #include "cull_small_parts.h"
 #include "config.h"
 #include "cull_small_parts_core.h"
+#include "engine_effects_option.h"
+#include "engine_far_jets.h"
 #include "cull_census.h"
 #include "camera_state.h"
 #include "fov.h"
@@ -10,9 +12,10 @@
 #include <windows.h>
 #include <cstring>
 
-// Nothing here runs inside the engine's pass: the stub is straight-line
-// integer code emitted from cull_small_parts_core.h (no call into this
-// module), so this file is compiled with the ordinary proxy flags. begin_frame
+// Nothing here runs inside the engine's pass: the stub is integer code emitted
+// from cull_small_parts_core.h whose only call (the far-jet block, plumes only)
+// goes to engine_far_jets.cpp, built without SSE/MMX, never into this module,
+// so this file is compiled with the ordinary proxy flags. begin_frame
 // and present run in the proxy's Present hook, after_reset in its Reset hook,
 // on the application's render thread (the one that runs the pass), where the
 // other frame-scoped modules already use SSE.
@@ -44,6 +47,8 @@ constexpr unsigned value_line_cap = 128; // cull_small_parts_value rows per proc
 core::SceneLatch scene_{};
 bool projectiles_ = true;              // the installed stub exempts marked projectile nodes
 const char* projectiles_state_ = "on"; // install-line value: on, off, marker_mismatch, invalid
+bool far_jets_ = false;                // the installed stub hands culled JET nodes to x3m_engine_far_jet (plumes)
+const char* far_jets_state_ = "off";   // install-line value: on, off, writer_mismatch
 
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[core::window_length]{};
@@ -73,7 +78,7 @@ bool read_setting(const wchar_t* name, char* out, unsigned capacity) {
     return true;
 }
 // Emits the stub followed by its 4-aligned continuation slot; 0 when the arena is full.
-std::uintptr_t emit_stub(std::uint32_t cull_target, bool exempt_projectiles, void*** slot_out) {
+std::uintptr_t emit_stub(std::uint32_t cull_target, bool exempt_projectiles, bool far_jets, void*** slot_out) {
     engine_patch::Emitter e(core::stub_length + 8);
     if (!e.ok()) return 0;
     const std::uintptr_t at = reinterpret_cast<std::uintptr_t>(e.here());
@@ -85,7 +90,8 @@ std::uintptr_t emit_stub(std::uint32_t cull_target, bool exempt_projectiles, voi
                       std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_culled)),
                       std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_exempt)),
                       std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_cull_small_parts_dock_culled)), cull_target,
-                      std::uint32_t(slot), code, exempt_projectiles);
+                      std::uint32_t(slot), code, exempt_projectiles,
+                      std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_engine_far_jet)), far_jets);
     e.bytes(code, core::stub_length);
     while (e.ok() && reinterpret_cast<std::uintptr_t>(e.here()) < slot) e.byte(0xcc);
     e.dword(0);
@@ -168,7 +174,7 @@ bool site_claimed() {
 const char* site_write() {
     return site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none";
 }
-bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles) {
+bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles, bool far_jets) {
     if (patched_) {
         state_ = "already_installed";
         return false;
@@ -176,7 +182,8 @@ bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_pro
     const char* reason = check_site(site, cull_target);
     std::uintptr_t stub = 0;
     void** slot = nullptr;
-    if (!reason && !(stub = emit_stub(std::uint32_t(cull_target), exempt_projectiles, &slot))) reason = "arena_full";
+    if (!reason && !(stub = emit_stub(std::uint32_t(cull_target), exempt_projectiles, far_jets, &slot)))
+        reason = "arena_full";
     if (!reason) reason = patch_site(site); // last: an arena refusal above leaves the site untouched
     if (!reason) {
         x3m_cull_small_parts_threshold = 0;
@@ -189,6 +196,7 @@ bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_pro
             patched_ = true;
             stub_ = stub;
             projectiles_ = exempt_projectiles;
+            far_jets_ = far_jets;
             reason = "ok";
         }
     }
@@ -219,6 +227,14 @@ bool initialize() {
     double dock_px = 0;
     const bool dock_ok =
         !dock_set || (core::parse_px(dock_text, &dock_px) && (dock_px == 0.0 || core::valid_px(dock_px)));
+    // Far engine jets: only with X3M_ENGINE_EFFECTS exactly `plumes` (the engine_effects option's parser; unset,
+    // native, off or a refused word leave the jet bits unread and nothing called).
+    char effects_text[32]{};
+    namespace option = x3m::engine_effects::option;
+    option::Mode effects = option::Mode::native;
+    bool far_jets = read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) &&
+                    option::parse_mode(effects_text, &effects) && effects == option::Mode::plumes;
+    far_jets_state_ = far_jets ? "on" : "off";
     double px = 0;
     const bool parsed = core::parse_px(setting, &px);
     bool applied = false;
@@ -240,15 +256,22 @@ bool initialize() {
             exempt = false;
             projectiles_state_ = "marker_mismatch";
         }
+        // The far-jet block relies on the engine's JET flag pair: its writer must be the verified bytes, else the
+        // block is left out (jets are culled as before, no record).
+        if (far_jets && !bytes_match(core::jet_writer_va, core::jet_writer, core::jet_writer_length)) {
+            far_jets = false;
+            far_jets_state_ = "writer_mismatch";
+        }
         px_ = px;
         dock_px_ = dock_px;
-        applied = install_at(core::site_va, core::cull_va, exempt);
+        applied = install_at(core::site_va, core::cull_va, exempt, far_jets);
     }
-    log("cull_small_parts requested=%s px=%.4g patched=%u reason=%s site=0x%08lx cull=0x%08lx write=%s stub=0x%08lx camera=%s scope=%s projectiles=%s dock_px=%.4g dock_requested=%s",
+    log("cull_small_parts requested=%s px=%.4g patched=%u reason=%s site=0x%08lx cull=0x%08lx write=%s stub=0x%08lx camera=%s scope=%s projectiles=%s dock_px=%.4g dock_requested=%s far_jets=%s",
         setting, applied ? px : 0.0, patched_ ? 1u : 0u, state_, static_cast<unsigned long>(core::site_va),
         static_cast<unsigned long>(core::cull_va),
         site_.patched_in ? (site_.atomic_write ? "atomic" : "plain") : "none", static_cast<unsigned long>(stub_),
-        camera_state::status(), "all", projectiles_state_, applied ? dock_px : 0.0, dock_set ? dock_text : "unset");
+        camera_state::status(), "all", projectiles_state_, applied ? dock_px : 0.0, dock_set ? dock_text : "unset",
+        far_jets_state_);
     SetLastError(error);
     return applied;
 }
@@ -272,6 +295,9 @@ const char* state() {
 }
 bool projectiles_exempt() {
     return patched_ && projectiles_;
+}
+bool far_jets() {
+    return patched_ && far_jets_;
 }
 std::uintptr_t stub_address() {
     return patched_ ? stub_ : 0;
@@ -375,13 +401,13 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
     if (captured) {
         const DWORD error = GetLastError();
         const std::int32_t threshold = x3m_cull_small_parts_threshold, upper = x3m_cull_small_parts_upper;
-        log("cull_small_parts_frame device=%llu frame=%llu px=%.4g threshold=%ld culled=%lu m00=%.9g width=%u scope=%s projectiles=%s exempt_bullet=%lu focus=0x%04lx source=%s fallback=%s dock_px=%.4g dock_threshold=%ld dock_culled=%lu",
+        log("cull_small_parts_frame device=%llu frame=%llu px=%.4g threshold=%ld culled=%lu m00=%.9g width=%u scope=%s projectiles=%s exempt_bullet=%lu focus=0x%04lx source=%s fallback=%s dock_px=%.4g dock_threshold=%ld dock_culled=%lu far_jets=%s",
             device, frame, px_, static_cast<long>(threshold), static_cast<unsigned long>(x3m_cull_small_parts_culled),
             static_cast<double>(last_m00_), width_, "all", projectiles_ ? "on" : "off",
             static_cast<unsigned long>(x3m_cull_small_parts_exempt), static_cast<unsigned long>(last_focus_),
             core::source_name(last_source_), core::fallback_name(last_fallback_), dock_px_,
             static_cast<long>(upper > threshold ? upper : 0),
-            static_cast<unsigned long>(x3m_cull_small_parts_dock_culled));
+            static_cast<unsigned long>(x3m_cull_small_parts_dock_culled), far_jets_ ? "on" : "off");
         SetLastError(error);
     }
     x3m_cull_small_parts_culled = 0;

@@ -20,9 +20,15 @@
 // docs/reverse-engineering/ship-scene-parts.md) are culled below a second,
 // larger threshold from X3M_CULL_DOCK_PARTS_PX (0 or unset = off, converted
 // the same way; the projectile exemption applies to them too; nothing else
-// changes for any other node). With the threshold at 0 (option off, no valid camera
-// yet, a Reset) the stub is one compare and a branch. No handler call: the
-// stub is straight-line integer code, LastError and the x87 stack untouched.
+// changes for any other node). With X3M_ENGINE_EFFECTS=plumes (and only then) a
+// culled node carrying the engine's JET flag pair (+0x130 & 0x4000001 ==
+// 0x4000001, the recogniser's test) stays culled and is handed to
+// x3m_engine_far_jet (engine_far_jets.h) on the way, whose raw fields become a
+// far plume record (cull_small_parts_core.h "Far engine jets"; the writer
+// 0x00434708 pinned at install). With the threshold at 0 (option off, no valid camera
+// yet, a Reset) the stub is one compare and a branch. Its only call is the
+// far-jet handler (plumes only), integer code without SSE/MMX or Win32:
+// LastError and the x87 stack untouched.
 // Installed on the backend-load path inside the engine_patch install window
 // after the exact-executable and window-byte checks, with this module pinned.
 // The claim is disjoint from the census's 0x0047d258/0x0047d528; both coexist.
@@ -37,7 +43,9 @@ bool shutdown();   // restores the site (dynamic-unload detach only); true when 
 // (+0x130 & 0x20000000: bolts, beams) runs the vanilla compare
 // (X3M_CULL_SMALL_PARTS_PROJECTILES=on, the default; initialize() turns it off
 // when the marker's two engine instructions are not the verified bytes).
-bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles);
+// far_jets: the far-jet block (initialize(): X3M_ENGINE_EFFECTS=plumes and the pinned
+// writer bytes): a JET node it culls is handed to x3m_engine_far_jet.
+bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles, bool far_jets = false);
 // The claim is shared with the lens-flare cull (lens_flare_cull.h): one
 // engine_patch claim of the site carries both stubs (push_front: the later one
 // runs first and continues into the earlier one, then the tail), restored once
@@ -54,6 +62,7 @@ bool site_claimed();      // the shared claim is live
 const char* site_write(); // none|atomic|plain: which engine_patch::write_code path wrote the jump
 const char* state();
 bool projectiles_exempt(); // the installed stub exempts marked projectile nodes
+bool far_jets();           // the installed stub carries the far-jet block
 std::uintptr_t stub_address();
 double requested_px();
 bool set_px(double px); // the setting without a relaunch (fixture and diagnostics); false outside the band

@@ -258,14 +258,31 @@ int main() {
         std::printf("STRIP points=%u head_px=%.2f want=%.2f tail_px=%.2f radiance_head=%.3f radiance_tail=%.3f floored=%u\n", bs.points, double(head_px), double(want_head), double(width_px(last)), double(out[0].shape[0]), double(out[2 * last].shape[0]), bs.floored);
         expect(n == 1 && bs.vertices == vertices_per_ribbon && near(head_px, want_head, 1e-3), "half-width 0.6 x the nozzle's half-width at the nozzle");
         expect(near(width_px(last), 3.f, 1e-3) && bs.floored >= 1, "the tail held at the 3 px floor");
-        expect(near(out[0].shape[0], .9f, 1e-5) && out[2 * last].shape[0] == 0.f && out[0].strip[0] == 0.f && near(out[2 * last].strip[0], 1.f, 1e-6), "I_ribbon(1) = 0.9 at the nozzle, 0 at the tail");
+        // After flight E the plumes' distance law: the nozzle (0.5 x 300 = 150 units) projects 6.9 px at 20,000.
+        float fw = 0.f;
+        ep::distance_weight(ep::default_look, .5f * value * ppu, &fw);
+        expect(fw > .5f && fw < .6f && bs.far_ribbons == 1, "the nozzle under 12 px: the distance law's factor, counted far_ribbons");
+        expect(near(out[0].shape[0], .9f * fw, 1e-5) && out[2 * last].shape[0] == 0.f && out[0].strip[0] == 0.f && near(out[2 * last].strip[0], 1.f, 1e-6), "I_ribbon(1) = 0.9 x the distance law at the nozzle, 0 at the tail");
         bool degenerate = true; for (unsigned k = bs.points; k < points_per_ribbon; ++k) degenerate = degenerate && !std::memcmp(&out[2 * k], &out[2 * last], sizeof(Vertex));
         expect(degenerate, "unused points repeat the last (zero-area triangles)");
         expect(out[0].shape[1] == Z && out[0].shape[2] == value && out[0].strip[1] == -1.f && out[1].strip[1] == 1.f, "centre depth, SOFT base, across");
         std::uint16_t ix[96 * 2]; write_indices(ix, 2);
         expect(ix[0] == 0 && ix[1] == 1 && ix[2] == 2 && ix[5] == 3 && ix[96] == 34 && ix[96 + 5] == 37, "the strip's indices");
         // strong preset: x1.5 radiance
-        build(pool, v, ep::Preset::strong, now - dt, out.data(), 1, &bs); expect(near(out[0].shape[0], 1.35f, 1e-5), "preset strong: x1.5");
+        build(pool, v, ep::Preset::strong, now - dt, out.data(), 1, &bs); expect(near(out[0].shape[0], 1.35f * fw, 1e-5), "preset strong: x1.5");
+        // The plume's nozzle is the floored value's (the plumes' look and ship radii): a 100 secondary of a radius-5,000
+        // ship (scale 0.5 x k 0.1 x 5,000 = 250) carries the nozzle 125; without radii its own 50.
+        {
+            static Pool fp; fp.clear(); const float rad = 5000.f; UpdateStats fs{};
+            const ee::Record q = rec(0, 0, Z, 100.f, 1.f);
+            update(fp, &q, 1, 1.0, false, 0, nullptr, 1.f, &fs, nullptr, &ep::default_look, &rad);
+            float with = 0.f, without = 0.f;
+            for (const auto& r : fp.ribbons) if (r.live) with = r.nozzle;
+            fp.clear();
+            update(fp, &q, 1, 1.0, false, 0, nullptr, 1.f, &fs);
+            for (const auto& r : fp.ribbons) if (r.live) without = r.nozzle;
+            expect(near(with, 125.f, 1e-5) && near(without, 50.f, 1e-5), "the ribbon's nozzle: Look::nozzle_width x the floored value (125), else x its own (50)");
+        }
         // the chase cap: a ribbon passing close to the camera is held to 0.12 H with radiance down to 0.5
         static Pool close; close.clear(); now = 0.0;
         for (unsigned f = 0; f < 60; ++f, now += dt) { const ee::Record r = rec(30.f, 0, 40.f + 600.f * float(f) * dt, 400.f, 1.f); update(close, &r, 1, now, false, 0, nullptr, 1.f, &st); }
@@ -343,9 +360,9 @@ class Wiring(unittest.TestCase):
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('if(in.cut&&ribbons_)ribbons_->note_cut();', motion)
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
-                      '(engine_ring_->count||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
+                      '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
         # the ribbons take the plumes' scene-view filter
-        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr);',
+        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii);',
                       source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp'))
         self.assertIn('if(ribbons_)taa_call([&]{ribbons_->before_reset();});', motion)
         self.assertIn('if(ribbons_)ribbons_->after_reset(result);', motion)

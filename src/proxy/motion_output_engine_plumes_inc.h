@@ -18,6 +18,10 @@
 void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width,
                                            float floor_scale) noexcept {
     plumes_requested_ = requested && engine_hook_ && engine_suppress_ && engine_ring_;
+    // Far engine jets: the small-parts cull stub's far block copies culled JET nodes only while a device requests the
+    // stage (it carries the block only with X3M_ENGINE_EFFECTS=plumes and the cull on).
+    engine_far_jets::set_armed(plumes_requested_);
+    engine_far_frame_ = ~std::uint64_t(0);
     plumes_preset_ = preset;
     // The look: the chosen constants with the configured nozzle width (engine_effects::plume_nozzle(): parsed and
     // range-checked there); out of range here (no caller does that) keeps the default.
@@ -165,8 +169,73 @@ std::uint64_t MotionOutput::engine_qpc_frequency() noexcept {
     }
     return qpc_frequency_;
 }
+// Far engine jets (after flight E; engine_far_jets.h, engine_effects_core.h far_record): the JET nodes the small-parts
+// cull stub culled this frame, appended to the ring once per frame after the frame's draws, with the tags a suppressed
+// draw takes: the camera handle (the pass's view +0x28, the object scope's camera), the scene phase (the selector's
+// state when the pass met it), the parent and its radius through the same memo (the plume floor), the own-ship tag. One
+// bounded read of context +0x2c per view context (memo); the parent's +0xa4 only with the floor on. The ring's cap
+// applies (far_overflow with the handler's own full buffer).
+float MotionOutput::engine_far_context_scale(std::uint32_t context) noexcept {
+    if (frame_ != engine_far_context_frame_) {
+        for (unsigned i = 0; i < engine_far_context_slots; ++i) engine_far_context_[i] = 0;
+        engine_far_context_frame_ = frame_;
+        engine_far_context_next_ = 0;
+    } else
+        for (unsigned i = 0; i < engine_far_context_slots; ++i)
+            if (engine_far_context_[i] == context) return engine_far_scale_[i];
+    float scale = 0.f;
+    if (context) {
+        const DWORD error = GetLastError();
+        if (!engine_memory::read(std::uintptr_t(context) + engine_far_jets::core::context_scale_offset, &scale, sizeof scale))
+            scale = 0.f;
+        SetLastError(error);
+    }
+    const unsigned slot = engine_far_context_next_;
+    engine_far_context_next_ = (slot + 1) % engine_far_context_slots;
+    engine_far_context_[slot] = context;
+    engine_far_scale_[slot] = scale;
+    return scale;
+}
+void MotionOutput::engine_far_append() noexcept {
+    if (engine_far_frame_ == frame_ || !plumes_requested_ || !engine_ring_) return;
+    engine_far_frame_ = frame_;
+    namespace ee = engine_effects::core;
+    const unsigned count = engine_far_jets::count();
+    const engine_far_jets::core::Raw* raw = engine_far_jets::entries();
+    const bool floors = plumes_look_.floor_scale > 0.f;
+    for (unsigned i = 0; i < count; ++i) {
+        const auto& f = raw[i];
+        if (engine_ring_->full()) {
+            engine_far_.ring_full += count - i;
+            break;
+        }
+        const int body = engine_effects::body_for_model(f.model);
+        const ee::Body* entry = engine_effects::body(body);
+        ee::Record record{};
+        const ee::FarVerdict verdict =
+            ee::far_record(f, engine_far_context_scale(f.context), body, entry, frame_, &record);
+        if (verdict != ee::FarVerdict::record) {
+            ++(verdict == ee::FarVerdict::steering ? engine_far_.steering : engine_far_.invalid);
+            continue;
+        }
+        float radius = 0.f;
+        if (floors)
+            ee::parent_radius_in_record(f.parent ? engine_parent_radius(f.parent) : 0, f.scale70, f.scale80, record.size,
+                                        &radius);
+        const unsigned slot = engine_ring_->count;
+        *engine_ring_->push() = record;
+        engine_ring_->camera[slot] = f.view_handle;
+        engine_ring_->scene[slot] = f.scene ? 1u : 0u;
+        engine_ring_->parent[slot] = f.parent;
+        engine_ring_->parent_radius[slot] = radius;
+        engine_ring_->own[slot] = engine_record_own(f.node, f.handle, true, f.parent) ? 1u : 0u;
+        ++engine_far_.records;
+        if (!entry) ++engine_counts_.unknown_body;
+    }
+}
 HRESULT MotionOutput::run_engine_plumes() noexcept {
     plumes_ran_ = true;
+    if (plumes_ && plumes_armed_ && plumes_lane_) engine_far_append(); // after the frame's draws, before the scene view
     if (!plumes_ || !plumes_armed_ || !plumes_lane_ || !engine_ring_ || (!engine_ring_->count && !engine_ribbons_live()))
         return S_FALSE; // phase 3: a frame without records still runs while ribbons fade
     // The scene view: the camera handle the own ship's jets were recorded under, else the most frequent camera handle
@@ -268,10 +337,12 @@ void MotionOutput::log_engine_stage() noexcept {
     const auto& rb = ribbons_report_.stats;
     const engine_ribbons::Pool* pool = ribbons_ ? &ribbons_->pool() : nullptr;
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
+    const engine_far_jets::core::Stats jets = engine_far_jets::stats(); // this frame's far jets (the cull stub's copies)
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
-            s.nozzles, s.vertices, s.discs, s.floored, s.floor_unknown, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
+            s.nozzles, s.vertices, s.discs, s.floored, s.floor_unknown, s.far_nozzles, jets.written, engine_far_.records, jets.engine,
+            jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
             s.culled_idle, s.skipped_other_view, engine_plumes::view_rule_name(plumes_view_rule_),
             total(plumes_view_own_total_), total(plumes_view_majority_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
             double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,

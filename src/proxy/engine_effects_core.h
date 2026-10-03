@@ -5,6 +5,7 @@
 #include "sse_scalar.h"
 #include "lens_flare_cull_core.h"
 #include "engine_effects_option.h"
+#include "engine_far_jets_core.h"
 
 // Portable core of the engine-effects phase 1a (docs/architecture/engine-effects-modern.md sections 1, 2 and 5;
 // docs/reverse-engineering/engine-effects.md sections 2-4): the glow-jet recogniser's truth table, the throttle and
@@ -197,6 +198,7 @@ enum RecordFlag : std::uint16_t {
     flag_effect_pair = 1u << 6,  // the effects pair was bound (c4-6 are its world rows)
     flag_rows_unknown = 1u << 7, // no geometry: not the effects pair, c4-6 not shadowed, or degenerate rows
     flag_additive = 1u << 8,     // DESTBLEND ONE (else the screen law ONE/INVSRCCOLOR or unknown)
+    flag_far = 1u << 9,          // a far jet: built from the node the small-parts cull culled (far_record), no draw
 };
 constexpr unsigned cluster_shift = 12; // bits 12..15: the tint cluster (core::Cluster)
 // One recognised glow-jet draw: a per-frame fact, 64 bytes, no pointer.
@@ -794,5 +796,59 @@ inline void fill_record(const RecordInput& in, Order* pinned, Record* r, Geometr
     r->body = std::int16_t(in.entry ? in.body : -1);
     r->flags = flags;
     r->frame = std::uint32_t(in.frame);
+}
+// --------------------------------------------------------------------------- far jets
+// A far jet's record (engine_far_jets_core.h Raw: the node fields the small-parts cull stub's far block copied for a JET
+// node it culled; docs/architecture/engine-effects-modern.md "After flight E") in the draw path's terms, from the same
+// construction the engine's world rows use (0x004bdee0, docs/reverse-engineering/engine-effects.md section 4): row k of
+// the 3x3 is basis row k (+0xc0 / +0xd0 / +0xe0, 16.16) x +0x70 x (+0x80, +0x84, +0x88)[k] / 65536 x the context scale,
+// the translation +0xb0 x the context scale; c4-6 order a (flight A: 117,442 records, model z = basis row 2 at cos 1.0)
+// reads model axis k from row k. So origin = +0xb0 x scale, axis = -(basis row 2) normalised, size = |model x| = |basis
+// row 0| / 65536 x +0x70 x +0x80 / 65536 x scale, ratio = |z| / |x| = (|row 2| x +0x88) / (|row 0| x +0x80), z and s from
+// +0x88 (throttle). The origin is computed in double (the engine rounds pos x scale once). `context_scale` is the
+// view's float at context +0x2c (0.01 in every gameplay view). steering: an RCS jet (v/00566 or a SMALLJET table entry,
+// the recogniser's rule; the stub's handler already skips 566); invalid: a context scale outside (0, 1), a zero basis
+// row or a non-positive scale: no record.
+enum class FarVerdict : std::uint8_t { record, steering, invalid };
+inline FarVerdict far_record(const x3m::engine_far_jets::core::Raw& raw, float context_scale, int body, const Body* entry,
+                             std::uint64_t frame, Record* r) noexcept {
+    if (raw.model == steering_model || (entry && (entry->lists & list_smalljet))) return FarVerdict::steering;
+    if (!finite_f(context_scale) || !(context_scale > 0.f) || !(context_scale < 1.f) || std::int32_t(raw.scale70) <= 0 ||
+        std::int32_t(raw.scale80) <= 0)
+        return FarVerdict::invalid;
+    float bx[3], bz[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        bx[i] = float(raw.basis_x[i]) * (1.f / 65536.f);
+        bz[i] = float(raw.basis_z[i]) * (1.f / 65536.f);
+    }
+    float lx = 0.f, lz = 0.f;
+    length3(bx, &lx);
+    length3(bz, &lz);
+    if (!(lx > 0.f) || !(lz > 0.f) || !finite_f(lx) || !finite_f(lz)) return FarVerdict::invalid;
+    float z = 0.f, s = 0.f;
+    throttle(raw.scale88, &z, &s);
+    const float sx = float(std::int32_t(raw.scale80)) * (1.f / 65536.f);
+    *r = Record{};
+    for (unsigned i = 0; i < 3; ++i) {
+        r->origin[i] = float(double(raw.position[i]) * double(context_scale));
+        r->axis[i] = -bz[i] / lz;
+    }
+    r->size = lx * float(std::int32_t(raw.scale70)) * sx * context_scale;
+    r->ratio = (lz * z) / (lx * sx);
+    if (!finite_f(r->size) || !(r->size > 0.f)) return FarVerdict::invalid;
+    r->s = s;
+    r->z = z;
+    r->node_handle = raw.handle;
+    r->model = raw.model;
+    r->body = std::int16_t(entry ? body : -1);
+    std::uint16_t flags = flag_far;
+    if (z > 2.f + ratio_tolerance) flags |= flag_brake;
+    if (!entry) flags |= flag_unknown_body;
+    const unsigned cluster = entry ? entry->cluster : default_cluster;
+    flags |= std::uint16_t((cluster & 15u) << cluster_shift);
+    r->flags = flags;
+    r->serial = 0;
+    r->frame = std::uint32_t(frame);
+    return FarVerdict::record;
 }
 } // namespace x3m::engine_effects::core

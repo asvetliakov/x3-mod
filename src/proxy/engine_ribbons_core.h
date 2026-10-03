@@ -35,7 +35,9 @@
 // Geometry: a camera-facing strip through the nozzle (the live head, so there is never a gap at the nozzle) and the
 // samples, newest first, cut at L (the last point interpolated); half-width 0.6 x the nozzle's half-width (0.5 value)
 // at the nozzle tapering linearly to 0 at the tail, never under 1.5 px (a 3 px strip); radiance
-// I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u) (u 0 at the nozzle, 1 at the tail); the plume's near-camera
+// I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u) (u 0 at the nozzle, 1 at the tail) x the plumes' distance
+// law (after flight E: engine_plumes_core.h distance_weight on the plume's projected nozzle width at the head, the
+// plume's nozzle being Look::nozzle_width x its floored value); the plume's near-camera
 // rule per point (the projected width held to 0.12 H, radiance 1 -> 0.5 over the last 20 %); the nozzle's fog
 // transmittance on the colour. Occlusion in the pixel program: the plume halo's soft lane test (SOFT 1.0 value) at the
 // centre line's view depth.
@@ -94,6 +96,7 @@ struct Ribbon {
     float head[3]{};                // the nozzle at its last update
     float last_seen = 0.f;          // pool clock
     float value = 0.f, throttle = 0.f;
+    float nozzle = 0.f;              // the plume's nozzle width (world): Look::nozzle_width x the floored value
     float speed = 0.f, length = 0.f; // v_est (units / s) and the target length at the last update
     float tint[3]{1.f, 1.f, 1.f};    // the record's mean colour (largest channel 1)
     std::uint32_t seen = 0;          // update serial of the last record
@@ -207,11 +210,15 @@ inline void estimate_speed(const Ribbon& r, const float head[3], float now, floa
 
 // The frame's records into the pool. `now` in seconds (any epoch, monotonic), `cut` the resolve's camera cut,
 // `load_epoch` the object_lifetime load epoch (0 when unknown: never a change), `preset_scale` 0.6 / 1 / 1.5 on T,
-// `filter` (null: every record) the plumes' scene-view filter: a record of another view takes no ribbon.
+// `filter` (null: every record) the plumes' scene-view filter: a record of another view takes no ribbon; `look` (null:
+// default_look) and `radii` (null: no floor) the plumes' look and ship radii, for the plume's nozzle width (the
+// distance law's input).
 using BodyLookup = ep::BodyLookup;
 inline void update(Pool& pool, const ee::Record* records, unsigned count, double now_seconds, bool cut,
                    std::uint64_t load_epoch, BodyLookup body, float preset_scale, UpdateStats* stats,
-                   const ep::ViewFilter* filter = nullptr) noexcept {
+                   const ep::ViewFilter* filter = nullptr, const ep::Look* look = nullptr,
+                   const float* radii = nullptr) noexcept {
+    const ep::Look& k = look ? *look : ep::default_look;
     UpdateStats local{};
     UpdateStats& st = stats ? *stats : local;
     st = UpdateStats{};
@@ -326,6 +333,9 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
             }
         }
         r.value = value;
+        float plume_value = value;
+        if (radii && k.floor_scale > 0.f) ep::floored_value(k, rec, radii[i], &plume_value);
+        r.nozzle = k.nozzle_width * plume_value;
         r.throttle = rec.s < 0.f ? 0.f : rec.s > 1.f ? 1.f : rec.s;
         float speed = 0.f;
         estimate_speed(r, rec.origin, now, &speed);
@@ -377,6 +387,7 @@ struct BuildStats {
     unsigned ribbons = 0, points = 0, samples = 0, vertices = 0;
     unsigned fading = 0, capped = 0, floored = 0, culled_short = 0, culled_behind = 0, culled_capacity = 0;
     unsigned fogged = 0;
+    unsigned far_ribbons = 0; // ribbons whose radiance the distance law scaled
 };
 // The static index list: per ribbon 16 segments x 2 triangles over its 34 vertices (point k: vertices 2k, 2k + 1).
 inline void write_indices(std::uint16_t* out, unsigned ribbons) noexcept {
@@ -413,7 +424,7 @@ inline void to_view(const ep::View& v, const float p[3], float out[3]) noexcept 
 
 // One ribbon's 34 vertices (`seen`: its record was in the latest update, else it fades); false: not drawn.
 inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& view, float preset_scale, Vertex* out,
-                         BuildStats* stats) noexcept {
+                         BuildStats* stats, const ep::Look& look = ep::default_look) noexcept {
     float fade = 1.f;
     if (!seen) {
         fade = 1.f - (now - r.last_seen) * (1.f / fade_seconds);
@@ -484,7 +495,14 @@ inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& 
         ++stats->fogged;
     }
     const std::uint32_t tint = ep::pack_colour(colour);
-    const float i0 = (radiance_low + (radiance_high - radiance_low) * r.throttle) * preset_scale * fade;
+    // The plumes' distance law on the nozzle's projected width at the head (the plume's own factor for a live nozzle).
+    float far_weight = 1.f;
+    {
+        const float z = v[0][2] > view.near_z ? v[0][2] : view.near_z;
+        ep::distance_weight(look, r.nozzle * focal / z, &far_weight);
+        if (far_weight < 1.f) ++stats->far_ribbons;
+    }
+    const float i0 = (radiance_low + (radiance_high - radiance_low) * r.throttle) * preset_scale * fade * far_weight;
     float previous_side[3] = {0.f, 0.f, 0.f};
     for (unsigned k = 0; k < n; ++k) {
         const float u = along[k] / total;
@@ -557,7 +575,8 @@ inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& 
 
 // The pool's drawable ribbons into `out` (capacity in ribbons, 34 vertices each); `now_seconds` the update's clock.
 inline unsigned build(const Pool& pool, const ep::View& view, ep::Preset preset, double now_seconds, Vertex* out,
-                      unsigned capacity, BuildStats* stats) noexcept {
+                      unsigned capacity, BuildStats* stats, const ep::Look* look = nullptr) noexcept {
+    const ep::Look& k = look ? *look : ep::default_look;
     BuildStats local{};
     BuildStats& st = stats ? *stats : local;
     st = BuildStats{};
@@ -574,7 +593,7 @@ inline unsigned build(const Pool& pool, const ep::View& view, ep::Preset preset,
             ++st.culled_capacity;
             continue;
         }
-        if (build_ribbon(r, r.seen == pool.serial, now, view, scale, out + written * vertices_per_ribbon, &st)) ++written;
+        if (build_ribbon(r, r.seen == pool.serial, now, view, scale, out + written * vertices_per_ribbon, &st, k)) ++written;
     }
     st.ribbons = written;
     st.vertices = written * vertices_per_ribbon;

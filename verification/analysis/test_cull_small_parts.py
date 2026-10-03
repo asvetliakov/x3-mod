@@ -93,8 +93,9 @@ int main() {
     check(valid_px(64.0) && !valid_px(64.01) && !valid_px(0.0), "band");
     unsigned char s[stub_length]; encode_stub(0x10000000, 0x20000000, 0x2000000c, 0x20000004, 0x20000008, 0x20000010, 0x0047d2c3, 0x10000094, s, true);
     std::uint32_t v = 0;
-    check(stub_length == 147 && stub_continue == 63 && stub_pop_continue == 62 && stub_dock == 69 && stub_dock_projectile == 70 && stub_dock_count == 82 &&
-          stub_small == 90 && stub_projectile == 91 && stub_count == 103 && stub_replay == 109 && stub_cull == 134 && stub_exempt == 139, "stub layout");
+    check(stub_length == 188 && stub_continue == 63 && stub_pop_continue == 62 && stub_dock == 69 && stub_dock_projectile == 70 && stub_dock_count == 82 &&
+          stub_small == 90 && stub_projectile == 91 && stub_far == 103 && stub_far_call == 133 && stub_count == 144 && stub_replay == 150 && stub_cull == 175 &&
+          stub_exempt == 180 && stub_far_length == 41, "stub layout");
     std::memcpy(&v, s + 2, 4); check(s[0] == 0x83 && s[1] == 0x3d && v == 0x2000000c && s[6] == 0 && s[7] == 0x7e && 9 + s[8] == stub_continue, "cmp dword [upper],0; jle continue");
     std::memcpy(&v, s + 11, 4); check(s[9] == 0x50 && s[10] == 0xa1 && v == 0x2000000c && !std::memcmp(s + 15, "\x39\x44\x24\x30\x7d", 5) && 21 + s[20] == stub_pop_continue, "push eax; mov eax,[upper]; cmp [esp+0x30],eax; jge pop_continue");
     std::memcpy(&v, s + 22, 4); check(s[21] == 0xa1 && v == 0x20000000 && !std::memcmp(s + 26, "\x39\x44\x24\x30\x7c", 5) && 32 + s[31] == stub_small, "mov eax,[threshold]; cmp [esp+0x30],eax; jl pop_small");
@@ -105,14 +106,28 @@ int main() {
     check(!std::memcmp(s + 70, "\xf7\x87\x30\x01\x00\x00\x00\x00\x00\x20\x75", 11) && 82 + s[81] == stub_exempt && !std::memcmp(s + 91, s + 70, 11) && 103 + s[102] == stub_exempt &&
           flags130_offset == 0x130 && projectile_flag == 0x20000000u, "both paths: test dword [edi+0x130],0x20000000; jne exempt");
     std::memcpy(&v, s + 84, 4); check(s[82] == 0xff && s[83] == 0x05 && v == 0x20000010 && s[88] == 0xeb && 90 + s[89] == stub_replay, "inc dword [dock_culled]; jmp replay");
-    std::memcpy(&v, s + 105, 4); check(s[103] == 0xff && s[104] == 0x05 && v == 0x20000004, "inc dword [culled]");
-    check(!std::memcmp(s + 109, "\x8b\x4f\x18\x85\xc9\x8b\x87\xd8\x01\x00\x00\x74", 12) && 122 + s[121] == stub_cull && !std::memcmp(s + 122, "\x8b\x89\xd8\x01\x00\x00\x3b\xc8\x7e", 9) && 132 + s[131] == stub_cull && s[132] == 0x8b && s[133] == 0xc1, "the engine's limit computation replayed");
-    std::memcpy(&v, s + 135, 4); check(s[134] == 0xe9 && 0x10000000u + stub_exempt + v == 0x0047d2c3, "jmp cull target");
-    std::memcpy(&v, s + 141, 4); check(s[139] == 0xff && s[140] == 0x05 && v == 0x20000008 && s[145] == 0xeb && 147 + static_cast<signed char>(s[146]) == static_cast<int>(stub_continue), "inc dword [exempt]; jmp continue");
+    check(s[103] == 0xeb && 105 + s[104] == stub_count && s[105] == 0xcc && s[143] == 0xcc, "far jets off (the default): jmp over the far block to the count, int3 padding");
+    std::memcpy(&v, s + 146, 4); check(s[144] == 0xff && s[145] == 0x05 && v == 0x20000004, "inc dword [culled]");
+    check(!std::memcmp(s + 150, "\x8b\x4f\x18\x85\xc9\x8b\x87\xd8\x01\x00\x00\x74", 12) && 163 + s[162] == stub_cull && !std::memcmp(s + 163, "\x8b\x89\xd8\x01\x00\x00\x3b\xc8\x7e", 9) && 173 + s[172] == stub_cull && s[173] == 0x8b && s[174] == 0xc1, "the engine's limit computation replayed");
+    std::memcpy(&v, s + 176, 4); check(s[175] == 0xe9 && 0x10000000u + stub_exempt + v == 0x0047d2c3, "jmp cull target");
+    std::memcpy(&v, s + 182, 4); check(s[180] == 0xff && s[181] == 0x05 && v == 0x20000008 && s[186] == 0xeb && 188 + static_cast<signed char>(s[187]) == static_cast<int>(stub_continue), "inc dword [exempt]; jmp continue");
     unsigned char o[stub_length]; encode_stub(0x10000000, 0x20000000, 0x2000000c, 0x20000004, 0x20000008, 0x20000010, 0x0047d2c3, 0x10000094, o, false);
     check(!std::memcmp(o, s, stub_dock_projectile) && !std::memcmp(o + stub_dock_count, s + stub_dock_count, stub_projectile - stub_dock_count) &&
-          !std::memcmp(o + stub_count, s + stub_count, stub_length - stub_count) && o[70] == 0xeb && 72 + o[71] == stub_dock_count && o[72] == 0xcc && o[81] == 0xcc &&
-          o[91] == 0xeb && 93 + o[92] == stub_count && o[93] == 0xcc && o[102] == 0xcc, "projectiles off: jmp over both marker tests, int3 padding, nothing else differs");
+          !std::memcmp(o + stub_far, s + stub_far, stub_length - stub_far) && o[70] == 0xeb && 72 + o[71] == stub_dock_count && o[72] == 0xcc && o[81] == 0xcc &&
+          o[91] == 0xeb && 93 + o[92] == stub_far && o[93] == 0xcc && o[102] == 0xcc, "projectiles off: jmp over both marker tests, int3 padding, nothing else differs");
+    // Far engine jets (X3M_ENGINE_EFFECTS=plumes): both bits of +0x130 tested below the small threshold only; the node is
+    // handed to the handler and culled either way.
+    unsigned char j[stub_length]; encode_stub(0x10000000, 0x20000000, 0x2000000c, 0x20000004, 0x20000008, 0x20000010, 0x0047d2c3, 0x10000094, j, true, 0x10400000, true);
+    check(!std::memcmp(j + 103, "\xf7\x87\x30\x01\x00\x00\x00\x00\x00\x04\x74", 11) && 115 + j[114] == stub_count &&
+          !std::memcmp(j + 115, "\xf6\x87\x30\x01\x00\x00\x01\x74", 8) && 124 + j[123] == stub_count && jet_flags == 0x4000001u &&
+          (jet_flag_high | jet_flag_low) == jet_flags, "far jets: test dword [edi+0x130],0x4000000; je count; test byte [edi+0x130],1; je count");
+    std::memcpy(&v, j + 134, 4);
+    check(!std::memcmp(j + 124, "\x50\x51\x52\xff\x74\x24\x34\x56\x57\xe8", 10) && 0x10000000u + stub_far_call + 5 + v == 0x10400000u &&
+          !std::memcmp(j + 138, "\x83\xc4\x0c\x5a\x59\x58", 6),
+          "far jets: push eax/ecx/edx; push view (site [esp+0x28]); push esi; push edi; call handler; add esp,12; pop edx/ecx/eax");
+    check(!std::memcmp(j, s, stub_far) && !std::memcmp(j + stub_count, s + stub_count, stub_length - stub_count),
+          "far jets: only the far block differs from far jets off");
+    check(!std::memcmp(jet_writer, "\x81\x8e\x30\x01\x00\x00\x01\x00\x00\x04", jet_writer_length) && jet_writer_va == 0x00434708u && jet_writer_length == 10, "JET writer instruction");
     check(dock_model(901300000u) && dock_model(901300003u) && dock_model(901400003u) && dock_model(901499999u) && dock_model(909800000u) && dock_model(909900005u) && dock_model(909999999u) &&
           !dock_model(901299999u) && !dock_model(901500000u) && !dock_model(909799999u) && !dock_model(910000000u) && !dock_model(0u) && !dock_model(0xffffffffu) && !dock_model(0x10000u),
           "dock-port ids: [901300000, 901499999] and [909800000, 909999999] only");
@@ -310,7 +325,8 @@ def image(*changes):
     """A synthetic PE with the window, its documented incoming branches, the after-cull target and the final ret 8."""
     extra = [(probe.FUNCTION[0], probe.PROLOGUE), *probe.S_STORES.items(), (probe.WINDOW_VA, probe.WINDOW), (0x47d28c, b'\x74\x14'),                     # je 0x47d2a2, the engine's other incoming branch
              (probe.AFTER_CULL_VA, b'\x8b\x87\x2c\x01\x00\x00'), (probe.RET_VA, b'\xc2\x08\x00'),
-             (probe.MARKER_STORE_VA, probe.MARKER_STORE), (probe.MARKER_OR_VA, probe.MARKER_OR), (probe.MARKER_USE_VA, probe.MARKER_USE), *changes]
+             (probe.MARKER_STORE_VA, probe.MARKER_STORE), (probe.MARKER_OR_VA, probe.MARKER_OR), (probe.MARKER_USE_VA, probe.MARKER_USE),
+             (probe.JET_WRITER_VA, probe.JET_WRITER), *changes]
     return synthetic_image(extra=extra, text_size=0x100000)
 
 
@@ -326,7 +342,7 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertFalse(report['checks']['exe_identity'])
         self.assertEqual(report['site_sources'], ['0x47d28c', '0x47d297'])
         self.assertEqual(report['interior_branches'], [])
-        self.assertEqual(len(report['checks']), 20)
+        self.assertEqual(len(report['checks']), 22)
 
     def test_changed_bytes_and_branches_refused(self):
         cases = {
@@ -342,6 +358,7 @@ class CullSmallPartsSite(unittest.TestCase):
             's_slot_stores': (0x47d24a + 3, b'\x28'),                                       # mov [esp+0x28],eax
             'function_ret': (probe.RET_VA, b'\xc2\x04\x00'),
             'projectile_marker': (probe.MARKER_STORE_VA + 7, b'\x00'),                      # the class-0 case stores 0x00800000
+            'jet_writer': (probe.JET_WRITER_VA + 6, b'\x00'),                               # or ..,0x4000000 (SMALLJET's bit alone)
         }
         for failed, change in cases.items():
             with self.subTest(check=failed):
@@ -360,27 +377,38 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertEqual(probe.OTHER_CLAIMS['cull_census_measure'][0], census_probe.MEASURE_SITE_VA)
         self.assertEqual(probe.OTHER_CLAIMS['cull_census_exit'][0], census_probe.EXIT_SITE_VA)
         self.assertIn('culled_small', census_probe.VERDICTS)
+        # The far-jet block tests exactly the recogniser's JET flag pair, and only with the plumes mode.
+        self.assertIn('constexpr std::uint32_t jet_flags = 0x4000001u;', source_text(ROOT / 'src/proxy/engine_effects_core.h'))
+        module = source_text(ROOT / 'src/proxy/cull_small_parts.cpp')
+        self.assertIn('option::parse_mode(effects_text, &effects) && effects == option::Mode::plumes', module)
+        self.assertIn('bytes_match(core::jet_writer_va, core::jet_writer, core::jet_writer_length)', module)
 
     def test_encoder_and_threshold(self):
         args = (0x10000000, 0x20000000, 0x2000000c, 0x20000004, 0x20000008, 0x20000010, probe.CULL_VA, 0x10000094)
         stub = probe.encode_stub(*args)
-        self.assertEqual(len(stub), 147)
+        self.assertEqual(len(stub), 188)
         self.assertEqual(stub[:9], b'\x83\x3d' + struct.pack('<I', 0x2000000c) + b'\x00\x7e\x36')
         self.assertEqual(stub[9:21], b'\x50\xa1' + struct.pack('<I', 0x2000000c) + b'\x39\x44\x24\x30\x7d\x29')
         self.assertEqual(stub[21:32], b'\xa1' + struct.pack('<I', 0x20000000) + b'\x39\x44\x24\x30\x7c\x3a')
         self.assertEqual(stub[32:62], bytes.fromhex('8b8740010000 2d20bfb835 3d400d0300 7213 2d20b38100 3d400d0300 7207'.replace(' ', '')))
         self.assertEqual(stub[62:70], b'\x58\xff\x25' + struct.pack('<I', 0x10000094) + b'\x58')
-        self.assertEqual(stub[70:82], bytes.fromhex('f787 30010000 00000020 7539'.replace(' ', '')))
-        self.assertEqual(stub[82:91], b'\xff\x05' + struct.pack('<I', 0x20000010) + b'\xeb\x13\x58')
-        self.assertEqual(stub[91:103], bytes.fromhex('f787 30010000 00000020 7524'.replace(' ', '')))
-        self.assertEqual(stub[103:109], b'\xff\x05' + struct.pack('<I', 0x20000004))
-        self.assertEqual(stub[109:134], bytes.fromhex('8b4f18 85c9 8b87d8010000 740c 8b89d8010000 3bc8 7e02 8bc1'.replace(' ', '')))
-        self.assertEqual(stub[134], 0xe9)
-        self.assertEqual(struct.unpack('<i', stub[135:139])[0], probe.CULL_VA - (0x10000000 + 139))
-        self.assertEqual(stub[139:147], b'\xff\x05' + struct.pack('<I', 0x20000008) + b'\xeb\xac')
+        self.assertEqual(stub[70:82], bytes.fromhex('f787 30010000 00000020 7562'.replace(' ', '')))
+        self.assertEqual(stub[82:91], b'\xff\x05' + struct.pack('<I', 0x20000010) + b'\xeb\x3c\x58')
+        self.assertEqual(stub[91:103], bytes.fromhex('f787 30010000 00000020 754d'.replace(' ', '')))
+        self.assertEqual(stub[103:144], b'\xeb\x27' + b'\xcc' * 39)  # far jets off (the default)
+        self.assertEqual(stub[144:150], b'\xff\x05' + struct.pack('<I', 0x20000004))
+        self.assertEqual(stub[150:175], bytes.fromhex('8b4f18 85c9 8b87d8010000 740c 8b89d8010000 3bc8 7e02 8bc1'.replace(' ', '')))
+        self.assertEqual(stub[175], 0xe9)
+        self.assertEqual(struct.unpack('<i', stub[176:180])[0], probe.CULL_VA - (0x10000000 + 180))
+        self.assertEqual(stub[180:188], b'\xff\x05' + struct.pack('<I', 0x20000008) + b'\xeb\x83')
         off = probe.encode_stub(*args, projectiles=False)
         self.assertEqual((off[:70], off[82:91], off[103:]), (stub[:70], stub[82:91], stub[103:]))
         self.assertEqual((off[70:82], off[91:103]), (b'\xeb\x0a' + b'\xcc' * 10, b'\xeb\x0a' + b'\xcc' * 10))
+        far = probe.encode_stub(*args, far_handler=0x10400000, far_jets=True)
+        self.assertEqual(far[103:124], bytes.fromhex('f787 30010000 00000004 741d f687 30010000 01 7414'.replace(' ', '')))
+        self.assertEqual(far[124:144], b'\x50\x51\x52\xff\x74\x24\x34\x56\x57\xe8' + struct.pack('<i', 0x10400000 - (0x10000000 + 138)) + b'\x83\xc4\x0c\x5a\x59\x58')
+        self.assertEqual((far[:103], far[144:]), (stub[:103], stub[144:]))
+        self.assertTrue(probe.far_stub_ok())
         self.assertTrue(probe.projectile_stub_ok())
         with self.assertRaises(ValueError):
             probe.encode_stub(1 << 32, 0, 0, 0, 0, 0, 0, 0)
@@ -421,7 +449,7 @@ class CullSmallPartsSite(unittest.TestCase):
     def test_line_parsers(self):
         row = probe.parse_log_line('00:00:01.234 cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active')
         self.assertEqual(row, {'requested': '2', 'px': 2.0, 'patched': True, 'reason': 'ok', 'site': 0x47d2a2, 'cull': 0x47d2c3, 'write': 'atomic', 'stub': 0x0a100000, 'camera': 'active', 'scope': None,
-                               'projectiles': None, 'dock_px': None, 'dock_requested': None})
+                               'projectiles': None, 'dock_px': None, 'dock_requested': None, 'far_jets': None})
         self.assertEqual(probe.parse_log_line('cull_small_parts requested=4 px=4 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=all projectiles=marker_mismatch')['projectiles'],
                          'marker_mismatch')
         self.assertEqual(probe.parse_log_line(' cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=bodies')['scope'], 'bodies')
@@ -452,6 +480,14 @@ class CullSmallPartsSite(unittest.TestCase):
         row = probe.parse_log_line('cull_small_parts requested=4.0000 px=4 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=all '
                                    'projectiles=on dock_px=8 dock_requested=8.0000')
         self.assertEqual((row['dock_px'], row['dock_requested']), (8.0, '8.0000'))
+        # Far engine jets (2026-10-03): appended fields; rows without them parse as before (None).
+        row = probe.parse_log_line('cull_small_parts requested=4.0000 px=4 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=all '
+                                   'projectiles=on dock_px=0 dock_requested=unset far_jets=writer_mismatch')
+        self.assertEqual(row['far_jets'], 'writer_mismatch')
+        frame = probe.parse_frame_line('cull_small_parts_frame device=1 frame=4827 px=4 threshold=3 culled=507 m00=0.499997884 width=5120 scope=all projectiles=on exempt_bullet=0 '
+                                       'focus=0x3470 source=scene fallback=none dock_px=0 dock_threshold=0 dock_culled=0 far_jets=on')
+        self.assertEqual((frame['far_jets'], frame['dock_culled']), ('on', 0))
+        self.assertIsNone(probe.parse_frame_line('cull_small_parts_frame device=1 frame=900 px=4 threshold=3 culled=12 m00=0.5 width=5120')['far_jets'])
 
     def test_core_compiled(self):
         compiler = shutil.which('clang++') or shutil.which('c++')

@@ -21,6 +21,7 @@
 #include "chase_camera.h"
 #include "sun_occlusion.h"
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
+#include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
@@ -410,6 +411,7 @@ MotionOutput::~MotionOutput() {
     release_resources();
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
     delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
+    if (plumes_requested_) engine_far_jets::set_armed(false); // the cull stub's far block copies nothing without a device
 }
 
 unsigned MotionOutput::device_references() const noexcept {
@@ -2406,10 +2408,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Engine plumes (motion_output_engine_plumes_inc.h): the armed stage draws the frame's glow-jet records as
             // the first act of the run's bracket, on the FP16 route only (RT0 is the texture the resolve reads); it
             // reads the lane the run reads.
-            // Phase 3: a frame without records still runs while ribbons fade; every cut reaches the ribbon pool.
+            // Phase 3: a frame without records still runs while ribbons fade; every cut reaches the ribbon pool. After
+            // flight E a frame whose only jets are far ones (the small-parts cull's copies, appended in the stage) runs too.
             if (in.cut && ribbons_) ribbons_->note_cut();
             if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
-                (engine_ring_->count || engine_ribbons_live())) {
+                (engine_ring_->count || engine_far_jets::count() || engine_ribbons_live())) {
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
                 in.stage_context = this;
             }
@@ -5253,6 +5256,8 @@ void MotionOutput::observe(renderer::Event& e, HRESULT result) noexcept {
     e.result = static_cast<std::uint32_t>(result);
     const bool was_scene = selector_.state() == renderer::BoundaryState::Scene;
     selector_.observe(e);
+    // The far jets' scene tag (engine_far_jets.h): the selector's phase as the cull pass meets it, as a draw is tagged.
+    if (plumes_requested_) engine_far_jets::note_scene(selector_.state() == renderer::BoundaryState::Scene);
     // The scene phase ends with the event that moves the selector past Scene
     // (the bloom copy or a rejection); the cut verdict is complete then, so a
     // future consumer at the copy boundary can read it before Present. A

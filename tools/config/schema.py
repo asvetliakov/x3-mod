@@ -337,9 +337,9 @@ SETTINGS = [
     entry('engine_plume_floor', 'float', 'engine', 'Smallest engine plumes (engine_effects = plumes): every main engine '
           'draws at least a share of its ship\'s size, a larger share on fighters and a smaller one on big ships, never more '
           'than four times its own size, so small ships and the side engines of big ones keep visible plumes while big '
-          'ships\' main engines stay as they are. This number scales those shares: 1 = the chosen ones, 0 turns it off; '
-          '0 to 3. Read when the game starts.',
-          builtin='1', range=(0.0, 3.0), launcher='--engine-plume-floor', since='2026-10-03'),
+          'ships\' main engines stay as they are. This number scales those shares: 1 = the shares as first chosen, 0 turns '
+          'it off; 0 to 3, default 0.5. Read when the game starts.',
+          builtin='0.5', range=(0.0, 3.0), launcher='--engine-plume-floor', since='2026-10-03'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

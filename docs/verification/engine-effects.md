@@ -326,3 +326,28 @@ caps). The memo is a four-entry recent list per frame. Timing mode runs `plumes`
 | Memo A/B | `run_engine_effects.py timing`, one entry vs four | hit 0.687 / 0.695 us, two parents 0.733 / 0.683, five parents 0.738 / 0.738, no parent 0.661 / 0.683; four kept (`verification/results/engine-effects/radius_memo_ab_out.json`) |
 | Ribbons | `run_engine_ribbons.py` | PASS 44/44 (record refreshed for the changed sources) |
 | Host | `unittest discover -p 'test_engine_*.py'` | 55 tests OK (garbage radius 2,000.005 x value -> 0 and floor_unknown +1; 1,999.995 x kept) |
+
+## After flight E: far jets from the small-parts cull, distance law, halo 0.20, floor 0.5 (2026-10-03, worktree build, not a candidate)
+
+Run 122 A (run407/408): far jets were culled by the proxy's small-parts cull before the engine drew their glow. Design:
+[engine-effects-modern.md](../architecture/engine-effects-modern.md) "After flight E"; the stub:
+[cull-small-parts.md](cull-small-parts.md) "Far engine jets". The far jets stay culled; the cull stub copies a culled
+JET node's fields and the stage appends one `flag_far` record per copy. A plume whose projected nozzle is under 12 px
+scales its radiance (0.15 at 2 px, 0.449 at 6, 1 at 12), the dot floor is 2 x 4 px (was 3 x 6), ribbons take the
+plume's factor; `hb` 0.20, `engine_plume_floor` default 0.5. Numbers changed legitimately by these constants: the floor
+case now floors the 100 secondary to 140 (0.5 x 0.35 x 800) against a lone 140; mouth / body at s = 1 / 0.5 / 0 is
+0.580 / 0.645 / 0.761 (1080p; was 0.595 / 0.658 / 0.773: the weaker halo); the flickering-sky trail at 8 px/frame 0 / 10
+px (was 10 / 13); the armed effects fixture's four 2.1 px test nozzles now draw at 0.15 (their probe pixels read 28..255,
+the lit threshold 96 -> 16, dark stays at most 6); the host harness's halo expectations take `hb`, the floor's anchor
+checks run at scale 1 with one check of the shipped 0.5, and the minimums check is the dot floor. Measured.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build -j8`; `check_no_x87.py build/d3d9.dll` | 0 warnings; x87 PASS, 127 roots (`_x3m_engine_far_jet` added), 755 reachable, 0 violations |
+| Config | `python3 tools/config/generate.py --check` | PASS 252 settings, 103 in the template (`;engine_plume_floor = 0.5`) |
+| Cull fixture | `run_cull_small_parts.py` | 255 checks, 0 failures (twice); far copy 5.6 ns per culled jet |
+| Effects fixture | `run_engine_effects.py` (all modes) | PASS, 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 20, armed_refused 7). Armed: a far copy in the scene phase becomes a fifth record of the scene camera, drawn with the two scene-view jets (nozzles 3, skipped 2, `far_records` 1, `flag_far`, nothing submitted); a frame whose only jet is a far one runs the stage and draws it (nozzles 1); the buffer is empty the next frame. Per suppressed draw 0.679 us (one parent) |
+| Plume fixture | `run_engine_plumes.py` | PASS 128/128. Distance law GPU / CPU ratio at 2 / 6 / 12 / 40 px: 0.1500 / 0.4492 / 1.0000 / 1.0000 at both sizes; the 1 px nozzle at s = 0 draws 2.000 x 4.000 px at I_core 0.18 (0.15 x 1.2). 300 nozzles, 250 far: GPU 0.28 / 0.84 ms at 1080p and 0.27 / 0.26 ms at 5120x1440 (two runs, EVENT-fenced tail; 100 nozzles of the old crowd 0.15 / 0.36 and 0.03 / 0.14 ms in the same runs); CPU build at 300 records 29.9 / 30.8 us, 32.3 / 33.4 us with the floor. Core survival min 0.945 |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 (near survival min 0.991, fog 0.4902 against 0.4919) |
+| Host | `test_engine_*`, `test_cull_small_parts`, `test_cull_census`, `test_config_schema`, `test_launcher_defaults`, `test_check_no_x87`; `run_host_suite.py` | 128 tests OK; suite 286 modules, 3,011 tests, 0 failing |
+| Floor per class | `python3 verification/results/engine-effects/floor_by_class.py` | `floor_by_class_out.txt` at scale 0.5: main nozzle lift M2 1.93, M6 1.56, M3 1.32, M4 / M5 1.00 |

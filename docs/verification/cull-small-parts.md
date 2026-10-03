@@ -216,3 +216,33 @@ per frame against dock cull off 19.77 / 19.82 / 21.23 ms, i.e. 2.4-3.7 ms saved 
 load, where no dock part is in range, the runs agree within 0.5 ms. run389 (`--debug --perf`, three F8): `dock_culled=`
 equals the census `culled_dock` on every burst frame (27-33 nodes per frame at the Raptor at 4.0 km), the largest culled
 part had s=7 (below the threshold 8), one carrier node stayed drawn at s=12 as the rule requires. Accepted; default 12 stays.
+
+## Far engine jets (`engine_effects = plumes`, 2026-10-03)
+
+Run 122 A (run407/408, [triage](../../verification/results/run407-408-engine-plumes/README.md)): every far engine jet
+was `culled_small` (s = 1..2 under threshold 3 at 4 px), so the plume stage never got a record for a far ship. User
+decision: keep culling the jet (the engine's submission work per jet, about 10 us, is what the cull saves) and let the
+stub hand it to the plume stage instead of exempting it. Design and record mapping:
+[engine-effects-modern.md](../architecture/engine-effects-modern.md) "After flight E".
+
+The stub (`cull_small_parts_core.h`, 147 → 188 bytes, same site, window, verified bytes and fail-closed install)
+gains a far block on the small path only, after the projectile marker test: `test dword [edi+0x130],0x4000000; je
+count; test byte [edi+0x130],1; je count` (both bits of the JET flag pair, the recogniser's test; SMALLJET's bit 26
+alone is not a jet), then `push eax/ecx/edx; push [esp+0x34]` (the site's view), `push esi; push edi; call
+x3m_engine_far_jet; add esp,12; pop edx/ecx/eax`, and falls into the count and the replay: the node is culled either
+way. The handler (`src/proxy/engine_far_jets.cpp`) is integer only, built without SSE/MMX and exceptions, makes no call
+and no Win32 call (117 instructions, no push: EAX/ECX/EDX only), and reads only fields of the node, its parent and the
+pass's view that the pass itself dereferences; `check_no_x87.py` walks it as a root. It copies nothing while no device
+requests the plume stage (`x3m_engine_far_armed`), skips v/00566 and a jet the engine would cull itself (the window's
+size limit or the degenerate test), and keeps at most 1,024 copies a frame. Without `engine_effects = plumes` (the
+default) the block is `jmp +39` and int3 padding: the jet bits are not read and nothing is called. `initialize()`
+reads `X3M_ENGINE_EFFECTS` with the engine_effects option's exact parser and pins the JET writer `0x00434708` (`or
+dword [esi+0x130],0x4000001`); a mismatch leaves the block out. Rows: `cull_small_parts … far_jets=on|off|writer_mismatch`,
+`cull_small_parts_frame … far_jets=`; the copies are counted in `engine_stage` (`far_jets=`, `far_records=`,
+`far_engine=`, `far_overflow=`, `far_dropped=`, `far_disarmed=`). The census still names these rows `culled_small`.
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-10-03 | Site verifier on the installed EXE: the JET writer bytes, the encoder twin with the far block (`encoder_far_jets`), the 188-byte constants | `python3 verification/probe/verify_cull_small_parts_site.py` | PASS 22/22 (measured) |
+| 2026-10-03 | Host: C++ and Python encoders byte for byte (far block on and off, the call's rel32, projectiles off), the JET writer, the recogniser's flag pair and the plumes-only parse, the row parsers with `far_jets=` | `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_cull_small_parts test_cull_census` | 34 tests OK (measured) |
+| 2026-10-03 | X3 CPU fixture: far block off (the default install): JET rows culled as any node, the handler never called even armed; `initialize()` far_jets=off for unset / native / off / `Plumes` / `plumes2`, writer_mismatch for `plumes` in this process; re-install with the block: disarmed one call per pair row below the threshold and nothing copied, armed exactly the 18 pair rows the engine keeps copied and the 214 engine-culled ones counted (single-bit rows never), the same 97-node / 403-draw class flips, registers / ESP / x87 / EAX ECX EDX EFLAGS / LastError as native, the view's handle and context and the scene tag with every copy; the flight-A jet's record (origin -123845.594, -9315.600, -31755.600, axis (-0.7071, 0, 0.7071), size 939.220, s 1, z 2, ratio 2); v/00566 skipped, scene 0 outside the scene phase, the 1,024 cap (overflow 3), the degenerate test mirrored; rollback exact | `python3 verification/probe/build_cull_small_parts.py` then `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py` | 255 checks, 0 failures, twice (measured). Bench: 64 culled children 0.996 / 1.014 us per pass plain, 1.356 / 1.374 us with a far copy each: 5.6 ns per far jet (harness-inclusive, Wine/FEX, not game FPS) |

@@ -26,7 +26,8 @@ def main():
     run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=600)
     total = re.search(r'CULL SMALL PARTS CPU checks=(\d+) failures=(\d+)', run.stdout)
     bench = re.search(r'CULL SMALL PARTS BENCH native_pass_us=([\d.]+) patched_disarmed_us=([\d.]+) patched_armed_us=([\d.]+) patched_armed_dock_us=([\d.]+)', run.stdout)
-    replay = [l for l in run.stdout.splitlines() if l.startswith(('REPLAY', 'CENSUS', 'PROPS', 'DOCK'))]
+    replay = [l for l in run.stdout.splitlines() if l.startswith(('REPLAY', 'CENSUS', 'PROPS', 'DOCK', 'FAR'))]
+    far_bench = re.search(r'FAR BENCH nodes=(\d+) culled_plain_us=([\d.]+) culled_far_us=([\d.]+) per_far_jet_ns=(-?[\d.]+)', run.stdout)
     lens = re.search(r'LENS FLARE CULL checks=(\d+) failures=(\d+)', run.stdout)
     lens_bench = re.search(r'LENS BENCH restart_scan_us=([\d.]+) slots=(\d+) dynamic_named=(\d+) mappings_hold_us=([\d.]+) mappings=(\d+)', run.stdout)
     props_bench = re.search(r'CULL SMALL PROPS BENCH memo_hit_ns=([\d.]+) not_prop_first_ns=([\d.]+) prop_culled_first_in_frame_ns=([\d.]+) prop_culled_pair_mean_ns=([\d.]+)', run.stdout)
@@ -36,6 +37,8 @@ def main():
               'replay_lines': replay,
               'bench_us': {k: float(bench.group(i + 1)) for i, k in enumerate(('native_pass', 'patched_disarmed', 'patched_armed', 'patched_armed_dock'))} if bench else None,
               'props_bench_ns': {k: float(props_bench.group(i + 1)) for i, k in enumerate(('memo_hit', 'not_prop_first', 'prop_culled_first_in_frame', 'prop_culled_pair_mean'))} if props_bench else None,
+              'far_bench': {'nodes': int(far_bench.group(1)), 'culled_plain_us': float(far_bench.group(2)), 'culled_far_us': float(far_bench.group(3)),
+                            'per_far_jet_ns': float(far_bench.group(4))} if far_bench else None,
               'install_lines': [l for l in run.stdout.splitlines() if l.startswith('cull_small_parts ') or l.startswith('cull_census ')],
               'lens_checks': int(lens.group(1)) if lens else None, 'lens_failures': int(lens.group(2)) if lens else None,
               'lens_bench': {'restart_scan_us': float(lens_bench.group(1)), 'slots': int(lens_bench.group(2)), 'dynamic_named': int(lens_bench.group(3)),
@@ -43,7 +46,7 @@ def main():
               'lens_failure_lines': [l for l in run.stdout.splitlines() if l.startswith('FAIL lens:')],
               'bottle': bottle.describe(name), 'note': 'harness-inclusive per-pass estimates over a 12-node tree (7 culled when armed at threshold 20; armed_dock adds the dock-port id compares with upper 40), not game FPS'}
     OUT.write_text(json.dumps(record, indent=1) + '\n')
-    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'bench_us', 'props_bench_ns', 'failure_lines', 'replay_lines', 'lens_checks', 'lens_failures', 'lens_bench')}))
+    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'bench_us', 'props_bench_ns', 'far_bench', 'failure_lines', 'replay_lines', 'lens_checks', 'lens_failures', 'lens_bench')}))
     if run.returncode != 0 and not total:
         print(run.stdout[-2000:], run.stderr[-2000:], file=sys.stderr)
     sys.exit(0 if run.returncode == 0 and total and record['failures'] == 0 else 1)
