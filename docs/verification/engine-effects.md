@@ -307,5 +307,22 @@ The cap is 4 x value. `engine_plume_floor` scales the curve (default 1, 0 = off,
 | Plume fixture | `run_engine_plumes.py` | PASS 118/118. A 100 secondary on a fighter (R 139 / 105 record units at 1080p / 5120x1440, k 0.35) draws at 280 like the lone 280 (36 px long); radius 0 keeps 100. The mouth is unchanged (0.595 / 0.658 / 0.773) |
 | Effects fixture | `run_engine_effects.py` (all modes) | PASS, 8 modes. Frame-1 `engine_draw` radius / value_eff: 0 / 0, 5,000 / 1,000, 1,300 / 260, 0 / 9,366 (node E, a, b RCS, c dirty root). Per suppressed draw: 0.674 us with the radius, 0.637 us without a parent, 0.725 us on a memo miss |
 | Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
-| Host | focused `test_engine_*`, `test_regenerate`, `test_manage_engine_effects`, `test_config_schema`; `run_host_suite.py` | 89 tests OK; host suite 286 modules, 3,011 tests, 0 failing. k(R) against std::log: max error 3e-8; `law::ln` relative error 1.0e-7. value_eff on run406's ships: M6 40 -> 119.4 (k 0.256), capital 939.2 -> 1,002.2 and 187.5 -> 750 (cap), M4 10 -> 23.6 and 5 -> 20.2 (cap), TS 10 -> 40 (cap) and 5 -> 20.2 (cap) |
+| Host | focused `test_engine_*`, `test_regenerate`, `test_manage_engine_effects`, `test_config_schema`; `run_host_suite.py` | 89 tests OK; host suite 286 modules, 3,011 tests, 0 failing. k(R) against std::log: max error 3e-8; `law::ln` relative error 1.0e-7. value_eff on run406's ships: M6 40 -> 119.4 (k 0.256), capital 939.2 -> 1,002.2 and 187.5 -> 750 (cap), M4 10 -> 23.5 and 5 -> 20.2 (cap), TS 10 -> 40 (cap) and 5 -> 20.2 (cap) |
 | k reach | `floor_ratio_effects.py` | Mayhem: 393 of 405 ships raise their largest main jet (77 to the 4x cap); stock: 124 of 198 (1). R is estimated offline (inferred) |
+
+## Review fixes after flight D (2026-10-03, worktree build, not a candidate)
+
+A positive garbage root radius above `parent_radius_max_ratio` 2,000 x the record's value is unknown (no floor,
+`floor_unknown`), not the 4x cap. The +0xa4 read runs only for a suppressed record with plumes requested and
+`engine_plume_floor` > 0, or for a JET draw that writes an `engine_draw` row (none in `off` mode, none after the row
+caps). The memo is a four-entry recent list per frame. Timing mode runs `plumes`; classes added: five cycling parents
+(a miss) and two alternating. `run_engine_effects.py` hashes `motion_output.h` and `capture.cpp` too. Measured.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build`, `check_no_x87.py build/d3d9.dll` | 0 warnings; x87 0 violations (752 reachable functions) |
+| Plume fixture | `run_engine_plumes.py` | PASS 118/118 |
+| Effects fixture | `run_engine_effects.py` (all modes) | PASS, 8 modes (main 174: `parent_radius` on frames 1..8, `parent_radius_not_read` (all 0) on frames 9..11 past the census in `off`). Per suppressed draw: 0.693 us one parent, 0.739 five parents (miss), 0.693 two parents, 0.688 no parent |
+| Memo A/B | `run_engine_effects.py timing`, one entry vs four | hit 0.687 / 0.695 us, two parents 0.733 / 0.683, five parents 0.738 / 0.738, no parent 0.661 / 0.683; four kept (`verification/results/engine-effects/radius_memo_ab_out.json`) |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 (record refreshed for the changed sources) |
+| Host | `unittest discover -p 'test_engine_*.py'` | 55 tests OK (garbage radius 2,000.005 x value -> 0 and floor_unknown +1; 1,999.995 x kept) |

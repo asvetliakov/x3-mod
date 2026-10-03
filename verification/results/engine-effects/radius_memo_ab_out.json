@@ -1,0 +1,14 @@
+{
+  "what": "engine_parent_radius memo: one entry (last parent) vs four-entry recent list, per suppressed draw (us, median of 5 frames x 1,000 draws), timing mode = plumes without the census (floor on), Wine, bottle X3, 2026-10-03",
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py timing  (the 'timing' field of its stdout)",
+  "classes": {
+    "suppressed": "one parent (memo hit)",
+    "suppressed_new_parent": "five parents cycling (a miss under both memos)",
+    "suppressed_two_parents": "two parents alternating (interleaved ships: a one-entry memo misses, the list hits)",
+    "suppressed_no_parent": "no parent (no read)"
+  },
+  "memo_1": {"suppressed": 0.687, "suppressed_new_parent": 0.738, "suppressed_two_parents": 0.733, "suppressed_no_parent": 0.661},
+  "memo_4": {"suppressed": 0.695, "suppressed_new_parent": 0.738, "suppressed_two_parents": 0.683, "suppressed_no_parent": 0.683},
+  "memo_4_acceptance_run": {"suppressed": 0.693, "suppressed_new_parent": 0.739, "suppressed_two_parents": 0.693, "suppressed_no_parent": 0.688},
+  "kept": "memo_4"
+}

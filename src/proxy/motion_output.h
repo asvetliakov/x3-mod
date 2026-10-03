@@ -1725,11 +1725,14 @@ private:
     bool engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     bool engine_record_own(std::uintptr_t node, std::uint32_t handle, bool parent_known, std::uint32_t parent) noexcept;
     // The ship's radius of a suppressed jet (its parent's +0xa4, engine_effects_core.h parent_radius_in_record): one
-    // bounded read per ship and frame (the last parent's radius stands for the next jets of the same root in the frame).
+    // bounded read per parent while it stays among the frame's four most recently read parents (a ship whose jets are
+    // drawn interleaved with up to three other ships' reads once; a fifth parent evicts the oldest, which reads again).
     std::int32_t engine_parent_radius(std::uint32_t parent) noexcept;
-    std::uint32_t engine_radius_parent_ = 0;                // the memo: the last parent ...
-    std::uint64_t engine_radius_frame_ = ~std::uint64_t(0); // ... in this frame ...
-    std::int32_t engine_radius_ = 0;                        // ... and its +0xa4 (0 when unread or not positive)
+    static constexpr unsigned engine_radius_slots = 4;
+    std::uint32_t engine_radius_parent_[engine_radius_slots]{}; // the memo: the recent parents (0 empty) ...
+    std::int32_t engine_radius_[engine_radius_slots]{};         // ... their +0xa4 (0 when unread or not positive) ...
+    std::uint64_t engine_radius_frame_ = ~std::uint64_t(0);     // ... in this frame
+    unsigned engine_radius_next_ = 0;                           // the slot the next miss replaces (oldest first)
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one

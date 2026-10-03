@@ -222,9 +222,11 @@ The plume floor needs the ship's size at draw time from the jet's parent, the sh
 | `+0xa4` = the **subtree** radius `0x00488170` caches: R = `+0xa0`, then for each child and each axis i, R = max(R, \|offset_i\| + child subtree radius), offset = child `+0x30/+0x34/+0x38` (x root `+0x70` >> 16 when the child has `+0x12c & 0x40`). `-1` = dirty | [m] |
 | Dirtied by: attaching a child (`0x00489f20` writes the **parent's** `+0xa4 = -1`, `0x00489f5c`), the node's own scale or base change (`0x00488270`, `0x004880e0`, `0x00487ec1`) and the save restore (`0x00479ebc`). A jet's scale change dirties only the jet, so the root's value is recomputed only after the root itself is dirtied; it is first computed after construction, with the jets at their creation scale | [m] |
 | Units of `+0xa4`: those of `+0x70`, the LOD-0 value. A jet's record size is \|model x\| = `+0x70` x `+0x80`/65536 x the context scale (run406: 939.211 for value 93922), so the radius in record units is `+0xa4` x size / (`+0x70` x `+0x80` / 65536) | [m] + [m run406] |
-| A jet's own radius is value x max(1, 1, z) = value at any throttle (x and y scale stay 1). Its offset plus value enters the root's R only when R is recomputed | [m] |
+| A jet's own radius is `+0x70` x max(`+0x80`, `+0x84`, `+0x88`) = value x max(1, 1, z): the value while z <= 1, value x z above it (x and y scale stay 1; z reaches 2.0 at full throttle and up to 9.0 brake- or steering-pushed). Its offset plus that radius enters the root's R only when R is recomputed, so R can step with the throttle the jets had at that moment (attach, save restore); Run 122's `radius=` census rows check whether it does | [m]; the live step not observed |
 
-So the proxy reads `parent+0xa4` (one bounded read per ship and frame). A dirty or non-positive value means no floor.
+So the proxy reads `parent+0xa4`: one bounded read per parent while the parent stays among the frame's four most
+recently read parents (a ship drawn interleaved with up to three others still reads once per frame). A dirty,
+non-positive or implausible value (above 2,000 x the jet's value) means no floor.
 For hulls at the root's origin R is at least the hull's LOD-0 value. An offline estimate over the scene parts (|offset|
 + part value) is in `verification/results/engine-effects/floor_ratio_effects.py`. It is not verified against a live
 read: no session has logged `+0xa4` (open question below).

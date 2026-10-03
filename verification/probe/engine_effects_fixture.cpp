@@ -412,7 +412,9 @@ struct Fixture {
                 check(identity, named((std::string(what) + "_identity").c_str()));
             }
             // The ship radius beside the records (the plume floor), in record units: node E has no parent (0); a and b
-            // root_a's 5 x +0x70 -> 5 x their size (5,000 and 1,300); c's root is dirty (-1 -> 0).
+            // root_a's 5 x +0x70 -> 5 x their size (5,000 and 1,300); c's root is dirty (-1 -> 0). Read only with the
+            // floor on (plumes) or for a census row: off past the census's eight frames (main 9..11) reads none (all 0).
+            const bool read = std::strcmp(mode, "plumes") == 0 || frame <= 8;
             float radii[4]{};
             for (unsigned i = 0; i < 4; ++i) {
                 const std::uint32_t bits = status(device, 40 + i);
@@ -420,7 +422,9 @@ struct Fixture {
             }
             std::printf("PARENT_RADIUS frame=%u radii=%.3f,%.3f,%.3f,%.3f\n", frame, double(radii[0]), double(radii[1]), double(radii[2]),
                         double(radii[3]));
-            check(radii[0] == 0.f && close_to(radii[1], 5.f * a.k) && close_to(radii[2], 5.f * b.k) && radii[3] == 0.f, named("parent_radius"));
+            check(read ? radii[0] == 0.f && close_to(radii[1], 5.f * a.k) && close_to(radii[2], 5.f * b.k) && radii[3] == 0.f
+                       : radii[0] == 0.f && radii[1] == 0.f && radii[2] == 0.f && radii[3] == 0.f,
+                  named(read ? "parent_radius" : "parent_radius_not_read"));
         }
         api(device->EndScene(), "EndScene");
         api(device->Present(nullptr, nullptr, nullptr, nullptr), "Present");
@@ -682,18 +686,27 @@ struct Fixture {
         } else if (kind == 2) { // not a candidate: the same fixed-function quad with Z-write on, no blending
             fixed_function(false, true);
             scope(&node_d, 0);
-        } else { // 3: suppressed, the parent alternating between two roots: every draw misses the radius memo (one read);
-                 // 4: suppressed without a parent (no radius read: the path before the plume floor)
+        } else { // 3: suppressed, the parent cycling through five roots: every draw misses the radius memo (one read);
+                 // 4: suppressed without a parent (no radius read: the path before the plume floor); 5: suppressed, the
+                 // parent alternating between two roots (interleaved ships: a one-entry memo misses, a recent list hits)
             effect_state(false);
             device->SetVertexShaderConstantF(4, a.rows, 3);
             scope(&a.node, a.serial);
         }
-        const std::uint32_t parents[2] = {std::uint32_t(reinterpret_cast<std::uintptr_t>(root_a.words)),
-                                          std::uint32_t(reinterpret_cast<std::uintptr_t>(root_b.words))};
+        const std::uint32_t parents[5] = {std::uint32_t(reinterpret_cast<std::uintptr_t>(root_a.words)),
+                                          std::uint32_t(reinterpret_cast<std::uintptr_t>(root_b.words)),
+                                          std::uint32_t(reinterpret_cast<std::uintptr_t>(root_c.words)),
+                                          std::uint32_t(reinterpret_cast<std::uintptr_t>(node_d.words)),
+                                          std::uint32_t(reinterpret_cast<std::uintptr_t>(node_e.words))};
         QueryPerformanceCounter(&t0);
         const unsigned primitives = kind == 0 || kind >= 3 ? 1u : 2u;
         if (kind == 4) a.node.words[0x18 / 4] = 0;
         if (kind == 3)
+            for (unsigned i = 0; i < n; ++i) {
+                a.node.words[0x18 / 4] = parents[i % 5];
+                draw(primitives);
+            }
+        else if (kind == 5)
             for (unsigned i = 0; i < n; ++i) {
                 a.node.words[0x18 / 4] = parents[i & 1];
                 draw(primitives);
@@ -785,9 +798,9 @@ int main(int argc, char** argv) {
         for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "unpatched", false, false);
     } else if (mode == "timing") {
         // Warm the four paths, then five frames of 1000 draws each per class; the median per-draw microseconds. The
-        // alternating-parent and the parentless classes run in frames of their own (the ring holds 1,024 records).
+        // five-parent, parentless and two-parent classes run in frames of their own (the ring holds 1,024 records).
         const unsigned n = 1000;
-        std::vector<double> t[5];
+        std::vector<double> t[6];
         for (unsigned frame = 0; frame < 6; ++frame) {
             api(f.device->BeginScene(), "BeginScene");
             for (unsigned kind = 0; kind < 3; ++kind) {
@@ -798,18 +811,22 @@ int main(int argc, char** argv) {
             api(f.device->EndScene(), "EndScene");
             api(f.device->Present(nullptr, nullptr, nullptr, nullptr), "Present");
             if (frame) check(suppressed == n, "timing_suppressed_count");
-            for (unsigned kind = 3; kind < 5; ++kind) {
+            for (unsigned kind = 3; kind < 6; ++kind) {
                 api(f.device->BeginScene(), "BeginScene");
                 const double us = f.batch(n, kind);
                 if (frame) t[kind].push_back(us);
                 suppressed = f.status(f.device, 3);
                 api(f.device->EndScene(), "EndScene");
                 api(f.device->Present(nullptr, nullptr, nullptr, nullptr), "Present");
-                if (frame) check(suppressed == n, kind == 3 ? "timing_new_parent_suppressed_count" : "timing_no_parent_suppressed_count");
+                if (frame)
+                    check(suppressed == n, kind == 3   ? "timing_new_parent_suppressed_count"
+                                           : kind == 4 ? "timing_no_parent_suppressed_count"
+                                                       : "timing_two_parents_suppressed_count");
             }
         }
-        static const char* const names[5] = {"suppressed", "not_jet", "not_candidate", "suppressed_new_parent", "suppressed_no_parent"};
-        for (unsigned kind = 0; kind < 5; ++kind) {
+        static const char* const names[6] = {"suppressed", "not_jet", "not_candidate", "suppressed_new_parent", "suppressed_no_parent",
+                                             "suppressed_two_parents"};
+        for (unsigned kind = 0; kind < 6; ++kind) {
             std::sort(t[kind].begin(), t[kind].end());
             std::printf("TIMING %s draws=%u frames=%u median_us_per_draw=%.3f min_us=%.3f max_us=%.3f\n", names[kind], n, unsigned(t[kind].size()),
                         t[kind][t[kind].size() / 2], t[kind].front(), t[kind].back());

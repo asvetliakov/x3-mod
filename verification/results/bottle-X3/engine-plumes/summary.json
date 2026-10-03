@@ -22,14 +22,14 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "1d8f8c4c10586baeda591bb687c38c2db8aee12b-dirty",
+    "commit": "da8ac8426ae9b8e4a49cba9190f57739e2514798-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/engine_plumes_core.h"
+      "src/proxy/engine_effects_core.h"
     ],
     "sha256": {
       "src/proxy/engine_plumes_core.h": "b3724f90eaa9da1d62ad0376e41c23beeede58049230d5e924a12c7f7423efb3",
-      "src/proxy/engine_effects_core.h": "eb1500d1e7b7bc74485bba45751e8b45bd368886b225d81956cc622e6297f8f2",
+      "src/proxy/engine_effects_core.h": "8af910e60f8226baa2ac0204abb495500d0496a72c5fc9dae6efd5b8d59327d6",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
       "src/renderer/engine_plumes_pass.h": "671c01a1c4a2aa8fe2151a5df9247f25038e5fa266830644767f66b5632269d7",
       "src/renderer/engine_plumes_pass.cpp": "0fa9da9254ac9af1843226c527bfba582bd20bca63f8eec52a002b0754dfea67",
@@ -85,12 +85,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a595b0ec2ca605525/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0b8235ef764ef3b4/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "99c534ed9d011d1ce49105719843a46ff709008d025cd7674334fd640b839652"
+    "executable_sha256": "7d75981cfd772cb5ef96a9e5863d78f73f6e93e1699f24657af525a4d523ff59"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -1008,11 +1008,11 @@
         "height": 1080,
         "nozzles": 30,
         "drawn": 30,
-        "fenced_on_ms": 1.1272,
-        "fenced_off_ms": 0.9238,
-        "submit_ms": 0.0523,
-        "chain_ms": 0.2034,
-        "gpu_ms": 0.1511,
+        "fenced_on_ms": 1.1228,
+        "fenced_off_ms": 0.918,
+        "submit_ms": 0.0503,
+        "chain_ms": 0.2048,
+        "gpu_ms": 0.1545,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1022,11 +1022,11 @@
         "height": 1080,
         "nozzles": 100,
         "drawn": 100,
-        "fenced_on_ms": 1.3513,
-        "fenced_off_ms": 0.9264,
-        "submit_ms": 0.0627,
-        "chain_ms": 0.4249,
-        "gpu_ms": 0.3622,
+        "fenced_on_ms": 1.3535,
+        "fenced_off_ms": 0.9295,
+        "submit_ms": 0.0619,
+        "chain_ms": 0.424,
+        "gpu_ms": 0.3621,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1036,11 +1036,11 @@
         "height": 1440,
         "nozzles": 30,
         "drawn": 30,
-        "fenced_on_ms": 1.706,
-        "fenced_off_ms": 1.6271,
-        "submit_ms": 0.0518,
-        "chain_ms": 0.0789,
-        "gpu_ms": 0.0271,
+        "fenced_on_ms": 1.7074,
+        "fenced_off_ms": 1.627,
+        "submit_ms": 0.0541,
+        "chain_ms": 0.0804,
+        "gpu_ms": 0.0263,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1050,11 +1050,11 @@
         "height": 1440,
         "nozzles": 100,
         "drawn": 100,
-        "fenced_on_ms": 1.8254,
-        "fenced_off_ms": 1.6238,
-        "submit_ms": 0.0628,
-        "chain_ms": 0.2016,
-        "gpu_ms": 0.1388,
+        "fenced_on_ms": 1.8266,
+        "fenced_off_ms": 1.6198,
+        "submit_ms": 0.064,
+        "chain_ms": 0.2068,
+        "gpu_ms": 0.1428,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1065,22 +1065,22 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 2.88,
+        "median_us": 2.91,
         "min_us": 2.77,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 9.36,
-        "min_us": 8.96,
+        "median_us": 9.37,
+        "min_us": 8.92,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 101.21,
-        "min_us": 97.52,
+        "median_us": 99.9,
+        "min_us": 97.27,
         "method": "qpc_50x41"
       }
     ],
@@ -1089,21 +1089,21 @@
         "records": 30,
         "drawn": 30,
         "median_us": 3.17,
-        "min_us": 3.05,
+        "min_us": 3.07,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 10.36,
-        "min_us": 9.88,
+        "median_us": 10.41,
+        "min_us": 9.94,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 111.44,
-        "min_us": 107.21,
+        "median_us": 109.28,
+        "min_us": 106.6,
         "method": "qpc_50x41"
       }
     ],
@@ -1603,10 +1603,10 @@
       "5120_8px": 13
     },
     "stage_gpu_ms": {
-      "1920x1080_30": 0.1511,
-      "1920x1080_100": 0.3622,
-      "5120x1440_30": 0.0271,
-      "5120x1440_100": 0.1388
+      "1920x1080_30": 0.1545,
+      "1920x1080_100": 0.3621,
+      "5120x1440_30": 0.0263,
+      "5120x1440_100": 0.1428
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": false,
@@ -1615,14 +1615,14 @@
       "5120x1440_100": false
     },
     "build_us": {
-      "30": 2.88,
-      "100": 9.36,
-      "1024": 101.21
+      "30": 2.91,
+      "100": 9.37,
+      "1024": 99.9
     },
     "build_floor_us": {
       "30": 3.17,
-      "100": 10.36,
-      "1024": 111.44
+      "100": 10.41,
+      "1024": 109.28
     },
     "mouth_over_body": {
       "1920_s1.00": 0.5954,

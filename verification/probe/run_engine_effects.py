@@ -11,7 +11,9 @@ engine_effects_fixture.exe, then runs the fixture once per mode in the selected 
   unverified  off without the identity seam: refused, every draw forwarded
   unpatched   off + --debug with the identity but without the call redirects (engine_effects_patch not installed):
               every glow-jet draw forwarded as forwarded_patch_missing, nothing recorded
-  timing      off without the census: per-draw microseconds of the suppressed, not_jet and non-candidate paths
+  timing      plumes without the census or --hdr --taa (suppressed as off, the plume floor's radius read on): per-draw
+              microseconds of the suppressed (one parent, five cycling parents, two alternating, none), not_jet and
+              non-candidate paths
   plumes      plumes + preset strong + --debug on a device without --hdr --taa: suppressed as off (records, pixels),
               the plume stage refuses to arm with one engine_plumes_state row (reason hdr_taa_path, glow suppressed),
               engine_stage rows at the engine_frame cadence (armed=0, nothing drawn, preset strong)
@@ -59,7 +61,7 @@ PROGRAMS = {'vs': Path('/tmp/x3-shader-sweep/programs/vs_d5e1c75351ed3f04.bin'),
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2']
 MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X3M_ENGINE_EFFECTS='native', X3M_DEBUG='1'),
          'unverified': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'unpatched': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'),
-         'timing': dict(X3M_ENGINE_EFFECTS='off'),
+         'timing': dict(X3M_ENGINE_EFFECTS='plumes'),
          'plumes': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1'),
          'armed': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1', X3M_HDR='1', X3M_TAA='1',
                        X3M_MOTION_JITTER='1'),
@@ -73,7 +75,8 @@ PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.
                       'src/proxy/engine_effects_option.h', 'src/proxy/motion_output_engine_effects_inc.h',
                       'src/proxy/motion_output_engine_plumes_inc.h', 'src/proxy/engine_plumes_core.h',
                       'src/renderer/engine_plumes_pass.cpp', 'src/renderer/engine_plumes_pass.h',
-                      'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h')
+                      'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h',
+                      'src/proxy/motion_output.h', 'src/proxy/capture.cpp')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
 
@@ -171,7 +174,7 @@ def validate(mode, r):
         out['timing'] = {l.split()[1]: float(fields(l)['median_us_per_draw']) for l in lines if l.startswith('TIMING ')}
         if rows(log, 'engine_draw') or rows(log, 'engine_frame'):
             problems.append('timing: census rows without --debug')
-        if len(out['timing']) != 5:
+        if len(out['timing']) != 6:
             problems.append(f'timing: {out["timing"]}')
         return problems, out
     plume_rows = rows(log, 'engine_effects_plumes') + rows(log, 'engine_plumes_state') + rows(log, 'engine_stage')

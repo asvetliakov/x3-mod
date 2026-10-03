@@ -111,21 +111,29 @@ bool MotionOutput::engine_record_own(std::uintptr_t node, std::uint32_t handle, 
 }
 // The ship's radius for the plume floor: the parent's (the root node's) +0xa4, the subtree radius the engine caches
 // (docs/reverse-engineering/engine-effects.md, "Ship radius"; -1 while dirty). One bounded read (LastError preserved) per
-// ship and frame: the jets of one root share it, so the last parent's answer stands for the next jets of the same parent
-// in the frame. 0 when the parent is unknown, the read fails or the value is not positive (no floor for its jets).
+// parent while it stays among the frame's four most recently read parents: the jets of one root share it, and a ship
+// drawn interleaved with up to three others still reads once; a fifth parent replaces the oldest entry (which reads
+// again if it returns). The memo is cleared at a new frame. 0 when the parent is unknown, the read fails or the value
+// is not positive (no floor for its jets).
 std::int32_t MotionOutput::engine_parent_radius(std::uint32_t parent) noexcept {
     if (!parent) return 0;
-    if (parent != engine_radius_parent_ || frame_ != engine_radius_frame_) {
-        std::int32_t radius = 0;
-        const DWORD error = GetLastError();
-        const bool known = engine_memory::read(std::uintptr_t(parent) + engine_effects::core::parent_radius_offset, &radius,
-                                               sizeof radius);
-        SetLastError(error);
-        engine_radius_parent_ = parent;
+    if (frame_ != engine_radius_frame_) {
+        for (unsigned i = 0; i < engine_radius_slots; ++i) engine_radius_parent_[i] = 0;
         engine_radius_frame_ = frame_;
-        engine_radius_ = known && radius > 0 ? radius : 0;
-    }
-    return engine_radius_;
+        engine_radius_next_ = 0;
+    } else
+        for (unsigned i = 0; i < engine_radius_slots; ++i)
+            if (engine_radius_parent_[i] == parent) return engine_radius_[i];
+    std::int32_t radius = 0;
+    const DWORD error = GetLastError();
+    const bool known = engine_memory::read(std::uintptr_t(parent) + engine_effects::core::parent_radius_offset, &radius,
+                                           sizeof radius);
+    SetLastError(error);
+    const unsigned slot = engine_radius_next_;
+    engine_radius_next_ = (slot + 1) & (engine_radius_slots - 1);
+    engine_radius_parent_[slot] = parent;
+    engine_radius_[slot] = known && radius > 0 ? radius : 0;
+    return engine_radius_[slot];
 }
 bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept {
     namespace ee = engine_effects::core;
@@ -244,10 +252,16 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         ee::fill_record(in, verdict == ee::Verdict::suppressed ? &engine_order_ : &pinned, &record, &geometry,
                         verdict == ee::Verdict::suppressed ? &engine_counts_ : nullptr);
     }
+    // Whether this draw writes an engine_draw row: the first eight frames with rows and every F8 capture frame, at most
+    // engine_row_cap rows per frame.
+    const bool census_row = engine_census_ && (capture_ || engine_row_frames_ < engine_row_frame_cap) &&
+                            engine_rows_ < engine_row_cap;
     // The ship's radius in the record's units (the plume floor; the census's radius=): the parent's +0xa4 against the
-    // jet's own +0x70 and +0x80 from the same node block. Only for a suppressed record or a census row.
+    // jet's own +0x70 and +0x80 from the same node block. Read only where it is used: a suppressed record while the
+    // plume stage is requested with the floor on (off mode and engine_plume_floor 0 never read it), and a JET draw
+    // that writes a census row (suppressed or forwarded; none once the row caps are spent).
     float jet_radius = 0.f;
-    if (jet && (verdict == ee::Verdict::suppressed || engine_census_))
+    if (jet && ((verdict == ee::Verdict::suppressed && plumes_requested_ && plumes_look_.floor_scale > 0.f) || census_row))
         ee::parent_radius_in_record(parent_known ? engine_parent_radius(scope_parent) : 0, scope.scale[0], scope.scale[1],
                                     record.size, &jet_radius);
     if (verdict == ee::Verdict::suppressed) {
@@ -274,10 +288,9 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
     }
     if (engine_census_) {
         // The first eight frames with rows, and every F8 capture frame (the own ship's z in the log of each capture).
-        if (engine_row_frames_ >= engine_row_frame_cap && !capture_) {
-        } else if (engine_rows_ >= engine_row_cap)
-            ++engine_rows_more_;
-        else {
+        if (!census_row) {
+            if (capture_ || engine_row_frames_ < engine_row_frame_cap) ++engine_rows_more_;
+        } else {
             ++engine_rows_;
             char name[40] = "-";
             if (entry) {

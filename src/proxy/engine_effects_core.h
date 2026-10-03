@@ -241,15 +241,19 @@ struct Ring {
 // |child offset| + the child's own subtree radius, starting from the root's own +0xa0 (the TShips column-0 body's
 // value: 47 for body 0). Units: those of node+0x70 (the LOD-0 value), as the jet's own +0x70; the record's size is
 // |model x| = +0x70 x (+0x80 / 65536) x the context scale, so the radius in the record's units is
-// radius x size / (+0x70 x +0x80 / 65536). 0 when the radius is not positive (dirty, unread) or the scales are not.
+// radius x size / (+0x70 x +0x80 / 65536). 0 when the radius is not positive (dirty, unread) or the scales are not,
+// and when it exceeds parent_radius_max_ratio x size: no ship is 2,000 of its own nozzles across (the Mayhem fleet's
+// largest main nozzle / R is about 0.09; a capital's smallest jets near 1/2,000), so a larger value is a garbage read
+// and takes no floor (counted floor_unknown by the stage) rather than the 4x cap.
 constexpr unsigned parent_radius_offset = 0xa4;
+constexpr float parent_radius_max_ratio = 2000.f;
 inline void parent_radius_in_record(std::int32_t radius, std::uint32_t scale70, std::uint32_t scale80, float size,
                                     float* out) noexcept {
     *out = 0.f;
     if (radius <= 0 || std::int32_t(scale70) <= 0 || std::int32_t(scale80) <= 0 || !finite_f(size) || !(size > 0.f)) return;
     const float base = float(std::int32_t(scale70)) * (float(std::int32_t(scale80)) * (1.f / 65536.f));
     const float r = float(radius) * (size / base);
-    if (finite_f(r) && r > 0.f) *out = r;
+    if (finite_f(r) && r > 0.f && r <= parent_radius_max_ratio * size) *out = r;
 }
 // The frame's census counts (engine_frame row).
 struct FrameCounts {

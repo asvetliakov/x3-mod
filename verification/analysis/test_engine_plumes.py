@@ -458,7 +458,7 @@ int main() {
         for (const char* t : refused) { w = 7.f; expect(!parse_nozzle(t, std::strlen(t), &w) && w == 7.f, t); }
         expect(parse_nozzle(L"0.5", 3, &w) && w == .5f, "wide text");
         expect(default_look.nozzle_width == .5f && nozzle_min == .1f && nozzle_max == 1.f, "default 0.5 (flight C), range 0.1..1.0");
-        // The plume floor setting (after flight D): the same plain decimal, 0..0.5.
+        // The plume floor setting (after flight D): the same plain decimal, 0..3 (the scale of the k(R) curve).
         const char* floors_ok[] = {"0", "1", "3", ".25", "1.5"};
         const float floor_values[] = {0.f, 1.f, 3.f, .25f, 1.5f};
         for (unsigned i = 0; i < 5; ++i) { w = 7.f; expect(parse_floor(floors_ok[i], std::strlen(floors_ok[i]), &w) && near(w, floor_values[i], 1e-6f), floors_ok[i]); }
@@ -519,7 +519,7 @@ int main() {
         expect(ce < 2e-6f && ee_ < 2e-5f, "law::cos within 2e-6 on [-40, 40], law::exp_neg within 2e-5 relative on [0, 20]");
         std::printf("LAW cos_max_abs_error=%.2e exp_max_rel_error=%.2e\n", double(ce), double(ee_));
     }
-    // ----------------------------------------------------------- the plume floor: k x the ship's radius, at most 3 x value
+    // ----------------------------------------------------------- the plume floor: k x the ship's radius, at most 4 x value
     {
         const float Zf = 9000.f;
         const unsigned steer = (unsigned(ee::white) << ee::cluster_shift) | ee::flag_steering;
@@ -598,6 +598,22 @@ int main() {
         const float bad[6] = {NAN, -5000.f, INFINITY, 0.f, 0.f, 0.f};
         build(rs, 6, nullptr, v, Preset::standard, 0.f, vb.data(), 6, &st, nullptr, &flat, nullptr, bad);
         expect(st.floored == 0 && st.floor_unknown == 4 && near(vb[0].shape[1], 200.f) && near(vb[16].shape[1], 100.f), "NaN, negative, infinite radius: no floor");
+        // A positive garbage root radius: above 2,000 x the record's value it is unknown (0, no floor, floor_unknown),
+        // not the 4x cap; just under the bound it stands.
+        {
+            float garbage = 1.f, plausible = 0.f;
+            ee::parent_radius_in_record(400001, 200u, 0x10000u, 200.f, &garbage);   // 2,000.005 x the value
+            ee::parent_radius_in_record(399999, 200u, 0x10000u, 200.f, &plausible); // 1,999.995 x
+            float with_garbage[6];
+            for (unsigned i = 0; i < 6; ++i) with_garbage[i] = radii[i];
+            with_garbage[0] = garbage;
+            BuildStats base{};
+            build(rs, 6, nullptr, v, Preset::standard, 0.f, vb.data(), 6, &base, nullptr, &flat, nullptr, radii);
+            build(rs, 6, nullptr, v, Preset::standard, 0.f, vb.data(), 6, &st, nullptr, &flat, nullptr, with_garbage);
+            expect(garbage == 0.f && near(plausible, 399999.f) && ee::parent_radius_max_ratio == 2000.f &&
+                       st.floor_unknown == base.floor_unknown + 1 && st.floored + 1 == base.floored && near(vb[0].shape[1], 200.f),
+                   "a root radius above 2,000 x the value: unknown (no floor, floor_unknown), not the 4x cap");
+        }
         // The scene-view filter: a hidden record is skipped before the floor (nothing counted for it).
         const std::uint32_t cam[6] = {1, 1, 1, 1, 1, 1};
         const std::uint8_t scene[6] = {0, 1, 1, 1, 1, 1};
@@ -941,14 +957,20 @@ class Wiring(unittest.TestCase):
         self.assertNotIn('engine_memory::read(scope.node+0x18', effects_inc)
         self.assertIn('engine_stage_off_=engine_plumes_stage_off();', effects_inc)
         self.assertIn('facts.stage_off=engine_stage_off_;', effects_inc)
-        # After flight D (2026-10-03): the plume floor from the ship's radius, the parent's +0xa4 read once per ship and
-        # frame (LastError preserved), in the record's units beside the records, handed to the stage; the floor knob.
+        # After flight D (2026-10-03): the plume floor from the ship's radius, the parent's +0xa4 read once per parent
+        # among the frame's four most recent (LastError preserved), only with the floor on or for a census row, in the
+        # record's units beside the records, handed to the stage; the floor knob.
         self.assertIn('ee::parent_radius_in_record(parent_known?engine_parent_radius(scope_parent):0,scope.scale[0],scope.scale[1],'
                       'record.size,&jet_radius);', effects_inc)
         self.assertIn('engine_ring_->parent_radius[slot]=jet_radius;', effects_inc)
         self.assertIn('const bool known=engine_memory::read(std::uintptr_t(parent)+engine_effects::core::parent_radius_offset,&radius,'
                       'sizeof radius);SetLastError(error);', effects_inc)
-        self.assertIn('if(parent!=engine_radius_parent_||frame_!=engine_radius_frame_){', effects_inc)
+        self.assertIn('if(engine_radius_parent_[i]==parent)return engine_radius_[i];', effects_inc)
+        self.assertIn('engine_radius_next_=(slot+1)&(engine_radius_slots-1);', effects_inc)
+        self.assertIn('if(jet&&((verdict==ee::Verdict::suppressed&&plumes_requested_&&plumes_look_.floor_scale>0.f)||census_row))',
+                      effects_inc)
+        self.assertIn('const bool census_row=engine_census_&&(capture_||engine_row_frames_<engine_row_frame_cap)&&'
+                      'engine_rows_<engine_row_cap;', effects_inc)
         self.assertIn('in.radii=engine_ring_->parent_radius;', inc)
         self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii);', passes)
         self.assertIn('floored=%u floor_unknown=%u', inc)
@@ -958,7 +980,7 @@ class Wiring(unittest.TestCase):
         self.assertNotIn('ShipFloor', source_text(ROOT / 'src/proxy/engine_plumes_core.h'))
         self.assertIn('call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,pixel,17)', passes)
         self.assertIn('float4 mouth_k : register(c16);', ps)
-        self.assertIn('if(engine_row_frames_>=engine_row_frame_cap&&!capture_){',
+        self.assertIn('if(!census_row){if(capture_||engine_row_frames_<engine_row_frame_cap)++engine_rows_more_;}else{',
                       source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
         self.assertIn('static constexpr unsigned plumes_failure_limit=3;', source_text(ROOT / 'src/proxy/motion_output.h'))
         effects = source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h')

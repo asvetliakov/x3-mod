@@ -486,10 +486,13 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
     and every part, culled or not. Its units are those of node+0x70 (the LOD-0 value), so the radius in the record's
     units is R x size / (+0x70 x +0x80 / 65536), with the jet's own +0x70/+0x80 from the node block already read
     (`parent_radius_in_record`). A dirty (-1), unread or non-positive R gives no floor (counted `floor_unknown=` in
-    `engine_stage`).
-  - The read: one bounded `engine_memory` read of parent+0xa4 per ship and frame (a one-entry memo keyed by parent
-    and frame), LastError preserved, stored per record in `Ring::parent_radius` (also computed for a forwarded jet
-    while the census writes its row).
+    `engine_stage`), and so does an R above `parent_radius_max_ratio` 2,000 x the record's value: a garbage positive
+    read would otherwise always land on the 4x cap (the fleet's largest main nozzle / R is about 0.09).
+  - The read: one bounded `engine_memory` read of parent+0xa4 per parent while it stays among the frame's four most
+    recently read parents (`engine_parent_radius`, a four-entry memo cleared each frame, the oldest entry replaced on
+    a miss), LastError preserved, stored per record in `Ring::parent_radius`. Only where it is used: a suppressed
+    record while plumes are requested with `engine_plume_floor` > 0 (never in `off` mode or with the floor at 0), and
+    a JET draw (suppressed or forwarded) that writes an `engine_draw` row under --debug, not after the row caps.
   - k depends on the ship's size, because the user wants small ships' plumes to stop being small while capitals stay
     as they are. One k cannot do both: the Mayhem fleet's largest main nozzle / R is about the same at every size (the
     M6's 0.086 against the capital's 0.094; offline estimate over 405 ship scenes: q1 0.057, p40 0.086, median 0.099,
@@ -516,6 +519,15 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
   - Flight check: `engine_draw` census rows now carry `radius=` (the ship's radius in record units, 0 unknown) and
     `value_eff=` (the value the stage draws at, `floored_value` with the device's look). Comparing a ship's `radius=`
     across F8 frames verifies the live +0xa4 read and shows whether it drifts with throttle.
+  - Not analysed, for Run 122 to check:
+    - The floor applies to every main JET record with a readable parent, so also to missile jets and any other
+      non-ship JET parent; their R and the resulting lift were not estimated (`radius=` / `value_eff=` rows of
+      non-ship models).
+    - R may step with throttle: a jet's own radius is value x z above z = 1, and it enters the root's +0xa4 whenever
+      that is recomputed (attach, save restore) ([engine-effects.md](../reverse-engineering/engine-effects.md)
+      "Ship radius").
+    - The own ship's lifted plume reaches the chase-view cap and fade more often (`capped=` / `faded=` in
+      `engine_stage`).
 - *Mouth.* The halo and the ring now follow the body's throttle curve I(s) / I(1): hb x lerp(1.2, 4, s) / 4 and
   ring x lerp(1.2, 4, s) / 4, where the halo was already lerp(0.3, 1, s) and the ring was lerp(0.4, 1, s).
   - That alone cannot hold the mouth below the body. At s = 0 the brightest point of the side view was the body
@@ -525,7 +537,9 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
     and in the disc's tail samples (`law::tail`).
   - The side view's axis peak per I_core drops from 1.832 to 1.462 at s = 1 and from 1.600 to 1.258 at s = 0
     (`peak_axis_at`, now the maximum of tail x ramp x (1 + s cell) over 513 samples of u for s in eighths). The end-on
-    disc's cap follows it. The first 0.3 L reads dimmer; this is the look change to judge in flight.
+    disc's cap follows it. The first 0.3 L reads dimmer; this is the look change to judge in flight. The ramp applies
+    to every body, RCS included, which takes no floor: RCS plumes lose up to 50 % near the nozzle with nothing to
+    offset it.
   - Mouth peak / body peak in the fixture: 0.595 / 0.658 / 0.773 at s = 1 / 0.5 / 0 (1080p; 0.642 at s = 0.5 at
     5120x1440), gated at 0.85. Before: 0.890 / 0.998 / 1.128.
   - The lab (`tools/effects/engine_exhaust_lab.html`) mirrors the ramp and the curve. ps 680 -> 687 slots.
@@ -534,6 +548,10 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
   runs (+0.04..0.05 us). A memo miss (the parent alternating every draw) costs 0.744 / 0.706 / 0.711 us, which a ship
   pays once per frame. The CPU build with cached look tables: 9.55 vs 9.40 us at 100 records and 101.3 vs 97.0 us at
   1,024, without and with the floor (no measurable change).
+  - Review fixes (2026-10-03): the read now runs only with the floor on or for a census row (none in `off` mode), and
+    the memo is a four-entry recent list. Timing mode now runs `plumes` (the floor on). One entry vs four: hit 0.687 /
+    0.695 us, two interleaved parents 0.733 / 0.683 us, a five-parent miss 0.738 / 0.738 us, no parent 0.661 / 0.683 us
+    (one run each; `verification/results/engine-effects/radius_memo_ab_out.json`).
 - *Not taken from the data.* The ship scene's id rides on every scene-part node (+0x258), and the generator could key
   a per-ship table on it. Per the user's decision, the floor uses the radius at draw time and the generator is
   unchanged.
