@@ -220,8 +220,12 @@ def validate(report):
         result['gpu'].append(dict(width=g['width'], height=g['height'], base_ms=base, twin_ms=twin, term_us=(twin - base) * 1e3,
                                   base_batches=g['base_ms'], twin_batches=g['twin_ms']))
     result['reset_ok'] = parsed['reset'] is not None and parsed['reset']['differ'] == 0
+    # The fixture's teardown: every object released, the device's last Release at zero references, then done (a leaked
+    # twin, pass or surface keeps references above zero and fails the run).
+    teardown = parsed['teardown']
+    result['teardown_ok'] = 'TEARDOWN device references=0' in teardown and 'TEARDOWN done' in teardown
     result['passed'] = (all(c['passed'] for c in result['cases'].values()) and all(result['cost_checks'].values()) and
-                        result['reset_ok'] and len(result['gpu']) == 2 and len(result['cases']) >= 9)
+                        result['reset_ok'] and result['teardown_ok'] and len(result['gpu']) == 2 and len(result['cases']) >= 9)
     return result
 
 
@@ -259,7 +263,8 @@ def main():
                    cases={cid: dict(passed=c['passed'], max_relative=round(c['stats']['max_relative'], 6), lit=c['stats']['lit'], zero=c['stats']['zero'],
                                     capped=c['stats']['capped'], depth=c['stats']['max_depth_error'], checks=[n for n, v in c['checks'].items() if not v])
                           for cid, c in record.get('cases', {}).items()},
-                   reset=record.get('reset'), create=record.get('create'), record=str(path.relative_to(ROOT)))
+                   reset=record.get('reset'), create=record.get('create'), teardown=record.get('teardown'),
+                   teardown_ok=record.get('teardown_ok'), record=str(path.relative_to(ROOT)))
     print(json.dumps(summary, indent=1))
     raise SystemExit(0 if record['passed'] else 1)
 

@@ -48,8 +48,10 @@ void MotionOutput::configure_engine_light(bool plumes) noexcept {
 }
 // The twins of the program's original-shading variants, created once at registration beside them with the options
 // that built each (engine_light_kind order: the plain motion variant at K = 0, the fill, the gained and widened, the
-// share producer and its gained and widened forms). A refused transform or a failed create leaves that kind without
-// a twin: a lit draw selecting it stays unlit (counted no_twin). One engine_light_variant row per reviewed program.
+// share producer and its gained and widened forms). A refused transform, a twin whose share / gain / widening out-flags
+// differ from its base's (engine_light::core::twin_matches_base; `mismatched`) or a failed create leaves that kind
+// without a twin: a lit draw selecting it stays unlit (counted no_twin). One engine_light_variant row per reviewed
+// program.
 void MotionOutput::engine_light_create_twins(ShaderEntry& entry, const void* code, UINT bytes,
                                              std::uint64_t hash) noexcept {
     if (!engine_light_requested_ || !entry.variant) return;
@@ -68,18 +70,24 @@ void MotionOutput::engine_light_create_twins(ShaderEntry& entry, const void* cod
     }
     for (unsigned k : {3u, 6u}) options[k].widen = &widen;
     for (unsigned k : {4u, 5u, 6u}) options[k].share = true;
-    unsigned created = 0, refused = 0, failed = 0;
+    static_assert(engine_light_kinds == engine_light::core::twin_kinds, "one expectation per twin kind");
+    unsigned created = 0, refused = 0, failed = 0, mismatched = 0;
     std::size_t words_max = 0;
     for (unsigned k = 0; k < engine_light_kinds; ++k) {
         release(entry.engine_twin[k]);
         if (!bases[k]) continue;
         try {
             std::vector<std::uint32_t> words;
-            bool applied = false;
+            bool applied = false, share = false, gain = false, widened = false;
             const auto result = renderer::linear_material_original_engine_light_pixel_variant(
-                static_cast<const std::uint32_t*>(code), bytes / 4, options[k], words, depth_enabled_, applied);
+                static_cast<const std::uint32_t*>(code), bytes / 4, options[k], words, depth_enabled_, applied, &share,
+                &gain, &widened);
             if (result != renderer::LinearMaterialResult::Applied || !applied) {
                 if (result != renderer::LinearMaterialResult::UnsupportedShader) refused |= 1u << k;
+                continue;
+            }
+            if (!engine_light::core::twin_matches_base(k, applied, share, gain, widened)) {
+                mismatched |= 1u << k;
                 continue;
             }
             IDirect3DPixelShader9* twin = nullptr;
@@ -98,9 +106,9 @@ void MotionOutput::engine_light_create_twins(ShaderEntry& entry, const void* cod
             failed |= 1u << k;
         }
     }
-    if (created || refused || failed)
-        log("engine_light_variant device=%llu original=%016llx created=%02x refused=%02x failed=%02x words_max=%u depth=%u",
-            id_, hash, created, refused, failed, unsigned(words_max), unsigned(depth_enabled_));
+    if (created || refused || failed || mismatched)
+        log("engine_light_variant device=%llu original=%016llx created=%02x refused=%02x mismatched=%02x failed=%02x words_max=%u depth=%u",
+            id_, hash, created, refused, mismatched, failed, unsigned(words_max), unsigned(depth_enabled_));
 }
 void MotionOutput::engine_light_release(ShaderEntry& entry) noexcept {
     for (auto*& twin : entry.engine_twin) release(twin);
@@ -171,7 +179,7 @@ void MotionOutput::engine_light_frame() noexcept {
     if (records)
         el::build_ships(engine_ring_->records, engine_ring_->parent, engine_ring_->parent_radius, engine_ring_->camera,
                         engine_ring_->scene, scene_camera, engine_ring_->count, &engine_effects::body, plumes_look_,
-                        preset_scale, &s.ships);
+                        preset_scale, &s.ships, engine_ring_->own);
     else
         s.ships.clear();
     el::build_nodes(s.ships, s.log, &s.nodes);

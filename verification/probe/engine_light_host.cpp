@@ -1,7 +1,9 @@
 // Host driver of the engine light's portable core (src/proxy/engine_light_core.h; docs/architecture/engine-light.md).
 // Runs the scenarios of verification/analysis/test_engine_light.py on synthetic rings and draw logs and prints one JSON
 // object: the option parser, the brightest-main-nozzle selection (RCS, brake, other views and unknown parents
-// ignored), the 256-ship cap, the one-frame protocol with the motion compensation (the light rides on the hull node
+// ignored), the 256-ship cap (the dimmest entry gives way to a brighter ship and always to the own ship; the hash stays
+// consistent through the replacements), the twin kinds' out-flag match (a twin whose share plan failed only with the
+// light is refused), the one-frame protocol with the motion compensation (the light rides on the hull node
 // that moved and turned between the frames), the per-draw constants, and the per-draw lookup + constants cost on the
 // host. No Windows dependency, no game bytes.
 #include "../../src/proxy/engine_light_core.h"
@@ -93,6 +95,58 @@ int main() {
         unsigned found = 0;
         for (unsigned i = 0; i < 300; ++i) found += find_ship(*ships, parent[i]) >= 0;
         std::printf("\"cap\":{\"ships\":%u,\"dropped\":%u,\"found\":%u},", ships->count, ships->stats.dropped, found);
+    }
+    // ---- cap with replacement: 299 other ships and the own ship last and dimmest (ring order), in ascending and in
+    // descending brightness; the own ship is admitted either way, the other 255 entries are the brightest.
+    {
+        static ee::Record r[300];
+        static std::uint32_t parent[300];
+        static std::uint8_t own[300];
+        std::printf("\"replace\":{");
+        for (unsigned order = 0; order < 2; ++order) {
+            for (unsigned i = 0; i < 299; ++i) {
+                const unsigned rank = order ? 298 - i : i; // brightness rank: size 10 + rank / 8
+                r[i] = jet(float(i), 0, 0, 10.f + float(rank) * .125f, .5f, 100 + i);
+                parent[i] = 0x10000u + i * 16u;
+                own[i] = 0;
+            }
+            r[299] = jet(0, 0, 0, 1.f, 0.f, 99);
+            parent[299] = 0xf0000u;
+            own[299] = 1;
+            build_ships(r, parent, nullptr, nullptr, nullptr, 0, 300, nullptr, look, 1.f, ships.get(), own);
+            unsigned found = 0, consistent = 0, dimmest_rank = 1000;
+            for (unsigned i = 0; i < 299; ++i)
+                if (find_ship(*ships, parent[i]) >= 0) {
+                    ++found;
+                    const unsigned rank = order ? 298 - i : i;
+                    if (rank < dimmest_rank) dimmest_rank = rank;
+                }
+            for (unsigned i = 0; i < ships->count; ++i) consistent += find_ship(*ships, ships->lights[i].root) == int(i);
+            const int o = find_ship(*ships, 0xf0000u);
+            std::printf("\"%s\":{\"ships\":%u,\"dropped\":%u,\"own\":%d,\"own_flag\":%d,\"others\":%u,\"dimmest_rank\":%u,\"consistent\":%u}%s",
+                        order ? "descending" : "ascending", ships->count, ships->stats.dropped, o >= 0,
+                        o >= 0 && ships->lights[o].own, found, dimmest_rank, consistent, order ? "" : ",");
+        }
+        // Without the own tags (own = null) the same dimmest last ship is the one refused.
+        build_ships(r, parent, nullptr, nullptr, nullptr, 0, 300, nullptr, look, 1.f, ships.get());
+        std::printf(",\"untagged_own\":%d},", find_ship(*ships, 0xf0000u) >= 0);
+    }
+    // ---- twin kinds: the twin stands in for its base only with the base's share / gain / widen (a synthetic transform
+    // outcome per kind: the expected flags, then each flag flipped; the share kinds with the share plan failing only
+    // with the light, i.e. the twin reporting share 0).
+    {
+        unsigned accepted = 0, flipped_accepted = 0, share_lost = 0;
+        for (unsigned k = 0; k < twin_kinds; ++k) {
+            const TwinOptions o = twin_options[k];
+            accepted += twin_matches_base(k, true, o.share, o.gain, o.widen);
+            flipped_accepted += twin_matches_base(k, false, o.share, o.gain, o.widen);
+            flipped_accepted += twin_matches_base(k, true, !o.share, o.gain, o.widen);
+            flipped_accepted += twin_matches_base(k, true, o.share, !o.gain, o.widen);
+            flipped_accepted += twin_matches_base(k, true, o.share, o.gain, !o.widen);
+            if (o.share) share_lost += !twin_matches_base(k, true, false, o.gain, o.widen);
+        }
+        std::printf("\"twins\":{\"kinds\":%u,\"accepted\":%u,\"flipped_accepted\":%u,\"share_lost_refused\":%u,\"out_of_range\":%d},",
+                    twin_kinds, accepted, flipped_accepted, share_lost, twin_matches_base(twin_kinds, true, false, false, false));
     }
     // ---- one-frame protocol with motion: frame N-1 has the jet record and the hull draw (node 0x5000 under root
     // 0x4000, rotated 0.3 rad, scale 2, at t0); frame N draws the same node rotated 0.5 rad at t1. Frame N-1 itself has
