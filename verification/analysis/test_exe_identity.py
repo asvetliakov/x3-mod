@@ -36,12 +36,14 @@ REAL = ident.DEFAULT_EXE
 NOT_READ = {0x0059695f: 'collide_memo_core.h: end of the root block comment',
             0x00608533: 'collide_memo_core.h: end of the contact record comment',
             0x00587c94: 'loading_trace.cpp: d3dx9_37 address', 0x00587e06: 'loading_trace.cpp: d3dx9_37 address',
-            0x00587e6b: 'loading_trace.cpp: d3dx9_37 address'}
+            0x00587e6b: 'loading_trace.cpp: d3dx9_37 address',
+            0x00640000: 'engine_plumes_core.h: the SETA warp bound 100.0 in 16.16 (a value, not an address)'}
 # Modules that call executable_verified() and patch nothing: they only read
 # engine globals, which the gate anchors.
 READ_ONLY = {'camera_state.cpp', 'capture.cpp', 'sun_light_poll.cpp', 'motion_output_shadow_adaptive_inc.h',
-             'motion_output_cull_small_props_inc.h',  # the small-prop draw skip: reads only, no engine write
-             'engine_effects.cpp'}  # the glow-jet skip: reads the body table global 0x00608518 (anchored), no engine write
+             'motion_output_cull_small_props_inc.h'}  # the small-prop draw skip: reads only, no engine write
+# engine_effects.cpp left this set on 2026-10-03: besides the anchored globals it reads the SETA dwords, whose offsets it
+# binds with a whole-instruction compare of the tick at 0x004d1ef0 (memcmp, seta_read).
 SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(|sites::install\(')
 
 

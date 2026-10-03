@@ -53,11 +53,22 @@ struct Stats {
     bool table_loaded;
 };
 Stats stats();
+// The plume stage's travel look (gap 7 of docs/architecture/engine-exhaust-gap-analysis.md; the read of
+// docs/reverse-engineering/engine-effects.md section 8): this frame's SETA dwords, warp = cfg+0xcc and mult = cfg+0xd0
+// (16.16) with cfg = *0x00606f34, through engine_memory::read: the pointer, then one 8-byte read. Refused without the
+// executable identity, when the 12-byte compare of the tick's reads at 0x004d1ef0 (done once, at the first call)
+// differs, on a null pointer or a failed read; the caller then uses 1.0 (engine_plumes_core.h seta_decode validates the
+// values). Render thread only (the Present path; the writers are the game's main thread, the same one). LastError kept.
+enum class SetaStatus : std::uint8_t { ok = 0, identity = 1, site = 2, pointer = 3, read = 4 };
+const char* seta_status_name(SetaStatus);
+SetaStatus seta_read(std::uint32_t* warp, std::uint32_t* mult);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Fixture seams (the motion seam DLL): the identity treated as verified before initialize, and a synthetic body
 // manager's global in the fixture's own memory.
 void fixture_identity(bool verified);
 void fixture_redirects(bool live); // the redirects treated as live (the fixture EXE has no engine sites)
 void fixture_body_global(std::uintptr_t va);
+// The SETA read's site and pointer slot moved to the fixture's own memory (a synthetic tick and configuration block).
+void fixture_seta(std::uintptr_t site_va, std::uintptr_t slot_va);
 #endif
 }

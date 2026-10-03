@@ -215,7 +215,7 @@ int main() {
             const float s = r.s;
             float pulse = 0;
             length_pulse(default_look, seed_byte(r), 9.f, &pulse);
-            const bool ok = near(out[0].local[2], zs * V * pulse) && near(out[0].shape[0], .55f * sc[pr]) &&
+            const bool ok = near(out[0].local[2], std::max(zs, .5f) * V * pulse) && near(out[0].shape[0], .55f * sc[pr]) && // idle floor 0.5
                             near(out[0].intensity[0], (1.2f + 2.8f * s) * sc[pr]) && near(out[0].intensity[1], HB * (.3f + .7f * s) * sc[pr]);
             char what[96]; std::snprintf(what, sizeof what, "law z=%.3f preset=%s", double(zs), preset_name(Preset(pr)));
             expect(ok, what);
@@ -240,7 +240,7 @@ int main() {
             return 1.6f * best;
         };
         const float axis_peak = axis_at(1.f), axis_peak0 = axis_at(0.f);
-        bool disc = st.discs == 1 && out[4].shape[3] == 1.f && near(out[4].local[3], nw) && near(out[4].intensity[0], 4.f * 1.8f * Ln) &&
+        bool disc = st.discs == 1 && (out[4].peak >> 24) == 255u && (out[0].peak >> 24) == 0u && near(out[4].local[3], nw) && near(out[4].intensity[0], 4.f * 1.8f * Ln) &&
                     near(out[4].intensity[1], HB * 3.f * Ln) && near(out[4].intensity[2], 1.5f * 4.f * axis_peak, 3e-3f) &&
                     near(out[4].local[2], 4.f * (.3f / 4.f * .5f) * 2.f);
         for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half, 1e-3f) && near(std::fabs(out[c].position[1]), half, 1e-3f) && out[c].position[2] == Z;
@@ -459,25 +459,188 @@ int main() {
         float rate_narrow = 0;
         flow_rate(narrow, &rate_narrow);
         expect(near(rate_narrow * .25f, rate * .5f) && near(rate_narrow, 5.25f), "the same speed in value units at any nozzle width (5.25 at 0.25)");
-        FlowPhase ph; float out_phase = 0;
+        FlowPhase ph;
         for (unsigned i = 0; i < 600; ++i) ph.advance(1. / 60., rate);
-        ph.wrapped(&out_phase);
-        expect(near(out_phase, 26.25f, 1e-4f), "600 frames at 60 fps: 10 s x 2.625");
+        expect(std::fabs(ph.nozzle_widths - 26.25) < 1e-4, "600 frames at 60 fps: 10 s x 2.625");
+        const double kept = ph.nozzle_widths;
         ph.advance(0., rate); ph.advance(-1., rate); ph.advance(1. / 60., -1.f); ph.advance(1e300, rate);
-        float same = 0; ph.wrapped(&same);
-        expect(same == out_phase, "no advance on a zero, negative or huge step or a non-positive rate");
-        ph.nozzle_widths = phase_wrap - .5; ph.advance(1., 1.f); ph.wrapped(&out_phase);
-        expect(near(out_phase, .5f), "wraps at 4,096 nozzle widths");
-        // The flow does not follow the pulsed L: the phase of two frames differs by rate dt whatever the length.
+        expect(ph.nozzle_widths == kept, "no advance on a zero, negative or huge step or a non-positive rate");
+        // Gap 4: the nozzle's share flow_reference / value in [0.3, 1]: one world speed from value 500 to 1,667.
+        float f100 = 0, f500 = 0, f600 = 0, f1000 = 0, f1500 = 0, f1667 = 0, f1e4 = 0, f0 = 0, fnan = 0;
+        flow_factor(default_look, 100.f, &f100); flow_factor(default_look, 500.f, &f500); flow_factor(default_look, 600.f, &f600);
+        flow_factor(default_look, 1000.f, &f1000); flow_factor(default_look, 1500.f, &f1500); flow_factor(default_look, 1700.f, &f1667);
+        flow_factor(default_look, 1e4f, &f1e4); flow_factor(default_look, 0.f, &f0); flow_factor(default_look, NAN, &fnan);
+        expect(f100 == 1.f && f500 == 1.f && near(f1000, .5f) && near(f600, 500.f / 600.f) && near(f1500, 1.f / 3.f) && f1667 == .3f &&
+               f1e4 == .3f && f0 == 1.f && fnan == 1.f, "flow factor: 1 up to value 500, 500 / value, at least 0.3");
+        const float speed600 = rate * f600 * .5f * 600.f, speed1500 = rate * f1500 * .5f * 1500.f;
+        expect(near(speed600, 656.25f, 1e-4f) && near(speed1500, 656.25f, 1e-4f) && near(rate * f100 * .5f * 100.f, 131.25f) &&
+               near(rate * f1e4 * .5f * 1e4f, 3937.5f), "world speed 656.25 per second from value 500 to 1,667 (value 100: 131.25, 10,000: 3,937.5)");
+        // The nozzle's phase over 10^4 s at 60 fps: continuous frame to frame except one step of -4,096 per wrap, in
+        // [0, 4,096), and the wraps counted by flow x factor.
+        {
+            FlowPhase acc; float previous[2] = {0, 0}; unsigned wraps[2] = {0, 0}; bool steady = true, bounded = true;
+            const float factors[2] = {1.f, .3f};
+            for (unsigned i = 0; i < 600000; ++i) {
+                acc.advance(1. / 60., rate);
+                for (unsigned k = 0; k < 2; ++k) {
+                    float p = 0; nozzle_phase(acc.nozzle_widths, factors[k], &p);
+                    bounded = bounded && p >= 0.f && p < 4096.f;
+                    const float step = p - previous[k], want = rate * factors[k] / 60.f;
+                    if (step < 0.f) { ++wraps[k]; steady = steady && std::fabs(step + 4096.f - want) < 2e-3f; }
+                    else steady = steady && std::fabs(step - want) < 2e-3f;
+                    previous[k] = p;
+                }
+            }
+            expect(steady && bounded && wraps[0] == unsigned(26250. / 4096.) && wraps[1] == unsigned(26250. * .3 / 4096.),
+                   "phase over 10^4 s: steps rate x factor / 60 (within 2e-3), one wrap per 4,096 nozzle widths (6 and 1)");
+            float big = 1.f; nozzle_phase(1e13, 1.f, &big);
+            float neg = 1.f; nozzle_phase(-5., 1.f, &neg);
+            expect(big == 0.f && neg == 0.f, "out of range or negative flow: phase 0");
+        }
+        // The vertex: both quads carry the nozzle's phase (shape.w); the kind is the head colour's alpha (0 axial, 255
+        // disc). The phase follows the flow x the factor of the plume's own (floored, pre-cap) value, whatever the pulsed L.
+        {
+            const ee::Record r = rec(0, 0, Z, 0, 0, 1, V, 2.f); // head-on: the disc drawn
+            Dynamics dy; dy.flow = 1234.5;
+            build(&r, 1, nullptr, v, Preset::standard, 10.f, out.data(), 16, &st, nullptr, nullptr, nullptr, nullptr, &dy);
+            float want = 0, fv = 0; flow_factor(default_look, V, &fv); nozzle_phase(1234.5, fv, &want);
+            bool same = true;
+            for (unsigned c = 0; c < 8; ++c) same = same && out[c].shape[3] == want;
+            expect(same && st.discs == 1 && (out[0].peak >> 24) == 0u && (out[4].peak >> 24) == 255u, "both quads carry the nozzle's phase; the kind in the head colour's alpha");
+            const ee::Record side = rec(0, 0, Z, -1, 0, 0, V, 2.f);
+            Dynamics da; da.flow = 10.; Dynamics db; db.flow = 10. + rate / 60.;
+            build(&side, 1, nullptr, v, Preset::standard, 10.f, out.data(), 16, &st, nullptr, nullptr, nullptr, nullptr, &da);
+            const float La = out[0].local[2], a = out[0].shape[3];
+            build(&side, 1, nullptr, v, Preset::standard, 10.f + 1.f / 60.f, out.data(), 16, &st, nullptr, nullptr, nullptr, nullptr, &db);
+            const float Lb = out[0].local[2], b = out[0].shape[3];
+            expect(La != Lb && near(b - a, rate * fv / 60.f, 1e-3f), "one frame's phase step is rate x factor / 60 while L pulses");
+            const ee::Record big = rec(0, 0, Z * 50.f, -1, 0, 0, 1e4f, 2.f);
+            build(&big, 1, nullptr, v, Preset::standard, 10.f, out.data(), 16, &st, nullptr, nullptr, nullptr, nullptr, &da);
+            float wb = 0; nozzle_phase(10., .3f, &wb);
+            expect(near(out[0].shape[3], wb), "value 10,000: phase = flow x 0.3");
+        }
+    }
+    // ----------------------------------------------------------- gap 5: two-tone colour
+    {
+        ee::Body b{}; b.colour = 1; const float m[3] = {1.f, .15f, .15f}, pk[3] = {1.f, .81f, .81f};
+        std::memcpy(b.mean, m, sizeof m); std::memcpy(b.peak, pk, sizeof pk); g_body = &b;
+        ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f, unsigned(ee::red) << ee::cluster_shift); r.body = 3;
+        build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
+        float head[3]; head_colour(m, pk, head);
+        const float lm = .2126f + .7152f * .15f + .0722f * .15f, lp = .2126f + .7874f * .81f;
+        const float lh = .2126f * head[0] + .7152f * head[1] + .0722f * head[2];
+        expect(near(lh, lm, 1e-5f) && near(head[0], lm / lp) && near(head[1] / head[0], .81f) && (out[0].peak & 0xffffffu) == (pack_colour(head) & 0xffffffu) &&
+               out[0].tint == pack_colour(m), "head colour: the peak's chroma at the mean's luminance (red: x 0.389), the tint the mean");
+        const float dim[3] = {.2f, .2f, 1.f}; float same[3]; head_colour(m, dim, same);
+        expect(same[0] == .2f && same[2] == 1.f, "a peak no brighter than the mean is kept");
+        r.body = -1;
+        build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
+        expect((out[0].peak & 0xffffffu) == (out[0].tint & 0xffffffu), "no body colours: head = tail = the cluster's tint");
+        g_body = nullptr;
+    }
+    // ----------------------------------------------------------- gap 10: the idle floor
+    {
+        const ee::Record idle = rec(0, 0, Z, -1, 0, 0, V, .25f), cruise = rec(0, 0, Z, -1, 0, 0, V, 1.f);
+        build(&idle, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat);
+        const float Li = out[0].local[2];
+        build(&cruise, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat);
+        const float Lc = out[0].local[2];
+        const ee::Record puff = rec(0, 0, Z, -1, 0, 0, V, .1f, (unsigned(ee::white) << ee::cluster_shift) | ee::flag_steering);
+        build(&puff, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat);
+        const float Lp = out[0].local[2];
+        expect(near(Li, .5f * V) && near(Lc, 1.f * V) && near(Lp, .1f * V) && near(out[0].intensity[0], 1.2f * .1f),
+               "idle floor: a main jet at z 0.25 is 0.5 value long (z 1: 1 value); an RCS jet keeps z value and its weight z");
+    }
+    // ----------------------------------------------------------- gap 6: the RCS puff attack and retro flare
+    {
+        const unsigned steer = (unsigned(ee::white) << ee::cluster_shift) | ee::flag_steering;
+        auto run = [&](unsigned flags, const float* zs, unsigned frames, float* intensity) {
+            static Transients mem; mem.clear();
+            for (unsigned i = 0; i < frames; ++i) {
+                ee::Record q = rec(0, 0, Z, -1, 0, 0, V, zs[i], flags); q.serial = 99; q.flags |= ee::flag_serial;
+                if (zs[i] > 2.f + 1e-3f) q.flags |= ee::flag_brake;
+                Dynamics dy; dy.transients = &mem; dy.step = 1.f / 60.f; dy.game_ms = 1000.f / 60.f;
+                intensity[i] = build(&q, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat, nullptr, nullptr, &dy) ? out[0].intensity[0] : 0.f;
+            }
+        };
+        float zs[16], in[16];
+        zs[0] = .01f; zs[1] = .505f; for (unsigned i = 2; i < 16; ++i) zs[i] = 1.f;
+        run(steer, zs, 16, in);
+        const float steady = in[15];
+        unsigned back = 0; for (unsigned i = 2; i < 16; ++i) if (in[i] > steady * 1.0001f) back = i;
+        auto plain = [&](float z, unsigned flags) {
+            const ee::Record q = rec(0, 0, Z, -1, 0, 0, V, z, flags);
+            return build(&q, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat) ? out[0].intensity[0] : 0.f;
+        };
+        expect(in[0] == 0.f && near(in[2] / steady, 1.5f) && near(in[1] / plain(.505f, steer), 1.5f) && back == 9 && in[3] < in[2] &&
+                   near(in[3] / steady, 1.f + .5f * (1.f - 1.f / 60.f / .12f)),
+               "RCS puff z 0.01 -> 1 over three frames: 1.5 x steady at frame 2, linear decay over 120 ms (last boosted frame 9, 117 ms)");
+        std::printf("ATTACK steering ratio_f1=%.4f ratio_f2=%.4f ratio_f3=%.4f last_boosted_frame=%u\n", double(in[1] / steady), double(in[2] / steady), double(in[3] / steady), back);
+        float bz[16], bi[16];
+        bz[0] = 2.2f; bz[1] = 2.6f; for (unsigned i = 2; i < 16; ++i) bz[i] = 3.f;
+        run(unsigned(ee::white) << ee::cluster_shift, bz, 16, bi);
+        expect(near(bi[2] / bi[15], 1.5f) && near(bi[1] / bi[15], 1.5f) && bi[0] == bi[15], "brake body z 2.2 -> 3: the same flash");
+        float mz[4] = {.25f, 1.f, 2.f, 2.f}, mi[4];
+        run(unsigned(ee::white) << ee::cluster_shift, mz, 4, mi);
+        expect(near(mi[2], mi[3]) && near(mi[2], 4.f), "a main jet's rising z: no attack");
+        float slow[16], si[16];
+        for (unsigned i = 0; i < 16; ++i) slow[i] = .1f + .004f * 1000.f / 60.f * .5f * float(i);
+        run(steer, slow, 16, si);
+        expect(near(si[8] / plain(slow[8], steer), 1.25f, 1e-3f), "z rising at half the game's rate: x 1.25 (gain 0.5 x 0.5)");
+        // Capacity: 600 identities in one frame; eviction after the hold.
+        static Transients mem; mem.clear(); mem.begin(1.f / 60.f);
+        float factor = 0; unsigned stored = 0;
+        for (std::uint64_t k = 1; k <= 600; ++k) { mem.attack(k, .5f, 16.7f, &factor); }
+        for (const auto& s : mem.slots) stored += s.key != 0;
+        expect(stored <= 512 && stored + mem.overflow == 600 && mem.overflow > 0, "600 identities: at most 512 slots, the rest counted overflow");
+        mem.begin(.6f);
+        stored = 0; for (const auto& s : mem.slots) stored += s.key != 0;
+        expect(stored == 0, "a slot unseen for 0.5 s is free");
+    }
+    // ----------------------------------------------------------- gap 7: SETA and the travel look
+    {
+        bool on = true; float req = 0, rate = 0;
+        expect(seta_decode(0x60000u, 0x10000u, &on, &req, &rate) && on && req == 6.f && rate == 6.f, "warp x6, governor 1: engaged, rate 6");
+        expect(seta_decode(0xa0000u, 0x4cccu, &on, &req, &rate) && on && req == 10.f && near(rate, 3.f, 1e-3f), "x10 under the governor's floor 0.3: rate 3");
+        expect(seta_decode(0x10000u, 0x10000u, &on, &req, &rate) && !on && rate == 1.f, "1.0: not engaged");
+        const std::uint32_t bad[][2] = {{0, 0x10000u}, {0x640001u, 0x10000u}, {0x60000u, 0x4ccbu}, {0x60000u, 0x10001u}, {0xffffffffu, 0xffffffffu}};
+        bool refused = true;
+        for (const auto& b : bad) refused = refused && !seta_decode(b[0], b[1], &on, &req, &rate) && !on && req == 1.f && rate == 1.f;
+        expect(refused && seta_decode(0x640000u, 0x4cccu, &on, &req, &rate) && on, "out of range: refused, 1.0 (fail closed); the bounds inclusive");
+        expect(seta_slot_va == 0x00606f34u && seta_site_va == 0x004d1ef0u && seta_warp_offset == 0xccu && expected_seta_site[2] == 0xd0 &&
+               expected_seta_site[8] == 0xcc && expected_seta_site[0] == 0x8b && expected_seta_site[6] == 0x8b, "the read: *0x00606f34 + 0xcc, bound by mov edx,[ecx+0xd0] / mov eax,[ecx+0xcc] at 0x004d1ef0");
+        TravelRamp t; float w = 0; unsigned changes = 0;
+        for (unsigned i = 0; i < 15; ++i) changes += t.step(true, 1.f / 60.f);
+        t.weight(&w);
+        expect(changes == 1 && t.engaged && near(t.linear, .5f, 1e-4f) && near(w, .5f, 1e-4f), "engaged at once, half way after 0.25 s");
+        for (unsigned i = 0; i < 16; ++i) changes += t.step(true, 1.f / 60.f);
+        t.weight(&w);
+        expect(changes == 1 && w == 1.f, "full after 0.5 s (and held)");
+        for (unsigned i = 0; i < 12; ++i) changes += t.step(false, 1.f / 60.f); // 0.2 s at 1.0
+        for (unsigned i = 0; i < 3; ++i) changes += t.step(true, 1.f / 60.f);
+        expect(changes == 1 && t.engaged, "a 0.2 s dip to 1.0 inside the hold: still engaged");
+        changes += t.step(false, 5.f); // a stall: held to 0.1 s
+        expect(changes == 1 && t.engaged && near(t.released, .1f), "a 5 s stall at 1.0 counts 0.1 s of the hold");
+        for (unsigned i = 0; i < 11; ++i) changes += t.step(false, 1.f / 60.f);
+        const bool held = t.engaged && changes == 1;
+        for (unsigned i = 0; i < 2; ++i) changes += t.step(false, 1.f / 60.f);
+        expect(held && changes == 2 && !t.engaged, "released once 0.3 s at 1.0 have passed (0.283 s: held): one change");
+        for (unsigned i = 0; i < 40; ++i) t.step(false, 1.f / 60.f);
+        t.weight(&w);
+        expect(w == 0.f, "back to 0 after the ramp");
+        TravelRamp u; const bool flipped = u.step(false, .1f); float wu = 1; u.weight(&wu);
+        expect(!flipped && !u.engaged && wu == 0.f, "a 0.1 s stall frame at 1.0: no trigger");
+        // The look at weight 1 (warp 6 after the ramp): a main jet's L x 2 and radiance x 1.25; RCS unchanged.
         const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
-        float a = 0, b = 0;
-        build(&r, 1, nullptr, v, Preset::standard, 10.f, out.data(), 16, &st);
-        const float La = out[0].local[2];
-        build(&r, 1, nullptr, v, Preset::standard, 10.f + 1.f / 60.f, out.data(), 16, &st);
-        const float Lb = out[0].local[2];
-        FlowPhase pa; pa.advance(10., rate); pa.wrapped(&a);
-        FlowPhase pb; pb.advance(10. + 1. / 60., rate); pb.wrapped(&b);
-        expect(La != Lb && near(b - a, rate / 60.f, 1e-3f), "one frame's phase step is rate / 60 while L pulses");
+        Dynamics d0, d1; d1.travel = 1.f;
+        build(&r, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat, nullptr, nullptr, &d0);
+        const float L0 = out[0].local[2], I0 = out[0].intensity[0];
+        build(&r, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat, nullptr, nullptr, &d1);
+        const float L1 = out[0].local[2], I1 = out[0].intensity[0];
+        const ee::Record puff = rec(0, 0, Z, -1, 0, 0, V, .5f, (unsigned(ee::white) << ee::cluster_shift) | ee::flag_steering);
+        build(&puff, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat, nullptr, nullptr, &d1);
+        expect(near(L1 / L0, 2.f) && near(I1 / I0, 1.25f) && near(out[0].local[2], .5f * V) && near(out[0].intensity[0], (1.2f + 2.8f * (.25f / 1.75f)) * .5f),
+               "travel weight 1: L x 2, I x 1.25 on a main jet; an RCS jet unchanged");
     }
     // ----------------------------------------------------------- the nozzle width setting
     {
@@ -525,6 +688,8 @@ int main() {
                near(c[10], 3.f) && near(c[11], .84f) && near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .529f) &&
                c[16] == .3f && c[17] == .8f && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f && default_look.ring == .3f,
                "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail; ring 0.3 after flight C; c4.x 1 / period)");
+        expect(pixel_constant_floats == 60 && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && c[58] == 0.f && c[59] == 0.f,
+               "the spill (gap 3): c16.zw glow_through 0.15, 1 / spill_depth 0.5; c17.xy inner 0.8, reach 1.0 nozzle widths");
         // c8..c15: the law at u_k = (k + 0.5) / 8 against an independent replica (std::exp / std::cos).
         auto ss = [](float e0, float e1, float x) { float q = (x - e0) / (e1 - e0); q = q < 0 ? 0 : q > 1 ? 1 : q; return q * q * (3 - 2 * q); };
         float worst = 0.f;
@@ -975,14 +1140,40 @@ class Wiring(unittest.TestCase):
         self.assertIn('f.seconds=engine_clock_.seconds;', source_text(ROOT / 'src/proxy/motion_output_engine_ribbons_inc.h'))
         # Review fixes (2026-10-03): the flow phase advances by the clock's step at a constant rate; the look carries the
         # configured nozzle width.
-        self.assertIn('engine_flow_.advance(engine_clock_.last_step,plumes_flow_rate_);engine_flow_.wrapped(&in.phase);'
+        # After the gap analysis (phases 2 and 3): the SETA read and the travel ramp before the flow, which advances x the
+        # travel look's flow; the accumulator, the travel weight, the steps and the attack memory handed to the pass.
+        self.assertIn('engine_seta_step(engine_clock_.last_step);const float travel_flow=1.f+(engine_plumes::travel_flow-1.f)*'
+                      'engine_travel_weight_;engine_flow_.advance(engine_clock_.last_step,plumes_flow_rate_*travel_flow);'
+                      'in.flow=engine_flow_.nozzle_widths;in.travel=engine_travel_weight_;in.step=float(engine_clock_.last_step);'
+                      'in.game_ms=float(engine_clock_.last_step*1000.)*seta_rate_;in.transients=engine_transients_.get();'
                       'in.look=&plumes_look_;', inc)
         self.assertLess(inc.index('engine_clock_.wrapped(&in.seconds);'), inc.index('engine_flow_.advance('))
         self.assertIn('engine_plumes::flow_rate(plumes_look_,&plumes_flow_rate_);', inc)
+        self.assertIn('const engine_effects::SetaStatus status=engine_effects::seta_read(&warp,&mult);++seta_reads_;', inc)
+        self.assertIn('}else if(!engine_plumes::seta_decode(warp,mult,&engaged,&seta_warp_,&seta_rate_)){++seta_invalid_;', inc)
+        self.assertIn('log("engine_seta device=%llu frame=%llu event=%s state=%s read=%s', inc)
+        self.assertIn('if(!log_tier::cached_debug||(!changed&&!status_changed))return;', inc)
+        self.assertIn('if(plumes_requested_&&!engine_transients_)engine_transients_.reset(new(std::nothrow)engine_plumes::Transients);', inc)
+        effects_module = source_text(ROOT / 'src/proxy/engine_effects.cpp')
+        self.assertIn('if(!identity_)return SetaStatus::identity;', effects_module)
+        self.assertIn('seta_site_state_=x3m::engine_memory::read(seta_site_,bytes,sizeof bytes)&&'
+                      '!std::memcmp(bytes,ep::expected_seta_site,sizeof bytes)?1:2;', effects_module)
+        self.assertIn('else if(!x3m::engine_memory::read(seta_slot_,&cfg,sizeof cfg)||!cfg)status=SetaStatus::pointer;'
+                      'else if(!x3m::engine_memory::read(std::uintptr_t(cfg)+ep::seta_warp_offset,pair,sizeof pair))'
+                      'status=SetaStatus::read;', effects_module)
+        self.assertIn('SetLastError(error);return status;', effects_module)
         passes = source_text(ROOT / 'src/renderer/engine_plumes_pass.cpp')
-        self.assertIn('float pixel[12+engine_plumes::pixel_constant_floats]={1.f/float(f.width),1.f/float(f.height),f.phase,0.f,', passes)
+        self.assertIn('float pixel[12+engine_plumes::pixel_constant_floats]={1.f/float(f.width),1.f/float(f.height),0.f,0.f,', passes)
+        self.assertIn('{0,72,D3DDECLTYPE_D3DCOLOR,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_COLOR,3},', passes)
+        ribbon_pass = source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp')
+        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel);', ribbon_pass)
         ps = (ROOT / 'src/effects/engine_plume_ps.hlsl').read_text()
-        self.assertIn(': float3((q.x - lane_sizes.z) * 1.6, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);', ps)
+        self.assertIn(': float3((q.x - phase) * 1.6, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);', ps)
+        self.assertIn('const float phase = i.shape.w;', ps)
+        self.assertIn('const bool disc = i.peak.w > 0.5;', ps)
+        self.assertIn('const float3 colour = lerp(lerp(i.peak.rgb, i.tint, smoothstep(0.3, 1.0, u)), white, heat);', ps)
+        self.assertIn('const float soft_halo = occluder ? valid * max(saturate(gap / max(look.y * i.shape.y, 1e-4)), spill) : 1.0;', ps)
+        self.assertIn('const float soft_body = occluder ? valid * saturate(gap / max(look.x * i.shape.y, 1e-4)) : 1.0;', ps)
         self.assertIn('saturate(2.0 * (look.z - dn))', ps)
         # After flight C (2026-10-03): the end-on disc's samples in c8..c15, the soft-maximum mouth, the cells ramped in,
         # the ship key read beside the own-ship tag.
@@ -1012,13 +1203,13 @@ class Wiring(unittest.TestCase):
         self.assertIn('const bool census_row=engine_census_&&(capture_||engine_row_frames_<engine_row_frame_cap)&&'
                       'engine_rows_<engine_row_cap;', effects_inc)
         self.assertIn('in.radii=engine_ring_->parent_radius;', inc)
-        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii);', passes)
+        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii,&dynamics);', passes)
         self.assertIn('floored=%u floor_unknown=%u', inc)
         self.assertIn('if(floor_scale>=engine_plumes::floor_min&&floor_scale<=engine_plumes::floor_max)plumes_look_.floor_scale=floor_scale;', inc)
         self.assertIn('verdict=%s radius=%.6g value_eff=%.6g', effects_inc)
         self.assertIn('engine_plumes::floored_value(plumes_look_,record,jet_radius,&value_eff);', effects_inc)
         self.assertNotIn('ShipFloor', source_text(ROOT / 'src/proxy/engine_plumes_core.h'))
-        self.assertIn('call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,pixel,17)', passes)
+        self.assertIn('call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,pixel,(12+engine_plumes::pixel_constant_floats)/4)', passes)
         self.assertIn('float4 mouth_k : register(c16);', ps)
         self.assertIn('if(!census_row){if(capture_||engine_row_frames_<engine_row_frame_cap)++engine_rows_more_;}else{',
                       source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
@@ -1066,6 +1257,26 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         self.assertTrue(all(x['lab_w_u01'] >= 1.05 and abs(x['half_width_u01_over_nozzle_half'] / x['expected_u01'] - 1) <= .06 and
                             abs(x['half_width_u09_over_nozzle_half'] / x['expected_u09'] - 1) <= .12 for x in r['report']['shape']))
         self.assertTrue(all(x['still_maxima'] >= 3 for x in r['report']['shock']))
+        # After the gap analysis (phases 2 and 3): the slots, the idle floor, the spill, the flow, the colour, the attack
+        # and the travel look at both sizes.
+        self.assertLessEqual(g['ps_slots'], 800)
+        self.assertTrue(r['report']['idle'] and all(x['L_over_value'] == .5 for x in r['report']['idle']))
+        self.assertEqual(len(r['report']['spill']), 3)  # 4ch at both sizes, R32F at 1920
+        self.assertTrue(all(abs(x['law_median'] - .15) <= .003 and x['law_max'] <= .1515 and x['law_beyond_max'] == 0 and
+                            x['guard_max'] == 0 for x in r['report']['spill']))
+        self.assertEqual(len(r['report']['flow']), 8)
+        self.assertTrue(all(abs(x['ratio'] - 1) <= .05 for x in r['report']['flow']))
+        self.assertTrue(all(abs(x['ratio'] - 1) <= .05 for x in r['report']['flow_same']))
+        self.assertTrue(len(r['report']['flow_lag']) == 4 and all(x['lag1'] >= .5 for x in r['report']['flow_lag']))
+        self.assertTrue(len(r['report']['colour']) == 12 and all(x['error'] <= .01 for x in r['report']['colour']))
+        attack = {(x['width'], x['kind']): x for x in r['report']['attack']}
+        self.assertEqual(len(attack), 6)
+        self.assertTrue(all(1.3 <= x['frame2'] <= 1.5 * 1.003 and x['back_ms'] <= 150 for k, x in attack.items() if k[1] != 'main'))
+        self.assertTrue(all(abs(x['frame2'] - 1) <= .003 for k, x in attack.items() if k[1] == 'main'))
+        self.assertTrue(len(r['report']['travel']) == 2 and all(
+            x['weight'] == 1 and abs(x['L_ratio'] - 2) < 1e-3 and abs(x['I_ratio'] - 1.25) < 1e-3 and abs(x['drawn_ratio'] - 2) <= .06 and
+            abs(x['peak_ratio'] - 1.25) <= .025 for x in r['report']['travel']))
+        self.assertTrue(all(x['mouth_over_body'] <= .85 for x in r['report']['mouth']))
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))

@@ -57,7 +57,7 @@ std::uint32_t vs3_program_slots() noexcept {
     copy[0] = ps3_version_token;
     return ps3_program_slots(copy, std::size(copy));
 }
-// The vertex layout of engine_plumes::Vertex (72 bytes).
+// The vertex layout of engine_plumes::Vertex (76 bytes).
 constexpr D3DVERTEXELEMENT9 elements[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
                                           {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
                                           {0, 28, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
@@ -65,10 +65,12 @@ constexpr D3DVERTEXELEMENT9 elements[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETH
                                           {0, 60, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
                                           {0, 64, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 1},
                                           {0, 68, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 2},
+                                          {0, 72, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 3},
                                           D3DDECL_END()};
 static_assert(offsetof(engine_plumes::Vertex, local) == 12 && offsetof(engine_plumes::Vertex, shape) == 28 &&
                   offsetof(engine_plumes::Vertex, intensity) == 44 && offsetof(engine_plumes::Vertex, tint) == 60 &&
-                  offsetof(engine_plumes::Vertex, params) == 64 && offsetof(engine_plumes::Vertex, fog) == 68,
+                  offsetof(engine_plumes::Vertex, params) == 64 && offsetof(engine_plumes::Vertex, fog) == 68 &&
+                  offsetof(engine_plumes::Vertex, peak) == 72,
               "the declaration follows the vertex");
 bool finite(float v) noexcept {
     return v == v && v <= 3.4e38f && v >= -3.4e38f;
@@ -220,7 +222,7 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     if (!f.width || !f.height || !f.lane || (f.record_count && !f.records) || !finite(f.view.m00) || !(f.view.m00 > 0.f) ||
         !finite(f.view.m11) || !(f.view.m11 > 0.f) || !finite(f.m20) || !finite(f.m21) || !finite(f.m22) ||
         !finite(f.m32) || !(f.view.near_z > 0.f) || !(f.view.height > 0.f) || !finite(f.seconds) ||
-        !finite(f.phase))
+        !(f.flow >= 0. && f.flow < 1e300) || !finite(f.travel) || !finite(f.step) || !finite(f.game_ms))
         return refuse(EnginePlumesStep::Validate, E_INVALIDARG);
     for (float v : f.view.rows)
         if (!finite(v)) return refuse(EnginePlumesStep::Validate, E_INVALIDARG);
@@ -250,10 +252,17 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
         engine_plumes::look_tables(look, &computed);
         tables = &computed;
     }
+    // The frame's flow accumulator, travel weight and attack memory (the memory begins its frame inside build()).
+    engine_plumes::Dynamics dynamics;
+    dynamics.flow = f.flow;
+    dynamics.travel = f.travel;
+    dynamics.game_ms = f.game_ms;
+    dynamics.transients = f.transients;
+    dynamics.step = f.step;
     const unsigned nozzles = engine_plumes::build(f.records, f.record_count, f.body, f.view, f.preset, f.seconds,
                                                   static_cast<engine_plumes::Vertex*>(mapping), capacity, &r.stats,
                                                   f.filter.camera && f.filter.scene ? &f.filter : nullptr, &look, tables,
-                                                  f.radii);
+                                                  f.radii, &dynamics);
     hr = vb_->Unlock();
     if (FAILED(hr)) return refuse(EnginePlumesStep::Lock, hr);
     if (!nozzles) return finish(S_FALSE); // nothing drawable: no render state touched
@@ -266,15 +275,17 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     };
     const float projection[4] = {f.view.m00, f.view.m11, f.m20, f.m21};
     const float limits[4] = {f.view.near_z, 0.f, 0.f, 0.f};
-    // c0 sizes and the flow phase, c1 the lane's form, c2 the lane terms and the clock, c3..c16 the look
-    // (engine_plumes_core.h Look, the end-on disc's samples in c8..c15, the mouth ramp in c16): one call for the
-    // seventeen registers.
-    float pixel[12 + engine_plumes::pixel_constant_floats] = {1.f / float(f.width), 1.f / float(f.height), f.phase, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
+    // c0 sizes, c1 the lane's form, c2 the lane terms and the clock, c3..c17 the look (engine_plumes_core.h Look, the
+    // end-on disc's samples in c8..c15, the mouth ramp and the nozzle spill in c16..c17): one call for the eighteen
+    // registers. The flow phase is per nozzle, in the vertex.
+    float pixel[12 + engine_plumes::pixel_constant_floats] = {1.f / float(f.width), 1.f / float(f.height), 0.f, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
                        engine_plumes::soft_core, engine_plumes::soft_halo, engine_plumes::halo_reach, f.seconds};
+    static_assert((12 + engine_plumes::pixel_constant_floats) % 4 == 0, "whole registers");
     engine_plumes::pixel_constants(look, *tables, pixel + 12);
     step(EnginePlumesStep::State, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 0, projection, 1));
     step(EnginePlumesStep::State, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 1, limits, 1));
-    step(EnginePlumesStep::State, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, pixel, 17));
+    step(EnginePlumesStep::State, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, pixel,
+                                                                                   (12 + engine_plumes::pixel_constant_floats) / 4));
     step(EnginePlumesStep::State, call<SetTextureFn>(SetTexture)(d, 0, f.lane));
     for (auto s : {std::pair{D3DSAMP_MINFILTER, DWORD(D3DTEXF_POINT)}, std::pair{D3DSAMP_MAGFILTER, DWORD(D3DTEXF_POINT)},
                    std::pair{D3DSAMP_MIPFILTER, DWORD(D3DTEXF_NONE)}, std::pair{D3DSAMP_ADDRESSU, DWORD(D3DTADDRESS_CLAMP)},

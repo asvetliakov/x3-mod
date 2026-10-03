@@ -20,7 +20,8 @@
 //   look's and the motes' scale, fog-dust-motes.md; L the ribbon's target length, so the 16 samples always cover it).
 //   A frame's displacement never enters except through that distance, so SETA advances the samples and stretches
 //   nothing.
-// - Length: L = T(value) x preset x v_est x s, T 0.5 s below value 2,000, 0.8 s to 20,000, 1.2 s above; v_est is the
+// - Length: L = T(value) x preset x v_est x s (T x up to travel_trail under SETA, the plumes' travel weight), T 0.5 s
+//   below value 2,000, 0.8 s to 20,000, 1.2 s above; v_est is the
 //   path length from the nozzle back through the samples of the last 0.1 s or more (never across a gap of more than
 //   0.25 s between samples, the newest sample always) over their age.
 // - Lifetime: a ribbon whose record is missing fades out over 0.3 s at its last positions, then is evicted; every
@@ -76,9 +77,7 @@ inline void trail_seconds(float value, float* out) noexcept {
 }
 // The identity: bit 63 set for a node serial, clear for node handle + model (never 0: 0 marks a free map slot).
 inline std::uint64_t record_key(const ee::Record& r) noexcept {
-    if ((r.flags & ee::flag_serial) && r.serial) return r.serial | (std::uint64_t(1) << 63);
-    const std::uint64_t k = (std::uint64_t(r.model & 0x7fffffffu) << 32) | r.node_handle;
-    return k ? k : 1u;
+    return ep::identity_key(r); // the plumes' attack memory keys the same way
 }
 inline unsigned key_slot(std::uint64_t key) noexcept {
     return ep::hash32(std::uint32_t(key) ^ ep::hash32(std::uint32_t(key >> 32))) & (map_slots - 1);
@@ -212,13 +211,15 @@ inline void estimate_speed(const Ribbon& r, const float head[3], float now, floa
 // `load_epoch` the object_lifetime load epoch (0 when unknown: never a change), `preset_scale` 0.6 / 1 / 1.5 on T,
 // `filter` (null: every record) the plumes' scene-view filter: a record of another view takes no ribbon; `look` (null:
 // default_look) and `radii` (null: no floor) the plumes' look and ship radii, for the plume's nozzle width (the
-// distance law's input).
+// distance law's input); `travel` the plumes' SETA travel weight (0..1): T x (1 + (travel_trail - 1) travel), gap 7.
 using BodyLookup = ep::BodyLookup;
 inline void update(Pool& pool, const ee::Record* records, unsigned count, double now_seconds, bool cut,
                    std::uint64_t load_epoch, BodyLookup body, float preset_scale, UpdateStats* stats,
                    const ep::ViewFilter* filter = nullptr, const ep::Look* look = nullptr,
-                   const float* radii = nullptr) noexcept {
+                   const float* radii = nullptr, float travel = 0.f) noexcept {
     const ep::Look& k = look ? *look : ep::default_look;
+    travel = travel > 0.f ? (travel < 1.f ? travel : 1.f) : 0.f;
+    const float trail_scale = preset_scale * (1.f + (ep::travel_trail - 1.f) * travel);
     UpdateStats local{};
     UpdateStats& st = stats ? *stats : local;
     st = UpdateStats{};
@@ -341,7 +342,7 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         estimate_speed(r, rec.origin, now, &speed);
         float t = 0.f;
         trail_seconds(value, &t);
-        const float length = t * preset_scale * speed * r.throttle;
+        const float length = t * trail_scale * speed * r.throttle;
         float spacing = spacing_value * value;
         spacing = spacing > min_spacing ? spacing : min_spacing;
         spacing = length / float(samples_per_ribbon - 1) > spacing ? length / float(samples_per_ribbon - 1) : spacing;

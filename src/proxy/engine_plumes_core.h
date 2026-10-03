@@ -16,8 +16,8 @@
 // Look below), drawn analytically by src/effects/engine_plume_ps.hlsl:
 // - the axial billboard: it contains the plume axis (record.axis = -(model z), the side the glow mesh extends to) and
 //   is turned about that axis to face the camera; local (x along the axis from the nozzle, y across) in world units,
-//   the nozzle width n = Look::nozzle_width x value (X3M_ENGINE_PLUME_NOZZLE, default 0.5), the length L = z x value x
-//   the length pulse (a per-nozzle value noise of the stage's clock, 1 +- Look::pulse, evaluated once per seed byte and
+//   the nozzle width n = Look::nozzle_width x value (X3M_ENGINE_PLUME_NOZZLE, default 0.5), the length L = max(z,
+//   idle_length) x value x the length pulse (a per-nozzle value noise of the stage's clock, 1 +- Look::pulse, evaluated once per seed byte and
 //   frame). The quad is a trapezoid, linear in x, that encloses the body (its edge, eroded outwards by up to 0.48 erode
 //   of the local width, through the linear upper bound of the width profile, the cylinder-to-cone line), the halo's
 //   window (halo_reach x the nozzle's halo sigma, constant along the plume as in the mock-up) and the nozzle ring, plus
@@ -44,9 +44,15 @@
 // clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the
 // clamp, the end-on disc's no lower than 0.6 (any plume that close; the own ship's in chase view only when its body is,
 // after the review of flight C).
-// Flow: the noise field translates along the axis by a phase in nozzle widths accumulated on the CPU once per frame
-// (FlowPhase at flow_rate: the mock-up's speed at s = 1 without the pulse), so it moves at one speed whatever the
-// pulsed, throttle-dependent L.
+// Flow: the noise field translates along the axis by a phase in nozzle widths: the frame's accumulator (FlowPhase at
+// flow_rate, the mock-up's speed at s = 1 without the pulse, x the travel look's flow) x the nozzle's flow_factor
+// (flow_reference / value in [flow_slow, 1]: the same world speed from value 500 up, capitals crawl at 0.3; gap 4 of
+// docs/architecture/engine-exhaust-gap-analysis.md), per vertex (shape.w), so it moves at one speed whatever the pulsed,
+// throttle-dependent L.
+// After the gap analysis (phase 2 and 3): a main jet's length is at least idle_length value (gap 10); the body's colour
+// runs from the head colour (the peak colour at the mean's luminance) to the mean (gap 5); the halo spills through the
+// lane around the nozzle (gap 3, the pixel program); a steering or brake body's rising z adds a decaying attack to its
+// radiance (gap 6, Transients); under SETA the travel weight lengthens and brightens the main jets (gap 7, TravelRamp).
 // Occlusion depth (the pixel program): the nearest axis point's view depth, the nozzle's view z (intensity[3]) plus
 // the axis's view z component (intensity[2]) x local u clamped to [0, L] (exact anywhere on the billboard, whose side
 // vector has a view z component off-centre), pulled towards the camera by 0.5 value x max(0, axis . to_camera); the
@@ -189,6 +195,18 @@ struct Look {
     // the radiance of a plume whose projected nozzle width is under far_px_full scales by far_low + (1 - far_low) x
     // smoothstep(far_px_min, far_px_full, px) (distance_weight), so far ships read as faint sparks.
     float far_px_min = 2.f, far_px_full = 12.f, far_low = .15f;
+    // Phase 2 of the gap analysis (docs/architecture/engine-exhaust-gap-analysis.md, gaps 4, 5, 3, 10).
+    // Gap 4, the flow in world units: a nozzle of value flow_reference keeps flow_rate (2.625 nozzle widths per second at
+    // the default nozzle), a larger one scrolls flow_reference / value of it, at least flow_slow, a smaller one never
+    // faster (flow_factor): the same world speed from value 500 to 1,667, capitals crawl at 0.3, never freeze.
+    float flow_reference = 500.f; // record units
+    float flow_slow = .3f;
+    // Gap 10, the idle floor: a main jet's length is max(z, idle_length) x value (z 0.25 at idle gave 0.25 value).
+    float idle_length = .5f;
+    // Gap 3, the nozzle spill: the halo's lane visibility is at least glow_through within spill_inner nozzle widths of
+    // the nozzle (the screen-plane distance), tapering to 0 at spill_reach, for an occluder at most spill_depth x value
+    // in front of the nozzle's depth (its own hull, not a ship passing in front); the body and the ring unchanged.
+    float glow_through = .15f, spill_inner = .8f, spill_reach = 1.f, spill_depth = 2.f;
 };
 constexpr Look default_look{};
 constexpr float soft_core = .15f, soft_halo = 1.f; // SOFT x value (the pixel program's lane terms: body and ring, halo)
@@ -202,7 +220,26 @@ constexpr float chase_disc_floor = .6f;     // the end-on disc's radiance under 
 constexpr float min_nozzle_px = 2.f, min_length_px = 4.f, cull_px = 1.5f; // the dot floor (after flight E: 3 / 6)
 constexpr float steering_min_z = .02f;
 constexpr float clock_wrap = 1024.f;        // seconds: the pixel program's clock wraps (float precision of the noise)
-constexpr double phase_wrap = 4096.;        // nozzle widths: the flow phase wraps (one discontinuity of the noise per wrap)
+constexpr double phase_wrap = 4096.;        // nozzle widths: a nozzle's flow phase wraps (one discontinuity of its noise per
+                                            // wrap, at least every 26 minutes)
+constexpr double flow_wrap = 1099511627776.; // 2^40 nozzle widths: the frame's flow accumulator (never in practice)
+// Gap 5, two-tone colour: the head colour is the body's peak colour scaled to the mean's luminance (Rec. 709 weights)
+// when it is brighter, so the plume gets whiter at the head, not brighter (the table's peak is the whiter colour at
+// 1.0-3.6x the mean's luminance by cluster: verification/results/engine-effects/plume_two_tone_colours.py).
+constexpr float luma_r = .2126f, luma_g = .7152f, luma_b = .0722f;
+// Gap 6, the RCS puff attack and retro flare: a steering or brake body whose z rises gains radiance x (1 + attack_gain x
+// saturate(dz / (attack_rate x dt))), dt in game ms (wall x the SETA rate), decaying linearly to 1 over attack_decay
+// seconds; no shape change; main jets unaffected. The memory: transient_slots per-nozzle last z keyed by the record's
+// identity (the ribbon pool's map shape), transient_probe slots probed, a slot unseen for transient_hold free.
+constexpr float attack_gain = .5f, attack_rate = .004f, attack_decay = .12f; // -, z per game ms, seconds
+constexpr unsigned transient_slots = 512, transient_probe = 8;
+constexpr float transient_hold = .5f;       // seconds
+// Gap 7, the travel look under SETA (docs/reverse-engineering/engine-effects.md section 8): with the requested warp above
+// 1.0 the travel weight ramps 0 -> 1 over travel_rise seconds (smoothstep), and back over the same after the warp has
+// been 1.0 for travel_hold seconds; at weight 1 a main jet's L x travel_length, its radiance x travel_radiance, the
+// ribbons' T x travel_trail, the flow x travel_flow. The ramp's step is held to travel_max_step (a stall).
+constexpr float travel_length = 2.f, travel_radiance = 1.25f, travel_trail = 2.f, travel_flow = 1.5f;
+constexpr float travel_rise = .5f, travel_hold = .3f, travel_max_step = .1f; // seconds
 constexpr float nozzle_min = .1f, nozzle_max = 1.f; // X3M_ENGINE_PLUME_NOZZLE's accepted range (x value)
 constexpr float floor_min = 0.f, floor_max = 3.f;   // X3M_ENGINE_PLUME_FLOOR's accepted range (x the k(R) curve)
 constexpr unsigned max_nozzles = ee::ring_capacity; // 1,024: one ring
@@ -332,9 +369,10 @@ inline void peak_axis_at(const LookTables& t, float s, float* out) noexcept {
     const float f = x - float(j);
     *out = 1.6f * (t.axis_peak[j] + (t.axis_peak[j + 1] - t.axis_peak[j]) * f);
 }
-// The pixel program's look constants c3..c16 (engine_plume_ps.hlsl), 56 floats (the flow is the frame's phase in c0.z,
-// the halo's sigma the nozzle's): c3..c7 the law, c8..c15 the disc's samples, c16 the mouth ramp (dip, end, 0, 0).
-constexpr unsigned pixel_constant_floats = 56;
+// The pixel program's look constants c3..c17 (engine_plume_ps.hlsl), 60 floats (the flow phase is the nozzle's, in the
+// vertex; the halo's sigma the nozzle's): c3..c7 the law, c8..c15 the disc's samples, c16 the mouth ramp (dip, end) and
+// the spill's glow_through and 1 / (spill_depth), c17 the spill's inner and outer reach (nozzle widths), 0, 0.
+constexpr unsigned pixel_constant_floats = 60;
 // `t` look_tables(k), computed once where the look is fixed (the proxy at load: MotionOutput::plumes_tables_).
 inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_constant_floats]) noexcept {
     const float c[20] = {.5f * k.bulge, (.04f - .5f * k.bulge) * k.taper, .5f * k.bulge * k.taper, k.tail_narrowing * k.taper,
@@ -347,7 +385,11 @@ inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_
         for (unsigned j = 0; j < 4; ++j) out[20 + i * 4 + j] = t.disc[i][j];
     out[52] = k.mouth_dip;
     out[53] = k.mouth_ramp > 1e-3f ? k.mouth_ramp : 1e-3f;
-    out[54] = out[55] = 0.f;
+    out[54] = k.glow_through > 0.f ? (k.glow_through < 1.f ? k.glow_through : 1.f) : 0.f;
+    out[55] = k.spill_depth > 1e-3f ? 1.f / k.spill_depth : 1e3f;
+    out[56] = k.spill_inner;
+    out[57] = k.spill_reach > k.spill_inner + 1e-3f ? k.spill_reach : k.spill_inner + 1e-3f;
+    out[58] = out[59] = 0.f;
 }
 inline void pixel_constants(const Look& k, float out[pixel_constant_floats]) noexcept {
     LookTables t;
@@ -361,17 +403,31 @@ inline void flow_rate(const Look& k, float* out) noexcept {
     const float L1 = k.nozzle_width > 0.f ? 2.f / k.nozzle_width : 0.f;
     *out = .35f * k.flow * L1 / 1.6f;
 }
-// The flow phase (nozzle widths): advanced once per frame by the stage clock's step x flow_rate, wrapped at phase_wrap;
-// the pixel program translates the noise field along the axis by it (c0.z).
+// The frame's flow accumulator (flow_rate's nozzle widths, unwrapped in double): advanced once per frame by the stage
+// clock's step x flow_rate (x the travel look's flow factor); each nozzle's phase is it x flow_factor (nozzle_phase).
 struct FlowPhase {
     double nozzle_widths = 0.;
     void advance(double dt, float rate) noexcept {
         if (!(dt > 0.) || !(dt < 1e9) || !(rate > 0.f) || !(rate < 1e6f)) return;
         nozzle_widths += dt * double(rate);
-        if (nozzle_widths >= phase_wrap) nozzle_widths -= phase_wrap * x3m::scalar::floor(nozzle_widths / phase_wrap);
+        if (nozzle_widths >= flow_wrap) nozzle_widths -= flow_wrap * x3m::scalar::floor(nozzle_widths / flow_wrap);
     }
-    void wrapped(float* out) const noexcept { *out = float(nozzle_widths); }
 };
+// Gap 4: a nozzle's share of the frame's flow, flow_reference / value clamped to [flow_slow, 1] (value: the plume's own,
+// floored, before the near-camera cap; 1 for a non-positive or non-finite one).
+inline void flow_factor(const Look& k, float value, float* out) noexcept {
+    float f = value > 0.f && value < 3.4e38f ? k.flow_reference / value : 1.f;
+    const float slow = k.flow_slow > 0.f && k.flow_slow < 1.f ? k.flow_slow : 1.f;
+    *out = !(f < 1.f) ? 1.f : f < slow ? slow : f;
+}
+// The nozzle's flow phase in its nozzle widths, wrapped at phase_wrap: flow x factor in double, so the pixel program's
+// float keeps 4096 / 2^23 nozzle widths of precision whatever the session's length.
+inline void nozzle_phase(double flow, float factor, float* out) noexcept {
+    double p = flow * double(factor);
+    if (!(p >= 0.) || !(p < 4e12)) p = 0.; // scalar::floor needs p / phase_wrap < 2^31
+    p -= phase_wrap * x3m::scalar::floor(p / phase_wrap);
+    *out = float(p);
+}
 // X3M_ENGINE_PLUME_NOZZLE / X3M_ENGINE_PLUME_FLOOR: the whole text one plain decimal number (digits with at most one
 // point; no sign, exponent or padding) in [low, high]; anything else is refused (the caller keeps the default_look
 // value). `n` characters of narrow or wide text.
@@ -413,21 +469,23 @@ inline const float* cluster_tint(unsigned cluster) noexcept {
     return tints[cluster < ee::cluster_count ? cluster : ee::default_cluster];
 }
 
-// One vertex of the stage's VB: 72 bytes (FLOAT3, 3 x FLOAT4, 3 x D3DCOLOR).
+// One vertex of the stage's VB: 76 bytes (FLOAT3, 3 x FLOAT4, 4 x D3DCOLOR).
 struct Vertex {
     float position[3];  // view space (x right, y up, z forward), before the jittered projection
     float local[4];     // x, y (world units), L (pulsed, world; the disc: the ring's radiance), the nozzle width n (world)
     float shape[4];     // halo sigma at the nozzle (nozzle widths, x the preset), value (the SOFT base), occlusion bias
-                        // (view units), kind (0 axial, 1 disc)
+                        // (view units), the nozzle's flow phase (nozzle widths, nozzle_phase; gap 4)
     float intensity[4]; // axial: I_core, I_halo (x weights), the axis's view z component; disc: the integrated body's
                         // radiance per unit of the mean profile, the halo's, the soft cap (x the disc's weight); the
                         // nozzle's view z
-    std::uint32_t tint;   // 0xAARRGGBB of the mean colour, largest channel 255
+    std::uint32_t tint;   // 0xAARRGGBB of the mean colour (the tail's, the halo's and the ring's), largest channel 255
     std::uint32_t params; // 0xAARRGGBB: R the throttle s, G the noise seed, B I_ring / I_core / 2, A the disc's weight
     std::uint32_t fog;    // 0xAARRGGBB of the fog transmittance per channel (white without fog): the white-hot core's
                           // and the ring's colours take it (the tint carries it already); A sin(view) = sqrt(1 - f^2)
+    std::uint32_t peak;   // 0xAARRGGBB: RGB the head colour (gap 5: the body's peak at the mean's luminance, head_colour,
+                          // with the fog); A the kind (0 axial, 255 disc)
 };
-static_assert(sizeof(Vertex) == 72, "the stage's vertex stride");
+static_assert(sizeof(Vertex) == 76, "the stage's vertex stride");
 
 // The camera of the frame: world -> view rows (view_j = dot(p, rows[j].xyz) + rows[j].w), the projection's scale terms
 // (the jitter terms move, they do not size) and the target height.
@@ -443,6 +501,8 @@ struct BuildStats {
     unsigned floored = 0;       // main jets raised to k(R) x their ship's radius
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
     unsigned far_nozzles = 0;   // nozzles drawn under Look::far_px_full (the distance law scaled their radiance)
+    unsigned attacks = 0;       // steering or brake records under an attack (gap 6), drawn or not
+    unsigned transient_overflow = 0; // steering or brake records without an attack slot
     unsigned culled_rows = 0, culled_behind = 0, culled_small = 0, culled_idle = 0, culled_capacity = 0;
     unsigned fogged = 0;        // nozzles whose colours took the fog transmittance (phase 3)
     float fog_min = 1.f;        // the smallest channel transmittance applied this frame
@@ -509,6 +569,13 @@ inline void record_tint(const ee::Record& r, const ee::Body* body, float mean[3]
     }
     const float* t = cluster_tint(unsigned(r.flags >> ee::cluster_shift) & 15u);
     for (unsigned i = 0; i < 3; ++i) mean[i] = peak[i] = t[i];
+}
+// Gap 5: the plume's head colour, the peak colour scaled down to the mean's luminance when it is brighter (never up).
+inline void head_colour(const float mean[3], const float peak[3], float out[3]) noexcept {
+    const float lm = luma_r * mean[0] + luma_g * mean[1] + luma_b * mean[2];
+    const float lp = luma_r * peak[0] + luma_g * peak[1] + luma_b * peak[2];
+    const float k = lp > lm && lp > 0.f ? lm / lp : 1.f;
+    for (unsigned i = 0; i < 3; ++i) out[i] = peak[i] * k;
 }
 inline std::uint32_t pack_colour(const float c[3]) noexcept {
     std::uint32_t out = 0xff000000u;
@@ -634,6 +701,156 @@ struct StageClock {
     }
 };
 
+// --------------------------------------------------------------------------- transients (gap 6)
+// A record's identity across frames: bit 63 set for the object_lifetime node serial, clear for node handle + model
+// (never 0: 0 marks a free slot). The ribbon pool keys its map the same way (engine_ribbons_core.h record_key).
+inline std::uint64_t identity_key(const ee::Record& r) noexcept {
+    if ((r.flags & ee::flag_serial) && r.serial) return r.serial | (std::uint64_t(1) << 63);
+    const std::uint64_t k = (std::uint64_t(r.model & 0x7fffffffu) << 32) | r.node_handle;
+    return k ? k : 1u;
+}
+// The RCS puff attack and retro flare's memory: per steering or brake nozzle the last z and the attack's envelope,
+// transient_slots slots probed transient_probe from the key's home (no deletion: a slot unseen for transient_hold is
+// free and the first free one in the window takes a new key; a full window draws the nozzle without attack and counts
+// overflow). begin() once per frame with the stage clock's step; attack() per steering or brake record (before the idle
+// cull, so a puff rising from z 0.01 is seen). Render thread only. 24 bytes a slot, 12 KB.
+struct Transients {
+    struct Slot {
+        std::uint64_t key = 0;
+        float z = 0.f;
+        float boost = 0.f;      // the envelope's height at the attack (0..attack_gain)
+        float attack_age = 1e9f; // seconds since the attack
+        float idle = 1e9f;       // seconds since the slot's key was last seen
+    };
+    Slot slots[transient_slots];
+    std::uint32_t frame = 0;     // begin() count (a key seen twice in a frame keeps its first result)
+    float step = 0.f;            // this frame's step, seconds
+    unsigned overflow = 0;       // this frame's records without a slot
+    void clear() noexcept {
+        for (auto& s : slots) s = Slot{};
+        step = 0.f;
+        overflow = 0;
+    }
+    // A frame: every slot ages by `seconds` (the stage clock's step; non-finite or negative: 0).
+    void begin(float seconds) noexcept {
+        step = seconds > 0.f && seconds < 1e6f ? seconds : 0.f;
+        ++frame;
+        overflow = 0;
+        for (auto& s : slots) {
+            if (!s.key) continue;
+            s.idle += step;
+            s.attack_age += step;
+            if (s.idle > transient_hold) s.key = 0;
+        }
+    }
+    // The radiance factor 1 + boost x (1 - age / attack_decay) of the record of identity `key` at `z`; `game_ms` this
+    // frame's step in game milliseconds (0: no attack, z still remembered). A new key starts at its own z (no attack).
+    void attack(std::uint64_t key, float z, float game_ms, float* factor) noexcept {
+        *factor = 1.f;
+        if (!key || !ee::finite_f(z)) return;
+        const unsigned home = unsigned(std::uint32_t(key) ^ std::uint32_t(key >> 32)) * 0x9e3779b1u >> 23; // 9 bits
+        Slot* found = nullptr;
+        Slot* free_slot = nullptr;
+        for (unsigned p = 0; p < transient_probe; ++p) {
+            Slot& s = slots[(home + p) & (transient_slots - 1u)];
+            if (s.key == key) {
+                found = &s;
+                break;
+            }
+            if (!s.key && !free_slot) free_slot = &s;
+        }
+        if (!found) {
+            if (!free_slot) {
+                ++overflow;
+                return;
+            }
+            *free_slot = Slot{};
+            free_slot->key = key;
+            free_slot->z = z;
+            free_slot->idle = 0.f;
+            return;
+        }
+        Slot& s = *found;
+        if (s.idle > 0.f || step <= 0.f) { // the first sight this frame (or a frame without a step): update
+            const float dz = z - s.z;
+            if (dz > 0.f && game_ms > 0.f) {
+                float rise = dz / (attack_rate * game_ms);
+                rise = rise > 1.f ? 1.f : rise;
+                float current = s.attack_age < attack_decay ? s.boost * (1.f - s.attack_age / attack_decay) : 0.f;
+                const float fresh = attack_gain * rise;
+                if (fresh >= current) {
+                    s.boost = fresh;
+                    s.attack_age = 0.f;
+                }
+            }
+            s.z = z;
+            s.idle = 0.f;
+        }
+        if (s.attack_age < attack_decay) *factor = 1.f + s.boost * (1.f - s.attack_age / attack_decay);
+    }
+};
+
+// --------------------------------------------------------------------------- SETA (gap 7)
+// The SETA factor's two dwords as read (docs/reverse-engineering/engine-effects.md section 8: cfg+0xcc the requested
+// warp, cfg+0xd0 the load governor's multiplier, both 16.16): accepted only with 0 < warp <= 0x640000 and
+// 0x4ccc <= mult <= 0x10000, else 1.0 (fail closed). `engaged`: warp > 0x10000 (SETA on); `rate`: the effective game-time
+// rate ((warp x mult + 0x8000) >> 16) / 65536.
+constexpr std::uint32_t seta_one = 0x10000u, seta_warp_max = 0x640000u, seta_mult_min = 0x4cccu;
+// The read (engine_effects.cpp seta_read): cfg = *(u32*)seta_slot_va (identity anchor 0x00401c19 in
+// executable_identity.h), then one bounded 8-byte read at cfg + seta_warp_offset (warp, then mult at +0xd0). The two
+// offsets are bound once by the whole-instruction compare of the tick's reads at seta_site_va: `mov edx,[ecx+0xd0]`,
+// `mov eax,[ecx+0xcc]` (verification/results/engine-effects/seta_frame_step.py rows 0x004d1ef0 / 0x004d1ef6).
+constexpr std::uintptr_t seta_slot_va = 0x00606f34, seta_site_va = 0x004d1ef0;
+constexpr std::uint32_t seta_warp_offset = 0xcc;
+constexpr unsigned seta_site_length = 12;
+constexpr unsigned char expected_seta_site[seta_site_length] = {0x8b, 0x91, 0xd0, 0x00, 0x00, 0x00,
+                                                                0x8b, 0x81, 0xcc, 0x00, 0x00, 0x00};
+static_assert(seta_warp_offset + 4 == 0xd0, "warp and mult are adjacent dwords");
+inline bool seta_decode(std::uint32_t warp, std::uint32_t mult, bool* engaged, float* requested, float* rate) noexcept {
+    *engaged = false;
+    *requested = *rate = 1.f;
+    if (!warp || warp > seta_warp_max || mult < seta_mult_min || mult > seta_one) return false;
+    const std::uint64_t effective = (std::uint64_t(warp) * mult + 0x8000u) >> 16;
+    *engaged = warp > seta_one;
+    *requested = float(double(warp) / 65536.);
+    *rate = float(double(effective) / 65536.);
+    return true;
+}
+// The travel ramp: engaged at once on a SETA frame, released after travel_hold seconds without one; the weight runs
+// 0 -> 1 over travel_rise seconds while engaged and back while released. A step is held to travel_max_step, so a stall
+// neither completes a ramp nor releases the hold by itself. step() returns true when `engaged` changed (one log row).
+struct TravelRamp {
+    bool engaged = false;
+    float linear = 0.f;   // 0..1
+    float released = 0.f; // seconds without SETA while engaged
+    bool step(bool seta, float seconds) noexcept {
+        float dt = seconds > 0.f && seconds < 1e6f ? seconds : 0.f;
+        dt = dt < travel_max_step ? dt : travel_max_step;
+        const bool was = engaged;
+        if (seta) {
+            engaged = true;
+            released = 0.f;
+        } else if (engaged) {
+            released += dt;
+            if (released >= travel_hold) engaged = false;
+        }
+        linear += (engaged ? dt : -dt) / travel_rise;
+        linear = linear < 0.f ? 0.f : linear > 1.f ? 1.f : linear;
+        return engaged != was;
+    }
+    // The applied weight, smoothstep of the linear ramp.
+    void weight(float* out) const noexcept { *out = linear * linear * (3.f - 2.f * linear); }
+};
+
+// The frame's time-dependent inputs of build() (null: flow 0, no travel, no attack).
+struct Dynamics {
+    double flow = 0.;                 // FlowPhase::nozzle_widths (flow_rate's nozzle widths, unwrapped)
+    float travel = 0.f;               // TravelRamp::weight, 0..1
+    float game_ms = 0.f;              // this frame's step in game milliseconds (the attack's normalisation)
+    Transients* transients = nullptr; // the attack memory (null: none); build() calls begin(step) once
+    float step = 0.f;                 // this frame's step, seconds (the stage clock's)
+};
+
 namespace detail {
 inline void to_view(const View& v, const float p[3], float out[3]) noexcept {
     for (unsigned j = 0; j < 3; ++j)
@@ -689,16 +906,26 @@ inline void facing_weights(const Look& k, float facing_abs, float* disc, float* 
 
 // One nozzle's eight vertices. False: not drawn (stats says why). `tables` look_tables(look); `seconds` the stage's
 // clock (the length pulse); `floor_value` the plume floor for this record (0: none; build()), raising the value of
-// the plume's size and length, never its position; `pulses` (null: evaluated here) the frame's pulse per seed byte.
+// the plume's size and length, never its position; `pulses` (null: evaluated here) the frame's pulse per seed byte;
+// `dynamics` (null: none) the frame's flow accumulator, travel weight and attack memory (begun by the caller).
 inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& view, const Look& look,
                          const LookTables& tables, float scale, float seconds, float floor_value, Vertex* out,
-                         BuildStats* stats, PulseCache* pulses = nullptr) noexcept {
+                         BuildStats* stats, PulseCache* pulses = nullptr, const Dynamics* dynamics = nullptr) noexcept {
     if ((r.flags & ee::flag_rows_unknown) || !detail::finite3(r.origin) || !detail::finite3(r.axis) ||
         !ee::finite_f(r.size) || !(r.size > 0.f) || !ee::finite_f(r.z) || !ee::finite_f(r.s)) {
         ++stats->culled_rows;
         return false;
     }
     const bool steering = (r.flags & ee::flag_steering) != 0;
+    // Gap 6: a steering or brake body's attack, remembered before the idle cull (a puff rises from z 0.01).
+    float attack = 1.f;
+    if ((steering || (r.flags & ee::flag_brake)) && dynamics && dynamics->transients) {
+        dynamics->transients->attack(identity_key(r), r.z, dynamics->game_ms, &attack);
+        if (attack > 1.f) ++stats->attacks;
+    }
+    // Gap 7: the travel weight on the main jets (not RCS).
+    float travel = 0.f;
+    if (dynamics && !steering && dynamics->travel > 0.f) travel = dynamics->travel < 1.f ? dynamics->travel : 1.f;
     if (steering && r.z < steering_min_z) {
         ++stats->culled_idle;
         return false;
@@ -720,7 +947,17 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         pulses->get(look, seed, seconds, &pulse);
     else
         length_pulse(look, seed, seconds, &pulse);
-    float L = (r.z > 0.f ? r.z : 0.f) * value * pulse;
+    // The length: z value x the pulse, a main jet's z at least idle_length (gap 10), x the travel look's length (gap 7).
+    float zl = r.z > 0.f ? r.z : 0.f;
+    if (!steering && zl < look.idle_length) zl = look.idle_length;
+    float L = zl * value * pulse * (1.f + (travel_length - 1.f) * travel);
+    // Gap 4: the nozzle's flow phase from its own value (floored, before the near-camera cap).
+    float flow_phase = 0.f;
+    if (dynamics) {
+        float factor = 1.f;
+        flow_factor(look, value, &factor);
+        nozzle_phase(dynamics->flow, factor, &flow_phase);
+    }
     // The quad's reach in nozzle widths: over the width line the body's eroded edge (1 + 0.48 erode of the local
     // width), at the nozzle at least the ring (its radius plus three of its sigmas); the halo window's reach
     // (halo_reach x sigma0, the nozzle's sigma, constant along the plume) everywhere. `extent` the widest of them at the
@@ -790,7 +1027,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // Radiance: I(s) x preset, the RCS weight z, the chase fade, the distance law; the halo and the ring relative to it
     // (the disc's terms all follow i_core and i_halo).
     const float s = r.s < 0.f ? 0.f : r.s > 1.f ? 1.f : r.s;
-    float weight = near_weight * far_weight;
+    float weight = near_weight * far_weight * attack * (1.f + (travel_radiance - 1.f) * travel);
     if (steering) weight *= r.z < 1.f ? r.z : 1.f;
     const float level = look.core_low + (look.core_high - look.core_low) * s;
     const float i_core = level * scale * weight;
@@ -801,17 +1038,20 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     float ring = look.core_high > 0.f ? look.ring / look.core_high * .5f : 0.f;
     ring = ring < 0.f ? 0.f : ring > 1.f ? 1.f : ring;
     std::uint32_t params = (std::uint32_t(int(s * 255.f + .5f)) << 16) | (seed << 8) | std::uint32_t(int(ring * 255.f + .5f));
-    float mean[3], peak[3], transmittance[3] = {1.f, 1.f, 1.f};
+    float mean[3], peak[3], head[3], transmittance[3] = {1.f, 1.f, 1.f};
     record_tint(r, body, mean, peak);
+    head_colour(mean, peak, head);
     if (view.fog.on) {
         x3m::renderer::fog_transmittance(view.fog, x3m::scalar::sqrt(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]), transmittance);
         for (unsigned i = 0; i < 3; ++i) {
             mean[i] *= transmittance[i];
+            head[i] *= transmittance[i];
             stats->fog_min = transmittance[i] < stats->fog_min ? transmittance[i] : stats->fog_min;
         }
         ++stats->fogged;
     }
     const std::uint32_t tint = pack_colour(mean);
+    const std::uint32_t head_axial = pack_colour(head) & 0x00ffffffu, head_disc = head_axial | 0xff000000u;
     std::uint32_t fog = pack_colour(transmittance) & 0x00ffffffu;
     // Facing: e = unit vector from the nozzle to the camera; the axial quad's side n = a x e, a fallback when the axis
     // points along the line of sight.
@@ -871,7 +1111,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.shape[0] = sigma0;
         v.shape[1] = value;
         v.shape[2] = bias;
-        v.shape[3] = 0.f;
+        v.shape[3] = flow_phase;
         v.intensity[0] = i_core * axial_weight;
         v.intensity[1] = i_halo * axial_weight;
         v.intensity[2] = a[2];
@@ -879,6 +1119,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.tint = tint;
         v.params = params;
         v.fog = fog;
+        v.peak = head_axial;
     }
     // The disc, the end-on plume, weighted by smoothstep(disc_low, disc_high, f); under disc_low it collapses to one point
     // (no pixel). Its radiance: the body integrated along the axis, I x disc_kappa x L / n x f per unit of the mean
@@ -911,7 +1152,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.shape[0] = sigma0;
         v.shape[1] = value;
         v.shape[2] = bias;
-        v.shape[3] = 1.f;
+        v.shape[3] = flow_phase;
         v.intensity[0] = disc_body;
         v.intensity[1] = disc_halo;
         v.intensity[2] = disc_cap;
@@ -919,6 +1160,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.tint = tint;
         v.params = params;
         v.fog = fog;
+        v.peak = head_disc;
     }
     if (disc_drawn) ++stats->discs;
     if (steering) ++stats->steering;
@@ -975,7 +1217,8 @@ inline void floored_value(const Look& k, const ee::Record& r, float radius, floa
 using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
                       float seconds, Vertex* out, unsigned capacity, BuildStats* stats, const ViewFilter* filter = nullptr,
-                      const Look* look = nullptr, const LookTables* tables = nullptr, const float* radii = nullptr) noexcept {
+                      const Look* look = nullptr, const LookTables* tables = nullptr, const float* radii = nullptr,
+                      const Dynamics* dynamics = nullptr) noexcept {
     BuildStats local{};
     BuildStats& st = stats ? *stats : local;
     st = BuildStats{};
@@ -996,6 +1239,7 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
     constexpr std::uint32_t unfloored = ee::flag_steering | ee::flag_brake;
     const bool floors = radii && k.floor_scale > 0.f && ee::finite_f(k.floor_scale);
     PulseCache pulses;
+    if (dynamics && dynamics->transients) dynamics->transients->begin(dynamics->step);
     unsigned written = 0;
     for (unsigned i = 0; i < count; ++i) {
         if (written >= capacity || written >= max_nozzles) {
@@ -1016,9 +1260,11 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
             else
                 ++st.floor_unknown;
         }
-        if (build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, out + written * vertices_per_nozzle, &st, &pulses))
+        if (build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, out + written * vertices_per_nozzle, &st, &pulses,
+                         dynamics))
             ++written;
     }
+    if (dynamics && dynamics->transients) st.transient_overflow = dynamics->transients->overflow;
     st.nozzles = written;
     st.vertices = written * vertices_per_nozzle;
     return written;

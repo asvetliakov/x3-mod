@@ -34,33 +34,33 @@
     "src/proxy/capture.cpp"
   ],
   "source": {
-    "commit": "8f90fa58a335d44148ea5134e7625dd2b29df22c-dirty",
+    "commit": "9f7266b26dc88292b614b0b2aaed76858f03f1b0-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/capture.cpp",
       "src/proxy/engine_effects.cpp",
       "src/proxy/engine_effects.h",
-      "src/proxy/engine_effects_core.h",
       "src/proxy/engine_plumes_core.h",
       "src/proxy/engine_ribbons_core.h",
       "src/proxy/motion_output.h",
-      "src/proxy/motion_output_engine_effects_inc.h",
-      "src/proxy/motion_output_engine_plumes_inc.h"
+      "src/proxy/motion_output_engine_plumes_inc.h",
+      "src/renderer/engine_plumes_pass.cpp",
+      "src/renderer/engine_plumes_pass.h"
     ],
     "sha256": {
-      "src/proxy/engine_effects.cpp": "124635a6f91e048e969a23812e49701e7a51320f122b7959018f21ad87dcf472",
-      "src/proxy/engine_effects.h": "25e13b3be6bb1e911c33981f3f74f7bb575080d582b950c11d784a4bdccc7d52",
+      "src/proxy/engine_effects.cpp": "8a1d8fad6cc3b606ecbd3166d17056f941c0ea43f27f996a8451dd9e77c87b5e",
+      "src/proxy/engine_effects.h": "51f8dbe74c4af45b0e36213ded0f01b3388a8725c19c9f75b7425605f984ce85",
       "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
       "src/proxy/engine_effects_option.h": "cb8a96b23acaa40985fc6fcca31c8b80cef9d581be53dea800c69fec8b1ab6b6",
       "src/proxy/motion_output_engine_effects_inc.h": "6ce6c232fb7b4987dc4fd7ebac566c2e2369ca3839c5078e01662d3da81329dc",
-      "src/proxy/motion_output_engine_plumes_inc.h": "1169ca39edc2a1bea3a4394ad92bad1abaaf79ee0447c9268576e040824aa4ee",
-      "src/proxy/engine_plumes_core.h": "a14cf50c22737da5b0e5561f2083cac1874458ced4a7b68729d2042c69c682d4",
-      "src/renderer/engine_plumes_pass.cpp": "0fa9da9254ac9af1843226c527bfba582bd20bca63f8eec52a002b0754dfea67",
-      "src/renderer/engine_plumes_pass.h": "671c01a1c4a2aa8fe2151a5df9247f25038e5fa266830644767f66b5632269d7",
+      "src/proxy/motion_output_engine_plumes_inc.h": "5a84d3dbe0df181cedcb88bea49000c64ecf25dd0ddd196e6c23a88d52f3c674",
+      "src/proxy/engine_plumes_core.h": "05dd37ab55c1c4145467d18ba4a34ccfe4a759d079d7d9d4bfb548ba09037252",
+      "src/renderer/engine_plumes_pass.cpp": "b25936af72b735d9f7d63323ae57022db31befa6e9a78704e84ffc55cf1ec027",
+      "src/renderer/engine_plumes_pass.h": "ffbd2fea053a6e66a0b62edaf5cd8d8d244bd0fa39e87198cd8184ae398d0cd6",
       "src/proxy/motion_output_engine_ribbons_inc.h": "02af53103a41900335f91299caf2f295abddc0d9950aa80f05f35bdbbbe70c96",
-      "src/proxy/engine_ribbons_core.h": "76e909e92d074d8d823395655375e6d65e955919b197997d0ef252d8be44f329",
-      "src/proxy/motion_output.h": "d6b2cfe05013964f575cef50b68370c8c94b8e8886cf7a8dfdf1727f208023ae",
-      "src/proxy/capture.cpp": "29eb1c7265ec0a274ce85729fa42e3f44a56aaf50a6b6cb912da42f60bb9dbd8"
+      "src/proxy/engine_ribbons_core.h": "a7b162baa7f2757fba74b13845b4167c89ff2a8a0526183f333387a410b47958",
+      "src/proxy/motion_output.h": "44eaf422d62a148ceafbd7d3cf024e24af62032041468440ed6f66bd7555533a",
+      "src/proxy/capture.cpp": "e0fe74abb99880df28798d87890e2a48fdb07acbe5cf240759721d82dde8199a"
     }
   },
   "game_launched": false,
@@ -69,9 +69,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "5b07e45ade5c39b755d03ad8a1e2895b37a075ad1461925973ee10c92bd6dd50",
-    "seam_sha256": "4ebb0705a18b5f036bb565f2dd794d0212ca220e7a8822498d4fb4383d189133",
-    "dll_sha256": "4f46acbcfd92f29ddfae519d316c7664dac7dbb7d902de1d9844604e31e62c6e"
+    "fixture_sha256": "ec8dc23e1daea22e78b8ca3a9c12af78a6c3c9a0a4dbc1bb2b5bae84d3033166",
+    "seam_sha256": "579f49b035ea49924bc128a25bc1ac26ffea3a4f532333df52344eec5c451f47",
+    "dll_sha256": "17eb600c0b04036c5ceb0c11c070aad782162465ecfea97f3edcef2e9743f3cf"
   },
   "runs": {
     "main": {
@@ -191,7 +191,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261003-175136-376995"
+      "directory": "verification/probe/build/engine-effects-main-20261003-184757-443553"
     },
     "native": {
       "exit": 0,
@@ -235,7 +235,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261003-175145-248426"
+      "directory": "verification/probe/build/engine-effects-native-20261003-184806-026809"
     },
     "unverified": {
       "exit": 0,
@@ -251,7 +251,7 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261003-175153-248393"
+      "directory": "verification/probe/build/engine-effects-unverified-20261003-184813-790139"
     },
     "unpatched": {
       "exit": 0,
@@ -295,7 +295,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-unpatched-20261003-175201-056858"
+      "directory": "verification/probe/build/engine-effects-unpatched-20261003-184821-550606"
     },
     "timing": {
       "exit": 0,
@@ -312,14 +312,14 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.679,
-        "not_jet": 1.22,
+        "suppressed": 0.693,
+        "not_jet": 1.218,
         "not_candidate": 1.072,
-        "suppressed_new_parent": 0.731,
-        "suppressed_no_parent": 0.684,
-        "suppressed_two_parents": 0.694
+        "suppressed_new_parent": 0.741,
+        "suppressed_no_parent": 0.7,
+        "suppressed_two_parents": 0.69
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261003-175209-042568"
+      "directory": "verification/probe/build/engine-effects-timing-20261003-184829-335882"
     },
     "plumes": {
       "exit": 0,
@@ -364,13 +364,13 @@
         1,
         2
       ],
-      "directory": "verification/probe/build/engine-effects-plumes-20261003-175217-007788"
+      "directory": "verification/probe/build/engine-effects-plumes-20261003-184837-131450"
     },
     "armed": {
       "exit": 0,
-      "checks": 20,
+      "checks": 21,
       "failed": [],
-      "result": "RESULT PASS checks=20 failures=0",
+      "result": "RESULT PASS checks=21 failures=0",
       "mode_row": {
         "setting": "plumes",
         "mode": "plumes",
@@ -382,34 +382,34 @@
       },
       "failed_rows": [
         {
-          "frame": "9",
+          "frame": "18",
           "result": "80004005",
           "step": "5",
           "consecutive": "1",
-          "until": "73",
+          "until": "82",
           "final": "0",
           "retry": "frames"
         },
         {
-          "frame": "74",
+          "frame": "83",
           "result": "80004005",
           "step": "5",
           "consecutive": "1",
-          "until": "138",
+          "until": "147",
           "final": "0",
           "retry": "frames"
         },
         {
-          "frame": "138",
+          "frame": "147",
           "result": "80004005",
           "step": "5",
           "consecutive": "2",
-          "until": "202",
+          "until": "211",
           "final": "0",
           "retry": "frames"
         },
         {
-          "frame": "202",
+          "frame": "211",
           "result": "80004005",
           "step": "5",
           "consecutive": "3",
@@ -457,8 +457,8 @@
         ]
       ],
       "device_rows": 1,
-      "stage_rows": 274,
-      "stage_drawn": 8,
+      "stage_rows": 283,
+      "stage_drawn": 17,
       "armed_lines": [
         {
           "phase": "first",
@@ -504,7 +504,7 @@
         },
         {
           "phase": "fault_once",
-          "frame": "10",
+          "frame": "19",
           "armed": "1",
           "ran": "1",
           "result": "80004005",
@@ -521,11 +521,11 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "460e0d,310605,000000,000000"
+          "px": "511615,360808,000000,000000"
         },
         {
           "phase": "rearmed",
-          "frame": "74",
+          "frame": "83",
           "armed": "1",
           "ran": "1",
           "result": "00000000",
@@ -542,7 +542,7 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "2a0909,150403,000000,000000"
+          "px": "300d0c,140202,000000,000000"
         },
         {
           "cycle": "once",
@@ -551,7 +551,7 @@
         },
         {
           "phase": "fault_persistent",
-          "frame": "75",
+          "frame": "84",
           "armed": "1",
           "ran": "1",
           "result": "80004005",
@@ -568,7 +568,7 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "481211,2a0706,000000,000000"
+          "px": "440e0d,2c0404,000000,000000"
         },
         {
           "cycle": "persistent_1",
@@ -577,7 +577,7 @@
         },
         {
           "phase": "fault_persistent",
-          "frame": "139",
+          "frame": "148",
           "armed": "1",
           "ran": "1",
           "result": "80004005",
@@ -594,7 +594,7 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "2f0c0c,210505,000000,000000"
+          "px": "1f0303,160202,000000,000000"
         },
         {
           "cycle": "persistent_2",
@@ -603,7 +603,7 @@
         },
         {
           "phase": "fault_persistent",
-          "frame": "203",
+          "frame": "212",
           "armed": "1",
           "ran": "1",
           "result": "80004005",
@@ -620,11 +620,11 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "2e0b0b,210505,000000,000000"
+          "px": "1f0303,120101,000000,000000"
         },
         {
           "phase": "refused",
-          "frame": "273",
+          "frame": "282",
           "armed": "0",
           "ran": "0",
           "result": "00000001",
@@ -645,7 +645,7 @@
         },
         {
           "phase": "after_reset",
-          "frame": "274",
+          "frame": "283",
           "armed": "1",
           "ran": "1",
           "result": "00000000",
@@ -662,7 +662,7 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "d12321,c02120,000000,000000"
+          "px": "ff4541,cc1212,000000,000000"
         },
         {
           "held": "5",
@@ -676,7 +676,32 @@
         }
       ],
       "stage_off_frames": 259,
-      "directory": "verification/probe/build/engine-effects-armed-20261003-175224-879302"
+      "seta_rows": [
+        [
+          "read",
+          "off",
+          "ok",
+          "1",
+          "1.000"
+        ],
+        [
+          "engage",
+          "on",
+          "ok",
+          "1",
+          "6.000"
+        ],
+        [
+          "release",
+          "off",
+          "ok",
+          "1",
+          "1.000"
+        ]
+      ],
+      "seta_reads_last": 23,
+      "seta_refused_last": "0",
+      "directory": "verification/probe/build/engine-effects-armed-20261003-184844-953050"
     },
     "armed_refused": {
       "exit": 0,
@@ -791,7 +816,14 @@
           "forwarded_during_warm": "0"
         }
       ],
-      "directory": "verification/probe/build/engine-effects-armed_refused-20261003-175233-218938"
+      "seta_rows": [
+        [
+          "read",
+          "off",
+          "site_mismatch"
+        ]
+      ],
+      "directory": "verification/probe/build/engine-effects-armed_refused-20261003-184853-690471"
     }
   },
   "problems": [],
