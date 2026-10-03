@@ -348,6 +348,10 @@ SETTINGS = [
           'image behind an engine moves, in pixels on a 1440-row screen (scaled with the screen height); 0 to 4, 0 = none, '
           'default 1.5. Read when the game starts.', builtin='1.5', range=(0.0, 4.0), launcher='--engine-shimmer-px',
           since='2026-10-03'),
+    entry('engine_shimmer_max', 'int', 'engine', 'How many engines get the heat shimmer at once (engine_shimmer = on): the '
+          'largest on screen first, so 4 covers your own ship and the nearest ones; more costs more GPU time. 0 to 16, 0 = '
+          'none, default 4. Read when the game starts.', builtin='4', range=(0, 16), launcher='--engine-shimmer-max',
+          since='2026-10-03'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

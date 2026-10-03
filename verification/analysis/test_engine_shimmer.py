@@ -63,6 +63,10 @@ int main() {
     float px = -1.f;
     expect(parse_px("1.5", 3, &px) && px == 1.5f && parse_px("0", 1, &px) && px == 0.f && parse_px("4", 1, &px) && px == 4.f, "px");
     for (const char* t : {"4.1", "-1", "1e0", "nan", "", "1.5x", "+1"}) { px = 9.f; expect(!parse_px(t, std::strlen(t), &px) && px == 9.f, t); }
+    unsigned most = 99;
+    expect(parse_max("4", 1, &most) && most == 4 && parse_max(L"16", 2, &most) && most == 16 && parse_max("0", 1, &most) && most == 0, "max");
+    for (const char* s : {"17", "", "-1", "4.0", "016", " 4", "a"}) { most = 99; expect(!parse_max(s, std::strlen(s), &most) && most == 99, s); }
+    expect(default_max == 4 && max_rects == 16, "default 4 of 16");
     float amp = 0.f;
     amplitude_px(1.5f, 1440.f, &amp); expect(amp == 1.5f, "1.5 px at 1440 rows");
     amplitude_px(1.5f, 1080.f, &amp); expect(close_to(amp, 1.125f, 1e-6f), "scaled with the height");
@@ -135,6 +139,11 @@ int main() {
         bool ranked = n == 16 && st.capped == 4 && st.kept == 16;
         for (unsigned i = 1; i < n; ++i) ranked = ranked && r[i - 1].nozzle_px >= r[i].nozzle_px;
         expect(ranked && close_to(r[0].nozzle_px, 49.f, .05f) && close_to(r[15].nozzle_px, 34.f, .05f), "16 largest, largest first");
+        const unsigned four = collect(crowd.data(), unsigned(crowd.size()), nullptr, view(), projection(), ep::Preset::standard, 0.f,
+                                      nullptr, nullptr, nullptr, nullptr, r, &st, default_max);
+        expect(four == 4 && st.capped == 16 && close_to(r[0].nozzle_px, 49.f, .05f) && close_to(r[3].nozzle_px, 46.f, .05f), "the default limit: 4 largest");
+        expect(collect(crowd.data(), unsigned(crowd.size()), nullptr, view(), projection(), ep::Preset::standard, 0.f,
+                       nullptr, nullptr, nullptr, nullptr, r, &st, 0) == 0, "limit 0: none");
     }
     // ----------------------------------------------------------- constants, quads, union
     {
@@ -296,12 +305,18 @@ class Options(unittest.TestCase):
         self.assertEqual((p['env'], p['type'], p['default'], p['builtin'], p['launcher']),
                          ('X3M_ENGINE_SHIMMER_PX', 'float', None, '1.5', '--engine-shimmer-px'))
         self.assertEqual(p['range'], ((0.0, 4.0, False),))
+        m = schema.BY_KEY['engine_shimmer_max']
+        self.assertEqual((m['env'], m['type'], m['default'], m['builtin'], m['launcher']),
+                         ('X3M_ENGINE_SHIMMER_MAX', 'int', None, '4', '--engine-shimmer-max'))
+        self.assertEqual(m['range'], ((0.0, 16.0, False),))
         header = (ROOT / 'src/config/config_schema_inc.h').read_text()
         self.assertIn('{"X3M_ENGINE_SHIMMER", "engine_shimmer", Type::Enum, nullptr,', header)
         self.assertIn('{"X3M_ENGINE_SHIMMER_PX", "engine_shimmer_px", Type::Float, nullptr,', header)
         template = (ROOT / 'assets/x3m.ini').read_text()
         self.assertIn(';engine_shimmer = on\n', template)
         self.assertIn(';engine_shimmer_px = 1.5\n', template)
+        self.assertIn(';engine_shimmer_max = 4\n', template)
+        self.assertIn('{"X3M_ENGINE_SHIMMER_MAX", "engine_shimmer_max", Type::Int, nullptr,', header)
 
     def test_launcher(self):
         module, game, wine, directory = hermetic_launcher()
@@ -314,12 +329,18 @@ class Options(unittest.TestCase):
             for value, sent in (('1.5', '1.5'), ('0', '0'), ('4', '4'), ('2.25', '2.25')):
                 env = launch_env(module, game, wine, '--engine-effects', 'plumes', '--engine-shimmer-px', value)
                 self.assertEqual(env['X3M_ENGINE_SHIMMER_PX'], sent)
+            self.assertNotIn('X3M_ENGINE_SHIMMER_MAX', launch_env(module, game, wine, '--engine-effects', 'plumes'))
+            for value in ('0', '4', '16'):
+                self.assertEqual(launch_env(module, game, wine, '--engine-effects', 'plumes', '--engine-shimmer-max', value)['X3M_ENGINE_SHIMMER_MAX'], value)
+            for bad in ('-1', '17'):
+                with self.assertRaises(SystemExit):
+                    launch_env(module, game, wine, '--engine-effects', 'plumes', '--engine-shimmer-max', bad)
             for bad in ('-0.1', '4.1', 'nan', 'inf'):
                 with self.assertRaises(SystemExit):
                     launch_env(module, game, wine, '--engine-effects', 'plumes', '--engine-shimmer-px', bad)
             with self.assertRaises(SystemExit):
                 launch_env(module, game, wine, '--engine-shimmer', 'Off')
-            for option, value in (('--engine-shimmer', 'off'), ('--engine-shimmer-px', '1')):
+            for option, value in (('--engine-shimmer', 'off'), ('--engine-shimmer-px', '1'), ('--engine-shimmer-max', '4')):
                 with self.assertRaises(SystemExit):
                     launch_env(module, game, wine, '--vanilla', option, value)
 
@@ -327,7 +348,9 @@ class Options(unittest.TestCase):
         inc = (ROOT / 'src/proxy/motion_output_engine_shimmer_inc.h').read_text()
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER"', inc)), 1)
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_PX"', inc)), 1)
-        self.assertIn('shimmer_requested_ = plumes_requested_ && on && px > 0.f;', inc)
+        self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_MAX"', inc)), 1)
+        self.assertIn('shimmer_requested_ = plumes_requested_ && on && px > 0.f && limit > 0;', inc)
+        self.assertIn('&shimmer_stats_, shimmer_max_);', inc)
 
 
 class Wiring(unittest.TestCase):

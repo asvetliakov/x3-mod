@@ -12,7 +12,7 @@
 // clock and plume floor as the stage) places the axial quad; its first four corners give back the nozzle's view
 // position o, the unit axis a, the pulsed length L and the nozzle width n after the near-camera cap. A nozzle whose
 // projected width n x ppu is under gate_px (24 px) gets no shimmer; the rest are ranked by that width (nearest and
-// largest first) and the first max_rects (16) kept. The rect is oriented along the projected axis: from back pixels
+// largest first) and the first `limit` kept (engine_shimmer_max, default 4, at most max_rects 16). The rect is oriented along the projected axis: from back pixels
 // behind the nozzle (a quarter nozzle width; more when the plume is foreshortened, so an end-on plume's rect is centred
 // on the nozzle) to length = max(|P(o + 1.5 L a) - P(o)|, half_width) pixels ahead, half_width = one projected nozzle
 // width either side (the rect is two nozzle widths wide). Points are projected with the unjittered projection (the
@@ -29,7 +29,8 @@ namespace x3m::engine_shimmer {
 namespace ee = x3m::engine_effects::core;
 namespace ep = x3m::engine_plumes;
 
-constexpr unsigned max_rects = 16;             // engine_shimmer_max: the nozzles with a shimmer per frame
+constexpr unsigned max_rects = 16;             // the program's capacity: engine_shimmer_max's upper bound
+constexpr unsigned default_max = 4;            // X3M_ENGINE_SHIMMER_MAX: the own ship plus the nearest (bounds the cost)
 constexpr float gate_px = 24.f;                // projected nozzle width under which a nozzle gets none
 constexpr float length_factor = 1.5f;          // the rect's reach along the axis, x L
 constexpr float half_width_widths = 1.f;       // the rect's half-width in nozzle widths (two nozzle widths wide)
@@ -57,6 +58,18 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, bo
         return true;
     }
     return false;
+}
+// X3M_ENGINE_SHIMMER_MAX: one plain integer in 0..max_rects (digits only, at most two).
+template <class Char> inline bool parse_max(const Char* text, std::size_t n, unsigned* out) noexcept {
+    if (!text || !out || n < 1 || n > 2) return false;
+    unsigned v = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        if (text[i] < Char('0') || text[i] > Char('9')) return false;
+        v = v * 10u + unsigned(text[i] - Char('0'));
+    }
+    if (v > max_rects) return false;
+    *out = v;
+    return true;
 }
 // X3M_ENGINE_SHIMMER_PX: one plain decimal in 0..4 (pixels at 1440 rows).
 template <class Char> inline bool parse_px(const Char* text, std::size_t n, float* out) noexcept {
@@ -101,7 +114,7 @@ struct Stats {
     unsigned small = 0;      // projected nozzle width under gate_px
     unsigned refused = 0;    // the builder drew none (invalid rows, idle RCS, culled)
     unsigned offscreen = 0;  // the quad misses the target
-    unsigned capped = 0;     // past max_rects
+    unsigned capped = 0;     // past the limit
     unsigned kept = 0;
 };
 
@@ -232,13 +245,13 @@ inline bool rect_of(const ep::Vertex* v, const ep::View& view, const Projection&
     return true;
 }
 
-// The frame's rects (at most max_rects into `out`, ranked by projected nozzle width, largest first; ties keep record
+// The frame's rects (at most `limit` (<= max_rects) into `out`, ranked by projected nozzle width, largest first; ties keep record
 // order). The inputs are the plume stage's (engine_plumes::build): records, body lookup, view, preset, the stage's clock,
 // the view filter, look, tables and radii (null: no plume floor); `p` the unjittered projection and the target size.
 inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLookup body, const ep::View& view,
                         const Projection& p, ep::Preset preset, float seconds, const ep::ViewFilter* filter,
                         const ep::Look* look, const ep::LookTables* tables, const float* radii, Rect* out,
-                        Stats* stats) noexcept {
+                        Stats* stats, unsigned limit = max_rects) noexcept {
     Stats local{};
     Stats& st = stats ? *stats : local;
     st = Stats{};
@@ -256,6 +269,7 @@ inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLooku
         ep::look_tables(k, &computed);
         tables = &computed;
     }
+    if (limit > max_rects) limit = max_rects;
     constexpr std::uint32_t unfloored = ee::flag_steering | ee::flag_brake;
     const bool floors = radii && k.floor_scale > 0.f && ee::finite_f(k.floor_scale);
     ep::PulseCache pulses;
@@ -307,15 +321,15 @@ inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLooku
         // Insert by rank (largest projected nozzle first); a full list drops its smallest.
         unsigned at = kept;
         while (at > 0 && out[at - 1].nozzle_px < rect.nozzle_px) --at;
-        if (at >= max_rects) {
+        if (at >= limit) {
             ++st.capped;
             continue;
         }
-        if (kept == max_rects) ++st.capped; // the last one falls off
-        const unsigned last = kept < max_rects ? kept : max_rects - 1;
+        if (kept == limit) ++st.capped; // the last one falls off
+        const unsigned last = kept < limit ? kept : limit - 1;
         for (unsigned j = last; j > at; --j) out[j] = out[j - 1];
         out[at] = rect;
-        if (kept < max_rects) ++kept;
+        if (kept < limit) ++kept;
     }
     st.kept = kept;
     return kept;

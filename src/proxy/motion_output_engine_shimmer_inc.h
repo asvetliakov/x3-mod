@@ -3,7 +3,7 @@
 // effects-modernisation-opus.md section 3.8). With the plumes requested and X3M_ENGINE_SHIMMER on (the default), a frame
 // whose plume stage drew gets a screen-space heat distortion behind its nearest nozzles: after the temporal resolve on
 // the FP16 route (the resolved image exists; the HDR write-back and the bloom candidate have not read it), the scene
-// view's records are turned into at most 16 rects by the plume builder itself (engine_shimmer::collect: nozzles under
+// view's records are turned into at most engine_shimmer_max (default 4, up to 16) rects by the plume builder itself (engine_shimmer::collect: nozzles under
 // 24 px projected get none), the pass copies the resolved image over their union and draws the refraction into it.
 // The resolved image is the TAA history: before Present the copy goes back (revert_engine_shimmer), so the next
 // resolve never reads the shimmer. Ctrl+Alt+F7 turns it off and on per device (one engine_shimmer_toggle row).
@@ -14,27 +14,34 @@ void MotionOutput::configure_engine_shimmer() noexcept {
     const DWORD error = GetLastError();
     bool on = true;
     float px = engine_shimmer::default_px;
-    wchar_t word[16]{}, amount[16]{};
+    unsigned limit = engine_shimmer::default_max;
+    wchar_t word[16]{}, amount[16]{}, most[16]{};
     const DWORD n = x3m::config::get(L"X3M_ENGINE_SHIMMER", word, 16);
     const DWORD pn = x3m::config::get(L"X3M_ENGINE_SHIMMER_PX", amount, 16);
-    char shown[16]{}, px_shown[16]{};
+    const DWORD mn = x3m::config::get(L"X3M_ENGINE_SHIMMER_MAX", most, 16);
+    char shown[16]{}, px_shown[16]{}, max_shown[16]{};
     for (DWORD i = 0; i < n && i < 15; ++i) shown[i] = word[i] > 0x20 && word[i] < 0x7f ? char(word[i]) : '?';
     for (DWORD i = 0; i < pn && i < 15; ++i) px_shown[i] = amount[i] > 0x20 && amount[i] < 0x7f ? char(amount[i]) : '?';
-    // Unset = on and 1.5 px; anything else refused (the default, status invalid_setting or too_long).
+    for (DWORD i = 0; i < mn && i < 15; ++i) max_shown[i] = most[i] > 0x20 && most[i] < 0x7f ? char(most[i]) : '?';
+    // Unset = on, 1.5 px and 4 rects; anything else refused (the default, status invalid_setting or too_long).
     const bool ok = !n || (n < 16 && engine_shimmer::parse_mode(word, n, &on));
     if (!ok) on = true;
     const bool px_ok = !pn || (pn < 16 && engine_shimmer::parse_px(amount, pn, &px));
     if (!px_ok) px = engine_shimmer::default_px;
+    const bool max_ok = !mn || (mn < 16 && engine_shimmer::parse_max(most, mn, &limit));
+    if (!max_ok) limit = engine_shimmer::default_max;
     shimmer_px_ = px;
-    shimmer_requested_ = plumes_requested_ && on && px > 0.f;
+    shimmer_max_ = limit;
+    shimmer_requested_ = plumes_requested_ && on && px > 0.f && limit > 0;
     shimmer_on_ = true;
     shimmer_attach_failed_ = shimmer_failed_ = false;
     shimmer_frame_ = ~std::uint64_t(0);
-    if (plumes_requested_ || n || pn)
-        log("engine_shimmer_config requested=%u plumes=%u setting=%s status=%s px=%.3f px_setting=%s px_status=%s max_rects=%u gate_px=%.0f toggle=ctrl+alt+f7",
+    if (plumes_requested_ || n || pn || mn)
+        log("engine_shimmer_config requested=%u plumes=%u setting=%s status=%s px=%.3f px_setting=%s px_status=%s max=%u max_setting=%s max_status=%s gate_px=%.0f toggle=ctrl+alt+f7",
             unsigned(shimmer_requested_), unsigned(plumes_requested_), n ? shown : "-",
             ok ? "ok" : n >= 16 ? "too_long" : "invalid_setting", double(px), pn ? px_shown : "-",
-            px_ok ? "ok" : pn >= 16 ? "too_long" : "invalid_setting", engine_shimmer::max_rects, double(engine_shimmer::gate_px));
+            px_ok ? "ok" : pn >= 16 ? "too_long" : "invalid_setting", limit, mn ? max_shown : "-",
+            max_ok ? "ok" : mn >= 16 ? "too_long" : "invalid_setting", double(engine_shimmer::gate_px));
     SetLastError(error);
 }
 int MotionOutput::engine_shimmer_toggle() noexcept {
@@ -157,7 +164,7 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     const unsigned count = engine_shimmer::collect(engine_ring_->records, engine_ring_->count, &engine_plumes_body, view,
                                                    projection, plumes_preset_, seconds, &filter, &plumes_look_,
                                                    &plumes_tables_, engine_ring_->parent_radius, shimmer_rects_,
-                                                   &shimmer_stats_);
+                                                   &shimmer_stats_, shimmer_max_);
     HRESULT hr = S_FALSE;
     const bool attached = count && attach_engine_shimmer();
     if (!attached) shimmer_report_.skipped = count ? "attach" : "no_rects";

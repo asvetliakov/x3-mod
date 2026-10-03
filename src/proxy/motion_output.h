@@ -1198,7 +1198,8 @@ public:
     // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
     int engine_plumes_cycle_preset() noexcept;
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h; docs/architecture/engine-exhaust-gap-analysis.md gap 9):
-    // reads X3M_ENGINE_SHIMMER (on|off, default on) and X3M_ENGINE_SHIMMER_PX (0..4, default 1.5) once and logs one
+    // reads X3M_ENGINE_SHIMMER (on|off, default on), X3M_ENGINE_SHIMMER_PX (0..4, default 1.5) and
+    // X3M_ENGINE_SHIMMER_MAX (0..16 rects, default 4) once and logs one
     // engine_shimmer_config row; requested only with the plumes requested. Process-start values.
     void configure_engine_shimmer() noexcept;
     bool engine_shimmer_requested() const noexcept { return shimmer_requested_; }
@@ -1818,6 +1819,7 @@ private:
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.
     bool shimmer_requested_ = false, shimmer_on_ = true, shimmer_attach_failed_ = false, shimmer_failed_ = false;
     float shimmer_px_ = engine_shimmer::default_px;
+    unsigned shimmer_max_ = engine_shimmer::default_max; // X3M_ENGINE_SHIMMER_MAX, 0..16
     std::unique_ptr<renderer::EngineShimmerPass> shimmer_;
     renderer::EngineShimmerReport shimmer_report_{};
     engine_shimmer::Stats shimmer_stats_{};

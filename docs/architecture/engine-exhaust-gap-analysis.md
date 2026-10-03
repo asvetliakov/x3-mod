@@ -118,7 +118,7 @@ work and is not re-planned here.
 | 2 "physics and colour" | Gaps 4, 5, 3, 10 together: world-unit flow, two-tone colour, nozzle spill 0.15 over 1 nozzle width, idle floor | `run_engine_plumes.py` new cases: (a) two values 100 and 10,000 px: the noise field's displacement between frames in world units within 5 % of each other and of the reference speed (the CPU replica); (b) colour at u 0.1 / 0.5 / 0.9 against the replica within 1 %; (c) the occluded-mouth case: halo over the hull at the nozzle = 0.15 +- 0.02 of unoccluded, 0 past 1.5 nozzle widths; (d) idle length 1 nozzle width. Host: the per-vertex phase wrap over 10^4 s, the kind/sign packing round trip. Gates: ps slots <= 700, the fenced stage within noise, `test_engine_*` OK | 4 and 10 clearly right in direction; 3 and 5 by the eye. One launch |
 | 3 "transients" | Gaps 6 and 7 | Plumes fixture: a steering record with z 0.01 -> 1 over three frames: radiance peak at frame 2 >= 1.3x and <= 1.5x steady, back within 150 ms; a brake body the same. SETA: a host test of the detector (ratio 6x, hysteresis, no false trigger on a 0.1 s stall); `run_engine_effects.py` counts the read; the read's safety by a `disassemble` task on `*(0x00606f34)+0xcc` (the SETA factor, 16.16; `+0x718` is the absolute game clock, RE §8) first | the user's eye, two launches (SETA on/off is the same launch) |
 | 4 "hull light" | Gap 8 | The converted-material fixture with a synthetic engine light: the lit plate's radiance against the law within 1 %; byte-identical programs at light 0; per-draw cost by the hull pass's existing timing | `implement-deep`; the eye |
-| 5 "shimmer" (**built 2026-10-03**, not flown) | Gap 9, on with the plumes at 1.5 px (`engine_shimmer`, Ctrl+Alt+F7) | A fixture over the resolved target: a known plume rect, measured offset <= 2 px, zero outside the rect, cost per rect size ([engine-effects.md](../verification/engine-effects.md), "Heat shimmer") | the eye; last |
+| 5 "shimmer" (**built 2026-10-03**, not flown) | Gap 9, on with the plumes at 1.5 px (`engine_shimmer`, `engine_shimmer_max` 4, Ctrl+Alt+F7) | A fixture over the resolved target: a known plume rect, measured offset <= 2 px, zero outside the rect, cost per rect size ([engine-effects.md](../verification/engine-effects.md), "Heat shimmer") | the eye; last |
 
 Clearly right, do now (phase 2): the world-unit flow and the idle floor. Needs the user's eye: everything else.
 
@@ -160,7 +160,7 @@ Clearly right, do now (phase 2): the world-unit flow and the idle floor. Needs t
 `src/proxy/engine_shimmer_core.h`, `src/renderer/engine_shimmer_pass.{h,cpp}`, `src/effects/engine_shimmer_ps.hlsl`,
 `src/proxy/motion_output_engine_shimmer_inc.h`. After the temporal resolve on the FP16 route, on frames whose plume
 stage drew, the scene view's records go through the plume builder itself (`build_nozzle`, so the rects follow its
-cap, floor and pulse) to at most 16 rects of nozzles of 24 px or more, ranked by projected width: from a quarter nozzle
+cap, floor and pulse) to at most `engine_shimmer_max` rects (default 4, the own ship plus the nearest; up to 16) of nozzles of 24 px or more, ranked by projected width: from a quarter nozzle
 width behind the nozzle to 1.5 L ahead along the projected axis, two nozzle widths wide (centred on the nozzle when
 foreshortened). One `StretchRect` copies the resolved image over the union (grown by the amplitude) into a scratch; one
 `DrawPrimitiveUP` of the rects' quads, scissored to the union, writes the refraction into the resolved image: per pixel
