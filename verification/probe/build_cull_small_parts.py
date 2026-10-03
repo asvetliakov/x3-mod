@@ -47,15 +47,18 @@ def build():
                                 ('src/proxy/cull_small_parts.cpp', 'small_parts', []),
                                 ('src/proxy/lens_flare_cull.cpp', 'lens_flare_cull', [FIXTURE_DEFINE]),
                                 ('src/proxy/cull_census.cpp', 'census', NO_SSE),
+                                ('src/proxy/engine_far_jets.cpp', 'far_jets', [*NO_SSE, '-fno-exceptions']),
                                 ('src/proxy/engine_patch.cpp', 'patch', []),
                                 ('src/proxy/engine_memory.cpp', 'memory', NO_SSE)]:
         out = BUILD / (stem + '.o')
         subprocess.run(['i686-w64-mingw32-g++', *FLAGS, *extra, '-c', str(ROOT / source), '-o', str(out)], check=True, cwd=ROOT)
         objects.append(out)
     audit = audit_module(BUILD / 'census.o')
+    far_audit = audit_module(BUILD / 'far_jets.o', ('_x3m_engine_far_jet',))  # the far-jet handler runs inside the pass too: no x87, no EH
     exe = BUILD / 'cull_small_parts_fixture.exe'
     subprocess.run(['i686-w64-mingw32-g++', *map(str, objects), '-static', '-static-libgcc', '-static-libstdc++', '-o', str(exe)], check=True, cwd=ROOT)
-    return {'binary': str(exe), 'rows': len(document['rows']), 'census_module_audit': audit, 'runtime': 'not run'}
+    return {'binary': str(exe), 'rows': len(document['rows']), 'census_module_audit': audit, 'far_jets_module_audit': far_audit,
+            'runtime': 'not run'}
 
 
 if __name__ == '__main__':

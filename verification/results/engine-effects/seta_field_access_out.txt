@@ -1,0 +1,101 @@
+# writers (lookback 400) of cfg fields; listing = i686-w64-mingw32-objdump -d -M intel --no-show-raw-insn X3AP.exe (sha fdbf3418)
+field +0xcc W 0x00404250 mov DWORD PTR [ecx+0xcc],0x10000  (base loaded at 0x00404247)
+field +0x714 W 0x00404f6a mov DWORD PTR [ecx+0x714],eax  (base loaded at 0x00404f64)
+field +0x718 W 0x00404f7b mov DWORD PTR [edx+0x718],eax  (base loaded at 0x00404f75)
+field +0x720 W 0x00404f8c mov DWORD PTR [ecx+0x720],eax  (base loaded at 0x00404f86)
+field +0xcc W 0x00404f9d mov DWORD PTR [edx+0xcc],eax  (base loaded at 0x00404f97)
+field +0xd0 W 0x004b0f99 mov DWORD PTR [ecx+0xd0],0x10000  (base loaded at 0x004b0f85)
+field +0xd0 W 0x004b0feb mov DWORD PTR [ecx+0xd0],eax  (base loaded at 0x004b0fe5)
+field +0xd0 W 0x004b0ff3 mov DWORD PTR [ecx+0xd0],0x4ccc  (base loaded at 0x004b0fe5)
+field +0xd0 W 0x004b1038 mov DWORD PTR [ecx+0xd0],eax  (base loaded at 0x004b1032)
+field +0xd0 W 0x004b1040 mov DWORD PTR [ecx+0xd0],0x10000  (base loaded at 0x004b1032)
+field +0xcc W 0x004b149c mov DWORD PTR [eax+0xcc],edx  (base loaded at 0x004b148c)
+field +0x714 W 0x004b154a mov DWORD PTR [eax+0x714],0x0  (base loaded at 0x004b1545)
+field +0x718 W 0x004b1557 mov DWORD PTR [eax+0x718],ebx  (base loaded at 0x004b1545)
+field +0x720 W 0x004d1eb0 add DWORD PTR [ecx+0x720],esi  (base loaded at 0x004d1e9e)
+field +0x718 W 0x004d1ed2 add DWORD PTR [ecx+0x718],eax  (base loaded at 0x004d1e9e)
+field +0x718 W 0x004d1f5c add DWORD PTR [ecx+0x718],eax  (base loaded at 0x004d1f56)
+field +0xcc W 0x004d1fbc mov DWORD PTR [eax+0xcc],0x10000  (base loaded at 0x004d1fb0)
+field +0xcc W 0x004ed716 mov DWORD PTR [eax+0xcc],ecx  (base loaded at 0x004ed70c)
+field +0xd0 W 0x004ed71c mov DWORD PTR [eax+0xd0],ecx  (base loaded at 0x004ed70c)
+field +0x714 W 0x004ee216 mov DWORD PTR [edx+0x714],eax  (base loaded at 0x004ee1e6)
+field +0x71c W 0x004ee23a mov DWORD PTR [edx+0x71c],eax  (base loaded at 0x004ee1e6)
+count +0xcc W 5
+count +0xd0 W 6
+count +0x714 W 3
+count +0x718 W 4
+count +0x71c W 1
+count +0x720 W 2
+# readers of +0xcc/+0xd0/+0x71c (lookback 24)
+field +0xcc R 0x0040481e mov ecx,DWORD PTR [eax+0xcc]  (base loaded at 0x00404819)
+field +0xcc R 0x00412113 cmp DWORD PTR [edx+0xcc],0x10000  (base loaded at 0x0041210d)
+field +0xcc R 0x0044d683 mov eax,DWORD PTR [ecx+0xcc]  (base loaded at 0x0044d67d)
+field +0xcc R 0x00454323 mov eax,DWORD PTR [edx+0xcc]  (base loaded at 0x0045431d)
+field +0xcc R 0x00496f8b mov eax,DWORD PTR [esi+0xcc]  (base loaded at 0x00496f85)
+field +0xcc R 0x004b0eb5 mov ecx,DWORD PTR [eax+0xcc]  (base loaded at 0x004b0eb0)
+field +0xcc R 0x004b0f8b mov eax,DWORD PTR [ecx+0xcc]  (base loaded at 0x004b0f85)
+field +0xd0 R 0x004b1005 mov eax,DWORD PTR [ecx+0xd0]  (base loaded at 0x004b0fe5)
+field +0xcc R 0x004b104a mov eax,DWORD PTR [ecx+0xcc]  (base loaded at 0x004b1032)
+field +0xcc R 0x004b105d mov ecx,DWORD PTR [ecx+0xcc]  (base loaded at 0x004b1032)
+field +0xcc R 0x004b14bc mov eax,DWORD PTR [edx+0xcc]  (base loaded at 0x004b14b6)
+field +0xd0 R 0x004b14e3 mov eax,DWORD PTR [edx+0xd0]  (base loaded at 0x004b14dd)
+field +0xd0 R 0x004d1ef0 mov edx,DWORD PTR [ecx+0xd0]  (base loaded at 0x004d1e9e)
+field +0xcc R 0x004d1ef6 mov eax,DWORD PTR [ecx+0xcc]  (base loaded at 0x004d1e9e)
+field +0x71c R 0x004d203d mov ecx,DWORD PTR [esi+0x71c]  (base loaded at 0x004d2024)
+field +0xd0 R 0x004e3f8d mov edx,DWORD PTR [eax+0xd0]  (base loaded at 0x004e3f46)
+field +0xcc R 0x004e3f93 mov eax,DWORD PTR [eax+0xcc]  (base loaded at 0x004e3f46)
+field +0xcc R 0x004e3fe4 mov eax,DWORD PTR [edx+0xcc]  (base loaded at 0x004e3fdc)
+count +0xcc R 13
+count +0xd0 R 4
+count +0x71c R 1
+# snapshot and governor globals
+global 0x609104 W 0x00403ae4 mov DWORD PTR ds:0x609104,ecx
+global 0x609108 W 0x00403aea mov DWORD PTR ds:0x609108,edx
+global 0x609108 W 0x0040440f mov ds:0x609108,eax
+global 0x609104 W 0x00404414 mov DWORD PTR ds:0x609104,edx
+global 0x609104 W 0x00404c86 mov DWORD PTR ds:0x609104,ecx
+global 0x609108 W 0x00404c8c mov DWORD PTR ds:0x609108,edx
+global 0x57dcb0 R 0x004b0f91 cmp eax,DWORD PTR ds:0x57dcb0
+global 0x57dcb0 W 0x004b0fa5 mov DWORD PTR ds:0x57dcb0,ecx
+global 0x57dcb0 W 0x004b1050 mov ds:0x57dcb0,eax
+global 0x57dcb0 W 0x004b1063 mov DWORD PTR ds:0x57dcb0,ecx
+global 0x57dcb0 W 0x004b107a mov DWORD PTR ds:0x57dcb0,edx
+global 0x608a98 R 0x004d1ec3 mov eax,ds:0x608a98
+global 0x608a98 W 0x004d1ede mov DWORD PTR ds:0x608a98,0x0
+global 0x609104 W 0x004d1f97 mov DWORD PTR ds:0x609104,ecx
+global 0x609108 W 0x004d1f9d mov DWORD PTR ds:0x609108,edx
+global 0x609104 W 0x004d200b mov DWORD PTR ds:0x609104,ecx
+global 0x609108 W 0x004d2011 mov DWORD PTR ds:0x609108,edx
+global 0x609104 W 0x004edeca mov DWORD PTR ds:0x609104,ecx
+global 0x609104 R 0x004edeff sub edi,DWORD PTR ds:0x609104
+global 0x609104 W 0x004edf05 mov ds:0x609104,eax
+global 0x609104 R 0x004ee1f4 sub eax,DWORD PTR ds:0x609104
+global 0x609104 W 0x004ee1fa mov DWORD PTR ds:0x609104,ecx
+global 0x609108 R 0x004ee21e sub eax,DWORD PTR ds:0x609108
+global 0x609108 W 0x004ee224 mov DWORD PTR ds:0x609108,ecx
+global 0x608a98 W 0x004f3ca3 mov DWORD PTR ds:0x608a98,ecx
+global 0x608a98 W 0x004f3cb8 mov DWORD PTR ds:0x608a98,ecx
+# writers of the config pointer
+  402634:	cmp    DWORD PTR ds:0x606f34,ebx
+  402844:	mov    ds:0x606f34,eax
+  4eca71:	mov    ds:0x606f34,eax
+  4ecd15:	mov    DWORD PTR ds:0x606f34,ebp
+  4ed61f:	mov    DWORD PTR ds:0x606f34,ebp
+  4edc69:	mov    DWORD PTR ds:0x606f34,ebp
+  4edf51:	cmp    DWORD PTR ds:0x606f34,0x0
+  4ee172:	mov    DWORD PTR ds:0x606f34,0x0
+# enclosing functions and callers
+0x004d1df0 in 0x004d1df0; callers: call@0x00403ace call@0x004043ef call@0x00404c6c call@0x004b159d call@0x004d1f81 call@0x004d1ff5 call@0x004edeba call@0x004edeec call@0x004ee1e1
+0x004ee1e0 in 0x004ee1e0; callers: call@0x004973e1 call@0x00497427 call@0x00497477 call@0x004974d6 call@0x004b0e0d
+0x004d1f80 in 0x004d1f80; callers: call@0x0040516c call@0x004650ca
+0x004b0e00 in 0x004b0e00; callers: call@0x00403a6b call@0x00403a84 call@0x00403af0 call@0x00497287
+0x004edf50 in 0x004edf50; callers: call@0x0040263e call@0x004ed9e6 call@0x004edc64
+0x004ec9e0 in 0x004ec9e0; callers: call@0x0040283a
+0x004f3b10 in 0x004f3b10; callers: call@0x00403f75 call@0x00403f8c
+0x00412113 in 0x00410100; callers: call@0x00404363 call@0x00404379
+0x00496f8b in 0x00496f80; callers: call@0x00403f5a
+0x00404250 in 0x00403840; callers: call@0x0040373a
+0x00404f9d in 0x00404cc0; callers: call@0x004038ba
+0x004ecd15 in 0x004ec9e0; callers: call@0x0040283a
+0x004ed61f in 0x004ec9e0; callers: call@0x0040283a
+0x004edc69 in 0x004ed750; callers: call@0x004ed66f call@0x004ed6cf call@0x004ede43

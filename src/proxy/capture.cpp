@@ -27,6 +27,7 @@
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
 #include "engine_effects.h"
+#include "engine_far_jets.h"
 #include "cull_small_parts_core.h"
 #include "cull_small_props_core.h"
 #include "frame_timing.h"
@@ -5761,6 +5762,13 @@ extern "C" __declspec(dllexport) int x3m_engine_effects_fixture_record(IDirect3D
     x3m::CaptureLock lock;
     const auto it = x3m::devices.find(device);
     return it != x3m::devices.end() && it->second->motion_output.fixture_engine_record(index, out, size) ? 1 : 0;
+}
+// Far engine jets seam (engine_effects_fixture.cpp "armed"): the small-parts cull stub's call (node, measure, the pass's
+// view) on a synthetic node, as the far block makes it inside the pass.
+extern "C" __declspec(dllexport) void x3m_engine_far_jets_fixture_call(std::uint32_t node, std::int32_t measure,
+                                                                      std::uint32_t view) {
+    x3m::CaptureLock lock;
+    x3m_engine_far_jet(node, measure, view);
 }
 // Engine plumes seam (engine_effects_fixture.cpp "armed", "armed_refused"): EnginePlumesPass fixture faults (bit 0 the
 // FP16 refusal at attach, bit 1 one failed draw, bit 2 every draw); before the stage's first arming the call creates the

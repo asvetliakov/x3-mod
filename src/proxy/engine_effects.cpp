@@ -212,8 +212,8 @@ void initialize() {
         float nozzle = x3m::engine_plumes::default_look.nozzle_width;
         const bool nozzle_ok = !wn || (wn < 16 && x3m::engine_plumes::parse_nozzle(width, wn, &nozzle));
         nozzle_ = nozzle_ok ? nozzle : x3m::engine_plumes::default_look.nozzle_width;
-        // The plume floor's scale of the k(R) curve: one plain decimal in 0..3; unset = 1, anything else refused (1,
-        // floor_status invalid_setting); 0 turns the floor off.
+        // The plume floor's scale of the k(R) curve: one plain decimal in 0..3; unset = 0.5 (default_look, after flight
+        // E), anything else refused (0.5, floor_status invalid_setting); 0 turns the floor off.
         wchar_t share[16]{};
         const DWORD fn = x3m::config::get(L"X3M_ENGINE_PLUME_FLOOR", share, 16);
         char share_shown[16]{};

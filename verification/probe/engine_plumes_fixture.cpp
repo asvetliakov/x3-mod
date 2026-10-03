@@ -1202,17 +1202,18 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         std::printf("\n");
     }
 }
-// The ship floor: side views (axis -x), the still look, s = 1, on separate rows: A (ship 1, value 1,000), B (ship 1,
-// 200), C (ship 2, 200) and R (ship 3, a lone 450); 1,000 is 80 px. B draws at 0.45 x 1,000 = 450: its length (the axis
-// down to 20 % of I_core) and its column's half-width at u = 0.5 (to 10 % of the column's peak) equal R's; C keeps 200.
+// The ship floor at the shipped scale (engine_plume_floor 0.5 since flight E): side views (axis -x), the still look,
+// s = 1, on separate rows; 1,000 is 80 px. Ship A (radius 800, k 0.5 x 0.35 -> 140) draws its 100 secondary at 140: its
+// length (the axis down to 20 % of I_core) and its column's half-width at u = 0.5 (to 10 % of the column's peak) equal
+// the lone 140's (radius 400, floor 70: not raised); ship B's 100 has no radius and keeps 100.
 void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
     // After flight D: the plume floor from the ship's radius. Ship A (radius 800 value units, a fighter in record units:
-    // 139 / 105 at 1080p / 5120x1440, k 0.35 -> 280) draws only its 100 secondary this frame (its large main nozzle culled
-    // by the game) and an RCS jet; ship B's 100 has no radius (0: the read failed or the subtree radius was dirty); a lone
-    // 280 of radius 400 (floor 140) is the reference.
+    // 139 / 105 at 1080p / 5120x1440, k 0.5 x 0.35 -> 140) draws only its 100 secondary this frame (its large main nozzle
+    // culled by the game) and an RCS jet; ship B's 100 has no radius (0: the read failed or the subtree radius was
+    // dirty); a lone 140 of radius 400 (floor 70) is the reference.
     const float Z = 2000.f, ppu = t.ppu(Z), unit = 80.f / ppu / 1000.f; // world units per value unit
-    const float values[4] = {100.f, 100.f, 280.f, 300.f}, rows_px[4] = {-180.f, -60.f, 60.f, 180.f};
-    const float radii_value[4] = {800.f, 0.f, 400.f, 800.f}; // the reference 280 above its floor (140: not raised)
+    const float values[4] = {100.f, 100.f, 140.f, 300.f}, rows_px[4] = {-180.f, -60.f, 60.f, 180.f};
+    const float radii_value[4] = {800.f, 0.f, 400.f, 800.f}; // the reference 140 above its floor (70: not raised)
     ee::Record rs[4];
     float radii[4];
     for (unsigned k = 0; k < 4; ++k) { // every nozzle right of centre by half the largest plume
@@ -1249,17 +1250,17 @@ void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     ep::floor_ratio_at(ep::default_look, radii[0], &k_a);
     std::printf("FLOOR width=%u height=%u floored=%u floor_unknown=%u stage_floored=%u k=%.3f radius_record=%.4f", t.w, t.h, st.floored,
                 st.floor_unknown, rep.stats.floored, double(k_a), double(radii[0]));
-    const char* names[3] = {"a100_radius800", "b100_radius0", "r280"};
+    const char* names[3] = {"a100_radius800", "b100_radius0", "r140"};
     for (unsigned k = 0; k < 3; ++k)
         std::printf(" %s_value=%.1f %s_length_px=%.0f %s_half_width_px=%.1f", names[k], double(cpu_value[k]), names[k], double(length[k]),
                     names[k], double(width[k]));
     std::printf(" rcs_value=%.1f\n", double(cpu_value[3]));
     char label[64];
     std::snprintf(label, sizeof label, "floor_main_absent_secondary_at_k_radius_%u", t.w);
-    report(label, rep.stats.floored == 1 && st.floor_unknown == 1 && std::fabs(cpu_value[0] - 280.f) < .5f &&
+    report(label, rep.stats.floored == 1 && st.floor_unknown == 1 && std::fabs(cpu_value[0] - 140.f) < .5f &&
                       std::fabs(length[0] - length[2]) <= 2.f && std::fabs(width[0] - width[2]) <= 1.f && std::fabs(cpu_value[3] - 300.f) < .5f);
     std::snprintf(label, sizeof label, "floor_radius_unknown_none_%u", t.w);
-    report(label, std::fabs(cpu_value[1] - 100.f) < .5f && std::fabs(length[1] - length[2] * 100.f / 280.f) <= 3.f);
+    report(label, std::fabs(cpu_value[1] - 100.f) < .5f && std::fabs(length[1] - length[2] * 100.f / 140.f) <= 3.f);
 }
 // The mouth against the body: side view (axis -x), the still look, value 60 px (the nozzle 30 px), at s = 1 / 0.5 / 0
 // (L 120 / 67.5 / 15 px): the peak of the frame within 0.1 L of the nozzle (every pixel centre at that distance, the
@@ -1320,6 +1321,57 @@ void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
                 double(end_peak), double(body_s1), double(body_s1 > 0 ? end_peak / body_s1 : 0));
     std::snprintf(label, sizeof label, "end_on_peak_within_1.5_body_%u", t.w);
     report(label, body_s1 > 0.f && end_peak <= 1.5f * body_s1 && end_peak >= .9f * body_s1);
+}
+
+// After flight E, the distance law: a side view (axis -x, the still look, s = 1, value 2 n) at a projected nozzle width n
+// of 2, 6, 12 and 40 px, drawn with the law (the production constants) and without it (far_low 1): the frame's total
+// radiance ratio is the law's factor, 0.15 at 2 px, smoothstep to 1 at 12 px (0.449 at 6), 1 at 40; the builder's
+// I_core ratio the same. The dot floor: a 1 px nozzle at s = 0 (L 0.25 px) draws 2 px wide and 4 px long, at 0.15.
+void distance_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float Z = 2000.f, ppu = t.ppu(Z);
+    ep::Look off = still;
+    off.far_low = 1.f;
+    const float sizes[4] = {2.f, 6.f, 12.f, 40.f};
+    const float expect[4] = {.15f, .15f + .85f * .352f, 1.f, 1.f};
+    char label[64];
+    for (unsigned k = 0; k < 4; ++k) {
+        const float n_px = sizes[k], value = 2.f * n_px / ppu, Lpx = 2.f * 2.f * n_px;
+        const ee::Record r = record(.5f * Lpx / ppu, 0, Z, -1, 0, 0, value, 2.f);
+        double totals[2] = {};
+        float i_core[2] = {};
+        unsigned far_count[2] = {};
+        for (unsigned law = 0; law < 2; ++law) {
+            const ep::Look* look = law ? &still : &off;
+            const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, look);
+            scene.frame(0, 0, 0, 0, 500);
+            const auto rep = draw(d, pass, f);
+            totals[law] = total_of(t.read(d), t.w, t.h);
+            const Built b = build_cpu(f);
+            i_core[law] = b.v[0].intensity[0];
+            far_count[law] = rep.stats.far_nozzles;
+        }
+        const double gpu = totals[0] > 0 ? totals[1] / totals[0] : 0.;
+        const float cpu = i_core[0] > 0.f ? i_core[1] / i_core[0] : 0.f;
+        std::printf("DISTANCE width=%u height=%u nozzle_px=%.0f ratio_gpu=%.4f ratio_cpu=%.4f expected=%.4f far=%u total_law=%.2f total_off=%.2f\n",
+                    t.w, t.h, double(n_px), gpu, double(cpu), double(expect[k]), far_count[1], totals[1], totals[0]);
+        std::snprintf(label, sizeof label, "distance_law_%.0fpx_%u", double(n_px), t.w);
+        report(label, std::fabs(cpu - expect[k]) < 2e-3f && std::fabs(gpu - double(expect[k])) < .02 * double(expect[k]) + .005 &&
+                          far_count[1] == (n_px < 12.f ? 1u : 0u) && far_count[0] == far_count[1]);
+    }
+    // The dot floor: value 2 px (nozzle 1 px), s = 0 (z 0.25: L 0.5 px).
+    const ee::Record dot = record(0, 0, Z, -1, 0, 0, 2.f / ppu, .25f);
+    const rr::EnginePlumesFrame f = frame_for(t, true, &dot, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+    scene.frame(0, 0, 0, 0, 500);
+    const auto rep = draw(d, pass, f);
+    const double total = total_of(t.read(d), t.w, t.h);
+    const Built b = build_cpu(f);
+    const float n_drawn = b.v[0].local[3] * ppu, L_drawn = b.v[0].local[2] * ppu;
+    const float level = ep::default_look.core_low; // I(0), standard preset, no fade
+    std::printf("DISTANCE_DOT width=%u height=%u nozzle_px=1 drawn_nozzle_px=%.3f drawn_length_px=%.3f i_core=%.4f expected_i_core=%.4f drew=%u total=%.3f\n",
+                t.w, t.h, double(n_drawn), double(L_drawn), double(b.v[0].intensity[0]), double(.15f * level), unsigned(rep.drew), total);
+    std::snprintf(label, sizeof label, "distance_dot_floor_%u", t.w);
+    report(label, b.nozzles == 1 && std::fabs(n_drawn - 2.f) < 1e-3f && std::fabs(L_drawn - 4.f) < 1e-3f &&
+                      std::fabs(b.v[0].intensity[0] - .15f * level) < 1e-4f && rep.drew && total > 0.);
 }
 
 void off_path_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
@@ -1417,6 +1469,23 @@ std::vector<ee::Record> crowd(Targets& t, unsigned n) {
     }
     return out;
 }
+// After flight E: n nozzles of which `distant` are far (projected nozzle 1..10 px: value 2..20 px, the distance law's range)
+// and the rest near (nozzle 12..60 px), depths 1,500..30,000, random axes and throttles (deterministic).
+std::vector<ee::Record> crowd_far(Targets& t, unsigned n, unsigned distant) {
+    std::vector<ee::Record> out;
+    std::uint32_t seed = 54321;
+    auto rnd = [&]() {
+        seed = seed * 1664525u + 1013904223u;
+        return float(seed >> 8) / 16777216.f;
+    };
+    for (unsigned i = 0; i < n; ++i) {
+        const float z = 1500.f + 28500.f * rnd() * rnd();
+        const float x = (rnd() * 1.6f - .8f) * z / t.m00(), y = (rnd() * 1.6f - .8f) * z / m11;
+        const float px = i < distant ? 2.f + 18.f * rnd() : 24.f + 96.f * rnd() * rnd();
+        out.push_back(record(x, y, z, rnd() - .5f, rnd() - .5f, rnd() - .5f, px / t.ppu(z), .25f + 1.75f * rnd()));
+    }
+    return out;
+}
 struct Fence {
     Com<IDirect3DQuery9> q;
     explicit Fence(IDirect3DDevice9* d) { check("event query", d->CreateQuery(D3DQUERYTYPE_EVENT, &q.p)); }
@@ -1488,13 +1557,15 @@ StageCost stage_cost(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePl
     c.samples = on.size();
     return c;
 }
-void timing_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, unsigned nozzles) {
+void timing_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, unsigned nozzles,
+                 unsigned distant = 0) {
     Fence fence(d);
-    const auto records = crowd(t, nozzles);
+    const auto records = distant ? crowd_far(t, nozzles, distant) : crowd(t, nozzles);
     const rr::EnginePlumesFrame f = frame_for(t, true, records.data(), unsigned(records.size()));
     const StageCost c = stage_cost(d, t, scene, pass, fence, f);
-    std::printf("TIMING width=%u height=%u nozzles=%u drawn=%u fenced_on_ms=%.4f fenced_off_ms=%.4f submit_ms=%.4f chain_ms=%.4f gpu_ms=%.4f samples=%zu calls=%u method=tail_event_fenced\n",
-                t.w, t.h, nozzles, c.first.stats.nozzles, c.on, c.off, c.submit, c.chain, c.gpu, c.samples, c.first.calls);
+    std::printf("TIMING width=%u height=%u nozzles=%u far=%u drawn=%u far_drawn=%u fenced_on_ms=%.4f fenced_off_ms=%.4f submit_ms=%.4f chain_ms=%.4f gpu_ms=%.4f samples=%zu calls=%u method=tail_event_fenced\n",
+                t.w, t.h, nozzles, distant, c.first.stats.nozzles, c.first.stats.far_nozzles, c.on, c.off, c.submit, c.chain, c.gpu,
+                c.samples, c.first.calls);
 }
 // X3M_PLUMES_FIXTURE_DISC_AB=1 (run_engine_plumes.py --disc-ab): the same source and crowd with the end-on disc drawn
 // (the production look) and not drawn (the facing band moved past 1: every disc collapses to a point), three rounds
@@ -1520,8 +1591,9 @@ void disc_ab_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlume
 void build_timing(Targets& t) {
     ep::LookTables tables; // cached as the proxy does (MotionOutput::plumes_tables_)
     ep::look_tables(ep::default_look, &tables);
-    for (const unsigned n : {30u, 100u, 1024u}) {
-        const auto records = crowd(t, n);
+    for (const unsigned n : {30u, 100u, 300u, 1024u}) {
+        // 300: the flight-E crowd, 250 of them far (crowd_far); the others the original crowd.
+        const auto records = n == 300u ? crowd_far(t, n, 250u) : crowd(t, n);
         const rr::EnginePlumesFrame f = frame_for(t, true, records.data(), unsigned(records.size()));
         std::vector<ep::Vertex> out(std::size_t(n) * ep::vertices_per_nozzle);
         std::vector<float> radii(n);
@@ -1633,6 +1705,7 @@ int main(int argc, char** argv) {
             if (wanted("end_on")) end_on_case(d, *t, *scene, pass);
             if (wanted("floor")) floor_case(d, *t, *scene, pass);
             if (wanted("mouth")) mouth_case(d, *t, *scene, pass);
+            if (wanted("distance")) distance_case(d, *t, *scene, pass);
             if (wanted("timing"))
                 for (const unsigned n : {30u, 100u}) {
                     if (disc_ab)
@@ -1640,6 +1713,7 @@ int main(int argc, char** argv) {
                     else
                         timing_case(d, *t, *scene, pass, n);
                 }
+            if (wanted("timing") && !disc_ab) timing_case(d, *t, *scene, pass, 300u, 250u); // after flight E: 250 far
             if (size.first == 1920) {
                 if (wanted("build")) build_timing(*t);
                 if (wanted("off")) off_path_case(d, *t, *scene, pass);

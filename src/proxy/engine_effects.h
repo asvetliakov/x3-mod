@@ -30,7 +30,7 @@ engine_plumes::Preset preset();
 // proportions: L = z value is 2 / nozzle nozzle widths at full throttle.
 float plume_nozzle();
 // X3M_ENGINE_PLUME_FLOOR (ini engine_plume_floor): the plume floor's scale of the k(R) curve in 0..3 (0: the floor
-// off), one plain decimal read once at initialize (only with plumes); unset or refused = default_look.floor_scale (1;
+// off), one plain decimal read once at initialize (only with plumes); unset or refused = default_look.floor_scale (0.5;
 // engine_plumes::parse_floor). A main jet draws at least scale x k(R) x its ship's root-node radius R (k 0.35 at R <= 150
 // record units, 0.25 at 500, 0.10 at >= 5,000, log-linear between), at most 4 x its own value.
 float plume_floor();

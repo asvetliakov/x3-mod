@@ -268,7 +268,19 @@ inline std::int32_t upper_for(std::int32_t small, std::int32_t dock) {
     return dock > small ? dock : small;
 }
 
-// The stub (147 bytes), entered by the dispatcher's `jmp [entry]` with the
+// Far engine jets (X3M_ENGINE_EFFECTS=plumes only; docs/verification/cull-small-parts.md "Far engine jets"): a node the
+// stub culls that carries the full JET flag pair in +0x130 (0x4000001, which the engine ORs into every SBTYPE_JET body
+// at 0x00434708 and the glow-jet recogniser requires, engine_effects_core.h jet_flags; SMALLJET alone sets bit 26 only)
+// stays culled (the engine's submission work per jet is what the cull saves) and is handed to x3m_engine_far_jet
+// (engine_far_jets.cpp) on the way, which copies its raw fields for a plume record built outside the pass. The writer is
+// pinned at install like the projectile marker.
+// 00434708  81 8e 30 01 00 00 01 00 00 04   OR dword [ESI+0x130],0x4000001   ; the JET list's match in 0x00434620
+constexpr std::uint32_t jet_flags = 0x4000001, jet_flag_high = 0x4000000, jet_flag_low = 0x1;
+constexpr std::uintptr_t jet_writer_va = 0x00434708;
+constexpr unsigned jet_writer_length = 10;
+constexpr unsigned char jet_writer[jet_writer_length] = {0x81, 0x8e, 0x30, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x04};
+
+// The stub (188 bytes), entered by the dispatcher's `jmp [entry]` with the
 // site's exact register state and ESP (no return address). `upper` =
 // upper_for(threshold, dock threshold):
 //    0  83 3d abs32 00      CMP  dword [upper],0        ; off (0) outside an armed frame
@@ -291,45 +303,63 @@ inline std::int32_t upper_for(std::int32_t small, std::int32_t dock) {
 //   63  ff 25 abs32         JMP  [next]                 ; continue: the tail (displaced MOV+TEST, jump back to 0x0047d2a7)
 //   69  58                  POP  EAX                    ; pop_dock
 //   70  f7 87 30 01 00 00 00 00 00 20   TEST dword [EDI+0x130],0x20000000   ; projectile marker
-//   80  75 39               JNE  exempt
+//   80  75 62               JNE  exempt
 //   82  ff 05 abs32         INC  dword [dock_culled]    ; per-frame count, render thread only
-//   88  eb 13               JMP  replay
+//   88  eb 3c               JMP  replay
 //   90  58                  POP  EAX                    ; pop_small
 //   91  f7 87 30 01 00 00 00 00 00 20   TEST dword [EDI+0x130],0x20000000   ; projectile marker
-//  101  75 24               JNE  exempt
-//  103  ff 05 abs32         INC  dword [culled]         ; per-frame count, render thread only
-//  109  8b 4f 18            MOV  ECX,[EDI+0x18]         ; replay: 0x0047d2a2..0x0047d2b9 replayed so ECX/EAX
-//  112  85 c9               TEST ECX,ECX                ;   arrive at the cull exactly as the engine
-//  114  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]        ;   leaves them (both dead there anyway)
-//  120  74 0c               JE   cull
-//  122  8b 89 d8 01 00 00   MOV  ECX,[ECX+0x1d8]
-//  128  3b c8               CMP  ECX,EAX
-//  130  7e 02               JLE  cull
-//  132  8b c1               MOV  EAX,ECX
-//  134  e9 rel32            JMP  0x0047d2c3             ; cull: the engine's `and [edi+0x12c],~2; jmp 0x0047d2d1`
-//  139  ff 05 abs32         INC  dword [exempt]         ; exempt: per-frame count, then the vanilla compare
-//  145  eb ac               JMP  continue
-// No call, no Win32, no floating point: LastError and the x87 stack are
-// untouched by construction; EFLAGS are dead on every exit (the tail's
-// displaced TEST regenerates them, the cull AND overwrites them); EAX is
+//  101  75 4d               JNE  exempt
+//  103  f7 87 30 01 00 00 00 00 00 04   TEST dword [EDI+0x130],0x4000000    ; far jet: bit 26 ...
+//  113  74 1d               JE   count
+//  115  f6 87 30 01 00 00 01            TEST byte [EDI+0x130],1             ; ... and bit 0
+//  122  74 14               JE   count
+//  124  50 51 52            PUSH EAX; PUSH ECX; PUSH EDX
+//  127  ff 74 24 34         PUSH dword [ESP+0x34]       ; view = site [ESP+0x28]
+//  131  56 57               PUSH ESI; PUSH EDI          ; measure, node
+//  133  e8 rel32            CALL x3m_engine_far_jet     ; cdecl, integer only, no Win32
+//  138  83 c4 0c            ADD  ESP,12
+//  141  5a 59 58            POP  EDX; POP ECX; POP EAX
+//  144  ff 05 abs32         INC  dword [culled]         ; count: per-frame count, render thread only
+//  150  8b 4f 18            MOV  ECX,[EDI+0x18]         ; replay: 0x0047d2a2..0x0047d2b9 replayed so ECX/EAX
+//  153  85 c9               TEST ECX,ECX                ;   arrive at the cull exactly as the engine
+//  155  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]        ;   leaves them (both dead there anyway)
+//  161  74 0c               JE   cull
+//  163  8b 89 d8 01 00 00   MOV  ECX,[ECX+0x1d8]
+//  169  3b c8               CMP  ECX,EAX
+//  171  7e 02               JLE  cull
+//  173  8b c1               MOV  EAX,ECX
+//  175  e9 rel32            JMP  0x0047d2c3             ; cull: the engine's `and [edi+0x12c],~2; jmp 0x0047d2d1`
+//  180  ff 05 abs32         INC  dword [exempt]         ; exempt: per-frame count, then the vanilla compare
+//  186  eb 83               JMP  continue
+// LastError and the x87 stack are untouched: the only call is the far-jet
+// handler, integer code without SSE/MMX or Win32 (engine_far_jets.cpp, its
+// own CMake flags; check_no_x87.py walks it), and EAX/ECX/EDX are saved around
+// it; EBX/EBP/ESI/EDI are callee-saved. EFLAGS are dead on every exit (the
+// tail's displaced TEST regenerates them, the cull AND overwrites them); EAX is
 // restored on every path that leaves through the tail and rewritten by the
-// replay on every cull. The marker test and the id read touch one word of
-// the node each and run only on a node already below `upper`. With the dock
-// rule off (upper == threshold) the path of a node at or above the threshold
-// is the same eight instructions as before the dock rule; a node below the
-// small threshold takes three more (MOV, CMP, JL); only a node between the
-// two thresholds runs the id compares.
+// replay on every cull. The marker test, the jet test and the id read touch
+// one word of the node each and run only on a node already below `upper` (the
+// jet test only below the small threshold, after the marker test). With the
+// dock rule off (upper == threshold) the path of a node at or above the
+// threshold is the same eight instructions as before the dock rule; a node
+// below the small threshold takes three more (MOV, CMP, JL); only a node
+// between the two thresholds runs the id compares.
 //
 // Projectiles `off` replaces bytes 70..81 and 91..102 with `eb 0a` (JMP +10)
 // and int3 padding: the marker is not read and the exempt block is unreachable.
+// Far jets off (engine_effects other than plumes, the default) replaces bytes
+// 103..143 with `eb 27` (JMP +39, to the count) and int3 padding: +0x130 is not
+// read for the jet bits and nothing is called.
 //
-constexpr unsigned stub_length = 147, stub_continue = 63, stub_pop_continue = 62, stub_dock = 69, stub_dock_projectile = 70,
-                   stub_dock_count = 82, stub_small = 90, stub_projectile = 91, stub_count = 103, stub_replay = 109,
-                   stub_cull = 134, stub_exempt = 139;
+constexpr unsigned stub_length = 188, stub_continue = 63, stub_pop_continue = 62, stub_dock = 69, stub_dock_projectile = 70,
+                   stub_dock_count = 82, stub_small = 90, stub_projectile = 91, stub_far = 103, stub_far_call = 133,
+                   stub_count = 144, stub_replay = 150, stub_cull = 175, stub_exempt = 180;
+constexpr unsigned stub_far_length = 41; // TEST dword (10) + JE (2) + TEST byte (7) + JE (2) + the call block (20)
 constexpr unsigned stub_marker_length = 12; // TEST (10) + JNE (2)
 inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t upper, std::uint32_t culled,
                         std::uint32_t exempt, std::uint32_t dock_culled, std::uint32_t cull_target,
-                        std::uint32_t next_slot, unsigned char out[stub_length], bool exempt_projectiles) {
+                        std::uint32_t next_slot, unsigned char out[stub_length], bool exempt_projectiles,
+                        std::uint32_t far_handler = 0, bool far_jets = false) {
     unsigned n = 0;
     auto b = [&](unsigned char v) { out[n++] = v; };
     auto d = [&](std::uint32_t v) {
@@ -370,8 +400,18 @@ inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t
     b(0xeb); rel8(stub_replay);           // 88
     b(0x58);                              // 90 pop_small
     marker();                             // 91
-    b(0xff); b(0x05); d(culled);          // 103
-    b(0x8b); b(0x4f); b(0x18);            // 109 replay
+    b(0xf7); b(0x87); d(flags130_offset); d(jet_flag_high); // 103 far jet
+    b(0x74); rel8(stub_count);
+    b(0xf6); b(0x87); d(flags130_offset); b(static_cast<unsigned char>(jet_flag_low));
+    b(0x74); rel8(stub_count);
+    b(0x50); b(0x51); b(0x52);            // 124
+    b(0xff); b(0x74); b(0x24); b(0x34);   // 127 view
+    b(0x56); b(0x57);                     // 131 measure, node
+    b(0xe8); d(far_handler - (at + stub_far_call + 5)); // 133
+    b(0x83); b(0xc4); b(0x0c);            // 138
+    b(0x5a); b(0x59); b(0x58);            // 141
+    b(0xff); b(0x05); d(culled);          // 144 count
+    b(0x8b); b(0x4f); b(0x18);            // 150 replay
     b(0x85); b(0xc9);
     b(0x8b); b(0x87); d(threshold_1d8_offset);
     b(0x74); rel8(stub_cull);
@@ -379,9 +419,9 @@ inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t
     b(0x3b); b(0xc8);
     b(0x7e); rel8(stub_cull);
     b(0x8b); b(0xc1);
-    b(0xe9); d(cull_target - (at + stub_exempt)); // 134 cull
-    b(0xff); b(0x05); d(exempt);                  // 139 exempt
-    b(0xeb); rel8(stub_continue);                 // 145
+    b(0xe9); d(cull_target - (at + stub_exempt)); // 175 cull
+    b(0xff); b(0x05); d(exempt);                  // 180 exempt
+    b(0xeb); rel8(stub_continue);                 // 186
     // clang-format on
     if (!exempt_projectiles) {
         const unsigned markers[2] = {stub_dock_projectile, stub_projectile};
@@ -390,6 +430,11 @@ inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t
             out[at_marker + 1] = static_cast<unsigned char>(stub_marker_length - 2);
             std::memset(out + at_marker + 2, 0xcc, stub_marker_length - 2);
         }
+    }
+    if (!far_jets) {
+        out[stub_far] = 0xeb;
+        out[stub_far + 1] = static_cast<unsigned char>(stub_far_length - 2);
+        std::memset(out + stub_far + 2, 0xcc, stub_far_length - 2);
     }
 }
 }

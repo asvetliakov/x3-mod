@@ -102,8 +102,8 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
             'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
-            'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING', 'TIMING_DISC', 'BUILD',
-            'BUILD_FLOOR')
+            'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
+            'TIMING_DISC', 'BUILD', 'BUILD_FLOOR')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -128,8 +128,11 @@ def gates(r):
     out['trail_dark_px_max'] = max((x['trail_px'] for x in dark), default=None)
     out['trail_dark'] = bool(dark) and all(x['trail_px'] <= GATES['trail_dark_px'] for x in dark)
     out['trail_flicker_px'] = {f"{x['width']}_{x['speed_px']:.0f}px": x['trail_px'] for x in r['resolve'] if x['sky'] == 'flicker'}
-    out['stage_gpu_ms'] = {f"{x['width']}x{x['height']}_{x['nozzles']}": x['gpu_ms'] for x in r['timing']}
+    out['stage_gpu_ms'] = {f"{x['width']}x{x['height']}_{x['nozzles']}" + (f"_far{x['far']}" if x.get('far') else ''): x['gpu_ms']
+                           for x in r['timing']}
+    out['distance_ratio_gpu'] = {f"{x['width']}_{x['nozzle_px']:.0f}px": x['ratio_gpu'] for x in r['distance']}
     out['stage_gpu_within_advisory'] = {k: v <= GATES['stage_gpu_ms_advisory'] for k, v in out['stage_gpu_ms'].items()}
+    out['build_300_far250_us'] = next((x['median_us'] for x in r['build'] if x['records'] == 300), None)
     out['build_us'] = {str(x['records']): x['median_us'] for x in r['build']}
     out['build_floor_us'] = {str(x['records']): x['median_us'] for x in r['build_floor']}
     out['mouth_over_body'] = {f"{x['width']}_s{x['s']:.2f}": x['mouth_over_body'] for x in r['mouth']}
@@ -213,6 +216,7 @@ def main():
                       'core_survival_min': g['core_survival_min'], 'trail_dark_px_max': g['trail_dark_px_max'],
                       'trail_flicker_px': g['trail_flicker_px'], 'stage_gpu_ms': g['stage_gpu_ms'], 'build_us': g['build_us'],
                       'build_floor_us': g['build_floor_us'], 'mouth_over_body': g['mouth_over_body'],
+                      'distance_ratio_gpu': g['distance_ratio_gpu'],
                       'results': str(results.relative_to(ROOT))}, indent=1))
     return 0 if record['passed'] else 1
 

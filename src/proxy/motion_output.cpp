@@ -21,6 +21,7 @@
 #include "chase_camera.h"
 #include "sun_occlusion.h"
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
+#include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
@@ -410,6 +411,9 @@ MotionOutput::~MotionOutput() {
     release_resources();
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
     delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
+    // The far block's device count: this device withdraws its request (and its claim on the buffer's frame); the far
+    // jets stay armed while another device requests the plume stage.
+    engine_far_jets::request(&engine_far_counted_, false, this);
     delete engine_light_; // plain CPU tables (engine_light_core.h), no device object
 }
 
@@ -2411,10 +2415,13 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Engine plumes (motion_output_engine_plumes_inc.h): the armed stage draws the frame's glow-jet records as
             // the first act of the run's bracket, on the FP16 route only (RT0 is the texture the resolve reads); it
             // reads the lane the run reads.
-            // Phase 3: a frame without records still runs while ribbons fade; every cut reaches the ribbon pool.
+            // Phase 3: a frame without records still runs while ribbons fade; every cut reaches the ribbon pool. After
+            // flight E a frame whose only jets are far ones (the small-parts cull's copies, appended in the stage) runs too.
             if (in.cut && ribbons_) ribbons_->note_cut();
+            // This device's resolve takes the stage's decision: it owns the far buffer's frame (engine_far_jets.h).
+            if (plumes_requested_) engine_far_jets::claim(this);
             if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
-                (engine_ring_->count || engine_ribbons_live())) {
+                (engine_ring_->count || engine_far_jets::count() || engine_ribbons_live())) {
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
                 in.stage_context = this;
             }

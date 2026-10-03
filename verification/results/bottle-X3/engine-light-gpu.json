@@ -454,10 +454,10 @@
   }
  },
  "cost": {
-  "build_us": 59.0,
-  "hit_ns": 34.0,
+  "build_us": 62.7,
+  "hit_ns": 32.3,
   "hits": 200000.0,
-  "log_ns": 2.2,
+  "log_ns": 2.0,
   "miss_ns": 3.7,
   "misses": 200000.0,
   "nodes": 1024.0,
@@ -471,54 +471,54 @@
  },
  "create": {
   "twins": 6.0,
-  "us_each": 42.9,
-  "us_total": 257.3
+  "us_each": 46.6,
+  "us_total": 279.4
  },
- "elapsed_s": 29.45,
- "executable_sha256": "a540b7dff0699dec40c145c295510a8bbeb70d7630c8a28ab03dec2d4264a657",
+ "elapsed_s": 27.83,
+ "executable_sha256": "26062a2c3639819f6359c40fa3a76eb8f81ca096734e4e2ce970aeb1a1d0ac27",
  "exit_code": 0,
  "game_launched": false,
  "gpu": [
   {
    "base_batches": [
-    0.2913,
-    0.2456,
-    0.1928,
-    0.1726,
-    0.1534
+    0.2914,
+    0.158,
+    0.153,
+    0.1544,
+    0.1525
    ],
-   "base_ms": 0.1928,
+   "base_ms": 0.1544,
    "height": 1080,
-   "term_us": -0.9000000000000119,
+   "term_us": 11.699999999999989,
    "twin_batches": [
-    0.3242,
-    0.2394,
-    0.1919,
-    0.166,
-    0.1664
+    0.2128,
+    0.1656,
+    0.1661,
+    0.1671,
+    0.1658
    ],
-   "twin_ms": 0.1919,
+   "twin_ms": 0.1661,
    "width": 1920
   },
   {
    "base_batches": [
-    0.4981,
-    0.4974,
-    0.497,
     0.4962,
-    0.4953
+    0.4936,
+    0.495,
+    0.4937,
+    0.4934
    ],
-   "base_ms": 0.497,
+   "base_ms": 0.4937,
    "height": 1440,
-   "term_us": 50.900000000000055,
+   "term_us": 56.89999999999995,
    "twin_batches": [
-    0.5486,
-    0.5479,
-    0.5479,
-    0.5479,
-    0.5471
+    0.5464,
+    0.5506,
+    0.546,
+    0.5532,
+    0.5518
    ],
-   "twin_ms": 0.5479,
+   "twin_ms": 0.5506,
    "width": 5120
   }
  ],
@@ -580,9 +580,9 @@
  },
  "reset_ok": true,
  "sources_sha256": {
-  "src/proxy/engine_effects_core.h": "d4c7a527078d086b9df9f5e5363674344388afcdea0f5ba3e95a7e50e29b68d1",
+  "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
   "src/proxy/engine_light_core.h": "b34f24656d39010370bf9d4b26b1c199fd017ea8e0e7b961d7a100ae0039f442",
-  "src/proxy/engine_plumes_core.h": "b3724f90eaa9da1d62ad0376e41c23beeede58049230d5e924a12c7f7423efb3",
+  "src/proxy/engine_plumes_core.h": "a14cf50c22737da5b0e5561f2083cac1874458ced4a7b68729d2042c69c682d4",
   "src/renderer/linear_engine_light_inc.h": "2f852298afb8b54adfc95ee0b2689f5621b10c9201e076c4e1b15f6574a29508",
   "src/renderer/linear_material.cpp": "e6ffbc02891f83336052868d5e629bf4cd34775f96cf05b050ec758454c50d63",
   "src/renderer/linear_material.h": "658208d18a1148d01834a90547328cb0caab71215fef306526582f794ab58de8",

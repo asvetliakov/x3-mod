@@ -501,7 +501,7 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
       500, 0.10 at R >= 5,000 (capitals), linear in ln R between neighbours (`floor_ratio_at`; `law::ln` without x87).
       The cap is `floor_cap` 4 x value.
     - Knob: `engine_plume_floor` ([config-file.md](config-file.md)) scales the whole curve (`floor_scale`, default 1,
-      0..3); 0 turns the floor off.
+      0.5 after flight E; 0..3); 0 turns the floor off.
     - Reach: 393 of 405 Mayhem ships raise their largest main jet (77 to the cap; k 0.35 applies to 152, 0.10 to 59).
       Stock: 124 of 198 (1 capped).
   - Effects on run406's ships (record units = value x 0.01; R estimated offline, the runtime +0xa4 is at least the
@@ -572,3 +572,57 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
 - *Lab.* `tools/effects/engine_exhaust_lab.html` draws L = 2 (0.25 + 1.75 s) nozzle widths (4 at full throttle, the
   game at nozzle 0.5), the flow at L1 = 4, and defaults the core radius to 0.45. Its note says the end-on disc, the
   hand-over, the floor and the near fade are game-only.
+
+**After flight E (2026-10-03, Run 122 A: run407 / run408).** Far ships showed no plumes at all
+([run407/408 triage](../../verification/results/run407-408-engine-plumes/README.md)): the proxy's small-parts cull
+(`cull_small_parts`, 4 px, threshold 3) culled every far jet node (s = 1..2) before the engine submitted its glow, so
+the recogniser never saw them. User decisions: keep culling them (the engine's submission work per jet, about 10 us, is
+what the cull saves; 100 far jets would cost about 1 ms) and draw them as faint sparks.
+- *Far jets from the cull.* With `engine_effects = plumes` the cull stub carries a far block
+  ([cull-small-parts.md](../verification/cull-small-parts.md) "Far engine jets"): a node it culls whose +0x130
+  carries the JET flag pair 0x4000001 is handed to `x3m_engine_far_jet` (`engine_far_jets.cpp`, integer only, no SSE,
+  no Win32, inside the pass) before the cull, which copies the node's raw fields into a per-frame buffer of 1,024. It
+  skips v/00566 (RCS) and a jet the engine would cull itself (the size limit max(+0x1d8, parent +0x1d8) or the
+  degenerate test: the census's `culled_size` / `culled_min`). The jet stays culled: nothing is submitted.
+  - At the plume stage (`engine_far_append`, once per frame, before the scene view is chosen) each copy becomes a
+    64-byte record (`engine_effects_core.h` `far_record`, `flag_far`): origin = +0xb0 x the view's context scale
+    (the float at `*(view+0x1c)+0x2c`, one bounded read per context and frame), axis = -(basis row 2), size = |basis
+    row 0| / 65536 x +0x70 x +0x80 / 65536 x the scale, s and z from +0x88 (the construction of `0x004bdee0` with c4-6
+    order a, flight A). Tags as a suppressed draw: the camera handle the pass's view carries (+0x28, the object
+    scope's camera), the parent and its radius through the same memo (the floor), the own-ship tag. SMALLJET table
+    entries are dropped. The ring's cap applies.
+  - View (review fix, 2026-10-03): a far copy carries no scene phase, only its view's handle: the main view's cull
+    pass may run before the selector enters Scene (the latching depth Clear after the background draws), so a phase
+    tag could drop every far record. The scene view is chosen from the drawn records only (own-ship rule, then
+    majority over the scene-phase draws); far records whose handle equals it are drawn, others count
+    `skipped_other_view`. A frame without a drawn scene-phase record takes the most frequent far handle
+    (`view_rule=far`, session count `view_far_total`). Consequence: on such a frame, a target monitor's far jets
+    outnumbering the main view's would be projected with the scene camera.
+  - Dedupe: the append drops a copy of a (node handle, view handle) pair already appended this frame
+    (`far_duplicates`; the cull pass may run more than once per view). A zero node handle is never deduplicated.
+  - Devices: the far block is armed while at least one device requests the plume stage (a count, not one flag: an old
+    device's teardown after a new device configured itself no longer disarms the session); the buffer is emptied at
+    the frame begin of the device whose resolve last took the stage's arming decision (any requesting device while no
+    device has).
+  - A frame whose only jets are far ones runs the stage too (the resolve installs the callback for buffered copies).
+  - The engine's own culls stay: a hull culled whole takes its jets with it (their children never reach the site).
+  - Counts in `engine_stage`: `far_jets` (copies), `far_records` (appended), `far_engine`, `far_overflow`,
+    `far_dropped`, `far_disarmed`, `far_duplicates`; the cull's rows say `far_jets=on|off|writer_mismatch`.
+  - Not verified in flight (Run 123 acceptance checks): far records are drawn by their view handle, i.e. the view's
+    +0x28 equals the draw scope's camera handle (`engine_stage far=` > 0 with far ships in view, `skipped_other_view=`
+    not rising by the far count, `view_rule=` own or majority with draws and `far` on draw-free frames); how many
+    times the cull pass runs per view and frame (`far_duplicates=` 0 if once); and the context scale is 0.01 in the
+    scene view. Ribbons on far records key on node handle + model (no lifetime serial), so a jet crossing the cull
+    threshold restarts its ribbon.
+- *Distance law.* A plume whose projected nozzle width (after the floor and the near cap, before the dot floor) is under
+  `far_px_full` 12 px scales its radiance (core, halo, ring and disc alike) by `far_low` + (1 - `far_low`) x
+  smoothstep(`far_px_min` 2, 12, px), 0.15 at 2 px and below, 0.449 at 6 px. The drawn geometry never falls below a
+  2 px wide, 4 px long dot (the minimums were 3 / 6). Ribbons take the same factor from the plume's nozzle (Look nozzle
+  width x the floored value) at the head and keep their 3 px floor. `engine_stage far=` counts the nozzles under 12 px.
+- *Halo* `hb` 0.35 -> 0.20 (plume and disc halo; the lab's slider default). *Floor* `engine_plume_floor` default
+  1.0 -> 0.5 (run408 confirmed it); per class at 0.5:
+  `verification/results/engine-effects/floor_by_class.py` -> `floor_by_class_out.txt`.
+- *Cost (measured, Wine, X3 bottle; fixture timings, not game FPS).* The cull stub with a far copy: 5.6 ns per culled
+  jet over a plain culled node (64-node tree, `run_cull_small_parts.py`). The CPU build at 300 records (250 far):
+  29.9 us, 32.3 us with the floor. The stage's GPU at 300 nozzles of which 250 are far: 0.84 ms at 1080p, 0.26 ms at
+  5120x1440 (EVENT-fenced tail; 100 nozzles of the old crowd: 0.36 / 0.14 ms).

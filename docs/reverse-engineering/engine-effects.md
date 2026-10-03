@@ -103,7 +103,7 @@ rates, `+0x48`/`+0x4a` type/subtype, `+0x50` extension, `+0x70` root render node
 | `0x0045af0a..0x0045af5d` | main jet (`C & 1` or `C == 0`): target = `base`; shown iff `C & 0x1000` and not `obj+0x44 & 0x4000000`, else `+0x12c \|= 0x100000` (hidden) |
 | `0x0045af61..0x0045afae` | every jet: if `C & 0x8000` or `C == 0`, shown iff `C & 0x1000` **and** `obj+0x44 & 0x4000000` (alternate nozzle set, overriding the main rule); otherwise +4.0 when `C & 2` and `accel < 0` (braking). Non-main jets start from `0x28f` (0.01) instead of `base` (`0x0045ada2`) |
 | `0x0045afb8..0x0045b006` | +1.0 for each matching steering bit: `0x4`/`0x8` yaw ±, `0x10`/`0x20` pitch ±, `0x40`/`0x80` roll ± (sign of the angular acceleration) |
-| `0x0045b00c..0x0045b03c` | **rate limit**: `|z_new − z_old| ≤ dt_ms · 0x106` (0.004 per ms; 0.25 → 2.0 takes 437 ms); `dt_ms = time − obj+0xa8`, clamped to 0…1000 |
+| `0x0045b00c..0x0045b03c` | **rate limit**: `|z_new − z_old| ≤ dt_ms · 0x106` (0.004 per ms; 0.25 → 2.0 takes 437 ms); `dt_ms = time − obj+0xa8` in game ms, set to 1000 when above 1000 or negative (§8) |
 | `0x0045b042..0x0045b08b` | non-main jets only: hidden while `z ≤ 0x28f`, shown above (children follow) |
 | `0x0045b08d..0x0045b09a` | `0x00488270(node, 0x10000, 0x10000, z)`: `+0x80/+0x84/+0x88` = per-axis scale, `+0xa0` radius = `+0x70 · max(scale)`; skipped when `z` is unchanged (`0x0045b03e`) |
 
@@ -129,8 +129,8 @@ Other writers of jet state:
 | `0x00413394` (`0x004132d0`, from `0x0041575c`) | ship break-up: debris objects per child | jets spawn no debris |
 | `0x004439c1`, `0x0044424a`, `0x004505aa` | `obj+0x44 & 0x4000000` set from `types/Flight` (`0x00606fac`, stride `0x50` = 5 modes × `0x10`) flags bit 1 of mode × variation `TShips+0xa8`; the stock and installed `Flight` table has one variation with the flag in "Travel" and "Decouple" | swaps main and `0x8000` nozzles; cleared when `+0xa8 = −1` |
 
-SETA: the drive uses game-time deltas (`*(0x00606f34)+0x718`), clamped to 1 s, so a faster clock only shortens the
-ramp per frame; the target ratio is unchanged [i]. Docked ships: not traced (they are not drawn) [u]. Boost or
+SETA: the drive uses game-time deltas from the game clock `*(0x00606f34)+0x718`, capped at 1 s, so a faster clock
+only shortens the ramp per frame; the target ratio is unchanged (§8 [m]). Docked ships: not traced (they are not drawn) [u]. Boost or
 afterburner: no such term in the drive; the only speed multiplier is `ext+0x274` [m for the code, i for its meaning].
 Per ship the root node also gets `+0x124 = remap(max |velocity component|; [0, vmax] → [TShips+0x60, TShips+0x64])`
 (cols 14/15, "sound vibration min/max" in editors; `0x0045b24c..0x0045b2ad`) [m]; it is not read by the material path
@@ -230,6 +230,19 @@ non-positive or implausible value (above 10,000 x the jet's value) means no floo
 For hulls at the root's origin R is at least the hull's LOD-0 value. An offline estimate over the scene parts (|offset|
 + part value) is in `verification/results/engine-effects/floor_ratio_effects.py`. It is not verified against a live
 read: no session has logged `+0xa4` (open question below).
+
+### Far jets at the cull pass (2026-10-03, after flight E)
+
+The small-parts cull's far block ([cull-small-parts.md](../verification/cull-small-parts.md) "Far engine jets") builds a
+record for a JET node it culls from the node itself, at the site `0x0047d2a2` of the cull/LOD pass, without a draw.
+
+| fact | source |
+| --- | --- |
+| `0x00434708` `81 8e 30 01 00 00 01 00 00 04` = `or dword [esi+0x130],0x4000001`, the JET list's match in `0x00434620` (pinned at install) | [m] installed EXE (`verify_cull_small_parts_site.py` `jet_writer`) |
+| The node's `+0xb0` translation and `+0xc0` basis are render-ready at the pass: the frame routine runs the node traversal `0x0047bc20` (writes `+0xc0` at `0x0047bea5`, `+0xb0..+0xb8` at `0x0047c047..0x0047c053`) at `0x00472256`, before the view activation at `0x00472260` whose pass follows | [m] listing ([chase-camera-first-flight.md](chase-camera-first-flight.md)); [i] that no other writer runs between |
+| The pass's view (site `[ESP+0x28]`) is the camera node: the pass reads its `+0x270` and `+0x298`. `0x004bdee0` scales the world rows by the float at `*(camera+0x1c)+0x2c` (the context scale, 0.01 in gameplay views) | [m] ([camera-state-and-frame-routine.md](camera-state-and-frame-routine.md) §2) |
+| The record: origin = `+0xb0` x the scale, axis = -(basis row 2), size = \|basis row 0\| / 65536 x `+0x70` x `+0x80` / 65536 x the scale, z = `+0x88` / 65536: the c4-6 rows of section 4 in order a (flight A: model z = basis row 2 at cos 1.0) | [m] construction and flight A; [i] model x = basis row 0 by the same construction |
+| The view's `+0x28` is the camera handle the draw path tags (object_trace reads the draw scope's camera argument `+0x28`) | [i]: that the pass's view is the same object as `0x004c0150`'s third argument is not traced; a mismatch shows as far records counted `skipped_other_view` |
 
 ## 5. Suppression safety
 
@@ -474,6 +487,179 @@ No instruction in `.text` sets or clears `0x40000000` on this word with an immed
 dialog has no item for it. The bit therefore comes from the default and the registry only. The bottle X3 value is
 `0x523bad5e` (`user.reg`), bit set: trails are on. Class-0 trails also need `VideoD3DFlags2 & 2` (`0x004146e5`).
 
+## 8. SETA and the frame step (2026-10-03)
+
+Question (gap 7 of [engine-exhaust-gap-analysis.md](../architecture/engine-exhaust-gap-analysis.md), the plume
+"travel look"): can the proxy detect SETA every frame from the game's own state, safely? Same EXE and method as
+above (fresh Ghidra 12.1.3 import in the scratchpad, `X3DecompileFunctions` on `0x004d1df0 0x004b0e00 0x004ee1e0
+0x0046c170 0x00412d70 0x00416750 0x004596e0`; objdump listing). Byte checks:
+[`seta_frame_step.py`](../../verification/results/engine-effects/seta_frame_step.py) →
+[`seta_frame_step_out.txt`](../../verification/results/engine-effects/seta_frame_step_out.txt), **48/48 PASS** (30
+instruction sites, the 16-row native table with its jump table, 2 strings). Field and caller scan:
+[`seta_field_access.py`](../../verification/results/engine-effects/seta_field_access.py) and
+[`seta_callers.py`](../../verification/results/engine-effects/seta_callers.py) →
+[`seta_field_access_out.txt`](../../verification/results/engine-effects/seta_field_access_out.txt). `cfg` below is
+`*(0x00606f34)`, the configuration/state object (the same pointer as §7 and compositor-and-glow.md §1).
+
+**Answer.** Yes, with plain reads and no hook. The SETA factor is `cfg+0xcc` (16.16, 1.0 = `0x10000`), set only by
+the script native `TI_SetTimeWarpFactor`. The engine's effective rate is `(cfg+0xcc · cfg+0xd0 + 0x8000) >> 16`,
+where `+0xd0` is a load governor in `[0.3, 1.0]`. The per-frame steps are `cfg+0x714` (game ms) and `cfg+0x71c`
+(wall ms). The pointer is valid from before `Direct3DCreate9` to process exit. Every writer runs on the main thread,
+which is also the thread that calls Present. Use the two factor fields; the step ratio is only a cross-check, because
+stalls distort it.
+
+### The clock [m]
+
+| address | operation |
+| --- | --- |
+| `0x004d1df0` tick | `QueryPerformanceCounter`; `ms = Δticks / *0x00608a94` (ticks per ms, from `QueryPerformanceFrequency / 1000` in `0x004d1fb0`), **busy-waits until `ms ≥ 1`**, remainder carried in `0x00591ea0/a4`; `cfg+0x720 += ms` (wall clock); if `*0x00608a98 ≠ 0`: `cfg+0x718 +=` that value, then cleared (one-shot); else `f = (cfg+0xcc · cfg+0xd0 + 0x8000) >> 16`, `cfg+0x718 += (clamp(ms, 1, 200) · f + 0x8000) >> 16` (game clock) |
+| `0x004ee1e0` frame clock | tick, then `cfg+0x714 = cfg+0x718 − *0x00609104`, `cfg+0x71c = cfg+0x720 − *0x00609108`, **each set to 1 when outside `1…0x7fff`** (`lea ecx,[eax-1]; cmp ecx,0x7ffe; jbe`); snapshots updated |
+| `0x004b0e00` (main loop `0x00403af0`, every iteration, every mode) | calls the frame clock first, runs due scheduler events, then the governor |
+| governor (`0x004b0eb0..0x004b107f`) | `n` = scheduler events due within `(0, round(40 · cfg+0xcc / 65536))` game ms; if `cfg+0xcc` dropped below its previous value (`0x0057dcb0`, initial `0x10000`): `+0xd0 = 1.0`; else `n > 1000` → `+0xd0 ·= 0.7` (`0xb333`), floor `0x4ccc` (0.3); `n < 200` → `·= 1.2` (`0x13333`), cap 1.0 |
+
+All six fields are int32. `+0x718` is the absolute game clock and `+0x720` the absolute wall clock, both in ms.
+`+0x714` is this frame's game-time step and `+0x71c` this frame's wall step, both in ms. The `TI_` script module
+(name table `0x00579f80`, dispatcher `0x004b1300`, jump table `0x004b15f8`, registered at `0x004b11ba`) exposes
+these fields:
+
+- `TI_GetAbsTime` (2) reads `+0x718`.
+- `TI_GetLastFrameDelay` (8) reads `+0x714`.
+- `TI_SetTimeWarpFactor` (9) writes `+0xcc` and `TI_GetTimeWarpFactor` (10) reads it.
+- `TI_GetTimeWarpMultiplier` (11) reads `+0xd0`.
+- `TI_SetAbsTime` (13) sets `+0x718` to its argument and `+0x714` to 0.
+- `TI_GetRealTime` (14) reads `+0x720`.
+- `TI_ReadSystemClock` (15) runs an extra tick without updating the snapshots.
+
+**The SETA factor.** The listing scan finds five writers of `cfg+0xcc`:
+
+- `0x004ed716`: object creation; sets 1.0, together with `+0xd0`.
+- `0x004d1fbc`: clock initialisation; sets 1.0.
+- `0x00404250`: after the game loop `0x00403840` returns; sets 1.0.
+- `0x00404f9d`: save-game load; takes the value from the save, which the save writer reads at `0x0040481e`.
+- `0x004b149c`: `TI_SetTimeWarpFactor`; stores the script argument unchanged.
+
+No EXE key handler sets it, so SETA is script-driven. The engine's frame-rate overlay (`0x004e3f40`, format
+`"%d fps, Warp: %d%% (real %d%%), …"` at `0x0056494c`) prints `+0xcc · 100 >> 16` as "Warp" and
+`((+0xcc · +0xd0) >> 16) · 100 >> 16` as "real". That pins `+0xcc` as the requested warp and the product as the
+effective one [m].
+
+Other engine readers [m sites; i roles]:
+
+- `0x00412113` (input routine `0x00410100`): when the warp is not 1.0 and one of nine input globals (`0x00608e60…0x00608fd0`) is set, it calls
+  the scene-script function `StopFastForward` (`0x00555e1c`).
+- `0x00496f99` (auto-detail, main loop `0x00403f5a`): computes frame ms as `+0x714 / warp` when the warp exceeds
+  1.0. It ignores `+0xd0`.
+- `0x0044d683` and `0x00454323`: `(warp − 1)/4` terms, not traced.
+
+That SETA ×10 stores `0xa0000` is [i]. The KC `.obj` files call natives by number, so the name scan has no hits
+([`seta_script_scan.py`](../../verification/results/engine-effects/seta_script_scan.py) →
+[`seta_script_scan_out.txt`](../../verification/results/engine-effects/seta_script_scan_out.txt)).
+
+### Question 1: what the jet drive reads [m]
+
+`0x004596e0` reads `cfg+0x718` once at entry (`0x004596f7`). That is the absolute game clock, not a step (§2 said
+"`+0x718` game-time deltas"; the delta is formed per object). For each object:
+
+- `dt = now − obj+0xa8` (`0x004597dd`), a 32-bit integer in game ms.
+- `dt` becomes 1000 when it is above 1000 **or negative** (`0x004597e5..0x00459806`); it is not clamped to 0.
+- At the end of the object, `obj+0xa8 = now` (`0x0045b3ce`).
+
+So `dt` is the game time since that object's previous pass, which equals `cfg+0x714` for an object driven every frame
+[i]. The SETA factor itself is `cfg+0xcc`. The drive never reads it.
+
+### Question 2: lifetime, alignment, thread
+
+- **Pointer** [m writers, i completeness of the free paths]: there are six stores to `0x00606f34` in `.text`.
+  - Creation: `0x004ec9e0` allocates the object with CRT `malloc(0x7a8)` (`0x004eca37`) and clears it with `memset`
+    (`0x004eca65`), so `+0x714/+0x71c` start at 0. It sets `+0xcc/+0xd0 = 1.0` (`0x004ed716`) and publishes the
+    pointer at `0x004eca71`.
+  - The startup routine `0x00402780` stores it at `0x00402844`, before `Direct3DCreate9` (`0x00402edc`).
+  - `0x004ecd15` and `0x004ed61f` store 0 on the creator's failure paths.
+  - `0x004edf50` clears it (`0x004ee172`). Its callers are the exit routine `0x00401dd0` (`0x0040263e`) and two
+    out-of-memory paths of the startup catalogue routine `0x004ed750` (`0x004ed9e6`, `0x004edc64`, which also stores 0
+    at `0x004edc69`).
+  - Nothing on the load, menu, sector-transit or save paths reallocates or frees it; a game load only fills fields.
+    It is never NULL while frames are presented.
+- **Alignment**: the offsets `0xcc`, `0xd0`, `0x714`, `0x718`, `0x71c` and `0x720` are multiples of 4 in a heap block
+  (`malloc` `0x005112c4` → `HeapAlloc`, at least 8-aligned [i]). Every read is an aligned dword.
+- **Thread**: every writer is main-thread code (main loop, startup, script-VM natives, save and load). The EXE
+  imports no thread creation (voice-startup-sequence.md §1) [i]. The game calls Present (`0x004e3e70`, from
+  `0x00403f7a`/`0x00403f87`) on the same thread, later in the same iteration as the clock (`0x00403af0`). A read at
+  the proxy's Present therefore sees the steps of the frame being presented, with no concurrent writer and no tear.
+- **Hook-site suitability**: no hook or patch is needed. Read with the fault-free `engine_memory::read` that
+  `sector_background` and `sun_occlusion` already use for this pointer. The optional diagnostic stamp
+  `game_phase_clock` at `0x00403af0` (game_phase_sites.h) is a call-site rewrite of the `0x004b0e00` call. It is not
+  needed, and the reads below do not touch it.
+
+### Question 3: values by state [m unless marked]
+
+| state | `+0xcc` / `+0xd0` | `+0x714` (game ms) / `+0x71c` (wall ms) |
+| --- | --- | --- |
+| normal flight, 60 fps | `0x10000` / `0x10000` (the governor sits at its cap while fewer than 200 events are due within 40 ms [i]) | 16 or 17 / 16 or 17, **equal**: `f = 1.0` and `ms ≤ 200` |
+| SETA ×k | `k · 0x10000` [i] / `0x4ccc…0x10000` | `≈ +0x71c · k · mult`, ±0.5 ms per tick: ×10 at 60 fps → about 167 / 16 or 17 |
+| hitch, wall frame > 200 ms | unchanged | capped at `round(200 · f)` / the real ms |
+| pause (`X2_SetPause`, bit 0 of `[*0x0057fc60+0x4a0]`, pause-dialog-input.md) | unchanged | In the paused iteration the extra tick `0x00403ace` resyncs the snapshots, then the frame clock busy-waits at least 1 ms: about `round(f)` / 1. `0x00404280` then blocks, and no frame is presented. The unpause tick `0x004043ef` republishes the snapshots, so the one frame drawn after the pause carries `round(f)` / 1 and the next frame is normal. The game clock jumps by at most `round(200 · f)` at unpause, which the drive sees as `dt`. |
+| main menu | 1.0 at boot (`0x004ed716`, `0x004d1fbc`), and 1.0 again once a game loop returns (`0x00404250`; that this is the exit-to-menu path is [i]) | written every iteration (`0x004b0e00` runs in every mode) |
+| loading screen | unchanged | the loading screen `0x004974c0` and the logo loop `0x004972d0` call the frame clock (`0x004974d6`, `0x004973e1`, `0x00497427`, `0x00497477`), so the steps update per loading-screen frame [m sites; i roles] |
+| game load | taken from the save (`0x00404f9d`) | `+0x714` is restored from the save (`0x00404f6a`), then `0x004d1f80` (`0x0040516c`) ticks and republishes the snapshots, so the next step is normal |
+| sector transit stall (sector-transit-order.md rows 1–10, no frames) | unchanged | `SA_FreeAllBodies` resyncs at `0x004650ca` (row 3), but rows 4–10 are counted: next frame `round(≤ 200 · f)` / the remaining stall in ms |
+| alt-tab, RunInBackground off | unchanged | The pump `0x004d34b0` (`0x00403af5`, after the clock) blocks in `GetMessageA`. That iteration's frame is normal; the next carries `≤ round(200 · f)` / the time away. Away longer than 32.767 s: `+0x71c = 1`, so the ratio is about `200 · f`. |
+| save (`0x00404530`) | unchanged | tick and republish at `0x00404c6c`/`0x00404c86`; the next step excludes the save stall |
+| screenshot (`0x004f3b10`, request `0x00607c50`) | unchanged | the next game step is forced to 33 or 34 ms (`*0x00608a98`) |
+| `TI_SetAbsTime` | unchanged | `+0x714 = 0` until the next frame clock |
+| before the first frame clock | 1.0 / 1.0 | 0 / 0 (memset) |
+
+No per-frame path writes 0 to either step; the range rule writes 1. The engine itself never changes `+0xcc` on pause,
+menu, alt-tab or loading. Whether the scripts end SETA there is [u], apart from `StopFastForward` above.
+
+### Question 4: the safest read
+
+There is no SETA flag byte in the EXE. The SETA ware and the toggle state live in script space; `+0xcc` is the engine
+state, and the engine tests it itself (`> 0x10000` at `0x00496f99`, `≠ 0x10000` at `0x00412113`).
+Recommended per-frame read at Present [i: recommendation]:
+
+1. `cfg = *(u32*)0x00606f34`, read fault-free; if 0, use 1.0.
+2. `warp = cfg+0xcc` and `mult = cfg+0xd0` (two aligned dwords).
+3. Accept them only if `0 < warp ≤ 0x00640000` (100×; the script can store any value) and `0x4ccc ≤ mult ≤ 0x10000`
+   (the governor's own bounds). Otherwise use 1.0.
+4. SETA is engaged when `warp > 0x10000`. The effective rate is `((warp · mult + 0x8000) >> 16) / 65536`. Use the
+   effective rate for anything that should follow the speed of game time, because the governor can pull ×10 down
+   to ×3.
+
+The step ratio `+0x714 / +0x71c` matches the effective rate only when `1 < +0x71c ≤ 200` and the frame held no
+resync or stall. At 1× and 60 fps it is exact; at ×10 it is within about 0.3 %. It misreads after alt-tab, loading,
+transit and hitches over 200 ms (ratio `200 · f / ms`), and it reads about `200 · f` after a stall over 32.767 s. It
+also needs a guard against division by zero before the first frame.
+
+Identity: `0x00606f34` is already anchored (`executable_identity.h` `{0x00401c19, a1 34 6f 60 00}`), and so is
+`0x0057fc60` (`0x00401b91`). The field offsets are not covered. Bind them with one whole-instruction compare of the
+tick's reads at `0x004d1ef0`: `8b 91 d0 00 00 00 8b 81 cc 00 00 00` (12 bytes). If the steps are used as well, add
+`0x004ee216` (`89 82 14 07 00 00`) and `0x004ee23a` (`89 82 1c 07 00 00`). No proxy hook or anchor sits in
+`0x004d1d40..0x004d1fa4` or `0x004ee1e0..0x004ee246` [m: grep of `src/`].
+
+### Question 5: SETA, the jet rate limit and the trails
+
+- **Rate limit**: each pass moves `z` by at most `dt · 0x106 / 65536` with `dt` in game ms, capped at 1000.
+  - Under an effective rate w, a plume ramps w× faster in wall time. 0.25 → 2.0 takes 437.5 game ms, which is 437.5/w
+    wall ms: 26 frames at 1× and 60 fps, about 3 frames at ×10 [m arithmetic].
+  - The target `speed / vmax` is unchanged. Ship speed also changes w× faster in wall time, so per game second the
+    plume follows speed exactly as at 1×. The braking term `(speed − previous)·1000/dt` is per game second, so it is
+    unchanged too [i].
+- **Trails** (`0x0046c170`, called from `0x00416750` with `now = cfg+0x718` [i: decompile]):
+  - Each emitter keeps a last-spawn time in game ms. The spawn interval (Density, size and speed terms) is in game ms,
+    and the loop catches up every interval elapsed since the last spawn.
+  - A particle's spawn time is the last spawn plus the interval; it dies at spawn + `Lifetime` + a random term, all
+    in game ms.
+  - Its position is interpolated between the emitter's previous and current position by `(spawn − previous frame)/dt`.
+    That `dt` is game ms and becomes 1000 outside `0…1000`.
+  - So under w, these are unchanged: spawns per game second, world spacing, world trail length (lifetime × speed) and
+    the number of live particles.
+  - Per wall second there are w× more spawns, and each particle lives `Lifetime / w` wall ms. Mayhem id 34's 1,500 ms
+    becomes 150 ms (about 9 frames) at ×10, so the trail turns over w× faster.
+  - Above 1000 game ms per frame (×10 below 10 fps) the fraction exceeds 1 and particles land ahead of the emitter [i].
+  - When the pool is exhausted (free list `+0x62ec` empty) the emitter recycles from `+0x62f8` or skips to `now` [i].
+    The function that ages and retires particles was not traced [u].
+
 ## Unknown
 
 - The c4–c6 index order of the glow draw (which register holds which world column) and therefore the exact
@@ -489,7 +675,9 @@ dialog has no item for it. The bit therefore comes from the default and the regi
 - How the legacy-material emitter sprite (`objects/v/00011`) is drawn, and the lens-flare path of `EEDF_LENSFLARE`
   elements.
 - Consumers of the root `+0x124` value and of TShips col 12; the population of `+0x12c & 0x800` children.
-- Docked and SETA behaviour beyond the code reading above.
+- Docked behaviour. For SETA (§8): the value the scripts pass for ×6/×10 (expected `k·0x10000`), how often the
+  load governor engages in practice, whether the scripts end SETA on pause or menus, and the particle ageing
+  function.
 - The live value of a ship root's `+0xa4` against the offline estimate (§4 "Ship radius"). Which children carry
   `+0x12c & 0x40` (their offsets are scaled by the root's 47 / 65536). Whether anything after construction dirties a
   ship root and so lets the jets' throttle scale or a part's movement into R. A `--debug` row with parent+0xa4 per ship
@@ -515,4 +703,13 @@ python3 verification/results/engine-effects/phase0_data.py \
 #   §7: 0x00414590..0x0041489b, 0x004148a0..0x00414a63, 0x00414c10..0x00414ce7, 0x00412d70..0x00412dc0,
 #   0x004124c0..0x00412541, 0x0040e780..0x0040e7ff, 0x004346a0..0x00434760, 0x0047d200..0x0047d2e0,
 #   0x00437b03..0x00437b90, 0x004127c0..0x004128d8, 0x004b71f0..0x004b7270, 0x004d8a60..0x004d8b00
+# §8 (listing = local objdump, about 0.5 s each):
+python3 verification/results/engine-effects/seta_frame_step.py \
+  > verification/results/engine-effects/seta_frame_step_out.txt                # 48/48 PASS, bytes only
+python3 verification/results/engine-effects/seta_field_access.py <listing> 0xcc 0xd0 0x714 0x718 0x71c 0x720 \
+  --writes --lookback 400                                                       # plus the readers/globals/callers
+python3 verification/results/engine-effects/seta_callers.py <listing> 4d1df0 4ee1e0 4b0e00 4edf50 ...
+python3 verification/results/engine-effects/seta_script_scan.py \
+  > verification/results/engine-effects/seta_script_scan_out.txt              # 3 s, no hits
+#   §8 Ghidra: X3DecompileFunctions <out> 004d1df0 004b0e00 004ee1e0 0046c170 00412d70 00416750 004596e0
 ```

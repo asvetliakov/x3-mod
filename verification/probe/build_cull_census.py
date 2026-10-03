@@ -18,7 +18,7 @@ FIXTURE_DEFINE = '-DX3M_CULL_CENSUS_FIXTURE'
 HANDLERS = ('_x3m_cull_census_measure', '_x3m_cull_census_exit')
 
 
-def audit_module(path):
+def audit_module(path, handlers=HANDLERS):
     symbols = subprocess.run(['i686-w64-mingw32-objdump', '-t', str(path)], capture_output=True, text=True, check=True).stdout
     forbidden = [line for line in symbols.splitlines() if any(name in line for name in ('_Unwind_', '__gxx_personality', '__cxa_throw'))]
     if forbidden:
@@ -37,10 +37,10 @@ def audit_module(path):
             violations.append(line.strip())
     if violations:
         raise RuntimeError('x87/MMX/XMM instruction in the handler module: ' + '; '.join(violations[:4]))
-    missing = [h for h in HANDLERS if h not in listing]
+    missing = [h for h in handlers if h not in listing]
     if missing:
         raise RuntimeError('handler symbol missing: ' + ', '.join(missing))
-    return {'functions': functions, 'no_x87_mmx_xmm': True, 'no_exception_runtime_symbols': True, 'handlers': list(HANDLERS)}
+    return {'functions': functions, 'no_x87_mmx_xmm': True, 'no_exception_runtime_symbols': True, 'handlers': list(handlers)}
 
 
 def build():
