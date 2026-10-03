@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor`, `engine_light` (2026-10-03; all four at the end of this note) |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor` (2026-10-03; all three at the end of this note), `engine_light`, `engine_shimmer`, `engine_shimmer_px`, `engine_shimmer_max` (2026-10-03, end of this note) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player
@@ -631,3 +631,22 @@ no twin and uploads nothing (every program is today's). Exactly `on` or `off` (l
 on with `status=invalid_setting` on the `engine_light_mode` row. Read once per device at attach and only with
 `plumes`; not applied under linear materials. The launcher sends it only when given; an inherited shell value is
 dropped, and it is refused under `--vanilla`.
+
+## `engine_shimmer`, `engine_shimmer_px`, `engine_shimmer_max` (2026-10-03, exhaust gap 9)
+
+Keys `engine_shimmer` (`X3M_ENGINE_SHIMMER`, launcher `--engine-shimmer on|off`) and `engine_shimmer_px`
+(`X3M_ENGINE_SHIMMER_PX`, launcher `--engine-shimmer-px PX`)
+([engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md), gap 9). The heat shimmer behind the nearest engine
+nozzles of `engine_effects = plumes`: a screen-space distortion after the TAA resolve and before bloom, behind the
+largest nozzles on screen whose projected width is 24 px or more. `engine_shimmer` is exactly `on` (default) or `off`; anything else is
+refused to `on` with `status=invalid_setting` (or `too_long`) on the per-device `engine_shimmer_config` row.
+`engine_shimmer_px` is the amplitude in pixels at 1440 rows (scaled with the target height), default **1.5**; one plain
+decimal in 0..4 (no sign, exponent or padding), 0 = none; anything else is refused to 1.5 with `px_status=invalid_setting`.
+`engine_shimmer_max` (`X3M_ENGINE_SHIMMER_MAX`, launcher `--engine-shimmer-max N`) is how many nozzles get it per frame,
+the largest first: one plain integer 0..16 (digits only), default **4** (the own ship plus the nearest; the orchestrator's
+choice after the build, bounding the measured worst case near 0.4 ms at 5120x1440), 0 = none; anything else is refused to
+4 with `max_status=invalid_setting`. Requested only with the plumes requested on the device (and a non-zero amplitude
+and count); read once per device configuration. Ctrl+Alt+F7 turns it off and
+on in flight ([comparison-hotkeys.md](comparison-hotkeys.md), "Engine heat shimmer"). The launcher sends each only when
+given (the amplitude finite 0..4, as a plain decimal; the count 0..16); an inherited shell value is dropped, and all three
+are refused under `--vanilla`.

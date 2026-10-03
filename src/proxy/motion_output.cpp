@@ -547,6 +547,7 @@ void MotionOutput::release_resources() noexcept {
         fog_frame_ = ~std::uint64_t(0);
     }
     release_engine_plumes(); // the plume stage's programs and DEFAULT buffers (motion_output_engine_plumes_inc.h)
+    release_engine_shimmer(); // the heat shimmer's programs, block and scratch (motion_output_engine_shimmer_inc.h)
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ =
         false; // a new pass may be refused for another reason
     fog_motes_drawn_ = false;
@@ -1985,7 +1986,8 @@ const char* taa_invalidate_site_name(TaaInvalidateSite site) noexcept {
                                                                           "composition_prepare",
                                                                           "composition_incomplete",
                                                                           "cutout_missed",
-                                                                          "fog_transition"};
+                                                                          "fog_transition",
+                                                                          "engine_shimmer"};
     return unsigned(site) < unsigned(TaaInvalidateSite::Count) ? names[unsigned(site)] : "unknown";
 }
 void MotionOutput::flush_taa_invalidate_log() noexcept {
@@ -2577,6 +2579,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     // the history already holds it.
                     hdr_resolved_ = out.color;
                     t.copy = S_FALSE;
+                    // Engine heat shimmer (motion_output_engine_shimmer_inc.h): after the resolve, before the
+                    // write-back and bloom read it; reverted in the history before Present.
+                    run_engine_shimmer(out.color, out.color_surface, depth, in.width, in.height);
                 } else if (out.display_written) {
                     // The pass drew the display image into the main target
                     // itself (the sharpened image, or the draw copy mode's
@@ -4124,6 +4129,7 @@ void MotionOutput::before_reset() noexcept {
     // start over.
     if (plumes_) taa_call([&] { plumes_->before_reset(); });
     if (ribbons_) taa_call([&] { ribbons_->before_reset(); }); // phase 3: the ribbon pass's objects and its pool
+    engine_shimmer_before_reset(); // the heat shimmer's block and scratch; a pending revert is forgotten
     ribbons_attach_failed_ = false;
     plumes_attach_failed_ = false;
     plumes_disarmed_until_ = 0;
@@ -4168,6 +4174,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     }
     if (plumes_) plumes_->after_reset(result);
     if (ribbons_) ribbons_->after_reset(result);
+    engine_shimmer_after_reset(result);
     sun_apply_frame_ = ~std::uint64_t(0);
     depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the
                                                // quad may run again
@@ -9905,6 +9912,7 @@ void MotionOutput::before_present() noexcept {
         counters_.hdr.dirty_at_present = hdr_state_ == HdrState::Active && hdr_dirty_;
         end_redirect(HdrEnd::Present);
     }
+    revert_engine_shimmer(); // every reader of the resolved image is done: the history gets its rect back
     if (!cut_finished_) finish_cut_detector();
     // Engine hook against selector: the verdict of this frame (SceneEndCheck).
     // A frame that never latched a scene (menu) has nothing to compare.
@@ -10089,6 +10097,7 @@ void MotionOutput::log_screen_additive_frame() noexcept {
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
     if (engine_hook_) engine_effects_frame_end(); // --debug: the engine_frame row of the presented frame
+    if (engine_hook_) log_engine_shimmer();       // --debug: its engine_shimmer row at the same cadence
     if (bolt_copy_more_) { // capture frames only: the bullet draws beyond the frame's bolt_copy cap
         log("bolt_copy_more device=%llu frame=%llu more=%u", id_, frame_, bolt_copy_more_);
         bolt_copy_more_ = 0;
@@ -12337,4 +12346,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_engine_plumes_inc.h"
 #include "motion_output_engine_ribbons_inc.h"
 #include "motion_output_engine_light_inc.h"
+#include "motion_output_engine_shimmer_inc.h"
 } // namespace x3m
