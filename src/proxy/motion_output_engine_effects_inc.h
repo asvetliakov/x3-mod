@@ -43,6 +43,11 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
         log("engine_effects_partial device=%llu frame=%llu route=off redirects=on suppress=1 glow=native sprites=off trails=off",
             id_, frame_);
     engine_partial_logged_ = partial;
+    // plumes whose stage is not attached on this device (refused at attach or creation, failed until Reset, or within
+    // the 64-frame disarm after a failed stage frame): this frame's recognised glow jets are forwarded natively
+    // (forwarded_stage_off), the game's glow rather than nothing. Latched once per frame from the states the last
+    // resolve left (a refusal found at this frame's resolve forwards from the next frame on).
+    engine_stage_off_ = engine_plumes_stage_off();
     if (engine_rows_) ++engine_row_frames_; // the previous frame wrote rows: one of the first eight spent
     engine_rows_ = engine_rows_more_ = 0;
     // The plume stage's per-frame report (engine_stage row; motion_output_engine_plumes_inc.h).
@@ -71,13 +76,14 @@ void MotionOutput::engine_effects_frame_end() noexcept {
     }
     const auto stats = engine_effects::stats();
     if (log_tier::cached_debug)
-        log("engine_frame device=%llu frame=%llu mode=%s candidates=%lu not_jet=%lu records=%u suppressed=%lu forwarded_unscoped=%lu forwarded_snapshot=%lu forwarded_opaque=%lu forwarded_state=%lu forwarded_overflow=%lu forwarded_native=%lu forwarded_patch_missing=%lu redirects=%u unknown_body=%lu steering=%lu rows_unknown=%lu order_a=%lu order_b=%lu order_ambiguous=%lu order_mismatch=%lu order_invalid=%lu pinned=%s bodies=%u mapped=%u rows=%u rows_more=%u",
+        log("engine_frame device=%llu frame=%llu mode=%s candidates=%lu not_jet=%lu records=%u suppressed=%lu forwarded_unscoped=%lu forwarded_snapshot=%lu forwarded_opaque=%lu forwarded_state=%lu forwarded_overflow=%lu forwarded_native=%lu forwarded_patch_missing=%lu forwarded_stage_off=%lu redirects=%u unknown_body=%lu steering=%lu rows_unknown=%lu order_a=%lu order_b=%lu order_ambiguous=%lu order_mismatch=%lu order_invalid=%lu pinned=%s bodies=%u mapped=%u rows=%u rows_more=%u",
         id_, frame_, ee::mode_name(engine_effects::mode()), static_cast<unsigned long>(c.candidates),
         static_cast<unsigned long>(c.not_jet), engine_ring_->count, static_cast<unsigned long>(c.suppressed),
         static_cast<unsigned long>(c.forwarded[0]), static_cast<unsigned long>(c.forwarded[1]),
         static_cast<unsigned long>(c.forwarded[2]), static_cast<unsigned long>(c.forwarded[3]),
         static_cast<unsigned long>(c.forwarded[4]), static_cast<unsigned long>(c.forwarded[5]),
-        static_cast<unsigned long>(c.forwarded[6]), unsigned(engine_redirects_), static_cast<unsigned long>(c.unknown_body),
+        static_cast<unsigned long>(c.forwarded[6]), static_cast<unsigned long>(c.forwarded[7]), unsigned(engine_redirects_),
+        static_cast<unsigned long>(c.unknown_body),
         static_cast<unsigned long>(c.steering), static_cast<unsigned long>(c.rows_unknown),
         static_cast<unsigned long>(c.match[0]), static_cast<unsigned long>(c.match[1]),
         static_cast<unsigned long>(c.match[2]), static_cast<unsigned long>(c.match[3]),
@@ -136,9 +142,10 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
     ee::Facts facts;
     facts.suppress = engine_suppress_;
     facts.redirects = engine_redirects_;
+    facts.stage_off = engine_stage_off_;
     facts.ring_full = engine_ring_->full();
     std::uint64_t serial = 0;
-    std::uint32_t scope_parent = 0; // node+0x18, read only for a suppressed record (the ship key, the own-ship tag)
+    std::uint32_t scope_parent = 0; // node+0x18 from the scope's node block (the ship key, the own-ship tag)
     bool parent_known = false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_configured_) {
@@ -168,7 +175,12 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         }
     } else
 #endif
+    {
         facts.scoped = object_trace::current(&scope, false);
+        // object_trace::current copies node+0x18 from the node block it reads (Snapshot::parent): no second read.
+        parent_known = facts.scoped && (scope.valid & object_trace::Node);
+        scope_parent = parent_known ? scope.parent : 0u;
+    }
     facts.snapshot = facts.scoped && (scope.valid & object_trace::Node) && scope.node;
     facts.flags130 = scope.flags130;
     const ee::Verdict verdict = ee::classify(st, facts);
@@ -221,13 +233,9 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         // scene phase.
         engine_ring_->camera[slot] = (scope.valid & object_trace::Camera) ? scope.camera_handle : 0u;
         engine_ring_->scene[slot] = selector_.state() == renderer::BoundaryState::Scene ? 1u : 0u;
-        // The ship key (the plume stage's sub-engine floor) and the own-ship tag read the same field: node+0x18, the
-        // parent (the ship's root node), one bounded read per suppressed record, LastError preserved; 0 when unreadable.
-        if (!parent_known && scope.node) {
-            const DWORD error = GetLastError();
-            parent_known = engine_memory::read(scope.node + 0x18, &scope_parent, sizeof scope_parent);
-            SetLastError(error);
-        }
+        // The ship key (the plume stage's sub-engine floor) and the own-ship tag take the same field: node+0x18, the
+        // parent (the ship's root node), copied from the scope's node block (object_trace::current; the fixture's seam
+        // reads the same offsets); 0 when the block was unreadable.
         engine_ring_->parent[slot] = parent_known ? scope_parent : 0u;
         engine_ring_->own[slot] = engine_record_own(scope.node, scope.node_handle, parent_known, scope_parent) ? 1u : 0u;
         ++engine_counts_.suppressed;
@@ -290,7 +298,7 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
 // 24 redirects live (this frame's cached signal); the plume stage (this frame's report until the next frame begins):
 // 25 armed, 26 ran, 27 the stage's result, 28 nozzles, 29 skipped_other_view, 30 drew, 31 the pass's references,
 // 32 taa_references, 33 consecutive failures, 34 refused until Reset, 35 the record's camera tag of index 0, 36 its
-// scene tag.
+// scene tag, 37 forwarded_stage_off (this frame), 38 the stage-off latch, 39 the plume pass refused at attach.
 unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     const auto& c = engine_counts_;
     if (key == 0) return c.candidates;
@@ -320,9 +328,13 @@ unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     if (key == 34) return plumes_failed_out_ ? 1u : 0u;
     if (key == 35) return engine_ring_ && engine_ring_->count ? engine_ring_->camera[0] : 0u;
     if (key == 36) return engine_ring_ && engine_ring_->count ? engine_ring_->scene[0] : 0u;
+    if (key == 37) return c.forwarded[7];
+    if (key == 38) return engine_stage_off_ ? 1u : 0u;
+    if (key == 39) return plumes_attach_failed_ ? 1u : 0u;
     return 0;
 }
 bool MotionOutput::fixture_plumes_fault(unsigned faults) noexcept {
+    if (!plumes_) plumes_.reset(new (std::nothrow) renderer::EnginePlumesPass); // attached at the next arming
     if (!plumes_) return false;
     plumes_->set_faults(faults);
     return true;

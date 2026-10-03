@@ -212,6 +212,12 @@ the whole plume; (2) capital sub-engine plumes too small (each takes its own glo
 (3) the glow at the nozzle mouth outsizes the plume body: our ring + disc + core + halo sum at the mouth and bloom there (the hull lightmap cannot be it:
 emission_source_clamp 0.7 caps hull emission below bloom), so the mouth terms combine as a soft maximum and the ring drops 0.6 -> 0.3. Built for Run121.
 
+Near-camera fade in the flight logs (measured): engine_stage rows with plumes drawn (nozzles > 0) and of those the rows with `faded` > 0 /
+`capped` > 0: run405 (nozzle 0.5) **12,323 of 19,319** faded, 3,578 capped; run404 (nozzle 0.25) **1,906 of 16,265** faded, 1,326 capped
+(`sh verification/results/run404-405-engine-plumes/fade_counts.sh` -> `fade_counts_out.txt`, grep/awk over the session logs). The fade then keyed
+on the halo's reach, which doubles with the nozzle width; at 0.5 it bit on 64 % of the plume frames and halved the end-on disc (a likely part of
+"faint head-on" in chase; inferred). Fixed below ("Review fixes after flight C").
+
 ## After flight C: end-on disc, ship floor, mouth (2026-10-03, worktree build, not a candidate)
 
 The three adjustments and the default nozzle 0.5 are described in the
@@ -230,7 +236,7 @@ All figures below are measured unless marked; Wine runs used bottle X3 through `
 | Mouth | MOUTH, side view, still look, s = 1, value 60 px | Peak within 0.15 L of the mouth 7.535 (u 0.150) vs body peak in u 0.1..0.4 7.586 (u 0.158): **0.993**. End-on peak / body peak **1.344** (gate <= 1.5) |
 | Ship floor | FLOOR, side views, still look | Same ship, 1,000 and 200: the 200 draws at 450 (length 58 px = the lone 450's 58 px; half-width 7.5 = 7.5 px). The other ship's 200 is unchanged (26 px). floored 1, ships 3 |
 | Ship floor cost | BUILD_SHIPS (Wine, qpc 50x41); host harness (clang -O2) | Grouping alone, 30 / 100 / 1,024 records: **0.106 / 0.42 / 4.39 us**; host 0.13 / 0.38 / 2.36 us. Build with the floor 2.23 / 6.84 / 71.1 us; without 2.18 / 6.88 / 72.7 us |
-| Stage cost | TIMING (EVENT-fenced tail), one run | gpu_ms 0.169 / 0.284 at 1080 with 30 / 100 nozzles (was 0.147 / 0.155), 0.024 / 0.031 at 5120 (was 0.040 / 0.082). Earlier rounds spread up to 0.12 ms, so the 1080 / 100 rise of 0.13 ms is at the method's noise and not attributed. The crowd's random axes draw about 70 % discs (inferred) |
+| Stage cost | TIMING (EVENT-fenced tail), one run | gpu_ms 0.169 / 0.284 at 1080 with 30 / 100 nozzles (was 0.147 / 0.155), 0.024 / 0.031 at 5120 (was 0.040 / 0.082). The disc's share, measured afterwards in a same-source A/B (disc on / off, three interleaved rounds, medians; `run_engine_plumes.py --disc-ab` -> `verification/results/engine-effects/plume_disc_ab.json`): 1080p **0.061 / 0.119 ms** (on 0.218 / 0.288, off 0.157 / 0.168), 5120x1440 **0.003 / 0.004 ms** (on 0.027 / 0.033, off 0.024 / 0.029) at 30 / 100 nozzles, with 23 / 76 discs drawn. Round spreads reach 0.09 ms at 1080p. The 1080p tail reads slower than 5120x1440 in every row of this method (also before the disc), so the absolute 1080p figures are the method's, not attributed |
 | Changed numbers | as above | (a) Temporal mean / design 1.087 (was 1.014; gate 10 %), CV 0.153, lag-1 0.910. Inferred cause: the flow is half as fast in nozzle widths at 0.5, so 30 frames sample less of the field. (b) Shape u 0.1 1.040 vs replica 1.029; u 0.9 0.523 vs 0.532. (c) Shock maxima unchanged at u 0.155 / 0.315 / 0.465. (d) Occlusion 20 deg and off-centre thresholds scale with the axial quad's facing weight (0.43..0.78), read from the built vertex. (e) Presets value 60 -> 30 px, because strong's drawn width at the new nozzle would enter the near fade band |
 | Ribbons | `run_engine_ribbons.py` | PASS 44/44; plume fog core ratio 0.490 vs T 0.492 |
 | Effects | `run_engine_effects.py` (all modes) | PASS: main 164, native 11, unverified 6, unpatched 11, timing 5, plumes 33, armed 15. The armed probe pixels for p1 / p2 moved 2 px into the plume: on a 3 px nozzle half the jittered frames sampled behind the softened mouth (px sum 71 < 96 before the move) |
@@ -241,5 +247,27 @@ Model for the disc constants: `python3 verification/results/engine-effects/plume
 GPU 0.932 at s = 1. At nozzle 0.25 and s = 1 it is 0.71 (the cap); not drawn in a fixture.
 
 Open: the look in flight (Run121), native Windows (cross-compiled only; a driver that enforces 512 slots refuses the
-680-slot program at creation and the stage stays off), and the ribbons pass still refuses on the reported cap
-(unchanged, 512 or fewer slots today).
+680-slot program at creation and the stage stays off; since the review fixes the glow is then forwarded natively). The
+ribbon pass's reported-cap refusal is removed in the review fixes below.
+
+## Review fixes after flight C (2026-10-03, worktree build, not a candidate)
+
+Decisions from the review of af932635, described in the
+[design note, "Review fixes after flight C"](../architecture/engine-effects-modern.md#plume-look-redesign-2026-10-03-after-flight-b).
+All figures measured unless marked; Wine runs used bottle X3 through `wine_lock.py`, one at a time.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build --clean-first` (worktree), `check_no_x87.py build/d3d9.dll` | 0 warnings; x87 PASS, 0 violations (751 reachable functions) |
+| Programs, config | `generate_rigid_motion_pixel.py --check`; `tools/config/generate.py --check` | PASS, 50 programs (no shader source changed: plume ps 680 slots, vs 11); PASS, 251 settings |
+| Plume fixture | `run_engine_plumes.py` | PASS **116/116** (was 110: chase_disc_not_dim and chase_own_not_faded per size, mouth s 0.5 per size). Core survival min 0.993; dark trail 0; flicker trail 10 / 13 px; end-on energy unchanged (60 / 30 / 0 deg 0.880 / 1.000 / 0.932 at 1080) |
+| Near cap on the body | CHASE, tail-on at 3 values | Body-only look capped to 66 / 88 px (cap 129.6 / 172.8 px); the production look's extent at 5 % of its peak 131 / 173 px (the halo reaches past the cap) |
+| Fade: the disc no dimmer than 0.6 | CHASE, still look, tail-on at 3 values vs 30 | Disc peak ratio **0.600** (GPU, both sizes), built disc radiance 0.6000, axial quad 0.5000; faded 1 near, 0 far |
+| Own ship in chase | CHASE_OWN: a value-1,000 main jet (camera units; 10 world units, run405's `fx_engine_xtc_red_nor`) at run405's boom 18,832 (`chase_camera distance=`, half vfov tan 0.5625), the nozzle at 0.75 of the boom (assumed rear offset), z 2.5 (L at the pulse's top), tail-on | Body width at the tip **61.1 / 81.4 px** (1080 / 1440), q **0.471**: not faded, not capped, axial radiance 2.0000 as unfaded; measured extent 36 / 47 px. Under the earlier halo key the width would be 103 / 138 px, q 0.796. Fade onset at nozzle depth 9,281 (body key) against 13,958 (halo key) camera units |
+| Mouth | MOUTH, still look, value 60 px, window 0.1 L | Mouth peak / body peak (u 0.1..0.4): s 1 **0.890 / 0.886**, s 0.5 **0.998 / 0.998** (gated <= 1); s 0 **1.128 / 1.062** (reported; the review's model 1.095). The value at u ~ 0 is the window's peak at every s (the mouth's maximum sits at the nozzle). End-on / body 1.344 |
+| Disc gains bounded | END_ON_NOZZLE, still look, s 1, value 40 px; end-on energy / side view (60 / 30 / 0 deg) | Nozzle 0.1 (L / n 20, held to 8): 0.760 / 0.506 / 0.284; 0.25 (L / n 8): 0.877 / 0.868 / 0.714; 1.0 (L / n 2): 0.806 / 1.038 / 1.086 (1080; 5120 within 0.03). Reported, not gated |
+| Disc A/B | `run_engine_plumes.py --disc-ab` | See the stage-cost row of the previous section |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44; ATTACH vs 8 / ps 34 slots against the reported 512 / 512, no cap refusal |
+| Effects | `run_engine_effects.py` (all modes) | PASS: main 164, native 11, unverified 6, unpatched 11, timing 5, plumes 33, armed 15, **armed_refused 7**. Armed: the 3 x 63 disarmed and 70 refused-until-Reset frames each forward the four jets (`forwarded_stage_off=4`, 0 suppressed, 0 recorded, 4 draws reaching the device; 259 `engine_frame` rows). armed_refused (FP16 refusal staged before the first attach): `engine_plumes_device attached=0 reason=fp16_blending`, then `attached=1 reason=ok` after the Reset; the refusing frame still suppressed 4, the next 40 frames forwarded 4 each; `engine_plumes_state reason=fp16_blending glow=native`; after the Reset armed and drawn. Suppressed path 0.637 us per draw |
+| Host | `test_engine_effects` (truth table now 8,192 combinations with the stage-off fact), `test_engine_plumes` (cap and fade on the body width with the disc floor; brake bodies outside the floor; L / n held to 8 at nozzle 0.1; cached tables identical), `test_engine_ribbons`, `test_object_capture`; `run_host_suite.py` | Focused 34 tests OK; suite 286 modules, 3,008 tests, 0 failing (104 s) |
+

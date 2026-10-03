@@ -385,8 +385,10 @@ Run run_sequence(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
 void attach_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, rr::EngineRibbonsPass& pass) {
     const HRESULT attached = pass.attach(d, *reinterpret_cast<void* const* const*>(d), caps, format);
     const auto& c = pass.caps();
-    std::printf("ATTACH result=%08lx enabled=%u reason=%s vs_slots=%u ps_slots=%u fp16_blending=%08lx references=%u vb_bytes=%u ib_bytes=%u pool_bytes=%u\n",
-                attached, unsigned(c.enabled), c.reason, c.vs_slots, c.ps_slots, c.fp16_blending, pass.references(),
+    std::printf("ATTACH result=%08lx enabled=%u reason=%s vs_slots=%u ps_slots=%u max_vs_slots=%lu max_ps_slots=%lu fp16_blending=%08lx references=%u vb_bytes=%u ib_bytes=%u pool_bytes=%u\n",
+                attached, unsigned(c.enabled), c.reason, c.vs_slots, c.ps_slots,
+                static_cast<unsigned long>(caps.MaxVertexShader30InstructionSlots),
+                static_cast<unsigned long>(caps.MaxPixelShader30InstructionSlots), c.fp16_blending, pass.references(),
                 rr::EngineRibbonsPass::vertex_bytes, rr::EngineRibbonsPass::index_bytes, unsigned(sizeof(er::Pool)));
     report("attach", SUCCEEDED(attached) && c.enabled && pass.references() == 5 && c.fp16_blending == D3D_OK);
     auto* refused = new rr::EngineRibbonsPass;

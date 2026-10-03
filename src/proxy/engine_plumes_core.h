@@ -35,10 +35,11 @@
 // flag_steering) take the same quads with L = z * value (short by construction: z runs 0.01..1.0 on steering) and
 // their radiance x min(z, 1); below z 0.02 they are not drawn.
 // Screen rules: a nozzle whose value projects under 1.5 px is not drawn; the nozzle width is at least 3 px and a main
-// jet's L at least 6 px (the 3x3-clip survival rule of the motes); the plume's projected width (twice its widest drawn
-// half-width, the body's eroded edge or the halo's reach, at the axis point nearest the camera) is clamped to 0.12 H by
-// shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the clamp (the own ship's
-// plume in chase view; any plume that close).
+// jet's L at least 6 px (the 3x3-clip survival rule of the motes); the plume's projected body width (twice the body's
+// eroded edge or the nozzle ring, whichever is wider, at the axis point nearest the camera; not the halo's reach) is
+// clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the
+// clamp, the end-on disc's no lower than 0.6 (any plume that close; the own ship's in chase view only when its body is,
+// after the review of flight C).
 // Flow: the noise field translates along the axis by a phase in nozzle widths accumulated on the CPU once per frame
 // (FlowPhase at flow_rate: the mock-up's speed at s = 1 without the pulse), so it moves at one speed whatever the
 // pulsed, throttle-dependent L.
@@ -157,6 +158,10 @@ struct Look {
     float disc_kappa = 1.8f;
     float disc_halo = 3.f;
     float disc_cap = 1.5f;
+    // The L / n of the disc's body and halo gains is held to disc_length_max: a thin nozzle (X3M_ENGINE_PLUME_NOZZLE
+    // 0.1: L / n 20 at full throttle) would otherwise saturate the soft cap into a flat disc. 8 = twice the default
+    // 0.5's 4 at full throttle; the nozzle 0.25 reaches it at full throttle.
+    float disc_length_max = 8.f;
     float disc_low = .3f, disc_high = .7f;
     float axial_floor = .5f;
     // The mouth's hand-over: the axial quad x (1 - disc weight x (1 - smoothstep(inner, outer, d))), d the screen-plane
@@ -173,6 +178,7 @@ constexpr float occlusion_bias = .5f;       // x value x max(0, axis . to_camera
 constexpr float chase_cap = .12f;           // x H: the largest projected plume
 constexpr float chase_fade_band = .2f;      // the last 20 % before the cap
 constexpr float chase_fade_floor = .5f;     // the radiance at and past the cap
+constexpr float chase_disc_floor = .6f;     // the end-on disc's radiance under the fade: at least this x its unfaded
 constexpr float min_nozzle_px = 3.f, min_length_px = 6.f, cull_px = 1.5f;
 constexpr float steering_min_z = .02f;
 constexpr float clock_wrap = 1024.f;        // seconds: the pixel program's clock wraps (float precision of the noise)
@@ -278,17 +284,21 @@ inline void peak_axis_at(const LookTables& t, float s, float* out) noexcept {
 // The pixel program's look constants c3..c15 (engine_plume_ps.hlsl), 52 floats (the flow is the frame's phase in c0.z,
 // the halo's sigma the nozzle's).
 constexpr unsigned pixel_constant_floats = 52;
-inline void pixel_constants(const Look& k, float out[pixel_constant_floats]) noexcept {
+// `t` look_tables(k), computed once where the look is fixed (the proxy at load: MotionOutput::plumes_tables_).
+inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_constant_floats]) noexcept {
     const float c[20] = {.5f * k.bulge, (.04f - .5f * k.bulge) * k.taper, .5f * k.bulge * k.taper, k.tail_narrowing * k.taper,
                          1.f / k.period, k.erode * 1.6f * .6f, k.turb * 2.2f, .75f + (.25f - .75f) * k.tail,
                          k.shock, 6.2831853f / k.period, 5.f * k.cfade, 1.2f * k.tail,
                          k.heat, 1.f / (1.4f * k.core), .46f * k.bulge, 1.f / 240.f,
                          k.handover_inner, k.handover_outer, k.ring_falloff, 2.f};
     for (unsigned i = 0; i < 20; ++i) out[i] = c[i];
-    LookTables t;
-    look_tables(k, &t);
     for (unsigned i = 0; i < disc_samples; ++i)
         for (unsigned j = 0; j < 4; ++j) out[20 + i * 4 + j] = t.disc[i][j];
+}
+inline void pixel_constants(const Look& k, float out[pixel_constant_floats]) noexcept {
+    LookTables t;
+    look_tables(k, &t);
+    pixel_constants(k, t, out);
 }
 // The flow's speed in nozzle widths per second: the mock-up's scroll 0.35 flow L / 1.6 (its noise runs at 1.6 per nozzle
 // width along the axis) at the design length of s = 1 without the pulse, L = 2 value = 2 / nozzle_width nozzle widths
@@ -644,7 +654,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // The quad's reach in nozzle widths: over the width line the body's eroded edge (1 + 0.48 erode of the local
     // width), at the nozzle at least the ring (its radius plus three of its sigmas); the halo window's reach
     // (halo_reach x sigma0, the nozzle's sigma, constant along the plume) everywhere. `extent` the widest of them at the
-    // nozzle: the plume's drawn half-width the near-camera cap holds.
+    // nozzle (the culling margin); `spread x line0` the body's half-width there, which the near-camera cap holds.
     float line0 = 0.f;
     width_line(look, 0.f, &line0);
     const float sigma0 = .5f * look.halo * scale; // nozzle widths
@@ -667,13 +677,15 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         ++stats->culled_small;
         return false;
     }
-    // The near-camera cap (the own ship in chase view): the plume's drawn width 2 extent n (the body's eroded edge or
-    // the halo's reach, x the preset through sigma0) at the axis point nearest the camera (the tip when the exhaust
-    // approaches it) is held to 0.12 H by shrinking the whole plume about the nozzle; its radiance fades 1 -> 0.5 over
-    // the last 20 % before the cap. Its length is free: a distant capital's long plume is not shortened.
+    // The near-camera cap: the plume's body width 2 spread line0 n (the body's eroded edge or the ring; the halo's
+    // faint reach, 1.7 x wider at the default look, does not count: keyed on it the fade bit on 64 % of run405's plume
+    // frames, the own ship's in chase view) at the axis point nearest the camera (the tip when the exhaust approaches
+    // it) is held to 0.12 H by shrinking the whole plume about the nozzle; its radiance fades 1 -> 0.5 over the last
+    // 20 % before the cap (the disc's no lower than chase_disc_floor). Its length is free: a distant capital's long
+    // plume is not shortened.
     float k = 1.f, near_weight = 1.f;
     {
-        const float half = extent * look.nozzle_width * value; // world units, x k with the plume
+        const float half = spread * line0 * look.nozzle_width * value; // world units, x k with the plume
         const float f = view.m11 * view.height * .5f, cap = chase_cap * view.height;
         const float toward = a[2] < 0.f ? -a[2] : 0.f; // approach to the camera per unit of length
         float near_depth = o[2] - toward * L;
@@ -794,15 +806,19 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // sampled profile (the pixel program's sum over c8..c15 / 8), its halo I_halo x disc_halo x L / n x f, the ring's
     // peak, and the soft cap disc_cap x the side view's peak on the axis (peak_axis_at); all x the disc's weight, so the
     // pixel program's cap x (1 - exp(-total / cap)) scales with it.
+    // The near fade dims the disc to no less than chase_disc_floor of its unfaded radiance (it shrinks with the
+    // plume; it does not go dim: the end-on plume in chase view); L / n held to disc_length_max.
     const bool disc_drawn = disc_weight > 0.f;
     const float half = width0 * (disc_drawn ? 1.f : 0.f);
-    const float length_widths = n > 0.f ? L / n : 0.f;
+    float length_widths = n > 0.f ? L / n : 0.f;
+    if (length_widths > look.disc_length_max) length_widths = look.disc_length_max;
     float axis_peak = 0.f;
     peak_axis_at(tables, s, &axis_peak);
-    const float disc_body = disc_weight * i_core * look.disc_kappa * length_widths * facing_abs;
-    const float disc_halo = disc_weight * i_halo * look.disc_halo * length_widths * facing_abs;
-    const float disc_cap = disc_weight * look.disc_cap * i_core * axis_peak;
-    const float disc_ring = disc_weight * i_core * ring * 2.f;
+    const float disc_level = disc_weight * (near_weight < chase_disc_floor ? chase_disc_floor / near_weight : 1.f);
+    const float disc_body = disc_level * i_core * look.disc_kappa * length_widths * facing_abs;
+    const float disc_halo = disc_level * i_halo * look.disc_halo * length_widths * facing_abs;
+    const float disc_cap = disc_level * look.disc_cap * i_core * axis_peak;
+    const float disc_ring = disc_level * i_core * ring * 2.f;
     const float dc[4][2] = {{-half, -half}, {-half, half}, {half, -half}, {half, half}};
     for (unsigned c = 0; c < 4; ++c) {
         Vertex& v = out[4 + c];
@@ -835,8 +851,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
 // Capital sub-engines: the frame's records grouped by ship (the jet node's parent, node+0x18 = the ship's root node,
 // docs/reverse-engineering/engine-effects.md; Ring::parent, 0 unknown) in an open-addressing map (linear probing,
 // at least twice the records' slots, at most 2,048 for the ring's 1,024 records); each ship's largest main-jet value
-// (RCS jets neither count nor take the floor). One pass to fill, one lookup per record in build(); the table is
-// cleared only over the slots in use.
+// (RCS jets and the main bodies the brake or steering bits pushed above z 2, ee::flag_brake, neither count nor take the
+// floor). One pass to fill, one lookup per record in build(); the table is cleared only over the slots in use.
 struct ShipFloor {
     static constexpr unsigned slots_max = 2048;
     std::uint32_t key[slots_max];
@@ -876,11 +892,13 @@ struct ShipFloor {
 // The frame's records into `out` (capacity in nozzles); returns the nozzles written (8 vertices each). `body` maps a
 // record's table index to its entry (null: none); `seconds` the stage's clock (wrapped, StageClock::wrapped); `filter`
 // (null: every record) keeps the scene view's records; `look` (null: default_look) the plume look; `parents` (beside
-// the records, Ring::parent) and `ships` (the caller's scratch, ShipFloor) both or neither: the sub-engine floor.
+// the records, Ring::parent) and `ships` (the caller's scratch, ShipFloor) both or neither: the sub-engine floor;
+// `tables` (null: computed here) look_tables(*look), cached where the look is fixed.
 using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
                       float seconds, Vertex* out, unsigned capacity, BuildStats* stats, const ViewFilter* filter = nullptr,
-                      const Look* look = nullptr, const std::uint32_t* parents = nullptr, ShipFloor* ships = nullptr) noexcept {
+                      const Look* look = nullptr, const std::uint32_t* parents = nullptr, ShipFloor* ships = nullptr,
+                      const LookTables* tables = nullptr) noexcept {
     BuildStats local{};
     BuildStats& st = stats ? *stats : local;
     st = BuildStats{};
@@ -891,16 +909,21 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
     const Look& k = look ? *look : default_look;
     float scale = 1.f;
     preset_scale(preset, &scale);
-    LookTables tables;
-    look_tables(k, &tables);
+    LookTables computed;
+    if (!tables) {
+        look_tables(k, &computed);
+        tables = &computed;
+    }
     auto shown = [&](unsigned i) { return !filter || (filter->scene[i] && filter->camera[i] == filter->handle); };
-    // The ship floor: each known ship's largest main-jet value among the drawn view's records.
+    // The ship floor: each known ship's largest main-jet value among the drawn view's records; RCS jets and the
+    // brake / steering-pushed main bodies are left out on both sides.
+    constexpr std::uint32_t unfloored = ee::flag_steering | ee::flag_brake;
     const bool floors = parents && ships && k.sub_floor > 0.f;
     if (floors) {
         ships->reset(count);
         for (unsigned i = 0; i < count; ++i) {
             const ee::Record& r = records[i];
-            if (!shown(i) || (r.flags & (ee::flag_steering | ee::flag_rows_unknown)) || !ee::finite_f(r.size) || !(r.size > 0.f))
+            if (!shown(i) || (r.flags & (unfloored | ee::flag_rows_unknown)) || !ee::finite_f(r.size) || !(r.size > 0.f))
                 continue;
             ships->note(parents[i], r.size);
         }
@@ -920,11 +943,11 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
         const ee::Record& r = records[i];
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;
         float floor_value = 0.f;
-        if (floors && !(r.flags & ee::flag_steering)) {
+        if (floors && !(r.flags & unfloored)) {
             ships->largest(parents[i], &floor_value);
             floor_value *= k.sub_floor;
         }
-        if (build_nozzle(r, b, view, k, tables, scale, seconds, floor_value, out + written * vertices_per_nozzle, &st, &pulses))
+        if (build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, out + written * vertices_per_nozzle, &st, &pulses))
             ++written;
     }
     st.nozzles = written;

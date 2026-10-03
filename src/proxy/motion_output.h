@@ -1440,7 +1440,7 @@ public:
     // Engine effects seam (x3m_engine_effects_fixture_status / _record): this frame's counts and records.
     unsigned fixture_engine_status(unsigned key) const noexcept;
     bool fixture_engine_record(unsigned index, void* out, unsigned size) const noexcept;
-    bool fixture_plumes_fault(unsigned faults) noexcept; // EnginePlumesPass::set_faults; false before the first arming
+    bool fixture_plumes_fault(unsigned faults) noexcept; // EnginePlumesPass::set_faults (creates the pass when absent)
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
     // Stage 2 exposure state: ev (consumed), ev_adapted, ev_target,
@@ -1711,6 +1711,7 @@ private:
     // capture frame).
     bool engine_hook_ = false, engine_suppress_ = false, engine_census_ = false, engine_device_logged_ = false;
     bool engine_redirects_ = false; // engine_effects::redirects_live(), read at configure and once per frame
+    bool engine_stage_off_ = false; // engine_plumes_stage_off(), latched once per frame: the glow jets forwarded
     bool engine_partial_logged_ = false; // the engine_effects_partial row (route off, redirects on) was written
     bool engine_quiet_logged_ = false;   // an engine_frame row of a frame without candidates was written ...
     std::uint64_t engine_quiet_frame_ = 0; // ... at this frame; the next quiet row waits engine_quiet_interval frames
@@ -1748,6 +1749,7 @@ private:
     engine_plumes::StageClock engine_clock_{};     // the plume stage's clock (flow, pulse, the ribbons' pool)
     engine_plumes::FlowPhase engine_flow_{};       // the plumes' flow phase, advanced by each clock step
     engine_plumes::Look plumes_look_{};            // default_look with the configured nozzle width
+    engine_plumes::LookTables plumes_tables_{};    // look_tables(plumes_look_), computed at configure (load)
     float plumes_flow_rate_ = 0.f;                 // engine_plumes::flow_rate(plumes_look_), nozzle widths per second
     static constexpr std::uint64_t plumes_disarm_frames = 64;
     unsigned plumes_failures_ = 0;      // consecutive failed stage frames (a drawn frame clears it)
@@ -1759,6 +1761,7 @@ private:
     bool attach_engine_plumes() noexcept;
     void release_engine_plumes() noexcept;
     void note_engine_plumes_state(bool armed, const char* reason) noexcept;
+    bool engine_plumes_stage_off() const noexcept;
     static HRESULT engine_plumes_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_engine_plumes() noexcept;
     void log_engine_stage() noexcept;

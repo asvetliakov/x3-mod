@@ -39,6 +39,7 @@ struct EnginePlumesFrame {
     float seconds = 0.f;                    // the stage's clock, wrapped (engine_plumes::StageClock::wrapped)
     float phase = 0.f;                      // the flow phase, nozzle widths (engine_plumes::FlowPhase::wrapped)
     const engine_plumes::Look* look = nullptr; // null: engine_plumes::default_look (the proxy's carries the nozzle knob)
+    const engine_plumes::LookTables* tables = nullptr; // look_tables(*look) cached at load (null: computed per run)
     const std::uint32_t* parents = nullptr; // beside the records (Ring::parent): the ship floor; null: none
 };
 enum class EnginePlumesStep : unsigned { None, Validate, Resources, Lock, State, Draw };

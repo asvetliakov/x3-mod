@@ -32,29 +32,28 @@
     "src/proxy/engine_ribbons_core.h"
   ],
   "source": {
-    "commit": "44a4756e242ced059943db987c3f8792a6d850f9-dirty",
+    "commit": "af932635d4ffd6cf762a2777fd2d7731e49a9dba-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/engine_effects.cpp",
-      "src/proxy/engine_effects.h",
       "src/proxy/engine_effects_core.h",
       "src/proxy/engine_plumes_core.h",
       "src/proxy/motion_output_engine_effects_inc.h",
       "src/proxy/motion_output_engine_plumes_inc.h",
+      "src/proxy/motion_output_engine_ribbons_inc.h",
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/engine_plumes_pass.h"
     ],
     "sha256": {
       "src/proxy/engine_effects.cpp": "cc9f894ec1ca5c46e9ff3aacf5576fadd141fda9cd62757b7cf4888d84c683bb",
       "src/proxy/engine_effects.h": "3d6ac97d56f871d27dffb94358b11670a19729c558ef7081a87b6aee0e2a38f8",
-      "src/proxy/engine_effects_core.h": "d533ecb4410bcd80b820ec043aef72fd1f51687d102ec3c5634a0f5273bf17d4",
+      "src/proxy/engine_effects_core.h": "13564278790a0cc2506a1c9545f7033e7c3e2ebc8d63845c832c57e58b763cd0",
       "src/proxy/engine_effects_option.h": "cb8a96b23acaa40985fc6fcca31c8b80cef9d581be53dea800c69fec8b1ab6b6",
-      "src/proxy/motion_output_engine_effects_inc.h": "185ef6f864fa7c0c1a71868fcb64c78cff2a48739cc44b3e0a4336ff53a219c9",
-      "src/proxy/motion_output_engine_plumes_inc.h": "4760d78988f4ecf4f8583db4f73669a5bd3469fa545409065e2b73b8462b537e",
-      "src/proxy/engine_plumes_core.h": "07c7bbd71bee592683169068758f96fd6c0d37de82b6e9a71cce60cf9eedf172",
-      "src/renderer/engine_plumes_pass.cpp": "b22eb7df20763373b7289764d203c6609e8ae64c5480654445deed48e1f9e3bb",
-      "src/renderer/engine_plumes_pass.h": "2d5532f46ed469c76d48685baa7dbe77829712f38be79a250865865d42867327",
-      "src/proxy/motion_output_engine_ribbons_inc.h": "b9ba941f17f6d70e1a9f6d5dcfbb1fcdb2eb73931e0b2bc8da1ff7d259e1783c",
+      "src/proxy/motion_output_engine_effects_inc.h": "d67223af1f485ca1f42dd3f4cde7c8d9768860cdae9df58712ee52d3e34da42b",
+      "src/proxy/motion_output_engine_plumes_inc.h": "9cbabe84f91301906c87b60d133b71db134ecb7abc88427e5ba206bfa4cda044",
+      "src/proxy/engine_plumes_core.h": "435e8e9423909c07f45acd0384e8e2262f8d82b3a9bd2ae72e2a8c79fe03b2b1",
+      "src/renderer/engine_plumes_pass.cpp": "7d65bee3f70a2ef22f6dd7ab1a071a8d1f1a57a7ae9100ebbe0a2880717d81fb",
+      "src/renderer/engine_plumes_pass.h": "47332d4e984889327da5d045ef9e5cec01c3773495c2e54695a12907020bb9ac",
+      "src/proxy/motion_output_engine_ribbons_inc.h": "02af53103a41900335f91299caf2f295abddc0d9950aa80f05f35bdbbbe70c96",
       "src/proxy/engine_ribbons_core.h": "b60b32db71b149f29d0002b928d6b1a675ea3e8cb821bae05572931dd14ef737"
     }
   },
@@ -64,9 +63,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "e92faec1b2463ea821ef372e7a957570f9e797283d306a276c2f612957356e7f",
-    "seam_sha256": "2e7f71fbf922efd321e1765306374357659206f24c5289a0b3c05b33cd6708ea",
-    "dll_sha256": "99a1d6c892755880ee4faa1bb6577dfa225309338498c965a978b197d7c8c3d1"
+    "fixture_sha256": "41dc8e12543315f6dd4ebf9c93dee65645698b7b977fd295a6c7e7d8e57b554c",
+    "seam_sha256": "126c0eeffa48b7b34b7983cdb3bcdb468de3b74bfe204377354b52e1a845b2c8",
+    "dll_sha256": "50d3ff65bf2827f5475fe83315a501e8dba4ed4e96aefcf29bf111aeabe80a0c"
   },
   "runs": {
     "main": {
@@ -168,7 +167,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261003-123828-848758"
+      "directory": "verification/probe/build/engine-effects-main-20261003-132330-025316"
     },
     "native": {
       "exit": 0,
@@ -212,7 +211,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261003-123837-308385"
+      "directory": "verification/probe/build/engine-effects-native-20261003-132338-971684"
     },
     "unverified": {
       "exit": 0,
@@ -228,7 +227,7 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261003-123844-980910"
+      "directory": "verification/probe/build/engine-effects-unverified-20261003-132346-595133"
     },
     "unpatched": {
       "exit": 0,
@@ -272,7 +271,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-unpatched-20261003-123852-736836"
+      "directory": "verification/probe/build/engine-effects-unpatched-20261003-132354-238323"
     },
     "timing": {
       "exit": 0,
@@ -289,11 +288,11 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.646,
-        "not_jet": 1.207,
-        "not_candidate": 1.062
+        "suppressed": 0.637,
+        "not_jet": 1.205,
+        "not_candidate": 1.063
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261003-123900-457838"
+      "directory": "verification/probe/build/engine-effects-timing-20261003-132401-896279"
     },
     "plumes": {
       "exit": 0,
@@ -335,7 +334,7 @@
         1,
         2
       ],
-      "directory": "verification/probe/build/engine-effects-plumes-20261003-123908-285659"
+      "directory": "verification/probe/build/engine-effects-plumes-20261003-132409-525127"
     },
     "armed": {
       "exit": 0,
@@ -447,7 +446,10 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "fff7e9,ff6662,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ffffff,ffdbd1,000000,000000"
         },
         {
           "phase": "steady",
@@ -465,7 +467,10 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffc2b7,ff807a,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ffffff,ffffff,000000,000000"
         },
         {
           "phase": "fault_once",
@@ -483,7 +488,10 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffb5ab,ff6c67,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ffffff,ffded3,000000,000000"
         },
         {
           "phase": "rearmed",
@@ -501,12 +509,15 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "d71514,9c0b0a,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ff312f,ff1616,000000,000000"
         },
         {
           "cycle": "once",
           "frames": "63",
-          "glow_dark": "63"
+          "glow_native": "63"
         },
         {
           "phase": "fault_persistent",
@@ -524,12 +535,15 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ff3230,ff1f1e,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ff706b,ff4542,000000,000000"
         },
         {
           "cycle": "persistent_1",
           "frames": "63",
-          "glow_dark": "63"
+          "glow_native": "63"
         },
         {
           "phase": "fault_persistent",
@@ -547,12 +561,15 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ec1a18,ff1f1e,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ff3a37,ff4643,000000,000000"
         },
         {
           "cycle": "persistent_2",
           "frames": "63",
-          "glow_dark": "63"
+          "glow_native": "63"
         },
         {
           "phase": "fault_persistent",
@@ -570,7 +587,10 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "f71817,ff1e1d,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ff3734,ff4341,000000,000000"
         },
         {
           "phase": "refused",
@@ -585,9 +605,12 @@
           "taa_references": "21",
           "failures": "3",
           "refused": "1",
-          "records": "4",
-          "suppressed": "4",
+          "records": "0",
+          "suppressed": "0",
           "resolved": "1",
+          "forwarded_stage_off": "4",
+          "attach_refused": "0",
+          "jets_submitted": "4",
           "px": "000000,000000,000000,000000"
         },
         {
@@ -606,7 +629,10 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ff5c59,ff3e3d,000000,000000"
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ffc1ba,ff827e,000000,000000"
         },
         {
           "held": "5",
@@ -619,7 +645,123 @@
           "taa_after": "21"
         }
       ],
-      "directory": "verification/probe/build/engine-effects-armed-20261003-123915-962383"
+      "stage_off_frames": 259,
+      "directory": "verification/probe/build/engine-effects-armed-20261003-132417-164967"
+    },
+    "armed_refused": {
+      "exit": 0,
+      "checks": 7,
+      "failed": [],
+      "result": "RESULT PASS checks=7 failures=0",
+      "mode_row": {
+        "setting": "plumes",
+        "mode": "plumes",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "device_rows": [
+        [
+          "0",
+          "fp16_blending"
+        ],
+        [
+          "1",
+          "ok"
+        ]
+      ],
+      "state_rows": [
+        [
+          "0",
+          "fp16_blending",
+          "native"
+        ],
+        [
+          "1",
+          "armed",
+          "suppressed"
+        ]
+      ],
+      "stage_off_frames": 40,
+      "armed_lines": [
+        {
+          "phase": "refusing",
+          "frame": "2",
+          "armed": "0",
+          "ran": "0",
+          "result": "00000001",
+          "nozzles": "0",
+          "skipped_other_view": "0",
+          "drew": "0",
+          "references": "0",
+          "taa_references": "11",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "1",
+          "jets_submitted": "0",
+          "px": "000000,000000,000000,000000"
+        },
+        {
+          "phase": "refused",
+          "frame": "42",
+          "armed": "0",
+          "ran": "0",
+          "result": "00000001",
+          "nozzles": "0",
+          "skipped_other_view": "0",
+          "drew": "0",
+          "references": "0",
+          "taa_references": "11",
+          "failures": "0",
+          "refused": "0",
+          "records": "0",
+          "suppressed": "0",
+          "resolved": "1",
+          "forwarded_stage_off": "4",
+          "attach_refused": "1",
+          "jets_submitted": "4",
+          "px": "000000,000000,000000,000000"
+        },
+        {
+          "frames": "40",
+          "glow_native": "40",
+          "forwarded_stage_off": "4"
+        },
+        {},
+        {
+          "phase": "after_reset",
+          "frame": "43",
+          "armed": "1",
+          "ran": "1",
+          "result": "00000000",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "1",
+          "references": "5",
+          "taa_references": "21",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ffffff,ffffff,000000,000000"
+        },
+        {
+          "refused_after": "0",
+          "warm": "0",
+          "forwarded_during_warm": "0"
+        }
+      ],
+      "directory": "verification/probe/build/engine-effects-armed_refused-20261003-132425-248310"
     }
   },
   "problems": [],

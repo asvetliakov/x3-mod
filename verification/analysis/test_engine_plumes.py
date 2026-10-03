@@ -308,10 +308,12 @@ int main() {
     // ----------------------------------------------------------- the near-camera cap and fade
     {
         const float f = 1.7f * 540.f, cap = .12f * 1080.f;
-        // Tail-on at the nozzle depth zo, L = 2 value: the drawn width 2 h value at the tip (zo - L) over the cap is q,
-        // h the widest half-width per value: the halo's reach 2.25 x 0.55 nozzle widths (wider than the body's eroded
-        // edge 1.2736 x 0.575) x the nozzle width 0.5. Tail-on the axial quad takes half (the end-on disc is whole).
-        const float h = 2.25f * .55f * .5f;
+        // Tail-on at the nozzle depth zo, L = 2 value: the body width 2 h value at the tip (zo - L) over the cap is q,
+        // h the body's half-width per value: its eroded edge 1.2736 x 0.575 nozzle widths (wider than the ring's 0.7226;
+        // the halo's reach 2.25 x 0.55 does not count, after the review of flight C) x the nozzle width 0.5. Tail-on the
+        // axial quad takes half (the end-on disc is whole); the fade takes the axial quad to 0.5, the disc to no less
+        // than 0.6 of its unfaded 4 x 1.8 x L / n (L / n = 4: the cap shrinks L and n together).
+        const float h = (1.f + .48f * .57f) * .575f * .5f, h_halo = 2.25f * .55f * .5f;
         auto at_q = [&](float q, float zo) { // value with 2 h value f / (zo - 2 value) = q cap
             return q * cap * zo / (2.f * h * f + 2.f * q * cap);
         };
@@ -320,15 +322,18 @@ int main() {
             const ee::Record r = rec(0, 0, zo, 0, 0, -1, val, 2.f);
             build(&r, 1, nullptr, v, Preset::standard, 4.f, out.data(), 16, &st, nullptr, &flat);
             const float weight = q <= .8f ? 1.f : q >= 1.f ? .5f : 1.f - .5f * (q - .8f) / .2f;
-            const float half = h * out[0].shape[1], L = out[0].local[2]; // the drawn half-width, x k
+            const float half = h * out[0].shape[1], L = out[0].local[2]; // the body's half-width, x k
             const float width = 2.f * half * f / (zo - L);
             const float quad_half = std::fabs(out[4].local[0]) - 1.f / (1.7f * 540.f / zo); // the disc's half (width0) less its pixel
+            const float disc = 4.f * 1.8f * (L / out[0].local[3]) * std::max(weight, .6f);
             const bool ok = near(out[0].intensity[0], 2.f * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : q == 1.f ? near(width, cap, 2e-3f) && near(out[0].shape[1], val, 1e-3f) : st.capped == 0 && near(out[0].shape[1], val)) &&
                             st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .5f * out[0].shape[1]) &&
-                            near(quad_half, half, 2e-3f);
+                            near(quad_half, h_halo * out[0].shape[1], 2e-3f) && near(out[4].intensity[0], disc, 2e-3f) &&
+                            out[4].intensity[0] >= .6f * 4.f * 1.8f * (L / out[0].local[3]) - 1e-3f;
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
-            std::printf("CAP q=%.2f weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 2.f), double(width), double(cap), double(out[0].shape[1] / val));
+            std::printf("CAP q=%.2f weight=%.3f disc_weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 2.f),
+                        double(out[4].intensity[0] / (4.f * 1.8f * (L / out[0].local[3]))), double(width), double(cap), double(out[0].shape[1] / val));
         }
         // Side view: the length is free (a long plume across the screen keeps its length).
         const float val = 100.f / ppu(Z);
@@ -544,6 +549,38 @@ int main() {
             all = near(big[i * 8].shape[1], std::max(many[i].size, .45f * top));
         }
         expect(all, "1,024 records over 600 ships: each value max(value, 0.45 x its ship's largest)");
+        // Brake / steering-pushed main bodies (flag_brake, z above 2) neither set nor take the floor: a 1,500 brake flare
+        // of the first ship leaves its floor at 0.45 x 1,000; a 100 brake flare of it stays 100 (1,500: under the cap here).
+        const unsigned brake = (unsigned(ee::white) << ee::cluster_shift) | ee::flag_brake;
+        const ee::Record rb[4] = {rec(-4000, 0, Zf, -1, 0, 0, 1000.f, 2.f), rec(0, 1000, Zf, -1, 0, 0, 200.f, 2.f),
+                                  rec(0, -1000, Zf, -1, 0, 0, 1500.f, 6.f, brake), rec(2000, 0, Zf, -1, 0, 0, 100.f, 6.f, brake)};
+        const std::uint32_t one[4] = {0x1000u, 0x1000u, 0x1000u, 0x1000u};
+        build(rb, 4, nullptr, v, Preset::standard, 0.f, vb.data(), 4, &st, nullptr, &flat, one, &ships);
+        expect(st.floored == 1 && near(vb[8].shape[1], 450.f) && near(vb[16].shape[1], 1500.f) && near(vb[24].shape[1], 100.f),
+               "floor: brake / steering-pushed main bodies neither count nor take the floor");
+    }
+    // ----------------------------------------------------------- the disc's L / n bound and the cached tables
+    {
+        // Nozzle 0.1: L / n = 20 at full throttle, held to 8 in the disc's body and halo gains (head-on, flat look).
+        Look thin = flat;
+        thin.nozzle_width = .1f;
+        const float V = 40.f / ppu(Z);
+        const ee::Record at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
+        build(&at, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &thin);
+        expect(near(out[4].intensity[0], 4.f * 1.8f * 8.f) && near(out[4].intensity[1], .35f * 3.f * 8.f) &&
+                   near(out[0].local[2] / out[0].local[3], 20.f, 1e-3f),
+               "nozzle 0.1: the disc's L / n held to 8 (the quad keeps L / n 20)");
+        // The cached tables give the same vertices as tables computed per build.
+        LookTables tb;
+        look_tables(flat, &tb);
+        std::vector<Vertex> a(8), b(8);
+        build(&at, 1, nullptr, v, Preset::standard, 2.f, a.data(), 1, &st, nullptr, &flat);
+        build(&at, 1, nullptr, v, Preset::standard, 2.f, b.data(), 1, &st, nullptr, &flat, nullptr, nullptr, &tb);
+        float c1[pixel_constant_floats], c2[pixel_constant_floats];
+        pixel_constants(flat, c1);
+        pixel_constants(flat, tb, c2);
+        expect(!std::memcmp(a.data(), b.data(), 8 * sizeof(Vertex)) && !std::memcmp(c1, c2, sizeof c1),
+               "cached look tables: the build and the pixel constants unchanged");
     }
     // ----------------------------------------------------------- cost of the build
     for (const unsigned count : {30u, 100u, 1024u}) {
@@ -765,7 +802,12 @@ class Wiring(unittest.TestCase):
         inc = source_text(ROOT / 'src/proxy/motion_output_engine_plumes_inc.h')
         self.assertIn('plumes_disarmed_until_=frame_+plumes_disarm_frames;', inc)
         self.assertIn('static constexpr std::uint64_t plumes_disarm_frames=64;', source_text(ROOT / 'src/proxy/motion_output.h'))
-        self.assertIn('glow=suppressed drawn=%s', inc)
+        self.assertIn('glow=%s drawn=%s', inc)
+        # Review fixes after flight C (2026-10-03): a stage that is not attached (refused, failed until Reset or
+        # disarmed) forwards the glow natively from the next frame on; the look's tables cached at load.
+        self.assertIn('return plumes_requested_&&(plumes_attach_failed_||plumes_failed_out_||frame_<plumes_disarmed_until_);', inc)
+        self.assertIn('engine_plumes::look_tables(plumes_look_,&plumes_tables_);', inc)
+        self.assertIn('in.tables=&plumes_tables_;', inc)
         # Review fixes (2026-10-01): the lane checked at arming, three consecutive failures refuse until Reset, the near
         # plane from the latch, the scene view's records only.
         self.assertIn('lane_desc.Width!=width||lane_desc.Height!=height||lane_desc.Format!=lane_depth_format()', inc)
@@ -797,10 +839,14 @@ class Wiring(unittest.TestCase):
         self.assertIn('const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen));', ps)
         self.assertIn('smoothstep(0.0, 1.0, u * fire_k.x)', ps)
         self.assertIn('const float shown = cap * (1.0 - exp(-total / cap));', ps)
-        self.assertIn('parent_known=engine_memory::read(scope.node+0x18,&scope_parent,sizeof scope_parent);SetLastError(error);}'
-                      'engine_ring_->parent[slot]=parent_known?scope_parent:0u;', source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
+        effects_inc = source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h')
+        self.assertIn('parent_known=facts.scoped&&(scope.valid&object_trace::Node);scope_parent=parent_known?scope.parent:0u;', effects_inc)
+        self.assertIn('engine_ring_->parent[slot]=parent_known?scope_parent:0u;', effects_inc)
+        self.assertNotIn('engine_memory::read(scope.node+0x18', effects_inc)
+        self.assertIn('engine_stage_off_=engine_plumes_stage_off();', effects_inc)
+        self.assertIn('facts.stage_off=engine_stage_off_;', effects_inc)
         self.assertIn('in.parents=engine_ring_->parent;', inc)
-        self.assertIn('f.parents,f.parents?&ships_:nullptr);', passes)
+        self.assertIn('f.parents,f.parents?&ships_:nullptr,tables);', passes)
         self.assertIn('if(engine_row_frames_>=engine_row_frame_cap&&!capture_){',
                       source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
         self.assertIn('static constexpr unsigned plumes_failure_limit=3;', source_text(ROOT / 'src/proxy/motion_output.h'))

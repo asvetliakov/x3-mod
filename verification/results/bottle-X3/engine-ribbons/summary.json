@@ -25,27 +25,28 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "44a4756e242ced059943db987c3f8792a6d850f9-dirty",
+    "commit": "af932635d4ffd6cf762a2777fd2d7731e49a9dba-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/engine_effects_core.h",
       "src/proxy/engine_plumes_core.h",
       "src/renderer/engine_plumes_pass.cpp",
-      "src/renderer/engine_plumes_pass.h"
+      "src/renderer/engine_plumes_pass.h",
+      "src/renderer/engine_ribbons_pass.cpp"
     ],
     "sha256": {
       "src/proxy/engine_ribbons_core.h": "b60b32db71b149f29d0002b928d6b1a675ea3e8cb821bae05572931dd14ef737",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
       "src/renderer/engine_ribbons_pass.h": "21f948c1c898fdd3b8ea0fa8ce6401b3f417efe950fec962dea2131d4d2b0fa1",
-      "src/renderer/engine_ribbons_pass.cpp": "ebbad70398bb1ebca1454b7387e8a1237271765df9d1e6ac649d804d9896dca9",
+      "src/renderer/engine_ribbons_pass.cpp": "6f5ca6770dce7bec9f37c03349a0f412de2600ca459f4848fbc6560d4237cef1",
       "src/effects/engine_ribbon_vs.hlsl": "a18ec5d89012735758b9bbbda0773e16c160a6ca86796db4c6fb0063b1db3fc5",
       "src/effects/engine_ribbon_ps.hlsl": "13b45c39a518de0b64485713138726243ad41899b8f406075b6cadf83e296ea8",
       "src/renderer/engine_ribbon_vertex_program_inc.h": "5651c07896aeb97820ef1dd204ce3218ec06d7ecd3cbe3594ef65c3e75530091",
       "src/renderer/engine_ribbon_pixel_program_inc.h": "9e04c634362f8416d3a06428dfdb7e2c009116554810a28214c8a54aa7689029",
-      "src/proxy/engine_plumes_core.h": "07c7bbd71bee592683169068758f96fd6c0d37de82b6e9a71cce60cf9eedf172",
-      "src/proxy/engine_effects_core.h": "d533ecb4410bcd80b820ec043aef72fd1f51687d102ec3c5634a0f5273bf17d4",
-      "src/renderer/engine_plumes_pass.h": "2d5532f46ed469c76d48685baa7dbe77829712f38be79a250865865d42867327",
-      "src/renderer/engine_plumes_pass.cpp": "b22eb7df20763373b7289764d203c6609e8ae64c5480654445deed48e1f9e3bb",
+      "src/proxy/engine_plumes_core.h": "435e8e9423909c07f45acd0384e8e2262f8d82b3a9bd2ae72e2a8c79fe03b2b1",
+      "src/proxy/engine_effects_core.h": "13564278790a0cc2506a1c9545f7033e7c3e2ebc8d63845c832c57e58b763cd0",
+      "src/renderer/engine_plumes_pass.h": "47332d4e984889327da5d045ef9e5cec01c3773495c2e54695a12907020bb9ac",
+      "src/renderer/engine_plumes_pass.cpp": "7d65bee3f70a2ef22f6dd7ab1a071a8d1f1a57a7ae9100ebbe0a2880717d81fb",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
       "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b"
     }
@@ -107,12 +108,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-ac52c1f796aafebfa/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-ac8553bacc3cabd67/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "64a00c96bf29f4dfa7fdb772b4edeeeb86c81be6ef5f2889e102c82ea9afb822"
+    "executable_sha256": "736fe692ba133b0c2aa2f14d5258d745407aa506b89be200e7ebd7254d5351a4"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -132,6 +133,8 @@
         "reason": "ok",
         "vs_slots": 8,
         "ps_slots": 34,
+        "max_vs_slots": 512,
+        "max_ps_slots": 512,
         "fp16_blending": 0,
         "references": 5,
         "vb_bytes": 417792,
@@ -414,11 +417,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.9843,
-        "fenced_off_ms": 0.8902,
-        "submit_ms": 0.0497,
-        "chain_ms": 0.0941,
-        "gpu_ms": 0.0444,
+        "fenced_on_ms": 0.9695,
+        "fenced_off_ms": 0.8891,
+        "submit_ms": 0.0515,
+        "chain_ms": 0.0804,
+        "gpu_ms": 0.0289,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -429,11 +432,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.1158,
-        "fenced_off_ms": 0.8791,
-        "submit_ms": 0.0842,
-        "chain_ms": 0.2367,
-        "gpu_ms": 0.1525,
+        "fenced_on_ms": 1.1162,
+        "fenced_off_ms": 0.8809,
+        "submit_ms": 0.0838,
+        "chain_ms": 0.2353,
+        "gpu_ms": 0.1515,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -444,11 +447,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.7255,
-        "fenced_off_ms": 1.6543,
-        "submit_ms": 0.0517,
-        "chain_ms": 0.0712,
-        "gpu_ms": 0.0195,
+        "fenced_on_ms": 1.7253,
+        "fenced_off_ms": 1.6527,
+        "submit_ms": 0.0502,
+        "chain_ms": 0.0726,
+        "gpu_ms": 0.0224,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -459,11 +462,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7643,
-        "fenced_off_ms": 1.6493,
-        "submit_ms": 0.0856,
-        "chain_ms": 0.115,
-        "gpu_ms": 0.0294,
+        "fenced_on_ms": 1.7546,
+        "fenced_off_ms": 1.6496,
+        "submit_ms": 0.0826,
+        "chain_ms": 0.105,
+        "gpu_ms": 0.0224,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -473,15 +476,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.65,
-        "min_us": 7.23,
+        "median_us": 7.72,
+        "min_us": 7.24,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 24.59,
-        "min_us": 23.29,
+        "median_us": 24.92,
+        "min_us": 23.27,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -686,10 +689,10 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0444,
-      "1920x1080_100": 0.1525,
-      "5120x1440_30": 0.0195,
-      "5120x1440_100": 0.0294
+      "1920x1080_30": 0.0289,
+      "1920x1080_100": 0.1515,
+      "5120x1440_30": 0.0224,
+      "5120x1440_100": 0.0224
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
@@ -698,8 +701,8 @@
       "5120x1440_100": true
     },
     "cpu_us": {
-      "30": 7.65,
-      "100": 24.59
+      "30": 7.72,
+      "100": 24.92
     },
     "cpu_100_within": true,
     "fog": [

@@ -10,8 +10,10 @@
 // latched), the lane (the completed RT2 at the target's size in the lane format), the attached pass (programs, buffers,
 // FP16 post-pixel-shader blending: refused until Reset when it fails) and not within 64 frames of a failed stage frame;
 // the third consecutive failed stage frame (no drawn frame between) refuses until Reset. An unarmed frame draws nothing
-// while the glow stays suppressed: the phase-1 look (off). One engine_plumes_state row per change of the armed state or
-// its reason. Frames the resolve does not reach show no engine effect (design section 1). Only the scene view's records
+// while the glow stays suppressed (the phase-1 look, off), except that a stage not attached on this device (refused at
+// attach or creation, failed until Reset, or disarmed) forwards the glow natively from the next frame on
+// (engine_plumes_stage_off; forwarded_stage_off in engine_frame). One engine_plumes_state row per change of the armed
+// state or its reason. Frames the resolve does not reach show no engine effect (design section 1). Only the scene view's records
 // are drawn (engine_plumes_core.h ViewFilter); the rest count skipped_other_view in engine_stage.
 void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width) noexcept {
     plumes_requested_ = requested && engine_hook_ && engine_suppress_ && engine_ring_;
@@ -21,6 +23,7 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
     plumes_look_ = engine_plumes::default_look;
     if (nozzle_width >= engine_plumes::nozzle_min && nozzle_width <= engine_plumes::nozzle_max) plumes_look_.nozzle_width = nozzle_width;
     engine_plumes::flow_rate(plumes_look_, &plumes_flow_rate_);
+    engine_plumes::look_tables(plumes_look_, &plumes_tables_); // fixed for the session: not recomputed per frame
     plumes_armed_ = plumes_ran_ = plumes_fenced_ = false;
     plumes_failures_ = 0;
     plumes_failed_out_ = false;
@@ -37,6 +40,12 @@ int MotionOutput::engine_plumes_cycle_preset() noexcept {
         engine_plumes::preset_name(plumes_preset_), engine_plumes::preset_name(previous));
     return int(plumes_preset_);
 }
+// The stage is not attached on this device: refused at attach or creation, failed until Reset, or within the 64-frame
+// disarm. The recognised glow jets are then forwarded natively (engine_effects_frame_begin latches it once per frame).
+// Configuration and path reasons (suppression_off, hdr_taa_path, camera, lane) keep the off look.
+bool MotionOutput::engine_plumes_stage_off() const noexcept {
+    return plumes_requested_ && (plumes_attach_failed_ || plumes_failed_out_ || frame_ < plumes_disarmed_until_);
+}
 void MotionOutput::note_engine_plumes_state(bool armed, const char* reason) noexcept {
     plumes_armed_ = armed;
     plumes_reason_ = reason;
@@ -44,9 +53,11 @@ void MotionOutput::note_engine_plumes_state(bool armed, const char* reason) noex
     plumes_state_logged_ = true;
     plumes_logged_armed_ = armed;
     plumes_logged_reason_ = reason;
-    // Unarmed: nothing is drawn and the recognised glow jets stay suppressed (the phase-1 look, off).
-    log("engine_plumes_state device=%llu frame=%llu armed=%u reason=%s glow=suppressed drawn=%s preset=%s", id_, frame_,
-        unsigned(armed), reason, armed ? "plumes" : "none", engine_plumes::preset_name(plumes_preset_));
+    // Unarmed: nothing is drawn; the recognised glow jets stay suppressed (the phase-1 look, off), or are forwarded
+    // natively from the next frame on when the stage is not attached (engine_plumes_stage_off).
+    log("engine_plumes_state device=%llu frame=%llu armed=%u reason=%s glow=%s drawn=%s preset=%s", id_, frame_,
+        unsigned(armed), reason, !armed && engine_plumes_stage_off() ? "native" : "suppressed", armed ? "plumes" : "none",
+        engine_plumes::preset_name(plumes_preset_));
 }
 // The pass at the latch: attached once per device (programs and buffers at the arming, not at the first plume),
 // refused until Reset on failure with one engine_plumes_device row.
@@ -209,6 +220,7 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     engine_flow_.advance(engine_clock_.last_step, plumes_flow_rate_);
     engine_flow_.wrapped(&in.phase);
     in.look = &plumes_look_;
+    in.tables = &plumes_tables_;
     in.parents = engine_ring_->parent; // the capital sub-engines' floor (engine_plumes_core.h ShipFloor)
     engine_plumes_fog(&in.view.fog); // phase 3: the density fog's mean transmittance per nozzle, off unless it applied
     // stage_us: the build and the draw; with --gpu-sync-timing the EnginePlumes pair fences both sides (EVENT queries),

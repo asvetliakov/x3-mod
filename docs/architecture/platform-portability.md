@@ -845,7 +845,8 @@ or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3
 The ribbon draw ([engine-effects-modern.md](engine-effects-modern.md) sections 3-5) is the plume stage's second
 `DrawIndexedPrimitive` with the same documented D3D9 set: its own DEFAULT `DYNAMIC | WRITEONLY` vertex buffer
 (`D3DLOCK_DISCARD`), a static 16-bit index buffer, vs_3_0 / ps_3_0 (`VPOS`, `texldl` of the lane), the same
-`CheckDeviceFormat` FP16 post-pixel-shader blending query at attach. The ring buffers are CPU state of the pass
+`CheckDeviceFormat` FP16 post-pixel-shader blending query at attach. Since 2026-10-03 the ribbon pass does not refuse
+on the reported slot caps (creation is the test; the caps are logged). The ring buffers are CPU state of the pass
 (no Windows dependency); the clock is `QueryPerformanceCounter`. The fog transmittance is CPU arithmetic on the fog
 pass's own family constants (no device call). Cross-compiled (0 warnings, x87 PASS); the GPU fixture passed under
 Wine on bottle X3 ([engine-effects.md](../verification/engine-effects.md), "Phase 3"); native Windows execution
@@ -858,7 +859,8 @@ DEFAULT `DYNAMIC | WRITEONLY` vertex buffer locked with `D3DLOCK_DISCARD`, a sta
 `DrawIndexedPrimitive`, vs_3_0 / ps_3_0 (`VPOS`, `dsx`/`dsy`, `texldl` of the lane), `D3DDECLTYPE_D3DCOLOR`, ONE/ONE
 blending gated by `CheckDeviceFormat(..., D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING, D3DFMT_A16B16G16R16F)` against the
 adapter's display format (the motes' query); no instancing, VTF, point sprites or MRT. A refused capability leaves
-the stage off with one row (the glow stays suppressed: the off look). The Ctrl+Alt+F6 preset key reads
+the stage off with one row; since the review of flight C (2026-10-03) the recognised glow draws are then forwarded
+natively from the next frame (`forwarded_stage_off`), so a device that refuses the stage keeps the game's glow. The Ctrl+Alt+F6 preset key reads
 `GetAsyncKeyState`, `GetForegroundWindow` and `GetWindowThreadProcessId`. Cross-compiled (0 warnings, x87 PASS);
 the GPU fixture passed under Wine on bottle X3 ([engine-effects.md](../verification/engine-effects.md), "Phase 2");
 native Windows execution unverified.

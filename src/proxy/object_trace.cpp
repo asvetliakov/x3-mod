@@ -291,10 +291,8 @@ bool current(Snapshot* out, bool matrices) {
     // Snapshot finite fixed-size regions only. No pointer walks or game strings.
     uint32_t node[0x150 / 4]{};
     if (read_memory(out->node, node, sizeof node)) {
-        if (matrices) {
-            out->parent = node[0x18 / 4];
-            out->alpha13c = node[0x13c / 4];
-        }
+        out->parent = node[0x18 / 4]; // the ship's root for an engine part (the plume stage's ship key, own-ship tag)
+        if (matrices) out->alpha13c = node[0x13c / 4];
         out->valid |= Node;
         out->node_handle = node[0x28 / 4];
         out->model = node[0x140 / 4];

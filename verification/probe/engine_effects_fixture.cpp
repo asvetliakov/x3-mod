@@ -14,8 +14,11 @@
 //              scene-boundary pattern (initial Clear, background draw, depth-only Clear, a depth writer, SetDepth null,
 //              the bloom StretchRect where the resolve runs); the production stage arms, attaches inside the resolve and
 //              draws the scene view's records (two of four: one of another camera, one from the background phase); a
-//              forced draw fault disarms 64 frames, three consecutive ones refuse until Reset; Reset releases and the
-//              next armed frame recreates the pass; taa_references unchanged across the cycle
+//              forced draw fault disarms 64 frames, three consecutive ones refuse until Reset (the game's glow forwarded
+//              meanwhile: forwarded_stage_off); Reset releases and the next armed frame recreates the pass;
+//              taa_references unchanged across the cycle
+//   armed_refused  as armed with the FP16 refusal staged before the first attach: the glow jets forwarded natively
+//              (forwarded_stage_off 4 per frame) from the frame after the refusal until Reset; then attached and drawn
 // Output: CHECK <label> PASS|FAIL lines, FRAME / RECORD / TIMING lines, RESULT PASS|FAIL. Original synthetic content
 // only; no game bytes are written or redistributed.
 #include <windows.h>
@@ -428,7 +431,7 @@ struct Fixture {
     }
     struct Armed {
         unsigned armed, ran, result, nozzles, skipped, drew, references, taa_references, failures, refused, records,
-            suppressed, resolved;
+            suppressed, resolved, stage_off, attach_refused, jets_submitted;
         DWORD px[4];
     };
     // One frame in the scene-boundary pattern: p4 in the background phase, p1 / p2 (the scene camera) and p3 (another
@@ -443,22 +446,27 @@ struct Fixture {
         effect_state(false); // background: an unscoped effect-pair draw (WVP zero: no pixel); the sentinel fill runs here
         scope(nullptr, 0);
         api(draw(1), "background draw");
+        unsigned jets_before = primitive_calls();
         jet_draw(p4, false, true, scene_camera);
+        unsigned jets_submitted = primitive_calls() - jets_before;
         api(device->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1.f, 0), "Clear depth"); // the scene phase; the camera latch
         effect_state(true); // the scene's depth writer (unscoped: forwarded)
         device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
         scope(nullptr, 0);
         api(draw(1), "depth writer");
+        jets_before = primitive_calls();
         jet_draw(p1, false, true, scene_camera);
         jet_draw(p2, false, true, scene_camera);
         jet_draw(p3, false, true, other_camera);
+        jets_submitted += primitive_calls() - jets_before;
         api(device->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
         api(device->StretchRect(back, nullptr, bloom_surface, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
         Armed a{};
-        const unsigned keys[12] = {25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 2, 3};
-        unsigned* out[12] = {&a.armed, &a.ran, &a.result, &a.nozzles, &a.skipped, &a.drew, &a.references, &a.taa_references,
-                             &a.failures, &a.refused, &a.records, &a.suppressed};
-        for (unsigned i = 0; i < 12; ++i) *out[i] = status(device, keys[i]);
+        const unsigned keys[14] = {25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 2, 3, 37, 39};
+        unsigned* out[14] = {&a.armed, &a.ran, &a.result, &a.nozzles, &a.skipped, &a.drew, &a.references, &a.taa_references,
+                             &a.failures, &a.refused, &a.records, &a.suppressed, &a.stage_off, &a.attach_refused};
+        for (unsigned i = 0; i < 14; ++i) *out[i] = status(device, keys[i]);
+        a.jets_submitted = jets_submitted;
         a.resolved = emission(device, 97); // this frame's resolve ran and its copy-back succeeded
         for (unsigned i = 0; i < 4; ++i) a.px[i] = pixel(nozzle_px[i].x, nozzle_px[i].y);
         api(device->EndScene(), "EndScene");
@@ -470,27 +478,36 @@ struct Fixture {
     static bool lit(DWORD v) { return sum(v) >= 96; }
     static bool dark(DWORD v) { return sum(v) <= 6; }
     static void print_armed(const char* phase, unsigned frame, const Armed& a) {
-        std::printf("ARMED phase=%s frame=%u armed=%u ran=%u result=%08x nozzles=%u skipped_other_view=%u drew=%u references=%u taa_references=%u failures=%u refused=%u records=%u suppressed=%u resolved=%u px=%06lx,%06lx,%06lx,%06lx\n",
+        std::printf("ARMED phase=%s frame=%u armed=%u ran=%u result=%08x nozzles=%u skipped_other_view=%u drew=%u references=%u taa_references=%u failures=%u refused=%u records=%u suppressed=%u resolved=%u forwarded_stage_off=%u attach_refused=%u jets_submitted=%u px=%06lx,%06lx,%06lx,%06lx\n",
                     phase, frame, a.armed, a.ran, a.result, a.nozzles, a.skipped, a.drew, a.references, a.taa_references,
-                    a.failures, a.refused, a.records, a.suppressed, a.resolved, static_cast<unsigned long>(a.px[0]),
+                    a.failures, a.refused, a.records, a.suppressed, a.resolved, a.stage_off, a.attach_refused, a.jets_submitted,
+                    static_cast<unsigned long>(a.px[0]),
                     static_cast<unsigned long>(a.px[1]), static_cast<unsigned long>(a.px[2]), static_cast<unsigned long>(a.px[3]));
     }
     // A frame that drew the scene view's records: p1 / p2 lit, p3 (another camera) and p4 (background phase) dark.
     static bool drawn_frame(const Armed& a) {
         return a.armed && a.ran && a.result == 0 && a.nozzles == 2 && a.skipped == 2 && a.drew && a.references == 5 &&
-               a.records == 4 && a.suppressed == 4 && a.resolved && lit(a.px[0]) && lit(a.px[1]) && dark(a.px[2]) && dark(a.px[3]);
+               a.records == 4 && a.suppressed == 4 && a.stage_off == 0 && a.jets_submitted == 0 && a.resolved && lit(a.px[0]) &&
+               lit(a.px[1]) && dark(a.px[2]) && dark(a.px[3]);
+    }
+    // A frame whose stage is not attached (refused, failed until Reset or disarmed): nothing drawn by the stage, the
+    // four glow-jet draws forwarded to the device (forwarded_stage_off 4, none recorded); the effect pair's WVP is zero,
+    // so the forwarded draws leave no pixel.
+    static bool glow_native(const Armed& a) {
+        return !a.ran && a.stage_off == 4 && a.suppressed == 0 && a.records == 0 && a.jets_submitted == 4 && dark(a.px[0]) &&
+               dark(a.px[1]);
     }
     // Frames until the stage is armed (at most `limit`): the unarmed frames before it; the armed frame in *last;
-    // *glow_dark counts the unarmed frames that drew nothing while the four records stayed suppressed.
-    unsigned until_armed(unsigned limit, unsigned* frame, Armed* last, unsigned* glow_dark) {
+    // *forwarded counts the unarmed frames that forwarded the glow natively (glow_native).
+    unsigned until_armed(unsigned limit, unsigned* frame, Armed* last, unsigned* forwarded) {
         unsigned unarmed = 0;
-        *glow_dark = 0;
+        *forwarded = 0;
         for (unsigned i = 0; i < limit; ++i) {
             *last = armed_frame();
             ++*frame;
             if (last->armed) return unarmed;
             ++unarmed;
-            *glow_dark += dark(last->px[0]) && dark(last->px[1]) && !last->ran && last->suppressed == 4;
+            *forwarded += glow_native(*last);
         }
         return unarmed;
     }
@@ -514,7 +531,7 @@ struct Fixture {
         const unsigned taa_before = a.taa_references;
         // One forced draw fault (the pass's fixture fault reports the draw failed after submitting it, so the frame may
         // still show the plume): the resolve goes on and resolves, the stage disarms for 64 frames (63 after the failed
-        // one, the plumes gone), then re-arms and draws again (failures back to 0).
+        // one: no plume, the game's glow forwarded), then re-arms and draws again (failures back to 0).
         check(plumes_fault(device, 2) == 1, "armed_fault_once_set");
         a = armed_frame();
         ++frame;
@@ -523,8 +540,8 @@ struct Fixture {
               "armed_fault_once_fails_stage_only");
         unsigned disarmed = until_armed(80, &frame, &a, &glow_dark);
         print_armed("rearmed", frame, a);
-        std::printf("DISARMED cycle=once frames=%u glow_dark=%u\n", disarmed, glow_dark);
-        check(disarmed == 63 && glow_dark == 63, "armed_disarmed_63_frames_after_the_failed_one");
+        std::printf("DISARMED cycle=once frames=%u glow_native=%u\n", disarmed, glow_dark);
+        check(disarmed == 63 && glow_dark == 63, "armed_disarmed_63_frames_glow_forwarded");
         check(drawn_frame(a) && a.failures == 0, "armed_rearmed_draws_failures_cleared");
         // Persistent fault: three consecutive failed stage frames (no drawn frame between) refuse until Reset.
         check(plumes_fault(device, 4) == 1, "armed_fault_persistent_set");
@@ -532,7 +549,7 @@ struct Fixture {
         for (unsigned c = 0; c < 3; ++c) {
             if (c) {
                 disarmed = until_armed(80, &frame, &a, &glow_dark);
-                std::printf("DISARMED cycle=persistent_%u frames=%u glow_dark=%u\n", c, disarmed, glow_dark);
+                std::printf("DISARMED cycle=persistent_%u frames=%u glow_native=%u\n", c, disarmed, glow_dark);
                 gaps_ok += disarmed == 63 && glow_dark == 63;
             } else {
                 a = armed_frame();
@@ -546,10 +563,10 @@ struct Fixture {
         for (unsigned i = 0; i < 70; ++i) {
             a = armed_frame();
             ++frame;
-            refused_frames += !a.armed && !a.ran && a.refused && dark(a.px[0]) && a.suppressed == 4;
+            refused_frames += !a.armed && a.refused && glow_native(a);
         }
         print_armed("refused", frame, a);
-        check(refused_frames == 70, "armed_refused_until_reset_70_frames");
+        check(refused_frames == 70, "armed_refused_until_reset_70_frames_glow_forwarded");
         // Reset: every pass object released, the refusal and the failure count cleared; the next armed frame recreates
         // the pass (5 objects) and draws; the TAA reference count is back where it was.
         check(plumes_fault(device, 0) == 1, "armed_faults_cleared");
@@ -566,6 +583,45 @@ struct Fixture {
         check(held == 5 && released == 0 && !refused_after && !failures_after, "armed_reset_releases_and_clears");
         check(drawn_frame(a), "armed_after_reset_recreated_and_draws");
         check(a.taa_references == taa_before, "armed_taa_references_delta_0");
+    }
+    // armed_refused: the pass refuses at its first attach (the FP16 blending fault staged before the first arming): the
+    // refusing frame's records stay suppressed (decided before its resolve), every later frame forwards the four glow
+    // jets natively (forwarded_stage_off 4, nothing recorded or drawn by the stage) until Reset; after a Reset without
+    // the fault the stage attaches, arms and draws.
+    void refused_script() {
+        make_armed_jets();
+        unsigned frame = 1, forwarded = 0;
+        check(plumes_fault(device, 1) == 1, "refused_fault_staged_before_attach");
+        Armed a{};
+        unsigned warm = 0;
+        for (; warm < 8; ++warm) {
+            a = armed_frame();
+            ++frame;
+            if (a.attach_refused) break;
+        }
+        print_armed("refusing", frame, a);
+        check(a.attach_refused == 1 && !a.armed && !a.ran && a.suppressed == 4 && a.stage_off == 0 && a.references == 0,
+              "refused_at_first_attach_suppressed_that_frame");
+        unsigned native = 0;
+        for (unsigned i = 0; i < 40; ++i) {
+            a = armed_frame();
+            ++frame;
+            native += !a.armed && a.attach_refused && glow_native(a);
+        }
+        print_armed("refused", frame, a);
+        std::printf("REFUSED frames=40 glow_native=%u forwarded_stage_off=%u\n", native, a.stage_off);
+        check(native == 40, "refused_40_frames_glow_forwarded_4_each");
+        check(plumes_fault(device, 0) == 1, "refused_fault_cleared");
+        release_swapchain_surfaces();
+        api(device->Reset(&pp), "Reset");
+        std::printf("RESET PASS\n");
+        const unsigned refused_after = status(device, 39);
+        swapchain_surfaces();
+        const unsigned warm_after = until_armed(8, &frame, &a, &forwarded);
+        print_armed("after_reset", frame, a);
+        std::printf("REFUSED_RESET refused_after=%u warm=%u forwarded_during_warm=%u\n", refused_after, warm_after, forwarded);
+        check(refused_after == 0 && forwarded == 0, "refused_reset_clears_the_refusal");
+        check(drawn_frame(a), "refused_after_reset_attaches_and_draws");
     }
     void overflow_frame(unsigned frame) {
         api(device->BeginScene(), "BeginScene");
@@ -619,7 +675,7 @@ struct Fixture {
 
 int main(int argc, char** argv) {
     if (argc != 4) {
-        std::printf("usage: engine_effects_fixture <vs_effect.bin> <ps_effect.bin> main|native|unverified|unpatched|timing|plumes|armed\n");
+        std::printf("usage: engine_effects_fixture <vs_effect.bin> <ps_effect.bin> main|native|unverified|unpatched|timing|plumes|armed|armed_refused\n");
         return 2;
     }
     const std::string mode = argv[3];
@@ -653,7 +709,7 @@ int main(int argc, char** argv) {
     body_global(reinterpret_cast<std::uintptr_t>(&manager.global));
     if (mode != "unverified") identity(1); // before Direct3DCreate9, which runs initialize
     if (mode != "unpatched") redirects(1);  // the fixture EXE has no engine sites: the patch module stays native
-    f.armed = mode == "armed";
+    f.armed = mode == "armed" || mode == "armed_refused";
     if (f.armed) camera_install(&camera_projection_slot, &camera_view_slot);
     f.create(mode == "timing");
     f.resources(vs_bytes, ps_bytes);
@@ -681,6 +737,9 @@ int main(int argc, char** argv) {
     } else if (mode == "armed") {
         check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 1, "armed_hook_and_suppress_armed");
         f.armed_script();
+    } else if (mode == "armed_refused") {
+        check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 1, "refused_hook_and_suppress_armed");
+        f.refused_script();
     } else if (mode == "native") {
         check(f.status(f.device, 19) == 1 && f.status(f.device, 20) == 0, "native_census_hook_without_suppression");
         for (unsigned frame = 1; frame <= 2; ++frame) f.scenario(frame, "native", false, false);

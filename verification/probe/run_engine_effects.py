@@ -19,7 +19,12 @@ engine_effects_fixture.exe, then runs the fixture once per mode in the selected 
               camera, frames in the scene-boundary pattern: the production stage arms, attaches inside the resolve and
               draws the scene view's two records (one of another camera and one from the background phase skipped); a
               forced draw fault disarms 64 frames with one engine_plumes_failed row, three consecutive ones refuse until
-              Reset (final=1), Reset releases the pass and the next armed frame recreates it; taa_references delta 0
+              Reset (final=1), Reset releases the pass and the next armed frame recreates it; taa_references delta 0; the
+              disarmed and refused frames forward the four glow jets natively (engine_frame forwarded_stage_off=4, 259
+              frames)
+  armed_refused  as armed with the FP16 refusal staged before the first attach: one engine_plumes_device attached=0
+              reason=fp16_blending row, engine_plumes_state reason=fp16_blending glow=native, engine_frame
+              forwarded_stage_off=4 on the 40 refused frames, then Reset, attached=1 and armed
 Each run's directory holds x3m/engine_bodies.json, written here by tools/effects/engine_bodies.py's dumps() for the
 synthetic body manager the fixture builds (default path: <EXE directory>\\x3m\\engine_bodies.json). The effects pair's
 program bytes are local inputs (/tmp/x3-shader-sweep/programs, never in the repository). The fixture's CHECK lines and
@@ -57,7 +62,9 @@ MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X
          'timing': dict(X3M_ENGINE_EFFECTS='off'),
          'plumes': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1'),
          'armed': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1', X3M_HDR='1', X3M_TAA='1',
-                       X3M_MOTION_JITTER='1')}
+                       X3M_MOTION_JITTER='1'),
+         'armed_refused': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1', X3M_HDR='1',
+                               X3M_TAA='1', X3M_MOTION_JITTER='1')}
 SCENARIO_FRAMES = (1, 2, 3, 5, 6, 7, 8, 9, 10, 11)
 OVERFLOW_FRAME, RING = 4, 1024
 # The production sources the fixture exercises: their content hashes and the checkout's commit go into the record
@@ -157,7 +164,7 @@ def validate(mode, r):
     modes = rows(log, 'engine_effects_mode')
     out['mode_row'] = modes[0] if modes else None
     expected_status = {'main': 'armed', 'native': 'native', 'unverified': 'executable_mismatch', 'unpatched': 'armed', 'timing': 'armed',
-                       'plumes': 'armed', 'armed': 'armed'}[mode]
+                       'plumes': 'armed', 'armed': 'armed', 'armed_refused': 'armed'}[mode]
     if len(modes) != 1 or modes[0].get('status') != expected_status:
         problems.append(f'{mode}: engine_effects_mode {modes}')
     if mode == 'timing':
@@ -168,7 +175,7 @@ def validate(mode, r):
             problems.append(f'timing: {out["timing"]}')
         return problems, out
     plume_rows = rows(log, 'engine_effects_plumes') + rows(log, 'engine_plumes_state') + rows(log, 'engine_stage')
-    if mode not in ('plumes', 'armed') and plume_rows:
+    if mode not in ('plumes', 'armed', 'armed_refused') and plume_rows:
         problems.append(f'{mode}: plume rows outside plumes: {plume_rows[:2]}')
     if mode == 'plumes':
         # Suppressed as off; the stage refuses to arm by configuration (no --hdr --taa in the seam) in one row and
@@ -224,6 +231,32 @@ def validate(mode, r):
             problems.append(f'armed: engine_stage drawn rows {len(drawn)}')
         if not rows(log, 'motion_output_reset'):
             problems.append('armed: no motion_output_reset row')
+        # The game's glow while the stage is off: 3 x 63 disarmed frames and the 70 refused ones forward the four jets.
+        frames = rows(log, 'engine_frame')
+        stage_off = [f for f in frames if f.get('forwarded_stage_off') not in (None, '0')]
+        out['stage_off_frames'] = len(stage_off)
+        if len(stage_off) != 3 * 63 + 70 or any((f.get('forwarded_stage_off'), f.get('suppressed'), f.get('records')) != ('4', '0', '0')
+                                                for f in stage_off):
+            problems.append(f'armed: forwarded_stage_off frames {len(stage_off)}')
+        return problems, out
+    if mode == 'armed_refused':
+        # The refusal at the first attach: one refused device row then, after the Reset, one attached row; the state rows
+        # name the refusal with glow=native; the refused frames forward the four jets (engine_frame forwarded_stage_off=4).
+        devices = [(d.get('attached'), d.get('reason')) for d in rows(log, 'engine_plumes_device')]
+        state = [(r.get('armed'), r.get('reason'), r.get('glow')) for r in rows(log, 'engine_plumes_state')]
+        frames = rows(log, 'engine_frame')
+        stage_off = [f for f in frames if f.get('forwarded_stage_off') not in (None, '0')]
+        out.update(device_rows=devices, state_rows=state, stage_off_frames=len(stage_off),
+                   armed_lines=[fields(l) for l in lines if l.startswith(('ARMED ', 'REFUSED', 'RESET'))])
+        if devices != [('0', 'fp16_blending'), ('1', 'ok')]:
+            problems.append(f'armed_refused: engine_plumes_device {devices}')
+        if ('0', 'fp16_blending', 'native') not in state or not state or state[-1][:2] != ('1', 'armed'):
+            problems.append(f'armed_refused: engine_plumes_state {state}')
+        if len(stage_off) != 40 or any((f.get('forwarded_stage_off'), f.get('suppressed'), f.get('records')) != ('4', '0', '0')
+                                       for f in stage_off):
+            problems.append(f'armed_refused: forwarded_stage_off frames {len(stage_off)}')
+        if not rows(log, 'motion_output_reset'):
+            problems.append('armed_refused: no motion_output_reset row')
         return problems, out
     if mode == 'unverified':
         if rows(log, 'engine_draw') or rows(log, 'engine_frame') or rows(log, 'engine_effects_device'):

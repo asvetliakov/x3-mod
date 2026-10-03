@@ -109,14 +109,14 @@ int main(int argc, char** argv) {
     expect(!suppresses(Mode::native) && suppresses(Mode::off) && suppresses(Mode::plumes), "plumes suppresses like off");
     expect(effect_pair(0xd5e1c75351ed3f04ull, 0x8360f422de08b5bdull) && effect_pair(0x89193868c61c3846ull, 0x8360f422de08b5bdull) && !effect_pair(0xd5e1c75351ed3f04ull, 1) && !effect_pair(1, 0x8360f422de08b5bdull), "the effects pair");
     // Truth table: bits 0 pair, 1 zwrite_known, 2 zwrite, 3 blend_known, 4 blend, 5 scoped, 6 snapshot, 7-8 flags (0 none,
-    // 1 0x4000000 only, 2 0x4000001, 3 0x0000001 only), 9 suppress, 10 ring_full, 11 redirects live.
-    for (unsigned bits = 0; bits < (1u << 12); ++bits) {
+    // 1 0x4000000 only, 2 0x4000001, 3 0x0000001 only), 9 suppress, 10 ring_full, 11 redirects live, 12 stage off.
+    for (unsigned bits = 0; bits < (1u << 13); ++bits) {
         DrawState s; Facts f;
         s.pair = bits & 1; s.zwrite_known = bits & 2; s.zwrite = (bits >> 2) & 1; s.blend_known = bits & 8; s.blend = (bits >> 4) & 1;
         f.scoped = bits & 32; f.snapshot = bits & 64;
         const unsigned k = (bits >> 7) & 3;
         f.flags130 = k == 1 ? 0x4000000u : k == 2 ? 0x4000001u | 0x200u : k == 3 ? 1u : 0x80u;
-        f.suppress = bits & 512; f.ring_full = bits & 1024; f.redirects = bits & 2048;
+        f.suppress = bits & 512; f.ring_full = bits & 1024; f.redirects = bits & 2048; f.stage_off = bits & 4096;
         std::printf("TRUTH %u %s\n", bits, verdict_name(classify(s, f)));
     }
     // Throttle: z = scale3 / 65536, s = clamp((z - 0.25) / 1.75).
@@ -239,13 +239,14 @@ int main(int argc, char** argv) {
 '''
 
 VERDICTS = ('none', 'not_jet', 'suppressed', 'forwarded_unscoped', 'forwarded_snapshot', 'forwarded_opaque', 'forwarded_state',
-            'forwarded_overflow', 'forwarded_native', 'forwarded_patch_missing')
+            'forwarded_overflow', 'forwarded_native', 'forwarded_patch_missing', 'forwarded_stage_off')
 
 
 def twin(bits):
     """The recogniser's truth table, written independently of the header (engine-effects-modern.md section 1)."""
     pair, zk, zw, bk, bl = bits & 1, bits & 2, (bits >> 2) & 1, bits & 8, (bits >> 4) & 1
     scoped, snapshot, kind, suppress, full, redirects = bits & 32, bits & 64, (bits >> 7) & 3, bits & 512, bits & 1024, bits & 2048
+    stage_off = bits & 4096
     flags = {0: 0x80, 1: 0x4000000, 2: 0x4000201, 3: 1}[kind]
     if not (pair or (bk and bl and zk and not zw)):
         return 'none'
@@ -263,6 +264,8 @@ def twin(bits):
         return 'forwarded_native'
     if not redirects:  # off|plumes arm only with both call redirects live (engine_effects_patch::installed())
         return 'forwarded_patch_missing'
+    if stage_off:  # plumes whose stage is not attached on this device: the game's glow rather than nothing
+        return 'forwarded_stage_off'
     return 'forwarded_overflow' if full else 'suppressed'
 
 
@@ -301,9 +304,9 @@ class EngineEffectsCore(unittest.TestCase):
 
     def test_truth_table_matches_the_twin(self):
         rows = self.rows('TRUTH')
-        self.assertEqual(len(rows), 4096)
+        self.assertEqual(len(rows), 8192)
         table = {int(b): v for b, v in rows}
-        self.assertEqual(table, {b: twin(b) for b in range(4096)})
+        self.assertEqual(table, {b: twin(b) for b in range(8192)})
         self.assertEqual(set(table.values()), set(VERDICTS))  # every verdict is reachable
 
     def test_throttle(self):

@@ -63,28 +63,32 @@ enum class Verdict : std::uint8_t {
     state,      // forwarded_state: Z-write unknown in the shadow - effect pair only
     overflow,   // forwarded_overflow: the frame's ring is full
     native,     // forwarded_native: mode native (the census counts what off would suppress)
-    patch_missing // forwarded_patch_missing: off|plumes without both call redirects live (engine_effects_patch.h):
-                  // the glow is never hidden while the native sprites, flares and trails stay
+    patch_missing, // forwarded_patch_missing: off|plumes without both call redirects live (engine_effects_patch.h):
+                   // the glow is never hidden while the native sprites, flares and trails stay
+    stage_off      // forwarded_stage_off: plumes whose stage is not attached on this device (refused at attach or
+                   // creation, failed until Reset, or within its 64-frame disarm): the game's glow rather than nothing;
+                   // the sprite and trail redirects stay (load-time)
 };
-constexpr unsigned forward_reasons = 7; // unscoped .. patch_missing, in this order
+constexpr unsigned forward_reasons = 8; // unscoped .. stage_off, in this order
 inline unsigned forward_index(Verdict v) noexcept {
     return v >= Verdict::unscoped ? unsigned(v) - unsigned(Verdict::unscoped) : forward_reasons;
 }
 inline const char* verdict_name(Verdict v) noexcept {
     static const char* const names[] = {"none", "not_jet", "suppressed", "forwarded_unscoped", "forwarded_snapshot",
                                         "forwarded_opaque", "forwarded_state", "forwarded_overflow", "forwarded_native",
-                                        "forwarded_patch_missing"};
+                                        "forwarded_patch_missing", "forwarded_stage_off"};
     return unsigned(v) < sizeof names / sizeof names[0] ? names[unsigned(v)] : "none";
 }
 // What the hot path learned about the draw, in the order it learns it (each later field is read only when the
 // earlier ones did not decide): scope present, node snapshot readable, the node's +0x130, the mode, the two call
-// redirects, the ring.
+// redirects, the plume stage, the ring.
 struct Facts {
     bool scoped = false;
     bool snapshot = false;
     std::uint32_t flags130 = 0;
     bool suppress = false;
     bool redirects = false; // engine_effects_patch::installed(): both call redirects live
+    bool stage_off = false; // plumes requested, the stage not attached on this device (refused or disarmed this frame)
     bool ring_full = false;
 };
 inline Verdict classify(const DrawState& s, const Facts& f) noexcept {
@@ -96,6 +100,7 @@ inline Verdict classify(const DrawState& s, const Facts& f) noexcept {
     if (s.zwrite) return Verdict::opaque;
     if (!f.suppress) return Verdict::native;
     if (!f.redirects) return Verdict::patch_missing;
+    if (f.stage_off) return Verdict::stage_off;
     if (f.ring_full) return Verdict::overflow;
     return Verdict::suppressed;
 }

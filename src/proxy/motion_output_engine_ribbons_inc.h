@@ -35,10 +35,11 @@ bool MotionOutput::attach_engine_ribbons() noexcept {
     }
     const bool attached = queried && SUCCEEDED(hr) && ribbons_->caps().enabled;
     const auto& c = ribbons_->caps();
-    log("engine_ribbons_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx vs_slots=%u ps_slots=%u vb_bytes=%u pool=%u samples=%u retry=reset",
+    log("engine_ribbons_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx vs_slots=%u ps_slots=%u max_vs_slots=%lu max_ps_slots=%lu vb_bytes=%u pool=%u samples=%u retry=reset",
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
-        c.vs_slots, c.ps_slots, renderer::EngineRibbonsPass::vertex_bytes, engine_ribbons::max_ribbons,
-        engine_ribbons::samples_per_ribbon);
+        c.vs_slots, c.ps_slots, static_cast<unsigned long>(caps_.MaxVertexShader30InstructionSlots),
+        static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots), renderer::EngineRibbonsPass::vertex_bytes,
+        engine_ribbons::max_ribbons, engine_ribbons::samples_per_ribbon);
     if (!attached) ribbons_attach_failed_ = true;
     return attached;
 }

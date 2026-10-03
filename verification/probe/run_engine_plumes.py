@@ -11,9 +11,13 @@ flickering sky, the occlusion cuts and rim widths (centred and off-centre at 90 
 fade, the presets, the temporal variation, the bulge and taper, the shock cells, after flight C the end-on energy at
 0 / 30 / 60 / 90 degrees, the ship floor and the mouth against the body, Reset, the FP16 refusal, the EVENT-fenced stage
 cost at 30 / 100 nozzles and the CPU build with and without the ship floor).
+--disc-ab runs the timing case alone with X3M_PLUMES_FIXTURE_DISC_AB=1: the stage cost with the end-on disc drawn and
+not drawn, three interleaved rounds at 30 / 100 nozzles and both sizes, into
+verification/results/engine-effects/plume_disc_ab.json (the summary record is not touched).
 The fixture's stdout stays under verification/probe/build/engine-plumes/. Run through wine_lock.py with
 X3M_FIXTURE_BOTTLE=X3. Never launches the game.
 """
+import statistics
 import argparse
 import hashlib
 import json
@@ -96,8 +100,9 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
-            'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON', 'FLOOR', 'MOUTH',
-            'OFF_PATH', 'FAULT', 'RESET', 'TIMING', 'BUILD', 'BUILD_SHIPS')
+            'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
+            'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING', 'TIMING_DISC', 'BUILD',
+            'BUILD_SHIPS')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -131,12 +136,34 @@ def gates(r):
     return out
 
 
+def disc_ab_summary(rows):
+    """Per size and nozzle count: the three rounds' gpu_ms with the disc on and off, their medians and the difference."""
+    out = {}
+    for row in rows:
+        key = f"{row['width']}x{row['height']}_{row['nozzles']}"
+        entry = out.setdefault(key, {'on': [], 'off': [], 'discs': row['discs'] if row['disc'] == 'on' else None})
+        entry[row['disc']].append(row['gpu_ms'])
+        if row['disc'] == 'on':
+            entry['discs'] = row['discs']
+    for entry in out.values():
+        entry['median_on_ms'] = statistics.median(entry['on']) if entry['on'] else None
+        entry['median_off_ms'] = statistics.median(entry['off']) if entry['off'] else None
+        if entry['on'] and entry['off']:
+            entry['disc_ms'] = round(entry['median_on_ms'] - entry['median_off_ms'], 4)
+            entry['spread_on_ms'] = round(max(entry['on']) - min(entry['on']), 4)
+            entry['spread_off_ms'] = round(max(entry['off']) - min(entry['off']), 4)
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=int, default=1800)
     parser.add_argument('--only', default=None, help='fixture case filter (comma list), diagnosis only: the record is not passed')
+    parser.add_argument('--disc-ab', action='store_true', help='the disc on/off stage-cost A/B alone (plume_disc_ab.json)')
     args = parser.parse_args()
+    if args.disc_ab:
+        args.only = 'timing'
     if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
         raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
     if game_running():
@@ -153,11 +180,25 @@ def main():
     if args.only:
         command += ['--only', args.only]
     env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b')
+    if args.disc_ab:
+        env['X3M_PLUMES_FIXTURE_DISC_AB'] = '1'
     done = subprocess.run(command, capture_output=True, env=env, timeout=args.timeout)
     text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
     (BUILD / 'fixture.log').write_text(text)
     (BUILD / 'fixture.stderr.txt').write_bytes(done.stderr)
     report = parse(text)
+    if args.disc_ab:
+        ab = {'bottle': record['bottle'], 'source': record['source'], 'build_warnings': record.get('build', {}).get('warnings'),
+              'method': 'tail EVENT-fenced, 60 on/off pairs per measurement; three rounds interleaved (on/off, off/on, on/off); '
+                        'disc off = the facing band moved past 1 (Look disc_low 1.5, disc_high 2), same source and crowd',
+              'exit_code': done.returncode, 'result': report['result'], 'rows': report['timing_disc'],
+              'summary': disc_ab_summary(report['timing_disc']), 'game_launched': False}
+        out_path = ROOT / 'verification/results/engine-effects/plume_disc_ab.json'
+        out_path.write_text(json.dumps(ab, indent=2) + '\n')
+        print(json.dumps({'exit': done.returncode, 'summary': {k: {x: v[x] for x in ('median_on_ms', 'median_off_ms', 'disc_ms', 'discs')}
+                                                               for k, v in ab['summary'].items()},
+                          'results': str(out_path.relative_to(ROOT))}, indent=1))
+        return 0 if done.returncode == 0 and len(report['timing_disc']) == 24 else 1
     record['run'] = {'exit_code': done.returncode, 'result': report['result'], 'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
     record['report'] = report
     record['gates_met'] = gates(report)

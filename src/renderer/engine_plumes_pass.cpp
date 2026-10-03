@@ -242,10 +242,18 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
         return refuse(EnginePlumesStep::Lock, hr);
     }
     const engine_plumes::Look& look = f.look ? *f.look : engine_plumes::default_look;
+    // The look's tables (the end-on disc's samples, the side view's crest): the proxy caches them at load; a frame
+    // without them (the fixture) computes them once here for the build and the constants.
+    engine_plumes::LookTables computed;
+    const engine_plumes::LookTables* tables = f.tables;
+    if (!tables) {
+        engine_plumes::look_tables(look, &computed);
+        tables = &computed;
+    }
     const unsigned nozzles = engine_plumes::build(f.records, f.record_count, f.body, f.view, f.preset, f.seconds,
                                                   static_cast<engine_plumes::Vertex*>(mapping), capacity, &r.stats,
                                                   f.filter.camera && f.filter.scene ? &f.filter : nullptr, &look, f.parents,
-                                                  f.parents ? &ships_ : nullptr);
+                                                  f.parents ? &ships_ : nullptr, tables);
     hr = vb_->Unlock();
     if (FAILED(hr)) return refuse(EnginePlumesStep::Lock, hr);
     if (!nozzles) return finish(S_FALSE); // nothing drawable: no render state touched
@@ -262,7 +270,7 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     // (engine_plumes_core.h Look, the end-on disc's samples in c8..c15): one call for the sixteen registers.
     float pixel[12 + engine_plumes::pixel_constant_floats] = {1.f / float(f.width), 1.f / float(f.height), f.phase, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
                        engine_plumes::soft_core, engine_plumes::soft_halo, engine_plumes::halo_reach, f.seconds};
-    engine_plumes::pixel_constants(look, pixel + 12);
+    engine_plumes::pixel_constants(look, *tables, pixel + 12);
     step(EnginePlumesStep::State, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 0, projection, 1));
     step(EnginePlumesStep::State, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 1, limits, 1));
     step(EnginePlumesStep::State, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, pixel, 16));

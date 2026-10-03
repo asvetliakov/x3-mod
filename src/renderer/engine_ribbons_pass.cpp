@@ -125,8 +125,8 @@ HRESULT EngineRibbonsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     caps_.vs_slots = vs3_program_slots();
     caps_.ps_slots = ps3_program_slots(ps_words, std::size(ps_words));
     if (!caps_.vs_slots || !caps_.ps_slots) return refuse("compiled_program");
-    if (caps_.ps_slots > caps.MaxPixelShader30InstructionSlots || caps_.vs_slots > caps.MaxVertexShader30InstructionSlots)
-        return refuse("compiled_slots");
+    // No refusal on the reported slot caps, as in the plume pass (docs/architecture/platform-portability.md, "Shader
+    // slot budget"): creation is the capability test (program_create below); the caller logs the caps beside the slots.
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_BLENDOP) || !(caps.SrcBlendCaps & D3DPBLENDCAPS_ONE) ||
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
         return refuse("blend_caps");

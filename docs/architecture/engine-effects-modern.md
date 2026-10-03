@@ -68,7 +68,7 @@ Per recognised draw, from the Snapshot (no device call) and the constant shadow:
 | Throttle `s` | `z = scale[3]/65536` from the Snapshot (`+0x88`), `s = clamp((z − 0.25)/1.75)` for a main jet (`C = 0x7001`, 99.4 % of installed parts) [m: the drive at `0x0045ad8b..0x0045b03c`]; the same number is the z/x row-length ratio of c4–6, which also identifies the z row when `z ≠ 1` | Rate-limited by the engine (0.004/ms, 437 ms for 0.25 → 2.0) [m]; steering/brake bits push `z` above 2.0 on flagged jets (up to 9.0): `s` saturates, the extra length is kept as a brake flare |
 | Tint, size class, extent | `model` (body id) → body name through the engine body table (the `lens_flare_cull` resolver: names → ids at begin_frame, 210 µs restart over 13,200 slots, 0.134 µs per frame for 5 mappings [m]) → the shipped `engine_bodies.json` of `tools/effects/engine_bodies.py` (merged `c7f6c05a`): keyed by the `types/Bodies` spelling, `lists` an array (`v\00566` on both), per body the LOD-0 value, z extent (negative / both), x/y half-width, material/blend, alpha-weighted mean and peak colour; Mayhem 253 bodies / 16 missing, stock 224 / 23 [m] | Mayhem: 80 `engine.fx` bodies, 11 colours (darkblue #5858f7 … lime #19a319), values 504 … 211,762 [m]. **Every size law uses the body's own `value`, never a tier label**: stock ships 98 `fx_engine_xtc_*` bodies at twice the Mayhem values under the same tier names [m, c7f6c05a]. Stock: 110 of 138 bodies share the animated blue family (#4ba0bf cyan), 28 white/grey [m]: the table gives cyan/white, which **is** the stock record (TShips carries no colour; col 11 only selects the sprite/flare row). A per-race override on stock needs the ship, which the jet node does not reach (phase 4). Not covered, forwarded natively: three Mayhem bodies under `effects\engines` that are on no list (`fx_engine_paranid_m6_axeface`, `fx_engine_xtraotas_ts1/ts3`: no flag, no entry) and `v/00114`, a MATERIAL3 text body the loader refuses (flagged, no table entry → `unknown_body`) [m] |
 | Identity | `object_lifetime` node serial (handle + lifetime epoch), else the spatial identity (key + origin quantised to 8 units) as the dropped stage did | Ring buffers and fades hang on it |
-| Fallback | A JET-flagged draw with no scope (depth 0), a failed node read, or no live redirects (`engine_effects_patch::installed()` false, cached per frame) → forwarded natively, counted (`forwarded_unscoped`, `forwarded_snapshot`, `forwarded_patch_missing`): the glow never disappears while native sprites and trails stay. A flagged draw whose body is not in the table **is** suppressed, with a record of the default tint cluster, counted `unknown_body` (phase 1 relaxation: `v/00114` and any mod body) | Phase 3 may add the removed texture-key registry as a second key if the census shows unscoped glow draws |
+| Fallback | A JET-flagged draw with no scope (depth 0), a failed node read, or no live redirects (`engine_effects_patch::installed()` false, cached per frame) → forwarded natively, counted (`forwarded_unscoped`, `forwarded_snapshot`, `forwarded_patch_missing`): the glow never disappears while native sprites and trails stay. Under `plumes`, a stage that is not attached on the device (refused at attach or creation, failed until Reset, or within its 64-frame disarm) forwards the glow too, from the next frame on (`forwarded_stage_off`, after the review of flight C); the sprite and trail redirects stay (load-time). A flagged draw whose body is not in the table **is** suppressed, with a record of the default tint cluster, counted `unknown_body` (phase 1 relaxation: `v/00114` and any mod body) | Phase 3 may add the removed texture-key registry as a second key if the census shows unscoped glow draws |
 
 A suppressed draw never reaches the boundary selector: `before_draw` returns before `route.evaluated` is set and
 `after_draw` returns at `!route.evaluated` ahead of `observe` [m, source]. On a capture frame its `motion_input` row
@@ -409,8 +409,8 @@ and the CPU build of 1,024 records takes 0.46 of the per-record pulse's time wit
 nozzle 0.5 and asked for three adjustments. All constants are in `engine_plumes_core.h` `Look`.
 - *Default nozzle 0.5* (`engine_plume_nozzle`, [config-file.md](config-file.md)). L = 2 z nozzle widths, 4 at full
   throttle. The flow is 2.625 nozzle widths/s (the same speed in value units as before). A plume's drawn width is now
-  2 x 2.25 x 0.55 x value / 2 = 1.24 value, so the near-camera fade starts at a value of 0.077 H, half the earlier
-  threshold (the behaviour flown in run405).
+  2 x 2.25 x 0.55 x value / 2 = 1.24 value, so the near-camera fade started at a value of 0.077 H, half the earlier
+  threshold (the behaviour flown in run405; superseded below: the fade keys on the body width, 0.73 value, from 0.13 H).
 - *End-on disc.* The camera-facing disc represents the whole plume seen along its axis. Its body is the law
   integrated along the axis: the mean over 8 samples u_k = (k + 0.5) / 8 of the law at radial = rho / w(u_k). The
   per-look table w, tail, cell, heat sits in c8..c15 (`look_tables`), and the shock cells form rings at 0.8 w(u_k).
@@ -452,3 +452,38 @@ nozzle 0.5 and asked for three adjustments. All constants are in `engine_plumes_
   creation is the capability test, per the slot-budget rule in
   [platform-portability.md](platform-portability.md#shader-slot-budget). The disc's integration sits behind a dynamic
   branch, so axial pixels do not pay for it.
+
+**Review fixes after flight C (2026-10-03).** Decided by the orchestrator from the review of af932635; numbers in the
+ledger ([engine-effects.md](../verification/engine-effects.md), "Review fixes after flight C").
+- *Near fade and cap on the body width.* The near-camera cap (0.12 H) and its fade band key on the body's half-width at
+  the nozzle, spread x line0 = 0.732 nozzle widths (the eroded edge 1.2736 x 0.575, wider than the ring's 0.7226), no
+  longer on the halo's reach 1.2375. Keyed on the halo it bit on 12,323 of run405's 19,319 plume frames (measured).
+  The fade now starts at a value of 0.13 H. The halo may reach past the cap (131 px against 129.6 at 1080 in the
+  fixture's three-value case).
+  - The disc's radiance (body, halo, ring and its soft cap) takes max(fade, `chase_disc_floor` 0.6) instead of the
+    fade: it shrinks with the plume, it does not go dim. The axial quad still fades to 0.5.
+  - Fixture own-ship case: an M3 main jet (1,000 camera units = 10 world units) at run405's chase boom (18,832, half
+    vfov tan 0.5625), the nozzle a quarter of the boom nearer, full throttle at the pulse's top. Its body is 61 px at
+    1080 (q 0.47): not faded. Under the halo key, q would be 0.80.
+- *Floor scope.* `flag_brake` main bodies (z above 2: the brake or steering bits) neither count toward a ship's
+  largest main jet nor take the floor, like the RCS jets.
+- *Ship key read.* `object_trace::current` copies node+0x18 into `Snapshot::parent` from the node block it already
+  reads (it used to only with `matrices`); the recogniser takes it there, so the second bounded read per suppressed
+  record is gone.
+- *Disc gains bounded.* L / n in the disc's body and halo gains is held to `disc_length_max` 8. A thin nozzle (0.1: L / n
+  20) would otherwise saturate the soft cap into a flat disc; its end-on energy is then 0.28 of the side view
+  (reported, 0.25: 0.71, 1.0: 1.09).
+- *Tables cached.* `look_tables` runs once at load (`MotionOutput::plumes_tables_`, `EnginePlumesFrame::tables`), not
+  twice per frame. The fixture's frames without tables compute them once per run.
+- *Stage off: the game's glow.* With `engine_effects = plumes` and the stage not attached on this device (refused at
+  attach or creation, failed until Reset, or within the 64-frame disarm), the recognised glow draws are forwarded
+  natively, counted `forwarded_stage_off` in `engine_frame`, and `engine_plumes_state` says `glow=native`.
+  - The latch is taken once per frame in `engine_effects_frame_begin` from the state the last resolve left, so the
+    frame that finds the refusal still hides its glow.
+  - Configuration and path reasons (`suppression_off`, `hdr_taa_path`, `camera`, `lane`) keep the off look.
+  - The sprite and trail redirects are load-time and stay.
+- *Ribbon slots.* The ribbon pass no longer refuses on the reported slot caps (creation is the test, as for the
+  plumes), and `engine_ribbons_device` logs `max_vs_slots` and `max_ps_slots`.
+- *Lab.* `tools/effects/engine_exhaust_lab.html` draws L = 2 (0.25 + 1.75 s) nozzle widths (4 at full throttle, the
+  game at nozzle 0.5), the flow at L1 = 4, and defaults the core radius to 0.45. Its note says the end-on disc, the
+  hand-over, the floor and the near fade are game-only.

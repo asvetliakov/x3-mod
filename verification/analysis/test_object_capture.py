@@ -50,8 +50,8 @@ class ObjectCaptureTests(unittest.TestCase):
         reset = source[source.index('HRESULT reset_common('):source.index('HRESULT reset_common(')+1200]
         self.assertLess(reset.index('ctx.object_evidence.invalidate();'), reset.index('if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())'))
         self.assertIn('D3DRS_FOGENABLE,D3DRS_ZENABLE', source)
-        self.assertIn('if(matrices){out->parent=node[0x18/4];out->alpha13c=node[0x13c/4];}',
-                      source_text(ROOT / 'src/proxy/object_trace.cpp'))
+        self.assertIn('out->parent=node[0x18/4];', source_text(ROOT / 'src/proxy/object_trace.cpp'))
+        self.assertIn('if(matrices)out->alpha13c=node[0x13c/4];', source_text(ROOT / 'src/proxy/object_trace.cpp'))
 
 if __name__ == '__main__':
     unittest.main()
