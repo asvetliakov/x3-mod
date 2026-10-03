@@ -242,11 +242,11 @@ struct Ring {
 // value: 47 for body 0). Units: those of node+0x70 (the LOD-0 value), as the jet's own +0x70; the record's size is
 // |model x| = +0x70 x (+0x80 / 65536) x the context scale, so the radius in the record's units is
 // radius x size / (+0x70 x +0x80 / 65536). 0 when the radius is not positive (dirty, unread) or the scales are not,
-// and when it exceeds parent_radius_max_ratio x size: no ship is 2,000 of its own nozzles across (the Mayhem fleet's
-// largest main nozzle / R is about 0.09; a capital's smallest jets near 1/2,000), so a larger value is a garbage read
+// and when it exceeds parent_radius_max_ratio x size: no ship is 10,000 of its own nozzles across (the Mayhem fleet's
+// largest main nozzle / R is about 0.09; a capital's smallest jets near 1/2,000, so 2,000 would clip real data), so a larger value is a garbage read
 // and takes no floor (counted floor_unknown by the stage) rather than the 4x cap.
 constexpr unsigned parent_radius_offset = 0xa4;
-constexpr float parent_radius_max_ratio = 2000.f;
+constexpr float parent_radius_max_ratio = 10000.f;
 inline void parent_radius_in_record(std::int32_t radius, std::uint32_t scale70, std::uint32_t scale80, float size,
                                     float* out) noexcept {
     *out = 0.f;

@@ -486,7 +486,7 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
     and every part, culled or not. Its units are those of node+0x70 (the LOD-0 value), so the radius in the record's
     units is R x size / (+0x70 x +0x80 / 65536), with the jet's own +0x70/+0x80 from the node block already read
     (`parent_radius_in_record`). A dirty (-1), unread or non-positive R gives no floor (counted `floor_unknown=` in
-    `engine_stage`), and so does an R above `parent_radius_max_ratio` 2,000 x the record's value: a garbage positive
+    `engine_stage`), and so does an R above `parent_radius_max_ratio` 10,000 x the record's value: a garbage positive
     read would otherwise always land on the 4x cap (the fleet's largest main nozzle / R is about 0.09).
   - The read: one bounded `engine_memory` read of parent+0xa4 per parent while it stays among the frame's four most
     recently read parents (`engine_parent_radius`, a four-entry memo cleared each frame, the oldest entry replaced on

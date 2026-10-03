@@ -602,17 +602,17 @@ int main() {
         // not the 4x cap; just under the bound it stands.
         {
             float garbage = 1.f, plausible = 0.f;
-            ee::parent_radius_in_record(400001, 200u, 0x10000u, 200.f, &garbage);   // 2,000.005 x the value
-            ee::parent_radius_in_record(399999, 200u, 0x10000u, 200.f, &plausible); // 1,999.995 x
+            ee::parent_radius_in_record(2000001, 200u, 0x10000u, 200.f, &garbage);  // 10,000.005 x the value
+            ee::parent_radius_in_record(1999999, 200u, 0x10000u, 200.f, &plausible); // 9,999.995 x
             float with_garbage[6];
             for (unsigned i = 0; i < 6; ++i) with_garbage[i] = radii[i];
             with_garbage[0] = garbage;
             BuildStats base{};
             build(rs, 6, nullptr, v, Preset::standard, 0.f, vb.data(), 6, &base, nullptr, &flat, nullptr, radii);
             build(rs, 6, nullptr, v, Preset::standard, 0.f, vb.data(), 6, &st, nullptr, &flat, nullptr, with_garbage);
-            expect(garbage == 0.f && near(plausible, 399999.f) && ee::parent_radius_max_ratio == 2000.f &&
+            expect(garbage == 0.f && near(plausible, 1999999.f) && ee::parent_radius_max_ratio == 10000.f &&
                        st.floor_unknown == base.floor_unknown + 1 && st.floored + 1 == base.floored && near(vb[0].shape[1], 200.f),
-                   "a root radius above 2,000 x the value: unknown (no floor, floor_unknown), not the 4x cap");
+                   "a root radius above 10,000 x the value: unknown (no floor, floor_unknown), not the 4x cap");
         }
         // The scene-view filter: a hidden record is skipped before the floor (nothing counted for it).
         const std::uint32_t cam[6] = {1, 1, 1, 1, 1, 1};

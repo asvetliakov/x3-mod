@@ -226,7 +226,7 @@ The plume floor needs the ship's size at draw time from the jet's parent, the sh
 
 So the proxy reads `parent+0xa4`: one bounded read per parent while the parent stays among the frame's four most
 recently read parents (a ship drawn interleaved with up to three others still reads once per frame). A dirty,
-non-positive or implausible value (above 2,000 x the jet's value) means no floor.
+non-positive or implausible value (above 10,000 x the jet's value) means no floor.
 For hulls at the root's origin R is at least the hull's LOD-0 value. An offline estimate over the scene parts (|offset|
 + part value) is in `verification/results/engine-effects/floor_ratio_effects.py`. It is not verified against a live
 read: no session has logged `+0xa4` (open question below).

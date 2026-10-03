@@ -312,7 +312,7 @@ The cap is 4 x value. `engine_plume_floor` scales the curve (default 1, 0 = off,
 
 ## Review fixes after flight D (2026-10-03, worktree build, not a candidate)
 
-A positive garbage root radius above `parent_radius_max_ratio` 2,000 x the record's value is unknown (no floor,
+A positive garbage root radius above `parent_radius_max_ratio` 10,000 x the record's value is unknown (no floor,
 `floor_unknown`), not the 4x cap. The +0xa4 read runs only for a suppressed record with plumes requested and
 `engine_plume_floor` > 0, or for a JET draw that writes an `engine_draw` row (none in `off` mode, none after the row
 caps). The memo is a four-entry recent list per frame. Timing mode runs `plumes`; classes added: five cycling parents
