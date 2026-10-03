@@ -1,0 +1,1 @@
+scanned extensions {'.fb': 2352, '.txt': 355, '.xml': 96, '.xsd': 7, '.abc': 6, '.xsl': 4, '.obj': 4, '.css': 2, '.htm': 2, '.db': 2, '.xpf': 2, '.bmp': 1}

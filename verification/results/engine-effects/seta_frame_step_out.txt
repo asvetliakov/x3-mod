@@ -1,0 +1,50 @@
+exe sha256 fdbf3418 size 2153984
+PASS 0x004d1eb0 01 b1 20 07 00 00                tick: cfg+0x720 += wall ms (esi)
+PASS 0x004d1ec3 a1 98 8a 60 00                   tick: forced one-shot game step *0x00608a98
+PASS 0x004d1ef0 8b 91 d0 00 00 00                tick: edx = cfg+0xd0 (governor)
+PASS 0x004d1ef6 8b 81 cc 00 00 00                tick: eax = cfg+0xcc (time-warp factor)
+PASS 0x004d1f30 81 fe c8 00 00 00                tick: wall ms clamp high 200
+PASS 0x004d1f5c 01 81 18 07 00 00                tick: cfg+0x718 += clamp(ms,1,200)*f
+PASS 0x004ee1e1 e8 0a 3c fe ff                   frame clock 0x004ee1e0 calls the tick 0x004d1df0
+PASS 0x004ee1f4 2b 05 04 91 60 00                game step = cfg+0x718 - *0x00609104
+PASS 0x004ee203 81 f9 fe 7f 00 00                step - 1 > 0x7ffe -> 1
+PASS 0x004ee216 89 82 14 07 00 00                cfg+0x714 = game step (ms)
+PASS 0x004ee21e 2b 05 08 91 60 00                wall step = cfg+0x720 - *0x00609108
+PASS 0x004ee23a 89 82 1c 07 00 00                cfg+0x71c = wall step (ms)
+PASS 0x004b0e0d e8 ce d3 03 00                   scheduler 0x004b0e00 calls the frame clock first
+PASS 0x004b0fc9 b8 33 b3 00 00                   governor x0.7 (0xb333) when > 1000 events due
+PASS 0x004b0ff3 c7 81 d0 00 00 00 cc 4c 00 00    governor floor 0x4ccc (0.3)
+PASS 0x004b1016 b8 33 33 01 00                   governor x1.2 (0x13333) when < 200 events due
+PASS 0x004b0f99 c7 81 d0 00 00 00 00 00 01 00    governor reset 1.0 when the warp factor drops
+PASS 0x004b149c 89 90 cc 00 00 00                TI_SetTimeWarpFactor: cfg+0xcc = arg
+PASS 0x00403af0 e8 0b d3 0a 00                   main loop calls 0x004b0e00 every iteration
+PASS 0x00403af5 e8 b6 f9 0c 00                   main loop pump 0x004d34b0 after the clock
+PASS 0x00403ac5 f6 86 a0 04 00 00 01             main loop: pause bit test before the extra tick
+PASS 0x00403f7a e8 f1 fe 0d 00                   main loop Present 0x004e3e70 (path 1)
+PASS 0x00403f87 e8 e4 fe 0d 00                   main loop Present 0x004e3e70 (path 2)
+PASS 0x0045b01a 69 c0 06 01 00 00                jet drive rate limit dt*0x106 (0.004/ms)
+PASS 0x004596f7 8b b8 18 07 00 00                jet drive now = cfg+0x718
+PASS 0x0045b3ce 89 83 a8 00 00 00                jet drive obj+0xa8 = now
+PASS 0x00412113 81 ba cc 00 00 00 00 00 01 00    input: warp != 1.0 -> script StopFastForward
+PASS 0x00496f99 3d 00 00 01 00                   auto-detail: frame ms = cfg+0x714 / warp when warp > 1.0
+PASS 0x00402844 a3 34 6f 60 00                   config pointer published once at startup
+PASS 0x004ee172 c7 05 34 6f 60 00 00 00 00 00    config pointer cleared in 0x004edf50 (exit/fatal)
+PASS native  0 TI_Delay                   handler 0x004b1321
+PASS native  1 TI_DelayRandom             handler 0x004b1361
+PASS native  2 TI_GetAbsTime              handler 0x004b143e
+PASS native  3 TI_CmpTime                 handler 0x004b1504
+PASS native  4 TI_WaitForStart            handler 0x004b13ad
+PASS native  5 TI_WaitForInterrupt        handler 0x004b13c3
+PASS native  6 TI_WaitRandomForInterrupt  handler 0x004b13e2
+PASS native  7 TI_Interrupt               handler 0x004b1417
+PASS native  8 TI_GetLastFrameDelay       handler 0x004b1465
+PASS native  9 TI_SetTimeWarpFactor       handler 0x004b148c
+PASS native 10 TI_GetTimeWarpFactor       handler 0x004b14b6
+PASS native 11 TI_GetTimeWarpMultiplier   handler 0x004b14dd
+PASS native 12 TI_AddTime                 handler 0x004b1524
+PASS native 13 TI_SetAbsTime              handler 0x004b1545
+PASS native 14 TI_GetRealTime             handler 0x004b1577
+PASS native 15 TI_ReadSystemClock         handler 0x004b159d
+PASS 0x0056494c string '%d fps, Warp: %d%% (real %d%%), %3.3f MB, %d Allocs'
+PASS 0x00555e1c string 'StopFastForward'
+result PASS
