@@ -26,7 +26,7 @@ core::Mode mode();
 // device).
 engine_plumes::Preset preset();
 // X3M_ENGINE_PLUME_NOZZLE (ini engine_plume_nozzle): the plume's nozzle width in value, one plain decimal in 0.1..1.0,
-// read once at initialize (only with plumes); unset or refused = 0.25 (engine_plumes::parse_nozzle). The look's
+// read once at initialize (only with plumes); unset or refused = 0.5 (engine_plumes::parse_nozzle). The look's
 // proportions: L = z value is 2 / nozzle nozzle widths at full throttle.
 float plume_nozzle();
 // The motion route's gates: hook = the per-draw recogniser runs (off|plumes with the identity verified, or native

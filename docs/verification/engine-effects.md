@@ -211,3 +211,35 @@ User verdict: the ported look is liked at `engine_plume_nozzle 0.5` (0.25 reads 
 the whole plume; (2) capital sub-engine plumes too small (each takes its own glow body's value): a per-ship floor of 0.45 x the ship's largest nozzle;
 (3) the glow at the nozzle mouth outsizes the plume body: our ring + disc + core + halo sum at the mouth and bloom there (the hull lightmap cannot be it:
 emission_source_clamp 0.7 caps hull emission below bloom), so the mouth terms combine as a soft maximum and the ring drops 0.6 -> 0.3. Built for Run121.
+
+## After flight C: end-on disc, ship floor, mouth (2026-10-03, worktree build, not a candidate)
+
+The three adjustments and the default nozzle 0.5 are described in the
+[design note, "After flight C"](../architecture/engine-effects-modern.md#plume-look-redesign-2026-10-03-after-flight-b).
+All figures below are measured unless marked; Wine runs used bottle X3 through `wine_lock.py`.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build` (worktree, MinGW i686), `check_no_x87.py build/d3d9.dll` | 0 warnings; x87 0 violations (751 reachable functions) |
+| Programs | `generate_rigid_motion_pixel.py --check` | PASS, 50 programs. engine_plume ps 385 -> **680** slots, vs 11 (fixture ATTACH, device max 512 reported). The pass's reported-cap refusal is removed: creation is the test |
+| Config | `tools/config/generate.py --check` | PASS, 251 settings, 102 in the template (`engine_plume_nozzle = 0.5`) |
+| Plume fixture | `run_engine_plumes.py` | PASS **110/110** (was 90: end_on 12, floor 4, mouth 4 added). Law vs CPU replica max 0.09 % of I_core. Core survival min 0.993; dark trail 0 px; flicker trail 10 / 13 px at 8 px per frame. Presets 0.600 / 1.500. Chase extent 87 / 117 px under 129.6 / 172.8 px, fade 0.500 |
+| End-on energy | END_ON, still look, s = 1, value 40 px; total radiance / side view's | 60 deg 0.880 / 0.865; 30 deg 1.000 / 0.996; 0 deg 0.932 (1080 / 5120; gate 0.7..1.5). Frame peaks 6.56 / 9.86 / 10.20 against the side view's 7.54 (gate 1.5x) |
+| End-on facing and life | END_ON | Discs 0 / 1 / 1 / 1 at 90 / 60 / 30 / 0 deg; axial weights 1 / 0.75 / 0.5 / 0.5. Production look end-on over 30 frames: rim CV 0.126, lag-1 0.835; centre CV 0.035 (soft-capped) |
+| Front occlusion | OCCLUSION_HEADON (both lanes) | Core inside the silhouette 0.00000; open peak 5.10 (near-faded at value 192 px); rim 43 / 61 px |
+| Mouth | MOUTH, side view, still look, s = 1, value 60 px | Peak within 0.15 L of the mouth 7.535 (u 0.150) vs body peak in u 0.1..0.4 7.586 (u 0.158): **0.993**. End-on peak / body peak **1.344** (gate <= 1.5) |
+| Ship floor | FLOOR, side views, still look | Same ship, 1,000 and 200: the 200 draws at 450 (length 58 px = the lone 450's 58 px; half-width 7.5 = 7.5 px). The other ship's 200 is unchanged (26 px). floored 1, ships 3 |
+| Ship floor cost | BUILD_SHIPS (Wine, qpc 50x41); host harness (clang -O2) | Grouping alone, 30 / 100 / 1,024 records: **0.106 / 0.42 / 4.39 us**; host 0.13 / 0.38 / 2.36 us. Build with the floor 2.23 / 6.84 / 71.1 us; without 2.18 / 6.88 / 72.7 us |
+| Stage cost | TIMING (EVENT-fenced tail), one run | gpu_ms 0.169 / 0.284 at 1080 with 30 / 100 nozzles (was 0.147 / 0.155), 0.024 / 0.031 at 5120 (was 0.040 / 0.082). Earlier rounds spread up to 0.12 ms, so the 1080 / 100 rise of 0.13 ms is at the method's noise and not attributed. The crowd's random axes draw about 70 % discs (inferred) |
+| Changed numbers | as above | (a) Temporal mean / design 1.087 (was 1.014; gate 10 %), CV 0.153, lag-1 0.910. Inferred cause: the flow is half as fast in nozzle widths at 0.5, so 30 frames sample less of the field. (b) Shape u 0.1 1.040 vs replica 1.029; u 0.9 0.523 vs 0.532. (c) Shock maxima unchanged at u 0.155 / 0.315 / 0.465. (d) Occlusion 20 deg and off-centre thresholds scale with the axial quad's facing weight (0.43..0.78), read from the built vertex. (e) Presets value 60 -> 30 px, because strong's drawn width at the new nozzle would enter the near fade band |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44; plume fog core ratio 0.490 vs T 0.492 |
+| Effects | `run_engine_effects.py` (all modes) | PASS: main 164, native 11, unverified 6, unpatched 11, timing 5, plumes 33, armed 15. The armed probe pixels for p1 / p2 moved 2 px into the plume: on a 3 px nozzle half the jittered frames sampled behind the softened mouth (px sum 71 < 96 before the move) |
+| Host | `test_engine_*` (6 modules) 52 OK; `test_config_schema` 18 OK; `test_launcher_defaults` 9 OK; `test_object_capture` 3 OK; `run_host_suite.py` 286 modules, 3,008 tests, 0 failing (104 s) | Core harness 132 checks: the end-on disc's intensities, cap and facing weights; the c8..c15 table vs std::exp / std::cos, max 2.5e-7; law::cos 1.5e-6; exp 2.7e-6; the ship floor incl. 1,024 records over 600 ships, the filter, parent 0 |
+
+Model for the disc constants: `python3 verification/results/engine-effects/plume_end_on_model.py`
+-> `plume_end_on_model_out.txt` (inferred). kappa is 1.76..1.78. The model's end-on energy at nozzle 0.5 is 0.92 / 1.04 / 1.16 at s = 1 / 0.5 / 0;
+GPU 0.932 at s = 1. At nozzle 0.25 and s = 1 it is 0.71 (the cap); not drawn in a fixture.
+
+Open: the look in flight (Run121), native Windows (cross-compiled only; a driver that enforces 512 slots refuses the
+680-slot program at creation and the stage stays off), and the ribbons pass still refuses on the reported cap
+(unchanged, 512 or fewer slots today).

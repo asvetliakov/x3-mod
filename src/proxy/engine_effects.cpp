@@ -202,8 +202,8 @@ void initialize() {
         x3m::engine_plumes::Preset parsed = x3m::engine_plumes::default_preset;
         const bool ok = !n || (n < 16 && x3m::engine_plumes::parse_preset(word, n, &parsed));
         preset_ = ok ? parsed : x3m::engine_plumes::default_preset;
-        // The nozzle width in value (the look's proportions): one plain decimal in 0.1..1.0; unset = 0.25, anything
-        // else refused (0.25, nozzle_status invalid_setting).
+        // The nozzle width in value (the look's proportions): one plain decimal in 0.1..1.0; unset = 0.5, anything
+        // else refused (0.5, nozzle_status invalid_setting).
         wchar_t width[16]{};
         const DWORD wn = x3m::config::get(L"X3M_ENGINE_PLUME_NOZZLE", width, 16);
         char width_shown[16]{};

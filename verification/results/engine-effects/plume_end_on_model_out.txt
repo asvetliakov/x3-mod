@@ -1,0 +1,6 @@
+s=1 L/n=4 kappa=1.773 side_E=8.718 mouth/crest=0.993 end_on_E/side_E=0.924 end_on_peak/crest=1.343 facing 1.0:0.92 0.866:1.09 0.7:1.08 0.5:0.93 0.3:0.95 0.0:1.00
+s=0.5 L/n=2.25 kappa=1.778 side_E=3.246 mouth/crest=0.999 end_on_E/side_E=1.042 end_on_peak/crest=1.167 facing 1.0:1.04 0.866:1.19 0.7:1.15 0.5:0.95 0.3:0.95 0.0:1.00
+s=0 L/n=0.5 kappa=1.759 side_E=0.380 mouth/crest=1.095 end_on_E/side_E=1.160 end_on_peak/crest=0.490 facing 1.0:1.16 0.866:1.27 0.7:1.19 0.5:0.95 0.3:0.95 0.0:1.00
+s=1 L/n=8 kappa=1.775 side_E=17.237 mouth/crest=0.992 end_on_E/side_E=0.707 end_on_peak/crest=1.439 facing 1.0:0.71 0.866:0.90 0.7:0.93 0.5:0.88 0.3:0.95 0.0:1.00
+s=0.5 L/n=4.5 kappa=1.782 side_E=6.363 mouth/crest=1.001 end_on_E/side_E=0.845 end_on_peak/crest=1.388 facing 1.0:0.85 0.866:1.02 0.7:1.03 0.5:0.92 0.3:0.95 0.0:1.00
+s=1 L/n=2 kappa=1.768 side_E=4.459 mouth/crest=0.993 end_on_E/side_E=1.104 end_on_peak/crest=1.059 facing 1.0:1.10 0.866:1.24 0.7:1.19 0.5:0.96 0.3:0.95 0.0:1.00

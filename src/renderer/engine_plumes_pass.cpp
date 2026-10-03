@@ -127,8 +127,8 @@ HRESULT EnginePlumesPass::attach(D d, void* const* native, const D3DCAPS9& caps,
     caps_.vs_slots = vs3_program_slots();
     caps_.ps_slots = ps3_program_slots(ps_words, std::size(ps_words));
     if (!caps_.vs_slots || !caps_.ps_slots) return refuse("compiled_program");
-    if (caps_.ps_slots > caps.MaxPixelShader30InstructionSlots || caps_.vs_slots > caps.MaxVertexShader30InstructionSlots)
-        return refuse("compiled_slots");
+    // No refusal on the reported slot cap (docs/architecture/platform-portability.md, "Shader slot budget"): the pixel
+    // program exceeds 512 since the end-on disc (after flight C); creation is the capability test (program_create below).
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_BLENDOP) || !(caps.SrcBlendCaps & D3DPBLENDCAPS_ONE) ||
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
         return refuse("blend_caps");
@@ -244,7 +244,8 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     const engine_plumes::Look& look = f.look ? *f.look : engine_plumes::default_look;
     const unsigned nozzles = engine_plumes::build(f.records, f.record_count, f.body, f.view, f.preset, f.seconds,
                                                   static_cast<engine_plumes::Vertex*>(mapping), capacity, &r.stats,
-                                                  f.filter.camera && f.filter.scene ? &f.filter : nullptr, &look);
+                                                  f.filter.camera && f.filter.scene ? &f.filter : nullptr, &look, f.parents,
+                                                  f.parents ? &ships_ : nullptr);
     hr = vb_->Unlock();
     if (FAILED(hr)) return refuse(EnginePlumesStep::Lock, hr);
     if (!nozzles) return finish(S_FALSE); // nothing drawable: no render state touched
@@ -257,14 +258,14 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     };
     const float projection[4] = {f.view.m00, f.view.m11, f.m20, f.m21};
     const float limits[4] = {f.view.near_z, 0.f, 0.f, 0.f};
-    // c0 sizes and the flow phase, c1 the lane's form, c2 the lane terms and the clock, c3..c7 the look
-    // (engine_plumes_core.h Look): one call for the eight registers.
-    float pixel[32] = {1.f / float(f.width), 1.f / float(f.height), f.phase, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
+    // c0 sizes and the flow phase, c1 the lane's form, c2 the lane terms and the clock, c3..c15 the look
+    // (engine_plumes_core.h Look, the end-on disc's samples in c8..c15): one call for the sixteen registers.
+    float pixel[12 + engine_plumes::pixel_constant_floats] = {1.f / float(f.width), 1.f / float(f.height), f.phase, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
                        engine_plumes::soft_core, engine_plumes::soft_halo, engine_plumes::halo_reach, f.seconds};
     engine_plumes::pixel_constants(look, pixel + 12);
     step(EnginePlumesStep::State, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 0, projection, 1));
     step(EnginePlumesStep::State, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 1, limits, 1));
-    step(EnginePlumesStep::State, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, pixel, 8));
+    step(EnginePlumesStep::State, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, pixel, 16));
     step(EnginePlumesStep::State, call<SetTextureFn>(SetTexture)(d, 0, f.lane));
     for (auto s : {std::pair{D3DSAMP_MINFILTER, DWORD(D3DTEXF_POINT)}, std::pair{D3DSAMP_MAGFILTER, DWORD(D3DTEXF_POINT)},
                    std::pair{D3DSAMP_MIPFILTER, DWORD(D3DTEXF_NONE)}, std::pair{D3DSAMP_ADDRESSU, DWORD(D3DTADDRESS_CLAMP)},

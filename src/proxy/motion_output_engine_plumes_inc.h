@@ -209,6 +209,7 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     engine_flow_.advance(engine_clock_.last_step, plumes_flow_rate_);
     engine_flow_.wrapped(&in.phase);
     in.look = &plumes_look_;
+    in.parents = engine_ring_->parent; // the capital sub-engines' floor (engine_plumes_core.h ShipFloor)
     engine_plumes_fog(&in.view.fog); // phase 3: the density fog's mean transmittance per nozzle, off unless it applied
     // stage_us: the build and the draw; with --gpu-sync-timing the EnginePlumes pair fences both sides (EVENT queries),
     // so it includes the GPU's completion of the draw.
@@ -253,9 +254,9 @@ void MotionOutput::log_engine_stage() noexcept {
     const engine_ribbons::Pool* pool = ribbons_ ? &ribbons_->pool() : nullptr;
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u ships=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
-            s.nozzles, s.vertices, s.discs, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
+            s.nozzles, s.vertices, s.discs, s.floored, s.ships, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
             s.culled_idle, s.skipped_other_view, engine_plumes::view_rule_name(plumes_view_rule_),
             total(plumes_view_own_total_), total(plumes_view_majority_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
             double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,

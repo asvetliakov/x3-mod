@@ -18,10 +18,17 @@
 //   shape         the body's mean half-width at u = 0.1 (the bulge) and 0.9 (the taper) over the nozzle's half-width,
 //                 against the mock-up's law
 //   shock         the axis's local maxima to u = 0.6 (the shock diamonds)
+//   end_on        after flight C: the axis at 0 / 30 / 60 / 90 degrees from the line of sight, the frame's total
+//                 radiance against the side view's (0.7..1.5), the end-on peak; the disc's variation over 30 frames
+//   floor         the ship floor: two nozzles of one parent (values 1,000 and 200) and one of another (200) against a
+//                 lone 450: the small one of the large ship draws at the 450's length and width
+//   mouth         side view at s = 1: the peak within 0.15 L of the mouth against the body's peak at u 0.1..0.4; the
+//                 end-on peak against 1.5 x that body peak
 //   off_path      no record: S_FALSE and no device call; an idle callback leaves the resolve byte-identical
 //   fault         a failed draw reports its step; the next frame draws
 //   reset         every object released before Reset, recreated after; the next frame draws
-//   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 records
+//   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 / 1,024
+//                 records, plain and with the ship floor (ships of 8 nozzles)
 // Validation-only readback; never launches the game.
 #include "../../src/renderer/engine_plumes_pass.h"
 #include "../../src/renderer/temporal_pass.h"
@@ -335,7 +342,7 @@ float smooth(float e0, float e1, float x) {
     return t * t * (3.f - 2.f * t);
 }
 float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1 = .4375f, float n2 = .4375f) {
-    float c[20];
+    float c[ep::pixel_constant_floats];
     ep::pixel_constants(k, c);
     const float L = in.L, r = std::fabs(y), u = x / L, uc = std::min(std::max(u, 0.f), 1.f);
     const float b = c[0] * (1.f - .55f * std::exp(-9.f * uc)) * (1.f + .35f * smooth(0.f, .25f, uc) * std::exp(-4.f * uc));
@@ -344,7 +351,7 @@ float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1
     const float edge = 1.f - smooth(.55f, 1.f, radial + c[5] * (n1 - .5f));
     const float tail = (1.f - smooth(c[7], 1.f, u)) * std::exp(-u * c[11]);
     const float inside = u >= 0.f && u <= 1.f ? 1.f : 0.f;
-    const float cells = 1.f + c[8] * std::cos(c[9] * u) * std::exp(-u * c[10]) * (1.f - smooth(0.f, .8f, radial)) * in.s;
+    const float cells = 1.f + c[8] * std::cos(c[9] * u) * std::exp(-u * c[10]) * smooth(0.f, 1.f, u * c[4]) * (1.f - smooth(0.f, .8f, radial)) * in.s;
     const float turbulence = 1.f + c[6] * (n2 - .5f);
     const float core_mask = 1.f - smooth(0.f, 1.f, radial * c[13]);
     const float body = in.i_core * edge * tail * inside * cells * turbulence * (1.f + .6f * core_mask);
@@ -355,7 +362,9 @@ float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1
     const float s2 = c[15] + .25f * in.aa * in.aa, rr2 = r - c[14];
     const float ring = in.i_core * in.ring2 * c[19] * std::sqrt(c[15] / s2) * std::exp(-rr2 * rr2 / (2.f * s2)) *
                        std::exp(-std::max(x, 0.f) * c[18]) * (x >= -.05f ? 1.f : 0.f);
-    return body + ring + halo;
+    // The mouth terms' soft maximum (white: one colour), the body added.
+    const float r4 = ring * ring * ring * ring, h4 = halo * halo * halo * halo;
+    return body + std::sqrt(std::sqrt(r4 + h4));
 }
 // Luma (the largest channel) of the rectangle [x0, x1) x [y0, y1) of `source` (null: the scene), row-major.
 std::vector<float> read_region(IDirect3DDevice9* d, Targets& t, IDirect3DSurface9* source, int x0, int y0, int x1, int y1) {
@@ -589,7 +598,7 @@ Sequence run_sequence(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineP
     return out;
 }
 void resolve_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, float speed_px, bool flicker) {
-    const float Z = 2000.f, ppu = t.ppu(Z), value = 30.f / ppu; // value 30 px: L 60 px at s = 1, nozzle width 7.5 px
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 30.f / ppu; // value 30 px: L 60 px at s = 1, nozzle width 15 px
     const ee::Record base = record(0, 0, Z, -1, 0, 0, value, 2.f);
     const unsigned frames = 16;
     const Sequence s = run_sequence(d, t, scene, pass, speed_px, flicker, base, Z, frames);
@@ -679,22 +688,24 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
         scene.frame(float(edge), 0, float(t.w), float(t.h), Z);
         draw(d, pass, frame_for(t, four, &r, 1));
         const auto cut = t.read(d);
+        // After flight C the axial quad takes 1 - 0.5 x the disc's weight (facing 0.94: half): the core's thresholds scale with it.
+        const float axial = build_cpu(frame_for(t, four, &r, 1)).v[0].intensity[0] / core;
         float tx, ty;
         t.window(-std::sin(a) * 2.f * value, 0, Z + std::cos(a) * 2.f * value, 0, 0, tx, ty);
         const float inside = peak(cut, t.w, t.h, edge, iy - 40, ix + 60, iy + 41);
         const float beyond = peak(cut, t.w, t.h, int(tx) + 4, iy - 1, edge - 4, iy + 2);
         int visible = 0;
-        for (int x = edge - 1; x > int(tx); --x) visible += luma(cut, t.w, x, iy) >= .5f * core;
+        for (int x = edge - 1; x > int(tx); --x) visible += luma(cut, t.w, x, iy) >= .5f * core * axial;
         int rim = 0;
         for (int y = iy + 1; y < iy + 200 && y < int(t.h); ++y)
             if (luma(cut, t.w, edge - 2, y) >= .05f * core) rim = y - iy;
-        std::printf("OCCLUSION_20DEG width=%u lane=%s inside_max=%.5f beyond_max=%.3f core_visible_px=%d projected_tip_px=%.1f rim_rows_px=%d\n",
-                    t.w, four ? "4ch" : "r32f", double(inside), double(beyond), visible, double(float(ix) - tx), rim);
+        std::printf("OCCLUSION_20DEG width=%u lane=%s inside_max=%.5f beyond_max=%.3f core_visible_px=%d projected_tip_px=%.1f rim_rows_px=%d axial_weight=%.3f\n",
+                    t.w, four ? "4ch" : "r32f", double(inside), double(beyond), visible, double(float(ix) - tx), rim, double(axial));
         char label[64];
         std::snprintf(label, sizeof label, "deg20_core_hidden_inside_%s_%u", four ? "4ch" : "r32f", t.w);
         report(label, inside <= 1e-3f);
         std::snprintf(label, sizeof label, "deg20_core_visible_outside_%s_%u", four ? "4ch" : "r32f", t.w);
-        report(label, beyond >= .9f * core && visible >= 10);
+        report(label, beyond >= .9f * core * axial && visible >= 10);
     }
     // Tail-on (reported): the exhaust points at the camera from a hull face at the nozzle depth; the occlusion bias
     // (0.5 value x facing) keeps the core visible over its own hull.
@@ -728,6 +739,7 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
         scene.frame(0, float(edge_y), float(t.w), float(t.h), Z);
         draw(d, pass, frame_for(t, four, &r, 1));
         const auto cut = t.read(d);
+        const float axial = build_cpu(frame_for(t, four, &r, 1)).v[0].intensity[0] / core; // the axial quad's facing weight
         const float inside = peak(cut, t.w, t.h, jx - 60, edge_y, jx + 61, jy + 61);
         // Along the projected axis above the edge (perspective moves it towards the centre as it recedes).
         const float L = 2.f * value;
@@ -745,16 +757,16 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
             beyond = std::max(beyond, l);
             if (iy2 != last_row) {
                 last_row = iy2;
-                visible += l >= .5f * core;
+                visible += l >= .5f * core * axial;
             }
         }
-        std::printf("OCCLUSION_OFFCENTRE width=%u lane=%s nozzle_px=%d,%d inside_max=%.5f beyond_max=%.3f core_visible_px=%d projected_tip_px=%.1f,%.1f\n",
-                    t.w, four ? "4ch" : "r32f", jx, jy, double(inside), double(beyond), visible, double(tip_x), double(tip_y));
+        std::printf("OCCLUSION_OFFCENTRE width=%u lane=%s nozzle_px=%d,%d inside_max=%.5f beyond_max=%.3f core_visible_px=%d projected_tip_px=%.1f,%.1f axial_weight=%.3f\n",
+                    t.w, four ? "4ch" : "r32f", jx, jy, double(inside), double(beyond), visible, double(tip_x), double(tip_y), double(axial));
         char label[64];
         std::snprintf(label, sizeof label, "offcentre_core_hidden_inside_%s_%u", four ? "4ch" : "r32f", t.w);
         report(label, inside <= 1e-3f);
         std::snprintf(label, sizeof label, "offcentre_core_visible_outside_%s_%u", four ? "4ch" : "r32f", t.w);
-        report(label, beyond >= .9f * core && visible >= 10);
+        report(label, beyond >= .9f * core * axial && visible >= 10);
     }
 }
 
@@ -804,7 +816,9 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
 }
 
 void preset_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
-    const float Z = 2000.f, ppu = t.ppu(Z), value = 60.f / ppu;
+    // Value 30 px (the nozzle 15 px): the strong preset's drawn width, 2 x 2.25 x 0.825 nozzle widths, stays under the
+    // near fade band at 1080.
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 30.f / ppu;
     const ee::Record r = record(value * .5f, 0, Z, -1, 0, 0, value, 1.125f);
     float cx, cy;
     t.window(r.origin[0], 0, Z, 0, 0, cx, cy);
@@ -815,7 +829,7 @@ void preset_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         draw(d, pass, frame_for(t, true, &r, 1, ep::Preset(p)));
         const auto px = t.read(d);
         cores[p] = luma(px, t.w, ix - int(.2f * value * ppu), iy);
-        halos[p] = luma(px, t.w, ix - int(.2f * value * ppu), iy + int(.15f * value * ppu)); // 0.6 nozzle widths off the axis
+        halos[p] = luma(px, t.w, ix - int(.2f * value * ppu), iy + int(.3f * value * ppu)); // 0.6 nozzle widths off the axis
     }
     std::printf("PRESETS width=%u core=%.3f,%.3f,%.3f halo_at_06n=%.4f,%.4f,%.4f core_ratio=%.3f,%.3f halo_ratio=%.3f,%.3f\n",
                 t.w, double(cores[0]), double(cores[1]), double(cores[2]), double(halos[0]), double(halos[1]),
@@ -945,7 +959,7 @@ double crossing_of(const std::vector<double>& v, int rows, int by, float cy) {
     return .5 * (crossing(-1) + crossing(1));
 }
 float lab_width(const ep::Look& k, float u) { // the mock-up's w(u), nozzle widths
-    float c[20];
+    float c[ep::pixel_constant_floats];
     ep::pixel_constants(k, c);
     const float b = c[0] * (1.f - .55f * std::exp(-9.f * u)) * (1.f + .35f * smooth(0.f, .25f, u) * std::exp(-4.f * u));
     return std::min(c[0] + c[1] * u, b + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, u), .05f);
@@ -1038,6 +1052,168 @@ void shock_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     char label[64];
     std::snprintf(label, sizeof label, "shock_cells_%u", t.w);
     report(label, counts[0] >= 3);
+}
+
+// After flight C. The end-on disc: the axis turned from the side (90 degrees) to the line of sight (0, pointing at the
+// camera), the still look, s = 1, value 40 px (the nozzle 20 px, L 80 px; under the near fade band). The frame's total
+// radiance (the sum of every pixel's largest channel) against the side view's, within 0.7..1.5 at every angle; the
+// end-on frame's peak reported (the mouth case checks it). Then 30 frames at 60 fps end-on with the production look: the
+// variation of a 3x3 box at the centre and at 0.45 nozzle widths (the disc's rim: the turbulence and erosion in its
+// plane), and its lag-1 correlation.
+double total_of(const std::vector<float>& px, UINT w, UINT h) {
+    double s = 0;
+    for (UINT y = 0; y < h; ++y)
+        for (UINT x = 0; x < w; ++x) s += luma(px, w, int(x), int(y));
+    return s;
+}
+void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 40.f / ppu;
+    const float degrees[4] = {90.f, 60.f, 30.f, 0.f};
+    double totals[4] = {}, peaks[4] = {};
+    unsigned discs[4] = {}, faded = 0;
+    float weights[4] = {};
+    for (unsigned k = 0; k < 4; ++k) {
+        const float a = degrees[k] * 3.14159265f / 180.f;
+        const ee::Record r = record(0, 0, Z, -std::sin(a), 0, -std::cos(a), value, 2.f);
+        const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+        scene.frame(0, 0, 0, 0, 500);
+        const auto rep = draw(d, pass, f);
+        const auto px = t.read(d);
+        totals[k] = total_of(px, t.w, t.h);
+        peaks[k] = peak(px, t.w, t.h, 0, 0, int(t.w), int(t.h));
+        discs[k] = rep.stats.discs;
+        faded += rep.stats.faded;
+        const Built b = build_cpu(f);
+        weights[k] = b.v[0].intensity[0] / 4.f; // the axial quad's weight (I_core 4 at s 1)
+    }
+    std::printf("END_ON width=%u height=%u value_px=%.1f nozzle_px=%.1f L_px=%.1f", t.w, t.h, double(value * ppu),
+                double(.5f * value * ppu), double(2.f * value * ppu));
+    for (unsigned k = 0; k < 4; ++k)
+        std::printf(" total_%.0f=%.1f ratio_%.0f=%.4f peak_%.0f=%.3f discs_%.0f=%u axial_%.0f=%.3f", double(degrees[k]), totals[k],
+                    double(degrees[k]), totals[0] > 0 ? totals[k] / totals[0] : 0., double(degrees[k]), peaks[k], double(degrees[k]),
+                    discs[k], double(degrees[k]), double(weights[k]));
+    // Alive: the production look end-on, 30 frames at 60 fps.
+    const ee::Record r = record(0, 0, Z, 0, 0, -1, value, 2.f);
+    float cx, cy;
+    t.window(0, 0, Z, 0, 0, cx, cy);
+    const int bx = int(std::floor(cx + .5f)), by = int(std::floor(cy + .5f)), rim = int(.45f * .5f * value * ppu + .5f);
+    std::vector<double> centre, edge;
+    for (unsigned n = 0; n < 30; ++n) {
+        scene.frame(0, 0, 0, 0, 500);
+        draw(d, pass, frame_for(t, true, &r, 1, ep::Preset::standard, 10.f + float(n) / 60.f));
+        const auto c = read_region(d, t, nullptr, bx - 1, by - 1, bx + 2, by + 2);
+        const auto e = read_region(d, t, nullptr, bx + rim - 1, by - 1, bx + rim + 2, by + 2);
+        double mc = 0, me = 0;
+        for (float v : c) mc += v;
+        for (float v : e) me += v;
+        centre.push_back(mc / 9.);
+        edge.push_back(me / 9.);
+    }
+    std::printf(" faded=%u centre_cv=%.4f rim_cv=%.4f rim_lag1=%.4f rim_px=%d\n", faded, cv_of(centre), cv_of(edge), lag1_of(edge), rim);
+    char label[64];
+    for (unsigned k = 1; k < 4; ++k) {
+        std::snprintf(label, sizeof label, "end_on_energy_%.0fdeg_%u", double(degrees[k]), t.w);
+        const double ratio = totals[0] > 0 ? totals[k] / totals[0] : 0.;
+        report(label, ratio >= .7 && ratio <= 1.5);
+    }
+    // The mouth stacks no more: at every angle the frame's peak within 1.5 x the side view's (the disc's hand-over).
+    std::snprintf(label, sizeof label, "end_on_peak_bounded_%u", t.w);
+    report(label, peaks[0] > 0. && peaks[1] <= 1.5 * peaks[0] && peaks[2] <= 1.5 * peaks[0] && peaks[3] <= 1.5 * peaks[0]);
+    std::snprintf(label, sizeof label, "end_on_facing_law_%u", t.w);
+    report(label, discs[0] == 0 && discs[1] == 1 && discs[2] == 1 && discs[3] == 1 && faded == 0 && std::fabs(weights[0] - 1.f) < 1e-3f &&
+                      std::fabs(weights[1] - .75f) < 2e-3f && std::fabs(weights[2] - .5f) < 1e-3f);
+    std::snprintf(label, sizeof label, "end_on_alive_%u", t.w);
+    report(label, cv_of(edge) >= .03 && lag1_of(edge) >= .5);
+}
+// The ship floor: side views (axis -x), the still look, s = 1, on separate rows: A (ship 1, value 1,000), B (ship 1,
+// 200), C (ship 2, 200) and R (ship 3, a lone 450); 1,000 is 80 px. B draws at 0.45 x 1,000 = 450: its length (the axis
+// down to 20 % of I_core) and its column's half-width at u = 0.5 (to 10 % of the column's peak) equal R's; C keeps 200.
+void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    static ep::ShipFloor ships;
+    const float Z = 2000.f, ppu = t.ppu(Z), unit = 80.f / ppu / 1000.f; // world units per value unit
+    const float values[4] = {1000.f, 200.f, 200.f, 450.f}, rows_px[4] = {-180.f, -60.f, 60.f, 180.f};
+    const std::uint32_t parents[4] = {0x5000u, 0x5000u, 0x6000u, 0x7000u};
+    ee::Record rs[4];
+    for (unsigned k = 0; k < 4; ++k) // every nozzle right of centre by half the largest plume
+        rs[k] = record(1000.f * unit, rows_px[k] / ppu, Z, -1, 0, 0, values[k] * unit, 2.f);
+    rr::EnginePlumesFrame f = frame_for(t, true, rs, 4, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+    f.parents = parents;
+    scene.frame(0, 0, 0, 0, 500);
+    const auto rep = draw(d, pass, f);
+    const auto px = t.read(d);
+    ep::Vertex v[32];
+    ep::BuildStats st{};
+    ep::build(f.records, 4, nullptr, f.view, f.preset, 0.f, v, 4, &st, nullptr, f.look, parents, &ships);
+    float length[4], width[4], cpu_value[4];
+    for (unsigned k = 0; k < 4; ++k) {
+        float cx, cy;
+        t.window(rs[k].origin[0], rs[k].origin[1], Z, 0, 0, cx, cy);
+        const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f));
+        const float i_core = v[k * 8].intensity[0];
+        int left = ix;
+        while (left > 0 && luma(px, t.w, left - 1, iy) >= .2f * i_core) --left;
+        length[k] = float(ix - left);
+        const int column = int(std::floor(cx - .5f * v[k * 8].local[2] * ppu));
+        float pk = 0.f;
+        for (int y = iy - 50; y <= iy + 50; ++y) pk = std::max(pk, luma(px, t.w, column, y));
+        int up = 0, down = 0;
+        while (up < 50 && luma(px, t.w, column, iy - up - 1) >= .1f * pk) ++up;
+        while (down < 50 && luma(px, t.w, column, iy + down + 1) >= .1f * pk) ++down;
+        width[k] = .5f * float(up + down + 1);
+        cpu_value[k] = v[k * 8].shape[1] / unit;
+    }
+    std::printf("FLOOR width=%u height=%u floored=%u ships=%u stage_floored=%u", t.w, t.h, st.floored, st.ships, rep.stats.floored);
+    const char* names[4] = {"a1000", "b200", "c200", "r450"};
+    for (unsigned k = 0; k < 4; ++k)
+        std::printf(" %s_value=%.1f %s_length_px=%.0f %s_half_width_px=%.1f", names[k], double(cpu_value[k]), names[k], double(length[k]),
+                    names[k], double(width[k]));
+    std::printf("\n");
+    char label[64];
+    std::snprintf(label, sizeof label, "floor_sub_engine_%u", t.w);
+    report(label, rep.stats.floored == 1 && st.ships == 3 && std::fabs(cpu_value[1] - 450.f) < .5f && std::fabs(length[1] - length[3]) <= 2.f &&
+                      std::fabs(width[1] - width[3]) <= 1.f);
+    std::snprintf(label, sizeof label, "floor_other_ship_%u", t.w);
+    report(label, std::fabs(cpu_value[2] - 200.f) < .5f && std::fabs(length[2] - length[3] * 200.f / 450.f) <= 3.f);
+}
+// The mouth against the body: side view (axis -x), the still look, s = 1, value 60 px (the nozzle 30 px, L 120 px); the
+// peak of the frame within 0.15 L of the nozzle (every pixel centre at that distance, the ring, halo and core included)
+// against the peak at u 0.1..0.4 (the body's first crests); the same nozzle end-on (the axis at the camera): its peak
+// against 1.5 x that body peak.
+void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float Z = 2000.f, ppu = t.ppu(Z), value = 60.f / ppu, Lpx = 2.f * value * ppu;
+    const ee::Record side = record(.5f * Lpx / ppu, 0, Z, -1, 0, 0, value, 2.f);
+    scene.frame(0, 0, 0, 0, 500);
+    draw(d, pass, frame_for(t, true, &side, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still));
+    const auto px = t.read(d);
+    float cx, cy;
+    t.window(side.origin[0], 0, Z, 0, 0, cx, cy);
+    float mouth = 0.f, body = 0.f, mouth_u = 0.f, body_u = 0.f;
+    const int span = int(Lpx) + 4;
+    for (int y = int(cy) - span; y <= int(cy) + span; ++y)
+        for (int x = int(cx) - span; x <= int(cx) + span; ++x) {
+            if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) continue;
+            const float dx = cx - float(x), dy = float(y) - cy, l = luma(px, t.w, x, y); // D3D9: pixel centres on integers
+            if (std::sqrt(dx * dx + dy * dy) <= .15f * Lpx && l > mouth) {
+                mouth = l;
+                mouth_u = dx / Lpx;
+            }
+            if (dx >= .1f * Lpx && dx <= .4f * Lpx && l > body) {
+                body = l;
+                body_u = dx / Lpx;
+            }
+        }
+    const ee::Record end = record(0, 0, Z, 0, 0, -1, value, 2.f);
+    scene.frame(0, 0, 0, 0, 500);
+    draw(d, pass, frame_for(t, true, &end, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still));
+    const float end_peak = peak(t.read(d), t.w, t.h, 0, 0, int(t.w), int(t.h));
+    std::printf("MOUTH width=%u height=%u L_px=%.1f mouth_peak=%.4f mouth_u=%.3f body_peak=%.4f body_u=%.3f mouth_over_body=%.4f end_on_peak=%.4f end_on_over_body=%.4f\n",
+                t.w, t.h, double(Lpx), double(mouth), double(mouth_u), double(body), double(body_u), double(body > 0 ? mouth / body : 0),
+                double(end_peak), double(body > 0 ? end_peak / body : 0));
+    char label[64];
+    std::snprintf(label, sizeof label, "mouth_not_above_body_%u", t.w);
+    report(label, body > 0.f && mouth <= body);
+    std::snprintf(label, sizeof label, "end_on_peak_within_1.5_body_%u", t.w);
+    report(label, body > 0.f && end_peak <= 1.5f * body && end_peak >= .9f * body);
 }
 
 void off_path_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
@@ -1220,6 +1396,36 @@ void build_timing(Targets& t) {
         std::printf("BUILD records=%u drawn=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, drawn, median(us),
                     *std::min_element(us.begin(), us.end()));
         if (n == 100) report("build_100_within_0.1ms", median(us) <= 100.);
+        // With the ship floor (ships of 8 nozzles): the build, and the grouping alone (the map's reset over the slots in
+        // use, a note and a lookup per record).
+        static ep::ShipFloor ships;
+        std::vector<std::uint32_t> parents(n);
+        for (unsigned i = 0; i < n; ++i) parents[i] = 0x100000u + (i / 8u) * 0x80u;
+        std::vector<double> with, group;
+        float sink = 0.f;
+        for (unsigned rep = 0; rep < 41; ++rep) {
+            LARGE_INTEGER a{}, b{};
+            QueryPerformanceCounter(&a);
+            for (unsigned k = 0; k < 50; ++k)
+                drawn = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, float(rep * 50 + k) / 60.f, out.data(), n, nullptr,
+                                  nullptr, nullptr, parents.data(), &ships);
+            QueryPerformanceCounter(&b);
+            with.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 50.);
+            QueryPerformanceCounter(&a);
+            for (unsigned k = 0; k < 200; ++k) {
+                ships.reset(n);
+                for (unsigned i = 0; i < n; ++i) ships.note(parents[i], records[i].size);
+                for (unsigned i = 0; i < n; ++i) {
+                    float top = 0.f;
+                    ships.largest(parents[i], &top);
+                    sink += top;
+                }
+            }
+            QueryPerformanceCounter(&b);
+            group.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 200.);
+        }
+        std::printf("BUILD_SHIPS records=%u drawn=%u median_us=%.2f grouping_us=%.3f ships=%u sink=%u method=qpc_50x41\n", n, drawn,
+                    median(with), median(group), (n + 7u) / 8u, unsigned(sink > 0.f));
     }
 }
 } // namespace
@@ -1298,6 +1504,9 @@ int main(int argc, char** argv) {
             if (wanted("temporal")) temporal_case(d, *t, *scene, pass);
             if (wanted("shape")) shape_case(d, *t, *scene, pass);
             if (wanted("shock")) shock_case(d, *t, *scene, pass);
+            if (wanted("end_on")) end_on_case(d, *t, *scene, pass);
+            if (wanted("floor")) floor_case(d, *t, *scene, pass);
+            if (wanted("mouth")) mouth_case(d, *t, *scene, pass);
             if (wanted("timing"))
                 for (const unsigned n : {30u, 100u}) timing_case(d, *t, *scene, pass, n);
             if (size.first == 1920) {

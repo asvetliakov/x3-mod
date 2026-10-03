@@ -138,7 +138,7 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
     facts.redirects = engine_redirects_;
     facts.ring_full = engine_ring_->full();
     std::uint64_t serial = 0;
-    std::uint32_t scope_parent = 0; // node+0x18, read only for a suppressed record (the own-ship tag)
+    std::uint32_t scope_parent = 0; // node+0x18, read only for a suppressed record (the ship key, the own-ship tag)
     bool parent_known = false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_configured_) {
@@ -221,6 +221,14 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         // scene phase.
         engine_ring_->camera[slot] = (scope.valid & object_trace::Camera) ? scope.camera_handle : 0u;
         engine_ring_->scene[slot] = selector_.state() == renderer::BoundaryState::Scene ? 1u : 0u;
+        // The ship key (the plume stage's sub-engine floor) and the own-ship tag read the same field: node+0x18, the
+        // parent (the ship's root node), one bounded read per suppressed record, LastError preserved; 0 when unreadable.
+        if (!parent_known && scope.node) {
+            const DWORD error = GetLastError();
+            parent_known = engine_memory::read(scope.node + 0x18, &scope_parent, sizeof scope_parent);
+            SetLastError(error);
+        }
+        engine_ring_->parent[slot] = parent_known ? scope_parent : 0u;
         engine_ring_->own[slot] = engine_record_own(scope.node, scope.node_handle, parent_known, scope_parent) ? 1u : 0u;
         ++engine_counts_.suppressed;
         if (!entry) ++engine_counts_.unknown_body;

@@ -376,7 +376,7 @@ shock 0.5, period 0.16, cfade 0.6, heat 0.7, core 0.45, halo 1.1, hb 0.35; disc 
 narrowing 1.6, the halo sigma following the local width) are reverted: the fixture's shape gates now measure the body alone against the mock-up's law
 instead of forcing the look. Port decisions:
 - *Nozzle width = value / 4*, a load-time knob: `engine_plume_nozzle` (ini), `X3M_ENGINE_PLUME_NOZZLE`, launcher `--engine-plume-nozzle`, one
-  plain decimal 0.1..1.0, default **0.25** ([config-file.md](config-file.md)). The mock-up's length is L = 4 (0.25 + 1.75 s) nozzle widths and the
+  plain decimal 0.1..1.0, default **0.25** (0.5 after flight C, below) ([config-file.md](config-file.md)). The mock-up's length is L = 4 (0.25 + 1.75 s) nozzle widths and the
   game's z value with z = 0.25 + 1.75 s, so value / 4 keeps the chosen proportions (the first look's core, 0.3 value across, is the mock-up's
   one-nozzle "current" cone); 0.5 draws a plume twice as wide relative to its length (L = 4 nozzle widths at full throttle), for a flight A/B of
   0.25 against 0.5 in two launches.
@@ -404,3 +404,51 @@ instead of forcing the look. Port decisions:
 Cost: ps 92 -> 385 slots, vs 10 -> 11 (measured); the axial quad's area at value 100 px is 0.12 / 0.19 / 0.23 of the first look's at s = 0 / 0.5 / 1
 (`verification/results/engine-effects/plume_look_area.py`; the halo keeps its width to the tip); the fenced stage cost stays within the method's noise
 and the CPU build of 1,024 records takes 0.46 of the per-record pulse's time with distinct seeds (ledger).
+
+**After flight C (2026-10-03, Run 120 A: run404 nozzle 0.25, run405 nozzle 0.5).** The look is kept; the user chose
+nozzle 0.5 and asked for three adjustments. All constants are in `engine_plumes_core.h` `Look`.
+- *Default nozzle 0.5* (`engine_plume_nozzle`, [config-file.md](config-file.md)). L = 2 z nozzle widths, 4 at full
+  throttle. The flow is 2.625 nozzle widths/s (the same speed in value units as before). A plume's drawn width is now
+  2 x 2.25 x 0.55 x value / 2 = 1.24 value, so the near-camera fade starts at a value of 0.077 H, half the earlier
+  threshold (the behaviour flown in run405).
+- *End-on disc.* The camera-facing disc represents the whole plume seen along its axis. Its body is the law
+  integrated along the axis: the mean over 8 samples u_k = (k + 0.5) / 8 of the law at radial = rho / w(u_k). The
+  per-look table w, tail, cell, heat sits in c8..c15 (`look_tables`), and the shock cells form rings at 0.8 w(u_k).
+  The disc's noise lies in its own plane (x 3 per nozzle width, like the axial quad's y), and the flow along the line
+  of sight is the noise's third coordinate.
+  - Radiance: I x `disc_kappa` 1.8 x L / n x f, with f = |axis . to_camera| as the view factor. The halo has the
+    nozzle's sigma and gain I_halo x `disc_halo` 3 x L / n x f. The ring keeps its law.
+  - Bound: the total is soft-capped, cap x (1 - exp(-total / cap)), with cap = `disc_cap` 1.5 x the side view's axis
+    peak (1.6 x I x max(1, tail(period) (1 + s x cell(period)))).
+  - kappa is the ratio of the side view's body energy to the integrated profile's, per nozzle width of length; the
+    model gives 1.76..1.78. The halo gain carries the energy the cap removes. Model:
+    `verification/results/engine-effects/plume_end_on_model.py` -> `plume_end_on_model_out.txt`.
+  - Facing: the disc's weight is smoothstep(0.3, 0.7, f), so no disc is drawn below 0.3. The axial quad's weight is
+    1 - 0.5 x the disc's (`axial_floor`), so from 0.7 up the foreshortened plume keeps its length at half weight.
+  - Occlusion: the disc's depth stays the nozzle's. The soft lane occlusion decides what a front view shows, and the
+    head-on core stays hidden inside the silhouette (fixture `headon_core_hidden_*`).
+- *Mouth.* The ring and the halo combine as a soft maximum (a^4 + b^4)^(1/4), with the colours weighted by a^4 and
+  b^4; the body still adds. The ring drops from 0.6 to 0.3. The shock cells ramp in over the first period
+  (x smoothstep(0, period, u)), so the mouth is no longer a crest: with the cells' u = 0 crest, the mouth at s = 1 was
+  1.31 x the first crest at u = 0.16 on the axis.
+  - Hand-over: where the disc is drawn, the axial quad gives its mouth to the disc. It is multiplied by
+    1 - w_disc x (1 - smoothstep(0.3, 0.8, d)), where d is the screen-plane distance from the nozzle in nozzle widths,
+    (x sin(view), y).
+  - Vertex bytes: the disc weight travels in params A and sin(view) = sqrt(1 - f^2) in the fog colour's A; c7.xy hold
+    0.3 / 0.8. Without the hand-over, the half-weight axial mouth on the full disc peaked at 1.74 x the side body at
+    30 degrees (measured, before the hand-over).
+- *Capital sub-engines.* A main jet's value becomes max(value, `sub_floor` 0.45 x the largest main-jet value of its
+  ship).
+  - The ship is the record's parent node, node+0x18, which is the ship's root for every engine part
+    ([engine-effects.md](../reverse-engineering/engine-effects.md)). It is read once per suppressed record beside the
+    own-ship tag (LastError preserved) into `Ring::parent`; 0 when unreadable means no floor.
+  - Scope: the floor raises the plume's size, length, minimum sizes, cull, SOFT and bias, never the nozzle's
+    position. RCS jets neither count nor take the floor, and only the drawn view's records count.
+  - Grouping: `ShipFloor`, an open-addressing map with linear probing, sized to at least twice the records (at most
+    2,048 slots, 16 KB, held by the pass), cleared only over the slots in use, with one note and one lookup per record.
+  - Cost: 0.42 / 4.39 us at 100 / 1,024 records under Wine (0.38 / 2.36 us on the host).
+  - Logging: the `engine_stage` row gains `floored=` and `ships=`.
+- *Slots.* ps 385 -> 680 (vs 11), above the 512 this runtime reports. The pass no longer refuses on the reported cap:
+  creation is the capability test, per the slot-budget rule in
+  [platform-portability.md](platform-portability.md#shader-slot-budget). The disc's integration sits behind a dynamic
+  branch, so axial pixels do not pay for it.

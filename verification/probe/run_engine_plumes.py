@@ -8,8 +8,9 @@ and writes <results>/engine-plumes/summary.json: bottle, the checkout's commit a
 the build, every CHECK, and the numbers of each case (lengths, widths and the law against the CPU replica for
 s = 0 / 0.5 / 1, core survival and trail through the real resolve at 0 / 4 / 8 px per frame over the dark and the
 flickering sky, the occlusion cuts and rim widths (centred and off-centre at 90 % of the width), the chase cap and
-fade, the presets, the temporal variation, the bulge and taper, the shock cells, Reset, the FP16 refusal, the
-EVENT-fenced stage cost at 30 / 100 nozzles and the CPU build).
+fade, the presets, the temporal variation, the bulge and taper, the shock cells, after flight C the end-on energy at
+0 / 30 / 60 / 90 degrees, the ship floor and the mouth against the body, Reset, the FP16 refusal, the EVENT-fenced stage
+cost at 30 / 100 nozzles and the CPU build with and without the ship floor).
 The fixture's stdout stays under verification/probe/build/engine-plumes/. Run through wine_lock.py with
 X3M_FIXTURE_BOTTLE=X3. Never launches the game.
 """
@@ -95,8 +96,8 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
-            'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'OFF_PATH', 'FAULT',
-            'RESET', 'TIMING', 'BUILD')
+            'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON', 'FLOOR', 'MOUTH',
+            'OFF_PATH', 'FAULT', 'RESET', 'TIMING', 'BUILD', 'BUILD_SHIPS')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -124,6 +125,8 @@ def gates(r):
     out['stage_gpu_ms'] = {f"{x['width']}x{x['height']}_{x['nozzles']}": x['gpu_ms'] for x in r['timing']}
     out['stage_gpu_within_advisory'] = {k: v <= GATES['stage_gpu_ms_advisory'] for k, v in out['stage_gpu_ms'].items()}
     out['build_us'] = {str(x['records']): x['median_us'] for x in r['build']}
+    out['build_ships_us'] = {str(x['records']): x['median_us'] for x in r['build_ships']}
+    out['grouping_us'] = {str(x['records']): x['grouping_us'] for x in r['build_ships']}
     out['build_100_within'] = any(x['records'] == 100 and x['median_us'] <= 1000 * GATES['build_100_ms'] for x in r['build'])
     return out
 
@@ -167,6 +170,7 @@ def main():
     print(json.dumps({'passed': record['passed'], 'checks': report['check_count'], 'failed': report['failed_checks'],
                       'core_survival_min': g['core_survival_min'], 'trail_dark_px_max': g['trail_dark_px_max'],
                       'trail_flicker_px': g['trail_flicker_px'], 'stage_gpu_ms': g['stage_gpu_ms'], 'build_us': g['build_us'],
+                      'grouping_us': g['grouping_us'],
                       'results': str(results.relative_to(ROOT))}, indent=1))
     return 0 if record['passed'] else 1
 

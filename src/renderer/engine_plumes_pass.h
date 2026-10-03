@@ -39,6 +39,7 @@ struct EnginePlumesFrame {
     float seconds = 0.f;                    // the stage's clock, wrapped (engine_plumes::StageClock::wrapped)
     float phase = 0.f;                      // the flow phase, nozzle widths (engine_plumes::FlowPhase::wrapped)
     const engine_plumes::Look* look = nullptr; // null: engine_plumes::default_look (the proxy's carries the nozzle knob)
+    const std::uint32_t* parents = nullptr; // beside the records (Ring::parent): the ship floor; null: none
 };
 enum class EnginePlumesStep : unsigned { None, Validate, Resources, Lock, State, Draw };
 struct EnginePlumesReport {
@@ -97,5 +98,6 @@ private:
     IDirect3DVertexDeclaration9* declaration_ = nullptr;
     IDirect3DVertexBuffer9* vb_ = nullptr;
     IDirect3DIndexBuffer9* ib_ = nullptr;
+    engine_plumes::ShipFloor ships_; // the build's per-frame ship map (16 KB, here rather than on the callback's stack)
 };
 } // namespace x3m::renderer

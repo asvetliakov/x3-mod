@@ -32,26 +32,28 @@
     "src/proxy/engine_ribbons_core.h"
   ],
   "source": {
-    "commit": "74bcc57b42843b7fe3c68ae5339b4c4bdfdc10a3-dirty",
+    "commit": "44a4756e242ced059943db987c3f8792a6d850f9-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/engine_effects.cpp",
       "src/proxy/engine_effects.h",
+      "src/proxy/engine_effects_core.h",
       "src/proxy/engine_plumes_core.h",
+      "src/proxy/motion_output_engine_effects_inc.h",
       "src/proxy/motion_output_engine_plumes_inc.h",
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/engine_plumes_pass.h"
     ],
     "sha256": {
-      "src/proxy/engine_effects.cpp": "6e465a42eeec2c35320c8e52c5b8dd8f439f8e6c67f70385a458ab4d22d2755a",
-      "src/proxy/engine_effects.h": "1bbe672cdf34bc28aa516ac1c7f438d9f94e89372ef8c35794df07e20490c370",
-      "src/proxy/engine_effects_core.h": "1293b14520f81a75a99f2198de65da25a0ef35990bdcf04884358400ab798702",
+      "src/proxy/engine_effects.cpp": "cc9f894ec1ca5c46e9ff3aacf5576fadd141fda9cd62757b7cf4888d84c683bb",
+      "src/proxy/engine_effects.h": "3d6ac97d56f871d27dffb94358b11670a19729c558ef7081a87b6aee0e2a38f8",
+      "src/proxy/engine_effects_core.h": "d533ecb4410bcd80b820ec043aef72fd1f51687d102ec3c5634a0f5273bf17d4",
       "src/proxy/engine_effects_option.h": "cb8a96b23acaa40985fc6fcca31c8b80cef9d581be53dea800c69fec8b1ab6b6",
-      "src/proxy/motion_output_engine_effects_inc.h": "8d49de0e31a1f843d3c9ada5eca50bf97f007e941579dbd87c00289b52e02c19",
-      "src/proxy/motion_output_engine_plumes_inc.h": "ec0d2c2c7a95364d21cbd01cabbe6eb7a91b5ebf3dd8c8f09d79b735f9cac98d",
-      "src/proxy/engine_plumes_core.h": "03c0bfe3ed093af06805fb3876e9c15cf4245e9e8ead447e0f2c20ecae80a198",
-      "src/renderer/engine_plumes_pass.cpp": "eabf7a9f01998742e265a0f2f0ec53f9dcc92e16ee02efd150df010d45e8a970",
-      "src/renderer/engine_plumes_pass.h": "5e2f7161972b22d42a504eb872a676a01d938be1d8bf2200cac1cf21884aa567",
+      "src/proxy/motion_output_engine_effects_inc.h": "185ef6f864fa7c0c1a71868fcb64c78cff2a48739cc44b3e0a4336ff53a219c9",
+      "src/proxy/motion_output_engine_plumes_inc.h": "4760d78988f4ecf4f8583db4f73669a5bd3469fa545409065e2b73b8462b537e",
+      "src/proxy/engine_plumes_core.h": "07c7bbd71bee592683169068758f96fd6c0d37de82b6e9a71cce60cf9eedf172",
+      "src/renderer/engine_plumes_pass.cpp": "b22eb7df20763373b7289764d203c6609e8ae64c5480654445deed48e1f9e3bb",
+      "src/renderer/engine_plumes_pass.h": "2d5532f46ed469c76d48685baa7dbe77829712f38be79a250865865d42867327",
       "src/proxy/motion_output_engine_ribbons_inc.h": "b9ba941f17f6d70e1a9f6d5dcfbb1fcdb2eb73931e0b2bc8da1ff7d259e1783c",
       "src/proxy/engine_ribbons_core.h": "b60b32db71b149f29d0002b928d6b1a675ea3e8cb821bae05572931dd14ef737"
     }
@@ -62,9 +64,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "3448d0739c817b082df05c9be6a41c86d7f23ed7e0ab5386a5d78a4b09c93f3d",
-    "seam_sha256": "6b3503ba7a9e5af1f0d9df4efe6e483c8201b38732e5953708fb8317a940e78d",
-    "dll_sha256": "cc8bf9cc719d8f5f5d31311701caa29ba08eab74ddcf25411e94d2254f7d3fb7"
+    "fixture_sha256": "e92faec1b2463ea821ef372e7a957570f9e797283d306a276c2f612957356e7f",
+    "seam_sha256": "2e7f71fbf922efd321e1765306374357659206f24c5289a0b3c05b33cd6708ea",
+    "dll_sha256": "99a1d6c892755880ee4faa1bb6577dfa225309338498c965a978b197d7c8c3d1"
   },
   "runs": {
     "main": {
@@ -166,7 +168,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261003-040730-329373"
+      "directory": "verification/probe/build/engine-effects-main-20261003-123828-848758"
     },
     "native": {
       "exit": 0,
@@ -210,7 +212,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261003-040741-271079"
+      "directory": "verification/probe/build/engine-effects-native-20261003-123837-308385"
     },
     "unverified": {
       "exit": 0,
@@ -226,7 +228,7 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261003-040749-134312"
+      "directory": "verification/probe/build/engine-effects-unverified-20261003-123844-980910"
     },
     "unpatched": {
       "exit": 0,
@@ -270,7 +272,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-unpatched-20261003-040756-965125"
+      "directory": "verification/probe/build/engine-effects-unpatched-20261003-123852-736836"
     },
     "timing": {
       "exit": 0,
@@ -287,11 +289,11 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.639,
-        "not_jet": 1.229,
-        "not_candidate": 1.078
+        "suppressed": 0.646,
+        "not_jet": 1.207,
+        "not_candidate": 1.062
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261003-040804-884594"
+      "directory": "verification/probe/build/engine-effects-timing-20261003-123900-457838"
     },
     "plumes": {
       "exit": 0,
@@ -313,7 +315,7 @@
         "status": "ok",
         "stage": "requested",
         "cycle": "ctrl+alt+f6",
-        "nozzle": "0.250",
+        "nozzle": "0.500",
         "nozzle_setting": "-",
         "nozzle_status": "ok"
       },
@@ -333,7 +335,7 @@
         1,
         2
       ],
-      "directory": "verification/probe/build/engine-effects-plumes-20261003-040812-777303"
+      "directory": "verification/probe/build/engine-effects-plumes-20261003-123908-285659"
     },
     "armed": {
       "exit": 0,
@@ -445,7 +447,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffffff,ffffff,000000,000000"
+          "px": "fff7e9,ff6662,000000,000000"
         },
         {
           "phase": "steady",
@@ -463,7 +465,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffffff,ffffff,000000,000000"
+          "px": "ffc2b7,ff807a,000000,000000"
         },
         {
           "phase": "fault_once",
@@ -481,7 +483,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffffff,ffffff,000000,000000"
+          "px": "ffb5ab,ff6c67,000000,000000"
         },
         {
           "phase": "rearmed",
@@ -499,7 +501,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffdbcc,ff7971,000000,000000"
+          "px": "d71514,9c0b0a,000000,000000"
         },
         {
           "cycle": "once",
@@ -522,7 +524,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffbbaf,ffffff,000000,000000"
+          "px": "ff3230,ff1f1e,000000,000000"
         },
         {
           "cycle": "persistent_1",
@@ -545,7 +547,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "3f0404,ffffff,000000,000000"
+          "px": "ec1a18,ff1f1e,000000,000000"
         },
         {
           "cycle": "persistent_2",
@@ -568,7 +570,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "3f0404,ffffff,000000,000000"
+          "px": "f71817,ff1e1d,000000,000000"
         },
         {
           "phase": "refused",
@@ -604,7 +606,7 @@
           "records": "4",
           "suppressed": "4",
           "resolved": "1",
-          "px": "ffffff,ffffff,000000,000000"
+          "px": "ff5c59,ff3e3d,000000,000000"
         },
         {
           "held": "5",
@@ -617,7 +619,7 @@
           "taa_after": "21"
         }
       ],
-      "directory": "verification/probe/build/engine-effects-armed-20261003-040820-613438"
+      "directory": "verification/probe/build/engine-effects-armed-20261003-123915-962383"
     }
   },
   "problems": [],

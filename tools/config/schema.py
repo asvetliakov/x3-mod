@@ -332,7 +332,7 @@ SETTINGS = [
           launcher='--engine-effects-preset', since='2026-10-01'),
     entry('engine_plume_nozzle', 'float', 'engine', 'Proportions of the mod\'s engine plumes (engine_effects = plumes): the '
           'nozzle width as a share of the engine\'s size. Larger is a wider, stubbier plume and coarser turbulence; '
-          '0.1 to 1. Read when the game starts.', builtin='0.25', range=(0.1, 1.0), launcher='--engine-plume-nozzle',
+          '0.1 to 1. Read when the game starts.', builtin='0.5', range=(0.1, 1.0), launcher='--engine-plume-nozzle',
           since='2026-10-03'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),

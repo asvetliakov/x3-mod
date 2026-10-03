@@ -78,7 +78,7 @@ int main() {
         expect(!std::memcmp(ix, want, sizeof ix), "two quads per nozzle, two triangles per quad");
     }
     const View v = view();
-    const float Z = 2000.f, V = 100.f / ppu(Z);
+    const float Z = 2000.f, V = 50.f / ppu(Z); // the nozzle 25 px at the default 0.5, under the near fade band
     std::vector<Vertex> out(8 * 16);
     BuildStats st{};
     // ----------------------------------------------------------- side view: the axial quad (no length pulse)
@@ -88,7 +88,7 @@ int main() {
         const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
         const unsigned n = build(&r, 1, nullptr, v, Preset::standard, 5.f, out.data(), 16, &st, nullptr, &flat);
         expect(n == 1 && st.nozzles == 1 && st.vertices == 8 && st.discs == 0 && st.capped == 0 && st.faded == 0, "side view: one nozzle, no disc");
-        const float L = 2.f * V, nw = .25f * V, px = 1.f / ppu(Z);
+        const float L = 2.f * V, nw = .5f * V, px = 1.f / ppu(Z);
         bool layout = true, plane = true;
         const float a[3] = {-1, 0, 0};
         float nrm[3] = {out[1].position[0] - out[0].position[0], out[1].position[1] - out[0].position[1], out[1].position[2] - out[0].position[2]};
@@ -100,7 +100,7 @@ int main() {
             for (unsigned j = 0; j < 3; ++j) layout = layout && near(x.position[j], r.origin[j] + a[j] * x.local[0] + nrm[j] * x.local[1], 1e-4f);
             layout = layout && near(x.local[2], L) && near(x.local[3], nw) && near(x.shape[0], .55f) && near(x.shape[1], V) && x.shape[2] == 0.f && x.shape[3] == 0.f;
         }
-        expect(layout && plane, "axial quad: position = origin + axis x + side y, L = z value, n = value / 4, halo sigma0 0.55 nozzle widths, kind 0");
+        expect(layout && plane, "axial quad: position = origin + axis x + side y, L = z value, n = value / 2 (the default nozzle 0.5), halo sigma0 0.55 nozzle widths, kind 0");
         // The body's eroded edge (1 + 0.48 erode of w(u)), the halo window (2.25 sigma0, the nozzle's sigma along the
         // whole plume as in the mock-up; half discs behind the nozzle and past the tip) and the ring (u near 0) inside the
         // trapezoid, linear in x. The mock-up's width: bulge 1.15, taper 0.45, tail narrowing 0.6.
@@ -140,8 +140,8 @@ int main() {
         expect(near(out[0].intensity[0], 4.f) && near(out[0].intensity[1], .35f) && out[0].intensity[2] == 0.f &&
                out[0].intensity[3] == Z && out[4].intensity[3] == Z, "I_core 4, I_halo 0.35 (hb x lerp(0.3, 1, 1)) at s 1; the axis's view z; the nozzle's view z");
         expect(out[0].tint == 0xffffffffu, "cluster white: neutral tint");
-        expect((out[0].params >> 24) == 255u && ((out[0].params >> 16) & 255u) == 255u && ((out[0].params >> 8) & 255u) == seed_byte(r) &&
-               (out[0].params & 255u) == unsigned(int(.6f / 4.f * .5f * 255.f + .5f)), "params: s 1, the seed, I_ring / I_core / 2");
+        expect((out[0].params >> 24) == 0u && (out[0].fog >> 24) == 255u && ((out[0].params >> 16) & 255u) == 255u && ((out[0].params >> 8) & 255u) == seed_byte(r) &&
+               (out[0].params & 255u) == unsigned(int(.3f / 4.f * .5f * 255.f + .5f)), "params: s 1, the seed, I_ring / I_core / 2 (ring 0.3), no disc weight; fog A sin(view) 1");
         bool collapsed = true;
         for (unsigned c = 5; c < 8; ++c) for (unsigned j = 0; j < 3; ++j) collapsed = collapsed && out[c].position[j] == out[4].position[j];
         expect(collapsed, "side view: the disc collapses to one point");
@@ -175,11 +175,11 @@ int main() {
         expect(fl >= 0.f && fh <= .875f + 1e-5f && std::fabs(fs / 20000.f - .4375f) < .03f, "fbm in [0, 0.875], mean 0.4375 within 0.03");
         std::printf("FBM min=%.4f max=%.4f mean=%.4f\n", double(fl), double(fh), double(fs / 20000.f));
     }
-    // ----------------------------------------------------------- throttle law and presets (value 60 px: strong's
-    // 2 cap_sigma = 90 px stays under the fade band of the 0.12 H cap)
+    // ----------------------------------------------------------- throttle law and presets (value 30 px: strong's
+    // drawn width 2 x 2.25 x 0.825 x 15 px = 56 px stays under the fade band of the 0.12 H cap)
     for (const float zs : {.25f, 1.125f, 2.f})
         for (unsigned pr = 0; pr < 3; ++pr) {
-            const float V = 60.f / ppu(Z);
+            const float V = 30.f / ppu(Z);
             const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, zs);
             build(&r, 1, nullptr, v, Preset(pr), 9.f, out.data(), 16, &st);
             const float s = r.s;
@@ -190,27 +190,58 @@ int main() {
             char what[96]; std::snprintf(what, sizeof what, "law z=%.3f preset=%s", double(zs), preset_name(Preset(pr)));
             expect(ok, what);
         }
-    // ----------------------------------------------------------- head-on and tail-on: the disc and the bias
+    // ----------------------------------------------------------- head-on and tail-on: the end-on disc and the bias
     {
         const ee::Record away = rec(0, 0, Z, 0, 0, 1, V, 2.f), at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
-        build(&away, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st);
-        const float nw = .25f * V, half = std::max((1.f + .48f * .57f) * .575f, 2.25f * .55f) * nw + 1.f / ppu(Z); // the halo's reach
-        bool disc = st.discs == 1 && out[4].shape[3] == 1.f && near(out[4].intensity[0], out[0].intensity[0]) && near(out[4].local[3], nw);
+        build(&away, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &flat);
+        const float nw = .5f * V, half = std::max((1.f + .48f * .57f) * .575f, 2.25f * .55f) * nw + 1.f / ppu(Z); // the halo's reach
+        const float Ln = 2.f * V / nw; // L / n = 4 at full throttle
+        // The side view's peak per I_core on the axis: 1.6 x the first crest, tail(0.16) x (1 + 0.5 exp(-3 x 0.16)).
+        const float crest = std::exp(-.84f * .16f) * (1.f + .5f * std::exp(-3.f * .16f)), axis_peak = 1.6f * std::max(1.f, crest);
+        bool disc = st.discs == 1 && out[4].shape[3] == 1.f && near(out[4].local[3], nw) && near(out[4].intensity[0], 4.f * 1.8f * Ln) &&
+                    near(out[4].intensity[1], .35f * 3.f * Ln) && near(out[4].intensity[2], 1.5f * 4.f * axis_peak, 1e-3f) &&
+                    near(out[4].local[2], 4.f * (.3f / 4.f * .5f) * 2.f);
         for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half, 1e-3f) && near(std::fabs(out[c].position[1]), half, 1e-3f) && out[c].position[2] == Z;
         bool finite = true;
         for (unsigned c = 0; c < 4; ++c) for (unsigned j = 0; j < 3; ++j) finite = finite && std::isfinite(out[c].position[j]);
-        expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f), "head-on: full disc weight, the nozzle's width, finite side axis, no bias");
-        build(&at, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
+        expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f) && near(out[0].intensity[0], 2.f) && near(out[0].intensity[1], .175f),
+               "head-on: the end-on disc (I x 1.8 L / n, halo I_halo x 3 L / n, cap 1.5 x the side peak, the ring), the axial quad at half weight, no bias");
+        float pk = 0.f;
+        LookTables tb;
+        look_tables(flat, &tb);
+        peak_axis_at(tb, 1.f, &pk);
+        float pk0 = 0.f;
+        peak_axis_at(tb, 0.f, &pk0);
+        expect(near(pk, axis_peak, 1e-4f) && near(pk0, 1.6f), "the side view's axis peak: the first crest at s 1, the mouth at s 0");
+        build(&at, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat);
         expect(near(out[0].shape[2], .5f * V) && near(out[4].shape[2], .5f * V) && near(out[0].intensity[2], -1.f), "tail-on: the occlusion bias 0.5 value");
-        const ee::Record tilt = rec(0, 0, Z, -.5f, 0, .8660254f, V, 2.f);
-        build(&tilt, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(near(out[4].intensity[0], out[0].intensity[0] * .8660254f, 1e-3f), "disc weight |axis . to_camera|");
-        // Under 0.15 no disc; over 0.15..0.3 its radiance fades in.
-        const ee::Record grazing = rec(0, 0, Z, -.99498744f, 0, .1f, V, 2.f), low = rec(0, 0, Z, -.9797959f, 0, .2f, V, 2.f);
-        build(&grazing, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(st.discs == 0 && out[4].position[0] == out[5].position[0] && out[4].position[1] == out[6].position[1], "facing 0.1: no disc");
-        build(&low, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(st.discs == 1 && near(out[4].intensity[0], out[0].intensity[0] * .2f * (.05f / .15f), 1e-3f), "facing 0.2: the disc faded in to a third");
+        // Facing f = |axis . to_camera|: the disc smoothstep(0.3, 0.7, f), the view factor f; the axial 1 - 0.5 x the disc's weight.
+        struct Case { float ax, az, wd; const char* what; };
+        const Case cases[] = {{-.5f, .8660254f, 1.f, "facing 0.866 (30 degrees off the axis): the full disc, view factor 0.866"},
+                              {-.8660254f, .5f, .5f, "facing 0.5 (60 degrees): half the disc, the axial 0.75"},
+                              {-.9539392f, .3f, 0.f, "facing 0.3: no disc, the axial whole"},
+                              {-.9797959f, .2f, 0.f, "facing 0.2: no disc"}};
+        for (const Case& c : cases) {
+            const ee::Record r = rec(0, 0, Z, c.ax, 0, c.az, V, 2.f);
+            build(&r, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat);
+            const float f = c.az, wa = 1.f - .5f * c.wd;
+            bool ok = near(out[0].intensity[0], 4.f * wa, 1e-3f) && near(out[0].intensity[1], .35f * wa, 1e-3f);
+            if (c.wd > 0.f)
+                ok = ok && st.discs == 1 && near(out[4].intensity[0], c.wd * 4.f * 1.8f * Ln * f, 1e-3f) &&
+                     near(out[4].intensity[1], c.wd * .35f * 3.f * Ln * f, 1e-3f) && near(out[4].intensity[2], c.wd * 1.5f * 4.f * axis_peak, 1e-3f);
+            else
+                ok = ok && st.discs == 0 && out[4].position[0] == out[5].position[0] && out[4].position[1] == out[6].position[1];
+            expect(ok, c.what);
+        }
+        {
+            const ee::Record r = rec(0, 0, Z, -.8660254f, 0, .5f, V, 2.f);
+            build(&r, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st, nullptr, &flat);
+            expect((out[0].params >> 24) == 128u && (out[4].params >> 24) == 128u && (out[0].fog >> 24) == unsigned(int(.8660254f * 255.f + .5f)),
+                   "the mouth hand-over: params A the disc weight 0.5, fog A sin(view) 0.866");
+        }
+        float wd = 0.f, wa = 0.f;
+        facing_weights(default_look, .5f, &wd, &wa);
+        expect(near(wd, .5f) && near(wa, .75f), "facing weights at 0.5");
     }
     // ----------------------------------------------------------- the view filter: the scene view's records only
     {
@@ -279,8 +310,8 @@ int main() {
         const float f = 1.7f * 540.f, cap = .12f * 1080.f;
         // Tail-on at the nozzle depth zo, L = 2 value: the drawn width 2 h value at the tip (zo - L) over the cap is q,
         // h the widest half-width per value: the halo's reach 2.25 x 0.55 nozzle widths (wider than the body's eroded
-        // edge 1.2736 x 0.575) x the nozzle width 0.25.
-        const float h = 2.25f * .55f * .25f;
+        // edge 1.2736 x 0.575) x the nozzle width 0.5. Tail-on the axial quad takes half (the end-on disc is whole).
+        const float h = 2.25f * .55f * .5f;
         auto at_q = [&](float q, float zo) { // value with 2 h value f / (zo - 2 value) = q cap
             return q * cap * zo / (2.f * h * f + 2.f * q * cap);
         };
@@ -292,12 +323,12 @@ int main() {
             const float half = h * out[0].shape[1], L = out[0].local[2]; // the drawn half-width, x k
             const float width = 2.f * half * f / (zo - L);
             const float quad_half = std::fabs(out[4].local[0]) - 1.f / (1.7f * 540.f / zo); // the disc's half (width0) less its pixel
-            const bool ok = near(out[0].intensity[0], 4.f * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : st.capped == 0 && near(out[0].shape[1], val)) &&
-                            st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .25f * out[0].shape[1]) &&
+            const bool ok = near(out[0].intensity[0], 2.f * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : q == 1.f ? near(width, cap, 2e-3f) && near(out[0].shape[1], val, 1e-3f) : st.capped == 0 && near(out[0].shape[1], val)) &&
+                            st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .5f * out[0].shape[1]) &&
                             near(quad_half, half, 2e-3f);
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
-            std::printf("CAP q=%.2f weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 4.f), double(width), double(cap), double(out[0].shape[1] / val));
+            std::printf("CAP q=%.2f weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 2.f), double(width), double(cap), double(out[0].shape[1] / val));
         }
         // Side view: the length is free (a long plume across the screen keeps its length).
         const float val = 100.f / ppu(Z);
@@ -374,15 +405,15 @@ int main() {
     {
         float rate = 0;
         flow_rate(default_look, &rate);
-        expect(near(rate, .35f * 3.f * 8.f / 1.6f), "flow rate 5.25 nozzle widths per second (the mock-up's at s 1, no pulse)");
-        Look wide = default_look; wide.nozzle_width = .5f;
-        float rate_wide = 0;
-        flow_rate(wide, &rate_wide);
-        expect(near(rate_wide * .5f, rate * .25f), "the same speed in value units at any nozzle width");
+        expect(near(rate, .35f * 3.f * 4.f / 1.6f), "flow rate 2.625 nozzle widths per second at the default nozzle 0.5 (the mock-up's speed in value units)");
+        Look narrow = default_look; narrow.nozzle_width = .25f;
+        float rate_narrow = 0;
+        flow_rate(narrow, &rate_narrow);
+        expect(near(rate_narrow * .25f, rate * .5f) && near(rate_narrow, 5.25f), "the same speed in value units at any nozzle width (5.25 at 0.25)");
         FlowPhase ph; float out_phase = 0;
         for (unsigned i = 0; i < 600; ++i) ph.advance(1. / 60., rate);
         ph.wrapped(&out_phase);
-        expect(near(out_phase, 52.5f, 1e-4f), "600 frames at 60 fps: 10 s x 5.25");
+        expect(near(out_phase, 26.25f, 1e-4f), "600 frames at 60 fps: 10 s x 2.625");
         ph.advance(0., rate); ph.advance(-1., rate); ph.advance(1. / 60., -1.f); ph.advance(1e300, rate);
         float same = 0; ph.wrapped(&same);
         expect(same == out_phase, "no advance on a zero, negative or huge step or a non-positive rate");
@@ -408,12 +439,12 @@ int main() {
         const char* refused[] = {"", "0.09", "1.01", "-0.5", "+0.5", "0.5 ", " 0.5", "5e-1", "0..5", ".", "abc", "0,5", "0.5000000000001", "2"};
         for (const char* t : refused) { w = 7.f; expect(!parse_nozzle(t, std::strlen(t), &w) && w == 7.f, t); }
         expect(parse_nozzle(L"0.5", 3, &w) && w == .5f, "wide text");
-        expect(default_look.nozzle_width == .25f && nozzle_min == .1f && nozzle_max == 1.f, "default 0.25, range 0.1..1.0");
-        // The knob changes the proportions: n = 0.5 value, L unchanged.
-        Look wide = default_look; wide.nozzle_width = .5f; wide.pulse = 0.f;
+        expect(default_look.nozzle_width == .5f && nozzle_min == .1f && nozzle_max == 1.f, "default 0.5 (flight C), range 0.1..1.0");
+        // The knob changes the proportions: n = 0.25 value, L unchanged.
+        Look narrow = default_look; narrow.nozzle_width = .25f; narrow.pulse = 0.f;
         const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
-        build(&r, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &wide);
-        expect(near(out[0].local[3], .5f * V) && near(out[0].local[2], 2.f * V), "nozzle 0.5: n = value / 2, L = z value");
+        build(&r, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &narrow);
+        expect(near(out[0].local[3], .25f * V) && near(out[0].local[2], 2.f * V), "nozzle 0.25: n = value / 4, L = z value");
     }
     // ----------------------------------------------------------- the pulse cache: one evaluation per seed byte
     {
@@ -431,13 +462,88 @@ int main() {
     }
     // ----------------------------------------------------------- the pixel program's look constants
     {
-        float c[20];
+        float c[pixel_constant_floats];
         pixel_constants(default_look, c);
-        expect(near(c[0], .575f) && near(c[1], (.04f - .575f) * .45f) && near(c[2], .575f * .45f) && near(c[3], .6f * .45f) && c[4] == 0.f &&
+        expect(near(c[0], .575f) && near(c[1], (.04f - .575f) * .45f) && near(c[2], .575f * .45f) && near(c[3], .6f * .45f) && near(c[4], 6.25f) &&
                near(c[5], .57f * .96f) && near(c[6], 1.32f) && near(c[7], .4f) && near(c[8], .5f) && near(c[9], 6.2831853f / .16f) &&
-               near(c[10], 3.f) && near(c[11], .84f) && near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .529f) && c[16] == 0.f &&
-               near(c[17], .16f) && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f,
-               "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail)");
+               near(c[10], 3.f) && near(c[11], .84f) && near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .529f) &&
+               c[16] == .3f && c[17] == .8f && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f && default_look.ring == .3f,
+               "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail; ring 0.3 after flight C; c4.x 1 / period)");
+        // c8..c15: the law at u_k = (k + 0.5) / 8 against an independent replica (std::exp / std::cos).
+        auto ss = [](float e0, float e1, float x) { float q = (x - e0) / (e1 - e0); q = q < 0 ? 0 : q > 1 ? 1 : q; return q * q * (3 - 2 * q); };
+        float worst = 0.f;
+        for (unsigned k = 0; k < disc_samples; ++k) {
+            const float u = (float(k) + .5f) / 8.f;
+            const float b = .575f * (1 - .55f * std::exp(-9 * u)) * (1 + .35f * ss(0, .25f, u) * std::exp(-4 * u));
+            const float w = std::min(.575f + (.04f - .575f) * .45f * u, b + .575f * .45f) * std::max(1 - .6f * .45f * ss(.6f, 1, u), .05f);
+            const float tl = (1 - ss(.4f, 1, u)) * std::exp(-.84f * u);
+            const float cl = .5f * std::cos(6.2831853f * u / .16f) * std::exp(-3.f * u) * ss(0, .16f, u);
+            const float ht = .7f * (1 - ss(0, .55f, u));
+            const float want[4] = {w, tl, cl, ht};
+            for (unsigned j = 0; j < 4; ++j) worst = std::max(worst, std::fabs(c[20 + 4 * k + j] - want[j]));
+        }
+        expect(worst < 2e-5f, "c8..c15: w, tail, cell, heat at the disc's 8 samples");
+        std::printf("DISC_TABLE max_abs_error=%.2e\n", double(worst));
+        float ce = 0.f, ee_ = 0.f;
+        for (unsigned i = 0; i < 4001; ++i) {
+            const float x = -40.f + float(i) * .02f;
+            float a = 0.f; law::cos(x, &a); ce = std::max(ce, std::fabs(a - float(std::cos(double(x)))));
+            const float y = float(i) * .005f;
+            float e = 0.f; law::exp_neg(y, &e); ee_ = std::max(ee_, std::fabs(e - float(std::exp(-double(y)))) / float(std::exp(-double(y))));
+        }
+        expect(ce < 2e-6f && ee_ < 2e-5f, "law::cos within 2e-6 on [-40, 40], law::exp_neg within 2e-5 relative on [0, 20]");
+        std::printf("LAW cos_max_abs_error=%.2e exp_max_rel_error=%.2e\n", double(ce), double(ee_));
+    }
+    // ----------------------------------------------------------- the ship floor: capital sub-engines
+    {
+        static ShipFloor ships;
+        const float Zf = 9000.f;
+        // Two main jets of one ship (values 1,000 and 200), one of another ship (200), an RCS jet of the first (300).
+        const unsigned steer = (unsigned(ee::white) << ee::cluster_shift) | ee::flag_steering;
+        const ee::Record rs[4] = {rec(-4000, 0, Zf, -1, 0, 0, 1000.f, 2.f), rec(0, 1000, Zf, -1, 0, 0, 200.f, 2.f),
+                                  rec(0, -1000, Zf, -1, 0, 0, 200.f, 2.f), rec(2000, 0, Zf, -1, 0, 0, 300.f, .5f, steer)};
+        const std::uint32_t parents[4] = {0x1000u, 0x1000u, 0x2000u, 0x1000u};
+        std::vector<Vertex> vb(4 * 8);
+        const unsigned n = build(rs, 4, nullptr, v, Preset::standard, 0.f, vb.data(), 4, &st, nullptr, &flat, parents, &ships);
+        bool ok = n == 4 && st.floored == 1 && st.ships == 2;
+        ok = ok && near(vb[0].local[3], .5f * 1000.f) && near(vb[8].local[3], .5f * 450.f) && near(vb[8].local[2], 2.f * 450.f) &&
+             near(vb[8].shape[1], 450.f) && near(vb[16].local[3], .5f * 200.f) && near(vb[24].shape[1], 300.f);
+        // The nozzle's position is the record's: the floored plume's disc sits at its own origin.
+        float cxs = 0.f, cys = 0.f;
+        for (unsigned c = 12; c < 16; ++c) { cxs += vb[c].position[0] * .25f; cys += vb[c].position[1] * .25f; }
+        ok = ok && std::fabs(cxs) < 1e-2f && std::fabs(cys - 1000.f) < 1e-2f;
+        expect(ok, "floor: the 200 jet of the 1,000 ship draws at 450 (size and length, not position), the other ship's stays 200, RCS untouched");
+        // Without parents (or without the scratch): no floor.
+        build(rs, 4, nullptr, v, Preset::standard, 0.f, vb.data(), 4, &st, nullptr, &flat);
+        expect(st.floored == 0 && near(vb[8].local[3], 100.f), "no parents: no floor");
+        build(rs, 4, nullptr, v, Preset::standard, 0.f, vb.data(), 4, &st, nullptr, &flat, parents, nullptr);
+        expect(st.floored == 0 && near(vb[8].local[3], 100.f), "no scratch: no floor");
+        // An unknown parent (0) takes no floor and sets none.
+        const std::uint32_t unknown[4] = {0u, 0x1000u, 0x2000u, 0x1000u};
+        build(rs, 4, nullptr, v, Preset::standard, 0.f, vb.data(), 4, &st, nullptr, &flat, unknown, &ships);
+        expect(st.floored == 0 && st.ships == 2 && near(vb[8].local[3], 100.f), "parent 0: no floor (the 1,000 jet is unknown)");
+        // The scene-view filter applies to the grouping: a hidden 1,000 jet does not raise its ship.
+        const std::uint32_t cam[4] = {1, 1, 1, 1};
+        const std::uint8_t scene[4] = {0, 1, 1, 1};
+        ViewFilter vf; vf.camera = cam; vf.scene = scene; vf.handle = 1;
+        build(rs, 4, nullptr, v, Preset::standard, 0.f, vb.data(), 4, &st, &vf, &flat, parents, &ships);
+        expect(st.floored == 0 && st.skipped_other_view == 1 && near(vb[0].local[3], 100.f), "the filter: another view's jet sets no floor");
+        // Many ships: 1,024 records over 600 parents, every ship's floor its own largest value.
+        std::vector<ee::Record> many;
+        std::vector<std::uint32_t> keys;
+        for (unsigned i = 0; i < 1024; ++i) {
+            many.push_back(rec(float(i % 32) * 50.f - 800.f, float(i / 32) * 50.f - 800.f, Zf, -1, 0, 0, 100.f + float(i % 7) * 100.f, 2.f));
+            keys.push_back(0x10000u + (i % 600u) * 0x40u);
+        }
+        std::vector<Vertex> big(1024 * 8);
+        const unsigned drawn = build(many.data(), 1024, nullptr, v, Preset::standard, 0.f, big.data(), 1024, &st, nullptr, &flat, keys.data(), &ships);
+        bool all = drawn == 1024 && st.ships == 600;
+        for (unsigned i = 0; i < 1024 && all; ++i) {
+            float top = 0.f;
+            for (unsigned j = i % 600u; j < 1024; j += 600) top = std::max(top, many[j].size);
+            all = near(big[i * 8].shape[1], std::max(many[i].size, .45f * top));
+        }
+        expect(all, "1,024 records over 600 ships: each value max(value, 0.45 x its ship's largest)");
     }
     // ----------------------------------------------------------- cost of the build
     for (const unsigned count : {30u, 100u, 1024u}) {
@@ -455,6 +561,28 @@ int main() {
         }
         std::sort(us.begin(), us.end());
         std::printf("BUILD records=%u drawn=%u median_us=%.2f\n", count, drawn, us[us.size() / 2]);
+        // The ship floor's grouping alone (the map's reset over the slots in use, one note and one lookup per record) for
+        // the same records in ships of 8 nozzles, and the build with it.
+        static ShipFloor ships;
+        std::vector<std::uint32_t> parents(count);
+        for (unsigned i = 0; i < count; ++i) parents[i] = 0x100000u + (i / 8u) * 0x80u;
+        std::vector<double> group, fl;
+        float sink = 0.f;
+        for (unsigned rep = 0; rep < 31; ++rep) {
+            auto a = std::chrono::steady_clock::now();
+            for (unsigned k = 0; k < 200; ++k) {
+                ships.reset(count);
+                for (unsigned i = 0; i < count; ++i) ships.note(parents[i], rs[i].size);
+                for (unsigned i = 0; i < count; ++i) { float top = 0.f; ships.largest(parents[i], &top); sink += top; }
+            }
+            group.push_back(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - a).count() / 200.);
+            a = std::chrono::steady_clock::now();
+            for (unsigned k = 0; k < 20; ++k) drawn = build(rs.data(), count, nullptr, v, Preset::standard, float(rep * 20 + k) / 60.f, vb.data(), count, nullptr, nullptr, nullptr, parents.data(), &ships);
+            fl.push_back(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - a).count() / 20.);
+        }
+        std::sort(group.begin(), group.end());
+        std::sort(fl.begin(), fl.end());
+        std::printf("BUILD_SHIPS records=%u drawn=%u median_us=%.2f grouping_us=%.3f sink=%.0f\n", count, drawn, fl[fl.size() / 2], group[group.size() / 2], double(sink > 0.f));
     }
     std::printf("engine_plumes_core checks=%u failed=%u\n", checks, failed);
     return failed ? 1 : 0;
@@ -589,16 +717,16 @@ class PresetOption(unittest.TestCase):
 
 
 class NozzleOption(unittest.TestCase):
-    """engine_plume_nozzle (2026-10-03): the plume's nozzle width in value, load-time, for the flight A/B 0.25 vs 0.5."""
+    """engine_plume_nozzle (2026-10-03): the plume's nozzle width in value, load-time; flight C chose 0.5, the default."""
 
     def test_schema_entry(self):
         e = schema.BY_KEY['engine_plume_nozzle']
         self.assertEqual((e['env'], e['type'], e['section'], e['default'], e['builtin'], e['launcher'], e['developer']),
-                         ('X3M_ENGINE_PLUME_NOZZLE', 'float', 'engine', None, '0.25', '--engine-plume-nozzle', False))
+                         ('X3M_ENGINE_PLUME_NOZZLE', 'float', 'engine', None, '0.5', '--engine-plume-nozzle', False))
         self.assertEqual(e['range'], ((0.1, 1.0, False),))
         self.assertIn('{"X3M_ENGINE_PLUME_NOZZLE", "engine_plume_nozzle", Type::Float, nullptr,',
                       (ROOT / 'src/config/config_schema_inc.h').read_text())
-        self.assertIn(';engine_plume_nozzle = 0.25', (ROOT / 'assets/x3m.ini').read_text())
+        self.assertIn(';engine_plume_nozzle = 0.5', (ROOT / 'assets/x3m.ini').read_text())
 
     def test_launcher(self):
         module, game, wine, directory = hermetic_launcher()
@@ -657,10 +785,22 @@ class Wiring(unittest.TestCase):
         self.assertLess(inc.index('engine_clock_.wrapped(&in.seconds);'), inc.index('engine_flow_.advance('))
         self.assertIn('engine_plumes::flow_rate(plumes_look_,&plumes_flow_rate_);', inc)
         passes = source_text(ROOT / 'src/renderer/engine_plumes_pass.cpp')
-        self.assertIn('float pixel[32]={1.f/float(f.width),1.f/float(f.height),f.phase,0.f,', passes)
+        self.assertIn('float pixel[12+engine_plumes::pixel_constant_floats]={1.f/float(f.width),1.f/float(f.height),f.phase,0.f,', passes)
+        self.assertIn('call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,pixel,16)', passes)
         ps = (ROOT / 'src/effects/engine_plume_ps.hlsl').read_text()
-        self.assertIn('const float3 p = float3(((disc ? q.x : x) - lane_sizes.z) * 1.6, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);', ps)
-        self.assertIn('const float window = saturate(2.0 * (look.z - dn));', ps)
+        self.assertIn(': float3((q.x - lane_sizes.z) * 1.6, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);', ps)
+        self.assertIn('saturate(2.0 * (look.z - dn))', ps)
+        # After flight C (2026-10-03): the end-on disc's samples in c8..c15, the soft-maximum mouth, the cells ramped in,
+        # the ship key read beside the own-ship tag, the parents to the stage.
+        self.assertIn('float4 disc_k[8] : register(c8);', ps)
+        self.assertIn('result = (colour * body + soft_max(ring, ring_colour, halo, i.tint).rgb) * handover;', ps)
+        self.assertIn('const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen));', ps)
+        self.assertIn('smoothstep(0.0, 1.0, u * fire_k.x)', ps)
+        self.assertIn('const float shown = cap * (1.0 - exp(-total / cap));', ps)
+        self.assertIn('parent_known=engine_memory::read(scope.node+0x18,&scope_parent,sizeof scope_parent);SetLastError(error);}'
+                      'engine_ring_->parent[slot]=parent_known?scope_parent:0u;', source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
+        self.assertIn('in.parents=engine_ring_->parent;', inc)
+        self.assertIn('f.parents,f.parents?&ships_:nullptr);', passes)
         self.assertIn('if(engine_row_frames_>=engine_row_frame_cap&&!capture_){',
                       source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
         self.assertIn('static constexpr unsigned plumes_failure_limit=3;', source_text(ROOT / 'src/proxy/motion_output.h'))

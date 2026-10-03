@@ -434,7 +434,10 @@ struct Fixture {
     // One frame in the scene-boundary pattern: p4 in the background phase, p1 / p2 (the scene camera) and p3 (another
     // camera) in the scene phase, the resolve at the bloom copy; the statuses and the nozzle pixels after the copy.
     Armed armed_frame() {
-        static const Px nozzle_px[4] = {{32, 32}, {19, 19}, {45, 45}, {45, 19}};
+        // p1 / p2 probed 2 px into the plume (the axis runs to -x): after flight C the mouth is no longer the brightest
+        // point (the shock cells ramp in, the ring halved, the mouth terms a soft maximum), and on this 3 px nozzle half
+        // the jittered frames sample behind it. p3 / p4 at their nozzles (never drawn).
+        static const Px nozzle_px[4] = {{30, 32}, {17, 19}, {45, 45}, {45, 19}};
         api(device->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0), "Clear initial");
         api(device->BeginScene(), "BeginScene");
         effect_state(false); // background: an unscoped effect-pair draw (WVP zero: no pixel); the sentinel fill runs here

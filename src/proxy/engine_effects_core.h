@@ -220,6 +220,10 @@ struct Ring {
     std::uint32_t camera[ring_capacity];
     std::uint8_t scene[ring_capacity];
     std::uint8_t own[ring_capacity];
+    // The jet node's parent, node+0x18: the ship's root node for every engine part (docs/reverse-engineering/
+    // engine-effects.md); 0 when unreadable. The plume stage groups a frame's records by it (engine_plumes_core.h
+    // ShipFloor: the capital sub-engines' floor).
+    std::uint32_t parent[ring_capacity];
     unsigned count = 0;
     void clear() noexcept { count = 0; }
     bool full() const noexcept { return count >= ring_capacity; }

@@ -54,7 +54,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outli
     <label class="row">Nozzle bulge (x nozzle width)<span class="v" id="v-bulge">1.15</span><input type="range" id="bulge" min="0.6" max="1.6" step="0.01" value="1.15"></label>
     <label class="row">Taper (0 = cylinder, 1 = cone)<span class="v" id="v-taper">0.45</span><input type="range" id="taper" min="0" max="1" step="0.01" value="0.45"></label>
     <label class="row">Tail softness<span class="v" id="v-tail">0.7</span><input type="range" id="tail" min="0" max="1" step="0.01" value="0.7"></label>
-    <label class="row">Nozzle ring brightness<span class="v" id="v-ring">0.6</span><input type="range" id="ring" min="0" max="1.5" step="0.01" value="0.6"></label>
+    <label class="row">Nozzle ring brightness<span class="v" id="v-ring">0.3</span><input type="range" id="ring" min="0" max="1.5" step="0.01" value="0.3"></label>
   </div>
   <div class="group"><h2>Fire</h2>
     <label class="row">Turbulence<span class="v" id="v-turb">0.55</span><input type="range" id="turb" min="0" max="1" step="0.01" value="0.55"></label>
@@ -114,8 +114,8 @@ vec3 plume(vec2 q,float s,float modern,float side){
  float edge=1.0-smoothstep(0.55,1.0,radial+eros*0.6);
  float tailFade=modern>0.5?(1.0-smoothstep(mix(0.75,0.25,tail),1.0,u))*exp(-u*tail*1.2):(1.0-smoothstep(0.75,1.0,u));
  float shape=edge*tailFade;
- // shock diamonds: bright rings along the core, fading
- float cells=1.0+modern*shock*cos(6.2831*u/period)*exp(-u*cfade*5.0)*(1.0-smoothstep(0.0,0.8,radial))*s;
+ // shock diamonds: bright rings along the core, fading; ramped in over the first period (after flight C: the mouth is no crest)
+ float cells=1.0+modern*shock*cos(6.2831*u/period)*exp(-u*cfade*5.0)*smoothstep(0.0,period,u)*(1.0-smoothstep(0.0,0.8,radial))*s;
  float turbI=1.0+modern*turb*(n2-0.5)*2.2;
  // core: hot white near the nozzle, race colour after
  float coreMask=1.0-smoothstep(0.0,core*1.4,radial);
@@ -126,7 +126,10 @@ vec3 plume(vec2 q,float s,float modern,float side){
  float hl=hb*exp(-r/(halo*0.5))*exp(-u*2.2)*mix(0.3,1.0,s);
  if(modern<0.5){ I=mix(1.5,4.0,s)*edge*(1.0-smoothstep(0.6,1.0,u))*mix(1.0,1.6,coreMask)*(1.0+0.1*(hash(vec3(floor(t*12.0),side,0.0))-0.5)); hl=hb*exp(-r/(halo*0.5))*exp(-u*2.0)*mix(0.3,1.0,s); col=tint; }
  float rr=abs(r-0.5*bulge*0.92); float ringI=modern*ring*exp(-rr*rr*120.0)*exp(-max(q.x,0.0)*14.0)*step(-0.05,q.x)*mix(0.4,1.0,s);
- return col*I+tint*hl+mix(tint,vec3(1.0,0.95,0.85),0.6)*ringI;
+ // the mouth terms (ring, halo) as a soft maximum (a^4+b^4)^(1/4), not a sum (after flight C); the body adds
+ float a4=ringI*ringI*ringI*ringI, b4=hl*hl*hl*hl, m4=a4+b4;
+ vec3 mouth=m4>1e-30?(mix(tint,vec3(1.0,0.95,0.85),0.6)*a4+tint*b4)*(sqrt(sqrt(m4))/m4):vec3(0.0);
+ return col*I+mouth;
 }
 vec3 stars(vec2 p){float h=hash(vec3(floor(p*vec2(2.2,2.2)*res.y),1.0));float s=smoothstep(0.995,1.0,h);return vec3(s*0.6);}
 void main(){
@@ -168,7 +171,7 @@ function val(i){return parseFloat(el[i].value);}
 function fmt(i){const v=val(i);document.getElementById('v-'+i).textContent=i==='sweep'?(v?'on':'off'):(i==='flow'||i==='exp'?v.toFixed(1):v.toFixed(2));}
 ids.forEach(i=>{el[i].addEventListener('input',()=>{fmt(i);if(i==='thr'){el.sweep.value=0;fmt('sweep');}});fmt(i);});
 const mb={modern:0,static:1,both:2};Object.keys(mb).forEach(k=>{const bt=document.getElementById('b-'+k);bt.addEventListener('click',()=>{mode=mb[k];Object.keys(mb).forEach(j=>document.getElementById('b-'+j).setAttribute('aria-pressed',j===k?'true':'false'));document.getElementById('hud-look').textContent=k==='both'?'side by side':k;});});
-const shapes={cone:{bulge:1.0,taper:1.0,tail:0.15,ring:0.2},bulge:{bulge:1.15,taper:0.45,tail:0.7,ring:0.6},feather:{bulge:1.05,taper:0.25,tail:1.0,ring:0.5}};
+const shapes={cone:{bulge:1.0,taper:1.0,tail:0.15,ring:0.2},bulge:{bulge:1.15,taper:0.45,tail:0.7,ring:0.3},feather:{bulge:1.05,taper:0.25,tail:1.0,ring:0.5}};
 Object.keys(shapes).forEach(k=>{document.getElementById('s-'+k).addEventListener('click',()=>{Object.entries(shapes[k]).forEach(([i,v])=>{el[i].value=v;fmt(i);});Object.keys(shapes).forEach(j=>document.getElementById('s-'+j).setAttribute('aria-pressed',j===k?'true':'false'));});});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let t0=performance.now(),tLast=0,phase=0;

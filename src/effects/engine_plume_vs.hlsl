@@ -8,12 +8,12 @@ float4 projection : register(c0); // m00, m11, m20 + 2 jx / W, m21 - 2 jy / H
 float4 limits : register(c1);     // NEAR (view units), unused x3
 struct Input {
     float3 position : POSITION;   // view space
-    float4 local : TEXCOORD0;     // u | x, w | y (world units), L (pulsed), the nozzle width n
+    float4 local : TEXCOORD0;     // u | x, w | y (world units), L (pulsed; the disc: the ring's radiance), the nozzle width n
     float4 shape : TEXCOORD1;     // halo sigma at the nozzle (nozzle widths), value, occlusion bias, kind (0 axial, 1 disc)
-    float4 intensity : TEXCOORD2; // I_core, I_halo, the axis's view z component (axial), the nozzle's view z
+    float4 intensity : TEXCOORD2; // I_core, I_halo, the axis's view z component (the disc: the soft cap), the nozzle's view z
     float4 tint : COLOR0;         // mean colour, largest channel 1
-    float4 params : COLOR1;       // throttle s, seed, I_ring / I_core / 2, unused (bytes)
-    float4 fog : COLOR2;          // the fog transmittance per channel (white without fog)
+    float4 params : COLOR1;       // throttle s, seed, I_ring / I_core / 2, the disc's weight (bytes)
+    float4 fog : COLOR2;          // the fog transmittance per channel (white without fog), sin(view)
 };
 struct Output {
     float4 position : POSITION;
@@ -22,7 +22,7 @@ struct Output {
     float4 view : TEXCOORD2;      // the nozzle's view z, I_core, I_halo, the axis's view z component
     float3 tint : TEXCOORD3;
     float4 params : TEXCOORD4;
-    float3 fog : TEXCOORD5;
+    float4 fog : TEXCOORD5;
 };
 Output main(Input i) {
     Output o;
@@ -34,6 +34,6 @@ Output main(Input i) {
     o.view = float4(i.intensity.w, i.intensity.xyz);
     o.tint = i.tint.rgb;
     o.params = i.params;
-    o.fog = i.fog.rgb;
+    o.fog = i.fog;
     return o;
 }

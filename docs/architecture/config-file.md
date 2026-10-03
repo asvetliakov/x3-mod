@@ -598,9 +598,10 @@ native/off/plumes mode itself is never toggled.
 Key `engine_plume_nozzle`, environment `X3M_ENGINE_PLUME_NOZZLE`, launcher `--engine-plume-nozzle W`
 ([engine-effects-modern.md](engine-effects-modern.md), "Plume look redesign", "Ported"). The plume's nozzle width as a
 share of the engine's size `value` under `engine_effects = plumes`; the length stays the game's `z x value`, so a larger
-width draws a wider, stubbier plume with coarser turbulence. Default **0.25** (the Engine Exhaust Lab's proportions,
-8 nozzle widths long at full throttle); 0.5 halves the length in nozzle widths, the A/B the flight compares. One plain
-decimal in 0.1..1.0 (digits with at most one point; no sign, exponent or padding); anything else is refused to 0.25
+width draws a wider, stubbier plume with coarser turbulence. Default **0.5** since flight C (Run 120 A, the user's
+choice; 4 nozzle widths long at full throttle); 0.25 is the Engine Exhaust Lab's proportions (8 nozzle widths), which
+read as a needle in flight. One plain decimal in 0.1..1.0 (digits with at most one point; no sign, exponent or
+padding); anything else is refused to 0.5
 with `nozzle_status=invalid_setting` on the `engine_effects_plumes` row (which also prints `nozzle=` and
 `nozzle_setting=`). Read once at load and only with `plumes`; the launcher sends it only when given (finite 0.1..1.0,
 as a plain decimal; an inherited shell value is dropped, refused under `--vanilla`).
