@@ -1,0 +1,17 @@
+# AgX EV0 display luma (gamma-2.2 decoded) of grey linear 0.25 .. 16:
+   0.25: display 0.556 (8-bit 142), decoded 0.275
+    0.5: display 0.678 (8-bit 173), decoded 0.425
+      1: display 0.787 (8-bit 201), decoded 0.590
+      2: display 0.874 (8-bit 223), decoded 0.743
+      4: display 0.934 (8-bit 238), decoded 0.861
+      8: display 0.971 (8-bit 248), decoded 0.937
+     16: display 0.998 (8-bit 254), decoded 0.995
+# head colours (peak scaled to the mean's luminance; proposal clamps k >= 0.75):
+  argon-blue: current [0.21 0.71 0.79], proposed [0.21 0.71 0.79], mean (0.14, 0.71, 1.0)
+  split-red: current [0.39 0.32 0.32], proposed [0.75 0.61 0.61], mean (1.0, 0.15, 0.15)
+argon-blue  current: peak/I 1.18, cells_lin 0.46, cells_disp 0.23, lane_cells_lin 0.21, lane_mean_lin 2.15, lane_cells_disp 0.05, lane_mean_disp 0.75, core/edge_u0.2_lin 1.43, core/edge_u0.2_disp 1.24, hw_u0.2 0.55, core/edge_u0.5_lin 1.86, core/edge_u0.5_disp 1.22, hw_u0.5 0.45, white_u0.1 0.02, white_u0.5 0.15, aniso 2.00, energy 6.31, energy_rgb 4.17
+argon-blue proposed: peak/I 0.80, cells_lin 0.32, cells_disp 0.21, lane_cells_lin 0.39, lane_mean_lin 0.48, lane_cells_disp 0.22, lane_mean_disp 0.40, core/edge_u0.2_lin 3.44, core/edge_u0.2_disp 2.89, hw_u0.2 0.38, core/edge_u0.5_lin 3.12, core/edge_u0.5_disp 2.23, hw_u0.5 0.32, white_u0.1 0.03, white_u0.5 0.20, aniso 13.33, energy 2.30, energy_rgb 1.43
+ split-red  current: peak/I 1.01, cells_lin 0.46, cells_disp 0.23, lane_cells_lin 0.21, lane_mean_lin 1.41, lane_cells_disp 0.07, lane_mean_disp 0.67, core/edge_u0.2_lin 1.93, core/edge_u0.2_disp 1.39, hw_u0.2 0.53, core/edge_u0.5_lin 1.90, core/edge_u0.5_disp 1.32, hw_u0.5 0.45, white_u0.1 0.01, white_u0.5 0.08, aniso 1.86, energy 6.31, energy_rgb 2.66
+ split-red proposed: peak/I 0.82, cells_lin 0.33, cells_disp 0.21, lane_cells_lin 0.38, lane_mean_lin 0.45, lane_cells_disp 0.21, lane_mean_disp 0.39, core/edge_u0.2_lin 3.40, core/edge_u0.2_disp 2.54, hw_u0.2 0.35, core/edge_u0.5_lin 3.12, core/edge_u0.5_disp 2.32, hw_u0.5 0.28, white_u0.1 0.02, white_u0.5 0.25, aniso 13.33, energy 2.30, energy_rgb 1.15
+# argon-blue: proposed / current body energy 0.37, luma energy 0.34, peak 0.67
+# split-red: proposed / current body energy 0.37, luma energy 0.43, peak 0.80
