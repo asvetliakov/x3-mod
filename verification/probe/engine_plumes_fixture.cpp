@@ -43,8 +43,11 @@
 //   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 / 1,024
 //                 records (the look's tables cached), plain and with the plume floor; with X3M_PLUMES_FIXTURE_DISC_AB=1 the
 //                 stage cost with the end-on disc drawn and not drawn, three interleaved rounds
+//   --dump <dir>  look images instead of the cases (namespace dump below): AgX-tonemapped 8-bit PPMs of the resolve
 // Validation-only readback; never launches the game.
 #include "../../src/renderer/engine_plumes_pass.h"
+#include "../../src/renderer/engine_ribbons_pass.h"
+#include "../../src/temporal/agx.h"
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/quad_vertex_program.h"
@@ -2025,15 +2028,493 @@ void build_timing(Targets& t) {
                     *std::min_element(with.begin(), with.end()));
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// --dump <dir> (run_engine_plumes.py --dump-images): look images for design review, one CHECK (every image written).
+// Each image is 1920x1080: one or more horizontal bands, each band a separate sequence of the production stage (the
+// plumes, then the production ribbons, as run_engine_plumes runs them) inside the real resolve (the flown
+// configuration), 30 frames of warm-up at 60 fps (the stage clock, the flow accumulator x the travel look's flow, the
+// attack memory and the SETA ramp advancing as the proxy advances them) and the band's rows of the resolved frame
+// `capture` (frame index; 30 = the 31st). The scene: a dark static starfield, a plain grey hull plate where the band has
+// one (the lanes carry the plate at the first nozzle's depth). The resolved FP16 image goes through a CPU port of the
+// write-back's AgX (agx.hlsl agxTonemap: gamma 2.2 decode, look none, EV 0 = exposure 1, the meter's neutral target
+// over a dark sky; no bloom, sharpen or dither) to 8-bit display RGB, written as <dir>\<name>.ppm; the runner turns
+// them into PNGs. DUMP_DESC / DUMP_PANEL / DUMP_NOZZLE rows carry what each image shows.
+namespace dump {
+// Two-tone body colours (linear, largest channel 1): the cluster medians of verification/results/engine-effects/
+// plume_two_tone_colours_out.txt (mean, peak). "split-red" is the red cluster, "argon-blue" the cyan cluster (the
+// largest: 121 bodies).
+struct Tone {
+    const char* name;
+    float mean[3], peak[3];
+};
+const Tone tones[] = {{"split-red", {1.f, .15f, .15f}, {1.f, .81f, .81f}}, {"argon-blue", {.14f, .71f, 1.f}, {.27f, .90f, 1.f}},
+                      {"darkblue", {.18f, .18f, 1.f}, {.84f, .84f, 1.f}},  {"lightblue", {.09f, .66f, 1.f}, {.69f, .93f, 1.f}},
+                      {"green", {.26f, 1.f, .50f}, {.64f, 1.f, .78f}},     {"lime", {.09f, 1.f, .09f}, {.68f, 1.f, .68f}},
+                      {"magenta", {1.f, .25f, .97f}, {1.f, .77f, .99f}},   {"orange", {1.f, .25f, .12f}, {1.f, .81f, .74f}},
+                      {"peach", {1.f, .84f, .76f}, {1.f, .89f, .84f}},     {"purple", {.74f, .37f, 1.f}, {.93f, .80f, 1.f}},
+                      {"yellow", {1.f, 1.f, 0.f}, {1.f, 1.f, .13f}},       {"white", {1.f, 1.f, 1.f}, {1.f, 1.f, 1.f}}};
+constexpr int tone_count = int(sizeof tones / sizeof tones[0]);
+enum : int { split_red = 0, argon_blue = 1 };
+ee::Body bodies[tone_count];
+const ee::Body* lookup(int i) {
+    return i >= 0 && i < tone_count ? &bodies[i] : nullptr;
+}
+struct Nozzle {
+    float x_px = 960.f, y_px = 540.f; // the nozzle on screen at the captured frame
+    float n_px = 150.f;               // projected nozzle width (the look's nozzle_width x value x pixels per unit)
+    float value = 500.f;              // record units
+    // The axis against the line of sight to the nozzle (at the captured frame): `degrees` from it (90 = the side view,
+    // 0 = end-on), towards the camera (`facing` +1) or away (-1), its screen component to the left; or `axis` itself
+    // (view space) when `fixed`.
+    float degrees = 90.f;
+    int facing = 1;
+    bool fixed = false;
+    float axis[3] = {-1.f, 0.f, 0.f};
+    float s = 1.f;                   // throttle (z = 0.25 + 1.75 s)
+    int tone = argon_blue;
+    bool steering = false;
+    int fire_at = -1;     // steering: z 0.01 before this frame, 0.505 at it, 1.0 after; -1: z from s every frame
+    float speed_px = 0.f; // +x per frame (the position at the captured frame is x_px)
+};
+struct Panel {
+    std::vector<Nozzle> nozzles;
+    ep::Preset preset = ep::Preset::standard;
+    bool seta = false;
+    bool plate = false;
+    float plate_rect[4] = {}; // pixels x0 y0 x1 y1, at the depth of the first nozzle
+    unsigned capture = 30;
+    const char* note = "";
+};
+struct Image {
+    std::string name;
+    std::string desc;
+    std::vector<Panel> panels; // horizontal bands, top to bottom
+};
+Nozzle side(float x, float y, float s, int tone, float n_px = 150.f, float value = 500.f) {
+    Nozzle z;
+    z.x_px = x;
+    z.y_px = y;
+    z.s = s;
+    z.tone = tone;
+    z.n_px = n_px;
+    z.value = value;
+    return z;
+}
+// The axis `degrees` from the line of sight, pointing at the camera (the end_on case's convention).
+Nozzle toward(Nozzle z, float degrees) {
+    z.degrees = degrees;
+    z.facing = 1;
+    return z;
+}
+// The axis `degrees` from the line of sight, pointing away from the camera (the hull cases: the camera in front).
+Nozzle away(Nozzle z, float degrees) {
+    z.degrees = degrees;
+    z.facing = -1;
+    return z;
+}
+float depth_of(const Targets& t, const Nozzle& z) {
+    const float ppu = z.n_px / (ep::default_look.nozzle_width * z.value);
+    return m11 * float(t.h) * .5f / ppu;
+}
+void view_point(const Targets& t, float px, float py, float Z, float* x, float* y) {
+    *x = (2.f * px / float(t.w) - 1.f) * Z / t.m00();
+    *y = (1.f - 2.f * py / float(t.h)) * Z / m11;
+}
+void axis_of(const Targets& t, const Nozzle& z, float out[3]) {
+    if (z.fixed) {
+        std::copy(z.axis, z.axis + 3, out);
+        return;
+    }
+    const float Z = depth_of(t, z);
+    float d[3] = {0.f, 0.f, Z};
+    view_point(t, z.x_px, z.y_px, Z, &d[0], &d[1]);
+    const float dl = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+    for (float& c : d) c /= dl;
+    // The screen's left (-x) without its component along the ray: perpendicular to the line of sight.
+    const float side[3] = {d[0] * d[0] - 1.f, d[1] * d[0], d[2] * d[0]};
+    const float sl = std::sqrt(side[0] * side[0] + side[1] * side[1] + side[2] * side[2]);
+    const float a = z.degrees * 3.14159265f / 180.f;
+    for (unsigned i = 0; i < 3; ++i) out[i] = std::sin(a) * side[i] / sl - float(z.facing) * std::cos(a) * d[i];
+}
+ee::Record record_at(const Targets& t, const Nozzle& z, unsigned n, unsigned capture, unsigned index) {
+    const float Z = depth_of(t, z);
+    float x, y, axis[3];
+    view_point(t, z.x_px - float(int(capture) - int(n)) * z.speed_px, z.y_px, Z, &x, &y);
+    axis_of(t, z, axis);
+    float zs = .25f + 1.75f * z.s;
+    if (z.steering && z.fire_at >= 0) zs = int(n) < z.fire_at ? .01f : int(n) == z.fire_at ? .505f : 1.f;
+    ee::Record r = record(x, y, Z, axis[0], axis[1], axis[2], z.value, zs, z.steering);
+    r.node_handle = 0x10000u + index;
+    r.body = z.tone;
+    return r;
+}
+struct Stage {
+    rr::EnginePlumesPass* plumes = nullptr;
+    rr::EngineRibbonsPass* ribbons = nullptr;
+    rr::EnginePlumesFrame frame{};
+    rr::EngineRibbonsFrame rframe{};
+    HRESULT result = S_FALSE;
+    rr::EnginePlumesReport preport{};
+    rr::EngineRibbonsReport rreport{};
+};
+HRESULT stage(void* context, IDirect3DDevice9*) noexcept {
+    auto& c = *static_cast<Stage*>(context);
+    HRESULT hr = c.plumes->run(c.frame, &c.preport);
+    if (SUCCEEDED(hr) && c.ribbons) {
+        c.rframe.base = &c.frame;
+        const HRESULT r = c.ribbons->run(c.rframe, &c.rreport);
+        if (FAILED(r) || r == S_OK) hr = r;
+    }
+    c.result = hr;
+    return hr;
+}
+// The write-back's AgX (agx.hlsl agxTonemap with the default block: gamma 2.2 decode, no clamp, look none) at
+// exposure 1, to 8-bit display codes.
+void agx(const float* e, unsigned char* out) {
+    const x3::temporal::AgxConstants k{};
+    float v[3], w[3];
+    for (unsigned i = 0; i < 3; ++i) v[i] = std::min(std::pow(std::max(e[i], 1e-10f), k.decode[0]), k.exposure[1]) * k.exposure[0];
+    for (unsigned i = 0; i < 3; ++i) w[i] = k.inset[i][0] * v[0] + k.inset[i][1] * v[1] + k.inset[i][2] * v[2];
+    for (unsigned i = 0; i < 3; ++i) {
+        float x = std::min(std::max(std::log2(std::max(w[i], 1e-10f)), k.log_range[0]), k.log_range[2]);
+        x = (x - k.log_range[0]) * k.log_range[1];
+        const float x2 = x * x, x4 = x2 * x2;
+        w[i] = k.contrast_hi[0] * x4 * x2 + k.contrast_hi[1] * x4 * x + k.contrast_hi[2] * x4 + k.contrast_hi[3] * x2 * x +
+               k.contrast_lo[0] * x2 + k.contrast_lo[1] * x + k.contrast_lo[2];
+    }
+    for (unsigned i = 0; i < 3; ++i) {
+        const float o = k.outset[i][0] * w[0] + k.outset[i][1] * w[1] + k.outset[i][2] * w[2];
+        out[i] = static_cast<unsigned char>(std::min(std::max(o, 0.f), 1.f) * 255.f + .5f);
+    }
+}
+bool run_image(IDirect3DDevice9* d, Targets& t, Scene& scene, IDirect3DPixelShader9* sky, rr::EnginePlumesPass& plumes,
+               rr::EngineRibbonsPass& ribbons, const std::string& dir, const Image& image) {
+    std::vector<unsigned char> rgb(std::size_t(t.w) * t.h * 3, 0);
+    const unsigned bands = unsigned(image.panels.size());
+    float rate = 0.f;
+    ep::flow_rate(ep::default_look, &rate);
+    std::printf("DUMP_DESC %s %s\n", image.name.c_str(), image.desc.c_str());
+    bool drew_all = true;
+    for (unsigned b = 0; b < bands; ++b) {
+        const Panel& p = image.panels[b];
+        const int y0 = int(b * t.h / bands), y1 = int((b + 1) * t.h / bands);
+        rr::TemporalPass taa;
+        check("dump taa", make_resolver(d, taa));
+        static ep::Transients memory;
+        memory.clear();
+        ep::TravelRamp ramp;
+        ep::FlowPhase flow;
+        rr::Output o{};
+        float pjx = 0, pjy = 0, weight = 0.f;
+        unsigned drawn = 0, ribbon_count = 0, attacks = 0, capped = 0, faded = 0;
+        const float dt = 1.f / 60.f;
+        for (unsigned n = 0; n <= p.capture; ++n) {
+            const float jx = float(halton(n % 8 + 1, 2) - .5), jy = float(halton(n % 8 + 1, 3) - .5);
+            std::vector<ee::Record> records;
+            for (unsigned i = 0; i < p.nozzles.size(); ++i) records.push_back(record_at(t, p.nozzles[i], n, p.capture, i));
+            // The lanes (the plate at the first nozzle's depth, else sky), the motion target, then the scene: the
+            // starfield and the plate.
+            const float plate_z = p.nozzles.empty() ? 500.f : depth_of(t, p.nozzles[0]);
+            if (p.plate)
+                scene.frame(p.plate_rect[0], p.plate_rect[1], p.plate_rect[2], p.plate_rect[3], plate_z);
+            else
+                scene.frame(0, 0, 0, 0, 500);
+            const float plate[4] = {.30f, p.plate ? 1.f : 0.f, 0.f, 0.f};
+            check("dump rect", d->SetPixelShaderConstantF(0, p.plate_rect, 1));
+            check("dump plate", d->SetPixelShaderConstantF(1, plate, 1));
+            scene.quad.draw(d, t.w, t.h, sky);
+            ramp.step(p.seta, dt);
+            ramp.weight(&weight);
+            flow.advance(dt, rate * (1.f + (ep::travel_flow - 1.f) * weight));
+            Stage ctx;
+            ctx.plumes = &plumes;
+            ctx.ribbons = &ribbons;
+            ctx.frame = frame_for(t, true, records.data(), unsigned(records.size()), p.preset, 10.f + float(n) * dt, jx, jy);
+            ctx.frame.body = &lookup;
+            ctx.frame.flow = flow.nozzle_widths;
+            ctx.frame.travel = weight;
+            ctx.frame.step = dt;
+            ctx.frame.game_ms = dt * 1000.f * (p.seta ? 6.f : 1.f);
+            ctx.frame.transients = &memory;
+            ctx.rframe.seconds = 10. + double(n) * double(dt);
+            ctx.rframe.cut = n == 0;
+            rr::FrameInputs in = resolve_inputs(t, jx, jy, pjx, pjy, true);
+            in.stage_callback = &stage;
+            in.stage_context = &ctx;
+            check("dump resolve begin", d->BeginScene());
+            const HRESULT hr = taa.run(in, &o);
+            check("dump resolve end", d->EndScene());
+            check("dump resolve", hr);
+            check("dump stage", ctx.result);
+            attacks += ctx.preport.stats.attacks;
+            pjx = jx;
+            pjy = jy;
+            if (n == p.capture) {
+                drawn = ctx.preport.stats.nozzles;
+                capped = ctx.preport.stats.capped;
+                faded = ctx.preport.stats.faded;
+                ribbon_count = ctx.rreport.stats.ribbons;
+                drew_all = drew_all && ctx.preport.drew;
+                Com<IDirect3DSurface9> resolved;
+                check("dump resolved surface", o.color->GetSurfaceLevel(0, &resolved.p));
+                const auto px = t.read(d, resolved.p);
+                for (int y = y0; y < y1; ++y)
+                    for (UINT x = 0; x < t.w; ++x) {
+                        const std::size_t i = std::size_t(y) * t.w + x;
+                        agx(&px[i * 4], &rgb[i * 3]);
+                    }
+            }
+        }
+        std::printf("DUMP_PANEL file=%s band=%u rows=%d..%d capture_frame=%u preset=%s seta=%u travel_weight=%.3f plate=%u nozzles=%u drawn=%u capped=%u faded=%u ribbons=%u attack_frames=%u note=%s\n",
+                    image.name.c_str(), b, y0, y1 - 1, p.capture, ep::preset_name(p.preset), unsigned(p.seta), double(weight),
+                    unsigned(p.plate), unsigned(p.nozzles.size()), drawn, capped, faded, ribbon_count, attacks,
+                    p.note[0] ? p.note : "-");
+        if (p.nozzles.size() <= 6)
+            for (const Nozzle& z : p.nozzles) {
+                float a[3];
+                axis_of(t, z, a);
+                std::printf("DUMP_NOZZLE file=%s band=%u x_px=%.0f y_px=%.0f nozzle_px=%.1f value=%.0f depth=%.1f degrees=%.0f facing=%s axis=%.3f,%.3f,%.3f s=%.3f tone=%s steering=%u fire_at=%d speed_px=%.1f\n",
+                            image.name.c_str(), b, double(z.x_px), double(z.y_px), double(z.n_px), double(z.value),
+                            double(depth_of(t, z)), double(z.degrees), z.facing > 0 ? "camera" : "away", double(a[0]),
+                            double(a[1]), double(a[2]), double(z.s), tones[z.tone].name, unsigned(z.steering), z.fire_at,
+                            double(z.speed_px));
+            }
+    }
+    const std::string path = dir + "\\" + image.name + ".ppm";
+    FILE* f = std::fopen(path.c_str(), "wb");
+    if (!f) throw std::runtime_error("dump: cannot open " + path);
+    std::fprintf(f, "P6\n%u %u\n255\n", t.w, t.h);
+    const bool ok = std::fwrite(rgb.data(), 1, rgb.size(), f) == rgb.size();
+    std::fclose(f);
+    if (!ok) throw std::runtime_error("dump: short write " + path);
+    std::printf("DUMP file=%s width=%u height=%u bands=%u drew=%u\n", image.name.c_str(), t.w, t.h, bands, unsigned(drew_all));
+    return drew_all;
+}
+std::vector<Image> images() {
+    std::vector<Image> out;
+    auto name = [](const char* stem) { return std::string(stem) + "_agx-ev0"; };
+    auto single = [](std::vector<Nozzle> v, ep::Preset preset = ep::Preset::standard) {
+        Panel p;
+        p.nozzles = std::move(v);
+        p.preset = preset;
+        return p;
+    };
+    // 1. The side view, the fighter (value 500, nozzle 150 px), s = 0 / 0.5 / 1 top to bottom, the default preset.
+    for (const int tone : {int(split_red), int(argon_blue)}) {
+        Image im;
+        im.name = name(tone == split_red ? "01a_side_fighter_v500_n150_s0-0.5-1_split-red_default"
+                                         : "01b_side_fighter_v500_n150_s0-0.5-1_argon-blue_default");
+        im.desc = std::string("Side view, fighter nozzle (value 500, 150 px wide), throttle 0 / 0.5 / 1 top to bottom, ") +
+                  tones[tone].name + ", default preset";
+        im.panels.push_back(single({side(1350, 180, 0.f, tone), side(1350, 540, .5f, tone), side(1350, 900, 1.f, tone)}));
+        out.push_back(im);
+    }
+    // 2. 45 degrees and end-on at s = 1, both tints.
+    {
+        Image im;
+        im.name = name("02a_45deg_fighter_v500_n150_s1_split-red-top_argon-blue-bottom");
+        im.desc = "Fighter nozzle (value 500, 150 px) at s = 1, axis 45 deg from the line of sight towards the camera; split red top, argon blue bottom";
+        im.panels.push_back(single({toward(side(1250, 300, 1.f, split_red), 45.f), toward(side(1250, 780, 1.f, argon_blue), 45.f)}));
+        out.push_back(im);
+        Image e;
+        e.name = name("02b_end-on_fighter_v500_n150_s1_split-red-left_argon-blue-right");
+        e.desc = "Fighter nozzle (value 500, 150 px) at s = 1 seen from directly behind (exhaust at the camera: the end-on disc); split red left, argon blue right";
+        e.panels.push_back(single({toward(side(600, 540, 1.f, split_red), 0.f), toward(side(1320, 540, 1.f, argon_blue), 0.f)}));
+        out.push_back(e);
+    }
+    // 3. The capital (value 10,000, nozzle 150 px) at s = 1: side and 30 degrees, frames 30 (top) and 36 (bottom, 100 ms
+    // later); the fighter the same way for reference.
+    for (const float deg : {90.f, 30.f}) {
+        Image im;
+        im.name = name(deg == 90.f ? "03a_side_capital_v10000_n150_s1_argon-blue_t0-top_t100ms-bottom"
+                                   : "03b_30deg_capital_v10000_n150_s1_argon-blue_t0-top_t100ms-bottom");
+        im.desc = std::string("Capital nozzle (value 10,000, 150 px wide) at s = 1, ") +
+                  (deg == 90.f ? "side view" : "axis 30 deg from the line of sight towards the camera") +
+                  ", argon blue; top frame 30, bottom frame 36 (100 ms later): the slower world-unit flow";
+        for (const unsigned capture : {30u, 36u}) {
+            Panel p = single({toward(side(deg == 90.f ? 1350.f : 1100.f, capture == 30u ? 270.f : 810.f, 1.f, argon_blue, 150.f, 10000.f), deg)});
+            p.capture = capture;
+            p.note = capture == 30u ? "t0" : "t0+100ms";
+            im.panels.push_back(p);
+        }
+        out.push_back(im);
+    }
+    {
+        Image im;
+        im.name = name("03c_side_fighter_v500_n150_s1_argon-blue_t0-top_t100ms-bottom");
+        im.desc = "Reference for 03a: the fighter nozzle (value 500, 150 px) at s = 1, side view, argon blue; top frame 30, bottom frame 36 (100 ms later)";
+        for (const unsigned capture : {30u, 36u}) {
+            Panel p = single({side(1350, capture == 30u ? 270.f : 810.f, 1.f, argon_blue)});
+            p.capture = capture;
+            p.note = capture == 30u ? "t0" : "t0+100ms";
+            im.panels.push_back(p);
+        }
+        out.push_back(im);
+    }
+    // 4. The presets, side view, s = 1.
+    {
+        Image im;
+        im.name = name("04_presets_side_fighter_v500_n150_s1_argon-blue_restrained-default-strong");
+        im.desc = "Presets restrained / default / strong top to bottom: fighter nozzle (value 500, 150 px), side view, s = 1, argon blue";
+        const ep::Preset presets[3] = {ep::Preset::restrained, ep::Preset::standard, ep::Preset::strong};
+        for (unsigned k = 0; k < 3; ++k) {
+            Panel p = single({side(1350, 180.f + 360.f * float(k), 1.f, argon_blue)}, presets[k]);
+            p.note = ep::preset_name(presets[k]);
+            im.panels.push_back(p);
+        }
+        out.push_back(im);
+    }
+    // 5. The distance series: value 500 at 40 / 12 / 6 / 2 px.
+    {
+        Image im;
+        im.name = name("05_distance_fighter_v500_s1_argon-blue_n40-12-6-2px");
+        im.desc = "Distance series: the fighter nozzle (value 500) at s = 1, side view, argon blue, projected 40 / 12 / 6 / 2 px wide left to right";
+        im.panels.push_back(single({side(560, 540, 1.f, argon_blue, 40.f), side(960, 540, 1.f, argon_blue, 12.f),
+                                    side(1300, 540, 1.f, argon_blue, 6.f), side(1600, 540, 1.f, argon_blue, 2.f)}));
+        out.push_back(im);
+    }
+    // 6. A grey hull plate at the nozzle's depth: head-on (the exhaust away from the camera, the nozzle well inside the
+    // plate) and at 20 degrees (the plate's left edge 10 px left of the nozzle, as the occlusion case).
+    {
+        Image im;
+        im.name = name("06a_hull_head-on_fighter_v500_n150_s1_argon-blue");
+        im.desc = "Grey hull plate at the nozzle depth seen from the front (exhaust pointing away, the nozzle 400 px inside the plate): only the spill through the hull; fighter 150 px, s = 1, argon blue";
+        Panel p = single({away(side(960, 540, 1.f, argon_blue), 0.f)});
+        p.plate = true;
+        const float r0[4] = {560.f, 290.f, 1360.f, 790.f};
+        std::copy(r0, r0 + 4, p.plate_rect);
+        im.panels.push_back(p);
+        out.push_back(im);
+        Image tilt;
+        tilt.name = name("06b_hull_20deg_fighter_v500_n150_s1_argon-blue");
+        tilt.desc = "Grey hull plate at the nozzle depth, its left edge 10 px left of the nozzle; exhaust 20 deg from the line of sight pointing away, emerging past the edge; fighter 150 px, s = 1, argon blue";
+        Panel q = single({away(side(1060, 540, 1.f, argon_blue), 20.f)});
+        q.plate = true;
+        const float r1[4] = {1050.f, 290.f, 1660.f, 790.f};
+        std::copy(r1, r1 + 4, q.plate_rect);
+        tilt.panels.push_back(q);
+        out.push_back(tilt);
+    }
+    // 7. The RCS puff: steering jets (value 100, 60 px), side view; left steady at z 1.0 from frame 0, right fired at
+    // frame 30 (z 0.01 -> 0.505 -> 1.0, the attack peak at frame 32), captured at frame 33.
+    {
+        Image im;
+        im.name = name("07_rcs_steering_v100_n60_argon-blue_steady-left_puff-peak+1-right");
+        im.desc = "RCS steering jets (value 100, 60 px), side view, argon blue: left at steady state (z 1.0), right one frame after its attack peak (fired at frame 30: z 0.01 -> 0.505 -> 1.0, peak frame 32, captured 33)";
+        Nozzle steady = side(800, 540, (1.f - .25f) / 1.75f, argon_blue, 60.f, 100.f); // z 1.0
+        steady.steering = true;
+        Nozzle puff = steady;
+        puff.x_px = 1500.f;
+        puff.fire_at = 30;
+        Panel p = single({steady, puff});
+        p.capture = 33;
+        im.panels.push_back(p);
+        out.push_back(im);
+    }
+    // 8. The SETA travel look: warp 6, the ramp engaged from frame 0 (weight 1 by frame 30), against normal.
+    {
+        Image im;
+        im.name = name("08_seta_warp6_side_fighter_v500_n150_s1_argon-blue_normal-top_travel-bottom");
+        im.desc = "SETA travel look: fighter nozzle (value 500, 150 px), side view, s = 1, argon blue; top normal, bottom at warp 6 after the ramp (weight 1: length 2x, radiance 1.25x, flow 1.5x)";
+        for (const bool seta : {false, true}) {
+            Panel p = single({side(1700, seta ? 810.f : 270.f, 1.f, argon_blue)});
+            p.seta = seta;
+            p.note = seta ? "warp6" : "normal";
+            im.panels.push_back(p);
+        }
+        out.push_back(im);
+    }
+    // 9. The ribbon: a nozzle (value 500, 40 px) moving 8 px per frame to the right over the dark sky.
+    {
+        Image im;
+        im.name = name("09_ribbon_moving8px_fighter_v500_n40_s1_argon-blue");
+        im.desc = "Ribbon: fighter nozzle (value 500, 40 px) at s = 1, side view, moving 8 px per frame to the right over the dark sky, the production ribbon trailing; argon blue";
+        Nozzle z = side(1300, 540, 1.f, argon_blue, 40.f);
+        z.speed_px = 8.f;
+        im.panels.push_back(single({z}));
+        out.push_back(im);
+    }
+    // 10. A crowd: 30 nozzles, mixed values, sizes, axes, throttles and tints (deterministic).
+    {
+        Image im;
+        im.name = name("10_crowd_30_mixed");
+        im.desc = "Crowd: 30 nozzles, value 60..10,000, projected 2..80 px (log-uniform), random axes and throttles, two-tone colours of 12 clusters; one frame";
+        std::uint32_t seed = 20261003u;
+        auto rnd = [&]() {
+            seed = seed * 1664525u + 1013904223u;
+            return float(seed >> 8) / 16777216.f;
+        };
+        const float values[5] = {60.f, 150.f, 500.f, 2000.f, 10000.f};
+        std::vector<Nozzle> v;
+        for (unsigned i = 0; i < 30; ++i) {
+            Nozzle z;
+            z.x_px = 120.f + 1680.f * rnd();
+            z.y_px = 90.f + 900.f * rnd();
+            z.n_px = 2.f * std::pow(40.f, rnd());
+            z.value = values[unsigned(rnd() * 5.f) % 5u];
+            const float a[3] = {rnd() - .5f, rnd() - .5f, rnd() - .5f};
+            const float l = std::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+            for (unsigned k = 0; k < 3; ++k) z.axis[k] = l > 1e-3f ? a[k] / l : (k ? 0.f : -1.f);
+            z.fixed = true;
+            z.s = rnd();
+            z.tone = int(rnd() * float(tone_count)) % tone_count;
+            v.push_back(z);
+        }
+        im.panels.push_back(single(v));
+        out.push_back(im);
+    }
+    return out;
+}
+void run(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, Quad& quad, rr::EnginePlumesPass& plumes,
+         const std::string& dir) {
+    for (int i = 0; i < tone_count; ++i) {
+        bodies[i] = ee::Body{};
+        bodies[i].colour = 1;
+        std::memcpy(bodies[i].mean, tones[i].mean, sizeof tones[i].mean);
+        std::memcpy(bodies[i].peak, tones[i].peak, sizeof tones[i].peak);
+    }
+    rr::EngineRibbonsPass ribbons;
+    check("dump ribbons attach", ribbons.attach(d, *reinterpret_cast<void* const* const*>(d), caps, format));
+    Targets t(d, 1920, 1080);
+    Scene scene(d, t, quad);
+    // The starfield (static: about 0.15 % of the pixels a star of 0.15..1.0 encoded, slightly tinted, over a
+    // 0.006..0.012 sky) and the grey plate (c0 its rectangle, c1.x its encoded level, c1.y on).
+    std::vector<DWORD> code;
+    compile("float4 rect:register(c0);float4 plate:register(c1);float4 main(float2 p:VPOS):COLOR0{"
+            "float2 q=floor(p);float h=frac(sin(dot(q,float2(12.9898,78.233)))*43758.5453);"
+            "float g=frac(sin(dot(q,float2(39.3468,11.135)))*24634.6345);"
+            "float star=h>0.9985?0.15+0.85*g*g:0;"
+            "float3 c=float3(0.006,0.007,0.012)+star*float3(lerp(0.8,1,g),lerp(0.85,1,frac(h*7.0)),1);"
+            "bool inside=plate.y>0.5&&p.x>=rect.x&&p.x<rect.z&&p.y>=rect.y&&p.y<rect.w;"
+            "return float4(inside?plate.xxx:c,0);}",
+            "ps_3_0", code);
+    Com<IDirect3DPixelShader9> sky;
+    check("dump sky ps", d->CreatePixelShader(code.data(), &sky.p));
+    unsigned written = 0, drew = 0;
+    const auto list = images();
+    for (const Image& image : list) {
+        drew += run_image(d, t, scene, sky.p, plumes, ribbons, dir, image);
+        ++written;
+    }
+    ribbons.detach();
+    std::printf("DUMP_DONE images=%u drew=%u\n", written, drew);
+    report("dump_images_written", written == list.size() && drew == list.size());
+}
+} // namespace dump
 } // namespace
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     try {
         if (argc < 2) {
-            std::puts("usage: engine_plumes_fixture <d3dx9_37.dll> [--only case,...]");
+            std::puts("usage: engine_plumes_fixture <d3dx9_37.dll> [--only case,...] [--dump dir]");
             return 2;
         }
-        std::string only = argc >= 4 && !std::strcmp(argv[2], "--only") ? argv[3] : "";
+        std::string only, dump_dir;
+        for (int i = 2; i + 1 < argc; i += 2) {
+            if (!std::strcmp(argv[i], "--only")) only = argv[i + 1];
+            else if (!std::strcmp(argv[i], "--dump")) dump_dir = argv[i + 1];
+        }
         auto wanted = [&](const char* name) { return only.empty() || only.find(name) != std::string::npos; };
         const char* ab = std::getenv("X3M_PLUMES_FIXTURE_DISC_AB");
         const bool disc_ab = ab && !std::strcmp(ab, "1");
@@ -2086,6 +2567,14 @@ int main(int argc, char** argv) {
             report("resolve_flown_configuration", flown);
         }
         Quad quad(d);
+        if (!dump_dir.empty()) {
+            dump::run(d, caps, mode.Format, quad, pass, dump_dir);
+            pass.detach();
+            std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
+            std::fflush(stdout);
+            TerminateProcess(GetCurrentProcess(), failures ? 1u : 0u);
+            return failures ? 1 : 0;
+        }
         for (const auto size : {std::pair{1920u, 1080u}, std::pair{5120u, 1440u}}) {
             Targets* t = new Targets(d, size.first, size.second);
             Scene* scene = new Scene(d, *t, quad);

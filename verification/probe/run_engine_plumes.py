@@ -17,6 +17,10 @@ u 0.1 / 0.5 / 0.9, the RCS puff and brake flare attack, the travel look at warp 
 --disc-ab runs the timing case alone with X3M_PLUMES_FIXTURE_DISC_AB=1: the stage cost with the end-on disc drawn and
 not drawn, three interleaved rounds at 30 / 100 nozzles and both sizes, into
 verification/results/engine-effects/plume_disc_ab.json (the summary record is not touched).
+--dump-images DIR runs the fixture's look-image mode instead of the cases (the summary record is not touched): 1920x1080
+frames of the production plume and ribbon stage through the real resolve after 30 frames of warm-up, tonemapped by a CPU
+port of the write-back's AgX at EV 0 (no bloom), written as PNGs (png_writer.py) into DIR with a README.md listing each
+file and its parameters, and contact_sheet.png when Pillow is importable.
 The fixture's stdout stays under verification/probe/build/engine-plumes/. Run through wine_lock.py with
 X3M_FIXTURE_BOTTLE=X3. Never launches the game.
 """
@@ -30,6 +34,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import png_writer
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 from game_guard import game_running
 
@@ -41,7 +46,7 @@ FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function
          '-mstackrealign', '-mincoming-stack-boundary=2', '-static', '-static-libgcc', '-static-libstdc++',
          '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX', '-DX3M_ENGINE_PLUMES_FIXTURE']
 SOURCES = ('verification/probe/engine_plumes_fixture.cpp', 'src/renderer/engine_plumes_pass.cpp',
-           'src/renderer/temporal_pass.cpp')
+           'src/renderer/engine_ribbons_pass.cpp', 'src/renderer/temporal_pass.cpp')  # the ribbons: --dump-images only
 # The production sources the fixture exercises: their content hashes and the checkout's commit go into the record
 # (test_engine_plumes compares them with the tree).
 PRODUCTION_SOURCES = ('src/proxy/engine_plumes_core.h', 'src/proxy/engine_effects_core.h', 'src/renderer/fog_transmittance.h',
@@ -174,12 +179,147 @@ def disc_ab_summary(rows):
     return out
 
 
+PNG_LIMIT = 500 * 1024
+
+
+def dump_rows(text):
+    """The fixture's DUMP rows: per image its description, bands and nozzles, in output order."""
+    images = {}
+    for line in text.splitlines():
+        head = line.split(' ', 1)[0]
+        if head == 'DUMP_DESC':
+            _, name, desc = line.split(' ', 2)
+            images[name] = {'name': name, 'desc': desc.strip(), 'panels': [], 'nozzles': [], 'written': False}
+        elif head in ('DUMP_PANEL', 'DUMP_NOZZLE', 'DUMP'):
+            row = fields(line)
+            entry = images.setdefault(row['file'], {'name': row['file'], 'desc': '', 'panels': [], 'nozzles': [], 'written': False})
+            if head == 'DUMP':
+                entry.update(written=True, drew=row.get('drew'))
+            else:
+                entry['panels' if head == 'DUMP_PANEL' else 'nozzles'].append(row)
+    return list(images.values())
+
+
+def contact_sheet(out_dir, names):
+    """Every image tiled 4 across at 480x270 with its file name; None without Pillow."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return None
+    cols, tw, th, label = 4, 480, 270, 30
+    rows = (len(names) + cols - 1) // cols
+    sheet = Image.new('RGB', (cols * tw, rows * (th + label)), (24, 24, 24))
+    draw = ImageDraw.Draw(sheet)
+    for i, name in enumerate(names):
+        x, y = (i % cols) * tw, (i // cols) * (th + label)
+        with Image.open(out_dir / f'{name}.png') as im:
+            sheet.paste(im.convert('RGB').resize((tw, th), Image.LANCZOS), (x, y))
+        text = name.replace('_agx-ev0', '')
+        draw.text((x + 4, y + th + 2), text[:78], fill=(230, 230, 230))
+        if len(text) > 78:
+            draw.text((x + 4, y + th + 15), text[78:156], fill=(230, 230, 230))
+    path = out_dir / 'contact_sheet.png'
+    sheet.save(path, optimize=True)
+    return path
+
+
+def write_readme(out_dir, images, sheet, record):
+    try:
+        shown = out_dir.relative_to(ROOT)
+    except ValueError:
+        shown = out_dir
+    lines = ['# Engine plume look images', '',
+             'Written by `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_plumes.py '
+             f'--dump-images {shown}/` (the fixture\'s `--dump` mode: `verification/probe/engine_plumes_fixture.cpp`, namespace '
+             '`dump`). Bottle X3, builtin d3d9; the game is not launched.', '',
+             f"Source: commit `{record['source']['commit']}`; production sources dirty: {record['source']['production_sources_dirty']}; "
+             f"fixture build warnings: {record.get('build', {}).get('warnings')}.", '',
+             'Every image is 1920x1080: one or more horizontal bands, each a separate sequence of the production stage '
+             '(EnginePlumesPass, then EngineRibbonsPass) inside the production TemporalPass resolve in the flown configuration, '
+             '30 frames of warm-up at 60 fps (stage clock, flow accumulator x the travel flow, attack memory and SETA ramp advanced '
+             'as the proxy advances them) and that band of the resolved frame named in the table (frame 30 = the 31st). Default '
+             'plume look with the preset named. Background: a dark static starfield; the hull cases add a plain grey plate (encoded '
+             '0.30) whose lane depth is the nozzle\'s. Tints are two-tone body colours (mean, peak; linear): "split-red" = the red '
+             'cluster (1, 0.15, 0.15; 1, 0.81, 0.81), "argon-blue" = the cyan cluster (0.14, 0.71, 1; 0.27, 0.90, 1). The nozzle '
+             'width in px is 0.5 x value x pixels per unit at the nozzle depth. Angles are from the line of sight to the nozzle '
+             '(90 = side view, perpendicular to it wherever the nozzle sits on screen).', '',
+             'Near-camera cap: at 1080p a 150 px nozzle is over the production cap (the body\'s width held to 0.12 H = 130 px by '
+             'shrinking the plume about the nozzle, its radiance fading towards 0.5 in the last 20 %; `engine_plumes_core.h`, '
+             'chase_cap). The bands where it acted say "near-cap N faded N" below: those plumes are shown smaller and dimmer than '
+             'the law at 150 px, as the game would draw them at that size.', '',
+             'Tonemap (`_agx-ev0` in each name): a CPU port of the write-back\'s AgX (`src/temporal/agx.hlsl` with the default '
+             'constants: gamma 2.2 decode, look none) at EV 0 (exposure 1, the meter\'s neutral target over a dark sky), 8-bit '
+             'display RGB. Not included: bloom, TAA sharpen, display dither, fog, the engine light on the hull and the heat shimmer.', '',
+             '| File | Shows | Bands: rows, captured frame, preset, SETA weight, plate, drawn / nozzles, ribbons |', '| --- | --- | --- |']
+    for im in images:
+        bands = '; '.join(
+            f"{p['rows']} f{p['capture_frame']} {p['preset']}" + (f" SETA {p['travel_weight']:.2f}" if p['seta'] else '') +
+            (' plate' if p['plate'] else '') + f" drawn {p['drawn']}/{p['nozzles']}" +
+            (f" near-cap {p['capped']} faded {p['faded']}" if p['capped'] or p['faded'] else '') + f" ribbons {p['ribbons']}" +
+            (f" ({p['note']})" if p['note'] != '-' else '') for p in im['panels'])
+        lines.append(f"| `{im['name']}.png` | {im['desc']} | {bands} |")
+    lines += ['', 'Nozzles: screen position at the captured frame, projected width, value, view depth, angle, axis (view '
+              'space), throttle, tint.', '']
+    for im in images:
+        for z in im['nozzles']:
+            extra = ((' steering' if z['steering'] else '') + (f" fired at frame {z['fire_at']}" if z['fire_at'] >= 0 else '') +
+                     (f" moving {z['speed_px']} px/frame" if z['speed_px'] else ''))
+            lines.append(f"- `{im['name']}` band {z['band']}: ({z['x_px']}, {z['y_px']}) px, {z['nozzle_px']} px, value {z['value']}, "
+                         f"depth {z['depth']}, {z['degrees']} deg from the line of sight ({z['facing']}), axis ({z['axis']}), "
+                         f"s {z['s']}, {z['tone']}{extra}")
+        if not im['nozzles']:
+            lines.append(f"- `{im['name']}`: {sum(p['nozzles'] for p in im['panels'])} nozzles from a fixed LCG seed "
+                         '(fixture `dump::images`), not listed one by one')
+    lines += ['', 'Contact sheet: `contact_sheet.png` (every image at 480x270 with its name).' if sheet else
+              'Contact sheet: skipped (Pillow not importable).', '']
+    (out_dir / 'README.md').write_text('\n'.join(lines))
+
+
+def dump_images(args, record):
+    out_dir = Path(args.dump_images)
+    out_dir = (out_dir if out_dir.is_absolute() else Path.cwd() / out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    raw = BUILD / 'dump'
+    raw.mkdir(parents=True, exist_ok=True)
+    for old in raw.glob('*.ppm'):
+        old.unlink()
+    command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll',
+               '--dump', 'dump']
+    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=args.timeout)
+    text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
+    (BUILD / 'dump.log').write_text(text)
+    (BUILD / 'dump.stderr.txt').write_bytes(done.stderr)
+    report = parse(text)
+    images = dump_rows(text)
+    sizes = {}
+    for im in images:
+        ppm = raw / f"{im['name']}.ppm"
+        if im['written'] and ppm.exists():
+            sizes[im['name']] = png_writer.write_png(out_dir / f"{im['name']}.png", *png_writer.read_ppm(ppm))
+            ppm.unlink()
+    names = [im['name'] for im in images if im['name'] in sizes]
+    sheet = contact_sheet(out_dir, names) if names else None
+    if sheet:
+        sizes['contact_sheet'] = sheet.stat().st_size
+    write_readme(out_dir, images, sheet, record)
+    over = {k: v for k, v in sizes.items() if v > PNG_LIMIT}
+    ok = (done.returncode == 0 and report['result'] is not None and report['result']['verdict'] == 'PASS' and
+          not report['failed_checks'] and images and len(names) == len(images) and all(im.get('drew') == 1 for im in images) and
+          not over and record.get('build', {}).get('warnings', 0) == 0)
+    print(json.dumps({'passed': bool(ok), 'exit': done.returncode, 'checks': report['check_count'], 'failed': report['failed_checks'],
+                      'images': len(names), 'contact_sheet': bool(sheet), 'max_png_kb': round(max(sizes.values(), default=0) / 1024, 1),
+                      'over_500kb': over, 'out': str(out_dir), 'log': str((BUILD / 'dump.log').relative_to(ROOT))}, indent=1))
+    return 0 if ok else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=int, default=1800)
     parser.add_argument('--only', default=None, help='fixture case filter (comma list), diagnosis only: the record is not passed')
     parser.add_argument('--disc-ab', action='store_true', help='the disc on/off stage-cost A/B alone (plume_disc_ab.json)')
+    parser.add_argument('--dump-images', metavar='DIR', default=None,
+                        help='look images (PNG, README, contact sheet) into DIR instead of the cases; the record is not touched')
     args = parser.parse_args()
     if args.disc_ab:
         args.only = 'timing'
@@ -195,6 +335,8 @@ def main():
         record['build'] = build()
     d3dx = bottle.game_dir() / 'd3dx9_37.dll'
     record['d3dx9_37_sha256'] = sha(d3dx)
+    if args.dump_images:
+        return dump_images(args, record)
     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll']
     if args.only:
         command += ['--only', args.only]
