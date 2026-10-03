@@ -99,6 +99,9 @@ int main() {
         const float value = s.size, L_nominal = 2.f * value * ppu(2000.f);
         expect(q.length >= 1.5f * .75f * L_nominal - 1.f && q.length <= 1.5f * 1.25f * L_nominal + 1.f, "length 1.5 L");
         expect(q.depth > 0.f && q.depth < 1.f && close_to(q.depth, M22 + M32 / (2000.f - .5f * value), 1e-6f), "occlusion depth one nozzle width nearer");
+        // The fade (review S3): over half a nozzle width of view depth in front of that, as 1 / its device-depth span.
+        const float d_full = M22 + M32 / (2000.f - .5f * value - .25f * value);
+        expect(close_to(q.fade, 1.f / (q.depth - d_full), 1e-3f) && q.fade > 0.f, "occlusion fade over 0.5 nozzle widths of depth");
         expect(q.bounds[0] >= 0 && q.bounds[2] <= int(W) && q.bounds[3] - q.bounds[1] == int(std::ceil(q.origin[1] + 61.f)) - int(std::floor(q.origin[1] - 61.f)), "box");
         // The mask: 1 near the nozzle on the centre line, 0 on every border, 0 outside.
         float m = 0.f;
@@ -144,7 +147,21 @@ int main() {
         float factor = 0.f, phase = 0.f;
         ep::flow_factor(ep::default_look, s.size, &factor);
         ep::nozzle_phase(123.25, factor, &phase);
-        expect(a[0].phase == phase && phase > 0.f, "the nozzle's own flow phase");
+        expect(a[0].phase == phase && phase > 0.f, "the nozzle's own flow phase (no memory: the shared phase)");
+        // Review P1: with the stage's per-nozzle memory the rect reads the nozzle's own accumulated phase (read only:
+        // the memory is unchanged), advanced to this frame's accumulator.
+        static ep::Transients memory; memory.clear(); memory.begin(1.f / 60.f);
+        ep::Transients::Slot* slot = memory.touch(ep::identity_key(s));
+        float stage_phase = 0.f;
+        memory.advance_phase(*slot, 100., factor, &stage_phase); // the stage's earlier frame, then 23.25 widths on
+        slot->phase = 777.;
+        ep::Dynamics keyed = still;
+        keyed.transients = &memory;
+        const std::uint32_t frame_before = memory.frame;
+        const double kept = slot->phase;
+        collect(&s, 1, nullptr, view(), projection(), ep::Preset::standard, 0.f, nullptr, nullptr, nullptr, nullptr, b, &st, 4, &keyed);
+        expect(close_to(b[0].phase, float(777. + 23.25 * double(factor)), 1e-4f) && slot->phase == kept && memory.frame == frame_before,
+               "the rect takes the nozzle's own phase from the memory, read only");
     }
     // ----------------------------------------------------------- the cap and the rank
     {
@@ -174,7 +191,8 @@ int main() {
                c[7] == 3.f * boil_rate && c[8] == 1.f / cell_widths, "c0..c2");
         expect(c[16] == r[0].origin[0] && c[18] == r[0].axis[0] && c[(4 + 16) * 4] == r[0].length && c[(4 + 16) * 4 + 1] == r[0].half_width &&
                c[(4 + 16) * 4 + 2] == r[0].back && close_to(c[(4 + 16) * 4 + 3], 1.f / r[0].nozzle_px, 1e-9f) &&
-               c[(4 + 32) * 4 + 1] == r[0].depth && c[(4 + 1) * 4] == 0.f, "per-rect registers c4 / c20 / c36");
+               c[(4 + 32) * 4 + 1] == r[0].depth && c[(4 + 32) * 4 + 3] == r[0].fade && c[(4 + 1) * 4] == 0.f,
+               "per-rect registers c4 / c20 / c36 (c36.w the occlusion fade)");
         QuadVertex v[vertices_per_rect];
         vertices(r, 1, W, H, v);
         // Continuous pixel X maps to clip 2 X / W - 1 - 1 / W and u X / W (pixel i's centre interpolates (i + 0.5) / W).
@@ -379,6 +397,9 @@ class Wiring(unittest.TestCase):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('#include "motion_output_engine_shimmer_inc.h"', motion)
         # The post-resolve site: the FP16 route's resolved image, before the write-back (end_redirect) and bloom read it.
+        # The order is also executed (review S1): the effects fixture's armed mode hashes frame N's resolved image
+        # before and after the shimmer and after its revert, and frame N+1's resolve reads it as history
+        # (test_engine_effects EngineEffectsFixtureRecord, `shimmer_history`).
         resolve = motion[motion.index('HRESULT MotionOutput::resolve(IDirect3DSurface9*'):motion.index('bool MotionOutput::resolve_hdr(')]
         site = resolve.index('run_engine_shimmer(out.color,out.color_surface,depth,in.width,in.height);')
         self.assertLess(resolve.index('hdr_resolved_=out.color;'), site)

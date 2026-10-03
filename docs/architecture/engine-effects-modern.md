@@ -660,3 +660,14 @@ of [engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md) (section 5 t
   --debug ([logging-tiers.md](logging-tiers.md)).
 - *Lab.* `tools/effects/engine_exhaust_lab.html` mirrors the flow factor (a nozzle-value slider), the two-tone head and
   the idle floor; the spill, the distance law, the attack and the travel look are game-only.
+- *Review fixes (2026-10-03, with the heat shimmer's).* The flow phase is accumulated per nozzle: `Transients` became
+  the per-nozzle memory (512 slots of 48 B: last z, attack, phase, keyed and probed as before); each drawn nozzle's
+  phase advances by the accumulator's step x this frame's `flow_factor`, a new key starts at accumulator x factor, a
+  record without a slot (a full window, counted `attack_overflow`) takes that shared phase; a factor change (the floor's
+  radius appearing, far <-> scene) changes the speed, never the position (counted `flow_factor_changes`). The shimmer's
+  rects read the same phase (read only). Main jets' z is remembered, so a main jet pushed into brake (z 1 -> 5 in one
+  frame) flares; the attack's rise is taken over the game time since the slot was last seen (a jet returning after
+  0.4 s gets 0.31 of the rise, not all of it). The spill's depth guard is min(2 value, `spill_depth_max` 300) world
+  units (c17.z). `TravelRamp` takes the true elapsed time with SETA off (a gap without plume frames releases at once;
+  under SETA a step stays held to 0.1 s) and starts over on a load epoch change and at Reset. An unreadable SETA tick
+  site refuses that frame only (`read`) and is retried; a byte mismatch still latches `site_mismatch`.

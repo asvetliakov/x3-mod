@@ -451,9 +451,16 @@ class EngineEffectsFixtureRecord(unittest.TestCase):
         self.assertEqual(r['runs']['main']['engine_frame_rows'], 13)  # frames 0..11 and the quiet row at 300
         # The plume stage's SETA read (gap 7): through the seam it engages at warp 6 and releases after the hold; without
         # it the site does not match and the read fails closed.
-        self.assertEqual(r['runs']['armed']['seta_rows'], [['read', 'off', 'ok', '1', '1.000'], ['engage', 'on', 'ok', '1', '6.000'],
-                                                           ['release', 'off', 'ok', '1', '1.000']])
+        # The site unreadable on the first armed frame: refused as `read` (valid 0), retried, then ok (review P6).
+        self.assertEqual(r['runs']['armed']['seta_rows'], [['read', 'off', 'read', '0', '1.000'], ['read', 'off', 'ok', '1', '1.000'],
+                                                           ['engage', 'on', 'ok', '1', '6.000'], ['release', 'off', 'ok', '1', '1.000']])
         self.assertEqual(r['runs']['armed_refused']['seta_rows'], [['read', 'off', 'site_mismatch']])
+        # The heat shimmer's two-frame history, executed (review S1): frame N's resolved image displaced by the shimmer,
+        # byte-equal to its unshimmered resolve after the revert, and read as history by frame N+1's resolve.
+        h = r['runs']['armed']['shimmer_history']
+        self.assertEqual((h['stage'], h['pre_eq_reverted'], h['pre_ne_drawn'], h['reverted_eq_history'], h['hashes'],
+                          h['used_history'], h['other_texture'], h['frames_apart']), ('5', '1', '1', '1', '4', '1', '1', '1'))
+        self.assertGreaterEqual(int(h['rects']), 1)
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))

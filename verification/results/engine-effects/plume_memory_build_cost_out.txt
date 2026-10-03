@@ -1,0 +1,12 @@
+FLOW_KEYED_HOST step_main=0.02185 step_doubled=0.01312 shared_jump=2206.0 changes=5
+ATTACK_GAP factor_0.4s=1.1562 factor_0.6s=1.0000
+BUILD records=30 drawn=30 median_us=1.31
+BUILD_FLOOR records=30 drawn=30 median_us=1.48
+BUILD_MEMORY records=30 drawn=30 median_us=3.03 overflow=0
+BUILD records=100 drawn=100 median_us=4.33
+BUILD_FLOOR records=100 drawn=100 median_us=4.89
+BUILD_MEMORY records=100 drawn=100 median_us=9.62 overflow=0
+BUILD records=1024 drawn=1024 median_us=46.78
+BUILD_FLOOR records=1024 drawn=1024 median_us=52.11
+BUILD_MEMORY records=1024 drawn=1024 median_us=67.19 overflow=512
+engine_plumes_core checks=190 failed=0

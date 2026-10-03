@@ -44,11 +44,14 @@
 // clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the
 // clamp, the end-on disc's no lower than 0.6 (any plume that close; the own ship's in chase view only when its body is,
 // after the review of flight C).
-// Flow: the noise field translates along the axis by a phase in nozzle widths: the frame's accumulator (FlowPhase at
+// Flow: the noise field translates along the axis by a phase in nozzle widths, per vertex (shape.w), so it moves at one
+// speed whatever the pulsed, throttle-dependent L. Each nozzle accumulates its own phase in the per-nozzle memory
+// (Transients, keyed by the record's identity): every frame it advances by the frame accumulator's step (FlowPhase at
 // flow_rate, the mock-up's speed at s = 1 without the pulse, x the travel look's flow) x the nozzle's flow_factor
 // (flow_reference / value in [flow_slow, 1]: the same world speed from value 500 up, capitals crawl at 0.3; gap 4 of
-// docs/architecture/engine-exhaust-gap-analysis.md), per vertex (shape.w), so it moves at one speed whatever the pulsed,
-// throttle-dependent L.
+// docs/architecture/engine-exhaust-gap-analysis.md), so a change of the factor (the floor's radius appearing, a far
+// record turning into a scene one) changes the speed, never the position; a new key (and a record without a slot)
+// takes the shared phase, the accumulator x factor.
 // After the gap analysis (phase 2 and 3): a main jet's length is at least idle_length value (gap 10); the body's colour
 // runs from the head colour (the peak colour at the mean's luminance) to the mean (gap 5); the halo spills through the
 // lane around the nozzle (gap 3, the pixel program); a steering or brake body's rising z adds a decaying attack to its
@@ -206,7 +209,9 @@ struct Look {
     // Gap 3, the nozzle spill: the halo's lane visibility is at least glow_through within spill_inner nozzle widths of
     // the nozzle (the screen-plane distance), tapering to 0 at spill_reach, for an occluder at most spill_depth x value
     // in front of the nozzle's depth (its own hull, not a ship passing in front); the body and the ring unchanged.
-    float glow_through = .15f, spill_inner = .8f, spill_reach = 1.f, spill_depth = 2.f;
+    // The depth guard is also bounded in world (record) units, at most spill_depth_max: a capital's 2 value reached
+    // about 2,000 units, so a ship passing that far in front still let the rim through.
+    float glow_through = .15f, spill_inner = .8f, spill_reach = 1.f, spill_depth = 2.f, spill_depth_max = 300.f;
 };
 constexpr Look default_look{};
 constexpr float soft_core = .15f, soft_halo = 1.f; // SOFT x value (the pixel program's lane terms: body and ring, halo)
@@ -228,16 +233,19 @@ constexpr double flow_wrap = 1099511627776.; // 2^40 nozzle widths: the frame's 
 // 1.0-3.6x the mean's luminance by cluster: verification/results/engine-effects/plume_two_tone_colours.py).
 constexpr float luma_r = .2126f, luma_g = .7152f, luma_b = .0722f;
 // Gap 6, the RCS puff attack and retro flare: a steering or brake body whose z rises gains radiance x (1 + attack_gain x
-// saturate(dz / (attack_rate x dt))), dt in game ms (wall x the SETA rate), decaying linearly to 1 over attack_decay
-// seconds; no shape change; main jets unaffected. The memory: transient_slots per-nozzle last z keyed by the record's
-// identity (the ribbon pool's map shape), transient_probe slots probed, a slot unseen for transient_hold free.
+// saturate(dz / (attack_rate x dt))), dt in game ms since the nozzle was last seen (wall x the SETA rate), decaying
+// linearly to 1 over attack_decay seconds; no shape change; main jets unaffected (their z is remembered, so a main jet
+// pushed into brake flares). The memory: transient_slots per-nozzle slots (last z, the attack, the flow phase) keyed by
+// the record's identity (the ribbon pool's map shape), transient_probe slots probed, a slot unseen for transient_hold
+// free.
 constexpr float attack_gain = .5f, attack_rate = .004f, attack_decay = .12f; // -, z per game ms, seconds
 constexpr unsigned transient_slots = 512, transient_probe = 8;
 constexpr float transient_hold = .5f;       // seconds
 // Gap 7, the travel look under SETA (docs/reverse-engineering/engine-effects.md section 8): with the requested warp above
 // 1.0 the travel weight ramps 0 -> 1 over travel_rise seconds (smoothstep), and back over the same after the warp has
 // been 1.0 for travel_hold seconds; at weight 1 a main jet's L x travel_length, its radiance x travel_radiance, the
-// ribbons' T x travel_trail, the flow x travel_flow. The ramp's step is held to travel_max_step (a stall).
+// ribbons' T x travel_trail, the flow x travel_flow. While SETA is on the ramp's step is held to travel_max_step (a
+// stall completes no rise); with SETA off it takes the true elapsed time (a gap without plume frames releases at once).
 constexpr float travel_length = 2.f, travel_radiance = 1.25f, travel_trail = 2.f, travel_flow = 1.5f;
 constexpr float travel_rise = .5f, travel_hold = .3f, travel_max_step = .1f; // seconds
 constexpr float nozzle_min = .1f, nozzle_max = 1.f; // X3M_ENGINE_PLUME_NOZZLE's accepted range (x value)
@@ -371,7 +379,8 @@ inline void peak_axis_at(const LookTables& t, float s, float* out) noexcept {
 }
 // The pixel program's look constants c3..c17 (engine_plume_ps.hlsl), 60 floats (the flow phase is the nozzle's, in the
 // vertex; the halo's sigma the nozzle's): c3..c7 the law, c8..c15 the disc's samples, c16 the mouth ramp (dip, end) and
-// the spill's glow_through and 1 / (spill_depth), c17 the spill's inner and outer reach (nozzle widths), 0, 0.
+// the spill's glow_through and 1 / (spill_depth), c17 the spill's inner and outer reach (nozzle widths), 1 /
+// spill_depth_max (world units), 0.
 constexpr unsigned pixel_constant_floats = 60;
 // `t` look_tables(k), computed once where the look is fixed (the proxy at load: MotionOutput::plumes_tables_).
 inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_constant_floats]) noexcept {
@@ -389,7 +398,8 @@ inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_
     out[55] = k.spill_depth > 1e-3f ? 1.f / k.spill_depth : 1e3f;
     out[56] = k.spill_inner;
     out[57] = k.spill_reach > k.spill_inner + 1e-3f ? k.spill_reach : k.spill_inner + 1e-3f;
-    out[58] = out[59] = 0.f;
+    out[58] = k.spill_depth_max > 1e-3f ? 1.f / k.spill_depth_max : 1e3f;
+    out[59] = 0.f;
 }
 inline void pixel_constants(const Look& k, float out[pixel_constant_floats]) noexcept {
     LookTables t;
@@ -404,7 +414,8 @@ inline void flow_rate(const Look& k, float* out) noexcept {
     *out = .35f * k.flow * L1 / 1.6f;
 }
 // The frame's flow accumulator (flow_rate's nozzle widths, unwrapped in double): advanced once per frame by the stage
-// clock's step x flow_rate (x the travel look's flow factor); each nozzle's phase is it x flow_factor (nozzle_phase).
+// clock's step x flow_rate (x the travel look's flow factor); a nozzle's phase advances by its step x the nozzle's
+// flow_factor (Transients::advance_phase), a new one starts at it x flow_factor (nozzle_phase).
 struct FlowPhase {
     double nozzle_widths = 0.;
     void advance(double dt, float rate) noexcept {
@@ -420,8 +431,9 @@ inline void flow_factor(const Look& k, float value, float* out) noexcept {
     const float slow = k.flow_slow > 0.f && k.flow_slow < 1.f ? k.flow_slow : 1.f;
     *out = !(f < 1.f) ? 1.f : f < slow ? slow : f;
 }
-// The nozzle's flow phase in its nozzle widths, wrapped at phase_wrap: flow x factor in double, so the pixel program's
-// float keeps 4096 / 2^23 nozzle widths of precision whatever the session's length.
+// The shared phase of a nozzle in its nozzle widths, wrapped at phase_wrap: flow x factor in double, so the pixel
+// program's float keeps 4096 / 2^23 nozzle widths of precision whatever the session's length. A nozzle's first frame
+// in the memory (and a record without a slot) takes it.
 inline void nozzle_phase(double flow, float factor, float* out) noexcept {
     double p = flow * double(factor);
     if (!(p >= 0.) || !(p < 4e12)) p = 0.; // scalar::floor needs p / phase_wrap < 2^31
@@ -502,7 +514,8 @@ struct BuildStats {
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
     unsigned far_nozzles = 0;   // nozzles drawn under Look::far_px_full (the distance law scaled their radiance)
     unsigned attacks = 0;       // steering or brake records under an attack (gap 6), drawn or not
-    unsigned transient_overflow = 0; // steering or brake records without an attack slot
+    unsigned transient_overflow = 0; // records without a slot in the per-nozzle memory (no attack; the shared phase)
+    unsigned flow_factor_changes = 0; // nozzles whose phase advanced under another flow factor than their last frame's
     unsigned culled_rows = 0, culled_behind = 0, culled_small = 0, culled_idle = 0, culled_capacity = 0;
     unsigned fogged = 0;        // nozzles whose colours took the fog transmittance (phase 3)
     float fog_min = 1.f;        // the smallest channel transmittance applied this frame
@@ -709,33 +722,42 @@ inline std::uint64_t identity_key(const ee::Record& r) noexcept {
     const std::uint64_t k = (std::uint64_t(r.model & 0x7fffffffu) << 32) | r.node_handle;
     return k ? k : 1u;
 }
-// The RCS puff attack and retro flare's memory: per steering or brake nozzle the last z and the attack's envelope,
-// transient_slots slots probed transient_probe from the key's home (no deletion: a slot unseen for transient_hold is
-// free and the first free one in the window takes a new key; a full window draws the nozzle without attack and counts
-// overflow). begin() once per frame with the stage clock's step; attack() per steering or brake record (before the idle
-// cull, so a puff rising from z 0.01 is seen). Render thread only. 24 bytes a slot, 12 KB.
+// The per-nozzle memory (gaps 4 and 6), keyed by the record's identity: the last z of every drawn nozzle and of every
+// steering or brake body (a main jet's too, so a main jet pushed into brake rises from its own z), the attack's
+// envelope, and the nozzle's own flow phase. transient_slots slots probed transient_probe from the key's home (no
+// deletion: a slot unseen for transient_hold is free and the first free one in the window takes a new key; a full
+// window counts overflow, and the record draws without attack on the shared phase). begin() once per frame with the
+// stage clock's step; touch() finds or takes a record's slot; update_z() the z and the attack, advance_phase() the
+// phase. A steering or brake body is touched before the idle cull (a puff rising from z 0.01 is seen), a main jet only
+// when drawn. Render thread only. 48 bytes a slot, 24 KB.
 struct Transients {
     struct Slot {
         std::uint64_t key = 0;
+        double flow = 0.;        // the frame accumulator (Dynamics::flow) at the phase's last advance
+        double phase = 0.;       // the nozzle's own flow phase, nozzle widths in [0, phase_wrap)
         float z = 0.f;
-        float boost = 0.f;      // the envelope's height at the attack (0..attack_gain)
+        float boost = 0.f;       // the envelope's height at the attack (0..attack_gain)
         float attack_age = 1e9f; // seconds since the attack
-        float idle = 1e9f;       // seconds since the slot's key was last seen
+        float idle = 1e9f;       // seconds since the slot's z was last updated
+        float factor = 0.f;      // the flow factor of the phase's last advance (0: no phase yet)
+        std::uint32_t seen = 0;  // the begin() count of the z's last update
+        bool z_known = false;
     };
     Slot slots[transient_slots];
-    std::uint32_t frame = 0;     // begin() count (a key seen twice in a frame keeps its first result)
+    std::uint32_t frame = 0;     // begin() count (a key seen twice in a frame keeps its first z update)
     float step = 0.f;            // this frame's step, seconds
     unsigned overflow = 0;       // this frame's records without a slot
+    unsigned factor_changes = 0; // this frame's phase advances under another factor than the slot's last
     void clear() noexcept {
         for (auto& s : slots) s = Slot{};
         step = 0.f;
-        overflow = 0;
+        overflow = factor_changes = 0;
     }
     // A frame: every slot ages by `seconds` (the stage clock's step; non-finite or negative: 0).
     void begin(float seconds) noexcept {
         step = seconds > 0.f && seconds < 1e6f ? seconds : 0.f;
         ++frame;
-        overflow = 0;
+        overflow = factor_changes = 0;
         for (auto& s : slots) {
             if (!s.key) continue;
             s.idle += step;
@@ -743,40 +765,53 @@ struct Transients {
             if (s.idle > transient_hold) s.key = 0;
         }
     }
-    // The radiance factor 1 + boost x (1 - age / attack_decay) of the record of identity `key` at `z`; `game_ms` this
-    // frame's step in game milliseconds (0: no attack, z still remembered). A new key starts at its own z (no attack).
-    void attack(std::uint64_t key, float z, float game_ms, float* factor) noexcept {
-        *factor = 1.f;
-        if (!key || !ee::finite_f(z)) return;
-        const unsigned home = unsigned(std::uint32_t(key) ^ std::uint32_t(key >> 32)) * 0x9e3779b1u >> 23; // 9 bits
-        Slot* found = nullptr;
+    static unsigned home_of(std::uint64_t key) noexcept {
+        return unsigned(std::uint32_t(key) ^ std::uint32_t(key >> 32)) * 0x9e3779b1u >> 23; // 9 bits
+    }
+    // The slot of identity `key` (taken from the window's first free one when absent: no z, no phase yet); null for key
+    // 0 or a full window (counted overflow).
+    Slot* touch(std::uint64_t key) noexcept {
+        if (!key) return nullptr;
+        const unsigned home = home_of(key);
         Slot* free_slot = nullptr;
         for (unsigned p = 0; p < transient_probe; ++p) {
             Slot& s = slots[(home + p) & (transient_slots - 1u)];
-            if (s.key == key) {
-                found = &s;
-                break;
-            }
+            if (s.key == key) return &s;
             if (!s.key && !free_slot) free_slot = &s;
         }
-        if (!found) {
-            if (!free_slot) {
-                ++overflow;
-                return;
-            }
-            *free_slot = Slot{};
-            free_slot->key = key;
-            free_slot->z = z;
-            free_slot->idle = 0.f;
-            return;
+        if (!free_slot) {
+            ++overflow;
+            return nullptr;
         }
-        Slot& s = *found;
-        if (s.idle > 0.f || step <= 0.f) { // the first sight this frame (or a frame without a step): update
+        *free_slot = Slot{};
+        free_slot->key = key;
+        free_slot->idle = 0.f;
+        return free_slot;
+    }
+    const Slot* find(std::uint64_t key) const noexcept {
+        if (!key) return nullptr;
+        const unsigned home = home_of(key);
+        for (unsigned p = 0; p < transient_probe; ++p) {
+            const Slot& s = slots[(home + p) & (transient_slots - 1u)];
+            if (s.key == key) return &s;
+        }
+        return nullptr;
+    }
+    // The slot's z this frame (the frame's first update counts; a later one of the same key keeps it). `transient` (a
+    // steering or brake body): a rising z starts an attack, its rise taken over the game time since the slot's last
+    // update (game_ms / step x idle: a nozzle seen again after a gap does not flash for the whole gap's rise), and
+    // `*factor` is its radiance factor 1 + boost x (1 - age / attack_decay); `game_ms` this frame's step in game
+    // milliseconds (0: no attack, z still remembered). A slot without a z starts at this one (no attack).
+    void update_z(Slot& s, float z, bool transient, float game_ms, float* factor) noexcept {
+        *factor = 1.f;
+        if (!ee::finite_f(z)) return;
+        if (!s.z_known || s.seen != frame) {
             const float dz = z - s.z;
-            if (dz > 0.f && game_ms > 0.f) {
-                float rise = dz / (attack_rate * game_ms);
+            if (s.z_known && transient && dz > 0.f && game_ms > 0.f) {
+                const float since = step > 0.f && s.idle > step ? game_ms * (s.idle / step) : game_ms;
+                float rise = dz / (attack_rate * since);
                 rise = rise > 1.f ? 1.f : rise;
-                float current = s.attack_age < attack_decay ? s.boost * (1.f - s.attack_age / attack_decay) : 0.f;
+                const float current = s.attack_age < attack_decay ? s.boost * (1.f - s.attack_age / attack_decay) : 0.f;
                 const float fresh = attack_gain * rise;
                 if (fresh >= current) {
                     s.boost = fresh;
@@ -784,9 +819,49 @@ struct Transients {
                 }
             }
             s.z = z;
+            s.z_known = true;
             s.idle = 0.f;
+            s.seen = frame;
         }
-        if (s.attack_age < attack_decay) *factor = 1.f + s.boost * (1.f - s.attack_age / attack_decay);
+        if (transient && s.attack_age < attack_decay) *factor = 1.f + s.boost * (1.f - s.attack_age / attack_decay);
+    }
+    // The radiance factor of the steering or brake record of identity `key` at `z` (touch + update_z): 1 without a slot.
+    void attack(std::uint64_t key, float z, float game_ms, float* factor) noexcept {
+        *factor = 1.f;
+        if (Slot* s = touch(key)) update_z(*s, z, true, game_ms, factor);
+    }
+    // The slot's flow phase this frame: the first advance takes the shared phase (nozzle_phase(flow, factor)), every
+    // later one adds the accumulator's step since the slot's last advance x this frame's factor (a decreasing or
+    // non-finite accumulator adds nothing); wrapped at phase_wrap. A factor other than the last advance's counts in
+    // factor_changes.
+    void advance_phase(Slot& s, double flow, float factor, float* out) noexcept {
+        if (!(s.factor > 0.f)) {
+            float p = 0.f;
+            nozzle_phase(flow, factor, &p);
+            s.phase = double(p);
+        } else {
+            const double d = flow - s.flow;
+            if (d > 0. && d < 1e9) s.phase += d * double(factor);
+            if (!(s.phase >= 0.) || !(s.phase < 4e12)) s.phase = 0.;
+            if (s.phase >= phase_wrap) s.phase -= phase_wrap * x3m::scalar::floor(s.phase / phase_wrap);
+            if (factor != s.factor) ++factor_changes;
+        }
+        s.flow = flow;
+        s.factor = factor;
+        *out = float(s.phase);
+    }
+    // Read only (the heat shimmer's rects, after the stage's frame): the phase advance_phase would give the key at
+    // `flow` and `factor`; false without a slot or a phase.
+    bool phase_of(std::uint64_t key, double flow, float factor, float* out) const noexcept {
+        const Slot* s = find(key);
+        if (!s || !(s->factor > 0.f)) return false;
+        double p = s->phase;
+        const double d = flow - s->flow;
+        if (d > 0. && d < 1e9) p += d * double(factor);
+        if (!(p >= 0.) || !(p < 4e12)) p = 0.;
+        if (p >= phase_wrap) p -= phase_wrap * x3m::scalar::floor(p / phase_wrap);
+        *out = float(p);
+        return true;
     }
 };
 
@@ -817,15 +892,16 @@ inline bool seta_decode(std::uint32_t warp, std::uint32_t mult, bool* engaged, f
     return true;
 }
 // The travel ramp: engaged at once on a SETA frame, released after travel_hold seconds without one; the weight runs
-// 0 -> 1 over travel_rise seconds while engaged and back while released. A step is held to travel_max_step, so a stall
-// neither completes a ramp nor releases the hold by itself. step() returns true when `engaged` changed (one log row).
+// 0 -> 1 over travel_rise seconds while engaged and back while released. A SETA frame's step is held to
+// travel_max_step, so a stall completes no rise; a frame without SETA takes its true step, so a gap without plume frames
+// (the stage's clock spans it) releases a stale ramp at once. step() returns true when `engaged` changed (one log row).
 struct TravelRamp {
     bool engaged = false;
     float linear = 0.f;   // 0..1
     float released = 0.f; // seconds without SETA while engaged
     bool step(bool seta, float seconds) noexcept {
         float dt = seconds > 0.f && seconds < 1e6f ? seconds : 0.f;
-        dt = dt < travel_max_step ? dt : travel_max_step;
+        if (seta && dt > travel_max_step) dt = travel_max_step;
         const bool was = engaged;
         if (seta) {
             engaged = true;
@@ -847,7 +923,8 @@ struct Dynamics {
     double flow = 0.;                 // FlowPhase::nozzle_widths (flow_rate's nozzle widths, unwrapped)
     float travel = 0.f;               // TravelRamp::weight, 0..1
     float game_ms = 0.f;              // this frame's step in game milliseconds (the attack's normalisation)
-    Transients* transients = nullptr; // the attack memory (null: none); build() calls begin(step) once
+    Transients* transients = nullptr; // the per-nozzle memory (null: no attack, the shared phase); build() calls
+                                      // begin(step) once
     float step = 0.f;                 // this frame's step, seconds (the stage clock's)
 };
 
@@ -917,10 +994,14 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         return false;
     }
     const bool steering = (r.flags & ee::flag_steering) != 0;
-    // Gap 6: a steering or brake body's attack, remembered before the idle cull (a puff rises from z 0.01).
+    // Gap 6: a steering or brake body's attack, remembered before the idle cull (a puff rises from z 0.01); its slot
+    // carries the flow phase too.
+    Transients* const memory = dynamics ? dynamics->transients : nullptr;
+    Transients::Slot* slot = nullptr;
     float attack = 1.f;
-    if ((steering || (r.flags & ee::flag_brake)) && dynamics && dynamics->transients) {
-        dynamics->transients->attack(identity_key(r), r.z, dynamics->game_ms, &attack);
+    if ((steering || (r.flags & ee::flag_brake)) && memory) {
+        slot = memory->touch(identity_key(r));
+        if (slot) memory->update_z(*slot, r.z, true, dynamics->game_ms, &attack);
         if (attack > 1.f) ++stats->attacks;
     }
     // Gap 7: the travel weight on the main jets (not RCS).
@@ -951,13 +1032,10 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     float zl = r.z > 0.f ? r.z : 0.f;
     if (!steering && zl < look.idle_length) zl = look.idle_length;
     float L = zl * value * pulse * (1.f + (travel_length - 1.f) * travel);
-    // Gap 4: the nozzle's flow phase from its own value (floored, before the near-camera cap).
-    float flow_phase = 0.f;
-    if (dynamics) {
-        float factor = 1.f;
-        flow_factor(look, value, &factor);
-        nozzle_phase(dynamics->flow, factor, &flow_phase);
-    }
+    // Gap 4: the nozzle's flow factor from its own value (floored, before the near-camera cap); its phase below, once
+    // the nozzle passes the culls.
+    float flow_speed = 1.f;
+    if (dynamics) flow_factor(look, value, &flow_speed);
     // The quad's reach in nozzle widths: over the width line the body's eroded edge (1 + 0.48 erode of the local
     // width), at the nozzle at least the ring (its radius plus three of its sigmas); the halo window's reach
     // (halo_reach x sigma0, the nozzle's sigma, constant along the plume) everywhere. `extent` the widest of them at the
@@ -983,6 +1061,20 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     if (value * ppu < cull_px) {
         ++stats->culled_small;
         return false;
+    }
+    // The nozzle's own flow phase (its slot, advanced at this frame's factor; a main jet takes its slot here, with its
+    // z), or the shared one without the memory or a slot.
+    float flow_phase = 0.f;
+    if (dynamics) {
+        if (memory && !slot) {
+            slot = memory->touch(identity_key(r));
+            float unused = 1.f;
+            if (slot) memory->update_z(*slot, r.z, false, 0.f, &unused);
+        }
+        if (slot)
+            memory->advance_phase(*slot, dynamics->flow, flow_speed, &flow_phase);
+        else
+            nozzle_phase(dynamics->flow, flow_speed, &flow_phase);
     }
     // The near-camera cap: the plume's body width 2 spread line0 n (the body's eroded edge or the ring; the halo's
     // faint reach, 1.7 x wider at the default look, does not count: keyed on it the fade bit on 64 % of run405's plume
@@ -1264,7 +1356,10 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
                          dynamics))
             ++written;
     }
-    if (dynamics && dynamics->transients) st.transient_overflow = dynamics->transients->overflow;
+    if (dynamics && dynamics->transients) {
+        st.transient_overflow = dynamics->transients->overflow;
+        st.flow_factor_changes = dynamics->transients->factor_changes;
+    }
     st.nozzles = written;
     st.vertices = written * vertices_per_nozzle;
     return written;

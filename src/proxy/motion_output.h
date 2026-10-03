@@ -1841,6 +1841,8 @@ private:
     // the ramp's state or of the read's status under --debug (the latter at most seta_status_rows per device).
     std::unique_ptr<engine_plumes::Transients> engine_transients_;
     engine_plumes::TravelRamp engine_travel_{};
+    std::uint64_t engine_travel_epoch_ = 0;      // the load epoch the ramp last saw (a change starts it over)
+    const char* engine_travel_reset_ = nullptr;  // the next engine_seta row's reset event (Reset, a load)
     float engine_travel_weight_ = 0.f, seta_warp_ = 1.f, seta_rate_ = 1.f;
     unsigned char seta_status_ = 0, seta_logged_status_ = 0xff; // engine_effects::SetaStatus
     bool seta_valid_ = true;
@@ -1893,6 +1895,31 @@ private:
     float shimmer_us_ = 0.f, shimmer_revert_us_ = 0.f;
     HRESULT shimmer_revert_ = S_FALSE;
     unsigned shimmer_stale_reverts_ = 0;
+    // Frames since the shimmer last drew (held at the limit) and the scratch releases (the toggle off, or that many idle
+    // frames: idle_engine_shimmer).
+    unsigned shimmer_idle_frames_ = 0, shimmer_scratch_releases_ = 0;
+    static constexpr unsigned shimmer_idle_limit = 300;
+    void idle_engine_shimmer(bool off) noexcept;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // The two-frame history probe (motion_output_engine_shimmer_inc.h; x3m_engine_shimmer_fixture_probe / _status).
+    struct ShimmerProbe {
+        unsigned stage = 0; // 0 off, 1 armed, 2 drawn (frame N), 3 reverted, 4 hashed before N+1's resolve, 5 done
+        std::uint64_t pre = 0, drawn = 0, reverted = 0, history = 0;
+        IDirect3DTexture9* texture = nullptr; // frame N's resolved image (borrowed: compared and read until stage 5)
+        std::uint64_t frame = 0, next_frame = 0;
+        unsigned rects = 0, used_history = 0, other_target = 0, hashed = 0;
+    };
+    ShimmerProbe fixture_shimmer_probe_{};
+    std::uint64_t fixture_shimmer_hash(IDirect3DTexture9* texture) noexcept;
+    void fixture_shimmer_before_resolve() noexcept;
+    void fixture_shimmer_after_resolve(HRESULT hr, bool used_history, IDirect3DTexture9* color) noexcept;
+
+public:
+    void fixture_shimmer_probe(bool arm) noexcept;
+    unsigned fixture_shimmer_status(unsigned key) const noexcept;
+
+private:
+#endif
     // After the resolve on the FP16 route (resolve(), `output` the history texture the write-back and bloom read,
     // `lane` the completed RT2): the frame's rects and the draw.
     void run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurface9* output_surface, IDirect3DTexture9* lane,

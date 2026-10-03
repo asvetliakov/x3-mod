@@ -8,14 +8,15 @@
 // before Present): the next resolve never sees the shimmer (it stays unaveraged, and no displacement accumulates).
 //
 // Objects: the pass-through quad vertex program and declaration (renderer/quad_vertex_program.h) and the pixel program,
-// created at attach; a D3DSBT_ALL state block and the scratch (A16B16G16R16F render-target texture at the target's
-// size, DEFAULT pool, one level), created at the first run and again after a size change. before_reset() releases the
+// created at attach; a state block recorded with exactly the states the draw sets, and the scratch (A16B16G16R16F
+// render-target texture at the target's size, DEFAULT pool, one level), created at the first run and again after a
+// size change; release_scratch() lets the caller drop the scratch while the shimmer idles. before_reset() releases the
 // block and the scratch and forgets a pending revert (the target goes with the TAA history); the programs survive
 // Reset. Documented D3D9 only: shader model 3, FP16 render-target textures with filtering (D3DUSAGE_QUERY_FILTER), the
 // StretchRect-from-texture capability, scissor test, CULLNONE; the compiled program's creation is the slot test
 // (docs/architecture/platform-portability.md, "Shader slot budget"). Every device call goes through the saved native
-// table; run() saves and restores every state it touches (the block, the render targets, depth, viewport, scissor rect,
-// the vertex input mode) and leaves the caller's scene as it found it.
+// table; run() saves and restores every state it touches (the recorded block, the render targets, depth, viewport,
+// scissor rect, the vertex input mode) and leaves the caller's scene as it found it.
 #include "../proxy/engine_shimmer_core.h"
 #include <d3d9.h>
 #include <cstdint>
@@ -63,9 +64,9 @@ public:
     void before_reset() noexcept;
     void after_reset(HRESULT) noexcept;
     // Draws the frame's rects into the target (see the header comment). S_FALSE with no device call when there is
-    // nothing to draw (no rect, zero amplitude) or the frame does not qualify (report.skipped: format, recording);
-    // E_FAIL while a Reset is pending; a failed call names its step, and the caller's state is restored (a lost device
-    // stops the restoration). The copy has been made when the step is past Copy: revert() is then pending.
+    // nothing to draw (no rect, zero amplitude), the frame does not qualify (report.skipped: format, recording) or a
+    // Reset is pending (reset_pending); a failed call names its step, and the caller's state is restored (a lost
+    // device stops the restoration). The copy has been made when the step is past Copy: revert() is then pending.
     HRESULT run(const EngineShimmerFrame&, EngineShimmerReport*) noexcept;
     // The copy back into the target over the copied rect (S_FALSE: nothing pending). Clears the pending state.
     HRESULT revert() noexcept;
@@ -74,6 +75,8 @@ public:
     void forget() noexcept { pending_ = nullptr; }
     unsigned references() const noexcept;
     UINT scratch_width() const noexcept { return scratch_width_; }
+    // Drops the scratch (the next run recreates it); nothing while a revert is pending.
+    void release_scratch() noexcept;
 #if defined(X3M_ENGINE_SHIMMER_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
     // Fixture faults: bit 0 refuses the FP16 filter capability at attach, bit 1 fails the draw once, bit 2 fails the
     // scratch's creation once.
@@ -86,6 +89,7 @@ private:
         return reinterpret_cast<Fn>(vtable_[slot]);
     }
     HRESULT ensure_scratch(UINT width, UINT height) noexcept;
+    HRESULT set_states(IDirect3DVertexShader9* vs, IDirect3DPixelShader9* ps) noexcept;
     HRESULT normalize(IDirect3DSurface9* target, UINT width, UINT height, const int scissor[4]) noexcept;
     void release_frame_objects() noexcept;
     IDirect3DDevice9* device_ = nullptr;
@@ -94,7 +98,7 @@ private:
     bool reset_pending_ = false;
     mutable unsigned calls_ = 0;
     unsigned faults_ = 0;
-    UINT render_targets_ = 1, streams_ = 1;
+    UINT render_targets_ = 1;
     IDirect3DVertexShader9* vs_ = nullptr;
     IDirect3DPixelShader9* ps_ = nullptr;
     IDirect3DVertexDeclaration9* declaration_ = nullptr;

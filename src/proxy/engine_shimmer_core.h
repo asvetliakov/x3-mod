@@ -22,9 +22,10 @@
 //
 // The mask (the pixel program, src/effects/engine_shimmer_ps.hlsl): smoothstep(-back, 0, s) x (1 - smoothstep(0,
 // length, s)) along the axis (1 just behind the nozzle, 0 at 1.5 L) x (1 - smoothstep(0.35, 1, |t| / half_width))
-// across; 0 on the rect's border, so the drawn quads (the rect plus one pixel) have no seam. Occlusion: a scene depth
-// in [0, depth) (nearer than the plume's nearest point less one nozzle width; the -1 sky never) takes no shimmer, so a
-// hull in front of its own exhaust is not distorted.
+// across; 0 on the rect's border, so the drawn quads (the rect plus one pixel) have no seam. Occlusion: a scene nearer
+// than the plume's nearest point less one nozzle width (the -1 sky never) fades the shimmer out over
+// occlusion_band_widths of view depth (linear in device depth between the two: x saturate(1 - (depth - d) x fade)), so
+// a hull in front of its own exhaust is not distorted and its silhouette carries no hard step.
 namespace x3m::engine_shimmer {
 namespace ee = x3m::engine_effects::core;
 namespace ep = x3m::engine_plumes;
@@ -37,6 +38,7 @@ constexpr float half_width_widths = 1.f;       // the rect's half-width in nozzl
 constexpr float back_widths = .25f;            // the fade-in behind the nozzle, nozzle widths
 constexpr float side_inner = .35f;             // the across fade starts at this share of the half-width
 constexpr float occlusion_margin_widths = 1.f; // nozzle widths nearer than the plume's nearest point
+constexpr float occlusion_band_widths = .5f;   // the fade's view-depth band in front of that, nozzle widths
 constexpr float cell_widths = .5f;             // the noise cell, nozzle widths
 constexpr float boil_rate = 1.5f;              // the noise's third axis per second (the flow scrolls the first)
 constexpr float default_px = 1.5f, px_min = 0.f, px_max = 4.f; // X3M_ENGINE_SHIMMER_PX: amplitude at 1440 rows
@@ -104,7 +106,8 @@ struct Rect {
     float back = 0.f;      // pixels behind the nozzle
     float nozzle_px = 0.f; // projected nozzle width (the rank)
     float seed = 0.f;      // 0..1
-    float depth = 0.f;     // occlusion: a scene device depth in [0, depth) takes no shimmer (0: none)
+    float depth = 0.f;     // occlusion: a scene device depth in [0, depth) fades the shimmer (0: none)
+    float fade = 0.f;      // 1 / the band's device-depth span: a scene depth under depth - 1 / fade takes none
     float phase = 0.f;     // the nozzle's own flow phase, nozzle widths (engine_plumes::nozzle_phase, as its plume)
     float corners[4][2]{}; // the drawn quad (the rect plus one pixel): back-left, back-right, front-left, front-right
     int bounds[4]{};       // x0, y0, x1, y1 (exclusive), the quad's box clipped to the target
@@ -239,18 +242,27 @@ inline bool rect_of(const ep::Vertex* v, const ep::View& view, const Projection&
     if (z_near < view.near_z) z_near = view.near_z;
     float depth = p.m22 + p.m32 / z_near;
     depth = ee::finite_f(depth) && depth > 0.f && p.m32 < 0.f ? depth : 0.f;
+    // The fade's band: occlusion_band_widths of view depth in front of z_near (at the near plane at most), as a device
+    // depth span (a span under 1e-7 is a step).
+    float z_full = z_near - occlusion_band_widths * n;
+    if (z_full < view.near_z) z_full = view.near_z;
+    const float span = depth - (p.m22 + p.m32 / z_full);
+    const float fade = depth > 0.f && ee::finite_f(span) && span > 1e-7f ? 1.f / span : 1e7f;
     if (!make_rect(p0, d, ahead, hw, back_px, nozzle_px, seed, depth, p.width, p.height, out)) {
         ++st->offscreen;
         return false;
     }
+    out->fade = depth > 0.f ? fade : 0.f;
     return true;
 }
 
 // The frame's rects (at most `limit` (<= max_rects) into `out`, ranked by projected nozzle width, largest first; ties keep record
 // order). The inputs are the plume stage's (engine_plumes::build): records, body lookup, view, preset, the stage's clock,
 // the view filter, look, tables and radii (null: no plume floor), and its dynamics (the flow accumulator and the SETA
-// travel weight; its attack memory is never touched: the builder runs here without it, so the stage's transients and the
-// rects' geometry agree, the radiance aside); `p` the unjittered projection and the target size.
+// travel weight; its per-nozzle memory is only read: the builder runs here without it, so the stage's transients and the
+// rects' geometry agree, the radiance aside, and each rect takes its nozzle's own phase from it (Transients::phase_of,
+// as the stage advanced it this frame; the shared phase without a slot)); `p` the unjittered projection and the target
+// size.
 inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLookup body, const ep::View& view,
                         const Projection& p, ep::Preset preset, float seconds, const ep::ViewFilter* filter,
                         const ep::Look* look, const ep::LookTables* tables, const float* radii, Rect* out,
@@ -330,7 +342,9 @@ inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLooku
         {
             float factor = 1.f;
             ep::flow_factor(k, value, &factor);
-            ep::nozzle_phase(dynamics ? dynamics->flow : 0., factor, &rect.phase);
+            const double flow = dynamics ? dynamics->flow : 0.;
+            if (!(dynamics && dynamics->transients && dynamics->transients->phase_of(ep::identity_key(r), flow, factor, &rect.phase)))
+                ep::nozzle_phase(flow, factor, &rect.phase);
         }
         // Insert by rank (largest projected nozzle first); a full list drops its smallest.
         unsigned at = kept;
@@ -372,7 +386,7 @@ inline bool union_bounds(const Rect* rects, unsigned n, int margin, int width, i
 
 // The pixel program's constants (src/effects/engine_shimmer_ps.hlsl): c0 (1/W, 1/H, W, H), c1 (amplitude px, rect
 // count, 0, boil), c2 (1 / cell, 0, 0, 0), c3 zero; per rect i: c4+i (origin, axis), c20+i (length,
-// half-width, back, 1 / nozzle px), c36+i (seed, depth, flow phase / cell, 0). Unused rects stay zero (the program
+// half-width, back, 1 / nozzle px), c36+i (seed, depth, flow phase / cell, the occlusion fade). Unused rects stay zero (the program
 // skips them past the count). `seconds` the stage's clock.
 inline void constants(const Rect* rects, unsigned n, float amplitude, float seconds, float width, float height,
                       float out[constant_vectors * 4]) noexcept {
@@ -406,6 +420,7 @@ inline void constants(const Rect* rects, unsigned n, float amplitude, float seco
         e[0] = r.seed * 61.7f;
         e[1] = r.depth;
         e[2] = r.phase / cell_widths;
+        e[3] = r.fade;
     }
 }
 

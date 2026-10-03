@@ -22,19 +22,23 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "579687f0cd0a2a15a4c8ede1bf92ad8f11c1df31-dirty",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "0a7fcd3a8209892f9b97726298ce311e3a77b6a5-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/effects/engine_plume_ps.hlsl",
+      "src/proxy/engine_plumes_core.h",
+      "src/renderer/engine_plume_pixel_program_inc.h"
+    ],
     "sha256": {
-      "src/proxy/engine_plumes_core.h": "05dd37ab55c1c4145467d18ba4a34ccfe4a759d079d7d9d4bfb548ba09037252",
+      "src/proxy/engine_plumes_core.h": "cee58b76f85d4f28ebfab2ba28a5b40de47b5b573626de1ba7a4d499e7075aa4",
       "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
       "src/renderer/engine_plumes_pass.h": "ffbd2fea053a6e66a0b62edaf5cd8d8d244bd0fa39e87198cd8184ae398d0cd6",
       "src/renderer/engine_plumes_pass.cpp": "b25936af72b735d9f7d63323ae57022db31befa6e9a78704e84ffc55cf1ec027",
       "src/effects/engine_plume_vs.hlsl": "9012a145972fa9c9ed9d6ce50106d308037d65086634079c67fb04530330194c",
-      "src/effects/engine_plume_ps.hlsl": "1edcf593552767ece436caf7648dea9341b7d453ad3b03ef0579d8cf8c8a3c7f",
+      "src/effects/engine_plume_ps.hlsl": "4473e771a606d2502aec2ab3761a1c43bb6f5b7b6437df56592df80b53716cd9",
       "src/renderer/engine_plume_vertex_program_inc.h": "32c3cd34dddb640dda42af219f12ccc882b813dfa86c6caeca440d8f69c2c8f6",
-      "src/renderer/engine_plume_pixel_program_inc.h": "b8a5406e8bcc925443d8cdb5e61d338efe5fab888a0e6f33b5e19964f7fee313",
+      "src/renderer/engine_plume_pixel_program_inc.h": "13544e7e39e7e1e67dd4e3de981631c45418d319c6123b97b0776ba1cffcd4fc",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
       "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b"
     }
@@ -48,8 +52,8 @@
     },
     "engine_plume_ps": {
       "source": "src/effects/engine_plume_ps.hlsl",
-      "word_count": 3167,
-      "bytecode_sha256": "9c99519feda83b913294456b7b3ebaa35bf48802960a28cd7c82939a560f107f",
+      "word_count": 3171,
+      "bytecode_sha256": "1fec871f28e06786a3084f7f68619f8812d3712aa24f02c62c8c9856a085368d",
       "target": "ps_3_0"
     }
   },
@@ -84,18 +88,18 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4ab1d9fe558e187b/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa1a718ce7a5b2eb4/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "2bf68771f70331bf134b4396d7b0ffb451f6c66025de3fcb315a7077b1250893"
+    "executable_sha256": "e23d2a249eca63926fb45ff9472b8c6be0a5332452c498505f17106f16ee22de"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 178,
+      "checks": 188,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -108,7 +112,7 @@
         "enabled": 1,
         "reason": "ok",
         "vs_slots": 12,
-        "ps_slots": 734,
+        "ps_slots": 735,
         "fp16_blending": 0,
         "max_vs_slots": 512,
         "max_ps_slots": 512,
@@ -1123,11 +1127,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 1.1559,
-        "fenced_off_ms": 0.9348,
-        "submit_ms": 0.0567,
-        "chain_ms": 0.2211,
-        "gpu_ms": 0.1644,
+        "fenced_on_ms": 1.107,
+        "fenced_off_ms": 0.9082,
+        "submit_ms": 0.0511,
+        "chain_ms": 0.1988,
+        "gpu_ms": 0.1477,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1139,11 +1143,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 1.3635,
-        "fenced_off_ms": 0.9207,
-        "submit_ms": 0.0648,
-        "chain_ms": 0.4428,
-        "gpu_ms": 0.378,
+        "fenced_on_ms": 0.9029,
+        "fenced_off_ms": 0.5844,
+        "submit_ms": 0.0688,
+        "chain_ms": 0.3185,
+        "gpu_ms": 0.2497,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1155,11 +1159,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 1.1905,
-        "fenced_off_ms": 0.5995,
-        "submit_ms": 0.1205,
-        "chain_ms": 0.591,
-        "gpu_ms": 0.4705,
+        "fenced_on_ms": 1.0679,
+        "fenced_off_ms": 0.5817,
+        "submit_ms": 0.1133,
+        "chain_ms": 0.4862,
+        "gpu_ms": 0.3729,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1171,11 +1175,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 1.7195,
-        "fenced_off_ms": 1.6222,
-        "submit_ms": 0.0542,
-        "chain_ms": 0.0973,
-        "gpu_ms": 0.0431,
+        "fenced_on_ms": 1.7086,
+        "fenced_off_ms": 1.626,
+        "submit_ms": 0.0528,
+        "chain_ms": 0.0826,
+        "gpu_ms": 0.0298,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1187,11 +1191,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 1.8263,
-        "fenced_off_ms": 1.6195,
-        "submit_ms": 0.0657,
-        "chain_ms": 0.2068,
-        "gpu_ms": 0.1411,
+        "fenced_on_ms": 1.8266,
+        "fenced_off_ms": 1.6218,
+        "submit_ms": 0.0647,
+        "chain_ms": 0.2048,
+        "gpu_ms": 0.1401,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1203,11 +1207,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 2.0888,
-        "fenced_off_ms": 1.6732,
-        "submit_ms": 0.1567,
-        "chain_ms": 0.4156,
-        "gpu_ms": 0.2589,
+        "fenced_on_ms": 1.9899,
+        "fenced_off_ms": 1.6242,
+        "submit_ms": 0.108,
+        "chain_ms": 0.3657,
+        "gpu_ms": 0.2577,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1218,29 +1222,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 3.24,
-        "min_us": 3.06,
+        "median_us": 3.35,
+        "min_us": 3.29,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 10.6,
-        "min_us": 10.0,
+        "median_us": 10.83,
+        "min_us": 10.67,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 32.37,
-        "min_us": 31.04,
+        "median_us": 32.91,
+        "min_us": 32.06,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 113.06,
-        "min_us": 110.51,
+        "median_us": 113.69,
+        "min_us": 111.99,
         "method": "qpc_50x41"
       }
     ],
@@ -1248,29 +1252,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 3.62,
-        "min_us": 3.46,
+        "median_us": 3.79,
+        "min_us": 3.71,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 11.84,
-        "min_us": 11.21,
+        "median_us": 12.23,
+        "min_us": 12.03,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 35.46,
-        "min_us": 34.09,
+        "median_us": 36.5,
+        "min_us": 35.93,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 124.49,
-        "min_us": 121.33,
+        "median_us": 125.54,
+        "min_us": 124.06,
         "method": "qpc_50x41"
       }
     ],
@@ -1455,7 +1459,7 @@
         "max_4": 0.148,
         "mean_5": 0.1552,
         "max_5": 0.1561,
-        "mean_6": 0.155,
+        "mean_6": 0.1549,
         "max_6": 0.1555,
         "mean_7": 0.1484,
         "max_7": 0.1545,
@@ -1531,6 +1535,74 @@
         "max_11": 0.0,
         "mean_12": 0.0,
         "max_12": 0.0
+      }
+    ],
+    "spill_near": [
+      {
+        "width": 1920,
+        "lane": "4ch",
+        "value": 100,
+        "plate": 150,
+        "guard": 200,
+        "open_core_max": 4.9492,
+        "core_ratio_max": 0.02872,
+        "rim_ratio_max": 0.0291,
+        "cut_max": 0.036194
+      },
+      {
+        "width": 1920,
+        "lane": "4ch",
+        "value": 1000,
+        "plate": 1500,
+        "guard": 300,
+        "open_core_max": 4.7773,
+        "core_ratio_max": 0.0,
+        "rim_ratio_max": 0.0,
+        "cut_max": 0.0
+      },
+      {
+        "width": 1920,
+        "lane": "r32f",
+        "value": 100,
+        "plate": 150,
+        "guard": 200,
+        "open_core_max": 4.9492,
+        "core_ratio_max": 0.02872,
+        "rim_ratio_max": 0.0291,
+        "cut_max": 0.036194
+      },
+      {
+        "width": 1920,
+        "lane": "r32f",
+        "value": 1000,
+        "plate": 1500,
+        "guard": 300,
+        "open_core_max": 4.7773,
+        "core_ratio_max": 0.0,
+        "rim_ratio_max": 0.0,
+        "cut_max": 0.0
+      },
+      {
+        "width": 5120,
+        "lane": "4ch",
+        "value": 100,
+        "plate": 150,
+        "guard": 200,
+        "open_core_max": 7.9961,
+        "core_ratio_max": 0.03075,
+        "rim_ratio_max": 0.03903,
+        "cut_max": 0.078125
+      },
+      {
+        "width": 5120,
+        "lane": "4ch",
+        "value": 1000,
+        "plate": 1500,
+        "guard": 300,
+        "open_core_max": 7.6914,
+        "core_ratio_max": 0.0,
+        "rim_ratio_max": 0.0,
+        "cut_max": 0.0
       }
     ],
     "flow": [
@@ -1695,6 +1767,28 @@
         "frames": 30,
         "lag1": 0.9462,
         "cv": 0.0661
+      }
+    ],
+    "flow_keyed": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "values": "1000,2000",
+        "seconds": 3600,
+        "frames": 30,
+        "lag1_keyed": 0.8088,
+        "lag1_shared": -0.7834,
+        "factor_changes": 29
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "values": "1000,2000",
+        "seconds": 3600,
+        "frames": 30,
+        "lag1_keyed": 0.8088,
+        "lag1_shared": -0.7835,
+        "factor_changes": 29
       }
     ],
     "colour": [
@@ -1894,6 +1988,17 @@
         "back_ms": 0.0
       },
       {
+        "width": 1920,
+        "height": 1080,
+        "kind": "main_to_brake",
+        "frame1": 1.5,
+        "frame2": 1.4306,
+        "frame3": 1.3611,
+        "frame5": 1.2222,
+        "back_frame": 9,
+        "back_ms": 116.7
+      },
+      {
         "width": 5120,
         "height": 1440,
         "kind": "steering",
@@ -1925,6 +2030,31 @@
         "frame5": 1.0,
         "back_frame": 2,
         "back_ms": 0.0
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "kind": "main_to_brake",
+        "frame1": 1.5,
+        "frame2": 1.4306,
+        "frame3": 1.3611,
+        "frame5": 1.2222,
+        "back_frame": 9,
+        "back_ms": 116.7
+      }
+    ],
+    "attack_crossing": [
+      {
+        "width": 1920,
+        "kind": "main_to_brake",
+        "frame1": 1.5,
+        "back_ms": 133.3
+      },
+      {
+        "width": 5120,
+        "kind": "main_to_brake",
+        "frame1": 1.5,
+        "back_ms": 133.3
       }
     ],
     "travel": [
@@ -2239,6 +2369,14 @@
         true
       ],
       [
+        "spill_near_plate_value100_4ch_1920",
+        true
+      ],
+      [
+        "spill_near_plate_value1000_4ch_1920",
+        true
+      ],
+      [
         "spill_law_0.15_r32f_1920",
         true
       ],
@@ -2252,6 +2390,14 @@
       ],
       [
         "spill_depth_guard_r32f_1920",
+        true
+      ],
+      [
+        "spill_near_plate_value100_r32f_1920",
+        true
+      ],
+      [
+        "spill_near_plate_value1000_r32f_1920",
         true
       ],
       [
@@ -2280,6 +2426,10 @@
       ],
       [
         "flow_lag1_value10000_1920",
+        true
+      ],
+      [
+        "flow_keyed_phase_value_flip_lag1_1920",
         true
       ],
       [
@@ -2316,6 +2466,10 @@
       ],
       [
         "attack_main_1920",
+        true
+      ],
+      [
+        "attack_main_to_brake_1920",
         true
       ],
       [
@@ -2595,6 +2749,14 @@
         true
       ],
       [
+        "spill_near_plate_value100_4ch_5120",
+        true
+      ],
+      [
+        "spill_near_plate_value1000_4ch_5120",
+        true
+      ],
+      [
         "flow_world_law_value100_5120",
         true
       ],
@@ -2620,6 +2782,10 @@
       ],
       [
         "flow_lag1_value10000_5120",
+        true
+      ],
+      [
+        "flow_keyed_phase_value_flip_lag1_5120",
         true
       ],
       [
@@ -2659,6 +2825,10 @@
         true
       ],
       [
+        "attack_main_to_brake_5120",
+        true
+      ],
+      [
         "travel_warp6_weight1_5120",
         true
       ],
@@ -2672,11 +2842,11 @@
       ]
     ],
     "result": {
-      "checks": 178,
+      "checks": 188,
       "failures": 0,
       "verdict": "PASS"
     },
-    "check_count": 178,
+    "check_count": 188,
     "failed_checks": []
   },
   "gates_met": {
@@ -2693,12 +2863,12 @@
       "5120_8px": 10
     },
     "stage_gpu_ms": {
-      "1920x1080_30": 0.1644,
-      "1920x1080_100": 0.378,
-      "1920x1080_300_far250": 0.4705,
-      "5120x1440_30": 0.0431,
-      "5120x1440_100": 0.1411,
-      "5120x1440_300_far250": 0.2589
+      "1920x1080_30": 0.1477,
+      "1920x1080_100": 0.2497,
+      "1920x1080_300_far250": 0.3729,
+      "5120x1440_30": 0.0298,
+      "5120x1440_100": 0.1401,
+      "5120x1440_300_far250": 0.2577
     },
     "distance_ratio_gpu": {
       "1920_2px": 0.15,
@@ -2718,18 +2888,18 @@
       "5120x1440_100": false,
       "5120x1440_300_far250": false
     },
-    "build_300_far250_us": 32.37,
+    "build_300_far250_us": 32.91,
     "build_us": {
-      "30": 3.24,
-      "100": 10.6,
-      "300": 32.37,
-      "1024": 113.06
+      "30": 3.35,
+      "100": 10.83,
+      "300": 32.91,
+      "1024": 113.69
     },
     "build_floor_us": {
-      "30": 3.62,
-      "100": 11.84,
-      "300": 35.46,
-      "1024": 124.49
+      "30": 3.79,
+      "100": 12.23,
+      "300": 36.5,
+      "1024": 125.54
     },
     "mouth_over_body": {
       "1920_s1.00": 0.5799,
@@ -2740,7 +2910,7 @@
       "5120_s0.00": 0.7522
     },
     "build_100_within": true,
-    "ps_slots": 734,
+    "ps_slots": 735,
     "ps_slots_within": true,
     "idle_L_over_value": {
       "1920": 0.5,
@@ -2789,6 +2959,60 @@
       "5120_100": 0.9011,
       "5120_10000": 0.9462
     },
+    "flow_keyed": {
+      "1920": {
+        "lag1_keyed": 0.8088,
+        "lag1_shared": -0.7834,
+        "factor_changes": 29
+      },
+      "5120": {
+        "lag1_keyed": 0.8088,
+        "lag1_shared": -0.7835,
+        "factor_changes": 29
+      }
+    },
+    "spill_near": {
+      "1920_4ch_100": {
+        "core_ratio_max": 0.02872,
+        "rim_ratio_max": 0.0291,
+        "cut_max": 0.036194
+      },
+      "1920_4ch_1000": {
+        "core_ratio_max": 0.0,
+        "rim_ratio_max": 0.0,
+        "cut_max": 0.0
+      },
+      "1920_r32f_100": {
+        "core_ratio_max": 0.02872,
+        "rim_ratio_max": 0.0291,
+        "cut_max": 0.036194
+      },
+      "1920_r32f_1000": {
+        "core_ratio_max": 0.0,
+        "rim_ratio_max": 0.0,
+        "cut_max": 0.0
+      },
+      "5120_4ch_100": {
+        "core_ratio_max": 0.03075,
+        "rim_ratio_max": 0.03903,
+        "cut_max": 0.078125
+      },
+      "5120_4ch_1000": {
+        "core_ratio_max": 0.0,
+        "rim_ratio_max": 0.0,
+        "cut_max": 0.0
+      }
+    },
+    "attack_crossing": {
+      "1920": {
+        "frame1": 1.5,
+        "back_ms": 133.3
+      },
+      "5120": {
+        "frame1": 1.5,
+        "back_ms": 133.3
+      }
+    },
     "colour_error_max": 0.00053,
     "attack": {
       "1920_steering": {
@@ -2803,6 +3027,10 @@
         "frame2": 1.0,
         "back_ms": 0.0
       },
+      "1920_main_to_brake": {
+        "frame2": 1.4306,
+        "back_ms": 116.7
+      },
       "5120_steering": {
         "frame2": 1.5,
         "back_ms": 133.3
@@ -2814,6 +3042,10 @@
       "5120_main": {
         "frame2": 1.0,
         "back_ms": 0.0
+      },
+      "5120_main_to_brake": {
+        "frame2": 1.4306,
+        "back_ms": 116.7
       }
     },
     "travel": {

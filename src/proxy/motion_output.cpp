@@ -2441,11 +2441,17 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             constexpr bool injected = false;
 #endif
             if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::Taa); // --gpu-sync-timing only
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            fixture_shimmer_before_resolve(); // the shimmer's history probe (motion_output_engine_shimmer_inc.h)
+#endif
             if (injected) {
                 hr = E_FAIL;
                 taa_->invalidate();
             } else
                 hr = taa_->run(in, &out);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            fixture_shimmer_after_resolve(hr, out.used_history, out.color);
+#endif
             if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::Taa);
             if (taa_->line_masks_failed() && !taa_masks_logged_) {
                 taa_masks_logged_ = true;
@@ -4137,6 +4143,10 @@ void MotionOutput::before_reset() noexcept {
     plumes_failed_out_ = false;
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
+    // The SETA travel ramp starts over (a Reset is a mode or load boundary; the next engine_seta row says so).
+    if (engine_travel_.engaged || engine_travel_.linear > 0.f) engine_travel_reset_ = "reset_device";
+    engine_travel_ = engine_plumes::TravelRamp{};
+    engine_travel_weight_ = 0.f;
     fog_sector_ = {};
     fog_cards_ = {};
     fog_card_ready_checked_ = fog_card_ready_ = false;

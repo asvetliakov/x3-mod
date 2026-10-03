@@ -12,12 +12,15 @@
 //   gate        nozzles of 20 / 23.9 / 24.5 / 30 px: rects only from 24 px; no rect -> S_FALSE, no device call
 //   occlusion   a lane occluder nearer than the plume over the back half of the rect: byte-equal there, displaced in front
 //   state       hostile caller state (RT0 another target, RT1, depth, viewport, scissor, blend, a texture, a constant, FVF
-//               mode) restored after the run; the pass's own scene without a caller scene
+//               mode) restored after the run; stream 0 and the index buffer restored, a constant past c51 and the target
+//               bound on an unused sampler untouched (the recorded block); the pass's own scene without a caller scene;
+//               the scratch released while idle (never with a revert pending) and recreated by the next run
 //   refusal     a non-FP16 target, a recording caller, an empty rect list, zero amplitude: S_FALSE, the target unchanged
 //   fault       a failed draw names its step, restores the state, leaves the copy pending and revert() restores it; a
 //               failed scratch creation holds nothing pending; the next frame draws
-//   reset       before_reset releases the block and the scratch (programs survive), forgets the pending revert; after
-//               Reset the next run recreates them and draws
+//   reset       before_reset releases the block and the scratch (programs survive), forgets the pending revert; a run
+//               while the Reset is pending is skipped (reset_pending, no device call); after Reset the next run recreates
+//               them and draws
 //   timing      EVENT-fenced run + revert in a frame tail for 1 / 4 / 16 rects of 10 % of the screen each
 // Validation-only readback; never launches the game.
 #include "../../src/renderer/engine_shimmer_pass.h"
@@ -465,6 +468,18 @@ void state_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
     check("vs", d->SetVertexShader(nullptr));
     check("ps", d->SetPixelShader(nullptr));
     check("fvf", d->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE));
+    // The recorded block (review S2): stream 0 (DrawPrimitiveUP resets it) and the index buffer come back; a constant
+    // outside the program's c0..c51 and a texture on an unused sampler (the target itself on s5: the program samples
+    // s0..s2 only) are never touched.
+    Com<IDirect3DVertexBuffer9> vb;
+    Com<IDirect3DIndexBuffer9> ib;
+    check("vb", d->CreateVertexBuffer(96, D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &vb.p, nullptr));
+    check("ib", d->CreateIndexBuffer(12, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_DEFAULT, &ib.p, nullptr));
+    check("stream", d->SetStreamSource(0, vb.p, 16, 24));
+    check("indices", d->SetIndices(ib.p));
+    const float outside[4] = {55.f, 66.f, 77.f, 88.f};
+    check("constant c60", d->SetPixelShaderConstantF(60, outside, 1));
+    check("texture s5", d->SetTexture(5, t.target.p));
     rr::EngineShimmerFrame f = frame_for(t, rects, n);
     f.caller_scene_open = false; // the pass opens and closes its own scene
     rr::EngineShimmerReport rep{};
@@ -492,6 +507,17 @@ void state_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
     d->GetPixelShaderConstantF(30, c30, 1);
     d->GetFVF(&fvf);
     d->GetVertexDeclaration(&decl.p);
+    Com<IDirect3DVertexBuffer9> vb2;
+    Com<IDirect3DIndexBuffer9> ib2;
+    Com<IDirect3DBaseTexture9> tex5;
+    UINT offset = 0, stride = 0;
+    float c60[4]{};
+    d->GetStreamSource(0, &vb2.p, &offset, &stride);
+    d->GetIndices(&ib2.p);
+    d->GetTexture(5, &tex5.p);
+    d->GetPixelShaderConstantF(60, c60, 1);
+    const bool untouched = vb2.p == vb.p && offset == 16 && stride == 24 && ib2.p == ib.p &&
+                           tex5.p == static_cast<IDirect3DBaseTexture9*>(t.target.p) && !std::memcmp(c60, outside, sizeof c60);
     const bool restored = rt0.p == t.other_s.p && rt1.p == t.lane_s.p && ds.p == t.depth.p && vp2.X == vp.X && vp2.Y == vp.Y &&
                           vp2.Width == vp.Width && vp2.Height == vp.Height && vp2.MinZ == vp.MinZ && vp2.MaxZ == vp.MaxZ &&
                           !std::memcmp(&sc2, &sc, sizeof sc) && scissor_on == TRUE && blend == TRUE && src == D3DBLEND_DESTCOLOR &&
@@ -504,17 +530,42 @@ void state_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
     for (std::size_t i = 0; i < std::size_t(t.w) * t.h; ++i) changed += !same_pixel(out, t.pristine, i);
     pass.revert();
     const bool reverted = t.read(d) == t.pristine;
-    std::printf("STATE width=%u result=%08lx restore=%08lx restored=%u own_scene=1 changed=%zu reverted=%u calls=%u\n", t.w,
-                rep.operation, rep.restore, unsigned(restored), changed, unsigned(reverted), rep.calls);
+    std::printf("STATE width=%u result=%08lx restore=%08lx restored=%u stream_indices_outside=%u own_scene=1 changed=%zu reverted=%u calls=%u\n",
+                t.w, rep.operation, rep.restore, unsigned(restored), unsigned(untouched), changed, unsigned(reverted), rep.calls);
     report("state_restored", rep.operation == S_OK && rep.restore == S_OK && restored);
+    report("state_stream_indices_restored_outside_untouched", untouched);
     report("state_own_scene_drew", rep.drew && changed > 0 && reverted);
     // Back to a plain state for the next cases.
     check("rt1 off", d->SetRenderTarget(1, nullptr));
     check("ds off", d->SetDepthStencilSurface(nullptr));
     check("rt0", d->SetRenderTarget(0, t.target_s.p));
     check("tex off", d->SetTexture(0, nullptr));
+    check("tex5 off", d->SetTexture(5, nullptr));
+    check("stream off", d->SetStreamSource(0, nullptr, 0, 0));
+    check("indices off", d->SetIndices(nullptr));
     check("scissor off", d->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE));
     check("srgb off", d->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE));
+    // Review S5: the scratch is released while the shimmer idles (release_scratch), never while a revert is pending;
+    // the next run recreates it and draws.
+    {
+        rr::EngineShimmerFrame g = frame_for(t, rects, n);
+        check("scratch scene", d->BeginScene());
+        rr::EngineShimmerReport r1{}, r2{};
+        pass.run(g, &r1);
+        const unsigned held = pass.references();
+        pass.release_scratch(); // a revert pending: kept
+        const unsigned pending_kept = pass.references();
+        pass.revert();
+        pass.release_scratch();
+        const unsigned released = pass.references(), width = pass.scratch_width();
+        pass.run(g, &r2);
+        const unsigned again = pass.references();
+        pass.revert();
+        check("scratch scene end", d->EndScene());
+        std::printf("SCRATCH width=%u held=%u pending_kept=%u released=%u scratch_width_after=%u again=%u drew=%u\n", t.w, held,
+                    pending_kept, released, width, again, unsigned(r2.drew));
+        report("scratch_released_while_idle", r1.drew && held == 6 && pending_kept == 6 && released == 4 && width == 0 && again == 6 && r2.drew);
+    }
 }
 
 void refusal_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
@@ -609,7 +660,10 @@ void reset_case(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS& pp, rr::EngineShimme
     std::printf("RESET before=%u pending=%u released=%u forgotten=%u during=%08lx reset=%08lx after=%u result=%08lx drew=%u changed=%zu reverted=%u\n",
                 before, unsigned(pending), released, unsigned(forgotten), during.operation, reset, after,
                 after_run.operation, unsigned(after_run.drew), changed, unsigned(reverted));
-    report("reset_released", before == 6 && pending && released == 3 && forgotten && during.operation == E_FAIL);
+    // While the Reset is pending: skipped (reset_pending), no device call, no failure (review S6).
+    report("reset_released", before == 6 && pending && released == 3 && forgotten && during.operation == S_FALSE &&
+                                 during.skipped && !std::strcmp(during.skipped, "reset_pending") && during.calls == 0 &&
+                                 during.failed == rr::EngineShimmerStep::None);
     report("reset_recreated", SUCCEEDED(reset) && after == 6 && after_run.drew && changed > 0 && reverted);
 }
 
