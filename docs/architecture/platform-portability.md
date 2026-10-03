@@ -840,6 +840,20 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-10-03: engine heat shimmer (`engine_shimmer`, exhaust gap 9)
+
+The shimmer ([engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md), gap 9) uses documented D3D9 only: one
+same-format, same-size `StretchRect` (point) of the resolved A16B16G16R16F render-target texture into a scratch of the
+same format and back (`D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES` checked at attach), one `DrawPrimitiveUP` of the shared
+pass-through quad program with a ps_3_0 program (`texldl`, no VPOS) sampling the copy with linear filtering, gated by
+`CheckDeviceFormat(D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_FILTER, A16B16G16R16F)`, the scissor test
+(`D3DPRASTERCAPS_SCISSORTEST`), `D3DPMISCCAPS_CULLNONE`, and a `D3DSBT_ALL` state block plus the render targets, depth,
+viewport, scissor rect and vertex input mode saved and restored around the draw. No VTF, MRT or Wine export; the
+program's creation is the slot test (1,608 slots by the conservative count). A refused capability leaves the shimmer off
+with one row; the plumes are unaffected. The Ctrl+Alt+F7 key reads `GetAsyncKeyState`, `GetForegroundWindow` and
+`GetWindowThreadProcessId`. Cross-compiled (0 warnings, x87 PASS); the GPU fixture passed under Wine on bottle X3
+([engine-effects.md](../verification/engine-effects.md), "Heat shimmer"); native Windows execution unverified.
+
 ## 2026-10-01: engine ribbons and the plumes' fog, phase 3 (`--engine-effects plumes`)
 
 The ribbon draw ([engine-effects-modern.md](engine-effects-modern.md) sections 3-5) is the plume stage's second

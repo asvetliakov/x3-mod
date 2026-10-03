@@ -243,6 +243,10 @@ public:
     Pass* fog_ = nullptr;
     Pass* plumes_ = nullptr; // engine plumes (phase 2): after_reset forwards to the pass when one is attached
     Pass* ribbons_ = nullptr; // engine ribbons (phase 3): likewise
+    Pass* shimmer_ = nullptr; // engine heat shimmer (exhaust gap 9): likewise, through its own forwarder
+    void engine_shimmer_after_reset(HRESULT result) noexcept {
+        if (shimmer_) shimmer_->after_reset(result);
+    }
     std::uint64_t fog_frame_ = ~std::uint64_t(0);
     unsigned fog_failures_ = 0;
     bool fog_attach_failed_ = false; // volumetric fog: the same forwarding and per-frame marker

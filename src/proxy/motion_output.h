@@ -41,6 +41,7 @@
 #include "engine_effects_core.h"
 #include "../renderer/engine_plumes_pass.h"
 #include "../renderer/engine_ribbons_pass.h"
+#include "../renderer/engine_shimmer_pass.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
 #include "fog_prefill.h"
@@ -317,7 +318,8 @@ enum class TaaInvalidateSite : unsigned {
     CompositionIncomplete = 18, // the composition ended without a linear image
     CutoutMissed = 19,          // a requested cutout pair forwarded natively without owned motion (cutout::missed)
     FogTransition = 20,         // keep/replace/off/fault transitions only
-    Count = 21
+    EngineShimmer = 21,         // the heat shimmer's revert failed: the history holds the displaced image
+    Count = 22
 };
 const char* taa_invalidate_site_name(TaaInvalidateSite site) noexcept;
 // Where this frame's resolve ran: at the engine scene-end hook (X3M_SCENE_HOOK,
@@ -1195,6 +1197,14 @@ public:
     // Ctrl+Alt+F6: the next preset (restrained -> default -> strong -> restrained), one engine_plumes_preset row; the
     // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
     int engine_plumes_cycle_preset() noexcept;
+    // Engine heat shimmer (motion_output_engine_shimmer_inc.h; docs/architecture/engine-exhaust-gap-analysis.md gap 9):
+    // reads X3M_ENGINE_SHIMMER (on|off, default on) and X3M_ENGINE_SHIMMER_PX (0..4, default 1.5) once and logs one
+    // engine_shimmer_config row; requested only with the plumes requested. Process-start values.
+    void configure_engine_shimmer() noexcept;
+    bool engine_shimmer_requested() const noexcept { return shimmer_requested_; }
+    // Ctrl+Alt+F7: the shimmer off / on for this device (one engine_shimmer_toggle row); -1 when not requested, else
+    // the new state.
+    int engine_shimmer_toggle() noexcept;
     // Small-prop cull (X3M_CULL_SMALL_PROPS=on with X3M_CULL_SMALL_PARTS_PX, cull_small_props_core.h): process-start
     // values validated by the caller; off = one bool test per scene draw.
     void configure_cull_small_props(bool on, float px) noexcept {
@@ -1803,6 +1813,30 @@ private:
     bool engine_ribbons_live() const noexcept { return ribbons_ && ribbons_->live() != 0; }
     HRESULT run_engine_ribbons(const renderer::EnginePlumesFrame& frame) noexcept;
     void engine_plumes_fog(x3m::renderer::FogTransmittanceLaw* law) noexcept;
+    // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
+    // Ctrl+Alt+F7 state, the pass (attached at the first frame with rects; refused at attach or failed: off until
+    // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.
+    bool shimmer_requested_ = false, shimmer_on_ = true, shimmer_attach_failed_ = false, shimmer_failed_ = false;
+    float shimmer_px_ = engine_shimmer::default_px;
+    std::unique_ptr<renderer::EngineShimmerPass> shimmer_;
+    renderer::EngineShimmerReport shimmer_report_{};
+    engine_shimmer::Stats shimmer_stats_{};
+    engine_shimmer::Rect shimmer_rects_[engine_shimmer::max_rects]{};
+    std::uint64_t shimmer_frame_ = ~std::uint64_t(0); // the frame of shimmer_report_ / shimmer_stats_
+    float shimmer_us_ = 0.f, shimmer_revert_us_ = 0.f;
+    HRESULT shimmer_revert_ = S_FALSE;
+    unsigned shimmer_stale_reverts_ = 0;
+    // After the resolve on the FP16 route (resolve(), `output` the history texture the write-back and bloom read,
+    // `lane` the completed RT2): the frame's rects and the draw.
+    void run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurface9* output_surface, IDirect3DTexture9* lane,
+                            UINT width, UINT height) noexcept;
+    void revert_engine_shimmer() noexcept; // before Present: the history gets its unshimmered rect back
+    void release_engine_shimmer() noexcept;
+    void engine_shimmer_before_reset() noexcept;
+    void engine_shimmer_after_reset(HRESULT result) noexcept;
+    bool attach_engine_shimmer() noexcept;
+    void fail_engine_shimmer(const char* step, HRESULT hr) noexcept;
+    void log_engine_shimmer() noexcept;
     bool lens_gain_caps_ = false;
     unsigned lens_gained_ = 0, lens_gain_refused_ = 0, lens_gain_logged_ = 0;
     // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, skipped

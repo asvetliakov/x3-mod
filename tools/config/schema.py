@@ -340,6 +340,14 @@ SETTINGS = [
           'ships\' main engines stay as they are. This number scales those shares: 1 = the shares as first chosen, 0 turns '
           'it off; 0 to 3, default 0.5. Read when the game starts.',
           builtin='0.5', range=(0.0, 3.0), launcher='--engine-plume-floor', since='2026-10-03'),
+    entry('engine_shimmer', 'enum', 'engine', 'Heat shimmer behind the nearest engines of the mod\'s engine plumes '
+          '(engine_effects = plumes): the air behind a close engine wavers slightly, mostly visible on your own ship in '
+          'chase view. on or off; Ctrl+Alt+F7 switches it off and on in flight. Read when the game starts.', builtin='on',
+          choices=('on', 'off'), launcher='--engine-shimmer', since='2026-10-03'),
+    entry('engine_shimmer_px', 'float', 'engine', 'Strength of the engine heat shimmer (engine_shimmer = on): how far the '
+          'image behind an engine moves, in pixels on a 1440-row screen (scaled with the screen height); 0 to 4, 0 = none, '
+          'default 1.5. Read when the game starts.', builtin='1.5', range=(0.0, 4.0), launcher='--engine-shimmer-px',
+          since='2026-10-03'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

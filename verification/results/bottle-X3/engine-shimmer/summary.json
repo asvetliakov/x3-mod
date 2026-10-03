@@ -1,0 +1,582 @@
+{
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "production_sources": [
+    "src/proxy/engine_shimmer_core.h",
+    "src/proxy/engine_plumes_core.h",
+    "src/proxy/engine_effects_core.h",
+    "src/renderer/engine_shimmer_pass.h",
+    "src/renderer/engine_shimmer_pass.cpp",
+    "src/effects/engine_shimmer_ps.hlsl",
+    "src/renderer/engine_shimmer_pixel_program_inc.h",
+    "src/renderer/quad_vertex_program.h",
+    "src/renderer/quad_vertex_program_inc.h"
+  ],
+  "source": {
+    "commit": "9f7266b26dc88292b614b0b2aaed76858f03f1b0-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/effects/engine_shimmer_ps.hlsl",
+      "src/proxy/engine_shimmer_core.h",
+      "src/renderer/engine_shimmer_pass.cpp",
+      "src/renderer/engine_shimmer_pass.h",
+      "src/renderer/engine_shimmer_pixel_program_inc.h"
+    ],
+    "sha256": {
+      "src/proxy/engine_shimmer_core.h": "5bd46e4d0753333f1c0361302c0a2ffdb54ede760f322ce5566646a04aaedb24",
+      "src/proxy/engine_plumes_core.h": "a14cf50c22737da5b0e5561f2083cac1874458ced4a7b68729d2042c69c682d4",
+      "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
+      "src/renderer/engine_shimmer_pass.h": "91241e4f8a08b02a722b690e9f82dec13723c7b5d51c47e3e1f4635365a6de3d",
+      "src/renderer/engine_shimmer_pass.cpp": "fb382f50cb1de2d9486dc8f398cfb1c9e64210fb1d35dc63662a546dbde06a00",
+      "src/effects/engine_shimmer_ps.hlsl": "9bfce359274378524782744e3032f46799f43de25a70a52496b44556d08a2ad8",
+      "src/renderer/engine_shimmer_pixel_program_inc.h": "27f9e068e593c962b725649a6306d9a6f07fc1e6512b850f068a1cddf1995201",
+      "src/renderer/quad_vertex_program.h": "bac269397080f5942b099193dbae1498b94c3ada69f9296f220cc7ac37b59fab",
+      "src/renderer/quad_vertex_program_inc.h": "fbf84f4a87bc71d72091e964bbdfd0377bf72011b19d2d5b40d0b6c1346d8415"
+    }
+  },
+  "program": {
+    "source": "src/effects/engine_shimmer_ps.hlsl",
+    "word_count": 6103,
+    "bytecode_sha256": "70020f611a0f275752117a9f0d39fb5eb9d21354851a8fe53f1631bf8e888b3c",
+    "target": "ps_3_0"
+  },
+  "game_launched": false,
+  "build": {
+    "command": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-Wno-cast-function-type",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-static",
+      "-static-libgcc",
+      "-static-libstdc++",
+      "-DWIN32_LEAN_AND_MEAN",
+      "-DNOMINMAX",
+      "-DX3M_ENGINE_SHIMMER_FIXTURE",
+      "verification/probe/engine_shimmer_fixture.cpp",
+      "src/renderer/engine_shimmer_pass.cpp",
+      "-o",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-ab06f485d58ffe4b8/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
+      "-luser32",
+      "-ldxguid"
+    ],
+    "warnings": 0,
+    "executable_sha256": "dd482a5dea1181405bc25778e3b2f08543e391de65b515d8a11db12c12a81c03"
+  },
+  "run": {
+    "exit_code": 0,
+    "result": {
+      "checks": 41,
+      "failures": 0,
+      "verdict": "PASS"
+    },
+    "log": "verification/probe/build/engine-shimmer/fixture.log"
+  },
+  "report": {
+    "attach": [
+      {
+        "refused": "8876086a",
+        "refused_reason": "fp16_filter",
+        "held": 0,
+        "result": 0,
+        "reason": "ok",
+        "ps_slots": 1608,
+        "max_ps_slots": 512,
+        "fp16_filter": 0,
+        "references": 3
+      }
+    ],
+    "size": [
+      {
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "width": 5120,
+        "height": 1440
+      }
+    ],
+    "displace": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "nozzle_px": 60.0,
+        "length_px": 336.0,
+        "half_width_px": 60.0,
+        "back_px": 15.0,
+        "amplitude_px": 1.125,
+        "result": 0,
+        "scissor_px": 43542,
+        "copy_px": 46440,
+        "inside": 24196,
+        "strong": 10941,
+        "moved": 10905,
+        "mean_strong_px": 0.2991,
+        "max_px": 1.0331,
+        "max_over_mask_px": 0.0112,
+        "near_px": 0.4778,
+        "mid_px": 0.1781,
+        "far_px": 0.012,
+        "side_px": 0.0246,
+        "outside": 2030058,
+        "outside_diff": 0,
+        "band": 0,
+        "band_diff": 0,
+        "revert": 0,
+        "restored": 1,
+        "pending_after": 0
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "nozzle_px": 60.0,
+        "length_px": 336.0,
+        "half_width_px": 60.0,
+        "back_px": 15.0,
+        "amplitude_px": 1.5,
+        "result": 0,
+        "scissor_px": 43542,
+        "copy_px": 46440,
+        "inside": 22794,
+        "strong": 11703,
+        "moved": 11648,
+        "mean_strong_px": 0.3574,
+        "max_px": 1.3775,
+        "max_over_mask_px": 0.0118,
+        "near_px": 0.6008,
+        "mid_px": 0.1875,
+        "far_px": 0.0113,
+        "side_px": 0.026,
+        "outside": 7329258,
+        "outside_diff": 0,
+        "band": 0,
+        "band_diff": 0,
+        "revert": 0,
+        "restored": 1,
+        "pending_after": 0
+      }
+    ],
+    "gate": [
+      {
+        "width": 1920,
+        "kept_20": 0,
+        "kept_23_9": 0,
+        "kept_24_5": 1,
+        "kept_30": 1,
+        "empty": 1,
+        "empty_calls": 0,
+        "empty_skipped": "no_rects",
+        "unchanged": 1,
+        "crowd": 16,
+        "capped": 4,
+        "largest": 49.0,
+        "smallest": 34.0
+      }
+    ],
+    "occlusion": [
+      {
+        "width": 1920,
+        "result": 0,
+        "depth": 0.996793,
+        "hidden": 5075,
+        "hidden_diff": 0,
+        "front": 8957,
+        "front_moved": 8914
+      },
+      {
+        "width": 5120,
+        "result": 0,
+        "depth": 0.996848,
+        "hidden": 5075,
+        "hidden_diff": 0,
+        "front": 9178,
+        "front_moved": 9127
+      }
+    ],
+    "state": [
+      {
+        "width": 1920,
+        "result": 0,
+        "restore": 0,
+        "restored": 1,
+        "own_scene": 1,
+        "changed": 36386,
+        "reverted": 1,
+        "calls": 124
+      }
+    ],
+    "refusal": [
+      {
+        "width": 1920,
+        "format": "00000001/format/0",
+        "recording": "00000001/recording/0",
+        "amplitude": "00000001/amplitude/0",
+        "unchanged": 1
+      }
+    ],
+    "fault": [
+      {
+        "width": 1920,
+        "draw": 80004005,
+        "step": 6,
+        "restore": 0,
+        "state_back": 1,
+        "pending": 1,
+        "revert": 0,
+        "reverted": 1,
+        "scratch": "8007000e",
+        "scratch_step": 2,
+        "none_pending": 1,
+        "next": 0,
+        "drew": 1
+      }
+    ],
+    "reset": [
+      {
+        "before": 6,
+        "pending": 1,
+        "released": 3,
+        "forgotten": 1,
+        "during": 80004005,
+        "reset": 0,
+        "after": 6,
+        "result": 0,
+        "drew": 1,
+        "changed": 36386,
+        "reverted": 1
+      }
+    ],
+    "timing": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "rects": 1,
+        "rect_area_share": 0.103,
+        "scissor_px": 215602,
+        "copy_px": 222880,
+        "fenced_on_ms": 0.6998,
+        "fenced_off_ms": 0.4678,
+        "submit_ms": 0.1003,
+        "chain_ms": 0.232,
+        "gpu_ms": 0.1317,
+        "samples": 60,
+        "calls": 122,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rects": 4,
+        "rect_area_share": 0.103,
+        "scissor_px": 341388,
+        "copy_px": 352128,
+        "fenced_on_ms": 0.8334,
+        "fenced_off_ms": 0.4681,
+        "submit_ms": 0.1012,
+        "chain_ms": 0.3653,
+        "gpu_ms": 0.2641,
+        "samples": 60,
+        "calls": 122,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rects": 16,
+        "rect_area_share": 0.103,
+        "scissor_px": 1525284,
+        "copy_px": 1540560,
+        "fenced_on_ms": 0.9749,
+        "fenced_off_ms": 0.3379,
+        "submit_ms": 0.1013,
+        "chain_ms": 0.637,
+        "gpu_ms": 0.5357,
+        "samples": 60,
+        "calls": 122,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "rects": 1,
+        "rect_area_share": 0.101,
+        "scissor_px": 753420,
+        "copy_px": 770784,
+        "fenced_on_ms": 1.0847,
+        "fenced_off_ms": 0.723,
+        "submit_ms": 0.0978,
+        "chain_ms": 0.3617,
+        "gpu_ms": 0.2639,
+        "samples": 60,
+        "calls": 122,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "rects": 4,
+        "rect_area_share": 0.101,
+        "scissor_px": 1198860,
+        "copy_px": 1225440,
+        "fenced_on_ms": 1.0956,
+        "fenced_off_ms": 0.5972,
+        "submit_ms": 0.0995,
+        "chain_ms": 0.4984,
+        "gpu_ms": 0.3989,
+        "samples": 60,
+        "calls": 122,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "rects": 16,
+        "rect_area_share": 0.101,
+        "scissor_px": 5365932,
+        "copy_px": 5398560,
+        "fenced_on_ms": 2.168,
+        "fenced_off_ms": 0.5987,
+        "submit_ms": 0.1118,
+        "chain_ms": 1.5693,
+        "gpu_ms": 1.4575,
+        "samples": 60,
+        "calls": 122,
+        "method": "tail_event_fenced"
+      }
+    ],
+    "checks": [
+      [
+        "attach_fp16_filter_refusal",
+        true
+      ],
+      [
+        "attach",
+        true
+      ],
+      [
+        "displace_one_rect",
+        true
+      ],
+      [
+        "displace_drew",
+        true
+      ],
+      [
+        "displace_within_amplitude",
+        true
+      ],
+      [
+        "displace_within_mask",
+        true
+      ],
+      [
+        "displace_moves",
+        true
+      ],
+      [
+        "displace_outside_byte_equal",
+        true
+      ],
+      [
+        "displace_unmasked_byte_equal",
+        true
+      ],
+      [
+        "displace_fade_along",
+        true
+      ],
+      [
+        "displace_fade_side",
+        true
+      ],
+      [
+        "displace_revert_byte_equal",
+        true
+      ],
+      [
+        "occlusion_hidden_byte_equal",
+        true
+      ],
+      [
+        "occlusion_front_displaced",
+        true
+      ],
+      [
+        "gate_24px",
+        true
+      ],
+      [
+        "gate_empty_no_call",
+        true
+      ],
+      [
+        "gate_cap_16_ranked",
+        true
+      ],
+      [
+        "state_restored",
+        true
+      ],
+      [
+        "state_own_scene_drew",
+        true
+      ],
+      [
+        "refusal_format",
+        true
+      ],
+      [
+        "refusal_recording",
+        true
+      ],
+      [
+        "refusal_zero_amplitude",
+        true
+      ],
+      [
+        "fault_draw_step",
+        true
+      ],
+      [
+        "fault_draw_revert",
+        true
+      ],
+      [
+        "fault_scratch",
+        true
+      ],
+      [
+        "fault_next_frame_draws",
+        true
+      ],
+      [
+        "reset_released",
+        true
+      ],
+      [
+        "reset_recreated",
+        true
+      ],
+      [
+        "displace_one_rect",
+        true
+      ],
+      [
+        "displace_drew",
+        true
+      ],
+      [
+        "displace_within_amplitude",
+        true
+      ],
+      [
+        "displace_within_mask",
+        true
+      ],
+      [
+        "displace_moves",
+        true
+      ],
+      [
+        "displace_outside_byte_equal",
+        true
+      ],
+      [
+        "displace_unmasked_byte_equal",
+        true
+      ],
+      [
+        "displace_fade_along",
+        true
+      ],
+      [
+        "displace_fade_side",
+        true
+      ],
+      [
+        "displace_revert_byte_equal",
+        true
+      ],
+      [
+        "occlusion_hidden_byte_equal",
+        true
+      ],
+      [
+        "occlusion_front_displaced",
+        true
+      ],
+      [
+        "detach_released",
+        true
+      ]
+    ],
+    "result": {
+      "checks": 41,
+      "failures": 0,
+      "verdict": "PASS"
+    },
+    "check_count": 41,
+    "failed_checks": []
+  },
+  "summary": {
+    "timing_gpu_ms": {
+      "1920x1080_1": 0.1317,
+      "1920x1080_4": 0.2641,
+      "1920x1080_16": 0.5357,
+      "5120x1440_1": 0.2639,
+      "5120x1440_4": 0.3989,
+      "5120x1440_16": 1.4575
+    },
+    "timing_submit_ms": {
+      "1920x1080_1": 0.1003,
+      "1920x1080_4": 0.1012,
+      "1920x1080_16": 0.1013,
+      "5120x1440_1": 0.0978,
+      "5120x1440_4": 0.0995,
+      "5120x1440_16": 0.1118
+    },
+    "displace": {
+      "1920x1080": {
+        "amplitude_px": 1.125,
+        "max_px": 1.0331,
+        "max_over_mask_px": 0.0112,
+        "mean_strong_px": 0.2991,
+        "near_px": 0.4778,
+        "mid_px": 0.1781,
+        "far_px": 0.012,
+        "side_px": 0.0246,
+        "outside_diff": 0,
+        "band_diff": 0,
+        "restored": 1
+      },
+      "5120x1440": {
+        "amplitude_px": 1.5,
+        "max_px": 1.3775,
+        "max_over_mask_px": 0.0118,
+        "mean_strong_px": 0.3574,
+        "near_px": 0.6008,
+        "mid_px": 0.1875,
+        "far_px": 0.0113,
+        "side_px": 0.026,
+        "outside_diff": 0,
+        "band_diff": 0,
+        "restored": 1
+      }
+    }
+  },
+  "passed": true
+}

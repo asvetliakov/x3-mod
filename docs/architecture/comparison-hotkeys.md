@@ -40,6 +40,19 @@ never becomes a press by changing modifiers, an unfocused press does not arm). E
 no key. Host proof: `verification/analysis/test_engine_plumes.py` (`PresetHotkey`: the production block executed with
 stubbed keys) and `test_comparison_hotkeys.py` (F8 plus exactly this block poll keys).
 
+## Engine heat shimmer (2026-10-03)
+
+**Ctrl+Alt+F7** (Shift up) turns the engine heat shimmer off and on for the device
+([engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md), gap 9; ini `engine_shimmer`, launch value via
+`--engine-shimmer`). The chord belonged to the FPS overlay until the 2026-09-26 removal and was free since. It is polled
+only on a device with the shimmer requested (`engine_effects = plumes` and `engine_shimmer` on); otherwise no key state is
+read. F7 is read every frame; the modifiers and the foreground window only on a fresh F7 edge
+(`engine_shimmer::ToggleKey`, the F6 latch's shape). Each press logs one `engine_shimmer_toggle` row (`on=`,
+`failed=`, `source=hotkey`). No suppression, hook or plume state changes: off only skips the post-resolve draw (a
+pending revert still runs before Present). Host proof: `verification/analysis/test_engine_shimmer.py` (`ToggleHotkey`:
+the production block executed with stubbed keys) and `test_comparison_hotkeys.py` (F8 plus exactly the F6 and F7 blocks
+poll keys).
+
 The sections below are the history of the keys before their removal.
 
 ## History: same-run exposure and bloom comparisons
