@@ -1187,8 +1187,9 @@ public:
     const engine_effects::core::Ring* engine_effects_ring() const noexcept { return engine_hook_ ? engine_ring_ : nullptr; }
     // Engine plumes, phase 2 (motion_output_engine_plumes_inc.h; docs/architecture/engine-effects-modern.md sections
     // 3-6): requested = X3M_ENGINE_EFFECTS=plumes with the suppression on (configure_engine_effects' suppress), the
-    // load-time preset. Process-start values; the stage arms per frame at the resolve.
-    void configure_engine_plumes(bool requested, engine_plumes::Preset preset) noexcept;
+    // load-time preset and nozzle width (X3M_ENGINE_PLUME_NOZZLE, x value). Process-start values; the stage arms per
+    // frame at the resolve.
+    void configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width) noexcept;
     bool engine_plumes_requested() const noexcept { return plumes_requested_; }
     // Ctrl+Alt+F6: the next preset (restrained -> default -> strong -> restrained), one engine_plumes_preset row; the
     // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
@@ -1745,6 +1746,9 @@ private:
     std::uint64_t plumes_view_own_total_ = 0, plumes_view_majority_total_ = 0;
     std::uint64_t engine_qpc_frequency() noexcept; // qpc_frequency_, read once
     engine_plumes::StageClock engine_clock_{};     // the plume stage's clock (flow, pulse, the ribbons' pool)
+    engine_plumes::FlowPhase engine_flow_{};       // the plumes' flow phase, advanced by each clock step
+    engine_plumes::Look plumes_look_{};            // default_look with the configured nozzle width
+    float plumes_flow_rate_ = 0.f;                 // engine_plumes::flow_rate(plumes_look_), nozzle widths per second
     static constexpr std::uint64_t plumes_disarm_frames = 64;
     unsigned plumes_failures_ = 0;      // consecutive failed stage frames (a drawn frame clears it)
     bool plumes_failed_out_ = false;    // plumes_failure_limit reached: refused until Reset

@@ -3266,7 +3266,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
                                                   log_tier::cached_debug); // X3M_ENGINE_EFFECTS: off = one bool per draw
     hooked.motion_output.configure_engine_plumes(engine_effects::mode() == engine_effects::core::Mode::plumes &&
                                                      engine_effects::suppress(),
-                                                 engine_effects::preset()); // plumes: the stage in the resolve
+                                                 engine_effects::preset(),
+                                                 engine_effects::plume_nozzle()); // plumes: the stage in the resolve
     hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless configured
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);

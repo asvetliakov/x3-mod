@@ -17,6 +17,7 @@ namespace core = x3m::engine_effects::core;
 namespace lfc = x3m::lens_flare_cull::core;
 core::Mode mode_ = core::Mode::native;
 x3m::engine_plumes::Preset preset_ = x3m::engine_plumes::default_preset;
+float nozzle_ = x3m::engine_plumes::default_look.nozzle_width;
 bool identity_ = false, hook_ = false, initialized_ = false;
 const char* status_ = "not_initialized";
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -201,11 +202,21 @@ void initialize() {
         x3m::engine_plumes::Preset parsed = x3m::engine_plumes::default_preset;
         const bool ok = !n || (n < 16 && x3m::engine_plumes::parse_preset(word, n, &parsed));
         preset_ = ok ? parsed : x3m::engine_plumes::default_preset;
+        // The nozzle width in value (the look's proportions): one plain decimal in 0.1..1.0; unset = 0.25, anything
+        // else refused (0.25, nozzle_status invalid_setting).
+        wchar_t width[16]{};
+        const DWORD wn = x3m::config::get(L"X3M_ENGINE_PLUME_NOZZLE", width, 16);
+        char width_shown[16]{};
+        for (DWORD i = 0; i < wn && i < 15; ++i) width_shown[i] = width[i] > 0x20 && width[i] < 0x7f ? char(width[i]) : '?';
+        float nozzle = x3m::engine_plumes::default_look.nozzle_width;
+        const bool nozzle_ok = !wn || (wn < 16 && x3m::engine_plumes::parse_nozzle(width, wn, &nozzle));
+        nozzle_ = nozzle_ok ? nozzle : x3m::engine_plumes::default_look.nozzle_width;
         // One row: the stage arms per device at the resolve (the suppression, --motion-output --hdr --taa, FP16
         // blending); a device that cannot arm says so in engine_plumes_state and keeps the phase-1 look (off).
-        log("engine_effects_plumes preset=%s setting=%s status=%s stage=%s cycle=ctrl+alt+f6",
+        log("engine_effects_plumes preset=%s setting=%s status=%s stage=%s cycle=ctrl+alt+f6 nozzle=%.3f nozzle_setting=%s nozzle_status=%s",
             x3m::engine_plumes::preset_name(preset_), n ? shown : "-", ok ? "ok" : n >= 16 ? "too_long" : "invalid_setting",
-            hook_ ? "requested" : "off");
+            hook_ ? "requested" : "off", double(nozzle_), wn ? width_shown : "-",
+            nozzle_ok ? "ok" : wn >= 16 ? "too_long" : "invalid_setting");
     }
     SetLastError(error);
 }
@@ -214,6 +225,9 @@ core::Mode mode() {
 }
 x3m::engine_plumes::Preset preset() {
     return preset_;
+}
+float plume_nozzle() {
+    return nozzle_;
 }
 bool hook_wanted() {
     return hook_;

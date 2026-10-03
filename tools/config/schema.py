@@ -330,6 +330,10 @@ SETTINGS = [
           'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Ctrl+Alt+F6 switches '
           'between them in flight.', builtin='default', choices=('restrained', 'default', 'strong'),
           launcher='--engine-effects-preset', since='2026-10-01'),
+    entry('engine_plume_nozzle', 'float', 'engine', 'Proportions of the mod\'s engine plumes (engine_effects = plumes): the '
+          'nozzle width as a share of the engine\'s size. Larger is a wider, stubbier plume and coarser turbulence; '
+          '0.1 to 1. Read when the game starts.', builtin='0.25', range=(0.1, 1.0), launcher='--engine-plume-nozzle',
+          since='2026-10-03'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

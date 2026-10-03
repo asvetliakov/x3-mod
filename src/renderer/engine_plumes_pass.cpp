@@ -219,7 +219,8 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     if (reset_pending_) return refuse(EnginePlumesStep::Validate, E_FAIL);
     if (!f.width || !f.height || !f.lane || (f.record_count && !f.records) || !finite(f.view.m00) || !(f.view.m00 > 0.f) ||
         !finite(f.view.m11) || !(f.view.m11 > 0.f) || !finite(f.m20) || !finite(f.m21) || !finite(f.m22) ||
-        !finite(f.m32) || !(f.view.near_z > 0.f) || !(f.view.height > 0.f) || !finite(f.seconds))
+        !finite(f.m32) || !(f.view.near_z > 0.f) || !(f.view.height > 0.f) || !finite(f.seconds) ||
+        !finite(f.phase))
         return refuse(EnginePlumesStep::Validate, E_INVALIDARG);
     for (float v : f.view.rows)
         if (!finite(v)) return refuse(EnginePlumesStep::Validate, E_INVALIDARG);
@@ -256,9 +257,9 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     };
     const float projection[4] = {f.view.m00, f.view.m11, f.m20, f.m21};
     const float limits[4] = {f.view.near_z, 0.f, 0.f, 0.f};
-    // c0 sizes, c1 the lane's form, c2 the lane terms and the clock, c3..c7 the look (engine_plumes_core.h Look):
-    // one call for the eight registers.
-    float pixel[32] = {1.f / float(f.width), 1.f / float(f.height), 0.f, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
+    // c0 sizes and the flow phase, c1 the lane's form, c2 the lane terms and the clock, c3..c7 the look
+    // (engine_plumes_core.h Look): one call for the eight registers.
+    float pixel[32] = {1.f / float(f.width), 1.f / float(f.height), f.phase, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
                        engine_plumes::soft_core, engine_plumes::soft_halo, engine_plumes::halo_reach, f.seconds};
     engine_plumes::pixel_constants(look, pixel + 12);
     step(EnginePlumesStep::State, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 0, projection, 1));

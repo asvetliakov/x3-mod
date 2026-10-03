@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01, see the end of this note) |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle` (2026-10-03; both at the end of this note) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player
@@ -592,3 +592,15 @@ to `default` with `status=invalid_setting` on the `engine_effects_plumes` row. R
 shell value is dropped, refused under `--vanilla`). In flight **Ctrl+Alt+F6** cycles restrained → default → strong
 per device (one `engine_plumes_preset` row per press, [comparison-hotkeys.md](comparison-hotkeys.md)); the
 native/off/plumes mode itself is never toggled.
+
+## `engine_plume_nozzle` (2026-10-03, plume look review fixes)
+
+Key `engine_plume_nozzle`, environment `X3M_ENGINE_PLUME_NOZZLE`, launcher `--engine-plume-nozzle W`
+([engine-effects-modern.md](engine-effects-modern.md), "Plume look redesign", "Ported"). The plume's nozzle width as a
+share of the engine's size `value` under `engine_effects = plumes`; the length stays the game's `z x value`, so a larger
+width draws a wider, stubbier plume with coarser turbulence. Default **0.25** (the Engine Exhaust Lab's proportions,
+8 nozzle widths long at full throttle); 0.5 halves the length in nozzle widths, the A/B the flight compares. One plain
+decimal in 0.1..1.0 (digits with at most one point; no sign, exponent or padding); anything else is refused to 0.25
+with `nozzle_status=invalid_setting` on the `engine_effects_plumes` row (which also prints `nozzle=` and
+`nozzle_setting=`). Read once at load and only with `plumes`; the launcher sends it only when given (finite 0.1..1.0,
+as a plain decimal; an inherited shell value is dropped, refused under `--vanilla`).

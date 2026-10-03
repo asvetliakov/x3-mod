@@ -13,8 +13,10 @@
 //                 the camera, the occlusion bias) reported
 //   chase         the own ship's plume tail-on close to the camera: its projected extent against 0.12 H, the fade's 0.5
 //   presets       restrained / default / strong: the core and halo radiance ratios
-//   temporal      30 frames at 60 fps: the core's variation (alive, not strobing) and mean (the design); resolved
-//   shape         the mean half-width at u = 0.1 (the bulge) and 0.9 (the taper) over the nozzle's half-width
+//   temporal      30 frames at 60 fps: the core's variation (alive, not strobing), its lag-1 correlation (the flow
+//                 moves, it does not jump) and mean (the design); resolved
+//   shape         the body's mean half-width at u = 0.1 (the bulge) and 0.9 (the taper) over the nozzle's half-width,
+//                 against the mock-up's law
 //   shock         the axis's local maxima to u = 0.6 (the shock diamonds)
 //   off_path      no record: S_FALSE and no device call; an idle callback leaves the resolve byte-identical
 //   fault         a failed draw reports its step; the next frame draws
@@ -237,7 +239,8 @@ ee::Record record(float x, float y, float z, float ax, float ay, float az, float
     return r;
 }
 // The looks the cases draw with: the production look (null: ep::default_look), and a still one (no turbulence, erosion
-// or length pulse) where a readback is compared with the CPU replica of the law; the shape case's: no pulse.
+// or length pulse) where a readback is compared with the CPU replica of the law; the shape case's: no pulse, no halo
+// and no ring (the body alone).
 ep::Look make_still() {
     ep::Look k = ep::default_look;
     k.turb = 0.f;
@@ -245,12 +248,23 @@ ep::Look make_still() {
     k.pulse = 0.f;
     return k;
 }
-ep::Look make_steady() {
+ep::Look make_body() {
     ep::Look k = ep::default_look;
     k.pulse = 0.f;
+    k.hb = 0.f;
+    k.ring = 0.f;
     return k;
 }
-const ep::Look still = make_still(), steady = make_steady();
+const ep::Look still = make_still(), body_only = make_body();
+// The flow phase of the stage clock's `seconds` (the proxy advances it per frame at a constant rate: the same value).
+float phase_at(float seconds, const ep::Look* look) {
+    float rate = 0.f, out = 0.f;
+    ep::flow_rate(look ? *look : ep::default_look, &rate);
+    ep::FlowPhase phase;
+    phase.advance(double(seconds), rate);
+    phase.wrapped(&out);
+    return out;
+}
 rr::EnginePlumesFrame frame_for(Targets& t, bool four, const ee::Record* records, unsigned count,
                                 ep::Preset preset = ep::Preset::standard, float seconds = 0.f, float jx = 0.f,
                                 float jy = 0.f, const ep::Look* look = nullptr) {
@@ -274,6 +288,7 @@ rr::EnginePlumesFrame frame_for(Targets& t, bool four, const ee::Record* records
     f.body = nullptr;
     f.preset = preset;
     f.seconds = seconds;
+    f.phase = phase_at(seconds, look);
     f.look = look;
     return f;
 }
@@ -290,9 +305,10 @@ Built build_cpu(const rr::EnginePlumesFrame& f) {
 }
 // The CPU replica of the pixel program's law (src/effects/engine_plume_ps.hlsl) for the axial quad and a white tint:
 // the luma (the red channel: white stays 1 under the heat and ring mixes) at (x, y) in nozzle widths, the noise given
-// (n1 the erosion's, n2 the turbulence's; 0.4375 = their mean, the still look ignores them).
+// (n1 the erosion's, n2 the turbulence's; 0.4375 = their mean, the still look ignores them; noise_at the CPU's value
+// noise at the pixel program's coordinates, statistically the GPU's: the hash's float rounding differs).
 struct LawInputs {
-    float L = 0.f, s = 0.f, i_core = 0.f, i_halo = 0.f, sigma0 = 0.f, ring2 = 0.f, aa = 0.f, n_px = 0.f;
+    float L = 0.f, s = 0.f, i_core = 0.f, i_halo = 0.f, sigma0 = 0.f, ring2 = 0.f, aa = 0.f, n_px = 0.f, seed = 0.f;
 };
 LawInputs law_of(const ep::Vertex& v, float ppu) {
     LawInputs in;
@@ -303,8 +319,15 @@ LawInputs law_of(const ep::Vertex& v, float ppu) {
     in.i_halo = v.intensity[1];
     in.sigma0 = v.shape[0];
     in.ring2 = float(v.params & 255u) / 255.f;
+    in.seed = float((v.params >> 8) & 255u) / 255.f;
     in.aa = 1.f / in.n_px;
     return in;
+}
+void noise_at(const LawInputs& in, float x, float y, float phase, float seconds, float& n1, float& n2) {
+    const float p[3] = {(x - phase) * 1.6f, y * 3.f, in.seed * 1861.5f + seconds * .7f};
+    const float p2[3] = {p[0] * 2.2f + 5.f, p[1] * 2.2f + 2.f, p[2] * 2.2f + 1.f};
+    ep::noise::fbm(p, &n1);
+    ep::noise::fbm(p2, &n2);
 }
 float smooth(float e0, float e1, float x) {
     float t = (x - e0) / (e1 - e0);
@@ -326,9 +349,9 @@ float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1
     const float core_mask = 1.f - smooth(0.f, 1.f, radial * c[13]);
     const float body = in.i_core * edge * tail * inside * cells * turbulence * (1.f + .6f * core_mask);
     const float du = x - std::min(std::max(x, 0.f), L), d = std::sqrt(du * du + r * r);
-    const float sigma = std::max(in.sigma0 * w * c[16], 1e-4f);
-    const float window = std::min(std::max(1.f - d / (ep::halo_reach * sigma), 0.f), 1.f);
-    const float halo = in.i_halo * std::exp(-d / sigma) * std::exp(-2.2f * uc) * window;
+    const float dn = d / std::max(in.sigma0, 1e-4f);
+    const float window = std::min(std::max(2.f * (ep::halo_reach - dn), 0.f), 1.f);
+    const float halo = in.i_halo * std::exp(-dn) * std::exp(-2.2f * uc) * window;
     const float s2 = c[15] + .25f * in.aa * in.aa, rr2 = r - c[14];
     const float ring = in.i_core * in.ring2 * c[19] * std::sqrt(c[15] / s2) * std::exp(-rr2 * rr2 / (2.f * s2)) *
                        std::exp(-std::max(x, 0.f) * c[18]) * (x >= -.05f ? 1.f : 0.f);
@@ -816,9 +839,20 @@ double cv_of(const std::vector<double>& v) {
     for (double x : v) s += (x - m) * (x - m);
     return v.size() > 1 && m > 0 ? std::sqrt(s / double(v.size() - 1)) / m : 0.;
 }
+// The lag-1 autocorrelation of a series (1: each frame its predecessor; 0: uncorrelated frame to frame).
+double lag1_of(const std::vector<double>& v) {
+    const double m = mean_of(v);
+    double num = 0, den = 0;
+    for (std::size_t i = 0; i < v.size(); ++i) {
+        den += (v[i] - m) * (v[i] - m);
+        if (i + 1 < v.size()) num += (v[i] - m) * (v[i + 1] - m);
+    }
+    return den > 0 ? num / den : 0.;
+}
 // (a) Alive, not strobing: the same nozzle over 30 frames at 60 fps (side view, value 200 px, s = 1, the production
 // look): the luma of a 3x3 box on the axis at u = 0.2 of the game's length, per frame; its coefficient of variation
-// (0.05..0.4) and its mean against the design (the replica on the box's pixels with the noise at its mean, 0.4375, and
+// (0.05..0.4), its lag-1 correlation (at least 0.5: the flow translates the noise at a constant speed, so a frame
+// resembles its predecessor; a phase following the pulsed L decorrelates it from t ~ 10 s) and its mean against the design (the replica on the box's pixels with the noise at its mean, 0.4375, and
 // each frame's pulsed length; within 10 %). The same frames through the resolve (the flown configuration, the stage
 // callback, 8 frames of history first): the resolved box's variation, reported (the history's smoothing of the flow).
 void temporal_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
@@ -874,21 +908,48 @@ void temporal_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlum
             resolved.push_back(m / 9.);
         }
     }
-    const double raw_mean = mean_of(raw), design_mean = mean_of(design), raw_cv = cv_of(raw);
+    const double raw_mean = mean_of(raw), design_mean = mean_of(design), raw_cv = cv_of(raw), raw_lag1 = lag1_of(raw);
     const double ratio = design_mean > 0 ? raw_mean / design_mean : 0.;
     double step = 0;
     for (std::size_t i = 1; i < raw.size(); ++i) step = std::max(step, std::fabs(raw[i] - raw[i - 1]) / raw_mean);
-    std::printf("TEMPORAL width=%u height=%u frames=%u dt_ms=16.7 box_u=0.2 raw_mean=%.4f raw_cv=%.4f raw_max_step=%.4f design_mean=%.4f mean_over_design=%.4f resolved_mean=%.4f resolved_cv=%.4f\n",
-                t.w, t.h, frames, raw_mean, raw_cv, step, design_mean, ratio, mean_of(resolved), cv_of(resolved));
+    std::printf("TEMPORAL width=%u height=%u frames=%u dt_ms=16.7 box_u=0.2 raw_mean=%.4f raw_cv=%.4f raw_lag1=%.4f raw_max_step=%.4f design_mean=%.4f mean_over_design=%.4f resolved_mean=%.4f resolved_cv=%.4f\n",
+                t.w, t.h, frames, raw_mean, raw_cv, raw_lag1, step, design_mean, ratio, mean_of(resolved), cv_of(resolved));
     char label[64];
     std::snprintf(label, sizeof label, "temporal_alive_%u", t.w);
     report(label, raw_cv >= .05 && raw_cv <= .4);
+    std::snprintf(label, sizeof label, "temporal_lag1_%u", t.w);
+    report(label, raw_lag1 >= .5);
     std::snprintf(label, sizeof label, "temporal_mean_design_%u", t.w);
     report(label, std::fabs(ratio - 1.) <= .1);
 }
-// (b) Bulge and taper: side view, value 400 px (the nozzle 100 px wide), s = 1, the production look without the length
-// pulse, 30 frames 0.1 s apart; on the frames' mean, the half-width of the columns at u = 0.1 and 0.9 down to 10 % of
-// the column's peak, over the nozzle's half-width (0.5 n): at least 1.05 at u = 0.1, at most 0.35 at u = 0.9.
+// (b) Bulge and taper: side view, value 100 px (the nozzle 25 px wide), s = 1, the production look without the length
+// pulse, the halo and the ring (the body alone), 30 frames 0.1 s apart; on the frames' mean, the half-width of the
+// columns at u = 0.1 and 0.9 down to 10 % of the column's peak, over the nozzle's half-width (0.5 n), against the same
+// crossing of the CPU replica over the same frames (the mock-up's law with the CPU value noise at the pixel program's
+// coordinates): within 6 % at u = 0.1 and 12 % at u = 0.9. The mock-up's width itself, w(0.1) / 0.5 >= 1.05 (the
+// bulge past the nozzle), is checked from the law.
+double crossing_of(const std::vector<double>& v, int rows, int by, float cy) {
+    double pk = 0;
+    for (double x : v) pk = std::max(pk, x);
+    const double threshold = .1 * pk;
+    // The crossings of 10 % of the peak on both sides of the axis row, interpolated between pixel centres (D3D9: on
+    // integers; the row by + k lies k + by - cy from the axis).
+    auto crossing = [&](int direction) {
+        int k = 0;
+        while (std::abs(k + direction) <= rows && v[std::size_t(rows + k + direction)] >= threshold) k += direction;
+        if (std::abs(k + direction) > rows) return double(rows);
+        const double a = v[std::size_t(rows + k)], b = v[std::size_t(rows + k + direction)];
+        const double f = a > b ? (a - threshold) / (a - b) : 0.;
+        return std::fabs(double(k) + double(direction) * f + double(by) - double(cy));
+    };
+    return .5 * (crossing(-1) + crossing(1));
+}
+float lab_width(const ep::Look& k, float u) { // the mock-up's w(u), nozzle widths
+    float c[20];
+    ep::pixel_constants(k, c);
+    const float b = c[0] * (1.f - .55f * std::exp(-9.f * u)) * (1.f + .35f * smooth(0.f, .25f, u) * std::exp(-4.f * u));
+    return std::min(c[0] + c[1] * u, b + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, u), .05f);
+}
 void shape_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
     const float Z = 2000.f, ppu = t.ppu(Z), value = 100.f / ppu, Lpx = 2.f * value * ppu;
     const ee::Record r = record(Lpx * .5f / ppu, 0, Z, -1, 0, 0, value, 2.f);
@@ -897,43 +958,43 @@ void shape_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     const int by = int(std::floor(cy + .5f)), rows = 80;
     const int columns[2] = {int(std::floor(cx - .1f * Lpx)), int(std::floor(cx - .9f * Lpx))};
     std::vector<double> sum[2] = {std::vector<double>(2 * rows + 1, 0.), std::vector<double>(2 * rows + 1, 0.)};
+    std::vector<double> want[2] = {std::vector<double>(2 * rows + 1, 0.), std::vector<double>(2 * rows + 1, 0.)};
     const unsigned frames = 30;
     float n_px = 0.f;
     for (unsigned n = 0; n < frames; ++n) {
-        const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 20.f + .1f * float(n), 0.f, 0.f, &steady);
-        n_px = build_cpu(f).v[0].local[3] * ppu;
+        const float seconds = 20.f + .1f * float(n);
+        const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, seconds, 0.f, 0.f, &body_only);
+        const Built b = build_cpu(f);
+        const LawInputs in = law_of(b.v[0], ppu);
+        n_px = in.n_px;
         scene.frame(0, 0, 0, 0, 500);
         draw(d, pass, f);
         for (unsigned c = 0; c < 2; ++c) {
             const auto col = read_region(d, t, nullptr, columns[c], by - rows, columns[c] + 1, by + rows + 1);
-            for (int i = 0; i <= 2 * rows; ++i) sum[c][i] += col[i];
+            const float x = (cx - float(columns[c])) / in.n_px;
+            for (int i = 0; i <= 2 * rows; ++i) {
+                sum[c][std::size_t(i)] += col[std::size_t(i)];
+                const float y = (float(by - rows + i) - cy) / in.n_px;
+                float n1 = 0.f, n2 = 0.f;
+                noise_at(in, x, y, f.phase, seconds, n1, n2);
+                want[c][std::size_t(i)] += replica(body_only, in, x, y, n1, n2);
+            }
         }
     }
-    // The crossings of 10 % of the peak on both sides of the axis row, interpolated between pixel centres (D3D9: on
-    // integers; the row by + k lies k + by - cy from the axis).
-    float ratio[2];
+    float ratio[2], expected[2];
     for (unsigned c = 0; c < 2; ++c) {
-        const std::vector<double>& v = sum[c];
-        double pk = 0;
-        for (double x : v) pk = std::max(pk, x);
-        const double threshold = .1 * pk;
-        auto crossing = [&](int direction) {
-            int k = 0;
-            while (std::abs(k + direction) <= rows && v[std::size_t(rows + k + direction)] >= threshold) k += direction;
-            if (std::abs(k + direction) > rows) return double(rows);
-            const double a = v[std::size_t(rows + k)], b = v[std::size_t(rows + k + direction)];
-            const double f = a > b ? (a - threshold) / (a - b) : 0.;
-            return std::fabs(double(k) + double(direction) * f + double(by) - double(cy));
-        };
-        ratio[c] = float(.5 * (crossing(-1) + crossing(1))) / (.5f * n_px);
+        ratio[c] = float(crossing_of(sum[c], rows, by, cy)) / (.5f * n_px);
+        expected[c] = float(crossing_of(want[c], rows, by, cy)) / (.5f * n_px);
     }
-    std::printf("SHAPE width=%u height=%u frames=%u nozzle_px=%.1f L_px=%.1f half_width_u01_over_nozzle_half=%.3f half_width_u09_over_nozzle_half=%.3f\n",
-                t.w, t.h, frames, double(n_px), double(Lpx), double(ratio[0]), double(ratio[1]));
+    const float lab01 = lab_width(body_only, .1f) / .5f, lab09 = lab_width(body_only, .9f) / .5f;
+    std::printf("SHAPE width=%u height=%u frames=%u nozzle_px=%.1f L_px=%.1f half_width_u01_over_nozzle_half=%.3f half_width_u09_over_nozzle_half=%.3f expected_u01=%.3f expected_u09=%.3f lab_w_u01=%.3f lab_w_u09=%.3f\n",
+                t.w, t.h, frames, double(n_px), double(Lpx), double(ratio[0]), double(ratio[1]), double(expected[0]),
+                double(expected[1]), double(lab01), double(lab09));
     char label[64];
     std::snprintf(label, sizeof label, "shape_bulge_u01_%u", t.w);
-    report(label, ratio[0] >= 1.05f);
+    report(label, lab01 >= 1.05f && expected[0] > 0.f && std::fabs(ratio[0] / expected[0] - 1.f) <= .06f);
     std::snprintf(label, sizeof label, "shape_taper_u09_%u", t.w);
-    report(label, ratio[1] <= .35f);
+    report(label, expected[1] > 0.f && std::fabs(ratio[1] / expected[1] - 1.f) <= .12f && ratio[1] < ratio[0]);
 }
 // (c) Shock diamonds: side view, value 200 px, s = 1; the axis's radiance (r = 0) from the nozzle to u = 0.6, a 5-px
 // running mean, its local maxima (the largest within +-6 px) at u in [0.02, 0.6]: at least 3 with the still look (the

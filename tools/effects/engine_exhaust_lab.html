@@ -86,7 +86,7 @@ const vs=`#version 300 es
 in vec2 p;out vec2 uv;void main(){uv=p*0.5+0.5;gl_Position=vec4(p,0,1);}`;
 const fs=`#version 300 es
 precision highp float;out vec4 o;in vec2 uv;
-uniform vec2 res;uniform float t,thr,mode,turb,flow,erode,pulse,shock,period,cfade,heat,core,halo,hb,expo,bulge,taper,tail,ring;uniform vec3 tint;
+uniform vec2 res;uniform float t,phase,thr,mode,turb,flow,erode,pulse,shock,period,cfade,heat,core,halo,hb,expo,bulge,taper,tail,ring;uniform vec3 tint;
 float hash(vec3 p){p=fract(p*0.3183099+vec3(.1,.2,.3));p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vnoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
  return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
@@ -94,7 +94,7 @@ float vnoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
 float fbm(vec3 p){return 0.5*vnoise(p)+0.25*vnoise(p*2.03+1.7)+0.125*vnoise(p*4.1+3.1);}
 // one plume: x along axis from nozzle (0) in nozzle-diameter units, y radial, s throttle, modern flag
 vec3 plume(vec2 q,float s,float modern,float side){
- float L=(0.25+1.75*s)*4.0;            // game law: length vs throttle, 4 nozzle diameters at s=1
+ float L=(0.25+1.75*s)*4.0;            // game law: length vs throttle, 8 nozzle diameters at s=1 (1 at s=0)
  float lp=L*(1.0+pulse*modern*(fbm(vec3(t*3.0,side,0.0))-0.5)*2.0);
  float u=q.x/lp; if(u<0.0||u>1.0) return vec3(0);
  float r=abs(q.y);
@@ -105,8 +105,9 @@ vec3 plume(vec2 q,float s,float modern,float side){
    w=mix(cyl,cone,taper); w=min(w,b+0.5*bulge*taper); w*=1.0-0.6*smoothstep(0.6,1.0,u)*taper;
  }
  float radial=r/w;
- // noise scrolled along the axis at flow speed, stretched along u
- vec3 np=vec3(q.x*1.6-t*flow*lp*0.35,q.y*3.0,side+t*0.7);
+ // noise translated along the axis by the flow phase (nozzle diameters, accumulated per frame at a constant speed,
+ // the s=1 unpulsed design length's 0.35 flow L / 1.6; the proxy's FlowPhase), stretched along u
+ vec3 np=vec3((q.x-phase)*1.6,q.y*3.0,side+t*0.7);
  float n=fbm(np);
  float n2=fbm(np*2.2+vec3(5.0,2.0,1.0));
  float eros=modern*erode*(n-0.5)*1.6;   // eats the edge
@@ -155,7 +156,7 @@ function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShade
 const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,vs));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(pr);gl.useProgram(pr);
 const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
 const loc=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-const U={};['res','t','thr','mode','turb','flow','erode','pulse','shock','period','cfade','heat','core','halo','hb','expo','tint','bulge','taper','tail','ring'].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
+const U={};['res','t','phase','thr','mode','turb','flow','erode','pulse','shock','period','cfade','heat','core','halo','hb','expo','tint','bulge','taper','tail','ring'].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
 const ids=['thr','sweep','bulge','taper','tail','ring','turb','flow','erode','pulse','shock','period','cfade','heat','core','halo','hb','exp'];
 const el={};ids.forEach(i=>el[i]=document.getElementById(i));
 const colors=[['Argon','#5858f7'],['Boron','#1b88a6'],['Split','#d63d3d'],['Teladi','#38865a'],['Paranid','#777702'],['Xenon','#a2439f'],['Terran','#b8a99a'],['Kha’ak','#84549c']];
@@ -170,13 +171,16 @@ const mb={modern:0,static:1,both:2};Object.keys(mb).forEach(k=>{const bt=documen
 const shapes={cone:{bulge:1.0,taper:1.0,tail:0.15,ring:0.2},bulge:{bulge:1.15,taper:0.45,tail:0.7,ring:0.6},feather:{bulge:1.05,taper:0.25,tail:1.0,ring:0.5}};
 Object.keys(shapes).forEach(k=>{document.getElementById('s-'+k).addEventListener('click',()=>{Object.entries(shapes[k]).forEach(([i,v])=>{el[i].value=v;fmt(i);});Object.keys(shapes).forEach(j=>document.getElementById('s-'+j).setAttribute('aria-pressed',j===k?'true':'false'));});});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let t0=performance.now();
+let t0=performance.now(),tLast=0,phase=0;
+// The flow phase in nozzle diameters: phase += 0.35 flow L1 / 1.6 dt with L1 = 8 (s = 1, no pulse), wrapped at 4096
+// (engine_plumes_core.h flow_rate / FlowPhase); a step is held to 0.1 s (a hidden tab).
 function frame(now){
- const t=(now-t0)/1000;const dpr=Math.min(devicePixelRatio||1,2);const w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);
+ const t=(now-t0)/1000;const dt=Math.min(Math.max(t-tLast,0),0.1);tLast=t;
+ phase=(phase+0.35*val('flow')*8.0/1.6*dt)%4096;const dpr=Math.min(devicePixelRatio||1,2);const w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);
  if(c.width!==w||c.height!==h){c.width=w;c.height=h;gl.viewport(0,0,w,h);}
  let thr=val('thr');if(val('sweep')>0.5){thr=0.5-0.5*Math.cos(t*0.45);el.thr.value=thr.toFixed(2);fmt('thr');}
  document.getElementById('hud-thr').textContent=thr.toFixed(2);
- gl.uniform2f(U.res,w,h);gl.uniform1f(U.t,reduce?0:t);gl.uniform1f(U.thr,thr);gl.uniform1f(U.mode,mode);
+ gl.uniform2f(U.res,w,h);gl.uniform1f(U.t,reduce?0:t);gl.uniform1f(U.phase,reduce?0:phase);gl.uniform1f(U.thr,thr);gl.uniform1f(U.mode,mode);
  gl.uniform1f(U.turb,val('turb'));gl.uniform1f(U.flow,val('flow'));gl.uniform1f(U.erode,val('erode'));gl.uniform1f(U.pulse,val('pulse'));
  gl.uniform1f(U.shock,val('shock'));gl.uniform1f(U.period,val('period'));gl.uniform1f(U.cfade,val('cfade'));gl.uniform1f(U.heat,val('heat'));
  gl.uniform1f(U.core,val('core'));gl.uniform1f(U.halo,val('halo'));gl.uniform1f(U.hb,val('hb'));gl.uniform1f(U.expo,val('exp'));gl.uniform1f(U.bulge,val('bulge'));gl.uniform1f(U.taper,val('taper'));gl.uniform1f(U.tail,val('tail'));gl.uniform1f(U.ring,val('ring'));gl.uniform3f(U.tint,tint[0],tint[1],tint[2]);

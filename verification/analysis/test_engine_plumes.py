@@ -1,9 +1,10 @@
 """Engine plumes, phase 2 (X3M_ENGINE_EFFECTS=plumes; docs/architecture/engine-effects-modern.md sections 3-6): the
 portable core src/proxy/engine_plumes_core.h compiled on the host (the preset parser, the Ctrl+Alt+F6 latch, the
 record -> vertex builder: geometry, throttle law, presets, the screen minimums, the near-camera cap and fade, the RCS
-puffs, the cull rules, capacity, tint and the body table's colours, the flicker, the build's cost), the production
-Ctrl+Alt+F6 block of capture.cpp executed with stubbed keys, the preset's schema entry and launcher option, the
-wiring, and the tracked Wine record of run_engine_plumes.py bound to its production sources.
+puffs, the cull rules, capacity, tint and the body table's colours, the length pulse and its per-seed cache, the flow
+phase, the nozzle parser, the build's cost), the production Ctrl+Alt+F6 block of capture.cpp executed with stubbed keys,
+the preset's and the nozzle width's schema entries and launcher options, the wiring, and the tracked Wine record of
+run_engine_plumes.py bound to its production sources.
 """
 import hashlib
 import json
@@ -100,26 +101,27 @@ int main() {
             layout = layout && near(x.local[2], L) && near(x.local[3], nw) && near(x.shape[0], .55f) && near(x.shape[1], V) && x.shape[2] == 0.f && x.shape[3] == 0.f;
         }
         expect(layout && plane, "axial quad: position = origin + axis x + side y, L = z value, n = value / 4, halo sigma0 0.55 nozzle widths, kind 0");
-        // The body's eroded edge (1 + 0.48 erode of w(u)), the halo window (2.25 sigma, sigma = 0.55 w(u) / w(0); half
-        // discs behind the nozzle and past the tip) and the ring (u near 0) inside the trapezoid, linear in x.
+        // The body's eroded edge (1 + 0.48 erode of w(u)), the halo window (2.25 sigma0, the nozzle's sigma along the
+        // whole plume as in the mock-up; half discs behind the nozzle and past the tip) and the ring (u near 0) inside the
+        // trapezoid, linear in x. The mock-up's width: bulge 1.15, taper 0.45, tail narrowing 0.6.
         auto ss = [](float e0, float e1, float x) { float t = (x - e0) / (e1 - e0); t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
         auto w_of = [&](float u) {
-            const float b = .6f * (1 - .55f * std::exp(-9 * u)) * (1 + .35f * ss(0, .25f, u) * std::exp(-4 * u));
-            const float line = .6f + (.04f - .6f) * .45f * u;
-            return (line < b + .6f * .45f ? line : b + .6f * .45f) * std::max(1 - 1.6f * .45f * ss(.6f, 1, u), .05f);
+            const float b = .575f * (1 - .55f * std::exp(-9 * u)) * (1 + .35f * ss(0, .25f, u) * std::exp(-4 * u));
+            const float line = .575f + (.04f - .575f) * .45f * u;
+            return (line < b + .575f * .45f ? line : b + .575f * .45f) * std::max(1 - .6f * .45f * ss(.6f, 1, u), .05f);
         };
-        const float w0 = w_of(0), x0 = out[0].local[0], x1 = out[2].local[0], h0 = std::fabs(out[0].local[1]), h1 = std::fabs(out[2].local[1]);
+        const float x0 = out[0].local[0], x1 = out[2].local[0], h0 = std::fabs(out[0].local[1]), h1 = std::fabs(out[2].local[1]);
         bool covered = true;
         float worst = 1e9f;
         for (float x = x0; x <= x1; x += (x1 - x0) / 512.f) {
-            const float u = x / L, uc = u < 0 ? 0 : u > 1 ? 1 : u, w = w_of(uc), reach = 2.25f * .55f * w / w0 * nw;
+            const float u = x / L, uc = u < 0 ? 0 : u > 1 ? 1 : u, w = w_of(uc), reach = 2.25f * .55f * nw;
             float need = 0;
-            if (u >= 0 && u <= 1) need = std::max(1.f + .48f * .57f, 2.25f * .55f / w0) * w * nw;
+            if (u >= 0 && u <= 1) need = std::max((1.f + .48f * .57f) * w * nw, reach);
             else {
                 const float d = u < 0 ? -x : x - L;
                 need = d < reach ? std::sqrt(reach * reach - d * d) : 0.f;
             }
-            if (x >= -.05f * nw && x <= .3f * nw) need = std::max(need, (.46f * 1.2f + 3.f * .0645497f) * nw);
+            if (x >= -.05f * nw && x <= .3f * nw) need = std::max(need, (.46f * 1.15f + 3.f * .0645497f) * nw);
             const float have = h0 + (h1 - h0) * (x - x0) / (x1 - x0);
             covered = covered && need <= have + 1e-3f;
             worst = std::min(worst, have - need);
@@ -192,7 +194,7 @@ int main() {
     {
         const ee::Record away = rec(0, 0, Z, 0, 0, 1, V, 2.f), at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
         build(&away, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st);
-        const float nw = .25f * V, half = std::max(1.f + .48f * .57f, 2.25f * .55f / .54f) * nw * .6f + 1.f / ppu(Z);
+        const float nw = .25f * V, half = std::max((1.f + .48f * .57f) * .575f, 2.25f * .55f) * nw + 1.f / ppu(Z); // the halo's reach
         bool disc = st.discs == 1 && out[4].shape[3] == 1.f && near(out[4].intensity[0], out[0].intensity[0]) && near(out[4].local[3], nw);
         for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half, 1e-3f) && near(std::fabs(out[c].position[1]), half, 1e-3f) && out[c].position[2] == Z;
         bool finite = true;
@@ -275,19 +277,24 @@ int main() {
     // ----------------------------------------------------------- the near-camera cap and fade
     {
         const float f = 1.7f * 540.f, cap = .12f * 1080.f;
-        // Tail-on at the nozzle depth zo, L = 2 value: the width 2 sigma at the tip (zo - L) over the cap is q.
-        auto at_q = [&](float q, float zo) { // value with 2 (0.5 value) f / (zo - 2 value) = q cap
-            return q * cap * zo / (f + 2.f * q * cap);
+        // Tail-on at the nozzle depth zo, L = 2 value: the drawn width 2 h value at the tip (zo - L) over the cap is q,
+        // h the widest half-width per value: the halo's reach 2.25 x 0.55 nozzle widths (wider than the body's eroded
+        // edge 1.2736 x 0.575) x the nozzle width 0.25.
+        const float h = 2.25f * .55f * .25f;
+        auto at_q = [&](float q, float zo) { // value with 2 h value f / (zo - 2 value) = q cap
+            return q * cap * zo / (2.f * h * f + 2.f * q * cap);
         };
         for (const float q : {.7f, .9f, 1.f, 3.f, 40.f}) {
             const float zo = 400.f, val = at_q(q, zo);
             const ee::Record r = rec(0, 0, zo, 0, 0, -1, val, 2.f);
             build(&r, 1, nullptr, v, Preset::standard, 4.f, out.data(), 16, &st, nullptr, &flat);
             const float weight = q <= .8f ? 1.f : q >= 1.f ? .5f : 1.f - .5f * (q - .8f) / .2f;
-            const float sigma = cap_sigma * out[0].shape[1], L = out[0].local[2]; // the cap's reference width, x k
-            const float width = 2.f * sigma * f / (zo - L);
+            const float half = h * out[0].shape[1], L = out[0].local[2]; // the drawn half-width, x k
+            const float width = 2.f * half * f / (zo - L);
+            const float quad_half = std::fabs(out[4].local[0]) - 1.f / (1.7f * 540.f / zo); // the disc's half (width0) less its pixel
             const bool ok = near(out[0].intensity[0], 4.f * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : st.capped == 0 && near(out[0].shape[1], val)) &&
-                            st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .25f * out[0].shape[1]);
+                            st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .25f * out[0].shape[1]) &&
+                            near(quad_half, half, 2e-3f);
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
             std::printf("CAP q=%.2f weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 4.f), double(width), double(cap), double(out[0].shape[1] / val));
@@ -353,15 +360,84 @@ int main() {
         expect(std::fabs(c.seconds - before_gap - .6) < 1e-6, "a counter going back does not step");
         StageClock w; w.seconds = 1024. * 3 + 7.5; float wrapped = 0; w.wrapped(&wrapped);
         expect(wrapped == 7.5f, "the pixel program's clock wraps at 1,024 s");
+        StageClock s1;
+        s1.step(hz, hz, false);
+        expect(s1.last_step == 0., "the first step advances nothing");
+        s1.step(hz + hz / 60, hz, false);
+        expect(std::fabs(s1.last_step - 1. / 60.) < 1e-6, "last_step: the ordinary step");
+        s1.step(hz + hz / 60 + 2 * hz, hz, true);
+        expect(std::fabs(s1.last_step - 1. / 60.) < 1e-6, "last_step: a capture stall held to the ordinary step");
+        s1.step(hz, hz, false);
+        expect(s1.last_step == 0., "last_step: a counter going back advances nothing");
+    }
+    // ----------------------------------------------------------- the flow phase: constant speed in nozzle widths
+    {
+        float rate = 0;
+        flow_rate(default_look, &rate);
+        expect(near(rate, .35f * 3.f * 8.f / 1.6f), "flow rate 5.25 nozzle widths per second (the mock-up's at s 1, no pulse)");
+        Look wide = default_look; wide.nozzle_width = .5f;
+        float rate_wide = 0;
+        flow_rate(wide, &rate_wide);
+        expect(near(rate_wide * .5f, rate * .25f), "the same speed in value units at any nozzle width");
+        FlowPhase ph; float out_phase = 0;
+        for (unsigned i = 0; i < 600; ++i) ph.advance(1. / 60., rate);
+        ph.wrapped(&out_phase);
+        expect(near(out_phase, 52.5f, 1e-4f), "600 frames at 60 fps: 10 s x 5.25");
+        ph.advance(0., rate); ph.advance(-1., rate); ph.advance(1. / 60., -1.f); ph.advance(1e300, rate);
+        float same = 0; ph.wrapped(&same);
+        expect(same == out_phase, "no advance on a zero, negative or huge step or a non-positive rate");
+        ph.nozzle_widths = phase_wrap - .5; ph.advance(1., 1.f); ph.wrapped(&out_phase);
+        expect(near(out_phase, .5f), "wraps at 4,096 nozzle widths");
+        // The flow does not follow the pulsed L: the phase of two frames differs by rate dt whatever the length.
+        const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
+        float a = 0, b = 0;
+        build(&r, 1, nullptr, v, Preset::standard, 10.f, out.data(), 16, &st);
+        const float La = out[0].local[2];
+        build(&r, 1, nullptr, v, Preset::standard, 10.f + 1.f / 60.f, out.data(), 16, &st);
+        const float Lb = out[0].local[2];
+        FlowPhase pa; pa.advance(10., rate); pa.wrapped(&a);
+        FlowPhase pb; pb.advance(10. + 1. / 60., rate); pb.wrapped(&b);
+        expect(La != Lb && near(b - a, rate / 60.f, 1e-3f), "one frame's phase step is rate / 60 while L pulses");
+    }
+    // ----------------------------------------------------------- the nozzle width setting
+    {
+        float w = 0;
+        const char* accepted[] = {"0.25", "0.5", "1", "1.0", ".5", "0.1", "0.10", "0.123456"};
+        const float values[] = {.25f, .5f, 1.f, 1.f, .5f, .1f, .1f, .123456f};
+        for (unsigned i = 0; i < 8; ++i) { w = 0; expect(parse_nozzle(accepted[i], std::strlen(accepted[i]), &w) && near(w, values[i], 1e-6f), accepted[i]); }
+        const char* refused[] = {"", "0.09", "1.01", "-0.5", "+0.5", "0.5 ", " 0.5", "5e-1", "0..5", ".", "abc", "0,5", "0.5000000000001", "2"};
+        for (const char* t : refused) { w = 7.f; expect(!parse_nozzle(t, std::strlen(t), &w) && w == 7.f, t); }
+        expect(parse_nozzle(L"0.5", 3, &w) && w == .5f, "wide text");
+        expect(default_look.nozzle_width == .25f && nozzle_min == .1f && nozzle_max == 1.f, "default 0.25, range 0.1..1.0");
+        // The knob changes the proportions: n = 0.5 value, L unchanged.
+        Look wide = default_look; wide.nozzle_width = .5f; wide.pulse = 0.f;
+        const ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f);
+        build(&r, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &wide);
+        expect(near(out[0].local[3], .5f * V) && near(out[0].local[2], 2.f * V), "nozzle 0.5: n = value / 2, L = z value");
+    }
+    // ----------------------------------------------------------- the pulse cache: one evaluation per seed byte
+    {
+        std::vector<ee::Record> rs;
+        for (unsigned i = 0; i < 600; ++i) { ee::Record r = rec(float(i % 7) * 10.f, 0, Z, -1, 0, 0, V, 2.f); r.serial = i * 2654435761u; r.node_handle = i; rs.push_back(r); }
+        std::vector<Vertex> vb(rs.size() * 8);
+        const unsigned n = build(rs.data(), unsigned(rs.size()), nullptr, v, Preset::standard, 3.25f, vb.data(), unsigned(rs.size()), &st);
+        bool same = n == rs.size();
+        for (unsigned i = 0; i < n && same; ++i) {
+            float want = 0;
+            length_pulse(default_look, seed_byte(rs[i]), 3.25f, &want);
+            same = vb[i * 8].local[2] == 2.f * V * want;
+        }
+        expect(same, "the cached pulse equals the direct evaluation for 600 records");
     }
     // ----------------------------------------------------------- the pixel program's look constants
     {
         float c[20];
         pixel_constants(default_look, c);
-        expect(near(c[0], .6f) && near(c[1], (.04f - .6f) * .45f) && near(c[3], 1.6f * .45f) && near(c[4], 1.05f) && near(c[5], .57f * .96f) &&
-               near(c[6], 1.32f) && near(c[7], .4f) && near(c[8], .5f) && near(c[9], 6.2831853f / .16f) && near(c[10], 3.f) && near(c[11], .84f) &&
-               near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .552f) && near(c[16], 1.f / .54f) && near(c[17], .16f) && c[19] == 2.f,
-               "look constants c3..c7 from the chosen settings");
+        expect(near(c[0], .575f) && near(c[1], (.04f - .575f) * .45f) && near(c[2], .575f * .45f) && near(c[3], .6f * .45f) && c[4] == 0.f &&
+               near(c[5], .57f * .96f) && near(c[6], 1.32f) && near(c[7], .4f) && near(c[8], .5f) && near(c[9], 6.2831853f / .16f) &&
+               near(c[10], 3.f) && near(c[11], .84f) && near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .529f) && c[16] == 0.f &&
+               near(c[17], .16f) && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f,
+               "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail)");
     }
     // ----------------------------------------------------------- cost of the build
     for (const unsigned count : {30u, 100u, 1024u}) {
@@ -512,11 +588,44 @@ class PresetOption(unittest.TestCase):
         self.assertIn('engine_plumes::parse_preset(word, n, &parsed)', module)
 
 
+class NozzleOption(unittest.TestCase):
+    """engine_plume_nozzle (2026-10-03): the plume's nozzle width in value, load-time, for the flight A/B 0.25 vs 0.5."""
+
+    def test_schema_entry(self):
+        e = schema.BY_KEY['engine_plume_nozzle']
+        self.assertEqual((e['env'], e['type'], e['section'], e['default'], e['builtin'], e['launcher'], e['developer']),
+                         ('X3M_ENGINE_PLUME_NOZZLE', 'float', 'engine', None, '0.25', '--engine-plume-nozzle', False))
+        self.assertEqual(e['range'], ((0.1, 1.0, False),))
+        self.assertIn('{"X3M_ENGINE_PLUME_NOZZLE", "engine_plume_nozzle", Type::Float, nullptr,',
+                      (ROOT / 'src/config/config_schema_inc.h').read_text())
+        self.assertIn(';engine_plume_nozzle = 0.25', (ROOT / 'assets/x3m.ini').read_text())
+
+    def test_launcher(self):
+        module, game, wine, directory = hermetic_launcher()
+        with directory:
+            self.assertNotIn('X3M_ENGINE_PLUME_NOZZLE', launch_env(module, game, wine))
+            self.assertNotIn('X3M_ENGINE_PLUME_NOZZLE', launch_env(module, game, wine, '--engine-effects', 'plumes'))
+            for value, sent in (('0.5', '0.5'), ('0.25', '0.25'), ('1', '1'), ('0.1', '0.1')):
+                env = launch_env(module, game, wine, '--engine-effects', 'plumes', '--engine-plume-nozzle', value)
+                self.assertEqual(env['X3M_ENGINE_PLUME_NOZZLE'], sent)
+            for bad in ('0.05', '1.5', 'nan', 'inf'):
+                with self.assertRaises(SystemExit):
+                    launch_env(module, game, wine, '--engine-effects', 'plumes', '--engine-plume-nozzle', bad)
+            with self.assertRaises(SystemExit):
+                launch_env(module, game, wine, '--vanilla', '--engine-plume-nozzle', '0.5')
+
+    def test_read_once_at_load(self):
+        module = (ROOT / 'src/proxy/engine_effects.cpp').read_text()
+        self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_PLUME_NOZZLE"', module)), 1)
+        self.assertIn('x3m::engine_plumes::parse_nozzle(width, wn, &nozzle)', module)
+        self.assertIn('nozzle=%.3f nozzle_setting=%s nozzle_status=%s', module)
+
+
 class Wiring(unittest.TestCase):
     def test_wiring(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('configure_engine_plumes(engine_effects::mode()==engine_effects::core::Mode::plumes&&engine_effects::suppress(),'
-                      'engine_effects::preset());', capture)
+                      'engine_effects::preset(),engine_effects::plume_nozzle());', capture)
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
                       '(engine_ring_->count||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
@@ -541,6 +650,17 @@ class Wiring(unittest.TestCase):
         self.assertIn('engine_clock_.step(std::uint64_t(counter.QuadPart),engine_qpc_frequency(),capture_);'
                       'engine_clock_.wrapped(&in.seconds);', inc)
         self.assertIn('f.seconds=engine_clock_.seconds;', source_text(ROOT / 'src/proxy/motion_output_engine_ribbons_inc.h'))
+        # Review fixes (2026-10-03): the flow phase advances by the clock's step at a constant rate; the look carries the
+        # configured nozzle width.
+        self.assertIn('engine_flow_.advance(engine_clock_.last_step,plumes_flow_rate_);engine_flow_.wrapped(&in.phase);'
+                      'in.look=&plumes_look_;', inc)
+        self.assertLess(inc.index('engine_clock_.wrapped(&in.seconds);'), inc.index('engine_flow_.advance('))
+        self.assertIn('engine_plumes::flow_rate(plumes_look_,&plumes_flow_rate_);', inc)
+        passes = source_text(ROOT / 'src/renderer/engine_plumes_pass.cpp')
+        self.assertIn('float pixel[32]={1.f/float(f.width),1.f/float(f.height),f.phase,0.f,', passes)
+        ps = (ROOT / 'src/effects/engine_plume_ps.hlsl').read_text()
+        self.assertIn('const float3 p = float3(((disc ? q.x : x) - lane_sizes.z) * 1.6, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);', ps)
+        self.assertIn('const float window = saturate(2.0 * (look.z - dn));', ps)
         self.assertIn('if(engine_row_frames_>=engine_row_frame_cap&&!capture_){',
                       source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h'))
         self.assertIn('static constexpr unsigned plumes_failure_limit=3;', source_text(ROOT / 'src/proxy/motion_output.h'))
@@ -576,9 +696,11 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         # The plume look (2026-10-03): alive, bulge and taper, shock cells at both sizes.
         for case in ('temporal', 'shape', 'shock'):
             self.assertEqual(len(r['report'][case]), 2, case)
-        self.assertTrue(all(.05 <= x['raw_cv'] <= .4 and abs(x['mean_over_design'] - 1) <= .1 for x in r['report']['temporal']))
-        self.assertTrue(all(x['half_width_u01_over_nozzle_half'] >= 1.05 and x['half_width_u09_over_nozzle_half'] <= .35
-                            for x in r['report']['shape']))
+        self.assertTrue(all(.05 <= x['raw_cv'] <= .4 and abs(x['mean_over_design'] - 1) <= .1 and x['raw_lag1'] >= .5
+                            for x in r['report']['temporal']))
+        # The body's half-width against the mock-up's law (review fixes 2026-10-03: bulge 1.15, the mock-up's tail).
+        self.assertTrue(all(x['lab_w_u01'] >= 1.05 and abs(x['half_width_u01_over_nozzle_half'] / x['expected_u01'] - 1) <= .06 and
+                            abs(x['half_width_u09_over_nozzle_half'] / x['expected_u09'] - 1) <= .12 for x in r['report']['shape']))
         self.assertTrue(all(x['still_maxima'] >= 3 for x in r['report']['shock']))
 
     def test_bound_to_its_production_sources(self):

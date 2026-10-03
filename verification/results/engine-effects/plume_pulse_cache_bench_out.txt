@@ -1,0 +1,2 @@
+records=100 distinct_seeds=85 per_record_us=19.70 cached_us=15.86 ratio=0.805
+records=1024 distinct_seeds=248 per_record_us=108.56 cached_us=49.85 ratio=0.459

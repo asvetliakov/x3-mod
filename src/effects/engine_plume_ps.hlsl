@@ -6,10 +6,12 @@
 // per nozzle and frame). The constants come from engine_plumes_core.h Look through c3..c7 (one block, uploaded per
 // frame).
 // Body: width w(u) (the mouth bulge, a near-cylinder tapering towards the tail, the tail narrowing), radial = r / w,
-// 3-octave value noise in (x 1.6 - t flow L 0.35, y 3, seed + 0.7 t): n eats the edge (erosion), n2 modulates the
-// radiance (turbulence); shock diamonds along the core fading along the plume; a white-hot core cooling into the tint;
-// the tail fade. Halo: exp(-d / sigma) x exp(-2.2 u), d the distance to the segment nozzle..tip, sigma following the
-// local width (sigma0 at the nozzle, the preset's), windowed linearly to 0 at the quad's reach (`look.z` sigma).
+// 3-octave value noise in ((x - phase) 1.6, y 3, seed + 0.7 t), phase the flow in nozzle widths accumulated on the CPU
+// at a constant speed (c0.z; engine_plumes_core.h FlowPhase), so the field moves the same whatever the pulsed L: n eats
+// the edge (erosion), n2 modulates the radiance (turbulence); shock diamonds along the core fading along the plume; a
+// white-hot core cooling into the tint; the tail fade. Halo: exp(-d / sigma) x exp(-2.2 u), d the distance to the segment
+// nozzle..tip, sigma the nozzle's (sigma0, the preset's) along the whole plume as in the mock-up, tapered to 0 over the
+// last 0.5 sigma before the quad's reach (`look.z` sigma), so inside it the halo is the mock-up's.
 // Nozzle ring: a thin bright ring at the mouth, its Gaussian widened to the pixel footprint (energy kept).
 // Disc (kind 1, the camera-facing nozzle disc; the CPU weighted it by |axis . to_camera|): the same law end-on, the
 // body at u = Look::disc_u over the disc's radius, the ring at the mouth, the halo radially about the nozzle.
@@ -21,14 +23,14 @@
 // body and the ring and 1.0 value for the halo, so a plume behind a hull shows only past its silhouette.
 // Compiled with tools/shaders/generate_rigid_motion_pixel.py.
 sampler2D lane_sampler : register(s0);
-float4 lane_sizes : register(c0); // 1/W, 1/H of the target, unused x2
+float4 lane_sizes : register(c0); // 1/W, 1/H of the target, the flow phase (nozzle widths), unused
 float4 lane_form : register(c1);  // four_channel (1: .b is the view depth), m22, m32 (R32F: z = m32 / (d - m22)), unused
 float4 look : register(c2);       // SOFT body, SOFT halo (x value), halo reach (x sigma), seconds (the stage's clock)
 float4 shape_k : register(c3);    // 0.5 bulge, (0.04 - 0.5 bulge) taper, 0.5 bulge taper, tail narrowing x taper
-float4 fire_k : register(c4);     // 0.35 flow, erosion (erode x 1.6 x 0.6), turbulence (turb x 2.2), tail fade start
+float4 fire_k : register(c4);     // unused, erosion (erode x 1.6 x 0.6), turbulence (turb x 2.2), tail fade start
 float4 cell_k : register(c5);     // shock, 2 pi / period, 5 cfade, 1.2 tail
 float4 core_k : register(c6);     // heat, 1 / (1.4 core), ring radius, ring sigma^2
-float4 halo_k : register(c7);     // 1 / w(0), disc u, the ring's axial falloff, 2 (params.z holds I_ring / I_core / 2)
+float4 halo_k : register(c7);     // unused, disc u, the ring's axial falloff, 2 (params.z holds I_ring / I_core / 2)
 struct Input {
     float4 local : TEXCOORD0;     // x, y (world), L (pulsed, world), n (nozzle width, world)
     float4 shape : TEXCOORD1;     // halo sigma0 (nozzle widths), value, occlusion bias, kind (0 axial, 1 disc)
@@ -75,8 +77,8 @@ float4 main(Input i) : COLOR0 {
     const float b = shape_k.x * (1.0 - 0.55 * exp(-9.0 * uc)) * (1.0 + 0.35 * smoothstep(0.0, 0.25, uc) * exp(-4.0 * uc));
     const float w = min(shape_k.x + shape_k.y * uc, b + shape_k.z) * max(1.0 - shape_k.w * smoothstep(0.6, 1.0, uc), 0.05);
     const float radial = r / w;
-    // Noise scrolled along the axis at the flow speed (the disc: its own plane).
-    const float3 p = float3((disc ? q.x : x) * 1.6 - t * fire_k.x * L, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);
+    // Noise translated along the axis by the flow phase (the disc: its own plane).
+    const float3 p = float3(((disc ? q.x : x) - lane_sizes.z) * 1.6, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);
     const float n1 = fbm(p);
     const float n2 = fbm(p * 2.2 + float3(5.0, 2.0, 1.0));
     const float edge = 1.0 - smoothstep(0.55, 1.0, radial + fire_k.y * (n1 - 0.5));
@@ -88,12 +90,13 @@ float4 main(Input i) : COLOR0 {
     const float heat = core_k.x * core_mask * (1.0 - smoothstep(0.0, 0.55, u));
     const float3 colour = lerp(i.tint, i.fog * float3(1.0, 0.97, 0.9), heat);
     const float body = i.view.y * edge * tail * inside * cells * turbulence * (1.0 + 0.6 * core_mask);
-    // Halo about the segment nozzle..tip (the disc: about the nozzle), sigma following the local width.
+    // Halo about the segment nozzle..tip (the disc: about the nozzle), the nozzle's sigma; the window
+    // saturate((reach - d) / (0.5 sigma)) only tapers its outer part.
     const float du = disc ? 0.0 : q.x - clamp(q.x, 0.0, L);
     const float d = disc ? rho : sqrt(du * du + r * r);
-    const float sigma = max(i.shape.x * (disc ? 1.0 : w * halo_k.x), 1e-4);
-    const float window = saturate(1.0 - d / (look.z * sigma));
-    const float halo = i.view.z * exp(-d / sigma) * exp(-2.2 * uc) * window;
+    const float dn = d / max(i.shape.x, 1e-4);
+    const float window = saturate(2.0 * (look.z - dn));
+    const float halo = i.view.z * exp(-dn) * exp(-2.2 * uc) * window;
     // The nozzle ring, its Gaussian widened to the pixel footprint (fwidth in nozzle widths).
     const float aa = fwidth(q.y);
     const float s2 = core_k.w + 0.25 * aa * aa;

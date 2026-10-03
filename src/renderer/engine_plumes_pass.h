@@ -6,7 +6,7 @@
 // released before Reset; ensure_resources() recreates them after a successful Reset.
 //
 // run() builds the frame's vertices straight into the locked buffer (engine_plumes_core.h build(): the glow-jet records
-// of the frame, the camera's view rows, the preset, the stage's clock and the look) and draws every nozzle with one
+// of the frame, the camera's view rows, the preset, the stage's clock, the flow phase and the look) and draws every nozzle with one
 // DrawIndexedPrimitive inside the caller's state bracket: the temporal resolve calls it through FrameInputs::stage_callback after its normalize (RT0 the
 // FP16 scene the resolve reads, RT1+ and the depth surface unbound, every render state at the pass's baseline, the
 // scene open) and normalizes again afterwards, so this pass sets only what it draws with: the programs, declaration,
@@ -37,7 +37,8 @@ struct EnginePlumesFrame {
     engine_plumes::ViewFilter filter{};     // null tags: every record is drawn
     engine_plumes::Preset preset = engine_plumes::default_preset;
     float seconds = 0.f;                    // the stage's clock, wrapped (engine_plumes::StageClock::wrapped)
-    const engine_plumes::Look* look = nullptr; // null: engine_plumes::default_look (fixtures override it)
+    float phase = 0.f;                      // the flow phase, nozzle widths (engine_plumes::FlowPhase::wrapped)
+    const engine_plumes::Look* look = nullptr; // null: engine_plumes::default_look (the proxy's carries the nozzle knob)
 };
 enum class EnginePlumesStep : unsigned { None, Validate, Resources, Lock, State, Draw };
 struct EnginePlumesReport {

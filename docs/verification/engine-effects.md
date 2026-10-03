@@ -174,3 +174,32 @@ evicted = nozzles, stage_us 3-10 ms): the capture stall exceeded the 0.3 s fade 
 capture frame to the last ordinary step; verified on the host (`StageClock`), not in flight. `engine_draw` rows are written on every F8 frame (64 per
 frame cap unchanged); wiring asserted on the host, not exercised by a fixture (the effects fixture has no capture frame). Open: the look in flight
 (the nozzle width = value / 4 reading, the tuned bulge and tail), the temporal smoothing through the real history, native Windows (cross-compiled only).
+
+## Plume look review fixes (2026-10-03, worktree build, not a candidate)
+
+Review of the look port (74bcc57b), decisions accepted by the main session: the flow phase on the CPU (F1), the halo's
+window only at its outer part (F2), the user's numbers back (bulge 1.15, the mock-up's tail; F3), the nozzle-width knob
+`engine_plume_nozzle` (F4/F11), the near-camera cap on the drawn width (F5), the pulse once per seed byte (F7), the
+retained timing A/B (F10) ([design note, "Ported"](../architecture/engine-effects-modern.md#plume-look-redesign-2026-10-03-after-flight-b)).
+All measured unless marked.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build` (worktree, MinGW i686), `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings; x87 0 violations, 751 reachable functions |
+| Programs | `tools/shaders/generate_rigid_motion_pixel.py --check` (Wine) | PASS, 50 programs; engine_plume ps 391 -> 385 slots (fixture ATTACH), vs 11 |
+| Config | `tools/config/generate.py --check` | PASS, 251 settings, 102 in the template (`engine_plume_nozzle = 0.25`) |
+| Plume fixture | `run_engine_plumes.py` | PASS 90/90 (was 88: `temporal_lag1_*` added); law vs CPU replica max 0.10 % of I_core; core survival min 0.957, dark trail 0 px, flicker trail 14 / 24 px at 8 px per frame (1080 / 5120); occlusion, presets 0.600 / 1.500, Reset, fault, FP16 refusal unchanged; chase extent 42 / 55 px under the 129.6 / 172.8 px cap (was 30 / 39: the cap now holds the drawn width), fade 0.500 |
+| (a) temporal | 30 frames at 60 fps, 3x3 box at u = 0.2 | lag-1 correlation **0.866** (gate >= 0.5; the reviewer measured ~0 with the pulsed-L scroll), CV 0.231 (gate 0.05..0.4), mean / design 1.014, largest frame step 20 % of the mean (was 43 %); through the resolve CV 0.199 |
+| (b) shape | body alone (no pulse, halo or ring), 30 frames 0.1 s apart, value 100 px | 10 %-of-peak half-width / nozzle half-width 1.036 at u = 0.1 against the replica's 1.053 (gate 6 %), 0.522 at u = 0.9 against 0.519 (gate 12 %); the mock-up's w(0.1) / 0.5 = 1.102 (gate >= 1.05), w(0.9) / 0.5 = 0.553 |
+| (c) shock cells | axis profile to u = 0.6, s = 1 | 3 maxima at u 0.155 / 0.315 / 0.465 (still look), 4 with turbulence |
+| (d) cost, A/B | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/results/engine-effects/plume_review_timing_ab.py <74bcc57b fixture.exe> <tree fixture.exe> --rounds 3` -> `plume_review_timing_ab_out.json` | stage gpu_ms medians before -> after: 1080p 0.152 -> 0.147 (30 nozzles), 0.154 -> 0.155 (100); 5120x1440 0.024 -> 0.040 (30), 0.053 -> 0.082 (100); round spreads up to 0.12 ms, within the method's noise. CPU build (the fixture's crowd: one seed byte, the cache's best case) 30 / 100 / 1,024 records 6.06 / 20.3 / 211.7 -> 2.00 / 6.43 / 66.8 us |
+| (d) pulse cache, distinct seeds | `python3 verification/results/engine-effects/plume_pulse_cache_bench.py` (host clang -O2) -> `plume_pulse_cache_bench_out.txt` | 100 records (85 seed bytes) 19.7 -> 15.9 us (0.81); 1,024 records (248 seed bytes) 108.6 -> 49.9 us (0.46) |
+| Quad area | `python3 verification/results/engine-effects/plume_look_area.py` (= host AREA rows) | 0.12 / 0.19 / 0.23 of the first look's at s = 0 / 0.5 / 1 (was 0.09 / 0.15 / 0.19: the halo keeps its width to the tip) |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44; plume fog core ratio 0.490 vs T 0.492 |
+| Effects | `run_engine_effects.py` (all modes) | PASS: main 164, native 11, unverified 6, unpatched 11, timing 5, plumes 33, armed 15 |
+| Host | `test_engine_*` (6 modules), `test_config_schema`, `test_launcher_defaults`; `run_host_suite.py` | 79 tests OK (core harness 120 checks: flow rate 5.25 nozzle widths/s and its wrap, `last_step`, the nozzle parser, the cached pulse equal to the direct one for 600 records, the cap on the drawn width, the quad covering the constant halo reach); suite 286 modules, 3,008 tests, 0 failing |
+
+Flow speed reading (inferred from the mock-up's formula): "flow 3" is the slider's label in lengths per second, the
+mock-up's actual scroll is 0.35 x 3 x L / 1.6 = 5.25 nozzle widths per second at s = 1; the port keeps that speed and
+no longer scales it with the throttle's length. Open: the look and the knob's A/B (0.25 against 0.5) in flight; native
+Windows (cross-compiled only).

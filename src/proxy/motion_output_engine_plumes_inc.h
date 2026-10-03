@@ -13,9 +13,14 @@
 // while the glow stays suppressed: the phase-1 look (off). One engine_plumes_state row per change of the armed state or
 // its reason. Frames the resolve does not reach show no engine effect (design section 1). Only the scene view's records
 // are drawn (engine_plumes_core.h ViewFilter); the rest count skipped_other_view in engine_stage.
-void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset preset) noexcept {
+void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width) noexcept {
     plumes_requested_ = requested && engine_hook_ && engine_suppress_ && engine_ring_;
     plumes_preset_ = preset;
+    // The look: the chosen constants with the configured nozzle width (engine_effects::plume_nozzle(): parsed and
+    // range-checked there); out of range here (no caller does that) keeps the default.
+    plumes_look_ = engine_plumes::default_look;
+    if (nozzle_width >= engine_plumes::nozzle_min && nozzle_width <= engine_plumes::nozzle_max) plumes_look_.nozzle_width = nozzle_width;
+    engine_plumes::flow_rate(plumes_look_, &plumes_flow_rate_);
     plumes_armed_ = plumes_ran_ = plumes_fenced_ = false;
     plumes_failures_ = 0;
     plumes_failed_out_ = false;
@@ -200,6 +205,10 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     QueryPerformanceCounter(&counter);
     engine_clock_.step(std::uint64_t(counter.QuadPart), engine_qpc_frequency(), capture_);
     engine_clock_.wrapped(&in.seconds);
+    // The flow phase advances by the same step at a constant speed (engine_plumes_core.h FlowPhase).
+    engine_flow_.advance(engine_clock_.last_step, plumes_flow_rate_);
+    engine_flow_.wrapped(&in.phase);
+    in.look = &plumes_look_;
     engine_plumes_fog(&in.view.fog); // phase 3: the density fog's mean transmittance per nozzle, off unless it applied
     // stage_us: the build and the draw; with --gpu-sync-timing the EnginePlumes pair fences both sides (EVENT queries),
     // so it includes the GPU's completion of the draw.

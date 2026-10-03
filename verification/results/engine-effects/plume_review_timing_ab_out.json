@@ -1,0 +1,116 @@
+{
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "rounds": 3,
+ "before": "fixture at 74bcc57b (plume look port)",
+ "after": "fixture at the review-fix tree",
+ "gpu_ms": {
+  "1920x1080_30": {
+   "before": [
+    0.1523,
+    0.1533,
+    0.0487
+   ],
+   "after": [
+    0.1316,
+    0.1666,
+    0.1473
+   ],
+   "before_median": 0.1523,
+   "after_median": 0.1473
+  },
+  "5120x1440_30": {
+   "before": [
+    0.0184,
+    0.0241,
+    0.0243
+   ],
+   "after": [
+    0.0404,
+    0.0712,
+    0.0287
+   ],
+   "before_median": 0.0241,
+   "after_median": 0.0404
+  },
+  "1920x1080_100": {
+   "before": [
+    0.1404,
+    0.1558,
+    0.1535
+   ],
+   "after": [
+    0.1545,
+    0.0428,
+    0.1582
+   ],
+   "before_median": 0.1535,
+   "after_median": 0.1545
+  },
+  "5120x1440_100": {
+   "before": [
+    0.0528,
+    0.0658,
+    0.0346
+   ],
+   "after": [
+    0.0239,
+    0.0818,
+    0.1405
+   ],
+   "before_median": 0.0528,
+   "after_median": 0.0818
+  }
+ },
+ "build_us": {
+  "30": {
+   "before": [
+    6.13,
+    6.0,
+    6.06
+   ],
+   "after": [
+    2.0,
+    2.04,
+    1.97
+   ],
+   "before_median": 6.06,
+   "after_median": 2.0
+  },
+  "100": {
+   "before": [
+    20.3,
+    20.27,
+    20.34
+   ],
+   "after": [
+    6.43,
+    6.48,
+    6.28
+   ],
+   "before_median": 20.3,
+   "after_median": 6.43
+  },
+  "1024": {
+   "before": [
+    211.27,
+    211.67,
+    212.92
+   ],
+   "after": [
+    66.75,
+    67.61,
+    66.05
+   ],
+   "before_median": 211.67,
+   "after_median": 66.75
+  }
+ }
+}
