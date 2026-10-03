@@ -1,0 +1,27 @@
+{
+ "run": "Run122",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run122-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run122-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-03T16:35+0400",
+ "commit": "192e1e3f",
+ "candidate_record": "verification/results/run122-candidate-build.json",
+ "installed": {
+  "sha256": "4d5cbb9cba631486e0dc02c0e8ba697bc57cca1af0036d6870c450b7cc8f03af",
+  "bytes": 58511846,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; 16 font files unchanged; engine_bodies.json kept (45a1215b\u2026)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418...",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run121",
+  "dll_sha256": "a124a5afd0fe0f40c2abcb15fa55d4a826c17e320960969af5ddad516d329571",
+  "path": "/tmp/x3-run121-candidate/build/d3d9.dll",
+  "then": "Run120 c44a0887... at /tmp/x3-run120-candidate/build/d3d9.dll, Run118 924d12bd..."
+ },
+ "trigger": "Run 121 A (run406): secondary plumes changed size with screen position (per-frame floor), small ships small with a strong mouth; fix = floor from the ship root radius with a size-dependent ratio, mouth <= body at every throttle",
+ "producer": "main session (Fable 5.1)"
+}
