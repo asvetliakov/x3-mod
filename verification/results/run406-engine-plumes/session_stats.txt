@@ -1,0 +1,8 @@
+main-jet rows 560 s hist (0.1 bins) [58, 18, 6, 2, 44, 62, 0, 32, 22, 316]
+unique (burst,handle) 73 s hist [8, 1, 2, 2, 6, 6, 0, 4, 3, 41]
+value (size) counts [(5.0, 64), (10.0, 66), (40.0, 100), (62.5, 16), (187.5, 200), (939.2, 114)]
+stage_us armed n 23936 median 99.4 p99 406.7 max 11990.4
+forwarded_stage_off total 0 engine_plumes_failed 0
+engine_plumes_state device=1 frame=749 armed=1 reason=armed glow=suppressed drawn=plumes preset=default
+session_end frames=24685 elapsed_ms=512301 devices=1 resets=0 exception=0 dropped=0 filter=ours
+24684 median ms 16.596649999999997

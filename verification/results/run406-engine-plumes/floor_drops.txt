@@ -1,0 +1,10 @@
+armed stage rows 23936 floor drops with nozzles not falling 3
+frame=11037 nozzles 10->10 floored 6->5
+frame=11039 nozzles 10->10 floored 5->4
+frame=12166 nozzles 9->9 floored 4->3
+faded min 0 max 3 nonzero_frames 246
+capped min 0 max 3 nonzero_frames 168
+culled_small min 0 max 0 nonzero_frames 0
+culled_behind min 0 max 0 nonzero_frames 0
+culled_idle min 0 max 0 nonzero_frames 0
+discs min 2 max 19 nonzero_frames 608
