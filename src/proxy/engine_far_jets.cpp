@@ -8,13 +8,13 @@ namespace core = x3m::engine_far_jets::core;
 core::Raw buffer_[core::capacity];
 unsigned count_ = 0;
 core::Stats stats_{};
+core::Requests requests_{};
 inline std::uint32_t word(std::uint32_t base, unsigned offset) noexcept {
     return *reinterpret_cast<const volatile std::uint32_t*>(base + offset);
 }
 } // namespace
 
 volatile std::uint32_t x3m_engine_far_armed = 0;
-volatile std::uint32_t x3m_engine_far_scene = 0;
 
 extern "C" void x3m_engine_far_jet(std::uint32_t node, std::int32_t measure, std::uint32_t view) {
     if (!x3m_engine_far_armed || !node || !view) {
@@ -52,16 +52,19 @@ extern "C" void x3m_engine_far_jet(std::uint32_t node, std::int32_t measure, std
         r.basis_x[i] = std::int32_t(word(node, core::basis_x_offset + 4 * i));
         r.basis_z[i] = std::int32_t(word(node, core::basis_z_offset + 4 * i));
     }
-    r.scene = x3m_engine_far_scene;
     ++stats_.written;
 }
 
 namespace x3m::engine_far_jets {
-void set_armed(bool armed) noexcept {
-    x3m_engine_far_armed = armed ? 1u : 0u;
+void request(bool* counted, bool requested, const void* device) noexcept {
+    requests_.request(counted, requested, reinterpret_cast<std::uintptr_t>(device));
+    x3m_engine_far_armed = requests_.armed() ? 1u : 0u;
 }
-void note_scene(bool scene) noexcept {
-    x3m_engine_far_scene = scene ? 1u : 0u;
+void claim(const void* device) noexcept {
+    requests_.claim(reinterpret_cast<std::uintptr_t>(device));
+}
+bool clears(const void* device) noexcept {
+    return requests_.clears(reinterpret_cast<std::uintptr_t>(device));
 }
 void begin_frame() noexcept {
     count_ = 0;

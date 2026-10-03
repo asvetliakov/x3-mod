@@ -231,15 +231,20 @@ count; test byte [edi+0x130],1; je count` (both bits of the JET flag pair, the r
 alone is not a jet), then `push eax/ecx/edx; push [esp+0x34]` (the site's view), `push esi; push edi; call
 x3m_engine_far_jet; add esp,12; pop edx/ecx/eax`, and falls into the count and the replay: the node is culled either
 way. The handler (`src/proxy/engine_far_jets.cpp`) is integer only, built without SSE/MMX and exceptions, makes no call
-and no Win32 call (117 instructions, no push: EAX/ECX/EDX only), and reads only fields of the node, its parent and the
-pass's view that the pass itself dereferences; `check_no_x87.py` walks it as a root. It copies nothing while no device
-requests the plume stage (`x3m_engine_far_armed`), skips v/00566 and a jet the engine would cull itself (the window's
+and no Win32 call, and reads only fields of the node, its parent and the pass's view that the pass itself dereferences;
+`check_no_x87.py` walks it as a root. Registers (cdecl): the stub saves EAX/ECX/EDX around the call; the handler itself
+uses the callee-saved EBX/ESI/EDI (and EBP when the compiler allocates it) and restores them, saved in its own frame by
+`mov` rather than `push` (after the review fixes: 110 instructions, EBX/ESI/EDI, no EBP; `i686-w64-mingw32-objdump -d`
+of `engine_far_jets.cpp.obj`). It copies nothing while no device
+requests the plume stage (`x3m_engine_far_armed`, a count of requesting devices), skips v/00566 and a jet the engine would cull itself (the window's
 size limit or the degenerate test), and keeps at most 1,024 copies a frame. Without `engine_effects = plumes` (the
 default) the block is `jmp +39` and int3 padding: the jet bits are not read and nothing is called. `initialize()`
 reads `X3M_ENGINE_EFFECTS` with the engine_effects option's exact parser and pins the JET writer `0x00434708` (`or
 dword [esi+0x130],0x4000001`); a mismatch leaves the block out. Rows: `cull_small_parts … far_jets=on|off|writer_mismatch`,
 `cull_small_parts_frame … far_jets=`; the copies are counted in `engine_stage` (`far_jets=`, `far_records=`,
-`far_engine=`, `far_overflow=`, `far_dropped=`, `far_disarmed=`). The census still names these rows `culled_small`.
+`far_engine=`, `far_overflow=`, `far_dropped=`, `far_disarmed=`, `far_duplicates=`). The census still names these rows
+`culled_small`. The copies carry the view's handle but no scene phase; the plume stage decides by the handle
+([engine-effects-modern.md](../architecture/engine-effects-modern.md) "After flight E", View).
 
 | Date | Check | Command | Result |
 | --- | --- | --- | --- |

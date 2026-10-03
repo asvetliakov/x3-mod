@@ -16,7 +16,9 @@
 //              draws the scene view's records (two of four: one of another camera, one from the background phase); a
 //              forced draw fault disarms 64 frames, three consecutive ones refuse until Reset (the game's glow forwarded
 //              meanwhile: forwarded_stage_off); Reset releases and the next armed frame recreates the pass;
-//              taa_references unchanged across the cycle
+//              taa_references unchanged across the cycle; far copies (the small-parts cull's handler) drawn by their view
+//              handle whatever the selector's phase, another view's skipped, duplicates dropped, a draw-free frame's
+//              scene view the most frequent far handle (512x512: one nozzle over the distance law's 12 px)
 //   armed_refused  as armed with the FP16 refusal staged before the first attach: the glow jets forwarded natively
 //              (forwarded_stage_off 4 per frame) from the frame after the refusal until Reset; then attached and drawn
 // Output: CHECK <label> PASS|FAIL lines, FRAME / RECORD / TIMING lines, RESULT PASS|FAIL. Original synthetic content
@@ -188,6 +190,9 @@ struct Fixture {
         configure(&config);
     }
     unsigned primitive_calls() { return emission(device, 49); } // DrawPrimitive submissions that reached the device
+    // The target's side: 64, armed 512 (a nozzle over the distance law's 12 px stays under the near-camera cap's fade
+    // band, 0.8 x 0.12 of the height, only from about 300 px up).
+    UINT target_size() const { return armed ? 512u : 64u; }
     void create(bool timing) {
         WNDCLASSA cls{};
         cls.lpfnWndProc = DefWindowProcA;
@@ -199,8 +204,8 @@ struct Fixture {
         if (!d3d) api(E_FAIL, "Direct3DCreate9");
         pp.Windowed = TRUE;
         pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-        pp.BackBufferWidth = 64;
-        pp.BackBufferHeight = 64;
+        pp.BackBufferWidth = target_size();
+        pp.BackBufferHeight = target_size();
         pp.BackBufferFormat = armed ? D3DFMT_A8R8G8B8 : D3DFMT_X8R8G8B8; // armed: the selector's main target format
         pp.EnableAutoDepthStencil = armed;
         pp.AutoDepthStencilFormat = D3DFMT_D24X8;
@@ -236,25 +241,35 @@ struct Fixture {
         api(quad_vb->Lock(0, 0, &p, 0), "quad VB lock");
         std::memcpy(p, quad, sizeof quad);
         quad_vb->Unlock();
-        api(device->CreateOffscreenPlainSurface(64, 64, pp.BackBufferFormat, D3DPOOL_SYSTEMMEM, &readback, nullptr), "readback surface");
+        api(device->CreateOffscreenPlainSurface(target_size(), target_size(), pp.BackBufferFormat, D3DPOOL_SYSTEMMEM, &readback, nullptr),
+            "readback surface");
         if (armed) swapchain_surfaces();
     }
     DWORD pixel(int x = 32, int y = 32) {
+        DWORD v = 0;
+        const int at[2] = {x, y};
+        pixels(at, 1, &v);
+        return v;
+    }
+    // One readback, `n` pixels at (at[2i], at[2i + 1]).
+    void pixels(const int* at, unsigned n, DWORD* out) {
         IDirect3DSurface9* target = nullptr;
         api(device->GetRenderTarget(0, &target), "GetRenderTarget");
         api(device->GetRenderTargetData(target, readback), "GetRenderTargetData");
         target->Release();
         D3DLOCKED_RECT lr{};
         api(readback->LockRect(&lr, nullptr, D3DLOCK_READONLY), "readback lock");
-        const DWORD v = reinterpret_cast<const DWORD*>(static_cast<const char*>(lr.pBits) + y * lr.Pitch)[x] & 0xffffffu;
+        for (unsigned i = 0; i < n; ++i)
+            out[i] = reinterpret_cast<const DWORD*>(static_cast<const char*>(lr.pBits) + at[2 * i + 1] * lr.Pitch)[at[2 * i]] & 0xffffffu;
         readback->UnlockRect();
-        return v;
     }
     // armed: the back buffer, the auto depth surface and the bloom source (DEFAULT: released before Reset).
     void swapchain_surfaces() {
         api(device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back), "GetBackBuffer");
         api(device->GetDepthStencilSurface(&depth), "GetDepthStencilSurface");
-        api(device->CreateTexture(64, 64, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom, nullptr), "bloom texture");
+        api(device->CreateTexture(target_size(), target_size(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom,
+                                  nullptr),
+            "bloom texture");
         api(bloom->GetSurfaceLevel(0, &bloom_surface), "bloom level");
     }
     void release_swapchain_surfaces() {
@@ -431,8 +446,9 @@ struct Fixture {
         api(device->EndScene(), "EndScene");
         api(device->Present(nullptr, nullptr, nullptr, nullptr), "Present");
     }
-    // armed: four jets 100 units ahead (value 10, z 2.0, axis -x: the plume runs left of the nozzle); the window pixels
-    // of the nozzles (m00 0.8, m11 4/3 at 64x64).
+    // armed: four jets 100 units ahead (z 2.0, axis -x: the plume runs left of the nozzle; m00 0.8, m11 4/3 at
+    // 512x512): p1, p3 and p4 value 1.25 (a 2.13 px nozzle: the distance law's 0.15), p2 value 8 (a 13.65 px nozzle,
+    // over the law's 12 px: whole radiance, under the near-camera cap's fade band).
     Jet p1, p2, p3, p4;
     static constexpr std::uint32_t scene_camera = 0x77, other_camera = 0x99;
     struct Px { int x, y; };
@@ -444,7 +460,7 @@ struct Fixture {
         for (unsigned i = 0; i < 4; ++i) {
             Jet& j = *jets[i];
             std::memcpy(j.r, r, sizeof r);
-            j.k = 10.f;
+            j.k = i == 1 ? 8.f : 1.25f;
             j.z = 2.f;
             std::memcpy(j.t, t[i], sizeof j.t);
             j.order_b = false;
@@ -458,40 +474,64 @@ struct Fixture {
         unsigned armed, ran, result, nozzles, skipped, drew, references, taa_references, failures, refused, records,
             suppressed, resolved, stage_off, attach_refused, jets_submitted;
         unsigned far_records, far_nozzles, far_copies, last_flags; // keys 44..47 (far engine jets, the distance law)
-        DWORD px[4];
+        unsigned view_rule, far_duplicates;                        // keys 48, 49
+        DWORD px[6];   // p1..p4, far jets 1 and 2
+        DWORD prev[6]; // the same pixels in the previous armed frame
     };
     // One frame in the scene-boundary pattern: p4 in the background phase, p1 / p2 (the scene camera) and p3 (another
     // camera) in the scene phase, the resolve at the bloom copy; the statuses and the nozzle pixels after the copy.
-    // armed: a far jet the small-parts cull culled (never drawn by the game): a synthetic node 100 units ahead at
-    // (-20, -20) with the four jets' orientation (basis row 0 = -z, row 2 = +x: the axis -x), value 10 (+0x70 1,000 x
-    // context 0.01), z 2.0, handed over in the scene phase with a view of the scene camera's handle.
-    alignas(16) std::uint32_t far_node[0x260 / 4]{};
-    alignas(16) std::uint32_t far_view[0x80 / 4]{};
+    // armed: two far jets the small-parts cull culled (never drawn by the game): synthetic nodes 100 units ahead at
+    // (-20, -20) and (20, -20) with the four jets' orientation (basis row 0 = -z, row 2 = +x: the axis -x), value 1.25
+    // (+0x70 125 x context 0.01: a 2.13 px nozzle), z 2.0, handed over with a view of the scene camera's handle or of
+    // the other camera's.
+    alignas(16) std::uint32_t far_node[2][0x260 / 4]{};
+    alignas(16) std::uint32_t far_view[0x80 / 4]{};       // the scene camera's view
+    alignas(16) std::uint32_t far_view_other[0x80 / 4]{}; // another camera's view (a target monitor)
     alignas(16) std::uint32_t far_context[0x40 / 4]{};
-    void make_far_jet() {
-        far_node[0x28 / 4] = 0xf9;
-        far_node[0x70 / 4] = 1000;
-        far_node[0x80 / 4] = far_node[0x84 / 4] = 0x10000;
-        far_node[0x88 / 4] = 0x20000;
-        far_node[0xb0 / 4] = std::uint32_t(-2000);
-        far_node[0xb4 / 4] = std::uint32_t(-2000);
-        far_node[0xb8 / 4] = 10000;
-        far_node[0xc8 / 4] = std::uint32_t(-0x10000); // basis row 0 (model x) = -z
-        far_node[0xd4 / 4] = 0x10000;                 // row 1 = y
-        far_node[0xe0 / 4] = 0x10000;                 // row 2 (model z) = +x
-        far_node[0x12c / 4] = 0x1002;
-        far_node[0x130 / 4] = 0x4000001;
-        far_node[0x140 / 4] = 20000;
+    void make_far_jets() {
+        for (unsigned k = 0; k < 2; ++k) {
+            std::uint32_t* n = far_node[k];
+            n[0x28 / 4] = 0xf9 + k;
+            n[0x70 / 4] = 125;
+            n[0x80 / 4] = n[0x84 / 4] = 0x10000;
+            n[0x88 / 4] = 0x20000;
+            n[0xb0 / 4] = std::uint32_t(k ? 2000 : -2000);
+            n[0xb4 / 4] = std::uint32_t(-2000);
+            n[0xb8 / 4] = 10000;
+            n[0xc8 / 4] = std::uint32_t(-0x10000); // basis row 0 (model x) = -z
+            n[0xd4 / 4] = 0x10000;                 // row 1 = y
+            n[0xe0 / 4] = 0x10000;                 // row 2 (model z) = +x
+            n[0x12c / 4] = 0x1002;
+            n[0x130 / 4] = 0x4000001;
+            n[0x140 / 4] = 20000;
+        }
         const float scale = 0.01f;
         std::memcpy(&far_context[0x2c / 4], &scale, 4);
         far_view[0x28 / 4] = scene_camera;
         far_view[0x1c / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(far_context));
+        far_view_other[0x28 / 4] = other_camera;
+        far_view_other[0x1c / 4] = far_view[0x1c / 4];
     }
-    Armed armed_frame(bool far_jet = false, bool draw_jets = true) {
-        // p1 / p2 probed 2 px into the plume (the axis runs to -x): after flight C the mouth is no longer the brightest
-        // point (the shock cells ramp in, the ring halved, the mouth terms a soft maximum), and on this 3 px nozzle half
-        // the jittered frames sample behind it. p3 / p4 at their nozzles (never drawn).
-        static const Px nozzle_px[4] = {{30, 32}, {17, 19}, {45, 45}, {45, 19}};
+    // One far copy of a frame: far jet `jet` (0, 1) through the scene camera's view or the other one's, handed over in
+    // the scene phase (after the depth Clear, as the scene view's cull/LOD pass runs after its activation) or before it
+    // (the background phase: the main view's pass may run before the selector's latching depth Clear).
+    struct Far {
+        unsigned jet;
+        bool other_view, before_scene;
+    };
+    void far_copy(const Far& f) {
+        far_call(std::uint32_t(reinterpret_cast<std::uintptr_t>(far_node[f.jet])), 6,
+                 std::uint32_t(reinterpret_cast<std::uintptr_t>(f.other_view ? far_view_other : far_view)));
+    }
+    DWORD last_px_[6]{};
+    bool profiled_ = false;
+    Armed armed_frame(const Far* copies = nullptr, unsigned copy_count = 0, bool draw_jets = true) {
+        // p1 probed 2 px into the plume (the axis runs to -x): after flight C the mouth is no longer the brightest point
+        // (the shock cells ramp in, the ring halved, the mouth terms a soft maximum), and on this 2 px nozzle half the
+        // jittered frames sample behind it; p2 (13.65 px) 4 px into it; the far jets 2 px into theirs. p3 / p4 at their
+        // nozzles (never drawn). Nozzle centres: p1 (256, 256), p2 (153.6, 153.6), p3 (358.4, 358.4), p4 (358.4, 153.6),
+        // far jets (215.0, 324.3) and (297.0, 324.3).
+        static const int probe[12] = {254, 256, 150, 154, 358, 358, 358, 154, 213, 324, 295, 324};
         api(device->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0), "Clear initial");
         api(device->BeginScene(), "BeginScene");
         effect_state(false); // background: an unscoped effect-pair draw (WVP zero: no pixel); the sentinel fill runs here
@@ -500,14 +540,15 @@ struct Fixture {
         unsigned jets_before = primitive_calls();
         if (draw_jets) jet_draw(p4, false, true, scene_camera);
         unsigned jets_submitted = primitive_calls() - jets_before;
+        for (unsigned i = 0; i < copy_count; ++i)
+            if (copies[i].before_scene) far_copy(copies[i]);
         api(device->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1.f, 0), "Clear depth"); // the scene phase; the camera latch
         effect_state(true); // the scene's depth writer (unscoped: forwarded)
         device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
         scope(nullptr, 0);
         api(draw(1), "depth writer");
-        if (far_jet) // the cull/LOD pass of the scene view runs after its activation and Clear: the scene phase
-            far_call(std::uint32_t(reinterpret_cast<std::uintptr_t>(far_node)), 6,
-                     std::uint32_t(reinterpret_cast<std::uintptr_t>(far_view)));
+        for (unsigned i = 0; i < copy_count; ++i)
+            if (!copies[i].before_scene) far_copy(copies[i]);
         jets_before = primitive_calls();
         if (draw_jets) {
             jet_draw(p1, false, true, scene_camera);
@@ -518,37 +559,62 @@ struct Fixture {
         api(device->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
         api(device->StretchRect(back, nullptr, bloom_surface, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
         Armed a{};
-        const unsigned keys[18] = {25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 2, 3, 37, 39, 44, 45, 46, 47};
-        unsigned* out[18] = {&a.armed, &a.ran, &a.result, &a.nozzles, &a.skipped, &a.drew, &a.references, &a.taa_references,
+        const unsigned keys[20] = {25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 2, 3, 37, 39, 44, 45, 46, 47, 48, 49};
+        unsigned* out[20] = {&a.armed, &a.ran, &a.result, &a.nozzles, &a.skipped, &a.drew, &a.references, &a.taa_references,
                              &a.failures, &a.refused, &a.records, &a.suppressed, &a.stage_off, &a.attach_refused,
-                             &a.far_records, &a.far_nozzles, &a.far_copies, &a.last_flags};
-        for (unsigned i = 0; i < 18; ++i) *out[i] = status(device, keys[i]);
+                             &a.far_records, &a.far_nozzles, &a.far_copies, &a.last_flags, &a.view_rule, &a.far_duplicates};
+        for (unsigned i = 0; i < 20; ++i) *out[i] = status(device, keys[i]);
         a.jets_submitted = jets_submitted;
         a.resolved = emission(device, 97); // this frame's resolve ran and its copy-back succeeded
-        for (unsigned i = 0; i < 4; ++i) a.px[i] = pixel(nozzle_px[i].x, nozzle_px[i].y);
+        pixels(probe, 6, a.px);
+        std::memcpy(a.prev, last_px_, sizeof a.prev);
+        std::memcpy(last_px_, a.px, sizeof last_px_);
+        if (!profiled_ && a.drew && a.nozzles == 2) { // once: p2's axis profile, the probe's choice (PROFILE row)
+            profiled_ = true;
+            static const int along[16] = {158, 154, 154, 154, 150, 154, 146, 154, 140, 154, 130, 154, 115, 154, 100, 154};
+            DWORD v[8];
+            pixels(along, 8, v);
+            std::printf("PROFILE p2 y=154 x=158,154,150,146,140,130,115,100 sums=%u,%u,%u,%u,%u,%u,%u,%u\n", sum(v[0]), sum(v[1]),
+                        sum(v[2]), sum(v[3]), sum(v[4]), sum(v[5]), sum(v[6]), sum(v[7]));
+        }
         api(device->EndScene(), "EndScene");
         api(device->SetDepthStencilSurface(depth), "SetDepthStencilSurface rebind");
         api(device->Present(nullptr, nullptr, nullptr, nullptr), "Present");
         return a;
     }
     static unsigned sum(DWORD v) { return ((v >> 16) & 0xff) + ((v >> 8) & 0xff) + (v & 0xff); }
-    // After flight E the four jets' 2.1 px nozzles (value 10 at 100 units in the 64-pixel target) are far: the distance
-    // law draws them at 0.15 of the radiance, so a drawn nozzle reads 28..255 (a re-armed frame's first blend with the
-    // dark history the least: 28..60 in three runs) where it read 96 and above; dark stays at most 6.
+    // `drew` (the stage's own report) is the authority on whether a frame drew; the pixels confirm actual writes (the
+    // forced fault reports failure after submitting the draw, so a fault frame shows the plume: 765 at p2, measured).
+    // p2's 13.65 px nozzle takes the whole radiance: a drawn frame reads 96 and above there (765 measured, the probe
+    // 4 px into the plume where the axis profile reads 765). The small nozzles are under the distance law (0.15 of the
+    // radiance), where TAA history alone can read as much as a drawn frame, so a far nozzle is checked as a rise against
+    // the previous frame where it was absent (rose: at least `rise` above it; the far jets rose 23..48 from 0, p1 66..376,
+    // measured 2026-10-03); dark stays at most 6.
+    static bool near_lit(DWORD v) { return sum(v) >= 96; }
     static bool lit(DWORD v) { return sum(v) >= 16; }
     static bool dark(DWORD v) { return sum(v) <= 6; }
+    static constexpr unsigned rise = 12;
+    static bool rose(const Armed& a, unsigned i) { return sum(a.px[i]) >= sum(a.prev[i]) + rise; }
     static void print_armed(const char* phase, unsigned frame, const Armed& a) {
-        std::printf("ARMED phase=%s frame=%u armed=%u ran=%u result=%08x nozzles=%u skipped_other_view=%u drew=%u references=%u taa_references=%u failures=%u refused=%u records=%u suppressed=%u resolved=%u forwarded_stage_off=%u attach_refused=%u jets_submitted=%u px=%06lx,%06lx,%06lx,%06lx\n",
+        std::printf("ARMED phase=%s frame=%u armed=%u ran=%u result=%08x nozzles=%u skipped_other_view=%u drew=%u references=%u taa_references=%u failures=%u refused=%u records=%u suppressed=%u resolved=%u forwarded_stage_off=%u attach_refused=%u jets_submitted=%u px=%06lx,%06lx,%06lx,%06lx sums=%u,%u,%u,%u prev=%u,%u\n",
                     phase, frame, a.armed, a.ran, a.result, a.nozzles, a.skipped, a.drew, a.references, a.taa_references,
                     a.failures, a.refused, a.records, a.suppressed, a.resolved, a.stage_off, a.attach_refused, a.jets_submitted,
                     static_cast<unsigned long>(a.px[0]),
-                    static_cast<unsigned long>(a.px[1]), static_cast<unsigned long>(a.px[2]), static_cast<unsigned long>(a.px[3]));
+                    static_cast<unsigned long>(a.px[1]), static_cast<unsigned long>(a.px[2]), static_cast<unsigned long>(a.px[3]),
+                    sum(a.px[0]), sum(a.px[1]), sum(a.px[2]), sum(a.px[3]), sum(a.prev[0]), sum(a.prev[1]));
     }
-    // A frame that drew the scene view's records: p1 / p2 lit, p3 (another camera) and p4 (background phase) dark.
+    static void print_far(const char* phase, unsigned frame, const Armed& a) {
+        std::printf("FAR phase=%s frame=%u ran=%u drew=%u nozzles=%u skipped_other_view=%u records=%u suppressed=%u far_records=%u far_nozzles=%u far_copies=%u far_duplicates=%u view_rule=%u last_flags=%04x jets_submitted=%u far_sums=%u,%u prev=%u,%u p1=%u p2=%u\n",
+                    phase, frame, a.ran, a.drew, a.nozzles, a.skipped, a.records, a.suppressed, a.far_records, a.far_nozzles,
+                    a.far_copies, a.far_duplicates, a.view_rule, a.last_flags, a.jets_submitted, sum(a.px[4]), sum(a.px[5]),
+                    sum(a.prev[4]), sum(a.prev[5]), sum(a.px[0]), sum(a.px[1]));
+    }
+    // A frame that drew the scene view's records: p2 near-lit, p1 lit, p3 (another camera) and p4 (background phase)
+    // dark.
     static bool drawn_frame(const Armed& a) {
         return a.armed && a.ran && a.result == 0 && a.nozzles == 2 && a.skipped == 2 && a.drew && a.references == 5 &&
                a.records == 4 && a.suppressed == 4 && a.stage_off == 0 && a.jets_submitted == 0 && a.resolved && lit(a.px[0]) &&
-               lit(a.px[1]) && dark(a.px[2]) && dark(a.px[3]);
+               near_lit(a.px[1]) && dark(a.px[2]) && dark(a.px[3]);
     }
     // A frame whose stage is not attached (refused, failed until Reset or disarmed): nothing drawn by the stage, the
     // four glow-jet draws forwarded to the device (forwarded_stage_off 4, none recorded); the effect pair's WVP is zero,
@@ -580,6 +646,7 @@ struct Fixture {
         print_armed("first", frame, a);
         check(a.armed && warm < 8, "armed_arms_within_8_frames");
         check(drawn_frame(a), "armed_first_frame_draws_scene_view");
+        check(rose(a, 0), "armed_first_frame_far_nozzle_rises_from_dark_history");
         unsigned drawn = 0;
         for (unsigned i = 0; i < 3; ++i) {
             a = armed_frame();
@@ -588,32 +655,79 @@ struct Fixture {
         }
         print_armed("steady", frame, a);
         check(drawn == 3, "armed_three_frames_draw");
-        // A far jet (after flight E): the cull stub's copy becomes a fifth record of the scene camera, drawn with the two
-        // scene-view jets; nothing of it is submitted to the device (jets_submitted 0).
-        make_far_jet();
-        a = armed_frame(true);
+        // Far jets (after flight E; the review fixes): the cull stub's copies become records of the view whose handle they
+        // carry, whatever the selector's phase when the pass met them; nothing is submitted to the device. Each far frame
+        // follows two plain frames (the far probes' TAA history settles), and its far nozzle must rise against the
+        // previous frame's pixel (`rose`).
+        make_far_jets();
+        unsigned settled = 0, settles = 0;
+        auto settle = [&] {
+            for (unsigned i = 0; i < 2; ++i) {
+                a = armed_frame();
+                ++frame;
+                ++settles;
+                settled += drawn_frame(a) && a.far_records == 0 && a.far_copies == 0;
+            }
+        };
+        // The scene view's copy in the scene phase: a fifth record of the scene camera, drawn with p1 / p2.
+        const Far scene_in_scene[1] = {{0, false, false}};
+        a = armed_frame(scene_in_scene, 1);
         ++frame;
-        std::printf("FAR_JET frame=%u nozzles=%u skipped_other_view=%u records=%u suppressed=%u far_records=%u far_nozzles=%u far_copies=%u last_flags=%04x jets_submitted=%u\n",
-                    frame, a.nozzles, a.skipped, a.records, a.suppressed, a.far_records, a.far_nozzles, a.far_copies, a.last_flags,
-                    a.jets_submitted);
-        check(a.armed && a.ran && a.result == 0 && a.nozzles == 3 && a.skipped == 2 && a.records == 5 && a.suppressed == 4 &&
-                  a.far_records == 1 && a.far_copies == 1 && (a.last_flags & 0x200u) && a.jets_submitted == 0,
+        print_far("scene_copy", frame, a);
+        check(a.armed && a.ran && a.result == 0 && a.drew && a.nozzles == 3 && a.skipped == 2 && a.records == 5 && a.suppressed == 4 &&
+                  a.far_records == 1 && a.far_copies == 1 && (a.last_flags & 0x200u) && a.jets_submitted == 0 && a.view_rule == 2 &&
+                  near_lit(a.px[1]) && rose(a, 4),
               "armed_far_jet_drawn_as_a_scene_record");
-        check(a.far_nozzles == 3, "armed_far_jet_distance_law_counts_the_far_nozzles");
-        a = armed_frame();
+        check(a.far_nozzles == 2, "armed_far_jet_distance_law_counts_the_far_nozzles");
+        settle();
+        // Finding 1: the main view's cull pass before the selector's scene phase (the latching depth Clear): the copy is
+        // still drawn (the handle decides, not the phase).
+        const Far scene_before[1] = {{0, false, true}};
+        a = armed_frame(scene_before, 1);
         ++frame;
-        check(drawn_frame(a) && a.far_records == 0 && a.far_copies == 0, "armed_far_buffer_empties_next_frame");
-        // A frame whose only jet is a far one (no glow-jet draw at all): the stage still runs and draws it alone.
-        a = armed_frame(true, false);
+        print_far("before_scene", frame, a);
+        check(a.drew && a.nozzles == 3 && a.skipped == 2 && a.far_records == 1 && a.view_rule == 2 && rose(a, 4),
+              "armed_far_copy_before_the_scene_phase_drawn");
+        settle();
+        // The cull pass twice for one view: the second copy of (node handle, view handle) is dropped (far_duplicates).
+        const Far twice[2] = {{0, false, false}, {0, false, false}};
+        a = armed_frame(twice, 2);
         ++frame;
-        std::printf("FAR_ONLY frame=%u ran=%u nozzles=%u skipped_other_view=%u records=%u far_records=%u drew=%u\n", frame, a.ran,
-                    a.nozzles, a.skipped, a.records, a.far_records, a.drew);
+        print_far("duplicate", frame, a);
+        check(a.drew && a.nozzles == 3 && a.far_copies == 2 && a.far_records == 1 && a.far_duplicates == 1 && rose(a, 4),
+              "armed_far_duplicate_dropped");
+        settle();
+        // Another camera's copy (a target monitor's cull pass) beside the scene view's draws: skipped, its pixel dark.
+        const Far other[1] = {{0, true, false}};
+        a = armed_frame(other, 1);
+        ++frame;
+        print_far("other_view", frame, a);
+        check(a.drew && a.nozzles == 2 && a.skipped == 3 && a.far_records == 1 && a.view_rule == 2 && dark(a.px[4]),
+              "armed_far_copy_of_another_view_skipped");
+        // A frame whose only jet is a far one (no glow-jet draw at all), culled before the scene phase: the stage still
+        // runs, the scene view is the far handle (view_rule far) and draws it alone.
+        const Far alone[1] = {{0, false, true}};
+        a = armed_frame(alone, 1, false);
+        ++frame;
+        print_far("far_only", frame, a);
         check(a.armed && a.ran && a.result == 0 && a.drew && a.nozzles == 1 && a.skipped == 0 && a.records == 1 &&
-                  a.far_records == 1 && a.suppressed == 0,
+                  a.far_records == 1 && a.suppressed == 0 && a.view_rule == 3 && rose(a, 4),
               "armed_far_only_frame_runs_the_stage");
         a = armed_frame();
         ++frame;
         check(drawn_frame(a), "armed_after_far_only_draws");
+        settle();
+        // Far copies only, of two views: the most frequent far handle is the scene view (two copies of the scene camera,
+        // one before the scene phase, against one of the other camera): both scene copies drawn, the other skipped.
+        const Far mixed[3] = {{0, false, true}, {1, false, false}, {0, true, false}};
+        a = armed_frame(mixed, 3, false);
+        ++frame;
+        print_far("far_only_mixed", frame, a);
+        check(a.drew && a.nozzles == 2 && a.skipped == 1 && a.records == 3 && a.far_records == 3 && a.view_rule == 3 &&
+                  rose(a, 4) && rose(a, 5),
+              "armed_far_only_majority_far_handle_drawn_other_skipped");
+        settle();
+        check(settled == settles, "armed_far_settle_frames_draw_without_far_records");
         const unsigned taa_before = a.taa_references;
         // One forced draw fault (the pass's fixture fault reports the draw failed after submitting it, so the frame may
         // still show the plume): the resolve goes on and resolves, the stage disarms for 64 frames (63 after the failed
@@ -629,6 +743,7 @@ struct Fixture {
         std::printf("DISARMED cycle=once frames=%u glow_native=%u\n", disarmed, glow_dark);
         check(disarmed == 63 && glow_dark == 63, "armed_disarmed_63_frames_glow_forwarded");
         check(drawn_frame(a) && a.failures == 0, "armed_rearmed_draws_failures_cleared");
+        check(rose(a, 0), "armed_rearmed_far_nozzle_rises_from_dark_history");
         // Persistent fault: three consecutive failed stage frames (no drawn frame between) refuse until Reset.
         check(plumes_fault(device, 4) == 1, "armed_fault_persistent_set");
         unsigned cycles = 0, gaps_ok = 0;
@@ -668,6 +783,7 @@ struct Fixture {
                     held, released, refused_after, failures_after, warm_after, a.references, taa_before, a.taa_references);
         check(held == 5 && released == 0 && !refused_after && !failures_after, "armed_reset_releases_and_clears");
         check(drawn_frame(a), "armed_after_reset_recreated_and_draws");
+        check(rose(a, 0), "armed_after_reset_far_nozzle_rises_from_dark_history");
         check(a.taa_references == taa_before, "armed_taa_references_delta_0");
     }
     // armed_refused: the pass refuses at its first attach (the FP16 blending fault staged before the first arming): the

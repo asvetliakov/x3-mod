@@ -1746,7 +1746,10 @@ private:
     std::uint64_t engine_far_frame_ = ~std::uint64_t(0); // the frame whose buffer was appended
     struct EngineFarCounts {
         unsigned records = 0, ring_full = 0, steering = 0, invalid = 0;
+        unsigned duplicates = 0; // copies of a (node handle, view handle) pair already appended this frame
     } engine_far_{};
+    bool engine_far_counted_ = false;            // this device is among the far block's requesting devices
+    engine_far_jets::core::Seen engine_far_seen_; // the append's (node handle, view handle) dedupe, one generation a frame
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one
@@ -1768,7 +1771,8 @@ private:
     // The rule that chose this frame's scene view (engine_plumes::ViewRule: none, own ship, majority) and the session
     // count of each, for the engine_stage row.
     engine_plumes::ViewRule plumes_view_rule_ = engine_plumes::ViewRule::none;
-    std::uint64_t plumes_view_own_total_ = 0, plumes_view_majority_total_ = 0;
+    bool plumes_view_far_ = false; // no drawn scene-phase record: the scene view is the most frequent far handle (view_rule=far)
+    std::uint64_t plumes_view_own_total_ = 0, plumes_view_majority_total_ = 0, plumes_view_far_total_ = 0;
     std::uint64_t engine_qpc_frequency() noexcept; // qpc_frequency_, read once
     engine_plumes::StageClock engine_clock_{};     // the plume stage's clock (flow, pulse, the ribbons' pool)
     engine_plumes::FlowPhase engine_flow_{};       // the plumes' flow phase, advanced by each clock step
