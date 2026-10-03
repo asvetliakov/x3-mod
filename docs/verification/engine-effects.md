@@ -294,3 +294,18 @@ and `engine_bodies.json` are unchanged.
 
 Open: the live `+0xa4` against the estimate and whether a ship root is ever re-dirtied in flight (one `--debug` row
 would settle it), the look in flight (the first 0.3 L dimmer, the floor's k), native Windows (cross-compiled only).
+
+### Size-dependent k (2026-10-03, orchestrator changes before merge)
+
+k(R) runs through three anchors, log-linear in R: 0.35 at R <= 150 record units, 0.25 at 500, 0.10 at R >= 5,000.
+The cap is 4 x value. `engine_plume_floor` scales the curve (default 1, 0 = off, 0..3). `engine_draw` rows gained
+`radius=` and `value_eff=`. Measured unless marked.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL, config | `cmake --build build`, `check_no_x87.py`, `tools/config/generate.py --check` | 0 warnings, x87 0 violations; PASS, 252 settings (`engine_plume_floor = 1`) |
+| Plume fixture | `run_engine_plumes.py` | PASS 118/118. A 100 secondary on a fighter (R 139 / 105 record units at 1080p / 5120x1440, k 0.35) draws at 280 like the lone 280 (36 px long); radius 0 keeps 100. The mouth is unchanged (0.595 / 0.658 / 0.773) |
+| Effects fixture | `run_engine_effects.py` (all modes) | PASS, 8 modes. Frame-1 `engine_draw` radius / value_eff: 0 / 0, 5,000 / 1,000, 1,300 / 260, 0 / 9,366 (node E, a, b RCS, c dirty root). Per suppressed draw: 0.674 us with the radius, 0.637 us without a parent, 0.725 us on a memo miss |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
+| Host | focused `test_engine_*`, `test_regenerate`, `test_manage_engine_effects`, `test_config_schema`; `run_host_suite.py` | 89 tests OK; host suite 286 modules, 3,011 tests, 0 failing. k(R) against std::log: max error 3e-8; `law::ln` relative error 1.0e-7. value_eff on run406's ships: M6 40 -> 119.4 (k 0.256), capital 939.2 -> 1,002.2 and 187.5 -> 750 (cap), M4 10 -> 23.6 and 5 -> 20.2 (cap), TS 10 -> 40 (cap) and 5 -> 20.2 (cap) |
+| k reach | `floor_ratio_effects.py` | Mayhem: 393 of 405 ships raise their largest main jet (77 to the 4x cap); stock: 124 of 198 (1). R is estimated offline (inferred) |

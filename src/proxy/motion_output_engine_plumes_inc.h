@@ -16,15 +16,15 @@
 // state or its reason. Frames the resolve does not reach show no engine effect (design section 1). Only the scene view's records
 // are drawn (engine_plumes_core.h ViewFilter); the rest count skipped_other_view in engine_stage.
 void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width,
-                                           float floor_ratio) noexcept {
+                                           float floor_scale) noexcept {
     plumes_requested_ = requested && engine_hook_ && engine_suppress_ && engine_ring_;
     plumes_preset_ = preset;
     // The look: the chosen constants with the configured nozzle width (engine_effects::plume_nozzle(): parsed and
     // range-checked there); out of range here (no caller does that) keeps the default.
     plumes_look_ = engine_plumes::default_look;
     if (nozzle_width >= engine_plumes::nozzle_min && nozzle_width <= engine_plumes::nozzle_max) plumes_look_.nozzle_width = nozzle_width;
-    // The plume floor (engine_effects::plume_floor(): parsed and range-checked there; 0 = off).
-    if (floor_ratio >= engine_plumes::floor_min && floor_ratio <= engine_plumes::floor_max) plumes_look_.floor_ratio = floor_ratio;
+    // The plume floor's scale of the k(R) curve (engine_effects::plume_floor(): parsed and range-checked there; 0 = off).
+    if (floor_scale >= engine_plumes::floor_min && floor_scale <= engine_plumes::floor_max) plumes_look_.floor_scale = floor_scale;
     engine_plumes::flow_rate(plumes_look_, &plumes_flow_rate_);
     engine_plumes::look_tables(plumes_look_, &plumes_tables_); // fixed for the session: not recomputed per frame
     plumes_armed_ = plumes_ran_ = plumes_fenced_ = false;

@@ -30,7 +30,7 @@
 //   axial quad's 1 - (1 - axial_floor) x that weight (half from 0.7 up: the foreshortened plume keeps its length), so the
 //   total radiance stays near the side view's at every angle.
 // value = record.size (|model x| of the c4-6 rows: the body's LOD-0 value x the context scale); a main jet's value is
-// raised to floor_ratio x its ship's radius (the root node's subtree radius in the record's units, Ring::parent_radius),
+// raised to k(R) x its ship's radius R (the root node's subtree radius in the record's units, Ring::parent_radius),
 // at most floor_cap x its own value, for the plume's size and length, not its position (the plume floor). RCS jets (v/00566,
 // flag_steering) take the same quads with L = z * value (short by construction: z runs 0.01..1.0 on steering) and
 // their radiance x min(z, 1); below z 0.02 they are not drawn.
@@ -170,12 +170,17 @@ struct Look {
     // The mouth's hand-over: the axial quad x (1 - disc weight x (1 - smoothstep(inner, outer, d))), d the screen-plane
     // distance from the nozzle in nozzle widths (the disc's integrated body ends near 0.6).
     float handover_inner = .3f, handover_outer = .8f;
-    // The plume floor (after flight D): a main jet's value is at least floor_ratio x its ship's radius (the root node's
-    // subtree radius, Ring::parent_radius), at most floor_cap x its own value; 0 = off. Load-time knob
-    // X3M_ENGINE_PLUME_FLOOR (ini engine_plume_floor, 0..0.5; parse_floor). 0.10: about the Mayhem fleet's median
-    // largest main nozzle / ship radius (0.099; verification/results/engine-effects/floor_ratio_effects.py).
-    float floor_ratio = .10f;
-    float floor_cap = 3.f;
+    // The plume floor (after flight D): a main jet's value is at least k(R) x its ship's radius R (the root node's
+    // subtree radius in record units, Ring::parent_radius), at most floor_cap x its own value. k(R) runs through three
+    // anchors, linear in ln R between them and flat outside (floor_ratio_at): 0.35 at R <= 150 (fighters), 0.25 at 500,
+    // 0.10 at R >= 5,000 (capitals), so small ships' plumes grow and capitals' stay (the Mayhem fleet's largest main
+    // nozzle / R is about 0.09 at every size, so one k cannot do both; verification/results/engine-effects/
+    // floor_ratio_effects.py). floor_scale multiplies the whole curve: load-time knob X3M_ENGINE_PLUME_FLOOR (ini
+    // engine_plume_floor, 0..3; parse_floor); 0 turns the floor off.
+    float floor_scale = 1.f;
+    float floor_r[3] = {150.f, 500.f, 5000.f}; // record units (run406: value x 0.01)
+    float floor_k[3] = {.35f, .25f, .10f};
+    float floor_cap = 4.f;
 };
 constexpr Look default_look{};
 constexpr float soft_core = .15f, soft_halo = 1.f; // SOFT x value (the pixel program's lane terms: body and ring, halo)
@@ -191,7 +196,7 @@ constexpr float steering_min_z = .02f;
 constexpr float clock_wrap = 1024.f;        // seconds: the pixel program's clock wraps (float precision of the noise)
 constexpr double phase_wrap = 4096.;        // nozzle widths: the flow phase wraps (one discontinuity of the noise per wrap)
 constexpr float nozzle_min = .1f, nozzle_max = 1.f; // X3M_ENGINE_PLUME_NOZZLE's accepted range (x value)
-constexpr float floor_min = 0.f, floor_max = .5f;   // X3M_ENGINE_PLUME_FLOOR's accepted range (x the ship's radius)
+constexpr float floor_min = 0.f, floor_max = 3.f;   // X3M_ENGINE_PLUME_FLOOR's accepted range (x the k(R) curve)
 constexpr unsigned max_nozzles = ee::ring_capacity; // 1,024: one ring
 constexpr unsigned vertices_per_nozzle = 8, indices_per_nozzle = 12;
 constexpr unsigned max_vertices = max_nozzles * vertices_per_nozzle; // 8,192: 16-bit indices
@@ -221,6 +226,21 @@ inline void smooth(float e0, float e1, float x, float* out) noexcept {
 }
 inline void exp_neg(float x, float* out) noexcept {
     x3m::renderer::fog_exp_negative(x, out);
+}
+// ln x for x > 0 without x87: x = m 2^e with m in [1, 2), ln m = 2 atanh((m - 1) / (m + 1)) to the 9th power
+// (|z| <= 1/3: error under 2e-6); 0 for x <= 0 or non-finite.
+inline void ln(float x, float* out) noexcept {
+    *out = 0.f;
+    if (!(x > 0.f) || !(x <= 3.4e38f)) return;
+    std::uint32_t bits = 0;
+    std::memcpy(&bits, &x, 4);
+    const int e = int((bits >> 23) & 255u) - 127;
+    if (e == -127) return; // denormal: not a radius
+    bits = (bits & 0x007fffffu) | 0x3f800000u;
+    float m = 1.f;
+    std::memcpy(&m, &bits, 4);
+    const float z = (m - 1.f) / (m + 1.f), z2 = z * z;
+    *out = float(e) * .69314718f + 2.f * z * (1.f + z2 * (1.f / 3.f + z2 * (1.f / 5.f + z2 * (1.f / 7.f + z2 * (1.f / 9.f)))));
 }
 inline void cos(float x, float* out) noexcept {
     const float pi = 3.14159265f, two_pi = 6.28318531f;
@@ -412,7 +432,7 @@ struct View {
 };
 struct BuildStats {
     unsigned nozzles = 0, vertices = 0, discs = 0, steering = 0, capped = 0, faded = 0;
-    unsigned floored = 0;       // main jets raised to floor_ratio x their ship's radius
+    unsigned floored = 0;       // main jets raised to k(R) x their ship's radius
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
     unsigned culled_rows = 0, culled_behind = 0, culled_small = 0, culled_idle = 0, culled_capacity = 0;
     unsigned fogged = 0;        // nozzles whose colours took the fog transmittance (phase 3)
@@ -889,9 +909,46 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
 // computed here) look_tables(*look), cached where the look is fixed; `radii` (beside the records, Ring::parent_radius;
 // null: no floor) each record's ship radius in its own units.
 //
-// The plume floor of a main jet (not RCS, not brake- or steering-pushed): min(max(value, floor_ratio x radius),
-// floor_cap x value), from the ship's own radius at draw time, so it does not depend on which of the ship's nozzles the
+// The plume floor of a main jet (not RCS, not brake- or steering-pushed): min(max(value, k(R) x R), floor_cap x value)
+// (floored_value), from the ship's own radius at draw time, so it does not depend on which of the ship's nozzles the
 // game culled this frame; a radius of 0 (unknown) takes none.
+// k(R): floor_scale x the three-anchor curve (floor_r / floor_k: flat below the first and above the last radius, linear in
+// ln R between neighbours); 0 when floor_scale is 0 (the floor off) or R is not a positive finite radius.
+inline void floor_ratio_at(const Look& k, float radius, float* out) noexcept {
+    *out = 0.f;
+    if (!(k.floor_scale > 0.f) || !ee::finite_f(k.floor_scale) || !(radius > 0.f) || !ee::finite_f(radius)) return;
+    float ratio = k.floor_k[2];
+    if (radius <= k.floor_r[0])
+        ratio = k.floor_k[0];
+    else if (radius < k.floor_r[2]) {
+        const unsigned i = radius < k.floor_r[1] ? 0u : 1u;
+        float a = 0.f, b = 0.f;
+        law::ln(radius / k.floor_r[i], &a);
+        law::ln(k.floor_r[i + 1] / k.floor_r[i], &b);
+        float t = b > 0.f ? a / b : 1.f;
+        t = t < 0.f ? 0.f : t > 1.f ? 1.f : t;
+        ratio = k.floor_k[i] + (k.floor_k[i + 1] - k.floor_k[i]) * t;
+    }
+    *out = k.floor_scale * ratio;
+}
+// The floor's target for a main jet of value `size` on a ship of radius R: min(k(R) x R, floor_cap x size) (0: none).
+inline void floor_target(const Look& k, float size, float radius, float* out) noexcept {
+    float ratio = 0.f;
+    floor_ratio_at(k, radius, &ratio);
+    float f = ratio * radius;
+    const float cap = k.floor_cap * size;
+    if (f > cap) f = cap;
+    *out = ee::finite_f(f) && f > 0.f ? f : 0.f;
+}
+// The value a record draws at under the floor (the engine_draw census's value_eff): its size, raised for a main jet to
+// the floor's target; RCS and brake- or steering-pushed bodies and a radius of 0 keep their size.
+inline void floored_value(const Look& k, const ee::Record& r, float radius, float* out) noexcept {
+    *out = r.size;
+    if (r.flags & (ee::flag_steering | ee::flag_brake)) return;
+    float f = 0.f;
+    floor_target(k, r.size, radius, &f);
+    if (f > r.size) *out = f;
+}
 using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
                       float seconds, Vertex* out, unsigned capacity, BuildStats* stats, const ViewFilter* filter = nullptr,
@@ -914,7 +971,7 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
     auto shown = [&](unsigned i) { return !filter || (filter->scene[i] && filter->camera[i] == filter->handle); };
     // The plume floor: RCS jets and the brake / steering-pushed main bodies neither take it.
     constexpr std::uint32_t unfloored = ee::flag_steering | ee::flag_brake;
-    const bool floors = radii && k.floor_ratio > 0.f && ee::finite_f(k.floor_ratio);
+    const bool floors = radii && k.floor_scale > 0.f && ee::finite_f(k.floor_scale);
     PulseCache pulses;
     unsigned written = 0;
     for (unsigned i = 0; i < count; ++i) {
@@ -931,11 +988,9 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
         float floor_value = 0.f;
         if (floors && !(r.flags & unfloored)) {
             const float radius = radii[i];
-            if (radius > 0.f && ee::finite_f(radius)) {
-                floor_value = k.floor_ratio * radius;
-                const float cap = k.floor_cap * r.size;
-                if (floor_value > cap) floor_value = cap;
-            } else
+            if (radius > 0.f && ee::finite_f(radius))
+                floor_target(k, r.size, radius, &floor_value);
+            else
                 ++st.floor_unknown;
         }
         if (build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, out + written * vertices_per_nozzle, &st, &pulses))

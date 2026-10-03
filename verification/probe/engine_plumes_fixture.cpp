@@ -22,8 +22,8 @@
 //   end_on        after flight C: the axis at 0 / 30 / 60 / 90 degrees from the line of sight, the frame's total
 //                 radiance against the side view's (0.7..1.5), the end-on peak; the disc's variation over 30 frames;
 //                 the energy ratios at the nozzle widths 0.1 / 0.25 / 1.0 reported
-//   floor         after flight D, the plume floor k x the ship's radius: a 200 secondary whose main nozzle is absent from
-//                 the frame (radius 4,500, k 0.1) draws at the lone 450's length and width; a radius of 0 takes no floor
+//   floor         after flight D, the plume floor k(R) x the ship's radius: a 100 secondary whose main nozzle is absent
+//                 from the frame (a fighter's radius, k 0.35) draws at the lone 280's length and width; radius 0: no floor
 //   mouth         side view at s = 1 / 0.5 / 0: the peak within 0.1 L of the mouth and the value at u ~ 0 against the
 //                 body's peak at u 0.1..0.4 (after flight D gated at 0.85 at all three); the end-on peak against 1.5 x the
 //                 s = 1 body peak
@@ -1206,12 +1206,13 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
 // 200), C (ship 2, 200) and R (ship 3, a lone 450); 1,000 is 80 px. B draws at 0.45 x 1,000 = 450: its length (the axis
 // down to 20 % of I_core) and its column's half-width at u = 0.5 (to 10 % of the column's peak) equal R's; C keeps 200.
 void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
-    // After flight D: the plume floor from the ship's radius. Ship A (radius 4,500 value units: k 0.1 -> 450) draws only
-    // its 200 secondary this frame (its large main nozzle culled by the game) and an RCS jet; ship B's 200 has no radius
-    // (0: the read failed or the subtree radius was dirty); a lone 450 of radius 4,000 (above its floor) is the reference.
+    // After flight D: the plume floor from the ship's radius. Ship A (radius 800 value units, a fighter in record units:
+    // 139 / 105 at 1080p / 5120x1440, k 0.35 -> 280) draws only its 100 secondary this frame (its large main nozzle culled
+    // by the game) and an RCS jet; ship B's 100 has no radius (0: the read failed or the subtree radius was dirty); a lone
+    // 280 of radius 400 (floor 140) is the reference.
     const float Z = 2000.f, ppu = t.ppu(Z), unit = 80.f / ppu / 1000.f; // world units per value unit
-    const float values[4] = {200.f, 200.f, 450.f, 300.f}, rows_px[4] = {-180.f, -60.f, 60.f, 180.f};
-    const float radii_value[4] = {4500.f, 0.f, 4000.f, 4500.f}; // the reference 450 above its floor (400: not raised)
+    const float values[4] = {100.f, 100.f, 280.f, 300.f}, rows_px[4] = {-180.f, -60.f, 60.f, 180.f};
+    const float radii_value[4] = {800.f, 0.f, 400.f, 800.f}; // the reference 280 above its floor (140: not raised)
     ee::Record rs[4];
     float radii[4];
     for (unsigned k = 0; k < 4; ++k) { // every nozzle right of centre by half the largest plume
@@ -1244,19 +1245,21 @@ void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
         while (down < 50 && luma(px, t.w, column, iy + down + 1) >= .1f * pk) ++down;
         width[k] = .5f * float(up + down + 1);
     }
-    std::printf("FLOOR width=%u height=%u floored=%u floor_unknown=%u stage_floored=%u k=%.3f", t.w, t.h, st.floored, st.floor_unknown,
-                rep.stats.floored, double(ep::default_look.floor_ratio));
-    const char* names[3] = {"a200_radius4500", "b200_radius0", "r450"};
+    float k_a = 0.f;
+    ep::floor_ratio_at(ep::default_look, radii[0], &k_a);
+    std::printf("FLOOR width=%u height=%u floored=%u floor_unknown=%u stage_floored=%u k=%.3f radius_record=%.4f", t.w, t.h, st.floored,
+                st.floor_unknown, rep.stats.floored, double(k_a), double(radii[0]));
+    const char* names[3] = {"a100_radius800", "b100_radius0", "r280"};
     for (unsigned k = 0; k < 3; ++k)
         std::printf(" %s_value=%.1f %s_length_px=%.0f %s_half_width_px=%.1f", names[k], double(cpu_value[k]), names[k], double(length[k]),
                     names[k], double(width[k]));
     std::printf(" rcs_value=%.1f\n", double(cpu_value[3]));
     char label[64];
     std::snprintf(label, sizeof label, "floor_main_absent_secondary_at_k_radius_%u", t.w);
-    report(label, rep.stats.floored == 1 && st.floor_unknown == 1 && std::fabs(cpu_value[0] - 450.f) < .5f &&
+    report(label, rep.stats.floored == 1 && st.floor_unknown == 1 && std::fabs(cpu_value[0] - 280.f) < .5f &&
                       std::fabs(length[0] - length[2]) <= 2.f && std::fabs(width[0] - width[2]) <= 1.f && std::fabs(cpu_value[3] - 300.f) < .5f);
     std::snprintf(label, sizeof label, "floor_radius_unknown_none_%u", t.w);
-    report(label, std::fabs(cpu_value[1] - 200.f) < .5f && std::fabs(length[1] - length[2] * 200.f / 450.f) <= 3.f);
+    report(label, std::fabs(cpu_value[1] - 100.f) < .5f && std::fabs(length[1] - length[2] * 100.f / 280.f) <= 3.f);
 }
 // The mouth against the body: side view (axis -x), the still look, value 60 px (the nozzle 30 px), at s = 1 / 0.5 / 0
 // (L 120 / 67.5 / 15 px): the peak of the frame within 0.1 L of the nozzle (every pixel centre at that distance, the

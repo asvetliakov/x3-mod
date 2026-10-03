@@ -47,7 +47,7 @@ constexpr Interval intervals[interval_count] = {
     {0.0, 0.0, false},
     {0.25, 8.0, false},
     {1.0, 8.0, false},
-    {0.0, 0.5, false},
+    {0.0, 3.0, false},
     {0.1, 1.0, false},
     {0.0, 0.0, false},
     {64.0, 8192.0, false},

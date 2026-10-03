@@ -609,11 +609,13 @@ as a plain decimal; an inherited shell value is dropped, refused under `--vanill
 ## `engine_plume_floor` (2026-10-03, after flight D)
 
 Key `engine_plume_floor`, environment `X3M_ENGINE_PLUME_FLOOR`, launcher `--engine-plume-floor K`
-([engine-effects-modern.md](engine-effects-modern.md), "After flight D"). The smallest engine plume of a ship under
-`engine_effects = plumes`, as a share of the ship's size: every main jet draws at least K x the radius of its ship's
-root node (the engine's cached subtree radius), at most 3 x its own value. RCS and brake-pushed jets keep theirs.
-Default **0.1**, about the Mayhem fleet's median largest main nozzle / ship radius; **0** turns it off. One plain
-decimal in 0..0.5 (digits with at most one point; no sign, exponent or padding); anything else is refused to 0.1 with
-`floor_status=invalid_setting` on the `engine_effects_plumes` row, which also prints `floor=` and `floor_setting=`.
-Read once at load and only with `plumes`. The launcher sends it only when given (finite 0..0.5, as a plain decimal);
-an inherited shell value is dropped, and it is refused under `--vanilla`.
+([engine-effects-modern.md](engine-effects-modern.md), "After flight D"). The scale of the plume floor under
+`engine_effects = plumes`. Every main jet draws at least K x k(R) x the radius R of its ship's root node (the engine's
+cached subtree radius), at most 4 x its own value. k(R) is 0.35 at R <= 150 record units, 0.25 at 500 and 0.10 at
+R >= 5,000, log-linear between. RCS and brake-pushed jets keep theirs.
+
+Default **1** (the anchors as chosen); **0** turns the floor off. One plain decimal in 0..3 (digits with at most one
+point; no sign, exponent or padding); anything else is refused to 1 with `floor_status=invalid_setting` on the
+`engine_effects_plumes` row, which also prints `floor=` and `floor_setting=`. Read once at load and only with
+`plumes`. The launcher sends it only when given (finite 0..3, as a plain decimal); an inherited shell value is
+dropped, and it is refused under `--vanilla`.

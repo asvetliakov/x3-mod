@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""After flight D: the plume floor value_eff = min(max(value, k x R), 3 x value) (engine_plumes_core.h Look::floor_ratio,
-ini engine_plume_floor), R the ship's root-node radius, against run406's capture frames
+"""After flight D: the plume floor value_eff = min(max(value, k(R) x R), 4 x value) (engine_plumes_core.h floor_ratio_at:
+k 0.35 at R <= 150 record units, 0.25 at 500, 0.10 at >= 5,000, linear in ln R between; ini engine_plume_floor scales it), R the ship's
+root-node radius, against run406's capture frames
 (verification/results/run406-engine-plumes/draws_7144_7151_9327_20450.txt): the capital drawing xtc_red_huge (939.2)
 beside xtc_red_big3 (187.5), the M6 with four xtc_red_nor3 (40), the own ship's xtc_red_nor (10) and xtc_red_tiny (5).
 
@@ -33,7 +34,8 @@ ROOT_OWN = 47          # body 0's LOD value (objects/v/00000.pbd)
 MAIN_MODE = 0x1001     # C & 0x1001 == 0x1001: a main jet the drive shows
 PART = re.compile(rb'^P (\d+); B ([^;]+);([^\n]*)$', re.M)
 FRAME = re.compile(rb'\{([^}]*)\}')
-KS = (0.09, 0.10, 0.12, 0.15)
+ANCHORS = ((150.0, 0.35), (500.0, 0.25), (5000.0, 0.10))   # (R in record units, k)
+CAP = 4.0
 
 
 def tships_scenes(assets):
@@ -119,8 +121,18 @@ def ship(assets, token, jets, cache):
     return (radius, nozzles) if nozzles else None
 
 
-def effect(k, R, v):
-    return min(max(v, k * R), 3 * v)
+def k_of(R_record):
+    if R_record <= ANCHORS[0][0]:
+        return ANCHORS[0][1]
+    if R_record >= ANCHORS[-1][0]:
+        return ANCHORS[-1][1]
+    (r0, k0), (r1, k1) = next((a, b) for a, b in zip(ANCHORS, ANCHORS[1:]) if R_record < b[0])
+    return k0 + (k1 - k0) * np.log(R_record / r0) / np.log(r1 / r0)
+
+
+def effect(R, v):
+    """value_eff in body units for a ship of radius R (body units): k(R) is keyed on R in record units."""
+    return min(max(v, k_of(R * CONTEXT) * R), CAP * v)
 
 
 def main():
@@ -138,9 +150,10 @@ def main():
         q = np.percentile(ratios, [25, 40, 50, 75])
         print(f'{view}: tships_rows={rows} scenes={len(scenes)} fleet={len(fleet)} nozzle_max/R q1={q[0]:.4f} p40={q[1]:.4f} '
               f'median={q[2]:.4f} q3={q[3]:.4f} min={ratios[0]:.4f} max={ratios[-1]:.4f}')
-        for k in KS:
-            print(f'  k={k}: ships whose largest main nozzle is raised {int((ratios < k).sum())} of {len(ratios)}, '
-                  f'to the 3x cap {int((ratios * 3 <= k).sum())}')
+        ks = np.array(sorted(k_of(R * CONTEXT) for R, n in fleet.values()))
+        rk = [(max(v for _, v in n) / R, k_of(R * CONTEXT)) for R, n in fleet.values()]
+        print(f'  k(R): ships whose largest main nozzle is raised {sum(r < k for r, k in rk)} of {len(rk)}, to the 4x cap '
+              f'{sum(CAP * r <= k for r, k in rk)}; k 0.35 on {int((ks >= 0.35).sum())}, 0.10 on {int((ks <= 0.10).sum())}')
         if stock:
             continue
         cases = dict(capital='ships\\split\\split_m2p_ocelot_scene', m6='ships\\split\\split_m6_heavy_dragon_scene',
@@ -152,9 +165,9 @@ def main():
                 continue
             R, nozzles = fleet[match]
             uniq = sorted(set(nozzles), key=lambda x: -x[1])
-            for k in KS:
-                cells = ', '.join(f'{n} {v * CONTEXT:g} -> {effect(k, R, v) * CONTEXT:.1f}' for n, v in uniq)
-                print(f'  {label} k={k}: {match} R={R:.0f} ({R * CONTEXT:.1f} record units) kR={k * R * CONTEXT:.1f}: {cells}')
+            k = k_of(R * CONTEXT)
+            cells = ', '.join(f'{n} {v * CONTEXT:g} -> {effect(R, v) * CONTEXT:.1f}' for n, v in uniq)
+            print(f'  {label}: {match} R={R:.0f} ({R * CONTEXT:.1f} record units) k={k:.3f} kR={k * R * CONTEXT:.1f}: {cells}')
 
 
 if __name__ == '__main__':

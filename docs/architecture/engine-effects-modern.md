@@ -477,7 +477,7 @@ by one, so a per-frame floor taken from the largest drawn jet of a ship changed 
 position (a capital drew 1 of 2 `huge` and 4 of 8 `big3` on one capture frame). Second, small ships' plumes read small
 and the mouth too strong. User decisions: the floor comes from the ship itself, not from frame memory, and the mouth
 never exceeds the body at any throttle. All constants are in `engine_plumes_core.h` `Look`.
-- *The plume floor from the ship's radius.* A main jet draws `value_eff = min(max(value, k x R), 3 x value)`. RCS
+- *The plume floor from the ship's radius.* A main jet draws `value_eff = min(max(value, k(R) x R), 4 x value)`. RCS
   (`flag_steering`) and brake- or steering-pushed bodies (`flag_brake`) are excluded as before. The per-frame
   `ShipFloor` map and `sub_floor` are gone.
   - R is the ship's root node's `+0xa4`, read through the jet's parent (node+0x18): the engine's cached subtree radius
@@ -488,24 +488,34 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
     (`parent_radius_in_record`). A dirty (-1), unread or non-positive R gives no floor (counted `floor_unknown=` in
     `engine_stage`).
   - The read: one bounded `engine_memory` read of parent+0xa4 per ship and frame (a one-entry memo keyed by parent
-    and frame), LastError preserved, stored per record in `Ring::parent_radius`.
-  - k is one compiled constant, `Look::floor_ratio` 0.10, exposed as `engine_plume_floor`
-    ([config-file.md](config-file.md); 0 = off, 0..0.5). It sits at the Mayhem fleet's median largest main nozzle /
-    R (offline estimate over 405 ship scenes: q1 0.057, p40 0.086, median 0.099, q3 0.162; stock 198 scenes: q1 0.167,
-    p40 0.222, median 0.280, q3 0.411). At 0.10, 205 of 405 Mayhem ships raise their largest main jet (43 to the cap),
-    and 17 of 198 stock ships (2 capped).
-  - Effects at k 0.10 on run406's ships (record units = value x 0.01; R estimated offline, the runtime +0xa4 is at
-    least the hull's):
+    and frame), LastError preserved, stored per record in `Ring::parent_radius` (also computed for a forwarded jet
+    while the census writes its row).
+  - k depends on the ship's size, because the user wants small ships' plumes to stop being small while capitals stay
+    as they are. One k cannot do both: the Mayhem fleet's largest main nozzle / R is about the same at every size (the
+    M6's 0.086 against the capital's 0.094; offline estimate over 405 ship scenes: q1 0.057, p40 0.086, median 0.099,
+    q3 0.162; stock 198 scenes: q1 0.167, p40 0.222, median 0.280, q3 0.411).
+    - Rule: k(R) runs through three anchors (`floor_r` / `floor_k`): 0.35 at R <= 150 record units (fighters), 0.25 at
+      500, 0.10 at R >= 5,000 (capitals), linear in ln R between neighbours (`floor_ratio_at`; `law::ln` without x87).
+      The cap is `floor_cap` 4 x value.
+    - Knob: `engine_plume_floor` ([config-file.md](config-file.md)) scales the whole curve (`floor_scale`, default 1,
+      0..3); 0 turns the floor off.
+    - Reach: 393 of 405 Mayhem ships raise their largest main jet (77 to the cap; k 0.35 applies to 152, 0.10 to 59).
+      Stock: 124 of 198 (1 capped).
+  - Effects on run406's ships (record units = value x 0.01; R estimated offline, the runtime +0xa4 is at least the
+    hull's):
 
-    | Ship (scene) | R (record units) | Nozzles before -> after |
-    | --- | --- | --- |
-    | Capital, `split_m2p_ocelot` | 10,022 | `huge` 939.2 -> 1,002.2; `big3` 187.5 -> 562.5 (the 3x cap; was 422.6 beside a drawn `huge` and 187.5 without) |
-    | M6, `split_m6_heavy_dragon` | 467 | `nor3` 40 -> 46.7 |
-    | Own ship, if a Split M4 (`split_m4_scorpion`) | 67.3 | `nor` 10 -> 10, `tiny` 5 -> 6.7 |
-    | Own ship, if a Split TS (`split_ts_caiman`) | 159.7 | `nor` 10 -> 16.0, `tiny` 5 -> 15.1 (cap) |
+    | Ship (scene) | R (record units) | k(R) | Nozzles before -> after |
+    | --- | --- | --- | --- |
+    | Capital, `split_m2p_ocelot` | 10,022 | 0.100 | `huge` 939.2 -> 1,002.2 (+7 %); `big3` 187.5 -> 750 (the 4x cap; was 422.6 beside a drawn `huge` and 187.5 without) |
+    | M6, `split_m6_heavy_dragon` | 467 | 0.256 | `nor3` 40 -> 119.4 |
+    | Own ship, if a Split M4 (`split_m4_scorpion`) | 67.3 | 0.350 | `nor` 10 -> 23.5, `tiny` 5 -> 20.2 (cap) |
+    | Own ship, if a Split TS (`split_ts_caiman`) | 159.7 | 0.345 | `nor` 10 -> 40 (cap), `tiny` 5 -> 20.2 (cap) |
 
-    Script: `verification/results/engine-effects/floor_ratio_effects.py` -> `floor_ratio_effects_out.txt` (k 0.09,
-    0.12 and 0.15 alongside). The run406 log does not name the own ship.
+    Script: `verification/results/engine-effects/floor_ratio_effects.py` -> `floor_ratio_effects_out.txt`. The run406
+    log does not name the own ship.
+  - Flight check: `engine_draw` census rows now carry `radius=` (the ship's radius in record units, 0 unknown) and
+    `value_eff=` (the value the stage draws at, `floored_value` with the device's look). Comparing a ship's `radius=`
+    across F8 frames verifies the live +0xa4 read and shows whether it drifts with throttle.
 - *Mouth.* The halo and the ring now follow the body's throttle curve I(s) / I(1): hb x lerp(1.2, 4, s) / 4 and
   ring x lerp(1.2, 4, s) / 4, where the halo was already lerp(0.3, 1, s) and the ring was lerp(0.4, 1, s).
   - That alone cannot hold the mouth below the body. At s = 0 the brightest point of the side view was the body

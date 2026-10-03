@@ -244,6 +244,12 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         ee::fill_record(in, verdict == ee::Verdict::suppressed ? &engine_order_ : &pinned, &record, &geometry,
                         verdict == ee::Verdict::suppressed ? &engine_counts_ : nullptr);
     }
+    // The ship's radius in the record's units (the plume floor; the census's radius=): the parent's +0xa4 against the
+    // jet's own +0x70 and +0x80 from the same node block. Only for a suppressed record or a census row.
+    float jet_radius = 0.f;
+    if (jet && (verdict == ee::Verdict::suppressed || engine_census_))
+        ee::parent_radius_in_record(parent_known ? engine_parent_radius(scope_parent) : 0, scope.scale[0], scope.scale[1],
+                                    record.size, &jet_radius);
     if (verdict == ee::Verdict::suppressed) {
         const unsigned slot = engine_ring_->count;
         *engine_ring_->push() = record; // not full: classify saw room
@@ -255,10 +261,7 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         // parent (the ship's root node), copied from the scope's node block (object_trace::current; the fixture's seam
         // reads the same offsets); 0 when the block was unreadable.
         engine_ring_->parent[slot] = parent_known ? scope_parent : 0u;
-        // The ship's radius in the record's units (the plume floor): the parent's +0xa4 against the jet's own +0x70 and
-        // +0x80 from the same node block.
-        ee::parent_radius_in_record(parent_known ? engine_parent_radius(scope_parent) : 0, scope.scale[0], scope.scale[1],
-                                    record.size, &engine_ring_->parent_radius[slot]);
+        engine_ring_->parent_radius[slot] = jet_radius;
         engine_ring_->own[slot] = engine_record_own(scope.node, scope.node_handle, parent_known, scope_parent) ? 1u : 0u;
         ++engine_counts_.suppressed;
         if (!entry) ++engine_counts_.unknown_body;
@@ -295,7 +298,11 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
             const float cos_b = geometry.z_b[0] * bz[0] + geometry.z_b[1] * bz[1] + geometry.z_b[2] * bz[2];
             const long src = blend_known(0) ? long(shadow_.composition_blend[0]) : -1;
             const long dst = blend_known(1) ? long(shadow_.composition_blend[1]) : -1;
-            log("engine_draw device=%llu frame=%llu index=%lu vs=%016llx ps=%016llx pair=%s primitives=%u flags130=%08lx model=%lu name=%s body=%d cluster=%s z=%.5f s=%.5f order=%s ratio_a=%.5f ratio_b=%.5f size=%.6g origin=%.6g,%.6g,%.6g axis=%.5f,%.5f,%.5f za_basis=%.5f zb_basis=%.5f basis_z=%.5f,%.5f,%.5f position=%ld,%ld,%ld blend=%ld src=%ld dst=%ld zwrite=%ld scope_depth=%lu node=%08lx handle=%08lx serial=%llu flags=%04x verdict=%s",
+            // The plume floor's inputs and result (after flight D): the ship's radius in record units and the value the
+            // stage draws at (engine_plumes_core.h floored_value with this device's look).
+            float value_eff = 0.f;
+            engine_plumes::floored_value(plumes_look_, record, jet_radius, &value_eff);
+            log("engine_draw device=%llu frame=%llu index=%lu vs=%016llx ps=%016llx pair=%s primitives=%u flags130=%08lx model=%lu name=%s body=%d cluster=%s z=%.5f s=%.5f order=%s ratio_a=%.5f ratio_b=%.5f size=%.6g origin=%.6g,%.6g,%.6g axis=%.5f,%.5f,%.5f za_basis=%.5f zb_basis=%.5f basis_z=%.5f,%.5f,%.5f position=%ld,%ld,%ld blend=%ld src=%ld dst=%ld zwrite=%ld scope_depth=%lu node=%08lx handle=%08lx serial=%llu flags=%04x verdict=%s radius=%.6g value_eff=%.6g",
                 id_, frame_, static_cast<unsigned long>(counters_.draws), static_cast<unsigned long long>(shadow_.vs_hash),
                 static_cast<unsigned long long>(shadow_.ps_hash), st.pair ? "effect" : "other", call.primitives,
                 static_cast<unsigned long>(scope.flags130), static_cast<unsigned long>(scope.model), name, jet ? body : -1,
@@ -308,7 +315,7 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
                 st.blend_known ? long(st.blend) : -1l, src, dst, st.zwrite_known ? long(st.zwrite) : -1l,
                 static_cast<unsigned long>(scope.scope_depth), static_cast<unsigned long>(scope.node),
                 static_cast<unsigned long>(scope.node_handle), static_cast<unsigned long long>(serial),
-                unsigned(record.flags), ee::verdict_name(verdict));
+                unsigned(record.flags), ee::verdict_name(verdict), double(jet_radius), double(value_eff));
         }
     }
     return verdict == ee::Verdict::suppressed;

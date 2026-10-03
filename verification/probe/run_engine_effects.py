@@ -305,6 +305,17 @@ def validate(mode, r):
             ('20000', 'effects\\engines\\fx_engine_test_red', 'invalid', 'red'), ('20000', 'effects\\engines\\fx_engine_test_red', 'a', 'red'),
             ('566', 'v\\00566', 'a', 'grey'), ('777', '-', 'b', 'white')]:
         problems.append(f'main: frame 1 rows {out["frame1_rows"]}')
+    # After flight D: the plume floor's census fields. Node E has no parent and no size; a and b hang under root_a
+    # (5 x their size: 5,000 and 1,300 record units; k(5,000) 0.10 gives 500, under a's 1,000; b is RCS); c's root is
+    # dirty (radius 0): every value_eff is the record's size.
+    out['frame1_floor'] = [(d.get('radius'), d.get('value_eff')) for d in first]
+    want_floor = [(0.0, 0.0), (5000.0, 1000.0), (1300.0, 260.0), (0.0, 9366.0)]
+    try:
+        got_floor = [(float(r), float(v)) for r, v in out['frame1_floor']]
+    except (TypeError, ValueError):
+        got_floor = None
+    if got_floor is None or len(got_floor) != 4 or any(abs(g[0] - w[0]) > 0.01 or abs(g[1] - w[1]) > 0.01 for g, w in zip(got_floor, want_floor)):
+        problems.append(f'main: engine_draw radius / value_eff {out["frame1_floor"]}')
     # The node basis cross-check: the matching order's unit z agrees with the node's z basis row (16.16).
     for d in first[1:]:
         cos = float(d['za_basis'] if d['order'] == 'a' else d['zb_basis'])

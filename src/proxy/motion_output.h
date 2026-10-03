@@ -1190,7 +1190,7 @@ public:
     // load-time preset and nozzle width (X3M_ENGINE_PLUME_NOZZLE, x value). Process-start values; the stage arms per
     // frame at the resolve.
     void configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width,
-                                 float floor_ratio = engine_plumes::default_look.floor_ratio) noexcept;
+                                 float floor_scale = engine_plumes::default_look.floor_scale) noexcept;
     bool engine_plumes_requested() const noexcept { return plumes_requested_; }
     // Ctrl+Alt+F6: the next preset (restrained -> default -> strong -> restrained), one engine_plumes_preset row; the
     // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
