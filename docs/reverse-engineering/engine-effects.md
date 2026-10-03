@@ -209,6 +209,26 @@ this site, so a redirect stub is not re-entered; the site runs on the game-updat
 (`0x0045b03e`). A call redirect that forwards the four registers/arguments unchanged and records (EBX, ECX, z) is
 boundary-safe; preserving LastError and x87 state is the stub's duty as at `0x004c5228`.
 
+### Ship radius and ship key (2026-10-03, after flight D) [m: listings; data where marked]
+
+The plume floor needs the ship's size at draw time from the jet's parent, the ship's root node.
+
+| fact | source |
+| --- | --- |
+| The ship root's model id `+0x140` is **TShips column 0**, not the hull: the type-7 case of `0x0043ffa0` loads `(u16)TShips[sub]+0` into `[esp+0x10]` (`0x0044062e`; `0xffff` -> 0), and `0x004410f9..0x00441107` allocates the root and calls `0x00487e30(model)`. Column 0 is `0` on 524 of 525 installed rows and 392 of 404 stock rows [m data]. Body 0 is `objects/v/00000.pbd` "testbody", LOD value 47 [m data] | [m] |
+| The ship scene is built under that root by `0x0043ce30` (called from `0x00451a85` with `TShips+0x68` = column 16, or from `0x004506a6` with `obj+0x98`). It skips a part whose body equals the root's `+0x140` (`0x0043cfa7..0x0043cfb9`: the root then *is* that part and the scene is recentred on it). With `+0x140` = 0 no part is skipped, so the hull is an ordinary root child | [m] |
+| Every scene-part node carries its **scene id** at `+0x258` (`0x0048eb40` copies the scene record's `+0` there; the text scene loader writes the cut id into `+0` at `0x004927f0`), the part index at `+0x25c` and the `C` word at `+0x260`. A TShips column-16 name is registered in the engine's scene table by `0x0046e690`: `g = *0x00608518`, `g+0xc0` fixed count 15000 (`0x0046daad`), `g+0xc4` dynamic count, `g+0xc8` 8-byte slots (`+0` char* name, `+4` loaded flag), `_stricmp` over every slot, else a new dynamic slot with id 50000 + index; a digit string is its own id | [m] |
+| `+0xa0` = the node's **own** radius, `(+0x70 x max(+0x80, +0x84, +0x88)) >> 16` (`0x00488270`, `0x004880e0`; [render-node-bounds.md](render-node-bounds.md)). For the ship root that is body 0's 47, not the ship | [m] |
+| `+0xa4` = the **subtree** radius `0x00488170` caches: R = `+0xa0`, then for each child and each axis i, R = max(R, \|offset_i\| + child subtree radius), offset = child `+0x30/+0x34/+0x38` (x root `+0x70` >> 16 when the child has `+0x12c & 0x40`). `-1` = dirty | [m] |
+| Dirtied by: attaching a child (`0x00489f20` writes the **parent's** `+0xa4 = -1`, `0x00489f5c`), the node's own scale or base change (`0x00488270`, `0x004880e0`, `0x00487ec1`) and the save restore (`0x00479ebc`). A jet's scale change dirties only the jet, so the root's value is recomputed only after the root itself is dirtied; it is first computed after construction, with the jets at their creation scale | [m] |
+| Units of `+0xa4`: those of `+0x70`, the LOD-0 value. A jet's record size is \|model x\| = `+0x70` x `+0x80`/65536 x the context scale (run406: 939.211 for value 93922), so the radius in record units is `+0xa4` x size / (`+0x70` x `+0x80` / 65536) | [m] + [m run406] |
+| A jet's own radius is value x max(1, 1, z) = value at any throttle (x and y scale stay 1). Its offset plus value enters the root's R only when R is recomputed | [m] |
+
+So the proxy reads `parent+0xa4` (one bounded read per ship and frame). A dirty or non-positive value means no floor.
+For hulls at the root's origin R is at least the hull's LOD-0 value. An offline estimate over the scene parts (|offset|
++ part value) is in `verification/results/engine-effects/floor_ratio_effects.py`. It is not verified against a live
+read: no session has logged `+0xa4` (open question below).
+
 ## 5. Suppression safety
 
 - The draw at `0x004c403c` (`call ecx`, the draw helper) is followed by `mov edx,[ebx]` / `mov eax,[edx+0x108]`
@@ -468,6 +488,10 @@ dialog has no item for it. The bit therefore comes from the default and the regi
   elements.
 - Consumers of the root `+0x124` value and of TShips col 12; the population of `+0x12c & 0x800` children.
 - Docked and SETA behaviour beyond the code reading above.
+- The live value of a ship root's `+0xa4` against the offline estimate (§4 "Ship radius"). Which children carry
+  `+0x12c & 0x40` (their offsets are scaled by the root's 47 / 65536). Whether anything after construction dirties a
+  ship root and so lets the jets' throttle scale or a part's movement into R. A `--debug` row with parent+0xa4 per ship
+  on a capture frame would settle these.
 
 ## Reproduce
 

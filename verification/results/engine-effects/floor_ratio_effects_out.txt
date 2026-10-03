@@ -1,0 +1,26 @@
+installed: tships_rows=525 scenes=427 fleet=405 nozzle_max/R q1=0.0574 p40=0.0862 median=0.0989 q3=0.1622 min=0.0106 max=0.4599
+  k=0.09: ships whose largest main nozzle is raised 176 of 405, to the 3x cap 38
+  k=0.1: ships whose largest main nozzle is raised 205 of 405, to the 3x cap 43
+  k=0.12: ships whose largest main nozzle is raised 231 of 405, to the 3x cap 55
+  k=0.15: ships whose largest main nozzle is raised 285 of 405, to the 3x cap 87
+  capital k=0.09: ships\split\split_m2p_ocelot_scene R=1002246 (10022.5 record units) kR=902.0: huge 939.22 -> 939.2, big3 187.5 -> 562.5
+  capital k=0.1: ships\split\split_m2p_ocelot_scene R=1002246 (10022.5 record units) kR=1002.2: huge 939.22 -> 1002.2, big3 187.5 -> 562.5
+  capital k=0.12: ships\split\split_m2p_ocelot_scene R=1002246 (10022.5 record units) kR=1202.7: huge 939.22 -> 1202.7, big3 187.5 -> 562.5
+  capital k=0.15: ships\split\split_m2p_ocelot_scene R=1002246 (10022.5 record units) kR=1503.4: huge 939.22 -> 1503.4, big3 187.5 -> 562.5
+  m6 k=0.09: ships\split\split_m6_heavy_dragon_scene R=46707 (467.1 record units) kR=42.0: nor3 40 -> 42.0
+  m6 k=0.1: ships\split\split_m6_heavy_dragon_scene R=46707 (467.1 record units) kR=46.7: nor3 40 -> 46.7
+  m6 k=0.12: ships\split\split_m6_heavy_dragon_scene R=46707 (467.1 record units) kR=56.0: nor3 40 -> 56.0
+  m6 k=0.15: ships\split\split_m6_heavy_dragon_scene R=46707 (467.1 record units) kR=70.1: nor3 40 -> 70.1
+  own_m4 k=0.09: ships\split\split_m4_scorpion_scene R=6726 (67.3 record units) kR=6.1: nor 10 -> 10.0, tiny 5.04 -> 6.1
+  own_m4 k=0.1: ships\split\split_m4_scorpion_scene R=6726 (67.3 record units) kR=6.7: nor 10 -> 10.0, tiny 5.04 -> 6.7
+  own_m4 k=0.12: ships\split\split_m4_scorpion_scene R=6726 (67.3 record units) kR=8.1: nor 10 -> 10.0, tiny 5.04 -> 8.1
+  own_m4 k=0.15: ships\split\split_m4_scorpion_scene R=6726 (67.3 record units) kR=10.1: nor 10 -> 10.1, tiny 5.04 -> 10.1
+  own_ts k=0.09: ships\split\split_ts_caiman_scene R=15970 (159.7 record units) kR=14.4: nor 10 -> 14.4, tiny 5.04 -> 14.4
+  own_ts k=0.1: ships\split\split_ts_caiman_scene R=15970 (159.7 record units) kR=16.0: nor 10 -> 16.0, tiny 5.04 -> 15.1
+  own_ts k=0.12: ships\split\split_ts_caiman_scene R=15970 (159.7 record units) kR=19.2: nor 10 -> 19.2, tiny 5.04 -> 15.1
+  own_ts k=0.15: ships\split\split_ts_caiman_scene R=15970 (159.7 record units) kR=24.0: nor 10 -> 24.0, tiny 5.04 -> 15.1
+stock: tships_rows=404 scenes=302 fleet=198 nozzle_max/R q1=0.1668 p40=0.2223 median=0.2804 q3=0.4105 min=0.0273 max=0.7327
+  k=0.09: ships whose largest main nozzle is raised 8 of 198, to the 3x cap 2
+  k=0.1: ships whose largest main nozzle is raised 17 of 198, to the 3x cap 2
+  k=0.12: ships whose largest main nozzle is raised 25 of 198, to the 3x cap 2
+  k=0.15: ships whose largest main nozzle is raised 41 of 198, to the 3x cap 3

@@ -470,6 +470,63 @@ ledger ([engine-effects.md](../verification/engine-effects.md), "Review fixes af
 - *Ship key read.* `object_trace::current` copies node+0x18 into `Snapshot::parent` from the node block it already
   reads (it used to only with `matrices`); the recogniser takes it there, so the second bounded read per suppressed
   record is gone.
+
+**After flight D (2026-10-03, Run 121 A: run406).** Two findings
+([run406 triage](../../verification/results/run406-engine-plumes/README.md)). First, the game culls nozzle nodes one
+by one, so a per-frame floor taken from the largest drawn jet of a ship changed a secondary's size with the screen
+position (a capital drew 1 of 2 `huge` and 4 of 8 `big3` on one capture frame). Second, small ships' plumes read small
+and the mouth too strong. User decisions: the floor comes from the ship itself, not from frame memory, and the mouth
+never exceeds the body at any throttle. All constants are in `engine_plumes_core.h` `Look`.
+- *The plume floor from the ship's radius.* A main jet draws `value_eff = min(max(value, k x R), 3 x value)`. RCS
+  (`flag_steering`) and brake- or steering-pushed bodies (`flag_brake`) are excluded as before. The per-frame
+  `ShipFloor` map and `sub_floor` are gone.
+  - R is the ship's root node's `+0xa4`, read through the jet's parent (node+0x18): the engine's cached subtree radius
+    (`0x00488170`, [engine-effects.md](../reverse-engineering/engine-effects.md) "Ship radius"). It is the maximum
+    over the root's children and the three axes of |child offset| + the child's own radius, so it covers the hull
+    and every part, culled or not. Its units are those of node+0x70 (the LOD-0 value), so the radius in the record's
+    units is R x size / (+0x70 x +0x80 / 65536), with the jet's own +0x70/+0x80 from the node block already read
+    (`parent_radius_in_record`). A dirty (-1), unread or non-positive R gives no floor (counted `floor_unknown=` in
+    `engine_stage`).
+  - The read: one bounded `engine_memory` read of parent+0xa4 per ship and frame (a one-entry memo keyed by parent
+    and frame), LastError preserved, stored per record in `Ring::parent_radius`.
+  - k is one compiled constant, `Look::floor_ratio` 0.10, exposed as `engine_plume_floor`
+    ([config-file.md](config-file.md); 0 = off, 0..0.5). It sits at the Mayhem fleet's median largest main nozzle /
+    R (offline estimate over 405 ship scenes: q1 0.057, p40 0.086, median 0.099, q3 0.162; stock 198 scenes: q1 0.167,
+    p40 0.222, median 0.280, q3 0.411). At 0.10, 205 of 405 Mayhem ships raise their largest main jet (43 to the cap),
+    and 17 of 198 stock ships (2 capped).
+  - Effects at k 0.10 on run406's ships (record units = value x 0.01; R estimated offline, the runtime +0xa4 is at
+    least the hull's):
+
+    | Ship (scene) | R (record units) | Nozzles before -> after |
+    | --- | --- | --- |
+    | Capital, `split_m2p_ocelot` | 10,022 | `huge` 939.2 -> 1,002.2; `big3` 187.5 -> 562.5 (the 3x cap; was 422.6 beside a drawn `huge` and 187.5 without) |
+    | M6, `split_m6_heavy_dragon` | 467 | `nor3` 40 -> 46.7 |
+    | Own ship, if a Split M4 (`split_m4_scorpion`) | 67.3 | `nor` 10 -> 10, `tiny` 5 -> 6.7 |
+    | Own ship, if a Split TS (`split_ts_caiman`) | 159.7 | `nor` 10 -> 16.0, `tiny` 5 -> 15.1 (cap) |
+
+    Script: `verification/results/engine-effects/floor_ratio_effects.py` -> `floor_ratio_effects_out.txt` (k 0.09,
+    0.12 and 0.15 alongside). The run406 log does not name the own ship.
+- *Mouth.* The halo and the ring now follow the body's throttle curve I(s) / I(1): hb x lerp(1.2, 4, s) / 4 and
+  ring x lerp(1.2, 4, s) / 4, where the halo was already lerp(0.3, 1, s) and the ring was lerp(0.4, 1, s).
+  - That alone cannot hold the mouth below the body. At s = 0 the brightest point of the side view was the body
+    itself at the nozzle: the tail falls from u = 0 and there are no cells. The model gave 1.088 from the body alone,
+    against 1.128 measured with the mouth terms.
+  - So the body ramps in, x (1 - `mouth_dip` 0.5 (1 - smoothstep(0, `mouth_ramp` 0.3, u))), in the side view (c16)
+    and in the disc's tail samples (`law::tail`).
+  - The side view's axis peak per I_core drops from 1.832 to 1.462 at s = 1 and from 1.600 to 1.258 at s = 0
+    (`peak_axis_at`, now the maximum of tail x ramp x (1 + s cell) over 513 samples of u for s in eighths). The end-on
+    disc's cap follows it. The first 0.3 L reads dimmer; this is the look change to judge in flight.
+  - Mouth peak / body peak in the fixture: 0.595 / 0.658 / 0.773 at s = 1 / 0.5 / 0 (1080p; 0.642 at s = 0.5 at
+    5120x1440), gated at 0.85. Before: 0.890 / 0.998 / 1.128.
+  - The lab (`tools/effects/engine_exhaust_lab.html`) mirrors the ramp and the curve. ps 680 -> 687 slots.
+- *Cost (measured, Wine, X3 bottle).* Per suppressed draw (run_engine_effects timing): 0.694 / 0.668 / 0.666 us with
+  the parent's radius on the memo, against 0.657 / 0.629 / 0.614 us for the same draw without a parent in the same
+  runs (+0.04..0.05 us). A memo miss (the parent alternating every draw) costs 0.744 / 0.706 / 0.711 us, which a ship
+  pays once per frame. The CPU build with cached look tables: 9.55 vs 9.40 us at 100 records and 101.3 vs 97.0 us at
+  1,024, without and with the floor (no measurable change).
+- *Not taken from the data.* The ship scene's id rides on every scene-part node (+0x258), and the generator could key
+  a per-ship table on it. Per the user's decision, the floor uses the radius at draw time and the generator is
+  unchanged.
 - *Disc gains bounded.* L / n in the disc's body and halo gains is held to `disc_length_max` 8. A thin nozzle (0.1: L / n
   20) would otherwise saturate the soft cap into a flat disc; its end-on energy is then 0.28 of the side view
   (reported, 0.25: 0.71, 1.0: 1.09).

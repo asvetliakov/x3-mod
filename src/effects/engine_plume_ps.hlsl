@@ -9,10 +9,13 @@
 // radial = r / w, 3-octave value noise in ((x - phase) 1.6, y 3, seed + 0.7 t), phase the flow in nozzle widths
 // accumulated on the CPU at a constant speed (c0.z; engine_plumes_core.h FlowPhase): n1 eats the edge (erosion), n2
 // modulates the radiance (turbulence); shock diamonds along the core fading along the plume, ramped in over the first
-// period (smoothstep(0, period, u): the mouth is no crest); a white-hot core cooling into the tint; the tail fade.
+// period (smoothstep(0, period, u): the mouth is no crest); a white-hot core cooling into the tint; the tail fade; the
+// mouth ramp (after flight D): the body x (1 - dip (1 - smoothstep(0, ramp, u))), c16, so the nozzle reads no brighter
+// than 0.85 of the body's peak at any throttle (the disc's samples carry the same factor in their tail column).
 // Halo: exp(-d / sigma) x exp(-2.2 u), d the distance to the segment nozzle..tip, sigma the nozzle's (sigma0, the
 // preset's) along the whole plume as in the mock-up, tapered to 0 over the last 0.5 sigma before the quad's reach
 // (`look.z` sigma). Nozzle ring: a thin ring at the mouth, its Gaussian widened to the pixel footprint (energy kept).
+// The halo's and the ring's radiances follow the body's throttle curve I(s) / I(1) (the CPU sets them).
 // The mouth terms (the ring and the halo) combine as a soft maximum, (a^4 + b^4)^(1/4), not a sum; the body adds. Where
 // the disc is drawn the axial quad hands its mouth over to it: x (1 - disc weight x (1 - smoothstep(0.3, 0.8, d))), d the
 // screen-plane distance from the nozzle in nozzle widths.
@@ -37,7 +40,8 @@ float4 fire_k : register(c4);     // 1 / period, erosion (erode x 1.6 x 0.6), tu
 float4 cell_k : register(c5);     // shock, 2 pi / period, 5 cfade, 1.2 tail
 float4 core_k : register(c6);     // heat, 1 / (1.4 core), ring radius, ring sigma^2
 float4 halo_k : register(c7);     // hand-over inner, outer (nozzle widths), the ring's axial falloff, 2 (params.z: I_ring / I_core / 2)
-float4 disc_k[8] : register(c8);  // the disc's samples u_k = (k + 0.5) / 8: w, tail, cell (without the throttle), heat
+float4 disc_k[8] : register(c8);  // the disc's samples u_k = (k + 0.5) / 8: w, tail (with the mouth ramp), cell (without the throttle), heat
+float4 mouth_k : register(c16);   // the mouth ramp: dip, end (x L), 0, 0
 struct Input {
     float4 local : TEXCOORD0;     // x, y (world), L (pulsed, world; the disc: the ring's radiance), n (nozzle width, world)
     float4 shape : TEXCOORD1;     // halo sigma0 (nozzle widths), value, occlusion bias, kind (0 axial, 1 disc)
@@ -139,7 +143,7 @@ float4 main(Input i) : COLOR0 {
         const float w = min(shape_k.x + shape_k.y * uc, b + shape_k.z) * max(1.0 - shape_k.w * smoothstep(0.6, 1.0, uc), 0.05);
         const float radial = r / w;
         const float edge = 1.0 - smoothstep(0.55, 1.0, radial + erosion);
-        const float tail = (1.0 - smoothstep(fire_k.w, 1.0, u)) * exp(-u * cell_k.w);
+        const float tail = (1.0 - smoothstep(fire_k.w, 1.0, u)) * exp(-u * cell_k.w) * (1.0 - mouth_k.x * (1.0 - smoothstep(0.0, mouth_k.y, u)));
         const float inside = (u >= 0.0 && u <= 1.0) ? 1.0 : 0.0;
         const float cells = 1.0 + cell_k.x * cos(cell_k.y * u) * exp(-u * cell_k.z) * smoothstep(0.0, 1.0, u * fire_k.x) *
                                       (1.0 - smoothstep(0.0, 0.8, radial)) * s;

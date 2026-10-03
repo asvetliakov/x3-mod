@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle` (2026-10-03; both at the end of this note) |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor` (2026-10-03; all three at the end of this note) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player
@@ -605,3 +605,15 @@ padding); anything else is refused to 0.5
 with `nozzle_status=invalid_setting` on the `engine_effects_plumes` row (which also prints `nozzle=` and
 `nozzle_setting=`). Read once at load and only with `plumes`; the launcher sends it only when given (finite 0.1..1.0,
 as a plain decimal; an inherited shell value is dropped, refused under `--vanilla`).
+
+## `engine_plume_floor` (2026-10-03, after flight D)
+
+Key `engine_plume_floor`, environment `X3M_ENGINE_PLUME_FLOOR`, launcher `--engine-plume-floor K`
+([engine-effects-modern.md](engine-effects-modern.md), "After flight D"). The smallest engine plume of a ship under
+`engine_effects = plumes`, as a share of the ship's size: every main jet draws at least K x the radius of its ship's
+root node (the engine's cached subtree radius), at most 3 x its own value. RCS and brake-pushed jets keep theirs.
+Default **0.1**, about the Mayhem fleet's median largest main nozzle / ship radius; **0** turns it off. One plain
+decimal in 0..0.5 (digits with at most one point; no sign, exponent or padding); anything else is refused to 0.1 with
+`floor_status=invalid_setting` on the `engine_effects_plumes` row, which also prints `floor=` and `floor_setting=`.
+Read once at load and only with `plumes`. The launcher sends it only when given (finite 0..0.5, as a plain decimal);
+an inherited shell value is dropped, and it is refused under `--vanilla`.

@@ -171,7 +171,7 @@ def validate(mode, r):
         out['timing'] = {l.split()[1]: float(fields(l)['median_us_per_draw']) for l in lines if l.startswith('TIMING ')}
         if rows(log, 'engine_draw') or rows(log, 'engine_frame'):
             problems.append('timing: census rows without --debug')
-        if len(out['timing']) != 3:
+        if len(out['timing']) != 5:
             problems.append(f'timing: {out["timing"]}')
         return problems, out
     plume_rows = rows(log, 'engine_effects_plumes') + rows(log, 'engine_plumes_state') + rows(log, 'engine_stage')

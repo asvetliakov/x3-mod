@@ -9,8 +9,9 @@ the build, every CHECK, and the numbers of each case (lengths, widths and the la
 s = 0 / 0.5 / 1, core survival and trail through the real resolve at 0 / 4 / 8 px per frame over the dark and the
 flickering sky, the occlusion cuts and rim widths (centred and off-centre at 90 % of the width), the chase cap and
 fade, the presets, the temporal variation, the bulge and taper, the shock cells, after flight C the end-on energy at
-0 / 30 / 60 / 90 degrees, the ship floor and the mouth against the body, Reset, the FP16 refusal, the EVENT-fenced stage
-cost at 30 / 100 nozzles and the CPU build with and without the ship floor).
+0 / 30 / 60 / 90 degrees, after flight D the plume floor (k x the ship's radius) and the mouth against the body at three
+throttles, Reset, the FP16 refusal, the EVENT-fenced stage cost at 30 / 100 nozzles and the CPU build with and without the
+plume floor).
 --disc-ab runs the timing case alone with X3M_PLUMES_FIXTURE_DISC_AB=1: the stage cost with the end-on disc drawn and
 not drawn, three interleaved rounds at 30 / 100 nozzles and both sizes, into
 verification/results/engine-effects/plume_disc_ab.json (the summary record is not touched).
@@ -102,7 +103,7 @@ def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
             'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
             'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING', 'TIMING_DISC', 'BUILD',
-            'BUILD_SHIPS')
+            'BUILD_FLOOR')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -130,8 +131,8 @@ def gates(r):
     out['stage_gpu_ms'] = {f"{x['width']}x{x['height']}_{x['nozzles']}": x['gpu_ms'] for x in r['timing']}
     out['stage_gpu_within_advisory'] = {k: v <= GATES['stage_gpu_ms_advisory'] for k, v in out['stage_gpu_ms'].items()}
     out['build_us'] = {str(x['records']): x['median_us'] for x in r['build']}
-    out['build_ships_us'] = {str(x['records']): x['median_us'] for x in r['build_ships']}
-    out['grouping_us'] = {str(x['records']): x['grouping_us'] for x in r['build_ships']}
+    out['build_floor_us'] = {str(x['records']): x['median_us'] for x in r['build_floor']}
+    out['mouth_over_body'] = {f"{x['width']}_s{x['s']:.2f}": x['mouth_over_body'] for x in r['mouth']}
     out['build_100_within'] = any(x['records'] == 100 and x['median_us'] <= 1000 * GATES['build_100_ms'] for x in r['build'])
     return out
 
@@ -211,7 +212,7 @@ def main():
     print(json.dumps({'passed': record['passed'], 'checks': report['check_count'], 'failed': report['failed_checks'],
                       'core_survival_min': g['core_survival_min'], 'trail_dark_px_max': g['trail_dark_px_max'],
                       'trail_flicker_px': g['trail_flicker_px'], 'stage_gpu_ms': g['stage_gpu_ms'], 'build_us': g['build_us'],
-                      'grouping_us': g['grouping_us'],
+                      'build_floor_us': g['build_floor_us'], 'mouth_over_body': g['mouth_over_body'],
                       'results': str(results.relative_to(ROOT))}, indent=1))
     return 0 if record['passed'] else 1
 

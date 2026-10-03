@@ -22,15 +22,16 @@
 //   end_on        after flight C: the axis at 0 / 30 / 60 / 90 degrees from the line of sight, the frame's total
 //                 radiance against the side view's (0.7..1.5), the end-on peak; the disc's variation over 30 frames;
 //                 the energy ratios at the nozzle widths 0.1 / 0.25 / 1.0 reported
-//   floor         the ship floor: two nozzles of one parent (values 1,000 and 200) and one of another (200) against a
-//                 lone 450: the small one of the large ship draws at the 450's length and width
+//   floor         after flight D, the plume floor k x the ship's radius: a 200 secondary whose main nozzle is absent from
+//                 the frame (radius 4,500, k 0.1) draws at the lone 450's length and width; a radius of 0 takes no floor
 //   mouth         side view at s = 1 / 0.5 / 0: the peak within 0.1 L of the mouth and the value at u ~ 0 against the
-//                 body's peak at u 0.1..0.4 (gated at s = 1 and 0.5); the end-on peak against 1.5 x the s = 1 body peak
+//                 body's peak at u 0.1..0.4 (after flight D gated at 0.85 at all three); the end-on peak against 1.5 x the
+//                 s = 1 body peak
 //   off_path      no record: S_FALSE and no device call; an idle callback leaves the resolve byte-identical
 //   fault         a failed draw reports its step; the next frame draws
 //   reset         every object released before Reset, recreated after; the next frame draws
 //   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 / 1,024
-//                 records, plain and with the ship floor (ships of 8 nozzles); with X3M_PLUMES_FIXTURE_DISC_AB=1 the
+//                 records (the look's tables cached), plain and with the plume floor; with X3M_PLUMES_FIXTURE_DISC_AB=1 the
 //                 stage cost with the end-on disc drawn and not drawn, three interleaved rounds
 // Validation-only readback; never launches the game.
 #include "../../src/renderer/engine_plumes_pass.h"
@@ -353,7 +354,7 @@ float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1
     const float w = std::min(c[0] + c[1] * uc, b + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, uc), .05f);
     const float radial = r / w;
     const float edge = 1.f - smooth(.55f, 1.f, radial + c[5] * (n1 - .5f));
-    const float tail = (1.f - smooth(c[7], 1.f, u)) * std::exp(-u * c[11]);
+    const float tail = (1.f - smooth(c[7], 1.f, u)) * std::exp(-u * c[11]) * (1.f - c[52] * (1.f - smooth(0.f, c[53], u)));
     const float inside = u >= 0.f && u <= 1.f ? 1.f : 0.f;
     const float cells = 1.f + c[8] * std::cos(c[9] * u) * std::exp(-u * c[10]) * smooth(0.f, 1.f, u * c[4]) * (1.f - smooth(0.f, .8f, radial)) * in.s;
     const float turbulence = 1.f + c[6] * (n2 - .5f);
@@ -401,7 +402,7 @@ float peak(const std::vector<float>& px, UINT w, UINT h, int x0, int y0, int x1,
 void core_levels(float s, float scale, float& core, float& halo) {
     const ep::Look& k = ep::default_look;
     core = (k.core_low + (k.core_high - k.core_low) * s) * scale;
-    halo = k.hb * (k.halo_low + (k.halo_high - k.halo_low) * s) * scale;
+    halo = k.hb * (k.core_low + (k.core_high - k.core_low) * s) / k.core_high * scale;
 }
 float default_levels_core(float s) {
     float core = 0.f, halo = 0.f;
@@ -1205,23 +1206,29 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
 // 200), C (ship 2, 200) and R (ship 3, a lone 450); 1,000 is 80 px. B draws at 0.45 x 1,000 = 450: its length (the axis
 // down to 20 % of I_core) and its column's half-width at u = 0.5 (to 10 % of the column's peak) equal R's; C keeps 200.
 void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
-    static ep::ShipFloor ships;
+    // After flight D: the plume floor from the ship's radius. Ship A (radius 4,500 value units: k 0.1 -> 450) draws only
+    // its 200 secondary this frame (its large main nozzle culled by the game) and an RCS jet; ship B's 200 has no radius
+    // (0: the read failed or the subtree radius was dirty); a lone 450 of radius 4,000 (above its floor) is the reference.
     const float Z = 2000.f, ppu = t.ppu(Z), unit = 80.f / ppu / 1000.f; // world units per value unit
-    const float values[4] = {1000.f, 200.f, 200.f, 450.f}, rows_px[4] = {-180.f, -60.f, 60.f, 180.f};
-    const std::uint32_t parents[4] = {0x5000u, 0x5000u, 0x6000u, 0x7000u};
+    const float values[4] = {200.f, 200.f, 450.f, 300.f}, rows_px[4] = {-180.f, -60.f, 60.f, 180.f};
+    const float radii_value[4] = {4500.f, 0.f, 4000.f, 4500.f}; // the reference 450 above its floor (400: not raised)
     ee::Record rs[4];
-    for (unsigned k = 0; k < 4; ++k) // every nozzle right of centre by half the largest plume
-        rs[k] = record(1000.f * unit, rows_px[k] / ppu, Z, -1, 0, 0, values[k] * unit, 2.f);
+    float radii[4];
+    for (unsigned k = 0; k < 4; ++k) { // every nozzle right of centre by half the largest plume
+        rs[k] = record(1000.f * unit, rows_px[k] / ppu, Z, -1, 0, 0, values[k] * unit, k == 3 ? .5f : 2.f, k == 3);
+        radii[k] = radii_value[k] * unit;
+    }
     rr::EnginePlumesFrame f = frame_for(t, true, rs, 4, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
-    f.parents = parents;
+    f.radii = radii;
     scene.frame(0, 0, 0, 0, 500);
     const auto rep = draw(d, pass, f);
     const auto px = t.read(d);
     ep::Vertex v[32];
     ep::BuildStats st{};
-    ep::build(f.records, 4, nullptr, f.view, f.preset, 0.f, v, 4, &st, nullptr, f.look, parents, &ships);
-    float length[4], width[4], cpu_value[4];
-    for (unsigned k = 0; k < 4; ++k) {
+    ep::build(f.records, 4, nullptr, f.view, f.preset, 0.f, v, 4, &st, nullptr, f.look, nullptr, radii);
+    float length[3], width[3], cpu_value[4];
+    for (unsigned k = 0; k < 4; ++k) cpu_value[k] = v[k * 8].shape[1] / unit;
+    for (unsigned k = 0; k < 3; ++k) {
         float cx, cy;
         t.window(rs[k].origin[0], rs[k].origin[1], Z, 0, 0, cx, cy);
         const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f));
@@ -1236,27 +1243,27 @@ void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
         while (up < 50 && luma(px, t.w, column, iy - up - 1) >= .1f * pk) ++up;
         while (down < 50 && luma(px, t.w, column, iy + down + 1) >= .1f * pk) ++down;
         width[k] = .5f * float(up + down + 1);
-        cpu_value[k] = v[k * 8].shape[1] / unit;
     }
-    std::printf("FLOOR width=%u height=%u floored=%u ships=%u stage_floored=%u", t.w, t.h, st.floored, st.ships, rep.stats.floored);
-    const char* names[4] = {"a1000", "b200", "c200", "r450"};
-    for (unsigned k = 0; k < 4; ++k)
+    std::printf("FLOOR width=%u height=%u floored=%u floor_unknown=%u stage_floored=%u k=%.3f", t.w, t.h, st.floored, st.floor_unknown,
+                rep.stats.floored, double(ep::default_look.floor_ratio));
+    const char* names[3] = {"a200_radius4500", "b200_radius0", "r450"};
+    for (unsigned k = 0; k < 3; ++k)
         std::printf(" %s_value=%.1f %s_length_px=%.0f %s_half_width_px=%.1f", names[k], double(cpu_value[k]), names[k], double(length[k]),
                     names[k], double(width[k]));
-    std::printf("\n");
+    std::printf(" rcs_value=%.1f\n", double(cpu_value[3]));
     char label[64];
-    std::snprintf(label, sizeof label, "floor_sub_engine_%u", t.w);
-    report(label, rep.stats.floored == 1 && st.ships == 3 && std::fabs(cpu_value[1] - 450.f) < .5f && std::fabs(length[1] - length[3]) <= 2.f &&
-                      std::fabs(width[1] - width[3]) <= 1.f);
-    std::snprintf(label, sizeof label, "floor_other_ship_%u", t.w);
-    report(label, std::fabs(cpu_value[2] - 200.f) < .5f && std::fabs(length[2] - length[3] * 200.f / 450.f) <= 3.f);
+    std::snprintf(label, sizeof label, "floor_main_absent_secondary_at_k_radius_%u", t.w);
+    report(label, rep.stats.floored == 1 && st.floor_unknown == 1 && std::fabs(cpu_value[0] - 450.f) < .5f &&
+                      std::fabs(length[0] - length[2]) <= 2.f && std::fabs(width[0] - width[2]) <= 1.f && std::fabs(cpu_value[3] - 300.f) < .5f);
+    std::snprintf(label, sizeof label, "floor_radius_unknown_none_%u", t.w);
+    report(label, std::fabs(cpu_value[1] - 200.f) < .5f && std::fabs(length[1] - length[2] * 200.f / 450.f) <= 3.f);
 }
 // The mouth against the body: side view (axis -x), the still look, value 60 px (the nozzle 30 px), at s = 1 / 0.5 / 0
 // (L 120 / 67.5 / 15 px): the peak of the frame within 0.1 L of the nozzle (every pixel centre at that distance, the
 // ring, halo and core included; the window ends before the first crest at u = period) and the value at u ~ 0 (the
-// nozzle's pixel) against the peak at u 0.1..0.4 (the body's first crests): not above it at s = 1 and 0.5; at s = 0
-// reported (the review's model: 1.095). Then the same nozzle end-on at s = 1 (the axis at the camera): its peak against
-// 1.5 x the s = 1 body peak.
+// nozzle's pixel) against the peak at u 0.1..0.4 (the body's first crests): after flight D at most 0.85 of it at s = 1,
+// 0.5 and 0 (the mouth ramp and the mouth terms on the body's throttle curve). Then the same nozzle end-on at s = 1 (the
+// axis at the camera): its peak against 1.5 x the s = 1 body peak.
 void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
     const float Z = 2000.f, ppu = t.ppu(Z), value = 60.f / ppu;
     const float zs[3] = {2.f, 1.125f, .25f};
@@ -1299,10 +1306,8 @@ void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
                     t.w, t.h, double(s), double(Lpx), double(mouth), double(mouth_u), double(at_nozzle), double(body), double(body_u),
                     double(body > 0 ? mouth / body : 0), double(body > 0 ? at_nozzle / body : 0));
         if (k == 0) body_s1 = body;
-        if (k < 2) {
-            std::snprintf(label, sizeof label, "mouth_not_above_body_s%s_%u", k ? "0.5" : "1", t.w);
-            report(label, body > 0.f && mouth <= body);
-        }
+        std::snprintf(label, sizeof label, "mouth_within_0.85_body_s%s_%u", k == 0 ? "1" : k == 1 ? "0.5" : "0", t.w);
+        report(label, body > 0.f && mouth <= .85f * body);
     }
     const ee::Record end = record(0, 0, Z, 0, 0, -1, value, 2.f);
     scene.frame(0, 0, 0, 0, 500);
@@ -1510,55 +1515,38 @@ void disc_ab_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlume
 }
 // The CPU build alone (into system memory, the same code the locked buffer receives): median microseconds per build.
 void build_timing(Targets& t) {
+    ep::LookTables tables; // cached as the proxy does (MotionOutput::plumes_tables_)
+    ep::look_tables(ep::default_look, &tables);
     for (const unsigned n : {30u, 100u, 1024u}) {
         const auto records = crowd(t, n);
         const rr::EnginePlumesFrame f = frame_for(t, true, records.data(), unsigned(records.size()));
         std::vector<ep::Vertex> out(std::size_t(n) * ep::vertices_per_nozzle);
+        std::vector<float> radii(n);
+        for (unsigned i = 0; i < n; ++i) radii[i] = records[i].size * (5.f + float(i % 11)); // ships of 5..15 x the value
         LARGE_INTEGER freq{};
         QueryPerformanceFrequency(&freq);
-        std::vector<double> us;
-        unsigned drawn = 0;
-        for (unsigned rep = 0; rep < 41; ++rep) {
-            LARGE_INTEGER a{}, b{};
-            QueryPerformanceCounter(&a);
-            for (unsigned k = 0; k < 50; ++k)
-                drawn = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, float(rep * 50 + k) / 60.f, out.data(), n, nullptr);
-            QueryPerformanceCounter(&b);
-            us.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 50.);
-        }
-        std::printf("BUILD records=%u drawn=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, drawn, median(us),
-                    *std::min_element(us.begin(), us.end()));
-        if (n == 100) report("build_100_within_0.1ms", median(us) <= 100.);
-        // With the ship floor (ships of 8 nozzles): the build, and the grouping alone (the map's reset over the slots in
-        // use, a note and a lookup per record).
-        static ep::ShipFloor ships;
-        std::vector<std::uint32_t> parents(n);
-        for (unsigned i = 0; i < n; ++i) parents[i] = 0x100000u + (i / 8u) * 0x80u;
-        std::vector<double> with, group;
-        float sink = 0.f;
+        std::vector<double> us, with;
+        unsigned drawn = 0, drawn_floor = 0;
         for (unsigned rep = 0; rep < 41; ++rep) {
             LARGE_INTEGER a{}, b{};
             QueryPerformanceCounter(&a);
             for (unsigned k = 0; k < 50; ++k)
                 drawn = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, float(rep * 50 + k) / 60.f, out.data(), n, nullptr,
-                                  nullptr, nullptr, parents.data(), &ships);
+                                  nullptr, nullptr, &tables);
+            QueryPerformanceCounter(&b);
+            us.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 50.);
+            QueryPerformanceCounter(&a);
+            for (unsigned k = 0; k < 50; ++k)
+                drawn_floor = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, float(rep * 50 + k) / 60.f, out.data(), n,
+                                        nullptr, nullptr, nullptr, &tables, radii.data());
             QueryPerformanceCounter(&b);
             with.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 50.);
-            QueryPerformanceCounter(&a);
-            for (unsigned k = 0; k < 200; ++k) {
-                ships.reset(n);
-                for (unsigned i = 0; i < n; ++i) ships.note(parents[i], records[i].size);
-                for (unsigned i = 0; i < n; ++i) {
-                    float top = 0.f;
-                    ships.largest(parents[i], &top);
-                    sink += top;
-                }
-            }
-            QueryPerformanceCounter(&b);
-            group.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 200.);
         }
-        std::printf("BUILD_SHIPS records=%u drawn=%u median_us=%.2f grouping_us=%.3f ships=%u sink=%u method=qpc_50x41\n", n, drawn,
-                    median(with), median(group), (n + 7u) / 8u, unsigned(sink > 0.f));
+        std::printf("BUILD records=%u drawn=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, drawn, median(us),
+                    *std::min_element(us.begin(), us.end()));
+        if (n == 100) report("build_100_within_0.1ms", median(us) <= 100.);
+        std::printf("BUILD_FLOOR records=%u drawn=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, drawn_floor, median(with),
+                    *std::min_element(with.begin(), with.end()));
     }
 }
 } // namespace

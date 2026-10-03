@@ -271,3 +271,26 @@ All figures measured unless marked; Wine runs used bottle X3 through `wine_lock.
 | Effects | `run_engine_effects.py` (all modes) | PASS: main 164, native 11, unverified 6, unpatched 11, timing 5, plumes 33, armed 15, **armed_refused 7**. Armed: the 3 x 63 disarmed and 70 refused-until-Reset frames each forward the four jets (`forwarded_stage_off=4`, 0 suppressed, 0 recorded, 4 draws reaching the device; 259 `engine_frame` rows). armed_refused (FP16 refusal staged before the first attach): `engine_plumes_device attached=0 reason=fp16_blending`, then `attached=1 reason=ok` after the Reset; the refusing frame still suppressed 4, the next 40 frames forwarded 4 each; `engine_plumes_state reason=fp16_blending glow=native`; after the Reset armed and drawn. Suppressed path 0.637 us per draw |
 | Host | `test_engine_effects` (truth table now 8,192 combinations with the stage-off fact), `test_engine_plumes` (cap and fade on the body width with the disc floor; brake bodies outside the floor; L / n held to 8 at nozzle 0.1; cached tables identical), `test_engine_ribbons`, `test_object_capture`; `run_host_suite.py` | Focused 34 tests OK; suite 286 modules, 3,008 tests, 0 failing (104 s) |
 
+
+## After flight D: plume floor from the ship's radius, mouth ramp (2026-10-03, worktree build, not a candidate)
+
+Run 121 A (run406) findings and the user's decisions:
+[design note, "After flight D"](../architecture/engine-effects-modern.md#plume-look-redesign-2026-10-03-after-flight-b).
+The radius source is in [engine-effects.md](../reverse-engineering/engine-effects.md), "Ship radius and ship key".
+All figures are measured unless marked. Wine runs used bottle X3 through `wine_lock.py`, one at a time. The generator
+and `engine_bodies.json` are unchanged.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build` (worktree, RelWithDebInfo, mingw-i686), `check_no_x87.py build/d3d9.dll` | 0 warnings; x87 0 violations (752 reachable functions) |
+| Programs, config | `generate_rigid_motion_pixel.py --check`; `tools/config/generate.py --check` | PASS, 50 programs (plume ps 680 -> 687 slots, c16 the mouth ramp); PASS, 252 settings, 103 in the template (`engine_plume_floor = 0.1`) |
+| Plume fixture | `run_engine_plumes.py` | PASS **118/118**. Floor: a 200 secondary whose main nozzle is absent from the frame, radius 4,500 at k 0.1, draws at 450 (58 px long, as the lone 450) at both sizes; radius 0 keeps 200. Mouth / body: 0.595 / 0.658 / 0.773 at s 1 / 0.5 / 0 at 1080p (0.595 / 0.642 / 0.773 at 5120x1440), gated <= 0.85 (were 0.890 / 0.998 / 1.128). End-on peak / s 1 body 1.381; end-on energy 0.908 / 1.032 / 0.944 at 60 / 30 / 0 deg. Core survival min 0.947 (was 0.993; gate passed); dark trail 0, flicker trail 10 / 13 px |
+| CPU build (Wine) | the same run, look tables cached | 30 / 100 / 1,024 records: 2.94 / 9.55 / 101.3 us plain, 2.92 / 9.40 / 97.0 us with the floor (no measurable change). `build_100_within_0.1ms` PASS |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
+| Effects | `run_engine_effects.py` (all modes) | PASS, 8 modes (main 174 checks with `parent_radius` per scenario frame: 0 / 5,000 / 1,300 / 0 for node E / a / b / c, c's root dirty). Per suppressed draw: 0.694 us with the parent's radius (memo), 0.657 us without a parent, 0.744 us on a memo miss; two timing-only repeats 0.668 / 0.629 / 0.706 and 0.666 / 0.614 / 0.711 us. So the floor adds +0.04..0.05 us per suppressed draw, plus one read per ship per frame |
+| Host | `test_engine_plumes` (floor: k x radius, the cap, RCS / brake / radius 0 / NaN / filter, 1,024 records; `parent_radius_in_record`; the knob's parse and launcher; the axis peak against an independent replica: 1.462 at s 1, 1.258 at s 0), `test_engine_effects`, `test_engine_bodies`, `test_regenerate`, `test_manage_engine_effects`, `test_config_schema` | 87 + 2 tests OK |
+| Host suite | `run_host_suite.py` | 286 modules, 3,011 tests, 0 failing |
+| k calibration | `verification/results/engine-effects/floor_ratio_effects.py` -> `floor_ratio_effects_out.txt` | Mayhem nozzle_max / R over 405 ship scenes: q1 0.057, p40 0.086, median 0.099, q3 0.162; stock (198): 0.167 / 0.222 / 0.280 / 0.411. At k 0.10: capital `huge` 939.2 -> 1,002.2, `big3` 187.5 -> 562.5 (cap); M6 `nor3` 40 -> 46.7; own Split M4 `nor` 10 -> 10, `tiny` 5 -> 6.7; own Split TS `nor` 10 -> 16.0, `tiny` 5 -> 15.1. R is an offline estimate (inferred) |
+
+Open: the live `+0xa4` against the estimate and whether a ship root is ever re-dirtied in flight (one `--debug` row
+would settle it), the look in flight (the first 0.3 L dimmer, the floor's k), native Windows (cross-compiled only).

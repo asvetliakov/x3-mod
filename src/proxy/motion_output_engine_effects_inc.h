@@ -109,6 +109,24 @@ bool MotionOutput::engine_record_own(std::uintptr_t node, std::uint32_t handle, 
     }
     return parent && std::uintptr_t(parent) == own_ship_node_;
 }
+// The ship's radius for the plume floor: the parent's (the root node's) +0xa4, the subtree radius the engine caches
+// (docs/reverse-engineering/engine-effects.md, "Ship radius"; -1 while dirty). One bounded read (LastError preserved) per
+// ship and frame: the jets of one root share it, so the last parent's answer stands for the next jets of the same parent
+// in the frame. 0 when the parent is unknown, the read fails or the value is not positive (no floor for its jets).
+std::int32_t MotionOutput::engine_parent_radius(std::uint32_t parent) noexcept {
+    if (!parent) return 0;
+    if (parent != engine_radius_parent_ || frame_ != engine_radius_frame_) {
+        std::int32_t radius = 0;
+        const DWORD error = GetLastError();
+        const bool known = engine_memory::read(std::uintptr_t(parent) + engine_effects::core::parent_radius_offset, &radius,
+                                               sizeof radius);
+        SetLastError(error);
+        engine_radius_parent_ = parent;
+        engine_radius_frame_ = frame_;
+        engine_radius_ = known && radius > 0 ? radius : 0;
+    }
+    return engine_radius_;
+}
 bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept {
     namespace ee = engine_effects::core;
     ee::DrawState st;
@@ -237,6 +255,10 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
         // parent (the ship's root node), copied from the scope's node block (object_trace::current; the fixture's seam
         // reads the same offsets); 0 when the block was unreadable.
         engine_ring_->parent[slot] = parent_known ? scope_parent : 0u;
+        // The ship's radius in the record's units (the plume floor): the parent's +0xa4 against the jet's own +0x70 and
+        // +0x80 from the same node block.
+        ee::parent_radius_in_record(parent_known ? engine_parent_radius(scope_parent) : 0, scope.scale[0], scope.scale[1],
+                                    record.size, &engine_ring_->parent_radius[slot]);
         engine_ring_->own[slot] = engine_record_own(scope.node, scope.node_handle, parent_known, scope_parent) ? 1u : 0u;
         ++engine_counts_.suppressed;
         if (!entry) ++engine_counts_.unknown_body;
@@ -298,7 +320,8 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
 // 24 redirects live (this frame's cached signal); the plume stage (this frame's report until the next frame begins):
 // 25 armed, 26 ran, 27 the stage's result, 28 nozzles, 29 skipped_other_view, 30 drew, 31 the pass's references,
 // 32 taa_references, 33 consecutive failures, 34 refused until Reset, 35 the record's camera tag of index 0, 36 its
-// scene tag, 37 forwarded_stage_off (this frame), 38 the stage-off latch, 39 the plume pass refused at attach.
+// scene tag, 37 forwarded_stage_off (this frame), 38 the stage-off latch, 39 the plume pass refused at attach, 40..43
+// the parent radius of records 0..3 in record units (float bits; 0 unknown).
 unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     const auto& c = engine_counts_;
     if (key == 0) return c.candidates;
@@ -331,6 +354,11 @@ unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     if (key == 37) return c.forwarded[7];
     if (key == 38) return engine_stage_off_ ? 1u : 0u;
     if (key == 39) return plumes_attach_failed_ ? 1u : 0u;
+    if (key >= 40 && key < 44) {
+        std::uint32_t bits = 0;
+        if (engine_ring_ && key - 40u < engine_ring_->count) std::memcpy(&bits, &engine_ring_->parent_radius[key - 40u], 4);
+        return bits;
+    }
     return 0;
 }
 bool MotionOutput::fixture_plumes_fault(unsigned faults) noexcept {

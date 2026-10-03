@@ -226,14 +226,31 @@ struct Ring {
     std::uint8_t scene[ring_capacity];
     std::uint8_t own[ring_capacity];
     // The jet node's parent, node+0x18: the ship's root node for every engine part (docs/reverse-engineering/
-    // engine-effects.md); 0 when unreadable. The plume stage groups a frame's records by it (engine_plumes_core.h
-    // ShipFloor: the capital sub-engines' floor).
+    // engine-effects.md); 0 when unreadable. The own-ship tag and the key of the radius read below.
     std::uint32_t parent[ring_capacity];
+    // The ship's radius in the record's units (parent_radius_in_record): the root node's cached subtree radius
+    // (+0xa4) x the record's size / its node's x scale; 0 unknown. engine_plumes_core.h build(): the plume floor.
+    float parent_radius[ring_capacity];
     unsigned count = 0;
     void clear() noexcept { count = 0; }
     bool full() const noexcept { return count >= ring_capacity; }
     Record* push() noexcept { return count < ring_capacity ? &records[count++] : nullptr; }
 };
+// The ship's radius for the plume floor (docs/reverse-engineering/engine-effects.md, "Ship radius"): the root node's
+// +0xa4, the subtree radius 0x00488170 caches (-1 dirty): the maximum over its children and the three axes of
+// |child offset| + the child's own subtree radius, starting from the root's own +0xa0 (the TShips column-0 body's
+// value: 47 for body 0). Units: those of node+0x70 (the LOD-0 value), as the jet's own +0x70; the record's size is
+// |model x| = +0x70 x (+0x80 / 65536) x the context scale, so the radius in the record's units is
+// radius x size / (+0x70 x +0x80 / 65536). 0 when the radius is not positive (dirty, unread) or the scales are not.
+constexpr unsigned parent_radius_offset = 0xa4;
+inline void parent_radius_in_record(std::int32_t radius, std::uint32_t scale70, std::uint32_t scale80, float size,
+                                    float* out) noexcept {
+    *out = 0.f;
+    if (radius <= 0 || std::int32_t(scale70) <= 0 || std::int32_t(scale80) <= 0 || !finite_f(size) || !(size > 0.f)) return;
+    const float base = float(std::int32_t(scale70)) * (float(std::int32_t(scale80)) * (1.f / 65536.f));
+    const float r = float(radius) * (size / base);
+    if (finite_f(r) && r > 0.f) *out = r;
+}
 // The frame's census counts (engine_frame row).
 struct FrameCounts {
     std::uint32_t candidates = 0, not_jet = 0, records = 0, suppressed = 0, unknown_body = 0, steering = 0,

@@ -18,6 +18,7 @@ namespace lfc = x3m::lens_flare_cull::core;
 core::Mode mode_ = core::Mode::native;
 x3m::engine_plumes::Preset preset_ = x3m::engine_plumes::default_preset;
 float nozzle_ = x3m::engine_plumes::default_look.nozzle_width;
+float floor_ = x3m::engine_plumes::default_look.floor_ratio;
 bool identity_ = false, hook_ = false, initialized_ = false;
 const char* status_ = "not_initialized";
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -211,12 +212,22 @@ void initialize() {
         float nozzle = x3m::engine_plumes::default_look.nozzle_width;
         const bool nozzle_ok = !wn || (wn < 16 && x3m::engine_plumes::parse_nozzle(width, wn, &nozzle));
         nozzle_ = nozzle_ok ? nozzle : x3m::engine_plumes::default_look.nozzle_width;
+        // The plume floor (a share of the ship's radius): one plain decimal in 0..0.5; unset = 0.1, anything else
+        // refused (0.1, floor_status invalid_setting).
+        wchar_t share[16]{};
+        const DWORD fn = x3m::config::get(L"X3M_ENGINE_PLUME_FLOOR", share, 16);
+        char share_shown[16]{};
+        for (DWORD i = 0; i < fn && i < 15; ++i) share_shown[i] = share[i] > 0x20 && share[i] < 0x7f ? char(share[i]) : '?';
+        float floor_ratio = x3m::engine_plumes::default_look.floor_ratio;
+        const bool floor_ok = !fn || (fn < 16 && x3m::engine_plumes::parse_floor(share, fn, &floor_ratio));
+        floor_ = floor_ok ? floor_ratio : x3m::engine_plumes::default_look.floor_ratio;
         // One row: the stage arms per device at the resolve (the suppression, --motion-output --hdr --taa, FP16
         // blending); a device that cannot arm says so in engine_plumes_state and keeps the phase-1 look (off).
-        log("engine_effects_plumes preset=%s setting=%s status=%s stage=%s cycle=ctrl+alt+f6 nozzle=%.3f nozzle_setting=%s nozzle_status=%s",
+        log("engine_effects_plumes preset=%s setting=%s status=%s stage=%s cycle=ctrl+alt+f6 nozzle=%.3f nozzle_setting=%s nozzle_status=%s floor=%.3f floor_setting=%s floor_status=%s",
             x3m::engine_plumes::preset_name(preset_), n ? shown : "-", ok ? "ok" : n >= 16 ? "too_long" : "invalid_setting",
             hook_ ? "requested" : "off", double(nozzle_), wn ? width_shown : "-",
-            nozzle_ok ? "ok" : wn >= 16 ? "too_long" : "invalid_setting");
+            nozzle_ok ? "ok" : wn >= 16 ? "too_long" : "invalid_setting", double(floor_), fn ? share_shown : "-",
+            floor_ok ? "ok" : fn >= 16 ? "too_long" : "invalid_setting");
     }
     SetLastError(error);
 }
@@ -228,6 +239,9 @@ x3m::engine_plumes::Preset preset() {
 }
 float plume_nozzle() {
     return nozzle_;
+}
+float plume_floor() {
+    return floor_;
 }
 bool hook_wanted() {
     return hook_;

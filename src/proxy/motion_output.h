@@ -1189,7 +1189,8 @@ public:
     // 3-6): requested = X3M_ENGINE_EFFECTS=plumes with the suppression on (configure_engine_effects' suppress), the
     // load-time preset and nozzle width (X3M_ENGINE_PLUME_NOZZLE, x value). Process-start values; the stage arms per
     // frame at the resolve.
-    void configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width) noexcept;
+    void configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width,
+                                 float floor_ratio = engine_plumes::default_look.floor_ratio) noexcept;
     bool engine_plumes_requested() const noexcept { return plumes_requested_; }
     // Ctrl+Alt+F6: the next preset (restrained -> default -> strong -> restrained), one engine_plumes_preset row; the
     // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
@@ -1723,6 +1724,12 @@ private:
     static constexpr unsigned engine_row_cap = 64, engine_row_frame_cap = 8;
     bool engine_effects_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     bool engine_record_own(std::uintptr_t node, std::uint32_t handle, bool parent_known, std::uint32_t parent) noexcept;
+    // The ship's radius of a suppressed jet (its parent's +0xa4, engine_effects_core.h parent_radius_in_record): one
+    // bounded read per ship and frame (the last parent's radius stands for the next jets of the same root in the frame).
+    std::int32_t engine_parent_radius(std::uint32_t parent) noexcept;
+    std::uint32_t engine_radius_parent_ = 0;                // the memo: the last parent ...
+    std::uint64_t engine_radius_frame_ = ~std::uint64_t(0); // ... in this frame ...
+    std::int32_t engine_radius_ = 0;                        // ... and its +0xa4 (0 when unread or not positive)
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one

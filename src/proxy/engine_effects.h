@@ -29,6 +29,10 @@ engine_plumes::Preset preset();
 // read once at initialize (only with plumes); unset or refused = 0.5 (engine_plumes::parse_nozzle). The look's
 // proportions: L = z value is 2 / nozzle nozzle widths at full throttle.
 float plume_nozzle();
+// X3M_ENGINE_PLUME_FLOOR (ini engine_plume_floor): the plume floor, a share of the ship's radius in 0..0.5 (0 off), one
+// plain decimal read once at initialize (only with plumes); unset or refused = default_look.floor_ratio (0.1;
+// engine_plumes::parse_floor). A main jet draws at least this x its ship's root-node radius, at most 3 x its own value.
+float plume_floor();
 // The motion route's gates: hook = the per-draw recogniser runs (off|plumes with the identity verified, or native
 // under --debug for the census); suppress = a recognised draw is not forwarded.
 bool hook_wanted();

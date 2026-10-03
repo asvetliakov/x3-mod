@@ -99,6 +99,10 @@ shared xtc bodies within 1 % of 2x, `fx_engine_xtc_boron_m8` equal), so a
 table generated on the stock tree is not interchangeable with a Mayhem one:
 generate it on the tree that is played.
 
+The plume floor (`engine_plume_floor`, after flight D) needs no data: it reads each ship's radius from the
+engine's own root node at draw time (the cached subtree radius, so the hull and every part of a modded scene count),
+so a mod that adds or resizes ships needs nothing regenerated for it. The table is unchanged (schema 1).
+
 ## User flow: the regenerate executable
 
 For players the tools above collapse into one step: with the mods installed,
