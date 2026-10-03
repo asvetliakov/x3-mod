@@ -5761,6 +5761,11 @@ extern "C" __declspec(dllexport) void x3m_engine_effects_fixture_body_global(std
     x3m::CaptureLock lock;
     x3m::engine_effects::fixture_body_global(va);
 }
+// The SETA read's tick site and configuration pointer slot in the fixture's memory (gap 7 of the plume gap analysis).
+extern "C" __declspec(dllexport) void x3m_engine_effects_fixture_seta(std::uintptr_t site_va, std::uintptr_t slot_va) {
+    x3m::CaptureLock lock;
+    x3m::engine_effects::fixture_seta(site_va, slot_va);
+}
 extern "C" __declspec(dllexport) unsigned x3m_engine_effects_fixture_status(IDirect3DDevice9* device, unsigned key) {
     x3m::CaptureLock lock;
     const auto it = x3m::devices.find(device);

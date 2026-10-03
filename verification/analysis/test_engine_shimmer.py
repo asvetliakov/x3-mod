@@ -129,6 +129,23 @@ int main() {
         expect(collect(two, 2, nullptr, view(), projection(), ep::Preset::standard, 0.f, &filter, nullptr, nullptr, nullptr, r, &st) == 1 &&
                close_to(r[0].nozzle_px, 40.f, .05f) && st.candidates == 1, "the scene view's records only");
     }
+    // ----------------------------------------------------------- the stage's dynamics: travel length, per-nozzle phase
+    {
+        Rect a[max_rects], b[max_rects]; Stats st{};
+        const ee::Record s = side(30.f, .6f, 2000.f, .5f); // a short plume: its 1.5 L stays on screen at travel 1
+        ep::Dynamics still{}, travel{};
+        still.flow = travel.flow = 123.25;
+        travel.travel = 1.f;
+        ep::Transients* never = nullptr; // the stage's attack memory is not passed through
+        travel.transients = never;
+        const unsigned n0 = collect(&s, 1, nullptr, view(), projection(), ep::Preset::standard, 0.f, nullptr, nullptr, nullptr, nullptr, a, &st, 4, &still);
+        const unsigned n1 = collect(&s, 1, nullptr, view(), projection(), ep::Preset::standard, 0.f, nullptr, nullptr, nullptr, nullptr, b, &st, 4, &travel);
+        expect(n0 == 1 && n1 == 1 && close_to(b[0].length / a[0].length, ep::travel_length, .02f), "travel lengthens the rect as the plume");
+        float factor = 0.f, phase = 0.f;
+        ep::flow_factor(ep::default_look, s.size, &factor);
+        ep::nozzle_phase(123.25, factor, &phase);
+        expect(a[0].phase == phase && phase > 0.f, "the nozzle's own flow phase");
+    }
     // ----------------------------------------------------------- the cap and the rank
     {
         std::vector<ee::Record> crowd;
@@ -150,8 +167,10 @@ int main() {
         Rect r[max_rects]; Stats st{};
         collect1(side(60.f), r, &st);
         float c[constant_vectors * 4];
-        constants(r, 1, 1.125f, 8.f, 3.f, W, H, c);
-        expect(close_to(c[0], 1.f / W, 1e-9f) && c[2] == W && c[3] == H && c[4] == 1.125f && c[5] == 1.f && c[6] == 8.f / cell_widths &&
+        r[0].phase = 8.f;
+        constants(r, 1, 1.125f, 3.f, W, H, c);
+        expect(c[(4 + 32) * 4 + 2] == 8.f / cell_widths, "the rect's own flow phase in c36+i.z");
+        expect(close_to(c[0], 1.f / W, 1e-9f) && c[2] == W && c[3] == H && c[4] == 1.125f && c[5] == 1.f && c[6] == 0.f &&
                c[7] == 3.f * boil_rate && c[8] == 1.f / cell_widths, "c0..c2");
         expect(c[16] == r[0].origin[0] && c[18] == r[0].axis[0] && c[(4 + 16) * 4] == r[0].length && c[(4 + 16) * 4 + 1] == r[0].half_width &&
                c[(4 + 16) * 4 + 2] == r[0].back && close_to(c[(4 + 16) * 4 + 3], 1.f / r[0].nozzle_px, 1e-9f) &&
@@ -350,7 +369,8 @@ class Options(unittest.TestCase):
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_PX"', inc)), 1)
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_MAX"', inc)), 1)
         self.assertIn('shimmer_requested_ = plumes_requested_ && on && px > 0.f && limit > 0;', inc)
-        self.assertIn('&shimmer_stats_, shimmer_max_);', inc)
+        self.assertIn('&shimmer_stats_, shimmer_max_, &dynamics);', inc)
+        self.assertIn('dynamics.travel = engine_travel_weight_;', inc)
 
 
 class Wiring(unittest.TestCase):

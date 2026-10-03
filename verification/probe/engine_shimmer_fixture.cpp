@@ -210,7 +210,6 @@ rr::EngineShimmerFrame frame_for(Targets& t, const es::Rect* rects, unsigned n, 
     f.rects = rects;
     f.rect_count = n;
     es::amplitude_px(px, float(t.h), &f.amplitude_px);
-    f.phase = 3.25f;
     f.seconds = 1.5f;
     f.caller_scene_open = true;
     return f;

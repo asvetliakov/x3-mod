@@ -589,15 +589,31 @@ what the cull saves; 100 far jets would cost about 1 ms) and draw them as faint 
     (the float at `*(view+0x1c)+0x2c`, one bounded read per context and frame), axis = -(basis row 2), size = |basis
     row 0| / 65536 x +0x70 x +0x80 / 65536 x the scale, s and z from +0x88 (the construction of `0x004bdee0` with c4-6
     order a, flight A). Tags as a suppressed draw: the camera handle the pass's view carries (+0x28, the object
-    scope's camera), the scene phase the selector was in when the pass met it, the parent and its radius through the
-    same memo (the floor), the own-ship tag. SMALLJET table entries are dropped. The ring's cap applies.
+    scope's camera), the parent and its radius through the same memo (the floor), the own-ship tag. SMALLJET table
+    entries are dropped. The ring's cap applies.
+  - View (review fix, 2026-10-03): a far copy carries no scene phase, only its view's handle: the main view's cull
+    pass may run before the selector enters Scene (the latching depth Clear after the background draws), so a phase
+    tag could drop every far record. The scene view is chosen from the drawn records only (own-ship rule, then
+    majority over the scene-phase draws); far records whose handle equals it are drawn, others count
+    `skipped_other_view`. A frame without a drawn scene-phase record takes the most frequent far handle
+    (`view_rule=far`, session count `view_far_total`). Consequence: on such a frame, a target monitor's far jets
+    outnumbering the main view's would be projected with the scene camera.
+  - Dedupe: the append drops a copy of a (node handle, view handle) pair already appended this frame
+    (`far_duplicates`; the cull pass may run more than once per view). A zero node handle is never deduplicated.
+  - Devices: the far block is armed while at least one device requests the plume stage (a count, not one flag: an old
+    device's teardown after a new device configured itself no longer disarms the session); the buffer is emptied at
+    the frame begin of the device whose resolve last took the stage's arming decision (any requesting device while no
+    device has).
   - A frame whose only jets are far ones runs the stage too (the resolve installs the callback for buffered copies).
   - The engine's own culls stay: a hull culled whole takes its jets with it (their children never reach the site).
   - Counts in `engine_stage`: `far_jets` (copies), `far_records` (appended), `far_engine`, `far_overflow`,
-    `far_dropped`, `far_disarmed`; the cull's rows say `far_jets=on|off|writer_mismatch`.
-  - Not verified in flight: the view's +0x28 equals the draw scope's camera handle (else far records count
-    `skipped_other_view`), and the context scale is 0.01 in the scene view. Ribbons on far records key on node handle +
-    model (no lifetime serial), so a jet crossing the cull threshold restarts its ribbon.
+    `far_dropped`, `far_disarmed`, `far_duplicates`; the cull's rows say `far_jets=on|off|writer_mismatch`.
+  - Not verified in flight (Run 123 acceptance checks): far records are drawn by their view handle, i.e. the view's
+    +0x28 equals the draw scope's camera handle (`engine_stage far=` > 0 with far ships in view, `skipped_other_view=`
+    not rising by the far count, `view_rule=` own or majority with draws and `far` on draw-free frames); how many
+    times the cull pass runs per view and frame (`far_duplicates=` 0 if once); and the context scale is 0.01 in the
+    scene view. Ribbons on far records key on node handle + model (no lifetime serial), so a jet crossing the cull
+    threshold restarts its ribbon.
 - *Distance law.* A plume whose projected nozzle width (after the floor and the near cap, before the dot floor) is under
   `far_px_full` 12 px scales its radiance (core, halo, ring and disc alike) by `far_low` + (1 - `far_low`) x
   smoothstep(`far_px_min` 2, 12, px), 0.15 at 2 px and below, 0.449 at 6 px. The drawn geometry never falls below a
@@ -610,3 +626,37 @@ what the cull saves; 100 far jets would cost about 1 ms) and draw them as faint 
   jet over a plain culled node (64-node tree, `run_cull_small_parts.py`). The CPU build at 300 records (250 far):
   29.9 us, 32.3 us with the floor. The stage's GPU at 300 nozzles of which 250 are far: 0.84 ms at 1080p, 0.26 ms at
   5120x1440 (EVENT-fenced tail; 100 nozzles of the old crowd: 0.36 / 0.14 ms).
+
+**After flight E, the gap analysis' phases 2 and 3 (2026-10-03, worktree build, not flown).** Gaps 4, 5, 3, 10, 6 and 7
+of [engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md) (section 5 there has the measured numbers; ledger
+[engine-effects.md](../verification/engine-effects.md)). Every new term is bounded; none brightens the cruise look.
+- *Flow in world units (gap 4).* The frame's flow accumulator (`FlowPhase`, flow_rate 2.625 nozzle widths per second,
+  unwrapped in double) x the nozzle's `flow_factor` = `flow_reference` 500 / value clamped to [`flow_slow` 0.3, 1]
+  (value: the floored value before the near cap), wrapped at 4,096 per nozzle in double and written per vertex
+  (`shape.w`; the kind moved to the new colour's alpha). One world speed, 656.25 per second, from value 500 to 1,667;
+  smaller nozzles keep today's rate in nozzle widths (no strobing), capitals crawl at 0.3.
+- *Two-tone colour (gap 5).* The body's colour is lerp(lerp(head, mean, smoothstep(0.3, 1, u)), white, heat); the head is
+  the table's peak colour scaled to the mean's Rec. 709 luminance when brighter (`head_colour`: the peak is the whiter
+  colour at 1.0-3.6x the mean's luminance, so the head turns whiter, not brighter); a fourth D3DCOLOR in the vertex (76 B).
+  The disc integrates the same split exactly (the tail weight per sample, a compile-time constant). Halo and ring keep
+  the mean. Without table colours head = mean (today's look).
+- *Nozzle spill (gap 3).* The halo's lane visibility is max(soft, spill) with spill = `glow_through` 0.15 x (1 -
+  smoothstep(`spill_inner` 0.8, `spill_reach` 1.0, d)) x saturate(1 + gap / (`spill_depth` 2 x value)), d the
+  screen-plane distance from the nozzle in nozzle widths (the hand-over's): around the nozzle rim only, and only through
+  an occluder within 2 value in front of the nozzle (its own hull, not a ship passing in front). Body and ring unchanged.
+- *Idle floor (gap 10).* A main jet's L = max(z, `idle_length` 0.5) x value: 1 nozzle width at idle (was 0.5); RCS keeps
+  z value.
+- *RCS puff attack and retro flare (gap 6).* `Transients`: 512 slots of the last z per steering or brake record, keyed like
+  the ribbon pool (serial, else node handle + model), probed 8 from the key's home, free after 0.5 s unseen; a rising z
+  multiplies the radiance by 1 + `attack_gain` 0.5 x saturate(dz / (0.004 x dt_game_ms)) (the game's own rate limit,
+  dt in game ms = wall x the SETA rate), decaying linearly to 1 over `attack_decay` 120 ms; updated before the idle cull
+  so a puff from z 0.01 is seen; no shape change; main jets unaffected. Overflow draws without the attack (counted).
+- *Travel look under SETA (gap 7).* One bounded read per stage frame (`engine_effects::seta_read`): `*0x00606f34`, then 8
+  bytes at +0xcc (warp, governor), bound once by the 12-byte compare of the tick's `mov edx,[ecx+0xd0]; mov eax,[ecx+0xcc]`
+  at 0x004d1ef0; refused without the identity, on a mismatch, a null pointer or a failed read; values outside
+  0 < warp <= 0x640000, 0x4ccc <= mult <= 0x10000 count invalid; both fail closed to 1.0. `TravelRamp`: engaged at once
+  when the warp is above 1.0, released after 0.3 s at 1.0, weight 0 -> 1 over 0.5 s (smoothstep), steps held to 0.1 s.
+  At weight 1: a main jet's L x 2, its radiance x 1.25, the ribbons' T x 2, the flow x 1.5. `engine_seta` rows under
+  --debug ([logging-tiers.md](logging-tiers.md)).
+- *Lab.* `tools/effects/engine_exhaust_lab.html` mirrors the flow factor (a nozzle-value slider), the two-tone head and
+  the idle floor; the spill, the distance law, the attack and the travel look are game-only.

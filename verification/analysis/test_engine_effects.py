@@ -449,6 +449,11 @@ class EngineEffectsFixtureRecord(unittest.TestCase):
         self.assertEqual(r['bottle']['name'], 'X3')
         self.assertEqual(r['problems'], [])
         self.assertEqual(r['runs']['main']['engine_frame_rows'], 13)  # frames 0..11 and the quiet row at 300
+        # The plume stage's SETA read (gap 7): through the seam it engages at warp 6 and releases after the hold; without
+        # it the site does not match and the read fails closed.
+        self.assertEqual(r['runs']['armed']['seta_rows'], [['read', 'off', 'ok', '1', '1.000'], ['engage', 'on', 'ok', '1', '6.000'],
+                                                           ['release', 'off', 'ok', '1', '1.000']])
+        self.assertEqual(r['runs']['armed_refused']['seta_rows'], [['read', 'off', 'site_mismatch']])
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))

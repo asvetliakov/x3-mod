@@ -34,11 +34,10 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
     }
     engine_ring_->clear();
     engine_counts_ = {};
-    // Far engine jets: this frame's buffer starts empty (the previous frame's counts went out in its engine_stage row).
-    if (plumes_requested_) {
-        engine_far_jets::begin_frame();
-        engine_far_jets::note_scene(selector_.state() == renderer::BoundaryState::Scene);
-    }
+    // Far engine jets: this frame's buffer starts empty (the previous frame's counts went out in its engine_stage row),
+    // emptied by the device that owns the resolve only (another device's Present between the cull pass and the stage
+    // would otherwise empty it).
+    if (plumes_requested_ && engine_far_jets::clears(this)) engine_far_jets::begin_frame();
     engine_far_ = {};
     engine_redirects_ = engine_effects::redirects_live(); // one call per frame; the redirects arm once at load
     // off|plumes with the redirects live but the motion route off on this device: the redirects (process-wide) hide
@@ -62,6 +61,7 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
     ribbons_report_ = {}; // phase 3: the ribbons' share of the engine_stage row
     plumes_stage_us_ = 0.f;
     plumes_view_rule_ = engine_plumes::ViewRule::none;
+    plumes_view_far_ = false;
 }
 void MotionOutput::engine_effects_frame_end() noexcept {
     // Plumes requested on a frame with records whose resolve never asked for the stage: a device that cannot arm by
@@ -349,7 +349,8 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
 // scene tag, 37 forwarded_stage_off (this frame), 38 the stage-off latch, 39 the plume pass refused at attach, 40..43
 // the parent radius of records 0..3 in record units (float bits; 0 unknown), 44 far records appended this frame
 // (engine_far_append), 45 nozzles drawn under the distance law's far_px_full (far_nozzles), 46 the far handler's copies
-// this frame, 47 the flags of the ring's last record.
+// this frame, 47 the flags of the ring's last record, 48 the scene view's rule (engine_plumes::ViewRule; 3 = far: no
+// drawn scene-phase record, the most frequent far handle), 49 far_duplicates this frame.
 unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     const auto& c = engine_counts_;
     if (key == 0) return c.candidates;
@@ -391,6 +392,8 @@ unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     if (key == 45) return plumes_report_.stats.far_nozzles;
     if (key == 46) return engine_far_jets::stats().written;
     if (key == 47) return engine_ring_ && engine_ring_->count ? engine_ring_->records[engine_ring_->count - 1].flags : 0u;
+    if (key == 48) return plumes_view_far_ ? 3u : unsigned(plumes_view_rule_);
+    if (key == 49) return engine_far_.duplicates;
     return 0;
 }
 bool MotionOutput::fixture_plumes_fault(unsigned faults) noexcept {

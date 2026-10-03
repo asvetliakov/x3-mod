@@ -19,8 +19,8 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
                                            float floor_scale) noexcept {
     plumes_requested_ = requested && engine_hook_ && engine_suppress_ && engine_ring_;
     // Far engine jets: the small-parts cull stub's far block copies culled JET nodes only while a device requests the
-    // stage (it carries the block only with X3M_ENGINE_EFFECTS=plumes and the cull on).
-    engine_far_jets::set_armed(plumes_requested_);
+    // stage (it carries the block only with X3M_ENGINE_EFFECTS=plumes and the cull on); each device counts once.
+    engine_far_jets::request(&engine_far_counted_, plumes_requested_, this);
     engine_far_frame_ = ~std::uint64_t(0);
     plumes_preset_ = preset;
     // The look: the chosen constants with the configured nozzle width (engine_effects::plume_nozzle(): parsed and
@@ -31,6 +31,11 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
     if (floor_scale >= engine_plumes::floor_min && floor_scale <= engine_plumes::floor_max) plumes_look_.floor_scale = floor_scale;
     engine_plumes::flow_rate(plumes_look_, &plumes_flow_rate_);
     engine_plumes::look_tables(plumes_look_, &plumes_tables_); // fixed for the session: not recomputed per frame
+    // The RCS puff attack's memory (gap 6): 12 KB, while the stage is requested; an allocation failure draws without it.
+    if (plumes_requested_ && !engine_transients_) engine_transients_.reset(new (std::nothrow) engine_plumes::Transients);
+    if (engine_transients_) engine_transients_->clear();
+    engine_travel_ = engine_plumes::TravelRamp{};
+    engine_travel_weight_ = 0.f;
     plumes_armed_ = plumes_ran_ = plumes_fenced_ = false;
     plumes_failures_ = 0;
     plumes_failed_out_ = false;
@@ -171,10 +176,14 @@ std::uint64_t MotionOutput::engine_qpc_frequency() noexcept {
 }
 // Far engine jets (after flight E; engine_far_jets.h, engine_effects_core.h far_record): the JET nodes the small-parts
 // cull stub culled this frame, appended to the ring once per frame after the frame's draws, with the tags a suppressed
-// draw takes: the camera handle (the pass's view +0x28, the object scope's camera), the scene phase (the selector's
-// state when the pass met it), the parent and its radius through the same memo (the plume floor), the own-ship tag. One
-// bounded read of context +0x2c per view context (memo); the parent's +0xa4 only with the floor on. The ring's cap
-// applies (far_overflow with the handler's own full buffer).
+// draw takes: the camera handle (the pass's view +0x28, the object scope's camera), the parent and its radius through
+// the same memo (the plume floor), the own-ship tag. No scene phase: the main view's cull pass may run before the
+// selector enters Scene (the latching depth Clear after the background draws), so every far record is marked
+// eligible (scene 1) and the stage's view filter decides by the handle alone (run_engine_plumes: the view rule
+// ignores far records unless no drawn record is in the scene phase). A copy of a (node handle, view handle) pair
+// already appended this frame is dropped (far_duplicates: the cull pass may run more than once per view). One bounded
+// read of context +0x2c per view context (memo); the parent's +0xa4 only with the floor on. The ring's cap applies
+// (far_overflow with the handler's own full buffer).
 float MotionOutput::engine_far_context_scale(std::uint32_t context) noexcept {
     if (frame_ != engine_far_context_frame_) {
         for (unsigned i = 0; i < engine_far_context_slots; ++i) engine_far_context_[i] = 0;
@@ -199,12 +208,17 @@ float MotionOutput::engine_far_context_scale(std::uint32_t context) noexcept {
 void MotionOutput::engine_far_append() noexcept {
     if (engine_far_frame_ == frame_ || !plumes_requested_ || !engine_ring_) return;
     engine_far_frame_ = frame_;
+    engine_far_seen_.begin();
     namespace ee = engine_effects::core;
     const unsigned count = engine_far_jets::count();
     const engine_far_jets::core::Raw* raw = engine_far_jets::entries();
     const bool floors = plumes_look_.floor_scale > 0.f;
     for (unsigned i = 0; i < count; ++i) {
         const auto& f = raw[i];
+        if (!engine_far_seen_.insert(f.handle, f.view_handle)) {
+            ++engine_far_.duplicates;
+            continue;
+        }
         if (engine_ring_->full()) {
             engine_far_.ring_full += count - i;
             break;
@@ -225,7 +239,7 @@ void MotionOutput::engine_far_append() noexcept {
         const unsigned slot = engine_ring_->count;
         *engine_ring_->push() = record;
         engine_ring_->camera[slot] = f.view_handle;
-        engine_ring_->scene[slot] = f.scene ? 1u : 0u;
+        engine_ring_->scene[slot] = 1u; // eligible: the view filter decides by the handle (flag_far marks it)
         engine_ring_->parent[slot] = f.parent;
         engine_ring_->parent_radius[slot] = radius;
         engine_ring_->own[slot] = engine_record_own(f.node, f.handle, true, f.parent) ? 1u : 0u;
@@ -233,18 +247,68 @@ void MotionOutput::engine_far_append() noexcept {
         if (!entry) ++engine_counts_.unknown_body;
     }
 }
+// The travel look under SETA (gap 7; engine_plumes_core.h TravelRamp, docs/reverse-engineering/engine-effects.md
+// section 8): one bounded read of the SETA dwords per stage frame (engine_effects::seta_read: refused without the
+// identity, on a site mismatch or a failed read), validated by seta_decode (out of range: 1.0, counted invalid); the
+// ramp steps by the stage clock's step. Under --debug one engine_seta row per change of the ramp's state, and per change
+// of the read's status (at most seta_status_row_cap per device).
+void MotionOutput::engine_seta_step(double step) noexcept {
+    std::uint32_t warp = engine_plumes::seta_one, mult = engine_plumes::seta_one;
+    const engine_effects::SetaStatus status = engine_effects::seta_read(&warp, &mult);
+    ++seta_reads_;
+    bool engaged = false;
+    seta_valid_ = true;
+    if (status != engine_effects::SetaStatus::ok) {
+        ++seta_refused_;
+        seta_warp_ = seta_rate_ = 1.f;
+    } else if (!engine_plumes::seta_decode(warp, mult, &engaged, &seta_warp_, &seta_rate_)) {
+        ++seta_invalid_;
+        seta_valid_ = false;
+    }
+    seta_status_ = static_cast<unsigned char>(status);
+    const bool changed = engine_travel_.step(engaged, float(step));
+    engine_travel_.weight(&engine_travel_weight_);
+    const bool status_changed = seta_status_ != seta_logged_status_ && seta_status_rows_ < seta_status_row_cap;
+    if (!log_tier::cached_debug || (!changed && !status_changed)) return;
+    if (status_changed) {
+        ++seta_status_rows_;
+        seta_logged_status_ = seta_status_;
+    }
+    log("engine_seta device=%llu frame=%llu event=%s state=%s read=%s valid=%u warp=%.3f mult=%.4f rate=%.3f travel=%.3f reads=%llu refused=%llu invalid=%llu",
+        id_, frame_, changed ? (engine_travel_.engaged ? "engage" : "release") : "read", engine_travel_.engaged ? "on" : "off",
+        engine_effects::seta_status_name(status), unsigned(seta_valid_), double(seta_warp_), double(mult) / 65536.,
+        double(seta_rate_), double(engine_travel_weight_), static_cast<unsigned long long>(seta_reads_),
+        static_cast<unsigned long long>(seta_refused_), static_cast<unsigned long long>(seta_invalid_));
+}
 HRESULT MotionOutput::run_engine_plumes() noexcept {
     plumes_ran_ = true;
     if (plumes_ && plumes_armed_ && plumes_lane_) engine_far_append(); // after the frame's draws, before the scene view
     if (!plumes_ || !plumes_armed_ || !plumes_lane_ || !engine_ring_ || (!engine_ring_->count && !engine_ribbons_live()))
         return S_FALSE; // phase 3: a frame without records still runs while ribbons fade
-    // The scene view: the camera handle the own ship's jets were recorded under, else the most frequent camera handle
-    // among the scene-phase records; no scene-phase record, nothing to draw (no device call) unless ribbons are fading
-    // (they then take no record: every one fails the filter).
+    // The scene view, from the drawn records only (far records carry no phase): the camera handle the own ship's jets
+    // were recorded under, else the most frequent camera handle among the scene-phase draws. A frame without a drawn
+    // scene-phase record takes the most frequent far handle (view_rule=far). No candidate, nothing to draw (no device
+    // call) unless ribbons are fading (they then take no record: every one fails the filter). Far records whose handle
+    // is the scene view's are drawn (the filter's scene tag is 1 on every far record).
+    const unsigned count = engine_ring_->count;
+    std::uint8_t pick[engine_effects::core::ring_capacity]; // the tally's scene tags, one byte per record
+    bool any_far = false;
+    for (unsigned i = 0; i < count; ++i) {
+        const bool far_record = (engine_ring_->records[i].flags & engine_effects::core::flag_far) != 0;
+        pick[i] = far_record ? 0u : engine_ring_->scene[i];
+        any_far = any_far || far_record;
+    }
     std::uint32_t scene_camera = 0;
-    const bool viewed = engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->own,
-                                                         engine_ring_->count, &scene_camera, &plumes_view_rule_);
-    if (plumes_view_rule_ == engine_plumes::ViewRule::own)
+    bool viewed = engine_plumes::scene_view_camera(engine_ring_->camera, pick, engine_ring_->own, count, &scene_camera,
+                                                   &plumes_view_rule_);
+    if (!viewed && any_far) {
+        for (unsigned i = 0; i < count; ++i)
+            pick[i] = (engine_ring_->records[i].flags & engine_effects::core::flag_far) ? 1u : 0u;
+        viewed = plumes_view_far_ = engine_plumes::tally_scene_view(engine_ring_->camera, pick, nullptr, count, &scene_camera);
+    }
+    if (plumes_view_far_)
+        ++plumes_view_far_total_;
+    else if (plumes_view_rule_ == engine_plumes::ViewRule::own)
         ++plumes_view_own_total_;
     else if (plumes_view_rule_ == engine_plumes::ViewRule::majority)
         ++plumes_view_majority_total_;
@@ -288,9 +352,17 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     QueryPerformanceCounter(&counter);
     engine_clock_.step(std::uint64_t(counter.QuadPart), engine_qpc_frequency(), capture_);
     engine_clock_.wrapped(&in.seconds);
-    // The flow phase advances by the same step at a constant speed (engine_plumes_core.h FlowPhase).
-    engine_flow_.advance(engine_clock_.last_step, plumes_flow_rate_);
-    engine_flow_.wrapped(&in.phase);
+    // The travel look (gap 7): this frame's SETA read and the ramp; then the flow accumulator advances by the same step
+    // at its constant speed x the travel look's flow (engine_plumes_core.h FlowPhase; each nozzle's phase is it x its
+    // flow_factor, gap 4); the attack memory's step in game ms is the wall step x the SETA rate (gap 6).
+    engine_seta_step(engine_clock_.last_step);
+    const float travel_flow = 1.f + (engine_plumes::travel_flow - 1.f) * engine_travel_weight_;
+    engine_flow_.advance(engine_clock_.last_step, plumes_flow_rate_ * travel_flow);
+    in.flow = engine_flow_.nozzle_widths;
+    in.travel = engine_travel_weight_;
+    in.step = float(engine_clock_.last_step);
+    in.game_ms = float(engine_clock_.last_step * 1000.) * seta_rate_;
+    in.transients = engine_transients_.get();
     in.look = &plumes_look_;
     in.tables = &plumes_tables_;
     in.radii = engine_ring_->parent_radius; // the plume floor: each record's ship radius (engine_plumes_core.h build)
@@ -339,16 +411,19 @@ void MotionOutput::log_engine_stage() noexcept {
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     const engine_far_jets::core::Stats jets = engine_far_jets::stats(); // this frame's far jets (the cull stub's copies)
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
             s.nozzles, s.vertices, s.discs, s.floored, s.floor_unknown, s.far_nozzles, jets.written, engine_far_.records, jets.engine,
-            jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
-            s.culled_idle, s.skipped_other_view, engine_plumes::view_rule_name(plumes_view_rule_),
-            total(plumes_view_own_total_), total(plumes_view_majority_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
+            jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, engine_far_.duplicates, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
+            s.culled_idle, s.skipped_other_view, plumes_view_far_ ? "far" : engine_plumes::view_rule_name(plumes_view_rule_),
+            total(plumes_view_own_total_), total(plumes_view_majority_total_), total(plumes_view_far_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
             double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,
             rb.samples, ru.live, ru.fading, ru.created, ru.appended, ru.overflow, ru.skipped_other_view, ru.evicted, unsigned(ru.cut_clear),
             unsigned(ru.load_clear), ribbons_report_.operation, unsigned(ribbons_report_.failed), ribbons_report_.calls,
             total(pool ? pool->evictions : 0), total(pool ? pool->cut_clears : 0), total(pool ? pool->load_clears : 0),
             total(pool ? pool->reset_clears : 0), total(pool ? pool->jumps : 0), total(pool ? pool->overflows : 0),
-            unsigned(fog_density_applied_frame_ == frame_), s.fogged + rb.fogged, double(s.fog_min));
+            unsigned(fog_density_applied_frame_ == frame_), s.fogged + rb.fogged, double(s.fog_min), s.attacks,
+            s.transient_overflow, double(engine_travel_weight_), unsigned(engine_travel_.engaged),
+            engine_effects::seta_status_name(engine_effects::SetaStatus(seta_status_)), total(seta_reads_),
+            total(seta_refused_), total(seta_invalid_));
 }

@@ -122,6 +122,13 @@ int main() {
         double now = 5.0; for (unsigned f = 0; f < 120; ++f, now += dt) { const ee::Record r = rec(4000.f * float(f) * dt, 0, 50000.f, 1000.f, s); update(pool, &r, 1, now, false, 0, nullptr, preset, nullptr); }
         expect(near(only(pool)->length, .5 * preset * 4000. * s, 1e-3), "L scales with s and the preset");
     }
+    // the travel look under SETA (gap 7 of the gap analysis): T x (1 + travel) at the plumes' travel weight
+    for (const float travel : {0.f, .5f, 1.f, 3.f}) {
+        static Pool pool; pool.clear();
+        double now = 5.0; for (unsigned f = 0; f < 120; ++f, now += dt) { const ee::Record r = rec(4000.f * float(f) * dt, 0, 50000.f, 1000.f, 1.f); update(pool, &r, 1, now, false, 0, nullptr, 1.f, nullptr, nullptr, nullptr, nullptr, travel); }
+        const double want = .5 * 4000. * (1. + std::min(double(travel), 1.));
+        expect(near(only(pool)->length, want, 1e-3), "travel weight 0 / 0.5 / 1 (3 held to 1): T x 1 / 1.5 / 2");
+    }
     // ------------------------------------------------------------------ stationary: one sample, no ribbon
     {
         static Pool pool; pool.clear(); double now = 0.0; UpdateStats st{};
@@ -362,7 +369,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
                       '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
         # the ribbons take the plumes' scene-view filter
-        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii);',
+        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel);',
                       source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp'))
         self.assertIn('if(ribbons_)taa_call([&]{ribbons_->before_reset();});', motion)
         self.assertIn('if(ribbons_)ribbons_->after_reset(result);', motion)

@@ -357,7 +357,7 @@ HRESULT EngineShimmerPass::run(const EngineShimmerFrame& f, EngineShimmerReport*
     if (!device_ || !caps_.enabled) return refuse(EngineShimmerStep::Validate, E_INVALIDARG);
     if (reset_pending_) return refuse(EngineShimmerStep::Validate, E_FAIL);
     if (!f.width || !f.height || !f.target || !f.target_surface || (f.rect_count && !f.rects) ||
-        f.rect_count > engine_shimmer::max_rects || !finite(f.amplitude_px) || !finite(f.phase) || !finite(f.seconds))
+        f.rect_count > engine_shimmer::max_rects || !finite(f.amplitude_px) || !finite(f.seconds))
         return refuse(EngineShimmerStep::Validate, E_INVALIDARG);
     // A revert the caller has not issued yet (it reverts before Present): the copy goes back before this frame's.
     if (pending_) {
@@ -402,7 +402,7 @@ HRESULT EngineShimmerPass::run(const EngineShimmerFrame& f, EngineShimmerReport*
     pending_ = f.target_surface;
     pending_rect_ = copy_rect;
     float constants[engine_shimmer::constant_vectors * 4];
-    engine_shimmer::constants(f.rects, f.rect_count, f.amplitude_px, f.phase, f.seconds, float(f.width), float(f.height),
+    engine_shimmer::constants(f.rects, f.rect_count, f.amplitude_px, f.seconds, float(f.width), float(f.height),
                               constants);
     // Without a lane the program reads the copy at s2 and every rect's occlusion depth (c36+i.y) is 0: nothing occluded.
     if (!f.lane)

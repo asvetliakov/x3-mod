@@ -224,8 +224,9 @@ HRESULT EngineRibbonsPass::run(const EngineRibbonsFrame& frame, EngineRibbonsRep
     engine_plumes::preset_scale(f.preset, &scale);
     engine_ribbons::update(pool_, f.records, f.record_count, frame.seconds, frame.cut || cut_pending_, frame.load_epoch, f.body,
                            // the plumes' view filter, then their look and ship radii (the plume's nozzle width: the
-                           // distance law's input)
-                           scale, &r.update, f.filter.camera && f.filter.scene ? &f.filter : nullptr, f.look, f.radii);
+                           // distance law's input) and the SETA travel weight (T x up to 2)
+                           scale, &r.update, f.filter.camera && f.filter.scene ? &f.filter : nullptr, f.look, f.radii,
+                           f.travel);
     cut_pending_ = false;
     r.updated = true;
     if (reset_pending_) return refuse(EngineRibbonsStep::Validate, E_FAIL);

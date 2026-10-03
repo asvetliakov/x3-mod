@@ -76,7 +76,8 @@ PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.
                       'src/proxy/motion_output_engine_plumes_inc.h', 'src/proxy/engine_plumes_core.h',
                       'src/renderer/engine_plumes_pass.cpp', 'src/renderer/engine_plumes_pass.h',
                       'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h',
-                      'src/proxy/motion_output.h', 'src/proxy/capture.cpp')
+                      'src/proxy/motion_output.h', 'src/proxy/capture.cpp', 'src/proxy/engine_far_jets.cpp',
+                      'src/proxy/engine_far_jets.h', 'src/proxy/engine_far_jets_core.h')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
 
@@ -232,6 +233,11 @@ def validate(mode, r):
             problems.append(f'armed: engine_plumes_state {state}')
         if len(drawn) < 6:  # first + 3 steady + re-armed + after Reset
             problems.append(f'armed: engine_stage drawn rows {len(drawn)}')
+        # The far review fixes: the duplicate frame's row (it has candidates, so it is logged) drops one copy.
+        duplicates = [g for g in stage if (g.get('far_jets'), g.get('far_records'), g.get('far_duplicates')) == ('2', '1', '1')]
+        out['far_duplicate_rows'] = len(duplicates)
+        if len(duplicates) != 1 or any('view_far_total' not in g for g in stage):
+            problems.append(f'armed: engine_stage far_duplicates rows {len(duplicates)}')
         if not rows(log, 'motion_output_reset'):
             problems.append('armed: no motion_output_reset row')
         # The game's glow while the stage is off: 3 x 63 disarmed frames and the 70 refused ones forward the four jets.
@@ -241,6 +247,17 @@ def validate(mode, r):
         if len(stage_off) != 3 * 63 + 70 or any((f.get('forwarded_stage_off'), f.get('suppressed'), f.get('records')) != ('4', '0', '0')
                                                 for f in stage_off):
             problems.append(f'armed: forwarded_stage_off frames {len(stage_off)}')
+        # The travel look (gap 7): the SETA read through the seam, one row at the first read (ok, 1.0), one engage at
+        # warp 6, one release after the 0.3 s hold; every drawn stage frame read once, none refused or invalid.
+        seta = [(r.get('event'), r.get('state'), r.get('read'), r.get('valid'), r.get('warp')) for r in rows(log, 'engine_seta')]
+        reads = [int(g.get('seta_reads', 0)) for g in stage]
+        out.update(seta_rows=seta, seta_reads_last=reads[-1] if reads else None,
+                   seta_refused_last=stage[-1].get('seta_refused') if stage else None)
+        if seta != [('read', 'off', 'ok', '1', '1.000'), ('engage', 'on', 'ok', '1', '6.000'), ('release', 'off', 'ok', '1', '1.000')]:
+            problems.append(f'armed: engine_seta rows {seta}')
+        if not stage or (stage[-1].get('seta_refused'), stage[-1].get('seta_invalid'), stage[-1].get('seta_read')) != ('0', '0', 'ok') or \
+                not reads or reads[-1] < 10:
+            problems.append(f'armed: engine_stage seta counts {out["seta_reads_last"]} {out["seta_refused_last"]}')
         return problems, out
     if mode == 'armed_refused':
         # The refusal at the first attach: one refused device row then, after the Reset, one attached row; the state rows
@@ -260,6 +277,16 @@ def validate(mode, r):
             problems.append(f'armed_refused: forwarded_stage_off frames {len(stage_off)}')
         if not rows(log, 'motion_output_reset'):
             problems.append('armed_refused: no motion_output_reset row')
+        # No SETA seam here: the tick site does not match in the fixture's memory, the read is refused and fails closed
+        # (one read row, never engaged; every read counted refused).
+        seta = [(r.get('event'), r.get('state'), r.get('read')) for r in rows(log, 'engine_seta')]
+        stage = rows(log, 'engine_stage')
+        out.update(seta_rows=seta)
+        if seta != [('read', 'off', 'site_mismatch')]:
+            problems.append(f'armed_refused: engine_seta rows {seta}')
+        drawn_stage = [g for g in stage if g.get('ran') == '1']
+        if not drawn_stage or drawn_stage[-1].get('seta_refused') != drawn_stage[-1].get('seta_reads') or drawn_stage[-1].get('seta') != '0':
+            problems.append('armed_refused: engine_stage seta counts')
         return problems, out
     if mode == 'unverified':
         if rows(log, 'engine_draw') or rows(log, 'engine_frame') or rows(log, 'engine_effects_device'):

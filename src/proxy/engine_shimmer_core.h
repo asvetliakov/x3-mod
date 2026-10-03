@@ -105,6 +105,7 @@ struct Rect {
     float nozzle_px = 0.f; // projected nozzle width (the rank)
     float seed = 0.f;      // 0..1
     float depth = 0.f;     // occlusion: a scene device depth in [0, depth) takes no shimmer (0: none)
+    float phase = 0.f;     // the nozzle's own flow phase, nozzle widths (engine_plumes::nozzle_phase, as its plume)
     float corners[4][2]{}; // the drawn quad (the rect plus one pixel): back-left, back-right, front-left, front-right
     int bounds[4]{};       // x0, y0, x1, y1 (exclusive), the quad's box clipped to the target
 };
@@ -247,11 +248,13 @@ inline bool rect_of(const ep::Vertex* v, const ep::View& view, const Projection&
 
 // The frame's rects (at most `limit` (<= max_rects) into `out`, ranked by projected nozzle width, largest first; ties keep record
 // order). The inputs are the plume stage's (engine_plumes::build): records, body lookup, view, preset, the stage's clock,
-// the view filter, look, tables and radii (null: no plume floor); `p` the unjittered projection and the target size.
+// the view filter, look, tables and radii (null: no plume floor), and its dynamics (the flow accumulator and the SETA
+// travel weight; its attack memory is never touched: the builder runs here without it, so the stage's transients and the
+// rects' geometry agree, the radiance aside); `p` the unjittered projection and the target size.
 inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLookup body, const ep::View& view,
                         const Projection& p, ep::Preset preset, float seconds, const ep::ViewFilter* filter,
                         const ep::Look* look, const ep::LookTables* tables, const float* radii, Rect* out,
-                        Stats* stats, unsigned limit = max_rects) noexcept {
+                        Stats* stats, unsigned limit = max_rects, const ep::Dynamics* dynamics = nullptr) noexcept {
     Stats local{};
     Stats& st = stats ? *stats : local;
     st = Stats{};
@@ -270,6 +273,12 @@ inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLooku
         tables = &computed;
     }
     if (limit > max_rects) limit = max_rects;
+    ep::Dynamics geometry{};
+    if (dynamics) {
+        geometry = *dynamics;
+        geometry.transients = nullptr;
+    }
+    const ep::Dynamics* dyn = dynamics ? &geometry : nullptr;
     constexpr std::uint32_t unfloored = ee::flag_steering | ee::flag_brake;
     const bool floors = radii && k.floor_scale > 0.f && ee::finite_f(k.floor_scale);
     ep::PulseCache pulses;
@@ -312,12 +321,17 @@ inline unsigned collect(const ee::Record* records, unsigned count, ep::BodyLooku
         ep::Vertex v[ep::vertices_per_nozzle];
         ep::BuildStats bs{};
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;
-        if (!ep::build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, v, &bs, &pulses)) {
+        if (!ep::build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, v, &bs, &pulses, dyn)) {
             ++st.refused;
             continue;
         }
         Rect rect{};
         if (!rect_of(v, view, p, float(ep::seed_byte(r)) * (1.f / 255.f), &rect, &st)) continue;
+        {
+            float factor = 1.f;
+            ep::flow_factor(k, value, &factor);
+            ep::nozzle_phase(dynamics ? dynamics->flow : 0., factor, &rect.phase);
+        }
         // Insert by rank (largest projected nozzle first); a full list drops its smallest.
         unsigned at = kept;
         while (at > 0 && out[at - 1].nozzle_px < rect.nozzle_px) --at;
@@ -357,10 +371,10 @@ inline bool union_bounds(const Rect* rects, unsigned n, int margin, int width, i
 }
 
 // The pixel program's constants (src/effects/engine_shimmer_ps.hlsl): c0 (1/W, 1/H, W, H), c1 (amplitude px, rect
-// count, flow phase / cell, boil), c2 (1 / cell, 0, 0, 0), c3 zero; per rect i: c4+i (origin, axis), c20+i (length,
-// half-width, back, 1 / nozzle px), c36+i (seed, depth, 0, 0). Unused rects stay zero (the loop stops at the count).
-// `phase` the flow phase in nozzle widths (engine_plumes::FlowPhase::wrapped), `seconds` the stage's clock.
-inline void constants(const Rect* rects, unsigned n, float amplitude, float phase, float seconds, float width, float height,
+// count, 0, boil), c2 (1 / cell, 0, 0, 0), c3 zero; per rect i: c4+i (origin, axis), c20+i (length,
+// half-width, back, 1 / nozzle px), c36+i (seed, depth, flow phase / cell, 0). Unused rects stay zero (the program
+// skips them past the count). `seconds` the stage's clock.
+inline void constants(const Rect* rects, unsigned n, float amplitude, float seconds, float width, float height,
                       float out[constant_vectors * 4]) noexcept {
     for (unsigned i = 0; i < constant_vectors * 4; ++i) out[i] = 0.f;
     if (n > max_rects) n = max_rects;
@@ -371,9 +385,9 @@ inline void constants(const Rect* rects, unsigned n, float amplitude, float phas
     c[3] = height;
     c[4] = amplitude;
     c[5] = float(n);
-    // The phase and the clock wrap (FlowPhase at 4,096 nozzle widths, the clock at 1,024 s): one jump of the field per
-    // wrap, as in the plume.
-    c[6] = phase / cell_widths;
+    // The phases and the clock wrap (nozzle_phase at 4,096 nozzle widths, the clock at 1,024 s): one jump of the field
+    // per wrap, as in the plume.
+    c[6] = 0.f;
     c[7] = seconds * boil_rate;
     c[8] = 1.f / cell_widths;
     for (unsigned i = 0; i < n; ++i) {
@@ -391,6 +405,7 @@ inline void constants(const Rect* rects, unsigned n, float amplitude, float phas
         b[3] = r.nozzle_px > 0.f ? 1.f / r.nozzle_px : 0.f;
         e[0] = r.seed * 61.7f;
         e[1] = r.depth;
+        e[2] = r.phase / cell_widths;
     }
 }
 

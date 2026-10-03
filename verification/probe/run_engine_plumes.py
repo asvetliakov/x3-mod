@@ -11,7 +11,9 @@ flickering sky, the occlusion cuts and rim widths (centred and off-centre at 90 
 fade, the presets, the temporal variation, the bulge and taper, the shock cells, after flight C the end-on energy at
 0 / 30 / 60 / 90 degrees, after flight D the plume floor (k x the ship's radius) and the mouth against the body at three
 throttles, Reset, the FP16 refusal, the EVENT-fenced stage cost at 30 / 100 nozzles and the CPU build with and without the
-plume floor).
+plume floor; after the gap analysis' phases 2 and 3 the idle floor's length at s = 0, the nozzle spill head-on behind a
+plane, the flow's world displacement at value 100 / 600 / 1,500 / 10,000 and its lag-1 correlation, the two-tone colour at
+u 0.1 / 0.5 / 0.9, the RCS puff and brake flare attack, the travel look at warp 6; ps slots gated at 800).
 --disc-ab runs the timing case alone with X3M_PLUMES_FIXTURE_DISC_AB=1: the stage cost with the end-on disc drawn and
 not drawn, three interleaved rounds at 30 / 100 nozzles and both sizes, into
 verification/results/engine-effects/plume_disc_ab.json (the summary record is not touched).
@@ -49,7 +51,7 @@ PRODUCTION_SOURCES = ('src/proxy/engine_plumes_core.h', 'src/proxy/engine_effect
                       'src/renderer/temporal_pass.h', 'src/renderer/temporal_pass.cpp')
 PROGRAMS = {'engine_plume_vs': ('verification/results/engine-plume-vertex-program.json', 'src/renderer/engine_plume_vertex_program_inc.h'),
             'engine_plume_ps': ('verification/results/engine-plume-pixel-program.json', 'src/renderer/engine_plume_pixel_program_inc.h')}
-GATES = {'core_survival': 0.9, 'trail_dark_px': 3, 'stage_gpu_ms_advisory': 0.1, 'build_100_ms': 0.1}
+GATES = {'core_survival': 0.9, 'trail_dark_px': 3, 'stage_gpu_ms_advisory': 0.1, 'build_100_ms': 0.1, 'ps_slots': 800}
 
 
 def sha(path):
@@ -103,7 +105,8 @@ def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
             'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
             'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
-            'TIMING_DISC', 'BUILD', 'BUILD_FLOOR')
+            'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'FLOW', 'FLOW_SAME', 'FLOW_LAG', 'COLOUR', 'COLOUR_HEAD',
+            'ATTACK', 'TRAVEL')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -137,6 +140,18 @@ def gates(r):
     out['build_floor_us'] = {str(x['records']): x['median_us'] for x in r['build_floor']}
     out['mouth_over_body'] = {f"{x['width']}_s{x['s']:.2f}": x['mouth_over_body'] for x in r['mouth']}
     out['build_100_within'] = any(x['records'] == 100 and x['median_us'] <= 1000 * GATES['build_100_ms'] for x in r['build'])
+    # After the gap analysis (phases 2 and 3): the pixel program's slots, and each new case's numbers.
+    out['ps_slots'] = r['attach'][0].get('ps_slots') if r['attach'] else None
+    out['ps_slots_within'] = out['ps_slots'] is not None and out['ps_slots'] <= GATES['ps_slots']
+    out['idle_L_over_value'] = {str(x['width']): x['L_over_value'] for x in r['idle']}
+    out['spill'] = {f"{x['width']}_{x['lane']}": {k: x[k] for k in ('law_median', 'law_max', 'look_median', 'law_beyond_max', 'guard_max')}
+                    for x in r['spill']}
+    out['flow_world_over_law'] = {f"{x['width']}_{x['value']:.0f}": x['ratio'] for x in r['flow']}
+    out['flow_600_over_1500'] = {str(x['width']): x['ratio'] for x in r['flow_same']}
+    out['flow_lag1'] = {f"{x['width']}_{x['value']:.0f}": x['lag1'] for x in r['flow_lag']}
+    out['colour_error_max'] = max((x['error'] for x in r['colour']), default=None)
+    out['attack'] = {f"{x['width']}_{x['kind']}": {'frame2': x['frame2'], 'back_ms': x['back_ms']} for x in r['attack']}
+    out['travel'] = {str(x['width']): {k: x[k] for k in ('weight', 'L_ratio', 'I_ratio', 'drawn_ratio', 'peak_ratio')} for x in r['travel']}
     return out
 
 
@@ -209,15 +224,18 @@ def main():
     record['passed'] = (done.returncode == 0 and not report['failed_checks'] and report['result'] is not None and
                         report['result']['verdict'] == 'PASS' and not args.only and record['gates_met']['core_survival'] and
                         record['gates_met']['trail_dark'] and record['gates_met']['build_100_within'] and
-                        record.get('build', {}).get('warnings', 0) == 0)
+                        record['gates_met']['ps_slots_within'] and record.get('build', {}).get('warnings', 0) == 0)
     (results / 'summary.json').write_text(json.dumps(record, indent=2) + '\n')
     g = record['gates_met']
     print(json.dumps({'passed': record['passed'], 'checks': report['check_count'], 'failed': report['failed_checks'],
                       'core_survival_min': g['core_survival_min'], 'trail_dark_px_max': g['trail_dark_px_max'],
                       'trail_flicker_px': g['trail_flicker_px'], 'stage_gpu_ms': g['stage_gpu_ms'], 'build_us': g['build_us'],
                       'build_floor_us': g['build_floor_us'], 'mouth_over_body': g['mouth_over_body'],
-                      'distance_ratio_gpu': g['distance_ratio_gpu'],
-                      'results': str(results.relative_to(ROOT))}, indent=1))
+                      'distance_ratio_gpu': g['distance_ratio_gpu'], 'ps_slots': g['ps_slots'],
+                      'idle_L_over_value': g['idle_L_over_value'], 'spill': g['spill'],
+                      'flow_world_over_law': g['flow_world_over_law'], 'flow_600_over_1500': g['flow_600_over_1500'],
+                      'flow_lag1': g['flow_lag1'], 'colour_error_max': g['colour_error_max'], 'attack': g['attack'],
+                      'travel': g['travel'], 'results': str(results.relative_to(ROOT))}, indent=1))
     return 0 if record['passed'] else 1
 
 

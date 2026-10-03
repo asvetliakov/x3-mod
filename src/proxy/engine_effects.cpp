@@ -24,9 +24,13 @@ const char* status_ = "not_initialized";
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 bool fixture_identity_ = false, fixture_redirects_ = false;
 std::uintptr_t body_global_ = lfc::census::body_global_va;
+std::uintptr_t seta_site_ = x3m::engine_plumes::seta_site_va, seta_slot_ = x3m::engine_plumes::seta_slot_va;
 #else
 constexpr std::uintptr_t body_global_ = lfc::census::body_global_va;
+constexpr std::uintptr_t seta_site_ = x3m::engine_plumes::seta_site_va, seta_slot_ = x3m::engine_plumes::seta_slot_va;
 #endif
+// The SETA site's compare: 0 not yet, 1 matched, 2 refused (for the session).
+unsigned char seta_site_state_ = 0;
 // The table, its index and the resolution: allocated at the first begin_frame (about 260 KB), never freed.
 struct State {
     core::BodyTable table;
@@ -284,7 +288,49 @@ Stats stats() {
     s.table_loaded = table_loaded_;
     return s;
 }
+const char* seta_status_name(SetaStatus s) {
+    switch (s) {
+    case SetaStatus::ok: return "ok";
+    case SetaStatus::identity: return "identity";
+    case SetaStatus::site: return "site_mismatch";
+    case SetaStatus::pointer: return "pointer";
+    case SetaStatus::read: return "read";
+    }
+    return "unknown";
+}
+SetaStatus seta_read(std::uint32_t* warp, std::uint32_t* mult) {
+    namespace ep = x3m::engine_plumes;
+    *warp = *mult = ep::seta_one;
+    if (!identity_) return SetaStatus::identity;
+    const DWORD error = GetLastError();
+    SetaStatus status = SetaStatus::ok;
+    if (!seta_site_state_) {
+        unsigned char bytes[ep::seta_site_length]{};
+        seta_site_state_ = x3m::engine_memory::read(seta_site_, bytes, sizeof bytes) &&
+                                   !std::memcmp(bytes, ep::expected_seta_site, sizeof bytes)
+                               ? 1
+                               : 2;
+    }
+    std::uint32_t cfg = 0, pair[2] = {0, 0};
+    if (seta_site_state_ != 1)
+        status = SetaStatus::site;
+    else if (!x3m::engine_memory::read(seta_slot_, &cfg, sizeof cfg) || !cfg)
+        status = SetaStatus::pointer;
+    else if (!x3m::engine_memory::read(std::uintptr_t(cfg) + ep::seta_warp_offset, pair, sizeof pair))
+        status = SetaStatus::read;
+    else {
+        *warp = pair[0];
+        *mult = pair[1];
+    }
+    SetLastError(error);
+    return status;
+}
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
+void fixture_seta(std::uintptr_t site_va, std::uintptr_t slot_va) {
+    seta_site_ = site_va;
+    seta_slot_ = slot_va;
+    seta_site_state_ = 0;
+}
 void fixture_identity(bool verified) {
     fixture_identity_ = verified;
 }

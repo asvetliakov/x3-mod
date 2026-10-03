@@ -4,7 +4,7 @@
 // and draws the rects' quads (the shared pass-through vertex program, src/temporal/quad_vs.hlsl) into the resolved
 // image itself. Every pixel sums the displacement of all rects (so overlapping quads write the same value), each one
 // mask x the direction of the gradient of animated value noise (the plume's hash family, engine_plume_ps.hlsl vnoise:
-// the cell grid in nozzle widths, scrolled along the axis by the plume's flow phase, boiling in the third axis with the
+// the cell grid in nozzle widths, scrolled along the axis by the nozzle's own flow phase as its plume, boiling in the third axis with the
 // stage's clock), clamps the sum to unit length and samples the copy amplitude pixels away. A pixel whose sum is zero
 // (outside every mask, occluded) is the copy point-sampled at its own centre: bit for bit the input.
 // Mask of a rect (engine_shimmer_core.h mask_at): s along the screen axis from the nozzle, t across;
@@ -16,11 +16,11 @@ sampler2D scene_linear : register(s0);
 sampler2D scene_point : register(s1);
 sampler2D lane : register(s2);
 float4 target : register(c0);    // 1/W, 1/H, W, H
-float4 frame : register(c1);     // amplitude (px), rect count, flow phase / cell, the clock x boil rate
+float4 frame : register(c1);     // amplitude (px), rect count, 0, the clock x boil rate
 float4 grid : register(c2);      // 1 / cell (cells per nozzle width), 0, 0, 0
 float4 rect_a[16] : register(c4);  // origin (px), unit axis
 float4 rect_b[16] : register(c20); // length (px ahead), half-width (px), back (px behind), 1 / nozzle width (px)
-float4 rect_c[16] : register(c36); // seed (x 61.7), occlusion depth (device; 0 none), 0, 0
+float4 rect_c[16] : register(c36); // seed (x 61.7), occlusion depth (device; 0 none), the nozzle's flow phase / cell, 0
 // The plume's value noise and its gradient in x and y: (d/dx, d/dy) of the smoothstep-trilinear interpolation.
 float2 vnoise_gradient(float3 p) {
     const float3 f = frac(p);
@@ -58,7 +58,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
                                (1.0 - smoothstep(0.35 * b.y, b.y, at));
             // Nozzle widths -> cells; the field moves away from the nozzle with the flow.
             const float2 q = float2(s, t) * (b.w * grid.x);
-            const float3 cell = float3(q.x - frame.z, q.y, c.x + frame.w);
+            const float3 cell = float3(q.x - c.z, q.y, c.x + frame.w);
             const float2 g = vnoise_gradient(cell);
             // Gradient (in the rect's frame) -> screen direction, at most unit length per rect: the slope reaches 1.5
             // per axis but is about 0.4 typically (measured: 0.47 of the amplitude at most with 1 / 1.5), so 1 / 0.75

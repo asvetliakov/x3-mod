@@ -125,7 +125,8 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     LARGE_INTEGER begin{}, end{};
     QueryPerformanceCounter(&begin);
     // The plume stage's inputs (motion_output_engine_plumes_inc.h run_engine_plumes): the scene camera's view rows, the
-    // scene view's records, the preset, the look and the stage's clock and flow phase (advanced by this frame's stage).
+    // scene view's records, the preset, the look, the stage's clock and its dynamics (the flow accumulator and the SETA
+    // travel weight, advanced by this frame's stage; its attack memory stays the stage's).
     engine_plumes::View view{};
     for (unsigned j = 0; j < 3; ++j) {
         view.rows[j * 4] = camera_scene_.r[j];
@@ -158,13 +159,15 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     filter.camera = engine_ring_->camera;
     filter.scene = engine_ring_->scene;
     filter.handle = scene_camera;
-    float seconds = 0.f, phase = 0.f;
+    float seconds = 0.f;
     engine_clock_.wrapped(&seconds);
-    engine_flow_.wrapped(&phase);
+    engine_plumes::Dynamics dynamics{};
+    dynamics.flow = engine_flow_.nozzle_widths;
+    dynamics.travel = engine_travel_weight_;
     const unsigned count = engine_shimmer::collect(engine_ring_->records, engine_ring_->count, &engine_plumes_body, view,
                                                    projection, plumes_preset_, seconds, &filter, &plumes_look_,
                                                    &plumes_tables_, engine_ring_->parent_radius, shimmer_rects_,
-                                                   &shimmer_stats_, shimmer_max_);
+                                                   &shimmer_stats_, shimmer_max_, &dynamics);
     HRESULT hr = S_FALSE;
     const bool attached = count && attach_engine_shimmer();
     if (!attached) shimmer_report_.skipped = count ? "attach" : "no_rects";
@@ -178,7 +181,6 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
         f.rects = shimmer_rects_;
         f.rect_count = count;
         engine_shimmer::amplitude_px(shimmer_px_, float(height), &f.amplitude_px);
-        f.phase = phase;
         f.seconds = seconds;
         f.caller_scene_open = scene_open_;
         f.caller_stateblock_recording = shadow_.recording;

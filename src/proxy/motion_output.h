@@ -1757,7 +1757,10 @@ private:
     std::uint64_t engine_far_frame_ = ~std::uint64_t(0); // the frame whose buffer was appended
     struct EngineFarCounts {
         unsigned records = 0, ring_full = 0, steering = 0, invalid = 0;
+        unsigned duplicates = 0; // copies of a (node handle, view handle) pair already appended this frame
     } engine_far_{};
+    bool engine_far_counted_ = false;            // this device is among the far block's requesting devices
+    engine_far_jets::core::Seen engine_far_seen_; // the append's (node handle, view handle) dedupe, one generation a frame
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one
@@ -1779,10 +1782,24 @@ private:
     // The rule that chose this frame's scene view (engine_plumes::ViewRule: none, own ship, majority) and the session
     // count of each, for the engine_stage row.
     engine_plumes::ViewRule plumes_view_rule_ = engine_plumes::ViewRule::none;
-    std::uint64_t plumes_view_own_total_ = 0, plumes_view_majority_total_ = 0;
+    bool plumes_view_far_ = false; // no drawn scene-phase record: the scene view is the most frequent far handle (view_rule=far)
+    std::uint64_t plumes_view_own_total_ = 0, plumes_view_majority_total_ = 0, plumes_view_far_total_ = 0;
     std::uint64_t engine_qpc_frequency() noexcept; // qpc_frequency_, read once
     engine_plumes::StageClock engine_clock_{};     // the plume stage's clock (flow, pulse, the ribbons' pool)
-    engine_plumes::FlowPhase engine_flow_{};       // the plumes' flow phase, advanced by each clock step
+    engine_plumes::FlowPhase engine_flow_{};       // the plumes' flow accumulator, advanced by each clock step
+    // After the gap analysis (docs/architecture/engine-exhaust-gap-analysis.md): the RCS puff attack's memory (gap 6;
+    // allocated at configure while the stage is requested, null: no attack) and the SETA travel look (gap 7): the
+    // ramp, this frame's read (engine_effects::seta_read) and the session's counts; one engine_seta row per change of
+    // the ramp's state or of the read's status under --debug (the latter at most seta_status_rows per device).
+    std::unique_ptr<engine_plumes::Transients> engine_transients_;
+    engine_plumes::TravelRamp engine_travel_{};
+    float engine_travel_weight_ = 0.f, seta_warp_ = 1.f, seta_rate_ = 1.f;
+    unsigned char seta_status_ = 0, seta_logged_status_ = 0xff; // engine_effects::SetaStatus
+    bool seta_valid_ = true;
+    unsigned seta_status_rows_ = 0;
+    static constexpr unsigned seta_status_row_cap = 16;
+    std::uint64_t seta_reads_ = 0, seta_refused_ = 0, seta_invalid_ = 0;
+    void engine_seta_step(double step) noexcept;
     engine_plumes::Look plumes_look_{};            // default_look with the configured nozzle width
     engine_plumes::LookTables plumes_tables_{};    // look_tables(plumes_look_), computed at configure (load)
     float plumes_flow_rate_ = 0.f;                 // engine_plumes::flow_rate(plumes_look_), nozzle widths per second

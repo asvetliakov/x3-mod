@@ -23,16 +23,17 @@ constexpr unsigned view_handle_offset = 0x28, view_context_offset = 0x1c, contex
 constexpr std::uint32_t steering_model = 566; // v/00566: JET + SMALLJET, the RCS nozzle (engine_effects_core.h)
 constexpr unsigned capacity = 1024;           // entries per frame (the record ring's capacity)
 
-// One far jet as the pass left it: 76 bytes, raw integers.
+// One far jet as the pass left it: 72 bytes, raw integers. No scene-phase tag: the main view's cull pass may run before
+// the scene-boundary selector enters its scene phase, so the plume stage decides by the view handle alone
+// (motion_output_engine_plumes_inc.h engine_far_append and the view rule there).
 struct Raw {
     std::uint32_t node, view_handle, context, parent;
     std::uint32_t handle, model;
     std::uint32_t scale70, scale80, scale88;
     std::int32_t position[3];
     std::int32_t basis_x[3], basis_z[3]; // 16.16 rows 0 and 2 of the node basis: model x and model z (c4-6 order a)
-    std::uint32_t scene;                 // the scene-boundary selector was in its scene phase (the draw path's tag)
 };
-static_assert(sizeof(Raw) == 76, "the raw entry");
+static_assert(sizeof(Raw) == 72, "the raw entry");
 
 // The engine's own verdict at the site, mirroring 0x0047d2a2..0x0047d2c3 and the degenerate test after it (the census's
 // culled_size and culled_min, cull_census_core.h classify): limit = max(node +0x1d8, parent +0x1d8 when a parent),
@@ -53,5 +54,61 @@ struct Stats {
     std::uint32_t steering = 0; // v/00566 nodes: no entry (the recogniser's RCS rule; SMALLJET table entries at conversion)
     std::uint32_t overflow = 0; // the buffer was full
     std::uint32_t disarmed = 0; // calls while no device requested the plume stage
+};
+
+// The far block's arming across devices: each device that requests the plume stage counts once (its own `counted`
+// flag), and the handler copies while at least one does, so an old device's teardown after a new device configured
+// itself lowers the count instead of disarming the session. The device that owns the resolve (the requesting device
+// whose resolve last took the stage's arming decision: claim) empties the buffer at its frame begin; with no owner
+// (none resolved yet, or the owner withdrew) every requesting device does. Device identities are opaque, non-zero.
+struct Requests {
+    unsigned devices = 0;
+    std::uintptr_t owner = 0;
+    void request(bool* counted, bool requested, std::uintptr_t device) noexcept {
+        if (requested == *counted) return;
+        *counted = requested;
+        if (requested) {
+            ++devices;
+            return;
+        }
+        if (devices) --devices;
+        if (owner == device) owner = 0;
+    }
+    bool armed() const noexcept { return devices != 0; }
+    void claim(std::uintptr_t device) noexcept { owner = device; }
+    bool clears(std::uintptr_t device) const noexcept { return !owner || owner == device; }
+};
+
+// The frame's (node handle, view handle) pairs at the plume stage's append: the cull pass may run more than once per
+// view, so one jet can be copied twice under the same view. A generation-stamped open-addressing set of 2,048 slots,
+// twice the buffer's capacity, so a probe always meets a free slot (a frame inserts at most `capacity` keys). begin()
+// opens a frame without clearing (the stamps are cleared once when the generation wraps). insert() is true for a new
+// pair and false for a duplicate; a zero node handle has no identity and is never a duplicate. 24 KB, integer only.
+struct Seen {
+    static constexpr unsigned slots = 2 * capacity;
+    static_assert((slots & (slots - 1)) == 0, "a power of two");
+    std::uint64_t key[slots];
+    std::uint32_t stamp[slots];
+    std::uint32_t generation = 1;
+    Seen() noexcept : key{}, stamp{} {}
+    void begin() noexcept {
+        if (++generation) return;
+        for (unsigned i = 0; i < slots; ++i) stamp[i] = 0;
+        generation = 1;
+    }
+    bool insert(std::uint32_t node_handle, std::uint32_t view_handle) noexcept {
+        if (!node_handle) return true;
+        const std::uint64_t k = (std::uint64_t(node_handle) << 32) | view_handle;
+        unsigned i = unsigned((k * 0x9e3779b97f4a7c15ull) >> 53); // the top 11 bits: 0 .. slots - 1
+        for (unsigned n = 0; n < slots; ++n, i = (i + 1) & (slots - 1)) {
+            if (stamp[i] != generation) {
+                stamp[i] = generation;
+                key[i] = k;
+                return true;
+            }
+            if (key[i] == k) return false;
+        }
+        return true; // unreachable at <= capacity inserts per generation: kept rather than dropped
+    }
 };
 } // namespace x3m::engine_far_jets::core

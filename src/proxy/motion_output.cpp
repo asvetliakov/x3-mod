@@ -411,7 +411,9 @@ MotionOutput::~MotionOutput() {
     release_resources();
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
     delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
-    if (plumes_requested_) engine_far_jets::set_armed(false); // the cull stub's far block copies nothing without a device
+    // The far block's device count: this device withdraws its request (and its claim on the buffer's frame); the far
+    // jets stay armed while another device requests the plume stage.
+    engine_far_jets::request(&engine_far_counted_, false, this);
 }
 
 unsigned MotionOutput::device_references() const noexcept {
@@ -2413,6 +2415,8 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Phase 3: a frame without records still runs while ribbons fade; every cut reaches the ribbon pool. After
             // flight E a frame whose only jets are far ones (the small-parts cull's copies, appended in the stage) runs too.
             if (in.cut && ribbons_) ribbons_->note_cut();
+            // This device's resolve takes the stage's decision: it owns the far buffer's frame (engine_far_jets.h).
+            if (plumes_requested_) engine_far_jets::claim(this);
             if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
                 (engine_ring_->count || engine_far_jets::count() || engine_ribbons_live())) {
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
@@ -5263,8 +5267,6 @@ void MotionOutput::observe(renderer::Event& e, HRESULT result) noexcept {
     e.result = static_cast<std::uint32_t>(result);
     const bool was_scene = selector_.state() == renderer::BoundaryState::Scene;
     selector_.observe(e);
-    // The far jets' scene tag (engine_far_jets.h): the selector's phase as the cull pass meets it, as a draw is tagged.
-    if (plumes_requested_) engine_far_jets::note_scene(selector_.state() == renderer::BoundaryState::Scene);
     // The scene phase ends with the event that moves the selector past Scene
     // (the bloom copy or a rejection); the cut verdict is complete then, so a
     // future consumer at the copy boundary can read it before Present. A

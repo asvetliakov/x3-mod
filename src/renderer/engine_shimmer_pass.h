@@ -34,7 +34,6 @@ struct EngineShimmerFrame {
     const engine_shimmer::Rect* rects = nullptr;
     unsigned rect_count = 0;
     float amplitude_px = 0.f; // pixels (engine_shimmer::amplitude_px)
-    float phase = 0.f;        // the plume's flow phase, nozzle widths (engine_plumes::FlowPhase::wrapped)
     float seconds = 0.f;      // the stage's clock (engine_plumes::StageClock::wrapped)
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
