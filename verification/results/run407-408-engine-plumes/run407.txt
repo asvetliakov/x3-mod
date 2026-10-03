@@ -1,0 +1,178 @@
+F8 frames [3640, 3641, 3642, 3643, 3644, 3645, 3646, 3647]
+engine_stage records nozzles ships floored floor_unknown culled_small culled_behind culled_rows culled_idle capped faded skipped_other_view stage_us
+3640 12 12 - 12 0 0 0 0 0 6 10 0 140.2
+3641 12 12 - 12 0 0 0 0 0 6 10 0 6355.0
+3642 12 12 - 12 0 0 0 0 0 6 10 0 3032.9
+3643 12 12 - 12 0 0 0 0 0 6 10 0 3413.8
+3644 12 12 - 12 0 0 0 0 0 6 10 0 3478.2
+3645 12 12 - 12 0 0 0 0 0 6 10 0 2997.1
+3646 12 12 - 12 0 0 0 0 0 6 10 0 2754.1
+3647 12 12 - 12 0 0 0 0 0 6 10 0 2853.6
+engine_frame candidates not_jet records suppressed forwarded_unscoped forwarded_snapshot forwarded_opaque forwarded_state forwarded_overflow forwarded_native forwarded_stage_off unknown_body bodies rows rows_more
+3640 27 15 12 12 0 0 0 0 0 0 0 0 253 12 0
+3641 27 15 12 12 0 0 0 0 0 0 0 0 253 12 0
+3642 27 15 12 12 0 0 0 0 0 0 0 0 253 12 0
+3643 31 19 12 12 0 0 0 0 0 0 0 0 253 12 0
+3644 27 15 12 12 0 0 0 0 0 0 0 0 253 12 0
+3645 32 20 12 12 0 0 0 0 0 0 0 0 253 12 0
+3646 27 15 12 12 0 0 0 0 0 0 0 0 253 12 0
+3647 27 15 12 12 0 0 0 0 0 0 0 0 253 12 0
+cull_census verdicts per frame; engine bodies (name contains engine/fx_)
+3640 {'kept': 163, 'culled_dock': 12, 'culled_min': 2, 'culled_size': 32, 'culled_small': 12} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+3641 {'kept': 163, 'culled_dock': 12, 'culled_min': 2, 'culled_size': 32, 'culled_small': 12} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+3642 {'kept': 163, 'culled_dock': 12, 'culled_min': 2, 'culled_size': 32, 'culled_small': 12} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+3643 {'kept': 167, 'culled_dock': 12, 'culled_min': 4, 'culled_size': 32, 'culled_small': 13} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+3644 {'kept': 163, 'culled_dock': 12, 'culled_min': 2, 'culled_size': 32, 'culled_small': 12} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+3645 {'kept': 168, 'culled_dock': 12, 'culled_min': 4, 'culled_size': 32, 'culled_small': 12} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+3646 {'kept': 163, 'culled_dock': 12, 'culled_min': 2, 'culled_size': 32, 'culled_small': 12} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+3647 {'kept': 163, 'culled_dock': 12, 'culled_min': 2, 'culled_size': 32, 'culled_small': 12} engine: {('kept', 'effects\\engines\\fx_engine_xtc_red_big3'): 8, ('kept', 'effects\\engines\\fx_engine_xtc_red_huge'): 2, ('kept', 'effects\\engines\\fx_engine_xtc_red_tiny'): 1, ('kept', 'effects\\engines\\fx_engine_xtc_red_nor'): 1, ('kept', 'effects/menugfx/GUI/gui_master'): 45, ('kept', 'effects/menugfx/hud_target_text'): 3, ('kept', 'effects/menugfx/hud_radar_2d'): 1, ('kept', 'effects/menugfx/hud_info_2d'): 1, ('kept', 'effects/menugfx/hud_weapons_2d'): 1, ('kept', 'effects/menugfx/GUI/sidebar'): 1, ('kept', 'effects\\menugfx\\GUI\\gui_master'): 1}
+non-kept bodies over F8 frames (top 25):
+  96 culled_dock -
+  80 culled_size -
+  80 culled_small -
+  64 culled_size ships\props\m6maingun_static
+  64 culled_size ships\props\m6maingun_moving
+  16 culled_min v\00001
+  16 culled_size ships\props\split_m6turretA_base
+  16 culled_size ships\props\split_m6turretA_weapon
+  16 culled_size ships\props\split_m6turretA_socket
+  8 culled_small ships\split\split_tp_nomad\hull
+  8 culled_small stations\connections\connect_argon_pipe_medium_cargo_cargoanimB
+  2 culled_min v\12014
+  2 culled_min v\12013
+  1 culled_small v\10667
+census rows whose body mentions engines (any verdict): 96
+engine_draw rows on F8 frames: frame model name lod size radius value_eff verdict dist(origin vs cam)
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3640 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3640 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3640 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3640 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3640 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3641 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3641 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3641 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3641 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3641 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3642 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3642 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3642 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3642 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3642 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3643 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3643 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3643 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3643 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3643 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3644 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3644 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3644 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3644 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3644 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3645 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3645 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3645 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3645 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3645 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3646 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3646 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3646 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3646 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3646 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56c dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56d dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56b dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56f dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56a dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b56e dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b566 dist=-
+3647 20405 fx_engine_xtc_red_big3 lod=- size=187.498 R=10961.6 veff=749.993 suppressed handle=0005b567 dist=-
+3647 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b569 dist=-
+3647 20407 fx_engine_xtc_red_huge lod=- size=939.211 R=10961.6 veff=1096.16 suppressed handle=0005b568 dist=-
+3647 20400 fx_engine_xtc_red_nor lod=- size=9.99988 R=67.2592 veff=23.5407 suppressed handle=0000c1d6 dist=-
+3647 20399 fx_engine_xtc_red_tiny lod=- size=5.03994 R=67.2592 veff=20.1598 suppressed handle=0000c1cf dist=-
+handles with >1 radius value on F8 frames: none
+floor_unknown>0 frames (whole session): 0
+engine_stage ran=1 frames 12374 stage_us median 98.5
+forwarded_stage_off total 0
+frame_end dt median 17.0
+camera_state keys sample: ['background_p00', 'background_p11', 'background_rotation_deg', 'background_valid', 'camera_cut', 'cut_deg', 'device', 'failure', 'frame', 'history_view_frame', 'history_view_valid', 'mode', 'p00', 'p11', 'p20', 'p21', 'p22', 'p32', 'policy', 'prev_valid_at_policy', 'projection', 'r00', 'r01', 'r02', 'r10', 'r11', 'r12', 'r20', 'r21', 'r22']
+object_bounds rows on F8 frames: 1624 keys: ['device', 'frame', 'index', 'inside', 'model', 'node', 'sx0', 'sx1', 'sy0', 'sy1', 'zmax', 'zmin']
+engine_effects_plumes preset=default setting=- status=ok stage=requested cycle=ctrl+alt+f6 nozzle=0.500 nozzle_setting=- nozzle_status=ok floor=1.000 floor_setting=- floor_status=ok
+engine_plumes_state device=1 frame=328 armed=1 reason=armed glow=suppressed drawn=plumes preset=default
+session_end frames=12982 elapsed_ms=294962 devices=1 resets=0 exception=0 dropped=0 filter=ours
+census jet rows per frame: frame kept culled_small other | culled s range | culled d range | kept d max
+3640 12 0 0 - - 9833..715569 thr=-
+3641 12 0 0 - - 9833..712662 thr=-
+3642 12 0 0 - - 9833..709737 thr=-
+3643 12 0 0 - - 9833..706798 thr=-
+3644 12 0 0 - - 9833..703845 thr=-
+3645 12 0 0 - - 9833..700881 thr=-
+3646 12 0 0 - - 9833..697907 thr=-
+3647 12 0 0 - - 9833..694922 thr=-
+engine_draw summary per frame: model:count R values
+3640 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+3641 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+3642 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+3643 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+3644 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+3645 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+3646 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+3647 {'20405': 8, '20407': 2, '20400': 1, '20399': 1} ['10961.6', '67.2592'] lod field present: False
+engine_draw joined to census (frame: model s d) and farthest ships\ body node in census (any verdict)
+3640 joined 12 max d drawn 715569 s of drawn ['32', '33', '343', '358', '47', '62', '70'] | hull nodes 3 farthest hull (19499121, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
+3641 joined 12 max d drawn 712662 s of drawn ['32', '33', '346', '362', '47', '48', '62', '71'] | hull nodes 3 farthest hull (19484664, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
+3642 joined 12 max d drawn 709737 s of drawn ['32', '33', '349', '365', '47', '48', '62', '71'] | hull nodes 3 farthest hull (19470192, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
+3643 joined 12 max d drawn 706798 s of drawn ['32', '33', '34', '352', '368', '47', '48', '62', '72'] | hull nodes 3 farthest hull (19455704, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
+3644 joined 12 max d drawn 703845 s of drawn ['32', '34', '355', '372', '48', '62', '73'] | hull nodes 3 farthest hull (19441203, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
+3645 joined 12 max d drawn 700881 s of drawn ['32', '34', '358', '375', '48', '49', '62', '73'] | hull nodes 3 farthest hull (19426691, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
+3646 joined 12 max d drawn 697907 s of drawn ['32', '34', '361', '378', '48', '49', '62', '74'] | hull nodes 3 farthest hull (19412168, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
+3647 joined 12 max d drawn 694922 s of drawn ['32', '34', '365', '382', '49', '62', '75'] | hull nodes 3 farthest hull (19397634, 'culled_small', 'ships\\split\\split_tp_nomad\\hull')
