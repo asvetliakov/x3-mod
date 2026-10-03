@@ -17,6 +17,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import agx_reference as agx  # noqa: E402
 
 I_CORE = 4.0  # I(s = 1)
+N_PX = 60     # pixels per nozzle width in the model grid
+# The law as implemented (docs/architecture/engine-exhaust-look-critique.md "Implemented"): the proposal with the cells'
+# gap depth 0.85 (min(1, 1.7 shock)) ramped in over half a period, and the hot core's boost cooling to half over
+# smoothstep(0.2, 0.8, u). The proposal: gap 0.8 over a whole period, no cooling.
+IMPLEMENTED = dict(gap=0.85, ramp=0.08, cool=0.5)
 TINTS = {
     "argon-blue": ((0.14, 0.71, 1.0), (0.27, 0.90, 1.0)),
     "split-red": ((1.0, 0.15, 0.15), (1.0, 0.81, 0.81)),
@@ -68,7 +73,8 @@ def head_colour(mean, peak, k_min=0.0):
 
 
 def law(kind, X, Y, tint_name, phase=7.3, t=0.5, seed=0.37, s=1.0):
-    """kind: 'current' | 'proposed'. X along the axis (nozzle widths), Y across. Returns (rgb radiance, scalar body)."""
+    """kind: 'current' | 'proposed' | 'implemented'. X along the axis (nozzle widths), Y across. Returns (rgb radiance,
+    scalar body)."""
     mean, peak = TINTS[tint_name]
     mean = np.array(mean)
     L = 4.0
@@ -94,7 +100,8 @@ def law(kind, X, Y, tint_name, phase=7.3, t=0.5, seed=0.37, s=1.0):
         colour = tone + (WHITE[None, None, :] - tone) * heat[..., None]
         body = I_CORE * edge * tail * inside * cells * turb * (1 + 0.6 * core_mask)
         return colour * body[..., None], body
-    # proposed
+    # proposed / implemented
+    gap, ramp, cool = (IMPLEMENTED["gap"], IMPLEMENTED["ramp"], IMPLEMENTED["cool"]) if kind == "implemented" else (0.8, 0.16, 0.0)
     p = np.stack([(X - phase) * 1.0, Y * 4.5, np.full_like(X, seed * 1861.5 + t * 0.7)], -1)  # the streak field, 4.5:1
     n1 = fbm(p)
     n2 = fbm(p * 2.2 + np.array([5.0, 2.0, 1.0]))
@@ -108,7 +115,7 @@ def law(kind, X, Y, tint_name, phase=7.3, t=0.5, seed=0.37, s=1.0):
     c = (0.5 + 0.5 * np.cos(2 * np.pi * u / 0.16)) ** 3  # sharp crests, dark gaps; mean 0.3125
     # the cells carve the body (crest 1, gap 1 - a): a = shock_gap 0.8 at the mouth, fading 5 cfade along, ramped in
     # over the first period, across the core to 0.9 w
-    a_cells = 0.8 * np.exp(-u * 3.0) * smoothstep(0, 1, u / 0.16) * (1 - smoothstep(0.3, 0.9, radial)) * s
+    a_cells = gap * np.exp(-u * 3.0) * smoothstep(0, ramp, u) * (1 - smoothstep(0.3, 0.9, radial)) * s
     cells = 1 - a_cells * (1 - c)
     turb = 1 + 0.6 * 2.2 * S2 * (0.4 + 0.6 * np.clip(radial, 0, 1))  # steady core, boiling sheath
     heat = 0.7 * core * (1 - smoothstep(0.05, 0.3, u))
@@ -119,7 +126,7 @@ def law(kind, X, Y, tint_name, phase=7.3, t=0.5, seed=0.37, s=1.0):
     hot = head[None, None, :] + (body_tint - head[None, None, :]) * smoothstep(0.2, 0.5, uc)[..., None]
     colour = hot + (tint_dark[None, None, :] - hot) * smoothstep(0.25, 0.9, radial)[..., None]
     colour = colour + (WHITE[None, None, :] - colour) * heat[..., None]
-    body = I_CORE * edge * tail * inside * cells * turb * profile * (1 + 0.6 * core)
+    body = I_CORE * edge * tail * inside * cells * turb * profile * (1 + 0.6 * core * (1 - cool * smoothstep(0.2, 0.8, uc)))
     return colour * body[..., None], body
 
 
@@ -137,7 +144,7 @@ def luma_lin(rgb):
 
 
 def metrics(label, rgb, body, X, Y):
-    n_px = 60  # pixels per nozzle width in the model grid
+    n_px = N_PX
     Yl = luma_lin(rgb)
     disp = display(rgb)
     Yd = luma_lin(np.clip(disp, 0, 1) ** 2.2)
@@ -213,7 +220,7 @@ def save_png(rgb, path):
 
 
 def main():
-    n_px = 60
+    n_px = N_PX
     png_dir = sys.argv[sys.argv.index("--png") + 1] if "--png" in sys.argv else None
     xs = np.arange(-0.5, 4.6, 1.0 / n_px)
     ys = np.arange(-1.2, 1.2 + 1e-9, 1.0 / n_px)
@@ -227,15 +234,17 @@ def main():
         print(f"  {name}: current {np.round(head_colour(mean, peak), 2)}, proposed {np.round(head_colour(mean, peak, 0.75), 2)}, mean {mean}")
     res = {}
     for tint in TINTS:
-        for kind in ("current", "proposed"):
+        for kind in ("current", "proposed", "implemented"):
             rgb, body = law(kind, X, Y, tint)
             res[(tint, kind)] = metrics(f"{tint:>10} {kind:>8}", rgb, body, X, Y)
             if png_dir:
                 save_png(rgb, os.path.join(png_dir, f"model_{tint}_{kind}.png"))
     for tint in TINTS:
-        c, p = res[(tint, "current")], res[(tint, "proposed")]
-        print(f"# {tint}: proposed / current body energy {p['energy'] / c['energy']:.2f}, luma energy {p['energy_rgb'] / c['energy_rgb']:.2f}, "
-              f"peak {p['peak/I'] / c['peak/I']:.2f}")
+        c = res[(tint, "current")]
+        for kind in ("proposed", "implemented"):
+            p = res[(tint, kind)]
+            print(f"# {tint}: {kind} / current body energy {p['energy'] / c['energy']:.2f}, luma energy {p['energy_rgb'] / c['energy_rgb']:.2f}, "
+                  f"peak {p['peak/I'] / c['peak/I']:.2f}")
 
 
 if __name__ == "__main__":

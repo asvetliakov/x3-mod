@@ -79,6 +79,11 @@ int main() {
     }
     const View v = view();
     const float Z = 2000.f, V = 50.f / ppu(Z); // the nozzle 25 px at the default 0.5, under the near fade band
+    // The revised law's detail level at that 25 px nozzle, smoothstep(16, 40, 25) = 0.316: the halo's e-fold
+    // (0.5 + (0.32 - 0.5) detail) x halo 1.1 nozzle widths and the disc's halo gain 3 + (2.82 - 3) detail.
+    float DL = 0.f;
+    law::smooth(16.f, 40.f, 25.f, &DL);
+    const float SG = (.5f + (.32f - .5f) * DL) * 1.1f, DH = 3.f + (2.82f - 3.f) * DL;
     std::vector<Vertex> out(8 * 16);
     BuildStats st{};
     // ----------------------------------------------------------- side view: the axial quad (no length pulse)
@@ -128,10 +133,11 @@ int main() {
         for (unsigned c = 0; c < 4; ++c) {
             const Vertex& x = out[c];
             for (unsigned j = 0; j < 3; ++j) layout = layout && near(x.position[j], r.origin[j] + a[j] * x.local[0] + nrm[j] * x.local[1], 1e-4f);
-            layout = layout && near(x.local[2], L) && near(x.local[3], nw) && near(x.shape[0], .55f) && near(x.shape[1], V) && x.shape[2] == 0.f && x.shape[3] == 0.f;
+            layout = layout && near(x.local[2], L) && near(x.local[3], nw) && near(x.shape[0], SG) && near(x.shape[1], V) && x.shape[2] == 0.f && x.shape[3] == 0.f;
         }
-        expect(layout && plane, "axial quad: position = origin + axis x + side y, L = z value, n = value / 2 (the default nozzle 0.5), halo sigma0 0.55 nozzle widths, kind 0");
-        // The body's eroded edge (1 + 0.48 erode of w(u)), the halo window (2.25 sigma0, the nozzle's sigma along the
+        expect(layout && plane, "axial quad: position = origin + axis x + side y, L = z value, n = value / 2 (the default nozzle 0.5), halo sigma0 by the detail level (0.55 -> 0.352 nozzle widths), kind 0");
+        // The body's eroded edge (1 + 0.7 erode (0.6 + 0.8 u) of w(u): the revised law's streak erosion at S2's minimum),
+        // the halo window (2.25 sigma0, the nozzle's sigma along the
         // whole plume as in the mock-up; half discs behind the nozzle and past the tip) and the ring (u near 0) inside the
         // trapezoid, linear in x. The mock-up's width: bulge 1.15, taper 0.45, tail narrowing 0.6.
         auto ss = [](float e0, float e1, float x) { float t = (x - e0) / (e1 - e0); t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
@@ -144,9 +150,9 @@ int main() {
         bool covered = true;
         float worst = 1e9f;
         for (float x = x0; x <= x1; x += (x1 - x0) / 512.f) {
-            const float u = x / L, uc = u < 0 ? 0 : u > 1 ? 1 : u, w = w_of(uc), reach = 2.25f * .55f * nw;
+            const float u = x / L, uc = u < 0 ? 0 : u > 1 ? 1 : u, w = w_of(uc), reach = 2.25f * SG * nw;
             float need = 0;
-            if (u >= 0 && u <= 1) need = std::max((1.f + .48f * .57f) * w * nw, reach);
+            if (u >= 0 && u <= 1) need = std::max((1.f + .7f * .57f * (.6f + .8f * u)) * w * nw, reach);
             else {
                 const float d = u < 0 ? -x : x - L;
                 need = d < reach ? std::sqrt(reach * reach - d * d) : 0.f;
@@ -156,7 +162,7 @@ int main() {
             covered = covered && need <= have + 1e-3f;
             worst = std::min(worst, have - need);
         }
-        expect(covered && x0 <= -2.25f * .55f * nw && x1 >= L, "the trapezoid covers the body, the halo window and the ring");
+        expect(covered && x0 <= -2.25f * SG * nw && x1 >= L, "the trapezoid covers the body, the halo window and the ring");
         // Overdraw against the first look's trapezoid (sigma 0.5 value, 2.25 sigma reach, r0 0.15 value).
         for (const float zs : {.25f, 1.125f, 2.f}) {
             const ee::Record q = rec(0, 0, Z, -1, 0, 0, V, zs);
@@ -169,7 +175,7 @@ int main() {
         build(&r, 1, nullptr, v, Preset::standard, 5.f, out.data(), 16, &st, nullptr, &flat);
         expect(near(out[0].intensity[0], 4.f) && near(out[0].intensity[1], HB) && out[0].intensity[2] == 0.f &&
                out[0].intensity[3] == Z && out[4].intensity[3] == Z, "I_core 4, I_halo 0.20 (hb x lerp(0.3, 1, 1)) at s 1; the axis's view z; the nozzle's view z");
-        expect(out[0].tint == 0xffffffffu, "cluster white: neutral tint");
+        expect((out[0].tint & 0xffffffu) == 0xffffffu, "cluster white: neutral tint");
         expect((out[0].params >> 24) == 0u && (out[0].fog >> 24) == 255u && ((out[0].params >> 16) & 255u) == 255u && ((out[0].params >> 8) & 255u) == seed_byte(r) &&
                (out[0].params & 255u) == unsigned(int(.3f / 4.f * .5f * 255.f + .5f)), "params: s 1, the seed, I_ring / I_core / 2 (ring 0.3), no disc weight; fog A sin(view) 1");
         bool collapsed = true;
@@ -206,7 +212,8 @@ int main() {
         std::printf("FBM min=%.4f max=%.4f mean=%.4f\n", double(fl), double(fh), double(fs / 20000.f));
     }
     // ----------------------------------------------------------- throttle law and presets (value 30 px: strong's
-    // drawn width 2 x 2.25 x 0.825 x 15 px = 56 px stays under the fade band of the 0.12 H cap)
+    // drawn width 2 x 2.25 x 0.825 x 15 px = 56 px stays under the fade band of the 0.12 H cap; a 15 px nozzle is at the
+    // detail level 0: the previous law's halo e-fold 0.5 halo)
     for (const float zs : {.25f, 1.125f, 2.f})
         for (unsigned pr = 0; pr < 3; ++pr) {
             const float V = 30.f / ppu(Z);
@@ -224,30 +231,46 @@ int main() {
     {
         const ee::Record away = rec(0, 0, Z, 0, 0, 1, V, 2.f), at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
         build(&away, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &flat);
-        const float nw = .5f * V, half = std::max((1.f + .48f * .57f) * .575f, 2.25f * .55f) * nw + 1.f / ppu(Z); // the halo's reach
+        // The disc's half: the body's eroded edge at the along-mean growth (1 + 0.7 erode of w <= 0.575), the ring, the
+        // halo's reach.
+        const float nw = .5f * V, half = std::max(std::max((1.f + .7f * .57f) * .575f, .46f * 1.15f + 3.f * .0645497f), 2.25f * SG) * nw + 1.f / ppu(Z);
         const float Ln = 2.f * V / nw; // L / n = 4 at full throttle
-        // The side view's peak per I_core on the axis (after flight D, with the mouth ramp): 1.6 x max over u of
-        // tail(u) x ramp(u) x (1 + s cell(u)), an independent replica (std::exp / std::cos) on 4,097 samples.
+        // The side view's peak per I_core on the axis (after flight D, with the mouth ramp; the revised law's carving
+        // cells, the cooling core): max over u of (1 + 0.6 (1 - 0.5 smoothstep(0.2, 0.8, u))) x tail(u) x ramp(u) x
+        // (1 - s carve(u)), carve = 0.85 exp(-3 u) smoothstep(0, 0.08, u)
+        // (1 - ((1 + cos(2 pi u / 0.16)) / 2)^3), an independent replica (std::exp / std::cos) on 4,097 samples.
         auto ss_ = [](float e0, float e1, float x) { float q = (x - e0) / (e1 - e0); q = q < 0 ? 0 : q > 1 ? 1 : q; return q * q * (3 - 2 * q); };
         auto axis_at = [&](float s_) {
             float best = 0.f;
             for (unsigned i = 0; i <= 4096; ++i) {
                 const float u = float(i) / 4096.f;
                 const float tl = (1 - ss_(.4f, 1, u)) * std::exp(-.84f * u) * (1 - .5f * (1 - ss_(0, .3f, u)));
-                const float cl = .5f * std::cos(6.2831853f * u / .16f) * std::exp(-3.f * u) * ss_(0, .16f, u);
-                best = std::max(best, tl * (1 + s_ * cl));
+                const float cr = .5f + .5f * std::cos(6.2831853f * u / .16f);
+                const float cl = .85f * std::exp(-3.f * u) * ss_(0, .08f, u) * (1 - cr * cr * cr);
+                best = std::max(best, (1 + .6f * (1 - .5f * ss_(.2f, .8f, u))) * tl * (1 - s_ * cl));
             }
-            return 1.6f * best;
+            return best;
+        };
+        auto previous_at = [&](float s_) { // the previous law's: 1.6 x max of tail x (1 + s x 0.5 cos e^-3u ramp(0.08))
+            float best = 0.f;
+            for (unsigned i = 0; i <= 4096; ++i) {
+                const float u = float(i) / 4096.f;
+                const float tl = (1 - ss_(.4f, 1, u)) * std::exp(-.84f * u) * (1 - .5f * (1 - ss_(0, .3f, u)));
+                best = std::max(best, 1.6f * tl * (1 + s_ * .5f * std::cos(6.2831853f * u / .16f) * std::exp(-3.f * u) * ss_(0, .08f, u)));
+            }
+            return best;
         };
         const float axis_peak = axis_at(1.f), axis_peak0 = axis_at(0.f);
-        bool disc = st.discs == 1 && (out[4].peak >> 24) == 255u && (out[0].peak >> 24) == 0u && near(out[4].local[3], nw) && near(out[4].intensity[0], 4.f * 1.8f * Ln) &&
-                    near(out[4].intensity[1], HB * 3.f * Ln) && near(out[4].intensity[2], 1.5f * 4.f * axis_peak, 3e-3f) &&
-                    near(out[4].local[2], 4.f * (.3f / 4.f * .5f) * 2.f);
+        // The disc's cap at the 25 px nozzle's detail level DL: the previous law's peak to the revised.
+        const float cap_peak = previous_at(1.f) + (axis_peak - previous_at(1.f)) * DL;
+        bool disc = st.discs == 1 && (out[4].peak >> 24) == 255u && (out[0].peak >> 24) == 0u && near(out[4].local[3], nw) && near(out[4].intensity[0], 4.f * 3.33f * Ln) &&
+                    near(out[4].intensity[1], HB * DH * Ln) && near(out[4].intensity[2], 1.5f * 4.f * cap_peak, 3e-3f) &&
+                    near(out[4].local[2], 4.f * (.3f / 4.f * .5f) * 2.f * 3.f);
         for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half, 1e-3f) && near(std::fabs(out[c].position[1]), half, 1e-3f) && out[c].position[2] == Z;
         bool finite = true;
         for (unsigned c = 0; c < 4; ++c) for (unsigned j = 0; j < 3; ++j) finite = finite && std::isfinite(out[c].position[j]);
         expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f) && near(out[0].intensity[0], 2.f) && near(out[0].intensity[1], HB * .5f),
-               "head-on: the end-on disc (I x 1.8 L / n, halo I_halo x 3 L / n, cap 1.5 x the side peak, the ring), the axial quad at half weight, no bias");
+               "head-on: the end-on disc (I x 3.33 L / n, halo I_halo x (3 -> 2.82 by the detail) L / n, cap 1.5 x the side peak, the ring x 3), the axial quad at half weight, no bias");
         float pk = 0.f;
         LookTables tb;
         look_tables(flat, &tb);
@@ -270,8 +293,8 @@ int main() {
             const float f = c.az, wa = 1.f - .5f * c.wd;
             bool ok = near(out[0].intensity[0], 4.f * wa, 1e-3f) && near(out[0].intensity[1], HB * wa, 1e-3f);
             if (c.wd > 0.f)
-                ok = ok && st.discs == 1 && near(out[4].intensity[0], c.wd * 4.f * 1.8f * Ln * f, 1e-3f) &&
-                     near(out[4].intensity[1], c.wd * HB * 3.f * Ln * f, 1e-3f) && near(out[4].intensity[2], c.wd * 1.5f * 4.f * axis_peak, 3e-3f);
+                ok = ok && st.discs == 1 && near(out[4].intensity[0], c.wd * 4.f * 3.33f * Ln * f, 1e-3f) &&
+                     near(out[4].intensity[1], c.wd * HB * DH * Ln * f, 1e-3f) && near(out[4].intensity[2], c.wd * 1.5f * 4.f * cap_peak, 3e-3f);
             else
                 ok = ok && st.discs == 0 && out[4].position[0] == out[5].position[0] && out[4].position[1] == out[6].position[1];
             expect(ok, c.what);
@@ -354,10 +377,11 @@ int main() {
         const float f = 1.7f * 540.f, cap = .12f * 1080.f;
         // Tail-on at the nozzle depth zo, L = 2 value: the body width 2 h value at the tip (zo - L) over the cap is q,
         // h the body's half-width per value: its eroded edge 1.2736 x 0.575 nozzle widths (wider than the ring's 0.7226;
-        // the halo's reach 2.25 x 0.55 does not count, after the review of flight C) x the nozzle width 0.5. Tail-on the
-        // axial quad takes half (the end-on disc is whole); the fade takes the axial quad to 0.5, the disc to no less
-        // than 0.6 of its unfaded 4 x 1.8 x L / n (L / n = 4: the cap shrinks L and n together).
-        const float h = (1.f + .48f * .57f) * .575f * .5f, h_halo = 2.25f * .55f * .5f;
+        // the halo's reach does not count, after the review of flight C; unchanged by the revised law) x the nozzle width
+        // 0.5. Tail-on the axial quad takes half (the end-on disc is whole); the fade takes the axial quad to 0.5, the
+        // disc to no less than 0.6 of its unfaded 4 x 3.33 x L / n (L / n = 4: the cap shrinks L and n together). The
+        // disc's half-size: the eroded edge at the along-mean growth, (1 + 0.7 x 0.57) x 0.575, past the halo's 2.25 x 0.352.
+        const float h = (1.f + .48f * .57f) * .575f * .5f, h_halo = std::max((1.f + .7f * .57f) * .575f, 2.25f * .352f) * .5f;
         auto at_q = [&](float q, float zo) { // value with 2 h value f / (zo - 2 value) = q cap
             return q * cap * zo / (2.f * h * f + 2.f * q * cap);
         };
@@ -369,15 +393,15 @@ int main() {
             const float half = h * out[0].shape[1], L = out[0].local[2]; // the body's half-width, x k
             const float width = 2.f * half * f / (zo - L);
             const float quad_half = std::fabs(out[4].local[0]) - 1.f / (1.7f * 540.f / zo); // the disc's half (width0) less its pixel
-            const float disc = 4.f * 1.8f * (L / out[0].local[3]) * std::max(weight, .6f);
+            const float disc = 4.f * 3.33f * (L / out[0].local[3]) * std::max(weight, .6f);
             const bool ok = near(out[0].intensity[0], 2.f * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : q == 1.f ? near(width, cap, 2e-3f) && near(out[0].shape[1], val, 1e-3f) : st.capped == 0 && near(out[0].shape[1], val)) &&
                             st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .5f * out[0].shape[1]) &&
                             near(quad_half, h_halo * out[0].shape[1], 2e-3f) && near(out[4].intensity[0], disc, 2e-3f) &&
-                            out[4].intensity[0] >= .6f * 4.f * 1.8f * (L / out[0].local[3]) - 1e-3f;
+                            out[4].intensity[0] >= .6f * 4.f * 3.33f * (L / out[0].local[3]) - 1e-3f;
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
             std::printf("CAP q=%.2f weight=%.3f disc_weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 2.f),
-                        double(out[4].intensity[0] / (4.f * 1.8f * (L / out[0].local[3]))), double(width), double(cap), double(out[0].shape[1] / val));
+                        double(out[4].intensity[0] / (4.f * 3.33f * (L / out[0].local[3]))), double(width), double(cap), double(out[0].shape[1] / val));
         }
         // Side view: the length is free (a long plume across the screen keeps its length).
         const float val = 100.f / ppu(Z);
@@ -396,13 +420,26 @@ int main() {
         std::memcpy(b.mean, m, sizeof m); std::memcpy(b.peak, pk, sizeof pk); g_body = &b;
         ee::Record r = rec(0, 0, Z, -1, 0, 0, V, 2.f, unsigned(ee::red) << ee::cluster_shift); r.body = 3;
         build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(out[0].tint == pack_colour(m) && out[0].tint == 0xff3380ffu, "the body's mean");
+        expect((out[0].tint & 0xffffffu) == (pack_colour(m) & 0xffffffu) && (out[0].tint & 0xffffffu) == 0x3380ffu, "the body's mean");
         r.body = -1;
         build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(out[0].tint == pack_colour(cluster_tint(ee::red)) && out[0].tint == 0xffff1212u, "no body: the cluster's tint");
+        expect((out[0].tint & 0xffffffu) == (pack_colour(cluster_tint(ee::red)) & 0xffffffu) && (out[0].tint & 0xffffffu) == 0xff1212u, "no body: the cluster's tint");
         b.colour = 0; r.body = 3;
         build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
-        expect(out[0].tint == pack_colour(cluster_tint(ee::red)), "a body without colours: the cluster's tint");
+        expect((out[0].tint & 0xffffffu) == (pack_colour(cluster_tint(ee::red)) & 0xffffffu), "a body without colours: the cluster's tint");
+        // The revised law's detail level in the tint's alpha: smoothstep(16, 40) of the drawn nozzle width, the axial quad
+        // and the disc alike (side view: 15, 28, 40 px nozzles; head-on 28 px).
+        unsigned alpha[3] = {};
+        const float sizes[3] = {30.f, 56.f, 80.f};
+        for (unsigned i = 0; i < 3; ++i) {
+            const ee::Record q = rec(0, 0, Z, -1, 0, 0, sizes[i] / ppu(Z), 2.f);
+            build(&q, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
+            alpha[i] = out[0].tint >> 24;
+        }
+        const ee::Record head_on = rec(0, 0, Z, 0, 0, -1, 56.f / ppu(Z), 2.f);
+        build(&head_on, 1, nullptr, v, Preset::standard, 0, out.data(), 16, &st);
+        expect(alpha[0] == 0u && alpha[1] == 128u && alpha[2] == 255u && (out[0].tint >> 24) == 128u && (out[4].tint >> 24) == 128u,
+               "detail level: 0 at a 15 px nozzle, 0.5 at 28 px, 1 at 40 px; the disc's the same");
     }
     // ----------------------------------------------------------- the body table's colours
     {
@@ -569,9 +606,12 @@ int main() {
         build(&r, 1, &lookup, v, Preset::standard, 0, out.data(), 16, &st);
         float head[3]; head_colour(m, pk, head);
         const float lm = .2126f + .7152f * .15f + .0722f * .15f, lp = .2126f + .7874f * .81f;
-        const float lh = .2126f * head[0] + .7152f * head[1] + .0722f * head[2];
-        expect(near(lh, lm, 1e-5f) && near(head[0], lm / lp) && near(head[1] / head[0], .81f) && (out[0].peak & 0xffffffu) == (pack_colour(head) & 0xffffffu) &&
-               out[0].tint == pack_colour(m), "head colour: the peak's chroma at the mean's luminance (red: x 0.389), the tint the mean");
+        expect(lm / lp < .75f && near(head[0], .75f) && near(head[1] / head[0], .81f) && (out[0].peak & 0xffffffu) == (pack_colour(head) & 0xffffffu) &&
+               (out[0].tint & 0xffffffu) == (pack_colour(m) & 0xffffffu), "head colour: the peak's chroma, its scale to the mean's luminance (red: 0.389) held at 0.75 (the revised law), the tint the mean");
+        const float cy[3] = {.14f, .71f, 1.f}, cyp[3] = {.27f, .9f, 1.f};
+        float hc[3]; head_colour(cy, cyp, hc);
+        const float lc = .2126f * .14f + .7152f * .71f + .0722f, lcp = .2126f * .27f + .7152f * .9f + .0722f;
+        expect(lc / lcp > .75f && near(hc[1], .9f * lc / lcp), "head colour: a scale above 0.75 (cyan: 0.79) to the mean's luminance as before");
         const float dim[3] = {.2f, .2f, 1.f}; float same[3]; head_colour(m, dim, same);
         expect(same[0] == .2f && same[2] == 1.f, "a peak no brighter than the mean is kept");
         r.body = -1;
@@ -754,14 +794,15 @@ int main() {
     {
         float c[pixel_constant_floats];
         pixel_constants(default_look, c);
-        expect(near(c[0], .575f) && near(c[1], (.04f - .575f) * .45f) && near(c[2], .575f * .45f) && near(c[3], .6f * .45f) && near(c[4], 6.25f) &&
-               near(c[5], .57f * .96f) && near(c[6], 1.32f) && near(c[7], .4f) && near(c[8], .5f) && near(c[9], 6.2831853f / .16f) &&
-               near(c[10], 3.f) && near(c[11], .84f) && near(c[12], .7f) && near(c[13], 1.f / .63f) && near(c[14], .529f) &&
+        expect(near(c[0], .575f) && near(c[1], (.04f - .575f) * .45f) && near(c[2], .575f * .45f) && near(c[3], .6f * .45f) && near(c[4], 12.5f) &&
+               near(c[5], .57f * 1.6f) && near(c[6], 1.32f) && near(c[7], .4f) && near(c[8], .85f) && near(c[9], 6.2831853f / .16f) &&
+               near(c[10], 3.f) && near(c[11], .84f) && near(c[12], .7f) && near(c[13], 1.f / (.45f * .45f)) && near(c[14], .529f) &&
                c[16] == .3f && c[17] == .8f && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f && default_look.ring == .3f,
-               "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail; ring 0.3 after flight C; c4.x 1 / period)");
-        expect(pixel_constant_floats == 60 && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && near(c[58], 1.f / 300.f) &&
-                   c[59] == 0.f && default_look.spill_depth_max == 300.f,
-               "the spill (gap 3): c16.zw glow_through 0.15, 1 / spill_depth 0.5; c17.xyz inner 0.8, reach 1.0 nozzle widths, 1 / 300 world units (the guard's bound)");
+               "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail; ring 0.3 after flight C; c4.x 1 / period; "
+               "the revised law: c4.x 2 / period (the cells' half-period ramp), erosion 1.6 erode, the cells' gap 0.85, the hot core 1 / (0.45 core))");
+        expect(pixel_constant_floats == 64 && c[60] == .5f && c[61] == 0.f && c[63] == 0.f && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && near(c[58], 1.f / 300.f) &&
+                   near(c[59], .35f) && default_look.spill_depth_max == 300.f,
+               "the spill (gap 3): c16.zw glow_through 0.15, 1 / spill_depth 0.5; c17.xyz inner 0.8, reach 1.0 nozzle widths, 1 / 300 world units (the guard's bound); c17.w the tail's tongues 0.35");
         // c8..c15: the law at u_k = (k + 0.5) / 8 against an independent replica (std::exp / std::cos).
         auto ss = [](float e0, float e1, float x) { float q = (x - e0) / (e1 - e0); q = q < 0 ? 0 : q > 1 ? 1 : q; return q * q * (3 - 2 * q); };
         float worst = 0.f;
@@ -770,12 +811,13 @@ int main() {
             const float b = .575f * (1 - .55f * std::exp(-9 * u)) * (1 + .35f * ss(0, .25f, u) * std::exp(-4 * u));
             const float w = std::min(.575f + (.04f - .575f) * .45f * u, b + .575f * .45f) * std::max(1 - .6f * .45f * ss(.6f, 1, u), .05f);
             const float tl = (1 - ss(.4f, 1, u)) * std::exp(-.84f * u) * (1 - .5f * (1 - ss(0, .3f, u)));
-            const float cl = .5f * std::cos(6.2831853f * u / .16f) * std::exp(-3.f * u) * ss(0, .16f, u);
-            const float ht = .7f * (1 - ss(0, .55f, u));
-            const float want[4] = {w, tl, cl, ht};
+            const float cr = .5f + .5f * std::cos(6.2831853f * u / .16f);
+            const float cl = .85f * std::exp(-3.f * u) * ss(0, .08f, u) * (1 - cr * cr * cr);
+            const float ht = .7f * (1 - ss(.05f, .3f, u));
+            const float want[4] = {1.f / w, tl, cl, ht};
             for (unsigned j = 0; j < 4; ++j) worst = std::max(worst, std::fabs(c[20 + 4 * k + j] - want[j]));
         }
-        expect(worst < 2e-5f, "c8..c15: w, tail, cell, heat at the disc's 8 samples");
+        expect(worst < 2e-5f, "c8..c15: 1 / w, tail, carve, heat at the disc's 8 samples");
         std::printf("DISC_TABLE max_abs_error=%.2e\n", double(worst));
         float ce = 0.f, ee_ = 0.f;
         for (unsigned i = 0; i < 4001; ++i) {
@@ -934,7 +976,7 @@ int main() {
         const float V = 40.f / ppu(Z);
         const ee::Record at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
         build(&at, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &thin);
-        expect(near(out[4].intensity[0], 4.f * 1.8f * 8.f * fw4) && near(out[4].intensity[1], HB * 3.f * 8.f * fw4) &&
+        expect(near(out[4].intensity[0], 4.f * 3.33f * 8.f * fw4) && near(out[4].intensity[1], HB * 3.f * 8.f * fw4) &&
                    near(out[0].local[2] / out[0].local[3], 20.f, 1e-3f),
                "nozzle 0.1: the disc's L / n held to 8 (the quad keeps L / n 20)");
         // The cached tables give the same vertices as tables computed per build.
@@ -1265,17 +1307,22 @@ class Wiring(unittest.TestCase):
         ribbon_pass = source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp')
         self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel);', ribbon_pass)
         ps = (ROOT / 'src/effects/engine_plume_ps.hlsl').read_text()
-        self.assertIn(': float3((q.x - phase) * 1.6, q.y * 3.0, i.params.y * 1861.5 + t * 0.7);', ps)
+        self.assertIn(': float3(q.x - phase, q.y * 4.5, seed);', ps)
+        self.assertIn('const float S2 = fbm(p * 2.2 + float3(5.0, 2.0, 1.0)) - 0.4375;', ps)
+        self.assertEqual(ps.count(' fbm(p'), 1)  # one evaluation (the revised law's streak field)
         self.assertIn('const float phase = i.shape.w;', ps)
         self.assertIn('const bool disc = i.peak.w > 0.5;', ps)
-        self.assertIn('const float3 colour = lerp(lerp(i.peak.rgb, i.tint, smoothstep(0.3, 1.0, u)), white, heat);', ps)
+        self.assertIn('const float3 colour = lerp(lerp(tone, 0.5 * tint, detail * smoothstep(0.25, 0.9, radial)), white, heat);', ps)
+        self.assertIn('const float body = i.view.y * tail * inside * lerp(slab, peaked, detail) * turbulence * soft_body;', ps)
+        self.assertIn('const float heat = core_k.x * hot * (1.0 - smoothstep(0.05, 0.3, u));', ps)
+        self.assertIn('exp(-(2.2 + 1.8 * detail) * uc)', ps)
         self.assertIn('const float soft_halo = occluder ? valid * max(saturate(gap / max(look.y * i.shape.y, 1e-4)), spill) : 1.0;', ps)
         self.assertIn('const float soft_body = occluder ? valid * saturate(gap / max(look.x * i.shape.y, 1e-4)) : 1.0;', ps)
         self.assertIn('saturate(2.0 * (look.z - dn))', ps)
         # After flight C (2026-10-03): the end-on disc's samples in c8..c15, the soft-maximum mouth, the cells ramped in,
         # the ship key read beside the own-ship tag.
         self.assertIn('float4 disc_k[8] : register(c8);', ps)
-        self.assertIn('result = (colour * body + soft_max(ring, ring_colour, halo, i.tint).rgb) * handover;', ps)
+        self.assertIn('result = (colour * body + soft_max(ring, ring_colour, halo, tint).rgb) * handover;', ps)
         self.assertIn('const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen));', ps)
         self.assertIn('smoothstep(0.0, 1.0, u * fire_k.x)', ps)
         self.assertIn('const float shown = cap * (1.0 - exp(-total / cap));', ps)
@@ -1386,6 +1433,15 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
             x['weight'] == 1 and abs(x['L_ratio'] - 2) < 1e-3 and abs(x['I_ratio'] - 1.25) < 1e-3 and abs(x['drawn_ratio'] - 2) <= .06 and
             abs(x['peak_ratio'] - 1.25) <= .025 for x in r['report']['travel']))
         self.assertTrue(all(x['mouth_over_body'] <= .85 for x in r['report']['mouth']))
+        # The revised look law (docs/architecture/engine-exhaust-look-critique.md section 5, "Implemented"): the structure
+        # gates on the FP16 readback, every frame (2 sizes x 2 tints x 2 nozzles x 3 frames), and the end-on ring.
+        structure = r['report']['structure']
+        self.assertEqual(len(structure), 24)
+        self.assertTrue(all(x['radial'] >= 3 and x['lane_depth'] >= .35 and x['gap_min'] <= .6 and x['aniso'] >= 3 and
+                            x['white_axis_u05'] >= .15 and x['white_rim_u02'] >= .5 for x in structure))
+        disc = r['report']['structure_disc']
+        self.assertEqual(len(disc), 4)
+        self.assertTrue(all(x['ring'] >= 1.05 and .4 <= x['ring_n'] <= .7 and x['hot'] >= .9 for x in disc))
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))

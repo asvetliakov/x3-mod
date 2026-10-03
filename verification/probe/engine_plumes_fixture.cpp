@@ -43,6 +43,9 @@
 //   attack        gap 6: an RCS puff and a brake flare z rise through the attack memory, frame 2 at 1.3..1.5x steady,
 //                 back within 150 ms; a main jet unchanged; a main jet pushed into brake in one frame (z 1 -> 5) flares
 //   travel        gap 7: the SETA decode and ramp at warp 6 reach weight 1: length 2x, radiance 1.25x
+//   structure     the revised look law (docs/architecture/engine-exhaust-look-critique.md section 5) on the FP16
+//                 readback: radial contrast, the body lane's cells and dark gaps, the streaks' anisotropy, the
+//                 whiteness at 150 px (capped) and 40 px, cyan and red, three frames; the end-on ring and hot centre
 //   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 / 1,024
 //                 records (the look's tables cached), plain and with the plume floor; with X3M_PLUMES_FIXTURE_DISC_AB=1 the
 //                 stage cost with the end-on disc drawn and not drawn, three interleaved rounds
@@ -344,12 +347,13 @@ Built build_cpu(const rr::EnginePlumesFrame& f) {
                           nullptr, nullptr, &dynamics);
     return b;
 }
-// The CPU replica of the pixel program's law (src/effects/engine_plume_ps.hlsl) for the axial quad and a white tint:
-// the luma (the red channel: white stays 1 under the heat and ring mixes) at (x, y) in nozzle widths, the noise given
-// (n1 the erosion's, n2 the turbulence's; 0.4375 = their mean, the still look ignores them; noise_at the CPU's value
-// noise at the pixel program's coordinates, statistically the GPU's: the hash's float rounding differs).
+// The CPU replica of the pixel program's law (src/effects/engine_plume_ps.hlsl, the revised law) for the axial quad and
+// a white tint: the luma (the red channel: white stays 1 under the heat and ring mixes) at (x, y) in nozzle widths, the
+// streak noise given (n2 = fbm of the streak field; 0.4375 = its mean, S2 = 0, the still look ignores it; n1 is kept
+// for the callers and unused; noise_at the CPU's value noise at the pixel program's coordinates, statistically the
+// GPU's: the hash's float rounding differs).
 struct LawInputs {
-    float L = 0.f, s = 0.f, i_core = 0.f, i_halo = 0.f, sigma0 = 0.f, ring2 = 0.f, aa = 0.f, n_px = 0.f, seed = 0.f;
+    float L = 0.f, s = 0.f, i_core = 0.f, i_halo = 0.f, sigma0 = 0.f, ring2 = 0.f, aa = 0.f, n_px = 0.f, seed = 0.f, detail = 1.f;
 };
 LawInputs law_of(const ep::Vertex& v, float ppu) {
     LawInputs in;
@@ -362,13 +366,14 @@ LawInputs law_of(const ep::Vertex& v, float ppu) {
     in.ring2 = float(v.params & 255u) / 255.f;
     in.seed = float((v.params >> 8) & 255u) / 255.f;
     in.aa = 1.f / in.n_px;
+    in.detail = float(v.tint >> 24) / 255.f;
     return in;
 }
 void noise_at(const LawInputs& in, float x, float y, float phase, float seconds, float& n1, float& n2) {
-    const float p[3] = {(x - phase) * 1.6f, y * 3.f, in.seed * 1861.5f + seconds * .7f};
+    const float p[3] = {x - phase, y * 4.5f, in.seed * 1861.5f + seconds * .7f};
     const float p2[3] = {p[0] * 2.2f + 5.f, p[1] * 2.2f + 2.f, p[2] * 2.2f + 1.f};
-    ep::noise::fbm(p, &n1);
     ep::noise::fbm(p2, &n2);
+    n1 = n2;
 }
 float smooth(float e0, float e1, float x) {
     float t = (x - e0) / (e1 - e0);
@@ -381,18 +386,30 @@ float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1
     const float L = in.L, r = std::fabs(y), u = x / L, uc = std::min(std::max(u, 0.f), 1.f);
     const float b = c[0] * (1.f - .55f * std::exp(-9.f * uc)) * (1.f + .35f * smooth(0.f, .25f, uc) * std::exp(-4.f * uc));
     const float w = std::min(c[0] + c[1] * uc, b + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, uc), .05f);
-    const float radial = r / w;
-    const float edge = 1.f - smooth(.55f, 1.f, radial + c[5] * (n1 - .5f));
-    const float tail = (1.f - smooth(c[7], 1.f, u)) * std::exp(-u * c[11]) * (1.f - c[52] * (1.f - smooth(0.f, c[53], u)));
+    (void)n1;
+    const float radial = r / w, S2 = n2 - .4375f;
+    const float edge = 1.f - smooth(.45f, 1.f, radial + c[5] * S2 * (.6f + .8f * uc));
+    const float tail = (1.f - smooth(c[7], 1.f, u + c[59] * S2 * in.detail)) * std::exp(-u * c[11]) * (1.f - c[52] * (1.f - smooth(0.f, c[53], u)));
     const float inside = u >= 0.f && u <= 1.f ? 1.f : 0.f;
-    const float cells = 1.f + c[8] * std::cos(c[9] * u) * std::exp(-u * c[10]) * smooth(0.f, 1.f, u * c[4]) * (1.f - smooth(0.f, .8f, radial)) * in.s;
-    const float turbulence = 1.f + c[6] * (n2 - .5f);
-    const float core_mask = 1.f - smooth(0.f, 1.f, radial * c[13]);
-    const float body = in.i_core * edge * tail * inside * cells * turbulence * (1.f + .6f * core_mask);
+    const float crest = .5f + .5f * std::cos(c[9] * u);
+    const float envelope = std::exp(-u * c[10]) * smooth(0.f, 1.f, u * c[4]) * (1.f - smooth(.3f, .9f, radial)) * in.s;
+    const float cells = 1.f - c[8] * envelope * (1.f - crest * crest * crest);
+    const float turbulence = 1.f + c[6] * S2 * (.4f + .6f * std::min(radial, 1.f));
+    const float rc = radial * c[13], rp = radial / .32f;
+    const float hot = std::exp(-rc * rc), profile = .08f + .92f * std::exp(-rp * rp);
+    // The colour's red channel for a white tint and head: the tail's darker stop, the rim's half tint (both x the detail
+    // level), white by the heat; the body the slab's radial shape under detail 1.
+    const float tone = 1.f - .4f * in.detail * smooth(.6f, 1.f, uc) * smooth(.2f, .5f, uc);
+    const float rim = tone + (.5f - tone) * in.detail * smooth(.25f, .9f, radial);
+    const float heat = c[12] * hot * (1.f - smooth(.05f, .3f, u)), red = rim + (1.f - rim) * heat;
+    const float slab = (1.f - smooth(.55f, 1.f, radial)) * (1.f + .6f * (1.f - smooth(0.f, 1.f, radial * c[13] * .3214286f))) *
+                       (1.f + c[60] * envelope * (2.f * crest - 1.f));
+    const float peaked = edge * cells * profile * (1.f + .6f * hot * (1.f - .5f * smooth(.2f, .8f, uc)));
+    const float body = in.i_core * tail * inside * (slab + (peaked - slab) * in.detail) * turbulence * red;
     const float du = x - std::min(std::max(x, 0.f), L), d = std::sqrt(du * du + r * r);
     const float dn = d / std::max(in.sigma0, 1e-4f);
     const float window = std::min(std::max(2.f * (ep::halo_reach - dn), 0.f), 1.f);
-    const float halo = in.i_halo * std::exp(-dn) * std::exp(-2.2f * uc) * window;
+    const float halo = in.i_halo * std::exp(-dn) * std::exp(-(2.2f + 1.8f * in.detail) * uc) * window;
     const float s2 = c[15] + .25f * in.aa * in.aa, rr2 = r - c[14];
     const float ring = in.i_core * in.ring2 * c[19] * std::sqrt(c[15] / s2) * std::exp(-rr2 * rr2 / (2.f * s2)) *
                        std::exp(-std::max(x, 0.f) * c[18]) * (x >= -.05f ? 1.f : 0.f);
@@ -721,7 +738,7 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
         const float outside = peak(cut, t.w, t.h, edge - 30, iy - 30, edge, iy + 31);
         std::printf("OCCLUSION_HEADON width=%u lane=%s open_peak=%.3f inside_max=%.5f outside_max=%.4f rim_px=%d sigma_px=%.1f\n",
                     t.w, four ? "4ch" : "r32f", double(open_peak), double(inside), double(outside), rim,
-                    double(.5f * ep::default_look.halo * ep::default_look.nozzle_width * value * ppu));
+                    double(ep::halo_sigma * ep::default_look.halo * ep::default_look.nozzle_width * value * ppu));
         char label[64];
         std::snprintf(label, sizeof label, "headon_core_hidden_%s_%u", four ? "4ch" : "r32f", t.w);
         report(label, open_peak >= .9f * core && inside <= 1e-3f);
@@ -856,7 +873,8 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     draw(d, pass, frame_for(t, true, &r, 1));
     const int extent = extent_px(t.read(d), t.w, t.h, &pk);
     // The fade: the still look's peak (the disc's centre) on the view axis (the axial quad exactly edge-on: the disc
-    // alone) here against the same nozzle at 30 values; the law is scale-free in nozzle widths.
+    // alone) here against the same nozzle at 9 values (unfaded, 51 / 68 px wide: the revised law's detail level 1 as
+    // the capped one; the law is scale-free in nozzle widths at the same detail level).
     auto still_peak = [&](float z, Built* built) {
         const ee::Record q = record(0, 0, z, 0, 0, -1, value, 2.f);
         const rr::EnginePlumesFrame f = frame_for(t, true, &q, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
@@ -866,7 +884,7 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
         return peak(t.read(d), t.w, t.h, 0, 0, int(t.w), int(t.h));
     };
     Built near_b, far_b;
-    const float near_peak = still_peak(3.f * value, &near_b), far_peak = still_peak(30.f * value, &far_b);
+    const float near_peak = still_peak(3.f * value, &near_b), far_peak = still_peak(9.f * value, &far_b);
     const float ratio = far_peak > 0.f ? near_peak / far_peak : 0.f;
     const float disc_cpu = far_b.v[4].intensity[0] > 0.f ? near_b.v[4].intensity[0] / far_b.v[4].intensity[0] : 0.f;
     const float axial_cpu = far_b.v[0].intensity[0] > 0.f ? near_b.v[0].intensity[0] / far_b.v[0].intensity[0] : 0.f;
@@ -1420,7 +1438,9 @@ void distance_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlum
 // x >= edge (the nozzle 10 px inside it), value 192 px (the nozzle 96 px), s = 1. On the plane pixels at screen distance
 // d (nozzle widths) from the nozzle: (a) the law, the still look without the ring and with the disc's soft cap out of
 // the way (disc_cap 50, the open halo compressed under 0.5 %): the cut frame over the open one (no plane) in 0.65..0.8 n (past the still body's 0.56 n,
-// inside the spill's full reach) is glow_through 0.15, at most 0.15 in the taper 0.8..1.0 n, nothing past 1.0 n;
+// inside the spill's full reach) is glow_through 0.15, at most 0.15 in the taper 0.8..1.0 n, nothing past 1.0 n (the ratio
+// where the open frame is above 0.01: the revised law's halo window ends at 0.79 n, and under that the soft cap's
+// 1 - exp(-x) at x ~1e-5 leaves the cut / open ratio a few % off on the GPU);
 // (b) the still look (the production cap and ring): 0.15 +- 0.02 in 0.72..0.8 n (the soft cap compresses the open halo
 // more than the spilled one), nothing past 1.0 n; (c) the depth guard: the plane 3 value in front of the nozzle (another
 // object, not its hull): nothing through it.
@@ -1454,14 +1474,14 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
                 const float dx = cx - float(x), dy = float(y) - cy, dn = std::sqrt(dx * dx + dy * dy) / n_px;
                 const float c = luma(cut, t.w, x, y), o = luma(open, t.w, x, y);
                 const unsigned bin = unsigned(dn * 10.f);
-                if (bin < 13 && o > 1e-3f) {
+                if (bin < 13 && o > 1e-2f) {
                     out->bin_sum[bin] += double(c / o);
                     out->bin_max[bin] = std::max(out->bin_max[bin], double(c / o));
                     ++out->bin_n[bin];
                 }
                 if (dn > 1.f + 1.5f / n_px) out->beyond_max = std::max(out->beyond_max, double(c));
-                else if (dn >= band_low && dn <= band_high && o > 1e-3f) ratios.push_back(double(c / o));
-                else if (dn > band_high && dn <= 1.f && o > 1e-3f) out->taper_max = std::max(out->taper_max, double(c / o));
+                else if (dn >= band_low && dn <= band_high && o > 1e-2f) ratios.push_back(double(c / o));
+                else if (dn > band_high && dn <= 1.f && o > 1e-2f) out->taper_max = std::max(out->taper_max, double(c / o));
             }
         std::sort(ratios.begin(), ratios.end());
         out->band_px = unsigned(ratios.size());
@@ -1743,13 +1763,14 @@ void colour_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
             const float x = (cx - float(X)) / in.n_px, y = (float(Y) - cy) / in.n_px, u = x / in.L, uc = std::min(std::max(u, 0.f), 1.f);
             const float b2 = c[0] * (1.f - .55f * std::exp(-9.f * uc)) * (1.f + .35f * smooth(0.f, .25f, uc) * std::exp(-4.f * uc));
             const float w = std::min(c[0] + c[1] * uc, b2 + c[2]) * std::max(1.f - c[3] * smooth(.6f, 1.f, uc), .05f);
-            const float radial = std::fabs(y) / w, core_mask = 1.f - smooth(0.f, 1.f, radial * c[13]);
-            const float heat = c[12] * core_mask * (1.f - smooth(0.f, .55f, u)), mix = smooth(.3f, 1.f, u);
+            const float radial = std::fabs(y) / w, rc = radial * c[13], hot = std::exp(-rc * rc);
+            const float heat = c[12] * hot * (1.f - smooth(.05f, .3f, u)), mix = smooth(.2f, .5f, uc);
+            const float darker = 1.f - .4f * smooth(.6f, 1.f, uc), rim = smooth(.25f, .9f, radial);
             const float white[3] = {1.f, .97f, .9f};
             float want[3], got[3], wm = 0.f, gm = 0.f;
             for (unsigned i = 0; i < 3; ++i) {
-                const float tone = head[i] + (tail[i] - head[i]) * mix;
-                want[i] = tone + (white[i] - tone) * heat;
+                const float tone = head[i] + (tail[i] * darker - head[i]) * mix, across_tone = tone + (.5f * tail[i] - tone) * rim;
+                want[i] = across_tone + (white[i] - across_tone) * heat;
                 got[i] = px[(std::size_t(Y) * t.w + std::size_t(X)) * 4 + i];
                 wm = std::max(wm, want[i]);
                 gm = std::max(gm, got[i]);
@@ -2600,6 +2621,300 @@ void run(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, Quad& quad
     report("dump_images_written", written == list.size() && drew == list.size());
 }
 } // namespace dump
+
+// The revised look law's structure gates (docs/architecture/engine-exhaust-look-critique.md section 5) on the FP16
+// readback of the stage (no resolve; plume_look_metrics.py measures the resolved, tonemapped look images): side views
+// (axis -x), the production look, s = 1, the fighter's nozzle asked at 150 px (over the near-camera cap: drawn at
+// 0.12 H, faded) and at 40 px (uncapped), argon-blue and split-red body colours, three frames 100 ms apart (the pulse
+// and the flow move the structure). Per frame, Rec. 709 luma of the FP16 RGB, every frame gated:
+//   radial  u 0.2: the axis luma (the largest of the 5 rows about it) over the mean of the two rows at 0.6 of the
+//           half-width (the first row under 10 % of the axis luma) >= 3.0
+//   lane    the mean of the two rows 0.35 w(u) off the axis over its running mean of 1.5 periods: (max - min) /
+//           (max + min) in u 0.05..0.4 >= 0.35; the dark gaps: the lane's minimum in u 0.1..0.3 over its mean there
+//           <= 0.6
+//   aniso   u 0.1..0.8, the rows within 0.6 of the half-width (at least 6), less their Gaussian blur (sigma 10 px):
+//           the autocorrelation's half-length (first lag under 0.5) along over across >= 3
+//   white   the dump's AgX at EV 0: 1 - min / max channel on the axis at u 0.5 >= 0.15; at radial 0.6, u 0.2 (the mean of
+//           both sides) >= 0.5
+// End-on (the exhaust at the camera), the 150 px nozzle, both colours: the luma's azimuthal mean over 64 directions per
+// pixel of radius (bilinear); the ring, its maximum in 0.4..0.7 n over its minimum between 0.2 n and that maximum,
+// >= 1.05; the hot centre, the centre over the profile's maximum, >= 0.9; both also on the display-decoded luma (the
+// dump's AgX, gamma 2.2), reported.
+namespace structure {
+float luma709(const std::vector<float>& px, const Targets& t, int x, int y) {
+    if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) return 0.f;
+    const std::size_t i = (std::size_t(y) * t.w + std::size_t(x)) * 4;
+    return .2126f * px[i] + .7152f * px[i + 1] + .0722f * px[i + 2];
+}
+float display709(const std::vector<float>& px, const Targets& t, int x, int y) {
+    if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) return 0.f;
+    unsigned char c[3];
+    dump::agx(&px[(std::size_t(y) * t.w + std::size_t(x)) * 4], c);
+    float v[3];
+    for (unsigned i = 0; i < 3; ++i) v[i] = std::pow(float(c[i]) / 255.f, 2.2f);
+    return .2126f * v[0] + .7152f * v[1] + .0722f * v[2];
+}
+float whiteness(const std::vector<float>& px, const Targets& t, int x, int y) {
+    if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) return 0.f;
+    unsigned char c[3];
+    dump::agx(&px[(std::size_t(y) * t.w + std::size_t(x)) * 4], c);
+    const float hi = float(std::max(c[0], std::max(c[1], c[2]))), lo = float(std::min(c[0], std::min(c[1], c[2])));
+    return hi > 0.f ? 1.f - lo / hi : 0.f;
+}
+// The running mean of `v` over `win` samples (edge-padded), as plume_look_metrics.py's modulation().
+std::vector<double> running_mean(const std::vector<double>& v, int win) {
+    std::vector<double> out(v.size(), 0.);
+    const int n = int(v.size()), lo = win / 2, hi = win - win / 2 - 1;
+    for (int i = 0; i < n; ++i) {
+        double s = 0.;
+        for (int j = i - lo; j <= i + hi; ++j) s += v[std::size_t(std::min(std::max(j, 0), n - 1))];
+        out[std::size_t(i)] = s / double(win);
+    }
+    return out;
+}
+// Separable Gaussian blur (edge-clamped) of a rows x cols image.
+std::vector<double> blur(const std::vector<double>& v, int rows, int cols, double sigma) {
+    const int r = int(std::ceil(3. * sigma));
+    std::vector<double> k(std::size_t(2 * r + 1));
+    double ks = 0.;
+    for (int i = -r; i <= r; ++i) ks += k[std::size_t(i + r)] = std::exp(-.5 * double(i * i) / (sigma * sigma));
+    for (double& x : k) x /= ks;
+    std::vector<double> a(v.size(), 0.), b(v.size(), 0.);
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < cols; ++x) {
+            double s = 0.;
+            for (int i = -r; i <= r; ++i) s += k[std::size_t(i + r)] * v[std::size_t(y * cols + std::min(std::max(x + i, 0), cols - 1))];
+            a[std::size_t(y * cols + x)] = s;
+        }
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < cols; ++x) {
+            double s = 0.;
+            for (int i = -r; i <= r; ++i) s += k[std::size_t(i + r)] * a[std::size_t(std::min(std::max(y + i, 0), rows - 1) * cols + x)];
+            b[std::size_t(y * cols + x)] = s;
+        }
+    return b;
+}
+// The first lag at which the autocorrelation of the zero-mean `hp` falls under 0.5, along x or across (y); the limit
+// (half the extent, at most 60) when it never does.
+int half_length(const std::vector<double>& hp, int rows, int cols, bool along, double var) {
+    const int limit = std::min(60, (along ? cols : rows) / 2);
+    for (int lag = 1; lag < limit; ++lag) {
+        double s = 0.;
+        int n = 0;
+        for (int y = 0; y + (along ? 0 : lag) < rows; ++y)
+            for (int x = 0; x + (along ? lag : 0) < cols; ++x, ++n)
+                s += hp[std::size_t(y * cols + x)] * hp[std::size_t((y + (along ? 0 : lag)) * cols + x + (along ? lag : 0))];
+        if (n && s / double(n) / var < .5) return lag;
+    }
+    return limit;
+}
+struct Side {
+    float radial = 0.f, lane_depth = 0.f, gap_min = 0.f, aniso = 0.f, white_axis = 0.f, white_rim = 0.f;
+    int hw = 0, along = 0, across = 0;
+};
+Side measure(const std::vector<float>& px, const Targets& t, const ep::Look& k, float cx, float cy, float L_px, float n_px) {
+    Side m;
+    const int iy = int(std::floor(cy + .5f));
+    auto column = [&](float u) { return int(std::floor(cx - u * L_px + .5f)); };
+    // Radial contrast at u 0.2.
+    {
+        const int X = column(.2f);
+        float pk = 0.f;
+        for (int y = iy - 2; y <= iy + 2; ++y) pk = std::max(pk, luma709(px, t, X, y));
+        int hw = 0;
+        for (int dd = 1; dd < 400 && !hw; ++dd)
+            if (std::max(luma709(px, t, X, iy + dd), luma709(px, t, X, iy - dd)) < .1f * pk) hw = dd;
+        const int e = int(std::floor(.6f * float(hw) + .5f));
+        const float edge = .5f * (luma709(px, t, X, iy + e) + luma709(px, t, X, iy - e));
+        m.hw = hw;
+        m.radial = edge > 0.f ? pk / edge : 0.f;
+    }
+    // The body lane 0.35 w(u) off the axis, u 0..0.6.
+    {
+        const int x0 = column(0.f), x1 = column(.6f);
+        std::vector<double> lane, us;
+        for (int X = x0; X >= x1; --X) {
+            const float u = (cx - float(X)) / L_px, w = lab_width(k, std::min(std::max(u, 0.f), 1.f));
+            const int off = int(std::floor(.35f * w * n_px + .5f));
+            lane.push_back(.5 * double(luma709(px, t, X, iy + off) + luma709(px, t, X, iy - off)));
+            us.push_back(double(u));
+        }
+        const std::vector<double> mean = running_mean(lane, std::max(int(1.5f * k.period * L_px), 5));
+        double hi = 0., lo = 1e30, gap = 1e30, gap_sum = 0.;
+        unsigned gap_n = 0;
+        for (std::size_t i = 0; i < lane.size(); ++i) {
+            const double ratio = mean[i] > 1e-9 ? lane[i] / mean[i] : 0.;
+            if (us[i] >= .05 && us[i] <= .4) {
+                hi = std::max(hi, ratio);
+                lo = std::min(lo, ratio);
+            }
+            if (us[i] >= .1 && us[i] <= .3) {
+                gap = std::min(gap, lane[i]);
+                gap_sum += lane[i];
+                ++gap_n;
+            }
+        }
+        m.lane_depth = hi + lo > 0. ? float((hi - lo) / (hi + lo)) : 0.f;
+        m.gap_min = gap_n && gap_sum > 0. ? float(gap * double(gap_n) / gap_sum) : 1.f;
+    }
+    // Anisotropy of the high-passed body, u 0.1..0.8.
+    {
+        const int xa = column(.8f), xb = column(.1f), cols = xb - xa + 1;
+        float axis_max = 0.f;
+        for (int X = xa; X <= xb; ++X) axis_max = std::max(axis_max, luma709(px, t, X, iy));
+        int hw = 0;
+        for (int dd = 1; dd < 170 && !hw; ++dd) {
+            float row = 0.f;
+            for (int X = xa; X <= xb; ++X) row = std::max(row, std::max(luma709(px, t, X, iy + dd), luma709(px, t, X, iy - dd)));
+            if (row < .1f * axis_max) hw = dd;
+        }
+        const int half = std::max(int(.6f * float(hw)), 6), rows = 2 * half + 1;
+        std::vector<double> sub(std::size_t(rows * cols));
+        for (int y = 0; y < rows; ++y)
+            for (int x = 0; x < cols; ++x) sub[std::size_t(y * cols + x)] = luma709(px, t, xa + x, iy - half + y);
+        const std::vector<double> low = blur(sub, rows, cols, 10.);
+        double avg = 0., var = 0.;
+        for (std::size_t i = 0; i < sub.size(); ++i) avg += sub[i] -= low[i];
+        avg /= double(sub.size());
+        for (double& v : sub) {
+            v -= avg;
+            var += v * v;
+        }
+        var /= double(sub.size());
+        if (var > 1e-12) {
+            m.along = half_length(sub, rows, cols, true, var);
+            m.across = half_length(sub, rows, cols, false, var);
+            m.aniso = float(m.along) / float(std::max(m.across, 1));
+        }
+    }
+    // Whiteness (display): the axis at u 0.5, radial 0.6 at u 0.2.
+    {
+        m.white_axis = whiteness(px, t, column(.5f), iy);
+        const int off = int(std::floor(.6f * lab_width(k, .2f) * n_px + .5f));
+        m.white_rim = .5f * (whiteness(px, t, column(.2f), iy + off) + whiteness(px, t, column(.2f), iy - off));
+    }
+    return m;
+}
+// The azimuthal mean of `sample` at radius r px about (cx, cy), 64 directions, bilinear.
+template <class F> float ring_mean(F&& sample, float cx, float cy, float r) {
+    double s = 0.;
+    for (unsigned a = 0; a < 64; ++a) {
+        const float ang = 6.2831853f * float(a) / 64.f, x = cx + r * std::cos(ang), y = cy + r * std::sin(ang);
+        const int x0 = int(std::floor(x)), y0 = int(std::floor(y));
+        const float fx = x - float(x0), fy = y - float(y0);
+        s += (1.f - fy) * ((1.f - fx) * sample(x0, y0) + fx * sample(x0 + 1, y0)) + fy * ((1.f - fx) * sample(x0, y0 + 1) + fx * sample(x0 + 1, y0 + 1));
+    }
+    return float(s / 64.);
+}
+void disc_measures(const std::vector<float>& prof, float n_px, float* ring, float* ring_n, float* hot) {
+    float pk = 0.f;
+    for (float v : prof) pk = std::max(pk, v);
+    int j = -1;
+    for (int i = 0; i < int(prof.size()); ++i) {
+        const float rn = float(i) / n_px;
+        if (rn >= .4f && rn <= .7f && (j < 0 || prof[std::size_t(i)] > prof[std::size_t(j)])) j = i;
+    }
+    float lo = 1e30f;
+    for (int i = 0; i <= j; ++i)
+        if (float(i) / n_px >= .2f) lo = std::min(lo, prof[std::size_t(i)]);
+    *ring = j >= 0 && lo > 0.f && lo < 1e30f ? prof[std::size_t(j)] / lo : 0.f;
+    *ring_n = j >= 0 ? float(j) / n_px : 0.f;
+    *hot = pk > 0.f ? prof[0] / pk : 0.f;
+}
+} // namespace structure
+void structure_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const ep::Look& k = ep::default_look;
+    const float Z = 2000.f, ppu = t.ppu(Z);
+    struct Tone {
+        const char* name;
+        float mean[3], peak[3];
+    };
+    const Tone tones[2] = {{"argon-blue", {.14f, .71f, 1.f}, {.27f, .9f, 1.f}}, {"split-red", {1.f, .15f, .15f}, {1.f, .81f, .81f}}};
+    char label[96];
+    for (const Tone& tone : tones) {
+        colour_body = ee::Body{};
+        colour_body.colour = 1;
+        std::memcpy(colour_body.mean, tone.mean, sizeof tone.mean);
+        std::memcpy(colour_body.peak, tone.peak, sizeof tone.peak);
+        for (const float asked : {150.f, 40.f}) {
+            const float value = 2.f * asked / ppu;
+            // The nozzle right of centre so the drawn plume (capped or not, with the pulse) stays on screen.
+            ee::Record r = record(.5f * std::min(4.f * asked, .8f * float(t.w)) / ppu, 0, Z, -1, 0, 0, value, 2.f);
+            r.body = 0;
+            bool ok_radial = true, ok_lane = true, ok_gap = true, ok_aniso = true, ok_white = true;
+            for (unsigned frame = 0; frame < 3; ++frame) {
+                const float seconds = 10.f + .1f * float(frame);
+                rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, seconds);
+                f.body = &colour_lookup;
+                scene.frame(0, 0, 0, 0, 500);
+                const auto rep = draw(d, pass, f);
+                const auto px = t.read(d);
+                const Built b = build_cpu(f);
+                float cx, cy;
+                t.window(r.origin[0], 0, Z, 0, 0, cx, cy);
+                const float L_px = b.v[0].local[2] * ppu, n_px = b.v[0].local[3] * ppu;
+                const structure::Side m = structure::measure(px, t, k, cx, cy, L_px, n_px);
+                const std::size_t a05 = (std::size_t(std::floor(cy + .5f)) * t.w + std::size_t(std::floor(cx - .5f * L_px + .5f))) * 4;
+                std::printf("STRUCTURE width=%u height=%u tint=%s asked_px=%.0f nozzle_px=%.1f L_px=%.1f frame=%u seconds=%.2f capped=%u faded=%u "
+                            "radial=%.3f hw_px=%d lane_depth=%.3f gap_min=%.3f aniso=%.2f along=%d across=%d white_axis_u05=%.3f white_rim_u02=%.3f "
+                            "axis_u05_rgb=%.3f,%.3f,%.3f\n",
+                            t.w, t.h, tone.name, double(asked), double(n_px), double(L_px), frame, double(seconds), rep.stats.capped,
+                            rep.stats.faded, double(m.radial), m.hw, double(m.lane_depth), double(m.gap_min), double(m.aniso), m.along,
+                            m.across, double(m.white_axis), double(m.white_rim), double(px[a05]), double(px[a05 + 1]), double(px[a05 + 2]));
+                ok_radial = ok_radial && m.radial >= 3.f;
+                ok_lane = ok_lane && m.lane_depth >= .35f;
+                ok_gap = ok_gap && m.gap_min <= .6f;
+                ok_aniso = ok_aniso && m.aniso >= 3.f;
+                ok_white = ok_white && m.white_axis >= .15f && m.white_rim >= .5f;
+            }
+            const char* tag = tone.name[0] == 'a' ? "blue" : "red";
+            std::snprintf(label, sizeof label, "structure_radial_%s_%.0fpx_%u", tag, double(asked), t.w);
+            report(label, ok_radial);
+            std::snprintf(label, sizeof label, "structure_lane_cells_%s_%.0fpx_%u", tag, double(asked), t.w);
+            report(label, ok_lane);
+            std::snprintf(label, sizeof label, "structure_dark_gaps_%s_%.0fpx_%u", tag, double(asked), t.w);
+            report(label, ok_gap);
+            std::snprintf(label, sizeof label, "structure_anisotropy_%s_%.0fpx_%u", tag, double(asked), t.w);
+            report(label, ok_aniso);
+            std::snprintf(label, sizeof label, "structure_whiteness_%s_%.0fpx_%u", tag, double(asked), t.w);
+            report(label, ok_white);
+        }
+        // End-on: the 150 px nozzle at the screen's centre, the exhaust at the camera.
+        {
+            const float value = 2.f * 150.f / ppu;
+            ee::Record r = record(0, 0, Z, 0, 0, -1, value, 2.f);
+            r.body = 0;
+            rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 10.f);
+            f.body = &colour_lookup;
+            scene.frame(0, 0, 0, 0, 500);
+            const auto rep = draw(d, pass, f);
+            const auto px = t.read(d);
+            const Built b = build_cpu(f);
+            float cx, cy;
+            t.window(0, 0, Z, 0, 0, cx, cy);
+            const float n_px = b.v[0].local[3] * ppu;
+            std::vector<float> lin, disp;
+            for (int rr = 0; rr <= int(.9f * n_px); ++rr) {
+                lin.push_back(structure::ring_mean([&](int x, int y) { return structure::luma709(px, t, x, y); }, cx, cy, float(rr)));
+                disp.push_back(structure::ring_mean([&](int x, int y) { return structure::display709(px, t, x, y); }, cx, cy, float(rr)));
+            }
+            float ring = 0.f, ring_n = 0.f, hot = 0.f, ring_d = 0.f, ring_nd = 0.f, hot_d = 0.f;
+            structure::disc_measures(lin, n_px, &ring, &ring_n, &hot);
+            structure::disc_measures(disp, n_px, &ring_d, &ring_nd, &hot_d);
+            std::printf("STRUCTURE_DISC width=%u height=%u tint=%s nozzle_px=%.1f discs=%u capped=%u ring=%.3f ring_n=%.3f hot=%.3f "
+                        "ring_display=%.3f ring_display_n=%.3f hot_display=%.3f centre=%.3f profile=",
+                        t.w, t.h, tone.name, double(n_px), rep.stats.discs, rep.stats.capped, double(ring), double(ring_n), double(hot),
+                        double(ring_d), double(ring_nd), double(hot_d), double(lin[0]));
+            for (std::size_t i = 0; i < disp.size(); i += 4) std::printf("%s%.3f", i ? "," : "", double(disp[i]));
+            std::printf("\n");
+            const char* tag = tone.name[0] == 'a' ? "blue" : "red";
+            std::snprintf(label, sizeof label, "structure_disc_ring_%s_%u", tag, t.w);
+            report(label, rep.stats.discs == 1 && ring >= 1.05f && ring_n >= .4f && ring_n <= .7f);
+            std::snprintf(label, sizeof label, "structure_disc_hot_centre_%s_%u", tag, t.w);
+            report(label, rep.stats.discs == 1 && hot >= .9f);
+        }
+    }
+}
 } // namespace
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2701,6 +3016,7 @@ int main(int argc, char** argv) {
             }
             if (wanted("flow")) flow_case(d, *t, *scene, pass);
             if (wanted("colour")) colour_case(d, *t, *scene, pass);
+            if (wanted("structure")) structure_case(d, *t, *scene, pass);
             if (wanted("attack")) attack_case(d, *t, *scene, pass);
             if (wanted("travel")) travel_case(d, *t, *scene, pass);
             if (wanted("timing"))

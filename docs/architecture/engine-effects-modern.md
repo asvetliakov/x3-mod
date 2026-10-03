@@ -355,6 +355,11 @@ bytes on Windows and are validated at exact sites. Unverified natively like the 
 
 ## Plume look redesign (2026-10-03, after flight B)
 
+Revised since (2026-10-03): the pixel law below is replaced by the revised look law of
+[engine-exhaust-look-critique.md](engine-exhaust-look-critique.md) (section 3, as built in section 6: a peaked profile with
+a cooling hot core, carving shock cells, streaks 4.5 : 1, tongues, a tight halo, the end-on ring, and a detail level
+that keeps this section's law for plumes narrower than 16 px). The knobs keep the numbers chosen here.
+
 Flight B (run403) rejected the analytic cone as static. The look is redesigned in an offline WebGL mock-up (`tools/effects/engine_exhaust_lab.html`,
 published as the Engine Exhaust Lab artifact) with the same throttle law, and the user chose, with licence for fine-tuning:
 

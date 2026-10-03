@@ -1,6 +1,26 @@
-s=1 L/n=4 kappa=1.773 side_E=8.718 mouth/crest=0.993 end_on_E/side_E=0.924 end_on_peak/crest=1.343 facing 1.0:0.92 0.866:1.09 0.7:1.08 0.5:0.93 0.3:0.95 0.0:1.00
-s=0.5 L/n=2.25 kappa=1.778 side_E=3.246 mouth/crest=0.999 end_on_E/side_E=1.042 end_on_peak/crest=1.167 facing 1.0:1.04 0.866:1.19 0.7:1.15 0.5:0.95 0.3:0.95 0.0:1.00
-s=0 L/n=0.5 kappa=1.759 side_E=0.380 mouth/crest=1.095 end_on_E/side_E=1.160 end_on_peak/crest=0.490 facing 1.0:1.16 0.866:1.27 0.7:1.19 0.5:0.95 0.3:0.95 0.0:1.00
-s=1 L/n=8 kappa=1.775 side_E=17.237 mouth/crest=0.992 end_on_E/side_E=0.707 end_on_peak/crest=1.439 facing 1.0:0.71 0.866:0.90 0.7:0.93 0.5:0.88 0.3:0.95 0.0:1.00
-s=0.5 L/n=4.5 kappa=1.782 side_E=6.363 mouth/crest=1.001 end_on_E/side_E=0.845 end_on_peak/crest=1.388 facing 1.0:0.85 0.866:1.02 0.7:1.03 0.5:0.92 0.3:0.95 0.0:1.00
-s=1 L/n=2 kappa=1.768 side_E=4.459 mouth/crest=0.993 end_on_E/side_E=1.104 end_on_peak/crest=1.059 facing 1.0:1.10 0.866:1.24 0.7:1.19 0.5:0.96 0.3:0.95 0.0:1.00
+# previous law: disc halo energy / side halo energy at s 1, L/n 4 = 6.255 (halo gain 3)
+# revised law: kappa = 3.326, halo gain for the same halo ratio = 2.819
+
+## previous: kappa 1.8, halo 3.0, cap 1.5, end-on ring x1.0, halo sigma 0.550 n, fall 2.2
+s=1 L/n=4 kappa=1.801 side_E=7.233 body_E=6.800 mouth/crest=0.943 end_on_E/side_E=0.788 end_on_peak/crest=1.380 facing 1.0:0.79 0.866:0.97 0.7:0.98 0.5:0.90 0.3:0.95 0.0:1.00
+s=0.5 L/n=2.25 kappa=1.811 side_E=2.677 body_E=2.484 mouth/crest=0.896 end_on_E/side_E=0.917 end_on_peak/crest=1.191 facing 1.0:0.92 0.866:1.08 0.7:1.06 0.5:0.92 0.3:0.95 0.0:1.00
+s=0 L/n=0.5 kappa=1.807 side_E=0.302 body_E=0.252 mouth/crest=0.832 end_on_E/side_E=1.068 end_on_peak/crest=0.472 facing 1.0:1.07 0.866:1.19 0.7:1.12 0.5:0.93 0.3:0.95 0.0:1.00
+s=1 L/n=8 kappa=1.802 side_E=14.350 body_E=13.611 mouth/crest=0.943 end_on_E/side_E=0.587 end_on_peak/crest=1.469 facing 1.0:0.59 0.866:0.79 0.7:0.84 0.5:0.85 0.3:0.95 0.0:1.00
+s=0.5 L/n=4.5 kappa=1.814 side_E=5.280 body_E=4.974 mouth/crest=0.906 end_on_E/side_E=0.728 end_on_peak/crest=1.419 facing 1.0:0.73 0.866:0.92 0.7:0.94 0.5:0.88 0.3:0.95 0.0:1.00
+s=1 L/n=2 kappa=1.798 side_E=3.674 body_E=3.395 mouth/crest=0.943 end_on_E/side_E=0.967 end_on_peak/crest=1.101 facing 1.0:0.97 0.866:1.12 0.7:1.09 0.5:0.93 0.3:0.95 0.0:1.00
+
+## revised: kappa 3.33, halo 2.82, cap 1.5, end-on ring x3.0, halo sigma 0.352 n, fall 4.0
+s=1 L/n=4 kappa=3.326 side_E=2.226 body_E=2.059 mouth/crest=0.834 end_on_E/side_E=0.913 end_on_peak/crest=1.458 facing 1.0:0.91 0.866:1.07 0.7:1.06 0.5:0.92 0.3:0.95 0.0:1.00
+s=0.5 L/n=2.25 kappa=3.356 side_E=0.963 body_E=0.889 mouth/crest=0.835 end_on_E/side_E=0.951 end_on_peak/crest=1.380 facing 1.0:0.95 0.866:1.10 0.7:1.08 0.5:0.92 0.3:0.95 0.0:1.00
+s=0 L/n=0.5 kappa=3.349 side_E=0.123 body_E=0.104 mouth/crest=0.837 end_on_E/side_E=1.053 end_on_peak/crest=0.707 facing 1.0:1.05 0.866:1.17 0.7:1.12 0.5:0.93 0.3:0.95 0.0:1.00
+s=1 L/n=8 kappa=3.330 side_E=4.408 body_E=4.123 mouth/crest=0.833 end_on_E/side_E=0.726 end_on_peak/crest=1.482 facing 1.0:0.73 0.866:0.91 0.7:0.94 0.5:0.88 0.3:0.95 0.0:1.00
+s=0.5 L/n=4.5 kappa=3.361 side_E=1.899 body_E=1.781 mouth/crest=0.854 end_on_E/side_E=0.786 end_on_peak/crest=1.475 facing 1.0:0.79 0.866:0.96 0.7:0.97 0.5:0.89 0.3:0.95 0.0:1.00
+s=1 L/n=2 kappa=3.320 side_E=1.134 body_E=1.027 mouth/crest=0.834 end_on_E/side_E=1.066 end_on_peak/crest=1.288 facing 1.0:1.07 0.866:1.20 0.7:1.15 0.5:0.95 0.3:0.95 0.0:1.00
+
+# side body energy revised / previous at s 1, L/n 4: 0.303; axis peak (x I) 1.200 / 1.462
+
+# 02b look image (the capped fighter disc, 88.6 px nozzle, faded 0.5): display-decoded luma every 4 px
+  previous  split-red: 0.78 0.77 0.76 0.75 0.72 0.70 0.67 0.65 0.61 0.53 0.41 0.27 0.20 0.18 0.17 0.16 0.15 0.14 0.13 | ring 1.000 at 0.41 n, centre / max 1.000, max off-centre / centre 0.995
+  previous argon-blue: 0.83 0.83 0.83 0.82 0.81 0.80 0.78 0.77 0.73 0.67 0.55 0.41 0.32 0.30 0.28 0.27 0.25 0.24 0.23 | ring 1.000 at 0.41 n, centre / max 1.000, max off-centre / centre 0.998
+   revised  split-red: 0.74 0.73 0.72 0.68 0.61 0.53 0.43 0.34 0.26 0.20 0.20 0.31 0.34 0.26 0.11 0.05 0.03 0.01 0.00 | ring 1.723 at 0.54 n, centre / max 1.000, max off-centre / centre 0.996
+   revised argon-blue: 0.79 0.78 0.77 0.74 0.68 0.61 0.53 0.45 0.39 0.32 0.29 0.36 0.38 0.30 0.17 0.10 0.05 0.01 0.00 | ring 1.289 at 0.54 n, centre / max 1.000, max off-centre / centre 0.995

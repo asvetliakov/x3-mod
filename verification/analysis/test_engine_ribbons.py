@@ -90,7 +90,7 @@ int main() {
         std::printf("PLUME_FOG T=%.4f,%.4f,%.4f tint=%u,%u,%u fogged=%u fog_min=%.4f\n", double(want[0]), double(want[1]), double(want[2]), red, green, blue, bs.fogged, double(bs.fog_min));
         expect(n == 1 && bs.fogged == 1 && std::abs(int(red) - int(want[0] * 255.f + .5f)) <= 1 && std::abs(int(blue) - int(want[2] * 255.f + .5f)) <= 1 && near(bs.fog_min, want[2], 1e-5) && pv[0].fog == ep::pack_colour(want) && pv[4].fog == pv[0].fog, "plume builder: tint x T_rgb at the nozzle's distance, T_rgb for the white-hot core");
         ep::View clear = view(); ep::build(&r, 1, nullptr, clear, ep::Preset::standard, 3, pv, 1, &bs);
-        expect(pv[0].tint == 0xffffffffu && pv[0].fog == 0xffffffffu && bs.fogged == 0, "plume builder: no fog without the law");
+        expect((pv[0].tint & 0xffffffu) == 0xffffffu && pv[0].fog == 0xffffffffu && bs.fogged == 0, "plume builder: no fog without the law");
     }
     const ep::View v = view();
     // ------------------------------------------------------------------ distance sampling and the length law

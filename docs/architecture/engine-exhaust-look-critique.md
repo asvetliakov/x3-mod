@@ -1,8 +1,9 @@
 # Engine exhaust look: critique and redesign (2026-10-03)
 
 Owning note for the plume look after the fixture's look images
-(`verification/results/engine-effects/look-images/`, `README.md` there lists every band). Design only: nothing here is
-built. The law under critique is `src/effects/engine_plume_ps.hlsl` with `engine_plumes_core.h` `Look` (the user's lab
+(`verification/results/engine-effects/look-images/`, `README.md` there lists every band). Implemented on 2026-10-03 with
+the deviations and measured gates of section 6; sections 1-5 are the design as written (section 1's images are the
+previous law's, the look images now show the revised one). The law under critique is `src/effects/engine_plume_ps.hlsl` with `engine_plumes_core.h` `Look` (the user's lab
 settings, [engine-effects-modern.md](engine-effects-modern.md) "Plume look redesign" and after), the references are X4 and
 Everspace 2 as described in [engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md) section 1.
 
@@ -178,6 +179,47 @@ The brief's 0.4 cell depth is reachable in linear FP16 (0.38 in the model) but n
 at EV 0 unless the gaps go black; the display gate is set at 0.2 and the eye decides in flight. `plume_look_metrics.py`
 already computes the radial, cell, whiteness and anisotropy columns on the dump images; the fixture case adds the FP16
 columns and the three-frame repeat.
+
+## 6. Implemented (2026-10-03, worktree build on e51872be, not a candidate)
+
+Code: `src/effects/engine_plume_ps.hlsl` (797 slots by the production counter, gate 800; one fbm evaluation instead of
+two), `engine_plume_vs.hlsl` (the tint passed as float4), `src/proxy/engine_plumes_core.h` (`Look`, `look_tables`,
+`pixel_constants` c3..c18, the builder), the lab (`tools/effects/engine_exhaust_lab.html`: both laws, an A/B toggle, the
+end-on disc). Models: `plume_end_on_model.py` (kappa, halo, the 02b ring), `plume_look_proposal_model.py` (the
+"implemented" rows), `plume_slab_disc_fit.py`. Ledger: [engine-effects.md](../verification/engine-effects.md), "Revised
+look law".
+
+| Term | As built | Against section 3 |
+| --- | --- | --- |
+| Streaks | `S2 = fbm(2.2 p + (5, 2, 1)) - 0.4375`, `p = (x - phase, 4.5 y, seed + 0.7 t)` | As written. `S1` enters none of the table's terms, so the shader evaluates one fbm |
+| Profile, core | `0.08 + 0.92 exp(-(radial / 0.32)^2)`; hot core `exp(-(radial / (0.45 core))^2)`, `x (1 + 0.6 hot (1 - 0.5 smoothstep(0.2, 0.8, u)))` | The core's boost cools to half along the plume. Without it the cyan axis at u 0.5 on the uncapped 40 px plume read whiteness 0.137-0.149 through the fixture's AgX (gate 0.15) |
+| Edge, tongues | `1 - smoothstep(0.45, 1, radial + 1.6 erode S2 (0.6 + 0.8 u))`; tail on `u + 0.614 erode S2` (0.35 at erode 0.57) | Tongues tied to `erode`, so the still look (erode 0) has none |
+| Cells | `1 - a (1 - c)`, `c = (0.5 + 0.5 cos(2 pi u / period))^3`, `a = min(1, 1.7 shock) e^(-5 cfade u) smoothstep(0, period / 2, u) (1 - smoothstep(0.3, 0.9, radial)) s`: gap 0.85, first gap 0.33 of the crest, 0.74 by u 0.4 | Gap 0.85 instead of 0.8 and a half-period ramp. The written term measured lane depth 0.30-0.40 and gaps 0.69-0.78 (gates 0.35 and 0.6), because the full-period ramp and the fade leave the gap at u 0.24 at 0.61 of the crest. Gap 1.0 lets the carved white core dominate a red plume's high-passed luma (anisotropy 1.8-2.3) |
+| Turbulence, heat, colour | as written; `head_colour` scale at least 0.75 | As written |
+| Halo | e-fold `0.32 halo`, `exp(-4 u)`, reach 2.25 sigma | As written |
+| Disc | kappa 3.33, halo gain 2.82, cap 1.5 x the side axis peak (per I: 1.20 revised, 1.46 previous), ring x 3 (`Look::disc_ring`); polar streaks with the direction on a circle of radius 2.5 in the noise and `4.5 rho - 1.6 phase` radially | kappa rises (1.8 -> 3.33) because the peaked profile's integral is smaller; the end-on/side energy stays 0.91 at s 1, L/n 4 (model). Halo 2.82 keeps the slab law's disc/side halo ratio (6.3). The ring needs 3x end-on to show between the integrated outer flame and the halo (model ring 1.29 cyan / 1.72 red at x3, 1.00 at x1). The circle replaces `atan2`, whose cut at +-pi would seam |
+| Detail level (new) | `smoothstep(16, 40, drawn nozzle px)` in the tint's alpha; under 1 the body, cells and halo blend to the previous law's (slab edge 0.55..1 and core, cosine cells on the carving's envelope, e-fold 0.5 halo, `exp(-2.2 u)`, disc halo gain 3, cap on the previous peak, the disc's slab a fitted profile); streaks, tongues and the rim and tail darkening scale with it; turbulence stays | Not in the design. The resolve case (a 15 px nozzle moving 4 and 8 px a frame along its axis) kept 0.76-0.83 of its core with the revised law, 0.81-0.86 with streaks and cells off (the peaked profile alone), against the 0.9 gate; with the detail level the minimum is 0.957. It also settles the far-dot Unknown: `far_low` cannot (the 6 px weight 0.45 can rise at most to 1, which gives 0.67 of today on the 0.30 energy), so `far_low` stays 0.15 |
+| Ring (side), far law, chase cap | unchanged (ring 0.3, `far_low` 0.15 at 2 x 4 px, cap and fade) | The mouth gate holds (0.65 / 0.67 / 0.76 at s 1 / 0.5 / 0) |
+
+Gates, measured (bottle X3, `run_engine_plumes.py` PASS 236/236; display figures from `plume_look_metrics.py` on the
+dumped images, before = the images at e51872be, `plume_look_metrics_before_out.txt`):
+
+| Gate | Result |
+| --- | --- |
+| Radial contrast, FP16, u 0.2 (>= 3.0) | 3.02-4.49 over 24 frames (both sizes, cyan and red, 150 px capped and 40 px) |
+| Body-lane cells, FP16 (>= 0.35); dark gaps (<= 0.6) | 0.43-0.57; 0.45-0.56 |
+| Anisotropy, FP16 (>= 3) | 3.67-17.3 (red 40 px frame 0 the lowest) |
+| Whiteness, display of the FP16 frame (axis u 0.5 >= 0.15; rim >= 0.5) | 0.157-0.53; 0.71-0.96 |
+| Disc ring (>= 1.05) and hot centre (>= 0.9) | FP16 1.62 / 2.37 and 1.00; 02b image 1.80 / 2.47 and 1.00 (before 1.00 / 1.00) |
+| Far dots, 05 image (0.7..1.3 of before) | 2 px 1.08, 6 px 1.01 (12 px 1.02; the 40 px plume 0.33, the revised law's restraint) |
+| Mouth (<= 0.85 body) | 0.65 / 0.67 / 0.76 |
+| Radial contrast, display (>= 2.0) | 1.77-2.47 on the s 1 bands, five of 13 at 1.77-1.99 (before 1.20-2.27, nine under 2.0) |
+| Lane cells, display (>= 0.2) | 0.77-0.95 on the capped bands; 09 (40 px moving 8 px a frame) 0.16 (before 0.05-0.26) |
+| Energy (model, detail 1, s 1) | body 0.33 of the slab law's, luma 0.31 cyan / 0.39 red, axis peak 0.67 / 0.80 |
+
+The display radial contrast stays under its 2.0 on five of the capped bands (03c t0, the three presets, 08 normal;
+1.77-1.99), through the resolve, the chase fade and AgX. The FP16 gate holds on the fixture's frames of the same setup.
+Whether that reads as fire in flight is the eye's call, as section 5 anticipated for the display figures.
 
 ## Unknown, and what settles it
 

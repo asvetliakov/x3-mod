@@ -25,7 +25,7 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "0a7fcd3a8209892f9b97726298ce311e3a77b6a5-dirty",
+    "commit": "e51872be484d77c9e2e4cbb25c0e726a8440e880-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/engine_plumes_core.h"
@@ -39,7 +39,7 @@
       "src/effects/engine_ribbon_ps.hlsl": "13b45c39a518de0b64485713138726243ad41899b8f406075b6cadf83e296ea8",
       "src/renderer/engine_ribbon_vertex_program_inc.h": "5651c07896aeb97820ef1dd204ce3218ec06d7ecd3cbe3594ef65c3e75530091",
       "src/renderer/engine_ribbon_pixel_program_inc.h": "9e04c634362f8416d3a06428dfdb7e2c009116554810a28214c8a54aa7689029",
-      "src/proxy/engine_plumes_core.h": "cee58b76f85d4f28ebfab2ba28a5b40de47b5b573626de1ba7a4d499e7075aa4",
+      "src/proxy/engine_plumes_core.h": "2636827e8871799f3c9fe2efeb2c49e1041b1b2c1baf2a13cc3588800eb194b7",
       "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
       "src/renderer/engine_plumes_pass.h": "ffbd2fea053a6e66a0b62edaf5cd8d8d244bd0fa39e87198cd8184ae398d0cd6",
       "src/renderer/engine_plumes_pass.cpp": "b25936af72b735d9f7d63323ae57022db31befa6e9a78704e84ffc55cf1ec027",
@@ -51,13 +51,13 @@
     "engine_plume_vs": {
       "source": "src/effects/engine_plume_vs.hlsl",
       "word_count": 138,
-      "bytecode_sha256": "fff59fa307c51ea1d388d4fbd18c4692c496507c25db3aec012128aff8718ba3",
+      "bytecode_sha256": "86a6cfcfa437bf7e8e849f9139e1b032919b350221bd7995ec4557f66dfa160c",
       "target": "vs_3_0"
     },
     "engine_plume_ps": {
       "source": "src/effects/engine_plume_ps.hlsl",
-      "word_count": 3171,
-      "bytecode_sha256": "1fec871f28e06786a3084f7f68619f8812d3712aa24f02c62c8c9856a085368d",
+      "word_count": 3551,
+      "bytecode_sha256": "20b0187cadda05e700689bda47511c182ecffb3c1fa3f303bb5b0d08af03b93c",
       "target": "ps_3_0"
     },
     "engine_ribbon_vs": {
@@ -104,12 +104,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa1a718ce7a5b2eb4/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3b117e7133937793/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "df205c79352a8d6a66433add0291610814dfaae4ed9c148e01750b4f1b5d6a8c"
+    "executable_sha256": "915cb1b12fe6fb5f64f0968976213bf08f3d7554c9c2104607da5913db59ca08"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -165,8 +165,8 @@
         "length_px": 117,
         "resolved_length_px": 118,
         "gaps": 0,
-        "at_nozzle": 0.8848,
-        "survival": 0.994,
+        "at_nozzle": 0.8828,
+        "survival": 1.0036,
         "ribbons": 1,
         "samples": 14,
         "live": 1,
@@ -182,8 +182,8 @@
         "length_px": 234,
         "resolved_length_px": 235,
         "gaps": 0,
-        "at_nozzle": 0.8887,
-        "survival": 1.0085,
+        "at_nozzle": 0.8867,
+        "survival": 1.0073,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -199,8 +199,8 @@
         "length_px": 117,
         "resolved_length_px": 161,
         "gaps": 0,
-        "at_nozzle": 0.8848,
-        "survival": 0.9907,
+        "at_nozzle": 0.8828,
+        "survival": 1.0012,
         "ribbons": 1,
         "samples": 14,
         "live": 1,
@@ -217,7 +217,7 @@
         "resolved_length_px": 321,
         "gaps": 0,
         "at_nozzle": 0.8906,
-        "survival": 0.9941,
+        "survival": 0.9935,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -233,8 +233,8 @@
         "length_px": 117,
         "resolved_length_px": 118,
         "gaps": 0,
-        "at_nozzle": 0.8848,
-        "survival": 0.9949,
+        "at_nozzle": 0.8789,
+        "survival": 1.0029,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -250,8 +250,8 @@
         "length_px": 234,
         "resolved_length_px": 235,
         "gaps": 0,
-        "at_nozzle": 0.8887,
-        "survival": 1.0083,
+        "at_nozzle": 0.8867,
+        "survival": 1.0072,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -267,8 +267,8 @@
         "length_px": 117,
         "resolved_length_px": 160,
         "gaps": 0,
-        "at_nozzle": 0.8848,
-        "survival": 0.9957,
+        "at_nozzle": 0.8828,
+        "survival": 1.0058,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -284,8 +284,8 @@
         "length_px": 234,
         "resolved_length_px": 329,
         "gaps": 0,
-        "at_nozzle": 0.8887,
-        "survival": 0.9954,
+        "at_nozzle": 0.8906,
+        "survival": 0.992,
         "ribbons": 1,
         "samples": 13,
         "live": 1,
@@ -370,8 +370,8 @@
         "width": 1920,
         "distance": 2046.9,
         "expected_T": 0.4919,
-        "core": "4.6055,2.2578",
-        "core_ratio": 0.4902,
+        "core": "4.8867,2.3965",
+        "core_ratio": 0.4904,
         "trail": "0.1499,0.0735",
         "trail_ratio": 0.4902
       }
@@ -413,11 +413,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.7663,
-        "fenced_off_ms": 0.5892,
-        "submit_ms": 0.0583,
-        "chain_ms": 0.1771,
-        "gpu_ms": 0.1188,
+        "fenced_on_ms": 1.0043,
+        "fenced_off_ms": 0.9291,
+        "submit_ms": 0.0549,
+        "chain_ms": 0.0752,
+        "gpu_ms": 0.0203,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -428,11 +428,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 0.8094,
-        "fenced_off_ms": 0.5788,
-        "submit_ms": 0.0945,
-        "chain_ms": 0.2306,
-        "gpu_ms": 0.1361,
+        "fenced_on_ms": 1.0681,
+        "fenced_off_ms": 0.922,
+        "submit_ms": 0.0891,
+        "chain_ms": 0.1461,
+        "gpu_ms": 0.057,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -443,11 +443,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.6966,
-        "fenced_off_ms": 1.6214,
-        "submit_ms": 0.0522,
-        "chain_ms": 0.0752,
-        "gpu_ms": 0.023,
+        "fenced_on_ms": 1.6951,
+        "fenced_off_ms": 1.6174,
+        "submit_ms": 0.0513,
+        "chain_ms": 0.0777,
+        "gpu_ms": 0.0264,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -458,11 +458,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7596,
-        "fenced_off_ms": 1.6231,
-        "submit_ms": 0.0866,
-        "chain_ms": 0.1365,
-        "gpu_ms": 0.0499,
+        "fenced_on_ms": 1.7318,
+        "fenced_off_ms": 1.6177,
+        "submit_ms": 0.086,
+        "chain_ms": 0.1141,
+        "gpu_ms": 0.0281,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -472,15 +472,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.59,
-        "min_us": 7.1,
+        "median_us": 7.57,
+        "min_us": 7.11,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 25.01,
-        "min_us": 23.53,
+        "median_us": 24.54,
+        "min_us": 23.3,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -671,7 +671,7 @@
     "failed_checks": []
   },
   "gates_met": {
-    "near_survival_min": 0.9907,
+    "near_survival_min": 0.992,
     "near_survival": true,
     "length_ratio": {
       "1920_dark_4px": 0.975,
@@ -685,26 +685,26 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.1188,
-      "1920x1080_100": 0.1361,
-      "5120x1440_30": 0.023,
-      "5120x1440_100": 0.0499
+      "1920x1080_30": 0.0203,
+      "1920x1080_100": 0.057,
+      "5120x1440_30": 0.0264,
+      "5120x1440_100": 0.0281
     },
     "stage_gpu_within_advisory": {
-      "1920x1080_30": false,
-      "1920x1080_100": false,
+      "1920x1080_30": true,
+      "1920x1080_100": true,
       "5120x1440_30": true,
       "5120x1440_100": true
     },
     "cpu_us": {
-      "30": 7.59,
-      "100": 25.01
+      "30": 7.57,
+      "100": 24.54
     },
     "cpu_100_within": true,
     "fog": [
       {
         "expected_T": 0.4919,
-        "core_ratio": 0.4902,
+        "core_ratio": 0.4904,
         "trail_ratio": 0.4902
       }
     ]

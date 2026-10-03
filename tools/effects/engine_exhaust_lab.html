@@ -38,12 +38,18 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outli
   <p>A live mock-up of the proxy's plume pixel law. Tune it here; the chosen numbers port one-to-one into the ps_3_0 plume shader.</p>
 </header>
 <div class="stage"><canvas id="c"></canvas>
-  <div class="hud"><span class="chip">look <b id="hud-look">modern</b></span><span class="chip">throttle <b id="hud-thr">1.00</b></span><span class="chip">ps cost <b id="hud-cost">~170 slots</b></span></div>
+  <div class="hud"><span class="chip">look <b id="hud-look">modern</b></span><span class="chip">throttle <b id="hud-thr">1.00</b></span><span class="chip">law <b id="hud-law">revised</b></span><span class="chip">view <b id="hud-view">side</b></span><span class="chip">game ps <b id="hud-cost">789 slots</b></span></div>
 </div>
 <div class="deck">
   <div class="group"><h2>Scene</h2>
     <div class="btns">
       <button id="b-modern" aria-pressed="true">Modern</button><button id="b-static" aria-pressed="false">Current (static cone)</button><button id="b-both" aria-pressed="false">Side by side</button>
+    </div>
+    <div class="btns" aria-label="Look law">
+      <button id="l-rev" aria-pressed="true">Revised law</button><button id="l-prev" aria-pressed="false">Previous law</button><button id="l-ab" aria-pressed="false">A/B (previous / revised)</button>
+    </div>
+    <div class="btns" aria-label="View">
+      <button id="w-side" aria-pressed="true">Side view</button><button id="w-end" aria-pressed="false">End-on (exhaust at the camera)</button>
     </div>
     <label class="row">Throttle (speed / max)<span class="v" id="v-thr">1.00</span><input type="range" id="thr" min="0" max="1" step="0.01" value="1"></label>
     <label class="row">Auto throttle sweep<span class="v" id="v-sweep">on</span><input type="range" id="sweep" min="0" max="1" step="1" value="1"></label>
@@ -57,15 +63,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outli
     <label class="row">Nozzle ring brightness<span class="v" id="v-ring">0.3</span><input type="range" id="ring" min="0" max="1.5" step="0.01" value="0.3"></label>
   </div>
   <div class="group"><h2>Fire</h2>
-    <label class="row">Turbulence<span class="v" id="v-turb">0.55</span><input type="range" id="turb" min="0" max="1" step="0.01" value="0.55"></label>
-    <label class="row">Flow speed (lengths / s)<span class="v" id="v-flow">2.5</span><input type="range" id="flow" min="0.3" max="6" step="0.1" value="2.5"></label>
+    <label class="row">Turbulence<span class="v" id="v-turb">0.60</span><input type="range" id="turb" min="0" max="1" step="0.01" value="0.6"></label>
+    <label class="row">Flow speed (lengths / s)<span class="v" id="v-flow">3.0</span><input type="range" id="flow" min="0.3" max="6" step="0.1" value="3"></label>
     <label class="row">Nozzle value (record units; flow x 500 / value, 0.3..1)<span class="v" id="v-nval">500</span><input type="range" id="nval" min="100" max="10000" step="100" value="500"></label>
-    <label class="row">Edge erosion<span class="v" id="v-erode">0.6</span><input type="range" id="erode" min="0" max="1" step="0.01" value="0.6"></label>
-    <label class="row">Length pulse<span class="v" id="v-pulse">0.12</span><input type="range" id="pulse" min="0" max="0.4" step="0.01" value="0.12"></label>
+    <label class="row">Edge erosion<span class="v" id="v-erode">0.57</span><input type="range" id="erode" min="0" max="1" step="0.01" value="0.57"></label>
+    <label class="row">Length pulse<span class="v" id="v-pulse">0.25</span><input type="range" id="pulse" min="0" max="0.4" step="0.01" value="0.25"></label>
   </div>
   <div class="group"><h2>Shock cells</h2>
     <label class="row">Diamond strength<span class="v" id="v-shock">0.5</span><input type="range" id="shock" min="0" max="1" step="0.01" value="0.5"></label>
-    <label class="row">Cell period (fraction of length)<span class="v" id="v-period">0.14</span><input type="range" id="period" min="0.05" max="0.4" step="0.01" value="0.14"></label>
+    <label class="row">Cell period (fraction of length)<span class="v" id="v-period">0.16</span><input type="range" id="period" min="0.05" max="0.4" step="0.01" value="0.16"></label>
     <label class="row">Cell fade along plume<span class="v" id="v-cfade">0.6</span><input type="range" id="cfade" min="0" max="1" step="0.01" value="0.6"></label>
   </div>
   <div class="group"><h2>Core and halo</h2>
@@ -76,7 +82,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outli
     <label class="row">Exposure<span class="v" id="v-exp">1.0</span><input type="range" id="exp" min="0.3" max="2.5" step="0.05" value="1"></label>
   </div>
 </div>
-<p class="note">Length and brightness follow throttle exactly as in the game: the game stretches the jet to 0.25 + 1.75 × throttle, the proxy reads that scale from the draw, and at the default nozzle width (0.5 of the jet's value) the plume is 4 nozzle widths long at full throttle, as here. The side view only: the end-on disc, the mouth's hand-over to it, the capital sub-engine floor and the near-camera fade exist in the game alone. Mirrored from the gap analysis' phase 2: the flow in world units (the nozzle value slider), the two-tone colour and the idle floor (1 nozzle width at zero throttle). Game-only, not shown: the nozzle spill through the hull (it needs the depth lane), the far-engine distance law, the RCS puff and brake flare attack (it follows the game's z from frame to frame) and the SETA travel look (it reads the game's time-warp factor). Everything here is analytic noise (no textures), so it ports to ps_3_0 at a few hundred slots. When you have a setting you like, press <code>Copy settings</code> and paste the line back to me.</p>
+<p class="note">Length and brightness follow throttle exactly as in the game: the game stretches the jet to 0.25 + 1.75 × throttle, the proxy reads that scale from the draw, and at the default nozzle width (0.5 of the jet's value) the plume is 4 nozzle widths long at full throttle, as here. The sliders open at the game's look and keep their numbers and directions. <b>Revised law</b> (the game's since 2026-10-03, <code>docs/architecture/engine-exhaust-look-critique.md</code>): a thin hot core that cools along the plume inside a peaked body, the colour core &rarr; tint &rarr; darker tint, streaks 4.5 : 1 along the axis moving with the flow, shock cells that carve dark gaps (crests at the body's level), tongues at the edge and the tail, a tight halo at the mouth; <i>Core radius</i> now sets the hot core's width, <i>Edge erosion</i> the streaks' erosion and the tail's tongues, <i>Diamond strength</i> the gaps' depth (full at 0.59), <i>Halo width</i> its e-fold (0.32 &times; the value). <b>Previous law</b> is the slab look flown until then; <b>A/B</b> shows both (side view: previous on top; end-on: previous left). <b>End-on</b> is the game's nozzle disc for a plume pointing at the camera (the chase view): the body integrated along the axis (8 samples), the hot centre, the nozzle ring (3&times; its side radiance in the revised law), radial streaks scrolling outward and the halo, under the game's soft cap. Game-only, not shown: the revised law's detail level (a plume narrower than 16 px keeps the previous law's shape and halo, fading to the revised at 40 px: TAA keeps a small moving plume and the far dots their brightness), the nozzle spill through the hull, the far-engine distance law, the RCS puff and brake flare attack, the SETA travel look, the mouth's hand-over between the disc and the side quad, and the game's tonemap: the lab maps x / (1 + x), the game AgX, which whitens bright bodies sooner, so judge the hue and the structure here and the brightness in flight. When you have a setting you like, press <code>Copy settings</code> and paste the line back to me.</p>
 <div class="btns"><button id="copy">Copy settings</button><span class="chip" id="copied" hidden>copied</span></div>
 </div>
 <script>
@@ -87,14 +93,54 @@ const vs=`#version 300 es
 in vec2 p;out vec2 uv;void main(){uv=p*0.5+0.5;gl_Position=vec4(p,0,1);}`;
 const fs=`#version 300 es
 precision highp float;out vec4 o;in vec2 uv;
-uniform vec2 res;uniform float t,phase,thr,mode,turb,flow,erode,pulse,shock,period,cfade,heat,core,halo,hb,expo,bulge,taper,tail,ring;uniform vec3 tint,head;
+uniform vec2 res;uniform float t,phase,thr,mode,law,endon,turb,flow,erode,pulse,shock,period,cfade,heat,core,halo,hb,expo,bulge,taper,tail,ring,apkP,apkR;uniform vec3 tint,head,headP;
 float hash(vec3 p){p=fract(p*0.3183099+vec3(.1,.2,.3));p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vnoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
  return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
             mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
 float fbm(vec3 p){return 0.5*vnoise(p)+0.25*vnoise(p*2.03+1.7)+0.125*vnoise(p*4.1+3.1);}
-// one plume: x along axis from nozzle (0) in nozzle-diameter units, y radial, s throttle, modern flag
-vec3 plume(vec2 q,float s,float modern,float side){
+// The game's law in pieces (src/effects/engine_plume_ps.hlsl, src/proxy/engine_plumes_core.h): the width profile,
+// the tail (with the mouth ramp), the previous law's cosine cells and the revised law's carving and cooling core.
+float widthAt(float u){float b=0.5*bulge*(1.0-0.55*exp(-u*9.0))*(1.0+0.35*smoothstep(0.0,0.25,u)*exp(-u*4.0));
+ float w=min(mix(0.5*bulge,mix(0.5*bulge,0.04,u),taper),b+0.5*bulge*taper);return w*max(1.0-0.6*smoothstep(0.6,1.0,u)*taper,0.05);}
+float tailAt(float u){return (1.0-smoothstep(mix(0.75,0.25,tail),1.0,u))*exp(-u*tail*1.2)*(1.0-0.5*(1.0-smoothstep(0.0,0.3,u)));}
+float cellPrev(float u){return shock*cos(6.2831853*u/period)*exp(-u*cfade*5.0)*smoothstep(0.0,period,u);}
+float carveRev(float u){float c=0.5+0.5*cos(6.2831853*u/period);return min(1.0,1.7*shock)*exp(-u*cfade*5.0)*smoothstep(0.0,0.5*period,u)*(1.0-c*c*c);}
+float coolRev(float u){return 1.0-0.5*smoothstep(0.2,0.8,u);}
+vec4 softMax(float a,vec3 ca,float b,vec3 cb){float a4=a*a*a*a,b4=b*b*b*b,m4=a4+b4;return m4>1e-30?vec4((ca*a4+cb*b4)*(sqrt(sqrt(m4))/m4),sqrt(sqrt(m4))):vec4(0.0);}
+// The end-on disc (the game's camera-facing disc, the exhaust at the camera): the body integrated over 8 samples of
+// the law, the halo radially, the ring, the soft cap 1.5 x the side view's axis peak. Revised: the peaked profile and
+// hot centre, the cells as rings, polar streaks (spokes scrolling outward), kappa 3.33, halo 2.82, the ring x 3.
+vec3 discEnd(vec2 q,float s,float side,float rev){
+ float rho=length(q),Ln=min(max(0.25+1.75*s,0.5)*2.0,8.0),I=mix(1.2,4.0,s),ih=hb*I/4.0,sig=halo*(rev>0.5?0.32:0.5);
+ vec3 white=vec3(1.0,0.97,0.9);
+ float erosion,turbI;
+ if(rev>0.5){vec2 dir=q/max(rho,1e-4);float S2=fbm(vec3(dir.x*2.5+side+t*0.7,dir.y*2.5,rho*4.5-phase*1.6)*2.2+vec3(5.0,2.0,1.0))-0.4375;
+   erosion=erode*1.6*S2;turbI=1.0+turb*2.2*S2*(0.4+0.6*clamp(2.0*rho,0.0,1.0));}
+ else{vec3 p=vec3(q.x*3.0,q.y*3.0,side+t*0.7-phase*1.6);erosion=erode*0.96*(fbm(p)-0.5);turbI=1.0+turb*2.2*(fbm(p*2.2+vec3(5.0,2.0,1.0))-0.5);}
+ float B=0.0,H=0.0,A=0.0,M=0.0,T=0.0;
+ for(int k=0;k<8;k++){float u=(float(k)+0.5)/8.0,radial=rho/widthAt(u),tl=tailAt(u);
+  if(rev>0.5){float hot=exp(-pow(radial/(0.45*core),2.0));
+   float b=tl*(1.0-smoothstep(0.45,1.0,radial+erosion))*(1.0-carveRev(u)*s*(1.0-smoothstep(0.3,0.9,radial)))*(0.08+0.92*exp(-pow(radial/0.32,2.0)))*(1.0+0.6*hot*coolRev(u));
+   float bh=b*heat*(1.0-smoothstep(0.05,0.3,u))*hot,rim=smoothstep(0.25,0.9,radial),g=smoothstep(0.2,0.5,u);
+   B+=b;H+=bh;A+=(b-bh)*(1.0-rim)*(1.0-g);M+=(b-bh)*((1.0-rim)*g*(1.0-0.4*smoothstep(0.6,1.0,u))+0.5*rim);}
+  else{float cm=1.0-smoothstep(0.0,1.4*core,radial);
+   float b=tl*(1.0-smoothstep(0.55,1.0,radial+erosion))*(1.0+cellPrev(u)*s*(1.0-smoothstep(0.0,0.8,radial)))*(1.0+0.6*cm);
+   float bh=b*heat*(1.0-smoothstep(0.0,0.55,u))*cm;B+=b;H+=bh;T+=(b-bh)*smoothstep(0.3,1.0,u);}
+ }
+ float level=I*(rev>0.5?3.33:1.8)*Ln*0.125*turbI;
+ vec3 body;
+ if(rev>0.5) body=level*(A*head+M*tint+H*white);
+ else{float c=B-H;body=level*B*mix(mix(headP,tint,c>1e-20?T/c:1.0),white,B>0.0?H/B:0.0);}
+ float dn=rho/sig,hl=ih*(rev>0.5?2.82:3.0)*Ln*exp(-dn)*clamp(2.0*(2.25-dn),0.0,1.0);
+ float aa=fwidth(rho),s2=1.0/240.0+0.25*aa*aa,rr=rho-0.46*bulge;
+ float ringI=I*ring/4.0*(rev>0.5?3.0:1.0)*sqrt((1.0/240.0)/s2)*exp(-rr*rr/(2.0*s2));
+ vec4 mouth=softMax(ringI,mix(tint,vec3(1.0,0.95,0.85),0.6),hl,tint);
+ float total=level*B+mouth.w,cap=1.5*I*(rev>0.5?apkR:apkP);
+ return total>1e-20?(body+mouth.rgb)*(cap*(1.0-exp(-total/cap))/total):vec3(0.0);
+}
+// one plume: x along axis from nozzle (0) in nozzle-diameter units, y radial, s throttle, modern flag, rev: the revised law
+vec3 plume(vec2 q,float s,float modern,float side,float rev){
  // game law at the default nozzle 0.5: L = 2 z nozzle widths, 4 at s=1; the modern look's idle floor (gap 10 of the
  // gap analysis): z at least 0.5, so 1 nozzle width at s=0 (0.5 before)
  float L=(modern>0.5?max(0.25+1.75*s,0.5):0.25+1.75*s)*2.0;
@@ -108,7 +154,28 @@ vec3 plume(vec2 q,float s,float modern,float side){
    w=mix(cyl,cone,taper); w=min(w,b+0.5*bulge*taper); w*=1.0-0.6*smoothstep(0.6,1.0,u)*taper;
  }
  float radial=r/w;
- // noise translated along the axis by the flow phase (nozzle diameters, accumulated per frame at a constant speed,
+ float rr=abs(r-0.5*bulge*0.92); float ringI=modern*ring*exp(-rr*rr*120.0)*exp(-max(q.x,0.0)*14.0)*step(-0.05,q.x)*mix(1.2,4.0,s)/4.0;
+ if(modern>0.5&&rev>0.5){
+   // The revised law (docs/architecture/engine-exhaust-look-critique.md section 3, "Implemented"): the streak field
+   // S2 (4.5 : 1 along the axis, advected by the flow phase), a peaked profile with a thin hot core that cools along
+   // the plume, the erosion growing along it and the tail's tongues, cells that carve dark gaps (ramped in over half a
+   // period), the turbulence weighted by the radius, the heat in the core and the first 0.3 L, the colour core ->
+   // tint -> darker tint, a tight halo at the mouth.
+   float S2=fbm(vec3(q.x-phase,q.y*4.5,side+t*0.7)*2.2+vec3(5.0,2.0,1.0))-0.4375;
+   float edgeR=1.0-smoothstep(0.45,1.0,radial+erode*1.6*S2*(0.6+0.8*u));
+   float tl=(1.0-smoothstep(mix(0.75,0.25,tail),1.0,u+erode*(0.35/0.57)*S2))*exp(-u*tail*1.2)*(1.0-0.5*(1.0-smoothstep(0.0,0.3,u)));
+   float crest=0.5+0.5*cos(6.2831853*u/period);
+   float cellsR=1.0-min(1.0,1.7*shock)*exp(-u*cfade*5.0)*smoothstep(0.0,0.5*period,u)*(1.0-smoothstep(0.3,0.9,radial))*s*(1.0-crest*crest*crest);
+   float hot=exp(-pow(radial/(0.45*core),2.0));
+   float turbR=1.0+turb*2.2*S2*(0.4+0.6*min(radial,1.0));
+   float heatR=heat*hot*(1.0-smoothstep(0.05,0.3,u));
+   vec3 toneR=mix(head,tint*(1.0-0.4*smoothstep(0.6,1.0,u)),smoothstep(0.2,0.5,u));
+   vec3 colR=mix(mix(toneR,0.5*tint,smoothstep(0.25,0.9,radial)),vec3(1.0,0.97,0.9),heatR);
+   float IR=mix(1.2,4.0,s)*edgeR*tl*cellsR*turbR*(0.08+0.92*exp(-pow(radial/0.32,2.0)))*(1.0+0.6*hot*coolRev(u));
+   float hlR=hb*exp(-r/(halo*0.32))*exp(-u*4.0)*mix(1.2,4.0,s)/4.0;
+   return colR*IR+softMax(ringI,mix(tint,vec3(1.0,0.95,0.85),0.6),hlR,tint).rgb;
+ }
+ // the previous law: noise translated along the axis by the flow phase (nozzle diameters, accumulated per frame at a constant speed,
  // the s=1 unpulsed design length's 0.35 flow L / 1.6, x the nozzle's flow factor clamp(500 / value, 0.3, 1): the
  // proxy's FlowPhase and flow_factor, gap 4), stretched along u
  vec3 np=vec3((q.x-phase)*1.6,q.y*3.0,side+t*0.7);
@@ -126,13 +193,12 @@ vec3 plume(vec2 q,float s,float modern,float side){
  // luminance) in the first third, the tint (the mean) towards the tail
  float coreMask=1.0-smoothstep(0.0,core*1.4,radial);
  float heatMix=heat*coreMask*(1.0-smoothstep(0.0,0.55,u));
- vec3 tone=modern>0.5?mix(head,tint,smoothstep(0.3,1.0,u)):tint;
+ vec3 tone=modern>0.5?mix(headP,tint,smoothstep(0.3,1.0,u)):tint;
  vec3 col=mix(tone,vec3(1.0,0.97,0.9),heatMix);
  float I=mix(1.2,4.0,s)*shape*cells*turbI*mix(1.0,1.6,coreMask);
  // halo: soft wide glow, no structure; after flight D the mouth terms follow the body's throttle curve mix(1.2,4,s)/4
  float hl=hb*exp(-r/(halo*0.5))*exp(-u*2.2)*mix(1.2,4.0,s)/4.0;
  if(modern<0.5){ I=mix(1.5,4.0,s)*edge*(1.0-smoothstep(0.6,1.0,u))*mix(1.0,1.6,coreMask)*(1.0+0.1*(hash(vec3(floor(t*12.0),side,0.0))-0.5)); hl=hb*exp(-r/(halo*0.5))*exp(-u*2.0)*mix(0.3,1.0,s); col=tint; }
- float rr=abs(r-0.5*bulge*0.92); float ringI=modern*ring*exp(-rr*rr*120.0)*exp(-max(q.x,0.0)*14.0)*step(-0.05,q.x)*mix(1.2,4.0,s)/4.0;
  // the mouth terms (ring, halo) as a soft maximum (a^4+b^4)^(1/4), not a sum (after flight C); the body adds
  float a4=ringI*ringI*ringI*ringI, b4=hl*hl*hl*hl, m4=a4+b4;
  vec3 mouth=m4>1e-30?(mix(tint,vec3(1.0,0.95,0.85),0.6)*a4+tint*b4)*(sqrt(sqrt(m4))/m4):vec3(0.0);
@@ -140,15 +206,34 @@ vec3 plume(vec2 q,float s,float modern,float side){
 }
 vec3 stars(vec2 p){float h=hash(vec3(floor(p*vec2(2.2,2.2)*res.y),1.0));float s=smoothstep(0.995,1.0,h);return vec3(s*0.6);}
 void main(){
- vec2 px=uv*res; float H=res.y; vec2 p=(px-vec2(res.x*0.5,H*0.5))/H*10.0; // scene units: 10 nozzle diameters tall
+ vec2 px=uv*res; float H=res.y;
  vec3 col=stars(uv)*0.4+vec3(0.01,0.012,0.02);
- float split=mode>1.5?1.0:0.0;
+ bool ab=law>1.5;
+ if(endon>0.5){
+  // End-on (the exhaust at the camera): 4 nozzle diameters tall; the ship's stern a dark disc, the nozzle bell a ring;
+  // A/B: the previous law left, the revised right.
+  vec2 p=(px-vec2(res.x*0.5,H*0.5))/H*4.0;
+  for(int i=0;i<2;i++){
+   if(!ab&&i==1) break;
+   vec2 q=p-vec2(ab?(i==0?-1.9:1.9):0.0,0.0);
+   float rho=length(q);
+   col=mix(col,vec3(0.12,0.13,0.15),step(rho,1.6)); col=mix(col,vec3(0.2,0.2,0.22),step(0.5,rho)*step(rho,0.6));
+   col+=discEnd(q,thr,float(i)*7.3,ab?float(i):law);
+  }
+  col*=expo; col=col/(1.0+col); col=pow(col,vec3(1.0/2.2));
+  o=vec4(col,1.0);
+  return;
+ }
+ vec2 p=(px-vec2(res.x*0.5,H*0.5))/H*10.0; // scene units: 10 nozzle diameters tall
+ float split=(mode>1.5||ab)?1.0:0.0;
  // ship hull: a dark wedge ending at the nozzle
  float nozzleX=-2.8;
  for(int i=0;i<2;i++){
   if(split<0.5&&i==1) break;
   float yo=split>0.5?(i==0?2.6:-2.6):0.0;
-  float modern=split>0.5?(i==0?1.0:0.0):(mode<0.5?1.0:0.0);
+  // A/B: the previous law on top, the revised below (both modern); else the scene's modern / static / side by side
+  float modern=ab?1.0:split>0.5?(i==0?1.0:0.0):(mode<0.5?1.0:0.0);
+  float rev=ab?float(i):law;
   vec2 q=p-vec2(nozzleX,yo);
   // hull
   float hull=step(q.x,0.0)*step(-3.6,q.x)*step(abs(q.y),0.5+0.12*(-q.x));
@@ -156,7 +241,7 @@ void main(){
   col=mix(col,vec3(0.12,0.13,0.15),hull); col=mix(col,vec3(0.2,0.2,0.22),bell);
   // nozzle disc glow
   float disc=exp(-length(vec2(q.x*3.0,q.y))*3.0)*step(0.0,q.x+0.1)*mix(0.3,1.5,thr);
-  vec3 e=plume(q,thr,modern,float(i)*7.3);
+  vec3 e=plume(q,thr,modern,float(i)*7.3,rev);
   col+=e+tint*disc;
  }
  col*=expo; col=col/(1.0+col); col=pow(col,vec3(1.0/2.2));
@@ -166,7 +251,7 @@ function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShade
 const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,vs));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(pr);gl.useProgram(pr);
 const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
 const loc=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-const U={};['res','t','phase','thr','mode','turb','flow','erode','pulse','shock','period','cfade','heat','core','halo','hb','expo','tint','head','bulge','taper','tail','ring'].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
+const U={};['res','t','phase','thr','mode','law','endon','turb','flow','erode','pulse','shock','period','cfade','heat','core','halo','hb','expo','tint','head','headP','bulge','taper','tail','ring','apkP','apkR'].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
 const ids=['thr','sweep','bulge','taper','tail','ring','turb','flow','nval','erode','pulse','shock','period','cfade','heat','core','halo','hb','exp'];
 const el={};ids.forEach(i=>el[i]=document.getElementById(i));
 const colors=[['Argon','#5858f7'],['Boron','#1b88a6'],['Split','#d63d3d'],['Teladi','#38865a'],['Paranid','#777702'],['Xenon','#a2439f'],['Terran','#b8a99a'],['Kha’ak','#84549c']];
@@ -174,15 +259,26 @@ const colors=[['Argon','#5858f7'],['Boron','#1b88a6'],['Split','#d63d3d'],['Tela
 // largest channel; verification/results/engine-effects/plume_two_tone_colours.py) scaled to the tint's luminance when it
 // is brighter, as the proxy's head_colour does with the body's mean.
 const peaks={Argon:[.84,.84,1],Boron:[.27,.90,1],Split:[1,.81,.81],Teladi:[.64,1,.78],Paranid:[1,1,.13],Xenon:[1,.77,.99],Terran:[1,.89,.84],'Kha’ak':[.93,.80,1]};
-function headOf(t,p){const l=c=>.2126*c[0]+.7152*c[1]+.0722*c[2];const lp=l(p),lt=l(t),k=lp>lt&&lp>0?lt/lp:1;return p.map(v=>v*k);}
-let tint=[0.345,0.345,0.969],tintName='Argon',mode=0,head=headOf(tint,peaks.Argon);
+// The revised law clamps the scale at 0.75 (engine_plumes_core.h head_min): the red head stays red, not grey-pink.
+function headOf(t,p,kmin){const l=c=>.2126*c[0]+.7152*c[1]+.0722*c[2];const lp=l(p),lt=l(t);let k=lp>lt&&lp>0?lt/lp:1;k=Math.max(k,kmin||0);return p.map(v=>v*k);}
+let tint=[0.345,0.345,0.969],tintName='Argon',mode=0,law=1,endon=0,head=headOf(tint,peaks.Argon,.75),headP=headOf(tint,peaks.Argon);
 const cb=document.getElementById('colors');
-colors.forEach(([n,h],i)=>{const bt=document.createElement('button');bt.innerHTML=`<span class="sw" style="background:${h}"></span>${n}`;bt.setAttribute('aria-pressed',i===0?'true':'false');bt.addEventListener('click',()=>{tint=hex(h);head=headOf(tint,peaks[n]);tintName=n;[...cb.children].forEach(x=>x.setAttribute('aria-pressed','false'));bt.setAttribute('aria-pressed','true');});cb.appendChild(bt);});
+colors.forEach(([n,h],i)=>{const bt=document.createElement('button');bt.innerHTML=`<span class="sw" style="background:${h}"></span>${n}`;bt.setAttribute('aria-pressed',i===0?'true':'false');bt.addEventListener('click',()=>{tint=hex(h);head=headOf(tint,peaks[n],.75);headP=headOf(tint,peaks[n]);tintName=n;[...cb.children].forEach(x=>x.setAttribute('aria-pressed','false'));bt.setAttribute('aria-pressed','true');});cb.appendChild(bt);});
 function hex(h){const n=parseInt(h.slice(1),16);const s=v=>Math.pow(v/255,2.2);return [s(n>>16&255),s(n>>8&255),s(n&255)];}
 function val(i){return parseFloat(el[i].value);}
 function fmt(i){const v=val(i);document.getElementById('v-'+i).textContent=i==='sweep'?(v?'on':'off'):i==='nval'?v.toFixed(0):(i==='flow'||i==='exp'?v.toFixed(1):v.toFixed(2));}
 ids.forEach(i=>{el[i].addEventListener('input',()=>{fmt(i);if(i==='thr'){el.sweep.value=0;fmt('sweep');}});fmt(i);});
 const mb={modern:0,static:1,both:2};Object.keys(mb).forEach(k=>{const bt=document.getElementById('b-'+k);bt.addEventListener('click',()=>{mode=mb[k];Object.keys(mb).forEach(j=>document.getElementById('b-'+j).setAttribute('aria-pressed',j===k?'true':'false'));document.getElementById('hud-look').textContent=k==='both'?'side by side':k;});});
+const lb={rev:1,prev:0,ab:2};Object.keys(lb).forEach(k=>{document.getElementById('l-'+k).addEventListener('click',()=>{law=lb[k];Object.keys(lb).forEach(j=>document.getElementById('l-'+j).setAttribute('aria-pressed',j===k?'true':'false'));document.getElementById('hud-law').textContent=k==='ab'?'A/B':k==='rev'?'revised':'previous';});});
+const wb={side:0,end:1};Object.keys(wb).forEach(k=>{document.getElementById('w-'+k).addEventListener('click',()=>{endon=wb[k];Object.keys(wb).forEach(j=>document.getElementById('w-'+j).setAttribute('aria-pressed',j===k?'true':'false'));document.getElementById('hud-view').textContent=k==='end'?'end-on':'side';});});
+// The side view's axis peak per I (the end-on disc's soft cap is 1.5 x I x it; engine_plumes_core.h look_tables): the
+// previous law's 1.6 x max tail x (1 + s cosine cell), the revised max of the cooling core's boost x tail x (1 - s carve).
+function axisPeaks(s){const ss=(a,b,x)=>{const t=Math.min(Math.max((x-a)/(b-a),0),1);return t*t*(3-2*t);};
+ const tail=val('tail'),per=val('period'),cf=val('cfade'),sh=val('shock');let p=0,r=0;
+ for(let i=0;i<=512;i++){const u=i/512,tl=(1-ss(0.75+(0.25-0.75)*tail,1,u))*Math.exp(-u*tail*1.2)*(1-0.5*(1-ss(0,0.3,u))),c=Math.cos(6.2831853*u/per),e=Math.exp(-u*cf*5);
+  p=Math.max(p,1.6*tl*(1+s*sh*c*e*ss(0,per,u)));const cr=0.5+0.5*c;
+  r=Math.max(r,(1+0.6*(1-0.5*ss(0.2,0.8,u)))*tl*(1-s*Math.min(1,1.7*sh)*e*ss(0,0.5*per,u)*(1-cr*cr*cr)));}
+ return [p,r];}
 const shapes={cone:{bulge:1.0,taper:1.0,tail:0.15,ring:0.2},bulge:{bulge:1.15,taper:0.45,tail:0.7,ring:0.3},feather:{bulge:1.05,taper:0.25,tail:1.0,ring:0.5}};
 Object.keys(shapes).forEach(k=>{document.getElementById('s-'+k).addEventListener('click',()=>{Object.entries(shapes[k]).forEach(([i,v])=>{el[i].value=v;fmt(i);});Object.keys(shapes).forEach(j=>document.getElementById('s-'+j).setAttribute('aria-pressed',j===k?'true':'false'));});});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -200,7 +296,8 @@ function frame(now){
  gl.uniform2f(U.res,w,h);gl.uniform1f(U.t,reduce?0:t);gl.uniform1f(U.phase,reduce?0:phase);gl.uniform1f(U.thr,thr);gl.uniform1f(U.mode,mode);
  gl.uniform1f(U.turb,val('turb'));gl.uniform1f(U.flow,val('flow'));gl.uniform1f(U.erode,val('erode'));gl.uniform1f(U.pulse,val('pulse'));
  gl.uniform1f(U.shock,val('shock'));gl.uniform1f(U.period,val('period'));gl.uniform1f(U.cfade,val('cfade'));gl.uniform1f(U.heat,val('heat'));
- gl.uniform1f(U.core,val('core'));gl.uniform1f(U.halo,val('halo'));gl.uniform1f(U.hb,val('hb'));gl.uniform1f(U.expo,val('exp'));gl.uniform1f(U.bulge,val('bulge'));gl.uniform1f(U.taper,val('taper'));gl.uniform1f(U.tail,val('tail'));gl.uniform1f(U.ring,val('ring'));gl.uniform3f(U.tint,tint[0],tint[1],tint[2]);gl.uniform3f(U.head,head[0],head[1],head[2]);
+ gl.uniform1f(U.core,val('core'));gl.uniform1f(U.halo,val('halo'));gl.uniform1f(U.hb,val('hb'));gl.uniform1f(U.expo,val('exp'));gl.uniform1f(U.bulge,val('bulge'));gl.uniform1f(U.taper,val('taper'));gl.uniform1f(U.tail,val('tail'));gl.uniform1f(U.ring,val('ring'));gl.uniform3f(U.tint,tint[0],tint[1],tint[2]);gl.uniform3f(U.head,head[0],head[1],head[2]);gl.uniform3f(U.headP,headP[0],headP[1],headP[2]);
+ const pk=axisPeaks(thr);gl.uniform1f(U.apkP,pk[0]);gl.uniform1f(U.apkR,pk[1]);gl.uniform1f(U.law,law);gl.uniform1f(U.endon,endon);
  gl.drawArrays(gl.TRIANGLES,0,3);requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

@@ -11,7 +11,7 @@ struct Input {
     float4 local : TEXCOORD0;     // u | x, w | y (world units), L (pulsed; the disc: the ring's radiance), the nozzle width n
     float4 shape : TEXCOORD1;     // halo sigma at the nozzle (nozzle widths), value, occlusion bias, the nozzle's flow phase
     float4 intensity : TEXCOORD2; // I_core, I_halo, the axis's view z component (the disc: the soft cap), the nozzle's view z
-    float4 tint : COLOR0;         // mean colour, largest channel 1
+    float4 tint : COLOR0;         // mean colour, largest channel 1; A the revised law's detail level (engine_plumes_core.h)
     float4 params : COLOR1;       // throttle s, seed, I_ring / I_core / 2, the disc's weight (bytes)
     float4 fog : COLOR2;          // the fog transmittance per channel (white without fog), sin(view)
     float4 peak : COLOR3;         // the head colour (the body's peak at the mean's luminance), the kind (0 axial, 1 disc)
@@ -21,7 +21,7 @@ struct Output {
     float4 local : TEXCOORD0;
     float4 shape : TEXCOORD1;
     float4 view : TEXCOORD2;      // the nozzle's view z, I_core, I_halo, the axis's view z component
-    float3 tint : TEXCOORD3;
+    float4 tint : TEXCOORD3;      // the mean colour, the revised law's detail level (A)
     float4 params : TEXCOORD4;
     float4 fog : TEXCOORD5;
     float4 peak : TEXCOORD6;
@@ -34,7 +34,7 @@ Output main(Input i) {
     o.local = i.local;
     o.shape = i.shape;
     o.view = float4(i.intensity.w, i.intensity.xyz);
-    o.tint = i.tint.rgb;
+    o.tint = i.tint;
     o.params = i.params;
     o.fog = i.fog;
     o.peak = i.peak;

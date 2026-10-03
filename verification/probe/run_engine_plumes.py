@@ -13,7 +13,9 @@ fade, the presets, the temporal variation, the bulge and taper, the shock cells,
 throttles, Reset, the FP16 refusal, the EVENT-fenced stage cost at 30 / 100 nozzles and the CPU build with and without the
 plume floor; after the gap analysis' phases 2 and 3 the idle floor's length at s = 0, the nozzle spill head-on behind a
 plane, the flow's world displacement at value 100 / 600 / 1,500 / 10,000 and its lag-1 correlation, the two-tone colour at
-u 0.1 / 0.5 / 0.9, the RCS puff and brake flare attack, the travel look at warp 6; ps slots gated at 800).
+u 0.1 / 0.5 / 0.9, the RCS puff and brake flare attack, the travel look at warp 6; ps slots gated at 800; after the revised
+look law the structure gates of docs/architecture/engine-exhaust-look-critique.md section 5 on the FP16 readback: radial
+contrast, the body lane's cells and dark gaps, the streaks' anisotropy, the whiteness, the end-on ring and hot centre).
 --disc-ab runs the timing case alone with X3M_PLUMES_FIXTURE_DISC_AB=1: the stage cost with the end-on disc drawn and
 not drawn, three interleaved rounds at 30 / 100 nozzles and both sizes, into
 verification/results/engine-effects/plume_disc_ab.json (the summary record is not touched).
@@ -111,7 +113,7 @@ def parse(text):
             'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
             'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
             'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'SPILL_NEAR', 'FLOW', 'FLOW_SAME', 'FLOW_LAG',
-            'FLOW_KEYED', 'COLOUR', 'COLOUR_HEAD', 'ATTACK', 'ATTACK_CROSSING', 'TRAVEL')
+            'FLOW_KEYED', 'COLOUR', 'COLOUR_HEAD', 'ATTACK', 'ATTACK_CROSSING', 'TRAVEL', 'STRUCTURE', 'STRUCTURE_DISC')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -162,6 +164,22 @@ def gates(r):
     out['colour_error_max'] = max((x['error'] for x in r['colour']), default=None)
     out['attack'] = {f"{x['width']}_{x['kind']}": {'frame2': x['frame2'], 'back_ms': x['back_ms']} for x in r['attack']}
     out['travel'] = {str(x['width']): {k: x[k] for k in ('weight', 'L_ratio', 'I_ratio', 'drawn_ratio', 'peak_ratio')} for x in r['travel']}
+    # The revised look law's structure (FP16, every frame gated in the fixture): the worst frame per size, tint and nozzle.
+    structure = {}
+    for x in r['structure']:
+        key = f"{x['width']}_{x['tint']}_{x['asked_px']:.0f}"
+        row = structure.setdefault(key, {'radial_min': 9e9, 'lane_depth_min': 9e9, 'gap_min_max': 0.0, 'aniso_min': 9e9,
+                                         'white_axis_min': 9e9, 'white_rim_min': 9e9, 'nozzle_px': x['nozzle_px'], 'frames': 0})
+        row['radial_min'] = min(row['radial_min'], x['radial'])
+        row['lane_depth_min'] = min(row['lane_depth_min'], x['lane_depth'])
+        row['gap_min_max'] = max(row['gap_min_max'], x['gap_min'])
+        row['aniso_min'] = min(row['aniso_min'], x['aniso'])
+        row['white_axis_min'] = min(row['white_axis_min'], x['white_axis_u05'])
+        row['white_rim_min'] = min(row['white_rim_min'], x['white_rim_u02'])
+        row['frames'] += 1
+    out['structure'] = structure
+    out['structure_disc'] = {f"{x['width']}_{x['tint']}": {k: x[k] for k in ('ring', 'ring_n', 'hot', 'ring_display', 'hot_display', 'nozzle_px')}
+                             for x in r['structure_disc']}
     return out
 
 
@@ -383,7 +401,8 @@ def main():
                       'flow_world_over_law': g['flow_world_over_law'], 'flow_600_over_1500': g['flow_600_over_1500'],
                       'flow_lag1': g['flow_lag1'], 'flow_keyed': g['flow_keyed'], 'spill_near': g['spill_near'],
                       'colour_error_max': g['colour_error_max'], 'attack': g['attack'], 'attack_crossing': g['attack_crossing'],
-                      'travel': g['travel'], 'results': str(results.relative_to(ROOT))}, indent=1))
+                      'travel': g['travel'], 'structure': g['structure'], 'structure_disc': g['structure_disc'],
+                      'results': str(results.relative_to(ROOT))}, indent=1))
     return 0 if record['passed'] else 1
 
 

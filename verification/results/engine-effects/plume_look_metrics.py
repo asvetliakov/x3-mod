@@ -7,8 +7,15 @@ in u in [0.05, 0.4], the radial core/edge contrast at u = 0.2 and 0.5, the head/
 the streak anisotropy (axial / radial autocorrelation half-length of the high-passed body). Luma is Rec. 709 of the
 display values decoded with gamma 2.2 ("lin" below): AgX compresses the top, so linear contrasts near the peak are
 underestimated, never overestimated. Also: the end-on disc's radial profile (02b) and the uncapped peaks (05, 09, 10).
+Since the revised look law (docs/architecture/engine-exhaust-look-critique.md section 5, "Implemented"): the body lane's
+cell depth and dark gaps (the row 0.35 w(u) off the axis, w the law's width at the band's drawn nozzle width), the
+display gates per side band (radial >= 2.0 at u 0.2, lane cells >= 0.2), the end-on disc's ring (its maximum in
+0.4..0.7 n over the minimum between 0.2 n and it, >= 1.05) and hot centre (the centre over the maximum, >= 0.9) on the
+azimuthal mean, and the far dots of 05 (the summed luma of the 40 / 12 / 6 / 2 px plumes; with --before DIR their ratio
+to the same sums in DIR, the gate 0.7..1.3 at 2 and 6 px).
 
-Usage: python3 plume_look_metrics.py [look-images dir] [--crops DIR]  (crops: 3x upscaled band crops for viewing).
+Usage: python3 plume_look_metrics.py [look-images dir] [--crops DIR] [--before DIR]  (crops: 3x upscaled band crops for
+viewing; before: an earlier dump, e.g. the images of e51872be checked out into a scratch directory).
 """
 import os
 import sys
@@ -22,6 +29,11 @@ CROPS = None
 if "--crops" in sys.argv:
     CROPS = sys.argv[sys.argv.index("--crops") + 1]
     os.makedirs(CROPS, exist_ok=True)
+BEFORE = sys.argv[sys.argv.index("--before") + 1] if "--before" in sys.argv else None
+# The drawn nozzle width (px) of the bands: the 150 px fighter and capital are held by the near-camera cap to 88.5 px at
+# 1080 (the fixture's STRUCTURE rows), the 40 px ones are uncapped; the end-on 150 px disc 65.6 px.
+NOZZLE_PX = {"05": 40.0, "09": 40.0}
+CAPPED_NOZZLE_PX, DISC_NOZZLE_PX = 88.5, 65.6
 
 # Side-view bands: file, label, nozzle (x, y), exhaust direction (-1: leftwards), throttle.
 SIDE = [
@@ -173,6 +185,56 @@ def anisotropy(Y, cols, cen, length, sigma=10):
     return lx, ly, lx / ly
 
 
+def width_law(u, bulge=1.15, taper=0.45):
+    """The law's width w(u) in nozzle widths (engine_plumes_core.h law::width)."""
+    def ss(a, b, x):
+        t = min(max((x - a) / (b - a), 0.0), 1.0)
+        return t * t * (3 - 2 * t)
+    b = 0.5 * bulge * (1 - 0.55 * np.exp(-9 * u)) * (1 + 0.35 * ss(0, 0.25, u) * np.exp(-4 * u)) + 0.5 * bulge * taper
+    line = 0.5 * bulge + (0.04 - 0.5 * bulge) * taper * u
+    return min(line, b) * max(1 - 0.6 * taper * ss(0.6, 1, u), 0.05)
+
+
+def lane(Y, cols, cen, length, n_px, period_frac=0.16):
+    """The body lane 0.35 w(u) off the axis (both sides' mean), u 0..0.6: the cell depth (max - min) / (max + min) of
+    its ratio to the running mean of 1.5 periods in u 0.05..0.4, and the dark gaps, its minimum over its mean in u
+    0.1..0.3 (the fixture's structure case on the FP16 readback; here display-decoded)."""
+    n = min(int(0.6 * length), len(cols))
+    if n < 20:
+        return float("nan"), float("nan")
+    vals, us = [], []
+    for i in range(n):
+        u = i / length
+        off = int(round(0.35 * width_law(min(u, 1.0)) * n_px))
+        r, c = cen[i], cols[i]
+        vals.append(0.5 * (Y[min(r + off, Y.shape[0] - 1), c] + Y[max(r - off, 0), c]))
+        us.append(u)
+    vals, us = np.array(vals), np.array(us)
+    win = max(int(1.5 * period_frac * length), 5)
+    pad = np.pad(vals, (win // 2, win - win // 2 - 1), mode="edge")
+    mean = np.convolve(pad, np.ones(win) / win, mode="valid")[:n]
+    ratio = vals / np.maximum(mean, 1e-9)
+    sel = (us >= 0.05) & (us <= 0.4)
+    gap = (us >= 0.1) & (us <= 0.3)
+    depth = (ratio[sel].max() - ratio[sel].min()) / (ratio[sel].max() + ratio[sel].min())
+    return depth, vals[gap].min() / max(vals[gap].mean(), 1e-9)
+
+
+def far_dots(directory):
+    """The 05 distance series: the summed display-decoded luma of the 40 / 12 / 6 / 2 px plumes (boxes about each
+    nozzle, the plume to the left; the background is the dark static starfield, the same in every dump)."""
+    img = load_from(directory, "05_distance_fighter_v500_s1_argon-blue_n40-12-6-2px_agx-ev0.png")
+    Y = luma_lin(img)
+    out = {}
+    for px, (cx, back, half) in ((40, (560, 230, 60)), (12, (960, 80, 30)), (6, (1300, 45, 18)), (2, (1600, 20, 10))):
+        out[px] = float(Y[540 - half: 540 + half + 1, cx - back: cx + 21].sum())
+    return out
+
+
+def load_from(directory, name):
+    return np.asarray(Image.open(os.path.join(directory, name)).convert("RGB")).astype(np.float64) / 255.0
+
+
 def crop(img, noz, name, half_h=120, reach=520, scale=3):
     if not CROPS:
         return
@@ -184,7 +246,8 @@ def crop(img, noz, name, half_h=120, reach=520, scale=3):
 
 
 print("# side views (luma: Rec.709 of gamma-2.2 decoded display; 'disp' = 8-bit display luma of the axis peak)")
-print("band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) | core/edge u.5 | white head u.1 / body u.5 | aniso lx/ly")
+print("band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) | core/edge u.5 | white head u.1 / body u.5 | aniso lx/ly | lane cells / gaps")
+GATES = []
 for fn, label, noz, s in SIDE:
     img = load(fn)
     sub, (ox, oy) = band(img, noz)
@@ -204,7 +267,10 @@ for fn, label, noz, s in SIDE:
     wh1 = whiteness(sub, cols, cen, length, 0.1)
     wh5 = whiteness(sub, cols, cen, length, 0.5)
     lx, ly, an = anisotropy(Y, cols, cen, length)
-    print(f"{label} | {length} | {peak:.3f} | {disp:.0f} | {depth:.2f} | {cr2:.1f} ({hw2}) | {cr5:.1f} | {wh1:.2f} / {wh5:.2f} | {lx}/{ly} = {an:.1f}")
+    ld, lg = lane(Y, cols, cen, length, NOZZLE_PX.get(fn[:2], CAPPED_NOZZLE_PX))
+    print(f"{label} | {length} | {peak:.3f} | {disp:.0f} | {depth:.2f} | {cr2:.1f} ({hw2}) | {cr5:.1f} | {wh1:.2f} / {wh5:.2f} | {lx}/{ly} = {an:.1f} | {ld:.2f} / {lg:.2f}")
+    if s == 1.0:
+        GATES.append((label, cr2, ld, an))
     crop(img, noz, label.replace(" ", "_").replace("=", ""))
 
 # Axial profile of one band, printed coarsely, to see the cells.
@@ -238,6 +304,44 @@ for label, (cx, cy) in (("red", (600, 540)), ("blue", (1320, 540))):
     if CROPS:
         im = Image.fromarray((img * 255).astype(np.uint8)).crop((cx - 130, cy - 130, cx + 130, cy + 130))
         im.resize((780, 780), Image.NEAREST).save(os.path.join(CROPS, f"02b_{label}.png"))
+
+# The disc gate on the azimuthal mean (64 directions, bilinear, every px to 0.9 n).
+print(f"# 02b disc gate (azimuthal mean, display-decoded luma, n {DISC_NOZZLE_PX} px): ring = max in 0.4..0.7 n / min in 0.2 n..it "
+      "(gate >= 1.05), hot centre = centre / max (gate >= 0.9)")
+for label, (cx, cy) in (("red", (600, 540)), ("blue", (1320, 540))):
+    prof = []
+    for rr in range(0, int(0.9 * DISC_NOZZLE_PX) + 1):
+        acc = 0.0
+        for a in range(64):
+            x, y = cx + rr * np.cos(2 * np.pi * a / 64), cy + rr * np.sin(2 * np.pi * a / 64)
+            x0, y0 = int(np.floor(x)), int(np.floor(y))
+            fx, fy = x - x0, y - y0
+            acc += ((1 - fy) * ((1 - fx) * Y[y0, x0] + fx * Y[y0, x0 + 1]) + fy * ((1 - fx) * Y[y0 + 1, x0] + fx * Y[y0 + 1, x0 + 1]))
+        prof.append(acc / 64)
+    prof = np.array(prof)
+    rn = np.arange(len(prof)) / DISC_NOZZLE_PX
+    band = np.where((rn >= 0.4) & (rn <= 0.7))[0]
+    j = band[np.argmax(prof[band])]
+    inner = np.where((rn >= 0.2) & (np.arange(len(prof)) <= j))[0]
+    ring = prof[j] / max(prof[inner].min(), 1e-9)
+    print(f"  {label}: ring {ring:.2f} at {rn[j]:.2f} n, hot centre {prof[0] / prof.max():.2f} -> {'PASS' if ring >= 1.05 and prof[0] / prof.max() >= 0.9 else 'FAIL'}")
+
+# The display gates of the side bands at s = 1 (section 5: radial contrast >= 2.0 at u 0.2, body-lane cells >= 0.2).
+print("\n# display gates at s = 1 (radial >= 2.0 at u 0.2, lane cells >= 0.2; anisotropy >= 3 reported)")
+for label, cr2, ld, an in GATES:
+    print(f"  {label}: radial {cr2:.2f} {'PASS' if cr2 >= 2.0 else 'FAIL'}, lane {ld:.2f} {'PASS' if ld >= 0.2 else 'FAIL'}, aniso {an:.1f}")
+
+# The far dots (05).
+dots = far_dots(DIR)
+print("\n# 05 far dots: summed display-decoded luma per plume (nozzle px: sum)" + ("; after / before (gate 0.7..1.3 at 2 and 6 px)" if BEFORE else ""))
+if BEFORE:
+    before = far_dots(BEFORE)
+    for px in (40, 12, 6, 2):
+        ratio = dots[px] / max(before[px], 1e-9)
+        verdict = ("PASS" if 0.7 <= ratio <= 1.3 else "FAIL") if px in (2, 6) else "reported"
+        print(f"  {px} px: {dots[px]:.3f} (before {before[px]:.3f}) ratio {ratio:.2f} {verdict}")
+else:
+    print("  " + ", ".join(f"{px} px: {v:.3f}" for px, v in dots.items()))
 
 # Uncapped peaks: 05 (40 px), 09 (40 px), 10 (crowd), and the capped 01b for reference.
 print("\n# peak display RGB (max over the image region) of the uncapped images")

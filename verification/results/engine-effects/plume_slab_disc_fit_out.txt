@@ -1,0 +1,4 @@
+fit: a 0.4480 r0 0.24 r1 0.52 b 0.70 r2 0.30; worst |error| at s 1 0.0114 (peak 0.753)
+s 1.0: worst |error| 0.0114, energy fit / law 0.9972
+s 0.5: worst |error| 0.0209, energy fit / law 1.0040
+s 0.0: worst |error| 0.0335, energy fit / law 1.0108

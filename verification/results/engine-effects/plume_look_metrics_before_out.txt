@@ -1,0 +1,63 @@
+# side views (luma: Rec.709 of gamma-2.2 decoded display; 'disp' = 8-bit display luma of the axis peak)
+band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) | core/edge u.5 | white head u.1 / body u.5 | aniso lx/ly | lane cells / gaps
+01a red s=0 | 59 | 0.230 | 120 | 0.07 | 2.3 (24) | 4.6 | 0.12 / 0.15 | 16/5 = 3.2 | 0.17 / 0.73
+01a red s=0.5 | 154 | 0.687 | 197 | 0.16 | 2.5 (28) | 1.6 | 0.09 / 0.20 | 31/6 = 5.2 | 0.34 / 0.59
+01a red s=1 | 273 | 0.879 | 242 | 0.16 | 2.3 (38) | 3.1 | 0.05 / 0.14 | 21/8 = 2.6 | 0.26 / 0.66
+01b blue s=0 | 67 | 0.281 | 154 | 0.04 | 2.9 (36) | 2.5 | 0.22 / 0.44 | 17/7 = 2.4 | 0.13 / 0.71
+01b blue s=0.5 | 156 | 0.739 | 227 | 0.12 | 2.5 (40) | 1.5 | 0.10 / 0.40 | 14/6 = 2.3 | 0.23 / 0.76
+01b blue s=1 | 279 | 0.925 | 247 | 0.11 | 1.4 (41) | 1.8 | 0.06 / 0.28 | 14/7 = 2.0 | 0.18 / 0.74
+03a capital t0 | 302 | 0.878 | 245 | 0.13 | 2.0 (46) | 1.2 | 0.07 / 0.34 | 21/6 = 3.5 | 0.11 / 0.85
+03a capital t+100ms | 311 | 0.910 | 245 | 0.13 | 2.1 (44) | 1.1 | 0.07 / 0.31 | 21/6 = 3.5 | 0.11 / 0.84
+03c fighter t0 | 301 | 0.924 | 248 | 0.18 | 1.6 (43) | 1.5 | 0.09 / 0.29 | 15/6 = 2.5 | 0.16 / 0.75
+03c fighter t+100ms | 307 | 0.937 | 248 | 0.15 | 1.6 (46) | 1.6 | 0.09 / 0.24 | 17/6 = 2.8 | 0.17 / 0.71
+04 restrained | 284 | 0.750 | 225 | 0.32 | 2.0 (42) | 1.7 | 0.16 / 0.41 | 15/7 = 2.1 | 0.22 / 0.64
+04 default | 299 | 0.910 | 245 | 0.17 | 1.7 (42) | 1.5 | 0.08 / 0.29 | 16/6 = 2.7 | 0.15 / 0.75
+04 strong | 309 | 0.989 | 253 | 0.09 | 1.6 (48) | 1.3 | 0.04 / 0.18 | 16/5 = 3.2 | 0.06 / 0.89
+05 n40 uncapped | 173 | 1.000 | 255 | 0.05 | 1.3 (21) | 1.3 | 0.02 / 0.11 | 60/3 = 20.0 | 0.07 / 0.96
+08 normal | 330 | 0.910 | 245 | 0.18 | 1.6 (43) | 1.5 | 0.09 / 0.29 | 18/6 = 3.0 | 0.13 / 0.77
+08 warp6 | 572 | 0.935 | 249 | 0.11 | 1.6 (44) | 1.3 | 0.06 / 0.19 | 26/4 = 6.5 | 0.17 / 0.81
+09 ribbon n40 uncapped | 179 | 1.000 | 255 | 0.03 | 1.2 (20) | 1.3 | 0.04 / 0.13 | 60/4 = 15.0 | 0.05 / 0.95
+
+# 01b s=1 axial luma (lin) every 10 px from the nozzle:
+0.70 0.78 0.82 0.75 0.78 0.85 0.92 0.89 0.80 0.75 0.78 0.86 0.87 0.78 0.64 0.65 0.74 0.74 0.59 0.39 0.46 0.49 0.41 0.28 0.17 0.14 0.10 0.05
+# 01b s=1 radial luma (lin) at u=0.2, every 4 px from the axis outwards (one side):
+0.87 0.86 0.86 0.73 0.53 0.55 0.60 0.65 0.54 0.34 0.13 0.01 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00
+# 01b s=1 axis RGB (display 0..255) at u = 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9:
+  u=0.05: [221 232 232]
+  u=0.1: [214 227 227]
+  u=0.2: [230 241 242]
+  u=0.3: [209 233 234]
+  u=0.5: [163 220 227]
+  u=0.7: [ 84 163 183]
+  u=0.9: [ 30  90 119]
+
+# 02b end-on discs: radial luma (lin) at 0, 4, 8, .. 72 px from the centre (mean over 4 directions)
+  red: 0.90 0.90 0.87 0.83 0.77 0.73 0.61 0.41 0.20 0.08 0.06 0.05 0.04 0.03 0.02 0.02 0.01 0.00 0.00  | max off-centre / centre = 0.99; centre RGB [253 241 240]
+  blue: 0.98 0.98 0.97 0.95 0.93 0.90 0.84 0.61 0.26 0.12 0.09 0.07 0.06 0.04 0.03 0.02 0.02 0.00 0.00  | max off-centre / centre = 1.00; centre RGB [244 255 255]
+# 02b disc gate (azimuthal mean, display-decoded luma, n 65.6 px): ring = max in 0.4..0.7 n / min in 0.2 n..it (gate >= 1.05), hot centre = centre / max (gate >= 0.9)
+  red: ring 1.00 at 0.41 n, hot centre 1.00 -> FAIL
+  blue: ring 1.00 at 0.41 n, hot centre 1.00 -> FAIL
+
+# display gates at s = 1 (radial >= 2.0 at u 0.2, lane cells >= 0.2; anisotropy >= 3 reported)
+  01a red s=1: radial 2.27 PASS, lane 0.26 PASS, aniso 2.6
+  01b blue s=1: radial 1.42 FAIL, lane 0.18 FAIL, aniso 2.0
+  03a capital t0: radial 2.04 PASS, lane 0.11 FAIL, aniso 3.5
+  03a capital t+100ms: radial 2.05 PASS, lane 0.11 FAIL, aniso 3.5
+  03c fighter t0: radial 1.64 FAIL, lane 0.16 FAIL, aniso 2.5
+  03c fighter t+100ms: radial 1.59 FAIL, lane 0.17 FAIL, aniso 2.8
+  04 restrained: radial 2.03 PASS, lane 0.22 PASS, aniso 2.1
+  04 default: radial 1.72 FAIL, lane 0.15 FAIL, aniso 2.7
+  04 strong: radial 1.58 FAIL, lane 0.06 FAIL, aniso 3.2
+  05 n40 uncapped: radial 1.30 FAIL, lane 0.07 FAIL, aniso 20.0
+  08 normal: radial 1.61 FAIL, lane 0.13 FAIL, aniso 3.0
+  08 warp6: radial 1.62 FAIL, lane 0.17 FAIL, aniso 6.5
+  09 ribbon n40 uncapped: radial 1.20 FAIL, lane 0.05 FAIL, aniso 15.0
+
+# 05 far dots: summed display-decoded luma per plume (nozzle px: sum)
+  40 px: 3773.771, 12 px: 258.351, 6 px: 38.263, 2 px: 0.966
+
+# peak display RGB (max over the image region) of the uncapped images
+  05_distance_fighter_v500: peak lin 1.000 display [255 255 255] at (534, 540); pixels >= 250 on any channel: 1201
+  09_ribbon_moving8px_figh: peak lin 1.000 display [255 255 255] at (1276, 539); pixels >= 250 on any channel: 1738
+  10_crowd_30_mixed_agx-ev: peak lin 1.000 display [255 255 255] at (1374, 424); pixels >= 250 on any channel: 3346
+  01b_side_fighter_v500_n1: peak lin 0.925 display [235 249 250] at (1237, 908); pixels >= 250 on any channel: 1

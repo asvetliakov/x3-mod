@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/engine_plume_ps.hlsl",
-  "source_sha256": "4473e771a606d2502aec2ab3761a1c43bb6f5b7b6437df56592df80b53716cd9",
+  "source_sha256": "c020209af3c8cbe3d1b13045fc13435b6b1cd14a96090fcf3cb112dc98beb5b2",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,9 +10,9 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": null,
-  "word_count": 3171,
-  "bytecode_sha256": "1fec871f28e06786a3084f7f68619f8812d3712aa24f02c62c8c9856a085368d",
-  "header_sha256": "13544e7e39e7e1e67dd4e3de981631c45418d319c6123b97b0776ba1cffcd4fc",
+  "word_count": 3551,
+  "bytecode_sha256": "20b0187cadda05e700689bda47511c182ecffb3c1fa3f303bb5b0d08af03b93c",
+  "header_sha256": "8dad00b325b0575a3029cf62fcfeb427f8262abe1d1e47db3170445fd398046f",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "7a836e438d943936992a4d54cd11313ae55e876a109097008621caa21f7d8d64"

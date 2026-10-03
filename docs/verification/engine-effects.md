@@ -461,3 +461,23 @@ unless marked; the records are `verification/results/bottle-X3/engine-{plumes,sh
 | Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
 | Build cost | `verification/results/engine-effects/plume_memory_build_cost.py` (host clang -O2) | 30 / 100 / 1,024 records: 1.48 / 4.89 / 52.1 us with the floor, 3.03 / 9.62 / 67.2 us with the floor and the per-nozzle memory (1,024: 512 overflow) |
 | Host | focused `test_engine_effects`, `_plumes`, `_shimmer`, `_ribbons`, `_effects_sites`, `_far_jets`, `test_manage_engine_effects`, `test_motion_hdr_scene`, `test_motion_wrap_states`, `test_comparison_hotkeys`, `test_logging_tiers`, `test_config_schema`, `test_launcher_defaults`, `test_check_no_x87`; `run_host_suite.py` | 115 tests OK; suite 289 modules, 3,036 tests, 0 failing |
+
+## Revised look law (2026-10-03, worktree build on e51872be, not a candidate)
+
+The law of [engine-exhaust-look-critique.md](../architecture/engine-exhaust-look-critique.md) section 3, as built in its
+section 6 (deviations there: cell gap 0.85 over a half-period ramp, a cooling hot core, the end-on ring x 3, and a detail
+level by the drawn nozzle width, 16..40 px, that keeps the previous law for small plumes). All figures measured in bottle
+X3 unless marked; the records are `verification/results/bottle-X3/engine-{plumes,ribbons,effects,shimmer}/summary.json`.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Build | `cmake --build build` (MinGW i686, `-DPython3_EXECUTABLE=/usr/bin/python3`) | 0 warnings; `check_no_x87.py build/d3d9.dll` 765 reachable, 0 violations |
+| Shaders | `generate_rigid_motion_pixel.py --check` | PASS 50; plume ps 3,551 words, 797 slots by the production counter (735 before; gate 800); vs 138 words |
+| Plumes | `run_engine_plumes.py` | PASS 236/236 (188 + 48 structure checks). Structure, FP16, 24 frames: radial 3.02-4.49 (>= 3), lane cells 0.43-0.57 (>= 0.35), gaps 0.45-0.56 (<= 0.6), anisotropy 3.67-17.3 (>= 3), whiteness axis 0.157-0.53 (>= 0.15), rim 0.71-0.96 (>= 0.5); disc ring 1.62 / 2.37, hot centre 1.00. Core survival min 0.957 (0.758 without the detail level); mouth 0.65 / 0.67 / 0.76; end-on 60 / 30 / 0 deg 0.87-0.88 / 0.91 / 0.81; lag-1 0.88-0.89, keyed 0.88; attack 1.5 / 133 ms, main-to-brake 1.43 / 117 ms; SETA L 2.0, I 1.25; spill 0.1501 median, max 0.1514 (ratio floor 1e-2: the halo now ends at 0.79 n); distance 2 / 6 / 12 px totals 3.99 / 119.2 / 1,046.8 (before 3.99 / 120.2 / 1,055.3); chase fade 0.6 (reference moved to a 51 / 68 px nozzle at the same detail level). Stage GPU 300 nozzles (250 far) 0.49 / 0.14 ms at 1080p / 5120x1440 [fixture tail, advisory]; CPU build 30 / 100 / 1,024 records 3.31 / 10.71 / 115.4 us |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
+| Effects | `run_engine_effects.py` | PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) |
+| Shimmer | `run_engine_shimmer.py` | PASS 43/43 |
+| Look images | `run_engine_plumes.py --dump-images verification/results/engine-effects/look-images/` | 15 images and the contact sheet, max 166 KB; README regenerated |
+| Image metrics | `plume_look_metrics.py look-images --before <images at e51872be>` -> `plume_look_metrics_out.txt` (before: `plume_look_metrics_before_out.txt`) | s 1 bands: radial (display) 1.77-2.47 (before 1.20-2.27), lane cells 0.77-0.95 capped, 0.16 on 09 (before 0.05-0.26), anisotropy 15-30 (before 2.0-6.5 on the capped bands), body whiteness u 0.5 0.15-0.52 (before 0.11-0.44 over all bands); 02b ring 2.47 / 1.80, hot centre 1.00 (before 1.00 / 1.00); far dots 2 / 6 px 1.08 / 1.01 of before (40 px 0.33); clipped pixels 05 / 09 / 10: 273 / 561 / 1,691 (before 1,201 / 1,738 / 3,346) |
+| Models | `plume_end_on_model.py`, `plume_look_proposal_model.py`, `plume_slab_disc_fit.py` | kappa 3.33, halo 2.82 (the slab law's disc/side halo ratio 6.3); body energy 0.33, luma 0.31 / 0.39, axis peak 0.67 / 0.80 of the slab law (detail 1, s 1); the disc's slab fit within 0.011 of a 0.753 peak, energy 0.997 |
+| Host | `run_host_suite.py` | 289 modules, 3,040 tests, 0 failing |
