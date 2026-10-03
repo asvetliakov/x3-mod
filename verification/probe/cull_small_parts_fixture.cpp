@@ -31,6 +31,19 @@
 // the dock rule off at 0 and at a dock setting below the small one, a marked
 // projectile exempt (culled with the exemption off), the census names
 // culled_dock, registers/flags/LastError preserved, native after rollback.
+// Far engine jets (X3M_ENGINE_EFFECTS=plumes, 2026-10-03): every fifth row
+// carries the engine's JET flag pair (+0x130 |= 0x4000001), others bit 26 or
+// bit 0 alone. Without the far block (any other engine_effects mode, the
+// default) nothing is handed over; installed with it, every JET row below the
+// threshold stays culled (the same 97-node / 403-draw class flips: the engine
+// never submits it) and is handed to x3m_engine_far_jet: disarmed nothing is
+// copied, armed exactly the pair rows the engine itself would keep are copied
+// (the engine-culled ones counted, single-bit rows and v/00566 never), with the
+// view's handle and context, the scene tag, and a record (far_record) with the
+// expected origin, axis, size and throttle; the buffer's cap; registers, flags
+// and LastError preserved across the call; the per-node cost with and without
+// a far record; initialize() requests the block only for exactly `plumes` and
+// leaves it out when the JET writer 0x00434708 is not the verified bytes.
 // The lens-flare cull (X3M_LENS_FLARE_GAIN=0,
 // src/proxy/lens_flare_cull.cpp): the second stub on the same claim, its body-name
 // resolution over a synthetic body table, the flare bodies culled exactly as the
@@ -46,6 +59,8 @@
 #include "../../src/proxy/cull_small_props_core.h"
 #include "../../src/proxy/lens_flare_cull.h"
 #include "../../src/proxy/lens_flare_cull_core.h"
+#include "../../src/proxy/engine_far_jets.h"
+#include "../../src/proxy/engine_effects_core.h"
 #include "run131_rows_inc.h"
 #include <windows.h>
 #include <cmath>
@@ -630,6 +645,38 @@ static unsigned kept_marked_below(const Node* reference, std::int32_t threshold,
         if (row_marked(i) && kRows[i].s < threshold && (get(reference[1 + i].bytes, ccore::flags12c_offset) & 2u)) {
             ++n;
             *draws += unsigned(kRows[i].draws);
+        }
+    return n;
+}
+
+// Far engine jets: rows i % 5 == 1 carry the JET flag pair, i % 5 == 2 bit 26 alone (SMALLJET's), i % 5 == 3 bit 0
+// alone (the synthetic pass, like the engine's entry mask ~0x180000, never touches these bits).
+static std::uint32_t jet_bits(unsigned i) {
+    return i % 5 == 1 ? score::jet_flags : i % 5 == 2 ? score::jet_flag_high : i % 5 == 3 ? score::jet_flag_low : 0u;
+}
+static bool row_jet(unsigned i) {
+    return i % 5 == 1;
+}
+static void set_jet_bits(Node* tree, bool on) {
+    for (unsigned i = 0; i < kRowCount; ++i) {
+        const std::uint32_t b = jet_bits(i), f = get(tree[1 + i].bytes, score::flags130_offset);
+        if (b) put(tree[1 + i].bytes, score::flags130_offset, on ? f | b : f & ~b);
+    }
+}
+static unsigned rows_below_jet(std::int32_t threshold) {
+    unsigned n = 0;
+    for (unsigned i = 0; i < kRowCount; ++i)
+        if (kRows[i].s < threshold && row_jet(i)) ++n;
+    return n;
+}
+// Pair rows below the threshold that the engine keeps natively (the handler's copies) and their first index.
+static unsigned kept_jet_below(const Node* reference, std::int32_t threshold, int* first = nullptr) {
+    unsigned n = 0;
+    if (first) *first = -1;
+    for (unsigned i = 0; i < kRowCount; ++i)
+        if (row_jet(i) && kRows[i].s < threshold && (get(reference[1 + i].bytes, ccore::flags12c_offset) & 2u)) {
+            if (first && *first < 0) *first = int(i);
+            ++n;
         }
     return n;
 }
@@ -1286,6 +1333,257 @@ static void lens_section(std::uintptr_t site, std::uintptr_t cull, View& view) {
     std::printf("LENS FLARE CULL checks=%u failures=%u\n", checks - checks_before, failures - failures_before);
 }
 
+// ---- far engine jets (X3M_ENGINE_EFFECTS=plumes): culled JET nodes handed to x3m_engine_far_jet ----
+namespace fj = x3m::engine_far_jets;
+namespace fcore = x3m::engine_far_jets::core;
+namespace ee = x3m::engine_effects::core;
+struct alignas(16) Context {
+    unsigned char bytes[0x40];
+};
+static Context far_context;
+// A tree of 64 children below the 4 px threshold (5) at D = 64000 in a 1280 / 0x4000 view (s = radius / 100 = 3, measure
+// 6: the engine keeps them), JET or not: the stub's per-node cost with and without a far record (the copy is armed).
+static Node far_tree[65], far_tree_initial[65];
+static double far_bench_us(bool jets, View& v, unsigned loops) {
+    node_set(far_tree[0], nullptr, 1, 100000, 0x1000, 0, 0, 0xffff);
+    Node* kids[64];
+    for (unsigned i = 0; i < 64; ++i) {
+        node_set(far_tree[1 + i], nullptr, 300, 64000, 0x1002, 0, 0, 0x20000 + i);
+        if (jets) {
+            put(far_tree[1 + i].bytes, score::flags130_offset, score::jet_flags);
+            put(far_tree[1 + i].bytes, fcore::scale70_offset, 93922);
+            put(far_tree[1 + i].bytes, fcore::scale80_offset, 0x10000);
+            put(far_tree[1 + i].bytes, fcore::scale88_offset, 0x20000);
+            put(far_tree[1 + i].bytes, fcore::basis_x_offset, 0x10000);
+            put(far_tree[1 + i].bytes, fcore::basis_z_offset + 8, 0x10000);
+        }
+        kids[i] = &far_tree[1 + i];
+    }
+    link_traversal(far_tree[0], kids, 64);
+    std::memcpy(far_tree_initial, far_tree, sizeof far_tree);
+    LARGE_INTEGER f{}, s{}, e{};
+    QueryPerformanceFrequency(&f);
+    auto once = [&] {
+        std::memcpy(far_tree, far_tree_initial, sizeof far_tree);
+        fj::begin_frame();
+        run(far_tree[0], v);
+    };
+    for (unsigned i = 0; i < 64; ++i) once();
+    QueryPerformanceCounter(&s);
+    for (unsigned i = 0; i < loops; ++i) once();
+    QueryPerformanceCounter(&e);
+    return double(e.QuadPart - s.QuadPart) * 1e6 / double(f.QuadPart) / double(loops);
+}
+static void far_section(std::uintptr_t site, std::uintptr_t cull, View& view, const Node* replay_initial) {
+    // The native outputs at this function's stack depth: the synthetic pass's final `add esp,0x14` sets PF from the
+    // stack address, so the baseline is taken here, unpatched, before the re-install.
+    std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
+    const Result native = run(replay[0], view);
+    check(!std::memcmp(replay, replay_native, sizeof(Node) * (kRowCount + 1)), "far jets: the unpatched baseline is native");
+    check(small::install_at(site, cull, true, true) && !std::strcmp(small::state(), "ok") && small::projectiles_exempt() &&
+              small::far_jets(),
+          "far jets: re-install with the far block");
+    {
+        const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
+        unsigned char want[score::stub_length];
+        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)),
+                           addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_upper)),
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)),
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_dock_culled)), std::uint32_t(cull), slot,
+                           want, true, addr(reinterpret_cast<const void*>(&x3m_engine_far_jet)), true);
+        std::int32_t rel = 0;
+        std::memcpy(&rel, want + score::stub_far_call + 1, 4);
+        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && want[score::stub_far] == 0xf7 &&
+                  want[score::stub_far_call] == 0xe8 &&
+                  at + score::stub_far_call + 5 + std::uint32_t(rel) == addr(reinterpret_cast<const void*>(&x3m_engine_far_jet)),
+              "far jets: stub bytes as encoded (both bit tests live, the call reaches the handler)");
+    }
+    // The view's handle and context (the context's +0x2c: the view's context scale, read outside the pass).
+    std::memset(far_context.bytes, 0, sizeof far_context.bytes);
+    const float scale = 0.01f;
+    std::memcpy(far_context.bytes + fcore::context_scale_offset, &scale, 4);
+    put(view.bytes, fcore::view_handle_offset, 0xc0de0028u);
+    put(view.bytes, fcore::view_context_offset, addr(&far_context));
+    small::after_reset(kRowsWidth);
+    check(small::set_px(2.0) && small::set_dock_px(0.0), "far jets: 2 px, dock rule off");
+    small::begin_frame();
+    // The record row: the first pair row the engine keeps below the threshold carries the node fields of a flight-A jet.
+    int j0 = -1;
+    const unsigned jet_kept = kept_jet_below(replay_native, 3, &j0);
+    auto prepare = [&]() {
+        std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
+        set_jet_bits(replay, true);
+        if (j0 >= 0) {
+            unsigned char* n = replay[1 + j0].bytes;
+            put(n, fcore::handle_offset, 0x51a7e000u);
+            put(n, fcore::scale70_offset, 93922);
+            put(n, fcore::scale80_offset, 0x10000);
+            put(n, fcore::scale88_offset, 0x20000);
+            const std::int32_t position[3] = {-12384560, -931560, -3175560};
+            const std::int32_t bx[3] = {0, 0x10000, 0}, bz[3] = {46341, 0, -46341}; // model z = (1, 0, -1) / sqrt 2
+            for (unsigned k = 0; k < 3; ++k) {
+                put(n, fcore::position_offset + 4 * k, std::uint32_t(position[k]));
+                put(n, fcore::basis_x_offset + 4 * k, std::uint32_t(bx[k]));
+                put(n, fcore::basis_z_offset + 4 * k, std::uint32_t(bz[k]));
+            }
+        }
+    };
+    // Disarmed (no device requested the stage): the handler is called for every pair row below the threshold and copies
+    // nothing; the class flips exactly as without the block.
+    {
+        fj::set_armed(false);
+        fj::begin_frame();
+        prepare();
+        SetLastError(0x5155);
+        const Result r = run(replay[0], view);
+        set_jet_bits(replay, false);
+        const auto st = fj::stats();
+        check(GetLastError() == 0x5155 && r.preserved && r.x87_empty && same_outputs(r, native),
+              "far jets disarmed: LastError, registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as native");
+        check(fj::count() == 0 && st.disarmed == rows_below_jet(3) && rows_below_jet(3) > 0 && st.written == 0,
+              "far jets disarmed: one call per pair row below the threshold, nothing copied");
+    }
+    // Armed, in the scene phase: exactly the pair rows the engine keeps are copied; the engine-culled pair rows counted;
+    // single-bit rows never; every node below the threshold still culled (the engine never submits a far jet).
+    {
+        fj::set_armed(true);
+        fj::note_scene(true);
+        fj::begin_frame();
+        small::begin_frame(); // the stub's per-frame counts start again
+        prepare();
+        SetLastError(0x5156);
+        const Result r = run(replay[0], view);
+        check(GetLastError() == 0x5156, "far jets armed: LastError preserved across the pass and the handler calls");
+        check(r.preserved && r.x87_empty && same_outputs(r, native),
+              "far jets armed: registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as native");
+        const auto st = fj::stats();
+        check(fj::count() == jet_kept && st.written == jet_kept && jet_kept > 0 && st.engine == rows_below_jet(3) - jet_kept &&
+                  st.steering == 0 && st.overflow == 0 && st.disarmed == 0 && x3m_cull_small_parts_culled == rows_below(3),
+              "far jets armed: the kept pair rows copied, the engine-culled pair rows counted, nothing else");
+        bool rows_ok = true, tags_ok = true;
+        const fcore::Raw* e = fj::entries();
+        for (unsigned k = 0; k < fj::count(); ++k) {
+            const unsigned i = unsigned((e[k].node - addr(&replay[1])) / sizeof(Node));
+            rows_ok = rows_ok && i < kRowCount && row_jet(i) && kRows[i].s < 3 &&
+                      (get(replay_native[1 + i].bytes, ccore::flags12c_offset) & 2u) && e[k].model == 0x10000 + i;
+            tags_ok = tags_ok && e[k].view_handle == 0xc0de0028u && e[k].context == addr(&far_context) && e[k].scene == 1 &&
+                      e[k].parent == get(replay[1 + i].bytes, ccore::parent_offset);
+        }
+        check(rows_ok, "far jets armed: every copy is a pair row below the threshold the engine keeps (no single-bit row)");
+        check(tags_ok, "far jets armed: the view's handle and context, the scene tag and the parent with every copy");
+        set_jet_bits(replay, false);
+        Node* rj = j0 >= 0 ? &replay[1 + j0] : nullptr;
+        if (rj) { // the record row's extra fields out again before the flip compare
+            Node& n = *rj;
+            const Node& ref = replay_native[1 + j0];
+            for (unsigned off : {fcore::handle_offset, fcore::scale70_offset, fcore::scale80_offset, fcore::scale88_offset})
+                put(n.bytes, off, get(ref.bytes, off));
+            for (unsigned k = 0; k < 3; ++k)
+                for (unsigned off : {fcore::position_offset, fcore::basis_x_offset, fcore::basis_z_offset})
+                    put(n.bytes, off + 4 * k, get(ref.bytes, off + 4 * k));
+        }
+        const Flip f = replay_compare(replay_native);
+        check(f.other_changes == 0 && replay_flipped_exactly(replay_native, 3) && f.flipped == 97 && f.draws == 403,
+              "far jets armed: the same 97-node / 403-draw class flips (a far jet stays culled: no draw)");
+        // The record of the flight-A jet: origin = +0xb0 x 0.01, axis = -(model z), size = 939.22, s 1, z 2.
+        const fcore::Raw* raw = nullptr;
+        for (unsigned k = 0; k < fj::count(); ++k)
+            if (rj && e[k].node == addr(rj)) raw = &e[k];
+        ee::Record rec{};
+        const ee::FarVerdict v = raw ? ee::far_record(*raw, scale, -1, nullptr, 4999, &rec) : ee::FarVerdict::invalid;
+        const float h = 0.70710678f;
+        const bool record_ok = v == ee::FarVerdict::record && std::fabs(rec.origin[0] + 123845.6f) < 0.01f &&
+                               std::fabs(rec.origin[1] + 9315.6f) < 0.01f && std::fabs(rec.origin[2] + 31755.6f) < 0.01f &&
+                               std::fabs(rec.axis[0] + h) < 1e-4f && std::fabs(rec.axis[1]) < 1e-6f && std::fabs(rec.axis[2] - h) < 1e-4f &&
+                               std::fabs(rec.size - 939.22f) < 0.01f && rec.s == 1.f && rec.z == 2.f && std::fabs(rec.ratio - 2.f) < 1e-3f &&
+                               rec.node_handle == 0x51a7e000u && rec.model == 0x10000u + unsigned(j0) && rec.body == -1 &&
+                               (rec.flags & ee::flag_far) && (rec.flags & ee::flag_unknown_body) && !(rec.flags & ee::flag_steering) &&
+                               rec.serial == 0 && rec.frame == 4999;
+        std::printf("FAR record origin=%.3f,%.3f,%.3f axis=%.5f,%.5f,%.5f size=%.3f s=%.3f z=%.3f ratio=%.4f flags=%04x copies=%u engine=%u\n",
+                    double(rec.origin[0]), double(rec.origin[1]), double(rec.origin[2]), double(rec.axis[0]), double(rec.axis[1]),
+                    double(rec.axis[2]), double(rec.size), double(rec.s), double(rec.z), double(rec.ratio), unsigned(rec.flags),
+                    fj::count(), st.engine);
+        check(record_ok, "far jets: the record of a culled jet carries the expected origin, axis, size, throttle and identity");
+        // A context scale outside (0, 1) or a zero basis is no record; v/00566 or a SMALLJET table entry is steering.
+        ee::Record none{};
+        check(raw && ee::far_record(*raw, 0.f, -1, nullptr, 0, &none) == ee::FarVerdict::invalid &&
+                  ee::far_record(*raw, 1.5f, -1, nullptr, 0, &none) == ee::FarVerdict::invalid,
+              "far jets: an unusable context scale is no record");
+        if (raw) {
+            fcore::Raw zero = *raw;
+            zero.basis_z[0] = zero.basis_z[1] = zero.basis_z[2] = 0;
+            ee::Body smalljet{};
+            smalljet.lists = ee::list_smalljet;
+            check(ee::far_record(zero, scale, -1, nullptr, 0, &none) == ee::FarVerdict::invalid &&
+                      ee::far_record(*raw, scale, 3, &smalljet, 0, &none) == ee::FarVerdict::steering,
+                  "far jets: a zero basis is no record; a SMALLJET table entry is steering");
+        }
+        small::present(7, 5000, true);
+        check(!small_lines.empty() && small_lines.back().find(" far_jets=on") != std::string::npos,
+              "far jets: the frame row says far_jets=on");
+    }
+    // v/00566 (the RCS body) is never copied; outside the scene phase the tag is 0.
+    {
+        fj::note_scene(false);
+        fj::begin_frame();
+        prepare();
+        if (j0 >= 0) put(replay[1 + j0].bytes, ccore::model_offset, fcore::steering_model);
+        run(replay[0], view);
+        const auto st = fj::stats();
+        bool scene0 = true;
+        for (unsigned k = 0; k < fj::count(); ++k) scene0 = scene0 && fj::entries()[k].scene == 0;
+        check(st.steering == 1 && fj::count() == jet_kept - 1 && scene0,
+              "far jets: v/00566 skipped (steering=1); copies outside the scene phase carry scene=0");
+    }
+    // The buffer's cap: a direct call on a kept JET node beyond 1,024 copies counts overflow.
+    {
+        fj::note_scene(true);
+        fj::begin_frame();
+        Node lone{};
+        node_set(lone, nullptr, 300, 64000, 0x1002, 0, 0, 0x30000);
+        put(lone.bytes, score::flags130_offset, score::jet_flags);
+        for (unsigned k = 0; k < fcore::capacity + 3; ++k) x3m_engine_far_jet(addr(&lone), 6, addr(&view));
+        x3m_engine_far_jet(addr(&lone), 0, addr(&view)); // measure 0 without 0x4000000: the engine's own degenerate cull
+        const auto st = fj::stats();
+        check(fj::count() == fcore::capacity && st.written == fcore::capacity && st.overflow == 3 && st.engine == 1,
+              "far jets: 1,024 copies a frame, the rest counted overflow; the engine's degenerate cull mirrored");
+        fj::begin_frame();
+        check(fj::count() == 0 && fj::stats().overflow == 0, "far jets: begin_frame empties the buffer and the counts");
+    }
+    // The cost per node below the threshold with and without a far record (armed, the copy included).
+    {
+        View bv;
+        view_set(bv, 1280, 0, 0x4000, 2);
+        put(bv.bytes, fcore::view_handle_offset, 0xc0de0029u);
+        put(bv.bytes, fcore::view_context_offset, addr(&far_context));
+        small::publish(0.8f, 1280, 0x4000, true); // 4 px at m00 0.8 / 1280: threshold 5
+        check(small::set_px(4.0), "far bench: 4 px");
+        small::publish(0.8f, 1280, 0x4000, true);
+        const double plain = far_bench_us(false, bv, 20000), jets = far_bench_us(true, bv, 20000);
+        const auto st = fj::stats();
+        check(st.written == 64 && fj::count() == 64, "far bench: every child copied in the JET tree");
+        std::printf("FAR BENCH nodes=64 culled_plain_us=%.4f culled_far_us=%.4f per_far_jet_ns=%.1f harness=fixture_call_included game_fps=unmeasured\n",
+                    plain, jets, (jets - plain) * 1000. / 64.);
+        fj::set_armed(false);
+        fj::begin_frame();
+        small::present(7, 5001, false);
+    }
+    check(small::shutdown() && small_window_original(), "far jets: restore, rollback bytes exact");
+    {
+        std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
+        set_jet_bits(replay, true);
+        fj::set_armed(true);
+        fj::begin_frame();
+        run(replay[0], view);
+        set_jet_bits(replay, false);
+        check(!std::memcmp(replay, replay_native, sizeof(Node) * (kRowCount + 1)) && fj::count() == 0 &&
+                  fj::stats().disarmed == 0,
+              "far jets: after rollback every node as native, the handler never called");
+        fj::set_armed(false);
+    }
+}
+
 int main() {
     DWORD old = 0;
     check(VirtualProtect(reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(synthetic_measure_window) &
@@ -1391,6 +1689,22 @@ int main() {
               install_lines.back().find(" projectiles=off") != std::string::npos,
           "projectiles off: parsed and logged, the marker not consulted");
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PROJECTILES", nullptr);
+    // Far engine jets: requested only by X3M_ENGINE_EFFECTS exactly `plumes`; the JET writer's bytes are absent in this
+    // process, so even then the block is left out (writer_mismatch).
+    SetEnvironmentVariableW(L"X3M_ENGINE_EFFECTS", nullptr);
+    check(!small::initialize() && install_lines.back().find(" far_jets=off") != std::string::npos,
+          "far jets: X3M_ENGINE_EFFECTS unset: far_jets=off");
+    for (const wchar_t* mode : {L"native", L"off", L"Plumes", L"plumes2"}) {
+        SetEnvironmentVariableW(L"X3M_ENGINE_EFFECTS", mode);
+        check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") &&
+                  install_lines.back().find(" far_jets=off") != std::string::npos,
+              "far jets: native, off and refused words: far_jets=off");
+    }
+    SetEnvironmentVariableW(L"X3M_ENGINE_EFFECTS", L"plumes");
+    check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") &&
+              install_lines.back().find(" far_jets=writer_mismatch") != std::string::npos,
+          "far jets: plumes requests the block; the JET writer absent in this process leaves it out (writer_mismatch)");
+    SetEnvironmentVariableW(L"X3M_ENGINE_EFFECTS", nullptr);
     const std::uintptr_t site = addr(small_site()), cull = addr(small_cull());
     synthetic_small_window[2] ^= 1;
     check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "bytes_mismatch") &&
@@ -1422,9 +1736,10 @@ int main() {
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)),
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_dock_culled)), std::uint32_t(cull), slot,
-                           want, true);
-        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length),
-              "stub bytes as encoded (projectiles on)");
+                           want, true, addr(reinterpret_cast<const void*>(&x3m_engine_far_jet)), false);
+        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && !small::far_jets() &&
+                  want[score::stub_far] == 0xeb && score::stub_far + 2 + want[score::stub_far + 1] == score::stub_count,
+              "stub bytes as encoded (projectiles on, far jets off: jmp over the far block)");
         check(*reinterpret_cast<void**>(slot) != nullptr, "continuation slot points at the tail");
     }
     check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "already_installed"),
@@ -1686,6 +2001,32 @@ int main() {
         check(!small_lines.empty() && small_lines.back().find(want_row) != std::string::npos &&
                   x3m_cull_small_parts_exempt == 0,
               "projectiles: the frame row carries exempt_bullet=, present clears it");
+    }
+
+    // ---- far jets off (engine_effects native or off, the default): JET rows are culled, nothing is handed over ----
+    small::begin_frame();
+    {
+        x3m::engine_far_jets::set_armed(true);
+        x3m::engine_far_jets::begin_frame();
+        std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
+        set_jet_bits(replay, true);
+        SetLastError(0x5153);
+        patched = run(replay[0], view);
+        check(GetLastError() == 0x5153, "far jets off: LastError preserved across the armed pass");
+        check(patched.preserved && patched.x87_empty && same_outputs(patched, native),
+              "far jets off: registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as native");
+        set_jet_bits(replay, false);
+        const Flip f = replay_compare(replay_native);
+        check(f.other_changes == 0 && replay_flipped_exactly(replay_native, 3) && f.flipped == 97 && f.draws == 403,
+              "far jets off: the full 97-node / 403-draw class flips, JET flags or not");
+        const auto st = x3m::engine_far_jets::stats();
+        check(x3m::engine_far_jets::count() == 0 && st.written == 0 && st.disarmed == 0 && st.engine == 0 &&
+                  x3m_cull_small_parts_culled == rows_below(3),
+              "far jets off: the handler is never called (nothing copied, nothing counted), even armed");
+        small::present(7, 4998, true);
+        check(!small_lines.empty() && small_lines.back().find(" far_jets=off") != std::string::npos,
+              "far jets off: the frame row says far_jets=off");
+        x3m::engine_far_jets::set_armed(false);
     }
 
     // ---- the census and the stub armed together ----
@@ -1999,12 +2340,12 @@ int main() {
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)),
                            addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_dock_culled)), std::uint32_t(cull), slot,
-                           want, false);
+                           want, false, addr(reinterpret_cast<const void*>(&x3m_engine_far_jet)), false);
         check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) &&
                   want[score::stub_dock_projectile] == 0xeb &&
                   score::stub_dock_projectile + 2 + want[score::stub_dock_projectile + 1] == score::stub_dock_count &&
                   want[score::stub_projectile] == 0xeb &&
-                  score::stub_projectile + 2 + want[score::stub_projectile + 1] == score::stub_count,
+                  score::stub_projectile + 2 + want[score::stub_projectile + 1] == score::stub_far,
               "projectiles off: stub bytes as encoded (jmp over both marker tests)");
         small::after_reset(kRowsWidth);
         check(small::set_px(2.0), "projectiles off: 2 px");
@@ -2033,6 +2374,7 @@ int main() {
         small::present(7, 6005, false);
     }
     check(small::shutdown() && small_window_original(), "projectiles off: restore, rollback bytes exact");
+    far_section(site, cull, view, replay_initial);
     lens_section(site, cull, bench_view);
     x3m::engine_patch::close_install_window("fixture");
     check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "late_claim") && small_window_original(),

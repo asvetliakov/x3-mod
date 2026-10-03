@@ -231,6 +231,19 @@ For hulls at the root's origin R is at least the hull's LOD-0 value. An offline 
 + part value) is in `verification/results/engine-effects/floor_ratio_effects.py`. It is not verified against a live
 read: no session has logged `+0xa4` (open question below).
 
+### Far jets at the cull pass (2026-10-03, after flight E)
+
+The small-parts cull's far block ([cull-small-parts.md](../verification/cull-small-parts.md) "Far engine jets") builds a
+record for a JET node it culls from the node itself, at the site `0x0047d2a2` of the cull/LOD pass, without a draw.
+
+| fact | source |
+| --- | --- |
+| `0x00434708` `81 8e 30 01 00 00 01 00 00 04` = `or dword [esi+0x130],0x4000001`, the JET list's match in `0x00434620` (pinned at install) | [m] installed EXE (`verify_cull_small_parts_site.py` `jet_writer`) |
+| The node's `+0xb0` translation and `+0xc0` basis are render-ready at the pass: the frame routine runs the node traversal `0x0047bc20` (writes `+0xc0` at `0x0047bea5`, `+0xb0..+0xb8` at `0x0047c047..0x0047c053`) at `0x00472256`, before the view activation at `0x00472260` whose pass follows | [m] listing ([chase-camera-first-flight.md](chase-camera-first-flight.md)); [i] that no other writer runs between |
+| The pass's view (site `[ESP+0x28]`) is the camera node: the pass reads its `+0x270` and `+0x298`. `0x004bdee0` scales the world rows by the float at `*(camera+0x1c)+0x2c` (the context scale, 0.01 in gameplay views) | [m] ([camera-state-and-frame-routine.md](camera-state-and-frame-routine.md) §2) |
+| The record: origin = `+0xb0` x the scale, axis = -(basis row 2), size = \|basis row 0\| / 65536 x `+0x70` x `+0x80` / 65536 x the scale, z = `+0x88` / 65536: the c4-6 rows of section 4 in order a (flight A: model z = basis row 2 at cos 1.0) | [m] construction and flight A; [i] model x = basis row 0 by the same construction |
+| The view's `+0x28` is the camera handle the draw path tags (object_trace reads the draw scope's camera argument `+0x28`) | [i]: that the pass's view is the same object as `0x004c0150`'s third argument is not traced; a mismatch shows as far records counted `skipped_other_view` |
+
 ## 5. Suppression safety
 
 - The draw at `0x004c403c` (`call ecx`, the draw helper) is followed by `mov edx,[ebx]` / `mov eax,[edx+0x108]`

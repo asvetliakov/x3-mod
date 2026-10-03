@@ -1,8 +1,8 @@
 {
  "fixture": "build/verification/cull-small-parts/cull_small_parts_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 6.3,
- "checks": 221,
+ "elapsed_s": 5.3,
+ "checks": 255,
  "failures": 0,
  "failure_lines": [],
  "replay_lines": [
@@ -18,37 +18,51 @@
   "CENSUS culled_prop rows=1 kept_named=1 culled_unchanged=1",
   "DOCK px=4 dock_px=8 threshold=5 upper=10 culled=3 dock_culled=7 exempt=1 flipped_exact=1",
   "CENSUS dock rows=18 culled_dock=7 culled_small=3 kept=8",
+  "FAR record origin=-123845.594,-9315.600,-31755.600 axis=-0.70711,-0.00000,0.70711 size=939.220 s=1.000 z=2.000 ratio=2.0000 flags=8204 copies=18 engine=214",
+  "FAR BENCH nodes=64 culled_plain_us=1.0143 culled_far_us=1.3742 per_far_jet_ns=5.6 harness=fixture_call_included game_fps=unmeasured",
   "PROPS engine_part_px=11.572",
   "PROPS radius_far_px=1.281 radius_near_px=12.864 threshold_px=4",
   "PROPS budget culled=64 deferred=6 next=70 walks=78 resolves=5"
  ],
  "bench_us": {
-  "native_pass": 0.2352,
-  "patched_disarmed": 0.2363,
-  "patched_armed": 0.2338,
-  "patched_armed_dock": 0.2334
+  "native_pass": 0.2196,
+  "patched_disarmed": 0.2272,
+  "patched_armed": 0.2276,
+  "patched_armed_dock": 0.2303
  },
  "props_bench_ns": {
-  "memo_hit": 3.1,
-  "not_prop_first": 13.5,
-  "prop_culled_first_in_frame": 287.2,
-  "prop_culled_pair_mean": 169.7
+  "memo_hit": 2.5,
+  "not_prop_first": 13.3,
+  "prop_culled_first_in_frame": 280.5,
+  "prop_culled_pair_mean": 164.2
+ },
+ "far_bench": {
+  "nodes": 64,
+  "culled_plain_us": 1.0143,
+  "culled_far_us": 1.3742,
+  "per_far_jet_ns": 5.6
  },
  "install_lines": [
-  "cull_small_parts requested=0 px=0 patched=0 reason=disabled site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=on dock_px=0 dock_requested=unset",
-  "cull_small_parts requested=abc px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=on dock_px=0 dock_requested=unset",
-  "cull_small_parts requested=65 px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=on dock_px=0 dock_requested=unset",
-  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset",
-  "cull_small_parts requested=2 px=0 patched=0 reason=invalid_projectiles site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=invalid dock_px=0 dock_requested=unset",
-  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=off dock_px=0 dock_requested=unset"
+  "cull_small_parts requested=0 px=0 patched=0 reason=disabled site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=on dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=abc px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=on dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=65 px=0 patched=0 reason=invalid_px site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=on dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=invalid_projectiles site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=invalid dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=off dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset far_jets=off",
+  "cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=marker_mismatch dock_px=0 dock_requested=unset far_jets=writer_mismatch"
  ],
  "lens_checks": 58,
  "lens_failures": 0,
  "lens_bench": {
-  "restart_scan_us": 221.4,
+  "restart_scan_us": 207.6,
   "slots": 13200,
   "dynamic_named": 2200,
-  "mappings_hold_us": 0.139,
+  "mappings_hold_us": 0.134,
   "mappings": 5
  },
  "lens_failure_lines": [],

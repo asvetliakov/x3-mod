@@ -34,8 +34,12 @@
 // at most floor_cap x its own value, for the plume's size and length, not its position (the plume floor). RCS jets (v/00566,
 // flag_steering) take the same quads with L = z * value (short by construction: z runs 0.01..1.0 on steering) and
 // their radiance x min(z, 1); below z 0.02 they are not drawn.
-// Screen rules: a nozzle whose value projects under 1.5 px is not drawn; the nozzle width is at least 3 px and a main
-// jet's L at least 6 px (the 3x3-clip survival rule of the motes); the plume's projected body width (twice the body's
+// Screen rules: a nozzle whose value projects under 1.5 px is not drawn; the nozzle width is at least 2 px and a main
+// jet's L at least 4 px (after flight E: a far ship's plume is a faint spark, not a blot; it was 3 / 6, the 3x3-clip
+// survival rule of the motes); the distance law (after flight E, Look::far_*): a plume whose projected nozzle width is
+// under far_px_full (12 px) scales its radiance (core, halo, ring and disc alike) by far_low + (1 - far_low) x
+// smoothstep(far_px_min, far_px_full, px), 0.15 at 2 px and below, 1 at 12 px (distance_weight; counted far_nozzles); the
+// plume's projected body width (twice the body's
 // eroded edge or the nozzle ring, whichever is wider, at the axis point nearest the camera; not the halo's reach) is
 // clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the
 // clamp, the end-on disc's no lower than 0.6 (any plume that close; the own ship's in chase view only when its body is,
@@ -117,7 +121,7 @@ struct PresetKey {
 // --------------------------------------------------------------------------- look
 // The plume look: the Engine Exhaust Lab's settings the user chose (tools/effects/engine_exhaust_lab.html: "bulge=1.15
 // taper=0.45 tail=0.7 ring=0.6 turb=0.6 flow=3 erode=0.57 pulse=0.25 shock=0.5 period=0.16 cfade=0.6 heat=0.7 core=0.45
-// halo=1.1 hb=0.35"; after flight C the ring 0.3 and the nozzle 0.5), in one block: the CPU builder reads it and the
+// halo=1.1 hb=0.35"; after flight C the ring 0.3 and the nozzle 0.5; after flight E hb 0.20), in one block: the CPU builder reads it and the
 // pass uploads it to the pixel program (c3..c15, pixel_constants). Lengths across are in nozzle widths, lengths along
 // in L.
 struct Look {
@@ -140,7 +144,7 @@ struct Look {
     float heat = .7f;     // the white-hot core
     float core = .45f;    // core radius, x the local width
     float halo = 1.1f;    // halo width: e-fold 0.5 halo nozzle widths at the nozzle (x the preset)
-    float hb = .35f;      // halo brightness
+    float hb = .20f;      // halo brightness (after flight E: 0.35 -> 0.20, the plume's and the disc's halo)
     // The mock-up's tail narrowing, w x (1 - 0.6 taper smoothstep(0.6, 1, u)); the halo keeps the nozzle's sigma along
     // the whole plume, as in the mock-up.
     float tail_narrowing = .6f;
@@ -176,11 +180,15 @@ struct Look {
     // 0.10 at R >= 5,000 (capitals), so small ships' plumes grow and capitals' stay (the Mayhem fleet's largest main
     // nozzle / R is about 0.09 at every size, so one k cannot do both; verification/results/engine-effects/
     // floor_ratio_effects.py). floor_scale multiplies the whole curve: load-time knob X3M_ENGINE_PLUME_FLOOR (ini
-    // engine_plume_floor, 0..3; parse_floor); 0 turns the floor off.
-    float floor_scale = 1.f;
+    // engine_plume_floor, 0..3; parse_floor); 0 turns the floor off. Default 0.5 after flight E (Run 122 A, run408).
+    float floor_scale = .5f;
     float floor_r[3] = {150.f, 500.f, 5000.f}; // record units (run406: value x 0.01)
     float floor_k[3] = {.35f, .25f, .10f};
     float floor_cap = 4.f;
+    // The distance law (after flight E: far jets reach the stage as records once the small-parts cull hands them over):
+    // the radiance of a plume whose projected nozzle width is under far_px_full scales by far_low + (1 - far_low) x
+    // smoothstep(far_px_min, far_px_full, px) (distance_weight), so far ships read as faint sparks.
+    float far_px_min = 2.f, far_px_full = 12.f, far_low = .15f;
 };
 constexpr Look default_look{};
 constexpr float soft_core = .15f, soft_halo = 1.f; // SOFT x value (the pixel program's lane terms: body and ring, halo)
@@ -191,7 +199,7 @@ constexpr float chase_cap = .12f;           // x H: the largest projected plume
 constexpr float chase_fade_band = .2f;      // the last 20 % before the cap
 constexpr float chase_fade_floor = .5f;     // the radiance at and past the cap
 constexpr float chase_disc_floor = .6f;     // the end-on disc's radiance under the fade: at least this x its unfaded
-constexpr float min_nozzle_px = 3.f, min_length_px = 6.f, cull_px = 1.5f;
+constexpr float min_nozzle_px = 2.f, min_length_px = 4.f, cull_px = 1.5f; // the dot floor (after flight E: 3 / 6)
 constexpr float steering_min_z = .02f;
 constexpr float clock_wrap = 1024.f;        // seconds: the pixel program's clock wraps (float precision of the noise)
 constexpr double phase_wrap = 4096.;        // nozzle widths: the flow phase wraps (one discontinuity of the noise per wrap)
@@ -434,6 +442,7 @@ struct BuildStats {
     unsigned nozzles = 0, vertices = 0, discs = 0, steering = 0, capped = 0, faded = 0;
     unsigned floored = 0;       // main jets raised to k(R) x their ship's radius
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
+    unsigned far_nozzles = 0;   // nozzles drawn under Look::far_px_full (the distance law scaled their radiance)
     unsigned culled_rows = 0, culled_behind = 0, culled_small = 0, culled_idle = 0, culled_capacity = 0;
     unsigned fogged = 0;        // nozzles whose colours took the fog transmittance (phase 3)
     float fog_min = 1.f;        // the smallest channel transmittance applied this frame
@@ -664,6 +673,14 @@ inline void write_indices(std::uint16_t* out, unsigned nozzles) noexcept {
     }
 }
 
+// The distance law: the radiance factor of a plume whose projected nozzle width is `nozzle_px` pixels, far_low +
+// (1 - far_low) x smoothstep(far_px_min, far_px_full, nozzle_px): far_low at far_px_min and below, 1 at far_px_full and
+// above (the ribbons take the same factor from their nozzle's width at the head).
+inline void distance_weight(const Look& k, float nozzle_px, float* out) noexcept {
+    float t = 1.f;
+    if (nozzle_px < k.far_px_full) law::smooth(k.far_px_min, k.far_px_full, nozzle_px, &t);
+    *out = k.far_low + (1.f - k.far_low) * t;
+}
 // The facing weights: the disc's smoothstep(disc_low, disc_high, f) and the axial quad's 1 - (1 - axial_floor) x it.
 inline void facing_weights(const Look& k, float facing_abs, float* disc, float* axial) noexcept {
     law::smooth(k.disc_low, k.disc_high, facing_abs, disc);
@@ -761,13 +778,19 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     }
     value *= k;
     L *= k;
-    // Minimum screen sizes (after the cap: a capped plume is large anyway).
+    // The distance law on the projected nozzle width before the dot floor (after flight E).
     float n = look.nozzle_width * value;
+    float far_weight = 1.f;
+    const float nozzle_px = n * ppu;
+    distance_weight(look, nozzle_px, &far_weight);
+    if (nozzle_px < look.far_px_full) ++stats->far_nozzles;
+    // Minimum screen sizes, the dot floor (after the cap: a capped plume is large anyway).
     if (n * ppu < min_nozzle_px) n = min_nozzle_px / ppu;
     if (!steering && L * ppu < min_length_px) L = min_length_px / ppu;
-    // Radiance: I(s) x preset, the RCS weight z, the chase fade; the halo and the ring relative to it.
+    // Radiance: I(s) x preset, the RCS weight z, the chase fade, the distance law; the halo and the ring relative to it
+    // (the disc's terms all follow i_core and i_halo).
     const float s = r.s < 0.f ? 0.f : r.s > 1.f ? 1.f : r.s;
-    float weight = near_weight;
+    float weight = near_weight * far_weight;
     if (steering) weight *= r.z < 1.f ? r.z : 1.f;
     const float level = look.core_low + (look.core_high - look.core_low) * s;
     const float i_core = level * scale * weight;

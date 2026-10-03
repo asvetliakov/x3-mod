@@ -223,7 +223,9 @@ HRESULT EngineRibbonsPass::run(const EngineRibbonsFrame& frame, EngineRibbonsRep
     float scale = 1.f;
     engine_plumes::preset_scale(f.preset, &scale);
     engine_ribbons::update(pool_, f.records, f.record_count, frame.seconds, frame.cut || cut_pending_, frame.load_epoch, f.body,
-                           scale, &r.update, f.filter.camera && f.filter.scene ? &f.filter : nullptr); // the plumes' view filter
+                           // the plumes' view filter, then their look and ship radii (the plume's nozzle width: the
+                           // distance law's input)
+                           scale, &r.update, f.filter.camera && f.filter.scene ? &f.filter : nullptr, f.look, f.radii);
     cut_pending_ = false;
     r.updated = true;
     if (reset_pending_) return refuse(EngineRibbonsStep::Validate, E_FAIL);
@@ -243,7 +245,7 @@ HRESULT EngineRibbonsPass::run(const EngineRibbonsFrame& frame, EngineRibbonsRep
         return refuse(EngineRibbonsStep::Lock, hr);
     }
     const unsigned ribbons = engine_ribbons::build(pool_, f.view, f.preset, frame.seconds,
-                                                   static_cast<engine_ribbons::Vertex*>(mapping), capacity, &r.stats);
+                                                   static_cast<engine_ribbons::Vertex*>(mapping), capacity, &r.stats, f.look);
     hr = vb_->Unlock();
     if (FAILED(hr)) return refuse(EngineRibbonsStep::Lock, hr);
     if (!ribbons) return finish(S_FALSE); // nothing drawable: no render state touched

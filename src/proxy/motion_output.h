@@ -1733,6 +1733,20 @@ private:
     std::int32_t engine_radius_[engine_radius_slots]{};         // ... their +0xa4 (0 when unread or not positive) ...
     std::uint64_t engine_radius_frame_ = ~std::uint64_t(0);     // ... in this frame
     unsigned engine_radius_next_ = 0;                           // the slot the next miss replaces (oldest first)
+    // Far engine jets (engine_far_jets.h, after flight E): the culled JET nodes the small-parts cull stub copied, appended
+    // to the ring once per frame at the plume stage (engine_far_append); the views' context scales (context +0x2c, one
+    // bounded read per context among the frame's four most recent); this frame's counts for the engine_stage row.
+    void engine_far_append() noexcept;
+    float engine_far_context_scale(std::uint32_t context) noexcept;
+    static constexpr unsigned engine_far_context_slots = 4;
+    std::uint32_t engine_far_context_[engine_far_context_slots]{};
+    float engine_far_scale_[engine_far_context_slots]{};
+    std::uint64_t engine_far_context_frame_ = ~std::uint64_t(0);
+    unsigned engine_far_context_next_ = 0;
+    std::uint64_t engine_far_frame_ = ~std::uint64_t(0); // the frame whose buffer was appended
+    struct EngineFarCounts {
+        unsigned records = 0, ring_full = 0, steering = 0, invalid = 0;
+    } engine_far_{};
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
     // Engine plumes (motion_output_engine_plumes_inc.h): the request and preset, the pass and its arming (one

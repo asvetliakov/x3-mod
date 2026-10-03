@@ -71,6 +71,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_media_cue_enter', '_x3m_media_cue_return',
                 # the cull-census handlers (src/proxy/cull_census.cpp, X3M_CULL_CENSUS=1) run inside the cull/LOD pass, no boundary
                 '_x3m_cull_census_measure', '_x3m_cull_census_exit',
+                # the far-jet handler (src/proxy/engine_far_jets.cpp, X3M_ENGINE_EFFECTS=plumes with the small-parts cull) the cull
+                # stub calls inside the same pass for a JET node it culls; integer copies only
+                '_x3m_engine_far_jet',
                 # the narrow-census bracket handlers (src/proxy/collide_narrow_census.cpp, X3M_COLLIDE_NARROW_CENSUS=1) run around the
                 # engine's x87 narrow phase under LightCallBoundary only
                 '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post',
