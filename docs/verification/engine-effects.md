@@ -203,3 +203,11 @@ Flow speed reading (inferred from the mock-up's formula): "flow 3" is the slider
 mock-up's actual scroll is 0.35 x 3 x L / 1.6 = 5.25 nozzle widths per second at s = 1; the port keeps that speed and
 no longer scales it with the throttle's length. Open: the look and the knob's A/B (0.25 against 0.5) in flight; native
 Windows (cross-compiled only).
+
+## Flight C (Run 120 A, run404 nozzle 0.25 / run405 nozzle 0.5, 2026-10-03)
+
+User verdict: the ported look is liked at `engine_plume_nozzle 0.5` (0.25 reads as a needle); 0.5 becomes the default. Three adjustments requested:
+(1) plumes faint when viewed along the axis (the axial quad is edge-on and the disc is a faint mouth term): the disc becomes the end-on representation of
+the whole plume; (2) capital sub-engine plumes too small (each takes its own glow body's value): a per-ship floor of 0.45 x the ship's largest nozzle;
+(3) the glow at the nozzle mouth outsizes the plume body: our ring + disc + core + halo sum at the mouth and bloom there (the hull lightmap cannot be it:
+emission_source_clamp 0.7 caps hull emission below bloom), so the mouth terms combine as a soft maximum and the ring drops 0.6 -> 0.3. Built for Run121.
