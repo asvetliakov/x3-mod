@@ -589,15 +589,31 @@ what the cull saves; 100 far jets would cost about 1 ms) and draw them as faint 
     (the float at `*(view+0x1c)+0x2c`, one bounded read per context and frame), axis = -(basis row 2), size = |basis
     row 0| / 65536 x +0x70 x +0x80 / 65536 x the scale, s and z from +0x88 (the construction of `0x004bdee0` with c4-6
     order a, flight A). Tags as a suppressed draw: the camera handle the pass's view carries (+0x28, the object
-    scope's camera), the scene phase the selector was in when the pass met it, the parent and its radius through the
-    same memo (the floor), the own-ship tag. SMALLJET table entries are dropped. The ring's cap applies.
+    scope's camera), the parent and its radius through the same memo (the floor), the own-ship tag. SMALLJET table
+    entries are dropped. The ring's cap applies.
+  - View (review fix, 2026-10-03): a far copy carries no scene phase, only its view's handle: the main view's cull
+    pass may run before the selector enters Scene (the latching depth Clear after the background draws), so a phase
+    tag could drop every far record. The scene view is chosen from the drawn records only (own-ship rule, then
+    majority over the scene-phase draws); far records whose handle equals it are drawn, others count
+    `skipped_other_view`. A frame without a drawn scene-phase record takes the most frequent far handle
+    (`view_rule=far`, session count `view_far_total`). Consequence: on such a frame, a target monitor's far jets
+    outnumbering the main view's would be projected with the scene camera.
+  - Dedupe: the append drops a copy of a (node handle, view handle) pair already appended this frame
+    (`far_duplicates`; the cull pass may run more than once per view). A zero node handle is never deduplicated.
+  - Devices: the far block is armed while at least one device requests the plume stage (a count, not one flag: an old
+    device's teardown after a new device configured itself no longer disarms the session); the buffer is emptied at
+    the frame begin of the device whose resolve last took the stage's arming decision (any requesting device while no
+    device has).
   - A frame whose only jets are far ones runs the stage too (the resolve installs the callback for buffered copies).
   - The engine's own culls stay: a hull culled whole takes its jets with it (their children never reach the site).
   - Counts in `engine_stage`: `far_jets` (copies), `far_records` (appended), `far_engine`, `far_overflow`,
-    `far_dropped`, `far_disarmed`; the cull's rows say `far_jets=on|off|writer_mismatch`.
-  - Not verified in flight: the view's +0x28 equals the draw scope's camera handle (else far records count
-    `skipped_other_view`), and the context scale is 0.01 in the scene view. Ribbons on far records key on node handle +
-    model (no lifetime serial), so a jet crossing the cull threshold restarts its ribbon.
+    `far_dropped`, `far_disarmed`, `far_duplicates`; the cull's rows say `far_jets=on|off|writer_mismatch`.
+  - Not verified in flight (Run 123 acceptance checks): far records are drawn by their view handle, i.e. the view's
+    +0x28 equals the draw scope's camera handle (`engine_stage far=` > 0 with far ships in view, `skipped_other_view=`
+    not rising by the far count, `view_rule=` own or majority with draws and `far` on draw-free frames); how many
+    times the cull pass runs per view and frame (`far_duplicates=` 0 if once); and the context scale is 0.01 in the
+    scene view. Ribbons on far records key on node handle + model (no lifetime serial), so a jet crossing the cull
+    threshold restarts its ribbon.
 - *Distance law.* A plume whose projected nozzle width (after the floor and the near cap, before the dot floor) is under
   `far_px_full` 12 px scales its radiance (core, halo, ring and disc alike) by `far_low` + (1 - `far_low`) x
   smoothstep(`far_px_min` 2, 12, px), 0.15 at 2 px and below, 0.449 at 6 px. The drawn geometry never falls below a

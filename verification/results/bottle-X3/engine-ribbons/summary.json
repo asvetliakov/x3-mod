@@ -25,15 +25,9 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "9f7266b26dc88292b614b0b2aaed76858f03f1b0-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/engine_plumes_core.h",
-      "src/proxy/engine_ribbons_core.h",
-      "src/renderer/engine_plumes_pass.cpp",
-      "src/renderer/engine_plumes_pass.h",
-      "src/renderer/engine_ribbons_pass.cpp"
-    ],
+    "commit": "b963d3c40ddc623f9baa63273af635e4e0d20b91-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_ribbons_core.h": "a7b162baa7f2757fba74b13845b4167c89ff2a8a0526183f333387a410b47958",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
@@ -113,7 +107,7 @@
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "d3719afeb039277fc905fb7080dbb0218a152704871884a9b4746b64684d0ce2"
+    "executable_sha256": "eb5f058559ace44c77eef2e428d7bbf1ac8f573f4e968bbaf3f22ee3a91f5370"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -417,11 +411,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.9684,
-        "fenced_off_ms": 0.8879,
-        "submit_ms": 0.0518,
-        "chain_ms": 0.0805,
-        "gpu_ms": 0.0287,
+        "fenced_on_ms": 0.967,
+        "fenced_off_ms": 0.878,
+        "submit_ms": 0.0516,
+        "chain_ms": 0.089,
+        "gpu_ms": 0.0374,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -432,11 +426,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.1187,
-        "fenced_off_ms": 0.8758,
-        "submit_ms": 0.0856,
-        "chain_ms": 0.2429,
-        "gpu_ms": 0.1573,
+        "fenced_on_ms": 1.1136,
+        "fenced_off_ms": 0.8809,
+        "submit_ms": 0.0844,
+        "chain_ms": 0.2327,
+        "gpu_ms": 0.1483,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -447,11 +441,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.7347,
-        "fenced_off_ms": 1.6613,
-        "submit_ms": 0.0546,
-        "chain_ms": 0.0734,
-        "gpu_ms": 0.0188,
+        "fenced_on_ms": 1.7448,
+        "fenced_off_ms": 1.662,
+        "submit_ms": 0.0576,
+        "chain_ms": 0.0828,
+        "gpu_ms": 0.0252,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -462,11 +456,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7604,
-        "fenced_off_ms": 1.6501,
-        "submit_ms": 0.0855,
-        "chain_ms": 0.1103,
-        "gpu_ms": 0.0248,
+        "fenced_on_ms": 1.7672,
+        "fenced_off_ms": 1.6536,
+        "submit_ms": 0.0896,
+        "chain_ms": 0.1136,
+        "gpu_ms": 0.024,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -476,15 +470,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.62,
-        "min_us": 7.23,
+        "median_us": 7.6,
+        "min_us": 7.2,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 24.89,
-        "min_us": 23.47,
+        "median_us": 24.97,
+        "min_us": 23.67,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -689,10 +683,10 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0287,
-      "1920x1080_100": 0.1573,
-      "5120x1440_30": 0.0188,
-      "5120x1440_100": 0.0248
+      "1920x1080_30": 0.0374,
+      "1920x1080_100": 0.1483,
+      "5120x1440_30": 0.0252,
+      "5120x1440_100": 0.024
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
@@ -701,8 +695,8 @@
       "5120x1440_100": true
     },
     "cpu_us": {
-      "30": 7.62,
-      "100": 24.89
+      "30": 7.6,
+      "100": 24.97
     },
     "cpu_100_within": true,
     "fog": [

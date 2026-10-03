@@ -1337,6 +1337,11 @@ static void lens_section(std::uintptr_t site, std::uintptr_t cull, View& view) {
 namespace fj = x3m::engine_far_jets;
 namespace fcore = x3m::engine_far_jets::core;
 namespace ee = x3m::engine_effects::core;
+// The fixture as one requesting device (engine_far_jets.h request: the production device count).
+static bool far_counted = false;
+static void far_arm(bool on) {
+    fj::request(&far_counted, on, &far_counted);
+}
 struct alignas(16) Context {
     unsigned char bytes[0x40];
 };
@@ -1432,7 +1437,7 @@ static void far_section(std::uintptr_t site, std::uintptr_t cull, View& view, co
     // Disarmed (no device requested the stage): the handler is called for every pair row below the threshold and copies
     // nothing; the class flips exactly as without the block.
     {
-        fj::set_armed(false);
+        far_arm(false);
         fj::begin_frame();
         prepare();
         SetLastError(0x5155);
@@ -1444,11 +1449,10 @@ static void far_section(std::uintptr_t site, std::uintptr_t cull, View& view, co
         check(fj::count() == 0 && st.disarmed == rows_below_jet(3) && rows_below_jet(3) > 0 && st.written == 0,
               "far jets disarmed: one call per pair row below the threshold, nothing copied");
     }
-    // Armed, in the scene phase: exactly the pair rows the engine keeps are copied; the engine-culled pair rows counted;
-    // single-bit rows never; every node below the threshold still culled (the engine never submits a far jet).
+    // Armed: exactly the pair rows the engine keeps are copied; the engine-culled pair rows counted; single-bit rows
+    // never; every node below the threshold still culled (the engine never submits a far jet).
     {
-        fj::set_armed(true);
-        fj::note_scene(true);
+        far_arm(true);
         fj::begin_frame();
         small::begin_frame(); // the stub's per-frame counts start again
         prepare();
@@ -1467,11 +1471,11 @@ static void far_section(std::uintptr_t site, std::uintptr_t cull, View& view, co
             const unsigned i = unsigned((e[k].node - addr(&replay[1])) / sizeof(Node));
             rows_ok = rows_ok && i < kRowCount && row_jet(i) && kRows[i].s < 3 &&
                       (get(replay_native[1 + i].bytes, ccore::flags12c_offset) & 2u) && e[k].model == 0x10000 + i;
-            tags_ok = tags_ok && e[k].view_handle == 0xc0de0028u && e[k].context == addr(&far_context) && e[k].scene == 1 &&
+            tags_ok = tags_ok && e[k].view_handle == 0xc0de0028u && e[k].context == addr(&far_context) &&
                       e[k].parent == get(replay[1 + i].bytes, ccore::parent_offset);
         }
         check(rows_ok, "far jets armed: every copy is a pair row below the threshold the engine keeps (no single-bit row)");
-        check(tags_ok, "far jets armed: the view's handle and context, the scene tag and the parent with every copy");
+        check(tags_ok, "far jets armed: the view's handle and context and the parent with every copy");
         set_jet_bits(replay, false);
         Node* rj = j0 >= 0 ? &replay[1 + j0] : nullptr;
         if (rj) { // the record row's extra fields out again before the flip compare
@@ -1523,22 +1527,33 @@ static void far_section(std::uintptr_t site, std::uintptr_t cull, View& view, co
         check(!small_lines.empty() && small_lines.back().find(" far_jets=on") != std::string::npos,
               "far jets: the frame row says far_jets=on");
     }
-    // v/00566 (the RCS body) is never copied; outside the scene phase the tag is 0.
+    // v/00566 (the RCS body) is never copied.
     {
-        fj::note_scene(false);
         fj::begin_frame();
         prepare();
         if (j0 >= 0) put(replay[1 + j0].bytes, ccore::model_offset, fcore::steering_model);
         run(replay[0], view);
         const auto st = fj::stats();
-        bool scene0 = true;
-        for (unsigned k = 0; k < fj::count(); ++k) scene0 = scene0 && fj::entries()[k].scene == 0;
-        check(st.steering == 1 && fj::count() == jet_kept - 1 && scene0,
-              "far jets: v/00566 skipped (steering=1); copies outside the scene phase carry scene=0");
+        check(st.steering == 1 && fj::count() == jet_kept - 1, "far jets: v/00566 skipped (steering=1)");
+    }
+    // The device count: a second device's request and withdrawal leave the far block armed for the fixture's own;
+    // the device that claimed the resolve alone empties the buffer until it withdraws.
+    {
+        bool other = false;
+        fj::request(&other, true, &other);
+        fj::request(&other, true, &other); // idempotent per device
+        fj::claim(&other);
+        const bool owner_only = fj::clears(&other) && !fj::clears(&far_counted);
+        fj::request(&other, false, &other);
+        const bool still = x3m_engine_far_armed == 1 && fj::clears(&far_counted);
+        far_arm(false);
+        const bool last = x3m_engine_far_armed == 0;
+        far_arm(true);
+        check(owner_only && still && last && x3m_engine_far_armed == 1,
+              "far jets: armed while one device requests, the resolve's owner empties the buffer, its withdrawal frees it");
     }
     // The buffer's cap: a direct call on a kept JET node beyond 1,024 copies counts overflow.
     {
-        fj::note_scene(true);
         fj::begin_frame();
         Node lone{};
         node_set(lone, nullptr, 300, 64000, 0x1002, 0, 0, 0x30000);
@@ -1565,7 +1580,7 @@ static void far_section(std::uintptr_t site, std::uintptr_t cull, View& view, co
         check(st.written == 64 && fj::count() == 64, "far bench: every child copied in the JET tree");
         std::printf("FAR BENCH nodes=64 culled_plain_us=%.4f culled_far_us=%.4f per_far_jet_ns=%.1f harness=fixture_call_included game_fps=unmeasured\n",
                     plain, jets, (jets - plain) * 1000. / 64.);
-        fj::set_armed(false);
+        far_arm(false);
         fj::begin_frame();
         small::present(7, 5001, false);
     }
@@ -1573,14 +1588,14 @@ static void far_section(std::uintptr_t site, std::uintptr_t cull, View& view, co
     {
         std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
         set_jet_bits(replay, true);
-        fj::set_armed(true);
+        far_arm(true);
         fj::begin_frame();
         run(replay[0], view);
         set_jet_bits(replay, false);
         check(!std::memcmp(replay, replay_native, sizeof(Node) * (kRowCount + 1)) && fj::count() == 0 &&
                   fj::stats().disarmed == 0,
               "far jets: after rollback every node as native, the handler never called");
-        fj::set_armed(false);
+        far_arm(false);
     }
 }
 
@@ -2006,7 +2021,7 @@ int main() {
     // ---- far jets off (engine_effects native or off, the default): JET rows are culled, nothing is handed over ----
     small::begin_frame();
     {
-        x3m::engine_far_jets::set_armed(true);
+        far_arm(true);
         x3m::engine_far_jets::begin_frame();
         std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
         set_jet_bits(replay, true);
@@ -2026,7 +2041,7 @@ int main() {
         small::present(7, 4998, true);
         check(!small_lines.empty() && small_lines.back().find(" far_jets=off") != std::string::npos,
               "far jets off: the frame row says far_jets=off");
-        x3m::engine_far_jets::set_armed(false);
+        far_arm(false);
     }
 
     // ---- the census and the stub armed together ----

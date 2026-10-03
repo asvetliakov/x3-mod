@@ -352,6 +352,29 @@ checks run at scale 1 with one check of the shipped 0.5, and the minimums check 
 | Host | `test_engine_*`, `test_cull_small_parts`, `test_cull_census`, `test_config_schema`, `test_launcher_defaults`, `test_check_no_x87`; `run_host_suite.py` | 128 tests OK; suite 286 modules, 3,011 tests, 0 failing |
 | Floor per class | `python3 verification/results/engine-effects/floor_by_class.py` | `floor_by_class_out.txt` at scale 0.5: main nozzle lift M2 1.93, M6 1.56, M3 1.32, M4 / M5 1.00 |
 
+## Far jets: review fixes (2026-10-03, worktree build b80fbeb5, not a candidate)
+
+Review of the after-flight-E change. (1) Far copies carry no scene phase: the main view's cull pass may run before the
+selector's latching depth Clear, which would have tagged every far record 0 and filtered it out; the stage now chooses
+the scene view from the drawn records only and draws far records by their view handle; a frame without a drawn
+scene-phase record takes the most frequent far handle (`view_rule=far`). (2) The append drops a repeated (node handle,
+view handle) pair (`far_duplicates`). (3) The far block's arming is a device count; the buffer is emptied by the device
+that owns the resolve. (4) The armed fixture renders 512x512 so p2 can be a 13.65 px nozzle (over the distance law's
+12 px, under the near-camera cap's fade band, which needs about 300 px of height): p2 must read at least 96 (765
+measured); the small nozzles are checked as a rise against the previous frame where they were absent (far jets 23..48
+from 0, p1 66..376 on first / re-armed / after-Reset frames; threshold 12). The forced fault reports failure after
+submitting the draw, so fault frames show the plume (p2 765): `drew` stays the authority. Design:
+[engine-effects-modern.md](../architecture/engine-effects-modern.md) "After flight E", View / Dedupe / Devices.
+Measured unless marked.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| DLL | `cmake --build build -j8` (configured with `-DPython3_EXECUTABLE=/usr/bin/python3`); `check_no_x87.py build/d3d9.dll` | 0 warnings; x87 0 violations (754 reachable functions); handler 110 instructions, EBX/ESI/EDI saved by `mov`, no EBP |
+| Effects fixture | `run_engine_effects.py` (all modes), record bound to b80fbeb5 | PASS, 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 27, armed_refused 7). Armed far frames: scene copy in the scene phase nozzles 3 / skipped 2 / rule majority; copy before the scene phase drawn (nozzles 3); duplicate copies 2, records 1, `far_duplicates` 1; another view's copy skipped (skipped 3, pixel 0); far-only frame nozzles 1, rule far; far-only two views (2 scene, 1 other) nozzles 2, skipped 1, rule far. One `engine_stage` row with `far_jets=2 far_records=1 far_duplicates=1`; 17 drawn stage rows |
+| Cull fixture | `build_cull_small_parts.py`, then `run_cull_small_parts.py` | 256 checks, 0 failures (scene-tag checks gone; device count through the production API added); far copy 5.6 ns per culled jet |
+| Plume fixture | `run_engine_plumes.py` | PASS 128/128; distance ratios 0.15 / 0.4492 / 1 / 1 at both sizes |
+| Host | `unittest discover -p 'test_engine_*.py'`, `-p 'test_cull_*.py'`, `-p 'test_check_no_x87.py'` | 57 + 34 + 5 tests OK; new `test_engine_far_jets` (dedupe: repeated pair, other view / node, zero handle, 1,024 colliding pairs, generation wrap; device count: once per device, owner-only clear, old device's teardown, last withdrawal) |
+
 ## Gap analysis phases 2 and 3: flow, two-tone, spill, idle floor, attack, travel (2026-10-03, worktree build, not a candidate)
 
 Gaps 4, 5, 3, 10, 6 and 7 of [engine-exhaust-gap-analysis.md](../architecture/engine-exhaust-gap-analysis.md) (section 5:
@@ -371,3 +394,11 @@ spill is measured in its own case), the shape case's noise replica takes the noz
 | Effects fixture | `run_engine_effects.py` (all modes) | PASS, 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 21, armed_refused 7). Armed: the SETA read through the seam, `engine_seta` rows read (1.000) / engage (6.000) / release (1.000), 23 reads, 0 refused; armed_refused: one row `read=site_mismatch`, every read refused, never engaged. Per suppressed draw 0.693 us |
 | Cull fixture | `run_cull_small_parts.py` | 255 checks, 0 failures; far copy 6.2 ns per culled jet |
 | Host | `test_engine_*`, `test_cull_small_parts`, `test_check_no_x87`; `run_host_suite.py` | 79 tests OK; suite 286 modules, 3,011 tests, 1 failing module (`test_exe_identity`: `engine_effects.cpp` now compares a site, so it left the read-only list, and the SETA bound 0x640000 is a value in the address range: both list entries updated), then `test_exe_identity` alone 24 OK |
+
+**Merged with main 47735fb9 (the far-jet review fixes).** `engine_stage` carries both field sets (`far_duplicates`,
+`view_rule=far` and the attack / SETA fields); the armed effects fixture runs the SETA frames (now 16 release frames 60
+ms apart, so the travel weight is back at 0 before the far-jet frames' rise checks) before main's far-jet frames. Rerun
+on the merge (records bound to b963d3c4-dirty): DLL 0 warnings, x87 0 violations (754 reachable); shaders `--check` PASS
+50; plumes 178/178 (734 ps slots; every gap number above unchanged; build 300 records 31.5 us, GPU 300 / 250 far 0.79 /
+0.28 ms); ribbons 44/44; effects PASS 8 modes (armed 28 checks, SETA rows read / engage 6.000 / release, 44 reads, 0
+refused; armed_refused `site_mismatch`); cull 256/256 (far copy 5.7 ns). Measured.

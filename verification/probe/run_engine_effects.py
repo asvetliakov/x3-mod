@@ -76,7 +76,8 @@ PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.
                       'src/proxy/motion_output_engine_plumes_inc.h', 'src/proxy/engine_plumes_core.h',
                       'src/renderer/engine_plumes_pass.cpp', 'src/renderer/engine_plumes_pass.h',
                       'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h',
-                      'src/proxy/motion_output.h', 'src/proxy/capture.cpp')
+                      'src/proxy/motion_output.h', 'src/proxy/capture.cpp', 'src/proxy/engine_far_jets.cpp',
+                      'src/proxy/engine_far_jets.h', 'src/proxy/engine_far_jets_core.h')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
 ROW_VERDICTS = collections.Counter(suppressed=4, forwarded_opaque=1, forwarded_unscoped=1)  # engine_draw rows per scenario frame
 
@@ -232,6 +233,11 @@ def validate(mode, r):
             problems.append(f'armed: engine_plumes_state {state}')
         if len(drawn) < 6:  # first + 3 steady + re-armed + after Reset
             problems.append(f'armed: engine_stage drawn rows {len(drawn)}')
+        # The far review fixes: the duplicate frame's row (it has candidates, so it is logged) drops one copy.
+        duplicates = [g for g in stage if (g.get('far_jets'), g.get('far_records'), g.get('far_duplicates')) == ('2', '1', '1')]
+        out['far_duplicate_rows'] = len(duplicates)
+        if len(duplicates) != 1 or any('view_far_total' not in g for g in stage):
+            problems.append(f'armed: engine_stage far_duplicates rows {len(duplicates)}')
         if not rows(log, 'motion_output_reset'):
             problems.append('armed: no motion_output_reset row')
         # The game's glow while the stage is off: 3 x 63 disarmed frames and the 70 refused ones forward the four jets.
