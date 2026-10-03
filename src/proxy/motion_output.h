@@ -537,6 +537,7 @@ struct MotionOutputFixtureScope {
     std::uint32_t node_handle = 0, camera_handle = 0, model = 0, lod = 0;
     std::uint32_t flags12c = 0, flags130 = 0; // node class bits (caster retention's excluded classes)
     std::uint64_t observer_epoch = 0;         // the lifetime observer's epoch (a retention key component)
+    std::uint32_t parent = 0;                 // node+0x18 (the engine light's ship root; 0 unknown)
 };
 struct MotionOutputFixtureConfig {
     std::uint32_t size = sizeof(MotionOutputFixtureConfig);
@@ -3176,6 +3177,9 @@ private:
     bool fixture_screen_rect_set_ = false, fixture_screen_caps_fault_ = false;
     fade_region::Rect fixture_screen_rect_{};
     float fixture_last_pixel_abi_[12]{};
+    // Engine light seam (motion_output_engine_light_seam_inc.h, keys 500..): the pixel program the last routed draw
+    // bound, 0x100 | kind for the twin of kind `kind`, 0x200 | kind for that base (kind 7: another program); 0 none yet.
+    unsigned fixture_engine_bound_ = 0;
     unsigned fixture_emission_exchange_fault_ = 0;
     unsigned fixture_cutout_cap_fault_ = 0, fixture_cutout_vs_fault_ = 0, fixture_cutout_ps_fault_ = 0;
     unsigned fixture_cutout_rs_fault_ = 0, fixture_cutout_sampler_fault_ = 0;

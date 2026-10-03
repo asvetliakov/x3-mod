@@ -4,16 +4,20 @@ docs/architecture/engine-exhaust-gap-analysis.md).
 - the option: schema entry engine_light (on|off, builtin on), the generated header and template, the launcher;
 - the portable core (src/proxy/engine_light_core.h) through verification/probe/engine_light_host.cpp: the brightest main
   nozzle per ship (RCS, brake-pushed, other-view and parentless records ignored; ties to the lower handle), the
-  256-ship cap, the one-frame protocol with the motion compensation, degenerate rows, the VS layouts, the host cost;
+  256-ship cap (the dimmest entry gives way to a brighter ship and always to the own ship), the twin kinds' share /
+  gain / widen match, the one-frame protocol with the motion compensation, degenerate rows, the VS layouts, the host
+  cost;
 - the pixel twins (verification/probe/engine_light_structure.cpp over the local original corpus, skipped without it):
   every non-asteroid reviewed pixel program gets a twin in all eight option sets, the four asteroid programs refuse,
   and each twin is its base variant plus exactly the words re-derived here (one `def c199`, the 18-instruction block,
   one 3-instruction add per fill block), with the slot deltas; the inputs and layouts the twin and the route rely on
   re-derived from the corpus (verification/results/engine-light/eye_normal_registers.py);
-- the route's wiring (source checks) and the tracked Wine record (verification/results/bottle-X3/engine-light-gpu.json).
+- the route's wiring (source checks) and the tracked Wine records (verification/results/bottle-X3/engine-light-gpu.json;
+  the route-level seam case seam-engine-light-fixture.json, run_motion_output.py seam-engine-light).
 """
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -174,7 +178,34 @@ class CoreTests(unittest.TestCase):
         self.assertEqual((s['main'], s['rcs'], s['brake'], s['other_view'], s['orphan']), (3, 1, 1, 1, 1))
 
     def test_cap(self):
-        self.assertEqual(self.r['cap'], dict(ships=256, dropped=44, found=256))
+        self.assertEqual(self.r['cap'], dict(ships=256, dropped=44, found=256))   # equal brightness: the incumbents stay
+
+    def test_cap_replaces_the_dimmest_and_admits_the_own_ship(self):
+        # 299 ships plus the own ship last and dimmest in ring order: in either brightness order the own ship is in, the
+        # other 255 entries are the brightest (ranks 44..298), 44 lights dropped, every entry still found by its hash.
+        for order in ('ascending', 'descending'):
+            self.assertEqual(self.r['replace'][order], dict(ships=256, dropped=44, own=1, own_flag=1, others=255,
+                                                            dimmest_rank=44, consistent=256), order)
+        self.assertEqual(self.r['replace']['untagged_own'], 0)   # without the own tags the dimmest newcomer is refused
+
+    def test_twin_kinds_match_their_base(self):
+        # Each kind accepted with its base's share / gain / widen only; any flag flipped (or the light not applied) is
+        # refused; the three share kinds refuse a twin whose share plan failed only with the light.
+        self.assertEqual(self.r['twins'], dict(kinds=7, accepted=7, flipped_accepted=0, share_lost_refused=3, out_of_range=0))
+        core = (ROOT / 'src/proxy/engine_light_core.h').read_text()
+        table = core[core.index('constexpr TwinOptions twin_options'):core.index('inline bool twin_matches_base')]
+        inc = (ROOT / 'src/proxy/motion_output_engine_light_inc.h').read_text()
+        create = inc[inc.index('void MotionOutput::engine_light_create_twins'):inc.index('void MotionOutput::engine_light_release')]
+        # The table agrees with the options the twins are built with (share 4-6, gain 2, 3, 5, 6, widen 3, 6).
+        self.assertIn('for (unsigned k : {2u, 3u, 5u, 6u}) {', create)
+        self.assertIn('for (unsigned k : {3u, 6u}) options[k].widen = &widen;', create)
+        self.assertIn('for (unsigned k : {4u, 5u, 6u}) options[k].share = true;', create)
+        flags = [tuple(v == 'true' for v in m) for m in re.findall(r'\{(true|false), (true|false), (true|false)\}', table)]
+        self.assertEqual(flags, [(False, False, False), (False, False, False), (False, True, False), (False, True, True),
+                                 (True, False, False), (True, True, False), (True, True, True)])
+        self.assertIn('depth_enabled_, applied, &share,', create)
+        self.assertIn('if (!engine_light::core::twin_matches_base(k, applied, share, gain, widened)) {', create)
+        self.assertIn('mismatched=%02x', create)
 
     def test_one_frame_protocol_rides_on_the_hull(self):
         p = self.r['protocol']
@@ -331,6 +362,9 @@ class RouteWiringTests(unittest.TestCase):
         inc = (ROOT / 'src/proxy/motion_output_engine_light_inc.h').read_text()
         self.assertNotIn('new ', inc.split('void MotionOutput::engine_light_prepare')[1])   # no allocation per draw
         self.assertIn('hdr_state_ != HdrState::Active', inc)
+        self.assertIn('preset_scale, &s.ships, engine_ring_->own);', inc)   # the own-ship tags reach the ship table
+        # The fixture scope carries node+0x18 like object_trace's (the seam case's lit node hangs under the root).
+        self.assertIn('route.scope_parent = s.parent; // engine light: the synthetic node+0x18', cpp)
 
 
 class WineRecordTests(unittest.TestCase):
@@ -345,8 +379,24 @@ class WineRecordTests(unittest.TestCase):
             self.assertLessEqual(case['stats']['max_relative'], 0.01)
             self.assertEqual(case['stats']['zero_not_identical'], 0)
         self.assertTrue(record['reset_ok'])
+        self.assertTrue(record['teardown_ok'])
+        self.assertIn('TEARDOWN device references=0', record['teardown'])
         self.assertLessEqual(record['cost']['hit_ns'], 200.0)
         self.assertEqual([(g['width'], g['height']) for g in record['gpu']], [(1920, 1080), (5120, 1440)])
+
+    def test_tracked_seam_record(self):
+        # The route-level path (run_motion_output.py seam-engine-light): twins at registration, the twin bound on the
+        # lit draw and the base on the unlit one, one upload, the law within 5 %, Reset.
+        record = json.loads((ROOT / 'verification/results/bottle-X3/seam-engine-light-fixture.json').read_text())
+        self.assertEqual((record['case'], record['bottle']['name'], record['exit']), ('seam-engine-light', 'X3', 0))
+        self.assertEqual([f['draws_lit'] for f in record['frames']], ['0', '0', '1', '1'] + [f['draws_lit'] for f in record['frames'][4:]])
+        self.assertEqual(record['frames'][-1]['draws_lit'], '1')
+        self.assertLessEqual(record['worst_relative'], 0.05)
+        self.assertEqual(record['zero_differ'], 0)
+        self.assertEqual(record['log_rows']['hull_variant']['created'], '07')
+        for row in record['log_rows']['frame_rows']:
+            if row['candidates'] != '0':
+                self.assertEqual((row['draws_lit'], row['no_twin'], row['no_rows']), ('1', '0', '0'))
 
 
 if __name__ == '__main__':

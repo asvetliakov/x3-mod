@@ -1,0 +1,258 @@
+{
+ "case": "seam-engine-light",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "verification/probe/build/motion_output_fixture.exe": "384b3528d172fb88bc9cf7a7eb9b616145fd78fc067d9112b05e652c50327e31",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "8cf35da53f629ef70e13837f3e78d5e1e82e3a7d19dd2cb67477e6074cce996a",
+  "build/d3d9.dll": "94bd21e319441a3037a68ee678504bb0ea2436cc5ec5d506b6a4926d53763707"
+ },
+ "checks": 107,
+ "frames": [
+  {
+   "step": "0",
+   "reset": "0",
+   "draws_lit": "0",
+   "bound_unlit": "202",
+   "bound_lit": "202",
+   "constant_error": "0",
+   "lit_samples": "0",
+   "visible": "0",
+   "max_relative": "0.000000",
+   "zero": "0",
+   "zero_differ": "0"
+  },
+  {
+   "step": "1",
+   "reset": "0",
+   "draws_lit": "0",
+   "bound_unlit": "202",
+   "bound_lit": "202",
+   "constant_error": "0",
+   "lit_samples": "0",
+   "visible": "0",
+   "max_relative": "0.000000",
+   "zero": "0",
+   "zero_differ": "0"
+  },
+  {
+   "step": "2",
+   "reset": "0",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0"
+  },
+  {
+   "step": "3",
+   "reset": "0",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0"
+  },
+  {
+   "step": "4",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0"
+  },
+  {
+   "step": "5",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0"
+  },
+  {
+   "step": "6",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0"
+  },
+  {
+   "step": "7",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0"
+  },
+  {
+   "step": "8",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0"
+  }
+ ],
+ "lit_frames": 7,
+ "first_lit_after_reset": 1,
+ "worst_relative": 0.003994,
+ "worst_constant": 1.19e-08,
+ "visible": 33915,
+ "zero": 1106,
+ "zero_differ": 0,
+ "log_rows": {
+  "mode": {
+   "device": "0",
+   "setting": "on",
+   "status": "ok",
+   "mode": "on",
+   "requested": "1",
+   "reason": "requested",
+   "behind": "0.50",
+   "reach": "3.00",
+   "colour_scale": "0.25",
+   "cap": "1",
+   "constants": "c200-c202",
+   "ships_max": "256"
+  },
+  "hull_variant": {
+   "device": "1",
+   "original": "7c83ed50c9894e44",
+   "created": "07",
+   "refused": "00",
+   "mismatched": "00",
+   "failed": "00",
+   "words_max": "1602",
+   "depth": "1"
+  },
+  "frames_with_candidates": 7,
+  "frame_rows": [
+   {
+    "frame": "1",
+    "ships": "1",
+    "nodes": "0",
+    "candidates": "0",
+    "draws_lit": "0",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   },
+   {
+    "frame": "2",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   },
+   {
+    "frame": "3",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   },
+   {
+    "frame": "4",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   },
+   {
+    "frame": "5",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   },
+   {
+    "frame": "6",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   },
+   {
+    "frame": "7",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   },
+   {
+    "frame": "8",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6"
+   }
+  ]
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261003-203725-793954",
+ "trace_sha256": "af7eae2366d76fc1436af88f40507b54f7a592006e4a475d62e8f40d91633ff4",
+ "dll_sha256": "8cf35da53f629ef70e13837f3e78d5e1e82e3a7d19dd2cb67477e6074cce996a",
+ "exe_sha256": "384b3528d172fb88bc9cf7a7eb9b616145fd78fc067d9112b05e652c50327e31"
+}

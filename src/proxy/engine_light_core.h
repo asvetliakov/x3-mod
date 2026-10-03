@@ -53,8 +53,9 @@ constexpr Mode default_mode = Mode::on;
 // throttle light at the default preset carries the tint at 1.0 and an idle one at 0.3. The pixel program caps the sum
 // at 1 (EngineLightAbi: the lit plate stays below the plume's own radiance class).
 constexpr float behind = .5f, reach = 3.f, colour_scale = .25f;
-constexpr unsigned ship_capacity = 256;     // lights per frame (ships); further ships are counted dropped
+constexpr unsigned ship_capacity = 256;     // lights per frame (ships); beyond it the dimmest gives way (build_ships)
 constexpr unsigned ship_slots = 512;        // open addressing, a power of two above twice the capacity
+constexpr unsigned ship_block = 16, ship_blocks = ship_capacity / ship_block; // the full table's dimmest-entry blocks
 constexpr unsigned log_capacity = 4096;     // routed hull draws logged per frame; further draws are counted dropped
 constexpr unsigned node_capacity = 2048;    // hull nodes carrying a light; further nodes are counted dropped
 constexpr unsigned node_slots = 4096;
@@ -66,8 +67,10 @@ struct Light {
     float brightness = 0.f;         // I(s) x value_eff: the selection key
     std::uint32_t handle = 0;       // the chosen jet's node handle (ties: the lower one wins)
     float s = 0.f, value = 0.f;     // the chosen jet's throttle and value_eff (the row's diagnostics)
+    bool own = false;               // a record of the own ship fed it (never evicted by a full table)
 };
 struct ShipStats {
+    // dropped: lights lost to the full table (a dimmer newcomer refused, or an entry evicted by a brighter or own one)
     unsigned records = 0, main = 0, rcs = 0, brake = 0, other_view = 0, invalid = 0, orphan = 0, dropped = 0;
 };
 struct ShipTable {
@@ -75,9 +78,15 @@ struct ShipTable {
     std::uint16_t slot[ship_slots]; // 0 empty, else index + 1
     unsigned count = 0;
     ShipStats stats{};
+    // Full table only: per block of ship_block entries its evictable (non-own) entry of least brightness (-1: none).
+    std::int16_t block_dimmest[ship_blocks];
+    bool blocks_known = false;
+    int dimmest = -1; // the minimum over the blocks, -1 until computed (dropped when a block changes)
     void clear() noexcept {
         count = 0;
         stats = {};
+        blocks_known = false;
+        dimmest = -1;
         for (unsigned i = 0; i < ship_slots; ++i) slot[i] = 0;
     }
 };
@@ -98,6 +107,56 @@ inline int find_ship(const ShipTable& t, std::uint32_t root) noexcept {
         if (t.lights[s - 1].root == root) return int(s - 1);
     }
     return -1;
+}
+// The slot holding the ship `root`, or -1.
+inline int find_ship_slot(const ShipTable& t, std::uint32_t root) noexcept {
+    if (!root) return -1;
+    unsigned h = hash_key(root, 0, ship_slots - 1);
+    for (unsigned probe = 0; probe < ship_slots; ++probe, h = (h + 1) & (ship_slots - 1)) {
+        const unsigned s = t.slot[h];
+        if (!s) return -1;
+        if (t.lights[s - 1].root == root) return int(h);
+    }
+    return -1;
+}
+// Linear-probing removal without tombstones: the slot at `hole` is emptied and every later entry of its cluster whose
+// home slot does not lie cyclically in (hole, j] moves back into the hole, so every probe still reaches its entry.
+inline void erase_ship_slot(ShipTable& t, unsigned hole) noexcept {
+    constexpr unsigned mask = ship_slots - 1;
+    for (unsigned j = (hole + 1) & mask; t.slot[j]; j = (j + 1) & mask) {
+        const unsigned home = hash_key(t.lights[t.slot[j] - 1].root, 0, mask);
+        const bool stays = hole <= j ? (hole < home && home <= j) : (hole < home || home <= j);
+        if (stays) continue;
+        t.slot[hole] = t.slot[j];
+        hole = j;
+    }
+    t.slot[hole] = 0;
+}
+// The full table's evictable entry of least brightness (ties: the later index), -1 when every entry is the own ship's.
+// Kept per block of ship_block entries: a replacement or a brightened entry rescans its block only, so a newcomer costs
+// ship_blocks + ship_block compares rather than ship_capacity, and a refused one reads the cached minimum (1,024
+// records in ascending brightness, every newcomer a replacement: 23 us on the arm64 host, 124 us with a whole-table
+// rescan; descending: 9 us; measured).
+inline void rescan_ship_block(ShipTable& t, unsigned block) noexcept {
+    int at = -1;
+    for (unsigned i = block * ship_block; i < (block + 1) * ship_block; ++i)
+        if (!t.lights[i].own && (at < 0 || !(t.lights[i].brightness > t.lights[at].brightness))) at = int(i);
+    t.block_dimmest[block] = std::int16_t(at);
+    t.dimmest = -1;
+}
+inline int dimmest_ship(ShipTable& t) noexcept {
+    if (!t.blocks_known) {
+        for (unsigned b = 0; b < ship_blocks; ++b) rescan_ship_block(t, b);
+        t.blocks_known = true;
+    }
+    if (t.dimmest >= 0) return t.dimmest;
+    int at = -1;
+    for (unsigned b = 0; b < ship_blocks; ++b) {
+        const int c = t.block_dimmest[b];
+        if (c >= 0 && (at < 0 || !(t.lights[c].brightness > t.lights[at].brightness))) at = c;
+    }
+    t.dimmest = at;
+    return at;
 }
 // A record's light (false: not a main jet with geometry, or non-finite). `radius` the ship's radius beside the record
 // (Ring::parent_radius; 0 = none) for the plume floor's value_eff, `preset_scale` the stage's preset.
@@ -135,12 +194,15 @@ inline bool record_light(const ee::Record& r, const ee::Body* body, float radius
 // Ship lights from one frame's records: per root the brightest main nozzle (brightness I(s) x value_eff; ties: the
 // lower node handle, then the earlier record), only records of the scene view (scene phase and the scene camera's
 // handle, as the plume stage draws them; `camera`/`scene` null = every record) with a known parent. RCS (steering) and
-// brake-pushed bodies never feed it. At most ship_capacity ships; a new ship beyond that is counted dropped.
+// brake-pushed bodies never feed it. At most ship_capacity ships: a new ship beyond that replaces the dimmest entry
+// (brightness I(s) x value_eff) when it is brighter, and always when it is the own ship's (`own`: Ring::own, null = no
+// record is); own-ship entries are never the ones replaced. Every light lost to the cap counts dropped (dimmest_ship:
+// the block minima).
 using BodyLookup = const ee::Body* (*)(int index);
 inline void build_ships(const ee::Record* records, const std::uint32_t* parents, const float* radii,
                         const std::uint32_t* camera, const std::uint8_t* scene, std::uint32_t scene_handle,
                         unsigned count, BodyLookup body, const ep::Look& look, float preset_scale,
-                        ShipTable* out) noexcept {
+                        ShipTable* out, const std::uint8_t* own = nullptr) noexcept {
     out->clear();
     if (!records || !parents) return;
     for (unsigned i = 0; i < count; ++i) {
@@ -171,21 +233,37 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
         }
         ++out->stats.main;
         l.root = root;
+        l.own = own && own[i];
         const int found = find_ship(*out, root);
         if (found >= 0) {
             Light& have = out->lights[found];
-            if (l.brightness > have.brightness || (l.brightness == have.brightness && l.handle < have.handle))
+            const bool was_own = have.own;
+            bool changed = false;
+            if (l.brightness > have.brightness || (l.brightness == have.brightness && l.handle < have.handle)) {
                 have = l;
+                changed = true;
+            }
+            if (was_own || l.own) {
+                changed = changed || !was_own;
+                have.own = true;
+            }
+            if (changed && out->blocks_known) rescan_ship_block(*out, unsigned(found) / ship_block);
             continue;
         }
+        unsigned index = out->count;
         if (out->count >= ship_capacity) {
-            ++out->stats.dropped;
-            continue;
-        }
+            const int victim = dimmest_ship(*out);
+            ++out->stats.dropped; // the newcomer or the entry it replaces
+            if (victim < 0 || !(l.own || l.brightness > out->lights[victim].brightness)) continue;
+            erase_ship_slot(*out, unsigned(find_ship_slot(*out, out->lights[victim].root)));
+            index = unsigned(victim);
+        } else
+            ++out->count;
         unsigned h = hash_key(root, 0, ship_slots - 1);
         while (out->slot[h]) h = (h + 1) & (ship_slots - 1);
-        out->lights[out->count] = l;
-        out->slot[h] = std::uint16_t(++out->count);
+        out->lights[index] = l;
+        out->slot[h] = std::uint16_t(index + 1);
+        if (out->blocks_known) rescan_ship_block(*out, index / ship_block);
     }
 }
 
@@ -371,6 +449,27 @@ inline bool draw_constants(const NodeLight& n, const float world[12], const floa
     for (unsigned i = 0; i < 12; ++i)
         if (!ee::finite_f(out[i])) return false;
     return true;
+}
+// --------------------------------------------------------------------------- twin kinds
+// The original-shading variants a twin may stand in for (MotionOutput::engine_light_kinds order): the plain motion
+// variant, the fill, the gained, the gained widened, the share producer, the share gained, the share gained widened.
+// Each base is created only when its transform applied exactly these options (share / light-map gain / widening), so a
+// twin is bound in its place only when the twin's transform applied the same three: the light's fill block can change
+// the share plan (it is planned with the block's site), and a twin whose share, gain or widening differs from its
+// base would change more than the light.
+struct TwinOptions {
+    bool share, gain, widen;
+};
+constexpr unsigned twin_kinds = 7;
+constexpr TwinOptions twin_options[twin_kinds] = {{false, false, false}, {false, false, false}, {false, true, false},
+                                                  {false, true, true},   {true, false, false},  {true, true, false},
+                                                  {true, true, true}};
+// The twin of kind `kind` stands in for its base: the light applied and the transform's share / gain / widen out-flags
+// equal the base's options.
+inline bool twin_matches_base(unsigned kind, bool engine, bool share, bool gain, bool widen) noexcept {
+    if (kind >= twin_kinds || !engine) return false;
+    const TwinOptions& o = twin_options[kind];
+    return share == o.share && gain == o.gain && widen == o.widen;
 }
 // --------------------------------------------------------------------------- frame row
 struct FrameCounts {

@@ -85,7 +85,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        **{f'seam-bolt-far-flag{s}': '0' for s in ('', '-r32f', '-off')}})  # bolts through the TAA: the RT2.g flag
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (120, 14, 67))  # + seam-log-tiers-emitters (the light-map script, no exposure mode; 2026-09-27)  # + seam-bolt-far-flag{,-r32f,-off} (2026-09-26)  # + seam-bolt-single-copy{,-off,-late,-behind,-empty,-nullps} (2026-09-26)  # + seam-bolt-copy-hash (2026-09-26)  # + seam-exit-path (the hostile thin-vote script, no exposure mode; 2026-09-26)  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (121, 14, 67))  # + seam-engine-light (the hull light seam, no exposure mode; 2026-10-03)  # + seam-log-tiers-emitters (the light-map script, no exposure mode; 2026-09-27)  # + seam-bolt-far-flag{,-r32f,-off} (2026-09-26)  # + seam-bolt-single-copy{,-off,-late,-behind,-empty,-nullps} (2026-09-26)  # + seam-bolt-copy-hash (2026-09-26)  # + seam-exit-path (the hostile thin-vote script, no exposure mode; 2026-09-26)  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
@@ -493,6 +493,52 @@ class MotionOutputRunnerTests(unittest.TestCase):
         for script, output, log in bad:
             with self.subTest(script=script, output=output != good[0]), self.assertRaises(AssertionError):
                 runner.validate_fade_zonly('host', script, output, log)
+
+    @staticmethod
+    def engine_light_output():
+        """Synthetic seam-engine-light report and trace: frames 0-1 unlit, 2-3 lit, Reset, 4-8 lit."""
+        rows = []
+        for f in range(9):
+            lit = f >= 2
+            rows.append(f'ENGINE_LIGHT frame={f + 1} step={f} reset={int(f >= 4)} records=1 suppressed=1 ships=1 nodes={int(f >= 2)} '
+                        f'candidates={int(lit)} draws_lit={int(lit)} no_twin=0 no_rows=0 bound_unlit=202 bound_lit={"102" if lit else "202"} '
+                        f'lit_after_unlit=0 sentinel_kept=1 constant_error={"1e-07" if lit else "0"} constants=0 '
+                        f'lit_samples={900 if lit else 0} visible={1500 if lit else 0} max_relative={0.004 if lit else 0} '
+                        f'zero={400 if lit else 0} zero_differ=0 not_brighter=0')
+        text = '\n'.join(['ENGINE_LIGHT_TWINS hull=3 effects=0 total=6'] + rows[:4] + ['RESET PASS'] + rows[4:] +
+                         ['ENGINE_LIGHT_RESULT lit_frames=7 checked_images=7 first_lit_after_reset=1 worst_relative=0.004 '
+                          'worst_constant=1e-07 visible=10500 zero=2800 zero_differ=0 unlit_differ=0'])
+        trace = ['engine_light_mode device=1 setting=on status=ok mode=on requested=1 reason=requested',
+                 'engine_light_variant device=1 original=7c83ed50c9894e44 created=07 refused=00 mismatched=00 failed=00 words_max=1500 depth=1']
+        trace += [f'engine_light_frame device=1 frame={f} ships=1 ships_drawn={int(f >= 2)} nodes={int(f >= 2)} candidates={int(f >= 3)} '
+                  f'draws_lit={int(f >= 3)} no_twin=0 no_rows=0 twins=6' for f in range(1, 9)]
+        return text, '\n'.join(trace)
+
+    def test_engine_light_seam_case_and_validator(self):
+        case = [c for c in runner.CASES if c['mode'] == 'enginelight']
+        self.assertEqual([c['name'] for c in case], [runner.ENGINE_LIGHT_SEAM_CASE])
+        env = case[0]['hdr_env']
+        self.assertTrue(case[0]['hdr'] and case[0]['camera'] and not case[0]['taa'])
+        self.assertEqual((env['X3M_ENGINE_EFFECTS'], env['X3M_ENGINE_LIGHT'], env['X3M_DEBUG'], env['X3M_LINEAR_MATERIALS']), ('plumes', 'on', '1', '0'))
+        text, trace = self.engine_light_output()
+        result = runner.validate_engine_light_seam('host', text, trace)
+        self.assertEqual((result['lit_frames'], result['zero_differ'], result['log_rows']['frames_with_candidates']), (7, 0, 6))
+        bad = [(text.replace('bound_lit=102', 'bound_lit=202', 1), trace),                      # a lit draw without the twin
+               (text.replace('bound_unlit=202', 'bound_unlit=102', 1), trace),                  # the unlit draw on the twin
+               (text.replace('sentinel_kept=1', 'sentinel_kept=0', 1), trace),                  # an upload on the unlit draw
+               (text.replace('max_relative=0.004', 'max_relative=0.06', 1), trace),             # off the law by 6 %
+               (text.replace('zero_differ=0', 'zero_differ=3', 1), trace),                      # beyond the radius not identical
+               (text.replace('draws_lit=1 no_twin=0', 'draws_lit=2 no_twin=0', 1), trace),      # two uploads
+               (text.replace('step=1 reset=0 records=1 suppressed=1 ships=1 nodes=0 candidates=0 draws_lit=0',
+                             'step=1 reset=0 records=1 suppressed=1 ships=1 nodes=0 candidates=1 draws_lit=1', 1), trace),  # lit a frame early
+               (text.replace('RESET PASS\n', '', 1), trace),
+               (text, trace.replace('created=07', 'created=03', 1)),
+               (text, trace.replace('mismatched=00', 'mismatched=04', 1)),
+               (text, trace.replace('candidates=1 draws_lit=1 no_twin=0', 'candidates=1 draws_lit=0 no_twin=1', 1)),
+               (text, trace.replace('requested=1', 'requested=0', 1))]
+        for output, log in bad:
+            with self.subTest(output=output != text, log=log != trace), self.assertRaises(AssertionError):
+                runner.validate_engine_light_seam('host', output, log)
 
     def test_fade_route_cases_and_validator(self):
         cases = [c for c in runner.CASES if c['mode'] == 'faderoute']

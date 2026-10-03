@@ -5574,6 +5574,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
         route.node_flags12c = s.flags12c;
         route.node_flags130 = s.flags130;
         route.observer_epoch = s.observer_epoch;
+        route.scope_parent = s.parent; // engine light: the synthetic node+0x18
         key.draw_domain = (((s.load_epoch & 0xffffffffull) << 32) | (s.registry_epoch & 0xffffffffull)) + 1;
         return true;
     }
@@ -7631,6 +7632,18 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     if (lightmap && SUCCEEDED(hr)) route.hull_lightmap = true;
     if (widen && SUCCEEDED(hr)) route.hull_lightmap_widen = true;
     route.engine_light = engine && SUCCEEDED(hr);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (SUCCEEDED(hr)) { // engine light seam (key 500): 0x100 | kind for a twin, 0x200 | kind for a base, 0x207 other
+        const IDirect3DPixelShader9* bases[engine_light_kinds] = {
+            shadow_.ps_variant,          shadow_.ps_original_fill_variant, shadow_.ps_hull_lightmap_variant,
+            shadow_.ps_hull_lightmap_widen, shadow_.ps_sun_original,    shadow_.ps_sun_original_lightmap,
+            shadow_.ps_sun_original_lightmap_widen};
+        unsigned kind = engine_light_kinds;
+        for (unsigned k = 0; k < engine_light_kinds; ++k)
+            if (ps && ps == (engine ? shadow_.engine_twin[k] : bases[k])) kind = k;
+        fixture_engine_bound_ = (engine ? 0x100u : 0x200u) | kind;
+    }
+#endif
     return hr;
 }
 
@@ -10500,6 +10513,16 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 53: return counters_.fade_held;
     case 54: return counters_.overlay_routed;
     case 55: return counters_.overlay_refused;
+    // Engine light seam (motion_output_engine_light_seam_inc.h): this frame's counts, the device's tables and twins.
+    case 500: return fixture_engine_bound_;
+    case 501: return engine_light_ ? engine_light_->counts.candidates : 0u;
+    case 502: return engine_light_ ? engine_light_->counts.draws_lit : 0u;
+    case 503: return engine_light_ ? engine_light_->counts.no_twin : 0u;
+    case 504: return engine_light_ ? engine_light_->counts.no_rows : 0u;
+    case 505: return engine_light_ ? engine_light_->twins : 0u;
+    case 506: return engine_light_ ? engine_light_->ships.count : 0u;
+    case 507: return engine_light_ ? engine_light_->nodes.count : 0u;
+    case 508: return unsigned(engine_light_requested_);
     case 83: return unsigned(fade_rt2_owner_);   // fixture: X3M_FADE_RT2_OWNER resolved on
     case 84: return counters_.fade_owner_masked; // fixture: fade-arm rows kept masked on the lane RT2 this frame
     case 85: return counters_.fade_evicted;      // fixture: hysteresis evictions this frame

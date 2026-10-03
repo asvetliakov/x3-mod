@@ -1195,6 +1195,16 @@ CASES += [case(LOG_TIERS_EMITTERS_CASE, 'lightmapwiden', camera=True, hdr=True, 
                hdr_env=dict(LIGHTMAP_WIDEN_ENV, X3M_HULL_EMISSIVE_WIDENING='4,4',
                             X3M_LIGHT_MAP_FAR_FADE='%g,%g,%g' % (*LIGHTMAP_FADE_P, 1.0), X3M_ORIGINAL_FILL='0.01',
                             X3M_HULL_EMISSION_GAIN='2.0', X3M_EMISSION_SOURCE_GAIN='2.0'))]
+# Engine light seam (motion_output_engine_light_seam_inc.h; docs/architecture/engine-light.md): the route-level path of
+# the hull light through the production MotionOutput: a glow-jet record of the effects pair under a synthetic ship root,
+# the reviewed hull pair drawn as another ship's node (unlit) and as a node under the root (lit from the third jet frame),
+# the twin of the gained fill base bound and c200-c202 uploaded once, the lit image against the unlit one by the law,
+# Reset. The compact record: <results>/seam-engine-light-fixture.json.
+ENGINE_LIGHT_SEAM_CASE = 'seam-engine-light'
+ENGINE_LIGHT_SEAM_ENV = dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='standard', X3M_ENGINE_LIGHT='on', X3M_DEBUG='1',
+                             X3M_ORIGINAL_FILL='0.01', X3M_HULL_LIGHTMAP_GAIN=repr(LIGHTMAP_FADE_GAIN), X3M_LINEAR_MATERIALS='0',
+                             X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0', X3M_MOTION_FRAME_LOG='1')
+CASES += [case(ENGINE_LIGHT_SEAM_CASE, 'enginelight', camera=True, hdr=True, hdr_env=ENGINE_LIGHT_SEAM_ENV)]
 LIGHTMAP_WIDEN_MAP = 64
 LIGHTMAP_WIDEN_PAIRS = 11
 LIGHTMAP_WIDEN_LIGHTMAP_PROGRAMS = 100
@@ -1526,6 +1536,50 @@ def write_lightmap_fade_record(result):
         bottle=result['bottle'], binaries=result.get('binaries'), selected=sorted(result['selected_cases']), cases=cases), indent=1) + '\n')
 
 
+def validate_engine_light_seam(name, text, trace):
+    """seam-engine-light: the fixture's ENGINE_LIGHT rows (its own CHECKs already passed: exit 0) re-checked, and the
+    session log's engine_light_mode / _variant / _frame rows."""
+    lines = text.splitlines()
+    assert 'RESET PASS' in lines, name
+    rows = [fields(l) for l in lines if l.startswith('ENGINE_LIGHT ')]
+    result = [fields(l) for l in lines if l.startswith('ENGINE_LIGHT_RESULT ')]
+    twins = [fields(l) for l in lines if l.startswith('ENGINE_LIGHT_TWINS ')]
+    assert len(rows) == 9 and len(result) == 1 and len(twins) == 1 and twins[0]['hull'] == '3', (name, len(rows), twins)
+    lit = [r for r in rows if r['draws_lit'] == '1']
+    for r in rows:
+        assert r['records'] == '1' and r['suppressed'] == '1' and r['bound_unlit'] == '202' and r['sentinel_kept'] == '1', (name, r)
+        assert r['lit_after_unlit'] == '0' and r['no_twin'] == '0' and r['no_rows'] == '0', (name, r)
+    assert [r['draws_lit'] for r in rows[:4]] == ['0', '0', '1', '1'] and rows[-1]['draws_lit'] == '1', (name, [r['draws_lit'] for r in rows])
+    for r in lit:
+        assert r['bound_lit'] == '102' and r['candidates'] == '1' and float(r['constant_error']) <= 1e-5, (name, r)
+        assert int(r['visible']) >= 200 and float(r['max_relative']) <= 0.05, (name, r)
+        assert int(r['zero']) >= 50 and r['zero_differ'] == '0' and r['not_brighter'] == '0', (name, r)
+    for r in rows:
+        if r['draws_lit'] == '0':
+            assert r['bound_lit'] == '202' and r['zero_differ'] == '0', (name, r)
+    mode = [fields(l) for l in trace.splitlines() if l.startswith('engine_light_mode ')]
+    assert len(mode) == 1 and mode[0]['requested'] == '1' and mode[0]['reason'] == 'requested', (name, mode)
+    variants = {v['original']: v for v in (fields(l) for l in trace.splitlines() if l.startswith('engine_light_variant '))}
+    hull = variants.get('7c83ed50c9894e44')
+    assert hull and hull['created'] == '07' and hull['refused'] == '00' and hull['mismatched'] == '00' and hull['failed'] == '00', (name, hull)
+    frames = [fields(l) for l in trace.splitlines() if l.startswith('engine_light_frame ')]
+    lit_rows = [f for f in frames if f['candidates'] != '0']
+    # One row per frame with a table or a candidate; the last frame's row is never written (no later boundary).
+    assert len(lit_rows) >= len(lit) - 1, (name, len(lit_rows), len(lit))
+    for f in lit_rows:
+        assert (f['candidates'], f['draws_lit'], f['no_twin'], f['no_rows'], f['ships'], f['nodes']) == ('1', '1', '0', '0', '1', '1'), (name, f)
+    summary = result[0]
+    return dict(checks=len(rows) * 6 + len(lit) * 6 + 4 + len(lit_rows), frames=[{k: r[k] for k in (
+                    'step', 'reset', 'draws_lit', 'bound_unlit', 'bound_lit', 'constant_error', 'lit_samples', 'visible', 'max_relative',
+                    'zero', 'zero_differ')} for r in rows],
+                lit_frames=int(summary['lit_frames']), first_lit_after_reset=int(summary['first_lit_after_reset']),
+                worst_relative=float(summary['worst_relative']), worst_constant=float(summary['worst_constant']),
+                visible=int(summary['visible']), zero=int(summary['zero']), zero_differ=int(summary['zero_differ']),
+                log_rows=dict(mode=mode[0], hull_variant=hull, frames_with_candidates=len(lit_rows),
+                              frame_rows=[{k: f[k] for k in ('frame', 'ships', 'nodes', 'candidates', 'draws_lit', 'no_twin', 'no_rows', 'twins')}
+                                          for f in frames]))
+
+
 def validate_lightmap_fade(name, floor, text, trace):
     lines = text.splitlines()
     assert 'RESET PASS' in lines, name
@@ -1725,7 +1779,7 @@ def sources():
         'exposure_reference.py', 'agx_reference.py', 'analyze_motion_readback.py', 'summarize_capture.py')]
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
-        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h', 'motion_output_lightmap_fade_inc.h',
+        'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h', 'motion_output_lightmap_fade_inc.h', 'motion_output_engine_light_seam_inc.h',
         'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h', 'motion_output_thin_vote_inc.h', 'motion_output_fade_route_inc.h',
         'motion_output_shadow_alpha_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
@@ -6866,7 +6920,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'shadowalpha', 'shadowalpharoute', 'unmatchedstatic', 'boltshape') + HDR_MODES + ('thinvote',) and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'enginelight', 'shadowreplay', 'shadowretention', 'shadowpool', 'shadowalpha', 'shadowalpharoute', 'unmatchedstatic', 'boltshape') + HDR_MODES + ('thinvote',) and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -7181,6 +7235,17 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} depth={case["depth"]} casters={case["casters"]} us={case.get("us", {}).get("median")} max_depth_error={case.get("map", {}).get("max_depth_error")}', flush=True)
+                continue
+            if mode == 'enginelight':
+                case = validate_engine_light_seam(name, text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} lit_frames={case["lit_frames"]} first_lit_after_reset={case["first_lit_after_reset"]} '
+                      f'worst_relative={case["worst_relative"]:.4f} visible={case["visible"]} zero={case["zero"]} zero_differ={case["zero_differ"]}', flush=True)
                 continue
             if mode == 'lightmapfade':
                 case = validate_lightmap_fade(name, LIGHTMAP_FADE_CASES[name], text, trace)

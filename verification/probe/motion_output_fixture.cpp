@@ -733,6 +733,8 @@ struct Fixture {
                                 // setup, its own frames
     bool lightmapwiden = false; // the hull emissive widening script (motion_output_lightmap_widen_inc.h): the same
                                 // setup at 256 x 256
+    bool enginelight = false;   // the engine light seam script (motion_output_engine_light_seam_inc.h): the hullemission
+                                // setup with the plume records
     bool faderoute = false;     // fade-band motion arm script (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT)
     bool skip_c4 = false; // shadowreplay script: material_state leaves PS c4 unwritten (a frame without a sun write)
     bool distancefade_enabled = false, distancefade_emissions_enabled = false;
@@ -3498,6 +3500,7 @@ struct Fixture {
 #include "hull_emission_live_inc.h"
 #include "motion_output_lightmap_fade_inc.h"
 #include "motion_output_lightmap_widen_inc.h"
+#include "motion_output_engine_light_seam_inc.h"
 
     // XT live admission/transport witness. Full shader mathematics and authored
     // DEFAULT UV/weight policy are qualified by the detached reference fixture.
@@ -4753,7 +4756,7 @@ int main(int argc, char** argv) {
     try {
         if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime)
             throw std::runtime_error(
-                "usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|thinvote|bench|routebench|burst|mipbias|zonly|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|lightmapfade|lightmapwiden|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|boltshape|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+                "usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|thinvote|bench|routebench|burst|mipbias|zonly|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|lightmapfade|lightmapwiden|enginelight|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|boltshape|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime;
         f.window = window;
@@ -4786,7 +4789,8 @@ int main(int argc, char** argv) {
         f.sunlane = mode == "sunlane";
         f.lightmapfade = mode == "lightmapfade";
         f.lightmapwiden = mode == "lightmapwiden";
-        f.hullemission = mode == "hullemission" || f.lightmapfade || f.lightmapwiden;
+        f.enginelight = mode == "enginelight";
+        f.hullemission = mode == "hullemission" || f.lightmapfade || f.lightmapwiden || f.enginelight;
         if (f.lightmapwiden) {
             Fixture::W = 256;
             Fixture::H = 256;
@@ -4970,6 +4974,12 @@ int main(int argc, char** argv) {
         f.flat_hash = fnv(flat_program, sizeof flat_program);
         require(f.vs_hash == 0x53a0a641107ed76cull && f.ps_hash == 0x8759c7838bbc86c2ull,
                 "local files are the reviewed pair");
+        if (f.enginelight) {
+            // The engine effects seam (engine_effects.cpp): the fixture EXE stands in for the verified executable and
+            // its call redirects; set before Direct3DCreate9, which runs the module's initialize.
+            symbol<void (*)(int)>(runtime, "x3m_engine_effects_fixture_identity", true)(1);
+            symbol<void (*)(int)>(runtime, "x3m_engine_effects_fixture_redirects", true)(1);
+        }
         auto create = symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime, "Direct3DCreate9", true);
         f.factory.p = create(D3D_SDK_VERSION);
         if (!f.factory.p) throw std::runtime_error("factory");
@@ -5019,6 +5029,8 @@ int main(int argc, char** argv) {
             f.run_lightmap_fade(argv[1]);
         else if (f.lightmapwiden)
             f.run_lightmap_widen(argv[1]);
+        else if (f.enginelight)
+            f.run_engine_light(argv[1]);
         else if (f.hullemission)
             f.run_hull_emission(argv[1]);
         else if (mode == "shadowreplay")
