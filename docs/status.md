@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-03 04:30, Run120 = the redesigned plume look over Run119). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-03 13:50, Run121 = plume adjustments after flight C over Run120). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,6 +15,15 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run121 = **plume adjustments after flight C** (Run 120 A accepted the look at `engine_plume_nozzle 0.5`): DLL SHA-256
+`a124a5afd0fe0f40c2abcb15fa55d4a826c17e320960969af5ddad516d329571` (58,489,756 bytes) built once from clean main `8fd8d48d` (host suite 286/3,008/0,
+0 warnings, x87 0, shader checks 50 + 9, 27 verifiers; all four engine fixtures rerun: patch 54/54, plumes 116/116, ribbons 44/44, effects 8 modes;
+[candidate](../verification/results/run121-candidate-build.json)), installed 2026-10-03 13:48 ([install](../verification/results/run121-candidate-install.json)).
+Over Run120: nozzle default 0.5; the end-on disc represents the whole plume (8-sample axial average, facing blend 0.3-0.7, soft cap 1.5x the side peak,
+L/n gain bounded at 8); per-ship floor 0.45 x the ship's largest nozzle for secondary jets (`Snapshot::parent` = node+0x18, RCS and brake jets excluded,
+open-addressing map of 2,048); mouth terms as a soft maximum with the ring 0.3 and the shock cells ramping in; the chase cap/fade keyed on the body width
+with the disc kept >= 0.6 under the fade; the plume (ps 680 slots) and ribbon passes no longer refuse on the reported 512 cap (creation is the test);
+a refused/disarmed stage forwards the glow natively (`forwarded_stage_off`). Reviewed (Opus, 11 findings fixed). Run 121 A queued. Rollback Run120.
 Run120 = **plume look port** (the Engine Exhaust Lab law, `tools/effects/engine_exhaust_lab.html`, user settings of 2026-10-03): DLL SHA-256
 `c44a0887262e0ae03ec9392e9c798e9971fd372a46adc0e8c6c03032c7493527` (58,432,188 bytes) built once from clean main `0cc93fa8` (host suite 286/3,008/0,
 0 warnings, x87 0, shader checks 50 + 9, 27 verifiers; fixtures plumes 90/90, ribbons 44/44, effects all modes, patch 54/54 carried;
@@ -59,7 +68,7 @@ binaries reused from 0.8.0; [release record](../verification/results/release-0.9
 x3m-regenerate.exe, f/<16 fonts>, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
 and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run118 `924d12bd…` at `/tmp/x3-run118-candidate/build/d3d9.dll` (Run119 `58227081…` not retained), then Run117 = release 0.9.0 `72db0628…` at `/tmp/x3m-release-0.9.0/zip-extract/d3d9.dll`, then Run116 `68bd5f41…` at `/tmp/x3-run116-candidate/build/d3d9.dll`, then Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run120 `c44a0887…` at `/tmp/x3-run120-candidate/build/d3d9.dll`, then Run118 `924d12bd…` at `/tmp/x3-run118-candidate/build/d3d9.dll` (Run119 `58227081…` not retained), then Run117 = release 0.9.0 `72db0628…` at `/tmp/x3m-release-0.9.0/zip-extract/d3d9.dll`, then Run116 `68bd5f41…` at `/tmp/x3-run116-candidate/build/d3d9.dll`, then Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
 Run117 = 0.9.0 over Run116: defaults `ui_scale = auto` and `text_density = auto` (the bare DLL and the launcher default flight
