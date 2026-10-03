@@ -1,0 +1,27 @@
+{
+ "run": "Run123",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run123-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run123-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-04T03:30+0400",
+ "commit": "c8f36eb6",
+ "candidate_record": "verification/results/run123-candidate-build.json",
+ "installed": {
+  "sha256": "a252c522991d9407d3371df215b6d205b24e27957372581e66560c89afc1ae89",
+  "bytes": 59061764,
+  "verified": "sha256 and size read back after install; equals the candidate record; pgrep X3AP empty before; 16 font files unchanged; engine_bodies.json kept (45a1215b\u2026)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418...",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept"
+ },
+ "previous": {
+  "run": "Run122",
+  "dll_sha256": "4d5cbb9cba631486e0dc02c0e8ba697bc57cca1af0036d6870c450b7cc8f03af",
+  "path": "/tmp/x3-run122-candidate/build/d3d9.dll",
+  "then": "Run121 a124a5af... at /tmp/x3-run121-candidate/build/d3d9.dll, Run120 c44a0887..."
+ },
+ "trigger": "Run 122 A findings (halo, far ships) + the X4/Everspace 2 gap analysis + the look critique: far-jet records, plume physics/colour/transients, SETA travel look, engine light on the hull, heat shimmer, the single fire law",
+ "producer": "main session (Fable 5.1)"
+}

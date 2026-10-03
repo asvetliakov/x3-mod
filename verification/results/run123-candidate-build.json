@@ -1,0 +1,117 @@
+{
+ "dll": "/tmp/x3-run123-candidate/build/d3d9.dll",
+ "sha256": "a252c522991d9407d3371df215b6d205b24e27957372581e66560c89afc1ae89",
+ "bytes": 59061764,
+ "commit": "c8f36eb6",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree (X3M_SOURCE_COMMIT c8f36eb6d3d59ab8b20fa8545b550fedf00ecca9, no dirty diff); clean configure+build wall time 42 s",
+ "gates": "build 0 warnings (configure and build logs); x87 0 violations (127 roots, 765 reachable functions, 1 s); generate --check PASS (256 settings, 107 in the template); shader provenance on this tree under the Wine lock, bottle X3: generate_rigid_motion_pixel.py --check PASS 50 programs (434 s wall incl. lock), generate_bloom_programs.py --check PASS 9 programs (47 s), generate_engine_shimmer_program.py --check PASS (engine_shimmer_ps 6,178 words, 19 s); on the installed X3AP.exe (read-only, sha256 fdbf3418..., shipped LAA CheckSum 0, size 2,153,984 and mtime unchanged after the gates): verify_ui_scale_sites PASS 75/75 checks (10,331 instructions, 164 claims considered), verify_text_density_sites PASS 72/72 checks (4,008 instructions, 173 claims considered), verify_cull_small_parts_site PASS 22/22 (site 0x47d2a2, 373 function instructions), verify_lens_flare_cull_site PASS 13/13 (42 body names), verify_dust_leak_fix_site PASS 27/27 (site 0x41f4d1, 473 function instructions), verify_engine_effects_sites PASS 20/20 (routine 240, callee A 156, callee B 167 instructions; 173 other claims); executable-identity/run_verifiers.py PASS (45 anchors; 27/27 on shipped, LAA-cleared, NTCore 4gb and unknown-hash variants; different_build 27/27 refused; 9 corrupt-site negatives FAIL as required, incl. engine_effects A and B; 43 s wall); host suite 289 modules / 3,040 tests / 0 failing (108.1 s wall, 12 jobs); engine fixture records (verification/results/run123-candidate/record_binding.py: recorded hashes against this tree, and the g++ -MM -MG include closure of each runner's translation units plus runner/builder against git diff from the record's source commit and from the commit that committed the record; seam-engine-light's closure is all of src/): bind: engine-shimmer (e117e960-dirty, 9/9 hashes, 20-file closure) PASS 43/43, engine-effects (e117e960-dirty, 20/20 hashes, 91-file closure) PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7), engine-effects-patch (192e1e3f, 6/6 hashes, 14-file closure) PASS 54/54, cull-small-parts-cpu (committed a2fb74fd, 35-file closure) 256 checks 0 failures (lens 58/0), not rerun; do not bind: engine-plumes (8e14f787-dirty: verification/probe/engine_plumes_fixture.cpp differs from 8e14f787, dirty state not recorded), engine-ribbons (src/renderer/engine_plume_pixel_program_inc.h in its closure, not hashed, changed since e117e960), engine-light-gpu (src/proxy/engine_plumes_core.h hash mismatch), seam-engine-light (18 src/ files changed since ecf173eb); rerun in a clean worktree /tmp/x3-run123-fixture at c8f36eb6 (candidate build untouched) under the Wine lock, tracked records restored between runs: run_engine_plumes PASS 286/286 (151 s wall), run_engine_ribbons PASS 44/44 (26 s), run_engine_light PASS (9 cases, Reset and teardown ok, 0 build warnings, sources 8/8 equal, hit 33.3 ns; 32 s), run_motion_output.py seam-engine-light exit 0, 107 checks, lit_frames 7, first_lit_after_reset 1, worst_relative 0.0040, zero_differ 0 (same figures as the ecf173eb record; partial-run summary by design; 89 s incl. its own clean DLL build, 0 warnings); plumes/ribbons/light records source c8f36eb6 with production_sources_dirty false and dirty_paths []; records kept local under /tmp/x3-run123-logs/*-c8f36eb6.json, tracked records restored and the fixture worktree removed; generate_fonts.py --out build/fonts wrote 16 files under build/fonts/F, sha256 identical to assets/fonts/generated/F (16/16) and the Run122 record (16/16) (12 s); stem_coverage.py --gen build/fonts/F PASS (its rewritten stem_coverage.json restored); manage.py --config --direct launch --dry-run exit 0, 0 X3M_* variables from explicit options, no X3M_ENGINE_* variable; launch --dry-run --direct --config --debug --engine-effects plumes exit 0, X3M_ENGINE_EFFECTS \"plumes\" (2 X3M_* from explicit options), no X3M_ENGINE_LIGHT / X3M_ENGINE_SHIMMER (DLL defaults: engine_light on, engine_shimmer on per tools/config/schema.py), engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed); the same with --engine-shimmer off --engine-light off exit 0, X3M_ENGINE_SHIMMER \"off\" and X3M_ENGINE_LIGHT \"off\" (4 X3M_* from explicit options); launch --dry-run --vanilla --engine-effects plumes exit 2 (refused: --engine-effects cannot be combined with --vanilla); X3AP not running before build, Wine gates and suite; candidate worktree clean after all gates; installed d3d9.dll (4d5cbb9c..., Run122) and bottle untouched",
+ "changes": [
+  "c8f36eb6 Plume review fixes: one law parameterised by the detail level (docs/architecture/engine-exhaust-look-critique.md section 6, \"One law\"; ledger \"Revised law review fixes: one law\"). The slab-la...",
+  "8eb0514b Plume look tuning (docs/architecture/engine-exhaust-look-critique.md section 6, \"Tuning pass\"): the side view's outer sheath of the darker tint, 4 outer m (1 - m) on the colour's rim window m...",
+  "c5e04764 Revised plume look law (docs/architecture/engine-exhaust-look-critique.md sections 3 and 6): a peaked radial profile (0.08 + 0.92 exp(-(r/0.32)^2)) with a thin hot core (0.45 core) whose boos...",
+  "dd5b3697 Review fixes for the plume physics batch and the heat shimmer: the flow phase accumulated per nozzle in the keyed memory (Transients, 512 x 48 B; a value flip changes the speed, not the posit...",
+  "ecf173eb Engine light review fixes: route-level seam case, own-ship-safe ship table, twin out-flag match, teardown asserts",
+  "6e15dc43 Design: engine exhaust look critique from the fixture images (docs/architecture/engine-exhaust-look-critique.md): slab radial profile in the AgX shoulder erases cells/tint, isotropic blob tur...",
+  "9071ce0f Engine plumes look images: run_engine_plumes.py --dump-images DIR",
+  "ce0ba6b7 Engine heat shimmer: engine_shimmer_max option (0..16, default 4: the own ship plus the nearest; bounds the measured worst case at the 4-rect row, 0.40 ms at 5120x1440); schema, template, lau...",
+  "42fd6a3c Engine heat shimmer, exhaust gap 9 / phase 5 (engine_shimmer on with the plumes at 1.5 px, Ctrl+Alt+F7; built, not flown): after the TAA resolve on the FP16 route and before the write-back an...",
+  "b963d3c4 Plume gap analysis phases 2 and 3: world-unit flow, two-tone colour, nozzle spill 0.15, idle floor 0.5, RCS puff attack, SETA travel look",
+  "844a091b Engine light on the hull (gap 8, phase 4): per-ship light from the previous frame's plume records, pixel twins of the original-shading hull programs",
+  "47735fb9 Far jets review fixes: records and ledgers (engine_effects 8 modes, cull 256/256, plumes 128/128 on b80fbeb5)",
+  "b80fbeb5 Far jets review fixes: view by handle, per-frame dedupe, device count, near probe (after flight E)",
+  "c6ca2842 Far engine jets from the small-parts cull, plume distance law, halo 0.20, floor 0.5 (after flight E, Run 122 A run407/408)",
+  "321b7e0b RE: SETA and the frame step (engine-effects.md section 8): the SETA factor is cfg+0xcc (16.16, set only by TI_SetTimeWarpFactor), effective speed (cfg+0xcc * cfg+0xd0) >> 16, steps +0x714 gam...",
+  "667db4c2 Design: engine exhaust gap analysis vs X4 / Everspace 2 (docs/architecture/engine-exhaust-gap-analysis.md): 11 ranked gaps, five-phase plan",
+  "8f90fa58 Run 122 A triage (run407/408): far jets are removed by the proxy's small-parts cull (threshold 3 px, scope all, no JET exemption); plume stage counters 0, radius per ship constant, floor 0.5 ...",
+  "96922036 Run 122 A completed (run407/408): floor 0.5 accepted; halo and distance findings open for Run123",
+  "e8a0b65b Run122 installed: plume floor from the ship radius + mouth fix, DLL 4d5cbb9c\u2026 (58,511,846 B) from clean 192e1e3f into bottle X3 at 16:35, bytes verified, EXE/bottle/table unchanged, rollback ..."
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "equal to the Run122 table; tools/effects between 192e1e3f and c8f36eb6 only changes engine_exhaust_lab.html (a mock-up, not the baker), so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "producer": "Claude Code implement agent (Opus 5.5), 2026-10-04; git log --oneline --no-merges 192e1e3f..c8f36eb6 (19 commits); shasum -a 256; hashlib over build/fonts/F; source-hash and include-closure binding: verification/results/run123-candidate/record_binding.py; build/site/identity/suite/shader/fixture/fonts/stem/dry-run logs local under /tmp/x3-run123-logs/"
+}

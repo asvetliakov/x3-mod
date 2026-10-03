@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-03 16:40, Run122 = plume floor from the ship radius + mouth fix over Run121). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-04 03:35, Run123 = the engine exhaust batch over Run122). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,6 +15,16 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run123 = **engine exhaust batch** (Run 122 A findings + the X4/Everspace 2 gap analysis [engine-exhaust-gap-analysis.md](architecture/engine-exhaust-gap-analysis.md)
++ the look critique [engine-exhaust-look-critique.md](architecture/engine-exhaust-look-critique.md)): DLL SHA-256
+`a252c522991d9407d3371df215b6d205b24e27957372581e66560c89afc1ae89` (59,061,764 bytes) built once from clean main `c8f36eb6` (host suite 289/3,040/0,
+0 warnings, x87 0, shader checks 50 + 9 + shimmer, 27 verifiers; fixtures plumes 286/286, ribbons 44/44, effects 8 modes, shimmer 43/43, light 9 cases + seam 107,
+patch 54/54, cull 256; [candidate](../verification/results/run123-candidate-build.json)), installed 2026-10-04 03:30 ([install](../verification/results/run123-candidate-install.json)).
+Over Run122, all behind `plumes`: far jets recorded by the small-parts cull stub (no engine submission, distance law 0.15 at 2 px, 2x4 px floor); halo 0.20,
+floor 0.5; world-unit flow, two-tone colour, nozzle spill, idle floor, RCS attack, SETA travel look (`cfg+0xcc`, fail closed); engine light on the hull
+(`engine_light`, twins of the reviewed hull programs, one light per ship from the previous frame); heat shimmer after the resolve (`engine_shimmer`, max 4,
+Ctrl+Alt+F7); the single fire law (thin hot core, dark-gap cells, 4.5:1 streaks, saturated outer sheath, detail parameter below 40 px; ps 921 slots).
+Five reviews with fixes. Run 123 A queued. Rollback Run122.
 Run122 = **plume floor from the ship radius + mouth fix** (Run 121 A findings): DLL SHA-256
 `4d5cbb9cba631486e0dc02c0e8ba697bc57cca1af0036d6870c450b7cc8f03af` (58,511,846 bytes) built once from clean main `192e1e3f` (host suite 286/3,011/0,
 0 warnings, x87 0, shader checks 50 + 9, 27 verifiers; fixtures plumes 118/118, ribbons 44/44, effects 8 modes, patch 54/54 rerun;
@@ -77,7 +87,7 @@ binaries reused from 0.8.0; [release record](../verification/results/release-0.9
 x3m-regenerate.exe, f/<16 fonts>, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt). `X3AP.exe`, `cxbottle.conf`, the user's `x3m.ini`
 and the 0.8.0 `x3m-regenerate` binaries unchanged.
 
-Rollback chain: Run121 `a124a5af…` at `/tmp/x3-run121-candidate/build/d3d9.dll`, then Run120 `c44a0887…` at `/tmp/x3-run120-candidate/build/d3d9.dll`, then Run118 `924d12bd…` at `/tmp/x3-run118-candidate/build/d3d9.dll` (Run119 `58227081…` not retained), then Run117 = release 0.9.0 `72db0628…` at `/tmp/x3m-release-0.9.0/zip-extract/d3d9.dll`, then Run116 `68bd5f41…` at `/tmp/x3-run116-candidate/build/d3d9.dll`, then Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
+Rollback chain: Run122 `4d5cbb9c…` at `/tmp/x3-run122-candidate/build/d3d9.dll`, then Run121 `a124a5af…` at `/tmp/x3-run121-candidate/build/d3d9.dll`, then Run120 `c44a0887…` at `/tmp/x3-run120-candidate/build/d3d9.dll`, then Run118 `924d12bd…` at `/tmp/x3-run118-candidate/build/d3d9.dll` (Run119 `58227081…` not retained), then Run117 = release 0.9.0 `72db0628…` at `/tmp/x3m-release-0.9.0/zip-extract/d3d9.dll`, then Run116 `68bd5f41…` at `/tmp/x3-run116-candidate/build/d3d9.dll`, then Run115 `fe31263b…` at `/tmp/x3-run115-candidate/build/d3d9.dll` (fonts under its `build/fonts/F`), then Run114 `41ff9b41…` at `/tmp/x3-run114-candidate/build/d3d9.dll` (its fonts under `/tmp/x3-run114-candidate/build/fonts/F`), then Run113 `44208d1f…` at `/tmp/x3-run113-candidate/build/d3d9.dll` (fonts in `f/` stay; a non-density DLL never requests them), then Run112 `ea3ad671…` at `/tmp/x3-run112-candidate/build/d3d9.dll`, then Run111 = release 0.8.1 `e123b7ed…` at `/tmp/x3m-release-0.8.1/d3d9.dll`, then Run110 `e5e7ac15…` at `/tmp/x3-run110-candidate/build/d3d9.dll`, then Run109 `09f08cff…` at `/tmp/x3-run109-candidate/build/d3d9.dll`, then Run108 `c57556bb…` at `/tmp/x3-run108-candidate/build/d3d9.dll`, then Run107 `b9e8793c…` at `/tmp/x3-run107-candidate/build/d3d9.dll`, then Run106 `d07848e8…`, then Run104 = release 0.8.0 `f34d3ab4…` (zip at `/tmp/x3m-release-0.8.0/`, entry `d3d9.dll`, extracted copy
 at `/tmp/x3m-release-0.8.0/zip-extract/d3d9.dll`), then Run103 `1f3ad3db…` at `/tmp/x3-run103-candidate/build/d3d9.dll`.
 
 Run117 = 0.9.0 over Run116: defaults `ui_scale = auto` and `text_density = auto` (the bare DLL and the launcher default flight
