@@ -4,8 +4,10 @@ disc_cap, the facing band 0.3..0.7, axial_floor 0.5; docs/architecture/engine-ef
 since the revised look law docs/architecture/engine-exhaust-look-critique.md "Implemented"). The still look (no
 turbulence, erosion, tongues or pulse), lengths in nozzle widths.
 
-Two laws: "previous" (the slab law of flight C: kappa 1.8, halo 3, cap 1.5) and "revised" (the peaked profile, the
-carving cells, the tight halo exp(-d / 0.32 halo) exp(-4 u)). Per law:
+Three laws: "previous" (the slab law of flight C: kappa 1.8, halo 3, cap 1.5), "revised" (the peaked profile, the
+carving cells, the tight halo exp(-d / 0.32 halo) exp(-4 u)) and "tuned" (the critique's section 6 tuning pass: the
+side view's outer sheath 4 x 0.32 m (1 - m), m = smoothstep(0.25, 0.9, radial), not in the disc's samples, so kappa
+rises; the end-on ring x 3 at twice the side's sigma). Per law:
 - kappa: the side view's body energy over the 8-sample integrated end-on profile's, per nozzle width of length (I x L / n);
 - halo: the end-on halo gain that keeps the previous law's ratio of the disc's halo energy to the side view's halo energy;
 - the energy rows: the end-on disc's (soft-capped body + halo) against the side view's (body + halo) at s 0 / 0.5 / 1 and
@@ -25,11 +27,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import agx_reference as agx  # noqa: E402
 
 bulge, taper, tail, shock, period, cfade, core, halo, hb, ring = 1.15, .45, .7, .5, .16, .6, .45, 1.1, .20, .3
+SHEATH, RING_W, RING = .32, 2.0, 3.0  # the tuned law's Look::outer, disc_ring_width, disc_ring
 c0, c1, c2, c3 = .5 * bulge, (.04 - .5 * bulge) * taper, .5 * bulge * taper, .6 * taper
 tf, t12 = .75 + (.25 - .75) * tail, 1.2 * tail
 LAWS = {
     "previous": dict(kappa=1.8, halo=3.0, cap=1.5, sigma=.5 * halo, fall=2.2, ring=1.0),
-    "revised": dict(kappa=None, halo=None, cap=None, sigma=.32 * halo, fall=4.0, ring=3.0),
+    "revised": dict(kappa=None, halo=None, cap=None, sigma=.32 * halo, fall=4.0, ring=3.0, sheath=0.0, ring_w=1.0),
+    # The tuning pass (docs/architecture/engine-exhaust-look-critique.md section 6, "Tuning"): the side view's outer
+    # sheath (4 Look::outer x m (1 - m), m = smoothstep(0.25, 0.9, radial); not in the disc's samples), the end-on ring
+    # x 3 with its Gaussian twice as wide.
+    "tuned": dict(kappa=None, halo=None, cap=None, sigma=.32 * halo, fall=4.0, ring=RING, sheath=SHEATH, ring_w=RING_W),
 }
 
 
@@ -55,12 +62,12 @@ def cell(law, u):
     return min(1.0, 1.7 * shock) * np.exp(-u * 5 * cfade) * ss(0, .5 * period, u) * (1 - c)
 
 
-def profile(law, radial, s, c, u=0.0):
+def profile(law, radial, s, c, u=0.0, disc=False):
     if law == "previous":
         edge, cm = 1 - ss(.55, 1, radial), 1 - ss(0, 1, radial / (1.4 * core))
         return edge * (1 + c * (1 - ss(0, .8, radial)) * s) * (1 + .6 * cm)
     edge = 1 - ss(.45, 1, radial)
-    peaked = .08 + .92 * np.exp(-(radial / .32) ** 2)
+    peaked = .08 + .92 * np.exp(-(radial / .32) ** 2) + (0.0 if disc else 4 * LAWS[law]["sheath"] * ss(.25, .9, radial) * (1 - ss(.25, .9, radial)))
     hot = np.exp(-(radial / (.45 * core)) ** 2)
     return edge * (1 - c * s * (1 - ss(.3, .9, radial))) * peaked * (1 + .6 * hot * (1 - .5 * ss(.2, .8, u)))
 
@@ -93,7 +100,7 @@ def axis_peak(law, s):
 
 
 def mean_profile(law, rho, s):
-    return sum(t * profile(law, rho / w, s, cell(law, u), u) for w, t, u in zip(wk, tk, uk)) / 8
+    return sum(t * profile(law, rho / w, s, cell(law, u), u, True) for w, t, u in zip(wk, tk, uk)) / 8
 
 
 def disc_halo_energy(sig, dx=.01):
@@ -136,7 +143,7 @@ def look_image_profile(law, tint, head, n_px=88.6, ln=4.0, near=.5):
         B, rgb = 0.0, np.zeros(3)
         for w, t, u in zip(wk, tk, uk):
             radial = rho / w
-            b = t * profile(law, radial, 1.0, cell(law, u), u)
+            b = t * profile(law, radial, 1.0, cell(law, u), u, True)
             if law == "previous":
                 cm = 1 - ss(0, 1, radial / (1.4 * core))
                 h = .7 * (1 - ss(0, .55, u)) * cm
@@ -150,10 +157,13 @@ def look_image_profile(law, tint, head, n_px=88.6, ln=4.0, near=.5):
         colour = rgb / B if B > 0 else tint
         body = level * i * p["kappa"] * ln * B / 8
         halo_v = level * ih * p["halo"] * ln * np.exp(-rho / sig) * np.clip(2 * (2.25 - rho / sig), 0, 1)
-        ring_v = level * i * ring * p["ring"] / 4 * np.sqrt((1 / 240) / s2) * np.exp(-(rho - .46 * bulge) ** 2 / (2 * s2))
+        rd = rho - .46 * bulge
+        rr = rd / p.get("ring_w", 1.0)
+        ring_v = level * i * ring * p["ring"] / 4 * np.sqrt((1 / 240) / s2) * np.exp(-rr ** 2 / (2 * s2))
         ring_c = tint + (np.array([1.0, .95, .85]) - tint) * .6
-        m = soft_max(ring_v, halo_v)
-        mouth_c = (ring_c * ring_v ** 4 + tint * halo_v ** 4) / max(ring_v ** 4 + halo_v ** 4, 1e-30)
+        m = ring_v + halo_v if p.get("ring_sum") else soft_max(ring_v, halo_v)
+        mouth_c = ((ring_c * ring_v + tint * halo_v) / max(ring_v + halo_v, 1e-30) if p.get("ring_sum") else
+                   (ring_c * ring_v ** 4 + tint * halo_v ** 4) / max(ring_v ** 4 + halo_v ** 4, 1e-30))
         total = body + m
         cap = level * p["cap"] * i * axis_peak(law, 1.0)
         shown = cap * (1 - np.exp(-total / cap))
@@ -178,14 +188,15 @@ if __name__ == '__main__':
     # gain from the previous law's disc / side halo energy ratio, the cap as before (1.5 x the side view's axis peak).
     _, h_prev, _, _, _ = side("previous", 1, 4)
     prev_ratio = LAWS["previous"]["halo"] * 4 * hb * disc_halo_energy(LAWS["previous"]["sigma"]) / h_prev
-    LAWS["revised"].update(kappa=1.0, halo=1.0, cap=1.5)
-    eb, h_rev, _, _, _ = side("revised", 1, 4)
-    kappa = eb / (4.0 * 4 * disc("revised", 1, 4)[2])
-    halo_gain = prev_ratio * h_rev / (4 * hb * disc_halo_energy(LAWS["revised"]["sigma"]))
+    for law in ("revised", "tuned"):
+        LAWS[law].update(kappa=1.0, halo=1.0, cap=1.5)
+        eb, h_rev, _, _, _ = side(law, 1, 4)
+        kappa = eb / (4.0 * 4 * disc(law, 1, 4)[2])
+        halo_gain = prev_ratio * h_rev / (4 * hb * disc_halo_energy(LAWS[law]["sigma"]))
+        print(f"# {law} law: kappa = {kappa:.3f}, halo gain for the same halo ratio = {halo_gain:.3f}")
+        LAWS[law].update(kappa=round(kappa, 2), halo=round(halo_gain, 2))
     print(f"# previous law: disc halo energy / side halo energy at s 1, L/n 4 = {prev_ratio:.3f} (halo gain 3)")
-    print(f"# revised law: kappa = {kappa:.3f}, halo gain for the same halo ratio = {halo_gain:.3f}")
-    LAWS["revised"].update(kappa=round(kappa, 2), halo=round(halo_gain, 2))
-    for law in ("previous", "revised"):
+    for law in ("previous", "revised", "tuned"):
         p = LAWS[law]
         print(f"\n## {law}: kappa {p['kappa']}, halo {p['halo']}, cap {p['cap']}, end-on ring x{p['ring']}, halo sigma {p['sigma']:.3f} n, "
               f"fall {p['fall']}")
@@ -201,16 +212,16 @@ if __name__ == '__main__':
                 row.append(f'{f}:{share:.2f}')
             print(' '.join(row))
     e_prev = side("previous", 1, 4)[0]
-    e_rev = side("revised", 1, 4)[0]
-    print(f"\n# side body energy revised / previous at s 1, L/n 4: {e_rev / e_prev:.3f}; axis peak (x I) "
+    e_rev, e_tun = side("revised", 1, 4)[0], side("tuned", 1, 4)[0]
+    print(f"\n# side body energy revised / previous at s 1, L/n 4: {e_rev / e_prev:.3f}, tuned / previous {e_tun / e_prev:.3f}; axis peak (x I) "
           f"{axis_peak('revised', 1):.3f} / {axis_peak('previous', 1):.3f}")
     print("\n# 02b look image (the capped fighter disc, 88.6 px nozzle, faded 0.5): display-decoded luma every 4 px")
     tints = {"split-red": ((1.0, .15, .15), (1.0, .81, .81)), "argon-blue": ((.14, .71, 1.0), (.27, .90, 1.0))}
-    for law in ("previous", "revised"):
+    for law in ("previous", "revised", "tuned"):
         for name, (mean, peak) in tints.items():
             lm, lp = agx.luma(mean), agx.luma(peak)
             k = min(1.0, lm / lp) if lp > lm else 1.0
-            if law == "revised":
+            if law != "previous":
                 k = max(k, .75)
             prof = look_image_profile(law, mean, np.array(peak) * k)
             ringv, hot, at = ring_measures(prof)

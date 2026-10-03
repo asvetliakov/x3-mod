@@ -231,9 +231,9 @@ int main() {
     {
         const ee::Record away = rec(0, 0, Z, 0, 0, 1, V, 2.f), at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
         build(&away, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &flat);
-        // The disc's half: the body's eroded edge at the along-mean growth (1 + 0.7 erode of w <= 0.575), the ring, the
-        // halo's reach.
-        const float nw = .5f * V, half = std::max(std::max((1.f + .7f * .57f) * .575f, .46f * 1.15f + 3.f * .0645497f), 2.25f * SG) * nw + 1.f / ppu(Z);
+        // The disc's half: the body's eroded edge at the along-mean growth (1 + 0.7 erode of w <= 0.575), the end-on ring
+        // (its radius plus three of its sigmas, twice the side's since the tuning pass), the halo's reach.
+        const float nw = .5f * V, half = std::max(std::max((1.f + .7f * .57f) * .575f, .46f * 1.15f + 3.f * .0645497f * 2.f), 2.25f * SG) * nw + 1.f / ppu(Z);
         const float Ln = 2.f * V / nw; // L / n = 4 at full throttle
         // The side view's peak per I_core on the axis (after flight D, with the mouth ramp; the revised law's carving
         // cells, the cooling core): max over u of (1 + 0.6 (1 - 0.5 smoothstep(0.2, 0.8, u))) x tail(u) x ramp(u) x
@@ -263,14 +263,14 @@ int main() {
         const float axis_peak = axis_at(1.f), axis_peak0 = axis_at(0.f);
         // The disc's cap at the 25 px nozzle's detail level DL: the previous law's peak to the revised.
         const float cap_peak = previous_at(1.f) + (axis_peak - previous_at(1.f)) * DL;
-        bool disc = st.discs == 1 && (out[4].peak >> 24) == 255u && (out[0].peak >> 24) == 0u && near(out[4].local[3], nw) && near(out[4].intensity[0], 4.f * 3.33f * Ln) &&
+        bool disc = st.discs == 1 && (out[4].peak >> 24) == 255u && (out[0].peak >> 24) == 0u && near(out[4].local[3], nw) && near(out[4].intensity[0], 4.f * 4.13f * Ln) &&
                     near(out[4].intensity[1], HB * DH * Ln) && near(out[4].intensity[2], 1.5f * 4.f * cap_peak, 3e-3f) &&
                     near(out[4].local[2], 4.f * (.3f / 4.f * .5f) * 2.f * 3.f);
         for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half, 1e-3f) && near(std::fabs(out[c].position[1]), half, 1e-3f) && out[c].position[2] == Z;
         bool finite = true;
         for (unsigned c = 0; c < 4; ++c) for (unsigned j = 0; j < 3; ++j) finite = finite && std::isfinite(out[c].position[j]);
         expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f) && near(out[0].intensity[0], 2.f) && near(out[0].intensity[1], HB * .5f),
-               "head-on: the end-on disc (I x 3.33 L / n, halo I_halo x (3 -> 2.82 by the detail) L / n, cap 1.5 x the side peak, the ring x 3), the axial quad at half weight, no bias");
+               "head-on: the end-on disc (I x 4.13 L / n, halo I_halo x (3 -> 2.82 by the detail) L / n, cap 1.5 x the side peak, the ring x 3), the axial quad at half weight, no bias");
         float pk = 0.f;
         LookTables tb;
         look_tables(flat, &tb);
@@ -293,7 +293,7 @@ int main() {
             const float f = c.az, wa = 1.f - .5f * c.wd;
             bool ok = near(out[0].intensity[0], 4.f * wa, 1e-3f) && near(out[0].intensity[1], HB * wa, 1e-3f);
             if (c.wd > 0.f)
-                ok = ok && st.discs == 1 && near(out[4].intensity[0], c.wd * 4.f * 3.33f * Ln * f, 1e-3f) &&
+                ok = ok && st.discs == 1 && near(out[4].intensity[0], c.wd * 4.f * 4.13f * Ln * f, 1e-3f) &&
                      near(out[4].intensity[1], c.wd * HB * DH * Ln * f, 1e-3f) && near(out[4].intensity[2], c.wd * 1.5f * 4.f * cap_peak, 3e-3f);
             else
                 ok = ok && st.discs == 0 && out[4].position[0] == out[5].position[0] && out[4].position[1] == out[6].position[1];
@@ -379,9 +379,11 @@ int main() {
         // h the body's half-width per value: its eroded edge 1.2736 x 0.575 nozzle widths (wider than the ring's 0.7226;
         // the halo's reach does not count, after the review of flight C; unchanged by the revised law) x the nozzle width
         // 0.5. Tail-on the axial quad takes half (the end-on disc is whole); the fade takes the axial quad to 0.5, the
-        // disc to no less than 0.6 of its unfaded 4 x 3.33 x L / n (L / n = 4: the cap shrinks L and n together). The
-        // disc's half-size: the eroded edge at the along-mean growth, (1 + 0.7 x 0.57) x 0.575, past the halo's 2.25 x 0.352.
-        const float h = (1.f + .48f * .57f) * .575f * .5f, h_halo = std::max((1.f + .7f * .57f) * .575f, 2.25f * .352f) * .5f;
+        // disc to no less than 0.6 of its unfaded 4 x 4.13 x L / n (L / n = 4: the cap shrinks L and n together). The
+        // disc's half-size: the end-on ring's radius plus three of its sigmas (twice the side's since the tuning pass),
+        // 0.529 + 0.387, past the eroded edge at the along-mean growth, (1 + 0.7 x 0.57) x 0.575, and the halo's 2.25 x 0.352.
+        const float h = (1.f + .48f * .57f) * .575f * .5f,
+                    h_halo = std::max(std::max((1.f + .7f * .57f) * .575f, 2.25f * .352f), .46f * 1.15f + 3.f * .0645497f * 2.f) * .5f;
         auto at_q = [&](float q, float zo) { // value with 2 h value f / (zo - 2 value) = q cap
             return q * cap * zo / (2.f * h * f + 2.f * q * cap);
         };
@@ -393,15 +395,15 @@ int main() {
             const float half = h * out[0].shape[1], L = out[0].local[2]; // the body's half-width, x k
             const float width = 2.f * half * f / (zo - L);
             const float quad_half = std::fabs(out[4].local[0]) - 1.f / (1.7f * 540.f / zo); // the disc's half (width0) less its pixel
-            const float disc = 4.f * 3.33f * (L / out[0].local[3]) * std::max(weight, .6f);
+            const float disc = 4.f * 4.13f * (L / out[0].local[3]) * std::max(weight, .6f);
             const bool ok = near(out[0].intensity[0], 2.f * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : q == 1.f ? near(width, cap, 2e-3f) && near(out[0].shape[1], val, 1e-3f) : st.capped == 0 && near(out[0].shape[1], val)) &&
                             st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .5f * out[0].shape[1]) &&
                             near(quad_half, h_halo * out[0].shape[1], 2e-3f) && near(out[4].intensity[0], disc, 2e-3f) &&
-                            out[4].intensity[0] >= .6f * 4.f * 3.33f * (L / out[0].local[3]) - 1e-3f;
+                            out[4].intensity[0] >= .6f * 4.f * 4.13f * (L / out[0].local[3]) - 1e-3f;
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
             std::printf("CAP q=%.2f weight=%.3f disc_weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / 2.f),
-                        double(out[4].intensity[0] / (4.f * 3.33f * (L / out[0].local[3]))), double(width), double(cap), double(out[0].shape[1] / val));
+                        double(out[4].intensity[0] / (4.f * 4.13f * (L / out[0].local[3]))), double(width), double(cap), double(out[0].shape[1] / val));
         }
         // Side view: the length is free (a long plume across the screen keeps its length).
         const float val = 100.f / ppu(Z);
@@ -800,9 +802,9 @@ int main() {
                c[16] == .3f && c[17] == .8f && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f && default_look.ring == .3f,
                "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail; ring 0.3 after flight C; c4.x 1 / period; "
                "the revised law: c4.x 2 / period (the cells' half-period ramp), erosion 1.6 erode, the cells' gap 0.85, the hot core 1 / (0.45 core))");
-        expect(pixel_constant_floats == 64 && c[60] == .5f && c[61] == 0.f && c[63] == 0.f && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && near(c[58], 1.f / 300.f) &&
+        expect(pixel_constant_floats == 64 && c[60] == .5f && near(c[61], 4.f * .32f) && c[62] == .5f && c[63] == 0.f && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && near(c[58], 1.f / 300.f) &&
                    near(c[59], .35f) && default_look.spill_depth_max == 300.f,
-               "the spill (gap 3): c16.zw glow_through 0.15, 1 / spill_depth 0.5; c17.xyz inner 0.8, reach 1.0 nozzle widths, 1 / 300 world units (the guard's bound); c17.w the tail's tongues 0.35");
+               "the spill (gap 3): c16.zw glow_through 0.15, 1 / spill_depth 0.5; c17.xyz inner 0.8, reach 1.0 nozzle widths, 1 / 300 world units (the guard's bound); c17.w the tail's tongues 0.35; c18.yz the outer sheath 4 x 0.32, the end-on ring's scale 1 / 2");
         // c8..c15: the law at u_k = (k + 0.5) / 8 against an independent replica (std::exp / std::cos).
         auto ss = [](float e0, float e1, float x) { float q = (x - e0) / (e1 - e0); q = q < 0 ? 0 : q > 1 ? 1 : q; return q * q * (3 - 2 * q); };
         float worst = 0.f;
@@ -976,7 +978,7 @@ int main() {
         const float V = 40.f / ppu(Z);
         const ee::Record at = rec(0, 0, Z, 0, 0, -1, V, 2.f);
         build(&at, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &thin);
-        expect(near(out[4].intensity[0], 4.f * 3.33f * 8.f * fw4) && near(out[4].intensity[1], HB * 3.f * 8.f * fw4) &&
+        expect(near(out[4].intensity[0], 4.f * 4.13f * 8.f * fw4) && near(out[4].intensity[1], HB * 3.f * 8.f * fw4) &&
                    near(out[0].local[2] / out[0].local[3], 20.f, 1e-3f),
                "nozzle 0.1: the disc's L / n held to 8 (the quad keeps L / n 20)");
         // The cached tables give the same vertices as tables computed per build.
@@ -1312,7 +1314,10 @@ class Wiring(unittest.TestCase):
         self.assertEqual(ps.count(' fbm(p'), 1)  # one evaluation (the revised law's streak field)
         self.assertIn('const float phase = i.shape.w;', ps)
         self.assertIn('const bool disc = i.peak.w > 0.5;', ps)
-        self.assertIn('const float3 colour = lerp(lerp(tone, 0.5 * tint, detail * smoothstep(0.25, 0.9, radial)), white, heat);', ps)
+        self.assertIn('const float rim = smoothstep(0.25, 0.9, radial);\n        const float3 colour = lerp(lerp(tone, 0.5 * tint, detail * rim), white, heat);', ps)
+        # The tuning pass: the side view's outer sheath on the colour's rim window, the end-on ring's width.
+        self.assertIn('(0.08 + 0.92 * exp(-rp * rp) + detail_k.y * rim * (1.0 - rim))', ps)
+        self.assertIn('const float rr = (rho - core_k.z) * detail_k.z;', ps)
         self.assertIn('const float body = i.view.y * tail * inside * lerp(slab, peaked, detail) * turbulence * soft_body;', ps)
         self.assertIn('const float heat = core_k.x * hot * (1.0 - smoothstep(0.05, 0.3, u));', ps)
         self.assertIn('exp(-(2.2 + 1.8 * detail) * uc)', ps)

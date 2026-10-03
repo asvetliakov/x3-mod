@@ -192,12 +192,12 @@ look law".
 | Term | As built | Against section 3 |
 | --- | --- | --- |
 | Streaks | `S2 = fbm(2.2 p + (5, 2, 1)) - 0.4375`, `p = (x - phase, 4.5 y, seed + 0.7 t)` | As written. `S1` enters none of the table's terms, so the shader evaluates one fbm |
-| Profile, core | `0.08 + 0.92 exp(-(radial / 0.32)^2)`; hot core `exp(-(radial / (0.45 core))^2)`, `x (1 + 0.6 hot (1 - 0.5 smoothstep(0.2, 0.8, u)))` | The core's boost cools to half along the plume. Without it the cyan axis at u 0.5 on the uncapped 40 px plume read whiteness 0.137-0.149 through the fixture's AgX (gate 0.15) |
+| Profile, core | `0.08 + 0.92 exp(-(radial / 0.32)^2)`, since the tuning pass plus the side view's outer sheath `4 outer m (1 - m)` (below); hot core `exp(-(radial / (0.45 core))^2)`, `x (1 + 0.6 hot (1 - 0.5 smoothstep(0.2, 0.8, u)))` | The core's boost cools to half along the plume. Without it the cyan axis at u 0.5 on the uncapped 40 px plume read whiteness 0.137-0.149 through the fixture's AgX (gate 0.15) |
 | Edge, tongues | `1 - smoothstep(0.45, 1, radial + 1.6 erode S2 (0.6 + 0.8 u))`; tail on `u + 0.614 erode S2` (0.35 at erode 0.57) | Tongues tied to `erode`, so the still look (erode 0) has none |
 | Cells | `1 - a (1 - c)`, `c = (0.5 + 0.5 cos(2 pi u / period))^3`, `a = min(1, 1.7 shock) e^(-5 cfade u) smoothstep(0, period / 2, u) (1 - smoothstep(0.3, 0.9, radial)) s`: gap 0.85, first gap 0.33 of the crest, 0.74 by u 0.4 | Gap 0.85 instead of 0.8 and a half-period ramp. The written term measured lane depth 0.30-0.40 and gaps 0.69-0.78 (gates 0.35 and 0.6), because the full-period ramp and the fade leave the gap at u 0.24 at 0.61 of the crest. Gap 1.0 lets the carved white core dominate a red plume's high-passed luma (anisotropy 1.8-2.3) |
 | Turbulence, heat, colour | as written; `head_colour` scale at least 0.75 | As written |
 | Halo | e-fold `0.32 halo`, `exp(-4 u)`, reach 2.25 sigma | As written |
-| Disc | kappa 3.33, halo gain 2.82, cap 1.5 x the side axis peak (per I: 1.20 revised, 1.46 previous), ring x 3 (`Look::disc_ring`); polar streaks with the direction on a circle of radius 2.5 in the noise and `4.5 rho - 1.6 phase` radially | kappa rises (1.8 -> 3.33) because the peaked profile's integral is smaller; the end-on/side energy stays 0.91 at s 1, L/n 4 (model). Halo 2.82 keeps the slab law's disc/side halo ratio (6.3). The ring needs 3x end-on to show between the integrated outer flame and the halo (model ring 1.29 cyan / 1.72 red at x3, 1.00 at x1). The circle replaces `atan2`, whose cut at +-pi would seam |
+| Disc | kappa 3.33 (4.13 since the tuning pass), halo gain 2.82, cap 1.5 x the side axis peak (per I: 1.20 revised, 1.46 previous), ring x 3 (`Look::disc_ring`; twice the side's sigma since the tuning pass); polar streaks with the direction on a circle of radius 2.5 in the noise and `4.5 rho - 1.6 phase` radially | kappa rises (1.8 -> 3.33) because the peaked profile's integral is smaller; the end-on/side energy stays 0.91 at s 1, L/n 4 (model). Halo 2.82 keeps the slab law's disc/side halo ratio (6.3). The ring needs 3x end-on to show between the integrated outer flame and the halo (model ring 1.29 cyan / 1.72 red at x3, 1.00 at x1). The circle replaces `atan2`, whose cut at +-pi would seam |
 | Detail level (new) | `smoothstep(16, 40, drawn nozzle px)` in the tint's alpha; under 1 the body, cells and halo blend to the previous law's (slab edge 0.55..1 and core, cosine cells on the carving's envelope, e-fold 0.5 halo, `exp(-2.2 u)`, disc halo gain 3, cap on the previous peak, the disc's slab a fitted profile); streaks, tongues and the rim and tail darkening scale with it; turbulence stays | Not in the design. The resolve case (a 15 px nozzle moving 4 and 8 px a frame along its axis) kept 0.76-0.83 of its core with the revised law, 0.81-0.86 with streaks and cells off (the peaked profile alone), against the 0.9 gate; with the detail level the minimum is 0.957. It also settles the far-dot Unknown: `far_low` cannot (the 6 px weight 0.45 can rise at most to 1, which gives 0.67 of today on the 0.30 energy), so `far_low` stays 0.15 |
 | Ring (side), far law, chase cap | unchanged (ring 0.3, `far_low` 0.15 at 2 x 4 px, cap and fade) | The mouth gate holds (0.65 / 0.67 / 0.76 at s 1 / 0.5 / 0) |
 
@@ -220,6 +220,35 @@ dumped images, before = the images at e51872be, `plume_look_metrics_before_out.t
 The display radial contrast stays under its 2.0 on five of the capped bands (03c t0, the three presets, 08 normal;
 1.77-1.99), through the resolve, the chase fade and AgX. The FP16 gate holds on the fixture's frames of the same setup.
 Whether that reads as fire in flight is the eye's call, as section 5 anticipated for the display figures.
+
+### Tuning pass (2026-10-03, worktree build on c5e04764, not a candidate)
+
+Judged on the images above: the structure was right, two things overshot. The peaked profile left the outer flame
+invisible (01b / 03a read as a needle about a third of the slab law's width), and the end-on ring read as a drawn
+outline over a dark annulus (02a, 02b, 03b).
+
+| Term | As built | Why |
+| --- | --- | --- |
+| Outer sheath (`Look::outer` 0.32, c18.y = 4 outer) | profile `0.08 + 0.92 exp(-(radial / 0.32)^2) + 4 outer m (1 - m)`, `m = smoothstep(0.25, 0.9, radial)` (the colour's darker-tint window): 0.32 at radial 0.575, 0.06 of it at the lane's 0.35, 0 on the axis; inside the eroded edge, carved and streaked like the body; side view only | A uniform floor (0.08 -> 0.15..0.45) widens the plume but the cells then band the floor in the anisotropy window: red anisotropy 3.0 at 0.15, 1.9-2.6 at 0.38 (gate 3). A sheath on the rim window alone (`outer m`) plateaus to the edge, so the 10 % width jumps from 0.5 to 0.85 of the slab law's between weights 0.5 and 1.0; `m (1 - m)` falls off before the edge and grades it |
+| Disc kappa 4.13 | the disc's 8 samples keep the peaked profile without the sheath; kappa re-derived from the side energy (`plume_end_on_model.py`, law "tuned"); the detail-0 slab fit 0.448 x 1.8 / 4.13 = 0.1953 | The sheath in the disc's samples (floor 0.45, kappa 2.23) fills 0.3-0.6 n and buries the ring at any intensity (02b ring 1.00 / 1.00) |
+| End-on ring (`Look::disc_ring_width` 2, `disc_ring` 3) | the Gaussian at twice the side's sigma (0.129 n), the end-on peak unchanged at x 3 (energy x 2); c18.z = 1 / width; the disc quad's half reaches 0.46 bulge + 3 x 0.129 | The written x 0.6 (x 1.8) at width x 2 leaves no bump on the cyan disc: FP16 gate 1.00 at 1920 and 5120, the halo at 0.53 n is as bright as the ring. On the resolved 02b image cyan needs x 3 at width 2 (x 2.7: 1.00; x 3: 1.11). A wider inner side (the Gaussian x 1.15-1.5 again inside the radius) drops cyan under 1.05 too; the annulus fills from the doubled width and the brighter disc body instead |
+
+Measured (bottle X3; `run_engine_plumes.py` PASS 236/236, 800 slots; images re-dumped; before = c5e04764's images and
+records, slab = e51872be's images; `plume_look_width_ratio.py` -> `plume_look_width_ratio_out.txt`):
+
+| Gate | Before (c5e04764) | After |
+| --- | --- | --- |
+| 10 % half-width u 0.2 / the slab law's, s 1 capped bands (display) | 0.39-0.50 | 0.61-0.71 (01b 0.71, 03a 0.61 / 0.64, 03c 0.61 / 0.65, 04 default 0.64, 08 0.64 / 0.65); restrained preset 0.45; s 0.5 0.45 / 0.57, s 0 0.47 / 0.58 |
+| Radial contrast, FP16, u 0.2 (>= 3.0) | 3.02-4.49 | 3.76-4.65 (0.6 of the wider half-width lands outside the sheath's peak) |
+| Lane cells; dark gaps; anisotropy, FP16 | 0.43-0.57; 0.45-0.56; 3.67-17.3 | 0.40-0.57; 0.47-0.56; 7.5-17.3 |
+| Whiteness axis u 0.5; rim (FP16 frame, display) | 0.157-0.53; 0.71-0.96 | 0.157-0.53; 0.53-0.88 (red 40 px the lowest: the sheath's red rim desaturates under AgX; outer 0.4 measured 0.48) |
+| Disc ring FP16 cyan / red (>= 1.05); hot centre | 1.62 / 2.37-2.38; 1.00 | 1.14-1.17 / 1.43-1.48; 1.00 |
+| Disc ring, 02b image cyan / red | 1.80 / 2.47 | 1.11 / 1.46; trough (min 0.2 n..ring, 4 px samples) 0.17 / 0.11 against 0.11 / 0.07 |
+| Radial contrast, display, s 1 bands (>= 2.0) | 1.77-2.47, five under 2.0 | 2.46-6.65, none under 2.0 (09 moving 1.89, before 2.47) |
+| Far dots 2 / 6 px of the slab law | 1.08 / 1.01 | 1.08 / 1.01 (the detail level keeps them); 40 px 0.40 (0.33) |
+| Mouth; core survival; end-on 60 / 30 / 0 deg | 0.65 / 0.67 / 0.76; 0.957; 0.87-0.88 / 0.91 / 0.81 | unchanged; 0.957; 0.88-0.89 / 0.92 / 0.81 |
+| Energy, model (detail 1, s 1, of the slab law) | body 0.33, luma 0.31 / 0.39, axis peak 0.67 / 0.80 | body 0.41 (`plume_look_proposal_model.py`; side 0.40 in `plume_end_on_model.py`), luma 0.37 / 0.45, axis peak unchanged; end-on / side energy 0.78 at L / n 4 (0.91: the brighter disc body meets the soft cap) |
+| Slots | 797 | 800 (the end-on ring's inner-side select dropped to make room) |
 
 ## Unknown, and what settles it
 

@@ -481,3 +481,24 @@ X3 unless marked; the records are `verification/results/bottle-X3/engine-{plumes
 | Image metrics | `plume_look_metrics.py look-images --before <images at e51872be>` -> `plume_look_metrics_out.txt` (before: `plume_look_metrics_before_out.txt`) | s 1 bands: radial (display) 1.77-2.47 (before 1.20-2.27), lane cells 0.77-0.95 capped, 0.16 on 09 (before 0.05-0.26), anisotropy 15-30 (before 2.0-6.5 on the capped bands), body whiteness u 0.5 0.15-0.52 (before 0.11-0.44 over all bands); 02b ring 2.47 / 1.80, hot centre 1.00 (before 1.00 / 1.00); far dots 2 / 6 px 1.08 / 1.01 of before (40 px 0.33); clipped pixels 05 / 09 / 10: 273 / 561 / 1,691 (before 1,201 / 1,738 / 3,346) |
 | Models | `plume_end_on_model.py`, `plume_look_proposal_model.py`, `plume_slab_disc_fit.py` | kappa 3.33, halo 2.82 (the slab law's disc/side halo ratio 6.3); body energy 0.33, luma 0.31 / 0.39, axis peak 0.67 / 0.80 of the slab law (detail 1, s 1); the disc's slab fit within 0.011 of a 0.753 peak, energy 0.997 |
 | Host | `run_host_suite.py` | 289 modules, 3,040 tests, 0 failing |
+
+## Look tuning: outer sheath, soft end-on ring (2026-10-03, worktree build on c5e04764, not a candidate)
+
+The tuning pass of [engine-exhaust-look-critique.md](../architecture/engine-exhaust-look-critique.md) section 6: the side
+view's outer sheath (`Look::outer` 0.32), the disc kappa 4.13 (the disc's samples without the sheath), the end-on ring at
+twice the side's sigma with its peak kept at x 3 (the written x 0.6 left the cyan ring gate at 1.00). Fixture change: the
+spill case's still-look band (0.72..0.8 n) is measured with the ring off, which the hull cuts with the body; the wider
+ring reached into the band and took its ratio to 0.0. All figures measured in bottle X3 unless marked.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Build | `cmake --build build` (MinGW i686, `-DPython3_EXECUTABLE=/usr/bin/python3`) | 0 warnings; `check_no_x87.py build/d3d9.dll` 765 reachable, 0 violations |
+| Shader | `generate_rigid_motion_pixel.py --shader engine_plume_ps --check` | PASS; 3,564 words, 800 slots by the production counter (797 before; gate 800) |
+| Plumes | `run_engine_plumes.py` | PASS 236/236. Structure, FP16, 24 frames: radial 3.76-4.65, lane cells 0.40-0.57, gaps 0.47-0.56, anisotropy 7.5-17.3, whiteness axis 0.157-0.53, rim 0.53-0.88; disc ring cyan 1.14-1.17, red 1.43-1.48, hot centre 1.00. Core survival 0.957; mouth 0.65 / 0.67 / 0.76; end-on 60 / 30 / 0 deg 0.88-0.89 / 0.92 / 0.81; spill law 0.1501, look 0.1502-0.1505; distance 2 / 6 px 0.15 / 0.449; stage GPU 300 nozzles (250 far) 0.59 / 0.15 ms at 1080p / 5120x1440 [advisory]; CPU build 30 / 100 / 1,024 records 3.40 / 10.94 / 116.3 us |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
+| Effects | `run_engine_effects.py` | PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) |
+| Shimmer | `run_engine_shimmer.py` | PASS 43/43 |
+| Look images | `run_engine_plumes.py --dump-images verification/results/engine-effects/look-images/` | 15 images and the contact sheet, max 175 KB |
+| Image metrics | `plume_look_metrics.py look-images --before <images at e51872be>` -> `plume_look_metrics_out.txt`; `plume_look_width_ratio.py` -> `plume_look_width_ratio_out.txt` | 10 % half-width u 0.2 over the slab law's: 0.61-0.71 on the s 1 capped bands (c5e04764: 0.39-0.50), restrained preset 0.45, s 0.5 / 0 0.45-0.58; display radial 2.46-6.65 on the s 1 bands (09 moving 1.89); 02b ring cyan / red 1.11 / 1.46 (2.47 / 1.80 at c5e04764 red / cyan), trough 0.17 / 0.11 (0.11 / 0.07); far dots 2 / 6 px 1.08 / 1.01 of the slab law, 40 px 0.40 |
+| Models | `plume_end_on_model.py` (law "tuned"), `plume_look_proposal_model.py` (kind "tuned") | kappa 4.133; side body energy 0.41 of the slab law (0.33 before), luma 0.37 cyan / 0.45 red, axis peak unchanged 0.67 / 0.80; end-on / side energy 0.78 at s 1, L / n 4 (0.91 before) [model] |
+| Host | `test_engine_*` (unittest discover, `PYTHONPATH=verification/probe`) | 83 tests OK; the full suite not run |

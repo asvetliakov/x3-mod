@@ -396,11 +396,12 @@ float replica(const ep::Look& k, const LawInputs& in, float x, float y, float n1
     const float cells = 1.f - c[8] * envelope * (1.f - crest * crest * crest);
     const float turbulence = 1.f + c[6] * S2 * (.4f + .6f * std::min(radial, 1.f));
     const float rc = radial * c[13], rp = radial / .32f;
-    const float hot = std::exp(-rc * rc), profile = .08f + .92f * std::exp(-rp * rp);
+    const float rim_window = smooth(.25f, .9f, radial);
+    const float hot = std::exp(-rc * rc), profile = .08f + .92f * std::exp(-rp * rp) + c[61] * rim_window * (1.f - rim_window);
     // The colour's red channel for a white tint and head: the tail's darker stop, the rim's half tint (both x the detail
     // level), white by the heat; the body the slab's radial shape under detail 1.
     const float tone = 1.f - .4f * in.detail * smooth(.6f, 1.f, uc) * smooth(.2f, .5f, uc);
-    const float rim = tone + (.5f - tone) * in.detail * smooth(.25f, .9f, radial);
+    const float rim = tone + (.5f - tone) * in.detail * rim_window;
     const float heat = c[12] * hot * (1.f - smooth(.05f, .3f, u)), red = rim + (1.f - rim) * heat;
     const float slab = (1.f - smooth(.55f, 1.f, radial)) * (1.f + .6f * (1.f - smooth(0.f, 1.f, radial * c[13] * .3214286f))) *
                        (1.f + c[60] * envelope * (2.f * crest - 1.f));
@@ -1441,8 +1442,9 @@ void distance_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlum
 // inside the spill's full reach) is glow_through 0.15, at most 0.15 in the taper 0.8..1.0 n, nothing past 1.0 n (the ratio
 // where the open frame is above 0.01: the revised law's halo window ends at 0.79 n, and under that the soft cap's
 // 1 - exp(-x) at x ~1e-5 leaves the cut / open ratio a few % off on the GPU);
-// (b) the still look (the production cap and ring): 0.15 +- 0.02 in 0.72..0.8 n (the soft cap compresses the open halo
-// more than the spilled one), nothing past 1.0 n; (c) the depth guard: the plane 3 value in front of the nozzle (another
+// (b) the still look with the production cap: 0.15 +- 0.02 in 0.72..0.8 n (the soft cap compresses the open halo more
+// than the spilled one), nothing past 1.0 n; without the ring, which the hull cuts with the body (since the tuning pass
+// the end-on ring's Gaussian is twice as wide, reaches 0.92 n and would fill the open frame in the band); (c) the depth guard: the plane 3 value in front of the nozzle (another
 // object, not its hull): nothing through it.
 void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, bool four) {
     const float Z = 2000.f, ppu = t.ppu(Z), value = 192.f / ppu, n_px = 96.f;
@@ -1452,6 +1454,8 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     const ee::Record r = record(0, 0, Z, 0, 0, 1, value, 2.f);
     ep::Look linear = still;
     linear.ring = 0.f;
+    ep::Look capped = still;
+    capped.ring = 0.f;
     linear.disc_cap = 50.f; // total / cap about 0.01: under 0.5 % compression, no 1 - exp(-x) cancellation on the GPU
     const int span = int(1.3f * n_px);
     struct Measure {
@@ -1490,7 +1494,7 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     };
     Measure law{}, look{}, guard{};
     measure(&linear, .65f, .8f, Z, &law);
-    measure(&still, .72f, .8f, Z, &look);
+    measure(&capped, .72f, .8f, Z, &look);
     measure(&still, .65f, .8f, Z - 3.f * value, &guard);
     std::printf("SPILL width=%u lane=%s nozzle_px=%.0f law_band_px=%u law_median=%.4f law_max=%.4f law_taper_max=%.4f law_beyond_max=%.6f look_band_px=%u look_median=%.4f look_max=%.4f look_beyond_max=%.6f guard_max=%.6f\n",
                 t.w, four ? "4ch" : "r32f", double(n_px), law.band_px, law.band_median, law.band_max, law.taper_max, law.beyond_max,

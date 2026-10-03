@@ -38,7 +38,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outli
   <p>A live mock-up of the proxy's plume pixel law. Tune it here; the chosen numbers port one-to-one into the ps_3_0 plume shader.</p>
 </header>
 <div class="stage"><canvas id="c"></canvas>
-  <div class="hud"><span class="chip">look <b id="hud-look">modern</b></span><span class="chip">throttle <b id="hud-thr">1.00</b></span><span class="chip">law <b id="hud-law">revised</b></span><span class="chip">view <b id="hud-view">side</b></span><span class="chip">game ps <b id="hud-cost">789 slots</b></span></div>
+  <div class="hud"><span class="chip">look <b id="hud-look">modern</b></span><span class="chip">throttle <b id="hud-thr">1.00</b></span><span class="chip">law <b id="hud-law">revised</b></span><span class="chip">view <b id="hud-view">side</b></span><span class="chip">game ps <b id="hud-cost">800 slots</b></span></div>
 </div>
 <div class="deck">
   <div class="group"><h2>Scene</h2>
@@ -82,7 +82,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outli
     <label class="row">Exposure<span class="v" id="v-exp">1.0</span><input type="range" id="exp" min="0.3" max="2.5" step="0.05" value="1"></label>
   </div>
 </div>
-<p class="note">Length and brightness follow throttle exactly as in the game: the game stretches the jet to 0.25 + 1.75 × throttle, the proxy reads that scale from the draw, and at the default nozzle width (0.5 of the jet's value) the plume is 4 nozzle widths long at full throttle, as here. The sliders open at the game's look and keep their numbers and directions. <b>Revised law</b> (the game's since 2026-10-03, <code>docs/architecture/engine-exhaust-look-critique.md</code>): a thin hot core that cools along the plume inside a peaked body, the colour core &rarr; tint &rarr; darker tint, streaks 4.5 : 1 along the axis moving with the flow, shock cells that carve dark gaps (crests at the body's level), tongues at the edge and the tail, a tight halo at the mouth; <i>Core radius</i> now sets the hot core's width, <i>Edge erosion</i> the streaks' erosion and the tail's tongues, <i>Diamond strength</i> the gaps' depth (full at 0.59), <i>Halo width</i> its e-fold (0.32 &times; the value). <b>Previous law</b> is the slab look flown until then; <b>A/B</b> shows both (side view: previous on top; end-on: previous left). <b>End-on</b> is the game's nozzle disc for a plume pointing at the camera (the chase view): the body integrated along the axis (8 samples), the hot centre, the nozzle ring (3&times; its side radiance in the revised law), radial streaks scrolling outward and the halo, under the game's soft cap. Game-only, not shown: the revised law's detail level (a plume narrower than 16 px keeps the previous law's shape and halo, fading to the revised at 40 px: TAA keeps a small moving plume and the far dots their brightness), the nozzle spill through the hull, the far-engine distance law, the RCS puff and brake flare attack, the SETA travel look, the mouth's hand-over between the disc and the side quad, and the game's tonemap: the lab maps x / (1 + x), the game AgX, which whitens bright bodies sooner, so judge the hue and the structure here and the brightness in flight. When you have a setting you like, press <code>Copy settings</code> and paste the line back to me.</p>
+<p class="note">Length and brightness follow throttle exactly as in the game: the game stretches the jet to 0.25 + 1.75 × throttle, the proxy reads that scale from the draw, and at the default nozzle width (0.5 of the jet's value) the plume is 4 nozzle widths long at full throttle, as here. The sliders open at the game's look and keep their numbers and directions. <b>Revised law</b> (the game's since 2026-10-03, <code>docs/architecture/engine-exhaust-look-critique.md</code>): a thin hot core that cools along the plume inside a peaked body wrapped in a darker outer sheath that carries the visible width, the colour core &rarr; tint &rarr; darker tint, streaks 4.5 : 1 along the axis moving with the flow, shock cells that carve dark gaps (crests at the body's level), tongues at the edge and the tail, a tight halo at the mouth; <i>Core radius</i> now sets the hot core's width, <i>Edge erosion</i> the streaks' erosion and the tail's tongues, <i>Diamond strength</i> the gaps' depth (full at 0.59), <i>Halo width</i> its e-fold (0.32 &times; the value). <b>Previous law</b> is the slab look flown until then; <b>A/B</b> shows both (side view: previous on top; end-on: previous left). <b>End-on</b> is the game's nozzle disc for a plume pointing at the camera (the chase view): the body integrated along the axis (8 samples), the hot centre, the nozzle ring (3&times; its side radiance and twice its width in the revised law), radial streaks scrolling outward and the halo, under the game's soft cap. Game-only, not shown: the revised law's detail level (a plume narrower than 16 px keeps the previous law's shape and halo, fading to the revised at 40 px: TAA keeps a small moving plume and the far dots their brightness), the nozzle spill through the hull, the far-engine distance law, the RCS puff and brake flare attack, the SETA travel look, the mouth's hand-over between the disc and the side quad, and the game's tonemap: the lab maps x / (1 + x), the game AgX, which whitens bright bodies sooner, so judge the hue and the structure here and the brightness in flight. When you have a setting you like, press <code>Copy settings</code> and paste the line back to me.</p>
 <div class="btns"><button id="copy">Copy settings</button><span class="chip" id="copied" hidden>copied</span></div>
 </div>
 <script>
@@ -110,7 +110,8 @@ float coolRev(float u){return 1.0-0.5*smoothstep(0.2,0.8,u);}
 vec4 softMax(float a,vec3 ca,float b,vec3 cb){float a4=a*a*a*a,b4=b*b*b*b,m4=a4+b4;return m4>1e-30?vec4((ca*a4+cb*b4)*(sqrt(sqrt(m4))/m4),sqrt(sqrt(m4))):vec4(0.0);}
 // The end-on disc (the game's camera-facing disc, the exhaust at the camera): the body integrated over 8 samples of
 // the law, the halo radially, the ring, the soft cap 1.5 x the side view's axis peak. Revised: the peaked profile and
-// hot centre, the cells as rings, polar streaks (spokes scrolling outward), kappa 3.33, halo 2.82, the ring x 3.
+// hot centre, the cells as rings, polar streaks (spokes scrolling outward), kappa 4.13 (the side view's outer sheath is
+// not in the samples), halo 2.82, the ring x 3 with its Gaussian twice the side's width (the tuning pass).
 vec3 discEnd(vec2 q,float s,float side,float rev){
  float rho=length(q),Ln=min(max(0.25+1.75*s,0.5)*2.0,8.0),I=mix(1.2,4.0,s),ih=hb*I/4.0,sig=halo*(rev>0.5?0.32:0.5);
  vec3 white=vec3(1.0,0.97,0.9);
@@ -128,12 +129,12 @@ vec3 discEnd(vec2 q,float s,float side,float rev){
    float b=tl*(1.0-smoothstep(0.55,1.0,radial+erosion))*(1.0+cellPrev(u)*s*(1.0-smoothstep(0.0,0.8,radial)))*(1.0+0.6*cm);
    float bh=b*heat*(1.0-smoothstep(0.0,0.55,u))*cm;B+=b;H+=bh;T+=(b-bh)*smoothstep(0.3,1.0,u);}
  }
- float level=I*(rev>0.5?3.33:1.8)*Ln*0.125*turbI;
+ float level=I*(rev>0.5?4.13:1.8)*Ln*0.125*turbI;
  vec3 body;
  if(rev>0.5) body=level*(A*head+M*tint+H*white);
  else{float c=B-H;body=level*B*mix(mix(headP,tint,c>1e-20?T/c:1.0),white,B>0.0?H/B:0.0);}
  float dn=rho/sig,hl=ih*(rev>0.5?2.82:3.0)*Ln*exp(-dn)*clamp(2.0*(2.25-dn),0.0,1.0);
- float aa=fwidth(rho),s2=1.0/240.0+0.25*aa*aa,rr=rho-0.46*bulge;
+ float aa=fwidth(rho),s2=1.0/240.0+0.25*aa*aa,rr=(rho-0.46*bulge)*(rev>0.5?0.5:1.0);
  float ringI=I*ring/4.0*(rev>0.5?3.0:1.0)*sqrt((1.0/240.0)/s2)*exp(-rr*rr/(2.0*s2));
  vec4 mouth=softMax(ringI,mix(tint,vec3(1.0,0.95,0.85),0.6),hl,tint);
  float total=level*B+mouth.w,cap=1.5*I*(rev>0.5?apkR:apkP);
@@ -160,7 +161,8 @@ vec3 plume(vec2 q,float s,float modern,float side,float rev){
    // S2 (4.5 : 1 along the axis, advected by the flow phase), a peaked profile with a thin hot core that cools along
    // the plume, the erosion growing along it and the tail's tongues, cells that carve dark gaps (ramped in over half a
    // period), the turbulence weighted by the radius, the heat in the core and the first 0.3 L, the colour core ->
-   // tint -> darker tint, a tight halo at the mouth.
+   // tint -> darker tint, a tight halo at the mouth; since the tuning pass the outer sheath of the darker tint,
+   // 4 x 0.32 m (1 - m) on the colour's rim window m (Look::outer), which carries the visible width.
    float S2=fbm(vec3(q.x-phase,q.y*4.5,side+t*0.7)*2.2+vec3(5.0,2.0,1.0))-0.4375;
    float edgeR=1.0-smoothstep(0.45,1.0,radial+erode*1.6*S2*(0.6+0.8*u));
    float tl=(1.0-smoothstep(mix(0.75,0.25,tail),1.0,u+erode*(0.35/0.57)*S2))*exp(-u*tail*1.2)*(1.0-0.5*(1.0-smoothstep(0.0,0.3,u)));
@@ -170,8 +172,9 @@ vec3 plume(vec2 q,float s,float modern,float side,float rev){
    float turbR=1.0+turb*2.2*S2*(0.4+0.6*min(radial,1.0));
    float heatR=heat*hot*(1.0-smoothstep(0.05,0.3,u));
    vec3 toneR=mix(head,tint*(1.0-0.4*smoothstep(0.6,1.0,u)),smoothstep(0.2,0.5,u));
-   vec3 colR=mix(mix(toneR,0.5*tint,smoothstep(0.25,0.9,radial)),vec3(1.0,0.97,0.9),heatR);
-   float IR=mix(1.2,4.0,s)*edgeR*tl*cellsR*turbR*(0.08+0.92*exp(-pow(radial/0.32,2.0)))*(1.0+0.6*hot*coolRev(u));
+   float rimR=smoothstep(0.25,0.9,radial);
+   vec3 colR=mix(mix(toneR,0.5*tint,rimR),vec3(1.0,0.97,0.9),heatR);
+   float IR=mix(1.2,4.0,s)*edgeR*tl*cellsR*turbR*(0.08+0.92*exp(-pow(radial/0.32,2.0))+1.28*rimR*(1.0-rimR))*(1.0+0.6*hot*coolRev(u));
    float hlR=hb*exp(-r/(halo*0.32))*exp(-u*4.0)*mix(1.2,4.0,s)/4.0;
    return colR*IR+softMax(ringI,mix(tint,vec3(1.0,0.95,0.85),0.6),hlR,tint).rgb;
  }

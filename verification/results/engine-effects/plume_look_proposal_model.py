@@ -101,7 +101,7 @@ def law(kind, X, Y, tint_name, phase=7.3, t=0.5, seed=0.37, s=1.0):
         body = I_CORE * edge * tail * inside * cells * turb * (1 + 0.6 * core_mask)
         return colour * body[..., None], body
     # proposed / implemented
-    gap, ramp, cool = (IMPLEMENTED["gap"], IMPLEMENTED["ramp"], IMPLEMENTED["cool"]) if kind == "implemented" else (0.8, 0.16, 0.0)
+    gap, ramp, cool = (IMPLEMENTED["gap"], IMPLEMENTED["ramp"], IMPLEMENTED["cool"]) if kind in ("implemented", "tuned") else (0.8, 0.16, 0.0)
     p = np.stack([(X - phase) * 1.0, Y * 4.5, np.full_like(X, seed * 1861.5 + t * 0.7)], -1)  # the streak field, 4.5:1
     n1 = fbm(p)
     n2 = fbm(p * 2.2 + np.array([5.0, 2.0, 1.0]))
@@ -111,6 +111,9 @@ def law(kind, X, Y, tint_name, phase=7.3, t=0.5, seed=0.37, s=1.0):
     edge = 1 - smoothstep(0.45, 1.0, radial + erosion)
     tail = (1 - smoothstep(0.4, 1.0, u + 0.35 * S2)) * np.exp(-u * 0.84) * (1 - 0.5 * (1 - smoothstep(0, 0.3, u)))
     profile = 0.08 + 0.92 * np.exp(-(radial / 0.32) ** 2)  # peaked body
+    if kind == "tuned":  # the tuning pass (critique section 6): the outer sheath of the darker tint, Look::outer 0.32
+        m = smoothstep(0.25, 0.9, radial)
+        profile = profile + 4 * 0.32 * m * (1 - m)
     core = np.exp(-(radial / 0.2) ** 2)  # the thin hot core
     c = (0.5 + 0.5 * np.cos(2 * np.pi * u / 0.16)) ** 3  # sharp crests, dark gaps; mean 0.3125
     # the cells carve the body (crest 1, gap 1 - a): a = shock_gap 0.8 at the mouth, fading 5 cfade along, ramped in
@@ -234,14 +237,14 @@ def main():
         print(f"  {name}: current {np.round(head_colour(mean, peak), 2)}, proposed {np.round(head_colour(mean, peak, 0.75), 2)}, mean {mean}")
     res = {}
     for tint in TINTS:
-        for kind in ("current", "proposed", "implemented"):
+        for kind in ("current", "proposed", "implemented", "tuned"):
             rgb, body = law(kind, X, Y, tint)
             res[(tint, kind)] = metrics(f"{tint:>10} {kind:>8}", rgb, body, X, Y)
             if png_dir:
                 save_png(rgb, os.path.join(png_dir, f"model_{tint}_{kind}.png"))
     for tint in TINTS:
         c = res[(tint, "current")]
-        for kind in ("proposed", "implemented"):
+        for kind in ("proposed", "implemented", "tuned"):
             p = res[(tint, kind)]
             print(f"# {tint}: {kind} / current body energy {p['energy'] / c['energy']:.2f}, luma energy {p['energy_rgb'] / c['energy_rgb']:.2f}, "
                   f"peak {p['peak/I'] / c['peak/I']:.2f}")

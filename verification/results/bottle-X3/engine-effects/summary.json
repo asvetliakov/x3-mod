@@ -41,7 +41,7 @@
     "src/renderer/engine_shimmer_pass.h"
   ],
   "source": {
-    "commit": "e51872be484d77c9e2e4cbb25c0e726a8440e880-dirty",
+    "commit": "c5e04764b703ae7ad474e70a1fc696d4deb8ce6b-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/engine_plumes_core.h"
@@ -53,7 +53,7 @@
       "src/proxy/engine_effects_option.h": "cb8a96b23acaa40985fc6fcca31c8b80cef9d581be53dea800c69fec8b1ab6b6",
       "src/proxy/motion_output_engine_effects_inc.h": "92ee9f92a67f466f4b7cb15b07af4455b5d72b268be7eb83933f9746b94c2be7",
       "src/proxy/motion_output_engine_plumes_inc.h": "67f2daad2de3114497d22001a866e79d7f6b8bfb0c8fb286ee77e44f3d80f2c4",
-      "src/proxy/engine_plumes_core.h": "2636827e8871799f3c9fe2efeb2c49e1041b1b2c1baf2a13cc3588800eb194b7",
+      "src/proxy/engine_plumes_core.h": "46650315ae2d0bb0c4c1a51c806e5100d937d5463600cccbd1e14aae45b3b3a0",
       "src/renderer/engine_plumes_pass.cpp": "b25936af72b735d9f7d63323ae57022db31befa6e9a78704e84ffc55cf1ec027",
       "src/renderer/engine_plumes_pass.h": "ffbd2fea053a6e66a0b62edaf5cd8d8d244bd0fa39e87198cd8184ae398d0cd6",
       "src/proxy/motion_output_engine_ribbons_inc.h": "02af53103a41900335f91299caf2f295abddc0d9950aa80f05f35bdbbbe70c96",
@@ -75,9 +75,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "c5655ca2868da8bb3a8e9c9b7bfee700fde80d7b4cc8e48c02a988cfc05f85b2",
-    "seam_sha256": "a5ac4339cebbc4e03eb7355e8adf4f09852dbba6fb4e3dda9a024e70a6e85015",
-    "dll_sha256": "9997b423097e563bb449e1256e1d086c8563689652d7908951054f2182090fd0"
+    "fixture_sha256": "7623b5d524d7a937fc51b5cf749d19d94ce02332431153382abb17ef5f458984",
+    "seam_sha256": "34112e689d4870c590297755ca301b6a4bf5226262bff6838805c8af1bd537d7",
+    "dll_sha256": "2525db60546ff3b0bae9cfa48be49a665659fd94a7fa0eca0c08e5b8b666df25"
   },
   "runs": {
     "main": {
@@ -197,7 +197,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261003-220730-998394"
+      "directory": "verification/probe/build/engine-effects-main-20261003-233456-264633"
     },
     "native": {
       "exit": 0,
@@ -241,7 +241,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261003-220739-541900"
+      "directory": "verification/probe/build/engine-effects-native-20261003-233505-033015"
     },
     "unverified": {
       "exit": 0,
@@ -257,7 +257,7 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261003-220747-290989"
+      "directory": "verification/probe/build/engine-effects-unverified-20261003-233512-921227"
     },
     "unpatched": {
       "exit": 0,
@@ -301,7 +301,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-unpatched-20261003-220755-375370"
+      "directory": "verification/probe/build/engine-effects-unpatched-20261003-233520-773424"
     },
     "timing": {
       "exit": 0,
@@ -318,14 +318,14 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.689,
-        "not_jet": 1.208,
-        "not_candidate": 1.074,
-        "suppressed_new_parent": 0.733,
-        "suppressed_no_parent": 0.692,
-        "suppressed_two_parents": 0.688
+        "suppressed": 0.682,
+        "not_jet": 1.209,
+        "not_candidate": 1.068,
+        "suppressed_new_parent": 0.742,
+        "suppressed_no_parent": 0.686,
+        "suppressed_two_parents": 0.698
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261003-220803-310280"
+      "directory": "verification/probe/build/engine-effects-timing-20261003-233528-869734"
     },
     "plumes": {
       "exit": 0,
@@ -370,7 +370,7 @@
         1,
         2
       ],
-      "directory": "verification/probe/build/engine-effects-plumes-20261003-220811-341181"
+      "directory": "verification/probe/build/engine-effects-plumes-20261003-233536-970992"
     },
     "armed": {
       "exit": 0,
@@ -582,8 +582,8 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "490505,ffffff,000000,000000",
-          "sums": "83,765,0,0",
+          "px": "4a0505,ffffff,000000,000000",
+          "sums": "84,765,0,0",
           "prev": "46,765"
         },
         {
@@ -737,10 +737,10 @@
         "frame": "308",
         "stage": "5",
         "rects": "1",
-        "pre": "9efda15f",
-        "drawn": "373e630a",
-        "reverted": "9efda15f",
-        "history": "9efda15f",
+        "pre": "bfcab5cc",
+        "drawn": "44d04179",
+        "reverted": "bfcab5cc",
+        "history": "bfcab5cc",
         "pre_eq_reverted": "1",
         "pre_ne_drawn": "1",
         "reverted_eq_history": "1",
@@ -757,7 +757,7 @@
         ]
       ],
       "shimmer_drawn_rows": 4,
-      "directory": "verification/probe/build/engine-effects-armed-20261003-220819-496315"
+      "directory": "verification/probe/build/engine-effects-armed-20261003-233544-862525"
     },
     "armed_refused": {
       "exit": 0,
@@ -885,7 +885,7 @@
           "site_mismatch"
         ]
       ],
-      "directory": "verification/probe/build/engine-effects-armed_refused-20261003-220829-246160"
+      "directory": "verification/probe/build/engine-effects-armed_refused-20261003-233554-526202"
     }
   },
   "problems": [],

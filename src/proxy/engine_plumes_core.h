@@ -160,6 +160,11 @@ struct Look {
     float core = .45f;    // the hot core's radius: exp(-(radial / (0.45 core))^2), sigma 0.2 of the local width
     float halo = 1.1f;    // halo width: e-fold halo_sigma (0.32) x halo nozzle widths (x the preset)
     float hb = .20f;      // halo brightness (after flight E: 0.35 -> 0.20, the plume's and the disc's halo)
+    // The outer flame (the tuning pass after the revised law: its peaked profile read as a needle): a sheath of the darker
+    // tint added to the side view's profile, 4 outer m (1 - m) with m = smoothstep(0.25, 0.9, radial) (the colour's own
+    // rim window), outer at radial 0.575, 0.06 of it at 0.35 (the carved lane) and nothing on the axis; inside the eroded
+    // edge, so the visible width follows the bulge and taper. Not in the end-on disc's samples (it would bury the ring).
+    float outer = .32f;
     // The mock-up's tail narrowing, w x (1 - 0.6 taper smoothstep(0.6, 1, u)); the halo keeps the nozzle's sigma along
     // the whole plume, as in the mock-up.
     float tail_narrowing = .6f;
@@ -173,17 +178,22 @@ struct Look {
     float pulse_rate = 3.f;                 // the length pulse's noise, per second
     // After flight C (docs/architecture/engine-effects-modern.md, "After flight C").
     // The end-on disc: the body integrated along the axis has radiance I x disc_kappa x L / n x the view factor (the
-    // ratio of the side view's body energy to the integrated profile's, per nozzle width of length: 3.33 from the
-    // revised law's peaked profile, 1.8 from the slab law before it; verification/results/engine-effects/
+    // ratio of the side view's body energy to the integrated profile's, per nozzle width of length: 4.13 with the outer
+    // sheath (the disc's samples keep the peaked profile without it), 3.33 from the revised law's peaked profile, 1.8
+    // from the slab law before it; verification/results/engine-effects/
     // plume_end_on_model.py); its halo I_halo x disc_halo x L / n x the view factor (2.82: the slab law's ratio of the
     // disc's halo energy to the side view's, 6.3, kept for the tight halo); the total soft-capped at disc_cap x the side
-    // view's peak; the ring seen end-on at disc_ring x its side radiance (3: the ring shows between the integrated
-    // outer flame and the halo, the model's 02b ring bump 1.29 cyan / 1.72 red display-decoded). The facing band: the
+    // view's peak; the ring seen end-on at disc_ring x its side radiance (3: the ring shows between the integrated body
+    // and the halo; at the doubled width x 1.8 left no bump on the cyan disc, FP16 gate 1.00, and x 2.7 none on the
+    // resolved 02b image). The facing band: the
     // disc from disc_low to full at disc_high; the axial quad's weight there drops to axial_floor.
-    float disc_kappa = 3.33f;
+    float disc_kappa = 4.13f;
     float disc_halo = 2.82f;
     float disc_cap = 1.5f;
     float disc_ring = 3.f;
+    // The end-on ring's width (the tuning pass: the x 3 ring at the side's sigma read as a drawn outline): its Gaussian
+    // disc_ring_width x the side's sigma (0.0645 nozzle widths), a glowing rim reaching into the hot centre.
+    float disc_ring_width = 2.f;
     // The L / n of the disc's body and halo gains is held to disc_length_max: a thin nozzle (X3M_ENGINE_PLUME_NOZZLE
     // 0.1: L / n 20 at full throttle) would otherwise saturate the soft cap into a flat disc. 8 = twice the default
     // 0.5's 4 at full throttle; the nozzle 0.25 reaches it at full throttle.
@@ -433,7 +443,8 @@ inline void peak_axis_at(const LookTables& t, float s, float* out, float detail 
 // vertex; the halo's sigma the nozzle's): c3..c7 the law, c8..c15 the disc's samples, c16 the mouth ramp (dip, end) and
 // the spill's glow_through and 1 / (spill_depth), c17 the spill's inner and outer reach (nozzle widths), 1 /
 // spill_depth_max (world units), the tail's tongues (erode x 0.35 / 0.57: 0.35 at the chosen erode); c18 the previous
-// law's cosine cell amplitude (shock) at the detail level 0, 0 x3.
+// law's cosine cell amplitude (shock) at the detail level 0, the outer sheath's weight 4 outer, the end-on ring's radial
+// scale 1 / disc_ring_width, 0.
 constexpr unsigned pixel_constant_floats = 64;
 // `t` look_tables(k), computed once where the look is fixed (the proxy at load: MotionOutput::plumes_tables_).
 inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_constant_floats]) noexcept {
@@ -454,7 +465,9 @@ inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_
     out[58] = k.spill_depth_max > 1e-3f ? 1.f / k.spill_depth_max : 1e3f;
     out[59] = k.erode * (.35f / .57f);
     out[60] = k.shock;
-    out[61] = out[62] = out[63] = 0.f;
+    out[61] = 4.f * k.outer;
+    out[62] = k.disc_ring_width > 1e-3f ? 1.f / k.disc_ring_width : 1e3f;
+    out[63] = 0.f;
 }
 inline void pixel_constants(const Look& k, float out[pixel_constant_floats]) noexcept {
     LookTables t;
@@ -1261,7 +1274,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     const float front = L + reach + pixel;
     float body_back = n * (edge0 > edge1 ? edge0 : edge1), body_front = body_back;
     float disc_edge = (1.f + .7f * erode) * line0; // the disc's erosion at the along-mean growth 1, w_k <= line0
-    if (disc_edge < ring_outer) disc_edge = ring_outer;
+    const float disc_ring_outer = .46f * look.bulge + 3.f * .0645497f * (look.disc_ring_width > 1.f ? look.disc_ring_width : 1.f);
+    if (disc_edge < disc_ring_outer) disc_edge = disc_ring_outer;
     const float width0 = (n * disc_edge > reach ? n * disc_edge : reach) + pixel;
     if (back < L) {
         body_back = n * (edge0 - edge_slope * back / L);
