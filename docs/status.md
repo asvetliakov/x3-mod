@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-04 21:25, Run129 = end-on disc at the nozzle opening over Run128). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-04 22:40, Run130 = Raptor engines back + hotkeys removed over Run129). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,6 +15,17 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run130 = **co-located layers unfloored, hotkeys removed** (Run 129 A, run417: the look accepted by the user, "exactly this"; the Split Raptor's third
+engine had no plume; the user asked to drop the F6/F7 keys): DLL SHA-256 `e7ab879ac7442a78f24b49a66d0da089cd5e44e374b1b55729824c968844574f`
+(59,097,184 bytes) built once from clean main `01114822` (host suite 289/3,041/0, 0 warnings, x87 0, shader/site/identity reused; fixtures plumes
+322/322, effects 8 modes, ribbons 44/44, shimmer 43/43, light 12 plate modes, seam 107; [candidate](../verification/results/run130-candidate-build.json)),
+installed 2026-10-04 22:32 ([install](../verification/results/run130-candidate-install.json)). The layer merge no longer drops the smaller glow: a layer
+(same parent and kind, ratio 0.35..0.75, parallel, within the larger's size AND within 1.5 x its own size) is drawn at its natural value without the floor
+(`engine_stage unfloored=`); the Scorpion's tiny stays 5.04 inside the nor's 23.6 (side total 1.07 of the nor alone), the Raptor's big2s at 1.8 / 2.1 x their
+size from the big3 are real engines, all three floored equal ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "No floor instead
+of the drop"). Ctrl+Alt+F6 (preset cycle) and Ctrl+Alt+F7 (shimmer toggle) removed with their rows and tests; `engine_effects_preset` and
+`engine_shimmer` stay as load-time options; F8 under `--debug` is the only in-game key. All 16 look images byte-identical to Run129. Run 130 A queued.
+Rollback Run129.
 Run129 = **end-on disc at the nozzle opening** (Run 128 A, run416: no visible change; the user asked for the excess glow around nozzles to go): DLL SHA-256
 `87b2389f8515808954ca35f4f4a23cefef40337c4fe16e1e0d19f283047f4068` (59,101,965 bytes) built once from clean main `5e44a667` (host suite 289/3,042/0,
 0 warnings, x87 0, shader checks 50 + 9 + shimmer, site/identity reused; fixtures plumes 316/316, effects 8 modes, ribbons 44/44, shimmer 43/43, light 12 plate
@@ -24,7 +35,7 @@ end-on discs were drawn to twice the hull's nozzle ring (bright to 0.45 n, edge 
 into one mass already in HDR; the halo carried 1-5 %, bloom 2 %, hull textures 2-7 %. `Look::disc_halo` 2.82 -> 1.0 and `disc_radius` 0.5 (the disc's whole
 profile at half the radius, per-pixel radiance unchanged, energy x 0.27; the own ship included at the user's word; c19.x carries 1 / disc_radius for the
 handover, 924 slots); 02b 5 % radius 0.64 -> 0.32 n, own chase disc 43 -> 21 px; nine side views byte-identical; end-on energy gates re-floored x 0.25; the spill
-case draws at disc_radius 1 ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Disc radius"). Run 129 A queued. Rollback Run128.
+case draws at disc_radius 1 ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Disc radius"). Run 129 A completed in run417: "Exactly this. All good now"; the Raptor's third engine missing (-> Run130). Rollback Run128.
 Run128 = **disc distance dimming** (Run 127 A, run415: the close-up glow confirmed back; the user asked to dim the end-on discs with distance, the capital
 from straight behind reading as lamps): DLL SHA-256 `61f6be83c58f5a8c033d324e7e4434c63cd73bb5ff561dbb6c15bec4b503af65` (59,101,453 bytes) built once
 from clean main `f3abf618` (host suite 289/3,042/0, 0 warnings, x87 0, shader/site/identity reused; fixtures plumes 312/312, effects 8 modes, ribbons 44/44,

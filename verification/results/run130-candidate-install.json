@@ -1,0 +1,28 @@
+{
+ "run": "Run130",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run130-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run123-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-04T22:32+0400",
+ "commit": "01114822",
+ "candidate_record": "verification/results/run130-candidate-build.json",
+ "installed": {
+  "sha256": "e7ab879ac7442a78f24b49a66d0da089cd5e44e374b1b55729824c968844574f",
+  "bytes": 59097184,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed from the candidate DLL before install); pgrep X3AP empty before; 16 font files unchanged (Run123 fonts reused); engine_bodies.json kept (45a1215b…)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept (the regenerated template drops the hotkey sentences; the user's file is not rewritten)",
+  "x3m-regenerate": "0.8.0 binaries kept (rebuild due at the next release)"
+ },
+ "previous": {
+  "run": "Run129",
+  "dll_sha256": "87b2389f8515808954ca35f4f4a23cefef40337c4fe16e1e0d19f283047f4068",
+  "path": "/tmp/x3-run129-candidate/build/d3d9.dll",
+  "then": "Run128 61f6be83... at /tmp/x3-run128-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 129 A (run417): the look accepted ('Exactly this. All good now'); the Split Raptor's third engine had no plume (the layer merge dropped a real side engine); the user asked to remove the Ctrl+Alt+F6 / F7 hotkeys",
+ "producer": "main session (Fable 5.1)"
+}
