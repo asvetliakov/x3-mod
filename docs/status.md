@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-04 19:55, Run128 = disc distance dimming over Run127). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-04 21:25, Run129 = end-on disc at the nozzle opening over Run128). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,6 +15,16 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run129 = **end-on disc at the nozzle opening** (Run 128 A, run416: no visible change; the user asked for the excess glow around nozzles to go): DLL SHA-256
+`87b2389f8515808954ca35f4f4a23cefef40337c4fe16e1e0d19f283047f4068` (59,101,965 bytes) built once from clean main `5e44a667` (host suite 289/3,042/0,
+0 warnings, x87 0, shader checks 50 + 9 + shimmer, site/identity reused; fixtures plumes 316/316, effects 8 modes, ribbons 44/44, shimmer 43/43, light 12 plate
+modes, seam 107; [candidate](../verification/results/run129-candidate-build.json)), installed 2026-10-04 21:18
+([install](../verification/results/run129-candidate-install.json)). Measured on run416's captures ([triage](../verification/results/run416-engine-glow/)): the
+end-on discs were drawn to twice the hull's nozzle ring (bright to 0.45 n, edge 0.70 n, the ring at 0.30 n), so a capital's nozzles 0.6-0.7 n apart overlapped
+into one mass already in HDR; the halo carried 1-5 %, bloom 2 %, hull textures 2-7 %. `Look::disc_halo` 2.82 -> 1.0 and `disc_radius` 0.5 (the disc's whole
+profile at half the radius, per-pixel radiance unchanged, energy x 0.27; the own ship included at the user's word; c19.x carries 1 / disc_radius for the
+handover, 924 slots); 02b 5 % radius 0.64 -> 0.32 n, own chase disc 43 -> 21 px; nine side views byte-identical; end-on energy gates re-floored x 0.25; the spill
+case draws at disc_radius 1 ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Disc radius"). Run 129 A queued. Rollback Run128.
 Run128 = **disc distance dimming** (Run 127 A, run415: the close-up glow confirmed back; the user asked to dim the end-on discs with distance, the capital
 from straight behind reading as lamps): DLL SHA-256 `61f6be83c58f5a8c033d324e7e4434c63cd73bb5ff561dbb6c15bec4b503af65` (59,101,453 bytes) built once
 from clean main `f3abf618` (host suite 289/3,042/0, 0 warnings, x87 0, shader/site/identity reused; fixtures plumes 312/312, effects 8 modes, ribbons 44/44,

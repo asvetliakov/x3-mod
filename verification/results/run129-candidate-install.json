@@ -1,0 +1,28 @@
+{
+ "run": "Run129",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run129-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run123-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-04T21:18+0400",
+ "commit": "5e44a667",
+ "candidate_record": "verification/results/run129-candidate-build.json",
+ "installed": {
+  "sha256": "87b2389f8515808954ca35f4f4a23cefef40337c4fe16e1e0d19f283047f4068",
+  "bytes": 59101965,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed from the candidate DLL before install); pgrep X3AP empty before; 16 font files unchanged (Run123 fonts reused); engine_bodies.json kept (45a1215b…)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept (rebuild due at the next release)"
+ },
+ "previous": {
+  "run": "Run128",
+  "dll_sha256": "61f6be83c58f5a8c033d324e7e4434c63cd73bb5ff561dbb6c15bec4b503af65",
+  "path": "/tmp/x3-run128-candidate/build/d3d9.dll",
+  "then": "Run127 2433cda8... at /tmp/x3-run127-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 128 A (run416): no visible change; the user asked for the excess glow around nozzles to go (not the colour). The run416 triage: the end-on discs were drawn to twice the hull's nozzle ring (bright to 0.45 n, edge 0.70 n, ring at 0.30 n) and overlap into one mass in HDR; the halo (1-5 %), bloom (2 %) and hull textures (2-7 %) are minor. Fixes: disc_halo 2.82 -> 1.0, disc_radius 0.5 (the own ship included, per the user)",
+ "producer": "main session (Fable 5.1)"
+}
