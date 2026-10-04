@@ -573,3 +573,36 @@ follow I / core_high); ring, mouth dip and ramp unchanged; no shader change (921
 | Effects, shimmer, light | `run_engine_effects.py`; `run_engine_shimmer.py`; `run_engine_light.py` (records hash `engine_plumes_core.h`) | PASS 8 modes (main 174 ... armed_refused 7), build 0 warnings; PASS 43/43; PASS. The hull light follows I(s): x 1.04 (`test_engine_light` 1.0 -> 1.04, brightness 40 -> 41.6) |
 | Shader | `generate_rigid_motion_pixel.py --check` (wine_lock); `tools/config/generate.py --check` | PASS (no shader source changed); PASS 256 settings |
 | Host | `test_engine_*` (unittest discover, `PYTHONPATH=verification/probe`) | 83 tests OK; the full suite not run |
+
+## End-on brightness after flight G (2026-10-04, worktree build on 3ee84cf3, not a candidate)
+
+[engine-exhaust-look-critique.md](../architecture/engine-exhaust-look-critique.md) section 6, "End-on brightness
+(after flight G)": the near-camera fade takes the end-on disc 1 -> `chase_disc_floor` over the last 20 % before the cap
+(its own fade; before, max(the body's fade, 0.6)), `chase_disc_floor` 0.6 -> 0.4; `disc_cap`, `disc_kappa`,
+`disc_ring`, the head colour, the side-view mouth, `far_low`, the floor and the presets unchanged; no shader change
+(921 slots). Gate floors moved: `headon_core_hidden` open peak 0.9 -> 0.6 x I (its 1920 head-on disc is past the cap);
+`chase_disc_not_dim` tightened to the floor's value. Bottle X3, all measured unless marked.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Flight G disc | `verification/results/run412-engine-disc/run412_engine_disc.py` -> `_out.txt` (run412 F8 HDR + depth, frames 4480-4487 and 5437-5444, read-only) | Own ship at EV +0.7..+1.0: peak 19.0-20.3 / 15.5-16.8 / 15.5-16.8 engine; AgX white 386-522 px (22-26 px eq. diameter), R saturated 6,622-7,693 px (92-99 px), R >= 1 7,893-8,511 px (1,063-1,677 over sky); along the main nozzle's row R saturated 68-69 px, white 13-14 px, against the depth opening 19-20 x 24-25 px. At EV -2.0: white 17-45 px, R saturated 1,054-1,225 px. Ocelot pair (z 7,300-11,300 units): peak 3.7-12.5 / 3.9-11.1 / 2.7-4.1, white 3-11 px, R >= 1 12-29 px. AgX white for grey at engine 2.11 (EV +0.99) / 2.88 (EV 0) / 5.44 (EV -2.02) |
+| End-on clip | `run_engine_plumes.py --dump-images <scratch> --dump-linear` (before; after); `plume_disc_clip.py before=... after=...` -> `plume_disc_clip_out.txt` | 02b (capped and faded, 65.6 px): centre min(rgb) >= 1 red 0.046 -> 0, blue 0 -> 0; peak red 3.25 / 1.07 / 1.07 -> 2.17 / 0.71 / 0.72, blue 0.88 / 3.09 / 3.93 -> 0.64 / 2.06 / 2.62; disc energy red 0.671, blue 0.670 of before. 01a, 01b, 03a, 03c, 04, 05 (far dots), 07, 08, 09 bit-identical; 02a 0.869, 03b 0.864, 06b 0.988, 06a, 10 0.999 of their totals |
+| Plumes | `run_engine_plumes.py` | PASS 286/286 (first run of this law: FAIL 284/286, `headon_core_hidden_{4ch,r32f}_1920`, open peak 4.375 -> 2.916 against 0.9 x I; floor 0.6). Chase disc and drawn peak 0.600 -> 0.400 of unfaded; end-on at 40 px 0.706, d 1 1.013, over slab 0.744, own-ship look 0.706 / 0.698 (all unchanged); ring cyan / red 1.183 / 1.725 -> 1.183 / 1.726, hot 1.0; 150 px disc centre luma red 1.508 -> 1.006, cyan 2.641 -> 1.761; slots 921 (advisory 1,024); build 0 warnings |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
+| Effects, shimmer, light | `run_engine_effects.py`; `run_engine_shimmer.py`; `run_engine_light.py` (records hash `engine_plumes_core.h`) | PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7); PASS 43/43; PASS |
+| Host | `test_engine_*` (unittest discover, `PYTHONPATH=verification/probe`) | 83 tests OK (`test_engine_plumes` near-camera cap case: the disc's fade 1 -> 0.4 over the band); the full suite not run |
+
+Co-located layer merge (same entry, after the coordinator's diagnosis of run412 frame 5437: the own nozzle's nor 10 +
+tiny 5.04 glow layers, both floored, drew two plumes and two discs). `merge_layers` (`engine_plumes_core.h`) in
+`build()` and in the ribbons' `update()` via `EnginePlumesFrame::parents`; `engine_stage` `merged=N`. Rule: same parent
+and kind, parallel (dot >= 0.95), the smaller at most 0.75 of the larger's size, origin within the larger's pre-floor
+size (not 0.5 size: the pair is 0.69 size apart); the larger keeps its floored value.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Census | `run412-engine-disc/run412_colocated_pairs.py` -> `_out.txt` | 24 frames: nor + tiny 24 pairs (d 0.5..1 size, ratio 0.50: merged); huge + big3 32 pairs (d <= 0.5, ratio 0.20: merged, 4 of the capital's 8 big3); huge + huge 16 (ratio 1: kept); big3 + big3 24 (d 1..2: kept) |
+| Plumes | `run_engine_plumes.py` | PASS 294/294 (286 + 8 `merge_*`). Merge, 1920 and 5120: pair -> 1 nozzle, 1 disc end-on, merged 1, value 23.56, total and end-on centre 1.00000 of the nor alone; unmerged pair 1.74x total end-on (1.80x side), 1.106x at the nor's centre (1.009x side); 3 widths apart and anti-parallel: 2 nozzles, merged 0. Build us (median, 50 x 41) floor / floor + merge (ships of 8): 30 4.13 / 5.30, 100 13.47 / 15.29, 300 38.94 / 42.64, 1,024 138.73 / 148.43; 300 of one parent 123.13. Slots 921 |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
+| Effects, shimmer, light | `run_engine_effects.py`; `run_engine_shimmer.py`; `run_engine_light.py` | PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7), DLL build 0 warnings; PASS 43/43; PASS |
+| x87 | `check_no_x87.py build/d3d9.dll` | 0 violations, 765 reachable functions |
+| Host | `test_engine_*` | 83 tests OK (`test_engine_plumes`: merge_layers pair dropped; twin, 3 widths, anti-parallel, other / unknown / no parent kept; source wiring `f.parents`, `merged=%u`) |

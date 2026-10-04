@@ -369,7 +369,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
                       '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
         # the ribbons take the plumes' scene-view filter
-        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel);',
+        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel,f.parents);',
                       source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp'))
         self.assertIn('if(ribbons_)taa_call([&]{ribbons_->before_reset();});', motion)
         self.assertIn('if(ribbons_)ribbons_->after_reset(result);', motion)

@@ -338,6 +338,123 @@ mouth 1.02-1.04, the far dots at 12 / 6 / 2 px 0.971 (restrained 0.58-0.60). Fix
 1.020 -> 1.013, over the slab law 0.740 -> 0.744; the 40 px cyan axis whiteness 0.169 -> 0.161 (gate 0.15), the
 mouth over the body 0.694 -> 0.692 (gate 0.85), the end-on ring cyan 1.205 -> 1.183. No gate floor moved.
 
+### End-on brightness (after flight G, 2026-10-04, worktree build on 3ee84cf3, not a candidate)
+
+Flight G (Run 124, run412; screenshot `screenshots/engines3.png`): the own Split Scorpion seen from behind in chase
+view at full throttle showed a clipped pink-white disc wider than its nozzle; the Ocelot's nozzles at about 6 km
+read as pink-white dots. The side-view mouth change of flight F did not reach the end-on view.
+
+Flight measurement (`verification/results/run412-engine-disc/run412_engine_disc.py`, `_out.txt`; the F8 HDR
+captures in engine space, the tonemapper's input, and the depth captures; both frame sets at the default preset,
+both own nozzles capped and faded, `capped=2 faded=2`). The AgX write-back shows a grey engine value white
+(>= 0.98) from 2.11 at the second set's exposure (EV +0.65..+0.99) and 5.44 at the first's (EV -2.0..-2.1).
+
+| | Own ship, frames 5437-5444 (EV +0.7..+1.0) | Own ship, 4480-4487 (EV -2.0) | Ocelot pair (z 7,300-11,300 units), 5437-5444 |
+| --- | --- | --- | --- |
+| Peak R / G / B (engine) | 19.0-20.3 / 15.5-16.8 / 15.5-16.8 | 15.5-18.3 / 13.5-16.3 / 13.5-16.2 | 3.7-12.5 / 3.9-11.1 / 2.7-4.1 |
+| min(rgb) >= 1.0 | 2,581-2,696 px (59 px eq. diameter; the lit hull included) | 638-661 px (29 px) | 8-18 px (3-5 px) |
+| AgX white | 386-522 px (22-26 px) | 17-45 px (5-8 px) | 3-11 px (2-4 px) |
+| AgX R channel saturated | 6,622-7,693 px (92-99 px) | 1,054-1,225 px (37-40 px) | 3-23 px |
+| R >= 1.0 | 7,893-8,511 px, 1,063-1,677 over sky | 7,176-7,419 px, 780-1,004 over sky | 12-29 px |
+| Along the row through the main nozzle | R saturated 68-69 px, white 13-14 px; centre 10.5-11.3 / 6.1-6.3 / 6.1-6.3 | R saturated 13-14 px, white 0; centre 7.5-7.7 / 5.2-5.3 | not readable |
+
+The main nozzle's opening in the depth capture (the recessed plateau under the projected centre) is 19-20 x 24-25 px
+(the small nozzle 41 px above it 9-10 x 7-8 px). So the pink disc at EV +1 is the red-saturated area, 68-69 px across
+along the row (3.5x the opening's width), and the white core is a column 13-14 px wide, inside the opening. The flight's
+disc centre is about 3.5x the fixture's 02b red centre in R and 6x in G and B (inferred from the two tables:
+10.5-11.3 / 6.1-6.3 against 3.25 / 1.07), so the flight disc stays above the AgX white point at EV +1 after this change
+(about 0.67 of 6.2 is 4.1, against 2.11; inferred). Part of the difference is the second glow layer of the same
+nozzle, drawn as a second plume and disc ("Co-located layers" below). The rest is not explained: the hull light lies
+under the disc, and 15 non-jet engine draws at frame 5437 (`not_jet=15`) are forwarded natively.
+
+Law: the near-camera fade took the disc to max(the body's fade, `chase_disc_floor` 0.6). Since the body's fade ends
+at 0.5, any floor under 0.5 changes nothing (floor 0.4 alone: 02b energy 0.836, measured), so the floor is now the
+disc's own fade target: the disc fades 1 -> `chase_disc_floor` over the same last 20 % before the cap
+(`build_nozzle`: `disc_level = disc_weight x near_disc / near_weight`, `i_core` and `i_halo` carrying `near_weight`).
+`chase_disc_floor` 0.6 -> 0.4. A disc under the band (every far, side or unfaded end-on disc) is unchanged. No shader
+change (921 slots). `disc_cap` stays 1.5: at 1.0 it reached the clip target too (02b red 0, energy 0.68), but it dims
+every unfaded disc. The fixture's end-on case at 40 px went 0.706 -> 0.565 of the side view, the detail-0 ratio
+0.744 -> 0.677, the end-on rim's variation 0.032 -> 0.027 (`end_on_alive`, gate 0.03), and the head-on open peak at
+1920 4.375 -> 2.46. `disc_kappa`, `disc_ring`, the head colour, the side-view mouth constants, `far_low`, the floor and
+the presets are unchanged. The lab (`tools/effects/engine_exhaust_lab.html`) draws the unfaded disc and has no chase
+fade, so it needs no change.
+
+Fixture (`plume_disc_clip.py`, `_out.txt`; the resolved FP16 02b image, both 150 px nozzles capped and faded to
+65.6 px, the own ship's chase regime), before -> after:
+
+| 02b disc | centre (0.3 n) min(rgb) >= 1 | peak R / G / B | disc (4 n) min(rgb) >= 1 | tint channel >= 1 | energy |
+| --- | --- | --- | --- | --- | --- |
+| red | 0.046 -> 0.000 | 3.25 / 1.07 / 1.07 -> 2.17 / 0.71 / 0.72 | 56 px -> 0 | 4,491 -> 3,450 px | 0.671 |
+| blue | 0.000 -> 0.000 | 0.88 / 3.09 / 3.93 -> 0.64 / 2.06 / 2.62 | 0 -> 0 | 4,447 -> 3,557 px | 0.670 |
+
+Side views 01a, 01b, 03a, 03c, 04, 08, the distance dots 05, the RCS 07 and the ribbon 09 are bit-identical (the
+largest per-pixel change is 0.0000). The frames with a near-camera disc change: 02a at 45 degrees 0.869 of its total, 03b at 30 degrees
+0.864, 06b 0.988, 06a 0.999, the crowd 10 0.999. In the gated fixture, the hot centre (1.0) and the ring stay at
+cyan 1.183 / red 1.726 (1.183 / 1.725 before; the ring is a ratio within the disc, which scales as a whole).
+The 150 px disc's centre luma goes red 1.508 -> 1.006 and cyan 2.641 -> 1.761. The chase case's disc and drawn peak
+are 0.400 of the unfaded (0.600 before). The end-on 40 px cases are unfaded and unchanged: 0.706 of the side, 1.013
+at d 1, 0.744 over the slab. The own-ship look case (not faded) is unchanged at 0.706 / 0.698.
+
+Gates: `headon_core_hidden` (1920) read the open peak against 0.9 x I. Its 192 px head-on value is past the cap at
+1920, so the open peak follows the disc's fade, 4.375 -> 2.916 = 0.70 x I. The floor is now 0.6 x I; the cut
+(inside <= 1e-3) is unchanged, and 5120 is in the band, 7.043 -> 6.992. `chase_disc_not_dim` now holds the disc at
+`chase_disc_floor` within 1e-3 (CPU) and 0.01 (drawn), not only above it. The end-on gates (end-on over the side
+0.7, over the slab 0.7..0.9, the ring 1.05) keep their floors: the law does not touch an unfaded disc, and the
+user's earlier acceptance of 0.7-0.8 of the old end-on level is superseded only for the near-camera disc.
+
+Co-located layers. At frame 5437 the own ship has two engine records, `fx_engine_xtc_red_nor` (size 10, origin
+96411.5, -37509.1, 19210) and `fx_engine_xtc_red_tiny` (5.04; 96405.8, -37505.3, 19209). They share an axis and lie
+6.9 units apart, so they are the two glow layers of one nozzle. The floor raised both (23.5, 20.2;
+`floor_ratio_effects_out.txt`, own_m4), so two plumes and two end-on discs were drawn. `merge_layers`
+(`engine_plumes_core.h`) runs in `build()` and in the ribbons' `update()` through `EnginePlumesFrame::parents`
+(`Ring::parent`), so the plume, disc, ribbon and far paths drop the same record; far records sit in the same ring with
+their parent. `engine_stage` reports `merged=N`. A record is dropped when another record of the same parent and kind
+(steering and brake flags) is larger, it is at most 0.75 of that size, the axes are parallel (dot >= 0.95), and its
+origin lies within the larger record's pre-floor size. The larger record keeps its floored value. Records are
+bucketed by parent (2,048 hash heads), so pairs are tested only within one ship.
+
+The distance limit is the size, not the plume's nozzle width (0.5 size). The glow body spans ±0.5 size
+(`engine_bodies.csv`: nor ±500 at value 1,000), and the Scorpion pair is 0.69 size apart, so the nozzle width would
+miss it. The 0.75 ratio keeps equal twins apart. Census over run412's 24 frames with `engine_draw` rows
+(`run412-engine-disc/run412_colocated_pairs.py`, `_out.txt`; ships approximated by a shared axis, since the rows carry
+no parent):
+
+| Pair | Distance / larger size | Size ratio | Merged |
+| --- | --- | --- | --- |
+| nor + tiny (own Scorpion) | 0.5..1, 24 pairs in 24 frames | 0.50 | yes |
+| huge + big3 (the capital at frame 4480) | <= 0.5, 32 pairs in 8 frames | 0.20 | yes (4 of its 8 big3 into its 2 huge) |
+| huge + huge | 0.5..1, 16 pairs | 1.0 | no (ratio) |
+| big3 + big3 | 1..2, 24 pairs | 1.0 | no |
+
+Not established: whether the capital's huge + big3 pairs are layers of one nozzle or separate nozzles inside one
+outer glow.
+
+Fixture case `merge` (still look, floor scale 1, R 67.3, s 1, the nor's floored nozzle 40 px; 1920 and 5120):
+
+- The pair draws 1 nozzle and 1 disc end-on (0 side-on), with merged 1 and value 23.56.
+- Its frame total and end-on centre equal the nor alone (ratio 1.00000).
+- Unmerged, as Run 124 drew it, the pair's total is 1.74x the nor alone end-on and 1.80x side-on. At the nor's
+  centre the second layer adds only 1.106x end-on (1.009x side-on): its disc is centred 0.6 nozzle widths away.
+- Two records 3 nozzle widths apart, or anti-parallel at one origin, are both kept.
+
+Builder cost (`BUILD_MERGE`, floor and merge, ships of 8, median of 50 x 41 builds), against the floor alone:
+
+| Records | Floor alone | Floor and merge |
+| --- | --- | --- |
+| 30 | 4.13 µs | 5.30 µs |
+| 100 | 13.47 µs | 15.29 µs |
+| 300 | 38.94 µs | 42.64 µs |
+| 1,024 | 138.73 µs | 148.43 µs |
+| 300 of one parent (worst case) | — | 123.13 µs |
+
+The ribbons run the same merge once more per frame.
+
+Re-estimate of the flight centre (inferred). The main nozzle's centre was measured at 10.5-11.3 / 6.1-6.3 / 6.1-6.3.
+The disc fade gives x 0.667, and removing the second layer at that centre gives / 1.106 (fixture). That is about
+6.3-6.8 / 3.7-3.8, still above the 2.11 white point at EV +1. The brightest spot of the old frame, the small layer's
+own centre (peak 19-20 / 15.5-16.8 / 15.5-16.8), and the second halo (1.74x frame total) are gone. The remaining gap to
+the fixture's 02b centre (about 3x) is not explained by the stacking.
+
 ## Unknown, and what settles it
 
 - Whether the body at 0.3-0.8 linear reads too dark at 5120x1440 with bloom on: the lab at the same constants is the

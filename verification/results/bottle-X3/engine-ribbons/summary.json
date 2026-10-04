@@ -25,22 +25,28 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "9c0c57ab6e3fabd30b5de08f18a47942748a3e54",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "3ee84cf3aaa87960dfa37066eec14e036da8979b-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/engine_plumes_core.h",
+      "src/proxy/engine_ribbons_core.h",
+      "src/renderer/engine_plumes_pass.cpp",
+      "src/renderer/engine_plumes_pass.h",
+      "src/renderer/engine_ribbons_pass.cpp"
+    ],
     "sha256": {
-      "src/proxy/engine_ribbons_core.h": "a7b162baa7f2757fba74b13845b4167c89ff2a8a0526183f333387a410b47958",
+      "src/proxy/engine_ribbons_core.h": "b8f686d8b199489ea462149451bc090a5c6e771f660a27265e430fdce38fb735",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
       "src/renderer/engine_ribbons_pass.h": "21f948c1c898fdd3b8ea0fa8ce6401b3f417efe950fec962dea2131d4d2b0fa1",
-      "src/renderer/engine_ribbons_pass.cpp": "7c78aacf95cf24e7f2115d722fc8bf4e7b491bcc0119a8619cd93d691752d439",
+      "src/renderer/engine_ribbons_pass.cpp": "6f8b58e2b87a4fddccb2cf8ef8da658a700e1b1a919d560a2dfb8bfc8a82ac57",
       "src/effects/engine_ribbon_vs.hlsl": "a18ec5d89012735758b9bbbda0773e16c160a6ca86796db4c6fb0063b1db3fc5",
       "src/effects/engine_ribbon_ps.hlsl": "13b45c39a518de0b64485713138726243ad41899b8f406075b6cadf83e296ea8",
       "src/renderer/engine_ribbon_vertex_program_inc.h": "5651c07896aeb97820ef1dd204ce3218ec06d7ecd3cbe3594ef65c3e75530091",
       "src/renderer/engine_ribbon_pixel_program_inc.h": "9e04c634362f8416d3a06428dfdb7e2c009116554810a28214c8a54aa7689029",
-      "src/proxy/engine_plumes_core.h": "f681a139d760e9d13995d468cbfa06a34053773b1779fcca1f41ee298fdc287a",
+      "src/proxy/engine_plumes_core.h": "e52c9b237ff80db902e31e21f09c79e4ed8c6d5caa06a8ea1928247ee54b5e62",
       "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
-      "src/renderer/engine_plumes_pass.h": "ffbd2fea053a6e66a0b62edaf5cd8d8d244bd0fa39e87198cd8184ae398d0cd6",
-      "src/renderer/engine_plumes_pass.cpp": "041bd2de589179cd4ccabb6a37079c5ae5cf83a581f10b6c782a7e91505acfa3",
+      "src/renderer/engine_plumes_pass.h": "c335e626a4ea4a5dcfaaa38aa5b0faa6ab80f5c77c7875daabbeaf97e3e9e8e3",
+      "src/renderer/engine_plumes_pass.cpp": "2f53ab4abeed11992f3764eb1d63493b923273e8325ed2bbdebe7ef83c7f8511",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
       "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b"
     }
@@ -102,12 +108,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/private/tmp/x3-run124-fixture/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3f8d7410ec5638df/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "eb5be5e69a4ad2c4726cb7910d60a457e2bc7894c321bb32baa00e5bb9268318"
+    "executable_sha256": "54e811791cda244826a1e40855f262c52e46d3241a7f0b50545c709e44d1e0a7"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -411,11 +417,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.9708,
-        "fenced_off_ms": 0.8886,
-        "submit_ms": 0.0532,
-        "chain_ms": 0.0822,
-        "gpu_ms": 0.029,
+        "fenced_on_ms": 0.9731,
+        "fenced_off_ms": 0.8882,
+        "submit_ms": 0.0535,
+        "chain_ms": 0.0849,
+        "gpu_ms": 0.0314,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -426,11 +432,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.1164,
-        "fenced_off_ms": 0.8792,
-        "submit_ms": 0.0854,
-        "chain_ms": 0.2372,
-        "gpu_ms": 0.1518,
+        "fenced_on_ms": 1.1148,
+        "fenced_off_ms": 0.8834,
+        "submit_ms": 0.085,
+        "chain_ms": 0.2314,
+        "gpu_ms": 0.1464,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -441,11 +447,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.7275,
-        "fenced_off_ms": 1.6514,
-        "submit_ms": 0.0523,
-        "chain_ms": 0.0761,
-        "gpu_ms": 0.0238,
+        "fenced_on_ms": 1.7271,
+        "fenced_off_ms": 1.6515,
+        "submit_ms": 0.0517,
+        "chain_ms": 0.0756,
+        "gpu_ms": 0.0239,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -456,11 +462,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.757,
-        "fenced_off_ms": 1.6505,
-        "submit_ms": 0.0847,
-        "chain_ms": 0.1065,
-        "gpu_ms": 0.0218,
+        "fenced_on_ms": 1.7618,
+        "fenced_off_ms": 1.652,
+        "submit_ms": 0.0857,
+        "chain_ms": 0.1098,
+        "gpu_ms": 0.0241,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -470,15 +476,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.56,
-        "min_us": 7.17,
+        "median_us": 7.63,
+        "min_us": 7.13,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 25.02,
-        "min_us": 23.64,
+        "median_us": 24.93,
+        "min_us": 23.5,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -683,10 +689,10 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.029,
-      "1920x1080_100": 0.1518,
-      "5120x1440_30": 0.0238,
-      "5120x1440_100": 0.0218
+      "1920x1080_30": 0.0314,
+      "1920x1080_100": 0.1464,
+      "5120x1440_30": 0.0239,
+      "5120x1440_100": 0.0241
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
@@ -695,8 +701,8 @@
       "5120x1440_100": true
     },
     "cpu_us": {
-      "30": 7.56,
-      "100": 25.02
+      "30": 7.63,
+      "100": 24.93
     },
     "cpu_100_within": true,
     "fog": [

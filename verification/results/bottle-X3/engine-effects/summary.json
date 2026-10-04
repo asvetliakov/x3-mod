@@ -41,21 +41,27 @@
     "src/renderer/engine_shimmer_pass.h"
   ],
   "source": {
-    "commit": "9c0c57ab6e3fabd30b5de08f18a47942748a3e54",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "3ee84cf3aaa87960dfa37066eec14e036da8979b-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/engine_plumes_core.h",
+      "src/proxy/engine_ribbons_core.h",
+      "src/proxy/motion_output_engine_plumes_inc.h",
+      "src/renderer/engine_plumes_pass.cpp",
+      "src/renderer/engine_plumes_pass.h"
+    ],
     "sha256": {
       "src/proxy/engine_effects.cpp": "69d163bbd24ca4baed57378386c749a4954e65f484f2befad6b28705669df4e0",
       "src/proxy/engine_effects.h": "82013a890e51e60255cf9a03358bd16c4f19bd1c742ca3ad26f63e42e7aec65e",
       "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
       "src/proxy/engine_effects_option.h": "cb8a96b23acaa40985fc6fcca31c8b80cef9d581be53dea800c69fec8b1ab6b6",
       "src/proxy/motion_output_engine_effects_inc.h": "92ee9f92a67f466f4b7cb15b07af4455b5d72b268be7eb83933f9746b94c2be7",
-      "src/proxy/motion_output_engine_plumes_inc.h": "67f2daad2de3114497d22001a866e79d7f6b8bfb0c8fb286ee77e44f3d80f2c4",
-      "src/proxy/engine_plumes_core.h": "f681a139d760e9d13995d468cbfa06a34053773b1779fcca1f41ee298fdc287a",
-      "src/renderer/engine_plumes_pass.cpp": "041bd2de589179cd4ccabb6a37079c5ae5cf83a581f10b6c782a7e91505acfa3",
-      "src/renderer/engine_plumes_pass.h": "ffbd2fea053a6e66a0b62edaf5cd8d8d244bd0fa39e87198cd8184ae398d0cd6",
+      "src/proxy/motion_output_engine_plumes_inc.h": "e71ac2d9ade986d25a4d6751d47b1a8b2be5adb50a95f785abb1ef3d5493252c",
+      "src/proxy/engine_plumes_core.h": "e52c9b237ff80db902e31e21f09c79e4ed8c6d5caa06a8ea1928247ee54b5e62",
+      "src/renderer/engine_plumes_pass.cpp": "2f53ab4abeed11992f3764eb1d63493b923273e8325ed2bbdebe7ef83c7f8511",
+      "src/renderer/engine_plumes_pass.h": "c335e626a4ea4a5dcfaaa38aa5b0faa6ab80f5c77c7875daabbeaf97e3e9e8e3",
       "src/proxy/motion_output_engine_ribbons_inc.h": "02af53103a41900335f91299caf2f295abddc0d9950aa80f05f35bdbbbe70c96",
-      "src/proxy/engine_ribbons_core.h": "a7b162baa7f2757fba74b13845b4167c89ff2a8a0526183f333387a410b47958",
+      "src/proxy/engine_ribbons_core.h": "b8f686d8b199489ea462149451bc090a5c6e771f660a27265e430fdce38fb735",
       "src/proxy/motion_output.h": "fd0af151bf42a730acdafdff67dba2285da643f2b1d8ea112ea97e567a990547",
       "src/proxy/capture.cpp": "449c73701e2b2e12e8e14cdfd9cc1a812b9cd9d0b56d1df65dfa8f967df9f15b",
       "src/proxy/engine_far_jets.cpp": "bf2d876882f5bc7f145cec5d033ebb6ed95d4056917a4a9f53b41dd1b71dca4e",
@@ -73,9 +79,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "02f3626d1e7be758ad6a3305df0764eb4162b8634b04fb4434a437e70b814096",
-    "seam_sha256": "aad4df626a4f33335885c026bca44375f50f2eed59a8c60ca4ccdfbc999d1f06",
-    "dll_sha256": "00a1eaa26b2070fd078784edbb5731cdc5c89abc1282bd8677552953f5c2e283"
+    "fixture_sha256": "62c45b5bd9302bba982a7c10d6107a2da2d7f53d352a240fdff9fa33b4cd8333",
+    "seam_sha256": "52a7b188150ecd8c1188aea32a2a83fe6eed4fad6fc0a0d8d0008416eff6b1f2",
+    "dll_sha256": "bcbafc5d05f4b5a35ea0ff60f0dbbac6e4729eaabb9658820a3ce1c44c2dcb4f"
   },
   "runs": {
     "main": {
@@ -195,7 +201,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261004-050629-739765"
+      "directory": "verification/probe/build/engine-effects-main-20261004-134500-129189"
     },
     "native": {
       "exit": 0,
@@ -239,7 +245,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261004-050640-544113"
+      "directory": "verification/probe/build/engine-effects-native-20261004-134508-412770"
     },
     "unverified": {
       "exit": 0,
@@ -255,7 +261,7 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261004-050648-263722"
+      "directory": "verification/probe/build/engine-effects-unverified-20261004-134516-119592"
     },
     "unpatched": {
       "exit": 0,
@@ -299,7 +305,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-unpatched-20261004-050656-042543"
+      "directory": "verification/probe/build/engine-effects-unpatched-20261004-134523-861924"
     },
     "timing": {
       "exit": 0,
@@ -316,14 +322,14 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.664,
-        "not_jet": 1.218,
-        "not_candidate": 1.079,
-        "suppressed_new_parent": 0.726,
-        "suppressed_no_parent": 0.684,
-        "suppressed_two_parents": 0.68
+        "suppressed": 0.676,
+        "not_jet": 1.199,
+        "not_candidate": 1.07,
+        "suppressed_new_parent": 0.719,
+        "suppressed_no_parent": 0.677,
+        "suppressed_two_parents": 0.687
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261004-050703-776569"
+      "directory": "verification/probe/build/engine-effects-timing-20261004-134531-618968"
     },
     "plumes": {
       "exit": 0,
@@ -368,7 +374,7 @@
         1,
         2
       ],
-      "directory": "verification/probe/build/engine-effects-plumes-20261004-050711-590118"
+      "directory": "verification/probe/build/engine-effects-plumes-20261004-134539-358724"
     },
     "armed": {
       "exit": 0,
@@ -682,8 +688,8 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "f61111,ffa09a,000000,000000",
-          "sums": "280,569,0,0",
+          "px": "f51111,ffa09a,000000,000000",
+          "sums": "279,569,0,0",
           "prev": "0,0"
         },
         {
@@ -735,10 +741,10 @@
         "frame": "308",
         "stage": "5",
         "rects": "1",
-        "pre": "87438251",
-        "drawn": "18ff5cd2",
-        "reverted": "87438251",
-        "history": "87438251",
+        "pre": "f0902a8b",
+        "drawn": "843f9d24",
+        "reverted": "f0902a8b",
+        "history": "f0902a8b",
         "pre_eq_reverted": "1",
         "pre_ne_drawn": "1",
         "reverted_eq_history": "1",
@@ -755,7 +761,7 @@
         ]
       ],
       "shimmer_drawn_rows": 4,
-      "directory": "verification/probe/build/engine-effects-armed-20261004-050719-376804"
+      "directory": "verification/probe/build/engine-effects-armed-20261004-134547-086234"
     },
     "armed_refused": {
       "exit": 0,
@@ -883,7 +889,7 @@
           "site_mismatch"
         ]
       ],
-      "directory": "verification/probe/build/engine-effects-armed_refused-20261004-050728-952040"
+      "directory": "verification/probe/build/engine-effects-armed_refused-20261004-134556-660562"
     }
   },
   "problems": [],

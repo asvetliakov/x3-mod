@@ -468,7 +468,9 @@ ledger ([engine-effects.md](../verification/engine-effects.md), "Review fixes af
   The fade now starts at a value of 0.13 H. The halo may reach past the cap (131 px against 129.6 at 1080 in the
   fixture's three-value case).
   - The disc's radiance (body, halo, ring and its soft cap) takes max(fade, `chase_disc_floor` 0.6) instead of the
-    fade: it shrinks with the plume, it does not go dim. The axial quad still fades to 0.5.
+    fade: it shrinks with the plume, it does not go dim. The axial quad still fades to 0.5. Superseded after flight G
+    (2026-10-04): the disc fades on its own, 1 -> `chase_disc_floor` 0.4 over the same band
+    ([engine-exhaust-look-critique.md](engine-exhaust-look-critique.md) section 6, "End-on brightness").
   - Fixture own-ship case: an M3 main jet (1,000 camera units = 10 world units) at run405's chase boom (18,832, half
     vfov tan 0.5625), the nozzle a quarter of the boom nearer, full throttle at the pulse's top. Its body is 61 px at
     1080 (q 0.47): not faded. Under the halo key, q would be 0.80.

@@ -394,7 +394,8 @@ int main() {
         // h the body's half-width per value: its eroded edge 1.2736 x 0.575 nozzle widths (wider than the ring's 0.7226;
         // the halo's reach does not count, after the review of flight C; unchanged by the revised law) x the nozzle width
         // 0.5. Tail-on the axial quad takes half (the end-on disc is whole); the fade takes the axial quad to 0.5, the
-        // disc to no less than 0.6 of its unfaded 4 x kappa(detail) x L / n (L / n = 4: the cap shrinks L and n together). The
+        // disc to 0.4 (chase_disc_floor, its own fade over the same band since flight G; a floor of 0.6 before) of its
+        // unfaded 4 x kappa(detail) x L / n (L / n = 4: the cap shrinks L and n together). The
         // disc's half-size: the end-on ring's radius plus three of its sigmas (twice the side's since the tuning pass),
         // 0.529 + 0.387, past the outer sheath's eroded edge at the along-mean growth, (1.2 + 0.7 x 0.57) x 0.575, and the halo's 2.25 x 0.352.
         const float h = (1.f + .48f * .57f) * .575f * .5f,
@@ -407,14 +408,15 @@ int main() {
             const ee::Record r = rec(0, 0, zo, 0, 0, -1, val, 2.f);
             build(&r, 1, nullptr, v, Preset::standard, 4.f, out.data(), 16, &st, nullptr, &flat);
             const float weight = q <= .8f ? 1.f : q >= 1.f ? .5f : 1.f - .5f * (q - .8f) / .2f;
+            const float disc_fade = q <= .8f ? 1.f : q >= 1.f ? .4f : 1.f - .6f * (q - .8f) / .2f;
             const float half = h * out[0].shape[1], L = out[0].local[2]; // the body's half-width, x k
             const float width = 2.f * half * f / (zo - L);
             const float quad_half = std::fabs(out[4].local[0]) - 1.f / (1.7f * 540.f / zo); // the disc's half (width0) less its pixel
-            const float disc = IH * kap(out[4]) * (L / out[0].local[3]) * std::max(weight, .6f);
+            const float disc = IH * kap(out[4]) * (L / out[0].local[3]) * disc_fade;
             const bool ok = near(out[0].intensity[0], .5f * IH * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : q == 1.f ? near(width, cap, 2e-3f) && near(out[0].shape[1], val, 1e-3f) : st.capped == 0 && near(out[0].shape[1], val)) &&
                             st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .5f * out[0].shape[1]) &&
                             near(quad_half, h_halo * out[0].shape[1], 2e-3f) && near(out[4].intensity[0], disc, 2e-3f) &&
-                            out[4].intensity[0] >= .6f * IH * kap(out[4]) * (L / out[0].local[3]) * (1.f - 2e-3f);
+                            out[4].intensity[0] >= .4f * IH * kap(out[4]) * (L / out[0].local[3]) * (1.f - 2e-3f);
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
             std::printf("CAP q=%.2f weight=%.3f disc_weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / (.5f * IH)),
@@ -425,6 +427,28 @@ int main() {
         const ee::Record lng = rec(0, 0, Z, -1, 0, 0, val, 9.f);
         build(&lng, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &flat);
         expect(st.capped == 0 && near(out[0].local[2], 9.f * val), "a long plume (brake flare 9 value) is not shortened");
+    }
+    // ----------------------------------------------------------- co-located layers (merge_layers, after flight G)
+    {
+        // run412 frame 5437: the Scorpion's nor 10 and tiny 5.04, 6.9 units apart on one axis, one parent.
+        const float ax = -.66242f, ay = .22177f, az = .71555f;
+        ee::Record m[8];
+        m[0] = rec(96411.5f, -37509.1f, 19210.f, ax, ay, az, 10.f, 2.f);
+        m[1] = rec(96405.8f, -37505.3f, 19209.f, ax, ay, az, 5.04f, 2.f);
+        m[2] = rec(0.f, 0.f, 500.f, 0, 0, -1, 10.f, 2.f);   // a twin of equal size 5 apart: kept
+        m[3] = rec(5.f, 0.f, 500.f, 0, 0, -1, 10.f, 2.f);
+        m[4] = rec(0.f, 0.f, 900.f, 0, 0, -1, 10.f, 2.f);   // a smaller one 3 nozzle widths (15) away: kept
+        m[5] = rec(15.f, 0.f, 900.f, 0, 0, -1, 5.f, 2.f);
+        m[6] = rec(0.f, 0.f, 1300.f, 0, 0, -1, 10.f, 2.f);  // anti-parallel, co-located: kept
+        m[7] = rec(1.f, 0.f, 1300.f, 0, 0, 1, 5.f, 2.f);
+        const std::uint32_t parents[8] = {7, 7, 9, 9, 11, 11, 13, 13};
+        std::uint8_t drop[8];
+        const unsigned merged = merge_layers(m, 8, parents, drop);
+        expect(merged == 1 && drop[1] == 1 && !drop[0] && !drop[2] && !drop[3] && !drop[4] && !drop[5] && !drop[6] && !drop[7],
+               "merge: the smaller parallel layer within the larger's size is dropped; twins, 3 widths apart, anti-parallel kept");
+        const std::uint32_t other[2] = {7, 8}, unknown[2] = {0, 0};
+        expect(merge_layers(m, 2, other, drop) == 0 && !drop[1] && merge_layers(m, 2, unknown, drop) == 0 &&
+                   merge_layers(m, 2, nullptr, drop) == 0, "merge: another parent, an unknown parent or none: kept");
     }
     // ----------------------------------------------------------- capacity
     {
@@ -1323,7 +1347,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('float pixel[12+engine_plumes::pixel_constant_floats]={1.f/float(f.width),1.f/float(f.height),0.f,0.f,', passes)
         self.assertIn('{0,72,D3DDECLTYPE_D3DCOLOR,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_COLOR,3},', passes)
         ribbon_pass = source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp')
-        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel);', ribbon_pass)
+        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel,f.parents);', ribbon_pass)
         ps = (ROOT / 'src/effects/engine_plume_ps.hlsl').read_text()
         self.assertIn(': float3(q.x - phase, q.y * 4.5, seed);', ps)
         self.assertIn('const float S2 = fbm(p * 2.2 + float3(5.0, 2.0, 1.0)) - 0.4375;', ps)
@@ -1375,8 +1399,9 @@ class Wiring(unittest.TestCase):
         self.assertIn('const bool census_row=engine_census_&&(capture_||engine_row_frames_<engine_row_frame_cap)&&'
                       'engine_rows_<engine_row_cap;', effects_inc)
         self.assertIn('in.radii=engine_ring_->parent_radius;', inc)
-        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii,&dynamics);', passes)
-        self.assertIn('floored=%u floor_unknown=%u', inc)
+        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii,&dynamics,f.parents);', passes)
+        self.assertIn('in.parents=engine_ring_->parent;', inc)
+        self.assertIn('floored=%u floor_unknown=%u merged=%u', inc)
         self.assertIn('if(floor_scale>=engine_plumes::floor_min&&floor_scale<=engine_plumes::floor_max)plumes_look_.floor_scale=floor_scale;', inc)
         self.assertIn('verdict=%s radius=%.6g value_eff=%.6g', effects_inc)
         self.assertIn('engine_plumes::floored_value(plumes_look_,record,jet_radius,&value_eff);', effects_inc)

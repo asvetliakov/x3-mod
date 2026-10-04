@@ -44,8 +44,8 @@
 // plume's projected body width (twice the body's
 // eroded edge or the nozzle ring, whichever is wider, at the axis point nearest the camera; not the halo's reach) is
 // clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the
-// clamp, the end-on disc's no lower than 0.6 (any plume that close; the own ship's in chase view only when its body is,
-// after the review of flight C).
+// clamp, the end-on disc's 1 -> 0.4 (chase_disc_floor; any plume that close, the own ship's in chase view only when its
+// body is, after the review of flight C; a floor of 0.6 over the body's fade until flight G).
 // Flow: the noise field translates along the axis by a phase in nozzle widths, per vertex (shape.w), so it moves at one
 // speed whatever the pulsed, throttle-dependent L. Each nozzle accumulates its own phase in the per-nozzle memory
 // (Transients, keyed by the record's identity): every frame it advances by the frame accumulator's step (FlowPhase at
@@ -287,7 +287,7 @@ constexpr float occlusion_bias = .5f;       // x value x max(0, axis . to_camera
 constexpr float chase_cap = .12f;           // x H: the largest projected plume
 constexpr float chase_fade_band = .2f;      // the last 20 % before the cap
 constexpr float chase_fade_floor = .5f;     // the radiance at and past the cap
-constexpr float chase_disc_floor = .6f;     // the end-on disc's radiance under the fade: at least this x its unfaded
+constexpr float chase_disc_floor = .4f;     // the end-on disc's radiance at and past the cap: this x its unfaded
 constexpr float min_nozzle_px = 2.f, min_length_px = 4.f, cull_px = 1.5f; // the dot floor (after flight E: 3 / 6)
 constexpr float steering_min_z = .02f;
 constexpr float clock_wrap = 1024.f;        // seconds: the pixel program's clock wraps (float precision of the noise)
@@ -607,6 +607,7 @@ struct BuildStats {
     unsigned nozzles = 0, vertices = 0, discs = 0, steering = 0, capped = 0, faded = 0;
     unsigned floored = 0;       // main jets raised to k(R) x their ship's radius
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
+    unsigned merged = 0;        // records dropped as a smaller co-located layer of another (merge_layers)
     unsigned far_nozzles = 0;   // nozzles drawn under Look::far_px_full (the distance law scaled their radiance)
     unsigned attacks = 0;       // steering or brake records under an attack (gap 6), drawn or not
     unsigned transient_overflow = 0; // records without a slot in the per-nozzle memory (no attack; the shared phase)
@@ -1190,9 +1191,9 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // faint reach, 1.7 x wider at the default look, does not count: keyed on it the fade bit on 64 % of run405's plume
     // frames, the own ship's in chase view) at the axis point nearest the camera (the tip when the exhaust approaches
     // it) is held to 0.12 H by shrinking the whole plume about the nozzle; its radiance fades 1 -> 0.5 over the last
-    // 20 % before the cap (the disc's no lower than chase_disc_floor). Its length is free: a distant capital's long
-    // plume is not shortened.
-    float k = 1.f, near_weight = 1.f;
+    // 20 % before the cap, the disc's 1 -> chase_disc_floor over the same band (after flight G; a floor of 0.6 above
+    // the body's fade before). Its length is free: a distant capital's long plume is not shortened.
+    float k = 1.f, near_weight = 1.f, near_disc = 1.f;
     {
         const float half = spread * line0 * look.nozzle_width * value; // world units, x k with the plume
         const float f = view.m11 * view.height * .5f, cap = chase_cap * view.height;
@@ -1204,6 +1205,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
             float t = (q - (1.f - chase_fade_band)) * (1.f / chase_fade_band);
             t = t > 1.f ? 1.f : t;
             near_weight = 1.f - (1.f - chase_fade_floor) * t;
+            near_disc = 1.f - (1.f - chase_disc_floor) * t;
             ++stats->faded;
         }
         if (q > 1.f) {
@@ -1339,15 +1341,16 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // sampled profile (the pixel program's sum over c8..c15 / 8), its halo I_halo x disc_halo x L / n x f, the ring's
     // peak, and the soft cap disc_cap x the side view's peak on the axis (peak_axis_at); all x the disc's weight, so the
     // pixel program's cap x (1 - exp(-total / cap)) scales with it.
-    // The near fade dims the disc to no less than chase_disc_floor of its unfaded radiance (it shrinks with the
-    // plume; it does not go dim: the end-on plume in chase view); L / n held to disc_length_max.
+    // The near fade takes the disc to chase_disc_floor of its unfaded radiance at the cap (its own fade, not the body's
+    // 0.5: after flight G the own ship's end-on disc in chase view read as a clipped disc at the old floor 0.6, which
+    // was a lower bound over the body's fade); L / n held to disc_length_max.
     const bool disc_drawn = disc_weight > 0.f;
     const float half = width0 * (disc_drawn ? 1.f : 0.f);
     float length_widths = n > 0.f ? L / n : 0.f;
     if (length_widths > look.disc_length_max) length_widths = look.disc_length_max;
     float axis_peak = 0.f; // the cap's side peak: only a drawn disc reads it (the bilinear lookup costs ~25 ns a nozzle)
     if (disc_drawn) peak_axis_at(tables, s, &axis_peak, detail);
-    const float disc_level = disc_weight * (near_weight < chase_disc_floor ? chase_disc_floor / near_weight : 1.f);
+    const float disc_level = disc_weight * (near_disc / near_weight); // i_core and i_halo carry near_weight (>= 0.5)
     // kappa by the detail level: the smooth law's at 0, the structured law's at 1 (Look::disc_kappa_smooth, disc_kappa).
     const float kappa = look.disc_kappa_smooth + (look.disc_kappa - look.disc_kappa_smooth) * detail;
     const float disc_body = disc_level * i_core * kappa * length_widths * facing_abs;
@@ -1433,11 +1436,60 @@ inline void floored_value(const Look& k, const ee::Record& r, float radius, floa
     floor_target(k, r.size, radius, &f);
     if (f > r.size) *out = f;
 }
+// Co-located layers (after flight G, Run 124 / run412): the game draws some nozzles as two glow records of one parent,
+// an outer and an inner layer (the Split Scorpion's fx_engine_xtc_red_nor 10 and _tiny 5.04, 6.9 units apart, one
+// axis), and the floor raises both (23.5, 20.2): two plumes and two end-on discs at one nozzle. A record is dropped
+// when another record of the same parent (the ship's root node, Ring::parent; 0 unknown: never merged) and the same
+// kind (steering / brake flags) is larger (size; the smaller at most merge_size_ratio of it, so equal twins stay
+// apart), parallel (axis dot >= merge_axis_dot) and its origin within the larger's natural width (its pre-floor size:
+// the glow body spans +-0.5 size; the plume's nozzle width is 0.5 of it); the larger keeps its own floored value.
+// Records are bucketed by parent (a hash of 2,048 heads), so the pair tests run within one ship's nozzles. `drop`
+// (count bytes) gets 1 per dropped record; returns their number. Records past ee::ring_capacity are not merged.
+constexpr float merge_axis_dot = .95f, merge_size_ratio = .75f;
+constexpr unsigned merge_buckets = 2048;
+inline unsigned merge_layers(const ee::Record* records, unsigned count, const std::uint32_t* parents,
+                             std::uint8_t* drop) noexcept {
+    for (unsigned i = 0; i < count; ++i) drop[i] = 0;
+    if (!records || !parents || count < 2) return 0;
+    if (count > ee::ring_capacity) count = ee::ring_capacity;
+    constexpr std::uint16_t none = 0xffffu;
+    std::uint16_t head[merge_buckets], next[ee::ring_capacity];
+    for (unsigned b = 0; b < merge_buckets; ++b) head[b] = none;
+    constexpr std::uint32_t kind = ee::flag_steering | ee::flag_brake;
+    for (unsigned i = 0; i < count; ++i) {
+        next[i] = none;
+        const ee::Record& r = records[i];
+        if (!parents[i] || !(r.size > 0.f) || !ee::finite_f(r.size) || !detail::finite3(r.origin) || !detail::finite3(r.axis))
+            continue;
+        const unsigned b = (parents[i] * 2654435761u) >> 21; // 11 bits: merge_buckets
+        next[i] = head[b];
+        head[b] = std::uint16_t(i);
+    }
+    unsigned merged = 0;
+    for (unsigned b = 0; b < merge_buckets; ++b)
+        for (unsigned i = head[b]; i != none; i = next[i])
+            for (unsigned j = next[i]; j != none; j = next[j]) {
+                if (parents[i] != parents[j] || ((records[i].flags ^ records[j].flags) & kind)) continue;
+                const bool i_large = records[i].size >= records[j].size;
+                const ee::Record& large = records[i_large ? i : j];
+                const ee::Record& small = records[i_large ? j : i];
+                const unsigned dropped = i_large ? j : i;
+                if (drop[dropped] || small.size > merge_size_ratio * large.size) continue;
+                const float dot = large.axis[0] * small.axis[0] + large.axis[1] * small.axis[1] + large.axis[2] * small.axis[2];
+                if (!(dot >= merge_axis_dot)) continue;
+                const float dx = large.origin[0] - small.origin[0], dy = large.origin[1] - small.origin[1],
+                            dz = large.origin[2] - small.origin[2];
+                if (!(dx * dx + dy * dy + dz * dz <= large.size * large.size)) continue;
+                drop[dropped] = 1;
+                ++merged;
+            }
+    return merged;
+}
 using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
                       float seconds, Vertex* out, unsigned capacity, BuildStats* stats, const ViewFilter* filter = nullptr,
                       const Look* look = nullptr, const LookTables* tables = nullptr, const float* radii = nullptr,
-                      const Dynamics* dynamics = nullptr) noexcept {
+                      const Dynamics* dynamics = nullptr, const std::uint32_t* parents = nullptr) noexcept {
     BuildStats local{};
     BuildStats& st = stats ? *stats : local;
     st = BuildStats{};
@@ -1459,6 +1511,10 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
     const bool floors = radii && k.floor_scale > 0.f && ee::finite_f(k.floor_scale);
     PulseCache pulses;
     if (dynamics && dynamics->transients) dynamics->transients->begin(dynamics->step);
+    // Co-located layers of one nozzle draw once (merge_layers; `parents` null: none).
+    std::uint8_t drop[ee::ring_capacity];
+    const bool merging = parents && count > 1;
+    if (merging) st.merged = merge_layers(records, count, parents, drop);
     unsigned written = 0;
     for (unsigned i = 0; i < count; ++i) {
         if (written >= capacity || written >= max_nozzles) {
@@ -1469,6 +1525,7 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
             ++st.skipped_other_view;
             continue;
         }
+        if (merging && i < ee::ring_capacity && drop[i]) continue;
         const ee::Record& r = records[i];
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;
         float floor_value = 0.f;

@@ -24,6 +24,9 @@
 //                 the energy ratios at the nozzle widths 0.1 / 0.25 / 1.0 reported
 //   floor         after flight D, the plume floor k(R) x the ship's radius: a 100 secondary whose main nozzle is absent
 //                 from the frame (a fighter's radius, k 0.35) draws at the lone 280's length and width; radius 0: no floor
+//   merge         after flight G: the Split Scorpion's two glow layers of one nozzle (nor 10, tiny 5.04, 6.9 apart, one
+//                 axis and parent, the floor on) draw one nozzle and one disc (merged 1) with the end-on centre, frame
+//                 total and side-view total of the nor alone; 3 nozzle widths apart or anti-parallel: both kept
 //   mouth         side view at s = 1 / 0.5 / 0: the peak within 0.1 L of the mouth and the value at u ~ 0 against the
 //                 body's peak at u 0.1..0.4 (after flight D gated at 0.85 at all three); the end-on peak against 1.5 x the
 //                 s = 1 body peak
@@ -759,8 +762,10 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
                     t.w, four ? "4ch" : "r32f", double(open_peak), double(inside), double(outside), rim,
                     double(ep::halo_sigma * ep::default_look.halo * ep::default_look.nozzle_width * value * ppu));
         char label[64];
+        // The open peak at least 0.6 x I (0.9 until flight G): at 1920 the 192 px value is past the near-camera cap, so
+        // the disc carries the chase fade's chase_disc_floor 0.4 (0.6 before; open peak 4.375 -> 2.916, 0.70 x I).
         std::snprintf(label, sizeof label, "headon_core_hidden_%s_%u", four ? "4ch" : "r32f", t.w);
-        report(label, open_peak >= .9f * core && inside <= 1e-3f);
+        report(label, open_peak >= .6f * core && inside <= 1e-3f);
         std::snprintf(label, sizeof label, "headon_rim_outside_%s_%u", four ? "4ch" : "r32f", t.w);
         report(label, outside > 0.f && rim >= 1);
     }
@@ -962,8 +967,10 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     report(label, rep.stats.capped == 1 && body_extent > 0 && float(body_extent) <= cap_px + 2.f);
     std::snprintf(label, sizeof label, "chase_fade_%u", t.w);
     report(label, pk > 0.f && near_b.stats.faded == 1 && far_b.stats.faded == 0 && std::fabs(axial_cpu - .5f) < 1e-3f);
+    // Past the cap the disc sits at chase_disc_floor of its unfaded radiance (its own fade since flight G; a floor over
+    // the body's 0.5 before), on the CPU and in the drawn peak.
     std::snprintf(label, sizeof label, "chase_disc_not_dim_%u", t.w);
-    report(label, disc_cpu >= ep::chase_disc_floor - 1e-4f && ratio >= ep::chase_disc_floor - .01f);
+    report(label, std::fabs(disc_cpu - ep::chase_disc_floor) < 1e-3f && std::fabs(ratio - ep::chase_disc_floor) < .01f);
     std::snprintf(label, sizeof label, "chase_own_not_faded_%u", t.w);
     report(label, ob.nozzles == 1 && ob.stats.faded == 0 && ob.stats.capped == 0 && std::fabs(ob.v[0].intensity[0] - i_expected) < 1e-4f &&
                       own_extent > 0);
@@ -1463,6 +1470,80 @@ void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
 // nozzle's pixel) against the peak at u 0.1..0.4 (the body's first crests): after flight D at most 0.85 of it at s = 1,
 // 0.5 and 0 (the mouth ramp and the mouth terms on the body's throttle curve). Then the same nozzle end-on at s = 1 (the
 // axis at the camera): its peak against 1.5 x the s = 1 body peak.
+// After flight G (run412 frame 5437): the own Split Scorpion's nozzle is two glow records of one parent, nor 10 and
+// tiny 5.04 at (96411.5, -37509.1, 19210) and (96405.8, -37505.3, 19209) on one axis; the floor (R 67.3 record units,
+// k 0.35 at the floor scale 1: 23.5 and 20.2) drew both. Here in the flight's units (the floor's k depends on the
+// radius in record units) at the depth where the nor's floored nozzle (0.5 x 23.5) is 40 px, the still look at the
+// floor scale 1, s = 1: the pair against the nor alone, end-on (the exhaust at the camera) and side-on (axis -x): one
+// nozzle, one disc end-on, merged 1, the floored value 23.5, and the same centre peak and frame total. Negative: the
+// tiny 3 nozzle widths (15 units at size 10) to the side, and anti-parallel at the nor's origin: both kept.
+void merge_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float u = 1.f, Z = t.ppu(1.f) * (.5f * 23.5f) / 40.f; // flight units; ppu(Z) = ppu(1) / Z
+    ep::Look look = still; // the cases below draw with the floor at scale 1
+    look.floor_scale = 1.f;
+    const float off[3] = {-5.7f * u, 3.8f * u, -1.f * u};             // tiny - nor (flight units)
+    const std::uint32_t parents[2] = {0x2373e7a0u, 0x2373e7a0u};
+    const float radii[2] = {67.3f * u, 67.3f * u};
+    struct MergeView {
+        const char* name;
+        float a[3];
+    } views[2] = {{"end_on", {0, 0, -1}}, {"side", {-1, 0, 0}}};
+    char label[64];
+    for (const auto& v : views) {
+        ee::Record pair[2] = {record(0, 0, Z, v.a[0], v.a[1], v.a[2], 10.f * u, 2.f),
+                              record(off[0], off[1], Z + off[2], v.a[0], v.a[1], v.a[2], 5.04f * u, 2.f)};
+        pair[1].node_handle = 0x1235;
+        double total[3] = {};
+        float centre[3] = {};
+        rr::EnginePlumesReport rep[3];
+        Built built[3];
+        for (unsigned k = 0; k < 3; ++k) { // 0: the pair, 1: the nor alone, 2: the pair unmerged (as Run 124 drew it)
+            rr::EnginePlumesFrame f = frame_for(t, true, pair, k == 1 ? 1u : 2u, ep::Preset::standard, 0.f, 0.f, 0.f, &look);
+            f.radii = radii;
+            f.parents = k == 2 ? nullptr : parents;
+            scene.frame(0, 0, 0, 0, 500);
+            rep[k] = draw(d, pass, f);
+            const auto px = t.read(d);
+            total[k] = total_of(px, t.w, t.h);
+            float cx, cy;
+            t.window(0, 0, Z, 0, 0, cx, cy);
+            const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f));
+            centre[k] = peak(px, t.w, t.h, ix - 2, iy - 2, ix + 3, iy + 3);
+            built[k].nozzles = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, 0.f, built[k].v, 1, &built[k].stats,
+                                         nullptr, f.look, nullptr, radii, nullptr, f.parents);
+        }
+        const double total_ratio = total[1] > 0 ? total[0] / total[1] : 0.;
+        const double centre_ratio = centre[1] > 0.f ? double(centre[0] / centre[1]) : 0.;
+        std::printf("MERGE width=%u height=%u view=%s nozzles=%u discs=%u merged=%u floored=%u value=%.2f single_value=%.2f total=%.1f "
+                    "single_total=%.1f total_ratio=%.5f centre=%.4f single_centre=%.4f centre_ratio=%.5f unmerged_nozzles=%u "
+                    "unmerged_over_single_total=%.4f unmerged_over_single_centre=%.4f\n",
+                    t.w, t.h, v.name, rep[0].stats.nozzles, rep[0].stats.discs, rep[0].stats.merged, rep[0].stats.floored,
+                    double(built[0].v[0].shape[1] / u), double(built[1].v[0].shape[1] / u), total[0], total[1], total_ratio, double(centre[0]),
+                    double(centre[1]), centre_ratio, rep[2].stats.nozzles, total[1] > 0 ? total[2] / total[1] : 0.,
+                    centre[1] > 0.f ? double(centre[2] / centre[1]) : 0.);
+        const bool disc_expected = v.a[2] != 0.f;
+        std::snprintf(label, sizeof label, "merge_scorpion_pair_%s_%u", v.name, t.w);
+        report(label, rep[0].stats.nozzles == 1 && rep[0].stats.merged == 1 && rep[0].stats.discs == (disc_expected ? 1u : 0u) &&
+                          rep[1].stats.merged == 0 && std::fabs(built[0].v[0].shape[1] / u - 23.5f) < .1f &&
+                          std::fabs(total_ratio - 1.) <= 1e-3 && std::fabs(centre_ratio - 1.) <= 1e-3);
+    }
+    // Negative: 3 nozzle widths apart (parallel), and anti-parallel at the nor's origin.
+    const float apart = 3.f * ep::default_look.nozzle_width * 10.f * u;
+    const ee::Record far_pair[2] = {record(0, 0, Z, 0, 0, -1, 10.f * u, 2.f), record(apart, 0, Z, 0, 0, -1, 5.04f * u, 2.f)};
+    const ee::Record anti_pair[2] = {record(0, 0, Z, 0, 0, -1, 10.f * u, 2.f), record(0, 0, Z, 0, 0, 1, 5.04f * u, 2.f)};
+    const ee::Record* negatives[2] = {far_pair, anti_pair};
+    const char* names[2] = {"apart_3n", "anti_parallel"};
+    for (unsigned k = 0; k < 2; ++k) {
+        rr::EnginePlumesFrame f = frame_for(t, true, negatives[k], 2, ep::Preset::standard, 0.f, 0.f, 0.f, &look);
+        f.radii = radii;
+        f.parents = parents;
+        scene.frame(0, 0, 0, 0, 500);
+        const auto rep = draw(d, pass, f);
+        std::printf("MERGE_KEPT width=%u height=%u case=%s nozzles=%u merged=%u\n", t.w, t.h, names[k], rep.stats.nozzles, rep.stats.merged);
+        std::snprintf(label, sizeof label, "merge_kept_%s_%u", names[k], t.w);
+        report(label, rep.stats.nozzles == 2 && rep.stats.merged == 0);
+    }
+}
 void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
     const float Z = 2000.f, ppu = t.ppu(Z), value = 60.f / ppu;
     const float zs[3] = {2.f, 1.125f, .25f};
@@ -2332,6 +2413,28 @@ void build_timing(Targets& t) {
         if (n == 100) report("build_100_within_0.1ms", median(us) <= 100.);
         std::printf("BUILD_FLOOR records=%u drawn=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, drawn_floor, median(with),
                     *std::min_element(with.begin(), with.end()));
+        // After flight G: the floor and the co-located layer merge (merge_layers) as the proxy runs them, ships of 8
+        // nozzles (a capital's count; every pair tested, none co-located in the crowd), and all records of one parent
+        // (the merge's worst case: n (n - 1) / 2 pair tests).
+        for (const unsigned group : {8u, n}) {
+            if (group == n && n != 300u) continue;
+            std::vector<std::uint32_t> parents(n);
+            for (unsigned i = 0; i < n; ++i) parents[i] = 0x10000u + 0x40u * (i / group);
+            std::vector<double> merge_us;
+            unsigned drawn_merge = 0;
+            ep::BuildStats st{};
+            for (unsigned rep = 0; rep < 41; ++rep) {
+                LARGE_INTEGER a{}, b{};
+                QueryPerformanceCounter(&a);
+                for (unsigned k = 0; k < 50; ++k)
+                    drawn_merge = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, float(rep * 50 + k) / 60.f, out.data(), n,
+                                            &st, nullptr, nullptr, &tables, radii.data(), nullptr, parents.data());
+                QueryPerformanceCounter(&b);
+                merge_us.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 50.);
+            }
+            std::printf("BUILD_MERGE records=%u group=%u drawn=%u merged=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, group,
+                        drawn_merge, st.merged, median(merge_us), *std::min_element(merge_us.begin(), merge_us.end()));
+        }
     }
 }
 
@@ -3220,6 +3323,7 @@ int main(int argc, char** argv) {
             if (wanted("end_on")) end_on_case(d, *t, *scene, pass);
             if (wanted("energy")) energy_case(d, *t, *scene, pass);
             if (wanted("floor")) floor_case(d, *t, *scene, pass);
+            if (wanted("merge")) merge_case(d, *t, *scene, pass);
             if (wanted("mouth")) mouth_case(d, *t, *scene, pass);
             if (wanted("distance")) distance_case(d, *t, *scene, pass);
             // After the gap analysis, phases 2 and 3.

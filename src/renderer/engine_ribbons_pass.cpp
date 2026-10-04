@@ -226,7 +226,7 @@ HRESULT EngineRibbonsPass::run(const EngineRibbonsFrame& frame, EngineRibbonsRep
                            // the plumes' view filter, then their look and ship radii (the plume's nozzle width: the
                            // distance law's input) and the SETA travel weight (T x up to 2)
                            scale, &r.update, f.filter.camera && f.filter.scene ? &f.filter : nullptr, f.look, f.radii,
-                           f.travel);
+                           f.travel, f.parents);
     cut_pending_ = false;
     r.updated = true;
     if (reset_pending_) return refuse(EngineRibbonsStep::Validate, E_FAIL);
