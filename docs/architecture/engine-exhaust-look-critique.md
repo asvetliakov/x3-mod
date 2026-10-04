@@ -500,7 +500,10 @@ Ocelot's huge nozzles at 1,800-2,450 units, and `value *= k` shrank the disc and
 nozzle plate). The axial body keeps the cap exactly as Run 125 drew it (k from the tip's projection, width and length
 x k, the fade to 0.5); only the end-on disc and its halo use the natural (unshrunk, floored) nozzle width, with the 0.4
 fade, and the disc's projected radius (its quad's half-size) is held to `disc_cap_px` 0.35 H by scaling the disc alone
-(`discs_capped` in `BuildStats`). The disc's integrated body keeps L / n of the shrunk pair (the same ratio). Where the
+(`discs_capped` in `BuildStats`). The disc's integrated body keeps L / n of the shrunk pair (the same ratio). The disc's
+vertices carry the natural value in shape.y too, so the pixel program's soft-depth fades (occlusion edge and nozzle
+spill, x value) match the full-size disc; the body keeps the shrunk value, and both keep the shrunk occlusion bias
+(shape.z, 0.5 x value x facing). Where the
 natural disc and the shrunk body meet at the mouth, the axial quad's hand-over (`handover_inner`..`outer`, nozzle
 widths) measures the disc's width: the axial n over the disc's n travels in the axial quad's head-colour alpha (0..127,
 under the disc kind's 0.5), and `engine_plume_ps.hlsl` scales its screen-plane distance by it (one MIN and one MUL;
@@ -526,7 +529,7 @@ established. Census (`run412-engine-disc/run412_colocated_pairs.py run412|run413
 the only merged pairs are nor + tiny, 24 in run412's 24 frames and 40 in run413's 40; huge + big3 (32 and 96 pairs)
 and the run413 huge + nor / tiny pairs (ratio under 0.35, 5 each) are kept. Fixture `merge`: the Scorpion pair still
 draws one nozzle (merged 1, value 23.56, totals and centre 1.00000 of the nor alone); a 0.2-ratio side nozzle at 0.3
-of the larger's size apart is kept (2 nozzles, merged 0) at both sizes. The engine light's nozzle plates use the same
+of the larger's size apart is kept (2 nozzles, merged 0) at both sizes. The merge is transitive: a record already dropped still drops its own smaller layers, so an inner layer at 0.25 of the outer (under the window) drops through a 0.5 middle layer (`test_engine_plumes.py`: outer 10, middle 5, inner 2.5 co-located, 2 merged). The engine light's nozzle plates use the same
 merge (`engine-light.md` "Nozzle plates"), so the big3 nozzles get plates.
 
 ## Unknown, and what settles it

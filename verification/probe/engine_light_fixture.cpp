@@ -299,7 +299,8 @@ struct Fixture {
         pc[216][0] = 1.f / float(size);
         pc[216][1] = 1.f / float(size);
         pc[217][3] = gain_lane; // the dynamic light-map gain lane (the light map is black but in the plate case)
-        api(d->SetPixelShaderConstantF(0, &pc[0][0], 200), "PS constants");
+        // c0-c189 only: c190-c197 and c200-c202 per twin draw (upload), c198-c199 never written by the API (the DEFs).
+        api(d->SetPixelShaderConstantF(0, &pc[0][0], 190), "PS constants");
         api(d->SetPixelShaderConstantF(203, &pc[203][0], 21), "PS constants high");
     }
     void state(unsigned p, IDirect3DSurface9* rt, unsigned w, unsigned h) {
@@ -364,14 +365,21 @@ struct Fixture {
     struct Image {
         std::vector<float> color, motion, depth;
     };
-    // `block`: the upload of a twin draw, EngineLightAbi::upload_count registers from upload_first (the plates, two
-    // filler registers, the light at block + 40).
+    // The route's two uploads of a twin draw: the plates c190-c197 and the light c200-c202 (never c198-c199, the DEFs).
+    void upload(const float* block) {
+        api(d->SetPixelShaderConstantF(EngineLightAbi::plate_constant, block, EngineLightAbi::plate_count), "c190");
+        api(d->SetPixelShaderConstantF(EngineLightAbi::pixel_constant, block + EngineLightAbi::block_light * 4,
+                                       EngineLightAbi::pixel_constant_count),
+            "c200");
+    }
+    // `block`: the staging block of a twin draw (EngineLightAbi::block_registers rows: the plates, two rows never
+    // uploaded, the light at block + 40), uploaded by upload().
     Image draw(unsigned p, unsigned k, bool twin, const Scene& s, float emissive, const float* block, bool fp16) {
         IDirect3DSurface9* rt = fp16 ? color16.p : color32.p;
         state(p, rt, size, size);
         constants(p, s, emissive);
         api(d->SetPixelShader(twin ? programs[p].twin[k].p : programs[p].base[k].p), "set PS");
-        if (twin) api(d->SetPixelShaderConstantF(EngineLightAbi::upload_first, block, EngineLightAbi::upload_count), "c190");
+        if (twin) upload(block);
         api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0), "clear");
         api(d->BeginScene(), "begin");
         api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, triangles), "draw");
@@ -383,8 +391,8 @@ struct Fixture {
         return i;
     }
 };
-constexpr unsigned block_floats = EngineLightAbi::upload_count * 4, light_at = 40;
-static_assert(EngineLightAbi::upload_first == 190 && EngineLightAbi::pixel_constant - EngineLightAbi::upload_first == 10 &&
+constexpr unsigned block_floats = EngineLightAbi::block_registers * 4, light_at = EngineLightAbi::block_light * 4;
+static_assert(EngineLightAbi::plate_constant == 190 && EngineLightAbi::block_light == 10 &&
                   EngineLightAbi::plate_count == el::plate_slots,
               "the fixture's upload block");
 // The production CPU path for one ship (root 0x4000) of `count` main jets: the ship table, the plate's draw logged
@@ -691,7 +699,8 @@ int main(int argc, char** argv) {
                 if (n && el::draw_constants(*n, s.world, s.view_inverse, c + light_at)) {
                     el::plate_constants(*n, s.world, s.view_inverse, c, &c[light_at + 11]);
                     ++hits;
-                    device.p->SetPixelShaderConstantF(EngineLightAbi::upload_first, c, EngineLightAbi::upload_count);
+                    device.p->SetPixelShaderConstantF(EngineLightAbi::plate_constant, c, EngineLightAbi::plate_count);
+                    device.p->SetPixelShaderConstantF(EngineLightAbi::pixel_constant, c + light_at, EngineLightAbi::pixel_constant_count);
                 }
             }
             const double hit_ns = double(now() - hit_begin) * 1e9 / frequency() / rounds;
@@ -746,9 +755,7 @@ int main(int argc, char** argv) {
                         api(device.p->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE), "dst");
                         api(device.p->SetPixelShader(twin ? f->programs[1].twin[1].p : f->programs[1].base[1].p), "PS");
                         if (twin)
-                            api(device.p->SetPixelShaderConstantF(EngineLightAbi::upload_first, block,
-                                                                  EngineLightAbi::upload_count),
-                                "c190");
+                            f->upload(block);
                         api(device.p->BeginScene(), "begin");
                         query.p->Issue(D3DISSUE_END);
                         while (query.p->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE) {

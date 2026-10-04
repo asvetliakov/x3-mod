@@ -1,0 +1,90 @@
+{
+ "gain": {
+  "twins": 104,
+  "gained": 100,
+  "without_gain": [
+   [
+    "ps_9d49f288800f898d",
+    "glass"
+   ],
+   [
+    "ps_a66fb1981ba755b2",
+    "glass"
+   ],
+   [
+    "ps_ebc9b2b3f1564e9a",
+    "glass"
+   ],
+   [
+    "ps_f31c9e2701c8eee4",
+    "glass"
+   ]
+  ]
+ },
+ "widen": {
+  "twins": 104,
+  "gained": 100,
+  "without_gain": [
+   [
+    "ps_9d49f288800f898d",
+    "glass"
+   ],
+   [
+    "ps_a66fb1981ba755b2",
+    "glass"
+   ],
+   [
+    "ps_ebc9b2b3f1564e9a",
+    "glass"
+   ],
+   [
+    "ps_f31c9e2701c8eee4",
+    "glass"
+   ]
+  ]
+ },
+ "share_gain": {
+  "twins": 104,
+  "gained": 100,
+  "without_gain": [
+   [
+    "ps_9d49f288800f898d",
+    "glass"
+   ],
+   [
+    "ps_a66fb1981ba755b2",
+    "glass"
+   ],
+   [
+    "ps_ebc9b2b3f1564e9a",
+    "glass"
+   ],
+   [
+    "ps_f31c9e2701c8eee4",
+    "glass"
+   ]
+  ]
+ },
+ "share_widen": {
+  "twins": 104,
+  "gained": 100,
+  "without_gain": [
+   [
+    "ps_9d49f288800f898d",
+    "glass"
+   ],
+   [
+    "ps_a66fb1981ba755b2",
+    "glass"
+   ],
+   [
+    "ps_ebc9b2b3f1564e9a",
+    "glass"
+   ],
+   [
+    "ps_f31c9e2701c8eee4",
+    "glass"
+   ]
+  ]
+ }
+}

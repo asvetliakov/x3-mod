@@ -64,6 +64,11 @@ static_assert(nozzle_plate_full >= 0.0f && nozzle_plate_full < nozzle_plate_reac
                   nozzle_plate_none >= nozzle_plate_reach * nozzle_plate_reach,
               "the plate weight reaches 0 inside the light's radius and at an unused slot");
 constexpr float engine_light_cap = 1.0f, engine_light_facing_floor = -0x1p-20f, engine_light_distance_floor = 0x1p-40f;
+// The plate block's second branch compares the tier with c199.x, the cap: it must stay 1 (the tier between two to four
+// plates and five to eight), and c198.z the tier 0.
+constexpr float engine_light_plate_tier_one = 1.0f;
+static_assert(engine_light_cap == engine_light_plate_tier_one,
+              "the plate block's slots 5-8 branch reads c199.x as the tier 1: a cap other than 1 needs its own DEF");
 constexpr unsigned engine_light_eye_texcoord = 1, engine_light_normal_texcoord = 2;
 void engine_light_definition_words(Words& out) {
     emit(out, def,
@@ -77,9 +82,10 @@ void engine_light_plate_definition_words(Words& out) {
 }
 // if_ne with the comparison NE (5) in the token's bits 16-23; endif.
 constexpr unsigned engine_light_if_ne = 41u | (5u << 16), engine_light_endif = 43u;
-// 18 instructions, 22 weighted slots (two NRM x3); with `plate` 49 / 57 (the
+// 18 instructions, 22 weighted slots (two NRM x3); with `plate` 53 / 61 (the
 // pixel position D = e t, three per plate slot, two uniform if_ne / endif
-// pairs around slots 1-7 and 4-7 (a ship runs 1, 4 or 8 slots), the weight into r15.w after
+// pairs around slots 1-7 and 4-7 with two MOVs each for their temporary
+// operands (a ship runs 1, 4 or 8 slots), the weight into r15.w after
 // the light, read by the gain site, lightmap_gain_instruction): the light
 // then reads D (ADD instead of the MAD) and keeps 1 / d in r15.x, so r15.w
 // carries the running minimum through the light.
@@ -96,12 +102,17 @@ void engine_light_block(Words& out, unsigned depth_input, bool plate = false) {
     const unsigned inverse_lane = plate ? 0u : 3u; // 1 / d: r15.x with plates (r15.w holds the minimum)
     if (plate) {
         emit(out, mul, {dst(temp, s), src(temp, s), lane(temp, s, 3)}); // D = e t
-        // Uniform branches on the ship's plate tier (c202.w: 0 one plate, 1 two to four, 2 five to eight; both
-        // operands constants, so no divergence): slot 0 always, slots 1-3 under if_ne tier, 0 (c198.z), slots 4-7
-        // nested under if_ne tier, 1 (c199.x). if_ne (D3DSPC_NE), the comparison the XT originals already use.
+        // Uniform branches on the ship's plate tier (c202.w: 0 one plate, 1 two to four, 2 five to eight; the operands
+        // come from constants, so no divergence): slot 0 always, slots 1-3 under if_ne tier, 0 (c198.z), slots 4-7
+        // nested under if_ne tier, 1 (c199.x, the cap 1: engine_light_plate_tier_one). The form the corpus's XT originals
+        // use, if_ne on two temporary lanes: the tier and the threshold moved into r14.x / r14.y first (r14 is the
+        // per-slot scratch, free between slots).
         for (unsigned i = 0; i < engine_light_plate_slots; ++i) {
-            if (i == 1) emit(out, engine_light_if_ne, {lane(constant, f, 3), lane(constant, c, 2)});
-            if (i == 4) emit(out, engine_light_if_ne, {lane(constant, f, 3), lane(constant, k, 0)});
+            if (i == 1 || i == 4) {
+                emit(out, mov, {dst(temp, e, 1), lane(constant, f, 3)});                       // r14.x = tier
+                emit(out, mov, {dst(temp, e, 2), i == 1 ? lane(constant, c, 2) : lane(constant, k, 0)}); // 0 or 1
+                emit(out, engine_light_if_ne, {lane(temp, e, 0), lane(temp, e, 1)});
+            }
             const unsigned p = engine_light_plate_first + i;
             emit(out, mad, {dst(temp, e), src(temp, s), lane(constant, p, 3), src(constant, p, identity, negate)});
             emit(out, 8, {dst(temp, e, 8), src(temp, e), src(temp, e)});         // (d / v_i)^2

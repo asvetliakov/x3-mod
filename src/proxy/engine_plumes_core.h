@@ -1406,7 +1406,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.local[2] = disc_ring;
         v.local[3] = n_disc;
         v.shape[0] = sigma0;
-        v.shape[1] = value;
+        v.shape[1] = value_natural; // the soft-depth fades at the disc's natural size (the body keeps the shrunk value)
         v.shape[2] = bias;
         v.shape[3] = flow_phase;
         v.intensity[0] = disc_body;

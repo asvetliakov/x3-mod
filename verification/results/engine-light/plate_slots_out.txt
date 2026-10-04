@@ -1,12 +1,12 @@
 {
  "twins": 832,
  "largest": {
-  "slots": 364,
-  "words": 2616,
+  "slots": 368,
+  "words": 2628,
   "program": "ps_f1b0e820c7b488c3",
   "set": "share_widen",
   "base_slots": 299,
-  "words_max": 2616
+  "words_max": 2628
  },
  "deltas": [
   {
@@ -30,7 +30,7 @@
   {
    "set": "gain",
    "plate": 1,
-   "delta": 62,
+   "delta": 66,
    "programs": 100
   },
   {
@@ -54,7 +54,7 @@
   {
    "set": "share_gain",
    "plate": 1,
-   "delta": 65,
+   "delta": 69,
    "programs": 100
   },
   {
@@ -66,7 +66,7 @@
   {
    "set": "share_widen",
    "plate": 1,
-   "delta": 65,
+   "delta": 69,
    "programs": 100
   },
   {
@@ -78,7 +78,7 @@
   {
    "set": "widen",
    "plate": 1,
-   "delta": 62,
+   "delta": 66,
    "programs": 100
   }
  ]

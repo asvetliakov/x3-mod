@@ -44,8 +44,8 @@ void MotionOutput::configure_engine_light(bool plumes) noexcept {
         id_, n ? shown : "-", ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting", engine_light::core::mode_name(mode),
         unsigned(engine_light_requested_), reason, double(engine_light::core::behind),
         double(engine_light::core::reach), double(engine_light::core::colour_scale),
-        renderer::EngineLightAbi::upload_first,
-        renderer::EngineLightAbi::upload_first + renderer::EngineLightAbi::upload_count - 1,
+        renderer::EngineLightAbi::plate_constant,
+        renderer::EngineLightAbi::pixel_constant + renderer::EngineLightAbi::pixel_constant_count - 1,
         engine_light::core::ship_capacity, engine_light::core::plate_slots);
 }
 // The twins of the program's original-shading variants, created once at registration beside them with the options
@@ -196,16 +196,18 @@ void MotionOutput::engine_light_frame() noexcept {
     el::build_nodes(s.ships, s.log, &s.nodes);
     s.log.clear();
 }
-// After the motion ABI's upload on a draw whose twin bind_variant_pair bound: c190-c202 (EngineLightAbi upload_first,
-// upload_count: the plates, the filler, the light), one call.
+// After the motion ABI's upload on a draw whose twin bind_variant_pair bound: the plates c190-c197 and the light
+// c200-c202 (EngineLightAbi), two calls; c198-c199 (the twins' DEFs) are never written.
 HRESULT MotionOutput::engine_light_upload() noexcept {
-    static_assert(renderer::EngineLightAbi::plate_constant == renderer::EngineLightAbi::upload_first &&
-                      renderer::EngineLightAbi::plate_count == engine_light::core::plate_slots &&
-                      sizeof(EngineLightState::constants) == renderer::EngineLightAbi::upload_count * 4 * sizeof(float) &&
-                      renderer::EngineLightAbi::pixel_constant - renderer::EngineLightAbi::upload_first == 10,
-                  "the upload block: eight plates, c198-c199, the light at offset 10 registers (engine_light_prepare)");
-    const HRESULT hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF, renderer::EngineLightAbi::upload_first,
-                                                    engine_light_->constants, renderer::EngineLightAbi::upload_count);
+    using Abi = renderer::EngineLightAbi;
+    static_assert(Abi::plate_count == engine_light::core::plate_slots &&
+                      sizeof(EngineLightState::constants) == Abi::block_registers * 4 * sizeof(float) && Abi::block_light == 10,
+                  "the staging block: eight plates, two unused rows, the light at offset 10 registers (engine_light_prepare)");
+    HRESULT hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF, Abi::plate_constant, engine_light_->constants,
+                                              Abi::plate_count);
+    if (SUCCEEDED(hr))
+        hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF, Abi::pixel_constant,
+                                          engine_light_->constants + Abi::block_light * 4, Abi::pixel_constant_count);
     if (SUCCEEDED(hr)) ++engine_light_->counts.draws_lit;
     return hr;
 }

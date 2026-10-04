@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "e9cbd764a6454ac3e18e499201f8a7114d418b10cad851aeb388c1cf73bb2f98",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "9855a5bd7a56f63282a97c83d5f4c5d0b52453c661c2834589f65b0dec68d2db",
-  "build/d3d9.dll": "5effd61021fea05959e3cb93a86f4536680915886a78414ab66f43337dd2aef3"
+  "verification/probe/build/motion_output_fixture.exe": "b367dea7fae2e2ba706dee0a34bbde96e67af1a45a28827959126508b33ee2f9",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "d6cada9846cf54de9d30d24324251da02192690296776093e86434f51308cbbd",
+  "build/d3d9.dll": "b3363fb8dafe10df676edbd03d90bd598a22f41ed45d9e7fec2dfb637873edca"
  },
  "checks": 107,
  "frames": [
@@ -164,7 +164,7 @@
    "refused": "00",
    "mismatched": "00",
    "failed": "00",
-   "words_max": "1741",
+   "words_max": "1753",
    "depth": "1"
   },
   "frames_with_candidates": 7,
@@ -260,8 +260,8 @@
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-engine-light-20261004-153949-295712",
- "trace_sha256": "0423b08efc91a9325f5ba2b4246e61a9f88d58d9b4cecf203b5d6141967c9693",
- "dll_sha256": "9855a5bd7a56f63282a97c83d5f4c5d0b52453c661c2834589f65b0dec68d2db",
- "exe_sha256": "e9cbd764a6454ac3e18e499201f8a7114d418b10cad851aeb388c1cf73bb2f98"
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261004-160307-340308",
+ "trace_sha256": "43131f2e8c9fabb11be8c515c4d590906a4f3cd23e8f5ea864488ad07e6fa7c5",
+ "dll_sha256": "d6cada9846cf54de9d30d24324251da02192690296776093e86434f51308cbbd",
+ "exe_sha256": "b367dea7fae2e2ba706dee0a34bbde96e67af1a45a28827959126508b33ee2f9"
 }

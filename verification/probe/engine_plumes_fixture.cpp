@@ -1022,14 +1022,14 @@ void near_capital_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::Engine
     const float drawn_l = b.v[0].local[2], tip_depth = Z - toward * drawn_l;
     const float tip_px = 2.f * half_world * k * m11 * float(t.h) * .5f / tip_depth;
     const float disc_n_px = b.v[4].local[3] * ppu, disc_half_px = std::fabs(b.v[4].local[0]) * ppu;
-    std::printf("NEAR_CAPITAL width=%u height=%u value=%.0f depth=%.0f off_axis_deg=20 natural_n_px=%.1f disc_n_px=%.1f axial_n_px=%.1f k=%.4f disc_half_px=%.1f disc_cap_px=%.1f natural_length_px=%.1f drawn_length_px=%.1f tip_body_px=%.1f cap_px=%.1f capped=%u faded=%u discs=%u discs_capped=%u handover_alpha=%u extent_px=%d peak=%.3f\n",
+    std::printf("NEAR_CAPITAL width=%u height=%u value=%.0f depth=%.0f off_axis_deg=20 natural_n_px=%.1f disc_n_px=%.1f axial_n_px=%.1f k=%.4f disc_half_px=%.1f disc_cap_px=%.1f natural_length_px=%.1f drawn_length_px=%.1f tip_body_px=%.1f cap_px=%.1f capped=%u faded=%u discs=%u discs_capped=%u handover_alpha=%u extent_px=%d peak=%.3f disc_value=%.2f body_value=%.2f\n",
                 t.w, t.h, double(value), double(Z), double(n * ppu), double(disc_n_px), double(b.v[0].local[3] * ppu), double(k),
                 double(disc_half_px), double(ep::disc_cap_px * float(t.h)), double(L_natural * ppu), double(drawn_l * ppu), double(tip_px),
                 double(cap_px), rep.stats.capped, rep.stats.faded, rep.stats.discs, b.stats.discs_capped, unsigned(b.v[0].peak >> 24), extent,
-                double(pk));
+                double(pk), double(b.v[4].shape[1]), double(b.v[0].shape[1]));
     char label[64];
     std::snprintf(label, sizeof label, "near_capital_disc_natural_%u", t.w);
-    report(label, rep.stats.discs == 1 && b.stats.discs_capped == 0 && std::fabs(disc_n_px - n * ppu) <= 1e-3f * n * ppu &&
+    report(label, rep.stats.discs == 1 && std::fabs(b.v[4].shape[1] - value) <= 1e-3f * value && b.v[0].shape[1] < value && b.stats.discs_capped == 0 && std::fabs(disc_n_px - n * ppu) <= 1e-3f * n * ppu &&
                       disc_half_px <= ep::disc_cap_px * float(t.h));
     std::snprintf(label, sizeof label, "near_capital_length_capped_%u", t.w);
     report(label, rep.stats.capped == 1 && k < 1.f && std::fabs(drawn_l - L_natural * k) <= 1e-3f * L_natural &&

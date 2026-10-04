@@ -71,7 +71,7 @@ def bits(value):
     return struct.unpack('<I', struct.pack('<f', value))[0]
 
 
-NRM, DP3, MIN, RCP, MUL, MAD, MAX, RSQ, ADD = 36, 8, 10, 6, 5, 4, 11, 7, 2
+NRM, DP3, MIN, RCP, MUL, MAD, MAX, RSQ, ADD, MOV = 36, 8, 10, 6, 5, 4, 11, 7, 2, 1
 
 
 def engine_block(depth, plate=False):
@@ -88,10 +88,11 @@ def engine_block(depth, plate=False):
             c = PLATE_FIRST + i
             # Uniform branches on the plate tier c202.w: slots 1-7 under if_ne tier, c198.z (0), 4-7 under if_ne tier,
             # c199.x (1); if_ne = opcode 41 with the comparison 5 in bits 16-23.
-            if i == 1:
-                to_light += [(2 << 24) | (5 << 16) | 41, lane(CONST, f, 3), lane(CONST, 198, 2)]
-            if i == 4:
-                to_light += [(2 << 24) | (5 << 16) | 41, lane(CONST, f, 3), lane(CONST, k, 0)]
+            # The operands moved into r14.x / r14.y first (if_ne on two temporaries, the corpus's form).
+            if i in (1, 4):
+                to_light += (op(MOV, dst(TEMP, e, 1), lane(CONST, f, 3)) +
+                             op(MOV, dst(TEMP, e, 2), lane(CONST, 198, 2) if i == 1 else lane(CONST, k, 0)) +
+                             [(2 << 24) | (5 << 16) | 41, lane(TEMP, e, 0), lane(TEMP, e, 1)])
             to_light += (op(MAD, dst(TEMP, e), src(TEMP, s), lane(CONST, c, 3), src(CONST, c, 0xe4, 1)) +
                          op(DP3, dst(TEMP, e, 8), src(TEMP, e), src(TEMP, e)) +
                          op(MIN, dst(TEMP, s, 8), lane(TEMP, e, 3), lane(TEMP, s, 3) if i else lane(CONST, 198, 3)))
@@ -388,8 +389,8 @@ class TwinTests(unittest.TestCase):
                 if fill0:
                     self.assertEqual(delta, 70 if share else 45, (name, set_name))
                     continue
-                # The plate form: 35 more block slots (D, three per slot, two if_ne x 3 and two endif, the weight), the gain 3 for 1.
-                self.assertEqual(delta, (28 if share else 25) + (37 if plate else 0), (name, set_name))
+                # The plate form: 39 more block slots (D, three per slot, four MOVs, two if_ne x 3 and two endif, the weight), the gain 3 for 1.
+                self.assertEqual(delta, (28 if share else 25) + (41 if plate else 0), (name, set_name))
                 for at in triplets:   # each add follows its fill block's MAD
                     self.assertEqual(twin[at - len(FILL_MAD):at], FILL_MAD, (name, set_name))
                 stripped = twin
@@ -453,6 +454,13 @@ class RouteWiringTests(unittest.TestCase):
         self.assertIn('engine_light_release(entry.second);', cpp)
         inc = (ROOT / 'src/proxy/motion_output_engine_light_inc.h').read_text()
         self.assertNotIn('new ', inc.split('void MotionOutput::engine_light_prepare')[1])   # no allocation per draw
+        # Two uploads, the plates c190-c197 and the light c200-c202: the API never writes c198-c199 (the twins' DEFs).
+        upload_body = inc[inc.index('HRESULT MotionOutput::engine_light_upload()'):inc.index('void MotionOutput::engine_light_prepare')]
+        self.assertEqual(upload_body.count('direct_call<SetConstantsFFn>(SetPixelShaderConstantF,'), 2)
+        self.assertIn('Abi::plate_constant, engine_light_->constants,', upload_body)
+        self.assertIn('Abi::pixel_constant,', upload_body)
+        self.assertIn('Abi::plate_count);', upload_body)
+        self.assertIn('Abi::pixel_constant_count);', upload_body)
         self.assertIn('hdr_state_ != HdrState::Active', inc)
         self.assertIn('preset_scale, &s.ships, engine_ring_->own);', inc)   # the own-ship tags reach the ship table
         # The fixture scope carries node+0x18 like object_trace's (the seam case's lit node hangs under the root).

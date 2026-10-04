@@ -49,11 +49,12 @@ first in MAX/MIN).
 | c202 | (F, tier): .w the plate tier in plate twins (0: one plate, 1: two to four, 2: five to eight) |
 
 No original program reads c50 or above (corpus scan of all 429 ps_2+ programs), so the per-draw upload needs no
-restore. A twin is refused when its original reads or defines any of c190-c202. The route uploads c190-c202 in one
-SetPixelShaderConstantF of 13 registers; c198 and c199 are zero filler there, shadowed by the twins' DEFs (a twin
-without plates reads none of c190-c198). Slots: +25 on the fill variant, +28 on the share producer (two fill blocks),
-+45 / +70 at K = 0 (the block is emitted for the light alone), and on the four gained kinds 37 more for the nozzle
-plates (+62, +65 with the share; +4 with one plate before Run 125); largest twin 364 weighted slots, 2,616 DWORDs
+restore. A twin is refused when its original reads or defines any of c190-c202. The route uploads the plates
+c190-c197 and the light c200-c202 in two SetPixelShaderConstantF calls; the API never writes c198-c199 (the twins'
+DEFs), so nothing relies on a DEF shadowing a later upload (a twin without plates reads none of c190-c198). Slots: +25
+on the fill variant, +28 on the share producer (two fill blocks), +45 / +70 at K = 0 (the block is emitted for the
+light alone), and on the four gained kinds 41 more for the nozzle plates (+66, +69 with the share; +4 with one plate
+before Run 125); largest twin 368 weighted slots, 2,628 DWORDs
 (`ps_f1b0e820c7b488c3`, share + gain + widening, base 299; measured 2026-10-04 over all 104 x 8 option sets with
 [plate_slots.py](../../verification/results/engine-light/plate_slots.py); 331 with one plate, 327 before the plates).
 
@@ -101,24 +102,28 @@ Pixel program (gained twins): after t = w / (e . F) the block forms D = e t (MUL
 then reads D (`add r14.xyz, c200, -r15` in place of the MAD) and keeps 1 / d in r15.x, so r15.w carries the minimum
 m through it; after q, `mad_sat r15.w, r15.w, c198.x, c198.y` gives w = saturate((r1^2 - m) / (r1^2 - r0^2)) (w falls
 with (d / v)^2, so the minimum distance is the maximum weight) and `max r15.w, r15.w, c198.z` maps a NaN to 0. An unused
-slot uploads (2, 0, 0, 0): (d / v)^2 = 4, weight 0. A ship pays only its slots: slots 1-7 sit under
-`if_ne c202.w, c198.z` and slots 4-7 under a nested `if_ne c202.w, c199.x`, c202.w the tier the route uploads with the
-plates (`plate_tier`: 0 for one plate, 1 for two to four, 2 for five to eight), so a ship runs 1, 4 or 8 slots. Both
-operands are constants, so the branches are uniform (no divergence); if_ne is the comparison the XT originals use, and
-the twin's structure check admits it only for a plate twin (`structure(..., xt || plate_on)`; a hull original itself
+slot uploads (2, 0, 0, 0): (d / v)^2 = 4, weight 0. A ship pays only its slots: slots 1-7 sit under an if_ne of the
+tier against 0 (c198.z) and slots 4-7 under a nested if_ne of the tier against 1 (c199.x, the cap: a static_assert
+holds `engine_light_cap` at 1), c202.w the tier the route uploads with the light (`plate_tier`: 0 for one plate, 1 for
+two to four, 2 for five to eight), so a ship runs 1, 4 or 8 slots. Each branch first moves the tier and the threshold
+into r14.x / r14.y (the per-slot scratch, free between slots) and compares the two temporaries, the form the corpus's
+XT originals use (if_ne on two temporaries; no original compares constants). The operands come from constants, so the
+branches are uniform (no divergence), and the twin's structure check admits them only for a plate twin (`structure(..., xt || plate_on)`; a hull original itself
 has no flow control, an XT plate twin's block sits at its depth 0 by the plate condition). The gain site is unchanged:
 `mad r15.w, -r15.w, g, r15.w`, `add r15.w, r15.w, g`, `mul rL.xyz, rL, r15.w` (g = c223.x, or c217.w with the far
-fade). The plate block is 49 instructions, 57 weighted slots against the light's 18 / 22 (+35; with the gain's +2,
-+37 per gained twin). Emitted only when the light's site precedes the light-map fetch and both sit outside flow control
-(all 100 gained programs, measured); otherwise the twin keeps the plain gain. The emitted program re-proves c198 (one
+fade). The plate block is 53 instructions, 61 weighted slots against the light's 18 / 22 (+39; with the gain's +2,
++41 per gained twin). Emitted only when the light's site precedes the light-map fetch and both sit outside flow control
+(all 100 gained programs, measured); otherwise the twin keeps the plain gain. In each gained option set the other 4
+of the 104 twins are the glass programs, whose transform applies no light-map gain at all (gain flag 0: nothing for the
+plates to suppress; [gained_without_plates.py](../../verification/results/engine-light/gained_without_plates.py)). The emitted program re-proves c198 (one
 DEF, five reads), c199 (one more read), c202 (three reads), c190-c197 (no DEF, two reads each), r15 (the block's
 references plus six) and the block's position before the fetch. The reach ratio 3 in the pixel program equals
 `engine_light::core::reach` (pinned by `test_engine_light.py`).
 
 Cost (the i686 fixture under Wine/FEX, `run_engine_light.py`; host arm64 figures in the ledger): the per-draw hit with
-the plates and the 13-register upload, the ship table over 1,024 records of 128 ships x 8 nozzles, the node build and
+the plates and the two uploads (8 + 3 registers), the ship table over 1,024 records of 128 ships x 8 nozzles, the node build and
 the full-screen twin term at 5120x1440 are in [engine-light.md](../verification/engine-light.md) (2026-10-04, "All
-main nozzles"). The upload is 13 registers per lit draw (3 before).
+main nozzles"). The upload is 11 registers in two calls per lit draw (3 in one before).
 
 Limits: the suppression lives in the twin, so it acts only where the hull light does (`engine_effects = plumes`,
 `engine_light` on, a ship in the light table, its routed hull draw). With `engine_light` off, or for a ship without a
@@ -133,7 +138,7 @@ reach (turrets and parts deeper than one level) are not drawn by a lit draw and 
 
 Each original-shading variant (plain motion, fill, gained, gained widened, share, share gained, share gained widened)
 gets a twin at registration; a draw whose node carries a light binds the twin of the program the pair selection chose
-and uploads c190-c202 (the plates and the light), every other draw binds today's program and uploads nothing. A zero-light term in every program
+and uploads the plates c190-c197 and the light c200-c202, every other draw binds today's program and uploads nothing. A zero-light term in every program
 would cost the term on every hull pixel of every frame: measured +50.9 us per full-screen draw at 5120x1440 (0.497 ->
 0.548 ms, +10 %, five EVENT-fenced batches of 20 additive draws) for the production BUMPMAP share program; at
 1920x1080 the difference stayed inside the batches' warm-up noise (about 14 us by pixel count, inferred). The pair

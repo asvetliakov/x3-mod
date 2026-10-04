@@ -632,3 +632,14 @@ collapsed a near capital's length to the dot floor; replaced on the coordinator'
 | Light | `run_engine_light.py` | PASS (the plates: [engine-light.md](engine-light.md) 2026-10-04 "All main nozzles") |
 | Host | `X3M_REQUIRE_SHADER_CORPUS=1 ... unittest discover -p 'test_engine_*.py'` | 85 OK (`test_engine_plumes`: disc cap 1.0 and ring x 3, the near-camera cap q 0.7 / 0.9 / 1 / 3 / 40 with the disc natural and the hand-over alpha, the disc cap at 0.35 H, the merge window with a 0.2-ratio pair kept, the shader's hand-over line) |
 | Build | clean `cmake` build in a fresh directory; `check_no_x87.py` | 0 warnings; x87 PASS (766 reachable functions, no violations) |
+
+Review fixes on 4712dbd8 (same day): the end-on disc's vertices carry the natural value in shape.y (the soft-depth
+fades of the occlusion edge and the nozzle spill at the disc's full size; the body keeps the shrunk value; the
+occlusion bias stays the shrunk one); `merge_layers` is transitive (a dropped record still drops its smaller layers: an
+inner layer at 0.25 of the outer merges through a 0.5 middle layer), now pinned by a host case.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Plumes | `run_engine_plumes.py` | PASS 300/300; `near_capital_disc_natural_*` now also holds the disc's shape.y at the natural 939 (the body's 290.51 = 939 x k 0.309); the case otherwise unchanged: disc n 215.5 / 287.3 px = natural, half 199.1 / 265.2 px, length 778.5 -> 240.8 px (1080) and 1,038 -> 321.1 px (1440), extent 281 / 374 px, peak 1.963 |
+| Ribbons, shimmer, effects | `run_engine_ribbons.py`; `run_engine_shimmer.py`; `run_engine_effects.py` (records hash `engine_plumes_core.h`) | PASS 44/44; PASS 43/43; PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7), DLL build 0 warnings |
+| Host | `test_engine_plumes` | the near-camera cap cases also hold the disc's shape.y at the natural value; the transitive merge case (outer 10, middle 5, inner 2.5: 2 merged); OK |

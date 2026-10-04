@@ -419,7 +419,7 @@ int main() {
             const float kk = out[0].shape[1] / val;
             const bool ok = near(out[0].intensity[0], .5f * IH * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : q == 1.f ? near(width, cap, 2e-3f) && near(out[0].shape[1], val, 1e-3f) : st.capped == 0 && near(out[0].shape[1], val)) &&
                             st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .5f * out[0].shape[1]) &&
-                            near(out[4].local[3], .5f * val) && near(quad_half, h_halo * val, 2e-3f) && st.discs_capped == 0 &&
+                            near(out[4].local[3], .5f * val) && near(out[4].shape[1], val) && near(quad_half, h_halo * val, 2e-3f) && st.discs_capped == 0 &&
                             (out[0].peak >> 24) == unsigned(int(std::min(kk, 1.f) * 127.f + .5f)) &&
                             near(out[4].intensity[0], disc, 2e-3f) &&
                             out[4].intensity[0] >= .4f * IH * kap(out[4]) * (L / out[0].local[3]) * (1.f - 2e-3f);
@@ -470,6 +470,16 @@ int main() {
                    !drop[9],
                "merge: the smaller parallel layer (ratio 0.35..0.75) within the larger's size is dropped; twins, 3 widths apart, "
                "anti-parallel, a 0.2-ratio side nozzle kept");
+        // Transitive: an inner layer at 0.25 of the outer (under the window) and 0.5 of a middle layer (0.5 of the outer)
+        // is dropped through the middle one, which the outer drops (a dropped record still drops its own smaller layers).
+        {
+            ee::Record l3[3] = {rec(0.f, 0.f, 700.f, 0, 0, -1, 10.f, 2.f), rec(1.f, 0.f, 700.f, 0, 0, -1, 5.f, 2.f),
+                                rec(2.f, 0.f, 700.f, 0, 0, -1, 2.5f, 2.f)};
+            const std::uint32_t p3[3] = {21, 21, 21};
+            std::uint8_t d3[3];
+            expect(merge_layers(l3, 3, p3, d3) == 2 && !d3[0] && d3[1] && d3[2],
+                   "merge is transitive: 0.25 of the outer drops through a 0.5 middle layer");
+        }
         const std::uint32_t other[2] = {7, 8}, unknown[2] = {0, 0};
         expect(merge_layers(m, 2, other, drop) == 0 && !drop[1] && merge_layers(m, 2, unknown, drop) == 0 &&
                    merge_layers(m, 2, nullptr, drop) == 0, "merge: another parent, an unknown parent or none: kept");

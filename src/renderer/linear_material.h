@@ -237,12 +237,13 @@ LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(
 // the C0 decode then left out) r12 += min(E, saturate(1 - r12)) before the
 // encode; one shader-local `def c199`. With the light-map gain the block
 // also leaves the nozzle-plate weight in r15.w (the maximum over eight plate
-// slots c190-c197, 27 instructions more, `def c198`) and the gain becomes
+// slots c190-c197 behind two uniform branches, `def c198`) and the gain becomes
 // g - (g - 1) w per pixel (3 instructions in place of the gain MUL): the
 // light-map term near each main nozzle falls back to the texture's own value
-// (engine-light.md "Nozzle plates"). The caller MUST upload
-// EngineLightAbi::upload_count registers at upload_first (the plates, two
-// unread filler registers, the light) on every draw that binds the twin.
+// (engine-light.md "Nozzle plates"). The caller MUST upload the plates
+// (plate_count registers at plate_constant) and the light (pixel_constant_count
+// at pixel_constant) on every draw that binds the twin, never c198/c199 (the
+// twins' DEFs).
 // Refusals (no lobe-sum site, the motion variant without depth, an asteroid
 // layout, inputs other than TEXCOORD1 -> v2 and TEXCOORD2 -> v3, r14/r15 or
 // c190-c202 used by the original) report
@@ -250,15 +251,18 @@ LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(
 // must not be bound as a twin. Pure, allocation-bounded, no D3D; failure
 // leaves output intact.
 struct EngineLightAbi {
-    static constexpr unsigned pixel_constant = 200; // c200 (L - cam, R^2), c201 (colour, 1/R^2), c202 (F, 0)
+    static constexpr unsigned pixel_constant = 200; // c200 (L - cam, R^2), c201 (colour, 1/R^2), c202 (F, plate tier: 0 / 1 / 2)
     static constexpr unsigned pixel_constant_count = 3;
     static constexpr unsigned definition_constant = 199; // shader-local (cap 1, guards)
     static constexpr unsigned block_slots = 22, add_slots = 3;
-    // The nozzle plates: c190 + i = ((P_i - cam) / v_i, 1 / v_i), i < 8 (engine_light::core::plate_constants);
-    // c198 and c199 lie inside the one upload: every twin DEFs c199 and a plate twin c198, which shadow the uploaded
-    // filler (zeros); a twin without plates reads neither c190-c198.
+    // The nozzle plates: c190 + i = ((P_i - cam) / v_i, 1 / v_i), i < 8 (engine_light::core::plate_constants),
+    // uploaded by their own call; c198 (a plate twin's DEF) and c199 (every twin's DEF) are never written by the API.
+    // The caller's staging block mirrors c190-c202 (block_registers float4s, the light at block_light): its c198-c199
+    // rows are never uploaded.
     static constexpr unsigned plate_constant = 190, plate_count = 8;
-    static constexpr unsigned upload_first = plate_constant, upload_count = pixel_constant + pixel_constant_count - plate_constant;
+    static constexpr unsigned block_registers = pixel_constant + pixel_constant_count - plate_constant,
+                              block_light = pixel_constant - plate_constant;
+    static_assert(plate_constant + plate_count == definition_constant - 1, "the plates end below the DEFs c198-c199");
 };
 struct OriginalVariantOptions {
     float fill = 0.f;
