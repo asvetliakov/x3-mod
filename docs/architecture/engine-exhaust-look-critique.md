@@ -561,6 +561,25 @@ never evict the own ship), through `EnginePlumesFrame::own`. Every end-on gate m
 law's factor (`docs/verification/engine-effects.md`, "Disc distance dimming after Run 127"). The lab has no distance
 control and draws the disc at x 1 (noted in its comment).
 
+### Excess end-on glow (after Run 128)
+
+The user asked for the excess glow around other ships' nozzles to go, not for a colour change (`screenshots/engines6.png`:
+the Split Ocelot's ten stern discs from straight behind at 3-4 km merge into one glowing cluster). The end-on halo's
+gain at the detail level 1, `Look::disc_halo`, drops from 2.82 to 1.0: the halo end-on, scaled by L / n, wrapped each
+of a capital's nozzles in a soft blob. Its e-fold is the side's sigma0 (the disc's vertices carry the same `shape.x`;
+nothing doubles it end-on), and the detail-0 gain stays 3 (the smooth law's), as do the hot centre, the ring (x 3), the
+cap, the chase fade, the distance law (the own ship stays exempt from that law only), the axial body, the side-view
+halo and the far dots. The cut applies to the own ship's end-on disc too. Measured on the fixture (bottle X3, the 02b
+discs at their natural 150 px, L / n 4, the halo's marginal energy = the frame less a scratch draw with `disc_halo` 0,
+`verification/results/engine-effects/plume_disc_clip_halo_out.txt`): the halo carried 1.1 % (red) and 5.3 % (blue) of
+the disc's energy at 2.82 and carries 0.4 % / 1.3 % at 1.0, all inside 1 n (it reaches 2.25 sigma0 = 0.79 n), so the
+halo was never three times the disc's body on this frame; the disc's energy is 0.993 / 0.959 of Run 128's, peaks R
+1.721 -> 1.709 and B 1.730 -> 1.719, no clipped pixel. The own ship's chase disc (`chase_own_look`): total 3075.3 ->
+2865.2 (1080 rows) and 5268.4 -> 4999.6 (1440), extent 49 -> 43 / 61 -> 57 px; the near-camera chase case's extent
+205 -> 195 / 274 -> 260 px. No gate moved past its floor. If the cluster on the Ocelot still reads as glow in flight,
+the halo is not the term carrying it on the fixture's frame (`docs/verification/engine-effects.md`, "Excess end-on glow
+after Run 128").
+
 ## Unknown, and what settles it
 
 - Whether the body at 0.3-0.8 linear reads too dark at 5120x1440 with bloom on: the lab at the same constants is the

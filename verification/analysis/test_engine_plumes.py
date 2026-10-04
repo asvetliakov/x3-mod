@@ -80,12 +80,12 @@ int main() {
     const View v = view();
     const float Z = 2000.f, V = 50.f / ppu(Z); // the nozzle 25 px at the default 0.5, under the near fade band
     // The single law's detail level at that 25 px nozzle, smoothstep(8, 40, 25) = 0.596: the halo's e-fold
-    // (0.5 + (0.32 - 0.5) detail) x halo 1.1 nozzle widths and the disc's halo gain 3 + (2.82 - 3) detail; DL15 at the
+    // (0.5 + (0.32 - 0.5) detail) x halo 1.1 nozzle widths and the disc's halo gain 3 + (1.0 - 3) detail (2.82 at 1 until Run 128); DL15 at the
     // 15 px nozzle of the law rows (0.123).
     float DL = 0.f, DL15 = 0.f;
     law::smooth(8.f, 40.f, 25.f, &DL);
     law::smooth(8.f, 40.f, 15.f, &DL15);
-    const float SG = (.5f + (.32f - .5f) * DL) * 1.1f, DH = 3.f + (2.82f - 3.f) * DL, SG15 = (.5f + (.32f - .5f) * DL15) * 1.1f;
+    const float SG = (.5f + (.32f - .5f) * DL) * 1.1f, DH = 3.f + (1.f - 3.f) * DL, SG15 = (.5f + (.32f - .5f) * DL15) * 1.1f;
     // The disc's kappa by the detail level (Look::disc_kappa_smooth 1.84 -> disc_kappa 2.2) from a vertex's 8-bit detail
     // level (the 25 px nozzle's exact KA in the head-on block).
     auto kap = [](const Vertex& vx) { return 1.84f + (3.f - 1.84f) * float(vx.tint >> 24) / 255.f; };
@@ -284,7 +284,7 @@ int main() {
         bool finite = true;
         for (unsigned c = 0; c < 4; ++c) for (unsigned j = 0; j < 3; ++j) finite = finite && std::isfinite(out[c].position[j]);
         expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f) && near(out[0].intensity[0], .5f * IH) && near(out[0].intensity[1], HB * .5f),
-               "head-on: the end-on disc (I x (1.84 -> 3 by the detail) L / n, halo I_halo x (3 -> 2.82 by the detail) L / n, cap 1.0 x the side peak, the ring x 1 -> 3 by the detail), the axial quad at half weight, no bias");
+               "head-on: the end-on disc (I x (1.84 -> 3 by the detail) L / n, halo I_halo x (3 -> 1.0 by the detail) L / n, cap 1.0 x the side peak, the ring x 1 -> 3 by the detail), the axial quad at half weight, no bias");
         float pk = 0.f;
         LookTables tb;
         look_tables(flat, &tb);

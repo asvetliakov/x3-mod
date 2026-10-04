@@ -708,3 +708,32 @@ without the exemption re-floored it to 0.7083 / 0.6289, the law's ratio at 153 /
 own ship's nozzle at run405's boom is 34 / 45.3 px, where the law would give 0.514 / 0.543 (`chase_own_look`
 disc_far, the same record untagged over tagged); exempt, it draws as in Run 127. The look images have no own-tagged
 record: a re-dump after the exemption is byte-identical to the tracked set (16 of 16).
+
+### Excess end-on glow after Run 128 (2026-10-04, worktree on 13492972, not a candidate)
+
+`Look::disc_halo` 2.82 -> 1.0 (the end-on halo's gain at the detail level 1; detail-0 gain 3, the halo's e-fold the
+side's sigma0, ring, hot centre, cap, chase fade, distance law and own-ship exemption unchanged; the cut applies to the
+own ship's disc as well). Lab (`mix(3, 1.0, d)`) and `test_engine_plumes` (DH) follow. Rationale:
+`docs/architecture/engine-exhaust-look-critique.md` section 6, "Excess end-on glow (after Run 128)". Bottle X3, all
+measured; records from the dirty tree.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Plumes | `run_engine_plumes.py` | PASS 312/312; 923 slots; no gate re-floored |
+| Ribbons, shimmer, effects | `run_engine_ribbons.py`; `run_engine_shimmer.py`; `run_engine_effects.py` | PASS 44/44; PASS 43/43; PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) |
+| Light | `run_engine_light.py` | PASS (12 of 12 plate modes) |
+| Host | `X3M_REQUIRE_SHADER_CORPUS=1 ... unittest discover -p 'test_engine_*.py'` | 85 OK |
+| Build | clean `cmake` build in a fresh `build/`; `check_no_x87.py build/d3d9.dll` | 0 warnings; 766 reachable, 0 violations |
+| Look images | `--dump-images --dump-linear`; `plume_look_sha_compare.py look-images <after>` -> `plume_look_sha_halo_out.txt` | 9 of 9 side / far / RCS / ribbon images byte-identical (01a, 01b, 03a, 03c, 04, 05, 07, 08, 09); 02a, 02b, 03b, 06a, 06b, 10 and the contact sheet changed; re-tracked |
+| Look metrics | `plume_look_metrics.py`, `plume_look_metrics_compare.py` -> `plume_look_metrics_halo_*_out.txt` | every side band unchanged; 02b ring red / blue 1 -> 1; crowd 10 pixels >= 250 508 -> 508 |
+| End-on disc | `plume_disc_clip.py --n 150 --nohalo <disc_halo 0 dump> run128=<pfm> halo1=<pfm>` -> `plume_disc_clip_halo_out.txt` | 02b energy red / blue 0.993 / 0.959 of Run 128; peak R 1.721 -> 1.709, peak B 1.730 -> 1.719; no clipped pixel; tint >= 1 px 5219 -> 3899 / 5985 -> 4265; 02a 0.9877, 03b 0.9771, 06a 0.9958, 06b 0.9952, crowd 10 0.9937 of summed luma; side views 1.0000 |
+| Halo split (new `--nohalo`) | as above; body = the `disc_halo` 0 draw (body, ring, cap), halo = the state less it | halo / disc energy red 0.011 -> 0.004, blue 0.053 -> 0.013; the halo all inside 1 n (0-0.5 n: 74.5 -> 25.6 / 328.8 -> 98.2; 0.5-1 n: 8.8 -> 1.6 / 310.4 -> 48.7; nothing past 1 n) |
+
+The halo carried well under the body's energy at 2.82 on the 02b frame (L / n 4), so 1.0 stands (no step to 0.7).
+End-on gates moved, all inside their floors (Run 128 -> now, 1920 / 5120): `end_on_energy` 0 deg 0.2819 -> 0.2636, 30
+deg 0.4374 / 0.4328 -> 0.4212 / 0.4167, 60 deg 0.7169 / 0.7153 -> 0.7121 / 0.7106; `end_on_energy_detail1` 0 deg n40
+0.3527 -> 0.3376, n48 0.3687 -> 0.3528; `end_on_over_slab` n40 / n48 0.5799 / 0.58 -> 0.555 / 0.5551 (floor 0.55:
+margin 0.005); `end_on_peak_within_1.5_body` 0.4948 -> 0.4944. The own ship's chase disc (`chase_own_look`, reported,
+not pinned): total 3075.3 -> 2865.2 (1080 rows) and 5268.4 -> 4999.6 (1440), total_ratio 0.5681 / 0.5474 -> 0.5293 /
+0.5195, peak 4.742 / 4.738 -> 4.738 / 4.734, extent 49 / 61 -> 43 / 57 px; the chase case (`chase`) extent 205 / 274 ->
+195 / 260 px, fade_ratio and disc_ratio_cpu 0.4 unchanged; `chase_own_disc_exempt` 0.5627 / 0.636 unchanged.

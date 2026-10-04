@@ -198,8 +198,8 @@ struct Look {
     // ratio of the side view's body energy to the integrated profile's, per nozzle width of length: 4.13 with the outer
     // sheath (the disc's samples keep the peaked profile without it), 3.33 from the revised law's peaked profile, 1.8
     // from the slab law before it; verification/results/engine-effects/
-    // plume_end_on_model.py); its halo I_halo x disc_halo x L / n x the view factor (2.82: the slab law's ratio of the
-    // disc's halo energy to the side view's, 6.3, kept for the tight halo); the total soft-capped at disc_cap x the side
+    // plume_end_on_model.py); its halo I_halo x disc_halo x L / n x the view factor (1.0 since Run 128; 2.82 before: the
+    // slab law's ratio of the disc's halo energy to the side view's, 6.3, kept for the tight halo); the total soft-capped at disc_cap x the side
     // view's peak; the ring seen end-on at disc_ring x its side radiance (3: the ring shows between the integrated body
     // and the halo; at the doubled width x 1.8 left no bump on the cyan disc, FP16 gate 1.00, and x 2.7 none on the
     // resolved 02b image). Since the single law (docs/architecture/engine-exhaust-look-critique.md section 6, "One law")
@@ -216,7 +216,12 @@ struct Look {
     // centre (under the soft cap and the hue bound), carries the end-on energy: the end-on total 0.74 of the detail-0
     // law's at the same size (gate 0.7..0.9; 2.0 gave 0.75 and broke the 20 px disc's rim variation).
     float disc_sheath = 1.6f;
-    float disc_halo = 2.82f;
+    // The end-on halo's gain at the detail level 1: 1.0 since Run 128 (2.82 until then, the slab law's halo ratio; the
+    // halo scaled by L / n end-on wrapped each of a capital's nozzles in a soft blob, and the Split Ocelot's ten stern
+    // discs merged into one glowing cluster on screenshots/engines6.png; the user asked for the excess glow to go, not
+    // for a colour change). The detail-0 gain stays 3 (the smooth law's); the halo's e-fold is the side's sigma0.
+    // docs/architecture/engine-exhaust-look-critique.md section 6, "Excess end-on glow (after Run 128)".
+    float disc_halo = 1.f;
     // After Run 125 (the Split Ocelot's stern nozzles at 2.4 km as white rings with pink centres): the soft cap 1.0 x
     // the side view's peak (1.5 until then: a red disc's centre reached ~2.2 at s 1, past the flight's display white
     // ~2.1 at EV +1, so every end-on red disc clipped white at its centre) and the end-on ring x 3 its side radiance
