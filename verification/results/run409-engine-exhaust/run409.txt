@@ -1,0 +1,185 @@
+## engine_stage ran=1 preset=default
+  records: n=34912 min=0 med=20 p95=43 max=70
+  nozzles: n=34912 min=0 med=14 p95=34 max=46
+  far: n=34912 min=0 med=8 p95=22 max=44
+  far_jets: n=34912 min=0 med=8 p95=29 max=51
+  far_records: n=34912 min=0 med=8 p95=29 max=51
+  far_dropped: n=34912 min=0 med=0 p95=24 max=160
+  far_overflow: n=34912 min=0 med=0 p95=0 max=0
+  far_disarmed: n=34912 min=0 med=0 p95=0 max=0
+  floored: n=34912 min=0 med=12 p95=32 max=41
+  floor_unknown: n=34912 min=0 med=0 p95=0 max=0
+  capped: n=34912 min=0 med=0 p95=2 max=5
+  faded: n=34912 min=0 med=0 p95=4 max=7
+  culled_small: n=34912 min=0 med=1 p95=20 max=50
+  culled_behind: n=34912 min=0 med=0 p95=0 max=0
+  culled_rows: n=34912 min=0 med=0 p95=8 max=20
+  culled_idle: n=34912 min=0 med=0 p95=0 max=0
+  skipped_other_view: n=34912 min=0 med=0 p95=0 max=0
+  stage_us: n=34912 min=11.9 med=132.8 p95=281.3 max=18427.4
+  discs: n=34912 min=0 med=12 p95=26 max=43
+  attacks: n=34912 min=0 med=0 p95=0 max=0
+  attack_overflow: n=34912 min=0 med=0 p95=0 max=0
+  view_own_total: n=34912 min=1 med=19422 p95=35061 max=36806
+  view_majority_total: n=34912 min=0 med=0 p95=0 max=0
+  view_far_total: n=34912 min=0 med=0 p95=69 max=69
+  vertices: n=34912 min=0 med=112 p95=272 max=368
+  view_rule: {'own': 34841, 'none': 2, 'far': 69}
+## engine_stage ran=1 preset=strong
+  records: n=206 min=16 med=18 p95=25 max=26
+  nozzles: n=206 min=14 med=16 p95=25 max=26
+  far: n=206 min=2 med=4 p95=11 max=11
+  far_jets: n=206 min=4 med=6 p95=11 max=11
+  far_records: n=206 min=4 med=6 p95=11 max=11
+  far_dropped: n=206 min=0 med=0 p95=0 max=0
+  far_overflow: n=206 min=0 med=0 p95=0 max=0
+  far_disarmed: n=206 min=0 med=0 p95=0 max=0
+  floored: n=206 min=12 med=14 p95=23 max=24
+  floor_unknown: n=206 min=0 med=0 p95=0 max=0
+  capped: n=206 min=0 med=2 p95=2 max=2
+  faded: n=206 min=0 med=2 p95=2 max=2
+  culled_small: n=206 min=0 med=0 p95=4 max=4
+  culled_behind: n=206 min=0 med=0 p95=0 max=0
+  culled_rows: n=206 min=0 med=0 p95=0 max=0
+  culled_idle: n=206 min=0 med=0 p95=0 max=0
+  skipped_other_view: n=206 min=0 med=0 p95=0 max=0
+  stage_us: n=206 min=89.6 med=110.4 p95=142.6 max=212.1
+  discs: n=206 min=14 med=14 p95=23 max=23
+  attacks: n=206 min=0 med=0 p95=0 max=0
+  attack_overflow: n=206 min=0 med=0 p95=0 max=0
+  view_own_total: n=206 min=10390 med=13421 p95=15392 max=15402
+  view_majority_total: n=206 min=0 med=0 p95=0 max=0
+  view_far_total: n=206 min=0 med=0 p95=0 max=0
+  vertices: n=206 min=112 med=128 p95=200 max=208
+  view_rule: {'own': 206}
+## engine_stage ran=1 preset=restrained
+  records: n=1759 min=12 med=19 p95=27 max=31
+  nozzles: n=1759 min=12 med=19 p95=23 max=26
+  far: n=1759 min=0 med=8 p95=17 max=17
+  far_jets: n=1759 min=0 med=6 p95=14 max=14
+  far_records: n=1759 min=0 med=6 p95=14 max=14
+  far_dropped: n=1759 min=0 med=0 p95=0 max=0
+  far_overflow: n=1759 min=0 med=0 p95=0 max=0
+  far_disarmed: n=1759 min=0 med=0 p95=0 max=0
+  floored: n=1759 min=10 med=17 p95=21 max=24
+  floor_unknown: n=1759 min=0 med=0 p95=0 max=0
+  capped: n=1759 min=0 med=0 p95=2 max=2
+  faded: n=1759 min=0 med=0 p95=2 max=4
+  culled_small: n=1759 min=0 med=0 p95=4 max=4
+  culled_behind: n=1759 min=0 med=0 p95=0 max=0
+  culled_rows: n=1759 min=0 med=0 p95=8 max=12
+  culled_idle: n=1759 min=0 med=0 p95=0 max=0
+  skipped_other_view: n=1759 min=0 med=0 p95=0 max=0
+  stage_us: n=1759 min=88.9 med=116.7 p95=159.1 max=472.8
+  discs: n=1759 min=7 med=15 p95=23 max=24
+  attacks: n=1759 min=0 med=0 p95=0 max=0
+  attack_overflow: n=1759 min=0 med=0 p95=0 max=0
+  view_own_total: n=1759 min=10442 med=14463 p95=15255 max=15422
+  view_majority_total: n=1759 min=0 med=0 p95=0 max=0
+  view_far_total: n=1759 min=0 med=0 p95=0 max=0
+  vertices: n=1759 min=96 med=152 p95=184 max=208
+  view_rule: {'own': 1759}
+## engine_stage armed/reason {('0', 'pending'): 821, ('1', 'armed'): 37260}
+## seta {'seta_refused_max': 0, 'seta_invalid_max': 0, 'read_ok': 36877, 'seta1': 663, 'seta1_travel': 663}
+## engine_light_frame
+  ships: n=36817 min=1 med=6 p95=12 max=20
+  ships_drawn: n=36817 min=0 med=5 p95=12 max=19
+  nodes: n=36817 min=0 med=12 p95=30 max=37
+  candidates: n=36817 min=0 med=24 p95=56 max=76
+  draws_lit: n=36817 min=0 med=24 p95=56 max=76
+  records: n=36817 min=2 med=20 p95=43 max=70
+  invalid: n=36817 min=0 med=0 p95=0 max=0
+  orphan: n=36817 min=0 med=0 p95=0 max=0
+  ships_dropped: n=36817 min=0 med=0 p95=0 max=0
+  nodes_dropped: n=36817 min=0 med=0 p95=0 max=0
+  log_dropped: n=36817 min=0 med=0 p95=0 max=0
+  other_view: n=36817 min=0 med=0 p95=0 max=0
+## engine_shimmer on {'1': 38026, '0': 55} skipped {'no_resolve': 1038, '-': 36692, 'off': 55, 'no_plumes': 226, 'no_rects': 70}
+  rects: n=38081 min=0 med=2 p95=4 max=4
+  drew: n=38081 min=0 med=1 p95=1 max=1
+  candidates: n=38081 min=0 med=19 p95=43 max=70
+  refused: n=38081 min=0 med=0 p95=8 max=20
+  capped: n=38081 min=0 med=0 p95=8 max=11
+  failed: n=38081 min=0 med=0 p95=0 max=0
+  cpu_us: n=38081 min=0 med=160.4 p95=265.9 max=49476.3
+  stale_reverts: n=38081 min=0 med=0 p95=0 max=0
+## frame_end dt_ms
+  default: n=36118 min=3 med=18 p95=22 max=47352
+  ALL: n=38083 min=3 med=18 p95=22 max=47352
+  strong: n=206 min=16 med=18 p95=21 max=25
+  restrained: n=1759 min=15 med=18 p95=22 max=64
+## frame_phases dt_p50_us n=126 min=8088 med=18258 p95=20053 max=21853 | dt_p95_us n=126 min=12127 med=21080 p95=25719 max=42487
+## suspicious rows/fields
+  bloom_admission: 126  ex: bloom_admission calls=300 caller=0 owner=0 device=0 nested=0 thread=0 reset=0 glow_off=0 scene_handoff=299 pass_unavailable=0 boundary=0 post_qualification=0
+  bloom_refusal: 1  ex: bloom_refusal reason=scene_handoff count=1 device=1 ordinary_signal=1
+  bolt_footprint: 126  ex: bolt_footprint device=1 frame=299 frames=300 draws=0 written=0 untouched=0 gated=0 instances=0 expanded=0 lengthened=0 widened=0 world_axis=0 disc=0 refused_period=0 refused_w=0 refused_buffer=0 refused_rows=0 refused_sh
+  bolt_footprint_refused: 1  ex: bolt_footprint_refused device=1 frame=5551 index=6 reason=buffer detail=1 primitives=96 stream0_bytes=1179648
+  camera_state: 38084  ex: camera_state device=1 frame=0 status=active reads=1 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_vali
+  chase_aim_window: 167  ex: chase_aim_window frame=0 entries=0 rays=0 finals=0 samples=0 dropped=0 orphans=0 read_failures=0 sampled_cone_clamped=0 thread_overflow=0 omitted_followups=0 gates=0,0,0,0,0,0,0,0,0,0 timing_scope=player_fire_and_cursor_
+  chase_camera: 167  ex: chase_camera frame=0 status=active frames=0 applied=0 refused=0 refused_inactive=0 admitted_unbound=0 cockpits_seen=0 snaps=0 coalesced=0 clamps=0 write_refused=0 verdict=0 snap_reason=0 mode=0 connect=0 flags_1a0=0x0 tr
+  chase_central_hud_window: 167  ex: chase_central_hud_window frame=0 active=1 admitted=0 no_pose=0 lifetime=0 read=0 scope=0 identity=0 cleanup_pending=0 texture_unavailable=0 calls=0 total_us=0.000 max_us=0.000 hud_anchor=forward anchor_applied=0 anchor_r
+  chase_fire_window: 167  ex: chase_fire_window frame=0 native_inactive_override=0 refused_stale=0 refused_identity=0 refused_view=0 refused_cursor=0 refused_read=0 timed_calls=0 total_us=0.000 max_us=0.000 timing_scope=eligible_handler_after_first_q
+  chase_transition_detail: 73  ex: chase_transition_detail event=1 geometry_valid=0 angles_a8=0,0,0 offset_160=0,0,0 view_lock_120=0 context_returns_extra=00000000:00000000,00000000:00000000 identity_valid=261 identity_refused=648 vm=0x022caf90 native_id=
+  chase_transition_window: 167  ex: chase_transition_window frame=0 first=0 last=0 dropped=0 lifetime_overflow=0 thread_overflow=0 origin_refusals_total=0 suppressed_total=0
+  chase_view_restore_arm_refused: 1  ex: chase_view_restore_arm_refused reason=4 cockpit=0x6a372590 generation=1 mode=258 readable=7 connect=0 ship=0x2f8f32c8 view=0x2f8f32c8 handle=2 identity_valid=263 identity_refused=2696 native_script=0xffff1d90 player=0xff
+  chase_view_restore_state: 167  ex: chase_view_restore_state frame=0 armed=0 pending=0 arms=0 arm_refusals=0 arm_refusal_reasons=0,0,0,0,0,0,0 transfers=0 consumed=0 writes_failed=0 seam_calls=0 eh_bumps=0 epoch=1 last_refusal=0 cancels=0,0,0,0,0,0,0,0,0,0
+  collide_query_phases: 124  ex: collide_query_phases qpc=27998521375821 device=1 frame=1128 first_frame=829 frames=300 valid_frames=300 invalid_frames=0 verify=0 engine_query_p50_us=14 engine_query_p95_us=283 descent_p50_us=9 descent_p95_us=237 non_des
+  crypt_cache: 2  ex: crypt_cache scope=window acquires=6 hits=1 misses=1 failed_passthrough=0 releases_suppressed=2 imports=2 import_hits=1 deletes_emulated=3 deletes_passthrough=1 busy_passthrough=0 evictions=0 releases=2 import_passthrough
+  cull_small_parts_value: 3  ex: cull_small_parts_value px=4 m00=0.499997914 width=5120 threshold=3 focus=0x3470 source=registry fallback=no_scene dock_px=12 dock_threshold=8
+  dat_handle_pool_metric: 48  ex: dat_handle_pool_metric cumulative=1 opens=15 reused=10 real_opens=5 closes=44 kept=15 real_closes=29 errors=0 full=0 held=5
+  emission_source_gain_frame:refused_other: 3935  ex: 
+  emission_source_gain_frame:refused_state: 3935  ex: 
+  emission_source_gain_refused_state: 16  ex: emission_source_gain_refused_state device=1 frame=829 vs=d5e1c75351ed3f04 ps=8360f422de08b5bd hdr=0 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=1 src=-1 dst=-1 op=-1 sepalpha=-1
+  engine_effects_bodies: 1  ex: engine_effects_bodies event=loaded reason=ok bodies=253 named=245 smalljet=1 refused=0 bytes=272401 fault=0 frame=1 path="C:\X3\x3m\engine_bodies.json"
+  engine_effects_plumes: 1  ex: engine_effects_plumes preset=default setting=- status=ok stage=requested cycle=ctrl+alt+f6 nozzle=0.500 nozzle_setting=- nozzle_status=ok floor=0.500 floor_setting=0.5 floor_status=ok
+  engine_light_variant: 26  ex: engine_light_variant device=1 original=496049cec2066ed3 created=7f refused=00 mismatched=00 failed=00 words_max=2469 depth=1
+  engine_plumes_device: 1  ex: engine_plumes_device device=1 frame=824 attached=1 reason=ok result=00000000 fp16_blending=00000000 vs_slots=12 ps_slots=921 max_ps_slots=512 vb_bytes=622592 retry=reset
+  engine_plumes_preset: 18  ex: engine_plumes_preset device=1 frame=11212 preset=strong previous=default source=hotkey
+  engine_plumes_state: 1  ex: engine_plumes_state device=1 frame=824 armed=1 reason=armed glow=suppressed drawn=plumes preset=default
+  engine_ribbons_device: 1  ex: engine_ribbons_device device=1 frame=824 attached=1 reason=ok result=00000000 fp16_blending=00000000 vs_slots=8 ps_slots=34 max_vs_slots=512 max_ps_slots=512 vb_bytes=417792 pool=256 samples=16 retry=reset
+  engine_seta: 11  ex: engine_seta device=1 frame=824 event=read state=off read=ok valid=1 warp=1.000 mult=1.0000 rate=1.000 travel=0.000 reads=1 refused=0 invalid=0
+  engine_shimmer_device: 1  ex: engine_shimmer_device device=1 frame=824 attached=1 reason=ok result=00000000 fp16_filter=00000000 ps_slots=1623 max_ps_slots=512 retry=reset
+  engine_shimmer_toggle: 2  ex: engine_shimmer_toggle device=1 frame=5616 on=0 failed=0 source=hotkey
+  gz_buffer_file: 4  ex: gz_buffer_file slot=0 capacity=262144 calls=9 small_calls=7 served_bytes=116 real_reads=1 real_bytes=262144 direct_reads=0 getcs=0 tells=0 seeks=0 seeks_served=0 seeks_real=0 error=0 end=0 close=0
+  hdr_device: 1  ex: hdr_device device=1 enabled=1 reason=ok fp16_target=00000000 fp16_blending=00000000 fp16_filter=00000000 fp16_sampling=00000000 stretch_conversion=00000000 main_format=21 mrt_blending=1 self_test_targets=3 self_test=stag
+  hull_emission_frame:refused_blend: 37043  ex: 
+  hull_emission_frame:refused_other: 2224  ex: 
+  hull_emission_frame:refused_state: 2224  ex: 
+  hull_emission_refused: 16  ex: hull_emission_refused device=1 frame=34180 vs=4944d81dfe531b37 ps=64bac8bb307eb896 reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+  hull_emission_refused_state: 16  ex: hull_emission_refused_state device=1 frame=4 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 hdr=0 scene=0 open=1 recording=0 primitives=60 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+  loading_metric: 2427  ex: loading_metric op=CreateFileA qpc=27997832446601 count=59 failures=2 pending=0 ambiguous=0 bytes=0 inclusive_ticks=172992 exclusive_ticks=172992 max_ticks=69421 wrapper_tail_ticks=152 total_us=17299.200 exclusive_us=1729
+  loading_probe_site: 1  ex: loading_probe_site index=1 name=resource_open va=0x004e8780 length=5 timed=1 kind=resource_open status=active x0=loose x1=catalogue x2=failed x3=- atomic_write=1
+  log_writer: 78  ex: log_writer reason=period frames=4 rows=570 bytes=101693 dropped_total=0 format_us=1321.4 format_max_us=41.30 format_us_per_frame=330.35 writes=27 write_bytes=112155 write_us=2646.3 write_max_us=1908.7 write_failures=0 wr
+  media_cue_window: 126  ex: media_cue_window qpc=27997928947776 frame=299 frames=300 attempts=4 failures=1 successes=3 refused=0 unobserved=0 attempts_frame_p50=0 attempts_frame_max=3 ids=144:1,244:1,1:1,8404:1 id_overflow=0 cache_used=0 evictions=
+  mesh_adjacency: 1  ex: mesh_adjacency mode=fast scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_f
+  mesh_adjacency_metric: 518  ex: mesh_adjacency_metric cumulative=1 qpc=27997895250790 mode=fast faulted=0 calls=73 computed=73 fallbacks=0 faults=0 faces=8775 vertices=9278 fast_ticks=17798 fast_max_ticks=6725 fast_us=1779.800 fast_max_us=672.500 nativ
+  motion_output_device: 1  ex: motion_output_device device=1 enabled=1 reason=ok detail=stage=compare result=00000000 draw=00000000 restore=00000000 scene=00000000 color_errors=0 motion_errors=0 depth_errors=0 targets=3 mrt=4 vs_constants=256 misc=002
+  object_ancestor: 12349  ex: object_ancestor device=1 frame=2421 reset=0 epoch=1 id=1 link=0 node=2f0e84b0 handle=49098
+  object_ancestry: 5127  ex: object_ancestry device=1 frame=2421 reset=0 epoch=1 index=1 id=1 status=end count=1
+  object_evidence: 7078  ex: object_evidence device=1 frame=2421 reset=0 epoch=1 index=1 node_valid=1 parent=00000000 alpha13c=00000000 ancestry_id=1 ancestry_capacity=0 camera_valid=1 fade_id=1 fade_capacity=0
+  object_fade: 257  ex: object_fade device=1 frame=2421 reset=0 epoch=1 index=1 id=1 camera=2f0baf00 handle=49714 valid=7 context=2ee89e50 flags270=00400135 position=000440b8,fffdf4bf,00006650 near36c=00000000 far370=00000000 scale_bits=3727bb3
+  object_target: 40  ex: object_target device=1 frame=2421 reset=0 epoch=1 index=1 status=ready registry=6a372130 active_handle=2 cockpit=6a372590 camera=2f0b9fd0 target=6a346330 target_id=742 root=293ef3c0 root_handle=373927
+  ownership_mode: 1  ex: ownership_mode requested=1 depth_copy_requested=0 depth_copy_enabled=0 scope=normal9 fallback=native
+  proxy_options: 1  ex: proxy_options X3M_BLOOM_SOURCE_CLAMP=1.0@default X3M_BOLT_FAR_COMPOSITE=1@default X3M_BOLT_FAR_SHOW=1@default X3M_BOLT_FOOTPRINT=3,12@default X3M_BOLT_SINGLE_COPY=1@default X3M_BOTTLE=X3@env X3M_CAMERA=chase@default X3M_
+  resource_reader: 1  ex: resource_reader mode=fast installed=1 status=active site=0x004e8880 chained_after_probe=1 scope=whole_extent_fread,word_xor,single_inflate,game_malloc,no_memset fallback=original arena_used=4688
+  resource_reader_metric: 55  ex: resource_reader_metric cumulative=1 mode=fast calls=1 handled=0 fallbacks=1 bytes_in=0 bytes_out=0 fast_us=0.000 fast_max_us=0.000 original_us=0.000 verify_files=0 verify_equal=0 verify_mismatched=0 verify_original_null=
+  screen_emission_additive_refused_window: 126  ex: screen_emission_additive_refused_window device=1 frame=299 frames=300 pair_draws=0 admitted=0 refused=0 apply_failures=0 not_reached=0 state=0 draw_shape=0 scene=0 no_fp16_target=0 no_variant=0 srgb_sampler=0 projected=0
+  session_end: 1  ex: session_end frames=38084 elapsed_ms=781016 devices=1 resets=0 exception=0 dropped=0 filter=ours
+  shadow_alpha_casters: 37043  ex: shadow_alpha_casters device=1 frame=824 ready=0 seen=0 tested=0 opaque=0 refused_state=0 refused_function=0 refused_uv=0 refused_texture=0 refused_pool=0
+  shadow_lease_retirement: 38084  ex: shadow_lease_retirement device=1 frame=0 calls=1 records=0 refs=0 us=71.8 clock_errors=0
+  shadow_replay_candidates: 37043  ex: shadow_replay_candidates device=1 frame=824 routed=160 zwrite=160 slice0=144 bounds=0 origin=8 fallback=144 managed=131 dynamic=0 default_pool=0 excluded=13 unknown=0 shadow_mismatch=0 leased=131 capped=0 reads=14 serial
+  shadow_replay_depth_refused: 8  ex: shadow_replay_depth_refused device=1 frame=4414 reason=state detail=sun_changing result=00000000 stage=0
+  shadow_replay_sun: 37043  ex: shadow_replay_sun device=1 frame=824 verdict=sampled register=0 samples=160 agree=55 disagree=104 invalid=0 no_register=0 unlatched=1 bounds_state=0 bounds_unavailable=0 extent_refused=0 sun=-0.508224,-0.783951,0.356522
+  telemetry_first_present: 1  ex: telemetry_first_present device=1 frame=0 qpc=27997837314047 since_start_us=3604507.900 capture=0 reset_count=0
+  telemetry_metric: 14141  ex: telemetry_metric device=0 name=lock_wait count=1 failures=0 total_us=2.500 min_us=2.500 max_us=2.500 bytes=0 buckets=1,0,0,0,0,0
+  telemetry_span: 1  ex: telemetry_span name=backend_load qpc_begin=27997801380993 qpc_end=27997801447565 thread=220 success=1 error=203
+  text_density: 1  ex: text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=1 failed_site=- writes=atomic,atomic,atomic,atomic,atomic,atomic site=0048cdc0
+  ui_scale_install: 1  ex: ui_scale_install width=5120 height=1440 scale=1.5000 status=patched reason=ok failed_site=- mode=auto virtual=3413x960 inverse16=43691 fixed256=384 writes=plain,atomic,plain,atomic,atomic,plain,plain,atomic,atomic,plain
+  voice_dmo_fallback: 7  ex: voice_dmo_fallback requested=1 installed=1 status=ok site=004cfd46 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=01d60000 arena_size=24576 arena_used=1996
+  volumetric_fog_cards: 206  ex: volumetric_fog_cards device=1 frame=824 observed=0 suppressed=0 refused=0 ready=0 warmup=0 applied=0 fault=0 reason=none mode=0 observed_total=0 suppressed_total=0 refused_total=0 refusal=none
+  volumetric_fog_device: 1  ex: volumetric_fog_device device=1 frame=28356 attached=1 reason=ok result=00000000 slots=506 retry=reset
+  volumetric_fog_families: 1  ex: volumetric_fog_families device=1 frame=0 event=loaded families=70 packets=35 rows_disabled=0 bytes=79847804 reason=ok fallback=compiled_first path="C:\X3\x3m\fog-families.bin"
+  volumetric_fog_march_scale: 1  ex: volumetric_fog_march_scale scale=4 requested=4 refused=none
+  window_mode: 1  ex: window_mode phase=create_before hwnd=000a0064 style=94000000 exstyle=00000000 before=0,31,5120,1471 after=0,0,5120,1440 monitor=0,0,5120,1440 work=0,31,5120,1440 backbuffer=5120x1440 windowed=1 single_window=1 top_level=
+  window_mode_config: 1  ex: window_mode_config requested=1 default=1 phases=create_before,reset_before flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER
+  window_trace_hooks: 1  ex: window_trace_hooks device=1 window=000a0064 window_thread=220 render_thread=220 installed=1 reason=ok error=0 trace=1 reassert=0 call=1 ret=1 get=1 pinned=1 launch_arm=0
