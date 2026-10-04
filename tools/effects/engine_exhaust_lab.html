@@ -76,7 +76,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outli
     <label class="row">Cell fade along plume<span class="v" id="v-cfade">0.6</span><input type="range" id="cfade" min="0" max="1" step="0.01" value="0.6"></label>
   </div>
   <div class="group"><h2>Core and halo</h2>
-    <label class="row">Core heat (white centre)<span class="v" id="v-heat">0.7</span><input type="range" id="heat" min="0" max="1" step="0.01" value="0.7"></label>
+    <label class="row">Core heat (white centre)<span class="v" id="v-heat">0.1</span><input type="range" id="heat" min="0" max="1" step="0.01" value="0.1"></label>
     <label class="row">Core radius (x nozzle)<span class="v" id="v-core">0.45</span><input type="range" id="core" min="0.1" max="0.8" step="0.01" value="0.45"></label>
     <label class="row">Halo width (x nozzle)<span class="v" id="v-halo">1.1</span><input type="range" id="halo" min="0.3" max="2.5" step="0.05" value="1.1"></label>
     <label class="row">Halo brightness<span class="v" id="v-hb">0.20</span><input type="range" id="hb" min="0" max="1" step="0.01" value="0.20"></label>
@@ -115,7 +115,7 @@ vec4 softMax(float a,vec3 ca,float b,vec3 cb){float a4=a*a*a*a,b4=b*b*b*b,m4=a4+
 // mix(3.74, 1, d), the cells, erosion and turbulence x d, the hot centre, the outer sheath as the annulus (x 1.6, its
 // deep tint), kappa mix(1.84, 3.0, d), halo mix(3, 2.82, d), the ring x 1 + (8 min(1, L / n / 2) - 1) d at the side's width.
 vec3 discEnd(vec2 q,float s,float side,float rev){
- float rho=length(q),Ln=min(max(0.25+1.75*s,0.5)*2.0,8.0),I=mix(1.2,4.0,s),ih=hb*I/4.0,d=rev>0.5?detail:0.0,sig=halo*(rev>0.5?mix(0.5,0.32,d):0.5);
+ float rho=length(q),Ln=min(max(0.25+1.75*s,0.5)*2.0,8.0),I=mix(1.2,4.0,s)*(rev>0.5?1.04:1.0),ih=hb*mix(0.3,1.0,s),d=rev>0.5?detail:0.0,sig=halo*(rev>0.5?mix(0.5,0.32,d):0.5);
  vec3 white=vec3(1.0,0.97,0.9);
  float erosion,turbI;
  if(rev>0.5){vec2 dir=q/max(rho,1e-4);float S2=fbm(vec3(dir.x*2.5+side+t*0.7,dir.y*2.5,rho*4.5-phase*1.6)*2.2+vec3(5.0,2.0,1.0))-0.4375;
@@ -140,7 +140,7 @@ vec3 discEnd(vec2 q,float s,float side,float rev){
  else{float c=B-H;body=level*B*mix(mix(headP,tint,c>1e-20?T/c:1.0),white,B>0.0?H/B:0.0);}
  float dn=rho/sig,hl=ih*(rev>0.5?mix(3.0,2.82,d):3.0)*Ln*exp(-dn)*clamp(2.0*(2.25-dn),0.0,1.0);
  float aa=fwidth(rho),s2=1.0/240.0+0.25*aa*aa,rr=rho-0.46*bulge;
- float ringI=I*ring/4.0*(rev>0.5?1.0+(max(1.0,8.0*min(1.0,0.5*Ln))-1.0)*d:1.0)*sqrt((1.0/240.0)/s2)*exp(-rr*rr/(2.0*s2));
+ float ringI=mix(1.2,4.0,s)*ring/4.0*(rev>0.5?1.0+(max(1.0,8.0*min(1.0,0.5*Ln))-1.0)*d:1.0)*sqrt((1.0/240.0)/s2)*exp(-rr*rr/(2.0*s2));
  vec4 mouth=softMax(ringI,mix(tint,vec3(1.0,0.95,0.85),0.6),hl,tint);
  float total=level*(B+O)+mouth.w,cap=1.5*I*(rev>0.5?apkR:apkP);
  return total>1e-20?(body+mouth.rgb)*(cap*(1.0-exp(-total/cap))/total):vec3(0.0);
@@ -185,7 +185,7 @@ vec3 plume(vec2 q,float s,float modern,float side,float rev){
    float coreR=edgeR*cellsR*(0.08+0.92*exp(-pow(radial/(0.32*kc),2.0)))*(1.0+0.6*hot*coolRev(u));
    float m=smoothstep(0.1,1.2,radial),outerR=d*5.0*m*(1.0-m)*(1.0-smoothstep(0.65,1.2,radial+ero))*cellsR*(0.6+0.4*smoothstep(0.1,0.5,u));
    vec3 t2=tint*tint,deep=t2*(max(max(tint.r,tint.g),tint.b)/max(max(max(t2.r,t2.g),t2.b),1e-6));
-   float I=mix(1.2,4.0,s)*tl*turbR;
+   float I=mix(1.248,4.16,s)*tl*turbR; // after flight F: I(s) x 1.04 (engine_plumes_core.h core_low / core_high)
    float hlR=hb*exp(-r/(halo*mix(0.5,0.32,d)))*exp(-u*mix(2.2,4.0,d))*mix(1.2,4.0,s)/4.0;
    return I*(colR*coreR+0.5*dark*deep*outerR)+softMax(ringI,mix(tint,vec3(1.0,0.95,0.85),0.6),hlR,tint).rgb;
  }
@@ -273,11 +273,12 @@ const colors=[['Argon','#5858f7'],['Boron','#1b88a6'],['Split','#d63d3d'],['Tela
 // largest channel; verification/results/engine-effects/plume_two_tone_colours.py) scaled to the tint's luminance when it
 // is brighter, as the proxy's head_colour does with the body's mean.
 const peaks={Argon:[.84,.84,1],Boron:[.27,.90,1],Split:[1,.81,.81],Teladi:[.64,1,.78],Paranid:[1,1,.13],Xenon:[1,.77,.99],Terran:[1,.89,.84],'Kha’ak':[.93,.80,1]};
-// The revised law clamps the scale at 0.75 (engine_plumes_core.h head_min): the red head stays red, not grey-pink.
+// The revised law clamps the scale at 0.42 (engine_plumes_core.h head_min; 0.75 until flight F, when the red head's
+// mouth clipped white).
 function headOf(t,p,kmin){const l=c=>.2126*c[0]+.7152*c[1]+.0722*c[2];const lp=l(p),lt=l(t);let k=lp>lt&&lp>0?lt/lp:1;k=Math.max(k,kmin||0);return p.map(v=>v*k);}
-let tint=[0.345,0.345,0.969],tintName='Argon',mode=0,law=1,endon=0,head=headOf(tint,peaks.Argon,.75),headP=headOf(tint,peaks.Argon);
+let tint=[0.345,0.345,0.969],tintName='Argon',mode=0,law=1,endon=0,head=headOf(tint,peaks.Argon,.42),headP=headOf(tint,peaks.Argon);
 const cb=document.getElementById('colors');
-colors.forEach(([n,h],i)=>{const bt=document.createElement('button');bt.innerHTML=`<span class="sw" style="background:${h}"></span>${n}`;bt.setAttribute('aria-pressed',i===0?'true':'false');bt.addEventListener('click',()=>{tint=hex(h);head=headOf(tint,peaks[n],.75);headP=headOf(tint,peaks[n]);tintName=n;[...cb.children].forEach(x=>x.setAttribute('aria-pressed','false'));bt.setAttribute('aria-pressed','true');});cb.appendChild(bt);});
+colors.forEach(([n,h],i)=>{const bt=document.createElement('button');bt.innerHTML=`<span class="sw" style="background:${h}"></span>${n}`;bt.setAttribute('aria-pressed',i===0?'true':'false');bt.addEventListener('click',()=>{tint=hex(h);head=headOf(tint,peaks[n],.42);headP=headOf(tint,peaks[n]);tintName=n;[...cb.children].forEach(x=>x.setAttribute('aria-pressed','false'));bt.setAttribute('aria-pressed','true');});cb.appendChild(bt);});
 function hex(h){const n=parseInt(h.slice(1),16);const s=v=>Math.pow(v/255,2.2);return [s(n>>16&255),s(n>>8&255),s(n&255)];}
 function val(i){return parseFloat(el[i].value);}
 function fmt(i){const v=val(i);document.getElementById('v-'+i).textContent=i==='sweep'?(v?'on':'off'):i==='nval'?v.toFixed(0):(i==='flow'||i==='exp'?v.toFixed(1):v.toFixed(2));}

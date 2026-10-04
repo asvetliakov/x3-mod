@@ -156,7 +156,7 @@ struct Look {
     float shock = .5f;    // shock cells: the gaps carved to 1 - min(1, 1.7 shock); ramped in over the first half period
     float period = .16f;  // their period, x L
     float cfade = .6f;    // their fade along the plume
-    float heat = .7f;     // the white-hot core
+    float heat = .1f;     // the white-hot core (flight F: 0.7 -> 0.1, the mouth read white; see core_low)
     float core = .45f;    // the hot core's radius: exp(-(radial / (0.45 core))^2), sigma 0.2 of the local width
     float halo = 1.1f;    // halo width: e-fold halo_sigma (0.32) x halo nozzle widths (x the preset)
     float hb = .20f;      // halo brightness (after flight E: 0.35 -> 0.20, the plume's and the disc's halo)
@@ -175,11 +175,20 @@ struct Look {
     // The mock-up's tail narrowing, w x (1 - 0.6 taper smoothstep(0.6, 1, u)); the halo keeps the nozzle's sigma along
     // the whole plume, as in the mock-up.
     float tail_narrowing = .6f;
-    float core_low = 1.2f, core_high = 4.f; // I(s) = lerp(1.2, 4.0, s)
+    // I(s) = lerp(core_low, core_high, s). After flight F (Run 123 A: the mouth too white on the default preset, the
+    // restrained one preferred) the mouth whitens no more than the restrained preset's did: heat 0.7 -> 0.1 (the hot
+    // core keeps its x 1.6 radiance, tinted), head_min 0.75 -> 0.42, and I(s) x 1.04 (1.2 / 4.0 before) for the
+    // luminance the heat's white took; the ring and the mouth dip unchanged (a dip of 0.6 over 0.4 L took 13 % of the
+    // far dots). The mouth terms follow I / core_high, so the gain does not raise them. Measured on the look images:
+    // the whole plume 1.00..1.01 of before (the red cluster 0.78..0.79: its head), the far dots 0.97, the body past
+    // the mouth 1.02..1.04
+    // (verification/results/engine-effects/plume_mouth_whiteness.py; docs/architecture/engine-exhaust-look-critique.md
+    // section 6, "Mouth whiteness (after flight F)").
+    float core_low = 1.248f, core_high = 4.16f;
     // After flight D: the mouth terms (the ring, the halo, the disc's ring and halo) follow the body's throttle curve,
-    // x I(s) / core_high (the halo hb x I / 4, the ring ring x I / 4), and the body ramps in over the first mouth_ramp
-    // of its length from 1 - mouth_dip at the nozzle (x (1 - dip (1 - smoothstep(0, ramp, u))), in law::tail): the
-    // mouth's total stays at most 0.85 of the body's peak at every throttle (run_engine_plumes.py, mouth case).
+    // x I(s) / core_high (the halo hb x I / core_high, the ring ring x I / core_high), and the body ramps in over the
+    // first mouth_ramp of its length from 1 - mouth_dip at the nozzle (x (1 - dip (1 - smoothstep(0, ramp, u))), in
+    // law::tail): the mouth's total stays at most 0.85 of the body's peak at every throttle (run_engine_plumes.py, mouth case).
     float mouth_dip = .5f, mouth_ramp = .3f;
     float ring_falloff = 14.f;              // the ring's axial falloff, per nozzle width
     float pulse_rate = 3.f;                 // the length pulse's noise, per second
@@ -272,7 +281,8 @@ constexpr float shock_gap = 1.7f;           // the cells' gap depth min(1, shock
                                             // u 0.4 (the critique's 0.8 over a whole period left the body lane's gap at
                                             // 0.68 of its mean in u 0.1..0.3, the gate 0.6; at 1.0 the carved white core
                                             // dominates a red plume's high-passed luma, anisotropy 1.8..2.3 against 3)
-constexpr float head_min = .75f;            // the head colour's luminance scale is at least this (head_colour)
+constexpr float head_min = .42f;           // the head colour's luminance scale is at least this (head_colour; 0.75
+                                            // until flight F: the red cluster's head clipped white at the mouth)
 constexpr float occlusion_bias = .5f;       // x value x max(0, axis . to_camera): the exhaust facing the camera clears its hull
 constexpr float chase_cap = .12f;           // x H: the largest projected plume
 constexpr float chase_fade_band = .2f;      // the last 20 % before the cap
@@ -670,7 +680,7 @@ inline void record_tint(const ee::Record& r, const ee::Body* body, float mean[3]
 }
 // Gap 5: the plume's head colour, the peak colour scaled down to the mean's luminance when it is brighter (never up),
 // the scale at least head_min (the revised law: a peak 2.6x the mean's luminance, the red cluster's, stayed a grey-pink
-// at 0.39; it is 0.75 of the peak now).
+// at 0.39; 0.75 of the peak until flight F, 0.42 since: its head clipped white at the mouth).
 inline void head_colour(const float mean[3], const float peak[3], float out[3]) noexcept {
     const float lm = luma_r * mean[0] + luma_g * mean[1] + luma_b * mean[2];
     const float lp = luma_r * peak[0] + luma_g * peak[1] + luma_b * peak[2];

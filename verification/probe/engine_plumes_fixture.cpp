@@ -1238,7 +1238,7 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         discs[k] = rep.stats.discs;
         faded += rep.stats.faded;
         const Built b = build_cpu(f);
-        weights[k] = b.v[0].intensity[0] / 4.f; // the axial quad's weight (I_core 4 at s 1)
+        weights[k] = b.v[0].intensity[0] / ep::default_look.core_high; // the axial quad's weight (I_core core_high at s 1)
     }
     std::printf("END_ON width=%u height=%u value_px=%.1f nozzle_px=%.1f L_px=%.1f", t.w, t.h, double(value * ppu),
                 double(.5f * value * ppu), double(2.f * value * ppu));
@@ -2346,7 +2346,12 @@ void build_timing(Targets& t) {
 // write-back's AgX (agx.hlsl agxTonemap: gamma 2.2 decode, look none, EV 0 = exposure 1, the meter's neutral target
 // over a dark sky; no bloom, sharpen or dither) to 8-bit display RGB, written as <dir>\<name>.ppm; the runner turns
 // them into PNGs. DUMP_DESC / DUMP_PANEL / DUMP_NOZZLE rows carry what each image shows.
+// X3M_PLUMES_FIXTURE_DUMP_PRESET=restrained|default|strong sets the preset of every band that does not name its own
+// (04 keeps its three); X3M_PLUMES_FIXTURE_DUMP_LINEAR=1 also writes the resolved FP16 RGB before the tonemap as
+// <dir>\<name>.pfm (little-endian float, rows bottom to top; plume_mouth_whiteness.py reads them).
 namespace dump {
+ep::Preset panel_preset = ep::Preset::standard; // X3M_PLUMES_FIXTURE_DUMP_PRESET
+bool write_linear = false;                      // X3M_PLUMES_FIXTURE_DUMP_LINEAR
 // Two-tone body colours (linear, largest channel 1): the cluster medians of verification/results/engine-effects/
 // plume_two_tone_colours_out.txt (mean, peak). "split-red" is the red cluster, "argon-blue" the cyan cluster (the
 // largest: 121 bodies).
@@ -2497,6 +2502,7 @@ void agx(const float* e, unsigned char* out) {
 bool run_image(IDirect3DDevice9* d, Targets& t, Scene& scene, IDirect3DPixelShader9* sky, rr::EnginePlumesPass& plumes,
                rr::EngineRibbonsPass& ribbons, const std::string& dir, const Image& image) {
     std::vector<unsigned char> rgb(std::size_t(t.w) * t.h * 3, 0);
+    std::vector<float> lin(write_linear ? std::size_t(t.w) * t.h * 3 : 0, 0.f);
     const unsigned bands = unsigned(image.panels.size());
     float rate = 0.f;
     ep::flow_rate(ep::default_look, &rate);
@@ -2569,6 +2575,8 @@ bool run_image(IDirect3DDevice9* d, Targets& t, Scene& scene, IDirect3DPixelShad
                     for (UINT x = 0; x < t.w; ++x) {
                         const std::size_t i = std::size_t(y) * t.w + x;
                         agx(&px[i * 4], &rgb[i * 3]);
+                        if (write_linear)
+                            for (int c = 0; c < 3; ++c) lin[i * 3 + c] = px[i * 4 + c];
                     }
             }
         }
@@ -2594,16 +2602,27 @@ bool run_image(IDirect3DDevice9* d, Targets& t, Scene& scene, IDirect3DPixelShad
     const bool ok = std::fwrite(rgb.data(), 1, rgb.size(), f) == rgb.size();
     std::fclose(f);
     if (!ok) throw std::runtime_error("dump: short write " + path);
+    if (write_linear) {
+        const std::string lpath = dir + "\\" + image.name + ".pfm";
+        FILE* lf = std::fopen(lpath.c_str(), "wb");
+        if (!lf) throw std::runtime_error("dump: cannot open " + lpath);
+        std::fprintf(lf, "PF\n%u %u\n-1.0\n", t.w, t.h);
+        bool lok = true;
+        for (UINT y = t.h; y-- > 0 && lok;)
+            lok = std::fwrite(&lin[std::size_t(y) * t.w * 3], sizeof(float), std::size_t(t.w) * 3, lf) == std::size_t(t.w) * 3;
+        std::fclose(lf);
+        if (!lok) throw std::runtime_error("dump: short write " + lpath);
+    }
     std::printf("DUMP file=%s width=%u height=%u bands=%u drew=%u\n", image.name.c_str(), t.w, t.h, bands, unsigned(drew_all));
     return drew_all;
 }
 std::vector<Image> images() {
     std::vector<Image> out;
     auto name = [](const char* stem) { return std::string(stem) + "_agx-ev0"; };
-    auto single = [](std::vector<Nozzle> v, ep::Preset preset = ep::Preset::standard) {
+    auto single = [](std::vector<Nozzle> v, ep::Preset preset = ep::Preset(255)) {
         Panel p;
         p.nozzles = std::move(v);
-        p.preset = preset;
+        p.preset = preset == ep::Preset(255) ? panel_preset : preset; // 255: the run's preset
         return p;
     };
     // 1. The side view, the fighter (value 500, nozzle 150 px), s = 0 / 0.5 / 1 top to bottom, the default preset.
@@ -2774,6 +2793,9 @@ std::vector<Image> images() {
 }
 void run(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, Quad& quad, rr::EnginePlumesPass& plumes,
          const std::string& dir) {
+    if (const char* word = std::getenv("X3M_PLUMES_FIXTURE_DUMP_PRESET"))
+        if (!ep::parse_preset(word, &panel_preset)) throw std::runtime_error("dump: X3M_PLUMES_FIXTURE_DUMP_PRESET");
+    if (const char* on = std::getenv("X3M_PLUMES_FIXTURE_DUMP_LINEAR")) write_linear = on[0] == '1';
     for (int i = 0; i < tone_count; ++i) {
         bodies[i] = ee::Body{};
         bodies[i].colour = 1;

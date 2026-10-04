@@ -311,6 +311,33 @@ the size is the hard gate. The structured law carries about 0.55..0.6 of the sla
 and contrast gates win over the first 0.8, which was an orchestrator estimate, not a user requirement. Energy per px^2
 falls smoothly from 12 to 40 px (no step) and the total rises with the size.
 
+### Mouth whiteness (after flight F, 2026-10-04, worktree build on c256d9c2, not a candidate)
+
+Flight F (Run 123 A, run409): the mouth read too white on the default preset and the user preferred the restrained
+one, which is only I x 0.6 everywhere. Constants (`engine_plumes_core.h`, `Look` and `head_min`; no shader change):
+
+| Constant | Before | After | Why |
+| --- | --- | --- | --- |
+| `heat` | 0.7 | 0.1 | the white lerp in the core's first 0.3 L; the core keeps its x 1.6 radiance, tinted |
+| `head_min` | 0.75 | 0.42 | the red cluster's head (1, 0.81, 0.81) at 0.75 is 1.9x the mean's luminance and near white; its natural scale is 0.389 |
+| `core_low`, `core_high` | 1.2, 4.0 | 1.248, 4.16 | I(s) x 1.04 returns the luminance the heat's white took; the mouth terms follow I / core_high and do not rise |
+| `ring`, `mouth_dip`, `mouth_ramp` | 0.3, 0.5, 0.3 | unchanged | a dip of 0.6 over 0.4 L cost the far dots 13 % (it acts at every detail level) and the 0.2 ring failed the end-on ring gate (1.00) |
+
+Metric (`verification/results/engine-effects/plume_mouth_whiteness.py`, `_out.txt`): the fixture's resolved FP16
+frames before the tonemap (`run_engine_plumes.py --dump-images DIR --dump-linear [--preset restrained]`), the body
+pixels within 0.3 L of the nozzle (the default-before mask, luma >= 0.25, applied to every state) and the end-on
+disc's centre (0.3 n). Fraction with min(rgb) >= 1.0 (clipped white), default before / restrained before / default
+after, s 1 side views: 01a red 0.119 / 0.001 / 0.000; 01b blue 0.026 / 0 / 0; 03a 0.036, 0.041 / 0 / 0; 03c 0.024,
+0.032 / 0 / 0; 04 default band 0.025 / (0 in its restrained band) / 0; 05 at 40 px 0.102 / 0.034 / 0.006; 08 normal
+0.036 / 0 / 0, warp 6 0.078 / 0 / 0; 09 at 40 px 0.115 / 0.019 / 0.011. Mean min / max on the s 1 bands 0.20-0.73 ->
+0.15-0.66 (restrained 0.20-0.74: the restrained preset dims, it does not colour). Not met: the oblique and end-on red
+(02a 45 deg 0.042 / 0 / 0.004; 02b centre 0.153 / 0 / 0.046), where the red head still clips. Radiance kept (summed
+luma over default before): the whole plume 1.00-1.01 (blue; the red cluster 0.78-0.79, its head), the body past the
+mouth 1.02-1.04, the far dots at 12 / 6 / 2 px 0.971 (restrained 0.58-0.60). Fixture: 40 / 12 px energy per px^2
+0.533 -> 0.533 (s 1), 0.589 -> 0.590 (s 0.5); end-on over the side at 40 px 0.713 -> 0.706 (gate 0.7), at d 1
+1.020 -> 1.013, over the slab law 0.740 -> 0.744; the 40 px cyan axis whiteness 0.169 -> 0.161 (gate 0.15), the
+mouth over the body 0.694 -> 0.692 (gate 0.85), the end-on ring cyan 1.205 -> 1.183. No gate floor moved.
+
 ## Unknown, and what settles it
 
 - Whether the body at 0.3-0.8 linear reads too dark at 5120x1440 with bloom on: the lab at the same constants is the
