@@ -1,4 +1,4 @@
-# before metrics-run125-tracked.txt, after plume_look_metrics_out.txt; per band: before -> after
+# before metrics_6741928d_out.txt, after plume_look_metrics_out.txt; per band: before -> after
 band | peak disp | core/edge u.2 | core/edge u.5 | white head u.1 | white body u.5 | aniso | lane cells | lane gaps
 01a red s=0 | 144 -> 144 | 3.4 -> 3.4 | 6.7 -> 6.7 | 0.22 -> 0.22 | 0.58 -> 0.58 | 3.5 -> 3.5 | 0.93 -> 0.93 | 0.17 -> 0.17
 01a red s=0.5 | 196 -> 196 | 4.3 -> 4.3 | 3.4 -> 3.4 | 0.21 -> 0.21 | 0.54 -> 0.54 | 8.2 -> 8.2 | 0.84 -> 0.84 | 0.22 -> 0.22
@@ -18,9 +18,5 @@ band | peak disp | core/edge u.2 | core/edge u.5 | white head u.1 | white body u
 08 warp6 | 250 -> 250 | 6.5 -> 6.5 | 2.7 -> 2.7 | 0.45 -> 0.45 | 0.24 -> 0.24 | 10 -> 10 | 0.77 -> 0.77 | 0.22 -> 0.22
 09 ribbon n40 uncapped | 255 -> 255 | 1.8 -> 1.8 | 1.7 -> 1.7 | 0.23 -> 0.23 | 0.15 -> 0.15 | 15 -> 15 | 0.19 -> 0.19 | 0.74 -> 0.74
 # disc and far dots
-02b ring red: 1.31 -> 1
-02b ring blue: 1 -> 1
-05 dot 40 px (display sum): 2109.57 -> 2109.57
-05 dot 12 px (display sum): 262.836 -> 262.836
-05 dot 6 px (display sum): 40.33 -> 40.33
-05 dot 2 px (display sum): 1.155 -> 1.155
+02b ring red: 1.36 -> 1
+02b ring blue: 1.03 -> 1

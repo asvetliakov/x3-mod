@@ -1,8 +1,8 @@
 # Engine plume look images
 
-Written by `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_plumes.py --dump-images /private/tmp/claude-501/-Users-asvetl-x3-mod/a470796d-d7e3-4231-83fe-7c27a83f7bda/scratchpad/look-final2/` (the fixture's `--dump` mode: `verification/probe/engine_plumes_fixture.cpp`, namespace `dump`). Bottle X3, builtin d3d9; the game is not launched.
+Written by `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_plumes.py --dump-images verification/results/engine-effects/look-images//` (the fixture's `--dump` mode: `verification/probe/engine_plumes_fixture.cpp`, namespace `dump`). Bottle X3, builtin d3d9; the game is not launched.
 
-Source: commit `4f036d43d1e03b82299ae6fda48db276372b1545-dirty`; production sources dirty: True; fixture build warnings: None.
+Source: commit `00e184cf00a1e9063328c172e74b5971cf57f292`; production sources dirty: False; fixture build warnings: 0.
 
 Every image is 1920x1080: one or more horizontal bands, each a separate sequence of the production stage (EnginePlumesPass, then EngineRibbonsPass) inside the production TemporalPass resolve in the flown configuration, 30 frames of warm-up at 60 fps (stage clock, flow accumulator x the travel flow, attack memory and SETA ramp advanced as the proxy advances them) and that band of the resolved frame named in the table (frame 30 = the 31st). Default plume look with the preset named. Background: a dark static starfield; the hull cases add a plain grey plate (encoded 0.30) whose lane depth is the nozzle's. Tints are two-tone body colours (mean, peak; linear): "split-red" = the red cluster (1, 0.15, 0.15; 1, 0.81, 0.81), "argon-blue" = the cyan cluster (0.14, 0.71, 1; 0.27, 0.90, 1). The nozzle width in px is 0.5 x value x pixels per unit at the nozzle depth. Angles are from the line of sight to the nozzle (90 = side view, perpendicular to it wherever the nozzle sits on screen).
 

@@ -25,11 +25,9 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "4712dbd8c352369c8c348dcf4d2d8ef21aa59f84-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/engine_plumes_core.h"
-    ],
+    "commit": "00e184cf00a1e9063328c172e74b5971cf57f292",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_ribbons_core.h": "b8f686d8b199489ea462149451bc090a5c6e771f660a27265e430fdce38fb735",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
@@ -104,12 +102,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a03bc895c49588030/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/private/tmp/x3-run126-fixture/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "d8dbeaa728419783b691a48456e03653f64a69509e5a13ea32b76e61f0dcf521"
+    "executable_sha256": "94c4ebf31ff50b58295a429f5bcb42c422e12ac6e42764e92b84c28f24b3d347"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -413,11 +411,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.9973,
-        "fenced_off_ms": 0.9169,
-        "submit_ms": 0.0509,
-        "chain_ms": 0.0804,
-        "gpu_ms": 0.0295,
+        "fenced_on_ms": 0.7237,
+        "fenced_off_ms": 0.5836,
+        "submit_ms": 0.0596,
+        "chain_ms": 0.1401,
+        "gpu_ms": 0.0805,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -428,11 +426,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.0474,
-        "fenced_off_ms": 0.9214,
-        "submit_ms": 0.0867,
-        "chain_ms": 0.126,
-        "gpu_ms": 0.0393,
+        "fenced_on_ms": 0.8206,
+        "fenced_off_ms": 0.5917,
+        "submit_ms": 0.1012,
+        "chain_ms": 0.2289,
+        "gpu_ms": 0.1277,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -443,11 +441,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.6968,
-        "fenced_off_ms": 1.6196,
-        "submit_ms": 0.0522,
-        "chain_ms": 0.0772,
-        "gpu_ms": 0.025,
+        "fenced_on_ms": 1.7085,
+        "fenced_off_ms": 1.6289,
+        "submit_ms": 0.053,
+        "chain_ms": 0.0796,
+        "gpu_ms": 0.0266,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -458,11 +456,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7435,
-        "fenced_off_ms": 1.6207,
-        "submit_ms": 0.0888,
-        "chain_ms": 0.1228,
-        "gpu_ms": 0.034,
+        "fenced_on_ms": 1.8431,
+        "fenced_off_ms": 1.627,
+        "submit_ms": 0.0927,
+        "chain_ms": 0.2161,
+        "gpu_ms": 0.1234,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -472,15 +470,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.7,
-        "min_us": 7.45,
+        "median_us": 7.87,
+        "min_us": 7.53,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 25.31,
-        "min_us": 24.74,
+        "median_us": 27.2,
+        "min_us": 24.87,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -685,20 +683,20 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0295,
-      "1920x1080_100": 0.0393,
-      "5120x1440_30": 0.025,
-      "5120x1440_100": 0.034
+      "1920x1080_30": 0.0805,
+      "1920x1080_100": 0.1277,
+      "5120x1440_30": 0.0266,
+      "5120x1440_100": 0.1234
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
-      "1920x1080_100": true,
+      "1920x1080_100": false,
       "5120x1440_30": true,
-      "5120x1440_100": true
+      "5120x1440_100": false
     },
     "cpu_us": {
-      "30": 7.7,
-      "100": 25.31
+      "30": 7.87,
+      "100": 27.2
     },
     "cpu_100_within": true,
     "fog": [
