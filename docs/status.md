@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-04 05:25, Run124 = plumes default + mouth whiteness over Run123). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-04 14:35, Run125 = chase-view engine blob fixes over Run124). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,6 +15,20 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run125 = **chase-view engine blob** (Run 124 A, run412: the own ship's engine from behind a clipped pink-white disc 4x the nozzle opening, no visible
+difference from Run124): DLL SHA-256 `e7f34300c30845284c52cf48e2f753f42f1c781d07ca9c1ff135d64abce477b6` (59,079,594 bytes) built once from clean main
+`6741928d` (host suite 289/3,041/0, 0 warnings, x87 0, shader/site/identity evidence reused unchanged; fixtures effects 8 modes, plumes 294/294, ribbons
+44/44, shimmer 43/43, light 9 cases + plate 8/8, seam 107, hull light-map gain 108 programs; [candidate](../verification/results/run125-candidate-build.json)),
+installed 2026-10-04 14:30 ([install](../verification/results/run125-candidate-install.json)). Measured on run412's F8 HDR captures
+([triage](../verification/results/run412-engine-disc/)): the white is the hull light-map gain 4 on the Scorpion's pure-white recessed nozzle plates (~4.0
+neutral, display white from 2.1 at that exposure); the size and the red are two floored glow layers of one nozzle (xtc_red_nor 10 + xtc_red_tiny 5 at one
+origin, both raised to ~20-23) stacked 1.74x, plus an end-on disc the chase fade could not dim. Three fixes: (1) the end-on disc's own near-camera fade to
+`chase_disc_floor` 0.4 (was max(body fade, 0.6)); (2) co-located layers merged into one plume/disc/ribbon/far record (same parent and kind, the smaller
+<= 0.75 of the larger, axes parallel, origins within the larger's pre-floor size; the capital's 4 of 8 big3 inside its 2 huge merge too; `engine_stage merged=`);
+(3) in the 100 engine-light twins that host the light-map gain, the gain falls back to 1 within 0.75 value_eff of the engine light (0 from 1.0; +4 slots, largest
+twin 331; [engine-light.md](architecture/engine-light.md) "Nozzle plates": limits one light per ship, the unbind jump, `engine_light` off keeps the gain).
+Expected (inferred): the plate's neutral excess 3.7/4.3/4.3 -> ~0.7/1.3/1.3, the plume centre ~4.4/1.4/1.4, so the engine reads red. Run 125 A queued.
+Rollback Run124.
 Run124 = **plumes default + mouth whiteness** (Run 123 A, run409: no issues, the default preset's mouths too white, restrained preferred): DLL SHA-256
 `f35a07f1412b0a8afbeaa93f1ae9b9d7f85d79a09029bf5931c08e54ac721b3e` (59,061,764 bytes) built once from clean main `9c0c57ab` (host suite 289/3,040/0,
 0 warnings, x87 0, shader checks reused (no shader change), `verify_engine_effects_sites` 20/20 + identity 27/27; fixtures effects 8 modes, patch 62/62,
@@ -24,7 +38,7 @@ module, the schema, the ini template and the launcher (an invalid setting still 
 so a plain launch flies the Run 123 A setup. Mouth whiteness ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Mouth whiteness"):
 `Look::heat` 0.7 -> 0.1, `head_min` 0.75 -> 0.42, I(s) x 1.04; constants only. Measured on the fixture images: nozzle pixels clipped to white at the default
 preset 0 on every s 1 side view where restrained gave 0, 0.006 / 0.011 at the two 40 px views (restrained 0.034 / 0.019); body energy, far dots and every
-gate within 1 %; red plumes 0.78 of their previous total (the dimmer head), red end-on centre still 0.046 clipped. Run 124 A queued. Rollback Run123.
+gate within 1 %; red plumes 0.78 of their previous total (the dimmer head), red end-on centre still 0.046 clipped. Run 124 A completed in run412: no visible difference, the chase-view blob (-> Run125). Rollback Run123.
 Run123 = **engine exhaust batch** (Run 122 A findings + the X4/Everspace 2 gap analysis [engine-exhaust-gap-analysis.md](architecture/engine-exhaust-gap-analysis.md)
 + the look critique [engine-exhaust-look-critique.md](architecture/engine-exhaust-look-critique.md)): DLL SHA-256
 `a252c522991d9407d3371df215b6d205b24e27957372581e66560c89afc1ae89` (59,061,764 bytes) built once from clean main `c8f36eb6` (host suite 289/3,040/0,

@@ -1,0 +1,28 @@
+{
+ "run": "Run125",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run125-candidate-2/build/d3d9.dll --fonts-dir /tmp/x3-run123-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-04T14:30+0400",
+ "commit": "6741928d",
+ "candidate_record": "verification/results/run125-candidate-build.json",
+ "installed": {
+  "sha256": "e7f34300c30845284c52cf48e2f753f42f1c781d07ca9c1ff135d64abce477b6",
+  "bytes": 59079594,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed from the candidate DLL before install); pgrep X3AP empty before; 16 font files unchanged (Run123 fonts reused); engine_bodies.json kept (45a1215b…)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept (rebuild due at the next release)"
+ },
+ "previous": {
+  "run": "Run124",
+  "dll_sha256": "f35a07f1412b0a8afbeaa93f1ae9b9d7f85d79a09029bf5931c08e54ac721b3e",
+  "path": "/tmp/x3-run124-candidate/build/d3d9.dll",
+  "then": "Run123 a252c522... at /tmp/x3-run123-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "6068c464 (engine-light.md limits, doc only) and the record commit; no code",
+ "trigger": "Run 124 A (run412): no visible difference, the own ship's chase-view engine a clipped pink-white blob (screenshots/engines3.png). Measured on the F8 HDR captures: the hull light-map gain 4 on the Scorpion's pure-white nozzle plates (~4.0 neutral) is the white, two floored glow layers of one nozzle stacked (1.74x) and an unfaded end-on disc the size and the red. Fixes: the end-on disc's own chase fade to 0.4, co-located layer merge, the light-map gain back to 1 within 0.75..1.0 value_eff of the engine light",
+ "producer": "main session (Fable 5.1)"
+}
