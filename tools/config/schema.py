@@ -327,8 +327,8 @@ SETTINGS = [
           'it looks like off; the trails come later); default plumes. Read when the game starts.', builtin='plumes',
           choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
     entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
-          'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Ctrl+Alt+F6 switches '
-          'between them in flight.', builtin='default', choices=('restrained', 'default', 'strong'),
+          'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Read when the game '
+          'starts.', builtin='default', choices=('restrained', 'default', 'strong'),
           launcher='--engine-effects-preset', since='2026-10-01'),
     entry('engine_plume_nozzle', 'float', 'engine', 'Proportions of the mod\'s engine plumes (engine_effects = plumes): the '
           'nozzle width as a share of the engine\'s size. Larger is a wider, stubbier plume and coarser turbulence; '
@@ -345,7 +345,7 @@ SETTINGS = [
           'Read when the game starts.', builtin='on', choices=('on', 'off'), launcher='--engine-light', since='2026-10-03'),
     entry('engine_shimmer', 'enum', 'engine', 'Heat shimmer behind the nearest engines of the mod\'s engine plumes '
           '(engine_effects = plumes): the air behind a close engine wavers slightly, mostly visible on your own ship in '
-          'chase view. on or off; Ctrl+Alt+F7 switches it off and on in flight. Read when the game starts.', builtin='on',
+          'chase view. on or off. Read when the game starts.', builtin='on',
           choices=('on', 'off'), launcher='--engine-shimmer', since='2026-10-03'),
     entry('engine_shimmer_px', 'float', 'engine', 'Strength of the engine heat shimmer (engine_shimmer = on): how far the '
           'image behind an engine moves, in pixels on a 1440-row screen (scaled with the screen height); 0 to 4, 0 = none, '

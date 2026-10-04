@@ -589,9 +589,8 @@ proxy's engine plumes under `engine_effects = plumes`: `restrained`, `default` a
 radiance and the halo width by 0.6, 1 and 1.5. Exactly one of the three words in lower case; anything else is refused
 to `default` with `status=invalid_setting` on the `engine_effects_plumes` row. Read once at load and only with
 `plumes`; the DLL's value when nothing sets it is `default`, and the launcher sends it only when given (an inherited
-shell value is dropped, refused under `--vanilla`). In flight **Ctrl+Alt+F6** cycles restrained → default → strong
-per device (one `engine_plumes_preset` row per press, [comparison-hotkeys.md](comparison-hotkeys.md)); the
-native/off/plumes mode itself is never toggled.
+shell value is dropped, refused under `--vanilla`). No in-flight key since 2026-10-04 (the Ctrl+Alt+F6 cycle went,
+[comparison-hotkeys.md](comparison-hotkeys.md)).
 
 ## `engine_plume_nozzle` (2026-10-03, plume look review fixes)
 
@@ -646,7 +645,7 @@ decimal in 0..4 (no sign, exponent or padding), 0 = none; anything else is refus
 the largest first: one plain integer 0..16 (digits only), default **4** (the own ship plus the nearest; the orchestrator's
 choice after the build, bounding the measured worst case near 0.4 ms at 5120x1440), 0 = none; anything else is refused to
 4 with `max_status=invalid_setting`. Requested only with the plumes requested on the device (and a non-zero amplitude
-and count); read once per device configuration. Ctrl+Alt+F7 turns it off and
-on in flight ([comparison-hotkeys.md](comparison-hotkeys.md), "Engine heat shimmer"). The launcher sends each only when
+and count); read once per device configuration; no in-flight key since 2026-10-04 (the Ctrl+Alt+F7 toggle
+went, [comparison-hotkeys.md](comparison-hotkeys.md)). The launcher sends each only when
 given (the amplitude finite 0..4, as a plain decimal; the count 0..16); an inherited shell value is dropped, and all three
 are refused under `--vanilla`.

@@ -4,7 +4,7 @@
 #include "engine_plumes_core.h"
 
 // Portable core of the engine heat shimmer (docs/architecture/engine-exhaust-gap-analysis.md gap 9, phase 5;
-// docs/architecture/effects-modernisation-opus.md section 3.8): the option parsers, the Ctrl+Alt+F7 toggle latch, the
+// docs/architecture/effects-modernisation-opus.md section 3.8): the option parsers, the
 // screen rects behind the frame's nozzles and the pixel program's constant block and quads. No Windows dependency (the
 // host tests compile it); float work through SSE scalars, no float returned by value.
 //
@@ -81,16 +81,6 @@ template <class Char> inline bool parse_px(const Char* text, std::size_t n, floa
 inline void amplitude_px(float px, float height, float* out) noexcept {
     *out = px > 0.f && height > 0.f ? px * height / reference_rows : 0.f;
 }
-
-// Ctrl+Alt+F7 (Shift up, focused): the press edge of F7. A held F7 never becomes a press by changing modifiers.
-struct ToggleKey {
-    bool f7_down = false;
-    bool step(bool focused, bool control, bool alt, bool shift, bool f7) noexcept {
-        const bool press = focused && control && alt && !shift && f7 && !f7_down;
-        f7_down = f7;
-        return press;
-    }
-};
 
 // ----------------------------------------------------------------------------------------------------- rects
 // The unjittered projection of the resolved image and the depth law of the lane (z_device = m22 + m32 / z).

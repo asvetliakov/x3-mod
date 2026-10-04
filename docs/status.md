@@ -217,6 +217,8 @@ Last release: **0.9.0** from `c1baa169` ([release record](../verification/result
 
 ## Main beyond the installed build
 
+Engine hotkeys removed (2026-10-04, user decision; not yet in a candidate, the installed build still has both): Ctrl+Alt+F6 (plume preset cycle) and Ctrl+Alt+F7 (heat shimmer toggle) are gone, F8 under `--debug` is the only in-game key; `engine_effects_preset` and `engine_shimmer` stay load-time options ([in-game keys](architecture/comparison-hotkeys.md), [ledger](verification/engine-effects.md)).
+
 Nothing beyond the installed Run117 (`c1baa169`); release 0.9.0 is the last packaged build; release 0.8.1 (`f4439590`) is the last packaged build.
 
 ## Run queue

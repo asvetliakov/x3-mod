@@ -22,8 +22,7 @@ namespace x3m::engine_effects {
 void initialize();
 core::Mode mode();
 // X3M_ENGINE_EFFECTS_PRESET=restrained|default|strong (ini engine_effects_preset), read once at initialize (only with
-// plumes); unset, refused or another mode = default. The plume stage's starting preset (Ctrl+Alt+F6 cycles it per
-// device).
+// plumes); unset, refused or another mode = default. The plume stage's preset for the session.
 engine_plumes::Preset preset();
 // X3M_ENGINE_PLUME_NOZZLE (ini engine_plume_nozzle): the plume's nozzle width in value, one plain decimal in 0.1..1.0,
 // read once at initialize (only with plumes); unset or refused = 0.5 (engine_plumes::parse_nozzle). The look's
