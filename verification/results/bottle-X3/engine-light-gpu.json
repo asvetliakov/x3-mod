@@ -454,16 +454,16 @@
   }
  },
  "cost": {
-  "build_us": 81.2,
-  "hit_ns": 63.2,
+  "build_us": 84.5,
+  "hit_ns": 62.2,
   "hits": 200000.0,
-  "log_ns": 1.9,
+  "log_ns": 2.0,
   "miss_ns": 3.6,
   "misses": 200000.0,
   "nodes": 1024.0,
   "rounds": 200000.0,
   "ships": 256.0,
-  "ships_us": 48.0
+  "ships_us": 47.4
  },
  "cost_checks": {
   "hit_ns": true,
@@ -472,144 +472,144 @@
  },
  "create": {
   "twins": 6.0,
-  "us_each": 45.1,
-  "us_total": 270.4
+  "us_each": 42.8,
+  "us_total": 257.0
  },
- "elapsed_s": 30.7,
- "executable_sha256": "3f9ecb68f6818bfe416418e9bed73ecdce4378a5296efac256d6682643805e21",
+ "elapsed_s": 29.55,
+ "executable_sha256": "b2dc7b70656702f774817592e146a25ed5c0c481e7946f0ac4102d8ec8f07647",
  "exit_code": 0,
  "game_launched": false,
  "gpu": [
   {
    "base_batches": [
-    0.2334,
-    0.1791,
-    0.1625,
-    0.1502,
-    0.1494
-   ],
-   "base_ms": 0.1625,
-   "height": 1080,
-   "nozzles": 1,
-   "term_us": 17.600000000000005,
-   "twin_batches": [
-    0.2314,
-    0.196,
-    0.1801,
-    0.1738,
-    0.1733
-   ],
-   "twin_ms": 0.1801,
-   "width": 1920
-  },
-  {
-   "base_batches": [
-    0.4954,
-    0.4936,
-    0.499,
-    0.5017,
-    0.4996
-   ],
-   "base_ms": 0.499,
-   "height": 1440,
-   "nozzles": 1,
-   "term_us": 87.20000000000006,
-   "twin_batches": [
-    0.5941,
-    0.5817,
-    0.5863,
-    0.5862,
-    0.5829
-   ],
-   "twin_ms": 0.5862,
-   "width": 5120
-  },
-  {
-   "base_batches": [
-    0.1503,
-    0.1501,
-    0.15,
-    0.1499,
-    0.1502
-   ],
-   "base_ms": 0.1501,
-   "height": 1080,
-   "nozzles": 3,
-   "term_us": 34.99999999999998,
-   "twin_batches": [
-    0.1854,
-    0.1846,
+    0.2223,
     0.1844,
-    0.1851,
-    0.1968
+    0.1611,
+    0.15,
+    0.1508
    ],
-   "twin_ms": 0.1851,
+   "base_ms": 0.1611,
+   "height": 1080,
+   "nozzles": 1,
+   "term_us": 12.6,
+   "twin_batches": [
+    0.2212,
+    0.1907,
+    0.1736,
+    0.1737,
+    0.1728
+   ],
+   "twin_ms": 0.1737,
    "width": 1920
   },
   {
    "base_batches": [
-    0.4962,
-    0.5246,
-    0.5606,
-    0.5037,
-    0.5193
+    0.4961,
+    0.4948,
+    0.4938,
+    0.4986,
+    0.4945
    ],
-   "base_ms": 0.5193,
+   "base_ms": 0.4948,
    "height": 1440,
-   "nozzles": 3,
-   "term_us": 112.19999999999996,
+   "nozzles": 1,
+   "term_us": 87.19999999999995,
    "twin_batches": [
-    0.6185,
-    0.651,
-    0.6315,
-    0.6245,
-    0.6445
+    0.5822,
+    0.5812,
+    0.5805,
+    0.582,
+    0.5869
    ],
-   "twin_ms": 0.6315,
+   "twin_ms": 0.582,
    "width": 5120
   },
   {
    "base_batches": [
-    0.1587,
-    0.1751,
-    0.1519,
-    0.1563,
-    0.1523
+    0.1499,
+    0.15,
+    0.1496,
+    0.1498,
+    0.1491
    ],
-   "base_ms": 0.1563,
+   "base_ms": 0.1498,
    "height": 1080,
-   "nozzles": 8,
-   "term_us": 49.199999999999996,
+   "nozzles": 3,
+   "term_us": 35.20000000000001,
    "twin_batches": [
-    0.2112,
-    0.2025,
-    0.1978,
-    0.2119,
-    0.2055
+    0.1841,
+    0.185,
+    0.1846,
+    0.1852,
+    0.1851
    ],
-   "twin_ms": 0.2055,
+   "twin_ms": 0.185,
    "width": 1920
   },
   {
    "base_batches": [
-    0.5128,
-    0.5167,
-    0.517,
-    0.515,
-    0.5102
+    0.4942,
+    0.4922,
+    0.4936,
+    0.4923,
+    0.4946
    ],
-   "base_ms": 0.515,
+   "base_ms": 0.4936,
+   "height": 1440,
+   "nozzles": 3,
+   "term_us": 115.49999999999999,
+   "twin_batches": [
+    0.6096,
+    0.6103,
+    0.6091,
+    0.6089,
+    0.609
+   ],
+   "twin_ms": 0.6091,
+   "width": 5120
+  },
+  {
+   "base_batches": [
+    0.1494,
+    0.1491,
+    0.1491,
+    0.1493,
+    0.1492
+   ],
+   "base_ms": 0.1492,
+   "height": 1080,
+   "nozzles": 8,
+   "term_us": 46.500000000000014,
+   "twin_batches": [
+    0.1956,
+    0.1952,
+    0.196,
+    0.1957,
+    0.1959
+   ],
+   "twin_ms": 0.1957,
+   "width": 1920
+  },
+  {
+   "base_batches": [
+    0.4935,
+    0.493,
+    0.4933,
+    0.4923,
+    0.4931
+   ],
+   "base_ms": 0.4931,
    "height": 1440,
    "nozzles": 8,
-   "term_us": 165.69999999999996,
+   "term_us": 157.29999999999998,
    "twin_batches": [
-    0.6774,
-    0.67,
-    0.682,
-    0.6807,
-    0.6901
+    0.6502,
+    0.6515,
+    0.6514,
+    0.6504,
+    0.6497
    ],
-   "twin_ms": 0.6807,
+   "twin_ms": 0.6504,
    "width": 5120
   }
  ],
@@ -1219,7 +1219,7 @@
  "sources_sha256": {
   "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
   "src/proxy/engine_light_core.h": "2ede22b62141f53449142140cb40d2c526744190e85f33ebc989a36aab41f851",
-  "src/proxy/engine_plumes_core.h": "1cb40097202b167937c59e34aaea9d660057ef8af4571f94123947e1dc990968",
+  "src/proxy/engine_plumes_core.h": "e9a8500842e1a415c6628e7ba5ffb76cab6f1c69c045d56979d5517137890273",
   "src/renderer/linear_engine_light_inc.h": "41b0f26ed5a78025cf908273878fff6c8aa1792ac645b112a22a0bf686e46873",
   "src/renderer/linear_material.cpp": "c12810ae25cc99d2afc4330c17088a3f800be1edb0265ae7042ceac8e817b181",
   "src/renderer/linear_material.h": "f654155aeb9e8075889417b9c8b0a71b5272b4b405836ec8ca898720fee280e2",
