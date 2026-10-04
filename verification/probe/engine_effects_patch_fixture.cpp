@@ -479,7 +479,6 @@ int main() {
     }
 
     // Settings that patch nothing: two rows each.
-    refusal("unset_is_native", nullptr, true, "state=native reason=native mode=native setting=- write=none");
     refusal("native_is_native", L"native", true, "state=native reason=native mode=native setting=native write=none");
     refusal("word_refused", L"on", true, "state=invalid_setting reason=invalid_setting mode=- setting=on write=none");
     refusal("case_refused", L"Off", true, "state=invalid_setting reason=invalid_setting mode=- setting=Off write=none");
@@ -568,19 +567,21 @@ int main() {
     check(eep::shutdown() && engine_windows_original() && !std::strcmp(eep::state(), "restored"),
           "refused_a_restored_at_shutdown", eep::state());
 
-    // Installed through initialize(): off and plumes patch the same two calls.
-    const wchar_t* modes[2] = {L"off", L"plumes"};
-    const char* mode_names[2] = {"off", "plumes"};
-    for (unsigned m = 0; m < 2; ++m) {
+    // Installed through initialize(): off and plumes patch the same two calls; unset is the default, plumes.
+    const wchar_t* modes[3] = {L"off", L"plumes", nullptr};
+    const char* mode_names[3] = {"off", "plumes", "plumes"};
+    const char* settings[3] = {"off", "plumes", "-"};
+    const char* phases[3] = {"off", "plumes", "unset"};
+    for (unsigned m = 0; m < 3; ++m) {
         set_setting(modes[m]);
         const size_t before = log_lines.size();
         SetLastError(sentinel_error);
         const bool armed = eep::initialize();
         char a_row[160], b_row[160];
         std::snprintf(a_row, sizeof a_row, "state=active reason=ok mode=%s setting=%s write=atomic", mode_names[m],
-                      mode_names[m]);
+                      settings[m]);
         std::snprintf(b_row, sizeof b_row, "state=active reason=ok mode=%s setting=%s write=plain", mode_names[m],
-                      mode_names[m]);
+                      settings[m]);
         check(armed && GetLastError() == sentinel_error && rows_have(before, a_row, b_row) && eep::installed() &&
                   redirected() && protection(code_page) == code_protect && !std::strcmp(eep::write_path(0), "atomic") &&
                   !std::strcmp(eep::write_path(1), "plain") && x3m_engine_effects_continue_a == sites::target_a_va &&
@@ -591,7 +592,7 @@ int main() {
               "second_initialize_silent");
         for (unsigned i = 0; i < 3; ++i) {
             const Run r = run(*objects[i]);
-            print_run(mode_names[m], names[i], r);
+            print_run(phases[m], names[i], r);
             if (objects[i] == &ship) {
                 check(r.ca[20] == 0 && r.cb[14] == 0 && r.out[0] == 0 && frame_kept(r), "ship_skips_both");
             } else {

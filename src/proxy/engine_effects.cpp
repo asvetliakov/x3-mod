@@ -166,7 +166,8 @@ void initialize() {
         return;
     }
     initialized_ = true;
-    // Unset or empty = native; 1..15 characters must be one of the three words; anything else is refused (native).
+    // Unset or empty = plumes (the default since Run 123 A); 1..15 characters must be one of the three words; anything
+    // else is refused and stays native (fail closed: an invalid or too-long setting never arms suppression).
     wchar_t text[16]{};
     const DWORD length = x3m::config::get(L"X3M_ENGINE_EFFECTS", text, 16);
     char setting[16]{};
@@ -175,7 +176,7 @@ void initialize() {
         printable = printable && text[i] > 0x20 && text[i] < 0x7f;
         setting[i] = text[i] > 0x20 && text[i] < 0x7f ? char(text[i]) : '?';
     }
-    core::Mode parsed = core::Mode::native;
+    core::Mode parsed = length ? core::Mode::native : core::Mode::plumes;
     const bool valid = !length || (printable && core::parse_mode(setting, length, &parsed));
     mode_ = valid ? parsed : core::Mode::native;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE

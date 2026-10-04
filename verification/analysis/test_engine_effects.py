@@ -384,18 +384,18 @@ class EngineEffectsInstalledTable(unittest.TestCase):
 class EngineEffectsOption(unittest.TestCase):
     def test_schema_entry(self):
         e = schema.BY_KEY['engine_effects']
-        # The launcher sends it only when given: no schema default, the DLL's built-in native.
+        # The launcher sends it only when given: no schema default, the DLL's built-in plumes (since Run 123 A).
         self.assertEqual((e['env'], e['type'], e['section'], e['default'], e['builtin'], e['choices'], e['launcher'], e['developer']),
-                         ('X3M_ENGINE_EFFECTS', 'enum', 'engine', None, 'native', ('native', 'off', 'plumes'), '--engine-effects', False))
+                         ('X3M_ENGINE_EFFECTS', 'enum', 'engine', None, 'plumes', ('native', 'off', 'plumes'), '--engine-effects', False))
         self.assertTrue(schema.BY_KEY['engine_bodies']['developer'])
         table = (ROOT / 'src/config/config_schema_inc.h').read_text()
         self.assertIn('{"X3M_ENGINE_EFFECTS", "engine_effects", Type::Enum, nullptr,', table)
-        self.assertIn(';engine_effects = native', (ROOT / 'assets/x3m.ini').read_text())
+        self.assertIn(';engine_effects = plumes', (ROOT / 'assets/x3m.ini').read_text())
 
     def test_launcher(self):
         module, game, wine, directory = hermetic_launcher()
         with directory:
-            self.assertNotIn('X3M_ENGINE_EFFECTS', launch_env(module, game, wine))  # the default flight sends nothing: native
+            self.assertNotIn('X3M_ENGINE_EFFECTS', launch_env(module, game, wine))  # the default flight sends nothing: plumes
             self.assertEqual(launch_env(module, game, wine, '--engine-effects', 'off')['X3M_ENGINE_EFFECTS'], 'off')
             self.assertEqual(launch_env(module, game, wine, '--config', '--engine-effects', 'plumes')['X3M_ENGINE_EFFECTS'], 'plumes')
             self.assertNotIn('X3M_ENGINE_EFFECTS', launch_env(module, game, wine, '--config'))

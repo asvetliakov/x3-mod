@@ -5455,12 +5455,12 @@ void initialize_log(HMODULE module) {
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at
                                       // 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other
                                       // cull/LOD pass claims
-    engine_effects::initialize();     // X3M_ENGINE_EFFECTS=native|off|plumes, unset = native: read once here, never
+    engine_effects::initialize();     // X3M_ENGINE_EFFECTS=native|off|plumes, unset = plumes: read once here, never
                                       // toggled; nothing patched (the glow-jet draws are skipped in the motion route)
     lod_occlusion::initialize();      // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0
                                  // occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the
                                  // point-light site in the same function
-    engine_effects_patch::initialize(); // X3M_ENGINE_EFFECTS=native|off|plumes, unset = native: off/plumes redirect the
+    engine_effects_patch::initialize(); // X3M_ENGINE_EFFECTS=native|off|plumes, unset = plumes: off/plumes redirect the
                                         // per-ship engine effect routine's two calls (0x004147eb effect instance,
                                         // 0x0041482c trail generator) to class-7 skip stubs, both or none, same window,
                                         // disjoint from every other claim

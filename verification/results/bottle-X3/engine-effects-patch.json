@@ -10,13 +10,17 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "192e1e3fb14b4148c18a73437cb6d75ff12695ac",
-  "production_sources_dirty": false,
-  "dirty_paths": [],
+  "commit": "c256d9c2158d8280093f7cb6c7223ddc51004f2d",
+  "production_sources_dirty": true,
+  "dirty_paths": [
+   "src/proxy/engine_effects_patch.cpp",
+   "src/proxy/engine_effects_patch.h",
+   "src/proxy/engine_effects_sites.h"
+  ],
   "sha256": {
-   "src/proxy/engine_effects_patch.cpp": "fbea0deafab10f98158861c2a974c1c4dfbfc27faee91f5ab37439f2fbf1e933",
-   "src/proxy/engine_effects_patch.h": "71a691a372718d6606c9ccffa346b80e9476cc83129d7b523b928c2e52f2c90b",
-   "src/proxy/engine_effects_sites.h": "4770de63643eb69c69aa8f27a677cb2bd199fccfeaa9c6e26cf19749bafc57df",
+   "src/proxy/engine_effects_patch.cpp": "75c006090eac160acd72179597476038d7488861e34c5e0b86494bb3994b0bef",
+   "src/proxy/engine_effects_patch.h": "78ef07a039fec359ff094957057570d92adcb7564850f8dc17d67a1b4e765daa",
+   "src/proxy/engine_effects_sites.h": "70b035032893f7fd6dee7ca1cd61c1a2972ab2f479fcea6ae01ecda2c035ddec",
    "src/proxy/engine_effects_option.h": "cb8a96b23acaa40985fc6fcca31c8b80cef9d581be53dea800c69fec8b1ab6b6",
    "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
    "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
@@ -33,8 +37,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 6.2,
- "executable_sha256": "96cd622eb830a567841ac289f518476b93047bfa62b89b65782bc9b71fabf3ab",
+ "elapsed_s": 5.6,
+ "executable_sha256": "01a2b8b407170f45ee4d48e43c004ca24f6356c82e1cbf9b1e4117023a30d2d3",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect": [],
@@ -97,8 +101,8 @@
   "overlapping_sections": [],
   "highest_other_section_end": "0023b008"
  },
- "check_count": 54,
- "pass_count": 54,
+ "check_count": 62,
+ "pass_count": 62,
  "checks": [
   {
    "name": "layout_at_engine_addresses",
@@ -126,10 +130,6 @@
   },
   {
    "name": "vanilla_contract",
-   "pass": true
-  },
-  {
-   "name": "unset_is_native",
    "pass": true
   },
   {
@@ -297,6 +297,42 @@
    "pass": true
   },
   {
+   "name": "installed_a_atomic_b_plain",
+   "pass": true
+  },
+  {
+   "name": "second_initialize_silent",
+   "pass": true
+  },
+  {
+   "name": "ship_skips_both",
+   "pass": true
+  },
+  {
+   "name": "non_ship_forwarded_unchanged",
+   "pass": true
+  },
+  {
+   "name": "non_ship_forwarded_unchanged",
+   "pass": true
+  },
+  {
+   "name": "restored",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
+   "name": "vanilla_after_restore",
+   "pass": true
+  },
+  {
    "name": "reinstalled",
    "pass": true
   },
@@ -325,7 +361,7 @@
    "calls_b": "1",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "b0b0b0b0",
@@ -345,7 +381,7 @@
    "calls_b": "1",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "b0b0b0b0",
@@ -365,7 +401,7 @@
    "calls_b": "1",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "b0b0b0b0",
@@ -385,7 +421,7 @@
    "calls_b": "0",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "00000000",
@@ -405,7 +441,7 @@
    "calls_b": "1",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "b0b0b0b0",
@@ -425,7 +461,7 @@
    "calls_b": "1",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "b0b0b0b0",
@@ -445,7 +481,7 @@
    "calls_b": "0",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "00000000",
@@ -465,7 +501,7 @@
    "calls_b": "1",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "b0b0b0b0",
@@ -485,7 +521,67 @@
    "calls_b": "1",
    "exit_esp_delta": "0",
    "ebx": "00237180",
-   "ebp": "0080f914",
+   "ebp": "0080f8e4",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "unset",
+   "object": "ship",
+   "calls_a": "0",
+   "calls_b": "0",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f8e4",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "00000000",
+   "eflags": "00000646",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "0",
+   "a_return": "00000000",
+   "b_esp_delta": "0",
+   "b_return": "00000000"
+  },
+  {
+   "phase": "unset",
+   "object": "missile",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f8e4",
+   "esi": "50505050",
+   "edi": "d0d0d0d0",
+   "eax": "b0b0b0b0",
+   "eflags": "00000602",
+   "mxcsr": "00007f80",
+   "fcw": "0c7f",
+   "error": "1234abcd",
+   "a_esp_delta": "-44",
+   "a_return": "004147f0",
+   "b_esp_delta": "-20",
+   "b_return": "00414831"
+  },
+  {
+   "phase": "unset",
+   "object": "class_0107",
+   "calls_a": "1",
+   "calls_b": "1",
+   "exit_esp_delta": "0",
+   "ebx": "00237180",
+   "ebp": "0080f8e4",
    "esi": "50505050",
    "edi": "d0d0d0d0",
    "eax": "b0b0b0b0",
@@ -500,26 +596,6 @@
   }
  ],
  "rows": [
-  {
-   "site": "A",
-   "va": "0x004147eb",
-   "state": "native",
-   "reason": "native",
-   "mode": "native",
-   "setting": "-",
-   "write": "none",
-   "active": false
-  },
-  {
-   "site": "B",
-   "va": "0x0041482c",
-   "state": "native",
-   "reason": "native",
-   "mode": "native",
-   "setting": "-",
-   "write": "none",
-   "active": false
-  },
   {
    "site": "A",
    "va": "0x004147eb",
@@ -657,6 +733,26 @@
    "reason": "ok",
    "mode": "plumes",
    "setting": "plumes",
+   "write": "plain",
+   "active": true
+  },
+  {
+   "site": "A",
+   "va": "0x004147eb",
+   "state": "active",
+   "reason": "ok",
+   "mode": "plumes",
+   "setting": "-",
+   "write": "atomic",
+   "active": true
+  },
+  {
+   "site": "B",
+   "va": "0x0041482c",
+   "state": "active",
+   "reason": "ok",
+   "mode": "plumes",
+   "setting": "-",
    "write": "plain",
    "active": true
   },
@@ -702,7 +798,7 @@
   }
  ],
  "result": {
-  "checks": 54,
+  "checks": 62,
   "failures": 0
  },
  "passed": true

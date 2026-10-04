@@ -50,7 +50,9 @@ together; the ribbon is armed only when redirect B is installed (fail closed), t
 **The redirects are decided at install/load only, never toggled per frame:** an instance or generator created
 before a stub arms lives on, frozen at its last refresh, until its ship is removed [i, §7 "Arm once"]. The
 option (`engine_effects = native | off | plumes`) is therefore a load-time setting; there is no native/plumes
-comparison hotkey (user decision), only strength presets for the plume look (section 6).
+comparison hotkey (user decision), only strength presets for the plume look (section 6). **Default: plumes** since
+Run 123 A (2026-10-04, user acceptance): unset or empty = plumes in the DLL, the schema builtin and the launcher (which
+sends nothing unless given); an invalid or too-long setting is refused to native and patches nothing (fail closed).
 
 **RCS jets** (`v/00566`, 2,583 parts, mode words without bit 0, +1.0 z per steering axis [m]) are on **both** the
 JET and the SMALLJET list, so they carry the full `0x4000001` flag plus `+0x1d8 = 5` (the small-object cull drops
@@ -233,7 +235,7 @@ planned.
 | Phase | Content | Tasks |
 | --- | --- | --- |
 | 0 (**done** 2026-10-01) | engine-effects.md §7 (both sites, ABI, `&pos`, list readers, `v/00566`, the registry bit) and `tools/effects/engine_bodies.py` (`c7f6c05a`); left for phase 1: the body-name resolver generalised from `lens_flare_cull_core.h` | — |
-| 1 (**built and installed** 2026-10-01 as Run118, `526a741c`; reviewed; Run 118 A queued = flight A) | `implement-deep`: recogniser, record, suppression, the c4–6 shadow window, the resolver, census rows; `implement-deep`: the two redirects (class-7 skip, class-10 forward, install-window claim) with the hook fixture; `implement`: the load-time option (`engine_effects=native|off|plumes`, default native until flown), launcher, ledger; one review; flight A (suppression only, F8 set 1–6) | 3 + review |
+| 1 (**built and installed** 2026-10-01 as Run118, `526a741c`; reviewed; Run 118 A queued = flight A) | `implement-deep`: recogniser, record, suppression, the c4–6 shadow window, the resolver, census rows; `implement-deep`: the two redirects (class-7 skip, class-10 forward, install-window claim) with the hook fixture; `implement`: the load-time option (`engine_effects=native|off|plumes`, default native until flown, plumes since Run 123 A), launcher, ledger; one review; flight A (suppression only, F8 set 1–6) | 3 + review |
 | 2 (**built** 2026-10-01, not flown) | `implement-deep`: the stage pass, plume programs, GPU fixture, timing; `implement`: strength presets as `x3m.ini` keys; review; flight B | 2 + review |
 | 3 (ribbons, fog law, SETA/cut rules **built** 2026-10-01, not flown; RCS puffs closed: phase 2 draws RCS records as short quads) | `implement-deep`: ribbons (ring buffer core, program, fixture rows), fog law, SETA/cut rules; `implement`: RCS puffs, docs; review; flight C | 2 + review |
 | 4 (optional, on evidence) | emitter-site anchor records (stock capitals, per-race stock tint); engine-side JET cull for the engine's per-draw time; texture-key fallback for unscoped draws; reactive mark | 1–2 each |

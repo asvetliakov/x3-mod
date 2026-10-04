@@ -88,8 +88,9 @@ class EngineEffectsLaunchOption(unittest.TestCase):
             code, data, error = self.launch(inherited=inherited)
             self.assertEqual(code, 0, error)
             self.assertNotIn('X3M_ENGINE_EFFECTS', data['env'])
-            self.assertIsNone(data['engine_bodies'])
-            self.assertNotIn('engine bodies:', error)
+            # Unset is the DLL default plumes, so the table line is reported.
+            self.assertTrue(data['engine_bodies'].startswith('engine bodies: missing ('), data['engine_bodies'])
+            self.assertIn(data['engine_bodies'], error)
 
     def test_explicit_values_and_the_table_line(self):
         table_path = self.game / 'x3m/engine_bodies.json'

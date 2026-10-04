@@ -8,7 +8,8 @@
 //   native     X3M_ENGINE_EFFECTS=native, X3M_DEBUG=1: the census counts, nothing suppressed or recorded
 //   unverified X3M_ENGINE_EFFECTS=off without the identity seam: refused, everything forwarded
 //   unpatched  X3M_ENGINE_EFFECTS=off, identity verified, the call redirects not live: forwarded_patch_missing
-//   timing     X3M_ENGINE_EFFECTS=off, no census: per-draw cost of the suppressed, not_jet and non-candidate paths
+//   timing     X3M_ENGINE_EFFECTS unset (the default, plumes), no census: per-draw cost of the suppressed, not_jet
+//              and non-candidate paths
 //   plumes     X3M_ENGINE_EFFECTS=plumes without --hdr --taa: suppressed as off, the stage refuses to arm
 //   armed      X3M_ENGINE_EFFECTS=plumes with X3M_HDR=1 X3M_TAA=1 X3M_MOTION_JITTER=1 and the fixture camera: frames in the
 //              scene-boundary pattern (initial Clear, background draw, depth-only Clear, a depth writer, SetDepth null,

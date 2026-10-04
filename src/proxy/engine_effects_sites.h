@@ -77,14 +77,14 @@ constexpr unsigned callee_pop_b = 0x10;                // B: __stdcall, 4 dwords
 constexpr unsigned class_offset = 0x48;                // int16 object class
 constexpr std::uint16_t ship_class = 7;                // TShips; 10 (missiles) and the rest are forwarded
 
-// X3M_ENGINE_EFFECTS: native = the engine's bytes (unset or empty: the DLL default); off and plumes = both
-// redirects (plumes adds the draw-path plumes, which arm only when both redirects are live); anything else
-// (1..15 characters) is refused, 16 or more is too_long.
+// X3M_ENGINE_EFFECTS: native = the engine's bytes; off and plumes = both redirects (plumes, the DLL default when
+// unset or empty since Run 123 A, adds the draw-path plumes, which arm only when both redirects are live); anything
+// else (1..15 characters) is refused, 16 or more is too_long, and a refused setting patches nothing (fail closed).
 // The enum, names and the exact-lowercase parser are shared with the draw-path module (engine_effects_option.h).
 using x3m::engine_effects::option::Mode;
 using x3m::engine_effects::option::mode_name;
 using x3m::engine_effects::option::parse_mode;
-constexpr Mode default_mode = Mode::native;
+constexpr Mode default_mode = Mode::plumes;
 constexpr unsigned setting_capacity = 16;
 // The install decision on the bytes read at each window: nullptr when it is exactly the engine's, else the
 // refusal reason (an already redirected or otherwise changed window is refused).

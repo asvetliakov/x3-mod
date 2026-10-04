@@ -324,7 +324,7 @@ SETTINGS = [
     entry('engine_effects', 'enum', 'engine', 'Ship engine effects. native = the game\'s own engine glow, flares and exhaust '
           'trails; off = none of them on ships, and missiles lose their engine glow but keep their sprites and trails for now; '
           'plumes = the mod draws its own engine plumes instead (ships and missiles; needs the HDR and TAA defaults, otherwise '
-          'it looks like off; the trails come later). Read when the game starts.', builtin='native',
+          'it looks like off; the trails come later); default plumes. Read when the game starts.', builtin='plumes',
           choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
     entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
           'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Ctrl+Alt+F6 switches '

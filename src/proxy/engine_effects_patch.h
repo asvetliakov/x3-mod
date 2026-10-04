@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-// Engine-effects call redirects (X3M_ENGINE_EFFECTS=native|off|plumes; unset = native; docs/architecture/
+// Engine-effects call redirects (X3M_ENGINE_EFFECTS=native|off|plumes; unset = plumes; docs/architecture/
 // engine-effects-modern.md phase 1b, docs/reverse-engineering/engine-effects.md section 7). off and plumes redirect
 // the two calls of the per-ship engine effect routine 0x00414590 (engine_effects_sites.h): site A 0x004147eb
 // (call 0x004148a0, the effect instance: emitter sprite and engine lens flare) and site B 0x0041482c (call

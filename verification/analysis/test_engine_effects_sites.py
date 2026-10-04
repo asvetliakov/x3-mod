@@ -59,7 +59,7 @@ int main() {
     for (const char* t : rejected) { m = Mode::plumes; check(!parse_mode(t, &m) && m == Mode::plumes, t); }
     check(!parse_mode(static_cast<const char*>(nullptr), &m), "null");
     check(!std::strcmp(mode_name(Mode::native), "native") && !std::strcmp(mode_name(Mode::off), "off") &&
-          !std::strcmp(mode_name(Mode::plumes), "plumes") && default_mode == Mode::native, "names and default");
+          !std::strcmp(mode_name(Mode::plumes), "plumes") && default_mode == Mode::plumes, "names and default");
     std::printf("engine_effects_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
@@ -172,7 +172,8 @@ class EngineEffectsFixtureRecord(unittest.TestCase):
             self.assertIn(name, names)
         active = {(row['site'], row['write'], row['mode']) for row in self.record['rows'] if row['active']}
         self.assertEqual(active, {('A', 'atomic', 'off'), ('B', 'plain', 'off'), ('A', 'atomic', 'plumes'), ('B', 'plain', 'plumes')})
-        ships = [run for run in self.record['runs'] if run['object'] == 'ship' and run['phase'] in ('off', 'plumes')]
+        self.assertIn('unset', {run['phase'] for run in self.record['runs']})  # unset = the default plumes, installed
+        ships = [run for run in self.record['runs'] if run['object'] == 'ship' and run['phase'] in ('off', 'plumes', 'unset')]
         self.assertTrue(ships and all(run['calls_a'] == '0' and run['calls_b'] == '0' and run['exit_esp_delta'] == '0' for run in ships))
 
 

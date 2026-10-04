@@ -11,7 +11,8 @@ engine_effects_fixture.exe, then runs the fixture once per mode in the selected 
   unverified  off without the identity seam: refused, every draw forwarded
   unpatched   off + --debug with the identity but without the call redirects (engine_effects_patch not installed):
               every glow-jet draw forwarded as forwarded_patch_missing, nothing recorded
-  timing      plumes without the census or --hdr --taa (suppressed as off, the plume floor's radius read on): per-draw
+  timing      X3M_ENGINE_EFFECTS unset (the DLL default since Run 123 A: engine_effects_mode setting=- mode=plumes
+              status=armed) without the census or --hdr --taa (suppressed as off, the plume floor's radius read on): per-draw
               microseconds of the suppressed (one parent, five cycling parents, two alternating, none), not_jet and
               non-candidate paths
   plumes      plumes + preset strong + --debug on a device without --hdr --taa: suppressed as off (records, pixels),
@@ -63,7 +64,7 @@ PROGRAMS = {'vs': Path('/tmp/x3-shader-sweep/programs/vs_d5e1c75351ed3f04.bin'),
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2']
 MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X3M_ENGINE_EFFECTS='native', X3M_DEBUG='1'),
          'unverified': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'unpatched': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'),
-         'timing': dict(X3M_ENGINE_EFFECTS='plumes'),
+         'timing': dict(),  # X3M_ENGINE_EFFECTS unset: the default, plumes
          'plumes': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1'),
          'armed': dict(X3M_ENGINE_EFFECTS='plumes', X3M_ENGINE_EFFECTS_PRESET='strong', X3M_DEBUG='1', X3M_HDR='1', X3M_TAA='1',
                        X3M_MOTION_JITTER='1'),
@@ -176,6 +177,8 @@ def validate(mode, r):
     if len(modes) != 1 or modes[0].get('status') != expected_status:
         problems.append(f'{mode}: engine_effects_mode {modes}')
     if mode == 'timing':
+        if not modes or (modes[0].get('setting'), modes[0].get('mode')) != ('-', 'plumes'):
+            problems.append(f'timing: the unset default is not plumes: {modes}')
         out['timing'] = {l.split()[1]: float(fields(l)['median_us_per_draw']) for l in lines if l.startswith('TIMING ')}
         if rows(log, 'engine_draw') or rows(log, 'engine_frame'):
             problems.append('timing: census rows without --debug')

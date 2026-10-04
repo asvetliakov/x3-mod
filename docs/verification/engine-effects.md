@@ -531,3 +531,27 @@ contrast and width gates with a monotone profile [model]). All figures measured 
 | Look images | `run_engine_plumes.py --dump-images verification/results/engine-effects/look-images` | 15 images and the contact sheet, max 182 KB |
 | Image metrics | `plume_look_metrics.py --before <images at e51872be>` -> `plume_look_metrics_out.txt`; `plume_look_metrics_compare.py` -> `_out.txt` (before: `plume_look_metrics_tuned_out.txt`, 8eb0514b's); `plume_look_width_ratio.py` -> `_out.txt` | display radial u 0.2 on the s 1 capped bands 4.3-6.7 -> 5.4-8.4; body whiteness u 0.5 0.36-0.38 -> 0.35-0.38; 10 % half-width over the slab law's 0.61-0.71 -> 0.78-0.95 (restrained 0.52); 02b ring cyan 1.11 -> 1.04 (display gate 1.05: FAIL; FP16 1.21 passes), red 1.46 -> 1.38; far dots 2 / 6 px of the slab law's 1.21 / 1.07; the 40 px plume 0.40 -> 0.55 of the slab law's display energy |
 | Host | `run_host_suite.py` | 289 modules, 3,040 tests, 0 failing (`test_engine_plumes` 15 tests OK on the regenerated record) |
+
+## Default mode plumes (2026-10-04, after Run 123 A; worktree build on c256d9c2, not a candidate)
+
+The user accepted the plumes on Run 123 A; `engine_effects` unset or empty is now plumes everywhere a default lives.
+DLL: `engine_effects.cpp` initialize() parses unset/empty as `Mode::plumes`; `engine_effects_sites.h` `default_mode =
+Mode::plumes`, so `engine_effects_patch.cpp` installs both redirects when unset. Kept fail closed: an invalid (1..15
+characters, not one of the three words) or too-long (16+) setting is still refused, the draw path stays native
+(status invalid_setting / too_long, no hook) and the redirect module patches nothing (mode `-`, write none). Schema
+`engine_effects` builtin `native` -> `plumes` (`assets/x3m.ini` regenerated: `;engine_effects = plumes`;
+`config_schema_inc.h` carries no builtin and is unchanged). Launcher: still sends nothing unless given; the help text
+says plumes is the unset default; `engine_bodies_line` treats unset as plumes, so the default launch reports the table
+(`engine bodies: missing|unreadable|ok`), native alone omits it. `engine_plume_floor` stays 0.5 (DLL and schema).
+Fixtures: `run_engine_effects.py` mode `timing` now runs with X3M_ENGINE_EFFECTS unset and requires `setting=- mode=plumes
+status=armed`; `engine_effects_patch_fixture.cpp` drops `unset_is_native` and installs/restores the unset case as a
+third pass of the off/plumes loop (phase `unset`).
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| Effects | `wine_lock.py env X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/run_engine_effects.py` | PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7); timing's mode row `setting=- mode=plumes status=armed` |
+| Redirects | `wine_lock.py env X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/run_engine_effects_patch.py` | PASS 62/62, 20 rows |
+| Config | `python3 tools/config/generate.py --check` | PASS 256 settings, 107 in the template |
+| Host | `unittest` test_engine_effects, test_engine_effects_sites, test_config_schema, test_manage_engine_effects, test_launcher_defaults, test_cull_small_parts, test_comparison_hotkeys, test_engine_ribbons, test_engine_plumes, test_motion_output_runner, test_engine_light | 139 tests OK |
+| Launcher | `python3 tools/manage.py launch --dry-run` | no X3M_ENGINE_EFFECTS* sent; `engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed)`; with `--engine-effects native` no engine bodies line |
+| Build | clean `cmake -S . -B build` (mingw-i686, RelWithDebInfo) + `check_no_x87.py` | 0 warnings; PASS, 765 reachable functions |

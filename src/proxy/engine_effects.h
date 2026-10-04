@@ -4,7 +4,7 @@
 #include "engine_plumes_core.h"
 
 // Engine effects, phases 1a and 2 (docs/architecture/engine-effects-modern.md sections 1-6): the process-wide part of
-// the glow-jet suppression. The option X3M_ENGINE_EFFECTS=native|off|plumes (ini engine_effects, default native) is
+// the glow-jet suppression. The option X3M_ENGINE_EFFECTS=native|off|plumes (ini engine_effects, default plumes) is
 // read once at load and never toggled (a switch mid-flight would freeze native sprites and trails); plumes suppresses
 // like off and arms the proxy's plume stage (motion_output_engine_plumes_inc.h) with the preset read here. The per-draw recogniser, the record ring and the census rows live in the
 // motion route (motion_output_engine_effects_inc.h), which reads the shadow it already keeps. This module owns:

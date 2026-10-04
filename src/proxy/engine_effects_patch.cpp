@@ -176,8 +176,8 @@ bool initialize() {
         SetLastError(error);
         return installed_;
     }
-    // Unset or empty = native (the engine's bytes); 1..15 characters must be exactly native, off or plumes;
-    // anything else is refused and nothing is patched.
+    // Unset or empty = plumes (both redirects); 1..15 characters must be exactly native, off or plumes; anything
+    // else is refused and nothing is patched (the engine's bytes, as native).
     wchar_t text[sites::setting_capacity]{};
     const DWORD length = x3m::config::get(L"X3M_ENGINE_EFFECTS", text, sites::setting_capacity);
     char setting[sites::setting_capacity]{};
