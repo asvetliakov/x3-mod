@@ -22,13 +22,9 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "3ee84cf3aaa87960dfa37066eec14e036da8979b-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/engine_plumes_core.h",
-      "src/renderer/engine_plumes_pass.cpp",
-      "src/renderer/engine_plumes_pass.h"
-    ],
+    "commit": "d0d71d7b3b65e9365844374ee3bfce50efb84afe",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_plumes_core.h": "e52c9b237ff80db902e31e21f09c79e4ed8c6d5caa06a8ea1928247ee54b5e62",
       "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
@@ -89,12 +85,12 @@
       "src/renderer/engine_ribbons_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3f8d7410ec5638df/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
+      "/private/tmp/x3-run125-fixture/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "f0e617123992d348eb3bd975482feea1bb00e6f5543ec3a8064ce8f71b7fac4b"
+    "executable_sha256": "0236160a096e6afdd20acd84053f59e44a3f6214336aab6921c585acdb97dbe9"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -1290,11 +1286,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 1.1206,
-        "fenced_off_ms": 0.8935,
-        "submit_ms": 0.0744,
-        "chain_ms": 0.2271,
-        "gpu_ms": 0.1527,
+        "fenced_on_ms": 1.1505,
+        "fenced_off_ms": 0.9353,
+        "submit_ms": 0.077,
+        "chain_ms": 0.2152,
+        "gpu_ms": 0.1382,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1306,11 +1302,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 1.2697,
-        "fenced_off_ms": 1.0083,
-        "submit_ms": 0.0895,
-        "chain_ms": 0.2614,
-        "gpu_ms": 0.1719,
+        "fenced_on_ms": 1.2862,
+        "fenced_off_ms": 0.9342,
+        "submit_ms": 0.0925,
+        "chain_ms": 0.352,
+        "gpu_ms": 0.2595,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1322,11 +1318,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 1.6786,
-        "fenced_off_ms": 1.0118,
-        "submit_ms": 0.1301,
-        "chain_ms": 0.6668,
-        "gpu_ms": 0.5367,
+        "fenced_on_ms": 1.7005,
+        "fenced_off_ms": 0.9538,
+        "submit_ms": 0.143,
+        "chain_ms": 0.7467,
+        "gpu_ms": 0.6037,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1338,11 +1334,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 1.7598,
-        "fenced_off_ms": 1.6544,
-        "submit_ms": 0.077,
-        "chain_ms": 0.1054,
-        "gpu_ms": 0.0284,
+        "fenced_on_ms": 1.747,
+        "fenced_off_ms": 1.6368,
+        "submit_ms": 0.0835,
+        "chain_ms": 0.1102,
+        "gpu_ms": 0.0267,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1354,11 +1350,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 1.7738,
-        "fenced_off_ms": 1.6535,
-        "submit_ms": 0.0918,
-        "chain_ms": 0.1203,
-        "gpu_ms": 0.0285,
+        "fenced_on_ms": 1.8531,
+        "fenced_off_ms": 1.6305,
+        "submit_ms": 0.0925,
+        "chain_ms": 0.2226,
+        "gpu_ms": 0.1301,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1370,11 +1366,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 1.9386,
-        "fenced_off_ms": 1.545,
-        "submit_ms": 0.1315,
-        "chain_ms": 0.3936,
-        "gpu_ms": 0.2621,
+        "fenced_on_ms": 1.9005,
+        "fenced_off_ms": 1.623,
+        "submit_ms": 0.1339,
+        "chain_ms": 0.2775,
+        "gpu_ms": 0.1436,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1385,29 +1381,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 3.68,
-        "min_us": 3.59,
+        "median_us": 3.89,
+        "min_us": 3.72,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 11.99,
-        "min_us": 11.58,
+        "median_us": 12.41,
+        "min_us": 11.93,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 35.51,
-        "min_us": 34.09,
+        "median_us": 36.27,
+        "min_us": 35.14,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 127.68,
-        "min_us": 124.14,
+        "median_us": 131.4,
+        "min_us": 128.48,
         "method": "qpc_50x41"
       }
     ],
@@ -1415,29 +1411,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 4.13,
-        "min_us": 3.99,
+        "median_us": 4.29,
+        "min_us": 4.18,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 13.47,
-        "min_us": 12.96,
+        "median_us": 13.92,
+        "min_us": 13.49,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 38.94,
-        "min_us": 37.34,
+        "median_us": 39.8,
+        "min_us": 38.73,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 138.73,
-        "min_us": 136.28,
+        "median_us": 143.56,
+        "min_us": 141.32,
         "method": "qpc_50x41"
       }
     ],
@@ -1447,8 +1443,8 @@
         "group": 8,
         "drawn": 30,
         "merged": 0,
-        "median_us": 5.3,
-        "min_us": 5.26,
+        "median_us": 5.72,
+        "min_us": 5.52,
         "method": "qpc_50x41"
       },
       {
@@ -1456,8 +1452,8 @@
         "group": 8,
         "drawn": 100,
         "merged": 0,
-        "median_us": 15.29,
-        "min_us": 14.88,
+        "median_us": 15.97,
+        "min_us": 15.24,
         "method": "qpc_50x41"
       },
       {
@@ -1465,8 +1461,8 @@
         "group": 8,
         "drawn": 300,
         "merged": 0,
-        "median_us": 42.64,
-        "min_us": 41.18,
+        "median_us": 43.64,
+        "min_us": 42.04,
         "method": "qpc_50x41"
       },
       {
@@ -1474,8 +1470,8 @@
         "group": 300,
         "drawn": 300,
         "merged": 0,
-        "median_us": 123.13,
-        "min_us": 120.84,
+        "median_us": 125.38,
+        "min_us": 123.84,
         "method": "qpc_50x41"
       },
       {
@@ -1483,8 +1479,8 @@
         "group": 8,
         "drawn": 1024,
         "merged": 0,
-        "median_us": 148.43,
-        "min_us": 145.78,
+        "median_us": 153.02,
+        "min_us": 150.61,
         "method": "qpc_50x41"
       }
     ],
@@ -4764,12 +4760,12 @@
       "5120_flicker_8px": 1.0005
     },
     "stage_gpu_ms": {
-      "1920x1080_30": 0.1527,
-      "1920x1080_100": 0.1719,
-      "1920x1080_300_far250": 0.5367,
-      "5120x1440_30": 0.0284,
-      "5120x1440_100": 0.0285,
-      "5120x1440_300_far250": 0.2621
+      "1920x1080_30": 0.1382,
+      "1920x1080_100": 0.2595,
+      "1920x1080_300_far250": 0.6037,
+      "5120x1440_30": 0.0267,
+      "5120x1440_100": 0.1301,
+      "5120x1440_300_far250": 0.1436
     },
     "distance_ratio_gpu": {
       "1920_2px": 0.15,
@@ -4786,28 +4782,28 @@
       "1920x1080_100": false,
       "1920x1080_300_far250": false,
       "5120x1440_30": true,
-      "5120x1440_100": true,
+      "5120x1440_100": false,
       "5120x1440_300_far250": false
     },
-    "build_300_far250_us": 35.51,
+    "build_300_far250_us": 36.27,
     "build_us": {
-      "30": 3.68,
-      "100": 11.99,
-      "300": 35.51,
-      "1024": 127.68
+      "30": 3.89,
+      "100": 12.41,
+      "300": 36.27,
+      "1024": 131.4
     },
     "build_floor_us": {
-      "30": 4.13,
-      "100": 13.47,
-      "300": 38.94,
-      "1024": 138.73
+      "30": 4.29,
+      "100": 13.92,
+      "300": 39.8,
+      "1024": 143.56
     },
     "build_merge_us": {
-      "30_g8": 5.3,
-      "100_g8": 15.29,
-      "300_g8": 42.64,
-      "300_g300": 123.13,
-      "1024_g8": 148.43
+      "30_g8": 5.72,
+      "100_g8": 15.97,
+      "300_g8": 43.64,
+      "300_g300": 125.38,
+      "1024_g8": 153.02
     },
     "merge": {
       "1920_end_on": {

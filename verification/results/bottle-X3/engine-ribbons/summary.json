@@ -25,15 +25,9 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "3ee84cf3aaa87960dfa37066eec14e036da8979b-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/engine_plumes_core.h",
-      "src/proxy/engine_ribbons_core.h",
-      "src/renderer/engine_plumes_pass.cpp",
-      "src/renderer/engine_plumes_pass.h",
-      "src/renderer/engine_ribbons_pass.cpp"
-    ],
+    "commit": "6741928d23957d4125492c19b432ed44e175c2ae",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_ribbons_core.h": "b8f686d8b199489ea462149451bc090a5c6e771f660a27265e430fdce38fb735",
       "src/renderer/fog_transmittance.h": "a4cde673329565e3a673c9897d93a58f1ab0c1399347bd13e54a5b312874d617",
@@ -108,12 +102,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3f8d7410ec5638df/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/private/tmp/x3-run125-fixture/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "54e811791cda244826a1e40855f262c52e46d3241a7f0b50545c709e44d1e0a7"
+    "executable_sha256": "d1f019423317ec7337946b18d816dd9c458c9ba1afcd9fc7c433affcaa6d87e4"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -417,11 +411,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.9731,
-        "fenced_off_ms": 0.8882,
-        "submit_ms": 0.0535,
-        "chain_ms": 0.0849,
-        "gpu_ms": 0.0314,
+        "fenced_on_ms": 1.0176,
+        "fenced_off_ms": 0.9291,
+        "submit_ms": 0.0543,
+        "chain_ms": 0.0885,
+        "gpu_ms": 0.0342,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -432,11 +426,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.1148,
-        "fenced_off_ms": 0.8834,
-        "submit_ms": 0.085,
-        "chain_ms": 0.2314,
-        "gpu_ms": 0.1464,
+        "fenced_on_ms": 1.1479,
+        "fenced_off_ms": 0.9394,
+        "submit_ms": 0.1007,
+        "chain_ms": 0.2085,
+        "gpu_ms": 0.1078,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -447,11 +441,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.7271,
-        "fenced_off_ms": 1.6515,
-        "submit_ms": 0.0517,
-        "chain_ms": 0.0756,
-        "gpu_ms": 0.0239,
+        "fenced_on_ms": 1.6987,
+        "fenced_off_ms": 1.6223,
+        "submit_ms": 0.0528,
+        "chain_ms": 0.0764,
+        "gpu_ms": 0.0236,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -462,11 +456,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7618,
-        "fenced_off_ms": 1.652,
-        "submit_ms": 0.0857,
-        "chain_ms": 0.1098,
-        "gpu_ms": 0.0241,
+        "fenced_on_ms": 1.8523,
+        "fenced_off_ms": 1.6421,
+        "submit_ms": 0.093,
+        "chain_ms": 0.2102,
+        "gpu_ms": 0.1172,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -476,15 +470,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.63,
-        "min_us": 7.13,
+        "median_us": 7.57,
+        "min_us": 7.05,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 24.93,
-        "min_us": 23.5,
+        "median_us": 25.14,
+        "min_us": 23.65,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -689,20 +683,20 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0314,
-      "1920x1080_100": 0.1464,
-      "5120x1440_30": 0.0239,
-      "5120x1440_100": 0.0241
+      "1920x1080_30": 0.0342,
+      "1920x1080_100": 0.1078,
+      "5120x1440_30": 0.0236,
+      "5120x1440_100": 0.1172
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
       "1920x1080_100": false,
       "5120x1440_30": true,
-      "5120x1440_100": true
+      "5120x1440_100": false
     },
     "cpu_us": {
-      "30": 7.63,
-      "100": 24.93
+      "30": 7.57,
+      "100": 25.14
     },
     "cpu_100_within": true,
     "fog": [
