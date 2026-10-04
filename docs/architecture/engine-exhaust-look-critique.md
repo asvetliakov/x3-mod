@@ -338,6 +338,12 @@ mouth 1.02-1.04, the far dots at 12 / 6 / 2 px 0.971 (restrained 0.58-0.60). Fix
 1.020 -> 1.013, over the slab law 0.740 -> 0.744; the 40 px cyan axis whiteness 0.169 -> 0.161 (gate 0.15), the
 mouth over the body 0.694 -> 0.692 (gate 0.85), the end-on ring cyan 1.205 -> 1.183. No gate floor moved.
 
+Reverted (2026-10-04, after Run 126 A, user decision): `heat` 0.7, `head_min` 0.75 and `core_low` / `core_high`
+1.2 / 4.0 are back (the Run123 values). The change dimmed the red plume heads (the red cluster's total 0.78 of
+before) for a side-view gain nobody noticed in flight. Everything after it stays: `disc_cap` 1.0, `disc_ring` 3,
+`chase_disc_floor` 0.4, the natural-width disc under the near cap, the merge window, the floor and the far law.
+Measured on this tree: `docs/verification/engine-effects.md`, "Mouth whiteness reverted".
+
 ### End-on brightness (after flight G, 2026-10-04, worktree build on 3ee84cf3, not a candidate)
 
 Flight G (Run 124, run412; screenshot `screenshots/engines3.png`): the own Split Scorpion seen from behind in chase

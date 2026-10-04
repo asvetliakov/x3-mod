@@ -96,12 +96,12 @@ int main() {
     flat.pulse = 0.f;
     // After flight E: the halo brightness 0.20, and the distance law's factor at the small nozzles below (10 px, 4 px).
     const float HB = default_look.hb;
-    // After flight F: I(s) = lerp(IL, IH, s) (1.248 / 4.16), the heat 0.1, head_min 0.42; the ring 0.3 and the mouth dip
-    // 0.5 over 0.3 L as before.
+    // I(s) = lerp(IL, IH, s) (1.2 / 4.0), the heat 0.7, head_min 0.75 (the flight-F 1.248 / 4.16, 0.1, 0.42 reverted
+    // after Run 126 A); the ring 0.3 and the mouth dip 0.5 over 0.3 L.
     const float IL = default_look.core_low, IH = default_look.core_high, RG = default_look.ring, HT = default_look.heat,
                 DIP = default_look.mouth_dip, RAMP = default_look.mouth_ramp;
-    expect(IL == 1.248f && IH == 4.16f && RG == .3f && HT == .1f && DIP == .5f && RAMP == .3f && head_min == .42f,
-           "after flight F: I(s) 1.248 .. 4.16, heat 0.1, head_min 0.42; ring 0.3, mouth dip 0.5 over 0.3 L");
+    expect(IL == 1.2f && IH == 4.f && RG == .3f && HT == .7f && DIP == .5f && RAMP == .3f && head_min == .75f,
+           "Run123 look (flight-F mouth change reverted after Run 126 A): I(s) 1.2 .. 4.0, heat 0.7, head_min 0.75; ring 0.3, mouth dip 0.5 over 0.3 L");
     float fw10 = 0.f, fw4 = 0.f;
     distance_weight(default_look, 10.f, &fw10);
     distance_weight(default_look, 4.f, &fw4);
@@ -682,7 +682,7 @@ int main() {
         float head[3]; head_colour(m, pk, head);
         const float lm = .2126f + .7152f * .15f + .0722f * .15f, lp = .2126f + .7874f * .81f;
         expect(lm / lp < head_min && near(head[0], head_min) && near(head[1] / head[0], .81f) && (out[0].peak & 0xffffffu) == (pack_colour(head) & 0xffffffu) &&
-               (out[0].tint & 0xffffffu) == (pack_colour(m) & 0xffffffu), "head colour: the peak's chroma, its scale to the mean's luminance (red: 0.389) held at head_min 0.42 (0.75 until flight F), the tint the mean");
+               (out[0].tint & 0xffffffu) == (pack_colour(m) & 0xffffffu), "head colour: the peak's chroma, its scale to the mean's luminance (red: 0.389) held at head_min 0.75 (the revised law; flight F's 0.42 reverted), the tint the mean");
         const float cy[3] = {.14f, .71f, 1.f}, cyp[3] = {.27f, .9f, 1.f};
         float hc[3]; head_colour(cy, cyp, hc);
         const float lc = .2126f * .14f + .7152f * .71f + .0722f, lcp = .2126f * .27f + .7152f * .9f + .0722f;
@@ -874,7 +874,7 @@ int main() {
                near(c[10], 3.f) && near(c[11], .84f) && near(c[12], HT) && near(c[13], 1.f / (.45f * .45f)) && near(c[14], .529f) &&
                c[16] == .3f && c[17] == .8f && c[19] == 2.f && default_look.bulge == 1.15f && default_look.tail_narrowing == .6f && default_look.ring == RG && c[52] == DIP && c[53] == RAMP,
                "look constants c3..c7 from the chosen settings (bulge 1.15, the mock-up's tail; ring 0.3 after flight C; c4.x 1 / period; "
-               "the heat c6.x 0.1 after flight F, the mouth dip / ramp c16.xy; "
+               "the heat c6.x 0.7 (flight F's 0.1 reverted), the mouth dip / ramp c16.xy; "
                "the revised law: c4.x 2 / period (the cells' half-period ramp), erosion 1.6 erode, the cells' gap 0.85, the hot core 1 / (0.45 core))");
         expect(pixel_constant_floats == 64 && near(c[60], 3.74f) && near(c[61], 4.f * 1.25f) && c[62] == 1.f && near(c[63], 1.6f) && c[54] == .15f && near(c[55], .5f) && c[56] == .8f && c[57] == 1.f && near(c[58], 1.f / 300.f) &&
                    near(c[59], .35f) && default_look.spill_depth_max == 300.f,

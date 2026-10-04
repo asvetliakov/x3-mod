@@ -1,0 +1,24 @@
+# python3 plume_disc_clip.py --n 150 run126=DIR revert=DIR (2026-10-04, X3; states as plume_mouth_whiteness_revert_out.txt)
+02b end-on, n 150.0 px drawn (capped and faded); centre radius 0.3 n, disc radius 4 n; mask from 'run126'
+disc                  state centre>=1  peak R  peak G  peak B disc>=1 px   frac tint>=1 px    energy  ratio
+02b red              run126     0.000   1.549   0.604   0.608          0  0.000      12355    7411.3  1.000
+02b red              revert     0.000   1.733   0.747   0.738          0  0.000       6172    7709.2  1.040
+02b blue             run126     0.000   0.623   1.408   1.793          0  0.000      12487   12525.0  1.000
+02b blue             revert     0.000   0.622   1.396   1.742          0  0.000       7783   12210.2  0.975
+
+other frames: summed luma over the first state's, largest per-pixel change of any channel
+image                    revert
+01a          1.0836 /    0.8623
+01b          0.9975 /    0.6958
+02a          0.9991 /    0.2551
+03a          0.9967 /    0.7283
+03b          0.9841 /    0.1160
+03c          0.9962 /    0.7827
+04           0.9953 /    1.1772
+05           0.9987 /    1.6318
+06a          1.0000 /    0.0002
+06b          0.9988 /    0.0671
+07           0.9982 /    1.2637
+08           0.9985 /    0.9331
+09           0.9982 /    1.4297
+10           0.9939 /    0.8838

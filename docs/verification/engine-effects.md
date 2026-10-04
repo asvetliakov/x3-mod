@@ -643,3 +643,24 @@ inner layer at 0.25 of the outer merges through a 0.5 middle layer), now pinned 
 | Plumes | `run_engine_plumes.py` | PASS 300/300; `near_capital_disc_natural_*` now also holds the disc's shape.y at the natural 939 (the body's 290.51 = 939 x k 0.309); the case otherwise unchanged: disc n 215.5 / 287.3 px = natural, half 199.1 / 265.2 px, length 778.5 -> 240.8 px (1080) and 1,038 -> 321.1 px (1440), extent 281 / 374 px, peak 1.963 |
 | Ribbons, shimmer, effects | `run_engine_ribbons.py`; `run_engine_shimmer.py`; `run_engine_effects.py` (records hash `engine_plumes_core.h`) | PASS 44/44; PASS 43/43; PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7), DLL build 0 warnings |
 | Host | `test_engine_plumes` | the near-camera cap cases also hold the disc's shape.y at the natural value; the transitive merge case (outer 10, middle 5, inner 2.5: 2 merged); OK |
+
+## Mouth whiteness reverted after Run 126 A (2026-10-04, worktree build on f4f49367, not a candidate)
+
+User decision after Run 126 A: the flight-F mouth change dimmed the red plume heads for a side-view gain nobody
+noticed. `Look` is back at the Run123 values: `heat` 0.1 -> 0.7, `head_min` 0.42 -> 0.75, `core_low` / `core_high`
+1.248 / 4.16 -> 1.2 / 4.0; everything after flight F stays (`disc_cap` 1.0, `disc_ring` 3, `chase_disc_floor` 0.4, the
+natural-width disc, the merge window, the floor, the far law). Lab, `engine_light_core.h` comment (1.2 .. 4 / 1.0 /
+0.3), `test_engine_plumes` (constants check: 1.2 / 4.0, heat 0.7, head_min 0.75), `test_engine_light` (colour 1.0,
+brightness 40) and the seam fixture's expected hull-light colour (0.312 -> 0.3) follow. No gate floor moved. Bottle X3,
+all measured.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Plumes | `run_engine_plumes.py` | PASS 300/300, no gate touched. Against the Run126 record: 40 / 12 px energy per px^2 0.5334 -> 0.533 (s 1), 0.590 -> 0.5894 (s 0.5); mouth over body (<= 0.85) 0.692 / 0.694 / 0.757 -> 0.694 / 0.695 / 0.758; 40 px axis whiteness cyan 0.161 -> 0.169 (gate 0.15), red 0.263 -> 0.275; end-on at d 1 n40 0 deg 0.665 -> 0.668, over slab 0.585 -> 0.580; red disc ring 1.168 -> 1.187; 923 slots |
+| Ribbons, shimmer, effects | `run_engine_ribbons.py`; `run_engine_shimmer.py`; `run_engine_effects.py` | PASS 44/44; PASS 43/43; PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) |
+| Light | `run_engine_light.py` | PASS (12 plate modes) |
+| Seam | `run_motion_output.py seam-engine-light` | exit 0, 107 checks, colour 0.3 (worst constant error 1.19e-08), worst relative 0.0040 |
+| Host | `X3M_REQUIRE_SHADER_CORPUS=1 ... unittest discover -p 'test_engine_*.py'`; `test_motion_output_runner.py` | 85 OK; 21 OK |
+| Build | clean `cmake` build in a fresh directory; `check_no_x87.py build/d3d9.dll` | 0 warnings; 766 reachable, 0 violations |
+| Mouth whiteness | `run_engine_plumes.py --dump-images <scratch> --dump-linear`; `plume_mouth_whiteness.py run123=<c256d9c2 dump> run126=<00e184cf dump> revert=<this tree>` -> `verification/results/engine-effects/plume_mouth_whiteness_revert_out.txt` | Every side view and the far dots equal Run123 exactly (01a and 05 .pfm byte-identical); clipped fraction (min(rgb) >= 1) Run123 / Run124 = Run126 / revert: 01a red 0.119 / 0.000 / 0.119, 01b 0.026 / 0 / 0.026, 03a 0.036, 0.041 / 0 / same as Run123, 03c 0.024, 0.032 / 0 / same, 04 0.025 / 0 / 0.025, 05 40 px 0.102 / 0.006 / 0.102, 08 0.036, 0.078 / 0 / same, 09 0.115 / 0.011 / 0.115. Red whole-band radiance: revert 1.000 of Run123, 1.266 (s 1) / 1.287 (s 0.5) of Run126 (Run126 0.790 / 0.777 of Run123); blue and the other side views 0.988..0.997 of Run126 whole, the body past the mouth 0.962..0.971 (Run124's x 1.04 gone); far dots 1.029 of Run126 |
+| End-on disc | `plume_disc_clip.py --n 150 run126=<dump> revert=<dump>` -> `plume_disc_clip_revert_out.txt` | 02b red: no clipped pixel either state (centre >= 1 0.000), peak R 1.549 -> 1.733, G 0.604 -> 0.747 (the hot centre whiter), energy 1.040; blue: peak B 1.793 -> 1.742, energy 0.975, no clipped pixel; 02b centre whiteness (min/max) red 0.294 -> 0.381, blue 0.183 -> 0.221; oblique 02a red 45 deg energy 1.050 of Run126, still no clipped pixel |

@@ -1,0 +1,67 @@
+# python3 plume_mouth_whiteness.py run123=DIR run126=DIR revert=DIR (2026-10-04, X3)
+# run123 = c256d9c2 default (the default-before of plume_mouth_whiteness_out.txt); run126 = the 00e184cf look
+# (Run124 mouth constants + the Run125/126 disc); revert = f4f49367 working tree with heat 0.7, head_min 0.75,
+# I(s) 1.2..4.0. Each from run_engine_plumes.py --dump-images DIR --dump-linear (the .pfm files).
+mask: luma709 >= 0.25 linear, 5x5 min filter, from state 'run123'; region: side 0.3 L from the nozzle (+0.15 n behind), end-on radius 0.3 n
+band                           px                             run123                             run126                             revert
+                                         min/max  >=1.0  >=0.5  luma        min/max  >=1.0  >=0.5  luma        min/max  >=1.0  >=0.5  luma
+01a red s=1                  2826         0.729  0.119  0.592  0.688         0.659  0.000  0.167  0.395         0.729  0.119  0.592  0.688
+01b blue s=1                 4711         0.302  0.026  0.148  0.541         0.201  0.000  0.017  0.516         0.302  0.026  0.148  0.541
+03a capital t0               3762         0.360  0.036  0.202  0.584         0.226  0.000  0.024  0.544         0.360  0.036  0.202  0.584
+03a capital t+100ms          3684         0.372  0.041  0.213  0.594         0.231  0.000  0.030  0.551         0.372  0.041  0.213  0.594
+03c fighter t0               4006         0.346  0.024  0.178  0.574         0.221  0.000  0.017  0.540         0.346  0.024  0.178  0.574
+03c fighter t+100ms          4069         0.351  0.032  0.193  0.574         0.222  0.000  0.025  0.536         0.351  0.032  0.193  0.574
+04 default band              3749         0.353  0.025  0.189  0.579         0.224  0.000  0.018  0.543         0.353  0.025  0.189  0.579
+05 n40 uncapped              1359         0.252  0.102  0.277  0.843         0.171  0.006  0.159  0.807         0.252  0.102  0.277  0.843
+08 normal                    3039         0.423  0.036  0.268  0.622         0.246  0.000  0.027  0.567         0.423  0.036  0.268  0.622
+08 warp6                     8252         0.342  0.078  0.274  0.658         0.209  0.000  0.084  0.609         0.342  0.078  0.274  0.658
+09 ribbon n40                1469         0.199  0.115  0.283  1.106         0.152  0.011  0.202  1.077         0.199  0.115  0.283  1.106
+01a red s=0.5                1235         0.787  0.007  0.657  0.631         0.727  0.000  0.036  0.354         0.787  0.007  0.657  0.631
+01b blue s=0.5               1365         0.476  0.001  0.242  0.600         0.286  0.000  0.001  0.551         0.476  0.001  0.242  0.600
+02a 45deg red                5185         0.300  0.042  0.357  0.695         0.151  0.000  0.000  0.362         0.191  0.000  0.157  0.424
+02a 45deg blue               5422         0.263  0.001  0.311  0.965         0.116  0.000  0.000  0.633         0.126  0.000  0.000  0.617
+02b end-on red centre        1209         0.170  0.153  0.320  0.918         0.294  0.000  0.000  0.605         0.381  0.000  0.753  0.804
+02b end-on blue centre       1209         0.099  0.021  0.176  1.395         0.183  0.000  0.000  1.064         0.221  0.000  0.000  1.054
+
+radiance kept: summed luma less the background, over the first state
+band                                    run126 past/whole              revert past/whole
+01a red s=1                                1.016 /  0.790                 1.000 /  1.000
+01b blue s=1                               1.039 /  1.007                 1.000 /  1.000
+03a capital t0                             1.039 /  1.006                 1.000 /  1.000
+03a capital t+100ms                        1.039 /  1.006                 1.000 /  1.000
+03c fighter t0                             1.039 /  1.008                 1.000 /  1.000
+03c fighter t+100ms                        1.039 /  1.007                 1.000 /  1.000
+04 default band                            1.039 /  1.007                 1.000 /  1.000
+05 n40 uncapped                            1.039 /  1.012                 1.000 /  1.000
+08 normal                                  1.039 /  1.006                 1.000 /  1.000
+08 warp6                                   1.039 /  1.001                 1.000 /  1.000
+09 ribbon n40                              1.030 /  1.008                 1.000 /  1.000
+01a red s=0.5                              1.005 /  0.777                 1.000 /  1.000
+01b blue s=0.5                             1.039 /  1.003                 1.000 /  1.000
+02a 45deg red                              1.035 /  1.026                 0.998 /  1.078
+02a 45deg blue                             1.035 /  1.196                 0.998 /  1.164
+05 far 12 px                                        0.971                          1.000
+05 far 6 px                                         0.971                          1.000
+05 far 2 px                                         0.971                          1.000
+
+# python3 plume_mouth_whiteness.py run126=DIR revert=DIR: radiance kept over Run124/126
+radiance kept: summed luma less the background, over the first state
+band                                    revert past/whole
+01a red s=1                                0.984 /  1.266
+01b blue s=1                               0.962 /  0.993
+03a capital t0                             0.962 /  0.994
+03a capital t+100ms                        0.962 /  0.994
+03c fighter t0                             0.962 /  0.992
+03c fighter t+100ms                        0.962 /  0.993
+04 default band                            0.962 /  0.993
+05 n40 uncapped                            0.962 /  0.988
+08 normal                                  0.963 /  0.994
+08 warp6                                   0.963 /  0.999
+09 ribbon n40                              0.971 /  0.992
+01a red s=0.5                              0.995 /  1.287
+01b blue s=0.5                             0.963 /  0.997
+02a 45deg red                              0.964 /  1.050
+02a 45deg blue                             0.964 /  0.973
+05 far 12 px                                        1.030
+05 far 6 px                                         1.029
+05 far 2 px                                         1.029

@@ -20,7 +20,7 @@
     "radiance": true,
     "zero": true
    },
-   "constant_error": 3.747199994741379e-08,
+   "constant_error": 1.2200000121254106e-08,
    "emissive": 0.0,
    "fp16": false,
    "invariants": {
@@ -36,21 +36,21 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 4775,
+    "energy_checked": 4678,
     "lit": 4100,
-    "max_dark_absolute": 3.888542871873131e-05,
+    "max_dark_absolute": 3.819745789526187e-05,
     "max_depth_error": 8.009800600561334e-10,
-    "max_energy_relative": 0.0003372583162348972,
-    "max_relative": 0.001428136078016665,
+    "max_energy_relative": 0.00033748427352998814,
+    "max_relative": 0.001428043849341525,
     "plate": 16384,
     "samples": 16384,
-    "visible": 11369,
+    "visible": 11352,
     "worst": {
      "base": 1.00000314e-10,
      "channel": 0,
-     "energy": 0.00020665973760567143,
-     "expected": 0.02114055118385482,
-     "twin": 0.0211103596,
+     "energy": 0.0001987112994704084,
+     "expected": 0.020767006195466675,
+     "twin": 0.02073735,
      "x": 86,
      "y": 96
     },
@@ -85,21 +85,21 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 8324,
+    "energy_checked": 8262,
     "lit": 6086,
     "max_dark_absolute": 0.0,
     "max_depth_error": 2.3223394873816972e-07,
-    "max_energy_relative": 0.0004704937852728875,
-    "max_relative": 4.9506665262017874e-05,
+    "max_energy_relative": 0.00046340347257673077,
+    "max_relative": 4.7917730283125166e-05,
     "plate": 14976,
     "samples": 16384,
     "visible": 18258,
     "worst": {
      "base": 0.300000072,
      "channel": 2,
-     "energy": 0.02207041128689341,
-     "expected": 0.3394114128727968,
-     "twin": 0.339428216,
+     "energy": 0.02122155013053405,
+     "expected": 0.33799682695920924,
+     "twin": 0.338013023,
      "x": 86,
      "y": 120
     },
@@ -134,21 +134,21 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 8324,
+    "energy_checked": 8262,
     "lit": 6086,
     "max_dark_absolute": 0.0,
     "max_depth_error": 2.3223394873816972e-07,
-    "max_energy_relative": 0.0004722225825869879,
-    "max_relative": 4.9506665262017874e-05,
+    "max_energy_relative": 0.00046340347257673077,
+    "max_relative": 4.7917730283125166e-05,
     "plate": 14976,
     "samples": 16384,
     "visible": 18258,
     "worst": {
      "base": 0.300000072,
      "channel": 2,
-     "energy": 0.02207041128689341,
-     "expected": 0.3394114128727968,
-     "twin": 0.339428216,
+     "energy": 0.02122155013053405,
+     "expected": 0.33799682695920924,
+     "twin": 0.338013023,
      "x": 86,
      "y": 120
     },
@@ -168,7 +168,7 @@
     "radiance": true,
     "zero": true
    },
-   "constant_error": 3.846153851246215e-08,
+   "constant_error": 2.691358030534885e-11,
    "emissive": 0.0,
    "fp16": false,
    "invariants": {
@@ -183,22 +183,22 @@
    "passed": true,
    "stats": {
     "cap_max_error": 0.0,
-    "capped": 135,
-    "energy_checked": 3603,
+    "capped": 111,
+    "energy_checked": 3555,
     "lit": 1609,
-    "max_dark_absolute": 6.0201715505953275e-05,
+    "max_dark_absolute": 5.913734482323324e-05,
     "max_depth_error": 8.009800600561334e-10,
-    "max_energy_relative": 0.00047888134415122825,
-    "max_relative": 0.002131218888750959,
+    "max_energy_relative": 0.0004633098413166347,
+    "max_relative": 0.0021311600682017286,
     "plate": 16384,
     "samples": 16384,
     "visible": 4743,
     "worst": {
      "base": 1.00000314e-10,
      "channel": 0,
-     "energy": 0.0002427535067189974,
-     "expected": 0.02274539140780034,
-     "twin": 0.022696916,
+     "energy": 0.0002334168423612222,
+     "expected": 0.022343489252078325,
+     "twin": 0.0222958717,
      "x": 108,
      "y": 88
     },
@@ -233,21 +233,21 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 6148,
+    "energy_checked": 6004,
     "lit": 6086,
-    "max_dark_absolute": 7.168776995239e-05,
+    "max_dark_absolute": 7.042145119898376e-05,
     "max_depth_error": 2.3223394873816972e-07,
-    "max_energy_relative": 0.0003319335009193031,
-    "max_relative": 0.0027889076537200084,
+    "max_energy_relative": 0.00033211551926994704,
+    "max_relative": 0.0027889948725824216,
     "plate": 14976,
     "samples": 16384,
-    "visible": 16667,
+    "visible": 16628,
     "worst": {
      "base": 1.00000314e-10,
      "channel": 0,
-     "energy": 0.00021694902074435925,
-     "expected": 0.02161265111189685,
-     "twin": 0.0216729268,
+     "energy": 0.00020860483080146515,
+     "expected": 0.021230763808596814,
+     "twin": 0.0212899763,
      "x": 82,
      "y": 132
     },
@@ -282,21 +282,21 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 8583,
+    "energy_checked": 8417,
     "lit": 7812,
     "max_dark_absolute": 0.0,
     "max_depth_error": 2.3223394873816972e-07,
-    "max_energy_relative": 0.0001557749744739146,
-    "max_relative": 3.0508590350873465e-05,
+    "max_energy_relative": 0.00015373439285645336,
+    "max_relative": 3.004385040623587e-05,
     "plate": 14976,
     "samples": 16384,
     "visible": 23436,
     "worst": {
      "base": 0.200000048,
      "channel": 0,
-     "energy": 0.05087860181939003,
-     "expected": 0.31701733275193905,
-     "twin": 0.317007661,
+     "energy": 0.04892173326034674,
+     "expected": 0.3134629136328851,
+     "twin": 0.313453496,
      "x": 164,
      "y": 222
     },
@@ -315,7 +315,7 @@
     "radiance": true,
     "zero": true
    },
-   "constant_error": 1.1228643204976393e-08,
+   "constant_error": 2.3999999876345157e-08,
    "emissive": 0.200000003,
    "fp16": false,
    "invariants": {
@@ -331,21 +331,21 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 4054,
+    "energy_checked": 3998,
     "lit": 2695,
     "max_dark_absolute": 0.0,
     "max_depth_error": 1.8684438896077182e-07,
-    "max_energy_relative": 0.00032949015880404765,
-    "max_relative": 6.40006765282219e-05,
+    "max_energy_relative": 0.00030621037610448903,
+    "max_relative": 6.264448429113959e-05,
     "plate": 16256,
     "samples": 16384,
     "visible": 8085,
     "worst": {
      "base": 0.200000048,
      "channel": 1,
-     "energy": 0.024674743000460807,
-     "expected": 0.26460031359907993,
-     "twin": 0.264583379,
+     "energy": 0.02372571358259084,
+     "expected": 0.2624630538626547,
+     "twin": 0.262446612,
      "x": 156,
      "y": 94
     },
@@ -364,7 +364,7 @@
     "radiance": true,
     "zero": true
    },
-   "constant_error": 1.1228643204976393e-08,
+   "constant_error": 2.3999999876345157e-08,
    "emissive": 0.200000003,
    "fp16": true,
    "invariants": {
@@ -380,23 +380,23 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 4054,
+    "energy_checked": 3998,
     "lit": 2695,
     "max_dark_absolute": 0.0,
     "max_depth_error": 1.8684438896077182e-07,
-    "max_energy_relative": 0.00427927725952331,
-    "max_relative": 0.0009110485677666006,
+    "max_energy_relative": 0.004471771702447545,
+    "max_relative": 0.0009122203553895019,
     "plate": 16256,
     "samples": 16384,
     "visible": 8085,
     "worst": {
      "base": 0.199951172,
      "channel": 1,
-     "energy": 0.2000202586110593,
-     "expected": 0.5116966494996577,
-     "twin": 0.511230469,
-     "x": 140,
-     "y": 100
+     "energy": 0.2034026056917953,
+     "expected": 0.5151183394346668,
+     "twin": 0.514648438,
+     "x": 142,
+     "y": 110
     },
     "zero": 13529,
     "zero_not_identical": 0
@@ -429,22 +429,22 @@
    "stats": {
     "cap_max_error": 0.0,
     "capped": 0,
-    "energy_checked": 8583,
+    "energy_checked": 8417,
     "lit": 7812,
     "max_dark_absolute": 0.0,
     "max_depth_error": 2.3223394873816972e-07,
-    "max_energy_relative": 0.004324309688693226,
-    "max_relative": 0.0009397014019007404,
+    "max_energy_relative": 0.004385714853338053,
+    "max_relative": 0.0009520315462069864,
     "plate": 14976,
     "samples": 16384,
     "visible": 23436,
     "worst": {
      "base": 0.199951172,
      "channel": 0,
-     "energy": 0.20051618903969876,
-     "expected": 0.5122000651192462,
-     "twin": 0.51171875,
-     "x": 174,
+     "energy": 0.1895873900737418,
+     "expected": 0.5009652156888882,
+     "twin": 0.500488281,
+     "x": 172,
      "y": 196
     },
     "zero": 7140,
@@ -454,16 +454,16 @@
   }
  },
  "cost": {
-  "build_us": 92.6,
-  "hit_ns": 63.2,
+  "build_us": 77.3,
+  "hit_ns": 62.1,
   "hits": 200000.0,
-  "log_ns": 2.0,
-  "miss_ns": 3.6,
+  "log_ns": 1.9,
+  "miss_ns": 3.5,
   "misses": 200000.0,
   "nodes": 1024.0,
   "rounds": 200000.0,
   "ships": 256.0,
-  "ships_us": 48.5
+  "ships_us": 47.0
  },
  "cost_checks": {
   "hit_ns": true,
@@ -472,144 +472,144 @@
  },
  "create": {
   "twins": 6.0,
-  "us_each": 42.6,
-  "us_total": 255.6
+  "us_each": 44.9,
+  "us_total": 269.7
  },
- "elapsed_s": 39.98,
- "executable_sha256": "a2f3931051acf25a8153913b08694adebeee61d9fb53988f692554d148c60345",
+ "elapsed_s": 29.81,
+ "executable_sha256": "5c1cac591a9188081e825c2cf53e6b31ae6598a3b15c10fd6863e0229622416e",
  "exit_code": 0,
  "game_launched": false,
  "gpu": [
   {
    "base_batches": [
-    0.253,
-    0.1543,
-    0.1509,
-    0.1528,
-    0.1518
+    0.2925,
+    0.202,
+    0.1746,
+    0.15,
+    0.1503
    ],
-   "base_ms": 0.1528,
+   "base_ms": 0.1746,
    "height": 1080,
    "nozzles": 1,
-   "term_us": 23.60000000000001,
+   "term_us": 11.199999999999989,
    "twin_batches": [
-    0.2409,
-    0.1769,
-    0.1756,
-    0.1764,
-    0.1749
+    0.2602,
+    0.2096,
+    0.1858,
+    0.1804,
+    0.1753
    ],
-   "twin_ms": 0.1764,
+   "twin_ms": 0.1858,
    "width": 1920
   },
   {
    "base_batches": [
-    0.4981,
-    0.4982,
-    0.4976,
-    0.4944,
-    0.4931
+    0.4931,
+    0.4961,
+    0.4937,
+    0.4938,
+    0.4996
    ],
-   "base_ms": 0.4976,
+   "base_ms": 0.4938,
    "height": 1440,
    "nozzles": 1,
-   "term_us": 85.10000000000001,
+   "term_us": 86.50000000000003,
    "twin_batches": [
-    0.5842,
-    0.5857,
-    0.5822,
-    0.5827,
-    0.5827
+    0.5832,
+    0.58,
+    0.5803,
+    0.5772,
+    0.5885
    ],
-   "twin_ms": 0.5827,
+   "twin_ms": 0.5803,
    "width": 5120
   },
   {
    "base_batches": [
+    0.1566,
+    0.15,
+    0.149,
     0.1496,
-    0.1503,
-    0.1497,
-    0.1515,
-    0.1501
+    0.1572
    ],
-   "base_ms": 0.1501,
+   "base_ms": 0.15,
    "height": 1080,
    "nozzles": 3,
-   "term_us": 34.899999999999984,
+   "term_us": 35.0,
    "twin_batches": [
     0.185,
-    0.1854,
-    0.1845,
-    0.1854,
-    0.1837
+    0.1841,
+    0.1914,
+    0.179,
+    0.1856
    ],
    "twin_ms": 0.185,
    "width": 1920
   },
   {
    "base_batches": [
-    0.4936,
-    0.4944,
-    0.4973,
-    0.4942,
-    0.4932
+    0.4993,
+    0.4938,
+    0.5,
+    0.4945,
+    0.4995
    ],
-   "base_ms": 0.4942,
+   "base_ms": 0.4993,
    "height": 1440,
    "nozzles": 3,
-   "term_us": 116.60000000000004,
+   "term_us": 116.99999999999994,
    "twin_batches": [
-    0.6091,
-    0.6108,
-    0.6175,
-    0.6095,
-    0.6119
+    0.6146,
+    0.6163,
+    0.6213,
+    0.6154,
+    0.6167
    ],
-   "twin_ms": 0.6108,
+   "twin_ms": 0.6163,
    "width": 5120
   },
   {
    "base_batches": [
-    0.15,
-    0.1511,
-    0.1495,
+    0.1556,
     0.1501,
-    0.15
+    0.1494,
+    0.1499,
+    0.1498
    ],
-   "base_ms": 0.15,
+   "base_ms": 0.1499,
    "height": 1080,
    "nozzles": 8,
-   "term_us": 46.80000000000001,
+   "term_us": 46.6,
    "twin_batches": [
-    0.1975,
-    0.197,
-    0.1958,
+    0.1961,
+    0.2031,
+    0.1971,
     0.1965,
-    0.1968
+    0.1961
    ],
-   "twin_ms": 0.1968,
+   "twin_ms": 0.1965,
    "width": 1920
   },
   {
    "base_batches": [
-    0.4943,
-    0.4919,
-    0.4941,
-    0.4946,
-    0.4945
+    0.4993,
+    0.4987,
+    0.4981,
+    0.5001,
+    0.4922
    ],
-   "base_ms": 0.4943,
+   "base_ms": 0.4987,
    "height": 1440,
    "nozzles": 8,
-   "term_us": 158.19999999999996,
+   "term_us": 159.10000000000008,
    "twin_batches": [
-    0.6526,
-    0.6525,
-    0.6525,
-    0.6513,
-    0.6507
+    0.6634,
+    0.6614,
+    0.6572,
+    0.6576,
+    0.6578
    ],
-   "twin_ms": 0.6525,
+   "twin_ms": 0.6578,
    "width": 5120
   }
  ],
@@ -1218,8 +1218,8 @@
  "reset_ok": true,
  "sources_sha256": {
   "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
-  "src/proxy/engine_light_core.h": "b4648ce5a73f92004995c5c777b2ba05374506710e84b091aec1ad46bb18aa37",
-  "src/proxy/engine_plumes_core.h": "28777918f6ca4389efb9cf8a89f85114ace9b3c79dadd542251f72ecdaf53302",
+  "src/proxy/engine_light_core.h": "7b3cb1a1bd739597659ba97504e412724e2cc9b5e3bb1f3cfc791f8b5e777ae0",
+  "src/proxy/engine_plumes_core.h": "c16e7cdde24d41ea47ee3b4ea0cc23885b116c675302725b0bd074c9ffbcdddb",
   "src/renderer/linear_engine_light_inc.h": "41b0f26ed5a78025cf908273878fff6c8aa1792ac645b112a22a0bf686e46873",
   "src/renderer/linear_material.cpp": "c12810ae25cc99d2afc4330c17088a3f800be1edb0265ae7042ceac8e817b181",
   "src/renderer/linear_material.h": "f654155aeb9e8075889417b9c8b0a71b5272b4b405836ec8ca898720fee280e2",

@@ -124,9 +124,9 @@ void run_engine_light(const char* bootstrap_vertex) {
     const float view_inverse[12] = {1, 0, 0, cam[0], 0, 1, 0, cam[1], 0, 0, 1, cam[2]};
     const float sentinel[12] = {-7, -7, -7, -7, -7, -7, -7, -7, -7, -7, -7, -7};
     // The record law (engine_light_core.h, computed here from the jet's geometry): L = t + axis x 0.5 x size, axis
-    // -(model z) = -z; R = 3 x size; colour = white x I(0) 1.248 (core_low, 1.2 until flight F) x preset 1 x 0.25.
+    // -(model z) = -z; R = 3 x size; colour = white x I(0) 1.2 (core_low) x preset 1 x 0.25.
     const double size = k, R = 3. * size, L[3] = {t[0], t[1], t[2] - .5 * size};
-    const double expected[12] = {L[0] - cam[0], L[1] - cam[1], L[2] - cam[2], R * R, .312, .312, .312, 1. / (R * R), 0, 0, 1, 0};
+    const double expected[12] = {L[0] - cam[0], L[1] - cam[1], L[2] - cam[2], R * R, .3, .3, .3, 1. / (R * R), 0, 0, 1, 0};
     unsigned lit_frames = 0, checked_images = 0, first_lit_after_reset = 0;
     double worst_relative = 0, worst_constant = 0;
     unsigned zero_differ = 0, zero_total = 0, visible_total = 0, darker = 0;

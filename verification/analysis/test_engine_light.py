@@ -217,9 +217,8 @@ class CoreTests(unittest.TestCase):
         self.assertEqual((s['ships'], s['found'], s['other_ship']), (1, 0, -1))
         self.assertEqual(s['handle'], 10)                                # the tie with handle 12 goes to the lower handle
         self.assertEqual(s['position'], [-5.0, 0.0, -15.0])               # 0.5 x value behind the nozzle along the axis
-        self.assertEqual(s['colour'], [1.04, 1.04, 1.04])                 # white x I(1) 4.16 (after flight F) x preset 1 x 0.25
-        self.assertEqual(s['radius'], 30.0)
-        self.assertAlmostEqual(s['brightness'], 41.6, places=4)            # 40 x 1.04 (I(1) 4.16 after flight F)
+        self.assertEqual(s['colour'], [1.0, 1.0, 1.0])                    # white x I(1) 4 x preset 1 x 0.25
+        self.assertEqual((s['radius'], s['brightness']), (30.0, 40.0))
         self.assertEqual((s['main'], s['rcs'], s['brake'], s['other_view'], s['orphan']), (3, 1, 1, 1, 1))
 
     def test_nozzle_plates(self):

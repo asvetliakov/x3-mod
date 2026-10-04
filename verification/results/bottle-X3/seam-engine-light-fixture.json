@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "86cf25c83ec1c652fb3a22834a4749313e85f757f2bc66a7b180ee1cb874bcdd",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "dc87ffef38769c6e1db11c93f9cad272a70288078a6da1a9a5ff96cea4f50de4",
-  "build/d3d9.dll": "63a43549815f65e8b01bd285872f7dfae5cbb8600a060f47f2dc40afd5e761a1"
+  "verification/probe/build/motion_output_fixture.exe": "1ba52078d562a5099c69cf3bcb6fa3e9f6b7a103c956c53600ec461938151a68",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "c16faa474b99ded5bc5b71ebd2eac2216b1a3786342e8c3f9025a64cf351614e",
+  "build/d3d9.dll": "e105ac52913ed10b4fe614b574afc722462df7d7f0675656ce6855d2ad338838"
  },
  "checks": 107,
  "frames": [
@@ -48,10 +48,10 @@
    "draws_lit": "1",
    "bound_unlit": "202",
    "bound_lit": "102",
-   "constant_error": "9.93e-09",
+   "constant_error": "1.19e-08",
    "lit_samples": "2236",
-   "visible": "4884",
-   "max_relative": "0.003912",
+   "visible": "4845",
+   "max_relative": "0.003994",
    "zero": "158",
    "zero_differ": "0"
   },
@@ -61,10 +61,10 @@
    "draws_lit": "1",
    "bound_unlit": "202",
    "bound_lit": "102",
-   "constant_error": "9.93e-09",
+   "constant_error": "1.19e-08",
    "lit_samples": "2236",
-   "visible": "4884",
-   "max_relative": "0.003912",
+   "visible": "4845",
+   "max_relative": "0.003994",
    "zero": "158",
    "zero_differ": "0"
   },
@@ -74,10 +74,10 @@
    "draws_lit": "1",
    "bound_unlit": "202",
    "bound_lit": "102",
-   "constant_error": "9.93e-09",
+   "constant_error": "1.19e-08",
    "lit_samples": "2236",
-   "visible": "4884",
-   "max_relative": "0.003912",
+   "visible": "4845",
+   "max_relative": "0.003994",
    "zero": "158",
    "zero_differ": "0"
   },
@@ -87,10 +87,10 @@
    "draws_lit": "1",
    "bound_unlit": "202",
    "bound_lit": "102",
-   "constant_error": "9.93e-09",
+   "constant_error": "1.19e-08",
    "lit_samples": "2236",
-   "visible": "4884",
-   "max_relative": "0.003912",
+   "visible": "4845",
+   "max_relative": "0.003994",
    "zero": "158",
    "zero_differ": "0"
   },
@@ -100,10 +100,10 @@
    "draws_lit": "1",
    "bound_unlit": "202",
    "bound_lit": "102",
-   "constant_error": "9.93e-09",
+   "constant_error": "1.19e-08",
    "lit_samples": "2236",
-   "visible": "4884",
-   "max_relative": "0.003912",
+   "visible": "4845",
+   "max_relative": "0.003994",
    "zero": "158",
    "zero_differ": "0"
   },
@@ -113,10 +113,10 @@
    "draws_lit": "1",
    "bound_unlit": "202",
    "bound_lit": "102",
-   "constant_error": "9.93e-09",
+   "constant_error": "1.19e-08",
    "lit_samples": "2236",
-   "visible": "4884",
-   "max_relative": "0.003912",
+   "visible": "4845",
+   "max_relative": "0.003994",
    "zero": "158",
    "zero_differ": "0"
   },
@@ -126,19 +126,19 @@
    "draws_lit": "1",
    "bound_unlit": "202",
    "bound_lit": "102",
-   "constant_error": "9.93e-09",
+   "constant_error": "1.19e-08",
    "lit_samples": "2236",
-   "visible": "4884",
-   "max_relative": "0.003912",
+   "visible": "4845",
+   "max_relative": "0.003994",
    "zero": "158",
    "zero_differ": "0"
   }
  ],
  "lit_frames": 7,
  "first_lit_after_reset": 1,
- "worst_relative": 0.003912,
- "worst_constant": 9.93e-09,
- "visible": 34188,
+ "worst_relative": 0.003994,
+ "worst_constant": 1.19e-08,
+ "visible": 33915,
  "zero": 1106,
  "zero_differ": 0,
  "log_rows": {
@@ -260,8 +260,8 @@
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-engine-light-20261004-162034-243936",
- "trace_sha256": "2c3b1dd2aea2c6fd8b1f0adcf2d84576241d13344d0aed2f741c7c2725a1701d",
- "dll_sha256": "dc87ffef38769c6e1db11c93f9cad272a70288078a6da1a9a5ff96cea4f50de4",
- "exe_sha256": "86cf25c83ec1c652fb3a22834a4749313e85f757f2bc66a7b180ee1cb874bcdd"
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261004-183202-980658",
+ "trace_sha256": "5913efa7b012f127453c6db04265b731b270592718f02d773060955fcf72d3f9",
+ "dll_sha256": "c16faa474b99ded5bc5b71ebd2eac2216b1a3786342e8c3f9025a64cf351614e",
+ "exe_sha256": "1ba52078d562a5099c69cf3bcb6fa3e9f6b7a103c956c53600ec461938151a68"
 }
