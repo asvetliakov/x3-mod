@@ -1,0 +1,57 @@
+## frame 6044 ev -1.146; reference display: ExL plate 1.00/0.88/0.66 -> 0.67/0.61/0.50; mat10 lightmap x1 1.00/0.94/0.35 -> 0.67/0.65/0.34; mat10 lightmap x4 -> 0.99/0.98/0.85; mat12 annulus x1 1/1/1 -> 0.66/0.66/0.66; mat12 annulus x4 -> 0.98/0.98/0.98; mat12 wall x4 1.2/0.8/0.2 -> 0.76/0.59/0.27
+# huge h=0005b568 LIGHT vz 4441 plate depth 4439.0
+   sector   0- 45 deg px   647 med  1.99  1.01  0.80 disp 0.90 0.68 0.61 dz   +19.9
+   sector  45- 90 deg px   656 med  1.84  1.03  0.81 disp 0.88 0.68 0.61 dz   +12.5
+   sector  90-135 deg px   738 med  1.17  0.62  0.47 disp 0.74 0.49 0.39 dz   -42.3
+   sector 135-180 deg px   786 med  0.93  0.47  0.38 disp 0.66 0.38 0.32 dz  -114.4
+   sector 180-225 deg px   709 med  0.94  0.41  0.35 disp 0.67 0.34 0.29 dz   -22.2
+   sector 225-270 deg px   687 med  0.93  0.45  0.38 disp 0.66 0.36 0.31 dz   -25.8
+   sector 270-315 deg px   772 med  1.05  0.53  0.44 disp 0.71 0.43 0.37 dz   -90.5
+   sector 315-360 deg px   745 med  1.37  0.71  0.53 disp 0.80 0.54 0.45 dz   -23.4
+# huge h=0005b569 - vz 4270 plate depth 4269.4
+   sector   0- 45 deg px   770 med  1.56  0.86  0.62 disp 0.84 0.61 0.50 dz   +11.3
+   sector  45- 90 deg px   756 med  1.46  0.78  0.57 disp 0.82 0.58 0.47 dz    +2.6
+   sector  90-135 deg px   837 med  1.02  0.58  0.42 disp 0.69 0.46 0.35 dz   -51.8
+   sector 135-180 deg px   858 med  1.24  0.70  0.48 disp 0.76 0.53 0.41 dz  -143.0
+   sector 180-225 deg px   830 med  0.85  0.47  0.39 disp 0.62 0.38 0.32 dz   -78.7
+   sector 225-270 deg px   832 med  0.92  0.52  0.43 disp 0.65 0.41 0.35 dz   -65.4
+   sector 270-315 deg px   838 med  1.52  0.86  0.53 disp 0.83 0.62 0.46 dz  -127.3
+   sector 315-360 deg px   830 med  1.36  0.71  0.48 disp 0.80 0.54 0.42 dz   -29.6
+## frame 6051 ev -0.575; reference display: ExL plate 1.00/0.88/0.66 -> 0.73/0.68/0.58; mat10 lightmap x1 1.00/0.94/0.35 -> 0.74/0.72/0.40; mat10 lightmap x4 -> 1.00/0.99/0.89; mat12 annulus x1 1/1/1 -> 0.73/0.73/0.73; mat12 annulus x4 -> 0.99/0.99/0.99; mat12 wall x4 1.2/0.8/0.2 -> 0.82/0.66/0.33
+# huge h=0005b568 LIGHT vz 5437 plate depth 5435.8
+   sector   0- 45 deg px   463 med  2.24  0.79  0.61 disp 0.97 0.68 0.62 dz    -5.1
+   sector  45- 90 deg px   475 med  2.08  0.78  0.59 disp 0.96 0.67 0.60 dz   -13.4
+   sector  90-135 deg px   506 med  1.80  0.71  0.56 disp 0.93 0.63 0.56 dz   -59.3
+   sector 135-180 deg px   519 med  1.60  0.53  0.46 disp 0.91 0.53 0.49 dz  -123.2
+   sector 180-225 deg px   481 med  1.45  0.45  0.36 disp 0.89 0.48 0.42 dz    -9.0
+   sector 225-270 deg px   474 med  1.50  0.45  0.34 disp 0.90 0.48 0.42 dz   -18.0
+   sector 270-315 deg px   522 med  1.74  0.57  0.49 disp 0.93 0.56 0.52 dz  -107.0
+   sector 315-360 deg px   504 med  1.86  0.75  0.58 disp 0.94 0.65 0.58 dz   -35.5
+# huge h=0005b569 - vz 5335 plate depth 5335.1
+   sector   0- 45 deg px   494 med  1.94  0.67  0.52 disp 0.95 0.62 0.56 dz   -14.3
+   sector  45- 90 deg px   512 med  1.70  0.70  0.55 disp 0.92 0.62 0.55 dz   -23.2
+   sector  90-135 deg px   531 med  1.60  0.67  0.54 disp 0.90 0.60 0.54 dz   -68.6
+   sector 135-180 deg px   548 med  1.71  0.61  0.49 disp 0.92 0.58 0.52 dz  -136.3
+   sector 180-225 deg px   527 med  1.39  0.56  0.49 disp 0.87 0.53 0.49 dz   -99.0
+   sector 225-270 deg px   519 med  1.93  0.60  0.50 disp 0.95 0.59 0.55 dz   -95.2
+   sector 270-315 deg px   550 med  2.12  0.84  0.57 disp 0.96 0.70 0.60 dz  -115.8
+   sector 315-360 deg px   522 med  1.89  0.78  0.59 disp 0.94 0.66 0.58 dz   -40.0
+## frame 11208 ev -1.552; reference display: ExL plate 1.00/0.88/0.66 -> 0.62/0.56/0.45; mat10 lightmap x1 1.00/0.94/0.35 -> 0.62/0.60/0.29; mat10 lightmap x4 -> 0.98/0.97/0.82; mat12 annulus x1 1/1/1 -> 0.61/0.61/0.61; mat12 annulus x4 -> 0.97/0.97/0.97; mat12 wall x4 1.2/0.8/0.2 -> 0.71/0.54/0.23
+# huge h=0005b568 LIGHT vz 2450 plate depth 2448.8
+   sector   0- 45 deg px  2561 med  0.37  0.17  0.10 disp 0.26 0.08 0.03 dz  -111.8
+   sector  45- 90 deg px  2587 med  0.54  0.30  0.18 disp 0.39 0.19 0.10 dz   -91.2
+   sector  90-135 deg px  2372 med  0.67  0.40  0.23 disp 0.47 0.27 0.14 dz   -28.7
+   sector 135-180 deg px  2231 med  1.19  0.58  0.35 disp 0.71 0.41 0.28 dz    -7.2
+   sector 180-225 deg px  2330 med  0.68  0.35  0.20 disp 0.48 0.24 0.12 dz   -22.6
+   sector 225-270 deg px  2562 med  0.62  0.31  0.19 disp 0.44 0.20 0.11 dz   -74.3
+   sector 270-315 deg px  2538 med  0.32  0.15  0.09 disp 0.21 0.06 0.02 dz  -122.8
+   sector 315-360 deg px  2436 med  0.31  0.09  0.07 disp 0.20 0.03 0.02 dz   -33.7
+# huge h=0005b569 - vz 2521 plate depth 2520.3
+   sector   0- 45 deg px  2256 med  0.23  0.13  0.09 disp 0.13 0.04 0.02 dz    +1.1
+   sector  45- 90 deg px  2394 med  0.27  0.14  0.10 disp 0.16 0.05 0.03 dz   -77.4
+   sector  90-135 deg px  2352 med  0.35  0.25  0.14 disp 0.23 0.14 0.06 dz   -48.8
+   sector 135-180 deg px  2083 med  1.39  0.94  0.54 disp 0.76 0.60 0.41 dz    -7.4
+   sector 180-225 deg px  2104 med  2.39  1.56  0.95 disp 0.91 0.78 0.63 dz   -11.8
+   sector 225-270 deg px  2428 med  1.49  0.92  0.47 disp 0.78 0.59 0.38 dz   -44.4
+   sector 270-315 deg px  2492 med  0.80  0.43  0.19 disp 0.55 0.30 0.14 dz  -111.2
+   sector 315-360 deg px  2292 med  0.21  0.10  0.08 disp 0.10 0.03 0.02 dz   -25.2

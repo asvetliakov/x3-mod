@@ -1,0 +1,61 @@
+## frame 6051 ev -0.575 display white from grey 3.45; engine_stage capped=2 faded=2 discs=9
+# big3 h=0005b56d idx=184 - facing 0.974 vz 9961 value 70 px origin (2591,870)
+   plate   px    259 med  5.20  1.83  1.57 p95  6.27  2.66  2.52 disp 1.00 0.92 0.90 dz -2739.2 white 0.00
+   annulus px     92 med  4.76  1.16  0.97 p95  5.62  1.62  1.48 disp 1.00 0.85 0.83 dz -2739.4 white 0.00
+   lip     px    327 med  4.75  1.10  0.89 p95 11.63  7.12  5.65 disp 1.00 0.85 0.82 dz -2739.2 white 0.10
+   tabs    px    635 med  4.80  1.11  0.89 p95 15.64 11.28  9.72 disp 1.00 0.85 0.82 dz -2765.8 white 0.17
+   out     px   1077 med  2.93  1.17  0.98 p95  5.10  2.35  2.06 disp 0.99 0.81 0.77 dz -2752.0 white 0.00
+# big3 h=0005b56c idx=185 - facing 0.981 vz 9817 value 71 px origin (2343,684)
+   plate   px    272 med  3.63  1.46  1.22 p95  5.38  2.32  2.08 disp 1.00 0.87 0.83 dz -2776.0 white 0.01
+   annulus px    105 med  3.85  1.19  0.93 p95  9.68  5.36  4.38 disp 1.00 0.83 0.79 dz -2762.7 white 0.07
+   lip     px    336 med  4.36  1.16  0.96 p95 14.49 10.24  8.72 disp 1.00 0.84 0.82 dz -2751.2 white 0.09
+   tabs    px    662 med  4.51  1.11  0.93 p95 11.01  6.48  4.98 disp 1.00 0.84 0.82 dz -2711.7 white 0.06
+   out     px   1122 med  4.21  1.10  0.91 p95  6.43  2.72  2.56 disp 1.00 0.83 0.80 dz -2706.1 white 0.04
+# big3 h=0005b56f idx=186 - facing 0.974 vz 7230 value 97 px origin (2593,869)
+   plate   px    487 med  4.97  1.41  1.21 p95  6.20  2.61  2.38 disp 1.00 0.88 0.86 dz    -3.9 white 0.00
+   annulus px    180 med  4.74  1.06  0.82 p95  5.34  1.15  1.07 disp 1.00 0.84 0.81 dz    -3.4 white 0.00
+   lip     px    615 med  5.18  1.41  0.96 p95 15.70 11.30  9.81 disp 1.00 0.89 0.85 dz   -27.3 white 0.24
+   tabs    px   1202 med  2.86  1.19  1.04 p95  4.66  2.49  2.23 disp 0.99 0.81 0.78 dz   -49.9 white 0.00
+   out     px   2037 med  0.41  0.21  0.16 p95  3.70  1.35  1.15 disp 0.40 0.17 0.12 dz   +54.3 white 0.00
+# big3 h=0005b56e idx=187 - facing 0.968 vz 7170 value 98 px origin (2629,909)
+   plate   px    494 med  5.01  1.40  1.22 p95  6.22  2.64  2.41 disp 1.00 0.88 0.87 dz    -0.6 white 0.00
+   annulus px    181 med  6.14  2.38  1.92 p95 17.28 12.62 11.20 disp 1.00 0.95 0.94 dz   -13.2 white 0.38
+   lip     px    620 med  4.46  0.69  0.37 p95  6.90  2.82  2.29 disp 1.00 0.78 0.75 dz   -42.9 white 0.04
+   tabs    px   1225 med  2.91  1.12  1.01 p95  4.54  2.26  2.04 disp 0.99 0.80 0.77 dz   +17.3 white 0.00
+   out     px   2069 med  0.56  0.22  0.19 p95  4.71  1.53  1.29 disp 0.53 0.20 0.17 dz    +7.3 white 0.01
+# big3 h=0005b56b idx=188 - facing 0.983 vz 7136 value 98 px origin (2369,700)
+   plate   px    513 med  4.96  1.39  1.19 p95  6.17  2.59  2.37 disp 1.00 0.88 0.86 dz    -3.8 white 0.00
+   annulus px    189 med  4.72  1.05  0.82 p95  5.24  1.18  1.09 disp 1.00 0.84 0.81 dz    -3.5 white 0.00
+   lip     px    645 med  5.04  1.27  0.89 p95 16.03 11.78 10.21 disp 1.00 0.87 0.83 dz   -27.4 white 0.25
+   tabs    px   1252 med  2.96  1.19  1.04 p95  4.56  2.27  2.03 disp 0.99 0.81 0.78 dz   -51.5 white 0.00
+   out     px   2112 med  0.33  0.19  0.15 p95  3.54  1.26  1.09 disp 0.31 0.15 0.11 dz   +56.8 white 0.00
+# big3 h=0005b56a idx=189 - facing 0.980 vz 7041 value 100 px origin (2319,676)
+   plate   px    529 med  5.01  1.39  1.20 p95  6.24  2.63  2.42 disp 1.00 0.88 0.86 dz    -0.6 white 0.00
+   annulus px    194 med 11.72  7.29  5.85 p95 16.88 12.47 10.89 disp 1.00 1.00 1.00 dz   -10.2 white 0.65
+   lip     px    649 med  4.46  0.79  0.41 p95  5.87  2.11  1.80 disp 1.00 0.80 0.75 dz   -51.3 white 0.02
+   tabs    px   1292 med  2.63  1.10  0.99 p95  3.90  2.03  1.82 disp 0.98 0.78 0.76 dz   +17.4 white 0.00
+   out     px   2188 med  0.32  0.16  0.13 p95  4.41  1.70  1.36 disp 0.31 0.12 0.08 dz    +7.1 white 0.01
+# big3 h=0005b567 idx=190 - facing 0.946 vz 5367 value 131 px origin (2631,662)
+   plate   px    861 med  1.15  0.88  0.58 p95  2.68  2.24  1.95 disp 0.79 0.68 0.54 dz    -3.0 white 0.00
+   annulus px    314 med  0.53  0.17  0.13 p95  0.94  0.51  0.44 disp 0.51 0.14 0.11 dz   -28.6 white 0.00
+   lip     px   1076 med  0.54  0.17  0.15 p95  1.37  0.70  0.49 disp 0.52 0.15 0.13 dz   +90.2 white 0.00
+   tabs    px   2123 med  0.66  0.28  0.21 p95  1.73  0.76  0.60 disp 0.60 0.27 0.20 dz   +86.4 white 0.00
+   out     px   3555 med  1.06  0.46  0.31 p95  2.72  1.05  0.96 disp 0.78 0.45 0.34 dz   +33.3 white 0.00
+# big3 h=0005b566 idx=191 - facing 0.949 vz 5353 value 131 px origin (2588,629)
+   plate   px    867 med  1.01  0.84  0.54 p95  2.64  2.19  1.84 disp 0.74 0.67 0.51 dz    -3.0 white 0.00
+   annulus px    318 med  0.38  0.10  0.08 p95  0.75  0.50  0.41 disp 0.38 0.06 0.05 dz   -23.8 white 0.00
+   lip     px   1082 med  0.44  0.15  0.13 p95  1.21  0.68  0.51 disp 0.43 0.12 0.10 dz   +95.1 white 0.00
+   tabs    px   2142 med  0.71  0.25  0.20 p95  1.56  0.76  0.60 disp 0.63 0.25 0.20 dz   +95.3 white 0.00
+   out     px   3584 med  1.11  0.42  0.29 p95  2.61  1.03  0.94 disp 0.80 0.42 0.33 dz   +47.2 white 0.00
+# huge h=0005b568 idx=192 LIGHT facing 0.930 vz 5437 value 221 px origin (2648,592)
+   plate   px   2429 med  2.59  1.03  0.84 p95  3.00  1.54  1.35 disp 0.98 0.77 0.72 dz    -1.2 white 0.00
+   annulus px    888 med  2.50  0.94  0.83 p95  3.40  1.69  1.32 disp 0.98 0.74 0.71 dz   -12.9 white 0.00
+   lip     px   3056 med  1.62  0.60  0.48 p95  2.64  1.08  0.87 disp 0.91 0.57 0.51 dz   -40.1 white 0.00
+   tabs    px   5985 med  0.61  0.28  0.22 p95  1.61  0.86  0.66 disp 0.56 0.26 0.20 dz   +20.0 white 0.00
+   out     px  10088 med  0.30  0.09  0.07 p95  1.23  0.91  0.69 disp 0.28 0.05 0.03 dz   +39.0 white 0.00
+# huge h=0005b569 idx=193 - facing 0.964 vz 5335 value 225 px origin (2565,704)
+   plate   px   2597 med  2.58  1.03  0.84 p95  2.96  1.52  1.34 disp 0.98 0.77 0.72 dz    +0.1 white 0.00
+   annulus px    945 med  2.74  1.15  1.02 p95  8.91  6.76  5.54 disp 0.98 0.80 0.77 dz   -12.9 white 0.12
+   lip     px   3258 med  1.59  0.60  0.48 p95  2.94  1.64  1.06 disp 0.91 0.57 0.51 dz   -70.9 white 0.00
+   tabs    px   6408 med  0.45  0.18  0.16 p95  1.36  0.79  0.59 disp 0.44 0.15 0.12 dz   -41.7 white 0.00
+   out     px  10764 med  0.20  0.07  0.05 p95  1.13  0.93  0.75 disp 0.17 0.03 0.02 dz   -17.6 white 0.00
