@@ -24,8 +24,8 @@ installed 2026-10-04 22:32 ([install](../verification/results/run130-candidate-i
 (`engine_stage unfloored=`); the Scorpion's tiny stays 5.04 inside the nor's 23.6 (side total 1.07 of the nor alone), the Raptor's big2s at 1.8 / 2.1 x their
 size from the big3 are real engines, all three floored equal ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "No floor instead
 of the drop"). Ctrl+Alt+F6 (preset cycle) and Ctrl+Alt+F7 (shimmer toggle) removed with their rows and tests; `engine_effects_preset` and
-`engine_shimmer` stay as load-time options; F8 under `--debug` is the only in-game key. All 16 look images byte-identical to Run129. Run 130 A queued.
-Rollback Run129.
+`engine_shimmer` stay as load-time options; F8 under `--debug` is the only in-game key. All 16 look images byte-identical to Run129. Run 130 A completed in run418: all good. Release 1.0.0 in preparation from
+082e1d8c (the version bump over 01114822). Rollback Run129.
 Run129 = **end-on disc at the nozzle opening** (Run 128 A, run416: no visible change; the user asked for the excess glow around nozzles to go): DLL SHA-256
 `87b2389f8515808954ca35f4f4a23cefef40337c4fe16e1e0d19f283047f4068` (59,101,965 bytes) built once from clean main `5e44a667` (host suite 289/3,042/0,
 0 warnings, x87 0, shader checks 50 + 9 + shimmer, site/identity reused; fixtures plumes 316/316, effects 8 modes, ribbons 44/44, shimmer 43/43, light 12 plate
