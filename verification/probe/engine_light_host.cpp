@@ -84,8 +84,8 @@ int main() {
                     find_ship(*ships, 0x2000));
     }
     // ---- nozzle plates: ship A (root 0x1000) with three main nozzles (values 10, 8, 6 at s 1), a smaller co-located
-    // layer of the first (size 5, 3 units behind it on its axis: merged, no plate), a second record of the 8 nozzle's
-    // handle at s 0 (dimmer: kept once, the brighter), an RCS jet; ship B (root 0x2000) with nine main nozzles (values
+    // layer of the first (size 5, 3 units behind it on its axis: unfloored, a plate at its natural value), a second
+    // record of the 8 nozzle's handle at s 0 (dimmer: kept once, the brighter), an RCS jet; ship B (root 0x2000) with nine main nozzles (values
     // 10 + i, ties none): eight plates, the dimmest dropped. Then the node table and the per-draw plate registers of
     // ship A's node (identity rows translated, camera at the origin).
     {
@@ -111,7 +111,7 @@ int main() {
                     la.plates[0].position[1], la.plates[0].position[2], la.position[0], la.position[1], la.position[2]);
         std::printf("\"b\":{\"handle\":%u,\"count\":%u,\"handles\":[", lb.handle, lb.plate_count);
         for (unsigned i = 0; i < lb.plate_count; ++i) std::printf("%s%u", i ? "," : "", lb.plates[i].handle);
-        std::printf("]},\"merged\":%u,\"plates_dropped\":%u,", ships->stats.merged, ships->stats.plates_dropped);
+        std::printf("]},\"unfloored\":%u,\"plates_dropped\":%u,", ships->stats.unfloored, ships->stats.plates_dropped);
         const double t[3] = {100., 200., 300.};
         float w[12];
         rows(0., 1., t, w);
@@ -134,6 +134,22 @@ int main() {
                     double(c[4]), double(c[5]), double(c[6]), double(c[7]), double(tier), double(plate_tier(0)),
                     double(plate_tier(1)), double(plate_tier(2)), double(plate_tier(3)), double(plate_tier(4)),
                     double(plate_tier(5)), double(plate_tier(6)), double(plate_tier(7)), double(plate_tier(8)));
+    }
+    // ---- the floor and a co-located layer (after Run 129 A): the Split Scorpion's nor 10 and tiny 5.04, 6.9 units
+    // apart on one axis, one parent, R 67.3: the nor's plate at its floored value, the tiny's at its natural 5.04.
+    {
+        ee::Record r[2] = {jet(0, 0, 0, 10, 1.f, 70), jet(-5.7f, 3.8f, -1.f, 5.04f, 1.f, 71)};
+        const std::uint32_t parent[2] = {0x3000, 0x3000};
+        const float radii[2] = {67.3f, 67.3f};
+        build_ships(r, parent, radii, nullptr, nullptr, 0, 2, nullptr, look, 1.f, ships.get());
+        const int a = find_ship(*ships, 0x3000);
+        const Light& l = ships->lights[a < 0 ? 0 : a];
+        float nor = 0.f;
+        ep::floored_value(look, r[0], radii[0], &nor);
+        std::printf("\"layer_floor\":{\"count\":%u,\"values\":[%.6f,%.6f],\"handles\":[%u,%u],\"nor_floored\":%.6f,"
+                    "\"unfloored\":%u},",
+                    l.plate_count, double(l.plates[0].value), double(l.plates[1].value), l.plates[0].handle,
+                    l.plates[1].handle, double(nor), ships->stats.unfloored);
     }
     // ---- cap: 300 ships, one jet each
     {

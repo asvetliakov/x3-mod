@@ -408,7 +408,8 @@ Gates: `headon_core_hidden` (1920) read the open peak against 0.9 x I. Its 192 p
 0.7, over the slab 0.7..0.9, the ring 1.05) keep their floors: the law does not touch an unfaded disc, and the
 user's earlier acceptance of 0.7-0.8 of the old end-on level is superseded only for the near-camera disc.
 
-Co-located layers. At frame 5437 the own ship has two engine records, `fx_engine_xtc_red_nor` (size 10, origin
+Co-located layers (superseded 2026-10-04 after Run 129 A: the layer is no longer dropped but drawn at its natural
+value, "No floor instead of the drop" below). At frame 5437 the own ship has two engine records, `fx_engine_xtc_red_nor` (size 10, origin
 96411.5, -37509.1, 19210) and `fx_engine_xtc_red_tiny` (5.04; 96405.8, -37505.3, 19209). They share an axis and lie
 6.9 units apart, so they are the two glow layers of one nozzle. The floor raised both (23.5, 20.2;
 `floor_ratio_effects_out.txt`, own_m4), so two plumes and two end-on discs were drawn. `merge_layers`
@@ -537,6 +538,30 @@ and the run413 huge + nor / tiny pairs (ratio under 0.35, 5 each) are kept. Fixt
 draws one nozzle (merged 1, value 23.56, totals and centre 1.00000 of the nor alone); a 0.2-ratio side nozzle at 0.3
 of the larger's size apart is kept (2 nozzles, merged 0) at both sizes. The merge is transitive: a record already dropped still drops its own smaller layers, so an inner layer at 0.25 of the outer (under the window) drops through a 0.5 middle layer (`test_engine_plumes.py`: outer 10, middle 5, inner 2.5 co-located, 2 merged). The engine light's nozzle plates use the same
 merge (`engine-light.md` "Nozzle plates"), so the big3 nozzles get plates.
+
+No floor instead of the drop (2026-10-04, after Run 129 A). Run 129 A (run417, last F8 frame 17144) shows the drop
+removing a real engine: the Split Raptor's three main nozzles are `fx_engine_xtc_red_big3` 187.5 between two
+`fx_engine_xtc_red_big2` 93.66, one axis, R 5615.55, all three drawn at value_eff 280.8 by the floor. One big2 lies
+0.907 x the big3's size from it, ratio 0.50, so `merge_layers` dropped it and the user saw the lower engine without a
+plume; the other lies 1.045 x away, outside the window (`run412-engine-disc/run417_raptor_pairs.py`, `_out.txt`: 8 of
+8 frames each). Size ratio and distance over the larger's size do not tell this pair from the Scorpion's nor + tiny
+(0.50, 0.69 x apart), and the jet node's parent is the ship root for every part, so there is no nesting. The stacking
+the drop was introduced for came from the floor blowing the tiny up to 20.2 beside the nor's 23.5, not from the second
+record itself. Two changes. First, `merge_layers` only marks the smaller record and the plume builder, the ribbons and
+the engine-light plates draw it at its own natural value (no floor, nothing dropped; the larger keeps its floored
+value). Second, a pair is a layer only when its origins are also within `merge_layer_near` 1.5 x the smaller's
+pre-floor size: the Scorpion 6.9 / 5.04 = 1.37 is a layer; the Raptor's big2s at 170 / 93.66 = 1.82 and 196 / 93.66 =
+2.09 are real nozzles, floored to 280.8 like the big3, so both draw equal (the orchestrator's decision: secondary
+engines stay bold; an M2's nozzles side by side are real engines). The window otherwise is unchanged (same parent and
+kind, ratio 0.35..0.75, parallel, within the larger's pre-floor size; transitive: a smaller layer of an unfloored
+record is unfloored too). `engine_stage` and `engine_light_frame` report `unfloored=N` in place of `merged=N`. Fixture
+`merge` (still look, floor scale 1, R 67.3, 1920 / 5120): the Scorpion pair draws 2 nozzles, 2 discs end-on (0
+side-on), unfloored 1, the nor 23.56, the tiny 5.04; the end-on centre 1.0000 of the nor alone (the tiny's disc is
+centred about 0.6 nozzle widths away), the frame total 1.063 end-on and 1.067 side-on (both floored, as Run 124 drew
+it: 1.76 / 1.80). `merge_raptor` (the still look at the production floor scale 0.5, R 5615.55, big2 at +-(114, 122,
+-30)): 3 nozzles, 3 discs, unfloored 0, all three at 280.78. `merge_near`: a 10 + 5 pair 1.4 x the smaller apart is
+unfloored (5.00), 1.6 x is floored. Census (`run412_colocated_pairs.py run412|run413|run417`): unfloored nor + tiny 24
+/ 40 / 48 pairs; floored as nozzles of their own huge + big3 32 / 96 / 96 and big3 + big2 0 / 0 / 8 (run417).
 
 ### Distance dimming of the disc (after Run 127)
 

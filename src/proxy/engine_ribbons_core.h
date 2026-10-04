@@ -107,7 +107,7 @@ struct Ribbon {
 struct UpdateStats {
     unsigned records = 0, matched = 0, created = 0, overflow = 0, duplicates = 0, skipped = 0, skipped_other_view = 0;
     unsigned appended = 0, evicted = 0, jumps = 0, live = 0, fading = 0;
-    unsigned merged = 0; // records dropped as a co-located layer of a larger one (engine_plumes merge_layers)
+    unsigned unfloored = 0; // records at their natural width: a co-located layer of a larger one (ep::merge_layers)
     bool cut_clear = false, load_clear = false;
 };
 struct Pool {
@@ -213,8 +213,8 @@ inline void estimate_speed(const Ribbon& r, const float head[3], float now, floa
 // `filter` (null: every record) the plumes' scene-view filter: a record of another view takes no ribbon; `look` (null:
 // default_look) and `radii` (null: no floor) the plumes' look and ship radii, for the plume's nozzle width (the
 // distance law's input); `travel` the plumes' SETA travel weight (0..1): T x (1 + (travel_trail - 1) travel), gap 7;
-// `parents` (null: none; Ring::parent) the plumes' co-located layer merge (ep::merge_layers): a dropped layer takes no
-// ribbon, as it draws no plume.
+// `parents` (null: none; Ring::parent) the plumes' co-located layer rule (ep::merge_layers): an unfloored layer takes
+// its own ribbon at its natural nozzle width, as its plume draws at its natural value.
 using BodyLookup = ep::BodyLookup;
 inline void update(Pool& pool, const ee::Record* records, unsigned count, double now_seconds, bool cut,
                    std::uint64_t load_epoch, BodyLookup body, float preset_scale, UpdateStats* stats,
@@ -275,9 +275,9 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
     detail::rebuild_map(pool);
     unsigned free_hint = 0;
     bool no_fading = false;
-    std::uint8_t drop[ee::ring_capacity];
+    std::uint8_t unfloor[ee::ring_capacity];
     const bool merging = parents && records && count > 1;
-    if (merging) st.merged = ep::merge_layers(records, count, parents, drop);
+    if (merging) st.unfloored = ep::merge_layers(records, count, parents, unfloor);
     for (unsigned i = 0; i < count && records; ++i) {
         const ee::Record& rec = records[i];
         ++st.records;
@@ -285,7 +285,6 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
             ++st.skipped_other_view;
             continue;
         }
-        if (merging && i < ee::ring_capacity && drop[i]) continue;
         if ((rec.flags & (ee::flag_rows_unknown | ee::flag_steering)) || !detail::finite3(rec.origin) ||
             !ee::finite_f(rec.size) || !(rec.size > 0.f) || !ee::finite_f(rec.s)) {
             ++st.skipped;
@@ -342,7 +341,8 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         }
         r.value = value;
         float plume_value = value;
-        if (radii && k.floor_scale > 0.f) ep::floored_value(k, rec, radii[i], &plume_value);
+        if (radii && k.floor_scale > 0.f && !(merging && i < ee::ring_capacity && unfloor[i]))
+            ep::floored_value(k, rec, radii[i], &plume_value);
         r.nozzle = k.nozzle_width * plume_value;
         r.throttle = rec.s < 0.f ? 0.f : rec.s > 1.f ? 1.f : rec.s;
         float speed = 0.f;

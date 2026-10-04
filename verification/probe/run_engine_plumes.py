@@ -128,7 +128,7 @@ def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
             'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
             'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'DISC_DISTANCE', 'CHASE_OWN_EXEMPT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
-            'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'BUILD_MERGE', 'MERGE', 'MERGE_KEPT', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'SPILL_NEAR', 'FLOW', 'FLOW_SAME', 'FLOW_LAG',
+            'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'BUILD_MERGE', 'MERGE', 'MERGE_RAPTOR', 'MERGE_NEAR', 'MERGE_KEPT', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'SPILL_NEAR', 'FLOW', 'FLOW_SAME', 'FLOW_LAG',
             'FLOW_KEYED', 'COLOUR', 'COLOUR_HEAD', 'ATTACK', 'ATTACK_CROSSING', 'TRAVEL', 'STRUCTURE', 'STRUCTURE_DISC',
             'END_ON_DETAIL', 'ENERGY', 'CHASE_OWN_LOOK', 'CHASE_CAP', 'NEAR_CAPITAL')
     report = {tag.lower(): [] for tag in tags}
@@ -168,7 +168,12 @@ def gates(r):
     out['build_us'] = {str(x['records']): x['median_us'] for x in r['build']}
     out['build_floor_us'] = {str(x['records']): x['median_us'] for x in r['build_floor']}
     out['build_merge_us'] = {f"{x['records']}_g{x['group']}": x['median_us'] for x in r['build_merge']}
-    out['merge'] = {f"{x['width']}_{x['view']}": {k: x[k] for k in ('nozzles', 'discs', 'merged', 'total_ratio', 'centre_ratio')} for x in r['merge']}
+    out['merge'] = {f"{x['width']}_{x['view']}": {k: x[k] for k in ('nozzles', 'discs', 'unfloored', 'value', 'layer_value', 'total_ratio', 'centre_ratio')}
+                    for x in r['merge']}
+    out['merge_raptor'] = {str(x['width']): {k: x[k] for k in ('nozzles', 'discs', 'unfloored', 'big3_value', 'big2_values', 'total_ratio')}
+                           for x in r['merge_raptor']}
+    out['merge_near'] = {f"{x['width']}_{x['apart_over_smaller']}": {k: x[k] for k in ('nozzles', 'unfloored', 'small_value')}
+                         for x in r['merge_near']}
     out['mouth_over_body'] = {f"{x['width']}_s{x['s']:.2f}": x['mouth_over_body'] for x in r['mouth']}
     out['build_100_within'] = any(x['records'] == 100 and x['median_us'] <= 1000 * GATES['build_100_ms'] for x in r['build'])
     # After the gap analysis (phases 2 and 3): the pixel program's slots, and each new case's numbers.
@@ -436,7 +441,7 @@ def main():
     print(json.dumps({'passed': record['passed'], 'checks': report['check_count'], 'failed': report['failed_checks'],
                       'core_survival_min': g['core_survival_min'], 'trail_dark_px_max': g['trail_dark_px_max'],
                       'trail_flicker_px': g['trail_flicker_px'], 'stage_gpu_ms': g['stage_gpu_ms'], 'build_us': g['build_us'],
-                      'build_floor_us': g['build_floor_us'], 'build_merge_us': g['build_merge_us'], 'merge': g['merge'], 'mouth_over_body': g['mouth_over_body'],
+                      'build_floor_us': g['build_floor_us'], 'build_merge_us': g['build_merge_us'], 'merge': g['merge'], 'merge_raptor': g['merge_raptor'], 'merge_near': g['merge_near'], 'mouth_over_body': g['mouth_over_body'],
                       'distance_ratio_gpu': g['distance_ratio_gpu'], 'ps_slots': g['ps_slots'],
                       'idle_L_over_value': g['idle_L_over_value'], 'spill': g['spill'],
                       'flow_world_over_law': g['flow_world_over_law'], 'flow_600_over_1500': g['flow_600_over_1500'],

@@ -247,6 +247,7 @@ struct Look {
     // nozzle / R is about 0.09 at every size, so one k cannot do both; verification/results/engine-effects/
     // floor_ratio_effects.py). floor_scale multiplies the whole curve: load-time knob X3M_ENGINE_PLUME_FLOOR (ini
     // engine_plume_floor, 0..3; parse_floor); 0 turns the floor off. Default 0.5 after flight E (Run 122 A, run408).
+    // A smaller co-located layer of another record of its ship takes no floor (merge_layers, after Run 129 A).
     float floor_scale = .5f;
     float floor_r[3] = {150.f, 500.f, 5000.f}; // record units (run406: value x 0.01)
     float floor_k[3] = {.35f, .25f, .10f};
@@ -634,7 +635,7 @@ struct BuildStats {
     unsigned discs_capped = 0;  // discs scaled to disc_cap_px x H (since Run 125)
     unsigned floored = 0;       // main jets raised to k(R) x their ship's radius
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
-    unsigned merged = 0;        // records dropped as a smaller co-located layer of another (merge_layers)
+    unsigned unfloored = 0;     // records at their natural value: a smaller co-located layer of another (merge_layers)
     unsigned far_nozzles = 0;   // nozzles drawn under Look::far_px_full (the distance law scaled their radiance)
     unsigned attacks = 0;       // steering or brake records under an attack (gap 6), drawn or not
     unsigned transient_overflow = 0; // records without a slot in the per-nozzle memory (no attack; the shared phase)
@@ -1508,21 +1509,28 @@ inline void floored_value(const Look& k, const ee::Record& r, float radius, floa
 }
 // Co-located layers (after flight G, Run 124 / run412): the game draws some nozzles as two glow records of one parent,
 // an outer and an inner layer (the Split Scorpion's fx_engine_xtc_red_nor 10 and _tiny 5.04, 6.9 units apart, one
-// axis), and the floor raises both (23.5, 20.2): two plumes and two end-on discs at one nozzle. A record is dropped
-// when another record of the same parent (the ship's root node, Ring::parent; 0 unknown: never merged) and the same
-// kind (steering / brake flags) is larger (size; the smaller between merge_size_min and merge_size_ratio of it, so
-// equal twins stay apart), parallel (axis dot >= merge_axis_dot) and its origin within the larger's natural width (its
-// pre-floor size: the glow body spans +-0.5 size; the plume's nozzle width is 0.5 of it); the larger keeps its own
-// floored value. The lower bound since Run 125 (run413): the Split Ocelot's side nozzles (fx_engine_xtc_red_big3 187.5
-// beside _huge 939, ratio 0.2) have their own rim and plate geometry and drew no plume once merged; the layers of one
-// nozzle (the Scorpion's nor + tiny, ratio 0.50) have none. Two cases only: the window [0.35, 0.75] sits between them.
-// Records are bucketed by parent (a hash of 2,048 heads), so the pair tests run within one ship's nozzles. `drop`
-// (count bytes) gets 1 per dropped record; returns their number. Records past ee::ring_capacity are not merged.
-constexpr float merge_axis_dot = .95f, merge_size_ratio = .75f, merge_size_min = .35f;
+// axis), and the floor raised both (23.5, 20.2): two full plumes and two full end-on discs at one nozzle. A record is
+// unfloored (drawn at its own natural value, the plume floor not applied) when another record of the same parent (the
+// ship's root node, Ring::parent; 0 unknown: never unfloored) and the same kind (steering / brake flags) is larger
+// (size; the smaller between merge_size_min and merge_size_ratio of it, so equal twins stay apart), parallel (axis dot
+// >= merge_axis_dot) and its origin within the larger's natural width (its pre-floor size: the glow body spans +-0.5
+// size; the plume's nozzle width is 0.5 of it) and within merge_layer_near x the smaller's; the larger keeps its own
+// floored value. The lower bound since Run 125 (run413): the Split Ocelot's side nozzles (fx_engine_xtc_red_big3
+// 187.5 beside _huge 939, ratio 0.2) have their own rim and plate geometry. Until Run 129 the record was dropped; Run 129 A (run417 frame 17144) showed that the Split
+// Raptor's two fx_engine_xtc_red_big2 93.66 beside its big3 187.5 (ratio 0.50, 170 units = 0.9 x the big3's size
+// apart, one axis) are real nozzles that the drop left without a plume; neither size ratio nor the larger's size
+// tells them from the Scorpion's layers, and the parent is the ship root for every part. Two changes: the layer is
+// drawn unfloored instead of dropped (the Scorpion's tiny at 5.04 inside the nor's 23.5: a small spot, not a second
+// full disc), and the origins must also lie within merge_layer_near x the smaller's pre-floor size (the Scorpion 6.9 /
+// 5.04 = 1.37: a layer; the Raptor's big2s 170 / 93.66 = 1.8 and 196 / 93.66 = 2.1: real nozzles, floored to 280.8
+// like the big3, so both draw equal). Records are bucketed by parent (a hash of 2,048 heads), so the pair tests run
+// within one ship's nozzles. `unfloor` (count bytes) gets 1 per unfloored record; returns their number. A smaller layer of an
+// unfloored record is unfloored too. Records past ee::ring_capacity are never unfloored.
+constexpr float merge_axis_dot = .95f, merge_size_ratio = .75f, merge_size_min = .35f, merge_layer_near = 1.5f;
 constexpr unsigned merge_buckets = 2048;
 inline unsigned merge_layers(const ee::Record* records, unsigned count, const std::uint32_t* parents,
-                             std::uint8_t* drop) noexcept {
-    for (unsigned i = 0; i < count; ++i) drop[i] = 0;
+                             std::uint8_t* unfloor) noexcept {
+    for (unsigned i = 0; i < count; ++i) unfloor[i] = 0;
     if (!records || !parents || count < 2) return 0;
     if (count > ee::ring_capacity) count = ee::ring_capacity;
     constexpr std::uint16_t none = 0xffffu;
@@ -1538,7 +1546,7 @@ inline unsigned merge_layers(const ee::Record* records, unsigned count, const st
         next[i] = head[b];
         head[b] = std::uint16_t(i);
     }
-    unsigned merged = 0;
+    unsigned unfloored = 0;
     for (unsigned b = 0; b < merge_buckets; ++b)
         for (unsigned i = head[b]; i != none; i = next[i])
             for (unsigned j = next[i]; j != none; j = next[j]) {
@@ -1546,18 +1554,19 @@ inline unsigned merge_layers(const ee::Record* records, unsigned count, const st
                 const bool i_large = records[i].size >= records[j].size;
                 const ee::Record& large = records[i_large ? i : j];
                 const ee::Record& small = records[i_large ? j : i];
-                const unsigned dropped = i_large ? j : i;
-                if (drop[dropped] || small.size > merge_size_ratio * large.size || small.size < merge_size_min * large.size)
+                const unsigned layer = i_large ? j : i;
+                if (unfloor[layer] || small.size > merge_size_ratio * large.size || small.size < merge_size_min * large.size)
                     continue;
                 const float dot = large.axis[0] * small.axis[0] + large.axis[1] * small.axis[1] + large.axis[2] * small.axis[2];
                 if (!(dot >= merge_axis_dot)) continue;
                 const float dx = large.origin[0] - small.origin[0], dy = large.origin[1] - small.origin[1],
                             dz = large.origin[2] - small.origin[2];
-                if (!(dx * dx + dy * dy + dz * dz <= large.size * large.size)) continue;
-                drop[dropped] = 1;
-                ++merged;
+                const float d2 = dx * dx + dy * dy + dz * dz, near_limit = merge_layer_near * small.size;
+                if (!(d2 <= large.size * large.size) || !(d2 <= near_limit * near_limit)) continue;
+                unfloor[layer] = 1;
+                ++unfloored;
             }
-    return merged;
+    return unfloored;
 }
 using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
@@ -1582,14 +1591,14 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
     }
     auto shown = [&](unsigned i) { return !filter || (filter->scene[i] && filter->camera[i] == filter->handle); };
     // The plume floor: RCS jets and the brake / steering-pushed main bodies neither take it.
-    constexpr std::uint32_t unfloored = ee::flag_steering | ee::flag_brake;
+    constexpr std::uint32_t floorless = ee::flag_steering | ee::flag_brake;
     const bool floors = radii && k.floor_scale > 0.f && ee::finite_f(k.floor_scale);
     PulseCache pulses;
     if (dynamics && dynamics->transients) dynamics->transients->begin(dynamics->step);
-    // Co-located layers of one nozzle draw once (merge_layers; `parents` null: none).
-    std::uint8_t drop[ee::ring_capacity];
+    // A smaller co-located layer of another record draws at its natural value (merge_layers; `parents` null: none).
+    std::uint8_t unfloor[ee::ring_capacity];
     const bool merging = parents && count > 1;
-    if (merging) st.merged = merge_layers(records, count, parents, drop);
+    if (merging) st.unfloored = merge_layers(records, count, parents, unfloor);
     unsigned written = 0;
     for (unsigned i = 0; i < count; ++i) {
         if (written >= capacity || written >= max_nozzles) {
@@ -1600,11 +1609,10 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
             ++st.skipped_other_view;
             continue;
         }
-        if (merging && i < ee::ring_capacity && drop[i]) continue;
         const ee::Record& r = records[i];
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;
         float floor_value = 0.f;
-        if (floors && !(r.flags & unfloored)) {
+        if (floors && !(r.flags & floorless) && !(merging && i < ee::ring_capacity && unfloor[i])) {
             const float radius = radii[i];
             if (radius > 0.f && ee::finite_f(radius))
                 floor_target(k, r.size, radius, &floor_value);
