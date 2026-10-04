@@ -33,8 +33,8 @@ band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) 
   u=0.9: [ 35  98 133]
 
 # 02b end-on discs: radial luma (lin) at 0, 4, 8, .. 72 px from the centre (mean over 4 directions)
-  red: 0.56 0.56 0.55 0.51 0.44 0.35 0.27 0.23 0.21 0.19 0.19 0.19 0.18 0.18 0.18 0.18 0.18 0.16 0.15  | max off-centre / centre = 1.00; centre RGB [242 181 180]
-  blue: 0.70 0.69 0.69 0.66 0.60 0.52 0.44 0.38 0.33 0.31 0.29 0.29 0.28 0.28 0.27 0.27 0.26 0.22 0.19  | max off-centre / centre = 0.99; centre RGB [171 226 237]
+  red: 0.55 0.55 0.55 0.51 0.43 0.34 0.27 0.23 0.20 0.19 0.19 0.18 0.18 0.18 0.18 0.18 0.17 0.16 0.15  | max off-centre / centre = 1.00; centre RGB [241 180 179]
+  blue: 0.69 0.69 0.68 0.65 0.60 0.52 0.44 0.37 0.33 0.30 0.29 0.28 0.28 0.27 0.27 0.27 0.26 0.22 0.18  | max off-centre / centre = 1.00; centre RGB [171 225 237]
 # 02b disc gate (azimuthal mean, display-decoded luma, n 150.0 px): ring = max in 0.4..0.7 n / min in 0.2 n..it (gate >= 1.05), hot centre = centre / max (gate >= 0.9)
   red: ring 1.00 at 0.40 n, hot centre 1.00 -> FAIL
   blue: ring 1.00 at 0.40 n, hot centre 1.00 -> FAIL
@@ -55,13 +55,13 @@ band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) 
   09 ribbon n40 uncapped: radial 1.89 FAIL, lane 0.18 FAIL, aniso 15.0
 
 # 05 far dots: summed display-decoded luma per plume (nozzle px: sum); after / before (gate 0.7..1.3 at 2 and 6 px)
-  40 px: 2061.211 (before 2109.568) ratio 0.98 reported
-  12 px: 263.423 (before 262.836) ratio 1.00 reported
-  6 px: 40.754 (before 40.330) ratio 1.01 PASS
-  2 px: 1.167 (before 1.155) ratio 1.01 PASS
+  40 px: 2061.211 (before 2061.211) ratio 1.00 reported
+  12 px: 263.423 (before 263.423) ratio 1.00 reported
+  6 px: 40.754 (before 40.754) ratio 1.00 PASS
+  2 px: 1.167 (before 1.167) ratio 1.00 PASS
 
 # peak display RGB (max over the image region) of the uncapped images
   05_distance_fighter_v500: peak lin 0.965 display [243 253 253] at (532, 540); pixels >= 250 on any channel: 271
   09_ribbon_moving8px_figh: peak lin 0.987 display [248 255 255] at (1298, 540); pixels >= 250 on any channel: 574
-  10_crowd_30_mixed_agx-ev: peak lin 1.000 display [255 255 255] at (301, 851); pixels >= 250 on any channel: 2576
+  10_crowd_30_mixed_agx-ev: peak lin 0.955 display [253 249 247] at (199, 294); pixels >= 250 on any channel: 508
   01b_side_fighter_v500_n1: peak lin 0.837 display [220 239 240] at (1294, 900); pixels >= 250 on any channel: 0

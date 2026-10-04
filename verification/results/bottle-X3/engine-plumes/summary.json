@@ -22,13 +22,9 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "d562700ede2cc186ac976944a185efbd87c109ae-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/engine_plumes_core.h",
-      "src/renderer/engine_plumes_pass.cpp",
-      "src/renderer/engine_plumes_pass.h"
-    ],
+    "commit": "f3abf618a8caf3c8f832040f113bc830ee7dbd61",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_plumes_core.h": "e13b2317e3454ff7857fc0ec3756aab77e053247415fc932425f5baf2221a4b2",
       "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
@@ -89,12 +85,12 @@
       "src/renderer/engine_ribbons_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad2f57f9ce805d0ed/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
+      "/private/tmp/x3-run128-fixture/verification/probe/build/engine-plumes/engine_plumes_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "c2c6c65bc3f75fab4f176818f9b71f7e487fb0e4c19e916f3af8fc126c1ad21b"
+    "executable_sha256": "11aaa9be3054d11c1ae7fc92a29686686dea1d3dd5805097e64234ebdd60b896"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -1472,11 +1468,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 1.1455,
-        "fenced_off_ms": 0.9236,
-        "submit_ms": 0.0764,
-        "chain_ms": 0.2219,
-        "gpu_ms": 0.1455,
+        "fenced_on_ms": 1.1431,
+        "fenced_off_ms": 0.9279,
+        "submit_ms": 0.0757,
+        "chain_ms": 0.2152,
+        "gpu_ms": 0.1395,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1488,11 +1484,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 1.2728,
-        "fenced_off_ms": 0.9461,
-        "submit_ms": 0.0896,
-        "chain_ms": 0.3267,
-        "gpu_ms": 0.2371,
+        "fenced_on_ms": 1.2747,
+        "fenced_off_ms": 0.9322,
+        "submit_ms": 0.0881,
+        "chain_ms": 0.3425,
+        "gpu_ms": 0.2544,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1504,11 +1500,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 1.6608,
-        "fenced_off_ms": 0.9323,
-        "submit_ms": 0.1314,
-        "chain_ms": 0.7285,
-        "gpu_ms": 0.5971,
+        "fenced_on_ms": 1.663,
+        "fenced_off_ms": 0.9239,
+        "submit_ms": 0.1306,
+        "chain_ms": 0.7391,
+        "gpu_ms": 0.6085,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1520,11 +1516,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 1.7445,
-        "fenced_off_ms": 1.6358,
-        "submit_ms": 0.0837,
-        "chain_ms": 0.1087,
-        "gpu_ms": 0.025,
+        "fenced_on_ms": 1.7647,
+        "fenced_off_ms": 1.6375,
+        "submit_ms": 0.0836,
+        "chain_ms": 0.1272,
+        "gpu_ms": 0.0436,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1536,11 +1532,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 1.8497,
-        "fenced_off_ms": 1.627,
-        "submit_ms": 0.0928,
-        "chain_ms": 0.2227,
-        "gpu_ms": 0.1299,
+        "fenced_on_ms": 1.9102,
+        "fenced_off_ms": 1.6541,
+        "submit_ms": 0.1187,
+        "chain_ms": 0.2561,
+        "gpu_ms": 0.1374,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1552,11 +1548,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 1.9035,
-        "fenced_off_ms": 1.6268,
-        "submit_ms": 0.1356,
-        "chain_ms": 0.2767,
-        "gpu_ms": 0.1411,
+        "fenced_on_ms": 1.9215,
+        "fenced_off_ms": 1.6365,
+        "submit_ms": 0.1442,
+        "chain_ms": 0.285,
+        "gpu_ms": 0.1408,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1567,29 +1563,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 3.77,
-        "min_us": 3.64,
+        "median_us": 3.88,
+        "min_us": 3.67,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 12.46,
-        "min_us": 11.76,
+        "median_us": 12.64,
+        "min_us": 12.0,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 37.07,
-        "min_us": 35.28,
+        "median_us": 37.54,
+        "min_us": 36.09,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 133.03,
-        "min_us": 130.99,
+        "median_us": 135.71,
+        "min_us": 132.43,
         "method": "qpc_50x41"
       }
     ],
@@ -1597,29 +1593,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 4.16,
-        "min_us": 4.06,
+        "median_us": 4.34,
+        "min_us": 4.09,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 13.7,
-        "min_us": 13.09,
+        "median_us": 14.05,
+        "min_us": 13.48,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 39.93,
-        "min_us": 38.32,
+        "median_us": 40.73,
+        "min_us": 39.25,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 142.01,
-        "min_us": 140.54,
+        "median_us": 146.64,
+        "min_us": 143.98,
         "method": "qpc_50x41"
       }
     ],
@@ -1629,7 +1625,7 @@
         "group": 8,
         "drawn": 30,
         "merged": 0,
-        "median_us": 5.47,
+        "median_us": 5.57,
         "min_us": 5.31,
         "method": "qpc_50x41"
       },
@@ -1638,8 +1634,8 @@
         "group": 8,
         "drawn": 100,
         "merged": 0,
-        "median_us": 15.66,
-        "min_us": 15.05,
+        "median_us": 16.13,
+        "min_us": 15.21,
         "method": "qpc_50x41"
       },
       {
@@ -1647,8 +1643,8 @@
         "group": 8,
         "drawn": 300,
         "merged": 0,
-        "median_us": 43.48,
-        "min_us": 42.14,
+        "median_us": 44.67,
+        "min_us": 43.11,
         "method": "qpc_50x41"
       },
       {
@@ -1656,8 +1652,8 @@
         "group": 300,
         "drawn": 300,
         "merged": 0,
-        "median_us": 124.42,
-        "min_us": 121.5,
+        "median_us": 125.58,
+        "min_us": 123.14,
         "method": "qpc_50x41"
       },
       {
@@ -1665,8 +1661,8 @@
         "group": 8,
         "drawn": 1024,
         "merged": 0,
-        "median_us": 153.18,
-        "min_us": 150.89,
+        "median_us": 157.17,
+        "min_us": 155.0,
         "method": "qpc_50x41"
       }
     ],
@@ -5122,12 +5118,12 @@
       "5120_flicker_8px": 1.0017
     },
     "stage_gpu_ms": {
-      "1920x1080_30": 0.1455,
-      "1920x1080_100": 0.2371,
-      "1920x1080_300_far250": 0.5971,
-      "5120x1440_30": 0.025,
-      "5120x1440_100": 0.1299,
-      "5120x1440_300_far250": 0.1411
+      "1920x1080_30": 0.1395,
+      "1920x1080_100": 0.2544,
+      "1920x1080_300_far250": 0.6085,
+      "5120x1440_30": 0.0436,
+      "5120x1440_100": 0.1374,
+      "5120x1440_300_far250": 0.1408
     },
     "distance_ratio_gpu": {
       "1920_2px": 0.15,
@@ -5219,25 +5215,25 @@
       "5120x1440_100": false,
       "5120x1440_300_far250": false
     },
-    "build_300_far250_us": 37.07,
+    "build_300_far250_us": 37.54,
     "build_us": {
-      "30": 3.77,
-      "100": 12.46,
-      "300": 37.07,
-      "1024": 133.03
+      "30": 3.88,
+      "100": 12.64,
+      "300": 37.54,
+      "1024": 135.71
     },
     "build_floor_us": {
-      "30": 4.16,
-      "100": 13.7,
-      "300": 39.93,
-      "1024": 142.01
+      "30": 4.34,
+      "100": 14.05,
+      "300": 40.73,
+      "1024": 146.64
     },
     "build_merge_us": {
-      "30_g8": 5.47,
-      "100_g8": 15.66,
-      "300_g8": 43.48,
-      "300_g300": 124.42,
-      "1024_g8": 153.18
+      "30_g8": 5.57,
+      "100_g8": 16.13,
+      "300_g8": 44.67,
+      "300_g300": 125.58,
+      "1024_g8": 157.17
     },
     "merge": {
       "1920_end_on": {

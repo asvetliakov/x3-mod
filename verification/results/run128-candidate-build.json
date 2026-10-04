@@ -1,0 +1,102 @@
+{
+ "dll": "/tmp/x3-run128-candidate/build/d3d9.dll",
+ "sha256": "61f6be83c58f5a8c033d324e7e4434c63cd73bb5ff561dbb6c15bec4b503af65",
+ "bytes": 59101453,
+ "commit": "f3abf618",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree (X3M_SOURCE_COMMIT f3abf618a8caf3c8f832040f113bc830ee7dbd61, no dirty diff); clean configure+build wall time 44 s",
+ "gates": "build 0 warnings (configure and build logs); x87 0 violations (127 roots, 766 reachable functions); generate --check PASS (256 settings, 107 in the template); shader provenance: git diff --stat 6e7d8daa..f3abf618 -- src/effects (5 files) and -- tools/shaders (6 files), one path per call, both empty (4712dbd8..6e7d8daa empty as recorded for Run127), so the three --check results run under the Wine lock at 4712dbd8 (/tmp/x3-run126-candidate) are reused: generate_rigid_motion_pixel.py --check PASS 50 programs (engine_plume_ps 4,074 words, bytecode b2a7f177... = verification/results/engine-plume-pixel-program.json), generate_bloom_programs.py --check passed 9 programs, generate_engine_shimmer_program.py --check PASS (engine_shimmer_ps 6,178 words); site verifiers and identity: git diff --stat 9c0c57ab..f3abf618 -- 'verification/probe/verify_*.py' (38 files) and -- 'src/proxy/*site*.h' (17 files), one path per call, both empty, so the Run124 evidence (verify_engine_effects_sites PASS 20/20; executable-identity/run_verifiers.py PASS, 45 anchors, 27/27 on every accepted variant, different_build refused, 9 corrupt-site negatives FAIL as required) and the Run123 evidence for the other five site verifiers are reused, not rerun; host suite on the candidate tree 289 modules / 3,042 tests / 0 failing (109.2 s wall, 12 jobs); engine fixture records (verification/results/run128-candidate/record_binding.py f3abf618 on the candidate tree): bind: engine-shimmer, engine-effects, engine-light-gpu (by hash/closure, but rewritten from a dirty worktree in f3abf618, so rerun), engine-effects-patch (clean 9c0c57ab, not rerun), cull-small-parts-cpu (not rerun); do not bind: engine-plumes (engine_plumes_fixture.cpp, run_engine_plumes.py), engine-ribbons (run_engine_plumes.py), seam-engine-light (engine_plumes_core.h, motion_output_engine_plumes_inc.h, engine_plumes_pass.{h,cpp}); hull-lightmap-gain-gpu.json (clean 00e184cf, Run126) not rerun: git diff --stat 6e7d8daa..f3abf618 on linear_material.{cpp,h}, linear_emission.cpp, material_motion.cpp, linear_material_fixture.cpp, run_linear_material.py each empty and its 23 code_sha256 entries all equal the tree; rerun in the clean fixture worktree /tmp/x3-run128-fixture at f3abf618 (own clean configure; candidate build untouched) under the Wine lock, one at a time, tracked records restored between runs: run_engine_plumes PASS 312/312 (174 s), run_engine_ribbons PASS 44/44 (27 s), run_engine_shimmer PASS 43/43 (13 s), run_engine_effects PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7; 143 s incl. its build), run_engine_light PASS (9 cases, plate 12/12 modes, Reset differ 0, teardown ok, 0 build warnings, sources 8/8 equal, hit 61.7 ns, build 78.4 us; 35 s), run_motion_output.py seam-engine-light exit 0, 107 checks, lit_frames 7, first_lit_after_reset 1, worst_relative 0.0040, worst_constant 1.2e-08, zero_differ 0, colour_scale 0.25 x core_low 1.2 = 0.3, frame rows plates=1,0,0,0,0,0,0,0 (plates_max 8) (86 s incl. its own clean DLL build); every rerun record source f3abf618, production_sources_dirty false, dirty_paths []; the six clean records (engine-effects summary, engine-plumes, engine-ribbons, engine-shimmer summaries, engine-light-gpu.json, seam-engine-light-fixture.json) copied over the tracked records in the main checkout; engine-effects-patch.json and hull-lightmap-gain-gpu.json kept; motion-output-build.log and motion-output-partial.json (rewritten by the seam run) not copied; after the copy record_binding.py binds seven of eight: seam-engine-light still lists engine_plumes_core.h and motion_output_engine_plumes_inc.h because the record carries no source commit and its only base is the commit that last committed the file (6e7d8daa); the record itself is the clean f3abf618 rerun and binds once committed (inferred, as engine-effects at Run125); test_engine_*, test_hull_lightmap_gain, test_manage_engine_effects, test_motion_output_runner (12 modules) 122 tests OK in the main checkout; records kept local under /tmp/x3-run128-logs/*-f3abf618.json; look images: run_engine_plumes.py --dump-images verification/results/engine-effects/look-images from the fixture worktree (29 s, 15 PNG + README + contact sheet 1920x1200, 204,666 B = the largest PNG, none over 500 KB; every PNG bit-identical to the dump committed in f3abf618 from its dirty tree, README provenance now clean f3abf618 and the relative path restored); compared with the Run127 candidate images (7b432aa6, the clean 6e7d8daa dump; the look-images tracked at 6e7d8daa itself were still the 00e184cf dump): 01a, 01b, 03a, 03c, 04, 05, 07, 08, 09 byte-identical (sha256), 02a, 02b, 03b, 06a, 06b, 10 differ; mean display luma (run126-candidate/mean_luma.py) 02a 2.897 -> 2.881, 02b 2.761 -> 2.744, 03b 3.271 -> 3.253, 06a 16.577 -> 16.576, 06b 13.281 -> 13.277, 10 2.670 -> 2.331; plume_look_metrics.py --before <7b432aa6 images> and plume_look_metrics_compare.py (before = the 7b432aa6 metrics): 02b centre RGB red 242/181/180 -> 241/180/179, blue 171/226/237 -> 171/225/237; 02b ring red 1.00 / blue 1.00 at n 150 px, FAIL the >= 1.05 ring gate as at Run126/127; 09 ribbon radial 1.89 / lane 0.18 FAIL (unchanged); every other s = 1 side band PASS and unchanged; far dots 6 px 1.00 / 2 px 1.00 PASS; launch --dry-run --direct --config --debug exit 0, no X3M_ENGINE_* variable (3 X3M_*: X3M_CONFIG, X3M_DEBUG, X3M_VOICE_DMO_FALLBACK), engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed); the same with --engine-effects native exit 0, X3M_ENGINE_EFFECTS \"native\"; launch --dry-run --vanilla --engine-effects plumes exit 2 (refused: --engine-effects cannot be combined with --vanilla); X3AP not running before build, Wine gates and suite; candidate worktree clean after all gates; installed d3d9.dll (2433cda8..., Run127, 59,098,881 B, mtime Oct 4 18:50:01) and X3AP.exe (fdbf3418..., 2,153,984 B, mtime 2017-11-28) untouched; cxbottle.conf unchanged (Sep 29); the bottle's *.reg files rewritten at 19:48:06 by the wineserver at the last fixture's exit (no d3d9 override in them)",
+ "changes": [
+  "f3abf618 Disc distance dimming (after Run 127, user: \"dim them with distance\"; docs/architecture/engine-exhaust-look-critique.md section 6 \"Distance dimming of the disc\"): the END-ON DISC (integrat...",
+  "d562700e Run127 installed: mouth whiteness reverted, DLL 2433cda8\u2026 (59,098,881 B) from clean 6e7d8daa into bottle X3 at 18:50, bytes verified, EXE/bottle/table/fonts unchanged, rollback Run126; ins...",
+  "7b432aa6 Run127 candidate record: DLL 2433cda8\u2026 (59,098,881 B) from clean 6e7d8daa (mouth whiteness reverted over Run126), all gates (build 0 warnings, x87 0, generate --check, host suite 289 modul..."
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "equal to the Run127 table; git diff --stat 9c0c57ab..f3abf618 -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "reused from the Run123 record: git diff --stat c8f36eb6..f3abf618 -- tools/fonts (4 files) and -- assets/fonts (21 files), one path per call, both empty",
+ "producer": "Claude Code implement-deep agent (Opus 5.5), 2026-10-04; git log --oneline --no-merges 6e7d8daa..f3abf618 (3 commits); shasum -a 256; source-hash and include-closure binding: verification/results/run128-candidate/record_binding.py; mean display luma: verification/results/run126-candidate/mean_luma.py; build/suite/fixture/dump/dry-run logs local under /tmp/x3-run128-logs/; shader --check logs under /tmp/x3-run126-logs/shader-*.log (4712dbd8)"
+}
