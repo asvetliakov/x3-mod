@@ -555,3 +555,21 @@ third pass of the off/plumes loop (phase `unset`).
 | Host | `unittest` test_engine_effects, test_engine_effects_sites, test_config_schema, test_manage_engine_effects, test_launcher_defaults, test_cull_small_parts, test_comparison_hotkeys, test_engine_ribbons, test_engine_plumes, test_motion_output_runner, test_engine_light | 139 tests OK |
 | Launcher | `python3 tools/manage.py launch --dry-run` | no X3M_ENGINE_EFFECTS* sent; `engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed)`; with `--engine-effects native` no engine bodies line |
 | Build | clean `cmake -S . -B build` (mingw-i686, RelWithDebInfo) + `check_no_x87.py` | 0 warnings; PASS, 765 reachable functions |
+
+## Mouth whiteness after flight F (2026-10-04, worktree build on c256d9c2, not a candidate)
+
+[engine-exhaust-look-critique.md](../architecture/engine-exhaust-look-critique.md) section 6, "Mouth whiteness (after
+flight F)": `Look::heat` 0.7 -> 0.1, `head_min` 0.75 -> 0.42, I(s) 1.2..4.0 -> 1.248..4.16 (x 1.04; the mouth terms
+follow I / core_high); ring, mouth dip and ramp unchanged; no shader change (921 slots). New tooling: the fixture's
+`--dump` mode takes `X3M_PLUMES_FIXTURE_DUMP_PRESET` and `X3M_PLUMES_FIXTURE_DUMP_LINEAR` (runner `--preset`,
+`--dump-linear`: the resolved FP16 RGB as `.pfm` under `verification/probe/build/engine-plumes/dump/`, untracked);
+`plume_mouth_whiteness.py` reads them. Before = c256d9c2 (its committed plumes record). Bottle X3, all measured.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Mouth whiteness | `run_engine_plumes.py --dump-images <scratch> --dump-linear` (before; after), `--preset restrained` (before); `plume_mouth_whiteness.py default-before=... restrained-before=... default-after=...` -> `plume_mouth_whiteness_out.txt` | clipped (min rgb >= 1.0) within 0.3 L, s 1 side views, default before / restrained before / after: 01a red 0.119 / 0.001 / 0.000, 01b 0.026 / 0 / 0, 03a 0.036-0.041 / 0 / 0, 03c 0.024-0.032 / 0 / 0, 05 (40 px) 0.102 / 0.034 / 0.006, 08 0.036-0.078 / 0 / 0, 09 (40 px) 0.115 / 0.019 / 0.011: after <= restrained on every one. Not met: 02a red 45 deg 0.004 (restrained 0), 02b red end-on centre 0.046 (0). Whole plume 1.00-1.01 of before (red 0.78-0.79), past the mouth 1.02-1.04, far dots 0.971 |
+| Plumes | `run_engine_plumes.py` | PASS 286/286 (first run of this cut with ring 0.2: FAIL 278/286, end-on energy 0.699, over slab 0.695, the ring cyan 1.000; ring back to 0.3). Energy per px^2 40 / 12 px 0.533 -> 0.5334 (s 1), 0.5894 -> 0.590 (s 0.5); end-on at 40 px 0.713 -> 0.706 (0 deg; 60 / 30 deg 0.871 / 0.842 -> 0.869 / 0.835), at d 1 1.020 -> 1.013, over slab 0.740 -> 0.744; structure whiteness 40 px cyan 0.169 -> 0.161 (gate 0.15), 150 px cyan 0.379 -> 0.364; mouth / body 0.694 -> 0.692 (s 1); ring cyan / red 1.205 / 1.763 -> 1.183 / 1.725; core survival 0.978; slots 921. The end-on facing check read the axial weight as I / 4: now I / core_high |
+| Ribbons | `run_engine_ribbons.py` | PASS 44/44 |
+| Effects, shimmer, light | `run_engine_effects.py`; `run_engine_shimmer.py`; `run_engine_light.py` (records hash `engine_plumes_core.h`) | PASS 8 modes (main 174 ... armed_refused 7), build 0 warnings; PASS 43/43; PASS. The hull light follows I(s): x 1.04 (`test_engine_light` 1.0 -> 1.04, brightness 40 -> 41.6) |
+| Shader | `generate_rigid_motion_pixel.py --check` (wine_lock); `tools/config/generate.py --check` | PASS (no shader source changed); PASS 256 settings |
+| Host | `test_engine_*` (unittest discover, `PYTHONPATH=verification/probe`) | 83 tests OK; the full suite not run |

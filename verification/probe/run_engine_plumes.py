@@ -26,7 +26,11 @@ verification/results/engine-effects/plume_disc_ab.json (the summary record is no
 --dump-images DIR runs the fixture's look-image mode instead of the cases (the summary record is not touched): 1920x1080
 frames of the production plume and ribbon stage through the real resolve after 30 frames of warm-up, tonemapped by a CPU
 port of the write-back's AgX at EV 0 (no bloom), written as PNGs (png_writer.py) into DIR with a README.md listing each
-file and its parameters, and contact_sheet.png when Pillow is importable.
+file and its parameters, and contact_sheet.png when Pillow is importable. With it, --preset WORD sets the preset of
+every band that does not name its own (X3M_PLUMES_FIXTURE_DUMP_PRESET; 04 keeps restrained / default / strong) and
+--dump-linear also keeps the resolved FP16 RGB before the tonemap as <name>.pfm under
+verification/probe/build/engine-plumes/dump/ (X3M_PLUMES_FIXTURE_DUMP_LINEAR; about 25 MB each, untracked;
+verification/results/engine-effects/plume_mouth_whiteness.py reads them).
 The fixture's stdout stays under verification/probe/build/engine-plumes/. Run through wine_lock.py with
 X3M_FIXTURE_BOTTLE=X3. Never launches the game.
 """
@@ -327,11 +331,13 @@ def dump_images(args, record):
     out_dir.mkdir(parents=True, exist_ok=True)
     raw = BUILD / 'dump'
     raw.mkdir(parents=True, exist_ok=True)
-    for old in raw.glob('*.ppm'):
+    for old in [*raw.glob('*.ppm'), *raw.glob('*.pfm')]:
         old.unlink()
     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll',
                '--dump', 'dump']
-    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=args.timeout)
+    env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b', X3M_PLUMES_FIXTURE_DUMP_PRESET=args.preset,
+               X3M_PLUMES_FIXTURE_DUMP_LINEAR='1' if args.dump_linear else '0')
+    done = subprocess.run(command, capture_output=True, env=env, timeout=args.timeout)
     text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
     (BUILD / 'dump.log').write_text(text)
     (BUILD / 'dump.stderr.txt').write_bytes(done.stderr)
@@ -366,6 +372,10 @@ def main():
     parser.add_argument('--disc-ab', action='store_true', help='the disc on/off stage-cost A/B alone (plume_disc_ab.json)')
     parser.add_argument('--dump-images', metavar='DIR', default=None,
                         help='look images (PNG, README, contact sheet) into DIR instead of the cases; the record is not touched')
+    parser.add_argument('--preset', choices=('restrained', 'default', 'strong'), default='default',
+                        help='--dump-images: the preset of every band that does not name its own')
+    parser.add_argument('--dump-linear', action='store_true',
+                        help='--dump-images: also keep the FP16 RGB before the tonemap as build/engine-plumes/dump/<name>.pfm')
     args = parser.parse_args()
     if args.disc_ab:
         args.only = 'timing'
