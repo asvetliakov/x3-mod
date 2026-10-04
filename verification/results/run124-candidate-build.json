@@ -1,0 +1,103 @@
+{
+ "dll": "/tmp/x3-run124-candidate/build/d3d9.dll",
+ "sha256": "f35a07f1412b0a8afbeaa93f1ae9b9d7f85d79a09029bf5931c08e54ac721b3e",
+ "bytes": 59061764,
+ "commit": "9c0c57ab",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree (X3M_SOURCE_COMMIT 9c0c57ab6e3fabd30b5de08f18a47942748a3e54, no dirty diff); clean configure+build wall time 43 s",
+ "gates": "build 0 warnings (configure and build logs); x87 0 violations (127 roots, 765 reachable functions, 1 s); generate --check PASS (256 settings, 107 in the template); shader provenance: git diff --stat c8f36eb6..9c0c57ab -- src/effects tools/shaders empty, so the Run123 shader --check evidence (rigid motion 50 programs, bloom 9, engine_shimmer_ps) is reused, not rerun; on the installed X3AP.exe (read-only, sha256 fdbf3418..., size 2,153,984 and mtime unchanged after the gates): verify_engine_effects_sites PASS 20/20 (routine 240, callee A 156, callee B 167 instructions; 173 other claims; the redirect module's default_mode changed); executable-identity/run_verifiers.py PASS (45 anchors; 27/27 on shipped, LAA-cleared, NTCore 4gb and unknown-hash variants; different_build 27/27 refused; 9 corrupt-site negatives FAIL as required, incl. engine_effects A and B; 43 s wall); verify_ui_scale_sites, verify_text_density_sites, verify_cull_small_parts_site, verify_lens_flare_cull_site, verify_dust_leak_fix_site: Run123 evidence reused (git diff --stat c8f36eb6..9c0c57ab on verification/probe/verify_*.py and src/proxy/*site*.h touches only src/proxy/engine_effects_sites.h); host suite on the candidate tree 289 modules / 3,040 tests / 1 failing module (107.9 s wall, 12 jobs): test_engine_effects.test_bound_to_its_production_sources, the tracked engine-effects record's production-source hashes (committed from a dirty tree) against 9c0c57ab; after the clean 9c0c57ab records below were copied over the tracked records, the engine modules (test_engine_effects, _plumes, _light, _shimmer, _ribbons, _effects_sites, _far_jets, test_manage_engine_effects, test_motion_output_runner) 99 tests OK in the main checkout; engine fixture records (verification/results/run124-candidate/record_binding.py 9c0c57ab on the candidate tree): bind: engine-shimmer, engine-light-gpu, cull-small-parts-cpu (not rerun); do not bind: engine-effects (src/proxy/engine_plumes_core.h hash mismatch; fixture and runner changed), engine-plumes (fixture and runner changed), engine-ribbons (run_engine_plumes.py changed), engine-effects-patch (fixture changed), seam-engine-light (21 src/ files changed since ecf173eb); rerun in a clean worktree /tmp/x3-run124-fixture at 9c0c57ab (own clean configure; candidate build untouched) under the Wine lock, one at a time, tracked records restored between runs: run_engine_effects PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20 with the variable unset: setting=- mode=plumes status=armed, plumes 35, armed 33, armed_refused 7; 143 s incl. its build), run_engine_effects_patch PASS 62/62 (7 s), run_engine_plumes PASS 286/286 (148 s), run_engine_ribbons PASS 44/44 (26 s), run_engine_shimmer PASS 43/43 (14 s), run_engine_light PASS (9 cases, Reset differ 0, teardown ok, 0 build warnings, sources 8/8 equal, hit 32.6 ns; 32 s); every rerun record source 9c0c57ab, production_sources_dirty false, dirty_paths []; run_motion_output.py seam-engine-light on clean 9c0c57ab FAILED 'c200-c202 carry the record law' (constant_error 0.012: the fixture expects colour 1.2 x 0.25 = 0.3, production uploads 1.248 x 0.25 = 0.312 since the mouth commit raised core_low); with the fixture-only expectation fix (verification/probe/motion_output_engine_light_seam_inc.h, 0.3 -> 0.312, uncommitted in the main checkout) exit 0, 107 checks, lit_frames 7, first_lit_after_reset 1, worst_relative 0.0039, worst_constant 9.9e-09, zero_differ 0, 0 build warnings (83 s incl. its own clean DLL build); the six clean records (engine-effects summary, engine-plumes, engine-ribbons, engine-shimmer summaries, engine-light-gpu.json, engine-effects-patch.json) copied over the tracked records in the main checkout, after which record_binding.py binds all seven but seam-engine-light; records kept local under /tmp/x3-run124-logs/*-9c0c57ab.json, fixture worktree removed; look images: run_engine_plumes.py --dump-images verification/results/engine-effects/look-images (28 s, 15 PNG + README + contact sheet 1920x1200, 186,424 B; max PNG 182.1 KB, none over 500 KB); plume_look_metrics.py --before <c8f36eb6 images> and plume_look_metrics_compare.py (before = the c8f36eb6 metrics): gate verdicts as at c8f36eb6 (02b blue ring 1.03 FAIL, was 1.04; 09 ribbon radial 1.81 / lane 0.19 FAIL, was 1.89 / 0.18; every other s = 1 side band PASS), far dots 6 px 0.99 / 2 px 0.99 PASS; launch --dry-run --direct --config --debug exit 0, no X3M_ENGINE_* variable (3 X3M_* incl. X3M_DEBUG), engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed); the same with --engine-effects native exit 0, X3M_ENGINE_EFFECTS \"native\", no engine bodies line; launch --dry-run --vanilla --engine-effects plumes exit 2 (refused: --engine-effects cannot be combined with --vanilla); X3AP not running before build, Wine gates and suite; candidate worktree clean after all gates; installed d3d9.dll (a252c522..., Run123, 59,061,764 B, mtime unchanged) and X3AP.exe untouched; the bottle's *.reg files were rewritten at 05:16:30 by the wineserver at the last fixture's exit (no d3d9 override in them), cxbottle.conf unchanged (Sep 29)",
+ "changes": [
+  "9c0c57ab Run 123 A (run409) triage: aggregates and producer script (presets, stage, light, shimmer, SETA, frame time; no failures)",
+  "91e6ac93 Mouth whiteness (after flight F, Run 123 A, run409: the default preset's mouths read too white, restrained is a global x 0.6): constants only in Look (engine_plumes_core.h): heat 0.7 -> 0....",
+  "914672f9 Engine effects default plumes (after flight F, Run 123 A, run409): X3M_ENGINE_EFFECTS unset or empty = plumes in the DLL draw path (engine_effects.cpp) and the redirect module (engine_effe...",
+  "c256d9c2 Run123 installed: the engine exhaust batch (far jets, physics, hull light, shimmer, single fire law), DLL a252c522\u2026 (59,061,764 B) from clean c8f36eb6 into bottle X3 at 03:30, bytes verifi..."
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "equal to the Run123 table; git diff --stat c8f36eb6..9c0c57ab -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "reused from the Run123 record: git diff --stat c8f36eb6..9c0c57ab -- tools/fonts assets/fonts is empty",
+ "producer": "Claude Code implement-deep agent (Opus 5.5), 2026-10-04; git log --oneline --no-merges c8f36eb6..9c0c57ab (4 commits); shasum -a 256; source-hash and include-closure binding: verification/results/run124-candidate/record_binding.py; build/site/identity/suite/fixture/dump/dry-run logs local under /tmp/x3-run124-logs/"
+}

@@ -49,8 +49,8 @@ constexpr Mode default_mode = Mode::on;
 // --------------------------------------------------------------------------- the law
 // Placement: behind x value_eff along the plume axis from the nozzle (into the exhaust); reach: the radius of influence
 // reach x value_eff (quadratic falloff saturate(1 - d^2 / R^2)^2, zero at R); colour: the record's mean tint x I(s) x
-// the preset's scale x colour_scale, I(s) = lerp(core_low, core_high, s) (1.2 .. 4 at the default look), so a full
-// throttle light at the default preset carries the tint at 1.0 and an idle one at 0.3. The pixel program caps the sum
+// the preset's scale x colour_scale, I(s) = lerp(core_low, core_high, s) (1.248 .. 4.16 at the default look since flight F), so a full
+// throttle light at the default preset carries the tint at 1.04 and an idle one at 0.31. The pixel program caps the sum
 // at 1 (EngineLightAbi: the lit plate stays below the plume's own radiance class).
 constexpr float behind = .5f, reach = 3.f, colour_scale = .25f;
 constexpr unsigned ship_capacity = 256;     // lights per frame (ships); beyond it the dimmest gives way (build_ships)
