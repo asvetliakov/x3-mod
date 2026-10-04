@@ -22,8 +22,9 @@ shimmer 43/43, light 12 plate modes, seam 107; [candidate](../verification/resul
 ([install](../verification/results/run128-candidate-install.json)). The end-on disc (body, halo, ring, hot centre) x 0.5 + 0.5 smoothstep(20, 160, px) of the
 drawn nozzle width (`Look::disc_far_low`, `disc_px_min`, `disc_px_full`; the far law under 12 px and the chase fade multiply on top); the own ship exempt
 (`Ring::own`); the axial body, side views and ribbons unchanged (nine side images byte-identical). 20 / 65 / 160 px -> 0.50 / 0.62 / 1.0; five end-on gates
-re-floored by the law's factor ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Distance dimming of the disc"). Run 128 A queued
-(a plain launch; judge the engines6 pose). Rollback Run127.
+re-floored by the law's factor ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Distance dimming of the disc"). Run 128 A completed in run416: no visible
+change to the eye (the 0.62 factor sits under the AgX shoulder); the capital-from-behind lamps look is the tonemapper desaturating bright red, which only a
+hue-preserving emitter tone curve would change; the engine exhaust work is closed here by the user's acceptance. Rollback Run127.
 Run127 = **mouth whiteness reverted** (user decision after Run 126 A): DLL SHA-256 `2433cda8c265975d2706c9460b36729e377fba9295bb4d56baf8463427d6fd75`
 (59,098,881 bytes) built once from clean main `6e7d8daa` (host suite 289/3,042/0, 0 warnings, x87 0, shader/site/identity reused; fixtures plumes 300/300,
 effects 8 modes, ribbons 44/44, shimmer 43/43, light 12 plate modes, seam 107; [candidate](../verification/results/run127-candidate-build.json)), installed
