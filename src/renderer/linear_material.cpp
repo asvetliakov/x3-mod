@@ -2367,7 +2367,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         const bool fill_on = fill > 0.0f && fill_site;
         // Engine light (linear_engine_light_inc.h): the same site, the depth
         // export (its interpolator carries w), not an asteroid layout, the eye
-        // and normal inputs declared as proved, r14/r15 and c199-c202 free.
+        // and normal inputs declared as proved, r14/r15 and c190-c202 free.
         const bool engine_on = engine_light && fill_site && (xt || !p->asteroid_layout) &&
                                material_motion_pixel_writes_depth(*row, current_depth) &&
                                engine_light_inputs(original, s, row->pixel_depth_input_register);
@@ -2414,7 +2414,8 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         // Nozzle plates (linear_engine_light_inc.h): the twin's light block
         // feeds the gain a per-pixel weight. The block (at the lobe-sum site)
         // must precede the light-map fetch, both outside flow control, and
-        // c198 must be free; otherwise the twin keeps the plain gain.
+        // c190-c198 must be free (engine_light_inputs refuses the original
+        // otherwise); otherwise the twin keeps the plain gain.
         bool plate_on = false;
         if (engine_on && lightmap_on && site < lightmap_site &&
             constant_free(original, s, engine_light_plate_constant)) {
@@ -2582,7 +2583,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         }
         Structure final_structure;
         if (!structure(combined.data(), combined.size(), false, final_structure, false, abi, temp_count, false, false,
-                       xt != nullptr))
+                       xt != nullptr || plate_on)) // the plate block's uniform if_ne / endif (XT originals: their own)
             return LinearMaterialResult::ResourceLimit;
         if (widen_on) {
             // The emitted program re-proves the widening: rG, rT and rU referenced
@@ -2672,19 +2673,26 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             // and read by the block (3) and each fill block (1, twice with the
             // share twin).
             unsigned definitions = 0, reads = 0;
-            const unsigned expected[3] = {2, 2, 1};
+            // c202: the forward axis (DP3) and, in a plate twin, the tier lane of the two if_ne.
+            const unsigned expected[3] = {2, 2, plate_on ? 3u : 1u};
             for (unsigned k = 0; k < 3; ++k) {
                 constant_uses(combined.data(), final_structure, engine_light_constant + k, definitions, reads);
                 if (definitions != 0 || reads != expected[k]) return LinearMaterialResult::ProfileMismatch;
             }
             constant_uses(combined.data(), final_structure, engine_light_definition, definitions, reads);
-            if (definitions != 1 || reads != (share ? 5u : 4u)) return LinearMaterialResult::ProfileMismatch;
-            // Nozzle plates: c198 defined once and read by the block alone (3);
+            if (definitions != 1 || reads != (share ? 5u : 4u) + (plate_on ? 1u : 0u))
+                return LinearMaterialResult::ProfileMismatch;
+            // Nozzle plates: c198 defined once and read by the block alone (5),
+            // c190-c197 never defined and read by the block alone (2 each);
             // r15 referenced only by the block and the plate gain (6), the
             // block emitted before the light-map fetch.
             constant_uses(combined.data(), final_structure, engine_light_plate_constant, definitions, reads);
-            if (definitions != (plate_on ? 1u : 0u) || reads != (plate_on ? 3u : 0u))
+            if (definitions != (plate_on ? 1u : 0u) || reads != (plate_on ? 5u : 0u))
                 return LinearMaterialResult::ProfileMismatch;
+            for (unsigned i = 0; i < engine_light_plate_slots; ++i) {
+                constant_uses(combined.data(), final_structure, engine_light_plate_first + i, definitions, reads);
+                if (definitions != 0 || reads != (plate_on ? 2u : 0u)) return LinearMaterialResult::ProfileMismatch;
+            }
             if (plate_on) {
                 unsigned scratch = 0;
                 for (const auto& in : final_structure.instructions) {

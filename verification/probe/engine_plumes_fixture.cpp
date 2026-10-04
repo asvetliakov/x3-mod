@@ -11,8 +11,11 @@
 //   occlusion     a plane at the nozzle depth, head-on (the exhaust pointing away) and at 20 degrees, both lane forms:
 //                 the core hidden inside the silhouette, visible outside, the soft rim's width; tail-on (the exhaust at
 //                 the camera, the occlusion bias) reported
-//   chase         a plume tail-on close to the camera: its body's projected extent against 0.12 H, the fade's 0.5 on the
-//                 axial quad and at least 0.6 on the disc; the own ship's main jet at the chase boom not faded
+//   chase         a plume tail-on close to the camera: since Run 125 its axial quad shortened (the tip's body width at
+//                 0.12 H, or the dot floor's length when the natural nozzle projects wider) with the nozzle width and the
+//                 disc natural, the disc under 0.35 H, the fade's 0.5 on the axial quad and 0.4 on the disc; the own
+//                 ship's main jet at the chase boom not faded; a capital's huge nozzle (value 939) at 2,000 units 20
+//                 degrees off the axis: the disc at the natural nozzle width's projection, the length capped
 //   presets       restrained / default / strong: the core and halo radiance ratios
 //   temporal      30 frames at 60 fps: the core's variation (alive, not strobing), its lag-1 correlation (the flow
 //                 moves, it does not jump) and mean (the design); resolved
@@ -26,7 +29,8 @@
 //                 from the frame (a fighter's radius, k 0.35) draws at the lone 280's length and width; radius 0: no floor
 //   merge         after flight G: the Split Scorpion's two glow layers of one nozzle (nor 10, tiny 5.04, 6.9 apart, one
 //                 axis and parent, the floor on) draw one nozzle and one disc (merged 1) with the end-on centre, frame
-//                 total and side-view total of the nor alone; 3 nozzle widths apart or anti-parallel: both kept
+//                 total and side-view total of the nor alone; 3 nozzle widths apart, anti-parallel, or a side nozzle
+//                 at 0.2 of the size (the Split Ocelot's big3 beside its huge, run413; under merge_size_min): kept
 //   mouth         side view at s = 1 / 0.5 / 0: the peak within 0.1 L of the mouth and the value at u ~ 0 against the
 //                 body's peak at u 0.1..0.4 (after flight D gated at 0.85 at all three); the end-on peak against 1.5 x the
 //                 s = 1 body peak
@@ -762,10 +766,11 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
                     t.w, four ? "4ch" : "r32f", double(open_peak), double(inside), double(outside), rim,
                     double(ep::halo_sigma * ep::default_look.halo * ep::default_look.nozzle_width * value * ppu));
         char label[64];
-        // The open peak at least 0.6 x I (0.9 until flight G): at 1920 the 192 px value is past the near-camera cap, so
-        // the disc carries the chase fade's chase_disc_floor 0.4 (0.6 before; open peak 4.375 -> 2.916, 0.70 x I).
+        // The open peak at least 0.45 x I (0.9 until flight G, 0.6 until Run 125): at 1920 the 192 px value is past the
+        // near-camera cap, so the disc carries the chase fade's chase_disc_floor 0.4 (0.6 before; open peak 4.375 ->
+        // 2.916, 0.70 x I); since Run 125 under the soft cap 1.0 and the ring x 3 (1.5 / x 8 before) 1.969, 0.473 x I.
         std::snprintf(label, sizeof label, "headon_core_hidden_%s_%u", four ? "4ch" : "r32f", t.w);
-        report(label, open_peak >= .6f * core && inside <= 1e-3f);
+        report(label, open_peak >= .45f * core && inside <= 1e-3f);
         std::snprintf(label, sizeof label, "headon_rim_outside_%s_%u", four ? "4ch" : "r32f", t.w);
         report(label, outside > 0.f && rim >= 1);
     }
@@ -962,9 +967,23 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
                 t.w, t.h, double(boom), double(depth_flight), double(nozzle_value), double(zscale * nozzle_value), double(body_px),
                 double(body_px / cap_px), double(halo_px), double(halo_px / cap_px), own_extent, ob.stats.faded, ob.stats.capped,
                 double(ob.v[0].intensity[0]), double(i_expected), double(onset_body), double(onset_halo));
+    // The body is shrunk to the cap as before: its width at the nearest axis point (the tip) projects to 0.12 H (CPU, the
+    // builder's own k; the frame's extent is reported: since Run 125 it is the end-on disc's, which keeps the natural
+    // nozzle width, its half-size under 0.35 H); the axial quad's head-colour alpha carries its n over the disc's.
+    const Built cb = build_cpu(frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &body_only));
+    const float zr = r.origin[2], natural_n = body_only.nozzle_width * value, k_body = cb.v[0].local[3] / natural_n;
+    const float tip_px = 2.f * spread * line0 * cb.v[0].local[3] * m11 * float(t.h) * .5f / (zr - cb.v[0].local[2]);
+    const float disc_half_px = std::fabs(cb.v[4].local[0]) * t.ppu(zr);
+    const unsigned handover_alpha = cb.v[0].peak >> 24;
+    std::printf("CHASE_CAP width=%u height=%u natural_n=%.4f drawn_n=%.4f disc_n=%.4f k=%.4f drawn_length_px=%.2f tip_body_px=%.2f body_extent_px=%d cap_px=%.1f disc_half_px=%.1f disc_cap_px=%.1f discs_capped=%u handover_alpha=%u\n",
+                t.w, t.h, double(natural_n), double(cb.v[0].local[3]), double(cb.v[4].local[3]), double(k_body),
+                double(cb.v[0].local[2] * t.ppu(zr)), double(tip_px), body_extent, double(cap_px), double(disc_half_px),
+                double(ep::disc_cap_px * float(t.h)), cb.stats.discs_capped, handover_alpha);
     char label[64];
     std::snprintf(label, sizeof label, "chase_cap_%u", t.w);
-    report(label, rep.stats.capped == 1 && body_extent > 0 && float(body_extent) <= cap_px + 2.f);
+    report(label, rep.stats.capped == 1 && body_extent > 0 && k_body < 1.f && std::fabs(tip_px - cap_px) <= .01f * cap_px &&
+                      std::fabs(cb.v[4].local[3] - natural_n) <= 1e-4f * natural_n && disc_half_px <= ep::disc_cap_px * float(t.h) * 1.001f &&
+                      handover_alpha == unsigned(int(k_body * 127.f + .5f)));
     std::snprintf(label, sizeof label, "chase_fade_%u", t.w);
     report(label, pk > 0.f && near_b.stats.faded == 1 && far_b.stats.faded == 0 && std::fabs(axial_cpu - .5f) < 1e-3f);
     // Past the cap the disc sits at chase_disc_floor of its unfaded radiance (its own fade since flight G; a floor over
@@ -974,6 +993,47 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     std::snprintf(label, sizeof label, "chase_own_not_faded_%u", t.w);
     report(label, ob.nozzles == 1 && ob.stats.faded == 0 && ob.stats.capped == 0 && std::fabs(ob.v[0].intensity[0] - i_expected) < 1e-4f &&
                       own_extent > 0);
+}
+
+// After Run 125 (run413, the Split Ocelot at 1,800-2,450 units): a capital's huge nozzle (value 939) at 2,000 units, 20
+// degrees off the axis with the exhaust towards the camera, s 1, the production look. The near-camera cap shrinks the
+// body as before (width and length x k, the tip's body width at 0.12 H; the length L x k, not the dot floor); the disc's
+// nozzle width and half-size are the natural (unshrunk) ones, its radius under 0.35 H; the frame's 5 % extent reported.
+void near_capital_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float value = 939.f, Z = 2000.f, a = 20.f * 3.14159265f / 180.f;
+    const ee::Record r = record(0, 0, Z, std::sin(a), 0, -std::cos(a), value, 2.f);
+    const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 10.f);
+    const Built b = build_cpu(f);
+    scene.frame(0, 0, 0, 0, 500);
+    const auto rep = draw(d, pass, f);
+    float pk = 0.f;
+    const int extent = extent_px(t.read(d), t.w, t.h, &pk);
+    const ep::Look& lk = ep::default_look;
+    float line0 = 0.f;
+    ep::width_line(lk, 0.f, &line0);
+    const float ppu = t.ppu(Z), n = lk.nozzle_width * value;
+    const float spread = std::max(1.f + .48f * lk.erode, (.46f * lk.bulge + 3.f * .0645497f) / line0);
+    const float half_world = spread * line0 * n, cap_px = ep::chase_cap * float(t.h);
+    const float toward = std::cos(a);
+    // The natural L / n: the same record far away (uncapped, the same pulse).
+    const ee::Record far_r = record(0, 0, 50.f * Z, std::sin(a), 0, -std::cos(a), value, 2.f);
+    const Built fb = build_cpu(frame_for(t, true, &far_r, 1, ep::Preset::standard, 10.f));
+    const float k = b.v[0].local[3] / n, L_natural = fb.v[0].local[2] / fb.v[0].local[3] * n;
+    const float drawn_l = b.v[0].local[2], tip_depth = Z - toward * drawn_l;
+    const float tip_px = 2.f * half_world * k * m11 * float(t.h) * .5f / tip_depth;
+    const float disc_n_px = b.v[4].local[3] * ppu, disc_half_px = std::fabs(b.v[4].local[0]) * ppu;
+    std::printf("NEAR_CAPITAL width=%u height=%u value=%.0f depth=%.0f off_axis_deg=20 natural_n_px=%.1f disc_n_px=%.1f axial_n_px=%.1f k=%.4f disc_half_px=%.1f disc_cap_px=%.1f natural_length_px=%.1f drawn_length_px=%.1f tip_body_px=%.1f cap_px=%.1f capped=%u faded=%u discs=%u discs_capped=%u handover_alpha=%u extent_px=%d peak=%.3f\n",
+                t.w, t.h, double(value), double(Z), double(n * ppu), double(disc_n_px), double(b.v[0].local[3] * ppu), double(k),
+                double(disc_half_px), double(ep::disc_cap_px * float(t.h)), double(L_natural * ppu), double(drawn_l * ppu), double(tip_px),
+                double(cap_px), rep.stats.capped, rep.stats.faded, rep.stats.discs, b.stats.discs_capped, unsigned(b.v[0].peak >> 24), extent,
+                double(pk));
+    char label[64];
+    std::snprintf(label, sizeof label, "near_capital_disc_natural_%u", t.w);
+    report(label, rep.stats.discs == 1 && b.stats.discs_capped == 0 && std::fabs(disc_n_px - n * ppu) <= 1e-3f * n * ppu &&
+                      disc_half_px <= ep::disc_cap_px * float(t.h));
+    std::snprintf(label, sizeof label, "near_capital_length_capped_%u", t.w);
+    report(label, rep.stats.capped == 1 && k < 1.f && std::fabs(drawn_l - L_natural * k) <= 1e-3f * L_natural &&
+                      drawn_l * ppu > ep::min_length_px && std::fabs(tip_px - cap_px) <= .01f * cap_px);
 }
 
 void preset_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
@@ -1272,10 +1332,13 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
     }
     std::printf(" faded=%u centre_cv=%.4f rim_cv=%.4f rim_lag1=%.4f rim_px=%d\n", faded, cv_of(centre), cv_of(edge), lag1_of(edge), rim);
     char label[64];
+    // The end-on energy against the side view's at least 0.5 (0.7 until Run 125: the soft cap 1.0 and the end-on ring
+    // x 3, 1.5 and x 8 before, take the 40 px end-on 0.706 -> 0.558 and 30 degrees 0.835 -> 0.697; the user judged the
+    // end-on disc too bright, engine-exhaust-look-critique.md section 6, "End-on brightness, Run 125").
     for (unsigned k = 1; k < 4; ++k) {
         std::snprintf(label, sizeof label, "end_on_energy_%.0fdeg_%u", double(degrees[k]), t.w);
         const double ratio = totals[0] > 0 ? totals[k] / totals[0] : 0.;
-        report(label, ratio >= .7 && ratio <= 1.5);
+        report(label, ratio >= .5 && ratio <= 1.5);
     }
     // The mouth stacks no more: at every angle the frame's peak within 1.5 x the side view's (the disc's hand-over).
     std::snprintf(label, sizeof label, "end_on_peak_bounded_%u", t.w);
@@ -1283,8 +1346,9 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
     std::snprintf(label, sizeof label, "end_on_facing_law_%u", t.w);
     report(label, discs[0] == 0 && discs[1] == 1 && discs[2] == 1 && discs[3] == 1 && faded == 0 && std::fabs(weights[0] - 1.f) < 1e-3f &&
                       std::fabs(weights[1] - .75f) < 2e-3f && std::fabs(weights[2] - .5f) < 1e-3f);
+    // The end-on rim's variation at least 0.025 (0.03 until Run 125: under the soft cap 1.0 0.032 -> 0.029, lag-1 0.86).
     std::snprintf(label, sizeof label, "end_on_alive_%u", t.w);
-    report(label, cv_of(edge) >= .03 && lag1_of(edge) >= .5);
+    report(label, cv_of(edge) >= .025 && lag1_of(edge) >= .5);
     // The other nozzle widths (X3M_ENGINE_PLUME_NOZZLE 0.1 / 0.25 / 1.0; L / n 20 / 8 / 2 at full throttle, the disc's
     // gains held to disc_length_max 8): the end-on energy against the side view's, reported. The same value (40 px).
     for (const float nozzle : {.1f, .25f, 1.f}) {
@@ -1351,13 +1415,15 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
                         double(degrees[j]), tot_slab[j], double(degrees[j]), tot[0] > 0 ? tot[j] / tot[0] : 0., double(degrees[j]),
                         tot_slab[j] > 0 ? tot[j] / tot_slab[j] : 0., double(degrees[j]), pks[j]);
         std::printf("\n");
+        // Since Run 125 (the soft cap 1.0, the ring x 3): the end-on energy at least 0.6 of the side view's (0.7 before;
+        // 0 degrees 1.013 -> 0.665), the end-on over the detail-0 law's 0.55..0.9 (0.7..0.9 before; 0.744 -> 0.585).
         bool ok = detail > .999f && fade == 0;
-        for (unsigned j = 1; j < 4; ++j) ok = ok && tot[0] > 0 && tot[j] / tot[0] >= .7 && tot[j] / tot[0] <= 1.5;
+        for (unsigned j = 1; j < 4; ++j) ok = ok && tot[0] > 0 && tot[j] / tot[0] >= .6 && tot[j] / tot[0] <= 1.5;
         std::snprintf(label, sizeof label, "end_on_energy_detail1_n%.0f_%u", double(n_px), t.w);
         report(label, ok);
         const double over = tot_slab[3] > 0 ? tot[3] / tot_slab[3] : 0.;
         std::snprintf(label, sizeof label, "end_on_over_slab_n%.0f_%u", double(n_px), t.w);
-        report(label, detail > .999f && over >= .7 && over <= .9);
+        report(label, detail > .999f && over >= .55 && over <= .9);
         std::snprintf(label, sizeof label, "end_on_peak_bounded_detail1_n%.0f_%u", double(n_px), t.w);
         report(label, pks[0] > 0. && pks[1] <= 1.5 * pks[0] && pks[2] <= 1.5 * pks[0] && pks[3] <= 1.5 * pks[0]);
     }
@@ -1531,9 +1597,11 @@ void merge_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     const float apart = 3.f * ep::default_look.nozzle_width * 10.f * u;
     const ee::Record far_pair[2] = {record(0, 0, Z, 0, 0, -1, 10.f * u, 2.f), record(apart, 0, Z, 0, 0, -1, 5.04f * u, 2.f)};
     const ee::Record anti_pair[2] = {record(0, 0, Z, 0, 0, -1, 10.f * u, 2.f), record(0, 0, Z, 0, 0, 1, 5.04f * u, 2.f)};
-    const ee::Record* negatives[2] = {far_pair, anti_pair};
-    const char* names[2] = {"apart_3n", "anti_parallel"};
-    for (unsigned k = 0; k < 2; ++k) {
+    // run413: the Split Ocelot's side nozzle big3 187.5 beside its huge 939 (ratio 0.2), 0.3 x the larger's size apart.
+    const ee::Record side_pair[2] = {record(0, 0, Z, 0, 0, -1, 10.f * u, 2.f), record(3.f * u, 0, Z, 0, 0, -1, 2.f * u, 2.f)};
+    const ee::Record* negatives[3] = {far_pair, anti_pair, side_pair};
+    const char* names[3] = {"apart_3n", "anti_parallel", "ratio_0.2"};
+    for (unsigned k = 0; k < 3; ++k) {
         rr::EnginePlumesFrame f = frame_for(t, true, negatives[k], 2, ep::Preset::standard, 0.f, 0.f, 0.f, &look);
         f.radii = radii;
         f.parents = parents;
@@ -2688,14 +2756,22 @@ bool run_image(IDirect3DDevice9* d, Targets& t, Scene& scene, IDirect3DPixelShad
                     unsigned(p.plate), unsigned(p.nozzles.size()), drawn, capped, faded, ribbon_count, attacks,
                     p.note[0] ? p.note : "-");
         if (p.nozzles.size() <= 6)
-            for (const Nozzle& z : p.nozzles) {
+            for (unsigned i = 0; i < p.nozzles.size(); ++i) {
+                const Nozzle& z = p.nozzles[i];
                 float a[3];
                 axis_of(t, z, a);
-                std::printf("DUMP_NOZZLE file=%s band=%u x_px=%.0f y_px=%.0f nozzle_px=%.1f value=%.0f depth=%.1f degrees=%.0f facing=%s axis=%.3f,%.3f,%.3f s=%.3f tone=%s steering=%u fire_at=%d speed_px=%.1f\n",
+                // The drawn widths at the captured frame (the builder alone): the body's nozzle width (x k past the
+                // near-camera cap) and the end-on disc's (natural since Run 125, under 0.35 H); 0 when not drawn.
+                const ee::Record rz = record_at(t, z, p.capture, p.capture, i);
+                const Built bz = build_cpu(frame_for(t, true, &rz, 1, p.preset, 10.f + float(p.capture) / 60.f));
+                const float zppu = t.ppu(depth_of(t, z));
+                const float body_n_px = bz.nozzles ? bz.v[0].local[3] * zppu : 0.f;
+                const float disc_n_px = bz.nozzles && bz.stats.discs ? bz.v[4].local[3] * zppu : 0.f;
+                std::printf("DUMP_NOZZLE file=%s band=%u x_px=%.0f y_px=%.0f nozzle_px=%.1f value=%.0f depth=%.1f degrees=%.0f facing=%s axis=%.3f,%.3f,%.3f s=%.3f tone=%s steering=%u fire_at=%d speed_px=%.1f body_n_px=%.1f disc_n_px=%.1f\n",
                             image.name.c_str(), b, double(z.x_px), double(z.y_px), double(z.n_px), double(z.value),
                             double(depth_of(t, z)), double(z.degrees), z.facing > 0 ? "camera" : "away", double(a[0]),
                             double(a[1]), double(a[2]), double(z.s), tones[z.tone].name, unsigned(z.steering), z.fire_at,
-                            double(z.speed_px));
+                            double(z.speed_px), double(body_n_px), double(disc_n_px));
             }
     }
     const std::string path = dir + "\\" + image.name + ".ppm";
@@ -3204,7 +3280,7 @@ void structure_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
             const Built b = build_cpu(f);
             float cx, cy;
             t.window(0, 0, Z, 0, 0, cx, cy);
-            const float n_px = b.v[0].local[3] * ppu;
+            const float n_px = b.v[4].local[3] * ppu; // the disc's own nozzle width (natural since Run 125; the body's is x k)
             std::vector<float> lin, disp;
             for (int rr = 0; rr <= int(.9f * n_px); ++rr) {
                 lin.push_back(structure::ring_mean([&](int x, int y) { return structure::luma709(px, t, x, y); }, cx, cy, float(rr)));
@@ -3220,8 +3296,12 @@ void structure_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
             for (std::size_t i = 0; i < disp.size(); i += 4) std::printf("%s%.3f", i ? "," : "", double(disp[i]));
             std::printf("\n");
             const char* tag = tone.name[0] == 'a' ? "blue" : "red";
+            // The end-on ring over the minimum inside it: red at least 1.05 (1.168 since Run 125's ring x 3); the cyan
+            // disc's profile is monotone under the soft cap 1.0 and the ring x 3 (1.000, 1.21 at x 8): held at >= 1.0, no
+            // dip (the ring no longer reads on cyan; the user's eye decides, critique section 6).
+            const float ring_floor = tone.name[0] == 'a' ? 1.f : 1.05f;
             std::snprintf(label, sizeof label, "structure_disc_ring_%s_%u", tag, t.w);
-            report(label, rep.stats.discs == 1 && ring >= 1.05f && ring_n >= .4f && ring_n <= .7f);
+            report(label, rep.stats.discs == 1 && ring >= ring_floor && ring_n >= .4f && ring_n <= .7f);
             std::snprintf(label, sizeof label, "structure_disc_hot_centre_%s_%u", tag, t.w);
             report(label, rep.stats.discs == 1 && hot >= .9f);
         }
@@ -3316,6 +3396,7 @@ int main(int argc, char** argv) {
                 if (size.first == 1920) occlusion_case(d, *t, *scene, pass, false);
             }
             if (wanted("chase")) chase_case(d, *t, *scene, pass);
+            if (wanted("chase")) near_capital_case(d, *t, *scene, pass);
             if (wanted("presets")) preset_case(d, *t, *scene, pass);
             if (wanted("temporal")) temporal_case(d, *t, *scene, pass);
             if (wanted("shape")) shape_case(d, *t, *scene, pass);

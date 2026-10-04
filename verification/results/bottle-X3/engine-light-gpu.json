@@ -8,7 +8,7 @@
   "name": "X3",
   "wine_arch": "arm64"
  },
- "build_warnings": 0,
+ "build_warnings": null,
  "cases": {
   "0": {
    "checks": {
@@ -138,7 +138,7 @@
     "lit": 6086,
     "max_dark_absolute": 0.0,
     "max_depth_error": 2.3223394873816972e-07,
-    "max_energy_relative": 0.0004704937852728875,
+    "max_energy_relative": 0.0004722225825869879,
     "max_relative": 4.9506665262017874e-05,
     "plate": 14976,
     "samples": 16384,
@@ -454,15 +454,16 @@
   }
  },
  "cost": {
-  "build_us": 62.2,
-  "hit_ns": 32.8,
+  "build_us": 80.3,
+  "hit_ns": 40.9,
   "hits": 200000.0,
-  "log_ns": 2.2,
-  "miss_ns": 3.6,
+  "log_ns": 2.0,
+  "miss_ns": 3.7,
   "misses": 200000.0,
   "nodes": 1024.0,
   "rounds": 200000.0,
-  "ships": 256.0
+  "ships": 256.0,
+  "ships_us": 50.3
  },
  "cost_checks": {
   "hit_ns": true,
@@ -471,54 +472,144 @@
  },
  "create": {
   "twins": 6.0,
-  "us_each": 41.2,
-  "us_total": 247.5
+  "us_each": 39.9,
+  "us_total": 239.3
  },
- "elapsed_s": 28.38,
- "executable_sha256": "b1fef1922a7a1c8494c6cde36514f330f1ccb47aa135af69953e2b4843565d3a",
+ "elapsed_s": 29.63,
+ "executable_sha256": "8415fa5e19bc474f4a16e5aca24f31d0413382819bf70aef48b80e840562e148",
  "exit_code": 0,
  "game_launched": false,
  "gpu": [
   {
    "base_batches": [
-    0.2278,
-    0.1903,
-    0.1714,
-    0.1523,
-    0.1534
+    0.246,
+    0.191,
+    0.1672,
+    0.1521,
+    0.1506
    ],
-   "base_ms": 0.1714,
+   "base_ms": 0.1672,
    "height": 1080,
-   "term_us": 4.9000000000000155,
+   "nozzles": 1,
+   "term_us": 7.300000000000001,
    "twin_batches": [
-    0.2121,
-    0.1966,
-    0.1763,
-    0.1693,
-    0.1723
+    0.2402,
+    0.202,
+    0.1745,
+    0.1734,
+    0.1726
    ],
-   "twin_ms": 0.1763,
+   "twin_ms": 0.1745,
    "width": 1920
   },
   {
    "base_batches": [
-    0.5001,
-    0.4994,
-    0.5027,
-    0.5003,
-    0.4963
+    0.498,
+    0.4985,
+    0.495,
+    0.4947,
+    0.4947
    ],
-   "base_ms": 0.5001,
+   "base_ms": 0.495,
    "height": 1440,
-   "term_us": 58.699999999999974,
+   "nozzles": 1,
+   "term_us": 86.50000000000003,
    "twin_batches": [
-    0.5687,
-    0.56,
-    0.5588,
-    0.5575,
-    0.5539
+    0.5819,
+    0.581,
+    0.5772,
+    0.5904,
+    0.5815
    ],
-   "twin_ms": 0.5588,
+   "twin_ms": 0.5815,
+   "width": 5120
+  },
+  {
+   "base_batches": [
+    0.151,
+    0.1502,
+    0.1631,
+    0.1617,
+    0.1507
+   ],
+   "base_ms": 0.151,
+   "height": 1080,
+   "nozzles": 3,
+   "term_us": 33.90000000000001,
+   "twin_batches": [
+    0.1847,
+    0.1849,
+    0.1848,
+    0.188,
+    0.1918
+   ],
+   "twin_ms": 0.1849,
+   "width": 1920
+  },
+  {
+   "base_batches": [
+    0.5143,
+    0.5069,
+    0.5117,
+    0.5129,
+    0.5162
+   ],
+   "base_ms": 0.5129,
+   "height": 1440,
+   "nozzles": 3,
+   "term_us": 122.49999999999994,
+   "twin_batches": [
+    0.6284,
+    0.6342,
+    0.6484,
+    0.6354,
+    0.6356
+   ],
+   "twin_ms": 0.6354,
+   "width": 5120
+  },
+  {
+   "base_batches": [
+    0.1559,
+    0.1615,
+    0.1627,
+    0.1557,
+    0.1506
+   ],
+   "base_ms": 0.1559,
+   "height": 1080,
+   "nozzles": 8,
+   "term_us": 46.29999999999998,
+   "twin_batches": [
+    0.203,
+    0.1913,
+    0.1974,
+    0.2022,
+    0.2031
+   ],
+   "twin_ms": 0.2022,
+   "width": 1920
+  },
+  {
+   "base_batches": [
+    0.518,
+    0.5148,
+    0.5135,
+    0.5072,
+    0.5116
+   ],
+   "base_ms": 0.5135,
+   "height": 1440,
+   "nozzles": 8,
+   "term_us": 165.3,
+   "twin_batches": [
+    0.6788,
+    0.6661,
+    0.6762,
+    0.6838,
+    0.6835
+   ],
+   "twin_ms": 0.6788,
    "width": 5120
   }
  ],
@@ -532,6 +623,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -544,8 +636,18 @@
      "max_error": 5.999999996841865e-08,
      "near": 101,
      "near_max": 1.0,
-     "near_min": 0.99999994,
+     "near_min": 1.0,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 101,
+       "near_max": 1.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
      "samples": 4096
     }
    },
@@ -556,6 +658,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -569,7 +672,17 @@
      "near": 101,
      "near_max": 1.0,
      "near_min": 0.99999994,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 101,
+       "near_max": 1.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
      "samples": 4096
     }
    },
@@ -579,6 +692,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -592,7 +706,17 @@
      "near": 101,
      "near_max": 4.0,
      "near_min": 4.0,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 4.0,
+       "near": 101,
+       "near_max": 4.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
      "samples": 4096
     }
    },
@@ -604,6 +728,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -613,11 +738,149 @@
      "far": 3911,
      "far_max": 4.0,
      "far_min": 3.99999976,
-     "max_error": 0.0005497795238103009,
+     "max_error": 0.0005481095238102363,
      "near": 101,
      "near_max": 1.0,
-     "near_min": 0.99999994,
+     "near_min": 1.0,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 101,
+       "near_max": 1.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
+     "samples": 4096
+    }
+   },
+   "0-twin3": {
+    "checks": {
+     "each_near": true,
+     "each_point": true,
+     "far": true,
+     "finite": true,
+     "grey": true,
+     "law": true,
+     "nozzles": true,
+     "registers": true,
+     "samples": true
+    },
+    "passed": true,
+    "stats": {
+     "centre": 4.0,
+     "channel_spread": 0.0,
+     "far": 3746,
+     "far_max": 4.0,
+     "far_min": 3.99999976,
+     "max_error": 0.0011488540211637144,
+     "near": 198,
+     "near_max": 1.0,
+     "near_min": 0.99999994,
+     "nozzles": 3,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 103,
+       "near_max": 1.0,
+       "nearest": 0.026041666666666668
+      },
+      {
+       "at_point": 1.0,
+       "near": 58,
+       "near_max": 1.0,
+       "nearest": 0.0844828129208086
+      },
+      {
+       "at_point": 1.0,
+       "near": 37,
+       "near_max": 1.0,
+       "nearest": 0.08035714285714286
+      }
+     ],
+     "ramp": 152,
+     "register_error": 4.000000011217253e-08,
+     "samples": 4096
+    }
+   },
+   "0-twin8": {
+    "checks": {
+     "each_near": true,
+     "each_point": true,
+     "far": true,
+     "finite": true,
+     "grey": true,
+     "law": true,
+     "nozzles": true,
+     "registers": true,
+     "samples": true
+    },
+    "passed": true,
+    "stats": {
+     "centre": 4.0,
+     "channel_spread": 0.0,
+     "far": 3743,
+     "far_max": 4.0,
+     "far_min": 3.99999976,
+     "max_error": 0.0018814258955530683,
+     "near": 199,
+     "near_max": 1.0,
+     "near_min": 0.99999994,
+     "nozzles": 8,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 10,
+       "near_max": 1.0,
+       "nearest": 0.07062162141345255
+      },
+      {
+       "at_point": 1.0,
+       "near": 15,
+       "near_max": 1.0,
+       "nearest": 0.0627747745897356
+      },
+      {
+       "at_point": 1.0,
+       "near": 20,
+       "near_max": 1.0,
+       "nearest": 0.056497297130762035
+      },
+      {
+       "at_point": 1.0,
+       "near": 21,
+       "near_max": 1.0,
+       "nearest": 0.05136117920978367
+      },
+      {
+       "at_point": 1.0,
+       "near": 24,
+       "near_max": 1.0,
+       "nearest": 0.0470810809423017
+      },
+      {
+       "at_point": 1.0,
+       "near": 31,
+       "near_max": 1.0,
+       "nearest": 0.043459459331355414
+      },
+      {
+       "at_point": 1.0,
+       "near": 37,
+       "near_max": 1.0,
+       "nearest": 0.0403552122362586
+      },
+      {
+       "at_point": 1.0,
+       "near": 41,
+       "near_max": 1.0,
+       "nearest": 0.03766486475384136
+      }
+     ],
+     "ramp": 154,
+     "register_error": 1.9726597877691827e-06,
      "samples": 4096
     }
    },
@@ -628,6 +891,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -640,8 +904,18 @@
      "max_error": 5.999999996841865e-08,
      "near": 101,
      "near_max": 1.0,
-     "near_min": 0.99999994,
+     "near_min": 1.0,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 101,
+       "near_max": 1.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
      "samples": 4096
     }
    },
@@ -652,6 +926,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -665,7 +940,17 @@
      "near": 101,
      "near_max": 1.0,
      "near_min": 0.99999994,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 101,
+       "near_max": 1.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
      "samples": 4096
     }
    },
@@ -675,6 +960,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -688,7 +974,17 @@
      "near": 101,
      "near_max": 4.0,
      "near_min": 4.0,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 4.0,
+       "near": 101,
+       "near_max": 4.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
      "samples": 4096
     }
    },
@@ -700,6 +996,7 @@
      "grey": true,
      "law": true,
      "near": true,
+     "registers": true,
      "samples": true
     },
     "passed": true,
@@ -709,11 +1006,149 @@
      "far": 3911,
      "far_max": 4.0,
      "far_min": 3.99999976,
-     "max_error": 0.0005497795238103009,
+     "max_error": 0.0005481095238102363,
      "near": 101,
      "near_max": 1.0,
-     "near_min": 0.99999994,
+     "near_min": 1.0,
+     "nozzles": 1,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 101,
+       "near_max": 1.0,
+       "nearest": 0.0
+      }
+     ],
      "ramp": 84,
+     "register_error": 3.760000012675846e-08,
+     "samples": 4096
+    }
+   },
+   "1-twin3": {
+    "checks": {
+     "each_near": true,
+     "each_point": true,
+     "far": true,
+     "finite": true,
+     "grey": true,
+     "law": true,
+     "nozzles": true,
+     "registers": true,
+     "samples": true
+    },
+    "passed": true,
+    "stats": {
+     "centre": 4.0,
+     "channel_spread": 0.0,
+     "far": 3746,
+     "far_max": 4.0,
+     "far_min": 3.99999976,
+     "max_error": 0.0011488540211637144,
+     "near": 198,
+     "near_max": 1.0,
+     "near_min": 0.99999994,
+     "nozzles": 3,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 103,
+       "near_max": 1.0,
+       "nearest": 0.026041666666666668
+      },
+      {
+       "at_point": 1.0,
+       "near": 58,
+       "near_max": 1.0,
+       "nearest": 0.0844828129208086
+      },
+      {
+       "at_point": 1.0,
+       "near": 37,
+       "near_max": 1.0,
+       "nearest": 0.08035714285714286
+      }
+     ],
+     "ramp": 152,
+     "register_error": 4.000000011217253e-08,
+     "samples": 4096
+    }
+   },
+   "1-twin8": {
+    "checks": {
+     "each_near": true,
+     "each_point": true,
+     "far": true,
+     "finite": true,
+     "grey": true,
+     "law": true,
+     "nozzles": true,
+     "registers": true,
+     "samples": true
+    },
+    "passed": true,
+    "stats": {
+     "centre": 4.0,
+     "channel_spread": 0.0,
+     "far": 3743,
+     "far_max": 4.0,
+     "far_min": 3.99999976,
+     "max_error": 0.0018814258955530683,
+     "near": 199,
+     "near_max": 1.0,
+     "near_min": 0.99999994,
+     "nozzles": 8,
+     "per_nozzle": [
+      {
+       "at_point": 1.0,
+       "near": 10,
+       "near_max": 1.0,
+       "nearest": 0.07062162141345255
+      },
+      {
+       "at_point": 1.0,
+       "near": 15,
+       "near_max": 1.0,
+       "nearest": 0.0627747745897356
+      },
+      {
+       "at_point": 1.0,
+       "near": 20,
+       "near_max": 1.0,
+       "nearest": 0.056497297130762035
+      },
+      {
+       "at_point": 1.0,
+       "near": 21,
+       "near_max": 1.0,
+       "nearest": 0.05136117920978367
+      },
+      {
+       "at_point": 1.0,
+       "near": 24,
+       "near_max": 1.0,
+       "nearest": 0.0470810809423017
+      },
+      {
+       "at_point": 1.0,
+       "near": 31,
+       "near_max": 1.0,
+       "nearest": 0.043459459331355414
+      },
+      {
+       "at_point": 1.0,
+       "near": 37,
+       "near_max": 1.0,
+       "nearest": 0.0403552122362586
+      },
+      {
+       "at_point": 1.0,
+       "near": 41,
+       "near_max": 1.0,
+       "nearest": 0.03766486475384136
+      }
+     ],
+     "ramp": 154,
+     "register_error": 1.9726597877691827e-06,
      "samples": 4096
     }
    }
@@ -739,7 +1174,7 @@
    "kind": "6",
    "pair": "0",
    "ps": "ps_8759c7838bbc86c2",
-   "twin_words": "1955",
+   "twin_words": "2070",
    "vs": "vs_53a0a641107ed76c"
   },
   {
@@ -755,7 +1190,7 @@
    "kind": "6",
    "pair": "1",
    "ps": "ps_64bac8bb307eb896",
-   "twin_words": "2093",
+   "twin_words": "2208",
    "vs": "vs_4944d81dfe531b37"
   },
   {
@@ -771,7 +1206,7 @@
    "kind": "6",
    "pair": "2",
    "ps": "ps_f6a501717c3e5ca8",
-   "twin_words": "986",
+   "twin_words": "1101",
    "vs": "vs_badefd5143b3024f"
   }
  ],
@@ -783,13 +1218,13 @@
  "reset_ok": true,
  "sources_sha256": {
   "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
-  "src/proxy/engine_light_core.h": "3b63c727fbafa8991aeae516ae91b5817f2510e16396f5a9f3184b8bcf1fde05",
-  "src/proxy/engine_plumes_core.h": "e52c9b237ff80db902e31e21f09c79e4ed8c6d5caa06a8ea1928247ee54b5e62",
-  "src/renderer/linear_engine_light_inc.h": "0beec8d14e6707da3c32c500e8201fde20828eec622fc276c18be351bc85c8af",
-  "src/renderer/linear_material.cpp": "afe50a964b85c23389b308aac3f74847f65d663690094c5cc77dc1838c39c3d2",
-  "src/renderer/linear_material.h": "df9e22f63031f9600420cf2861d6f08efb39ee14ad7712c436a6a04d5cc97621",
+  "src/proxy/engine_light_core.h": "b4648ce5a73f92004995c5c777b2ba05374506710e84b091aec1ad46bb18aa37",
+  "src/proxy/engine_plumes_core.h": "ba06a0c4311aa782507f638bb99491de2551df42766cb9f15ac9b7370875e0e2",
+  "src/renderer/linear_engine_light_inc.h": "df6cf69e9f35370006c877416451147aa2c980b224341c5deaa6dbb8c82cfcbe",
+  "src/renderer/linear_material.cpp": "c12810ae25cc99d2afc4330c17088a3f800be1edb0265ae7042ceac8e817b181",
+  "src/renderer/linear_material.h": "43fb2fc8653a421f8f3ef61ef60f7ae18cfdf18118a93779088aff63a957ad08",
   "src/renderer/material_motion.cpp": "5734138efcfe06b1a3297af28d4be08ce251a994e30b99c91993b67a4a771d79",
-  "verification/probe/engine_light_fixture.cpp": "eb2ce89323ce6c4f38f027db145fc7c84985fac0dbcdd6199caad394cc822c42"
+  "verification/probe/engine_light_fixture.cpp": "a90d2b6becc99b76e2dabbb9fc33e6b80af121e8ef9833cb36fbf886cca29c09"
  },
  "teardown": [
   "TEARDOWN fixture",

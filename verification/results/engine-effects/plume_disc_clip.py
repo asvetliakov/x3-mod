@@ -17,9 +17,13 @@ any channel (side views, distance dots, hull and crowd frames: 0 when the change
 oblique 02a (45 degrees, disc weight 1) is reported, not held. The side bands' and far dots' radiance kept is
 plume_mouth_whiteness.py's second table (run it on the same states).
 
-Usage: python3 plume_disc_clip.py LABEL=DIR [LABEL=DIR ...]   (the first DIR is the reference)
-plume_disc_clip_out.txt: before = 3ee84cf3 (chase_disc_floor 0.6 as a floor over the body's fade), after = its working
-tree with the disc's own chase fade 1 -> chase_disc_floor 0.4 (engine_plumes_core.h); X3, 2026-10-04.
+Usage: python3 plume_disc_clip.py [--n PX] LABEL=DIR [LABEL=DIR ...]   (the first DIR is the reference; --n the
+drawn nozzle width in px the centre and disc radii scale with, default 65.6: the capped 02b nozzle)
+plume_disc_clip_out.txt (2026-10-04, X3): before = 4f036d43 (Run 125: disc_cap 1.5, disc_ring 8, the near-camera cap
+shrinking the whole plume), cause2 = its working tree with disc_cap 1.0 and disc_ring 3 (the same geometry), then, with
+--n 150 (the natural nozzle width the 02b disc keeps since Run 125), final = disc_cap 1.0, disc_ring 3,
+the natural-width disc beside the body capped as before, and the merge window (before again as the reference). Before Run 125: before = 3ee84cf3
+(chase_disc_floor 0.6 as a floor over the body's fade), after = the disc's own chase fade 1 -> 0.4.
 """
 import os
 import sys
@@ -30,6 +34,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from plume_mouth_whiteness import find, load_pfm, luma, min_filter5  # noqa: E402
 
 N = 65.6
+if len(sys.argv) > 2 and sys.argv[1] == "--n":
+    N = float(sys.argv[2])
+    del sys.argv[1:3]
 DISCS = [("02b red", (600, 540), 0), ("02b blue", (1320, 540), 2)]
 PREFIXES = ["01a", "01b", "02a", "03a", "03b", "03c", "04", "05", "06a", "06b", "07", "08", "09", "10"]
 

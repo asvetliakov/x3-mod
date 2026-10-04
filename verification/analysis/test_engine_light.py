@@ -75,20 +75,41 @@ NRM, DP3, MIN, RCP, MUL, MAD, MAX, RSQ, ADD = 36, 8, 10, 6, 5, 4, 11, 7, 2
 
 
 def engine_block(depth, plate=False):
+    """The light block; with `plate` the nozzle-plate form: D = e t, per plate slot c190 + i the squared distance in
+    value_eff units (MAD, DP3) and the running minimum in r15.w (MIN, input first, from c198.w), the light from D (ADD)
+    with 1 / d in r15.x, then w = saturate(A m + B) and max(w, 0) after q."""
     e, s, a, b, f, k = 14, 15, 200, 201, 202, 199
     words = []
-    weight = (op(MAD, dst(TEMP, s, 8) | SAT, lane(TEMP, e, 3), lane(CONST, 198, 0), lane(CONST, 198, 1)) +
+    weight = (op(MAD, dst(TEMP, s, 8) | SAT, lane(TEMP, s, 3), lane(CONST, 198, 0), lane(CONST, 198, 1)) +
               op(MAX, dst(TEMP, s, 8), lane(TEMP, s, 3), lane(CONST, 198, 2))) if plate else []
+    if plate:
+        to_light = op(MUL, dst(TEMP, s), src(TEMP, s), lane(TEMP, s, 3))
+        for i in range(PLATE_SLOTS):
+            c = PLATE_FIRST + i
+            # Uniform branches on the plate tier c202.w: slots 1-7 under if_ne tier, c198.z (0), 4-7 under if_ne tier,
+            # c199.x (1); if_ne = opcode 41 with the comparison 5 in bits 16-23.
+            if i == 1:
+                to_light += [(2 << 24) | (5 << 16) | 41, lane(CONST, f, 3), lane(CONST, 198, 2)]
+            if i == 4:
+                to_light += [(2 << 24) | (5 << 16) | 41, lane(CONST, f, 3), lane(CONST, k, 0)]
+            to_light += (op(MAD, dst(TEMP, e), src(TEMP, s), lane(CONST, c, 3), src(CONST, c, 0xe4, 1)) +
+                         op(DP3, dst(TEMP, e, 8), src(TEMP, e), src(TEMP, e)) +
+                         op(MIN, dst(TEMP, s, 8), lane(TEMP, e, 3), lane(TEMP, s, 3) if i else lane(CONST, 198, 3)))
+        to_light += [43, 43] + op(ADD, dst(TEMP, e), src(CONST, a), src(TEMP, s, 0xe4, 1))  # endif, endif
+        inverse = 0
+    else:
+        to_light = op(MAD, dst(TEMP, e), src(TEMP, s), lane(TEMP, s, 3, 1), src(CONST, a))
+        inverse = 3
     for w in (op(NRM, dst(TEMP, s), src(INPUT, 2)),
               op(DP3, dst(TEMP, s, 8), src(TEMP, s), src(CONST, f)),
               op(MIN, dst(TEMP, s, 8), lane(TEMP, s, 3), lane(CONST, k, 1)),
               op(RCP, dst(TEMP, s, 8), lane(TEMP, s, 3)),
               op(MUL, dst(TEMP, s, 8), lane(TEMP, s, 3), lane(INPUT, depth, 1)),
-              op(MAD, dst(TEMP, e), src(TEMP, s), lane(TEMP, s, 3, 1), src(CONST, a)),
+              to_light,
               op(DP3, dst(TEMP, e, 8), src(TEMP, e), src(TEMP, e)),
               op(MAX, dst(TEMP, e, 8), lane(TEMP, e, 3), lane(CONST, k, 2)),
-              op(RSQ, dst(TEMP, s, 8), lane(TEMP, e, 3)),
-              op(MUL, dst(TEMP, e), src(TEMP, e), lane(TEMP, s, 3)),
+              op(RSQ, dst(TEMP, s, 1 << inverse), lane(TEMP, e, 3)),
+              op(MUL, dst(TEMP, e), src(TEMP, e), lane(TEMP, s, inverse)),
               op(NRM, dst(TEMP, s), src(INPUT, 3)),
               op(DP3, dst(TEMP, s, 1) | SAT, src(TEMP, s), src(TEMP, e)),
               op(ADD, dst(TEMP, e, 8), lane(TEMP, e, 3, 1), lane(CONST, a, 3)),
@@ -106,12 +127,14 @@ ADD_TRIPLET = (op(ADD, dst(TEMP, 13) | SAT, src(TEMP, 12, 0xe4, 1), lane(CONST, 
                op(MIN, dst(TEMP, 13), src(TEMP, 14), src(TEMP, 13)) + op(ADD, dst(TEMP, 12), src(TEMP, 12), src(TEMP, 13)))
 FILL_MAD = op(MAD, dst(TEMP, 12), src(TEMP, 13), lane(CONST, 215, 0), src(TEMP, 12))
 DEF_C199 = [0x05000051, dst(CONST, 199, 15), bits(1.0), bits(-2.0 ** -20), bits(2.0 ** -40), bits(0.0)]
-# Nozzle plates (docs/architecture/engine-light.md): full suppression to 0.75 x value_eff from the light, none from 1.0,
-# linear in d^2 between; from q = saturate(1 - d^2 / R^2), R = 3 x value_eff: w = saturate(A q + B).
+# Nozzle plates (docs/architecture/engine-light.md): full suppression to 0.75 x value_eff of each plate (the ship's main
+# nozzles, up to eight, uploaded at c190-c197), none from 1.0, linear in d^2 between; from the minimum m of
+# (d / v_i)^2 over the slots (4 for an unused slot): w = saturate(A m + B), A = -1 / (r1^2 - r0^2), B = r1^2 / (...).
 PLATE_FULL, PLATE_REACH, REACH = 0.75, 1.0, 3.0
-PLATE_A = REACH ** 2 / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
-PLATE_B = (PLATE_REACH ** 2 - REACH ** 2) / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
-DEF_C198 = [0x05000051, dst(CONST, 198, 15), bits(PLATE_A), bits(PLATE_B), bits(0.0), bits(0.0)]
+PLATE_FIRST, PLATE_SLOTS, PLATE_NONE = 190, 8, 4.0
+PLATE_A = -1.0 / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
+PLATE_B = PLATE_REACH ** 2 / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
+DEF_C198 = [0x05000051, dst(CONST, 198, 15), bits(PLATE_A), bits(PLATE_B), bits(0.0), bits(PLATE_NONE)]
 GAIN_DYNAMIC = lane(CONST, 217, 3)
 
 
@@ -197,6 +220,33 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(s['radius'], 30.0)
         self.assertAlmostEqual(s['brightness'], 41.6, places=4)            # 40 x 1.04 (I(1) 4.16 after flight F)
         self.assertEqual((s['main'], s['rcs'], s['brake'], s['other_view'], s['orphan']), (3, 1, 1, 1, 1))
+
+    def test_nozzle_plates(self):
+        # Every main nozzle of the ship, brightest first, one per handle (the brighter record), no plate for the smaller
+        # co-located layer, the RCS jet never; the light stays at the brightest nozzle (plate 0).
+        p = self.r['plates']
+        self.assertEqual((p['a']['handle'], p['a']['count'], p['a']['handles']), (50, 3, [50, 51, 52]))
+        self.assertEqual(p['a']['values'], [10.0, 8.0, 6.0])
+        self.assertEqual(p['a']['first'], [0.0, 0.0, -5.0])      # 0.5 x value behind the nozzle along -z, as the light
+        self.assertEqual(p['a']['light'], p['a']['first'])
+        # Nine nozzles: the eight brightest (values 18 .. 11), the ninth dropped.
+        self.assertEqual((p['b']['handle'], p['b']['count'], p['b']['handles']), (68, 8, list(range(68, 60, -1))))
+        self.assertEqual((p['merged'], p['plates_dropped']), (1, 1))
+        # Per-draw registers ((P - cam) / v, 1 / v), unused slots (2, 0, 0, 0); a non-finite plate left unused.
+        self.assertEqual(p['node_count'], 3)
+        expected = [0, 0, -0.5, 0.1, 5, 0, -0.5, 0.125, 0, 40 / 6, -0.5, 1 / 6] + [2, 0, 0, 0] * 5
+        for got, want in zip(p['registers'], expected):
+            self.assertAlmostEqual(got, want, places=6)
+        self.assertEqual(p['broken_slot1'], [2.0, 0.0, 0.0, 0.0])
+        # The twin's uniform branch tier in c202.w: 1, 4 or 8 slots run.
+        self.assertEqual(p['tier'], 1.0)
+        self.assertEqual(p['tiers'], [0, 0, 1, 1, 1, 2, 2, 2, 2])
+        core = (ROOT / 'src/proxy/engine_light_core.h').read_text()
+        self.assertIn('constexpr float unused_plate[4] = {2.f, 0.f, 0.f, 0.f};', core)
+        self.assertIn('constexpr unsigned plate_slots = 8;', core)
+        inc = (ROOT / 'src/renderer/linear_engine_light_inc.h').read_text()
+        self.assertIn('engine_light_plate_first = 190, engine_light_plate_slots = 8;', inc)
+        self.assertIn('nozzle_plate_none = 4.0f;', inc)
 
     def test_cap(self):
         self.assertEqual(self.r['cap'], dict(ships=256, dropped=44, found=256))   # equal brightness: the incumbents stay
@@ -338,7 +388,8 @@ class TwinTests(unittest.TestCase):
                 if fill0:
                     self.assertEqual(delta, 70 if share else 45, (name, set_name))
                     continue
-                self.assertEqual(delta, (28 if share else 25) + (4 if plate else 0), (name, set_name))
+                # The plate form: 35 more block slots (D, three per slot, two if_ne x 3 and two endif, the weight), the gain 3 for 1.
+                self.assertEqual(delta, (28 if share else 25) + (37 if plate else 0), (name, set_name))
                 for at in triplets:   # each add follows its fill block's MAD
                     self.assertEqual(twin[at - len(FILL_MAD):at], FILL_MAD, (name, set_name))
                 stripped = twin
@@ -423,15 +474,29 @@ class WineRecordTests(unittest.TestCase):
         self.assertTrue(record['teardown_ok'])
         self.assertIn('TEARDOWN device references=0', record['teardown'])
         self.assertLessEqual(record['cost']['hit_ns'], 200.0)
-        self.assertEqual([(g['width'], g['height']) for g in record['gpu']], [(1920, 1080), (5120, 1440)])
+        # The full-screen term for ships of 1, 3 and 8 nozzles (the twin's uniform branches: 1, 4, 8 plate slots).
+        self.assertEqual([(g['nozzles'], g['width'], g['height']) for g in record['gpu']],
+                         [(n, w, h) for n in (1, 3, 8) for w, h in ((1920, 1080), (5120, 1440))])
         # Nozzle plates: the white light map's term at the light 1 x (<= 1.05), beyond the plate radius 4 x; gain 1 and the
         # fill-only twin 1 x everywhere; without the light (the base) 4 x everywhere; both layouts.
         plate = record['plate']
         self.assertTrue(plate['passed'])
         self.assertEqual(plate['radii'], dict(reach=REACH, full=PLATE_FULL, zero=PLATE_REACH))
-        self.assertEqual(sorted(plate['modes']), ['%d-%s' % (p, m) for p in (0, 1) for m in ('gain1', 'nogain', 'nolight', 'twin')])
+        self.assertEqual(sorted(plate['modes']), ['%d-%s' % (p, m) for p in (0, 1)
+                                                  for m in ('gain1', 'nogain', 'nolight', 'twin', 'twin3', 'twin8')])
         for name, mode in plate['modes'].items():
             s = mode['stats']
+            self.assertLessEqual(s['register_error'], 1e-5, name)
+            if name.endswith(('twin3', 'twin8')):
+                # Every main nozzle of the ship at gain 1 (its plate point and its near samples), 4 beyond all of them.
+                self.assertEqual(s['nozzles'], int(name[-1]), name)
+                for nozzle in s['per_nozzle']:
+                    self.assertGreater(nozzle['near'], 0, name)
+                    self.assertAlmostEqual(nozzle['at_point'], 1.0, places=5, msg=name)
+                    self.assertLessEqual(nozzle['near_max'], 1.05, name)
+                self.assertAlmostEqual(s['far_min'], 4.0, places=5, msg=name)
+                self.assertAlmostEqual(s['far_max'], 4.0, places=5, msg=name)
+                continue
             expected = dict(twin=(1.0, 4.0), gain1=(1.0, 1.0), nogain=(1.0, 1.0), nolight=(4.0, 4.0))[name.split('-')[1]]
             self.assertLessEqual(s['near_max'], 1.05 if expected[0] == 1.0 else 4.0 + 1e-5, name)
             self.assertAlmostEqual(s['centre'], expected[0], places=5, msg=name)

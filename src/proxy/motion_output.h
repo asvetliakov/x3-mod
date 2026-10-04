@@ -1795,7 +1795,9 @@ private:
         engine_light::core::FrameCounts counts{};
         std::uint64_t built_frame = ~std::uint64_t(0);
         unsigned twins = 0; // created on this device (session count)
-        float constants[12]{};
+        // One upload from EngineLightAbi::upload_first: the plates c190-c197, c198-c199 (zeros, shadowed by the twins'
+        // DEFs), the light c200-c202 (13 registers: renderer::EngineLightAbi::upload_count, asserted at the upload).
+        float constants[engine_light::core::plate_slots * 4 + 20]{};
     };
     bool engine_light_requested_ = false;
     EngineLightState* engine_light_ = nullptr;

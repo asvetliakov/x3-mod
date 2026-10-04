@@ -1,0 +1,85 @@
+{
+ "twins": 832,
+ "largest": {
+  "slots": 364,
+  "words": 2616,
+  "program": "ps_f1b0e820c7b488c3",
+  "set": "share_widen",
+  "base_slots": 299,
+  "words_max": 2616
+ },
+ "deltas": [
+  {
+   "set": "fill",
+   "plate": 0,
+   "delta": 25,
+   "programs": 104
+  },
+  {
+   "set": "fill0",
+   "plate": 0,
+   "delta": 45,
+   "programs": 104
+  },
+  {
+   "set": "gain",
+   "plate": 0,
+   "delta": 25,
+   "programs": 4
+  },
+  {
+   "set": "gain",
+   "plate": 1,
+   "delta": 62,
+   "programs": 100
+  },
+  {
+   "set": "share",
+   "plate": 0,
+   "delta": 28,
+   "programs": 104
+  },
+  {
+   "set": "share0",
+   "plate": 0,
+   "delta": 70,
+   "programs": 104
+  },
+  {
+   "set": "share_gain",
+   "plate": 0,
+   "delta": 28,
+   "programs": 4
+  },
+  {
+   "set": "share_gain",
+   "plate": 1,
+   "delta": 65,
+   "programs": 100
+  },
+  {
+   "set": "share_widen",
+   "plate": 0,
+   "delta": 28,
+   "programs": 4
+  },
+  {
+   "set": "share_widen",
+   "plate": 1,
+   "delta": 65,
+   "programs": 100
+  },
+  {
+   "set": "widen",
+   "plate": 0,
+   "delta": 25,
+   "programs": 4
+  },
+  {
+   "set": "widen",
+   "plate": 1,
+   "delta": 62,
+   "programs": 100
+  }
+ ]
+}

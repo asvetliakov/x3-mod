@@ -1568,6 +1568,8 @@ def validate_engine_light_seam(name, text, trace):
     assert len(lit_rows) >= len(lit) - 1, (name, len(lit_rows), len(lit))
     for f in lit_rows:
         assert (f['candidates'], f['draws_lit'], f['no_twin'], f['no_rows'], f['ships'], f['nodes']) == ('1', '1', '0', '0', '1', '1'), (name, f)
+        # The one ship's nozzle plates: its one main nozzle (plates= ships by plate count 1..8).
+        assert (f['plates'], f['plates_none'], f['plates_dropped']) == ('1,0,0,0,0,0,0,0', '0', '0'), (name, f)
     summary = result[0]
     return dict(checks=len(rows) * 6 + len(lit) * 6 + 4 + len(lit_rows), frames=[{k: r[k] for k in (
                     'step', 'reset', 'draws_lit', 'bound_unlit', 'bound_lit', 'constant_error', 'lit_samples', 'visible', 'max_relative',
@@ -1576,7 +1578,8 @@ def validate_engine_light_seam(name, text, trace):
                 worst_relative=float(summary['worst_relative']), worst_constant=float(summary['worst_constant']),
                 visible=int(summary['visible']), zero=int(summary['zero']), zero_differ=int(summary['zero_differ']),
                 log_rows=dict(mode=mode[0], hull_variant=hull, frames_with_candidates=len(lit_rows),
-                              frame_rows=[{k: f[k] for k in ('frame', 'ships', 'nodes', 'candidates', 'draws_lit', 'no_twin', 'no_rows', 'twins')}
+                              frame_rows=[{k: f.get(k) for k in ('frame', 'ships', 'nodes', 'candidates', 'draws_lit', 'no_twin', 'no_rows', 'twins',
+                                                                  'plates')}
                                           for f in frames]))
 
 

@@ -15,12 +15,16 @@ against a float64 oracle written here, independently of the C++ core:
 - invariants: alpha, motion and depth bit-identical between base and twin, finite non-negative RGB; Reset: the
   same draw after a device Reset bit-identical;
 - nozzle plates: the light-map term's contribution (white minus black light map, same program and constants) against
-  g - (g - 1) w, w = saturate((r1^2 - (d / v)^2) / (r1^2 - r0^2)) (r0, r1 parsed from linear_engine_light_inc.h): the
-  production twin at gain 4 <= 1.05 x the texel within r0 x value of the light (the d = 0 pixel 1.0), 4 x beyond
-  r1 x value; the twin at gain 1 and the fill-only twin 1 x everywhere; the base without the light 4 x everywhere
-  (the documented engine_light-off limit);
-- cost: the per-draw CPU path (lookup, constants, SetPixelShaderConstantF of three registers) <= 0.2 us on a hit; the
-  GPU cost of the term over a full-screen hull at 1920x1080 and 5120x1440 (median of five EVENT-fenced batches).
+  g - (g - 1) w, w = max over the ship's main nozzles of saturate((r1^2 - (d_i / v_i)^2) / (r1^2 - r0^2)), d_i from the
+  nozzle's light point (0.5 x value behind it), v_i its value (r0, r1 parsed from linear_engine_light_inc.h): one
+  nozzle: the production twin at gain 4 <= 1.05 x the texel within r0 x value of the light (the d = 0 pixel 1.0), 4 x
+  beyond r1 x value; the twin at gain 1 and the fill-only twin 1 x everywhere; the base without the light 4 x
+  everywhere (the documented engine_light-off limit); three and eight nozzles (twin3, twin8): 1.0 at each nozzle's
+  plate point and within r0 x its value, 4 x beyond r1 x value of every nozzle; the uploaded plate registers
+  ((P_i - cam) / v_i, 1 / v_i), brightest first, unused (2, 0, 0, 0), against the record law;
+- cost: the per-draw CPU path (lookup, constants and plates, SetPixelShaderConstantF of thirteen registers) <= 0.2 us
+  on a hit; the ship table's build over 1,024 records (128 ships x 8 nozzles); the GPU cost of the term over a
+  full-screen hull at 1920x1080 and 5120x1440 (median of five EVENT-fenced batches).
 
 Run as  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_light.py
 The compact record goes to verification/results/bottle-X3/engine-light-gpu.json; the raw report stays under
@@ -134,9 +138,11 @@ def parse(text):
                                             light=nums(fields['light']), camera=nums(fields['camera']), m22=float(fields['m22']),
                                             m32=float(fields['m32']))
         elif line.startswith('PLATE '):
-            plates[(int(fields['pair']), fields['mode'])] = dict(twin=fields['twin'] == '1', gain=float(fields['gain']),
-                                                               value=float(fields['value']), finite_bad=int(fields['finite_bad']),
-                                                               light=[float(v) for v in fields['light'].split(',')], rows=[])
+            plates[(int(fields['pair']), fields['mode'])] = dict(
+                twin=fields['twin'] == '1', gain=float(fields['gain']), value=float(fields['value']),
+                finite_bad=int(fields['finite_bad']), light=[float(v) for v in fields['light'].split(',')],
+                nozzles=[[float(v) for v in n.split(',')] for n in fields['nozzles'].split(';')],
+                registers=[float(v) for v in fields['plates'].split(',')], rows=[])
         elif line.startswith('INVARIANT '):
             invariants[int(fields['id'])] = {k: int(v) for k, v in fields.items() if k != 'id'}
         elif line.startswith('PROGRAM '):
@@ -148,38 +154,59 @@ def parse(text):
         elif line.startswith('COST '):
             out['cost'] = {k: float(v) for k, v in fields.items()}
         elif line.startswith('GPU '):
-            out['gpu'].append(dict(width=int(fields['width']), height=int(fields['height']),
+            out['gpu'].append(dict(width=int(fields['width']), height=int(fields['height']), nozzles=int(fields.get('nozzles', 1)),
                                    base_ms=[float(v) for v in fields['base_ms'].split(',')],
                                    twin_ms=[float(v) for v in fields['twin_ms'].split(',')]))
     out.update(cases=cases, invariants=invariants, samples=samples, plates=plates)
     return out
 
 
-def oracle_plate(plate, size, radii):
-    """The light-map term's contribution per sampled pixel against g_eff(d); a twin of a gained kind carries the weight,
-    the base and the fill-only twin do not (their g_eff is the uploaded gain or 1)."""
+def expected_plates(plate, k):
+    """The plate registers from the record law: per nozzle (x, y, z camera-relative, value; axis +z) the light point
+    0.5 x value behind it, ((P - cam) / v, 1 / v), brightest first (s 1: by value), unused slots (2, 0, 0, 0)."""
+    nozzles = sorted(plate['nozzles'], key=lambda n: -n[3])
+    out = []
+    for x, y, z, v in nozzles[:8]:
+        point = (x, y, z + k['behind'] * v)
+        out += [point[0] / v, point[1] / v, point[2] / v, 1.0 / v]
+    return out + [2.0, 0.0, 0.0, 0.0] * (8 - len(nozzles[:8]))
+
+
+def oracle_plate(plate, size, radii, k):
+    """The light-map term's contribution per sampled pixel against g_eff = g - (g - 1) w, w the maximum over the ship's
+    nozzles; a twin of a gained kind carries the weight, the base and the fill-only twin do not (their g_eff is the
+    uploaded gain or 1). Near: within r0 x value of some nozzle's light point; far: beyond r1 x value of every one."""
     reach, r0, r1 = radii
-    rel, r2 = plate['light'][0:3], plate['light'][3]
-    v = math.sqrt(r2) / reach
+    points = [((x, y, z + k['behind'] * v), v) for x, y, z, v in plate['nozzles']]
     stats = dict(samples=len(plate['rows']), near=0, near_max=0.0, near_min=math.inf, centre=None, far=0, far_min=math.inf,
-                 far_max=0.0, ramp=0, max_error=0.0, channel_spread=0.0)
+                 far_max=0.0, ramp=0, max_error=0.0, channel_spread=0.0, nozzles=len(points),
+                 per_nozzle=[dict(near=0, near_max=0.0, nearest=math.inf, at_point=None) for _ in points])
+    expected_registers = expected_plates(plate, k)
+    stats['register_error'] = max(abs(a - b) / max(1.0, abs(b)) for a, b in zip(plate['registers'], expected_registers))
     for x, y, rgb in plate['rows']:
         ndc = (2.0 * x / size - 1.0, 1.0 - 2.0 * y / size)
         point = (50.0 * ndc[0], 50.0 * ndc[1], 50.0)
-        dv = math.sqrt(sum((point[i] - rel[i]) ** 2 for i in range(3))) / v
-        weight = min(max((r1 * r1 - dv * dv) / (r1 * r1 - r0 * r0), 0.0), 1.0)
+        dvs = [math.sqrt(sum((point[i] - p[i]) ** 2 for i in range(3))) / v for p, v in points]
+        weight = max(min(max((r1 * r1 - dv * dv) / (r1 * r1 - r0 * r0), 0.0), 1.0) for dv in dvs)
         mode = plate['mode']
-        g = plate['gain'] if mode in ('twin', 'gain1', 'nolight') else 1.0
-        expected = g - (g - 1.0) * weight if mode in ('twin', 'gain1') else g
+        g = plate['gain'] if mode.startswith('twin') or mode in ('gain1', 'nolight') else 1.0
+        expected = g - (g - 1.0) * weight if mode.startswith('twin') or mode == 'gain1' else g
         c = rgb[0]
         stats['channel_spread'] = max(stats['channel_spread'], max(rgb) - min(rgb))
         stats['max_error'] = max(stats['max_error'], abs(c - expected))
         if x == size // 2 and y == size // 2:
             stats['centre'] = c
-        if dv <= r0:
+        for i, dv in enumerate(dvs):
+            n = stats['per_nozzle'][i]
+            if dv <= r0:
+                n['near'] += 1
+                n['near_max'] = max(n['near_max'], c)
+            if dv < n['nearest']:
+                n['nearest'], n['at_point'] = dv, c
+        if min(dvs) <= r0:
             stats['near'] += 1
             stats['near_max'], stats['near_min'] = max(stats['near_max'], c), min(stats['near_min'], c)
-        elif dv >= r1:
+        elif min(dvs) >= r1:
             stats['far'] += 1
             stats['far_min'], stats['far_max'] = min(stats['far_min'], c), max(stats['far_max'], c)
         else:
@@ -271,25 +298,33 @@ def validate(report):
     result['plate'] = dict(radii=dict(reach=radii[0], full=radii[1], zero=radii[2]), modes={})
     for (pair, mode), plate in sorted(parsed['plates'].items()):
         plate['mode'] = mode
-        stats = oracle_plate(plate, 256, radii)
-        exact = PLATE_ABSOLUTE if mode == 'twin' else PLATE_EXACT
+        stats = oracle_plate(plate, 256, radii, k)
+        exact = PLATE_ABSOLUTE if mode.startswith('twin') else PLATE_EXACT
         checks = dict(finite=plate['finite_bad'] == 0, samples=stats['near'] > 0 and stats['far'] > 0 and stats['ramp'] > 0,
-                      law=stats['max_error'] <= exact, grey=stats['channel_spread'] <= PLATE_EXACT)
+                      law=stats['max_error'] <= exact, grey=stats['channel_spread'] <= PLATE_EXACT,
+                      registers=stats['register_error'] <= 1e-5)
         if mode == 'twin':
             checks.update(near=stats['near_max'] <= PLATE_NEAR_LIMIT, centre=abs(stats['centre'] - 1.0) <= PLATE_EXACT,
+                          far=abs(stats['far_min'] - 4.0) <= PLATE_EXACT and abs(stats['far_max'] - 4.0) <= PLATE_EXACT)
+        elif mode in ('twin3', 'twin8'):
+            # Every nozzle at gain 1: its near samples and the sample nearest its plate point at the texel's 1.0.
+            checks.update(nozzles=stats['nozzles'] == int(mode[4:]),
+                          each_near=all(n['near'] > 0 and n['near_max'] <= PLATE_NEAR_LIMIT for n in stats['per_nozzle']),
+                          each_point=all(abs(n['at_point'] - 1.0) <= PLATE_EXACT for n in stats['per_nozzle']),
                           far=abs(stats['far_min'] - 4.0) <= PLATE_EXACT and abs(stats['far_max'] - 4.0) <= PLATE_EXACT)
         elif mode == 'nolight':
             checks.update(near=abs(stats['near_min'] - 4.0) <= PLATE_EXACT and abs(stats['near_max'] - 4.0) <= PLATE_EXACT)
         else:
             checks.update(near=abs(stats['near_max'] - 1.0) <= PLATE_EXACT, far=abs(stats['far_max'] - 1.0) <= PLATE_EXACT)
         result['plate']['modes']['%d-%s' % (pair, mode)] = dict(stats=stats, checks=checks, passed=all(checks.values()))
-    result['plate']['passed'] = len(result['plate']['modes']) == 8 and all(m['passed'] for m in result['plate']['modes'].values())
+    result['plate']['passed'] = len(result['plate']['modes']) == 12 and all(m['passed'] for m in result['plate']['modes'].values())
     cost = parsed['cost']
     result['cost_checks'] = dict(hit_ns=cost['hit_ns'] <= HIT_NS_LIMIT, hits=cost['hits'] == cost['rounds'], misses=cost['misses'] == cost['rounds'])
     result['gpu'] = []
     for g in parsed['gpu']:
         base, twin = statistics.median(g['base_ms']), statistics.median(g['twin_ms'])
-        result['gpu'].append(dict(width=g['width'], height=g['height'], base_ms=base, twin_ms=twin, term_us=(twin - base) * 1e3,
+        result['gpu'].append(dict(width=g['width'], height=g['height'], nozzles=g['nozzles'], base_ms=base, twin_ms=twin,
+                                  term_us=(twin - base) * 1e3,
                                   base_batches=g['base_ms'], twin_batches=g['twin_ms']))
     result['reset_ok'] = parsed['reset'] is not None and parsed['reset']['differ'] == 0
     # The fixture's teardown: every object released, the device's last Release at zero references, then done (a leaked
@@ -298,7 +333,7 @@ def validate(report):
     result['teardown_ok'] = 'TEARDOWN device references=0' in teardown and 'TEARDOWN done' in teardown
     result['passed'] = (all(c['passed'] for c in result['cases'].values()) and all(result['cost_checks'].values()) and
                         result['plate']['passed'] and
-                        result['reset_ok'] and result['teardown_ok'] and len(result['gpu']) == 2 and len(result['cases']) >= 9)
+                        result['reset_ok'] and result['teardown_ok'] and len(result['gpu']) == 6 and len(result['cases']) >= 9)
     return result
 
 
@@ -332,13 +367,15 @@ def main():
         record['error'] = repr(error)
     path = bottle.results_dir(ROOT) / 'engine-light-gpu.json'
     path.write_text(json.dumps(record, indent=1, sort_keys=True) + '\n')
-    summary = dict(passed=record['passed'], error=record.get('error'), cost=record.get('cost'), gpu=[{k: g[k] for k in ('width', 'height', 'base_ms', 'twin_ms', 'term_us')} for g in record.get('gpu', [])],
+    summary = dict(passed=record['passed'], error=record.get('error'), cost=record.get('cost'), gpu=[{k: g[k] for k in ('width', 'height', 'nozzles', 'base_ms', 'twin_ms', 'term_us')} for g in record.get('gpu', [])],
                    cases={cid: dict(passed=c['passed'], max_relative=round(c['stats']['max_relative'], 6), lit=c['stats']['lit'], zero=c['stats']['zero'],
                                     capped=c['stats']['capped'], depth=c['stats']['max_depth_error'], checks=[n for n, v in c['checks'].items() if not v])
                           for cid, c in record.get('cases', {}).items()},
                    plate={k: dict(passed=m['passed'], centre=m['stats']['centre'], near_max=m['stats']['near_max'],
                                   near_min=m['stats']['near_min'], far_min=m['stats']['far_min'], far_max=m['stats']['far_max'],
-                                  max_error=m['stats']['max_error'], checks=[n for n, v in m['checks'].items() if not v])
+                                  max_error=m['stats']['max_error'], register_error=m['stats']['register_error'],
+                                  at_points=[n['at_point'] for n in m['stats']['per_nozzle']],
+                                  checks=[n for n, v in m['checks'].items() if not v])
                           for k, m in record.get('plate', {}).get('modes', {}).items()},
                    reset=record.get('reset'), create=record.get('create'), teardown=record.get('teardown'),
                    teardown_ok=record.get('teardown_ok'), record=str(path.relative_to(ROOT)))

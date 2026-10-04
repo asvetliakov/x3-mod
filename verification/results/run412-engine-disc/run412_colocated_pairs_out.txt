@@ -1,6 +1,8 @@
 # /tmp/x3-bottleX3-run412/session-20261004-124734-212.log; 24 frames with engine_draw rows
 # larger body, smaller body, distance / larger size, size ratio: pairs (frames)
-fx_engine_xtc_red_huge       fx_engine_xtc_red_big3       d/v<=0.5  v2/v1<=0.75       32 (8)
+fx_engine_xtc_red_huge       fx_engine_xtc_red_big3       d/v<=0.5  v2/v1<0.35        32 (8)
 fx_engine_xtc_red_nor        fx_engine_xtc_red_tiny       d/v<=1    v2/v1<=0.75       24 (24)
 fx_engine_xtc_red_big3       fx_engine_xtc_red_big3       d/v<=2    v2/v1>0.75        24 (8)
 fx_engine_xtc_red_huge       fx_engine_xtc_red_huge       d/v<=1    v2/v1>0.75        16 (16)
+# merged by the rule (d <= v_large, 0.35 <= v2 / v1 <= 0.75): larger, smaller, size ratio: pairs
+merged fx_engine_xtc_red_nor        fx_engine_xtc_red_tiny        0.504      24

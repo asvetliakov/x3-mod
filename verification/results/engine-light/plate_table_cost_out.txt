@@ -1,0 +1,9 @@
+# plate_table_cost.cpp, arm64 host, 2026-10-04 (three runs each)
+# before: 4f036d43 engine_light_core.h (one light per ship, no plates)
+ships=128 ships_us=8.17 nodes=512 nodes_us=3.88 hits=2000000 draw_ns=5.18
+ships=128 ships_us=9.08 nodes=512 nodes_us=3.75 hits=2000000 draw_ns=5.13
+ships=128 ships_us=8.79 nodes=512 nodes_us=3.75 hits=2000000 draw_ns=5.12
+# after: eight plates per ship (merge_layers in build_ships, plates in build_nodes, plate_constants per draw)
+ships=128 ships_us=25.04 nodes=512 nodes_us=26.08 hits=2000000 draw_ns=34.50
+ships=128 ships_us=26.71 nodes=512 nodes_us=16.42 hits=2000000 draw_ns=27.50
+ships=128 ships_us=23.54 nodes=512 nodes_us=14.62 hits=2000000 draw_ns=27.45

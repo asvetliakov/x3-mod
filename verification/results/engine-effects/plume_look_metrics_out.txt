@@ -1,3 +1,4 @@
+# drawn nozzle widths: side bands 88.5 px, 02b disc 150.0 px, from the dump's README (01a band 0 body, 02b band 0 disc)
 # side views (luma: Rec.709 of gamma-2.2 decoded display; 'disp' = 8-bit display luma of the axis peak)
 band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) | core/edge u.5 | white head u.1 / body u.5 | aniso lx/ly | lane cells / gaps
 01a red s=0 | 61 | 0.243 | 144 | 0.37 | 3.4 (13) | 6.7 | 0.22 / 0.58 | 21/6 = 3.5 | 0.93 / 0.17
@@ -32,11 +33,11 @@ band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) 
   u=0.9: [ 36  99 135]
 
 # 02b end-on discs: radial luma (lin) at 0, 4, 8, .. 72 px from the centre (mean over 4 directions)
-  red: 0.59 0.56 0.43 0.33 0.30 0.30 0.29 0.27 0.30 0.30 0.08 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00  | max off-centre / centre = 0.96; centre RGB [252 183 184]
-  blue: 0.84 0.83 0.73 0.58 0.51 0.48 0.46 0.43 0.41 0.39 0.12 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00  | max off-centre / centre = 0.98; centre RGB [202 243 250]
-# 02b disc gate (azimuthal mean, display-decoded luma, n 65.6 px): ring = max in 0.4..0.7 n / min in 0.2 n..it (gate >= 1.05), hot centre = centre / max (gate >= 0.9)
-  red: ring 1.31 at 0.52 n, hot centre 1.00 -> PASS
-  blue: ring 1.00 at 0.41 n, hot centre 1.00 -> FAIL
+  red: 0.41 0.41 0.41 0.38 0.33 0.28 0.24 0.21 0.20 0.20 0.19 0.19 0.19 0.19 0.19 0.19 0.18 0.17 0.15  | max off-centre / centre = 0.99; centre RGB [238 146 146]
+  blue: 0.69 0.69 0.69 0.67 0.61 0.53 0.46 0.39 0.35 0.32 0.31 0.30 0.29 0.29 0.29 0.28 0.27 0.24 0.20  | max off-centre / centre = 1.00; centre RGB [166 226 239]
+# 02b disc gate (azimuthal mean, display-decoded luma, n 150.0 px): ring = max in 0.4..0.7 n / min in 0.2 n..it (gate >= 1.05), hot centre = centre / max (gate >= 0.9)
+  red: ring 1.00 at 0.40 n, hot centre 1.00 -> FAIL
+  blue: ring 1.00 at 0.40 n, hot centre 1.00 -> FAIL
 
 # display gates at s = 1 (radial >= 2.0 at u 0.2, lane cells >= 0.2; anisotropy >= 3 reported)
   01a red s=1: radial 7.12 PASS, lane 1.00 PASS, aniso 8.6
@@ -54,13 +55,13 @@ band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) 
   09 ribbon n40 uncapped: radial 1.81 FAIL, lane 0.19 FAIL, aniso 15.0
 
 # 05 far dots: summed display-decoded luma per plume (nozzle px: sum); after / before (gate 0.7..1.3 at 2 and 6 px)
-  40 px: 2109.568 (before 2061.211) ratio 1.02 reported
-  12 px: 262.836 (before 263.423) ratio 1.00 reported
-  6 px: 40.330 (before 40.754) ratio 0.99 PASS
-  2 px: 1.155 (before 1.167) ratio 0.99 PASS
+  40 px: 2109.568 (before 2109.568) ratio 1.00 reported
+  12 px: 262.836 (before 262.836) ratio 1.00 reported
+  6 px: 40.330 (before 40.330) ratio 1.00 PASS
+  2 px: 1.155 (before 1.155) ratio 1.00 PASS
 
 # peak display RGB (max over the image region) of the uncapped images
   05_distance_fighter_v500: peak lin 0.967 display [236 255 255] at (501, 540); pixels >= 250 on any channel: 311
   09_ribbon_moving8px_figh: peak lin 0.975 display [241 255 255] at (1245, 540); pixels >= 250 on any channel: 625
-  10_crowd_30_mixed_agx-ev: peak lin 1.000 display [255 255 255] at (298, 845); pixels >= 250 on any channel: 4147
+  10_crowd_30_mixed_agx-ev: peak lin 1.000 display [255 255 255] at (301, 849); pixels >= 250 on any channel: 2829
   01b_side_fighter_v500_n1: peak lin 0.797 display [189 239 246] at (1237, 899); pixels >= 250 on any channel: 0

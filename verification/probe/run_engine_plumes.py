@@ -128,7 +128,7 @@ def parse(text):
             'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
             'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'BUILD_MERGE', 'MERGE', 'MERGE_KEPT', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'SPILL_NEAR', 'FLOW', 'FLOW_SAME', 'FLOW_LAG',
             'FLOW_KEYED', 'COLOUR', 'COLOUR_HEAD', 'ATTACK', 'ATTACK_CROSSING', 'TRAVEL', 'STRUCTURE', 'STRUCTURE_DISC',
-            'END_ON_DETAIL', 'ENERGY', 'CHASE_OWN_LOOK')
+            'END_ON_DETAIL', 'ENERGY', 'CHASE_OWN_LOOK', 'CHASE_CAP', 'NEAR_CAPITAL')
     report = {tag.lower(): [] for tag in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -311,14 +311,16 @@ def write_readme(out_dir, images, sheet, record):
             (f" ({p['note']})" if p['note'] != '-' else '') for p in im['panels'])
         lines.append(f"| `{im['name']}.png` | {im['desc']} | {bands} |")
     lines += ['', 'Nozzles: screen position at the captured frame, projected width, value, view depth, angle, axis (view '
-              'space), throttle, tint.', '']
+              'space), throttle, tint; the drawn nozzle widths of the body (x k past the near-camera cap) and the end-on '
+              'disc (natural since Run 125; 0: no disc).', '']
     for im in images:
         for z in im['nozzles']:
             extra = ((' steering' if z['steering'] else '') + (f" fired at frame {z['fire_at']}" if z['fire_at'] >= 0 else '') +
                      (f" moving {z['speed_px']} px/frame" if z['speed_px'] else ''))
+            drawn = (f", drawn body {z['body_n_px']} px, disc {z['disc_n_px']} px" if 'disc_n_px' in z else '')
             lines.append(f"- `{im['name']}` band {z['band']}: ({z['x_px']}, {z['y_px']}) px, {z['nozzle_px']} px, value {z['value']}, "
                          f"depth {z['depth']}, {z['degrees']} deg from the line of sight ({z['facing']}), axis ({z['axis']}), "
-                         f"s {z['s']}, {z['tone']}{extra}")
+                         f"s {z['s']}, {z['tone']}{extra}{drawn}")
         if not im['nozzles']:
             lines.append(f"- `{im['name']}`: {sum(p['nozzles'] for p in im['panels'])} nozzles from a fixed LCG seed "
                          '(fixture `dump::images`), not listed one by one')

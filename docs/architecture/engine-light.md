@@ -41,15 +41,21 @@ first in MAX/MIN).
 
 | Register | Content |
 | --- | --- |
+| c190-c197 | the nozzle plates (gained twins only; "Nozzle plates"): ((P_i - cam) / v_i, 1 / v_i), unused (2, 0, 0, 0) |
+| c198 (DEF) | plate twins: (-1 / (r1^2 - r0^2), r1^2 / (r1^2 - r0^2), 0, 4) |
 | c199 (DEF) | (cap 1, -2^-20, 2^-40, 0) |
 | c200 | (L - cam, R^2), world axes |
 | c201 | (colour, 1 / R^2) |
-| c202 | (F, 0) |
+| c202 | (F, tier): .w the plate tier in plate twins (0: one plate, 1: two to four, 2: five to eight) |
 
 No original program reads c50 or above (corpus scan of all 429 ps_2+ programs), so the per-draw upload needs no
-restore. Slots: +25 on the fill variant, +28 on the share producer (two fill blocks), +45 / +70 at K = 0 (the block is
-emitted for the light alone), and on the four gained kinds 4 more for the nozzle plates (+29, +32 with the share);
-largest twin 331 (measured 2026-10-04, all 104 x 8 option sets; 327 before the plates).
+restore. A twin is refused when its original reads or defines any of c190-c202. The route uploads c190-c202 in one
+SetPixelShaderConstantF of 13 registers; c198 and c199 are zero filler there, shadowed by the twins' DEFs (a twin
+without plates reads none of c190-c198). Slots: +25 on the fill variant, +28 on the share producer (two fill blocks),
++45 / +70 at K = 0 (the block is emitted for the light alone), and on the four gained kinds 37 more for the nozzle
+plates (+62, +65 with the share; +4 with one plate before Run 125); largest twin 364 weighted slots, 2,616 DWORDs
+(`ps_f1b0e820c7b488c3`, share + gain + widening, base 299; measured 2026-10-04 over all 104 x 8 option sets with
+[plate_slots.py](../../verification/results/engine-light/plate_slots.py); 331 with one plate, 327 before the plates).
 
 ## Nozzle plates
 
@@ -76,30 +82,58 @@ all 66 white faces at d/v 0.41-0.55 (farthest vertex 0.546), gain_eff 1.000; of 
 markings 3,400-9,400 model units forward of the nozzle (light map <= 0.39, gain_eff 1.00-3.75); the other 285,
 including every face more than 2 x value_eff from the light (259, the windows and markings forward), keep gain 4.
 
-Pixel program: the light block computes w from its q = saturate(1 - d^2 / R^2) with one MAD_SAT (A q + B, A =
-9 / (r1^2 - r0^2), B = (r1^2 - 9) / (r1^2 - r0^2), R = 3 x value_eff; shader-local `def c198 = (A, B, 0, 0)`) and a MAX
-(input first, NaN to 0) into r15.w; the gain MUL after the light-map fetch becomes `mad r15.w, -r15.w, g, r15.w`,
-`add r15.w, r15.w, g`, `mul rL.xyz, rL, r15.w` (g = c223.x, or c217.w with the far fade). +4 instructions, +4 slots, +24
-DWORDs; no new upload. Emitted only when the light's site precedes the light-map fetch and both sit outside flow
-control (all 100 gained programs, measured); otherwise the twin keeps the plain gain. The emitted program re-proves
-c198 (one DEF, three reads), r15 (the block's references plus six) and the block's position before the fetch. The
-reach ratio 3 in the pixel program equals `engine_light::core::reach` (pinned by `test_engine_light.py`).
+All main nozzles (after Run 125: the Split Ocelot's stern nozzles at 2.4 km kept white rings, the plates of the
+nozzles other than the light's): w is the maximum over the ship's plates, up to `engine_light::core::plate_slots` = 8.
+A plate is each main nozzle's light point (0.5 x its value_eff behind it along its axis, where its light would sit)
+with its own value_eff, so the window 0.75..1.0 x value_eff holds per nozzle and the light's own nozzle is plate 0 with
+the Run 125 law. `build_ships` adds every main record of the scene view to its ship's list, brightest first (I(s) x
+value_eff, ties to the lower handle, then the earlier record), one plate per node handle (the brighter record), the
+dimmest giving way past eight (`plates_dropped`); a record that `engine_plumes::merge_layers` drops as a smaller
+co-located layer adds no plate (`merged`), so the plates follow the plumes' nozzles. The light itself is still chosen
+over all main records, one light per ship. `build_nodes` carries each plate into the node's model space with the
+light; per draw `plate_constants` places them with the draw's world rows, relative to the camera, scaled by 1 / v_i.
+The `engine_light_frame` row gains `plates=` (the ships by plate count 1..8), `plates_none=`, `merged=` and
+`plates_dropped=`; `engine_light_mode` reports `constants=c190-c202 plates_max=8`.
 
-Limit: the suppression lives in the twin, so it acts only where the hull light does (`engine_effects = plumes`,
+Pixel program (gained twins): after t = w / (e . F) the block forms D = e t (MUL), then per plate slot i
+`mad r14.xyz, r15, c(190+i).w, -c(190+i)` ((D - P_i) / v_i), `dp3 r14.w, r14, r14` ((d_i / v_i)^2) and
+`min r15.w, r14.w, r15.w` (input first: a NaN distance keeps the minimum; slot 0 starts from c198.w = 4). The light
+then reads D (`add r14.xyz, c200, -r15` in place of the MAD) and keeps 1 / d in r15.x, so r15.w carries the minimum
+m through it; after q, `mad_sat r15.w, r15.w, c198.x, c198.y` gives w = saturate((r1^2 - m) / (r1^2 - r0^2)) (w falls
+with (d / v)^2, so the minimum distance is the maximum weight) and `max r15.w, r15.w, c198.z` maps a NaN to 0. An unused
+slot uploads (2, 0, 0, 0): (d / v)^2 = 4, weight 0. A ship pays only its slots: slots 1-7 sit under
+`if_ne c202.w, c198.z` and slots 4-7 under a nested `if_ne c202.w, c199.x`, c202.w the tier the route uploads with the
+plates (`plate_tier`: 0 for one plate, 1 for two to four, 2 for five to eight), so a ship runs 1, 4 or 8 slots. Both
+operands are constants, so the branches are uniform (no divergence); if_ne is the comparison the XT originals use, and
+the twin's structure check admits it only for a plate twin (`structure(..., xt || plate_on)`; a hull original itself
+has no flow control, an XT plate twin's block sits at its depth 0 by the plate condition). The gain site is unchanged:
+`mad r15.w, -r15.w, g, r15.w`, `add r15.w, r15.w, g`, `mul rL.xyz, rL, r15.w` (g = c223.x, or c217.w with the far
+fade). The plate block is 49 instructions, 57 weighted slots against the light's 18 / 22 (+35; with the gain's +2,
++37 per gained twin). Emitted only when the light's site precedes the light-map fetch and both sit outside flow control
+(all 100 gained programs, measured); otherwise the twin keeps the plain gain. The emitted program re-proves c198 (one
+DEF, five reads), c199 (one more read), c202 (three reads), c190-c197 (no DEF, two reads each), r15 (the block's
+references plus six) and the block's position before the fetch. The reach ratio 3 in the pixel program equals
+`engine_light::core::reach` (pinned by `test_engine_light.py`).
+
+Cost (the i686 fixture under Wine/FEX, `run_engine_light.py`; host arm64 figures in the ledger): the per-draw hit with
+the plates and the 13-register upload, the ship table over 1,024 records of 128 ships x 8 nozzles, the node build and
+the full-screen twin term at 5120x1440 are in [engine-light.md](../verification/engine-light.md) (2026-10-04, "All
+main nozzles"). The upload is 13 registers per lit draw (3 before).
+
+Limits: the suppression lives in the twin, so it acts only where the hull light does (`engine_effects = plumes`,
 `engine_light` on, a ship in the light table, its routed hull draw). With `engine_light` off, or for a ship without a
-recorded main jet, the plates keep the full gain; no second program set carries the weight. Three more limits from
-the review of 6741928d (none changed before Run125): the table holds one light per ship, at its brightest main
-nozzle, so on a ship with two or more spread-out nozzles only that nozzle's plates drop to gain 1 and the others keep
-4 (an asymmetric stern; a multi-nozzle coverage run on an M3, an M5 and a TS is the open check); when a ship's light
-unbinds (evicted at the 256-ship cap, no main-jet record that frame, the option off) its plates jump from about 1 back
-to 4 in one frame, no fade; and a far-fade far gain under 1 (`light_map_far_fade` third value, default 1) would raise a
-plate to 1 above the faded hull around it, because g - (g - 1) w is not clamped at g >= 1.
+recorded main jet (unlit: no plates either), the plates keep the full gain; no second program set carries the weight.
+A ship with more than eight main nozzles keeps gain 4 on its dimmest ones. When a ship's light unbinds (evicted at the
+256-ship cap, no main-jet record that frame, the option off) its plates jump from about 1 back to 4 in one frame, no
+fade; a far-fade far gain under 1 (`light_map_far_fade` third value, default 1) would raise a plate to 1 above the
+faded hull around it, because g - (g - 1) w is not clamped at g >= 1. Plates of nozzles outside the node table's
+reach (turrets and parts deeper than one level) are not drawn by a lit draw and keep the gain.
 
 ## Variant pair, not a zero-light term
 
 Each original-shading variant (plain motion, fill, gained, gained widened, share, share gained, share gained widened)
 gets a twin at registration; a draw whose node carries a light binds the twin of the program the pair selection chose
-and uploads c200-c202, every other draw binds today's program and uploads nothing. A zero-light term in every program
+and uploads c190-c202 (the plates and the light), every other draw binds today's program and uploads nothing. A zero-light term in every program
 would cost the term on every hull pixel of every frame: measured +50.9 us per full-screen draw at 5120x1440 (0.497 ->
 0.548 ms, +10 %, five EVENT-fenced batches of 20 additive draws) for the production BUMPMAP share program; at
 1920x1080 the difference stayed inside the batches' warm-up noise (about 14 us by pixel count, inferred). The pair
@@ -151,7 +185,8 @@ unverified on Windows ([platform-portability.md](platform-portability.md)).
 
 - Ships whose hull nodes hang deeper than one level under the root (turrets on sub-nodes) are not lit; the main hull is
   the root or its child in the ships studied ([engine-effects.md](../reverse-engineering/engine-effects.md) section 4).
-- Twin nozzles: the light sits behind one of them (the brightest, ties to the lower handle), not at their centroid.
+- Twin nozzles: the light sits behind one of them (the brightest, ties to the lower handle), not at their centroid;
+  the light-map suppression covers up to eight of the ship's main nozzles ("Nozzle plates").
 - The route-level path (registration, selection, upload, Reset) is exercised under Wine by the seam case
   `seam-engine-light` of `run_motion_output.py` (`verification/probe/motion_output_engine_light_seam_inc.h`): a glow-jet
   record of the effects pair under a synthetic root, the reviewed hull pair drawn as another ship's node and as a node

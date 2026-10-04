@@ -26,8 +26,8 @@
 // - the nozzle disc: camera-facing (the view plane), the end-on representation of the whole plume (after flight C): the
 //   body integrated along the axis (8 samples of the law, Look tables), its radiance I x the view integration
 //   kappa(detail) x L / n x |axis . to_camera|, a halo of the nozzle's sigma carrying disc_halo x L / n, the ring at
-//   1 + (max(1, disc_ring min(1, (L / n) / 2)) - 1) x the detail level times its side radiance; the
-//   total soft-capped at disc_cap x the side view's peak (the body's crest one shock period in). Facing f =
+//   1 + (max(1, disc_ring min(1, (L / n) / 2)) - 1) x the detail level times its side radiance (disc_ring 3); the
+//   total soft-capped at disc_cap (1.0) x the side view's peak (the body's crest one shock period in). Facing f =
 //   |axis . to_camera|: the disc's weight smoothstep(0.3, 0.7, f) (none under 0.3: a side view draws no disc), the
 //   axial quad's 1 - (1 - axial_floor) x that weight (half from 0.7 up: the foreshortened plume keeps its length), so the
 //   total radiance stays near the side view's at every angle.
@@ -43,9 +43,13 @@
 // smoothstep(far_px_min, far_px_full, px), 0.15 at 2 px and below, 1 at 12 px (distance_weight; counted far_nozzles); the
 // plume's projected body width (twice the body's
 // eroded edge or the nozzle ring, whichever is wider, at the axis point nearest the camera; not the halo's reach) is
-// clamped to 0.12 H by shrinking it about the nozzle, and its radiance fades 1 -> 0.5 over the last 20 % before the
-// clamp, the end-on disc's 1 -> 0.4 (chase_disc_floor; any plume that close, the own ship's in chase view only when its
-// body is, after the review of flight C; a floor of 0.6 over the body's fade until flight G).
+// held to 0.12 H by shrinking the axial quad about the nozzle (width and length x k), and its radiance fades 1 -> 0.5
+// over the last 20 % before the clamp, the end-on disc's 1 -> 0.4 (chase_disc_floor; any plume that close, the own
+// ship's in chase view only when its body is, after the review of flight C; a floor of 0.6 over the body's fade until
+// flight G). Since Run 125 the end-on disc and its halo keep the natural (unshrunk, floored) nozzle width (shrunk with
+// the body, a capital's disc was a spot inside its own nozzle plate), its projected radius (its quad's half-size: the
+// ring, the eroded edge or the halo's reach) held to disc_cap_px x H (0.35) by scaling the disc alone; the axial quad's
+// mouth hand-over measures the disc's width (the axial n over the disc's n in the head colour's alpha, 127 = 1).
 // Flow: the noise field translates along the axis by a phase in nozzle widths, per vertex (shape.w), so it moves at one
 // speed whatever the pulsed, throttle-dependent L. Each nozzle accumulates its own phase in the per-nozzle memory
 // (Transients, keyed by the record's identity): every frame it advances by the frame accumulator's step (FlowPhase at
@@ -216,11 +220,16 @@ struct Look {
     // law's at the same size (gate 0.7..0.9; 2.0 gave 0.75 and broke the 20 px disc's rim variation).
     float disc_sheath = 1.6f;
     float disc_halo = 2.82f;
-    float disc_cap = 1.5f;
+    // After Run 125 (the Split Ocelot's stern nozzles at 2.4 km as white rings with pink centres): the soft cap 1.0 x
+    // the side view's peak (1.5 until then: a red disc's centre reached ~2.2 at s 1, past the flight's display white
+    // ~2.1 at EV +1, so every end-on red disc clipped white at its centre) and the end-on ring x 3 its side radiance
+    // (x 8 until then, at the side's width: a bright white rim); docs/architecture/engine-exhaust-look-critique.md
+    // section 6, "End-on brightness".
+    float disc_cap = 1.f;
     // The end-on ring at the side's width since the single law (the sheath's annulus fills what read as a dark annulus
-    // under the tuning pass's narrow x 3 ring; the doubled width left no bump on the cyan disc over the annulus): x 8
-    // its side radiance, ring gate cyan 1.21 / red 1.76 on the FP16 frame.
-    float disc_ring = 8.f;
+    // under the tuning pass's narrow x 3 ring; the doubled width left no bump on the cyan disc over the annulus): x 3
+    // its side radiance since Run 125 (x 8 before: ring gate cyan 1.21 / red 1.76 on the FP16 frame).
+    float disc_ring = 3.f;
     float disc_ring_width = 1.f;
     // The L / n of the disc's body and halo gains is held to disc_length_max: a thin nozzle (X3M_ENGINE_PLUME_NOZZLE
     // 0.1: L / n 20 at full throttle) would otherwise saturate the soft cap into a flat disc. 8 = twice the default
@@ -288,6 +297,7 @@ constexpr float chase_cap = .12f;           // x H: the largest projected plume
 constexpr float chase_fade_band = .2f;      // the last 20 % before the cap
 constexpr float chase_fade_floor = .5f;     // the radiance at and past the cap
 constexpr float chase_disc_floor = .4f;     // the end-on disc's radiance at and past the cap: this x its unfaded
+constexpr float disc_cap_px = .35f;         // x H: the largest projected disc radius (its quad's half-size; since Run 125)
 constexpr float min_nozzle_px = 2.f, min_length_px = 4.f, cull_px = 1.5f; // the dot floor (after flight E: 3 / 6)
 constexpr float steering_min_z = .02f;
 constexpr float clock_wrap = 1024.f;        // seconds: the pixel program's clock wraps (float precision of the noise)
@@ -605,6 +615,7 @@ struct View {
 };
 struct BuildStats {
     unsigned nozzles = 0, vertices = 0, discs = 0, steering = 0, capped = 0, faded = 0;
+    unsigned discs_capped = 0;  // discs scaled to disc_cap_px x H (since Run 125)
     unsigned floored = 0;       // main jets raised to k(R) x their ship's radius
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
     unsigned merged = 0;        // records dropped as a smaller co-located layer of another (merge_layers)
@@ -1190,9 +1201,12 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // The near-camera cap: the plume's body width 2 spread line0 n (the body's eroded edge or the ring; the halo's
     // faint reach, 1.7 x wider at the default look, does not count: keyed on it the fade bit on 64 % of run405's plume
     // frames, the own ship's in chase view) at the axis point nearest the camera (the tip when the exhaust approaches
-    // it) is held to 0.12 H by shrinking the whole plume about the nozzle; its radiance fades 1 -> 0.5 over the last
-    // 20 % before the cap, the disc's 1 -> chase_disc_floor over the same band (after flight G; a floor of 0.6 above
-    // the body's fade before). Its length is free: a distant capital's long plume is not shortened.
+    // it) is held to 0.12 H by shrinking the axial quad about the nozzle (width and length x k, the value with them);
+    // its radiance fades 1 -> 0.5 over the last 20 % before the cap, the disc's 1 -> chase_disc_floor over the same
+    // band (after flight G; a floor of 0.6 above the body's fade before). Its length is free: a distant capital's long
+    // plume is not shortened. Since Run 125 the end-on disc and its halo keep the natural nozzle width (value_natural:
+    // k down to 0.26 on the Split Ocelot's huge nozzles at 1,800-2,450 units drew its disc as a spot inside the hull's
+    // nozzle plate); its integrated body keeps L / n of the shrunk pair, the same ratio.
     float k = 1.f, near_weight = 1.f, near_disc = 1.f;
     {
         const float half = spread * line0 * look.nozzle_width * value; // world units, x k with the plume
@@ -1217,6 +1231,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
             ++stats->capped;
         }
     }
+    const float value_natural = value; // the end-on disc's and its halo's nozzle width (since Run 125)
     value *= k;
     L *= k;
     // The distance law on the projected nozzle width before the dot floor (after flight E).
@@ -1228,6 +1243,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // Minimum screen sizes, the dot floor (after the cap: a capped plume is large anyway).
     if (n * ppu < min_nozzle_px) n = min_nozzle_px / ppu;
     if (!steering && L * ppu < min_length_px) L = min_length_px / ppu;
+    float n_natural = look.nozzle_width * value_natural;
+    if (n_natural * ppu < min_nozzle_px) n_natural = min_nozzle_px / ppu;
     // Radiance: I(s) x preset, the RCS weight z, the chase fade, the distance law; the halo and the ring relative to it
     // (the disc's terms all follow i_core and i_halo).
     const float s = r.s < 0.f ? 0.f : r.s > 1.f ? 1.f : r.s;
@@ -1306,7 +1323,9 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     float disc_edge = (outer_reach + .7f * erode) * line0;
     const float disc_ring_outer = .46f * look.bulge + 3.f * .0645497f * (look.disc_ring_width > 1.f ? look.disc_ring_width : 1.f);
     if (disc_edge < disc_ring_outer) disc_edge = disc_ring_outer;
-    const float width0 = (n * disc_edge > reach ? n * disc_edge : reach) + pixel;
+    // The disc's half-size at the natural nozzle width (the halo's reach with it).
+    const float reach_natural = halo_units * n_natural;
+    const float width0 = (n_natural * disc_edge > reach_natural ? n_natural * disc_edge : reach_natural) + pixel;
     if (back < L) {
         body_back = n * (edge0 - edge_slope * back / L);
         body_front = n * (edge0 + edge_slope * front / L);
@@ -1345,7 +1364,22 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     // 0.5: after flight G the own ship's end-on disc in chase view read as a clipped disc at the old floor 0.6, which
     // was a lower bound over the body's fade); L / n held to disc_length_max.
     const bool disc_drawn = disc_weight > 0.f;
-    const float half = width0 * (disc_drawn ? 1.f : 0.f);
+    // The disc's projected radius held to disc_cap_px x H: the disc alone scales (its quad and nozzle width), its
+    // radiance law is scale-free in nozzle widths.
+    float disc_scale = 1.f;
+    if (disc_drawn && width0 * ppu > disc_cap_px * view.height) {
+        disc_scale = disc_cap_px * view.height / (width0 * ppu);
+        ++stats->discs_capped;
+    }
+    const float half = width0 * disc_scale * (disc_drawn ? 1.f : 0.f), n_disc = n_natural * disc_scale;
+    // The axial quad's hand-over at the mouth measures the disc's width: its n over the disc's (at most 1) in the head
+    // colour's alpha, 0..127 (under the disc kind's 0.5); the pixel program scales its screen-plane distance by it.
+    {
+        float ratio = n_disc > 0.f ? n / n_disc : 1.f;
+        ratio = ratio > 0.f ? (ratio < 1.f ? ratio : 1.f) : 0.f; // NaN -> 0
+        const std::uint32_t alpha = std::uint32_t(int(ratio * 127.f + .5f)) << 24;
+        for (unsigned c = 0; c < 4; ++c) out[c].peak = head_axial | alpha;
+    }
     float length_widths = n > 0.f ? L / n : 0.f;
     if (length_widths > look.disc_length_max) length_widths = look.disc_length_max;
     float axis_peak = 0.f; // the cap's side peak: only a drawn disc reads it (the bilinear lookup costs ~25 ns a nozzle)
@@ -1370,7 +1404,7 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         v.local[0] = dc[c][0];
         v.local[1] = dc[c][1];
         v.local[2] = disc_ring;
-        v.local[3] = n;
+        v.local[3] = n_disc;
         v.shape[0] = sigma0;
         v.shape[1] = value;
         v.shape[2] = bias;
@@ -1440,12 +1474,15 @@ inline void floored_value(const Look& k, const ee::Record& r, float radius, floa
 // an outer and an inner layer (the Split Scorpion's fx_engine_xtc_red_nor 10 and _tiny 5.04, 6.9 units apart, one
 // axis), and the floor raises both (23.5, 20.2): two plumes and two end-on discs at one nozzle. A record is dropped
 // when another record of the same parent (the ship's root node, Ring::parent; 0 unknown: never merged) and the same
-// kind (steering / brake flags) is larger (size; the smaller at most merge_size_ratio of it, so equal twins stay
-// apart), parallel (axis dot >= merge_axis_dot) and its origin within the larger's natural width (its pre-floor size:
-// the glow body spans +-0.5 size; the plume's nozzle width is 0.5 of it); the larger keeps its own floored value.
+// kind (steering / brake flags) is larger (size; the smaller between merge_size_min and merge_size_ratio of it, so
+// equal twins stay apart), parallel (axis dot >= merge_axis_dot) and its origin within the larger's natural width (its
+// pre-floor size: the glow body spans +-0.5 size; the plume's nozzle width is 0.5 of it); the larger keeps its own
+// floored value. The lower bound since Run 125 (run413): the Split Ocelot's side nozzles (fx_engine_xtc_red_big3 187.5
+// beside _huge 939, ratio 0.2) have their own rim and plate geometry and drew no plume once merged; the layers of one
+// nozzle (the Scorpion's nor + tiny, ratio 0.50) have none. Two cases only: the window [0.35, 0.75] sits between them.
 // Records are bucketed by parent (a hash of 2,048 heads), so the pair tests run within one ship's nozzles. `drop`
 // (count bytes) gets 1 per dropped record; returns their number. Records past ee::ring_capacity are not merged.
-constexpr float merge_axis_dot = .95f, merge_size_ratio = .75f;
+constexpr float merge_axis_dot = .95f, merge_size_ratio = .75f, merge_size_min = .35f;
 constexpr unsigned merge_buckets = 2048;
 inline unsigned merge_layers(const ee::Record* records, unsigned count, const std::uint32_t* parents,
                              std::uint8_t* drop) noexcept {
@@ -1474,7 +1511,8 @@ inline unsigned merge_layers(const ee::Record* records, unsigned count, const st
                 const ee::Record& large = records[i_large ? i : j];
                 const ee::Record& small = records[i_large ? j : i];
                 const unsigned dropped = i_large ? j : i;
-                if (drop[dropped] || small.size > merge_size_ratio * large.size) continue;
+                if (drop[dropped] || small.size > merge_size_ratio * large.size || small.size < merge_size_min * large.size)
+                    continue;
                 const float dot = large.axis[0] * small.axis[0] + large.axis[1] * small.axis[1] + large.axis[2] * small.axis[2];
                 if (!(dot >= merge_axis_dot)) continue;
                 const float dx = large.origin[0] - small.origin[0], dy = large.origin[1] - small.origin[1],

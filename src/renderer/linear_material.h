@@ -236,14 +236,16 @@ LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(
 // the depth interpolator's w, and in the fill block (emitted with K = 0 too,
 // the C0 decode then left out) r12 += min(E, saturate(1 - r12)) before the
 // encode; one shader-local `def c199`. With the light-map gain the block
-// also leaves the nozzle-plate weight in r15.w (2 instructions, `def c198`)
-// and the gain becomes g - (g - 1) w per pixel (3 instructions in place of
-// the gain MUL): the light-map term near the light falls back to the
-// texture's own value (engine-light.md "Nozzle plates"). The caller MUST upload
-// EngineLightAbi::pixel_constant_count registers at pixel_constant on every
-// draw that binds the twin. Refusals (no lobe-sum site, the motion variant
-// without depth, an asteroid layout, inputs other than TEXCOORD1 -> v2 and
-// TEXCOORD2 -> v3, r14/r15 or c198-c202 used by the original) report
+// also leaves the nozzle-plate weight in r15.w (the maximum over eight plate
+// slots c190-c197, 27 instructions more, `def c198`) and the gain becomes
+// g - (g - 1) w per pixel (3 instructions in place of the gain MUL): the
+// light-map term near each main nozzle falls back to the texture's own value
+// (engine-light.md "Nozzle plates"). The caller MUST upload
+// EngineLightAbi::upload_count registers at upload_first (the plates, two
+// unread filler registers, the light) on every draw that binds the twin.
+// Refusals (no lobe-sum site, the motion variant without depth, an asteroid
+// layout, inputs other than TEXCOORD1 -> v2 and TEXCOORD2 -> v3, r14/r15 or
+// c190-c202 used by the original) report
 // engine_applied = false; the output is then the plain option variant and
 // must not be bound as a twin. Pure, allocation-bounded, no D3D; failure
 // leaves output intact.
@@ -252,6 +254,11 @@ struct EngineLightAbi {
     static constexpr unsigned pixel_constant_count = 3;
     static constexpr unsigned definition_constant = 199; // shader-local (cap 1, guards)
     static constexpr unsigned block_slots = 22, add_slots = 3;
+    // The nozzle plates: c190 + i = ((P_i - cam) / v_i, 1 / v_i), i < 8 (engine_light::core::plate_constants);
+    // c198 and c199 lie inside the one upload: every twin DEFs c199 and a plate twin c198, which shadow the uploaded
+    // filler (zeros); a twin without plates reads neither c190-c198.
+    static constexpr unsigned plate_constant = 190, plate_count = 8;
+    static constexpr unsigned upload_first = plate_constant, upload_count = pixel_constant + pixel_constant_count - plate_constant;
 };
 struct OriginalVariantOptions {
     float fill = 0.f;

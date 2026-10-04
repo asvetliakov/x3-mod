@@ -22,7 +22,7 @@
 // engine-light variant; no original program reads c50 or above):
 //   c200 = (L - cam, R^2)      the light relative to the camera, world axes
 //   c201 = (colour, 1 / R^2)   linear colour of the light
-//   c202 = (F, 0)              the camera's forward axis, world
+//   c202 = (F, tier)           the camera's forward axis, world; .w the plate tier (plate twins)
 // Shader-local c199 = (cap, -2^-20, 2^-40, 0).
 // E = colour x saturate(N . l) x saturate(1 - d^2 / R^2)^2 into r14.xyz, r15
 // scratch; the fill block then adds min(E, saturate(cap - decode(sum))) to
@@ -31,29 +31,38 @@
 //
 // Nozzle plates (docs/architecture/engine-light.md "Nozzle plates"): in a twin
 // that also carries the hull light-map gain g, the block leaves the plate
-// weight w in r15.w, 1 within nozzle_plate_full x value_eff of the light, 0
-// from nozzle_plate_reach x value_eff, linear in d^2 between; the gain site
-// then scales the light-map term by g - (g - 1) w instead of g (texture
-// value alone on the nozzle plates, the full gain on windows and markings
-// elsewhere). From q = saturate(1 - d^2 / R^2), R = engine_light_reach_ratio
-// x value_eff: w = saturate(A q + B), A = k^2 / (r1^2 - r0^2),
-// B = (r1^2 - k^2) / (r1^2 - r0^2) (k the reach ratio, r0/r1 the two radii in
-// value_eff units, r1 < k so d >= R, q = 0, gives w = 0). Shader-local c198 =
-// (A, B, 0, 0); the MAX (input first) maps a NaN weight to 0 (the full gain).
+// weight w in r15.w, the maximum over the ship's plates (up to eight main
+// nozzles, each at its nozzle's light point P_i with its value_eff v_i) of
+// 1 within nozzle_plate_full x v_i, 0 from nozzle_plate_reach x v_i, linear
+// in d^2 between; the gain site then scales the light-map term by
+// g - (g - 1) w instead of g (texture value alone on the nozzle plates, the
+// full gain on windows and markings elsewhere). Uploaded per draw beside the
+// light: c190 + i = ((P_i - cam) / v_i, 1 / v_i), i < 8 (an unused slot
+// (2, 0, 0, 0): (d / v)^2 = 4, weight 0), and c202.w = the ship's plate tier
+// (0: one plate, 1: two to four, 2: five to eight) for the uniform branches. The block forms the pixel's
+// camera-relative position D = e t once, then per plate
+// u_i = (D / v_i - (P_i - cam) / v_i)^2 (MAD, DP3) and m = min(u_i, m)
+// (input first: a NaN u_i keeps m; m starts at c198.w = 4); after the light
+// w = saturate(A m + B), A = -1 / (r1^2 - r0^2), B = r1^2 / (r1^2 - r0^2)
+// (w is decreasing in (d / v)^2, so the min of the distances is the max of
+// the weights), then max(w, 0) (input first). Shader-local c198 = (A, B, 0, 4).
 constexpr unsigned engine_light_constant = 200, engine_light_definition = 199, engine_light_term = 14,
                    engine_light_scratch = 15, engine_light_eye = 2, engine_light_normal = 3,
-                   engine_light_plate_constant = 198;
+                   engine_light_plate_constant = 198, engine_light_plate_first = 190, engine_light_plate_slots = 8;
+static_assert(engine_light_plate_first + engine_light_plate_slots == engine_light_plate_constant,
+              "the plate registers sit directly below c198: one refusal range c190-c202");
 // engine_light_reach_ratio must equal engine_light::core::reach (src/proxy/engine_light_core.h; pinned by
 // verification/analysis/test_engine_light.py).
 constexpr float engine_light_reach_ratio = 3.0f, nozzle_plate_full = 0.75f, nozzle_plate_reach = 1.0f;
-constexpr float nozzle_plate_slope = engine_light_reach_ratio * engine_light_reach_ratio /
-                                     (nozzle_plate_reach * nozzle_plate_reach - nozzle_plate_full * nozzle_plate_full),
-                nozzle_plate_offset = (nozzle_plate_reach * nozzle_plate_reach -
-                                       engine_light_reach_ratio * engine_light_reach_ratio) /
-                                      (nozzle_plate_reach * nozzle_plate_reach - nozzle_plate_full * nozzle_plate_full);
+constexpr float nozzle_plate_slope =
+                    -1.0f / (nozzle_plate_reach * nozzle_plate_reach - nozzle_plate_full * nozzle_plate_full),
+                nozzle_plate_offset = nozzle_plate_reach * nozzle_plate_reach /
+                                      (nozzle_plate_reach * nozzle_plate_reach - nozzle_plate_full * nozzle_plate_full),
+                nozzle_plate_none = 4.0f; // (d / v)^2 of an unused slot (engine_light::core::unused_plate) and the start
 static_assert(nozzle_plate_full >= 0.0f && nozzle_plate_full < nozzle_plate_reach &&
-                  nozzle_plate_reach < engine_light_reach_ratio,
-              "the plate weight reaches 0 inside the light's radius");
+                  nozzle_plate_reach < engine_light_reach_ratio &&
+                  nozzle_plate_none >= nozzle_plate_reach * nozzle_plate_reach,
+              "the plate weight reaches 0 inside the light's radius and at an unused slot");
 constexpr float engine_light_cap = 1.0f, engine_light_facing_floor = -0x1p-20f, engine_light_distance_floor = 0x1p-40f;
 constexpr unsigned engine_light_eye_texcoord = 1, engine_light_normal_texcoord = 2;
 void engine_light_definition_words(Words& out) {
@@ -64,31 +73,55 @@ void engine_light_definition_words(Words& out) {
 void engine_light_plate_definition_words(Words& out) {
     emit(out, def,
          {dst(constant, engine_light_plate_constant, xyzw), bits(nozzle_plate_slope), bits(nozzle_plate_offset),
-          bits(0.0f), bits(0.0f)});
+          bits(0.0f), bits(nozzle_plate_none)});
 }
-// 18 instructions, 22 weighted slots (two NRM x3); with `plate` 20 / 24 (the
-// plate weight into r15.w, read by the gain site, engine_light_plate_gain).
+// if_ne with the comparison NE (5) in the token's bits 16-23; endif.
+constexpr unsigned engine_light_if_ne = 41u | (5u << 16), engine_light_endif = 43u;
+// 18 instructions, 22 weighted slots (two NRM x3); with `plate` 49 / 57 (the
+// pixel position D = e t, three per plate slot, two uniform if_ne / endif
+// pairs around slots 1-7 and 4-7 (a ship runs 1, 4 or 8 slots), the weight into r15.w after
+// the light, read by the gain site, lightmap_gain_instruction): the light
+// then reads D (ADD instead of the MAD) and keeps 1 / d in r15.x, so r15.w
+// carries the running minimum through the light.
 void engine_light_block(Words& out, unsigned depth_input, bool plate = false) {
     const unsigned e = engine_light_term, s = engine_light_scratch, a = engine_light_constant,
-                   b = engine_light_constant + 1, f = engine_light_constant + 2, k = engine_light_definition;
+                   b = engine_light_constant + 1, f = engine_light_constant + 2, k = engine_light_definition,
+                   c = engine_light_plate_constant;
     constexpr unsigned negate = 1;
     emit(out, 36, {dst(temp, s), src(input, engine_light_eye)});                 // e = nrm(v2)
     emit(out, 8, {dst(temp, s, 8), src(temp, s), src(constant, f)});             // e . F
     emit(out, min_op, {dst(temp, s, 8), lane(temp, s, 3), lane(constant, k, 1)}); // <= -2^-20 (input first)
     emit(out, 6, {dst(temp, s, 8), lane(temp, s, 3)});                           // 1 / (e . F)
     emit(out, mul, {dst(temp, s, 8), lane(temp, s, 3), lane(input, depth_input, 1)}); // t = w / (e . F)
-    emit(out, mad, {dst(temp, e), src(temp, s), src(temp, s, 3 * 0x55, negate), src(constant, a)}); // L - cam - e t
+    const unsigned inverse_lane = plate ? 0u : 3u; // 1 / d: r15.x with plates (r15.w holds the minimum)
+    if (plate) {
+        emit(out, mul, {dst(temp, s), src(temp, s), lane(temp, s, 3)}); // D = e t
+        // Uniform branches on the ship's plate tier (c202.w: 0 one plate, 1 two to four, 2 five to eight; both
+        // operands constants, so no divergence): slot 0 always, slots 1-3 under if_ne tier, 0 (c198.z), slots 4-7
+        // nested under if_ne tier, 1 (c199.x). if_ne (D3DSPC_NE), the comparison the XT originals already use.
+        for (unsigned i = 0; i < engine_light_plate_slots; ++i) {
+            if (i == 1) emit(out, engine_light_if_ne, {lane(constant, f, 3), lane(constant, c, 2)});
+            if (i == 4) emit(out, engine_light_if_ne, {lane(constant, f, 3), lane(constant, k, 0)});
+            const unsigned p = engine_light_plate_first + i;
+            emit(out, mad, {dst(temp, e), src(temp, s), lane(constant, p, 3), src(constant, p, identity, negate)});
+            emit(out, 8, {dst(temp, e, 8), src(temp, e), src(temp, e)});         // (d / v_i)^2
+            emit(out, min_op, {dst(temp, s, 8), lane(temp, e, 3), i ? lane(temp, s, 3) : lane(constant, c, 3)});
+        }
+        emit(out, engine_light_endif, {});
+        emit(out, engine_light_endif, {});
+        emit(out, add, {dst(temp, e), src(constant, a), src(temp, s, identity, negate)}); // L - cam - D
+    } else
+        emit(out, mad, {dst(temp, e), src(temp, s), src(temp, s, 3 * 0x55, negate), src(constant, a)}); // L - cam - e t
     emit(out, 8, {dst(temp, e, 8), src(temp, e), src(temp, e)});                 // d^2
     emit(out, max_op, {dst(temp, e, 8), lane(temp, e, 3), lane(constant, k, 2)}); // >= 2^-40 (input first)
-    emit(out, 7, {dst(temp, s, 8), lane(temp, e, 3)});                           // 1 / d
-    emit(out, mul, {dst(temp, e), src(temp, e), lane(temp, s, 3)});              // l
+    emit(out, 7, {dst(temp, s, 1u << inverse_lane), lane(temp, e, 3)});         // 1 / d
+    emit(out, mul, {dst(temp, e), src(temp, e), lane(temp, s, inverse_lane)});   // l
     emit(out, 36, {dst(temp, s), src(input, engine_light_normal)});              // N = nrm(v3)
     emit(out, 8, {dst(temp, s, 1) | sat, src(temp, s), src(temp, e)});           // saturate(N . l)
     emit(out, add, {dst(temp, e, 8), src(temp, e, 3 * 0x55, negate), lane(constant, a, 3)}); // R^2 - d^2
     emit(out, mul, {dst(temp, e, 8) | sat, lane(temp, e, 3), lane(constant, b, 3)}); // q = saturate(1 - d^2 / R^2)
     if (plate) {
-        const unsigned c = engine_light_plate_constant;
-        emit(out, mad, {dst(temp, s, 8) | sat, lane(temp, e, 3), lane(constant, c, 0), lane(constant, c, 1)}); // w
+        emit(out, mad, {dst(temp, s, 8) | sat, lane(temp, s, 3), lane(constant, c, 0), lane(constant, c, 1)}); // w
         emit(out, max_op, {dst(temp, s, 8), lane(temp, s, 3), lane(constant, c, 2)}); // NaN -> 0 (input first)
     }
     emit(out, mul, {dst(temp, e, 8), lane(temp, e, 3), lane(temp, e, 3)});       // q^2
@@ -128,13 +161,13 @@ bool engine_light_inputs(const Word* code, const Structure& s, unsigned depth_in
         for (unsigned q = 1; q <= last; ++q) {
             const auto t = kind(code[i.at + q]), r = index(code[i.at + q]);
             if (t == temp && (r == engine_light_term || r == engine_light_scratch)) return false;
-            if (t == constant && r >= engine_light_plate_constant && r <= engine_light_constant + 2) return false;
+            if (t == constant && r >= engine_light_plate_first && r <= engine_light_constant + 2) return false;
         }
     }
     return true;
 }
 // The emitted block references only its own temporaries, v2/v3/vD and its
-// constants (c198-c202); the fill block with the light reads r14 besides its own set.
+// constants (c190-c202); the fill block with the light reads r14 besides its own set.
 bool engine_light_range_free(const Word* code, std::size_t begin, std::size_t end, unsigned depth_input) noexcept {
     for (std::size_t at = begin; at < end;) {
         const Word token = code[at];
@@ -143,7 +176,7 @@ bool engine_light_range_free(const Word* code, std::size_t begin, std::size_t en
         for (unsigned q = 1; q <= n; ++q) {
             const auto t = kind(code[at + q]), r = index(code[at + q]);
             if (t == temp && r != engine_light_term && r != engine_light_scratch) return false;
-            if (t == constant && (r < engine_light_plate_constant || r > engine_light_constant + 2)) return false;
+            if (t == constant && (r < engine_light_plate_first || r > engine_light_constant + 2)) return false;
             if (t == input && r != engine_light_eye && r != engine_light_normal && r != depth_input) return false;
             if (t != temp && t != constant && t != input) return false;
         }

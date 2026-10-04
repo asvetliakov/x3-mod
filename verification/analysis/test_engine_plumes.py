@@ -273,16 +273,17 @@ int main() {
         };
         const float axis_peak = axis_at(1.f), axis_peak0 = axis_at(0.f);
         // The disc's cap at the 25 px nozzle's detail level DL: the side peak with the cells x DL (s 1); kappa 1.84 -> 8.2
-        // by DL; the end-on ring x (1 + (3 min(1, (L / n) / 2) - 1) DL), L / n 4.
+        // by DL; the end-on ring x (1 + (3 min(1, (L / n) / 2) - 1) DL), L / n 4; the soft cap 1.0 x the side peak (both
+        // since Run 125: x 8 and 1.5 before).
         const float cap_peak = axis_at(DL), KA = 1.84f + (3.f - 1.84f) * DL;
-        bool disc = st.discs == 1 && (out[4].peak >> 24) == 255u && (out[0].peak >> 24) == 0u && near(out[4].local[3], nw) && near(out[4].intensity[0], IH * KA * Ln, 2e-3f) &&
-                    near(out[4].intensity[1], HB * DH * Ln) && near(out[4].intensity[2], 1.5f * IH * cap_peak, 1e-2f) &&
-                    near(out[4].local[2], IH * (RG / IH * .5f) * 2.f * (1.f + (8.f - 1.f) * DL), 2e-3f);
+        bool disc = st.discs == 1 && (out[4].peak >> 24) == 255u && (out[0].peak >> 24) == 127u && near(out[4].local[3], nw) && near(out[4].intensity[0], IH * KA * Ln, 2e-3f) &&
+                    near(out[4].intensity[1], HB * DH * Ln) && near(out[4].intensity[2], 1.f * IH * cap_peak, 1e-2f) &&
+                    near(out[4].local[2], IH * (RG / IH * .5f) * 2.f * (1.f + (3.f - 1.f) * DL), 2e-3f);
         for (unsigned c = 4; c < 8; ++c) disc = disc && near(std::fabs(out[c].position[0]), half, 1e-3f) && near(std::fabs(out[c].position[1]), half, 1e-3f) && out[c].position[2] == Z;
         bool finite = true;
         for (unsigned c = 0; c < 4; ++c) for (unsigned j = 0; j < 3; ++j) finite = finite && std::isfinite(out[c].position[j]);
         expect(disc && finite && out[0].shape[2] == 0.f && near(out[0].intensity[2], 1.f) && near(out[0].intensity[0], .5f * IH) && near(out[0].intensity[1], HB * .5f),
-               "head-on: the end-on disc (I x (1.84 -> 3 by the detail) L / n, halo I_halo x (3 -> 2.82 by the detail) L / n, cap 1.5 x the side peak, the ring x 1 -> 8 by the detail), the axial quad at half weight, no bias");
+               "head-on: the end-on disc (I x (1.84 -> 3 by the detail) L / n, halo I_halo x (3 -> 2.82 by the detail) L / n, cap 1.0 x the side peak, the ring x 1 -> 3 by the detail), the axial quad at half weight, no bias");
         float pk = 0.f;
         LookTables tb;
         look_tables(flat, &tb);
@@ -309,7 +310,7 @@ int main() {
             bool ok = near(out[0].intensity[0], IH * wa, 1e-3f) && near(out[0].intensity[1], HB * wa, 1e-3f);
             if (c.wd > 0.f)
                 ok = ok && st.discs == 1 && near(out[4].intensity[0], c.wd * IH * KA * Ln * f, 1e-3f) &&
-                     near(out[4].intensity[1], c.wd * HB * DH * Ln * f, 1e-3f) && near(out[4].intensity[2], c.wd * 1.5f * IH * cap_peak, 1e-2f);
+                     near(out[4].intensity[1], c.wd * HB * DH * Ln * f, 1e-3f) && near(out[4].intensity[2], c.wd * 1.f * IH * cap_peak, 1e-2f);
             else
                 ok = ok && st.discs == 0 && out[4].position[0] == out[5].position[0] && out[4].position[1] == out[6].position[1];
             expect(ok, c.what);
@@ -395,7 +396,9 @@ int main() {
         // the halo's reach does not count, after the review of flight C; unchanged by the revised law) x the nozzle width
         // 0.5. Tail-on the axial quad takes half (the end-on disc is whole); the fade takes the axial quad to 0.5, the
         // disc to 0.4 (chase_disc_floor, its own fade over the same band since flight G; a floor of 0.6 before) of its
-        // unfaded 4 x kappa(detail) x L / n (L / n = 4: the cap shrinks L and n together). The
+        // unfaded 4 x kappa(detail) x L / n (L / n = 4: the cap shrinks the body's L and n together). Since Run 125 the
+        // end-on disc keeps the natural nozzle width (the body is shrunk as before): its nozzle width 0.5 value and its
+        // half-size at the natural width, the axial quad's n over the disc's n (k) in the head colour's alpha x 127. The
         // disc's half-size: the end-on ring's radius plus three of its sigmas (twice the side's since the tuning pass),
         // 0.529 + 0.387, past the outer sheath's eroded edge at the along-mean growth, (1.2 + 0.7 x 0.57) x 0.575, and the halo's 2.25 x 0.352.
         const float h = (1.f + .48f * .57f) * .575f * .5f,
@@ -404,23 +407,38 @@ int main() {
             return q * cap * zo / (2.f * h * f + 2.f * q * cap);
         };
         for (const float q : {.7f, .9f, 1.f, 3.f, 40.f}) {
-            const float zo = 400.f, val = at_q(q, zo);
+            const float zo = 400.f, val = at_q(q, zo), pp = f / zo;
             const ee::Record r = rec(0, 0, zo, 0, 0, -1, val, 2.f);
             build(&r, 1, nullptr, v, Preset::standard, 4.f, out.data(), 16, &st, nullptr, &flat);
             const float weight = q <= .8f ? 1.f : q >= 1.f ? .5f : 1.f - .5f * (q - .8f) / .2f;
             const float disc_fade = q <= .8f ? 1.f : q >= 1.f ? .4f : 1.f - .6f * (q - .8f) / .2f;
             const float half = h * out[0].shape[1], L = out[0].local[2]; // the body's half-width, x k
             const float width = 2.f * half * f / (zo - L);
-            const float quad_half = std::fabs(out[4].local[0]) - 1.f / (1.7f * 540.f / zo); // the disc's half (width0) less its pixel
+            const float quad_half = std::fabs(out[4].local[0]) - 1.f / pp; // the disc's half (width0) less its pixel
             const float disc = IH * kap(out[4]) * (L / out[0].local[3]) * disc_fade;
+            const float kk = out[0].shape[1] / val;
             const bool ok = near(out[0].intensity[0], .5f * IH * weight, 2e-3f) && (q > 1.f ? near(width, cap, 2e-3f) && st.capped == 1 : q == 1.f ? near(width, cap, 2e-3f) && near(out[0].shape[1], val, 1e-3f) : st.capped == 0 && near(out[0].shape[1], val)) &&
                             st.faded == (q > .8f ? 1u : 0u) && near(out[0].local[3], .5f * out[0].shape[1]) &&
-                            near(quad_half, h_halo * out[0].shape[1], 2e-3f) && near(out[4].intensity[0], disc, 2e-3f) &&
+                            near(out[4].local[3], .5f * val) && near(quad_half, h_halo * val, 2e-3f) && st.discs_capped == 0 &&
+                            (out[0].peak >> 24) == unsigned(int(std::min(kk, 1.f) * 127.f + .5f)) &&
+                            near(out[4].intensity[0], disc, 2e-3f) &&
                             out[4].intensity[0] >= .4f * IH * kap(out[4]) * (L / out[0].local[3]) * (1.f - 2e-3f);
             char what[64]; std::snprintf(what, sizeof what, "near-camera cap q=%.1f", double(q));
             expect(ok, what);
-            std::printf("CAP q=%.2f weight=%.3f disc_weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f\n", double(q), double(out[0].intensity[0] / (.5f * IH)),
-                        double(out[4].intensity[0] / (IH * kap(out[4]) * (L / out[0].local[3]))), double(width), double(cap), double(out[0].shape[1] / val));
+            std::printf("CAP q=%.2f weight=%.3f disc_weight=%.3f width_px=%.2f cap_px=%.2f k=%.4f disc_n_px=%.2f handover_alpha=%u\n", double(q),
+                        double(out[0].intensity[0] / (.5f * IH)), double(out[4].intensity[0] / (IH * kap(out[4]) * (L / out[0].local[3]))),
+                        double(width), double(cap), double(kk), double(out[4].local[3] * pp), unsigned(out[0].peak >> 24));
+        }
+        // The disc's own cap: a nozzle whose natural disc half-size projects to twice 0.35 H draws its disc at 0.35 H (its
+        // quad and nozzle width scaled together), the axial quad shrunk by k as before.
+        {
+            const float zo = 400.f, pp = f / zo, val = 2.f * .35f * 1080.f / (h_halo * pp);
+            const ee::Record r = rec(0, 0, zo, 0, 0, -1, val, 2.f);
+            build(&r, 1, nullptr, v, Preset::standard, 4.f, out.data(), 16, &st, nullptr, &flat);
+            const float scale = .35f * 1080.f / (h_halo * val * pp + 1.f);
+            expect(st.discs_capped == 1 && st.capped == 1 && near(std::fabs(out[4].local[0]) * pp, .35f * 1080.f, 2e-3f) &&
+                       near(out[4].local[3], .5f * val * scale, 2e-3f) && out[0].shape[1] < val,
+                   "the disc's projected radius held to 0.35 H (disc and its nozzle width scaled; the axial quad shrunk by k)");
         }
         // Side view: the length is free (a long plume across the screen keeps its length).
         const float val = 100.f / ppu(Z);
@@ -432,7 +450,7 @@ int main() {
     {
         // run412 frame 5437: the Scorpion's nor 10 and tiny 5.04, 6.9 units apart on one axis, one parent.
         const float ax = -.66242f, ay = .22177f, az = .71555f;
-        ee::Record m[8];
+        ee::Record m[10];
         m[0] = rec(96411.5f, -37509.1f, 19210.f, ax, ay, az, 10.f, 2.f);
         m[1] = rec(96405.8f, -37505.3f, 19209.f, ax, ay, az, 5.04f, 2.f);
         m[2] = rec(0.f, 0.f, 500.f, 0, 0, -1, 10.f, 2.f);   // a twin of equal size 5 apart: kept
@@ -441,11 +459,17 @@ int main() {
         m[5] = rec(15.f, 0.f, 900.f, 0, 0, -1, 5.f, 2.f);
         m[6] = rec(0.f, 0.f, 1300.f, 0, 0, -1, 10.f, 2.f);  // anti-parallel, co-located: kept
         m[7] = rec(1.f, 0.f, 1300.f, 0, 0, 1, 5.f, 2.f);
-        const std::uint32_t parents[8] = {7, 7, 9, 9, 11, 11, 13, 13};
-        std::uint8_t drop[8];
-        const unsigned merged = merge_layers(m, 8, parents, drop);
-        expect(merged == 1 && drop[1] == 1 && !drop[0] && !drop[2] && !drop[3] && !drop[4] && !drop[5] && !drop[6] && !drop[7],
-               "merge: the smaller parallel layer within the larger's size is dropped; twins, 3 widths apart, anti-parallel kept");
+        // run413: the Split Ocelot's huge 939 and a side nozzle big3 187.5 (ratio 0.2, 0.3 x 939 apart, parallel): a
+        // nozzle of its own (under merge_size_min 0.35 since Run 125), kept.
+        m[8] = rec(0.f, 0.f, 9000.f, 0, 0, -1, 939.f, 2.f);
+        m[9] = rec(281.7f, 0.f, 9000.f, 0, 0, -1, 187.5f, 2.f);
+        const std::uint32_t parents[10] = {7, 7, 9, 9, 11, 11, 13, 13, 15, 15};
+        std::uint8_t drop[10];
+        const unsigned merged = merge_layers(m, 10, parents, drop);
+        expect(merged == 1 && drop[1] == 1 && !drop[0] && !drop[2] && !drop[3] && !drop[4] && !drop[5] && !drop[6] && !drop[7] && !drop[8] &&
+                   !drop[9],
+               "merge: the smaller parallel layer (ratio 0.35..0.75) within the larger's size is dropped; twins, 3 widths apart, "
+               "anti-parallel, a 0.2-ratio side nozzle kept");
         const std::uint32_t other[2] = {7, 8}, unknown[2] = {0, 0};
         expect(merge_layers(m, 2, other, drop) == 0 && !drop[1] && merge_layers(m, 2, unknown, drop) == 0 &&
                    merge_layers(m, 2, nullptr, drop) == 0, "merge: another parent, an unknown parent or none: kept");
@@ -584,7 +608,7 @@ int main() {
             float want = 0, fv = 0; flow_factor(default_look, V, &fv); nozzle_phase(1234.5, fv, &want);
             bool same = true;
             for (unsigned c = 0; c < 8; ++c) same = same && out[c].shape[3] == want;
-            expect(same && st.discs == 1 && (out[0].peak >> 24) == 0u && (out[4].peak >> 24) == 255u, "both quads carry the nozzle's phase; the kind in the head colour's alpha");
+            expect(same && st.discs == 1 && (out[0].peak >> 24) == 127u && (out[4].peak >> 24) == 255u, "both quads carry the nozzle's phase; the kind in the head colour's alpha (axial: the hand-over scale 1 = 127)");
             const ee::Record side = rec(0, 0, Z, -1, 0, 0, V, 2.f);
             Dynamics da; da.flow = 10.; Dynamics db; db.flow = 10. + rate / 60.;
             build(&side, 1, nullptr, v, Preset::standard, 10.f, out.data(), 16, &st, nullptr, nullptr, nullptr, nullptr, &da);
@@ -1375,7 +1399,8 @@ class Wiring(unittest.TestCase):
         # After flight C (2026-10-03): the end-on disc's samples in c8..c15, the soft-maximum mouth, the cells ramped in,
         # the ship key read beside the own-ship tag.
         self.assertIn('float4 disc_k[8] : register(c8);', ps)
-        self.assertIn('const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen));', ps)
+        self.assertIn('const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen * handover_scale));', ps)
+        self.assertIn('const float handover_scale = min(i.peak.w * (255.0 / 127.0), 1.0);', ps)  # since Run 125: the disc's width
         self.assertIn('smoothstep(0.0, 1.0, u * fire_k.x)', ps)
         self.assertIn('const float shown = cap * (1.0 - exp(-total / cap));', ps)
         effects_inc = source_text(ROOT / 'src/proxy/motion_output_engine_effects_inc.h')
@@ -1470,11 +1495,12 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         self.assertTrue(all(x['law_taper_px'] > 50 and .05 <= x['law_taper_mean'] <= .1 for x in r['report']['spill'] if x['nozzle_px'] == 12))
         self.assertTrue(all(x['detail'] == 1 and x['law_taper_all'] == 0 for x in r['report']['spill'] if x['nozzle_px'] == 60))
         # The review fixes (critique section 6): the side view's energy per px^2 at 40 px 0.5..1.0 of the 12 px value (0.8 was an estimate; the hue and contrast gates win),
-        # rising with the size; the end-on energy at the detail level 1 0.7..0.9 of the detail-0 law's at the same size.
+        # rising with the size; the end-on energy at the detail level 1 0.55..0.9 of the detail-0 law's at the same size
+        # (0.7..0.9 until Run 125's soft cap 1.0 and ring x 3).
         self.assertEqual(len(r['report']['energy']), 4)
         self.assertTrue(all(x['rising'] == 1 and .5 <= x['per_px2_40_over_12'] <= 1. for x in r['report']['energy']))
         self.assertEqual(len(r['report']['end_on_detail']), 4)
-        self.assertTrue(all(x['detail'] == 1 and .7 <= x['over_slab_0'] <= .9 for x in r['report']['end_on_detail']))
+        self.assertTrue(all(x['detail'] == 1 and .55 <= x['over_slab_0'] <= .9 for x in r['report']['end_on_detail']))
         self.assertEqual(len(r['report']['chase_own_look']), 2)
         self.assertEqual(len(r['report']['flow']), 8)
         self.assertTrue(all(abs(x['ratio'] - 1) <= .05 for x in r['report']['flow']))
@@ -1509,7 +1535,23 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
                             x['white_axis_u05'] >= .15 and x['white_rim_u02'] >= .5 for x in structure))
         disc = r['report']['structure_disc']
         self.assertEqual(len(disc), 4)
-        self.assertTrue(all(x['ring'] >= 1.05 and .4 <= x['ring_n'] <= .7 and x['hot'] >= .9 for x in disc))
+        # The ring: red >= 1.05; cyan >= 1.0 since Run 125 (monotone under the soft cap 1.0 and the ring x 3).
+        self.assertTrue(all(x['ring'] >= (1.0 if x['tint'] == 'argon-blue' else 1.05) and .4 <= x['ring_n'] <= .7 and x['hot'] >= .9
+                            for x in disc))
+        # Since Run 125 the near-camera cap shrinks the body as before (width and length x k) while the end-on disc keeps
+        # the natural nozzle width under 0.35 H: the chase case's body within the cap, its disc natural; a capital's huge
+        # nozzle at 2,000 units draws its disc at its natural width and its length L x k (not the dot floor).
+        self.assertEqual(len(r['report']['chase_cap']), 2)
+        self.assertTrue(all(x['drawn_n'] < x['natural_n'] and abs(x['disc_n'] - x['natural_n']) <= 1e-4 * x['natural_n'] and
+                            abs(x['tip_body_px'] - x['cap_px']) <= .01 * x['cap_px'] and x['disc_half_px'] <= x['disc_cap_px']
+                            for x in r['report']['chase_cap']))
+        capital = r['report']['near_capital']
+        self.assertEqual(len(capital), 2)
+        self.assertTrue(all(abs(x['disc_n_px'] - x['natural_n_px']) <= 1e-3 * x['natural_n_px'] and x['capped'] == 1 and x['discs_capped'] == 0
+                            and x['k'] < 1 and abs(x['drawn_length_px'] - x['k'] * x['natural_length_px']) <= .002 * x['natural_length_px']
+                            and x['drawn_length_px'] > 4 for x in capital))
+        kept = [x for x in r['report']['merge_kept'] if x['case'] == 'ratio_0.2']
+        self.assertTrue(len(kept) == 2 and all(x['nozzles'] == 2 and x['merged'] == 0 for x in kept))
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))

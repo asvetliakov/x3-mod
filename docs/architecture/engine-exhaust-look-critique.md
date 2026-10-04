@@ -422,7 +422,7 @@ no parent):
 | Pair | Distance / larger size | Size ratio | Merged |
 | --- | --- | --- | --- |
 | nor + tiny (own Scorpion) | 0.5..1, 24 pairs in 24 frames | 0.50 | yes |
-| huge + big3 (the capital at frame 4480) | <= 0.5, 32 pairs in 8 frames | 0.20 | yes (4 of its 8 big3 into its 2 huge) |
+| huge + big3 (the capital at frame 4480) | <= 0.5, 32 pairs in 8 frames | 0.20 | yes (4 of its 8 big3 into its 2 huge); no since Run 125 (ratio under 0.35) |
 | huge + huge | 0.5..1, 16 pairs | 1.0 | no (ratio) |
 | big3 + big3 | 1..2, 24 pairs | 1.0 | no |
 
@@ -454,6 +454,80 @@ The disc fade gives x 0.667, and removing the second layer at that centre gives 
 6.3-6.8 / 3.7-3.8, still above the 2.11 white point at EV +1. The brightest spot of the old frame, the small layer's
 own centre (peak 19-20 / 15.5-16.8 / 15.5-16.8), and the second halo (1.74x frame total) are gone. The remaining gap to
 the fixture's 02b centre (about 3x) is not explained by the stacking.
+
+### End-on brightness, Run 125 (2026-10-04, worktree build on 4f036d43, not a candidate)
+
+Run 125 (screenshot `screenshots/engines4.png`, the Split Ocelot at 2.4 km; run413 triage
+`verification/results/run413-engine-rings/` in the main checkout): the own ship's engine was fixed, the capital's stern
+nozzles read as white rings with bright pink centres. Three changes in `engine_plumes_core.h` (and the hand-over in `engine_plume_ps.hlsl`), all measured on the
+fixture (bottle X3) unless marked.
+
+Soft cap and ring. At s 1 the faded 02b red disc's centre was 2.17 (`plume_disc_clip_out.txt`), past the flight's
+display white near 2.1 at EV +1, so every end-on red disc clipped white at its centre, and the end-on ring (x 8 its side
+radiance at the side's width) drew a bright rim. `Look::disc_cap` 1.5 -> 1.0 (the soft cap relative to the side view's
+peak), `Look::disc_ring` 8 -> 3. At x 3 no 02b disc clips at EV 0, so the fallback to 2 was not taken. Mirrored in
+`tools/effects/engine_exhaust_lab.html` (`cap=1.0*I`, the ring `3.0*min(1, Ln / 2)`). The 02b discs at the old
+geometry (capped and faded to 65.6 px), before -> after:
+
+| 02b disc | centre (0.3 n) min(rgb) >= 1 | peak R / G / B | disc (4 n) min(rgb) >= 1 | tint channel >= 1 | energy |
+| --- | --- | --- | --- | --- | --- |
+| red | 0 -> 0 | 2.17 / 0.71 / 0.72 -> 1.48 / 0.57 / 0.57 | 0 -> 0 | 3,450 -> 2,260 px | 0.560 |
+| blue | 0 -> 0 | 0.64 / 2.06 / 2.62 -> 0.57 / 1.41 / 1.79 | 0 -> 0 | 3,557 -> 2,407 px | 0.619 |
+
+With these two constants alone the side views 01a, 01b, 03a, 03c, 04, 08, the far dots 05, the RCS 07 and the ribbon
+09 are bit-identical (largest per-pixel change 0.0000; far dots 1.00 at 40 / 12 / 6 / 2 px, `plume_look_metrics.py
+--before`). The near-camera discs change: 02a 0.876 of its total, 03b 0.876, 06b 0.991, the crowd 10 0.862. The 02b
+red ring on the display goes 1.31 -> 1.00 (`plume_look_metrics.py`, its own gate 1.05: the ring no longer stands out
+after AgX at that size); the blue one was 1.00 before.
+
+Gate floors. The fixture's end-on gates encoded the old level; the user judged it too bright, so they are re-floored to
+what the new law measures (both sizes unless marked):
+
+| Gate | Old floor | New floor | Measured before -> after |
+| --- | --- | --- | --- |
+| `headon_core_hidden` (1920) | open peak 0.6 x I | 0.45 x I | 2.916 -> 1.969 (0.473 x I); 5120 6.992 -> 4.719 |
+| `end_on_energy_{60,30,0}deg` (production look, 40 px) | 0.7..1.5 of the side view | 0.5..1.5 | 0 deg 0.706 -> 0.558; 30 deg 0.835 -> 0.697 (5120 0.831 -> 0.692); 60 deg 0.869 -> 0.818 |
+| `end_on_alive` | rim CV 0.03 | 0.025 | 0.032 -> 0.029 (lag-1 0.864 -> 0.860) |
+| `end_on_energy_detail1_n40/n48` | 0.7..1.5 | 0.6..1.5 | 0 deg 1.013 -> 0.665 |
+| `end_on_over_slab_n40/n48` | 0.7..0.9 | 0.55..0.9 | 0.744 -> 0.585 |
+| `structure_disc_ring_blue` | ring 1.05 | 1.0 (no dip) | cyan 1.183 -> 1.000 (the profile is monotone); red 1.726 -> 1.168 (floor 1.05 kept) |
+
+The own ship's chase look (unfaded, 34 px nozzle) goes 0.706 -> 0.572 of the slab law's total, its peak 7.32 -> 4.93.
+The cyan disc no longer shows a ring at all; whether that reads well is for the user's eye.
+
+Natural-width end-on disc (run413: the cap's q, measured at the tip that points at the camera, reached k 0.26 on the
+Ocelot's huge nozzles at 1,800-2,450 units, and `value *= k` shrank the disc and halo to a spot inside the hull's own
+nozzle plate). The axial body keeps the cap exactly as Run 125 drew it (k from the tip's projection, width and length
+x k, the fade to 0.5); only the end-on disc and its halo use the natural (unshrunk, floored) nozzle width, with the 0.4
+fade, and the disc's projected radius (its quad's half-size) is held to `disc_cap_px` 0.35 H by scaling the disc alone
+(`discs_capped` in `BuildStats`). The disc's integrated body keeps L / n of the shrunk pair (the same ratio). Where the
+natural disc and the shrunk body meet at the mouth, the axial quad's hand-over (`handover_inner`..`outer`, nozzle
+widths) measures the disc's width: the axial n over the disc's n travels in the axial quad's head-colour alpha (0..127,
+under the disc kind's 0.5), and `engine_plume_ps.hlsl` scales its screen-plane distance by it (one MIN and one MUL;
+regenerated with `generate_rigid_motion_pixel.py --shader engine_plume_ps`). Fixture: the chase case keeps k 0.417, its
+body's tip width at the cap (CPU), the disc at the natural 5.0 units (141.7 px half-size at 1080, under 378), alpha 53;
+the frame's 5 % extent 83 -> 204 px is now the natural disc's. `near_capital` (value 939 at 2,000 units, 20 degrees off
+the axis, s 1): k 0.309, the body's length 778.5 -> 240.8 px at 1080 and 1,038 -> 321.1 px at 1440 (L x k, the tip's
+body width at the cap), the disc's nozzle width 215.5 / 287.3 px = the natural projection, half-size 199.1 / 265.2 px
+(cap 378 / 504), alpha 39. Look images against Run 125: the side views 01a, 01b, 03a, 03c, 04, 08, the far dots 05, the
+RCS 07 and the ribbon 09 are bit-identical (PNGs unchanged); 02a 1.349 and 03b 1.545 of their summed luma (the
+natural disc at 45 and 30 degrees), 06a 1.004, 06b 1.023, the crowd 10 0.862; the 02b discs at their natural 150 px
+peak red 1.55 / 0.60 / 0.61 and blue 0.62 / 1.41 / 1.79, no pixel with min(rgb) >= 1, energy 2.76 / 3.07 of Run 125's
+65.6 px discs (`plume_disc_clip.py --n 150`). The dump's README now lists each nozzle's drawn body and disc widths
+(02b: body 64.4 px, disc 150.0 px), and `plume_look_metrics.py` takes the side bands' and the 02b disc's widths from it:
+at 150 px the 02b display ring reads red 1.00, blue 1.00 (Run 125 1.31 / 1.00 at 65.6 px).
+
+Co-located merge window (run413: the Ocelot's side nozzles `fx_engine_xtc_red_big3`, size 187.5 beside the 939
+`_huge`, ratio 0.20, have their own rim and plate geometry and drew no plume once merged, `merged=3`). `merge_layers`
+now drops the smaller record only when its size is 0.35..0.75 of the larger's (`merge_size_min`, `merge_size_ratio`).
+The data basis is two cases: the Scorpion's nor + tiny (0.504, one nozzle, no geometry of its own: merged) and the
+Ocelot's huge + big3 (0.20, separate nozzles: kept); the window's lower bound sits between them and is not otherwise
+established. Census (`run412-engine-disc/run412_colocated_pairs.py run412|run413`, `_out.txt`): under the window rule
+the only merged pairs are nor + tiny, 24 in run412's 24 frames and 40 in run413's 40; huge + big3 (32 and 96 pairs)
+and the run413 huge + nor / tiny pairs (ratio under 0.35, 5 each) are kept. Fixture `merge`: the Scorpion pair still
+draws one nozzle (merged 1, value 23.56, totals and centre 1.00000 of the nor alone); a 0.2-ratio side nozzle at 0.3
+of the larger's size apart is kept (2 nozzles, merged 0) at both sizes. The engine light's nozzle plates use the same
+merge (`engine-light.md` "Nozzle plates"), so the big3 nozzles get plates.
 
 ## Unknown, and what settles it
 

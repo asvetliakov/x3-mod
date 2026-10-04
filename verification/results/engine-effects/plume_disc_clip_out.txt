@@ -1,23 +1,46 @@
 02b end-on, n 65.6 px drawn (capped and faded); centre radius 0.3 n, disc radius 4 n; mask from 'before'
 disc                  state centre>=1  peak R  peak G  peak B disc>=1 px   frac tint>=1 px    energy  ratio
-02b red              before     0.046   3.254   1.066   1.067         56  0.012       4491    3725.1  1.000
-02b red               after     0.000   2.170   0.713   0.715          0  0.000       3450    2500.4  0.671
-02b blue             before     0.000   0.884   3.090   3.930          0  0.000       4447    5795.6  1.000
-02b blue              after     0.000   0.642   2.062   2.623          0  0.000       3557    3882.9  0.670
+02b red              before     0.000   2.170   0.713   0.715          0  0.000       3450    2500.4  1.000
+02b red              cause2     0.000   1.475   0.567   0.572          0  0.000       2260    1401.4  0.560
+02b blue             before     0.000   0.642   2.062   2.623          0  0.000       3557    3882.9  1.000
+02b blue             cause2     0.000   0.570   1.407   1.791          0  0.000       2407    2405.1  0.619
 
 other frames: summed luma over the first state's, largest per-pixel change of any channel
-image                     after
+image                    cause2
 01a          1.0000 /    0.0000
 01b          1.0000 /    0.0000
-02a          0.8685 /    1.2422
+02a          0.8756 /    0.7295
 03a          1.0000 /    0.0000
-03b          0.8637 /    1.3008
+03b          0.8762 /    0.8213
 03c          1.0000 /    0.0000
 04           1.0000 /    0.0000
 05           1.0000 /    0.0000
-06a          0.9988 /    0.0676
-06b          0.9879 /    1.0059
+06a          1.0000 /    0.0017
+06b          0.9907 /    0.5957
 07           1.0000 /    0.0000
 08           1.0000 /    0.0000
 09           1.0000 /    0.0000
-10           0.9988 /    0.0195
+10           0.8621 /    1.9766
+02b end-on, n 150.0 px drawn (capped and faded); centre radius 0.3 n, disc radius 4 n; mask from 'before'
+disc                  state centre>=1  peak R  peak G  peak B disc>=1 px   frac tint>=1 px    energy  ratio
+02b red              before     0.000   2.170   0.713   0.715          0  0.000       3450    2682.4  1.000
+02b red               final     0.000   1.549   0.604   0.608          0  0.000      12355    7411.3  2.763
+02b blue             before     0.000   0.642   2.062   2.623          0  0.000       3557    4083.1  1.000
+02b blue              final     0.000   0.623   1.408   1.793          0  0.000      12487   12525.0  3.068
+
+other frames: summed luma over the first state's, largest per-pixel change of any channel
+image                     final
+01a          1.0000 /    0.0000
+01b          1.0000 /    0.0000
+02a          1.3491 /    0.9906
+03a          1.0000 /    0.0000
+03b          1.5449 /    1.0229
+03c          1.0000 /    0.0000
+04           1.0000 /    0.0000
+05           1.0000 /    0.0000
+06a          1.0043 /    0.0371
+06b          1.0225 /    0.9562
+07           1.0000 /    0.0000
+08           1.0000 /    0.0000
+09           1.0000 /    0.0000
+10           0.8621 /    1.9766

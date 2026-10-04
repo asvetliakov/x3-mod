@@ -83,6 +83,58 @@ int main() {
                     ships->stats.rcs, ships->stats.brake, ships->stats.other_view, ships->stats.orphan,
                     find_ship(*ships, 0x2000));
     }
+    // ---- nozzle plates: ship A (root 0x1000) with three main nozzles (values 10, 8, 6 at s 1), a smaller co-located
+    // layer of the first (size 5, 3 units behind it on its axis: merged, no plate), a second record of the 8 nozzle's
+    // handle at s 0 (dimmer: kept once, the brighter), an RCS jet; ship B (root 0x2000) with nine main nozzles (values
+    // 10 + i, ties none): eight plates, the dimmest dropped. Then the node table and the per-draw plate registers of
+    // ship A's node (identity rows translated, camera at the origin).
+    {
+        ee::Record r[16];
+        std::uint32_t parent[16];
+        unsigned n = 0;
+        r[n] = jet(0, 0, 0, 10, 1.f, 50), parent[n++] = 0x1000;
+        r[n] = jet(40, 0, 0, 8, 1.f, 51), parent[n++] = 0x1000;
+        r[n] = jet(0, 40, 0, 6, 1.f, 52), parent[n++] = 0x1000;
+        r[n] = jet(0, 0, -3, 5, 1.f, 53), parent[n++] = 0x1000;          // co-located inner layer of handle 50
+        r[n] = jet(40, 0, 0, 8, 0.f, 51), parent[n++] = 0x1000;          // handle 51 again, idle
+        r[n] = jet(9, 9, 9, 40, 1.f, 54, ee::flag_steering), parent[n++] = 0x1000;
+        for (unsigned i = 0; i < 9; ++i) r[n] = jet(float(i) * 30.f, 500, 0, 10.f + float(i), 1.f, 60 + i), parent[n++] = 0x2000;
+        build_ships(r, parent, nullptr, nullptr, nullptr, 0, n, nullptr, look, 1.f, ships.get());
+        const int a = find_ship(*ships, 0x1000), b = find_ship(*ships, 0x2000);
+        const Light& la = ships->lights[a < 0 ? 0 : a];
+        const Light& lb = ships->lights[b < 0 ? 0 : b];
+        std::printf("\"plates\":{\"a\":{\"handle\":%u,\"count\":%u,\"handles\":[", la.handle, la.plate_count);
+        for (unsigned i = 0; i < la.plate_count; ++i) std::printf("%s%u", i ? "," : "", la.plates[i].handle);
+        std::printf("],\"values\":[");
+        for (unsigned i = 0; i < la.plate_count; ++i) std::printf("%s%.6f", i ? "," : "", double(la.plates[i].value));
+        std::printf("],\"first\":[%.6f,%.6f,%.6f],\"light\":[%.6f,%.6f,%.6f]},", la.plates[0].position[0],
+                    la.plates[0].position[1], la.plates[0].position[2], la.position[0], la.position[1], la.position[2]);
+        std::printf("\"b\":{\"handle\":%u,\"count\":%u,\"handles\":[", lb.handle, lb.plate_count);
+        for (unsigned i = 0; i < lb.plate_count; ++i) std::printf("%s%u", i ? "," : "", lb.plates[i].handle);
+        std::printf("]},\"merged\":%u,\"plates_dropped\":%u,", ships->stats.merged, ships->stats.plates_dropped);
+        const double t[3] = {100., 200., 300.};
+        float w[12];
+        rows(0., 1., t, w);
+        log->clear();
+        log->push(0x5000, 0x1000, 9, w);
+        build_nodes(*ships, *log, nodes.get());
+        const NodeLight* node = find_node(*nodes, 0x5000, 9);
+        float vi[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+        float c[plate_slots * 4];
+        for (float& v : c) v = -1.f;
+        float tier = -1.f;
+        if (node) plate_constants(*node, w, vi, c, &tier);
+        std::printf("\"node_count\":%u,\"registers\":[", node ? node->plate_count : 0u);
+        for (unsigned i = 0; i < plate_slots * 4; ++i) std::printf("%s%.9g", i ? "," : "", double(c[i]));
+        // A non-finite plate (value 0 after the node build) is left unused.
+        NodeLight broken = node ? *node : NodeLight{};
+        broken.plate[1][3] = 0.f;
+        plate_constants(broken, w, vi, c);
+        std::printf("],\"broken_slot1\":[%.9g,%.9g,%.9g,%.9g],\"tier\":%.1f,\"tiers\":[%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f]},",
+                    double(c[4]), double(c[5]), double(c[6]), double(c[7]), double(tier), double(plate_tier(0)),
+                    double(plate_tier(1)), double(plate_tier(2)), double(plate_tier(3)), double(plate_tier(4)),
+                    double(plate_tier(5)), double(plate_tier(6)), double(plate_tier(7)), double(plate_tier(8)));
+    }
     // ---- cap: 300 ships, one jet each
     {
         static ee::Record r[300];

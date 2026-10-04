@@ -59,6 +59,18 @@ constexpr unsigned ship_block = 16, ship_blocks = ship_capacity / ship_block; //
 constexpr unsigned log_capacity = 4096;     // routed hull draws logged per frame; further draws are counted dropped
 constexpr unsigned node_capacity = 2048;    // hull nodes carrying a light; further nodes are counted dropped
 constexpr unsigned node_slots = 4096;
+// Nozzle plates (docs/architecture/engine-light.md "Nozzle plates"): up to plate_slots main nozzles per ship carry the
+// light-map gain suppression of the twin, the light's own nozzle among them. Each plate is the point its nozzle's light
+// would sit at (behind x value_eff along the plume axis) with that nozzle's value_eff; the twin's weight is the maximum
+// over the ship's plates. Brightest first (I(s) x value_eff; ties: the lower node handle, then the earlier record);
+// one plate per node handle; a smaller co-located layer of another record (engine_plumes merge_layers) adds none.
+constexpr unsigned plate_slots = 8;
+struct Plate {
+    double position[3]{};           // world, the record's space (the nozzle's light point)
+    float value = 0.f;              // the nozzle's value_eff (world units)
+    float brightness = 0.f;         // I(s) x value_eff: the order key
+    std::uint32_t handle = 0;
+};
 struct Light {
     std::uint32_t root = 0;         // the ship's root node (the jets' node+0x18)
     double position[3]{};           // world, the record's space
@@ -68,10 +80,15 @@ struct Light {
     std::uint32_t handle = 0;       // the chosen jet's node handle (ties: the lower one wins)
     float s = 0.f, value = 0.f;     // the chosen jet's throttle and value_eff (the row's diagnostics)
     bool own = false;               // a record of the own ship fed it (never evicted by a full table)
+    unsigned plate_count = 0;
+    Plate plates[plate_slots];      // the ship's main nozzles, brightest first (add_plate)
 };
 struct ShipStats {
-    // dropped: lights lost to the full table (a dimmer newcomer refused, or an entry evicted by a brighter or own one)
+    // dropped: lights lost to the full table (a dimmer newcomer refused, or an entry evicted by a brighter or own one);
+    // merged: main-jet records adding no plate as a smaller co-located layer; plates_dropped: main nozzles beyond the
+    // ship's plate_slots (the dimmest give way)
     unsigned records = 0, main = 0, rcs = 0, brake = 0, other_view = 0, invalid = 0, orphan = 0, dropped = 0;
+    unsigned merged = 0, plates_dropped = 0;
 };
 struct ShipTable {
     Light lights[ship_capacity];
@@ -191,13 +208,49 @@ inline bool record_light(const ee::Record& r, const ee::Body* body, float radius
     *out = l;
     return true;
 }
+// The record's plate into the ship's list (brightest first; ties: the lower handle, then the earlier record). A second
+// record of a handle already listed keeps the brighter of the two; beyond plate_slots the dimmest gives way.
+inline void add_plate(Light& ship, const Light& record, ShipStats& stats) noexcept {
+    Plate p{};
+    for (unsigned i = 0; i < 3; ++i) p.position[i] = record.position[i];
+    p.value = record.value;
+    p.brightness = record.brightness;
+    p.handle = record.handle;
+    const auto before = [](const Plate& a, const Plate& b) {
+        return a.brightness > b.brightness || (a.brightness == b.brightness && a.handle < b.handle);
+    };
+    unsigned n = ship.plate_count;
+    for (unsigned i = 0; i < n; ++i)
+        if (ship.plates[i].handle == p.handle) {
+            if (!before(p, ship.plates[i])) return;
+            for (unsigned j = i; j + 1 < n; ++j) ship.plates[j] = ship.plates[j + 1]; // re-inserted below
+            --n;
+            break;
+        }
+    unsigned at = n;
+    while (at > 0 && before(p, ship.plates[at - 1])) --at;
+    if (at >= plate_slots) {
+        ++stats.plates_dropped;
+        ship.plate_count = n;
+        return;
+    }
+    if (n >= plate_slots) {
+        ++stats.plates_dropped;
+        n = plate_slots - 1;
+    }
+    for (unsigned j = n; j > at; --j) ship.plates[j] = ship.plates[j - 1];
+    ship.plates[at] = p;
+    ship.plate_count = n + 1;
+}
 // Ship lights from one frame's records: per root the brightest main nozzle (brightness I(s) x value_eff; ties: the
 // lower node handle, then the earlier record), only records of the scene view (scene phase and the scene camera's
 // handle, as the plume stage draws them; `camera`/`scene` null = every record) with a known parent. RCS (steering) and
 // brake-pushed bodies never feed it. At most ship_capacity ships: a new ship beyond that replaces the dimmest entry
 // (brightness I(s) x value_eff) when it is brighter, and always when it is the own ship's (`own`: Ring::own, null = no
 // record is); own-ship entries are never the ones replaced. Every light lost to the cap counts dropped (dimmest_ship:
-// the block minima).
+// the block minima). Every main nozzle of the scene view also feeds its ship's plates (add_plate) unless merge_layers
+// drops it as a smaller co-located layer of another record of the ship (`parents` as the plume stage passes them;
+// records past ee::ring_capacity are not merged); the light itself is chosen over all main records as before.
 using BodyLookup = const ee::Body* (*)(int index);
 inline void build_ships(const ee::Record* records, const std::uint32_t* parents, const float* radii,
                         const std::uint32_t* camera, const std::uint8_t* scene, std::uint32_t scene_handle,
@@ -205,6 +258,9 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
                         ShipTable* out, const std::uint8_t* own = nullptr) noexcept {
     out->clear();
     if (!records || !parents) return;
+    std::uint8_t merged[ee::ring_capacity];
+    const unsigned merging = count < ee::ring_capacity ? count : ee::ring_capacity;
+    ep::merge_layers(records, merging, parents, merged);
     for (unsigned i = 0; i < count; ++i) {
         const ee::Record& r = records[i];
         ++out->stats.records;
@@ -234,13 +290,26 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
         ++out->stats.main;
         l.root = root;
         l.own = own && own[i];
+        const bool plate = !(i < merging && merged[i]);
+        out->stats.merged += !plate;
         const int found = find_ship(*out, root);
         if (found >= 0) {
             Light& have = out->lights[found];
+            if (plate) add_plate(have, l, out->stats);
             const bool was_own = have.own;
             bool changed = false;
             if (l.brightness > have.brightness || (l.brightness == have.brightness && l.handle < have.handle)) {
-                have = l;
+                // The selection fields only: the plate list stays.
+                have.position[0] = l.position[0];
+                have.position[1] = l.position[1];
+                have.position[2] = l.position[2];
+                for (unsigned k = 0; k < 3; ++k) have.colour[k] = l.colour[k];
+                have.radius = l.radius;
+                have.brightness = l.brightness;
+                have.handle = l.handle;
+                have.s = l.s;
+                have.value = l.value;
+                have.own = l.own;
                 changed = true;
             }
             if (was_own || l.own) {
@@ -262,6 +331,8 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
         unsigned h = hash_key(root, 0, ship_slots - 1);
         while (out->slot[h]) h = (h + 1) & (ship_slots - 1);
         out->lights[index] = l;
+        out->lights[index].plate_count = 0;
+        if (plate) add_plate(out->lights[index], l, out->stats);
         out->slot[h] = std::uint16_t(index + 1);
         if (out->blocks_known) rescan_ship_block(*out, index / ship_block);
     }
@@ -302,6 +373,8 @@ struct NodeLight {
     float local[3]{};   // the light in the node's model space
     float colour[3]{};
     float radius = 0.f;
+    unsigned plate_count = 0;
+    float plate[plate_slots][4]{}; // the ship's plates in the node's model space, value_eff in .w (world units)
 };
 struct NodeStats {
     unsigned logged = 0, matched = 0, singular = 0, dropped = 0, log_dropped = 0;
@@ -383,6 +456,20 @@ inline void build_nodes(const ShipTable& ships, const DrawLog& log, NodeTable* o
             finite = finite && ee::finite_f(n.local[k]);
         }
         n.radius = l.radius;
+        // The plates in the node's model space; a non-finite one is left out (its nozzle keeps the full gain).
+        for (unsigned p = 0; p < l.plate_count; ++p) {
+            const Plate& plate = l.plates[p];
+            const double r[3] = {plate.position[0] - double(d.world[3]), plate.position[1] - double(d.world[7]),
+                                 plate.position[2] - double(d.world[11])};
+            float* out_plate = n.plate[n.plate_count];
+            bool ok = ee::finite_f(plate.value) && plate.value > 0.f;
+            for (unsigned k = 0; k < 3; ++k) {
+                out_plate[k] = float(inverse[k * 3] * r[0] + inverse[k * 3 + 1] * r[1] + inverse[k * 3 + 2] * r[2]);
+                ok = ok && ee::finite_f(out_plate[k]);
+            }
+            out_plate[3] = plate.value;
+            n.plate_count += ok;
+        }
         if (!finite) {
             ++out->stats.singular;
             continue;
@@ -449,6 +536,38 @@ inline bool draw_constants(const NodeLight& n, const float world[12], const floa
     for (unsigned i = 0; i < 12; ++i)
         if (!ee::finite_f(out[i])) return false;
     return true;
+}
+// The plate registers (renderer::EngineLightAbi::plate_constant, plate_slots of them) for one draw: per plate
+// ((P - cam) / v, 1 / v), P placed by the draw's world rows like the light, v its value_eff; the twin forms
+// (d / v)^2 = |D / v - (P - cam) / v|^2 for the pixel at D (camera-relative). An unused slot, or a plate whose
+// constants are not finite, gets unused_plate: (d / v)^2 = 4 everywhere, weight 0. `tier` (null: none) gets the
+// twin's uniform branch tier for c202.w: 0 for at most one plate, 1 for two to four, 2 for five to eight (the twin runs
+// 1, 4 or 8 slots).
+constexpr float unused_plate[4] = {2.f, 0.f, 0.f, 0.f};
+inline float plate_tier(unsigned plates) noexcept {
+    return plates <= 1 ? 0.f : plates <= 4 ? 1.f : 2.f;
+}
+inline void plate_constants(const NodeLight& n, const float world[12], const float view_inverse[12],
+                            float out[plate_slots * 4], float* tier = nullptr) noexcept {
+    if (tier) *tier = plate_tier(n.plate_count);
+    for (unsigned p = 0; p < plate_slots; ++p) {
+        float* o = out + p * 4;
+        for (unsigned k = 0; k < 4; ++k) o[k] = unused_plate[k];
+        if (p >= n.plate_count) continue;
+        const float* local = n.plate[p];
+        const double inv = 1. / double(local[3]);
+        float c[4];
+        bool ok = true;
+        for (unsigned i = 0; i < 3; ++i) {
+            const double placed = double(world[i * 4]) * local[0] + double(world[i * 4 + 1]) * local[1] +
+                                  double(world[i * 4 + 2]) * local[2];
+            c[i] = float((placed + (double(world[i * 4 + 3]) - double(view_inverse[i * 4 + 3]))) * inv);
+            ok = ok && ee::finite_f(c[i]);
+        }
+        c[3] = float(inv);
+        if (!ok || !ee::finite_f(c[3]) || !(c[3] > 0.f)) continue;
+        for (unsigned k = 0; k < 4; ++k) o[k] = c[k];
+    }
 }
 // --------------------------------------------------------------------------- twin kinds
 // The original-shading variants a twin may stand in for (MotionOutput::engine_light_kinds order): the plain motion

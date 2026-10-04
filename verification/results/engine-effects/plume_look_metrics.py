@@ -31,9 +31,33 @@ if "--crops" in sys.argv:
     os.makedirs(CROPS, exist_ok=True)
 BEFORE = sys.argv[sys.argv.index("--before") + 1] if "--before" in sys.argv else None
 # The drawn nozzle width (px) of the bands: the 150 px fighter and capital are held by the near-camera cap to 88.5 px at
-# 1080 (the fixture's STRUCTURE rows), the 40 px ones are uncapped; the end-on 150 px disc 65.6 px.
+# 1080 (the fixture's STRUCTURE rows), the 40 px ones are uncapped; the end-on 150 px disc 65.6 px until Run 125. Since
+# Run 125 the dump's README lists each nozzle's drawn body and disc widths ("drawn body X px, disc Y px", from the
+# builder at the captured frame): the side bands' width is 01a band 0's body, the 02b disc's is 02b band 0's disc (the
+# disc keeps the natural nozzle width since Run 125); the constants stay the fallback for older dumps.
 NOZZLE_PX = {"05": 40.0, "09": 40.0}
 CAPPED_NOZZLE_PX, DISC_NOZZLE_PX = 88.5, 65.6
+WIDTHS_FROM = "constants (the dump's README lists no drawn widths)"
+
+
+def drawn_widths(directory):
+    import re
+    path = os.path.join(directory, "README.md")
+    if not os.path.exists(path):
+        return {}
+    out = {}
+    for line in open(path):
+        m = re.match(r"- `([^`]+)` band (\d+): .*drawn body ([0-9.]+) px, disc ([0-9.]+) px", line)
+        if m:
+            out[(m.group(1)[:3].rstrip("_"), int(m.group(2)))] = (float(m.group(3)), float(m.group(4)))
+    return out
+
+
+_widths = drawn_widths(DIR)
+if ("01a", 0) in _widths and ("02b", 0) in _widths and _widths[("02b", 0)][1] > 0:
+    CAPPED_NOZZLE_PX, DISC_NOZZLE_PX = _widths[("01a", 0)][0], _widths[("02b", 0)][1]
+    WIDTHS_FROM = "the dump's README (01a band 0 body, 02b band 0 disc)"
+print(f"# drawn nozzle widths: side bands {CAPPED_NOZZLE_PX} px, 02b disc {DISC_NOZZLE_PX} px, from {WIDTHS_FROM}")
 
 # Side-view bands: file, label, nozzle (x, y), exhaust direction (-1: leftwards), throttle.
 SIDE = [

@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "247c963e39c105a2a04abecf0051576f2149f6bf3b1802133cbd801c4b051b6c",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "d0414fffaaa9cfb1e800be105411e71ef604235733d075fa27fa9830e8ee21b4",
-  "build/d3d9.dll": "b02cb0c6c06f92396ee877caa8658c77955477776a6ffdc2f6a1ba41c238e08d"
+  "verification/probe/build/motion_output_fixture.exe": "e9cbd764a6454ac3e18e499201f8a7114d418b10cad851aeb388c1cf73bb2f98",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "9855a5bd7a56f63282a97c83d5f4c5d0b52453c661c2834589f65b0dec68d2db",
+  "build/d3d9.dll": "5effd61021fea05959e3cb93a86f4536680915886a78414ab66f43337dd2aef3"
  },
  "checks": 107,
  "frames": [
@@ -153,8 +153,9 @@
    "reach": "3.00",
    "colour_scale": "0.25",
    "cap": "1",
-   "constants": "c200-c202",
-   "ships_max": "256"
+   "constants": "c190-c202",
+   "ships_max": "256",
+   "plates_max": "8"
   },
   "hull_variant": {
    "device": "1",
@@ -163,7 +164,7 @@
    "refused": "00",
    "mismatched": "00",
    "failed": "00",
-   "words_max": "1626",
+   "words_max": "1741",
    "depth": "1"
   },
   "frames_with_candidates": 7,
@@ -176,7 +177,8 @@
     "draws_lit": "0",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    },
    {
     "frame": "2",
@@ -186,7 +188,8 @@
     "draws_lit": "1",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    },
    {
     "frame": "3",
@@ -196,7 +199,8 @@
     "draws_lit": "1",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    },
    {
     "frame": "4",
@@ -206,7 +210,8 @@
     "draws_lit": "1",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    },
    {
     "frame": "5",
@@ -216,7 +221,8 @@
     "draws_lit": "1",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    },
    {
     "frame": "6",
@@ -226,7 +232,8 @@
     "draws_lit": "1",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    },
    {
     "frame": "7",
@@ -236,7 +243,8 @@
     "draws_lit": "1",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    },
    {
     "frame": "8",
@@ -246,13 +254,14 @@
     "draws_lit": "1",
     "no_twin": "0",
     "no_rows": "0",
-    "twins": "6"
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
    }
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-engine-light-20261004-142623-756293",
- "trace_sha256": "c14d5098f5fab5e3552e183ad5d0dcbe841a84fb6d37f0c1c96c2b6691194c51",
- "dll_sha256": "d0414fffaaa9cfb1e800be105411e71ef604235733d075fa27fa9830e8ee21b4",
- "exe_sha256": "247c963e39c105a2a04abecf0051576f2149f6bf3b1802133cbd801c4b051b6c"
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261004-153949-295712",
+ "trace_sha256": "0423b08efc91a9325f5ba2b4246e61a9f88d58d9b4cecf203b5d6141967c9693",
+ "dll_sha256": "9855a5bd7a56f63282a97c83d5f4c5d0b52453c661c2834589f65b0dec68d2db",
+ "exe_sha256": "e9cbd764a6454ac3e18e499201f8a7114d418b10cad851aeb388c1cf73bb2f98"
 }

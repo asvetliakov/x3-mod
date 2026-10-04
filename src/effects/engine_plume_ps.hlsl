@@ -84,7 +84,7 @@ struct Input {
     float4 tint : TEXCOORD3;      // the mean colour: the tail's, the halo's and the ring's; A the detail level
     float4 params : TEXCOORD4;    // throttle s, seed (0..1), I_ring / I_core / 2, the disc's weight
     float4 fog : TEXCOORD5;       // the fog transmittance per channel: the white-hot core's and the ring's (the tint has it); sin(view)
-    float4 peak : TEXCOORD6;      // the head colour (with the fog), the kind (0 axial, 1 disc)
+    float4 peak : TEXCOORD6;      // the head colour (with the fog), the kind (disc 1; axial under 0.5: its n over the disc's x 127 / 255)
     float2 pixel : VPOS;
 };
 // Value noise of the mock-up (hash p = frac(p 0.3183099 + (.1, .2, .3)) 17, frac(x y z (x + y + z)); smoothstep
@@ -256,7 +256,10 @@ float4 main(Input i) : COLOR0 {
                            (x >= -0.05 ? 1.0 : 0.0) * soft_body;
         // The mouth's hand-over to the disc: inside the disc's footprint (the screen-plane distance from the nozzle,
         // (x sin(view), y)) the axial quad gives way by the disc's weight, so the two draws do not stack at the mouth.
-        const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen));
+        // Since Run 125 the disc keeps the natural nozzle width while a capped body shrinks: the distance is measured in
+        // the disc's widths, x the axial n over the disc's n (the head colour's alpha, 0..127 / 255 = 0..1).
+        const float handover_scale = min(i.peak.w * (255.0 / 127.0), 1.0);
+        const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen * handover_scale));
         result = ((colour * core + 0.5 * darken * deep * outer) * body + soft_max(ring, ring_colour, halo, tint).rgb) * handover;
     }
     return float4(max(result, 0.0), 0.0);
