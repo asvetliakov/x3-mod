@@ -171,6 +171,12 @@ mul   rL.xyz, rL, c223.x        ; inserted immediately after it
   boundary in the EXE, no register or flag liveness, no reentrancy question. The
   only liveness obligations are the two inside the shader named above.
 
+**Nozzle plates (2026-10-04).** In the engine-light twins the gain is per pixel,
+g - (g - 1) w, with w the nozzle-plate weight around the ship's engine light (three
+instructions in place of the MUL): white nozzle plates near the light emit the
+texture's own value; see [engine-light.md](../architecture/engine-light.md)
+"Nozzle plates". The base variants above are unchanged.
+
 **Host.** `original_fill_transform` in `src/renderer/linear_material.cpp`
 (exposed as `linear_material_original_fill_pixel_variant`, the `--original-fill`
 machinery) is the natural host: it already walks the original word by word,

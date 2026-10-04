@@ -1279,7 +1279,20 @@ constexpr unsigned lightmap_dynamic_constant = MaterialMotionAbi::pixel_mode_con
 Word lightmap_gain_operand(bool dynamic) noexcept {
     return dynamic ? lane(constant, lightmap_dynamic_constant, 3) : lane(constant, lightmap_gain_constant, 0);
 }
-void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic) {
+// Nozzle plates (engine-light twins, linear_engine_light_inc.h): the engine
+// light block leaves the plate weight w in r15.w and the gain becomes per
+// pixel, g - (g - 1) w: `mad r15.w, -r15.w, g, r15.w` (w - w g), `add r15.w,
+// r15.w, g`, `mul rL.xyz, rL, r15.w`. Three instructions, 3 slots, g read
+// twice; the program re-proves r15 and the order (original_fill_transform).
+constexpr unsigned lightmap_plate_weight = 15, lightmap_plate_scratch_references = 6;
+void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic, bool plate = false) {
+    if (plate) {
+        const unsigned w = lightmap_plate_weight;
+        emit(out, mad, {dst(temp, w, 8), src(temp, w, 0xff, 1), lightmap_gain_operand(dynamic), lane(temp, w, 3)});
+        emit(out, add, {dst(temp, w, 8), lane(temp, w, 3), lightmap_gain_operand(dynamic)});
+        emit(out, mul, {dst(temp, reg), src(temp, reg), lane(temp, w, 3)});
+        return;
+    }
     emit(out, mul, {dst(temp, reg), src(temp, reg), lightmap_gain_operand(dynamic)});
 }
 // Hull emissive widening (docs/architecture/hull-emissive-widening.md 8.3
@@ -1443,7 +1456,8 @@ int lightmap_widen_site(const Word* code, const Structure& s, std::size_t i, uns
 // `final_destination`.xyz from exactly one unmodified rL operand; nothing
 // after it reads rL.xyz. Returns rL, or -1 when the program has no such term.
 int lightmap_term(const Word* code, const Structure& s, std::size_t site, std::size_t final_rgb, unsigned stage,
-                  bool gained, Word final_destination, bool dynamic = false, int* widened = nullptr) noexcept {
+                  bool gained, Word final_destination, bool dynamic = false, int* widened = nullptr,
+                  bool plate = false) noexcept {
     std::size_t i = 0;
     while (i < s.instructions.size() && s.instructions[i].at != site) ++i;
     if (i >= s.instructions.size() || site >= final_rgb) return -1;
@@ -1476,7 +1490,21 @@ int lightmap_term(const Word* code, const Structure& s, std::size_t site, std::s
     // The widened block's boost (its last sixteen instructions, proven word
     // for word above) is the term's own; the gain MUL follows the block.
     if (widen) i += lightmap_widen_after;
-    if (gained) {
+    if (gained && plate) {
+        // The nozzle-plate gain (lightmap_gain_instruction with plate): the
+        // two weight instructions on r15.w, then the MUL by r15.w.
+        if (i + 3 >= s.instructions.size() || reg == lightmap_plate_weight) return -1;
+        const unsigned w = lightmap_plate_weight;
+        const auto &a = s.instructions[i + 1], &b = s.instructions[i + 2], &m = s.instructions[i + 3];
+        if (a.opcode != mad || a.count != 4 || code[a.at + 1] != dst(temp, w, 8) ||
+            code[a.at + 2] != src(temp, w, 0xff, 1) || code[a.at + 3] != lightmap_gain_operand(dynamic) ||
+            code[a.at + 4] != lane(temp, w, 3) || b.opcode != add || b.count != 3 || code[b.at + 1] != dst(temp, w, 8) ||
+            code[b.at + 2] != lane(temp, w, 3) || code[b.at + 3] != lightmap_gain_operand(dynamic) || m.opcode != mul ||
+            m.count != 3 || code[m.at + 1] != dst(temp, reg) || code[m.at + 2] != src(temp, reg) ||
+            code[m.at + 3] != lane(temp, w, 3))
+            return -1;
+        i += 3;
+    } else if (gained) {
         if (++i >= s.instructions.size()) return -1;
         const auto& gain = s.instructions[i];
         if (gain.opcode != mul || gain.count != 3 || code[gain.at + 1] != dst(temp, reg) ||
@@ -2383,6 +2411,17 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             if (lightmap_on) lightmap_reg = unsigned(reg);
         }
         const bool widen_on = lightmap_on && widen;
+        // Nozzle plates (linear_engine_light_inc.h): the twin's light block
+        // feeds the gain a per-pixel weight. The block (at the lobe-sum site)
+        // must precede the light-map fetch, both outside flow control, and
+        // c198 must be free; otherwise the twin keeps the plain gain.
+        bool plate_on = false;
+        if (engine_on && lightmap_on && site < lightmap_site &&
+            constant_free(original, s, engine_light_plate_constant)) {
+            const int site_depth = linear_material_flow_control_depth(original, words, site),
+                      fetch_depth = linear_material_flow_control_depth(original, words, lightmap_site);
+            plate_on = site_depth == 0 && fetch_depth == 0;
+        }
         if (share_applied) {
             std::array<unsigned, 2> seeds{};
             if (xt) {
@@ -2418,11 +2457,19 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             if (!original_share_range_free(block.data(), 0, block.size(), true, sum, light, engine_on))
                 return LinearMaterialResult::ResourceLimit;
         }
+        unsigned engine_scratch_references = 0;
         if (engine_on) {
             Words block;
-            engine_light_block(block, row->pixel_depth_input_register);
+            engine_light_block(block, row->pixel_depth_input_register, plate_on);
             if (!engine_light_range_free(block.data(), 0, block.size(), row->pixel_depth_input_register))
                 return LinearMaterialResult::ResourceLimit;
+            for (std::size_t at = 0; at < block.size();) {
+                const unsigned n = length(block[at]);
+                for (unsigned q = 1; q <= n; ++q)
+                    engine_scratch_references +=
+                        kind(block[at + q]) == temp && index(block[at + q]) == engine_light_scratch;
+                at += n + 1;
+            }
         }
         if (!block_on && !share && !lightmap_on) {
             output.swap(motion);
@@ -2431,7 +2478,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         Words combined;
         combined.reserve(motion.size() + (share ? 640 : 80) + (widen_on ? lightmap_widen_words : 0));
         combined.push_back(original[0]);
-        std::size_t inserted = 0, edited = 0, combined_site = 0, combined_final = 0, widen_at = 0;
+        std::size_t inserted = 0, edited = 0, combined_site = 0, combined_final = 0, widen_at = 0, engine_at = 0;
         const auto flush_edits = [&](std::size_t at) {
             while (edited < edits.size() && edits[edited].at == at) {
                 const auto& e = edits[edited++];
@@ -2448,6 +2495,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             if (at == s.first_declaration) {
                 if (block_on) original_fill_definition(combined, fill);
                 if (engine_on) engine_light_definition_words(combined);
+                if (plate_on) engine_light_plate_definition_words(combined);
                 if (share) {
                     emit(combined, def,
                          {dst(constant, original_share_domain, xyzw), bits(2.2f), bits(0.0f), bits(65504.0f),
@@ -2473,7 +2521,10 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             if (block_on && at == site) {
                 // The engine light's term into r14 first: both fill blocks of
                 // the share twin add the same capped term.
-                if (engine_on) engine_light_block(combined, row->pixel_depth_input_register);
+                if (engine_on) {
+                    engine_at = combined.size();
+                    engine_light_block(combined, row->pixel_depth_input_register, plate_on);
+                }
                 // Fill twin: S_sum' = fill(sum) - fill(sum - S_sum), evaluated
                 // on r23 (free until the final RGB instruction writes it).
                 if (share)
@@ -2502,7 +2553,8 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             }
             // The gain MUL immediately after the light-map fetch, before any
             // motion insertion keyed on the next original instruction.
-            if (lightmap_on && at == lightmap_site) lightmap_gain_instruction(combined, lightmap_reg, lightmap_dynamic);
+            if (lightmap_on && at == lightmap_site)
+                lightmap_gain_instruction(combined, lightmap_reg, lightmap_dynamic, plate_on);
             at += n + 1;
         }
         if (inserted != insertions.size() || edited != edits.size()) return LinearMaterialResult::ProfileMismatch;
@@ -2591,8 +2643,10 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             // Dynamic: no DEF of c223 or c217 (a DEF would shadow the upload)
             // and exactly one read of the c217.w lane, the MUL's.
             unsigned definitions = 0, reads = 0;
+            // The plate gain reads g twice (lightmap_gain_instruction).
+            const unsigned gain_reads = plate_on ? 2u : 1u;
             constant_uses(combined.data(), final_structure, lightmap_gain_constant, definitions, reads);
-            bool constants = definitions == 1 && reads == 1;
+            bool constants = definitions == 1 && reads == gain_reads;
             if (lightmap_dynamic) {
                 constants = definitions == 0 && reads == 0;
                 constant_uses(combined.data(), final_structure, lightmap_dynamic_constant, definitions, reads);
@@ -2602,13 +2656,13 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                     for (unsigned q = 2; q <= in.count; ++q)
                         if (combined[in.at + q] == lightmap_gain_operand(true)) ++lane_reads;
                 }
-                constants = constants && definitions == 0 && lane_reads == 1;
+                constants = constants && definitions == 0 && lane_reads == gain_reads;
             }
             int widened = -1;
             if (!constants || combined_site == 0 || combined_final == 0 ||
                 lightmap_term(combined.data(), final_structure, combined_site, combined_final, lightmap_stage, true,
                               share ? dst(temp, original_share_total) : dst(color_output, 0), lightmap_dynamic,
-                              widen_on ? &widened : nullptr) != int(lightmap_reg) ||
+                              widen_on ? &widened : nullptr, plate_on) != int(lightmap_reg) ||
                 (widen_on ? widened != int(widen_reg) : widened != -1))
                 return LinearMaterialResult::ProfileMismatch;
         }
@@ -2625,6 +2679,23 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             }
             constant_uses(combined.data(), final_structure, engine_light_definition, definitions, reads);
             if (definitions != 1 || reads != (share ? 5u : 4u)) return LinearMaterialResult::ProfileMismatch;
+            // Nozzle plates: c198 defined once and read by the block alone (3);
+            // r15 referenced only by the block and the plate gain (6), the
+            // block emitted before the light-map fetch.
+            constant_uses(combined.data(), final_structure, engine_light_plate_constant, definitions, reads);
+            if (definitions != (plate_on ? 1u : 0u) || reads != (plate_on ? 3u : 0u))
+                return LinearMaterialResult::ProfileMismatch;
+            if (plate_on) {
+                unsigned scratch = 0;
+                for (const auto& in : final_structure.instructions) {
+                    if (in.opcode == dcl || in.opcode == def) continue;
+                    for (unsigned q = 1; q <= in.count; ++q)
+                        scratch += kind(combined[in.at + q]) == temp && index(combined[in.at + q]) == engine_light_scratch;
+                }
+                if (engine_at == 0 || engine_at >= combined_site ||
+                    scratch != engine_scratch_references + lightmap_plate_scratch_references)
+                    return LinearMaterialResult::ProfileMismatch;
+            }
         }
         output.swap(combined);
         fill_applied = fill_on;

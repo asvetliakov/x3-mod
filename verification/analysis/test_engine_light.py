@@ -74,9 +74,11 @@ def bits(value):
 NRM, DP3, MIN, RCP, MUL, MAD, MAX, RSQ, ADD = 36, 8, 10, 6, 5, 4, 11, 7, 2
 
 
-def engine_block(depth):
+def engine_block(depth, plate=False):
     e, s, a, b, f, k = 14, 15, 200, 201, 202, 199
     words = []
+    weight = (op(MAD, dst(TEMP, s, 8) | SAT, lane(TEMP, e, 3), lane(CONST, 198, 0), lane(CONST, 198, 1)) +
+              op(MAX, dst(TEMP, s, 8), lane(TEMP, s, 3), lane(CONST, 198, 2))) if plate else []
     for w in (op(NRM, dst(TEMP, s), src(INPUT, 2)),
               op(DP3, dst(TEMP, s, 8), src(TEMP, s), src(CONST, f)),
               op(MIN, dst(TEMP, s, 8), lane(TEMP, s, 3), lane(CONST, k, 1)),
@@ -91,6 +93,7 @@ def engine_block(depth):
               op(DP3, dst(TEMP, s, 1) | SAT, src(TEMP, s), src(TEMP, e)),
               op(ADD, dst(TEMP, e, 8), lane(TEMP, e, 3, 1), lane(CONST, a, 3)),
               op(MUL, dst(TEMP, e, 8) | SAT, lane(TEMP, e, 3), lane(CONST, b, 3)),
+              weight,
               op(MUL, dst(TEMP, e, 8), lane(TEMP, e, 3), lane(TEMP, e, 3)),
               op(MUL, dst(TEMP, e, 8), lane(TEMP, e, 3), lane(TEMP, s, 0)),
               op(MUL, dst(TEMP, e), lane(TEMP, e, 3), src(CONST, b)),
@@ -103,6 +106,23 @@ ADD_TRIPLET = (op(ADD, dst(TEMP, 13) | SAT, src(TEMP, 12, 0xe4, 1), lane(CONST, 
                op(MIN, dst(TEMP, 13), src(TEMP, 14), src(TEMP, 13)) + op(ADD, dst(TEMP, 12), src(TEMP, 12), src(TEMP, 13)))
 FILL_MAD = op(MAD, dst(TEMP, 12), src(TEMP, 13), lane(CONST, 215, 0), src(TEMP, 12))
 DEF_C199 = [0x05000051, dst(CONST, 199, 15), bits(1.0), bits(-2.0 ** -20), bits(2.0 ** -40), bits(0.0)]
+# Nozzle plates (docs/architecture/engine-light.md): full suppression to 0.75 x value_eff from the light, none from 1.0,
+# linear in d^2 between; from q = saturate(1 - d^2 / R^2), R = 3 x value_eff: w = saturate(A q + B).
+PLATE_FULL, PLATE_REACH, REACH = 0.75, 1.0, 3.0
+PLATE_A = REACH ** 2 / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
+PLATE_B = (PLATE_REACH ** 2 - REACH ** 2) / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
+DEF_C198 = [0x05000051, dst(CONST, 198, 15), bits(PLATE_A), bits(PLATE_B), bits(0.0), bits(0.0)]
+GAIN_DYNAMIC = lane(CONST, 217, 3)
+
+
+def plate_gain(reg, gain=GAIN_DYNAMIC):
+    return (op(MAD, dst(TEMP, 15, 8), lane(TEMP, 15, 3, 1), gain, lane(TEMP, 15, 3)) +
+            op(ADD, dst(TEMP, 15, 8), lane(TEMP, 15, 3), gain) +
+            op(MUL, dst(TEMP, reg), src(TEMP, reg), lane(TEMP, 15, 3)))
+
+
+def plain_gain(reg, gain=GAIN_DYNAMIC):
+    return op(MUL, dst(TEMP, reg), src(TEMP, reg), gain)
 
 
 def find_all(words, pattern):
@@ -288,8 +308,7 @@ class TwinTests(unittest.TestCase):
 
     def test_twin_is_base_plus_the_engine_words(self):
         reviewed = self.reviewed()
-        blocks = {depth: engine_block(depth) for depth in range(10)}
-        checked = 0
+        checked = plated = 0
         for name, row in reviewed.items():
             if row['family'] == 'asteroid':
                 continue
@@ -301,6 +320,10 @@ class TwinTests(unittest.TestCase):
                                           (self.out / f'{name}-{set_name}-twin.bin').read_bytes()))
                 share = set_name.startswith('share')
                 fill0 = set_name.endswith('0')
+                # A gained twin carries the nozzle-plate weight (every gained program: the light's site precedes the
+                # light-map fetch, both at flow-control depth 0).
+                plate = entry['gain'] == 1
+                blocks = {depth: engine_block(depth, plate) for depth in range(10)}
                 found = [(d, find_all(twin, b)) for d, b in blocks.items()]
                 found = [(d, hits) for d, hits in found if hits]
                 self.assertEqual(len(found), 1, (name, set_name))
@@ -308,19 +331,28 @@ class TwinTests(unittest.TestCase):
                 self.assertEqual(len(hits), 1, (name, set_name))
                 self.assertIn(depth, (5, 6, 7, 8, 9), (name, set_name))   # the motion transformer's depth input
                 self.assertEqual(len(find_all(twin, DEF_C199)), 1, (name, set_name))
+                self.assertEqual(len(find_all(twin, DEF_C198)), 1 if plate else 0, (name, set_name))
                 triplets = find_all(twin, ADD_TRIPLET)
                 self.assertEqual(len(triplets), 2 if share else 1, (name, set_name))
                 delta = entry['twin_slots'] - entry['base_slots']
                 if fill0:
                     self.assertEqual(delta, 70 if share else 45, (name, set_name))
                     continue
-                self.assertEqual(delta, 28 if share else 25, (name, set_name))
+                self.assertEqual(delta, (28 if share else 25) + (4 if plate else 0), (name, set_name))
                 for at in triplets:   # each add follows its fill block's MAD
                     self.assertEqual(twin[at - len(FILL_MAD):at], FILL_MAD, (name, set_name))
                 stripped = twin
-                for pattern in [blocks[depth], DEF_C199] + [ADD_TRIPLET] * len(triplets):
+                for pattern in [blocks[depth], DEF_C199] + [DEF_C198] * plate + [ADD_TRIPLET] * len(triplets):
                     at = find_all(stripped, pattern)[0]
                     stripped = remove(stripped, at, len(pattern))
+                if plate:
+                    # The plate gain sequence after the light-map fetch, in place of the base's gain MUL, after the block.
+                    hits = [(reg, at) for reg in range(8) for at in find_all(stripped, plate_gain(reg))]
+                    self.assertEqual(len(hits), 1, (name, set_name))
+                    reg, at = hits[0]
+                    self.assertLess(find_all(twin, blocks[depth])[0], find_all(twin, plate_gain(reg))[0], (name, set_name))
+                    stripped = stripped[:at] + plain_gain(reg) + stripped[at + len(plate_gain(reg)):]
+                    plated += 1
                 if set_name.endswith('widen'):
                     # The widening's three temporaries sit one above the program's highest, which r14/r15 raise: the
                     # only other difference is that consistent renumbering (temporary registers only).
@@ -341,6 +373,14 @@ class TwinTests(unittest.TestCase):
                     self.assertEqual(stripped, base, (name, set_name))
                 checked += 1
         self.assertEqual(checked, 104 * 6)
+        self.assertEqual(plated, 100 * 4)   # every gained twin (the four glass programs have no light-map gain)
+
+    def test_plate_constants_pinned(self):
+        # The pixel program's reach ratio is the core's reach; the plate radii as documented.
+        inc = (ROOT / 'src/renderer/linear_engine_light_inc.h').read_text()
+        self.assertIn('constexpr float engine_light_reach_ratio = 3.0f, nozzle_plate_full = 0.75f, nozzle_plate_reach = 1.0f;', inc)
+        core = (ROOT / 'src/proxy/engine_light_core.h').read_text()
+        self.assertEqual(float(re.search(r'reach = ([0-9.]+)f', core).group(1)), REACH)
 
 
 class RouteWiringTests(unittest.TestCase):
@@ -384,6 +424,18 @@ class WineRecordTests(unittest.TestCase):
         self.assertIn('TEARDOWN device references=0', record['teardown'])
         self.assertLessEqual(record['cost']['hit_ns'], 200.0)
         self.assertEqual([(g['width'], g['height']) for g in record['gpu']], [(1920, 1080), (5120, 1440)])
+        # Nozzle plates: the white light map's term at the light 1 x (<= 1.05), beyond the plate radius 4 x; gain 1 and the
+        # fill-only twin 1 x everywhere; without the light (the base) 4 x everywhere; both layouts.
+        plate = record['plate']
+        self.assertTrue(plate['passed'])
+        self.assertEqual(plate['radii'], dict(reach=REACH, full=PLATE_FULL, zero=PLATE_REACH))
+        self.assertEqual(sorted(plate['modes']), ['%d-%s' % (p, m) for p in (0, 1) for m in ('gain1', 'nogain', 'nolight', 'twin')])
+        for name, mode in plate['modes'].items():
+            s = mode['stats']
+            expected = dict(twin=(1.0, 4.0), gain1=(1.0, 1.0), nogain=(1.0, 1.0), nolight=(4.0, 4.0))[name.split('-')[1]]
+            self.assertLessEqual(s['near_max'], 1.05 if expected[0] == 1.0 else 4.0 + 1e-5, name)
+            self.assertAlmostEqual(s['centre'], expected[0], places=5, msg=name)
+            self.assertAlmostEqual(s['far_min'], expected[1], places=5, msg=name)
 
     def test_tracked_seam_record(self):
         # The route-level path (run_motion_output.py seam-engine-light): twins at registration, the twin bound on the

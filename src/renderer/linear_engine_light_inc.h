@@ -28,8 +28,32 @@
 // scratch; the fill block then adds min(E, saturate(cap - decode(sum))) to
 // the decoded lobe sum before the encode, so a lit plate never exceeds the
 // cap where the native lighting did not (E 1: the plume's own radiance class).
+//
+// Nozzle plates (docs/architecture/engine-light.md "Nozzle plates"): in a twin
+// that also carries the hull light-map gain g, the block leaves the plate
+// weight w in r15.w, 1 within nozzle_plate_full x value_eff of the light, 0
+// from nozzle_plate_reach x value_eff, linear in d^2 between; the gain site
+// then scales the light-map term by g - (g - 1) w instead of g (texture
+// value alone on the nozzle plates, the full gain on windows and markings
+// elsewhere). From q = saturate(1 - d^2 / R^2), R = engine_light_reach_ratio
+// x value_eff: w = saturate(A q + B), A = k^2 / (r1^2 - r0^2),
+// B = (r1^2 - k^2) / (r1^2 - r0^2) (k the reach ratio, r0/r1 the two radii in
+// value_eff units, r1 < k so d >= R, q = 0, gives w = 0). Shader-local c198 =
+// (A, B, 0, 0); the MAX (input first) maps a NaN weight to 0 (the full gain).
 constexpr unsigned engine_light_constant = 200, engine_light_definition = 199, engine_light_term = 14,
-                   engine_light_scratch = 15, engine_light_eye = 2, engine_light_normal = 3;
+                   engine_light_scratch = 15, engine_light_eye = 2, engine_light_normal = 3,
+                   engine_light_plate_constant = 198;
+// engine_light_reach_ratio must equal engine_light::core::reach (src/proxy/engine_light_core.h; pinned by
+// verification/analysis/test_engine_light.py).
+constexpr float engine_light_reach_ratio = 3.0f, nozzle_plate_full = 0.75f, nozzle_plate_reach = 1.0f;
+constexpr float nozzle_plate_slope = engine_light_reach_ratio * engine_light_reach_ratio /
+                                     (nozzle_plate_reach * nozzle_plate_reach - nozzle_plate_full * nozzle_plate_full),
+                nozzle_plate_offset = (nozzle_plate_reach * nozzle_plate_reach -
+                                       engine_light_reach_ratio * engine_light_reach_ratio) /
+                                      (nozzle_plate_reach * nozzle_plate_reach - nozzle_plate_full * nozzle_plate_full);
+static_assert(nozzle_plate_full >= 0.0f && nozzle_plate_full < nozzle_plate_reach &&
+                  nozzle_plate_reach < engine_light_reach_ratio,
+              "the plate weight reaches 0 inside the light's radius");
 constexpr float engine_light_cap = 1.0f, engine_light_facing_floor = -0x1p-20f, engine_light_distance_floor = 0x1p-40f;
 constexpr unsigned engine_light_eye_texcoord = 1, engine_light_normal_texcoord = 2;
 void engine_light_definition_words(Words& out) {
@@ -37,8 +61,14 @@ void engine_light_definition_words(Words& out) {
          {dst(constant, engine_light_definition, xyzw), bits(engine_light_cap), bits(engine_light_facing_floor),
           bits(engine_light_distance_floor), bits(0.0f)});
 }
-// 18 instructions, 22 weighted slots (two NRM x3).
-void engine_light_block(Words& out, unsigned depth_input) {
+void engine_light_plate_definition_words(Words& out) {
+    emit(out, def,
+         {dst(constant, engine_light_plate_constant, xyzw), bits(nozzle_plate_slope), bits(nozzle_plate_offset),
+          bits(0.0f), bits(0.0f)});
+}
+// 18 instructions, 22 weighted slots (two NRM x3); with `plate` 20 / 24 (the
+// plate weight into r15.w, read by the gain site, engine_light_plate_gain).
+void engine_light_block(Words& out, unsigned depth_input, bool plate = false) {
     const unsigned e = engine_light_term, s = engine_light_scratch, a = engine_light_constant,
                    b = engine_light_constant + 1, f = engine_light_constant + 2, k = engine_light_definition;
     constexpr unsigned negate = 1;
@@ -56,6 +86,11 @@ void engine_light_block(Words& out, unsigned depth_input) {
     emit(out, 8, {dst(temp, s, 1) | sat, src(temp, s), src(temp, e)});           // saturate(N . l)
     emit(out, add, {dst(temp, e, 8), src(temp, e, 3 * 0x55, negate), lane(constant, a, 3)}); // R^2 - d^2
     emit(out, mul, {dst(temp, e, 8) | sat, lane(temp, e, 3), lane(constant, b, 3)}); // q = saturate(1 - d^2 / R^2)
+    if (plate) {
+        const unsigned c = engine_light_plate_constant;
+        emit(out, mad, {dst(temp, s, 8) | sat, lane(temp, e, 3), lane(constant, c, 0), lane(constant, c, 1)}); // w
+        emit(out, max_op, {dst(temp, s, 8), lane(temp, s, 3), lane(constant, c, 2)}); // NaN -> 0 (input first)
+    }
     emit(out, mul, {dst(temp, e, 8), lane(temp, e, 3), lane(temp, e, 3)});       // q^2
     emit(out, mul, {dst(temp, e, 8), lane(temp, e, 3), lane(temp, s, 0)});       // q^2 (N . l)
     emit(out, mul, {dst(temp, e), lane(temp, e, 3), src(constant, b)});          // E = colour q^2 (N . l)
@@ -68,6 +103,9 @@ void engine_light_add(Words& out) {
     emit(out, min_op, {dst(temp, 13), src(temp, engine_light_term), src(temp, 13)});
     emit(out, add, {dst(temp, 12), src(temp, 12), src(temp, 13)});
 }
+// The gain site of a plate twin reads the weight from r15.w
+// (lightmap_plate_gain_instructions, beside the gain MUL above).
+static_assert(engine_light_scratch == lightmap_plate_weight, "the plate weight lives in the block's scratch");
 // The program declares the two inputs with the expected semantics (TEXCOORD1
 // -> v2, TEXCOORD2 -> v3, xyz lanes present) and the motion depth input; the
 // block's temporaries and constants are free of the original. Pure scan.
@@ -90,13 +128,13 @@ bool engine_light_inputs(const Word* code, const Structure& s, unsigned depth_in
         for (unsigned q = 1; q <= last; ++q) {
             const auto t = kind(code[i.at + q]), r = index(code[i.at + q]);
             if (t == temp && (r == engine_light_term || r == engine_light_scratch)) return false;
-            if (t == constant && r >= engine_light_definition && r <= engine_light_constant + 2) return false;
+            if (t == constant && r >= engine_light_plate_constant && r <= engine_light_constant + 2) return false;
         }
     }
     return true;
 }
 // The emitted block references only its own temporaries, v2/v3/vD and its
-// constants; the fill block with the light reads r14 besides its own set.
+// constants (c198-c202); the fill block with the light reads r14 besides its own set.
 bool engine_light_range_free(const Word* code, std::size_t begin, std::size_t end, unsigned depth_input) noexcept {
     for (std::size_t at = begin; at < end;) {
         const Word token = code[at];
@@ -105,7 +143,7 @@ bool engine_light_range_free(const Word* code, std::size_t begin, std::size_t en
         for (unsigned q = 1; q <= n; ++q) {
             const auto t = kind(code[at + q]), r = index(code[at + q]);
             if (t == temp && r != engine_light_term && r != engine_light_scratch) return false;
-            if (t == constant && (r < engine_light_definition || r > engine_light_constant + 2)) return false;
+            if (t == constant && (r < engine_light_plate_constant || r > engine_light_constant + 2)) return false;
             if (t == input && r != engine_light_eye && r != engine_light_normal && r != depth_input) return false;
             if (t != temp && t != constant && t != input) return false;
         }

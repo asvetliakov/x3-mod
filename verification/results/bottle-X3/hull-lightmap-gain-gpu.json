@@ -166,13 +166,13 @@
     "vs_c30104cb0efb6675.bin": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
     "vs_e2ad860d5fbb3e59.bin": "c0aa7effc40cfcfc4c3b936c3809446f3be1048576b6a5138f6de3155f778d5d"
   },
-  "executable_sha256": "7722b79b373cb8c8a0e4d70b6d1345fae2b5556cf6540fe141f2e75b017312dd",
+  "executable_sha256": "de271c172e3c56a1372ca79c0b957a97df877b1df8a1fa17910723cb43ec8b9a",
   "code_sha256": {
     "src/renderer/quad_vertex_program.h": "bac269397080f5942b099193dbae1498b94c3ada69f9296f220cc7ac37b59fab",
     "src/renderer/quad_vertex_program_inc.h": "fbf84f4a87bc71d72091e964bbdfd0377bf72011b19d2d5b40d0b6c1346d8415",
     "verification/probe/sun_share_material_inc.h": "8b629c7ca49adf072d97ca455770fb5376d18f5d1fbe8542591d80395004bcbe",
-    "src/renderer/linear_material.cpp": "e6ffbc02891f83336052868d5e629bf4cd34775f96cf05b050ec758454c50d63",
-    "src/renderer/linear_material.h": "658208d18a1148d01834a90547328cb0caab71215fef306526582f794ab58de8",
+    "src/renderer/linear_material.cpp": "afe50a964b85c23389b308aac3f74847f65d663690094c5cc77dc1838c39c3d2",
+    "src/renderer/linear_material.h": "df9e22f63031f9600420cf2861d6f08efb39ee14ad7712c436a6a04d5cc97621",
     "src/renderer/linear_emission.cpp": "396cbead734e59087f227c4d8eb75d61be15fe2c4bdd038b6834847ad48d6d3b",
     "src/renderer/linear_emission.h": "bf3a95922aae9aba04c74e0bad6b3d3372a7a30139af37128e3566ca66d9a374",
     "src/renderer/linear_sun_share_inc.h": "de0b29729de6952a2a681e8985fef5bda35650e7bf6849a23a62d63524bfd1dc",

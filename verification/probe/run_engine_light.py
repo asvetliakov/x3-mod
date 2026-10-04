@@ -14,6 +14,11 @@ against a float64 oracle written here, independently of the C++ core:
   light-less base variant; the cap case at 1.0; the depth target against the plate's depth law (pixel-centre witness);
 - invariants: alpha, motion and depth bit-identical between base and twin, finite non-negative RGB; Reset: the
   same draw after a device Reset bit-identical;
+- nozzle plates: the light-map term's contribution (white minus black light map, same program and constants) against
+  g - (g - 1) w, w = saturate((r1^2 - (d / v)^2) / (r1^2 - r0^2)) (r0, r1 parsed from linear_engine_light_inc.h): the
+  production twin at gain 4 <= 1.05 x the texel within r0 x value of the light (the d = 0 pixel 1.0), 4 x beyond
+  r1 x value; the twin at gain 1 and the fill-only twin 1 x everywhere; the base without the light 4 x everywhere
+  (the documented engine_light-off limit);
 - cost: the per-draw CPU path (lookup, constants, SetPixelShaderConstantF of three registers) <= 0.2 us on a hit; the
   GPU cost of the term over a full-screen hull at 1920x1080 and 5120x1440 (median of five EVENT-fenced batches).
 
@@ -51,6 +56,9 @@ VISIBLE = 0.02           # ... (expected radiance >= 0.02; a darker sample is he
 ABSOLUTE = 1e-3          # where q^2 ~ 1e-5, carries the interpolated eye vector's last bits)
 HIT_NS_LIMIT = 200.0     # per-draw target (lookup + constants + upload)
 CAP = 1.0
+PLATE_NEAR_LIMIT = 1.05  # the gained light-map term within the full-suppression radius, x the texel
+PLATE_ABSOLUTE = 0.01    # the contribution against g - (g - 1) w on the ramp (pixel-centre interpolation of v2)
+PLATE_EXACT = 1e-5       # where the weight is 0 or 1, or the program has no weight
 
 
 def sha(path):
@@ -85,6 +93,13 @@ def look():
                 preset={0: float(presets[0]), 1: float(presets[2]), 2: float(presets[1])})
 
 
+def plate_radii():
+    text = (ROOT / 'src/renderer/linear_engine_light_inc.h').read_text()
+    reach, full, zero = re.search(r'constexpr float engine_light_reach_ratio = ([0-9.]+)f, nozzle_plate_full = ([0-9.]+)f, '
+                                  r'nozzle_plate_reach = ([0-9.]+)f;', text).groups()
+    return float(reach), float(full), float(zero)
+
+
 def expected_constants(case, tints, k):
     value = case['value']
     light = [case['nozzle'][i] + case['axis'][i] * k['behind'] * value for i in range(3)]
@@ -96,10 +111,14 @@ def expected_constants(case, tints, k):
 
 
 def parse(text):
-    cases, invariants, samples = {}, {}, {}
+    cases, invariants, samples, plates = {}, {}, {}, {}
     out = dict(programs=[], create=None, reset=None, cost=None, gpu=[], done='DONE' in text.split(),
                teardown=[line for line in text.splitlines() if line.startswith('TEARDOWN ')])
     for line in text.splitlines():
+        if line.startswith('P '):
+            p = line.split()
+            plates[(int(p[1]), p[2])]['rows'].append((int(p[3]), int(p[4]), [float(v) for v in p[5:8]]))
+            continue
         if line.startswith('S '):
             p = line.split()
             samples.setdefault(int(p[1]), []).append((int(p[2]), int(p[3]), [float(v) for v in p[4:7]], [float(v) for v in p[7:10]],
@@ -114,6 +133,10 @@ def parse(text):
                                             s=float(fields['s']), cluster=int(fields['cluster']), preset=int(fields['preset']),
                                             light=nums(fields['light']), camera=nums(fields['camera']), m22=float(fields['m22']),
                                             m32=float(fields['m32']))
+        elif line.startswith('PLATE '):
+            plates[(int(fields['pair']), fields['mode'])] = dict(twin=fields['twin'] == '1', gain=float(fields['gain']),
+                                                               value=float(fields['value']), finite_bad=int(fields['finite_bad']),
+                                                               light=[float(v) for v in fields['light'].split(',')], rows=[])
         elif line.startswith('INVARIANT '):
             invariants[int(fields['id'])] = {k: int(v) for k, v in fields.items() if k != 'id'}
         elif line.startswith('PROGRAM '):
@@ -128,8 +151,40 @@ def parse(text):
             out['gpu'].append(dict(width=int(fields['width']), height=int(fields['height']),
                                    base_ms=[float(v) for v in fields['base_ms'].split(',')],
                                    twin_ms=[float(v) for v in fields['twin_ms'].split(',')]))
-    out.update(cases=cases, invariants=invariants, samples=samples)
+    out.update(cases=cases, invariants=invariants, samples=samples, plates=plates)
     return out
+
+
+def oracle_plate(plate, size, radii):
+    """The light-map term's contribution per sampled pixel against g_eff(d); a twin of a gained kind carries the weight,
+    the base and the fill-only twin do not (their g_eff is the uploaded gain or 1)."""
+    reach, r0, r1 = radii
+    rel, r2 = plate['light'][0:3], plate['light'][3]
+    v = math.sqrt(r2) / reach
+    stats = dict(samples=len(plate['rows']), near=0, near_max=0.0, near_min=math.inf, centre=None, far=0, far_min=math.inf,
+                 far_max=0.0, ramp=0, max_error=0.0, channel_spread=0.0)
+    for x, y, rgb in plate['rows']:
+        ndc = (2.0 * x / size - 1.0, 1.0 - 2.0 * y / size)
+        point = (50.0 * ndc[0], 50.0 * ndc[1], 50.0)
+        dv = math.sqrt(sum((point[i] - rel[i]) ** 2 for i in range(3))) / v
+        weight = min(max((r1 * r1 - dv * dv) / (r1 * r1 - r0 * r0), 0.0), 1.0)
+        mode = plate['mode']
+        g = plate['gain'] if mode in ('twin', 'gain1', 'nolight') else 1.0
+        expected = g - (g - 1.0) * weight if mode in ('twin', 'gain1') else g
+        c = rgb[0]
+        stats['channel_spread'] = max(stats['channel_spread'], max(rgb) - min(rgb))
+        stats['max_error'] = max(stats['max_error'], abs(c - expected))
+        if x == size // 2 and y == size // 2:
+            stats['centre'] = c
+        if dv <= r0:
+            stats['near'] += 1
+            stats['near_max'], stats['near_min'] = max(stats['near_max'], c), min(stats['near_min'], c)
+        elif dv >= r1:
+            stats['far'] += 1
+            stats['far_min'], stats['far_max'] = min(stats['far_min'], c), max(stats['far_max'], c)
+        else:
+            stats['ramp'] += 1
+    return stats
 
 
 def oracle_case(case, rows, constants):
@@ -212,6 +267,23 @@ def validate(report):
         result['cases'][cid] = dict(pair=case['pair'], kind=case['kind'], tilt=case['tilt'], emissive=case['emissive'], fp16=case['fp16'],
                                     constant_error=constant_error, stats=stats, invariants=inv, checks=checks,
                                     passed=all(checks.values()))
+    radii = plate_radii()
+    result['plate'] = dict(radii=dict(reach=radii[0], full=radii[1], zero=radii[2]), modes={})
+    for (pair, mode), plate in sorted(parsed['plates'].items()):
+        plate['mode'] = mode
+        stats = oracle_plate(plate, 256, radii)
+        exact = PLATE_ABSOLUTE if mode == 'twin' else PLATE_EXACT
+        checks = dict(finite=plate['finite_bad'] == 0, samples=stats['near'] > 0 and stats['far'] > 0 and stats['ramp'] > 0,
+                      law=stats['max_error'] <= exact, grey=stats['channel_spread'] <= PLATE_EXACT)
+        if mode == 'twin':
+            checks.update(near=stats['near_max'] <= PLATE_NEAR_LIMIT, centre=abs(stats['centre'] - 1.0) <= PLATE_EXACT,
+                          far=abs(stats['far_min'] - 4.0) <= PLATE_EXACT and abs(stats['far_max'] - 4.0) <= PLATE_EXACT)
+        elif mode == 'nolight':
+            checks.update(near=abs(stats['near_min'] - 4.0) <= PLATE_EXACT and abs(stats['near_max'] - 4.0) <= PLATE_EXACT)
+        else:
+            checks.update(near=abs(stats['near_max'] - 1.0) <= PLATE_EXACT, far=abs(stats['far_max'] - 1.0) <= PLATE_EXACT)
+        result['plate']['modes']['%d-%s' % (pair, mode)] = dict(stats=stats, checks=checks, passed=all(checks.values()))
+    result['plate']['passed'] = len(result['plate']['modes']) == 8 and all(m['passed'] for m in result['plate']['modes'].values())
     cost = parsed['cost']
     result['cost_checks'] = dict(hit_ns=cost['hit_ns'] <= HIT_NS_LIMIT, hits=cost['hits'] == cost['rounds'], misses=cost['misses'] == cost['rounds'])
     result['gpu'] = []
@@ -225,6 +297,7 @@ def validate(report):
     teardown = parsed['teardown']
     result['teardown_ok'] = 'TEARDOWN device references=0' in teardown and 'TEARDOWN done' in teardown
     result['passed'] = (all(c['passed'] for c in result['cases'].values()) and all(result['cost_checks'].values()) and
+                        result['plate']['passed'] and
                         result['reset_ok'] and result['teardown_ok'] and len(result['gpu']) == 2 and len(result['cases']) >= 9)
     return result
 
@@ -263,6 +336,10 @@ def main():
                    cases={cid: dict(passed=c['passed'], max_relative=round(c['stats']['max_relative'], 6), lit=c['stats']['lit'], zero=c['stats']['zero'],
                                     capped=c['stats']['capped'], depth=c['stats']['max_depth_error'], checks=[n for n, v in c['checks'].items() if not v])
                           for cid, c in record.get('cases', {}).items()},
+                   plate={k: dict(passed=m['passed'], centre=m['stats']['centre'], near_max=m['stats']['near_max'],
+                                  near_min=m['stats']['near_min'], far_min=m['stats']['far_min'], far_max=m['stats']['far_max'],
+                                  max_error=m['stats']['max_error'], checks=[n for n, v in m['checks'].items() if not v])
+                          for k, m in record.get('plate', {}).get('modes', {}).items()},
                    reset=record.get('reset'), create=record.get('create'), teardown=record.get('teardown'),
                    teardown_ok=record.get('teardown_ok'), record=str(path.relative_to(ROOT)))
     print(json.dumps(summary, indent=1))

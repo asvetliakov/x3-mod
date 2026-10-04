@@ -1,0 +1,20 @@
+# model units per record unit 1049.6; nozzle model [-32.0, -6440.0, -60152.0] axis [0.0, -0.0, -1.0]; value_eff 23.5 = 24666 model units; light [-32.0, -6440.0, -72485.0]
+# faces 5997; plates (lm min >= 0.8) 66: d/v centroid 0.413..0.544, farthest vertex 0.546; along-axis offset from the nozzle -3893..509 model units
+# other light-mapped faces (lm max >= 0.2) 315, lm max mean 0.48; nearest d/v 0.460; within d/v < 1.0 / 1.25 / 1.5 / 2.0: 30 / 46 / 54 / 56
+  lit face d/v 0.460 pos [-1361.0, -3914.0, -61494.0] lm [0.51, 0.51, 0.51] area 43441
+  lit face d/v 0.460 pos [-1155.0, -3865.0, -61481.0] lm [0.19, 0.2, 0.19] area 43623
+  lit face d/v 0.461 pos [1361.0, -3914.0, -61494.0] lm [0.51, 0.51, 0.51] area 43441
+  lit face d/v 0.461 pos [1155.0, -3865.0, -61481.0] lm [0.19, 0.2, 0.19] area 43623
+  lit face d/v 0.463 pos [-690.0, -3400.0, -61490.0] lm [0.65, 0.65, 0.65] area 591530
+  lit face d/v 0.463 pos [690.0, -3400.0, -61490.0] lm [0.65, 0.65, 0.65] area 591530
+  lit face d/v 0.465 pos [-1198.0, -3401.0, -61491.0] lm [0.39, 0.4, 0.39] area 358222
+  lit face d/v 0.465 pos [1198.0, -3401.0, -61491.0] lm [0.39, 0.4, 0.39] area 358222
+  lit face d/v 0.502 pos [-230.0, -4415.0, -60275.0] lm [0.71, 0.73, 0.71] area 271912
+  lit face d/v 0.502 pos [230.0, -4415.0, -60275.0] lm [0.71, 0.73, 0.71] area 271912
+  lit face d/v 0.504 pos [-762.0, -7742.0, -60138.0] lm [0.26, 0.25, 0.26] area 31549
+  lit face d/v 0.504 pos [762.0, -7742.0, -60138.0] lm [0.26, 0.25, 0.26] area 31549
+# shape (r0, r1): plate gain_eff min / mean (area-weighted) / max at gain 4 | other lit faces touched (w > 0), their light-mapped area share, the mean gain_eff over them
+  (0.75, 1.00): plates 1.000 / 1.000 / 1.000 | lit 30, 0.0688 of the lit area x lm, gain_eff 1.36; of them the nozzle surround (d/v < 0.6, z -65464..-60138) 24 at gain_eff 1.00, further forward 6 (z -56774..-50753, lm max 0.39) at gain_eff 1.00..3.75
+  (0.00, 1.25): plates 1.328 / 1.467 / 1.569 | lit 46, 0.1153 of the lit area x lm, gain_eff 2.30; of them the nozzle surround (d/v < 0.6, z -65464..-60138) 24 at gain_eff 1.51, further forward 22 (z -56774..-44652, lm max 0.39) at gain_eff 2.02..3.64
+  (0.00, 2.00): plates 1.128 / 1.183 / 1.222 | lit 56, 0.1698 of the lit area x lm, gain_eff 1.71; of them the nozzle surround (d/v < 0.6, z -65464..-60138) 24 at gain_eff 1.20, further forward 32 (z -56774..-28459, lm max 0.55) at gain_eff 1.40..3.44
+  (0.75, 1.25): plates 1.000 / 1.000 / 1.000 | lit 46, 0.1153 of the lit area x lm, gain_eff 1.81; of them the nozzle surround (d/v < 0.6, z -65464..-60138) 24 at gain_eff 1.00, further forward 22 (z -56774..-44652, lm max 0.39) at gain_eff 1.00..3.44

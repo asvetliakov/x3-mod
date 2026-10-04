@@ -3,7 +3,8 @@
 // single-light layout) drawn over a plate in front of a synthetic engine light, against their light-less base
 // variants; the light goes the production CPU path (engine_light_core.h: a glow-jet record -> the ship table -> the
 // node table from a logged draw -> the draw's constants) and is uploaded at c200-c202. Prints CASE / SAMPLE /
-// INVARIANT rows for the runner's float64 oracle (verification/probe/run_engine_light.py), then the Reset witness,
+// INVARIANT rows for the runner's float64 oracle (verification/probe/run_engine_light.py), the nozzle-plate PLATE / P
+// rows (the light-map term's gain near the light: twin, gain 1, light absent, no gain), then the Reset witness,
 // the per-draw CPU cost of the lookup + constants + upload, the twins' creation time, and the GPU cost of the term
 // over a full-screen hull at 1920x1080 and 5120x1440 (EVENT-fenced). Local original programs only
 // (/tmp/x3-shader-sweep/programs); no game bytes in the repository. Never launches the game.
@@ -105,7 +106,9 @@ struct Fixture {
     std::string dir;
     unsigned size = 256;
     Com<IDirect3DSurface9> back, color32, color16, motion, depth;
-    Com<IDirect3DTexture9> white, black, flat_normal;
+    Com<IDirect3DTexture9> white, black, flat_normal, white_rgb;
+    IDirect3DTexture9* lightmap = nullptr; // the light-map stage's texture (null: black)
+    float gain_lane = gain;                // c217.w, the dynamic light-map gain
     Com<IDirect3DCubeTexture9> cube;
     Com<IDirect3DVertexDeclaration9> declaration;
     Com<IDirect3DVertexBuffer9> plate;
@@ -142,6 +145,7 @@ struct Fixture {
         texture(white, 1, 1, 1, 1);
         texture(black, 0, 0, 0, 0);
         texture(flat_normal, .5f, .5f, .5f, .5f); // AG normal (0, 0): the geometric normal
+        texture(white_rgb, 1, 1, 1, 0);           // the nozzle-plate case's light map: white RGB, alpha as black's
         api(d->CreateCubeTexture(1, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &cube.p, nullptr), "cube");
         for (unsigned f = 0; f < 6; ++f) {
             D3DLOCKED_RECT lock{};
@@ -293,7 +297,7 @@ struct Fixture {
         }
         pc[216][0] = 1.f / float(size);
         pc[216][1] = 1.f / float(size);
-        pc[217][3] = gain; // the dynamic light-map gain lane (the light map is black)
+        pc[217][3] = gain_lane; // the dynamic light-map gain lane (the light map is black but in the plate case)
         api(d->SetPixelShaderConstantF(0, &pc[0][0], 200), "PS constants");
         api(d->SetPixelShaderConstantF(203, &pc[203][0], 21), "PS constants high");
     }
@@ -324,11 +328,11 @@ struct Fixture {
         if (pairs[p].bump) {
             api(d->SetTexture(1, flat_normal.p), "s1");
             api(d->SetTexture(2, black.p), "s2");
-            api(d->SetTexture(3, black.p), "s3");
+            api(d->SetTexture(3, lightmap ? lightmap : black.p), "s3");
             api(d->SetTexture(4, cube.p), "s4");
         } else {
             api(d->SetTexture(1, black.p), "s1");
-            api(d->SetTexture(2, black.p), "s2");
+            api(d->SetTexture(2, lightmap ? lightmap : black.p), "s2");
             api(d->SetTexture(3, cube.p), "s3");
         }
         api(d->SetVertexShader(programs[p].vs.p), "set VS");
@@ -508,6 +512,54 @@ int main(int argc, char** argv) {
                                 unsigned(std::memcmp(&base.color[i * 4], &twin.color[i * 4], 12) == 0));
                 }
             ++case_id;
+        }
+        // Nozzle plates (engine-light.md "Nozzle plates"): the light-map term's gain near the light. The plate faces the
+        // camera at 50 units (tilt 0), the light placed on it at the centre pixel (128, 128: d = 0; nozzle 0.5 x value
+        // in front of the plate, axis +z), value 12 (R 36). Per pair (DEFAULT: light map s2, BUMPMAP: s3) and mode, the
+        // same program and constants drawn with the light map white (RGB 1) and black: the difference is the light-map
+        // term's contribution (the final adds it). Modes: twin = the production twin (kind 6) with c217.w 4; gain1 =
+        // the same twin with c217.w 1; nolight = its base (no twin bound, no c200-c202), c217.w 4; nogain = the twin of
+        // the fill-only kind (no light-map gain). Rows P pair mode x y r g b (stride 4).
+        {
+            const Fixture::Scene s = Fixture::scene(0.);
+            const float value = 12.f;
+            const double nozzle[3] = {Fixture::C[0], Fixture::C[1], Fixture::C[2] + 50. - 0.5 * double(value)},
+                         axis[3] = {0., 0., 1.};
+            float light[12];
+            require(light_constants(s, nozzle, axis, value, 1.f, ee::white, ep::Preset::standard, light, *ships, *nodes,
+                                    *log),
+                    "plate light");
+            struct Mode {
+                const char* name;
+                unsigned k;
+                bool twin;
+                float gain;
+            };
+            const Mode modes[] = {{"twin", 1, true, 4.f}, {"gain1", 1, true, 1.f}, {"nolight", 1, false, 4.f},
+                                  {"nogain", 0, true, 4.f}};
+            for (unsigned p = 0; p < 2; ++p)
+                for (const auto& m : modes) {
+                    f->gain_lane = m.gain;
+                    f->lightmap = f->white_rgb.p;
+                    const auto lit = f->draw(p, m.k, m.twin, s, 0.f, light, false);
+                    f->lightmap = nullptr;
+                    const auto dark = f->draw(p, m.k, m.twin, s, 0.f, light, false);
+                    unsigned finite_bad = 0;
+                    for (float v : lit.color) finite_bad += !std::isfinite(v);
+                    std::printf("PLATE pair=%u mode=%s twin=%u gain=%.9g value=%.9g finite_bad=%u light=", p, m.name,
+                                unsigned(m.twin), double(m.gain), double(value), finite_bad);
+                    for (unsigned i = 0; i < 12; ++i) std::printf("%s%.9g", i ? "," : "", double(light[i]));
+                    std::printf("\n");
+                    for (unsigned y = 0; y < f->size; y += 4)
+                        for (unsigned x = 0; x < f->size; x += 4) {
+                            const unsigned i = (y * f->size + x) * 4;
+                            std::printf("P %u %s %u %u %.9g %.9g %.9g\n", p, m.name, x, y,
+                                        double(lit.color[i] - dark.color[i]), double(lit.color[i + 1] - dark.color[i + 1]),
+                                        double(lit.color[i + 2] - dark.color[i + 2]));
+                        }
+                }
+            f->gain_lane = gain;
+            f->lightmap = nullptr;
         }
         // Reset: the render targets go (D3DPOOL_DEFAULT), the device resets, the targets come back; the shaders and
         // managed resources survive. Case 0 drawn again must match its readback bit for bit.

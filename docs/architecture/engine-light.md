@@ -47,8 +47,47 @@ first in MAX/MIN).
 | c202 | (F, 0) |
 
 No original program reads c50 or above (corpus scan of all 429 ps_2+ programs), so the per-draw upload needs no
-restore. Slots: +25 on the fill and gained variants, +28 on the share producers (two fill blocks), +45 / +70 at K = 0
-(the block is emitted for the light alone); largest twin 327 (measured, all 104 x 8 option sets).
+restore. Slots: +25 on the fill variant, +28 on the share producer (two fill blocks), +45 / +70 at K = 0 (the block is
+emitted for the light alone), and on the four gained kinds 4 more for the nozzle plates (+29, +32 with the share);
+largest twin 331 (measured 2026-10-04, all 104 x 8 option sets; 327 before the plates).
+
+## Nozzle plates
+
+Flight G (Run 124 A, run412, the own Split Scorpion in chase view): the white blob at the engine was mostly the hull.
+The Scorpion's light map (`unique_split_m4_light`) is white (0.99-1.0) on 66 of the 5,997 LOD-0 faces, the recessed
+rear nozzle plates (normals straight back), and the hull light-map gain 4 (`hull_lightmap_gain`, for lit windows and
+markings) made them emit about 4 on every channel: plate minus the surrounding hull 3.7/4.3/4.3 in the F8 HDR capture
+of frame 5437, the plume on top red ([run412_nozzle_split.py](../../verification/results/run412-engine-disc/run412_nozzle_split.py)
+and its output).
+
+Rule: in a twin that carries the light-map gain g, the light-map term is scaled by g - (g - 1) w instead of g, w the
+plate weight around the light: 1 within r0 = 0.75 x value_eff of the light, 0 from r1 = 1.0 x value_eff, linear in
+d^2 between (w = saturate((r1^2 - (d / v)^2) / (r1^2 - r0^2))). Near the nozzle the plate emits the texture's own value
+(at most 1.0) and the plume's colour shows; windows and markings outside r1 keep the full gain; the lit diffuse and
+the engine light term are untouched. The light sits 0.5 x value_eff behind the nozzle, so a nozzle plate lies about
+0.4-0.55 x value_eff from it: the plain saturate(1 - d^2 / R_lm^2) would leave the plates at gain 1.33-1.57 with
+R_lm = 1.25 x value_eff (2.0 still 1.13-1.22), hence the plateau.
+
+Coverage on the Scorpion ([nozzle_plate_coverage.py](../../verification/results/engine-light/nozzle_plate_coverage.py),
+[output](../../verification/results/engine-light/nozzle_plate_coverage_out.txt); the hull's world rows and the
+`fx_engine_xtc_red_nor` origin of frame 5437, 1 record unit = 1,049.6 model units, value_eff 23.5 = 24,666 model units):
+all 66 white faces at d/v 0.41-0.55 (farthest vertex 0.546), gain_eff 1.000; of the 315 other light-mapped faces
+(light map >= 0.2) 30 are touched, 24 of them the nozzle surround at the stern (d/v < 0.6, gain_eff 1.00) and 6 dim
+markings 3,400-9,400 model units forward of the nozzle (light map <= 0.39, gain_eff 1.00-3.75); the other 285,
+including every face more than 2 x value_eff from the light (259, the windows and markings forward), keep gain 4.
+
+Pixel program: the light block computes w from its q = saturate(1 - d^2 / R^2) with one MAD_SAT (A q + B, A =
+9 / (r1^2 - r0^2), B = (r1^2 - 9) / (r1^2 - r0^2), R = 3 x value_eff; shader-local `def c198 = (A, B, 0, 0)`) and a MAX
+(input first, NaN to 0) into r15.w; the gain MUL after the light-map fetch becomes `mad r15.w, -r15.w, g, r15.w`,
+`add r15.w, r15.w, g`, `mul rL.xyz, rL, r15.w` (g = c223.x, or c217.w with the far fade). +4 instructions, +4 slots, +24
+DWORDs; no new upload. Emitted only when the light's site precedes the light-map fetch and both sit outside flow
+control (all 100 gained programs, measured); otherwise the twin keeps the plain gain. The emitted program re-proves
+c198 (one DEF, three reads), r15 (the block's references plus six) and the block's position before the fetch. The
+reach ratio 3 in the pixel program equals `engine_light::core::reach` (pinned by `test_engine_light.py`).
+
+Limit: the suppression lives in the twin, so it acts only where the hull light does (`engine_effects = plumes`,
+`engine_light` on, a ship in the light table, its routed hull draw). With `engine_light` off, or for a ship without a
+recorded main jet, the plates keep the full gain; no second program set carries the weight.
 
 ## Variant pair, not a zero-light term
 
@@ -100,6 +139,9 @@ ps_3_0 arithmetic and `SetPixelShaderConstantF` / `GetVertexShaderConstantF` onl
 unverified on Windows ([platform-portability.md](platform-portability.md)).
 
 ## Limits and open questions
+
+- Nozzle plates keep the full light-map gain where no twin is bound (`engine_light` off, an unlit ship); see
+  "Nozzle plates".
 
 - Ships whose hull nodes hang deeper than one level under the root (turrets on sub-nodes) are not lit; the main hull is
   the root or its child in the ships studied ([engine-effects.md](../reverse-engineering/engine-effects.md) section 4).

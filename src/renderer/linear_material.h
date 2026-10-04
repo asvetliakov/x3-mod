@@ -235,11 +235,15 @@ LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(
 // saturate(1 - d^2 / R^2)^2 from the eye (v2), the geometric normal (v3) and
 // the depth interpolator's w, and in the fill block (emitted with K = 0 too,
 // the C0 decode then left out) r12 += min(E, saturate(1 - r12)) before the
-// encode; one shader-local `def c199`. The caller MUST upload
+// encode; one shader-local `def c199`. With the light-map gain the block
+// also leaves the nozzle-plate weight in r15.w (2 instructions, `def c198`)
+// and the gain becomes g - (g - 1) w per pixel (3 instructions in place of
+// the gain MUL): the light-map term near the light falls back to the
+// texture's own value (engine-light.md "Nozzle plates"). The caller MUST upload
 // EngineLightAbi::pixel_constant_count registers at pixel_constant on every
 // draw that binds the twin. Refusals (no lobe-sum site, the motion variant
 // without depth, an asteroid layout, inputs other than TEXCOORD1 -> v2 and
-// TEXCOORD2 -> v3, r14/r15 or c199-c202 used by the original) report
+// TEXCOORD2 -> v3, r14/r15 or c198-c202 used by the original) report
 // engine_applied = false; the output is then the plain option variant and
 // must not be bound as a twin. Pure, allocation-bounded, no D3D; failure
 // leaves output intact.
