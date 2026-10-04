@@ -196,3 +196,20 @@ width takes none (a hull in front of its exhaust is not distorted). The resolved
 goes back before Present: the next resolve never sees the shimmer (unaveraged, no accumulation). Measured on bottle X3:
 ceiling 1.10 / 1.47 px against 1.125 / 1.5 px at 1080p / 5120x1440, byte-equal outside the rects and after the revert;
 cost and the rest in the ledger section.
+
+## End-on view: options deferred (2026-10-04, after Run 129 A)
+
+The end-on view is the one place the plume is weaker than X4 / Everspace 2: the body strip foreshortens to nothing down
+the axis and the integrated disc stands in for it, flat. Two options were costed and deferred by the user ("not worth for
+now"):
+
+- **Stacked cross-section discs**: three or four discs spaced along the axis inside the plume, each the law's radial
+  profile at its depth, the radiance split so the total equals today's disc. Edge-on from the side (side views unchanged),
+  parallax end-on. Builder change plus a fixture case; about a day with one flight. The cheap first step if the flat
+  end-on disc ever bothers.
+- **Volumetric exhaust**: a bounding cone per nozzle ray-marched through a 3D density field (the fire law x advected 3D
+  noise), replacing strip and disc, right from every angle and intersecting hulls correctly. Per-pixel samples x coverage
+  (a near capital's ten nozzles) is the first plume feature with a real frame-time risk; a few thousand slots; two to
+  three days and several flights. Only if the stacked discs are still unsatisfying.
+- Crossed fixed strips (Freelancer-era) were rejected: they overbrighten from the side where the strips overlap unless
+  weighted and normalised by facing, and shimmer across the crossings as the camera moves.
