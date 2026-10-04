@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-04 03:35, Run123 = the engine exhaust batch over Run122). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-04 05:25, Run124 = plumes default + mouth whiteness over Run123). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,6 +15,16 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run124 = **plumes default + mouth whiteness** (Run 123 A, run409: no issues, the default preset's mouths too white, restrained preferred): DLL SHA-256
+`f35a07f1412b0a8afbeaa93f1ae9b9d7f85d79a09029bf5931c08e54ac721b3e` (59,061,764 bytes) built once from clean main `9c0c57ab` (host suite 289/3,040/0,
+0 warnings, x87 0, shader checks reused (no shader change), `verify_engine_effects_sites` 20/20 + identity 27/27; fixtures effects 8 modes, patch 62/62,
+plumes 286/286, ribbons 44/44, shimmer 43/43, light 9 cases + seam 107; [candidate](../verification/results/run124-candidate-build.json)), installed
+2026-10-04 05:19 ([install](../verification/results/run124-candidate-install.json)). `engine_effects` unset or empty is now `plumes` in the DLL, the redirect
+module, the schema, the ini template and the launcher (an invalid setting still falls back to native; `--engine-effects native` restores the game's effects),
+so a plain launch flies the Run 123 A setup. Mouth whiteness ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Mouth whiteness"):
+`Look::heat` 0.7 -> 0.1, `head_min` 0.75 -> 0.42, I(s) x 1.04; constants only. Measured on the fixture images: nozzle pixels clipped to white at the default
+preset 0 on every s 1 side view where restrained gave 0, 0.006 / 0.011 at the two 40 px views (restrained 0.034 / 0.019); body energy, far dots and every
+gate within 1 %; red plumes 0.78 of their previous total (the dimmer head), red end-on centre still 0.046 clipped. Run 124 A queued. Rollback Run123.
 Run123 = **engine exhaust batch** (Run 122 A findings + the X4/Everspace 2 gap analysis [engine-exhaust-gap-analysis.md](architecture/engine-exhaust-gap-analysis.md)
 + the look critique [engine-exhaust-look-critique.md](architecture/engine-exhaust-look-critique.md)): DLL SHA-256
 `a252c522991d9407d3371df215b6d205b24e27957372581e66560c89afc1ae89` (59,061,764 bytes) built once from clean main `c8f36eb6` (host suite 289/3,040/0,
@@ -24,7 +34,7 @@ Over Run122, all behind `plumes`: far jets recorded by the small-parts cull stub
 floor 0.5; world-unit flow, two-tone colour, nozzle spill, idle floor, RCS attack, SETA travel look (`cfg+0xcc`, fail closed); engine light on the hull
 (`engine_light`, twins of the reviewed hull programs, one light per ship from the previous frame); heat shimmer after the resolve (`engine_shimmer`, max 4,
 Ctrl+Alt+F7); the single fire law (thin hot core, dark-gap cells, 4.5:1 streaks, saturated outer sheath, detail parameter below 40 px; ps 921 slots).
-Five reviews with fixes. Run 123 A queued. Rollback Run122.
+Five reviews with fixes. Run 123 A completed in run409: no issues (frame time median 18 ms, plumes armed throughout, far sparks, hull light, shimmer and SETA rows clean), restrained preferred over default for the white mouths. Rollback Run122.
 Run122 = **plume floor from the ship radius + mouth fix** (Run 121 A findings): DLL SHA-256
 `4d5cbb9cba631486e0dc02c0e8ba697bc57cca1af0036d6870c450b7cc8f03af` (58,511,846 bytes) built once from clean main `192e1e3f` (host suite 286/3,011/0,
 0 warnings, x87 0, shader checks 50 + 9, 27 verifiers; fixtures plumes 118/118, ribbons 44/44, effects 8 modes, patch 54/54 rerun;

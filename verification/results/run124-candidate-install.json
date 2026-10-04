@@ -1,0 +1,28 @@
+{
+ "run": "Run124",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run124-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run123-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-04T05:19+0400",
+ "commit": "9c0c57ab",
+ "candidate_record": "verification/results/run124-candidate-build.json",
+ "installed": {
+  "sha256": "f35a07f1412b0a8afbeaa93f1ae9b9d7f85d79a09029bf5931c08e54ac721b3e",
+  "bytes": 59061764,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed from the candidate DLL before install); pgrep X3AP empty before; 16 font files unchanged (the Run123 candidate's fonts, reused: tools/fonts and assets/fonts unchanged since c8f36eb6); engine_bodies.json kept (45a1215b…)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept (rebuild due at the next release)"
+ },
+ "previous": {
+  "run": "Run123",
+  "dll_sha256": "a252c522991d9407d3371df215b6d205b24e27957372581e66560c89afc1ae89",
+  "path": "/tmp/x3-run123-candidate/build/d3d9.dll",
+  "then": "Run122 4d5cbb9c... at /tmp/x3-run122-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "203c5e98 changes no code (one comment line in src/proxy/engine_light_core.h, the seam fixture's expected value, records and images)",
+ "trigger": "Run 123 A (run409): no issues; the user preferred the restrained preset because the default's mouths read too white, and asked for the flown setup to be the default: engine_effects unset = plumes; mouth whiteness fixed at its source (heat 0.1, head_min 0.42, I x 1.04) so the default preset keeps its reach",
+ "producer": "main session (Fable 5.1)"
+}
