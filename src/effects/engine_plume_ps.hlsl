@@ -50,7 +50,8 @@
 // end-on radiance the CPU's, 1 + (max(1, disc_ring min(1, (L / n) / 2)) - 1) d x the side's; its Gaussian
 // 1 + (disc_ring_width - 1) d x the side's, c18.z the inverse width at 1: a detail-0 disc keeps the previous law's
 // ring); the total soft-capped, cap x (1 - exp(-total / cap)) (view.w; the CPU set the radiances, kappa by the detail
-// level, and the cap, engine_plumes_core.h build_nozzle).
+// level, and the cap, engine_plumes_core.h build_nozzle). Its n (local.w) is the natural nozzle width x Look::disc_radius
+// (0.5 since Run 128), so rho, the ring, the sheath and the halo all shrink with it.
 // Soft occlusion against the completed lane (RT2 at s0, point sampled at the pixel): .b the view depth on the
 // four-channel lane, z/w in .r inverted with m32 / (d - m22) on the R32F lane; .r outside [0, 1] (the sentinel) = no
 // occluder; a non-finite or non-positive depth occludes. The plume's depth is that of the nearest axis point (the
@@ -77,6 +78,7 @@ float4 spill_k : register(c17);   // the spill's inner and outer reach (nozzle w
 float4 detail_k : register(c18);  // the core's radius at the detail level 0 (x the revised law's: Look::core_widen), the outer
                                   // sheath's weight (4 outer), the end-on ring's radial scale at detail 1 (1 / disc_ring_width),
                                   // the end-on annulus's weight (Look::disc_sheath, x the sheath's in the disc's samples)
+float4 radius_k : register(c19);  // 1 / disc_radius (the hand-over's scale: the disc's n is the natural x disc_radius), unused x3
 struct Input {
     float4 local : TEXCOORD0;     // x, y (world), L (pulsed, world; the disc: the ring's radiance), n (nozzle width, world)
     float4 shape : TEXCOORD1;     // halo sigma0 (nozzle widths), value, occlusion bias, the nozzle's flow phase (nozzle widths)
@@ -257,8 +259,9 @@ float4 main(Input i) : COLOR0 {
         // The mouth's hand-over to the disc: inside the disc's footprint (the screen-plane distance from the nozzle,
         // (x sin(view), y)) the axial quad gives way by the disc's weight, so the two draws do not stack at the mouth.
         // Since Run 125 the disc keeps the natural nozzle width while a capped body shrinks: the distance is measured in
-        // the disc's widths, x the axial n over the disc's n (the head colour's alpha, 0..127 / 255 = 0..1).
-        const float handover_scale = min(i.peak.w * (255.0 / 127.0), 1.0);
+        // the disc's widths, x the axial n over the disc's n: the head colour's alpha (0..127 / 255 = 0..1) carries it x
+        // disc_radius (after Run 128 the disc's n is the natural one x disc_radius), c19.x restores it.
+        const float handover_scale = min(i.peak.w * (255.0 / 127.0), 1.0) * radius_k.x;
         const float handover = 1.0 - i.params.w * (1.0 - smoothstep(halo_k.x, halo_k.y, d_screen * handover_scale));
         result = ((colour * core + 0.5 * darken * deep * outer) * body + soft_max(ring, ring_colour, halo, tint).rgb) * handover;
     }

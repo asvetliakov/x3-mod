@@ -303,6 +303,10 @@ ep::Look make_nospill() {
     return k;
 }
 const ep::Look still = make_still(), body_only = make_body(), nospill = make_nospill();
+// The end-on energy gates' re-floor after Run 128 (Look::disc_radius 1 -> 0.5): the measured ratio of the end-on
+// totals at 0 degrees (END_ON 20 px 0.0658 / 0.2636 = 0.2496, END_ON_DETAIL n40 0.0843 / 0.3376 = 0.2497, n48 0.0881 /
+// 0.3528 = 0.2497; the disc's area x 0.25).
+constexpr double disc_radius_refloor = .2496;
 // `k` held at the detail level 0 at every size (the threshold far past any drawn nozzle): the previous (slab) law at the
 // same size, the reference of the review fixes' energy cases.
 ep::Look slab_of(ep::Look k) {
@@ -1008,7 +1012,8 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
                 double(ob.v[0].intensity[0]), double(i_expected), double(onset_body), double(onset_halo));
     // The body is shrunk to the cap as before: its width at the nearest axis point (the tip) projects to 0.12 H (CPU, the
     // builder's own k; the frame's extent is reported: since Run 125 it is the end-on disc's, which keeps the natural
-    // nozzle width, its half-size under 0.35 H); the axial quad's head-colour alpha carries its n over the disc's.
+    // nozzle width x disc_radius since Run 128, its half-size under 0.35 H); the axial quad's head-colour alpha carries its
+    // n over the disc's x disc_radius.
     const Built cb = build_cpu(own_frame(&r, 0.f, &body_only));
     const float zr = r.origin[2], natural_n = body_only.nozzle_width * value, k_body = cb.v[0].local[3] / natural_n;
     const float tip_px = 2.f * spread * line0 * cb.v[0].local[3] * m11 * float(t.h) * .5f / (zr - cb.v[0].local[2]);
@@ -1021,7 +1026,8 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     char label[64];
     std::snprintf(label, sizeof label, "chase_cap_%u", t.w);
     report(label, rep.stats.capped == 1 && body_extent > 0 && k_body < 1.f && std::fabs(tip_px - cap_px) <= .01f * cap_px &&
-                      std::fabs(cb.v[4].local[3] - natural_n) <= 1e-4f * natural_n && disc_half_px <= ep::disc_cap_px * float(t.h) * 1.001f &&
+                      std::fabs(cb.v[4].local[3] - body_only.disc_radius * natural_n) <= 1e-4f * natural_n &&
+                      disc_half_px <= ep::disc_cap_px * float(t.h) * 1.001f &&
                       handover_alpha == unsigned(int(k_body * 127.f + .5f)));
     std::snprintf(label, sizeof label, "chase_fade_%u", t.w);
     report(label, pk > 0.f && near_b.stats.faded == 1 && far_b.stats.faded == 0 && std::fabs(axial_cpu - .5f) < 1e-3f);
@@ -1075,7 +1081,7 @@ void near_capital_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::Engine
                 double(pk), double(b.v[4].shape[1]), double(b.v[0].shape[1]));
     char label[64];
     std::snprintf(label, sizeof label, "near_capital_disc_natural_%u", t.w);
-    report(label, rep.stats.discs == 1 && std::fabs(b.v[4].shape[1] - value) <= 1e-3f * value && b.v[0].shape[1] < value && b.stats.discs_capped == 0 && std::fabs(disc_n_px - n * ppu) <= 1e-3f * n * ppu &&
+    report(label, rep.stats.discs == 1 && std::fabs(b.v[4].shape[1] - value) <= 1e-3f * value && b.v[0].shape[1] < value && b.stats.discs_capped == 0 && std::fabs(disc_n_px - lk.disc_radius * n * ppu) <= 1e-3f * n * ppu &&
                       disc_half_px <= ep::disc_cap_px * float(t.h));
     std::snprintf(label, sizeof label, "near_capital_length_capped_%u", t.w);
     report(label, rep.stats.capped == 1 && k < 1.f && std::fabs(drawn_l - L_natural * k) <= 1e-3f * L_natural &&
@@ -1381,8 +1387,9 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
     // The end-on energy against the side view's at least 0.5 (0.7 until Run 125: the soft cap 1.0 and the end-on ring
     // x 3, 1.5 and x 8 before, take the 40 px end-on 0.706 -> 0.558 and 30 degrees 0.835 -> 0.697; the user judged the
     // end-on disc too bright, engine-exhaust-look-critique.md section 6, "End-on brightness, Run 125").
-    // After Run 127 the floor x the disc's distance law at the 20 px nozzle (0.5: 0.25).
-    const double floor_end_on = .5 * double(disc_far(.5f * value * ppu));
+    // After Run 127 the floor x the disc's distance law at the 20 px nozzle (0.5: 0.25). After Run 128 x the measured
+    // ratio of the disc's radius 0.5 (disc_radius_refloor: 0 degrees 0.2636 -> 0.0658; the floor 0.25 -> 0.0624).
+    const double floor_end_on = .5 * double(disc_far(.5f * value * ppu)) * disc_radius_refloor;
     for (unsigned k = 1; k < 4; ++k) {
         std::snprintf(label, sizeof label, "end_on_energy_%.0fdeg_%u", double(degrees[k]), t.w);
         const double ratio = totals[0] > 0 ? totals[k] / totals[0] : 0.;
@@ -1465,8 +1472,10 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         std::printf("\n");
         // Since Run 125 (the soft cap 1.0, the ring x 3): the end-on energy at least 0.6 of the side view's (0.7 before;
         // 0 degrees 1.013 -> 0.665), the end-on over the detail-0 law's 0.55..0.9 (0.7..0.9 before; 0.744 -> 0.585).
-        // After Run 127 the floor x the disc's distance law at the nozzle (40 px 0.528, 48 px 0.552).
-        const double floor_detail = .6 * double(disc_far(n_px));
+        // After Run 127 the floor x the disc's distance law at the nozzle (40 px 0.528, 48 px 0.552). After Run 128 x the
+        // measured ratio of the disc's radius 0.5 (disc_radius_refloor: 0 degrees n40 0.3376 -> 0.0843, n48 0.3528 ->
+        // 0.0881; the floors 0.3166 -> 0.0790, 0.3312 -> 0.0827).
+        const double floor_detail = .6 * double(disc_far(n_px)) * disc_radius_refloor;
         bool ok = detail > .999f && fade == 0;
         for (unsigned j = 1; j < 4; ++j) ok = ok && tot[0] > 0 && tot[j] / tot[0] >= floor_detail && tot[j] / tot[0] <= 1.5;
         std::snprintf(label, sizeof label, "end_on_energy_detail1_n%.0f_%u", double(n_px), t.w);
@@ -1851,15 +1860,21 @@ void distance_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlum
 // (c) the depth guard: the plane 3 value in front of the nozzle (another object, not its hull): nothing through it.
 // Each band's measured pixels are at least 95 % of the band's pixels on the plane (the open frame above 0.01 over the
 // whole band). `near_plate` also runs the near plate below (once per size and lane).
+// Since Run 128 the disc's widths are the natural one x Look::disc_radius (0.5), and the pixel program measures the
+// disc's spill distance in them (rho): the bands above, in nozzle widths, are the disc's widths at disc_radius 1, so
+// the three looks here draw the disc at disc_radius 1 (at 0.5 the 12 px nozzle's disc is 6 px wide and its band holds
+// under 50 pixels); the law is the same in the disc's widths at any disc_radius.
 void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass, bool four, float n_px, bool near_plate) {
     const float Z = 2000.f, ppu = t.ppu(Z), value = 2.f * n_px / ppu;
     float cx, cy;
     t.window(0, 0, Z, 0, 0, cx, cy);
     const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f)), edge = ix - 10;
     const ee::Record r = record(0, 0, Z, 0, 0, 1, value, 2.f);
-    ep::Look linear = still;
+    ep::Look still_unscaled = still;
+    still_unscaled.disc_radius = 1.f;
+    ep::Look linear = still_unscaled;
     linear.ring = 0.f;
-    ep::Look capped = still;
+    ep::Look capped = still_unscaled;
     capped.ring = 0.f;
     linear.disc_cap = 50.f; // total / cap about 0.01: under 0.5 % compression, no 1 - exp(-x) cancellation on the GPU
     const Built sb = build_cpu(frame_for(t, four, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &linear));
@@ -1916,7 +1931,7 @@ void spill_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     Measure law{}, look{}, guard{};
     measure(&linear, .65f, band_end, Z, &law);
     measure(&capped, .72f, band_end, Z, &look);
-    measure(&still, .65f, band_end, Z - 3.f * value, &guard);
+    measure(&still_unscaled, .65f, band_end, Z - 3.f * value, &guard);
     std::printf("SPILL width=%u lane=%s nozzle_px=%.0f detail=%.3f reach_n=%.3f band_end_n=%.3f law_band_px=%u law_band_all=%u law_median=%.4f law_max=%.4f "
                 "law_taper_px=%u law_taper_all=%u law_taper_max=%.4f law_taper_mean=%.4f law_beyond_max=%.6f law_open_past_reach=%.6f "
                 "look_band_px=%u look_band_all=%u look_median=%.4f look_max=%.4f look_beyond_max=%.6f guard_max=%.6f\n",
@@ -3403,10 +3418,24 @@ void structure_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
             float ring = 0.f, ring_n = 0.f, hot = 0.f, ring_d = 0.f, ring_nd = 0.f, hot_d = 0.f;
             structure::disc_measures(lin, n_px, &ring, &ring_n, &hot);
             structure::disc_measures(disp, n_px, &ring_d, &ring_nd, &hot_d);
-            std::printf("STRUCTURE_DISC width=%u height=%u tint=%s nozzle_px=%.1f discs=%u capped=%u ring=%.3f ring_n=%.3f hot=%.3f "
-                        "ring_display=%.3f ring_display_n=%.3f hot_display=%.3f centre=%.3f profile=",
-                        t.w, t.h, tone.name, double(n_px), rep.stats.discs, rep.stats.capped, double(ring), double(ring_n), double(hot),
-                        double(ring_d), double(ring_nd), double(hot_d), double(lin[0]));
+            // The disc's reach in the natural nozzle width n (150 px; after Run 128, disc_radius): the tint channel's (R red,
+            // B blue: the captures' engine R) azimuthal mean, the first radius under 5 % and under 70 % of its centre.
+            const float natural_px = k.nozzle_width * value * ppu;
+            const unsigned chan = tone.name[0] == 'a' ? 2u : 0u;
+            float r05 = -1.f, r70 = -1.f, c0 = 0.f;
+            for (int rr = 0; rr <= int(natural_px); ++rr) {
+                const float m = structure::ring_mean([&](int x, int y) {
+                    if (x < 0 || y < 0 || x >= int(t.w) || y >= int(t.h)) return 0.f;
+                    return px[(std::size_t(y) * t.w + std::size_t(x)) * 4 + chan];
+                }, cx, cy, float(rr));
+                if (rr == 0) c0 = m;
+                if (r70 < 0.f && m < .7f * c0) r70 = float(rr) / natural_px;
+                if (r05 < 0.f && m < .05f * c0) r05 = float(rr) / natural_px;
+            }
+            std::printf("STRUCTURE_DISC width=%u height=%u tint=%s nozzle_px=%.1f natural_px=%.1f discs=%u capped=%u ring=%.3f ring_n=%.3f hot=%.3f "
+                        "ring_display=%.3f ring_display_n=%.3f hot_display=%.3f centre=%.3f tint_centre=%.3f r05_n=%.3f r70_n=%.3f profile=",
+                        t.w, t.h, tone.name, double(n_px), double(natural_px), rep.stats.discs, rep.stats.capped, double(ring), double(ring_n),
+                        double(hot), double(ring_d), double(ring_nd), double(hot_d), double(lin[0]), double(c0), double(r05), double(r70));
             for (std::size_t i = 0; i < disp.size(); i += 4) std::printf("%s%.3f", i ? "," : "", double(disp[i]));
             std::printf("\n");
             const char* tag = tone.name[0] == 'a' ? "blue" : "red";
@@ -3418,6 +3447,10 @@ void structure_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
             report(label, rep.stats.discs == 1 && ring >= ring_floor && ring_n >= .4f && ring_n <= .7f);
             std::snprintf(label, sizeof label, "structure_disc_hot_centre_%s_%u", tag, t.w);
             report(label, rep.stats.discs == 1 && hot >= .9f);
+            // The disc's reach (after Run 128: at disc_radius 1 the 02b disc reached 5 % of its centre near 0.7 n, twice
+            // the hull's nozzle ring): 5 % within 0.37 n, the bright part (>= 0.7 of the centre) within 0.25 n.
+            std::snprintf(label, sizeof label, "structure_disc_radius_%s_%u", tag, t.w);
+            report(label, rep.stats.discs == 1 && c0 > 0.f && r05 > 0.f && r05 <= .37f && r70 > 0.f && r70 <= .25f);
         }
     }
 }

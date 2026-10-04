@@ -211,7 +211,7 @@ def gates(r):
         row['white_rim_min'] = min(row['white_rim_min'], x['white_rim_u02'])
         row['frames'] += 1
     out['structure'] = structure
-    out['structure_disc'] = {f"{x['width']}_{x['tint']}": {k: x[k] for k in ('ring', 'ring_n', 'hot', 'ring_display', 'hot_display', 'nozzle_px')}
+    out['structure_disc'] = {f"{x['width']}_{x['tint']}": {k: x[k] for k in ('ring', 'ring_n', 'hot', 'ring_display', 'hot_display', 'nozzle_px', 'natural_px', 'r05_n', 'r70_n')}
                              for x in r['structure_disc']}
     return out
 

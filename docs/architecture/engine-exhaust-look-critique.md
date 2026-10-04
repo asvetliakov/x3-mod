@@ -580,6 +580,26 @@ halo was never three times the disc's body on this frame; the disc's energy is 0
 the halo is not the term carrying it on the fixture's frame (`docs/verification/engine-effects.md`, "Excess end-on glow
 after Run 128").
 
+### Disc radius (after Run 128)
+
+What carries the glow on `screenshots/engines6.png` is the end-on disc's size. On the Run 126 / 128 captures
+(`verification/results/run416-engine-glow/`: `run416_profiles*`, `run416_fine*`, `run416_cluster_bloom*`) a huge
+nozzle's disc stays bright (engine R >= 2.4) out to 0.45 n and falls to 5 % of its centre at 0.70 n (n the drawn
+nozzle width, 0.5 x value_eff), while the hull's own nozzle ring sits at 0.30 n on a huge nozzle and 0.45 n on a big3;
+neighbouring nozzles are 0.59-0.70 n apart, so the discs overlap into one mass in HDR, before bloom (bloom adds about
+2 %, the halo 1-5 %, the hull textures 2-7 %). The fixture's 02b disc has the same shape (tint channel under 5 % of its
+centre at 0.64 n), so this is the law, not a flight artefact. `Look::disc_radius` 0.5: the disc's radial coordinate
+runs in 0.5 n, so the whole disc (integrated body, hot centre, ring step, sheath annulus, halo e-fold) and its quad
+shrink to half the radius at the same radiance per pixel; its edge meets the hull's ring on a huge nozzle and sits
+inside it on a big3. The 0.35 H cap and the mouth hand-over follow the scaled width, the dot floor applies after the
+scale, the distance law keeps the unscaled width; the own ship's disc shrinks too (accepted). Fixture (bottle X3, the
+02b discs at their natural 150 px, `verification/results/engine-effects/plume_disc_clip_radius_out.txt`): tint channel
+under 5 % of the centre 0.64 -> 0.32 n and under 70 % 0.15 -> 0.08 n on both discs (new gate: <= 0.37 n and <= 0.25 n),
+energy 0.273 (red) / 0.267 (blue), peaks unchanged (R 1.709 -> 1.707, B 1.719 -> 1.718), no clipped pixel; the end-on
+energy gates drop by 0.2496 and are re-floored by it; the ring (red 1.157, cyan 1.000) and the hot centre (1.000) hold;
+the own ship's chase disc total 2865 -> 715 (1080 rows) / 5000 -> 1247 (1440), extent 43 -> 21 / 57 -> 29 px; the nine
+side-view images byte-identical (`docs/verification/engine-effects.md`, "Disc radius after Run 128").
+
 ## Unknown, and what settles it
 
 - Whether the body at 0.3-0.8 linear reads too dark at 5120x1440 with bloom on: the lab at the same constants is the

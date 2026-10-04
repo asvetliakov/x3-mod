@@ -51,7 +51,10 @@
 // flight G). Since Run 125 the end-on disc and its halo keep the natural (unshrunk, floored) nozzle width (shrunk with
 // the body, a capital's disc was a spot inside its own nozzle plate), its projected radius (its quad's half-size: the
 // ring, the eroded edge or the halo's reach) held to disc_cap_px x H (0.35) by scaling the disc alone; the axial quad's
-// mouth hand-over measures the disc's width (the axial n over the disc's n in the head colour's alpha, 127 = 1).
+// mouth hand-over measures the disc's width (the axial n over the disc's n in the head colour's alpha, 127 = 1). Since
+// Run 128 the disc's nozzle width is the natural one x disc_radius (0.5; the dot floor after the scale): its whole profile
+// and its quad at half the radius, the 0.35 H cap and the hand-over on the scaled width (c19.x = 1 / disc_radius
+// restores the alpha's ratio), its distance law on the unscaled width.
 // Flow: the noise field translates along the axis by a phase in nozzle widths, per vertex (shape.w), so it moves at one
 // speed whatever the pulsed, throttle-dependent L. Each nozzle accumulates its own phase in the per-nozzle memory
 // (Transients, keyed by the record's identity): every frame it advances by the frame accumulator's step (FlowPhase at
@@ -222,6 +225,17 @@ struct Look {
     // for a colour change). The detail-0 gain stays 3 (the smooth law's); the halo's e-fold is the side's sigma0.
     // docs/architecture/engine-exhaust-look-critique.md section 6, "Excess end-on glow (after Run 128)".
     float disc_halo = 1.f;
+    // The end-on disc's radius (after Run 128): its radial coordinate runs in disc_radius x n instead of n, so the whole
+    // disc profile (integrated body, hot centre, the ring at its 0.5-0.55 radial step, the sheath's annulus, the halo's
+    // e-fold) and its quad shrink by it; the radiance per pixel is unchanged (the energy goes with the area, ~x 0.25).
+    // Why: at 1.0 a huge nozzle's disc stayed bright (engine R >= 2.4) out to 0.45 n and reached 5 % of its centre at
+    // 0.70 n on the Run 126 / 128 captures (verification/results/run416-engine-glow/), twice the hull's own nozzle ring
+    // (0.30 n on a huge nozzle, 0.45 n on a big3), and neighbours 0.59-0.70 n apart merged into one glowing mass before
+    // bloom (screenshots/engines6.png). At 0.5 the disc's edge meets the ring on a huge nozzle and sits inside it on a
+    // big3. The dot floor (min_nozzle_px) applies after the scale; the disc's distance law keeps the unscaled width;
+    // the own ship's disc shrinks too (accepted). docs/architecture/engine-exhaust-look-critique.md section 6, "Disc
+    // radius (after Run 128)".
+    float disc_radius = .5f;
     // After Run 125 (the Split Ocelot's stern nozzles at 2.4 km as white rings with pink centres): the soft cap 1.0 x
     // the side view's peak (1.5 until then: a red disc's centre reached ~2.2 at s 1, past the flight's display white
     // ~2.1 at EV +1, so every end-on red disc clipped white at its centre) and the end-on ring x 3 its side radiance
@@ -490,13 +504,14 @@ inline void peak_axis_at(const LookTables& t, float s, float* out, float detail 
     const float b = t.axis_peak[j][d + 1] + (t.axis_peak[j + 1][d + 1] - t.axis_peak[j][d + 1]) * f;
     *out = a + (b - a) * g;
 }
-// The pixel program's look constants c3..c18 (engine_plume_ps.hlsl), 64 floats (the flow phase is the nozzle's, in the
+// The pixel program's look constants c3..c19 (engine_plume_ps.hlsl), 68 floats (the flow phase is the nozzle's, in the
 // vertex; the halo's sigma the nozzle's): c3..c7 the law, c8..c15 the disc's samples, c16 the mouth ramp (dip, end) and
 // the spill's glow_through and 1 / (spill_depth), c17 the spill's inner and outer reach (nozzle widths), 1 /
 // spill_depth_max (world units), the tail's tongues (erode x 0.35 / 0.57: 0.35 at the chosen erode); c18 the core's
 // widening at the detail level 0 (core_widen), the outer sheath's weight 4 outer, the end-on ring's radial scale
-// 1 / disc_ring_width (at the detail level 1), the end-on annulus's weight disc_sheath.
-constexpr unsigned pixel_constant_floats = 64;
+// 1 / disc_ring_width (at the detail level 1), the end-on annulus's weight disc_sheath; c19 1 / disc_radius (the axial
+// quad's mouth hand-over: the head colour's alpha carries its n over the disc's x disc_radius), three zeros.
+constexpr unsigned pixel_constant_floats = 68;
 // `t` look_tables(k), computed once where the look is fixed (the proxy at load: MotionOutput::plumes_tables_).
 inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_constant_floats]) noexcept {
     const float c[20] = {.5f * k.bulge, (.04f - .5f * k.bulge) * k.taper, .5f * k.bulge * k.taper, k.tail_narrowing * k.taper,
@@ -519,6 +534,8 @@ inline void pixel_constants(const Look& k, const LookTables& t, float out[pixel_
     out[61] = 4.f * k.outer;
     out[62] = k.disc_ring_width > 1e-3f ? 1.f / k.disc_ring_width : 1e3f;
     out[63] = k.disc_sheath > 0.f ? k.disc_sheath : 0.f;
+    out[64] = k.disc_radius > 0.f ? 1.f / k.disc_radius : 1.f; // as build_nozzle: NaN or <= 0 the unscaled disc
+    out[65] = out[66] = out[67] = 0.f;
 }
 inline void pixel_constants(const Look& k, float out[pixel_constant_floats]) noexcept {
     LookTables t;
@@ -1269,6 +1286,10 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     if (!steering && L * ppu < min_length_px) L = min_length_px / ppu;
     float n_natural = look.nozzle_width * value_natural;
     if (n_natural * ppu < min_nozzle_px) n_natural = min_nozzle_px / ppu;
+    // The disc's geometric nozzle width: the natural one x disc_radius (after Run 128), the dot floor after the scale.
+    const float disc_radius = look.disc_radius > 0.f ? look.disc_radius : 1.f; // NaN or <= 0: the unscaled disc
+    float n_disc_natural = look.nozzle_width * value_natural * disc_radius;
+    if (n_disc_natural * ppu < min_nozzle_px) n_disc_natural = min_nozzle_px / ppu;
     // Radiance: I(s) x preset, the RCS weight z, the chase fade, the distance law; the halo and the ring relative to it
     // (the disc's terms all follow i_core and i_halo).
     const float s = r.s < 0.f ? 0.f : r.s > 1.f ? 1.f : r.s;
@@ -1347,9 +1368,9 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     float disc_edge = (outer_reach + .7f * erode) * line0;
     const float disc_ring_outer = .46f * look.bulge + 3.f * .0645497f * (look.disc_ring_width > 1.f ? look.disc_ring_width : 1.f);
     if (disc_edge < disc_ring_outer) disc_edge = disc_ring_outer;
-    // The disc's half-size at the natural nozzle width (the halo's reach with it).
-    const float reach_natural = halo_units * n_natural;
-    const float width0 = (n_natural * disc_edge > reach_natural ? n_natural * disc_edge : reach_natural) + pixel;
+    // The disc's half-size at its natural nozzle width x disc_radius (the halo's reach with it).
+    const float reach_natural = halo_units * n_disc_natural;
+    const float width0 = (n_disc_natural * disc_edge > reach_natural ? n_disc_natural * disc_edge : reach_natural) + pixel;
     if (back < L) {
         body_back = n * (edge0 - edge_slope * back / L);
         body_front = n * (edge0 + edge_slope * front / L);
@@ -1395,11 +1416,12 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
         disc_scale = disc_cap_px * view.height / (width0 * ppu);
         ++stats->discs_capped;
     }
-    const float half = width0 * disc_scale * (disc_drawn ? 1.f : 0.f), n_disc = n_natural * disc_scale;
-    // The axial quad's hand-over at the mouth measures the disc's width: its n over the disc's (at most 1) in the head
-    // colour's alpha, 0..127 (under the disc kind's 0.5); the pixel program scales its screen-plane distance by it.
+    const float half = width0 * disc_scale * (disc_drawn ? 1.f : 0.f), n_disc = n_disc_natural * disc_scale;
+    // The axial quad's hand-over at the mouth measures the disc's width: its n over the disc's, x disc_radius (at most
+    // 1) in the head colour's alpha, 0..127 (under the disc kind's 0.5); the pixel program scales its screen-plane
+    // distance by it and by 1 / disc_radius (c19.x).
     {
-        float ratio = n_disc > 0.f ? n / n_disc : 1.f;
+        float ratio = n_disc > 0.f ? n * disc_radius / n_disc : 1.f;
         ratio = ratio > 0.f ? (ratio < 1.f ? ratio : 1.f) : 0.f; // NaN -> 0
         const std::uint32_t alpha = std::uint32_t(int(ratio * 127.f + .5f)) << 24;
         for (unsigned c = 0; c < 4; ++c) out[c].peak = head_axial | alpha;

@@ -737,3 +737,56 @@ margin 0.005); `end_on_peak_within_1.5_body` 0.4948 -> 0.4944. The own ship's ch
 not pinned): total 3075.3 -> 2865.2 (1080 rows) and 5268.4 -> 4999.6 (1440), total_ratio 0.5681 / 0.5474 -> 0.5293 /
 0.5195, peak 4.742 / 4.738 -> 4.738 / 4.734, extent 49 / 61 -> 43 / 57 px; the chase case (`chase`) extent 205 / 274 ->
 195 / 260 px, fade_ratio and disc_ratio_cpu 0.4 unchanged; `chase_own_disc_exempt` 0.5627 / 0.636 unchanged.
+
+### Disc radius after Run 128 (2026-10-04, worktree on 39f13132, not a candidate)
+
+`Look::disc_radius` 0.5 (new): the end-on disc's nozzle width (its vertices' `local.w`) is the natural one x
+disc_radius, the dot floor (`min_nozzle_px` 2) applied after the scale, so the pixel program's rho, the integrated
+body, the hot centre, the ring's radial step, the sheath's annulus and the halo's e-fold all shrink to half the radius;
+the quad's half-size (`width0`) and the 0.35 H cap are computed on the scaled width. The axial quad's mouth hand-over
+keeps measuring the disc's width: the head colour's alpha carries n x disc_radius / n_disc (unchanged range 0..1) and
+the pixel program multiplies by 1 / disc_radius from the new constant c19.x (`pixel_constant_floats` 64 -> 68). The
+disc's distance law keeps the unscaled natural width; the own-ship exemption, the axial body, side views and far dots
+are unchanged; the disc's radiance per pixel is unchanged. The nozzle spill on the disc is measured in the disc's
+widths (rho) as before, so it shrinks with the disc. The shimmer rects key on the axial quad's vertices only
+(`engine_shimmer_core.h rect_of`, v[0..3]): nothing to follow. Lab: the revised law's end-on disc at q / 0.5.
+Rationale and capture numbers: `docs/architecture/engine-exhaust-look-critique.md` section 6, "Disc radius (after
+Run 128)". Bottle X3, all measured; records from the dirty tree.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Plumes | `run_engine_plumes.py` | PASS 316/316 (312 + four new `structure_disc_radius_{blue,red}_{1920,5120}`); 924 slots (923 + the c19.x multiply; advisory 1,024) |
+| Ribbons, shimmer, effects | `run_engine_ribbons.py`; `run_engine_shimmer.py`; `run_engine_effects.py` | PASS 44/44; PASS 43/43 (no re-pin needed); PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) |
+| Light | `run_engine_light.py` | PASS (12 of 12 plate modes) |
+| Shader | `generate_rigid_motion_pixel.py --shader engine_plume_ps` then `--check` | PASS; 4,086 words, sha256 `ceff5ae0…` |
+| Host | `X3M_REQUIRE_SHADER_CORPUS=1 ... unittest discover -p 'test_engine_*.py'` | 85 OK |
+| Build | clean `cmake` build in a fresh `build/`; `check_no_x87.py build/d3d9.dll` | 0 warnings; 766 reachable, 0 violations |
+| Look images | `--dump-images --dump-linear`; `plume_look_sha_compare.py look-images <after>` -> `plume_look_sha_radius_out.txt` | 9 of 9 side / far / RCS / ribbon images byte-identical (01a, 01b, 03a, 03c, 04, 05, 07, 08, 09); 02a, 02b, 03b, 06a, 06b, 10 and the contact sheet changed; the before dump equalled the tracked set 16 of 16; re-tracked |
+| Look metrics | `plume_look_metrics.py`, `plume_look_metrics_compare.py` -> `plume_look_metrics_radius_*_out.txt` | every side band row unchanged; 02b ring red / blue 1 -> 1 (now at the disc's 75 px); crowd 10 pixels >= 250 508 -> 530 |
+| End-on disc | `plume_disc_clip.py --n 150 halo1=<pfm> radius05=<pfm>` (new reach table) -> `plume_disc_clip_radius_out.txt` | 02b energy red / blue 0.273 / 0.267; peak R 1.709 -> 1.707, peak B 1.719 -> 1.718; no clipped pixel; tint >= 1 px 3899 -> 971 / 4265 -> 1064; tint channel under 5 % of the centre at 0.64 -> 0.32 n, under 70 % at 0.15 -> 0.08 n (both discs); 02a 0.6572, 03b 0.6019, 06a 0.9983, 06b 0.9696, crowd 10 0.9125 of summed luma; side views 1.0000 |
+
+Gates re-floored by the measured end-on energy ratio (`disc_radius_refloor` 0.2496 in the fixture; 0 degrees Run 128
+halo1 -> now: `END_ON` 20 px 0.2636 -> 0.0658 = 0.2496, `END_ON_DETAIL` n40 0.3376 -> 0.0843 = 0.2497, n48 0.3528 ->
+0.0881 = 0.2497):
+
+| Gate | Floor old -> new | Measured old -> new (1920 / 5120) |
+| --- | --- | --- |
+| `end_on_energy_{60,30,0}deg` | 0.25 -> 0.0624 | 0 deg 0.2636 -> 0.0658; 30 deg 0.4212 / 0.4167 -> 0.3055 / 0.2986; 60 deg 0.7121 / 0.7106 -> 0.683 / 0.6825 |
+| `end_on_energy_detail1_n40` | 0.3166 -> 0.0790 | 0 deg 0.3376 -> 0.0843; 30 deg 0.542 / 0.5305 -> 0.3563 / 0.3437 |
+| `end_on_energy_detail1_n48` | 0.3312 -> 0.0827 | 0 deg 0.3528 -> 0.0881; 30 deg 0.5668 / 0.5521 -> 0.371 / 0.3547 |
+
+Not moved, not re-floored: `end_on_over_slab` n40 / n48 0.555 / 0.5551 -> 0.5543 / 0.5546 (the slab reference draws
+the same disc_radius; floor 0.55), `end_on_peak_within_1.5_body` 0.4944 -> 0.4944 (a peak: radiance per pixel kept),
+`headon_core_hidden` open peak 1.479 / 3.545 unchanged, `end_on_alive` rim_cv 0.0303 -> 0.0411,
+`structure_disc_ring` red 1.164 / 1.166 -> 1.157 / 1.158 (at 0.52 of the disc's width), cyan 1.000 -> 1.000 (floors 1.05 / 1.0, unchanged),
+`structure_disc_hot_centre` 1.000. New `structure_disc_radius_*` (the 150 px end-on nozzle, the 02b geometry; the tint
+channel's azimuthal mean against its centre, in the natural n): r05 0.320 n (<= 0.37), r70 0.080 n (<= 0.25) at both
+widths and tints. The spill case (13 checks, its bands 0.65..0.8 n) draws its three looks at disc_radius 1: at 0.5 the
+12 px nozzle's disc is 6 px wide and its band holds under 50 pixels (first run: 13 spill checks failed on band pixel
+counts); the law is the same in the disc's widths at any radius; values unchanged (law median 0.1501..0.1502, look
+0.1504 / 0.1574). Pins that follow the scaled width: `chase_cap` disc_n 5.0 -> 2.5 (k 0.4174, handover alpha 53
+unchanged), `near_capital_disc_natural` disc 215.5 -> 107.8 px (1920) and 287.3 -> 143.7 px (5120), half 100.1 / 133.1 px.
+The own ship's chase disc (`chase_own_look`, reported, not pinned): total 2865.2 -> 714.8 (1080 rows) and 4999.6 ->
+1247.4 (1440), total_ratio 0.5293 / 0.5195 -> 0.5282 / 0.5184, peak 4.738 / 4.734 -> 4.730 / 4.723, extent 43 / 57 ->
+21 / 29 px; the chase case (`chase`) extent 195 / 260 -> 97 / 130 px, fade_ratio and disc_ratio_cpu 0.4 unchanged;
+`chase_own_disc_exempt` 0.5627 / 0.636 unchanged. CPU build 300 records 37.0 us median (37.2 before).

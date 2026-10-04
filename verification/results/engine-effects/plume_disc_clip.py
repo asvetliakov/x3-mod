@@ -22,6 +22,10 @@ body, ring and soft cap alone); per 02b disc and state, the halo's energy = the 
 draw's (the halo's marginal energy under the soft maximum with the ring and the cap), the body's = the no-halo draw's,
 both less the box's median background, by radius band (0-0.5, 0.5-1, 1-2, 2-4 n) and in total.
 
+Reach (after Run 128, Look::disc_radius): per 02b disc and state, the tint channel's azimuthal mean (less the box's
+median) in 0.01 n rings, the first ring under 70 % and under 5 % of the centre ring's, in n (--n): the disc's radius.
+plume_disc_clip_radius_out.txt: halo1 = 39f13132, radius05 = disc_radius 0.5.
+
 Usage: python3 plume_disc_clip.py [--n PX] [--nohalo DIR] LABEL=DIR [LABEL=DIR ...]   (the first DIR is the reference; --n the
 drawn nozzle width in px the centre and disc radii scale with, default 65.6: the capped 02b nozzle)
 plume_disc_clip_out.txt (2026-10-04, X3): before = 4f036d43 (Run 125: disc_cap 1.5, disc_ring 8, the near-camera cap
@@ -66,6 +70,24 @@ def disc_stats(rgb, centre, chan, mask_ref):
                 energy=float((luma(rgb[disc]) - bg).sum()), mask_px=int(m.sum()))
 
 
+def reach(rgb, centre, chan):
+    """The tint channel's azimuthal mean (less the box's median) in 0.01 n rings: the first ring under 70 % and under
+    5 % of the centre ring's (r < 0.01 n), in n (after Run 128: the disc's radius)."""
+    x, y = centre
+    box = rgb[int(y - 1.2 * N):int(y + 1.2 * N) + 1, int(x - 1.2 * N):int(x + 1.2 * N) + 1, chan]
+    yy, xx = np.mgrid[0:box.shape[0], 0:box.shape[1]]
+    r = np.sqrt((xx - (x - int(x - 1.2 * N))) ** 2 + (yy - (y - int(y - 1.2 * N))) ** 2) / N
+    v = box - float(np.median(box))
+    rings = np.floor(r / 0.01).astype(int)
+    prof = np.bincount(rings.ravel(), weights=v.ravel()) / np.maximum(np.bincount(rings.ravel()), 1)
+    c = prof[0]
+    out = []
+    for frac in (0.7, 0.05):
+        below = np.nonzero(prof[:120] < frac * c)[0]
+        out.append(float(below[0]) * 0.01 if len(below) else float('nan'))
+    return float(c), out[0], out[1]
+
+
 def band_energy(rgb, centre):
     x, y = centre
     yy, xx = np.mgrid[0:rgb.shape[0], 0:rgb.shape[1]]
@@ -107,6 +129,14 @@ def main():
             base = base if base is not None else s["energy"]
             print(f"{name:10s} {label:>16s} {s['centre_clip']:9.3f} {s['peak'][0]:7.3f} {s['peak'][1]:7.3f} {s['peak'][2]:7.3f} "
                   f"{s['clip_px']:10d} {s['clip_frac']:6.3f} {s['tint_px']:10d} {s['energy']:9.1f} {s['energy'] / base:6.3f}")
+    print()
+    print("02b reach: the tint channel's (R red, B blue) azimuthal mean less the box median, first ring under 70 % / 5 % "
+          "of the centre, in n")
+    print(f"{'disc':10s} {'state':>16s} {'centre':>8s} {'r70 n':>6s} {'r05 n':>6s}")
+    for name, centre, chan in DISCS:
+        for label, d in states:
+            c, r70, r05 = reach(load_pfm(find(d, "02b")), centre, chan)
+            print(f"{name:10s} {label:>16s} {c:8.3f} {r70:6.2f} {r05:6.2f}")
     print()
     print("other frames: summed luma over the first state's, largest per-pixel change of any channel")
     print(f"{'image':6s} " + " ".join(f"{lab:>24s}" for lab, _ in states[1:]))

@@ -275,9 +275,9 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     };
     const float projection[4] = {f.view.m00, f.view.m11, f.m20, f.m21};
     const float limits[4] = {f.view.near_z, 0.f, 0.f, 0.f};
-    // c0 sizes, c1 the lane's form, c2 the lane terms and the clock, c3..c18 the look (engine_plumes_core.h Look, the
-    // end-on disc's samples in c8..c15, the mouth ramp and the nozzle spill in c16..c17, the detail level's terms in c18):
-    // one call for the nineteen registers. The flow phase is per nozzle, in the vertex.
+    // c0 sizes, c1 the lane's form, c2 the lane terms and the clock, c3..c19 the look (engine_plumes_core.h Look, the
+    // end-on disc's samples in c8..c15, the mouth ramp and the nozzle spill in c16..c17, the detail level's terms in c18,
+    // the disc's radius in c19): one call for the twenty registers. The flow phase is per nozzle, in the vertex.
     float pixel[12 + engine_plumes::pixel_constant_floats] = {1.f / float(f.width), 1.f / float(f.height), 0.f, 0.f, f.lane_four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
                        engine_plumes::soft_core, engine_plumes::soft_halo, engine_plumes::halo_reach, f.seconds};
     static_assert((12 + engine_plumes::pixel_constant_floats) % 4 == 0, "whole registers");
