@@ -1,0 +1,25 @@
+## run416 frame 7304 crop x 1056..3904 y 0..1440 ev(frame-1) 0.2161 exposure 1.1616; 10 Ocelot nozzles, n_huge 164.7 px; sky background decoded luma 0.00000
+HDR energy in the cluster region (decoded luma, background-subtracted):
+  DISC  px  112257  energy   116508.7   91.0%  mean decoded RGB 2.606 0.633 0.432
+  SKY   px  391789  energy      571.4    0.4%  mean decoded RGB 0.005 0.000 0.001
+  HULL  px  277444  energy     9145.9    7.1%  mean decoded RGB 0.045 0.032 0.009
+  PLATE px    2496  energy     1839.0    1.4%  mean decoded RGB 0.862 0.733 0.400
+bloom source (prefiltered exposed luma, whole crop) by term/class: authored/disc 5069.2 (90.6%), authored/out 363.6 (6.5%), highlight/disc 147.1 (2.6%), highlight/out 14.5 (0.3%)
+bloom added over the cluster region's classes (mean exposed luma of the bloom term, its share by source; scene exposed luma beside):
+  DISC  bloom 0.0451 (scene 1.2056, bloom/scene 0.04) | authored/disc 97%, authored/out 0%, highlight/disc 3%, highlight/out 0%
+  SKY   bloom 0.0000 (scene 0.0017, bloom/scene 0.03) | authored/disc 90%, authored/out 9%, highlight/disc 1%, highlight/out 1%
+  HULL  bloom 0.0010 (scene 0.0383, bloom/scene 0.03) | authored/disc 49%, authored/out 47%, highlight/disc 1%, highlight/out 3%
+  PLATE bloom 0.0183 (scene 0.8558, bloom/scene 0.02) | authored/disc 2%, authored/out 97%, highlight/disc 0%, highlight/out 1%
+display (AgX) mean luma and glow pixels (display R >= 0.5), without -> with bloom:
+  DISC  mean luma 0.450 -> 0.470   R>=0.5 px  78179 ->  79096   R>=0.8 px  59661 ->  60330
+  SKY   mean luma 0.008 -> 0.009   R>=0.5 px   4436 ->   4476   R>=0.8 px    210 ->    212
+  HULL  mean luma 0.041 -> 0.048   R>=0.5 px   7696 ->   7836   R>=0.8 px   2031 ->   2038
+  PLATE mean luma 0.199 -> 0.242   R>=0.5 px    275 ->    321   R>=0.8 px     93 ->    107
+  sky ring 2.5-4 n_huge outside the region: mean display luma 0.012 -> 0.012; R>=0.5 px 821 -> 821
+connected groups holding the nozzles (4-neighbour, inside the region):
+  disc footprints (0.75 n_i): 91310 px {big3:6a big3:6b big3:66 big3:67 huge:69 huge:68}, 3053 px {big3:6c}, 3730 px {big3:6d}, 14164 px {big3:6f big3:6e}
+  display R >= 0.5 without bloom: 70428 px {big3:6a big3:6b big3:66 big3:67 huge:69 huge:68}, 2703 px {big3:6d}, 14230 px {big3:6f big3:6e}; nozzles outside any group: big3:6c
+  display R >= 0.5 with bloom:    71204 px {big3:6a big3:6b big3:66 big3:67 huge:69 huge:68}, 2799 px {big3:6d}, 14406 px {big3:6f big3:6e}; nozzles outside any group: big3:6c
+  display R >= 0.8 without bloom: 48286 px {big3:6a big3:66 big3:67 huge:69 huge:68}, 2032 px {big3:6d}, 8841 px {big3:6f big3:6e}; nozzles outside any group: big3:6c big3:6b
+  display R >= 0.8 with bloom:    48751 px {big3:6a big3:66 big3:67 huge:69 huge:68}, 2120 px {big3:6d}, 9363 px {big3:6f big3:6e}; nozzles outside any group: big3:6c big3:6b
+  DISC display white (min >= 0.98) px 496 -> 499 of 112257; R >= 0.98 px 23751 -> 23577

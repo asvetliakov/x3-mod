@@ -1,0 +1,1 @@
+r0 0.65 n: tongue (axis wedge - control, r >= r0) decoded 0.1186, engine R 0.3855; disc (r < r0, round) decoded 3.5001, engine R 3.2084; tongue / disc decoded 0.034, engine R 0.120   (units: n^2 x value)

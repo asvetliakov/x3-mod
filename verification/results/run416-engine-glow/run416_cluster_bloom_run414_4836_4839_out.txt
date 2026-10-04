@@ -1,0 +1,16 @@
+## run414 frame 4836 crop x 1824..3072 y 96..1216 ev(frame-1) 1.0861 exposure 2.1230; 10 Ocelot nozzles, n_huge 47.7 px; sky background decoded luma 0.00181
+  DISC  px   11920  energy    37420.6   96.1%  mean decoded RGB 10.933 1.068 0.707
+  SKY   px   25566  energy       87.7    0.2%  mean decoded RGB 0.011 0.003 0.009
+  HULL  px   34201  energy      859.6    2.2%  mean decoded RGB 0.039 0.023 0.005
+  PLATE px     304  energy      557.3    1.4%  mean decoded RGB 2.322 1.777 0.951
+display (AgX) mean luma and glow pixels (display R >= 0.5), without -> with bloom:
+  display R >= 0.5 without bloom: 9276 px {big3:6d big3:6e big3:6f big3:67 big3:66 huge:69 huge:68}, 1037 px {big3:6c}, 1856 px {big3:6b big3:6a}
+  display R >= 0.5 with bloom:    9432 px {big3:6d big3:6e big3:6f big3:67 big3:66 huge:69 huge:68}, 1150 px {big3:6c}, 1929 px {big3:6b big3:6a}
+## run414 frame 4839 crop x 1824..3040 y 128..1216 ev(frame-1) 0.9666 exposure 1.9542; 10 Ocelot nozzles, n_huge 46.4 px; sky background decoded luma 0.00178
+  DISC  px   11354  energy    36467.8   97.0%  mean decoded RGB 11.164 1.099 0.727
+  SKY   px   23741  energy       67.3    0.2%  mean decoded RGB 0.010 0.003 0.008
+  HULL  px   32625  energy      729.5    1.9%  mean decoded RGB 0.035 0.020 0.005
+  PLATE px     291  energy      315.0    0.8%  mean decoded RGB 1.441 1.033 0.519
+display (AgX) mean luma and glow pixels (display R >= 0.5), without -> with bloom:
+  display R >= 0.5 without bloom: 8556 px {big3:6d big3:6e big3:6f big3:67 big3:66 huge:69 huge:68}, 982 px {big3:6c}, 1763 px {big3:6b big3:6a}
+  display R >= 0.5 with bloom:    8696 px {big3:6d big3:6e big3:6f big3:67 big3:66 huge:69 huge:68}, 1080 px {big3:6c}, 1832 px {big3:6b big3:6a}

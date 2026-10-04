@@ -1,0 +1,25 @@
+## run414 frame 4832 crop x 1824..3072 y 96..1248 ev(frame-1) 1.1046 exposure 2.1504; 10 Ocelot nozzles, n_huge 49.6 px; sky background decoded luma 0.00186
+HDR energy in the cluster region (decoded luma, background-subtracted):
+  DISC  px   12727  energy    39049.5   95.7%  mean decoded RGB 10.666 1.049 0.695
+  SKY   px   28261  energy      118.8    0.3%  mean decoded RGB 0.014 0.003 0.009
+  HULL  px   36574  energy      799.7    2.0%  mean decoded RGB 0.036 0.019 0.005
+  PLATE px     314  energy      823.6    2.0%  mean decoded RGB 3.276 2.551 1.408
+bloom source (prefiltered exposed luma, whole crop) by term/class: authored/disc 1325.7 (76.4%), authored/out 190.9 (11.0%), highlight/disc 165.1 (9.5%), highlight/out 52.9 (3.0%)
+bloom added over the cluster region's classes (mean exposed luma of the bloom term, its share by source; scene exposed luma beside):
+  DISC  bloom 0.1011 (scene 6.5979, bloom/scene 0.02) | authored/disc 88%, authored/out 0%, highlight/disc 11%, highlight/out 0%
+  SKY   bloom 0.0012 (scene 0.0129, bloom/scene 0.09) | authored/disc 89%, authored/out 2%, highlight/disc 8%, highlight/out 1%
+  HULL  bloom 0.0055 (scene 0.0470, bloom/scene 0.12) | authored/disc 74%, authored/out 14%, highlight/disc 8%, highlight/out 4%
+  PLATE bloom 0.0174 (scene 5.6400, bloom/scene 0.00) | authored/disc 25%, authored/out 70%, highlight/disc 3%, highlight/out 2%
+display (AgX) mean luma and glow pixels (display R >= 0.5), without -> with bloom:
+  DISC  mean luma 0.703 -> 0.728   R>=0.5 px  11621 ->  11848   R>=0.8 px   9801 ->   9868
+  SKY   mean luma 0.102 -> 0.110   R>=0.5 px     88 ->     91   R>=0.8 px      0 ->      0
+  HULL  mean luma 0.062 -> 0.101   R>=0.5 px   1913 ->   2058   R>=0.8 px    585 ->    589
+  PLATE mean luma 0.136 -> 0.219   R>=0.5 px     38 ->     38   R>=0.8 px     35 ->     36
+  sky ring 2.5-4 n_huge outside the region: mean display luma 0.074 -> 0.074; R>=0.5 px 94 -> 94
+connected groups holding the nozzles (4-neighbour, inside the region):
+  disc footprints (0.75 n_i): 9818 px {big3:6d big3:6e big3:6f big3:67 big3:66 huge:69 huge:68}, 822 px {big3:6c}, 2087 px {big3:6b big3:6a}
+  display R >= 0.5 without bloom: 10104 px {big3:6d big3:6e big3:6f big3:67 big3:66 huge:69 huge:68}, 1076 px {big3:6c}, 1956 px {big3:6b big3:6a}
+  display R >= 0.5 with bloom:    10236 px {big3:6d big3:6e big3:6f big3:67 big3:66 huge:69 huge:68}, 1183 px {big3:6c}, 2056 px {big3:6b big3:6a}
+  display R >= 0.8 without bloom: 7488 px {big3:6d big3:6f big3:67 big3:66 huge:69 huge:68}, 545 px {big3:6c}, 1342 px {big3:6b big3:6a}, 720 px {big3:6e}
+  display R >= 0.8 with bloom:    7497 px {big3:6d big3:6f big3:67 big3:66 huge:69 huge:68}, 592 px {big3:6c}, 1375 px {big3:6b big3:6a}, 724 px {big3:6e}
+  DISC display white (min >= 0.98) px 423 -> 437 of 12727; R >= 0.98 px 7607 -> 7582
