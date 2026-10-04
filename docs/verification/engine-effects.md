@@ -664,3 +664,47 @@ all measured.
 | Build | clean `cmake` build in a fresh directory; `check_no_x87.py build/d3d9.dll` | 0 warnings; 766 reachable, 0 violations |
 | Mouth whiteness | `run_engine_plumes.py --dump-images <scratch> --dump-linear`; `plume_mouth_whiteness.py run123=<c256d9c2 dump> run126=<00e184cf dump> revert=<this tree>` -> `verification/results/engine-effects/plume_mouth_whiteness_revert_out.txt` | Every side view and the far dots equal Run123 exactly (01a and 05 .pfm byte-identical); clipped fraction (min(rgb) >= 1) Run123 / Run124 = Run126 / revert: 01a red 0.119 / 0.000 / 0.119, 01b 0.026 / 0 / 0.026, 03a 0.036, 0.041 / 0 / same as Run123, 03c 0.024, 0.032 / 0 / same, 04 0.025 / 0 / 0.025, 05 40 px 0.102 / 0.006 / 0.102, 08 0.036, 0.078 / 0 / same, 09 0.115 / 0.011 / 0.115. Red whole-band radiance: revert 1.000 of Run123, 1.266 (s 1) / 1.287 (s 0.5) of Run126 (Run126 0.790 / 0.777 of Run123); blue and the other side views 0.988..0.997 of Run126 whole, the body past the mouth 0.962..0.971 (Run124's x 1.04 gone); far dots 1.029 of Run126 |
 | End-on disc | `plume_disc_clip.py --n 150 run126=<dump> revert=<dump>` -> `plume_disc_clip_revert_out.txt` | 02b red: no clipped pixel either state (centre >= 1 0.000), peak R 1.549 -> 1.733, G 0.604 -> 0.747 (the hot centre whiter), energy 1.040; blue: peak B 1.793 -> 1.742, energy 0.975, no clipped pixel; 02b centre whiteness (min/max) red 0.294 -> 0.381, blue 0.183 -> 0.221; oblique 02a red 45 deg energy 1.050 of Run126, still no clipped pixel |
+
+## Disc distance dimming after Run 127 (2026-10-04, worktree build on d562700e, not a candidate)
+
+Run 127 (`screenshots/engines6.png`): a Split Ocelot from straight behind at 3-4 km reads as ten white-centred lamps.
+The end-on disc's whole radiance (body, halo, ring, soft cap) now scales by 0.5 + 0.5 x smoothstep(20, 160, px), px
+the disc's drawn natural nozzle width (`Look::disc_far_low` 0.5, `disc_px_min` 20, `disc_px_full` 160, fixed;
+`disc_distance_weight`). The axial body, side view and ribbons are unchanged, and the far law and chase fade multiply
+on top. The own ship's jets are exempt (coordinator decision after the first pass: its nozzle is small because the ship
+is small, not far, and its look was accepted on Run 126 A): `build()` takes `Ring::own` beside the records (the tag the
+engine-light table uses to never evict the own ship) through `EnginePlumesFrame::own`, set by the proxy from
+`engine_ring_->own`. Rationale: `docs/architecture/engine-exhaust-look-critique.md` section 6, "Distance dimming of the disc". The
+lab has no distance control (noted in its comment). `test_engine_plumes` pins the constants and the builder's disc
+terms at 6 / 20 / 65 / 160 / 300 px and the own-tagged record's disc equal to the law-off draw (its `flat` look holds
+the law off for the older exact pins). Bottle X3, all measured.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Plumes | `run_engine_plumes.py` | PASS 312/312 (300 + 10 new `disc_distance` + 2 new `chase_own_disc_exempt`); 923 slots |
+| Own-ship exemption | fixture `chase_own_disc_exempt` (the chase case's far nozzle, 51 px at 1080 / 68 px at 1440, still look) | a non-own record over the own one: CPU 0.5627 / 0.636, drawn peak 0.5624 / 0.636 (law 0.5627 / 0.636); the own disc's terms equal the law-off draw's. Chase rows equal Run 127: fade_ratio and disc_ratio_cpu 0.4, extent 205 / 274 px, `chase_own_look` total 3075.3 / 5268.4, peak 4.742 / 4.738, own extent 39 / 53 px |
+| Disc law | fixture `disc_distance` (end-on, still look, s 1; disc energy = frame channel sum less the disc-zeroed draw) | law / undimmed at 20 / 65 / 160 / 300 px: 0.500 / 0.622 / 1.000 / 1.000 (expected 0.500 / 0.6218 / 1 / 1) at 1920 and 5120, CPU equal; 6 px: 0.500 of the far law alone, 0.2246 of both laws off (= 0.4492 x 0.5); axial quad's terms identical |
+| Ribbons, shimmer, effects | `run_engine_ribbons.py`; `run_engine_shimmer.py`; `run_engine_effects.py` | PASS 44/44; PASS 43/43; PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) |
+| Light | `run_engine_light.py` | PASS (12 plate modes) |
+| Host | `X3M_REQUIRE_SHADER_CORPUS=1 ... unittest discover -p 'test_engine_*.py'` | 85 OK |
+| Build | clean `cmake` build in a fresh directory; `check_no_x87.py build/d3d9.dll` | 0 warnings; 766 reachable, 0 violations |
+| Look images | `--dump-images`, `plume_look_sha_compare.py <d562700e images> look-images` -> `plume_look_sha_discfar_out.txt` | 9 of 9 side / far / RCS / ribbon images byte-identical (01a, 01b, 03a, 03c, 04, 05, 07, 08, 09); 02a, 02b, 03b, 06a, 06b, 10 and the contact sheet changed |
+| Look metrics | `plume_look_metrics.py`, `plume_look_metrics_compare.py` -> `plume_look_metrics_discfar_*_out.txt` | every side band unchanged; 02b ring red / blue 1 -> 1; far dots ratio 1.00 at 40 / 12 / 6 / 2 px; crowd 10 pixels >= 250 2576 -> 508 |
+| End-on disc | `plume_disc_clip.py --n 150 run127=<pfm> discfar=<pfm>` -> `plume_disc_clip_discfar_out.txt` | 02b (natural 150 px, law 0.993): energy red / blue 0.993 / 0.993, peak R 1.733 -> 1.721, peak B 1.742 -> 1.730, no clipped pixel; 02a 0.9962, 03b 0.9957, 06b 0.9997 of summed luma, side views 1.0000; crowd 10 0.8686 |
+
+Gates re-floored by exactly the law's factor at the gate's nozzle width (the fixture computes it, `disc_far(px)`):
+
+| Gate | Width | Factor | Floor old -> new | Measured Run127 -> now (1920 / 5120) |
+| --- | --- | --- | --- | --- |
+| `end_on_energy_{60,30,0}deg` | 20 px | 0.5 | 0.5 -> 0.25 | 0 deg 0.5638 -> 0.2819; 30 deg 0.7023 / 0.6977 -> 0.4374 / 0.4328; 60 deg 0.8198 / 0.8183 -> 0.7169 / 0.7153 |
+| `end_on_energy_detail1_n40` | 40 px | 0.5277 | 0.6 -> 0.3166 | 0 deg 0.6684 -> 0.3527; 30 deg 0.8627 / 0.8512 -> 0.5548 / 0.5434 |
+| `end_on_energy_detail1_n48` | 48 px | 0.552 | 0.6 -> 0.3312 | 0 deg 0.6679 -> 0.3687; 30 deg 0.872 / 0.8573 -> 0.5802 / 0.5655 |
+| `end_on_peak_within_1.5_body` (lower bound) | 30 px | 0.5073 | 0.9 -> 0.4566 x body | 0.9751 -> 0.4948 |
+| `headon_core_hidden` (open peak) | 96 px | 0.7821 | 0.45 -> 0.352 x I | open peak 1.893 -> 1.480 (1920), 4.539 -> 3.549 (5120) |
+
+`end_on_over_slab` stays (the slab reference carries the same law: 0.5799 / 0.58 as before), as does `chase_own_look`
+total_ratio 0.5681 / 0.5474. `chase_disc_not_dim` stays at 0.4: the chase case's plumes are tagged own (a first pass
+without the exemption re-floored it to 0.7083 / 0.6289, the law's ratio at 153 / 51 and 204 / 68 px; reverted). The
+own ship's nozzle at run405's boom is 34 / 45.3 px, where the law would give 0.514 / 0.543 (`chase_own_look`
+disc_far, the same record untagged over tagged); exempt, it draws as in Run 127. The look images have no own-tagged
+record: a re-dump after the exemption is byte-identical to the tracked set (16 of 16).

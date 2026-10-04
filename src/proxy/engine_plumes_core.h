@@ -41,6 +41,8 @@
 // survival rule of the motes); the distance law (after flight E, Look::far_*): a plume whose projected nozzle width is
 // under far_px_full (12 px) scales its radiance (core, halo, ring and disc alike) by far_low + (1 - far_low) x
 // smoothstep(far_px_min, far_px_full, px), 0.15 at 2 px and below, 1 at 12 px (distance_weight; counted far_nozzles); the
+// end-on disc alone also by disc_far_low + (1 - disc_far_low) x smoothstep(disc_px_min, disc_px_full, its drawn nozzle
+// width) (after Run 127: 0.5 at 20 px and below, 1 from 160 px; disc_distance_weight; not the own ship's jets); the
 // plume's projected body width (twice the body's
 // eroded edge or the nozzle ring, whichever is wider, at the axis point nearest the camera; not the halo's reach) is
 // held to 0.12 H by shrinking the axial quad about the nozzle (width and length x k), and its radiance fades 1 -> 0.5
@@ -250,6 +252,19 @@ struct Look {
     // the radiance of a plume whose projected nozzle width is under far_px_full scales by far_low + (1 - far_low) x
     // smoothstep(far_px_min, far_px_full, px) (distance_weight), so far ships read as faint sparks.
     float far_px_min = 2.f, far_px_full = 12.f, far_low = .15f;
+    // The disc's distance law (after Run 127: a Split Ocelot seen from straight behind at 3-4 km read as ten white-centred
+    // lamps): the end-on disc's whole radiance (its integrated body, halo, ring and the soft cap of its hot centre; not
+    // the axial quad, the side view or the ribbons) scales by disc_far_low + (1 - disc_far_low) x smoothstep(disc_px_min,
+    // disc_px_full, px), px the disc's drawn (natural, floored) nozzle width (disc_distance_weight): 0.5 at 20 px and
+    // below, ~0.6 at 65 px (the Ocelot's huge nozzle at 4 km on a 1440-row screen), 1 from 160 px; under 12 px the far
+    // law multiplies on top, the chase fade's chase_disc_floor too. Why: a glowing surface keeps its radiance with
+    // distance (only its solid angle shrinks), so a distant disc stays as bright per pixel as a near one and reads as a
+    // lamp; modern games roll distant emitters off through exposure and bloom, which this stage does not see, and the
+    // dimming stands in for that roll-off. The own ship's jets (Ring::own, the tag the engine light's table never evicts)
+    // are exempt (factor 1): its nozzle is small on screen because the ship is small, not far (34 / 45 px at the chase
+    // boom), and its end-on look was accepted on Run 126 A; the far law and the chase fade still apply. Fixed constants
+    // (no ini key).
+    float disc_far_low = .5f, disc_px_min = 20.f, disc_px_full = 160.f;
     // The detail level d of the single law (docs/architecture/engine-exhaust-look-critique.md section 6, "One law"): by
     // the drawn nozzle width in px (after the near-camera cap, before the dot floor), smoothstep(detail_px_min,
     // detail_px_max, px), carried in the tint's alpha. One law at every d: the core radius x core_widen at 0 to the
@@ -1080,6 +1095,13 @@ inline void distance_weight(const Look& k, float nozzle_px, float* out) noexcept
     if (nozzle_px < k.far_px_full) law::smooth(k.far_px_min, k.far_px_full, nozzle_px, &t);
     *out = k.far_low + (1.f - k.far_low) * t;
 }
+// The disc's distance law: the end-on disc's radiance factor at a drawn disc nozzle width of `disc_px` pixels,
+// disc_far_low + (1 - disc_far_low) x smoothstep(disc_px_min, disc_px_full, disc_px) (after Run 127).
+inline void disc_distance_weight(const Look& k, float disc_px, float* out) noexcept {
+    float t = 1.f;
+    if (disc_px < k.disc_px_full) law::smooth(k.disc_px_min, k.disc_px_full, disc_px, &t);
+    *out = k.disc_far_low + (1.f - k.disc_far_low) * t;
+}
 // The facing weights: the disc's smoothstep(disc_low, disc_high, f) and the axial quad's 1 - (1 - axial_floor) x it.
 inline void facing_weights(const Look& k, float facing_abs, float* disc, float* axial) noexcept {
     law::smooth(k.disc_low, k.disc_high, facing_abs, disc);
@@ -1089,10 +1111,12 @@ inline void facing_weights(const Look& k, float facing_abs, float* disc, float* 
 // One nozzle's eight vertices. False: not drawn (stats says why). `tables` look_tables(look); `seconds` the stage's
 // clock (the length pulse); `floor_value` the plume floor for this record (0: none; build()), raising the value of
 // the plume's size and length, never its position; `pulses` (null: evaluated here) the frame's pulse per seed byte;
-// `dynamics` (null: none) the frame's flow accumulator, travel weight and attack memory (begun by the caller).
+// `dynamics` (null: none) the frame's flow accumulator, travel weight and attack memory (begun by the caller);
+// `own_ship` the record is the own ship's jet (Ring::own): its disc is exempt from the disc's distance law.
 inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& view, const Look& look,
                          const LookTables& tables, float scale, float seconds, float floor_value, Vertex* out,
-                         BuildStats* stats, PulseCache* pulses = nullptr, const Dynamics* dynamics = nullptr) noexcept {
+                         BuildStats* stats, PulseCache* pulses = nullptr, const Dynamics* dynamics = nullptr,
+                         bool own_ship = false) noexcept {
     if ((r.flags & ee::flag_rows_unknown) || !detail::finite3(r.origin) || !detail::finite3(r.axis) ||
         !ee::finite_f(r.size) || !(r.size > 0.f) || !ee::finite_f(r.z) || !ee::finite_f(r.s)) {
         ++stats->culled_rows;
@@ -1379,7 +1403,12 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
     if (length_widths > look.disc_length_max) length_widths = look.disc_length_max;
     float axis_peak = 0.f; // the cap's side peak: only a drawn disc reads it (the bilinear lookup costs ~25 ns a nozzle)
     if (disc_drawn) peak_axis_at(tables, s, &axis_peak, detail);
-    const float disc_level = disc_weight * (near_disc / near_weight); // i_core and i_halo carry near_weight (>= 0.5)
+    // The disc's distance law on its drawn natural nozzle width (before the disc_cap_px scale, which caps at 0.35 H, far
+    // past disc_px_full); evaluated only for a drawn disc, not for the own ship's jets (after Run 127: exempt).
+    float disc_far = 1.f;
+    if (disc_drawn && !own_ship) disc_distance_weight(look, n_natural * ppu, &disc_far);
+    // i_core and i_halo carry near_weight (>= 0.5) and the far law.
+    const float disc_level = disc_weight * (near_disc / near_weight) * disc_far;
     // kappa by the detail level: the smooth law's at 0, the structured law's at 1 (Look::disc_kappa_smooth, disc_kappa).
     const float kappa = look.disc_kappa_smooth + (look.disc_kappa - look.disc_kappa_smooth) * detail;
     const float disc_body = disc_level * i_core * kappa * length_widths * facing_abs;
@@ -1423,7 +1452,8 @@ inline bool build_nozzle(const ee::Record& r, const ee::Body* body, const View& 
 // record's table index to its entry (null: none); `seconds` the stage's clock (wrapped, StageClock::wrapped); `filter`
 // (null: every record) keeps the scene view's records; `look` (null: default_look) the plume look; `tables` (null:
 // computed here) look_tables(*look), cached where the look is fixed; `radii` (beside the records, Ring::parent_radius;
-// null: no floor) each record's ship radius in its own units.
+// null: no floor) each record's ship radius in its own units; `own` (beside the records, Ring::own; null: none) the own
+// ship's jets, exempt from the disc's distance law.
 //
 // The plume floor of a main jet (not RCS, not brake- or steering-pushed): min(max(value, k(R) x R), floor_cap x value)
 // (floored_value), from the ship's own radius at draw time, so it does not depend on which of the ship's nozzles the
@@ -1522,7 +1552,8 @@ using BodyLookup = const ee::Body* (*)(int index);
 inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body, const View& view, Preset preset,
                       float seconds, Vertex* out, unsigned capacity, BuildStats* stats, const ViewFilter* filter = nullptr,
                       const Look* look = nullptr, const LookTables* tables = nullptr, const float* radii = nullptr,
-                      const Dynamics* dynamics = nullptr, const std::uint32_t* parents = nullptr) noexcept {
+                      const Dynamics* dynamics = nullptr, const std::uint32_t* parents = nullptr,
+                      const std::uint8_t* own = nullptr) noexcept {
     BuildStats local{};
     BuildStats& st = stats ? *stats : local;
     st = BuildStats{};
@@ -1570,7 +1601,7 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
                 ++st.floor_unknown;
         }
         if (build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, out + written * vertices_per_nozzle, &st, &pulses,
-                         dynamics))
+                         dynamics, own && own[i]))
             ++written;
     }
     if (dynamics && dynamics->transients) {

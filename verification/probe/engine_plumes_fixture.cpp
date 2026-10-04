@@ -53,6 +53,8 @@
 //   structure     the revised look law (docs/architecture/engine-exhaust-look-critique.md section 5) on the FP16
 //                 readback: radial contrast, the body lane's cells and dark gaps, the streaks' anisotropy, the
 //                 whiteness at 150 px (capped) and 40 px, cyan and red, three frames; the end-on ring and hot centre
+//   distance      after flight E the far law at 2 / 6 / 12 / 40 px; after Run 127 the end-on disc's distance law at
+//                 6 / 20 / 65 / 160 / 300 px (the disc's energy law / off 0.5 + 0.5 smoothstep(20, 160, n), the axial unchanged)
 //   timing        EVENT-fenced stage cost in a frame tail at 30 and 100 nozzles; the CPU build for 30 / 100 / 1,024
 //                 records (the look's tables cached), plain and with the plume floor; with X3M_PLUMES_FIXTURE_DISC_AB=1 the
 //                 stage cost with the end-on disc drawn and not drawn, three interleaved rounds
@@ -344,6 +346,15 @@ rr::EnginePlumesFrame frame_for(Targets& t, bool four, const ee::Record* records
     f.look = look;
     return f;
 }
+// The end-on disc's distance law at a drawn nozzle width in px (engine_plumes_core.h disc_distance_weight, after Run
+// 127): the factor the re-floored end-on gates scale their old floors by.
+// The own-ship tag of a one-record frame (Ring::own): the chase cases' plumes are the own ship's, exempt from the law.
+const std::uint8_t own_tag[1] = {1};
+float disc_far(float nozzle_px) {
+    float w = 1.f;
+    ep::disc_distance_weight(ep::default_look, nozzle_px, &w);
+    return w;
+}
 // The frame's first nozzle as the builder writes it (the same inputs the pass draws).
 struct Built {
     ep::Vertex v[8];
@@ -358,7 +369,7 @@ Built build_cpu(const rr::EnginePlumesFrame& f) {
     dynamics.flow = f.flow;
     dynamics.travel = f.travel;
     b.nozzles = ep::build(f.records, f.record_count, f.body, f.view, f.preset, f.seconds, b.v, 1, &b.stats, nullptr, f.look,
-                          nullptr, nullptr, &dynamics);
+                          nullptr, nullptr, &dynamics, nullptr, f.own);
     return b;
 }
 // The CPU replica of the pixel program's law (src/effects/engine_plume_ps.hlsl, the revised law) for the axial quad and
@@ -768,9 +779,10 @@ void occlusion_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlu
         char label[64];
         // The open peak at least 0.45 x I (0.9 until flight G, 0.6 until Run 125): at 1920 the 192 px value is past the
         // near-camera cap, so the disc carries the chase fade's chase_disc_floor 0.4 (0.6 before; open peak 4.375 ->
-        // 2.916, 0.70 x I); since Run 125 under the soft cap 1.0 and the ring x 3 (1.5 / x 8 before) 1.969, 0.473 x I.
+        // 2.916, 0.70 x I); since Run 125 under the soft cap 1.0 and the ring x 3 (1.5 / x 8 before) 1.969, 0.473 x I. After
+        // Run 127 the floor x the disc's distance law at the nozzle's 96 px (0.782: 0.352 x I).
         std::snprintf(label, sizeof label, "headon_core_hidden_%s_%u", four ? "4ch" : "r32f", t.w);
-        report(label, open_peak >= .45f * core && inside <= 1e-3f);
+        report(label, open_peak >= .45f * disc_far(ep::default_look.nozzle_width * value * ppu) * core && inside <= 1e-3f);
         std::snprintf(label, sizeof label, "headon_rim_outside_%s_%u", four ? "4ch" : "r32f", t.w);
         report(label, outside > 0.f && rim >= 1);
     }
@@ -895,19 +907,26 @@ int extent_px(const std::vector<float>& px, UINT w, UINT h, float* peak_out) {
 void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
     const float value = 10.f;
     const ee::Record r = record(0, -2.f, 3.f * value, 0, 0, -1, value, 2.f);
+    // The chase cases' plumes are the own ship's (Ring::own): exempt from the disc's distance law (after Run 127).
+    auto own_frame = [&](const ee::Record* q, float seconds, const ep::Look* look) {
+        rr::EnginePlumesFrame f = frame_for(t, true, q, 1, ep::Preset::standard, seconds, 0.f, 0.f, look);
+        f.own = own_tag;
+        return f;
+    };
     scene.frame(0, 0, 0, 0, 500);
-    const auto rep = draw(d, pass, frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &body_only));
+    const auto rep = draw(d, pass, own_frame(&r, 0.f, &body_only));
     float body_peak = 0.f, pk = 0.f;
     const int body_extent = extent_px(t.read(d), t.w, t.h, &body_peak);
     scene.frame(0, 0, 0, 0, 500);
-    draw(d, pass, frame_for(t, true, &r, 1));
+    draw(d, pass, own_frame(&r, 0.f, nullptr));
     const int extent = extent_px(t.read(d), t.w, t.h, &pk);
     // The fade: the still look's peak (the disc's centre) on the view axis (the axial quad exactly edge-on: the disc
     // alone) here against the same nozzle at 9 values (unfaded, 51 / 68 px wide: the revised law's detail level 1 as
     // the capped one; the law is scale-free in nozzle widths at the same detail level).
-    auto still_peak = [&](float z, Built* built) {
+    auto still_peak = [&](float z, Built* built, bool own = true) {
         const ee::Record q = record(0, 0, z, 0, 0, -1, value, 2.f);
-        const rr::EnginePlumesFrame f = frame_for(t, true, &q, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+        rr::EnginePlumesFrame f = frame_for(t, true, &q, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+        if (own) f.own = own_tag;
         *built = build_cpu(f);
         scene.frame(0, 0, 0, 0, 500);
         draw(d, pass, f);
@@ -916,13 +935,29 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     Built near_b, far_b;
     const float near_peak = still_peak(3.f * value, &near_b), far_peak = still_peak(9.f * value, &far_b);
     const float ratio = far_peak > 0.f ? near_peak / far_peak : 0.f;
+    // After Run 127: the same far nozzle (51 / 68 px) not the own ship's is dimmed by the disc's distance law, the own
+    // one is not (its disc terms equal a non-own draw with the law off); CPU terms and the drawn peak.
+    Built other_b, off_b;
+    const float other_peak = still_peak(9.f * value, &other_b, false);
+    {
+        ep::Look law_off = still;
+        law_off.disc_far_low = 1.f;
+        const ee::Record q = record(0, 0, 9.f * value, 0, 0, -1, value, 2.f);
+        off_b = build_cpu(frame_for(t, true, &q, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &law_off));
+    }
+    const float far_px = body_only.nozzle_width * value * t.ppu(9.f * value), law_far = disc_far(far_px);
+    bool own_exempt = other_b.v[4].intensity[0] > 0.f;
+    for (unsigned j = 0; j < 3; ++j)
+        own_exempt = own_exempt && std::fabs(other_b.v[4].intensity[j] - law_far * far_b.v[4].intensity[j]) <= 1e-4f * (1.f + far_b.v[4].intensity[j]) &&
+                     far_b.v[4].intensity[j] == off_b.v[4].intensity[j] && other_b.v[0].intensity[j] == far_b.v[0].intensity[j];
+    const float other_ratio = far_peak > 0.f ? other_peak / far_peak : 0.f;
     const float disc_cpu = far_b.v[4].intensity[0] > 0.f ? near_b.v[4].intensity[0] / far_b.v[4].intensity[0] : 0.f;
     const float axial_cpu = far_b.v[0].intensity[0] > 0.f ? near_b.v[0].intensity[0] / far_b.v[0].intensity[0] : 0.f;
     // The own ship in chase view.
     const float boom = 18832.f, m11_flight = 1.f / .5625f, nozzle_value = 1000.f, zscale = 2.5f;
     const float depth_flight = .75f * boom, depth = depth_flight * m11 / m11_flight;
     const ee::Record own = record(0, 0, depth, 0, 0, -1, nozzle_value, zscale);
-    const rr::EnginePlumesFrame of = frame_for(t, true, &own, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &body_only);
+    const rr::EnginePlumesFrame of = own_frame(&own, 0.f, &body_only);
     const Built ob = build_cpu(of);
     scene.frame(0, 0, 0, 0, 500);
     draw(d, pass, of);
@@ -936,18 +971,22 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
         float pk_own[2] = {};
         int ext[2] = {};
         for (unsigned law = 0; law < 2; ++law) {
-            const rr::EnginePlumesFrame lf = frame_for(t, true, &own, 1, ep::Preset::standard, 10.f, 0.f, 0.f, law ? nullptr : &slab);
+            const rr::EnginePlumesFrame lf = own_frame(&own, 10.f, law ? nullptr : &slab);
             scene.frame(0, 0, 0, 0, 500);
             draw(d, pass, lf);
             const auto img = t.read(d);
             total[law] = total_of(img, t.w, t.h);
             ext[law] = extent_px(img, t.w, t.h, &pk_own[law]);
         }
-        const Built lb = build_cpu(frame_for(t, true, &own, 1, ep::Preset::standard, 10.f));
-        std::printf("CHASE_OWN_LOOK width=%u height=%u nozzle_px=%.1f detail=%.3f total=%.1f total_slab=%.1f total_ratio=%.4f peak=%.3f peak_slab=%.3f peak_ratio=%.4f extent_px=%d extent_slab_px=%d extent_ratio=%.4f\n",
+        const Built lb = build_cpu(own_frame(&own, 10.f, nullptr));
+        // After Run 127: the own ship's end-on disc against the same record not tagged own (CPU, its body term): the
+        // factor the disc's distance law would give it at this size (it is exempt).
+        const Built lo = build_cpu(frame_for(t, true, &own, 1, ep::Preset::standard, 10.f));
+        std::printf("CHASE_OWN_LOOK width=%u height=%u nozzle_px=%.1f detail=%.3f total=%.1f total_slab=%.1f total_ratio=%.4f peak=%.3f peak_slab=%.3f peak_ratio=%.4f extent_px=%d extent_slab_px=%d extent_ratio=%.4f disc_far=%.4f\n",
                     t.w, t.h, double(lb.v[0].local[3] * t.ppu(depth)), double(float(lb.v[0].tint >> 24) / 255.f), total[1], total[0],
                     total[0] > 0 ? total[1] / total[0] : 0., double(pk_own[1]), double(pk_own[0]),
-                    pk_own[0] > 0.f ? double(pk_own[1] / pk_own[0]) : 0., ext[1], ext[0], ext[0] > 0 ? double(ext[1]) / double(ext[0]) : 0.);
+                    pk_own[0] > 0.f ? double(pk_own[1] / pk_own[0]) : 0., ext[1], ext[0], ext[0] > 0 ? double(ext[1]) / double(ext[0]) : 0.,
+                    lb.v[4].intensity[0] > 0.f ? double(lo.v[4].intensity[0] / lb.v[4].intensity[0]) : 0.);
     }
     float line0 = 0.f;
     ep::width_line(body_only, 0.f, &line0);
@@ -970,7 +1009,7 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     // The body is shrunk to the cap as before: its width at the nearest axis point (the tip) projects to 0.12 H (CPU, the
     // builder's own k; the frame's extent is reported: since Run 125 it is the end-on disc's, which keeps the natural
     // nozzle width, its half-size under 0.35 H); the axial quad's head-colour alpha carries its n over the disc's.
-    const Built cb = build_cpu(frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, &body_only));
+    const Built cb = build_cpu(own_frame(&r, 0.f, &body_only));
     const float zr = r.origin[2], natural_n = body_only.nozzle_width * value, k_body = cb.v[0].local[3] / natural_n;
     const float tip_px = 2.f * spread * line0 * cb.v[0].local[3] * m11 * float(t.h) * .5f / (zr - cb.v[0].local[2]);
     const float disc_half_px = std::fabs(cb.v[4].local[0]) * t.ppu(zr);
@@ -987,9 +1026,16 @@ void chase_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     std::snprintf(label, sizeof label, "chase_fade_%u", t.w);
     report(label, pk > 0.f && near_b.stats.faded == 1 && far_b.stats.faded == 0 && std::fabs(axial_cpu - .5f) < 1e-3f);
     // Past the cap the disc sits at chase_disc_floor of its unfaded radiance (its own fade since flight G; a floor over
-    // the body's 0.5 before), on the CPU and in the drawn peak.
+    // the body's 0.5 before), on the CPU and in the drawn peak (the own ship's: no disc distance law, after Run 127).
     std::snprintf(label, sizeof label, "chase_disc_not_dim_%u", t.w);
     report(label, std::fabs(disc_cpu - ep::chase_disc_floor) < 1e-3f && std::fabs(ratio - ep::chase_disc_floor) < .01f);
+    // After Run 127: at the far nozzle's px a record not the own ship's is dimmed by the law, the own one is not.
+    std::printf("CHASE_OWN_EXEMPT width=%u height=%u nozzle_px=%.1f law=%.4f other_over_own_cpu=%.4f other_over_own_peak=%.4f exempt=%u\n",
+                t.w, t.h, double(far_px), double(law_far),
+                far_b.v[4].intensity[0] > 0.f ? double(other_b.v[4].intensity[0] / far_b.v[4].intensity[0]) : 0., double(other_ratio),
+                unsigned(own_exempt));
+    std::snprintf(label, sizeof label, "chase_own_disc_exempt_%u", t.w);
+    report(label, own_exempt && law_far < .99f && std::fabs(other_ratio - law_far) < .02f);
     std::snprintf(label, sizeof label, "chase_own_not_faded_%u", t.w);
     report(label, ob.nozzles == 1 && ob.stats.faded == 0 && ob.stats.capped == 0 && std::fabs(ob.v[0].intensity[0] - i_expected) < 1e-4f &&
                       own_extent > 0);
@@ -1335,10 +1381,12 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
     // The end-on energy against the side view's at least 0.5 (0.7 until Run 125: the soft cap 1.0 and the end-on ring
     // x 3, 1.5 and x 8 before, take the 40 px end-on 0.706 -> 0.558 and 30 degrees 0.835 -> 0.697; the user judged the
     // end-on disc too bright, engine-exhaust-look-critique.md section 6, "End-on brightness, Run 125").
+    // After Run 127 the floor x the disc's distance law at the 20 px nozzle (0.5: 0.25).
+    const double floor_end_on = .5 * double(disc_far(.5f * value * ppu));
     for (unsigned k = 1; k < 4; ++k) {
         std::snprintf(label, sizeof label, "end_on_energy_%.0fdeg_%u", double(degrees[k]), t.w);
         const double ratio = totals[0] > 0 ? totals[k] / totals[0] : 0.;
-        report(label, ratio >= .5 && ratio <= 1.5);
+        report(label, ratio >= floor_end_on && ratio <= 1.5);
     }
     // The mouth stacks no more: at every angle the frame's peak within 1.5 x the side view's (the disc's hand-over).
     std::snprintf(label, sizeof label, "end_on_peak_bounded_%u", t.w);
@@ -1417,8 +1465,10 @@ void end_on_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumes
         std::printf("\n");
         // Since Run 125 (the soft cap 1.0, the ring x 3): the end-on energy at least 0.6 of the side view's (0.7 before;
         // 0 degrees 1.013 -> 0.665), the end-on over the detail-0 law's 0.55..0.9 (0.7..0.9 before; 0.744 -> 0.585).
+        // After Run 127 the floor x the disc's distance law at the nozzle (40 px 0.528, 48 px 0.552).
+        const double floor_detail = .6 * double(disc_far(n_px));
         bool ok = detail > .999f && fade == 0;
-        for (unsigned j = 1; j < 4; ++j) ok = ok && tot[0] > 0 && tot[j] / tot[0] >= .6 && tot[j] / tot[0] <= 1.5;
+        for (unsigned j = 1; j < 4; ++j) ok = ok && tot[0] > 0 && tot[j] / tot[0] >= floor_detail && tot[j] / tot[0] <= 1.5;
         std::snprintf(label, sizeof label, "end_on_energy_detail1_n%.0f_%u", double(n_px), t.w);
         report(label, ok);
         const double over = tot_slab[3] > 0 ? tot[3] / tot_slab[3] : 0.;
@@ -1664,9 +1714,73 @@ void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
     std::printf("MOUTH_END_ON width=%u height=%u end_on_peak=%.4f body_peak_s1=%.4f end_on_over_body=%.4f\n", t.w, t.h,
                 double(end_peak), double(body_s1), double(body_s1 > 0 ? end_peak / body_s1 : 0));
     std::snprintf(label, sizeof label, "end_on_peak_within_1.5_body_%u", t.w);
-    report(label, body_s1 > 0.f && end_peak <= 1.5f * body_s1 && end_peak >= .9f * body_s1);
+    // After Run 127 the lower bound x the disc's distance law at the 30 px nozzle (0.507: 0.457).
+    report(label, body_s1 > 0.f && end_peak <= 1.5f * body_s1 && end_peak >= .9f * disc_far(.5f * value * ppu) * body_s1);
 }
 
+// After Run 127, the disc's distance law: an end-on nozzle (the exhaust at the camera, the still look, s = 1, value 2 n) at
+// a drawn nozzle width n of 6 / 20 / 65 / 160 / 300 px, drawn with the production law, with the disc law off
+// (disc_far_low 1) and with the disc zeroed (its factor 0: disc_far_low 0 and the ramp past every width), the axial quad
+// identical in all of them. The disc's energy is the frame's channel sum (linear under the additive blend) less the
+// zeroed draw's; its ratio law / off (per nozzle px^2 at one size: the same ratio) is 0.5 + 0.5 smoothstep(20, 160, n),
+// 0.50 / 0.622 / 1 / 1, within 5 %; at 6 px the production disc against both laws off is the far law's 0.4492 x 0.5. The
+// builder's disc terms carry the same factor; the axial quad's are equal.
+double channel_sum(const std::vector<float>& px, UINT w, UINT h) {
+    double s = 0;
+    for (std::size_t i = 0, n = std::size_t(w) * h; i < n; ++i) s += double(px[i * 4]) + px[i * 4 + 1] + px[i * 4 + 2];
+    return s;
+}
+void disc_distance_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
+    const float Z = 2000.f, ppu = t.ppu(Z);
+    ep::Look off = still, zero = still, both_off = still, zero_far = still;
+    off.disc_far_low = 1.f;
+    zero.disc_far_low = 0.f;
+    zero.disc_px_min = 1e6f;
+    zero.disc_px_full = 2e6f;
+    both_off.disc_far_low = 1.f;
+    both_off.far_low = 1.f;
+    zero_far = zero;
+    zero_far.far_low = 1.f;
+    const float sizes[5] = {6.f, 20.f, 65.f, 160.f, 300.f};
+    char label[64];
+    for (const float n_px : sizes) {
+        const float value = 2.f * n_px / ppu;
+        const ee::Record r = record(0, 0, Z, 0, 0, -1, value, 2.f);
+        const ep::Look* looks[5] = {&still, &off, &zero, &both_off, &zero_far};
+        double sums[5] = {};
+        Built b[5];
+        unsigned faded = 0, discs = 0;
+        for (unsigned k = 0; k < 5; ++k) {
+            const rr::EnginePlumesFrame f = frame_for(t, true, &r, 1, ep::Preset::standard, 0.f, 0.f, 0.f, looks[k]);
+            scene.frame(0, 0, 0, 0, 500);
+            const auto rep = draw(d, pass, f);
+            sums[k] = channel_sum(t.read(d), t.w, t.h);
+            b[k] = build_cpu(f);
+            faded += rep.stats.faded;
+            discs += rep.stats.discs;
+        }
+        const double e_law = sums[0] - sums[2], e_off = sums[1] - sums[2], e_both = sums[3] - sums[4];
+        float expect = 0.f, far_w = 1.f;
+        ep::disc_distance_weight(ep::default_look, n_px, &expect);
+        ep::distance_weight(ep::default_look, n_px, &far_w);
+        const double gpu = e_off > 0 ? e_law / e_off : 0., gpu_both = e_both > 0 ? e_law / e_both : 0.;
+        const float cpu = b[1].v[4].intensity[0] > 0.f ? b[0].v[4].intensity[0] / b[1].v[4].intensity[0] : 0.f;
+        bool terms = b[2].v[4].intensity[0] == 0.f;
+        for (unsigned j = 0; j < 3; ++j)
+            terms = terms && std::fabs(b[0].v[4].intensity[j] - expect * b[1].v[4].intensity[j]) <= 1e-4f * (1.f + b[1].v[4].intensity[j]) &&
+                    b[0].v[0].intensity[j] == b[1].v[0].intensity[j] && b[0].v[0].intensity[j] == b[2].v[0].intensity[j];
+        terms = terms && std::fabs(b[0].v[4].local[2] - expect * b[1].v[4].local[2]) <= 1e-4f * (1.f + b[1].v[4].local[2]);
+        const float area = n_px * n_px;
+        std::printf("DISC_DISTANCE width=%u height=%u nozzle_px=%.0f expected=%.4f far=%.4f ratio_gpu=%.4f ratio_cpu=%.4f ratio_both_off=%.4f "
+                    "expected_both_off=%.4f disc_per_px2_law=%.3f disc_per_px2_off=%.3f faded=%u discs=%u terms=%u\n",
+                    t.w, t.h, double(n_px), double(expect), double(far_w), gpu, double(cpu), gpu_both, double(expect * far_w),
+                    e_law / double(area), e_off / double(area), faded, discs, unsigned(terms));
+        std::snprintf(label, sizeof label, "disc_distance_%.0fpx_%u", double(n_px), t.w);
+        bool ok = terms && discs == 5 && std::fabs(gpu - double(expect)) <= .05 * double(expect) && std::fabs(cpu - expect) < 1e-3f;
+        if (n_px < ep::default_look.far_px_full) ok = ok && std::fabs(gpu_both - double(expect * far_w)) <= .05 * double(expect * far_w);
+        report(label, ok);
+    }
+}
 // After flight E, the distance law: a side view (axis -x, the still look, s = 1, value 2 n) at a projected nozzle width n
 // of 2, 6, 12 and 40 px, drawn with the law (the production constants) and without it (far_low 1): the frame's total
 // radiance ratio is the law's factor, 0.15 at 2 px, smoothstep to 1 at 12 px (0.449 at 6), 1 at 40; the builder's
@@ -3407,6 +3521,7 @@ int main(int argc, char** argv) {
             if (wanted("merge")) merge_case(d, *t, *scene, pass);
             if (wanted("mouth")) mouth_case(d, *t, *scene, pass);
             if (wanted("distance")) distance_case(d, *t, *scene, pass);
+            if (wanted("distance")) disc_distance_case(d, *t, *scene, pass);
             // After the gap analysis, phases 2 and 3.
             if (wanted("spill"))
                 for (const float n_px : {12.f, 60.f}) {

@@ -48,6 +48,8 @@ struct EnginePlumesFrame {
     const float* radii = nullptr;           // beside the records (Ring::parent_radius): the plume floor; null: none
     const std::uint32_t* parents = nullptr; // beside the records (Ring::parent): the co-located layer merge
                                             // (engine_plumes::merge_layers, plumes and ribbons); null: none
+    const std::uint8_t* own = nullptr;      // beside the records (Ring::own): the own ship's jets, exempt from the
+                                            // disc's distance law (engine_plumes_core.h); null: none
 };
 enum class EnginePlumesStep : unsigned { None, Validate, Resources, Lock, State, Draw };
 struct EnginePlumesReport {

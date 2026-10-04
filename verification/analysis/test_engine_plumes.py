@@ -94,6 +94,7 @@ int main() {
     // ----------------------------------------------------------- side view: the axial quad (no length pulse)
     Look flat = default_look;
     flat.pulse = 0.f;
+    flat.disc_far_low = 1.f; // the disc's distance law (after Run 127) off for the pins below; its own block tests it
     // After flight E: the halo brightness 0.20, and the distance law's factor at the small nozzles below (10 px, 4 px).
     const float HB = default_look.hb;
     // I(s) = lerp(IL, IH, s) (1.2 / 4.0), the heat 0.7, head_min 0.75 (the flight-F 1.248 / 4.16, 0.1, 0.42 reverted
@@ -1044,6 +1045,43 @@ int main() {
         expect(scaled && z1 == 0.f && z2 == 0.f && z3 == 0.f && z4 == 0.f && z5 == 0.f,
                "the ship radius in record units: radius x size / (+0x70 x +0x80 / 65536); 0 when dirty, unread or unscaled");
     }
+    // ----------------------------------------------------------- the disc's distance law (after Run 127)
+    {
+        // 0.5 + 0.5 smoothstep(20, 160, px): 0.5 at <= 20 px, 0.5 + 0.5 x 0.2435 at 65 (t 0.3214), 1 from 160 px. An
+        // end-on nozzle's disc terms (body, halo, cap, ring) scale by it on the drawn disc width, the axial quad does not;
+        // at 6 px the far law multiplies on top.
+        expect(default_look.disc_far_low == .5f && default_look.disc_px_min == 20.f && default_look.disc_px_full == 160.f,
+               "disc distance law constants 0.5 / 20 / 160 px");
+        Look law_on = flat, law_off = flat;
+        law_on.disc_far_low = default_look.disc_far_low;
+        const float at[5] = {6.f, 20.f, 65.f, 160.f, 300.f};
+        bool ok = true;
+        for (unsigned i = 0; i < 5; ++i) {
+            float w = 0.f, t = 0.f;
+            disc_distance_weight(default_look, at[i], &w);
+            law::smooth(20.f, 160.f, at[i], &t);
+            ok = ok && near(w, .5f + .5f * t);
+            const ee::Record r = rec(0, 0, 6.f * Z, 0, 0, -1, 2.f * at[i] / ppu(6.f * Z), 2.f);
+            std::vector<Vertex> a(8), b(8);
+            BuildStats sa{}, sb{};
+            build(&r, 1, nullptr, v, Preset::standard, 0.f, a.data(), 1, &sa, nullptr, &law_on);
+            build(&r, 1, nullptr, v, Preset::standard, 0.f, b.data(), 1, &sb, nullptr, &law_off);
+            ok = ok && sa.discs == 1 && near(.5f * b[4].shape[1] * ppu(6.f * Z), at[i], 1e-2f); // the natural width (near cap or not)
+            for (unsigned j = 0; j < 3; ++j) ok = ok && near(a[4].intensity[j], b[4].intensity[j] * w, 1e-4f) && a[0].intensity[j] == b[0].intensity[j];
+            ok = ok && near(a[4].local[2], b[4].local[2] * w, 1e-4f);
+            // The own ship's jet (Ring::own) is exempt: its disc equals the law-off draw's.
+            const std::uint8_t own_tag[1] = {1};
+            std::vector<Vertex> c(8);
+            BuildStats sc{};
+            build(&r, 1, nullptr, v, Preset::standard, 0.f, c.data(), 1, &sc, nullptr, &law_on, nullptr, nullptr, nullptr, nullptr, own_tag);
+            for (unsigned j = 0; j < 3; ++j) ok = ok && c[4].intensity[j] == b[4].intensity[j] && c[0].intensity[j] == b[0].intensity[j];
+            ok = ok && c[4].local[2] == b[4].local[2];
+        }
+        float w65 = 0.f;
+        disc_distance_weight(default_look, 65.f, &w65);
+        expect(ok && near(w65, .5f + .5f * .2435f, 2e-3f),
+               "disc distance law: the disc's body, halo, cap and ring x 0.5 + 0.5 smoothstep(20, 160, px) at 6 / 20 / 65 / 160 / 300 px, the axial quad unchanged; the own ship's jet exempt");
+    }
     // ----------------------------------------------------------- the disc's L / n bound and the cached tables
     {
         // Nozzle 0.1: L / n = 20 at full throttle, held to 8 in the disc's body and halo gains (head-on, flat look).
@@ -1434,8 +1472,9 @@ class Wiring(unittest.TestCase):
         self.assertIn('const bool census_row=engine_census_&&(capture_||engine_row_frames_<engine_row_frame_cap)&&'
                       'engine_rows_<engine_row_cap;', effects_inc)
         self.assertIn('in.radii=engine_ring_->parent_radius;', inc)
-        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii,&dynamics,f.parents);', passes)
+        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii,&dynamics,f.parents,f.own);', passes)
         self.assertIn('in.parents=engine_ring_->parent;', inc)
+        self.assertIn('in.own=engine_ring_->own;', inc)  # after Run 127: the own ship's jets exempt from the disc law
         self.assertIn('floored=%u floor_unknown=%u merged=%u', inc)
         self.assertIn('if(floor_scale>=engine_plumes::floor_min&&floor_scale<=engine_plumes::floor_max)plumes_look_.floor_scale=floor_scale;', inc)
         self.assertIn('verdict=%s radius=%.6g value_eff=%.6g', effects_inc)

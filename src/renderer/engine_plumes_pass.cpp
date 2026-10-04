@@ -262,7 +262,7 @@ HRESULT EnginePlumesPass::run(const EnginePlumesFrame& f, EnginePlumesReport* ou
     const unsigned nozzles = engine_plumes::build(f.records, f.record_count, f.body, f.view, f.preset, f.seconds,
                                                   static_cast<engine_plumes::Vertex*>(mapping), capacity, &r.stats,
                                                   f.filter.camera && f.filter.scene ? &f.filter : nullptr, &look, tables,
-                                                  f.radii, &dynamics, f.parents);
+                                                  f.radii, &dynamics, f.parents, f.own);
     hr = vb_->Unlock();
     if (FAILED(hr)) return refuse(EnginePlumesStep::Lock, hr);
     if (!nozzles) return finish(S_FALSE); // nothing drawable: no render state touched

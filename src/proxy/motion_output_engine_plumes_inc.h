@@ -379,6 +379,7 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     in.tables = &plumes_tables_;
     in.radii = engine_ring_->parent_radius; // the plume floor: each record's ship radius (engine_plumes_core.h build)
     in.parents = engine_ring_->parent;      // the co-located layer merge (engine_plumes_core.h merge_layers)
+    in.own = engine_ring_->own;             // the own ship's jets: no disc distance law (engine_plumes_core.h build)
     engine_plumes_fog(&in.view.fog); // phase 3: the density fog's mean transmittance per nozzle, off unless it applied
     // stage_us: the build and the draw; with --gpu-sync-timing the EnginePlumes pair fences both sides (EVENT queries),
     // so it includes the GPU's completion of the draw.

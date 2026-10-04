@@ -1,0 +1,24 @@
+# python3 plume_disc_clip.py --n 150 run127=DIR discfar=DIR (2026-10-04, X3; run127 = the Run127 law at d562700e, the same .pfm as plume_disc_clip_revert_out.txt revert; discfar = the disc distance law after Run 127, --dump-images --dump-linear)
+02b end-on, n 150.0 px drawn (capped and faded); centre radius 0.3 n, disc radius 4 n; mask from 'run127'
+disc                  state centre>=1  peak R  peak G  peak B disc>=1 px   frac tint>=1 px    energy  ratio
+02b red              run127     0.000   1.733   0.747   0.738          0  0.000       6172    7709.2  1.000
+02b red             discfar     0.000   1.721   0.741   0.733          0  0.000       5219    7654.8  0.993
+02b blue             run127     0.000   0.622   1.396   1.742          0  0.000       7783   12210.2  1.000
+02b blue            discfar     0.000   0.621   1.387   1.730          0  0.000       5985   12123.1  0.993
+
+other frames: summed luma over the first state's, largest per-pixel change of any channel
+image                   discfar
+01a          1.0000 /    0.0000
+01b          1.0000 /    0.0000
+02a          0.9962 /    0.0137
+03a          1.0000 /    0.0000
+03b          0.9957 /    0.0137
+03c          1.0000 /    0.0000
+04           1.0000 /    0.0000
+05           1.0000 /    0.0000
+06a          1.0000 /    0.0010
+06b          0.9997 /    0.0127
+07           1.0000 /    0.0000
+08           1.0000 /    0.0000
+09           1.0000 /    0.0000
+10           0.8686 /    2.1875

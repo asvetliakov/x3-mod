@@ -20,6 +20,8 @@ section 5 on the FP16 readback: radial contrast, the body lane's cells and dark 
 whiteness, the end-on ring and hot centre; after its review fixes (section 6, "Review fixes") the side view's energy
 across the detail blend (12..60 px), the end-on energy at the detail level 1 against the slab law's, the own ship's
 chase look against the slab law, the spill at the detail levels 0 and 1, and a 40 px nozzle through the resolve).
+After Run 127 the end-on disc's distance law (disc_distance: its energy law / off at 6 / 20 / 65 / 160 / 300 px) and
+the own ship's exemption from it (chase_own_exempt).
 --disc-ab runs the timing case alone with X3M_PLUMES_FIXTURE_DISC_AB=1: the stage cost with the end-on disc drawn and
 not drawn, three interleaved rounds at 30 / 100 nozzles and both sizes, into
 verification/results/engine-effects/plume_disc_ab.json (the summary record is not touched).
@@ -125,7 +127,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'FP16_REFUSED', 'RESOLVE_CONFIG', 'LENGTH', 'RESOLVE', 'OCCLUSION_HEADON', 'OCCLUSION_20DEG',
             'OCCLUSION_TAILON', 'OCCLUSION_OFFCENTRE', 'CHASE', 'CHASE_OWN', 'PRESETS', 'TEMPORAL', 'SHAPE', 'SHOCK', 'END_ON',
-            'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
+            'END_ON_NOZZLE', 'FLOOR', 'MOUTH', 'MOUTH_END_ON', 'DISTANCE', 'DISTANCE_DOT', 'DISC_DISTANCE', 'CHASE_OWN_EXEMPT', 'OFF_PATH', 'FAULT', 'RESET', 'TIMING',
             'TIMING_DISC', 'BUILD', 'BUILD_FLOOR', 'BUILD_MERGE', 'MERGE', 'MERGE_KEPT', 'IDLE', 'SPILL', 'SPILL_PROFILE', 'SPILL_NEAR', 'FLOW', 'FLOW_SAME', 'FLOW_LAG',
             'FLOW_KEYED', 'COLOUR', 'COLOUR_HEAD', 'ATTACK', 'ATTACK_CROSSING', 'TRAVEL', 'STRUCTURE', 'STRUCTURE_DISC',
             'END_ON_DETAIL', 'ENERGY', 'CHASE_OWN_LOOK', 'CHASE_CAP', 'NEAR_CAPITAL')
@@ -159,6 +161,8 @@ def gates(r):
     out['stage_gpu_ms'] = {f"{x['width']}x{x['height']}_{x['nozzles']}" + (f"_far{x['far']}" if x.get('far') else ''): x['gpu_ms']
                            for x in r['timing']}
     out['distance_ratio_gpu'] = {f"{x['width']}_{x['nozzle_px']:.0f}px": x['ratio_gpu'] for x in r['distance']}
+    out['disc_distance'] = {f"{x['width']}_{x['nozzle_px']:.0f}px": {k: x[k] for k in ('expected', 'ratio_gpu', 'ratio_cpu', 'ratio_both_off', 'expected_both_off')}
+                            for x in r['disc_distance']}
     out['stage_gpu_within_advisory'] = {k: v <= GATES['stage_gpu_ms_advisory'] for k, v in out['stage_gpu_ms'].items()}
     out['build_300_far250_us'] = next((x['median_us'] for x in r['build'] if x['records'] == 300), None)
     out['build_us'] = {str(x['records']): x['median_us'] for x in r['build']}

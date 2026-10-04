@@ -538,6 +538,29 @@ draws one nozzle (merged 1, value 23.56, totals and centre 1.00000 of the nor al
 of the larger's size apart is kept (2 nozzles, merged 0) at both sizes. The merge is transitive: a record already dropped still drops its own smaller layers, so an inner layer at 0.25 of the outer (under the window) drops through a 0.5 middle layer (`test_engine_plumes.py`: outer 10, middle 5, inner 2.5 co-located, 2 merged). The engine light's nozzle plates use the same
 merge (`engine-light.md` "Nozzle plates"), so the big3 nozzles get plates.
 
+### Distance dimming of the disc (after Run 127)
+
+Run 127 (`screenshots/engines6.png`): a Split Ocelot seen from straight behind at 3-4 km shows its ten stern discs as
+a cluster of white-centred lamps. A glowing surface keeps its radiance with distance; only its solid angle shrinks. So
+the end-on disc, which draws the whole plume integrated along the axis, is as bright per pixel at 4 km as at 400 m,
+and many such discs on one stern read as lamps. Modern games roll distant emitters off through auto-exposure and
+bloom, and the plume stage sees neither, so a mid-distance law stands in for that roll-off: the disc's whole radiance
+(its integrated body, halo, ring and the soft cap of its hot centre; not the axial body, the side view or the ribbons)
+scales by `disc_far_low` + (1 - `disc_far_low`) x smoothstep(`disc_px_min`, `disc_px_full`, px), with px the disc's
+drawn natural nozzle width (after the floors, before the 0.35 H radius cap). `Look::disc_far_low` 0.5, `disc_px_min`
+20, `disc_px_full` 160 are fixed constants, not ini keys (`disc_distance_weight` in `engine_plumes_core.h`). The
+Ocelot's huge nozzle at 4 km on a 1440-row screen (about 65 px) draws at 0.622, a 160 px disc and wider at 1. Under
+12 px the far law multiplies on top (0.449 x 0.5 at 6 px), and so does the chase fade. Measured on the fixture (bottle
+X3, `disc_distance`): the disc's energy against the undimmed law is 0.500 / 0.622 / 1.000 / 1.000 at 20 / 65 / 160 /
+300 px, both sizes, and the axial quad is unchanged. Side views, far dots, RCS and ribbon images are byte-identical;
+the 02b discs at their natural 150 px keep 0.993 of their energy. The own ship's jets are exempt (factor 1; the far
+law and the chase fade still apply): its nozzle is small on screen because the ship is small, not far (34 px at 1080
+rows and 45 px at 1440 at run405's boom, where the law would give 0.514 / 0.543), and its end-on look was accepted
+on Run 126 A. The builder takes the tag beside each record, `Ring::own` (the identity the engine-light table uses to
+never evict the own ship), through `EnginePlumesFrame::own`. Every end-on gate measured under 160 px was re-floored by exactly the
+law's factor (`docs/verification/engine-effects.md`, "Disc distance dimming after Run 127"). The lab has no distance
+control and draws the disc at x 1 (noted in its comment).
+
 ## Unknown, and what settles it
 
 - Whether the body at 0.3-0.8 linear reads too dark at 5120x1440 with bloom on: the lab at the same constants is the
