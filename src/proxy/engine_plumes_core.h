@@ -6,7 +6,7 @@
 #include "../renderer/fog_transmittance.h"
 
 // Portable core of the engine plumes, phase 2 (docs/architecture/engine-effects-modern.md sections 3-6): the strength
-// presets and their parser, the Ctrl+Alt+F6 press latch, the tint of a record, and the CPU builder that turns the
+// presets and their parser, the tint of a record, and the CPU builder that turns the
 // frame's glow-jet records (engine_effects_core.h Record) into the vertices of the stage's one indexed draw. No Windows
 // dependency: the host tests compile it. No x87: float work through SSE scalars, no float returned by value from a
 // function that may stay out of line.
@@ -85,8 +85,8 @@ namespace x3m::engine_plumes {
 namespace ee = x3m::engine_effects::core;
 
 // --------------------------------------------------------------------------- presets
-// X3M_ENGINE_EFFECTS_PRESET=restrained|default|strong (ini engine_effects_preset), default "default"; Ctrl+Alt+F6
-// cycles them at run time. Each scales I_core, I_halo and the halo sigma.
+// X3M_ENGINE_EFFECTS_PRESET=restrained|default|strong (ini engine_effects_preset), default "default", read at
+// load. Each scales I_core, I_halo and the halo sigma.
 enum class Preset : std::uint8_t { restrained = 0, standard = 1, strong = 2 };
 constexpr unsigned preset_count = 3;
 constexpr Preset default_preset = Preset::standard;
@@ -95,9 +95,6 @@ inline const char* preset_name(Preset p) noexcept {
 }
 inline void preset_scale(Preset p, float* out) noexcept {
     *out = p == Preset::restrained ? .6f : p == Preset::strong ? 1.5f : 1.f;
-}
-inline Preset next_preset(Preset p) noexcept {
-    return Preset((unsigned(p) + 1u) % preset_count);
 }
 // Exactly one of the three words in lower case (the engine_effects option's rule: mixed case, padding or another word
 // is refused); `n` characters of narrow or wide text.
@@ -124,19 +121,6 @@ template <class Char> inline bool parse_preset(const Char* text, Preset* out) no
     if (text[n]) return false;
     return parse_preset(text, n, out);
 }
-
-// --------------------------------------------------------------------------- hotkey
-// Ctrl+Alt+F6 with Shift up, edge-triggered on F6's own latch: a held F6 never becomes a press by changing modifiers,
-// and an unfocused window neither fires nor arms (the latch follows the key while unfocused, so focus coming back with
-// F6 held is no press).
-struct PresetKey {
-    bool f6_down = false;
-    bool step(bool focused, bool control, bool alt, bool shift, bool f6) noexcept {
-        const bool press = focused && control && alt && !shift && f6 && !f6_down;
-        f6_down = f6;
-        return press;
-    }
-};
 
 // --------------------------------------------------------------------------- look
 // The plume look: the Engine Exhaust Lab's settings the user chose (tools/effects/engine_exhaust_lab.html: "bulge=1.15

@@ -1,8 +1,7 @@
 """Engine heat shimmer (docs/architecture/engine-exhaust-gap-analysis.md gap 9, phase 5): the portable core
-src/proxy/engine_shimmer_core.h compiled on the host (the option parsers, the Ctrl+Alt+F7 latch, the amplitude law, the
+src/proxy/engine_shimmer_core.h compiled on the host (the option parsers, the amplitude law, the
 rects from the plume builder: the 24 px gate, the 16-rect cap and rank, the side-view and end-on geometry, the near-plane
-cut, the view filter, the occlusion depth, the mask law, the constant block and the quads), the production Ctrl+Alt+F7
-block of capture.cpp executed with stubbed keys, the schema entries and launcher options, the wiring, and the tracked Wine
+cut, the view filter, the occlusion depth, the mask law, the constant block and the quads), the schema entries and launcher options, the wiring, and the tracked Wine
 record of run_engine_shimmer.py bound to its production sources.
 """
 import hashlib
@@ -71,17 +70,6 @@ int main() {
     amplitude_px(1.5f, 1440.f, &amp); expect(amp == 1.5f, "1.5 px at 1440 rows");
     amplitude_px(1.5f, 1080.f, &amp); expect(close_to(amp, 1.125f, 1e-6f), "scaled with the height");
     amplitude_px(0.f, 1080.f, &amp); expect(amp == 0.f, "zero");
-    // ----------------------------------------------------------- the F7 latch
-    {
-        ToggleKey k; unsigned n = 0;
-        auto f = [&](bool focus, bool c, bool a, bool s, bool f7) { n += k.step(focus, c, a, s, f7); };
-        for (int i = 0; i < 5; ++i) f(true, true, true, false, true);
-        expect(n == 1, "held F7 is one press");
-        f(true, true, true, false, false); f(true, true, true, false, true); expect(n == 2, "second press");
-        f(true, true, true, false, false); f(true, true, true, true, true); expect(n == 2, "Shift held: no press");
-        f(true, false, false, false, false); f(true, false, false, false, true); f(true, true, true, false, true); expect(n == 2, "F7 before the modifiers");
-        f(false, false, false, false, false); f(false, true, true, false, true); f(true, true, true, false, true); expect(n == 2, "unfocused");
-    }
     // ----------------------------------------------------------- the gate and the side view
     {
         Rect r[max_rects]; Stats st{};
@@ -261,76 +249,6 @@ class EngineShimmerCore(unittest.TestCase):
     def test_collect_cost(self):
         row = next(m for l in self.lines if (m := re.match(r'COLLECT records=300 kept=(\d+) small=(\d+) median_us=([\d.]+)', l)))
         self.assertLess(float(row.group(3)), 100.0)  # host clang -O2: the rect build for 300 records
-
-
-F7_BEGIN = '    // Ctrl+Alt+F7 (comparison-hotkeys.md'
-F7_END = 'ctx.motion_output.engine_shimmer_toggle();\n    }\n'
-
-
-def f7_block(capture):
-    start = capture.index(F7_BEGIN)
-    return capture[start:capture.end(F7_END, start)]
-
-
-class ToggleHotkey(unittest.TestCase):
-    """The production Ctrl+Alt+F7 block of capture.cpp's Present, executed with stubbed keys and focus."""
-
-    def test_block(self):
-        block = f7_block(source_text(ROOT / 'src/proxy/capture.cpp'))
-        harness = textwrap.dedent('''
-            #include "engine_shimmer_core.h"
-            #include <cstdio>
-            #define VK_F7 0x76
-            #define VK_CONTROL 0x11
-            #define VK_MENU 0x12
-            #define VK_SHIFT 0x10
-            static unsigned polls = 0, checks = 0, failures = 0;
-            static bool keys[256], focused = true;
-            short GetAsyncKeyState(int key) { ++polls; return keys[key & 255] ? short(-32768) : short(0); }
-            bool comparison_foreground() noexcept { return focused; }
-            namespace x3m {
-            struct Motion { bool requested = false; unsigned toggles = 0; bool engine_shimmer_requested() const { return requested; }
-                            int engine_shimmer_toggle() { ++toggles; return 0; } };
-            struct Ctx { Motion motion_output; engine_shimmer::ToggleKey shimmer_key; };
-            static void frame(Ctx& ctx) {
-            @BLOCK@
-            }
-            }
-            #define CHECK(x) do { ++checks; if (!(x)) { ++failures; std::printf("FAIL line=%d %s\\n", __LINE__, #x); } } while (0)
-            static void set(bool c, bool a, bool s, bool f7) { keys[VK_CONTROL] = c; keys[VK_MENU] = a; keys[VK_SHIFT] = s; keys[VK_F7] = f7; }
-            int main() {
-                x3m::Ctx ctx;
-                set(true, true, false, true);
-                for (int i = 0; i < 5; ++i) x3m::frame(ctx);
-                CHECK(polls == 0 && ctx.motion_output.toggles == 0); // not requested: never polled
-                ctx.motion_output.requested = true;
-                set(false, false, false, false); polls = 0;
-                for (int i = 0; i < 10; ++i) x3m::frame(ctx);
-                CHECK(polls == 10); // idle: F7 only, once per frame
-                set(true, true, false, true); for (int i = 0; i < 6; ++i) x3m::frame(ctx);
-                CHECK(ctx.motion_output.toggles == 1); // a held chord is one press
-                set(true, true, false, false); x3m::frame(ctx); set(true, true, false, true); x3m::frame(ctx);
-                CHECK(ctx.motion_output.toggles == 2);
-                set(true, true, true, false); x3m::frame(ctx); set(true, true, true, true); x3m::frame(ctx);
-                CHECK(ctx.motion_output.toggles == 2); // Shift held
-                set(false, false, false, false); x3m::frame(ctx); set(false, false, false, true); x3m::frame(ctx); set(true, true, false, true); x3m::frame(ctx);
-                CHECK(ctx.motion_output.toggles == 2); // F7 first, modifiers later
-                set(false, false, false, false); x3m::frame(ctx); focused = false; set(true, true, false, true); x3m::frame(ctx);
-                focused = true; x3m::frame(ctx);
-                CHECK(ctx.motion_output.toggles == 2); // unfocused press, focus returns while held
-                std::printf("f7 checks=%u failures=%u\\n", checks, failures);
-                return failures ? 1 : 0;
-            }
-        ''').replace('@BLOCK@', str(block))
-        with tempfile.TemporaryDirectory(prefix='x3-f7-') as temporary:
-            source, executable = Path(temporary) / 'f7.cpp', Path(temporary) / 'f7'
-            source.write_text(harness)
-            built = subprocess.run([compiler(), '-std=c++17', '-Wall', '-Wextra', '-Werror', '-O1', '-I', str(ROOT / 'src/proxy'),
-                                    str(source), '-o', str(executable)], capture_output=True, text=True, timeout=120)
-            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
-            run = subprocess.run([str(executable)], capture_output=True, text=True, timeout=20)
-            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'f7 checks=7 failures=0\n')
 
 
 class Options(unittest.TestCase):

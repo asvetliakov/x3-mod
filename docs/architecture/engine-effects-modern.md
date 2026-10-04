@@ -241,13 +241,14 @@ planned.
 | 4 (optional, on evidence) | emitter-site anchor records (stock capitals, per-race stock tint); engine-side JET cull for the engine's per-draw time; texture-key fallback for unscoped draws; reactive mark | 1–2 each |
 
 **Phase 2 as built (2026-10-01; ledger [engine-effects.md](../verification/engine-effects.md), "Phase 2").** Code:
-`src/proxy/engine_plumes_core.h` (presets, the F6 latch, the CPU builder), `src/renderer/engine_plumes_pass.{h,cpp}`,
+`src/proxy/engine_plumes_core.h` (presets, the CPU builder), `src/renderer/engine_plumes_pass.{h,cpp}`,
 `src/effects/engine_plume_{vs,ps}.hlsl` (vs 10 / ps 92 slots after the review fixes [m]), `src/proxy/motion_output_engine_plumes_inc.h`
 (arming, census) and `TemporalPass::FrameInputs::stage_callback`. Where the phase-2 brief set numbers that differ from
 section 3 above, the brief's are built: core radius 0.15 value (not 0.12) tapering to 0 at L, halo `exp(-d/sigma)` with
 sigma 0.5 value at the nozzle (half at the tip), a camera-facing disc of diameter 0.5 value, the flicker evaluated per
 nozzle on the CPU (+-10 %, 8-frame value-noise cells), presets scaling I_core, I_halo and sigma (not the ribbon's T),
-and a Ctrl+Alt+F6 preset key (risk 3 above said none). Decisions of the build: the near-camera cap holds the plume's
+and a Ctrl+Alt+F6 preset key (risk 3 above said none; removed 2026-10-04 by user decision, the preset is load-time
+only again, [comparison-hotkeys.md](comparison-hotkeys.md)). Decisions of the build: the near-camera cap holds the plume's
 projected **width** (2 sigma at the axis point nearest the camera) to 0.12 H by shrinking the whole plume about the
 nozzle, radiance 1 -> 0.5 over the last 20 % (a bounding-sphere rule shrank every long side-on plume); the occlusion
 depth of a pixel is that of the nearest axis point (the billboard's own depth would let the halo behind the nozzle

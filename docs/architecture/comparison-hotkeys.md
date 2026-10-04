@@ -28,30 +28,18 @@ executed with and without the debug tier). Ledger lines (`docs/verification/`): 
 `directional-shadows.md`, `volumetric-fog.md`, `telemetry.md`, `window-and-cursor.md`, `screen-emission.md`,
 `hdr-scene-path.md`.
 
-## Engine plume presets (2026-10-01)
+## Removed 2026-10-04: engine plume preset and heat shimmer keys
 
-**Ctrl+Alt+F6** (Shift up) cycles the strength preset of the proxy's engine plumes, restrained → default → strong →
-restrained ([engine-effects-modern.md](engine-effects-modern.md), section 6; ini `engine_effects_preset`, launch value
-via `--engine-effects-preset`). Added by the phase-2 brief after the 2026-09-26 removal: it is the only key besides F8,
-and it is polled only on a device with `engine_effects = plumes` requested (otherwise no key state is read). F6 is read
-every frame; the modifiers and the foreground window only on a fresh F6 edge (`engine_plumes::PresetKey`: a held F6
-never becomes a press by changing modifiers, an unfocused press does not arm). Each press logs one
-`engine_plumes_preset` row (`preset=`, `previous=`, `source=hotkey`). The native/off/plumes mode is load-time and has
-no key. Host proof: `verification/analysis/test_engine_plumes.py` (`PresetHotkey`: the production block executed with
-stubbed keys) and `test_comparison_hotkeys.py` (F8 plus exactly this block poll keys).
+User decision 2026-10-04: the two engine keys went; F8 is again the only in-game key. Both options keep their
+load-time value for the whole session.
 
-## Engine heat shimmer (2026-10-03)
+| Key (gone) | What it did (added) | Now |
+| --- | --- | --- |
+| Ctrl+Alt+F6 | cycled the plume preset restrained → default → strong (`engine_plumes::PresetKey`, `MotionOutput::engine_plumes_cycle_preset`, one `engine_plumes_preset` row per press; 2026-10-01) | `engine_effects_preset` / `--engine-effects-preset` / `X3M_ENGINE_EFFECTS_PRESET`, read at load |
+| Ctrl+Alt+F7 | turned the heat shimmer off and on per device (`engine_shimmer::ToggleKey`, `MotionOutput::engine_shimmer_toggle`, one `engine_shimmer_toggle` row; 2026-10-03) | `engine_shimmer` / `--engine-shimmer` / `X3M_ENGINE_SHIMMER`, read at load; the shimmer's per-device on/off state, the `skipped=off` reason, the `on=` field of the `engine_shimmer` row and `toggle=` of `engine_shimmer_config` went with it |
 
-**Ctrl+Alt+F7** (Shift up) turns the engine heat shimmer off and on for the device
-([engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md), gap 9; ini `engine_shimmer`, launch value via
-`--engine-shimmer`). The chord belonged to the FPS overlay until the 2026-09-26 removal and was free since. It is polled
-only on a device with the shimmer requested (`engine_effects = plumes` and `engine_shimmer` on); otherwise no key state is
-read. F7 is read every frame; the modifiers and the foreground window only on a fresh F7 edge
-(`engine_shimmer::ToggleKey`, the F6 latch's shape). Each press logs one `engine_shimmer_toggle` row (`on=`,
-`failed=`, `source=hotkey`). No suppression, hook or plume state changes: off only skips the post-resolve draw (a
-pending revert still runs before Present). Host proof: `verification/analysis/test_engine_shimmer.py` (`ToggleHotkey`:
-the production block executed with stubbed keys) and `test_comparison_hotkeys.py` (F8 plus exactly the F6 and F7 blocks
-poll keys).
+Host proof: `verification/analysis/test_comparison_hotkeys.py` (F8 is the only `GetAsyncKeyState` caller in `src/`; no
+modifier or F6/F7 key code, latch or handler name remains). Ledger: `docs/verification/engine-effects.md`.
 
 The sections below are the history of the keys before their removal.
 

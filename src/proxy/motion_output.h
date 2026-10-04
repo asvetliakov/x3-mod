@@ -1199,10 +1199,6 @@ public:
     // frame at the resolve.
     void configure_engine_plumes(bool requested, engine_plumes::Preset preset, float nozzle_width,
                                  float floor_scale = engine_plumes::default_look.floor_scale) noexcept;
-    bool engine_plumes_requested() const noexcept { return plumes_requested_; }
-    // Ctrl+Alt+F6: the next preset (restrained -> default -> strong -> restrained), one engine_plumes_preset row; the
-    // native/off/plumes mode is never toggled. -1 when plumes are not requested on this device, else the new preset.
-    int engine_plumes_cycle_preset() noexcept;
     // Engine light on the hull (motion_output_engine_light_inc.h; docs/architecture/engine-light.md): plumes = the
     // plume stage is requested (X3M_ENGINE_EFFECTS=plumes with the suppression on); reads X3M_ENGINE_LIGHT=on|off
     // (default on) once, after the material options, and allocates the tables (about 0.4 MB) when it applies.
@@ -1212,10 +1208,6 @@ public:
     // X3M_ENGINE_SHIMMER_MAX (0..16 rects, default 4) once and logs one
     // engine_shimmer_config row; requested only with the plumes requested. Process-start values.
     void configure_engine_shimmer() noexcept;
-    bool engine_shimmer_requested() const noexcept { return shimmer_requested_; }
-    // Ctrl+Alt+F7: the shimmer off / on for this device (one engine_shimmer_toggle row); -1 when not requested, else
-    // the new state.
-    int engine_shimmer_toggle() noexcept;
     // Small-prop cull (X3M_CULL_SMALL_PROPS=on with X3M_CULL_SMALL_PARTS_PX, cull_small_props_core.h): process-start
     // values validated by the caller; off = one bool test per scene draw.
     void configure_cull_small_props(bool on, float px) noexcept {
@@ -1886,9 +1878,9 @@ private:
     HRESULT run_engine_ribbons(const renderer::EnginePlumesFrame& frame) noexcept;
     void engine_plumes_fog(x3m::renderer::FogTransmittanceLaw* law) noexcept;
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
-    // Ctrl+Alt+F7 state, the pass (attached at the first frame with rects; refused at attach or failed: off until
+    // pass (attached at the first frame with rects; refused at attach or failed: off until
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.
-    bool shimmer_requested_ = false, shimmer_on_ = true, shimmer_attach_failed_ = false, shimmer_failed_ = false;
+    bool shimmer_requested_ = false, shimmer_attach_failed_ = false, shimmer_failed_ = false;
     float shimmer_px_ = engine_shimmer::default_px;
     unsigned shimmer_max_ = engine_shimmer::default_max; // X3M_ENGINE_SHIMMER_MAX, 0..16
     std::unique_ptr<renderer::EngineShimmerPass> shimmer_;
@@ -1899,11 +1891,11 @@ private:
     float shimmer_us_ = 0.f, shimmer_revert_us_ = 0.f;
     HRESULT shimmer_revert_ = S_FALSE;
     unsigned shimmer_stale_reverts_ = 0;
-    // Frames since the shimmer last drew (held at the limit) and the scratch releases (the toggle off, or that many idle
-    // frames: idle_engine_shimmer).
+    // Frames since the shimmer last drew (held at the limit) and the scratch releases (after that many idle frames:
+    // idle_engine_shimmer).
     unsigned shimmer_idle_frames_ = 0, shimmer_scratch_releases_ = 0;
     static constexpr unsigned shimmer_idle_limit = 300;
-    void idle_engine_shimmer(bool off) noexcept;
+    void idle_engine_shimmer() noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     // The two-frame history probe (motion_output_engine_shimmer_inc.h; x3m_engine_shimmer_fixture_probe / _status).
     struct ShimmerProbe {

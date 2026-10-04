@@ -1,9 +1,8 @@
 """Engine plumes, phase 2 (X3M_ENGINE_EFFECTS=plumes; docs/architecture/engine-effects-modern.md sections 3-6): the
-portable core src/proxy/engine_plumes_core.h compiled on the host (the preset parser, the Ctrl+Alt+F6 latch, the
-record -> vertex builder: geometry, throttle law, presets, the screen minimums, the near-camera cap and fade, the RCS
+portable core src/proxy/engine_plumes_core.h compiled on the host (the preset parser, the record -> vertex
+builder: geometry, throttle law, presets, the screen minimums, the near-camera cap and fade, the RCS
 puffs, the cull rules, capacity, tint and the body table's colours, the length pulse and its per-seed cache, the flow
-phase, the nozzle parser, the build's cost), the production Ctrl+Alt+F6 block of capture.cpp executed with stubbed keys,
-the preset's and the nozzle width's schema entries and launcher options, the wiring, and the tracked Wine record of
+phase, the nozzle parser, the build's cost), the preset's and the nozzle width's schema entries and launcher options, the wiring, and the tracked Wine record of
 run_engine_plumes.py bound to its production sources.
 """
 import hashlib
@@ -55,22 +54,8 @@ int main() {
     for (const char* t : refused) { p = Preset::strong; expect(!parse_preset(t, &p) && p == Preset::strong, t); }
     expect(!std::strcmp(preset_name(Preset::restrained), "restrained") && !std::strcmp(preset_name(Preset::standard), "default") &&
            !std::strcmp(preset_name(Preset::strong), "strong") && default_preset == Preset::standard, "names");
-    expect(next_preset(Preset::restrained) == Preset::standard && next_preset(Preset::standard) == Preset::strong &&
-           next_preset(Preset::strong) == Preset::restrained, "cycle");
     float sc[3]; for (unsigned i = 0; i < 3; ++i) preset_scale(Preset(i), &sc[i]);
     expect(sc[0] == .6f && sc[1] == 1.f && sc[2] == 1.5f, "scales 0.6 / 1 / 1.5");
-    // ----------------------------------------------------------- the F6 latch
-    {
-        PresetKey k; unsigned n = 0;
-        auto f = [&](bool focus, bool c, bool a, bool s, bool f6) { n += k.step(focus, c, a, s, f6); };
-        for (int i = 0; i < 5; ++i) f(true, true, true, false, true); // held: one press
-        expect(n == 1, "held F6 is one press");
-        f(true, true, true, false, false); f(true, true, true, false, true); expect(n == 2, "second press");
-        f(true, true, true, false, false); f(true, true, true, true, true); expect(n == 2, "Shift held: no press");
-        f(true, false, false, false, false); f(true, false, false, false, true); f(true, true, true, false, true); expect(n == 2, "F6 before the modifiers: no press");
-        f(false, false, false, false, false); f(false, true, true, false, true); f(true, true, true, false, true); expect(n == 2, "unfocused, then focused while held: no press");
-        f(true, true, false, false, false); f(true, true, false, false, true); expect(n == 2, "Ctrl+F6 without Alt: no press");
-    }
     // ----------------------------------------------------------- indices
     {
         std::uint16_t ix[24]; write_indices(ix, 2);
@@ -1183,73 +1168,6 @@ class EnginePlumesCore(unittest.TestCase):
         rows = {int(m.group(1)): float(m.group(2)) for l in self.lines if (m := re.match(r'BUILD records=(\d+) drawn=\d+ median_us=([\d.]+)', l))}
         self.assertEqual(sorted(rows), [30, 100, 1024])
         self.assertLess(rows[100], 100.0)  # the 0.1 ms target at 100 records (host clang -O2; the Wine number is in the record)
-
-
-F6_BEGIN = '    // Ctrl+Alt+F6 (comparison-hotkeys.md'
-F6_END = 'ctx.motion_output.engine_plumes_cycle_preset();\n    }\n'
-
-
-class PresetHotkey(unittest.TestCase):
-    """The production Ctrl+Alt+F6 block of capture.cpp's Present, executed with stubbed keys and focus."""
-
-    def test_block(self):
-        capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        start = capture.index(F6_BEGIN)
-        block = capture[start:capture.end(F6_END, start)]
-        harness = textwrap.dedent('''
-            #include "engine_plumes_core.h"
-            #include <cstdio>
-            #define VK_F6 0x75
-            #define VK_CONTROL 0x11
-            #define VK_MENU 0x12
-            #define VK_SHIFT 0x10
-            static unsigned polls = 0, checks = 0, failures = 0;
-            static bool keys[256], focused = true;
-            short GetAsyncKeyState(int key) { ++polls; return keys[key & 255] ? short(-32768) : short(0); }
-            bool comparison_foreground() noexcept { return focused; }
-            namespace x3m {
-            struct Motion { bool requested = false; unsigned cycles = 0; bool engine_plumes_requested() const { return requested; }
-                            int engine_plumes_cycle_preset() { ++cycles; return 0; } };
-            struct Ctx { Motion motion_output; engine_plumes::PresetKey plumes_key; };
-            static void frame(Ctx& ctx) {
-            @BLOCK@
-            }
-            }
-            #define CHECK(x) do { ++checks; if (!(x)) { ++failures; std::printf("FAIL line=%d %s\\n", __LINE__, #x); } } while (0)
-            static void set(bool c, bool a, bool s, bool f6) { keys[VK_CONTROL] = c; keys[VK_MENU] = a; keys[VK_SHIFT] = s; keys[VK_F6] = f6; }
-            int main() {
-                x3m::Ctx ctx;
-                set(true, true, false, true);
-                for (int i = 0; i < 5; ++i) x3m::frame(ctx);
-                CHECK(polls == 0 && ctx.motion_output.cycles == 0); // plumes not requested: never polled
-                ctx.motion_output.requested = true;
-                set(false, false, false, false); polls = 0;
-                for (int i = 0; i < 10; ++i) x3m::frame(ctx);
-                CHECK(polls == 10); // idle: F6 only, once per frame
-                set(true, true, false, true); for (int i = 0; i < 6; ++i) x3m::frame(ctx);
-                CHECK(ctx.motion_output.cycles == 1); // a held chord is one press
-                set(true, true, false, false); x3m::frame(ctx); set(true, true, false, true); x3m::frame(ctx);
-                CHECK(ctx.motion_output.cycles == 2);
-                set(true, true, true, false); x3m::frame(ctx); set(true, true, true, true); x3m::frame(ctx);
-                CHECK(ctx.motion_output.cycles == 2); // Shift held
-                set(false, false, false, false); x3m::frame(ctx); set(false, false, false, true); x3m::frame(ctx); set(true, true, false, true); x3m::frame(ctx);
-                CHECK(ctx.motion_output.cycles == 2); // F6 first, modifiers later
-                set(false, false, false, false); x3m::frame(ctx); focused = false; set(true, true, false, true); x3m::frame(ctx);
-                focused = true; x3m::frame(ctx);
-                CHECK(ctx.motion_output.cycles == 2); // unfocused press, focus returns while held
-                std::printf("f6 checks=%u failures=%u\\n", checks, failures);
-                return failures ? 1 : 0;
-            }
-        ''').replace('@BLOCK@', str(block))
-        with tempfile.TemporaryDirectory(prefix='x3-f6-') as temporary:
-            source, executable = Path(temporary) / 'f6.cpp', Path(temporary) / 'f6'
-            source.write_text(harness)
-            built = subprocess.run([compiler(), '-std=c++17', '-Wall', '-Wextra', '-Werror', '-O1', '-I', str(ROOT / 'src/proxy'),
-                                    str(source), '-o', str(executable)], capture_output=True, text=True, timeout=120)
-            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
-            run = subprocess.run([str(executable)], capture_output=True, text=True, timeout=20)
-            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'f6 checks=7 failures=0\n')
 
 
 class PresetOption(unittest.TestCase):

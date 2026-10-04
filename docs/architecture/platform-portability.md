@@ -850,8 +850,7 @@ pass-through quad program with a ps_3_0 program (`texldl`, no VPOS) sampling the
 (`D3DPRASTERCAPS_SCISSORTEST`), `D3DPMISCCAPS_CULLNONE`, and a `D3DSBT_ALL` state block plus the render targets, depth,
 viewport, scissor rect and vertex input mode saved and restored around the draw. No VTF, MRT or Wine export; the
 program's creation is the slot test (1,608 slots by the conservative count). A refused capability leaves the shimmer off
-with one row; the plumes are unaffected. The Ctrl+Alt+F7 key reads `GetAsyncKeyState`, `GetForegroundWindow` and
-`GetWindowThreadProcessId`. Cross-compiled (0 warnings, x87 PASS); the GPU fixture passed under Wine on bottle X3
+with one row; the plumes are unaffected. No key (the Ctrl+Alt+F7 toggle went 2026-10-04). Cross-compiled (0 warnings, x87 PASS); the GPU fixture passed under Wine on bottle X3
 ([engine-effects.md](../verification/engine-effects.md), "Heat shimmer"); native Windows execution unverified.
 
 ## 2026-10-03: engine light on the hull (`engine_light`, default on with `--engine-effects plumes`)
@@ -883,8 +882,8 @@ DEFAULT `DYNAMIC | WRITEONLY` vertex buffer locked with `D3DLOCK_DISCARD`, a sta
 blending gated by `CheckDeviceFormat(..., D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING, D3DFMT_A16B16G16R16F)` against the
 adapter's display format (the motes' query); no instancing, VTF, point sprites or MRT. A refused capability leaves
 the stage off with one row; since the review of flight C (2026-10-03) the recognised glow draws are then forwarded
-natively from the next frame (`forwarded_stage_off`), so a device that refuses the stage keeps the game's glow. The Ctrl+Alt+F6 preset key reads
-`GetAsyncKeyState`, `GetForegroundWindow` and `GetWindowThreadProcessId`. Cross-compiled (0 warnings, x87 PASS);
+natively from the next frame (`forwarded_stage_off`), so a device that refuses the stage keeps the game's glow. No key (the Ctrl+Alt+F6
+preset key went 2026-10-04). Cross-compiled (0 warnings, x87 PASS);
 the GPU fixture passed under Wine on bottle X3 ([engine-effects.md](../verification/engine-effects.md), "Phase 2");
 native Windows execution unverified.
 

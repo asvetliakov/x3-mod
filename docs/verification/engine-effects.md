@@ -790,3 +790,23 @@ The own ship's chase disc (`chase_own_look`, reported, not pinned): total 2865.2
 1247.4 (1440), total_ratio 0.5293 / 0.5195 -> 0.5282 / 0.5184, peak 4.738 / 4.734 -> 4.730 / 4.723, extent 43 / 57 ->
 21 / 29 px; the chase case (`chase`) extent 195 / 260 -> 97 / 130 px, fade_ratio and disc_ratio_cpu 0.4 unchanged;
 `chase_own_disc_exempt` 0.5627 / 0.636 unchanged. CPU build 300 records 37.0 us median (37.2 before).
+
+## Engine hotkeys removed (2026-10-04, user decision; worktree on 7100ae00, not a candidate)
+
+Ctrl+Alt+F6 (plume preset cycle) and Ctrl+Alt+F7 (heat shimmer toggle) are gone; F8 under `--debug` is again the only
+in-game key ([in-game keys](../architecture/comparison-hotkeys.md), "Removed 2026-10-04"). Removed: the two capture.cpp
+Present blocks and the `Device` latches, `engine_plumes::PresetKey` and `next_preset`, `engine_shimmer::ToggleKey`,
+`MotionOutput::engine_plumes_cycle_preset` / `engine_shimmer_toggle` / `engine_plumes_requested` /
+`engine_shimmer_requested`, the shimmer's per-device `shimmer_on_` state (with it the `skipped=off` reason, the scratch
+release on toggle-off, the `on=` field of the `engine_shimmer` row and `toggle=ctrl+alt+f7` of `engine_shimmer_config`),
+the `engine_plumes_preset` and `engine_shimmer_toggle` rows, and the host tests `PresetHotkey`, `ToggleHotkey` and the
+two latch blocks of the core tests. `engine_effects_preset` and `engine_shimmer` stay load-time options. The Wine
+fixtures had no hotkey case; their counts are unchanged.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Template | `python3 tools/config/generate.py --check` | PASS 256 settings, 107 in the template |
+| Build | clean `cmake` build in a fresh `build/`; `check_no_x87.py build/d3d9.dll` | 0 warnings; 766 reachable, 0 violations |
+| Fixtures (bottle X3, `wine_lock.py`) | `run_engine_plumes.py`, `run_engine_shimmer.py`, `run_engine_effects.py`, `run_engine_ribbons.py` (its record binds `engine_plumes_core.h`) | plumes 316/316, shimmer 43/43, effects 8 modes (174 + 11 + 6 + 11 + 20 + 35 + 33 + 7), ribbons 44/44; the four records rewritten |
+| Host | `run_host_suite.py` | 289 modules, 3,040 tests (3,042 - the two hotkey tests), 0 failing |
+| Launcher | `tools/manage.py launch --dry-run --direct --config --debug` | exit 0 |

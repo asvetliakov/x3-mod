@@ -6,7 +6,7 @@
 // view's records are turned into at most engine_shimmer_max (default 4, up to 16) rects by the plume builder itself (engine_shimmer::collect: nozzles under
 // 24 px projected get none), the pass copies the resolved image over their union and draws the refraction into it.
 // The resolved image is the TAA history: before Present the copy goes back (revert_engine_shimmer), so the next
-// resolve never reads the shimmer. Ctrl+Alt+F7 turns it off and on per device (one engine_shimmer_toggle row).
+// resolve never reads the shimmer.
 // Fail closed: a refused attach or a failed run or revert logs one engine_shimmer_device / engine_shimmer_failed row and
 // turns the shimmer off until Reset (a failed revert also restarts the TAA history: invalidate site engine_shimmer);
 // nothing else changes. --debug: one engine_shimmer row at the engine_frame cadence.
@@ -33,23 +33,15 @@ void MotionOutput::configure_engine_shimmer() noexcept {
     shimmer_px_ = px;
     shimmer_max_ = limit;
     shimmer_requested_ = plumes_requested_ && on && px > 0.f && limit > 0;
-    shimmer_on_ = true;
     shimmer_attach_failed_ = shimmer_failed_ = false;
     shimmer_frame_ = ~std::uint64_t(0);
     if (plumes_requested_ || n || pn || mn)
-        log("engine_shimmer_config requested=%u plumes=%u setting=%s status=%s px=%.3f px_setting=%s px_status=%s max=%u max_setting=%s max_status=%s gate_px=%.0f toggle=ctrl+alt+f7",
+        log("engine_shimmer_config requested=%u plumes=%u setting=%s status=%s px=%.3f px_setting=%s px_status=%s max=%u max_setting=%s max_status=%s gate_px=%.0f",
             unsigned(shimmer_requested_), unsigned(plumes_requested_), n ? shown : "-",
             ok ? "ok" : n >= 16 ? "too_long" : "invalid_setting", double(px), pn ? px_shown : "-",
             px_ok ? "ok" : pn >= 16 ? "too_long" : "invalid_setting", limit, mn ? max_shown : "-",
             max_ok ? "ok" : mn >= 16 ? "too_long" : "invalid_setting", double(engine_shimmer::gate_px));
     SetLastError(error);
-}
-int MotionOutput::engine_shimmer_toggle() noexcept {
-    if (!shimmer_requested_) return -1;
-    shimmer_on_ = !shimmer_on_;
-    log("engine_shimmer_toggle device=%llu frame=%llu on=%u failed=%u source=hotkey", id_, frame_, unsigned(shimmer_on_),
-        unsigned(shimmer_failed_ || shimmer_attach_failed_));
-    return shimmer_on_ ? 1 : 0;
 }
 // Attached once per device at the first frame with rects (inside the resolve's taa_call: its reference accounting
 // covers the programs); refused until Reset with one engine_shimmer_device row.
@@ -93,14 +85,14 @@ void MotionOutput::release_engine_shimmer() noexcept {
         shimmer_.reset();
     }
 }
-// A frame that drew no shimmer: the scratch (an FP16 copy at the target's size, 59 MB at 5120x1440) goes at once when the
-// shimmer is toggled off, and after shimmer_idle_limit (300) consecutive frames without a drawn shimmer (no nozzle
+// A frame that drew no shimmer: the scratch (an FP16 copy at the target's size, 59 MB at 5120x1440) goes after
+// shimmer_idle_limit (300) consecutive frames without a drawn shimmer (no nozzle
 // qualified); the next drawn frame recreates it. Never while a revert is pending. Inside the resolve's taa_call, whose
 // reference accounting covered the creation.
-void MotionOutput::idle_engine_shimmer(bool off) noexcept {
+void MotionOutput::idle_engine_shimmer() noexcept {
     if (shimmer_idle_frames_ < shimmer_idle_limit) ++shimmer_idle_frames_;
     if (!shimmer_ || !shimmer_->scratch_width() || shimmer_->revert_pending()) return;
-    if (!off && shimmer_idle_frames_ < shimmer_idle_limit) return;
+    if (shimmer_idle_frames_ < shimmer_idle_limit) return;
     shimmer_->release_scratch();
     if (!shimmer_->scratch_width()) ++shimmer_scratch_releases_;
 }
@@ -124,10 +116,9 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     shimmer_report_ = {};
     shimmer_stats_ = {};
     shimmer_us_ = 0.f;
-    // Only while the plume stage drew this frame (the producer is on screen), on, and not failed until Reset; the
+    // Only while the plume stage drew this frame (the producer is on screen) and not failed until Reset; the
     // engine_shimmer row's skipped= says which.
-    const char* idle = !shimmer_on_                                    ? "off"
-                       : shimmer_failed_ || shimmer_attach_failed_      ? "failed"
+    const char* idle = shimmer_failed_ || shimmer_attach_failed_        ? "failed"
                        : !plumes_armed_ || !plumes_ran_ || !plumes_report_.drew || !engine_ring_ || !engine_ring_->count
                            ? "no_plumes"
                        : !output || !output_surface || !width || !height ? "output"
@@ -135,7 +126,7 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
                                                                          : nullptr;
     if (idle) {
         shimmer_report_.skipped = idle;
-        idle_engine_shimmer(!shimmer_on_);
+        idle_engine_shimmer();
         return;
     }
     LARGE_INTEGER begin{}, end{};
@@ -169,7 +160,7 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     if (!engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->own, engine_ring_->count,
                                           &scene_camera, &rule)) {
         shimmer_report_.skipped = "no_scene_view";
-        idle_engine_shimmer(false);
+        idle_engine_shimmer();
         return;
     }
     engine_plumes::ViewFilter filter{};
@@ -225,7 +216,7 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     if (shimmer_report_.drew)
         shimmer_idle_frames_ = 0;
     else
-        idle_engine_shimmer(false);
+        idle_engine_shimmer();
     QueryPerformanceCounter(&end);
     const std::uint64_t frequency = engine_qpc_frequency();
     shimmer_us_ = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
@@ -262,8 +253,8 @@ void MotionOutput::log_engine_shimmer() noexcept {
     const bool ran = shimmer_frame_ == frame_;
     const engine_shimmer::Stats s = ran ? shimmer_stats_ : engine_shimmer::Stats{};
     const renderer::EngineShimmerReport r = ran ? shimmer_report_ : renderer::EngineShimmerReport{};
-    log("engine_shimmer device=%llu frame=%llu on=%u failed=%u ran=%u rects=%u candidates=%u small=%u behind=%u refused=%u offscreen=%u capped=%u scissor_px=%u copy_px=%u drew=%u px=%.2f result=%08lx step=%u skipped=%s calls=%u cpu_us=%.1f revert=%08lx revert_us=%.1f stale_reverts=%u scratch=%u scratch_releases=%u",
-        id_, frame_, unsigned(shimmer_on_), unsigned(shimmer_failed_ || shimmer_attach_failed_), unsigned(ran), s.kept,
+    log("engine_shimmer device=%llu frame=%llu failed=%u ran=%u rects=%u candidates=%u small=%u behind=%u refused=%u offscreen=%u capped=%u scissor_px=%u copy_px=%u drew=%u px=%.2f result=%08lx step=%u skipped=%s calls=%u cpu_us=%.1f revert=%08lx revert_us=%.1f stale_reverts=%u scratch=%u scratch_releases=%u",
+        id_, frame_, unsigned(shimmer_failed_ || shimmer_attach_failed_), unsigned(ran), s.kept,
         s.candidates, s.small, s.behind, s.refused, s.offscreen, s.capped, r.scissor_px, r.copy_px, unsigned(r.drew),
         double(shimmer_px_), r.operation, unsigned(r.failed), r.skipped ? r.skipped : ran ? "-" : "no_resolve", r.calls,
         double(ran ? shimmer_us_ : 0.f), shimmer_revert_, double(shimmer_revert_us_), shimmer_stale_reverts_,

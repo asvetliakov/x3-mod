@@ -46,14 +46,6 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
     if (requested && !plumes_requested_)
         log("engine_plumes_state device=%llu frame=%llu armed=0 reason=suppression_off glow=native drawn=none", id_, frame_);
 }
-int MotionOutput::engine_plumes_cycle_preset() noexcept {
-    if (!plumes_requested_) return -1;
-    const engine_plumes::Preset previous = plumes_preset_;
-    plumes_preset_ = engine_plumes::next_preset(previous);
-    log("engine_plumes_preset device=%llu frame=%llu preset=%s previous=%s source=hotkey", id_, frame_,
-        engine_plumes::preset_name(plumes_preset_), engine_plumes::preset_name(previous));
-    return int(plumes_preset_);
-}
 // The stage is not attached on this device: refused at attach or creation, failed until Reset, or within the 64-frame
 // disarm. The recognised glow jets are then forwarded natively (engine_effects_frame_begin latches it once per frame).
 // Configuration and path reasons (suppression_off, hdr_taa_path, camera, lane) keep the off look.
