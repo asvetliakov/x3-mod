@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-04 18:55, Run127 = mouth whiteness reverted over Run126). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-04 19:55, Run128 = disc distance dimming over Run127). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,13 +15,21 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run128 = **disc distance dimming** (Run 127 A, run415: the close-up glow confirmed back; the user asked to dim the end-on discs with distance, the capital
+from straight behind reading as lamps): DLL SHA-256 `61f6be83c58f5a8c033d324e7e4434c63cd73bb5ff561dbb6c15bec4b503af65` (59,101,453 bytes) built once
+from clean main `f3abf618` (host suite 289/3,042/0, 0 warnings, x87 0, shader/site/identity reused; fixtures plumes 312/312, effects 8 modes, ribbons 44/44,
+shimmer 43/43, light 12 plate modes, seam 107; [candidate](../verification/results/run128-candidate-build.json)), installed 2026-10-04 19:49
+([install](../verification/results/run128-candidate-install.json)). The end-on disc (body, halo, ring, hot centre) x 0.5 + 0.5 smoothstep(20, 160, px) of the
+drawn nozzle width (`Look::disc_far_low`, `disc_px_min`, `disc_px_full`; the far law under 12 px and the chase fade multiply on top); the own ship exempt
+(`Ring::own`); the axial body, side views and ribbons unchanged (nine side images byte-identical). 20 / 65 / 160 px -> 0.50 / 0.62 / 1.0; five end-on gates
+re-floored by the law's factor ([look critique](architecture/engine-exhaust-look-critique.md) section 6, "Distance dimming of the disc"). Run 128 A queued
+(a plain launch; judge the engines6 pose). Rollback Run127.
 Run127 = **mouth whiteness reverted** (user decision after Run 126 A): DLL SHA-256 `2433cda8c265975d2706c9460b36729e377fba9295bb4d56baf8463427d6fd75`
 (59,098,881 bytes) built once from clean main `6e7d8daa` (host suite 289/3,042/0, 0 warnings, x87 0, shader/site/identity reused; fixtures plumes 300/300,
 effects 8 modes, ribbons 44/44, shimmer 43/43, light 12 plate modes, seam 107; [candidate](../verification/results/run127-candidate-build.json)), installed
 2026-10-04 18:50 ([install](../verification/results/run127-candidate-install.json)). `Look::heat` 0.7, `head_min` 0.75, I(s) 1.2..4.0 (the Run123 values; the
 Run124 change dimmed red heads to 0.78 for a side-view clip reduction nobody noticed); everything after Run124 kept. Side views and far dots byte-identical to
-the Run123 images, red total 1.27 of Run126, 02b red centre whiter but unclipped. No run queued: the look is accepted; the next flight is a plain launch
-whenever the user next plays. Rollback Run126.
+the Run123 images, red total 1.27 of Run126, 02b red centre whiter but unclipped. Run 127 A completed in run415: the close-up glow back, the look accepted (-> Run128 distance dimming). Rollback Run126.
 Run126 = **engine rings and close-up glow** (Run 125 A, run413: own ship better; the Ocelot's stern white rings with pink centres, the glow gone at close
 range): DLL SHA-256 `b7e41991543c7b7b80dadc9099707e20f10b9a632a6a9f15d8eac5e513a49c20` (59,099,909 bytes) built once from clean main `00e184cf` (host
 suite 289/3,042/0, 0 warnings, x87 0, shader checks 50 + 9 + shimmer at 4712dbd8 reused, site/identity reused; fixtures plumes 300/300, effects 8 modes,
