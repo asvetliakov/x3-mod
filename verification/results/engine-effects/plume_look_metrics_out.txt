@@ -1,4 +1,4 @@
-# drawn nozzle widths: side bands 88.5 px, 02b disc 150.0 px, from the dump's README (01a band 0 body, 02b band 0 disc)
+# drawn nozzle widths: side bands 88.5 px, 02b disc 75.0 px, from the dump's README (01a band 0 body, 02b band 0 disc)
 # side views (luma: Rec.709 of gamma-2.2 decoded display; 'disp' = 8-bit display luma of the axis peak)
 band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) | core/edge u.5 | white head u.1 / body u.5 | aniso lx/ly | lane cells / gaps
 01a red s=0 | 61 | 0.274 | 151 | 0.03 | 2.6 (14) | 6.4 | 0.11 / 0.43 | 18/4 = 4.5 | 0.48 / 0.55
@@ -33,9 +33,9 @@ band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) 
   u=0.9: [ 35  98 133]
 
 # 02b end-on discs: radial luma (lin) at 0, 4, 8, .. 72 px from the centre (mean over 4 directions)
-  red: 0.55 0.55 0.55 0.51 0.43 0.34 0.27 0.23 0.20 0.19 0.19 0.18 0.18 0.18 0.18 0.18 0.17 0.16 0.15  | max off-centre / centre = 1.00; centre RGB [241 180 179]
-  blue: 0.69 0.69 0.68 0.65 0.60 0.52 0.44 0.37 0.33 0.30 0.29 0.28 0.28 0.27 0.27 0.27 0.26 0.22 0.18  | max off-centre / centre = 1.00; centre RGB [171 225 237]
-# 02b disc gate (azimuthal mean, display-decoded luma, n 150.0 px): ring = max in 0.4..0.7 n / min in 0.2 n..it (gate >= 1.05), hot centre = centre / max (gate >= 0.9)
+  red: 0.56 0.55 0.43 0.26 0.20 0.18 0.18 0.18 0.17 0.14 0.09 0.03 0.00 0.00 0.00 0.00 0.00 0.00 0.00  | max off-centre / centre = 0.98; centre RGB [241 182 182]
+  blue: 0.69 0.68 0.59 0.42 0.32 0.28 0.27 0.26 0.24 0.19 0.12 0.03 0.00 0.00 0.00 0.00 0.00 0.00 0.00  | max off-centre / centre = 0.99; centre RGB [171 225 237]
+# 02b disc gate (azimuthal mean, display-decoded luma, n 75.0 px): ring = max in 0.4..0.7 n / min in 0.2 n..it (gate >= 1.05), hot centre = centre / max (gate >= 0.9)
   red: ring 1.00 at 0.40 n, hot centre 1.00 -> FAIL
   blue: ring 1.00 at 0.40 n, hot centre 1.00 -> FAIL
 
@@ -63,5 +63,5 @@ band | L_px | peak lin | peak disp | cell depth u.05-.4 | core/edge u.2 (hw px) 
 # peak display RGB (max over the image region) of the uncapped images
   05_distance_fighter_v500: peak lin 0.965 display [243 253 253] at (532, 540); pixels >= 250 on any channel: 271
   09_ribbon_moving8px_figh: peak lin 0.987 display [248 255 255] at (1298, 540); pixels >= 250 on any channel: 574
-  10_crowd_30_mixed_agx-ev: peak lin 0.955 display [253 249 247] at (199, 294); pixels >= 250 on any channel: 508
+  10_crowd_30_mixed_agx-ev: peak lin 0.955 display [253 249 247] at (199, 294); pixels >= 250 on any channel: 530
   01b_side_fighter_v500_n1: peak lin 0.837 display [220 239 240] at (1294, 900); pixels >= 250 on any channel: 0
