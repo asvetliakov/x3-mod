@@ -450,7 +450,8 @@ int main() {
         build(&lng, 1, nullptr, v, Preset::standard, 0.f, out.data(), 16, &st, nullptr, &flat);
         expect(st.capped == 0 && near(out[0].local[2], 9.f * val), "a long plume (brake flare 9 value) is not shortened");
     }
-    // ----------------------------------------------------------- co-located layers (merge_layers, after flight G)
+    // ----------------------------------------------------------- co-located layers (merge_layers, after flight G;
+    // since Run 129 A the marked record is unfloored, not dropped)
     {
         // run412 frame 5437: the Scorpion's nor 10 and tiny 5.04, 6.9 units apart on one axis, one parent.
         const float ax = -.66242f, ay = .22177f, az = .71555f;
@@ -464,29 +465,63 @@ int main() {
         m[6] = rec(0.f, 0.f, 1300.f, 0, 0, -1, 10.f, 2.f);  // anti-parallel, co-located: kept
         m[7] = rec(1.f, 0.f, 1300.f, 0, 0, 1, 5.f, 2.f);
         // run413: the Split Ocelot's huge 939 and a side nozzle big3 187.5 (ratio 0.2, 0.3 x 939 apart, parallel): a
-        // nozzle of its own (under merge_size_min 0.35 since Run 125), kept.
+        // nozzle of its own (under merge_size_min 0.35 since Run 125), floored.
         m[8] = rec(0.f, 0.f, 9000.f, 0, 0, -1, 939.f, 2.f);
         m[9] = rec(281.7f, 0.f, 9000.f, 0, 0, -1, 187.5f, 2.f);
         const std::uint32_t parents[10] = {7, 7, 9, 9, 11, 11, 13, 13, 15, 15};
         std::uint8_t drop[10];
-        const unsigned merged = merge_layers(m, 10, parents, drop);
-        expect(merged == 1 && drop[1] == 1 && !drop[0] && !drop[2] && !drop[3] && !drop[4] && !drop[5] && !drop[6] && !drop[7] && !drop[8] &&
+        const unsigned unfloored = merge_layers(m, 10, parents, drop);
+        expect(unfloored == 1 && drop[1] == 1 && !drop[0] && !drop[2] && !drop[3] && !drop[4] && !drop[5] && !drop[6] && !drop[7] && !drop[8] &&
                    !drop[9],
-               "merge: the smaller parallel layer (ratio 0.35..0.75) within the larger's size is dropped; twins, 3 widths apart, "
-               "anti-parallel, a 0.2-ratio side nozzle kept");
+               "layers: the smaller parallel layer (ratio 0.35..0.75) within the larger's size is unfloored; twins, 3 widths "
+               "apart, anti-parallel, a 0.2-ratio side nozzle floored");
         // Transitive: an inner layer at 0.25 of the outer (under the window) and 0.5 of a middle layer (0.5 of the outer)
-        // is dropped through the middle one, which the outer drops (a dropped record still drops its own smaller layers).
+        // is unfloored through the middle one, which the outer unfloors (an unfloored record's smaller layers are too).
         {
             ee::Record l3[3] = {rec(0.f, 0.f, 700.f, 0, 0, -1, 10.f, 2.f), rec(1.f, 0.f, 700.f, 0, 0, -1, 5.f, 2.f),
                                 rec(2.f, 0.f, 700.f, 0, 0, -1, 2.5f, 2.f)};
             const std::uint32_t p3[3] = {21, 21, 21};
             std::uint8_t d3[3];
             expect(merge_layers(l3, 3, p3, d3) == 2 && !d3[0] && d3[1] && d3[2],
-                   "merge is transitive: 0.25 of the outer drops through a 0.5 middle layer");
+                   "layers are transitive: 0.25 of the outer is unfloored through a 0.5 middle layer");
+        }
+        // The near bound (merge_layer_near 1.5 x the smaller's size, after Run 129 A): the Split Raptor's big2 93.66 at
+        // 170 and 196 units from its big3 187.5 (1.8 / 2.1 x the big2) are real nozzles; a 10 + 5 pair 1.4 x the smaller
+        // apart is a layer, 1.6 x is not.
+        {
+            ee::Record r4[5] = {rec(57823.5f, 886.43f, 37895.8f, .66465f, -.64582f, -.37572f, 187.5f, 2.f),
+                                rec(57708.9f, 764.35f, 37925.8f, .66465f, -.64582f, -.37572f, 93.66f, 2.f),
+                                rec(57936.f, 1045.08f, 37872.1f, .66465f, -.64582f, -.37572f, 93.66f, 2.f),
+                                rec(0.f, 0.f, 300.f, 0, 0, -1, 10.f, 2.f), rec(7.f, 0.f, 300.f, 0, 0, -1, 5.f, 2.f)};
+            const std::uint32_t p4[5] = {31, 31, 31, 33, 33};
+            std::uint8_t d4[5];
+            expect(merge_layers(r4, 5, p4, d4) == 1 && !d4[0] && !d4[1] && !d4[2] && !d4[3] && d4[4],
+                   "the near bound: the Raptor's big2s are nozzles (floored), a pair 1.4 x the smaller apart is a layer");
+            r4[4].origin[0] = 8.f;
+            expect(merge_layers(r4, 5, p4, d4) == 0 && !d4[4], "the near bound: 1.6 x the smaller apart is not a layer");
         }
         const std::uint32_t other[2] = {7, 8}, unknown[2] = {0, 0};
         expect(merge_layers(m, 2, other, drop) == 0 && !drop[1] && merge_layers(m, 2, unknown, drop) == 0 &&
-                   merge_layers(m, 2, nullptr, drop) == 0, "merge: another parent, an unknown parent or none: kept");
+                   merge_layers(m, 2, nullptr, drop) == 0, "layers: another parent, an unknown parent or none: floored");
+        // The builder (after Run 129 A): both layers draw, the larger at its floored value, the smaller at its natural
+        // one (R 67.3, floor scale 1: the nor 10 -> 23.5, the tiny stays 5.04 instead of 20.2); without parents both floor.
+        {
+            Look f1 = default_look;
+            f1.floor_scale = 1.f;
+            ee::Record pair[2] = {rec(0.f, 0.f, 400.f, 0, 0, -1, 10.f, 2.f), rec(-5.7f, 3.8f, 399.f, 0, 0, -1, 5.04f, 2.f)};
+            const float rr[2] = {67.3f, 67.3f};
+            const std::uint32_t pp[2] = {7, 7};
+            std::vector<Vertex> vb(2 * vertices_per_nozzle);
+            BuildStats st;
+            const unsigned n = build(pair, 2, nullptr, v, Preset::standard, 0.f, vb.data(), 2, &st, nullptr, &f1, nullptr, rr,
+                                     nullptr, pp);
+            expect(n == 2 && st.unfloored == 1 && st.floored == 1 && std::fabs(vb[0].shape[1] - 23.555f) < .01f &&
+                       near(vb[vertices_per_nozzle].shape[1], 5.04f),
+                   "layers: the larger floored, the unfloored layer drawn at its natural value");
+            build(pair, 2, nullptr, v, Preset::standard, 0.f, vb.data(), 2, &st, nullptr, &f1, nullptr, rr);
+            expect(st.unfloored == 0 && st.floored == 2 && vb[vertices_per_nozzle].shape[1] > 20.f,
+                   "layers: without parents both records floor");
+        }
     }
     // ----------------------------------------------------------- capacity
     {
@@ -1480,7 +1515,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,&look,tables,f.radii,&dynamics,f.parents,f.own);', passes)
         self.assertIn('in.parents=engine_ring_->parent;', inc)
         self.assertIn('in.own=engine_ring_->own;', inc)  # after Run 127: the own ship's jets exempt from the disc law
-        self.assertIn('floored=%u floor_unknown=%u merged=%u', inc)
+        self.assertIn('floored=%u floor_unknown=%u unfloored=%u', inc)
         self.assertIn('if(floor_scale>=engine_plumes::floor_min&&floor_scale<=engine_plumes::floor_max)plumes_look_.floor_scale=floor_scale;', inc)
         self.assertIn('verdict=%s radius=%.6g value_eff=%.6g', effects_inc)
         self.assertIn('engine_plumes::floored_value(plumes_look_,record,jet_radius,&value_eff);', effects_inc)
@@ -1609,7 +1644,7 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
                             and x['k'] < 1 and abs(x['drawn_length_px'] - x['k'] * x['natural_length_px']) <= .002 * x['natural_length_px']
                             and x['drawn_length_px'] > 4 for x in capital))
         kept = [x for x in r['report']['merge_kept'] if x['case'] == 'ratio_0.2']
-        self.assertTrue(len(kept) == 2 and all(x['nozzles'] == 2 and x['merged'] == 0 for x in kept))
+        self.assertTrue(len(kept) == 2 and all(x['nozzles'] == 2 and x['unfloored'] == 0 for x in kept))
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))

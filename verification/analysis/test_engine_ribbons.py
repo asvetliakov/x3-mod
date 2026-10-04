@@ -290,6 +290,24 @@ int main() {
             for (const auto& r : fp.ribbons) if (r.live) without = r.nozzle;
             expect(near(with, 125.f, 1e-5) && near(without, 50.f, 1e-5), "the ribbon's nozzle: Look::nozzle_width x the floored value (125), else x its own (50)");
         }
+        // After Run 129 A: a smaller co-located layer of one parent (100 and 50, 30 apart on one axis) takes its own
+        // ribbon at its natural nozzle (25) beside the floored larger one (125); without parents both floor (125; the 50
+        // to its cap 4 x 50: 100).
+        {
+            static Pool lp; const float rad[2] = {5000.f, 5000.f}; const std::uint32_t par[2] = {9, 9}; UpdateStats ls{};
+            const ee::Record q[2] = {rec(0, 0, Z, 100.f, 1.f, 7), rec(0, 30.f, Z, 50.f, 1.f, 8)};
+            float big = 0.f, small = 0.f, big_np = 0.f, small_np = 0.f; unsigned live = 0, live_np = 0;
+            lp.clear();
+            update(lp, q, 2, 1.0, false, 0, nullptr, 1.f, &ls, nullptr, &ep::default_look, rad, 0.f, par);
+            const unsigned unfloored = ls.unfloored;
+            for (const auto& r : lp.ribbons) if (r.live) { ++live; (r.value > 75.f ? big : small) = r.nozzle; }
+            lp.clear();
+            update(lp, q, 2, 1.0, false, 0, nullptr, 1.f, &ls, nullptr, &ep::default_look, rad);
+            for (const auto& r : lp.ribbons) if (r.live) { ++live_np; (r.value > 75.f ? big_np : small_np) = r.nozzle; }
+            expect(live == 2 && unfloored == 1 && near(big, 125.f, 1e-5) && near(small, 25.f, 1e-5) && live_np == 2 &&
+                       ls.unfloored == 0 && near(big_np, 125.f, 1e-5) && near(small_np, 100.f, 1e-5),
+                   "a co-located layer: its own ribbon at its natural nozzle (25), the larger floored (125); no parents: both floored (125, 100)");
+        }
         // the chase cap: a ribbon passing close to the camera is held to 0.12 H with radiance down to 0.5
         static Pool close; close.clear(); now = 0.0;
         for (unsigned f = 0; f < 60; ++f, now += dt) { const ee::Record r = rec(30.f, 0, 40.f + 600.f * float(f) * dt, 400.f, 1.f); update(close, &r, 1, now, false, 0, nullptr, 1.f, &st); }

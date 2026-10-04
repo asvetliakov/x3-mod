@@ -46,8 +46,8 @@ struct EnginePlumesFrame {
     const engine_plumes::Look* look = nullptr; // null: engine_plumes::default_look (the proxy's carries the nozzle knob)
     const engine_plumes::LookTables* tables = nullptr; // look_tables(*look) cached at load (null: computed per run)
     const float* radii = nullptr;           // beside the records (Ring::parent_radius): the plume floor; null: none
-    const std::uint32_t* parents = nullptr; // beside the records (Ring::parent): the co-located layer merge
-                                            // (engine_plumes::merge_layers, plumes and ribbons); null: none
+    const std::uint32_t* parents = nullptr; // beside the records (Ring::parent): the co-located layer rule
+                                            // (engine_plumes::merge_layers: no floor; plumes and ribbons); null: none
     const std::uint8_t* own = nullptr;      // beside the records (Ring::own): the own ship's jets, exempt from the
                                             // disc's distance law (engine_plumes_core.h); null: none
 };

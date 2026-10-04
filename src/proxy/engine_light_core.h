@@ -63,7 +63,8 @@ constexpr unsigned node_slots = 4096;
 // light-map gain suppression of the twin, the light's own nozzle among them. Each plate is the point its nozzle's light
 // would sit at (behind x value_eff along the plume axis) with that nozzle's value_eff; the twin's weight is the maximum
 // over the ship's plates. Brightest first (I(s) x value_eff; ties: the lower node handle, then the earlier record);
-// one plate per node handle; a smaller co-located layer of another record (engine_plumes merge_layers) adds none.
+// one plate per node handle; a smaller co-located layer of another record (engine_plumes merge_layers) is a plate at
+// its natural value_eff (no floor), as the plume stage draws it.
 constexpr unsigned plate_slots = 8;
 struct Plate {
     double position[3]{};           // world, the record's space (the nozzle's light point)
@@ -85,10 +86,10 @@ struct Light {
 };
 struct ShipStats {
     // dropped: lights lost to the full table (a dimmer newcomer refused, or an entry evicted by a brighter or own one);
-    // merged: main-jet records adding no plate as a smaller co-located layer; plates_dropped: main nozzles beyond the
-    // ship's plate_slots (the dimmest give way)
+    // unfloored: main-jet records at their natural value as a smaller co-located layer (still a plate); plates_dropped:
+    // main nozzles beyond the ship's plate_slots (the dimmest give way)
     unsigned records = 0, main = 0, rcs = 0, brake = 0, other_view = 0, invalid = 0, orphan = 0, dropped = 0;
-    unsigned merged = 0, plates_dropped = 0;
+    unsigned unfloored = 0, plates_dropped = 0;
 };
 struct ShipTable {
     Light lights[ship_capacity];
@@ -248,9 +249,10 @@ inline void add_plate(Light& ship, const Light& record, ShipStats& stats) noexce
 // brake-pushed bodies never feed it. At most ship_capacity ships: a new ship beyond that replaces the dimmest entry
 // (brightness I(s) x value_eff) when it is brighter, and always when it is the own ship's (`own`: Ring::own, null = no
 // record is); own-ship entries are never the ones replaced. Every light lost to the cap counts dropped (dimmest_ship:
-// the block minima). Every main nozzle of the scene view also feeds its ship's plates (add_plate) unless merge_layers
-// drops it as a smaller co-located layer of another record of the ship (`parents` as the plume stage passes them;
-// records past ee::ring_capacity are not merged); the light itself is chosen over all main records as before.
+// the block minima). Every main nozzle of the scene view also feeds its ship's plates (add_plate); one that merge_layers
+// marks as a smaller co-located layer of another record of the ship (`parents` as the plume stage passes them; records
+// past ee::ring_capacity never are) takes no floor, its light and plate at its natural value, as the plume stage draws
+// it; the light itself is chosen over all main records as before.
 using BodyLookup = const ee::Body* (*)(int index);
 inline void build_ships(const ee::Record* records, const std::uint32_t* parents, const float* radii,
                         const std::uint32_t* camera, const std::uint8_t* scene, std::uint32_t scene_handle,
@@ -258,9 +260,9 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
                         ShipTable* out, const std::uint8_t* own = nullptr) noexcept {
     out->clear();
     if (!records || !parents) return;
-    std::uint8_t merged[ee::ring_capacity];
+    std::uint8_t unfloor[ee::ring_capacity];
     const unsigned merging = count < ee::ring_capacity ? count : ee::ring_capacity;
-    ep::merge_layers(records, merging, parents, merged);
+    ep::merge_layers(records, merging, parents, unfloor);
     for (unsigned i = 0; i < count; ++i) {
         const ee::Record& r = records[i];
         ++out->stats.records;
@@ -283,19 +285,19 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
         }
         Light l;
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;
-        if (!record_light(r, b, radii ? radii[i] : 0.f, look, preset_scale, &l)) {
+        const bool natural = i < merging && unfloor[i];
+        if (!record_light(r, b, radii && !natural ? radii[i] : 0.f, look, preset_scale, &l)) {
             ++out->stats.invalid;
             continue;
         }
         ++out->stats.main;
         l.root = root;
         l.own = own && own[i];
-        const bool plate = !(i < merging && merged[i]);
-        out->stats.merged += !plate;
+        out->stats.unfloored += natural;
         const int found = find_ship(*out, root);
         if (found >= 0) {
             Light& have = out->lights[found];
-            if (plate) add_plate(have, l, out->stats);
+            add_plate(have, l, out->stats);
             const bool was_own = have.own;
             bool changed = false;
             if (l.brightness > have.brightness || (l.brightness == have.brightness && l.handle < have.handle)) {
@@ -332,7 +334,7 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
         while (out->slot[h]) h = (h + 1) & (ship_slots - 1);
         out->lights[index] = l;
         out->lights[index].plate_count = 0;
-        if (plate) add_plate(out->lights[index], l, out->stats);
+        add_plate(out->lights[index], l, out->stats);
         out->slot[h] = std::uint16_t(index + 1);
         if (out->blocks_known) rescan_ship_block(*out, index / ship_block);
     }

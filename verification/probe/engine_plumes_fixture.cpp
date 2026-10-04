@@ -27,10 +27,14 @@
 //                 the energy ratios at the nozzle widths 0.1 / 0.25 / 1.0 reported
 //   floor         after flight D, the plume floor k(R) x the ship's radius: a 100 secondary whose main nozzle is absent
 //                 from the frame (a fighter's radius, k 0.35) draws at the lone 280's length and width; radius 0: no floor
-//   merge         after flight G: the Split Scorpion's two glow layers of one nozzle (nor 10, tiny 5.04, 6.9 apart, one
-//                 axis and parent, the floor on) draw one nozzle and one disc (merged 1) with the end-on centre, frame
-//                 total and side-view total of the nor alone; 3 nozzle widths apart, anti-parallel, or a side nozzle
-//                 at 0.2 of the size (the Split Ocelot's big3 beside its huge, run413; under merge_size_min): kept
+//   merge         after flight G / Run 129 A: the Split Scorpion's two glow layers of one nozzle (nor 10, tiny 5.04, 6.9
+//                 apart, one axis and parent, the floor on) draw two nozzles and two discs (unfloored 1): the nor at
+//                 its floored value, the tiny at its natural 5.04, the end-on centre within 1.10 and the frame
+//                 total within 1.07 of the nor alone; the Split Raptor's big3 187.5 between two big2 93.66 (run417,
+//                 1.8 x the big2's size apart, past merge_layer_near 1.5): 3 nozzles, 3 discs, unfloored 0, all three
+//                 at 280.78; a 10 + 5 pair 1.4 x the smaller apart: unfloored 1, 1.6 x: unfloored 0; 3 nozzle widths
+//                 apart, anti-parallel, or a side nozzle at 0.2 of the size (the Split Ocelot's big3 beside its huge,
+//                 run413; under merge_size_min): floored (unfloored 0)
 //   mouth         side view at s = 1 / 0.5 / 0: the peak within 0.1 L of the mouth and the value at u ~ 0 against the
 //                 body's peak at u 0.1..0.4 (after flight D gated at 0.85 at all three); the end-on peak against 1.5 x the
 //                 s = 1 body peak
@@ -1599,30 +1603,41 @@ void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
 // tiny 5.04 at (96411.5, -37509.1, 19210) and (96405.8, -37505.3, 19209) on one axis; the floor (R 67.3 record units,
 // k 0.35 at the floor scale 1: 23.5 and 20.2) drew both. Here in the flight's units (the floor's k depends on the
 // radius in record units) at the depth where the nor's floored nozzle (0.5 x 23.5) is 40 px, the still look at the
-// floor scale 1, s = 1: the pair against the nor alone, end-on (the exhaust at the camera) and side-on (axis -x): one
-// nozzle, one disc end-on, merged 1, the floored value 23.5, and the same centre peak and frame total. Negative: the
-// tiny 3 nozzle widths (15 units at size 10) to the side, and anti-parallel at the nor's origin: both kept.
+// floor scale 1, s = 1: the pair against the nor alone, end-on (the exhaust at the camera) and side-on (axis -x). Since
+// Run 129 A (merge_layers no longer drops the layer, it unfloors it): two nozzles, two discs end-on, unfloored 1, the
+// nor at its floored 23.5, the tiny at its natural 5.04; the end-on centre within 1.10 and the frame total (end-on and
+// side) within merge_layer_total_max 1.07 of the nor alone. The Split Raptor (run417 frame 17144): big3 187.5
+// between two big2 93.66, 170 units (0.9 x the big3's size, 1.8 x the big2's) apart on one axis, R 5615.55 (the
+// flight's radius), the still look at the production floor scale 0.5: real nozzles (past merge_layer_near 1.5 x the
+// smaller), 3 nozzles, 3 discs, unfloored 0, all three at 280.78. The near bound: a 10 + 5 pair 1.4 x the smaller
+// apart is a layer (unfloored 1), 1.6 x is not (unfloored 0). Negative: the tiny 3 nozzle widths (15 units at size
+// 10) to the side, anti-parallel at the nor's origin, and a 0.2-ratio side nozzle: all floored (unfloored 0).
+// The unfloored tiny's share of the pair's frame total, pinned at the first measurement (2026-10-04: end-on 1.0631 /
+// 1.0624, side 1.0670 / 1.0668 at 1920 / 5120; the brief's estimate of 1.05 side-on was 0.017 low: the tiny's own
+// plume at 5.04 beside the nor's 23.56 adds 6.7 %, against 80 % floored to 20.16).
+constexpr double merge_layer_total_max = 1.07;
 void merge_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
     const float u = 1.f, Z = t.ppu(1.f) * (.5f * 23.5f) / 40.f; // flight units; ppu(Z) = ppu(1) / Z
     ep::Look look = still; // the cases below draw with the floor at scale 1
     look.floor_scale = 1.f;
     const float off[3] = {-5.7f * u, 3.8f * u, -1.f * u};             // tiny - nor (flight units)
-    const std::uint32_t parents[2] = {0x2373e7a0u, 0x2373e7a0u};
+    const std::uint32_t parents[3] = {0x2373e7a0u, 0x2373e7a0u, 0x2373e7a0u};
     const float radii[2] = {67.3f * u, 67.3f * u};
     struct MergeView {
         const char* name;
         float a[3];
     } views[2] = {{"end_on", {0, 0, -1}}, {"side", {-1, 0, 0}}};
     char label[64];
+    ep::Vertex cpu[3 * ep::vertices_per_nozzle];
     for (const auto& v : views) {
         ee::Record pair[2] = {record(0, 0, Z, v.a[0], v.a[1], v.a[2], 10.f * u, 2.f),
                               record(off[0], off[1], Z + off[2], v.a[0], v.a[1], v.a[2], 5.04f * u, 2.f)};
         pair[1].node_handle = 0x1235;
         double total[3] = {};
         float centre[3] = {};
+        float value[3][2] = {};
         rr::EnginePlumesReport rep[3];
-        Built built[3];
-        for (unsigned k = 0; k < 3; ++k) { // 0: the pair, 1: the nor alone, 2: the pair unmerged (as Run 124 drew it)
+        for (unsigned k = 0; k < 3; ++k) { // 0: the pair, 1: the nor alone, 2: the pair without parents (both floored, as Run 124 drew it)
             rr::EnginePlumesFrame f = frame_for(t, true, pair, k == 1 ? 1u : 2u, ep::Preset::standard, 0.f, 0.f, 0.f, &look);
             f.radii = radii;
             f.parents = k == 2 ? nullptr : parents;
@@ -1634,23 +1649,88 @@ void merge_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
             t.window(0, 0, Z, 0, 0, cx, cy);
             const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f));
             centre[k] = peak(px, t.w, t.h, ix - 2, iy - 2, ix + 3, iy + 3);
-            built[k].nozzles = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, 0.f, built[k].v, 1, &built[k].stats,
-                                         nullptr, f.look, nullptr, radii, nullptr, f.parents);
+            ep::BuildStats bs;
+            const unsigned n = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, 0.f, cpu, 2, &bs, nullptr, f.look,
+                                         nullptr, radii, nullptr, f.parents);
+            for (unsigned i = 0; i < n && i < 2; ++i) value[k][i] = cpu[i * ep::vertices_per_nozzle].shape[1] / u;
         }
         const double total_ratio = total[1] > 0 ? total[0] / total[1] : 0.;
         const double centre_ratio = centre[1] > 0.f ? double(centre[0] / centre[1]) : 0.;
-        std::printf("MERGE width=%u height=%u view=%s nozzles=%u discs=%u merged=%u floored=%u value=%.2f single_value=%.2f total=%.1f "
-                    "single_total=%.1f total_ratio=%.5f centre=%.4f single_centre=%.4f centre_ratio=%.5f unmerged_nozzles=%u "
-                    "unmerged_over_single_total=%.4f unmerged_over_single_centre=%.4f\n",
-                    t.w, t.h, v.name, rep[0].stats.nozzles, rep[0].stats.discs, rep[0].stats.merged, rep[0].stats.floored,
-                    double(built[0].v[0].shape[1] / u), double(built[1].v[0].shape[1] / u), total[0], total[1], total_ratio, double(centre[0]),
-                    double(centre[1]), centre_ratio, rep[2].stats.nozzles, total[1] > 0 ? total[2] / total[1] : 0.,
-                    centre[1] > 0.f ? double(centre[2] / centre[1]) : 0.);
-        const bool disc_expected = v.a[2] != 0.f;
+        std::printf("MERGE width=%u height=%u view=%s nozzles=%u discs=%u unfloored=%u floored=%u value=%.2f layer_value=%.2f "
+                    "single_value=%.2f total=%.1f single_total=%.1f total_ratio=%.5f centre=%.4f single_centre=%.4f "
+                    "centre_ratio=%.5f floored_nozzles=%u floored_layer_value=%.2f floored_over_single_total=%.4f "
+                    "floored_over_single_centre=%.4f\n",
+                    t.w, t.h, v.name, rep[0].stats.nozzles, rep[0].stats.discs, rep[0].stats.unfloored, rep[0].stats.floored,
+                    double(value[0][0]), double(value[0][1]), double(value[1][0]), total[0], total[1], total_ratio,
+                    double(centre[0]), double(centre[1]), centre_ratio, rep[2].stats.nozzles, double(value[2][1]),
+                    total[1] > 0 ? total[2] / total[1] : 0., centre[1] > 0.f ? double(centre[2] / centre[1]) : 0.);
+        const bool end_on = v.a[2] != 0.f;
         std::snprintf(label, sizeof label, "merge_scorpion_pair_%s_%u", v.name, t.w);
-        report(label, rep[0].stats.nozzles == 1 && rep[0].stats.merged == 1 && rep[0].stats.discs == (disc_expected ? 1u : 0u) &&
-                          rep[1].stats.merged == 0 && std::fabs(built[0].v[0].shape[1] / u - 23.5f) < .1f &&
-                          std::fabs(total_ratio - 1.) <= 1e-3 && std::fabs(centre_ratio - 1.) <= 1e-3);
+        report(label, rep[0].stats.nozzles == 2 && rep[0].stats.unfloored == 1 && rep[0].stats.floored == 1 &&
+                          rep[0].stats.discs == (end_on ? 2u : 0u) && rep[1].stats.unfloored == 0 &&
+                          std::fabs(value[0][0] - 23.5f) < .1f && std::fabs(value[0][1] - 5.04f) < 1e-3f &&
+                          (!end_on || centre_ratio <= 1.10) && total_ratio <= merge_layer_total_max && total_ratio >= 1.);
+    }
+    // The Split Raptor (run417 frame 17144): big3 187.5 at the centre, big2 93.66 at +-(114, 122, -30) record units, one
+    // axis, R 5615.55; end-on at the depth where the big3's floored nozzle (0.5 x 280.8) is 40 px.
+    {
+        const float R = 5615.55f;
+        float big3 = 0.f;
+        ee::Record probe = record(0, 0, 1, 0, 0, -1, 187.5f, 2.f);
+        ep::floored_value(still, probe, R, &big3);
+        const float Zr = t.ppu(1.f) * (.5f * big3) / 40.f;
+        const ee::Record raptor[3] = {record(114.f, 122.f, Zr - 30.f, 0, 0, -1, 93.66f, 2.f),
+                                      record(0, 0, Zr, 0, 0, -1, 187.5f, 2.f),
+                                      record(-114.f, -122.f, Zr + 30.f, 0, 0, -1, 93.66f, 2.f)};
+        const float rr3[3] = {R, R, R};
+        double total[2] = {};
+        rr::EnginePlumesReport rep[2];
+        float value[2][3] = {};
+        for (unsigned k = 0; k < 2; ++k) { // 0: the rule, 1: without parents (every nozzle floored)
+            rr::EnginePlumesFrame f = frame_for(t, true, raptor, 3, ep::Preset::standard, 0.f, 0.f, 0.f, &still);
+            f.radii = rr3;
+            f.parents = k == 0 ? parents : nullptr;
+            scene.frame(0, 0, 0, 0, 500);
+            rep[k] = draw(d, pass, f);
+            total[k] = total_of(t.read(d), t.w, t.h);
+            ep::BuildStats bs;
+            const unsigned n = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, 0.f, cpu, 3, &bs, nullptr, f.look,
+                                         nullptr, rr3, nullptr, f.parents);
+            for (unsigned i = 0; i < n && i < 3; ++i) value[k][i] = cpu[i * ep::vertices_per_nozzle].shape[1];
+        }
+        std::printf("MERGE_RAPTOR width=%u height=%u nozzles=%u discs=%u unfloored=%u floored=%u big3_value=%.2f "
+                    "big2_values=%.2f,%.2f total=%.1f all_floored_total=%.1f all_floored_big2=%.2f total_ratio=%.5f\n",
+                    t.w, t.h, rep[0].stats.nozzles, rep[0].stats.discs, rep[0].stats.unfloored, rep[0].stats.floored,
+                    double(value[0][1]), double(value[0][0]), double(value[0][2]), total[0], total[1], double(value[1][0]),
+                    total[1] > 0 ? total[0] / total[1] : 0.);
+        std::snprintf(label, sizeof label, "merge_raptor_%u", t.w);
+        report(label, rep[0].stats.nozzles == 3 && rep[0].stats.discs == 3 && rep[0].stats.unfloored == 0 &&
+                          rep[0].stats.floored == 3 && big3 > 187.5f && std::fabs(value[0][0] - big3) <= 1e-3f * big3 &&
+                          std::fabs(value[0][1] - big3) <= 1e-3f * big3 && std::fabs(value[0][2] - big3) <= 1e-3f * big3 &&
+                          rep[1].stats.unfloored == 0 && std::fabs(total[0] - total[1]) <= 1e-6 * total[1]);
+    }
+    // The near bound (merge_layer_near 1.5): a 10 + 5 pair (ratio 0.5, within the larger's size) 1.4 x the smaller's size
+    // apart is a layer, 1.6 x is not.
+    {
+        const float nears[2] = {1.4f, 1.6f};
+        for (unsigned k = 0; k < 2; ++k) {
+            const ee::Record pair[2] = {record(0, 0, Z, 0, 0, -1, 10.f * u, 2.f),
+                                        record(nears[k] * 5.f * u, 0, Z, 0, 0, -1, 5.f * u, 2.f)};
+            rr::EnginePlumesFrame f = frame_for(t, true, pair, 2, ep::Preset::standard, 0.f, 0.f, 0.f, &look);
+            f.radii = radii;
+            f.parents = parents;
+            scene.frame(0, 0, 0, 0, 500);
+            const auto rep = draw(d, pass, f);
+            ep::BuildStats bs;
+            const unsigned n = ep::build(f.records, f.record_count, nullptr, f.view, f.preset, 0.f, cpu, 2, &bs, nullptr, f.look,
+                                         nullptr, radii, nullptr, f.parents);
+            const float small_value = n == 2 ? cpu[ep::vertices_per_nozzle].shape[1] / u : 0.f;
+            std::printf("MERGE_NEAR width=%u height=%u apart_over_smaller=%.1f nozzles=%u unfloored=%u small_value=%.2f\n", t.w,
+                        t.h, double(nears[k]), rep.stats.nozzles, rep.stats.unfloored, double(small_value));
+            std::snprintf(label, sizeof label, "merge_near_%.1f_%u", double(nears[k]), t.w);
+            report(label, rep.stats.nozzles == 2 && (k == 0 ? rep.stats.unfloored == 1 && std::fabs(small_value - 5.f) < 1e-3f
+                                                            : rep.stats.unfloored == 0 && small_value > 5.f));
+        }
     }
     // Negative: 3 nozzle widths apart (parallel), and anti-parallel at the nor's origin.
     const float apart = 3.f * ep::default_look.nozzle_width * 10.f * u;
@@ -1666,9 +1746,10 @@ void merge_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesP
         f.parents = parents;
         scene.frame(0, 0, 0, 0, 500);
         const auto rep = draw(d, pass, f);
-        std::printf("MERGE_KEPT width=%u height=%u case=%s nozzles=%u merged=%u\n", t.w, t.h, names[k], rep.stats.nozzles, rep.stats.merged);
+        std::printf("MERGE_KEPT width=%u height=%u case=%s nozzles=%u unfloored=%u\n", t.w, t.h, names[k], rep.stats.nozzles,
+                    rep.stats.unfloored);
         std::snprintf(label, sizeof label, "merge_kept_%s_%u", names[k], t.w);
-        report(label, rep.stats.nozzles == 2 && rep.stats.merged == 0);
+        report(label, rep.stats.nozzles == 2 && rep.stats.unfloored == 0);
     }
 }
 void mouth_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlumesPass& pass) {
@@ -2610,7 +2691,7 @@ void build_timing(Targets& t) {
         if (n == 100) report("build_100_within_0.1ms", median(us) <= 100.);
         std::printf("BUILD_FLOOR records=%u drawn=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, drawn_floor, median(with),
                     *std::min_element(with.begin(), with.end()));
-        // After flight G: the floor and the co-located layer merge (merge_layers) as the proxy runs them, ships of 8
+        // After flight G: the floor and the co-located layer rule (merge_layers) as the proxy runs them, ships of 8
         // nozzles (a capital's count; every pair tested, none co-located in the crowd), and all records of one parent
         // (the merge's worst case: n (n - 1) / 2 pair tests).
         for (const unsigned group : {8u, n}) {
@@ -2629,8 +2710,8 @@ void build_timing(Targets& t) {
                 QueryPerformanceCounter(&b);
                 merge_us.push_back(double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart) / 50.);
             }
-            std::printf("BUILD_MERGE records=%u group=%u drawn=%u merged=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, group,
-                        drawn_merge, st.merged, median(merge_us), *std::min_element(merge_us.begin(), merge_us.end()));
+            std::printf("BUILD_MERGE records=%u group=%u drawn=%u unfloored=%u median_us=%.2f min_us=%.2f method=qpc_50x41\n", n, group,
+                        drawn_merge, st.unfloored, median(merge_us), *std::min_element(merge_us.begin(), merge_us.end()));
         }
     }
 }

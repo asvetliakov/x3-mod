@@ -221,20 +221,30 @@ class CoreTests(unittest.TestCase):
         self.assertEqual((s['radius'], s['brightness']), (30.0, 40.0))
         self.assertEqual((s['main'], s['rcs'], s['brake'], s['other_view'], s['orphan']), (3, 1, 1, 1, 1))
 
+    def test_layer_plate_unfloored(self):
+        # After Run 129 A: a smaller co-located layer takes no floor, so its plate sits at its natural value while the
+        # larger record's plate keeps its floored value (the Split Scorpion's nor 10 + tiny 5.04 at R 67.3).
+        q = self.r['layer_floor']
+        self.assertEqual((q['count'], q['handles'], q['unfloored']), (2, [70, 71], 1))
+        self.assertGreater(q['nor_floored'], 10.0)
+        self.assertAlmostEqual(q['values'][0], q['nor_floored'], places=5)
+        self.assertAlmostEqual(q['values'][1], 5.04, places=5)
+
     def test_nozzle_plates(self):
-        # Every main nozzle of the ship, brightest first, one per handle (the brighter record), no plate for the smaller
-        # co-located layer, the RCS jet never; the light stays at the brightest nozzle (plate 0).
+        # Every main nozzle of the ship, brightest first, one per handle (the brighter record), the smaller co-located
+        # layer a plate at its natural value (unfloored, after Run 129 A), the RCS jet never; the light stays at the
+        # brightest nozzle (plate 0).
         p = self.r['plates']
-        self.assertEqual((p['a']['handle'], p['a']['count'], p['a']['handles']), (50, 3, [50, 51, 52]))
-        self.assertEqual(p['a']['values'], [10.0, 8.0, 6.0])
+        self.assertEqual((p['a']['handle'], p['a']['count'], p['a']['handles']), (50, 4, [50, 51, 52, 53]))
+        self.assertEqual(p['a']['values'], [10.0, 8.0, 6.0, 5.0])
         self.assertEqual(p['a']['first'], [0.0, 0.0, -5.0])      # 0.5 x value behind the nozzle along -z, as the light
         self.assertEqual(p['a']['light'], p['a']['first'])
         # Nine nozzles: the eight brightest (values 18 .. 11), the ninth dropped.
         self.assertEqual((p['b']['handle'], p['b']['count'], p['b']['handles']), (68, 8, list(range(68, 60, -1))))
-        self.assertEqual((p['merged'], p['plates_dropped']), (1, 1))
+        self.assertEqual((p['unfloored'], p['plates_dropped']), (1, 1))
         # Per-draw registers ((P - cam) / v, 1 / v), unused slots (2, 0, 0, 0); a non-finite plate left unused.
-        self.assertEqual(p['node_count'], 3)
-        expected = [0, 0, -0.5, 0.1, 5, 0, -0.5, 0.125, 0, 40 / 6, -0.5, 1 / 6] + [2, 0, 0, 0] * 5
+        self.assertEqual(p['node_count'], 4)
+        expected = [0, 0, -0.5, 0.1, 5, 0, -0.5, 0.125, 0, 40 / 6, -0.5, 1 / 6, 0, 0, -1.1, 0.2] + [2, 0, 0, 0] * 4
         for got, want in zip(p['registers'], expected):
             self.assertAlmostEqual(got, want, places=6)
         self.assertEqual(p['broken_slot1'], [2.0, 0.0, 0.0, 0.0])

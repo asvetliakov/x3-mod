@@ -89,11 +89,14 @@ A plate is each main nozzle's light point (0.5 x its value_eff behind it along i
 with its own value_eff, so the window 0.75..1.0 x value_eff holds per nozzle and the light's own nozzle is plate 0 with
 the Run 125 law. `build_ships` adds every main record of the scene view to its ship's list, brightest first (I(s) x
 value_eff, ties to the lower handle, then the earlier record), one plate per node handle (the brighter record), the
-dimmest giving way past eight (`plates_dropped`); a record that `engine_plumes::merge_layers` drops as a smaller
-co-located layer adds no plate (`merged`), so the plates follow the plumes' nozzles. The light itself is still chosen
+dimmest giving way past eight (`plates_dropped`). A record that `engine_plumes::merge_layers` marks as a smaller
+co-located layer (within 1.5 x its own size of the larger) is, since Run 129 A (2026-10-04), a plate at its natural
+value_eff with its light unfloored
+(`unfloored`; until then it was dropped and added no plate, `merged`), so the plates follow the plumes' nozzles and
+values. The light itself is still chosen
 over all main records, one light per ship. `build_nodes` carries each plate into the node's model space with the
 light; per draw `plate_constants` places them with the draw's world rows, relative to the camera, scaled by 1 / v_i.
-The `engine_light_frame` row gains `plates=` (the ships by plate count 1..8), `plates_none=`, `merged=` and
+The `engine_light_frame` row gains `plates=` (the ships by plate count 1..8), `plates_none=`, `unfloored=` (`merged=` before Run 129 A) and
 `plates_dropped=`; `engine_light_mode` reports `constants=c190-c202 plates_max=8`.
 
 Pixel program (gained twins): after t = w / (e . F) the block forms D = e t (MUL), then per plate slot i

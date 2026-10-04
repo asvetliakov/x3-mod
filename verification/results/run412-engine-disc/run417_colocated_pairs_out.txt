@@ -1,0 +1,14 @@
+# /tmp/x3-bottleX3-run417/session-20261004-211921-212.log; 48 frames with engine_draw rows
+# larger body, smaller body, distance / larger size, size ratio: pairs (frames)
+fx_engine_xtc_red_huge       fx_engine_xtc_red_big3       d/v<=0.5  v2/v1<0.35        96 (24)
+fx_engine_xtc_red_big3       fx_engine_xtc_red_big3       d/v<=2    v2/v1>0.75        72 (24)
+fx_engine_xtc_red_huge       fx_engine_xtc_red_huge       d/v<=1    v2/v1>0.75        48 (48)
+fx_engine_xtc_red_nor        fx_engine_xtc_red_tiny       d/v<=1    v2/v1<=0.75       48 (48)
+fx_engine_xtc_red_nor3       fx_engine_xtc_red_nor3       d/v<=1    v2/v1>0.75         8 (8)
+fx_engine_xtc_red_big3       fx_engine_xtc_red_big2       d/v<=1    v2/v1<=0.75        8 (8)
+fx_engine_xtc_red_big3       fx_engine_xtc_red_big2       d/v<=2    v2/v1<=0.75        8 (8)
+# unfloored by the rule, both drawn (d <= v_large, d <= 1.5 v_small, 0.35 <= v2 / v1 <= 0.75): larger, smaller, size ratio: pairs
+unfloored fx_engine_xtc_red_nor        fx_engine_xtc_red_tiny        0.504      48
+# kept floored as a nozzle of its own (d <= v_large, v2 / v1 < 0.35 or d > 1.5 v_small): larger, smaller, size ratio: pairs
+own fx_engine_xtc_red_huge       fx_engine_xtc_red_big3        0.200      96
+own fx_engine_xtc_red_big3       fx_engine_xtc_red_big2        0.500       8

@@ -511,7 +511,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
         trace = ['engine_light_mode device=1 setting=on status=ok mode=on requested=1 reason=requested',
                  'engine_light_variant device=1 original=7c83ed50c9894e44 created=07 refused=00 mismatched=00 failed=00 words_max=1500 depth=1']
         trace += [f'engine_light_frame device=1 frame={f} ships=1 ships_drawn={int(f >= 2)} nodes={int(f >= 2)} candidates={int(f >= 3)} '
-                  f'draws_lit={int(f >= 3)} no_twin=0 no_rows=0 twins=6 plates=1,0,0,0,0,0,0,0 plates_none=0 merged=0 '
+                  f'draws_lit={int(f >= 3)} no_twin=0 no_rows=0 twins=6 plates=1,0,0,0,0,0,0,0 plates_none=0 unfloored=0 '
                   f'plates_dropped=0' for f in range(1, 9)]
         return text, '\n'.join(trace)
 

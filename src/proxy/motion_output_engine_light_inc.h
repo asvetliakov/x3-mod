@@ -169,13 +169,13 @@ void MotionOutput::engine_light_frame() noexcept {
             const unsigned k = s.ships.lights[i].plate_count;
             ++by_count[k <= el::plate_slots ? k : el::plate_slots];
         }
-        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_none=%u merged=%u plates_dropped=%u",
+        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_none=%u unfloored=%u plates_dropped=%u",
             id_, s.built_frame, s.ships.count, s.nodes.ships, s.nodes.count, c.candidates, c.draws_lit, c.no_twin,
             c.no_rows, s.ships.stats.records, s.ships.stats.main, s.ships.stats.rcs, s.ships.stats.brake,
             s.ships.stats.other_view, s.ships.stats.invalid, s.ships.stats.orphan, s.ships.stats.dropped,
             s.nodes.stats.logged, s.nodes.stats.log_dropped, s.nodes.stats.matched, s.nodes.stats.singular,
             s.nodes.stats.dropped, s.twins, by_count[1], by_count[2], by_count[3], by_count[4], by_count[5], by_count[6],
-            by_count[7], by_count[8], by_count[0], s.ships.stats.merged, s.ships.stats.plates_dropped);
+            by_count[7], by_count[8], by_count[0], s.ships.stats.unfloored, s.ships.stats.plates_dropped);
     }
     s.counts = {};
     s.built_frame = frame_;

@@ -790,3 +790,38 @@ The own ship's chase disc (`chase_own_look`, reported, not pinned): total 2865.2
 1247.4 (1440), total_ratio 0.5293 / 0.5195 -> 0.5282 / 0.5184, peak 4.738 / 4.734 -> 4.730 / 4.723, extent 43 / 57 ->
 21 / 29 px; the chase case (`chase`) extent 195 / 260 -> 97 / 130 px, fade_ratio and disc_ratio_cpu 0.4 unchanged;
 `chase_own_disc_exempt` 0.5627 / 0.636 unchanged. CPU build 300 records 37.0 us median (37.2 before).
+
+### Co-located layers unfloored instead of dropped, with a near bound, after Run 129 A (2026-10-04, worktree on 7100ae00, not a candidate)
+
+`merge_layers` (`engine_plumes_core.h`) no longer drops the smaller record: the plume builder, the ribbons and the
+engine-light plate table draw it at its own natural value (no floor); the larger keeps its floored value. The window
+gains a second distance bound: the origins must also lie within `merge_layer_near` 1.5 x the smaller's pre-floor size
+(besides the larger's size, ratio 0.35..0.75, same parent and kind, parallel; transitive). Counter renamed:
+`engine_stage` and `engine_light_frame` `merged=` -> `unfloored=` (`BuildStats`, `UpdateStats`,
+`ShipStats::unfloored`). Cause: Run 129 A (run417, frame 17144), the Split Raptor's big2 93.66 at 0.907 x its big3's
+187.5 was dropped (no plume on the lower engine); its two big2s are 1.82 / 2.09 x their own size from the big3, so
+under the near bound both are real nozzles, floored to 280.8 like the big3 (orchestrator decision: equal and bold).
+Rationale: `docs/architecture/engine-exhaust-look-critique.md` section 6, "No floor instead of the drop". Bottle X3,
+all measured; records from the dirty tree.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Plumes | `run_engine_plumes.py` | PASS 322/322 (316 + `merge_raptor_*` 2 + `merge_near_{1.4,1.6}_*` 4; `merge_scorpion_pair_*` rewritten); 924 slots |
+| Ribbons, shimmer, effects | `run_engine_ribbons.py`; `run_engine_shimmer.py`; `run_engine_effects.py` | PASS 44/44 (no ribbon count moved); PASS 43/43; PASS 8 modes (main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) |
+| Light | `run_engine_light.py`; `run_motion_output.py seam-engine-light` | PASS (12 of 12 plate modes); seam exit 0, 107 checks, worst relative 0.0040, constants 1.19e-08, every lit frame row `plates=1,0,0,0,0,0,0,0` (no re-pin) |
+| Host | `X3M_REQUIRE_SHADER_CORPUS=1 ... unittest discover -p 'test_engine_*.py'`; `test_motion_output_runner.py` | 86 OK (new `test_layer_plate_unfloored`; core: the builder's pair 23.555 / 5.04, the ribbons' 125 / 25, ship A's 4 plates with the layer at 5, the Raptor's flight records floored, 1.4 / 1.6 x the smaller); 21 OK |
+| Build | clean `cmake` build in a fresh `build/`; `check_no_x87.py build/d3d9.dll` | 0 warnings; 766 reachable, 0 violations (first attempt failed: a local named `near` collides with the `windows.h` macro; renamed `near_limit`) |
+| Look images | `--dump-images --dump-linear`; `plume_look_sha_compare.py look-images <after>` -> `plume_look_sha_unfloored_out.txt` | 16 of 16 byte-identical (no look image passes parents); not re-tracked |
+| Census | `run412-engine-disc/run412_colocated_pairs.py run412\|run413\|run417` -> `run41{2,3,7}_colocated_pairs_out.txt`; `run417_raptor_pairs.py` -> `_out.txt` | unfloored: nor + tiny 24 / 40 / 48 pairs (6.9 / 5.04 = 1.37 x the smaller); floored as nozzles of their own: huge + big3 32 / 96 / 96, big3 + big2 0 / 0 / 8. run417: 8 frames, big2s at 0.907 / 1.045 x the big3 and 1.816 / 2.091 x their own size, unfloored 0, floored 16 |
+
+Fixture `merge` (still look, floor scale 1, R 67.3; 1920 / 5120): the Scorpion pair draws 2 nozzles, 2 discs end-on (0
+side-on), unfloored 1, floored 1, the nor 23.56, the tiny 5.04 (20.16 floored, as Run 124 drew it). Against the nor
+alone: end-on centre 1.0000 (the tiny's disc is centred about 0.6 nozzle widths off the nor's centre window), end-on
+total 1.0631 / 1.0624, side total 1.0670 / 1.0668 (floored: 1.763 / 1.751 end-on, 1.804 / 1.806 side). The brief's
+estimate of at most 1.05 side-on was 0.017 low; the gate is pinned at `merge_layer_total_max` 1.07 for both views and
+the end-on centre at 1.10. `merge_raptor` (still look, production floor scale 0.5, R 5615.55, big2 at +-(114, 122,
+-30), end-on, the big3's floored nozzle 40 px): 3 nozzles, 3 discs, unfloored 0, floored 3, all three at 280.78; the
+frame equals the no-parents frame (total 1662.2 / 1623.2). `merge_near` (10 + 5 on one axis): 1.4 x the smaller apart
+unfloored 1 (5.00), 1.6 x unfloored 0 (20.00). `merge_kept` apart_3n, anti_parallel, ratio_0.2: 2 nozzles, unfloored
+0. Builder `BUILD_MERGE` 300 records in ships of 8: 44.61 us median (42.64 in the merge's first ledger row; per pair
+one more compare).
