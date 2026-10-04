@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-04 14:35, Run125 = chase-view engine blob fixes over Run124). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-04 16:30, Run126 = engine rings and close-up glow over Run125). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build
@@ -15,6 +15,20 @@ Renderer equal to Run117 on the default flight: the new option `engine_effects` 
 launcher sends it only when given. `off` = two install-time call redirects in `0x00414590` (ship engine sprite + lens flare, Particles3 engine trail; missiles forwarded)
 plus draw-path suppression of every JET-flagged glow draw (ships and missiles), armed only while both redirects are live; `plumes` = `off` until phase 2 lands
 ([ledger](verification/engine-effects.md), [RE](reverse-engineering/engine-effects.md)). Run 118 A queued = flight A, the suppression-only look. Rollback Run117.
+Run126 = **engine rings and close-up glow** (Run 125 A, run413: own ship better; the Ocelot's stern white rings with pink centres, the glow gone at close
+range): DLL SHA-256 `b7e41991543c7b7b80dadc9099707e20f10b9a632a6a9f15d8eac5e513a49c20` (59,099,909 bytes) built once from clean main `00e184cf` (host
+suite 289/3,042/0, 0 warnings, x87 0, shader checks 50 + 9 + shimmer at 4712dbd8 reused, site/identity reused; fixtures plumes 300/300, effects 8 modes,
+ribbons 44/44, shimmer 43/43, light 12 plate modes, seam 107, hull light-map gain 108; [candidate](../verification/results/run126-candidate-build.json)),
+installed 2026-10-04 16:24 ([install](../verification/results/run126-candidate-install.json)). Measured on run413's captures
+([triage](../verification/results/run413-engine-rings/)): the white ring is the hull's white light-map annulus x gain 4 on every nozzle except the one holding
+the engine light (one light per ship), the pink band the plume's own disc ring (x 8); at close range the near cap shrank the nozzle width with the length
+(k 0.26..0.36) so the disc sat inside the plate; the merge dropped the Ocelot's big3 side nozzles (own rims and plates). Fixes: (1) up to 8 nozzle plates per
+lit ship at c190-c197 (tier c202.w, two uniform if_ne branches on temps so a fighter pays one slot; largest twin 368 slots; 100 of 104 gained programs carry
+plates, the 4 others are glass without gain; [engine-light.md](architecture/engine-light.md) "Nozzle plates"); (2) `disc_cap` 1.0, `disc_ring` 3 (red
+end-on peak 2.17 -> 1.5, no clip, the ring no longer reads on cyan, seven end-on gates re-floored); (3) the body keeps the near cap, the end-on disc and halo
+the natural nozzle width under a 0.35 H radius cap (near side views bit-identical, 02a/03b brighter: full-size discs); (4) `merge_layers` ratio window
+[0.35, 0.75] (the Scorpion's pair merges, the Ocelot's side nozzles kept); review fixes (temp-operand branches, the plate upload split from the DEF'd c198/c199,
+disc shape.y natural). Open: the disc's occlusion bias still from the shrunk value; native Windows unverified for the if_ne twins. Run 126 A queued. Rollback Run125.
 Run125 = **chase-view engine blob** (Run 124 A, run412: the own ship's engine from behind a clipped pink-white disc 4x the nozzle opening, no visible
 difference from Run124): DLL SHA-256 `e7f34300c30845284c52cf48e2f753f42f1c781d07ca9c1ff135d64abce477b6` (59,079,594 bytes) built once from clean main
 `6741928d` (host suite 289/3,041/0, 0 warnings, x87 0, shader/site/identity evidence reused unchanged; fixtures effects 8 modes, plumes 294/294, ribbons
@@ -27,7 +41,7 @@ origin, both raised to ~20-23) stacked 1.74x, plus an end-on disc the chase fade
 <= 0.75 of the larger, axes parallel, origins within the larger's pre-floor size; the capital's 4 of 8 big3 inside its 2 huge merge too; `engine_stage merged=`);
 (3) in the 100 engine-light twins that host the light-map gain, the gain falls back to 1 within 0.75 value_eff of the engine light (0 from 1.0; +4 slots, largest
 twin 331; [engine-light.md](architecture/engine-light.md) "Nozzle plates": limits one light per ship, the unbind jump, `engine_light` off keeps the gain).
-Expected (inferred): the plate's neutral excess 3.7/4.3/4.3 -> ~0.7/1.3/1.3, the plume centre ~4.4/1.4/1.4, so the engine reads red. Run 125 A queued.
+Expected (inferred): the plate's neutral excess 3.7/4.3/4.3 -> ~0.7/1.3/1.3, the plume centre ~4.4/1.4/1.4, so the engine reads red. Run 125 A completed in run413: own ship better, the Ocelot still bright, the glow gone at close range (-> Run126).
 Rollback Run124.
 Run124 = **plumes default + mouth whiteness** (Run 123 A, run409: no issues, the default preset's mouths too white, restrained preferred): DLL SHA-256
 `f35a07f1412b0a8afbeaa93f1ae9b9d7f85d79a09029bf5931c08e54ac721b3e` (59,061,764 bytes) built once from clean main `9c0c57ab` (host suite 289/3,040/0,

@@ -1,0 +1,28 @@
+{
+ "run": "Run126",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run126-candidate-2/build/d3d9.dll --fonts-dir /tmp/x3-run123-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-04T16:24+0400",
+ "commit": "00e184cf",
+ "candidate_record": "verification/results/run126-candidate-build.json",
+ "installed": {
+  "sha256": "b7e41991543c7b7b80dadc9099707e20f10b9a632a6a9f15d8eac5e513a49c20",
+  "bytes": 59099909,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed from the candidate DLL before install); pgrep X3AP empty before; 16 font files unchanged (Run123 fonts reused); engine_bodies.json kept (45a1215b…)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept (rebuild due at the next release)"
+ },
+ "previous": {
+  "run": "Run125",
+  "dll_sha256": "e7f34300c30845284c52cf48e2f753f42f1c781d07ca9c1ff135d64abce477b6",
+  "path": "/tmp/x3-run125-candidate-2/build/d3d9.dll",
+  "then": "Run124 f35a07f1... at /tmp/x3-run124-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 125 A (run413): own ship better; the Ocelot's stern still white rings with pink centres (engines4.png: the hull's white light-map annulus x gain 4 on every nozzle but the one with the engine light, plus the plume's own disc ring), the glow vanishes at close range (engines5.png: the near cap shrank the nozzle width with the length), the merge dropped the capital's side nozzles. Fixes: plates at every main nozzle (up to 8), disc_cap 1.0 and disc_ring 3, the disc at natural width under the cap, merge ratio window [0.35, 0.75], review fixes (temp-operand branches, split upload)",
+ "producer": "main session (Fable 5.1)"
+}
