@@ -87,7 +87,13 @@ reach ratio 3 in the pixel program equals `engine_light::core::reach` (pinned by
 
 Limit: the suppression lives in the twin, so it acts only where the hull light does (`engine_effects = plumes`,
 `engine_light` on, a ship in the light table, its routed hull draw). With `engine_light` off, or for a ship without a
-recorded main jet, the plates keep the full gain; no second program set carries the weight.
+recorded main jet, the plates keep the full gain; no second program set carries the weight. Three more limits from
+the review of 6741928d (none changed before Run125): the table holds one light per ship, at its brightest main
+nozzle, so on a ship with two or more spread-out nozzles only that nozzle's plates drop to gain 1 and the others keep
+4 (an asymmetric stern; a multi-nozzle coverage run on an M3, an M5 and a TS is the open check); when a ship's light
+unbinds (evicted at the 256-ship cap, no main-jet record that frame, the option off) its plates jump from about 1 back
+to 4 in one frame, no fade; and a far-fade far gain under 1 (`light_map_far_fade` third value, default 1) would raise a
+plate to 1 above the faded hull around it, because g - (g - 1) w is not clamped at g >= 1.
 
 ## Variant pair, not a zero-light term
 
