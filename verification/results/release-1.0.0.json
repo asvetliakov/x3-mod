@@ -1,0 +1,204 @@
+{
+  "schema": 2,
+  "version": "1.0.0",
+  "complete": true,
+  "tool_record": "/private/tmp/x3m-release-1.0.0/release-1.0.0.json (local, untracked; fields below copied from it)",
+  "command": "python3 tools/release/release.py --out /tmp/x3m-release-1.0.0 (dry run first, exit 0; then the real run, exit 0, 204.5 s; both x3m-regenerate binaries rebuilt by release.py step 4, the Windows one through X3M_FIXTURE_BOTTLE=X3 wine_lock.py build.py --windows in bottle X3M-Build; game guard empty before the run)",
+  "commit": "c3cce57facdb5b7a4e51f0e94b6e07e4e8e44598",
+  "dirty": false,
+  "commit_note": "built from c3cce57f, the main session's docs-only commit on top of 082e1d8c (git diff --stat 082e1d8c c3cce57f: docs/status.md, docs/verification/user-runs.md only), committed while the release started; DLL and regenerate inputs identical to 082e1d8c",
+  "toolchain": {
+    "mingw_gcc": "i686-w64-mingw32-gcc (GCC) 16.2.0",
+    "mingw_objcopy": "GNU objcopy (GNU Binutils) 2.47.20260726",
+    "cmake": "cmake version 4.4.3",
+    "python": "3.9.6 (/Library/Developer/CommandLineTools/usr/bin/python3)"
+  },
+  "source_commit_marker": "c3cce57facdb5b7a4e51f0e94b6e07e4e8e44598",
+  "dll": {
+    "path": "/private/tmp/x3m-release-1.0.0/d3d9.dll",
+    "sha256": "94d16fa806eb784026d03db03591220c04fed6ed84706832874372a17421ede2",
+    "bytes": 39856549
+  },
+  "dll_unstripped": {
+    "path": "/private/tmp/x3m-release-1.0.0/unstripped/d3d9.dll",
+    "sha256": "86ed43f4835161c4570f12876f37776d0c84804c79e71c18efa82a6a481b4804",
+    "bytes": 59097196
+  },
+  "debug_file": {
+    "path": "/private/tmp/x3m-release-1.0.0/d3d9.debug",
+    "sha256": "e467b71757273261ad505ee8f7aadd096b1609622fd712044e20968917db6fc9",
+    "bytes": 20226668
+  },
+  "strip": {
+    "result": "PASS",
+    "sections_compared": [
+      ".text",
+      ".data",
+      ".rdata",
+      ".xdata",
+      ".bss",
+      ".edata",
+      ".idata",
+      ".tls",
+      ".rsrc",
+      ".reloc"
+    ],
+    "exports": 17,
+    "debug_sections_removed": [
+      ".debug_aranges",
+      ".debug_info",
+      ".debug_abbrev",
+      ".debug_line",
+      ".debug_frame",
+      ".debug_str",
+      ".debug_line_str",
+      ".debug_loclists",
+      ".debug_rnglists"
+    ],
+    "debuglink": true,
+    "x87": {
+      "result": "PASS",
+      "violations": 0,
+      "reachable_functions": 766
+    },
+    "method": "i686-w64-mingw32-objcopy --only-keep-debug; --strip-debug --add-gnu-debuglink"
+  },
+  "regenerate_source": "built",
+  "regenerate": {
+    "build_commit": "c3cce57facdb5b7a4e51f0e94b6e07e4e8e44598",
+    "x3m-regenerate": {
+      "sha256": "38261796ac0cab8bfe3ef05141594cfc8e49bd99f5e0056f6e774575923ee616",
+      "bytes": 12286224,
+      "smoke": "host: PASS exit 0 in 26.8 s, 6 processing lines, log 10239 B; engine bodies summary: 1 bodies (red 1), 1 listed but not loadable; all done: fog families, LOD overlay and engine bodies regenerated",
+      "shipped": false
+    },
+    "x3m-regenerate.exe": {
+      "sha256": "4196d3e02fc46a1ab4b4ec0817fa1b95e504a75d8584a33489484b4ab3d3b797",
+      "bytes": 29768130,
+      "smoke": "Windows under Wine (bottle X3M-Build): PASS exit 0 in 19.6 s, 6 processing lines, log 10269 B; engine bodies summary: 1 bodies (red 1), 1 listed but not loadable; all done: fog families, LOD overlay and engine bodies regenerated",
+      "shipped": true
+    },
+    "windows_lock": {
+      "lock_wait_seconds": 3.083000000000946e-06,
+      "child_elapsed_seconds": 84.2919885,
+      "exit_code": 0
+    }
+  },
+  "zip": {
+    "name": "x3m-1.0.0.zip",
+    "sha256": "dc130aadf3879b016147daa8540eaa1705c68ea883f48d5c6d5f6a1da315bb9c",
+    "bytes": 59764939,
+    "entries": {
+      "d3d9.dll": [
+        39856549,
+        "94d16fa806eb7840"
+      ],
+      "x3m.ini": [
+        20864,
+        "0b4acda3f210b1f6"
+      ],
+      "x3m-regenerate.exe": [
+        29768130,
+        "4196d3e02fc46a1a"
+      ],
+      "f/Harrier48.abc": [
+        10102,
+        "bfe708cd4c832d6e"
+      ],
+      "f/Harrier48.tga": [
+        2097170,
+        "b0e5db2922e7b7d8"
+      ],
+      "f/Harrier72.abc": [
+        10102,
+        "807a78585316503f"
+      ],
+      "f/Harrier72.tga": [
+        4194322,
+        "7e6db52e670aa17e"
+      ],
+      "f/Tahoma26.abc": [
+        17054,
+        "18cca779096a9e41"
+      ],
+      "f/Tahoma26.tga": [
+        1048594,
+        "ef536bbb89ca5792"
+      ],
+      "f/Tahoma39.abc": [
+        17054,
+        "abbe3241884774a0"
+      ],
+      "f/Tahoma39.tga": [
+        4194322,
+        "42596156cf468d1c"
+      ],
+      "f/Zekton52.abc": [
+        7628,
+        "7a52633c0a936aa7"
+      ],
+      "f/Zekton52.tga": [
+        2097170,
+        "cff8eb745fdb0fba"
+      ],
+      "f/Zekton78.abc": [
+        7628,
+        "3960f3cf197336c8"
+      ],
+      "f/Zekton78.tga": [
+        4194322,
+        "212b87b9e2610142"
+      ],
+      "f/ZektonES52.abc": [
+        24750,
+        "96c229be61d9ea26"
+      ],
+      "f/ZektonES52.tga": [
+        2097170,
+        "bb01d1d12b9293a9"
+      ],
+      "f/ZektonES78.abc": [
+        24750,
+        "496fabf863183563"
+      ],
+      "f/ZektonES78.tga": [
+        4194322,
+        "79140644e51f02a5"
+      ],
+      "OFL-NotoSans.txt": [
+        4396,
+        "cee9892f9f0cc8fe"
+      ],
+      "OFL-Exo2.txt": [
+        4386,
+        "7f95a8eeecc6904f"
+      ],
+      "README.txt": [
+        3378,
+        "e3e88aa7d1663a55"
+      ]
+    }
+  },
+  "gates": "generate --check PASS (256 settings, 107 in the template); DLL warnings 0; check_no_x87 PASS 0 violations 766 reachable (unstripped and stripped); strip identity PASS 10 sections 17 exports marker once 9 debug sections removed, debuglink; regenerate host and Windows smoke PASS incl. the engine-bodies step; zip entries exactly 22 (d3d9.dll, x3m.ini, x3m-regenerate.exe, f/<16 fonts>, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt), CRC test clean, d3d9.dll/x3m-regenerate.exe/fonts re-hashed by release.py; x3m.ini first line \"; X3 Modern Renderer 1.0.0: settings file x3m.ini (schema 2026-09-26).\" and byte-identical to assets/x3m.ini; README.txt names 1.0.0 and commit c3cce57f and the d3d9.debug SHA-256; stripped DLL marker X3M_SOURCE_COMMIT=c3cce57f... once; no RT_VERSION resource (.rsrc holds RT_RCDATA only); manage.py launch --dry-run --direct --config --debug exit 0 from the checkout",
+  "gates_reused": {
+    "record": "verification/results/run130-candidate-build.json",
+    "commit": "01114822",
+    "dll_sha256": "e7ab879ac7442a78f24b49a66d0da089cd5e44e374b1b55729824c968844574f",
+    "reason": "git diff --stat 01114822..082e1d8c -- src CMakeLists.txt tools assets: CMakeLists.txt (project VERSION 1.0.0) and assets/x3m.ini (template version line) only; src/config/config_schema_inc.h unchanged; the rest of the diff is docs and records. The fixture chain (plumes, ribbons, shimmer, effects, light, seam, host suite) is reused from Run130"
+  },
+  "changes_since_0.9.0": [
+    "engine exhaust set Run118..Run130: native/off/plumes engine effects with plumes the default, ribbons, far jets, plume physics, hull light plates, shimmer, single fire law, co-located layers unfloored (verification/results/run130-candidate-build.json, docs/verification/engine-effects.md)",
+    "x3m-regenerate gains the engine-bodies step (tools/effects/engine_bodies.py writes x3m/engine_bodies.json); both binaries rebuilt",
+    "version 1.0.0 with the x3m.ini template regenerated (082e1d8c)"
+  ],
+  "wall_seconds": {
+    "tree": 0.0,
+    "config": 0.0,
+    "dll": 53.6,
+    "regenerate_host": 60.3,
+    "regenerate_windows": 88.4,
+    "regenerate": 148.8,
+    "package": 1.9,
+    "total": 204.5
+  }
+}
