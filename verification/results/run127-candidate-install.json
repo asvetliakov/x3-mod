@@ -1,0 +1,28 @@
+{
+ "run": "Run127",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run127-candidate/build/d3d9.dll --fonts-dir /tmp/x3-run123-candidate/build/fonts/F",
+ "exit": 0,
+ "installed_at": "2026-10-04T18:50+0400",
+ "commit": "6e7d8daa",
+ "candidate_record": "verification/results/run127-candidate-build.json",
+ "installed": {
+  "sha256": "2433cda8c265975d2706c9460b36729e377fba9295bb4d56baf8463427d6fd75",
+  "bytes": 59098881,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed from the candidate DLL before install); pgrep X3AP empty before; 16 font files unchanged (Run123 fonts reused); engine_bodies.json kept (45a1215b…)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 3a70e875... before and after",
+  "x3m.ini": "the user's file kept",
+  "x3m-regenerate": "0.8.0 binaries kept (rebuild due at the next release)"
+ },
+ "previous": {
+  "run": "Run126",
+  "dll_sha256": "b7e41991543c7b7b80dadc9099707e20f10b9a632a6a9f15d8eac5e513a49c20",
+  "path": "/tmp/x3-run126-candidate-2/build/d3d9.dll",
+  "then": "Run125 e7f34300... at /tmp/x3-run125-candidate-2/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 126 A (run414) accepted as the look; the user then asked to revert the Run124 heat change (it dimmed red plume heads for a side-view gain nobody noticed): heat 0.7, head_min 0.75, I(s) 1.2..4.0 restored; everything after Run124 kept",
+ "producer": "main session (Fable 5.1)"
+}
