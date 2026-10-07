@@ -1,0 +1,42 @@
+== hdr_frame rows=5979
+  redirected: 1:4844, 0:1135
+  target_create: 00000000:4844, 00000001:1135
+  latch_bind: 00000000:4844, 00000001:1135
+  tonemapped: 1:4844, 0:1135
+  end: hook:4842, none:1135, present:1, content_write:1
+  unwind_reason: none:5979
+  blocked: 0:5979
+  suspended: 0:5979
+  meter: 00000000:4844, 00000001:1135
+  readback: 00000000:4843, 00000001:1136
+  tonemap_draw: 00000000:4844, 00000001:1135
+  caps: ok:5979
+== motion_output_frame rows=5979
+  latched: 1:4844, 0:1135
+  routed: >0:4842, 0:1137
+  matched: >0:4841, 0:1138
+  taa_attempted: >0:4842, 0:1137
+  taa_resolved: >0:4842, 0:1137
+  taa_skip: 0:4842, 2:1137
+  taa_result: 00000000:4842, 00000001:1137
+  scene_open: 0:5979
+  hook_signals: >0:5973, 0:6
+  hook_outside_scene: 0:4848, 1:1131
+  hook_state: 0:4848, 9:1131
+  draws_after_hook: 0:5979
+  camera_valid: 1:4842, 0:1137
+  camera_reads: >0:4844, 0:1135
+  selector_state: 9:5978, 0:1
+  jittered: 0:1137, 141:560, 203:382, 168:306, 116:268, 143:227
+  fill_result: 00000000:4842, 00000001:1137
+  scene_end_source: hook:4842, none:1137
+  bloom_copy_seen: 1:4842, 0:1137
+== taa_invalidate rows=1140
+  site: not_resolved:1137, fog_transition:3
+== camera_state rows=5979
+  valid: 1:4842, 0:1137
+  reads: >0:4844, 0:1135
+  read_failure: 0:5979
+  failure: 0:5979
+== frame_end rows=5979 max_draws=271 frames_draws>=500=0
+  dt_ms all: median=15 p95=22

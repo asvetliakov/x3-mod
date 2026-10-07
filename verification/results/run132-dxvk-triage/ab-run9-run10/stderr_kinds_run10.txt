@@ -1,0 +1,29 @@
+39360 [N-N-NTN:N:N.NZ] warn:  NcaNe-NdNc-NdN-Nd-bNdNeNcNce
+32330 [N-N-NTN:N:N.NZ] warn:  DNDNSwapChainEx::QueryInterface: Unknown interface query
+7030 [N-N-NTN:N:N.NZ] warn:  DNDNDeviceEx::QueryInterface: Unknown interface query
+  62 [N-N-NTN:N:N.NZ] [mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart.
+  42 [N-N-NTN:N:N.NZ] warn:  NcN-NdeN-NfN-NbNa-fNacNcNbN
+  42 [N-N-NTN:N:N.NZ] warn:  DNDNTextureCube::QueryInterface: Unknown interface query
+  11 [N-N-NTN:N:N.NZ] [mvk-info] MoltenVK version N.N.N, supporting Vulkan version N.N.N.
+  11 [N-N-NTN:N:N.NZ] [mvk-info] GPU device:
+  11 [N-N-NTN:N:N.NZ] [mvk-info] Created VkInstance for Vulkan version N.N.N, as requested by app, with the followi
+  11 [N-N-NTN:N:N.NZ] 	VK_KHR_deferred_host_operations vN
+   8 [N-N-NTN:N:N.NZ] [mvk-info] Destroying VkInstance for Vulkan version N.N.N with N Vulkan extensions enabled.
+   8 [N-N-NTN:N:N.NZ] [mvk-info] Destroyed VkPhysicalDevice for GPU Apple MN Pro with N MB of GPU memory still allo
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion 'object != NULL' failed
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion '((GObject *) object)->
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_state: assertion 'GST_IS_ELEMENT (e
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_bus: assertion 'GST_IS_ELEMENT (ele
+   3 [N-N-NTN:N:N.NZ] warn:  N-Nfc-Nc-NffN-NaNdfNd
+   3 [N-N-NTN:N:N.NZ] warn:  DNDNInterfaceEx::QueryInterface: Unknown interface query
+   3 [N-N-NTN:N:N.NZ] info:  DXVK: vN.N.N-N-async (macOS)
+   2 [N-N-NTN:N:N.NZ] warn:  DNDNDeviceEx::SetRenderState: Unhandled render state N
+   2 [N-N-NTN:N:N.NZ] [mvk-info] Created N swapchain images with size (N, N) and contents scale N.N in layer WineMe
+   1 [N-N-NTN:N:N.NZ] warn:  DXVK: No state cache file found
+   1 [N-N-NTN:N:N.NZ] launcher_tee pid=N log=/Users/asvetl/Library/Application Support/CrossOver/Bottles/XN/drive_c
+   1 [N-N-NTN:N:N.NZ] launcher command=["/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/w
+   1 [N-N-NTN:N:N.NZ] info:  DXVK: Using N compiler threads
+   1 [N-N-NTN:N:N.NZ] info:  DXVK: Read N valid state cache entries
+   1 [N-N-NTN:N:N.NZ] [mvk-info] Vulkan semaphores using MTLEvent.
+   1 [N-N-NTN:N:N.NZ] [mvk-info] Descriptor sets binding resources using MetalN argument buffers.
+   1 [N-N-NTN:N:N.NZ] [mvk-info] Created VkDevice to run on GPU Apple MN Pro with the following N Vulkan extensions

@@ -1,0 +1,31 @@
+== engine_stage rows=5976
+  armed: 1:5123, 0:853
+  reason: armed:5123, pending:853
+  ran: 1:4842, 0:1134
+== engine_frame rows=5976
+  records: >0:4842, 0:1134
+  suppressed: >0:4842, 0:1134
+  candidates: 27:1937, 39:839, 26:527, 31:490, 20:387
+== shadow_lease_retirement rows=5979
+  records: >0:4842, 0:1137
+== fade_route_frame rows=5979
+  fade_routed: 0:5979
+  fade_refused: 0:5979
+== thin_vote_frame rows=5979
+  lane: 1:5979
+  voted: >0:4841, 0:1138
+== hull_emission_frame rows=5973
+  admitted: 0:5353, >0:620
+  refused_state: 0:4198, 49:822, 2:644, 48:129, 52:106
+== volumetric_fog_prefill rows=38
+  event: poll:37, discarded:1
+  action: none:28, family_unsupported:4, already_started:3, started:2, <absent>:1
+== volumetric_fog_cache rows=2
+  event: epoch:2
+  reason: prefill:2
+sum engine_frame.records=56865
+sum engine_frame.suppressed=56865
+sum fade_route_frame.fade_routed=0
+sum thin_vote_frame.voted=254687
+sum shadow_lease_retirement.records=579899
+sum hull_emission_frame.admitted=1009

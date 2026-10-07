@@ -1,0 +1,12 @@
+  11 [N-N-NTN:N:N.NZ] [mvk-info] MoltenVK version N.N.N, supporting Vulkan version N.N.N.
+  11 [N-N-NTN:N:N.NZ] [mvk-info] GPU device:
+  11 [N-N-NTN:N:N.NZ] [mvk-info] Created VkInstance for Vulkan version N.N.N, as requested by app, with the followi
+  11 [N-N-NTN:N:N.NZ] 	VK_KHR_deferred_host_operations vN
+   9 [N-N-NTN:N:N.NZ] [mvk-info] Destroying VkInstance for Vulkan version N.N.N with N Vulkan extensions enabled.
+   9 [N-N-NTN:N:N.NZ] [mvk-info] Destroyed VkPhysicalDevice for GPU Apple MN Pro with N MB of GPU memory still allo
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion 'object != NULL' failed
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion '((GObject *) object)->
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_state: assertion 'GST_IS_ELEMENT (e
+   4 [N-N-NTN:N:N.NZ] (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_bus: assertion 'GST_IS_ELEMENT (ele
+   1 [N-N-NTN:N:N.NZ] launcher_tee pid=N log=/Users/asvetl/Library/Application Support/CrossOver/Bottles/XN/drive_c
+   1 [N-N-NTN:N:N.NZ] launcher command=["/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/w
