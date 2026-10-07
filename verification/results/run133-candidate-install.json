@@ -1,0 +1,28 @@
+{
+ "run": "Run133",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run133-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-08T03:54+0400",
+ "commit": "d8024b96",
+ "candidate_record": "verification/results/run133-candidate-build.json",
+ "installed": {
+  "sha256": "1a8de604945e3bd2686c372c5cff70aba24b46d6f17721af61a374c5665a6f00",
+  "bytes": 59117732,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed before install); pgrep X3AP empty before; 16 generated font files re-reported installed, unchanged content; engine_bodies.json kept"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 9fc1c171... before and after (CX_GRAPHICS_BACKEND = dxvk as the user set it)",
+  "x3m.ini": "the user's file kept",
+  "CrossOver Preview.app": "MoltenVK 1.4.2 + marked Gcenx PR #20 DXVK 1.10 as for Run 131 A"
+ },
+ "previous": {
+  "run": "Run132",
+  "dll_sha256": "5da368709076dd9801bfab82c0c7815fa581eb878da68066170700538dd5cbed",
+  "path": "/tmp/x3-run132-candidate/build/d3d9.dll",
+  "then": "Run130 e7ab879a... at /tmp/x3-run130-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 132 A A/B (run9 wined3d vs run10 DXVK): view_setup +3.3 ms on DXVK traced to the HDR meter GetRenderTargetData+LockRect at the latch waiting for the GPU (verification/results/run132-dxvk-triage/view-setup/); readback double-buffered, lock p50 5,591 -> 3 us in the fixture",
+ "producer": "main session (Fable 5.1)"
+}
