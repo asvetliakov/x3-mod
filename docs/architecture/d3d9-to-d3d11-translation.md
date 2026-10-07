@@ -550,6 +550,122 @@ either the user replacing `lib/aarch64/libMoltenVK.dylib` inside CrossOver Previ
 `e7a88637…`, 1.4.2 10,925,552 B `aef00b13…`) or a scratch copy of the runtime with its quarantine attribute
 removed so Gatekeeper does not assess it; both are the user's call.
 
+**2026-10-08, MoltenVK 1.4.2 inside CrossOver Preview (build 27.0.0.41069), user-authorised.** Backup with
+sha256 and a `RESTORE.sh` in `~/crossover-preview-backup-2026-10-08/` (bundled `lib/aarch64/libMoltenVK.dylib`
+1.2.10, 5,574,176 B, `40259e20…0990f`, arm64 only; `lib/dxvk/i386-windows/d3d9.dll` cxaddon-1.10.3, 3,329,616 B,
+`78a5f210…df5da`). The KhronosGroup v1.4.2 dylib (`aef00b13…4c5f`, 10,925,552 B) now sits at
+`lib/aarch64/libMoltenVK.dylib`; `xattr -rs -d com.apple.quarantine` cleared the attribute from the whole bundle
+(465 entries, symlinks included, 0 left). No re-signing was needed: the hardened Wine loader loaded the swapped
+dylib as is (M, seven fixture runs). `d3d9.dll` was **not** replaced. Fork DLL: release asset
+`dxvk-macos-v3.1-metalsharp.tar.zst` (tag `v3.1-macos1.0`, 2026-09-12; `i386-windows/d3d9.dll` 20,027,284 B,
+sha256 `34710ca909d344f8c50db5cca2b8a9d0f45e4f23b63bbc92b5f2636942eca3dd`, version string `v3.1+`, no Wine-builtin
+marker; the tarball also ships its own universal MoltenVK 1.4.3, 18,360,768 B, `8249d81e…`, not used). Records
+`dxvk-macos-3.1-mvk1.4.2-bundle-*.json`, `crossover-dxvk-1.10.3-mvk1.4.2.json`, `wined3d-mvk1.4.2-bundle.json` and
+`msl_depth_promotion.py` beside them; all figures M, `--no-sweep` (the program extraction is gone).
+
+| Run on the installed MoltenVK 1.4.2 (driver `MoltenVK 0.2.2210` = 1.4.2 encoded, as 1.2.10 was 0.2.2018) | Device | quad / ps11 two samplers / managed re-lock / fixed-function / scaled StretchRect (means R,G,B; cov) |
+| --- | --- | --- |
+| fork, no config | S_OK, 952 ms, `AMD_Radeon_RX_6700_XT` spoof | 200,200,200; 1.0 / 240,240,240 / 40,40,40 / 0,0,0; 0.0 / 10,10,10; 0.25 |
+| fork, `DXVK_CONFIG="d3d9.deAliasedSamplers = True"` (logged as effective; Auto already resolves to true on MoltenVK) | same | identical |
+| fork, `MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE=1` (`--env` and `--wine-env`; the parameter no longer exists in the 1.4.2 docs) | same | identical |
+| fork, `d3d9.deAliasedSamplers = False` | same | identical except both two-sampler cases 200,200,200 (second sampler lost) |
+| fork, `d3d9.forceSamplerTypeSpecConstants = True` | same | identical |
+| CrossOver DXVK 1.10.3 (`--d3d9-order b --wine-env CX_GRAPHICS_BACKEND=dxvk`, what the bottle's `dxvk` backend loads) | **D3DERR_NOTAVAILABLE 0x8876086a**: `[mvk-error] VK_ERROR_FEATURE_NOT_PRESENT: vkCreateDevice(): Requested physical device feature specified by the 39th flag in VkPhysicalDeviceFeatures` (shaderCullDistance) and `5th flag` (geometryShader) | not reached |
+| wined3d (`--d3d9 builtin --wine-env CX_GRAPHICS_BACKEND=wined3d`) | S_OK, 7.0 ms, GeForce 8800 GTX | 18 of 18 checks pass, 200,40,40 etc. exact |
+
+**Cause of the grey (M, `MVK_CONFIG_SHADER_DUMP_DIR`).** The SPIR-V DXVK hands MoltenVK declares every sampled 2D
+and cube image with `Depth=0`, but the MSL SPIRV-Cross emits declares them `depth2d<float>` / `depthcube<float>`
+and samples with `float4(s0_2d.sample(...))`, a scalar splat: red into all four channels. The reason is
+dxbc-spirv `sm3_resources.cpp` `emitSampleColorOrDref`, which emits `if (isDepth) sample_compare else sample` on
+one image at run time from the legacy sampler-state bits; Metal needs a depth texture type for `sample_compare`,
+so SPIRV-Cross promotes any image touched by a dref op, and Metal's `depth2d.sample()` returns one float. The
+fork's `deAliasedSamplers` patch only spreads 2D/cube/3D onto separate bindings and does not touch this; spec
+constants do not remove the dref op from the module. The scaled StretchRect copy is exact relative to its already-grey source
+(40,40,40 drawn by the same sampling path, quartered to 10,10,10 at 0.25 coverage), so the copy path is not
+implicated; DXVK's own internal shader in the dump keeps `texture2d<float> src`. The fixed-function shader (`array<depth2d<float>, 8> t2d`) draws nothing. Every fork run also hits a Metal
+validation assertion after the queries, `_mtlValidateArgumentsForTextureViewOnDevice:1866 ... texture view
+pixelFormat (MTLPixelFormatDepth32Float) not castable ... source MTLPixelFormatDepth32Float_Stencil8` (DXVK maps
+D24S8 to D32S8 and makes a depth-only view for the RESZ step), and ends without its RESZ, effect, Present and
+RESULT rows. No configuration fixes this; it needs a fork source change (a second, depth-typed image binding for
+the dref path with the D3D9 side binding the same view to both, or compile-time sampler-type specialisation that
+removes the dref op) and a rebuild, then the Metal view-cast assertion.
+
+**State left and what the game would load.** The proxy loads `GetSystemDirectoryW()\d3d9.dll`
+(`src/proxy/loader.cpp`), the bottle's builtin-marked `syswow64/d3d9.dll` (187,968 B), and CrossOver's `dxvk`
+backend substitutes `lib/dxvk/i386-windows/d3d9.dll` for it (I, from the 2026-09-24 load-order finding). With
+MoltenVK 1.4.2 in place and `CX_GRAPHICS_BACKEND=dxvk` in cxbottle.conf, the game would therefore get DXVK 1.10.3,
+which no longer creates a device (above); `CX_GRAPHICS_BACKEND=wined3d` renders exactly, and
+`~/crossover-preview-backup-2026-10-08/RESTORE.sh` puts 1.2.10 back. The fork DLL carries no Wine-builtin marker
+(M), so copying it over the `lib/dxvk` file for the builtin load order is untested and expected to be refused (I).
+
+**2026-10-08, later: Gcenx/DXVK-macOS PR #20 (DXVK 1.10 lineage) passes the whole fixture on MoltenVK 1.4.2.**
+`MiloszP/DXVK-macOS` branch `dealiased-samplers` at `217f1c03e89bdcce5f31af442f58810f66d6556e` (2026-07-08, "[d3d9] Add
+d3d9.deAliasedSamplers option for drivers without binding aliasing", 10 files +128/-28 over `1.10.x`,
+`git describe` `v1.10.3-20230507-repack-2-g217f1c03`). It gives every D3D9 sampler five consecutive binding slots
+(2D, 3D, cube, depth-2D, depth-cube; `src/dxso/dxso_util.h`), binds the active view to the matching slot at run time,
+and makes `geometryShader`/`shaderCullDistance` optional; `d3d9.deAliasedSamplers` defaults to Auto, which resolves to
+on when the adapter is Apple/MoltenVK (`d3d9_options.cpp`), so no `dxvk.conf` was needed and none was tried. Built
+i386 with the tree's `build-win32.txt`, `meson setup --buildtype release` (meson 1.12.1 in a scratch venv, Homebrew
+ninja 1.13.2, glslang 16.6.0 macOS release binary, Homebrew `i686-w64-mingw32-g++` 16.2.0 with mingw-w64 14
+headers). One local fix: `src/d3d9/d3d9_include.h` redefines `_D3DDEVINFO_RESOURCEMANAGER`, which mingw-w64 14
+headers already declare; the typedef is now guarded by `__MINGW64_VERSION_MAJOR < 12` (3 added lines, build
+products and clone stay in the session scratch). `d3d9.dll` 15,157,937 B, sha256
+`cb187b2ec62326982948b8c55d4f545e2deb53e789fcce8c069b3692083003a2`, version string `v1.10.3-20230507-async (macOS)`,
+**no** `Wine builtin DLL` marker at offset 0x40 (CrossOver's 1.10.3 file carries one there, M). Records
+`gcenx-1.10-pr20-mvk1.2.10.json` and `gcenx-1.10-pr20-mvk1.4.2.json`, `--no-sweep`, all M:
+
+| MoltenVK in the bundle | Device | quad / alpha test / ps11 two samplers / ps30 2D+cube / fixed-function / managed re-lock / scaled StretchRect / effect | Checks | Errors |
+| --- | --- | --- | --- | --- |
+| 1.2.10 (`40259e20…`, driver `MoltenVK 0.2.2018`, DXVK requests Vulkan 1.1) | S_OK, 49.7 ms, `Apple M5 Pro` | 200,40,40 / 100,20,20@0.50 / 240,80,240 / 240,80,240 / **0,0,0@0.0** / 40,200,40 / 10,10,50@0.25 / 64,128,191 | 17 of 18 | `[mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3): program_source:112:135: error: cannot reserve 'buffer' resource location at index 0` (`render_state_t` push constants and `D3D9FixedFunctionPS` both at `[[buffer(0)]]` in the fixed-function pixel shader), then `err: DxvkGraphicsPipeline: Failed to compile pipeline` |
+| 1.4.2 (`aef00b13…`, driver `MoltenVK 0.2.2210`) | S_OK, 63.7 ms, `Apple M5 Pro` | all expected values exact, fixed-function 240,80,240@1.0 | **18 of 18 PASS** | none (0 `mvk-error`, 0 `err:`; one `warn: DXVK: No state cache file found`; one `[mvk-warn] Metal does not support disabling primitive restart`) |
+
+On 1.4.2 MoltenVK uses Metal argument buffers by default, so descriptor sets land in `spvDescriptorSet0
+[[buffer(0)]]` and the push-constant block moves to `[[buffer(1)]]`/`[[buffer(8)]]`; that removes the 1.2.10
+collision (M, dumped MSL). The dumped SPIR-V on both carries the de-aliased pairs (`texture2d s0_2d` plus
+`depth2d s0_2d_shadow`, each on its own `[[texture(n)]]`), with no scalar-splat sampling. Occlusion query 65,536
+pixels, timestamp queries supported, RESZ into INTZ reads 128 at both references like wined3d, event query wait
+0.97 ms. MoltenVK 1.4.2 stays installed (step 3 of the brief: only if that run passes); `RESTORE.sh` reverts.
+Not yet done: the 211-program game sweep (extraction absent), and a builtin-marked copy for the bottle's `dxvk`
+backend path. Wine refuses an unmarked file found through the builtin load order (I; ntdll's
+`virtual_map_builtin_module` check), so shipping this DLL through `lib/dxvk/i386-windows/` needs the 16-byte
+`Wine builtin DLL` marker written into the DOS stub at 0x40 as winebuild does, or the proxy loading it by path
+with `d3d9=n`; neither was attempted.
+
+**2026-10-08, last: PR #20 installed as the bundle's DXVK, game sweep clean; Sarek as second candidate.** Durable
+copies in `~/x3-dxvk/` (each with `SHA256SUMS` and `BUILD.txt`; the PR #20 directory also holds
+`d3d9_include-mingw14.patch`). The marked copy `d3d9-marked.dll` is the PR #20 build with the 16 bytes
+`Wine builtin DLL` at 0x40 and zeros at 0x50..0x5F, exactly as CrossOver's 1.10.3 carries them (its surrounding
+DOS stub is otherwise identical, M), and the PE `CheckSum` recomputed (the algorithm reproduces CrossOver's stored
+`0x33068a`; the build's `0xe7945f` became `0xe7f130`; 34 bytes differ from the unmarked build, all inside
+0x40..0x60 and the CheckSum field, M). It is installed over `lib/dxvk/i386-windows/d3d9.dll`; the backup
+directory's `RESTORE.sh` reverts both bundle files (its `SHA256SUMS` check passes, M).
+
+| DLL | Bytes | sha256 | Marker |
+| --- | --- | --- | --- |
+| Gcenx PR #20 `217f1c03`, unmarked (`~/x3-dxvk/gcenx-1.10-pr20/d3d9.dll`) | 15,157,937 | `cb187b2ec62326982948b8c55d4f545e2deb53e789fcce8c069b3692083003a2` | no |
+| same, marked (`d3d9-marked.dll`, installed in the bundle) | 15,157,937 | `a5005d1f1f5e953dafe633027470242c273423c6c6ac733ba99705e699e1300d` | yes |
+| pythonlover02/dxvk-sarek `main` `250ca929` (2026-10-04, after `98b08c69` "split sampler bindings per variant on moltenvk"; `v1.13.0-40-g250ca929`, string `DXVK-Sarek v1.14`; `~/x3-dxvk/sarek-main-250ca929/d3d9.dll`, built with no source change) | 15,444,434 | `5141c498659179790798aeaf54c664a68f22c0567222a14f8f831382352f1e50` | no |
+
+The program corpus was rebuilt from the installed archives in 11 s (`index_shaders.py` 3,480 effects, 13,407
+streams; `sweep_shaders.py extract` 751 programs; `restore_shader_sweep.py --dry-run` 751/751 inventory SHA-256s,
+both pins ok; 0 of the 211 live programs missing, M). Runs, all M, records beside `summary.py`:
+
+| Run | Load path | Device | Fixture checks | Game programs: created / drawn / backend errors | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `gcenx-1.10-pr20-mvk1.4.2-bundle-builtin` | bottle `dxvk` backend, `--d3d9-order b --wine-env CX_GRAPHICS_BACKEND=dxvk` | S_OK 41.2 ms | 18/18 | not run | `MODULE role=d3d9 path=...lib\dxvk\i386-windows\d3d9.dll wine_builtin=1`, log `DXVK: v1.10.3-20230507-async (macOS)` |
+| `gcenx-1.10-pr20-mvk1.4.2-sweep` | same builtin path | S_OK | 18/18 | 211/211 (67 vs, 144 ps) / 211, 0 draw or wait failures / **0** | the runner's 144 "error programs" are one `[mvk-warn] Metal does not support disabling primitive restart` per pixel shader (matched by its `VK_ERROR` pattern), no `mvk-error`, no `err:`; 28.2 s |
+| `sarek-main-250ca929-mvk1.4.2` | `d3d9=n` | S_OK 219.9 ms, `AMD_Radeon_RX_6700_XT` spoof | 17/18: **alpha test ignored** (200,40,40 at 1.0 coverage for 100,20,20 at 0.5) | not run | one `err: DxvkContext: copyImageFb: Unsupported format`; all four RESZ reads 0 |
+| `sarek-main-250ca929-mvk1.4.2-sweep` | `d3d9=n` | S_OK | 18/18 (alpha test 100,20,20 at 0.50 this time) | 211/211 / 211, 0 failures / **0** | same 144 primitive-restart warnings; RESZ INTZ 128 at both references, D24X8 0 and 0 (as wined3d); 26.2 s |
+| `sarek-main-250ca929-mvk1.2.10` | `d3d9=n`, MoltenVK 1.2.10 swapped in for this run only | S_OK 222.8 ms | 18/18 | not run | no MoltenVK warnings at all; Sarek's fixed-function shader does not hit the 1.2.10 buffer-index collision that PR #20's does |
+
+Sarek logs `Degraded features: 4 unsupported` on MoltenVK (custom border colors, depth clip control, transform
+feedback / D3D9 `ProcessVertices`, non-seamless cube maps) and reports `geometryShader 0`, `shaderCullDistance 0`
+without needing them (M). The alpha-test miss in 1 of 3 Sarek runs is not explained (I: a state-ordering race on
+the first pipeline of the process); PR #20 passed it in every one of its 5 runs today. PR #20 reads RESZ D24X8
+255/0 at references 0.25/0.75 where wined3d and Sarek read 0/0 (the proxy decodes depth through
+`depth_decode.hlsl`, so informational). Bundle at the end: MoltenVK 1.4.2 `aef00b13…` and the marked PR #20
+`a5005d1f…`; backup directory unchanged apart from the `RESTORE.sh` comment.
+
 ## Alternatives considered and why they lose
 
 - **Write the 9-on-11 translator (the question as asked).** Loses on the

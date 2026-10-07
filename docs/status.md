@@ -1,6 +1,6 @@
 # Project status
 
-The single current-state file (updated 2026-10-04 22:40, Run130 = Raptor engines back + hotkeys removed over Run129). Rules: [AGENTS.md](../AGENTS.md). All goals were
+The single current-state file (updated 2026-10-08, Run 131 A = DXVK backend trial over the Run130/1.0.0 install: CrossOver Preview.app now carries MoltenVK 1.4.2 and the Gcenx PR #20 DXVK 1.10 build as its `dxvk` backend, user-authorised 2026-10-08, originals restorable with `~/crossover-preview-backup-2026-10-08/RESTORE.sh`; the bottle's `CX_GRAPHICS_BACKEND` is `dxvk` by the user's hand; [findings](architecture/d3d9-to-d3d11-translation.md), 2026-10-08 paragraphs). Rules: [AGENTS.md](../AGENTS.md). All goals were
 marked completed on 2026-09-26 by the user's decision ([goals](goals.md)). The agent never launches the game.
 
 ## Installed build

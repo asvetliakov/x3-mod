@@ -1,0 +1,180 @@
+{
+ "passed": false,
+ "game_launched": false,
+ "name": "crossover-dxvk-1.10.3-mvk1.4.2",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/d3d9_backend_smoke_fixture.cpp": "0650ea1fbb9f0ded8c1e2e348695b91d9f5bf2d4d9085d2325cf0a7062f03c98",
+  "verification/probe/run_d3d9_backend_smoke.py": "0dadba7ac5171f14d9b47dfb83f4c53b5265a97e566ac10c987f4f0331a5eb16"
+ },
+ "executable": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-d3d9smoke/d3d9_backend_smoke_fixture.exe",
+ "executable_sha256": "8476290f0b66b477574614587bde53ed3df7128b9b6f76be59ff73b9cff44dab",
+ "d3d9": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/dxvk/i386-windows/d3d9.dll",
+ "d3d9_sha256": "78a5f2104bbaecc563949b795b91006d5cce5d88593ee95e7fde3e2da3bdf5da",
+ "d3d9_bytes": 3329616,
+ "d3dx9_37": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+ "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+ "dll_overrides": "d3d9=b;d3dx9_37=n",
+ "env": {
+  "DXVK_LOG_LEVEL": "info",
+  "MVK_CONFIG_LOG_LEVEL": "2"
+ },
+ "extra_env": [],
+ "wine_env": [
+  "CX_GRAPHICS_BACKEND=dxvk"
+ ],
+ "moltenvk": {
+  "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/libMoltenVK.dylib",
+  "bytes": 10925552,
+  "sha256": "aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f"
+ },
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--dll",
+  "d3d9=b;d3dx9_37=n",
+  "--workdir",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-d3d9smoke",
+  "--env",
+  "CX_GRAPHICS_BACKEND=dxvk",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-d3d9smoke/d3d9_backend_smoke_fixture.exe",
+  "Z:\\Applications\\CrossOver Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+  "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+  "-"
+ ],
+ "killed": null,
+ "exit_code": 1,
+ "elapsed_s": 4.0,
+ "full_log": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-d3d9smoke/d3d9-backend-smoke-crossover-dxvk-1.10.3-mvk1.4.2.full.txt",
+ "report": {
+  "modules": [
+   {
+    "role": "d3d9",
+    "path": "Z:\\Applications\\CrossOver_Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+    "wine_builtin": 1
+   },
+   {
+    "role": "d3dx9_37",
+    "path": "Z:\\Users\\asvetl\\Library\\Application_Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+    "wine_builtin": 0
+   },
+   {
+    "role": "winevulkan.dll",
+    "path": "C:\\windows\\system32\\winevulkan.dll",
+    "wine_builtin": 1
+   },
+   {
+    "role": "vulkan-1.dll",
+    "path": "C:\\windows\\system32\\vulkan-1.dll",
+    "wine_builtin": 1
+   }
+  ],
+  "steps": [
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3d9"
+   },
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3dx"
+   },
+   {
+    "status": "ok",
+    "name": "direct3dcreate9"
+   }
+  ],
+  "formats": [
+   {
+    "name": "RESZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "INTZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "D24X8_texture",
+    "hr": "00000000"
+   },
+   {
+    "name": "A16B16G16R16F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "A32B32G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "NULL_rt",
+    "hr": "00000000"
+   }
+  ],
+  "shaders": [],
+  "draws": [],
+  "queries": [],
+  "resz": [],
+  "checks": [
+   [
+    "device_create",
+    false
+   ]
+  ],
+  "sweep": [],
+  "other": [],
+  "adapter": {
+   "hr": "00000000",
+   "driver": "nvd3dum.dll",
+   "description": "Apple_M5_Pro",
+   "device_name": "\\\\.\\DISPLAY1",
+   "vendor": "106b",
+   "device": "1a06020a",
+   "driver_version": "32767.65535.65535.65535"
+  },
+  "caps": {
+   "hr": "00000000",
+   "vs": 300,
+   "ps": 300,
+   "max_textures": 8,
+   "rts": 4,
+   "vs_consts": 256,
+   "max_tex": "16384x16384"
+  },
+  "device": {
+   "hr": "8876086a",
+   "behavior": "00000052",
+   "create_ms": "7.7"
+  },
+  "failed_checks": [
+   "device_create"
+  ],
+  "sweep_error_programs": 0,
+  "sweep_errors": [],
+  "stderr_errors_outside_sweep": 4,
+  "first_error": "info:  OpenVR: Failed to locate module",
+  "moltenvk_lines": [
+   "[mvk-error] VK_ERROR_FEATURE_NOT_PRESENT: vkCreateDevice(): Requested physical device feature specified by the 39th flag in VkPhysicalDeviceFeatures is not available on this device.",
+   "[mvk-error] VK_ERROR_FEATURE_NOT_PRESENT: vkCreateDevice(): Requested physical device feature specified by the 5th flag in VkPhysicalDeviceFeatures is not available on this device."
+  ]
+ },
+ "report_sha256": "f7e764717990fdb986cdd96fa88137460c7e0f9cafff796a1ccce0075d9b217a"
+}

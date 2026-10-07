@@ -1,0 +1,158 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+# d3d9=/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/dxvk/i386-windows/d3d9.dll sha256=78a5f2104bbaecc563949b795b91006d5cce5d88593ee95e7fde3e2da3bdf5da overrides=d3d9=b;d3dx9_37=n
+# command: '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update --dll 'd3d9=b;d3dx9_37=n' --workdir /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-d3d9smoke --env CX_GRAPHICS_BACKEND=dxvk /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-d3d9smoke/d3d9_backend_smoke_fixture.exe 'Z:\Applications\CrossOver Preview.app\Contents\SharedSupport\CrossOver\lib\dxvk\i386-windows\d3d9.dll' 'Z:\Users\asvetl\Library\Application Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll' -
+# exit=1 elapsed_s=4.0
+
+ENV name=X3M_ENV_PROBE present=0 value=-
+ENV name=DYLD_LIBRARY_PATH present=0 value=-
+ENV name=DYLD_FALLBACK_LIBRARY_PATH present=0 value=-
+ENV name=DXVK_LOG_LEVEL present=1 value=info
+ENV name=MVK_CONFIG_LOG_LEVEL present=1 value=2
+STEP load_d3d9 status=ok error=0
+MODULE role=d3d9 path=Z:\Applications\CrossOver_Preview.app\Contents\SharedSupport\CrossOver\lib\dxvk\i386-windows\d3d9.dll wine_builtin=1
+STEP load_d3dx status=ok error=0
+MODULE role=d3dx9_37 path=Z:\Users\asvetl\Library\Application_Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll wine_builtin=0
+STEP direct3dcreate9 status=ok
+MODULE role=winevulkan.dll path=C:\windows\system32\winevulkan.dll wine_builtin=1
+MODULE role=vulkan-1.dll path=C:\windows\system32\vulkan-1.dll wine_builtin=1
+ADAPTER hr=00000000 driver=nvd3dum.dll description=Apple_M5_Pro device_name=\\.\DISPLAY1 vendor=106b device=1a06020a driver_version=32767.65535.65535.65535
+CAPS hr=00000000 vs=0300 ps=0300 max_textures=8 rts=4 vs_consts=256 max_tex=16384x16384
+FORMAT name=RESZ hr=00000000
+FORMAT name=INTZ hr=00000000
+FORMAT name=D24X8_texture hr=00000000
+FORMAT name=A16B16G16R16F_rt hr=00000000
+FORMAT name=A32B32G32R32F_rt hr=00000000
+FORMAT name=R32F_rt hr=00000000
+FORMAT name=G32R32F_rt hr=00000000
+FORMAT name=NULL_rt hr=00000000
+DEVICE hr=8876086a behavior=00000052 create_ms=7.7
+CHECK device_create FAIL
+
+--- stderr outside the sweep: 125 relevant of 127 lines (first 150) ---
+info:  Game: d3d9_backend_smoke_fixture.exe
+info:  DXVK: cxaddon-1.10.3-1-25-g737aacd
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+info:  D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  Apple M5 Pro:
+info:    Driver: 0.2.2210
+info:    Vulkan: 1.1.357
+info:    Memory Heap[0]:
+info:      Size: 24576 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x1
+info:      Memory Type[1]: Property Flags = 0xf
+info:      Memory Type[2]: Property Flags = 0x11
+info:  D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  Apple M5 Pro:
+info:    Driver: 0.2.2210
+info:    Vulkan: 1.1.357
+info:    Memory Heap[0]:
+info:      Size: 24576 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x1
+info:      Memory Type[1]: Property Flags = 0xf
+info:      Memory Type[2]: Property Flags = 0x11
+info:  Process set as DPI aware
+info:  Device properties:
+info:    Device name:     : Apple M5 Pro
+info:    Driver version   : 0.2.2210
+info:  Enabled device extensions:
+info:    VK_EXT_4444_formats
+info:    VK_EXT_extended_dynamic_state
+info:    VK_EXT_host_query_reset
+info:    VK_EXT_robustness2
+info:    VK_EXT_shader_demote_to_helper_invocation
+info:    VK_EXT_shader_stencil_export
+info:    VK_EXT_shader_viewport_index_layer
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_create_renderpass2
+info:    VK_KHR_depth_stencil_resolve
+info:    VK_KHR_driver_properties
+info:    VK_KHR_image_format_list
+info:    VK_KHR_sampler_mirror_clamp_to_edge
+info:    VK_KHR_shader_float_controls
+info:    VK_KHR_swapchain
+info:    VK_KHR_timeline_semaphore
+info:  Device features:
+info:    robustBufferAccess                     : 1
+info:    fullDrawIndexUint32                    : 1
+info:    imageCubeArray                         : 1
+info:    independentBlend                       : 1
+info:    geometryShader                         : 1
+info:    tessellationShader                     : 0
+info:    sampleRateShading                      : 1
+info:    dualSrcBlend                           : 0
+info:    logicOp                                : 0
+info:    multiDrawIndirect                      : 0
+info:    drawIndirectFirstInstance              : 0
+info:    depthClamp                             : 1
+info:    depthBiasClamp                         : 1
+info:    fillModeNonSolid                       : 1
+info:    depthBounds                            : 1
+info:    multiViewport                          : 1
+info:    samplerAnisotropy                      : 1
+info:    textureCompressionBC                   : 1
+info:    occlusionQueryPrecise                  : 1
+info:    pipelineStatisticsQuery                : 0
+info:    vertexPipelineStoresAndAtomics         : 1
+info:    fragmentStoresAndAtomics               : 0
+info:    shaderImageGatherExtended              : 0
+info:    shaderStorageImageExtendedFormats      : 0
+info:    shaderStorageImageReadWithoutFormat    : 0
+info:    shaderStorageImageWriteWithoutFormat   : 1
+info:    shaderClipDistance                     : 1
+info:    shaderCullDistance                     : 1
+info:    shaderFloat64                          : 0
+info:    shaderInt64                            : 0
+info:    variableMultisampleRate                : 0
+info:  VK_EXT_4444_formats
+info:    formatA4R4G4B4                         : 1
+info:    formatA4B4G4R4                         : 1
+info:  VK_EXT_custom_border_color
+info:    customBorderColors                     : 0
+info:    customBorderColorWithoutFormat         : 0
+info:  VK_EXT_depth_clip_enable
+info:    depthClipEnable                        : 0
+info:  VK_EXT_extended_dynamic_state
+info:    extendedDynamicState                   : 1
+info:  VK_EXT_host_query_reset
+info:    hostQueryReset                         : 1
+info:  VK_EXT_memory_priority
+info:    memoryPriority                         : 0
+info:  VK_EXT_non_seamless_cube_map
+info:    nonSeamlessCubeMap                     : 0
+info:  VK_EXT_robustness2
+info:    robustBufferAccess2                    : 0
+info:    robustImageAccess2                     : 0
+info:    nullDescriptor                         : 0
+info:  VK_EXT_shader_demote_to_helper_invocation
+info:    shaderDemoteToHelperInvocation         : 1
+info:  VK_EXT_transform_feedback
+info:    transformFeedback                      : 0
+info:    geometryStreams                        : 0
+info:  VK_EXT_vertex_attribute_divisor
+info:    vertexAttributeInstanceRateDivisor     : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_buffer_device_address
+info:    bufferDeviceAddress                    : 0
+info:  VK_KHR_timeline_semaphore
+info:    timelineSemaphore                      : 0
+info:  Queue families:
+info:    Graphics : 0
+info:    Transfer : 0
+[mvk-error] VK_ERROR_FEATURE_NOT_PRESENT: vkCreateDevice(): Requested physical device feature specified by the 5th flag in VkPhysicalDeviceFeatures is not available on this device.
+[mvk-error] VK_ERROR_FEATURE_NOT_PRESENT: vkCreateDevice(): Requested physical device feature specified by the 39th flag in VkPhysicalDeviceFeatures is not available on this device.
+err:   DxvkAdapter: Failed to create device
+
+--- stderr error lines inside the sweep: 0 programs (first 60, first line each) ---
