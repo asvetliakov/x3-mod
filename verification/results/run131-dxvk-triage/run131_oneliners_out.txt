@@ -1,0 +1,41 @@
+3911704 resource_identity unavailable=8876086c bytes=0
+session_end frames=8728 elapsed_ms=134312 devices=1 resets=0 exception=0 dropped=0 filter=ours
+300 8365 10735
+600 8324 8792
+900 8341 8703
+1200 8303 14731
+1500 8317 9998
+1800 8332 25356
+2100 8382 11066
+2400 9186 12401
+2700 8560 10858
+3000 8305 10381
+3300 8330 10327
+3600 8395 19393
+3900 8311 8897
+4200 8293 9317
+4500 8297 9346
+4800 8304 9484
+5100 8322 8928
+5400 8302 8941
+5700 8316 8953
+6000 8288 9908
+6300 8326 9108
+6600 8325 8799
+6900 8315 9432
+7200 8331 8754
+7500 8279 10597
+7800 8220 12083
+8100 8863 13379
+8400 8590 14123
+8700 8373 11920
+  40 [mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart.
+  22 Warning!  Some triangles have zero area!
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion 'object != NULL' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion '((GObject *) object)->ref_count > N' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_state: assertion 'GST_IS_ELEMENT (element)' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_bus: assertion 'GST_IS_ELEMENT (element)' failed
+   3 warn:  N-Nfc-Nc-NffN-NaNdfNd
+   3 warn:  DNDNInterfaceEx::QueryInterface: Unknown interface query
+   1 warn:  DXVK: No state cache file found
+   1 warn:  DNDNDeviceEx::SetRenderState: Unhandled render state N
