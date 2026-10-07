@@ -12,6 +12,16 @@
 // backend resources, so persistent history cannot keep its own owner alive.
 namespace x3m::ownership {
 
+// GetPrivateData for a GUID that was never set. Native D3D9 and wined3d return
+// D3DERR_NOTFOUND. DXVK (src/d3d9/d3d9_resource.h, every version) maps any
+// ComPrivateData failure, here DXGI_ERROR_NOT_FOUND with *size = 0, to
+// D3DERR_INVALIDCALL; its too-small-buffer case is INVALIDCALL with the
+// required nonzero size, so size 0 separates the two. Callers pass a nonzero
+// size; every other failure stays a failure.
+inline bool private_data_not_found(HRESULT hr, DWORD size) noexcept {
+    return hr == D3DERR_NOTFOUND || (hr == D3DERR_INVALIDCALL && size == 0);
+}
+
 // CPU-only observation of a live canonical device/surface pair. Both inputs
 // are registry keys only until membership is established. S_OK returns an
 // identity but NO reference: caller must independently qualify engine binding

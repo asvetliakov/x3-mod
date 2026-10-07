@@ -60,9 +60,9 @@ def fields(text):
 
 def parse(stdout):
     report = {'modules': [], 'steps': [], 'formats': [], 'shaders': [], 'draws': [], 'queries': [], 'resz': [],
-              'checks': [], 'sweep': [], 'other': []}
+              'privatedata': [], 'checks': [], 'sweep': [], 'other': []}
     tags = {'MODULE': 'modules', 'STEP': 'steps', 'FORMAT': 'formats', 'SHADER': 'shaders', 'DRAW': 'draws',
-            'QUERY': 'queries', 'RESZ': 'resz', 'SWEEP': 'sweep', 'ASSEMBLE': 'other'}
+            'QUERY': 'queries', 'RESZ': 'resz', 'PRIVATEDATA': 'privatedata', 'SWEEP': 'sweep', 'ASSEMBLE': 'other'}
     for line in stdout.splitlines():
         tag, _, rest = line.partition(' ')
         if tag == 'CHECK':
@@ -216,7 +216,7 @@ def main():
                           'adapter': report.get('adapter'), 'device': report.get('device'), 'failed_checks': report.get('failed_checks'),
                           'draws': [{k: d.get(k) for k in ('name', 'mean_r', 'mean_g', 'mean_b', 'coverage')} for d in report.get('draws', [])],
                           'sweep': report.get('sweepsummary'), 'sweep_error_programs': report.get('sweep_error_programs'),
-                          'first_error': report.get('first_error'), 'moltenvk_lines': report.get('moltenvk_lines'),
+                          'first_error': report.get('first_error'), 'privatedata': report.get('privatedata'), 'moltenvk_lines': report.get('moltenvk_lines'),
                           'result': report.get('result')}, indent=1))
     return 0 if record['passed'] else 1
 

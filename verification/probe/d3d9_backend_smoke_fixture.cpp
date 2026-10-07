@@ -10,7 +10,7 @@
 // any channel > 16): a textured vs_3_0/ps_3_0 quad, alpha test, two samplers
 // in ps_1_1 (aliased-sampler path), ps_3_0 2D + cube, a two-stage fixed-function
 // draw, a MANAGED texture re-lock, StretchRect (RT->RT, backbuffer->RT, depth),
-// event / occlusion queries, RESZ into D24X8 and INTZ, a D3DXCreateEffect draw
+// event / occlusion queries, private data (unset GUID, set, round trip), RESZ into D24X8 and INTZ, a D3DXCreateEffect draw
 // with the given d3dx9_37 and Present. Then every listed game program is created
 // and, when that succeeds, drawn once with a generic partner and a GPU wait, so
 // pipeline compilation happens inside SWEEP markers that are also written to
@@ -565,6 +565,41 @@ int run(int argc, char** argv) {
         if (cube) c.cube_b->UnlockRect(D3DCUBEMAP_FACES(face), 0);
     }
     check(cube, "managed_cube");
+    { // Private data as the proxy's resource identity uses it (src/proxy/capture_state.cpp): an unset GUID, an
+      // 8-byte POD set, the round trip, and a 4-byte read of the 8-byte value (the too-small-buffer form).
+        const GUID guid = {0x5c0e7a31, 0x94d2, 0x4b6e, {0x8f, 0x13, 0x2a, 0x77, 0xc1, 0x05, 0xe9, 0x4b}};
+        struct Target {
+            const char* name;
+            IDirect3DResource9* resource;
+        };
+        for (const Target& target : {Target{"rt_surface", c.rt_surface.p}, Target{"managed_texture", c.tex_a.p}}) {
+            IDirect3DResource9* r = target.resource;
+            if (!r) continue;
+            const bool rt = target.resource == c.rt_surface.p;
+            std::uint64_t value = 0;
+            DWORD unset_size = sizeof value;
+            const HRESULT unset = r->GetPrivateData(guid, &value, &unset_size);
+            const std::uint64_t written = 0x58334d0000000001ull;
+            const HRESULT set = r->SetPrivateData(guid, &written, sizeof written, 0);
+            value = 0;
+            DWORD size = sizeof value;
+            const HRESULT get = r->GetPrivateData(guid, &value, &size);
+            std::uint32_t half = 0;
+            DWORD small_size = sizeof half;
+            const HRESULT small = r->GetPrivateData(guid, &half, &small_size);
+            r->FreePrivateData(guid);
+            std::printf("PRIVATEDATA resource=%s unset_hr=%08lx unset_size=%lu set_hr=%08lx get_hr=%08lx get_size=%lu "
+                        "value=%016llx value_ok=%d small_hr=%08lx small_size=%lu\n",
+                        target.name, (unsigned long)unset, (unsigned long)unset_size, (unsigned long)set,
+                        (unsigned long)get, (unsigned long)size, (unsigned long long)value, int(value == written),
+                        (unsigned long)small, (unsigned long)small_size);
+            // The two not-found forms the proxy accepts (ownership::private_data_not_found).
+            check(unset == D3DERR_NOTFOUND || (unset == D3DERR_INVALIDCALL && unset_size == 0),
+                  rt ? "privatedata_unset_rt" : "privatedata_unset_managed");
+            check(set == S_OK && get == S_OK && size == sizeof value && value == written,
+                  rt ? "privatedata_roundtrip_rt" : "privatedata_roundtrip_managed");
+        }
+    }
     if (SUCCEEDED(d->CreateVolumeTexture(4, 4, 4, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, c.volume.out(), nullptr))) {
         D3DLOCKED_BOX box{};
         if (SUCCEEDED(c.volume->LockBox(0, &box, nullptr, 0))) {
