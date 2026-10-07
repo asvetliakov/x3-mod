@@ -1,0 +1,103 @@
+{
+ "dll": "/tmp/x3-run132-candidate/build/d3d9.dll",
+ "sha256": "5da368709076dd9801bfab82c0c7815fa581eb878da68066170700538dd5cbed",
+ "bytes": 59106468,
+ "commit": "79e15e2f",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree /tmp/x3-run132-candidate/src (git worktree add --detach; X3M_SOURCE_COMMIT 79e15e2f27216dc49f0835929363978d965ff987 written by tools/build/write_source_commit.py, no dirty diff); clean configure+build wall time 41 s",
+ "gates": "production diff since the Run130 candidate (git diff --stat 01114822..79e15e2f -- src cmake CMakeLists.txt tools): 4 files, CMakeLists.txt (the 1.0.0 version bump 082e1d8c, already in the 1.0.0 release), src/ownership/d3d9_ownership.{h,cpp}, src/proxy/capture_state.cpp (fb91ef61, GetPrivateData not-found form); build 0 warnings (configure and build logs, grep -ci warning: 0 and 0); x87 0 violations (verification/probe/check_no_x87.py on the candidate DLL: PASS, 127 roots, 766 reachable functions; measured now); generate --check PASS (tools/config/generate.py --check in the candidate worktree: 256 settings, 107 in the template; measured now, because CMakeLists.txt changed with the version bump); shader provenance: git diff --stat 01114822..79e15e2f -- src/effects and -- tools/shaders, one path per call, both empty, so the Run129 shader --check results reused through Run130 are reused again (rigid motion 50 programs, bloom 9, engine shimmer PASS); site verifiers and identity: git diff --stat 01114822..79e15e2f -- 'verification/probe/verify_*.py' and -- 'src/proxy/*site*.h', both empty, the changed files are neither site headers nor verifier inputs, so the Run124/Run123 site and executable-identity evidence is reused, not rerun; host suite from the main checkout at 79e15e2f (/usr/bin/python3 verification/probe/run_host_suite.py): 289 modules / 3,043 tests / 0 failing modules, 104.6 s wall (12 jobs), no warning/skip/error lines in its output; +2 tests over Run130's 3,041 are fb91ef61's (test_d3d9_backend_smoke, test_logging_tiers); change's own fixture evidence (cited, not rerun): verification/results/bottle-X3/d3d9-backend-smoke/privatedata-wined3d.json (passed, 2 resources, unset GetPrivateData D3DERR_NOTFOUND 0x88760866 size 8, set/get S_OK, value_ok both) and privatedata-dxvk-pr20.json (passed, 2 resources, unset D3DERR_INVALIDCALL 0x8876086c size 0, set/get S_OK, value_ok both); engine fixture records (verification/results/run132-candidate/record_binding.py 79e15e2f on the candidate tree, output record_binding_out.json): seven of eight bind (engine-plumes, engine-ribbons, engine-shimmer, engine-effects, engine-light-gpu, engine-effects-patch, cull-small-parts-cpu: no hash mismatch, no changed path in their closures; reused from Run130 and earlier, not rerun); seam-engine-light does not bind because its closure is every path under src/ and lists src/ownership/d3d9_ownership.cpp, src/ownership/d3d9_ownership.h, src/proxy/capture_state.cpp; not rerun (inferred unaffected on wined3d: the changed predicate keeps the D3DERR_NOTFOUND path wined3d returns, per privatedata-wined3d.json); hull-lightmap-gain-gpu and the look images reused from Run130 (no renderer change); launch: env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 ./x3run --dry-run --direct --config --debug (x3run takes the Wine lock itself as holder user-game) exit 0, overrides d3d9=n,b, launcher-set X3M_* X3M_CONFIG, X3M_DEBUG, X3M_VOICE_DMO_FALLBACK (X3M_BOTTLE and X3M_FIXTURE_BOTTLE also appear, inherited from x3run and the caller's environment), no X3M_ENGINE_* variable, engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed), snapshot: no new session (expected for a dry run); X3AP not running before build, suite and dry run (pgrep); candidate worktree clean after all gates; installed d3d9.dll still Run130 (e7ab879a..., 59,097,184 B, mtime Oct 4 22:32:05) and X3AP.exe (fdbf3418..., 2,153,984 B, mtime 2017-11-28) untouched; cxbottle.conf mtime Oct 8 01:15:09 (changed since the Run130 record, before this build; not by this task)",
+ "changes": [
+  "79e15e2f Run 131 A triage evidence: resource identity fails under DXVK (GetPrivateData not-found form), every pass unarmed",
+  "fb91ef61 Resource identity tolerates DXVK's GetPrivateData not-found form (D3DERR_INVALIDCALL, size 0): shared ownership::private_data_not_found used by resource_id, query_resource_id and read_buff...",
+  "3fd6589b Archive the Run 122 A row",
+  "7471a674 DXVK backend trial: Gcenx PR #20 DXVK 1.10 (de-aliased sampler slots) + MoltenVK 1.4.2 installed into CrossOver Preview.app (user-authorised), 18/18 fixture through the game's load path an..."
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "carried over unchanged from the Run130 record; installed table sha256 re-measured equal (45a1215b...); git diff --stat 01114822..79e15e2f -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "carried over unchanged from the Run130 record (itself reused from Run123): git diff --stat 01114822..79e15e2f -- tools/fonts and -- assets/fonts, one path per call, both empty",
+ "producer": "Claude Code implement-deep agent (Opus 5.5), 2026-10-08; git log --oneline --no-merges b3494d4b..79e15e2f (4 commits) plus the merge 1ac06c1f; shasum -a 256; source-hash and include-closure binding: verification/results/run132-candidate/record_binding.py (the Run130 helper, docstring only changed) with output record_binding_out.json; configure/build/x87/generate/suite/dry-run/binding logs local under /tmp/x3-run132-logs/"
+}
