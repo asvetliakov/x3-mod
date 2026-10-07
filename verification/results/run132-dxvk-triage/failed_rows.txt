@@ -1,0 +1,32 @@
+== run5 hr!=0
+-- *_failed / *_refused row kinds, failed=N>0
+  37 bloom_admission
+   1 bolt_footprint_refused
+  38 chase_central_hud_window
+   1 chase_view_restore_arm_refused
+  16 emission_source_gain_refused_state
+  16 hull_emission_refused_state
+  37 screen_emission_additive_refused_window
+   8 shadow_replay_depth_refused
+10231 shadow_replay_sun
+  34 shadow_replay_sun_point_summary
+shadow_replay_depth_refused device=1 frame=2409 reason=state detail=sun_changing result=00000000 stage=0
+chase_view_restore_arm_refused reason=4 cockpit=0x83495a00 generation=1 mode=258 readable=7 connect=0 ship=0x834500b8 view=0x834500b8 handle=2 identity_valid=263 identity_refused=2696 native_script=0x
+bolt_footprint_refused device=1 frame=2002 index=6 reason=buffer detail=1 primitives=96 stream0_bytes=1179648
+voice_dmo_fallback requested=1 installed=1 status=ok site=004cfd46 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=01d60000 arena_size=2
+== run6 hr!=0
+-- *_failed / *_refused row kinds, failed=N>0
+  30 bloom_admission
+   1 bolt_footprint_refused
+  31 chase_central_hud_window
+   1 chase_view_restore_arm_refused
+  16 emission_source_gain_refused_state
+  16 hull_emission_refused_state
+  30 screen_emission_additive_refused_window
+   8 shadow_replay_depth_refused
+8664 shadow_replay_sun
+  28 shadow_replay_sun_point_summary
+shadow_replay_depth_refused device=1 frame=2623 reason=state detail=sun_changing result=00000000 stage=0
+chase_view_restore_arm_refused reason=4 cockpit=0x82492df8 generation=1 mode=258 readable=7 connect=0 ship=0x8244d4b0 view=0x8244d4b0 handle=2 identity_valid=263 identity_refused=2696 native_script=0x
+bolt_footprint_refused device=1 frame=4452 index=11 reason=buffer detail=1 primitives=96 stream0_bytes=1179648
+voice_dmo_fallback requested=1 installed=1 status=ok site=004cfd46 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=01d60000 arena_size=2

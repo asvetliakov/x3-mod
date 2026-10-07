@@ -1,0 +1,10 @@
+== run5
+load_frame 889 inflight_frames 10454 secs~ 171
+ >33ms 49 first_half 39 second_half 10
+ >50ms 38 first_half 28 second_half 10
+ >100ms 30 first_half 21 second_half 9
+== run6
+load_frame 395 inflight_frames 8806 secs~ 136
+ >33ms 48 first_half 37 second_half 11
+ >50ms 27 first_half 18 second_half 9
+ >100ms 14 first_half 7 second_half 7

@@ -1,0 +1,20 @@
+== run5
+0
+[2026-10-07T22:36:27.569Z] info:  DXVK: v1.10.3-20230507-async (macOS)
+[2026-10-07T22:36:30.144Z] info:  DXVK: v1.10.3-20230507-async (macOS)
+[2026-10-07T22:36:30.199Z] info:  DXVK: v1.10.3-20230507-async (macOS)
+[2026-10-07T22:36:30.729Z] warn:  DXVK: No state cache file found
+[2026-10-07T22:36:30.737Z] info:  DXVK: Read 108 valid state cache entries
+   1 hull_emission_program 
+  51 shader 
+   4 shader_population 
+== run6
+0
+[2026-10-07T22:40:56.302Z] info:  DXVK: v1.10.3-20230507-async (macOS)
+[2026-10-07T22:40:58.734Z] info:  DXVK: v1.10.3-20230507-async (macOS)
+[2026-10-07T22:40:58.787Z] info:  DXVK: v1.10.3-20230507-async (macOS)
+[2026-10-07T22:40:59.212Z] warn:  DXVK: No state cache file found
+[2026-10-07T22:40:59.215Z] info:  DXVK: Read 209 valid state cache entries
+   1 hull_emission_program 
+  51 shader 
+   3 shader_population 

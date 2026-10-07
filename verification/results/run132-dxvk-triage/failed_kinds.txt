@@ -1,0 +1,60 @@
+== run5
+11363 thin_vote_frame
+11363 screen_emission_additive_frame
+11363 fade_route_frame
+11360 engine_stage
+11360 engine_shimmer
+10231 sun_shadow_lane_frame
+10231 shadow_retention_frame
+10231 shadow_replay_sun
+10231 shadow_replay_candidates
+ 256 motion_unmatched_static_frame
+ 109 mesh_adjacency_metric
+  38 chase_view_restore_state
+  38 chase_central_hud_window
+  38 chase_camera
+  37 screen_emission_additive_refused_window
+  37 media_cue_window
+  24 engine_light_variant
+  18 volumetric_fog_frame
+  18 volumetric_fog_cards
+  16 hull_emission_refused_state
+  16 emission_source_gain_refused_state
+   8 shadow_replay_depth_refused
+   7 chase_transition_detail
+   6 voice_dmo_fallback
+   1 volumetric_fog_march_scale
+   1 engine_seta
+   1 engine_effects_bodies
+   1 chase_view_restore_arm_refused
+   1 bolt_footprint_refused
+== run6
+9221 thin_vote_frame
+9221 screen_emission_additive_frame
+9221 fade_route_frame
+9218 engine_stage
+9218 engine_shimmer
+8664 sun_shadow_lane_frame
+8664 shadow_retention_frame
+8664 shadow_replay_sun
+8664 shadow_replay_candidates
+ 256 motion_unmatched_static_frame
+ 101 mesh_adjacency_metric
+  31 chase_view_restore_state
+  31 chase_central_hud_window
+  31 chase_camera
+  30 screen_emission_additive_refused_window
+  30 media_cue_window
+  24 engine_light_variant
+  16 volumetric_fog_frame
+  16 volumetric_fog_cards
+  16 hull_emission_refused_state
+  16 emission_source_gain_refused_state
+  12 chase_transition_detail
+   8 shadow_replay_depth_refused
+   6 voice_dmo_fallback
+   5 engine_seta
+   1 volumetric_fog_march_scale
+   1 engine_effects_bodies
+   1 chase_view_restore_arm_refused
+   1 bolt_footprint_refused

@@ -1,0 +1,100 @@
+== run5 stderr kinds
+64908 warn:  NcaNe-NdNc-NdN-Nd-bNdNeNcNce
+53441 warn:  DNDNSwapChainEx::QueryInterface: Unknown interface query
+11467 warn:  DNDNDeviceEx::QueryInterface: Unknown interface query
+  78 warn:  NcN-NdeN-NfN-NbNa-fNacNcNbN
+  78 warn:  DNDNTextureCube::QueryInterface: Unknown interface query
+  60 [mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart.
+  23 Warning!  Some triangles have zero area!
+  12 info:  DNDN: VK_FORMAT_DN_UNORM_SN_UINT -> VK_FORMAT_DN_SFLOAT_SN_UINT
+  12 info:      Memory Type[N]: Property Flags = NxN
+  11 [mvk-info] MoltenVK version N.N.N, supporting Vulkan version N.N.N.
+  11 [mvk-info] GPU device:
+  11 [mvk-info] Created VkInstance for Vulkan version N.N.N, as requested by app, with the following N Vulkan exten
+   8 [mvk-info] Destroying VkInstance for Vulkan version N.N.N with N Vulkan extensions enabled.
+   8 [mvk-info] Destroyed VkPhysicalDevice for GPU Apple MN Pro with N MB of GPU memory still allocated.
+   6 info:  Apple MN Pro:
+   6 info:    Vulkan: N.N.N
+   6 info:    Memory Heap[N]: 
+   6 info:    Driver: N.N.N
+   6 info:      Size: N MiB
+   6 info:      Memory Type[N]: Property Flags = Nxf
+   6 info:      Flags: NxN
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion 'object != NULL' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion '((GObject *) object)->ref_count > N' fa
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_state: assertion 'GST_IS_ELEMENT (element)' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_bus: assertion 'GST_IS_ELEMENT (element)' failed
+   3 warn:  N-Nfc-Nc-NffN-NaNdfNd
+   3 warn:  DNDNInterfaceEx::QueryInterface: Unknown interface query
+   3 info:  Process set as DPI aware
+   3 info:  OpenVR: could not open registry key, status N
+   3 info:  OpenVR: Failed to locate module
+   3 info:  Game: XNAP.exe
+   3 info:  Enabled instance extensions:
+   3 info:  DXVK: vN.N.N-N-async (macOS)
+   3 info:  Built-in extension providers:
+   3 info:    WinN WSI
+   3 info:    VK_KHR_winN_surface
+   3 info:    VK_KHR_surface
+   3 info:    VK_KHR_get_surface_capabilitiesN
+   3 info:    OpenXR
+   3 info:    OpenVR
+-- state cache / pipeline
+  11 	VK_EXT_pipeline_creation_cache_control v3
+  11 	VK_EXT_pipeline_creation_feedback v1
+  11 	VK_EXT_pipeline_robustness v1
+  11 	pipelineCacheUUID: DB660224-1A06-020A-0000-000100000000
+   1 info:    pipelineStatisticsQuery                : 0
+   1 info:    vertexPipelineStoresAndAtomics         : 1
+   1 info:  DXVK: Read 108 valid state cache entries
+   1 warn:  DXVK: No state cache file found
+== run6 stderr kinds
+53761 warn:  NcaNe-NdNc-NdN-Nd-bNdNeNcNce
+44452 warn:  DNDNSwapChainEx::QueryInterface: Unknown interface query
+9309 warn:  DNDNDeviceEx::QueryInterface: Unknown interface query
+  66 warn:  NcN-NdeN-NfN-NbNa-fNacNcNbN
+  66 warn:  DNDNTextureCube::QueryInterface: Unknown interface query
+  63 [mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart.
+  23 Warning!  Some triangles have zero area!
+  12 info:  DNDN: VK_FORMAT_DN_UNORM_SN_UINT -> VK_FORMAT_DN_SFLOAT_SN_UINT
+  12 info:      Memory Type[N]: Property Flags = NxN
+  11 [mvk-info] MoltenVK version N.N.N, supporting Vulkan version N.N.N.
+  11 [mvk-info] GPU device:
+  11 [mvk-info] Created VkInstance for Vulkan version N.N.N, as requested by app, with the following N Vulkan exten
+   8 [mvk-info] Destroying VkInstance for Vulkan version N.N.N with N Vulkan extensions enabled.
+   8 [mvk-info] Destroyed VkPhysicalDevice for GPU Apple MN Pro with N MB of GPU memory still allocated.
+   6 info:  Apple MN Pro:
+   6 info:    Vulkan: N.N.N
+   6 info:    Memory Heap[N]: 
+   6 info:    Driver: N.N.N
+   6 info:      Size: N MiB
+   6 info:      Memory Type[N]: Property Flags = Nxf
+   6 info:      Flags: NxN
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion 'object != NULL' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion '((GObject *) object)->ref_count > N' fa
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_state: assertion 'GST_IS_ELEMENT (element)' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_bus: assertion 'GST_IS_ELEMENT (element)' failed
+   3 warn:  N-Nfc-Nc-NffN-NaNdfNd
+   3 warn:  DNDNInterfaceEx::QueryInterface: Unknown interface query
+   3 info:  Process set as DPI aware
+   3 info:  OpenVR: could not open registry key, status N
+   3 info:  OpenVR: Failed to locate module
+   3 info:  Game: XNAP.exe
+   3 info:  Enabled instance extensions:
+   3 info:  DXVK: vN.N.N-N-async (macOS)
+   3 info:  Built-in extension providers:
+   3 info:    WinN WSI
+   3 info:    VK_KHR_winN_surface
+   3 info:    VK_KHR_surface
+   3 info:    VK_KHR_get_surface_capabilitiesN
+   3 info:    OpenXR
+   3 info:    OpenVR
+-- state cache / pipeline
+  11 	VK_EXT_pipeline_creation_cache_control v3
+  11 	VK_EXT_pipeline_creation_feedback v1
+  11 	VK_EXT_pipeline_robustness v1
+  11 	pipelineCacheUUID: DB660224-1A06-020A-0000-000100000000
+   1 info:    pipelineStatisticsQuery                : 0
+   1 info:    vertexPipelineStoresAndAtomics         : 1
+   1 info:  DXVK: Read 209 valid state cache entries
+   1 warn:  DXVK: No state cache file found
