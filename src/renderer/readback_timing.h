@@ -2,12 +2,16 @@
 #include <cstdint>
 
 namespace x3m::renderer {
-// Exhaustive CPU envelope: transfer + LockRect (including validation), tile
-// extraction + UnlockRect + pending-slot retirement, statistics + adaptation.
-// Adjacent boundaries share a clock; any failed/backward clock invalidates all
-// buckets, so a partial measurement cannot masquerade as the readback total.
+// Exhaustive CPU envelope of the double-buffered meter readback: LockRect of
+// the surface the previous latch filled (including validation; Lock, logged as
+// readback_lock_us, also includes the meter_event_ready GetData poll), tile
+// extraction + UnlockRect, the GetRenderTargetData that fills the other
+// surface for the next latch (pending-slot retirement included), statistics +
+// adaptation. Phases may close in any order; adjacent boundaries share a
+// clock; any failed/backward clock invalidates all buckets, so a partial
+// measurement cannot masquerade as the readback total.
 struct ReadbackTiming {
-    enum Phase : unsigned { TransferLock, ExtractUnlock, StatisticsAdapt, Count };
+    enum Phase : unsigned { Copy, Lock, ExtractUnlock, StatisticsAdapt, Count };
     std::uint64_t ticks[Count]{};
     std::uint64_t last = 0;
     unsigned clock_errors = 0;

@@ -1,0 +1,14 @@
+after-wined3d-seam-hdr-exposure: frames=120 redirected=120 readback_latches=119 stepped=118 readback_failures=0
+  readback_copy_us: n=119 p50=0.9 p95=8.0 max=19.8
+  readback_lock_us: n=119 p50=6.1 p95=35.4 max=85.6
+  readback_us: n=119 p50=12.3 p95=72.2 max=483.5
+  meter_event_ready over readback latches: {'-1': 1, '1': 118}
+  readback_lock_us when meter_event_ready=0: n=0
+  readback_lock_us when meter_event_ready=1: n=118 p50=6.2 p95=35.4 max=85.6
+after-wined3d-bench-5120x1440-hdr-tonemap-taa-on: frames=6 redirected=6 readback_latches=5 stepped=5 readback_failures=0
+  readback_copy_us: n=5 p50=0.4 p95=0.6 max=0.6
+  readback_lock_us: n=5 p50=9.6 p95=13.6 max=13.6
+  readback_us: n=5 p50=51.2 p95=58.5 max=58.5
+  meter_event_ready over readback latches: {'1': 5}
+  readback_lock_us when meter_event_ready=0: n=0
+  readback_lock_us when meter_event_ready=1: n=5 p50=9.6 p95=13.6 max=13.6

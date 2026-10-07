@@ -1,0 +1,6 @@
+before-wined3d-seam-hdr-exposure: frames=120 redirected=120 readback_latches=119 stepped=119 readback_failures=0
+  readback_transfer_lock_us: n=119 p50=49.1 p95=104.3 max=139.9
+  readback_us: n=119 p50=57.0 p95=145.1 max=412.9
+before-wined3d-bench-5120x1440-hdr-tonemap-taa-on: frames=6 redirected=6 readback_latches=5 stepped=5 readback_failures=0
+  readback_transfer_lock_us: n=5 p50=44.9 p95=144.5 max=144.5
+  readback_us: n=5 p50=95.9 p95=197.3 max=197.3

@@ -113,6 +113,10 @@ cost stays inside the difference.
 
 ## HDR readback lock: GPU wait, not a regression (triage 2026-09-27)
 
+(2026-10-08: the readback is now double-buffered and `readback_transfer_lock_us` is split into `readback_copy_us`
+and `readback_lock_us`, with `meter_event_ready`; see `docs/verification/hdr-scene-path.md`. The figures below
+are the old combined span.)
+
 **What the span is.** `readback_transfer_lock_us` brackets only `GetRenderTargetData(chain_ring_[slot] ->
 chain_readback_[slot])` plus `LockRect` of the system-memory tile image, inside `HdrPass::begin_frame`
 (src/renderer/hdr_pass.cpp:1441-1451), called from the HDR redirect latch `MotionOutput::begin_redirect`

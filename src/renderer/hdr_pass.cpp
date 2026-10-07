@@ -27,10 +27,13 @@ enum Slot : unsigned {
     DrawPrimitiveUP = 83, CreateVertexDeclaration = 86, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
     CreateVertexShader = 91, SetVertexShader = 92, GetVertexShader = 93, SetStreamSource = 100, GetStreamSource = 101,
     SetStreamSourceFreq = 102, GetStreamSourceFreq = 103, CreatePixelShader = 106, SetPixelShader = 107,
-    GetPixelShader = 108, SetPixelShaderConstantF = 109, GetPixelShaderConstantF = 110
+    GetPixelShader = 108, SetPixelShaderConstantF = 109, GetPixelShaderConstantF = 110, CreateQuery = 118,
+    DeviceAddRef = 1, DeviceRelease = 2
 };
 // clang-format on
 using D = IDirect3DDevice9*;
+using CreateQueryFn = HRESULT(WINAPI*)(D, D3DQUERYTYPE, IDirect3DQuery9**);
+using DeviceCountFn = ULONG(WINAPI*)(D);
 using GetDirect3DFn = HRESULT(WINAPI*)(D, IDirect3D9**);
 using GetDisplayModeFn = HRESULT(WINAPI*)(D, UINT, D3DDISPLAYMODE*);
 using GetCreationFn = HRESULT(WINAPI*)(D, D3DDEVICE_CREATION_PARAMETERS*);
@@ -307,7 +310,11 @@ void HdrPass::release_chain() noexcept {
         drop(chain_ring_[i]);
         drop(chain_readback_[i]);
         chain_pending_[i] = false;
+        readback_filled_[i] = false; // both readback surfaces go together: nothing filled survives
     }
+    drop(meter_event_);
+    meter_event_refs_ = 0;
+    meter_event_issued_ = false;
 }
 
 // Levels, the two ring targets and the two readback surfaces, at the chain
@@ -350,7 +357,7 @@ unsigned HdrPass::references() const noexcept {
                  (meter_reduce_shader_ ? 1u : 0u) + chain_count_ + (sharpen_shader_ ? 1u : 0u) +
                  (tonemap_sharpen_shader_ ? 1u : 0u) + (quad_vs_ ? 1u : 0u) + (quad_declaration_ ? 1u : 0u);
     for (unsigned i = 0; i < 2; ++i) n += (chain_ring_[i] ? 1u : 0u) + (chain_readback_[i] ? 1u : 0u);
-    return n;
+    return n + (meter_event_ ? meter_event_refs_ : 0u); // drop() nulls the pointer before its Release re-enters
 }
 
 // The meter chain for a `width` x `height` scene: two-channel float
@@ -422,6 +429,21 @@ HRESULT HdrPass::ensure_chain(UINT width, UINT height) noexcept {
         release_chain();
         caps_.meter = false;
         caps_.meter_reason = "chain";
+    } else if (meter_event_wanted_) {
+        // The diagnostic EVENT query (meter_event_ready), telemetry tier only
+        // (configure_meter_event): created with the chain, released with it.
+        // Without it nothing is issued or polled and the row reports -1. A
+        // refusal leaves it null (-1 too) and never affects the meter. The
+        // device references it holds are measured by the native AddRef/Release
+        // probe (as gpu_sync_timing does) for the final-release accounting.
+        call<DeviceCountFn>(DeviceAddRef)(device_);
+        const ULONG before = call<DeviceCountFn>(DeviceRelease)(device_);
+        if (FAILED(call<CreateQueryFn>(CreateQuery)(device_, D3DQUERYTYPE_EVENT, &meter_event_)))
+            meter_event_ = nullptr;
+        call<DeviceCountFn>(DeviceAddRef)(device_);
+        const ULONG after = call<DeviceCountFn>(DeviceRelease)(device_);
+        meter_event_refs_ = meter_event_ && after > before ? unsigned(after - before) : 0u;
+        meter_event_issued_ = false;
     }
     return hr;
 }
@@ -711,9 +733,9 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
 // The exposure meter (section 3, the space-aware statistic): level 0 folds
 // the log2 luminance of the decoded scene into the first 4x reduction (mean
 // and maximum), the reduce program reduces the remaining levels by four per
-// axis, the last draw lands in the current ring target (the tile image) and
-// GetRenderTargetData queues its copy into the ring's system-memory surface
-// (locked at the next latch: never on this frame).
+// axis, the last draw lands in the current ring target (the tile image); no
+// copy is issued here: the next latch (begin_frame) queues the ring's copy into
+// its system-memory surface and the latch after that locks it.
 // Runs inside copy_draw's state bracket: FVF, samplers, stage and render
 // states are already set; RT1.. and the depth surface are unbound; every
 // level binds RT0, viewport, program, constants and the previous level (its
@@ -762,11 +784,17 @@ HRESULT HdrPass::meter_chain(IDirect3DTexture9* scene_texture, UINT width, UINT 
     }
     drop(previous);
     // The ring slot now holds this frame's meter; its copy to system memory
-    // is issued at the next latch (begin_frame), a Present later, so the
-    // backend's download never waits on this frame's queued work (measured:
-    // an immediate GetRenderTargetData here cost ~0.7 ms per frame on
-    // WineD3D at every size, the deferred one microseconds).
+    // is queued at the next latch (begin_frame), a Present later, and locked
+    // only at the latch after that, so neither the copy nor the lock waits on
+    // work queued in its own frame (measured: an immediate
+    // GetRenderTargetData here cost ~0.7 ms per frame on WineD3D at every
+    // size; copy and lock in the same latch cost ~3.6 ms median on DXVK,
+    // whose GPU runs a frame or more behind).
     chain_pending_[chain_slot_] = SUCCEEDED(op);
+    // Diagnostic: the GPU's completion of this chain, polled at the next
+    // latch's lock (meter_event_ready). Never gates anything; the query exists
+    // only with the telemetry tier.
+    if (SUCCEEDED(op) && meter_event_) meter_event_issued_ = SUCCEEDED(meter_event_->Issue(D3DISSUE_END));
     return op;
 }
 
@@ -1424,13 +1452,19 @@ void HdrPass::prepare_constants() noexcept {
     x3::temporal::set_dither(agx_, caps_.dither);
 }
 
-// At the latch: the previous frame's tile image (queued into the ring's
-// system-memory surface by that frame's chain) is copied and locked now -- a
-// frame later, so the lock does not wait on this frame's work -- reduced to
-// the space-aware statistic, and the host adaptation step runs on it with
-// the QPC interval between the two latches (or the fixed fixture dt). The
-// ring slot then advances for this frame's chain and the tonemap constants
-// take the new EV.
+// At the latch, double-buffered (one readback surface per ring slot): the
+// readback surface the previous latch filled -- the tile image of the frame
+// before the previous one -- is locked, reduced to the space-aware statistic,
+// and the host adaptation step runs on it with the QPC interval between the
+// two latches (or the fixed fixture dt); then the previous frame's tile image
+// is queued from its ring target into the other readback surface for the next
+// latch. A lock therefore only reads a copy queued a whole frame earlier and
+// never waits on work queued in its own frame (on DXVK, whose GPU runs a frame
+// or more behind, copy-and-lock in one latch waited ~3.6 ms median); the cost
+// is one more frame of exposure lag (the meter is two frames old). The lock
+// precedes the copy so a lock that still has to wait never also submits the
+// new copy early. The ring slot then advances for this frame's chain and the
+// tonemap constants take the new EV.
 HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t frequency, bool timing) noexcept {
     HdrFrameBegin r{};
     float dt = config_.fixed_dt > 0.f ? config_.fixed_dt
@@ -1438,18 +1472,37 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
                    ? float(double(now_ticks - latch_ticks_) / double(frequency))
                    : config_.params.dt_max;
     latch_ticks_ = now_ticks;
-    if (meter_active() && chain_pending_[chain_slot_] && chain_ring_[chain_slot_] && chain_readback_[chain_slot_]) {
+    // copy_slot: the ring the previous frame's chain wrote (chain_slot_ has not
+    // advanced yet); lock_slot: the readback surface the previous latch filled.
+    const unsigned copy_slot = chain_slot_, lock_slot = chain_slot_ ^ 1u;
+    if (!meter_active()) {
+        // The meter is off at this latch: a ring or readback surface filled
+        // before it went off is stale when it comes back, so it restarts from
+        // the next chain (no lock until a copy of a fresh meter is filled).
+        readback_filled_[0] = readback_filled_[1] = false;
+        chain_pending_[0] = chain_pending_[1] = false;
+    } else if (readback_filled_[lock_slot] || chain_pending_[copy_slot]) {
         r.readback_timing.begin(timing, stamp(timing));
-        D3DLOCKED_RECT lock{};
         const unsigned tiles = tile_width_ * tile_height_;
-        r.readback = tiles && tiles <= tile_capacity_
-                         ? call<GetRtDataFn>(GetRenderTargetData)(device_, chain_ring_[chain_slot_],
-                                                                  chain_readback_[chain_slot_])
-                         : E_FAIL;
-        if (SUCCEEDED(r.readback))
-            r.readback = chain_readback_[chain_slot_]->LockRect(&lock, nullptr, D3DLOCK_READONLY);
-        r.readback_timing.end(ReadbackTiming::TransferLock, stamp(timing));
-        if (SUCCEEDED(r.readback)) {
+        const bool sized = tiles && tiles <= tile_capacity_;
+        const bool locking = readback_filled_[lock_slot];
+        HRESULT lock_result = S_FALSE;
+        D3DLOCKED_RECT lock{};
+        if (locking) {
+            // Diagnostic only: had the GPU finished the previous frame's chain
+            // (and so the copy queued before it) when the lock was taken? No
+            // flush flag: polling must not submit work.
+            if (meter_event_ && meter_event_issued_) {
+                BOOL done = FALSE;
+                const HRESULT ready = meter_event_->GetData(&done, sizeof done, 0);
+                r.meter_event_ready = ready == S_OK ? 1 : ready == S_FALSE ? 0 : -1;
+            }
+            lock_result = sized && chain_readback_[lock_slot]
+                              ? chain_readback_[lock_slot]->LockRect(&lock, nullptr, D3DLOCK_READONLY)
+                              : E_FAIL;
+        }
+        r.readback_timing.end(ReadbackTiming::Lock, stamp(timing));
+        if (locking && SUCCEEDED(lock_result)) {
             // Texel .r = the tile's mean, .g = its maximum (the chain format's stride).
             for (UINT y = 0; y < tile_height_; ++y) {
                 const char* row = static_cast<const char*>(lock.pBits) + y * lock.Pitch;
@@ -1464,14 +1517,25 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
             // Publish the statistic only after the complete readback operation
             // succeeds. A failed unlock must not advance adaptation using the
             // copied candidate, even though the earlier copy/lock succeeded.
-            r.readback = chain_readback_[chain_slot_]->UnlockRect();
+            lock_result = chain_readback_[lock_slot]->UnlockRect();
             // Test-only returned-HRESULT injection after actual cleanup; never
             // leave a synthetic mapping locked or overwrite a native failure.
-            if (SUCCEEDED(r.readback) && fault(HdrFault::ReadbackUnlock)) r.readback = E_FAIL;
+            if (SUCCEEDED(lock_result) && fault(HdrFault::ReadbackUnlock)) lock_result = E_FAIL;
         }
-        chain_pending_[chain_slot_] = false;
+        readback_filled_[lock_slot] = false; // consumed or failed: never read twice
         r.readback_timing.end(ReadbackTiming::ExtractUnlock, stamp(timing));
-        if (SUCCEEDED(r.readback)) {
+        HRESULT copy_result = S_FALSE;
+        if (chain_pending_[copy_slot]) {
+            copy_result = sized && chain_ring_[copy_slot] && chain_readback_[copy_slot]
+                              ? call<GetRtDataFn>(GetRenderTargetData)(device_, chain_ring_[copy_slot],
+                                                                       chain_readback_[copy_slot])
+                              : E_FAIL;
+            chain_pending_[copy_slot] = false;
+            readback_filled_[copy_slot] = SUCCEEDED(copy_result);
+        }
+        r.readback_timing.end(ReadbackTiming::Copy, stamp(timing));
+        r.readback = locking && FAILED(lock_result) ? lock_result : FAILED(copy_result) ? copy_result : S_OK;
+        if (locking && SUCCEEDED(lock_result)) {
             // Non-finite tiles read as the floor inside; the statistic is finite.
             const MeterStatistics m = meter_statistics(tile_mean_.get(), tile_max_.get(), tile_weight_.get(), tiles,
                                                        tile_scratch_.get(), config_.params);
@@ -1485,6 +1549,8 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
         r.readback_timing.end(ReadbackTiming::StatisticsAdapt, stamp(timing));
         r.ticks_readback = r.readback_timing.total();
     }
+    meter_event_issued_ = false; // the next poll refers to the coming chain's issue only
+    last_meter_event_ready_ = r.meter_event_ready;
     chain_slot_ ^= 1u;
     prepare_constants();
     return r;

@@ -1,0 +1,33 @@
+HDR meter readback double buffer, 2026-10-08, bottle X3 (CrossOver Preview, arm64 Wine + FEX), worktree
+agent-a5ed5a641018560d9 over main f67f536a. Raw case directories stay local under verification/probe/build/.
+
+Binaries
+  before: f67f536a built by cmake (build/) + verification/probe/build_motion_output.sh (copied to a scratch directory B)
+  final:  the working tree of this change, built by the wined3d runner pass below (build/ --clean-first):
+          d3d9.dll sha256 e11e1f62e67e5b5e..., seam d3d9.dll 1cf32e3f8f3110c6..., fixture fc2fa946c89c2fed...
+  fresh:  cmake -S . -B build-fresh (mingw-i686, RelWithDebInfo); cmake --build build-fresh --target d3d9
+          d3d9.dll 59,133,676 B sha256 c5ef1a902f8a09a4...; check_no_x87.py: PASS, 127 roots, 766 functions, 0 violations
+
+Wine runs (one at a time, each through the lock)
+  before, wined3d: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py
+                   --wine-env CX_GRAPHICS_BACKEND=wined3d --dll B/d3d9.dll --seam B/seam/d3d9.dll --fixture B/motion_output_fixture.exe
+                   seam-hdr-exposure seam-hdr-tonemap-fault            -> both PASS (old validator)
+                   ... bench-5120x1440-hdr-tonemap-taa-on              -> timings; fails the new lag-2 step count (negative control)
+  before, dxvk:    same with CX_GRAPHICS_BACKEND=dxvk, seam-hdr-exposure; bench-5120x1440-hdr-tonemap-taa-on
+                   -> exit 5 (teardown crash), timings from the session logs
+  final, wined3d:  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py
+                   --wine-env CX_GRAPHICS_BACKEND=wined3d seam-hdr-exposure seam-hdr-exposure-offset seam-ownership-hdr-exposure
+                   seam-hdr-tonemap-fault seam-hdr-meter-selftest-unlock bench-5120x1440-hdr-tonemap-taa-on
+                   -> all six PASS (after_wined3d_runner.txt)
+  final, dxvk:     per case: ... --wine-env CX_GRAPHICS_BACKEND=dxvk --dll F/d3d9.dll --seam F/seam/d3d9.dll
+                   --fixture F/motion_output_fixture.exe CASE      -> exit 5 / NaN-store record, validated offline
+                   (validate_dxvk.sh -> after_dxvk_validation.txt)
+
+Timings: readback_timing.py (before_*.txt by hand on the before session logs, after_*.txt by timings_after.sh).
+
+Review fold-in (EVENT query only with the telemetry tier: HdrPass::configure_meter_event(telemetry::enabled()))
+  fresh:   build-fresh d3d9.dll 59,134,188 B sha256 e9ff597043d315c4...; check_no_x87.py: PASS, 0 violations
+  wined3d: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py
+           --wine-env CX_GRAPHICS_BACKEND=wined3d seam-hdr-exposure   -> PASS, 245 checks (gated_wined3d.txt; the runner
+           sets X3M_TELEMETRY=1, the same log_tier::telemetry() predicate that --debug and --perf satisfy)
+  The earlier case directories were moved out of verification/probe/build/ (local only); the scripts above name them.

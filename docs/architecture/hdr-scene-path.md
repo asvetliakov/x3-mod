@@ -861,27 +861,46 @@ GPU and the **statistic and adaptation** on the host: the last chain draw
 lands in one of two **tile-image** ring targets (two-channel float, no axis
 above 128 texels: 80×48 at 1280×768, 80×23 at 5120×1440, 16×16 in the
 64×64 fixtures); **at the next frame's latch** (`HdrPass::begin_frame`)
-`GetRenderTargetData` copies that target into its system-memory surface,
-`LockRect` reads the tiles into two host arrays (8 or 16 bytes per texel by
-the chain format; 30 KB at 1280×768), so the download waits on work
-submitted a Present earlier, never on the current frame (measured for the
-1×1 form: issuing the copy right after the chain, inside the write-back,
-cost ~0.7 ms per frame on WineD3D at every size — the backend waits for the
-queued frame there — whereas the deferred copy plus lock costs 30–80 µs);
+`GetRenderTargetData` queues that target's copy into its own system-memory
+surface, and **at the latch after that** `LockRect` reads the tiles into two
+host arrays (8 or 16 bytes per texel by the chain format; 30 KB at
+1280×768). The readback is double-buffered (one system-memory surface per
+ring slot; each latch first locks the surface the previous latch filled,
+then queues the newest copy into the other), so a lock only reads a copy
+queued a whole frame earlier and never waits on work queued in its own
+frame. History: issuing the copy right after the chain, inside the
+write-back, cost ~0.7 ms per frame on WineD3D at every size (1×1 form);
+copy and lock in the same latch cost 30–80 µs on WineD3D but 3.6 ms median
+on DXVK, whose Present is asynchronous and whose GPU runs a frame or more
+behind (Run132 A/B, `readback_transfer_lock_us`, 2026-10-08). That the
+double buffer removes the in-flight 3.6 ms on DXVK is predicted from the
+fixture (5.6 ms to 3 µs median there), pending the next flight.
+`hdr_frame` times the two calls separately (`readback_copy_us`,
+`readback_lock_us`, the latter including the poll) and `meter_event_ready`
+reports whether an EVENT query issued after the previous frame's chain had
+signalled when the lock was taken (`GetData` without the flush flag; 1/0,
+-1 when no query exists, nothing was issued or nothing was locked;
+diagnostic only). The query exists only with the telemetry tier
+(`X3M_TELEMETRY`, `--perf`, `--debug`): off, nothing is created, issued or
+polled, because DXVK's `End()` on an event query can flush.
+The first two latches after attach, Reset, a chain re-creation or a latch
+with the meter off lock nothing (no step; no stale read);
 `meter_statistics` reduces the tiles to the space-aware statistic (below)
 and it feeds `ExposureState::step(statistic, dt)` with `dt` the QPC interval
 between the two latches (clamped to [1/240, 1/5] s in the step;
 `X3M_HDR_DT_MS` replaces it for the fixtures); `prepare_constants` uploads
 `exp2(EV)` as c8.x for that frame's write-back. The ring keeps the tile
 image intact while the current frame's chain writes the other slot. The
-tonemap of frame *n* therefore consumes the EV adapted from frame *n−1*'s
-meter, as §3 specifies. Reasons for the deviation: the prepared fragment
+tonemap of frame *n* therefore consumes the EV adapted from frame *n−2*'s
+meter: one frame more than §3 specifies, invisible against the 0.4–1.2 s
+time constants (the fixtures assert the two-frame lag, `HDR_METER_LAG` in
+`run_motion_output.py`). Reasons for the deviation: the prepared fragment
 already takes the exposure as a constant (c8.x, pinned by the reference
 test); the host state is what the `hdr_frame` line, the fixtures (`≤ 1e-3
 EV` against `simulate`) and the stage-3 `k` upload need; and the statistic
 (a weighted median and a percentile) has no cheap SM3 form, whereas on the
 host it is a sort of at most 16 K floats per frame (`readback_us` on the
-frame line covers the copy, the lock and the statistic). Pass order inside
+frame line covers the lock, the copy and the statistic). Pass order inside
 one write-back bracket (§4 with the chain before the tonemap, one state
 save/restore): unbind texture 0 and RT1.., depth off, fixed
 FVF/sampler/render state, the chain (RT0 = level *i*, viewport, program,
@@ -1035,8 +1054,10 @@ is AgX), `look`, `decode`, `clamp`, `exposure`, `ev` (consumed),
 p99 tile maximum), `ev_key`, `ev_limit`, `ev_fresh` (this step's target
 before the dead band), `tiles`, `lit`, `dt_ms`, `stepped`, `steps`, `meter`,
 `readback`, `tonemap_draw`, `fallback`, `meter_us` (the chain inside the
-draw bracket), `readback_us` (the copy, the lock and the statistic at the
-latch), `k`, `chain_bytes`; metrics `hdr_meter`, `hdr_meter_readback` under
+draw bracket), `readback_us` (the lock, the copy and the statistic at the
+latch; split into `readback_copy_us`, `readback_lock_us`,
+`readback_extract_unlock_us`, `readback_statistics_adapt_us`),
+`meter_event_ready`, `k`, `chain_bytes`; metrics `hdr_meter`, `hdr_meter_readback` under
 `X3M_TELEMETRY=1`.
 
 ### Verification (summary; numbers in the verification record)

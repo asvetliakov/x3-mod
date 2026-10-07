@@ -3585,6 +3585,9 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
             }
             if (hdr_) {
                 hdr_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the meter's pair
+                // meter_event_ready's EVENT query: the telemetry tier only (X3M_TELEMETRY, --perf, --debug), the
+                // switch that also times the readback (telemetry_ at each latch).
+                hdr_->configure_meter_event(telemetry::enabled());
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
                 if (fixture_hdr_fault_count_) {
                     hdr_->set_fault(static_cast<renderer::HdrFault>(fixture_hdr_fault_kind_), fixture_hdr_fault_count_);
@@ -9703,7 +9706,7 @@ void MotionOutput::log_hdr_frame() noexcept {
     const bool tonemap = hdr_ && hdr_->tonemap_active();
     const auto& e = hdr_ ? hdr_->exposure() : renderer::ExposureState{};
     const auto& c = hdr_ ? hdr_->config() : renderer::HdrConfig{};
-    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g lit_fraction=%.4f luma_lit=%.6g luma_p99=%.6g ev_key=%.5f ev_limit=%.5f ev_fresh=%.5f tiles=%u lit=%u dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f readback_transfer_lock_us=%.1f readback_extract_unlock_us=%.1f readback_statistics_adapt_us=%.1f readback_clock_errors=%u k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
+    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g lit_fraction=%.4f luma_lit=%.6g luma_p99=%.6g ev_key=%.5f ev_limit=%.5f ev_fresh=%.5f tiles=%u lit=%u dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f readback_copy_us=%.1f readback_lock_us=%.1f readback_extract_unlock_us=%.1f readback_statistics_adapt_us=%.1f readback_clock_errors=%u meter_event_ready=%d k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
         id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks),
         static_cast<unsigned long>(h.flushes), hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw,
         h.unwind_restore, h.unwind_stretch, h.unwind_bind, h.blocked,
@@ -9718,9 +9721,13 @@ void MotionOutput::log_hdr_frame() noexcept {
         double(std::exp2(e.meter().lit_median_log)), double(std::exp2(e.meter().p99_max_log)), double(e.ev_key()),
         double(e.ev_limit()), double(e.ev_fresh()), e.meter().tiles, e.meter().lit, double(e.dt()) * 1000., h.stepped,
         e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback, us(h.meter_ticks), us(h.readback_ticks),
-        us(h.readback_timing.ticks[0]), us(h.readback_timing.ticks[1]), us(h.readback_timing.ticks[2]),
-        h.readback_timing.clock_errors, double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull, caps.sharpen_reason,
-        h.sharpened, h.sharpen_fallback);
+        us(h.readback_timing.ticks[renderer::ReadbackTiming::Copy]),
+        us(h.readback_timing.ticks[renderer::ReadbackTiming::Lock]), // readback_lock_us: the GetData poll + LockRect
+        us(h.readback_timing.ticks[renderer::ReadbackTiming::ExtractUnlock]),
+        us(h.readback_timing.ticks[renderer::ReadbackTiming::StatisticsAdapt]), h.readback_timing.clock_errors,
+        // This frame's latch poll; -1 when the frame had no latch readback (h.readback stays S_FALSE then).
+        h.readback != S_FALSE && hdr_ ? hdr_->meter_event_ready() : -1, double(hdr_taa_k_),
+        hdr_ ? hdr_->chain_bytes() : 0ull, caps.sharpen_reason, h.sharpened, h.sharpen_fallback);
 }
 
 // ---- frame end -------------------------------------------------------------

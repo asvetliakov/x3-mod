@@ -1,0 +1,7 @@
+gated-wined3d-seam-hdr-exposure: frames=120 redirected=120 readback_latches=119 stepped=118 readback_failures=0
+  readback_copy_us: n=119 p50=0.9 p95=7.2 max=40.5
+  readback_lock_us: n=119 p50=6.1 p95=37.0 max=102.9
+  readback_us: n=119 p50=12.1 p95=91.0 max=521.9
+  meter_event_ready over readback latches: {'-1': 1, '1': 118}
+  readback_lock_us when meter_event_ready=0: n=0
+  readback_lock_us when meter_event_ready=1: n=118 p50=6.1 p95=37.0 max=102.9

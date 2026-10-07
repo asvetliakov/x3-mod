@@ -767,3 +767,36 @@ off (no measurable cost). Logs carry `hdr_tonemap dither=1 dither_reason=ok` / `
 `--hdr-dither on` stays the default.
 
 **Ctrl+Shift+F9 / F10 removed 2026-09-26** (user decision; `docs/architecture/comparison-hotkeys.md`, "Removed 2026-09-26"): exposure follows `--hdr-exposure`, bloom runs at full strength; the notice, the `renderer_comparison` rows, `MotionOutput::comparison_toggle_exposure` and `HdrPass::comparison_exposure` are gone (`HdrConfig::allow_auto_toggle` stays, so a fixed-EV launch still prepares the meter).
+
+## Double-buffered meter readback (2026-10-08)
+
+Why: Run132 A/B put `readback_transfer_lock_us` (GetRenderTargetData + LockRect in one latch) at a 125 us in-flight
+median on wined3d and 3,592 us on DXVK, the whole `view_setup` difference. `HdrPass::begin_frame` now locks the
+system-memory surface the previous latch filled, then queues the newest ring copy into the other surface; the tonemap
+consumes the meter two frames old (was one). `hdr_frame` carries `readback_copy_us`, `readback_lock_us` and
+`meter_event_ready` (an EVENT query issued after each chain, polled without the flush flag before the lock and timed
+inside `readback_lock_us`; diagnostic, and only with the telemetry tier `X3M_TELEMETRY` / `--perf` / `--debug`: without
+it no query exists and the field is -1).
+Design text: `docs/architecture/hdr-scene-path.md`, "Exposure: meter on the GPU".
+
+Fixture (bottle X3, `run_motion_output.py --wine-env CX_GRAPHICS_BACKEND=wined3d|dxvk`, the latter mapping the bundled
+DXVK d3d9 as the builtin system d3d9: image 13,193,216 B vs 180,224 B), 64x64 `seam-hdr-exposure`, 119 readback
+latches, and the 5120x1440 bench (`bench-5120x1440-hdr-tonemap-taa-on`, 5 logged latches); median / p95 us:
+
+| Backend | Before (f67f536a): copy+lock | After: copy | After: lock | 5120x1440 before / after (lock) |
+| --- | --- | --- | --- | --- |
+| wined3d | 49.1 / 104.3 | 0.9 / 8.0 | 6.1 / 35.4 | 44.9 / 9.6 |
+| DXVK | 5,591.2 / 6,911.7 | 0.7 / 1.1 | 3.1 / 6.0 | 3,378.6 / 2.5 |
+
+`meter_event_ready` was 1 at every lock in both fixtures (the fixture's GPU work is tiny; the flight is where 0 can
+show). The validators assert the two-frame lag (`HDR_METER_LAG = 2`: frames 0 and 1 never step; at nine scene changes the
+latch one frame after the change still consumed the old scene's meter and the next the new one, which tells lag 2
+from lag 1 and lag 3 by construction; the before binaries were validated with the old validator only) and the fault script's new step pattern (0,0,0,1,1,0,1,0,0). wined3d: `seam-hdr-exposure`,
+`-offset`, `seam-ownership-hdr-exposure`, `seam-hdr-tonemap-fault`, `seam-hdr-meter-selftest-unlock` and the bench pass the
+runner. DXVK: the same validators pass offline (`validate_offline.py`), with two pre-existing backend differences seen
+with the before binaries too: the fixture crashes in teardown after its last frame (exit 5, call to 0x74666f73), and the
+FP16 target stores the script's NaN block as 0 (the hazard record, read as NaN with `--nan-store-zero`).
+After the query was gated to the telemetry tier, `seam-hdr-exposure` on wined3d passed again (245 checks) with the
+three fields logged and `meter_event_ready=1` at 118 of 118 locks (`gated_wined3d.txt`).
+Review note (2026-10-08): the tonemap-fault check `states[2]==states[1]` now compares two frames that never stepped, so it still catches a publish on unlock failure but is weaker than before the lag; kept as is.
+Scripts and outputs: `verification/results/hdr-readback-double-buffer/`.

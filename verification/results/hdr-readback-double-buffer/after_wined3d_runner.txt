@@ -1,0 +1,8 @@
+seam-hdr-exposure: exit=0 checks=245 frames=120
+seam-hdr-exposure-offset: exit=0 checks=245 frames=120
+seam-ownership-hdr-exposure: exit=0 checks=245 frames=120
+seam-hdr-tonemap-fault: exit=0 checks=59 frames=9
+seam-hdr-meter-selftest-unlock: exit=0 checks=23 frames=3
+bench-5120x1440-hdr-tonemap-taa-on: exit=0 boundary_ms={'min': 2.1411, 'median': 2.2592, 'max': 4.2256}
+partial run: no cross-case comparisons, not a pass
+{"passed": false, "status": "PARTIAL"}

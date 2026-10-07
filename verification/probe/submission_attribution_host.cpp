@@ -150,8 +150,18 @@ int main() {
     }
     T backward;
     backward.begin(true, 100);
-    backward.end(T::TransferLock, 99);
+    backward.end(T::Lock, 99);
     check(backward.clock_errors && !backward.total());
+    // begin_frame closes the buckets in call order (lock, extract, copy,
+    // statistics), not enum order: each bucket keeps its own span, total exhaustive.
+    T ordered;
+    ordered.begin(true, 100);
+    ordered.end(T::Lock, 130);
+    ordered.end(T::ExtractUnlock, 135);
+    ordered.end(T::Copy, 150);
+    ordered.end(T::StatisticsAdapt, 152);
+    check(ordered.ticks[T::Lock] == 30 && ordered.ticks[T::ExtractUnlock] == 5 && ordered.ticks[T::Copy] == 15 &&
+          ordered.ticks[T::StatisticsAdapt] == 2 && ordered.total() == 52 && !ordered.clock_errors);
     T off;
     off.begin(false, 0);
     for (unsigned i = 0; i < T::Count; ++i) off.end(T::Phase(i), 0);

@@ -44,6 +44,7 @@ struct Ref {
 struct IDirect3DPixelShader9 : Ref {};
 struct IDirect3DVertexShader9 : Ref {};
 struct IDirect3DVertexDeclaration9 : Ref {};
+struct IDirect3DQuery9 : Ref {}; // the meter's diagnostic EVENT query (released with the chain)
 constexpr int IID_IUnknown = 0, IID_IDirect3DTexture9 = 1;
 struct IUnknown : Ref {
     IUnknown* identity = nullptr; // null: this object is canonical

@@ -153,11 +153,20 @@ struct HdrDisplaySnapshot {
 };
 // The meter readback and adaptation step taken at a latch (begin_frame).
 struct HdrFrameBegin {
-    bool stepped = false;            // a meter of the previous frame was consumed
-    HRESULT readback = S_FALSE;      // LockRect of the ring surface (S_FALSE: nothing pending)
+    bool stepped = false; // a meter was consumed (the one copied at the previous latch: two frames old)
+    // The readback's first failure (lock/extract/unlock before the copy), else
+    // S_OK when a lock or a copy ran (S_FALSE: neither had anything to do).
+    HRESULT readback = S_FALSE;
     float avg_log_l = 0.f, dt = 0.f; // what the step consumed (dt after the clamp; the statistic is in the state)
+    // Diagnostic only, never gates: the EVENT query issued after the previous
+    // frame's chain had signalled (1) or not (0) when the lock was taken
+    // (GetData without the flush flag); -1: no query (telemetry tier off, or
+    // CreateQuery refused), none issued since the previous latch, no lock this
+    // latch, or GetData failed. The poll is inside the Lock bucket
+    // (readback_lock_us).
+    int meter_event_ready = -1;
     ReadbackTiming readback_timing{};
-    std::uint64_t ticks_readback = 0; // the copy, the lock and the host statistic
+    std::uint64_t ticks_readback = 0; // the lock, the extract, the copy and the host statistic
 };
 // Fault injection points of the fixture seam (verification/probe/
 // motion_output_fixture.cpp, case 4 of the design's section 7): each kind
@@ -194,6 +203,11 @@ public:
     // --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"): the meter
     // chain's boundary pair. Null (the default): one branch per meter run.
     void configure_sync_timing(gpu_sync_timing::Marks* marks) noexcept { sync_marks_ = marks; }
+    // The diagnostic meter EVENT query (meter_event_ready) only with the
+    // telemetry tier (X3M_TELEMETRY, --perf or --debug: the switch that times
+    // the readback); off, no query is created, issued or polled (DXVK's End()
+    // on an event query can flush). Effective at the next chain creation.
+    void configure_meter_event(bool on) noexcept { meter_event_wanted_ = on; }
     const HdrConfig& config() const noexcept { return config_; }
     // Device is BORROWED. `native` is the device's original method table; every
     // call goes through it. Runs the capability gate (section 5 of the design)
@@ -232,14 +246,18 @@ public:
     }
     const ExposureState& exposure() const noexcept { return exposure_; }
     ExposureMode exposure_mode() const noexcept { return config_.exposure; }
-    // At the latch of a frame (after the redirect bound): copies the previous
-    // frame's tile image from its ring target to system memory and locks it
-    // (the lagged readback, a Present after the chain wrote it), reduces it
-    // to the statistic (exposure.h meter_statistics) and adapts the EV the
-    // coming write-back's tonemap consumes;
+    // At the latch of a frame (after the redirect bound): locks the readback
+    // surface the previous latch filled (the tile image of the frame before
+    // the previous one: two frames old), reduces it to the statistic
+    // (exposure.h meter_statistics) and adapts the EV the coming write-back's
+    // tonemap consumes; then queues the previous frame's tile image from its
+    // ring target into the other readback surface for the next latch, so no
+    // lock ever waits on a copy queued in the same frame;
     // `now_ticks`/`frequency` is the QPC stamp of this latch (dt against the
     // previous one, or fixed_dt).
     HdrFrameBegin begin_frame(std::uint64_t now_ticks, std::uint64_t frequency, bool timing) noexcept;
+    // The last begin_frame's HdrFrameBegin::meter_event_ready (the frame row reads it).
+    int meter_event_ready() const noexcept { return last_meter_event_ready_; }
     // Bytes of the meter chain's levels, ring targets and readback surfaces
     // (0 without a chain); the levels drawn per chain (the tile image last).
     std::uint64_t chain_bytes() const noexcept;
@@ -399,8 +417,19 @@ private:
                                                                   // each
     std::unique_ptr<TileSample[]> tile_scratch_;                  // the statistic's working copy
     unsigned tile_capacity_ = 0;
-    unsigned chain_slot_ = 0; // ring slot the current frame's chain writes
-    bool chain_pending_[2]{}; // ring[slot] holds a meter not yet copied and consumed
+    unsigned chain_slot_ = 0;   // ring slot the current frame's chain writes
+    bool chain_pending_[2]{};   // ring[slot] holds a meter not yet copied to readback[slot]
+    bool readback_filled_[2]{}; // readback[slot] holds a copied meter not yet locked and consumed
+    // Diagnostic only: one EVENT query issued after each successful chain
+    // (created with the chain, released with it: Reset/loss/resize/shutdown);
+    // null without the telemetry tier (configure_meter_event) or when
+    // CreateQuery refused: then nothing is issued or polled. Issued since the
+    // previous latch?
+    IDirect3DQuery9* meter_event_ = nullptr;
+    unsigned meter_event_refs_ = 0; // device references it holds (measured at creation)
+    bool meter_event_issued_ = false;
+    bool meter_event_wanted_ = false; // configure_meter_event: the telemetry tier
+    int last_meter_event_ready_ = -1;
     ExposureState exposure_{};
     unsigned tonemap_failures_ = 0;
     std::uint64_t latch_ticks_ = 0; // QPC of the previous begin_frame (0: none)
