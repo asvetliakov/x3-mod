@@ -1241,7 +1241,7 @@ HRESULT read_buffer_metadata(Device* device, IDirect3DResource9* native, BufferM
     if (FAILED(device->buffer_tracking_status)) return device->buffer_tracking_status;
     DWORD size = sizeof(value);
     const HRESULT hr = native->GetPrivateData(buffer_content_guid, &value, &size);
-    if (hr == D3DERR_NOTFOUND) return hr;
+    if (private_data_not_found(hr, size)) return D3DERR_NOTFOUND; // DXVK's INVALIDCALL form normalised
     if (FAILED(hr)) {
         fail_buffer_tracking(device, hr);
         return hr;

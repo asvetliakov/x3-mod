@@ -318,6 +318,22 @@ class PerFrameRowTiers(unittest.TestCase):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('set_resource_rows(log_tier::cached_debug || (capture_start && capture_start < 999999u && capture_count));', capture)
 
+    def test_private_data_not_found_has_both_backend_forms(self):
+        """2026-10-08 (Run 131 A): DXVK answers an unset private-data GUID with D3DERR_INVALIDCALL and size 0, not
+        D3DERR_NOTFOUND (verification/results/bottle-X3/d3d9-backend-smoke/privatedata-*.json). Every proxy read that
+        treats an unset tag as absent goes through one predicate; the DXVK form logs one row per process."""
+        header = _strip_comments((ROOT / 'src/ownership/d3d9_ownership.h').read_text())
+        self.assertIn('inline bool private_data_not_found(HRESULT hr, DWORD size) noexcept {\n'
+                      '    return hr == D3DERR_NOTFOUND || (hr == D3DERR_INVALIDCALL && size == 0);\n}', header)
+        state = _strip_comments((ROOT / 'src/proxy/capture_state.cpp').read_text())
+        self.assertEqual(state.count('ownership::private_data_not_found('), 2)  # query_resource_id, resource_id
+        self.assertNotIn('D3DERR_NOTFOUND', state.replace('if (hr != D3DERR_NOTFOUND && !invalidcall_form_logged', ''))
+        self.assertIn('if (hr != D3DERR_NOTFOUND && !invalidcall_form_logged.exchange(true, std::memory_order_relaxed))\n'
+                      '        log("resource_identity notfound_form=invalidcall");', state)
+        self.assertEqual(state.count('log("resource_identity notfound_form='), 1)
+        ownership = _strip_comments((ROOT / 'src/ownership/d3d9_ownership.cpp').read_text())
+        self.assertIn('if (private_data_not_found(hr, size)) return D3DERR_NOTFOUND;', ownership)
+
 
 class StatusRowTiers(unittest.TestCase):
     """2026-09-29: the scene_graph_census row (src/proxy/scene_graph_census.cpp) is a 300-frame status row of the perf and

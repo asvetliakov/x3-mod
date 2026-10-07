@@ -28,6 +28,8 @@ STDOUT = '\n'.join([
     'DEVICE hr=00000000 behavior=00000052 create_ms=141.7',
     'DRAW name=quad_vs30_ps30 draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000',
     'CHECK quad_vs30_ps30 FAIL', 'CHECK device_create PASS',
+    'PRIVATEDATA resource=rt_surface unset_hr=8876086c unset_size=0 set_hr=00000000 get_hr=00000000 get_size=8 '
+    'value=58334d0000000001 value_ok=1 small_hr=8876086c small_size=8',
     'SWEEP index=0 kind=ps name=ps_a.bin version=ffff0300 words=10 create_hr=00000000 draw_hr=00000000 wait_ms=1.00',
     'SWEEP index=1 kind=vs name=vs_b.bin version=fffe0300 words=10 create_hr=00000000 draw_hr=00000000 wait_ms=1.00',
     'SWEEPSUMMARY programs=2 created=2 create_failed=0', 'RESULT checks=2 failed=1 FAIL', ''])
@@ -47,6 +49,25 @@ class D3D9BackendSmoke(unittest.TestCase):
         self.assertEqual(report['failed_checks'], ['quad_vs30_ps30'])
         self.assertEqual([row['name'] for row in report['sweep']], ['ps_a.bin', 'vs_b.bin'])
         self.assertEqual(report['result']['failed'], 1)
+        self.assertEqual(report['privatedata'], [{'resource': 'rt_surface', 'unset_hr': '8876086c', 'unset_size': 0,
+                                                  'set_hr': '00000000', 'get_hr': '00000000', 'get_size': 8,
+                                                  'value': '58334d0000000001', 'value_ok': 1, 'small_hr': '8876086c',
+                                                  'small_size': 8}])
+
+    def test_private_data_records(self):
+        """Run 131 A: the unset-GUID form per backend that ownership::private_data_not_found accepts."""
+        expected = {'privatedata-wined3d': ('88760866', 8), 'privatedata-dxvk-pr20': ('8876086c', 0)}
+        for name, (unset_hr, unset_size) in expected.items():
+            path = RECORDS / f'{name}.json'
+            if not path.is_file():
+                self.skipTest(f'{name} not recorded')
+            rows = json.loads(path.read_text())['report']['privatedata']
+            self.assertEqual(sorted(row['resource'] for row in rows), ['managed_texture', 'rt_surface'], name)
+            for row in rows:
+                self.assertEqual((row['unset_hr'], row['unset_size']), (unset_hr, unset_size), name)
+                self.assertEqual((row['set_hr'], row['get_hr'], row['get_size'], row['value_ok']),
+                                 ('00000000', '00000000', 8, 1), name)
+                self.assertNotEqual(row['small_size'], 0, name)  # too-small buffer: never the not-found form
 
     def test_attribution(self):
         per_program, outside = load().attribute(STDERR)

@@ -2,6 +2,7 @@
 #include "capture_state.h"
 #include "../ownership/d3d9_ownership.h"
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 
 namespace x3m {
@@ -11,6 +12,10 @@ namespace {
 const GUID resource_guid = {0xaf21a9ad, 0x728e, 0x487c, {0xa2, 0x37, 0x06, 0xb1, 0x8d, 0xec, 0xa2, 0x78}};
 uint64_t next_resource_id = 1;
 bool resource_rows = false; // set_resource_rows at initialize_log: log_tier::cached_debug or a scheduled capture
+// One row per process the first time an untagged resource answers in DXVK's
+// D3DERR_INVALIDCALL/size 0 form (ownership::private_data_not_found); its
+// absence means the documented D3DERR_NOTFOUND contract was in effect.
+std::atomic<bool> invalidcall_form_logged{false};
 // Revision zero is not evidence of stability unless requested/known are true.
 // Native-only capture explicitly reports unavailable tracking without reading bytes.
 void capture_buffer_content(IDirect3DResource9* resource, uint64_t id, const char* kind) {
@@ -27,7 +32,7 @@ HRESULT query_resource_id(IDirect3DResource9* resource, uint64_t* id) noexcept {
     if (!resource) return S_FALSE;
     DWORD bytes = sizeof(*id);
     const HRESULT hr = resource->GetPrivateData(resource_guid, id, &bytes);
-    if (hr == D3DERR_NOTFOUND) {
+    if (ownership::private_data_not_found(hr, bytes)) {
         *id = 0;
         return S_FALSE;
     }
@@ -45,10 +50,12 @@ uint64_t resource_id(IDirect3DResource9* resource) {
     if (SUCCEEDED(hr) && size == sizeof id && id) return id;
     // Unexpected metadata/API failures must not cause the same address to be
     // silently associated with a previous allocation. Zero means unavailable.
-    if (hr != D3DERR_NOTFOUND) {
+    if (!ownership::private_data_not_found(hr, size)) {
         log("resource_identity unavailable=%08lx bytes=%lu", hr, size);
         return 0;
     }
+    if (hr != D3DERR_NOTFOUND && !invalidcall_form_logged.exchange(true, std::memory_order_relaxed))
+        log("resource_identity notfound_form=invalidcall");
     id = next_resource_id++;
     const HRESULT set = resource->SetPrivateData(resource_guid, &id, sizeof id, 0);
     if (FAILED(set)) {
