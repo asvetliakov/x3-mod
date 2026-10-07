@@ -1,0 +1,1 @@
+n=92 slope=1.046 intercept_us=866 lock_p50=609 view_setup_p50=1348 residual(view_setup-lock)_p50=744
