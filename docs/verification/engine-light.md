@@ -34,3 +34,8 @@ bind, upload, registration, shadow) and `capture.cpp` (configure). Bottle **X3**
 Not verified: native Windows; the look (amount, reach, colour scale) needs the user's eye in a flight; the in-flight
 limits listed in [engine-light.md](../architecture/engine-light.md) ("Not verified in flight"). The route-level path
 under Wine (twins at registration, selection, upload, Reset) is covered since 2026-10-03 by `seam-engine-light`.
+
+
+### 2026-10-09 Run 139 A: the hold did not cover the reported flicker
+
+run20/run21 (`verification/results/run139-triage/run139_out.txt`, measured): `hold=60 hold_status=ok`; held > 0 in 137 / 390 frames, hold_expired 1 / 6 events. The light drops the user sees are a fourth case: one nozzle's main-jet record disappears while the ship keeps its other records (run20 23 of 27 `lights=` drops, run21 15 of 34; held = 0 at every one). The hold engages only for a ship with no record at all (`engine_light_core.h` ~569, `find_ship` skip), so a single off-screen nozzle still loses its plate and light in one frame. Next: hold per plate (a plate whose record is missing keeps its last entry in anchor space for the window, fading), or body-table-driven nozzles; user decision pending.

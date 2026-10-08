@@ -1,0 +1,48 @@
+### /tmp/x3-bottleX3-run20 load_frame=484 inflight=494-10670 frames=10177 secs=149
+ dt_ms n=10177 p50= 13.53 p95= 18.32 mean= 14.62  fps(mean)=68.4
+ hitches >33ms=35 >50ms=24 >100ms=15
+ frame_phases windows 33 dt_p50=13667 dt_p95=18076 pre_render_p50=5364 pre_render_p95=9040 begin_scene_p50=148 begin_scene_p95=204 views_p50=7394 views_p95=8632 scene_end_p50=194 scene_end_p95=240 present_p50=55 present_p95=80 view_setup_p50=948 view_setup_p95=1148 view_submit_p50=4902 view_submit_p95=5856
+ by_draws: 40:205 p50=8.33 mean=22.95 | 80:175 p50=12.11 mean=12.58 | 100:140 p50=12.75 mean=13.75 | 120:1139 p50=12.79 mean=13.55 | 140:2235 p50=13.07 mean=13.44 | 160:2662 p50=13.52 mean=14.37 | 180:2421 p50=13.82 mean=14.91 | 200:473 p50=14.73 mean=15.51 | 220:390 p50=15.13 mean=15.64 | 240:258 p50=15.80 mean=17.37 | 260:53 p50=17.20 mean=17.69 | 280:25 p50=18.09 mean=18.10
+ by_issued: 40:205 p50=8.33 mean=22.95 | 80:1327 p50=13.10 mean=13.64 | 100:4405 p50=13.54 mean=13.94 | 120:2217 p50=13.74 mean=13.95 | 140:697 p50=14.36 mean=16.58 | 160:1192 p50=13.46 mean=15.50 | 180:51 p50=16.18 mean=20.39 | 200:26 p50=17.32 mean=18.06 | 240:37 p50=18.33 mean=18.45
+ cull rows inflight=9971 of 10177; candidates>0: 9971
+  candidates     p95_all=  162 sum=   929968 max=  189 median_all=   94 median_nonzero=   94 frames_nonzero=9971
+  tested         p95_all=  118 sum=   446721 max=  176 median_all=   35 median_nonzero=   35 frames_nonzero=9971
+  hidden         p95_all=   93 sum=   356336 max=  126 median_all=   28 median_nonzero=   28 frames_nonzero=9969
+  skipped        p95_all=   76 sum=   337260 max=  126 median_all=   27 median_nonzero=   27 frames_nonzero=9969
+  drawn_late     p95_all=    1 sum=      810 max=    9 median_all=    0 median_nonzero=    1 frames_nonzero=680
+  unstable       p95_all=    3 sum=    16045 max=  121 median_all=    0 median_nonzero=   10 frames_nonzero=680
+  no_hull        p95_all=   37 sum=    51397 max=   37 median_all=    0 median_nonzero=   37 frames_nonzero=1429
+  not_ready      p95_all=    0 sum=      932 max=   49 median_all=    0 median_nonzero=   39 frames_nonzero=25
+  ready_lag2     p95_all=    0 sum=      888 max=   49 median_all=    0 median_nonzero=   39 frames_nonzero=24
+  pool_truncated p95_all=    0 sum=        0 max=    0 median_all=    0 median_nonzero=    0 frames_nonzero=0
+  errors         p95_all=    0 sum=        0 max=    0 median_all=    0 median_nonzero=    0 frames_nonzero=0
+  failed         p95_all=    0 sum=        0 max=    0 median_all=    0 median_nonzero=    0 frames_nonzero=0
+  refused        p95_all=    0 sum=        0 max=    0 median_all=    0 median_nonzero=    0 frames_nonzero=0
+  no_bounds      p95_all=    0 sum=       55 max=   25 median_all=    0 median_nonzero=    2 frames_nonzero=13
+  unbounded      p95_all=    0 sum=        0 max=    0 median_all=    0 median_nonzero=    0 frames_nonzero=0
+  state          p95_all=    0 sum=        0 max=    0 median_all=    0 median_nonzero=    0 frames_nonzero=0
+  blocks         p95_all=    3 sum=    19896 max=    5 median_all=    2 median_nonzero=    2 frames_nonzero=9971
+  test_us        p95_all=  170 sum=   881219 max= 1608 median_all=   80 median_nonzero=   80 frames_nonzero=9971
+  retest_skipped p95_all=   62 sum=   431663 max=   85 median_all=   43 median_nonzero=   43 frames_nonzero=9971
+  forced         p95_all=   13 sum=    24401 max=   72 median_all=    0 median_nonzero=    4 frames_nonzero=3449
+  stale          p95_all=    0 sum=        0 max=    0 median_all=    0 median_nonzero=    0 frames_nonzero=0
+  cadence        p95_all=   10 sum=    65795 max=   15 median_all=    6 median_nonzero=    6 frames_nonzero=9970
+  ready_age inflight age1=437824 age2=87239 none=353508
+  dt tested=0           n=  206 p50=  8.33 p95=  8.68 mean= 26.92
+  dt tested>0 skipped=0 n=    2 p50= 22.94 p95= 26.39 mean= 22.94
+  dt skipped>0         n= 9969 p50= 13.57 p95= 18.32 mean= 14.37
+  by tested (bin start; 1=1..24):
+   tested~   0 n=  206 dt_p50=  8.33 dt_mean= 26.92 draws_p50=   56 issued_p50=   56 skipped_p50=   0 visible_tested_p50=   0
+   tested~   1 n= 3208 dt_p50= 12.87 dt_mean= 14.45 draws_p50=  163 issued_p50=  132 skipped_p50=  16 visible_tested_p50=   3
+   tested~  26 n= 3156 dt_p50= 13.37 dt_mean= 13.73 draws_p50=  156 issued_p50=  110 skipped_p50=  26 visible_tested_p50=  10
+   tested~  51 n= 2361 dt_p50= 14.07 dt_mean= 14.49 draws_p50=  181 issued_p50=  115 skipped_p50=  50 visible_tested_p50=   9
+   tested~  76 n=  632 dt_p50= 14.37 dt_mean= 14.68 draws_p50=  188 issued_p50=  117 skipped_p50=  54 visible_tested_p50=  27
+   tested~ 101 n=  199 dt_p50= 14.80 dt_mean= 15.66 draws_p50=  232 issued_p50=  123 skipped_p50=  95 visible_tested_p50=  23
+   tested~ 126 n=  343 dt_p50= 15.32 dt_mean= 16.62 draws_p50=  242 issued_p50=  135 skipped_p50=  93 visible_tested_p50=  42
+   tested~ 151 n=   71 dt_p50= 17.59 dt_mean= 17.89 draws_p50=  273 issued_p50=  218 skipped_p50=  24 visible_tested_p50= 135
+### /tmp/x3-bottleX3-run21 load_frame=398 inflight=408-9845 frames=9438 secs=139
+ dt_ms n= 9438 p50= 13.64 p95= 19.14 mean= 14.71  fps(mean)=68.0
+ hitches >33ms=30 >50ms=25 >100ms=13
+ frame_phases windows 30 dt_p50=13770 dt_p95=18317 pre_render_p50=5004 pre_render_p95=8639 begin_scene_p50=142 begin_scene_p95=210 views_p50=7934 views_p95=9242 scene_end_p50=184 scene_end_p95=241 present_p50=69 present_p95=118 view_setup_p50=814 view_setup_p95=1039 view_submit_p50=5230 view_submit_p95=6276
+ by_draws: 40:158 p50=8.34 mean=25.56 | 120:117 p50=11.66 mean=11.78 | 140:865 p50=10.71 mean=11.04 | 160:932 p50=11.10 mean=11.79 | 180:1117 p50=12.62 mean=14.36 | 200:2705 p50=13.54 mean=14.74 | 220:1661 p50=14.76 mean=15.30 | 240:1100 p50=15.13 mean=15.80 | 260:205 p50=16.28 mean=16.57 | 280:166 p50=16.17 mean=16.56 | 300:198 p50=17.01 mean=17.39 | 320:213 p50=17.23 mean=17.98
+ by_issued: 40:158 p50=8.34 mean=25.56 | 120:1084 p50=10.90 mean=11.52 | 140:591 p50=12.04 mean=12.58 | 160:1367 p50=12.46 mean=12.75 | 180:1811 p50=12.97 mean=15.14 | 200:1730 p50=14.22 mean=14.99 | 220:1648 p50=15.03 mean=15.67 | 240:455 p50=15.40 mean=15.92 | 260:109 p50=16.37 mean=16.68 | 280:219 p50=16.66 mean=17.29 | 300:263 p50=17.08 mean=17.70

@@ -1,0 +1,28 @@
+/tmp/x3-bottleX3-run20: 20-33ms=226 33-50ms=11 >50ms=24 of 10177
+  draws=195.3 issued=132.5 frame= 9900 view_submit_p50= 5651 views_p50= 8292 dt_p50=14512 present_p50= 55
+  draws=202.8 issued=122.0 frame= 8700 view_submit_p50= 5474 views_p50= 8105 dt_p50=14486 present_p50= 50
+  draws=205.0 issued=111.9 frame= 8400 view_submit_p50= 5378 views_p50= 7907 dt_p50=14034 present_p50= 58
+  draws=216.9 issued=117.6 frame= 7500 view_submit_p50= 6074 views_p50= 8800 dt_p50=14844 present_p50= 70
+  draws=221.4 issued=141.9 frame=10200 view_submit_p50= 6154 views_p50= 8888 dt_p50=14917 present_p50= 61
+/tmp/x3-bottleX3-run21: 20-33ms=320 33-50ms=5 >50ms=25 of 9438
+  draws=200.3 issued=191.5 frame=  900 view_submit_p50= 4938 views_p50= 7162 dt_p50=13960 present_p50= 54
+  draws=201.8 issued=172.5 frame= 4500 view_submit_p50= 5147 views_p50= 7965 dt_p50=13692 present_p50= 73
+  draws=202.8 issued=188.7 frame= 4800 view_submit_p50= 5155 views_p50= 7650 dt_p50=13460 present_p50= 80
+  draws=204.3 issued=197.7 frame= 1800 view_submit_p50= 5215 views_p50= 7423 dt_p50=12624 present_p50= 59
+  draws=205.2 issued=198.7 frame= 1200 view_submit_p50= 4999 views_p50= 7161 dt_p50=12223 present_p50= 56
+  draws=208.0 issued=169.3 frame= 4200 view_submit_p50= 5389 views_p50= 8287 dt_p50=14260 present_p50= 57
+  draws=209.0 issued=201.9 frame= 1500 view_submit_p50= 5226 views_p50= 7437 dt_p50=12633 present_p50= 52
+  draws=209.1 issued=193.3 frame= 5100 view_submit_p50= 5196 views_p50= 7671 dt_p50=13387 present_p50= 78
+  draws=218.0 issued=202.2 frame= 5400 view_submit_p50= 5526 views_p50= 8033 dt_p50=14873 present_p50= 77
+  draws=229.6 issued=214.7 frame= 6900 view_submit_p50= 5613 views_p50= 8046 dt_p50=13440 present_p50= 73
+  draws=230.1 issued=215.2 frame= 5700 view_submit_p50= 5573 views_p50= 8043 dt_p50=14887 present_p50= 73
+  draws=233.2 issued=218.8 frame= 9300 view_submit_p50= 5786 views_p50= 8429 dt_p50=15526 present_p50= 66
+  draws=235.2 issued=220.6 frame= 7800 view_submit_p50= 6524 views_p50= 9436 dt_p50=15899 present_p50= 72
+  draws=235.9 issued=223.0 frame= 9600 view_submit_p50= 5863 views_p50= 8534 dt_p50=14768 present_p50= 65
+  draws=236.0 issued=220.4 frame= 8400 view_submit_p50= 6163 views_p50= 8994 dt_p50=15011 present_p50= 66
+  draws=236.6 issued=223.6 frame= 8100 view_submit_p50= 6534 views_p50= 9375 dt_p50=15514 present_p50= 67
+  draws=246.3 issued=233.3 frame= 7200 view_submit_p50= 6162 views_p50= 8906 dt_p50=14682 present_p50= 75
+  draws=255.5 issued=240.5 frame= 6000 view_submit_p50= 6307 views_p50= 8917 dt_p50=14425 present_p50= 76
+  draws=257.9 issued=239.9 frame= 7500 view_submit_p50= 6739 views_p50= 9788 dt_p50=16405 present_p50= 71
+  draws=286.6 issued=269.9 frame= 8700 view_submit_p50= 7051 views_p50= 9922 dt_p50=15904 present_p50= 71
+  draws=319.9 issued=302.9 frame= 9000 view_submit_p50= 7622 views_p50=10592 dt_p50=16972 present_p50= 58

@@ -1,0 +1,230 @@
+### /tmp/x3-bottleX3-run20 load=484 inflight=494-10670 n=10177
+ cfg occlusion_engine_cull status=patched reason=ok site=0x0047d2a2 cull=0x0047d2c3 stub=0x01d60fa0 stub_length=285 table_slots=512 probe=4 window_shift=8 write=atomic
+ cfg occlusion_cull_config requested=engine configured=1 reason=ok pool=1024 retest=8 retest_setting=- retest_status=ok engine=1 engine_status=ok
+ cfg engine_light_mode device=0 setting=- status=ok mode=on requested=1 reason=requested behind=0.50 reach=3.00 colour_scale=0.25 cap=1 constants=c55-c202 ships_max=256 plates_max=72 hold=60 hold_setting=- hold_status=ok
+ Q1 dt by scene draws (draws+engine_skipped_draws): 40:205 p50=8.00 p95=8.00 | 80:60 p50=12.00 p95=21.00 | 100:76 p50=12.00 p95=17.00 | 120:549 p50=12.00 p95=20.00 | 140:1125 p50=12.00 p95=17.00 | 160:1836 p50=12.00 p95=16.00 | 180:2006 p50=13.00 p95=17.00 | 200:1812 p50=13.00 p95=19.00 | 220:1528 p50=14.00 p95=18.00 | 240:822 p50=14.00 p95=19.00 | 260:130 p50=16.00 p95=20.00
+ Q1 windows(300): start mean_scene mean_draws mean_eskip dt_p50
+     600 scene= 198.8 draws= 185.4 eskip= 13.4 dt_p50= 14.00
+     900 scene= 204.2 draws= 190.3 eskip= 13.9 dt_p50= 13.00
+    1200 scene= 198.4 draws= 184.2 eskip= 14.2 dt_p50= 13.00
+    1500 scene= 202.5 draws= 188.1 eskip= 14.4 dt_p50= 12.00
+    1800 scene= 184.4 draws= 170.1 eskip= 14.3 dt_p50= 12.00
+    2100 scene= 178.6 draws= 163.6 eskip= 15.0 dt_p50= 11.00
+    2400 scene= 165.7 draws= 150.3 eskip= 15.4 dt_p50= 12.00
+    2700 scene= 153.6 draws= 138.1 eskip= 15.4 dt_p50= 12.00
+    3000 scene= 155.1 draws= 139.8 eskip= 15.3 dt_p50= 12.00
+    3300 scene= 158.8 draws= 143.4 eskip= 15.4 dt_p50= 12.00
+    3600 scene= 188.0 draws= 171.8 eskip= 16.2 dt_p50= 14.00
+    3900 scene= 183.7 draws= 163.2 eskip= 20.5 dt_p50= 14.00
+    4200 scene= 197.0 draws= 161.1 eskip= 35.9 dt_p50= 13.00
+    4500 scene= 155.4 draws= 137.2 eskip= 18.2 dt_p50= 13.00
+    4800 scene= 162.2 draws= 147.8 eskip= 14.4 dt_p50= 14.00
+    5100 scene= 141.3 draws= 128.9 eskip= 12.4 dt_p50= 14.00
+    5400 scene= 124.9 draws= 114.7 eskip= 10.2 dt_p50= 12.00
+    5700 scene= 184.3 draws= 160.0 eskip= 24.4 dt_p50= 13.00
+    6000 scene= 176.0 draws= 153.4 eskip= 22.6 dt_p50= 13.00
+    6300 scene= 185.2 draws= 155.2 eskip= 30.0 dt_p50= 12.00
+    6600 scene= 212.6 draws= 171.9 eskip= 40.7 dt_p50= 13.00
+    6900 scene= 234.2 draws= 191.0 eskip= 43.1 dt_p50= 14.00
+    7200 scene= 234.0 draws= 216.9 eskip= 17.1 dt_p50= 14.00
+    7500 scene= 204.5 draws= 178.4 eskip= 26.1 dt_p50= 14.00
+    7800 scene= 240.1 draws= 194.0 eskip= 46.1 dt_p50= 14.00
+    8100 scene= 238.3 draws= 204.8 eskip= 33.5 dt_p50= 14.00
+    8400 scene= 232.2 draws= 203.0 eskip= 29.2 dt_p50= 14.00
+    8700 scene= 171.4 draws= 147.2 eskip= 24.2 dt_p50= 12.00
+    9000 scene= 216.8 draws= 175.0 eskip= 41.8 dt_p50= 13.00
+    9300 scene= 228.4 draws= 184.7 eskip= 43.6 dt_p50= 14.00
+    9600 scene= 225.1 draws= 195.2 eskip= 30.0 dt_p50= 14.00
+    9900 scene= 246.3 draws= 221.3 eskip= 25.0 dt_p50= 14.00
+   10200 scene= 180.0 draws= 178.3 eskip=  1.7 dt_p50= 13.00
+ Q2 engine_published       nz_frames=9969/9971 p50=18 p95=35 max=61 sum=193501
+ Q2 engine_skipped_parts   nz_frames=9669/9971 p50=18 p95=33 max=47 sum=170658
+ Q2 engine_skipped_draws   nz_frames=9669/9971 p50=19 p95=49 max=81 sum=227575
+ Q2 withheld               nz_frames=1647/9971 p50=0 p95=3 max=11 sum=4525
+ Q2 engine_visits          nz_frames=9969/9971 p50=198 p95=418 max=443 sum=2393950
+ Q2 engine_partial         nz_frames=5906/9971 p50=1 p95=5 max=13 sum=11764
+ Q2 engine_unarmed         nz_frames=2/9971 p50=0 p95=0 max=1 sum=2
+ Q2 guard_rejected model,stamp,position sums= [0, 0, 22709] nz_frames= 1303 max= [0, 0, 61]
+ Q2 occlusion_engine_sample rows=76646 first=occlusion_engine_sample device=1 frame=488 node=0x36a752e8 model=19080 draws=1 lo=-158,-7219,18309 hi=-16,-7077,18451 view=0x4221d860
+
+ Q3 held          nz=137/9972 p50=0 p95=0 max=1 hist=[(0, 9835), (1, 137)]
+ Q3 hold_expired  nz=1/9972 p50=0 p95=0 max=1 hist=[(0, 9971), (1, 1)]
+ Q3 ships         nz=9972/9972 p50=2 p95=3 max=5 hist=[(2, 9191), (3, 562), (4, 214), (5, 5)]
+ Q3 ships_drawn   nz=9972/9972 p50=2 p95=3 max=5 hist=[(2, 9194), (3, 562), (4, 212), (5, 4)]
+ Q3 lights        nz=9972/9972 p50=12 p95=13 max=16 hist=[(4, 1305), (5, 30), (6, 32), (7, 3), (8, 55), (9, 215), (10, 645), (11, 625), (12, 6419), (13, 361), (14, 84), (15, 136)]
+ Q3 ships_dropped nz=0/9972 p50=0 p95=0 max=0 hist=[(0, 9972)]
+ Q3 frames with lights drop=27, with held rising at the drop=0, held>0 at drop=0
+ Q3 frames ships_drawn drop=4 of which lights also drop=4 held rise=0
+  ex f4728 ships=2 drawn=2 lights=12 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f4729 ships=2 drawn=2 lights=12 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f4730 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f4731 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f4732 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0
+  ex f7066 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f7067 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f7068 ships=2 drawn=2 lights=10 held=0 exp=0 plates=0,1,0,0,0,0,0,1 ; f7069 ships=2 drawn=2 lights=10 held=0 exp=0 plates=0,1,0,0,0,0,0,1 ; f7070 ships=2 drawn=2 lights=10 held=0 exp=0 plates=0,1,0,0,0,0,0,1
+  ex f9916 ships=2 drawn=2 lights=12 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f9917 ships=2 drawn=2 lights=12 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f9918 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f9919 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0 ; f9920 ships=2 drawn=2 lights=11 held=0 exp=0 plates=0,1,0,0,0,0,0,0
+ Q4 dt>100ms:
+  frame=1 dt=561 prev=cursor_snapshot device=1 frame=1 burst=1 foreground=00070066 focus=00070066 active=00070066 capture=00000000 visible=1 i
+  frame=2 dt=1507 prev=cursor_snapshot device=1 frame=2 burst=2 foreground=00070066 focus=00070066 active=00070066 capture=00000000 visible=1 i
+  frame=3 dt=197 prev=taa_invalidate device=1 frame=3 site=not_resolved
+  frame=4 dt=3632 prev=media_cue frame=3 qpc=1042801090586 id=1 kind=none caller=query flags=0x8 result=0 us=483249 attempts_frame=3 cached=0
+  frame=83 dt=325 prev=media_cue frame=82 qpc=1042832162107 id=8404 kind=none caller=query flags=0x90 result=0x2694e560 us=320684 attempts_fram
+  frame=483 dt=128 prev=taa_invalidate device=1 frame=483 site=not_resolved
+  frame=484 dt=41152 prev=media_cue frame=483 qpc=1042990945898 id=244 kind=none caller=query flags=0x110 result=0x362fb8e8 us=333317 attempts_fra
+  frame=570 dt=1455 prev=telemetry_cursor_poll device=1 frame=570 qpc=1043309599146 flags=0 cursor=00000000 x=4242 y=11
+  frame=629 dt=105 prev=telemetry_cursor_poll device=1 frame=629 qpc=1043317925728 flags=0 cursor=00000000 x=4821 y=1
+  frame=887 dt=120 prev=hdr_frame device=1 frame=887 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=888 dt=136 prev=hdr_frame device=1 frame=888 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=889 dt=207 prev=hdr_frame device=1 frame=889 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=890 dt=269 prev=telemetry_cursor_poll device=1 frame=890 qpc=1043365184931 flags=0 cursor=00000000 x=4922 y=1
+  frame=891 dt=303 prev=hdr_frame device=1 frame=891 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=892 dt=215 prev=hdr_frame device=1 frame=892 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=893 dt=138 prev=telemetry_cursor_poll device=1 frame=893 qpc=1043371755390 flags=0 cursor=00000000 x=4923 y=12
+  frame=1512 dt=120 prev=telemetry_cursor_poll device=1 frame=1512 qpc=1043459676825 flags=0 cursor=00000000 x=4962 y=202
+  frame=4844 dt=115 prev=hdr_frame device=1 frame=4844 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind
+  frame=7753 dt=258 prev=telemetry_cursor_poll device=1 frame=7753 qpc=1044322612255 flags=0 cursor=00000000 x=4869 y=198
+  frame=10465 dt=841 prev=ui_scale_camera frame=10465 excluded_camera=00000000 previous=422caec0
+  frame=10466 dt=2829 prev=media_cue frame=10465 qpc=1044732770443 id=1 kind=none caller=query flags=0x8 result=0 us=559378 attempts_frame=3 cached
+  frame=10562 dt=180 prev=media_cue frame=10561 qpc=1044762571727 id=8404 kind=none caller=query flags=0x90 result=0x201c4c70 us=175586 attempts_f
+### /tmp/x3-bottleX3-run21 load=398 inflight=408-9845 n=9438
+ cfg occlusion_engine_cull status=off reason=mode site=0x0047d2a2 cull=0x0047d2c3 stub=0x00000000 stub_length=285 table_slots=512 probe=4 window_shift=8 write=atomic
+ cfg occlusion_cull_config requested=off configured=0 reason=off pool=1024 retest=8 retest_setting=- retest_status=ok engine=0 engine_status=mode
+ cfg engine_light_mode device=0 setting=- status=ok mode=on requested=1 reason=requested behind=0.50 reach=3.00 colour_scale=0.25 cap=1 constants=c55-c202 ships_max=256 plates_max=72 hold=60 hold_setting=- hold_status=ok
+ Q1 dt by scene draws (draws+engine_skipped_draws): 40:158 p50=8.00 p95=8.00 | 120:117 p50=11.00 p95=14.00 | 140:865 p50=10.00 p95=13.00 | 160:932 p50=11.00 p95=14.00 | 180:1117 p50=12.00 p95=17.00 | 200:2705 p50=13.00 p95=18.00 | 220:1661 p50=14.00 p95=19.00 | 240:1100 p50=15.00 p95=20.00 | 260:205 p50=16.00 p95=20.00 | 280:166 p50=16.00 p95=21.00 | 300:198 p50=17.00 p95=21.00 | 320:213 p50=17.00 p95=23.00
+ Q1 windows(300): start mean_scene mean_draws mean_eskip dt_p50
+     600 scene= 200.3 draws= 200.3 eskip=  0.0 dt_p50= 13.00
+     900 scene= 205.2 draws= 205.2 eskip=  0.0 dt_p50= 12.00
+    1200 scene= 209.0 draws= 209.0 eskip=  0.0 dt_p50= 12.00
+    1500 scene= 204.3 draws= 204.3 eskip=  0.0 dt_p50= 12.00
+    1800 scene= 173.8 draws= 173.8 eskip=  0.0 dt_p50= 10.00
+    2100 scene= 176.9 draws= 176.9 eskip=  0.0 dt_p50= 10.00
+    2400 scene= 162.5 draws= 162.5 eskip=  0.0 dt_p50= 10.00
+    2700 scene= 153.2 draws= 153.2 eskip=  0.0 dt_p50= 10.00
+    3000 scene= 155.4 draws= 155.4 eskip=  0.0 dt_p50= 10.00
+    3300 scene= 178.1 draws= 178.1 eskip=  0.0 dt_p50= 11.00
+    3600 scene= 193.7 draws= 193.7 eskip=  0.0 dt_p50= 13.00
+    3900 scene= 208.0 draws= 208.0 eskip=  0.0 dt_p50= 14.00
+    4200 scene= 201.9 draws= 201.9 eskip=  0.0 dt_p50= 13.00
+    4500 scene= 202.8 draws= 202.8 eskip=  0.0 dt_p50= 13.00
+    4800 scene= 209.1 draws= 209.1 eskip=  0.0 dt_p50= 13.00
+    5100 scene= 218.0 draws= 218.0 eskip=  0.0 dt_p50= 14.00
+    5400 scene= 230.0 draws= 230.0 eskip=  0.0 dt_p50= 14.00
+    5700 scene= 255.6 draws= 255.6 eskip=  0.0 dt_p50= 14.00
+    6000 scene= 163.2 draws= 163.2 eskip=  0.0 dt_p50= 12.00
+    6300 scene= 192.7 draws= 192.7 eskip=  0.0 dt_p50= 13.00
+    6600 scene= 229.5 draws= 229.5 eskip=  0.0 dt_p50= 13.00
+    6900 scene= 246.3 draws= 246.3 eskip=  0.0 dt_p50= 14.00
+    7200 scene= 257.9 draws= 257.9 eskip=  0.0 dt_p50= 16.00
+    7500 scene= 235.3 draws= 235.3 eskip=  0.0 dt_p50= 15.00
+    7800 scene= 236.5 draws= 236.5 eskip=  0.0 dt_p50= 15.00
+    8100 scene= 236.0 draws= 236.0 eskip=  0.0 dt_p50= 15.00
+    8400 scene= 286.3 draws= 286.3 eskip=  0.0 dt_p50= 15.00
+    8700 scene= 320.1 draws= 320.1 eskip=  0.0 dt_p50= 16.50
+    9000 scene= 233.4 draws= 233.4 eskip=  0.0 dt_p50= 15.00
+    9300 scene= 235.9 draws= 235.9 eskip=  0.0 dt_p50= 14.00
+ Q2 guard_rejected model,stamp,position sums= [0, 0, 0] nz_frames= 0 max= [0, 0, 0]
+ Q2 occlusion_engine_sample rows=0 first=None
+ Q3 held          nz=390/9280 p50=0 p95=0 max=2 hist=[(0, 8890), (1, 350), (2, 40)]
+ Q3 hold_expired  nz=6/9280 p50=0 p95=0 max=1 hist=[(0, 9274), (1, 6)]
+ Q3 ships         nz=9280/9280 p50=2 p95=3 max=5 hist=[(2, 7040), (3, 2066), (4, 150), (5, 24)]
+ Q3 ships_drawn   nz=9280/9280 p50=2 p95=3 max=5 hist=[(2, 7048), (3, 2062), (4, 147), (5, 23)]
+ Q3 lights        nz=9280/9280 p50=12 p95=16 max=17 hist=[(4, 1363), (5, 34), (6, 38), (7, 4), (8, 23), (9, 6), (10, 128), (11, 85), (12, 5759), (13, 633), (14, 205), (15, 247)]
+ Q3 ships_dropped nz=0/9280 p50=0 p95=0 max=0 hist=[(0, 9280)]
+ Q3 frames with lights drop=34, with held rising at the drop=0, held>0 at drop=2
+ Q3 frames ships_drawn drop=13 of which lights also drop=12 held rise=0
+  ex f5893 ships=3 drawn=3 lights=16 held=0 exp=0 plates=0,1,0,1,0,0,0,0 ; f5894 ships=3 drawn=3 lights=16 held=0 exp=0 plates=0,1,0,1,0,0,0,0 ; f5895 ships=3 drawn=3 lights=15 held=0 exp=0 plates=0,1,1,0,0,0,0,0 ; f5896 ships=3 drawn=3 lights=14 held=0 exp=0 plates=0,2,0,0,0,0,0,0 ; f5897 ships=3 drawn=3 lights=14 held=1 exp=0 plates=0,2,0,0,0,0,0,0
+  ex f6822 ships=3 drawn=3 lights=16 held=0 exp=0 plates=0,1,0,1,0,0,0,0 ; f6823 ships=3 drawn=3 lights=16 held=0 exp=0 plates=0,1,0,1,0,0,0,0 ; f6824 ships=3 drawn=3 lights=15 held=0 exp=0 plates=0,1,1,0,0,0,0,0 ; f6825 ships=3 drawn=3 lights=15 held=0 exp=0 plates=0,1,1,0,0,0,0,0 ; f6826 ships=3 drawn=3 lights=14 held=0 exp=0 plates=0,2,0,0,0,0,0,0
+  ex f7581 ships=3 drawn=3 lights=15 held=0 exp=0 plates=0,1,0,1,0,0,0,0 ; f7582 ships=3 drawn=3 lights=15 held=0 exp=0 plates=0,1,0,1,0,0,0,0 ; f7583 ships=3 drawn=3 lights=14 held=0 exp=0 plates=0,1,0,1,0,0,0,1 ; f7584 ships=3 drawn=3 lights=14 held=0 exp=0 plates=0,1,0,1,0,0,0,1 ; f7585 ships=3 drawn=3 lights=14 held=0 exp=0 plates=0,1,0,1,0,0,0,1
+ Q4 dt>100ms:
+  frame=1 dt=537 prev=cursor_snapshot device=1 frame=1 burst=1 foreground=00070066 focus=00070066 active=00070066 capture=00000000 visible=1 i
+  frame=2 dt=1407 prev=cursor_snapshot device=1 frame=2 burst=2 foreground=00070066 focus=00070066 active=00070066 capture=00000000 visible=1 i
+  frame=3 dt=188 prev=cursor_snapshot device=1 frame=3 burst=3 foreground=00070066 focus=00070066 active=00070066 capture=00000000 visible=1 i
+  frame=4 dt=3054 prev=media_cue frame=3 qpc=1045092205796 id=1 kind=none caller=query flags=0x8 result=0 us=440887 attempts_frame=3 cached=0
+  frame=397 dt=124 prev=taa_invalidate device=1 frame=397 site=not_resolved
+  frame=398 dt=21959 prev=media_cue frame=397 qpc=1045263650911 id=244 kind=none caller=query flags=0x110 result=0x375c1d78 us=16635 attempts_fram
+  frame=399 dt=207 prev=hdr_frame device=1 frame=399 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=478 dt=1320 prev=telemetry_cursor_poll device=1 frame=478 qpc=1045395294286 flags=0 cursor=00000000 x=3389 y=628
+  frame=540 dt=105 prev=telemetry_cursor_poll device=1 frame=540 qpc=1045403769933 flags=0 cursor=00000000 x=3093 y=757
+  frame=810 dt=145 prev=hdr_frame device=1 frame=810 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=811 dt=207 prev=telemetry_cursor_poll device=1 frame=811 qpc=1045449864351 flags=0 cursor=00000000 x=4929 y=103
+  frame=812 dt=264 prev=telemetry_cursor_poll device=1 frame=812 qpc=1045452512193 flags=0 cursor=00000000 x=4903 y=92
+  frame=813 dt=236 prev=hdr_frame device=1 frame=813 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind_
+  frame=814 dt=133 prev=telemetry_cursor_poll device=1 frame=814 qpc=1045456212923 flags=0 cursor=00000000 x=4894 y=89
+  frame=1497 dt=114 prev=telemetry_cursor_poll device=1 frame=1497 qpc=1045546254488 flags=0 cursor=00000000 x=4866 y=70
+  frame=3250 dt=221 prev=telemetry_cursor_poll device=1 frame=3250 qpc=1045748245871 flags=0 cursor=00000000 x=4843 y=86
+  frame=4881 dt=105 prev=hdr_frame device=1 frame=4881 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 writeback_source=shader unwind=0 unwind
+  frame=9687 dt=713 prev=ui_scale_camera frame=9687 excluded_camera=00000000 previous=432c7630
+  frame=9688 dt=2562 prev=media_cue frame=9687 qpc=1046726332682 id=1 kind=none caller=query flags=0x8 result=0 us=504817 attempts_frame=3 cached=
+  frame=9782 dt=154 prev=media_cue frame=9781 qpc=1046755402576 id=8404 kind=none caller=query flags=0x90 result=0x249ee320 us=149774 attempts_fr
+### /tmp/x3-bottleX3-run20 P2 qpc dt by scene draws: 40:205 p50=8.33 p95=8.65 | 80:60 p50=12.37 p95=21.88 | 100:76 p50=12.62 p95=17.14 | 120:549 p50=12.97 p95=21.00 | 140:1125 p50=12.72 p95=17.13 | 160:1836 p50=12.88 p95=16.91 | 180:2006 p50=13.46 p95=17.06 | 200:1812 p50=13.60 p95=19.01 | 220:1528 p50=14.27 p95=18.12 | 240:822 p50=14.99 p95=19.62 | 260:130 p50=16.26 p95=20.07
+  all: p50=13.53 p95=18.32 mean=14.62
+  frame_phases windows: end scene eskip dt_p50 dt_p95 view_submit_p50 view_submit_p95
+      900 scene= 198.9 eskip= 13.4 dt=14299/36269 vs=4902/5659
+     1200 scene= 204.2 eskip= 13.9 dt=13515/17858 vs=5209/6220
+     1500 scene= 198.4 eskip= 14.2 dt=13271/15631 vs=5326/6135
+     1800 scene= 202.5 eskip= 14.4 dt=12665/18542 vs=5201/6080
+     2100 scene= 184.4 eskip= 14.3 dt=12759/15006 vs=4837/5664
+     2400 scene= 178.6 eskip= 15.0 dt=11967/18118 vs=4451/5510
+     2700 scene= 165.6 eskip= 15.4 dt=12168/15059 vs=4249/5141
+     3000 scene= 153.5 eskip= 15.4 dt=12544/15609 vs=4102/4712
+     3300 scene= 155.1 eskip= 15.3 dt=12619/16572 vs=4127/4973
+     3600 scene= 158.9 eskip= 15.4 dt=12510/16177 vs=4238/5180
+     3900 scene= 188.1 eskip= 16.2 dt=14140/16418 vs=5358/6197
+     4200 scene= 183.7 eskip= 20.6 dt=14073/17165 vs=5032/5856
+     4500 scene= 197.0 eskip= 35.9 dt=13667/16674 vs=4823/5627
+     4800 scene= 155.2 eskip= 18.1 dt=13380/17325 vs=4373/5223
+     5100 scene= 162.3 eskip= 14.5 dt=14291/20128 vs=4722/5771
+     5400 scene= 141.1 eskip= 12.3 dt=14321/20684 vs=4339/5417
+     5700 scene= 125.0 eskip= 10.2 dt=12778/21414 vs=3771/4631
+     6000 scene= 184.5 eskip= 24.4 dt=13528/18379 vs=4944/6774
+     6300 scene= 176.0 eskip= 22.6 dt=13141/16021 vs=4648/5324
+     6600 scene= 185.3 eskip= 30.1 dt=12749/17082 vs=4424/5377
+     6900 scene= 212.8 eskip= 40.7 dt=13689/18813 vs=4996/5861
+     7200 scene= 234.1 eskip= 43.2 dt=14145/17151 vs=5274/6266
+     7500 scene= 233.9 eskip= 17.0 dt=14844/18621 vs=6074/7236
+     7800 scene= 204.7 eskip= 26.2 dt=14141/20432 vs=5092/7083
+     8100 scene= 240.1 eskip= 46.1 dt=14162/17571 vs=5440/6356
+     8400 scene= 238.3 eskip= 33.3 dt=14034/18393 vs=5378/7433
+     8700 scene= 232.2 eskip= 29.4 dt=14486/18246 vs=5474/7471
+     9000 scene= 171.4 eskip= 24.2 dt=12792/15342 vs=4216/4861
+     9300 scene= 216.8 eskip= 41.8 dt=13900/18076 vs=4793/5390
+     9600 scene= 228.3 eskip= 43.6 dt=14697/19704 vs=5056/6151
+     9900 scene= 225.2 eskip= 30.0 dt=14512/18517 vs=5651/6731
+    10200 scene= 246.4 eskip= 24.9 dt=14917/19471 vs=6154/7683
+    10500 scene= 179.3 eskip=  1.7 dt=13644/19139 vs=4553/8445
+  lights drops (dships,dmain,drecords): [((-1, 0, 0), 3), ((-1, 0, 4), 1), ((0, -1, -1), 23)]
+  first 12 drops: [(4730, 12, 11, 12, 11, 2, 0), (4948, 12, 11, 12, 11, 2, 0), (5225, 12, 11, 12, 11, 2, 0), (5302, 11, 10, 11, 10, 2, 0), (5335, 10, 9, 10, 9, 2, 0), (5389, 9, 8, 9, 8, 2, 0), (5544, 11, 10, 11, 10, 2, 0), (5672, 10, 9, 10, 9, 2, 0), (7044, 12, 11, 12, 11, 2, 0), (7068, 11, 10, 11, 10, 2, 0), (7620, 12, 11, 12, 11, 2, 0), (8021, 16, 15, 16, 15, 3, 0)]
+  held>0 runs=4 lengths=[(12, 1), (21, 1), (44, 1), (60, 1)] first=[[8032, 8043], [9605, 9625], [9637, 9680], [10226, 10285]]
+  hold_expired frames: [10286]
+### /tmp/x3-bottleX3-run21 P2 qpc dt by scene draws: 40:158 p50=8.34 p95=8.65 | 120:117 p50=11.66 p95=14.25 | 140:865 p50=10.71 p95=13.43 | 160:932 p50=11.10 p95=14.80 | 180:1117 p50=12.62 p95=17.18 | 200:2705 p50=13.54 p95=18.87 | 220:1661 p50=14.76 p95=19.68 | 240:1100 p50=15.13 p95=20.53 | 260:205 p50=16.28 p95=20.47 | 280:166 p50=16.17 p95=21.67 | 300:198 p50=17.01 p95=21.32 | 320:213 p50=17.23 p95=23.58
+  all: p50=13.64 p95=19.14 mean=14.71
+  frame_phases windows: end scene eskip dt_p50 dt_p95 view_submit_p50 view_submit_p95
+      900 scene= 200.3 eskip=  0.0 dt=13960/31360 vs=4938/5463
+     1200 scene= 205.2 eskip=  0.0 dt=12223/15683 vs=4999/5565
+     1500 scene= 209.0 eskip=  0.0 dt=12633/16464 vs=5226/5952
+     1800 scene= 204.3 eskip=  0.0 dt=12624/14639 vs=5215/5781
+     2100 scene= 173.7 eskip=  0.0 dt=10986/12983 vs=4144/4482
+     2400 scene= 176.9 eskip=  0.0 dt=10865/13433 vs=4131/4755
+     2700 scene= 162.5 eskip=  0.0 dt=10655/13670 vs=3682/4327
+     3000 scene= 153.2 eskip=  0.0 dt=10752/15296 vs=3549/3960
+     3300 scene= 155.4 eskip=  0.0 dt=10632/12903 vs=3452/4108
+     3600 scene= 178.1 eskip=  0.0 dt=11701/15629 vs=4074/5095
+     3900 scene= 193.8 eskip=  0.0 dt=13849/17913 vs=5069/6296
+     4200 scene= 208.0 eskip=  0.0 dt=14260/17154 vs=5389/6246
+     4500 scene= 201.8 eskip=  0.0 dt=13692/16655 vs=5147/6055
+     4800 scene= 202.8 eskip=  0.0 dt=13460/17896 vs=5155/6255
+     5100 scene= 209.1 eskip=  0.0 dt=13387/18913 vs=5196/6197
+     5400 scene= 218.0 eskip=  0.0 dt=14873/19971 vs=5526/6529
+     5700 scene= 230.1 eskip=  0.0 dt=14887/22773 vs=5573/6643
+     6000 scene= 255.5 eskip=  0.0 dt=14425/18890 vs=6307/7360
+     6300 scene= 162.9 eskip=  0.0 dt=12204/15909 vs=4043/5362
+     6600 scene= 192.9 eskip=  0.0 dt=13096/16027 vs=5233/6543
+     6900 scene= 229.6 eskip=  0.0 dt=13440/18721 vs=5613/6505
+     7200 scene= 246.3 eskip=  0.0 dt=14682/20464 vs=6162/7491
+     7500 scene= 257.9 eskip=  0.0 dt=16405/22607 vs=6739/9013
+     7800 scene= 235.2 eskip=  0.0 dt=15899/20687 vs=6524/7905
+     8100 scene= 236.6 eskip=  0.0 dt=15514/19698 vs=6534/7353
+     8400 scene= 236.0 eskip=  0.0 dt=15011/20475 vs=6163/7925
+     8700 scene= 286.6 eskip=  0.0 dt=15904/21270 vs=7051/8167
+     9000 scene= 319.9 eskip=  0.0 dt=16972/21060 vs=7622/8848
+     9300 scene= 233.2 eskip=  0.0 dt=15526/19177 vs=5786/7090
+     9600 scene= 235.9 eskip=  0.0 dt=14768/19374 vs=5863/6855
+  lights drops (dships,dmain,drecords): [((-1, -2, -6), 1), ((-1, 0, 0), 11), ((0, -2, -2), 4), ((0, -2, 2), 1), ((0, -1, -5), 2), ((0, -1, -1), 15)]
+  first 12 drops: [(5895, 16, 15, 16, 15, 3, 0), (5896, 15, 14, 15, 14, 3, 0), (5957, 17, 15, 14, 14, 4, 1), (6001, 15, 14, 12, 12, 3, 1), (6037, 14, 12, 12, 12, 2, 0), (6054, 14, 13, 14, 13, 3, 0), (6206, 13, 12, 13, 12, 3, 0), (6264, 13, 12, 13, 12, 3, 0), (6307, 12, 11, 12, 11, 3, 0), (6364, 11, 10, 11, 10, 3, 0), (6432, 14, 12, 12, 12, 2, 0), (6824, 16, 15, 16, 15, 3, 0)]
+  held>0 runs=10 lengths=[(2, 2), (7, 2), (19, 1), (33, 1), (60, 3), (140, 1)] first=[[5897, 6036], [6413, 6431], [6845, 6877], [7212, 7271], [7357, 7358], [7377, 7378], [7845, 7851], [8653, 8712]]
+  hold_expired frames: [5957, 6001, 6037, 7272, 8713, 9246]

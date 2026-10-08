@@ -245,3 +245,8 @@ chain live: native 0.227 us, patched disarmed 0.252, armed 0.234 (Wine/FEX, harn
 
 Not verified: a flight (the saving, the reveal pop, `engine_visits`/`engine_view_changes` on the real view pointer);
 native Windows execution.
+
+
+### 2026-10-09 Run 139 A (run20 engine / run21 off, DXVK, same build d48d2bab…): engine-side skip is a net loss
+
+Triage [run139-triage](../../verification/results/run139-triage/) (`run139.py`, measured). The stub installed (`status=patched reason=ok`) and ran in 97 % of in-flight frames: engine_skipped_parts p50 18 / p95 33 / max 47, engine_skipped_draws p50 19 / max 81, guards 0 model / 0 stamp / 22,709 position, engine_visits p50 198, view changes 0, no errors. Frame time binned by scene draws (app draws + engine-skipped draws): off is 1-2 ms faster per frame below ~200 draws (140: 12.7 vs 10.7 ms p50; 160: 12.9 vs 11.1), level at 200, and engine is only slightly better at 220-260 draws, mostly in p95 (240: 15.0/19.6 vs 15.1/20.5). Overall dt p50 13.53 vs 13.64 ms. The engine run carries the batched D3D cull as well (27 skipped draws p50), so the low-draw loss is the cull's own cost with little to skip; the gain where 30-46 draws were skipped is small. User impression confirmed ("off generally better except some close views"). Decision: `occlusion_cull` stays off by default, `engine` kept as an opt-in; the occlusion-cull line is closed on this backend (both the draw-level and the engine-side skip). Open: an isolated A/B (batched-only vs engine on one route) was not flown and is not planned.
