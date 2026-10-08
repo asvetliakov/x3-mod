@@ -1,0 +1,13 @@
+hdr_readback:    8 bytes=3932160    8 bytes=58982400    8 hr=00000000    8 result=00000000 
+motion_output_readback:    8 bytes=117964800    8 bytes=3932160    8 hr=00000000    8 result=00000000 
+motion_output_depth_readback:    8 bytes=117964800    8 bytes=3932160    8 hr=00000000    8 result=00000000 
+shadow_replay_map_readback:   16 bytes=16777216   40 bytes=4194304   24 bytes=67108864   40 hr=00000000   40 result=00000000 
+8
+1481
+session_end frames=9856 elapsed_ms=173666 devices=1 resets=0 exception=0 dropped=0 filter=ours
+2
+session_end frames=12617 elapsed_ms=275156 devices=1 resets=0 exception=0 dropped=0 filter=ours
+2
+session_end frames=8972 elapsed_ms=183072 devices=1 resets=0 exception=0 dropped=0 filter=ours
+2
+8843 7946 1130

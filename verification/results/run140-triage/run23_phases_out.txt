@@ -1,0 +1,36 @@
+load frame=397 dt=22056.0 last=8971
+loop_phases windows=27/29 collide=713 simulate=38 post=25 passb=126 cutevent=232 containers=945 sweep=43 sum=897 region=1226 input=2268  passes_p50=0.0
+pass_phases windows=27/29 apply=3364 draw=2378 end=31 sum=5817 view_submit=7243  passes_p50=189.0
+residual_phases windows=27/29 prepare=1012 setup=385 other=1691  passes_p50=189.0
+frame_phases windows=27/29 dt=15268 pre_render=5552 views=9252 view_setup=811 view_submit=7243 present=63  passes_p50=0.0
+ frame_timing dt_p50_us median=15274.0 range=12808.0..21716.0
+ frame_timing draws_p50 median=195.0 range=117.0..251.0
+ frame_timing draw_p50_us median=2311.0 range=1361.0..3330.0
+ frame_timing draw_native_p50_us median=392.0 range=288.0..563.0
+ frame_timing scene_p50_us median=1643.0 range=1127.0..2169.0
+ frame_timing state_calls_p50 median=11557.0 range=6344.0..15325.0
+ frame_timing gap_pre_p50_us median=5785.0 range=5047.0..7977.0
+ frame_timing gap_draw_p50_us median=5642.0 range=3788.0..8104.0
+ frame_timing gap_draw_per_draw_us median=30.9 range=27.6..34.0
+ frame_timing present_p50_us median=61.0 range=42.0..79.0
+ state_redundant (3 fields, per frame median over windows): [1824.17, 1764.86, 272.32]  state_shadowed: [1891.1133333333332, 1787.3533333333332, 817.4233333333333]
+ state_top first window: set_sampler_state:5613,set_render_state:3641,set_texture:803,set_vs:195,set_ps_constant_f:193,set_indices:192  redundant_top: 7:58174,24:57574,25:57574,128:56974
+ scene_graph_census last: {'device': '1', 'frame': '8700', 'engine_nodes': '196', 'scenes': '6', 'cuts': '2', 'cut_buckets': '8', 'tasks': '20', 'unattached': '1', 'truncated': '0', 'cycle': '0', 'bounded': '0', 'capped': '0', 'sampled': '1', 'sampled_nodes': '1', 'distinct': '1', 'other': '0', 'registry_live': '196', 'inserts': '811', 'insert_pairs': '17', 'insert_dropped': '0', 'walk_us': '14', 'reads': '16', 'queries': '5'}
+slow frames in flight (dt 12..100 ms) with tape=1118 of 1130 taped; in-flight frames=8574
+ covered p50 us= 16491.449999999997  frame dt p50 ms= 16.0
+  Render             p50=   10208 us  p95=   14805  present_in=1118
+  PendingVm          p50=    1312 us  p95=    6667  present_in=1118
+  Input.part0        p50=    1261 us  p95=    1531  present_in=1118
+  Clock              p50=     984 us  p95=    1208  present_in=1118
+  Input.part1        p50=     969 us  p95=    1462  present_in=1118
+  Cockpits           p50=     789 us  p95=     980  present_in=1118
+  Presentation       p50=     246 us  p95=     339  present_in=1118
+  Pump               p50=     113 us  p95=     276  present_in=1118
+  PostRender         p50=      35 us  p95=      43  present_in=1118
+  Services           p50=      25 us  p95=      47  present_in=1118
+  Simulation         p50=      21 us  p95=      57  present_in=1118
+  Input.part2        p50=      18 us  p95=      31  present_in=1118
+  Detail             p50=      18 us  p95=      22  present_in=1118
+  Tail               p50=      16 us  p95=      24  present_in=1118
+  Channels           p50=      15 us  p95=      20  present_in=1118
+  LoopSetup          p50=      15 us  p95=      22  present_in=1118

@@ -1,0 +1,111 @@
+### /tmp/x3-bottleX3-run21 load=398 inflight=408-9845 n=9438 capture_frames=0
+ Q1 dt p50=13.0 p95=19.0 mean=14.20 draws p50=209 mean=210.7
+ Q1 dt by draws: 40:158 p50=8.00 p95=8.00 | 120:117 p50=11.00 p95=14.00 | 140:865 p50=10.00 p95=13.00 | 160:932 p50=11.00 p95=14.00 | 180:1117 p50=12.00 p95=17.00 | 200:2705 p50=13.00 p95=18.00 | 220:1661 p50=14.00 p95=19.00 | 240:1100 p50=15.00 p95=20.00 | 260:205 p50=16.00 p95=20.00 | 280:166 p50=16.00 p95=21.00 | 300:198 p50=17.00 p95=21.00 | 320:213 p50=17.00 p95=23.00
+ Q1 frame_phases windows n=30 medians of window p50/p95 (us): dt=13770/18317 pre_render=5004/8639 views=7934/9242 view_setup=814/1039 view_submit=5230/6276 present=69/118
+  draws~160: n=7 dt=11701 pre_render=4518 views=6543 view_setup=806 view_submit=4131 present=63
+  draws~200: n=16 dt=14110 pre_render=5192 views=8038 view_setup=832 view_submit=5458 present=66
+  draws~240: n=3 dt=14682 pre_render=5005 views=8917 view_setup=827 view_submit=6307 present=75
+ Q2 records            n=9438 nz=9279 p50=12.0 p95=20.0 max=28.0 mean=12.05
+ Q2 nozzles            n=9438 nz=9279 p50=12.0 p95=16.0 max=17.0 mean=10.97
+ Q2 discs              n=9438 nz=9279 p50=12.0 p95=13.0 max=16.0 mean=10.00
+ Q2 calls              n=9438 nz=9279 p50=30.0 p95=30.0 max=30.0 mean=29.49
+ Q2 stage_us           n=9438 nz=9279 p50=47.4 p95=63.0 max=2190.8 mean=49.01
+ Q2 ribbons_live       n=9438 nz=9279 p50=12.0 p95=16.0 max=17.0 mean=11.07
+ Q2 frames ran=9279/9438; stage_us on ran frames p50=47.6 p95=63.1
+ Q2 light held         nz=390/9280 p50=0.0 p95=0.0 max=2.0
+ Q2 light hold_expired nz=6/9280 p50=0.0 p95=0.0 max=1.0
+ Q2 light hold_walked  nz=0/9280 p50=0.0 p95=0.0 max=0.0
+ Q2 light lights       nz=9280/9280 p50=12.0 p95=16.0 max=17.0
+ Q2 light ships_drawn  nz=9280/9280 p50=2.0 p95=3.0 max=5.0
+ Q3 top kinds rows/frame: camera_state=1.00, screen_emission_additive_frame=1.00, fade_route_frame=1.00, motion_output_frame=1.00, thin_vote_frame=1.00, shadow_lease_retirement=1.00, hdr_frame=1.00, frame_end=1.00, engine_frame=1.00, engine_stage=1.00, engine_shimmer=1.00, hull_emission_frame=1.00, sun_shadow_lane_frame=0.94, shadow_replay_sun=0.94
+ Q4 stalls >100ms: 20
+  frame=1 dt=537 capture=0 prev=cursor_snapshot device=1 frame=1 burst=1 foreground=00070066 focus=00070066 acti
+  frame=2 dt=1407 capture=0 prev=cursor_snapshot device=1 frame=2 burst=2 foreground=00070066 focus=00070066 acti
+  frame=3 dt=188 capture=0 prev=cursor_snapshot device=1 frame=3 burst=3 foreground=00070066 focus=00070066 acti
+  frame=4 dt=3054 capture=0 prev=media_cue frame=3 qpc=1045092205796 id=1 kind=none caller=query flags=0x8 result
+  frame=397 dt=124 capture=0 prev=taa_invalidate device=1 frame=397 site=not_resolved
+  frame=398 dt=21959 capture=0 prev=media_cue frame=397 qpc=1045263650911 id=244 kind=none caller=query flags=0x110 
+  frame=399 dt=207 capture=0 prev=hdr_frame device=1 frame=399 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=478 dt=1320 capture=0 prev=telemetry_cursor_poll device=1 frame=478 qpc=1045395294286 flags=0 cursor=000000
+  frame=540 dt=105 capture=0 prev=telemetry_cursor_poll device=1 frame=540 qpc=1045403769933 flags=0 cursor=000000
+  frame=810 dt=145 capture=0 prev=hdr_frame device=1 frame=810 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=811 dt=207 capture=0 prev=telemetry_cursor_poll device=1 frame=811 qpc=1045449864351 flags=0 cursor=000000
+  frame=812 dt=264 capture=0 prev=telemetry_cursor_poll device=1 frame=812 qpc=1045452512193 flags=0 cursor=000000
+  frame=813 dt=236 capture=0 prev=hdr_frame device=1 frame=813 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=814 dt=133 capture=0 prev=telemetry_cursor_poll device=1 frame=814 qpc=1045456212923 flags=0 cursor=000000
+  frame=1497 dt=114 capture=0 prev=telemetry_cursor_poll device=1 frame=1497 qpc=1045546254488 flags=0 cursor=00000
+  frame=3250 dt=221 capture=0 prev=telemetry_cursor_poll device=1 frame=3250 qpc=1045748245871 flags=0 cursor=00000
+  frame=4881 dt=105 capture=0 prev=hdr_frame device=1 frame=4881 hdr=1 redirected=1 end=hook writebacks=1 flushes=0
+  frame=9687 dt=713 capture=0 prev=ui_scale_camera frame=9687 excluded_camera=00000000 previous=432c7630
+  frame=9688 dt=2562 capture=0 prev=media_cue frame=9687 qpc=1046726332682 id=1 kind=none caller=query flags=0x8 res
+  frame=9782 dt=154 capture=0 prev=media_cue frame=9781 qpc=1046755402576 id=8404 kind=none caller=query flags=0x90
+### /tmp/x3-bottleX3-run22 load=467 inflight=477-12606 n=12122 capture_frames=8
+ Q1 dt p50=16.0 p95=23.0 mean=16.93 draws p50=186 mean=186.5
+ Q1 dt by draws: 40:276 p50=8.00 p95=19.00 | 60:223 p50=16.00 p95=24.00 | 80:151 p50=15.00 p95=21.00 | 100:529 p50=15.00 p95=21.00 | 120:642 p50=15.00 p95=23.00 | 140:677 p50=16.00 p95=25.00 | 160:3112 p50=15.00 p95=23.00 | 180:1777 p50=14.00 p95=22.00 | 200:2088 p50=15.00 p95=22.00 | 220:821 p50=16.00 p95=23.00 | 240:1033 p50=19.00 p95=25.00 | 260:463 p50=18.00 p95=26.00 | 280:220 p50=19.00 p95=28.00 | 300:75 p50=19.00 p95=24.00
+ Q1 frame_phases windows n=40 medians of window p50/p95 (us): dt=15713/21782 pre_render=5882/10762 views=8848/10666 view_setup=996/1228 view_submit=5866/7001 present=66/104
+  draws~120: n=5 dt=13609 pre_render=6033 views=6829 view_setup=857 view_submit=3976 present=72
+  draws~160: n=18 dt=14796 pre_render=5768 views=8296 view_setup=978 view_submit=5467 present=67
+  draws~200: n=10 dt=15796 pre_render=5571 views=9292 view_setup=992 view_submit=6334 present=64
+  draws~240: n=4 dt=19382 pre_render=6574 views=11786 view_setup=1310 view_submit=8028 present=62
+ Q2 node_walk_us       n=12122 nz=12122 p50=33.4 p95=68.7 max=256.2 mean=37.02
+ Q2 node_roots         n=12122 nz=11938 p50=2.0 p95=5.0 max=6.0 mean=2.30
+ Q2 node_walked        n=12122 nz=11938 p50=2.0 p95=5.0 max=6.0 mean=2.30
+ Q2 node_records       n=12122 nz=4248 p50=0.0 p95=10.0 max=14.0 mean=2.45
+ Q2 node_dupes         n=12122 nz=11938 p50=12.0 p95=18.0 max=30.0 mean=11.42
+ Q2 node_root_overflow n=12122 nz=0 p50=0.0 p95=0.0 max=0.0 mean=0.00
+ Q2 node_not_ship      n=12122 nz=12122 p50=128.0 p95=194.0 max=284.0 mean=128.64
+ Q2 node_invalid       n=12122 nz=0 p50=0.0 p95=0.0 max=0.0 mean=0.00
+ Q2 node_hidden        n=12122 nz=11938 p50=27.0 p95=33.0 max=36.0 mean=25.90
+ Q2 node_overflow      n=12122 nz=0 p50=0.0 p95=0.0 max=0.0 mean=0.00
+ Q2 node_children      n=12122 nz=11938 p50=100.0 p95=166.0 max=192.0 mean=104.92
+ Q2 records            n=12122 nz=11937 p50=12.0 p95=21.0 max=31.0 mean=13.87
+ Q2 nozzles            n=12122 nz=11937 p50=12.0 p95=19.0 max=23.0 mean=12.40
+ Q2 discs              n=12122 nz=11937 p50=12.0 p95=16.0 max=21.0 mean=11.13
+ Q2 calls              n=12122 nz=11937 p50=30.0 p95=30.0 max=30.0 mean=29.54
+ Q2 stage_us           n=12122 nz=11937 p50=56.0 p95=80.0 max=2710.9 mean=59.17
+ Q2 ribbons_live       n=12122 nz=11937 p50=12.0 p95=21.0 max=23.0 mean=12.65
+ Q2 frames ran=11937/12122; stage_us on ran frames p50=56.2 p95=80.2
+ Q2 light held         nz=0/11938 p50=0.0 p95=0.0 max=0.0
+ Q2 light hold_expired nz=0/11938 p50=0.0 p95=0.0 max=0.0
+ Q2 light hold_walked  nz=0/11938 p50=0.0 p95=0.0 max=0.0
+ Q2 light lights       nz=11938/11938 p50=12.0 p95=20.0 max=23.0
+ Q2 light ships_drawn  nz=11938/11938 p50=2.0 p95=5.0 max=6.0
+ Q3 top kinds rows/frame: constant=16.31, sampler=12.15, state=3.47, object_matrix=1.78, stream=1.74, transform=1.30, camera_state=1.00, screen_emission_additive_frame=1.00, fade_route_frame=1.00, motion_output_frame=1.00, thin_vote_frame=1.00, shadow_lease_retirement=1.00, hdr_frame=1.00, frame_end=1.00
+ Q4 stalls >100ms: 37
+  frame=1 dt=2840 capture=0 prev=cursor_snapshot device=1 frame=1 burst=1 foreground=00070066 focus=00070066 acti
+  frame=2 dt=1480 capture=0 prev=cursor_snapshot device=1 frame=2 burst=2 foreground=00070066 focus=00070066 acti
+  frame=4 dt=3329 capture=0 prev=media_cue frame=3 qpc=1127663029938 id=1 kind=none caller=query flags=0x8 result
+  frame=77 dt=257 capture=0 prev=media_cue frame=76 qpc=1127693253085 id=8404 kind=none caller=query flags=0x90 r
+  frame=186 dt=104 capture=0 prev=taa_invalidate device=1 frame=186 site=not_resolved
+  frame=466 dt=130 capture=0 prev=taa_invalidate device=1 frame=466 site=not_resolved
+  frame=467 dt=43436 capture=0 prev=media_cue frame=466 qpc=1127850135325 id=244 kind=none caller=query flags=0x110 
+  frame=557 dt=1466 capture=0 prev=telemetry_cursor_poll device=1 frame=557 qpc=1128192483836 flags=0 cursor=000000
+  frame=621 dt=114 capture=0 prev=hdr_frame device=1 frame=621 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=879 dt=105 capture=0 prev=hdr_frame device=1 frame=879 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=880 dt=139 capture=0 prev=telemetry_cursor_poll device=1 frame=880 qpc=1128243384608 flags=0 cursor=000000
+  frame=881 dt=291 capture=0 prev=telemetry_cursor_poll device=1 frame=881 qpc=1128246295990 flags=0 cursor=000000
+  frame=882 dt=356 capture=0 prev=hdr_frame device=1 frame=882 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=883 dt=271 capture=0 prev=hdr_frame device=1 frame=883 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=884 dt=200 capture=0 prev=hdr_frame device=1 frame=884 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=885 dt=154 capture=0 prev=hdr_frame device=1 frame=885 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=886 dt=107 capture=0 prev=hdr_frame device=1 frame=886 hdr=1 redirected=1 end=hook writebacks=1 flushes=0 
+  frame=1562 dt=119 capture=0 prev=hdr_frame device=1 frame=1562 hdr=1 redirected=1 end=hook writebacks=1 flushes=0
+  frame=2805 dt=250 capture=0 prev=hdr_frame device=1 frame=2805 hdr=1 redirected=1 end=hook writebacks=1 flushes=0
+  frame=4962 dt=161 capture=0 prev=telemetry_cursor_poll device=1 frame=4962 qpc=1128839057750 flags=0 cursor=00000
+  frame=8895 dt=127 capture=0 prev=hdr_frame device=1 frame=8895 hdr=1 redirected=1 end=hook writebacks=1 flushes=0
+  frame=9488 dt=507 capture=1 prev=telemetry_cursor_poll device=1 frame=9488 qpc=1129651729939 flags=0 cursor=00000
+  frame=9489 dt=501 capture=1 prev=telemetry_cursor_poll device=1 frame=9489 qpc=1129656743567 flags=0 cursor=00000
+  frame=9490 dt=443 capture=1 prev=cull_small_parts_frame device=1 frame=9490 px=4 threshold=3 culled=66 m00=0.4999
+  frame=9491 dt=442 capture=1 prev=cull_small_parts_frame device=1 frame=9491 px=4 threshold=3 culled=67 m00=0.4999
+  frame=9492 dt=412 capture=1 prev=cull_small_parts_frame device=1 frame=9492 px=4 threshold=3 culled=67 m00=0.4999
+  frame=9493 dt=374 capture=1 prev=cull_small_parts_frame device=1 frame=9493 px=4 threshold=3 culled=67 m00=0.4999
+  frame=9494 dt=348 capture=1 prev=cull_small_parts_frame device=1 frame=9494 px=4 threshold=3 culled=67 m00=0.4999
+  frame=9495 dt=317 capture=1 prev=cull_small_parts_frame device=1 frame=9495 px=4 threshold=3 culled=69 m00=0.4999
+  frame=10943 dt=859 capture=0 prev=telemetry_cursor_poll device=1 frame=10943 qpc=1129978033887 flags=0 cursor=0000
+  frame=11127 dt=419 capture=0 prev=telemetry_cursor_poll device=1 frame=11127 qpc=1130013255989 flags=0 cursor=0000
+  frame=11227 dt=403 capture=0 prev=telemetry_cursor_poll device=1 frame=11227 qpc=1130034420796 flags=0 cursor=0000
+  frame=11867 dt=630 capture=0 prev=hdr_frame device=1 frame=11867 hdr=1 redirected=1 end=hook writebacks=1 flushes=
+  frame=12158 dt=140 capture=0 prev=telemetry_cursor_poll device=1 frame=12158 qpc=1130213757429 flags=0 cursor=0000
+  frame=12422 dt=733 capture=0 prev=ui_scale_camera frame=12422 excluded_camera=00000000 previous=422cac00
+  frame=12423 dt=2241 capture=0 prev=media_cue frame=12422 qpc=1130277414464 id=1 kind=none caller=query flags=0x8 re
+  frame=12518 dt=180 capture=0 prev=media_cue frame=12517 qpc=1130305329508 id=8404 kind=none caller=query flags=0x9

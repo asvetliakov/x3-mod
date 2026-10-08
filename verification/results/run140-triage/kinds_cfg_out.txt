@@ -1,0 +1,14 @@
+frames 9856 12617
+kinds only in B: {'engine_nozzle_source': 1, 'bolt_footprint_refused': 1, 'screen_emission_additive_refused': 1, 'bolt_footprint_buffer': 1, 'bolt_footprint_hist': 1, 'frame_begin': 8, 'capture_event': 1481, 'clear': 32, 'surface': 2858, 'clear_viewport': 32, 'draw': 1369, 'object_context': 1369, 'object_target': 8, 'object_ancestry': 937, 'object_ancestor': 2385, 'object_fade': 48, 'object_evidence': 1321, 'object_matrix': 22457, 'object_position': 1321, 'object_basis': 3963, 'geometry': 1369, 'stream': 21904, 'vertex_buffer': 1369, 'buffer_content': 2690, 'indices': 1369, 'index_buffer': 1321, 'state': 43808, 'viewport': 1369, 'texture': 9583, 'texture_desc': 8145, 'sampler': 153328, 'vertex_element': 7636, 'transform': 16428, 'constants': 8214, 'constant': 205772, 'draw_args': 1369, 'motion_input': 1369, 'motion_geometry': 1369, 'motion_lifetime': 1369, 'draw_result': 1369, 'hull_lightmap_widen_draw': 920, 'object_bounds': 1080, 'motion_route': 1113, 'cull_small_prop_box': 640, 'cull_small_prop': 16, 'motion_output_cut': 8, 'scene_end_marker': 8, 'shadow_replay_caster': 1520, 'shadow_retention_caster': 1656, 'sun_shadow_apply_params': 8, 'hdr_readback': 8, 'set_depth': 16, 'color_fill': 24, 'stretch_rect': 8, 'set_rt': 32, 'motion_output_readback': 8, 'motion_output_depth_readback': 8, 'shadow_replay_map_readback': 40, 'shadow_replay_map_basis': 40, 'cull_census_frame': 8, 'collide_census_frame': 8, 'cull_small_parts_frame': 8, 'hull_emission_draw': 1}
+kinds only in A: {}
+rate changes >25% (rows/frame A -> B, rate >= 0.01):
+  cull_census: 0.000 -> 0.155
+  engine_draw: 0.004 -> 0.010
+  lod_switch: 0.019 -> 0.010
+  lod_switch_frame: 0.017 -> 0.010
+  motion_unmatched_static_frame: 0.026 -> 0.019
+config rows differing:
+  A engine_nozzle_source: None
+  B engine_nozzle_source: engine_nozzle_source setting=- status=ok source=node requested=1 bound=256 roots_max=256
+sector A [('sector=195127b8', 133), ('sector=00000000', 9)]
+sector B [('sector=195127b8', 208), ('sector=00000000', 11)]
