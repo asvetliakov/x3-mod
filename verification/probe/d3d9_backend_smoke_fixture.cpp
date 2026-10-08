@@ -1,7 +1,7 @@
 // D3D9 backend smoke probe: can a given d3d9.dll (wined3d, CrossOver's DXVK, a
 // DXVK build over MoltenVK) stand in as the backend the proxy forwards to?
 //
-//   d3d9_backend_smoke_fixture.exe <d3d9 path | builtin> <d3dx9_37 path> <shader list | ->
+//   d3d9_backend_smoke_fixture.exe <d3d9 path | builtin> <d3dx9_37 path> <shader list | -> [pipeline-cost list]
 //
 // Loads the d3d9 by path (or "d3d9.dll" by name for builtin), creates the game's
 // device shape (HWVP | PUREDEVICE | FPU_PRESERVE = 0x52, windowed, A8R8G8B8,
@@ -15,14 +15,21 @@
 // and, when that succeeds, drawn once with a generic partner and a GPU wait, so
 // pipeline compilation happens inside SWEEP markers that are also written to
 // stderr (where DXVK / MoltenVK / wined3d log) for attribution by the runner.
+// With a pipeline-cost list (lines "<ps path>\t<vs path|->\t<second vs path|->"), each game pixel
+// shader is drawn with its partner in a fixed step order and the QPC time of draw + event-query wait is
+// printed per step (a: opaque S1/D1/A8R8G8B8, b: alpha blend, c: additive z-write off, d: position+uv
+// declaration, e: A16B16G16R16F target, f: a again, g: second vertex shader), after a warm-up of every
+// state/declaration/target with the fixture's own shaders so render passes and layouts exist already.
 // Documented D3D9 / Win32 / D3DX APIs only. Never launches the game.
 #include <windows.h>
 #include <d3d9.h>
 #include <d3dx9.h>
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -238,7 +245,7 @@ void reset_state(Context& c) {
     d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.0f, 0);
 }
 
-bool wait_gpu(IDirect3DDevice9* d, double* ms) {
+bool wait_gpu(IDirect3DDevice9* d, double* ms, double limit_ms = 5000) {
     Com<IDirect3DQuery9> q;
     const double start = now_ms();
     if (FAILED(d->CreateQuery(D3DQUERYTYPE_EVENT, q.out()))) {
@@ -253,7 +260,7 @@ bool wait_gpu(IDirect3DDevice9* d, double* ms) {
             *ms = now_ms() - start;
             return true;
         }
-        if (FAILED(hr) || now_ms() - start > 5000) {
+        if (FAILED(hr) || now_ms() - start > limit_ms) {
             *ms = now_ms() - start;
             return false;
         }
@@ -428,13 +435,227 @@ void sweep(Context& c, const char* list_path) {
         wait_failed, first_failure.c_str());
 }
 
+// --- pipeline cost: what does a first-use (shader, state) combination cost on this backend? ---
+struct PcVertex1 { // D1: position + normal + uv
+    float x, y, z, nx, ny, nz, u, v;
+};
+struct PcVertex2 { // D2: position + uv
+    float x, y, z, u, v;
+};
+
+std::string leaf(const std::string& path) {
+    const std::size_t at = path.find_last_of('\\');
+    std::string name = at == std::string::npos ? path : path.substr(at + 1);
+    const std::size_t dot = name.rfind(".bin");
+    return dot == std::string::npos ? name : name.substr(0, dot);
+}
+
+double median(std::vector<double> v) {
+    if (v.empty()) return -1;
+    std::sort(v.begin(), v.end());
+    const std::size_t n = v.size();
+    return n % 2 ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
+}
+
+void pipeline_cost(Context& c, const char* list_path) {
+    IDirect3DDevice9* d = c.device;
+    struct Entry {
+        std::string ps_path, vs_path, vs2_path;
+        Com<IDirect3DPixelShader9> ps;
+        IDirect3DVertexShader9* vs = nullptr;
+        IDirect3DVertexShader9* vs2 = nullptr;
+        Declared decl;
+        double create_us = -1;
+    };
+    std::vector<std::unique_ptr<Entry>> entries; // Com is neither copyable nor movable
+    FILE* list = std::fopen(list_path, "r");
+    if (!list) {
+        std::printf("PIPELINE_COST_STATUS status=missing path=%s\n", list_path);
+        return;
+    }
+    char line[2048];
+    while (std::fgets(line, sizeof line, list)) {
+        char a[900] = {}, b[900] = {}, e[900] = {};
+        if (std::sscanf(line, "%899[^\t\r\n]\t%899[^\t\r\n]\t%899[^\t\r\n]", a, b, e) != 3) continue;
+        entries.push_back(std::make_unique<Entry>());
+        entries.back()->ps_path = a;
+        entries.back()->vs_path = b;
+        entries.back()->vs2_path = e;
+    }
+    std::fclose(list);
+
+    // Resources: two vertex buffers (D1 32-byte and D2 20-byte vertices), two declarations, an FP16 target.
+    const D3DVERTEXELEMENT9 d1[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                    {0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0},
+                                    {0, 24, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+                                    D3DDECL_END()};
+    const D3DVERTEXELEMENT9 d2[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                    {0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+                                    D3DDECL_END()};
+    const PcVertex1 v1[4] = {{-1, 1, 0.5f, 0, 0, -1, 0, 0},
+                             {1, 1, 0.5f, 0, 0, -1, 1, 0},
+                             {-1, -1, 0.5f, 0, 0, -1, 0, 1},
+                             {1, -1, 0.5f, 0, 0, -1, 1, 1}};
+    const PcVertex2 v2[4] = {{-1, 1, 0.5f, 0, 0}, {1, 1, 0.5f, 1, 0}, {-1, -1, 0.5f, 0, 1}, {1, -1, 0.5f, 1, 1}};
+    Com<IDirect3DVertexDeclaration9> decl1, decl2;
+    Com<IDirect3DVertexBuffer9> vb1, vb2;
+    Com<IDirect3DTexture9> fp16;
+    Com<IDirect3DSurface9> fp16_surface;
+    bool ok = SUCCEEDED(d->CreateVertexDeclaration(d1, decl1.out())) &&
+              SUCCEEDED(d->CreateVertexDeclaration(d2, decl2.out())) &&
+              SUCCEEDED(d->CreateVertexBuffer(sizeof v1, D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, vb1.out(), nullptr)) &&
+              SUCCEEDED(d->CreateVertexBuffer(sizeof v2, D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, vb2.out(), nullptr)) &&
+              SUCCEEDED(d->CreateTexture(kSize, kSize, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F,
+                                         D3DPOOL_DEFAULT, fp16.out(), nullptr)) &&
+              SUCCEEDED(fp16->GetSurfaceLevel(0, fp16_surface.out()));
+    for (int i = 0; ok && i < 2; ++i) {
+        IDirect3DVertexBuffer9* vb = i ? vb2.p : vb1.p;
+        const void* src = i ? static_cast<const void*>(v2) : static_cast<const void*>(v1);
+        const UINT size = i ? sizeof v2 : sizeof v1;
+        void* dst = nullptr;
+        ok = SUCCEEDED(vb->Lock(0, size, &dst, 0));
+        if (ok) {
+            std::memcpy(dst, src, size);
+            vb->Unlock();
+        }
+    }
+    if (!ok) {
+        std::printf("PIPELINE_COST_STATUS status=resources_failed\n");
+        check(false, "pipeline_cost_resources");
+        return;
+    }
+
+    // Shader creation, timed (DXSO translation happens here on DXVK; wined3d defers GLSL to the draw).
+    std::vector<std::pair<std::string, std::unique_ptr<Com<IDirect3DVertexShader9>>>> vertex_shaders;
+    auto vertex_shader = [&](const std::string& path, IDirect3DVertexShader9* fallback) -> IDirect3DVertexShader9* {
+        if (path == "-") return fallback;
+        for (auto& vs : vertex_shaders)
+            if (vs.first == path) return vs.second->p;
+        const std::vector<DWORD> code = read_program(path);
+        auto holder = std::make_unique<Com<IDirect3DVertexShader9>>();
+        const double t = now_ms();
+        const HRESULT h = code.empty() ? E_FAIL : d->CreateVertexShader(code.data(), holder->out());
+        std::printf("PIPELINE_COST_SHADER name=%s create_hr=%08lx create_us=%.0f words=%u\n", leaf(path).c_str(),
+                    (unsigned long)h, 1000.0 * (now_ms() - t), unsigned(code.size()));
+        IDirect3DVertexShader9* created = SUCCEEDED(h) ? holder->p : fallback;
+        vertex_shaders.emplace_back(path, std::move(holder));
+        return created;
+    };
+    for (auto& entry : entries) {
+        Entry& e = *entry;
+        const std::vector<DWORD> code = read_program(e.ps_path);
+        const double t = now_ms();
+        const HRESULT h = code.empty() ? E_FAIL : d->CreatePixelShader(code.data(), e.ps.out());
+        e.create_us = 1000.0 * (now_ms() - t);
+        std::printf("PIPELINE_COST_SHADER name=%s create_hr=%08lx create_us=%.0f words=%u\n", leaf(e.ps_path).c_str(),
+                    (unsigned long)h, e.create_us, unsigned(code.size()));
+        if (SUCCEEDED(h)) e.decl = parse_declarations(code, false);
+        e.vs = vertex_shader(e.vs_path, c.vs30_generic.p);
+        e.vs2 = vertex_shader(e.vs2_path, c.vs30_generic.p);
+        if (e.vs2 == e.vs) e.vs2 = c.vs30_generic.p; // the second partner must differ from the first
+    }
+
+    std::vector<float> constants(256 * 4, 0.5f);
+    auto bind = [&](char step, IDirect3DVertexShader9* vs, IDirect3DPixelShader9* ps, const Declared* decl) {
+        reset_state(c);
+        d->SetVertexShaderConstantF(0, constants.data(), 256);
+        d->SetPixelShaderConstantF(0, constants.data(), 224);
+        d->SetRenderTarget(0, step == 'e' ? fp16_surface.p : c.rt_surface.p);
+        d->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+        d->SetRenderState(D3DRS_ZWRITEENABLE, step == 'c' ? FALSE : TRUE);
+        d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+        d->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
+        d->SetRenderState(D3DRS_ALPHABLENDENABLE, step == 'b' || step == 'c');
+        d->SetRenderState(D3DRS_SRCBLEND, step == 'c' ? D3DBLEND_ONE : D3DBLEND_SRCALPHA);
+        d->SetRenderState(D3DRS_DESTBLEND, step == 'c' ? D3DBLEND_ONE : D3DBLEND_INVSRCALPHA);
+        d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
+        if (step == 'd') {
+            d->SetVertexDeclaration(decl2.p);
+            d->SetStreamSource(0, vb2.p, 0, sizeof(PcVertex2));
+        } else {
+            d->SetVertexDeclaration(decl1.p);
+            d->SetStreamSource(0, vb1.p, 0, sizeof(PcVertex1));
+        }
+        for (DWORD s = 0; s < 16; ++s) {
+            const int type = !decl ? 0 : decl->any_sampler ? decl->sampler_type[s] : (s < 8 ? 2 : 0);
+            IDirect3DBaseTexture9* t = type == 2   ? static_cast<IDirect3DBaseTexture9*>(c.tex_a.p)
+                                       : type == 3 ? static_cast<IDirect3DBaseTexture9*>(c.cube_b.p)
+                                       : type == 4 ? static_cast<IDirect3DBaseTexture9*>(c.volume.p)
+                                                   : nullptr;
+            d->SetTexture(s, t);
+        }
+        d->SetVertexShader(vs);
+        d->SetPixelShader(ps);
+        double drain = 0;
+        wait_gpu(d, &drain, 60000); // the clear and state changes land before the clock starts
+    };
+    // One timed draw + event-query wait (60 s limit); the draw is where the backend builds the pipeline.
+    auto timed = [&](HRESULT* draw_hr, bool* waited) {
+        const double t = now_ms();
+        d->BeginScene();
+        *draw_hr = d->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
+        d->EndScene();
+        double ms = 0;
+        *waited = wait_gpu(d, &ms, 60000);
+        return 1000.0 * (now_ms() - t);
+    };
+    const char steps[] = "abcdefg";
+    // Warm-up with the fixture's own pair: every target, declaration and blend/depth state once, so the
+    // measured steps carry only what is specific to the game program.
+    for (const char* s = steps; *s; ++s) {
+        HRESULT h = E_FAIL;
+        bool waited = false;
+        bind(*s, c.vs30_generic.p, c.ps30_const.p, nullptr);
+        const double us = timed(&h, &waited);
+        std::printf("PIPELINE_WARMUP step=%c us=%.0f draw_hr=%08lx waited=%d\n", *s, us, (unsigned long)h, int(waited));
+    }
+    Sleep(3000); // let a backend's background workers (DXVK state cache) finish what shader creation queued
+    std::vector<double> per_step[7];
+    unsigned failed_draws = 0;
+    for (auto& entry : entries) {
+        Entry& e = *entry;
+        if (!e.ps.p) continue;
+        const std::string name = leaf(e.ps_path);
+        for (int i = 0; i < 7; ++i) {
+            const char step = steps[i];
+            IDirect3DVertexShader9* vs = step == 'g' ? e.vs2 : e.vs;
+            bind(step, vs, e.ps.p, &e.decl);
+            std::fprintf(stderr, "X3M-PC-BEGIN %s %c\n", name.c_str(), step);
+            std::fflush(stderr);
+            HRESULT h = E_FAIL;
+            bool waited = false;
+            const double us = timed(&h, &waited);
+            std::fprintf(stderr, "X3M-PC-END %s %c\n", name.c_str(), step);
+            std::fflush(stderr);
+            if (FAILED(h) || !waited) ++failed_draws;
+            per_step[i].push_back(us);
+            std::printf("pipeline_cost ps=%s step=%c us=%.0f vs=%s draw_hr=%08lx waited=%d", name.c_str(), step, us,
+                        step == 'g' ? (e.vs2 == c.vs30_generic.p ? "vs30_generic" : leaf(e.vs2_path).c_str())
+                                    : (e.vs == c.vs30_generic.p ? "vs30_generic" : leaf(e.vs_path).c_str()),
+                        (unsigned long)h, int(waited));
+            if (step == 'a') std::printf(" ps_create_us=%.0f", e.create_us);
+            std::printf("\n");
+        }
+        if (d->TestCooperativeLevel() != D3D_OK) {
+            std::printf("PIPELINE_COST_STATUS status=device_lost\n");
+            break;
+        }
+    }
+    for (int i = 0; i < 7; ++i) {
+        double max = per_step[i].empty() ? -1 : *std::max_element(per_step[i].begin(), per_step[i].end());
+        std::printf("pipeline_cost_summary step=%c n=%u median_us=%.0f max_us=%.0f\n", steps[i],
+                    unsigned(per_step[i].size()), median(per_step[i]), max);
+    }
+    check(failed_draws == 0 && !per_step[0].empty(), "pipeline_cost_draws");
+}
+
 LRESULT CALLBACK window_proc(HWND w, UINT m, WPARAM wp, LPARAM lp) {
     return DefWindowProcA(w, m, wp, lp);
 }
 
 int run(int argc, char** argv) {
     if (argc < 4) {
-        std::printf("usage: %s <d3d9 path|builtin> <d3dx9_37 path> <shader list|->\n", argv[0]);
+        std::printf("usage: %s <d3d9 path|builtin> <d3dx9_37 path> <shader list|-> [pipeline-cost list]\n", argv[0]);
         return 2;
     }
     LARGE_INTEGER f{};
@@ -840,6 +1061,7 @@ int run(int argc, char** argv) {
         check(SUCCEEDED(h), "present_hidden_window");
     }
     if (std::strcmp(argv[3], "-")) sweep(c, argv[3]);
+    if (argc > 4) pipeline_cost(c, argv[4]);
     std::printf("RESULT checks=%u failed=%u %s\n", checks, failures, failures ? "FAIL" : "PASS");
     return 0; // Context, device and Direct3D release in reverse declaration order.
 }

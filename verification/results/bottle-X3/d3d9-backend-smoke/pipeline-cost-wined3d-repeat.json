@@ -1,0 +1,1207 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "name": "pipeline-cost-wined3d-repeat",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/d3d9_backend_smoke_fixture.cpp": "4db0bdc04c1c177686adca40a97cfebf7da31583370da31f0268bbb5bdb5fbbd",
+  "verification/probe/run_d3d9_backend_smoke.py": "b942dc79ea6c84cf8e5da1b1ec6b00094e9b642e8962c7ecf453c1f843994995"
+ },
+ "executable": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc/d3d9_backend_smoke_fixture.exe",
+ "executable_sha256": "a6152682efdfb15100acb209513dde5b4cc85e5cf2d1b48cde93a46c898c6238",
+ "d3d9": "builtin",
+ "d3d9_sha256": null,
+ "d3d9_bytes": null,
+ "d3dx9_37": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+ "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+ "dll_overrides": "d3d9=b;d3dx9_37=n",
+ "env": {
+  "DXVK_LOG_LEVEL": "info",
+  "MVK_CONFIG_LOG_LEVEL": "2"
+ },
+ "extra_env": [],
+ "wine_env": [
+  "CX_GRAPHICS_BACKEND=wined3d"
+ ],
+ "pipeline_cost_programs": [
+  {
+   "ps": "ps_241c3fa33270f58e",
+   "bytes": 7532,
+   "vs": "vs_6059306306203243",
+   "vs2": "vs_1279d081455f5815"
+  },
+  {
+   "ps": "ps_f3172baa8dd19a40",
+   "bytes": 7532,
+   "vs": "vs_6059306306203243",
+   "vs2": "vs_1279d081455f5815"
+  },
+  {
+   "ps": "ps_f1b0e820c7b488c3",
+   "bytes": 7164,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_496049cec2066ed3",
+   "bytes": 7120,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_5f82ecacd39529cd",
+   "bytes": 7060,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_6733b119142c8d42",
+   "bytes": 7016,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_31445adb0a62d134",
+   "bytes": 6984,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_d51cf763125cb85a",
+   "bytes": 6880,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  }
+ ],
+ "moltenvk": {
+  "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/libMoltenVK.dylib",
+  "bytes": 10925552,
+  "sha256": "aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f"
+ },
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--dll",
+  "d3d9=b;d3dx9_37=n",
+  "--workdir",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc",
+  "--env",
+  "CX_GRAPHICS_BACKEND=wined3d",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc/d3d9_backend_smoke_fixture.exe",
+  "builtin",
+  "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+  "-",
+  "Z:\\private\\tmp\\claude-501\\-Users-asvetl-x3-mod\\45f963d7-d42f-48f5-8dc1-5a91b08a846f\\scratchpad\\build-pc\\d3d9-backend-smoke-pipeline-cost.txt"
+ ],
+ "killed": null,
+ "exit_code": 0,
+ "elapsed_s": 8.0,
+ "full_log": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc/d3d9-backend-smoke-pipeline-cost-wined3d-repeat.full.txt",
+ "report": {
+  "modules": [
+   {
+    "role": "d3d9",
+    "path": "C:\\windows\\system32\\d3d9.dll",
+    "wine_builtin": 1
+   },
+   {
+    "role": "d3dx9_37",
+    "path": "Z:\\Users\\asvetl\\Library\\Application_Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+    "wine_builtin": 0
+   },
+   {
+    "role": "wined3d.dll",
+    "path": "C:\\windows\\system32\\wined3d.dll",
+    "wine_builtin": 1
+   }
+  ],
+  "steps": [
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3d9"
+   },
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3dx"
+   },
+   {
+    "status": "ok",
+    "name": "direct3dcreate9"
+   }
+  ],
+  "formats": [
+   {
+    "name": "RESZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "INTZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "D24X8_texture",
+    "hr": "00000000"
+   },
+   {
+    "name": "A16B16G16R16F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "A32B32G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "NULL_rt",
+    "hr": "00000000"
+   }
+  ],
+  "shaders": [
+   {
+    "name": "vs30",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs11",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs30_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs20_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex_cube",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps11_two",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_depth",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_const",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps20_const",
+    "hr": "00000000"
+   }
+  ],
+  "draws": [
+   {
+    "name": "quad_vs30_ps30",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "200.0",
+    "mean_g": "40.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 200,
+    "expect_g": 40,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "alpha_test",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "100.0",
+    "mean_g": "20.0",
+    "mean_b": "20.0",
+    "coverage": "0.500",
+    "expect_r": 100,
+    "expect_g": 20,
+    "expect_b": 20,
+    "expect_coverage": "0.50"
+   },
+   {
+    "name": "two_samplers_ps11",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_samplers_ps30_2d_cube",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_stage_fixed_function",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "managed_relock",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "200.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 200,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretch_source",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "40.0",
+    "mean_b": "200.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 40,
+    "expect_b": 200,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretchrect_rt_scaled",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "10.0",
+    "mean_b": "50.0",
+    "coverage": "0.250",
+    "expect_r": 10,
+    "expect_g": 10,
+    "expect_b": 50,
+    "expect_coverage": "0.25"
+   },
+   {
+    "name": "stretchrect_backbuffer",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "200.0",
+    "mean_b": "10.0",
+    "coverage": "1.000",
+    "expect_r": 10,
+    "expect_g": 200,
+    "expect_b": 10,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "d3dx_effect",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "64.0",
+    "mean_g": "128.0",
+    "mean_b": "191.0",
+    "coverage": "1.000",
+    "expect_r": 64,
+    "expect_g": 128,
+    "expect_b": 191,
+    "expect_coverage": "1.00"
+   }
+  ],
+  "queries": [
+   {
+    "type": "event",
+    "ok": 1,
+    "ms": "1.29"
+   },
+   {
+    "type": "occlusion",
+    "hr": "00000000",
+    "pixels": 65536,
+    "expect": 65536
+   },
+   {
+    "type": 10,
+    "supported_hr": "8876086a"
+   },
+   {
+    "type": 11,
+    "supported_hr": "8876086a"
+   },
+   {
+    "type": 12,
+    "supported_hr": "8876086a"
+   }
+  ],
+  "resz": [
+   {
+    "format": "D24X8",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.25",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "0.0"
+   },
+   {
+    "format": "D24X8",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.75",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "0.0"
+   },
+   {
+    "format": "INTZ",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.25",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "128.0"
+   },
+   {
+    "format": "INTZ",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.75",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "128.0"
+   }
+  ],
+  "pipeline_cost": [
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "a",
+    "us": 4513,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 19
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "b",
+    "us": 777,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "c",
+    "us": 896,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "d",
+    "us": 843,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "e",
+    "us": 691,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "f",
+    "us": 567,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "g",
+    "us": 2047,
+    "vs": "vs_1279d081455f5815",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "a",
+    "us": 2818,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 11
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "b",
+    "us": 786,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "c",
+    "us": 712,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "d",
+    "us": 797,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "e",
+    "us": 423,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "f",
+    "us": 575,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "g",
+    "us": 1288,
+    "vs": "vs_1279d081455f5815",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "a",
+    "us": 6196,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 349
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "b",
+    "us": 516,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "c",
+    "us": 471,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "d",
+    "us": 429,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "e",
+    "us": 472,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "f",
+    "us": 332,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "g",
+    "us": 3398,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "a",
+    "us": 3774,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 15
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "b",
+    "us": 464,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "c",
+    "us": 444,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "d",
+    "us": 425,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "e",
+    "us": 433,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "f",
+    "us": 353,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "g",
+    "us": 2143,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "a",
+    "us": 3657,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 14
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "b",
+    "us": 464,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "c",
+    "us": 470,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "d",
+    "us": 444,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "e",
+    "us": 496,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "f",
+    "us": 354,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "g",
+    "us": 2322,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "a",
+    "us": 3642,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 12
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "b",
+    "us": 443,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "c",
+    "us": 414,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "d",
+    "us": 432,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "e",
+    "us": 433,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "f",
+    "us": 318,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "g",
+    "us": 2300,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "a",
+    "us": 3681,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 14
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "b",
+    "us": 458,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "c",
+    "us": 456,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "d",
+    "us": 412,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "e",
+    "us": 421,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "f",
+    "us": 320,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "g",
+    "us": 2619,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "a",
+    "us": 3697,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 11
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "b",
+    "us": 535,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "c",
+    "us": 369,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "d",
+    "us": 521,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "e",
+    "us": 374,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "f",
+    "us": 219,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "g",
+    "us": 2277,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   }
+  ],
+  "pipeline_cost_summary": [
+   {
+    "step": "a",
+    "n": 8,
+    "median_us": 3689,
+    "max_us": 6196
+   },
+   {
+    "step": "b",
+    "n": 8,
+    "median_us": 490,
+    "max_us": 786
+   },
+   {
+    "step": "c",
+    "n": 8,
+    "median_us": 463,
+    "max_us": 896
+   },
+   {
+    "step": "d",
+    "n": 8,
+    "median_us": 438,
+    "max_us": 843
+   },
+   {
+    "step": "e",
+    "n": 8,
+    "median_us": 433,
+    "max_us": 691
+   },
+   {
+    "step": "f",
+    "n": 8,
+    "median_us": 342,
+    "max_us": 575
+   },
+   {
+    "step": "g",
+    "n": 8,
+    "median_us": 2288,
+    "max_us": 3398
+   }
+  ],
+  "pipeline_warmup": [
+   {
+    "step": "a",
+    "us": 2496,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "b",
+    "us": 817,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "c",
+    "us": 720,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "d",
+    "us": 769,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "e",
+    "us": 444,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "f",
+    "us": 331,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "g",
+    "us": 580,
+    "draw_hr": "00000000",
+    "waited": 1
+   }
+  ],
+  "pipeline_cost_shaders": [
+   {
+    "name": "ps_241c3fa33270f58e",
+    "create_hr": "00000000",
+    "create_us": 19,
+    "words": 1883
+   },
+   {
+    "name": "vs_6059306306203243",
+    "create_hr": "00000000",
+    "create_us": 10,
+    "words": 164
+   },
+   {
+    "name": "vs_1279d081455f5815",
+    "create_hr": "00000000",
+    "create_us": 5,
+    "words": 168
+   },
+   {
+    "name": "ps_f3172baa8dd19a40",
+    "create_hr": "00000000",
+    "create_us": 11,
+    "words": 1883
+   },
+   {
+    "name": "ps_f1b0e820c7b488c3",
+    "create_hr": "00000000",
+    "create_us": 349,
+    "words": 1791
+   },
+   {
+    "name": "vs_37c34a7478544c14",
+    "create_hr": "00000000",
+    "create_us": 73,
+    "words": 768
+   },
+   {
+    "name": "vs_494fe349b8bc12ec",
+    "create_hr": "00000000",
+    "create_us": 10,
+    "words": 526
+   },
+   {
+    "name": "ps_496049cec2066ed3",
+    "create_hr": "00000000",
+    "create_us": 15,
+    "words": 1780
+   },
+   {
+    "name": "ps_5f82ecacd39529cd",
+    "create_hr": "00000000",
+    "create_us": 14,
+    "words": 1765
+   },
+   {
+    "name": "ps_6733b119142c8d42",
+    "create_hr": "00000000",
+    "create_us": 12,
+    "words": 1754
+   },
+   {
+    "name": "ps_31445adb0a62d134",
+    "create_hr": "00000000",
+    "create_us": 14,
+    "words": 1746
+   },
+   {
+    "name": "ps_d51cf763125cb85a",
+    "create_hr": "00000000",
+    "create_us": 11,
+    "words": 1720
+   }
+  ],
+  "privatedata": [
+   {
+    "resource": "rt_surface",
+    "unset_hr": "88760866",
+    "unset_size": 8,
+    "set_hr": "00000000",
+    "get_hr": "00000000",
+    "get_size": 8,
+    "value": "58334d0000000001",
+    "value_ok": 1,
+    "small_hr": "88760867",
+    "small_size": 8
+   },
+   {
+    "resource": "managed_texture",
+    "unset_hr": "88760866",
+    "unset_size": 8,
+    "set_hr": "00000000",
+    "get_hr": "00000000",
+    "get_size": 8,
+    "value": "58334d0000000001",
+    "value_ok": 1,
+    "small_hr": "88760867",
+    "small_size": 8
+   }
+  ],
+  "checks": [
+   [
+    "device_create",
+    true
+   ],
+   [
+    "managed_textures",
+    true
+   ],
+   [
+    "managed_cube",
+    true
+   ],
+   [
+    "privatedata_unset_rt",
+    true
+   ],
+   [
+    "privatedata_roundtrip_rt",
+    true
+   ],
+   [
+    "privatedata_unset_managed",
+    true
+   ],
+   [
+    "privatedata_roundtrip_managed",
+    true
+   ],
+   [
+    "resources",
+    true
+   ],
+   [
+    "quad_vs30_ps30",
+    true
+   ],
+   [
+    "alpha_test",
+    true
+   ],
+   [
+    "two_samplers_ps11",
+    true
+   ],
+   [
+    "two_samplers_ps30_2d_cube",
+    true
+   ],
+   [
+    "two_stage_fixed_function",
+    true
+   ],
+   [
+    "managed_relock",
+    true
+   ],
+   [
+    "stretch_source",
+    true
+   ],
+   [
+    "stretchrect_rt_scaled",
+    true
+   ],
+   [
+    "stretchrect_backbuffer",
+    true
+   ],
+   [
+    "stretchrect_depth",
+    true
+   ],
+   [
+    "event_query",
+    true
+   ],
+   [
+    "occlusion_query",
+    true
+   ],
+   [
+    "d3dx_effect",
+    true
+   ],
+   [
+    "present_hidden_window",
+    true
+   ],
+   [
+    "pipeline_cost_draws",
+    true
+   ]
+  ],
+  "sweep": [],
+  "other": [],
+  "adapter": {
+   "hr": "00000000",
+   "driver": "nvd3dum.dll",
+   "description": "NVIDIA_GeForce_8800_GTX",
+   "device_name": "\\\\.\\DISPLAY1",
+   "vendor": "10de",
+   "device": "0191",
+   "driver_version": "9.16.13.4052"
+  },
+  "caps": {
+   "hr": "00000000",
+   "vs": 300,
+   "ps": 300,
+   "max_textures": 8,
+   "rts": 4,
+   "vs_consts": 256,
+   "max_tex": "16384x16384"
+  },
+  "device": {
+   "hr": "00000000",
+   "behavior": "00000052",
+   "create_ms": "8.2"
+  },
+  "stretchdepth": {
+   "hr": "00000000"
+  },
+  "effect": {
+   "create_hr": "00000000",
+   "error": "-"
+  },
+  "present": {
+   "hr": "00000000"
+  },
+  "result": {
+   "checks": 23,
+   "failed": 0
+  },
+  "failed_checks": [],
+  "sweep_error_programs": 0,
+  "sweep_errors": [],
+  "stderr_errors_outside_sweep": 0,
+  "first_error": null,
+  "pipeline_cost_stderr": {
+   "steps_with_lines": 0,
+   "lines": 0,
+   "first": {}
+  },
+  "moltenvk_lines": []
+ },
+ "report_sha256": "a62838734f4b824dfb2264e2d6d3f43d075411209162398b03e319d510ec9f94"
+}

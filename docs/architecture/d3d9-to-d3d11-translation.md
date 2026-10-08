@@ -666,6 +666,53 @@ the first pipeline of the process); PR #20 passed it in every one of its 5 runs 
 `depth_decode.hlsl`, so informational). Bundle at the end: MoltenVK 1.4.2 `aef00b13…` and the marked PR #20
 `a5005d1f…`; backup directory unchanged apart from the `RESTORE.sh` comment.
 
+### Pipeline cost: shader compile versus per-state pipelines (2026-10-08, shader warm-up decision)
+
+Question: is a first-use stall the shader compile (once per program) or the pipeline (again per blend /
+depth / vertex layout / target format)? Fixture mode `--pipeline-cost` (same fixture and runner, one check
+`pipeline_cost_draws` added, 23/23 PASS on every run, M): the 8 largest live pixel shaders by bytecode size (7,532 to 6,880 B),
+each with the live vertex shader it shares most effect occurrences with, timed by QPC around draw +
+event-query wait. Steps: a = S1 (blend off, z on, z write on, LESSEQUAL, cull CCW, A8R8G8B8 + D24S8, D1 =
+position+normal+uv), b = alpha blend SRCALPHA/INVSRCALPHA, c = additive ONE/ONE with z write off, d = D2
+(position+uv, second vertex buffer), e = A16B16G16R16F target, f = a again, g = a with the second most common
+live vertex shader. Before the clock, every state/layout/target was drawn once with the fixture's own shaders
+(render passes, layouts and framebuffers exist) and the backend was given 3 s after shader creation. Bottle
+X3, CrossOver Preview 27.0.0.41069, MoltenVK 1.4.2 `aef00b13…`, bundle DXVK = marked Gcenx PR #20
+`a5005d1f…`. Runs (one at a time under `wine_lock.py`): `--d3d9 builtin --no-sweep --wine-env
+CX_GRAPHICS_BACKEND=wined3d --pipeline-cost`; the bundle DXVK with `--d3d9-order b --wine-env
+CX_GRAPHICS_BACKEND=dxvk --wine-env DXVK_STATE_CACHE_PATH=<empty dir> --pipeline-cost` (cold), the same
+directory again (warm), and a second fresh empty directory (cold-repeat); wined3d was repeated too. Figures:
+`python3 summary.py` beside the records `pipeline-cost-*.json` (median / max us over the 8 shaders, M):
+
+| Step | wined3d first | wined3d repeat | DXVK cold | DXVK cold-repeat | DXVK warm |
+| --- | --- | --- | --- | --- | --- |
+| a first draw S1 | 20,193 / 141,339 | 3,689 / 6,196 | 16,098 / 28,640 | 4,118 / 13,125 | 1,082 / 11,756 |
+| b alpha blend | 14,216 / 14,942 | 490 / 786 | 15,492 / 16,077 | 4,212 / 4,461 | 908 / 1,207 |
+| c additive, z write off | 14,052 / 14,631 | 463 / 896 | 15,006 / 15,667 | 4,128 / 4,384 | 1,153 / 1,232 |
+| d declaration D2 | 816 / 10,684 | 438 / 843 | 4,932 / 14,418 | 4,001 / 4,334 | 915 / 1,225 |
+| e FP16 target | 14,063 / 14,624 | 433 / 691 | 15,092 / 15,999 | 4,068 / 4,165 | 1,062 / 1,308 |
+| f a again (cached) | 606 / 726 | 342 / 575 | 1,212 / 1,261 | 1,162 / 1,211 | 902 / 1,210 |
+| g second vertex shader | 6,414 / 16,164 | 2,288 / 3,398 | 214,928 / 241,918 | 4,032 / 4,458 | 911 / 1,261 |
+
+Reading (M unless marked). Neither backend's first-use cost is a per-program compile: `CreatePixelShader`
+takes 10-332 us on wined3d and 303-1,633 us on DXVK, and every new blend state, target format and (on
+DXVK) vertex layout or vertex-shader pairing costs a fresh pipeline about as large as the first draw.
+First-ever runs: wined3d pays ~14 ms per blend/format variant (69 % of step a above the f baseline) and
+little for the layout; DXVK pays ~15 ms per blend/format variant (93-96 %), ~5 ms per layout, and 211-242 ms
+for every pixel shader drawn with the second vertex shader `vs_494fe349b8bc12ec` (the other second partner,
+`vs_1279d081455f5815`, cost 95 ms on its first pixel shader and 4 ms on its second; the cause of the
+per-pair repeat is not explained). Both backends sit on a persistent macOS-level cache: a second launch with
+an empty DXVK state cache still drops every new pipeline to ~4 ms (~3 ms above f), and wined3d's repeat drops
+b-e to the baseline while a and g keep 2-3 ms (the per-pair GLSL program, I). DXVK's state cache (61 entries,
+14,191 B) removes the remainder: with it, the cache's pipelines are built during the settle period after
+shader creation and every step is at the f baseline. MoltenVK writes one `[mvk-warn] ... Metal does not support
+disabling primitive restart.` line per pipeline it creates (48 = 6 new steps x 8 shaders on both cold runs,
+0 on the warm run), a usable per-pipeline counter in game logs. Consequence for a warm-up pass: compiling
+each program once with one state covers neither backend's first-ever cost (each further blend/format/layout
+variant and each vs/ps pairing is a new pipeline of comparable cost); it would have to issue the
+combinations the game uses, or rely on the persistent caches, which make every variant cheap (~3 ms) from the
+second launch on (I, from these 8 shaders).
+
 ## Alternatives considered and why they lose
 
 - **Write the 9-on-11 translator (the question as asked).** Loses on the

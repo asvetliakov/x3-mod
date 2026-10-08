@@ -1,0 +1,171 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+# d3d9=builtin sha256=None overrides=d3d9=b;d3dx9_37=n
+# command: '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update --dll 'd3d9=b;d3dx9_37=n' --workdir /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc --env CX_GRAPHICS_BACKEND=wined3d /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc/d3d9_backend_smoke_fixture.exe builtin 'Z:\Users\asvetl\Library\Application Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll' - 'Z:\private\tmp\claude-501\-Users-asvetl-x3-mod\45f963d7-d42f-48f5-8dc1-5a91b08a846f\scratchpad\build-pc\d3d9-backend-smoke-pipeline-cost.txt'
+# exit=0 elapsed_s=10.1
+
+ENV name=X3M_ENV_PROBE present=0 value=-
+ENV name=DYLD_LIBRARY_PATH present=0 value=-
+ENV name=DYLD_FALLBACK_LIBRARY_PATH present=0 value=-
+ENV name=DXVK_LOG_LEVEL present=1 value=info
+ENV name=MVK_CONFIG_LOG_LEVEL present=1 value=2
+STEP load_d3d9 status=ok error=0
+MODULE role=d3d9 path=C:\windows\system32\d3d9.dll wine_builtin=1
+STEP load_d3dx status=ok error=0
+MODULE role=d3dx9_37 path=Z:\Users\asvetl\Library\Application_Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll wine_builtin=0
+STEP direct3dcreate9 status=ok
+MODULE role=wined3d.dll path=C:\windows\system32\wined3d.dll wine_builtin=1
+ADAPTER hr=00000000 driver=nvd3dum.dll description=NVIDIA_GeForce_8800_GTX device_name=\\.\DISPLAY1 vendor=10de device=0191 driver_version=9.16.13.4052
+CAPS hr=00000000 vs=0300 ps=0300 max_textures=8 rts=4 vs_consts=256 max_tex=16384x16384
+FORMAT name=RESZ hr=00000000
+FORMAT name=INTZ hr=00000000
+FORMAT name=D24X8_texture hr=00000000
+FORMAT name=A16B16G16R16F_rt hr=00000000
+FORMAT name=A32B32G32R32F_rt hr=00000000
+FORMAT name=R32F_rt hr=00000000
+FORMAT name=G32R32F_rt hr=00000000
+FORMAT name=NULL_rt hr=00000000
+DEVICE hr=00000000 behavior=00000052 create_ms=7.4
+CHECK device_create PASS
+CHECK managed_textures PASS
+CHECK managed_cube PASS
+PRIVATEDATA resource=rt_surface unset_hr=88760866 unset_size=8 set_hr=00000000 get_hr=00000000 get_size=8 value=58334d0000000001 value_ok=1 small_hr=88760867 small_size=8
+CHECK privatedata_unset_rt PASS
+CHECK privatedata_roundtrip_rt PASS
+PRIVATEDATA resource=managed_texture unset_hr=88760866 unset_size=8 set_hr=00000000 get_hr=00000000 get_size=8 value=58334d0000000001 value_ok=1 small_hr=88760867 small_size=8
+CHECK privatedata_unset_managed PASS
+CHECK privatedata_roundtrip_managed PASS
+CHECK resources PASS
+SHADER name=vs30 hr=00000000
+SHADER name=vs11 hr=00000000
+SHADER name=vs30_generic hr=00000000
+SHADER name=vs20_generic hr=00000000
+SHADER name=ps30_tex hr=00000000
+SHADER name=ps30_tex_cube hr=00000000
+SHADER name=ps11_two hr=00000000
+SHADER name=ps30_depth hr=00000000
+SHADER name=ps30_const hr=00000000
+SHADER name=ps20_const hr=00000000
+DRAW name=quad_vs30_ps30 draw_hr=00000000 read_hr=00000000 mean_r=200.0 mean_g=40.0 mean_b=40.0 coverage=1.000 expect_r=200 expect_g=40 expect_b=40 expect_coverage=1.00
+CHECK quad_vs30_ps30 PASS
+DRAW name=alpha_test draw_hr=00000000 read_hr=00000000 mean_r=100.0 mean_g=20.0 mean_b=20.0 coverage=0.500 expect_r=100 expect_g=20 expect_b=20 expect_coverage=0.50
+CHECK alpha_test PASS
+DRAW name=two_samplers_ps11 draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=80.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps11 PASS
+DRAW name=two_samplers_ps30_2d_cube draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=80.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps30_2d_cube PASS
+DRAW name=two_stage_fixed_function draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=80.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_stage_fixed_function PASS
+DRAW name=managed_relock draw_hr=00000000 read_hr=00000000 mean_r=40.0 mean_g=200.0 mean_b=40.0 coverage=1.000 expect_r=40 expect_g=200 expect_b=40 expect_coverage=1.00
+CHECK managed_relock PASS
+DRAW name=stretch_source draw_hr=00000000 read_hr=00000000 mean_r=40.0 mean_g=40.0 mean_b=200.0 coverage=1.000 expect_r=40 expect_g=40 expect_b=200 expect_coverage=1.00
+CHECK stretch_source PASS
+DRAW name=stretchrect_rt_scaled draw_hr=00000000 read_hr=00000000 mean_r=10.0 mean_g=10.0 mean_b=50.0 coverage=0.250 expect_r=10 expect_g=10 expect_b=50 expect_coverage=0.25
+CHECK stretchrect_rt_scaled PASS
+DRAW name=stretchrect_backbuffer draw_hr=00000000 read_hr=00000000 mean_r=10.0 mean_g=200.0 mean_b=10.0 coverage=1.000 expect_r=10 expect_g=200 expect_b=10 expect_coverage=1.00
+CHECK stretchrect_backbuffer PASS
+STRETCHDEPTH hr=00000000
+CHECK stretchrect_depth PASS
+QUERY type=event ok=1 ms=2.37
+CHECK event_query PASS
+QUERY type=occlusion hr=00000000 pixels=65536 expect=65536
+CHECK occlusion_query PASS
+QUERY type=10 supported_hr=8876086a
+QUERY type=11 supported_hr=8876086a
+QUERY type=12 supported_hr=8876086a
+RESZ format=D24X8 create_hr=00000000 resz_hr=00000000 reference=0.25 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+RESZ format=D24X8 create_hr=00000000 resz_hr=00000000 reference=0.75 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+RESZ format=INTZ create_hr=00000000 resz_hr=00000000 reference=0.25 draw_hr=00000000 read_hr=00000000 mean_r=128.0
+RESZ format=INTZ create_hr=00000000 resz_hr=00000000 reference=0.75 draw_hr=00000000 read_hr=00000000 mean_r=128.0
+EFFECT create_hr=00000000 error=-
+DRAW name=d3dx_effect draw_hr=00000000 read_hr=00000000 mean_r=64.0 mean_g=128.0 mean_b=191.0 coverage=1.000 expect_r=64 expect_g=128 expect_b=191 expect_coverage=1.00
+CHECK d3dx_effect PASS
+PRESENT hr=00000000
+CHECK present_hidden_window PASS
+PIPELINE_COST_SHADER name=ps_241c3fa33270f58e create_hr=00000000 create_us=19 words=1883
+PIPELINE_COST_SHADER name=vs_6059306306203243 create_hr=00000000 create_us=11 words=164
+PIPELINE_COST_SHADER name=vs_1279d081455f5815 create_hr=00000000 create_us=9 words=168
+PIPELINE_COST_SHADER name=ps_f3172baa8dd19a40 create_hr=00000000 create_us=12 words=1883
+PIPELINE_COST_SHADER name=ps_f1b0e820c7b488c3 create_hr=00000000 create_us=332 words=1791
+PIPELINE_COST_SHADER name=vs_37c34a7478544c14 create_hr=00000000 create_us=62 words=768
+PIPELINE_COST_SHADER name=vs_494fe349b8bc12ec create_hr=00000000 create_us=13 words=526
+PIPELINE_COST_SHADER name=ps_496049cec2066ed3 create_hr=00000000 create_us=15 words=1780
+PIPELINE_COST_SHADER name=ps_5f82ecacd39529cd create_hr=00000000 create_us=14 words=1765
+PIPELINE_COST_SHADER name=ps_6733b119142c8d42 create_hr=00000000 create_us=12 words=1754
+PIPELINE_COST_SHADER name=ps_31445adb0a62d134 create_hr=00000000 create_us=12 words=1746
+PIPELINE_COST_SHADER name=ps_d51cf763125cb85a create_hr=00000000 create_us=10 words=1720
+PIPELINE_WARMUP step=a us=66083 draw_hr=00000000 waited=1
+PIPELINE_WARMUP step=b us=3779 draw_hr=00000000 waited=1
+PIPELINE_WARMUP step=c us=4129 draw_hr=00000000 waited=1
+PIPELINE_WARMUP step=d us=4183 draw_hr=00000000 waited=1
+PIPELINE_WARMUP step=e us=3576 draw_hr=00000000 waited=1
+PIPELINE_WARMUP step=f us=346 draw_hr=00000000 waited=1
+PIPELINE_WARMUP step=g us=222 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_241c3fa33270f58e step=a us=30093 vs=vs_6059306306203243 draw_hr=00000000 waited=1 ps_create_us=19
+pipeline_cost ps=ps_241c3fa33270f58e step=b us=9619 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_241c3fa33270f58e step=c us=9246 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_241c3fa33270f58e step=d us=4282 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_241c3fa33270f58e step=e us=9466 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_241c3fa33270f58e step=f us=651 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_241c3fa33270f58e step=g us=16164 vs=vs_1279d081455f5815 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f3172baa8dd19a40 step=a us=12683 vs=vs_6059306306203243 draw_hr=00000000 waited=1 ps_create_us=12
+pipeline_cost ps=ps_f3172baa8dd19a40 step=b us=10296 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f3172baa8dd19a40 step=c us=9470 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f3172baa8dd19a40 step=d us=871 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f3172baa8dd19a40 step=e us=9200 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f3172baa8dd19a40 step=f us=726 vs=vs_6059306306203243 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f3172baa8dd19a40 step=g us=10414 vs=vs_1279d081455f5815 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f1b0e820c7b488c3 step=a us=141339 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1 ps_create_us=332
+pipeline_cost ps=ps_f1b0e820c7b488c3 step=b us=14942 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f1b0e820c7b488c3 step=c us=14631 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f1b0e820c7b488c3 step=d us=10684 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f1b0e820c7b488c3 step=e us=14624 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f1b0e820c7b488c3 step=f us=596 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_f1b0e820c7b488c3 step=g us=12238 vs=vs_494fe349b8bc12ec draw_hr=00000000 waited=1
+pipeline_cost ps=ps_496049cec2066ed3 step=a us=20317 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1 ps_create_us=15
+pipeline_cost ps=ps_496049cec2066ed3 step=b us=14473 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_496049cec2066ed3 step=c us=14486 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_496049cec2066ed3 step=d us=760 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_496049cec2066ed3 step=e us=14315 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_496049cec2066ed3 step=f us=623 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_496049cec2066ed3 step=g us=2378 vs=vs_494fe349b8bc12ec draw_hr=00000000 waited=1
+pipeline_cost ps=ps_5f82ecacd39529cd step=a us=29994 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1 ps_create_us=14
+pipeline_cost ps=ps_5f82ecacd39529cd step=b us=14533 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_5f82ecacd39529cd step=c us=14105 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_5f82ecacd39529cd step=d us=10448 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_5f82ecacd39529cd step=e us=14365 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_5f82ecacd39529cd step=f us=597 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_5f82ecacd39529cd step=g us=10644 vs=vs_494fe349b8bc12ec draw_hr=00000000 waited=1
+pipeline_cost ps=ps_6733b119142c8d42 step=a us=20069 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1 ps_create_us=12
+pipeline_cost ps=ps_6733b119142c8d42 step=b us=14277 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_6733b119142c8d42 step=c us=13913 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_6733b119142c8d42 step=d us=732 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_6733b119142c8d42 step=e us=14374 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_6733b119142c8d42 step=f us=613 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_6733b119142c8d42 step=g us=2326 vs=vs_494fe349b8bc12ec draw_hr=00000000 waited=1
+pipeline_cost ps=ps_31445adb0a62d134 step=a us=16918 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1 ps_create_us=12
+pipeline_cost ps=ps_31445adb0a62d134 step=b us=13962 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_31445adb0a62d134 step=c us=14080 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_31445adb0a62d134 step=d us=748 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_31445adb0a62d134 step=e us=13741 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_31445adb0a62d134 step=f us=586 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_31445adb0a62d134 step=g us=2414 vs=vs_494fe349b8bc12ec draw_hr=00000000 waited=1
+pipeline_cost ps=ps_d51cf763125cb85a step=a us=16990 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1 ps_create_us=10
+pipeline_cost ps=ps_d51cf763125cb85a step=b us=14156 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_d51cf763125cb85a step=c us=14024 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_d51cf763125cb85a step=d us=743 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_d51cf763125cb85a step=e us=13811 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_d51cf763125cb85a step=f us=598 vs=vs_37c34a7478544c14 draw_hr=00000000 waited=1
+pipeline_cost ps=ps_d51cf763125cb85a step=g us=2239 vs=vs_494fe349b8bc12ec draw_hr=00000000 waited=1
+pipeline_cost_summary step=a n=8 median_us=20193 max_us=141339
+pipeline_cost_summary step=b n=8 median_us=14217 max_us=14942
+pipeline_cost_summary step=c n=8 median_us=14052 max_us=14631
+pipeline_cost_summary step=d n=8 median_us=815 max_us=10684
+pipeline_cost_summary step=e n=8 median_us=14063 max_us=14624
+pipeline_cost_summary step=f n=8 median_us=606 max_us=726
+pipeline_cost_summary step=g n=8 median_us=6414 max_us=16164
+CHECK pipeline_cost_draws PASS
+RESULT checks=23 failed=0 PASS
+
+--- stderr outside the sweep: 0 relevant of 114 lines (first 150) ---
+
+--- stderr error lines inside the sweep: 0 programs (first 60, first line each) ---

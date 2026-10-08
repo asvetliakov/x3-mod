@@ -14,6 +14,12 @@ variables through CrossOver's `wine --env` (applied after the bottle's environme
 CX_GRAPHICS_BACKEND=dxvk selects CrossOver's bundled DXVK for one run; DYLD_* set this way are still
 dropped by the hardened Wine loader, so MoltenVK cannot be swapped per process).
 
+--pipeline-cost adds the first-use cost measurement: the N (default 8) largest live pixel shaders by
+bytecode size, each with the live vertex shader it shares most effects with (and the second most
+common one for step g), timed per step (draw + event-query wait, QPC) by the fixture; rows
+`pipeline_cost ps=<hash> step=<a..g> us=<n>`, stderr lines between the fixture's X3M-PC markers are
+counted per step.
+
 Writes <results>/d3d9-backend-smoke/<name>.json (bottle, command, provenance hashes, parsed report,
 stderr attribution per swept program) and <name>.txt (stdout without passing sweep rows, relevant
 stderr lines, trimmed); the full stdout/stderr stays beside the fixture executable (untracked build
@@ -60,9 +66,12 @@ def fields(text):
 
 def parse(stdout):
     report = {'modules': [], 'steps': [], 'formats': [], 'shaders': [], 'draws': [], 'queries': [], 'resz': [],
+              'pipeline_cost': [], 'pipeline_cost_summary': [], 'pipeline_warmup': [], 'pipeline_cost_shaders': [],
               'privatedata': [], 'checks': [], 'sweep': [], 'other': []}
     tags = {'MODULE': 'modules', 'STEP': 'steps', 'FORMAT': 'formats', 'SHADER': 'shaders', 'DRAW': 'draws',
-            'QUERY': 'queries', 'RESZ': 'resz', 'PRIVATEDATA': 'privatedata', 'SWEEP': 'sweep', 'ASSEMBLE': 'other'}
+            'QUERY': 'queries', 'RESZ': 'resz', 'PRIVATEDATA': 'privatedata', 'SWEEP': 'sweep', 'ASSEMBLE': 'other',
+            'pipeline_cost': 'pipeline_cost', 'pipeline_cost_summary': 'pipeline_cost_summary', 'PIPELINE_WARMUP': 'pipeline_warmup',
+            'PIPELINE_COST_SHADER': 'pipeline_cost_shaders'}
     for line in stdout.splitlines():
         tag, _, rest = line.partition(' ')
         if tag == 'CHECK':
@@ -73,7 +82,7 @@ def parse(stdout):
             report['steps'].append(dict(fields(rest), name=name))
         elif tag in tags:
             report[tags[tag]].append(fields(rest))
-        elif tag in ('ADAPTER', 'CAPS', 'DEVICE', 'EFFECT', 'PRESENT', 'STRETCHDEPTH', 'SWEEPSUMMARY', 'SWEEPLIST', 'SWEEPSTOP', 'RESULT'):
+        elif tag in ('ADAPTER', 'CAPS', 'PIPELINE_COST_STATUS', 'DEVICE', 'EFFECT', 'PRESENT', 'STRETCHDEPTH', 'SWEEPSUMMARY', 'SWEEPLIST', 'SWEEPSTOP', 'RESULT'):
             report[tag.lower()] = fields(rest)
     report['failed_checks'] = [label for label, passed in report['checks'] if not passed]
     return report
@@ -95,6 +104,46 @@ def attribute(stderr):
         elif ERROR.search(line):
             per_program.setdefault(current, []).append(line.strip()[:300])
     return per_program, outside
+
+
+def attribute_pipeline_cost(stderr):
+    """stderr lines between X3M-PC-BEGIN/END markers, per (program, step)."""
+    per_step, current = {}, None
+    for line in stderr.splitlines():
+        begin = re.match(r'X3M-PC-BEGIN (\S+) (\w)', line)
+        if begin:
+            current = f'{begin.group(1)} {begin.group(2)}'
+            per_step.setdefault(current, [])
+            continue
+        if line.startswith('X3M-PC-END'):
+            current = None
+        elif current is not None:
+            per_step[current].append(line.strip()[:300])
+    return per_step
+
+
+def pipeline_cost_list(path, count):
+    """The `count` largest live pixel shaders (bytecode size, then name), each with its two most frequent
+    live vertex-shader partners (shared effect occurrences); '-' selects the fixture's generic vs_3_0."""
+    effects = [e for e in json.loads(ALIASES.read_text())['effects'] if '/3_0/' in e['path']]
+    programs = sorted({p for e in effects for p in e['program_occurrences']})
+    missing = [p for p in programs if not (PROGRAMS / f'{p}.bin').is_file()]
+    if missing:
+        return None, f'{len(missing)} of {len(programs)} live programs missing under {PROGRAMS}'
+    pixel = sorted((p for p in programs if p.startswith('ps_')), key=lambda p: (-(PROGRAMS / f'{p}.bin').stat().st_size, p))
+    chosen = []
+    for ps in pixel[:count]:
+        partners = {}
+        for effect in effects:
+            if ps in effect['program_occurrences']:
+                for vs, n in effect['program_occurrences'].items():
+                    if vs.startswith('vs_'):
+                        partners[vs] = partners.get(vs, 0) + n
+        ranked = sorted(partners, key=lambda vs: (-partners[vs], vs))[:2] + ['-', '-']
+        chosen.append({'ps': ps, 'bytes': (PROGRAMS / f'{ps}.bin').stat().st_size, 'vs': ranked[0], 'vs2': ranked[1]})
+    path.write_text(''.join('\t'.join(windows_path(PROGRAMS / f'{p}.bin') if p != '-' else '-' for p in (c['ps'], c['vs'], c['vs2'])) + '\n'
+                            for c in chosen))
+    return chosen, None
 
 
 def live_program_list(path):
@@ -136,6 +185,8 @@ def main():
     parser.add_argument('--no-sweep', action='store_true', help='Skip the game-program sweep')
     parser.add_argument('--env', action='append', default=[], help='KEY=VALUE for the process environment (repeatable)')
     parser.add_argument('--wine-env', action='append', default=[], help='KEY=VALUE passed through `wine --env` (repeatable)')
+    parser.add_argument('--pipeline-cost', action='store_true', help='Time first-use pipelines of the largest live pixel shaders per state step')
+    parser.add_argument('--pipeline-cost-count', type=int, default=8, help='How many pixel shaders --pipeline-cost measures (default 8)')
     parser.add_argument('--d3d9-order', help='d3d9 load order override (default b for builtin, n for a path; a Wine-builtin-marked '
                         'file such as CrossOver\'s DXVK needs b)')
     args = parser.parse_args()
@@ -171,12 +222,19 @@ def main():
         record['sweep_skipped'] = reason
         if live:
             list_arg = windows_path(exe.parent / 'd3d9-backend-smoke-programs.txt')
+    pipeline_arg = []
+    if args.pipeline_cost:
+        chosen, reason = pipeline_cost_list(exe.parent / 'd3d9-backend-smoke-pipeline-cost.txt', args.pipeline_cost_count)
+        if not chosen:
+            sys.exit(f'--pipeline-cost: {reason}')
+        record['pipeline_cost_programs'] = chosen
+        pipeline_arg = [windows_path(exe.parent / 'd3d9-backend-smoke-pipeline-cost.txt')]
     moltenvk = Path(bottle.WINE).parents[1] / 'lib/aarch64/libMoltenVK.dylib'  # what win32u.so dlopens (leaf name, rpath)
     record['moltenvk'] = {'path': str(moltenvk), 'bytes': moltenvk.stat().st_size, 'sha256': sha(moltenvk)} if moltenvk.is_file() else None
     command = [bottle.WINE, *bottle.wine_args(), '--dll', overrides, '--workdir', str(exe.parent)]
     if args.wine_env:
         command += ['--env', ' '.join(shlex.quote(item) for item in args.wine_env)]
-    command += [str(exe), windows_path(d3d9) if d3d9 else 'builtin', windows_path(d3dx), list_arg]
+    command += [str(exe), windows_path(d3d9) if d3d9 else 'builtin', windows_path(d3dx), list_arg, *pipeline_arg]
     record['command'] = command
     out_json = results / f'{name}.json'
     try:
@@ -196,6 +254,11 @@ def main():
         errors_outside = [line.strip()[:300] for line in outside if ERROR.search(line)]
         report['stderr_errors_outside_sweep'] = len(errors_outside)
         report['first_error'] = next(iter(errors_outside), None) or (report['sweep_errors'][0]['first'] if report['sweep_errors'] else None)
+        if args.pipeline_cost:
+            per_step = attribute_pipeline_cost(stderr)
+            report['pipeline_cost_stderr'] = {'steps_with_lines': sum(1 for lines in per_step.values() if lines),
+                                              'lines': sum(len(lines) for lines in per_step.values()),
+                                              'first': {key: lines[:3] for key, lines in per_step.items() if lines}}
         report['moltenvk_lines'] = sorted({line.strip()[:200] for line in stderr.splitlines() if 'MoltenVK' in line or 'mvk' in line.lower()})[:12]
         record['report'] = report
         relevant = [line.rstrip()[:300] for line in outside if RELEVANT.search(line)]

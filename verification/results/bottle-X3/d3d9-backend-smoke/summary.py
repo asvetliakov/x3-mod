@@ -31,3 +31,25 @@ for path in sorted(Path(__file__).parent.glob('*.json')):
     print(f"  queries={[(q.get('type'), q.get('ok', q.get('hr', q.get('supported_hr'))), q.get('pixels')) for q in report.get('queries', [])]}")
     print(f"  resz={[(r.get('format'), r.get('reference'), r.get('mean_r')) for r in report.get('resz', [])]}")
     print(f"  effect={report.get('effect')} present={report.get('present')} stretch_depth={report.get('stretchdepth')}")
+
+# --pipeline-cost records: per step the median and max of draw + event wait (us) over the measured pixel
+# shaders, the median ratio to step a, and the median excess over step f (the cached-pipeline baseline)
+# relative to step a's excess.
+from statistics import median
+for path in sorted(Path(__file__).parent.glob('pipeline-cost-*.json')):
+    record = json.loads(path.read_text())
+    rows = record.get('report', {}).get('pipeline_cost', [])
+    if not rows:
+        continue
+    by_step = {}
+    for row in rows:
+        by_step.setdefault(row['step'], []).append(row['us'])
+    a, f = median(by_step['a']), median(by_step['f'])
+    stderr = record['report'].get('pipeline_cost_stderr') or {}
+    print(f"{record['name']}: shaders={len(by_step['a'])} wine_env={record.get('wine_env')} elapsed_s={record.get('elapsed_s')} "
+          f"stderr_lines_in_steps={stderr.get('lines')} distinct={sorted({l for ls in (stderr.get('first') or {}).values() for l in ls})[:3]}")
+    for step in 'abcdefg':
+        values = by_step.get(step, [])
+        m = median(values)
+        print(f"  step={step} median_us={m:.0f} max_us={max(values)} ratio_to_a={m / a:.2f} "
+              f"excess_over_f_vs_a={(m - f) / (a - f) if a != f else float('nan'):.2f}")

@@ -1,0 +1,1360 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "name": "pipeline-cost-dxvk-cold-repeat",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/d3d9_backend_smoke_fixture.cpp": "4db0bdc04c1c177686adca40a97cfebf7da31583370da31f0268bbb5bdb5fbbd",
+  "verification/probe/run_d3d9_backend_smoke.py": "b942dc79ea6c84cf8e5da1b1ec6b00094e9b642e8962c7ecf453c1f843994995"
+ },
+ "executable": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc/d3d9_backend_smoke_fixture.exe",
+ "executable_sha256": "a6152682efdfb15100acb209513dde5b4cc85e5cf2d1b48cde93a46c898c6238",
+ "d3d9": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/dxvk/i386-windows/d3d9.dll",
+ "d3d9_sha256": "a5005d1f1f5e953dafe633027470242c273423c6c6ac733ba99705e699e1300d",
+ "d3d9_bytes": 15157937,
+ "d3dx9_37": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+ "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+ "dll_overrides": "d3d9=b;d3dx9_37=n",
+ "env": {
+  "DXVK_LOG_LEVEL": "info",
+  "MVK_CONFIG_LOG_LEVEL": "2"
+ },
+ "extra_env": [],
+ "wine_env": [
+  "CX_GRAPHICS_BACKEND=dxvk",
+  "DXVK_STATE_CACHE_PATH=/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/dxvk-cache-pc2"
+ ],
+ "pipeline_cost_programs": [
+  {
+   "ps": "ps_241c3fa33270f58e",
+   "bytes": 7532,
+   "vs": "vs_6059306306203243",
+   "vs2": "vs_1279d081455f5815"
+  },
+  {
+   "ps": "ps_f3172baa8dd19a40",
+   "bytes": 7532,
+   "vs": "vs_6059306306203243",
+   "vs2": "vs_1279d081455f5815"
+  },
+  {
+   "ps": "ps_f1b0e820c7b488c3",
+   "bytes": 7164,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_496049cec2066ed3",
+   "bytes": 7120,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_5f82ecacd39529cd",
+   "bytes": 7060,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_6733b119142c8d42",
+   "bytes": 7016,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_31445adb0a62d134",
+   "bytes": 6984,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  },
+  {
+   "ps": "ps_d51cf763125cb85a",
+   "bytes": 6880,
+   "vs": "vs_37c34a7478544c14",
+   "vs2": "vs_494fe349b8bc12ec"
+  }
+ ],
+ "moltenvk": {
+  "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/libMoltenVK.dylib",
+  "bytes": 10925552,
+  "sha256": "aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f"
+ },
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--dll",
+  "d3d9=b;d3dx9_37=n",
+  "--workdir",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc",
+  "--env",
+  "CX_GRAPHICS_BACKEND=dxvk DXVK_STATE_CACHE_PATH=/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/dxvk-cache-pc2",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc/d3d9_backend_smoke_fixture.exe",
+  "Z:\\Applications\\CrossOver Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+  "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+  "-",
+  "Z:\\private\\tmp\\claude-501\\-Users-asvetl-x3-mod\\45f963d7-d42f-48f5-8dc1-5a91b08a846f\\scratchpad\\build-pc\\d3d9-backend-smoke-pipeline-cost.txt"
+ ],
+ "killed": null,
+ "exit_code": 0,
+ "elapsed_s": 8.0,
+ "full_log": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/build-pc/d3d9-backend-smoke-pipeline-cost-dxvk-cold-repeat.full.txt",
+ "report": {
+  "modules": [
+   {
+    "role": "d3d9",
+    "path": "Z:\\Applications\\CrossOver_Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+    "wine_builtin": 1
+   },
+   {
+    "role": "d3dx9_37",
+    "path": "Z:\\Users\\asvetl\\Library\\Application_Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+    "wine_builtin": 0
+   },
+   {
+    "role": "winevulkan.dll",
+    "path": "C:\\windows\\system32\\winevulkan.dll",
+    "wine_builtin": 1
+   },
+   {
+    "role": "vulkan-1.dll",
+    "path": "C:\\windows\\system32\\vulkan-1.dll",
+    "wine_builtin": 1
+   }
+  ],
+  "steps": [
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3d9"
+   },
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3dx"
+   },
+   {
+    "status": "ok",
+    "name": "direct3dcreate9"
+   }
+  ],
+  "formats": [
+   {
+    "name": "RESZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "INTZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "D24X8_texture",
+    "hr": "00000000"
+   },
+   {
+    "name": "A16B16G16R16F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "A32B32G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "NULL_rt",
+    "hr": "00000000"
+   }
+  ],
+  "shaders": [
+   {
+    "name": "vs30",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs11",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs30_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs20_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex_cube",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps11_two",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_depth",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_const",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps20_const",
+    "hr": "00000000"
+   }
+  ],
+  "draws": [
+   {
+    "name": "quad_vs30_ps30",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "200.0",
+    "mean_g": "40.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 200,
+    "expect_g": 40,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "alpha_test",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "100.0",
+    "mean_g": "20.0",
+    "mean_b": "20.0",
+    "coverage": "0.500",
+    "expect_r": 100,
+    "expect_g": 20,
+    "expect_b": 20,
+    "expect_coverage": "0.50"
+   },
+   {
+    "name": "two_samplers_ps11",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_samplers_ps30_2d_cube",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_stage_fixed_function",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "managed_relock",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "200.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 200,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretch_source",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "40.0",
+    "mean_b": "200.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 40,
+    "expect_b": 200,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretchrect_rt_scaled",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "10.0",
+    "mean_b": "50.0",
+    "coverage": "0.250",
+    "expect_r": 10,
+    "expect_g": 10,
+    "expect_b": 50,
+    "expect_coverage": "0.25"
+   },
+   {
+    "name": "stretchrect_backbuffer",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "200.0",
+    "mean_b": "10.0",
+    "coverage": "1.000",
+    "expect_r": 10,
+    "expect_g": 200,
+    "expect_b": 10,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "d3dx_effect",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "64.0",
+    "mean_g": "128.0",
+    "mean_b": "191.0",
+    "coverage": "1.000",
+    "expect_r": 64,
+    "expect_g": 128,
+    "expect_b": 191,
+    "expect_coverage": "1.00"
+   }
+  ],
+  "queries": [
+   {
+    "type": "event",
+    "ok": 1,
+    "ms": "1.00"
+   },
+   {
+    "type": "occlusion",
+    "hr": "00000000",
+    "pixels": 65536,
+    "expect": 65536
+   },
+   {
+    "type": 10,
+    "supported_hr": "00000000"
+   },
+   {
+    "type": 11,
+    "supported_hr": "00000000"
+   },
+   {
+    "type": 12,
+    "supported_hr": "00000000"
+   }
+  ],
+  "resz": [
+   {
+    "format": "D24X8",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.25",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "255.0"
+   },
+   {
+    "format": "D24X8",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.75",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "0.0"
+   },
+   {
+    "format": "INTZ",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.25",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "128.0"
+   },
+   {
+    "format": "INTZ",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.75",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "128.0"
+   }
+  ],
+  "pipeline_cost": [
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "a",
+    "us": 13125,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 874
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "b",
+    "us": 4461,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "c",
+    "us": 4097,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "d",
+    "us": 3964,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "e",
+    "us": 3394,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "f",
+    "us": 872,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_241c3fa33270f58e",
+    "step": "g",
+    "us": 3787,
+    "vs": "vs_1279d081455f5815",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "a",
+    "us": 3662,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 283
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "b",
+    "us": 3628,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "c",
+    "us": 3470,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "d",
+    "us": 3878,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "e",
+    "us": 3568,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "f",
+    "us": 1211,
+    "vs": "vs_6059306306203243",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f3172baa8dd19a40",
+    "step": "g",
+    "us": 3601,
+    "vs": "vs_1279d081455f5815",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "a",
+    "us": 4511,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 1419
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "b",
+    "us": 4256,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "c",
+    "us": 4384,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "d",
+    "us": 4334,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "e",
+    "us": 4149,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "f",
+    "us": 899,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_f1b0e820c7b488c3",
+    "step": "g",
+    "us": 4180,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "a",
+    "us": 4066,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 296
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "b",
+    "us": 4275,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "c",
+    "us": 4118,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "d",
+    "us": 4237,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "e",
+    "us": 4165,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "f",
+    "us": 1169,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_496049cec2066ed3",
+    "step": "g",
+    "us": 4051,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "a",
+    "us": 4392,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 300
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "b",
+    "us": 4215,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "c",
+    "us": 4210,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "d",
+    "us": 4028,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "e",
+    "us": 4018,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "f",
+    "us": 1171,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_5f82ecacd39529cd",
+    "step": "g",
+    "us": 4094,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "a",
+    "us": 4050,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 317
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "b",
+    "us": 4208,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "c",
+    "us": 4362,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "d",
+    "us": 4170,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "e",
+    "us": 4088,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "f",
+    "us": 1208,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_6733b119142c8d42",
+    "step": "g",
+    "us": 4014,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "a",
+    "us": 4169,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 627
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "b",
+    "us": 3988,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "c",
+    "us": 3915,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "d",
+    "us": 3974,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "e",
+    "us": 4049,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "f",
+    "us": 1154,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_31445adb0a62d134",
+    "step": "g",
+    "us": 3970,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "a",
+    "us": 3987,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1,
+    "ps_create_us": 269
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "b",
+    "us": 4050,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "c",
+    "us": 4137,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "d",
+    "us": 3905,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "e",
+    "us": 4105,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "f",
+    "us": 1117,
+    "vs": "vs_37c34a7478544c14",
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "ps": "ps_d51cf763125cb85a",
+    "step": "g",
+    "us": 4458,
+    "vs": "vs_494fe349b8bc12ec",
+    "draw_hr": "00000000",
+    "waited": 1
+   }
+  ],
+  "pipeline_cost_summary": [
+   {
+    "step": "a",
+    "n": 8,
+    "median_us": 4117,
+    "max_us": 13125
+   },
+   {
+    "step": "b",
+    "n": 8,
+    "median_us": 4211,
+    "max_us": 4461
+   },
+   {
+    "step": "c",
+    "n": 8,
+    "median_us": 4127,
+    "max_us": 4384
+   },
+   {
+    "step": "d",
+    "n": 8,
+    "median_us": 4001,
+    "max_us": 4334
+   },
+   {
+    "step": "e",
+    "n": 8,
+    "median_us": 4069,
+    "max_us": 4165
+   },
+   {
+    "step": "f",
+    "n": 8,
+    "median_us": 1161,
+    "max_us": 1211
+   },
+   {
+    "step": "g",
+    "n": 8,
+    "median_us": 4032,
+    "max_us": 4458
+   }
+  ],
+  "pipeline_warmup": [
+   {
+    "step": "a",
+    "us": 1765,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "b",
+    "us": 2037,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "c",
+    "us": 2057,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "d",
+    "us": 2111,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "e",
+    "us": 2137,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "f",
+    "us": 1269,
+    "draw_hr": "00000000",
+    "waited": 1
+   },
+   {
+    "step": "g",
+    "us": 1200,
+    "draw_hr": "00000000",
+    "waited": 1
+   }
+  ],
+  "pipeline_cost_shaders": [
+   {
+    "name": "ps_241c3fa33270f58e",
+    "create_hr": "00000000",
+    "create_us": 874,
+    "words": 1883
+   },
+   {
+    "name": "vs_6059306306203243",
+    "create_hr": "00000000",
+    "create_us": 57,
+    "words": 164
+   },
+   {
+    "name": "vs_1279d081455f5815",
+    "create_hr": "00000000",
+    "create_us": 45,
+    "words": 168
+   },
+   {
+    "name": "ps_f3172baa8dd19a40",
+    "create_hr": "00000000",
+    "create_us": 283,
+    "words": 1883
+   },
+   {
+    "name": "ps_f1b0e820c7b488c3",
+    "create_hr": "00000000",
+    "create_us": 1419,
+    "words": 1791
+   },
+   {
+    "name": "vs_37c34a7478544c14",
+    "create_hr": "00000000",
+    "create_us": 621,
+    "words": 768
+   },
+   {
+    "name": "vs_494fe349b8bc12ec",
+    "create_hr": "00000000",
+    "create_us": 115,
+    "words": 526
+   },
+   {
+    "name": "ps_496049cec2066ed3",
+    "create_hr": "00000000",
+    "create_us": 296,
+    "words": 1780
+   },
+   {
+    "name": "ps_5f82ecacd39529cd",
+    "create_hr": "00000000",
+    "create_us": 300,
+    "words": 1765
+   },
+   {
+    "name": "ps_6733b119142c8d42",
+    "create_hr": "00000000",
+    "create_us": 317,
+    "words": 1754
+   },
+   {
+    "name": "ps_31445adb0a62d134",
+    "create_hr": "00000000",
+    "create_us": 627,
+    "words": 1746
+   },
+   {
+    "name": "ps_d51cf763125cb85a",
+    "create_hr": "00000000",
+    "create_us": 269,
+    "words": 1720
+   }
+  ],
+  "privatedata": [
+   {
+    "resource": "rt_surface",
+    "unset_hr": "8876086c",
+    "unset_size": 0,
+    "set_hr": "00000000",
+    "get_hr": "00000000",
+    "get_size": 8,
+    "value": "58334d0000000001",
+    "value_ok": 1,
+    "small_hr": "8876086c",
+    "small_size": 8
+   },
+   {
+    "resource": "managed_texture",
+    "unset_hr": "8876086c",
+    "unset_size": 0,
+    "set_hr": "00000000",
+    "get_hr": "00000000",
+    "get_size": 8,
+    "value": "58334d0000000001",
+    "value_ok": 1,
+    "small_hr": "8876086c",
+    "small_size": 8
+   }
+  ],
+  "checks": [
+   [
+    "device_create",
+    true
+   ],
+   [
+    "managed_textures",
+    true
+   ],
+   [
+    "managed_cube",
+    true
+   ],
+   [
+    "privatedata_unset_rt",
+    true
+   ],
+   [
+    "privatedata_roundtrip_rt",
+    true
+   ],
+   [
+    "privatedata_unset_managed",
+    true
+   ],
+   [
+    "privatedata_roundtrip_managed",
+    true
+   ],
+   [
+    "resources",
+    true
+   ],
+   [
+    "quad_vs30_ps30",
+    true
+   ],
+   [
+    "alpha_test",
+    true
+   ],
+   [
+    "two_samplers_ps11",
+    true
+   ],
+   [
+    "two_samplers_ps30_2d_cube",
+    true
+   ],
+   [
+    "two_stage_fixed_function",
+    true
+   ],
+   [
+    "managed_relock",
+    true
+   ],
+   [
+    "stretch_source",
+    true
+   ],
+   [
+    "stretchrect_rt_scaled",
+    true
+   ],
+   [
+    "stretchrect_backbuffer",
+    true
+   ],
+   [
+    "stretchrect_depth",
+    true
+   ],
+   [
+    "event_query",
+    true
+   ],
+   [
+    "occlusion_query",
+    true
+   ],
+   [
+    "d3dx_effect",
+    true
+   ],
+   [
+    "present_hidden_window",
+    true
+   ],
+   [
+    "pipeline_cost_draws",
+    true
+   ]
+  ],
+  "sweep": [],
+  "other": [],
+  "adapter": {
+   "hr": "00000000",
+   "driver": "nvd3dum.dll",
+   "description": "Apple_M5_Pro",
+   "device_name": "\\\\.\\DISPLAY1",
+   "vendor": "106b",
+   "device": "1a06020a",
+   "driver_version": "32767.65535.65535.65535"
+  },
+  "caps": {
+   "hr": "00000000",
+   "vs": 300,
+   "ps": 300,
+   "max_textures": 8,
+   "rts": 4,
+   "vs_consts": 256,
+   "max_tex": "16384x16384"
+  },
+  "device": {
+   "hr": "00000000",
+   "behavior": "00000052",
+   "create_ms": "38.4"
+  },
+  "stretchdepth": {
+   "hr": "00000000"
+  },
+  "effect": {
+   "create_hr": "00000000",
+   "error": "-"
+  },
+  "present": {
+   "hr": "00000000"
+  },
+  "result": {
+   "checks": 23,
+   "failed": 0
+  },
+  "failed_checks": [],
+  "sweep_error_programs": 0,
+  "sweep_errors": [],
+  "stderr_errors_outside_sweep": 63,
+  "first_error": "info:  OpenVR: Failed to locate module",
+  "pipeline_cost_stderr": {
+   "steps_with_lines": 48,
+   "lines": 48,
+   "first": {
+    "ps_241c3fa33270f58e a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_241c3fa33270f58e b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_241c3fa33270f58e c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_241c3fa33270f58e d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_241c3fa33270f58e e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_241c3fa33270f58e g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f3172baa8dd19a40 a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f3172baa8dd19a40 b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f3172baa8dd19a40 c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f3172baa8dd19a40 d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f3172baa8dd19a40 e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f3172baa8dd19a40 g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f1b0e820c7b488c3 a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f1b0e820c7b488c3 b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f1b0e820c7b488c3 c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f1b0e820c7b488c3 d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f1b0e820c7b488c3 e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_f1b0e820c7b488c3 g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_496049cec2066ed3 a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_496049cec2066ed3 b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_496049cec2066ed3 c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_496049cec2066ed3 d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_496049cec2066ed3 e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_496049cec2066ed3 g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_5f82ecacd39529cd a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_5f82ecacd39529cd b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_5f82ecacd39529cd c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_5f82ecacd39529cd d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_5f82ecacd39529cd e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_5f82ecacd39529cd g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_6733b119142c8d42 a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_6733b119142c8d42 b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_6733b119142c8d42 c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_6733b119142c8d42 d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_6733b119142c8d42 e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_6733b119142c8d42 g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_31445adb0a62d134 a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_31445adb0a62d134 b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_31445adb0a62d134 c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_31445adb0a62d134 d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_31445adb0a62d134 e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_31445adb0a62d134 g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_d51cf763125cb85a a": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_d51cf763125cb85a b": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_d51cf763125cb85a c": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_d51cf763125cb85a d": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_d51cf763125cb85a e": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ],
+    "ps_d51cf763125cb85a g": [
+     "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+    ]
+   }
+  },
+  "moltenvk_lines": [
+   "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+  ]
+ },
+ "report_sha256": "8fbba03e92427c0f41eaef9a4b53f04bcd829bfa7214d9f7dea299b50ce43245"
+}
