@@ -352,6 +352,10 @@ SETTINGS = [
     entry('engine_light', 'enum', 'engine', 'Engine light on the hull (engine_effects = plumes): each ship\'s brightest main '
           'engine lights the hull plates around its nozzles in the engine\'s colour, brighter at full throttle. on or off. '
           'Read when the game starts.', builtin='on', choices=('on', 'off'), launcher='--engine-light', since='2026-10-03'),
+    entry('engine_light_hold', 'int', 'engine', 'How long the engine light on the hull stays on after a ship\'s engines '
+          'leave the screen while its hull is still in view (engine_light = on), in frames: the light follows the hull for '
+          'this many frames and fades out over the last third. 0 to 600, 0 = goes out at once, default 60. Read when the '
+          'game starts.', builtin='60', range=(0, 600), launcher='--engine-light-hold', since='2026-10-08'),
     entry('engine_shimmer', 'enum', 'engine', 'Heat shimmer behind the nearest engines of the mod\'s engine plumes '
           '(engine_effects = plumes): the air behind a close engine wavers slightly, mostly visible on your own ship in '
           'chase view. on or off. Read when the game starts.', builtin='on',

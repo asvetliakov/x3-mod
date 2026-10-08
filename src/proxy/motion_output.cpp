@@ -10756,7 +10756,7 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 503: return engine_light_ ? engine_light_->counts.no_twin : 0u;
     case 504: return engine_light_ ? engine_light_->counts.no_rows : 0u;
     case 505: return engine_light_ ? engine_light_->twins : 0u;
-    case 506: return engine_light_ ? engine_light_->ships.count : 0u;
+    case 506: return engine_light_ ? engine_light_->ships->count : 0u;
     case 507: return engine_light_ ? engine_light_->nodes.count : 0u;
     case 508: return unsigned(engine_light_requested_);
     case 83: return unsigned(fade_rt2_owner_);   // fixture: X3M_FADE_RT2_OWNER resolved on

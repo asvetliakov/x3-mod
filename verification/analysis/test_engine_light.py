@@ -5,8 +5,10 @@ docs/architecture/engine-exhaust-gap-analysis.md).
 - the portable core (src/proxy/engine_light_core.h) through verification/probe/engine_light_host.cpp: the brightest main
   nozzle per ship (RCS, brake-pushed, other-view and parentless records ignored; ties to the lower handle), the
   256-ship cap (the dimmest entry gives way to a brighter ship and always to the own ship), the twin kinds' share /
-  gain / widen match, the one-frame protocol with the motion compensation, degenerate rows, the VS layouts, the host
-  cost;
+  gain / widen match, the one-frame protocol with the motion compensation, degenerate rows, the hold (a ship without a
+  record held on its moving hull for engine_light_hold frames by up to four anchors that follow its LOD, faded over the
+  last third, dropped when undrawn or expired, re-bound at full strength by a record, competing at the cap with its
+  faded brightness, the own ship's flag kept), the VS layouts, the host cost;
 - the pixel twins (verification/probe/engine_light_structure.cpp over the local original corpus, skipped without it):
   every non-asteroid reviewed pixel program gets a twin in all eight option sets, the four asteroid programs refuse,
   and each twin is its base variant plus exactly the words re-derived here (one `def c199`, the tier thresholds
@@ -246,9 +248,32 @@ class OptionTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 launch_env(module, game, wine, '--vanilla', '--engine-light', 'on')
 
+    def test_hold_schema_entry(self):
+        e = schema.BY_KEY['engine_light_hold']
+        self.assertEqual((e['env'], e['type'], e['section'], e['default'], e['builtin'], e['launcher'], e['developer']),
+                         ('X3M_ENGINE_LIGHT_HOLD', 'int', 'engine', None, '60', '--engine-light-hold', False))
+        self.assertEqual(e['range'], ((0.0, 600.0, False),))
+        self.assertIn('{"X3M_ENGINE_LIGHT_HOLD", "engine_light_hold", Type::Int,', (ROOT / 'src/config/config_schema_inc.h').read_text())
+        self.assertIn(';engine_light_hold = 60', (ROOT / 'assets/x3m.ini').read_text())
+
+    def test_hold_launcher(self):
+        module, game, wine, directory = hermetic_launcher()
+        with directory:
+            self.assertNotIn('X3M_ENGINE_LIGHT_HOLD', launch_env(module, game, wine))
+            for value in ('0', '60', '600'):
+                env = launch_env(module, game, wine, '--engine-effects', 'plumes', '--engine-light-hold', value)
+                self.assertEqual(env['X3M_ENGINE_LIGHT_HOLD'], value)
+            for value in ('-1', '601'):
+                with self.assertRaises(SystemExit):
+                    launch_env(module, game, wine, '--engine-light-hold', value)
+            with self.assertRaises(SystemExit):
+                launch_env(module, game, wine, '--vanilla', '--engine-light-hold', '60')
+
     def test_read_once_at_configure(self):
         inc = (ROOT / 'src/proxy/motion_output_engine_light_inc.h').read_text()
         self.assertEqual(inc.count('config::get(L"X3M_ENGINE_LIGHT"'), 1)
+        self.assertEqual(inc.count('config::get(L"X3M_ENGINE_LIGHT_HOLD"'), 1)
+        self.assertIn('hold=%u hold_setting=%s hold_status=%s', inc)
         self.assertIn('void MotionOutput::configure_engine_light(bool plumes)', inc)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         # After the material options the twins compose with.
@@ -422,6 +447,75 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(c[8:12], [1.0, 0.0, 0.0, 0.0])
         d = self.r['degenerate']
         self.assertEqual((d['view'], d['singular_nodes'], d['singular']), (1, 0, 1))
+
+    def test_hold(self):
+        h = self.r['hold']
+        self.assertEqual(h['window'], 60)
+        # Bound with two plates; two anchors, the root's own draw (handle 4) first though logged after its child's.
+        self.assertEqual(h['bound'], dict(ships=1, plates=2, anchors=2, anchor_root=1, anchor_handle=4, age=0, fade=1, own=1, node=1,
+                                          node_plates=2))
+        ages = {a['age']: a for a in h['ages']}
+        self.assertEqual(sorted(ages), [1, 20, 40, 41, 50, 60])
+        for age, a in ages.items():
+            # Held while the hull is drawn, the own ship's flag kept, both plates in the child node's table.
+            self.assertEqual((a['ships'], a['held'], a['found'], a['entry_age'], a['own'], a['node_plates']), (1, 1, 1, age, 1, 2), a)
+            # The hull moved and turned (the stale world position is metres off) and the held plate rides on it: its
+            # world position is the model point through this frame's rows and the child node keeps its model point.
+            self.assertGreater(a['moved'], 5.0)
+            self.assertLess(a['world_error'], 1e-3)
+            self.assertLess(a['node_error'], 1e-3)
+            # The fade: 1 through age 40, then (61 - age) / 21; colour, value_eff, the other plate's colour and the
+            # radius all scaled by it.
+            expect = 1.0 if age <= 40 else (61 - age) / 21
+            self.assertAlmostEqual(a['fade'], expect, places=6)
+            self.assertAlmostEqual(a['expect_fade'], expect, places=6)
+            for k in ('colour', 'value', 'plate_colour', 'radius'):
+                self.assertAlmostEqual(a[k], expect, places=5, msg=(age, k))
+        self.assertEqual(ages[40]['fade'], 1.0)
+        self.assertLess(ages[60]['fade'], 0.05)
+        # Gone the frame after the window, counted expired; 60 held frames in all.
+        self.assertEqual(h['expired'], dict(ships=0, held=0, hold_expired=1, nodes=0))
+        self.assertEqual(h['held_frames'], 60)
+        # Not drawn: dropped at once, not expired.
+        self.assertEqual(h['undrawn'], dict(ships=0, held=0, hold_expired=0, nodes=0))
+        # A fresh record re-binds at full strength.
+        b = h['rebind']
+        self.assertAlmostEqual(b['fade_before'], 11 / 21, places=6)
+        self.assertEqual((b['ships'], b['held'], b['age'], b['fade'], b['own'], b['colour'], b['value']), (1, 0, 0, 1, 1, 1, 1))
+        self.assertLess(b['world_error'], 1e-3)
+        self.assertLess(b['node_error'], 1e-3)
+        # Window 0: today's rule, no anchor taken.
+        self.assertEqual(h['window0'], dict(anchor=0, ships=0, held=0, nodes=0))
+        # Anchors across a LOD switch: the root's handle changes (held by the child), then the child's (held by the
+        # root's new handle, the set having followed), then both (no anchor drawn: dropped); the plate stays on the hull.
+        lod = h['lod']
+        self.assertEqual((lod['bound_anchors'], lod['held'], lod['first_handle']), (2, [1, 1, 0], [5, 5, 0]))
+        self.assertLess(max(lod['world_error'][:2]), 1e-3)
+        self.assertGreaterEqual(min(lod['world_error'][:2]), 0.0)
+        # A singular first anchor falls through to the next.
+        self.assertEqual(h['singular_anchor']['held'], 1)
+        self.assertLess(h['singular_anchor']['world_error'], 1e-3)
+        # The cap: a held entry competes with brightness x fade (plate 0's value 8 against 256 records of 20, 1 or 4);
+        # it enters a full table only in place of a dimmer evictable entry or as the own ship (dropped counted either
+        # way). Value 4 loses to the held ship at fade 1 and beats it at age 55 (fade 6/21: 8 x 0.286 = 2.3).
+        cap = h['cap']
+        def row(held, own, fade):
+            return dict(ships=256, held=held, dropped=1, found=held, own=own if held else -1, fade=fade)
+        self.assertEqual(cap['brighter'], row(0, 0, 1))
+        self.assertEqual(cap['dimmer'], row(1, 0, 1))
+        self.assertEqual(cap['unfaded_wins'], row(1, 0, 1))
+        self.assertEqual({k: v for k, v in cap['faded_loses'].items() if k != 'fade'}, {k: v for k, v in row(0, 0, 0).items() if k != 'fade'})
+        self.assertAlmostEqual(cap['faded_loses']['fade'], 6 / 21, places=6)
+        self.assertEqual({k: v for k, v in cap['own_faded'].items() if k != 'fade'}, {k: v for k, v in row(1, 1, 0).items() if k != 'fade'})
+        self.assertEqual(h['parse'], dict(zero=1, max=1, refused=1))
+        law = h['fade_law']
+        self.assertEqual(law[:5], [0.5, 1.0, 0.5, 0.5, 1.0])
+        self.assertAlmostEqual(law[5], 200 / 201, places=6)
+        # Cost: the worst case (256 held ships of 72 plates) carries every entry; bounded by the table, no per-draw work.
+        c = h['cost']
+        self.assertEqual((c['held'], c['plates']), (256, 72))
+        self.assertLess(c['hold_us'], 500.0)
+        self.assertLess(c['anchor_us'], 100.0)
 
     def test_layouts(self):
         self.assertEqual(self.r['layout'], dict(loop=[28, 34], single=[7, 13], unknown=[0, 0]))
@@ -638,7 +732,14 @@ class RouteWiringTests(unittest.TestCase):
         self.assertIn('lights=%u own_lights=%s most_lights=%s', inc)
         self.assertIn('plates_more=%u plates_max=%u', inc)
         self.assertIn('hdr_state_ != HdrState::Active', inc)
-        self.assertIn('preset_scale, &s.ships, engine_ring_->own);', inc)   # the own-ship tags reach the ship table
+        self.assertIn('preset_scale, s.ships, engine_ring_->own);', inc)   # the own-ship tags reach the ship table
+        # The hold: the two ship tables swap at the boundary, the hold runs between the ship and the node table (only
+        # with the plume stage attached), and the frame row carries its two counts.
+        frame = inc[inc.index('void MotionOutput::engine_light_frame()'):inc.index('HRESULT MotionOutput::engine_light_upload()')]
+        self.assertLess(frame.index('std::swap(s.ships, s.previous);'), frame.index('el::build_ships('))
+        self.assertLess(frame.index('el::build_ships('), frame.index('if (attached) el::hold_ships(*s.previous, s.ships, s.log, s.hold);'))
+        self.assertLess(frame.index('el::hold_ships('), frame.index('el::build_nodes(*s.ships, s.log, &s.nodes);'))
+        self.assertIn('held=%u hold_expired=%u', frame)
         # The fixture scope carries node+0x18 like object_trace's (the seam case's lit node hangs under the root).
         self.assertIn('route.scope_parent = s.parent; // engine light: the synthetic node+0x18', cpp)
 
