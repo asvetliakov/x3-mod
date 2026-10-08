@@ -1,0 +1,29 @@
+{
+ "run": 139,
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run139-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-09T00:19 local",
+ "commit": "8f03c306 (candidate source); records rerun committed as fb95cfa0",
+ "candidate_record": "verification/results/run139-candidate-build.json",
+ "installed": {
+  "path": "~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "d48d2bab029bad3053b21766fd51554e0dab807bd49127416dd1d79d7ed9fd11",
+  "bytes": 59502807,
+  "verified": "shasum after install equals the candidate (measured)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "x3m.ini": "31402b51df844a05b8613453211643e39df6c716c7df85a0dfb6f8700805eb67 (user's file, occlusion_cull = off at line 438)",
+  "fonts": "14 files listed unchanged by manage.py",
+  "engine_bodies.json": "45a1215b\u2026 unchanged, 253 bodies"
+ },
+ "previous": {
+  "run": 138,
+  "sha256": "850342c036202a3a830a14cf3a4c7602bdcaa3da2cd8c53daecdda98a0e4f30e",
+  "bytes": 59403525,
+  "rollback": "/tmp/x3-run138-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "none in src/; the three engine records rerun and committed (fb95cfa0) after the build; all 8 records bind at HEAD (record_binding_out.json)",
+ "trigger": "Run 139 A: engine-side occlusion skip (occlusion_cull = engine) A/B against off on one build, plus the engine light hold check",
+ "producer": "main session (Fable 5.1), 2026-10-09"
+}

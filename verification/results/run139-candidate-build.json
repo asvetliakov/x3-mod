@@ -1,0 +1,107 @@
+{
+ "dll": "/tmp/x3-run139-candidate/build/d3d9.dll",
+ "sha256": "d48d2bab029bad3053b21766fd51554e0dab807bd49127416dd1d79d7ed9fd11",
+ "bytes": 59502807,
+ "commit": "8f03c306",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree /tmp/x3-run139-candidate (git worktree add --detach 8f03c306; build dir /tmp/x3-run139-candidate/build, gitignored; X3M_SOURCE_COMMIT 8f03c306c25536e5af7782edc21af428080b74e7 written by tools/build/write_source_commit.py, no dirty diff); clean configure+build wall time 45 s",
+ "gates": "rollback: Run138 850342c0... is installed (59,403,525 B, mtime Oct 8 22:11:53, re-measured) and is the rollback (/tmp/x3-run138-candidate/build/d3d9.dll); production diff since Run138 (git diff --stat 937b8ab3..8f03c306 -- src cmake CMakeLists.txt tools assets): 17 files, +1321/-276: engine light hold (65743185: src/proxy/engine_light_core.h, motion_output_engine_light_inc.h, motion_output.{h,cpp}, tools/config/schema.py engine_light_hold default 60, tools/manage.py, assets/x3m.ini), occlusion_cull default off (0e21425b) and the engine mode (7beca74d: new src/proxy/occlusion_engine_core.h, occlusion_engine_cull.{h,cpp}, motion_output_occlusion_cull_inc.h, capture.cpp, cull_small_parts.{h,cpp} chain, loader.cpp, CMakeLists.txt), regenerated src/config/config_schema_inc.h at the merge; build 0 warnings (configure and build logs, grep -ci warning: 0 and 0; measured); X3M_SOURCE_COMMIT 8f03c306c25536e5af7782edc21af428080b74e7, not dirty; x87 0 violations (check_no_x87.py build/d3d9.dll from the worktree: PASS, 127 roots, 795 reachable functions, +2 over Run138's 793; measured); generate --check from the worktree: PASS, 260 settings, 110 in the template (Run138: 259 / 109; measured); shader --check reused from Run136/138: git diff --stat 937b8ab3..8f03c306 -- src/effects and -- tools/shaders both empty; site verifiers and identity: git diff --stat 937b8ab3..8f03c306 -- 'verification/probe/verify_*.py' and -- 'src/proxy/*site*.h' both empty, Run124/Run123 evidence reused; the new 0x0047d2a2 chain is covered by the executed-stub fixture below; host tests from the main checkout at 8f03c306 (PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_occlusion_cull test_engine_light test_cull_small_parts test_config_schema): 75 tests OK, 14.7 s, 0 warning/skip lines (per module 12 / 26 / 19 / 18; measured); full host suite not run; Wine fixture evidence cited, not rerun: verification/results/occlusion-cull-batched/fixture-dxvk.json (passed, exit 0, 86 checks failed 0, its 8 recorded source hashes all equal to the 8f03c306 tree, measured; committed in 7beca74d) and verification/results/cull-small-parts-cpu.json (exit 0, 285 checks 0 failures, lens 58/0, engine 28/0; committed in 7beca74d; binds per record_binding.py); engine records (verification/results/run139-candidate/record_binding.py 8f03c306 -> record_binding_out.json): five bind (engine-plumes, engine-ribbons, engine-shimmer, engine-effects-patch, cull-small-parts-cpu); engine-effects does not (hash mismatch src/proxy/motion_output.h, src/proxy/capture.cpp; closure changed engine_light_core.h, occlusion_engine_core.h); engine-light-gpu does not (hash mismatch src/proxy/engine_light_core.h); seam-engine-light does not (whole-src scope, 13 changed paths); no Wine reruns were made for this record (not assigned); the engine light hold's own evidence is the host harness (test_engine_light 26 OK); launch --dry-run not run; X3AP not running before build and tests (pgrep); candidate worktree clean after all gates; installed d3d9.dll still Run138 and X3AP.exe untouched (no install performed) | reruns after the build (verify agent, wine_lock, bottle X3, wined3d; measured): run_engine_effects.py exit 0, 120 s, passed, modes main 174 / native 11 / unverified 6 / unpatched 11 / timing 20 / plumes 35 / armed 33 / armed_refused 7, all failed 0; run_motion_output.py seam-engine-light exit 0, 90 s, 107 checks, lit_frames 7, worst_relative 0.0040, zero_differ 0 (PARTIAL by design); run_engine_light.py exit 0, 66 s, passed, differ 0; records committed fb95cfa0; record_binding.py HEAD: all 8 bind, no hash mismatch, no closure change.",
+ "changes": [
+  "7beca74d Engine-side occlusion skip (occlusion_cull = engine): third stub chained on the 0x0047d2a2 cull claim skips a part's render visit when the previous frame's batched test hid all its draws; ...",
+  "65743185 Engine light hold: a ship with no main-jet record keeps its light and plates for engine_light_hold frames (default 60) while an anchored hull node is drawn, re-expressed from the anchor's ...",
+  "d8513ae2 RE: engine-side occlusion cull is feasible at the shared 0x0047d2a2 cull claim (dock-port/lens-flare site): node and view identities match the draw log; 29-58 fully hidden draws per frame,...",
+  "b82db124 Handoff 2026-10-08: session compacted while the engine-side occlusion cull investigation runs",
+  "0e21425b occlusion_cull default off: same-build A/B (run19 off vs run17 on, DXVK) is parity (view_submit 6.63 vs 6.54 ms at matched close-capital draws, issued draws halved, frame time unchanged); ...",
+  "50ec9655 Run 138 A (run17) triage: the batched cull is level with no cull (view_submit 6.5 ms vs 6.3/6.8 at matched close-capital draws; 132 us per frame of tests, issued draws halved, submit uncha...",
+  "75168cdd Run138 installed: batched occlusion cull + 8-frame staggered re-test, DLL 850342c0\u2026 (59,403,525 B) from clean 937b8ab3 into bottle X3 at 22:11, bytes verified, EXE/bottle/x3m.ini/fonts/eng...",
+  "8f03c306 merge of the engine-side occlusion skip branch over the engine light hold; regenerated src/config/config_schema_inc.h"
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "carried over unchanged from the Run138 record; installed table sha256 re-measured equal (45a1215b...); git diff --stat 937b8ab3..8f03c306 -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "carried over unchanged from the Run138 record: git diff --stat 937b8ab3..8f03c306 -- tools/fonts and -- assets/fonts, one path per call, both empty",
+ "producer": "Claude Code implement agent (Opus 5.5), 2026-10-09; git log --oneline --no-merges 937b8ab3..8f03c306 (7 commits) plus the merge 8f03c306; shasum -a 256; source-hash and include-closure binding: verification/results/run139-candidate/record_binding.py (the Run130 helper, docstring only changed) with output record_binding_out.json; configure/build/x87/generate/host-test logs local under /tmp/x3-run139-logs/"
+}

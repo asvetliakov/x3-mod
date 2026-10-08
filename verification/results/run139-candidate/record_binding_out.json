@@ -1,0 +1,103 @@
+{
+ "engine-plumes": {
+  "record_commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+  "bases": [
+   "01114822",
+   "70024483"
+  ],
+  "hashes": 11,
+  "hash_mismatch": [],
+  "closure_files": 49,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-ribbons": {
+  "record_commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+  "bases": [
+   "01114822",
+   "70024483"
+  ],
+  "hashes": 14,
+  "hash_mismatch": [],
+  "closure_files": 48,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-shimmer": {
+  "record_commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+  "bases": [
+   "01114822",
+   "70024483"
+  ],
+  "hashes": 9,
+  "hash_mismatch": [],
+  "closure_files": 20,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-effects": {
+  "record_commit": "8f03c306c25536e5af7782edc21af428080b74e7",
+  "bases": [
+   "8f03c306",
+   "fb95cfa0"
+  ],
+  "hashes": 20,
+  "hash_mismatch": [],
+  "closure_files": 94,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-light-gpu": {
+  "record_commit": null,
+  "bases": [
+   "fb95cfa0"
+  ],
+  "hashes": 8,
+  "hash_mismatch": [],
+  "closure_files": 33,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-effects-patch": {
+  "record_commit": "9c0c57ab6e3fabd30b5de08f18a47942748a3e54",
+  "bases": [
+   "9c0c57ab",
+   "203c5e98"
+  ],
+  "hashes": 6,
+  "hash_mismatch": [],
+  "closure_files": 14,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "cull-small-parts-cpu": {
+  "record_commit": null,
+  "bases": [
+   "7beca74d"
+  ],
+  "hashes": 0,
+  "hash_mismatch": [],
+  "closure_files": 38,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "seam-engine-light": {
+  "record_commit": null,
+  "bases": [
+   "fb95cfa0"
+  ],
+  "hashes": 0,
+  "hash_mismatch": [],
+  "closure_files": "src/**",
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ }
+}
