@@ -258,3 +258,131 @@ nothing under FEX (0 of 1,497,596 leaf samples in `X3AP.exe`, run167; run84 the 
 ## Ledger
 
 - 2026-10-09 01:44, fixture (a) on bottle X3 / DXVK (`run_state_hook_benchmark.py`, defaults; record `verification/results/bottle-X3/state-hook-benchmark.json`, untracked; measured): the `native` case (direct device calls, no proxy) gives `SetSamplerState_same` 35.9 ns, `SetRenderState_same` 36.7, `SetTexture_same` 35.5, `SetTextureStageState_same` 34.5, `SetRenderState` 55.0, `SetStreamSource` 99.2; the `proxy-timing-off` case crashed (exit 5, execute-access page fault at 0x74666f73 after DXVK QueryInterface warnings; the pre-existing DXVK fixture teardown crash class, not diagnosed), so the proxy-path figure and `run_effect_beginpass.py` were not measured. Reading: a redundant call costs 36 ns inside DXVK plus the proxy's forwarding; at 250 draws x 47 redundant calls that is 0.4 ms at 36 ns and under 1 ms even at 80 ns (inferred), below the 60 ns rule on the measured part. Decision pending with the user; recommendation: closed, the bound is under 1 ms for a vtable hook into the game's state manager with shadow-state invalidation risk.
+
+## Part 2: pre-submit work
+
+2026-10-09, same marks. Question (user): in run20 (DXVK, in flight) `dt` p50 13.7 ms splits into `pre_render`
+5.3 ms (max 6.8), `views` 7.4 (`view_setup` 0.9, `view_submit` 4.8) and `scene_end` 0.2 (M, `frame_phases`
+windows of `/tmp/x3-bottleX3-run20`), so 40 % of the frame precedes the render routine. Can that part be made
+cheaper, given it grows with the nodes in the sector? Inputs: [main-loop-input-region.md](../reverse-engineering/main-loop-input-region.md)
+(the `input_part=0` region, run380/run381), [script-task-scheduler.md](../reverse-engineering/script-task-scheduler.md)
+(the animation tick `0x0048f550`, the scheduler `0x0049f770`, the probe set), [object-lifetimes.md](../reverse-engineering/object-lifetimes.md)
+Run383 and the [dust-leak report](../../verification/results/run383-dust-leak/report-for-mayhem-author.md),
+[dust-leak-fix.md](../verification/dust-leak-fix.md) Run 109 A (run384), the run94/run96/run129 game- and
+loop-phase ledgers in sampling-profiler.md, `src/proxy/loop_phase_sites.h`, `game_phase_sites.h`,
+`frame_phases_core.h`, logging-tiers.md, `tools/config/schema.py`. The brief's "Run 107/108/109 sections of
+engine-frame-time.md" do not exist under those names; the flights are run380/run381 (`main-loop-input-region.md`
+section 6) and run384 (`dust-leak-fix.md`), used here.
+
+**Answer.** `pre_render` is the main loop from the Present return to the render prologue: clock, message pump,
+audio channels, the script scheduler (`PendingVm`), media services, the Input phase (whose first 49 bytes are
+the `input_part=0` region: animation tick, per-sector driver, deferred-delete sweep, then the script/VM
+sub-path `input_part=1`), simulation `0x00416750`, cockpit update `0x0041cde0`, and the proxy's post-Present
+work. Only the `input_part=0` region has ever been split in flight (10 `--loop-phases` stamps): it is
+~0.9 ms of the 5.3 ms, flat and small once the dust leak is fixed. The other ~4.4 ms (I) has no per-site
+measurement in any normal-speed frame: the game-phase tape only records frames at or above its threshold
+(20 ms under `--draw-trace`), and every normal-frame figure below comes from slow-frame tapes of other runs. The
+animation tick, the user's candidate, costs 0.14-0.25 ms at 4.5-5.5k nodes (M run384) and run20 holds
+2.8-3.5k nodes (M), so an inert-node skip is bounded at ~0.1-0.25 ms and is not worth its exactness proof.
+**No pre-submit detour is justified today; the Run 140 A perf flight should carry the two existing stamp
+groups with a lowered tape threshold (section 2.2) so the 4.4 ms gets an owner first.**
+
+### 2.1 Composition of `pre_render`
+
+| segment | site(s) | per frame | scales with | mark | evidence |
+| --- | --- | --- | --- | --- | --- |
+| clock, pump, channels, services | `0x00403af0`-`0x00403b04` | < 0.1 ms combined | constant | M (run94 tape, slow frames only) | sampling-profiler.md run 32 C: "all others < 0.1 %" |
+| script scheduler `PendingVm` (`0x0049f770`, runnable tasks only) | `0x00403aff` | 0.81 ms (run129 corvette stand); 2.76 ms p50 on run94's slow frames; 70.8 % of its lightest 50.8 ms frame | runnable script tasks and their work; run20 holds **26,246 live tasks** (M, `scene_graph_census tasks=`), runnable share unknown | M, other builds/sectors | run129 (Run 42 A), run94 |
+| `input_part=0`: animation tick `0x0048f550` (`cutevent`) | `0x00403b12` | 0.14-0.25 ms at 4,515-5,477 nodes with the dust fix (run384); 0.05 -> 12.3 ms while leaking 27 nodes/frame (run381) | **live scene nodes** (walk ~34 insns/node, 30-50 ns/node from run384, 66-92 ns/key fit in run382) + animated nodes x dt + cut instances; run20: 2,785-3,544 nodes, 0 cut instances, 700-840 unattached (M) | M | dust-leak-fix.md Run 109 A; main-loop-input-region.md run381 table |
+| `input_part=0`: per-sector driver `0x0043a360` (`containers`) | `0x00403b17` | 0.66-0.80 ms (Mayhem battle, 1 active sector): collide 0.52-0.61, simulate 0.02-0.04, post 0.01, passb 0.14-0.19; collide is episodic (0.3 ms to 26 ms at a collide-heavy spot, run150) | objects in the sector (collide O(N^2) pair loop + narrow phase; simulate per object; passb economy tick) | M | run380/run381 tables; run150 |
+| `input_part=0`: deferred-delete sweep `0x0045b660` | `0x00403b1c` | 0.00 ms | objects flagged for deletion | M | run381 |
+| `input_part=1` (script/VM sub-path of the Input phase) | `[0x00403b3a, 0x00403dc5)` | 1.35 ms p50 on run94's slow frames | scripts | M, other sector | run94 |
+| simulation `0x00416750` | `0x00403f2a` | < 1 % of run94's slow frames; never measured on a normal frame | objects/AI | M (slow frames) | run94 |
+| cockpit update `0x0041cde0` | `0x00403f2f` | 0.44 ms p50 (run94 slow frames) | constant-ish (HUD) | M, other build | run94 |
+| proxy post-Present (`present_end()` fires before `after_present`: telemetry lines, retention census, `scene_graph_census` walk 38-59 us, HDR latch) | proxy | bounded by run89's `scene` bucket 1.25 ms, which also holds the compositor; 0.1-0.3 ms on DXVK (I) | constant; census walk capped at 1.8 ms | I | engine-frame-time.md 2.1; run20 `walk_us` |
+
+Sum check: the stamped region is 0.8-1.0 ms (I from the rows above), so 4.3-4.5 ms of run20's 5.3 ms lies in
+`PendingVm`, `input_part=1`, simulation, cockpits and the proxy's post-Present work, none of which was
+measured in this run or on this backend. run381's "region tracks `pre_render` minus a constant ~5 ms" (M,
+Mayhem battle) says the same: the unsplit remainder is ~3.6-5 ms there as well.
+
+What grows with what: scene nodes drive only the animation walk (and the proxy's census); objects drive
+collide/simulate/passb (0.7 ms flat in a battle sector, collide episodic); script tasks drive `PendingVm` and
+`input_part=1`; the rest is constant. With the dust leak fixed nothing in the stamped region grows with
+elapsed time (run384: `cutevent` 248 -> 140 us over 19,826 frames, M), but run384's `input` still rose
+4.6 -> 7.2 ms over the stay with `dt` 16 -> 23 ms, "unexplained" in its ledger: that growth is in the
+unstamped 4.4 ms, and it is the one open pre-submit question with a measured symptom.
+
+### 2.2 Splitting `pre_render` in flight on DXVK with the current build
+
+Yes, with two existing `--draw-trace` members and one ini key; no build:
+
+```sh
+python3 tools/manage.py launch --perf --draw-trace --config
+```
+
+with `x3m.ini` (section `logging`, developer keys, `tools/config/schema.py:542-547`): `loop_phases = 1`,
+`game_phases = 1`, **`game_phase_threshold_ms = 12`** (DLL default 20; the launcher drops an inherited
+`X3M_GAME_PHASE_THRESHOLD_MS`, so the ini is the only way). `--draw-trace` already sets `X3M_LOOP_PHASES` and
+`X3M_GAME_PHASES`; the threshold is what makes the tape record ordinary 12-18 ms DXVK frames instead of only
+stalls. Rows to read:
+
+- `loop_phases frame=N`: `cutevent_p50_us`, `containers_p50_us` (with `collide/simulate/post/passb_p50_us`
+  nested), `sweep_p50_us`, `region_p50_us`, `input_p50_us` (= `pre_render` when `game_phases` is off, the
+  Input phase when on), `region_max_owner`, `sectors_p50`. Self-cost 0.37 us per frame plus ~0.5 us per
+  active sector (M fixture).
+- `game_phase_slow_frame` + up to 96 `game_phase_segment` rows per frame above the threshold: per-site
+  durations for `pump`, `clock`, `channels`, `pending_vm`, `services`, `input` (`input_part` 0/1/2),
+  `simulation`, `cockpits`, `render`, `post_render`; reduce by site over the window (run129 did this at the
+  20 ms threshold: Input 27.4 ms, `PendingVm` 0.81 ms). Verbosity: 96 rows per qualifying frame; at 12 ms
+  about half of run20's frames qualify, ~200k rows for a 60 s hold, acceptable for one flight.
+- `scene_graph_census` (already in `--perf`): `engine_nodes`, `tasks`, `cuts`, `unattached` per 300 frames,
+  to regress `cutevent` and `pending_vm` on counts.
+- `frame_phases pre_render_p50_us` for the total, and `dust_leak_fix hits=` (the fix is on).
+
+Caveat: the game-phase group and the loop-phase group share the lean/shared stub mechanisms and were flown
+together in run96/run129 (M); the only group that conflicts with a default patch is `--submit-phases`
+(fixture-only), not these.
+
+### 2.3 Detour candidates, with bounds
+
+| candidate | site | bound at run20's counts | verdict |
+| --- | --- | --- | --- |
+| Animation tick skipping inert nodes (no cut `+0x258`, no `0x1000` flag below) in `0x0048f2b0` | `0x0048f2e4` (post-order walk; every writer of `+0x258`/`+0x1f4` would need an index hook) | the whole walk is 0.1-0.25 ms at 2.8-5.5k nodes (M run384, I run20); a skip saves less than that | closed at the normal node count; only a sector with > 20k live nodes (the leak case, fixed by `dust_leak_fix`) made it visible |
+| The per-millisecond `CutEvent` loop `0x0048f3c0`-`0x0048f4ac` (step to the next `i % 33 == 1`) | `0x0048f3c0` | exact; worth it only with thousands of animated nodes; run20 has 0 cut instances and the tick is 0.1-0.25 ms | closed until `node_animate` counts say otherwise |
+| Interval C bucket iteration (`0x004efda0` re-lookup per key) | `0x0048f616` | O(buckets + instances); run20 `cuts=0`, `cut_buckets=8` | nothing to gain |
+| Collide pair loop | `0x0045d250` | already carries `--collide-box-cull`, SAT SSE2, memo (defaults); 0.5-0.6 ms flat in a battle sector, 26 ms episodes at collide-heavy spots (M run150/run129) | no new lever; episodic cost is a separate investigation (sector-collide.md) |
+| Simulation per object `0x00452ad0`, economy tick `0x004596e0`, attach `0x004526b0` | sector driver | 0.02-0.04 + 0.14-0.19 ms (M) | too small |
+| Script scheduler / interpreter (`PendingVm`, `input_part=1`) | `0x0049f770`, `0x004a26a0` | unknown on this build; 26,246 live tasks in run20 (M); plausibly the largest unstamped item (A) | cannot be detoured without changing game logic; a cheaper interpreter is a rewrite. Only measurement applies |
+| Proxy post-Present work | proxy | 0.1-0.3 ms (I); the census walk 38-59 us (M) | proxy-owned; trim only if the tape shows it |
+
+Nothing in `pre_render` has a hook site, an exact cache and a bound above 0.3 ms at run20's counts. The
+animation tick is cheap now because the dust fix keeps the unattached list at ~800 instead of 150,000
+(run383 -> run384, M); the tick's 77 ns/node figure is the leak regime's slope, not a normal-sector cost.
+
+### 2.4 Closed
+
+| item | number | mark |
+| --- | --- | --- |
+| Animation-tick node skip | <= 0.25 ms per frame at <= 5.5k nodes | M run384 / I |
+| Sector driver (collide, simulate, post, passb) as a whole | 0.66-0.80 ms flat; all five callees mutate game state and fire script callbacks, no behaviour-preserving skip | M run380/381 |
+| Deferred-delete sweep | 0.00 ms | M run381 |
+| `input_part=0` as the growth owner | 0.9 ms with the dust fix; the leak was the data (170 of 248 Mayhem backgrounds request dust from families with no bodies) | M run383/384 |
+| Skipping/rate-limiting script tasks, animation updates or off-screen scene walks | changes game logic; out of scope | - |
+
+Ledger: 2026-10-09, Part 2 written from run20 (`frame_phases`, `scene_graph_census`, `dust_leak_fix` rows,
+queried by `grep`/`awk` only), run380/381/383/384 results and the run94/96/129 ledgers; no Wine run, no
+source change; the pre-submit split (2.2) is the request for Run 140 A, and no pre-submit detour is proposed.
+
+### Unknowns (Part 2)
+
+- The owner of the ~4.4 ms outside the stamped region on DXVK (`PendingVm`, `input_part=1`, simulation,
+  cockpits, proxy post-Present): the 2.2 flight.
+- Whether run384's slow `input` growth (4.6 -> 7.2 ms over a stay) recurs with the tape at 12 ms, and which
+  segment carries it.
+- The runnable share of the 26,246 live script tasks and the cost per runnable task; `game_phase_segment`
+  gives the time, `scene_graph_census tasks=` the live count, the runnable count needs the list-length
+  counter of script-task-scheduler.md section 4 (not built).
+- Whether the developer ini keys are honoured in `--config` player mode on this build (run380 ran
+  `--perf --config` with `loop_phases = 1` successfully, M; `game_phase_threshold_ms` through the ini was not
+  exercised in any run).
