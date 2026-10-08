@@ -1,0 +1,29 @@
+{
+ "run": "Run136",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run136-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-08T15:47+0400",
+ "commit": "6d912d8e",
+ "candidate_record": "verification/results/run136-candidate-build.json",
+ "installed": {
+  "sha256": "d03e597e44db6a63b386621b111477da638f484f609435c3b5a02ae35cec481a",
+  "bytes": 59172098,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed before install); pgrep X3AP empty before; 16 generated font files re-reported, unchanged content; engine_bodies.json kept"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 9fc1c171... before and after (CX_GRAPHICS_BACKEND = dxvk as the user set it)",
+  "x3m.ini": "the user's file kept",
+  "dxvk.conf": "235 B, dxvk.enableAsync = True (user decision 14:40), kept",
+  "CrossOver Preview.app": "MoltenVK 1.4.2 + marked Gcenx PR #20 DXVK 1.10 as for Run 131 A"
+ },
+ "previous": {
+  "run": "Run135",
+  "dll_sha256": "7f7c46596952340e6c4ed43f2cbe1804ca0193ae046db48967485c7fcdaad3f3",
+  "path": "/tmp/x3-run135-candidate/build/d3d9.dll",
+  "then": "Run134 a9d4559a... at /tmp/x3-run134-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 135 A (run14): two Ocelot nozzles lose their plate to the 8-plate cap whenever all 10 main nozzles are drawn; user decision 2026-10-08: remove artificial limits -> plate cap 72 (installed tree max 66), transformers follow the device slot cap",
+ "producer": "main session (Fable 5.1)"
+}
