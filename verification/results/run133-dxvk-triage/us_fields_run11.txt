@@ -1,0 +1,54 @@
+load_frame 893 lo 903 hi 13629
+engine_shimmer             cpu_us                           n=12725 p50=     35.2 p95=     45.3 mean=     36.3
+engine_shimmer             revert_us                        n=12725 p50=      2.6 p95=      3.5 mean=      2.7
+engine_stage               stage_us                         n=12725 p50=     48.3 p95=     60.2 mean=     49.3
+frame_phases_slow          begin_scene_us                   n=  168 p50=    145.5 p95=    217.0 mean=    238.9
+frame_phases_slow          dt_us                            n=  168 p50=  21550.5 p95= 192543.0 mean=  63633.0
+frame_phases_slow          overlays_us                      n=  168 p50=     34.0 p95=    129.0 mean=     61.5
+frame_phases_slow          pre_render_us                    n=  168 p50=  13258.5 p95=  96466.0 mean=  49615.8
+frame_phases_slow          present_us                       n=  168 p50=     63.0 p95=    110.0 mean=    428.6
+frame_phases_slow          prologue_us                      n=  168 p50=     38.0 p95=     52.0 mean=     39.7
+frame_phases_slow          scene_end_us                     n=  168 p50=    182.5 p95=    227.0 mean=    218.8
+frame_phases_slow          scene_update_us                  n=  168 p50=     56.0 p95=     99.0 mean=     75.5
+frame_phases_slow          text_us                          n=  168 p50=     21.0 p95=     33.0 mean=     22.4
+frame_phases_slow          view_setup_us                    n=  168 p50=    909.0 p95=   1357.0 mean=   4971.9
+frame_phases_slow          view_submit_us                   n=  168 p50=   4933.5 p95=   7613.0 mean=   5662.6
+frame_phases_slow          views_us                         n=  168 p50=   7528.5 p95=  12393.0 mean=  12931.9
+hdr_frame                  bind_us                          n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+hdr_frame                  meter_us                         n=12725 p50=     15.9 p95=     21.9 mean=     16.8
+hdr_frame                  readback_copy_us                 n=12725 p50=      1.8 p95=      2.8 mean=      2.3
+hdr_frame                  readback_extract_unlock_us       n=12725 p50=      3.4 p95=      6.1 mean=      4.2
+hdr_frame                  readback_lock_us                 n=12725 p50=      7.7 p95=     20.2 mean=     83.9
+hdr_frame                  readback_statistics_adapt_us     n=12725 p50=     27.8 p95=     60.2 mean=     31.1
+hdr_frame                  readback_us                      n=12725 p50=     42.2 p95=     95.8 mean=    121.5
+hdr_frame                  recheck_us                       n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+hdr_frame                  redirect_us                      n=12725 p50=     14.2 p95=     20.7 mean=     16.0
+hdr_frame                  writeback_draw_us                n=12725 p50=     50.4 p95=     63.6 mean=     52.1
+hdr_frame                  writeback_stretch_us             n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+hdr_frame                  writeback_us                     n=12725 p50=     51.4 p95=     64.7 mean=     53.1
+motion_output_frame        fill_us                          n=12725 p50=     29.6 p95=     35.8 mean=     30.6
+motion_output_frame        gate_us                          n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+motion_output_frame        jitter_us                        n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+motion_output_frame        lazy_flush_us                    n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+motion_output_frame        readback_us                      n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+motion_output_frame        route_draw_us                    n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+motion_output_frame        set_rt_us                        n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+motion_output_frame        taa_apply_us                     n=12725 p50=     65.9 p95=     79.9 mean=     67.0
+motion_output_frame        taa_capture_us                   n=12725 p50=     11.1 p95=     14.2 mean=     11.5
+motion_output_frame        taa_copy_back_us                 n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+motion_output_frame        taa_copy_color_us                n=12725 p50=      0.3 p95=      0.4 mean=      0.3
+motion_output_frame        taa_copy_depth_us                n=12725 p50=      0.3 p95=      0.4 mean=      0.3
+motion_output_frame        taa_draw_us                      n=12725 p50=    109.4 p95=    133.1 mean=    112.3
+motion_output_frame        taa_run_us                       n=12725 p50=    201.3 p95=    245.4 mean=    207.8
+shadow_replay_candidates   select_us                        n=12575 p50=      9.5 p95=     16.8 mean=     10.6
+shadow_replay_depth        apply_us                         n=12575 p50=    104.2 p95=    127.9 mean=    106.6
+shadow_retention_frame     draw_us                          n=12575 p50=      0.0 p95=      0.0 mean=      0.0
+shadow_retention_frame     gate_us                          n=12575 p50=      0.0 p95=      0.0 mean=      0.0
+shadow_retention_frame     journal_us                       n=12575 p50=      1.0 p95=      1.5 mean=      1.1
+shadow_retention_frame     walk_us                          n=12575 p50=     42.6 p95=    120.4 mean=     52.0
+thin_vote_frame            draw_us                          n=12725 p50=      0.0 p95=      0.0 mean=      0.0
+thin_vote_frame            lock_us                          n=12725 p50=   1417.6 p95=   1873.8 mean=   1366.2
+thin_vote_frame            max_measure_us                   n=12725 p50=    606.0 p95=    606.0 mean=    601.6
+thin_vote_frame            measure_us                       n=12725 p50=  12502.0 p95=  15105.4 mean=  11834.4
+thin_vote_frame            sample_us                        n=12725 p50=      0.4 p95=      0.6 mean=      0.4
+thin_vote_frame            stamp_us                         n=12725 p50=      0.4 p95=      0.6 mean=      0.4

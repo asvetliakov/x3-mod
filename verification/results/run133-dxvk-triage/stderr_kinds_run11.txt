@@ -1,0 +1,32 @@
+78804 warn:  NcaNe-NdNc-NdN-Nd-bNdNeNcNce
+65060 warn:  DNDNSwapChainEx::QueryInterface: Unknown interface query
+13744 warn:  DNDNDeviceEx::QueryInterface: Unknown interface query
+  78 warn:  NcN-NdeN-NfN-NbNa-fNacNcNbN
+  78 warn:  DNDNTextureCube::QueryInterface: Unknown interface query
+  62 [mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart.
+  23 Warning!  Some triangles have zero area!
+  11 [mvk-info] MoltenVK version N.N.N, supporting Vulkan version N.N.N.
+  11 [mvk-info] GPU device:
+  11 [mvk-info] Created VkInstance for Vulkan version N.N.N, as requested by app, with the following N Vulkan extensions enabled:
+  11 	VK_MVK_moltenvk vN
+  11 	VK_MVK_macos_surface vN
+  11 	VK_KHR_deferred_host_operations vN
+   8 [mvk-info] Destroying VkInstance for Vulkan version N.N.N with N Vulkan extensions enabled.
+   8 [mvk-info] Destroyed VkPhysicalDevice for GPU Apple MN Pro with N MB of GPU memory still allocated.
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion 'object != NULL' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_object_unref: assertion '((GObject *) object)->ref_count > N' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_state: assertion 'GST_IS_ELEMENT (element)' failed
+   4 (wine:N): GStreamer-CRITICAL **: N:N:N.N: gst_element_set_bus: assertion 'GST_IS_ELEMENT (element)' failed
+   3 warn:  N-Nfc-Nc-NffN-NaNdfNd
+   3 warn:  DNDNInterfaceEx::QueryInterface: Unknown interface query
+   3 info:  DXVK: vN.N.N-N-async (macOS)
+   2 warn:  DNDNDeviceEx::SetRenderState: Unhandled render state N
+   2 [mvk-info] Created N swapchain images with size (N, N) and contents scale N.N in layer WineMetalLayer: WineMetalView (NxNfN) on screen Main Screen.
+   1 warn:  DXVK: No state cache file found
+   1 launcher_tee pid=N log=/Users/asvetl/Library/Application Support/CrossOver/Bottles/XN/drive_c/XN/xN-modern-captures/launcher-stderr.log
+   1 launcher command=["/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine", "--bottle", "XN", "--no-update", "--dll", "dNdN=n,b", "--workdir", "/Users/asvetl/Library/Application Support/CrossOver/Bottles/XN/drive_c/XN", "/Users/asvetl/Library/Application Support/CrossOver/Bottles/XN/drive_c/XN/XNAP.exe", "-noabout", "-skipintro", "-runinbg"] overrides=dNdN=n,b
+   1 info:  DXVK: Using N compiler threads
+   1 info:  DXVK: Read N valid state cache entries
+   1 [mvk-info] Vulkan semaphores using MTLEvent.
+   1 [mvk-info] Descriptor sets binding resources using MetalN argument buffers.
+   1 [mvk-info] Created VkDevice to run on GPU Apple MN Pro with the following N Vulkan extensions enabled:

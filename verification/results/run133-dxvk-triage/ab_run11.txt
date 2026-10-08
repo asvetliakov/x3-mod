@@ -1,0 +1,38 @@
+load_frame 893 inflight_frames 12725 windows 41
+PH begin_scene_p50_us median=148 max=161
+PH begin_scene_p95_us median=193 max=238
+PH dt_p50_us median=12738 max=16970
+PH dt_p95_us median=15880 max=32470
+PH overlays_p50_us median=32 max=36
+PH overlays_p95_us median=111 max=257
+PH pre_render_p50_us median=5047 max=7110
+PH pre_render_p95_us median=7861 max=25237
+PH present_p50_us median=54 max=73
+PH present_p95_us median=93 max=4462
+PH prologue_p50_us median=39 max=43
+PH prologue_p95_us median=49 max=57
+PH scene_end_p50_us median=179 max=207
+PH scene_end_p95_us median=213 max=238
+PH scene_update_p50_us median=58 max=67
+PH scene_update_p95_us median=81 max=108
+PH text_p50_us median=21 max=23
+PH text_p95_us median=30 max=34
+PH view_setup_p50_us median=867 max=1100
+PH view_setup_p95_us median=1069 max=2470
+PH view_submit_p50_us median=4595 max=6429
+PH view_submit_p95_us median=5766 max=7417
+PH views_p50 median=9 max=11
+PH views_p50_us median=7165 max=9160
+PH views_p95_us median=8247 max=10591
+>50ms total=25 first=20 second=5
+>100ms total=16 first=12 second=4
+draws quartile edges [128, 180, 206] min=1 max=292
+  draws bin0 (-1,128] n=3200 dt_p50=10.0 dt_p95=14 mean=11.81
+  draws bin1 (128,180] n=3216 dt_p50=12.0 dt_p95=15 mean=12.12
+  draws bin2 (180,206] n=3233 dt_p50=13 dt_p95=16 mean=13.82
+  draws bin3 (206,1000000000] n=3076 dt_p50=14.0 dt_p95=19 mean=14.87
+issued quartile edges [115, 161, 183] min=1 max=280
+  issued bin0 (-1,115] n=3194 dt_p50=10.0 dt_p95=14 mean=11.84
+  issued bin1 (115,161] n=3247 dt_p50=12 dt_p95=15 mean=12.10
+  issued bin2 (161,183] n=3152 dt_p50=13.0 dt_p95=17 mean=13.96
+  issued bin3 (183,1000000000] n=3132 dt_p50=14.0 dt_p95=20 mean=14.72

@@ -1,0 +1,11 @@
+  45 bloom_admission
+   1 bolt_footprint_refused
+  46 chase_central_hud_window
+   1 chase_view_restore_arm_refused
+  16 emission_source_gain_refused_state
+  16 hull_emission_refused_state
+   1 screen_emission_additive_refused
+  45 screen_emission_additive_refused_window
+   8 shadow_replay_depth_refused
+12586 shadow_replay_sun
+  41 shadow_replay_sun_point_summary
