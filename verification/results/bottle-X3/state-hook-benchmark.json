@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-16T06:28:59",
+  "generated": "2026-10-09T01:43:49",
   "bottle": {
     "name": "X3",
     "wine_arch": "arm64",
@@ -11,139 +11,189 @@
   },
   "fixture": {
     "source": "verification/probe/state_hook_benchmark.cpp",
-    "exe_sha256": "918363a0ec08633fed0a336f136b153d4fe437630a8c76d7555fd49549e7a92f"
+    "exe_sha256": "151df529e7204281b21c90ae5dca9f144957062351e0c500d1623057b13f1dce"
   },
   "dll": {
-    "path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ae7b6d9992366e7f7/build/d3d9.dll",
-    "sha256": "207d4ede2efce8c72b33a9c51f2ef3844517602021659bfd7d1296286fe52082",
-    "installed": false
+    "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+    "sha256": "d48d2bab029bad3053b21766fd51554e0dab807bd49127416dd1d79d7ed9fd11",
+    "installed": true
   },
   "note": "Three repetitions per configuration inside one process; ns_per_call is the median. Equal-share setter mix: run87 frame_timing keeps one counter per bucket, no per-entry breakdown.",
   "cases": {
     "primitives": {
-      "directory": "verification/probe/build/state-hook-benchmark-primitives-20260916-062900-762174",
+      "directory": "verification/probe/build/state-hook-benchmark-primitives-20261009-014350-368757",
       "command_tail": [
         "primitives"
       ],
       "frame_timing": null,
+      "state_shadow": null,
       "ns_per_call": {
-        "QueryPerformanceCounter": 62.5,
-        "recursive_mutex_lock_unlock": 6.8,
-        "GetLastError_SetLastError": 4.0,
-        "LightCallBoundary_envelope": 9.9,
-        "CpuCallBoundary_envelope": 1011.9
+        "QueryPerformanceCounter": 93.4,
+        "recursive_mutex_lock_unlock": 6.6,
+        "GetLastError_SetLastError": 4.2,
+        "LightCallBoundary_envelope": 10.8,
+        "CpuCallBoundary_envelope": 564.3
       },
       "samples": {
         "QueryPerformanceCounter": [
-          62.5,
-          62.4,
-          65.0
+          92.9,
+          93.7,
+          93.4
         ],
         "recursive_mutex_lock_unlock": [
-          6.8,
-          6.8,
-          6.8
+          6.6,
+          6.9,
+          6.3
         ],
         "GetLastError_SetLastError": [
-          4.0,
-          3.9,
+          4.5,
+          4.1,
           4.2
         ],
         "LightCallBoundary_envelope": [
-          9.7,
-          10.0,
-          9.9
+          9.9,
+          10.8,
+          10.8
         ],
         "CpuCallBoundary_envelope": [
-          998.2,
-          1011.9,
-          1014.2
+          564.3,
+          559.0,
+          565.0
         ]
       },
       "hooked_slots": {},
       "preserve": {}
     },
     "native": {
-      "directory": "verification/probe/build/state-hook-benchmark-native-20260916-062912-518568",
+      "directory": "verification/probe/build/state-hook-benchmark-native-20261009-014401-250384",
       "command_tail": [
         "device",
         "native"
       ],
       "frame_timing": null,
+      "state_shadow": null,
       "ns_per_call": {
-        "state_mix": 15.3,
-        "SetRenderState": 14.8,
-        "SetTexture": 16.3,
-        "SetSamplerState": 10.9,
-        "SetTextureStageState": 11.5,
-        "SetVertexShaderConstantF4": 16.6,
-        "SetStreamSource": 15.9,
-        "GetRenderState": 8.9,
-        "GetSamplerState": 8.8,
-        "GetTexture_Release": 17.1,
-        "GetVertexShaderConstantF4": 15.4,
-        "SetStreamSource_DrawIndexedPrimitive_pair": 389.2
+        "state_mix": 49.3,
+        "SetRenderState": 55.0,
+        "SetTexture": 39.6,
+        "SetSamplerState": 35.1,
+        "SetTextureStageState": 33.1,
+        "SetVertexShaderConstantF4": 34.0,
+        "SetStreamSource": 99.2,
+        "SetRenderState_same": 36.7,
+        "SetRenderState_alternating": 37.9,
+        "SetSamplerState_same": 35.9,
+        "SetTextureStageState_same": 34.5,
+        "SetTexture_same": 35.5,
+        "noop_vtable_GetNumberOfSwapChains": 2.3,
+        "GetRenderState": 33.5,
+        "GetSamplerState": 34.8,
+        "GetTexture_Release": 38.1,
+        "GetVertexShaderConstantF4": 40.1,
+        "GetState_draw_set_10": 350.5,
+        "routed_draw_mip_bias_2stages": 282.6,
+        "SetStreamSource_DrawIndexedPrimitive_pair": 245.7
       },
       "samples": {
         "state_mix": [
-          15.1,
-          15.4,
-          15.3
+          76.9,
+          47.7,
+          49.3
         ],
         "SetRenderState": [
-          14.8,
-          11.4,
-          16.0
+          55.0,
+          55.2,
+          53.6
         ],
         "SetTexture": [
-          15.6,
-          16.4,
-          16.3
+          41.5,
+          39.6,
+          38.7
         ],
         "SetSamplerState": [
-          10.4,
-          10.9,
-          10.9
+          47.7,
+          35.1,
+          33.8
         ],
         "SetTextureStageState": [
-          11.5,
-          11.1,
-          11.7
+          36.2,
+          33.1,
+          32.4
         ],
         "SetVertexShaderConstantF4": [
-          16.5,
-          16.6,
-          16.7
+          36.3,
+          34.0,
+          33.4
         ],
         "SetStreamSource": [
-          15.7,
-          15.9,
-          16.1
+          113.4,
+          80.5,
+          99.2
+        ],
+        "SetRenderState_same": [
+          36.9,
+          34.0,
+          36.7
+        ],
+        "SetRenderState_alternating": [
+          39.4,
+          36.8,
+          37.9
+        ],
+        "SetSamplerState_same": [
+          39.0,
+          33.7,
+          35.9
+        ],
+        "SetTextureStageState_same": [
+          36.0,
+          33.1,
+          34.5
+        ],
+        "SetTexture_same": [
+          38.8,
+          35.4,
+          35.5
+        ],
+        "noop_vtable_GetNumberOfSwapChains": [
+          2.4,
+          2.3,
+          2.1
         ],
         "GetRenderState": [
-          9.2,
-          8.9,
-          8.8
+          36.0,
+          33.5,
+          33.4
         ],
         "GetSamplerState": [
-          9.1,
-          8.8,
-          8.8
+          35.1,
+          33.2,
+          34.8
         ],
         "GetTexture_Release": [
-          17.1,
-          17.1,
-          17.3
+          38.1,
+          36.0,
+          39.2
         ],
         "GetVertexShaderConstantF4": [
-          15.4,
-          15.3,
-          15.4
+          40.1,
+          37.9,
+          40.7
+        ],
+        "GetState_draw_set_10": [
+          350.5,
+          347.8,
+          351.1
+        ],
+        "routed_draw_mip_bias_2stages": [
+          295.6,
+          282.6,
+          279.7
         ],
         "SetStreamSource_DrawIndexedPrimitive_pair": [
-          473.4,
-          389.2,
-          387.0
+          245.7,
+          246.3,
+          243.1
         ]
       },
       "hooked_slots": {
@@ -252,465 +302,6 @@
           "error_after": 940
         }
       }
-    },
-    "proxy-timing-off": {
-      "directory": "verification/probe/build/state-hook-benchmark-proxy-timing-off-20260916-062915-588350",
-      "command_tail": [
-        "device",
-        "proxy"
-      ],
-      "frame_timing": "0",
-      "ns_per_call": {
-        "state_mix": 98.4,
-        "SetRenderState": 119.6,
-        "SetTexture": 126.4,
-        "SetSamplerState": 108.3,
-        "SetTextureStageState": 10.9,
-        "SetVertexShaderConstantF4": 79.0,
-        "SetStreamSource": 133.3,
-        "GetRenderState": 8.8,
-        "GetSamplerState": 8.7,
-        "GetTexture_Release": 17.0,
-        "GetVertexShaderConstantF4": 15.3,
-        "SetStreamSource_DrawIndexedPrimitive_pair": 1275.8
-      },
-      "samples": {
-        "state_mix": [
-          98.3,
-          98.4,
-          98.4
-        ],
-        "SetRenderState": [
-          120.1,
-          119.2,
-          119.6
-        ],
-        "SetTexture": [
-          126.3,
-          126.7,
-          126.4
-        ],
-        "SetSamplerState": [
-          108.3,
-          108.3,
-          109.2
-        ],
-        "SetTextureStageState": [
-          11.0,
-          10.9,
-          10.8
-        ],
-        "SetVertexShaderConstantF4": [
-          79.0,
-          79.2,
-          78.6
-        ],
-        "SetStreamSource": [
-          132.8,
-          133.3,
-          133.4
-        ],
-        "GetRenderState": [
-          8.6,
-          8.8,
-          8.8
-        ],
-        "GetSamplerState": [
-          8.7,
-          8.7,
-          8.8
-        ],
-        "GetTexture_Release": [
-          16.9,
-          17.0,
-          17.0
-        ],
-        "GetVertexShaderConstantF4": [
-          15.1,
-          15.3,
-          15.5
-        ],
-        "SetStreamSource_DrawIndexedPrimitive_pair": [
-          1292.4,
-          1272.7,
-          1275.8
-        ]
-      },
-      "hooked_slots": {
-        "SetRenderState": "d3d9.dll (proxy)",
-        "SetTexture": "d3d9.dll (proxy)",
-        "SetSamplerState": "d3d9.dll (proxy)",
-        "SetTextureStageState": "d3d9.dll (backend)",
-        "SetVertexShaderConstantF": "d3d9.dll (proxy)",
-        "SetStreamSource": "d3d9.dll (proxy)",
-        "DrawIndexedPrimitive": "d3d9.dll (proxy)",
-        "GetRenderState": "d3d9.dll (backend)",
-        "GetSamplerState": "d3d9.dll (backend)",
-        "GetTexture": "d3d9.dll (backend)",
-        "GetVertexShaderConstantF": "d3d9.dll (backend)"
-      },
-      "preserve": {
-        "SetStreamSource": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetIndices": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetVertexDeclaration": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetFVF": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetRenderState": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "DrawIndexedPrimitive": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "DrawPrimitive": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        }
-      },
-      "ns_over_native": {
-        "state_mix": 83.1,
-        "SetRenderState": 104.8,
-        "SetTexture": 110.1,
-        "SetSamplerState": 97.4,
-        "SetTextureStageState": -0.6,
-        "SetVertexShaderConstantF4": 62.4,
-        "SetStreamSource": 117.4,
-        "GetRenderState": -0.1,
-        "GetSamplerState": -0.1,
-        "GetTexture_Release": -0.1,
-        "GetVertexShaderConstantF4": -0.1,
-        "SetStreamSource_DrawIndexedPrimitive_pair": 886.6
-      }
-    },
-    "proxy-timing-on": {
-      "directory": "verification/probe/build/state-hook-benchmark-proxy-timing-on-20260916-062918-512213",
-      "command_tail": [
-        "device",
-        "proxy"
-      ],
-      "frame_timing": "1",
-      "ns_per_call": {
-        "state_mix": 334.1,
-        "SetRenderState": 382.9,
-        "SetTexture": 387.9,
-        "SetSamplerState": 366.1,
-        "SetTextureStageState": 11.2,
-        "SetVertexShaderConstantF4": 325.6,
-        "SetStreamSource": 371.5,
-        "GetRenderState": 8.9,
-        "GetSamplerState": 8.9,
-        "GetTexture_Release": 17.1,
-        "GetVertexShaderConstantF4": 16.2,
-        "SetStreamSource_DrawIndexedPrimitive_pair": 1877.2
-      },
-      "samples": {
-        "state_mix": [
-          374.6,
-          334.1,
-          322.6
-        ],
-        "SetRenderState": [
-          412.5,
-          378.2,
-          382.9
-        ],
-        "SetTexture": [
-          450.2,
-          387.9,
-          373.6
-        ],
-        "SetSamplerState": [
-          528.4,
-          339.5,
-          366.1
-        ],
-        "SetTextureStageState": [
-          11.2,
-          11.1,
-          13.0
-        ],
-        "SetVertexShaderConstantF4": [
-          321.6,
-          325.8,
-          325.6
-        ],
-        "SetStreamSource": [
-          373.4,
-          371.5,
-          368.1
-        ],
-        "GetRenderState": [
-          10.3,
-          8.9,
-          8.9
-        ],
-        "GetSamplerState": [
-          8.9,
-          9.9,
-          8.8
-        ],
-        "GetTexture_Release": [
-          17.1,
-          17.1,
-          17.3
-        ],
-        "GetVertexShaderConstantF4": [
-          16.2,
-          16.8,
-          15.7
-        ],
-        "SetStreamSource_DrawIndexedPrimitive_pair": [
-          2089.1,
-          1877.2,
-          1861.1
-        ]
-      },
-      "hooked_slots": {
-        "SetRenderState": "d3d9.dll (proxy)",
-        "SetTexture": "d3d9.dll (proxy)",
-        "SetSamplerState": "d3d9.dll (proxy)",
-        "SetTextureStageState": "d3d9.dll (backend)",
-        "SetVertexShaderConstantF": "d3d9.dll (proxy)",
-        "SetStreamSource": "d3d9.dll (proxy)",
-        "DrawIndexedPrimitive": "d3d9.dll (proxy)",
-        "GetRenderState": "d3d9.dll (backend)",
-        "GetSamplerState": "d3d9.dll (backend)",
-        "GetTexture": "d3d9.dll (backend)",
-        "GetVertexShaderConstantF": "d3d9.dll (backend)"
-      },
-      "preserve": {
-        "SetStreamSource": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetIndices": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetVertexDeclaration": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetFVF": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "SetRenderState": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "DrawIndexedPrimitive": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        },
-        "DrawPrimitive": {
-          "x87": 1,
-          "control": 1,
-          "status": 1,
-          "tags": 1,
-          "mxcsr": 1,
-          "error": 1,
-          "result": "00000000",
-          "mxcsr_before": "bf80",
-          "mxcsr_after": "bf80",
-          "error_before": 940,
-          "error_after": 940
-        }
-      },
-      "ns_over_native": {
-        "state_mix": 318.8,
-        "SetRenderState": 368.1,
-        "SetTexture": 371.6,
-        "SetSamplerState": 355.2,
-        "SetTextureStageState": -0.3,
-        "SetVertexShaderConstantF4": 309.0,
-        "SetStreamSource": 355.6,
-        "GetRenderState": 0.0,
-        "GetSamplerState": 0.1,
-        "GetTexture_Release": 0.0,
-        "GetVertexShaderConstantF4": 0.8,
-        "SetStreamSource_DrawIndexedPrimitive_pair": 1488.0
-      }
-    }
-  },
-  "attribution": {
-    "basis": "mean of the four hooked light-guard setters; equal shares",
-    "native_backend_call_ns": 14.7,
-    "proxy_guard_and_shadow_ns": 93.7,
-    "frame_timing_stamps_ns": 257.3,
-    "proxy_total_with_frame_timing_ns": 365.6,
-    "of_which_hook_mutex_ns": 6.8,
-    "of_which_cpu_envelope_light_ns": 9.9,
-    "of_which_qpc_pair_ns": 125.0,
-    "heavy_guard_setter_ns": {
-      "SetStreamSource_total_with_frame_timing": 371.5,
-      "SetStreamSource_without_frame_timing": 133.3,
-      "CpuCallBoundary_envelope": 1011.9
-    },
-    "unhooked_control_ns": {
-      "SetTextureStageState_native": 11.5,
-      "SetTextureStageState_through_proxy": 11.2
-    },
-    "equal_share_mix_ns": {
-      "native": 15.3,
-      "timing_off": 98.4,
-      "timing_on": 334.1
-    },
-    "getters_ns": {
-      "GetRenderState": {
-        "native": 8.9,
-        "timing_off": 8.8,
-        "timing_on": 8.9
-      },
-      "GetSamplerState": {
-        "native": 8.8,
-        "timing_off": 8.7,
-        "timing_on": 8.9
-      },
-      "GetTexture_Release": {
-        "native": 17.1,
-        "timing_off": 17.0,
-        "timing_on": 17.1
-      },
-      "GetVertexShaderConstantF4": {
-        "native": 15.4,
-        "timing_off": 15.3,
-        "timing_on": 16.2
-      }
-    },
-    "draw_pair_ns": {
-      "native": 389.2,
-      "timing_off": 1275.8,
-      "timing_on": 1877.2
     }
   }
 }
