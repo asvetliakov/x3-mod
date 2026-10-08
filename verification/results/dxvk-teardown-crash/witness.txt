@@ -1,0 +1,12 @@
+DXVK teardown crash witness (bottle X3, CrossOver Preview, DXVK v1.10.3-20230507-async i386 d3d9.dll sha256 a5005d1f1f5e953d..)
+Fixture: state_hook_benchmark.exe device proxy (runner case proxy-timing-off), candidate DLL 59,502,807 B (Run139).
+2026-10-09 01:44 runner case (build/state-hook-benchmark-proxy-timing-off-20261009-014406-525036): exit 5,
+  winedbg: EIP=EAX=74666f73, ECX=003065f0 (= device_hooked ptr, ex=0), [ESP]=75ebd6d1 (DXVK d3d9 +0x17d6d1),
+  stack 76a9461a = proxy +0x4461a = release_device, src/proxy/capture.cpp:1390 (refs = fn(d));
+  fixture frame state_hook_benchmark +0x2e6bf (main scope exit, device Com<> release); thread 0x198 = main.
+  x3m.log: motion_output_release device=1 held=4 count=6 released=1, then exception row, no device_destroy row.
+DXVK 0x625bd697..: final-release branch: mov (%ecx),%eax; mov 0x21c(%eax),%eax; cmp D3D9DeviceEx::D0; jne -> call *%eax.
+  0x21c = slot 135 = D3D9DeviceEx deleting destructor (vtable 0x627409a8: slot134 D1 0x6245af00, slot135 D0 0x6245b850).
+Proxy device vtable copy: capture.cpp:452-456/3192 = 119 slots (ex=0) or 134 (ex=1): slot 135 is past the copy.
+2026-10-09 repro (run_override_probe.py, --dll "d3d9=n,b;winedbg.exe=d"): exit 5, elapsed 12.3 s, same fault 74666F73,
+  motion_output_release held=4 count=6, exception row; 'WineDbg attached' 0 rows, no winedbg process afterwards.
