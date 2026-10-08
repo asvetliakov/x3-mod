@@ -1,0 +1,104 @@
+{
+ "dll": "/tmp/x3-run135-candidate/build/d3d9.dll",
+ "sha256": "7f7c46596952340e6c4ed43f2cbe1804ca0193ae046db48967485c7fcdaad3f3",
+ "bytes": 59149150,
+ "commit": "15d731a2",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree /tmp/x3-run135-candidate/src (git worktree add --detach; empty build directory, the d73d3484 build moved aside to build-d73d3484; X3M_SOURCE_COMMIT 15d731a264495d2d82d2dac1df9755a2cadb693b written by tools/build/write_source_commit.py, no dirty diff); clean configure+build wall time 45 s",
+ "gates": "production diff since the Run134 candidate (git diff --stat 90a8b4d4..15d731a2 -- src cmake CMakeLists.txt tools): src/proxy/motion_output.{h,cpp} (5bcfb282 capture band readback, d6d40962), src/proxy/engine_light_core.h, src/proxy/motion_output_engine_light_inc.h, src/renderer/linear_engine_light_inc.h, src/renderer/linear_material.{h,cpp} (d6d40962 engine light per plate), src/config/config_schema_inc.h and tools/config/schema.py (15d731a2: fixture_readback seam entry for X3M_FIXTURE_READBACK); an earlier build of d73d3484 (f1107715..., 59,149,150 B, same size) failed the host suite on test_config_schema and was withdrawn; build 0 warnings (configure and build logs, grep -ci warning: 0 and 0; measured); x87 0 violations (check_no_x87.py on this DLL: PASS, 127 roots, 767 reachable functions, +1 over Run134 as the capture-band-readback change recorded; measured); generate --check measured: PASS, 257 settings, 107 in the template (Run134: 256); shader --check reused from the d73d3484 run of this session (the schema fix touches no shader input: src/effects, tools/shaders, linear_material.cpp unchanged d73d3484..15d731a2): measured on the d73d3484 candidate tree under the Wine lock, one at a time: generate_rigid_motion_pixel.py --check PASS 50 programs, engine_plume_ps 4,086 words bytecode ceff5ae0... (251 s; two fxc X4121 gradient-in-flow-control warnings, HLSL unchanged since Run129, inferred pre-existing), generate_bloom_programs.py --check passed 9 programs (21 s), generate_engine_shimmer_program.py --check PASS engine_shimmer_ps 6,178 words (16 s); none of these generators reads the runtime-emitted engine light block (linear_engine_light_inc.h, linear_material.cpp), whose fixture evidence is below; site verifiers and identity: git diff --stat 90a8b4d4..15d731a2 -- 'verification/probe/verify_*.py' and -- 'src/proxy/*site*.h', both empty, Run124/Run123 evidence reused; host suite from the main checkout at 15d731a2 (with the regenerated seam record in the worktree; /usr/bin/python3 verification/probe/run_host_suite.py): 289 modules / 3,044 tests / 0 failing modules, 111.7 s wall (12 jobs), no warning/skip/error lines, test_config_schema 18 tests ok (measured); record runs from the committed main checkout under the Wine lock, one at a time: engine-effects (run_engine_effects.py --wine-env CX_GRAPHICS_BACKEND=wined3d) at d73d3484, committed in 15d731a2: exit 0, passed, modes main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7, source d73d3484 not dirty, 20 hashed sources (not rerun: config_schema_inc.h is outside its closure, and the helper binds it at 15d731a2); seam-engine-light (run_motion_output.py --wine-env CX_GRAPHICS_BACKEND=wined3d seam-engine-light) rerun at 15d731a2: exit 0 (86 s incl. its build, motion-output-build.log 0 warnings), 107 checks, lit_frames 7, first_lit_after_reset 1, worst_relative 0.003994, worst_constant 1.19e-08, zero_differ 0, seam dll 159244f1... (runner summary PARTIAL, by design for one case); its outputs (seam-engine-light-fixture.json, motion-output-partial.json, motion-output-build.log) kept uncommitted; engine fixture records (verification/results/run135-candidate/record_binding.py 15d731a2 in the main checkout, record_binding_out.json): all eight bind (engine-plumes, engine-ribbons, engine-shimmer, engine-effects, engine-light-gpu, engine-effects-patch, cull-small-parts-cpu, seam-engine-light), no hash mismatch, no changed closure path; the changes' own fixture evidence (cited, not rerun; built from their own worktrees): verification/results/capture-band-readback/ (wined3d final binaries hdr-band, hdr-rows5, shadow-band PASS 103/103/278 checks; files byte-identical to the whole-surface path for rgba16f, rgba32f, r32f at 5120x1440 on wined3d and DXVK; DXVK seam cases exit 1 on the fixture's own depth-oracle check at frame 1 with every binary, before included, and the DXVK bench crashes in fixture teardown, both pre-existing), verification/results/engine-light-per-plate/single-nozzle-equivalence.json (single_nozzle_identical true, 12 plate modes, 9 cases); hull-lightmap-gain, look images reused (no change under their inputs); launch: env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 ./x3run --dry-run --direct --config --debug at 15d731a2 (x3run takes the Wine lock itself as holder user-game) exit 0 (measured; output equal to the d73d3484 dry run apart from timestamps), overrides d3d9=n,b, X3M_* in the launch env X3M_DEBUG, X3M_VOICE_DMO_FALLBACK plus X3M_BOTTLE and X3M_FIXTURE_BOTTLE inherited, X3M_CONFIG unset (player mode), no X3M_ENGINE_* variable, engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed), launcher note fog families: stale (as at Run132-134), snapshot: no new session (expected); X3AP not running before the record runs, builds, shader checks, suites and dry runs (pgrep); candidate worktree clean after all gates; installed d3d9.dll still Run134 (a9d4559a..., 59,122,340 B, mtime Oct 8 04:46:36) and X3AP.exe (fdbf3418...) untouched; cxbottle.conf mtime Oct 8 02:52:51, unchanged since Run133",
+ "changes": [
+  "15d731a2 Schema: fixture_readback seam entry for X3M_FIXTURE_READBACK (test_config_schema); config_schema_inc.h regenerated (257 settings, template unchanged); engine-effects and seam-engine-light ...",
+  "d6d40962 Engine hull light: a light per nozzle plate (user decision 2026-10-08) instead of one per ship; each pixel evaluates the nearest plate in units of its value_eff (least (d/v)^2, ties to the...",
+  "5bcfb282 Capture snapshots read back in ~4 MiB horizontal bands through one cached (DEFAULT RT + SYSTEMMEM) pair per format/width, released at burst end, before Reset and at shutdown: peak staging ...",
+  "20bbf004 Run 134 A (run12) triage: the crash was mid-flight 33 s after three F8 captures exhausted DXVK's host-visible mapped memory in the 32-bit address space (530 MB staging per captured frame, ...",
+  "92cfdee9 Run134 installed: HDR meter lock gate, DLL a9d4559a\u2026 (59,122,340 B) from clean 90a8b4d4 into bottle X3 at 04:46, bytes verified, EXE/bottle/fonts/engine bodies unchanged, rollback Run133; ..."
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "carried over unchanged from the Run130-Run134 records; installed table sha256 re-measured equal (45a1215b...); git diff --stat 90a8b4d4..15d731a2 -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "carried over unchanged from the Run134 record (Run133, Run132, Run130, Run123): git diff --stat 90a8b4d4..15d731a2 -- tools/fonts and -- assets/fonts, one path per call, both empty",
+ "producer": "Claude Code implement-deep agent (Opus 5.5), 2026-10-08; git log --oneline --no-merges 90a8b4d4..15d731a2 (5 commits) plus the merge d73d3484; shasum -a 256; source-hash and include-closure binding: verification/results/run135-candidate/record_binding.py (the Run130 helper, docstring only changed) with output record_binding_out.json; record-run, configure/build/x87/generate/shader/suite/dry-run/binding logs local under /tmp/x3-run135-logs/ (*-15d731a2.* for this build; the unsuffixed files are the withdrawn d73d3484 build and its shader checks)"
+}

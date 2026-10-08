@@ -1,0 +1,28 @@
+{
+ "run": "Run135",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run135-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-08T14:09+0400",
+ "commit": "15d731a2",
+ "candidate_record": "verification/results/run135-candidate-build.json",
+ "installed": {
+  "sha256": "7f7c46596952340e6c4ed43f2cbe1804ca0193ae046db48967485c7fcdaad3f3",
+  "bytes": 59149150,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed before install); pgrep X3AP empty before; 16 generated font files re-reported, unchanged content; engine_bodies.json kept"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 9fc1c171... before and after (CX_GRAPHICS_BACKEND = dxvk as the user set it)",
+  "x3m.ini": "the user's file kept",
+  "CrossOver Preview.app": "MoltenVK 1.4.2 + marked Gcenx PR #20 DXVK 1.10 as for Run 131 A"
+ },
+ "previous": {
+  "run": "Run134",
+  "dll_sha256": "a9d4559a83278e21e41facdb766864a51082d01708e1876b97e5edb54f0a7474",
+  "path": "/tmp/x3-run134-candidate/build/d3d9.dll",
+  "then": "Run133 1a8de604... at /tmp/x3-run133-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 134 A (run12): (1) the game aborted 33 s after three F8 captures on DXVK (530 MB of staging per captured frame in the 32-bit address space) -> capture band readback; (2) the Ocelot's facing secondary engine had no hull light head-on (one light per ship, tie to the lower handle) -> a light per plate, user decision 2026-10-08",
+ "producer": "main session (Fable 5.1)"
+}
