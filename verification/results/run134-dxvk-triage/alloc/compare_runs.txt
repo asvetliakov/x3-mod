@@ -1,0 +1,12 @@
+x3-bottleX3-run1 dxvk=0 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=0 | 
+x3-bottleX3-run10 dxvk=3 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=1 | session_end frames=6974 elapsed_ms=143198 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run11 dxvk=3 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=3 | session_end frames=13640 elapsed_ms=231677 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run12 dxvk=3 capture_frames=24 readback_rows=192 alloc_failed=331 terminate=1 exit_marker=0 | session_end frames=12555 elapsed_ms=238179 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run2 dxvk=3 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=1 | session_end frames=1907 elapsed_ms=27500 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run3 dxvk=3 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=1 | session_end frames=1217 elapsed_ms=18916 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run4 dxvk=3 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=1 | session_end frames=8728 elapsed_ms=134312 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run5 dxvk=3 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=1 | session_end frames=11363 elapsed_ms=245659 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run6 dxvk=3 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=3 | session_end frames=9221 elapsed_ms=183466 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run7 dxvk=0 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=2 | session_end frames=164 elapsed_ms=9301 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run8 dxvk=0 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=1 | session_end frames=1141 elapsed_ms=16873 devices=1 resets=0 exception=0 dropped=0 filter=ours
+x3-bottleX3-run9 dxvk=0 capture_frames=0 readback_rows=0 alloc_failed=0 terminate=0 exit_marker=1 | session_end frames=5979 elapsed_ms=128208 devices=1 resets=0 exception=0 dropped=0 filter=ours

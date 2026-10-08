@@ -1,0 +1,96 @@
+engine_frame frame=9830 candidates=18 not_jet=14 records=4 suppressed=4 rows=4
+engine_stage frame=9830 records=4 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9830 admitted=146 toggled=1
+engine_light_frame frame=9830 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=4 main=4 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=9831 candidates=18 not_jet=14 records=4 suppressed=4 rows=4
+engine_stage frame=9831 records=4 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9831 admitted=146 toggled=1
+engine_light_frame frame=9831 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=4 main=4 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=9832 candidates=27 not_jet=19 records=8 suppressed=8 rows=8
+engine_stage frame=9832 records=8 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9832 admitted=146 toggled=1
+engine_light_frame frame=9832 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=4 main=4 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=9833 candidates=22 not_jet=14 records=8 suppressed=8 rows=8
+engine_stage frame=9833 records=8 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9833 admitted=146 toggled=1
+engine_light_frame frame=9833 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=8 main=4 rcs=4 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=9834 candidates=18 not_jet=14 records=4 suppressed=4 rows=4
+engine_stage frame=9834 records=4 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9834 admitted=146 toggled=1
+engine_light_frame frame=9834 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=8 main=4 rcs=4 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=9835 candidates=22 not_jet=14 records=8 suppressed=8 rows=8
+engine_stage frame=9835 records=8 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9835 admitted=146 toggled=1
+engine_light_frame frame=9835 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=4 main=4 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=9836 candidates=22 not_jet=14 records=8 suppressed=8 rows=8
+engine_stage frame=9836 records=8 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9836 admitted=146 toggled=1
+engine_light_frame frame=9836 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=8 main=4 rcs=4 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=9837 candidates=18 not_jet=14 records=4 suppressed=4 rows=4
+engine_stage frame=9837 records=4 nozzles=4 discs=4 floored=3 unfloored=1 capped=2 faded=2 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=9837 admitted=146 toggled=1
+engine_light_frame frame=9837 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=8 main=4 rcs=4 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=0,2,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10055 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10055 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10055 admitted=187 toggled=1
+engine_light_frame frame=10055 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10056 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10056 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10056 admitted=187 toggled=1
+engine_light_frame frame=10056 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10057 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10057 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10057 admitted=187 toggled=1
+engine_light_frame frame=10057 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10058 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10058 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10058 admitted=187 toggled=1
+engine_light_frame frame=10058 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10059 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10059 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10059 admitted=187 toggled=1
+engine_light_frame frame=10059 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10060 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10060 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10060 admitted=187 toggled=1
+engine_light_frame frame=10060 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10061 candidates=21 not_jet=18 records=3 suppressed=3 rows=3
+engine_stage frame=10061 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10061 admitted=187 toggled=1
+engine_light_frame frame=10061 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10062 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10062 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10062 admitted=187 toggled=1
+engine_light_frame frame=10062 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10387 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10387 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10387 admitted=155 toggled=1
+engine_light_frame frame=10387 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10388 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10388 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10388 admitted=155 toggled=1
+engine_light_frame frame=10388 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10389 candidates=21 not_jet=18 records=3 suppressed=3 rows=3
+engine_stage frame=10389 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10389 admitted=155 toggled=1
+engine_light_frame frame=10389 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10390 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10390 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10390 admitted=155 toggled=1
+engine_light_frame frame=10390 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10391 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10391 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10391 admitted=155 toggled=1
+engine_light_frame frame=10391 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10392 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10392 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10392 admitted=155 toggled=1
+engine_light_frame frame=10392 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10393 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10393 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10393 admitted=155 toggled=1
+engine_light_frame frame=10393 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0
+engine_frame frame=10394 candidates=17 not_jet=14 records=3 suppressed=3 rows=3
+engine_stage frame=10394 records=3 nozzles=3 discs=3 floored=2 unfloored=1 capped=1 faded=1 culled_small=0 culled_behind=0 skipped_other_view=0 view_rule=own
+hull_lightmap_frame frame=10394 admitted=155 toggled=1
+engine_light_frame frame=10394 ships=2 ships_drawn=2 nodes=8 candidates=21 draws_lit=21 no_twin=0 no_rows=0 records=3 main=3 rcs=0 other_view=0 invalid=0 orphan=0 ships_dropped=0 logged=8 matched=8 singular=0 nodes_dropped=0 twins=150 plates=1,1,0,0,0,0,0,0 plates_none=0 unfloored=1 plates_dropped=0

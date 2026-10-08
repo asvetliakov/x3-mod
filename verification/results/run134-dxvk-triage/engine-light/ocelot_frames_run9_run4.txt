@@ -1,0 +1,18 @@
+/tmp/x3-bottleX3-run9/session-20261008-025020-244.log dxvk_lines= 0 []
+  frame 856 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 857 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= ('0,2,0,0,0,0,0,0', '0', '0', '2')
+  frame 858 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= ('0,2,0,0,0,0,0,0', '10', '10', '2')
+  frame 859 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= ('0,2,0,0,0,0,0,0', '10', '10', '2')
+  frame 860 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= ('0,2,0,0,0,0,0,0', '10', '10', '2')
+  frame 861 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= ('0,2,0,0,0,0,0,0', '10', '10', '2')
+  frame 862 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= ('0,2,0,0,0,0,0,0', '10', '10', '2')
+  frame 863 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= ('0,2,0,0,0,0,0,0', '10', '10', '2')
+/tmp/x3-bottleX3-run4/session-20261008-020625-412.log dxvk_lines= 1 ['proxy_environment CX_BOTTLE=X3 CX_BOTTLE_PATH=~/Library/Application_Support/CrossOver/Bottles CX_DEBUGMSG=-all CX_GRAPHI']
+  frame 982 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 983 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 984 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 985 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 986 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 987 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 988 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None
+  frame 989 huge:568 huge:569 engine_light_frame(plates,draws_lit,candidates,ships)= None

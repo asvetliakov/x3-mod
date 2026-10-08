@@ -1,0 +1,16 @@
+frame=9830 fx_engine_xtc_red_big3 handle=0005b56c value_eff=548.076 view_z=2855 ndc=(-0.711,+0.500) cos_axis_to_cam=+0.572
+frame=9830 fx_engine_xtc_red_big3 handle=0005b56d value_eff=548.076 view_z=2848 ndc=(-0.294,+0.369) cos_axis_to_cam=+0.857
+frame=9830 fx_engine_xtc_red_nor handle=0000c1d6 value_eff=11.7703 view_z=124 ndc=(+0.015,-0.828) cos_axis_to_cam=+0.903
+frame=9830 fx_engine_xtc_red_tiny handle=0000c1cf value_eff=11.7703 view_z=120 ndc=(+0.016,-0.771) cos_axis_to_cam=+0.914
+frame=9830 light_at=0005b56c other=0005b56d |L-nozzle_other|=2411 reach=1644 plate_reach=548 nozzle_sep=2395
+frame=9832 fx_engine_xtc_red_big3 handle=0005b56c value_eff=548.076 view_z=2916 ndc=(-0.687,+0.500) cos_axis_to_cam=+0.570
+frame=9832 fx_engine_xtc_red_big3 handle=0005b56d value_eff=548.076 view_z=2865 ndc=(-0.283,+0.378) cos_axis_to_cam=+0.855
+frame=9832 fx_engine_xtc_red_nor handle=0000c1d6 value_eff=11.7704 view_z=124 ndc=(+0.020,-0.827) cos_axis_to_cam=+0.896
+frame=9832 fx_engine_xtc_red_tiny handle=0000c1cf value_eff=11.7704 view_z=120 ndc=(+0.021,-0.770) cos_axis_to_cam=+0.907
+frame=9832 light_at=0005b56c other=0005b56d |L-nozzle_other|=2411 reach=1644 plate_reach=548 nozzle_sep=2395
+frame=10055 fx_engine_xtc_red_big3 handle=0005b56d value_eff=548.076 view_z=1862 ndc=(-0.716,+0.660) cos_axis_to_cam=+0.842
+frame=10055 fx_engine_xtc_red_nor handle=0000c1d6 value_eff=11.7703 view_z=124 ndc=(-0.012,-0.827) cos_axis_to_cam=+0.904
+frame=10055 fx_engine_xtc_red_tiny handle=0000c1cf value_eff=11.7703 view_z=120 ndc=(-0.013,-0.771) cos_axis_to_cam=+0.915
+frame=10387 fx_engine_xtc_red_big3 handle=0005b56d value_eff=548.076 view_z=2241 ndc=(-0.811,+0.611) cos_axis_to_cam=+0.723
+frame=10387 fx_engine_xtc_red_nor handle=0000c1d6 value_eff=11.7704 view_z=124 ndc=(+0.007,-0.832) cos_axis_to_cam=+0.902
+frame=10387 fx_engine_xtc_red_tiny handle=0000c1cf value_eff=11.7704 view_z=120 ndc=(+0.008,-0.775) cos_axis_to_cam=+0.913

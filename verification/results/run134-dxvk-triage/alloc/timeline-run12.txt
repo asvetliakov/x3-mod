@@ -1,0 +1,37 @@
+first_frame_end 0 2026-10-08T08:38:27.618615+00:00
+last_frame_end 12554 2026-10-08T08:42:21.191656+00:00 elapsed_ms 238149
+session_end frames=12555 elapsed_ms=238179 devices=1 resets=0 exception=0 dropped=0 filter=ours
+captures (frames with readbacks):
+  frame=9830 end_utc=2026-10-08T08:41:36.880908+00:00 rows=8 ok=8 ok_bytes=529793024 failed=[]
+  frame=9831 end_utc=2026-10-08T08:41:37.361477+00:00 rows=8 ok=8 ok_bytes=529793024 failed=[]
+  frame=9832 end_utc=2026-10-08T08:41:37.878729+00:00 rows=8 ok=8 ok_bytes=529793024 failed=[]
+  frame=9833 end_utc=2026-10-08T08:41:38.152923+00:00 rows=8 ok=3 ok_bytes=142868480 failed=['motion', 'depth', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=9834 end_utc=2026-10-08T08:41:38.274185+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=9835 end_utc=2026-10-08T08:41:38.395890+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=9836 end_utc=2026-10-08T08:41:38.516007+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=9837 end_utc=2026-10-08T08:41:38.625328+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10055 end_utc=2026-10-08T08:41:41.798089+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10056 end_utc=2026-10-08T08:41:41.923564+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10057 end_utc=2026-10-08T08:41:42.042981+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10058 end_utc=2026-10-08T08:41:42.171374+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10059 end_utc=2026-10-08T08:41:42.295954+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10060 end_utc=2026-10-08T08:41:42.421171+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10061 end_utc=2026-10-08T08:41:42.552461+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10062 end_utc=2026-10-08T08:41:42.678347+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10387 end_utc=2026-10-08T08:41:47.441441+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10388 end_utc=2026-10-08T08:41:47.544194+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10389 end_utc=2026-10-08T08:41:47.650116+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10390 end_utc=2026-10-08T08:41:47.754442+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10391 end_utc=2026-10-08T08:41:47.858302+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10392 end_utc=2026-10-08T08:41:47.986471+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10393 end_utc=2026-10-08T08:41:48.103204+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+  frame=10394 end_utc=2026-10-08T08:41:48.224938+00:00 rows=8 ok=0 ok_bytes=0 failed=['hdr', 'motion', 'depth', 'shadow_map0', 'shadow_map1', 'shadow_map2', 'shadow_map3', 'shadow_map4']
+terminate [2026-10-08T08:42:21.219Z] terminate called after throwing an instance of 'dxvk::DxvkError'
+dxvk failure blocks 166
+  2026-10-08T08:41:38Z sizes={117964800: 10, 67108864: 14, 16777216: 9, 58982400: 4} nearest_frame=9832 capture=1
+  2026-10-08T08:41:41Z sizes={58982400: 2, 117964800: 4, 16777216: 4, 67108864: 6} nearest_frame=10012 capture=0
+  2026-10-08T08:41:42Z sizes={58982400: 6, 117964800: 12, 16777216: 12, 67108864: 18} nearest_frame=10057 capture=1
+  2026-10-08T08:41:47Z sizes={58982400: 6, 117964800: 12, 16777216: 12, 67108864: 18} nearest_frame=10359 capture=0
+  2026-10-08T08:41:48Z sizes={58982400: 2, 117964800: 4, 16777216: 4, 67108864: 6} nearest_frame=10392 capture=1
+  2026-10-08T08:42:21Z sizes={16777216: 1} nearest_frame=12541 capture=0
+heap_allocated_MB [3839] heap_used_MB [3522, 3524, 3542]
