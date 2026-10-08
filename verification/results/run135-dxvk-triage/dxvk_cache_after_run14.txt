@@ -1,0 +1,1 @@
+magic=b'DXVK' version=10 entries=223 parsed_bytes=51625 file_bytes=51625 stage_masks={17: 223}

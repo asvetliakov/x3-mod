@@ -1,0 +1,36 @@
+frame=6115 handle=0005b568 px=(-1773,-630) off_screen
+frame=6115 handle=0005b569 px=(-1863,-170) off_screen
+frame=6115 handle=0005b56a px=(163,159) half=100 mean_rgb=0.12,0.05,0.04 max_lum=0.15 p90_lum=0.11 white_gt2=0.000
+frame=6115 handle=0005b56b px=(307,203) half=98 mean_rgb=0.16,0.06,0.04 max_lum=0.15 p90_lum=0.12 white_gt2=0.000
+frame=6115 handle=0005b56c px=(1256,292) half=56 mean_rgb=0.06,0.03,0.02 max_lum=0.24 p90_lum=0.05 white_gt2=0.000
+frame=6115 handle=0005b56d px=(1676,551) half=56 mean_rgb=0.66,0.36,0.26 max_lum=4.25 p90_lum=1.23 white_gt2=0.006
+frame=6115 handle=0005b56e px=(836,574) half=100 mean_rgb=0.41,0.21,0.17 max_lum=3.48 p90_lum=1.00 white_gt2=0.000
+frame=6115 handle=0005b56f px=(791,501) half=98 mean_rgb=0.56,0.29,0.23 max_lum=3.67 p90_lum=1.04 white_gt2=0.000
+frame=6122 handle=0005b568 px=(-2364,-817) off_screen
+frame=6122 handle=0005b569 px=(-2525,-312) off_screen
+frame=6122 handle=0005b56a px=(-120,103) off_screen
+frame=6122 handle=0005b56b px=(55,155) half=106 mean_rgb=0.16,0.06,0.04 max_lum=0.15 p90_lum=0.12 white_gt2=0.000
+frame=6122 handle=0005b56c px=(1111,268) half=58 mean_rgb=0.07,0.03,0.02 max_lum=0.10 p90_lum=0.05 white_gt2=0.000
+frame=6122 handle=0005b56d px=(1573,543) half=57 mean_rgb=0.70,0.38,0.28 max_lum=3.85 p90_lum=1.26 white_gt2=0.007
+frame=6122 handle=0005b56e px=(686,559) half=104 mean_rgb=0.43,0.22,0.18 max_lum=3.52 p90_lum=1.03 white_gt2=0.000
+frame=6122 handle=0005b56f px=(633,483) half=103 mean_rgb=0.62,0.31,0.25 max_lum=3.46 p90_lum=1.06 white_gt2=0.000
+frame=6293 handle=0005b566 px=(522,109) half=112 mean_rgb=0.55,0.26,0.20 max_lum=2.87 p90_lum=0.82 white_gt2=0.000
+frame=6293 handle=0005b567 px=(578,152) half=113 mean_rgb=0.34,0.17,0.13 max_lum=2.87 p90_lum=0.60 white_gt2=0.000
+frame=6293 handle=0005b568 px=(593,18) half=195 mean_rgb=0.38,0.18,0.14 max_lum=2.87 p90_lum=0.62 white_gt2=0.000
+frame=6293 handle=0005b569 px=(544,248) half=188 mean_rgb=0.37,0.18,0.14 max_lum=2.87 p90_lum=0.60 white_gt2=0.000
+frame=6293 handle=0005b56a px=(1171,329) half=66 mean_rgb=0.07,0.04,0.03 max_lum=0.12 p90_lum=0.07 white_gt2=0.000
+frame=6293 handle=0005b56b px=(1245,353) half=66 mean_rgb=0.08,0.05,0.03 max_lum=0.11 p90_lum=0.08 white_gt2=0.000
+frame=6293 handle=0005b56c px=(1750,371) half=44 mean_rgb=0.06,0.03,0.02 max_lum=0.13 p90_lum=0.05 white_gt2=0.000
+frame=6293 handle=0005b56d px=(2051,569) half=46 mean_rgb=0.67,0.35,0.26 max_lum=4.66 p90_lum=1.23 white_gt2=0.009
+frame=6293 handle=0005b56e px=(1547,599) half=71 mean_rgb=0.70,0.41,0.32 max_lum=14.31 p90_lum=1.38 white_gt2=0.034
+frame=6293 handle=0005b56f px=(1518,548) half=70 mean_rgb=0.94,0.54,0.42 max_lum=14.24 p90_lum=1.51 white_gt2=0.038
+frame=6300 handle=0005b566 px=(966,196) half=95 mean_rgb=0.68,0.30,0.25 max_lum=2.75 p90_lum=1.00 white_gt2=0.000
+frame=6300 handle=0005b567 px=(1010,232) half=96 mean_rgb=0.42,0.21,0.17 max_lum=2.75 p90_lum=0.77 white_gt2=0.000
+frame=6300 handle=0005b568 px=(1023,118) half=165 mean_rgb=0.43,0.20,0.16 max_lum=2.75 p90_lum=0.73 white_gt2=0.000
+frame=6300 handle=0005b569 px=(981,314) half=159 mean_rgb=0.43,0.20,0.16 max_lum=2.75 p90_lum=0.73 white_gt2=0.000
+frame=6300 handle=0005b56a px=(1436,367) half=60 mean_rgb=0.07,0.04,0.03 max_lum=0.11 p90_lum=0.07 white_gt2=0.000
+frame=6300 handle=0005b56b px=(1498,387) half=60 mean_rgb=0.08,0.04,0.03 max_lum=0.12 p90_lum=0.08 white_gt2=0.000
+frame=6300 handle=0005b56c px=(1916,392) half=41 mean_rgb=0.06,0.03,0.02 max_lum=0.10 p90_lum=0.05 white_gt2=0.000
+frame=6300 handle=0005b56d px=(2192,574) half=44 mean_rgb=0.69,0.35,0.26 max_lum=4.56 p90_lum=1.23 white_gt2=0.010
+frame=6300 handle=0005b56e px=(1760,606) half=65 mean_rgb=0.73,0.42,0.33 max_lum=14.27 p90_lum=1.38 white_gt2=0.032
+frame=6300 handle=0005b56f px=(1733,560) half=63 mean_rgb=0.99,0.55,0.43 max_lum=14.66 p90_lum=1.52 white_gt2=0.036

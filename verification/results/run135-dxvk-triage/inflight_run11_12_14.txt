@@ -1,0 +1,15 @@
+== run11
+load_frame 893 inflight_frames 12727 secs~ 167
+ >33ms 38 first_half 28 second_half 10
+ >50ms 25 first_half 20 second_half 5
+ >100ms 16 first_half 12 second_half 4
+== run12
+load_frame 489 inflight_frames 12046 secs~ 176
+ >33ms 60 first_half 28 second_half 32
+ >50ms 47 first_half 19 second_half 28
+ >100ms 36 first_half 10 second_half 26
+== run14
+load_frame 554 inflight_frames 7512 secs~ 118
+ >33ms 64 first_half 33 second_half 31
+ >50ms 55 first_half 28 second_half 27
+ >100ms 42 first_half 19 second_half 23
