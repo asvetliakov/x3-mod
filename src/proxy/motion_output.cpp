@@ -413,6 +413,7 @@ MotionOutput::~MotionOutput() {
     release_resources();
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
     delete occlusion_classifier_; // plain CPU tables (occlusion_cull_core.h); the pass went with release_resources
+    delete occlusion_batcher_;    // plain CPU tables (occlusion_cull_core.h)
     delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
     // The far block's device count: this device withdraws its request (and its claim on the buffer's frame); the far
     // jets stay armed while another device requests the plume stage.
@@ -4163,9 +4164,11 @@ void MotionOutput::before_reset() noexcept {
     // The two 1x1 DEFAULT-pool targets go; the override is vanilla until a pass has run again
     // (sun_occlusion::device_reset).
     if (sun_occlusion_pass_) taa_call([&] { sun_occlusion_pass_->before_reset(); });
-    // Occlusion cull: the queries go (each holds a device reference); the next successful Reset recreates them and its
-    // first frame has no previous result, so every part draws.
+    // Occlusion cull: the queries (and the dynamic rectangle buffer) go (each holds a device reference); the next
+    // successful Reset recreates them and its first frame has no previous result, so every part draws; every part is
+    // tested at its ship's next block (the cadence's results are forgotten).
     if (occlusion_pass_) taa_call([&] { occlusion_pass_->before_reset(); }, "occlusion_cull_before_reset");
+    if (occlusion_batcher_) occlusion_batcher_->reset_results();
     occlusion_pass_failed_ = false; // a refusal or creation failure is retried after Reset
     release_lens_depth();
     lens_frame_active_ = lens_suppress_ = false;

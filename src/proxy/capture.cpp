@@ -192,6 +192,7 @@ bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS (default on): the rend
 float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3M_MOTION_OUTPUT=1 (cull_small_props_core.h)
 bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default on): the occlusion-query skip of hidden ship sub-parts;
                                 // needs X3M_MOTION_OUTPUT=1 (occlusion_cull_core.h)
+unsigned occlusion_cull_retest = x3m::occlusion_cull::core::retest_default; // X3M_OCCLUSION_CULL_RETEST (1..64, 8)
 float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
                                    // X3M_MOTION_OUTPUT=1
@@ -3263,7 +3264,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
                                                  engine_effects::plume_floor()); // plumes: the stage in the resolve
     hooked.motion_output.configure_engine_shimmer(); // after the plumes: X3M_ENGINE_SHIMMER(_PX), requested with them
     hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless configured
-    hooked.motion_output.configure_occlusion_cull(occlusion_cull_on); // X3M_OCCLUSION_CULL, read at start-up
+    hooked.motion_output.configure_occlusion_cull(occlusion_cull_on, occlusion_cull_retest); // read at start-up
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0], taa_thin_region[1], taa_thin_region[2],
@@ -5598,8 +5599,21 @@ void initialize_log(HMODULE module) {
         else if (!motion_output_requested)
             reason = "route_off"; // the test and the skip live in the motion route's draw path
         occlusion_cull_on = !std::strcmp(reason, "ok");
-        log("occlusion_cull_config requested=%s configured=%u reason=%s pool=%u", mode_length ? mode : "unset",
-            occlusion_cull_on ? 1u : 0u, reason, occlusion_cull::core::pool_size);
+        // X3M_OCCLUSION_CULL_RETEST: frames between tests of a part last read visible (1..64; unset = 8); anything
+        // else keeps the default (retest_status=invalid_setting or too_long).
+        wchar_t retest_text[16]{};
+        char retest[16]{};
+        const DWORD retest_length = x3m::config::get(L"X3M_OCCLUSION_CULL_RETEST", retest_text, 16);
+        for (DWORD i = 0; i < retest_length && i < 15; ++i)
+            retest[i] = retest_text[i] >= 0x21 && retest_text[i] <= 0x7e ? char(retest_text[i]) : '?';
+        unsigned frames = occlusion_cull::core::retest_default;
+        const bool retest_ok = retest_length < 16 && occlusion_cull::core::parse_retest(retest, &frames);
+        occlusion_cull_retest = retest_ok ? frames : occlusion_cull::core::retest_default;
+        log("occlusion_cull_config requested=%s configured=%u reason=%s pool=%u retest=%u retest_setting=%s "
+            "retest_status=%s",
+            mode_length ? mode : "unset", occlusion_cull_on ? 1u : 0u, reason, occlusion_cull::core::pool_size,
+            occlusion_cull_retest, retest_length ? retest : "-",
+            retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting");
     }
     if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||
         loading_trace::mesh_adjacency_requested())

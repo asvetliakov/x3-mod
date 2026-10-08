@@ -1,0 +1,296 @@
+{
+ "wined3d": {
+  "fixture": {
+   "passed": true,
+   "result": {
+    "checks": 76,
+    "failed": 0
+   },
+   "executable_sha256": "4d4e0d489f8c1cc98585e43754c1e67d9624f13c2cf07db942ea7c3cc57641dc",
+   "sources": {
+    "verification/probe/occlusion_cull_fixture.cpp": "a9817a611da760033d53f99563939592a6ea7ba093cd0dce4d31115a6f24b443",
+    "verification/probe/run_occlusion_cull.py": "61ccb2afe7ec4ae1bb7634082f33afe59fc8bafb7ba77f04ff79164959236a55",
+    "src/renderer/occlusion_cull_pass.cpp": "7b5e10c52e2cf08420b9bbf3224bbc8192fe4d5a304e9f9cc5590c58eb4d517b",
+    "src/renderer/occlusion_cull_pass.h": "1ab7b9a46802979e6362c151e375e250bba6d2ac4a5c16d2c6ddf69a3993dfb3",
+    "src/proxy/occlusion_cull_core.h": "98fd01b6cd66a3a59e6ad0f6b8eb7977bd1f0132846d5a4947121e051b00b703",
+    "verification/probe/occlusion_cull_scene_inc.h": "30fdc2e163cc452c1bdfb07a400749e445ec837a7c1a4c4b9844a6066100bcef",
+    "verification/results/occlusion-cull-batched/legacy_cost.cpp": "2e001caa74454f1c57c46b099af95b7d521a324a268e32060e38cb4d6472e8a2"
+   },
+   "derived": [
+    {
+     "impl": "batched",
+     "buffer": "dynamic",
+     "repeats": 5,
+     "per_test_us": 3.29,
+     "per_block_us": 174.1,
+     "all_test_us": 1018.1,
+     "all_frame_overhead_us": 1123.1,
+     "cull_test_us": 732.9,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 739.4,
+     "off_frame_us": 143.1,
+     "all_cpu_overhead_us": 1128.7,
+     "cull_cpu_delta_us": 739.5,
+     "off_cpu_us": 155.3
+    },
+    {
+     "impl": "batched",
+     "buffer": "managed",
+     "repeats": 5,
+     "per_test_us": 3.35,
+     "per_block_us": 172.7,
+     "all_test_us": 1026.5,
+     "all_frame_overhead_us": 1124.4,
+     "cull_test_us": 783.2,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 798.9,
+     "off_frame_us": 143.1,
+     "all_cpu_overhead_us": 1127.4,
+     "cull_cpu_delta_us": 803.6,
+     "off_cpu_us": 155.3
+    },
+    {
+     "impl": "batched",
+     "buffer": "discard",
+     "repeats": 5,
+     "per_test_us": 3.02,
+     "per_block_us": 197.3,
+     "all_test_us": 1038.9,
+     "all_frame_overhead_us": 1127.8,
+     "cull_test_us": 796.8,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 813.9,
+     "off_frame_us": 143.1,
+     "all_cpu_overhead_us": 1129.8,
+     "cull_cpu_delta_us": 812.9,
+     "off_cpu_us": 155.3
+    },
+    {
+     "impl": "batched",
+     "buffer": "constants",
+     "repeats": 5,
+     "per_test_us": 0.73,
+     "per_block_us": 8.9,
+     "all_test_us": 136.2,
+     "all_frame_overhead_us": 210.5,
+     "cull_test_us": 123.6,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 135.5,
+     "off_frame_us": 143.1,
+     "all_cpu_overhead_us": 207.8,
+     "cull_cpu_delta_us": 133.9,
+     "off_cpu_us": 155.3
+    }
+   ],
+   "real_summary": {
+    "hidden_skips": 3270,
+    "hidden_expected": 3270,
+    "visible_skips": 0,
+    "visible_exactly_3": "39/39",
+    "hidden_every_frame": "111/111",
+    "visible_tested_per_frame": "4..5",
+    "n_over_k": 4.88,
+    "reveal_drawn_at": 27,
+    "diff_frames": 1,
+    "diff_last": 26,
+    "diff_outside": 0,
+    "lane_diff_frames": 1,
+    "state_failures": 0,
+    "errors": 0,
+    "failed": 0,
+    "test_us_p50": 79.9
+   },
+   "command": [
+    "builtin",
+    "5"
+   ]
+  },
+  "legacy": {
+   "passed": true,
+   "result": {
+    "checks": 3,
+    "failed": 0
+   },
+   "executable_sha256": "7f80e2ad6f34d1f82a3c4162017e7cd3c81e8ee09060d8468641c76cc3090fb3",
+   "sources": {
+    "verification/probe/occlusion_cull_fixture.cpp": "a9817a611da760033d53f99563939592a6ea7ba093cd0dce4d31115a6f24b443",
+    "verification/probe/run_occlusion_cull.py": "61ccb2afe7ec4ae1bb7634082f33afe59fc8bafb7ba77f04ff79164959236a55",
+    "src/renderer/occlusion_cull_pass.cpp": "7b5e10c52e2cf08420b9bbf3224bbc8192fe4d5a304e9f9cc5590c58eb4d517b",
+    "src/renderer/occlusion_cull_pass.h": "1ab7b9a46802979e6362c151e375e250bba6d2ac4a5c16d2c6ddf69a3993dfb3",
+    "src/proxy/occlusion_cull_core.h": "98fd01b6cd66a3a59e6ad0f6b8eb7977bd1f0132846d5a4947121e051b00b703",
+    "verification/probe/occlusion_cull_scene_inc.h": "30fdc2e163cc452c1bdfb07a400749e445ec837a7c1a4c4b9844a6066100bcef",
+    "verification/results/occlusion-cull-batched/legacy_cost.cpp": "2e001caa74454f1c57c46b099af95b7d521a324a268e32060e38cb4d6472e8a2"
+   },
+   "derived": [
+    {
+     "impl": "legacy",
+     "buffer": "-",
+     "repeats": 5,
+     "per_test_us": 2.12,
+     "per_block_us": 0,
+     "all_test_us": 318.4,
+     "all_frame_overhead_us": 328.8,
+     "cull_test_us": 295.0,
+     "cull_tests": 150,
+     "cull_frame_delta_us": 234.5,
+     "off_frame_us": 137.4,
+     "all_cpu_overhead_us": 325.5,
+     "cull_cpu_delta_us": 230.2,
+     "off_cpu_us": 148.9
+    }
+   ],
+   "real_summary": null,
+   "command": [
+    "builtin",
+    "5"
+   ]
+  }
+ },
+ "dxvk": {
+  "fixture": {
+   "passed": true,
+   "result": {
+    "checks": 76,
+    "failed": 0
+   },
+   "executable_sha256": "4d4e0d489f8c1cc98585e43754c1e67d9624f13c2cf07db942ea7c3cc57641dc",
+   "sources": {
+    "verification/probe/occlusion_cull_fixture.cpp": "a9817a611da760033d53f99563939592a6ea7ba093cd0dce4d31115a6f24b443",
+    "verification/probe/run_occlusion_cull.py": "61ccb2afe7ec4ae1bb7634082f33afe59fc8bafb7ba77f04ff79164959236a55",
+    "src/renderer/occlusion_cull_pass.cpp": "7b5e10c52e2cf08420b9bbf3224bbc8192fe4d5a304e9f9cc5590c58eb4d517b",
+    "src/renderer/occlusion_cull_pass.h": "1ab7b9a46802979e6362c151e375e250bba6d2ac4a5c16d2c6ddf69a3993dfb3",
+    "src/proxy/occlusion_cull_core.h": "98fd01b6cd66a3a59e6ad0f6b8eb7977bd1f0132846d5a4947121e051b00b703",
+    "verification/probe/occlusion_cull_scene_inc.h": "30fdc2e163cc452c1bdfb07a400749e445ec837a7c1a4c4b9844a6066100bcef",
+    "verification/results/occlusion-cull-batched/legacy_cost.cpp": "2e001caa74454f1c57c46b099af95b7d521a324a268e32060e38cb4d6472e8a2"
+   },
+   "derived": [
+    {
+     "impl": "batched",
+     "buffer": "dynamic",
+     "repeats": 5,
+     "per_test_us": 0.69,
+     "per_block_us": 8.1,
+     "all_test_us": 126.8,
+     "all_frame_overhead_us": 279.2,
+     "cull_test_us": 112.9,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 159.0,
+     "off_frame_us": 200.8,
+     "all_cpu_overhead_us": 275.6,
+     "cull_cpu_delta_us": 160.5,
+     "off_cpu_us": 260.3
+    },
+    {
+     "impl": "batched",
+     "buffer": "managed",
+     "repeats": 5,
+     "per_test_us": 0.76,
+     "per_block_us": 8.5,
+     "all_test_us": 136.3,
+     "all_frame_overhead_us": 323.7,
+     "cull_test_us": 116.4,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 161.0,
+     "off_frame_us": 200.8,
+     "all_cpu_overhead_us": 312.6,
+     "cull_cpu_delta_us": 156.9,
+     "off_cpu_us": 260.3
+    },
+    {
+     "impl": "batched",
+     "buffer": "discard",
+     "repeats": 5,
+     "per_test_us": 0.69,
+     "per_block_us": 7.9,
+     "all_test_us": 128.0,
+     "all_frame_overhead_us": 277.0,
+     "cull_test_us": 111.8,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 158.0,
+     "off_frame_us": 200.8,
+     "all_cpu_overhead_us": 270.8,
+     "cull_cpu_delta_us": 158.4,
+     "off_cpu_us": 260.3
+    },
+    {
+     "impl": "batched",
+     "buffer": "constants",
+     "repeats": 5,
+     "per_test_us": 1.21,
+     "per_block_us": 7.4,
+     "all_test_us": 203.5,
+     "all_frame_overhead_us": 328.5,
+     "cull_test_us": 173.8,
+     "cull_tests": 116,
+     "cull_frame_delta_us": 201.0,
+     "off_frame_us": 200.8,
+     "all_cpu_overhead_us": 316.5,
+     "cull_cpu_delta_us": 198.8,
+     "off_cpu_us": 260.3
+    }
+   ],
+   "real_summary": {
+    "hidden_skips": 3270,
+    "hidden_expected": 3270,
+    "visible_skips": 0,
+    "visible_exactly_3": "39/39",
+    "hidden_every_frame": "111/111",
+    "visible_tested_per_frame": "4..5",
+    "n_over_k": 4.88,
+    "reveal_drawn_at": 27,
+    "diff_frames": 1,
+    "diff_last": 26,
+    "diff_outside": 0,
+    "lane_diff_frames": 1,
+    "state_failures": 0,
+    "errors": 0,
+    "failed": 0,
+    "test_us_p50": 94.7
+   },
+   "command": [
+    "Z:\\Applications\\CrossOver Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+    "5"
+   ]
+  },
+  "legacy": {
+   "passed": true,
+   "result": {
+    "checks": 3,
+    "failed": 0
+   },
+   "executable_sha256": "7f80e2ad6f34d1f82a3c4162017e7cd3c81e8ee09060d8468641c76cc3090fb3",
+   "sources": {
+    "verification/probe/occlusion_cull_fixture.cpp": "a9817a611da760033d53f99563939592a6ea7ba093cd0dce4d31115a6f24b443",
+    "verification/probe/run_occlusion_cull.py": "61ccb2afe7ec4ae1bb7634082f33afe59fc8bafb7ba77f04ff79164959236a55",
+    "src/renderer/occlusion_cull_pass.cpp": "7b5e10c52e2cf08420b9bbf3224bbc8192fe4d5a304e9f9cc5590c58eb4d517b",
+    "src/renderer/occlusion_cull_pass.h": "1ab7b9a46802979e6362c151e375e250bba6d2ac4a5c16d2c6ddf69a3993dfb3",
+    "src/proxy/occlusion_cull_core.h": "98fd01b6cd66a3a59e6ad0f6b8eb7977bd1f0132846d5a4947121e051b00b703",
+    "verification/probe/occlusion_cull_scene_inc.h": "30fdc2e163cc452c1bdfb07a400749e445ec837a7c1a4c4b9844a6066100bcef",
+    "verification/results/occlusion-cull-batched/legacy_cost.cpp": "2e001caa74454f1c57c46b099af95b7d521a324a268e32060e38cb4d6472e8a2"
+   },
+   "derived": [
+    {
+     "impl": "legacy",
+     "buffer": "-",
+     "repeats": 5,
+     "per_test_us": 6.2,
+     "per_block_us": 0,
+     "all_test_us": 929.9,
+     "all_frame_overhead_us": 1064.9,
+     "cull_test_us": 930.5,
+     "cull_tests": 150,
+     "cull_frame_delta_us": 910.1,
+     "off_frame_us": 188.9,
+     "all_cpu_overhead_us": 1062.6,
+     "cull_cpu_delta_us": 908.3,
+     "off_cpu_us": 247.4
+    }
+   ],
+   "real_summary": null,
+   "command": [
+    "Z:\\Applications\\CrossOver Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+    "5"
+   ]
+  }
+ }
+}
