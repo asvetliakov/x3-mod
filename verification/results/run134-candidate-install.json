@@ -1,0 +1,28 @@
+{
+ "run": "Run134",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run134-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-08T04:46+0400",
+ "commit": "90a8b4d4",
+ "candidate_record": "verification/results/run134-candidate-build.json",
+ "installed": {
+  "sha256": "a9d4559a83278e21e41facdb766864a51082d01708e1876b97e5edb54f0a7474",
+  "bytes": 59122340,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed before install); pgrep X3AP empty before; 16 generated font files re-reported, unchanged content; engine_bodies.json kept"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 9fc1c171... before and after (CX_GRAPHICS_BACKEND = dxvk as the user set it)",
+  "x3m.ini": "the user's file kept",
+  "CrossOver Preview.app": "MoltenVK 1.4.2 + marked Gcenx PR #20 DXVK 1.10 as for Run 131 A"
+ },
+ "previous": {
+  "run": "Run133",
+  "dll_sha256": "1a8de604945e3bd2686c372c5cff70aba24b46d6f17721af61a374c5665a6f00",
+  "path": "/tmp/x3-run133-candidate/build/d3d9.dll",
+  "then": "Run132 5da36870... at /tmp/x3-run132-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 133 A (run11): one 636 ms LockRect stall at frame 7059 with the GPU behind; the user asked for the lock gate now (2026-10-08, before sleeping); installed while the user is away",
+ "producer": "main session (Fable 5.1)"
+}

@@ -1,0 +1,102 @@
+{
+ "dll": "/tmp/x3-run134-candidate/build/d3d9.dll",
+ "sha256": "a9d4559a83278e21e41facdb766864a51082d01708e1876b97e5edb54f0a7474",
+ "bytes": 59122340,
+ "commit": "90a8b4d4",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree /tmp/x3-run134-candidate/src (git worktree add --detach; X3M_SOURCE_COMMIT 90a8b4d4fbcdf13541dc8bf51ab24ae81d95a79b written by tools/build/write_source_commit.py, no dirty diff); clean configure+build wall time 43 s",
+ "gates": "production diff since the Run133 candidate (git diff --stat d8024b96..90a8b4d4 -- src cmake CMakeLists.txt tools): 5 files under src/ (src/renderer/hdr_pass.{h,cpp}, src/renderer/readback_timing.h, src/proxy/motion_output.{h,cpp}), cmake, CMakeLists.txt and tools empty; build 0 warnings (configure and build logs, grep -ci warning: 0 and 0); x87 0 violations (verification/probe/check_no_x87.py on the candidate DLL: PASS, 127 roots, 766 reachable functions; measured now); generate --check reused from Run132 (PASS, 256 settings, 107 in the template): git diff --stat d8024b96..90a8b4d4 -- tools/config and -- CMakeLists.txt both empty; shader provenance: git diff --stat d8024b96..90a8b4d4 -- src/effects and -- tools/shaders, one path per call, both empty, so the Run129 shader --check results are reused again (rigid motion 50 programs, bloom 9, engine shimmer PASS); site verifiers and identity: git diff --stat d8024b96..90a8b4d4 -- 'verification/probe/verify_*.py' and -- 'src/proxy/*site*.h', both empty, so the Run124/Run123 site and executable-identity evidence is reused, not rerun; host suite from the main checkout at 90a8b4d4 (/usr/bin/python3 verification/probe/run_host_suite.py): 289 modules / 3,043 tests / 0 failing modules, 109.0 s wall (12 jobs), no warning/skip/error lines; counts equal to Run133 (the change edits test_motion_output_runner 21 tests and test_submission_attribution 2 tests, both ok; test_engine_effects 13 tests ok, its source binding included); change's own fixture evidence (cited, not rerun): verification/results/hdr-readback-skip/ (commands.txt; built from the change's worktree over ef9e88a2, not from this candidate): wined3d run_motion_output.py nine cases PASS (seam-hdr-meter-pending 90 checks / 14 frames, seam-hdr-meter-pending-cap 174 / 28, seam-hdr-exposure, -offset, seam-ownership-hdr-exposure 245 / 120 each, seam-hdr-tonemap-fault 59, seam-hdr-meter-selftest-unlock 23, seam-taa-hdr-tonemap-fault 132, bench-5120x1440-hdr-tonemap-taa-on boundary median 2.36 ms; after_wined3d_runner.txt, the runner's partial-run summary is not a pass by design; its first pass stopped on the new validator's missing checks key after five passing cases, fixed and the remaining four rerun); DXVK five cases exit 5 (pre-existing teardown crash) validated offline PASS (validation.txt); timings.txt (readback lock/copy per backend, meter_skip_total 0 on the unforced exposure case); engine fixture records (verification/results/run134-candidate/record_binding.py 90a8b4d4 on the candidate tree, output record_binding_out.json): seven of eight bind by input hashes and closures (engine-plumes, engine-ribbons, engine-shimmer, engine-light-gpu, engine-effects-patch, cull-small-parts-cpu, and seam-engine-light, regenerated on wined3d and committed in 90a8b4d4, so its base is 90a8b4d4 and nothing changed: 107 checks, exit 0); engine-effects does not bind mechanically: its record (passed, regenerated with --wine-env CX_GRAPHICS_BACKEND=wined3d, modes main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7) carries source ef9e88a2-dirty with dirty_paths [src/proxy/motion_output.h] and 20 hashed production sources, all equal to the tree, but hdr_pass.h, readback_timing.h (in its closure through motion_output.h) and run_engine_effects.py are not hashed and differ between ef9e88a2 and 90a8b4d4; that the run used this tree is inferred from the change's commands.txt (source ef9e88a2-dirty = this tree) and the record's wine_env key, which only the 90a8b4d4 runner writes; hull-lightmap-gain, look images reused (no change under their inputs); launch: env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 ./x3run --dry-run --direct --config --debug (x3run takes the Wine lock itself as holder user-game) exit 0, overrides d3d9=n,b, X3M_* in the launch env X3M_DEBUG, X3M_VOICE_DMO_FALLBACK plus X3M_BOTTLE and X3M_FIXTURE_BOTTLE inherited from x3run and the caller, X3M_CONFIG unset (player mode), no X3M_ENGINE_* variable, engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed), launcher note fog families: stale (as at Run132/133), snapshot: no new session (expected); X3AP not running before build, suite and dry run (pgrep); candidate worktree clean after all gates; installed d3d9.dll still Run133 (1a8de604..., 59,117,732 B, mtime Oct 8 03:54:20) and X3AP.exe (fdbf3418..., 2,153,984 B, mtime 2017-11-28) untouched; cxbottle.conf mtime Oct 8 02:52:51, unchanged since the Run133 record",
+ "changes": [
+  "90a8b4d4 HDR meter lock gate: one EVENT query per readback surface issued after its copy; the latch polls (GetData flags 0) before locking and skips the lock and copy when the GPU has not finished,...",
+  "ef9e88a2 Run 133 A completed (run11, DXVK): readback lock p50 3,592 -> 7.7 us, view_setup 4.32 -> 0.87 ms, dt_p50 15.8 -> 12.7 ms, dt_p95 18.4 -> 15.9 ms; one 636 ms lock stall (event=0) open; tria...",
+  "002f75c8 Run133 installed: HDR meter readback double-buffered, DLL 1a8de604\u2026 (59,117,732 B) from clean d8024b96 into bottle X3 at 03:54, bytes verified, EXE/bottle/fonts/engine bodies unchanged, ro..."
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "carried over unchanged from the Run130/Run132/Run133 records; installed table sha256 re-measured equal (45a1215b...); git diff --stat d8024b96..90a8b4d4 -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "carried over unchanged from the Run133 record (Run132, Run130, Run123): git diff --stat d8024b96..90a8b4d4 -- tools/fonts and -- assets/fonts, one path per call, both empty",
+ "producer": "Claude Code implement-deep agent (Opus 5.5), 2026-10-08; git log --oneline --no-merges d8024b96..90a8b4d4 (3 commits, fast-forward); shasum -a 256; source-hash and include-closure binding: verification/results/run134-candidate/record_binding.py (the Run130 helper, docstring only changed) with output record_binding_out.json; configure/build/x87/suite/dry-run/binding logs local under /tmp/x3-run134-logs/"
+}
