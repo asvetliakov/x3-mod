@@ -20,13 +20,13 @@
     "src/renderer/quad_vertex_program_inc.h"
   ],
   "source": {
-    "commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+    "commit": "ec9d29f0cf2cd360ff4ccc4b87970908c3b8b8c0-dirty",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_shimmer_core.h": "263b5bb5a44e902b5e29cd960606a24a2efb47139f16193634165c423c6f8006",
       "src/proxy/engine_plumes_core.h": "e9a8500842e1a415c6628e7ba5ffb76cab6f1c69c045d56979d5517137890273",
-      "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
+      "src/proxy/engine_effects_core.h": "ad8255d538bfca41afa42548ec3aa183db6e9180134df134c86103ea5b5bf508",
       "src/renderer/engine_shimmer_pass.h": "17a568d94fa2d2849f070c6efbd28d48232af20caeca6ea105d87274fae8ca86",
       "src/renderer/engine_shimmer_pass.cpp": "7756992c4a4453d89ce9a91874d9c575c8c6b25ee659d69149bf1b12768c3906",
       "src/effects/engine_shimmer_ps.hlsl": "8d9b48e643c5b952d0308525b4c3e430ef41e3bac8a7a2b13e3583799294d363",
@@ -42,6 +42,9 @@
     "target": "ps_3_0"
   },
   "game_launched": false,
+  "wine_env": [
+    "CX_GRAPHICS_BACKEND=wined3d"
+  ],
   "build": {
     "command": [
       "i686-w64-mingw32-g++",
@@ -64,12 +67,12 @@
       "verification/probe/engine_shimmer_fixture.cpp",
       "src/renderer/engine_shimmer_pass.cpp",
       "-o",
-      "/private/tmp/x3-run130-fixture/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
+      "/Users/asvetl/x3-mod/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "ba9cd1d2d6ff66934755f6e26665728ea397dabafd8ba3bc01de348c6756e02a"
+    "executable_sha256": "fa066d1e2ebaef0680ddbf6c502cabe6f083ee02fa6c766aa8f2910bfba5db97"
   },
   "run": {
     "exit_code": 0,
@@ -274,11 +277,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 215602,
         "copy_px": 222880,
-        "fenced_on_ms": 0.6484,
-        "fenced_off_ms": 0.4332,
-        "submit_ms": 0.0875,
-        "chain_ms": 0.2152,
-        "gpu_ms": 0.1277,
+        "fenced_on_ms": 0.6723,
+        "fenced_off_ms": 0.4412,
+        "submit_ms": 0.0964,
+        "chain_ms": 0.2311,
+        "gpu_ms": 0.1347,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -290,11 +293,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 341388,
         "copy_px": 352128,
-        "fenced_on_ms": 0.7807,
-        "fenced_off_ms": 0.4321,
-        "submit_ms": 0.0852,
-        "chain_ms": 0.3486,
-        "gpu_ms": 0.2634,
+        "fenced_on_ms": 0.5432,
+        "fenced_off_ms": 0.3206,
+        "submit_ms": 0.0938,
+        "chain_ms": 0.2226,
+        "gpu_ms": 0.1288,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -306,11 +309,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 1525284,
         "copy_px": 1540560,
-        "fenced_on_ms": 0.9972,
-        "fenced_off_ms": 0.3142,
-        "submit_ms": 0.0857,
-        "chain_ms": 0.683,
-        "gpu_ms": 0.5973,
+        "fenced_on_ms": 0.9871,
+        "fenced_off_ms": 0.3091,
+        "submit_ms": 0.0853,
+        "chain_ms": 0.678,
+        "gpu_ms": 0.5927,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -322,11 +325,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 753420,
         "copy_px": 770784,
-        "fenced_on_ms": 0.9332,
-        "fenced_off_ms": 0.6697,
-        "submit_ms": 0.0961,
-        "chain_ms": 0.2635,
-        "gpu_ms": 0.1674,
+        "fenced_on_ms": 0.9859,
+        "fenced_off_ms": 0.6653,
+        "submit_ms": 0.0878,
+        "chain_ms": 0.3206,
+        "gpu_ms": 0.2328,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -338,11 +341,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 1198860,
         "copy_px": 1225440,
-        "fenced_on_ms": 1.0174,
-        "fenced_off_ms": 0.6652,
-        "submit_ms": 0.0884,
-        "chain_ms": 0.3522,
-        "gpu_ms": 0.2638,
+        "fenced_on_ms": 1.0117,
+        "fenced_off_ms": 0.6662,
+        "submit_ms": 0.0888,
+        "chain_ms": 0.3455,
+        "gpu_ms": 0.2567,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -354,11 +357,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 5365932,
         "copy_px": 5398560,
-        "fenced_on_ms": 2.1775,
-        "fenced_off_ms": 0.662,
-        "submit_ms": 0.0898,
-        "chain_ms": 1.5155,
-        "gpu_ms": 1.4257,
+        "fenced_on_ms": 2.1656,
+        "fenced_off_ms": 0.6594,
+        "submit_ms": 0.085,
+        "chain_ms": 1.5062,
+        "gpu_ms": 1.4212,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -548,20 +551,20 @@
   },
   "summary": {
     "timing_gpu_ms": {
-      "1920x1080_1": 0.1277,
-      "1920x1080_4": 0.2634,
-      "1920x1080_16": 0.5973,
-      "5120x1440_1": 0.1674,
-      "5120x1440_4": 0.2638,
-      "5120x1440_16": 1.4257
+      "1920x1080_1": 0.1347,
+      "1920x1080_4": 0.1288,
+      "1920x1080_16": 0.5927,
+      "5120x1440_1": 0.2328,
+      "5120x1440_4": 0.2567,
+      "5120x1440_16": 1.4212
     },
     "timing_submit_ms": {
-      "1920x1080_1": 0.0875,
-      "1920x1080_4": 0.0852,
-      "1920x1080_16": 0.0857,
-      "5120x1440_1": 0.0961,
-      "5120x1440_4": 0.0884,
-      "5120x1440_16": 0.0898
+      "1920x1080_1": 0.0964,
+      "1920x1080_4": 0.0938,
+      "1920x1080_16": 0.0853,
+      "5120x1440_1": 0.0878,
+      "5120x1440_4": 0.0888,
+      "5120x1440_16": 0.085
     },
     "displace": {
       "1920x1080": {

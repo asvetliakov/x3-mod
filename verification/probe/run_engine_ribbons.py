@@ -10,7 +10,8 @@ every CHECK, and the numbers of each case (the moving nozzle at 4 / 8 px per fra
 sky through the real resolve: no gap at the nozzle, the near-nozzle survival, the trailing length against T v s; the
 3 px floor; stationary; SETA; cut; identity loss; the 256 cap; fog; fault; Reset; the EVENT-fenced ribbon draw at 30 /
 100 ribbons and the CPU update + build). The fixture's stdout stays under verification/probe/build/engine-ribbons/.
-Run through wine_lock.py with X3M_FIXTURE_BOTTLE=X3. Never launches the game.
+Run through wine_lock.py with X3M_FIXTURE_BOTTLE=X3; --wine-env NAME=VALUE (repeatable, e.g. CX_GRAPHICS_BACKEND=wined3d) goes to
+the wine wrapper as --env and into the record as wine_env. Never launches the game.
 """
 import argparse
 import json
@@ -110,7 +111,13 @@ def main():
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=int, default=1800)
     parser.add_argument('--only', default=None, help='fixture case filter (comma list), diagnosis only: the record is not passed')
+    parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
+                        help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
+                             'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 for one run')
     args = parser.parse_args()
+    for item in args.wine_env:
+        if '=' not in item or not item.split('=', 1)[0]:
+            parser.error(f'--wine-env expects NAME=VALUE: {item}')
     if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
         raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
     if game_running():
@@ -118,12 +125,12 @@ def main():
     results = bottle.results_dir(ROOT) / 'engine-ribbons'
     results.mkdir(parents=True, exist_ok=True)
     record = {'bottle': bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(),
-              'programs': programs_current(), 'gates': GATES, 'game_launched': False}
+              'programs': programs_current(), 'gates': GATES, 'game_launched': False, 'wine_env': list(args.wine_env)}
     if not args.no_build:
         record['build'] = build()
     d3dx = bottle.game_dir() / 'd3dx9_37.dll'
     record['d3dx9_37_sha256'] = plumes.sha(d3dx)
-    command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll']
+    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll']
     if args.only:
         command += ['--only', args.only]
     env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b')

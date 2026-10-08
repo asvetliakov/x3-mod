@@ -25,7 +25,7 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+    "commit": "ec9d29f0cf2cd360ff4ccc4b87970908c3b8b8c0-dirty",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -38,7 +38,7 @@
       "src/renderer/engine_ribbon_vertex_program_inc.h": "5651c07896aeb97820ef1dd204ce3218ec06d7ecd3cbe3594ef65c3e75530091",
       "src/renderer/engine_ribbon_pixel_program_inc.h": "9e04c634362f8416d3a06428dfdb7e2c009116554810a28214c8a54aa7689029",
       "src/proxy/engine_plumes_core.h": "e9a8500842e1a415c6628e7ba5ffb76cab6f1c69c045d56979d5517137890273",
-      "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
+      "src/proxy/engine_effects_core.h": "ad8255d538bfca41afa42548ec3aa183db6e9180134df134c86103ea5b5bf508",
       "src/renderer/engine_plumes_pass.h": "441fbcc8d2d6b6b9a17afd8e1a34998a7f7ad946187f258d489d9b3f761936d9",
       "src/renderer/engine_plumes_pass.cpp": "06b6153d894c389060bf0a4d62b0a1472bdb02041d9bc4fa6b9c7cfe1dfb9b97",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
@@ -78,6 +78,9 @@
     "cpu_100_ms": 0.1
   },
   "game_launched": false,
+  "wine_env": [
+    "CX_GRAPHICS_BACKEND=wined3d"
+  ],
   "build": {
     "command": [
       "i686-w64-mingw32-g++",
@@ -102,12 +105,12 @@
       "src/renderer/engine_plumes_pass.cpp",
       "src/renderer/temporal_pass.cpp",
       "-o",
-      "/private/tmp/x3-run130-fixture/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
+      "/Users/asvetl/x3-mod/verification/probe/build/engine-ribbons/engine_ribbons_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "3315d7c8feb6b3920084150c203c71a598ae3a70657b9488ab44f8a0474b1c26"
+    "executable_sha256": "616ba8a7e7857840f32d999f76c5832409f7f656b5b982f70092031e13ecaa67"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "run": {
@@ -411,11 +414,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 0.998,
-        "fenced_off_ms": 0.9254,
-        "submit_ms": 0.0518,
-        "chain_ms": 0.0726,
-        "gpu_ms": 0.0208,
+        "fenced_on_ms": 0.6876,
+        "fenced_off_ms": 0.6077,
+        "submit_ms": 0.064,
+        "chain_ms": 0.0799,
+        "gpu_ms": 0.0159,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -426,11 +429,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1221,
-        "fenced_on_ms": 1.0584,
-        "fenced_off_ms": 0.9239,
-        "submit_ms": 0.0866,
-        "chain_ms": 0.1345,
-        "gpu_ms": 0.0479,
+        "fenced_on_ms": 0.8156,
+        "fenced_off_ms": 0.5816,
+        "submit_ms": 0.0944,
+        "chain_ms": 0.234,
+        "gpu_ms": 0.1396,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -441,11 +444,11 @@
         "ribbons": 30,
         "drawn": 30,
         "samples": 354,
-        "fenced_on_ms": 1.7029,
-        "fenced_off_ms": 1.6277,
-        "submit_ms": 0.0563,
-        "chain_ms": 0.0752,
-        "gpu_ms": 0.0189,
+        "fenced_on_ms": 1.7496,
+        "fenced_off_ms": 1.6621,
+        "submit_ms": 0.0703,
+        "chain_ms": 0.0875,
+        "gpu_ms": 0.0172,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -456,11 +459,11 @@
         "ribbons": 100,
         "drawn": 100,
         "samples": 1210,
-        "fenced_on_ms": 1.7521,
-        "fenced_off_ms": 1.6271,
-        "submit_ms": 0.0916,
-        "chain_ms": 0.125,
-        "gpu_ms": 0.0334,
+        "fenced_on_ms": 1.8039,
+        "fenced_off_ms": 1.6719,
+        "submit_ms": 0.1112,
+        "chain_ms": 0.132,
+        "gpu_ms": 0.0208,
         "samples_n": 60,
         "calls": 32,
         "method": "tail_event_fenced"
@@ -470,15 +473,15 @@
       {
         "ribbons": 30,
         "drawn": 27,
-        "median_us": 7.68,
-        "min_us": 7.41,
+        "median_us": 7.53,
+        "min_us": 7.45,
         "method": "qpc_50x41_update_build"
       },
       {
         "ribbons": 100,
         "drawn": 88,
-        "median_us": 25.17,
-        "min_us": 24.53,
+        "median_us": 25.0,
+        "min_us": 24.31,
         "method": "qpc_50x41_update_build"
       }
     ],
@@ -683,20 +686,20 @@
     },
     "length_within": true,
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0208,
-      "1920x1080_100": 0.0479,
-      "5120x1440_30": 0.0189,
-      "5120x1440_100": 0.0334
+      "1920x1080_30": 0.0159,
+      "1920x1080_100": 0.1396,
+      "5120x1440_30": 0.0172,
+      "5120x1440_100": 0.0208
     },
     "stage_gpu_within_advisory": {
       "1920x1080_30": true,
-      "1920x1080_100": true,
+      "1920x1080_100": false,
       "5120x1440_30": true,
       "5120x1440_100": true
     },
     "cpu_us": {
-      "30": 7.68,
-      "100": 25.17
+      "30": 7.53,
+      "100": 25.0
     },
     "cpu_100_within": true,
     "fog": [

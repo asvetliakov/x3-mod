@@ -9,7 +9,8 @@ hashes, the build, every CHECK and the numbers of each case (displacement agains
 mask, byte-equality outside the rects and after the revert, the fade, the 24 px gate and the cap, occlusion, hostile
 state, refusals, faults, Reset, and the EVENT-fenced cost of run + revert for 1 / 4 / 16 rects of 10 % of the screen at
 1920x1080 and 5120x1440). The fixture's stdout stays under verification/probe/build/engine-shimmer/. Run through
-wine_lock.py with X3M_FIXTURE_BOTTLE=X3. Never launches the game.
+wine_lock.py with X3M_FIXTURE_BOTTLE=X3; --wine-env NAME=VALUE (repeatable, e.g. CX_GRAPHICS_BACKEND=wined3d) goes to
+the wine wrapper as --env and into the record as wine_env. Never launches the game.
 """
 import argparse
 import hashlib
@@ -113,7 +114,13 @@ def main():
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=int, default=1800)
     parser.add_argument('--only', default=None, help='fixture case filter (comma list), diagnosis only: the record is not passed')
+    parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
+                        help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
+                             'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 for one run')
     args = parser.parse_args()
+    for item in args.wine_env:
+        if '=' not in item or not item.split('=', 1)[0]:
+            parser.error(f'--wine-env expects NAME=VALUE: {item}')
     if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
         raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
     if game_running():
@@ -121,10 +128,10 @@ def main():
     results = bottle.results_dir(ROOT) / 'engine-shimmer'
     results.mkdir(parents=True, exist_ok=True)
     record = {'bottle': bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(),
-              'program': program_current(), 'game_launched': False}
+              'program': program_current(), 'game_launched': False, 'wine_env': list(args.wine_env)}
     if not args.no_build:
         record['build'] = build()
-    command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE)]
+    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE)]
     if args.only:
         command += ['--only', args.only]
     done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=args.timeout)

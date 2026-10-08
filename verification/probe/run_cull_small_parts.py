@@ -3,8 +3,10 @@
 
 Invoke only as:
   X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_cull_small_parts.py
+    [--wine-env CX_GRAPHICS_BACKEND=wined3d]
 Build first with build_cull_small_parts.py (which never runs Wine).
 """
+import argparse
 import json
 import os
 import re
@@ -19,11 +21,19 @@ OUT = ROOT / 'verification/results/cull-small-parts-cpu.json'
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
+                        help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
+                             'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 for one run')
+    args = parser.parse_args()
+    for item in args.wine_env:
+        if '=' not in item or not item.split('=', 1)[0]:
+            parser.error(f'--wine-env expects NAME=VALUE: {item}')
     name = os.environ.get('X3M_FIXTURE_BOTTLE')
     if name != 'X3':
         sys.exit('set X3M_FIXTURE_BOTTLE=X3')
     started = time.time()
-    run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=600)
+    run = subprocess.run([bottle.WINE, *bottle.wine_args(name), *[a for item in args.wine_env for a in ('--env', item)], str(EXE)], capture_output=True, text=True, timeout=600)
     total = re.search(r'CULL SMALL PARTS CPU checks=(\d+) failures=(\d+)', run.stdout)
     bench = re.search(r'CULL SMALL PARTS BENCH native_pass_us=([\d.]+) patched_disarmed_us=([\d.]+) patched_armed_us=([\d.]+) patched_armed_dock_us=([\d.]+)', run.stdout)
     replay = [l for l in run.stdout.splitlines() if l.startswith(('REPLAY', 'CENSUS', 'PROPS', 'DOCK', 'FAR'))]
@@ -47,7 +57,7 @@ def main():
               'lens_failure_lines': [l for l in run.stdout.splitlines() if l.startswith('FAIL lens:')],
               'engine_checks': int(engine.group(1)) if engine else None, 'engine_failures': int(engine.group(2)) if engine else None,
               'engine_failure_lines': [l for l in run.stdout.splitlines() if l.startswith('FAIL engine:')],
-              'bottle': bottle.describe(name), 'note': 'harness-inclusive per-pass estimates over a 12-node tree (7 culled when armed at threshold 20; armed_dock adds the dock-port id compares with upper 40), not game FPS'}
+              'bottle': bottle.describe(name), 'wine_env': list(args.wine_env), 'note': 'harness-inclusive per-pass estimates over a 12-node tree (7 culled when armed at threshold 20; armed_dock adds the dock-port id compares with upper 40), not game FPS'}
     OUT.write_text(json.dumps(record, indent=1) + '\n')
     print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'bench_us', 'props_bench_ns', 'far_bench', 'failure_lines', 'replay_lines', 'lens_checks', 'lens_failures', 'lens_bench', 'engine_checks', 'engine_failures')}))
     if run.returncode != 0 and not total:

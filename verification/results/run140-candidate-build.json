@@ -1,0 +1,113 @@
+{
+ "dll": "/tmp/x3-run140-candidate/build/d3d9.dll",
+ "sha256": "1f7021211f0b7b763718fcb8996576a43a7ebbdf31afca311cfce10b3d25fa23",
+ "bytes": 59545501,
+ "commit": "cd479d02",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree /tmp/x3-run140-candidate (git worktree add --detach cd479d02; build dir /tmp/x3-run140-candidate/build, gitignored; X3M_SOURCE_COMMIT cd479d02545d65e7b83aebba220e3990e6792a4b written by tools/build/write_source_commit.py, no dirty diff); clean configure+build wall time 49 s",
+ "gates": "rollback: Run139 d48d2bab... is installed (59,502,807 B, mtime Oct 9 00:19, re-measured) and is the rollback (/tmp/x3-run139-candidate/build/d3d9.dll, present); production diff since Run139 (git diff --stat 8f03c306..cd479d02 -- src cmake CMakeLists.txt tools assets): 16 files, +692/-28: node-sourced engine nozzles (0706012f: new src/proxy/engine_nozzle_walk_core.h, motion_output_engine_plumes_inc.h, motion_output_engine_effects_inc.h, motion_output_engine_light_inc.h, motion_output.{h,cpp}, engine_light_core.h, engine_effects_core.h, engine_far_jets{.cpp,.h,_core.h}, tools/config/schema.py engine_nozzle_source enum node|draw builtin node, tools/manage.py, assets/x3m.ini), final-Release vtable restore (8e672ae2: src/proxy/capture.cpp; plus verification/probe/wine_lock.py winedbg.exe=d override, test-only), regenerated src/config/config_schema_inc.h; build 0 warnings (configure and build logs, grep -ci warning: 0 and 0; measured); X3M_SOURCE_COMMIT cd479d02545d65e7b83aebba220e3990e6792a4b, not dirty; x87 0 violations (check_no_x87.py build/d3d9.dll from the worktree: PASS, 127 roots, 796 reachable functions, +1 over Run139's 795; measured); generate --check from the worktree: PASS, 261 settings, 111 in the template (Run139: 260 / 110; measured); shader --check reused from Run136/138/139: git diff --stat 8f03c306..cd479d02 -- src/effects and -- tools/shaders both empty; site verifiers and identity: git diff --stat 8f03c306..cd479d02 -- 'verification/probe/verify_*.py' and -- 'src/proxy/*site*.h' both empty, Run124/Run123 evidence reused (the nozzle walk adds no hook); host tests from the main checkout at cd479d02 (PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_engine_nozzle_walk test_engine_light test_config_schema test_capture_vtable_release test_occlusion_cull test_cull_small_parts): 96 tests OK, 18.3 s, 0 warning/skip lines (per module 20 / 26 / 18 / 1 / 12 / 19; measured); test_engine_effects not run (known stale on its record hash: engine-effects summary hashes src/proxy/capture.cpp from before the merge; a verify agent reruns that fixture); full host suite not run; Wine fixture evidence cited, not rerun: bottle-X3/seam-engine-light-fixture.json (wined3d, committed 0706012f, exit 0, 211 checks, lit_frames 11, worst_relative 0.0040, zero_differ 0; measured from the record) and bottle-X3/engine-effects/summary.json (wined3d, committed 0706012f, passed, source 4f994eaa-dirty) both from the nozzle worktree before the merge, so neither ran the merged capture.cpp; bottle-X3/state-hook-benchmark.json (DXVK, committed 8e672ae2, generated 2026-10-09T02:43, worktree DLL bc24f6ef, 5 cases) and bottle-X3/d3d9-backend-smoke/proxy-release-fix.json (DXVK, committed 8e672ae2, passed, exit_code 0, DLL bc24f6ef 59,525,907 B) for the release fix, which predate the nozzle merge; engine records (verification/results/run140-candidate/record_binding.py cd479d02 -> record_binding_out.json): one binds (engine-effects-patch); engine-plumes, engine-ribbons, engine-shimmer do not (hash mismatch src/proxy/engine_effects_core.h; closure changed engine_far_jets_core.h); engine-effects does not (hash mismatch src/proxy/capture.cpp; closure changed engine_light_core.h, engine_effects_fixture.cpp, run_engine_effects.py against its dirty base 4f994eaa); engine-light-gpu does not (hash mismatch engine_effects_core.h, engine_light_core.h); cull-small-parts-cpu does not (closure changed engine_effects_core.h, engine_far_jets.{cpp,h}, engine_far_jets_core.h); seam-engine-light does not (whole-src scope, capture.cpp changed by the merge); all eight records report passed; no Wine reruns were made for this record (not assigned); launch --dry-run not run; X3AP not running before build and tests (pgrep); candidate worktree clean after all gates; installed d3d9.dll still Run139 (d48d2bab) and X3AP.exe untouched (no install performed)",
+ "changes": [
+  "0706012f Node-sourced engine nozzles (engine_nozzle_source = node): every drawn ship's root child list is walked at the plume stage append, undrawn main jets become node records with live throttle; sh...",
+  "3df783cc Hotspot note: the 01:44 state-hook record line notes the overwrite",
+  "8e672ae2 Final Release of hooked objects restores the backend vtable: a C++ COM implementation (DXVK, native d3d9) runs its deleting destructor through the object's vtable pointer, which pointed at th...",
+  "bdf7f17f Render-visit hotspot: proxy-path redundant state call 39 ns on DXVK (fixture exits clean after the final-Release fix); state-manager slot filter closed (0.46 ms bound)",
+  "80d6898e DXVK fixture teardown crash located: the final device Release reaches DXVK's deleting destructor (vtable slot 135) through the proxy's 119-slot vtable copy, over-reading past it (0x74666f73);...",
+  "146ef4ce Render-visit hotspot Part 2: pre-submit work; only 0.9 of run20's 5.3 ms pre_render ever split (animation tick 0.14-0.25 ms at normal node counts, sector driver 0.7 ms); no detour justified; ...",
+  "dc3838a8 Render-visit hotspot: DXVK native state-call cost 36 ns (fixture a, proxy case crashed in the known teardown class); redundant-call detour bound under 1 ms, recommended closed; status",
+  "e7c0bd93 Design: render-visit hotspot: no engine traversal step worth a detour (each <= 0.13 ms/frame); only candidate is the redundant D3DX state-manager calls (94-99 % redundant), gated on DXVK per-...",
+  "4f994eaa Design: node-sourced engine nozzles (walk each drawn ship's root child list at the plume stage append, node records as far records, draw record wins; no new hook); ratified",
+  "bfdf4276 Run 139 A (run20 engine / run21 off) triage: engine-side skip ran (18 parts p50) but is a net loss below ~200 scene draws and only slightly better at 220-260; occlusion_cull stays off, line c...",
+  "cf5ce36b Run139 installed: engine light hold + engine-side occlusion skip (occlusion_cull = engine), DLL d48d2bab… (59,502,807 B) from clean 8f03c306 into bottle X3 at 00:19, bytes verified, EXE/x3m.i...",
+  "fb95cfa0 Run139 candidate: engine-effects, seam-engine-light and engine-light-gpu records rerun at 8f03c306 (wined3d, all passed)",
+  "bdfffd57 merge of the final-Release vtable restore branch",
+  "cd479d02 merge of the node-sourced engine nozzle branch over it (capture.cpp carries both: +10 lines from the nozzle branch over 8e672ae2)"
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "carried over unchanged from the Run139 record; installed table sha256 re-measured equal (45a1215b...); git diff --stat 8f03c306..cd479d02 -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "carried over unchanged from the Run139 record: git diff --stat 8f03c306..cd479d02 -- tools/fonts and -- assets/fonts, one path per call, both empty",
+ "producer": "Claude Code implement agent (Opus 5.5), 2026-10-09; git log --oneline --no-merges 8f03c306..cd479d02 (12 commits) plus the merges bdfffd57 and cd479d02; shasum -a 256; source-hash and include-closure binding: verification/results/run140-candidate/record_binding.py (the Run130 helper, docstring only changed) with output record_binding_out.json; configure/build/x87/generate/host-test logs local under /tmp/x3-run140-logs/"
+}
