@@ -20,7 +20,7 @@
     "src/renderer/quad_vertex_program_inc.h"
   ],
   "source": {
-    "commit": "ec9d29f0cf2cd360ff4ccc4b87970908c3b8b8c0-dirty",
+    "commit": "0cf873a6b513faf220c2632769171e2dd40ad43b-dirty",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -72,7 +72,7 @@
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "fa066d1e2ebaef0680ddbf6c502cabe6f083ee02fa6c766aa8f2910bfba5db97"
+    "executable_sha256": "b619e858af25c4802f666c8176bb081e1c964c2888f02a27e256922f9ee7aa10"
   },
   "run": {
     "exit_code": 0,
@@ -277,11 +277,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 215602,
         "copy_px": 222880,
-        "fenced_on_ms": 0.6723,
-        "fenced_off_ms": 0.4412,
-        "submit_ms": 0.0964,
-        "chain_ms": 0.2311,
-        "gpu_ms": 0.1347,
+        "fenced_on_ms": 0.6776,
+        "fenced_off_ms": 0.4417,
+        "submit_ms": 0.0985,
+        "chain_ms": 0.2359,
+        "gpu_ms": 0.1374,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -293,11 +293,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 341388,
         "copy_px": 352128,
-        "fenced_on_ms": 0.5432,
-        "fenced_off_ms": 0.3206,
-        "submit_ms": 0.0938,
-        "chain_ms": 0.2226,
-        "gpu_ms": 0.1288,
+        "fenced_on_ms": 0.8025,
+        "fenced_off_ms": 0.4401,
+        "submit_ms": 0.0973,
+        "chain_ms": 0.3624,
+        "gpu_ms": 0.2651,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -309,11 +309,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 1525284,
         "copy_px": 1540560,
-        "fenced_on_ms": 0.9871,
-        "fenced_off_ms": 0.3091,
-        "submit_ms": 0.0853,
-        "chain_ms": 0.678,
-        "gpu_ms": 0.5927,
+        "fenced_on_ms": 1.0308,
+        "fenced_off_ms": 0.3211,
+        "submit_ms": 0.1009,
+        "chain_ms": 0.7097,
+        "gpu_ms": 0.6088,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -325,11 +325,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 753420,
         "copy_px": 770784,
-        "fenced_on_ms": 0.9859,
-        "fenced_off_ms": 0.6653,
-        "submit_ms": 0.0878,
-        "chain_ms": 0.3206,
-        "gpu_ms": 0.2328,
+        "fenced_on_ms": 1.1418,
+        "fenced_off_ms": 0.6746,
+        "submit_ms": 0.0955,
+        "chain_ms": 0.4672,
+        "gpu_ms": 0.3717,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -341,11 +341,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 1198860,
         "copy_px": 1225440,
-        "fenced_on_ms": 1.0117,
-        "fenced_off_ms": 0.6662,
-        "submit_ms": 0.0888,
-        "chain_ms": 0.3455,
-        "gpu_ms": 0.2567,
+        "fenced_on_ms": 1.223,
+        "fenced_off_ms": 0.6654,
+        "submit_ms": 0.0894,
+        "chain_ms": 0.5576,
+        "gpu_ms": 0.4682,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -357,11 +357,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 5365932,
         "copy_px": 5398560,
-        "fenced_on_ms": 2.1656,
-        "fenced_off_ms": 0.6594,
-        "submit_ms": 0.085,
-        "chain_ms": 1.5062,
-        "gpu_ms": 1.4212,
+        "fenced_on_ms": 2.2106,
+        "fenced_off_ms": 0.5716,
+        "submit_ms": 0.1012,
+        "chain_ms": 1.639,
+        "gpu_ms": 1.5378,
         "samples": 60,
         "calls": 95,
         "method": "tail_event_fenced"
@@ -551,20 +551,20 @@
   },
   "summary": {
     "timing_gpu_ms": {
-      "1920x1080_1": 0.1347,
-      "1920x1080_4": 0.1288,
-      "1920x1080_16": 0.5927,
-      "5120x1440_1": 0.2328,
-      "5120x1440_4": 0.2567,
-      "5120x1440_16": 1.4212
+      "1920x1080_1": 0.1374,
+      "1920x1080_4": 0.2651,
+      "1920x1080_16": 0.6088,
+      "5120x1440_1": 0.3717,
+      "5120x1440_4": 0.4682,
+      "5120x1440_16": 1.5378
     },
     "timing_submit_ms": {
-      "1920x1080_1": 0.0964,
-      "1920x1080_4": 0.0938,
-      "1920x1080_16": 0.0853,
-      "5120x1440_1": 0.0878,
-      "5120x1440_4": 0.0888,
-      "5120x1440_16": 0.085
+      "1920x1080_1": 0.0985,
+      "1920x1080_4": 0.0973,
+      "1920x1080_16": 0.1009,
+      "5120x1440_1": 0.0955,
+      "5120x1440_4": 0.0894,
+      "5120x1440_16": 0.1012
     },
     "displace": {
       "1920x1080": {
