@@ -1,0 +1,106 @@
+{
+ "dll": "/tmp/x3-run137-candidate/build/d3d9.dll",
+ "sha256": "c920eef8b9cbcf5f212356bed0c76a33b33ed9fbdf18a2e38eabb8e8b2433c48",
+ "bytes": 59329428,
+ "commit": "1db749d6",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j8; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree /tmp/x3-run137-candidate/src (git worktree add --detach; X3M_SOURCE_COMMIT 1db749d604f51f9c2db4a3ac7b50b60ff9261477 written by tools/build/write_source_commit.py, no dirty diff); clean configure+build wall time 46 s",
+ "gates": "production diff since the Run136 candidate (git diff --stat 6d912d8e..1db749d6 -- src cmake CMakeLists.txt tools assets): 9 files under src/ (1db749d6 occlusion cull of hull-hidden sub-parts: new src/proxy/occlusion_cull_core.h, src/proxy/motion_output_occlusion_cull_inc.h, src/renderer/occlusion_cull_pass.{h,cpp}; edits in src/proxy/capture.cpp, src/proxy/motion_output.{h,cpp}, src/proxy/motion_output_cull_small_props_inc.h, regenerated src/config/config_schema_inc.h), CMakeLists.txt (+9/-1), tools/config/schema.py (occlusion_cull enum, builtin on), assets/x3m.ini (+5, the commented ;occlusion_cull = on entry), cmake empty; build 0 warnings (configure and build logs, grep -ci warning: 0 and 0; measured); x87 0 violations (check_no_x87.py on this DLL: PASS, 127 roots, 784 reachable functions, +18 over Run136's 766; measured); generate --check measured: PASS, 258 settings, 108 in the template (Run136: 257 / 107); shader --check reused from Run136 (generate_rigid_motion_pixel.py PASS 50 programs, engine_plume_ps ceff5ae0..., generate_bloom_programs.py 9, generate_engine_shimmer_program.py PASS 6,178 words): git diff --stat 6d912d8e..1db749d6 -- src/effects and -- tools/shaders, both empty, and the occlusion pass's own programs are covered by its fixture below; site verifiers and identity: git diff --stat 6d912d8e..1db749d6 -- 'verification/probe/verify_*.py' and -- 'src/proxy/*site*.h', both empty, Run124/Run123 evidence reused; host suite from the main checkout at 1db749d6 (with the two regenerated records in the worktree; /usr/bin/python3 verification/probe/run_host_suite.py): 290 modules / 3,056 tests / 0 failing modules, 112.4 s wall (12 jobs), no warning/skip/error lines; new module test_occlusion_cull 8 tests, test_config_schema 18, test_engine_effects 13, test_cull_small_parts 19 ok (measured); engine records before any rerun (record_binding.py 1db749d6 on the committed tree, /tmp/x3-run137-logs/binding-before-rerun.json): six bind; engine-effects did not (record 528b16dc-dirty from the change's worktree, its 20 hashes equal to the tree, but the new unhashed src/proxy/occlusion_cull_core.h and src/renderer/occlusion_cull_pass.h are in its closure through motion_output.h); seam-engine-light did not (whole-src/ scope, 9 changed paths); record runs from the committed main checkout at 1db749d6 under the Wine lock, one at a time, outputs kept uncommitted: run_engine_effects.py --wine-env CX_GRAPHICS_BACKEND=wined3d exit 0 (119 s incl. its build, 0 build warnings), passed, modes main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33, armed_refused 7, each exit 0 failed 0, source 1db749d6 not dirty, dirty_paths [], 20 hashed sources; run_motion_output.py --wine-env CX_GRAPHICS_BACKEND=wined3d seam-engine-light exit 0 (92 s incl. its build, motion-output-build.log 0 warnings), 107 checks, lit_frames 7, first_lit_after_reset 1, worst_relative 0.003994, worst_constant 1.19e-08, zero_differ 0, seam dll 0a002615... (runner summary PARTIAL, by design for one case); engine records after the reruns (verification/results/run137-candidate/record_binding_out.json): seven bind (engine-plumes, engine-ribbons, engine-shimmer, engine-effects at clean 1db749d6, engine-light-gpu, engine-effects-patch, cull-small-parts-cpu); seam-engine-light still lists the 9 paths because the record stores no source commit and its base is the last commit of the file (0e244a32); it binds once the regenerated record is committed on 1db749d6 (inferred, as at Run135); the change's own fixture evidence (cited, not rerun; built from the change's worktree): verification/results/occlusion-cull/fixture-wined3d.json and fixture-dxvk.json (passed, exit 0, 26 checks failed 0 each: revealed part late by exactly one frame, frames identical with the cull on and off except frame K inside the part, application state restored after every test, first frame after Reset draws everything with no query errors), gate.json (gate_passed true: gate 5.0 us vs saved 26.0 us per hidden draw, 2 hidden close views, 2 backends), ancestry.py/ancestry.txt (run14 draw ancestry classes), verification/results/bottle-X3/d3d9-backend-smoke/occlusion-cost-wined3d.json and occlusion-cost-dxvk.json (passed); hull-lightmap-gain, look images reused (no change under their inputs); launch: env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 ./x3run --dry-run --direct --config --debug (x3run takes the Wine lock itself as holder user-game) exit 0, output equal to the Run136 dry run apart from timestamps: config: player mode, X3M_CONFIG unset (x3m.ini next to the proxy), 3 X3M_* variables from explicit options, overrides d3d9=n,b, X3M_* in the launch env X3M_DEBUG, X3M_VOICE_DMO_FALLBACK plus X3M_BOTTLE and X3M_FIXTURE_BOTTLE inherited, no X3M_OCCLUSION_CULL or X3M_ENGINE_* variable, engine bodies: ok (253 bodies, 16 listed but not loadable, schema 1, view installed), launcher note fog families: stale (as at Run132-136), snapshot: no new session (expected); the user's <game>/x3m.ini (16,796 B, sha256 1e783ec8..., mtime Oct 8 14:28) byte- and mtime-identical before and after the dry run; it has no occlusion_cull line, so the proxy will use the builtin on (inferred from schema builtin='on'); X3AP not running before the record runs, build, suite and dry run (pgrep); candidate worktree clean after all gates; installed d3d9.dll still Run136 (d03e597e..., 59,172,098 B, mtime Oct 8 15:47:26) and X3AP.exe (fdbf3418...) untouched; cxbottle.conf mtime Oct 8 02:52:51, unchanged; game directory dxvk.conf absent (removed by 0fc7b4e0's user decision)",
+ "changes": [
+  "1db749d6 Occlusion cull of hull-hidden sub-parts (user decision 2026-10-08): at the part's draw site the proxy draws its screen rectangle at its nearest depth (+1 px) under an occlusion query, z wr...",
+  "528b16dc Occlusion cull estimate from run14/run15 captures: 67-91 sub-part draws per frame fully hidden behind hulls at close Ocelot views (turrets 53, dock ports 34; median box ~1,100 px), 1.7-2.4...",
+  "072c112f Engine light: per-draw plate cull built, proven invisible and dropped (hull pieces split by material keep every plate; cost is lit pixels x plates in view, ~0.1 ms for four capitals at 3-4...",
+  "f0d95f62 Pipeline cost measurement (smoke fixture --pipeline-cost): on wined3d and DXVK every new blend/target/pairing state costs about as much as the first draw (14-15 ms first ever, one vs 211-2...",
+  "af77b116 Pipeline state families from the captured frames of run12/14/15: 34 distinct application-side combinations over 23 vs/ps pairs (13 blend, 3 depth, 4 decl families), DXVK cache 212 -> 235 e...",
+  "0fc7b4e0 Run 136 A completed (run15): hull lights ok, no stutters; async pop-in rejected, dxvk.conf removed; status",
+  "0e244a32 Run136 installed: engine light plate cap 72 + device slot cap, DLL d03e597e\u2026 (59,172,098 B) from clean 6d912d8e into bottle X3 at 15:47, bytes verified, EXE/bottle/dxvk.conf/fonts/engine b..."
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "carried over unchanged from the Run130-Run136 records; installed table sha256 re-measured equal (45a1215b...); git diff --stat 6d912d8e..1db749d6 -- tools/effects/engine_bodies.py is empty, so no regeneration"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "carried over unchanged from the Run136 record (Run135 ... Run123): git diff --stat 6d912d8e..1db749d6 -- tools/fonts and -- assets/fonts, one path per call, both empty",
+ "producer": "Claude Code implement-deep agent (Opus 5.5), 2026-10-08; git log --oneline --no-merges 6d912d8e..1db749d6 (7 commits, fast-forward); shasum -a 256; source-hash and include-closure binding: verification/results/run137-candidate/record_binding.py (the Run130 helper, docstring only changed) with output record_binding_out.json; record-run, configure/build/x87/generate/suite/dry-run/binding logs local under /tmp/x3-run137-logs/"
+}

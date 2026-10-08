@@ -1,0 +1,113 @@
+{
+ "engine-plumes": {
+  "record_commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+  "bases": [
+   "01114822",
+   "70024483"
+  ],
+  "hashes": 11,
+  "hash_mismatch": [],
+  "closure_files": 49,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-ribbons": {
+  "record_commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+  "bases": [
+   "01114822",
+   "70024483"
+  ],
+  "hashes": 14,
+  "hash_mismatch": [],
+  "closure_files": 48,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-shimmer": {
+  "record_commit": "011148225189523fc1f2db4b255b8b4e038f4c49",
+  "bases": [
+   "01114822",
+   "70024483"
+  ],
+  "hashes": 9,
+  "hash_mismatch": [],
+  "closure_files": 20,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-effects": {
+  "record_commit": "1db749d604f51f9c2db4a3ac7b50b60ff9261477",
+  "bases": [
+   "1db749d6",
+   "1db749d6"
+  ],
+  "hashes": 20,
+  "hash_mismatch": [],
+  "closure_files": 93,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-light-gpu": {
+  "record_commit": null,
+  "bases": [
+   "0e244a32"
+  ],
+  "hashes": 8,
+  "hash_mismatch": [],
+  "closure_files": 33,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "engine-effects-patch": {
+  "record_commit": "9c0c57ab6e3fabd30b5de08f18a47942748a3e54",
+  "bases": [
+   "9c0c57ab",
+   "203c5e98"
+  ],
+  "hashes": 6,
+  "hash_mismatch": [],
+  "closure_files": 14,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "cull-small-parts-cpu": {
+  "record_commit": null,
+  "bases": [
+   "a2fb74fd"
+  ],
+  "hashes": 0,
+  "hash_mismatch": [],
+  "closure_files": 35,
+  "closure_changed": [],
+  "passed": true,
+  "binds": true
+ },
+ "seam-engine-light": {
+  "record_commit": null,
+  "bases": [
+   "0e244a32"
+  ],
+  "hashes": 0,
+  "hash_mismatch": [],
+  "closure_files": "src/**",
+  "closure_changed": [
+   "src/config/config_schema_inc.h",
+   "src/proxy/capture.cpp",
+   "src/proxy/motion_output.cpp",
+   "src/proxy/motion_output.h",
+   "src/proxy/motion_output_cull_small_props_inc.h",
+   "src/proxy/motion_output_occlusion_cull_inc.h",
+   "src/proxy/occlusion_cull_core.h",
+   "src/renderer/occlusion_cull_pass.cpp",
+   "src/renderer/occlusion_cull_pass.h"
+  ],
+  "passed": true,
+  "binds": false
+ }
+}

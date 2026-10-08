@@ -1,0 +1,29 @@
+{
+ "run": "Run137",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run137-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-08T18:52+0400",
+ "commit": "1db749d6",
+ "candidate_record": "verification/results/run137-candidate-build.json",
+ "installed": {
+  "sha256": "c920eef8b9cbcf5f212356bed0c76a33b33ed9fbdf18a2e38eabb8e8b2433c48",
+  "bytes": 59329428,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed before install); pgrep X3AP empty before; 16 generated font files re-reported, unchanged content; engine_bodies.json kept"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 9fc1c171... before and after (CX_GRAPHICS_BACKEND = dxvk as the user set it)",
+  "x3m.ini": "the user's file kept (1e783ec8..., no occlusion_cull line; built-in default on)",
+  "dxvk.conf": "absent (removed after Run 136 A)",
+  "CrossOver Preview.app": "MoltenVK 1.4.2 + marked Gcenx PR #20 DXVK 1.10 as for Run 131 A"
+ },
+ "previous": {
+  "run": "Run136",
+  "dll_sha256": "d03e597e44db6a63b386621b111477da638f484f609435c3b5a02ae35cec481a",
+  "path": "/tmp/x3-run136-candidate/build/d3d9.dll",
+  "then": "Run135 7f7c4659... at /tmp/x3-run135-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "occlusion-cull estimate from run14/run15 captures (67-91 hull-hidden sub-part draws per frame at close Ocelot views, 1.7-2.4 ms); user decision 2026-10-08: build the occlusion cull, test every candidate, no budget",
+ "producer": "main session (Fable 5.1)"
+}
