@@ -1,0 +1,25 @@
+inflight cull rows=10944 candidates>0=10944 tested>0=10944 skipped>0=10943
+ candidates      median=  134.0 p95=    181 max=    211 sum=  1380355 nonzero=10944
+ tested          median=   83.0 p95=    139 max=    200 sum=   842464 nonzero=10944
+ hidden          median=   67.0 p95=    127 max=    153 sum=   727162 nonzero=10941
+ skipped         median=   51.0 p95=    126 max=    153 sum=   678128 nonzero=10943
+ blocks          median=    2.0 p95=      3 max=      6 sum=    24043 nonzero=10944
+ test_us         median=  132.0 p95=    217 max=    862 sum=  1410832 nonzero=10944
+ retest_skipped  median=   45.0 p95=     63 max=     74 sum=   482960 nonzero=10944
+ forced          median=    0.0 p95=     19 max=     64 sum=    39565 nonzero=4526
+ stale           median=    0.0 p95=      0 max=      0 sum=        0 nonzero=0
+ drawn_late      median=    0.0 p95=      1 max=     19 sum=     2464 nonzero=2002
+ no_hull         median=    0.0 p95=     37 max=     49 sum=    54778 nonzero=1519
+ pool_truncated  median=    0.0 p95=      0 max=      0 sum=        0 nonzero=0
+ errors          median=    0.0 p95=      0 max=      0 sum=        0 nonzero=0
+ failed          median=    0.0 p95=      0 max=      0 sum=        0 nonzero=0
+ refused         median=    0.0 p95=      0 max=      1 sum=        2 nonzero=2
+ unstable        median=    0.0 p95=     27 max=    139 sum=    46768 nonzero=1079
+ not_ready       median=    0.0 p95=      0 max=     61 sum=      233 nonzero=8
+ ready_lag2      median=    0.0 p95=      0 max=     61 sum=      200 nonzero=7
+ cadence         median=    7.0 p95=     10 max=     13 sum=    75308 nonzero=10897
+ phase_spread first: median=6.0 max=10  second: median=8.0 max=13
+ ready_age age1=839332 age2=94639 none=391606
+ per frame (cand>0): test_us median=132 mean=129; skipped*10us median=510 mean=620; net mean=491 us; frames net>0=10224/10944
+ us per tested (sum test_us / sum tested over tested>0 frames)=1.67; per block=58.68
+ draws-issued (cand>0) median=76.0 mean=78.6; skipped mean=62.0
