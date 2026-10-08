@@ -41,7 +41,7 @@
     "src/renderer/engine_shimmer_pass.h"
   ],
   "source": {
-    "commit": "937b8ab3957e09652a453b54483c26df7d01f7f6",
+    "commit": "8f03c306c25536e5af7782edc21af428080b74e7",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -56,8 +56,8 @@
       "src/renderer/engine_plumes_pass.h": "441fbcc8d2d6b6b9a17afd8e1a34998a7f7ad946187f258d489d9b3f761936d9",
       "src/proxy/motion_output_engine_ribbons_inc.h": "02af53103a41900335f91299caf2f295abddc0d9950aa80f05f35bdbbbe70c96",
       "src/proxy/engine_ribbons_core.h": "75e7be6cc39a61c1c8ead1f1b6e833a9da0d47859ad34926fb789e769701c364",
-      "src/proxy/motion_output.h": "0a48c7e9f8a9aac297778d5413efe5caf1ecac2d6bdd5c961ef60236ca81734d",
-      "src/proxy/capture.cpp": "e8c656a7c0dd7e5f9b480b5bfc9180a45326aebcfab6ee6cf64ace7bb5a22c1f",
+      "src/proxy/motion_output.h": "1fcfbff49090c76dce9314b90bbfc271a0eb54cc2422904f2261685b324cd967",
+      "src/proxy/capture.cpp": "81341a89c77e3a6809a184293192770b702a7867219b439a09d2f86957bcea2a",
       "src/proxy/engine_far_jets.cpp": "bf2d876882f5bc7f145cec5d033ebb6ed95d4056917a4a9f53b41dd1b71dca4e",
       "src/proxy/engine_far_jets.h": "fdef23e89032064a7b2f2a7d2dc3a71ad218382c952d4c3b65e0437656b2dcde",
       "src/proxy/engine_far_jets_core.h": "abad117165bbdb9d9873d216f8c1b85f7b432a967ef6fb29b81054206a035b95",
@@ -76,9 +76,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "b0fa913dc7cde2d286a9d364f304769afa2cce605d92778630a2701ce5861ea5",
-    "seam_sha256": "8eed2a865f9617813cafca44fecc2a1e159becf24b45f48f877c1aa055036cda",
-    "dll_sha256": "05a964adf7da456c22fbc85c822fb5a567fd9011bd18bfd7256553f413309302"
+    "fixture_sha256": "a2e137827d57f2aa5fdd8e2e698e50307ae23ee916d0c647e7c1c0bee29f4be6",
+    "seam_sha256": "1879ebed6e57f98038384095244d9c2fe26d701c62536d62e4a3473afde32aad",
+    "dll_sha256": "2b6541658ff26fe171525bc9ed45097228ea0ffb4d1f0f3f09d13afa8f905052"
   },
   "runs": {
     "main": {
@@ -198,7 +198,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261008-220518-225087"
+      "directory": "verification/probe/build/engine-effects-main-20261009-001423-305795"
     },
     "native": {
       "exit": 0,
@@ -242,7 +242,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261008-220527-634647"
+      "directory": "verification/probe/build/engine-effects-native-20261009-001433-672658"
     },
     "unverified": {
       "exit": 0,
@@ -258,7 +258,7 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261008-220535-381672"
+      "directory": "verification/probe/build/engine-effects-unverified-20261009-001441-491777"
     },
     "unpatched": {
       "exit": 0,
@@ -302,7 +302,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-unpatched-20261008-220543-437616"
+      "directory": "verification/probe/build/engine-effects-unpatched-20261009-001449-627242"
     },
     "timing": {
       "exit": 0,
@@ -319,14 +319,14 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.617,
-        "not_jet": 0.841,
-        "not_candidate": 0.768,
-        "suppressed_new_parent": 0.716,
-        "suppressed_no_parent": 0.881,
-        "suppressed_two_parents": 0.666
+        "suppressed": 0.695,
+        "not_jet": 0.864,
+        "not_candidate": 0.753,
+        "suppressed_new_parent": 0.724,
+        "suppressed_no_parent": 0.666,
+        "suppressed_two_parents": 0.703
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261008-220551-187242"
+      "directory": "verification/probe/build/engine-effects-timing-20261009-001457-678160"
     },
     "plumes": {
       "exit": 0,
@@ -371,7 +371,7 @@
         1,
         2
       ],
-      "directory": "verification/probe/build/engine-effects-plumes-20261008-220559-128230"
+      "directory": "verification/probe/build/engine-effects-plumes-20261009-001505-751341"
     },
     "armed": {
       "exit": 0,
@@ -532,9 +532,9 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "5a0606,ffffff,000000,000000",
-          "sums": "102,765,0,0",
-          "prev": "77,765"
+          "px": "590606,ffffff,000000,000000",
+          "sums": "101,765,0,0",
+          "prev": "76,765"
         },
         {
           "phase": "rearmed",
@@ -583,8 +583,8 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "440505,ffffff,000000,000000",
-          "sums": "78,765,0,0",
+          "px": "430505,ffffff,000000,000000",
+          "sums": "77,765,0,0",
           "prev": "42,765"
         },
         {
@@ -685,8 +685,8 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "ec1111,ffffff,000000,000000",
-          "sums": "270,765,0,0",
+          "px": "ed1111,ffffff,000000,000000",
+          "sums": "271,765,0,0",
           "prev": "0,0"
         },
         {
@@ -738,10 +738,10 @@
         "frame": "308",
         "stage": "5",
         "rects": "1",
-        "pre": "fc8da87b",
-        "drawn": "f278ce2e",
-        "reverted": "fc8da87b",
-        "history": "fc8da87b",
+        "pre": "0ae4f1ec",
+        "drawn": "7dae8b96",
+        "reverted": "0ae4f1ec",
+        "history": "0ae4f1ec",
         "pre_eq_reverted": "1",
         "pre_ne_drawn": "1",
         "reverted_eq_history": "1",
@@ -758,7 +758,7 @@
         ]
       ],
       "shimmer_drawn_rows": 4,
-      "directory": "verification/probe/build/engine-effects-armed-20261008-220607-074505"
+      "directory": "verification/probe/build/engine-effects-armed-20261009-001514-028967"
     },
     "armed_refused": {
       "exit": 0,
@@ -886,7 +886,7 @@
           "site_mismatch"
         ]
       ],
-      "directory": "verification/probe/build/engine-effects-armed_refused-20261008-220617-102359"
+      "directory": "verification/probe/build/engine-effects-armed_refused-20261009-001523-766738"
     }
   },
   "problems": [],

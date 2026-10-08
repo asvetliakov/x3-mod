@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "4bfe3a1250bbe7ef501b6996f691265ec8510e11f014c3a05a58c2fbdf15db57",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "1bdaff2acf2966cbfbc35bd6368f3d992383edaeea20fe8adac1a21016e2a6bf",
-  "build/d3d9.dll": "44854472f394e5e2635838b9dc1f6be15a553ee0419f73757785487d2f04b87d"
+  "verification/probe/build/motion_output_fixture.exe": "c5b5cbf3cb140122b3278db8f5ce41728df069b10b1558d93383e640ff17e1d8",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "62f2967ea97d2ab5559105e9f48cba2c0e8268a3cf1d1fea5029cdaadb6c5126",
+  "build/d3d9.dll": "011484739f8840698c1d36a29df0d2c348c1a9e048855efb4d9e36b95fd3e3ef"
  },
  "checks": 107,
  "frames": [
@@ -155,7 +155,10 @@
    "cap": "1",
    "constants": "c55-c202",
    "ships_max": "256",
-   "plates_max": "72"
+   "plates_max": "72",
+   "hold": "60",
+   "hold_setting": "-",
+   "hold_status": "ok"
   },
   "hull_variant": {
    "device": "1",
@@ -270,8 +273,8 @@
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-engine-light-20261008-220750-352009",
- "trace_sha256": "a0127470709359935684f82d6b3ce8cbebd9ca383377872ab151a86191d4c75e",
- "dll_sha256": "1bdaff2acf2966cbfbc35bd6368f3d992383edaeea20fe8adac1a21016e2a6bf",
- "exe_sha256": "4bfe3a1250bbe7ef501b6996f691265ec8510e11f014c3a05a58c2fbdf15db57"
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261009-001703-019590",
+ "trace_sha256": "67ba08142a556bee4276a5869f8de6d07710cae4dc6716664b765a7ae54a8612",
+ "dll_sha256": "62f2967ea97d2ab5559105e9f48cba2c0e8268a3cf1d1fea5029cdaadb6c5126",
+ "exe_sha256": "c5b5cbf3cb140122b3278db8f5ce41728df069b10b1558d93383e640ff17e1d8"
 }
