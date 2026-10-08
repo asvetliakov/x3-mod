@@ -328,6 +328,10 @@ order, `-` when none: `most_lights=00663300:5a` in the seam case; since the plat
 ps_3_0 arithmetic and `SetPixelShaderConstantF` / `GetVertexShaderConstantF` only; no new resource or state. Runtime
 unverified on Windows ([platform-portability.md](platform-portability.md)).
 
+## Per-draw plate cull (built 2026-10-08, dropped)
+
+A cull that kept only the plates whose reach touches a draw's bounding box was built, proven invisible and dropped by the user, because the game splits a capital's close LOD into pieces by material (the Ocelot: 13 pieces, 12 spanning the whole hull), so nearly every piece keeps every plate; nine ships draw their close LOD as a single piece. The per-pixel walk's real cost is lit pixels x plates in view (about 4.5 ps per pixel per plate at 5120x1440, measured), i.e. ~0.1 ms for four capitals at 3-4 km and ~2.4 ms only when a 72-plate hull fills the screen. A screen-tile plate list is the mechanism if that ever matters; details in the ledger row of the same date.
+
 ## Limits and open questions
 
 - Nozzle plates keep the full light-map gain where no twin is bound (`engine_light` off, an unlit ship); see
