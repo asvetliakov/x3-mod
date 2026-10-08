@@ -1,6 +1,6 @@
 # Occlusion cull of ship sub-parts
 
-`X3M_OCCLUSION_CULL=on|off` (`occlusion_cull` in `x3m.ini`, default on; user decision 2026-10-08). Skips the game's
+`X3M_OCCLUSION_CULL=on|off` (`occlusion_cull` in `x3m.ini`, default off since the same-build A/B of 2026-10-08: on DXVK the cull halves the issued draws but frame time and `view_submit` do not change, so it is an opt-in; user decision 2026-10-08). Skips the game's
 draws of turrets, dock ports, antennas and similar ship parts that the previous frame's occlusion test found completely
 hidden behind their hull. Render-only: the engine's state, the cull/LOD pass and the simulation are untouched.
 

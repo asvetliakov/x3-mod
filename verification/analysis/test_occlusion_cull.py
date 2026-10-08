@@ -158,7 +158,7 @@ class OcclusionCullHost(unittest.TestCase):
         entries = {e['key']: e for e in schema.SETTINGS}
         self.assertIn('occlusion_cull', entries)
         e = entries['occlusion_cull']
-        self.assertEqual((e['type'], e['choices'], e['builtin']), ('enum', ('on', 'off'), 'on'))
+        self.assertEqual((e['type'], e['choices'], e['builtin']), ('enum', ('on', 'off'), 'off'))
         self.assertNotIn('occlusion_cull_budget', entries)  # no tuned budget (user 2026-10-08): only the fixed pool
         r = entries['occlusion_cull_retest']
         self.assertEqual((r['type'], r['builtin'], r['requires']), ('int', '8', ('occlusion_cull',)))

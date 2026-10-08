@@ -133,8 +133,9 @@ SETTINGS = [
           since='2026-09-29'),
     entry('occlusion_cull', 'enum', 'graphics', 'Skips drawing turrets, docking bays and similar ship parts that are completely '
           'hidden behind their ship\'s hull, found with the graphics card\'s occlusion test of the previous frame. A part '
-          'that comes into view appears one frame late. on = skip hidden parts (the default), off = draw them.',
-          builtin='on', choices=('on', 'off'), since='2026-10-08'),
+          'that comes into view appears one frame late. Measured on CrossOver/DXVK (2026-10-08): no frame-time change, '
+          'so off is the default; on = skip hidden parts, off = draw them.',
+          builtin='off', choices=('on', 'off'), since='2026-10-08'),
     entry('occlusion_cull_retest', 'int', 'graphics', 'How often, in frames, a ship part that the last occlusion test found '
           'visible is tested again (occlusion_cull = on). Hidden parts are tested every frame, and a part that moves or '
           'whose ship changes is tested at once. 1 = every frame (more graphics work), up to 64; default 8. Read when the '

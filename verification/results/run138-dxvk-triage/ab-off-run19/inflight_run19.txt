@@ -1,0 +1,4 @@
+load_frame 402 inflight_frames 8505 secs~ 116
+ >33ms 26 first_half 15 second_half 11
+ >50ms 18 first_half 11 second_half 7
+ >100ms 11 first_half 5 second_half 6

@@ -193,3 +193,5 @@ of frame CPU in this fixture, 1.4-3.5x) about 0.28-0.7 ms in flight, against ~1.
 gain of roughly 0.4-0.8 ms per frame, where Run137 lost ~1.7 ms. Not verified in flight.
 
 Not verified: a flight; native Windows execution; the batched tests' pipeline (GPU) cost.
+
+**2026-10-08, same-build A/B (Run138, run19 off vs run17 on, DXVK): parity.** At matched close-capital windows (237-262 draws) `view_submit_p50` 6.63 ms off vs 6.54 ms on, dt p50 15.5 vs 15.2 ms, both inside the 6.3-6.8 ms spread of the no-cull runs 14/15; issued draws 236 vs 126 at the same draw count, the cull's tests 132 us per frame. A skipped sub-part draw is nearly free on this backend's game thread (inferred). Decision: `occlusion_cull` default off, code kept as an opt-in and as the proxy's only hidden-part oracle; records under `verification/results/run138-dxvk-triage/ab-off-run19/`.

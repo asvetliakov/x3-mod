@@ -1,0 +1,4 @@
+run19 windows=6 draws=250 issued=236 view_submit_p50=6627 views_p50=9471 dt_p50=15465
+run17 windows=7 draws=242 issued=126 view_submit_p50=6540 views_p50=9120 dt_p50=15178
+run15 windows=5 draws=254 issued=239 view_submit_p50=6796 views_p50=9578 dt_p50=15692
+run14 windows=4 draws=241 issued=228 view_submit_p50=6344 views_p50=9114 dt_p50=14968
