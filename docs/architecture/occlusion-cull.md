@@ -199,7 +199,9 @@ every 300 frames with the session totals (the same new fields, `test_us` summed,
 
 - A skipped part is not a shadow-replay caster that frame: a hidden turret's sun shadow on visible hull disappears
   while it is skipped (the small-prop cull has the same property).
-- Only the part draws themselves are skipped; nothing is skipped on the engine side.
+- Only the part draws themselves are skipped; nothing is skipped on the engine side. An engine-side skip at the
+  cull/LOD pass was studied 2026-10-08 ([engine-side-occlusion-cull.md](../reverse-engineering/engine-side-occlusion-cull.md)):
+  feasible on the existing `0x0047d2a2` claim, 0.7-1.9 ms expected at close-capital views (inferred), not built.
 - A part first seen in a frame is drawn untested and joins the next frame's block: skipping starts on its third frame
   (frame 0 lists it, frame 1 tests it, frame 2 skips), one frame later than the per-part test of Run137.
 - A part last read visible that becomes hidden without moving and without a hull change keeps being drawn until its
