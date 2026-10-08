@@ -80,7 +80,7 @@ PRODUCTION_SOURCES = ('src/proxy/engine_effects.cpp', 'src/proxy/engine_effects.
                       'src/renderer/engine_plumes_pass.cpp', 'src/renderer/engine_plumes_pass.h',
                       'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/engine_ribbons_core.h',
                       'src/proxy/motion_output.h', 'src/proxy/capture.cpp', 'src/proxy/engine_far_jets.cpp',
-                      'src/proxy/engine_far_jets.h', 'src/proxy/engine_far_jets_core.h',
+                      'src/proxy/engine_far_jets.h', 'src/proxy/engine_far_jets_core.h', 'src/proxy/engine_nozzle_walk_core.h',
                       'src/proxy/motion_output_engine_shimmer_inc.h', 'src/proxy/engine_shimmer_core.h',
                       'src/renderer/engine_shimmer_pass.cpp', 'src/renderer/engine_shimmer_pass.h')
 QUIET_ROW_FRAME = 300  # main: the second candidate-free engine_frame row (frame 0 is the first)
@@ -245,6 +245,22 @@ def validate(mode, r):
         out['far_duplicate_rows'] = len(duplicates)
         if len(duplicates) != 1 or any('view_far_total' not in g for g in stage):
             problems.append(f'armed: engine_stage far_duplicates rows {len(duplicates)}')
+        # Node-sourced nozzles (engine_nozzle_walk_core.h): the two engine-culled frames' rows carry the handler's culled
+        # pair (far_engine 1, node_engine_culled 1), each walks the ship root (node_walked 1) and drops the listed jet
+        # (node_dupes 1); no stage row has a node record (nothing resurrected), every row has the node fields.
+        culled = [g for g in stage if (g.get('far_engine'), g.get('node_engine_culled')) == ('1', '1')]
+        walked = [g for g in stage if g.get('node_walked') not in (None, '0')]
+        out['node_engine_culled_rows'] = len(culled)
+        out['node_walked_rows'] = [(g.get('node_roots'), g.get('node_walked'), g.get('node_dupes'), g.get('node_records')) for g in walked]
+        node_fields = ('node_roots', 'node_records', 'node_dupes', 'node_guard_rejected', 'node_overflow', 'node_root_overflow',
+                       'node_not_ship', 'node_walk_us')
+        if len(culled) != 2 or any(f not in g for g in stage for f in node_fields) or \
+                any(g.get('node_records') != '0' for g in stage) or out['node_walked_rows'] != [('1', '1', '1', '0')] * 2:
+            problems.append(f'armed: engine_stage node rows culled {len(culled)} walked {out["node_walked_rows"]}')
+        source = rows(log, 'engine_nozzle_source')
+        out['nozzle_source_rows'] = [(r.get('source'), r.get('status')) for r in source]
+        if not source or any((r.get('source'), r.get('status')) != ('node', 'ok') for r in source):
+            problems.append(f'armed: engine_nozzle_source rows {out["nozzle_source_rows"]}')
         if not rows(log, 'motion_output_reset'):
             problems.append('armed: no motion_output_reset row')
         # The game's glow while the stage is off: 3 x 63 disarmed frames and the 70 refused ones forward the four jets.

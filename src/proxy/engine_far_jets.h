@@ -20,6 +20,10 @@ void begin_frame() noexcept;
 unsigned count() noexcept;
 const core::Raw* entries() noexcept;
 core::Stats stats() noexcept;
+// The frame's engine-culled (node handle, view handle) pairs (core::CulledPair; the node-sourced walk's exclusion
+// list, engine_nozzle_walk_core.h), emptied with the buffer.
+unsigned culled_count() noexcept;
+const core::CulledPair* culled() noexcept;
 } // namespace x3m::engine_far_jets
 // The stub's call: cdecl, node = EDI, measure = ESI, view = the pass's site [ESP+0x28]; EAX/ECX/EDX saved by the stub.
 extern "C" void x3m_engine_far_jet(std::uint32_t node, std::int32_t measure, std::uint32_t view);

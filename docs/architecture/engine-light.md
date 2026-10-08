@@ -349,6 +349,22 @@ frame and, without a hold, its light and plates went out in one frame while the 
   anchor pass over 256 bound ships (`test_engine_light.py` `hold.cost`, measured).
 - Config: `engine_light_hold` (`X3M_ENGINE_LIGHT_HOLD`, `--engine-light-hold`), read once at load; `engine_light_mode`
   carries `hold=`, `hold_setting=`, `hold_status=`.
+- Since 2026-10-09 (node-sourced nozzles, [engine-nozzle-source.md](engine-nozzle-source.md)): a ship whose root the
+  node walk read to its end that frame is never held (`hold_ships`' walked set, `hold_walked=` in `engine_light_frame`):
+  the walk is authoritative, no live nozzle means dark. The hold stays for roots the walk did not cover (the hull not
+  drawn in the scene view, a refused or cut walk, `engine_nozzle_source = draw`). Expected `held = 0` in flight.
+
+## Sources of records
+
+The ship table is built from the ring at the frame boundary whatever the record's source ([engine-effects-modern.md
+"Sources of records"](engine-effects-modern.md)): a glow-jet *draw* the recogniser suppressed, a *far* copy of a JET
+node the small-parts cull stub culled by size, or, since 2026-10-09, a *node* record the proxy built by walking the
+drawn ship's root child list at the plume stage's append (`engine_node_append`; at the next frame boundary before
+`build_ships` when the stage did not run), deduplicated by node handle with the draw record winning. A nozzle that
+leaves the frustum while its hull stays on screen keeps its plate and its light from the node source at the drive's
+live throttle (`+0x88`), one frame of latency as for any record; the hidden nozzle set (`+0x12c & 0x100000`) drops its
+record the frame the drive hides it. The seam case `seam-engine-light` shows a second, never drawn main jet becoming the
+ship's second plate (tier 1) with the hull pixels taking the nearer plate's light.
 
 ## Logging
 

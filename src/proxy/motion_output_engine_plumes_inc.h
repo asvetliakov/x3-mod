@@ -22,6 +22,27 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
     // stage (it carries the block only with X3M_ENGINE_EFFECTS=plumes and the cull on); each device counts once.
     engine_far_jets::request(&engine_far_counted_, plumes_requested_, this);
     engine_far_frame_ = ~std::uint64_t(0);
+    // Node-sourced nozzles (engine_nozzle_walk_core.h): X3M_ENGINE_NOZZLE_SOURCE=node|draw, unset = node, anything
+    // else refused (node, status invalid_setting). One row per configure.
+    {
+        wchar_t text[8]{};
+        const DWORD n = x3m::config::get(L"X3M_ENGINE_NOZZLE_SOURCE", text, 8);
+        char shown[8]{};
+        for (DWORD i = 0; i < n && i < 7; ++i) shown[i] = text[i] > 0x20 && text[i] < 0x7f ? char(text[i]) : '?';
+        engine_nozzle::core::Source source = engine_nozzle::core::default_source;
+        const bool ok = !n || (n < 8 && engine_nozzle::core::parse_source(text, n, &source));
+        engine_nozzle_source_ = ok ? source : engine_nozzle::core::default_source;
+        engine_node_roots_frame_ = ~std::uint64_t(0);
+        engine_node_appended_ = false;
+        engine_node_walked_count_ = 0;
+        engine_scene_camera_last_ = 0;
+        engine_scene_camera_frame_ = 0;
+        engine_node_ = {};
+        log("engine_nozzle_source device=%llu setting=%s status=%s source=%s requested=%u bound=%u roots_max=%u",
+            id_, n ? shown : "-", ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting",
+            engine_nozzle::core::source_name(engine_nozzle_source_), unsigned(plumes_requested_),
+            engine_nozzle::core::walk_bound, engine_nozzle::core::RootSet::capacity);
+    }
     plumes_preset_ = preset;
     // The look: the chosen constants with the configured nozzle width (engine_effects::plume_nozzle(): parsed and
     // range-checked there); out of range here (no caller does that) keeps the default.
@@ -241,6 +262,189 @@ void MotionOutput::engine_far_append() noexcept {
         if (!entry) ++engine_counts_.unknown_body;
     }
 }
+// Node-sourced nozzles (engine_nozzle_walk_core.h; docs/architecture/engine-nozzle-source.md): the roots gathered at
+// sample_scope (engine_node_gather) are walked once per frame's ring, at the stage append after engine_far_append or
+// at the next frame boundary before the light builds when the stage did not run (engine_light_frame). The dedupe set
+// is primed with every record already in the ring (draw and far: node_handle and camera[]) and the far handler's
+// engine-culled pairs, so a node record is appended only for a nozzle no draw, far copy or engine verdict covered.
+// Each record is far_record over the walk's Raw (the hull draw's camera handle as the view handle, the root as the
+// parent) with flag_node in place of flag_far, scene 1 (the view filter decides by the handle, as for far records),
+// the parent radius through the memo, the own tag, and the lifetime serial through object_lifetime (the ribbons' key
+// continues across draw -> node -> draw frames). The roots whose walk reached the list's end are the light's walked
+// set (hold_ships). All reads through engine_memory::read; LastError preserved; no allocation.
+bool MotionOutput::engine_node_read(void*, std::uint32_t address, void* out, unsigned size) noexcept {
+    return engine_memory::read(std::uintptr_t(address), out, size);
+}
+// The context scale of a hull draw's camera: camera+0x1c is the view's context (engine_far_jets_core.h
+// view_context_offset), whose +0x2c the far memo reads (engine_far_context_scale). One bounded read per camera among
+// the frame's four most recent; 0 when unreadable.
+float MotionOutput::engine_node_context_scale(std::uint32_t camera) noexcept {
+    if (!camera) return 0.f;
+    if (frame_ != engine_node_camera_frame_) {
+        for (unsigned i = 0; i < engine_node_camera_slots; ++i) engine_node_camera_[i] = 0;
+        engine_node_camera_frame_ = frame_;
+        engine_node_camera_next_ = 0;
+    } else
+        for (unsigned i = 0; i < engine_node_camera_slots; ++i)
+            if (engine_node_camera_[i] == camera) return engine_far_context_scale(engine_node_context_[i]);
+    std::uint32_t context = 0;
+    if (!engine_memory::read(std::uintptr_t(camera) + engine_far_jets::core::view_context_offset, &context, sizeof context))
+        context = 0;
+    const unsigned slot = engine_node_camera_next_;
+    engine_node_camera_next_ = (slot + 1) % engine_node_camera_slots;
+    engine_node_camera_[slot] = camera;
+    engine_node_context_[slot] = context;
+    return context ? engine_far_context_scale(context) : 0.f;
+}
+// The gather, per routed scene draw: the draw's root is admitted when it is a ship (engine_nozzle_walk_core.h
+// ShipRoots: a record named it as parent within two frames, or it is the own ship's root; stations, asteroids and
+// debris never enter the set, review S1) and, when a scene view is known, when the draw's camera is that view
+// (target-monitor ships are not walked). The view filter clears after engine_scene_camera_hold frames without a scene
+// tally, at Reset and on a load epoch change (review S3), so a stale view cannot starve the gather.
+void MotionOutput::engine_node_gather(std::uintptr_t node, std::uint32_t parent, std::uintptr_t camera,
+                                      std::uint32_t camera_handle, std::uintptr_t registry) noexcept {
+    if (engine_nozzle_source_ != engine_nozzle::core::Source::node || !plumes_requested_ || !engine_ring_ || !node) return;
+    if (selector_.state() != renderer::BoundaryState::Scene) return;
+    if (engine_node_roots_frame_ != frame_) {
+        engine_node_roots_.begin();
+        engine_node_roots_frame_ = frame_;
+        engine_node_.skipped_other_view = engine_node_.not_ship = 0;
+        if (engine_scene_camera_last_ && frame_ > engine_scene_camera_frame_ + engine_scene_camera_hold)
+            engine_scene_camera_last_ = 0; // no scene tally for 120 frames: gather every view again
+        resolve_own_ship(); // once per frame (LastError preserved there)
+    }
+    const std::uint32_t root = parent ? parent : std::uint32_t(node);
+    if (!(own_ship_node_ && std::uintptr_t(root) == own_ship_node_) && !engine_ship_roots_.recent(root, frame_)) {
+        ++engine_node_.not_ship;
+        return;
+    }
+    if (engine_scene_camera_last_ && camera_handle != engine_scene_camera_last_) {
+        ++engine_node_.skipped_other_view;
+        return;
+    }
+    engine_node_roots_.insert(root, camera_handle, std::uint32_t(camera), std::uint32_t(registry));
+}
+void MotionOutput::engine_node_append() noexcept {
+    if (engine_node_appended_) return;
+    engine_node_appended_ = true;
+    const unsigned skipped = engine_node_.skipped_other_view, not_ship = engine_node_.not_ship;
+    engine_node_ = {};
+    engine_node_.skipped_other_view = skipped;
+    engine_node_.not_ship = not_ship;
+    engine_node_walked_count_ = 0;
+    if (engine_nozzle_source_ != engine_nozzle::core::Source::node || !plumes_requested_ || !engine_ring_) return;
+    namespace ee = engine_effects::core;
+    namespace nz = engine_nozzle::core;
+    LARGE_INTEGER begin{}, end{};
+    QueryPerformanceCounter(&begin);
+    const DWORD error = GetLastError();
+    if (engine_load_epoch_ != engine_node_epoch_) { // a load: the previous sector's scene view is forgotten
+        engine_node_epoch_ = engine_load_epoch_;
+        engine_scene_camera_last_ = 0;
+    }
+    nz::RootSet& roots = engine_node_roots_;
+    const bool gathered = engine_node_roots_frame_ == engine_ring_frame_;
+    engine_node_.roots = gathered ? roots.count : 0u;
+    engine_node_.root_overflow = gathered ? roots.overflow : 0u;
+    // The dedupe set: the ring's records and the handler's culled pairs first (at most Seen::slots together), then the
+    // walk's jets while the set has room; a full set (review N1) refuses further jets as ring_full rather than let a
+    // duplicate through (Seen::insert's unreachable branch).
+    engine_node_seen_.begin();
+    unsigned seen_inserts = 0;
+    for (unsigned i = 0; i < engine_ring_->count; ++i)
+        seen_inserts += engine_node_seen_.insert(engine_ring_->records[i].node_handle, engine_ring_->camera[i]);
+    const unsigned culled = engine_far_jets::culled_count();
+    const engine_far_jets::core::CulledPair* pairs = engine_far_jets::culled();
+    for (unsigned i = 0; i < culled; ++i) seen_inserts += engine_node_seen_.insert(pairs[i].handle, pairs[i].view_handle);
+    engine_node_.engine_culled = culled;
+    // Engine-culled jets and the cull stub (review S2): with the stub installed its handler lists every JET it culled
+    // that the engine's own size verdict refuses too (engine_culls), and those stay out here. With the stub off
+    // (cull_small_parts_px 0) the list is empty, but the engine then draws every jet it does not refuse itself, so a
+    // visible jet has a draw record that wins the dedupe and nothing is resurrected. Residual either way: a jet the
+    // engine refuses natively past the stub's path (its +0x1d8 limit above the stub's threshold) has neither a draw
+    // nor a listed pair and is added by the walk as an off-screen jet would be; node_records on fully visible ships
+    // in flight measures it.
+    const bool floors = plumes_look_.floor_scale > 0.f;
+    const bool lifetimes =
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        !fixture_configured_ &&
+#endif
+        object_lifetime::active();
+    for (unsigned r = 0; gathered && r < roots.count; ++r) {
+        const unsigned slot = roots.order[r];
+        const std::uint32_t root = roots.root[slot], view_handle = roots.camera_handle[slot];
+        const std::uint32_t camera = roots.camera[slot], registry = roots.registry[slot];
+        const float scale = engine_node_context_scale(camera);
+        if (!(scale > 0.f)) {
+            ++engine_node_.no_scale;
+            continue;
+        }
+        nz::WalkStats st;
+        bool ring_full = false;
+        const bool complete = nz::walk(root, view_handle, &engine_node_read, nullptr, &st, [&](const engine_far_jets::core::Raw& raw) {
+            if (seen_inserts >= engine_far_jets::core::Seen::slots) {
+                ++engine_node_.seen_full;
+                ++engine_node_.ring_full;
+                ring_full = true;
+                return;
+            }
+            if (!engine_node_seen_.insert(raw.handle, raw.view_handle)) {
+                ++engine_node_.duplicates;
+                return;
+            }
+            ++seen_inserts;
+            if (engine_ring_->full()) {
+                ++engine_node_.ring_full;
+                ring_full = true;
+                return;
+            }
+            const int body = engine_effects::body_for_model(raw.model);
+            const ee::Body* entry = engine_effects::body(body);
+            ee::Record record{};
+            const ee::FarVerdict verdict = ee::far_record(raw, scale, body, entry, engine_ring_frame_, &record);
+            if (verdict != ee::FarVerdict::record) {
+                ++(verdict == ee::FarVerdict::steering ? engine_node_.steering : engine_node_.invalid);
+                return;
+            }
+            record.flags = std::uint16_t((record.flags & ~std::uint16_t(ee::flag_far)) | ee::flag_node);
+            if (lifetimes && registry && camera) {
+                object_lifetime::Snapshot life{};
+                if (object_lifetime::current(registry, raw.node, raw.handle, camera, view_handle, &life) && life.known &&
+                    life.node_serial) {
+                    record.serial = life.node_serial;
+                    record.flags |= ee::flag_serial;
+                }
+            }
+            float radius = 0.f;
+            if (floors)
+                ee::parent_radius_in_record(engine_parent_radius(root), raw.scale70, raw.scale80, record.size, &radius);
+            const unsigned at = engine_ring_->count;
+            *engine_ring_->push() = record;
+            engine_ring_->camera[at] = view_handle;
+            engine_ring_->scene[at] = 1u;
+            engine_ring_->parent[at] = root;
+            engine_ring_->parent_radius[at] = radius;
+            engine_ring_->own[at] = engine_record_own(raw.node, raw.handle, true, root) ? 1u : 0u;
+            ++engine_node_.records;
+            if (!entry) ++engine_counts_.unknown_body;
+        });
+        engine_node_.children += st.children;
+        engine_node_.hidden += st.hidden;
+        engine_node_.guard_rejected += st.guard_parent + st.guard_scale + st.guard_throttle;
+        engine_node_.overflow += st.overflow;
+        engine_node_.unreadable += st.unreadable;
+        if (complete && !ring_full) {
+            engine_node_walked_[engine_node_walked_count_++] = root;
+            ++engine_node_.walked;
+        }
+    }
+    // The ship roots for the next frames' gather: every record's parent (draw, far and node records alike).
+    for (unsigned i = 0; i < engine_ring_->count; ++i) engine_ship_roots_.mark(engine_ring_->parent[i], engine_ring_frame_);
+    SetLastError(error);
+    QueryPerformanceCounter(&end);
+    const std::uint64_t frequency = engine_qpc_frequency();
+    engine_node_.walk_us = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
+}
 // The travel look under SETA (gap 7; engine_plumes_core.h TravelRamp, docs/reverse-engineering/engine-effects.md
 // section 8): one bounded read of the SETA dwords per stage frame (engine_effects::seta_read: refused without the
 // identity, on a site mismatch or a failed read), validated by seta_decode (out of range: 1.0, counted invalid); the
@@ -285,7 +489,10 @@ void MotionOutput::engine_seta_step(double step) noexcept {
 }
 HRESULT MotionOutput::run_engine_plumes() noexcept {
     plumes_ran_ = true;
-    if (plumes_ && plumes_armed_ && plumes_lane_) engine_far_append(); // after the frame's draws, before the scene view
+    if (plumes_ && plumes_armed_ && plumes_lane_) {
+        engine_far_append();  // after the frame's draws, before the scene view
+        engine_node_append(); // then the drawn ships' jet lists (engine-nozzle-source.md)
+    }
     if (!plumes_ || !plumes_armed_ || !plumes_lane_ || !engine_ring_ || (!engine_ring_->count && !engine_ribbons_live()))
         return S_FALSE; // phase 3: a frame without records still runs while ribbons fade
     // The scene view, from the drawn records only (far records carry no phase): the camera handle the own ship's jets
@@ -296,8 +503,9 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     const unsigned count = engine_ring_->count;
     std::uint8_t pick[engine_effects::core::ring_capacity]; // the tally's scene tags, one byte per record
     bool any_far = false;
+    constexpr std::uint16_t undrawn = engine_effects::core::flag_far | engine_effects::core::flag_node; // no draw: handle-tagged
     for (unsigned i = 0; i < count; ++i) {
-        const bool far_record = (engine_ring_->records[i].flags & engine_effects::core::flag_far) != 0;
+        const bool far_record = (engine_ring_->records[i].flags & undrawn) != 0;
         pick[i] = far_record ? 0u : engine_ring_->scene[i];
         any_far = any_far || far_record;
     }
@@ -306,8 +514,12 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
                                                    &plumes_view_rule_);
     if (!viewed && any_far) {
         for (unsigned i = 0; i < count; ++i)
-            pick[i] = (engine_ring_->records[i].flags & engine_effects::core::flag_far) ? 1u : 0u;
+            pick[i] = (engine_ring_->records[i].flags & undrawn) ? 1u : 0u;
         viewed = plumes_view_far_ = engine_plumes::tally_scene_view(engine_ring_->camera, pick, nullptr, count, &scene_camera);
+    }
+    if (viewed) { // the next frame's root filter (engine_node_gather) and its reset clock
+        engine_scene_camera_last_ = scene_camera;
+        engine_scene_camera_frame_ = frame_;
     }
     if (plumes_view_far_)
         ++plumes_view_far_total_;
@@ -417,10 +629,15 @@ void MotionOutput::log_engine_stage() noexcept {
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     const engine_far_jets::core::Stats jets = engine_far_jets::stats(); // this frame's far jets (the cull stub's copies)
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u node_roots=%u node_walked=%u node_records=%u node_dupes=%u node_guard_rejected=%u node_hidden=%u node_overflow=%u node_unreadable=%u node_engine_culled=%u node_no_scale=%u node_root_overflow=%u node_children=%u node_other_view=%u node_not_ship=%u node_invalid=%u node_walk_us=%.1f steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
             s.nozzles, s.vertices, s.discs, s.floored, s.floor_unknown, s.unfloored, s.far_nozzles, jets.written, engine_far_.records, jets.engine,
-            jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, engine_far_.duplicates, s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
+            jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, engine_far_.duplicates,
+            engine_node_.roots, engine_node_.walked, engine_node_.records, engine_node_.duplicates, engine_node_.guard_rejected,
+            engine_node_.hidden, engine_node_.overflow, engine_node_.unreadable, engine_node_.engine_culled, engine_node_.no_scale,
+            engine_node_.root_overflow, engine_node_.children, engine_node_.skipped_other_view, engine_node_.not_ship,
+            engine_node_.invalid + engine_node_.steering + engine_node_.ring_full, // node_invalid: far_record refusals, RCS, ring or set full
+            double(engine_node_.walk_us), s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
             s.culled_idle, s.skipped_other_view, plumes_view_far_ ? "far" : engine_plumes::view_rule_name(plumes_view_rule_),
             total(plumes_view_own_total_), total(plumes_view_majority_total_), total(plumes_view_far_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
             double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,

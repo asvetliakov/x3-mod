@@ -1318,6 +1318,7 @@ def main():
     parser.add_argument('--engine-light', choices=('on', 'off'), default=None, help='Engine light on the hull with --engine-effects plumes (X3M_ENGINE_LIGHT, ini engine_light; nothing is sent unless given, i.e. on, also the DLL default; an inherited shell value is dropped; refused under --vanilla): per ship the brightest main jet of the previous frame lights the hull plates around its nozzles (a point light 0.5 x the jet\'s value behind the nozzle, radius 3 x value, the plume\'s tint x its throttle intensity, Lambert on the geometric normal, the lit plate capped at 1) through engine-light twins of the original-shading hull programs; off = the programs and uploads of today. Read once at load (docs/architecture/engine-light.md)')
     parser.add_argument('--engine-shimmer', choices=('on', 'off'), default=None, help='Heat shimmer behind the nearest engine nozzles with --engine-effects plumes: a screen-space distortion after the TAA resolve and before bloom, behind the largest nozzles of 24 px or more, 4 by default and at most 16 (--engine-shimmer-max) (X3M_ENGINE_SHIMMER, ini engine_shimmer; nothing is sent unless given, i.e. on, also the DLL default; an inherited shell value is dropped; refused under --vanilla); load-time only (docs/architecture/engine-exhaust-gap-analysis.md, gap 9)')
     parser.add_argument('--engine-shimmer-px', type=float, default=None, metavar='PX', help='Amplitude of the engine heat shimmer in pixels at 1440 rows (scaled with the height), finite 0..4, 0 = none (X3M_ENGINE_SHIMMER_PX, ini engine_shimmer_px; nothing is sent unless given, i.e. 1.5, also the DLL default; an inherited shell value is dropped; refused under --vanilla). Read once at load')
+    parser.add_argument('--engine-nozzle-source', choices=('node', 'draw'), default=None, help='Where the proxy\'s engine plumes and the engine light find a ship\'s nozzles with --engine-effects plumes (X3M_ENGINE_NOZZLE_SOURCE, ini engine_nozzle_source; nothing is sent unless given, i.e. node, also the DLL default; an inherited shell value is dropped; refused under --vanilla): node = the glow draws plus the ship root\'s part list walked by the proxy once per drawn ship per frame, so a nozzle the game culls at the frame edge keeps its plume, plate and light at the live throttle; draw = the glow draws only, the behaviour before 2026-10-09. Load-time only (docs/architecture/engine-nozzle-source.md)')
     parser.add_argument('--engine-light-hold', type=int, default=None, metavar='FRAMES', help='How many frames the engine light on the hull outlives a ship\'s last main-jet record while its hull is still drawn (an engine nozzle off screen), following the hull and fading out over the last third, 0..600, 0 = out at once (X3M_ENGINE_LIGHT_HOLD, ini engine_light_hold; nothing is sent unless given, i.e. 60, also the DLL default; an inherited shell value is dropped; refused under --vanilla). Read once at load (docs/architecture/engine-light.md "Hold")')
     parser.add_argument('--engine-shimmer-max', type=int, default=None, metavar='N', help='How many nozzles get the engine heat shimmer per frame, the largest on screen first, 0..16, 0 = none (X3M_ENGINE_SHIMMER_MAX, ini engine_shimmer_max; nothing is sent unless given, i.e. 4, also the DLL default: the own ship plus the nearest, about 0.4 ms worst case at 5120x1440; an inherited shell value is dropped; refused under --vanilla). Read once at load')
     parser.add_argument('--sun-flare-fix', choices=('on', 'off'), default=None, help='Keep the sun\'s lens flare when a far sun is near the view centre on wide displays by saturating the lens collector\'s overflowing horizontal bound (X3M_SUN_FLARE_FIX; default on for every modded launch, refused under --vanilla; off, or the variable unset, leaves the engine\'s bytes untouched; the first multiply of the same test still wraps for tan(F/2) >= 2, F >= 126.9 deg, which the --fov range never reaches, only script cameras; docs/reverse-engineering/field-of-view.md section 9.1)')
@@ -1948,6 +1949,8 @@ def main():
         parser.error('--engine-shimmer-px cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so no shimmer is drawn')
     if args.engine_shimmer_px is not None and not (math.isfinite(args.engine_shimmer_px) and 0.0 <= args.engine_shimmer_px <= 4.0):
         parser.error('--engine-shimmer-px must be finite and in 0..4')
+    if args.vanilla and args.engine_nozzle_source is not None:
+        parser.error('--engine-nozzle-source cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so no plume is drawn')
     if args.vanilla and args.engine_light_hold is not None:
         parser.error('--engine-light-hold cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so no engine light is drawn')
     if args.engine_light_hold is not None and not 0 <= args.engine_light_hold <= 600:
@@ -2439,6 +2442,11 @@ def main():
             env.pop('X3M_ENGINE_LIGHT', None)
         else:
             env['X3M_ENGINE_LIGHT'] = args.engine_light
+        # The nozzle source: likewise sent only when given (the DLL default is node); dropped under --vanilla.
+        if args.vanilla or args.engine_nozzle_source is None:
+            env.pop('X3M_ENGINE_NOZZLE_SOURCE', None)
+        else:
+            env['X3M_ENGINE_NOZZLE_SOURCE'] = args.engine_nozzle_source
         # Its hold window in frames: likewise sent only when given (the DLL default is 60); dropped under --vanilla.
         if args.vanilla or args.engine_light_hold is None:
             env.pop('X3M_ENGINE_LIGHT_HOLD', None)

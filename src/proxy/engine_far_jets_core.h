@@ -54,6 +54,13 @@ struct Stats {
     std::uint32_t steering = 0; // v/00566 nodes: no entry (the recogniser's RCS rule; SMALLJET table entries at conversion)
     std::uint32_t overflow = 0; // the buffer was full
     std::uint32_t disarmed = 0; // calls while no device requested the plume stage
+    std::uint32_t culled_overflow = 0; // engine-culled pairs beyond the culled list's capacity
+};
+// A JET node the engine culled by size at the site (Stats::engine): its (node handle, view handle) pair, kept so the
+// node-sourced walk (engine_nozzle_walk_core.h) does not resurrect a jet the game itself refused. Integer only, the
+// handler's second per-frame list (docs/architecture/engine-nozzle-source.md section 2).
+struct CulledPair {
+    std::uint32_t handle, view_handle;
 };
 
 // The far block's arming across devices: each device that requests the plume stage counts once (its own `counted`

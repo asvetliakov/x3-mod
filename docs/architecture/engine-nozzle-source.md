@@ -2,7 +2,8 @@
 
 Design note, 2026-10-09, for the user's decision "option 2 with live throttle from jet nodes": the hull engine light
 ([engine-light.md](engine-light.md)) and the plumes ([engine-effects-modern.md](engine-effects-modern.md)) stop
-depending on whether the game draws a nozzle's glow. Not implemented; the main session ratifies or rejects. Marks:
+depending on whether the game draws a nozzle's glow. Ratified; implemented 2026-10-09 ("Implementation" at the end:
+what differs from the design, the measured cost). Marks:
 **[m]** measured in this session or a named run, **[s]** static reading of the installed EXE, **[i]** inference,
 **[e]** estimate.
 
@@ -232,3 +233,109 @@ the first frame, or a guard rejection) to the one-frame cut.
 - The behind-eye test's effect on the own ship's plumes in chase view with a wide FOV (the nozzle behind the camera
   plane while the hull is drawn): the walk would supply the record; whether the stage's `culled_behind` then drops it
   is to be observed.
+
+## Implementation (2026-10-09, worktree build, not flown)
+
+Built as designed, with the differences listed below. Files: `src/proxy/engine_nozzle_walk_core.h` (portable: the
+option parser, the layout and guards, `RootSet`, `walk`), `engine_far_jets_core.h` / `engine_far_jets.cpp` (`CulledPair`,
+the handler's second list, `culled_overflow`), `engine_effects_core.h` (`flag_node`, bit 10), `engine_light_core.h`
+(`hold_ships` takes the walked roots; `ShipStats::hold_walked`), `motion_output.h` / `motion_output.cpp` (the gather at
+`sample_scope`, both the production and the fixture scope paths; seam status keys 509-516),
+`motion_output_engine_plumes_inc.h` (the option read at `configure_engine_plumes`, `engine_node_gather`,
+`engine_node_append`, `engine_node_context_scale`, the tally, the `engine_stage` fields), `motion_output_engine_effects_inc.h`
+(the per-frame reset, fixture keys 50-57), `motion_output_engine_light_inc.h` (the boundary append, the hold's walked set,
+`hold_walked=`), the schema entry `engine_nozzle_source` (`X3M_ENGINE_NOZZLE_SOURCE`, `--engine-nozzle-source`).
+
+**Flow as built.** Per routed scene draw (`sample_scope`, gate 5: the draw already has its node block, parent, camera and
+registry), `engine_node_gather` puts `parent ? parent : node` into the frame's `RootSet` with the draw's camera handle,
+camera node and registry: one multiplicative hash and a short probe, no read. `engine_node_append` runs once per ring:
+in `run_engine_plumes` after `engine_far_append` (the stage's frame) or, when the stage did not run that frame, at the
+next frame boundary in `engine_light_frame` before `build_ships` (the light is then the only consumer). It opens its
+own `Seen` generation, primes it with every record already in the ring (draw and far, `node_handle` and `camera[]`)
+and with the handler's culled pairs, then walks each root: the context scale from the hull draw's camera, the walk
+(flag pair first, then the block), `far_record`, `flag_far` -> `flag_node`, the lifetime serial through
+`object_lifetime::current` with the hull draw's registry and camera, the parent radius memo, the own tag, the ring
+push with `camera = the hull's handle`, `scene = 1`, `parent = root`. A root whose list was read to its end (no cut, no
+full ring) goes into the walked array the hold reads. The stage's view tally treats `flag_node` like `flag_far`
+(`pick = 0`; the `view_rule=far` fallback counts both), and `build_ships` sees node records as any record.
+
+**Differences from the design.**
+
+1. *Context scale.* Read from the hull draw's camera node (`camera+0x1c` = the owning spatial context, whose `+0x2c`
+   is the coordinate context's conversion scale: [object-identity.md](../reverse-engineering/object-identity.md)
+   lines 73 and 113; `0x004bdee0` scales the world rows by `*(camera+0x1c)+0x2c`,
+   [engine-effects.md](../reverse-engineering/engine-effects.md) line 243; the far memo already reads it through the
+   pass's view) instead of inverting the draw's rows against the node block: `engine_node_context_scale`, one bounded
+   read per camera among the frame's four most recent. Exact (the same float the far path uses), no transpose
+   ambiguity between the hull VS rows and the c4-6 convention, and the seam fixture supplies it with a synthetic
+   camera block. A camera whose context is unreadable skips its roots (`node_no_scale`).
+2. *Append point.* Also at the frame boundary when the stage did not run (not armed: no TAA/HDR, the resolve skipped).
+   The light builds from the ring there regardless of the stage, and the seam fixture (TAA off) exercises exactly that
+   path; `engine_node_appended_` makes the two call sites one append per ring. The stage row then shows the last
+   append's counts (the boundary append belongs to the previous ring).
+3. *Walk reads.* Three bounded reads per jet (next pointer, the `+0x12c/+0x130` pair, the `0x150` block) and two per
+   other part: a part without the JET pair touches two cache lines, not six. The host harness showed the cost is cache
+   misses, not instructions (below).
+4. *Dedupe set.* A second `Seen` (24 KB) owned by the append rather than the far append's, so the boundary path needs no
+   far-append state; the far copies are inserted from the ring, which the design's "far copies next" order already
+   implies (the far append runs first).
+5. *Steering.* A `v/00566` or SMALLJET node found by the walk is refused by `far_record` (`FarVerdict::steering`, counted
+   in `node_invalid=`) rather than skipped by the walk, the same verdict the far path gives.
+6. *Hold.* `hold_ships` takes the walked roots as a compact array (at most 256) and scans it only for a previous-frame
+   ship without a record (`hold_walked` counts the skips); `engine_nozzle_source = draw` passes none, so the hold is
+   byte-for-byte the Run139 rule there.
+7. *Not built.* The optional per-root cached-count skip (section 2) and `node_children_max`; the row carries
+   `node_children=` (the frame's total) instead.
+9. *Ship filter (review S1).* Section 1 gathered the root of every scene-phase draw; stations, asteroids and debris
+   would have been walked too and shared the 256-root set first come. Built instead: a root is admitted only when it
+   is a ship, i.e. a record (draw, far or node) named it as its parent within the last two frames
+   (`ShipRoots`: 512 slots, stamped at every append from the ring's `parent[]`, bounded probes, the stalest of a probe
+   run evicted) or it is the own ship's root (`resolve_own_ship`, once per frame). No non-ship root can displace a
+   ship, and no list of theirs is read; a ship whose nozzles are all off screen in its first visible frame is walked
+   from the frame after one nozzle draws (it has no engine light before that either). `node_not_ship=` counts the
+   draws refused, `node_root_overflow=` the ship roots beyond 256.
+10. *View filter reset (review S3).* `engine_scene_camera_last_` (the previous scene view the gather filters by) is
+    cleared at device Reset, on a load epoch change (`object_lifetime`'s, the sector-change signal the SETA ramp uses)
+    and after 120 frames without a scene tally (`engine_scene_camera_hold`), so a stale view (a monitor view that won
+    a tally, every nozzle off screen) cannot starve the gather for longer than that.
+11. *Dedupe set full (review N1).* The ring's records and the handler's culled pairs can fill `Seen` (1,024 + 1,024 =
+    its 2,048 slots); a walked jet past that is refused as `ring_full` (counted in `node_invalid=`, which is
+    `far_record` refusals + RCS jets + ring or set full) rather than let through as a duplicate.
+12. *Engine-culled jets and the cull stub (review S2).* With the stub installed, its handler lists every JET it culled
+    that the engine's own size verdict refuses as well (`engine_culls`), and the walk keeps those out. With the stub
+    off (`cull_small_parts_px = 0`) the list is empty, but then the engine draws every jet it does not refuse itself,
+    so a visible jet has a draw record that wins the dedupe: nothing is resurrected. Residual either way: a jet the
+    engine refuses natively past the stub's path (its `+0x1d8` limit above the stub's threshold; main jets carry no
+    `+0x1d8` limit of their own, SMALLJET 5, the ship root's unknown) has neither a draw nor a listed pair and is added
+    by the walk as an off-screen one would be, at its real position and size. Not gated: the pixel measure the site
+    computes is not reproduced here; `node_records=` on frames whose ships are fully on screen measures the residual
+    in flight.
+8. *Seam fixture.* The second jet is in the list from frame 0 with the drive's hidden flag set, shown at frame 9 (13
+   frames, Reset at 4), so one protocol covers the hidden flag, the duplicate, the node record and the two-plate light;
+   the plume stage does not run with TAA off, so `nozzles=2` is not observable there (the far fixture and the host test
+   cover the stage's handling of a far-built record). The hull pixels are checked against the per-plate selection
+   (`engine-light.md` "A light per plate") over the uploaded c191-c197 block.
+
+**Measured cost (host, arm64, `verification/results/engine-nozzle-source/walk_host.sh` -> `walk_host_out.json` and
+`walk_memory_host_out.json`, the harnesses `verification/probe/engine_nozzle_walk_host.cpp` and
+`engine_nozzle_walk_memory_host.cpp` through `test_engine_nozzle_walk.py`).** 256 roots of 108 parts, 4 main jets
+each, the reader opaque to the compiler: scattered blocks (every hop a cache miss) 1.45 us per root (13 ns per part),
+contiguous 0.52 us, warm 0.54 us; 2 ships 2.9 us, 5 ships 7.3 us, all 256 roots 371 us per frame; the root set's probe
+0.7 ns per routed draw. Through the production reader (`engine_memory.cpp` compiled on the host against the mock
+`<windows.h>` of `test_engine_memory_shutdown.py`: its region cache, span checks and tick sampling, one VirtualQuery
+per frame for the region, the copy a memcpy) the same walk costs 1.52 us per root, 14.0 ns per part (222 reads per
+root: the root's `+0xc`, two per part, a third per jet, the sentinel's next pointer), 7.6 us for 5 ships: the cache
+path adds nothing measurable over the raw reads (both figures taken with Wine fixtures running beside them). Not measured on the host: the Windows VirtualQuery per region per
+frame (one per distinct region the nodes live in, on their first touch each frame) and the x86 build; the stage row's
+`node_walk_us=` carries the in-game figure.
+
+**Verification state.** Host test `verification/analysis/test_engine_nozzle_walk.py` (the walk, every guard, the dedupe
+order, the hidden flag, the bound, unreadable elements, the root set, the hold rule, the cost; the wiring). Wine
+(wined3d, the records' backend): `run_motion_output.py seam-engine-light` exit 0, the second jet's record and
+two-plate light from frame 10 on; `run_engine_effects.py` 8 modes exit 0, the engine-culled pair in the stage row and
+a walked root whose listed jet stays out;
+the figures are in the ledgers (`docs/verification/engine-light.md`, `docs/verification/engine-effects.md`). Under
+DXVK both fixtures run every check to the end and then fault at process teardown (exit 5); the committed baseline
+without this change faults the same way (`verification/results/engine-nozzle-source/dxvk_teardown_baseline.txt`), so
+that is an open environment issue, not part of this change. Not flown: section 8's flight pass (`held = 0`,
+`node_records > 0` on edge frames, `node_walk_us` under 30 us p50) is the next user run.

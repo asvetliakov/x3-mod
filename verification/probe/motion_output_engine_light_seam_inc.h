@@ -8,14 +8,18 @@
 // the production hook; then the reviewed hull pair vs_494fe349b8bc12ec / ps_7c83ed50c9894e44 drawn twice over the same
 // quad (z 0.5, normal -z towards the camera, albedo white, mask and light map black): first as node B of another ship
 // (unlit), then as node A hanging under the jets' root (lit from the third jet frame on: the ship table from frame
-// N-1's record, the node table from frame N-1's logged draw). The VS rows are consistent: world identity (c28-30),
+// N-1's record, the node table from frame N-1's logged draw). From frame 9 on a second main jet in the root's child
+// list, never drawn, is shown by the drive (its hidden flag cleared): the node-sourced walk (engine_nozzle_walk_core.h,
+// at the frame boundary since the plume stage does not run with TAA off) records it, the table gets two plates and the
+// hull pixels take the nearer plate's light. The VS rows are consistent: world identity (c28-30),
 // camera at (0, 0, -4) with the identity basis (view inverse c34-36), clip w = view depth 4.5 (c24-27). The light: a
 // record at (0.3, 0.2, 0.2), axis -z, size 0.4, throttle 0 -> L = (0.3, 0.2, 0), R = 1.2, colour 0.3 (white x 1.2 x
 // 0.25). Checks per frame: the bound program (key 500: the twin of kind 2 on a lit A, the gained base on B), c200-c202
 // untouched by B (the application's sentinel stays) and the record law on A, the frame's counts (keys 501-504: one
 // candidate, one upload), the lit image against the unlit one by the law, the zero region bit-identical, state
-// restored after each routed draw. Then a Reset and four more frames (the twins and tables survive; the rows are
-// resynchronised). The runner reads the ENGINE_LIGHT rows and the session log's engine_light_* rows.
+// restored after each routed draw. Then a Reset and nine more frames (the twins and tables survive; the rows are
+// resynchronised; the second jet from frame 9). The runner reads the ENGINE_LIGHT rows and the session log's
+// engine_light_* rows.
 void run_engine_light(const char* bootstrap_vertex) {
     require(seam && enabled && hdr && hdr_readback && !taa && camera && emission_status != nullptr,
             "engine light seam needs the HDR seam, its readback, the camera, TAA off and the status export");
@@ -67,12 +71,27 @@ void run_engine_light(const char* bootstrap_vertex) {
         }
         api(quad->Unlock(), "engine light quad unlock");
     }
-    // The ship: a root node (radius +0xa4 0: no plume floor) and one main jet under it (+0x18), identity basis, +0x88
-    // throttle 0.25 (s 0), the c4-6 rows of size 0.4 at (0.3, 0.2, 0.2) (register order a: row i = (X_i, Y_i, Z_i, t_i)).
+    // The ship: a root node (radius +0xa4 0: no plume floor) with a child list (root+0xc; [child] = next; a sentinel whose
+    // +0 is 0 ends it): the drawn main jet (+0x18 = root, identity basis, +0x88 throttle 0.25 (s 0), the c4-6 rows of
+    // size 0.4 at (0.3, 0.2, 0.2), register order a: row i = (X_i, Y_i, Z_i, t_i)) and a second main jet the game never
+    // draws (handle 0x5b, +0x70 40 x the context scale 0.01 = size 0.4, position (-30, 20, 20) x 0.01, the same throttle),
+    // hidden by the drive's flag (+0x12c & 0x100000) until frame second_jet_from (docs/architecture/engine-nozzle-source.md):
+    // from then on the node-sourced walk at the frame boundary (the stage does not run with TAA off) appends its record
+    // beside the drawn jet's (node_records 1, the drawn jet a duplicate), the light's table gets two plates and the hull
+    // pixels take the nearer plate's light (engine-light.md "A light per plate"). The hull draws' camera is a synthetic
+    // camera node whose +0x1c context carries the scale at +0x2c (the walk's context scale, as the far path reads it).
     alignas(16) static std::uint32_t root[0x150 / 4];
     alignas(16) static std::uint32_t jet[0x150 / 4];
+    alignas(16) static std::uint32_t jet2[0x150 / 4];
+    alignas(16) static std::uint32_t sentinel[4];
+    alignas(16) static std::uint32_t camera_node[0x80 / 4];
+    alignas(16) static std::uint32_t camera_context[0x40 / 4];
     std::memset(root, 0, sizeof root);
     std::memset(jet, 0, sizeof jet);
+    std::memset(jet2, 0, sizeof jet2);
+    std::memset(sentinel, 0, sizeof sentinel);
+    std::memset(camera_node, 0, sizeof camera_node);
+    std::memset(camera_context, 0, sizeof camera_context);
     const float k = .4f, zt = .25f, t[3] = {.3f, .2f, .2f};
     jet[0x18 / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(root));
     jet[0x28 / 4] = 0x5a;
@@ -82,18 +101,38 @@ void run_engine_light(const char* bootstrap_vertex) {
     jet[0xc0 / 4] = jet[0xd0 / 4 + 1] = jet[0xe0 / 4 + 2] = 0x10000; // basis rows 16.16: identity
     jet[0x130 / 4] = 0x4000001u;
     jet[0x140 / 4] = 20000;
+    jet2[0x18 / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(root));
+    jet2[0x28 / 4] = 0x5b;
+    jet2[0x70 / 4] = 40;
+    jet2[0x80 / 4] = jet2[0x84 / 4] = 0x10000;
+    jet2[0x88 / 4] = jet[0x88 / 4];
+    jet2[0xb0 / 4] = std::uint32_t(std::int32_t(-30));
+    jet2[0xb4 / 4] = 20;
+    jet2[0xb8 / 4] = 20;
+    jet2[0xc0 / 4] = jet2[0xd0 / 4 + 1] = jet2[0xe0 / 4 + 2] = 0x10000;
+    jet2[0x12c / 4] = x3m::engine_nozzle::core::hidden_flag;
+    jet2[0x130 / 4] = 0x4000001u;
+    jet2[0x140 / 4] = 20000;
+    root[0xc / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(jet));
+    jet[0] = std::uint32_t(reinterpret_cast<std::uintptr_t>(jet2));
+    jet2[0] = std::uint32_t(reinterpret_cast<std::uintptr_t>(sentinel));
+    const float context_scale = .01f;
+    std::memcpy(&camera_context[0x2c / 4], &context_scale, 4);
+    camera_node[0x1c / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(camera_context));
+    camera_node[0x28 / 4] = 9;
     const float jet_rows[12] = {k, 0, 0, t[0], 0, k, 0, t[1], 0, 0, k * zt, t[2]};
     const std::uint32_t root_va = std::uint32_t(reinterpret_cast<std::uintptr_t>(root));
     x3m::MotionOutputFixtureScope jet_scope{}, lit{}, unlit{};
     jet_scope.known = 1;
     jet_scope.node = reinterpret_cast<std::uintptr_t>(jet);
+    jet_scope.parent = root_va; // the jet's own draw names the same root
     jet_scope.node_serial = 41;
     jet_scope.camera_handle = 9;
     lit.known = unlit.known = 1;
     lit.load_epoch = unlit.load_epoch = 1;
     lit.registry_epoch = unlit.registry_epoch = 3;
     lit.camera_serial = unlit.camera_serial = 21;
-    lit.camera = unlit.camera = 0x2000;
+    lit.camera = unlit.camera = reinterpret_cast<std::uintptr_t>(camera_node);
     lit.registry = unlit.registry = 0x3000;
     lit.camera_handle = unlit.camera_handle = 9;
     lit.lod = unlit.lod = 2;
@@ -108,7 +147,7 @@ void run_engine_light(const char* bootstrap_vertex) {
     unlit.mesh = 0x7400;
     unlit.node_handle = 0x73;
     unlit.model = 0x12;
-    unlit.parent = 0x7500; // another ship, no jets
+    unlit.parent = 0x7500; // another ship, no jets: never a record's parent, so never gathered (node_not_ship)
     const auto engine_scope = [&](const x3m::MotionOutputFixtureScope& s) {
         x3m::MotionOutputFixtureConfig config{};
         config.background_vs[0] = vs_hash;
@@ -122,19 +161,23 @@ void run_engine_light(const char* bootstrap_vertex) {
     const float wvp[16] = {4.5f, 0, 0, 0, 0, 4.5f, 0, 0, 0, 0, 1, 0, 0, 0, 9, 0};
     const float world[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
     const float view_inverse[12] = {1, 0, 0, cam[0], 0, 1, 0, cam[1], 0, 0, 1, cam[2]};
-    const float sentinel[12] = {-7, -7, -7, -7, -7, -7, -7, -7, -7, -7, -7, -7};
+    const float sentinel_rows[12] = {-7, -7, -7, -7, -7, -7, -7, -7, -7, -7, -7, -7};
     // The record law (engine_light_core.h, computed here from the jet's geometry): L = t + axis x 0.5 x size, axis
-    // -(model z) = -z; R = 3 x size; colour = white x I(0) 1.2 (core_low) x preset 1 x 0.25.
+    // -(model z) = -z; R = 3 x size; colour = white x I(0) 1.2 (core_low) x preset 1 x 0.25. The second jet's record is
+    // its mirror in x (position (-30, 20, 20) x 0.01, size 40 x 0.01): equal brightness, so plate 0 (c200-c202) stays the
+    // drawn jet's (the lower handle) and c202.w carries tier 1 (two plates, run 4) from the second jet's first lit frame.
     const double size = k, R = 3. * size, L[3] = {t[0], t[1], t[2] - .5 * size};
-    const double expected[12] = {L[0] - cam[0], L[1] - cam[1], L[2] - cam[2], R * R, .3, .3, .3, 1. / (R * R), 0, 0, 1, 0};
-    unsigned lit_frames = 0, checked_images = 0, first_lit_after_reset = 0;
+    const double L2[3] = {-t[0], t[1], t[2] - .5 * size};
+    double expected[12] = {L[0] - cam[0], L[1] - cam[1], L[2] - cam[2], R * R, .3, .3, .3, 1. / (R * R), 0, 0, 1, 0};
+    unsigned lit_frames = 0, checked_images = 0, first_lit_after_reset = 0, two_plate_frames = 0;
     double worst_relative = 0, worst_constant = 0;
     unsigned zero_differ = 0, zero_total = 0, visible_total = 0, darker = 0;
-    const unsigned frames = 9, reset_after = 4; // frames 0..3, Reset, frames 4..8
+    const unsigned frames = 13, reset_after = 4, second_jet_from = 9; // frames 0..3, Reset, 4..8 one jet, 9..12 two jets
     for (unsigned f = 0; f < frames; ++f) {
         if (f == reset_after) reset();
+        if (f == second_jet_from) jet2[0x12c / 4] &= ~x3m::engine_nozzle::core::hidden_flag; // the drive shows the nozzle
         frame_begin();
-        // The glow jet, scene phase: suppressed and recorded by the production hook (the ring's one record).
+        // The glow jet, scene phase: suppressed and recorded by the production hook (the ring's one draw record).
         api(d->SetVertexShader(jet_vs.p), "effects VS bind");
         api(d->SetPixelShader(jet_ps.p), "effects PS bind");
         api(d->SetVertexShaderConstantF(4, jet_rows, 3), "jet rows c4-6");
@@ -160,7 +203,7 @@ void run_engine_light(const char* bootstrap_vertex) {
         api(d->SetVertexShaderConstantF(24, wvp, 4), "hull rows c24-27");
         api(d->SetVertexShaderConstantF(28, world, 3), "hull world c28-30");
         api(d->SetVertexShaderConstantF(34, view_inverse, 3), "hull view inverse c34-36");
-        api(d->SetPixelShaderConstantF(200, sentinel, 3), "application c200-c202");
+        api(d->SetPixelShaderConstantF(200, sentinel_rows, 3), "application c200-c202");
         // B: another ship's node, never lit.
         engine_scope(unlit);
         Snapshot before = snapshot();
@@ -183,18 +226,43 @@ void run_engine_light(const char* bootstrap_vertex) {
         const unsigned candidates = emission_status(d.p, 501), draws_lit = emission_status(d.p, 502),
                        no_twin = emission_status(d.p, 503), no_rows = emission_status(d.p, 504);
         const unsigned ships = emission_status(d.p, 506), nodes = emission_status(d.p, 507);
+        // The node-sourced append of the last frame boundary and the table it fed (keys 509-516).
+        const unsigned node_records = emission_status(d.p, 509), node_dupes = emission_status(d.p, 510),
+                       node_hidden = emission_status(d.p, 511), node_roots = emission_status(d.p, 512),
+                       node_walked = emission_status(d.p, 513), plates_max = emission_status(d.p, 514),
+                       held = emission_status(d.p, 515), hold_walked = emission_status(d.p, 516);
         float constants[12]{};
         api(d->GetPixelShaderConstantF(200, constants, 3), "c200 after the lit draw");
+        // The plate block of tier 1 (run 4): c191-c197, slot p's plate register at c(197 - 2p), its colour at c(198 - 2p).
+        float block[7 * 4]{};
+        api(d->GetPixelShaderConstantF(191, block, 7), "c191-c197 after the lit draw");
         const std::vector<float> image = hdr_image(&w, &h);
         api(d->EndScene(), "EndScene");
         const bool lit_frame = draws_lit == 1;
-        const bool sentinel_kept = std::memcmp(after_unlit, sentinel, sizeof sentinel) == 0;
+        const unsigned tier = lit_frame ? unsigned(std::lround(constants[11])) : 0u;
+        const unsigned run = tier == 0 ? 1u : tier == 1 ? 4u : 0u;
+        const bool sentinel_kept = std::memcmp(after_unlit, sentinel_rows, sizeof sentinel_rows) == 0;
+        expected[11] = plates_max >= 2 ? 1. : 0.;
         double constant_error = 0;
         if (lit_frame)
             for (unsigned i = 0; i < 12; ++i)
                 constant_error = std::max(constant_error, std::fabs(double(constants[i]) - expected[i]) / std::max(1., std::fabs(expected[i])));
-        // The image: every pixel centre inside the quad (|x|, |y| <= 0.75 in NDC).
-        unsigned visible = 0, zero = 0, zero_bad = 0, lit_samples = 0, not_brighter = 0;
+        // The second plate's register (slot 1: c195 / c196) against its record law: ((L2 - cam) / v, 1 / v), (colour, 1 / R^2).
+        double plate_error = 0;
+        if (lit_frame && tier == 1) {
+            const float* key = block + (195 - 191) * 4;
+            const float* colour = block + (196 - 191) * 4;
+            const double v = size, want_key[4] = {(L2[0] - cam[0]) / v, (L2[1] - cam[1]) / v, (L2[2] - cam[2]) / v, 1. / v};
+            const double want_colour[4] = {.3, .3, .3, 1. / (R * R)};
+            for (unsigned i = 0; i < 4; ++i) {
+                plate_error = std::max(plate_error, std::fabs(double(key[i]) - want_key[i]) / std::max(1., std::fabs(want_key[i])));
+                plate_error = std::max(plate_error, std::fabs(double(colour[i]) - want_colour[i]) / std::max(1., std::fabs(want_colour[i])));
+            }
+        }
+        // The image: every pixel centre inside the quad (|x|, |y| <= 0.75 in NDC) takes the light of the plate nearest in
+        // units of its value (u_p = |D / v_p - (L_p - cam) / v_p|^2, ties and the switch band to the earlier slot: no claim
+        // within 1e-3 of the two least), then the law of that light; a pad slot repeats slot 0 and never wins.
+        unsigned visible = 0, zero = 0, zero_bad = 0, lit_samples = 0, not_brighter = 0, second_samples = 0, band = 0;
         double max_relative = 0;
         for (UINT y = 0; y < H; ++y)
             for (UINT x = 0; x < W; ++x) {
@@ -208,10 +276,46 @@ void run_engine_light(const char* bootstrap_vertex) {
                     continue;
                 }
                 const double rel[3] = {nx - cam[0], ny - cam[1], .5 - cam[2]};
-                const double l[3] = {double(constants[0]) - rel[0], double(constants[1]) - rel[1], double(constants[2]) - rel[2]};
+                // The selection over the run's slots.
+                double light[3] = {constants[0], constants[1], constants[2]}, r2 = constants[3];
+                double col[3] = {constants[4], constants[5], constants[6]};
+                unsigned chosen = 0;
+                if (run > 1) {
+                    double least = 1e300, second = 1e300;
+                    for (unsigned p = 0; p < run; ++p) {
+                        const float* key = block + (197 - 2 * p - 191) * 4;
+                        // A pad slot repeats slot 0's register (block_constants): it ties with slot 0 and never wins.
+                        if (p && std::memcmp(key, block + (197 - 191) * 4, 16) == 0) continue;
+                        double u = 0;
+                        for (unsigned i = 0; i < 3; ++i) {
+                            const double e = rel[i] * double(key[3]) - double(key[i]);
+                            u += e * e;
+                        }
+                        if (u < least) {
+                            second = least;
+                            least = u;
+                            chosen = p;
+                        } else if (u < second)
+                            second = u;
+                    }
+                    if (second - least < 1e-3 * second) {
+                        ++band;
+                        continue;
+                    }
+                    if (chosen) {
+                        const float* key = block + (197 - 2 * chosen - 191) * 4;
+                        const float* colour = block + (198 - 2 * chosen - 191) * 4;
+                        for (unsigned i = 0; i < 3; ++i) {
+                            light[i] = double(key[i]) / double(key[3]);
+                            col[i] = colour[i];
+                        }
+                        r2 = 1. / double(colour[3]);
+                        ++second_samples;
+                    }
+                }
+                const double l[3] = {light[0] - rel[0], light[1] - rel[1], light[2] - rel[2]};
                 const double d2 = l[0] * l[0] + l[1] * l[1] + l[2] * l[2];
                 const double ndl = std::min(std::max(-l[2] / std::sqrt(d2), 0.), 1.);
-                const double r2 = double(constants[3]);
                 if (d2 > r2 * 1.004 || ndl == 0.) {
                     ++zero;
                     zero_bad += identical ? 0u : 1u;
@@ -223,7 +327,7 @@ void run_engine_light(const char* bootstrap_vertex) {
                 for (unsigned c = 0; c < 3; ++c) {
                     const double u = std::max(double(base[at + c]), 0.), m = std::max(double(image[at + c]), 0.);
                     const double ud = std::pow(u, 2.2);
-                    const double e = std::min(double(constants[4 + c]) * ndl * q * q, std::max(0., 1. - ud));
+                    const double e = std::min(col[c] * ndl * q * q, std::max(0., 1. - ud));
                     if (m < u) ++not_brighter;
                     if (e < .02) continue;
                     ++visible;
@@ -231,15 +335,24 @@ void run_engine_light(const char* bootstrap_vertex) {
                 }
                 not_brighter += base[at + 3] == image[at + 3] ? 0u : 1u; // alpha is the base's
             }
-        std::printf("ENGINE_LIGHT frame=%llu step=%u reset=%u records=%u suppressed=%u ships=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u bound_unlit=%03x bound_lit=%03x lit_after_unlit=%u sentinel_kept=%u constant_error=%.3g constants=%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g lit_samples=%u visible=%u max_relative=%.6f zero=%u zero_differ=%u not_brighter=%u\n",
+        std::printf("ENGINE_LIGHT frame=%llu step=%u reset=%u records=%u suppressed=%u ships=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u bound_unlit=%03x bound_lit=%03x lit_after_unlit=%u sentinel_kept=%u constant_error=%.3g constants=%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g,%.7g lit_samples=%u visible=%u max_relative=%.6f zero=%u zero_differ=%u not_brighter=%u node_records=%u node_dupes=%u node_hidden=%u node_roots=%u node_walked=%u plates_max=%u tier=%u plate_error=%.3g second_samples=%u band=%u held=%u hold_walked=%u\n",
                     frame, f, unsigned(f >= reset_after), records, suppressed, ships, nodes, candidates, draws_lit, no_twin, no_rows,
                     bound_unlit, bound_lit, lit_after_unlit, unsigned(sentinel_kept), constant_error, double(constants[0]),
                     double(constants[1]), double(constants[2]), double(constants[3]), double(constants[4]), double(constants[5]),
                     double(constants[6]), double(constants[7]), double(constants[8]), double(constants[9]), double(constants[10]),
-                    double(constants[11]), lit_samples, visible, max_relative, zero, zero_bad, not_brighter);
+                    double(constants[11]), lit_samples, visible, max_relative, zero, zero_bad, not_brighter, node_records, node_dupes,
+                    node_hidden, node_roots, node_walked, plates_max, tier, plate_error, second_samples, band, held, hold_walked);
         require(records == 1 && suppressed == 1, "the jet is recorded and suppressed");
         require(bound_unlit == 0x202u, "B binds the gained base (kind 2)");
         require(lit_after_unlit == 0 && sentinel_kept, "B uploads nothing: c200-c202 keep the application's values");
+        // The walk at every boundary from the second frame's on (frame 0's draw record makes the root a ship root for
+        // frame 1's gather; the other ship's root is never one): the jets' root walked, the drawn jet a duplicate,
+        // the second jet hidden until the drive shows it, then one node record.
+        if (f == 1) require(node_roots == 0 && node_walked == 0, "no ship root known at the first frame's gather");
+        if (f >= 2) require(node_roots == 1 && node_walked == 1 && node_dupes == 1, "the jets' root is walked once per frame");
+        if (f >= 2 && f <= second_jet_from) require(node_records == 0 && node_hidden == 1, "the hidden second jet makes no record");
+        if (f > second_jet_from) require(node_records == 1 && node_hidden == 0, "the shown second jet becomes a node record");
+        require(held == 0 && hold_walked == 0, "nothing held: the lit ship has a record every frame");
         // Before the Reset the protocol is exact: the third jet frame is the first lit one.
         if (f < reset_after) require(lit_frame == (f >= 2), "lit from the third jet frame on");
         if (f >= reset_after && lit_frame && !first_lit_after_reset) first_lit_after_reset = f - reset_after + 1;
@@ -249,11 +362,21 @@ void run_engine_light(const char* bootstrap_vertex) {
             require(bound_lit == 0x102u, "A binds the twin of the gained base");
             require(candidates == 1 && draws_lit == 1 && no_twin == 0 && no_rows == 0, "one candidate, one upload");
             require(constant_error <= 1e-5, "c200-c202 carry the record law");
+            require(run >= 1, "a known tier");
             require(visible >= 200 && max_relative <= .05, "A is brighter than B by the law within 5 %");
-            require(zero >= 50 && zero_bad == 0, "beyond the radius A is B's image bit for bit");
+            // One plate: 158 pixel centres of the quad lie beyond its reach; two plates of reach 1.2 cover the quad.
+            require((zero >= 50 || plates_max >= 2) && zero_bad == 0, "beyond the radius A is B's image bit for bit");
+            require(band <= 64, "the selection's switch band is a thin strip");
             require(not_brighter == 0, "no lit sample darker than the base, alpha unchanged");
+            require((plates_max >= 2) == (f > second_jet_from), "two plates from the second jet's first lit frame on");
+            if (f > second_jet_from) {
+                ++two_plate_frames;
+                require(tier == 1 && plates_max == 2 && plate_error <= 1e-5, "the second plate's register carries its record law");
+                require(second_samples >= 100, "the second plate lights its side of the hull");
+            } else
+                require(tier == 0 && second_samples == 0, "one plate: tier 0");
             worst_relative = std::max(worst_relative, max_relative);
-            worst_constant = std::max(worst_constant, constant_error);
+            worst_constant = std::max(worst_constant, std::max(constant_error, plate_error));
             zero_differ += zero_bad;
             zero_total += zero;
             visible_total += visible;
@@ -267,9 +390,9 @@ void run_engine_light(const char* bootstrap_vertex) {
         ++frame;
         ++frames_since_reset;
     }
-    std::printf("ENGINE_LIGHT_RESULT lit_frames=%u checked_images=%u first_lit_after_reset=%u worst_relative=%.6f worst_constant=%.3g visible=%u zero=%u zero_differ=%u unlit_differ=%u\n",
+    std::printf("ENGINE_LIGHT_RESULT lit_frames=%u checked_images=%u first_lit_after_reset=%u worst_relative=%.6f worst_constant=%.3g visible=%u zero=%u zero_differ=%u unlit_differ=%u two_plate_frames=%u\n",
                 lit_frames, checked_images, first_lit_after_reset, worst_relative, worst_constant, visible_total, zero_total,
-                zero_differ, darker);
+                zero_differ, darker, two_plate_frames);
     for (UINT i = 0; i < 4; ++i) api(d->SetTexture(i, nullptr), "unbind engine light textures");
     api(d->SetStreamSource(0, nullptr, 0, 0), "unbind engine light quad");
     api(d->SetVertexShader(nullptr), "unbind engine light VS");

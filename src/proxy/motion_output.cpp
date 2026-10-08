@@ -4193,6 +4193,8 @@ void MotionOutput::before_reset() noexcept {
     plumes_failed_out_ = false;
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
+    engine_scene_camera_last_ = 0; // node-sourced nozzles: the root filter's view is forgotten (a mode or load boundary)
+    engine_scene_camera_frame_ = 0;
     // The SETA travel ramp starts over (a Reset is a mode or load boundary; the next engine_seta row says so).
     if (engine_travel_.engaged || engine_travel_.linear > 0.f) engine_travel_reset_ = "reset_device";
     engine_travel_ = engine_plumes::TravelRamp{};
@@ -5641,6 +5643,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
         route.observer_epoch = s.observer_epoch;
         route.scope_parent = s.parent; // engine light: the synthetic node+0x18
         key.draw_domain = (((s.load_epoch & 0xffffffffull) << 32) | (s.registry_epoch & 0xffffffffull)) + 1;
+        engine_node_gather(s.node, s.parent, s.camera, s.camera_handle, s.registry); // the ship's root (node-sourced nozzles)
         return true;
     }
 #endif
@@ -5650,6 +5653,8 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
     route.scope_parent = (scope.valid & object_trace::Node) ? scope.parent : 0u; // engine light: node+0x18
     constexpr std::uint32_t required = object_trace::Node | object_trace::Camera | object_trace::Registry;
     if ((scope.valid & required) != required || !scope.node || !scope.camera) return false;
+    // The ship's root for the node-sourced nozzles (engine_node_gather: one set probe, no read; the same block).
+    engine_node_gather(scope.node, scope.parent, scope.camera, scope.camera_handle, scope.registry);
     object_lifetime::Snapshot lifetime{};
     if (!object_lifetime::current(scope.registry, scope.node, scope.node_handle, scope.camera, scope.camera_handle,
                                   &lifetime) ||
@@ -10769,6 +10774,21 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 506: return engine_light_ ? engine_light_->ships->count : 0u;
     case 507: return engine_light_ ? engine_light_->nodes.count : 0u;
     case 508: return unsigned(engine_light_requested_);
+    case 509: return engine_node_.records;    // the last node-sourced append (engine_nozzle_walk_core.h)
+    case 510: return engine_node_.duplicates;
+    case 511: return engine_node_.hidden;
+    case 512: return engine_node_.roots;
+    case 513: return engine_node_.walked;
+    case 514: { // the largest plate count over the ship table
+        unsigned most = 0;
+        if (engine_light_)
+            for (unsigned i = 0; i < engine_light_->ships->count; ++i)
+                most = engine_light_->ships->lights[i].plate_count > most ? engine_light_->ships->lights[i].plate_count : most;
+        return most;
+    }
+    case 515: return engine_light_ ? engine_light_->ships->stats.held : 0u;
+    case 516: return engine_light_ ? engine_light_->ships->stats.hold_walked : 0u;
+    case 517: return engine_node_.not_ship;
     case 83: return unsigned(fade_rt2_owner_);   // fixture: X3M_FADE_RT2_OWNER resolved on
     case 84: return counters_.fade_owner_masked; // fixture: fade-arm rows kept masked on the lane RT2 this frame
     case 85: return counters_.fade_evicted;      // fixture: hysteresis evictions this frame
