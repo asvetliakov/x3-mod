@@ -2331,6 +2331,25 @@ private:
     HRESULT readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
                              const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name,
                              UINT width, UINT height) noexcept;
+    // Capture readback staging (docs/architecture/capture-format.md, "Banded
+    // readback"): a source is copied in horizontal bands of at most about
+    // 4 MiB through one DEFAULT render target and one SYSTEMMEM surface of
+    // band size per (format, width, rows), kept for the capture burst and
+    // dropped at the first non-capture frame, Reset and retirement.
+    struct BandStaging {
+        D3DFORMAT format = D3DFMT_UNKNOWN;
+        UINT width = 0, rows = 0;
+        IDirect3DSurface9* rt = nullptr;  // D3DPOOL_DEFAULT, StretchRect destination
+        IDirect3DSurface9* sys = nullptr; // D3DPOOL_SYSTEMMEM, GetRenderTargetData destination
+        std::uint64_t used = 0;           // least recently used slot is replaced when all are taken
+    };
+    static constexpr unsigned band_staging_slots = 8;
+    BandStaging band_staging_[band_staging_slots]{};
+    std::uint64_t band_staging_clock_ = 0;
+    BandStaging* band_staging(D3DFORMAT format, UINT width, UINT rows, HRESULT* result) noexcept;
+    void release_band_staging() noexcept;
+    HRESULT readback_whole(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel, const wchar_t* path,
+                           UINT width, UINT height, std::size_t* written, bool* opened) noexcept;
     void apply_jitter(MotionRoute& route) noexcept;
     void restore_jitter(MotionRoute& route) noexcept;
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
@@ -3189,6 +3208,12 @@ private:
                                             // (taa_copy=draw)
     bool fixture_taa_filter_fault_ = false; // X3M_FIXTURE_TAA_FILTER_FAULT=1: the history filter query "refuses" at
                                             // attach (fp16_filter)
+    // X3M_FIXTURE_READBACK=whole|rows=N|fail_band=N|fail_create (comma-separated; fixture seam only): force the
+    // whole-surface capture readback, override the band height, fail band N's StretchRect (N=0: the fallback; N>0:
+    // the aborted file), or fail the band render target's creation (the fallback).
+    bool fixture_readback_whole_ = false, fixture_readback_fail_create_ = false;
+    unsigned fixture_readback_rows_ = 0;
+    int fixture_readback_fail_band_ = -1;
     // X3M_FIXTURE_FADE_RECT=l,t,r,b (fixture seam only): every admitted fade
     // draw reports this rectangle as its bound-derived region, so the witness
     // sees a sub-viewport rectangle (and a deliberately wrong one) although the

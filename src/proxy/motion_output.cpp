@@ -424,6 +424,8 @@ unsigned MotionOutput::device_references() const noexcept {
     if (composition_) count += composition_->references();
     if (depth_surface_) ++count;
     if (fade_witness_.copy) ++count;  // the witness's retained system-memory readback surface
+    for (const auto& band : band_staging_) // the capture readback's band pairs (held for the burst)
+        count += (band.rt ? 1u : 0u) + (band.sys ? 1u : 0u);
     if (packed_sample_.copy) ++count; // the packed_sample diagnostic's retained readback surfaces (post and pre)
     if (packed_sample_.pre_copy) ++count;
     if (sentinel_ps_) ++count;
@@ -527,6 +529,7 @@ void MotionOutput::release_resources() noexcept {
     release_fade_witness();
     release_packed_sample();
     release_bolt_buffer();
+    release_band_staging();
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
     // of this function must not probe a device that no longer exists.
@@ -3357,6 +3360,28 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     }
     {
         char setting[64]{};
+        fixture_readback_whole_ = fixture_readback_fail_create_ = false;
+        fixture_readback_rows_ = 0;
+        fixture_readback_fail_band_ = -1;
+        const DWORD length = GetEnvironmentVariableA("X3M_FIXTURE_READBACK", setting, sizeof setting);
+        if (length && length < sizeof setting) {
+            for (char *token = setting, *next = nullptr; token; token = next) {
+                next = std::strchr(token, ',');
+                if (next) *next++ = '\0';
+                unsigned value = 0;
+                if (!std::strcmp(token, "whole"))
+                    fixture_readback_whole_ = true;
+                else if (!std::strcmp(token, "fail_create"))
+                    fixture_readback_fail_create_ = true;
+                else if (std::sscanf(token, "rows=%u", &value) == 1 && value)
+                    fixture_readback_rows_ = value;
+                else if (std::sscanf(token, "fail_band=%u", &value) == 1)
+                    fixture_readback_fail_band_ = int(value);
+            }
+        }
+    }
+    {
+        char setting[64]{};
         long l = 0, t = 0, r = 0, b = 0;
         fixture_fade_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_FADE_RECT", setting, sizeof setting) > 0 &&
                                  std::sscanf(setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r && t < b;
@@ -4092,6 +4117,7 @@ void MotionOutput::before_reset() noexcept {
     last_routed_frame_ = ~std::uint64_t{0};
     last_routed_draw_ = 0; // no overlay witness survives Reset
     release_fade_witness();
+    release_band_staging();  // DEFAULT-pool band render targets must not exist across Reset
     release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
     release_bolt_buffer();   // DEFAULT pool: goes before Reset, recreated by the next draw that needs it
     composition_state_lost_ = false;
@@ -5324,6 +5350,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     if (fog_cards_replace_ && fog_cards_.suppressed && !fog_cards_.finished) fault_fog_cards("scene_end_missing");
     frame_ = frame;
     capture_ = capture;
+    if (!capture) release_band_staging(); // the capture burst ended: its readback staging goes
     telemetry_ = telemetry::enabled();
     packed_sample_.valid = false;
     packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
@@ -9733,18 +9760,126 @@ void MotionOutput::log_hdr_frame() noexcept {
 
 // ---- frame end -------------------------------------------------------------
 
+// Band height of the capture readback: about 4 MiB of system memory per band
+// (5120 wide: 48 rows of RGBA32F, 96 of RGBA16F, 192 of R32F), a multiple of 16
+// rows when at least 16 fit, at least one row, at most the surface height.
+static UINT readback_band_rows(UINT width, unsigned bytes_per_pixel, UINT height) noexcept {
+    constexpr std::uint64_t budget = std::uint64_t(4) << 20;
+    const std::uint64_t row = std::uint64_t(width) * bytes_per_pixel;
+    std::uint64_t rows = row ? budget / row : 1;
+    if (rows >= 16) rows &= ~std::uint64_t(15);
+    if (!rows) rows = 1;
+    return UINT(rows < height ? rows : height);
+}
+
+// The cached staging pair for (format, width, rows), created on first use in
+// the burst. A full table replaces its least recently used pair. Creation
+// failure leaves the slot empty and returns null with the HRESULT.
+MotionOutput::BandStaging* MotionOutput::band_staging(D3DFORMAT format, UINT width, UINT rows,
+                                                      HRESULT* result) noexcept {
+    BandStaging* slot = nullptr;
+    for (auto& s : band_staging_) {
+        if (s.rt && s.format == format && s.width == width && s.rows == rows) {
+            s.used = ++band_staging_clock_;
+            return &s;
+        }
+        if (!slot || (slot->rt && (!s.rt || s.used < slot->used))) slot = &s;
+    }
+    release(slot->rt);
+    release(slot->sys);
+    *slot = {};
+    IDirect3DSurface9 *rt = nullptr, *sys = nullptr;
+    HRESULT hr = native<CreateRtFn>(CreateRenderTarget)(device_, width, rows, format, D3DMULTISAMPLE_NONE, 0, FALSE,
+                                                         &rt, nullptr);
+    if (FAILED(hr)) rt = nullptr;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (SUCCEEDED(hr) && fixture_readback_fail_create_) {
+        release(rt);
+        hr = E_OUTOFMEMORY;
+    }
+#endif
+    if (SUCCEEDED(hr)) {
+        hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, width, rows, format, D3DPOOL_SYSTEMMEM,
+                                                                    &sys, nullptr);
+        if (FAILED(hr)) sys = nullptr;
+    }
+    if (FAILED(hr)) {
+        release(rt);
+        release(sys);
+        *result = hr;
+        return nullptr;
+    }
+    slot->format = format;
+    slot->width = width;
+    slot->rows = rows;
+    slot->rt = rt;
+    slot->sys = sys;
+    slot->used = ++band_staging_clock_;
+    return slot;
+}
+
+void MotionOutput::release_band_staging() noexcept {
+    for (auto& s : band_staging_) {
+        if (!s.rt && !s.sys) continue;
+        release(s.rt);
+        release(s.sys);
+        s = {};
+    }
+}
+
+// The pre-band path, kept as the fallback: one SYSTEMMEM surface of the whole
+// target, one GetRenderTargetData, one lock.
+HRESULT MotionOutput::readback_whole(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
+                                     const wchar_t* path, UINT width, UINT height, std::size_t* written,
+                                     bool* opened) noexcept {
+    IDirect3DSurface9* copy = nullptr;
+    HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, width, height, format,
+                                                                        D3DPOOL_SYSTEMMEM, &copy, nullptr);
+    if (FAILED(hr)) copy = nullptr;
+    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
+    if (SUCCEEDED(hr)) {
+        D3DLOCKED_RECT lock{};
+        hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
+        if (SUCCEEDED(hr)) {
+            const std::size_t row_bytes = std::size_t(width) * bytes_per_pixel;
+            FILE* file = _wfopen(path, L"wb");
+            if (file) {
+                *opened = true;
+                for (UINT y = 0; y < height && SUCCEEDED(hr); ++y) {
+                    const std::size_t put = std::fwrite(
+                        static_cast<const char*>(lock.pBits) + std::size_t(y) * lock.Pitch, 1, row_bytes, file);
+                    *written += put;
+                    if (put != row_bytes) hr = E_FAIL;
+                }
+                if (std::fclose(file) && SUCCEEDED(hr)) hr = E_FAIL;
+            } else
+                hr = E_FAIL;
+            copy->UnlockRect();
+        }
+    }
+    release(copy);
+    return hr;
+}
+
 // Copies one owned target through system memory to <prefix>_<device>_<frame>.<extension>
-// beside the capture log (row-major, bytes_per_pixel per pixel, no header).
+// beside the capture log (row-major, bytes_per_pixel per pixel, no header), in
+// horizontal bands: StretchRect (same format, same size, point) of the band
+// into the cached DEFAULT render target, GetRenderTargetData into its
+// SYSTEMMEM twin, a read-only lock and the band's rows. A failed band removes
+// the partial file and reports its HRESULT; the band surfaces' creation
+// failure, or band 0's StretchRect refusal, takes the whole-surface path once
+// for this file (fallback=whole).
 HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
                                        const wchar_t* prefix, const wchar_t* extension, const char* tag,
                                        const char* format_name, UINT width, UINT height) noexcept {
-    const std::uint64_t begin = stamp(); // route_readback: allocation, GetRenderTargetData, lock, file write.
-    IDirect3DSurface9* copy = nullptr;
-    HRESULT hr = !width || !height ? E_INVALIDARG
-                                   : native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(
-                                         device_, width, height, format, D3DPOOL_SYSTEMMEM, &copy, nullptr);
-    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
+    const std::uint64_t begin = stamp(); // route_readback: staging, copies, locks, file write.
+    HRESULT hr = !width || !height || !surface ? E_INVALIDARG : S_OK;
     std::size_t written = 0;
+    unsigned bands = 0;
+    std::uint64_t staging = 0;
+    const char* fallback = "none";
+    HRESULT fallback_hr = S_OK;
+    bool opened = false;
     // Fixed buffers: this runs inside a noexcept hook path, so no std::wstring.
     wchar_t name[96]{}, path[MAX_PATH + 96]{};
     const wchar_t* dir = capture_directory();
@@ -9758,27 +9893,84 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
         std::wcscpy(path + dir_length, name);
     }
     if (SUCCEEDED(hr)) {
-        D3DLOCKED_RECT lock{};
-        hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
-        if (SUCCEEDED(hr)) {
-            FILE* file = _wfopen(path, L"wb");
-            if (file) {
-                for (UINT y = 0; y < height; ++y)
-                    written += std::fwrite(static_cast<const char*>(lock.pBits) + y * lock.Pitch, 1,
-                                           std::size_t(width) * bytes_per_pixel, file);
-                if (std::fclose(file)) hr = E_FAIL;
-            } else
-                hr = E_FAIL;
-            copy->UnlockRect();
+        UINT rows = readback_band_rows(width, bytes_per_pixel, height);
+        bool whole = false;
+        int fail_band = -1;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if (fixture_readback_rows_) rows = fixture_readback_rows_ < height ? fixture_readback_rows_ : height;
+        fail_band = fixture_readback_fail_band_;
+        if (fixture_readback_whole_) {
+            whole = true;
+            fallback = "forced";
+        }
+#endif
+        BandStaging* s = whole ? nullptr : band_staging(format, width, rows, &fallback_hr);
+        if (!whole && !s) {
+            whole = true;
+            fallback = "whole";
+        }
+        if (s) {
+            const std::size_t row_bytes = std::size_t(width) * bytes_per_pixel;
+            staging = std::uint64_t(row_bytes) * rows;
+            FILE* file = nullptr;
+            bool stretch_refused = false;
+            for (UINT y = 0; y < height && SUCCEEDED(hr); y += rows) {
+                const UINT n = height - y < rows ? height - y : rows;
+                const RECT source{0, LONG(y), LONG(width), LONG(y + n)}, band{0, 0, LONG(width), LONG(n)};
+                hr = native<StretchFn>(StretchRect)(device_, surface, &source, s->rt, &band, D3DTEXF_POINT);
+                if (SUCCEEDED(hr) && fail_band >= 0 && unsigned(fail_band) == bands) hr = E_FAIL; // fixture seam only
+                if (FAILED(hr)) {
+                    stretch_refused = true;
+                    break;
+                }
+                hr = native<GetRtDataFn>(GetRenderTargetData)(device_, s->rt, s->sys);
+                if (SUCCEEDED(hr) && !file) {
+                    file = _wfopen(path, L"wb");
+                    opened = file != nullptr;
+                    if (!file) hr = E_FAIL;
+                }
+                D3DLOCKED_RECT lock{};
+                if (SUCCEEDED(hr)) hr = s->sys->LockRect(&lock, nullptr, D3DLOCK_READONLY);
+                if (SUCCEEDED(hr)) {
+                    for (UINT r = 0; r < n && SUCCEEDED(hr); ++r) {
+                        const std::size_t put = std::fwrite(
+                            static_cast<const char*>(lock.pBits) + std::size_t(r) * lock.Pitch, 1, row_bytes, file);
+                        written += put;
+                        if (put != row_bytes) hr = E_FAIL;
+                    }
+                    s->sys->UnlockRect();
+                    ++bands;
+                }
+            }
+            if (file && std::fclose(file) && SUCCEEDED(hr)) hr = E_FAIL;
+            if (FAILED(hr) && stretch_refused && !bands) {
+                // Band 0 never reached the file: the whole-surface path for this file.
+                if (opened) DeleteFileW(path);
+                opened = false;
+                written = 0;
+                fallback_hr = hr;
+                hr = S_OK;
+                whole = true;
+                fallback = "whole";
+            }
+        }
+        if (whole) {
+            staging = std::uint64_t(width) * height * bytes_per_pixel;
+            hr = readback_whole(surface, format, bytes_per_pixel, path, width, height, &written, &opened);
         }
     }
-    release(copy);
+    if (FAILED(hr)) {
+        if (opened) DeleteFileW(path); // no partial file: the row's result marks the snapshot incomplete
+        written = 0;
+    }
     const std::uint64_t ticks = stamp() - begin;
     ++counters_.readbacks;
     counters_.readback_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteReadback), ticks, FAILED(hr), written);
-    log("%s device=%llu frame=%llu file=%ls_%llu_%llu.%ls width=%u height=%u format=%s result=%08lx bytes=%u", tag, id_,
-        frame_, prefix, id_, frame_, extension, width, height, format_name, hr, unsigned(written));
+    log("%s device=%llu frame=%llu file=%ls_%llu_%llu.%ls width=%u height=%u format=%s result=%08lx bytes=%u bands=%u "
+        "staging_bytes=%llu fallback=%s fallback_hr=%08lx",
+        tag, id_, frame_, prefix, id_, frame_, extension, width, height, format_name, hr, unsigned(written), bands,
+        static_cast<unsigned long long>(staging), fallback, fallback_hr);
     return hr;
 }
 // Capture frames: RT1 as motion_<device>_<frame>.rgba32f and, when produced,

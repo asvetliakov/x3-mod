@@ -1,0 +1,10 @@
+[whole] rows=1 files_present=1
+  rgba16f_row_major: files=1 sizes=[('64', '64')] identical_to_whole=1 different=0 missing=0 results={'00000000': 1} bands=['0'] staging_bytes=['32768'] fallback={'forced': 1} bytes_total=32768
+[band] rows=1 files_present=1
+  rgba16f_row_major: files=1 sizes=[('64', '64')] identical_to_whole=1 different=0 missing=0 results={'00000000': 1} bands=['1'] staging_bytes=['32768'] fallback={'none': 1} bytes_total=32768
+[rows5] rows=1 files_present=1
+  rgba16f_row_major: files=1 sizes=[('64', '64')] identical_to_whole=1 different=0 missing=0 results={'00000000': 1} bands=['13'] staging_bytes=['2560'] fallback={'none': 1} bytes_total=32768
+[failcreate] rows=1 files_present=1
+  rgba16f_row_major: files=1 sizes=[('64', '64')] identical_to_whole=1 different=0 missing=0 results={'00000000': 1} bands=['0'] staging_bytes=['32768'] fallback={'whole': 1} bytes_total=32768
+[failband1] rows=1 files_present=0
+  rgba16f_row_major: files=1 sizes=[('64', '64')] identical_to_whole=0 different=0 missing=1 results={'80004005': 1} bands=['1'] staging_bytes=['2560'] fallback={'none': 1} bytes_total=0

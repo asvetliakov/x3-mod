@@ -1,0 +1,36 @@
+[whole] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['16384'] fallback={'forced': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['32768'] fallback={'forced': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['65536'] fallback={'forced': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=705.8 min_us=526.0 max_us=2130.9
+  route_readback telemetry: count=24 mean_us=897.2 min_us=325.100 max_us=5477.800 failures=0
+[band] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['1'] staging_bytes=['16384'] fallback={'none': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['1'] staging_bytes=['32768'] fallback={'none': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['1'] staging_bytes=['65536'] fallback={'none': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=698.6 min_us=553.0 max_us=16106.1
+  route_readback telemetry: count=24 mean_us=2794.7 min_us=440.400 max_us=46245.200 failures=0
+[rows5] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['13'] staging_bytes=['1280'] fallback={'none': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['13'] staging_bytes=['2560'] fallback={'none': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['13'] staging_bytes=['5120'] fallback={'none': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=3360.7 min_us=2680.9 max_us=4735.9
+  route_readback telemetry: count=24 mean_us=3498.3 min_us=2405.400 max_us=6865.200 failures=0
+[failband0] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['16384'] fallback={'whole': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['32768'] fallback={'whole': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['65536'] fallback={'whole': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=753.1 min_us=627.9 max_us=2204.2
+  route_readback telemetry: count=24 mean_us=981.4 min_us=454.500 max_us=5330.200 failures=0
+[failcreate] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['16384'] fallback={'whole': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['32768'] fallback={'whole': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['65536'] fallback={'whole': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=753.1 min_us=578.3 max_us=2175.1
+  route_readback telemetry: count=24 mean_us=936.7 min_us=341.600 max_us=5662.700 failures=0
+[failband1] rows=24 files_present=0
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=0 different=0 missing=8 results={'80004005': 8} bands=['1'] staging_bytes=['1280'] fallback={'none': 8} bytes_total=0
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=0 different=0 missing=8 results={'80004005': 8} bands=['1'] staging_bytes=['2560'] fallback={'none': 8} bytes_total=0
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=0 different=0 missing=8 results={'80004005': 8} bands=['1'] staging_bytes=['5120'] fallback={'none': 8} bytes_total=0
+  route_readback per file: frames=8 median_us=2197.5 min_us=1654.4 max_us=3376.7
+  route_readback telemetry: count=24 mean_us=2451.4 min_us=924.000 max_us=6978.600 failures=24

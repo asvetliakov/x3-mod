@@ -1,0 +1,10 @@
+hdr          rgba16f  5120x1440 rows=96 bands=15 band_bytes=3932160 whole_bytes=58982400
+motion       rgba32f  5120x1440 rows=48 bands=30 band_bytes=3932160 whole_bytes=117964800
+depth        rgba32f  5120x1440 rows=48 bands=30 band_bytes=3932160 whole_bytes=117964800
+shadow_map0  r32f     2048x2048 rows=512 bands=4 band_bytes=4194304 whole_bytes=16777216
+shadow_map1  r32f     4096x4096 rows=256 bands=16 band_bytes=4194304 whole_bytes=67108864
+shadow_map2  r32f     4096x4096 rows=256 bands=16 band_bytes=4194304 whole_bytes=67108864
+shadow_map3  r32f     4096x4096 rows=256 bands=16 band_bytes=4194304 whole_bytes=67108864
+shadow_map4  r32f     2048x2048 rows=512 bands=4 band_bytes=4194304 whole_bytes=16777216
+before: 529793024 bytes per capture frame (529.8 MB), 4.24 GB per 8-frame burst
+after: 4 pairs, 16252928 bytes SYSTEMMEM (16.3 MB) for the whole burst, the same again in DEFAULT render targets

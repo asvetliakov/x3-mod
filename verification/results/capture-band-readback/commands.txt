@@ -1,0 +1,53 @@
+Capture readback in bands, 2026-10-08, bottle X3 (CrossOver Preview, arm64 Wine + FEX), worktree
+agent-a60ac9fa91d561137 over main 20bbf004. Raw case directories stay local under verification/probe/build/.
+
+Binaries
+  tested:  this change, cmake -S . -B build-fresh (mingw-i686, RelWithDebInfo), cmake --build build-fresh -j8 (0 warnings)
+           + X3M_CANDIDATE_BUILD=../../build-fresh sh verification/probe/build_motion_output.sh
+           d3d9.dll 621cf749971d58eb..., seam d3d9.dll 6c304ab3f0ab0295..., fixture 43fc7f5ea3d7b09a...
+  final:   the same source with release_band_staging() moved after release_bolt_buffer() in release_resources
+           (test_bolt_footprint asserts the literal release sequence); fresh cmake -B build, cmake --build build -j8
+           (0 warnings): d3d9.dll 59,150,339 B sha256 30538aa3e2c648f9..., seam 6c68d9bebf3fa0e6..., fixture 5219c48319449e41...
+           check_no_x87.py build/d3d9.dll: PASS, 127 roots, 767 reachable functions, 0 violations
+  before:  the Run134 candidate /tmp/x3-run134-candidate/build/d3d9.dll (a9d4559a83278e21..., clean 90a8b4d4;
+           git diff 90a8b4d4 20bbf004 -- src cmake CMakeLists.txt is empty), production DLL of the whole-surface path
+
+Wine runs (one at a time, each through wine_lock.py; run_cases.py BACKEND BIN_DIR OUT_FILE LABEL...)
+  CrossOver's wine accepts --env once, as one space-separated list, so each label passes
+  --wine-env "CX_GRAPHICS_BACKEND=<backend> <extra>" (the extras override the runner's own X3M_CAPTURE_*).
+  wined3d, tested binaries: hdr-band hdr-whole hdr-rows5 hdr-failband1 hdr-failband0 hdr-failcreate shadow-band
+           shadow-whole shadow-rows7 bench-band; before binaries: bench-whole
+           -> runner PASS on every seam case except hdr-failband1 (expected: the validator requires result 0;
+              the rows carry 80004005, bytes=0, and no file exists)
+  wined3d, final binaries: hdr-band hdr-rows5 shadow-band -> PASS (103, 103, 278 checks)
+  dxvk, tested binaries: hdr-band hdr-whole hdr-rows5 hdr-failband1 hdr-failcreate shadow-band shadow-whole
+           shadow-rows7 bench-band (x4); before binaries: bench-whole (x3); tested binaries, no capture: bench-nocapture
+           -> seam cases exit 1: the fixture's own "depth target matches the CPU oracle" check fails at frame 1 on DXVK
+              with every binary and mode (forced whole included; e.g. actual 0.551201522 expected 0.551215279), so
+              only frame 1's hdr file exists and the shadow case writes none; validate_offline.py refuses runs with a
+              FAIL line, so these are compared by file only
+           -> bench: every run crashes after BENCH_SUMMARY in the fixture's own teardown (main, 0x5bc4e3: call *8(vtable),
+              i.e. Release, on an object whose vtable is stale; return address motion_output_fixture+0x1bc4e5); before 3/3 exit 5 (eip 00050048); no-capture 1/1 exit 5;
+              band runs: exit 5 (eip 00050048), exit 84 (eip 0) and two 360 s timeouts after the debugger attached
+              (eip 00050048 and 0). The readback files and rows are complete in all of them.
+
+Comparisons: make_records.py (calls compare.py on the case directories) -> *.txt beside this file
+  wined3d_seam_hdr.txt     64x64 hdr rgba16f, motion rgba32f, depth r32f, 8 frames: whole / band / rows5 /
+                           failband0 / failcreate identical (24/24 each); failband1 0 files, 24 rows 80004005
+  wined3d_seam_shadow.txt  shadow maps 256x256 r32f + depth 64x64 r32f + motion rgba32f: whole / band / rows7 identical
+  wined3d_bench_5120.txt   5120x1440, 2 capture frames: before DLL vs band, 6/6 identical; per-file mean 48.5 -> 36.0 ms
+  wined3d_final_*.txt      final binaries vs the whole-path runs: identical
+  dxvk_seam_hdr.txt        frame-1 hdr rgba16f 64x64: whole / band / rows5 / failcreate identical, failband1 removed
+  dxvk_bench_5120.txt      5120x1440: 3 before runs and 4 band runs, 6/6 identical to the first before run;
+                           per-file frame mean before 37.7 / 38.4 / 39.1 ms, band 19.9 / 22.1 / 22.6 / 29.0 ms
+
+Host and records
+  focused modules (every verification/analysis module that parses *_readback rows or binds motion_output.{h,cpp}, plus
+  test_motion_output_runner and test_iteration08_taa; 52 modules):
+    PYTHONPATH=verification/probe:verification/analysis python3 -m unittest <modules>  -> 658 tests, 1 failure:
+    test_engine_effects.EngineEffectsFixtureRecord (the tracked record hashes src/proxy/motion_output.h); an earlier
+    pass also failed test_bolt_footprint on the literal release sequence, fixed by the final source above
+  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py
+    --wine-env CX_GRAPHICS_BACKEND=wined3d  -> passed; main 174, native 11, unverified 6, unpatched 11, timing 20,
+    plumes 35, armed 33, armed_refused 7 checks (verification/results/bottle-X3/engine-effects/summary.json regenerated)
+  test_engine_effects + test_bolt_footprint afterwards: 36 tests OK

@@ -91,7 +91,7 @@ Per-call metrics (`telemetry_metric name=...`, one `count` per call):
 | `route_jitter` | one jitter constant write: the jittered clip rows before a scene draw, or their bit-exact restoration after it | the jitter arithmetic (SSE, a few ns) |
 | `route_fill` | the per-frame sentinel fill: state save, fullscreen quad, state restore | – |
 | `route_lazy_flush` | one restoration of RT1/RT2 in `X3M_MOTION_RT_MODE=lazy` (the write masks are never held) | – |
-| `route_readback` | one capture-frame readback to disk (RT1, RT2, the pre-resolve color, the resolved FP16 image); `bytes` is what was written | – |
+| `route_readback` | one capture-frame readback to disk (RT1, RT2, the pre-resolve color, the resolved FP16 image), inclusive of the banded staging (pair creation on the burst's first use, every band's `StretchRect`, `GetRenderTargetData`, lock and write; [capture-format.md](../architecture/capture-format.md), "Banded readback"); `bytes` is what was written (0 when a failed file was removed) | – |
 | `taa_run` | `TemporalPass::run` inclusive; nests the five phases below | the copy-back and the readbacks |
 | `taa_state_capture` | the cached `D3DSBT_ALL` block's `Capture` plus the target/depth/viewport/scissor getters | – |
 | `taa_copy_color` | the 8-bit main target to FP16 scratch `StretchRect` (and the scratch allocation the first time) | – |

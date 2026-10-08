@@ -1,0 +1,12 @@
+[whole_old_dll] rows=6 files_present=6
+  r32f_row_major: files=2 sizes=[('5120', '1440')] identical_to_whole_old_dll=2 different=0 missing=0 results={'00000000': 2} bands=[None] staging_bytes=[None] fallback={None: 2} bytes_total=58982400
+  rgba16f_row_major: files=2 sizes=[('5120', '1440')] identical_to_whole_old_dll=2 different=0 missing=0 results={'00000000': 2} bands=[None] staging_bytes=[None] fallback={None: 2} bytes_total=117964800
+  rgba32f_row_major: files=2 sizes=[('5120', '1440')] identical_to_whole_old_dll=2 different=0 missing=0 results={'00000000': 2} bands=[None] staging_bytes=[None] fallback={None: 2} bytes_total=235929600
+  route_readback per file: frames=2 median_us=48487.9 min_us=44541.6 max_us=52434.1
+  route_readback telemetry: count=6 mean_us=48487.8 min_us=24998.700 max_us=84702.500 failures=0
+[band] rows=6 files_present=6
+  r32f_row_major: files=2 sizes=[('5120', '1440')] identical_to_whole_old_dll=2 different=0 missing=0 results={'00000000': 2} bands=['8'] staging_bytes=['3932160'] fallback={'none': 2} bytes_total=58982400
+  rgba16f_row_major: files=2 sizes=[('5120', '1440')] identical_to_whole_old_dll=2 different=0 missing=0 results={'00000000': 2} bands=['15'] staging_bytes=['3932160'] fallback={'none': 2} bytes_total=117964800
+  rgba32f_row_major: files=2 sizes=[('5120', '1440')] identical_to_whole_old_dll=2 different=0 missing=0 results={'00000000': 2} bands=['30'] staging_bytes=['3932160'] fallback={'none': 2} bytes_total=235929600
+  route_readback per file: frames=2 median_us=35998.2 min_us=30283.7 max_us=41712.7
+  route_readback telemetry: count=6 mean_us=35998.2 min_us=17540.500 max_us=53637.800 failures=0

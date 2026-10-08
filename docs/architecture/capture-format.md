@@ -155,11 +155,10 @@ isolation in `verification/analysis/test_capture_object_summary.py`.
 ## Temporal-route readbacks in capture frames (build 0.4)
 
 With `--motion-output` the route reads its owned targets back in every
-capture frame through the documented path (`CreateOffscreenPlainSurface` in
-`D3DPOOL_SYSTEMMEM`, `GetRenderTargetData`, `LockRect`; nothing runs outside
-capture frames) into headerless row-major files beside the log, one log line
-per file with the HRESULT and the byte count
-(`MotionOutput::readback_surface`). `--taa-debug` adds the four image kinds of
+capture frame through documented D3D9 calls (nothing runs outside capture
+frames) into headerless row-major files beside the log, one log line per file
+with the HRESULT and the byte count (`MotionOutput::readback_surface`; banded
+since 2026-10-08, below). `--taa-debug` adds the four image kinds of
 the resolve. Frames are the route's `(device, frame)` identity.
 
 | file | log line | contents | when |
@@ -184,3 +183,39 @@ against the image the fixture itself reads from the back buffer after
 The `readbacks` counter on the `motion_output_frame` line counts these files;
 with `--taa-debug` a resolved 8-bit-route frame reports 5 (motion, depth,
 colour, taa, present), an HDR-route frame 6.
+
+### Banded readback (2026-10-08)
+
+Until 2026-10-08 every file took one `D3DPOOL_SYSTEMMEM` surface of the whole
+target per file per frame. On DXVK (32-bit process, host-visible memory mapped
+into the 4 GB address space, freed chunks retained) one 5120x1440 capture frame
+staged about 530 MB (hdr 59, motion 118, depth 118, shadow maps 16/67/67/67/16
+MB) and three F8 bursts exhausted the mapped space: 165 readbacks refused with
+`D3DERR_OUTOFVIDEOMEMORY`, then an ordinary 16 MB allocation threw and the game
+aborted (Run 134 A, `verification/results/run134-dxvk-triage/alloc/`). The
+readback now copies the source in horizontal bands: per band a `StretchRect`
+(same format, same size, `D3DTEXF_POINT`, the proxy's filter everywhere) of the
+band into a `D3DPOOL_DEFAULT` render target of `width x band_rows`
+(`CreateRenderTarget`, no multisample, not lockable), `GetRenderTargetData`
+into a `D3DPOOL_SYSTEMMEM` surface of the same size, a `D3DLOCK_READONLY` lock
+and the band's rows; the last band is shorter. A band is about 4 MiB, rounded
+down to a multiple of 16 rows (5120 wide: RGBA32F 48 rows / 30 bands, RGBA16F
+96 / 15, R32F 192 / 8; a 2048 or 4096 R32F shadow map 512 or 256 rows). The
+pair is cached per (format, width, band rows) in eight slots for the capture
+burst and released at the first frame without capture, before Reset and at
+retirement; it counts in the route's device references. Run 134 A's burst
+(5120x1440, sun-lane RGBA32F depth sharing the motion pair, five cascades of
+2048/4096 R32F) holds four pairs, 16.3 MB of system memory plus the same in
+render targets, for the whole burst instead of 530 MB per frame
+(`verification/results/capture-band-readback/staging.py`). The file bytes are
+unchanged (verified byte for byte against the whole-surface path on wined3d
+and DXVK, `verification/results/capture-band-readback/`). Failure handling: a
+band failure removes the partial file and reports its HRESULT with `bytes=0`
+(the snapshot tool's `Snapshot incomplete` rule is unchanged: non-zero
+`result`); a failed creation of the band pair, or a `StretchRect` refusal on
+band 0 (before anything is written), takes the old whole-surface path once
+for that file. The row adds `bands=` (bands written; 0 on the whole path),
+`staging_bytes=` (system-memory staging of this file: one band surface, or the
+whole surface), `fallback=` (`none`, `whole`, or `forced` by the fixture-only
+`X3M_FIXTURE_READBACK=whole`) and `fallback_hr=` (the HRESULT that caused
+the fallback).

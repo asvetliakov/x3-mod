@@ -1,0 +1,18 @@
+[whole] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['16384'] fallback={'forced': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['32768'] fallback={'forced': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['0'] staging_bytes=['65536'] fallback={'forced': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=705.8 min_us=526.0 max_us=2130.9
+  route_readback telemetry: count=24 mean_us=897.2 min_us=325.100 max_us=5477.800 failures=0
+[final_band] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['1'] staging_bytes=['16384'] fallback={'none': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['1'] staging_bytes=['32768'] fallback={'none': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['1'] staging_bytes=['65536'] fallback={'none': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=739.5 min_us=644.5 max_us=2097.5
+  route_readback telemetry: count=24 mean_us=987.2 min_us=475.300 max_us=5090.100 failures=0
+[final_rows5] rows=24 files_present=24
+  r32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['13'] staging_bytes=['1280'] fallback={'none': 8} bytes_total=131072
+  rgba16f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['13'] staging_bytes=['2560'] fallback={'none': 8} bytes_total=262144
+  rgba32f_row_major: files=8 sizes=[('64', '64')] identical_to_whole=8 different=0 missing=0 results={'00000000': 8} bands=['13'] staging_bytes=['5120'] fallback={'none': 8} bytes_total=524288
+  route_readback per file: frames=8 median_us=3487.6 min_us=2840.9 max_us=4532.5
+  route_readback telemetry: count=24 mean_us=3550.7 min_us=2564.900 max_us=7156.200 failures=0

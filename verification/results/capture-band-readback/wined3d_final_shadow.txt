@@ -1,0 +1,10 @@
+[whole] rows=9 files_present=9
+  r32f_row_major: files=6 sizes=[('256', '256'), ('64', '64')] identical_to_whole=6 different=0 missing=0 results={'00000000': 6} bands=['0'] staging_bytes=['16384', '262144'] fallback={'forced': 6} bytes_total=835584
+  rgba32f_row_major: files=3 sizes=[('64', '64')] identical_to_whole=3 different=0 missing=0 results={'00000000': 3} bands=['0'] staging_bytes=['65536'] fallback={'forced': 3} bytes_total=196608
+  route_readback per file: frames=3 median_us=736.1 min_us=647.0 max_us=822.7
+  route_readback telemetry: count=9 mean_us=754.8 min_us=566.200 max_us=1018.500 failures=0
+[final_band] rows=9 files_present=9
+  r32f_row_major: files=6 sizes=[('256', '256'), ('64', '64')] identical_to_whole=6 different=0 missing=0 results={'00000000': 6} bands=['1'] staging_bytes=['16384', '262144'] fallback={'none': 6} bytes_total=835584
+  rgba32f_row_major: files=3 sizes=[('64', '64')] identical_to_whole=3 different=0 missing=0 results={'00000000': 3} bands=['1'] staging_bytes=['65536'] fallback={'none': 3} bytes_total=196608
+  route_readback per file: frames=3 median_us=847.1 min_us=599.4 max_us=857.5
+  route_readback telemetry: count=9 mean_us=795.5 min_us=428.000 max_us=1159.200 failures=0
