@@ -1,0 +1,26 @@
+{
+ "run": 141,
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3m-release-1.1.0/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-09T03:55 local",
+ "commit": "80556bd7 (release 1.1.0 source)",
+ "candidate_record": "verification/results/release-1.1.0.json",
+ "installed": {
+  "sha256": "2d65b65f206a846453805e08f4b564467f81fc54204f69dd94a975f00202a351",
+  "bytes": 39937177,
+  "verified": "shasum after install equals the release's shipped DLL (measured)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "x3m.ini": "14b95d6e\u2026 (user's file, user-edited during Run 140 B; carries `; engine_nozzle_source = draw` commented and occlusion_cull = off)",
+  "fonts": "unchanged",
+  "engine_bodies.json": "45a1215b\u2026 unchanged"
+ },
+ "previous": {
+  "run": 140,
+  "sha256": "1f7021211f0b7b763718fcb8996576a43a7ebbdf31afca311cfce10b3d25fa23",
+  "rollback": "/tmp/x3-run140-candidate/build/d3d9.dll"
+ },
+ "trigger": "release 1.1.0 install (user request); no run open",
+ "producer": "main session (Fable 5.1), 2026-10-09"
+}
