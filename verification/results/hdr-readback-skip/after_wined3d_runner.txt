@@ -1,0 +1,13 @@
+seam-hdr-exposure: exit=0 checks=245 frames=120
+seam-hdr-exposure-offset: exit=0 checks=245 frames=120
+seam-ownership-hdr-exposure: exit=0 checks=245 frames=120
+seam-hdr-tonemap-fault: exit=0 checks=59 frames=9
+seam-hdr-meter-selftest-unlock: exit=0 checks=23 frames=3
+{"passed": false, "status": "FAIL", "error": "KeyError('checks')"}
+KeyError: 'checks'
+seam-hdr-meter-pending: exit=0 checks=90 frames=14
+seam-hdr-meter-pending-cap: exit=0 checks=174 frames=28
+bench-5120x1440-hdr-tonemap-taa-on: exit=0 boundary_ms={'min': 2.1383, 'median': 2.3606, 'max': 2.504}
+seam-taa-hdr-tonemap-fault: exit=0 checks=132 frames=12
+partial run: no cross-case comparisons, not a pass
+{"passed": false, "status": "PARTIAL"}

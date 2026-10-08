@@ -311,10 +311,11 @@ void HdrPass::release_chain() noexcept {
         drop(chain_readback_[i]);
         chain_pending_[i] = false;
         readback_filled_[i] = false; // both readback surfaces go together: nothing filled survives
+        drop(readback_query_[i]);
+        readback_query_refs_[i] = 0;
+        readback_query_issued_[i] = false;
     }
-    drop(meter_event_);
-    meter_event_refs_ = 0;
-    meter_event_issued_ = false;
+    meter_skips_ = 0;
 }
 
 // Levels, the two ring targets and the two readback surfaces, at the chain
@@ -356,8 +357,10 @@ unsigned HdrPass::references() const noexcept {
                  (writeback_bolt_shader_ ? 1u : 0u) + (tonemap_shader_ ? 1u : 0u) + (meter_level0_shader_ ? 1u : 0u) +
                  (meter_reduce_shader_ ? 1u : 0u) + chain_count_ + (sharpen_shader_ ? 1u : 0u) +
                  (tonemap_sharpen_shader_ ? 1u : 0u) + (quad_vs_ ? 1u : 0u) + (quad_declaration_ ? 1u : 0u);
-    for (unsigned i = 0; i < 2; ++i) n += (chain_ring_[i] ? 1u : 0u) + (chain_readback_[i] ? 1u : 0u);
-    return n + (meter_event_ ? meter_event_refs_ : 0u); // drop() nulls the pointer before its Release re-enters
+    for (unsigned i = 0; i < 2; ++i)
+        n += (chain_ring_[i] ? 1u : 0u) + (chain_readback_[i] ? 1u : 0u) +
+             (readback_query_[i] ? readback_query_refs_[i] : 0u); // drop() nulls the pointer before its Release re-enters
+    return n;
 }
 
 // The meter chain for a `width` x `height` scene: two-channel float
@@ -429,21 +432,23 @@ HRESULT HdrPass::ensure_chain(UINT width, UINT height) noexcept {
         release_chain();
         caps_.meter = false;
         caps_.meter_reason = "chain";
-    } else if (meter_event_wanted_) {
-        // The diagnostic EVENT query (meter_event_ready), telemetry tier only
-        // (configure_meter_event): created with the chain, released with it.
-        // Without it nothing is issued or polled and the row reports -1. A
-        // refusal leaves it null (-1 too) and never affects the meter. The
-        // device references it holds are measured by the native AddRef/Release
-        // probe (as gpu_sync_timing does) for the final-release accounting.
-        call<DeviceCountFn>(DeviceAddRef)(device_);
-        const ULONG before = call<DeviceCountFn>(DeviceRelease)(device_);
-        if (FAILED(call<CreateQueryFn>(CreateQuery)(device_, D3DQUERYTYPE_EVENT, &meter_event_)))
-            meter_event_ = nullptr;
-        call<DeviceCountFn>(DeviceAddRef)(device_);
-        const ULONG after = call<DeviceCountFn>(DeviceRelease)(device_);
-        meter_event_refs_ = meter_event_ && after > before ? unsigned(after - before) : 0u;
-        meter_event_issued_ = false;
+    } else {
+        // One EVENT query per readback surface (the latch's lock gate):
+        // created with the chain, released with it. A refusal leaves that
+        // query null, so its surface is locked unconditionally (the row
+        // reports -1); it never disables the meter. The device references each
+        // holds are measured by the native AddRef/Release probe (as
+        // gpu_sync_timing does) for the final-release accounting.
+        for (unsigned i = 0; i < 2; ++i) {
+            call<DeviceCountFn>(DeviceAddRef)(device_);
+            const ULONG before = call<DeviceCountFn>(DeviceRelease)(device_);
+            if (FAILED(call<CreateQueryFn>(CreateQuery)(device_, D3DQUERYTYPE_EVENT, &readback_query_[i])))
+                readback_query_[i] = nullptr;
+            call<DeviceCountFn>(DeviceAddRef)(device_);
+            const ULONG after = call<DeviceCountFn>(DeviceRelease)(device_);
+            readback_query_refs_[i] = readback_query_[i] && after > before ? unsigned(after - before) : 0u;
+            readback_query_issued_[i] = false;
+        }
     }
     return hr;
 }
@@ -791,10 +796,6 @@ HRESULT HdrPass::meter_chain(IDirect3DTexture9* scene_texture, UINT width, UINT 
     // size; copy and lock in the same latch cost ~3.6 ms median on DXVK,
     // whose GPU runs a frame or more behind).
     chain_pending_[chain_slot_] = SUCCEEDED(op);
-    // Diagnostic: the GPU's completion of this chain, polled at the next
-    // latch's lock (meter_event_ready). Never gates anything; the query exists
-    // only with the telemetry tier.
-    if (SUCCEEDED(op) && meter_event_) meter_event_issued_ = SUCCEEDED(meter_event_->Issue(D3DISSUE_END));
     return op;
 }
 
@@ -1410,6 +1411,7 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
     sharpen_failures_ = 0;
     latch_ticks_ = 0;
     chain_slot_ = 0;
+    meter_skips_ = 0;
     if (!std::strcmp(reason, "ok")) {
         caps_.self_test_targets = with_depth ? 3u : 2u;
         if (!self_test(with_depth, false, caps_.self_test_detail, sizeof caps_.self_test_detail)) reason = "self_test";
@@ -1465,38 +1467,62 @@ void HdrPass::prepare_constants() noexcept {
 // precedes the copy so a lock that still has to wait never also submits the
 // new copy early. The ring slot then advances for this frame's chain and the
 // tonemap constants take the new EV.
+// The lock is gated on the EVENT query issued right after that surface's copy
+// (GetData without the flush flag, so the poll submits nothing): pending, the
+// latch skips -- no lock, no new copy (the previous frame's ring meter is
+// dropped and this frame's chain rewrites the same ring slot, which does not
+// advance), no step, the EV held, the copy and its query kept for the next
+// latch, whose step then spans both intervals (dt from the last latch that did
+// not skip, clamped in the step). A poll that fails (lost device, invalid
+// call) skips the same way and is counted. After kMeterSkipCap consecutive
+// skips the lock is taken regardless (a backend that never signals still
+// adapts); without a query (CreateQuery refused, Issue failed) the surface is
+// locked unconditionally, as before the query existed.
 HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t frequency, bool timing) noexcept {
     HdrFrameBegin r{};
     float dt = config_.fixed_dt > 0.f ? config_.fixed_dt
                : (latch_ticks_ && frequency && now_ticks > latch_ticks_)
                    ? float(double(now_ticks - latch_ticks_) / double(frequency))
                    : config_.params.dt_max;
-    latch_ticks_ = now_ticks;
     // copy_slot: the ring the previous frame's chain wrote (chain_slot_ has not
     // advanced yet); lock_slot: the readback surface the previous latch filled.
     const unsigned copy_slot = chain_slot_, lock_slot = chain_slot_ ^ 1u;
+    bool skip = false;
     if (!meter_active()) {
         // The meter is off at this latch: a ring or readback surface filled
         // before it went off is stale when it comes back, so it restarts from
         // the next chain (no lock until a copy of a fresh meter is filled).
         readback_filled_[0] = readback_filled_[1] = false;
         chain_pending_[0] = chain_pending_[1] = false;
+        meter_skips_ = 0;
     } else if (readback_filled_[lock_slot] || chain_pending_[copy_slot]) {
         r.readback_timing.begin(timing, stamp(timing));
         const unsigned tiles = tile_width_ * tile_height_;
         const bool sized = tiles && tiles <= tile_capacity_;
-        const bool locking = readback_filled_[lock_slot];
+        bool locking = readback_filled_[lock_slot];
         HRESULT lock_result = S_FALSE;
         D3DLOCKED_RECT lock{};
-        if (locking) {
-            // Diagnostic only: had the GPU finished the previous frame's chain
-            // (and so the copy queued before it) when the lock was taken? No
-            // flush flag: polling must not submit work.
-            if (meter_event_ && meter_event_issued_) {
-                BOOL done = FALSE;
-                const HRESULT ready = meter_event_->GetData(&done, sizeof done, 0);
-                r.meter_event_ready = ready == S_OK ? 1 : ready == S_FALSE ? 0 : -1;
+        if (locking && readback_query_[lock_slot] && readback_query_issued_[lock_slot]) {
+            BOOL done = FALSE;
+            HRESULT ready = readback_query_[lock_slot]->GetData(&done, sizeof done, 0);
+            if (fault(HdrFault::MeterPending)) ready = S_FALSE; // fixture seam (production: never)
+            if (ready == S_OK) {
+                r.meter_event_ready = 1;
+            } else if (meter_skips_ >= kMeterSkipCap) {
+                r.meter_event_ready = 2; // the cap: lock regardless (LockRect waits for the copy)
+                ++meter_cap_locks_;
+            } else {
+                skip = true;
+                locking = false;
+                r.meter_event_ready = 0;
+                if (ready != S_FALSE) ++meter_poll_errors_;
+                ++meter_skip_total_;
+                r.meter_skips = ++meter_skips_;
             }
+        }
+        if (locking) {
+            r.meter_skips = meter_skips_;
+            meter_skips_ = 0;
             lock_result = sized && chain_readback_[lock_slot]
                               ? chain_readback_[lock_slot]->LockRect(&lock, nullptr, D3DLOCK_READONLY)
                               : E_FAIL;
@@ -1522,19 +1548,25 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
             // leave a synthetic mapping locked or overwrite a native failure.
             if (SUCCEEDED(lock_result) && fault(HdrFault::ReadbackUnlock)) lock_result = E_FAIL;
         }
-        readback_filled_[lock_slot] = false; // consumed or failed: never read twice
+        if (!skip) readback_filled_[lock_slot] = false; // consumed or failed: never read twice
         r.readback_timing.end(ReadbackTiming::ExtractUnlock, stamp(timing));
         HRESULT copy_result = S_FALSE;
-        if (chain_pending_[copy_slot]) {
+        if (chain_pending_[copy_slot] && !skip) {
             copy_result = sized && chain_ring_[copy_slot] && chain_readback_[copy_slot]
                               ? call<GetRtDataFn>(GetRenderTargetData)(device_, chain_ring_[copy_slot],
                                                                        chain_readback_[copy_slot])
                               : E_FAIL;
-            chain_pending_[copy_slot] = false;
             readback_filled_[copy_slot] = SUCCEEDED(copy_result);
+            // The lock gate: signalled once the GPU has executed the copy.
+            readback_query_issued_[copy_slot] = SUCCEEDED(copy_result) && readback_query_[copy_slot] &&
+                                                SUCCEEDED(readback_query_[copy_slot]->Issue(D3DISSUE_END));
         }
+        chain_pending_[copy_slot] = false; // copied, or dropped by a skip (this frame's chain rewrites the slot)
         r.readback_timing.end(ReadbackTiming::Copy, stamp(timing));
-        r.readback = locking && FAILED(lock_result) ? lock_result : FAILED(copy_result) ? copy_result : S_OK;
+        r.readback = skip                               ? S_FALSE // neither a lock nor a copy ran (the poll did)
+                     : locking && FAILED(lock_result) ? lock_result
+                     : FAILED(copy_result)            ? copy_result
+                                                      : S_OK;
         if (locking && SUCCEEDED(lock_result)) {
             // Non-finite tiles read as the floor inside; the statistic is finite.
             const MeterStatistics m = meter_statistics(tile_mean_.get(), tile_max_.get(), tile_weight_.get(), tiles,
@@ -1549,9 +1581,10 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
         r.readback_timing.end(ReadbackTiming::StatisticsAdapt, stamp(timing));
         r.ticks_readback = r.readback_timing.total();
     }
-    meter_event_issued_ = false; // the next poll refers to the coming chain's issue only
-    last_meter_event_ready_ = r.meter_event_ready;
-    chain_slot_ ^= 1u;
+    if (!skip) {
+        latch_ticks_ = now_ticks;
+        chain_slot_ ^= 1u;
+    }
     prepare_constants();
     return r;
 }

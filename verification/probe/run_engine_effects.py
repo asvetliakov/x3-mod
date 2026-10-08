@@ -134,7 +134,7 @@ def build():
     return {'log': str(log.relative_to(ROOT)), 'warnings': len(re.findall(r'\bwarning:', text))}
 
 
-def run(mode, timeout):
+def run(mode, timeout, wine_env=()):
     directory = BUILD / ('engine-effects-' + mode + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
     (directory / 'x3m').mkdir(parents=True)
     shutil.copy(EXE, directory)
@@ -142,7 +142,7 @@ def run(mode, timeout):
     (directory / 'x3m/engine_bodies.json').write_text(table())
     env = {k: v for k, v in os.environ.items() if not k.startswith('X3M_')}
     env.update(X3M_FIXTURE_BOTTLE=bottle.BOTTLE, X3M_MOTION_OUTPUT='1', **MODES[mode], **fixture_log.session_log_env(directory))
-    command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(directory), str(directory / EXE.name),
+    command = [bottle.WINE, *bottle.wine_args(), *[a for item in wine_env for a in ('--env', item)], '--dll', 'd3d9=n,b', '--workdir', str(directory), str(directory / EXE.name),
                'Z:' + str(PROGRAMS['vs']), 'Z:' + str(PROGRAMS['ps']), mode]
     done = fixture_process.run(command, build_dir=directory, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
     stdout = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
@@ -399,8 +399,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=int, default=300)
+    parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
+                        help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
+                             'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 the proxy forwards to for one run')
     parser.add_argument('modes', nargs='*', default=list(MODES))
     args = parser.parse_args()
+    for item in args.wine_env:
+        if '=' not in item or not item.split('=', 1)[0]:
+            parser.error(f'--wine-env expects NAME=VALUE: {item}')
     if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
         raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
     if game_running():
@@ -411,13 +417,14 @@ def main():
     results = bottle.results_dir(ROOT) / 'engine-effects'
     results.mkdir(parents=True, exist_ok=True)
     record = {'bottle': bottle.describe(), 'programs': {k: {'path': str(p), 'sha256': sha(p)} for k, p in PROGRAMS.items()},
-              'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(), 'game_launched': False}
+              'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(), 'game_launched': False,
+              'wine_env': list(args.wine_env)}
     if not args.no_build:
         record['build'] = build()
     record['binaries'] = {'fixture_sha256': sha(EXE), 'seam_sha256': sha(SEAM), 'dll_sha256': sha(ROOT / 'build/d3d9.dll')}
     problems, runs = [], {}
     for mode in args.modes:
-        r = run(mode, args.timeout)
+        r = run(mode, args.timeout, args.wine_env)
         p, summary = validate(mode, r)
         summary['directory'] = str(r['directory'].relative_to(ROOT))
         runs[mode] = summary

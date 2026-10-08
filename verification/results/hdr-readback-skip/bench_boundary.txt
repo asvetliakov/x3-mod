@@ -1,0 +1,8 @@
+after-wined3d 041610-783103 image_size=180224 min_ms=2.1383 median_ms=2.3606 max_ms=2.5040
+after-dxvk 041703-142567 image_size=13193216 min_ms=3.1745 median_ms=3.2005 max_ms=4.1074
+before-wined3d 041725-080372 image_size=180224 min_ms=2.1687 median_ms=2.3922 max_ms=3.1968
+before-dxvk 041732-373726 image_size=13193216 min_ms=2.0644 median_ms=2.0901 max_ms=5.2148
+after-dxvk 041843-917209 image_size=13193216 min_ms=2.0487 median_ms=2.4909 max_ms=5.0672
+before-dxvk 041850-722136 image_size=13193216 min_ms=2.0584 median_ms=2.5937 max_ms=5.3886
+before-dxvk 041902-692875 image_size=13193216 min_ms=2.0702 median_ms=2.4303 max_ms=4.9621
+after-dxvk 041908-939922 image_size=13193216 min_ms=2.0443 median_ms=2.3977 max_ms=4.9790

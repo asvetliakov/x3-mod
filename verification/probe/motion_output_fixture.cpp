@@ -4527,6 +4527,21 @@ struct Fixture {
             for (unsigned i = 0; i < 3; ++i) hdrtonemapfault_frame(0);
             return;
         }
+        // X3M_FIXTURE_METER_PENDING=first,count,frames: plain frames, with the
+        // latch's readback poll reporting S_FALSE for `count` latches from
+        // frame `first` (fault 17, consumed by each poll).
+        char pending[32]{};
+        if (GetEnvironmentVariableA("X3M_FIXTURE_METER_PENDING", pending, sizeof pending) > 0) {
+            unsigned first = 0, count = 0, total = 0;
+            require(std::sscanf(pending, "%u,%u,%u", &first, &count, &total) == 3 && first < total && total <= 64,
+                    "X3M_FIXTURE_METER_PENDING=first,count,frames");
+            for (unsigned i = 0; i < total; ++i) {
+                if (i == first) hdr_fault(d.p, 17, count);
+                hdrtonemapfault_frame(0);
+                if (i == first) std::printf("HDR_TONEMAP_FAULT_ARMED frame=%u fault=17 count=%u\n", i, count);
+            }
+            return;
+        }
         // f0 normal; f1 tonemap draw fails (identity fallback, recheck next);
         // f2 readback UnlockRect reports failure AFTER its real cleanup (fault
         // 15): exposure must hold; f3 succeeds at readback but its meter draw

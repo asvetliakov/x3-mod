@@ -1,0 +1,94 @@
+image_size=180224 {"case": "seam-hdr-meter-pending", "validator": "PASS", "result_line": "fixture", "crash_lines_dropped": 0, "nan_store_zero_texels": 0, "mode": "hdrtonemapfault", "frames": 14, "checks": 90}
+image_size=13193216 {"case": "seam-hdr-meter-pending", "validator": "PASS", "result_line": "synthetic (teardown crash before RESULT)", "crash_lines_dropped": 0, "nan_store_zero_texels": 0, "mode": "hdrtonemapfault", "frames": 14, "checks": 88}
+image_size=180224 {"case": "seam-hdr-meter-pending-cap", "validator": "PASS", "result_line": "fixture", "crash_lines_dropped": 0, "nan_store_zero_texels": 0, "mode": "hdrtonemapfault", "frames": 28, "checks": 174}
+image_size=13193216 {"case": "seam-hdr-meter-pending-cap", "validator": "PASS", "result_line": "synthetic (teardown crash before RESULT)", "crash_lines_dropped": 0, "nan_store_zero_texels": 0, "mode": "hdrtonemapfault", "frames": 28, "checks": 172}
+image_size=13193216 {"case": "seam-hdr-exposure", "validator": "PASS", "result_line": "synthetic (teardown crash before RESULT)", "crash_lines_dropped": 0, "nan_store_zero_texels": 1024, "mode": "hdrexposure", "frames": 120, "checks": 243, "meter_lag_frames": 2, "ev_max_error_replayed": 2.755772152085445e-06, "ev_max_error_end_to_end": 1.1925513982158353e-06, "meter_max_abs_error_log2": 0.00258424081985531, "presente
+image_size=13193216 {"case": "seam-hdr-tonemap-fault", "validator": "PASS", "result_line": "synthetic (teardown crash before RESULT)", "crash_lines_dropped": 0, "nan_store_zero_texels": 0, "mode": "hdrtonemapfault", "frames": 9, "checks": 57, "stepped": {"0": "0", "1": "0", "2": "0", "3": "1", "4": "1", "5": "0", "6": "1", "7": "0", "8": "0"}}
+motion-output-seam-hdr-meter-pending-20261008-041604-815288 image_size=180224
+  frame=0 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000001
+  frame=1 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000000
+  frame=2 stepped=1 ready=1 skips=0 steps=1 ev=0.05882 readback=00000000
+  frame=3 stepped=1 ready=1 skips=0 steps=2 ev=0.11533 readback=00000000
+  frame=4 stepped=0 ready=0 skips=1 steps=2 ev=0.11533 readback=00000001
+  frame=5 stepped=0 ready=0 skips=2 steps=2 ev=0.11533 readback=00000001
+  frame=6 stepped=0 ready=0 skips=3 steps=2 ev=0.11533 readback=00000001
+  frame=7 stepped=0 ready=0 skips=4 steps=2 ev=0.11533 readback=00000001
+  frame=8 stepped=0 ready=0 skips=5 steps=2 ev=0.11533 readback=00000001
+  frame=9 stepped=1 ready=1 skips=5 steps=3 ev=0.16962 readback=00000000
+  frame=10 stepped=1 ready=1 skips=0 steps=4 ev=0.22178 readback=00000000
+  frame=11 stepped=1 ready=1 skips=0 steps=5 ev=0.27190 readback=00000000
+  frame=12 stepped=1 ready=1 skips=0 steps=6 ev=0.32006 readback=00000000
+  frame=13 stepped=1 ready=1 skips=0 steps=7 ev=0.36632 readback=00000000
+motion-output-seam-hdr-meter-pending-20261008-041628-575517 image_size=13193216
+  frame=0 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000001
+  frame=1 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000000
+  frame=2 stepped=1 ready=1 skips=0 steps=1 ev=0.05882 readback=00000000
+  frame=3 stepped=1 ready=1 skips=0 steps=2 ev=0.11533 readback=00000000
+  frame=4 stepped=0 ready=0 skips=1 steps=2 ev=0.11533 readback=00000001
+  frame=5 stepped=0 ready=0 skips=2 steps=2 ev=0.11533 readback=00000001
+  frame=6 stepped=0 ready=0 skips=3 steps=2 ev=0.11533 readback=00000001
+  frame=7 stepped=0 ready=0 skips=4 steps=2 ev=0.11533 readback=00000001
+  frame=8 stepped=0 ready=0 skips=5 steps=2 ev=0.11533 readback=00000001
+  frame=9 stepped=1 ready=1 skips=5 steps=3 ev=0.16962 readback=00000000
+  frame=10 stepped=1 ready=1 skips=0 steps=4 ev=0.22178 readback=00000000
+  frame=11 stepped=1 ready=1 skips=0 steps=5 ev=0.27190 readback=00000000
+  frame=12 stepped=1 ready=1 skips=0 steps=6 ev=0.32006 readback=00000000
+  frame=13 stepped=1 ready=1 skips=0 steps=7 ev=0.36632 readback=00000000
+motion-output-seam-hdr-meter-pending-cap-20261008-041609-093256 image_size=180224
+  frame=0 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000001
+  frame=1 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000000
+  frame=2 stepped=1 ready=1 skips=0 steps=1 ev=0.05882 readback=00000000
+  frame=3 stepped=1 ready=1 skips=0 steps=2 ev=0.11533 readback=00000000
+  frame=4 stepped=0 ready=0 skips=1 steps=2 ev=0.11533 readback=00000001
+  frame=5 stepped=0 ready=0 skips=2 steps=2 ev=0.11533 readback=00000001
+  frame=6 stepped=0 ready=0 skips=3 steps=2 ev=0.11533 readback=00000001
+  frame=7 stepped=0 ready=0 skips=4 steps=2 ev=0.11533 readback=00000001
+  frame=8 stepped=0 ready=0 skips=5 steps=2 ev=0.11533 readback=00000001
+  frame=9 stepped=0 ready=0 skips=6 steps=2 ev=0.11533 readback=00000001
+  frame=10 stepped=0 ready=0 skips=7 steps=2 ev=0.11533 readback=00000001
+  frame=11 stepped=0 ready=0 skips=8 steps=2 ev=0.11533 readback=00000001
+  frame=12 stepped=0 ready=0 skips=9 steps=2 ev=0.11533 readback=00000001
+  frame=13 stepped=0 ready=0 skips=10 steps=2 ev=0.11533 readback=00000001
+  frame=14 stepped=0 ready=0 skips=11 steps=2 ev=0.11533 readback=00000001
+  frame=15 stepped=0 ready=0 skips=12 steps=2 ev=0.11533 readback=00000001
+  frame=16 stepped=0 ready=0 skips=13 steps=2 ev=0.11533 readback=00000001
+  frame=17 stepped=0 ready=0 skips=14 steps=2 ev=0.11533 readback=00000001
+  frame=18 stepped=0 ready=0 skips=15 steps=2 ev=0.11533 readback=00000001
+  frame=19 stepped=0 ready=0 skips=16 steps=2 ev=0.11533 readback=00000001
+  frame=20 stepped=1 ready=2 skips=16 steps=3 ev=0.16962 readback=00000000
+  frame=21 stepped=0 ready=0 skips=1 steps=3 ev=0.16962 readback=00000001
+  frame=22 stepped=0 ready=0 skips=2 steps=3 ev=0.16962 readback=00000001
+  frame=23 stepped=0 ready=0 skips=3 steps=3 ev=0.16962 readback=00000001
+  frame=24 stepped=1 ready=1 skips=3 steps=4 ev=0.22178 readback=00000000
+  frame=25 stepped=1 ready=1 skips=0 steps=5 ev=0.27190 readback=00000000
+  frame=26 stepped=1 ready=1 skips=0 steps=6 ev=0.32006 readback=00000000
+  frame=27 stepped=1 ready=1 skips=0 steps=7 ev=0.36632 readback=00000000
+motion-output-seam-hdr-meter-pending-cap-20261008-041647-292563 image_size=13193216
+  frame=0 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000001
+  frame=1 stepped=0 ready=-1 skips=0 steps=0 ev=0.00000 readback=00000000
+  frame=2 stepped=1 ready=1 skips=0 steps=1 ev=0.05882 readback=00000000
+  frame=3 stepped=1 ready=1 skips=0 steps=2 ev=0.11533 readback=00000000
+  frame=4 stepped=0 ready=0 skips=1 steps=2 ev=0.11533 readback=00000001
+  frame=5 stepped=0 ready=0 skips=2 steps=2 ev=0.11533 readback=00000001
+  frame=6 stepped=0 ready=0 skips=3 steps=2 ev=0.11533 readback=00000001
+  frame=7 stepped=0 ready=0 skips=4 steps=2 ev=0.11533 readback=00000001
+  frame=8 stepped=0 ready=0 skips=5 steps=2 ev=0.11533 readback=00000001
+  frame=9 stepped=0 ready=0 skips=6 steps=2 ev=0.11533 readback=00000001
+  frame=10 stepped=0 ready=0 skips=7 steps=2 ev=0.11533 readback=00000001
+  frame=11 stepped=0 ready=0 skips=8 steps=2 ev=0.11533 readback=00000001
+  frame=12 stepped=0 ready=0 skips=9 steps=2 ev=0.11533 readback=00000001
+  frame=13 stepped=0 ready=0 skips=10 steps=2 ev=0.11533 readback=00000001
+  frame=14 stepped=0 ready=0 skips=11 steps=2 ev=0.11533 readback=00000001
+  frame=15 stepped=0 ready=0 skips=12 steps=2 ev=0.11533 readback=00000001
+  frame=16 stepped=0 ready=0 skips=13 steps=2 ev=0.11533 readback=00000001
+  frame=17 stepped=0 ready=0 skips=14 steps=2 ev=0.11533 readback=00000001
+  frame=18 stepped=0 ready=0 skips=15 steps=2 ev=0.11533 readback=00000001
+  frame=19 stepped=0 ready=0 skips=16 steps=2 ev=0.11533 readback=00000001
+  frame=20 stepped=1 ready=2 skips=16 steps=3 ev=0.16962 readback=00000000
+  frame=21 stepped=0 ready=0 skips=1 steps=3 ev=0.16962 readback=00000001
+  frame=22 stepped=0 ready=0 skips=2 steps=3 ev=0.16962 readback=00000001
+  frame=23 stepped=0 ready=0 skips=3 steps=3 ev=0.16962 readback=00000001
+  frame=24 stepped=1 ready=1 skips=3 steps=4 ev=0.22178 readback=00000000
+  frame=25 stepped=1 ready=1 skips=0 steps=5 ev=0.27190 readback=00000000
+  frame=26 stepped=1 ready=1 skips=0 steps=6 ev=0.32006 readback=00000000
+  frame=27 stepped=1 ready=1 skips=0 steps=7 ev=0.36632 readback=00000000

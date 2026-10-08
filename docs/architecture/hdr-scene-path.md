@@ -875,14 +875,35 @@ on DXVK, whose Present is asynchronous and whose GPU runs a frame or more
 behind (Run132 A/B, `readback_transfer_lock_us`, 2026-10-08). That the
 double buffer removes the in-flight 3.6 ms on DXVK is predicted from the
 fixture (5.6 ms to 3 µs median there), pending the next flight.
-`hdr_frame` times the two calls separately (`readback_copy_us`,
-`readback_lock_us`, the latter including the poll) and `meter_event_ready`
-reports whether an EVENT query issued after the previous frame's chain had
-signalled when the lock was taken (`GetData` without the flush flag; 1/0,
--1 when no query exists, nothing was issued or nothing was locked;
-diagnostic only). The query exists only with the telemetry tier
-(`X3M_TELEMETRY`, `--perf`, `--debug`): off, nothing is created, issued or
-polled, because DXVK's `End()` on an event query can flush.
+**Lock gate** (2026-10-08, after a 636 ms `LockRect` stall in Run 133 A on
+DXVK): each readback surface has its own EVENT query, created with the chain
+and released with it, issued (`Issue(D3DISSUE_END)`) right after that
+surface's `GetRenderTargetData`. Before locking, the latch polls it with
+`GetData` without the flush flag (the poll submits nothing; the frame's
+Present has submitted the copy). Signalled: lock and step as above. Pending:
+the latch skips -- no lock and no new copy (the previous frame's ring meter
+is dropped and this frame's chain rewrites the same ring slot, which does not
+advance), no step, the EV held; the held copy and its query stay for the next
+latch, whose step then uses the time since the last latch that did not skip
+(clamped in the step). A failing poll (lost device, invalid call) skips the
+same way and is counted. After `kMeterSkipCap` = 16 consecutive skips the
+lock is taken regardless, so a backend whose event never signals still
+adapts every 17th latch at the cost of the blocking lock it would otherwise
+take; a query that could not be created (or issued) leaves its surface
+locked unconditionally, as before the gate, and never disables the meter.
+Cost: one `Issue` and one `GetData` per latch, no allocation; the fixture
+measured +0.2 to +1.1 us median on the copy bucket and no reproducible bench
+change on DXVK (`docs/verification/hdr-scene-path.md`, "Lock gate").
+Consequence (review 2026-10-08): with the GPU N frames behind, the gate skips about N-1 of every N latches, so the meter
+updates every N frames and the ring meters in between are dropped; the adaptation speed is unchanged because `dt` runs from
+the last latch that did not skip, and the meter can be up to 18 frames (cap 16 + lag 2) old at the capped lock.
+`hdr_frame` times the two calls separately (`readback_copy_us` including the
+Issue, `readback_lock_us` including the poll; a skipped latch's is the poll
+alone), `meter_event_ready` reports the gate (1 locked after the signal, 0
+skipped, 2 locked by the cap, -1 no lock attempted or no query),
+`meter_skips` the consecutive skips (the run length on a skip, the skips
+before it on a lock) and `meter_skip_total`, `meter_poll_errors`,
+`meter_cap_locks` the session counts.
 The first two latches after attach, Reset, a chain re-creation or a latch
 with the meter off lock nothing (no step; no stale read);
 `meter_statistics` reduces the tiles to the space-aware statistic (below)
@@ -1057,7 +1078,8 @@ before the dead band), `tiles`, `lit`, `dt_ms`, `stepped`, `steps`, `meter`,
 draw bracket), `readback_us` (the lock, the copy and the statistic at the
 latch; split into `readback_copy_us`, `readback_lock_us`,
 `readback_extract_unlock_us`, `readback_statistics_adapt_us`),
-`meter_event_ready`, `k`, `chain_bytes`; metrics `hdr_meter`, `hdr_meter_readback` under
+`meter_event_ready`, `meter_skips`, `meter_skip_total`, `meter_poll_errors`,
+`meter_cap_locks`, `k`, `chain_bytes`; metrics `hdr_meter`, `hdr_meter_readback` under
 `X3M_TELEMETRY=1`.
 
 ### Verification (summary; numbers in the verification record)

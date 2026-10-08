@@ -1,0 +1,41 @@
+HDR meter readback lock gate (skip a pending copy), 2026-10-08, bottle X3 (CrossOver Preview, arm64 Wine + FEX; the
+bottle's default CX_GRAPHICS_BACKEND is dxvk), worktree agent-ae26bdb78a6e61526 over main ef9e88a2.
+Raw case directories stay local under verification/probe/build/.
+
+Binaries (scratch copies, untracked)
+  before: ef9e88a2 (= d8024b96 sources) built by cmake (build/) + sh verification/probe/build_motion_output.sh
+          d3d9.dll d6c1c721e8ff33f3..., seam d3d9.dll de330b053ffd8628..., fixture cddf3bcae0c3d8fa...
+  after:  this change, same commands, incremental: d3d9.dll f736f3fb78834089..., seam 1d544fd3aaed27a5..., fixture 45be2ef91965b569...
+  fresh:  cmake -S . -B build-fresh (mingw-i686, RelWithDebInfo); cmake --build build-fresh --target d3d9
+          d3d9.dll 59,138,796 B sha256 8501698c998a4e58...; python3 verification/probe/check_no_x87.py build-fresh/d3d9.dll
+          -> PASS, 766 reachable functions, 0 violations
+
+Wine runs (one at a time, each X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_motion_output.py --dll <bin>/d3d9.dll --seam <bin>/seam/d3d9.dll --fixture <bin>/motion_output_fixture.exe)
+  after, --wine-env CX_GRAPHICS_BACKEND=wined3d: seam-hdr-meter-pending seam-hdr-meter-pending-cap seam-hdr-exposure
+        seam-hdr-exposure-offset seam-ownership-hdr-exposure seam-hdr-tonemap-fault seam-hdr-meter-selftest-unlock
+        seam-taa-hdr-tonemap-fault bench-5120x1440-hdr-tonemap-taa-on -> all nine PASS (after_wined3d_runner.txt; the
+        first pass stopped on the new validator's missing 'checks' key after the five cases before it passed; fixed,
+        the remaining four rerun)
+  after, --wine-env CX_GRAPHICS_BACKEND=dxvk, one case each: seam-hdr-meter-pending, seam-hdr-meter-pending-cap,
+        seam-hdr-exposure, seam-hdr-tonemap-fault, bench-5120x1440-hdr-tonemap-taa-on -> exit 5 (teardown crash,
+        pre-existing), validated offline: validate.sh -> validation.txt (all PASS)
+  before, wined3d: seam-hdr-exposure bench-5120x1440-hdr-tonemap-taa-on -> both PASS
+  before, dxvk: seam-hdr-exposure; bench-5120x1440-hdr-tonemap-taa-on -> exit 5 / 84, timings from the session logs
+  repeat DXVK bench pairs: after, before, before, after (bench_boundary.sh -> bench_boundary.txt)
+
+Timings: timings.sh -> timings.txt (readback_timing.py on the session logs).
+
+Engine-effects record (test_engine_effects source binding; src/proxy/motion_output.h changed):
+  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py
+  -> every mode's checks pass (failed=0) but every fixture exits 5/84 in teardown on the bottle's DXVK default; a retry
+  with CX_GRAPHICS_BACKEND=wined3d in the process environment did not reach Wine (a .dxvk-cache was written).
+  run_engine_effects.py then gained --wine-env NAME=VALUE (passed to `wine --env`, as run_motion_output.py does; kept
+  in the record as wine_env):
+  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py
+      --wine-env CX_GRAPHICS_BACKEND=wined3d
+  -> exit 0, passed; checks main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 33,
+     armed_refused 7, every mode exit 0; summary.json regenerated (source ef9e88a2-dirty = this tree)
+  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py
+      --wine-env CX_GRAPHICS_BACKEND=wined3d seam-engine-light   (fresh runner build of this tree)
+  -> exit 0, 107 checks, lit_frames 7, worst_relative 0.0040, zero_differ 0; seam-engine-light-fixture.json regenerated

@@ -776,7 +776,7 @@ system-memory surface the previous latch filled, then queues the newest ring cop
 consumes the meter two frames old (was one). `hdr_frame` carries `readback_copy_us`, `readback_lock_us` and
 `meter_event_ready` (an EVENT query issued after each chain, polled without the flush flag before the lock and timed
 inside `readback_lock_us`; diagnostic, and only with the telemetry tier `X3M_TELEMETRY` / `--perf` / `--debug`: without
-it no query exists and the field is -1).
+it no query exists and the field is -1; superseded the same day by the per-surface lock gate, "Lock gate" below).
 Design text: `docs/architecture/hdr-scene-path.md`, "Exposure: meter on the GPU".
 
 Fixture (bottle X3, `run_motion_output.py --wine-env CX_GRAPHICS_BACKEND=wined3d|dxvk`, the latter mapping the bundled
@@ -800,3 +800,54 @@ After the query was gated to the telemetry tier, `seam-hdr-exposure` on wined3d 
 three fields logged and `meter_event_ready=1` at 118 of 118 locks (`gated_wined3d.txt`).
 Review note (2026-10-08): the tonemap-fault check `states[2]==states[1]` now compares two frames that never stepped, so it still catches a publish on unlock failure but is weaker than before the lag; kept as is.
 Scripts and outputs: `verification/results/hdr-readback-double-buffer/`.
+
+### Lock gate: skip a pending copy (2026-10-08, after Run 133 A)
+
+Why: in run11 (DXVK) one latch stalled 636 ms in `LockRect` because the GPU had not executed the copy; the chain
+query could not see it (issued after frame N's chain, polled at latch N+1: it measured the chain, and read 0 on 89 %
+of in-flight frames while the lock stayed under 1 ms). Now each readback surface has its own EVENT query, issued
+(`Issue(D3DISSUE_END)`) right after its `GetRenderTargetData` at the latch, always created with the chain (the
+telemetry gating and `configure_meter_event` are gone). The next latch polls it (`GetData(&done, sizeof done, 0)`,
+no flush flag) before the lock:
+
+| Poll | Action | `meter_event_ready` | `meter_skips` | `stepped` / `readback` |
+| --- | --- | --- | --- | --- |
+| S_OK | lock, extract, unlock, step; copy the newest ring into the other surface and issue its query | 1 | skips before this lock (then 0) | 1 / 00000000 |
+| S_FALSE, fewer than `kMeterSkipCap` (16) skips in a row | skip: no lock, no copy (the previous frame's ring meter is dropped and this frame's chain rewrites the same slot, which does not advance), EV held, the held copy and its query kept; the next step's dt runs from the last latch that did not skip (clamped in the step) | 0 | run length so far | 0 / 00000001 |
+| other HRESULT (lost, invalid call) | the same skip, counted in `meter_poll_errors` | 0 | run length | 0 / 00000001 |
+| not S_OK after 16 skips | lock regardless (`LockRect` may wait), as before the gate | 2 | 16 | 1 / 00000000 |
+| no query (CreateQuery refused, or Issue failed) | lock unconditionally, as before the query existed | -1 | 0 | 1 / 00000000 |
+| nothing to lock (first latches, meter off) | as before | -1 | 0 | per latch |
+
+`hdr_frame` also carries the session counts `meter_skip_total`, `meter_poll_errors`, `meter_cap_locks` (the pass has no
+summary row). The queries are released in `release_chain` (Reset, loss, resize, shutdown) with every flag and the skip
+run; their device references are measured at creation as before.
+
+Fixture (seam fault 17 `MeterPending`, `X3M_FIXTURE_METER_PENDING=first,count,frames`, fixture-only; the poll of
+`count` latches from frame `first` reports S_FALSE): `seam-hdr-meter-pending` (4,5,14) skips frames 4..8
+(`meter_skips` 1..5, EV and `steps` of frame 3 held, `readback=00000001`) and steps at frame 9 on the held copy
+(`meter_event_ready=1`, `meter_skips=5`; a dropped copy would step two latches later); `seam-hdr-meter-pending-cap`
+(4,20,28) skips 4..19, takes exactly one capped lock at frame 20 (`meter_event_ready=2`, `meter_skips=16`), skips the
+three remaining forced latches 21..23 and resumes at 24; `meter_skip_total` 5 / 19, `meter_poll_errors` 0, measured on
+both backends. wined3d: the two new cases plus `seam-hdr-exposure`, `-offset`, `seam-ownership-hdr-exposure`,
+`seam-hdr-tonemap-fault`, `seam-hdr-meter-selftest-unlock`, `seam-taa-hdr-tonemap-fault` and the 5120x1440 bench pass
+the runner. DXVK: the new cases, `seam-hdr-exposure` and `seam-hdr-tonemap-fault` pass `validate_offline.py` (the
+teardown crash and NaN-as-zero store are the known pre-existing differences). Unforced polls read 1 at every lock in
+every case on both backends (no real skip in the fixtures).
+
+Per-latch cost, `seam-hdr-exposure` (119 latches), median / p95 us, before (ef9e88a2) / after:
+
+| Backend | `readback_copy_us` (now with the Issue) | `readback_lock_us` (with the poll) | `readback_us` |
+| --- | --- | --- | --- |
+| wined3d | 0.7 / 5.3 -> 1.8 / 17.1 | 4.7 / 40.0 -> 6.8 / 40.9 | 10.2 / 69.4 -> 15.8 / 80.2 |
+| DXVK | 0.9 / 1.2 -> 1.1 / 1.4 | 3.6 / 6.6 -> 2.8 / 6.0 | 9.6 / 15.4 -> 8.1 / 12.1 |
+
+A skipped latch costs the poll alone: `readback_lock_us` median 0.6–0.7 us (max 3.0) on both backends. The 5120x1440
+bench boundary (20 frames, median ms): wined3d 2.39 -> 2.36; DXVK before 2.09, 2.59, 2.43 and after 3.20, 2.49, 2.40
+over three alternating pairs. The first DXVK pair's after run (min 3.17) did not reproduce, so no DXVK flush cost
+from `Issue(END)` at the latch is established. Host: `test_logging_tiers`, `test_submission_attribution` (the poll and
+Issue placement), `test_hdr_display_snapshot`, `test_motion_output_runner`, `test_engine_light` and
+`test_engine_effects` pass. The bottle now defaults to DXVK, so `run_engine_effects.py` gained `--wine-env` (as
+`run_motion_output.py` has) and its record and the `seam-engine-light` record were regenerated from this tree on
+wined3d (`commands.txt`). Fresh `build-fresh` d3d9.dll: `check_no_x87.py` PASS, 0 violations.
+Scripts and outputs: `verification/results/hdr-readback-skip/`.

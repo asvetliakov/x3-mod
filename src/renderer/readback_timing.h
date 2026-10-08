@@ -4,9 +4,10 @@
 namespace x3m::renderer {
 // Exhaustive CPU envelope of the double-buffered meter readback: LockRect of
 // the surface the previous latch filled (including validation; Lock, logged as
-// readback_lock_us, also includes the meter_event_ready GetData poll), tile
-// extraction + UnlockRect, the GetRenderTargetData that fills the other
-// surface for the next latch (pending-slot retirement included), statistics +
+// readback_lock_us, also includes the lock gate's GetData poll, alone on a
+// skipped latch), tile extraction + UnlockRect, the GetRenderTargetData that
+// fills the other surface for the next latch with its query's Issue
+// (pending-slot retirement included), statistics +
 // adaptation. Phases may close in any order; adjacent boundaries share a
 // clock; any failed/backward clock invalidates all buckets, so a partial
 // measurement cannot masquerade as the readback total.

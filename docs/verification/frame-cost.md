@@ -114,7 +114,8 @@ cost stays inside the difference.
 ## HDR readback lock: GPU wait, not a regression (triage 2026-09-27)
 
 (2026-10-08: the readback is now double-buffered and `readback_transfer_lock_us` is split into `readback_copy_us`
-and `readback_lock_us`, with `meter_event_ready`; see `docs/verification/hdr-scene-path.md`. The figures below
+and `readback_lock_us`, with `meter_event_ready` (since the lock gate: 1 locked, 0 skipped because the copy was still
+pending, 2 locked by the 16-skip cap, -1 no lock or no query) and `meter_skips`; see `docs/verification/hdr-scene-path.md`. The figures below
 are the old combined span.)
 
 **What the span is.** `readback_transfer_lock_us` brackets only `GetRenderTargetData(chain_ring_[slot] ->

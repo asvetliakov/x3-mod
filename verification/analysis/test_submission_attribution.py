@@ -39,9 +39,13 @@ class SubmissionAttribution(unittest.TestCase):
         self.assertLess(body.index('exposure_.step('), body.index('ReadbackTiming::StatisticsAdapt'))
         self.assertIn('r.ticks_readback = r.readback_timing.total();', body)
         self.assertIn('if (locking && SUCCEEDED(lock_result)) {\n            // Non-finite', body)
-        # The diagnostic poll never flushes and precedes the lock.
-        self.assertIn('meter_event_->GetData(&done, sizeof done, 0)', body)
-        self.assertLess(body.index('meter_event_->GetData('), body.index('->LockRect('))
+        # The lock gate: the poll of the copy's own query never flushes and
+        # precedes the lock; the query is issued right after the copy.
+        self.assertIn('readback_query_[lock_slot]->GetData(&done, sizeof done, 0)', body)
+        self.assertLess(body.index('readback_query_[lock_slot]->GetData('), body.index('->LockRect('))
+        self.assertLess(body.index('GetRenderTargetData)(device_'), body.index('readback_query_[copy_slot]->Issue(D3DISSUE_END)'))
+        self.assertLess(body.index('readback_query_[copy_slot]->Issue(D3DISSUE_END)'), body.index('ReadbackTiming::Copy'))
+        self.assertIn('meter_skips_ >= kMeterSkipCap', body)
 
 if __name__ == '__main__':
     unittest.main()

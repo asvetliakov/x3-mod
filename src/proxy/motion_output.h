@@ -378,6 +378,8 @@ struct MotionHdrCounters {
     bool tonemap = false, fallback = false, stepped = false;
     HRESULT tonemap_draw = S_FALSE, meter = S_FALSE, readback = S_FALSE;
     renderer::ReadbackTiming readback_timing{};
+    int meter_event_ready = -1;   // the latch's lock gate (renderer::HdrFrameBegin)
+    std::uint32_t meter_skips = 0; // its consecutive skipped latches
     std::uint64_t meter_ticks = 0, readback_ticks = 0;
     // Post-resolve sharpen: the last write-back's RCAS verdict and whether a
     // sharpened draw fell back to the unsharpened program this frame.

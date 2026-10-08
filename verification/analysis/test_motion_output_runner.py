@@ -58,6 +58,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
         automatic = {'seam-hdr-exposure', 'seam-hdr-exposure-offset', 'seam-ownership-hdr-exposure',
                      'seam-hdr-tonemap-fault', 'seam-hdr-meter-selftest-unlock', 'seam-hdr-tonemap-shader-absent',
                      'seam-taa-hdr-tonemap-auto', 'seam-taa-hdr-tonemap-fault'}
+        automatic |= {'seam-hdr-meter-pending', 'seam-hdr-meter-pending-cap'}  # the readback lock gate's forced-pending scripts (2026-10-08)
         automatic |= {f'bench-{size}-hdr-tonemap-taa-{suffix}' for size in ('1280x768', '5120x1440')
                       for suffix in ('off', 'on', 'sharpen-on')}
         manual = {f'seam-hdr-ramp-{suffix}': '0' for suffix in ('none', 'golden', 'punchy', 'decode-none', 'decode-srgb', 'clamp4', 'identity',
@@ -85,7 +86,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        **{f'seam-bolt-far-flag{s}': '0' for s in ('', '-r32f', '-off')}})  # bolts through the TAA: the RT2.g flag
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (121, 14, 67))  # + seam-engine-light (the hull light seam, no exposure mode; 2026-10-03)  # + seam-log-tiers-emitters (the light-map script, no exposure mode; 2026-09-27)  # + seam-bolt-far-flag{,-r32f,-off} (2026-09-26)  # + seam-bolt-single-copy{,-off,-late,-behind,-empty,-nullps} (2026-09-26)  # + seam-bolt-copy-hash (2026-09-26)  # + seam-exit-path (the hostile thin-vote script, no exposure mode; 2026-09-26)  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (123, 16, 67))  # + seam-hdr-meter-pending(-cap) (auto; 2026-10-08)  # + seam-engine-light (the hull light seam, no exposure mode; 2026-10-03)  # + seam-log-tiers-emitters (the light-map script, no exposure mode; 2026-09-27)  # + seam-bolt-far-flag{,-r32f,-off} (2026-09-26)  # + seam-bolt-single-copy{,-off,-late,-behind,-empty,-nullps} (2026-09-26)  # + seam-bolt-copy-hash (2026-09-26)  # + seam-exit-path (the hostile thin-vote script, no exposure mode; 2026-09-26)  # 110 before seam-thin-vote-far-on-source-{both,screen} went with X3M_TAA_THIN_REGION_SOURCE (2026-09-25)  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:

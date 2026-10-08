@@ -682,6 +682,13 @@ CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=Tr
 CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX)),
           case('seam-hdr-meter-selftest-unlock', 'hdrtonemapfault', hdr=True, hdr_fault='16', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX)),
           case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX))]
+# The latch's readback poll forced pending (seam fault 17, X3M_FIXTURE_METER_PENDING=first,count,frames: the poll of
+# `count` latches from frame `first` reports S_FALSE): a short range skips and resumes on the held copy, a range past
+# kMeterSkipCap (16) takes exactly one capped lock.
+METER_PENDING_CASES = {'seam-hdr-meter-pending': (4, 5, 14), 'seam-hdr-meter-pending-cap': (4, 20, 28)}
+CASES += [case(name, 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16', X3M_HDR_EV_MAX=RECORD_EV_MAX, X3M_MOTION_FRAME_LOG='1',
+                                                              X3M_FIXTURE_METER_PENDING=','.join(map(str, script))))
+          for name, script in METER_PENDING_CASES.items()]
 CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True, hdr_env=dict(AGX_AUTO, X3M_MOTION_FRAME_LOG='4')) for size in BENCH_SIZES for state in ('off', 'on')]  # frame lines every 4 frames: the adapted state of a timed frame
 # FP16 HDR scene path, stage 3 (TAA on HDR): the resolve consumes the FP16
 # scene target and the write-back presents tonemap(resolve(HDR)). The HDR
@@ -5870,6 +5877,80 @@ def validate_hdrtonemapfault_taa(name, text, trace, directory, hdr_env):
             'taa_frames': {fr: {k: f[k] for k in ('taa_resolved', 'taa_history', 'taa_result', 'taa_hdr', 'taa_k')} for fr, f in frames.items()}}
 
 
+HDR_METER_SKIP_CAP = 16  # hdr_pass.h kMeterSkipCap
+
+
+def meter_pending_expectations(first, count, frames):
+    """Per frame (stepped, meter_event_ready, meter_skips) of the forced-pending script, replaying the latch's decision:
+    frame 0 has nothing to lock, frame 1 only copies (no lock: -1), every later latch locks the held copy unless its
+    poll is forced pending (fault 17 is consumed by each poll from frame `first` while `count` remain); a pending poll
+    skips (0, no step, the copy held) until kMeterSkipCap consecutive skips, then locks anyway (2)."""
+    expect, remaining, skips = {}, 0, 0
+    for frame in range(frames):
+        if frame == first:
+            remaining = count
+        if frame < HDR_METER_LAG:
+            expect[frame] = (0, -1, 0)
+            continue
+        pending = remaining > 0
+        remaining -= pending
+        if pending and skips < HDR_METER_SKIP_CAP:
+            skips += 1
+            expect[frame] = (0, 0, skips)
+        else:
+            expect[frame] = (1, 2 if pending else 1, skips)
+            skips = 0
+    return expect
+
+
+def validate_meter_pending(name, text, trace, hdr_env):
+    """The latch's readback poll forced pending (fault 17 for `count` latches from frame `first`): a pending latch does
+    not lock or step, keeps the EV and the step count of the frame before and holds its copy (the first latch after the
+    range steps at once on it: a dropped copy would need a fresh copy and lock, two latches later); at most
+    kMeterSkipCap consecutive skips, then one lock regardless (meter_event_ready=2); the session counters agree."""
+    lines = text.splitlines()
+    first, count, frames = (int(v) for v in hdr_env['X3M_FIXTURE_METER_PENDING'].split(','))
+    s2 = hdr_stage2_lines(trace)
+    tm = s2['tonemap'][0]
+    assert (tm['tonemap'], tm['meter'], tm['meter_reason'], tm['exposure']) == ('1', '1', 'ok', 'auto'), (name, tm)
+    assert sorted(s2['frames']) == list(range(frames)) and not s2['unwinds'] and not s2['disabled'], (name, sorted(s2['frames']))
+    faults = {int(fields(l)['frame']): int(fields(l)['fault']) for l in lines if l.startswith('HDR_TONEMAP_FAULT ')}
+    armed = [fields(l) for l in lines if l.startswith('HDR_TONEMAP_FAULT_ARMED ')]
+    assert faults == {f: 0 for f in range(frames)} and [(int(a['frame']), int(a['count'])) for a in armed] == [(first, count)], (name, faults, armed)
+    states = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('EXPOSURE_STATE ')}
+    expect = meter_pending_expectations(first, count, frames)
+    observed = {}
+    for frame in range(frames):
+        h = s2['frames'][frame]
+        observed[frame] = (int(h['stepped']), int(h['meter_event_ready']), int(h['meter_skips']))
+        assert observed[frame] == expect[frame], (name, frame, observed[frame], expect[frame], h)
+        assert h['meter'] == '00000000' and h['readback'] in ('00000000', '00000001') and h['tonemapped'] == '1', (name, frame, h)
+        if frame >= 1:
+            before, now = s2['frames'][frame - 1], h
+            held = expect[frame][0] == 0
+            # No step: the EV and the step count of the frame before, in the DLL's row and the fixture's state line.
+            assert (int(now['steps']) == int(before['steps']) + (not held)), (name, frame, before['steps'], now['steps'])
+            if held and frame >= HDR_METER_LAG:
+                assert now['ev'] == before['ev'] and states[frame]['ev'] == states[frame - 1]['ev'], (name, frame, before['ev'], now['ev'])
+                assert now['readback'] == '00000001', (name, frame, now)  # neither a lock nor a copy ran
+            elif frame >= HDR_METER_LAG:
+                assert now['readback'] == '00000000', (name, frame, now)
+                # The lock that ends a skip run steps on the held copy at once (the EV still moves this early in the script).
+                assert expect[frame - 1][1] != 0 or now['ev'] != before['ev'], (name, frame, before['ev'], now['ev'])
+    last = s2['frames'][frames - 1]
+    skips_total = sum(1 for v in expect.values() if v[1] == 0)
+    assert (int(last['meter_skip_total']), int(last['meter_poll_errors'])) == (skips_total, 0), (name, last)
+    cap_locks = [f for f, v in observed.items() if v[1] == 2]
+    assert len(cap_locks) == (1 if count > HDR_METER_SKIP_CAP else 0), (name, cap_locks)
+    resumed = next(f for f in range(first + 1, frames) if expect[f][1] == 1)
+    assert lines[-1].startswith('RESULT PASS'), (name, lines[-1])
+    return {'mode': 'hdrtonemapfault', 'checks': int(fields(lines[-1])['checks']), 'frames': frames,
+            'meter_pending': {'first': first, 'count': count}, 'skip_cap': HDR_METER_SKIP_CAP,
+            'skipped_frames': [f for f, v in observed.items() if v[1] == 0], 'cap_lock_frames': cap_locks, 'resumed_frame': resumed,
+            'meter_skip_total': skips_total, 'rows': {f: {'stepped': v[0], 'meter_event_ready': v[1], 'meter_skips': v[2], 'ev': s2['frames'][f]['ev'],
+                                                         'steps': int(s2['frames'][f]['steps'])} for f, v in observed.items()}}
+
+
 def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=None):
     """The tonemap ladder: a failed tonemap draw takes the identity draw (one
     hdr_unwind=tonemap line, recheck at the next latch), a failed meter chain
@@ -5883,6 +5964,8 @@ def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=No
     assert lines[-1].startswith('RESULT PASS'), (name, lines[-1])
     if mode_line['taa'] == '1':
         return validate_hdrtonemapfault_taa(name, text, trace, directory, hdr_env)
+    if 'X3M_FIXTURE_METER_PENDING' in hdr_env:
+        return validate_meter_pending(name, text, trace, hdr_env)
     terminal = fields(lines[-1])
     params = hdr_env_params(hdr_env)
     s2 = hdr_stage2_lines(trace)
