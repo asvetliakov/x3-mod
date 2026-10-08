@@ -851,3 +851,14 @@ Issue placement), `test_hdr_display_snapshot`, `test_motion_output_runner`, `tes
 `run_motion_output.py` has) and its record and the `seam-engine-light` record were regenerated from this tree on
 wined3d (`commands.txt`). Fresh `build-fresh` d3d9.dll: `check_no_x87.py` PASS, 0 violations.
 Scripts and outputs: `verification/results/hdr-readback-skip/`.
+
+2026-10-09: the DXVK teardown crash above (exit 5, call to 0x74666f73) is fixed in the proxy. Cause (M,
+`verification/results/dxvk-teardown-crash/witness.txt`): DXVK's final `Release` runs its deleting destructor through
+the object's vtable pointer (slot 135 of `D3D9DeviceEx`), which still pointed at the proxy's 119-slot copy.
+`Hooks::release_original` (`src/proxy/capture.cpp`) now writes the backend's table back around a Release whose
+caller holds the last reference and reinstalls the copy if the count stays above zero; device, factory, query and
+state-block releases use it. On DXVK 1.10.3 (bottle X3, proxy sha256 `bc24f6ef…`, M): `run_state_hook_benchmark.py`
+exits 0 with all four cases, 0 fault rows in its wine log, and each proxy case logs `device_destroy` with 0
+`exception` rows; `run_d3d9_backend_smoke.py --d3d9 <proxy> --d3d9-order n,b --no-sweep` exits 0, 22 checks 0 failed,
+`device_hooked`/`device_destroy` and 0 `exception` rows. Host: `test_capture_vtable_release` (5 scenarios, 14 checks;
+the old plain forward fails 8 of them). Script: `verification/results/dxvk-teardown-crash/fix_check.sh`.

@@ -281,6 +281,10 @@ struct Hooks {
     template <class Function> Function get(std::size_t slot) const {
         return reinterpret_cast<Function>(original[slot]);
     }
+    // Production writes the backend vtable back around a possibly final Release; the double
+    // has no vtable pointer, so the forward is plain here (vtable mechanics:
+    // test_capture_vtable_release.py).
+    template <class T> ULONG release_original(T* object) { return get<ULONG(WINAPI*)(T*)>(2)(object); }
 };
 struct Device : Hooks {
     D3DCAPS9 caps{};

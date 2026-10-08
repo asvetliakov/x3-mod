@@ -666,6 +666,21 @@ the first pipeline of the process); PR #20 passed it in every one of its 5 runs 
 `depth_decode.hlsl`, so informational). Bundle at the end: MoltenVK 1.4.2 `aef00b13…` and the marked PR #20
 `a5005d1f…`; backup directory unchanged apart from the `RESTORE.sh` comment.
 
+**2026-10-09: proxy teardown on DXVK, cause and fix.** Fixture processes that loaded the proxy over DXVK ended
+with exit 5 after their last frame (execute fault at 0x74666f73; recorded as a pre-existing backend difference in
+[hdr-scene-path.md](../verification/hdr-scene-path.md)). The cause was in the proxy, not DXVK (M,
+`verification/results/dxvk-teardown-crash/witness.txt`): the proxy hooks an object by pointing it at a private copy
+of the documented interface slots (device 119 or 134, factory 17 or 22, query 8, state block 6), and a C++
+implementation's final `Release` runs `delete this` through the object's vtable pointer at a slot past the
+interface (DXVK's `D3D9DeviceEx` deleting destructor is slot 135), so it read past the copy. wined3d's C objects
+have no such slot. Native Windows d3d9 is also C++, so the fault applies there too (I). Fix (`Hooks::release_original`,
+`src/proxy/capture.cpp`): the hook obtains the caller's count from a probe AddRef/Release pair (Release's
+documented return value). Only when the caller holds the last reference does it write the backend's own table back,
+forward the Release, and reinstall the copy if the returned count stays above zero. The copies still hold only the
+known slots and are never padded to a backend's private layout, and a live object keeps its hooks throughout.
+After the fix, both the state-hook benchmark and the backend smoke fixture exit 0 through the proxy on DXVK 1.10.3
+(M, [hdr-scene-path.md](../verification/hdr-scene-path.md) ledger, 2026-10-09).
+
 ### Pipeline cost: shader compile versus per-state pipelines (2026-10-08, shader warm-up decision)
 
 Question: is a first-use stall the shader compile (once per program) or the pipeline (again per blend /

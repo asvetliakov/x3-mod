@@ -446,6 +446,18 @@ namespace {
 // Each object owns a private copy of the backend vtable. We don't patch shared
 // executable pages, wrap resources, or change IUnknown identity. Ex tails are
 // retained if supported, even though this first capture implementation targets 9.
+//
+// The copy holds only the documented interface slots (IDirect3D9[Ex] 17/22,
+// IDirect3DDevice9[Ex] 119/134, IDirect3DQuery9 8, IDirect3DStateBlock9 6);
+// whatever a C++ implementation keeps past them (DXVK's D3D9DeviceEx has its
+// destructors at slots 134/135) is private and never copied or padded for. Such
+// an implementation's final Release runs its deleting destructor through the
+// object's vtable pointer, so it must find the backend's own table there: read
+// through our shorter copy it reads past the end and calls garbage (the DXVK
+// fixture teardown fault at 0x74666f73, verification/results/dxvk-teardown-crash/
+// witness.txt; wined3d's C objects have no such slot). release_original therefore
+// writes `original` back around a Release that can be the last one and reinstalls
+// the copy when the returned count shows the object is still alive.
 struct Hooks {
     void** original;
     std::vector<void*> table;
@@ -454,8 +466,31 @@ struct Hooks {
         table.assign(original, original + size);
     }
     void install(void* object) { *static_cast<void***>(object) = table.data(); }
+    void restore(void* object) const { *static_cast<void***>(object) = original; }
     template <typename Fn> Fn get(size_t slot) const { return reinterpret_cast<Fn>(original[slot]); }
     template <typename Fn> void set(size_t slot, Fn fn) { table[slot] = reinterpret_cast<void*>(fn); }
+    // Forwards one application Release (slot 2) and returns the backend's count.
+    // Called with the hook mutex held, which every hooked Release of a proxied
+    // object takes. A probe AddRef/Release pair (our extra reference keeps the
+    // probe Release non-final) yields the caller's count from Release's own
+    // return value; only when it is 1 is the backend table written back for the
+    // forwarded Release, so a live object never loses its hooks to a concurrent
+    // caller and the window opens only while the caller holds the last reference.
+    // Nested Releases of other proxied objects from inside the backend destructor
+    // take their own hooks re-entrantly (recursive mutex); a nested Release of this
+    // object during the window reaches the backend directly. The count returned to
+    // the application is the forwarded Release's, unchanged.
+    template <typename T> ULONG release_original(T* object) {
+        const auto add_ref = get<ULONG(WINAPI*)(T*)>(1);
+        const auto release = get<ULONG(WINAPI*)(T*)>(2);
+        add_ref(object);
+        const ULONG caller = release(object);
+        if (caller != 1) return caller ? release(object) : 0; // 0: the caller held no reference; already gone
+        restore(object);
+        const ULONG refs = release(object);
+        if (refs) install(object); // revived meanwhile (a backend-internal AddRef): keep the hooks armed
+        return refs;
+    }
 };
 struct CompositorInvocation;
 struct Device : Hooks {
@@ -1387,7 +1422,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
             }
         }
         cpu.before_original();
-        refs = fn(d);
+        refs = ctx.release_original(d); // can be final: the backend's table goes back first (Hooks)
         cpu.after_original();
         if (!refs) {
             game_phases::invalidate_device();
@@ -2573,9 +2608,8 @@ ULONG WINAPI query_release(IDirect3DQuery9* query) {
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& hooks = *queries.at(query);
-    auto fn = hooks.get<ULONG(WINAPI*)(IDirect3DQuery9*)>(2);
     cpu.before_original();
-    const ULONG refs = fn(query);
+    const ULONG refs = hooks.release_original(query); // the final one releases the device too (nested release_device)
     cpu.after_original();
     if (!refs) {
         // An open query released without END no longer changes with draws.
@@ -3124,9 +3158,9 @@ ULONG WINAPI stateblock_release(IDirect3DStateBlock9* block) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
-    auto fn = stateblocks.at(block)->get<ULONG(WINAPI*)(IDirect3DStateBlock9*)>(2);
+    auto& hooks = *stateblocks.at(block);
     cpu.before_original();
-    const ULONG refs = fn(block);
+    const ULONG refs = hooks.release_original(block);
     cpu.after_original();
     if (!refs) stateblocks.erase(block);
     return refs;
@@ -3873,7 +3907,7 @@ ULONG WINAPI release_factory(IDirect3D9* d) {
     {
         HookGuard lock;
         cpu.before_original();
-        refs = factories.at(d)->get<ULONG(WINAPI*)(IDirect3D9*)>(2)(d);
+        refs = factories.at(d)->release_original(d);
         cpu.after_original();
         if (!refs) factories.erase(d);
     }
