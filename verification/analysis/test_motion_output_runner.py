@@ -497,25 +497,32 @@ class MotionOutputRunnerTests(unittest.TestCase):
 
     @staticmethod
     def engine_light_output():
-        """Synthetic seam-engine-light report and trace: frames 0-1 unlit, 2-3 lit, Reset, 4-8 lit."""
+        """Synthetic seam-engine-light report and trace (the 13-frame protocol of 2026-10-09): frames 0-1 unlit, 2-3 lit,
+        Reset, 4-9 lit with one plate, the second jet (node-sourced, hidden by the drive until frame 9) a second plate
+        from frame 10 on; the jets' root walked from frame 2's boundary on."""
         rows = []
-        for f in range(9):
-            lit = f >= 2
+        for f in range(13):
+            lit, walked, second = f >= 2, f >= 2, f >= 10
             rows.append(f'ENGINE_LIGHT frame={f + 1} step={f} reset={int(f >= 4)} records=1 suppressed=1 ships=1 nodes={int(f >= 2)} '
                         f'candidates={int(lit)} draws_lit={int(lit)} no_twin=0 no_rows=0 bound_unlit=202 bound_lit={"102" if lit else "202"} '
                         f'lit_after_unlit=0 sentinel_kept=1 constant_error={"1e-07" if lit else "0"} constants=0 '
                         f'lit_samples={900 if lit else 0} visible={1500 if lit else 0} max_relative={0.004 if lit else 0} '
-                        f'zero={400 if lit else 0} zero_differ=0 not_brighter=0')
+                        f'zero={0 if second else 400 if lit else 0} zero_differ=0 not_brighter=0 '
+                        f'node_records={int(second)} node_dupes={int(walked)} node_hidden={int(walked and not second)} '
+                        f'node_roots={int(walked)} node_walked={int(walked)} plates_max={2 if second else 1 if lit else 0} '
+                        f'tier={int(second)} plate_error={"1e-07" if second else "0"} second_samples={1176 if second else 0} '
+                        f'band={49 if second else 0} held=0 hold_walked=0')
         text = '\n'.join(['ENGINE_LIGHT_TWINS hull=3 effects=0 total=6'] + rows[:4] + ['RESET PASS'] + rows[4:] +
-                         ['ENGINE_LIGHT_RESULT lit_frames=7 checked_images=7 first_lit_after_reset=1 worst_relative=0.004 '
-                          'worst_constant=1e-07 visible=10500 zero=2800 zero_differ=0 unlit_differ=0'])
+                         ['ENGINE_LIGHT_RESULT lit_frames=11 checked_images=11 first_lit_after_reset=1 worst_relative=0.004 '
+                          'worst_constant=1e-07 visible=16500 zero=3200 zero_differ=0 unlit_differ=0 two_plate_frames=3'])
         trace = ['ps3_slot_budget device=1 ps30_slots=512 budget=32768 rule=spec_minimum',
                  'engine_light_mode device=1 setting=on status=ok mode=on requested=1 reason=requested',
                  'engine_light_variant device=1 original=7c83ed50c9894e44 created=07 refused=00 mismatched=00 failed=00 words_max=1500 '
                  'slots_max=900 slot_budget=32768 depth=1']
         trace += [f'engine_light_frame device=1 frame={f} ships=1 ships_drawn={int(f >= 2)} nodes={int(f >= 2)} candidates={int(f >= 3)} '
-                  f'draws_lit={int(f >= 3)} no_twin=0 no_rows=0 twins=6 plates=1,0,0,0,0,0,0,0 plates_more=0 plates_max=1 plates_none=0 '
-                  f'unfloored=0 plates_dropped=0' for f in range(1, 9)]
+                  f'draws_lit={int(f >= 3)} no_twin=0 no_rows=0 twins=6 plates={"0,1,0,0,0,0,0,0" if f >= 11 else "1,0,0,0,0,0,0,0"} '
+                  f'plates_more=0 plates_max={2 if f >= 11 else 1} plates_none=0 unfloored=0 plates_dropped=0 held=0 hold_walked=0'
+                  for f in range(1, 13)]
         return text, '\n'.join(trace)
 
     def test_engine_light_seam_case_and_validator(self):
@@ -526,7 +533,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
         self.assertEqual((env['X3M_ENGINE_EFFECTS'], env['X3M_ENGINE_LIGHT'], env['X3M_DEBUG'], env['X3M_LINEAR_MATERIALS']), ('plumes', 'on', '1', '0'))
         text, trace = self.engine_light_output()
         result = runner.validate_engine_light_seam('host', text, trace)
-        self.assertEqual((result['lit_frames'], result['zero_differ'], result['log_rows']['frames_with_candidates']), (7, 0, 6))
+        self.assertEqual((result['lit_frames'], result['zero_differ'], result['two_plate_frames'], result['log_rows']['frames_with_candidates']),
+                         (11, 0, 3, 10))
         bad = [(text.replace('bound_lit=102', 'bound_lit=202', 1), trace),                      # a lit draw without the twin
                (text.replace('bound_unlit=202', 'bound_unlit=102', 1), trace),                  # the unlit draw on the twin
                (text.replace('sentinel_kept=1', 'sentinel_kept=0', 1), trace),                  # an upload on the unlit draw
@@ -536,6 +544,14 @@ class MotionOutputRunnerTests(unittest.TestCase):
                (text.replace('step=1 reset=0 records=1 suppressed=1 ships=1 nodes=0 candidates=0 draws_lit=0',
                              'step=1 reset=0 records=1 suppressed=1 ships=1 nodes=0 candidates=1 draws_lit=1', 1), trace),  # lit a frame early
                (text.replace('RESET PASS\n', '', 1), trace),
+               # Node-sourced nozzles: the second jet's record missing, its plate's law off, the hold engaged, the
+               # root not walked, the summary short of a two-plate frame.
+               (text.replace('node_records=1', 'node_records=0', 1), trace),
+               (text.replace('plate_error=1e-07', 'plate_error=0.01', 1), trace),
+               (text.replace('second_samples=1176', 'second_samples=10', 1), trace),
+               (text.replace('held=0 hold_walked=0', 'held=1 hold_walked=0', 1), trace),
+               (text.replace('node_walked=1', 'node_walked=0', 1), trace),
+               (text.replace('two_plate_frames=3', 'two_plate_frames=2', 1), trace),
                (text, trace.replace('created=07', 'created=03', 1)),
                (text, trace.replace('mismatched=00', 'mismatched=04', 1)),
                (text, trace.replace('candidates=1 draws_lit=1 no_twin=0', 'candidates=1 draws_lit=0 no_twin=1', 1)),
@@ -544,7 +560,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
                (text, trace.replace('slots_max=900', 'slots_max=400', 1)),                    # no twin above the old 512
                (text, trace.replace('slot_budget=32768', 'slot_budget=512', 1)),
                (text, trace.replace('ps3_slot_budget device=1 ps30_slots=512 budget=32768 rule=spec_minimum\n', '', 1)),
-               (text, trace.replace('plates_max=1', 'plates_max=2'))]
+               (text, trace.replace('plates_max=1', 'plates_max=2')),                          # one-plate rows claiming two
+               (text, trace.replace('plates_max=2', 'plates_max=1'))]                          # no two-plate frame row
         for output, log in bad:
             with self.subTest(output=output != text, log=log != trace), self.assertRaises(AssertionError):
                 runner.validate_engine_light_seam('host', output, log)
