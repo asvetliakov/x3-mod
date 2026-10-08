@@ -1,0 +1,4 @@
+/tmp/x3-bottleX3-run21 engine_nodes n=32 med=3527.5 max=3657 tasks n=32 med=26295.0 max=26312 capture_frames []
+/tmp/x3-bottleX3-run22 engine_nodes n=42 med=3523.0 max=4141 tasks n=42 med=26263.5 max=26293 capture_frames [9488, 9489, 9490, 9491, 9492, 9493, 9494, 9495]
+/tmp/x3-bottleX3-run25 engine_nodes n=30 med=3513.0 max=3656 tasks n=30 med=26342.0 max=26357 capture_frames []
+/tmp/x3-bottleX3-run26 engine_nodes n=32 med=3522.5 max=3658 tasks n=32 med=26241.0 max=26258 capture_frames []

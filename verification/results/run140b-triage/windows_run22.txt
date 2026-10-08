@@ -1,0 +1,42 @@
+   300 draws=  55.6 dt=  8327 pre= 1591 views= 1423 submit= 1128 setup=  128 present= 5205
+   600 draws= 116.5 dt=  8479 pre= 2093 views= 1473 submit= 1167 setup=  132 present= 4670
+   900 draws= 197.9 dt= 13995 pre= 6156 views= 7103 submit= 4811 setup=  836 present=   55
+  1200 draws= 198.8 dt= 13467 pre= 5029 views= 7719 submit= 5269 setup=  960 present=   50
+  1500 draws= 203.0 dt= 14121 pre= 5133 views= 8177 submit= 5719 setup=  996 present=   53
+  1800 draws= 206.9 dt= 14480 pre= 5250 views= 8413 submit= 5884 setup=  988 present=   64
+  2100 draws= 177.5 dt= 12681 pre= 4821 views= 7253 submit= 4799 setup=  939 present=   58
+  2400 draws= 179.2 dt= 12698 pre= 4693 views= 7287 submit= 4772 setup=  947 present=   58
+  2700 draws= 162.4 dt= 11913 pre= 4575 views= 6654 submit= 4212 setup=  906 present=   60
+  3000 draws= 168.5 dt= 12715 pre= 5157 views= 6884 submit= 4316 setup=  963 present=   68
+  3300 draws= 172.8 dt= 13620 pre= 5394 views= 7514 submit= 4677 setup=  998 present=   76
+  3600 draws= 188.6 dt= 14546 pre= 5435 views= 8193 submit= 5246 setup=  992 present=   71
+  3900 draws= 210.2 dt= 15057 pre= 5372 views= 8863 submit= 5882 setup=  975 present=   53
+  4200 draws= 206.6 dt= 15280 pre= 5585 views= 8887 submit= 5850 setup=  949 present=   54
+  4500 draws= 196.9 dt= 13921 pre= 5245 views= 8056 submit= 5428 setup=  856 present=   76
+  4800 draws= 152.7 dt= 13609 pre= 5781 views= 7245 submit= 4489 setup=  881 present=   74
+  5100 draws= 121.2 dt= 14019 pre= 6996 views= 6230 submit= 3655 setup=  857 present=   69
+  5400 draws= 146.2 dt= 13496 pre= 6033 views= 6829 submit= 3976 setup=  826 present=   69
+  5700 draws= 211.4 dt= 15313 pre= 5492 views= 9016 submit= 6204 setup=  819 present=   68
+  6000 draws= 222.4 dt= 16280 pre= 5875 views= 9569 submit= 6464 setup=  995 present=   64
+  6300 draws= 188.7 dt= 15046 pre= 5769 views= 8398 submit= 5596 setup=  917 present=   62
+  6600 draws= 227.7 dt= 16422 pre= 5890 views= 9815 submit= 6557 setup= 1155 present=   64
+  6900 draws= 256.7 dt= 17291 pre= 5849 views=10645 submit= 7266 setup= 1083 present=   60
+  7200 draws= 237.3 dt= 16553 pre= 5557 views=10130 submit= 6841 setup=  819 present=   67
+  7500 draws= 176.9 dt= 15190 pre= 5766 views= 8657 submit= 5506 setup=  862 present=   66
+  7800 draws= 188.1 dt= 16113 pre= 6102 views= 9414 submit= 6013 setup= 1026 present=   70
+  8100 draws= 244.7 dt= 19782 pre= 6770 views=12255 submit= 8337 setup= 1309 present=   65
+  8400 draws= 262.8 dt= 22002 pre= 7981 views=13014 submit= 8985 setup= 1368 present=   74
+  8700 draws= 232.2 dt= 20707 pre= 8556 views=11183 submit= 7488 setup= 1191 present=   66
+  9000 draws= 181.3 dt= 19246 pre= 7861 views=10759 submit= 7001 setup= 1141 present=   73
+  9300 draws= 167.0 dt= 18486 pre= 7222 views=10454 submit= 6631 setup= 1198 present=   69
+  9600 draws= 171.2 dt= 18120 pre= 6692 views=10434 submit= 6702 setup= 1141 present=   73
+  9900 draws= 174.3 dt= 18385 pre= 6965 views=10532 submit= 6808 setup= 1141 present=   63
+ 10200 draws= 179.8 dt= 19492 pre= 7525 views=10981 submit= 7183 setup= 1162 present=   65
+ 10500 draws= 165.4 dt= 20899 pre= 8480 views=11538 submit= 7416 setup= 1233 present=   84
+ 10800 draws= 151.0 dt= 20400 pre= 8356 views=10927 submit= 6917 setup= 1177 present=   72
+ 11100 draws= 116.4 dt= 17975 pre= 7865 views= 8832 submit= 5000 setup= 1149 present=   62
+ 11400 draws= 109.4 dt= 16151 pre= 7601 views= 7568 submit= 4239 setup= 1013 present=   58
+ 11700 draws=  66.1 dt= 16268 pre= 8709 views= 6582 submit= 2992 setup= 1082 present=   67
+ 12000 draws= 211.7 dt= 19373 pre= 7436 views=11438 submit= 7655 setup= 1380 present=   61
+ 12300 draws= 275.6 dt= 18981 pre= 6379 views=11316 submit= 7719 setup= 1310 present=   60
+ 12600 draws= 152.9 dt=  8552 pre= 1773 views= 1536 submit= 1185 setup=  139 present= 4778

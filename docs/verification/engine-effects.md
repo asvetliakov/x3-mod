@@ -856,3 +856,8 @@ one more compare).
 ### 2026-10-09 Run 140 A flight 1 (run22, DXVK, build 1f702121…): nozzles fixed, frame time open
 
 User: engine lights and plumes OK, no flicker or disappearing at the screen edge; FPS felt lower. Triage [run140-triage](../../verification/results/run140-triage/) (measured): node_walk_us p50 33 / p95 69 / max 256 us, node_roots p50 2, node_records p50 0 / p95 10, overflow 0, held = 0 every frame (run21: 390 frames); plume stage 47 -> 56 us p50, no extra draws. Frame time: run22 dt p50 16 ms vs run21 13 ms; about 2 ms slower at matched draws early (160 draws: 13 vs 11 ms), 3-5 ms later (after frame 7200, at 66-245 draws: pre_render 6.8-8.7 ms, view_submit 6.8-8.3 ms); the gap sits in the game's own pre_render and views, not in any proxy row (the node source accounts for ~0.05 ms). Cause unknown; next: same-build A/B with `engine_nozzle_source = draw` on the same route (Run 140 B). F8 capture completed (8 frames, 507 ms spike, all readbacks hr 0). No errors.
+
+
+### 2026-10-09 Run 140 B (run25 draw / run26 node, same build, DXVK): node source is free; the run22 slowdown is not reproduced
+
+Triage [run140b-triage](../../verification/results/run140b-triage/) (measured): dt p50 run25 13.6 ms, run26 13.0 ms, run21 13.8 ms; at matched draws node is 0-1 ms faster than draw (noise), both at run21's level; node_walk_us p50 27 / p95 46 us, node_records non-zero on 4,157 of 9,314 frames, stage_us equal (47.8 vs 47.6). Run22's rise (13 -> 20 ms over 275 s, from frame ~5000, before the F8 captures, in pre_render, views and view_setup together, census flat) is a long-session or host effect, not the build; cause open, not pursued. Run140 accepted; `engine_nozzle_source = node` stays the default.
