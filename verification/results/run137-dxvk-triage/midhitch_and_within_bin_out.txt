@@ -1,0 +1,42 @@
+run16: 33-50ms frames=36 clusters=23 20-33ms frames=619
+  795-796 n=2 dt_max=38.0 draws=197 tested=115 skipped=27 not_ready=0 drawn_late=1 unstable=0
+  889-893 n=5 dt_max=42.9 draws=201 tested=115 skipped=27 not_ready=0 drawn_late=11 unstable=0
+  905-905 n=1 dt_max=34.6 draws=195 tested=109 skipped=29 not_ready=0 drawn_late=3 unstable=0
+  1120-1120 n=1 dt_max=37.7 draws=202 tested=115 skipped=31 not_ready=0 drawn_late=1 unstable=0
+  1487-1487 n=1 dt_max=40.1 draws=207 tested=115 skipped=30 not_ready=0 drawn_late=1 unstable=0
+  3062-3062 n=1 dt_max=40.3 draws=177 tested=78 skipped=32 not_ready=0 drawn_late=0 unstable=0
+  3746-3746 n=1 dt_max=33.4 draws=212 tested=104 skipped=43 not_ready=0 drawn_late=1 unstable=0
+  4229-4229 n=1 dt_max=33.9 draws=199 tested=135 skipped=80 not_ready=0 drawn_late=0 unstable=0
+  4532-4532 n=1 dt_max=33.2 draws=260 tested=177 skipped=111 not_ready=0 drawn_late=1 unstable=0
+  4641-4641 n=1 dt_max=36.4 draws=250 tested=177 skipped=113 not_ready=0 drawn_late=0 unstable=0
+  4650-4652 n=2 dt_max=36.5 draws=250 tested=177 skipped=113 not_ready=0 drawn_late=0 unstable=0
+  4688-4688 n=1 dt_max=35.3 draws=250 tested=177 skipped=112 not_ready=0 drawn_late=0 unstable=0
+  4723-4725 n=3 dt_max=45.1 draws=250 tested=177 skipped=114 not_ready=0 drawn_late=2 unstable=0
+  4737-4737 n=1 dt_max=35.5 draws=250 tested=177 skipped=115 not_ready=0 drawn_late=0 unstable=0
+  4796-4798 n=2 dt_max=39.8 draws=250 tested=177 skipped=110 not_ready=0 drawn_late=1 unstable=0
+  4855-4855 n=1 dt_max=36.9 draws=250 tested=177 skipped=109 not_ready=0 drawn_late=1 unstable=0
+  4872-4876 n=3 dt_max=34.9 draws=255 tested=177 skipped=108 not_ready=0 drawn_late=3 unstable=0
+  4881-4886 n=3 dt_max=36.6 draws=251 tested=177 skipped=105 not_ready=0 drawn_late=2 unstable=0
+  5038-5038 n=1 dt_max=33.9 draws=222 tested=148 skipped=93 not_ready=0 drawn_late=0 unstable=0
+  5266-5266 n=1 dt_max=36.5 draws=229 tested=149 skipped=86 not_ready=0 drawn_late=2 unstable=0
+  6337-6337 n=1 dt_max=35.8 draws=272 tested=158 skipped=1 not_ready=0 drawn_late=0 unstable=92
+  8759-8759 n=1 dt_max=34.1 draws=218 tested=147 skipped=89 not_ready=0 drawn_late=3 unstable=0
+  9061-9061 n=1 dt_max=47.5 draws=219 tested=148 skipped=79 not_ready=0 drawn_late=2 unstable=0
+run15: 33-50ms frames=9 clusters=7 20-33ms frames=301
+  817-820 n=3 dt_max=38.5 draws=202 
+  824-824 n=1 dt_max=44.9 draws=202 
+  834-834 n=1 dt_max=48.6 draws=202 
+  1195-1195 n=1 dt_max=49.9 draws=201 
+  1513-1513 n=1 dt_max=49.9 draws=204 
+  5017-5017 n=1 dt_max=33.5 draws=256 
+  7043-7043 n=1 dt_max=48.7 draws=190 
+draws 160-179 by visible_tests: 20:53 p50=12.69 | 40:1021 p50=12.97 | 60:34 p50=13.65
+draws 160-179 by skipped: 20:956 p50=12.98 | 60:93 p50=12.41 | 80:39 p50=13.40
+draws 180-199 by visible_tests: 40:1095 p50=13.78 | 60:234 p50=14.22 | 80:308 p50=13.92
+draws 180-199 by skipped: 20:1016 p50=13.63 | 40:62 p50=13.47 | 60:218 p50=14.41 | 80:349 p50=14.50
+draws 200-219 by visible_tests: 40:651 p50=14.81 | 60:650 p50=15.48 | 80:689 p50=14.82 | 100:83 p50=15.16
+draws 200-219 by skipped: 20:1092 p50=15.12 | 40:213 p50=15.65 | 60:139 p50=15.67 | 80:418 p50=14.36 | 100:223 p50=14.70
+draws 220-239 by visible_tests: 20:68 p50=15.87 | 40:515 p50=15.40 | 60:468 p50=15.17 | 80:41 p50=16.27
+draws 220-239 by skipped: 20:66 p50=16.45 | 80:674 p50=15.25 | 100:328 p50=15.39 | 120:30 p50=16.37
+draws 240-259 by visible_tests: 20:73 p50=14.96 | 40:356 p50=15.67 | 60:824 p50=18.01 | 80:52 p50=16.94
+draws 240-259 by skipped: 80:116 p50=16.96 | 100:791 p50=17.93 | 120:395 p50=15.49

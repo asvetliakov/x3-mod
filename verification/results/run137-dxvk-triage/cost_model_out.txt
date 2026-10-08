@@ -1,0 +1,50 @@
+run16: frames<33ms=8892 non-cull skips (draws-issued-skipped) p50=12 max=52 min=0
+  fit dt ~ a + b*issued (draws>=120, n=7929): a=13.18 ms b=17.7 us/issued draw
+  fit dt ~ a + b*issued + c*tested: a=8.58 b=18.6 us/issued c=36.1 us/test
+  fit dt ~ a + b*draws + c*tested + d*skipped: a=4.15 b=53.9 us/draw c=7.5 us/test d=-12.5 us/skip
+run15: frames<33ms=8840 non-cull skips (draws-issued-skipped) p50=14 max=26 min=0
+  fit dt ~ a + b*issued (draws>=120, n=8625): a=6.07 ms b=42.8 us/issued draw
+run14: frames<33ms=7447 non-cull skips (draws-issued-skipped) p50=14 max=48 min=0
+  fit dt ~ a + b*issued (draws>=120, n=7296): a=7.81 ms b=33.3 us/issued draw
+matched app draws (bins of 20, frames<33 ms): dt p50 / mean
+  draws  40-59: run16 n= 353 p50= 8.48 mean= 9.05  run15 n= 215 p50= 8.33 mean= 8.38  run14 n= 151 p50= 8.32 mean= 8.42
+  draws 140-159: run16 n= 414 p50=12.50 mean=12.97  run15 n= 580 p50=11.73 mean=12.00  run14 n= 449 p50=12.68 mean=13.00
+  draws 160-179: run16 n=1124 p50=12.99 mean=13.50  run15 n=1465 p50=12.21 mean=12.69  run14 n=1531 p50=12.30 mean=12.59
+  draws 180-199: run16 n=1648 p50=13.90 mean=14.38  run15 n=1800 p50=13.56 mean=13.81  run14 n=1158 p50=12.70 mean=13.07
+  draws 200-219: run16 n=2090 p50=15.05 mean=15.71  run15 n=2464 p50=13.94 mean=14.34  run14 n=1535 p50=13.71 mean=13.95
+  draws 220-239: run16 n=1131 p50=15.39 mean=15.92  run15 n= 475 p50=15.13 mean=15.50  run14 n=1443 p50=15.02 mean=15.63
+  draws 240-259: run16 n=1310 p50=17.09 mean=17.97  run15 n=1266 p50=15.94 mean=16.56  run14 n=1168 p50=15.17 mean=15.51
+frame_phases windows (run16): frame, view_submit_p50, views_p50, present_p50, dt_p50 vs window mean tested/skipped/issued/draws
+    900 vs= 5682 views= 7744 present=  64 dt=14301 | tested=115.0 skipped= 29.0 issued=158.0 draws=195.3
+   1200 vs= 6263 views= 8486 present=  61 dt=14774 | tested=112.0 skipped= 30.2 issued=164.6 draws=201.2
+   1500 vs= 6786 views= 9075 present=  60 dt=14797 | tested=115.0 skipped= 29.9 issued=171.5 draws=208.4
+   1800 vs= 6452 views= 8684 present=  64 dt=14395 | tested=107.5 skipped= 30.5 issued=160.7 draws=198.5
+   2100 vs= 5158 views= 7454 present=  67 dt=12797 | tested= 78.0 skipped= 30.9 issued=132.6 draws=177.5
+   2400 vs= 5233 views= 7503 present=  63 dt=12774 | tested= 78.0 skipped= 31.2 issued=135.2 draws=180.5
+   2700 vs= 4804 views= 7123 present=  61 dt=12493 | tested= 78.0 skipped= 31.3 issued=119.5 draws=165.5
+   3000 vs= 4888 views= 7283 present=  58 dt=12750 | tested= 78.0 skipped= 31.5 issued=110.8 draws=178.2
+   3300 vs= 5205 views= 7784 present=  64 dt=13617 | tested= 78.0 skipped= 31.5 issued=113.4 draws=181.1
+   3600 vs= 6640 views= 9431 present=  60 dt=15631 | tested= 96.9 skipped= 36.9 issued=131.9 draws=205.2
+   3900 vs= 6652 views= 9393 present=  55 dt=15701 | tested=101.8 skipped= 42.6 issued=124.5 draws=206.3
+   4200 vs= 6457 views= 8922 present=  57 dt=15367 | tested=132.5 skipped= 76.8 issued=105.7 draws=200.9
+   4500 vs= 6633 views= 9032 present=  60 dt=15176 | tested=150.7 skipped= 89.9 issued=109.3 draws=214.1
+   4800 vs= 8309 views=10888 present=  63 dt=19590 | tested=177.1 skipped=111.7 issued=127.4 draws=251.7
+   5100 vs= 8004 views=10636 present=  64 dt=18252 | tested=166.5 skipped= 99.5 issued=128.8 draws=241.0
+   5400 vs= 6948 views= 9197 present=  60 dt=15226 | tested=148.5 skipped= 89.1 issued=123.7 draws=225.4
+   5700 vs= 8015 views=10434 present=  64 dt=17121 | tested=174.5 skipped=110.1 issued=127.9 draws=250.3
+   6000 vs= 6176 views= 8456 present=  63 dt=15223 | tested=128.8 skipped= 81.2 issued=100.1 draws=187.6
+   6300 vs= 2475 views= 4743 present=  51 dt=10720 | tested= 15.7 skipped=  4.9 issued= 68.1 draws= 83.6
+   6600 vs= 6566 views= 8895 present=  53 dt=15044 | tested=144.9 skipped= 86.6 issued=111.6 draws=219.2
+   6900 vs= 6943 views= 9119 present=  52 dt=14970 | tested=179.4 skipped=124.5 issued=107.1 draws=244.1
+   7200 vs= 7142 views= 9458 present=  49 dt=15170 | tested=171.9 skipped=110.9 issued=120.2 draws=244.0
+   7500 vs= 4228 views= 6681 present=  51 dt=12570 | tested= 63.9 skipped= 25.4 issued= 88.2 draws=120.6
+   7800 vs= 1919 views= 4027 present=  56 dt= 9959 | tested= 23.3 skipped= 10.2 issued= 62.6 draws= 77.6
+   8100 vs= 5625 views= 7773 present=  49 dt=13306 | tested=128.0 skipped= 83.5 issued= 96.8 draws=192.1
+   8400 vs= 4483 views= 6743 present=  51 dt=13536 | tested= 84.2 skipped= 29.0 issued=114.8 draws=170.1
+   8700 vs= 6205 views= 8211 present=  45 dt=14731 | tested=110.9 skipped= 67.5 issued=104.6 draws=191.3
+   9000 vs= 6524 views= 8694 present=  52 dt=14708 | tested=147.0 skipped= 87.7 issued=115.6 draws=222.1
+   9300 vs= 6806 views= 9153 present=  53 dt=15566 | tested=151.7 skipped= 81.9 issued=122.6 draws=215.1
+  window fit view_submit_p50 ~ a + b*issued + c*tested: a=848 b=16.5 us/issued c=27.5 us/test
+  window fit view_submit_p50 ~ a + b*draws + c*tested + d*skipped: a=-85 b=26.1 c=12.4 d=-7.5 us
+  run15 window fit view_submit_p50 ~ a + b*issued: a=-761 b=32.0 us/issued (n=29)
+  run14 window fit view_submit_p50 ~ a + b*issued: a=932 b=23.6 us/issued (n=24)

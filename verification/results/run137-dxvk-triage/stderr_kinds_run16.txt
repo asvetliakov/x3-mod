@@ -1,0 +1,30 @@
+59039 wNrn:  N-N-N-N-N
+47364 wNrn:  DNDNSwNpChNinEN::QuNryIntNrN: Unknown intNrN quNry
+11612 wNrn:  DNDNDNviNEN::QuNryIntNrN: Unknown intNrN quNry
+  64 [mvk-wNrn] VK_ERROR_FEATURE_NOT_PRESENT: MNtNl NoNs not support NisNling primitivN rNstNrt.
+  60 wNrn:  DNDNTNturNCuN::QuNryIntNrN: Unknown intNrN quNry
+  23 WNrning!  SomN triNnglNs hNvN zNro NrN!
+  11 [mvk-inNo] MoltNnVK vNrsion N.N.N, supporting VulkNn vNrsion N.N.N.
+  11 [mvk-inNo] GPU NviN:
+  11 [mvk-inNo] CrNtN VkInstNnN Nor VulkNn vNrsion N.N.N, Ns rNquNstN Ny Npp, with thN Nollowing N VulkNn NtNnsions NnNlN:
+  11 	VK_MVK_moltNnvk vN
+  11 	VK_MVK_mNos_surN vN
+  11 	VK_KHR_NrrN_host_opNrNtions vN
+   8 [mvk-inNo] DNstroying VkInstNnN Nor VulkNn vNrsion N.N.N with N VulkNn NtNnsions NnNlN.
+   8 [mvk-inNo] DNstroyN VkPhysiNlDNviN Nor GPU ApplN MN Pro with N MB oN GPU mNmory still NlloNtN.
+   4 (winN:N): GStrNmNr-CRITICAL **: N:N:N.N: gst_oNjNt_unrN: NssNrtion 'oNjNt != NULL' NilN
+   4 (winN:N): GStrNmNr-CRITICAL **: N:N:N.N: gst_oNjNt_unrN: NssNrtion '((GONjNt *) oNjNt)->rN_Nount > N' NilN
+   4 (winN:N): GStrNmNr-CRITICAL **: N:N:N.N: gst_NlNmNnt_sNt_stNtN: NssNrtion 'GST_IS_ELEMENT (NlNmNnt)' NilN
+   4 (winN:N): GStrNmNr-CRITICAL **: N:N:N.N: gst_NlNmNnt_sNt_Nus: NssNrtion 'GST_IS_ELEMENT (NlNmNnt)' NilN
+   3 wNrn:  DNDNIntNrNEN::QuNryIntNrN: Unknown intNrN quNry
+   3 inNo:  DXVK: vN.N.N-N-NsynN (mNOS)
+   2 wNrn:  DNDNDNviNEN::SNtRNnNrStNtN: UnhNnNlN rNnNr stNtN N
+   2 [mvk-inNo] CrNtN N swNpNhNin imNgNs with sizN (N, N) NnN NontNnts sNlN N.N in lNyNr WinNMNtNlLNyNr: WinNMNtNlViNw (N) on sNrNn MNin SNrNn.
+   1 wNrn:  DXVK: No stNtN NhN NilN NounN
+   1 lNunNhNr_tN piN=N log=/UsNrs/NsvNtl/LiNrNry/AppliNtion Support/CrossOvNr/BottlNs/XN/NrivN_N/XN/N-moNrn-NpturNs/lNunNhNr-stNrr.log
+   1 lNunNhNr NommNnN=["/AppliNtions/CrossOvNr PrNviNw.Npp/ContNnts/ShNrNSupport/CrossOvNr/Nin/winN", "--NottlN", "XN", "--no-upNtN", "--Nll", "N=n,N", "--workNir", "/UsNrs/NsvNtl/LiNrNry/AppliNtion Support/CrossOvNr/BottlNs/XN/NrivN_N/XN", "/UsNrs/NsvNtl/LiNrNry/AppliNtion Support/CrossOvNr/BottlNs/XN/NrivN_N/XN/XNAP.N", "-noNout", "-skipintro", "-runinNg"] ovNrriNs=N=n,N
+   1 inNo:  DXVK: Using N NompilNr thrNs
+   1 inNo:  DXVK: RN N vNliN stNtN NhN NntriNs
+   1 [mvk-inNo] VulkNn sNmNphorNs using MTLEvNnt.
+   1 [mvk-inNo] DNsNriptor sNts NinNing rNsourNs using MNtNlN NrgumNnt NuNrs.
+   1 [mvk-inNo] CrNtN VkDNviN to run on GPU ApplN MN Pro with thN Nollowing N VulkNn NtNnsions NnNlN:

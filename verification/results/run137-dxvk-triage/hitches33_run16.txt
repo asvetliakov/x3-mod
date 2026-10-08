@@ -1,0 +1,63 @@
+load_frame=537 inflight=547-9509 over_33ms=62 in_capture=8 next_to_capture(+-1)=2 with_slow_row=29
+frame=9298 dt_ms=2384 capture=0 lod_switch=0 lock_us=0.0 meter_ready=-1 slow:pre_render_us=2378.9ms views_us=3.9ms view_submit_us=3.4ms
+frame=603 dt_ms=1374 capture=0 lod_switch=0 lock_us=9.3 meter_ready=1 slow:pre_render_us=1366.3ms views_us=7.7ms view_submit_us=5.6ms
+frame=9297 dt_ms=791 capture=0 lod_switch=0 lock_us=0.0 meter_ready=-1 slow:pre_render_us=791.5ms present_us=0.1ms views_us=0.0ms
+frame=4749 dt_ms=487 capture=1 lod_switch=0 lock_us=25.9 meter_ready=1 slow:scene_end_us=221.4ms views_us=202.9ms view_submit_us=154.3ms
+frame=4748 dt_ms=479 capture=1 lod_switch=0 lock_us=25.7 meter_ready=1 slow:scene_end_us=226.0ms views_us=184.7ms view_submit_us=142.8ms
+frame=4745 dt_ms=478 capture=1 lod_switch=0 lock_us=9.2 meter_ready=1 slow:scene_end_us=257.5ms views_us=205.7ms view_submit_us=160.0ms
+frame=4747 dt_ms=473 capture=1 lod_switch=0 lock_us=12.5 meter_ready=1 slow:scene_end_us=246.6ms views_us=174.9ms view_submit_us=135.3ms
+frame=4746 dt_ms=460 capture=1 lod_switch=0 lock_us=8.5 meter_ready=1 slow:
+frame=4751 dt_ms=425 capture=1 lod_switch=0 lock_us=9.1 meter_ready=1 slow:
+frame=4752 dt_ms=423 capture=1 lod_switch=0 lock_us=9.2 meter_ready=1 slow:
+frame=4750 dt_ms=422 capture=1 lod_switch=0 lock_us=13.1 meter_ready=1 slow:
+frame=900 dt_ms=391 capture=0 lod_switch=0 lock_us=12.8 meter_ready=1 slow:pre_render_us=382.1ms views_us=9.2ms view_submit_us=6.6ms
+frame=901 dt_ms=283 capture=0 lod_switch=0 lock_us=53.1 meter_ready=1 slow:pre_render_us=273.0ms views_us=9.5ms view_submit_us=6.9ms
+frame=2705 dt_ms=238 capture=0 lod_switch=0 lock_us=9.9 meter_ready=1 slow:pre_render_us=228.2ms views_us=9.2ms view_submit_us=5.7ms
+frame=902 dt_ms=237 capture=0 lod_switch=0 lock_us=6.9 meter_ready=1 slow:pre_render_us=228.7ms views_us=7.9ms view_submit_us=5.7ms
+frame=899 dt_ms=204 capture=0 lod_switch=0 lock_us=9.7 meter_ready=1 slow:pre_render_us=193.7ms views_us=9.6ms view_submit_us=7.2ms
+frame=903 dt_ms=166 capture=0 lod_switch=0 lock_us=27.1 meter_ready=1 slow:pre_render_us=153.8ms views_us=11.8ms view_submit_us=7.7ms
+frame=898 dt_ms=156 capture=0 lod_switch=0 lock_us=8.7 meter_ready=1 slow:pre_render_us=146.9ms views_us=9.2ms view_submit_us=6.8ms
+frame=897 dt_ms=139 capture=0 lod_switch=0 lock_us=9.9 meter_ready=1 slow:
+frame=4995 dt_ms=134 capture=0 lod_switch=0 lock_us=27.0 meter_ready=1 slow:views_us=113.2ms view_submit_us=51.7ms view_setup_us=9.7ms
+frame=9395 dt_ms=127 capture=0 lod_switch=0 lock_us=0.0 meter_ready=-1 slow:
+frame=656 dt_ms=114 capture=0 lod_switch=0 lock_us=7.5 meter_ready=1 slow:
+frame=5496 dt_ms=114 capture=0 lod_switch=0 lock_us=14.9 meter_ready=1 slow:pre_render_us=99.2ms views_us=14.6ms view_submit_us=10.8ms
+frame=1615 dt_ms=112 capture=0 lod_switch=0 lock_us=28.7 meter_ready=1 slow:views_us=95.4ms view_submit_us=44.8ms view_setup_us=7.5ms
+frame=896 dt_ms=105 capture=0 lod_switch=0 lock_us=8.5 meter_ready=1 slow:
+frame=904 dt_ms=94 capture=0 lod_switch=0 lock_us=7.7 meter_ready=1 slow:pre_render_us=86.3ms views_us=8.4ms view_submit_us=6.1ms
+frame=4638 dt_ms=88 capture=0 lod_switch=0 lock_us=9.9 meter_ready=1 slow:
+frame=895 dt_ms=73 capture=0 lod_switch=0 lock_us=9.1 meter_ready=1 slow:
+frame=4996 dt_ms=70 capture=0 lod_switch=1 lock_us=308.3 meter_ready=1 slow:pre_render_us=60.6ms views_us=12.8ms view_submit_us=7.8ms
+frame=6131 dt_ms=69 capture=0 lod_switch=0 lock_us=5.2 meter_ready=0 slow:views_us=64.4ms view_submit_us=62.3ms pre_render_us=4.6ms
+frame=1616 dt_ms=67 capture=0 lod_switch=0 lock_us=48.3 meter_ready=1 slow:pre_render_us=58.0ms views_us=11.4ms view_submit_us=7.2ms
+frame=1199 dt_ms=61 capture=0 lod_switch=0 lock_us=7.9 meter_ready=1 slow:
+frame=4744 dt_ms=56 capture=0 lod_switch=0 lock_us=10.4 meter_ready=1 slow:
+frame=4753 dt_ms=55 capture=0 lod_switch=0 lock_us=9.2 meter_ready=1 slow:
+frame=894 dt_ms=52 capture=0 lod_switch=0 lock_us=8.1 meter_ready=1 slow:
+frame=9061 dt_ms=47 capture=0 lod_switch=0 lock_us=7.5 meter_ready=1 slow:pre_render_us=38.2ms views_us=8.7ms view_submit_us=6.4ms
+frame=4723 dt_ms=45 capture=0 lod_switch=0 lock_us=25.6 meter_ready=1 slow:
+frame=893 dt_ms=42 capture=0 lod_switch=0 lock_us=8.1 meter_ready=1 slow:
+frame=1487 dt_ms=40 capture=0 lod_switch=0 lock_us=61.6 meter_ready=1 slow:pre_render_us=28.8ms views_us=10.6ms view_submit_us=8.1ms
+frame=3062 dt_ms=40 capture=0 lod_switch=0 lock_us=11.4 meter_ready=1 slow:pre_render_us=30.2ms views_us=9.4ms view_submit_us=6.4ms
+frame=4798 dt_ms=39 capture=0 lod_switch=0 lock_us=10.7 meter_ready=1 slow:
+frame=796 dt_ms=37 capture=0 lod_switch=0 lock_us=13.2 meter_ready=1 slow:
+frame=892 dt_ms=37 capture=0 lod_switch=0 lock_us=9.3 meter_ready=1 slow:
+frame=1120 dt_ms=37 capture=0 lod_switch=0 lock_us=11.0 meter_ready=1 slow:
+frame=4724 dt_ms=37 capture=0 lod_switch=0 lock_us=10.1 meter_ready=1 slow:
+frame=795 dt_ms=36 capture=0 lod_switch=0 lock_us=11.4 meter_ready=1 slow:
+frame=889 dt_ms=36 capture=0 lod_switch=0 lock_us=9.3 meter_ready=1 slow:
+frame=891 dt_ms=36 capture=0 lod_switch=0 lock_us=11.0 meter_ready=1 slow:
+frame=4641 dt_ms=36 capture=0 lod_switch=0 lock_us=8.3 meter_ready=1 slow:
+frame=4652 dt_ms=36 capture=0 lod_switch=0 lock_us=8.9 meter_ready=1 slow:
+frame=4725 dt_ms=36 capture=0 lod_switch=0 lock_us=10.0 meter_ready=1 slow:
+frame=4855 dt_ms=36 capture=0 lod_switch=0 lock_us=9.8 meter_ready=1 slow:pre_render_us=25.6ms views_us=10.7ms view_submit_us=8.1ms
+frame=4884 dt_ms=36 capture=0 lod_switch=0 lock_us=9.5 meter_ready=1 slow:pre_render_us=24.1ms views_us=11.8ms view_submit_us=8.9ms
+frame=5266 dt_ms=36 capture=0 lod_switch=0 lock_us=16.8 meter_ready=1 slow:pre_render_us=24.7ms views_us=11.2ms view_submit_us=8.8ms
+frame=4688 dt_ms=35 capture=0 lod_switch=0 lock_us=8.7 meter_ready=1 slow:
+frame=4737 dt_ms=35 capture=0 lod_switch=0 lock_us=10.0 meter_ready=1 slow:
+frame=6337 dt_ms=35 capture=0 lod_switch=3 lock_us=9.7 meter_ready=1 slow:pre_render_us=21.5ms views_us=13.7ms view_submit_us=10.2ms
+frame=905 dt_ms=34 capture=0 lod_switch=0 lock_us=7.9 meter_ready=1 slow:
+frame=4796 dt_ms=34 capture=0 lod_switch=0 lock_us=15.8 meter_ready=1 slow:
+frame=4874 dt_ms=34 capture=0 lod_switch=0 lock_us=47.1 meter_ready=1 slow:
+frame=4876 dt_ms=34 capture=0 lod_switch=0 lock_us=8.9 meter_ready=1 slow:
+frame=8759 dt_ms=34 capture=0 lod_switch=0 lock_us=9.5 meter_ready=1 slow:pre_render_us=20.8ms views_us=12.4ms view_submit_us=9.2ms
