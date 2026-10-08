@@ -9,7 +9,7 @@
 // docs/architecture/engine-exhaust-gap-analysis.md): the option, the per-ship light table built from the previous
 // frame's glow-jet records (engine_effects_core.h Ring), the per-node table that carries each light into the model
 // space of the ship's hull nodes drawn in that frame, and the per-draw constants of the pixel twin
-// (renderer/linear_engine_light_inc.h, c176-c202: a light per nozzle plate). No Windows dependency: the host tests
+// (renderer/linear_engine_light_inc.h, c52-c202: a light per nozzle plate). No Windows dependency: the host tests
 // compile it. No x87: float
 // work through SSE scalars (doubles where world coordinates are subtracted), no float or double returned by value.
 //
@@ -68,7 +68,11 @@ constexpr unsigned node_slots = 4096;
 // value_eff; ties: the lower node handle, then the earlier record); one plate per node handle; a smaller co-located
 // layer of another record (engine_plumes merge_layers) is a plate at its natural value_eff (no floor), as the plume
 // stage draws it. Plate 0 is the ship's brightest nozzle, the Light's own record.
-constexpr unsigned plate_slots = 8;
+// The cap covers every ship (engine-light.md "Plate cap"; verification/results/engine-light-plate-cap/nozzle_counts.py
+// over the installed and the stock ship scenes: at most 66 main nozzles, the Boron Segaris and the stock Boron M7
+// drone carrier; 19 installed ships above 16): 72 slots, the last tier's run (plate_runs), two registers per further
+// plate between c55 and c197 (block_first). A ship beyond it still drops its dimmest nozzles (plates_dropped).
+constexpr unsigned plate_slots = 72;
 struct Plate {
     double position[3]{};           // world, the record's space (the nozzle's light point)
     float value = 0.f;              // the nozzle's value_eff (world units; the light's radius is reach x value)
@@ -76,7 +80,9 @@ struct Plate {
     float colour[3]{};              // the nozzle's light colour (linear, record_light)
     std::uint32_t handle = 0;
 };
-struct Light {
+// One record's light, and the selection fields of a ship's entry (Light): kept apart from the plate list so a record
+// costs its 64 bytes, not the entry's 3.5 KB (build_ships constructs one per record).
+struct LightFields {
     std::uint32_t root = 0;         // the ship's root node (the jets' node+0x18)
     double position[3]{};           // world, the record's space (plate 0's light)
     float colour[3]{};              // linear
@@ -85,6 +91,8 @@ struct Light {
     std::uint32_t handle = 0;       // the brightest jet's node handle (ties: the lower one wins): plate 0
     float s = 0.f, value = 0.f;     // the brightest jet's throttle and value_eff (the row's diagnostics)
     bool own = false;               // a record of the own ship fed it (never evicted by a full table)
+};
+struct Light : LightFields {
     unsigned plate_count = 0;
     Plate plates[plate_slots];      // the ship's main nozzles, brightest first (add_plate)
 };
@@ -183,7 +191,7 @@ inline int dimmest_ship(ShipTable& t) noexcept {
 // A record's light (false: not a main jet with geometry, or non-finite). `radius` the ship's radius beside the record
 // (Ring::parent_radius; 0 = none) for the plume floor's value_eff, `preset_scale` the stage's preset.
 inline bool record_light(const ee::Record& r, const ee::Body* body, float radius, const ep::Look& look,
-                         float preset_scale, Light* out) noexcept {
+                         float preset_scale, LightFields* out) noexcept {
     if (r.flags & (ee::flag_steering | ee::flag_brake | ee::flag_rows_unknown)) return false;
     for (unsigned i = 0; i < 3; ++i)
         if (!ee::finite_f(r.origin[i]) || !ee::finite_f(r.axis[i])) return false;
@@ -197,7 +205,7 @@ inline bool record_light(const ee::Record& r, const ee::Body* body, float radius
     const float intensity = look.core_low + (look.core_high - look.core_low) * s;
     float mean[3], peak[3];
     ep::record_tint(r, body, mean, peak);
-    Light l{};
+    LightFields l{};
     const float offset = behind * value;
     for (unsigned i = 0; i < 3; ++i) {
         l.position[i] = double(r.origin[i]) + double(r.axis[i]) * double(offset);
@@ -215,7 +223,7 @@ inline bool record_light(const ee::Record& r, const ee::Body* body, float radius
 }
 // The record's plate into the ship's list (brightest first; ties: the lower handle, then the earlier record). A second
 // record of a handle already listed keeps the brighter of the two; beyond plate_slots the dimmest gives way.
-inline void add_plate(Light& ship, const Light& record, ShipStats& stats) noexcept {
+inline void add_plate(Light& ship, const LightFields& record, ShipStats& stats) noexcept {
     Plate p{};
     for (unsigned i = 0; i < 3; ++i) p.position[i] = record.position[i];
     p.value = record.value;
@@ -289,7 +297,7 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
             ++out->stats.orphan;
             continue;
         }
-        Light l;
+        LightFields l;
         const ee::Body* b = body && r.body >= 0 ? body(r.body) : nullptr;
         const bool natural = i < merging && unfloor[i];
         if (!record_light(r, b, radii && !natural ? radii[i] : 0.f, look, preset_scale, &l)) {
@@ -338,7 +346,7 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
             ++out->count;
         unsigned h = hash_key(root, 0, ship_slots - 1);
         while (out->slot[h]) h = (h + 1) & (ship_slots - 1);
-        out->lights[index] = l;
+        static_cast<LightFields&>(out->lights[index]) = l; // the plate list stays as it is until plate_count
         out->lights[index].plate_count = 0;
         add_plate(out->lights[index], l, out->stats);
         out->slot[h] = std::uint16_t(index + 1);
@@ -455,7 +463,7 @@ inline void build_nodes(const ShipTable& ships, const DrawLog& log, NodeTable* o
         const double rel[3] = {l.position[0] - double(d.world[3]), l.position[1] - double(d.world[7]),
                                l.position[2] - double(d.world[11])};
         // Built in place in the next free entry (a refused node leaves it free): every field the readers use is written
-        // here, the plate arrays up to plate_count (no zero fill or copy of the 264-byte entry per node).
+        // here, the plate arrays up to plate_count (no zero fill or copy of the 2,056-byte entry per node).
         NodeLight& n = out->nodes[out->count];
         n.node = d.node;
         n.handle = d.handle;
@@ -543,9 +551,62 @@ inline bool light_registers(const float local[3], const float colour[3], float r
         if (!ee::finite_f(out[i])) return false;
     return true;
 }
+// The plate tiers (the twin's uniform branches on c202.w; renderer/linear_engine_light_inc.h): tier k runs the first
+// plate_runs[k] slots, the smallest run that holds the ship's plates: one plate runs slot 0 alone (tier 0, the light
+// c200-c201 as before the plates), then steps of four slots to sixteen and of eight to plate_slots, so a ship runs at
+// most three pad slots below sixteen plates and seven above (the Split Ocelot's ten: twelve).
+constexpr unsigned plate_tiers = 12;
+constexpr unsigned plate_runs[plate_tiers] = {1, 4, 8, 12, 16, 24, 32, 40, 48, 56, 64, 72};
+static_assert(plate_runs[plate_tiers - 1] == plate_slots, "the last tier runs every slot");
+inline unsigned plate_tier_index(unsigned plates) noexcept {
+    unsigned k = 0;
+    while (k + 1 < plate_tiers && plate_runs[k] < plates) ++k;
+    return k;
+}
+inline float plate_tier(unsigned plates) noexcept {
+    return float(int(plate_tier_index(plates)));
+}
+constexpr bool same_runs(const unsigned (&runs)[plate_tiers]) noexcept {
+    for (unsigned k = 0; k < plate_tiers; ++k)
+        if (runs[k] != plate_runs[k]) return false;
+    return true;
+}
+inline unsigned plate_run(unsigned plates) noexcept {
+    return plate_runs[plate_tier_index(plates)];
+}
+// The per-draw staging block mirroring c(block_first)-c202 (renderer::EngineLightAbi, asserted where it is uploaded):
+// slot p's plate register ((P_p - cam) / v_p, 1 / v_p) at plate_register(p) (c197 for slot 0, c197 - 2p after it) and,
+// for p >= 1, its light colour (colour_p, 1 / R_p^2) at colour_register(p) = c198 - 2p, directly above its plate; the
+// rows c198-c199 never uploaded (the twins' DEFs); plate 0's light, the camera's forward axis and the tier c200-c202
+// (block_light: draw_constants). A run of r slots occupies the 2r - 1 registers from run_first(r) to c197, so a draw
+// uploads the plates in use and nothing above them in one call (block_upload_run). The light of slot p >= 1 is not
+// stored: L_p is the plate's point, so the twin forms L_p - cam = ((P_p - cam) / v_p) v_p and R_p^2 = 1 / (1 / R_p^2)
+// from the two registers once, for the selected plate (three registers per plate, the layout before the cap of 72,
+// would hold at most 49 between c50 and c202; two hold 72).
+constexpr unsigned block_top = 197, block_first = block_top + 2 - 2 * plate_slots, block_registers = 203 - block_first;
+constexpr unsigned block_light = (200 - block_first) * 4, block_floats = block_registers * 4;
+constexpr unsigned plate_register(unsigned p) noexcept {
+    return block_top - 2 * p;
+}
+constexpr unsigned colour_register(unsigned p) noexcept { // p >= 1
+    return block_top + 1 - 2 * p;
+}
+constexpr unsigned plate_offset(unsigned p) noexcept {
+    return (plate_register(p) - block_first) * 4;
+}
+constexpr unsigned colour_offset(unsigned p) noexcept {
+    return (colour_register(p) - block_first) * 4;
+}
+constexpr unsigned run_first(unsigned run) noexcept {
+    return block_top + 2 - 2 * run;
+}
+static_assert(block_first == 55 && plate_register(plate_slots - 1) == block_first && colour_register(1) == 196 &&
+                  run_first(1) == block_top && block_light / 4 + block_first == 200,
+              "c55-c197 the plates and their lights, c200-c202 the light");
 // The three registers c200-c202 for one draw: the light (plate 0: the ship's brightest nozzle) placed by the draw's
-// world rows, relative to the camera of its view-inverse rows; (colour, 1 / R^2); the camera's forward axis. false
-// (nothing to upload) on non-finite rows, a degenerate forward axis or a non-finite result.
+// world rows, relative to the camera of its view-inverse rows; (colour, 1 / R^2); the camera's forward axis (.w: the
+// tier, block_constants). false (nothing to upload) on non-finite rows, a degenerate forward axis or a non-finite
+// result.
 inline bool draw_constants(const NodeLight& n, const float world[12], const float view_inverse[12],
                            float out[12]) noexcept {
     float f[3] = {view_inverse[2], view_inverse[6], view_inverse[10]};
@@ -559,84 +620,71 @@ inline bool draw_constants(const NodeLight& n, const float world[12], const floa
         if (!ee::finite_f(out[i])) return false;
     return true;
 }
-// The plate registers (renderer::EngineLightAbi::plate_constant, plate_slots of them) for one draw: per plate
-// ((P - cam) / v, 1 / v), P placed by the draw's world rows like the light, v its value_eff; the twin forms
-// (d / v)^2 = |D / v - (P - cam) / v|^2 for the pixel at D (camera-relative). A slot the twin runs (the first
-// plate_run(plate_count)) without a plate, or whose plate's constants are not finite, is a pad: a copy of slot 0
-// (its (d / v)^2 equals slot 0's, so it changes neither the weight nor the light selection); a slot the twin skips,
-// and slot 0 when its plate is not finite, gets unused_plate: (d / v)^2 = 4 everywhere, weight 0. `tier` (null: none)
-// gets the twin's uniform branch tier for c202.w: 0 for at most one plate, 1 for two to four, 2 for five to eight (the
-// twin runs 1, 4 or 8 slots). Returns the mask of the slots holding their own plate (bit p: slot p).
-constexpr float unused_plate[4] = {2.f, 0.f, 0.f, 0.f};
-inline float plate_tier(unsigned plates) noexcept {
-    return plates <= 1 ? 0.f : plates <= 4 ? 1.f : 2.f;
-}
-inline unsigned plate_run(unsigned plates) noexcept {
-    return plates <= 1 ? 1u : plates <= 4 ? 4u : plate_slots;
-}
-inline unsigned plate_constants(const NodeLight& n, const float world[12], const float view_inverse[12],
-                                float out[plate_slots * 4], float* tier = nullptr) noexcept {
-    if (tier) *tier = plate_tier(n.plate_count);
-    const unsigned run = plate_run(n.plate_count);
-    unsigned own = 0;
-    for (unsigned p = 0; p < plate_slots; ++p) {
-        float* o = out + p * 4;
-        for (unsigned k = 0; k < 4; ++k) o[k] = p && p < run ? out[k] : unused_plate[k];
-        if (p >= n.plate_count) continue;
-        const float* local = n.plate[p];
-        const double inv = 1. / double(local[3]);
-        float c[4];
-        bool ok = true;
-        for (unsigned i = 0; i < 3; ++i) {
-            const double placed = double(world[i * 4]) * local[0] + double(world[i * 4 + 1]) * local[1] +
-                                  double(world[i * 4 + 2]) * local[2];
-            c[i] = float((placed + (double(world[i * 4 + 3]) - double(view_inverse[i * 4 + 3]))) * inv);
-            ok = ok && ee::finite_f(c[i]);
-        }
-        c[3] = float(inv);
-        if (!ok || !ee::finite_f(c[3]) || !(c[3] > 0.f)) continue;
-        for (unsigned k = 0; k < 4; ++k) o[k] = c[k];
-        own |= 1u << p;
+// One plate register for one draw: ((P - cam) / v, 1 / v), P the model-space plate point `local` (value_eff v in .w)
+// placed by the draw's world rows like the light; the twin forms (d / v)^2 = |D / v - (P - cam) / v|^2 for the pixel at
+// D (camera-relative). false when not finite or 1 / v not positive (out then partly written).
+inline bool plate_register_values(const float local[4], const float world[12], const float view_inverse[12],
+                                  float out[4]) noexcept {
+    const double inv = 1. / double(local[3]);
+    bool ok = true;
+    for (unsigned i = 0; i < 3; ++i) {
+        const double placed = double(world[i * 4]) * local[0] + double(world[i * 4 + 1]) * local[1] +
+                              double(world[i * 4 + 2]) * local[2];
+        out[i] = float((placed + (double(world[i * 4 + 3]) - double(view_inverse[i * 4 + 3]))) * inv);
+        ok = ok && ee::finite_f(out[i]);
     }
-    return own;
+    out[3] = float(inv);
+    return ok && ee::finite_f(out[3]) && out[3] > 0.f;
 }
-// The per-draw staging block mirroring c176-c202 (renderer::EngineLightAbi, asserted where it is uploaded): the plate
-// lights 1-7 at c176 + 2 (i - 1) = (L_i - cam, R_i^2) and c177 + 2 (i - 1) = (colour_i, 1 / R_i^2) (block_lights), the
-// plate registers c190-c197 (block_plates), two rows c198-c199 never uploaded (the twins' DEFs), plate 0's light and the
-// camera's forward axis and tier c200-c202 (block_light: draw_constants).
-constexpr unsigned block_first = 176, block_registers = 27;
-constexpr unsigned block_lights = 0, block_plates = 2 * (plate_slots - 1) * 4, block_light = block_plates + 10 * 4,
-                   block_floats = block_registers * 4;
-static_assert(block_first + block_plates / 4 == 190 && block_first + block_light / 4 == 200,
-              "c176-c189 the plate lights, c190-c197 the plates, c200-c202 the light");
-// The whole block for one draw: draw_constants (false: nothing to upload, the draw stays unlit), the plates with
-// their tier (plate_constants), and per plate slot 1-7 the twin runs its light from its own nozzle (light_registers:
-// its model-space point, colour and reach x value_eff). A pad slot (plate_constants), or a plate whose light is not
-// finite (its slot then made a pad as well), carries plate 0's light. The lights of the slots the twin skips are not
-// written (block_upload_skip: a one-plate draw does not upload c176-c189, which its twin never reads). One plate costs
-// one draw_constants and one plate register as before; each further plate one plate register and one light (about 12
-// double multiply-adds each), at most seven.
+// A further plate's light colour register: (colour, 1 / R^2), R = reach x value_eff, as draw_constants gives plate 0's
+// c201. false on a non-positive or non-finite R^2 or a non-finite result.
+inline bool plate_colour_values(const float colour[3], float value, float out[4]) noexcept {
+    const float radius = reach * value, r2 = radius * radius;
+    if (!(r2 > 0.f) || !ee::finite_f(r2)) return false;
+    for (unsigned i = 0; i < 3; ++i) out[i] = colour[i];
+    out[3] = 1.f / r2;
+    for (unsigned i = 0; i < 4; ++i)
+        if (!ee::finite_f(out[i])) return false;
+    return true;
+}
+// An unused plate register: (d / v)^2 = 4 everywhere, weight 0 (slot 0 of a ship whose first plate is not finite).
+constexpr float unused_plate[4] = {2.f, 0.f, 0.f, 0.f};
+// The whole block for one draw: draw_constants (false: nothing to upload, the draw stays unlit), the tier in c202.w,
+// and the slots of the tier's run: slot 0's plate register and, per further slot p, its plate register and its light
+// colour from its own nozzle (plate_register_values, plate_colour_values). A slot of the run without a plate, or whose
+// registers are not finite, is a pad: slot 0's plate register and plate 0's colour (c201), so its (d / v)^2 equals slot
+// 0's and the selection, which keeps the earlier slot on a tie, never takes it, nor does the weight change. A ship whose
+// first plate is not finite runs slot 0 alone (tier 0) with the unused plate: plate 0's light, no plate weight. Slots
+// beyond the run are not written (nor uploaded: block_upload_run). One plate costs one draw_constants and one plate
+// register as before; each further plate one plate register (about 12 double multiply-adds) and one colour.
 inline bool block_constants(const NodeLight& n, const float world[12], const float view_inverse[12],
                             float out[block_floats]) noexcept {
     float* light = out + block_light;
     if (!draw_constants(n, world, view_inverse, light)) return false;
-    float* plates = out + block_plates;
-    const unsigned own = plate_constants(n, world, view_inverse, plates, &light[11]);
-    const unsigned run = plate_run(n.plate_count);
+    float* key0 = out + plate_offset(0);
+    const bool first = n.plate_count && plate_register_values(n.plate[0], world, view_inverse, key0);
+    if (!first)
+        for (unsigned k = 0; k < 4; ++k) key0[k] = unused_plate[k];
+    const unsigned tier = first ? plate_tier_index(n.plate_count) : 0u, run = plate_runs[tier];
+    light[11] = float(int(tier));
     for (unsigned p = 1; p < run; ++p) {
-        float* l = out + block_lights + (p - 1) * 8;
-        if ((own >> p & 1u) &&
-            light_registers(n.plate[p], n.plate_colour[p], reach * n.plate[p][3], world, view_inverse, l))
+        float* key = out + plate_offset(p);
+        float* colour = out + colour_offset(p);
+        if (p < n.plate_count && plate_register_values(n.plate[p], world, view_inverse, key) &&
+            plate_colour_values(n.plate_colour[p], n.plate[p][3], colour))
             continue;
-        for (unsigned k = 0; k < 8; ++k) l[k] = light[k];
-        for (unsigned k = 0; k < 4; ++k) plates[p * 4 + k] = plates[k];
+        for (unsigned k = 0; k < 4; ++k) {
+            key[k] = key0[k];
+            colour[k] = light[4 + k];
+        }
     }
     return true;
 }
-// The leading registers of the block a draw need not upload: the plate lights (c176-c189) when its twin runs slot 0
-// only (tier 0, c202.w of the block): the upload then starts at the plates c190, as before the per-plate lights.
-inline unsigned block_upload_skip(const float block[block_floats]) noexcept {
-    return block[block_light + 11] > 0.f ? 0u : block_plates / 4;
+// The run a block's draw uploads (from its tier in c202.w): the registers run_first(run) .. c197, 2 run - 1 of them,
+// then c200-c202; a one-plate draw uploads c197 alone below the light.
+inline unsigned block_upload_run(const float block[block_floats]) noexcept {
+    const int tier = int(block[block_light + 11]);
+    return plate_runs[tier > 0 && tier < int(plate_tiers) ? tier : 0];
 }
 // --------------------------------------------------------------------------- twin kinds
 // The original-shading variants a twin may stand in for (MotionOutput::engine_light_kinds order): the plain motion

@@ -9,9 +9,11 @@ docs/architecture/engine-exhaust-gap-analysis.md).
   cost;
 - the pixel twins (verification/probe/engine_light_structure.cpp over the local original corpus, skipped without it):
   every non-asteroid reviewed pixel program gets a twin in all eight option sets, the four asteroid programs refuse,
-  and each twin is its base variant plus exactly the words re-derived here (one `def c199`, the light block with the
-  per-plate light selection, one 3-instruction add per fill block), with the slot deltas; the light per plate (the Split
-  Ocelot's two equal nozzles beyond one reach both lit; a one-nozzle ship's registers and modelled radiance unchanged);
+  and each twin is its base variant plus exactly the words re-derived here (one `def c199`, the tier thresholds
+  `def c52-c54`, the light block with the per-plate light selection over up to 72 plates, one 3-instruction add per
+  fill block), with the slot deltas; the light per plate (the Split Ocelot's two equal nozzles beyond one reach both
+  lit; its ten main nozzles all plates, none dropped, all lit; the cap of 72; a one-nozzle ship's registers and
+  modelled radiance unchanged); the transformers' slot budget (the device's cap, 32768 where it reports 512);
   the inputs and layouts the twin and the route rely on
   re-derived from the corpus (verification/results/engine-light/eye_normal_registers.py);
 - the route's wiring (source checks) and the tracked Wine records (verification/results/bottle-X3/engine-light-gpu.json;
@@ -78,12 +80,15 @@ NRM, DP3, MIN, RCP, MUL, MAD, MAX, RSQ, ADD, MOV, CMP = 36, 8, 10, 6, 5, 4, 11, 
 
 def engine_block(depth, plate=False, select=True):
     """The light block. With `select` (every twin of the corpus) a light per plate: r12 / r13 start as plate 0's light
-    (MOV c200 / c201); per further slot run by the tier branches the squared distance u_i in value_eff units, the
-    condition u_i - s in r14.y, CMP of r12 / r13 against the slot's light c176 + 2 (i - 1) / c177 + 2 (i - 1) (cond >= 0
-    keeps the earlier), the running minimum s in r14.w (s = u_0 from slot 0); the law then reads r12 / r13. Without
-    `plate` slot 0 sits inside the first branch and every slot forms D = e t (MUL); with `plate` the nozzle-plate form:
-    D = e t once, slot 0 ahead of the branches, the weight's running minimum in r15.w (MIN, input first, from c198.w),
-    the light from D (ADD) with 1 / d in r15.x, then w = saturate(A m + B) and max(w, 0) after q."""
+    (MOV c200 / c201); eleven nested tier levels (if_ne tier, level - 1; level 1 before slot 1, slot 0 without plates,
+    level j + 1 at slot runs[j]), the first moving slot 0's plate register c197 into r12; per further slot the squared
+    distance u_i in value_eff units, the condition u_i - s in r14.y, CMP of r12 / r13 against the slot's plate register
+    c197 - 2i and its colour c198 - 2i (cond >= 0 keeps the earlier), the running minimum s in r14.w (s = u_0 from slot
+    0); before the first level closes the selected plate becomes a light (RCP r14.x = 1 / r12.w, r12.xyz *= r14.x, RCP
+    r12.w = 1 / r13.w); the law then reads r12 / r13. Without `plate` slot 0 sits inside the first level and every slot
+    forms D = e t (MUL); with `plate` the nozzle-plate form: D = e t once, slot 0 ahead of the branches, the weight's
+    running minimum in r15.w (MIN, input first, from c198.w), the light from D (ADD) with 1 / d in r15.x, then
+    w = saturate(A m + B) and max(w, 0) after q."""
     e, s, a, b, f, k = 14, 15, 200, 201, 202, 199
     la, lb = (12, 12 + 1) if select else (None, None)
     position = (lambda sw: src(TEMP, la, sw)) if select else (lambda sw: src(CONST, a, sw))
@@ -94,16 +99,17 @@ def engine_block(depth, plate=False, select=True):
     to_light = op(MUL, dst(TEMP, s), src(TEMP, s), lane(TEMP, s, 3)) if plate else []
     if select:
         to_light += op(MOV, dst(TEMP, la, 15), src(CONST, a)) + op(MOV, dst(TEMP, lb, 15), src(CONST, b))
+        level = 0
         for i in range(PLATE_SLOTS):
-            c = PLATE_FIRST + i
-            # Uniform branches on the plate tier c202.w: slots 1-7 (0-7 without plates) under if_ne tier, 0 (c198.z with
-            # plates, c199.w without), 4-7 under if_ne tier, c199.x (1); if_ne = opcode 41 with the comparison 5 in bits
-            # 16-23. The operands moved into r14.x / r14.y first (if_ne on two temporaries, the corpus's form).
-            if i == (1 if plate else 0) or i == 4:
-                zero = lane(CONST, 198, 2) if plate else lane(CONST, k, 3)
-                to_light += (op(MOV, dst(TEMP, e, 1), lane(CONST, f, 3)) +
-                             op(MOV, dst(TEMP, e, 2), lane(CONST, k, 0) if i == 4 else zero) +
+            # Uniform branches on the plate tier c202.w: if_ne = opcode 41 with the comparison 5 in bits 16-23, the
+            # operands moved into r14.x / r14.y first (if_ne on two temporaries, the corpus's form).
+            if level < TIER_LEVELS and i == (PLATE_RUNS[level] if level else (1 if plate else 0)):
+                level += 1
+                to_light += (op(MOV, dst(TEMP, e, 1), lane(CONST, f, 3)) + op(MOV, dst(TEMP, e, 2), threshold(level, plate)) +
                              [(2 << 24) | (5 << 16) | 41, lane(TEMP, e, 0), lane(TEMP, e, 1)])
+                if level == 1:
+                    to_light += op(MOV, dst(TEMP, la, 15), src(CONST, plate_register(0)))
+            c = plate_register(i)
             if not plate:
                 to_light += op(MUL, dst(TEMP, e), src(TEMP, s), lane(TEMP, s, 3))
             u = 3 if i == 0 else 0
@@ -112,12 +118,13 @@ def engine_block(depth, plate=False, select=True):
             if plate:
                 to_light += op(MIN, dst(TEMP, s, 8), lane(TEMP, e, u), lane(TEMP, s, 3) if i else lane(CONST, 198, 3))
             if i:
-                q = SELECT_FIRST + 2 * (i - 1)
                 to_light += (op(ADD, dst(TEMP, e, 2), lane(TEMP, e, 0), lane(TEMP, e, 3, 1)) +
-                             op(CMP, dst(TEMP, la, 15), lane(TEMP, e, 1), src(TEMP, la), src(CONST, q)) +
-                             op(CMP, dst(TEMP, lb, 15), lane(TEMP, e, 1), src(TEMP, lb), src(CONST, q + 1)) +
+                             op(CMP, dst(TEMP, la, 15), lane(TEMP, e, 1), src(TEMP, la), src(CONST, c)) +
+                             op(CMP, dst(TEMP, lb, 15), lane(TEMP, e, 1), src(TEMP, lb), src(CONST, colour_register(i))) +
                              op(MIN, dst(TEMP, e, 8), lane(TEMP, e, 0), lane(TEMP, e, 3)))
-        to_light += [43, 43]  # endif, endif
+        to_light += [43] * (level - 1)   # endif of the inner levels
+        to_light += (op(RCP, dst(TEMP, e, 1), lane(TEMP, la, 3)) + op(MUL, dst(TEMP, la, 7), src(TEMP, la), lane(TEMP, e, 0)) +
+                     op(RCP, dst(TEMP, la, 8), lane(TEMP, lb, 3)) + [43])
     if plate:
         to_light += op(ADD, dst(TEMP, e), position(0xe4), src(TEMP, s, 0xe4, 1))
         inverse = 0
@@ -152,13 +159,41 @@ ADD_TRIPLET = (op(ADD, dst(TEMP, 13) | SAT, src(TEMP, 12, 0xe4, 1), lane(CONST, 
 FILL_MAD = op(MAD, dst(TEMP, 12), src(TEMP, 13), lane(CONST, 215, 0), src(TEMP, 12))
 DEF_C199 = [0x05000051, dst(CONST, 199, 15), bits(1.0), bits(-2.0 ** -20), bits(2.0 ** -40), bits(0.0)]
 # Nozzle plates (docs/architecture/engine-light.md): full suppression to 0.75 x value_eff of each plate (the ship's main
-# nozzles, up to eight, uploaded at c190-c197), none from 1.0, linear in d^2 between; from the minimum m of
+# nozzles, up to 72, slot i's plate register at c197 - 2i), none from 1.0, linear in d^2 between; from the minimum m of
 # (d / v_i)^2 over the slots (4 for an unused slot): w = saturate(A m + B), A = -1 / (r1^2 - r0^2), B = r1^2 / (...).
 PLATE_FULL, PLATE_REACH, REACH = 0.75, 1.0, 3.0
-PLATE_FIRST, PLATE_SLOTS, PLATE_NONE = 190, 8, 4.0
-# A light per plate (user decision 2026-10-08): plates 1-7's lights at c176 + 2 (i - 1) (position, R^2) and
-# c177 + 2 (i - 1) (colour, 1 / R^2), plate 0's at c200-c201.
-SELECT_FIRST = 176
+PLATE_TOP, PLATE_SLOTS, PLATE_NONE = 197, 72, 4.0
+# Plate cap (engine-light.md "Plate cap"): tier k runs PLATE_RUNS[k] slots; a light per plate (user decision
+# 2026-10-08): plate 0's at c200-c201, plate i's colour (colour, 1 / R^2) at c198 - 2i beside its plate register; the
+# tier thresholds 2 .. 10 in the shader-local c52-c54.
+PLATE_RUNS = (1, 4, 8, 12, 16, 24, 32, 40, 48, 56, 64, 72)
+TIER_LEVELS, TIER_FIRST = len(PLATE_RUNS) - 1, 52
+
+
+def plate_register(i):
+    return PLATE_TOP - 2 * i
+
+
+def colour_register(i):
+    return PLATE_TOP + 1 - 2 * i
+
+
+def threshold(level, plate):
+    """The tier threshold of level `level` (1-based): tier != level - 1."""
+    k = level - 1
+    if k == 0:
+        return lane(CONST, 198, 2) if plate else lane(CONST, 199, 3)
+    if k == 1:
+        return lane(CONST, 199, 0)
+    return lane(CONST, TIER_FIRST + (k - 2) // 4, (k - 2) % 4)
+
+
+def tier(count):
+    return next(k for k, run in enumerate(PLATE_RUNS) if run >= count or k == len(PLATE_RUNS) - 1)
+
+
+DEF_TIERS = [w for r in range(3) for w in [0x05000051, dst(CONST, TIER_FIRST + r, 15)] +
+             [bits(float(2 + 4 * r + l) if 2 + 4 * r + l < TIER_LEVELS else 0.0) for l in range(4)]]
 PLATE_A = -1.0 / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
 PLATE_B = PLATE_REACH ** 2 / (PLATE_REACH ** 2 - PLATE_FULL ** 2)
 DEF_C198 = [0x05000051, dst(CONST, 198, 15), bits(PLATE_A), bits(PLATE_B), bits(0.0), bits(PLATE_NONE)]
@@ -265,57 +300,87 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(p['a']['values'], [10.0, 8.0, 6.0, 5.0])
         self.assertEqual(p['a']['first'], [0.0, 0.0, -5.0])      # 0.5 x value behind the nozzle along -z, as the light
         self.assertEqual(p['a']['light'], p['a']['first'])
-        # Nine nozzles: the eight brightest (values 18 .. 11), the ninth dropped.
-        self.assertEqual((p['b']['handle'], p['b']['count'], p['b']['handles']), (68, 8, list(range(68, 60, -1))))
-        self.assertEqual((p['unfloored'], p['plates_dropped']), (1, 1))
-        # Per-draw registers ((P - cam) / v, 1 / v), slots the twin skips (2, 0, 0, 0); a non-finite plate in a slot the
-        # twin runs is a pad, a copy of slot 0 (neither the weight nor the light selection changes).
-        self.assertEqual(p['node_count'], 4)
-        expected = [0, 0, -0.5, 0.1, 5, 0, -0.5, 0.125, 0, 40 / 6, -0.5, 1 / 6, 0, 0, -1.1, 0.2] + [2, 0, 0, 0] * 4
-        for got, want in zip(p['registers'], expected):
+        # Nine nozzles: nine plates (values 18 .. 10), none dropped (the cap is 72; eight before 2026-10-08).
+        self.assertEqual((p['b']['handle'], p['b']['count'], p['b']['handles']), (68, 9, list(range(68, 59, -1))))
+        self.assertEqual((p['unfloored'], p['plates_dropped']), (1, 0))
+        # Per-draw registers of the run (tier 1: four slots): ((P - cam) / v, 1 / v) slot 0 first, each further slot's
+        # colour (colour, 1 / R^2), R = 3 v; slot 4 (beyond the run) not written.
+        self.assertEqual((p['ok'], p['node_count'], p['tier'], p['beyond_untouched']), (1, 4, 1.0, 1))
+        expected = [0, 0, -0.5, 0.1, 5, 0, -0.5, 0.125, 0, 40 / 6, -0.5, 1 / 6, 0, 0, -1.1, 0.2]
+        colours = [1, 1, 1, 1 / 24 ** 2, 1, 1, 1, 1 / 18 ** 2, 1, 1, 1, 1 / 15 ** 2]
+        self.assertEqual((len(p['registers']), len(p['colours'])), (len(expected), len(colours)))
+        for got, want in zip(p['registers'] + p['colours'], expected + colours):
             self.assertAlmostEqual(got, want, places=6)
-        for got, want in zip(p['broken_slot1'], expected[:4]):
-            self.assertAlmostEqual(got, want, places=6)
-        self.assertEqual(p['broken_mask'], 0b1101)
-        # The twin's uniform branch tier in c202.w: 1, 4 or 8 slots run.
-        self.assertEqual(p['tier'], 1.0)
-        self.assertEqual(p['tiers'], [0, 0, 1, 1, 1, 2, 2, 2, 2])
-        self.assertEqual(p['runs'], [1, 1, 4, 4, 4, 8, 8, 8, 8])
+        # A non-finite plate in a slot the twin runs is a pad (slot 0's plate register, plate 0's colour: neither the
+        # weight nor the light selection changes); a non-finite first plate runs slot 0 alone (tier 0) with the unused
+        # plate (2, 0, 0, 0): plate 0's light, no plate weight.
+        self.assertEqual(p['broken_pad'], 1)
+        self.assertEqual(p['broken_first'], [1, 0.0, 2, 0, 0, 0])
+        # The tiers by plate count 0 .. 73 and their runs: 1, then steps of four to 16 and of eight to 72.
+        counts = range(0, 74)
+        self.assertEqual(p['tiers'], [tier(c) for c in counts])
+        self.assertEqual(p['runs'], [PLATE_RUNS[tier(c)] for c in counts])
+        self.assertEqual(p['runs'][:18], [1, 1, 4, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 16, 16, 24])
+        self.assertEqual(p['runs'][66:], [72] * 8)
         core = (ROOT / 'src/proxy/engine_light_core.h').read_text()
         self.assertIn('constexpr float unused_plate[4] = {2.f, 0.f, 0.f, 0.f};', core)
-        self.assertIn('constexpr unsigned plate_slots = 8;', core)
+        self.assertIn('constexpr unsigned plate_slots = 72;', core)
+        self.assertIn('constexpr unsigned plate_runs[plate_tiers] = {1, 4, 8, 12, 16, 24, 32, 40, 48, 56, 64, 72};', core)
         inc = (ROOT / 'src/renderer/linear_engine_light_inc.h').read_text()
-        self.assertIn('engine_light_plate_first = 190, engine_light_plate_slots = 8,', inc)
-        self.assertIn('engine_light_select_first = 176, engine_light_selected = 12;', inc)
+        self.assertIn('engine_light_plate_constant = 198, engine_light_plate_top = 197, engine_light_plate_slots = 72,', inc)
+        self.assertIn('engine_light_plate_tiers = 12, engine_light_selected = 12;', inc)
         self.assertIn('nozzle_plate_none = 4.0f;', inc)
+        abi = (ROOT / 'src/renderer/linear_material.h').read_text()
+        self.assertIn('static constexpr unsigned plate_runs[tier_count] = {1, 4, 8, 12, 16, 24, 32, 40, 48, 56, 64, 72};', abi)
 
     def test_light_per_plate(self):
         # User decision 2026-10-08: the Split Ocelot's two equal secondary nozzles (value_eff 548.076, 2,411 apart, beyond
         # one reach 3 x 548.076 = 1,644; Run 134 A triage): both plates carry their own light, equal colour and R^2, the
-        # tie's lower handle plate 0 (c200-c201), the other plate 1 (c176-c177); slots 2-3 (run, tier 1) pads of slot 0,
-        # 4-7 skipped. The twin's selection modelled in float: a hull point 300 units beside each light is lit, while
-        # plate 0's light alone (the rule before) leaves the second nozzle dark.
+        # tie's lower handle plate 0 (c200-c201), the other plate 1 (its plate register c195 and colour c196); slots 2-3
+        # (run, tier 1) pads of slot 0, slot 4 on not written. The twin's selection modelled in float: a hull point 300
+        # units beside each light is lit, while plate 0's light alone (the rule before) leaves the second nozzle dark.
         q = self.r['per_plate']
         self.assertEqual((q['ok'], q['count'], q['handles'], q['light_handle'], q['node_plates'], q['tier']),
                          (1, 2, [80, 81], 80, 2, 1.0))
         self.assertAlmostEqual(q['r2'][0], (3 * 548.076) ** 2, delta=1.0)
-        self.assertEqual(q['r2'][0], q['r2'][1])
+        self.assertAlmostEqual(q['r2'][0], q['r2'][1], delta=q['r2'][0] * 1e-6)   # 1 / (1 / R^2) in float
         self.assertAlmostEqual(q['distance'], 2411.0, places=2)
         self.assertGreater(q['distance'], REACH * 548.076)
-        # Slots 4-7 (skipped at tier 1): keys (2, 0, 0, 0), lights not written; the upload starts at c176.
-        self.assertEqual((q['colour_equal'], q['keys_pad'], q['lights_pad'], q['skipped_untouched'], q['upload_skip']),
-                         (1, 1, 1, 1, 0))
+        self.assertEqual((q['colour_equal'], q['keys_pad'], q['colours_pad'], q['skipped_untouched'], q['upload_run']),
+                         (1, 1, 1, 1, 4))
         self.assertGreater(q['radiance'][0], 0.5)
         self.assertGreater(q['radiance'][1], 0.5)
-        self.assertEqual(q['radiance'][0], q['radiance'][1])
+        self.assertAlmostEqual(q['radiance'][0], q['radiance'][1], places=5)
         self.assertEqual(q['before'][1], 0.0)
-        # One nozzle: c200-c202 and the plates exactly as draw_constants / plate_constants give them, the plate lights
-        # neither written nor uploaded (the upload starts at c190, 14 registers in, as before), and the modelled
-        # radiance with the selection the single light's bit for bit.
+        # One nozzle: c200-c202 and c197 exactly as draw_constants / plate_register_values give them, nothing else
+        # written, the upload c197 alone below the light (four registers in two calls), and the modelled radiance with
+        # the selection the single light's bit for bit.
         o = self.r['single']
-        self.assertEqual((o['ok'], o['light_identical'], o['plates_identical'], o['lights_untouched'], o['upload_skip']),
-                         (1, 1, 1, 1, 14))
+        self.assertEqual((o['ok'], o['light_identical'], o['plates_identical'], o['lights_untouched'], o['upload_run'],
+                          o['upload_first']), (1, 1, 1, 1, 1, 197))
         self.assertEqual(o['radiance_identical'], o['checked'])
+
+    def test_many_nozzles(self):
+        # Plate cap (engine-light.md "Plate cap"; Run 135 A triage): the Split Ocelot's ten main nozzles (two huge at
+        # value_eff 939.2, eight big3 at 548.1, the big3 a brightness tie): ten plates, none dropped (the cap of eight
+        # dropped 0x56e / 0x56f), tier 3 (run 12: two pads), every plate lit by its own light at a hull point beside it.
+        m = self.r['many']
+        o = m['ocelot']
+        self.assertEqual((o['ok'], o['count'], o['plates_dropped'], o['node_plates'], o['tier'], o['run']),
+                         (1, 10, 0, 10, 3.0, 12))
+        self.assertEqual((o['lit'], o['own_light'], o['pads'], o['beyond_untouched']), (10, 10, 2, 1))
+        self.assertEqual((o['upload_first'], o['upload_count']), (175, 23))
+        self.assertEqual((o['first_handles'], o['last_handles']), ([0x564, 0x565], [0x56c, 0x56d]))
+        self.assertGreater(o['least'], 0.5)
+        self.assertGreaterEqual(o['dark_before'], 2)   # plate 0's light alone leaves the far plates dark
+        # The cap: 72 nozzles all plates and lit (tier 11, run 72: c55-c197, 143 registers); 80: the 72 brightest.
+        c = m['cap']
+        self.assertEqual((c['ok'], c['count'], c['plates_dropped'], c['node_plates'], c['tier'], c['run'], c['lit'],
+                          c['own_light'], c['pads']), (1, 72, 0, 72, 11.0, 72, 72, 72, 0))
+        self.assertEqual((c['upload_first'], c['upload_count'], c['beyond_untouched']), (55, 143, 1))
+        v = m['over']
+        self.assertEqual((v['count'], v['plates_dropped'], v['lit'], v['first_handles'], v['last_handles']),
+                         (72, 8, 72, [0x904f, 0x904e], [0x9009, 0x9008]))
 
     def test_cap(self):
         self.assertEqual(self.r['cap'], dict(ships=256, dropped=44, found=256))   # equal brightness: the incumbents stay
@@ -366,9 +431,34 @@ class CoreTests(unittest.TestCase):
         self.assertEqual((c['nodes'], c['ships']), (1024, 256))
         self.assertLess(abs(c['hits'] - c['rounds'] / 2), c['rounds'] / 100)   # half the probes hit
         self.assertLess(c['ns_per_draw'], 200.0)
-        # Ships of eight main nozzles: every plate's register and light per hit.
+        # Ships of eight main nozzles: every plate's register and colour per hit.
         self.assertEqual((c['hits8'], c['plates8']), (c['hits'], 8))
         self.assertLess(c['ns_per_draw8'], 200.0)
+        # Ships of 72 (the cap): the per-draw work grows with the plates in use, bounded proportionally (200 ns per eight
+        # plates); the node build over 1,024 logged draws per plate and node under 50 ns; the ship table over the ring's
+        # 1,024 records (14 ships x 72: each record's sorted insertion moves up to 71 plates) within 72 / 8 of the
+        # 128 x 8 build.
+        self.assertEqual((c['hits72'], c['plates72']), (c['hits'], 72))
+        self.assertLess(c['ns_per_draw72'], 200.0 * 72 / 8)
+        self.assertLess(c['build_us72'] * 1e3 / (c['nodes'] * 72), 50.0)
+        self.assertLess(c['ships_us72'], c['ships_us8'] * 72 / 8)
+
+    def test_slot_budget(self):
+        # AGENTS.md "Shader slot budget": the transformers check against the device's MaxPixelShader30InstructionSlots,
+        # 32768 where it reports the 512 spec minimum (or less), never above 32768; no hard-coded 512 remains.
+        self.assertEqual(self.r['slot_budget'], {'0': 32768, '512': 32768, '513': 513, '4096': 4096, '32768': 32768,
+                                                 '65535': 32768, 'default': 32768})
+        material = (ROOT / 'src/renderer/linear_material.cpp').read_text()
+        emission = (ROOT / 'src/renderer/linear_emission.cpp').read_text()
+        self.assertNotIn('slots <= 512', material)
+        self.assertNotIn('sm3_pixel_slots', emission)
+        self.assertIn('slots <= ps3_slot_budget()', material)
+        self.assertIn('slots <= ps3_slot_budget();', emission)
+        cpp = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        self.assertIn('renderer::set_ps3_slot_budget(reported)', cpp)
+        self.assertIn('ps3_slot_budget device=%llu ps30_slots=%lu budget=%lu rule=%s', cpp)
+        inc = (ROOT / 'src/proxy/motion_output_engine_light_inc.h').read_text()
+        self.assertIn('slots_max=%lu slot_budget=%lu', inc)
 
 
 class TwinTests(unittest.TestCase):
@@ -454,22 +544,23 @@ class TwinTests(unittest.TestCase):
                 self.assertIn(depth, (5, 6, 7, 8, 9), (name, set_name))   # the motion transformer's depth input
                 self.assertEqual(len(find_all(twin, DEF_C199)), 1, (name, set_name))
                 self.assertEqual(len(find_all(twin, DEF_C198)), 1 if plate else 0, (name, set_name))
+                self.assertEqual(len(find_all(twin, DEF_TIERS)), 1, (name, set_name))   # every twin selects
                 triplets = find_all(twin, ADD_TRIPLET)
                 self.assertEqual(len(triplets), 2 if share else 1, (name, set_name))
                 delta = entry['twin_slots'] - entry['base_slots']
-                # A light per plate: the selecting block without plates 88 slots (66 more than the single light's 22:
-                # two MOVs into r12 / r13, four MOVs, two if_ne x 3 and two endif, slot 0 three, slots 1-7 seven each);
-                # the plate form 91 (the plate form's 61, the two MOVs and four per slot 1-7: the condition, two CMP,
-                # the running minimum).
+                # A light per plate over up to 72 plates: the selecting block without plates 594 slots (572 more than
+                # the single light's 22: two MOVs into r12 / r13, eleven levels of two MOVs, if_ne x 3 and endif, the
+                # MOV of slot 0's plate register, slot 0 three, slots 1-71 seven each, the light from the selected plate
+                # three); the plate form 597 (the same and D once, slot 0's MIN, the weight's two, slots without the MUL).
                 if fill0:
-                    self.assertEqual(delta, (70 if share else 45) + 66, (name, set_name))
+                    self.assertEqual(delta, (70 if share else 45) + 572, (name, set_name))
                     continue
-                # The plate form: 69 more block slots than the single light, the gain 3 for 1.
-                self.assertEqual(delta, (28 if share else 25) + (71 if plate else 66), (name, set_name))
+                # The plate form: 575 more block slots than the single light, the gain 3 for 1.
+                self.assertEqual(delta, (28 if share else 25) + (577 if plate else 572), (name, set_name))
                 for at in triplets:   # each add follows its fill block's MAD
                     self.assertEqual(twin[at - len(FILL_MAD):at], FILL_MAD, (name, set_name))
                 stripped = twin
-                for pattern in [blocks[depth], DEF_C199] + [DEF_C198] * plate + [ADD_TRIPLET] * len(triplets):
+                for pattern in [blocks[depth], DEF_C199, DEF_TIERS] + [DEF_C198] * plate + [ADD_TRIPLET] * len(triplets):
                     at = find_all(stripped, pattern)[0]
                     stripped = remove(stripped, at, len(pattern))
                 if plate:
@@ -529,20 +620,23 @@ class RouteWiringTests(unittest.TestCase):
         self.assertIn('engine_light_release(entry.second);', cpp)
         inc = (ROOT / 'src/proxy/motion_output_engine_light_inc.h').read_text()
         self.assertNotIn('new ', inc.split('void MotionOutput::engine_light_prepare')[1])   # no allocation per draw
-        # Two uploads, the plate lights and plates c176-c197 and the light c200-c202: the API never writes c198-c199 (the
-        # twins' DEFs).
+        # Two uploads, the run of the draw's tier (its plates and colours, 2 run - 1 registers ending at c197) and the
+        # light c200-c202: the API never writes c52-c54 or c198-c199 (the twins' DEFs).
         upload_body = inc[inc.index('HRESULT MotionOutput::engine_light_upload()'):inc.index('void MotionOutput::engine_light_prepare')]
         self.assertEqual(upload_body.count('direct_call<SetConstantsFFn>(SetPixelShaderConstantF,'), 2)
-        self.assertIn('Abi::light_constant + skip,', upload_body)
-        self.assertIn('engine_light_->constants + skip * 4, Abi::upload_count - skip);', upload_body)
-        self.assertIn('el::block_upload_skip(engine_light_->constants)', upload_body)
+        self.assertIn('const unsigned run = el::block_upload_run(engine_light_->constants), first = Abi::upload_first(run);', upload_body)
+        self.assertIn('engine_light_->constants + (first - Abi::light_constant) * 4,', upload_body)
+        self.assertIn('Abi::upload_count(run));', upload_body)
         self.assertIn('Abi::pixel_constant,', upload_body)
         self.assertIn('Abi::pixel_constant_count);', upload_body)
+        self.assertIn('el::same_runs(Abi::plate_runs)', upload_body)
         abi = (ROOT / 'src/renderer/linear_material.h').read_text()
-        self.assertIn('light_constant = 176, light_count = 2 * (plate_count - 1),', abi)
+        self.assertIn('static constexpr unsigned plate_constant = 197, plate_count = 72, tier_count = 12;', abi)
+        self.assertIn('static constexpr unsigned tier_constant = 52, tier_constant_count = 3;', abi)
         self.assertIn('engine_light::core::block_constants(*light, world, view, s.constants)', inc)
-        # The frame row names the nozzles carrying light (no per-pixel rows).
+        # The frame row names the nozzles carrying light (no per-pixel rows) and the ships above eight plates.
         self.assertIn('lights=%u own_lights=%s most_lights=%s', inc)
+        self.assertIn('plates_more=%u plates_max=%u', inc)
         self.assertIn('hdr_state_ != HdrState::Active', inc)
         self.assertIn('preset_scale, &s.ships, engine_ring_->own);', inc)   # the own-ship tags reach the ship table
         # The fixture scope carries node+0x18 like object_trace's (the seam case's lit node hangs under the root).
@@ -564,18 +658,27 @@ class WineRecordTests(unittest.TestCase):
         self.assertTrue(record['teardown_ok'])
         self.assertIn('TEARDOWN device references=0', record['teardown'])
         self.assertLessEqual(record['cost']['hit_ns'], 200.0)
-        # The full-screen term for ships of 1, 3 and 8 nozzles (the twin's uniform branches: 1, 4, 8 plate slots).
+        # The per-draw path on ships of 8 and 72 nozzles (the run's plates computed and uploaded): <= 200 ns per eight.
+        self.assertEqual(sorted(int(c['plates']) for c in record['cost_plates']), [8, 72])
+        for c in record['cost_plates']:
+            self.assertLessEqual(c['hit_ns'], 200.0 * max(1.0, c['plates'] / 8), c)
+        # The full-screen term for ships of 1, 3, 8, 10 and 72 nozzles (the twin's uniform branches: 1, 4, 8, 12, 72
+        # plate slots).
         self.assertEqual([(g['nozzles'], g['width'], g['height']) for g in record['gpu']],
-                         [(n, w, h) for n in (1, 3, 8) for w, h in ((1920, 1080), (5120, 1440))])
-        # A light per plate (DUAL): two nozzles apart beyond one reach and two overlapping, both kinds' forms, every pixel
-        # against the law with the selected plate's light; both plates lit, the second nozzle's foot lit, and dark
-        # under plate 0's light alone where the nozzles are apart.
-        self.assertEqual(sorted(record['dual']), ['0-apart-1', '0-apart-6', '1-overlap-6', '2-overlap-1'])
+                         [(n, w, h) for n in (1, 3, 8, 10, 72) for w, h in ((1920, 1080), (5120, 1440))])
+        # A light per plate (DUAL): two nozzles apart beyond one reach and two overlapping, the Split Ocelot's ten and the
+        # cap of 72, both kinds' forms, every pixel against the law with the selected plate's light; every plate lit
+        # (none dropped), every further nozzle's foot lit, and dark under plate 0's light alone where the nozzles are
+        # apart.
+        self.assertEqual(sorted(record['dual']), ['0-apart-1', '0-apart-6', '0-cap-1', '0-ten-6', '1-cap-6',
+                                                  '1-overlap-6', '2-overlap-1', '2-ten-1'])
         for name, dual in record['dual'].items():
             self.assertTrue(dual['passed'], name)
+            self.assertTrue(dual['checks']['plates'], name)
             self.assertLessEqual(dual['stats']['max_relative'], 0.01, name)
+            self.assertEqual(len(dual['stats']['lit']), 10 if 'ten' in name else 72 if 'cap' in name else 2, name)
             self.assertTrue(all(n > 0 for n in dual['stats']['lit']), name)
-            self.assertGreater(dual['stats']['at_foot'][1], 0.0, name)
+            self.assertTrue(all(f > 0.0 for f in dual['stats']['at_foot']), name)
             self.assertEqual(dual['stats']['zero_not_identical'], 0, name)
             if 'apart' in name:
                 self.assertEqual(dual['stats']['before_at_foot'][1], 0.0, name)
@@ -585,13 +688,14 @@ class WineRecordTests(unittest.TestCase):
         self.assertTrue(plate['passed'])
         self.assertEqual(plate['radii'], dict(reach=REACH, full=PLATE_FULL, zero=PLATE_REACH))
         self.assertEqual(sorted(plate['modes']), ['%d-%s' % (p, m) for p in (0, 1)
-                                                  for m in ('gain1', 'nogain', 'nolight', 'twin', 'twin3', 'twin8')])
+                                                  for m in ('gain1', 'nogain', 'nolight', 'twin', 'twin10', 'twin3',
+                                                            'twin72', 'twin8')])
         for name, mode in plate['modes'].items():
             s = mode['stats']
             self.assertLessEqual(s['register_error'], 1e-5, name)
-            if name.endswith(('twin3', 'twin8')):
+            if name.endswith(('twin3', 'twin8', 'twin10', 'twin72')):
                 # Every main nozzle of the ship at gain 1 (its plate point and its near samples), 4 beyond all of them.
-                self.assertEqual(s['nozzles'], int(name[-1]), name)
+                self.assertEqual(s['nozzles'], int(name.split('twin')[1]), name)
                 for nozzle in s['per_nozzle']:
                     self.assertGreater(nozzle['near'], 0, name)
                     self.assertAlmostEqual(nozzle['at_point'], 1.0, places=5, msg=name)
@@ -614,6 +718,9 @@ class WineRecordTests(unittest.TestCase):
         self.assertLessEqual(record['worst_relative'], 0.05)
         self.assertEqual(record['zero_differ'], 0)
         self.assertEqual(record['log_rows']['hull_variant']['created'], '07')
+        # The hull twins above the old 512-slot refusal, created under the device's budget (wined3d reports 512: 32768).
+        self.assertGreater(int(record['log_rows']['hull_variant']['slots_max']), 512)
+        self.assertEqual(record['log_rows']['hull_variant']['slot_budget'], record['log_rows']['slot_budget'][-1]['budget'])
         for row in record['log_rows']['frame_rows']:
             if row['candidates'] != '0':
                 self.assertEqual((row['draws_lit'], row['no_twin'], row['no_rows']), ('1', '0', '0'))

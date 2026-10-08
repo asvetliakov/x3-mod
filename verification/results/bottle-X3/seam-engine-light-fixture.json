@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "8734e8cd82a9dde830b8edfda51b8986d0b916b000ebd86697c1b2eb90357122",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "159244f13d9b0f8ade25ebf514f95273b45f4deebcf4ac07ef7933bc04be7fa4",
-  "build/d3d9.dll": "250e408603b8690e4983c56f7a801e7aa846754c24b89cd10834bb914639ba59"
+  "verification/probe/build/motion_output_fixture.exe": "1a8bbc6c7737eb3f8ce5a27c3bf2acf5f6c73264cca60db8a0c2e93949dea0f0",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "8a14523983789461fb5c9418b265143af03f5616b1a27b4232712c4b694ba000",
+  "build/d3d9.dll": "cffd90cc62a0ff25eaa46f0967cea157eb615ac552ede09c14e9f9aa5153a8b6"
  },
  "checks": 107,
  "frames": [
@@ -153,9 +153,9 @@
    "reach": "3.00",
    "colour_scale": "0.25",
    "cap": "1",
-   "constants": "c176-c202",
+   "constants": "c55-c202",
    "ships_max": "256",
-   "plates_max": "8"
+   "plates_max": "72"
   },
   "hull_variant": {
    "device": "1",
@@ -164,9 +164,19 @@
    "refused": "00",
    "mismatched": "00",
    "failed": "00",
-   "words_max": "1885",
+   "words_max": "3990",
+   "slots_max": "692",
+   "slot_budget": "32768",
    "depth": "1"
   },
+  "slot_budget": [
+   {
+    "device": "1",
+    "ps30_slots": "512",
+    "budget": "32768",
+    "rule": "spec_minimum"
+   }
+  ],
   "frames_with_candidates": 7,
   "frame_rows": [
    {
@@ -260,8 +270,8 @@
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-engine-light-20261008-140535-377508",
- "trace_sha256": "3ac889eb3cbe6e2e99554c20872cc76d54b1b5c1a3fea50c0ba9cbf2cad907c9",
- "dll_sha256": "159244f13d9b0f8ade25ebf514f95273b45f4deebcf4ac07ef7933bc04be7fa4",
- "exe_sha256": "8734e8cd82a9dde830b8edfda51b8986d0b916b000ebd86697c1b2eb90357122"
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261008-151715-920228",
+ "trace_sha256": "9536fb524dc91eaa841fa8ae1424a701a9f07376ba6c0502c40bc949f336b828",
+ "dll_sha256": "8a14523983789461fb5c9418b265143af03f5616b1a27b4232712c4b694ba000",
+ "exe_sha256": "1a8bbc6c7737eb3f8ce5a27c3bf2acf5f6c73264cca60db8a0c2e93949dea0f0"
 }

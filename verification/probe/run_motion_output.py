@@ -1569,14 +1569,24 @@ def validate_engine_light_seam(name, text, trace):
     variants = {v['original']: v for v in (fields(l) for l in trace.splitlines() if l.startswith('engine_light_variant '))}
     hull = variants.get('7c83ed50c9894e44')
     assert hull and hull['created'] == '07' and hull['refused'] == '00' and hull['mismatched'] == '00' and hull['failed'] == '00', (name, hull)
+    # The transformers' slot budget (AGENTS.md "Shader slot budget"): the device's MaxPixelShader30InstructionSlots,
+    # 32768 where it reports the 512 spec minimum; the hull twins (the selection over 72 plates) above 512 slots, created.
+    budgets = [fields(l) for l in trace.splitlines() if l.startswith('ps3_slot_budget ')]
+    assert budgets, (name, 'no ps3_slot_budget row')
+    for b in budgets:
+        reported = int(b['ps30_slots'])
+        expected = 32768 if reported <= 512 else min(reported, 32768)
+        assert int(b['budget']) == expected and b['rule'] == ('spec_minimum' if reported <= 512 else 'device_cap'), (name, b)
+    assert int(hull['slots_max']) > 512 and hull['slot_budget'] == budgets[-1]['budget'], (name, hull, budgets[-1])
     frames = [fields(l) for l in trace.splitlines() if l.startswith('engine_light_frame ')]
     lit_rows = [f for f in frames if f['candidates'] != '0']
     # One row per frame with a table or a candidate; the last frame's row is never written (no later boundary).
     assert len(lit_rows) >= len(lit) - 1, (name, len(lit_rows), len(lit))
     for f in lit_rows:
         assert (f['candidates'], f['draws_lit'], f['no_twin'], f['no_rows'], f['ships'], f['nodes']) == ('1', '1', '0', '0', '1', '1'), (name, f)
-        # The one ship's nozzle plates: its one main nozzle (plates= ships by plate count 1..8).
-        assert (f['plates'], f['plates_none'], f['plates_dropped']) == ('1,0,0,0,0,0,0,0', '0', '0'), (name, f)
+        # The one ship's nozzle plates: its one main nozzle (plates= ships by plate count 1..8, plates_more= above).
+        assert (f['plates'], f['plates_more'], f['plates_max'], f['plates_none'], f['plates_dropped']) == (
+            '1,0,0,0,0,0,0,0', '0', '1', '0', '0'), (name, f)
     summary = result[0]
     return dict(checks=len(rows) * 6 + len(lit) * 6 + 4 + len(lit_rows), frames=[{k: r[k] for k in (
                     'step', 'reset', 'draws_lit', 'bound_unlit', 'bound_lit', 'constant_error', 'lit_samples', 'visible', 'max_relative',
@@ -1584,7 +1594,7 @@ def validate_engine_light_seam(name, text, trace):
                 lit_frames=int(summary['lit_frames']), first_lit_after_reset=int(summary['first_lit_after_reset']),
                 worst_relative=float(summary['worst_relative']), worst_constant=float(summary['worst_constant']),
                 visible=int(summary['visible']), zero=int(summary['zero']), zero_differ=int(summary['zero_differ']),
-                log_rows=dict(mode=mode[0], hull_variant=hull, frames_with_candidates=len(lit_rows),
+                log_rows=dict(mode=mode[0], hull_variant=hull, slot_budget=budgets, frames_with_candidates=len(lit_rows),
                               frame_rows=[{k: f.get(k) for k in ('frame', 'ships', 'nodes', 'candidates', 'draws_lit', 'no_twin', 'no_rows', 'twins',
                                                                   'plates')}
                                           for f in frames]))
