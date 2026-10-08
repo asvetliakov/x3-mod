@@ -143,8 +143,9 @@ Limits: the suppression lives in the twin, so it acts only where the hull light 
 `engine_light` on, a ship in the light table, its routed hull draw). With `engine_light` off, or for a ship without a
 recorded main jet (unlit: no plates either), the plates keep the full gain; no second program set carries the weight.
 A ship with more than `plate_slots` main nozzles (eight until 2026-10-08, 72 since) keeps gain 4 on its dimmest ones. When a ship's light unbinds (evicted at the
-256-ship cap, no main-jet record that frame, the option off) its plates jump from about 1 back to 4 in one frame, no
-fade; a far-fade far gain under 1 (`light_map_far_fade` third value, default 1) would raise a plate to 1 above the
+256-ship cap, the option off, its hull no longer drawn, or the end of a hold) its plates jump from about 1 back to 4 in one
+frame; a ship whose main-jet records stop while its hull is still drawn (a nozzle off screen) is held and fades out
+instead (since 2026-10-08, "Hold" below; `engine_light_hold 0` restores the one-frame cut); a far-fade far gain under 1 (`light_map_far_fade` third value, default 1) would raise a plate to 1 above the
 faded hull around it, because g - (g - 1) w is not clamped at g >= 1. Plates of nozzles outside the node table's
 reach (turrets and parts deeper than one level) are not drawn by a lit draw and keep the gain.
 
@@ -310,6 +311,45 @@ Per routed draw with a lit ship in the table: two ship-table probes (logging), o
 constants in double (about 30 multiply-adds) and one SetPixelShaderConstantF in the route's apply chain (a failure
 rolls the route back to the native draw). Not on fade-arm draws, linear materials or outside the FP16 scene.
 
+## Hold
+
+Since 2026-10-08 (user report: "when engines go off camera the engine light is cut off too, producing flicker in close
+views"). The game culls a nozzle's plume draw when the nozzle leaves the frustum, so the ship has no main-jet record that
+frame and, without a hold, its light and plates went out in one frame while the hull was still on screen.
+
+- Rule (`engine_light_core.h` `hold_ships`, between `build_ships` and `build_nodes`): a ship in the table the previous
+  frame drew with, without a record now, keeps its light and plates for up to `engine_light_hold` frames (default 60,
+  0..600, 0 = the cut as before) as long as any of its anchors is in the previous frame's draw log with the same node and
+  handle. Anchors: up to four logged draws of the ship per entry (node, handle, world rows, 56 bytes each): the root's own
+  draw first when logged, then the first logged draws of nodes directly under the root, the scope `build_nodes` lights.
+  The set is taken afresh every frame the ship is drawn, live or held, so it follows the current LOD: a LOD switch of one
+  anchored node is carried by another, and only a ship none of whose anchors is drawn leaves at once (no held entries off
+  screen). Only while the plume stage is attached.
+- Cap and own ship: a held entry competes at the 256-ship cap with its brightness x fade (the selection key; the bound
+  brightness is kept beside it), so a fading entry gives way to a brighter live ship; it enters a full table in place
+  of the dimmest evictable entry when it is brighter after the fade, or always when it is the own ship's (build_ships'
+  rule; `ships_dropped` either way). A held entry keeps its `own` flag: the own ship's held light is never evicted and
+  stays in `own_lights=`.
+- Position: each anchor keeps the world rows of the frame the entry's positions are in. A held entry's light and plate
+  points are carried by the first anchor drawn again whose earlier rows invert (a singular one falls through to the
+  next), P' = W' W^-1 (P - t) + t' (that anchor's model space, `invert_rows`), and stored as the entry's world positions;
+  `build_nodes` then expresses them in every logged node of the ship exactly as for a fresh entry, so the light rides on
+  the moving, turning hull through the whole hold.
+- Fade: over the window's last third, F = ceil(window / 3) frames, the scale is (window + 1 - age) / (F + 1), linear from
+  F / (F + 1) to 1 / (F + 1) at the last held frame, 0 (gone) the next; at 60: 1 through age 40, 20/21 at 41, 1/21 at 60,
+  dropped at 61 (`hold_expired`). `build_nodes` multiplies the light's colour (c201.xyz and each further plate's colour
+  register), its radius (c200.w, c201.w) and each plate's value_eff (the plate register's 1 / v) by it, so the light's
+  peak at its point falls linearly while its reach shrinks with it, and the plate weight's disc shrinks to nothing, the
+  light-map gain returning to 4 continuously instead of in one frame. A fresh record re-binds at full strength at the
+  same boundary.
+- Cost: the two ship tables swap at each boundary (no copy; one more 965,728-byte table, host layout, measured); one log
+  pass of at most four ship probes and four anchor compares per draw, then per held ship up to four 3x3 inverses (one
+  unless an anchor is singular) and one product and nine multiply-adds per plate; 6.5 KB of log indices on the stack, no
+  allocation; nothing per draw. Host arm64: 31-42 us (three runs) for 256 held ships of 72 plates, 1.1-1.8 us for the
+  anchor pass over 256 bound ships (`test_engine_light.py` `hold.cost`, measured).
+- Config: `engine_light_hold` (`X3M_ENGINE_LIGHT_HOLD`, `--engine-light-hold`), read once at load; `engine_light_mode`
+  carries `hold=`, `hold_setting=`, `hold_status=`.
+
 ## Logging
 
 `engine_light_mode` once per device (setting, status, reason, constants); `engine_light_variant` per reviewed program
@@ -318,7 +358,7 @@ drawn, nodes, candidates, draws lit, no_twin, no_rows, the record census, the lo
 2026-10-08 `lights=` the plates over all ships, each carrying its nozzle's light, and `own_lights=` / `most_lights=`
 the own ship's and the ship of the most plates' root and plate node handles, brightest first, i.e. the plate slot
 order, `-` when none: `most_lights=00663300:5a` in the seam case; since the plate cap `plates_more=` and
-`plates_max=`). `ps3_slot_budget` once per device (`ps30_slots=` the device's MaxPixelShader30InstructionSlots,
+`plates_max=`; since the hold `held=`, the ships held without a record, and `hold_expired=`, the holds that ran out). `ps3_slot_budget` once per device (`ps30_slots=` the device's MaxPixelShader30InstructionSlots,
 `budget=` the transformers' limit, `rule=spec_minimum|device_cap`), and `engine_light_variant` carries `slots_max=`
 (the largest created twin, `ps3_program_slots` weights) and `slot_budget=`. No per-pixel rows. See
 [logging-tiers.md](logging-tiers.md).
@@ -353,8 +393,10 @@ A cull that kept only the plates whose reach touches a draw's bounding box was b
 
 - Turrets and parts deeper than one level under the root stay unlit (the node table takes the root and its direct
   children only): on capitals a lit hull plate can meet an unlit turret or sub-part at a visible seam.
-- The light switches off with a culled glow: a ship whose glow-jet draws are culled (the small-parts cull, the LOD
-  switch, a jet off screen) records nothing that frame, so its hull light goes out with them.
+- The light outlives a culled glow by the hold ("Hold"): a ship whose glow-jet draws are culled (the small-parts cull, the
+  LOD switch, a jet off screen) records nothing that frame and is held on its drawn hull for `engine_light_hold` frames,
+  fading over the last third; not yet seen in a flight. A ship whose anchored nodes all change handle in one frame (a
+  LOD switch of the root and of every anchored child together) leaves at once.
 - Far records (`flag_far`, the small-parts cull's copies) feed the ship table like any main jet, so a distant ship
   whose nozzles the cull removed can still light its routed hull draws; not looked at in a flight.
 - Replay passes that reissue a routed hull draw with the twin bound: audited 2026-10-03 (read of the proxy's draw

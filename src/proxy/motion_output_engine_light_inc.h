@@ -21,6 +21,15 @@ void MotionOutput::configure_engine_light(bool plumes) noexcept {
     engine_light::core::Mode mode = engine_light::core::default_mode;
     const bool ok = !n || (n < 8 && engine_light::core::parse_mode(text, n, &mode));
     if (!ok) mode = engine_light::core::default_mode;
+    // The hold window (engine_light_core.h hold_ships): unset = hold_default, anything but 0..hold_max refused.
+    wchar_t hold_text[8]{};
+    const DWORD hn = x3m::config::get(L"X3M_ENGINE_LIGHT_HOLD", hold_text, 8);
+    char hold_shown[8]{};
+    for (DWORD i = 0; i < hn && i < 7; ++i)
+        hold_shown[i] = hold_text[i] > 0x20 && hold_text[i] < 0x7f ? char(hold_text[i]) : '?';
+    unsigned hold = engine_light::core::hold_default;
+    const bool hold_ok = !hn || (hn < 8 && engine_light::core::parse_hold(hold_text, hn, &hold));
+    if (!hold_ok) hold = engine_light::core::hold_default;
     engine_light_requested_ = mode == engine_light::core::Mode::on && plumes && plumes_requested_ && engine_ring_ &&
                               !linear_material_requested_;
     const char* reason = mode != engine_light::core::Mode::on ? "off"
@@ -36,18 +45,21 @@ void MotionOutput::configure_engine_light(bool plumes) noexcept {
         }
     }
     if (engine_light_) {
-        engine_light_->ships.clear();
+        engine_light_->tables[0].clear();
+        engine_light_->tables[1].clear();
+        engine_light_->hold = hold;
         engine_light_->nodes.clear();
         engine_light_->log.clear();
         engine_light_->built_frame = ~std::uint64_t(0);
     }
-    log("engine_light_mode device=%llu setting=%s status=%s mode=%s requested=%u reason=%s behind=%.2f reach=%.2f colour_scale=%.2f cap=1 constants=c%u-c%u ships_max=%u plates_max=%u",
+    log("engine_light_mode device=%llu setting=%s status=%s mode=%s requested=%u reason=%s behind=%.2f reach=%.2f colour_scale=%.2f cap=1 constants=c%u-c%u ships_max=%u plates_max=%u hold=%u hold_setting=%s hold_status=%s",
         id_, n ? shown : "-", ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting", engine_light::core::mode_name(mode),
         unsigned(engine_light_requested_), reason, double(engine_light::core::behind),
         double(engine_light::core::reach), double(engine_light::core::colour_scale),
         renderer::EngineLightAbi::light_constant,
         renderer::EngineLightAbi::pixel_constant + renderer::EngineLightAbi::pixel_constant_count - 1,
-        engine_light::core::ship_capacity, engine_light::core::plate_slots);
+        engine_light::core::ship_capacity, engine_light::core::plate_slots, hold, hn ? hold_shown : "-",
+        hold_ok ? "ok" : hn >= 8 ? "too_long" : "invalid_setting");
 }
 // The twins of the program's original-shading variants, created once at registration beside them with the options
 // that built each (engine_light_kind order: the plain motion variant at K = 0, the fill, the gained and widened, the
@@ -158,28 +170,29 @@ void MotionOutput::refresh_engine_light_pair() noexcept {
                                 renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
 }
 // At the frame boundary (begin_frame, before engine_effects_frame_begin clears the ring): the previous frame's row,
-// then the ship table from the previous frame's records of the scene view and the node table from its logged hull
-// draws. A Reset's repeated begin of the same frame builds nothing.
+// then the ship table from the previous frame's records of the scene view, the held ships (hold_ships: a ship lit in
+// the previous frame without a record, its hull still drawn, for engine_light_hold frames) and the node table from its
+// logged hull draws. A Reset's repeated begin of the same frame builds nothing.
 void MotionOutput::engine_light_frame() noexcept {
     if (!engine_light_requested_ || !engine_light_ || engine_light_->built_frame == frame_) return;
     auto& s = *engine_light_;
     namespace el = engine_light::core;
-    if (log_tier::cached_debug && engine_census_ && (s.counts.candidates || s.nodes.count || s.ships.count)) {
+    if (log_tier::cached_debug && engine_census_ && (s.counts.candidates || s.nodes.count || s.ships->count)) {
         const auto& c = s.counts;
         // plates=: the ships by nozzle-plate count 1..8, plates_more= the ships above eight and plates_max= the largest
         // count (the per-ship main nozzles after the co-located merge, capped at plate_slots; plates_dropped the
         // nozzles beyond it).
         unsigned by_count[9] = {}, more = 0, most_plates = 0, lights = 0;
         int own = -1, most = -1;
-        for (unsigned i = 0; i < s.ships.count; ++i) {
-            const el::Light& l = s.ships.lights[i];
+        for (unsigned i = 0; i < s.ships->count; ++i) {
+            const el::Light& l = s.ships->lights[i];
             const unsigned k = l.plate_count;
             if (k <= 8) ++by_count[k];
             else ++more;
             most_plates = k > most_plates ? k : most_plates;
             lights += k;
             if (l.own && own < 0) own = int(i);
-            if (most < 0 || k > s.ships.lights[most].plate_count) most = int(i);
+            if (most < 0 || k > s.ships->lights[most].plate_count) most = int(i);
         }
         // lights=: the plates over all ships, each carrying its nozzle's light (block_constants); own_lights= and
         // most_lights=: the own ship's and the ship of the most plates' (ties: the first entry) root and plate node
@@ -187,7 +200,7 @@ void MotionOutput::engine_light_frame() noexcept {
         char own_text[12 + el::plate_slots * 9] = "-", most_text[12 + el::plate_slots * 9] = "-";
         const auto handles = [&](int ship, char* out, std::size_t size) {
             if (ship < 0) return;
-            const el::Light& l = s.ships.lights[ship];
+            const el::Light& l = s.ships->lights[ship];
             int at = std::snprintf(out, size, "%08lx:", static_cast<unsigned long>(l.root));
             for (unsigned p = 0; p < l.plate_count && p < el::plate_slots && at > 0 && std::size_t(at) < size; ++p)
                 at += std::snprintf(out + at, size - std::size_t(at), "%s%lx", p ? "," : "",
@@ -195,21 +208,24 @@ void MotionOutput::engine_light_frame() noexcept {
         };
         handles(own, own_text, sizeof own_text);
         handles(most, most_text, sizeof most_text);
-        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_more=%u plates_max=%u plates_none=%u unfloored=%u plates_dropped=%u lights=%u own_lights=%s most_lights=%s",
-            id_, s.built_frame, s.ships.count, s.nodes.ships, s.nodes.count, c.candidates, c.draws_lit, c.no_twin,
-            c.no_rows, s.ships.stats.records, s.ships.stats.main, s.ships.stats.rcs, s.ships.stats.brake,
-            s.ships.stats.other_view, s.ships.stats.invalid, s.ships.stats.orphan, s.ships.stats.dropped,
+        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_more=%u plates_max=%u plates_none=%u unfloored=%u plates_dropped=%u lights=%u own_lights=%s most_lights=%s held=%u hold_expired=%u",
+            id_, s.built_frame, s.ships->count, s.nodes.ships, s.nodes.count, c.candidates, c.draws_lit, c.no_twin,
+            c.no_rows, s.ships->stats.records, s.ships->stats.main, s.ships->stats.rcs, s.ships->stats.brake,
+            s.ships->stats.other_view, s.ships->stats.invalid, s.ships->stats.orphan, s.ships->stats.dropped,
             s.nodes.stats.logged, s.nodes.stats.log_dropped, s.nodes.stats.matched, s.nodes.stats.singular,
             s.nodes.stats.dropped, s.twins, by_count[1], by_count[2], by_count[3], by_count[4], by_count[5], by_count[6],
-            by_count[7], by_count[8], more, most_plates, by_count[0], s.ships.stats.unfloored, s.ships.stats.plates_dropped, lights,
-            own_text, most_text);
+            by_count[7], by_count[8], more, most_plates, by_count[0], s.ships->stats.unfloored, s.ships->stats.plates_dropped, lights,
+            own_text, most_text, s.ships->stats.held, s.ships->stats.hold_expired);
     }
     s.counts = {};
     s.built_frame = frame_;
     // The plume stage's records: only while the stage is attached (a refused or disarmed stage forwards the glow, and
-    // a light without its plume is not drawn either).
+    // a light without its plume is not drawn either); the hold likewise. The table the previous frame drew with becomes
+    // `previous` (its draws are the logged ones) and the older buffer takes this boundary's table.
     std::uint32_t scene_camera = 0;
-    const bool records = engine_ring_ && engine_ring_->count && !engine_plumes_stage_off() &&
+    const bool attached = engine_ring_ && !engine_plumes_stage_off();
+    std::swap(s.ships, s.previous);
+    const bool records = attached && engine_ring_->count &&
                          engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->own,
                                                           engine_ring_->count, &scene_camera);
     float preset_scale = 1.f;
@@ -217,10 +233,11 @@ void MotionOutput::engine_light_frame() noexcept {
     if (records)
         el::build_ships(engine_ring_->records, engine_ring_->parent, engine_ring_->parent_radius, engine_ring_->camera,
                         engine_ring_->scene, scene_camera, engine_ring_->count, &engine_effects::body, plumes_look_,
-                        preset_scale, &s.ships, engine_ring_->own);
+                        preset_scale, s.ships, engine_ring_->own);
     else
-        s.ships.clear();
-    el::build_nodes(s.ships, s.log, &s.nodes);
+        s.ships->clear();
+    if (attached) el::hold_ships(*s.previous, s.ships, s.log, s.hold);
+    el::build_nodes(*s.ships, s.log, &s.nodes);
     s.log.clear();
 }
 // After the motion ABI's upload on a draw whose twin bind_variant_pair bound: the run of the draw's plate tier (its
@@ -256,10 +273,10 @@ void MotionOutput::engine_light_prepare(MotionRoute& route, bool material) noexc
     const std::uint32_t node = std::uint32_t(route.key.node), handle = route.key.node_handle;
     if (!node) return;
     auto& s = *engine_light_;
-    if (!s.ships.count) return;
+    if (!s.ships->count) return;
     const float* world = engine_light_rows(shadow_.engine_layout.world);
-    if (world && (engine_light::core::find_ship(s.ships, node) >= 0 ||
-                  engine_light::core::find_ship(s.ships, route.scope_parent) >= 0))
+    if (world && (engine_light::core::find_ship(*s.ships, node) >= 0 ||
+                  engine_light::core::find_ship(*s.ships, route.scope_parent) >= 0))
         s.log.push(node, route.scope_parent, handle, world);
     const auto* light = engine_light::core::find_node(s.nodes, node, handle);
     if (!light) return;

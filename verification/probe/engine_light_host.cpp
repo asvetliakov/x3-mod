@@ -5,7 +5,8 @@
 // consistent through the replacements), the twin kinds' out-flag match (a twin whose share plan failed only with the
 // light is refused), the one-frame protocol with the motion compensation (the light rides on the hull node
 // that moved and turned between the frames), the per-draw constants, the nozzle plates up to the cap of 72 (the Split
-// Ocelot's ten, 72, 80 with eight dropped; every plate lit by its own light in the modelled twin), the transformers'
+// Ocelot's ten, 72, 80 with eight dropped; every plate lit by its own light in the modelled twin), the hold (a ship
+// without a record held on its moving hull, faded, dropped when undrawn or expired, re-bound by a record), the transformers'
 // slot budget rule, and the per-draw lookup + constants cost on the host (ships of 1, 8 and 72 nozzles). No Windows
 // dependency, no game bytes.
 #include "../../src/proxy/engine_light_core.h"
@@ -513,6 +514,328 @@ int main() {
         build_nodes(*ships, *log, nodes.get());
         std::printf("\"degenerate\":{\"view\":%d,\"singular_nodes\":%u,\"singular\":%u},", degenerate, nodes->count,
                     nodes->stats.singular);
+    }
+    // ---- hold (engine-light.md "Hold"): ship 0x4000 bound with two plates (nozzles at model (-3, 0, -20) and
+    // (3, 0, -20), value 8 and 6, scale 2), its root 0x4000 (handle 4) and its child 0x5000 (handle 9, model offset
+    // o) logged; then frames without a record while the hull moves and turns: held with its new rows applied, the fade
+    // over the window's last third, gone after it; a frame with the ship not drawn drops it at once; a fresh record
+    // re-binds at full strength; window 0 is today's rule; a held entry is evictable at the cap like any other.
+    {
+        auto table_a = std::make_unique<ShipTable>(), table_b = std::make_unique<ShipTable>();
+        auto hold_nodes = std::make_unique<NodeTable>();
+        auto hold_log = std::make_unique<DrawLog>();
+        ShipTable *cur = table_a.get(), *prev = table_b.get();
+        cur->clear();
+        prev->clear();
+        const unsigned window = hold_default;
+        const std::uint32_t root = 0x4000, child = 0x5000;
+        const double offset[3] = {0, 1, 2};
+        // Frame k's rows of the root and the child (same rotation and scale, the child's origin at the root's model o).
+        const auto frame_rows = [&](unsigned k, float r[12], float c[12]) {
+            const double t[3] = {1000. + 5. * k, -200., 1500. - 3. * k};
+            rows(.3 + .01 * k, 2., t, r);
+            double o[3];
+            apply(r, offset, o);
+            for (unsigned i = 0; i < 12; ++i) c[i] = r[i];
+            c[3] = float(o[0]);
+            c[7] = float(o[1]);
+            c[11] = float(o[2]);
+        };
+        const double nozzle_model[2][3] = {{-3, 0, -20}, {3, 0, -20}};
+        const float sizes[2] = {8.f, 6.f};
+        // The plates' light points in the root's model space: the nozzle + 0.5 value behind along model -z (model units
+        // = world / 2).
+        double plate_model[2][3];
+        for (unsigned j = 0; j < 2; ++j) {
+            for (unsigned i = 0; i < 3; ++i) plate_model[j][i] = nozzle_model[j][i];
+            plate_model[j][2] -= .5 * double(sizes[j]) / 2.;
+        }
+        const auto records_at = [&](unsigned k, ee::Record out[2]) {
+            float r[12], c[12];
+            frame_rows(k, r, c);
+            const double zero[3] = {0, 0, 0}, axis_model[3] = {0, 0, -1};
+            double o[3], a[3];
+            apply(r, zero, o);
+            apply(r, axis_model, a);
+            for (unsigned j = 0; j < 2; ++j) {
+                double n[3];
+                apply(r, nozzle_model[j], n);
+                out[j] = jet(float(n[0]), float(n[1]), float(n[2]), sizes[j], 1.f, 1 + j);
+                for (unsigned i = 0; i < 3; ++i) out[j].axis[i] = float((a[i] - o[i]) / 2.);
+            }
+        };
+        const std::uint32_t parents[2] = {root, root};
+        const std::uint8_t own_tags[2] = {1, 1};
+        const std::uint8_t* own = own_tags; // null: bound as another ship
+        // One frame boundary: the previous frame's records (count 0: none) and draw log, the table swap, the hold.
+        const auto boundary = [&](const ee::Record* r, unsigned count, unsigned w) {
+            ShipTable* t = cur;
+            cur = prev;
+            prev = t;
+            if (count)
+                build_ships(r, parents, nullptr, nullptr, nullptr, 0, count, nullptr, look, 1.f, cur, own);
+            else
+                cur->clear();
+            hold_ships(*prev, cur, *hold_log, w);
+            build_nodes(*cur, *hold_log, hold_nodes.get());
+        };
+        // The previous frame's draws: the child first, then the root (the anchors take the root's own draw first);
+        // `drawn` false logs another ship's node only; the handles follow a LOD switch; `singular_root` logs the root
+        // with zero rows.
+        const auto log_frame = [&](unsigned k, bool drawn, std::uint32_t child_handle = 9, std::uint32_t root_handle = 4,
+                                   bool singular_root = false) {
+            float r[12], c[12];
+            frame_rows(k, r, c);
+            hold_log->clear();
+            if (drawn) {
+                hold_log->push(child, root, child_handle, c);
+                if (singular_root) {
+                    const float zero[12] = {};
+                    hold_log->push(root, 0x1234, root_handle, zero);
+                } else
+                    hold_log->push(root, 0x1234, root_handle, r);
+            } else
+                hold_log->push(0x6000, 0x7777, 3, r);
+        };
+        // The held plate 0's world position against its model point through frame k's rows (the largest coordinate
+        // error; 1e9: not in the table).
+        const auto world_error_at = [&](unsigned k) {
+            const int i = find_ship(*cur, root);
+            if (i < 0 || !cur->lights[i].plate_count) return 1e9;
+            float r[12], c[12];
+            frame_rows(k, r, c);
+            double expect[3], e = 0.;
+            apply(r, plate_model[0], expect);
+            for (unsigned j = 0; j < 3; ++j) {
+                const double d = std::fabs(cur->lights[i].plates[0].position[j] - expect[j]);
+                e = d > e ? d : e;
+            }
+            return e;
+        };
+        // The held plate 0's world position against the root's model point through frame k's rows, and the child
+        // node's plate 0 against its model point (root model - o): the largest coordinate error.
+        double bound_position[3] = {};
+        const auto plate_errors = [&](unsigned k, double* world_error, double* node_error, double* moved = nullptr) {
+            *world_error = *node_error = 1e9;
+            const int i = find_ship(*cur, root);
+            const NodeLight* n = find_node(*hold_nodes, child, 9);
+            if (i < 0 || !n || !n->plate_count) return;
+            float r[12], c[12];
+            frame_rows(k, r, c);
+            double expect[3];
+            apply(r, plate_model[0], expect);
+            *world_error = *node_error = 0.;
+            for (unsigned j = 0; j < 3; ++j) {
+                const double e = std::fabs(cur->lights[i].plates[0].position[j] - expect[j]);
+                const double m = std::fabs(double(n->plate[0][j]) - (plate_model[0][j] - offset[j]));
+                *world_error = e > *world_error ? e : *world_error;
+                *node_error = m > *node_error ? m : *node_error;
+            }
+            if (moved) // how far the stale (bound) position is from the right one
+                *moved = std::sqrt((expect[0] - bound_position[0]) * (expect[0] - bound_position[0]) +
+                                   (expect[1] - bound_position[1]) * (expect[1] - bound_position[1]) +
+                                   (expect[2] - bound_position[2]) * (expect[2] - bound_position[2]));
+        };
+        ee::Record rec[2];
+        // Frame 0's records and draws; boundary 1 binds.
+        records_at(0, rec);
+        log_frame(0, true);
+        boundary(rec, 2, window);
+        const int bound_at = find_ship(*cur, root);
+        const Light& bound_fields = cur->lights[bound_at >= 0 ? bound_at : 0];
+        for (unsigned j = 0; j < 3; ++j) bound_position[j] = bound_fields.plates[0].position[j];
+        const NodeLight* bound_node = find_node(*hold_nodes, child, 9);
+        const float bound_colour = bound_node ? bound_node->colour[0] : 0.f,
+                    bound_value = bound_node ? bound_node->plate[0][3] : 0.f,
+                    bound_radius = bound_node ? bound_node->radius : 0.f,
+                    bound_plate_colour = bound_node && bound_node->plate_count > 1 ? bound_node->plate_colour[1][0] : 0.f;
+        std::printf("\"hold\":{\"window\":%u,\"bound\":{\"ships\":%u,\"plates\":%u,\"anchors\":%u,\"anchor_root\":%d,\"anchor_handle\":%u,"
+                    "\"age\":%u,\"fade\":%.9g,\"own\":%d,\"node\":%d,\"node_plates\":%u},",
+                    window, cur->count, bound_fields.plate_count, bound_fields.anchor_count, bound_fields.anchors[0].node == root,
+                    bound_fields.anchors[0].handle,
+                    bound_fields.age, double(bound_fields.fade), int(bound_fields.own), bound_node != nullptr,
+                    bound_node ? bound_node->plate_count : 0u);
+        // Frames 1 .. window + 1 without a record, the hull drawn and moving: rows at the checked ages.
+        std::printf("\"ages\":[");
+        const unsigned checked[] = {1, 20, 40, 41, 50, 60};
+        unsigned printed = 0, held_frames = 0;
+        for (unsigned k = 1; k <= window + 1; ++k) {
+            log_frame(k, true);
+            boundary(nullptr, 0, window);
+            held_frames += cur->stats.held;
+            if (k == window + 1) {
+                std::printf("],\"expired\":{\"ships\":%u,\"held\":%u,\"hold_expired\":%u,\"nodes\":%u},\"held_frames\":%u,",
+                            cur->count, cur->stats.held, cur->stats.hold_expired, hold_nodes->count, held_frames);
+                break;
+            }
+            bool check = false;
+            for (const unsigned a : checked) check = check || a == k;
+            if (!check) continue;
+            const int i = find_ship(*cur, root);
+            const NodeLight* n = find_node(*hold_nodes, child, 9);
+            double world_error, node_error, moved = 0.;
+            plate_errors(k, &world_error, &node_error, &moved);
+            std::printf("%s{\"age\":%u,\"ships\":%u,\"held\":%u,\"found\":%d,\"entry_age\":%u,\"fade\":%.9g,\"own\":%d,"
+                        "\"node_plates\":%u,\"colour\":%.9g,\"value\":%.9g,\"plate_colour\":%.9g,\"radius\":%.9g,"
+                        "\"world_error\":%.3g,\"node_error\":%.3g,\"moved\":%.3f,\"expect_fade\":%.9g}",
+                        printed++ ? "," : "", k, cur->count, cur->stats.held, i >= 0, i >= 0 ? cur->lights[i].age : 0u,
+                        i >= 0 ? double(cur->lights[i].fade) : -1., i >= 0 ? int(cur->lights[i].own) : -1,
+                        n ? n->plate_count : 0u, n ? double(n->colour[0] / bound_colour) : -1.,
+                        n ? double(n->plate[0][3] / bound_value) : -1.,
+                        n && n->plate_count > 1 ? double(n->plate_colour[1][0] / bound_plate_colour) : -1.,
+                        n ? double(n->radius / bound_radius) : -1., world_error, node_error, moved,
+                        double(hold_fade(k, window)));
+        }
+        // Not drawn: bound at frame 0, frame 1 logs another ship's node only: gone at once, nothing expired.
+        records_at(0, rec);
+        log_frame(0, true);
+        boundary(rec, 2, window);
+        log_frame(1, false);
+        boundary(nullptr, 0, window);
+        std::printf("\"undrawn\":{\"ships\":%u,\"held\":%u,\"hold_expired\":%u,\"nodes\":%u},", cur->count, cur->stats.held,
+                    cur->stats.hold_expired, hold_nodes->count);
+        // Re-bind: held to age 50 (fade below 1), then frame 50's records: full strength, age 0.
+        records_at(0, rec);
+        log_frame(0, true);
+        boundary(rec, 2, window);
+        for (unsigned k = 1; k <= 50; ++k) {
+            log_frame(k, true);
+            boundary(nullptr, 0, window);
+        }
+        const int at50 = find_ship(*cur, root);
+        const float fade50 = at50 >= 0 ? cur->lights[at50].fade : -1.f;
+        records_at(51, rec);
+        log_frame(51, true);
+        boundary(rec, 2, window);
+        {
+            const int i = find_ship(*cur, root);
+            const NodeLight* n = find_node(*hold_nodes, child, 9);
+            double world_error, node_error;
+            plate_errors(51, &world_error, &node_error);
+            std::printf("\"rebind\":{\"fade_before\":%.9g,\"ships\":%u,\"held\":%u,\"age\":%u,\"fade\":%.9g,\"own\":%d,"
+                        "\"colour\":%.9g,\"value\":%.9g,\"world_error\":%.3g,\"node_error\":%.3g},",
+                        double(fade50), cur->count, cur->stats.held, i >= 0 ? cur->lights[i].age : 99u,
+                        i >= 0 ? double(cur->lights[i].fade) : -1., i >= 0 ? int(cur->lights[i].own) : -1,
+                        n ? double(n->colour[0] / bound_colour) : -1., n ? double(n->plate[0][3] / bound_value) : -1.,
+                        world_error, node_error);
+        }
+        // Window 0: no record drops the light at once (today's rule), and no anchor is taken.
+        records_at(0, rec);
+        log_frame(0, true);
+        boundary(rec, 2, 0);
+        const unsigned anchor0 = cur->count ? cur->lights[0].anchor_count : 1u;
+        log_frame(1, true);
+        boundary(nullptr, 0, 0);
+        std::printf("\"window0\":{\"anchor\":%u,\"ships\":%u,\"held\":%u,\"nodes\":%u},", anchor0, cur->count,
+                    cur->stats.held, hold_nodes->count);
+        // Anchors across a LOD switch: bound with the root (handle 4) and the child (9) as anchors; frame 1 the root
+        // switches to 5 (held by the child), frame 2 the child to 10 (held by the root's new 5: the set follows the
+        // current draws), frame 3 both switch (no anchor drawn: dropped).
+        records_at(0, rec);
+        log_frame(0, true);
+        boundary(rec, 2, window);
+        const unsigned lod_bound = cur->count ? cur->lights[0].anchor_count : 0u;
+        unsigned lod_held[3] = {}, lod_first[3] = {};
+        double lod_error[3] = {};
+        const std::uint32_t lod_handles[3][2] = {{9, 5}, {10, 5}, {11, 6}};
+        for (unsigned k = 1; k <= 3; ++k) {
+            log_frame(k, true, lod_handles[k - 1][0], lod_handles[k - 1][1]);
+            boundary(nullptr, 0, window);
+            const int i = find_ship(*cur, root);
+            lod_held[k - 1] = cur->stats.held;
+            lod_first[k - 1] = i >= 0 ? cur->lights[i].anchors[0].handle : 0u;
+            lod_error[k - 1] = world_error_at(k);
+        }
+        std::printf("\"lod\":{\"bound_anchors\":%u,\"held\":[%u,%u,%u],\"first_handle\":[%u,%u,%u],\"world_error\":[%.3g,%.3g,%.3g]},",
+                    lod_bound, lod_held[0], lod_held[1], lod_held[2], lod_first[0], lod_first[1], lod_first[2],
+                    lod_error[0] < 1e8 ? lod_error[0] : -1., lod_error[1] < 1e8 ? lod_error[1] : -1., -1.);
+        // A singular first anchor (the root's rows zero when bound) falls through to the child.
+        records_at(0, rec);
+        log_frame(0, true, 9, 4, true);
+        boundary(rec, 2, window);
+        log_frame(1, true);
+        boundary(nullptr, 0, window);
+        std::printf("\"singular_anchor\":{\"held\":%u,\"world_error\":%.3g},", cur->stats.held, world_error_at(1));
+        // The cap: bound (as another ship, or as the own ship), held to `age`, then that frame brings 256 other ships'
+        // records of value `value` (the held ship's plate 0: value 8, the same throttle): the held entry competes with
+        // brightness x fade.
+        static ee::Record others[256];
+        static std::uint32_t other_parents[256];
+        const auto cap_case = [&](const char* name, unsigned age, float value, bool as_own, bool last) {
+            own = as_own ? own_tags : nullptr;
+            records_at(0, rec);
+            log_frame(0, true);
+            boundary(rec, 2, window);
+            for (unsigned k = 1; k < age; ++k) {
+                log_frame(k, true);
+                boundary(nullptr, 0, window);
+            }
+            for (unsigned i = 0; i < 256; ++i) {
+                others[i] = jet(float(i), 0, 0, value, 1.f, 100 + i);
+                other_parents[i] = 0x100000u + i * 16u;
+            }
+            log_frame(age, true);
+            ShipTable* swap = cur;
+            cur = prev;
+            prev = swap;
+            build_ships(others, other_parents, nullptr, nullptr, nullptr, 0, 256, nullptr, look, 1.f, cur);
+            hold_ships(*prev, cur, *hold_log, window);
+            const int i = find_ship(*cur, root);
+            std::printf("\"%s\":{\"ships\":%u,\"held\":%u,\"dropped\":%u,\"found\":%d,\"own\":%d,\"fade\":%.9g}%s", name,
+                        cur->count, cur->stats.held, cur->stats.dropped, i >= 0, i >= 0 ? int(cur->lights[i].own) : -1,
+                        double(hold_fade(age, window)), last ? "" : ",");
+            own = own_tags;
+        };
+        std::printf("\"cap\":{");
+        cap_case("brighter", 1, 20.f, false, false);
+        cap_case("dimmer", 1, 1.f, false, false);
+        cap_case("unfaded_wins", 1, 4.f, false, false);
+        cap_case("faded_loses", 55, 4.f, false, false);
+        cap_case("own_faded", 55, 20.f, true, true);
+        std::printf("},");
+        // Cost of the hold pass, worst case: 256 held ships of 72 plates each (every entry carried, plates in double), one
+        // anchor draw per ship in the log; and of the anchor pass alone over 256 bound ships (no hold).
+        double hold_us = 0., anchor_us = 0.;
+        unsigned hold_count = 0;
+        {
+            static ee::Record many[256 * 72];
+            static std::uint32_t many_parents[256 * 72];
+            for (unsigned i = 0; i < 256; ++i)
+                for (unsigned j = 0; j < 72; ++j) {
+                    many[i * 72 + j] = jet(float(i) * 100.f + float(j), 0, -20, 10.f - float(j) * .1f, 1.f, 1 + j);
+                    many_parents[i * 72 + j] = 0x200000u + i * 64u;
+                }
+            float r[12], c[12];
+            frame_rows(0, r, c);
+            hold_log->clear();
+            for (unsigned i = 0; i < 256; ++i) hold_log->push(0x200000u + i * 64u, 0, 4, r);
+            build_ships(many, many_parents, nullptr, nullptr, nullptr, 0, 256 * 72, nullptr, look, 1.f, prev);
+            constexpr unsigned rounds = 200;
+            cur->clear();
+            auto begin = std::chrono::steady_clock::now();
+            for (unsigned j = 0; j < rounds; ++j) hold_ships(*cur, prev, *hold_log, window); // anchors only
+            anchor_us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - begin).count() / rounds;
+            begin = std::chrono::steady_clock::now();
+            for (unsigned j = 0; j < rounds; ++j) {
+                cur->clear();
+                hold_ships(*prev, cur, *hold_log, window);
+            }
+            hold_us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - begin).count() / rounds;
+            hold_count = cur->stats.held;
+        }
+        std::printf("\"cost\":{\"held\":%u,\"plates\":%u,\"hold_us\":%.3f,\"anchor_us\":%.3f},", hold_count,
+                    prev->lights[0].plate_count, hold_us, anchor_us);
+        // The option's parser and the fade law at the edges.
+        unsigned h = 7;
+        const bool p0 = parse_hold("0", 1, &h) && h == 0;
+        const bool p600 = parse_hold("600", 3, &h) && h == 600;
+        unsigned keep = 7;
+        const bool refused = !parse_hold("601", 3, &keep) && !parse_hold("-1", 2, &keep) &&
+                             !parse_hold("1000", 4, &keep) && !parse_hold("6x", 2, &keep) && !parse_hold("", 0, &keep) &&
+                             keep == 7;
+        std::printf("\"parse\":{\"zero\":%d,\"max\":%d,\"refused\":%d},\"fade_law\":[%.9g,%.9g,%.9g,%.9g,%.9g,%.9g]},", p0,
+                    p600, refused, double(hold_fade(1, 1)), double(hold_fade(1, 2)), double(hold_fade(2, 2)),
+                    double(hold_fade(3, 3)), double(hold_fade(400, 600)), double(hold_fade(401, 600)));
     }
     // ---- the transformers' ps_3_0 slot budget (ps3_slot_budget.h): the device's cap, 32768 at or below the 512 spec
     // minimum and above 32768; 32768 before any device.

@@ -22,7 +22,8 @@
 // did between the frames; the camera position and forward axis come from the same draw's view-inverse rows, the space
 // the pixel program's eye vector is in. The route logs only the draws of ships already in the frame's table (the log
 // stays small), so a ship lights from the second frame its jets are recorded in and the light then follows the
-// records with one frame of latency.
+// records with one frame of latency. A ship whose records stop while its hull is still drawn (a nozzle off screen) is
+// held for engine_light_hold frames on its moving hull and fades out (hold_ships).
 namespace x3m::engine_light::core {
 namespace ee = x3m::engine_effects::core;
 namespace ep = x3m::engine_plumes;
@@ -46,6 +47,30 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
     return false;
 }
 constexpr Mode default_mode = Mode::on;
+// X3M_ENGINE_LIGHT_HOLD (ini engine_light_hold), read once at load: how many frames a ship's light outlives its last
+// main-jet record while the ship's hull is still drawn (hold_ships; engine-light.md "Hold"); one plain integer
+// 0..hold_max, digits only, at most three (anything else refused: hold_default, status invalid_setting); 0 = no hold.
+constexpr unsigned hold_default = 60, hold_max = 600;
+template <class Char> inline bool parse_hold(const Char* text, std::size_t n, unsigned* out) noexcept {
+    if (!text || !out || n < 1 || n > 3) return false;
+    unsigned v = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        if (text[i] < Char('0') || text[i] > Char('9')) return false;
+        v = v * 10u + unsigned(text[i] - Char('0'));
+    }
+    if (v > hold_max) return false;
+    *out = v;
+    return true;
+}
+// The held light's scale at `age` frames without a record (1 .. window): 1 until the window's last third (F =
+// ceil(window / 3) frames), then (window + 1 - age) / (F + 1), linear down to 1 / (F + 1) at age = window; the next
+// frame drops the light (the ramp's zero). Window 60: 1 through age 40, 20/21 at 41 .. 1/21 at 60, gone at 61.
+inline float hold_fade(unsigned age, unsigned window) noexcept {
+    const unsigned last = (window + 2) / 3;
+    if (age + last <= window) return 1.f;
+    if (age > window) return 0.f;
+    return float(int(window + 1 - age)) / float(int(last + 1));
+}
 
 // --------------------------------------------------------------------------- the law
 // Placement: behind x value_eff along the plume axis from the nozzle (into the exhaust); reach: the radius of influence
@@ -92,8 +117,24 @@ struct LightFields {
     float s = 0.f, value = 0.f;     // the brightest jet's throttle and value_eff (the row's diagnostics)
     bool own = false;               // a record of the own ship fed it (never evicted by a full table)
 };
+// One logged draw a ship's world positions can be carried by (hold_ships): node, handle and that draw's world rows.
+struct Anchor {
+    std::uint32_t node = 0, handle = 0;
+    float rows[12]{};
+};
+constexpr unsigned anchor_slots = 4;
 struct Light : LightFields {
     unsigned plate_count = 0;
+    // Hold (hold_ships): up to anchor_slots logged draws of the ship of the frame its world positions are in (the
+    // root's own draw first when logged, then the first logged draws of nodes directly under the root; none: the entry
+    // cannot be held), the brightness at its last record (the selection key `brightness` of a held entry is that times
+    // its fade), the frames since the ship's last record (0: a record this frame) and the scale build_nodes applies to
+    // its light and plates (1 unless held in the window's last third).
+    Anchor anchors[anchor_slots];
+    unsigned anchor_count = 0;
+    float bound_brightness = 0.f;
+    unsigned age = 0;
+    float fade = 1.f;
     Plate plates[plate_slots];      // the ship's main nozzles, brightest first (add_plate)
 };
 struct ShipStats {
@@ -102,6 +143,8 @@ struct ShipStats {
     // main nozzles beyond the ship's plate_slots (the dimmest give way)
     unsigned records = 0, main = 0, rcs = 0, brake = 0, other_view = 0, invalid = 0, orphan = 0, dropped = 0;
     unsigned unfloored = 0, plates_dropped = 0;
+    // held: entries re-entered by hold_ships without a record; hold_expired: entries whose window ran out
+    unsigned held = 0, hold_expired = 0;
 };
 struct ShipTable {
     Light lights[ship_capacity];
@@ -348,6 +391,9 @@ inline void build_ships(const ee::Record* records, const std::uint32_t* parents,
         while (out->slot[h]) h = (h + 1) & (ship_slots - 1);
         static_cast<LightFields&>(out->lights[index]) = l; // the plate list stays as it is until plate_count
         out->lights[index].plate_count = 0;
+        out->lights[index].anchor_count = 0; // hold_ships sets the anchors from the log
+        out->lights[index].age = 0;
+        out->lights[index].fade = 1.f;
         add_plate(out->lights[index], l, out->stats);
         out->slot[h] = std::uint16_t(index + 1);
         if (out->blocks_known) rescan_ship_block(*out, index / ship_block);
@@ -436,7 +482,147 @@ inline bool invert_rows(const float rows[12], double inverse[9]) noexcept {
         if (!(inverse[i] == inverse[i]) || !(inverse[i] - inverse[i] == 0.)) return false;
     return true;
 }
+// Hold (engine-light.md "Hold"), after build_ships and before build_nodes at the frame boundary: `cur` this boundary's
+// table (the previous frame's records), `prev` the table the previous frame drew with (its draws are the ones logged),
+// `log` the previous frame's draw log, `window` engine_light_hold (0: nothing, the table as build_ships left it).
+// - Anchors: every entry of cur, fresh or held, takes up to anchor_slots of the ship's logged draws as it is drawn now:
+//   the root's own draw first when logged, then the first logged draws of nodes directly under the root (a node and
+//   handle's first draw of the frame, as build_nodes places it); their rows are of the same frame as the entry's world
+//   positions. The set follows the ship's current LOD each frame it is drawn.
+// - Held: an entry of prev with anchors and without an entry in cur (no main-jet record of the ship that frame) is
+//   re-entered in cur for age + 1 <= window frames while any of its anchors (same node and handle) is in the log: its
+//   light and plate positions carried by the first such anchor whose earlier rows invert, from those rows to its current
+//   ones, P' = W' W^-1 (P - t) + t' (the model space of the anchor: invert_rows), fade = hold_fade(age + 1), selection
+//   key brightness x fade. A ship none of whose anchors is logged leaves at once; an expired one counts hold_expired. A
+//   held entry keeps its own flag; a full table takes it in place of its dimmest evictable entry when it is the own
+//   ship's or brighter after the fade (build_ships' rule), counted dropped either way. Colours, radius and values stay
+//   at their bound strength; build_nodes applies the fade.
+// Cost: one pass over the log (at most four ship probes per draw, as build_nodes makes two, and up to anchor_slots
+// compares per set), then per held ship one 3x3 inverse and product and nine multiply-adds per plate (positions in
+// double); no allocation (6.5 KB of log indices on the stack).
+inline void hold_ships(const ShipTable& prev, ShipTable* cur, const DrawLog& log, unsigned window) noexcept {
+    static_assert(log_capacity <= 32767, "a log index fits the anchor arrays");
+    if (!window) return;
+    // Per cur entry and per prev entry the log indices of its anchor set as drawn now; per prev entry the log index of
+    // each of its old anchors found again (-1: not drawn).
+    std::int16_t drawn_cur[ship_capacity][anchor_slots], drawn_prev[ship_capacity][anchor_slots];
+    std::int16_t matched[ship_capacity][anchor_slots];
+    std::uint8_t cur_n[ship_capacity] = {}, prev_n[ship_capacity] = {};
+    for (unsigned i = 0; i < ship_capacity; ++i)
+        for (unsigned k = 0; k < anchor_slots; ++k) matched[i][k] = -1;
+    // The draw into a ship's set: the root's own draw in front, others behind while there is room; a node and handle
+    // already in the set keeps its first draw.
+    const auto collect = [&](std::int16_t* set, std::uint8_t& n, unsigned i, bool root) {
+        const LoggedDraw& d = log.draws[i];
+        for (unsigned k = 0; k < n; ++k)
+            if (log.draws[set[k]].node == d.node && log.draws[set[k]].handle == d.handle) return;
+        if (root) {
+            const unsigned keep = n < anchor_slots ? n : anchor_slots - 1;
+            for (unsigned k = keep; k > 0; --k) set[k] = set[k - 1];
+            set[0] = std::int16_t(i);
+            n = std::uint8_t(keep + 1);
+        } else if (n < anchor_slots)
+            set[n++] = std::int16_t(i);
+    };
+    const auto anchor_to = [&](Light& l, const std::int16_t* set, unsigned n) {
+        l.anchor_count = n;
+        for (unsigned k = 0; k < n; ++k) {
+            const LoggedDraw& d = log.draws[set[k]];
+            l.anchors[k].node = d.node;
+            l.anchors[k].handle = d.handle;
+            for (unsigned j = 0; j < 12; ++j) l.anchors[k].rows[j] = d.world[j];
+        }
+    };
+    const bool any_prev = prev.count != 0;
+    for (unsigned i = 0; i < log.count; ++i) {
+        const LoggedDraw& d = log.draws[i];
+        // The draw's ship as build_nodes attributes it once the held entries are in: by its node first, then by its
+        // parent (a prev ship found here has no entry in cur, or cur's probe of the same key would have found it).
+        int c = find_ship(*cur, d.node), p = -1;
+        bool root = c >= 0;
+        if (c < 0 && any_prev) {
+            p = find_ship(prev, d.node);
+            root = p >= 0;
+        }
+        if (c < 0 && p < 0) {
+            c = find_ship(*cur, d.parent);
+            if (c < 0 && any_prev) p = find_ship(prev, d.parent);
+        }
+        if (c >= 0) {
+            collect(drawn_cur[c], cur_n[c], i, root);
+            continue;
+        }
+        if (p < 0) continue;
+        collect(drawn_prev[p], prev_n[p], i, root);
+        const Light& was = prev.lights[p];
+        for (unsigned k = 0; k < was.anchor_count; ++k)
+            if (matched[p][k] < 0 && was.anchors[k].node == d.node && was.anchors[k].handle == d.handle)
+                matched[p][k] = std::int16_t(i);
+    }
+    for (unsigned c = 0; c < cur->count; ++c) {
+        Light& l = cur->lights[c];
+        anchor_to(l, drawn_cur[c], cur_n[c]);
+        l.bound_brightness = l.brightness;
+    }
+    for (unsigned p = 0; p < prev.count; ++p) {
+        const Light& was = prev.lights[p];
+        if (!was.anchor_count || find_ship(*cur, was.root) >= 0) continue;
+        const unsigned age = was.age + 1;
+        if (age > window) {
+            ++cur->stats.hold_expired;
+            continue;
+        }
+        // The first old anchor drawn again whose earlier rows invert; none: the ship is not drawn, no hold.
+        double inverse[9];
+        int use = -1;
+        for (unsigned k = 0; k < was.anchor_count && use < 0; ++k)
+            if (matched[p][k] >= 0 && invert_rows(was.anchors[k].rows, inverse)) use = int(k);
+        if (use < 0) continue;
+        const float* from = was.anchors[use].rows;
+        const LoggedDraw& d = log.draws[matched[p][use]];
+        // M = W' W^-1: P' = M (P - t) + t'.
+        double m[9];
+        for (unsigned r = 0; r < 3; ++r)
+            for (unsigned k = 0; k < 3; ++k)
+                m[r * 3 + k] = double(d.world[r * 4]) * inverse[k] + double(d.world[r * 4 + 1]) * inverse[3 + k] +
+                               double(d.world[r * 4 + 2]) * inverse[6 + k];
+        const auto carry = [&](const double at[3], double to[3]) {
+            const double rel[3] = {at[0] - double(from[3]), at[1] - double(from[7]), at[2] - double(from[11])};
+            for (unsigned r = 0; r < 3; ++r)
+                to[r] = m[r * 3] * rel[0] + m[r * 3 + 1] * rel[1] + m[r * 3 + 2] * rel[2] + double(d.world[r * 4 + 3]);
+        };
+        const float fade = hold_fade(age, window), brightness = was.bound_brightness * fade;
+        unsigned index = cur->count;
+        if (cur->count >= ship_capacity) {
+            const int victim = dimmest_ship(*cur);
+            ++cur->stats.dropped; // the held entry or the entry it replaces
+            if (victim < 0 || !(was.own || brightness > cur->lights[victim].brightness)) continue;
+            erase_ship_slot(*cur, unsigned(find_ship_slot(*cur, cur->lights[victim].root)));
+            index = unsigned(victim);
+        } else
+            ++cur->count;
+        Light& l = cur->lights[index];
+        static_cast<LightFields&>(l) = was; // own kept
+        l.brightness = brightness;
+        l.bound_brightness = was.bound_brightness;
+        carry(was.position, l.position);
+        l.plate_count = was.plate_count;
+        for (unsigned q = 0; q < was.plate_count; ++q) {
+            l.plates[q] = was.plates[q];
+            carry(was.plates[q].position, l.plates[q].position);
+        }
+        anchor_to(l, drawn_prev[p], prev_n[p]);
+        l.age = age;
+        l.fade = fade;
+        unsigned h = hash_key(was.root, 0, ship_slots - 1);
+        while (cur->slot[h]) h = (h + 1) & (ship_slots - 1);
+        cur->slot[h] = std::uint16_t(index + 1);
+        if (cur->blocks_known) rescan_ship_block(*cur, index / ship_block);
+        ++cur->stats.held;
+    }
+}
 // The node table for the next frame: every logged draw whose node is a lit ship's root or hangs directly under one.
+// A held ship's light and plates are scaled by its fade (colour, radius and value_eff; 1 for a ship with a record).
 inline void build_nodes(const ShipTable& ships, const DrawLog& log, NodeTable* out) noexcept {
     out->clear();
     out->stats.logged = log.count;
@@ -460,6 +646,7 @@ inline void build_nodes(const ShipTable& ships, const DrawLog& log, NodeTable* o
             continue;
         }
         const Light& l = ships.lights[ship];
+        const float fade = l.fade;
         const double rel[3] = {l.position[0] - double(d.world[3]), l.position[1] - double(d.world[7]),
                                l.position[2] - double(d.world[11])};
         // Built in place in the next free entry (a refused node leaves it free): every field the readers use is written
@@ -472,23 +659,24 @@ inline void build_nodes(const ShipTable& ships, const DrawLog& log, NodeTable* o
         for (unsigned k = 0; k < 3; ++k) {
             const double v = inverse[k * 3] * rel[0] + inverse[k * 3 + 1] * rel[1] + inverse[k * 3 + 2] * rel[2];
             n.local[k] = float(v);
-            n.colour[k] = l.colour[k];
+            n.colour[k] = l.colour[k] * fade;
             finite = finite && ee::finite_f(n.local[k]);
         }
-        n.radius = l.radius;
+        n.radius = l.radius * fade;
         // The plates in the node's model space; a non-finite one is left out (its nozzle keeps the full gain).
         for (unsigned p = 0; p < l.plate_count; ++p) {
             const Plate& plate = l.plates[p];
             const double r[3] = {plate.position[0] - double(d.world[3]), plate.position[1] - double(d.world[7]),
                                  plate.position[2] - double(d.world[11])};
             float* out_plate = n.plate[n.plate_count];
-            bool ok = ee::finite_f(plate.value) && plate.value > 0.f;
+            const float value = plate.value * fade;
+            bool ok = ee::finite_f(value) && value > 0.f;
             for (unsigned k = 0; k < 3; ++k) {
                 out_plate[k] = float(inverse[k * 3] * r[0] + inverse[k * 3 + 1] * r[1] + inverse[k * 3 + 2] * r[2]);
                 ok = ok && ee::finite_f(out_plate[k]);
             }
-            out_plate[3] = plate.value;
-            for (unsigned k = 0; k < 3; ++k) n.plate_colour[n.plate_count][k] = plate.colour[k];
+            out_plate[3] = value;
+            for (unsigned k = 0; k < 3; ++k) n.plate_colour[n.plate_count][k] = plate.colour[k] * fade;
             n.plate_count += ok;
         }
         if (!finite) {

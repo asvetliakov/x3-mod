@@ -1793,7 +1793,12 @@ private:
     static constexpr unsigned engine_light_kinds = 7;
     static constexpr unsigned engine_light_world_bases[4] = {7, 13, 28, 34}; // both VS layouts' world / view-inverse rows
     struct EngineLightState {
-        engine_light::core::ShipTable ships;
+        // This frame's ship table and the previous frame's (the hold reads it at the boundary: hold_ships); the two
+        // buffers swap at each build, no copy.
+        engine_light::core::ShipTable tables[2];
+        engine_light::core::ShipTable* ships = &tables[0];
+        engine_light::core::ShipTable* previous = &tables[1];
+        unsigned hold = engine_light::core::hold_default; // X3M_ENGINE_LIGHT_HOLD, frames (0: no hold)
         engine_light::core::NodeTable nodes;
         engine_light::core::DrawLog log;
         engine_light::core::FrameCounts counts{};
