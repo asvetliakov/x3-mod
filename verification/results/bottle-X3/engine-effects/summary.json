@@ -41,12 +41,9 @@
     "src/renderer/engine_shimmer_pass.h"
   ],
   "source": {
-    "commit": "833f1ac725f13828151a87b7ccfe4ac6ccf28714-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/capture.cpp",
-      "src/proxy/motion_output.h"
-    ],
+    "commit": "937b8ab3957e09652a453b54483c26df7d01f7f6",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_effects.cpp": "69d163bbd24ca4baed57378386c749a4954e65f484f2befad6b28705669df4e0",
       "src/proxy/engine_effects.h": "d6e09547a256dc41edf5eadea27261d0554c56c2870bdb7735d854e1bae0eaab",
@@ -79,9 +76,9 @@
     "warnings": 0
   },
   "binaries": {
-    "fixture_sha256": "0b0407d16185ace008b96b3d89cc80da7d170fbac446e51edf38034287e3e2cd",
-    "seam_sha256": "b4f68d47e9bb6b1588f4191e93463dff617ddf7b2bd37da71cdd490a4d5e88af",
-    "dll_sha256": "a6139eb505f6e3111e7ce71ab7d63dd636404d1c502a8cf3809f3d6f228b38c6"
+    "fixture_sha256": "b0fa913dc7cde2d286a9d364f304769afa2cce605d92778630a2701ce5861ea5",
+    "seam_sha256": "8eed2a865f9617813cafca44fecc2a1e159becf24b45f48f877c1aa055036cda",
+    "dll_sha256": "05a964adf7da456c22fbc85c822fb5a567fd9011bd18bfd7256553f413309302"
   },
   "runs": {
     "main": {
@@ -201,7 +198,7 @@
         "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
         "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
       ],
-      "directory": "verification/probe/build/engine-effects-main-20261008-211710-544543"
+      "directory": "verification/probe/build/engine-effects-main-20261008-220518-225087"
     },
     "native": {
       "exit": 0,
@@ -245,7 +242,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-native-20261008-211719-385231"
+      "directory": "verification/probe/build/engine-effects-native-20261008-220527-634647"
     },
     "unverified": {
       "exit": 0,
@@ -261,7 +258,7 @@
         "suppress": "0",
         "census": "0"
       },
-      "directory": "verification/probe/build/engine-effects-unverified-20261008-211727-480593"
+      "directory": "verification/probe/build/engine-effects-unverified-20261008-220535-381672"
     },
     "unpatched": {
       "exit": 0,
@@ -305,7 +302,7 @@
         2
       ],
       "engine_frame_rows": 3,
-      "directory": "verification/probe/build/engine-effects-unpatched-20261008-211735-546059"
+      "directory": "verification/probe/build/engine-effects-unpatched-20261008-220543-437616"
     },
     "timing": {
       "exit": 0,
@@ -322,14 +319,14 @@
         "census": "0"
       },
       "timing": {
-        "suppressed": 0.629,
-        "not_jet": 0.833,
-        "not_candidate": 0.71,
-        "suppressed_new_parent": 0.662,
-        "suppressed_no_parent": 0.613,
-        "suppressed_two_parents": 0.618
+        "suppressed": 0.617,
+        "not_jet": 0.841,
+        "not_candidate": 0.768,
+        "suppressed_new_parent": 0.716,
+        "suppressed_no_parent": 0.881,
+        "suppressed_two_parents": 0.666
       },
-      "directory": "verification/probe/build/engine-effects-timing-20261008-211743-526128"
+      "directory": "verification/probe/build/engine-effects-timing-20261008-220551-187242"
     },
     "plumes": {
       "exit": 0,
@@ -374,7 +371,7 @@
         1,
         2
       ],
-      "directory": "verification/probe/build/engine-effects-plumes-20261008-211751-549477"
+      "directory": "verification/probe/build/engine-effects-plumes-20261008-220559-128230"
     },
     "armed": {
       "exit": 0,
@@ -688,8 +685,8 @@
           "forwarded_stage_off": "0",
           "attach_refused": "0",
           "jets_submitted": "0",
-          "px": "ed1111,ffffff,000000,000000",
-          "sums": "271,765,0,0",
+          "px": "ec1111,ffffff,000000,000000",
+          "sums": "270,765,0,0",
           "prev": "0,0"
         },
         {
@@ -741,10 +738,10 @@
         "frame": "308",
         "stage": "5",
         "rects": "1",
-        "pre": "edf6c740",
-        "drawn": "705dbf40",
-        "reverted": "edf6c740",
-        "history": "edf6c740",
+        "pre": "fc8da87b",
+        "drawn": "f278ce2e",
+        "reverted": "fc8da87b",
+        "history": "fc8da87b",
         "pre_eq_reverted": "1",
         "pre_ne_drawn": "1",
         "reverted_eq_history": "1",
@@ -761,7 +758,7 @@
         ]
       ],
       "shimmer_drawn_rows": 4,
-      "directory": "verification/probe/build/engine-effects-armed-20261008-211759-776321"
+      "directory": "verification/probe/build/engine-effects-armed-20261008-220607-074505"
     },
     "armed_refused": {
       "exit": 0,
@@ -889,7 +886,7 @@
           "site_mismatch"
         ]
       ],
-      "directory": "verification/probe/build/engine-effects-armed_refused-20261008-211809-878904"
+      "directory": "verification/probe/build/engine-effects-armed_refused-20261008-220617-102359"
     }
   },
   "problems": [],

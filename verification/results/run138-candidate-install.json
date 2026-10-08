@@ -1,0 +1,29 @@
+{
+ "run": "Run138",
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run138-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-08T22:11+0400",
+ "commit": "937b8ab3",
+ "candidate_record": "verification/results/run138-candidate-build.json",
+ "installed": {
+  "sha256": "850342c036202a3a830a14cf3a4c7602bdcaa3da2cd8c53daecdda98a0e4f30e",
+  "bytes": 59403525,
+  "verified": "sha256 and size read back after install; equals the candidate record (recomputed before install); pgrep X3AP empty before; 16 generated font files re-reported, unchanged content; engine_bodies.json kept"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418... before and after",
+  "cxbottle.conf": "sha 9fc1c171... before and after (CX_GRAPHICS_BACKEND = dxvk as the user set it)",
+  "x3m.ini": "the user's file kept (1e783ec8..., no occlusion_cull/occlusion_cull_retest lines; built-in defaults on / 8)",
+  "dxvk.conf": "absent",
+  "CrossOver Preview.app": "MoltenVK 1.4.2 + marked Gcenx PR #20 DXVK 1.10 as for Run 131 A"
+ },
+ "previous": {
+  "run": "Run137",
+  "dll_sha256": "c920eef8b9cbcf5f212356bed0c76a33b33ed9fbdf18a2e38eabb8e8b2433c48",
+  "path": "/tmp/x3-run137-candidate/build/d3d9.dll (a net loss in flight; the user-facing rollback is Run136)",
+  "then": "Run136 d03e597e... at /tmp/x3-run136-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "the record commit only; no code",
+ "trigger": "Run 137 A (run16): the per-part occlusion test cost 10-25 us in flight against ~10 us saved per skip; user decision: batch per ship + re-test visible parts every 8 frames (staggered)",
+ "producer": "main session (Fable 5.1)"
+}
