@@ -12,8 +12,9 @@ Sources: `src/proxy/occlusion_cull_core.h` (pure rules and bookkeeping), `src/re
 
 At close capital-ship views 67-91 sub-part draws per frame are fully hidden behind hulls (run14/run15 captures,
 `verification/results/occlusion-cull-estimate/`), at a measured 26 us of game-thread submit cost per draw: 1.7-2.4 ms
-per frame. Hull pieces draw before the parts they hide, so a test issued at the part's own draw site sees the hull's
-depth.
+per frame. Hull pieces draw before the parts they hide, so a test issued at a ship's first part draw sees the hull's
+depth. Run 137 A (the per-part test) showed a skipped draw saves only ~10 us (the 26 us included the proxy's own
+per-draw work) while each per-part test cost 10-25 us in flight; hence the batching and the re-test cadence below.
 
 ## Candidates
 
@@ -42,43 +43,76 @@ reason=no_bounds_source` row and the cull is off there.
 
 ## Mechanism
 
-At the candidate's draw site, before the draw is forwarded (and before its jitter):
+Batched per ship since 2026-10-08 (Run 137 A: the per-part test cost 10-25 us in flight, two pipeline rebinds per
+part). The ship is the top-level root its hull owner hangs off (`Classifier` records it with each owner).
 
-1. At the frame's first candidate the pass reads the older frames' queries with `GetData(..., 0)`, never a flush:
-   frame N-2's tests that were not ready at their first read are polled again before their slot is reused, then frame
-   N-1's. Ready and 0 samples = hidden, ready and any sample = visible, not ready or an error = no result. The decision
-   uses the most recent ready result of the same draw, one or two frames old (`ready_age=` counts age 1, age 2, none per
-   frame); no ready result draws.
-2. It issues this frame's test: the screen rectangle of the vertex-extent box's eight corners (through the draw's own
-   clip rows), inflated by one pixel on every side, at the corners' nearest depth (`core::test_rect`), under an
-   occlusion query. A rectangle at the nearest depth over the projection is strictly more conservative than the
-   12-triangle box: it can only report visible where the box is hidden. It is the estimate's own test (screen box and
-   `zmin`), needs two constants instead of a vertex upload, and the one-pixel margin covers the rasterisation rules and
-   the frame's sub-pixel TAA jitter.
-3. It answers skip when the same draw's (key: scope node, vertex buffer, first vertex, vertex count, model id) most
-   recent ready test read hidden, its hull drew this frame and its rectangle is stable against that test's. The real draw is then not forwarded (the hook
-   returns D3D_OK, as the small-prop cull does).
+1. Hull draw: a hull node's first draw of the frame adds its draw key to its ship's hull signature (a commutative sum,
+   draw order does not matter) and records its clip rows; the ship's first hull node with rows is its reprojection
+   reference (`Batcher::note_hull`).
+2. Part draw (hull drawn this frame): the draw is entered in a persistent per-draw table (2,048 slots, key: scope node,
+   vertex buffer, first vertex, vertex count, model id) and in this frame's list (at most 512): its vertex-extent box,
+   its rectangle and its rows relative to the ship's reference hull, `rel = inverse(hull rows) x part rows` (the
+   inverse in double; accepted only when `hull rows x rel` gives every entry of the part's rows back within 1e-4 of
+   their largest entry: about 0.2 for rows whose largest entry, the depth translation of a ship 2 km away, is ~2,000).
+3. At the frame's first part the pass reads the older frames' queries with `GetData(..., 0)`, never a flush: frame
+   N-2's tests that were not ready at their first read are polled again before their slot is reused, then frame N-1's.
+   Ready and 0 samples = hidden, ready and any sample = visible, not ready or an error = no result. Each result also
+   goes to the table (the part's last result, the cadence's input).
+4. Block: at a ship's first part draw of the frame the pass issues one block for the ship: the ship's parts of the
+   previous frame's list (grouped by ship once per frame, a counting sort), each part's rectangle carried to this frame
+   as `hull rows now x rel` (exact for a part rigid with its hull under any camera, ship or projection change; host
+   check: 0.00012 px and 6e-8 depth against 14.8 px for last frame's rectangle in a 40 m camera / 30 m ship move at 2 km; a turning
+   turret keeps last frame's angle, within the stability guard), filtered by the re-test cadence (below). A part whose
+   reference hull did not draw with rows this frame is tested on last frame's rectangle (`stale=`). One state swap,
+   then per test the rectangle into `c252-c253`, `Issue(BEGIN)`, a two-triangle strip, `Issue(END)`, then one restore
+   (the production constants mode; no Lock on the game thread). A part first seen this frame is drawn untested and joins next frame's block. One block per ship per frame.
+5. Decision at every part draw: skip when the same draw's most recent ready test (one or two frames old, `ready_age=`)
+   read hidden, its hull drew this frame and its rectangle is stable against that test's. The real draw is then not
+   forwarded (the hook returns D3D_OK, as the small-prop cull does).
 
-The test draw: vs_3_0 `mad o0, v0, c253, c252` over an eight-vertex MANAGED strip (the unit square in both windings;
-`D3DCULL_CCW` culls vertices 0-3 and `D3DCULL_CW` 4-7 on both backends, so the application's cull mode is kept and the
-winding chosen), a ps_3_0 that writes 0 to every output the device has (oC0..oC3 at most), z write off, alpha test, stencil and
-separate alpha off, blend op ADD, and `ALPHABLENDENABLE` with `SRCBLEND ZERO` / `DESTBLEND ONE`, so every bound target
-keeps its value. Every output is written because the motion route's lazy mode keeps its own RT1 (A32B32G32R32F motion)
-and RT2 (R32F depth) bound between routed draws, and a D3D9 output the shader does not write is undefined (0 x NaN = NaN
-under the blend). The targets bound at the test are read from the device (not the shadow: under the HDR redirect RT0 is
-the FP16 scene target): each must pass `CheckDeviceFormat(D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING)` and more than one
-needs `D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING`, else the part is drawn untested. With RT1/RT2 bound, over 60 frames at
-128 tests (measured, `gate.json` "mrt"): zeros + blend 1.3 us (DXVK) / 17 us (wined3d) of pipeline per test with RT1/RT2
-byte-identical (a stored -0.0 included); masking RT1/RT2 (COLORWRITEENABLE1/2 0) 64 / 67 us and unbinding them as the
-lazy flush does 68 / 58 us, steady-state render-pass splits. The RT0 colour write mask is not touched either (55-79 us on
-DXVK). Everything changed is restored from the native getters (shaders, stream 0; the declaration first, then the FVF
-when the application's binding was one) and the route's shadow (render states, `c252-c253` when the application wrote
-them). A restore failure takes the route's restore-failure path (state invalidated, TAA invalidated).
+A part whose hull has not drawn when the part draws (hull after the part, or no hull) is never listed or tested and is
+drawn (`no_hull=`); the run14 triage shows hull draws precede their parts, so no per-part fallback remains.
+
+Re-test cadence (`X3M_OCCLUSION_CULL_RETEST`, `occlusion_cull_retest`, 1..64, default 8): a part whose last ready
+result was hidden, or which has none (new, not ready, an error, after a Reset), is tested at every block; a part last
+read visible only on its phase frame, `frame mod K == phase`, once every K frames; off-phase at once when its hull
+signature changed or its rectangle is unstable against its last test's (`forced=`). Phases are staggered so each frame
+re-tests about 1/K of the visible parts (coordinator refinement 2026-10-08): the phase is fixed for the part's life,
+chosen at its first visible result as the least-loaded phase among the visible parts of the previous frame's list,
+searched from a seed `hash(node, model) mod K`, the current frame's phase only when it is strictly the least loaded. A
+plain `hash mod K` spread 39 visible parts 0..10 per phase against a mean of 4.9 (host simulation), outside the asked
++-50 % flatness. `cadence=` counts the phase re-tests per frame, `retest_phase_spread=min,max` their range over the last
+K frames, `retest_skipped=` the visible parts left untested.
+
+The test draw (production, `OcclusionCullBuffer::constants`, coordinator decision 2026-10-08): vs_3_0 `mad o0, v0, c253,
+c252` over a four-vertex MANAGED unit-square strip (FLOAT2), the rectangle in `c252 = (x0, y0, z, 1)` and `c253 = (x1 -
+x0, y1 - y0, 0, 0)` per test, the application's `c252-c253` put back from the route's shadow after the block (left as
+the last rectangle when the application never wrote them), `D3DCULL_NONE` for the block, a ps_3_0 that writes 0 to every output the device has (oC0..oC3 at
+most), z write off, alpha test, stencil and separate alpha off, blend op ADD, and `ALPHABLENDENABLE` with `SRCBLEND
+ZERO` / `DESTBLEND ONE`, so every bound target keeps its value. Every output is written because the motion route's lazy
+mode keeps its own RT1 (A32B32G32R32F motion) and RT2 (R32F depth) bound between routed draws, and a D3D9 output the
+shader does not write is undefined (0 x NaN = NaN under the blend). The targets bound at the block are read from the
+device (not the shadow: under the HDR redirect RT0 is the FP16 scene target): each must pass
+`CheckDeviceFormat(D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING)` and more than one needs
+`D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING`, else the block's parts are drawn untested. With RT1/RT2 bound, over 60 frames
+at 128 tests (measured, `gate.json` "mrt"): zeros + blend 1.3 us (DXVK) / 17 us (wined3d) of pipeline per test with
+RT1/RT2 byte-identical (a stored -0.0 included); masking RT1/RT2 (COLORWRITEENABLE1/2 0) 64 / 67 us and unbinding them
+as the lazy flush does 68 / 58 us, steady-state render-pass splits. The RT0 colour write mask is not touched either
+(55-79 us on DXVK). Everything changed is restored from the native getters (shaders, stream 0; the declaration first,
+then the FVF when the application's binding was one) and the route's shadow (render states). A restore failure takes the
+route's restore-failure path (state invalidated, TAA invalidated).
+
+Fixture-measured alternatives (not production): a rectangle buffer sized to the pool (1,024 rectangles, 64 KB) written
+with one Lock per block and drawn by vs_3_0 `mov o0, v0` over FLOAT4 clip-space vertices: DEFAULT pool
+`D3DUSAGE_DYNAMIC` with `NOOVERWRITE` appends and `DISCARD` at the wrap (`dynamic`), `DISCARD` every block (`discard`),
+or MANAGED with a Lock of the block's region of its frame slot (`managed`). On wined3d over macOS GL every Lock waits for
+the command stream (157-272 us per block), hence the constants default (measurements under "Cost").
 
 Refused (drawn untested): no scope node, no extent or rows, a corner at or behind the eye or in front of the near plane,
-a depth function other than LESS/LESSEQUAL/GREATER/GREATEREQUAL, sRGB writes, a fill mode other than SOLID, a depth or
-slope bias, user clip planes, an application query open, a stream-0 frequency other than 1, a bound target that cannot
-blend (or several without MRT blending), a full pool slot.
+a depth function other than LESS/LESSEQUAL/GREATER/GREATEREQUAL (or another direction at the block than at the part's
+listing), sRGB writes, a fill mode other than SOLID, a depth or slope bias, user clip planes, an application query open,
+a stream-0 frequency other than 1, a bound target that cannot blend (or several without MRT blending), a full pool slot,
+table or list.
 
 ## Pool and lifetime
 
@@ -87,42 +121,86 @@ the first part draw through the native `CreateQuery` under the route's reference
 holds a device reference: 1,028 references with the programs, measured). `CreateQuery(D3DQUERYTYPE_OCCLUSION, nullptr)`
 other than S_OK: one `occlusion_cull_device attached=0 reason=unsupported` row and the cull stays off until a Reset.
 `before_reset` releases the queries and empties the ring; a successful Reset arms the recreation, done at the next
-part under the accounting; the first frame after it has no previous result and draws everything. The programs,
-declaration and strip survive Reset. Teardown detaches under the accounting.
+part under the accounting; the first frame after it has no previous result and draws everything. A dynamic rectangle
+buffer (DEFAULT pool) goes with the queries and comes back with them; the programs, the declaration and a MANAGED buffer
+survive Reset. The motion route resets the batcher's results with `before_reset` (`Batcher::reset_results`), so every
+part is tested at its ship's next block; the lists survive, so the first frame after the Reset already tests. Teardown
+detaches under the accounting. The batcher (per-draw table, lists, ship and hull tables, ~0.6 MB) is one allocation
+with the classifier.
 
-No budget (user 2026-10-08): every candidate is tested every frame until the frame's 512 queries are used; the rest is
-drawn untested and counted `pool_truncated=`.
+No budget (user 2026-10-08): every due part is tested until the frame's 512 queries are used; the rest is drawn
+untested and counted `pool_truncated=`.
 
 ## Guards
 
 - Stability: the hidden verdict carries over only while the rectangle's centre moved at most a quarter of its size
   (16 px minimum) and its area changed at most (4/3)^2. A turret turning in place keeps it; a teleport, a camera cut or a
   fast pan draws the part that frame (`unstable=`).
-- Hull: a part whose hull did not draw this frame is drawn (`no_hull=` counts its tests).
-- Reset: the first frame after draws everything.
+- Hull: a part whose hull did not draw before it this frame is drawn, never listed or tested (`no_hull=`).
+- Hull change: a ship whose hull signature changed (another hull draw set before the block) re-tests all its parts.
+- Reset: the first frame after draws everything; every part is tested at that frame's block.
 - Re-emergence: a part revealed with an unchanged rectangle (the hull moved away) is skipped once more and drawn from the
   next frame: one frame late (`drawn_late=`), accepted; two frames late when that frame's decision used an age-2 result
   (its frame N-1 test not ready yet).
 
 ## Cost (measured, bottle X3, 2026-10-08)
 
-Per candidate on DXVK (CrossOver's bundled DXVK over MoltenVK): 3.0-3.2 us CPU p50 on the game thread including the
-readback (max 3.37 us in the first run, 4.72 us in the rerun of 2026-10-08: run-to-run spread), 4.8-5.2 us p50 pipeline
-time (DXVK's worker and the GPU, 5.5 max); the query's own share 0.4-1.4 us. Per frame: 128 tests 0.39-0.60 ms CPU /
-0.6-0.67 ms pipeline; 512 tests 1.56-1.64 ms CPU / 2.7-2.8 ms pipeline. Every test's result was ready one frame later at
-13 and 20 ms frame pacing up to 512 per frame. At the close views (130-190 candidates, 67-91 hidden) the CPU cost is
-0.4-0.9 ms against a saving of 1.74-2.37 ms. wined3d: 1.8 us CPU and 20-23 us pipeline per test (the
-saving there was not measured). A per-test dynamic-buffer `Lock` costs 50-80 us on wined3d, hence the constants.
+Realistic state (`occlusion_cull_fixture.exe`, part 2; tracked records `verification/results/occlusion-cull-batched/
+fixture-{wined3d,dxvk}.json` and `legacy-{wined3d,dxvk}.json`): 1280 x 720 A16B16G16R16F scene target with the route's
+RT1/RT2 bound, a game vs/ps pair with per-draw constants bound before every block, three ships of four hull pieces and
+50 parts (111 hidden, 39 visible), 16 ms pacing, no readback; per configuration 200 frames after 20 warm-ups, five
+interleaved repeats, medians. Test time = QPC inside the blocks (Run137: around each per-part call); frame CPU =
+BeginScene to the return of Present, minus the same scene without the pass. Per test and per block come from two
+test-only configurations (K = 1, verdict ignored): every part (150 tests, 3 blocks) and one part per ship (3 tests, 3
+blocks). "Run137" is the pass of commit 833f1ac7 on the same scene (`legacy_cost.cpp`, `legacy_build.sh`).
+
+Production default, `constants`:
+
+| backend | per test | per block | 150 tests: test time / frame CPU | K = 8 cull: tests / test time / frame CPU |
+| --- | --- | --- | --- | --- |
+| DXVK | 1.21 us | 7.4 us | 204 / 317 us | 116 / 174 / 199 us |
+| wined3d | 0.73 us | 8.9 us | 136 / 208 us | 116 / 124 / 134 us |
+| Run137 per part, DXVK | 6.20 us | - | 930 / 1,063 us | 150 / 931 / 908 us |
+| Run137 per part, wined3d | 2.12 us | - | 318 / 326 us | 150 / 295 / 230 us |
+
+The frame CPU of the K = 8 cull also contains the fixture's skipped draws (about 1 us each here, ~10 us in the game).
+
+Measured alternatives (fixture only, not production; the same records):
+
+| geometry | DXVK per test / per block | DXVK 150 tests: test time / frame CPU | wined3d per test / per block | wined3d 150 tests: test time / frame CPU |
+| --- | --- | --- | --- | --- |
+| dynamic buffer (NOOVERWRITE, DISCARD at the wrap) | 0.69 / 8.1 us | 127 / 276 us | 3.29 / 174 us | 1,018 / 1,129 us |
+| managed buffer | 0.76 / 8.5 us | 136 / 313 us | 3.35 / 173 us | 1,027 / 1,127 us |
+| discard every block | 0.69 / 7.9 us | 128 / 271 us | 3.02 / 197 us | 1,039 / 1,130 us |
+
+On wined3d over macOS GL every buffer Lock waits for the command stream: per block plan 0.8-8.8, targets 2.5-4.2,
+getters 1.5-2.4, Lock 157-272, set 1.6-2.6, query loop 8-25 (3-50 tests), restore 0.8-1.1 us in every buffer mode
+(`stages-wined3d.txt`, instrumented copy of the pass from `stages_instrument.py`, taken before the constants mode and
+the per-frame target cache existed). The constants default avoids the Lock on every target at about 0.5 us per test
+more than a buffer on DXVK; native Windows constant uploads are the documented cheap path. The bound-target check
+(GetRenderTarget and GetDesc per target) runs once per frame and target binding, not per block.
+
+The step-0 gate (Run137 per-part shape, `verification/results/occlusion-cull/gate.json`): 3.0-3.4 us CPU and 4.2-5.4 us
+pipeline per test on DXVK in the smoke fixture's simple state; every result was ready one frame later at 13 and 20 ms
+pacing up to 512 tests per frame. The pipeline cost of the batched tests was not measured separately.
 
 ## Logging
 
 `occlusion_cull_config` once at start-up; `occlusion_cull_device` at attach (or `reason=no_bounds_source`); under
 `--debug` one `occlusion_cull` row per frame with candidates (`candidates tested hidden skipped pool ready not_ready
 ready_lag2 ready_age=age1,age2,none errors drawn_late pool_truncated unstable no_hull refused failed no_bounds unbounded
-state`); in every tier one `occlusion_cull_session` row every 300 frames with the session totals.
+state retest_skipped blocks stale test_us cadence forced retest_phase_spread=min,max`; `test_us` is the QPC time inside
+the frame's blocks, so a flight separates the test cost from the saving; `ready_age` none now also counts the visible
+parts the cadence left untested); in every tier one `occlusion_cull_session` row
+every 300 frames with the session totals (the same new fields, `test_us` summed, and `retest=`).
+`occlusion_cull_config` carries `retest= retest_setting= retest_status=`.
 
 ## Known limits
 
 - A skipped part is not a shadow-replay caster that frame: a hidden turret's sun shadow on visible hull disappears
   while it is skipped (the small-prop cull has the same property).
 - Only the part draws themselves are skipped; nothing is skipped on the engine side.
+- A part first seen in a frame is drawn untested and joins the next frame's block: skipping starts on its third frame
+  (frame 0 lists it, frame 1 tests it, frame 2 skips), one frame later than the per-part test of Run137.
+- A part last read visible that becomes hidden without moving and without a hull change keeps being drawn until its
+  next phase frame (at most K - 1 frames of lost saving, never an artefact).

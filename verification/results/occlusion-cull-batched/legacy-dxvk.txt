@@ -1,0 +1,23 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+# command: /Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle X3 --no-update --dll d3d9=b --workdir /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/legacy2 --env CX_GRAPHICS_BACKEND=dxvk /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/legacy2/legacy_cost.exe Z:\Applications\CrossOver Preview.app\Contents\SharedSupport\CrossOver\lib\dxvk\i386-windows\d3d9.dll 5
+ADAPTER description=Apple M5 Pro
+CHECK device PASS
+CHECK realistic scene resources PASS
+COST impl=legacy repeat=0 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=183.9 frame_us_p90=303.6 cpu_us_p50=240.9
+COST impl=legacy repeat=0 buffer=- config=cull frames=200 tests_p50=150 blocks_p50=0 skipped_p50=111 test_us_p50=1070.7 test_us_p90=1407.5 frame_us_p50=1264.9 frame_us_p90=1662.8 cpu_us_p50=1342.0
+COST impl=legacy repeat=0 buffer=- config=all frames=200 tests_p50=150 blocks_p50=0 skipped_p50=0 test_us_p50=980.4 test_us_p90=1361.8 frame_us_p50=1320.0 frame_us_p90=1829.3 cpu_us_p50=1386.7
+COST impl=legacy repeat=1 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=189.0 frame_us_p90=311.6 cpu_us_p50=248.0
+COST impl=legacy repeat=1 buffer=- config=cull frames=200 tests_p50=150 blocks_p50=0 skipped_p50=111 test_us_p50=925.4 test_us_p90=1401.6 frame_us_p50=1093.3 frame_us_p90=1651.3 cpu_us_p50=1140.1
+COST impl=legacy repeat=1 buffer=- config=all frames=200 tests_p50=150 blocks_p50=0 skipped_p50=0 test_us_p50=925.4 test_us_p90=1185.3 frame_us_p50=1239.5 frame_us_p90=1587.9 cpu_us_p50=1281.2
+COST impl=legacy repeat=2 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=186.5 frame_us_p90=293.5 cpu_us_p50=240.7
+COST impl=legacy repeat=2 buffer=- config=cull frames=200 tests_p50=150 blocks_p50=0 skipped_p50=111 test_us_p50=930.5 test_us_p90=1288.3 frame_us_p50=1099.0 frame_us_p90=1514.8 cpu_us_p50=1155.8
+COST impl=legacy repeat=2 buffer=- config=all frames=200 tests_p50=150 blocks_p50=0 skipped_p50=0 test_us_p50=929.9 test_us_p90=1226.7 frame_us_p50=1253.8 frame_us_p90=1622.5 cpu_us_p50=1309.4
+COST impl=legacy repeat=3 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=188.9 frame_us_p90=230.3 cpu_us_p50=247.4
+COST impl=legacy repeat=3 buffer=- config=cull frames=200 tests_p50=150 blocks_p50=0 skipped_p50=111 test_us_p50=934.2 test_us_p90=1376.2 frame_us_p50=1103.0 frame_us_p90=1620.3 cpu_us_p50=1155.7
+COST impl=legacy repeat=3 buffer=- config=all frames=200 tests_p50=150 blocks_p50=0 skipped_p50=0 test_us_p50=992.7 test_us_p90=1256.8 frame_us_p50=1344.6 frame_us_p90=1674.1 cpu_us_p50=1396.1
+COST impl=legacy repeat=4 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=189.1 frame_us_p90=340.1 cpu_us_p50=251.4
+COST impl=legacy repeat=4 buffer=- config=cull frames=200 tests_p50=150 blocks_p50=0 skipped_p50=111 test_us_p50=892.8 test_us_p90=1362.6 frame_us_p50=1054.3 frame_us_p90=1598.7 cpu_us_p50=1094.0
+COST impl=legacy repeat=4 buffer=- config=all frames=200 tests_p50=150 blocks_p50=0 skipped_p50=0 test_us_p50=928.7 test_us_p90=1185.5 frame_us_p50=1252.5 frame_us_p90=1588.9 cpu_us_p50=1310.0
+DERIVED impl=legacy buffer=- repeats=5 per_test_us=6.20 per_block_us=0 all_test_us=929.9 all_frame_overhead_us=1064.9 cull_test_us=930.5 cull_tests=150 cull_frame_delta_us=910.1 off_frame_us=188.9 all_cpu_overhead_us=1062.6 cull_cpu_delta_us=908.3 off_cpu_us=247.4
+CHECK every part tested every frame (Run137) PASS
+RESULT checks=3 failed=0 PASS

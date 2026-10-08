@@ -103,3 +103,93 @@ earlier assertions unchanged; back-to-back frames on DXVK: 45 of 54 one-frame re
 results, 15 skips, every one on a ready hidden result (wined3d: 0 age-2 results ready). `generate.py --check` PASS; fresh
 `d3d9` build 0 warnings; `check_no_x87.py` PASS (784 functions, 0 violations); `run_engine_effects.py --wine-env
 CX_GRAPHICS_BACKEND=wined3d` 8 modes, 297 checks, 0 failed (its record rebinds to this tree).
+
+## 2026-10-08: batched tests per ship, staggered re-test (after Run 137 A)
+
+Run 137 A (DXVK, `run137-dxvk-triage/`, measured): the cull acted correctly but cost 10-25 us per test in flight (two
+pipeline rebinds per part) against ~10 us saved per skipped draw; `view_submit` 6.4 -> 8.1 ms at the close capital
+views. Change: one block per ship per frame at its first part draw (after its hull), last frame's parts of the ship
+reprojected through the ship's hull rows, one state swap, a query per rectangle, one restore; a part last read visible
+is re-tested once every `occlusion_cull_retest` frames (default 8) on a fixed staggered phase; hidden, unknown, moved,
+hull-changed and post-Reset parts at every block. Rectangle supply (coordinator decision): `constants`, the rectangle in
+`c252-c253` per test over a static strip, no Lock on the game thread; the buffer modes are fixture-measured
+alternatives. Design: [occlusion-cull.md](../architecture/occlusion-cull.md) ("Mechanism", "Cost").
+
+Production default, realistic state (3 ships x 50 parts, fp16 + RT1/RT2, game vs/ps bound; medians of five interleaved
+repeats; measured; tracked records `verification/results/occlusion-cull-batched/fixture-*.json` and `legacy-*.json`):
+
+| backend | per test | per block | 150 tests: test time / frame CPU | K = 8 cull: tests / test time / frame CPU |
+| --- | --- | --- | --- | --- |
+| DXVK, constants | 1.21 us | 7.4 us | 204 / 317 us | 116 / 174 / 199 us |
+| wined3d, constants | 0.73 us | 8.9 us | 136 / 208 us | 116 / 124 / 134 us |
+| DXVK, Run137 per part | 6.20 us | - | 930 / 1,063 us | 150 / 931 / 908 us |
+| wined3d, Run137 per part | 2.12 us | - | 318 / 326 us | 150 / 295 / 230 us |
+
+The buffer alternatives and the wined3d Lock stall are tabled in the design note ("Measured alternatives"). Before the
+per-frame target-check cache (review F6) the constants mode measured 8.3 (DXVK) and 10.4 us (wined3d) per block in a
+superseded record (not kept); after it 7.4 and 8.9 us, a change of the size of the run-to-run spread, in the direction
+the stage measurement predicts (the target check was 2.5-4.2 us per block on wined3d, `stages-wined3d.txt`).
+
+Commands (bottle X3, each alone under the Wine lock; the fixture from the fresh CMake build, copied beside no d3d9.dll):
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_occlusion_cull.py --backend wined3d --repeats 5 --exe <dir>/occlusion_cull_fixture.exe
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_occlusion_cull.py --backend dxvk --repeats 5 --exe <dir>/occlusion_cull_fixture.exe
+sh verification/results/occlusion-cull-batched/legacy_build.sh <out>      # the Run137 pass (833f1ac7) on the same scene
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_occlusion_cull.py --backend <b> --repeats 5 --name legacy-<b> --exe <out>/legacy_cost.exe
+python3 verification/results/occlusion-cull-batched/summary.py           # -> summary.json
+```
+
+Records `verification/results/occlusion-cull-batched/{fixture,legacy}-{wined3d,dxvk}.{json,txt}`, `summary.{py,json}`,
+`stages-wined3d.txt` (+ `stages_instrument.py`). The fixture records carry the executable of the fresh build
+(4d4e0d48...). The legacy records carry `built_from: 833f1ac7` and `built_sources` (the hashes of the pass and core it
+was built from, equal to `git show 833f1ac7:<file>`); their `sources` are the worktree files at run time (runner, scene,
+driver). Build flags: the legacy driver is built by `legacy_build.sh` with `-O2` and the same SSE2/stack options as the
+CMake fixture, which adds `-g -DNDEBUG` (RelWithDebInfo); neither pass contains an assert. The first wined3d legacy run
+printed its complete output but did not exit within the runner's 600 s (`passed: false`); the rerun passed in 62 s.
+
+Functional, both backends 76/76 checks (the functional scene with the dynamic, managed, discard and constants geometry
+on fp16 + RT1/RT2 and the production one on A8R8G8B8, then the realistic state on the production one):
+
+- functional scene: hidden parts skipped in all 33 expected frame-part slots from frame 2 on, visible/in-front/alpha
+  parts never skipped, teleport drawn at T, the revealed part late exactly one frame (`drawn_late` 1), frames and
+  RT1/RT2 identical on and off except frame K inside the part, state back after every part (c252/c253 untouched, or put
+  back in the constants mode), every part tested at the first block after the Reset, pool 1,024 back, device references
+  back after detach; six back-to-back frames: DXVK 28 of 34 one-frame reads not ready, 23 skips on 32 ready decisions,
+  wined3d 24 of 28 not ready, 6 skips on 9 ready decisions, none without a ready hidden result;
+- realistic state (32 frames, cull on and off interleaved, every target read back): hidden parts skipped in 3,270 of
+  3,270 expected slots from frame 2, visible parts never skipped, the 10 revealed parts drawn from X + 1 (frame 27),
+  every visible part tested exactly 3 times over 3K = 24 frames (39/39) and every hidden part every frame (111/111),
+  visible re-tests per frame 4..5 against N/K = 4.88 (within +-50 %), RT0/RT1/RT2 identical except frame X inside the
+  revealed parts, no state failure, no query error, no failed block.
+
+Cadence refinement (coordinator, 2026-10-08): a plain `hash(node, model) mod K` phase spread 39 visible parts 0..10 per
+phase against a mean of 4.9 (host simulation of the fixture's node ids), outside the asked +-50 %; the phase is
+therefore chosen at the part's first visible result as the least-loaded phase, searched from that hash seed, then
+fixed. Host: 40 parts turning visible together get 5 per phase.
+
+Review fixes (2026-10-08): F7, `note_part` searched only up to the first expired slot of its probe chain and could take a
+second copy of a live draw behind it; it now searches the whole chain before reusing an expired slot (host check: two
+keys on one chain, the first expired, the second keeps its slot, phase and result, one copy; the expired slot is reused
+fresh for its own key). F6, the bound-target check is cached per frame and target binding (the route's key: lazy
+RT1/RT2 bits and the HDR redirect state). The reprojection's round-trip test accepts rel when `hull rows x rel`
+reproduces every entry of the part's rows within 1e-4 of their largest entry (about 0.2 for rows whose largest entry,
+the depth translation of a ship 2 km away, is ~2,000); measured reprojection error 0.00012 px and 6e-8 depth against
+14.8 px for the unprojected rectangle (host case: camera 40 m, ship 30 m and 0.02 rad between the frames at 2 km).
+
+Host: `test_occlusion_cull` 10 tests (core driver 90 checks: classification, rectangle, guard, ring, skip rule,
+classifier with ship roots, reprojection, retest parsing, blocks per ship with interleaved ships, cadence on phase,
+phase balance, hull signature, movement, reset, stale rectangles, depth direction, stale records, the probe chain;
+source contracts for the block; the batched records), `test_logging_tiers`, `test_engine_effects`,
+`test_config_schema`: OK. `generate.py --check` PASS (259 settings, 109 in the template). Fresh CMake configure and
+full build 0 warnings, `d3d9.dll` 90e823a0846bd68b... (59,418,945 B); `check_no_x87.py` PASS (793 functions, 0
+violations; an earlier build had four: double `std::fabs` and int64/double QPC conversions, replaced by a
+compare-and-negate and integer arithmetic). `run_engine_effects.py --wine-env CX_GRAPHICS_BACKEND=wined3d`: 8 modes,
+297 checks, 0 failed (record `verification/results/bottle-X3/engine-effects/summary.json`, still bound to this tree).
+
+Inferred net at the close capital views (110 hidden, 150 candidates, DXVK, constants default): the K = 8 cull costs
+~0.2 ms of frame CPU in the fixture; scaled by Run137's flight/fixture ratio (10-25 us in flight against 7.1 us per test
+of frame CPU in this fixture, 1.4-3.5x) about 0.28-0.7 ms in flight, against ~1.1 ms saved (110 draws x ~10 us): a net
+gain of roughly 0.4-0.8 ms per frame, where Run137 lost ~1.7 ms. Not verified in flight.
+
+Not verified: a flight; native Windows execution; the batched tests' pipeline (GPU) cost.

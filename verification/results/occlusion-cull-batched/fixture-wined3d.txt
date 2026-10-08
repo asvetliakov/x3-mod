@@ -1,0 +1,267 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+# command: /Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle X3 --no-update --dll d3d9=b --workdir /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/fxe --env CX_GRAPHICS_BACKEND=wined3d /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/fxe/occlusion_cull_fixture.exe builtin 5
+ADAPTER description=NVIDIA GeForce 8800 GTX
+CHECK device PASS
+CHECK scene resources PASS
+CHECK RT1/RT2 resources PASS
+ATTACH format=fp16_mrt_dynamic hr=00000000 reason=ok queries=1024 references_added=1028
+CHECK fp16_mrt_dynamic: attach: the pool of 1,024 queries PASS
+UNREADY format=fp16_mrt_dynamic frames=6 tested=28 not_ready=24 ready_decisions=9 skipped=6
+CHECK fp16_mrt_dynamic: back-to-back frames: a skip only on a ready hidden result (not ready = drawn) PASS
+CHECK fp16_mrt_dynamic: detach: the device's reference count is back PASS
+CHECK fp16_mrt_dynamic: both runs completed, one Reset each PASS
+FRAME format=fp16_mrt_dynamic frame=0 drawn=DDDDDDDDD tested=......... candidates=9 tested=0 blocks=0 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=1 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=2 drawn=sssDDDssD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=5 hidden=5 visible=4 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=3 drawn=sssDDDssD tested=TTTT..TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=0 not_ready=0 ready_age=5,4,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=4 drawn=sssDDDssD tested=TTT..TTT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=1 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=5 drawn=sssDDDsDD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=4 hidden=5 visible=1 not_ready=0 ready_age=6,1,2 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=6 drawn=sssDDDsDD tested=TTT.T.TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=4 hidden=5 visible=0 not_ready=0 ready_age=5,1,3 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=7 drawn=sssDDDsDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=4 hidden=4 visible=2 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=1444 rt1_diff=1444 rt2_diff=1444
+FRAME format=fp16_mrt_dynamic frame=8 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=1 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=9 drawn=sssDDDDDD tested=TTT...T.. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=0 not_ready=0 ready_age=3,6,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=10 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,0,5 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=11 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=12 drawn=sssDDDDDD tested=TTT..T... candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_dynamic frame=13 drawn=sssDDDDDD tested=TTT....T. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,5,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+SUMMARY format=fp16_mrt_dynamic hidden_skips=33 hidden_expected=33 visible_skips=0 teleport_at_T=D mover_at_K=s mover_after_K=D drawn_late=1 diff_frames=1 diff_frame=7 diff_outside_mover=0 state_failures=0 errors=0 not_ready_after_NR=0 fresh_skipped=0 lane_diff_frames=1 lane_diff_frame=7 lane_diff_outside=0
+CHECK fp16_mrt_dynamic: hidden parts skipped from frame 2 on (every frame with ready results) PASS
+CHECK fp16_mrt_dynamic: visible, in-front and alpha-tested parts always drawn PASS
+CHECK fp16_mrt_dynamic: the teleport is drawn the frame it leaves the hull (guard) PASS
+CHECK fp16_mrt_dynamic: the revealed part is late by exactly one frame (skipped at K, drawn from K+1) PASS
+CHECK fp16_mrt_dynamic: frames identical with the cull on and off except frame K, inside the part PASS
+CHECK fp16_mrt_dynamic: RT1 (RGBA32F) and RT2 (R32F) byte-identical on and off except frame K, inside the part PASS
+CHECK fp16_mrt_dynamic: the application state is back after every part PASS
+CHECK fp16_mrt_dynamic: the first frame after the Reset draws everything; no query errors PASS
+CHECK fp16_mrt_dynamic: every part is tested at the block after the Reset PASS
+ATTACH format=fp16_mrt_managed hr=00000000 reason=ok queries=1024 references_added=1028
+CHECK fp16_mrt_managed: attach: the pool of 1,024 queries PASS
+UNREADY format=fp16_mrt_managed frames=6 tested=28 not_ready=24 ready_decisions=9 skipped=6
+CHECK fp16_mrt_managed: back-to-back frames: a skip only on a ready hidden result (not ready = drawn) PASS
+CHECK fp16_mrt_managed: detach: the device's reference count is back PASS
+CHECK fp16_mrt_managed: both runs completed, one Reset each PASS
+FRAME format=fp16_mrt_managed frame=0 drawn=DDDDDDDDD tested=......... candidates=9 tested=0 blocks=0 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=1 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=2 drawn=sssDDDssD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=5 hidden=5 visible=4 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=3 drawn=sssDDDssD tested=TTTT..TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=0 not_ready=0 ready_age=5,4,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=4 drawn=sssDDDssD tested=TTT..TTT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=1 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=5 drawn=sssDDDsDD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=4 hidden=5 visible=1 not_ready=0 ready_age=6,1,2 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=6 drawn=sssDDDsDD tested=TTT.T.TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=4 hidden=5 visible=0 not_ready=0 ready_age=5,1,3 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=7 drawn=sssDDDsDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=4 hidden=4 visible=2 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=1444 rt1_diff=1444 rt2_diff=1444
+FRAME format=fp16_mrt_managed frame=8 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=1 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=9 drawn=sssDDDDDD tested=TTT...T.. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=0 not_ready=0 ready_age=3,6,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=10 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,0,5 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=11 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=12 drawn=sssDDDDDD tested=TTT..T... candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_managed frame=13 drawn=sssDDDDDD tested=TTT....T. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,5,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+SUMMARY format=fp16_mrt_managed hidden_skips=33 hidden_expected=33 visible_skips=0 teleport_at_T=D mover_at_K=s mover_after_K=D drawn_late=1 diff_frames=1 diff_frame=7 diff_outside_mover=0 state_failures=0 errors=0 not_ready_after_NR=0 fresh_skipped=0 lane_diff_frames=1 lane_diff_frame=7 lane_diff_outside=0
+CHECK fp16_mrt_managed: hidden parts skipped from frame 2 on (every frame with ready results) PASS
+CHECK fp16_mrt_managed: visible, in-front and alpha-tested parts always drawn PASS
+CHECK fp16_mrt_managed: the teleport is drawn the frame it leaves the hull (guard) PASS
+CHECK fp16_mrt_managed: the revealed part is late by exactly one frame (skipped at K, drawn from K+1) PASS
+CHECK fp16_mrt_managed: frames identical with the cull on and off except frame K, inside the part PASS
+CHECK fp16_mrt_managed: RT1 (RGBA32F) and RT2 (R32F) byte-identical on and off except frame K, inside the part PASS
+CHECK fp16_mrt_managed: the application state is back after every part PASS
+CHECK fp16_mrt_managed: the first frame after the Reset draws everything; no query errors PASS
+CHECK fp16_mrt_managed: every part is tested at the block after the Reset PASS
+ATTACH format=fp16_mrt_discard hr=00000000 reason=ok queries=1024 references_added=1028
+CHECK fp16_mrt_discard: attach: the pool of 1,024 queries PASS
+UNREADY format=fp16_mrt_discard frames=6 tested=28 not_ready=24 ready_decisions=9 skipped=6
+CHECK fp16_mrt_discard: back-to-back frames: a skip only on a ready hidden result (not ready = drawn) PASS
+CHECK fp16_mrt_discard: detach: the device's reference count is back PASS
+CHECK fp16_mrt_discard: both runs completed, one Reset each PASS
+FRAME format=fp16_mrt_discard frame=0 drawn=DDDDDDDDD tested=......... candidates=9 tested=0 blocks=0 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=1 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=2 drawn=sssDDDssD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=5 hidden=5 visible=4 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=3 drawn=sssDDDssD tested=TTTT..TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=0 not_ready=0 ready_age=5,4,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=4 drawn=sssDDDssD tested=TTT..TTT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=1 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=5 drawn=sssDDDsDD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=4 hidden=5 visible=1 not_ready=0 ready_age=6,1,2 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=6 drawn=sssDDDsDD tested=TTT.T.TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=4 hidden=5 visible=0 not_ready=0 ready_age=5,1,3 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=7 drawn=sssDDDsDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=4 hidden=4 visible=2 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=1444 rt1_diff=1444 rt2_diff=1444
+FRAME format=fp16_mrt_discard frame=8 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=1 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=9 drawn=sssDDDDDD tested=TTT...T.. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=0 not_ready=0 ready_age=3,6,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=10 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,0,5 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=11 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=12 drawn=sssDDDDDD tested=TTT..T... candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_discard frame=13 drawn=sssDDDDDD tested=TTT....T. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,5,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+SUMMARY format=fp16_mrt_discard hidden_skips=33 hidden_expected=33 visible_skips=0 teleport_at_T=D mover_at_K=s mover_after_K=D drawn_late=1 diff_frames=1 diff_frame=7 diff_outside_mover=0 state_failures=0 errors=0 not_ready_after_NR=0 fresh_skipped=0 lane_diff_frames=1 lane_diff_frame=7 lane_diff_outside=0
+CHECK fp16_mrt_discard: hidden parts skipped from frame 2 on (every frame with ready results) PASS
+CHECK fp16_mrt_discard: visible, in-front and alpha-tested parts always drawn PASS
+CHECK fp16_mrt_discard: the teleport is drawn the frame it leaves the hull (guard) PASS
+CHECK fp16_mrt_discard: the revealed part is late by exactly one frame (skipped at K, drawn from K+1) PASS
+CHECK fp16_mrt_discard: frames identical with the cull on and off except frame K, inside the part PASS
+CHECK fp16_mrt_discard: RT1 (RGBA32F) and RT2 (R32F) byte-identical on and off except frame K, inside the part PASS
+CHECK fp16_mrt_discard: the application state is back after every part PASS
+CHECK fp16_mrt_discard: the first frame after the Reset draws everything; no query errors PASS
+CHECK fp16_mrt_discard: every part is tested at the block after the Reset PASS
+ATTACH format=fp16_mrt_constants hr=00000000 reason=ok queries=1024 references_added=1028
+CHECK fp16_mrt_constants: attach: the pool of 1,024 queries PASS
+UNREADY format=fp16_mrt_constants frames=6 tested=28 not_ready=24 ready_decisions=9 skipped=6
+CHECK fp16_mrt_constants: back-to-back frames: a skip only on a ready hidden result (not ready = drawn) PASS
+CHECK fp16_mrt_constants: detach: the device's reference count is back PASS
+CHECK fp16_mrt_constants: both runs completed, one Reset each PASS
+FRAME format=fp16_mrt_constants frame=0 drawn=DDDDDDDDD tested=......... candidates=9 tested=0 blocks=0 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=1 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=2 drawn=sssDDDssD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=5 hidden=5 visible=4 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=3 drawn=sssDDDssD tested=TTTT..TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=0 not_ready=0 ready_age=5,4,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=4 drawn=sssDDDssD tested=TTT..TTT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=1 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=5 drawn=sssDDDsDD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=4 hidden=5 visible=1 not_ready=0 ready_age=6,1,2 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=6 drawn=sssDDDsDD tested=TTT.T.TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=4 hidden=5 visible=0 not_ready=0 ready_age=5,1,3 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=7 drawn=sssDDDsDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=4 hidden=4 visible=2 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=1444 rt1_diff=1444 rt2_diff=1444
+FRAME format=fp16_mrt_constants frame=8 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=1 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=9 drawn=sssDDDDDD tested=TTT...T.. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=0 not_ready=0 ready_age=3,6,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=10 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,0,5 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=11 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=12 drawn=sssDDDDDD tested=TTT..T... candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=fp16_mrt_constants frame=13 drawn=sssDDDDDD tested=TTT....T. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,5,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+SUMMARY format=fp16_mrt_constants hidden_skips=33 hidden_expected=33 visible_skips=0 teleport_at_T=D mover_at_K=s mover_after_K=D drawn_late=1 diff_frames=1 diff_frame=7 diff_outside_mover=0 state_failures=0 errors=0 not_ready_after_NR=0 fresh_skipped=0 lane_diff_frames=1 lane_diff_frame=7 lane_diff_outside=0
+CHECK fp16_mrt_constants: hidden parts skipped from frame 2 on (every frame with ready results) PASS
+CHECK fp16_mrt_constants: visible, in-front and alpha-tested parts always drawn PASS
+CHECK fp16_mrt_constants: the teleport is drawn the frame it leaves the hull (guard) PASS
+CHECK fp16_mrt_constants: the revealed part is late by exactly one frame (skipped at K, drawn from K+1) PASS
+CHECK fp16_mrt_constants: frames identical with the cull on and off except frame K, inside the part PASS
+CHECK fp16_mrt_constants: RT1 (RGBA32F) and RT2 (R32F) byte-identical on and off except frame K, inside the part PASS
+CHECK fp16_mrt_constants: the application state is back after every part PASS
+CHECK fp16_mrt_constants: the first frame after the Reset draws everything; no query errors PASS
+CHECK fp16_mrt_constants: every part is tested at the block after the Reset PASS
+ATTACH format=argb8 hr=00000000 reason=ok queries=1024 references_added=1028
+CHECK argb8: attach: the pool of 1,024 queries PASS
+UNREADY format=argb8 frames=6 tested=28 not_ready=24 ready_decisions=9 skipped=6
+CHECK argb8: back-to-back frames: a skip only on a ready hidden result (not ready = drawn) PASS
+CHECK argb8: detach: the device's reference count is back PASS
+CHECK argb8: both runs completed, one Reset each PASS
+FRAME format=argb8 frame=0 drawn=DDDDDDDDD tested=......... candidates=9 tested=0 blocks=0 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=1 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=2 drawn=sssDDDssD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=5 hidden=5 visible=4 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=3 drawn=sssDDDssD tested=TTTT..TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=0 not_ready=0 ready_age=5,4,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=4 drawn=sssDDDssD tested=TTT..TTT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=5 hidden=5 visible=1 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=5 drawn=sssDDDsDD tested=TTT...TT. candidates=9 tested=5 blocks=1 retest_skipped=4 skipped=4 hidden=5 visible=1 not_ready=0 ready_age=6,1,2 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=6 drawn=sssDDDsDD tested=TTT.T.TT. candidates=9 tested=6 blocks=1 retest_skipped=3 skipped=4 hidden=5 visible=0 not_ready=0 ready_age=5,1,3 errors=0 drawn_late=0 unstable=1 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=7 drawn=sssDDDsDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=4 hidden=4 visible=2 not_ready=0 ready_age=6,0,3 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=1444 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=8 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=1 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=9 drawn=sssDDDDDD tested=TTT...T.. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=0 not_ready=0 ready_age=3,6,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=10 drawn=sssDDDDDD tested=TTT...... candidates=9 tested=3 blocks=1 retest_skipped=6 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,0,5 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=11 drawn=DDDDDDDDD tested=TTTTTTTTT candidates=9 tested=9 blocks=1 retest_skipped=0 skipped=0 hidden=0 visible=0 not_ready=0 ready_age=0,0,9 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=12 drawn=sssDDDDDD tested=TTT..T... candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=6 not_ready=0 ready_age=9,0,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+FRAME format=argb8 frame=13 drawn=sssDDDDDD tested=TTT....T. candidates=9 tested=4 blocks=1 retest_skipped=5 skipped=3 hidden=3 visible=1 not_ready=0 ready_age=4,5,0 errors=0 drawn_late=0 unstable=0 pool_truncated=0 diff_px=0 rt1_diff=0 rt2_diff=0
+SUMMARY format=argb8 hidden_skips=33 hidden_expected=33 visible_skips=0 teleport_at_T=D mover_at_K=s mover_after_K=D drawn_late=1 diff_frames=1 diff_frame=7 diff_outside_mover=0 state_failures=0 errors=0 not_ready_after_NR=0 fresh_skipped=0 lane_diff_frames=0 lane_diff_frame=-1 lane_diff_outside=0
+CHECK argb8: hidden parts skipped from frame 2 on (every frame with ready results) PASS
+CHECK argb8: visible, in-front and alpha-tested parts always drawn PASS
+CHECK argb8: the teleport is drawn the frame it leaves the hull (guard) PASS
+CHECK argb8: the revealed part is late by exactly one frame (skipped at K, drawn from K+1) PASS
+CHECK argb8: frames identical with the cull on and off except frame K, inside the part PASS
+CHECK argb8: the application state is back after every part PASS
+CHECK argb8: the first frame after the Reset draws everything; no query errors PASS
+CHECK argb8: every part is tested at the block after the Reset PASS
+CHECK realistic: scene resources (1280 x 720 fp16 + RT1 + RT2) PASS
+CHECK realistic: attach (production buffer) PASS
+REALFRAME frame=0 candidates=150 tested=0 visible_tested=0 cadence=0 forced=0 retest_skipped=0 blocks=0 skipped=0 not_ready=0 ready_age=0,0,150 stale=0 test_us=1.0 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=1 candidates=150 tested=150 visible_tested=0 cadence=0 forced=0 retest_skipped=0 blocks=3 skipped=0 not_ready=0 ready_age=0,0,150 stale=0 test_us=122.1 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=2 candidates=150 tested=115 visible_tested=4 cadence=4 forced=0 retest_skipped=35 blocks=3 skipped=111 not_ready=0 ready_age=150,0,0 stale=0 test_us=84.5 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=3 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=115,35,0 stale=0 test_us=75.2 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=4 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,4,30 stale=0 test_us=79.9 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=5 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=79.8 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=6 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=78.9 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=7 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=72.0 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=8 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=87.8 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=9 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=99.6 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=10 candidates=150 tested=115 visible_tested=4 cadence=4 forced=0 retest_skipped=35 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=80.3 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=11 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=115,5,30 stale=0 test_us=82.4 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=12 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,4,30 stale=0 test_us=75.2 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=13 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=111.7 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=14 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=85.8 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=15 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=79.3 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=16 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=87.5 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=17 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=74.8 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=18 candidates=150 tested=115 visible_tested=4 cadence=4 forced=0 retest_skipped=35 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=81.7 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=19 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=115,5,30 stale=0 test_us=81.6 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=20 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,4,30 stale=0 test_us=81.6 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=21 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=77.8 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=22 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=81.7 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=23 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=74.2 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=24 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=75.4 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=25 candidates=150 tested=116 visible_tested=5 cadence=5 forced=0 retest_skipped=34 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=0 test_us=84.2 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=26 candidates=150 tested=127 visible_tested=0 cadence=4 forced=12 retest_skipped=23 blocks=3 skipped=111 not_ready=0 ready_age=116,5,29 stale=49 test_us=78.7 diff_px=6784 rt1_diff=6784 rt2_diff=6784
+REALFRAME frame=27 candidates=150 tested=107 visible_tested=0 cadence=6 forced=0 retest_skipped=43 blocks=3 skipped=101 not_ready=0 ready_age=127,3,20 stale=0 test_us=75.9 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=28 candidates=150 tested=108 visible_tested=0 cadence=7 forced=0 retest_skipped=42 blocks=3 skipped=101 not_ready=0 ready_age=107,23,20 stale=0 test_us=81.0 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=29 candidates=150 tested=107 visible_tested=0 cadence=6 forced=0 retest_skipped=43 blocks=3 skipped=101 not_ready=0 ready_age=108,6,36 stale=0 test_us=75.2 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=30 candidates=150 tested=107 visible_tested=0 cadence=6 forced=0 retest_skipped=43 blocks=3 skipped=101 not_ready=0 ready_age=107,7,36 stale=0 test_us=77.8 diff_px=0 rt1_diff=0 rt2_diff=0
+REALFRAME frame=31 candidates=150 tested=107 visible_tested=0 cadence=6 forced=0 retest_skipped=43 blocks=3 skipped=101 not_ready=0 ready_age=107,6,37 stale=0 test_us=74.2 diff_px=0 rt1_diff=0 rt2_diff=0
+REALSUMMARY hidden_skips=3270 hidden_expected=3270 visible_skips=0 visible_exactly_3=39/39 hidden_every_frame=111/111 visible_tested_per_frame=4..5 n_over_k=4.88 reveal_drawn_at=27 diff_frames=1 diff_last=26 diff_outside=0 lane_diff_frames=1 state_failures=0 errors=0 failed=0 test_us_p50=79.9
+CHECK realistic: hidden parts skipped from frame 2 (every frame with ready results) PASS
+CHECK realistic: visible parts never skipped PASS
+CHECK realistic: revealed parts drawn from X + 1 (X + 2 when not ready) PASS
+CHECK realistic: over 3K frames every visible part tested exactly 3 times (once per K), every hidden part every frame PASS
+CHECK realistic: visible re-tests per frame within +-50 % of N/K (staggered phases) PASS
+CHECK realistic: RT0, RT1 and RT2 byte-identical on and off except the late frame(s), inside the revealed parts PASS
+CHECK realistic: state back after every part, no query error, no failed block, skips only on ready results PASS
+COST impl=batched repeat=0 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=143.5 frame_us_p90=243.7 cpu_us_p50=155.3
+COST impl=batched repeat=0 buffer=dynamic config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=743.0 test_us_p90=1021.8 frame_us_p50=912.3 frame_us_p90=1249.6 cpu_us_p50=926.3
+COST impl=batched repeat=0 buffer=dynamic config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=983.8 test_us_p90=1269.8 frame_us_p50=1224.6 frame_us_p90=1552.7 cpu_us_p50=1237.4
+COST impl=batched repeat=0 buffer=dynamic config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=499.5 test_us_p90=674.2 frame_us_p50=649.7 frame_us_p90=882.6 cpu_us_p50=658.3
+COST impl=batched repeat=0 buffer=managed config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=783.2 test_us_p90=1085.9 frame_us_p50=945.1 frame_us_p90=1309.7 cpu_us_p50=959.0
+COST impl=batched repeat=0 buffer=managed config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1098.3 test_us_p90=1395.6 frame_us_p50=1348.5 frame_us_p90=1687.1 cpu_us_p50=1362.8
+COST impl=batched repeat=0 buffer=managed config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=614.3 test_us_p90=954.4 frame_us_p50=785.6 frame_us_p90=1182.4 cpu_us_p50=799.6
+COST impl=batched repeat=0 buffer=discard config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=803.2 test_us_p90=1180.7 frame_us_p50=967.2 frame_us_p90=1428.5 cpu_us_p50=981.0
+COST impl=batched repeat=0 buffer=discard config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1021.0 test_us_p90=1268.8 frame_us_p50=1256.9 frame_us_p90=1567.0 cpu_us_p50=1268.2
+COST impl=batched repeat=0 buffer=discard config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=577.5 test_us_p90=819.9 frame_us_p50=739.5 frame_us_p90=1073.0 cpu_us_p50=751.6
+COST impl=batched repeat=0 buffer=constants config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=146.9 test_us_p90=192.8 frame_us_p50=340.2 frame_us_p90=448.2 cpu_us_p50=351.4
+COST impl=batched repeat=0 buffer=constants config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=140.3 test_us_p90=181.0 frame_us_p50=362.9 frame_us_p90=464.0 cpu_us_p50=373.0
+COST impl=batched repeat=0 buffer=constants config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=29.1 test_us_p90=37.5 frame_us_p50=176.5 frame_us_p90=270.9 cpu_us_p50=185.6
+COST impl=batched repeat=1 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=139.6 frame_us_p90=249.2 cpu_us_p50=150.5
+COST impl=batched repeat=1 buffer=dynamic config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=732.9 test_us_p90=1140.8 frame_us_p50=882.5 frame_us_p90=1371.9 cpu_us_p50=894.8
+COST impl=batched repeat=1 buffer=dynamic config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=917.5 test_us_p90=1208.5 frame_us_p50=1136.2 frame_us_p90=1498.4 cpu_us_p50=1145.4
+COST impl=batched repeat=1 buffer=dynamic config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=493.2 test_us_p90=720.1 frame_us_p50=638.9 frame_us_p90=960.7 cpu_us_p50=645.9
+COST impl=batched repeat=1 buffer=managed config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=735.2 test_us_p90=1088.4 frame_us_p50=880.6 frame_us_p90=1308.0 cpu_us_p50=888.8
+COST impl=batched repeat=1 buffer=managed config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1032.6 test_us_p90=1308.7 frame_us_p50=1267.5 frame_us_p90=1616.7 cpu_us_p50=1282.7
+COST impl=batched repeat=1 buffer=managed config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=540.1 test_us_p90=755.1 frame_us_p50=698.1 frame_us_p90=989.4 cpu_us_p50=707.8
+COST impl=batched repeat=1 buffer=discard config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=796.8 test_us_p90=1027.2 frame_us_p50=957.0 frame_us_p90=1217.6 cpu_us_p50=968.2
+COST impl=batched repeat=1 buffer=discard config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1060.5 test_us_p90=1333.8 frame_us_p50=1301.9 frame_us_p90=1634.7 cpu_us_p50=1316.4
+COST impl=batched repeat=1 buffer=discard config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=610.4 test_us_p90=890.6 frame_us_p50=775.5 frame_us_p90=1158.8 cpu_us_p50=786.9
+COST impl=batched repeat=1 buffer=constants config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=120.1 test_us_p90=175.7 frame_us_p50=271.3 frame_us_p90=392.3 cpu_us_p50=281.2
+COST impl=batched repeat=1 buffer=constants config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=132.2 test_us_p90=170.6 frame_us_p50=341.7 frame_us_p90=429.3 cpu_us_p50=349.2
+COST impl=batched repeat=1 buffer=constants config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=31.6 test_us_p90=45.1 frame_us_p50=185.6 frame_us_p90=294.1 cpu_us_p50=196.8
+COST impl=batched repeat=2 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=143.1 frame_us_p90=245.9 cpu_us_p50=155.7
+COST impl=batched repeat=2 buffer=dynamic config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=728.6 test_us_p90=1086.2 frame_us_p50=881.6 frame_us_p90=1350.4 cpu_us_p50=892.5
+COST impl=batched repeat=2 buffer=dynamic config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1037.6 test_us_p90=1403.5 frame_us_p50=1275.0 frame_us_p90=1699.5 cpu_us_p50=1294.8
+COST impl=batched repeat=2 buffer=dynamic config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=532.5 test_us_p90=774.0 frame_us_p50=692.0 frame_us_p90=1034.4 cpu_us_p50=704.6
+COST impl=batched repeat=2 buffer=managed config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=784.0 test_us_p90=1163.9 frame_us_p50=942.0 frame_us_p90=1406.4 cpu_us_p50=958.9
+COST impl=batched repeat=2 buffer=managed config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1026.5 test_us_p90=1250.6 frame_us_p50=1270.8 frame_us_p90=1537.2 cpu_us_p50=1287.9
+COST impl=batched repeat=2 buffer=managed config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=435.6 test_us_p90=518.3 frame_us_p50=580.9 frame_us_p90=661.6 cpu_us_p50=588.8
+COST impl=batched repeat=2 buffer=discard config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=887.3 test_us_p90=1241.1 frame_us_p50=1089.9 frame_us_p90=1470.3 cpu_us_p50=1106.0
+COST impl=batched repeat=2 buffer=discard config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1049.2 test_us_p90=1258.1 frame_us_p50=1294.9 frame_us_p90=1547.3 cpu_us_p50=1310.9
+COST impl=batched repeat=2 buffer=discard config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=596.9 test_us_p90=881.7 frame_us_p50=778.0 frame_us_p90=1142.4 cpu_us_p50=788.3
+COST impl=batched repeat=2 buffer=constants config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=118.5 test_us_p90=173.6 frame_us_p50=268.1 frame_us_p90=380.0 cpu_us_p50=277.2
+COST impl=batched repeat=2 buffer=constants config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=131.0 test_us_p90=144.9 frame_us_p50=340.2 frame_us_p90=378.2 cpu_us_p50=348.4
+COST impl=batched repeat=2 buffer=constants config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=24.3 test_us_p90=31.0 frame_us_p50=167.1 frame_us_p90=200.4 cpu_us_p50=175.3
+COST impl=batched repeat=3 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=160.5 frame_us_p90=247.4 cpu_us_p50=174.1
+COST impl=batched repeat=3 buffer=dynamic config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=681.0 test_us_p90=1054.1 frame_us_p50=820.4 frame_us_p90=1273.5 cpu_us_p50=830.7
+COST impl=batched repeat=3 buffer=dynamic config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1040.8 test_us_p90=1316.9 frame_us_p50=1278.6 frame_us_p90=1601.6 cpu_us_p50=1298.9
+COST impl=batched repeat=3 buffer=dynamic config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=541.9 test_us_p90=731.6 frame_us_p50=704.4 frame_us_p90=981.1 cpu_us_p50=717.1
+COST impl=batched repeat=3 buffer=managed config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=803.3 test_us_p90=1154.9 frame_us_p50=967.8 frame_us_p90=1377.7 cpu_us_p50=986.2
+COST impl=batched repeat=3 buffer=managed config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=988.6 test_us_p90=1382.3 frame_us_p50=1224.2 frame_us_p90=1694.5 cpu_us_p50=1238.0
+COST impl=batched repeat=3 buffer=managed config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=527.6 test_us_p90=817.0 frame_us_p50=695.1 frame_us_p90=1051.8 cpu_us_p50=708.1
+COST impl=batched repeat=3 buffer=discard config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=787.1 test_us_p90=1161.5 frame_us_p50=949.2 frame_us_p90=1390.9 cpu_us_p50=964.2
+COST impl=batched repeat=3 buffer=discard config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=987.5 test_us_p90=1300.9 frame_us_p50=1219.2 frame_us_p90=1597.3 cpu_us_p50=1231.7
+COST impl=batched repeat=3 buffer=discard config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=599.8 test_us_p90=849.0 frame_us_p50=764.1 frame_us_p90=1094.3 cpu_us_p50=779.0
+COST impl=batched repeat=3 buffer=constants config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=124.5 test_us_p90=164.1 frame_us_p50=284.7 frame_us_p90=359.5 cpu_us_p50=296.9
+COST impl=batched repeat=3 buffer=constants config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=136.2 test_us_p90=157.6 frame_us_p50=353.6 frame_us_p90=419.3 cpu_us_p50=363.1
+COST impl=batched repeat=3 buffer=constants config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=29.2 test_us_p90=35.0 frame_us_p50=182.0 frame_us_p90=205.4 cpu_us_p50=192.5
+COST impl=batched repeat=4 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=140.0 frame_us_p90=159.2 cpu_us_p50=153.0
+COST impl=batched repeat=4 buffer=dynamic config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=750.5 test_us_p90=882.4 frame_us_p50=911.4 frame_us_p90=1088.0 cpu_us_p50=927.0
+COST impl=batched repeat=4 buffer=dynamic config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1018.1 test_us_p90=1201.0 frame_us_p50=1266.2 frame_us_p90=1450.3 cpu_us_p50=1284.0
+COST impl=batched repeat=4 buffer=dynamic config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=548.6 test_us_p90=693.6 frame_us_p50=718.9 frame_us_p90=879.1 cpu_us_p50=731.7
+COST impl=batched repeat=4 buffer=managed config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=752.4 test_us_p90=889.5 frame_us_p50=910.3 frame_us_p90=1068.3 cpu_us_p50=923.4
+COST impl=batched repeat=4 buffer=managed config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=989.7 test_us_p90=1148.9 frame_us_p50=1215.9 frame_us_p90=1398.6 cpu_us_p50=1229.7
+COST impl=batched repeat=4 buffer=managed config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=462.6 test_us_p90=592.4 frame_us_p50=606.3 frame_us_p90=761.0 cpu_us_p50=616.1
+COST impl=batched repeat=4 buffer=discard config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=770.3 test_us_p90=924.6 frame_us_p50=918.6 frame_us_p90=1104.9 cpu_us_p50=932.3
+COST impl=batched repeat=4 buffer=discard config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1038.9 test_us_p90=1236.6 frame_us_p50=1270.9 frame_us_p90=1504.2 cpu_us_p50=1285.1
+COST impl=batched repeat=4 buffer=discard config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=643.5 test_us_p90=782.5 frame_us_p50=815.9 frame_us_p90=991.1 cpu_us_p50=827.3
+COST impl=batched repeat=4 buffer=constants config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=123.6 test_us_p90=152.7 frame_us_p50=278.6 frame_us_p90=338.0 cpu_us_p50=289.2
+COST impl=batched repeat=4 buffer=constants config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=144.4 test_us_p90=172.8 frame_us_p50=376.5 frame_us_p90=454.8 cpu_us_p50=387.9
+COST impl=batched repeat=4 buffer=constants config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=27.2 test_us_p90=35.0 frame_us_p50=179.0 frame_us_p90=206.6 cpu_us_p50=189.1
+DERIVED impl=batched buffer=dynamic repeats=5 per_test_us=3.29 per_block_us=174.1 all_test_us=1018.1 all_frame_overhead_us=1123.1 cull_test_us=732.9 cull_tests=116 cull_frame_delta_us=739.4 off_frame_us=143.1 all_cpu_overhead_us=1128.7 cull_cpu_delta_us=739.5 off_cpu_us=155.3
+DERIVED impl=batched buffer=managed repeats=5 per_test_us=3.35 per_block_us=172.7 all_test_us=1026.5 all_frame_overhead_us=1124.4 cull_test_us=783.2 cull_tests=116 cull_frame_delta_us=798.9 off_frame_us=143.1 all_cpu_overhead_us=1127.4 cull_cpu_delta_us=803.6 off_cpu_us=155.3
+DERIVED impl=batched buffer=discard repeats=5 per_test_us=3.02 per_block_us=197.3 all_test_us=1038.9 all_frame_overhead_us=1127.8 cull_test_us=796.8 cull_tests=116 cull_frame_delta_us=813.9 off_frame_us=143.1 all_cpu_overhead_us=1129.8 cull_cpu_delta_us=812.9 off_cpu_us=155.3
+DERIVED impl=batched buffer=constants repeats=5 per_test_us=0.73 per_block_us=8.9 all_test_us=136.2 all_frame_overhead_us=210.5 cull_test_us=123.6 cull_tests=116 cull_frame_delta_us=135.5 off_frame_us=143.1 all_cpu_overhead_us=207.8 cull_cpu_delta_us=133.9 off_cpu_us=155.3
+RESULT checks=76 failed=0 PASS

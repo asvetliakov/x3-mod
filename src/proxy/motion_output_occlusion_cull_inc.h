@@ -3,26 +3,37 @@
 // Included by motion_output.cpp inside namespace x3m (docs/architecture/occlusion-cull.md). A main-scene draw (gate 2
 // passed, after the small-prop cull, before the jitter and every other binding) with z test on and blending off is
 // classified by its scope node's body (Classifier::evaluate: hull pieces record their node and parent as this frame's
-// hull owners; parts look for an owner among their ancestors). A part draw with a known vertex extent and clip rows
-// gets this frame's occlusion test at its own draw site (renderer::OcclusionCullPass::candidate), so the test sees the
-// depth of everything drawn before it, the hull included; when last frame's test of the same draw read 0 samples, its
-// hull drew this frame and its rectangle is stable, the draw is not forwarded (the hook returns D3D_OK, as the
-// small-prop cull does). Fail closed: no scope, no extent of the buffer's current revision, no rows, a rectangle
-// reaching the near plane, an unknown depth function, sRGB writes, a non-solid fill mode, depth bias, user clip planes,
-// a bound target that cannot blend, an open application query, a full pool slot or any failed call draws the part.
+// hull owners, with their ship root; parts look for an owner among their ancestors). A hull node's first draw of the
+// frame gives its ship's batch its signature and reference rows (core::Batcher::note_hull). A part draw with a known
+// vertex extent and clip rows whose hull drew this frame is listed for next frame's block of its ship; the ship's first
+// part draw of the frame issues that block (renderer::OcclusionCullPass::part: last frame's parts of the ship, due by the
+// re-test cadence, their rectangles reprojected through the ship's hull rows, tested against the depth drawn so far,
+// the hull included); when the most recent ready test of the draw read 0 samples, its hull drew this frame and its
+// rectangle is stable, the draw is not forwarded (the hook returns D3D_OK, as the small-prop cull does). A part whose
+// hull has not drawn yet is drawn untested. Fail closed: no scope, no extent of the buffer's current revision, no rows,
+// a rectangle reaching the near plane, an unknown depth function, sRGB writes, a non-solid fill mode, depth bias, user
+// clip planes, a bound target that cannot blend, an open application query, a full pool slot or any failed call draws
+// the part.
 // Without the shadow-replay candidate counter (no cascade set) there are no extents: one row, off on that device.
 // The engine's state is never written.
 // Per scene draw with the option on: one scope read and one memo probe; the first draw of a node per frame adds one
-// model read, a class-cache probe and (hull) one parent read or (part) a walk of at most walk_depth parent reads. A
-// part draw adds the extent probe, eight corner transforms, three native state reads (depth bias, slope bias, clip
-// planes) and the test (six native getters, about twenty state calls, one query pair and one two-triangle draw;
-// 3.0-3.4 us of CPU and 4.2-5.4 us of pipeline time per test on DXVK, measured: occlusion-cull/gate.json). No
-// allocation after the first scene draw.
+// model read, a class-cache probe and (hull) one parent read, a hull-table probe and a 16-float copy or (part) a walk of
+// at most walk_depth parent reads. A part draw adds the extent probe, eight corner transforms, three native state reads
+// (depth bias, slope bias, clip planes), a per-draw table probe and one 4x4 product (the reprojection); once per ship
+// per frame the block (six native getters, about twenty state calls, one Lock, then per test one query pair and one
+// two-triangle draw; measured costs in docs/architecture/occlusion-cull.md, "Cost"). No allocation after the first
+// scene draw.
 
 __attribute__((noinline)) bool MotionOutput::attach_occlusion_cull() noexcept {
     if (occlusion_attach_failed_) return false;
     occlusion_classifier_ = new (std::nothrow) occlusion_cull::core::Classifier();
-    if (!occlusion_classifier_) {
+    occlusion_batcher_ = new (std::nothrow) occlusion_cull::core::Batcher();
+    if (occlusion_batcher_) occlusion_batcher_->retest = occlusion_retest_;
+    if (!occlusion_classifier_ || !occlusion_batcher_) {
+        delete occlusion_classifier_;
+        delete occlusion_batcher_;
+        occlusion_classifier_ = nullptr;
+        occlusion_batcher_ = nullptr;
         occlusion_attach_failed_ = true;
         occlusion_on_ = false;
         log("occlusion_cull_device device=%llu attached=0 reason=out_of_memory", id_);
@@ -55,29 +66,43 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
         return false;
     if (!occlusion_classifier_ && !attach_occlusion_cull()) return false;
     auto& k = *occlusion_classifier_;
+    auto& b = *occlusion_batcher_;
     const DWORD error = GetLastError();
     const std::uint32_t frame = std::uint32_t(frame_) + 1u; // a stamp, never 0
     if (k.frame != frame) {
         k.begin(frame);
+        b.begin(frame);
         occlusion_frame_ = frame;
         if (occlusion_pass_) occlusion_pass_->begin_frame(frame);
     }
     auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
-    std::uint32_t model = 0;
-    bool hull = false;
-    const oc::Class cls = k.evaluate(read, x3m::cull_census::core::body_global_va, std::uint32_t(node), &model, &hull);
-    if (cls != oc::Class::part) {
+    std::uint32_t model = 0, ship = 0;
+    bool hull = false, fresh = false;
+    const oc::Class cls =
+        k.evaluate(read, x3m::cull_census::core::body_global_va, std::uint32_t(node), &model, &hull, &ship, &fresh);
+    if (cls != oc::Class::part && !(cls == oc::Class::hull && fresh)) {
         SetLastError(error);
         return false;
     }
-    // A part draw: the vertex extent (the small-prop cull's lookup) and the draw's own clip rows.
-    cull_small_props::core::Box extent_box{};
-    const cull_small_props::core::Box* extent = small_prop_extent(call, extent_box, false); // current revision only
+    // The draw's own clip rows and its identity (geometry and model).
     const UINT matrix_register = shadow_.vs_row       ? shadow_.vs_row->matrix_register
                                  : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register
                                                       : ~0u;
     const std::size_t window = matrix_register == ~0u ? motion_matrix_windows_max : window_of(matrix_register);
     const float* rows = window < motion_matrix_windows_max && shadow_.rows_known[window] ? shadow_.rows[window] : nullptr;
+    const std::int64_t first = call.indexed ? std::int64_t(call.base_vertex) + call.min_vertex : std::int64_t(call.first);
+    const std::uint32_t count = call.indexed ? call.vertex_count : shadow_replay::vertices_of(call.topology, call.primitives);
+    const std::uint64_t key = oc::draw_key(std::uint32_t(node), shadow_.stream0, std::uint32_t(first), count, model);
+    if (cls == oc::Class::hull) {
+        // A hull node's first draw this frame: its ship's signature and reprojection reference (rows may be unknown:
+        // its parts' blocks then test last frame's rectangles).
+        b.note_hull(ship, std::uint32_t(node), key, rows);
+        SetLastError(error);
+        return false;
+    }
+    // A part draw: the vertex extent (the small-prop cull's lookup).
+    cull_small_props::core::Box extent_box{};
+    const cull_small_props::core::Box* extent = small_prop_extent(call, extent_box, false); // current revision only
     if (!extent || !rows) {
         ++occlusion_refused_.no_bounds;
         SetLastError(error);
@@ -126,7 +151,7 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
     state.dest_blend = blend_states[1];
     state.blend_op = blend_states[2];
     state.separate_alpha = blend_states[3];
-    state.reserved = shadow_.vs_reserved_written ? shadow_.vs_reserved : nullptr;
+    state.reserved = shadow_.vs_reserved_written ? shadow_.vs_reserved : nullptr; // put back in the constants mode
     if (!occlusion_pass_ && !occlusion_pass_failed_) {
         HRESULT hr = E_OUTOFMEMORY;
         occlusion_pass_.reset(new (std::nothrow) renderer::OcclusionCullPass());
@@ -154,12 +179,20 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
         }
         occlusion_pass_->begin_frame(frame);
     }
-    const std::int64_t first = call.indexed ? std::int64_t(call.base_vertex) + call.min_vertex : std::int64_t(call.first);
-    const std::uint32_t count = call.indexed ? call.vertex_count : shadow_replay::vertices_of(call.topology, call.primitives);
-    const std::uint64_t key = oc::draw_key(std::uint32_t(node), shadow_.stream0, std::uint32_t(first), count, model);
+    renderer::OcclusionCullPart part{};
+    part.key = key;
+    part.ship = ship;
+    part.model = model;
+    part.box = box;
+    part.rect = rect;
+    part.rows = rows;
+    part.hull_drawn = hull;
+    part.zfunc = unsigned(zfunc);
+    part.targets_key = (lazy_rt1_ ? 1u : 0u) | (lazy_rt2_ ? 2u : 0u) | std::uint32_t(hdr_state_) << 2;
+    part.vp_width = vp_w;
+    part.vp_height = vp_h;
     HRESULT restore = S_OK;
-    const auto verdict =
-        occlusion_pass_->candidate(key, rect, hull, state, &restore);
+    const auto verdict = occlusion_pass_->part(b, part, state, &restore);
     if (FAILED(restore)) {
         // The device state is not known to be the application's: the route's restore-failure path.
         ++occlusion_refused_.restore_failed;
@@ -190,13 +223,21 @@ void MotionOutput::occlusion_cull_frame_end() noexcept {
         occlusion_pass_->frame_stats() = renderer::OcclusionCullFrameStats{};
     }
     const auto& r = occlusion_refused_;
+    // The staggered re-test: the visible parts tested on their phase this frame, and the min/max of that count over
+    // the last retest frames (flat when the phases spread the parts evenly).
+    occlusion_cadence_spread_.push(f.cadence, occlusion_retest_);
+    unsigned spread_lo = 0, spread_hi = 0;
+    occlusion_cadence_spread_.range(occlusion_retest_, &spread_lo, &spread_hi);
     if (log_tier::cached_debug && (f.candidates || r.no_bounds || r.unbounded || r.state))
         log("occlusion_cull device=%llu frame=%llu candidates=%u tested=%u hidden=%u skipped=%u pool=%u ready=%u "
             "not_ready=%u ready_lag2=%u ready_age=%u,%u,%u errors=%u drawn_late=%u pool_truncated=%u unstable=%u "
-            "no_hull=%u refused=%u failed=%u no_bounds=%u unbounded=%u state=%u",
+            "no_hull=%u refused=%u failed=%u no_bounds=%u unbounded=%u state=%u retest_skipped=%u blocks=%u stale=%u "
+            "test_us=%u cadence=%u forced=%u retest_phase_spread=%u,%u",
             id_, frame_, f.candidates, f.tested, f.hidden, f.skipped, occlusion_cull::core::pool_per_frame,
             f.hidden + f.visible, f.not_ready, f.ready_lag2, f.age1, f.age2, f.age_none, f.errors, f.drawn_late,
-            f.pool_truncated, f.unstable, f.no_hull, f.refused, f.failed, r.no_bounds, r.unbounded, r.state);
+            f.pool_truncated, f.unstable, f.no_hull, f.refused, f.failed, r.no_bounds, r.unbounded, r.state,
+            f.retest_skipped, f.blocks, f.stale, unsigned((f.test_ns + 500) / 1000), f.cadence, f.forced, spread_lo,
+            spread_hi);
     occlusion_session_.add(f);
     occlusion_session_refused_.no_bounds += r.no_bounds;
     occlusion_session_refused_.unbounded += r.unbounded;
@@ -211,11 +252,13 @@ void MotionOutput::occlusion_cull_frame_end() noexcept {
     log("occlusion_cull_session device=%llu frame=%llu frames=%u attached=%u candidates=%u tested=%u hidden=%u "
         "skipped=%u ready=%u not_ready=%u ready_lag2=%u ready_age=%u,%u,%u errors=%u drawn_late=%u pool_truncated=%u "
         "unstable=%u no_hull=%u refused=%u failed=%u no_bounds=%u unbounded=%u state=%u restore_failed=%u resolves=%u "
-        "walks=%u",
+        "walks=%u retest_skipped=%u blocks=%u stale=%u test_us=%llu retest=%u cadence=%u forced=%u "
+        "retest_phase_spread=%u,%u",
         id_, frame_, occlusion_frames_, occlusion_pass_ && occlusion_pass_->available() ? 1u : 0u, s.candidates,
         s.tested, s.hidden, s.skipped, s.hidden + s.visible, s.not_ready, s.ready_lag2, s.age1, s.age2, s.age_none,
         s.errors, s.drawn_late, s.pool_truncated,
         s.unstable, s.no_hull, s.refused, s.failed, sr.no_bounds, sr.unbounded, sr.state, sr.restore_failed,
-        occlusion_classifier_->resolves, occlusion_classifier_->walks);
+        occlusion_classifier_->resolves, occlusion_classifier_->walks, s.retest_skipped, s.blocks, s.stale,
+        (unsigned long long)((s.test_ns + 500) / 1000), occlusion_retest_, s.cadence, s.forced, spread_lo, spread_hi);
     occlusion_classifier_->flush_classes(); // a body id reused after a reload is re-read within 300 frames
 }

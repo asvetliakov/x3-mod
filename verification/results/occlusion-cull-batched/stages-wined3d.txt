@@ -1,0 +1,21 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+COST impl=batched repeat=0 buffer=- config=off frames=200 tests_p50=0 blocks_p50=0 skipped_p50=0 test_us_p50=0.0 test_us_p90=0.0 frame_us_p50=141.0 frame_us_p90=254.6 cpu_us_p50=152.8
+STAGES blocks=600 plan=8.6 targets=4.2 get=2.4 lock=208.5 set=2.2 loop=21.6 restore=1.0 (us per block)
+COST impl=batched repeat=0 buffer=dynamic config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=665.3 test_us_p90=1287.8 frame_us_p50=859.5 frame_us_p90=1529.8 cpu_us_p50=871.7
+STAGES blocks=600 plan=7.6 targets=3.0 get=1.9 lock=221.6 set=2.2 loop=22.6 restore=0.9 (us per block)
+COST impl=batched repeat=0 buffer=dynamic config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=859.2 test_us_p90=1150.6 frame_us_p50=1090.6 frame_us_p90=1413.7 cpu_us_p50=1102.0
+STAGES blocks=600 plan=3.9 targets=3.1 get=1.9 lock=195.4 set=2.0 loop=15.4 restore=0.9 (us per block)
+COST impl=batched repeat=0 buffer=dynamic config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=465.7 test_us_p90=701.3 frame_us_p50=628.6 frame_us_p90=948.9 cpu_us_p50=634.6
+STAGES blocks=600 plan=3.3 targets=2.5 get=1.5 lock=157.3 set=1.6 loop=10.9 restore=0.8 (us per block)
+COST impl=batched repeat=0 buffer=managed config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=604.8 test_us_p90=868.3 frame_us_p50=734.2 frame_us_p90=1048.3 cpu_us_p50=737.1
+STAGES blocks=600 plan=7.6 targets=2.7 get=1.7 lock=208.4 set=1.7 loop=21.2 restore=0.9 (us per block)
+COST impl=batched repeat=0 buffer=managed config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1000.1 test_us_p90=1279.5 frame_us_p50=1244.7 frame_us_p90=1564.9 cpu_us_p50=1256.0
+STAGES blocks=600 plan=5.5 targets=3.4 get=2.0 lock=238.2 set=2.6 loop=24.9 restore=1.1 (us per block)
+COST impl=batched repeat=0 buffer=managed config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=502.6 test_us_p90=742.1 frame_us_p50=657.1 frame_us_p90=937.1 cpu_us_p50=665.7
+STAGES blocks=600 plan=1.7 targets=2.9 get=1.8 lock=165.0 set=1.9 loop=8.6 restore=0.9 (us per block)
+COST impl=batched repeat=0 buffer=discard config=cull frames=200 tests_p50=116 blocks_p50=3 skipped_p50=111 test_us_p50=739.7 test_us_p90=1149.0 frame_us_p50=898.0 frame_us_p90=1359.3 cpu_us_p50=916.4
+STAGES blocks=600 plan=8.8 targets=3.2 get=1.9 lock=224.7 set=2.0 loop=21.6 restore=1.0 (us per block)
+STAGES blocks=600 plan=8.0 targets=2.9 get=1.9 lock=271.5 set=2.0 loop=24.2 restore=0.9 (us per block)
+COST impl=batched repeat=0 buffer=discard config=all frames=200 tests_p50=150 blocks_p50=3 skipped_p50=111 test_us_p50=1003.1 test_us_p90=1243.8 frame_us_p50=1240.9 frame_us_p90=1525.5 cpu_us_p50=1254.6
+STAGES blocks=600 plan=0.8 targets=3.2 get=1.9 lock=182.5 set=2.0 loop=8.2 restore=1.0 (us per block)
+COST impl=batched repeat=0 buffer=discard config=one frames=200 tests_p50=3 blocks_p50=3 skipped_p50=3 test_us_p50=602.3 test_us_p90=820.6 frame_us_p50=776.8 frame_us_p90=1050.8 cpu_us_p50=789.3

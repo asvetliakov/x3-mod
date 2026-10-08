@@ -1,8 +1,9 @@
 // Host driver of the occlusion cull's pure core (src/proxy/occlusion_cull_core.h), compiled with the host compiler by
 // verification/analysis/test_occlusion_cull.py: the body-name classification, the test rectangle (inflation, nearest
 // depth, refusals), the stability guard, the ring's bookkeeping (pool, previous slot, lookups across a frame gap and a
-// clear), the skip rule, the draw key and the classifier over a synthetic engine image (hull owners, the part walk,
-// the per-node memo). Prints one CHECK line per check and a RESULT line. No device, no Wine.
+// clear), the skip rule, the draw key, the classifier over a synthetic engine image (hull owners, the part walk,
+// the per-node memo, ship roots), the reprojection through the hull rows and the per-ship batching (blocks, cadence,
+// hull signature, movement, reset, stale rectangles). Prints one CHECK line per check and a RESULT line. No device, no Wine.
 #include "occlusion_cull_core.h"
 #include <cstdio>
 #include <cstring>
@@ -297,6 +298,287 @@ static void classifier() {
           "a part of another ship stops at its own root (no shared ancestor above the roots)");
     check(k.evaluate(read, census::body_global_va, 0x40024000, &model, &hull) == Class::part && !hull,
           "a part beside a nested hull: drawn (no owner registered above the hull)");
+    // Ship roots: a hull under a top-level root reports the root; its parts report the same ship; a hull that is its
+    // own top-level node reports itself; fresh only on the node's first evaluation of the frame.
+    k.begin(5);
+    std::uint32_t ship = 0;
+    bool fresh = false;
+    check(k.evaluate(read, census::body_global_va, 0x40001000, &model, &hull, &ship, &fresh) == Class::hull &&
+              ship == 0x40000000 && fresh,
+          "a hull's ship is its top-level parent (fresh at its first draw)");
+    check(k.evaluate(read, census::body_global_va, 0x40001000, &model, &hull, &ship, &fresh) == Class::hull &&
+              ship == 0x40000000 && !fresh,
+          "the hull's second draw: memoised, not fresh");
+    check(k.evaluate(read, census::body_global_va, 0x40003000, &model, &hull, &ship, &fresh) == Class::part && hull &&
+              ship == 0x40000000,
+          "its part (through the dummy) carries the same ship");
+    check(k.evaluate(read, census::body_global_va, 0x40010000, &model, &hull, &ship, &fresh) == Class::hull &&
+              ship == 0x40010000 &&
+              k.evaluate(read, census::body_global_va, 0x40012000, &model, &hull, &ship, &fresh) == Class::part &&
+              hull && ship == 0x40010000,
+          "a top-level hull is its own ship, and its part's");
+    check(k.evaluate(read, census::body_global_va, 0x40004000, &model, &hull, &ship, &fresh) == Class::part && !hull &&
+              ship == 0,
+          "a part without a drawn hull has no ship");
+}
+
+// Row-major clip rows P x V x W for a perspective camera at `eye` looking down +z, a model at `pos` scaled by `scale`
+// and turned by `yaw` about y.
+static void rows_of(float out[16], float eye_x, float eye_z, float pos_x, float pos_y, float pos_z, float yaw,
+                    float scale) {
+    const double n = 1.0, f = 30000.0, fx = 1.2, fy = 2.1;
+    const double proj[16] = {fx, 0, 0, 0, 0, fy, 0, 0, 0, 0, f / (f - n), -n * f / (f - n), 0, 0, 1, 0};
+    const double view[16] = {1, 0, 0, -eye_x, 0, 1, 0, 0, 0, 0, 1, -eye_z, 0, 0, 0, 1};
+    const double c = std::cos(yaw) * scale, s = std::sin(yaw) * scale;
+    const double world[16] = {c, 0, s, pos_x, 0, scale, 0, pos_y, -s, 0, c, pos_z, 0, 0, 0, 1};
+    double pv[16], pvw[16];
+    auto mul = [](const double* a, const double* b, double* o) {
+        for (int r = 0; r < 4; ++r)
+            for (int k = 0; k < 4; ++k) {
+                double sum = 0;
+                for (int i = 0; i < 4; ++i) sum += a[r * 4 + i] * b[i * 4 + k];
+                o[r * 4 + k] = sum;
+            }
+    };
+    mul(proj, view, pv);
+    mul(pv, world, pvw);
+    for (int i = 0; i < 16; ++i) out[i] = float(pvw[i]);
+}
+// The part sits at a fixed offset in its ship: part rows = ship rows x local offset.
+static void part_rows(float out[16], const float ship[16], float ox, float oy, float oz) {
+    const float local[16] = {1, 0, 0, ox, 0, 1, 0, oy, 0, 0, 1, oz, 0, 0, 0, 1};
+    multiply(ship, local, out);
+}
+
+static void reprojection() {
+    float hull_then[16], hull_now[16], part_then[16], part_now[16], rel[16], estimate[16];
+    double inverse[16];
+    // A capital 2 km ahead, 600 m across; between the frames the camera moves 40 m sideways and 25 m forward, the ship
+    // 30 m and turns 0.02 rad; the turret is 180 m off the ship's centre.
+    rows_of(hull_then, 0.f, 0.f, 120.f, -40.f, 2000.f, 0.3f, 1.f);
+    rows_of(hull_now, 40.f, 25.f, 150.f, -40.f, 2000.f, 0.32f, 1.f);
+    part_rows(part_then, hull_then, 180.f, 60.f, -90.f);
+    part_rows(part_now, hull_now, 180.f, 60.f, -90.f);
+    check(invert(hull_then, inverse), "the hull's clip rows invert (perspective, far 30 km)");
+    check(relative(hull_then, inverse, part_then, rel), "the part's rows relative to its hull pass the round trip");
+    multiply(hull_now, rel, estimate);
+    const Box box{{-8.f, -6.f, -8.f}, {8.f, 6.f, 8.f}};
+    Rect actual{}, reprojected{}, stale{};
+    const bool ok = test_rect(part_now, box, 5120, 1440, cmp_lessequal, &actual) == RectStatus::ok &&
+                    test_rect(estimate, box, 5120, 1440, cmp_lessequal, &reprojected) == RectStatus::ok &&
+                    test_rect(part_then, box, 5120, 1440, cmp_lessequal, &stale) == RectStatus::ok;
+    const float dx = std::fabs(reprojected.cx - actual.cx), dy = std::fabs(reprojected.cy - actual.cy),
+                dw = std::fabs(reprojected.w - actual.w), dz = std::fabs(reprojected.c252[2] - actual.c252[2]);
+    std::printf("REPROJECT dx=%.5f dy=%.5f dw=%.5f dz=%.3g stale_dx=%.2f\n", dx, dy, dw, dz,
+                std::fabs(stale.cx - actual.cx));
+    check(ok && dx < 0.01f && dy < 0.01f && dw < 0.01f && dz < 1e-6f,
+          "a rigid part's reprojected rectangle matches this frame's within 0.01 px and 1e-6 depth");
+    check(std::fabs(stale.cx - actual.cx) > 10.f, "(the stale rectangle is off by more than 10 px in that motion)");
+    const float singular[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
+    check(!invert(singular, inverse), "a singular reference is refused (stale rectangles)");
+    float bogus[16];
+    std::memcpy(bogus, part_then, sizeof bogus);
+    check(invert(hull_then, inverse) && relative(hull_then, inverse, part_then, rel), "(again)");
+    // A wrong inverse (another frame's) fails the round trip.
+    double other[16];
+    invert(hull_now, other);
+    check(!relative(hull_then, other, part_then, rel), "an inverse that does not belong to the reference is refused");
+    bool parsed = true;
+    unsigned k = 0;
+    parsed = parse_retest(nullptr, &k) && k == retest_default && parse_retest("", &k) && k == 8 &&
+             parse_retest("1", &k) && k == 1 && parse_retest("64", &k) && k == 64 && !parse_retest("0", &k) &&
+             !parse_retest("65", &k) && !parse_retest("8x", &k) && !parse_retest("-1", &k) && !parse_retest("0008", &k);
+    check(parsed, "X3M_OCCLUSION_CULL_RETEST: unset/empty = 8, 1..64, anything else refused");
+}
+
+// The batcher across frames as the pass drives it: hulls, parts, the ship's block (plan), the issued tests and the
+// results read back the next frame.
+static void batching() {
+    static Batcher b; // ~0.6 MB: not on the stack
+    b.retest = 4;
+    const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    const std::uint32_t ship_a = 0x5000, ship_b = 0x6000;
+    // Ship A: parts 1..6 (1..3 will read hidden, 4..6 visible); ship B: parts 7..8, drawn interleaved with A's.
+    auto box_of = [](unsigned i) {
+        const float x = -0.9f + 0.2f * float(i % 8);
+        return Box{{x, 0.1f, 0.5f}, {x + 0.1f, 0.2f, 0.6f}};
+    };
+    auto rect_of = [&](unsigned i, const float* rows) {
+        Rect r{};
+        test_rect(rows, box_of(i), 256, 256, cmp_lessequal, &r);
+        return r;
+    };
+    BlockItem items[pool_per_frame];
+    unsigned tests[9]{}, entries[9]{}, off_phase = 0, per_frame_visible[32]{};
+    std::uint32_t frame = 0;
+    // One frame: A's hull, A's parts 1..3, B's hull, B's part 7, A's parts 4..6, B's part 8. Block at each ship's first
+    // part. results: the result each tested part reads (applied next frame).
+    Result results[9]{};
+    PlanStats total{};
+    unsigned blocks = 0, planned_first = 0;
+    auto run_frame = [&](const float* rows_a, bool new_part9, std::uint64_t hull_key_a) {
+        ++frame;
+        b.begin(frame);
+        // the previous frame's tests' results arrive at the frame's first part
+        for (unsigned i = 1; i <= 8; ++i)
+            if (b.parts[entries[i]].tested == frame - 1 && b.parts[entries[i]].key == 100 + i)
+                b.on_result(std::uint16_t(entries[i]), 100 + i, results[i]);
+        b.note_hull(ship_a, 0xa0, hull_key_a, rows_a);
+        auto part = [&](unsigned i, std::uint32_t ship, const float* rows) {
+            const Rect r = rect_of(i, rows);
+            entries[i] = b.note_part(100 + i, ship, box_of(i), r, rows, true, 7 * i);
+            if (b.block_pending(ship)) {
+                PlanStats st{};
+                std::uint32_t sig = 0;
+                const unsigned n = b.plan(ship, 256, 256, cmp_lessequal, items, pool_per_frame, &st, &sig);
+                if (ship == ship_a && !planned_first) planned_first = n;
+                for (unsigned t = 0; t < n; ++t) {
+                    b.tested(items[t], sig, std::uint16_t(t));
+                    for (unsigned j = 1; j <= 8; ++j)
+                        if (items[t].key == 100 + j) {
+                            ++tests[j];
+                            const bool visible = j >= 4 && j != 7;
+                            if (visible && frame >= 3 && frame <= 12) {
+                                ++per_frame_visible[frame];
+                                if (frame % b.retest != b.parts[entries[j]].phase) ++off_phase;
+                            }
+                        }
+                }
+                total.retest_skipped += st.retest_skipped;
+                total.stale += st.stale;
+                ++blocks;
+            }
+        };
+        for (unsigned i = 1; i <= 3; ++i) part(i, ship_a, rows_a);
+        b.note_hull(ship_b, 0xb0, 0xb0b0, identity);
+        part(7, ship_b, identity);
+        for (unsigned i = 4; i <= 6; ++i) part(i, ship_a, rows_a);
+        part(8, ship_b, identity);
+        if (new_part9) part(0, ship_a, rows_a);
+    };
+    for (unsigned i = 1; i <= 8; ++i) results[i] = i <= 3 || i == 7 ? Result::hidden : Result::visible;
+    run_frame(identity, false, 0xa0a0);
+    check(blocks == 2 && planned_first == 0 && tests[1] == 0, "frame 1: blocks issue nothing (no previous list)");
+    run_frame(identity, false, 0xa0a0);
+    unsigned all = 0;
+    for (unsigned i = 1; i <= 8; ++i) all += tests[i];
+    check(blocks == 4 && all == 8, "frame 2: one block per ship tests all of last frame's parts, interleaved or not");
+    for (unsigned f = 3; f <= 12; ++f) run_frame(identity, false, 0xa0a0);
+    // Hidden parts (1-3, 7) every frame from 2 on: 11 tests; visible parts (4-6, 8) at frame 2 (no result yet), then
+    // only on their phase frames (frame mod 4 == phase): 1 + 10/4 rounded by phase over frames 3..12.
+    check(tests[1] == 11 && tests[2] == 11 && tests[3] == 11 && tests[7] == 11, "hidden parts are tested every frame");
+    bool cadence = off_phase == 0;
+    unsigned phases[4]{};
+    for (unsigned j : {4u, 5u, 6u, 8u}) {
+        unsigned expected = 1;
+        for (unsigned f = 3; f <= 12; ++f) expected += f % 4 == b.parts[entries[j]].phase;
+        cadence = cadence && tests[j] == expected;
+        ++phases[b.parts[entries[j]].phase];
+    }
+    std::printf("PHASES %u %u %u %u\n", phases[0], phases[1], phases[2], phases[3]);
+    check(cadence, "visible parts are re-tested only on their own phase frame (once per `retest` frames)");
+    check(retest_phase(1, 2, 8) == retest_phase(1, 2, 8) && retest_phase(1, 2, 1) == 0 && retest_phase(5, 9, 8) < 8,
+          "the phase is a fixed function of node and model, below retest");
+    unsigned spread[8]{};
+    for (unsigned node = 0; node < 800; ++node) ++spread[retest_phase(0x40000000u + node * 0x40u, 900000 + node % 7, 8)];
+    unsigned lo = ~0u, hi = 0;
+    for (unsigned v : spread) lo = v < lo ? v : lo, hi = v > hi ? v : hi;
+    std::printf("SPREAD min=%u max=%u of 100\n", lo, hi);
+    check(lo >= 75 && hi <= 125, "800 nodes spread over 8 phases within 25 % of 100 each");
+    // 40 parts turning visible in the same frame: their phases balance over the 8 phases (5 each).
+    {
+        static Batcher v;
+        v.retest = 8;
+        v.begin(5);
+        unsigned per[8]{};
+        for (unsigned i = 0; i < 40; ++i) {
+            const std::uint16_t e = v.note_part(0x40000000ull + i * 0x150, 0x7000, box_of(1), rect_of(1, identity), identity,
+                                                true, 900000 + i);
+            v.on_result(e, 0x40000000ull + i * 0x150, Result::visible);
+            ++per[v.parts[e].phase];
+        }
+        unsigned plo = ~0u, phi = 0;
+        for (unsigned c : per) plo = c < plo ? c : plo, phi = c > phi ? c : phi;
+        check(plo == 5 && phi == 5, "40 parts turning visible together: 5 per phase (balanced, then fixed)");
+    }
+    check(total.retest_skipped > 0 && total.stale == 0, "the cadence's untested parts are counted; no stale test");
+    // A new part (0) is drawn untested its first frame and joins the next block.
+    run_frame(identity, true, 0xa0a0); // frame 13
+    check(b.parts[entries[0]].tested == 0, "a part first seen this frame is not tested");
+    run_frame(identity, true, 0xa0a0); // frame 14
+    check(b.parts[entries[0]].tested == frame, "it joins the next frame's block");
+    // The hull changes (another hull draw key): every part of the ship is tested at the next block.
+    const unsigned v5 = tests[5];
+    run_frame(identity, true, 0xa1a1); // frame 15
+    check(tests[5] == v5 + 1, "a changed hull signature tests the visible parts at once");
+    // A visible part that moved: tested at once.
+    run_frame(identity, true, 0xa1a1); // frame 16
+    const unsigned v6 = tests[6];
+    float moved[16];
+    std::memcpy(moved, identity, sizeof moved);
+    moved[3] = 0.3f; // ship A moved right by 0.3 (38 px): every part of A unstable against its last test
+    run_frame(moved, true, 0xa1a1); // frame 17: the hull rows moved with the parts; the reprojection sees it
+    check(tests[6] == v6 + 1, "a part whose reprojected rectangle moved is tested at once");
+    // Reset: every part's results forgotten, all tested at the next block.
+    b.reset_results();
+    const unsigned v8 = tests[8];
+    run_frame(moved, true, 0xa1a1);
+    check(tests[8] == v8 + 1 && tests[6] == v6 + 2, "after reset_results every part is tested at its next block");
+    // No reference hull rows this frame (rows unknown): the stale rectangle, counted.
+    total.stale = 0;
+    ++frame;
+    b.begin(frame);
+    b.note_hull(ship_a, 0xa0, 0xa1a1, nullptr);
+    entries[1] = b.note_part(101, ship_a, box_of(1), rect_of(1, moved), moved, true);
+    b.note_hull(ship_b, 0xb0, 0xb0b0, identity);
+    entries[7] = b.note_part(107, ship_b, box_of(7), rect_of(7, identity), identity, true);
+    entries[8] = b.note_part(108, ship_b, box_of(8), rect_of(8, identity), identity, true);
+    PlanStats st{};
+    std::uint32_t sig = 0;
+    unsigned n = b.plan(ship_a, 256, 256, cmp_lessequal, items, pool_per_frame, &st, &sig);
+    check(n >= 3 && st.stale == n - 1, "no reference rows: last frame's rectangles (all but the block's own part stale)");
+    check(!b.block_pending(ship_a) && b.plan(ship_a, 256, 256, cmp_lessequal, items, pool_per_frame, &st, &sig) == 0,
+          "one block per ship per frame");
+    // A reversed depth at the block refuses the parts recorded under LESSEQUAL.
+    ++frame;
+    b.begin(frame);
+    b.note_hull(ship_b, 0xb0, 0xb0b0, identity);
+    entries[7] = b.note_part(107, ship_b, box_of(7), rect_of(7, identity), identity, false);
+    st = PlanStats{};
+    n = b.plan(ship_b, 256, 256, cmp_greaterequal, items, pool_per_frame, &st, &sig);
+    check(st.refused >= 1, "a part listed under another depth direction is refused at the block");
+    // Records and results: the ring carries the batcher's slot, on_result ignores a reused slot's old key.
+    b.on_result(std::uint16_t(entries[8]), 999, Result::hidden);
+    check(b.parts[entries[8]].last != Result::hidden || b.parts[entries[8]].key == 999, "a stale record's result is ignored");
+    b.on_result(std::uint16_t(entries[8]), 108, Result::error);
+    check(b.parts[entries[8]].last == Result::none, "an error forgets the last result (tested at the next block)");
+    check(b.record_of(std::uint16_t(entries[2]), 102) == -1, "no record this frame for a part not tested this frame");
+    // Two keys on one probe chain: A takes the home slot, B the next. A expires while B stays live; B's next draw must
+    // find its own entry (phase and last result kept), not take A's expired slot ahead of it.
+    {
+        static Batcher c;
+        c.retest = 8;
+        const std::uint64_t key_a = 0x0000000000001234ull, key_b = 0x0000000100001235ull; // same slot_of input
+        std::uint32_t f = 1;
+        c.begin(f);
+        const std::uint16_t ea = c.note_part(key_a, 0x7000, box_of(1), rect_of(1, identity), identity, true, 1);
+        const std::uint16_t eb = c.note_part(key_b, 0x7000, box_of(2), rect_of(2, identity), identity, true, 2);
+        c.on_result(eb, key_b, Result::visible);
+        const unsigned phase_b = c.parts[eb].phase;
+        for (unsigned k = 0; k <= part_expiry + 1; ++k) {
+            c.begin(++f);
+            c.note_part(key_b, 0x7000, box_of(2), rect_of(2, identity), identity, true, 2);
+        }
+        c.begin(++f);
+        const std::uint16_t again = c.note_part(key_b, 0x7000, box_of(2), rect_of(2, identity), identity, true, 2);
+        unsigned copies = 0;
+        for (const auto& part : c.parts) copies += part.seen && part.key == key_b ? 1 : 0;
+        check(ea + 1 == eb && again == eb && copies == 1 && c.parts[eb].last == Result::visible &&
+                  c.parts[eb].phase == phase_b,
+              "a live entry behind an expired slot of its chain is found (one copy, phase and result kept)");
+        const std::uint16_t a2 = c.note_part(key_a, 0x7000, box_of(1), rect_of(1, identity), identity, true, 1);
+        check(a2 == ea && c.parts[a2].last == Result::none, "the expired slot is reused for its own key, fresh");
+    }
 }
 
 int main() {
@@ -306,6 +588,8 @@ int main() {
     ring_bookkeeping();
     skip_rule();
     classifier();
+    reprojection();
+    batching();
     std::printf("RESULT checks=%u failed=%u\n", checks, failures);
     return failures ? 1 : 0;
 }

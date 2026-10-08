@@ -70,7 +70,8 @@ target are always drawn. It needs `cull_small_parts_px` above 0. With it on, `x3
 `occlusion_cull` (default `on`) skips drawing turrets, docking bays and similar ship parts that the previous frame's
 occlusion test found completely hidden behind their ship's hull; a part that comes into view appears one frame late.
 `occlusion_cull = off` draws them. Every log carries an `occlusion_cull_session` line every 300 frames with how many
-part draws were tested (`tested=`) and skipped (`skipped=`).
+part draws were tested (`tested=`) and skipped (`skipped=`). `occlusion_cull_retest` (default `8`, 1 to 64) is how
+many frames pass before a part that was found visible is tested again; hidden parts are tested every frame.
 
 `cull_dock_parts_px` (default `12` since 2026-09-29) skips drawing the hangar and launch-tube parts of carriers when
 they are smaller on screen than this many pixels. These parts sit inside the carrier's hull and cost many draws

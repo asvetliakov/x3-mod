@@ -1220,8 +1220,13 @@ public:
     }
     // Occlusion cull of ship sub-parts (X3M_OCCLUSION_CULL=on|off, default on; occlusion_cull_core.h,
     // renderer/occlusion_cull_pass.h, motion_output_occlusion_cull_inc.h): process-start value validated by the caller;
-    // off = one bool test per scene draw.
-    void configure_occlusion_cull(bool on) noexcept { occlusion_on_ = on; }
+    // off = one bool test per scene draw. retest: X3M_OCCLUSION_CULL_RETEST (frames between tests of a part last read
+    // visible, 1..64, default 8), validated by the caller.
+    void configure_occlusion_cull(bool on, unsigned retest) noexcept {
+        occlusion_on_ = on;
+        occlusion_retest_ = retest;
+        if (occlusion_batcher_) occlusion_batcher_->retest = retest;
+    }
     // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.85); validated by the caller and
     // read at every resolve.
     void configure_taa_resolve(float history_weight) noexcept { taa_history_weight_ = history_weight; }
@@ -1955,12 +1960,16 @@ private:
     const cull_small_props::core::Box* small_prop_extent(const MotionDrawCall& call, cull_small_props::core::Box& out,
                                                          bool allow_stale = true) noexcept;
     // Occlusion cull (motion_output_occlusion_cull_inc.h): the classifier (model classes, this frame's hull owners,
-    // the per-node memo; committed at the first scene draw with the option on), the pass (attached at the first part
+    // the per-node memo; committed at the first scene draw with the option on), the batcher (per-draw table, per-ship
+    // lists and blocks, re-test cadence; committed with the classifier), the pass (attached at the first part
     // draw under the reference accounting; queries released before Reset), the frame's refusals before the pass and
     // the session totals (one occlusion_cull_session row every 300 frames in every tier; the per-frame occlusion_cull
     // row under --debug).
     bool occlusion_on_ = false, occlusion_attach_failed_ = false, occlusion_pass_failed_ = false;
     occlusion_cull::core::Classifier* occlusion_classifier_ = nullptr;
+    occlusion_cull::core::Batcher* occlusion_batcher_ = nullptr; // the per-ship batching tables (~0.5 MB, one allocation)
+    unsigned occlusion_retest_ = occlusion_cull::core::retest_default;
+    occlusion_cull::core::CadenceSpread occlusion_cadence_spread_{}; // re-tests per frame over the last retest frames
     std::unique_ptr<renderer::OcclusionCullPass> occlusion_pass_;
     struct OcclusionRefusals {
         unsigned no_bounds = 0, unbounded = 0, state = 0, restore_failed = 0;

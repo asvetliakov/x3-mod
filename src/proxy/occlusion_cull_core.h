@@ -1,10 +1,13 @@
 #pragma once
 // Occlusion cull of ship sub-parts (X3M_OCCLUSION_CULL=on|off, default on; docs/architecture/occlusion-cull.md).
 // The pure parts: the body-name classification (hull / part / effect / other, the estimate's rules over the
-// engine's body table, cull_census_core.h), the per-frame owner table (a part's hull drew this frame), the test
-// rectangle (the draw's vertex-extent box through its own clip rows: the screen rectangle of its eight corners at
-// their nearest depth, inflated by one pixel), the stability guard, and the query ring's bookkeeping (two frame slots
-// of pool_per_frame records, the previous slot's results in a stamped hash). The D3D side is
+// engine's body table, cull_census_core.h), the per-frame owner table (a part's hull drew this frame, and the ship root
+// it belongs to), the test rectangle (the draw's vertex-extent box through its own clip rows: the screen rectangle of
+// its eight corners at their nearest depth, inflated by one pixel), the stability guard, the query ring's bookkeeping
+// (two frame slots of pool_per_frame records, the previous slot's results in a stamped hash) and the per-ship batching
+// (Batcher: last frame's candidates of a ship, reprojected through the ship's hull rows, tested in one block at the
+// ship's first part draw; a part last read visible is re-tested once every `retest` frames, on its own phase). The
+// D3D side is
 // renderer::OcclusionCullPass; the draw-site integration is motion_output_occlusion_cull_inc.h.
 //
 // Pure: no D3D, no Windows; the engine reads go through the caller's `read` (engine_memory::read in production, a
@@ -24,6 +27,12 @@ constexpr unsigned name_read = 96; // body-path bytes classified (the rules look
 constexpr unsigned class_slots = 1024, memo_slots = 1024, owner_slots = 1024, result_slots = 2048;
 constexpr unsigned walk_depth = 6; // part -> dummy -> ship root is two links (ship-scene-parts.md); turrets one more
 constexpr unsigned window_frames = 300;
+// Batching: the per-draw table (persistent, a draw unseen for part_expiry frames frees its slot), this frame's ships
+// and hull rows (stamped per frame), the re-test cadence of a part last read visible (X3M_OCCLUSION_CULL_RETEST).
+constexpr unsigned part_slots = 2048, part_probe = 16, part_expiry = 120, ship_slots = 256, ship_probe = 32,
+                   hull_slots = 512, hull_probe = 16;
+constexpr unsigned retest_default = 8, retest_max = 64;
+constexpr std::uint16_t no_entry = 0xffffu;
 constexpr float w_epsilon = 1e-6f;
 static_assert((memo_slots & (memo_slots - 1)) == 0 && (owner_slots & (owner_slots - 1)) == 0 &&
                   (result_slots & (result_slots - 1)) == 0 && result_slots >= 2 * pool_per_frame,
@@ -43,6 +52,21 @@ inline bool parse_mode(const char* text, bool* on) {
         return true;
     }
     return false;
+}
+// X3M_OCCLUSION_CULL_RETEST: unset/empty = retest_default; a decimal 1..retest_max; anything else is refused.
+inline bool parse_retest(const char* text, unsigned* frames) {
+    if (!text || !*text) {
+        *frames = retest_default;
+        return true;
+    }
+    unsigned value = 0;
+    for (const char* c = text; *c; ++c) {
+        if (*c < '0' || *c > '9' || c - text >= 3) return false;
+        value = value * 10 + unsigned(*c - '0');
+    }
+    if (value < 1 || value > retest_max) return false;
+    *frames = value;
+    return true;
 }
 
 enum class Class : std::uint8_t { unknown = 0, hull, part, effect, other };
@@ -171,7 +195,8 @@ struct Ring {
         std::uint64_t key;
         Rect rect;
         bool issued, skipped;
-        Result result; // as last read (none before the first read)
+        Result result;       // as last read (none before the first read)
+        std::uint16_t entry; // the Batcher's part slot (no_entry: none)
     };
     struct ResultSlot {
         std::uint64_t key;
@@ -238,13 +263,14 @@ struct Ring {
         return nullptr;
     }
     // This frame's next record, or null when the slot is full (pool_truncated).
-    Record* reserve(std::uint64_t key, const Rect& rect) {
+    Record* reserve(std::uint64_t key, const Rect& rect, std::uint16_t entry = no_entry) {
         const unsigned s = frame & 1;
         if (used[s] >= pool_per_frame) return nullptr;
         Record* r = &records[s][used[s]++];
-        *r = Record{key, rect, false, false, Result::none};
+        *r = Record{key, rect, false, false, Result::none, entry};
         return r;
     }
+    unsigned free_records() const { return pool_per_frame - used[frame & 1]; }
     unsigned index_of(const Record* r) const { return unsigned(r - records[frame & 1]); }
 };
 // The skip rule: the draw's most recent ready test (one or two frames old) read 0 samples, its hull drew this frame and
@@ -271,10 +297,10 @@ struct Classifier {
         Class cls;
     };
     struct OwnerSlot {
-        std::uint32_t node, stamp;
+        std::uint32_t node, stamp, ship; // ship: the root the owner belongs to (the batch's key)
     };
     struct MemoSlot {
-        std::uint32_t node, stamp, model;
+        std::uint32_t node, stamp, model, ship;
         Class cls;
         bool hull_drawn;
     };
@@ -328,23 +354,26 @@ struct Classifier {
         if (s.cls == Class::unknown || s.model != model) s = ClassSlot{model, resolve(read, body_global, model)};
         return s.cls;
     }
-    void add_owner(std::uint32_t node) {
+    void add_owner(std::uint32_t node, std::uint32_t ship) {
         if (!node || (node & 3)) return;
         OwnerSlot* s = &owners[slot_of(node, owner_slots)];
         for (unsigned probe = 0; probe < 8; ++probe) {
             if (s->stamp != frame || s->node == node) {
-                *s = OwnerSlot{node, frame};
+                *s = OwnerSlot{node, frame, ship};
                 return;
             }
             s = &owners[(unsigned(s - owners) + 1) & (owner_slots - 1)];
         }
         // eight collisions: dropped (a part of it then reads hull_drawn false and is drawn)
     }
-    bool is_owner(std::uint32_t node) const {
+    bool is_owner(std::uint32_t node, std::uint32_t* ship = nullptr) const {
         const OwnerSlot* s = &owners[slot_of(node, owner_slots)];
         for (unsigned probe = 0; probe < 8; ++probe) {
             if (s->stamp != frame) return false;
-            if (s->node == node) return true;
+            if (s->node == node) {
+                if (ship) *ship = s->ship;
+                return true;
+            }
             s = &owners[(unsigned(s - owners) + 1) & (owner_slots - 1)];
         }
         return false;
@@ -353,49 +382,508 @@ struct Classifier {
     // is a top-level node (its parent is null): every hull draw of the run14/run15 captures has ancestry 2, hull -> root
     // (verification/results/occlusion-cull/ancestry.txt; ship-scene-parts.md: part -> dummy -> root, the hull another
     // child of the root). A parent that is not top-level is never registered, so no node above a ship root (and no root
-    // of another object) can own a hull.
-    template <class Read> void note_hull(Read& read, std::uint32_t node) {
-        add_owner(node);
+    // of another object) can own a hull. Returns the hull's ship: its top-level parent, else the hull node itself.
+    template <class Read> std::uint32_t note_hull(Read& read, std::uint32_t node) {
         std::uint32_t parent = 0, grandparent = 1;
-        if (read(std::uintptr_t(node) + parent_offset, &parent, 4) && parent && !(parent & 3) &&
-            read(std::uintptr_t(parent) + parent_offset, &grandparent, 4) && !grandparent)
-            add_owner(parent);
+        const bool root = read(std::uintptr_t(node) + parent_offset, &parent, 4) && parent && !(parent & 3) &&
+                          read(std::uintptr_t(parent) + parent_offset, &grandparent, 4) && !grandparent;
+        const std::uint32_t ship = root ? parent : node;
+        add_owner(node, ship);
+        if (root) add_owner(parent, parent);
+        return ship;
     }
     // Whether an ancestor of the part (its parent, grandparent, ... at most walk_depth links, ending at the ship root,
-    // the top-level node) owns a hull drawn this frame.
-    template <class Read> bool hull_drawn(Read& read, std::uint32_t node) {
+    // the top-level node) owns a hull drawn this frame; *ship is that owner's ship.
+    template <class Read> bool hull_drawn(Read& read, std::uint32_t node, std::uint32_t* ship) {
         ++walks;
         for (unsigned depth = 0; depth < walk_depth && node && !(node & 3); ++depth) {
             std::uint32_t parent = 0;
             if (!read(std::uintptr_t(node) + parent_offset, &parent, 4)) return false;
-            if (parent && is_owner(parent)) return true;
+            if (parent && is_owner(parent, ship)) return true;
             node = parent; // a null parent: the node was the ship root, the walk ends
         }
         return false;
     }
     // One scene draw's node: its class and, for a part, whether its hull drew this frame (memoised per node per frame,
-    // so every draw of a node shares the first one's answer). model is set to the node's model id.
+    // so every draw of a node shares the first one's answer). model is set to the node's model id; ship (optional) to
+    // the hull's ship (a hull) or the owner's ship (a part whose hull drew), else 0; fresh (optional) says whether this
+    // was the node's first evaluation this frame (a hull's rows and signature are taken once per node per frame).
     template <class Read>
-    Class evaluate(Read& read, std::uintptr_t body_global, std::uint32_t node, std::uint32_t* model, bool* hull) {
+    Class evaluate(Read& read, std::uintptr_t body_global, std::uint32_t node, std::uint32_t* model, bool* hull,
+                   std::uint32_t* ship = nullptr, bool* fresh = nullptr) {
         *hull = false;
         *model = 0;
+        if (ship) *ship = 0;
+        if (fresh) *fresh = false;
         if (!node || (node & 3)) return Class::other;
         MemoSlot& m = memo[slot_of(node, memo_slots)];
         if (m.node == node && m.stamp == frame && frame) {
             *model = m.model;
             *hull = m.hull_drawn;
+            if (ship) *ship = m.ship;
             return m.cls;
         }
         if (!read(std::uintptr_t(node) + model_offset, model, 4)) return Class::other;
         const Class c = class_of(read, body_global, *model);
         bool h = false;
+        std::uint32_t owner_ship = 0;
         if (c == Class::hull)
-            note_hull(read, node);
-        else if (c == Class::part)
-            h = hull_drawn(read, node);
-        m = MemoSlot{node, frame, *model, c, h};
+            owner_ship = note_hull(read, node);
+        else if (c == Class::part && !(h = hull_drawn(read, node, &owner_ship)))
+            owner_ship = 0;
+        m = MemoSlot{node, frame, *model, owner_ship, c, h};
         *hull = h;
+        if (ship) *ship = owner_ship;
+        if (fresh) *fresh = true;
         return c;
+    }
+};
+
+// ---- per-ship batching (docs/architecture/occlusion-cull.md, "Batching") ----
+//
+// Reprojection: the block runs at the ship's first part draw, before the other parts' rows of this frame exist, so a
+// part's rectangle is carried from its last draw through its ship's reference hull (the ship's first hull node drawn
+// with known rows; the hull pieces and the parts hang off the same ship root): rel = inverse(hull rows then) x part rows
+// then, and this frame's rows = hull rows now x rel. Exact for a part rigid with its hull under any camera, ship or
+// projection change; a turning turret keeps last frame's angle (within the stability guard's tolerance). The inverse in
+// double (the rows include the projection); rel is accepted only when hull rows then x rel gives the part's rows back.
+// |v| for a double without std::fabs (which the i686 build lowers to x87 fabs; check_no_x87.py).
+inline double abs_d(double v) {
+    return v < 0.0 ? -v : v;
+}
+inline bool invert(const float m[16], double out[16]) {
+    double a[4][8];
+    for (unsigned r = 0; r < 4; ++r)
+        for (unsigned c = 0; c < 4; ++c) {
+            a[r][c] = double(m[r * 4 + c]);
+            a[r][c + 4] = r == c ? 1.0 : 0.0;
+        }
+    for (unsigned c = 0; c < 4; ++c) {
+        unsigned pivot = c;
+        for (unsigned r = c + 1; r < 4; ++r)
+            if (abs_d(a[r][c]) > abs_d(a[pivot][c])) pivot = r;
+        const double p = a[pivot][c];
+        if (!std::isfinite(p) || abs_d(p) < 1e-30) return false;
+        if (pivot != c)
+            for (unsigned k = 0; k < 8; ++k) {
+                const double t = a[c][k];
+                a[c][k] = a[pivot][k];
+                a[pivot][k] = t;
+            }
+        const double inv = 1.0 / p;
+        for (unsigned k = 0; k < 8; ++k) a[c][k] *= inv;
+        for (unsigned r = 0; r < 4; ++r) {
+            const double f = a[r][c];
+            if (r == c || f == 0.0) continue;
+            for (unsigned k = 0; k < 8; ++k) a[r][k] -= f * a[c][k];
+        }
+    }
+    for (unsigned r = 0; r < 4; ++r)
+        for (unsigned c = 0; c < 4; ++c) {
+            out[r * 4 + c] = a[r][c + 4];
+            if (!std::isfinite(out[r * 4 + c])) return false;
+        }
+    return true;
+}
+// out = a x b (row-major 4x4), accumulated in double.
+inline void multiply(const double a[16], const float b[16], double out[16]) {
+    for (unsigned r = 0; r < 4; ++r)
+        for (unsigned c = 0; c < 4; ++c) {
+            double sum = 0.0;
+            for (unsigned k = 0; k < 4; ++k) sum += a[r * 4 + k] * double(b[k * 4 + c]);
+            out[r * 4 + c] = sum;
+        }
+}
+inline void multiply(const float a[16], const float b[16], float out[16]) {
+    for (unsigned r = 0; r < 4; ++r)
+        for (unsigned c = 0; c < 4; ++c) {
+            double sum = 0.0;
+            for (unsigned k = 0; k < 4; ++k) sum += double(a[r * 4 + k]) * double(b[k * 4 + c]);
+            out[r * 4 + c] = float(sum);
+        }
+}
+// rel = inverse(ref then) x rows then, accepted when ref then x rel reproduces rows within 1e-4 of their largest entry.
+inline bool relative(const float ref[16], const double ref_inverse[16], const float rows[16], float rel[16]) {
+    double d[16];
+    multiply(ref_inverse, rows, d);
+    float scale = 0.f;
+    for (unsigned i = 0; i < 16; ++i) {
+        if (!std::isfinite(d[i]) || abs_d(d[i]) > 3.0e38) return false;
+        rel[i] = float(d[i]);
+        const float m = std::fabs(rows[i]);
+        scale = m > scale ? m : scale;
+    }
+    if (!(scale > 0.f)) return false;
+    float back[16];
+    multiply(ref, rel, back);
+    for (unsigned i = 0; i < 16; ++i)
+        if (!(std::fabs(back[i] - rows[i]) <= 1e-4f * scale)) return false;
+    return true;
+}
+
+// Plan output: one test of the block (the draw key, the rectangle tested, the Batcher's part slot).
+struct BlockItem {
+    std::uint64_t key;
+    Rect rect;
+    std::uint16_t entry;
+};
+struct PlanStats {
+    // cadence: tests of parts last read visible taken on their phase frame (the staggered re-test);
+    // forced: tests of parts last read visible taken off-phase because they moved or their hull changed.
+    unsigned retest_skipped = 0, stale = 0, refused = 0, truncated = 0, cadence = 0, forced = 0;
+};
+// The re-test phase seed of a draw: a fixed hash of its scene node and model id. The phase itself is chosen when the
+// part first reads visible: the least-loaded phase among the visible parts of the previous frame's list, searched
+// from the seed, the current frame's only when it is strictly the least loaded (so a part that just turned visible
+// is rarely re-tested at once), and then kept for the part's life whatever its
+// results. A plain hash mod retest spreads ~40 visible parts 0..10 per phase against a mean of 5 (host simulation),
+// so the balance keeps each frame near 1/retest of them; no frame carries them all.
+inline unsigned retest_phase(std::uint32_t node, std::uint32_t model, unsigned retest) {
+    std::uint32_t h = (node ^ 0x9e3779b9u) * 0x85ebca6bu;
+    h ^= h >> 13;
+    h = (h ^ model) * 0xc2b2ae35u;
+    h ^= h >> 16;
+    return retest > 1 ? h % retest : 0u;
+}
+// Spread of the cadence tests over the last `retest` frames (min and max per frame): the flight's evidence that the
+// staggering keeps the per-frame re-test count flat.
+struct CadenceSpread {
+    unsigned counts[retest_max]{};
+    unsigned frames = 0;
+    void push(unsigned count, unsigned retest) {
+        counts[frames % (retest ? retest : 1u)] = count;
+        ++frames;
+    }
+    void range(unsigned retest, unsigned* lo, unsigned* hi) const {
+        const unsigned n = frames < retest ? frames : retest;
+        *lo = n ? ~0u : 0u;
+        *hi = 0;
+        for (unsigned i = 0; i < n; ++i) {
+            *lo = counts[i] < *lo ? counts[i] : *lo;
+            *hi = counts[i] > *hi ? counts[i] : *hi;
+        }
+    }
+};
+// The batching bookkeeping. At each part draw (hull drawn) note_part() records the draw in a persistent per-draw table
+// and in this frame's list; at the ship's first part draw of the next frame plan() takes that ship's entries of the
+// previous frame's list (grouped by ship once per frame) and returns the tests of its block: every part whose last
+// ready result was hidden or is unknown, and a part last read visible only on its phase frame (frame mod retest ==
+// its phase: once every `retest` frames, staggered across the parts), or at once when it
+// moved (its rectangle unstable against its last test's), its ship's hull signature changed (the set of hull draws
+// before the block) or results were reset (Reset). A part first seen this frame is drawn untested and joins next
+// frame's block. No allocation: every table is a fixed array.
+struct Batcher {
+    struct Part {
+        std::uint64_t key;
+        std::uint32_t ship, seen, tested, sig, ref, record_frame;
+        std::uint16_t record; // this frame's ring record index (record_frame == frame)
+        Result last;          // the most recent ready result (none: unknown, an error, or reset)
+        bool less, rel_ok;
+        std::uint8_t phase; // its re-test phase (unphased until its first visible result), then fixed
+        std::uint8_t seed;  // retest_phase(node, model, retest)
+        Box box;
+        float rel[16];
+        Rect rect;        // at its last draw
+        Rect tested_rect; // of its last issued test
+    };
+    struct Ship {
+        std::uint32_t root, stamp, group_stamp, sig, ref;
+        std::uint16_t first, count; // its entries of the previous frame's list in grouped[] (group_stamp == frame)
+        bool ref_ok, inv_done, inv_ok, block_done;
+        float ref_rows[16];
+        double inverse[16];
+    };
+    struct Hull {
+        std::uint32_t node, stamp;
+        bool rows_ok;
+        float rows[16];
+    };
+    Part parts[part_slots]{};
+    Ship ships[ship_slots]{};
+    Hull hulls[hull_slots]{};
+    std::uint16_t list[2][pool_per_frame]{};
+    unsigned list_n[2]{};
+    std::uint32_t list_frame[2]{};
+    std::uint16_t grouped[pool_per_frame]{}, group_ship[pool_per_frame]{}, touched[ship_slots]{};
+    std::uint32_t frame = 0, grouped_frame = 0;
+    unsigned retest = retest_default;
+    unsigned load[retest_max]{}; // visible parts per phase (the previous frame's list, plus this frame's new phases)
+    static constexpr std::uint8_t unphased = 0xffu;
+
+    void begin(std::uint32_t f) { frame = f; }
+    // Reset: every part is tested at its next block (the ring's results went with the queries).
+    void reset_results() {
+        for (Part& p : parts) {
+            p.last = Result::none;
+            p.tested = 0;
+            p.record_frame = 0;
+        }
+    }
+    // This frame's ship (insert: created when absent; null when the table's probe window is full).
+    Ship* ship_slot(std::uint32_t root, bool insert) {
+        if (!root) return nullptr;
+        Ship* s = &ships[slot_of(root, ship_slots)];
+        for (unsigned probe = 0; probe < ship_probe; ++probe) {
+            const bool live = s->stamp == frame || s->group_stamp == frame;
+            if (!live) {
+                if (!insert) return nullptr;
+                *s = Ship{};
+                s->root = root;
+                return s;
+            }
+            if (s->root == root) return s;
+            s = &ships[(unsigned(s - ships) + 1) & (ship_slots - 1)];
+        }
+        return nullptr;
+    }
+    void touch(Ship* s) {
+        if (s->stamp == frame) return;
+        s->stamp = frame;
+        s->sig = 0;
+        s->ref = 0;
+        s->ref_ok = s->inv_done = s->inv_ok = s->block_done = false;
+    }
+    Hull* hull_slot(std::uint32_t node, bool insert, bool* inserted = nullptr) {
+        if (inserted) *inserted = false;
+        if (!node) return nullptr;
+        Hull* h = &hulls[slot_of(node, hull_slots)];
+        for (unsigned probe = 0; probe < hull_probe; ++probe) {
+            if (h->stamp != frame) {
+                if (!insert) return nullptr;
+                *h = Hull{node, frame, false, {}};
+                if (inserted) *inserted = true;
+                return h;
+            }
+            if (h->node == node) return h;
+            h = &hulls[(unsigned(h - hulls) + 1) & (hull_slots - 1)];
+        }
+        return nullptr;
+    }
+    // A hull node's first draw this frame: its ship's signature (a commutative sum over the hull draws, so the order
+    // does not matter), its rows (the reprojection reference; the ship's first hull with rows is the ship's reference).
+    void note_hull(std::uint32_t ship, std::uint32_t node, std::uint64_t key, const float* rows) {
+        bool inserted = false;
+        Hull* h = hull_slot(node, true, &inserted);
+        if (!h || !inserted) return; // a second draw of the node, or the table full (no reference: stale rectangles)
+        Ship* s = ship_slot(ship, true);
+        if (!s) return;
+        touch(s);
+        const std::uint64_t mix = key * 0x9e3779b97f4a7c15ull;
+        s->sig += std::uint32_t(mix >> 32) ^ std::uint32_t(mix);
+        if (!rows) return;
+        std::memcpy(h->rows, rows, sizeof h->rows);
+        h->rows_ok = true;
+        if (!s->ref_ok) {
+            s->ref = node;
+            std::memcpy(s->ref_rows, rows, sizeof s->ref_rows);
+            s->ref_ok = true;
+        }
+    }
+    // A part draw whose hull drew this frame: the per-draw entry (created, or taken over from another ship), its box,
+    // rectangle and reprojection, and this frame's list. Returns its slot, or no_entry when the table or the list is
+    // full (drawn untested).
+    std::uint16_t note_part(std::uint64_t key, std::uint32_t ship, const Box& box, const Rect& rect, const float* rows,
+                            bool less, std::uint32_t model = 0) {
+        // The whole probe chain is searched for the key's live entry before an expired slot is reused (an expired slot
+        // ahead of the live entry would otherwise take a second copy of the draw: lost phase and result, a duplicated
+        // test). A never-used slot ends the chain (slots are never emptied, so nothing was inserted past it).
+        Part* p = &parts[slot_of(std::uint32_t(key) ^ std::uint32_t(key >> 32), part_slots)];
+        Part *found = nullptr, *reusable = nullptr;
+        for (unsigned probe = 0; probe < part_probe; ++probe) {
+            if (!p->seen) {
+                if (!reusable) reusable = p;
+                break;
+            }
+            const bool expired = frame - p->seen > part_expiry;
+            if (!expired && p->key == key) {
+                found = p;
+                break;
+            }
+            if (expired && !reusable) reusable = p;
+            p = &parts[(unsigned(p - parts) + 1) & (part_slots - 1)];
+        }
+        const bool fresh = !found;
+        if (!found) found = reusable;
+        if (!found) return no_entry;
+        if (fresh || found->ship != ship) {
+            *found = Part{};
+            found->key = key;
+            found->ship = ship;
+            found->last = Result::none;
+            found->phase = unphased;
+            found->seed = std::uint8_t(retest_phase(std::uint32_t(key), model, retest));
+        }
+        found->box = box;
+        found->rect = rect;
+        found->less = less;
+        found->rel_ok = false;
+        found->ref = 0;
+        Ship* s = ship_slot(ship, false);
+        if (s && s->stamp == frame && s->ref_ok && rows) {
+            if (!s->inv_done) {
+                s->inv_done = true;
+                s->inv_ok = invert(s->ref_rows, s->inverse);
+            }
+            if (s->inv_ok && relative(s->ref_rows, s->inverse, rows, found->rel)) {
+                found->rel_ok = true;
+                found->ref = s->ref;
+            }
+        }
+        const std::uint16_t index = std::uint16_t(found - parts);
+        if (found->seen == frame) return index; // a second draw of the same key this frame: listed once
+        found->seen = frame;
+        const unsigned lf = frame & 1;
+        if (list_frame[lf] != frame) {
+            list_frame[lf] = frame;
+            list_n[lf] = 0;
+        }
+        if (list_n[lf] >= pool_per_frame) return no_entry;
+        list[lf][list_n[lf]++] = index;
+        return index;
+    }
+    // Whether the ship's block of this frame is still to be issued (its hull drew this frame).
+    bool block_pending(std::uint32_t ship) {
+        Ship* s = ship_slot(ship, false);
+        return s && s->stamp == frame && !s->block_done;
+    }
+    // Groups the previous frame's list by ship (a counting sort into grouped[]), once per frame at the first block.
+    void group() {
+        grouped_frame = frame;
+        const unsigned lf = (frame - 1) & 1;
+        if (frame <= 1 || list_frame[lf] != frame - 1) return;
+        const unsigned n = list_n[lf];
+        unsigned ships_touched = 0;
+        for (unsigned i = 0; i < n; ++i) {
+            Ship* s = ship_slot(parts[list[lf][i]].ship, true);
+            if (!s) {
+                group_ship[i] = 0xffffu;
+                continue;
+            }
+            if (s->group_stamp != frame) {
+                s->group_stamp = frame;
+                s->first = s->count = 0;
+                touched[ships_touched++] = std::uint16_t(s - ships);
+            }
+            ++s->count;
+            group_ship[i] = std::uint16_t(s - ships);
+        }
+        // The phase load: the listed parts last read visible, per phase (recounted every frame: no drift from expiry).
+        for (unsigned& l : load) l = 0;
+        for (unsigned i = 0; i < n; ++i) {
+            const Part& p = parts[list[lf][i]];
+            if (p.last == Result::visible && p.phase < retest) ++load[p.phase];
+        }
+        unsigned at = 0;
+        for (unsigned t = 0; t < ships_touched; ++t) {
+            Ship& s = ships[touched[t]];
+            s.first = std::uint16_t(at);
+            at += s.count;
+            s.count = 0;
+        }
+        for (unsigned i = 0; i < n; ++i)
+            if (group_ship[i] != 0xffffu) {
+                Ship& s = ships[group_ship[i]];
+                grouped[s.first + s.count++] = list[lf][i];
+            }
+    }
+    // The re-test rule of a part whose rectangle this frame is `now`: hidden every frame; unknown, an error or a Reset
+    // at once (required); last read visible on its phase frame (cadence), or off-phase when its hull changed or it moved
+    // (forced); else not this frame. A part that just turned visible keeps its phase (no immediate re-test).
+    enum class Due : std::uint8_t { no, required, cadence, forced };
+    Due due(const Part& p, const Rect& now, std::uint32_t sig) const {
+        if (p.last != Result::visible || !p.tested) return Due::required;
+        if (retest <= 1 || p.phase >= retest || frame % retest == p.phase) return Due::cadence;
+        if (p.sig != sig || !stable(p.tested_rect, now)) return Due::forced;
+        return Due::no;
+    }
+    // The ship's block: its tests (at most cap) in items. Marks the block issued for this frame whatever the outcome
+    // (one attempt per ship per frame). *sig is the ship's hull signature the tests are taken under.
+    unsigned plan(std::uint32_t ship, float vp_width, float vp_height, unsigned zfunc, BlockItem* items, unsigned cap,
+                  PlanStats* stats, std::uint32_t* sig) {
+        if (grouped_frame != frame) group();
+        Ship* s = ship_slot(ship, false);
+        if (!s || s->stamp != frame || s->block_done) return 0;
+        s->block_done = true;
+        *sig = s->sig;
+        if (s->group_stamp != frame) return 0;
+        const bool less = zfunc == cmp_less || zfunc == cmp_lessequal;
+        unsigned n = 0;
+        for (unsigned k = s->first; k < unsigned(s->first) + s->count; ++k) {
+            const std::uint16_t index = grouped[k];
+            Part& p = parts[index];
+            if (p.ship != ship) continue;
+            if (p.less != less) {
+                ++stats->refused;
+                continue;
+            }
+            Rect now{};
+            bool stale = false;
+            if (p.seen == frame) {
+                now = p.rect; // drawn already this frame (the block's own part): its exact rectangle
+            } else {
+                const Hull* h = p.rel_ok ? hull_slot(p.ref, false) : nullptr;
+                if (h && h->rows_ok) {
+                    float rows[16];
+                    multiply(h->rows, p.rel, rows);
+                    if (test_rect(rows, p.box, vp_width, vp_height, zfunc, &now) != RectStatus::ok) {
+                        ++stats->refused;
+                        continue;
+                    }
+                } else {
+                    now = p.rect; // no reference this frame: last frame's rectangle
+                    stale = true;
+                }
+            }
+            const Due why = due(p, now, s->sig);
+            if (why == Due::no) {
+                ++stats->retest_skipped;
+                continue;
+            }
+            if (n >= cap) {
+                ++stats->truncated;
+                continue;
+            }
+            if (stale) ++stats->stale;
+            if (why == Due::cadence) ++stats->cadence;
+            if (why == Due::forced) ++stats->forced;
+            items[n++] = BlockItem{p.key, now, index};
+        }
+        return n;
+    }
+    // The block issued the item's test (ring record `record` of this frame).
+    void tested(const BlockItem& item, std::uint32_t sig, std::uint16_t record) {
+        Part& p = parts[item.entry];
+        if (p.key != item.key) return;
+        p.tested = frame;
+        p.tested_rect = item.rect;
+        p.sig = sig;
+        p.record = record;
+        p.record_frame = frame;
+    }
+    // A read of an older test: a ready result becomes the part's last; an error forgets it (tested at the next block).
+    // The first visible result of a part gives it its phase (see retest_phase).
+    void on_result(std::uint16_t entry, std::uint64_t key, Result r) {
+        if (entry >= part_slots || parts[entry].key != key) return;
+        Part& p = parts[entry];
+        if (r == Result::visible && p.phase == unphased && retest > 1) {
+            const unsigned now = frame % retest;
+            unsigned best = retest, best_load = ~0u;
+            for (unsigned i = 0; i < retest; ++i) { // the current phase only when strictly less loaded than the rest
+                const unsigned phase = (p.seed + i) % retest, cost = 2 * load[phase] + (phase == now ? 1u : 0u);
+                if (cost < best_load) best = phase, best_load = cost;
+            }
+            p.phase = std::uint8_t(best);
+            ++load[best];
+        }
+        if (ready(r))
+            p.last = r;
+        else if (r == Result::error)
+            p.last = Result::none;
+    }
+    // This frame's ring record of the part's test, or -1.
+    int record_of(std::uint16_t entry, std::uint64_t key) const {
+        if (entry >= part_slots || parts[entry].key != key || parts[entry].record_frame != frame) return -1;
+        return parts[entry].record;
     }
 };
 }
