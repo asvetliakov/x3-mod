@@ -1,0 +1,18 @@
+  47d085:	0f 84 9d 04 00 00    	je     0x47d528
+  47d091:	8b 87 f8 00 00 00    	mov    eax,DWORD PTR [edi+0xf8]
+  47d099:	79 0e                	jns    0x47d0a9
+  47d09b:	83 e3 fd             	and    ebx,0xfffffffd
+  47d0a4:	e9 7f 04 00 00       	jmp    0x47d528
+  47d0e1:	83 e3 fd             	and    ebx,0xfffffffd
+  47d0ea:	e9 39 04 00 00       	jmp    0x47d528
+  47d0ff:	e8 9c 99 04 00       	call   0x4c6aa0
+  47d109:	75 0c                	jne    0x47d117
+  47d10b:	83 a7 2c 01 00 00 fd 	and    DWORD PTR [edi+0x12c],0xfffffffd
+  47d112:	e9 11 04 00 00       	jmp    0x47d528
+  47d528:	8b 7f 0c             	mov    edi,DWORD PTR [edi+0xc]
+  47d52b:	83 3f 00             	cmp    DWORD PTR [edi],0x0
+  47d52e:	74 18                	je     0x47d548
+  47d53c:	e8 9f fa ff ff       	call   0x47cfe0
+  47d541:	8b 3f                	mov    edi,DWORD PTR [edi]
+  47d543:	83 3f 00             	cmp    DWORD PTR [edi],0x0
+  47d546:	75 f0                	jne    0x47d538

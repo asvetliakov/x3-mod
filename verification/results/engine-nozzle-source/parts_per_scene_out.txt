@@ -1,0 +1,12 @@
+installed: tships_rows=525 scenes=427 text_scenes=419 parts_per_scene p50=28 p90=50 p99=76 max=108 jets_max=68 main_jets_max=66 scenes_over_256_parts=0 scenes_over_512_parts=0
+  parts=108 jets=56 main=28 ships\Xenon\xenon_m2_V_scene
+  parts=90 jets=24 main=12 ships\atf\atf_m0_valhalla_scene
+  parts=86 jets=68 main=66 ships\boron\boron_m7_segaris_scene
+  parts=83 jets=18 main=10 ships\stellaris\machineFlagship_scene
+  parts=76 jets=28 main=22 ships\xenon\xenon_m2_t_scene
+stock: tships_rows=404 scenes=302 text_scenes=286 parts_per_scene p50=23 p90=33 p99=58 max=87 jets_max=68 main_jets_max=66 scenes_over_256_parts=0 scenes_over_512_parts=0
+  parts=87 jets=68 main=66 ships\X3AP\boron\XTC_boron_m7drone_scene
+  parts=67 jets=0 main=0 ships\terran\atf_m0_scene
+  parts=63 jets=14 main=7 ships\X3AP\boron\XTC_boron_m2_plus_scene
+  parts=57 jets=6 main=3 ships\X3AP\usc\XTC_usc_m2plus_scene
+  parts=55 jets=0 main=0 ships\terraformer\terraformer_cpu_scene
