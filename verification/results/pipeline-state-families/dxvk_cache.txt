@@ -1,0 +1,6 @@
+run11: warn:  DXVK: No state cache file found info:  DXVK: Read 212 valid state cache entries 
+run12: warn:  DXVK: No state cache file found info:  DXVK: Read 215 valid state cache entries 
+run14: warn:  DXVK: No state cache file found info:  DXVK: Read 215 valid state cache entries 
+run15: warn:  DXVK: No state cache file found info:  DXVK: Read 223 valid state cache entries 
+after run15 (file mtime 15:51): magic=b'DXVK' version=10 bytes=54413 entries=235 trailing=0
+cmd: grep -E 'state cache' launcher-stderr.log; python3 dxvk_cache_count.py X3AP.dxvk-cache
