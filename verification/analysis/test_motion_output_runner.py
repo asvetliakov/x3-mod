@@ -509,11 +509,13 @@ class MotionOutputRunnerTests(unittest.TestCase):
         text = '\n'.join(['ENGINE_LIGHT_TWINS hull=3 effects=0 total=6'] + rows[:4] + ['RESET PASS'] + rows[4:] +
                          ['ENGINE_LIGHT_RESULT lit_frames=7 checked_images=7 first_lit_after_reset=1 worst_relative=0.004 '
                           'worst_constant=1e-07 visible=10500 zero=2800 zero_differ=0 unlit_differ=0'])
-        trace = ['engine_light_mode device=1 setting=on status=ok mode=on requested=1 reason=requested',
-                 'engine_light_variant device=1 original=7c83ed50c9894e44 created=07 refused=00 mismatched=00 failed=00 words_max=1500 depth=1']
+        trace = ['ps3_slot_budget device=1 ps30_slots=512 budget=32768 rule=spec_minimum',
+                 'engine_light_mode device=1 setting=on status=ok mode=on requested=1 reason=requested',
+                 'engine_light_variant device=1 original=7c83ed50c9894e44 created=07 refused=00 mismatched=00 failed=00 words_max=1500 '
+                 'slots_max=900 slot_budget=32768 depth=1']
         trace += [f'engine_light_frame device=1 frame={f} ships=1 ships_drawn={int(f >= 2)} nodes={int(f >= 2)} candidates={int(f >= 3)} '
-                  f'draws_lit={int(f >= 3)} no_twin=0 no_rows=0 twins=6 plates=1,0,0,0,0,0,0,0 plates_none=0 unfloored=0 '
-                  f'plates_dropped=0' for f in range(1, 9)]
+                  f'draws_lit={int(f >= 3)} no_twin=0 no_rows=0 twins=6 plates=1,0,0,0,0,0,0,0 plates_more=0 plates_max=1 plates_none=0 '
+                  f'unfloored=0 plates_dropped=0' for f in range(1, 9)]
         return text, '\n'.join(trace)
 
     def test_engine_light_seam_case_and_validator(self):
@@ -537,7 +539,12 @@ class MotionOutputRunnerTests(unittest.TestCase):
                (text, trace.replace('created=07', 'created=03', 1)),
                (text, trace.replace('mismatched=00', 'mismatched=04', 1)),
                (text, trace.replace('candidates=1 draws_lit=1 no_twin=0', 'candidates=1 draws_lit=0 no_twin=1', 1)),
-               (text, trace.replace('requested=1', 'requested=0', 1))]
+               (text, trace.replace('requested=1', 'requested=0', 1)),
+               (text, trace.replace('budget=32768 rule', 'budget=512 rule', 1)),              # the spec minimum as the budget
+               (text, trace.replace('slots_max=900', 'slots_max=400', 1)),                    # no twin above the old 512
+               (text, trace.replace('slot_budget=32768', 'slot_budget=512', 1)),
+               (text, trace.replace('ps3_slot_budget device=1 ps30_slots=512 budget=32768 rule=spec_minimum\n', '', 1)),
+               (text, trace.replace('plates_max=1', 'plates_max=2'))]
         for output, log in bad:
             with self.subTest(output=output != text, log=log != trace), self.assertRaises(AssertionError):
                 runner.validate_engine_light_seam('host', output, log)

@@ -1,0 +1,198 @@
+{
+ "installed": {
+  "ships": 516,
+  "scenes": 419,
+  "binary_scenes": 0,
+  "missing_scenes": 9,
+  "max": 66,
+  "distribution": {
+   "0": 17,
+   "1": 38,
+   "2": 84,
+   "3": 86,
+   "4": 79,
+   "5": 30,
+   "6": 53,
+   "7": 13,
+   "8": 37,
+   "9": 6,
+   "10": 12,
+   "11": 3,
+   "12": 14,
+   "13": 7,
+   "14": 7,
+   "15": 1,
+   "16": 10,
+   "20": 1,
+   "21": 2,
+   "22": 2,
+   "24": 3,
+   "26": 3,
+   "27": 1,
+   "28": 2,
+   "32": 1,
+   "36": 2,
+   "40": 1,
+   "66": 1
+  },
+  "ships_above": {
+   "8": 79,
+   "16": 19,
+   "32": 4,
+   "48": 1,
+   "64": 1
+  },
+  "top": [
+   {
+    "id": "SS_SH_B_M7_SEGARIS",
+    "cls": "OBJ_SHIP_M7",
+    "scene": "ships/boron/boron_m7_segaris_scene",
+    "main": 66
+   },
+   {
+    "id": "SS_SH_A_M2_ATLAS",
+    "cls": "OBJ_SHIP_M2",
+    "scene": "ships/argon/argon_m2_atlas_scene",
+    "main": 40
+   },
+   {
+    "id": "SS_SH_ATF_M6_LOGICH",
+    "cls": "OBJ_SHIP_M6",
+    "scene": "ships/atf/atf_m6_logich_scene",
+    "main": 36
+   },
+   {
+    "id": "SS_SH_ATF_M6_LOGICH_1",
+    "cls": "OBJ_SHIP_M6",
+    "scene": "ships/atf/atf_m6_logich_scene",
+    "main": 36
+   },
+   {
+    "id": "SS_SH_TR_TL_MINING",
+    "cls": "OBJ_SHIP_TL",
+    "scene": "ships/terran/terran_tl_mobile_mining_base-ship_scene",
+    "main": 32
+   },
+   {
+    "id": "SS_SH_OTAS_M6_SIROKOS",
+    "cls": "OBJ_SHIP_M6",
+    "scene": "ships/otas/otas_m6_sirokos_scene",
+    "main": 28
+   },
+   {
+    "id": "SS_SH_X_M2_V",
+    "cls": "OBJ_SHIP_M2",
+    "scene": "ships/xenon/xenon_m2_v_scene",
+    "main": 28
+   },
+   {
+    "id": "SS_SH_A_M7_MANDALAY",
+    "cls": "OBJ_SHIP_M7",
+    "scene": "ships/argon/argon_m7_mandalay_scene",
+    "main": 27
+   },
+   {
+    "id": "SS_SH_P_TL",
+    "cls": "OBJ_SHIP_TL",
+    "scene": "ships/paranid/paranid_tl_hercules_scene",
+    "main": 26
+   },
+   {
+    "id": "SS_SH_P_M1",
+    "cls": "OBJ_SHIP_M1",
+    "scene": "ships/paranid/paranid_m1_zeus_scene",
+    "main": 26
+   }
+  ]
+ },
+ "stock": {
+  "ships": 363,
+  "scenes": 286,
+  "binary_scenes": 0,
+  "missing_scenes": 17,
+  "max": 66,
+  "distribution": {
+   "0": 104,
+   "1": 168,
+   "2": 56,
+   "3": 13,
+   "4": 6,
+   "5": 4,
+   "6": 5,
+   "7": 2,
+   "8": 2,
+   "10": 1,
+   "14": 1,
+   "66": 1
+  },
+  "ships_above": {
+   "8": 3,
+   "16": 1,
+   "32": 1,
+   "48": 1,
+   "64": 1
+  },
+  "top": [
+   {
+    "id": "SS_SH_B_DC",
+    "cls": "OBJ_SHIP_M7",
+    "scene": "ships/x3ap/boron/xtc_boron_m7drone_scene",
+    "main": 66
+   },
+   {
+    "id": "SS_SH_X_M2P",
+    "cls": "OBJ_SHIP_M2",
+    "scene": "ships/x3ap/xenon/xtc_xenon_m2_plus_scene",
+    "main": 14
+   },
+   {
+    "id": "SS_SH_A_TPP",
+    "cls": "OBJ_SHIP_TP",
+    "scene": "ships/x3ap/argon/xtc_argon_tp_plus_scene",
+    "main": 10
+   },
+   {
+    "id": "SS_SH_B_M6M",
+    "cls": "OBJ_SHIP_M6",
+    "scene": "ships/m6/boron_m6x_scene",
+    "main": 8
+   },
+   {
+    "id": "SS_SH_A_TSP",
+    "cls": "OBJ_SHIP_TS",
+    "scene": "ships/argon/xtc_argon_ts_plus_scene",
+    "main": 8
+   },
+   {
+    "id": "SS_SH_B_M2P",
+    "cls": "OBJ_SHIP_M2",
+    "scene": "ships/x3ap/boron/xtc_boron_m2_plus_scene",
+    "main": 7
+   },
+   {
+    "id": "SS_SH_T_TPP",
+    "cls": "OBJ_SHIP_TP",
+    "scene": "ships/x3ap/teladi/xtc_teladi_tp_plus_scene",
+    "main": 7
+   },
+   {
+    "id": "SS_SH_B_M4P",
+    "cls": "OBJ_SHIP_M4",
+    "scene": "ships/x3ap/boron/xtc_boron_m4p_scene",
+    "main": 6
+   },
+   {
+    "id": "SS_SH_OTAS_TS_1",
+    "cls": "OBJ_SHIP_TS",
+    "scene": "ships/ts/otas_ts_scene",
+    "main": 6
+   },
+   {
+    "id": "SS_SH_ALDRIN_M6",
+    "cls": "OBJ_SHIP_M6",
+    "scene": "ships/x3ap/aldrin/xtc_aldrin_m6_scene",
+    "main": 6
+   }
+  ]
+ }
+}

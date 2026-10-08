@@ -1,0 +1,9 @@
+node_build_cost.cpp, host arm64 (Apple clang -O2), 2026-10-08; before = `git archive d77c26dd src`, after = this change
+(LightFields split in). Microseconds; ships_1024_records_us best of 50, warm_us best of 50, cold_us the first build.
+before {"plate_slots":8,"node_bytes":264,"rows":[{"plates":1,"ships_1024_records_us":20.0,"nodes":1024,"cold_us":71.0,"warm_us":32.3},{"plates":8,"ships_1024_records_us":45.1,"nodes":1024,"cold_us":84.8,"warm_us":24.9}]}
+after  {"plate_slots":72,"node_bytes":2056,"rows":[{"plates":1,"ships_1024_records_us":10.3,"nodes":1024,"cold_us":57.1,"warm_us":28.3},{"plates":8,"ships_1024_records_us":37.7,"nodes":1024,"cold_us":84.9,"warm_us":25.4},{"plates":72,"ships_1024_records_us":67.5,"nodes":1024,"cold_us":165.6,"warm_us":158.3}]}
+
+The same source as i686 (i686-w64-mingw32-g++ -O2 -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -static),
+run under Wine/FEX in bottle X3 (wine_lock.py "<CrossOver Preview wine>" --bottle X3 --no-update <exe>), 2026-10-08:
+before {"plate_slots":8,"node_bytes":264,"rows":[{"plates":1,"ships_1024_records_us":19.0,"nodes":1024,"cold_us":212.0,"warm_us":51.0},{"plates":8,"ships_1024_records_us":58.0,"nodes":1024,"cold_us":109.0,"warm_us":104.0}]}
+after  {"plate_slots":72,"node_bytes":2056,"rows":[{"plates":1,"ships_1024_records_us":10.0,"nodes":1024,"cold_us":230.0,"warm_us":51.0},{"plates":8,"ships_1024_records_us":32.0,"nodes":1024,"cold_us":127.0,"warm_us":100.0},{"plates":72,"ships_1024_records_us":101.0,"nodes":1024,"cold_us":417.0,"warm_us":407.0}]}

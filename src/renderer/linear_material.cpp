@@ -1,6 +1,7 @@
 #include "linear_material.h"
 #include "linear_distance_fade.h"
 #include "material_motion.h"
+#include "ps3_slot_budget.h"
 #include "shader_population.h"
 #include <algorithm>
 #include <array>
@@ -796,7 +797,8 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
         result.boundary[at] = 1;
         const Word token = code[at];
         const unsigned op = token & 0xffff, n = length(token);
-        if (token == end_token) return at == words - 1 && slots <= 512 && result.first_declaration != 0;
+        // The device's ps_3_0 slot budget (ps3_slot_budget.h: its cap, 32768 where it reports the 512 minimum).
+        if (token == end_token) return at == words - 1 && slots <= ps3_slot_budget() && result.first_declaration != 0;
         if (op == 0xffff || n > words - at - 1 ||
             (op != 0xfffe && (token & 0xf0ff0000u & ~(xt && op == 41 ? 0x00050000u : 0u))) ||
             (op == 41 && (!xt || ((token >> 16) & 255) != 5)))
@@ -2367,7 +2369,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         const bool fill_on = fill > 0.0f && fill_site;
         // Engine light (linear_engine_light_inc.h): the same site, the depth
         // export (its interpolator carries w), not an asteroid layout, the eye
-        // and normal inputs declared as proved, r14/r15 and c190-c202 free.
+        // and normal inputs declared as proved, r12-r15 and c52-c202 free.
         const bool engine_on = engine_light && fill_site && (xt || !p->asteroid_layout) &&
                                material_motion_pixel_writes_depth(*row, current_depth) &&
                                engine_light_inputs(original, s, row->pixel_depth_input_register);
@@ -2414,7 +2416,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         // Nozzle plates (linear_engine_light_inc.h): the twin's light block
         // feeds the gain a per-pixel weight. The block (at the lobe-sum site)
         // must precede the light-map fetch, both outside flow control, and
-        // c190-c198 must be free (engine_light_inputs refuses the original
+        // c52-c198 must be free (engine_light_inputs refuses the original
         // otherwise); otherwise the twin keeps the plain gain.
         bool plate_on = false;
         if (engine_on && lightmap_on && site < lightmap_site &&
@@ -2501,6 +2503,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                 if (block_on) original_fill_definition(combined, fill);
                 if (engine_on) engine_light_definition_words(combined);
                 if (plate_on) engine_light_plate_definition_words(combined);
+                if (select_on) engine_light_tier_definition_words(combined);
                 if (share) {
                     emit(combined, def,
                          {dst(constant, original_share_domain, xyzw), bits(2.2f), bits(0.0f), bits(65504.0f),
@@ -2674,12 +2677,13 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         if (engine_on) {
             // The emitted program re-proves the light: c200-c202 never defined
             // and read only by the block (2, 2 and 1 reads; with the per-plate
-            // selection 1, 1 and 3: the MOVs into r12 / r13 and the tier lane
-            // of the two if_ne), c199 defined once and read by the block (3,
-            // and the branch thresholds: 1 with plates, 2 without) and each
-            // fill block (1, twice with the share twin).
+            // selection 1, 1 and 1 + 11: the MOVs into r12 / r13 and the tier
+            // lane of the eleven levels), c199 defined once and read by the
+            // block (3, and the branch thresholds: 1 with plates, 2 without)
+            // and each fill block (1, twice with the share twin).
             unsigned definitions = 0, reads = 0;
-            const unsigned expected[3] = {select_on ? 1u : 2u, select_on ? 1u : 2u, select_on ? 3u : 1u};
+            const unsigned expected[3] = {select_on ? 1u : 2u, select_on ? 1u : 2u,
+                                          select_on ? 1u + engine_light_tier_levels : 1u};
             for (unsigned k = 0; k < 3; ++k) {
                 constant_uses(combined.data(), final_structure, engine_light_constant + k, definitions, reads);
                 if (definitions != 0 || reads != expected[k]) return LinearMaterialResult::ProfileMismatch;
@@ -2687,23 +2691,31 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             constant_uses(combined.data(), final_structure, engine_light_definition, definitions, reads);
             if (definitions != 1 || reads != (share ? 5u : 4u) + (plate_on ? 1u : select_on ? 2u : 0u))
                 return LinearMaterialResult::ProfileMismatch;
-            // The plate lights c176-c189: never defined, read once each by the selection's CMPs.
-            for (unsigned i = engine_light_select_first; i < engine_light_plate_first; ++i) {
-                constant_uses(combined.data(), final_structure, i, definitions, reads);
+            // The tier thresholds c52-c54: defined once each in every selecting
+            // twin, each threshold lane read once by its level's MOV.
+            for (unsigned r = 0; r < engine_light_tier_registers; ++r) {
+                constant_uses(combined.data(), final_structure, engine_light_tier_first + r, definitions, reads);
+                const unsigned lanes = engine_light_tier_levels - 2 - 4 * r < 4 ? engine_light_tier_levels - 2 - 4 * r : 4;
+                if (definitions != (select_on ? 1u : 0u) || reads != (select_on ? lanes : 0u))
+                    return LinearMaterialResult::ProfileMismatch;
+            }
+            // The plates and their lights' colours c55-c197, never defined,
+            // read by the block alone in every selecting twin: each plate
+            // register 3 times (the MAD's two operands and slot 0's MOV into
+            // r12 or slot i's CMP), each colour once (its CMP).
+            for (unsigned i = 0; i < engine_light_plate_slots; ++i) {
+                constant_uses(combined.data(), final_structure, engine_light_plate_register(i), definitions, reads);
+                if (definitions != 0 || reads != (select_on ? 3u : 0u)) return LinearMaterialResult::ProfileMismatch;
+                if (!i) continue;
+                constant_uses(combined.data(), final_structure, engine_light_colour_register(i), definitions, reads);
                 if (definitions != 0 || reads != (select_on ? 1u : 0u)) return LinearMaterialResult::ProfileMismatch;
             }
-            // Nozzle plates: c198 defined once and read by the block alone (5),
-            // c190-c197 never defined and read by the block alone (2 each, in
-            // every selecting twin);
+            // Nozzle plates: c198 defined once and read by the block alone (5);
             // r15 referenced only by the block and the plate gain (6), the
             // block emitted before the light-map fetch.
             constant_uses(combined.data(), final_structure, engine_light_plate_constant, definitions, reads);
             if (definitions != (plate_on ? 1u : 0u) || reads != (plate_on ? 5u : 0u))
                 return LinearMaterialResult::ProfileMismatch;
-            for (unsigned i = 0; i < engine_light_plate_slots; ++i) {
-                constant_uses(combined.data(), final_structure, engine_light_plate_first + i, definitions, reads);
-                if (definitions != 0 || reads != (select_on ? 2u : 0u)) return LinearMaterialResult::ProfileMismatch;
-            }
             if (plate_on) {
                 unsigned scratch = 0;
                 for (const auto& in : final_structure.instructions) {

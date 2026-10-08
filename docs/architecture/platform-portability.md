@@ -635,6 +635,16 @@ lines 784-785, checked 2026-09-24 against the GitHub master source: `MaxPixelSha
 - The practical ceiling on this backend is the first-draw backend shader compile. Cold cache: 39 ms at 513 slots,
   651 ms at 4,097, 8.6 s at 16,385. Warm cache: 10 / 141 / 1,784 ms (both measured). Keep programs in the low
   thousands of slots.
+- The shader transformers follow the rule since 2026-10-08 (engine-light plate cap): `linear_material.cpp`
+  `structure` and `linear_emission.cpp` `hull_structure` refused any program above a hard-coded 512 slots; both now
+  check `ps3_slot_budget()` (`src/renderer/ps3_slot_budget.h`), the device's `MaxPixelShader30InstructionSlots` set
+  at `MotionOutput::attach`, 32768 where the device reports the 512 spec minimum or less (wined3d) and at most 32768,
+  32768 before any device (host tests, fixtures). One `ps3_slot_budget` row per device logs the reported cap, the
+  budget and the rule. A program the device still refuses at `CreatePixelShader` keeps the caller's refusal row
+  (`engine_light_variant failed=`). The largest engine-light twin is 904 weighted slots (4,865 DWORDs; 398 before),
+  created on wined3d; `engine_light_variant` logs `slots_max=` and `slot_budget=`. The fog, sun-shadow-apply,
+  sun-occlusion and engine plume/ribbon passes still compare their fixed programs with the reported cap directly
+  (unchanged; they are created under wined3d's reported 512, so their programs fit it, inferred).
 
 ## 2026-09-19: `--taa-current-filter` exceeds the guaranteed ps_3_0 slot count
 

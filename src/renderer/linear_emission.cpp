@@ -1,4 +1,5 @@
 #include "linear_emission.h"
+#include "ps3_slot_budget.h"
 #include "shader_population.h"
 #include <algorithm>
 #include <cmath>
@@ -309,14 +310,16 @@ static_assert(sizeof(hull_profiles) / sizeof(hull_profiles[0]) == linear_emissio
 // The gain lives in the last ps_3_0 float constant, outside every constant the
 // originals read (max c26) and outside the linear-material/exposure/fill
 // reservations (c204..c222). A program that reads c223 is refused.
-constexpr unsigned hull_gain_constant = 223, hull_emission_temporary = 0, sm3_pixel_slots = 512;
+constexpr unsigned hull_gain_constant = 223, hull_emission_temporary = 0;
 constexpr Word sm3_pixel = 0xffff0300u;
 // Narrow SM3 walk: instruction boundaries from the length field, comments and
 // DEF/DCL payloads excluded from the register scan. It establishes the sites
 // and refuses relative addressing or any read of the gain constant.
-// Documented ps_3_0 executable budget: 512 slots, macro instructions at their
-// documented cost (the SM2 path's `structure` applies the 64/32 PS2 budgets the
-// same way, and the Python oracle mirrors this table).
+// ps_3_0 executable budget: the device's (ps3_slot_budget.h: its
+// MaxPixelShader30InstructionSlots, 32768 where it reports the 512 spec
+// minimum), macro instructions at their documented cost (the SM2 path's
+// `structure` applies the 64/32 PS2 budgets the same way, and the Python
+// oracle mirrors this table).
 unsigned slot_cost(unsigned op) noexcept {
     switch (op) {
     case 18:
@@ -344,7 +347,7 @@ bool hull_structure(const Word* code, std::size_t count, std::size_t& first_decl
     for (std::size_t at = 1; at < count;) {
         const Word token = code[at];
         if (token == end_token)
-            return at == count - 1 && first_declaration != 0 && instructions != 0 && slots <= sm3_pixel_slots;
+            return at == count - 1 && first_declaration != 0 && instructions != 0 && slots <= ps3_slot_budget();
         const unsigned op = token & 0xffffu;
         if (op == 0xffffu) return false;
         if (op == 0xfffeu) { // comment block: opaque payload, no registers

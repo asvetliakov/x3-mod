@@ -1,0 +1,241 @@
+{
+ "after": {
+  "executable_sha256": "172135c18c4cf900aa846b21dbd620a9784c64bbb710c4ab15cca4115101dc8a",
+  "report_sha256": "9c1b74e2128943365de369018e7a0b85f1d0acf6660e74adb8bab4c1fb68dc40"
+ },
+ "baseline": {
+  "commit": "d77c26dd",
+  "executable_sha256": "fc65f66161e0100d7e3f4d446098a2280747c5736298b3bb0fab55c975cfe117",
+  "report_sha256": "6d087dd131fb8b37d832822cef05537554ad12c5272c52264115f516d86d2a7f"
+ },
+ "cases": {
+  "0": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "9522b6d817871ff631b360da72936c304b3710c37307e6dd609dec66dd38b013"
+  },
+  "1": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "d65b92d5023f134b05314b2b038a63f8a8888928f49c06eb1c0cc9fc4e829ff1"
+  },
+  "2": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "4c9bfe3ad8f890f116ce891b3a4d503f583a77c3ec98ad58027dc2cd55e0aace"
+  },
+  "3": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "01592890230f978e23e2c50d99d03cce065574d498e187fc0eed83b67426ee33"
+  },
+  "4": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "2a2d0840a0cd263307b17ffbb5bb411a766304662e35767f2d84c66434dac152"
+  },
+  "5": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "73b7505a363fb3796d7e8f5a073f153ef34ffbcbc8830a36703b9fbefae9c390"
+  },
+  "6": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "c44b293bda462f49fcf4c79b60165fc738901e5c972c1aac8d357de34a760094"
+  },
+  "7": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "f3c4c1999a444b4b187d71d770c863f210456fd0bb45639385e6f449d9f363e1"
+  },
+  "8": {
+   "case_row_identical": true,
+   "samples_identical": true,
+   "sha256": "940c11479d78020bee9c3df29ecd5d8942972c8cfe01d42aa8a06928afefbb9b"
+  }
+ },
+ "cost": {
+  "build_us": {
+   "after": 323.9,
+   "before": 110.8
+  },
+  "hit_ns": {
+   "after": 63.5,
+   "before": 74.3
+  },
+  "ships_us": {
+   "after": 43.3,
+   "before": 67.3
+  }
+ },
+ "cost_plates": [
+  {
+   "build_us": 162.5,
+   "hit_ns": 160.2,
+   "hits": 200000.0,
+   "nodes": 1024.0,
+   "plates": 8.0,
+   "rounds": 200000.0,
+   "ships_us": 35.1
+  },
+  {
+   "build_us": 531.8,
+   "hit_ns": 806.3,
+   "hits": 200000.0,
+   "nodes": 1024.0,
+   "plates": 72.0,
+   "rounds": 200000.0,
+   "ships_us": 105.4
+  }
+ ],
+ "gpu": [
+  {
+   "after_term_us": 22.4,
+   "before_term_us": 83.6,
+   "height": 1080,
+   "nozzles": 1,
+   "width": 1920
+  },
+  {
+   "after_term_us": 90.7,
+   "before_term_us": 93.3,
+   "height": 1440,
+   "nozzles": 1,
+   "width": 5120
+  },
+  {
+   "after_term_us": 53.3,
+   "before_term_us": 45.5,
+   "height": 1080,
+   "nozzles": 3,
+   "width": 1920
+  },
+  {
+   "after_term_us": 184.8,
+   "before_term_us": 161.7,
+   "height": 1440,
+   "nozzles": 3,
+   "width": 5120
+  },
+  {
+   "after_term_us": 86.6,
+   "before_term_us": 68.0,
+   "height": 1080,
+   "nozzles": 8,
+   "width": 1920
+  },
+  {
+   "after_term_us": 300.2,
+   "before_term_us": 238.7,
+   "height": 1440,
+   "nozzles": 8,
+   "width": 5120
+  },
+  {
+   "after_term_us": 121.9,
+   "before_term_us": null,
+   "height": 1080,
+   "nozzles": 10,
+   "width": 1920
+  },
+  {
+   "after_term_us": 427.2,
+   "before_term_us": null,
+   "height": 1440,
+   "nozzles": 10,
+   "width": 5120
+  },
+  {
+   "after_term_us": 682.0,
+   "before_term_us": null,
+   "height": 1080,
+   "nozzles": 72,
+   "width": 1920
+  },
+  {
+   "after_term_us": 2415.1,
+   "before_term_us": null,
+   "height": 1440,
+   "nozzles": 72,
+   "width": 5120
+  }
+ ],
+ "new_cases": [
+  104,
+  105,
+  106,
+  107
+ ],
+ "other": {
+  "INVARIANT id=0": true,
+  "INVARIANT id=1": true,
+  "INVARIANT id=2": true,
+  "INVARIANT id=3": true,
+  "INVARIANT id=4": true,
+  "INVARIANT id=5": true,
+  "INVARIANT id=6": true,
+  "INVARIANT id=7": true,
+  "INVARIANT id=8": true,
+  "RESET channels=262144": true
+ },
+ "plate_modes": {
+  "0-gain1": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "0-nogain": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "0-nolight": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "0-twin": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "0-twin3": {
+   "light_identical": true,
+   "rows_identical": false
+  },
+  "0-twin8": {
+   "light_identical": true,
+   "rows_identical": false
+  },
+  "1-gain1": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "1-nogain": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "1-nolight": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "1-twin": {
+   "light_identical": true,
+   "rows_identical": true
+  },
+  "1-twin3": {
+   "light_identical": true,
+   "rows_identical": false
+  },
+  "1-twin8": {
+   "light_identical": true,
+   "rows_identical": false
+  }
+ },
+ "single_nozzle_identical": true,
+ "wine_env": [
+  [
+   "CX_GRAPHICS_BACKEND=wined3d"
+  ],
+  [
+   "CX_GRAPHICS_BACKEND=wined3d"
+  ]
+ ]
+}

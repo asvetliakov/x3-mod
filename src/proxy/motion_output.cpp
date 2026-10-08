@@ -24,6 +24,8 @@
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
 #include "../renderer/material_motion.h"
+#include "../renderer/ps3_program_slots.h"
+#include "../renderer/ps3_slot_budget.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
 #include "../renderer/taa_sharpen_program.h"
@@ -3150,6 +3152,16 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     id_ = device_id;
     caps_ = caps;
     requested_ = requested;
+    {
+        // AGENTS.md "Shader slot budget": the shader transformers (linear_material, linear_emission) check programs
+        // against the device's MaxPixelShader30InstructionSlots, 32768 where it reports the 512 spec minimum (wined3d;
+        // ps3_slot_budget.h); a program the device then refuses at creation keeps its one refusal row. One row here.
+        const std::uint32_t reported = caps.MaxPixelShader30InstructionSlots,
+                            budget = renderer::set_ps3_slot_budget(reported);
+        log("ps3_slot_budget device=%llu ps30_slots=%lu budget=%lu rule=%s", device_id,
+            static_cast<unsigned long>(reported), static_cast<unsigned long>(budget),
+            reported <= renderer::ps3_spec_minimum_slots ? "spec_minimum" : "device_cap");
+    }
     {
         // X3M_EMISSION_SOURCE_CLAMP < 1 saturates at C through SRCBLEND
         // BLENDFACTOR; without the documented cap the draws fall back to the
