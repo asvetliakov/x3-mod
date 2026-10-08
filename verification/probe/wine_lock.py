@@ -22,6 +22,13 @@ the lease, so no live runner owns it) ends exactly those orphans, their
 ``winedbg --auto`` (SIGTERM, then SIGKILL after 10 s) and reports what remains.
 It may be given alone or before a command.
 
+Fixture commands get ``winedbg.exe=d`` in CrossOver's ``--dll`` option
+(``with_winedbg_disabled``): a hand-started ``wine ... <fixture>.exe`` directly,
+a project runner (``python3 run_*.py``) through ``wine_lock_site/sitecustomize.py``
+on its PYTHONPATH. A faulting fixture then exits non-zero (the runners' exit-code
+checks still fail it) instead of leaving a ``winedbg --auto`` behind. The wrapper
+ignores WINEDLLOVERRIDES, so the override cannot travel in the environment.
+
 The wrapper waits for the lock (printing a note every 30 s with the holder's
 description), runs the command, and exits with its status. ``--holder TEXT``
 labels the holder for those notes; ``--timeout SECONDS`` gives up (exit 75)
@@ -44,17 +51,70 @@ import fixture_process
 LOCK_PATH = '/tmp/x3-wine-runner.lock'
 
 
-def child_environment(environ=None):
+def child_environment(environ=None, command=None):
     """The wrapped command's environment: this one, with X3M_CONFIG=bare unless it is set.
 
     Since the settings file (docs/architecture/config-file.md) the proxy's built-in defaults are the launcher's promoted
     set; `bare` gives every fixture the pre-config "absent = off" behaviour and ignores any x3m.ini. Every runner under the
     lock inherits it (the runners that start from a stripped environment set it themselves, fixture_log.CONFIG_BARE). The
     launcher (tools/manage.py launch, also run under this lock by x3run) drops the inherited value and sends its own.
+
+    A project runner (`python3 run_*.py`, RUNNER_NAMES) also gets WINEDBG_SITE first on PYTHONPATH: its sitecustomize
+    passes every wine command the runner starts through with_winedbg_disabled. The launcher is not a runner.
     """
     env = dict(os.environ if environ is None else environ)
     env.setdefault('X3M_CONFIG', 'bare')
+    if command and _python_runner(command):
+        env['PYTHONPATH'] = os.pathsep.join(p for p in (str(WINEDBG_SITE), env.get('PYTHONPATH')) if p)
     return env
+
+
+# A fixture that faults under Wine starts `winedbg --auto` (AeDebug), which can hang or outlive its runner (the
+# orphans above). CrossOver's bin/wine wrapper deletes WINEDLLOVERRIDES and rebuilds it from its single `--dll` option
+# (the last one given wins), so the override must travel inside that option: `winedbg.exe=d` makes the debugger start
+# fail and the faulting process ends with a non-zero status (witness: exit 5, verification/results/dxvk-teardown-crash/
+# witness.txt), which the runners' exit-code checks still see. Applied to the wine commands of fixtures this wrapper
+# launches, directly or from a runner (child_environment); never to the launcher, which the preflight keeps apart.
+WINEDBG_OVERRIDE = 'winedbg.exe=d'
+WINEDBG_SITE = Path(__file__).resolve().parent / 'wine_lock_site'
+_WRAPPERS = ('wine', 'wine64')  # CrossOver's option-parsing wrapper; the preloaders take no --dll
+
+
+def with_winedbg_disabled(command):
+    """`command` with `winedbg.exe=d` in its wrapper `--dll` value (appended, or a new `--dll` after the wrapper).
+
+    Only a CrossOver wrapper invocation changes; wrapper options end at `--` or the first non-option word (the
+    program), so the program's own arguments are never touched. Returns the same list object when nothing changes.
+    """
+    if not command or _basename(str(command[0])) not in _WRAPPERS:
+        return command
+    words = [str(word) for word in command]
+    found = None
+    index = 1
+    while index < len(words):
+        word = words[index]
+        if word == '--' or not word.startswith('-'):
+            break
+        if word == '--dll' and index + 1 < len(words):
+            found = (index + 1, '')
+        elif word.startswith('--dll='):
+            found = (index, '--dll=')
+        if word in VALUE_OPTIONS:
+            index += 1
+        index += 1
+    if found is None:
+        return [words[0], '--dll', WINEDBG_OVERRIDE] + words[1:]
+    position, prefix = found
+    value = words[position][len(prefix):]
+    if any(entry.strip().lower().startswith('winedbg.exe=') for entry in value.split(';')):
+        return command  # the caller chose winedbg's override itself
+    words[position] = prefix + (value + ';' if value else '') + WINEDBG_OVERRIDE
+    return words
+
+
+def _python_runner(command):
+    return (re.fullmatch(r'python(?:\d+(?:\.\d+)*)?', _basename(str(command[0]))) is not None
+            and is_runner(' '.join(str(word) for word in command)))
 
 
 def _basename(token):
@@ -254,7 +314,9 @@ def main(argv=None):
             return status
         try:
             child_started = time.monotonic()
-            status = subprocess.call(command, env=child_environment())
+            if is_runner(' '.join(command)):  # a hand-started fixture: wine <options> <fixture>.exe
+                command = with_winedbg_disabled(command)
+            status = subprocess.call(command, env=child_environment(command=command))
         except KeyboardInterrupt:
             status = 130
         finally:

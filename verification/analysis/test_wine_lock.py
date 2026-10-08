@@ -298,3 +298,48 @@ class LockCliTests(unittest.TestCase):
         # The settings file (docs/architecture/config-file.md): fixtures run the proxy without defaults or x3m.ini.
         self.assertEqual(wine_lock.child_environment({'PATH': '/bin'}), {'PATH': '/bin', 'X3M_CONFIG': 'bare'})
         self.assertEqual(wine_lock.child_environment({'X3M_CONFIG': 'none'})['X3M_CONFIG'], 'none')
+
+
+class WinedbgOverrideTests(unittest.TestCase):
+    WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
+
+    def test_existing_dll_value_is_extended_and_program_arguments_are_untouched(self):
+        command = [self.WINE, '--bottle', 'X3', '--workdir', 'd', '--dll', 'd3d9=n,b', 'a.exe', '--dll', 'x']
+        self.assertEqual(wine_lock.with_winedbg_disabled(command),
+                         [self.WINE, '--bottle', 'X3', '--workdir', 'd', '--dll', 'd3d9=n,b;winedbg.exe=d', 'a.exe',
+                          '--dll', 'x'])
+        self.assertEqual(wine_lock.with_winedbg_disabled(['wine', '--dll=d3d9=b', 'a.exe']),
+                         ['wine', '--dll=d3d9=b;winedbg.exe=d', 'a.exe'])
+        # The wrapper keeps the last --dll; that one carries the override.
+        self.assertEqual(wine_lock.with_winedbg_disabled(['wine', '--dll', 'a=b', '--dll', 'c=d', 'x.exe']),
+                         ['wine', '--dll', 'a=b', '--dll', 'c=d;winedbg.exe=d', 'x.exe'])
+
+    def test_missing_dll_is_added_and_other_commands_pass_through(self):
+        self.assertEqual(wine_lock.with_winedbg_disabled([self.WINE, '--bottle', 'X3', 'a.exe', '1']),
+                         [self.WINE, '--dll', 'winedbg.exe=d', '--bottle', 'X3', 'a.exe', '1'])
+        for command in (['python3', 'run_x.py', '--dll', 'p'], ['wine64-preloader', 'a.exe'], [],
+                        ['wine', '--dll', 'd3d9=n;winedbg.exe=n', 'a.exe']):
+            self.assertIs(wine_lock.with_winedbg_disabled(command), command)
+
+    def test_direct_fixture_command_is_rewritten_and_status_kept(self):
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.object(wine_lock, 'LOCK_PATH', str(Path(temporary) / 'lock')), \
+                patch.object(wine_lock, 'preflight'), \
+                patch.object(wine_lock.subprocess, 'call', return_value=5) as child:
+            self.assertEqual(wine_lock.main(['wine', '--bottle', 'X3', 'build/state_hook_benchmark.exe']), 5)
+            self.assertEqual(child.call_args.args[0],
+                             ['wine', '--dll', 'winedbg.exe=d', '--bottle', 'X3', 'build/state_hook_benchmark.exe'])
+
+    def test_runner_children_get_the_override_and_the_launcher_does_not(self):
+        runner = ['python3', 'verification/probe/run_state_hook_benchmark.py']
+        self.assertTrue(wine_lock.child_environment({}, runner)['PYTHONPATH'].startswith(str(wine_lock.WINEDBG_SITE)))
+        self.assertNotIn('PYTHONPATH', wine_lock.child_environment({}, ['python3', 'tools/manage.py', 'launch']))
+        with tempfile.TemporaryDirectory() as temporary:
+            wine = Path(temporary) / 'wine'
+            wine.write_text('#!/bin/sh\necho "$@"\nexit 3\n')
+            wine.chmod(0o755)
+            code = (f'import subprocess,sys; p=subprocess.run([{str(wine)!r},"--dll","d3d9=n,b","a.exe"],'
+                    'stdout=subprocess.PIPE,text=True); print(p.stdout.strip(), p.returncode)')
+            env = wine_lock.child_environment(dict(os.environ), runner)
+            out = subprocess.run([sys.executable, '-c', code], env=env, stdout=subprocess.PIPE, text=True, check=True)
+            self.assertEqual(out.stdout.strip(), '--dll d3d9=n,b;winedbg.exe=d a.exe 3')
