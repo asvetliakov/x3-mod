@@ -1,0 +1,29 @@
+{
+ "run": 140,
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run140-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-09T03:23 local",
+ "commit": "cd479d02 (candidate source; DLL inputs unchanged through cdb7cf14: git diff cd479d02..cdb7cf14 -- src cmake CMakeLists.txt assets tools/config empty)",
+ "candidate_record": "verification/results/run140-candidate-build.json",
+ "installed": {
+  "path": "~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "1f7021211f0b7b763718fcb8996576a43a7ebbdf31afca311cfce10b3d25fa23",
+  "bytes": 59545501,
+  "verified": "shasum after install equals the candidate (measured)"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "x3m.ini": "61ff64b54dc9a7696d727d119d1a68748d2516db027955129b553b587dde563e (user's file, edited by the user at 01:07 for the Run 139 A flights; occlusion_cull = off at line 438; not touched by the install)",
+  "fonts": "14 files listed unchanged by manage.py",
+  "engine_bodies.json": "45a1215b\u2026 unchanged, 253 bodies"
+ },
+ "previous": {
+  "run": 139,
+  "sha256": "d48d2bab029bad3053b21766fd51554e0dab807bd49127416dd1d79d7ed9fd11",
+  "bytes": 59502807,
+  "rollback": "/tmp/x3-run139-candidate/build/d3d9.dll"
+ },
+ "delta_after_candidate": "tooling and records only after cd479d02: wine_lock --dll merge fix (ec9d29f0), runner --wine-env (0cf873a6), records reruns, seam unit test (cdb7cf14); all 8 engine records bind at cdb7cf14 (record_binding_out.json)",
+ "trigger": "Run 140 A: node-sourced engine nozzles (lights/plumes for off-screen nozzles) + final-Release vtable restore; flight 2 carries the pre_render / state-call attribution",
+ "producer": "main session (Fable 5.1), 2026-10-09"
+}
