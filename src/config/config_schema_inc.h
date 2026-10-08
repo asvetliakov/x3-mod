@@ -320,7 +320,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_OBJECT_BOUNDS_LOG", "object_bounds_log", Type::Bool, nullptr, nullptr, 65, 0, 8, 0, 0, "", 1, -1},
     {"X3M_OBJECT_LIFETIME", "object_lifetime", Type::Bool, "1", nullptr, 65, 0, 8, 0, 0, "", 1, -1},
     {"X3M_OBJECT_TRACE", "object_trace", Type::Bool, "1", nullptr, 65, 0, 8, 0, 0, "", 1, -1},
-    {"X3M_OCCLUSION_CULL", "occlusion_cull", Type::Enum, nullptr, nullptr, 65, 0, 8, 0, 0, "on|off", 0, -1},
+    {"X3M_OCCLUSION_CULL", "occlusion_cull", Type::Enum, nullptr, nullptr, 65, 0, 8, 0, 0, "on|off|engine", 0, -1},
     {"X3M_OCCLUSION_CULL_RETEST", "occlusion_cull_retest", Type::Int, nullptr, nullptr, 65, 1, 8, 0, 0, "", 0, -1},
     {"X3M_ORIGINAL_FILL", "original_fill", Type::Float, "0.01", nullptr, 66, 1, 8, 0, 0, "", 0, -1},
     {"X3M_ORIGINAL_FILL_DEFAULT", "original_fill_default", Type::Bool, "1", nullptr, 67, 0, 8, 0, 0, "", 3, 154},

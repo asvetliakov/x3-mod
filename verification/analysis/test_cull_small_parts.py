@@ -529,7 +529,8 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertIn('if (valid) ' + call, taa)
         after_clear = body('void MotionOutput::after_clear(HRESULT result) noexcept')
         self.assertEqual(after_clear.count('read_camera(true)'), 1)
-        self.assertIn('if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene) read_camera(true);', after_clear)
+        self.assertIn('if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene) {\n'
+                      '        read_camera(true);', after_clear)  # the engine-side occlusion skip publishes right after it
         self.assertEqual(source.count('read_camera(true)'), 1, 'the scene read happens only at the scene-phase Clear')
         self.assertIn('#include "cull_small_parts.h"', source)
         self.assertIn('cull_small_parts::begin_frame();', source_text(ROOT / 'src/proxy/capture.cpp'))

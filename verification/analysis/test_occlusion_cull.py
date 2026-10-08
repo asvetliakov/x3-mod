@@ -2,7 +2,10 @@
 
 The pure core (src/proxy/occlusion_cull_core.h) compiled with the host compiler through
 verification/probe/occlusion_cull_host.cpp: classification, test rectangle, stability guard, ring bookkeeping, skip rule,
-the classifier over a synthetic engine image, the reprojection and the per-ship batching with its staggered re-test.
+the classifier over a synthetic engine image, the reprojection and the per-ship batching with its staggered re-test;
+and the engine-side skip's core (src/proxy/occlusion_engine_core.h): the ledger, the verdict table's publish rule
+(skipped only after a fully skipped previous frame, model/stamp/position guards, the skip withheld on the node's phase,
+the fall-back to drawn) and the stub bytes against the Python twin below.
 Then the source contracts the fixture cannot see: the draw-site order (after the small-prop cull, before the jitter),
 the pass's Reset and teardown under the reference accounting, the fixed pool, the hand-encoded programs, the block's
 single swap and Lock, the row fields, the schema entries without a budget setting, the gate record and the batched
@@ -13,6 +16,7 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +25,75 @@ ROOT = Path(__file__).resolve().parents[2]
 PASS_CPP = ROOT / 'src/renderer/occlusion_cull_pass.cpp'
 INC = ROOT / 'src/proxy/motion_output_occlusion_cull_inc.h'
 MOTION = ROOT / 'src/proxy/motion_output.cpp'
+ENGINE_CORE = ROOT / 'src/proxy/occlusion_engine_core.h'
+sys.path.insert(0, str(ROOT / 'verification/probe'))
+import verify_cull_small_parts_site as small  # noqa: E402
+
+# The engine-side skip's stub (occlusion_engine_core.h encode_stub): the Python twin of the C++ encoder.
+STUB_LENGTH, STUB_VISITS, STUB_PROBE, STUB_PROBE_LENGTH, STUB_CONTINUE, STUB_HIT = 285, 20, 38, 17, 99, 105
+STUB_REJECT_MODEL, STUB_REJECT_STAMP, STUB_REJECT_POSITION, STUB_SKIP, STUB_REPLAY, STUB_CULL = 201, 213, 225, 237, 255, 280
+TABLE_PROBE, POSITION_OFFSET, MODEL_OFFSET = 4, 0xf0, 0x140
+
+
+def encode_engine_stub(at, armed, view, stamp, table, visits, skipped_parts, skipped_draws, rejected_model, rejected_stamp,
+                       rejected_position, cull_target, next_slot):
+    """cmp dword [armed],0; je continue; mov eax,[view]; cmp [esp+0x28],eax; jne continue; inc [visits]; imul eax,edi,0x9e3779b1;
+    shr eax,23; imul eax,eax,48; four probes (mov ecx,[eax+table]; cmp ecx,edi; je hit; test ecx,ecx; je continue;
+    add eax,48); continue: jmp [next]; hit: mov ecx,[edi+0x140]; cmp ecx,[eax+table+4]; jne reject_model;
+    mov ecx,[stamp]; cmp ecx,[eax+table+8]; jne reject_stamp; per axis mov ecx,[edi+0xf0+4a]; cmp ecx,[lo]; jl
+    reject_position; cmp ecx,[hi]; jg reject_position; jmp skip; rejects: inc [counter]; jmp [next]; skip: inc
+    [skipped_parts]; mov ecx,[eax+table+36]; add [skipped_draws],ecx; the replay of 0x0047d2a2..0x0047d2b9; jmp cull."""
+    for value in (at, armed, view, stamp, table, visits, skipped_parts, skipped_draws, rejected_model, rejected_stamp,
+                  rejected_position, cull_target, next_slot):
+        if not 0 <= value <= 0xffffffff:
+            raise ValueError('addresses must be 32-bit VAs')
+    code = bytearray()
+
+    def rel8(target):
+        code.append((target - (len(code) + 1)) & 0xff)
+
+    def u32(v):
+        return struct.pack('<I', v & 0xffffffff)
+    code += b'\x83\x3d' + u32(armed) + b'\x00' + b'\x74'
+    rel8(STUB_CONTINUE)
+    code += b'\xa1' + u32(view) + b'\x39\x44\x24\x28' + b'\x75'
+    rel8(STUB_CONTINUE)
+    code += b'\xff\x05' + u32(visits)  # sector-view visits while armed
+    code += b'\x69\xc7' + u32(2654435761) + b'\xc1\xe8\x17' + b'\x6b\xc0\x30'  # 0x9e3779b1, the tables' slot_of multiplier
+    for probe in range(TABLE_PROBE):
+        code += b'\x8b\x88' + u32(table) + b'\x3b\xcf' + b'\x74'
+        rel8(STUB_HIT)
+        if probe + 1 == TABLE_PROBE:
+            break
+        code += b'\x85\xc9' + b'\x74'
+        rel8(STUB_CONTINUE)
+        code += b'\x83\xc0\x30'
+    code += b'\xff\x25' + u32(next_slot)
+    code += b'\x8b\x8f' + u32(MODEL_OFFSET) + b'\x3b\x88' + u32(table + 4) + b'\x75'
+    rel8(STUB_REJECT_MODEL)
+    code += b'\x8b\x0d' + u32(stamp) + b'\x3b\x88' + u32(table + 8) + b'\x75'
+    rel8(STUB_REJECT_STAMP)
+    for axis in range(3):
+        code += b'\x8b\x8f' + u32(POSITION_OFFSET + 4 * axis) + b'\x3b\x88' + u32(table + 12 + 8 * axis) + b'\x7c'
+        rel8(STUB_REJECT_POSITION)
+        code += b'\x3b\x88' + u32(table + 16 + 8 * axis) + b'\x7f'
+        rel8(STUB_REJECT_POSITION)
+    code += b'\xeb'
+    rel8(STUB_SKIP)
+    for counter in (rejected_model, rejected_stamp, rejected_position):
+        code += b'\xff\x05' + u32(counter) + b'\xff\x25' + u32(next_slot)
+    code += b'\xff\x05' + u32(skipped_parts) + b'\x8b\x88' + u32(table + 36) + b'\x01\x0d' + u32(skipped_draws)
+    code += b'\x8b\x4f\x18' + b'\x85\xc9' + b'\x8b\x87\xd8\x01\x00\x00' + b'\x74'
+    rel8(STUB_CULL)
+    code += b'\x8b\x89\xd8\x01\x00\x00' + b'\x3b\xc8' + b'\x7e'
+    rel8(STUB_CULL)
+    code += b'\x8b\xc1' + b'\xe9' + u32(cull_target - (at + STUB_LENGTH))
+    assert len(code) == STUB_LENGTH
+    return bytes(code)
+
+
+ENGINE_STUB_ARGS = (0x10000000, 0x10002000, 0x10002004, 0x10002008, 0x10003000, 0x1000200c, 0x10002010, 0x10002014, 0x10002018,
+                    0x1000201c, 0x10002020, 0x0047d2c3, 0x10000118)
 
 
 class OcclusionCullHost(unittest.TestCase):
@@ -36,7 +109,70 @@ class OcclusionCullHost(unittest.TestCase):
         result = dict(re.findall(r'(\w+)=(\d+)', run.stdout.splitlines()[-1]))
         self.assertEqual(run.returncode, 0)
         self.assertEqual(result['failed'], '0')
-        self.assertGreaterEqual(int(result['checks']), 85)
+        self.assertGreaterEqual(int(result['checks']), 125)
+        # The engine-side stub the C++ encoder emits is the twin's, byte for byte.
+        stub = next(line[5:] for line in run.stdout.splitlines() if line.startswith('STUB '))
+        self.assertEqual(bytes.fromhex(stub), encode_engine_stub(*ENGINE_STUB_ARGS))
+
+    def test_engine_stub_twin(self):
+        twin = encode_engine_stub(*ENGINE_STUB_ARGS)
+        self.assertEqual(len(twin), STUB_LENGTH)
+        self.assertEqual(twin[STUB_REPLAY:STUB_REPLAY + 25], small.WINDOW[14:39])  # 0x0047d2a2..0x0047d2b9 replayed
+        self.assertEqual(twin[STUB_CULL], 0xe9)
+        self.assertEqual(struct.unpack('<i', twin[STUB_CULL + 1:STUB_CULL + 5])[0], small.CULL_VA - (0x10000000 + STUB_LENGTH))
+        self.assertEqual(twin.count(b'\xff\x25' + struct.pack('<I', 0x10000118)), 4)  # continue and the three rejects
+        self.assertEqual(twin[:9], b'\x83\x3d' + struct.pack('<I', 0x10002000) + b'\x00\x74\x5a')
+        self.assertEqual(twin[9:20], b'\xa1' + struct.pack('<I', 0x10002004) + b'\x39\x44\x24\x28\x75\x4f')
+        self.assertEqual(twin[20:38], b'\xff\x05' + struct.pack('<I', 0x1000200c) + bytes.fromhex('69c7b179379e c1e817 6bc030'.replace(' ', '')))
+        self.assertIn('inline std::uint32_t slot_of(std::uint32_t value, std::uint32_t slots) {\n    return (value * 2654435761u)',
+                      (ROOT / 'src/proxy/occlusion_cull_core.h').read_text())  # the stub's multiplier is the tables' (0x9e3779b1)
+        self.assertNotIn(b'\xe8', twin[STUB_SKIP:STUB_CULL])  # no call anywhere after the probes either
+        text = ENGINE_CORE.read_text()
+        self.assertIn('constexpr unsigned stub_length = 285', text)
+        self.assertIn('EDX', text)  # the liveness contract is stated with the bytes
+        with self.assertRaises(ValueError):
+            encode_engine_stub(1 << 32, *ENGINE_STUB_ARGS[1:])
+
+    def test_engine_wiring(self):
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('occlusion_engine_cull::initialize(occlusion_cull_on && parsed == engine::Mode::engine)', capture)
+        self.assertLess(capture.index('lens_flare_cull::initialize('), capture.index('occlusion_engine_cull::initialize('))
+        self.assertIn('engine::parse_mode(mode, &parsed)', capture)
+        self.assertIn('engine=%u engine_status=%s', capture)
+        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        self.assertLess(loader.index('x3m::occlusion_engine_cull::shutdown();'), loader.index('x3m::lens_flare_cull::shutdown();'))
+        self.assertIn('src/proxy/occlusion_engine_cull.cpp', (ROOT / 'CMakeLists.txt').read_text())
+        module = (ROOT / 'src/proxy/occlusion_engine_cull.cpp').read_text()
+        self.assertIn('cull_small_parts::chain_stub(site, cull_target, reinterpret_cast<void*>(stub), slot, &reason)', module)
+        self.assertNotIn('x3m::config::get', module)  # the mode is capture.cpp's read
+        self.assertIn('install_at(small::site_va, small::cull_va)', module)
+        # The table is published at the sector view's Clear, right after the scene camera read, before the pass.
+        motion = MOTION.read_text()
+        clear = motion[motion.index('void MotionOutput::after_clear'):motion.index('void MotionOutput::after_clear') + 4000]
+        self.assertIn('read_camera(true);\n        // The engine-side occlusion skip', clear)
+        self.assertIn('if (occlusion_engine_) occlusion_engine_publish();', clear)
+        inc = INC.read_text()
+        # Every scene draw of a node counts at the scene gate, before the small-prop cull and every refusal of the
+        # draw-level cull (user_memory, active queries, a failed pass, z/blend, no bounds): only a proxy skip counts
+        # against it, so a node with any other draw is never published.
+        gate = motion.index('if (occlusion_engine_) occlusion_ledger_scene_draw();')
+        self.assertLess(motion.index('route.scene = true;'), gate)
+        self.assertLess(gate, motion.index('if (props_on_ && cull_small_prop(call, route)) return;'))
+        self.assertIn('occlusion_ledger_slot_ = occlusion_ledger_->draw(std::uint32_t(node));', inc)
+        self.assertLess(inc.index('ledger_slot = occlusion_ledger_slot_;'), inc.index('FAILED(render_state(D3DRS_ZENABLE, &z))'))
+        self.assertIn('occlusion_ledger_->skipped(ledger_slot, model, read)', inc)
+        self.assertIn('if (occlusion_engine_) occlusion_engine_cull::disarm();', motion)  # the destructor disarms
+        self.assertIn('occlusion_engine_samples_ = 0;', inc)  # sample rows per publish (8 per frame at most)
+        self.assertIn('cull_small_parts::site_chainable(site, cull_target, &reason)', module)  # checked before emitting
+        self.assertIn('occlusion_engine_cull::take()', inc)  # counters read and the stub disarmed at Present
+        for field in ('engine_skipped_parts', 'engine_skipped_draws', 'guard_rejected', 'withheld', 'engine_published', 'engine_visits', 'engine_view_changes'):
+            for prefix in ('occlusion_cull device=%llu frame=%llu', 'occlusion_cull_session'):
+                start = inc.index(f'log("{prefix} ')
+                self.assertTrue(re.search(rf'\b{field}=', inc[start:inc.index('id_,', start)]), (prefix, field))
+        self.assertNotIn('occlusion', (ROOT / 'src/proxy/frame_phases.cpp').read_text())  # frame_phases untouched
+        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        self.assertIn('void configure_occlusion_cull(bool on, unsigned retest, bool engine = false) noexcept', header)
+        self.assertIn('occlusion_engine_ = on && engine;', header)
 
     def test_draw_site_order(self):
         text = MOTION.read_text()
@@ -158,7 +294,7 @@ class OcclusionCullHost(unittest.TestCase):
         entries = {e['key']: e for e in schema.SETTINGS}
         self.assertIn('occlusion_cull', entries)
         e = entries['occlusion_cull']
-        self.assertEqual((e['type'], e['choices'], e['builtin']), ('enum', ('on', 'off'), 'off'))
+        self.assertEqual((e['type'], e['choices'], e['builtin']), ('enum', ('on', 'off', 'engine'), 'off'))
         self.assertNotIn('occlusion_cull_budget', entries)  # no tuned budget (user 2026-10-08): only the fixed pool
         r = entries['occlusion_cull_retest']
         self.assertEqual((r['type'], r['builtin'], r['requires']), ('int', '8', ('occlusion_cull',)))
@@ -188,8 +324,19 @@ class OcclusionCullHost(unittest.TestCase):
             self.assertEqual(record['result']['failed'], 0)
             # Bound to the production sources it ran (the pass, the core) and the fixture.
             for source in ('src/renderer/occlusion_cull_pass.cpp', 'src/renderer/occlusion_cull_pass.h',
-                           'src/proxy/occlusion_cull_core.h', 'verification/probe/occlusion_cull_fixture.cpp'):
+                           'src/proxy/occlusion_cull_core.h', 'src/proxy/occlusion_engine_core.h',
+                           'verification/probe/occlusion_cull_fixture.cpp'):
                 self.assertEqual(record['sources'][source], hashlib.sha256((ROOT / source).read_bytes()).hexdigest(), source)
+            # The engine-side skip's verdict table on the production pass (part 1b): the duty cycle, the guards, the
+            # fall-back to drawn.
+            engine = record['engine_summary'][0]
+            self.assertEqual(engine['e_after_full'], engine['e_total'])
+            self.assertGreaterEqual(engine['e_total'], 12)
+            self.assertEqual((engine['visible_e'], engine['partial_e'], engine['h1_e_after_w'], engine['overflow']), (0, 0, 0, 0))
+            self.assertEqual(engine['h1_cycle'].split('/')[0], engine['h1_cycle'].split('/')[1])
+            self.assertGreaterEqual(engine['withheld'], 1)
+            self.assertEqual(engine['rej_stamp_at_s'], engine['published_at_s'])
+            self.assertEqual(engine['mover_drawn_from_h2'], 1)
             real = record['real_summary'][0]
             self.assertEqual(real['hidden_skips'], real['hidden_expected'])
             self.assertEqual((real['visible_skips'], real['diff_outside'], real['state_failures']), (0, 0, 0))

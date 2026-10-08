@@ -59,6 +59,8 @@
 #include "../../src/proxy/cull_small_props_core.h"
 #include "../../src/proxy/lens_flare_cull.h"
 #include "../../src/proxy/lens_flare_cull_core.h"
+#include "../../src/proxy/occlusion_engine_cull.h"
+#include "../../src/proxy/occlusion_engine_core.h"
 #include "../../src/proxy/engine_far_jets.h"
 #include "../../src/proxy/engine_effects_core.h"
 #include "run131_rows_inc.h"
@@ -1333,6 +1335,264 @@ static void lens_section(std::uintptr_t site, std::uintptr_t cull, View& view) {
     std::printf("LENS FLARE CULL checks=%u failures=%u\n", checks - checks_before, failures - failures_before);
 }
 
+// ---- engine-side occlusion skip (X3M_OCCLUSION_CULL=engine, src/proxy/occlusion_engine_cull.cpp): the third stub
+// executed on the synthetic pass, alone and chained with the lens-flare and small-parts stubs in both orders ----
+// A root with seven children: XH listed in the table (three draws, every one a proxy skip), XM listed under another
+// model id, XP listed at a camera-space position outside its window (the ledger recorded +0xf0 shifted by 1000 units
+// against the 100000 / 256 = 390 window), XN drawn (never listed), XF a flare body (the lens stub), XS a small node
+// (the small-parts stub at threshold 10) and XL last and kept, so the pass's return state (EAX/ECX/EDX/EFLAGS) follows a
+// node that took the tail. Checks: both exits of the stub (the replay into the tail: every kept node byte-identical to
+// the native pass and the pass's outputs identical, so the tail's TEST fed the JE at the engine's 0x0047d2ad as native;
+// the jump to the cull: XH ends exactly as the engine's own size cull leaves it), callee-saved registers, ESP and the
+// x87 stack as native, LastError preserved, the six counters (visits, skipped parts/draws, the three guards), the stamp
+// guard through the stamp word, a non-sector view (another View object) not skipped and not counted, the disarmed
+// stub, take() clearing and disarming, the chain in the production order (engine stub first) and reversed (last), the
+// owner's restore, and refusals (initialize without the engine's bytes emits nothing: the arena is unchanged).
+namespace oe = x3m::occlusion_cull::engine;
+namespace eng = x3m::occlusion_engine_cull;
+static Node X, XH, XM, XP, XN, XF, XS, XL;
+static Node* const eng_all[] = {&X, &XH, &XM, &XP, &XN, &XF, &XS, &XL};
+constexpr unsigned eng_count = sizeof eng_all / sizeof eng_all[0];
+static Node eng_initial[eng_count];
+static void eng_reset() {
+    for (unsigned i = 0; i < eng_count; ++i) *eng_all[i] = eng_initial[i];
+}
+static bool eng_all_native(const Node* native) {
+    for (unsigned i = 0; i < eng_count; ++i)
+        if (std::memcmp(eng_all[i]->bytes, native[i].bytes, sizeof(Node))) return false;
+    return true;
+}
+static bool eng_counters(std::uint32_t visits, std::uint32_t parts, std::uint32_t draws, std::uint32_t model,
+                         std::uint32_t stamp, std::uint32_t position) {
+    return x3m_occlusion_engine_visits == visits && x3m_occlusion_engine_skipped_parts == parts &&
+           x3m_occlusion_engine_skipped_draws == draws && x3m_occlusion_engine_rejected_model == model &&
+           x3m_occlusion_engine_rejected_stamp == stamp && x3m_occlusion_engine_rejected_position == position;
+}
+static void engine_section(std::uintptr_t site, std::uintptr_t cull, View& view) {
+    const unsigned checks_before = checks, failures_before = failures;
+    node_set(X, nullptr, 20000, 100000, 0x1002, 0, 0, 0x5000, 4, 100, 50, 25);
+    node_set(XH, &X, 3000, 100000, 0x1002, 0, 0, 0x6001);
+    node_set(XM, &X, 3000, 100000, 0x1002, 0, 0, 0x6002);
+    node_set(XP, &X, 3000, 100000, 0x1002, 0, 0, 0x6003);
+    node_set(XN, &X, 3000, 100000, 0x1002, 0, 0, 0x6004);
+    node_set(XF, &X, 1000, 30000, 0x1002, 0, 0, 752);    // a fixed flare body: the lens stub's
+    node_set(XS, &X, 800, 100000, 0x1002, 0, 0, 0x6005);  // s = 5: the small-parts stub's at threshold 10
+    node_set(XL, &X, 3000, 100000, 0x1002, 0, 0, 0x6006); // last: kept on every path
+    Node* children[] = {&XH, &XM, &XP, &XN, &XF, &XS, &XL};
+    link_parented(X, children, 7);
+    for (unsigned i = 0; i < eng_count; ++i) eng_initial[i] = *eng_all[i];
+    static Node native[eng_count], culled_reference[eng_count];
+    eng_reset();
+    const Result native_result = run(X, view);
+    for (unsigned i = 0; i < eng_count; ++i) native[i] = *eng_all[i];
+    check(native_result.preserved && native_result.x87_empty && (get(XH.bytes, 0x12c) & 2) && (get(XF.bytes, 0x12c) & 2) &&
+              (get(XS.bytes, 0x12c) & 2) && (get(XL.bytes, 0x12c) & 2),
+          "engine: native tree keeps every node");
+    // The engine's own size cull of XH, XF and XS (a limit above their measure): the reference every stub must
+    // reproduce byte for byte except the limit word itself.
+    eng_reset();
+    put(XH.bytes, ccore::threshold_1d8_offset, 0x7fffffffu);
+    put(XF.bytes, ccore::threshold_1d8_offset, 0x7fffffffu);
+    put(XS.bytes, ccore::threshold_1d8_offset, 0x7fffffffu);
+    run(X, view);
+    for (unsigned i = 0; i < eng_count; ++i) culled_reference[i] = *eng_all[i];
+    check(!(get(XH.bytes, 0x12c) & 2) && !(get(XF.bytes, 0x12c) & 2) && !(get(XS.bytes, 0x12c) & 2),
+          "engine: the engine's own size cull reference");
+    auto culled_as_engine = [&](const Node& n, unsigned i) {
+        return !(get(n.bytes, 0x12c) & 2) && lens_same_but(&n, &culled_reference[i], ccore::threshold_1d8_offset);
+    };
+
+    // ---- initialize(): off at the modes on/off; refused without the engine's bytes, nothing emitted ----
+    const unsigned arena_before = x3m::engine_patch::arena_used();
+    check(!eng::initialize(false) && !std::strcmp(eng::state(), "mode") && !eng::installed(),
+          "engine: initialize with the mode on/off: nothing patched");
+    check(!eng::initialize(true) && !std::strcmp(eng::state(), "bytes_mismatch") && !eng::installed() &&
+              small_window_original() && x3m::engine_patch::arena_used() == arena_before,
+          "engine: initialize without the engine's window bytes: refused before any stub is emitted (arena unchanged)");
+
+    // ---- install alone: the claim is made by this module; the bytes are the encoder's ----
+    const bool installed_alone = eng::install_at(site, cull);
+    if (!installed_alone)
+        std::printf("DETAIL engine install state=%s arena_used=%u of %u\n", eng::state(), x3m::engine_patch::arena_used(),
+                    x3m::engine_patch::arena_capacity());
+    check(installed_alone && !std::strcmp(eng::state(), "ok") && eng::installed() && small::site_claimed() &&
+              !small::stub_address() && !lens::installed() && small_site()[0] == 0xe9,
+          "engine: install_at alone claims the shared site");
+    check(!eng::install_at(site, cull) && !std::strcmp(eng::state(), "already_installed"), "engine: second install refused");
+    {
+        const std::uint32_t at = std::uint32_t(eng::stub_address()), slot = (at + oe::stub_length + 3) & ~3u;
+        unsigned char want[oe::stub_length];
+        const oe::StubWords words{addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_armed)),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_view)),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_stamp)),
+                                  addr(eng::table().entries),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_visits)),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_skipped_parts)),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_skipped_draws)),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_rejected_model)),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_rejected_stamp)),
+                                  addr(const_cast<std::uint32_t*>(&x3m_occlusion_engine_rejected_position))};
+        oe::encode_stub(at, words, std::uint32_t(cull), slot, want);
+        check(at != 0 && !std::memcmp(reinterpret_cast<const void*>(at), want, oe::stub_length) &&
+                  *reinterpret_cast<void**>(slot) != nullptr,
+              "engine: stub bytes as encoded, continuation slot points at the tail");
+    }
+    // Disarmed (nothing published): the pass is native, nothing counted.
+    eng_reset();
+    Result r = run(X, view);
+    check(r.preserved && r.x87_empty && same_outputs(r, native_result) && eng_all_native(native) && eng_counters(0, 0, 0, 0, 0, 0),
+          "engine: installed but disarmed: every node and EAX/ECX/EDX/EFLAGS as native, nothing counted");
+
+    // ---- the previous frame's ledger: XH three skipped draws; XM skipped under model 0x7002 (the node carries
+    // 0x6002); XP skipped at +0xf0 - 1000 (outside the 390-unit window); XN drawn ----
+    static oe::Ledger ledger;
+    auto shifted_read = [&](std::uintptr_t p, void* out, std::size_t n) {
+        std::memcpy(out, reinterpret_cast<const void*>(p), n);
+        if (p == addr(&XP) + oe::position_offset) {
+            std::int32_t v;
+            std::memcpy(&v, out, 4);
+            v -= 1000;
+            std::memcpy(out, &v, 4);
+        }
+        return true;
+    };
+    ledger.begin(41, addr(&view));
+    for (unsigned i = 0; i < 3; ++i) ledger.skipped(ledger.draw(addr(&XH)), 0x6001, shifted_read);
+    ledger.skipped(ledger.draw(addr(&XM)), 0x7002, shifted_read);
+    ledger.skipped(ledger.draw(addr(&XP)), 0x6003, shifted_read);
+    ledger.draw(addr(&XN));
+    oe::PublishStats st{};
+    unsigned published = eng::publish(ledger, 42, 1, &st);
+    check(published == 3 && st.candidates == 4 && st.withheld == 0 && x3m_occlusion_engine_armed == 1 &&
+              x3m_occlusion_engine_view == addr(&view) && x3m_occlusion_engine_stamp == 42 && eng::table().find(addr(&XH)) &&
+              eng::table().find(addr(&XH))->draws == 3 && !eng::table().find(addr(&XN)),
+          "engine: publish lists the three fully skipped nodes, arms the stub with the view and the stamp");
+    // ---- armed, the sector view: XH takes the cull exit, XM and XP the guards, XN misses; the rest native ----
+    eng_reset();
+    SetLastError(0x5155);
+    r = run(X, view);
+    check(GetLastError() == 0x5155, "engine: LastError preserved across the armed pass");
+    check(r.preserved && r.x87_empty && same_outputs(r, native_result),
+          "engine: armed: callee-saved registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as native (the tail's TEST fed the JE)");
+    if (!culled_as_engine(XH, 1)) {
+        std::int32_t pos[3];
+        std::memcpy(pos, XH.bytes + oe::position_offset, 12);
+        const oe::Entry* e = eng::table().find(addr(&XH));
+        std::printf("DETAIL engine armed run: visits=%lu parts=%lu draws=%lu rejected=%lu,%lu,%lu xh_flags=%08lx xh_pos=%ld,%ld,%ld "
+                    "entry=%s lo=%ld hi=%ld mirror=%u view_word=%08lx view=%08lx stamp_word=%lu\n",
+                    (unsigned long)x3m_occlusion_engine_visits, (unsigned long)x3m_occlusion_engine_skipped_parts,
+                    (unsigned long)x3m_occlusion_engine_skipped_draws, (unsigned long)x3m_occlusion_engine_rejected_model,
+                    (unsigned long)x3m_occlusion_engine_rejected_stamp, (unsigned long)x3m_occlusion_engine_rejected_position,
+                    (unsigned long)get(XH.bytes, 0x12c), (long)pos[0], (long)pos[1], (long)pos[2], e ? "yes" : "no",
+                    e ? (long)e->lo_x : 0L, e ? (long)e->hi_x : 0L,
+                    unsigned(eng::table().lookup(addr(&XH), 0x6001, pos, x3m_occlusion_engine_stamp)),
+                    (unsigned long)x3m_occlusion_engine_view, (unsigned long)addr(&view), (unsigned long)x3m_occlusion_engine_stamp);
+    }
+    check(culled_as_engine(XH, 1), "engine: the listed node ends exactly as the engine's own size cull leaves it (cull exit)");
+    check(!std::memcmp(XM.bytes, native[2].bytes, sizeof(Node)) && !std::memcmp(XP.bytes, native[3].bytes, sizeof(Node)) &&
+              !std::memcmp(XN.bytes, native[4].bytes, sizeof(Node)) && !std::memcmp(XF.bytes, native[5].bytes, sizeof(Node)) &&
+              !std::memcmp(XS.bytes, native[6].bytes, sizeof(Node)) && !std::memcmp(XL.bytes, native[7].bytes, sizeof(Node)) &&
+              !std::memcmp(X.bytes, native[0].bytes, sizeof(Node)),
+          "engine: the model-guarded, position-guarded, unlisted and other nodes take the tail untouched (replay exit)");
+    check(eng_counters(8, 1, 3, 1, 0, 1),
+          "engine: counters: 8 visits (root and seven children), 1 part / 3 draws skipped, model 1, stamp 0, position 1");
+    // ---- the stamp guard: the stamp word of another frame ----
+    x3m_occlusion_engine_stamp = 43;
+    eng_reset();
+    r = run(X, view);
+    check(same_outputs(r, native_result) && eng_all_native(native) && eng_counters(16, 1, 3, 2, 2, 1),
+          "engine: a stale stamp: nothing skipped (XH and XP rejected by stamp, XM by model first)");
+    x3m_occlusion_engine_stamp = 42;
+    // ---- a non-sector view: another View object with the same contents ----
+    {
+        View other;
+        std::memcpy(other.bytes, view.bytes, sizeof other.bytes);
+        eng_reset();
+        r = run(X, other);
+        check(same_outputs(r, native_result) && eng_all_native(native) && eng_counters(16, 1, 3, 2, 2, 1),
+              "engine: another view: nothing skipped, no visit counted");
+    }
+    // ---- take(): the counters since the previous take, then cleared and disarmed ----
+    {
+        const eng::Counters c = eng::take();
+        eng_reset();
+        r = run(X, view);
+        check(c.visits == 16 && c.skipped_parts == 1 && c.skipped_draws == 3 && c.rejected_model == 2 && c.rejected_stamp == 2 &&
+                  c.rejected_position == 1 && x3m_occlusion_engine_armed == 0 && eng_all_native(native) && eng_counters(0, 0, 0, 0, 0, 0),
+              "engine: take() returns the counters, clears them and disarms: the next pass is native");
+    }
+    check(eng::shutdown() && !eng::installed() && eng::shutdown(), "engine: shutdown disarms; a second is a no-op");
+    check(small::shutdown() && small_window_original(), "engine: the owner's shutdown restores the site");
+    eng_reset();
+    r = run(X, view);
+    check(same_outputs(r, native_result) && eng_all_native(native), "engine: after the restore the native pass is back");
+
+    // ---- the lens stub's body set: fixed slots without names resolve by id (752 among them) ----
+    constexpr unsigned slots = ccore::body_fixed_count;
+    static unsigned char manager[0xc0];
+    unsigned char* table = static_cast<unsigned char*>(
+        VirtualAlloc(nullptr, (slots + 1) * ccore::body_slot_stride, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+    check(table != nullptr, "engine: synthetic body slots for the lens stub");
+    std::memset(manager, 0, sizeof manager);
+    put(manager, ccore::body_fixed_count_offset, ccore::body_fixed_count);
+    put(manager, ccore::body_dynamic_count_offset, 0);
+    put(manager, ccore::body_slots_offset, addr(table));
+    static std::uint32_t manager_global = 0;
+    manager_global = addr(manager);
+    lens::set_body_table_global(addr(&manager_global));
+    // visits: with this stub first every node reaching the site is counted (8); last, the nodes the lens and small-parts
+    // stubs culled before it (XF, XS) never reach it (6).
+    auto chained_run = [&](const char* order, std::uint32_t visits) {
+        lens::begin_frame(12);
+        x3m_cull_small_parts_threshold = 10;
+        x3m_cull_small_parts_upper = 10;
+        x3m_cull_small_parts_culled = 0;
+        x3m_lens_flare_cull_culled = 0;
+        eng::publish(ledger, 42, 1, &st);
+        eng_reset();
+        SetLastError(0x5156);
+        r = run(X, view);
+        char label[160];
+        std::snprintf(label, sizeof label, "engine: %s: XH by this stub, XF by the lens stub, XS by the small-parts stub, the rest kept", order);
+        const bool ok = GetLastError() == 0x5156 && r.preserved && r.x87_empty && same_outputs(r, native_result) &&
+                        culled_as_engine(XH, 1) && culled_as_engine(XF, 5) && culled_as_engine(XS, 6) &&
+                        !std::memcmp(XM.bytes, native[2].bytes, sizeof(Node)) && !std::memcmp(XP.bytes, native[3].bytes, sizeof(Node)) &&
+                        !std::memcmp(XN.bytes, native[4].bytes, sizeof(Node)) && !std::memcmp(XL.bytes, native[7].bytes, sizeof(Node)) &&
+                        x3m_lens_flare_cull_enabled == 1 && x3m_lens_flare_cull_culled == 1 && x3m_cull_small_parts_culled == 1 &&
+                        eng_counters(visits, 1, 3, 1, 0, 1);
+        if (!ok)
+            std::printf("DETAIL engine chained (%s): preserved=%d outputs=%d xh=%d xf=%d xs=%d lens_enabled=%lu lens_culled=%lu "
+                        "small_culled=%lu visits=%lu parts=%lu draws=%lu rejected=%lu,%lu,%lu\n",
+                        order, int(r.preserved), int(same_outputs(r, native_result)), int(culled_as_engine(XH, 1)),
+                        int(culled_as_engine(XF, 5)), int(culled_as_engine(XS, 6)), (unsigned long)x3m_lens_flare_cull_enabled,
+                        (unsigned long)x3m_lens_flare_cull_culled, (unsigned long)x3m_cull_small_parts_culled,
+                        (unsigned long)x3m_occlusion_engine_visits, (unsigned long)x3m_occlusion_engine_skipped_parts,
+                        (unsigned long)x3m_occlusion_engine_skipped_draws, (unsigned long)x3m_occlusion_engine_rejected_model,
+                        (unsigned long)x3m_occlusion_engine_rejected_stamp, (unsigned long)x3m_occlusion_engine_rejected_position);
+        check(ok, label);
+        eng::take();
+        x3m_cull_small_parts_threshold = 0;
+        x3m_cull_small_parts_upper = 0;
+    };
+    // ---- the production order: small-parts claims, the lens stub chains in front, this stub last pushed (runs first) ----
+    check(small::install_at(site, cull, true) && lens::install_at(site, cull, true) && eng::install_at(site, cull) &&
+              small::site_claimed() && !std::strcmp(eng::state(), "ok"),
+          "engine: production order: small-parts, lens, engine (the engine stub runs first)");
+    chained_run("engine stub first", 8);
+    check(eng::shutdown() && lens::shutdown() && small::shutdown() && small_window_original(), "engine: all three down, bytes exact");
+    // ---- reversed: this stub claims, the other two chain in front of it (it runs last, from the lens stub's continue) ----
+    check(eng::install_at(site, cull) && small::install_at(site, cull, true) && lens::install_at(site, cull, true) &&
+              small::site_claimed(),
+          "engine: reversed order: engine claims, small-parts and lens chain in front (the engine stub runs last)");
+    chained_run("engine stub last", 6);
+    check(eng::shutdown() && lens::shutdown() && small::shutdown() && small_window_original(), "engine: all three down again");
+    eng_reset();
+    r = run(X, view);
+    check(same_outputs(r, native_result) && eng_all_native(native) && x3m_occlusion_engine_armed == 0, "engine: native after both orders");
+    lens::set_body_table_global(addr(&zero_global_for_lens));
+    std::printf("ENGINE SKIP checks=%u failures=%u\n", checks - checks_before, failures - failures_before);
+}
+
 // ---- far engine jets (X3M_ENGINE_EFFECTS=plumes): culled JET nodes handed to x3m_engine_far_jet ----
 namespace fj = x3m::engine_far_jets;
 namespace fcore = x3m::engine_far_jets::core;
@@ -2391,9 +2651,12 @@ int main() {
     check(small::shutdown() && small_window_original(), "projectiles off: restore, rollback bytes exact");
     far_section(site, cull, view, replay_initial);
     lens_section(site, cull, bench_view);
+    engine_section(site, cull, bench_view);
     x3m::engine_patch::close_install_window("fixture");
     check(!small::install_at(site, cull, true) && !std::strcmp(small::state(), "late_claim") && small_window_original(),
           "closed install window: late_claim, site untouched");
+    check(!eng::install_at(site, cull) && !std::strcmp(eng::state(), "late_claim") && small_window_original(),
+          "engine: closed install window: late_claim, site untouched");
     check(!lens::install_at(site, cull, true) && !std::strcmp(lens::state(), "late_claim") && small_window_original(),
           "lens: closed install window: late_claim, site untouched");
     props_section();

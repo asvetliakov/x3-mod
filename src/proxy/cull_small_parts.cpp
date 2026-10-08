@@ -168,6 +168,11 @@ bool chain_stub(std::uintptr_t site, std::uintptr_t cull_target, void* stub, voi
     *status = reason ? reason : "ok";
     return reason == nullptr;
 }
+bool site_chainable(std::uintptr_t site, std::uintptr_t cull_target, const char** status) {
+    const char* reason = check_site(site, cull_target);
+    *status = reason ? reason : "ok";
+    return reason == nullptr;
+}
 bool site_claimed() {
     return site_claimed_;
 }

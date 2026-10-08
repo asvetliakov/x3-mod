@@ -15,7 +15,16 @@
 // clip planes, a bound target that cannot blend, an open application query, a full pool slot or any failed call draws
 // the part.
 // Without the shadow-replay candidate counter (no cascade set) there are no extents: one row, off on that device.
-// The engine's state is never written.
+// The engine's state is never written by the draw path.
+//
+// Engine-side skip (X3M_OCCLUSION_CULL=engine; occlusion_engine_core.h, occlusion_engine_cull.h): every scene draw with
+// a scope node is counted in a per-node ledger of the frame, a skipped draw again (with the node's model id and its
+// view-space position +0xf0..+0xf8, one 12-byte read per skipped node per frame); at the next frame's sector-view
+// Clear (after_clear, before the engine's cull/LOD pass of that view) occlusion_engine_publish() rebuilds the stub's
+// table from the ledger: a node whose every draw was skipped, with a live position and off its forced-redraw phase,
+// is skipped by the engine's pass for that view (no render visit, so no draw and no ledger entry), draws through this
+// path again the frame after and alternates from there (the duty cycle). The stub's counters are read and it is
+// disarmed at Present (occlusion_cull_frame_end). Ledger, publish and counters all run on the render thread.
 // Per scene draw with the option on: one scope read and one memo probe; the first draw of a node per frame adds one
 // model read, a class-cache probe and (hull) one parent read, a hull-table probe and a 16-float copy or (part) a walk of
 // at most walk_depth parent reads. A part draw adds the extent probe, eight corner transforms, three native state reads
@@ -29,13 +38,17 @@ __attribute__((noinline)) bool MotionOutput::attach_occlusion_cull() noexcept {
     occlusion_classifier_ = new (std::nothrow) occlusion_cull::core::Classifier();
     occlusion_batcher_ = new (std::nothrow) occlusion_cull::core::Batcher();
     if (occlusion_batcher_) occlusion_batcher_->retest = occlusion_retest_;
-    if (!occlusion_classifier_ || !occlusion_batcher_) {
+    if (occlusion_engine_ && !occlusion_ledger_) occlusion_ledger_ = new (std::nothrow) occlusion_cull::engine::Ledger();
+    if (!occlusion_classifier_ || !occlusion_batcher_ || (occlusion_engine_ && !occlusion_ledger_)) {
         delete occlusion_classifier_;
         delete occlusion_batcher_;
+        delete occlusion_ledger_;
         occlusion_classifier_ = nullptr;
         occlusion_batcher_ = nullptr;
+        occlusion_ledger_ = nullptr;
         occlusion_attach_failed_ = true;
         occlusion_on_ = false;
+        occlusion_engine_ = false;
         log("occlusion_cull_device device=%llu attached=0 reason=out_of_memory", id_);
         return false;
     }
@@ -60,6 +73,10 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
     }
     std::uintptr_t descriptor = 0, node = 0;
     if (!object_trace::executable_verified() || !object_trace::scope_node(&descriptor, &node)) return false;
+    // The engine-side skip's ledger slot of this draw (occlusion_ledger_scene_draw, taken at the scene gate before the
+    // small-prop cull and every refusal above and below): a skipped verdict counts against it at the end.
+    occlusion_cull::engine::Ledger::Slot* ledger_slot = occlusion_ledger_slot_;
+    occlusion_ledger_slot_ = nullptr;
     DWORD z = 0, blend = 1;
     if (FAILED(render_state(D3DRS_ZENABLE, &z)) || z != D3DZB_TRUE || FAILED(render_state(D3DRS_ALPHABLENDENABLE, &blend)) ||
         blend)
@@ -204,8 +221,12 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
         }
         invalidate_taa(TaaInvalidateSite::RestoreFailed);
     }
+    if (verdict != renderer::OcclusionCullVerdict::skip) {
+        SetLastError(error);
+        return false;
+    }
+    if (ledger_slot) occlusion_ledger_->skipped(ledger_slot, model, read); // the node's position: one read per frame
     SetLastError(error);
-    if (verdict != renderer::OcclusionCullVerdict::skip) return false;
     route.submit = false;
     route.submission_error = D3D_OK;
     route.sun_color_writer = false; // not drawn: no stamp, no untracked-writer bookkeeping
@@ -213,8 +234,76 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
     route.unmatched = UnmatchedReason::None;
     return true;
 }
+// Every scene draw (evaluate_draw, right after the scene gate, before the small-prop cull and every refusal of the
+// draw-level cull): the engine-side skip's ledger counts it, so a node with any draw that is refused, culled by size
+// or never tested is never published (its draws exceed its skips). The frame's camera (the sector view the stub
+// compares) is read once per frame at its first scene draw. The slot is handed to cull_occluded through
+// occlusion_ledger_slot_ (one draw at a time on the render thread).
+void MotionOutput::occlusion_ledger_scene_draw() noexcept {
+    occlusion_ledger_slot_ = nullptr;
+    if (!occlusion_ledger_ || !object_trace::executable_verified()) return;
+    std::uintptr_t descriptor = 0, node = 0;
+    if (!object_trace::scope_node(&descriptor, &node) || !node) return;
+    const std::uint32_t stamp = std::uint32_t(frame_) + 1u;
+    if (occlusion_ledger_->frame != stamp) {
+        const DWORD scope_error = GetLastError();
+        object_trace::Snapshot scope{};
+        const std::uintptr_t camera =
+            object_trace::current(&scope, false) && (scope.valid & object_trace::Camera) ? scope.camera : 0;
+        SetLastError(scope_error);
+        occlusion_ledger_->begin(stamp, camera);
+    }
+    occlusion_ledger_slot_ = occlusion_ledger_->draw(std::uint32_t(node));
+}
+// The sector view's Clear (after_clear, render thread): the stub's table for the pass that follows, from the previous
+// frame's ledger. No ledger of the previous frame (a menu, a frame without scene draws) disarms the stub.
+void MotionOutput::occlusion_engine_publish() noexcept {
+    namespace oe = occlusion_cull::engine;
+    if (!occlusion_ledger_ || !occlusion_engine_cull::installed()) return;
+    const DWORD error = GetLastError();
+    const auto& l = *occlusion_ledger_;
+    const std::uint32_t stamp = std::uint32_t(frame_) + 1u; // this frame's stamp (cull_occluded's)
+    const bool previous = l.frame == stamp - 1u && l.touched_n && l.view;
+    oe::PublishStats st{};
+    unsigned published = 0;
+    if (previous)
+        published = occlusion_engine_cull::publish(l, stamp, occlusion_retest_, &st);
+    else
+        occlusion_engine_cull::disarm();
+    auto& e = occlusion_engine_frame_;
+    e.published += published;
+    e.withheld += st.withheld;
+    e.partial += st.partial;
+    e.no_position += st.no_position;
+    e.overflow += st.overflow;
+    e.dropped += previous ? l.dropped : 0;
+    if (!published) ++e.unarmed;
+    // The camera pointer the ledger saw (the sector view the stub compares) against the previous publish's.
+    if (previous && l.view != occlusion_engine_view_) {
+        if (occlusion_engine_view_) ++e.view_changes;
+        occlusion_engine_view_ = l.view;
+    }
+    // The first engine_sample_cap published entries of the frame: the window's bounds in the engine's camera-space
+    // units (chase-lead-reticle.md). --debug only.
+    occlusion_engine_samples_ = 0;
+    if (published && log_tier::cached_debug) {
+        const oe::Table& t = occlusion_engine_cull::table();
+        for (unsigned i = 0; i < t.used_n && occlusion_engine_samples_ < engine_sample_cap; ++i) {
+            const oe::Entry& en = t.entries[t.used[i]];
+            ++occlusion_engine_samples_;
+            log("occlusion_engine_sample device=%llu frame=%llu node=0x%08lx model=%lu draws=%lu lo=%ld,%ld,%ld hi=%ld,%ld,%ld "
+                "view=0x%08lx",
+                id_, frame_, static_cast<unsigned long>(en.node), static_cast<unsigned long>(en.model),
+                static_cast<unsigned long>(en.draws), static_cast<long>(en.lo_x), static_cast<long>(en.lo_y),
+                static_cast<long>(en.lo_z), static_cast<long>(en.hi_x), static_cast<long>(en.hi_y),
+                static_cast<long>(en.hi_z), static_cast<unsigned long>(l.view));
+        }
+    }
+    SetLastError(error);
+}
 // After each Present: the frame's occlusion_cull row (--debug), the session totals, and every 300 frames one
-// occlusion_cull_session row in every tier (the plain flight's evidence that the cull acted).
+// occlusion_cull_session row in every tier (the plain flight's evidence that the cull acted). With the engine-side
+// skip: the stub's counters of the frame are taken here (and the stub disarmed until the next publish).
 void MotionOutput::occlusion_cull_frame_end() noexcept {
     if (!occlusion_classifier_) return;
     renderer::OcclusionCullFrameStats f{};
@@ -222,22 +311,53 @@ void MotionOutput::occlusion_cull_frame_end() noexcept {
         f = occlusion_pass_->frame_stats();
         occlusion_pass_->frame_stats() = renderer::OcclusionCullFrameStats{};
     }
+    OcclusionEngineStats e = occlusion_engine_frame_;
+    occlusion_engine_frame_ = OcclusionEngineStats{};
+    if (occlusion_engine_) {
+        const occlusion_engine_cull::Counters c = occlusion_engine_cull::take();
+        e.visits = c.visits;
+        e.skipped_parts = c.skipped_parts;
+        e.skipped_draws = c.skipped_draws;
+        e.rejected_model = c.rejected_model;
+        e.rejected_stamp = c.rejected_stamp;
+        e.rejected_position = c.rejected_position;
+    }
+    auto& es = occlusion_engine_session_;
+    es.published += e.published;
+    es.withheld += e.withheld;
+    es.partial += e.partial;
+    es.no_position += e.no_position;
+    es.overflow += e.overflow;
+    es.dropped += e.dropped;
+    es.unarmed += e.unarmed;
+    es.view_changes += e.view_changes;
+    es.visits += e.visits;
+    es.skipped_parts += e.skipped_parts;
+    es.skipped_draws += e.skipped_draws;
+    es.rejected_model += e.rejected_model;
+    es.rejected_stamp += e.rejected_stamp;
+    es.rejected_position += e.rejected_position;
     const auto& r = occlusion_refused_;
     // The staggered re-test: the visible parts tested on their phase this frame, and the min/max of that count over
     // the last retest frames (flat when the phases spread the parts evenly).
     occlusion_cadence_spread_.push(f.cadence, occlusion_retest_);
     unsigned spread_lo = 0, spread_hi = 0;
     occlusion_cadence_spread_.range(occlusion_retest_, &spread_lo, &spread_hi);
-    if (log_tier::cached_debug && (f.candidates || r.no_bounds || r.unbounded || r.state))
+    if (log_tier::cached_debug && (f.candidates || r.no_bounds || r.unbounded || r.state || e.skipped_parts))
         log("occlusion_cull device=%llu frame=%llu candidates=%u tested=%u hidden=%u skipped=%u pool=%u ready=%u "
             "not_ready=%u ready_lag2=%u ready_age=%u,%u,%u errors=%u drawn_late=%u pool_truncated=%u unstable=%u "
             "no_hull=%u refused=%u failed=%u no_bounds=%u unbounded=%u state=%u retest_skipped=%u blocks=%u stale=%u "
-            "test_us=%u cadence=%u forced=%u retest_phase_spread=%u,%u",
+            "test_us=%u cadence=%u forced=%u retest_phase_spread=%u,%u engine=%u engine_published=%u "
+            "engine_skipped_parts=%u engine_skipped_draws=%u guard_rejected=%u,%u,%u withheld=%u engine_partial=%u "
+            "engine_no_position=%u engine_overflow=%u engine_dropped=%u engine_unarmed=%u engine_visits=%u "
+            "engine_view_changes=%u",
             id_, frame_, f.candidates, f.tested, f.hidden, f.skipped, occlusion_cull::core::pool_per_frame,
             f.hidden + f.visible, f.not_ready, f.ready_lag2, f.age1, f.age2, f.age_none, f.errors, f.drawn_late,
             f.pool_truncated, f.unstable, f.no_hull, f.refused, f.failed, r.no_bounds, r.unbounded, r.state,
             f.retest_skipped, f.blocks, f.stale, unsigned((f.test_ns + 500) / 1000), f.cadence, f.forced, spread_lo,
-            spread_hi);
+            spread_hi, occlusion_engine_ ? 1u : 0u, e.published, e.skipped_parts, e.skipped_draws, e.rejected_model,
+            e.rejected_stamp, e.rejected_position, e.withheld, e.partial, e.no_position, e.overflow, e.dropped, e.unarmed,
+            e.visits, e.view_changes);
     occlusion_session_.add(f);
     occlusion_session_refused_.no_bounds += r.no_bounds;
     occlusion_session_refused_.unbounded += r.unbounded;
@@ -253,12 +373,17 @@ void MotionOutput::occlusion_cull_frame_end() noexcept {
         "skipped=%u ready=%u not_ready=%u ready_lag2=%u ready_age=%u,%u,%u errors=%u drawn_late=%u pool_truncated=%u "
         "unstable=%u no_hull=%u refused=%u failed=%u no_bounds=%u unbounded=%u state=%u restore_failed=%u resolves=%u "
         "walks=%u retest_skipped=%u blocks=%u stale=%u test_us=%llu retest=%u cadence=%u forced=%u "
-        "retest_phase_spread=%u,%u",
+        "retest_phase_spread=%u,%u engine=%u engine_published=%u engine_skipped_parts=%u engine_skipped_draws=%u "
+        "guard_rejected=%u,%u,%u withheld=%u engine_partial=%u engine_no_position=%u engine_overflow=%u "
+        "engine_dropped=%u engine_unarmed=%u engine_visits=%u engine_view_changes=%u",
         id_, frame_, occlusion_frames_, occlusion_pass_ && occlusion_pass_->available() ? 1u : 0u, s.candidates,
         s.tested, s.hidden, s.skipped, s.hidden + s.visible, s.not_ready, s.ready_lag2, s.age1, s.age2, s.age_none,
         s.errors, s.drawn_late, s.pool_truncated,
         s.unstable, s.no_hull, s.refused, s.failed, sr.no_bounds, sr.unbounded, sr.state, sr.restore_failed,
         occlusion_classifier_->resolves, occlusion_classifier_->walks, s.retest_skipped, s.blocks, s.stale,
-        (unsigned long long)((s.test_ns + 500) / 1000), occlusion_retest_, s.cadence, s.forced, spread_lo, spread_hi);
+        (unsigned long long)((s.test_ns + 500) / 1000), occlusion_retest_, s.cadence, s.forced, spread_lo, spread_hi,
+        occlusion_engine_ ? 1u : 0u, es.published, es.skipped_parts, es.skipped_draws, es.rejected_model,
+        es.rejected_stamp, es.rejected_position, es.withheld, es.partial, es.no_position, es.overflow, es.dropped,
+        es.unarmed, es.visits, es.view_changes);
     occlusion_classifier_->flush_classes(); // a body id reused after a reload is re-read within 300 frames
 }
