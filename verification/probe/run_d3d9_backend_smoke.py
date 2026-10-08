@@ -20,6 +20,12 @@ common one for step g), timed per step (draw + event-query wait, QPC) by the fix
 `pipeline_cost ps=<hash> step=<a..g> us=<n>`, stderr lines between the fixture's X3M-PC markers are
 counted per step.
 
+--occlusion-cost adds the per-part occlusion-test cost (fixture `occlusion_cost`): at 128, 256, 384 and 512 tests per frame
+and three paces (unpaced, 13 ms, 20 ms), part draws alone, part draws each followed by a 12-triangle box test with a
+per-test dynamic-buffer Lock, the same tests in a tight loop, and part draws each followed by the proxy's test shape
+(screen rectangle at nearest depth in c252/c253, static strip, no Lock), QPC-timed; next frame GetData(..., 0) on
+all of them, timed and counted ready / not ready (and ready two frames on); one `occlusion_cost` row per (n, pace).
+
 Writes <results>/d3d9-backend-smoke/<name>.json (bottle, command, provenance hashes, parsed report,
 stderr attribution per swept program) and <name>.txt (stdout without passing sweep rows, relevant
 stderr lines, trimmed); the full stdout/stderr stays beside the fixture executable (untracked build
@@ -84,6 +90,10 @@ def parse(stdout):
             report[tags[tag]].append(fields(rest))
         elif tag in ('ADAPTER', 'CAPS', 'PIPELINE_COST_STATUS', 'DEVICE', 'EFFECT', 'PRESENT', 'STRETCHDEPTH', 'SWEEPSUMMARY', 'SWEEPLIST', 'SWEEPSTOP', 'RESULT'):
             report[tag.lower()] = fields(rest)
+        elif tag in ('occlusion_mrt', 'occlusion_mrt_caps'):
+            report.setdefault(tag, []).append({k: float(v) if re.fullmatch(r'-?\d+\.\d+', str(v)) else v for k, v in fields(rest).items()})
+        elif tag == 'occlusion_cost':
+            report.setdefault('occlusion_cost', []).append({k: float(v) if re.fullmatch(r'-?\d+\.\d+', str(v)) else v for k, v in fields(rest).items()})
     report['failed_checks'] = [label for label, passed in report['checks'] if not passed]
     return report
 
@@ -187,6 +197,8 @@ def main():
     parser.add_argument('--wine-env', action='append', default=[], help='KEY=VALUE passed through `wine --env` (repeatable)')
     parser.add_argument('--pipeline-cost', action='store_true', help='Time first-use pipelines of the largest live pixel shaders per state step')
     parser.add_argument('--pipeline-cost-count', type=int, default=8, help='How many pixel shaders --pipeline-cost measures (default 8)')
+    parser.add_argument('--occlusion-cost', action='store_true', help='Time occlusion-query box tests per part '
+                        '(128, 256, 384 and 512 per frame, 60 presented frames, GetData(..., 0) next frame)')
     parser.add_argument('--d3d9-order', help='d3d9 load order override (default b for builtin, n for a path; a Wine-builtin-marked '
                         'file such as CrossOver\'s DXVK needs b)')
     args = parser.parse_args()
@@ -229,6 +241,8 @@ def main():
             sys.exit(f'--pipeline-cost: {reason}')
         record['pipeline_cost_programs'] = chosen
         pipeline_arg = [windows_path(exe.parent / 'd3d9-backend-smoke-pipeline-cost.txt')]
+    if args.occlusion_cost:
+        pipeline_arg.append('occlusion-cost')
     moltenvk = Path(bottle.WINE).parents[1] / 'lib/aarch64/libMoltenVK.dylib'  # what win32u.so dlopens (leaf name, rpath)
     record['moltenvk'] = {'path': str(moltenvk), 'bytes': moltenvk.stat().st_size, 'sha256': sha(moltenvk)} if moltenvk.is_file() else None
     command = [bottle.WINE, *bottle.wine_args(), '--dll', overrides, '--workdir', str(exe.parent)]
@@ -280,7 +294,7 @@ def main():
                           'draws': [{k: d.get(k) for k in ('name', 'mean_r', 'mean_g', 'mean_b', 'coverage')} for d in report.get('draws', [])],
                           'sweep': report.get('sweepsummary'), 'sweep_error_programs': report.get('sweep_error_programs'),
                           'first_error': report.get('first_error'), 'privatedata': report.get('privatedata'), 'moltenvk_lines': report.get('moltenvk_lines'),
-                          'result': report.get('result')}, indent=1))
+                          'occlusion_cost': report.get('occlusion_cost'), 'occlusion_mrt': report.get('occlusion_mrt'), 'occlusion_mrt_caps': report.get('occlusion_mrt_caps'), 'result': report.get('result')}, indent=1))
     return 0 if record['passed'] else 1
 
 

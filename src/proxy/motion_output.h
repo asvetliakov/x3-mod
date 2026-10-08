@@ -37,6 +37,7 @@
 #include "../renderer/fog_pass.h"
 #include "../renderer/gpu_sync_timing_core.h"
 #include "../renderer/sun_occlusion_pass.h"
+#include "../renderer/occlusion_cull_pass.h"
 #include "lens_flare_gain.h"
 #include "engine_effects_core.h"
 #include "engine_light_core.h"
@@ -1217,6 +1218,10 @@ public:
         if (props_) props_->px = px;
         props_px_ = px;
     }
+    // Occlusion cull of ship sub-parts (X3M_OCCLUSION_CULL=on|off, default on; occlusion_cull_core.h,
+    // renderer/occlusion_cull_pass.h, motion_output_occlusion_cull_inc.h): process-start value validated by the caller;
+    // off = one bool test per scene draw.
+    void configure_occlusion_cull(bool on) noexcept { occlusion_on_ = on; }
     // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.85); validated by the caller and
     // read at every resolve.
     void configure_taa_resolve(float history_weight) noexcept { taa_history_weight_ = history_weight; }
@@ -1945,8 +1950,28 @@ private:
     bool attach_small_props() noexcept;
     bool cull_small_prop(const MotionDrawCall& call,
                          MotionRoute& route); // not noexcept: no terminate region (SJLJ registration) per scene draw
-    const cull_small_props::core::Box* small_prop_extent(const MotionDrawCall& call,
-                                                         cull_small_props::core::Box& out) noexcept;
+    // allow_stale: a young extent of an earlier revision of the range stands in (the small-prop size test); false = the
+    // current revision only (the occlusion cull: a stale box may not cover the drawn vertices).
+    const cull_small_props::core::Box* small_prop_extent(const MotionDrawCall& call, cull_small_props::core::Box& out,
+                                                         bool allow_stale = true) noexcept;
+    // Occlusion cull (motion_output_occlusion_cull_inc.h): the classifier (model classes, this frame's hull owners,
+    // the per-node memo; committed at the first scene draw with the option on), the pass (attached at the first part
+    // draw under the reference accounting; queries released before Reset), the frame's refusals before the pass and
+    // the session totals (one occlusion_cull_session row every 300 frames in every tier; the per-frame occlusion_cull
+    // row under --debug).
+    bool occlusion_on_ = false, occlusion_attach_failed_ = false, occlusion_pass_failed_ = false;
+    occlusion_cull::core::Classifier* occlusion_classifier_ = nullptr;
+    std::unique_ptr<renderer::OcclusionCullPass> occlusion_pass_;
+    struct OcclusionRefusals {
+        unsigned no_bounds = 0, unbounded = 0, state = 0, restore_failed = 0;
+    } occlusion_refused_{}, occlusion_session_refused_{};
+    renderer::OcclusionCullFrameStats occlusion_session_{};
+    unsigned occlusion_frames_ = 0, occlusion_window_frames_ = 0;
+    std::uint32_t occlusion_frame_ = 0;
+    bool attach_occlusion_cull() noexcept;
+    bool cull_occluded(const MotionDrawCall& call, MotionRoute& route); // not noexcept, as cull_small_prop
+    void occlusion_cull_frame_end() noexcept;
+    void release_occlusion_cull() noexcept;
     std::uint64_t small_prop_rows_frame_ = ~std::uint64_t(0);
     unsigned small_prop_rows_ = 0; // cull_small_prop_box rows this F8 frame (cap 128)
     void log_cull_small_props_window() noexcept;

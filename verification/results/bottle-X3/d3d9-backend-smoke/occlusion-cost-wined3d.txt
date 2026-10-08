@@ -1,0 +1,125 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+# d3d9=builtin sha256=None overrides=d3d9=b;d3dx9_37=n
+# command: '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update --dll 'd3d9=b;d3dx9_37=n' --workdir /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/build-fx --env CX_GRAPHICS_BACKEND=wined3d /private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/build-fx/d3d9_backend_smoke_fixture.exe builtin 'Z:\Users\asvetl\Library\Application Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll' - occlusion-cost
+# exit=0 elapsed_s=24.1
+
+ENV name=X3M_ENV_PROBE present=0 value=-
+ENV name=DYLD_LIBRARY_PATH present=0 value=-
+ENV name=DYLD_FALLBACK_LIBRARY_PATH present=0 value=-
+ENV name=DXVK_LOG_LEVEL present=1 value=info
+ENV name=MVK_CONFIG_LOG_LEVEL present=1 value=2
+STEP load_d3d9 status=ok error=0
+MODULE role=d3d9 path=C:\windows\system32\d3d9.dll wine_builtin=1
+STEP load_d3dx status=ok error=0
+MODULE role=d3dx9_37 path=Z:\Users\asvetl\Library\Application_Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll wine_builtin=0
+STEP direct3dcreate9 status=ok
+MODULE role=wined3d.dll path=C:\windows\system32\wined3d.dll wine_builtin=1
+ADAPTER hr=00000000 driver=nvd3dum.dll description=NVIDIA_GeForce_8800_GTX device_name=\\.\DISPLAY1 vendor=10de device=0191 driver_version=9.16.13.4052
+CAPS hr=00000000 vs=0300 ps=0300 max_textures=8 rts=4 vs_consts=256 max_tex=16384x16384
+FORMAT name=RESZ hr=00000000
+FORMAT name=INTZ hr=00000000
+FORMAT name=D24X8_texture hr=00000000
+FORMAT name=A16B16G16R16F_rt hr=00000000
+FORMAT name=A32B32G32R32F_rt hr=00000000
+FORMAT name=R32F_rt hr=00000000
+FORMAT name=G32R32F_rt hr=00000000
+FORMAT name=NULL_rt hr=00000000
+DEVICE hr=00000000 behavior=00000052 create_ms=7.4
+CHECK device_create PASS
+CHECK managed_textures PASS
+CHECK managed_cube PASS
+PRIVATEDATA resource=rt_surface unset_hr=88760866 unset_size=8 set_hr=00000000 get_hr=00000000 get_size=8 value=58334d0000000001 value_ok=1 small_hr=88760867 small_size=8
+CHECK privatedata_unset_rt PASS
+CHECK privatedata_roundtrip_rt PASS
+PRIVATEDATA resource=managed_texture unset_hr=88760866 unset_size=8 set_hr=00000000 get_hr=00000000 get_size=8 value=58334d0000000001 value_ok=1 small_hr=88760867 small_size=8
+CHECK privatedata_unset_managed PASS
+CHECK privatedata_roundtrip_managed PASS
+CHECK resources PASS
+SHADER name=vs30 hr=00000000
+SHADER name=vs11 hr=00000000
+SHADER name=vs30_generic hr=00000000
+SHADER name=vs20_generic hr=00000000
+SHADER name=ps30_tex hr=00000000
+SHADER name=ps30_tex_cube hr=00000000
+SHADER name=ps11_two hr=00000000
+SHADER name=ps30_depth hr=00000000
+SHADER name=ps30_const hr=00000000
+SHADER name=ps20_const hr=00000000
+DRAW name=quad_vs30_ps30 draw_hr=00000000 read_hr=00000000 mean_r=200.0 mean_g=40.0 mean_b=40.0 coverage=1.000 expect_r=200 expect_g=40 expect_b=40 expect_coverage=1.00
+CHECK quad_vs30_ps30 PASS
+DRAW name=alpha_test draw_hr=00000000 read_hr=00000000 mean_r=100.0 mean_g=20.0 mean_b=20.0 coverage=0.500 expect_r=100 expect_g=20 expect_b=20 expect_coverage=0.50
+CHECK alpha_test PASS
+DRAW name=two_samplers_ps11 draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=80.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps11 PASS
+DRAW name=two_samplers_ps30_2d_cube draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=80.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps30_2d_cube PASS
+DRAW name=two_stage_fixed_function draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=80.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_stage_fixed_function PASS
+DRAW name=managed_relock draw_hr=00000000 read_hr=00000000 mean_r=40.0 mean_g=200.0 mean_b=40.0 coverage=1.000 expect_r=40 expect_g=200 expect_b=40 expect_coverage=1.00
+CHECK managed_relock PASS
+DRAW name=stretch_source draw_hr=00000000 read_hr=00000000 mean_r=40.0 mean_g=40.0 mean_b=200.0 coverage=1.000 expect_r=40 expect_g=40 expect_b=200 expect_coverage=1.00
+CHECK stretch_source PASS
+DRAW name=stretchrect_rt_scaled draw_hr=00000000 read_hr=00000000 mean_r=10.0 mean_g=10.0 mean_b=50.0 coverage=0.250 expect_r=10 expect_g=10 expect_b=50 expect_coverage=0.25
+CHECK stretchrect_rt_scaled PASS
+DRAW name=stretchrect_backbuffer draw_hr=00000000 read_hr=00000000 mean_r=10.0 mean_g=200.0 mean_b=10.0 coverage=1.000 expect_r=10 expect_g=200 expect_b=10 expect_coverage=1.00
+CHECK stretchrect_backbuffer PASS
+STRETCHDEPTH hr=00000000
+CHECK stretchrect_depth PASS
+QUERY type=event ok=1 ms=2.22
+CHECK event_query PASS
+QUERY type=occlusion hr=00000000 pixels=65536 expect=65536
+CHECK occlusion_query PASS
+QUERY type=10 supported_hr=8876086a
+QUERY type=11 supported_hr=8876086a
+QUERY type=12 supported_hr=8876086a
+RESZ format=D24X8 create_hr=00000000 resz_hr=00000000 reference=0.25 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+RESZ format=D24X8 create_hr=00000000 resz_hr=00000000 reference=0.75 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+RESZ format=INTZ create_hr=00000000 resz_hr=00000000 reference=0.25 draw_hr=00000000 read_hr=00000000 mean_r=128.0
+RESZ format=INTZ create_hr=00000000 resz_hr=00000000 reference=0.75 draw_hr=00000000 read_hr=00000000 mean_r=128.0
+EFFECT create_hr=00000000 error=-
+DRAW name=d3dx_effect draw_hr=00000000 read_hr=00000000 mean_r=64.0 mean_g=128.0 mean_b=191.0 coverage=1.000 expect_r=64 expect_g=128 expect_b=191 expect_coverage=1.00
+CHECK d3dx_effect PASS
+PRESENT hr=00000000
+CHECK present_hidden_window PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=128 pace_ms=0 frames=60 part_draw_us_p50=0.16 part_plus_test_us_p50=69.43 test_delta_us_p50=69.27 test_delta_us_p95=83.56 tight_test_us_p50=41.26 tight_test_us_p95=49.50 rect_delta_us_p50=1.75 rect_delta_us_p95=2.11 getdata_us_p50=0.019 getdata_us_p95=0.022 per_part_us=69.28 rect_per_part_us=1.77 frame_us_p50=226.2 frame_us_p95=272.3 ready=15408 ready_lag2=7508 not_ready=7632 errors=0 wrong=0 read=23040 ready_b=7680 ready_c=7646 ready_d=82 drain_noflush_ms=2.5 drain_flush_ms=-1.0 sets=3 gpu_with_ms=-1.000 gpu_without_ms=-1.000 gpu_control_ms=-1.000 gpu_us_per_test=-1.00 gpu_query_us_per_test=-1.00 gpu_alt_without_ms=-1.000 gpu_alt_with_ms=-1.000 gpu_alt_us_per_test=-1.00 gpu_keep_z_us_per_test=-1.00 gpu_keep_color_us_per_test=-1.00 gpu_mask_us_per_test=-1.00
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=512 pace_ms=0 frames=60 part_draw_us_p50=0.16 part_plus_test_us_p50=67.74 test_delta_us_p50=67.58 test_delta_us_p95=74.40 tight_test_us_p50=41.33 tight_test_us_p95=46.92 rect_delta_us_p50=1.69 rect_delta_us_p95=1.82 getdata_us_p50=0.019 getdata_us_p95=0.021 per_part_us=67.60 rect_per_part_us=1.71 frame_us_p50=876.1 frame_us_p95=943.3 ready=63729 ready_lag2=27959 not_ready=28431 errors=0 wrong=0 read=92160 ready_b=30720 ready_c=30720 ready_d=2289 drain_noflush_ms=8.9 drain_flush_ms=-1.0 sets=3 gpu_with_ms=-1.000 gpu_without_ms=-1.000 gpu_control_ms=-1.000 gpu_us_per_test=-1.00 gpu_query_us_per_test=-1.00 gpu_alt_without_ms=-1.000 gpu_alt_with_ms=-1.000 gpu_alt_us_per_test=-1.00 gpu_keep_z_us_per_test=-1.00 gpu_keep_color_us_per_test=-1.00 gpu_mask_us_per_test=-1.00
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=128 pace_ms=13 frames=60 part_draw_us_p50=0.16 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.63 rect_delta_us_p95=1.75 getdata_us_p50=0.029 getdata_us_p95=0.054 per_part_us=-0.97 rect_per_part_us=1.66 frame_us_p50=212.5 frame_us_p95=229.8 ready=7680 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=7680 ready_b=0 ready_c=0 ready_d=7680 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=2.872 gpu_without_ms=0.390 gpu_control_ms=1.762 gpu_us_per_test=19.39 gpu_query_us_per_test=8.67 gpu_alt_without_ms=0.607 gpu_alt_with_ms=2.885 gpu_alt_us_per_test=17.80 gpu_keep_z_us_per_test=10.25 gpu_keep_color_us_per_test=9.05 gpu_mask_us_per_test=21.05
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=128 pace_ms=20 frames=60 part_draw_us_p50=0.18 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.75 rect_delta_us_p95=3.28 getdata_us_p50=0.054 getdata_us_p95=0.079 per_part_us=-0.95 rect_per_part_us=1.81 frame_us_p50=228.7 frame_us_p95=429.5 ready=7680 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=7680 ready_b=0 ready_c=0 ready_d=7680 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=2.890 gpu_without_ms=0.376 gpu_control_ms=1.711 gpu_us_per_test=19.64 gpu_query_us_per_test=9.21 gpu_alt_without_ms=0.585 gpu_alt_with_ms=2.929 gpu_alt_us_per_test=18.31 gpu_keep_z_us_per_test=10.04 gpu_keep_color_us_per_test=8.91 gpu_mask_us_per_test=20.74
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=256 pace_ms=13 frames=60 part_draw_us_p50=0.15 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.64 rect_delta_us_p95=1.72 getdata_us_p50=0.023 getdata_us_p95=0.032 per_part_us=-0.98 rect_per_part_us=1.66 frame_us_p50=425.8 frame_us_p95=445.4 ready=15360 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=15360 ready_b=0 ready_c=0 ready_d=15360 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=5.570 gpu_without_ms=0.432 gpu_control_ms=3.537 gpu_us_per_test=20.07 gpu_query_us_per_test=7.94 gpu_alt_without_ms=0.977 gpu_alt_with_ms=5.753 gpu_alt_us_per_test=18.66 gpu_keep_z_us_per_test=11.13 gpu_keep_color_us_per_test=10.30 gpu_mask_us_per_test=21.43
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=256 pace_ms=20 frames=60 part_draw_us_p50=0.17 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.90 rect_delta_us_p95=2.19 getdata_us_p50=0.033 getdata_us_p95=0.088 per_part_us=-0.97 rect_per_part_us=1.94 frame_us_p50=509.3 frame_us_p95=574.1 ready=15360 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=15360 ready_b=0 ready_c=0 ready_d=15360 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=5.499 gpu_without_ms=0.443 gpu_control_ms=3.564 gpu_us_per_test=19.75 gpu_query_us_per_test=7.56 gpu_alt_without_ms=0.978 gpu_alt_with_ms=5.434 gpu_alt_us_per_test=17.41 gpu_keep_z_us_per_test=11.06 gpu_keep_color_us_per_test=10.45 gpu_mask_us_per_test=20.90
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=384 pace_ms=13 frames=60 part_draw_us_p50=0.16 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.65 rect_delta_us_p95=1.73 getdata_us_p50=0.023 getdata_us_p95=0.028 per_part_us=-0.98 rect_per_part_us=1.68 frame_us_p50=643.7 frame_us_p95=672.2 ready=23040 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=23040 ready_b=0 ready_c=0 ready_d=23040 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=8.547 gpu_without_ms=0.482 gpu_control_ms=4.996 gpu_us_per_test=21.00 gpu_query_us_per_test=9.25 gpu_alt_without_ms=1.224 gpu_alt_with_ms=8.371 gpu_alt_us_per_test=18.61 gpu_keep_z_us_per_test=10.69 gpu_keep_color_us_per_test=10.10 gpu_mask_us_per_test=21.68
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=384 pace_ms=20 frames=60 part_draw_us_p50=0.16 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.67 rect_delta_us_p95=1.77 getdata_us_p50=0.024 getdata_us_p95=0.029 per_part_us=-0.98 rect_per_part_us=1.69 frame_us_p50=648.6 frame_us_p95=687.6 ready=23040 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=23040 ready_b=0 ready_c=0 ready_d=23040 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=8.245 gpu_without_ms=0.485 gpu_control_ms=5.101 gpu_us_per_test=20.21 gpu_query_us_per_test=8.19 gpu_alt_without_ms=1.270 gpu_alt_with_ms=8.173 gpu_alt_us_per_test=17.98 gpu_keep_z_us_per_test=10.87 gpu_keep_color_us_per_test=10.06 gpu_mask_us_per_test=21.90
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=512 pace_ms=13 frames=60 part_draw_us_p50=0.16 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.63 rect_delta_us_p95=1.72 getdata_us_p50=0.021 getdata_us_p95=0.026 per_part_us=-0.98 rect_per_part_us=1.65 frame_us_p50=843.8 frame_us_p95=891.3 ready=30720 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=30720 ready_b=0 ready_c=0 ready_d=30720 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=10.945 gpu_without_ms=0.575 gpu_control_ms=6.632 gpu_us_per_test=20.25 gpu_query_us_per_test=8.42 gpu_alt_without_ms=1.637 gpu_alt_with_ms=11.112 gpu_alt_us_per_test=18.51 gpu_keep_z_us_per_test=10.78 gpu_keep_color_us_per_test=9.98 gpu_mask_us_per_test=21.48
+CHECK occlusion_cost_results PASS
+CHECK occlusion_cost_resources PASS
+occlusion_cost n=512 pace_ms=20 frames=60 part_draw_us_p50=0.17 part_plus_test_us_p50=-1.00 test_delta_us_p50=-1.00 test_delta_us_p95=-1.00 tight_test_us_p50=-1.00 tight_test_us_p95=-1.00 rect_delta_us_p50=1.66 rect_delta_us_p95=2.34 getdata_us_p50=0.025 getdata_us_p95=0.041 per_part_us=-0.98 rect_per_part_us=1.69 frame_us_p50=869.2 frame_us_p95=1216.8 ready=30720 ready_lag2=0 not_ready=0 errors=0 wrong=0 read=30720 ready_b=0 ready_c=0 ready_d=30720 drain_noflush_ms=0.0 drain_flush_ms=-1.0 sets=1 gpu_with_ms=11.481 gpu_without_ms=0.578 gpu_control_ms=6.428 gpu_us_per_test=21.30 gpu_query_us_per_test=9.87 gpu_alt_without_ms=1.681 gpu_alt_with_ms=11.227 gpu_alt_us_per_test=18.64 gpu_keep_z_us_per_test=10.81 gpu_keep_color_us_per_test=9.74 gpu_mask_us_per_test=22.07
+CHECK occlusion_cost_results PASS
+occlusion_mrt_caps rts=4 independent_masks=1 mrt_blending=1 blend_rgba32f=1 blend_r32f=1
+CHECK occlusion_mrt_resources PASS
+occlusion_mrt variant=base n=128 frames=60 cpu_us_p50=18.8 gpu_us_p50=371.8 cpu_us_per_test=0.00 pipeline_us_per_test=0.00 rt1_changed=0 rt2_changed=0
+occlusion_mrt variant=none n=128 frames=60 cpu_us_p50=213.6 gpu_us_p50=8615.5 cpu_us_per_test=1.52 pipeline_us_per_test=64.40 rt1_changed=0 rt2_changed=0
+occlusion_mrt variant=flush n=128 frames=60 cpu_us_p50=254.7 gpu_us_p50=7781.2 cpu_us_per_test=1.84 pipeline_us_per_test=57.89 rt1_changed=0 rt2_changed=0
+occlusion_mrt variant=mask n=128 frames=60 cpu_us_p50=225.0 gpu_us_p50=8889.6 cpu_us_per_test=1.61 pipeline_us_per_test=66.54 rt1_changed=0 rt2_changed=0
+occlusion_mrt variant=zeros n=128 frames=60 cpu_us_p50=215.9 gpu_us_p50=2563.1 cpu_us_per_test=1.54 pipeline_us_per_test=17.12 rt1_changed=0 rt2_changed=0
+RESULT checks=43 failed=0 PASS
+
+--- stderr outside the sweep: 0 relevant of 2 lines (first 150) ---
+
+--- stderr error lines inside the sweep: 0 programs (first 60, first line each) ---

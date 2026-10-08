@@ -243,6 +243,7 @@ public:
                                          // pass when one is attached
     Pass* fog_ = nullptr;
     Pass* plumes_ = nullptr; // engine plumes (phase 2): after_reset forwards to the pass when one is attached
+    Pass* occlusion_pass_ = nullptr; // occlusion cull: after_reset arms the pass's query recreation when one is attached
     Pass* ribbons_ = nullptr; // engine ribbons (phase 3): likewise
     Pass* shimmer_ = nullptr; // engine heat shimmer (exhaust gap 9): likewise, through its own forwarder
     void engine_shimmer_after_reset(HRESULT result) noexcept {

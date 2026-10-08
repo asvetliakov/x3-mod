@@ -131,6 +131,10 @@ SETTINGS = [
           'off = draw them.',
           builtin='on', choices=('on', 'off'), requires=('cull_small_parts_px',), launcher='--cull-small-props',
           since='2026-09-29'),
+    entry('occlusion_cull', 'enum', 'graphics', 'Skips drawing turrets, docking bays and similar ship parts that are completely '
+          'hidden behind their ship\'s hull, found with the graphics card\'s occlusion test of the previous frame. A part '
+          'that comes into view appears one frame late. on = skip hidden parts (the default), off = draw them.',
+          builtin='on', choices=('on', 'off'), since='2026-10-08'),
     entry('bolt_footprint', 'float_list', 'graphics', 'Minimum on-screen width and length of weapon bolts in the chase view, in pixels, '
           'so distant shots stay visible. 0 = the game\'s own size; the width up to 64, the length up to 256.', '3,12',
           counts=(1, 2), elements=((0, 64), [R(0, 256, True)]),

@@ -412,6 +412,7 @@ MotionOutput::MotionOutput() noexcept = default;
 MotionOutput::~MotionOutput() {
     release_resources();
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
+    delete occlusion_classifier_; // plain CPU tables (occlusion_cull_core.h); the pass went with release_resources
     delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
     // The far block's device count: this device withdraws its request (and its claim on the buffer's frame); the far
     // jets stay armed while another device requests the plume stage.
@@ -572,6 +573,7 @@ void MotionOutput::release_resources() noexcept {
         taa_call([&] { sun_occlusion_pass_->detach(); });
         sun_occlusion_pass_.reset();
     }
+    release_occlusion_cull(); // the occlusion queries, programs, declaration and strip (occlusion_cull_pass.h)
     release_lens_depth();
     lens_frame_active_ = lens_suppress_ = false;
     lens_record_ = 0;
@@ -4161,6 +4163,10 @@ void MotionOutput::before_reset() noexcept {
     // The two 1x1 DEFAULT-pool targets go; the override is vanilla until a pass has run again
     // (sun_occlusion::device_reset).
     if (sun_occlusion_pass_) taa_call([&] { sun_occlusion_pass_->before_reset(); });
+    // Occlusion cull: the queries go (each holds a device reference); the next successful Reset recreates them and its
+    // first frame has no previous result, so every part draws.
+    if (occlusion_pass_) taa_call([&] { occlusion_pass_->before_reset(); }, "occlusion_cull_before_reset");
+    occlusion_pass_failed_ = false; // a refusal or creation failure is retried after Reset
     release_lens_depth();
     lens_frame_active_ = lens_suppress_ = false;
     lens_record_ = 0;
@@ -4216,6 +4222,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     if (depth_replay_) depth_replay_->after_reset(result);
     if (sun_apply_) sun_apply_->after_reset(result);
     if (sun_occlusion_pass_) sun_occlusion_pass_->after_reset(result);
+    if (occlusion_pass_) occlusion_pass_->after_reset(result); // its queries come back at the next part, under taa_call
     if (fog_) {
         fog_->after_reset(result);
         fog_frame_ = ~std::uint64_t(0);
@@ -8238,6 +8245,9 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // Small-prop cull (X3M_CULL_SMALL_PROPS): before the jitter and every other binding, so a skipped draw has
     // nothing to undo; one bool test with the option off.
     if (props_on_ && cull_small_prop(call, route)) return;
+    // Occlusion cull (X3M_OCCLUSION_CULL): at the same point, so the test sees every earlier draw's depth and a skipped
+    // part has nothing to undo; one bool test with the option off.
+    if (occlusion_on_ && cull_occluded(call, route)) return;
     // Unavailable repair is feature refusal, not an enhanced fallback through
     // the malformed original linkage. Preserve the original bindings and rows.
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {
@@ -10367,6 +10377,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (lens_gain_.active && ++lens_gain_window_frames_ >= 300u) log_lens_gain_window();
     if (props_on_ && props_ && props_->window.frames >= cull_small_props::core::window_frames)
         log_cull_small_props_window();
+    if (occlusion_on_) occlusion_cull_frame_end();
     if (fade_refused_count_) log_fade_refused();
     // The six per-frame count rows of the emitter options below are family
     // rows (logging-tiers.md, "Per-frame emitter rows"): capture frames, or
@@ -12587,6 +12598,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_fog_inc.h"
 #include "motion_output_sun_occlusion_inc.h"
 #include "motion_output_cull_small_props_inc.h"
+#include "motion_output_occlusion_cull_inc.h"
 #include "motion_output_engine_effects_inc.h"
 #include "motion_output_engine_plumes_inc.h"
 #include "motion_output_engine_ribbons_inc.h"

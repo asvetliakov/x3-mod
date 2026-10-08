@@ -83,7 +83,7 @@ add_library(d3d9 SHARED
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_fast.cpp
   src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp src/renderer/exposure.cpp src/renderer/material_radiance.cpp src/renderer/engine_plumes_pass.cpp src/renderer/engine_ribbons_pass.cpp src/renderer/engine_shimmer_pass.cpp
-  src/renderer/gpu_sync_timing.cpp src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/sun_occlusion_pass.cpp src/renderer/lens_visibility_variant.cpp
+  src/renderer/gpu_sync_timing.cpp src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/sun_occlusion_pass.cpp src/renderer/lens_visibility_variant.cpp src/renderer/occlusion_cull_pass.cpp
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp src/renderer/shader_population.cpp
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
@@ -195,6 +195,14 @@ target_compile_definitions(gpu_backend_ab_fixture PRIVATE WIN32_LEAN_AND_MEAN NO
 target_compile_options(gpu_backend_ab_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
 target_link_options(gpu_backend_ab_fixture PRIVATE -static -static-libgcc -static-libstdc++)
 target_link_libraries(gpu_backend_ab_fixture PRIVATE user32 version advapi32)
+# Occlusion cull fixture (run by the Wine queue owner through verification/probe/run_occlusion_cull.py): the production
+# pass on a real device, the cull on and off frame by frame (docs/architecture/occlusion-cull.md).
+add_executable(occlusion_cull_fixture verification/probe/occlusion_cull_fixture.cpp src/renderer/occlusion_cull_pass.cpp)
+target_compile_features(occlusion_cull_fixture PRIVATE cxx_std_17)
+target_compile_definitions(occlusion_cull_fixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(occlusion_cull_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
+target_link_options(occlusion_cull_fixture PRIVATE -static -static-libgcc -static-libstdc++)
+target_link_libraries(occlusion_cull_fixture PRIVATE user32)
 # D3D9 backend smoke probe (run by the Wine queue owner through verification/probe/run_d3d9_backend_smoke.py):
 # loads a given d3d9.dll (wined3d, CrossOver's DXVK, a DXVK-over-MoltenVK build) and d3dx9_37 at run
 # time, draws readback cases in the game's device shape and sweeps the game's shader programs.

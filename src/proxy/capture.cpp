@@ -30,6 +30,7 @@
 #include "engine_far_jets.h"
 #include "cull_small_parts_core.h"
 #include "cull_small_props_core.h"
+#include "occlusion_cull_core.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
 #include "pass_phases.h"
@@ -189,6 +190,8 @@ bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core 
                                   // with the override; =0 restores clip-only)
 bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS (default on): the render-only small-prop draw skip,
 float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3M_MOTION_OUTPUT=1 (cull_small_props_core.h)
+bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default on): the occlusion-query skip of hidden ship sub-parts;
+                                // needs X3M_MOTION_OUTPUT=1 (occlusion_cull_core.h)
 float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
                                    // X3M_MOTION_OUTPUT=1
@@ -3260,6 +3263,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
                                                  engine_effects::plume_floor()); // plumes: the stage in the resolve
     hooked.motion_output.configure_engine_shimmer(); // after the plumes: X3M_ENGINE_SHIMMER(_PX), requested with them
     hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless configured
+    hooked.motion_output.configure_occlusion_cull(occlusion_cull_on); // X3M_OCCLUSION_CULL, read at start-up
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0], taa_thin_region[1], taa_thin_region[2],
@@ -5574,6 +5578,28 @@ void initialize_log(HMODULE module) {
             log("cull_small_props requested=%s px=%.4f configured=%u reason=%s", mode_length ? mode : "unset", px,
                 cull_small_props_on ? 1u : 0u, reason);
         }
+    }
+    {
+        // X3M_OCCLUSION_CULL=on|off (occlusion_cull_core.h, docs/architecture/occlusion-cull.md): no patch; the motion
+        // route tests ship sub-part draws with occlusion queries and skips those its previous frame's test found hidden.
+        // Unset or empty means on; one occlusion_cull_config row on every launch (requested=unset when absent). A device
+        // that refuses occlusion queries logs its own occlusion_cull_device attached=0 row and stays off.
+        wchar_t mode_text[16]{};
+        char mode[16]{};
+        const DWORD mode_length = x3m::config::get(L"X3M_OCCLUSION_CULL", mode_text, 16);
+        for (DWORD i = 0; i < mode_length && i < 15; ++i)
+            mode[i] = mode_text[i] >= 0x21 && mode_text[i] <= 0x7e ? char(mode_text[i]) : '?';
+        bool on = false;
+        const char* reason = "ok";
+        if (mode_length >= 16 || !occlusion_cull::core::parse_mode(mode, &on))
+            reason = "invalid";
+        else if (!on)
+            reason = "off";
+        else if (!motion_output_requested)
+            reason = "route_off"; // the test and the skip live in the motion route's draw path
+        occlusion_cull_on = !std::strcmp(reason, "ok");
+        log("occlusion_cull_config requested=%s configured=%u reason=%s pool=%u", mode_length ? mode : "unset",
+            occlusion_cull_on ? 1u : 0u, reason, occlusion_cull::core::pool_size);
     }
     if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||
         loading_trace::mesh_adjacency_requested())

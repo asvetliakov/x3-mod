@@ -1,0 +1,1112 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "name": "occlusion-cost-dxvk",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/d3d9_backend_smoke_fixture.cpp": "af58ae6f67f1135d1518907a2b7773a2a16d3905a7594b695aeee429a46aa1ce",
+  "verification/probe/run_d3d9_backend_smoke.py": "c22b5ca7bfa35926ba50e81865d6578c4e413aef6a0617e5f7f5540ee4139829"
+ },
+ "executable": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/build-fx/d3d9_backend_smoke_fixture.exe",
+ "executable_sha256": "1322855f7e4a902bfe9d982e0718923ed26fb075336da7952ba6e2ca2f803d87",
+ "d3d9": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/dxvk/i386-windows/d3d9.dll",
+ "d3d9_sha256": "a5005d1f1f5e953dafe633027470242c273423c6c6ac733ba99705e699e1300d",
+ "d3d9_bytes": 15157937,
+ "d3dx9_37": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+ "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+ "dll_overrides": "d3d9=b;d3dx9_37=n",
+ "env": {
+  "DXVK_LOG_LEVEL": "info",
+  "MVK_CONFIG_LOG_LEVEL": "2"
+ },
+ "extra_env": [],
+ "wine_env": [
+  "CX_GRAPHICS_BACKEND=dxvk",
+  "DXVK_STATE_CACHE_PATH=/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/dxvk-cache"
+ ],
+ "moltenvk": {
+  "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/libMoltenVK.dylib",
+  "bytes": 10925552,
+  "sha256": "aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f"
+ },
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--dll",
+  "d3d9=b;d3dx9_37=n",
+  "--workdir",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/build-fx",
+  "--env",
+  "CX_GRAPHICS_BACKEND=dxvk DXVK_STATE_CACHE_PATH=/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/dxvk-cache",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/build-fx/d3d9_backend_smoke_fixture.exe",
+  "Z:\\Applications\\CrossOver Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+  "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+  "-",
+  "occlusion-cost"
+ ],
+ "killed": null,
+ "exit_code": 0,
+ "elapsed_s": 22.1,
+ "full_log": "/private/tmp/claude-501/-Users-asvetl-x3-mod/45f963d7-d42f-48f5-8dc1-5a91b08a846f/scratchpad/oc/build-fx/d3d9-backend-smoke-occlusion-cost-dxvk.full.txt",
+ "report": {
+  "modules": [
+   {
+    "role": "d3d9",
+    "path": "Z:\\Applications\\CrossOver_Preview.app\\Contents\\SharedSupport\\CrossOver\\lib\\dxvk\\i386-windows\\d3d9.dll",
+    "wine_builtin": 1
+   },
+   {
+    "role": "d3dx9_37",
+    "path": "Z:\\Users\\asvetl\\Library\\Application_Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+    "wine_builtin": 0
+   },
+   {
+    "role": "winevulkan.dll",
+    "path": "C:\\windows\\system32\\winevulkan.dll",
+    "wine_builtin": 1
+   },
+   {
+    "role": "vulkan-1.dll",
+    "path": "C:\\windows\\system32\\vulkan-1.dll",
+    "wine_builtin": 1
+   }
+  ],
+  "steps": [
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3d9"
+   },
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3dx"
+   },
+   {
+    "status": "ok",
+    "name": "direct3dcreate9"
+   }
+  ],
+  "formats": [
+   {
+    "name": "RESZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "INTZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "D24X8_texture",
+    "hr": "00000000"
+   },
+   {
+    "name": "A16B16G16R16F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "A32B32G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "NULL_rt",
+    "hr": "00000000"
+   }
+  ],
+  "shaders": [
+   {
+    "name": "vs30",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs11",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs30_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs20_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex_cube",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps11_two",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_depth",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_const",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps20_const",
+    "hr": "00000000"
+   }
+  ],
+  "draws": [
+   {
+    "name": "quad_vs30_ps30",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "200.0",
+    "mean_g": "40.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 200,
+    "expect_g": 40,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "alpha_test",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "100.0",
+    "mean_g": "20.0",
+    "mean_b": "20.0",
+    "coverage": "0.500",
+    "expect_r": 100,
+    "expect_g": 20,
+    "expect_b": 20,
+    "expect_coverage": "0.50"
+   },
+   {
+    "name": "two_samplers_ps11",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_samplers_ps30_2d_cube",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_stage_fixed_function",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "80.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "managed_relock",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "200.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 200,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretch_source",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "40.0",
+    "mean_b": "200.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 40,
+    "expect_b": 200,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretchrect_rt_scaled",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "10.0",
+    "mean_b": "50.0",
+    "coverage": "0.250",
+    "expect_r": 10,
+    "expect_g": 10,
+    "expect_b": 50,
+    "expect_coverage": "0.25"
+   },
+   {
+    "name": "stretchrect_backbuffer",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "200.0",
+    "mean_b": "10.0",
+    "coverage": "1.000",
+    "expect_r": 10,
+    "expect_g": 200,
+    "expect_b": 10,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "d3dx_effect",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "64.0",
+    "mean_g": "128.0",
+    "mean_b": "191.0",
+    "coverage": "1.000",
+    "expect_r": 64,
+    "expect_g": 128,
+    "expect_b": 191,
+    "expect_coverage": "1.00"
+   }
+  ],
+  "queries": [
+   {
+    "type": "event",
+    "ok": 1,
+    "ms": "1.10"
+   },
+   {
+    "type": "occlusion",
+    "hr": "00000000",
+    "pixels": 65536,
+    "expect": 65536
+   },
+   {
+    "type": 10,
+    "supported_hr": "00000000"
+   },
+   {
+    "type": 11,
+    "supported_hr": "00000000"
+   },
+   {
+    "type": 12,
+    "supported_hr": "00000000"
+   }
+  ],
+  "resz": [
+   {
+    "format": "D24X8",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.25",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "255.0"
+   },
+   {
+    "format": "D24X8",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.75",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "0.0"
+   },
+   {
+    "format": "INTZ",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.25",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "128.0"
+   },
+   {
+    "format": "INTZ",
+    "create_hr": "00000000",
+    "resz_hr": "00000000",
+    "reference": "0.75",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "128.0"
+   }
+  ],
+  "pipeline_cost": [],
+  "pipeline_cost_summary": [],
+  "pipeline_warmup": [],
+  "pipeline_cost_shaders": [],
+  "privatedata": [
+   {
+    "resource": "rt_surface",
+    "unset_hr": "8876086c",
+    "unset_size": 0,
+    "set_hr": "00000000",
+    "get_hr": "00000000",
+    "get_size": 8,
+    "value": "58334d0000000001",
+    "value_ok": 1,
+    "small_hr": "8876086c",
+    "small_size": 8
+   },
+   {
+    "resource": "managed_texture",
+    "unset_hr": "8876086c",
+    "unset_size": 0,
+    "set_hr": "00000000",
+    "get_hr": "00000000",
+    "get_size": 8,
+    "value": "58334d0000000001",
+    "value_ok": 1,
+    "small_hr": "8876086c",
+    "small_size": 8
+   }
+  ],
+  "checks": [
+   [
+    "device_create",
+    true
+   ],
+   [
+    "managed_textures",
+    true
+   ],
+   [
+    "managed_cube",
+    true
+   ],
+   [
+    "privatedata_unset_rt",
+    true
+   ],
+   [
+    "privatedata_roundtrip_rt",
+    true
+   ],
+   [
+    "privatedata_unset_managed",
+    true
+   ],
+   [
+    "privatedata_roundtrip_managed",
+    true
+   ],
+   [
+    "resources",
+    true
+   ],
+   [
+    "quad_vs30_ps30",
+    true
+   ],
+   [
+    "alpha_test",
+    true
+   ],
+   [
+    "two_samplers_ps11",
+    true
+   ],
+   [
+    "two_samplers_ps30_2d_cube",
+    true
+   ],
+   [
+    "two_stage_fixed_function",
+    true
+   ],
+   [
+    "managed_relock",
+    true
+   ],
+   [
+    "stretch_source",
+    true
+   ],
+   [
+    "stretchrect_rt_scaled",
+    true
+   ],
+   [
+    "stretchrect_backbuffer",
+    true
+   ],
+   [
+    "stretchrect_depth",
+    true
+   ],
+   [
+    "event_query",
+    true
+   ],
+   [
+    "occlusion_query",
+    true
+   ],
+   [
+    "d3dx_effect",
+    true
+   ],
+   [
+    "present_hidden_window",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_cost_resources",
+    true
+   ],
+   [
+    "occlusion_cost_results",
+    true
+   ],
+   [
+    "occlusion_mrt_resources",
+    true
+   ]
+  ],
+  "sweep": [],
+  "other": [],
+  "adapter": {
+   "hr": "00000000",
+   "driver": "nvd3dum.dll",
+   "description": "Apple_M5_Pro",
+   "device_name": "\\\\.\\DISPLAY1",
+   "vendor": "106b",
+   "device": "1a06020a",
+   "driver_version": "32767.65535.65535.65535"
+  },
+  "caps": {
+   "hr": "00000000",
+   "vs": 300,
+   "ps": 300,
+   "max_textures": 8,
+   "rts": 4,
+   "vs_consts": 256,
+   "max_tex": "16384x16384"
+  },
+  "device": {
+   "hr": "00000000",
+   "behavior": "00000052",
+   "create_ms": "77.0"
+  },
+  "stretchdepth": {
+   "hr": "00000000"
+  },
+  "effect": {
+   "create_hr": "00000000",
+   "error": "-"
+  },
+  "present": {
+   "hr": "00000000"
+  },
+  "occlusion_cost": [
+   {
+    "n": 128,
+    "pace_ms": 0,
+    "frames": 60,
+    "part_draw_us_p50": 0.17,
+    "part_plus_test_us_p50": 2.42,
+    "test_delta_us_p50": 2.26,
+    "test_delta_us_p95": 2.52,
+    "tight_test_us_p50": 0.61,
+    "tight_test_us_p95": 0.68,
+    "rect_delta_us_p50": 2.27,
+    "rect_delta_us_p95": 2.36,
+    "getdata_us_p50": 0.269,
+    "getdata_us_p95": 0.302,
+    "per_part_us": 2.53,
+    "rect_per_part_us": 2.54,
+    "frame_us_p50": 325.6,
+    "frame_us_p95": 341.2,
+    "ready": 0,
+    "ready_lag2": 19396,
+    "not_ready": 23040,
+    "errors": 0,
+    "wrong": 0,
+    "read": 23040,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 0,
+    "drain_noflush_ms": 9.0,
+    "drain_flush_ms": -1.0,
+    "sets": 3,
+    "gpu_with_ms": -1.0,
+    "gpu_without_ms": -1.0,
+    "gpu_control_ms": -1.0,
+    "gpu_us_per_test": -1.0,
+    "gpu_query_us_per_test": -1.0,
+    "gpu_alt_without_ms": -1.0,
+    "gpu_alt_with_ms": -1.0,
+    "gpu_alt_us_per_test": -1.0,
+    "gpu_keep_z_us_per_test": -1.0,
+    "gpu_keep_color_us_per_test": -1.0,
+    "gpu_mask_us_per_test": -1.0
+   },
+   {
+    "n": 512,
+    "pace_ms": 0,
+    "frames": 60,
+    "part_draw_us_p50": 0.17,
+    "part_plus_test_us_p50": 2.29,
+    "test_delta_us_p50": 2.12,
+    "test_delta_us_p95": 2.36,
+    "tight_test_us_p50": 0.36,
+    "tight_test_us_p95": 0.42,
+    "rect_delta_us_p50": 2.34,
+    "rect_delta_us_p95": 2.56,
+    "getdata_us_p50": 0.245,
+    "getdata_us_p95": 0.322,
+    "per_part_us": 2.36,
+    "rect_per_part_us": 2.59,
+    "frame_us_p50": 1326.9,
+    "frame_us_p95": 1449.9,
+    "ready": 0,
+    "ready_lag2": 0,
+    "not_ready": 92160,
+    "errors": 0,
+    "wrong": 0,
+    "read": 92160,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 0,
+    "drain_noflush_ms": 30.5,
+    "drain_flush_ms": -1.0,
+    "sets": 3,
+    "gpu_with_ms": -1.0,
+    "gpu_without_ms": -1.0,
+    "gpu_control_ms": -1.0,
+    "gpu_us_per_test": -1.0,
+    "gpu_query_us_per_test": -1.0,
+    "gpu_alt_without_ms": -1.0,
+    "gpu_alt_with_ms": -1.0,
+    "gpu_alt_us_per_test": -1.0,
+    "gpu_keep_z_us_per_test": -1.0,
+    "gpu_keep_color_us_per_test": -1.0,
+    "gpu_mask_us_per_test": -1.0
+   },
+   {
+    "n": 128,
+    "pace_ms": 13,
+    "frames": 60,
+    "part_draw_us_p50": 0.37,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 4.16,
+    "rect_delta_us_p95": 8.01,
+    "getdata_us_p50": 0.566,
+    "getdata_us_p95": 0.981,
+    "per_part_us": -0.43,
+    "rect_per_part_us": 4.72,
+    "frame_us_p50": 604.0,
+    "frame_us_p95": 1148.7,
+    "ready": 7680,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 7680,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 7680,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 1.01,
+    "gpu_without_ms": 0.422,
+    "gpu_control_ms": 0.906,
+    "gpu_us_per_test": 4.6,
+    "gpu_query_us_per_test": 0.81,
+    "gpu_alt_without_ms": 0.526,
+    "gpu_alt_with_ms": 1.024,
+    "gpu_alt_us_per_test": 3.89,
+    "gpu_keep_z_us_per_test": 71.04,
+    "gpu_keep_color_us_per_test": 3.88,
+    "gpu_mask_us_per_test": 76.55
+   },
+   {
+    "n": 128,
+    "pace_ms": 20,
+    "frames": 60,
+    "part_draw_us_p50": 0.34,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 4.13,
+    "rect_delta_us_p95": 4.71,
+    "getdata_us_p50": 0.53,
+    "getdata_us_p95": 0.877,
+    "per_part_us": -0.47,
+    "rect_per_part_us": 4.66,
+    "frame_us_p50": 599.7,
+    "frame_us_p95": 686.2,
+    "ready": 7680,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 7680,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 7680,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 0.979,
+    "gpu_without_ms": 0.39,
+    "gpu_control_ms": 0.857,
+    "gpu_us_per_test": 4.59,
+    "gpu_query_us_per_test": 0.95,
+    "gpu_alt_without_ms": 0.48,
+    "gpu_alt_with_ms": 0.935,
+    "gpu_alt_us_per_test": 3.56,
+    "gpu_keep_z_us_per_test": 61.39,
+    "gpu_keep_color_us_per_test": 3.67,
+    "gpu_mask_us_per_test": 61.84
+   },
+   {
+    "n": 256,
+    "pace_ms": 13,
+    "frames": 60,
+    "part_draw_us_p50": 0.17,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 2.69,
+    "rect_delta_us_p95": 5.44,
+    "getdata_us_p50": 0.291,
+    "getdata_us_p95": 0.678,
+    "per_part_us": -0.71,
+    "rect_per_part_us": 2.99,
+    "frame_us_p50": 758.4,
+    "frame_us_p95": 1563.8,
+    "ready": 15360,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 15360,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 15360,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 1.586,
+    "gpu_without_ms": 0.389,
+    "gpu_control_ms": 1.428,
+    "gpu_us_per_test": 4.67,
+    "gpu_query_us_per_test": 0.62,
+    "gpu_alt_without_ms": 0.693,
+    "gpu_alt_with_ms": 1.621,
+    "gpu_alt_us_per_test": 3.62,
+    "gpu_keep_z_us_per_test": 57.51,
+    "gpu_keep_color_us_per_test": 4.12,
+    "gpu_mask_us_per_test": 64.73
+   },
+   {
+    "n": 256,
+    "pace_ms": 20,
+    "frames": 60,
+    "part_draw_us_p50": 0.17,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 2.71,
+    "rect_delta_us_p95": 4.14,
+    "getdata_us_p50": 0.316,
+    "getdata_us_p95": 0.532,
+    "per_part_us": -0.68,
+    "rect_per_part_us": 3.02,
+    "frame_us_p50": 768.4,
+    "frame_us_p95": 1192.6,
+    "ready": 15360,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 15360,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 15360,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 1.64,
+    "gpu_without_ms": 0.43,
+    "gpu_control_ms": 1.443,
+    "gpu_us_per_test": 4.73,
+    "gpu_query_us_per_test": 0.77,
+    "gpu_alt_without_ms": 0.673,
+    "gpu_alt_with_ms": 1.615,
+    "gpu_alt_us_per_test": 3.68,
+    "gpu_keep_z_us_per_test": 56.48,
+    "gpu_keep_color_us_per_test": 3.83,
+    "gpu_mask_us_per_test": 64.61
+   },
+   {
+    "n": 384,
+    "pace_ms": 13,
+    "frames": 60,
+    "part_draw_us_p50": 0.18,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 2.76,
+    "rect_delta_us_p95": 3.97,
+    "getdata_us_p50": 0.297,
+    "getdata_us_p95": 0.457,
+    "per_part_us": -0.7,
+    "rect_per_part_us": 3.06,
+    "frame_us_p50": 1174.0,
+    "frame_us_p95": 1694.4,
+    "ready": 23040,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 23040,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 23040,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 2.284,
+    "gpu_without_ms": 0.449,
+    "gpu_control_ms": 2.19,
+    "gpu_us_per_test": 4.78,
+    "gpu_query_us_per_test": 0.25,
+    "gpu_alt_without_ms": 0.872,
+    "gpu_alt_with_ms": 2.579,
+    "gpu_alt_us_per_test": 4.44,
+    "gpu_keep_z_us_per_test": 53.25,
+    "gpu_keep_color_us_per_test": 3.87,
+    "gpu_mask_us_per_test": 63.26
+   },
+   {
+    "n": 384,
+    "pace_ms": 20,
+    "frames": 60,
+    "part_draw_us_p50": 0.21,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 3.19,
+    "rect_delta_us_p95": 5.6,
+    "getdata_us_p50": 0.359,
+    "getdata_us_p95": 0.564,
+    "per_part_us": -0.64,
+    "rect_per_part_us": 3.55,
+    "frame_us_p50": 1343.4,
+    "frame_us_p95": 2365.1,
+    "ready": 23040,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 23040,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 23040,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 2.489,
+    "gpu_without_ms": 0.449,
+    "gpu_control_ms": 1.966,
+    "gpu_us_per_test": 5.31,
+    "gpu_query_us_per_test": 1.36,
+    "gpu_alt_without_ms": 0.872,
+    "gpu_alt_with_ms": 2.468,
+    "gpu_alt_us_per_test": 4.16,
+    "gpu_keep_z_us_per_test": 50.06,
+    "gpu_keep_color_us_per_test": 3.96,
+    "gpu_mask_us_per_test": 59.16
+   },
+   {
+    "n": 512,
+    "pace_ms": 13,
+    "frames": 60,
+    "part_draw_us_p50": 0.19,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 2.86,
+    "rect_delta_us_p95": 3.37,
+    "getdata_us_p50": 0.308,
+    "getdata_us_p95": 0.402,
+    "per_part_us": -0.69,
+    "rect_per_part_us": 3.17,
+    "frame_us_p50": 1641.6,
+    "frame_us_p95": 1925.7,
+    "ready": 30720,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 30720,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 30720,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 3.294,
+    "gpu_without_ms": 0.491,
+    "gpu_control_ms": 2.903,
+    "gpu_us_per_test": 5.48,
+    "gpu_query_us_per_test": 0.76,
+    "gpu_alt_without_ms": 1.086,
+    "gpu_alt_with_ms": 3.235,
+    "gpu_alt_us_per_test": 4.2,
+    "gpu_keep_z_us_per_test": 57.92,
+    "gpu_keep_color_us_per_test": 4.72,
+    "gpu_mask_us_per_test": 65.07
+   },
+   {
+    "n": 512,
+    "pace_ms": 20,
+    "frames": 60,
+    "part_draw_us_p50": 0.18,
+    "part_plus_test_us_p50": -1.0,
+    "test_delta_us_p50": -1.0,
+    "test_delta_us_p95": -1.0,
+    "tight_test_us_p50": -1.0,
+    "tight_test_us_p95": -1.0,
+    "rect_delta_us_p50": 2.76,
+    "rect_delta_us_p95": 4.13,
+    "getdata_us_p50": 0.284,
+    "getdata_us_p95": 0.482,
+    "per_part_us": -0.72,
+    "rect_per_part_us": 3.04,
+    "frame_us_p50": 1542.2,
+    "frame_us_p95": 2368.1,
+    "ready": 30720,
+    "ready_lag2": 0,
+    "not_ready": 0,
+    "errors": 0,
+    "wrong": 0,
+    "read": 30720,
+    "ready_b": 0,
+    "ready_c": 0,
+    "ready_d": 30720,
+    "drain_noflush_ms": 0.0,
+    "drain_flush_ms": -1.0,
+    "sets": 1,
+    "gpu_with_ms": 3.3,
+    "gpu_without_ms": 0.495,
+    "gpu_control_ms": 2.835,
+    "gpu_us_per_test": 5.48,
+    "gpu_query_us_per_test": 0.91,
+    "gpu_alt_without_ms": 1.088,
+    "gpu_alt_with_ms": 3.206,
+    "gpu_alt_us_per_test": 4.14,
+    "gpu_keep_z_us_per_test": 50.84,
+    "gpu_keep_color_us_per_test": 4.5,
+    "gpu_mask_us_per_test": 57.32
+   }
+  ],
+  "occlusion_mrt_caps": [
+   {
+    "rts": 4,
+    "independent_masks": 1,
+    "mrt_blending": 1,
+    "blend_rgba32f": 1,
+    "blend_r32f": 1
+   }
+  ],
+  "occlusion_mrt": [
+   {
+    "variant": "base",
+    "n": 128,
+    "frames": 60,
+    "cpu_us_p50": 22.2,
+    "gpu_us_p50": 1024.9,
+    "cpu_us_per_test": 0.0,
+    "pipeline_us_per_test": 0.0,
+    "rt1_changed": 0,
+    "rt2_changed": 0
+   },
+   {
+    "variant": "none",
+    "n": 128,
+    "frames": 60,
+    "cpu_us_p50": 386.8,
+    "gpu_us_p50": 1200.6,
+    "cpu_us_per_test": 2.85,
+    "pipeline_us_per_test": 1.37,
+    "rt1_changed": 0,
+    "rt2_changed": 0
+   },
+   {
+    "variant": "flush",
+    "n": 128,
+    "frames": 60,
+    "cpu_us_p50": 478.4,
+    "gpu_us_p50": 9666.2,
+    "cpu_us_per_test": 3.56,
+    "pipeline_us_per_test": 67.51,
+    "rt1_changed": 0,
+    "rt2_changed": 0
+   },
+   {
+    "variant": "mask",
+    "n": 128,
+    "frames": 60,
+    "cpu_us_p50": 386.0,
+    "gpu_us_p50": 9206.3,
+    "cpu_us_per_test": 2.84,
+    "pipeline_us_per_test": 63.92,
+    "rt1_changed": 0,
+    "rt2_changed": 0
+   },
+   {
+    "variant": "zeros",
+    "n": 128,
+    "frames": 60,
+    "cpu_us_p50": 388.1,
+    "gpu_us_p50": 1192.5,
+    "cpu_us_per_test": 2.86,
+    "pipeline_us_per_test": 1.31,
+    "rt1_changed": 0,
+    "rt2_changed": 0
+   }
+  ],
+  "result": {
+   "checks": 43,
+   "failed": 0
+  },
+  "failed_checks": [],
+  "sweep_error_programs": 0,
+  "sweep_errors": [],
+  "stderr_errors_outside_sweep": 24,
+  "first_error": "info:  OpenVR: Failed to locate module",
+  "moltenvk_lines": [
+   "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart."
+  ]
+ },
+ "report_sha256": "60665e83c5b7906e1b879b86f647a80355275896bd5405a24fd301d6dacb48e1"
+}

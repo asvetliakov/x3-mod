@@ -1,0 +1,22 @@
+run14.json
+  class=hull ancestry=2 parent_null=0 draws=132
+  class=hull ancestry=None parent_null=0 draws=404
+  class=other ancestry=1 parent_null=1 draws=287
+  class=other ancestry=2 parent_null=0 draws=399
+  class=other ancestry=3 parent_null=0 draws=185
+  class=other ancestry=None parent_null=0 draws=1534
+  class=other ancestry=None parent_null=1 draws=96
+  class=part ancestry=2 parent_null=0 draws=150
+  class=part ancestry=3 parent_null=0 draws=1768
+  class=part ancestry=None parent_null=0 draws=373
+run15.json
+  class=hull ancestry=2 parent_null=0 draws=16
+  class=hull ancestry=None parent_null=0 draws=104
+  class=other ancestry=1 parent_null=1 draws=90
+  class=other ancestry=2 parent_null=0 draws=160
+  class=other ancestry=3 parent_null=0 draws=72
+  class=other ancestry=None parent_null=0 draws=600
+  class=other ancestry=None parent_null=1 draws=32
+  class=part ancestry=2 parent_null=0 draws=48
+  class=part ancestry=3 parent_null=0 draws=576
+  class=part ancestry=None parent_null=0 draws=240

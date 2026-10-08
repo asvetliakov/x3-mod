@@ -67,6 +67,11 @@ changes what is drawn: the turrets still aim, fire and can be hit, and parts on 
 target are always drawn. It needs `cull_small_parts_px` above 0. With it on, `x3m.log` carries one
 `cull_small_props_frame` line every 300 frames with how many part draws were skipped (`culled=`) and drawn (`kept=`).
 
+`occlusion_cull` (default `on`) skips drawing turrets, docking bays and similar ship parts that the previous frame's
+occlusion test found completely hidden behind their ship's hull; a part that comes into view appears one frame late.
+`occlusion_cull = off` draws them. Every log carries an `occlusion_cull_session` line every 300 frames with how many
+part draws were tested (`tested=`) and skipped (`skipped=`).
+
 `cull_dock_parts_px` (default `12` since 2026-09-29) skips drawing the hangar and launch-tube parts of carriers when
 they are smaller on screen than this many pixels. These parts sit inside the carrier's hull and cost many draws
 each (a Split Raptor has 117), so they get a larger size than `cull_small_parts_px`; every other part keeps that

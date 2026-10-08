@@ -1,7 +1,7 @@
 // D3D9 backend smoke probe: can a given d3d9.dll (wined3d, CrossOver's DXVK, a
 // DXVK build over MoltenVK) stand in as the backend the proxy forwards to?
 //
-//   d3d9_backend_smoke_fixture.exe <d3d9 path | builtin> <d3dx9_37 path> <shader list | -> [pipeline-cost list]
+//   d3d9_backend_smoke_fixture.exe <d3d9 path | builtin> <d3dx9_37 path> <shader list | -> [pipeline-cost list] [occlusion-cost]
 //
 // Loads the d3d9 by path (or "d3d9.dll" by name for builtin), creates the game's
 // device shape (HWVP | PUREDEVICE | FPU_PRESERVE = 0x52, windowed, A8R8G8B8,
@@ -20,6 +20,9 @@
 // printed per step (a: opaque S1/D1/A8R8G8B8, b: alpha blend, c: additive z-write off, d: position+uv
 // declaration, e: A16B16G16R16F target, f: a again, g: second vertex shader), after a warm-up of every
 // state/declaration/target with the fixture's own shaders so render passes and layouts exist already.
+// With the literal argument "occlusion-cost", the per-part CPU cost of an occlusion-query box test (issued at a
+// draw site, read with GetData(..., 0) next frame) is measured over 60 presented frames at 128, 256, 384 and 512 tests per
+// frame and three paces (see occlusion_cost).
 // Documented D3D9 / Win32 / D3DX APIs only. Never launches the game.
 #include <windows.h>
 #include <d3d9.h>
@@ -649,13 +652,581 @@ void pipeline_cost(Context& c, const char* list_path) {
     check(failed_draws == 0 && !per_step[0].empty(), "pipeline_cost_draws");
 }
 
+// --- occlusion cost: what does one occlusion query around a box test cost per part on this backend? ---
+// Per frame into the backbuffer (D24S8): a hull quad (z write on) covering the left half, then four timed loops
+// of n iterations each (QPC around each loop), n = 128 and 512:
+//   A  part draws alone (textured vs_3_0/ps_3_0 box, the game state), the baseline;
+//   B  part draw + a 12-triangle box test with a per-test Lock(NOOVERWRITE) of 8 corners in a shared dynamic
+//      buffer: box state set (shaders, declaration, stream, indices, colour write 0, z write off), query Begin,
+//      DrawIndexedPrimitive, query End, game state restored; (B - A) / n is the per-part cost of that test;
+//   C  n such box tests in a tight loop (box state set once), the raw query + box cost;
+//   D  part draw + the proxy's test shape: the box's screen rectangle at its nearest depth in two
+//      vertex-shader constants (c252 origin, c253 extent) over a static 4-vertex strip, no Lock, no indices,
+//      z write off and the colour write mask left alone: blend ZERO/ONE keeps every target's value (a colour
+//      write mask of 0 costs ~50 us per test on DXVK over MoltenVK, measured below).
+// all_sets runs B, C and D (the CPU breakdown); otherwise only A and D run (the production shape alone, so
+// readiness and GPU time are those of n queries per frame), followed by a GPU timing of D (event query, with and
+// without the tests) and a drain. Then Present; at the start of the next frame GetData(..., 0) (no flush) on the
+// previous frame's queries, timed, counting ready / not ready (and, two frames on, what became ready by then), checking hidden
+// boxes (behind the hull) read 0 and visible ones > 0. Two warm-up frames are excluded. Paces: unpaced (0), 13 ms
+// per frame (the game's measured DXVK dt_p50) and 20 ms (longer than a 60 Hz present interval, so a
+// display-throttled hidden window cannot keep the GPU behind).
+constexpr int kOcMax = 512;
+constexpr int kOcFrames = 60, kOcWarm = 2, kOcRing = 3;
+
+void occlusion_cost(Context& c, int n, double pace_ms, bool all_sets) {
+    const int k_first = all_sets ? 0 : 2, sets = 3 - k_first;
+    IDirect3DDevice9* d = c.device;
+    struct BoxVertex {
+        float x, y, z, w;
+    };
+    const D3DVERTEXELEMENT9 box_elements[] = {{0, 0, D3DDECLTYPE_FLOAT4, 0, D3DDECLUSAGE_POSITION, 0}, D3DDECL_END()};
+    Com<IDirect3DVertexDeclaration9> box_decl;
+    Com<IDirect3DVertexBuffer9> box_vb, part_vb, rect_vb;
+    Com<IDirect3DIndexBuffer9> box_ib;
+    Com<IDirect3DVertexShader9> box_vs, rect_vs;
+    Com<IDirect3DPixelShader9> box_ps;
+    std::vector<std::unique_ptr<Com<IDirect3DQuery9>[]>> queries; // [slot * 3 + set][part]
+    const std::vector<DWORD> vs_code = assemble("vs_3_0\n dcl_position v0\n dcl_position o0\n mov o0, v0\n", "box_vs");
+    const std::vector<DWORD> ps_code = assemble("ps_3_0\n def c0, 0, 0, 0, 0\n mov oC0, c0\n", "box_ps");
+    const std::vector<DWORD> rect_code =
+        assemble("vs_3_0\n dcl_position v0\n dcl_position o0\n mad o0, v0, c253, c252\n", "rect_vs");
+    bool ok = n > 0 && n <= kOcMax && !vs_code.empty() && !ps_code.empty() && !rect_code.empty() &&
+              SUCCEEDED(d->CreateVertexShader(vs_code.data(), box_vs.out())) &&
+              SUCCEEDED(d->CreateVertexShader(rect_code.data(), rect_vs.out())) &&
+              SUCCEEDED(d->CreatePixelShader(ps_code.data(), box_ps.out())) &&
+              SUCCEEDED(d->CreateVertexDeclaration(box_elements, box_decl.out())) &&
+              SUCCEEDED(d->CreateVertexBuffer(2 * kOcMax * 8 * sizeof(BoxVertex), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0,
+                                              D3DPOOL_DEFAULT, box_vb.out(), nullptr)) &&
+              SUCCEEDED(d->CreateIndexBuffer(36 * sizeof(WORD), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_DEFAULT,
+                                             box_ib.out(), nullptr)) &&
+              SUCCEEDED(d->CreateVertexBuffer(kOcMax * 36 * sizeof(Vertex), D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT,
+                                              part_vb.out(), nullptr)) &&
+              SUCCEEDED(d->CreateVertexBuffer(4 * sizeof(BoxVertex), D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT,
+                                              rect_vb.out(), nullptr));
+    for (int q = 0; ok && q < kOcRing * 3; ++q) {
+        queries.emplace_back(new Com<IDirect3DQuery9>[kOcMax]);
+        for (int i = 0; ok && i < n; ++i) ok = SUCCEEDED(d->CreateQuery(D3DQUERYTYPE_OCCLUSION, queries[q][i].out()));
+    }
+    static const WORD kBoxIndex[36] = {0, 1, 2, 2, 1, 3, 4, 6, 5, 5, 6, 7, 0, 4, 1, 1, 4, 5,
+                                       2, 3, 6, 6, 3, 7, 0, 2, 4, 4, 2, 6, 1, 5, 3, 3, 5, 7};
+    // Part i: a box on a 16-column grid of n / 16 rows; even columns sit on the left half (behind the hull at z 0.3),
+    // odd columns on the right half (visible).
+    const int rows = n / 16 ? n / 16 : 1;
+    auto corner = [rows](int i, int k, float* out) {
+        const int col = i % 16, row = i / 16;
+        const float cx = -1.0f + float(col / 2 + (col & 1) * 8) * 0.125f + 0.0625f;
+        const float cy = -1.0f + (float(row) + 0.5f) * 2.0f / float(rows), hy = 0.6f / float(rows);
+        out[0] = cx + ((k & 1) ? 0.05f : -0.05f);
+        out[1] = cy + ((k & 2) ? hy : -hy);
+        out[2] = (k & 4) ? 0.7f : 0.6f;
+        out[3] = 1.0f;
+    };
+    void* p = nullptr;
+    if (ok && SUCCEEDED(box_ib->Lock(0, 0, &p, 0))) {
+        std::memcpy(p, kBoxIndex, sizeof kBoxIndex);
+        box_ib->Unlock();
+    } else
+        ok = false;
+    if (ok && SUCCEEDED(part_vb->Lock(0, 0, &p, 0))) {
+        Vertex* v = static_cast<Vertex*>(p);
+        for (int i = 0; i < n; ++i)
+            for (int t = 0; t < 36; ++t) {
+                float q[4];
+                corner(i, kBoxIndex[t], q);
+                v[i * 36 + t] = {q[0], q[1], q[2], 1.0f, float(kBoxIndex[t] & 1), float((kBoxIndex[t] >> 1) & 1)};
+            }
+        part_vb->Unlock();
+    } else
+        ok = false;
+    if (ok && SUCCEEDED(rect_vb->Lock(0, 0, &p, 0))) { // strip corners (0,0) (1,0) (0,1) (1,1)
+        BoxVertex* v = static_cast<BoxVertex*>(p);
+        for (int k = 0; k < 4; ++k) v[k] = {float(k & 1), float(k >> 1), 0, 0};
+        rect_vb->Unlock();
+    } else
+        ok = false;
+    check(ok, "occlusion_cost_resources");
+    if (!ok) return;
+    Com<IDirect3DSurface9> backbuffer;
+    d->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, backbuffer.out());
+    const Vertex hull[4] = {{-1, 1, 0.3f, 1, 0, 0}, {0, 1, 0.3f, 1, 1, 0}, {-1, -1, 0.3f, 1, 0, 1}, {0, -1, 0.3f, 1, 1, 1}};
+    auto game_state = [&]() {
+        d->SetVertexDeclaration(c.decl.p);
+        d->SetStreamSource(0, part_vb.p, 0, sizeof(Vertex));
+        d->SetVertexShader(c.vs30.p);
+        d->SetPixelShader(c.ps30_tex.p);
+        d->SetTexture(0, c.tex_b.p);
+        d->SetRenderState(D3DRS_COLORWRITEENABLE, 0xF);
+        d->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+        d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+        d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+    };
+    unsigned box_slot = 0; // ring position in the dynamic buffer (8 corners per test)
+    auto box_test = [&](int i, IDirect3DQuery9* q, bool switch_state) {
+        void* bp = nullptr;
+        const DWORD flags = box_slot ? D3DLOCK_NOOVERWRITE : D3DLOCK_DISCARD;
+        if (SUCCEEDED(box_vb->Lock(box_slot * 8 * sizeof(BoxVertex), 8 * sizeof(BoxVertex), &bp, flags))) {
+            float* out = static_cast<float*>(bp);
+            for (int k = 0; k < 8; ++k) corner(i, k, out + 4 * k);
+            box_vb->Unlock();
+        }
+        if (switch_state) {
+            d->SetVertexDeclaration(box_decl.p);
+            d->SetStreamSource(0, box_vb.p, 0, sizeof(BoxVertex));
+            d->SetIndices(box_ib.p);
+            d->SetVertexShader(box_vs.p);
+            d->SetPixelShader(box_ps.p);
+            d->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
+            d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+        }
+        q->Issue(D3DISSUE_BEGIN);
+        d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, INT(box_slot * 8), 0, 8, 0, 12);
+        q->Issue(D3DISSUE_END);
+        box_slot = (box_slot + 1) % (2 * kOcMax);
+        if (switch_state) game_state();
+    };
+    // D: the screen rectangle of the 8 corners at their nearest depth, in c252 (origin) and c253 (extent).
+    // mode: 3 the production state (colour write mask untouched, blend ZERO/ONE so every target keeps its value, z write
+    // off); 0 colour write 0 instead of the neutral blend; 1 as 0 with z write left on and 2 as 0 with colour write left
+    // on (timing controls only: the rectangle writes depth / colour).
+    auto rect_test = [&](int i, IDirect3DQuery9* q, int keep = 3) {
+        float lo[3] = {1e30f, 1e30f, 1e30f}, hi[2] = {-1e30f, -1e30f};
+        for (int k = 0; k < 8; ++k) {
+            float v[4];
+            corner(i, k, v);
+            lo[0] = std::min(lo[0], v[0]), lo[1] = std::min(lo[1], v[1]), lo[2] = std::min(lo[2], v[2]);
+            hi[0] = std::max(hi[0], v[0]), hi[1] = std::max(hi[1], v[1]);
+        }
+        const float px = 2.0f / float(kSize); // one pixel of inflation
+        const float constants[8] = {lo[0] - px, lo[1] - px, lo[2], 1, hi[0] - lo[0] + 2 * px, hi[1] - lo[1] + 2 * px, 0, 0};
+        d->SetVertexShaderConstantF(252, constants, 2);
+        d->SetVertexDeclaration(box_decl.p);
+        d->SetStreamSource(0, rect_vb.p, 0, sizeof(BoxVertex));
+        d->SetVertexShader(rect_vs.p);
+        d->SetPixelShader(box_ps.p);
+        if (keep == 3) {
+            d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+            d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
+            d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+        } else if (keep != 2)
+            d->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
+        if (keep != 1) d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+        if (q) q->Issue(D3DISSUE_BEGIN);
+        d->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
+        if (q) q->Issue(D3DISSUE_END);
+        if (keep == 3) d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+        game_state();
+    };
+    std::vector<double> a_us, b_us, c_us, d_us, get_us, delta, rect_delta, frame_test_us;
+    unsigned ready_set[3] = {}; // lag-1 ready per set B, C, D
+    unsigned ready = 0, ready_lag2 = 0, not_ready = 0, errors = 0, wrong = 0, read_total = 0;
+    std::vector<std::uint8_t> done(std::size_t(kOcRing) * 3 * kOcMax, 0);
+    int drain_slot = 0;
+    auto read_back = [&](int slot, bool count_lag1) {
+        unsigned r = 0, nr = 0, e = 0, w = 0;
+        for (int k = k_first; k < 3; ++k)
+            for (int i = 0; i < n; ++i) {
+                std::uint8_t& seen = done[(std::size_t(slot) * 3 + k) * kOcMax + i];
+                if (seen) continue;
+                DWORD pixels = 0;
+                const HRESULT h = queries[slot * 3 + k][i]->GetData(&pixels, sizeof pixels, 0);
+                if (h == S_OK) {
+                    ++r;
+                    if (count_lag1) ++ready_set[k];
+                    seen = 1;
+                    const bool hidden = (i % 16) % 2 == 0;
+                    if (hidden != (pixels == 0)) ++w;
+                } else if (h == S_FALSE)
+                    ++nr;
+                else
+                    ++e;
+            }
+        if (count_lag1)
+            ready += r, not_ready += nr, read_total += unsigned(sets * n);
+        else
+            ready_lag2 += r;
+        errors += e, wrong += w;
+    };
+    for (int frame = 0; frame <= kOcFrames + kOcWarm + 1; ++frame) {
+        const double frame_start = now_ms();
+        const int cur = frame % kOcRing, lag1 = (frame + kOcRing - 1) % kOcRing, lag2 = (frame + kOcRing - 2) % kOcRing;
+        if (frame > kOcWarm + 1) read_back(lag2, false); // what lag 1 missed, two frames on
+        double get_ms = 0;
+        if (frame > kOcWarm && frame <= kOcFrames + kOcWarm) { // the previous frame's queries, no flush
+            const double t0 = now_ms();
+            read_back(lag1, true);
+            get_ms = now_ms() - t0;
+            get_us.push_back(1000.0 * get_ms / (sets * n));
+        }
+        if (frame >= kOcFrames + kOcWarm) {
+            if (frame == kOcFrames + kOcWarm + 1) break;
+            Sleep(DWORD(pace_ms > 0 ? pace_ms : 0)); // one more period so the last frame's lag-2 read happens
+            continue;
+        }
+        if (frame == kOcFrames + kOcWarm - 1) drain_slot = cur; // the last drawn frame: drained afterwards
+        for (int k = 0; k < 3; ++k) std::memset(&done[(std::size_t(cur) * 3 + k) * kOcMax], 0, kOcMax);
+        reset_state(c);
+        d->SetRenderTarget(0, backbuffer.p);
+        d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00202020, 1.0f, 0);
+        d->BeginScene();
+        game_state();
+        d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, hull, sizeof(Vertex));
+        d->SetStreamSource(0, part_vb.p, 0, sizeof(Vertex));
+        const double t0 = now_ms();
+        for (int i = 0; i < n; ++i) d->DrawPrimitive(D3DPT_TRIANGLELIST, UINT(i * 36), 12);
+        const double t1 = now_ms();
+        for (int i = 0; all_sets && i < n; ++i) {
+            d->DrawPrimitive(D3DPT_TRIANGLELIST, UINT(i * 36), 12);
+            box_test(i, queries[cur * 3 + 0][i].p, true);
+        }
+        const double t2 = now_ms();
+        if (all_sets) {
+            d->SetVertexDeclaration(box_decl.p);
+            d->SetStreamSource(0, box_vb.p, 0, sizeof(BoxVertex));
+            d->SetIndices(box_ib.p);
+            d->SetVertexShader(box_vs.p);
+            d->SetPixelShader(box_ps.p);
+            d->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
+            d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+            for (int i = 0; i < n; ++i) box_test(i, queries[cur * 3 + 1][i].p, false);
+        }
+        const double t3 = now_ms();
+        game_state();
+        for (int i = 0; i < n; ++i) {
+            d->DrawPrimitive(D3DPT_TRIANGLELIST, UINT(i * 36), 12);
+            rect_test(i, queries[cur * 3 + 2][i].p);
+        }
+        const double t4 = now_ms();
+        d->EndScene();
+        d->Present(nullptr, nullptr, nullptr, nullptr);
+        if (frame >= kOcWarm) {
+            a_us.push_back(1000.0 * (t1 - t0) / n);
+            if (all_sets) {
+                b_us.push_back(1000.0 * (t2 - t1) / n);
+                c_us.push_back(1000.0 * (t3 - t2) / n);
+                delta.push_back(b_us.back() - a_us.back());
+            }
+            d_us.push_back(1000.0 * (t4 - t3) / n);
+            rect_delta.push_back(d_us.back() - a_us.back());
+            // The per-frame cost of n production-shape tests: (D - A) plus this frame's share of the readback.
+            frame_test_us.push_back(1000.0 * ((t4 - t3) - (t1 - t0)) + (get_ms > 0 ? 1000.0 * get_ms / sets : 0));
+        }
+        while (pace_ms > 0 && now_ms() - frame_start < pace_ms) Sleep(1); // the frame period
+    }
+    // Drain: how long until every D query of the last drawn frame is ready without a flush (polled, Sleep(1),
+    // 1000 ms cap), then, if not, with D3DGETDATA_FLUSH (another 1000 ms cap); -1 = not within the cap.
+    double drain_noflush_ms = -1, drain_flush_ms = -1;
+    for (int pass = 0; pass < 2 && drain_noflush_ms < 0; ++pass) {
+        const double start = now_ms();
+        for (;;) {
+            int pending = 0;
+            for (int i = 0; i < n; ++i) {
+                DWORD pixels = 0;
+                if (queries[drain_slot * 3 + 2][i]->GetData(&pixels, sizeof pixels, pass ? D3DGETDATA_FLUSH : 0) != S_OK)
+                    ++pending;
+            }
+            if (!pending) {
+                (pass ? drain_flush_ms : drain_noflush_ms) = now_ms() - start;
+                break;
+            }
+            if (now_ms() - start > 1000) break;
+            Sleep(1);
+        }
+    }
+    // GPU time of the production shape (production phase only): unpresented frames of hull + n part draws, in turn
+    // without tests, with the n rectangle tests, and with the same rectangle draws and state switches but no query
+    // Issue (the control), ten each, timed from the first draw to an event query's completion (spun with
+    // D3DGETDATA_FLUSH); (with - without) / n is the pipeline cost per test as the CPU observes it, (with - control)
+    // / n the share of the query itself. Kinds 3 and 4 repeat without / with on a game-like baseline where
+    // consecutive part draws alternate between two pixel shaders (every draw binds a new pipeline, as the game's
+    // draws do), so (alt_with - alt_without) / n is the incremental cost of a test between differing game draws.
+    // Kinds 5 and 6: the colour-write-0 control with z write left on / colour write left on, kind 7 the colour-write-0
+    // test with its query (which state change carries the cost).
+    std::vector<double> gpu_with, gpu_without, gpu_control, gpu_alt_with, gpu_alt_without, gpu_keep_z, gpu_keep_color,
+        gpu_mask;
+    Com<IDirect3DQuery9> event;
+    if (!all_sets && SUCCEEDED(d->CreateQuery(D3DQUERYTYPE_EVENT, event.out())))
+        for (int frame = 0; frame < 88; ++frame) {
+            // 0 without, 1 with, 2 control, 3/4 alternating without/with, 5 keep z, 6 keep colour, 7 colour write 0
+            const int kind = frame % 8;
+            const bool alt = kind == 3 || kind == 4;
+            reset_state(c);
+            d->SetRenderTarget(0, backbuffer.p);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00202020, 1.0f, 0);
+            double ms = 0;
+            wait_gpu(d, &ms); // idle before timing
+            d->BeginScene();
+            game_state();
+            const double t0 = now_ms();
+            d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, hull, sizeof(Vertex));
+            d->SetStreamSource(0, part_vb.p, 0, sizeof(Vertex));
+            for (int i = 0; i < n; ++i) {
+                d->DrawPrimitive(D3DPT_TRIANGLELIST, UINT(i * 36), 12);
+                if (alt) d->SetPixelShader((i & 1) ? c.ps30_const.p : c.ps30_tex.p);
+                if (kind && kind != 3) {
+                    rect_test(i, kind == 1 || kind == 4 || kind == 7 ? queries[2][i].p : nullptr,
+                              kind == 5 ? 1 : kind == 6 ? 2 : kind == 7 ? 0 : 3);
+                    if (alt) d->SetStreamSource(0, part_vb.p, 0, sizeof(Vertex));
+                }
+            }
+            d->EndScene();
+            event->Issue(D3DISSUE_END);
+            BOOL done_flag = FALSE;
+            HRESULT h;
+            while ((h = event->GetData(&done_flag, sizeof done_flag, D3DGETDATA_FLUSH)) == S_FALSE && now_ms() - t0 < 2000)
+                ;
+            std::vector<double>* const sink[8] = {&gpu_without,  &gpu_with,   &gpu_control,    &gpu_alt_without,
+                                                  &gpu_alt_with, &gpu_keep_z, &gpu_keep_color, &gpu_mask};
+            if (frame >= 8 && h == S_OK) sink[kind]->push_back(now_ms() - t0);
+        }
+    reset_state(c);
+    auto p95 = [](std::vector<double> v) {
+        if (v.empty()) return -1.0;
+        std::sort(v.begin(), v.end());
+        return v[std::min(v.size() - 1, std::size_t(0.95 * double(v.size())))];
+    };
+    std::printf("occlusion_cost n=%d pace_ms=%.0f frames=%u part_draw_us_p50=%.2f part_plus_test_us_p50=%.2f "
+                "test_delta_us_p50=%.2f test_delta_us_p95=%.2f tight_test_us_p50=%.2f tight_test_us_p95=%.2f "
+                "rect_delta_us_p50=%.2f rect_delta_us_p95=%.2f getdata_us_p50=%.3f getdata_us_p95=%.3f "
+                "per_part_us=%.2f rect_per_part_us=%.2f frame_us_p50=%.1f frame_us_p95=%.1f ready=%u ready_lag2=%u "
+                "not_ready=%u errors=%u wrong=%u read=%u ready_b=%u ready_c=%u ready_d=%u drain_noflush_ms=%.1f "
+                "drain_flush_ms=%.1f sets=%d gpu_with_ms=%.3f gpu_without_ms=%.3f gpu_control_ms=%.3f gpu_us_per_test=%.2f "
+                "gpu_query_us_per_test=%.2f gpu_alt_without_ms=%.3f gpu_alt_with_ms=%.3f gpu_alt_us_per_test=%.2f "
+                "gpu_keep_z_us_per_test=%.2f gpu_keep_color_us_per_test=%.2f gpu_mask_us_per_test=%.2f\n",
+                n, pace_ms, unsigned(a_us.size()), median(a_us), median(b_us), median(delta), p95(delta), median(c_us),
+                p95(c_us), median(rect_delta), p95(rect_delta), median(get_us), p95(get_us),
+                median(delta) + median(get_us), median(rect_delta) + median(get_us), median(frame_test_us),
+                p95(frame_test_us), ready, ready_lag2, not_ready, errors, wrong, read_total, ready_set[0],
+                ready_set[1], ready_set[2], drain_noflush_ms, drain_flush_ms, sets, median(gpu_with), median(gpu_without),
+                median(gpu_control),
+                gpu_with.empty() || gpu_without.empty() ? -1.0 : 1000.0 * (median(gpu_with) - median(gpu_without)) / n,
+                gpu_with.empty() || gpu_control.empty() ? -1.0 : 1000.0 * (median(gpu_with) - median(gpu_control)) / n,
+                median(gpu_alt_without), median(gpu_alt_with),
+                gpu_alt_with.empty() || gpu_alt_without.empty() ? -1.0
+                                                                : 1000.0 * (median(gpu_alt_with) - median(gpu_alt_without)) / n,
+                gpu_keep_z.empty() ? -1.0 : 1000.0 * (median(gpu_keep_z) - median(gpu_without)) / n,
+                gpu_keep_color.empty() ? -1.0 : 1000.0 * (median(gpu_keep_color) - median(gpu_without)) / n,
+                gpu_mask.empty() ? -1.0 : 1000.0 * (median(gpu_mask) - median(gpu_without)) / n);
+    queries.clear();
+    check(errors == 0 && wrong == 0 && read_total > 0, "occlusion_cost_results");
+}
+
+// --- occlusion test with the route's RT1 (A32B32G32R32F motion) and RT2 (R32F depth) bound (its lazy mode) ---
+// The game draw writes oC0..oC2 (RT1 gets -0.0 in .x, RT2 2.5). Per variant, 60 frames after 4 warm-ups, each frame:
+// clear, hull, then n x (test + part draw), an event query spun with FLUSH (pipeline time); the test protects RT1/RT2 by
+//   none    nothing (the unprotected test: the reference for corruption);
+//   flush   SetRenderTarget(2/1, null) before the test and both rebound before the part draw (the lazy flush);
+//   mask    COLORWRITEENABLE1/2 = 0 for the test, 15 after;
+//   zeros   a program writing 0 to oC0..oC2 under the same ZERO/ONE blend (needs MRT blending of the FP32 formats);
+// and "base" draws the parts without tests. Row: CPU per test (loop QPC vs base), pipeline per test, and RT1/RT2
+// texels that differ from base after the last frame (byte compare).
+void occlusion_mrt_cost(Context& c, int n) {
+    IDirect3DDevice9* d = c.device;
+    D3DCAPS9 caps{};
+    d->GetDeviceCaps(&caps);
+    Com<IDirect3D9> d3d;
+    d->GetDirect3D(d3d.out());
+    auto blendable = [&](D3DFORMAT f) {
+        return d3d.p && d3d->CheckDeviceFormat(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8,
+                                               D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,
+                                               D3DRTYPE_TEXTURE, f) == D3D_OK;
+    };
+    std::printf("occlusion_mrt_caps rts=%lu independent_masks=%d mrt_blending=%d blend_rgba32f=%d blend_r32f=%d\n",
+                (unsigned long)caps.NumSimultaneousRTs, (caps.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS) ? 1 : 0,
+                (caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING) ? 1 : 0,
+                int(blendable(D3DFMT_A32B32G32R32F)), int(blendable(D3DFMT_R32F)));
+    struct BoxVertex {
+        float x, y, z, w;
+    };
+    const D3DVERTEXELEMENT9 pos[] = {{0, 0, D3DDECLTYPE_FLOAT4, 0, D3DDECLUSAGE_POSITION, 0}, D3DDECL_END()};
+    const D3DVERTEXELEMENT9 pos2[] = {{0, 0, D3DDECLTYPE_FLOAT2, 0, D3DDECLUSAGE_POSITION, 0}, D3DDECL_END()};
+    Com<IDirect3DVertexDeclaration9> decl, rect_decl;
+    Com<IDirect3DVertexBuffer9> part_vb, strip;
+    Com<IDirect3DVertexShader9> vs, rect_vs;
+    Com<IDirect3DPixelShader9> game_ps, zero_ps, zeros3_ps;
+    Com<IDirect3DTexture9> rt1, rt2;
+    Com<IDirect3DSurface9> rt1s, rt2s, sys1, sys2, base1, base2, backbuffer;
+    std::unique_ptr<Com<IDirect3DQuery9>[]> queries(new Com<IDirect3DQuery9>[std::size_t(n)]);
+    const auto vs_code = assemble("vs_3_0\n dcl_position v0\n dcl_position o0\n mov o0, v0\n", "mrt_vs");
+    const auto rect_code = assemble("vs_3_0\n dcl_position v0\n dcl_position o0\n mad o0, v0, c253, c252\n", "mrt_rect_vs");
+    const auto game_code = assemble("ps_3_0\n mov oC0, c0\n mov oC1, c1\n mov oC2, c2\n", "mrt_game_ps");
+    const auto zero_code = assemble("ps_3_0\n def c0, 0, 0, 0, 0\n mov oC0, c0\n", "mrt_zero_ps");
+    const auto zeros3_code =
+        assemble("ps_3_0\n def c0, 0, 0, 0, 0\n mov oC0, c0\n mov oC1, c0\n mov oC2, c0\n", "mrt_zeros3_ps");
+    bool ok = !vs_code.empty() && !rect_code.empty() && !game_code.empty() && !zero_code.empty() && !zeros3_code.empty() &&
+              SUCCEEDED(d->CreateVertexShader(vs_code.data(), vs.out())) &&
+              SUCCEEDED(d->CreateVertexShader(rect_code.data(), rect_vs.out())) &&
+              SUCCEEDED(d->CreatePixelShader(game_code.data(), game_ps.out())) &&
+              SUCCEEDED(d->CreatePixelShader(zero_code.data(), zero_ps.out())) &&
+              SUCCEEDED(d->CreatePixelShader(zeros3_code.data(), zeros3_ps.out())) &&
+              SUCCEEDED(d->CreateVertexDeclaration(pos, decl.out())) &&
+              SUCCEEDED(d->CreateVertexDeclaration(pos2, rect_decl.out())) &&
+              SUCCEEDED(d->CreateVertexBuffer(UINT(n + 1) * 6 * sizeof(BoxVertex), D3DUSAGE_WRITEONLY, 0,
+                                              D3DPOOL_MANAGED, part_vb.out(), nullptr)) &&
+              SUCCEEDED(d->CreateVertexBuffer(4 * 8, D3DUSAGE_WRITEONLY, 0, D3DPOOL_MANAGED, strip.out(), nullptr)) &&
+              SUCCEEDED(d->CreateTexture(kSize, kSize, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT,
+                                         rt1.out(), nullptr)) &&
+              SUCCEEDED(d->CreateTexture(kSize, kSize, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, rt2.out(),
+                                         nullptr)) &&
+              SUCCEEDED(rt1->GetSurfaceLevel(0, rt1s.out())) && SUCCEEDED(rt2->GetSurfaceLevel(0, rt2s.out())) &&
+              SUCCEEDED(d->CreateOffscreenPlainSurface(kSize, kSize, D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, sys1.out(), nullptr)) &&
+              SUCCEEDED(d->CreateOffscreenPlainSurface(kSize, kSize, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, sys2.out(), nullptr)) &&
+              SUCCEEDED(d->CreateOffscreenPlainSurface(kSize, kSize, D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, base1.out(), nullptr)) &&
+              SUCCEEDED(d->CreateOffscreenPlainSurface(kSize, kSize, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, base2.out(), nullptr)) &&
+              SUCCEEDED(d->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, backbuffer.out()));
+    for (int i = 0; i < n; ++i) ok = ok && SUCCEEDED(d->CreateQuery(D3DQUERYTYPE_OCCLUSION, queries[std::size_t(i)].out()));
+    void* p = nullptr;
+    // Quads: [0] the hull (left half, z 0.3), then n parts on a 16-column grid (even columns behind the hull).
+    const int rows = n / 16 ? n / 16 : 1;
+    auto part_rect = [rows](int i, float* r) {
+        const int col = i % 16, row = i / 16;
+        const float cx = -1.0f + float(col / 2 + (col & 1) * 8) * 0.125f + 0.0625f;
+        const float cy = -1.0f + (float(row) + 0.5f) * 2.0f / float(rows), hy = 0.6f / float(rows);
+        r[0] = cx - 0.05f, r[1] = cy - hy, r[2] = cx + 0.05f, r[3] = cy + hy;
+    };
+    if (ok && SUCCEEDED(part_vb->Lock(0, 0, &p, 0))) {
+        BoxVertex* v = static_cast<BoxVertex*>(p);
+        auto quad6 = [](BoxVertex* o, float x0, float y0, float x1, float y1, float z) {
+            o[0] = {x0, y0, z, 1}, o[1] = {x1, y0, z, 1}, o[2] = {x0, y1, z, 1};
+            o[3] = {x0, y1, z, 1}, o[4] = {x1, y0, z, 1}, o[5] = {x1, y1, z, 1};
+        };
+        quad6(v, -1, -1, 0, 1, 0.3f);
+        for (int i = 0; i < n; ++i) {
+            float r[4];
+            part_rect(i, r);
+            quad6(v + 6 * (i + 1), r[0], r[1], r[2], r[3], 0.6f);
+        }
+        part_vb->Unlock();
+    } else
+        ok = false;
+    if (ok && SUCCEEDED(strip->Lock(0, 0, &p, 0))) {
+        const float s[8] = {1, 0, 0, 0, 1, 1, 0, 1}; // the winding CULL NONE keeps either way
+        std::memcpy(p, s, sizeof s);
+        strip->Unlock();
+    } else
+        ok = false;
+    check(ok, "occlusion_mrt_resources");
+    if (!ok) return;
+    const char* const names[5] = {"base", "none", "flush", "mask", "zeros"};
+    const float minus_zero = -0.0f;
+    const float c1[4] = {minus_zero, 2.5f, -1.0f, 1e-30f}, c2[4] = {2.5f, 0, 0, 1};
+    double base_cpu = 0, base_gpu = 0;
+    for (int variant = 0; variant < 5; ++variant) {
+        std::vector<double> cpu, gpu;
+        for (int frame = 0; frame < 64; ++frame) {
+            reset_state(c);
+            d->SetRenderTarget(0, backbuffer.p);
+            d->SetRenderTarget(1, rt1s.p);
+            d->SetRenderTarget(2, rt2s.p);
+            d->SetDepthStencilSurface(c.depth.p);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00202020, 1.0f, 0);
+            double ms = 0;
+            wait_gpu(d, &ms);
+            d->BeginScene();
+            d->SetVertexDeclaration(decl.p);
+            d->SetStreamSource(0, part_vb.p, 0, sizeof(BoxVertex));
+            d->SetVertexShader(vs.p);
+            d->SetPixelShader(game_ps.p);
+            d->SetPixelShaderConstantF(1, c1, 1);
+            d->SetPixelShaderConstantF(2, c2, 1);
+            d->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+            d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+            d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+            d->SetRenderState(D3DRS_COLORWRITEENABLE, 15);
+            d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15);
+            d->SetRenderState(D3DRS_COLORWRITEENABLE2, 15);
+            const float grey[4] = {.4f, .4f, .4f, 1};
+            d->SetPixelShaderConstantF(0, grey, 1);
+            const double t0 = now_ms();
+            d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 2);
+            for (int i = 0; i < n; ++i) {
+                if (variant) {
+                    float r[4];
+                    part_rect(i, r);
+                    const float k[8] = {r[0] - 2.f / kSize, r[1] - 2.f / kSize, 0.6f, 1,
+                                        r[2] - r[0] + 4.f / kSize, r[3] - r[1] + 4.f / kSize, 0, 0};
+                    if (variant == 2) d->SetRenderTarget(2, nullptr), d->SetRenderTarget(1, nullptr);
+                    if (variant == 3) {
+                        d->SetRenderState(D3DRS_COLORWRITEENABLE1, 0);
+                        d->SetRenderState(D3DRS_COLORWRITEENABLE2, 0);
+                    }
+                    d->SetVertexShaderConstantF(252, k, 2);
+                    d->SetVertexDeclaration(rect_decl.p);
+                    d->SetStreamSource(0, strip.p, 0, 8);
+                    d->SetVertexShader(rect_vs.p);
+                    d->SetPixelShader(variant == 4 ? zeros3_ps.p : zero_ps.p);
+                    d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+                    d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+                    d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
+                    d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+                    queries[std::size_t(i)]->Issue(D3DISSUE_BEGIN);
+                    d->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
+                    queries[std::size_t(i)]->Issue(D3DISSUE_END);
+                    d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
+                    d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+                    d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+                    d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+                    d->SetPixelShader(game_ps.p);
+                    d->SetVertexShader(vs.p);
+                    d->SetStreamSource(0, part_vb.p, 0, sizeof(BoxVertex));
+                    d->SetVertexDeclaration(decl.p);
+                    if (variant == 3) {
+                        d->SetRenderState(D3DRS_COLORWRITEENABLE2, 15);
+                        d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15);
+                    }
+                    if (variant == 2) d->SetRenderTarget(1, rt1s.p), d->SetRenderTarget(2, rt2s.p);
+                }
+                d->DrawPrimitive(D3DPT_TRIANGLELIST, UINT(6 * (i + 1)), 2);
+            }
+            const double t1 = now_ms();
+            d->EndScene();
+            wait_gpu(d, &ms);
+            const double t2 = now_ms();
+            if (frame >= 4) {
+                cpu.push_back(1000.0 * (t1 - t0));
+                gpu.push_back(1000.0 * (t2 - t0));
+            }
+        }
+        d->SetRenderTarget(1, nullptr);
+        d->SetRenderTarget(2, nullptr);
+        d->GetRenderTargetData(rt1s.p, variant ? sys1.p : base1.p);
+        d->GetRenderTargetData(rt2s.p, variant ? sys2.p : base2.p);
+        unsigned changed1 = 0, changed2 = 0;
+        if (variant) {
+            D3DLOCKED_RECT a{}, b{};
+            for (int t = 0; t < 2; ++t) {
+                IDirect3DSurface9* now = t ? sys2.p : sys1.p;
+                IDirect3DSurface9* was = t ? base2.p : base1.p;
+                const int bpp = t ? 4 : 16;
+                if (SUCCEEDED(now->LockRect(&a, nullptr, D3DLOCK_READONLY)) &&
+                    SUCCEEDED(was->LockRect(&b, nullptr, D3DLOCK_READONLY))) {
+                    for (int y = 0; y < kSize; ++y)
+                        for (int x = 0; x < kSize; ++x)
+                            if (std::memcmp(static_cast<const char*>(a.pBits) + y * a.Pitch + x * bpp,
+                                            static_cast<const char*>(b.pBits) + y * b.Pitch + x * bpp, bpp))
+                                ++(t ? changed2 : changed1);
+                    was->UnlockRect();
+                    now->UnlockRect();
+                }
+            }
+        }
+        const double cpu50 = median(cpu), gpu50 = median(gpu);
+        if (!variant) base_cpu = cpu50, base_gpu = gpu50;
+        std::printf("occlusion_mrt variant=%s n=%d frames=%u cpu_us_p50=%.1f gpu_us_p50=%.1f cpu_us_per_test=%.2f "
+                    "pipeline_us_per_test=%.2f rt1_changed=%u rt2_changed=%u\n",
+                    names[variant], n, unsigned(cpu.size()), cpu50, gpu50, variant ? (cpu50 - base_cpu) / n : 0.0,
+                    variant ? (gpu50 - base_gpu) / n : 0.0, changed1, changed2);
+    }
+    reset_state(c);
+}
+
 LRESULT CALLBACK window_proc(HWND w, UINT m, WPARAM wp, LPARAM lp) {
     return DefWindowProcA(w, m, wp, lp);
 }
 
 int run(int argc, char** argv) {
     if (argc < 4) {
-        std::printf("usage: %s <d3d9 path|builtin> <d3dx9_37 path> <shader list|-> [pipeline-cost list]\n", argv[0]);
+        std::printf("usage: %s <d3d9 path|builtin> <d3dx9_37 path> <shader list|-> [pipeline-cost list] [occlusion-cost]\n", argv[0]);
         return 2;
     }
     LARGE_INTEGER f{};
@@ -1061,7 +1632,15 @@ int run(int argc, char** argv) {
         check(SUCCEEDED(h), "present_hidden_window");
     }
     if (std::strcmp(argv[3], "-")) sweep(c, argv[3]);
-    if (argc > 4) pipeline_cost(c, argv[4]);
+    for (int i = 4; i < argc; ++i) {
+        if (!std::strcmp(argv[i], "occlusion-cost")) {
+            for (int n : {128, 512}) occlusion_cost(c, n, 0, true); // CPU cost of every variant
+            for (int n : {128, 256, 384, 512})
+                for (double pace : {13.0, 20.0}) occlusion_cost(c, n, pace, false); // the production shape alone
+            occlusion_mrt_cost(c, 128); // the route's RT1/RT2 bound: which protection, at what cost
+        } else
+            pipeline_cost(c, argv[i]);
+    }
     std::printf("RESULT checks=%u failed=%u %s\n", checks, failures, failures ? "FAIL" : "PASS");
     return 0; // Context, device and Direct3D release in reverse declaration order.
 }

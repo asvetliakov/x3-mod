@@ -39,7 +39,8 @@ __attribute__((noinline)) bool MotionOutput::attach_small_props() noexcept {
 // end even though the draw is skipped, so a skipped prop keeps its extent). A stale extent of an earlier revision of
 // the same range stands in while it is young, as in the caster verdict.
 const cull_small_props::core::Box* MotionOutput::small_prop_extent(const MotionDrawCall& call,
-                                                                   cull_small_props::core::Box& out) noexcept {
+                                                                   cull_small_props::core::Box& out,
+                                                                   bool allow_stale) noexcept {
     if (!candidates_requested_ || call.user_memory || !shadow_.stream0 || !shadow_.stream0_stride ||
         (call.indexed && !shadow_.indices) || shadow_.stream0_pool != shadow_replay::PoolClass::Managed)
         return nullptr;
@@ -66,7 +67,7 @@ const cull_small_props::core::Box* MotionOutput::small_prop_extent(const MotionD
     const shadow_replay::ExtentEntry* stale = nullptr;
     const shadow_replay::ExtentEntry* e = candidate_extents_.find(key, &stale);
     if (!e && !(stale && stale->abandoned())) queue_candidate_extent(key, shadow_.stream0_identity, stale != nullptr);
-    if (!e && stale && !stale->abandoned() &&
+    if (!e && allow_stale && stale && !stale->abandoned() &&
         candidate_extents_.stale_age(*stale) <= shadow_replay::extent_stale_frames)
         e = stale;
     if (!e || e->state != shadow_replay::ExtentState::Known) return nullptr;

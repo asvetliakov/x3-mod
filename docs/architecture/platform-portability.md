@@ -850,6 +850,16 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-10-08: occlusion cull of ship sub-parts (`occlusion_cull`, default on)
+
+The cull ([occlusion-cull.md](occlusion-cull.md)) uses documented D3D9 only: `D3DQUERYTYPE_OCCLUSION` queries
+(`CreateQuery(..., nullptr)` as the capability probe, `Issue`, `GetData(..., 0)`, never a flush), one vs_3_0/ps_3_0
+pair, a MANAGED vertex buffer, `SetVertexShaderConstantF(252, ..., 2)`, render states and the native getters, and
+`CheckDeviceFormat(D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING)` for the target format; the Windows path is the same code.
+A device that refuses occlusion queries logs one row and stays off. Cross-compiled (0 warnings, x87 PASS); the GPU
+fixture passed under Wine on bottle X3 on wined3d and DXVK ([occlusion-cull.md](../verification/occlusion-cull.md));
+native Windows execution unverified.
+
 ## 2026-10-03: engine heat shimmer (`engine_shimmer`, exhaust gap 9)
 
 The shimmer ([engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md), gap 9) uses documented D3D9 only: one
