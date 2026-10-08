@@ -2,8 +2,9 @@
 // reviewed original pairs (hull DEFAULT and BUMPMAP with the light-loop vertex layout, hull DEFAULT with the
 // single-light layout) drawn over a plate in front of a synthetic engine light, against their light-less base
 // variants; the light goes the production CPU path (engine_light_core.h: a glow-jet record -> the ship table -> the
-// node table from a logged draw -> the draw's constants) and is uploaded with the ship's nozzle plates at c190-c202.
-// Prints CASE / SAMPLE / INVARIANT rows for the runner's float64 oracle (verification/probe/run_engine_light.py), the
+// node table from a logged draw -> the draw's block) and is uploaded with the ship's nozzle plates and their lights at
+// c176-c202. Prints CASE / SAMPLE / INVARIANT rows for the runner's float64 oracle (verification/probe/run_engine_light.py),
+// the DUAL rows (ships of two nozzles: a light per plate, the per-pixel selection), the
 // nozzle-plate PLATE / P rows (the light-map term's gain near the ship's main nozzles: one nozzle as twin, gain 1,
 // light absent, no gain; three and eight nozzles as twin), then the Reset witness,
 // the per-draw CPU cost of the lookup + constants + upload, the twins' creation time, and the GPU cost of the term
@@ -299,8 +300,8 @@ struct Fixture {
         pc[216][0] = 1.f / float(size);
         pc[216][1] = 1.f / float(size);
         pc[217][3] = gain_lane; // the dynamic light-map gain lane (the light map is black but in the plate case)
-        // c0-c189 only: c190-c197 and c200-c202 per twin draw (upload), c198-c199 never written by the API (the DEFs).
-        api(d->SetPixelShaderConstantF(0, &pc[0][0], 190), "PS constants");
+        // c0-c175 only: c176-c197 and c200-c202 per twin draw (upload), c198-c199 never written by the API (the DEFs).
+        api(d->SetPixelShaderConstantF(0, &pc[0][0], EngineLightAbi::light_constant), "PS constants");
         api(d->SetPixelShaderConstantF(203, &pc[203][0], 21), "PS constants high");
     }
     void state(unsigned p, IDirect3DSurface9* rt, unsigned w, unsigned h) {
@@ -365,15 +366,19 @@ struct Fixture {
     struct Image {
         std::vector<float> color, motion, depth;
     };
-    // The route's two uploads of a twin draw: the plates c190-c197 and the light c200-c202 (never c198-c199, the DEFs).
+    // The route's two uploads of a twin draw: the plate lights and plates c176-c197 and the light c200-c202 (never
+    // c198-c199, the DEFs).
     void upload(const float* block) {
-        api(d->SetPixelShaderConstantF(EngineLightAbi::plate_constant, block, EngineLightAbi::plate_count), "c190");
+        const unsigned skip = el::block_upload_skip(block); // a one-plate ship from c190, as the route
+        api(d->SetPixelShaderConstantF(EngineLightAbi::light_constant + skip, block + skip * 4,
+                                       EngineLightAbi::upload_count - skip),
+            "c176");
         api(d->SetPixelShaderConstantF(EngineLightAbi::pixel_constant, block + EngineLightAbi::block_light * 4,
                                        EngineLightAbi::pixel_constant_count),
             "c200");
     }
-    // `block`: the staging block of a twin draw (EngineLightAbi::block_registers rows: the plates, two rows never
-    // uploaded, the light at block + 40), uploaded by upload().
+    // `block`: the staging block of a twin draw (EngineLightAbi::block_registers rows: the plate lights, the plates,
+    // two rows never uploaded, the light at block + light_at), uploaded by upload().
     Image draw(unsigned p, unsigned k, bool twin, const Scene& s, float emissive, const float* block, bool fp16) {
         IDirect3DSurface9* rt = fp16 ? color16.p : color32.p;
         state(p, rt, size, size);
@@ -391,12 +396,15 @@ struct Fixture {
         return i;
     }
 };
-constexpr unsigned block_floats = EngineLightAbi::block_registers * 4, light_at = EngineLightAbi::block_light * 4;
-static_assert(EngineLightAbi::plate_constant == 190 && EngineLightAbi::block_light == 10 &&
+constexpr unsigned block_floats = EngineLightAbi::block_registers * 4, light_at = EngineLightAbi::block_light * 4,
+                   keys_at = EngineLightAbi::block_plates * 4;
+static_assert(EngineLightAbi::light_constant == el::block_first && block_floats == el::block_floats &&
+                  light_at == el::block_light && keys_at == el::block_plates && el::block_lights == 0 &&
                   EngineLightAbi::plate_count == el::plate_slots,
-              "the fixture's upload block");
+              "the fixture's upload block (engine_light::core::block_constants)");
 // The production CPU path for one ship (root 0x4000) of `count` main jets: the ship table, the plate's draw logged
-// under the root, the node table, the draw's constants (the light at block + 40) and plates (block + 0).
+// under the root, the node table, the draw's block (block_constants: the plate lights at block + 0, the plates at
+// block + keys_at, the light at block + light_at).
 static bool ship_block(const Fixture::Scene& s, const ee::Record* records, unsigned count, ep::Preset preset,
                        float out[block_floats], el::ShipTable& ships, el::NodeTable& nodes, el::DrawLog& log) {
     std::uint32_t parents[16];
@@ -410,9 +418,7 @@ static bool ship_block(const Fixture::Scene& s, const ee::Record* records, unsig
     el::build_nodes(ships, log, &nodes);
     const el::NodeLight* n = el::find_node(nodes, 0x5000, 9);
     for (unsigned i = 0; i < block_floats; ++i) out[i] = 0.f;
-    if (!n || !el::draw_constants(*n, s.world, s.view_inverse, out + light_at)) return false;
-    el::plate_constants(*n, s.world, s.view_inverse, out, &out[light_at + 11]);
-    return true;
+    return n && el::block_constants(*n, s.world, s.view_inverse, out);
 }
 static ee::Record jet_record(const double nozzle[3], const double axis[3], float size, float throttle, unsigned cluster,
                              std::uint32_t handle) {
@@ -544,6 +550,69 @@ int main(int argc, char** argv) {
                 }
             ++case_id;
         }
+        // A light per plate (engine-light.md "A light per plate"): ships of two main nozzles in front of the facing plate
+        // (tilt 0, emissive 0), axis +z, so each light sits 0.5 x value in front of its nozzle. "apart": two equal
+        // nozzles (value 6, R 18) 40 units apart, beyond one reach (the Split Ocelot's head-on case scaled: the brightness
+        // tie's lower handle is plate 0; before, the other nozzle's hull stayed dark); "overlap": unequal nozzles (6 and
+        // 4) 16 apart, their reaches overlapping, so the per-pixel selection switches between them. The fill-only kind
+        // (no light-map gain: the selecting form without plates) and the production kind (the plate form), three
+        // pairs. Rows DUAL (the two lights c200-c201 / c176-c177, the plates c190-c191, the tier) and S (stride 2).
+        {
+            struct DualSpec {
+                unsigned pair, kind;
+                const char* name;
+                double x[2], z[2];
+                float value[2];
+            };
+            const DualSpec duals[] = {{0, 1, "apart", {20., -20.}, {38., 38.}, {6.f, 6.f}},
+                                      {0, 6, "apart", {20., -20.}, {38., 38.}, {6.f, 6.f}},
+                                      {1, 6, "overlap", {-8., 8.}, {40., 40.}, {6.f, 4.f}},
+                                      {2, 1, "overlap", {-8., 8.}, {40., 40.}, {6.f, 4.f}}};
+            const Fixture::Scene s = Fixture::scene(0.);
+            unsigned dual_id = 100;
+            for (const auto& c : duals) {
+                ee::Record r[2];
+                for (unsigned i = 0; i < 2; ++i) {
+                    const double nozzle[3] = {Fixture::C[0] + c.x[i], Fixture::C[1], Fixture::C[2] + c.z[i]},
+                                 axis[3] = {0., 0., 1.};
+                    r[i] = jet_record(nozzle, axis, c.value[i], .8f, ee::orange, 5 + i);
+                }
+                float block[block_floats];
+                require(ship_block(s, r, 2, ep::Preset::standard, block, *ships, *nodes, *log), "dual ship");
+                const unsigned k = c.kind == 6 ? 1 : 0;
+                const auto base = f->draw(c.pair, k, false, s, 0.f, block, false);
+                const auto twin = f->draw(c.pair, k, true, s, 0.f, block, false);
+                unsigned alpha_bad = 0, motion_bad = 0, depth_bad = 0, finite_bad = 0;
+                for (unsigned i = 0; i < f->size * f->size; ++i) {
+                    alpha_bad += std::memcmp(&base.color[i * 4 + 3], &twin.color[i * 4 + 3], 4) != 0;
+                    motion_bad += std::memcmp(&base.motion[i * 4], &twin.motion[i * 4], 16) != 0;
+                    depth_bad += std::memcmp(&base.depth[i], &twin.depth[i], 4) != 0;
+                    for (unsigned ch = 0; ch < 3; ++ch)
+                        finite_bad += !std::isfinite(twin.color[i * 4 + ch]) || twin.color[i * 4 + ch] < 0.f;
+                }
+                std::printf("DUAL id=%u pair=%u kind=%u name=%s size=%u cluster=%u s=%.9g preset=%u alpha_bad=%u motion_bad=%u depth_bad=%u finite_bad=%u nozzles=",
+                            dual_id, c.pair, c.kind, c.name, f->size, unsigned(ee::orange), .8, unsigned(ep::Preset::standard),
+                            alpha_bad, motion_bad, depth_bad, finite_bad);
+                for (unsigned i = 0; i < 2; ++i)
+                    std::printf("%s%.9g,%.9g,%.9g,%.9g", i ? ";" : "", c.x[i], 0., c.z[i], double(c.value[i]));
+                std::printf(" lights=");
+                for (unsigned i = 0; i < 8; ++i) std::printf("%s%.9g", i ? "," : "", double(block[light_at + i]));
+                for (unsigned i = 0; i < 8; ++i) std::printf(",%.9g", double(block[i]));
+                std::printf(" keys=");
+                for (unsigned i = 0; i < 8; ++i) std::printf("%s%.9g", i ? "," : "", double(block[keys_at + i]));
+                std::printf(" tier=%.9g\n", double(block[light_at + 11]));
+                for (unsigned y = 0; y < f->size; y += 2)
+                    for (unsigned x = 0; x < f->size; x += 2) {
+                        const unsigned i = y * f->size + x;
+                        std::printf("S %u %u %u %.9g %.9g %.9g %.9g %.9g %.9g %.9g %u\n", dual_id, x, y,
+                                    double(base.color[i * 4]), double(base.color[i * 4 + 1]), double(base.color[i * 4 + 2]),
+                                    double(twin.color[i * 4]), double(twin.color[i * 4 + 1]), double(twin.color[i * 4 + 2]),
+                                    double(twin.depth[i]),
+                                    unsigned(std::memcmp(&base.color[i * 4], &twin.color[i * 4], 12) == 0));
+                    }
+                ++dual_id;
+            }
+        }
         // Nozzle plates (engine-light.md "Nozzle plates"): the light-map term's gain near the light. The plate faces the
         // camera at 50 units (tilt 0), the light placed on it at the centre pixel (128, 128: d = 0; nozzle 0.5 x value
         // in front of the plate, axis +z), value 12 (R 36). Per pair (DEFAULT: light map s2, BUMPMAP: s3) and mode, the
@@ -611,7 +680,8 @@ int main(int argc, char** argv) {
                         std::printf("%s%.9g,%.9g,%.9g,%.9g", i ? ";" : "", sh.nozzles[i].x, sh.nozzles[i].y,
                                     50. - 0.5 * double(sh.nozzles[i].value), double(sh.nozzles[i].value));
                     std::printf(" plates=");
-                    for (unsigned i = 0; i < el::plate_slots * 4; ++i) std::printf("%s%.9g", i ? "," : "", double(sh.block[i]));
+                    for (unsigned i = 0; i < el::plate_slots * 4; ++i)
+                        std::printf("%s%.9g", i ? "," : "", double(sh.block[keys_at + i]));
                     std::printf("\n");
                     for (unsigned y = 0; y < f->size; y += 4)
                         for (unsigned x = 0; x < f->size; x += 4) {
@@ -696,10 +766,11 @@ int main(int argc, char** argv) {
             for (unsigned j = 0; j < rounds; ++j) {
                 const unsigned i = (j * 2654435761u) % 256u;
                 const el::NodeLight* n = el::find_node(*nodes, 0x900000u + i * 64u + (j & 3u) * 4u, j & 3u);
-                if (n && el::draw_constants(*n, s.world, s.view_inverse, c + light_at)) {
-                    el::plate_constants(*n, s.world, s.view_inverse, c, &c[light_at + 11]);
+                if (n && el::block_constants(*n, s.world, s.view_inverse, c)) {
                     ++hits;
-                    device.p->SetPixelShaderConstantF(EngineLightAbi::plate_constant, c, EngineLightAbi::plate_count);
+                    const unsigned skip = el::block_upload_skip(c);
+                    device.p->SetPixelShaderConstantF(EngineLightAbi::light_constant + skip, c + skip * 4,
+                                                      EngineLightAbi::upload_count - skip);
                     device.p->SetPixelShaderConstantF(EngineLightAbi::pixel_constant, c + light_at, EngineLightAbi::pixel_constant_count);
                 }
             }

@@ -454,16 +454,16 @@
   }
  },
  "cost": {
-  "build_us": 84.5,
-  "hit_ns": 62.2,
+  "build_us": 75.9,
+  "hit_ns": 73.8,
   "hits": 200000.0,
-  "log_ns": 2.0,
+  "log_ns": 1.8,
   "miss_ns": 3.6,
   "misses": 200000.0,
   "nodes": 1024.0,
   "rounds": 200000.0,
   "ships": 256.0,
-  "ships_us": 47.4
+  "ships_us": 71.4
  },
  "cost_checks": {
   "hit_ns": true,
@@ -472,144 +472,360 @@
  },
  "create": {
   "twins": 6.0,
-  "us_each": 42.8,
-  "us_total": 257.0
+  "us_each": 50.9,
+  "us_total": 305.2
  },
- "elapsed_s": 29.55,
- "executable_sha256": "b2dc7b70656702f774817592e146a25ed5c0c481e7946f0ac4102d8ec8f07647",
+ "dual": {
+  "0-apart-1": {
+   "checks": {
+    "before_dark": true,
+    "both_lit": true,
+    "constants": true,
+    "dark": true,
+    "invariants": true,
+    "radiance": true,
+    "second_nozzle": true,
+    "tier": true,
+    "zero": true
+   },
+   "constant_error": 2.500000007010783e-08,
+   "invariants": {
+    "alpha_bad": 0,
+    "depth_bad": 0,
+    "finite_bad": 0,
+    "motion_bad": 0
+   },
+   "passed": true,
+   "stats": {
+    "at_foot": [
+     0.718402445,
+     0.718402445
+    ],
+    "before_at_foot": [
+     0.4830701545727944,
+     0.0
+    ],
+    "foot_distance": [
+     0.3125,
+     0.3125
+    ],
+    "lit": [
+     1242,
+     1242
+    ],
+    "max_dark_absolute": 5.156865162188155e-05,
+    "max_relative": 0.001573255249025727,
+    "samples": 16384,
+    "seam": 128,
+    "visible": 6952,
+    "worst": {
+     "channel": 0,
+     "expected": 0.031305521275670434,
+     "light": 1,
+     "twin": 0.0312562697,
+     "x": 68,
+     "y": 90
+    },
+    "zero": 13752,
+    "zero_not_identical": 0
+   }
+  },
+  "0-apart-6": {
+   "checks": {
+    "before_dark": true,
+    "both_lit": true,
+    "constants": true,
+    "dark": true,
+    "invariants": true,
+    "radiance": true,
+    "second_nozzle": true,
+    "tier": true,
+    "zero": true
+   },
+   "constant_error": 2.500000007010783e-08,
+   "invariants": {
+    "alpha_bad": 0,
+    "depth_bad": 0,
+    "finite_bad": 0,
+    "motion_bad": 0
+   },
+   "passed": true,
+   "stats": {
+    "at_foot": [
+     0.718402386,
+     0.718402386
+    ],
+    "before_at_foot": [
+     0.4830701545727944,
+     0.0
+    ],
+    "foot_distance": [
+     0.3125,
+     0.3125
+    ],
+    "lit": [
+     1242,
+     1242
+    ],
+    "max_dark_absolute": 5.1479251621881425e-05,
+    "max_relative": 0.001573255249025727,
+    "samples": 16384,
+    "seam": 128,
+    "visible": 6952,
+    "worst": {
+     "channel": 0,
+     "expected": 0.031305521275670434,
+     "light": 1,
+     "twin": 0.0312562697,
+     "x": 68,
+     "y": 90
+    },
+    "zero": 13752,
+    "zero_not_identical": 0
+   }
+  },
+  "1-overlap-6": {
+   "checks": {
+    "both_lit": true,
+    "constants": true,
+    "dark": true,
+    "invariants": true,
+    "radiance": true,
+    "second_nozzle": true,
+    "tier": true,
+    "zero": true
+   },
+   "constant_error": 2.7500000110425304e-08,
+   "invariants": {
+    "alpha_bad": 0,
+    "depth_bad": 0,
+    "finite_bad": 0,
+    "motion_bad": 0
+   },
+   "passed": true,
+   "stats": {
+    "at_foot": [
+     0.804205894,
+     0.546932518
+    ],
+    "before_at_foot": [
+     0.6191659079244598,
+     0.002066821914298864
+    ],
+    "foot_distance": [
+     0.1875,
+     0.1875
+    ],
+    "lit": [
+     1316,
+     309
+    ],
+    "max_dark_absolute": 6.184965955332612e-05,
+    "max_relative": 0.003320074809874684,
+    "samples": 16384,
+    "seam": 8,
+    "visible": 4568,
+    "worst": {
+     "channel": 0,
+     "expected": 0.020778327000064253,
+     "light": 1,
+     "twin": 0.0207093414,
+     "x": 162,
+     "y": 146
+    },
+    "zero": 14733,
+    "zero_not_identical": 0
+   }
+  },
+  "2-overlap-1": {
+   "checks": {
+    "both_lit": true,
+    "constants": true,
+    "dark": true,
+    "invariants": true,
+    "radiance": true,
+    "second_nozzle": true,
+    "tier": true,
+    "zero": true
+   },
+   "constant_error": 2.7500000110425304e-08,
+   "invariants": {
+    "alpha_bad": 0,
+    "depth_bad": 0,
+    "finite_bad": 0,
+    "motion_bad": 0
+   },
+   "passed": true,
+   "stats": {
+    "at_foot": [
+     0.804205894,
+     0.546932638
+    ],
+    "before_at_foot": [
+     0.6191659079244598,
+     0.002066821914298864
+    ],
+    "foot_distance": [
+     0.1875,
+     0.1875
+    ],
+    "lit": [
+     1316,
+     309
+    ],
+    "max_dark_absolute": 6.184965955332612e-05,
+    "max_relative": 0.003320074809874684,
+    "samples": 16384,
+    "seam": 8,
+    "visible": 4568,
+    "worst": {
+     "channel": 0,
+     "expected": 0.020778327000064253,
+     "light": 1,
+     "twin": 0.0207093414,
+     "x": 162,
+     "y": 146
+    },
+    "zero": 14733,
+    "zero_not_identical": 0
+   }
+  }
+ },
+ "elapsed_s": 45.79,
+ "executable_sha256": "02e6fa47ab074b8add5b34e9136b88b1a4e7b610a8dc589d769d8c844ec5677d",
  "exit_code": 0,
  "game_launched": false,
  "gpu": [
   {
    "base_batches": [
-    0.2223,
-    0.1844,
-    0.1611,
-    0.15,
-    0.1508
-   ],
-   "base_ms": 0.1611,
-   "height": 1080,
-   "nozzles": 1,
-   "term_us": 12.6,
-   "twin_batches": [
-    0.2212,
-    0.1907,
-    0.1736,
-    0.1737,
-    0.1728
-   ],
-   "twin_ms": 0.1737,
-   "width": 1920
-  },
-  {
-   "base_batches": [
-    0.4961,
-    0.4948,
-    0.4938,
-    0.4986,
-    0.4945
-   ],
-   "base_ms": 0.4948,
-   "height": 1440,
-   "nozzles": 1,
-   "term_us": 87.19999999999995,
-   "twin_batches": [
-    0.5822,
-    0.5812,
-    0.5805,
-    0.582,
-    0.5869
-   ],
-   "twin_ms": 0.582,
-   "width": 5120
-  },
-  {
-   "base_batches": [
-    0.1499,
-    0.15,
-    0.1496,
-    0.1498,
-    0.1491
-   ],
-   "base_ms": 0.1498,
-   "height": 1080,
-   "nozzles": 3,
-   "term_us": 35.20000000000001,
-   "twin_batches": [
-    0.1841,
+    0.3098,
+    0.2644,
     0.185,
-    0.1846,
-    0.1852,
-    0.1851
+    0.1612,
+    0.1499
    ],
-   "twin_ms": 0.185,
+   "base_ms": 0.185,
+   "height": 1080,
+   "nozzles": 1,
+   "term_us": 29.600000000000016,
+   "twin_batches": [
+    0.3081,
+    0.2433,
+    0.2146,
+    0.1788,
+    0.1863
+   ],
+   "twin_ms": 0.2146,
    "width": 1920
   },
   {
    "base_batches": [
-    0.4942,
-    0.4922,
-    0.4936,
-    0.4923,
-    0.4946
+    0.5085,
+    0.5041,
+    0.5187,
+    0.5147,
+    0.5086
    ],
-   "base_ms": 0.4936,
+   "base_ms": 0.5086,
    "height": 1440,
-   "nozzles": 3,
-   "term_us": 115.49999999999999,
+   "nozzles": 1,
+   "term_us": 112.39999999999995,
    "twin_batches": [
-    0.6096,
-    0.6103,
-    0.6091,
-    0.6089,
-    0.609
+    0.6236,
+    0.6,
+    0.621,
+    0.6219,
+    0.5941
    ],
-   "twin_ms": 0.6091,
+   "twin_ms": 0.621,
    "width": 5120
   },
   {
    "base_batches": [
-    0.1494,
-    0.1491,
-    0.1491,
-    0.1493,
-    0.1492
+    0.1585,
+    0.1513,
+    0.1532,
+    0.1552,
+    0.1539
    ],
-   "base_ms": 0.1492,
+   "base_ms": 0.1539,
    "height": 1080,
-   "nozzles": 8,
-   "term_us": 46.500000000000014,
+   "nozzles": 3,
+   "term_us": 40.300000000000004,
    "twin_batches": [
-    0.1956,
-    0.1952,
-    0.196,
-    0.1957,
-    0.1959
+    0.1942,
+    0.1936,
+    0.1942,
+    0.1996,
+    0.1991
    ],
-   "twin_ms": 0.1957,
+   "twin_ms": 0.1942,
    "width": 1920
   },
   {
    "base_batches": [
-    0.4935,
-    0.493,
-    0.4933,
-    0.4923,
-    0.4931
+    0.5086,
+    0.509,
+    0.504,
+    0.5079,
+    0.5132
    ],
-   "base_ms": 0.4931,
+   "base_ms": 0.5086,
+   "height": 1440,
+   "nozzles": 3,
+   "term_us": 157.39999999999998,
+   "twin_batches": [
+    0.666,
+    0.6585,
+    0.6714,
+    0.6767,
+    0.6566
+   ],
+   "twin_ms": 0.666,
+   "width": 5120
+  },
+  {
+   "base_batches": [
+    0.1668,
+    0.1614,
+    0.1628,
+    0.1631,
+    0.1613
+   ],
+   "base_ms": 0.1628,
+   "height": 1080,
+   "nozzles": 8,
+   "term_us": 76.6,
+   "twin_batches": [
+    0.2394,
+    0.2366,
+    0.2412,
+    0.2351,
+    0.2411
+   ],
+   "twin_ms": 0.2394,
+   "width": 1920
+  },
+  {
+   "base_batches": [
+    0.5143,
+    0.5159,
+    0.5175,
+    0.5102,
+    0.518
+   ],
+   "base_ms": 0.5159,
    "height": 1440,
    "nozzles": 8,
-   "term_us": 157.29999999999998,
+   "term_us": 259.29999999999995,
    "twin_batches": [
-    0.6502,
-    0.6515,
-    0.6514,
-    0.6504,
-    0.6497
+    0.7697,
+    0.7774,
+    0.7793,
+    0.7725,
+    0.7752
    ],
-   "twin_ms": 0.6504,
+   "twin_ms": 0.7752,
    "width": 5120
   }
  ],
@@ -1166,7 +1382,7 @@
    "kind": "1",
    "pair": "0",
    "ps": "ps_8759c7838bbc86c2",
-   "twin_words": "1554",
+   "twin_words": "1810",
    "vs": "vs_53a0a641107ed76c"
   },
   {
@@ -1174,7 +1390,7 @@
    "kind": "6",
    "pair": "0",
    "ps": "ps_8759c7838bbc86c2",
-   "twin_words": "2082",
+   "twin_words": "2214",
    "vs": "vs_53a0a641107ed76c"
   },
   {
@@ -1182,7 +1398,7 @@
    "kind": "1",
    "pair": "1",
    "ps": "ps_64bac8bb307eb896",
-   "twin_words": "1686",
+   "twin_words": "1942",
    "vs": "vs_4944d81dfe531b37"
   },
   {
@@ -1190,7 +1406,7 @@
    "kind": "6",
    "pair": "1",
    "ps": "ps_64bac8bb307eb896",
-   "twin_words": "2220",
+   "twin_words": "2352",
    "vs": "vs_4944d81dfe531b37"
   },
   {
@@ -1198,7 +1414,7 @@
    "kind": "1",
    "pair": "2",
    "ps": "ps_f6a501717c3e5ca8",
-   "twin_words": "607",
+   "twin_words": "863",
    "vs": "vs_badefd5143b3024f"
   },
   {
@@ -1206,7 +1422,7 @@
    "kind": "6",
    "pair": "2",
    "ps": "ps_f6a501717c3e5ca8",
-   "twin_words": "1113",
+   "twin_words": "1245",
    "vs": "vs_badefd5143b3024f"
   }
  ],
@@ -1218,13 +1434,13 @@
  "reset_ok": true,
  "sources_sha256": {
   "src/proxy/engine_effects_core.h": "f530c117def4213c759b7bc45334c4dd2d2ebdfc45d6941615891a7ed56f4964",
-  "src/proxy/engine_light_core.h": "2ede22b62141f53449142140cb40d2c526744190e85f33ebc989a36aab41f851",
+  "src/proxy/engine_light_core.h": "e55f728b195d2c5e1b2c68e6e5376ea94ac13360f69ad59e0af58d433cdec0f5",
   "src/proxy/engine_plumes_core.h": "e9a8500842e1a415c6628e7ba5ffb76cab6f1c69c045d56979d5517137890273",
-  "src/renderer/linear_engine_light_inc.h": "41b0f26ed5a78025cf908273878fff6c8aa1792ac645b112a22a0bf686e46873",
-  "src/renderer/linear_material.cpp": "c12810ae25cc99d2afc4330c17088a3f800be1edb0265ae7042ceac8e817b181",
-  "src/renderer/linear_material.h": "f654155aeb9e8075889417b9c8b0a71b5272b4b405836ec8ca898720fee280e2",
+  "src/renderer/linear_engine_light_inc.h": "142ceb225910fc8df31ef661e7f2a143de39dfcec20fc15884a958a42715dea4",
+  "src/renderer/linear_material.cpp": "3b4d89067779e5095a834603a34931c4634e9542db4220c20f79061414ef97b8",
+  "src/renderer/linear_material.h": "cc865ef40fa937fb5c9ba6afc8e447ccdd044c1e5607cdd1b1607ae1784976a0",
   "src/renderer/material_motion.cpp": "5734138efcfe06b1a3297af28d4be08ce251a994e30b99c91993b67a4a771d79",
-  "verification/probe/engine_light_fixture.cpp": "2068e0c3b26c754307cc501c96e5a34a31e828dd3cc5be6cddbac81fb74ef174"
+  "verification/probe/engine_light_fixture.cpp": "1eb7773e304d01a0e418d15ca068c1269476b66d2c6db5d1e5d4bc49f2dc81c7"
  },
  "teardown": [
   "TEARDOWN fixture",
@@ -1232,5 +1448,8 @@
   "TEARDOWN done"
  ],
  "teardown_ok": true,
- "timeout": null
+ "timeout": null,
+ "wine_env": [
+  "CX_GRAPHICS_BACKEND=wined3d"
+ ]
 }

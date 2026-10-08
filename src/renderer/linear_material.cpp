@@ -2423,6 +2423,10 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                       fetch_depth = linear_material_flow_control_depth(original, words, lightmap_site);
             plate_on = site_depth == 0 && fetch_depth == 0;
         }
+        // A light per plate (linear_engine_light_inc.h): the selection's uniform branches, in every twin but a gained
+        // one without the plate weight (its block may sit between the light-map fetch and the final, where the term's
+        // proof admits no flow control): that one keeps plate 0's single light.
+        const bool select_on = engine_on && (!lightmap_on || plate_on);
         if (share_applied) {
             std::array<unsigned, 2> seeds{};
             if (xt) {
@@ -2461,7 +2465,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         unsigned engine_scratch_references = 0;
         if (engine_on) {
             Words block;
-            engine_light_block(block, row->pixel_depth_input_register, plate_on);
+            engine_light_block(block, row->pixel_depth_input_register, plate_on, select_on);
             if (!engine_light_range_free(block.data(), 0, block.size(), row->pixel_depth_input_register))
                 return LinearMaterialResult::ResourceLimit;
             for (std::size_t at = 0; at < block.size();) {
@@ -2524,7 +2528,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                 // the share twin add the same capped term.
                 if (engine_on) {
                     engine_at = combined.size();
-                    engine_light_block(combined, row->pixel_depth_input_register, plate_on);
+                    engine_light_block(combined, row->pixel_depth_input_register, plate_on, select_on);
                 }
                 // Fill twin: S_sum' = fill(sum) - fill(sum - S_sum), evaluated
                 // on r23 (free until the final RGB instruction writes it).
@@ -2583,7 +2587,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         }
         Structure final_structure;
         if (!structure(combined.data(), combined.size(), false, final_structure, false, abi, temp_count, false, false,
-                       xt != nullptr || plate_on)) // the plate block's uniform if_ne / endif (XT originals: their own)
+                       xt != nullptr || select_on)) // the light block's uniform if_ne / endif (XT originals: their own)
             return LinearMaterialResult::ResourceLimit;
         if (widen_on) {
             // The emitted program re-proves the widening: rG, rT and rU referenced
@@ -2669,21 +2673,28 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         }
         if (engine_on) {
             // The emitted program re-proves the light: c200-c202 never defined
-            // and read only by the block (2, 2 and 1 reads), c199 defined once
-            // and read by the block (3) and each fill block (1, twice with the
-            // share twin).
+            // and read only by the block (2, 2 and 1 reads; with the per-plate
+            // selection 1, 1 and 3: the MOVs into r12 / r13 and the tier lane
+            // of the two if_ne), c199 defined once and read by the block (3,
+            // and the branch thresholds: 1 with plates, 2 without) and each
+            // fill block (1, twice with the share twin).
             unsigned definitions = 0, reads = 0;
-            // c202: the forward axis (DP3) and, in a plate twin, the tier lane of the two if_ne.
-            const unsigned expected[3] = {2, 2, plate_on ? 3u : 1u};
+            const unsigned expected[3] = {select_on ? 1u : 2u, select_on ? 1u : 2u, select_on ? 3u : 1u};
             for (unsigned k = 0; k < 3; ++k) {
                 constant_uses(combined.data(), final_structure, engine_light_constant + k, definitions, reads);
                 if (definitions != 0 || reads != expected[k]) return LinearMaterialResult::ProfileMismatch;
             }
             constant_uses(combined.data(), final_structure, engine_light_definition, definitions, reads);
-            if (definitions != 1 || reads != (share ? 5u : 4u) + (plate_on ? 1u : 0u))
+            if (definitions != 1 || reads != (share ? 5u : 4u) + (plate_on ? 1u : select_on ? 2u : 0u))
                 return LinearMaterialResult::ProfileMismatch;
+            // The plate lights c176-c189: never defined, read once each by the selection's CMPs.
+            for (unsigned i = engine_light_select_first; i < engine_light_plate_first; ++i) {
+                constant_uses(combined.data(), final_structure, i, definitions, reads);
+                if (definitions != 0 || reads != (select_on ? 1u : 0u)) return LinearMaterialResult::ProfileMismatch;
+            }
             // Nozzle plates: c198 defined once and read by the block alone (5),
-            // c190-c197 never defined and read by the block alone (2 each);
+            // c190-c197 never defined and read by the block alone (2 each, in
+            // every selecting twin);
             // r15 referenced only by the block and the plate gain (6), the
             // block emitted before the light-map fetch.
             constant_uses(combined.data(), final_structure, engine_light_plate_constant, definitions, reads);
@@ -2691,7 +2702,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                 return LinearMaterialResult::ProfileMismatch;
             for (unsigned i = 0; i < engine_light_plate_slots; ++i) {
                 constant_uses(combined.data(), final_structure, engine_light_plate_first + i, definitions, reads);
-                if (definitions != 0 || reads != (plate_on ? 2u : 0u)) return LinearMaterialResult::ProfileMismatch;
+                if (definitions != 0 || reads != (select_on ? 2u : 0u)) return LinearMaterialResult::ProfileMismatch;
             }
             if (plate_on) {
                 unsigned scratch = 0;

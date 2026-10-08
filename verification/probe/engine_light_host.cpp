@@ -126,14 +126,132 @@ int main() {
         if (node) plate_constants(*node, w, vi, c, &tier);
         std::printf("\"node_count\":%u,\"registers\":[", node ? node->plate_count : 0u);
         for (unsigned i = 0; i < plate_slots * 4; ++i) std::printf("%s%.9g", i ? "," : "", double(c[i]));
-        // A non-finite plate (value 0 after the node build) is left unused.
+        // A non-finite plate (value 0 after the node build) is a pad: slot 0's registers (its light plate 0's).
         NodeLight broken = node ? *node : NodeLight{};
         broken.plate[1][3] = 0.f;
-        plate_constants(broken, w, vi, c);
-        std::printf("],\"broken_slot1\":[%.9g,%.9g,%.9g,%.9g],\"tier\":%.1f,\"tiers\":[%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f]},",
-                    double(c[4]), double(c[5]), double(c[6]), double(c[7]), double(tier), double(plate_tier(0)),
+        const unsigned mask = plate_constants(broken, w, vi, c);
+        std::printf("],\"broken_slot1\":[%.9g,%.9g,%.9g,%.9g],\"broken_mask\":%u,\"tier\":%.1f,\"tiers\":[%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f],\"runs\":[%u,%u,%u,%u,%u,%u,%u,%u,%u]},",
+                    double(c[4]), double(c[5]), double(c[6]), double(c[7]), mask, double(tier), double(plate_tier(0)),
                     double(plate_tier(1)), double(plate_tier(2)), double(plate_tier(3)), double(plate_tier(4)),
-                    double(plate_tier(5)), double(plate_tier(6)), double(plate_tier(7)), double(plate_tier(8)));
+                    double(plate_tier(5)), double(plate_tier(6)), double(plate_tier(7)), double(plate_tier(8)),
+                    plate_run(0), plate_run(1), plate_run(2), plate_run(3), plate_run(4), plate_run(5), plate_run(6),
+                    plate_run(7), plate_run(8));
+    }
+    // ---- a light per plate (user decision 2026-10-08): the Split Ocelot's two secondary big3 nozzles (Run 134 A
+    // triage: equal value_eff 548.076, 2,411 apart, reach 3 x 548.076 = 1,644), here at s 1, axis -z. Both plates carry
+    // their own light (plate 0 at c200-c201, plate 1 at c176-c177), the pads; the twin's selection and law modelled in
+    // float (shade below) at a hull point 300 units beside each light: both lit, while plate 0's light alone (the rule
+    // before) leaves the second dark. A one-nozzle ship: c200-c202 and c190 equal draw_constants / plate_constants
+    // bit for bit, c176-c189 zero, and the modelled radiance with the selection equals the single light's bit for bit.
+    {
+        const float v = 548.076f;
+        ee::Record r[2] = {jet(-1205.5f, 0, 0, v, 1.f, 81), jet(1205.5f, 0, 0, v, 1.f, 80)};
+        const std::uint32_t parent[2] = {0x6000, 0x6000};
+        build_ships(r, parent, nullptr, nullptr, nullptr, 0, 2, nullptr, look, 1.f, ships.get());
+        const double t[3] = {1.0e4, -2.0e3, 5.0e4};
+        float w[12];
+        rows(0., 1., t, w);
+        log->clear();
+        log->push(0x6100, 0x6000, 4, w);
+        build_nodes(*ships, *log, nodes.get());
+        const NodeLight* n = find_node(*nodes, 0x6100, 4);
+        // Camera 6,000 units in front of the ship (along -z), looking +z.
+        float vi[12] = {1, 0, 0, float(t[0]), 0, 1, 0, float(t[1]), 0, 0, 1, float(t[2] - 6000.)};
+        float b[block_floats];
+        for (float& x : b) x = -1.f;
+        const bool ok = n && block_constants(*n, w, vi, b);
+        const int a = find_ship(*ships, 0x6000);
+        const Light& l = ships->lights[a < 0 ? 0 : a];
+        // The twin's selection and law (linear_engine_light_inc.h) in float: the run slots' u_i = |D v_i^-1 - k_i|^2,
+        // the least (ties: the earlier) picks the light, then E = colour saturate(N . l) saturate(1 - d^2 / R^2)^2.
+        const auto shade = [&](const float* block, const float d[3], const float normal[3], bool single, float out[3]) {
+            const float* light = block + block_light;
+            const float* sel = light;
+            const float* col = light + 4;
+            const unsigned run = light[11] == 0.f ? 1u : light[11] == 1.f ? 4u : 8u;
+            float s = 0.f;
+            for (unsigned i = 0; i < run && !single; ++i) {
+                const float* k = block + block_plates + i * 4;
+                float u = 0.f;
+                for (unsigned j = 0; j < 3; ++j) {
+                    const float x = d[j] * k[3] - k[j];
+                    u += x * x;
+                }
+                if (!i) {
+                    s = u;
+                    continue;
+                }
+                if (!(u - s >= 0.f)) {
+                    sel = block + block_lights + (i - 1) * 8;
+                    col = sel + 4;
+                }
+                s = u < s ? u : s;
+            }
+            float to[3], d2 = 0.f;
+            for (unsigned j = 0; j < 3; ++j) {
+                to[j] = sel[j] - d[j];
+                d2 += to[j] * to[j];
+            }
+            const float inv = 1.f / std::sqrt(d2 > 0x1p-40f ? d2 : 0x1p-40f);
+            float ndl = 0.f;
+            for (unsigned j = 0; j < 3; ++j) ndl += normal[j] * to[j] * inv;
+            ndl = ndl < 0.f ? 0.f : ndl > 1.f ? 1.f : ndl;
+            float q = (sel[3] - d2) * col[3];
+            q = q < 0.f ? 0.f : q > 1.f ? 1.f : q;
+            for (unsigned j = 0; j < 3; ++j) out[j] = col[j] * (q * q * ndl);
+        };
+        // The hull points: 300 units beside each light point (toward +y), the normal toward the light.
+        float radiance[2][3] = {}, before[2][3] = {};
+        const float normal[3] = {0.f, -1.f, 0.f};
+        for (unsigned p = 0; p < 2 && ok; ++p) {
+            const float* light = p ? b + block_lights : b + block_light;
+            const float d[3] = {light[0], light[1] + 300.f, light[2]};
+            shade(b, d, normal, false, radiance[p]);
+            shade(b, d, normal, true, before[p]);
+        }
+        std::printf("\"per_plate\":{\"ok\":%d,\"count\":%u,\"handles\":[%u,%u],\"light_handle\":%u,\"node_plates\":%u,"
+                    "\"tier\":%.1f,\"r2\":[%.9g,%.9g],\"distance\":%.9g,\"colour_equal\":%d,\"keys_pad\":%d,\"lights_pad\":%d,"
+                    "\"skipped_untouched\":%d,\"upload_skip\":%u,\"radiance\":[%.9g,%.9g],\"before\":[%.9g,%.9g]},",
+                    ok, l.plate_count, l.plates[0].handle, l.plates[1].handle, l.handle, n ? n->plate_count : 0u,
+                    double(b[block_light + 11]), double(b[block_light + 3]), double(b[block_lights + 3]),
+                    std::sqrt(double(b[block_light] - b[block_lights]) * double(b[block_light] - b[block_lights]) +
+                              double(b[block_light + 1] - b[block_lights + 1]) * double(b[block_light + 1] - b[block_lights + 1]) +
+                              double(b[block_light + 2] - b[block_lights + 2]) * double(b[block_light + 2] - b[block_lights + 2])),
+                    std::memcmp(b + block_light + 4, b + block_lights + 4, 16) == 0,
+                    std::memcmp(b + block_plates + 8, b + block_plates, 16) == 0 &&
+                        std::memcmp(b + block_plates + 12, b + block_plates, 16) == 0,
+                    std::memcmp(b + block_lights + 8, b + block_light, 32) == 0 &&
+                        std::memcmp(b + block_lights + 16, b + block_light, 32) == 0,
+                    b[block_lights + 24] == -1.f && b[block_lights + 55] == -1.f && b[block_plates + 16] == 2.f,
+                    block_upload_skip(b), double(radiance[0][0]), double(radiance[1][0]), double(before[0][0]), double(before[1][0]));
+        // One nozzle: the same block as before the change in c190-c202, the selection's radiance the single light's.
+        build_ships(r, parent, nullptr, nullptr, nullptr, 0, 1, nullptr, look, 1.f, ships.get());
+        build_nodes(*ships, *log, nodes.get());
+        const NodeLight* one = find_node(*nodes, 0x6100, 4);
+        float single[block_floats], light[12], keys[plate_slots * 4];
+        for (float& x : single) x = -1.f;
+        float tier = -1.f;
+        const bool one_ok = one && block_constants(*one, w, vi, single) && draw_constants(*one, w, vi, light);
+        if (one_ok) plate_constants(*one, w, vi, keys, &tier);
+        light[11] = tier;
+        bool untouched = true; // c176-c189: neither written nor uploaded for a one-plate draw
+        for (unsigned i = 0; i < block_plates; ++i) untouched = untouched && single[i] == -1.f;
+        unsigned same = 0, checked = 0;
+        for (int y = -40; y <= 40 && one_ok; ++y)
+            for (int x = -40; x <= 40; ++x) {
+                const float d[3] = {single[block_light] + 40.f * float(x), single[block_light + 1] + 40.f * float(y),
+                                    single[block_light + 2] + 100.f};
+                float e0[3], e1[3];
+                shade(single, d, normal, false, e0);
+                shade(single, d, normal, true, e1);
+                ++checked;
+                same += std::memcmp(e0, e1, 12) == 0;
+            }
+        std::printf("\"single\":{\"ok\":%d,\"light_identical\":%d,\"plates_identical\":%d,\"lights_untouched\":%d,"
+                    "\"upload_skip\":%u,\"checked\":%u,\"radiance_identical\":%u},",
+                    one_ok, one_ok && std::memcmp(single + block_light, light, 48) == 0,
+                    one_ok && std::memcmp(single + block_plates, keys, sizeof keys) == 0, untouched,
+                    block_upload_skip(single), checked, same);
     }
     // ---- the floor and a co-located layer (after Run 129 A): the Split Scorpion's nor 10 and tiny 5.04, 6.9 units
     // apart on one axis, one parent, R 67.3: the nor's plate at its floored value, the tiny's at its natural 5.04.
@@ -305,7 +423,7 @@ int main() {
         const double build_us =
             std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - build_begin).count();
         float vi[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
-        float c[12];
+        float c[block_floats];
         unsigned hits = 0;
         constexpr unsigned rounds = 2000000;
         volatile float sink = 0.f;
@@ -313,14 +431,37 @@ int main() {
         for (unsigned j = 0; j < rounds; ++j) {
             const unsigned i = (j * 2654435761u) % 512u; // half of them miss
             const NodeLight* n = find_node(*nodes, i < 256 ? 0x900000u + i * 64u : 0x7f00000u + i, i < 256 ? 0u : 1u);
-            if (n && draw_constants(*n, w, vi, c)) {
+            if (n && block_constants(*n, w, vi, c)) {
                 ++hits;
-                sink = sink + c[0];
+                sink = sink + c[block_light];
             }
         }
         const double ns = std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - begin).count() / rounds;
-        std::printf("\"cost\":{\"nodes\":%u,\"ships\":%u,\"build_us\":%.3f,\"hits\":%u,\"rounds\":%u,\"ns_per_draw\":%.3f}",
-                    nodes->count, nodes->ships, build_us, hits, rounds, ns);
+        // The same lookups on ships of eight main nozzles (every plate with its light): the per-draw worst case.
+        for (unsigned i = 0; i < 256; ++i)
+            for (unsigned k = 0; k < 8; ++k) {
+                static ee::Record r8[2048];
+                static std::uint32_t parent8[2048];
+                r8[i * 8 + k] = jet(float(i) * 100.f + float(k) * 9.f, float(k) * 3.f, 0, 10.f - .5f * float(k), .5f, 5000 + i * 8 + k);
+                parent8[i * 8 + k] = parent[i];
+                if (i == 255 && k == 7) build_ships(r8, parent8, nullptr, nullptr, nullptr, 0, 2048, nullptr, look, 1.f, ships.get());
+            }
+        build_nodes(*ships, *log, nodes.get());
+        unsigned hits8 = 0, plates8 = 0;
+        const auto begin8 = std::chrono::steady_clock::now();
+        for (unsigned j = 0; j < rounds; ++j) {
+            const unsigned i = (j * 2654435761u) % 512u;
+            const NodeLight* n = find_node(*nodes, i < 256 ? 0x900000u + i * 64u : 0x7f00000u + i, i < 256 ? 0u : 1u);
+            if (n && block_constants(*n, w, vi, c)) {
+                ++hits8;
+                plates8 = n->plate_count;
+                sink = sink + c[block_lights];
+            }
+        }
+        const double ns8 = std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - begin8).count() / rounds;
+        std::printf("\"cost\":{\"nodes\":%u,\"ships\":%u,\"build_us\":%.3f,\"hits\":%u,\"rounds\":%u,\"ns_per_draw\":%.3f,"
+                    "\"hits8\":%u,\"plates8\":%u,\"ns_per_draw8\":%.3f}",
+                    nodes->count, nodes->ships, build_us, hits, rounds, ns, hits8, plates8, ns8);
     }
     std::printf("}\n");
     return 0;

@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "e0742983714be169e6c25bc5ee4851956ef01670185aef7b77304e1e8a1cf186",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "997e83007eb9da1632fd346d379a01ee2dea20922e3abd2b2924c43d79fced39",
-  "build/d3d9.dll": "7ca9f19469407e4f53ccb18cf5dbd33167c6713f5887dde6cbaf05c22b6fe3a4"
+  "verification/probe/build/motion_output_fixture.exe": "0b2376d19ea3aa56b2c6c8bf09c4e0dc2d9082ea3fa5f8387ee70d964cb8535f",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "e5e66d85dc15b5f1b3281fe3f9d7301f5fd1055adef9fcb54f46d0163462aa1f",
+  "build/d3d9.dll": "34c64bab9e73e331a63b9919bd9395925302431909b8f7deca335596b7e25cac"
  },
  "checks": 107,
  "frames": [
@@ -153,7 +153,7 @@
    "reach": "3.00",
    "colour_scale": "0.25",
    "cap": "1",
-   "constants": "c190-c202",
+   "constants": "c176-c202",
    "ships_max": "256",
    "plates_max": "8"
   },
@@ -164,7 +164,7 @@
    "refused": "00",
    "mismatched": "00",
    "failed": "00",
-   "words_max": "1753",
+   "words_max": "1885",
    "depth": "1"
   },
   "frames_with_candidates": 7,
@@ -260,8 +260,8 @@
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-engine-light-20261008-043626-087043",
- "trace_sha256": "2afaf930ea6259c8d5ee87571facb22fb63c4a9c3ec89df9826b2117084f0456",
- "dll_sha256": "997e83007eb9da1632fd346d379a01ee2dea20922e3abd2b2924c43d79fced39",
- "exe_sha256": "e0742983714be169e6c25bc5ee4851956ef01670185aef7b77304e1e8a1cf186"
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261008-133244-847830",
+ "trace_sha256": "5fdb01169d882dc4878e4d516ea421b6a5181e81e6e3a0caa1f8d28f8d5dbbf7",
+ "dll_sha256": "e5e66d85dc15b5f1b3281fe3f9d7301f5fd1055adef9fcb54f46d0163462aa1f",
+ "exe_sha256": "0b2376d19ea3aa56b2c6c8bf09c4e0dc2d9082ea3fa5f8387ee70d964cb8535f"
 }
