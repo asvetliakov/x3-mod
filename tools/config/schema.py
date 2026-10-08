@@ -582,6 +582,7 @@ SETTINGS = [
     seam('fixture_stretch_fault', 'Seam stretch fault.'),
     seam('fixture_sun_lane_fault', 'Seam sun lane faults.'),
     seam('fixture_taa_filter_fault', 'Seam TAA filter fault.'),
+    seam('fixture_readback', 'Seam capture readback: whole|rows=N|fail_band=N|fail_create.'),
 ]
 
 # Sent by tools/manage.py on a default launch but not a DLL setting (the file selection itself).

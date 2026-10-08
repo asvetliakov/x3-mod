@@ -1,19 +1,11 @@
--- The CXX compiler identification is GNU 16.2.0
--- Detecting CXX compiler ABI info
--- Detecting CXX compiler ABI info - done
--- Check for working CXX compiler: /opt/homebrew/bin/i686-w64-mingw32-g++ - skipped
--- Detecting CXX compile features
--- Detecting CXX compile features - done
--- Found Python3: /usr/bin/python3 (found version "3.9.6") found components: Interpreter
-source commit: 20bbf0042e3d869140ebc5ae9ade22922818f114-dirty
--- Configuring done (1.9s)
+-- Configuring done (0.3s)
 -- Generating done (0.1s)
--- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a4180c702bc0fa348/build
-[  1%] Building CXX object CMakeFiles/window_mode_fixture.dir/verification/probe/window_mode_fixture.cpp.obj
-[  1%] Refreshing compiled-in source commit
-[  3%] Building CXX object CMakeFiles/gpu_sync_timing_fixture.dir/verification/probe/gpu_sync_timing_fixture.cpp.obj
-[  3%] Baking spatial-fog family fields
-source commit: 20bbf0042e3d869140ebc5ae9ade22922818f114-dirty
+-- Build files have been written to: /Users/asvetl/x3-mod/build
+[  0%] Building CXX object CMakeFiles/window_mode_fixture.dir/verification/probe/window_mode_fixture.cpp.obj
+[  2%] Building CXX object CMakeFiles/gpu_sync_timing_fixture.dir/verification/probe/gpu_sync_timing_fixture.cpp.obj
+[  2%] Baking spatial-fog family fields
+[  3%] Refreshing compiled-in source commit
+source commit: d73d348497a820e7dd7c4bdf0e8f235f49b44833
 [  3%] Built target x3m_source_commit
 [  4%] Building CXX object CMakeFiles/window_mode_fixture.dir/src/proxy/window_mode.cpp.obj
 [  5%] Building CXX object CMakeFiles/gpu_sync_timing_fixture.dir/src/renderer/gpu_sync_timing.cpp.obj
@@ -30,21 +22,21 @@ source commit: 20bbf0042e3d869140ebc5ae9ade22922818f114-dirty
 [ 12%] Linking CXX executable cursor_reassert_fixture.exe
 [ 12%] Built target cursor_reassert_fixture
 [ 13%] Building CXX object CMakeFiles/d3d9_backend_smoke_fixture.dir/verification/probe/d3d9_backend_smoke_fixture.cpp.obj
-[ 14%] Linking CXX executable d3d11_interop_fixture.exe
-[ 14%] Built target d3d11_interop_fixture
-[ 15%] Linking CXX executable d3d9_backend_smoke_fixture.exe
+[ 14%] Linking CXX executable d3d9_backend_smoke_fixture.exe
+[ 15%] Linking CXX executable d3d11_interop_fixture.exe
 [ 15%] Built target d3d9_backend_smoke_fixture
+[ 15%] Built target d3d11_interop_fixture
 [ 15%] Linking CXX executable gpu_backend_ab_fixture.exe
 [ 15%] Built target gpu_backend_ab_fixture
-{"output": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a4180c702bc0fa348/build/generated/fog_field", "packet_bytes": 34142200, "profiles": 14, "seconds": 20.869390375000002}
+{"output": "/Users/asvetl/x3-mod/build/generated/fog_field", "packet_bytes": 34142200, "profiles": 14, "seconds": 20.766803957999997}
 [ 15%] Built target x3m_fog_field_assets
 [ 15%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [ 16%] Building compositor CPU boundary
 [ 16%] Building CXX object CMakeFiles/fog_family_file_fixture.dir/verification/probe/fog_family_file_fixture.cpp.obj
 [ 17%] Building CXX object CMakeFiles/fog_family_file_fixture.dir/src/renderer/fog_field_assets.cpp.obj
-/Users/asvetl/x3-mod/.claude/worktrees/agent-a4180c702bc0fa348/build/compositor_bridge
-[ 19%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
+/Users/asvetl/x3-mod/build/compositor_bridge
 [ 19%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
+[ 19%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
 [ 20%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [ 20%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/config.cpp.obj
 [ 21%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
@@ -52,8 +44,8 @@ source commit: 20bbf0042e3d869140ebc5ae9ade22922818f114-dirty
 [ 23%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/proxy_identity.cpp.obj
 [ 23%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
 [ 24%] Linking CXX executable fog_family_file_fixture.exe
+[ 24%] Built target fog_family_file_fixture
 [ 25%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/comparison_notice.cpp.obj
-[ 25%] Built target fog_family_file_fixture
 [ 26%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj
 [ 27%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj
 [ 27%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj
@@ -97,8 +89,8 @@ source commit: 20bbf0042e3d869140ebc5ae9ade22922818f114-dirty
 [ 56%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loop_phases.cpp.obj
 [ 57%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/lean_stub.cpp.obj
 [ 57%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/media_cue.cpp.obj
-[ 58%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_box_cull.cpp.obj
 [ 59%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/pause_key_only.cpp.obj
+[ 59%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_box_cull.cpp.obj
 [ 60%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_narrow_census.cpp.obj
 [ 60%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_sat_sse2.cpp.obj
 [ 61%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_memo.cpp.obj

@@ -282,10 +282,10 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-engine-light-20261008-133244-847830",
-      "trace_sha256": "5fdb01169d882dc4878e4d516ea421b6a5181e81e6e3a0caa1f8d28f8d5dbbf7",
-      "dll_sha256": "e5e66d85dc15b5f1b3281fe3f9d7301f5fd1055adef9fcb54f46d0163462aa1f",
-      "exe_sha256": "0b2376d19ea3aa56b2c6c8bf09c4e0dc2d9082ea3fa5f8387ee70d964cb8535f"
+      "directory": "verification/probe/build/motion-output-seam-engine-light-20261008-135307-045182",
+      "trace_sha256": "c462d987c3295d22c430f8a43519a37bd7a3617e704d79d900c1ca5ece7efbd9",
+      "dll_sha256": "a07a66370250f5370be10ce134b64db719c221a1ca07a784a217963532b49795",
+      "exe_sha256": "20fb1ad43e9b7ef9398f13678735093d770bc3a3f5c034f8b035987c0e9e9b73"
     }
   },
   "local_inputs": {
@@ -464,8 +464,8 @@
     "src/proxy/mesh_adjacency_fast.h": "304b9188fbbf0c3af47f713afd5e6c88fed87ddcb100913e1d3108ee94f1a353",
     "src/proxy/motion_capture.cpp": "8642597530f0cbee0285e0514052f118c2e1599ea47cc6f2700ab471d9d4d5e8",
     "src/proxy/motion_capture.h": "275fa7fe19161b66912733a1ac2c48e51b62f81f90466a21a63dda9b420917af",
-    "src/proxy/motion_output.cpp": "871f8b5000c833095cacab1de10f46ba39a0ad937ee0c5d958d5c1050f408cc2",
-    "src/proxy/motion_output.h": "40d1f9aeaefa64bede1fcea9654db9dc1645945b55d000ec9ad838552867edfd",
+    "src/proxy/motion_output.cpp": "224b7c81ae7b6d7ba3e03c634e0fe5ea59fc27d24597e560d82b3f9923dd04cf",
+    "src/proxy/motion_output.h": "a4b0c23f4a2eb923c20f9d55a57de5f371cb9a67e637eb4aad2723f519e3d963",
     "src/proxy/motion_output_cull_small_props_inc.h": "1904b8cf98ee45c7703251b3fb1732160b372a271d6af143e87ad36ef59513bc",
     "src/proxy/motion_output_engine_effects_inc.h": "92ee9f92a67f466f4b7cb15b07af4455b5d72b268be7eb83933f9746b94c2be7",
     "src/proxy/motion_output_engine_light_inc.h": "c2d110eaed26f02e1d81c2e98bd7c624b88e168efb95fef7caca7266bd24b34b",
@@ -837,9 +837,9 @@
     ]
   ],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "0b2376d19ea3aa56b2c6c8bf09c4e0dc2d9082ea3fa5f8387ee70d964cb8535f",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "e5e66d85dc15b5f1b3281fe3f9d7301f5fd1055adef9fcb54f46d0163462aa1f",
-    "build/d3d9.dll": "34c64bab9e73e331a63b9919bd9395925302431909b8f7deca335596b7e25cac"
+    "verification/probe/build/motion_output_fixture.exe": "20fb1ad43e9b7ef9398f13678735093d770bc3a3f5c034f8b035987c0e9e9b73",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "a07a66370250f5370be10ce134b64db719c221a1ca07a784a217963532b49795",
+    "build/d3d9.dll": "b48a28a6e316b2c66b204c808d66bf11ed6dad0246dbf8f86c1f81b938eb217b"
   },
   "bench": {},
   "shadow_replay_twins": {},
@@ -1017,8 +1017,8 @@
     "src/proxy/mesh_adjacency_fast.h": "304b9188fbbf0c3af47f713afd5e6c88fed87ddcb100913e1d3108ee94f1a353",
     "src/proxy/motion_capture.cpp": "8642597530f0cbee0285e0514052f118c2e1599ea47cc6f2700ab471d9d4d5e8",
     "src/proxy/motion_capture.h": "275fa7fe19161b66912733a1ac2c48e51b62f81f90466a21a63dda9b420917af",
-    "src/proxy/motion_output.cpp": "871f8b5000c833095cacab1de10f46ba39a0ad937ee0c5d958d5c1050f408cc2",
-    "src/proxy/motion_output.h": "40d1f9aeaefa64bede1fcea9654db9dc1645945b55d000ec9ad838552867edfd",
+    "src/proxy/motion_output.cpp": "224b7c81ae7b6d7ba3e03c634e0fe5ea59fc27d24597e560d82b3f9923dd04cf",
+    "src/proxy/motion_output.h": "a4b0c23f4a2eb923c20f9d55a57de5f371cb9a67e637eb4aad2723f519e3d963",
     "src/proxy/motion_output_cull_small_props_inc.h": "1904b8cf98ee45c7703251b3fb1732160b372a271d6af143e87ad36ef59513bc",
     "src/proxy/motion_output_engine_effects_inc.h": "92ee9f92a67f466f4b7cb15b07af4455b5d72b268be7eb83933f9746b94c2be7",
     "src/proxy/motion_output_engine_light_inc.h": "c2d110eaed26f02e1d81c2e98bd7c624b88e168efb95fef7caca7266bd24b34b",
