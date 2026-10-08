@@ -522,10 +522,10 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-engine-light-20261009-024759-732754",
-      "trace_sha256": "f6bc298230913809c4f1bbd1d294ac5ccaac4ed55c1b551efdc0b99931f5699c",
-      "dll_sha256": "7a12b192afc10e8a4ee0b3591eebbe1b47809a699f2a724eec199e01080dc490",
-      "exe_sha256": "9490f9601ebf45024c6f2cb1eafdfc011c44667b1c712d67c84302314be2eece"
+      "directory": "verification/probe/build/motion-output-seam-engine-light-20261009-030259-595821",
+      "trace_sha256": "19881627500edeee6e8a8875589703abe1c640533d9dcb05aaf5871b199c4d87",
+      "dll_sha256": "7a0fc07fde2a3651dc4d267ae24cb6b735cd73da320fe34126f5e6320bcce731",
+      "exe_sha256": "8c61ee7b63840cfc4ad83448cc669ee859bb300ebff6162738f09950bb9e671d"
     }
   },
   "local_inputs": {
@@ -561,7 +561,7 @@
     "src/proxy/bolt_footprint_core.h": "9db420c681bde732aafc0c01ca27fb3e7fbf4fb682308762a463e5822f7f7eb2",
     "src/proxy/camera_state.cpp": "d21f02d817faacb0a66da8c6746aa3bc4acb3284fd25e758c6af6dbc8d700889",
     "src/proxy/camera_state.h": "1778040e7cb2382debcd8162945017babf0d392fd41ba2eccb996d3304ce5d39",
-    "src/proxy/capture.cpp": "81341a89c77e3a6809a184293192770b702a7867219b439a09d2f86957bcea2a",
+    "src/proxy/capture.cpp": "716187b8833a42c70236af7b3d1e1be6e9eeb4414807bcca8cb77191f040df91",
     "src/proxy/capture.h": "d58571eaf733827d65efd1f1a7cfe208e88ae002dae6112edc82fd6f99882d3e",
     "src/proxy/capture_state.cpp": "890b558aedba0c3b97dbac63aacc716161bbd0cf36d1a8f0989847bfaae3173b",
     "src/proxy/capture_state.h": "94d69971b9fc6e56155736f74ecbcdbe710d5ca7aae47f5b0a95f325e97a01b4",
@@ -706,9 +706,9 @@
     "src/proxy/motion_capture.cpp": "8642597530f0cbee0285e0514052f118c2e1599ea47cc6f2700ab471d9d4d5e8",
     "src/proxy/motion_capture.h": "275fa7fe19161b66912733a1ac2c48e51b62f81f90466a21a63dda9b420917af",
     "src/proxy/motion_output.cpp": "03b13e38511371dd984bf38d40077dee11d5ad0231a66e7bb6900b0a1ed3f2bb",
-    "src/proxy/motion_output.h": "6c57844138a2efa2d5b0c02e7845d54f88b969dac638b75d86f94a6ee7b5e452",
+    "src/proxy/motion_output.h": "257b3a0960764eec72a828e25c6b50df92460ded1fa2b8fbbd7283e2f4a4c9c7",
     "src/proxy/motion_output_cull_small_props_inc.h": "ebeb30ee391fd0a5432d669bf1ee42f57af6aa88b2c3ee947051eba1e418dd30",
-    "src/proxy/motion_output_engine_effects_inc.h": "33caa666e0d30945140a8c5ccf68f15ba0cb708d65cc2473c0112fc9d7ceb46b",
+    "src/proxy/motion_output_engine_effects_inc.h": "030aecc5d971ebf13a3cfaa3df654745ecce8d625c3df5ff7f6b90cda2154f0e",
     "src/proxy/motion_output_engine_light_inc.h": "e07f10dc28fee9dbb1b1d3e4c4f9eb08f245926b53ea64799cad72a77ce54946",
     "src/proxy/motion_output_engine_plumes_inc.h": "fe95e894ad60b225475e5a855ac24d2a09dbcde5c7f2065ed8d1f86516c5d28d",
     "src/proxy/motion_output_engine_ribbons_inc.h": "02af53103a41900335f91299caf2f295abddc0d9950aa80f05f35bdbbbe70c96",
@@ -1050,7 +1050,7 @@
     "verification/probe/sun_shadow_apply.py": "8cd65ebf9f889eec8d5110ada25817969161939b05116cfc8c922d7eaef1ebae",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",
-    "verification/probe/wine_lock.py": "51eda1e49f81c62015067103d8e8c05f7e5c73e91784880b2c05b6e89180ac02"
+    "verification/probe/wine_lock.py": "2fb4b2b2f8e2dcf5114616a3f5cab1177f816126ff872390506b71450dd9bfa5"
   },
   "build_commands": [
     [
@@ -1086,9 +1086,9 @@
     ]
   ],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "9490f9601ebf45024c6f2cb1eafdfc011c44667b1c712d67c84302314be2eece",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "7a12b192afc10e8a4ee0b3591eebbe1b47809a699f2a724eec199e01080dc490",
-    "build/d3d9.dll": "6837d1dd13e90f1eb40f65aa94f30018a1e129a0fc56a71091a2de781e7250a3"
+    "verification/probe/build/motion_output_fixture.exe": "8c61ee7b63840cfc4ad83448cc669ee859bb300ebff6162738f09950bb9e671d",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "7a0fc07fde2a3651dc4d267ae24cb6b735cd73da320fe34126f5e6320bcce731",
+    "build/d3d9.dll": "ed65beecd82b058b0f05afbacaf6fae9548a7a953672e205f57dd07db06e1392"
   },
   "bench": {},
   "shadow_replay_twins": {},
@@ -1123,7 +1123,7 @@
     "src/proxy/bolt_footprint_core.h": "9db420c681bde732aafc0c01ca27fb3e7fbf4fb682308762a463e5822f7f7eb2",
     "src/proxy/camera_state.cpp": "d21f02d817faacb0a66da8c6746aa3bc4acb3284fd25e758c6af6dbc8d700889",
     "src/proxy/camera_state.h": "1778040e7cb2382debcd8162945017babf0d392fd41ba2eccb996d3304ce5d39",
-    "src/proxy/capture.cpp": "81341a89c77e3a6809a184293192770b702a7867219b439a09d2f86957bcea2a",
+    "src/proxy/capture.cpp": "716187b8833a42c70236af7b3d1e1be6e9eeb4414807bcca8cb77191f040df91",
     "src/proxy/capture.h": "d58571eaf733827d65efd1f1a7cfe208e88ae002dae6112edc82fd6f99882d3e",
     "src/proxy/capture_state.cpp": "890b558aedba0c3b97dbac63aacc716161bbd0cf36d1a8f0989847bfaae3173b",
     "src/proxy/capture_state.h": "94d69971b9fc6e56155736f74ecbcdbe710d5ca7aae47f5b0a95f325e97a01b4",
@@ -1268,9 +1268,9 @@
     "src/proxy/motion_capture.cpp": "8642597530f0cbee0285e0514052f118c2e1599ea47cc6f2700ab471d9d4d5e8",
     "src/proxy/motion_capture.h": "275fa7fe19161b66912733a1ac2c48e51b62f81f90466a21a63dda9b420917af",
     "src/proxy/motion_output.cpp": "03b13e38511371dd984bf38d40077dee11d5ad0231a66e7bb6900b0a1ed3f2bb",
-    "src/proxy/motion_output.h": "6c57844138a2efa2d5b0c02e7845d54f88b969dac638b75d86f94a6ee7b5e452",
+    "src/proxy/motion_output.h": "257b3a0960764eec72a828e25c6b50df92460ded1fa2b8fbbd7283e2f4a4c9c7",
     "src/proxy/motion_output_cull_small_props_inc.h": "ebeb30ee391fd0a5432d669bf1ee42f57af6aa88b2c3ee947051eba1e418dd30",
-    "src/proxy/motion_output_engine_effects_inc.h": "33caa666e0d30945140a8c5ccf68f15ba0cb708d65cc2473c0112fc9d7ceb46b",
+    "src/proxy/motion_output_engine_effects_inc.h": "030aecc5d971ebf13a3cfaa3df654745ecce8d625c3df5ff7f6b90cda2154f0e",
     "src/proxy/motion_output_engine_light_inc.h": "e07f10dc28fee9dbb1b1d3e4c4f9eb08f245926b53ea64799cad72a77ce54946",
     "src/proxy/motion_output_engine_plumes_inc.h": "fe95e894ad60b225475e5a855ac24d2a09dbcde5c7f2065ed8d1f86516c5d28d",
     "src/proxy/motion_output_engine_ribbons_inc.h": "02af53103a41900335f91299caf2f295abddc0d9950aa80f05f35bdbbbe70c96",
@@ -1612,6 +1612,6 @@
     "verification/probe/sun_shadow_apply.py": "8cd65ebf9f889eec8d5110ada25817969161939b05116cfc8c922d7eaef1ebae",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",
-    "verification/probe/wine_lock.py": "51eda1e49f81c62015067103d8e8c05f7e5c73e91784880b2c05b6e89180ac02"
+    "verification/probe/wine_lock.py": "2fb4b2b2f8e2dcf5114616a3f5cab1177f816126ff872390506b71450dd9bfa5"
   }
 }

@@ -310,9 +310,25 @@ class WinedbgOverrideTests(unittest.TestCase):
                           '--dll', 'x'])
         self.assertEqual(wine_lock.with_winedbg_disabled(['wine', '--dll=d3d9=b', 'a.exe']),
                          ['wine', '--dll=d3d9=b;winedbg.exe=d', 'a.exe'])
-        # The wrapper keeps the last --dll; that one carries the override.
-        self.assertEqual(wine_lock.with_winedbg_disabled(['wine', '--dll', 'a=b', '--dll', 'c=d', 'x.exe']),
-                         ['wine', '--dll', 'a=b', '--dll', 'c=d;winedbg.exe=d', 'x.exe'])
+
+    def test_engine_effects_runner_shape_keeps_one_dll(self):
+        # run_engine_effects.py: wrapper options with `--env` values ahead of the one `--dll`; the wrapper refuses a
+        # second `--dll` (`wine:error: --dll can only be specified once`, cd479d02 regression).
+        directory = '/x/verification/probe/build/engine-effects-main-1'
+        tail = ['--dll', 'd3d9=n,b', '--workdir', directory, directory + '/engine_effects_fixture.exe',
+                'Z:/p/vs.bin', 'Z:/p/ps.bin', 'main']
+        for wine_env in ([], ['CX_GRAPHICS_BACKEND=wined3d'], ['CX_GRAPHICS_BACKEND=dxvk', 'DXVK_HUD=0']):
+            head = [self.WINE, '--bottle', 'X3', '--no-update', *[a for item in wine_env for a in ('--env', item)]]
+            out = wine_lock.with_winedbg_disabled(head + tail)
+            self.assertEqual(out, head + ['--dll', 'd3d9=n,b;winedbg.exe=d'] + tail[2:])
+            self.assertEqual(out.count('--dll'), 1)
+        for command in ([self.WINE, '--env=A=B', '--dll=d3d9=n', 'a.exe'],
+                        [self.WINE, '--dll', 'd3d9=n', '--env', 'A=B', '--workdir', '-w', 'a.exe', '--dll', 'x']):
+            out = wine_lock.with_winedbg_disabled(command)
+            options = out[:out.index('a.exe')]
+            self.assertEqual(sum(w == '--dll' or w.startswith('--dll=') for w in options), 1, out)
+            self.assertIn('winedbg.exe=d', ' '.join(options))
+            self.assertEqual(out[out.index('a.exe'):], command[command.index('a.exe'):])
 
     def test_missing_dll_is_added_and_other_commands_pass_through(self):
         self.assertEqual(wine_lock.with_winedbg_disabled([self.WINE, '--bottle', 'X3', 'a.exe', '1']),

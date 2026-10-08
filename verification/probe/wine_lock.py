@@ -70,41 +70,51 @@ def child_environment(environ=None, command=None):
 
 
 # A fixture that faults under Wine starts `winedbg --auto` (AeDebug), which can hang or outlive its runner (the
-# orphans above). CrossOver's bin/wine wrapper deletes WINEDLLOVERRIDES and rebuilds it from its single `--dll` option
-# (the last one given wins), so the override must travel inside that option: `winedbg.exe=d` makes the debugger start
-# fail and the faulting process ends with a non-zero status (witness: exit 5, verification/results/dxvk-teardown-crash/
-# witness.txt), which the runners' exit-code checks still see. Applied to the wine commands of fixtures this wrapper
-# launches, directly or from a runner (child_environment); never to the launcher, which the preflight keeps apart.
+# orphans above). CrossOver's bin/wine wrapper deletes WINEDLLOVERRIDES and rebuilds it from its `--dll` option, which
+# it accepts once only (`--dll can only be specified once`), so the override must be merged into that one option:
+# `winedbg.exe=d` makes the debugger start fail and the faulting process ends with a non-zero status (witness: exit 5,
+# verification/results/dxvk-teardown-crash/witness.txt), which the runners' exit-code checks still see. Applied to the
+# wine commands of fixtures this wrapper launches, directly or from a runner (child_environment); never to the
+# launcher, which the preflight keeps apart.
 WINEDBG_OVERRIDE = 'winedbg.exe=d'
 WINEDBG_SITE = Path(__file__).resolve().parent / 'wine_lock_site'
 _WRAPPERS = ('wine', 'wine64')  # CrossOver's option-parsing wrapper; the preloaders take no --dll
+# Every option of the wrapper that takes a value (its `=s` specs, CrossOver Preview bin/wine). The wrapper stops at
+# `--`, at the first non-option word (the program) and at an unknown option; a value option's value is never the
+# program, whatever it looks like (`--env CX_GRAPHICS_BACKEND=wined3d`).
+_WRAPPER_VALUE_OPTIONS = frozenset('--' + name for name in (
+    'bottle', 'scope', 'ux-app', 'cx-app', 'wl-app', 'wl32-app', 'cx-hooks', 'start', 'start-only', 'start-default',
+    'start-mime', 'start-class', 'start-verb', 'desktop', 'workdir', 'env', 'debugmsg', 'dll', 'winver', 'display',
+    'cx-log', 'enable-alt-loader'))
 
 
 def with_winedbg_disabled(command):
-    """`command` with `winedbg.exe=d` in its wrapper `--dll` value (appended, or a new `--dll` after the wrapper).
+    """`command` with `winedbg.exe=d` in its wrapper `--dll` value (merged, or one new `--dll` after the wrapper).
 
-    Only a CrossOver wrapper invocation changes; wrapper options end at `--` or the first non-option word (the
-    program), so the program's own arguments are never touched. Returns the same list object when nothing changes.
+    Only a CrossOver wrapper invocation changes, and the result carries exactly one `--dll` among the wrapper's
+    options: an existing one (`--dll V` or `--dll=V`, wherever it stands among them) is extended, never repeated. The
+    program's own arguments are never touched. Returns the same list object when nothing changes.
     """
     if not command or _basename(str(command[0])) not in _WRAPPERS:
         return command
     words = [str(word) for word in command]
-    found = None
+    found = []
     index = 1
     while index < len(words):
         word = words[index]
         if word == '--' or not word.startswith('-'):
             break
-        if word == '--dll' and index + 1 < len(words):
-            found = (index + 1, '')
-        elif word.startswith('--dll='):
-            found = (index, '--dll=')
-        if word in VALUE_OPTIONS:
+        name, has_value, _ = word.partition('=')
+        if name == '--dll':
+            found.append((index, '--dll=') if has_value else (index + 1, ''))
+        if name in _WRAPPER_VALUE_OPTIONS and not has_value:
             index += 1
         index += 1
-    if found is None:
+    if not found:
         return [words[0], '--dll', WINEDBG_OVERRIDE] + words[1:]
-    position, prefix = found
+    position, prefix = found[-1]
+    if position >= len(words):
+        return command  # `--dll` without a value: the wrapper refuses it anyway
     value = words[position][len(prefix):]
     if any(entry.strip().lower().startswith('winedbg.exe=') for entry in value.split(';')):
         return command  # the caller chose winedbg's override itself
