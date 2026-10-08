@@ -21,12 +21,18 @@ against a float64 oracle written here, independently of the C++ core:
   beyond r1 x value; the twin at gain 1 and the fill-only twin 1 x everywhere; the base without the light 4 x
   everywhere (the documented engine_light-off limit); three and eight nozzles (twin3, twin8): 1.0 at each nozzle's
   plate point and within r0 x its value, 4 x beyond r1 x value of every nozzle; the uploaded plate registers
-  ((P_i - cam) / v_i, 1 / v_i), brightest first, unused (2, 0, 0, 0), against the record law;
+  ((P_i - cam) / v_i, 1 / v_i), brightest first, pads (copies of slot 0) in the slots the twin runs, (2, 0, 0, 0) in
+  the ones it skips, against the record law;
+- a light per plate (DUAL rows): ships of two nozzles, "apart" (equal, 40 units apart beyond one reach 18: the Split
+  Ocelot's head-on case) and "overlap" (6 and 4, 16 apart); each pixel against the law with the light of the plate of
+  the least (d / v)^2 (the uploaded registers; pixels within 1e-3 of the switch unclaimed), both lights' constants
+  against the record law, both plates lit, the second nozzle's foot lit where plate 0's light alone leaves it dark;
 - cost: the per-draw CPU path (lookup, constants and plates, SetPixelShaderConstantF of thirteen registers) <= 0.2 us
   on a hit; the ship table's build over 1,024 records (128 ships x 8 nozzles); the GPU cost of the term over a
   full-screen hull at 1920x1080 and 5120x1440 (median of five EVENT-fenced batches).
 
 Run as  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_light.py
+        [--wine-env CX_GRAPHICS_BACKEND=wined3d]
 The compact record goes to verification/results/bottle-X3/engine-light-gpu.json; the raw report stays under
 verification/probe/build/ (untracked). Never launches the game.
 """
@@ -115,7 +121,7 @@ def expected_constants(case, tints, k):
 
 
 def parse(text):
-    cases, invariants, samples, plates = {}, {}, {}, {}
+    cases, invariants, samples, plates, duals = {}, {}, {}, {}, {}
     out = dict(programs=[], create=None, reset=None, cost=None, gpu=[], done='DONE' in text.split(),
                teardown=[line for line in text.splitlines() if line.startswith('TEARDOWN ')])
     for line in text.splitlines():
@@ -143,6 +149,14 @@ def parse(text):
                 finite_bad=int(fields['finite_bad']), light=[float(v) for v in fields['light'].split(',')],
                 nozzles=[[float(v) for v in n.split(',')] for n in fields['nozzles'].split(';')],
                 registers=[float(v) for v in fields['plates'].split(',')], rows=[])
+        elif line.startswith('DUAL '):
+            nums = lambda s: [float(v) for v in s.split(',')]
+            duals[int(fields['id'])] = dict(pair=int(fields['pair']), kind=int(fields['kind']), name=fields['name'],
+                                            size=int(fields['size']), cluster=int(fields['cluster']), s=float(fields['s']),
+                                            preset=int(fields['preset']),
+                                            nozzles=[nums(n) for n in fields['nozzles'].split(';')],
+                                            lights=nums(fields['lights']), keys=nums(fields['keys']), tier=float(fields['tier']),
+                                            invariants={n: int(fields[n]) for n in ('alpha_bad', 'motion_bad', 'depth_bad', 'finite_bad')})
         elif line.startswith('INVARIANT '):
             invariants[int(fields['id'])] = {k: int(v) for k, v in fields.items() if k != 'id'}
         elif line.startswith('PROGRAM '):
@@ -157,19 +171,21 @@ def parse(text):
             out['gpu'].append(dict(width=int(fields['width']), height=int(fields['height']), nozzles=int(fields.get('nozzles', 1)),
                                    base_ms=[float(v) for v in fields['base_ms'].split(',')],
                                    twin_ms=[float(v) for v in fields['twin_ms'].split(',')]))
-    out.update(cases=cases, invariants=invariants, samples=samples, plates=plates)
+    out.update(cases=cases, invariants=invariants, samples=samples, plates=plates, duals=duals)
     return out
 
 
 def expected_plates(plate, k):
     """The plate registers from the record law: per nozzle (x, y, z camera-relative, value; axis +z) the light point
-    0.5 x value behind it, ((P - cam) / v, 1 / v), brightest first (s 1: by value), unused slots (2, 0, 0, 0)."""
-    nozzles = sorted(plate['nozzles'], key=lambda n: -n[3])
+    0.5 x value behind it, ((P - cam) / v, 1 / v), brightest first (s 1: by value); the slots the twin runs without a
+    plate (1, 4 or 8 by the count) pads, copies of slot 0; the slots it skips (2, 0, 0, 0)."""
+    nozzles = sorted(plate['nozzles'], key=lambda n: -n[3])[:8]
     out = []
-    for x, y, z, v in nozzles[:8]:
+    for x, y, z, v in nozzles:
         point = (x, y, z + k['behind'] * v)
         out += [point[0] / v, point[1] / v, point[2] / v, 1.0 / v]
-    return out + [2.0, 0.0, 0.0, 0.0] * (8 - len(nozzles[:8]))
+    run = 1 if len(nozzles) <= 1 else 4 if len(nozzles) <= 4 else 8
+    return out + out[:4] * (run - len(nozzles)) + [2.0, 0.0, 0.0, 0.0] * (8 - max(run, len(nozzles)))
 
 
 def oracle_plate(plate, size, radii, k):
@@ -272,6 +288,78 @@ def oracle_case(case, rows, constants):
     return stats
 
 
+def expected_dual(dual, tints, k):
+    """The two plates' lights and plate registers from the record law (axis +z, plate order = record order: the first
+    nozzle the brighter or the brightness tie's lower handle): per light (L - cam, R^2, colour, 1 / R^2), per plate
+    ((P - cam) / v, 1 / v)."""
+    lights, keys = [], []
+    intensity = k['core_low'] + (k['core_high'] - k['core_low']) * min(max(dual['s'], 0.0), 1.0)
+    colour = [tints[dual['cluster']][i] * intensity * k['preset'][dual['preset']] * k['colour_scale'] for i in range(3)]
+    for x, y, z, v in dual['nozzles']:
+        point = (x, y, z + k['behind'] * v)
+        radius = k['reach'] * v
+        lights += list(point) + [radius * radius] + colour + [1.0 / (radius * radius)]
+        keys += [point[0] / v, point[1] / v, point[2] / v, 1.0 / v]
+    return lights, keys
+
+
+def oracle_dual(dual, rows):
+    """A light per plate: per sampled pixel of the facing plate (tilt 0), the plate of the least (d / v)^2 from the
+    uploaded plate registers (ties: plate 0), then the law with that plate's uploaded light (as oracle_case); pixels
+    within 1e-3 relative of the selection's switch are not claimed (seam). Per light: the lit samples, the twin at the
+    sample nearest the light's foot on the plate, and what plate 0's light alone (the rule before) gives there."""
+    size = dual['size']
+    lights = [dual['lights'][0:8], dual['lights'][8:16]]
+    keys = [dual['keys'][0:4], dual['keys'][4:8]]
+    normal = (0.0, 0.0, -1.0)
+    stats = dict(samples=len(rows), lit=[0, 0], visible=0, max_relative=0.0, worst=None, max_dark_absolute=0.0, zero=0,
+                 zero_not_identical=0, seam=0, at_foot=[None, None], foot_distance=[math.inf, math.inf],
+                 before_at_foot=[None, None])
+
+    def law(light, point):
+        rel, r2, colour = light[0:3], light[3], light[4:7]
+        to = [rel[i] - point[i] for i in range(3)]
+        d2 = sum(v * v for v in to)
+        q = min(max(1.0 - d2 / r2, 0.0), 1.0)
+        ndl = min(max(sum(normal[i] * to[i] for i in range(3)) / math.sqrt(d2), 0.0), 1.0) if d2 > 0 else 0.0
+        return d2, r2, ndl, [colour[i] * ndl * q * q for i in range(3)]
+
+    for x, y, base, twin, depth, identical in rows:
+        ndc = (2.0 * x / size - 1.0, 1.0 - 2.0 * y / size)
+        point = (50.0 * ndc[0], 50.0 * ndc[1], 50.0)
+        u = [sum((point[i] * key[3] - key[i]) ** 2 for i in range(3)) for key in keys]
+        for i in range(2):
+            foot = math.hypot(point[0] - lights[i][0], point[1] - lights[i][1])
+            if foot < stats['foot_distance'][i]:
+                stats['foot_distance'][i] = foot
+                stats['at_foot'][i] = twin[0]
+                stats['before_at_foot'][i] = law(lights[0], point)[3][0]
+        if abs(u[0] - u[1]) <= 1e-3 * max(u[0], u[1]):
+            stats['seam'] += 1
+            continue
+        chosen = 0 if u[0] <= u[1] else 1
+        d2, r2, ndl, energy = law(lights[chosen], point)
+        if d2 > r2 * 1.004 or ndl == 0.0:
+            stats['zero'] += 1
+            stats['zero_not_identical'] += 0 if identical else 1
+            continue
+        if d2 > r2 * 0.996:
+            continue
+        stats['lit'][chosen] += 1
+        for c in range(3):
+            decoded = max(base[c], 0.0) ** 2.2
+            expected = (decoded + min(energy[c], max(0.0, CAP - decoded))) ** (1 / 2.2)
+            if expected < VISIBLE:
+                stats['max_dark_absolute'] = max(stats['max_dark_absolute'], abs(twin[c] - expected))
+                continue
+            stats['visible'] += 1
+            relative = abs(twin[c] - expected) / expected
+            if relative > stats['max_relative']:
+                stats['max_relative'] = relative
+                stats['worst'] = dict(x=x, y=y, channel=c, twin=twin[c], expected=expected, light=chosen)
+    return stats
+
+
 def validate(report):
     tints, k = cluster_tints(), look()
     parsed = parse(report)
@@ -294,6 +382,25 @@ def validate(report):
         result['cases'][cid] = dict(pair=case['pair'], kind=case['kind'], tilt=case['tilt'], emissive=case['emissive'], fp16=case['fp16'],
                                     constant_error=constant_error, stats=stats, invariants=inv, checks=checks,
                                     passed=all(checks.values()))
+    # A light per plate: both plates lit with their own lights, the per-pixel selection, the rest of the plate untouched.
+    result['dual'] = {}
+    for did, dual in sorted(parsed['duals'].items()):
+        lights, keys = expected_dual(dual, tints, k)
+        constant_error = max(abs(a - b) / max(1.0, abs(b)) for a, b in zip(dual['lights'] + dual['keys'], lights + keys))
+        stats = oracle_dual(dual, parsed['samples'][did])
+        checks = dict(constants=constant_error <= 1e-5, tier=dual['tier'] == 1.0,
+                      radiance=stats['max_relative'] <= RELATIVE and stats['visible'] > 0,
+                      dark=stats['max_dark_absolute'] <= ABSOLUTE,
+                      zero=stats['zero_not_identical'] == 0 and stats['zero'] > 0,
+                      both_lit=all(n > 0 for n in stats['lit']),
+                      second_nozzle=stats['at_foot'][1] is not None and stats['at_foot'][1] > 0.0,
+                      invariants=all(v == 0 for v in dual['invariants'].values()))
+        if dual['name'] == 'apart':
+            # The two nozzles beyond one reach: plate 0's light alone leaves the second nozzle's plate dark.
+            checks['before_dark'] = stats['before_at_foot'][1] == 0.0
+        result['dual']['%d-%s-%d' % (dual['pair'], dual['name'], dual['kind'])] = dict(
+            constant_error=constant_error, stats=stats, invariants=dual['invariants'], checks=checks,
+            passed=all(checks.values()))
     radii = plate_radii()
     result['plate'] = dict(radii=dict(reach=radii[0], full=radii[1], zero=radii[2]), modes={})
     for (pair, mode), plate in sorted(parsed['plates'].items()):
@@ -332,7 +439,8 @@ def validate(report):
     teardown = parsed['teardown']
     result['teardown_ok'] = 'TEARDOWN device references=0' in teardown and 'TEARDOWN done' in teardown
     result['passed'] = (all(c['passed'] for c in result['cases'].values()) and all(result['cost_checks'].values()) and
-                        result['plate']['passed'] and
+                        result['plate']['passed'] and len(result['dual']) == 4 and
+                        all(d['passed'] for d in result['dual'].values()) and
                         result['reset_ok'] and result['teardown_ok'] and len(result['gpu']) == 6 and len(result['cases']) >= 9)
     return result
 
@@ -341,12 +449,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=float, default=420)
+    parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
+                        help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
+                             'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 for one run')
     args = parser.parse_args()
+    for item in args.wine_env:
+        if '=' not in item or not item.split('=', 1)[0]:
+            parser.error(f'--wine-env expects NAME=VALUE: {item}')
     if bottle.BOTTLE != 'X3':
         raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
     warnings = None if args.no_build else build()
     report_path = BUILD / 'engine-light-report.txt'
-    command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', str(EXE), 'Z:' + str(PROGRAMS)]
+    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b',
+               str(EXE), 'Z:' + str(PROGRAMS)]
     started = time.time()
     exit_code, timeout = None, None
     with report_path.open('w') as out, (BUILD / 'engine-light-wine.log').open('w') as err:
@@ -357,7 +472,7 @@ def main():
             timeout = str(error)
     elapsed = time.time() - started
     report = report_path.read_text(errors='replace')
-    record = dict(passed=False, bottle=bottle.describe(), game_launched=False, exit_code=exit_code, timeout=timeout,
+    record = dict(passed=False, bottle=bottle.describe(), wine_env=list(args.wine_env), game_launched=False, exit_code=exit_code, timeout=timeout,
                   elapsed_s=round(elapsed, 2), build_warnings=warnings, executable_sha256=sha(EXE),
                   sources_sha256={s: sha(ROOT / s) for s in SOURCES}, raw_report=str(report_path.relative_to(ROOT)))
     try:
@@ -377,6 +492,10 @@ def main():
                                   at_points=[n['at_point'] for n in m['stats']['per_nozzle']],
                                   checks=[n for n, v in m['checks'].items() if not v])
                           for k, m in record.get('plate', {}).get('modes', {}).items()},
+                   dual={k: dict(passed=d['passed'], lit=d['stats']['lit'], max_relative=round(d['stats']['max_relative'], 6),
+                                 at_foot=d['stats']['at_foot'], before_at_foot=d['stats']['before_at_foot'],
+                                 seam=d['stats']['seam'], checks=[n for n, v in d['checks'].items() if not v])
+                         for k, d in record.get('dual', {}).items()},
                    reset=record.get('reset'), create=record.get('create'), teardown=record.get('teardown'),
                    teardown_ok=record.get('teardown_ok'), record=str(path.relative_to(ROOT)))
     print(json.dumps(summary, indent=1))

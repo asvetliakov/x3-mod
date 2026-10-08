@@ -1789,10 +1789,10 @@ private:
         engine_light::core::FrameCounts counts{};
         std::uint64_t built_frame = ~std::uint64_t(0);
         unsigned twins = 0; // created on this device (session count)
-        // The staging block mirroring c190-c202: the plates (uploaded c190-c197), two unused rows (c198-c199, the twins'
-        // DEFs, never uploaded), the light (uploaded c200-c202); renderer::EngineLightAbi::block_registers, asserted at
-        // the upload.
-        float constants[engine_light::core::plate_slots * 4 + 20]{};
+        // The staging block mirroring c176-c202 (engine_light::core::block_constants): the plate lights and the plates
+        // (uploaded c176-c197), two unused rows (c198-c199, the twins' DEFs, never uploaded), the light (uploaded
+        // c200-c202); renderer::EngineLightAbi::block_registers, asserted at the upload.
+        float constants[engine_light::core::block_floats]{};
     };
     bool engine_light_requested_ = false;
     EngineLightState* engine_light_ = nullptr;

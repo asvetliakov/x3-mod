@@ -6,10 +6,10 @@
 // Per routed draw with the light configured and a lit ship in the table: two hash probes on the ship table (a draw of a
 // lit ship is logged for the next frame: node, parent, handle, world rows, 15 words) and one on the node table. Only on a hit: the constants from the draw's
 // own shadowed world and view-inverse rows (double precision, about 30 multiply-adds, and about 12 per nozzle plate
-// of the ship, at most eight), the twin of the program the pair selection chose (pointer compares), and one
-// SetPixelShaderConstantF of thirteen registers (the plates c190-c197, two filler registers c198-c199 the twins' DEFs
-// shadow, the light c200-c202) in the route's existing apply chain (a failure rolls the route back to the native draw
-// like every other apply step). No
+// of the ship for its plate register and about 12 more for its light, at most eight), the twin of the program the pair
+// selection chose (pointer compares), and two SetPixelShaderConstantF calls (the plate lights and plates c176-c197,
+// twenty-two registers; the light c200-c202; never c198-c199, the twins' DEFs) in the route's existing apply chain (a
+// failure rolls the route back to the native draw like every other apply step). No
 // allocation, no device Get, no memory read of game structures (the parent comes from the scope's node block that
 // sample_scope already read).
 void MotionOutput::configure_engine_light(bool plumes) noexcept {
@@ -44,7 +44,7 @@ void MotionOutput::configure_engine_light(bool plumes) noexcept {
         id_, n ? shown : "-", ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting", engine_light::core::mode_name(mode),
         unsigned(engine_light_requested_), reason, double(engine_light::core::behind),
         double(engine_light::core::reach), double(engine_light::core::colour_scale),
-        renderer::EngineLightAbi::plate_constant,
+        renderer::EngineLightAbi::light_constant,
         renderer::EngineLightAbi::pixel_constant + renderer::EngineLightAbi::pixel_constant_count - 1,
         engine_light::core::ship_capacity, engine_light::core::plate_slots);
 }
@@ -164,18 +164,38 @@ void MotionOutput::engine_light_frame() noexcept {
         const auto& c = s.counts;
         // plates=: the ships by nozzle-plate count, 1..plate_slots (the per-ship main nozzles after the co-located
         // merge, capped at plate_slots; plates_dropped the nozzles beyond it).
-        unsigned by_count[el::plate_slots + 1] = {};
+        unsigned by_count[el::plate_slots + 1] = {}, lights = 0;
+        int own = -1, most = -1;
         for (unsigned i = 0; i < s.ships.count; ++i) {
-            const unsigned k = s.ships.lights[i].plate_count;
+            const el::Light& l = s.ships.lights[i];
+            const unsigned k = l.plate_count;
             ++by_count[k <= el::plate_slots ? k : el::plate_slots];
+            lights += k;
+            if (l.own && own < 0) own = int(i);
+            if (most < 0 || k > s.ships.lights[most].plate_count) most = int(i);
         }
-        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_none=%u unfloored=%u plates_dropped=%u",
+        // lights=: the plates over all ships, each carrying its nozzle's light (block_constants); own_lights= and
+        // most_lights=: the own ship's and the ship of the most plates' (ties: the first entry) root and plate node
+        // handles, brightest first, the order of c200 / c176-c189 ('-': none). Two fixed buffers, no allocation.
+        char own_text[12 + el::plate_slots * 9] = "-", most_text[12 + el::plate_slots * 9] = "-";
+        const auto handles = [&](int ship, char* out, std::size_t size) {
+            if (ship < 0) return;
+            const el::Light& l = s.ships.lights[ship];
+            int at = std::snprintf(out, size, "%08lx:", static_cast<unsigned long>(l.root));
+            for (unsigned p = 0; p < l.plate_count && p < el::plate_slots && at > 0 && std::size_t(at) < size; ++p)
+                at += std::snprintf(out + at, size - std::size_t(at), "%s%lx", p ? "," : "",
+                                    static_cast<unsigned long>(l.plates[p].handle));
+        };
+        handles(own, own_text, sizeof own_text);
+        handles(most, most_text, sizeof most_text);
+        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_none=%u unfloored=%u plates_dropped=%u lights=%u own_lights=%s most_lights=%s",
             id_, s.built_frame, s.ships.count, s.nodes.ships, s.nodes.count, c.candidates, c.draws_lit, c.no_twin,
             c.no_rows, s.ships.stats.records, s.ships.stats.main, s.ships.stats.rcs, s.ships.stats.brake,
             s.ships.stats.other_view, s.ships.stats.invalid, s.ships.stats.orphan, s.ships.stats.dropped,
             s.nodes.stats.logged, s.nodes.stats.log_dropped, s.nodes.stats.matched, s.nodes.stats.singular,
             s.nodes.stats.dropped, s.twins, by_count[1], by_count[2], by_count[3], by_count[4], by_count[5], by_count[6],
-            by_count[7], by_count[8], by_count[0], s.ships.stats.unfloored, s.ships.stats.plates_dropped);
+            by_count[7], by_count[8], by_count[0], s.ships.stats.unfloored, s.ships.stats.plates_dropped, lights,
+            own_text, most_text);
     }
     s.counts = {};
     s.built_frame = frame_;
@@ -196,15 +216,21 @@ void MotionOutput::engine_light_frame() noexcept {
     el::build_nodes(s.ships, s.log, &s.nodes);
     s.log.clear();
 }
-// After the motion ABI's upload on a draw whose twin bind_variant_pair bound: the plates c190-c197 and the light
-// c200-c202 (EngineLightAbi), two calls; c198-c199 (the twins' DEFs) are never written.
+// After the motion ABI's upload on a draw whose twin bind_variant_pair bound: the plate lights and the plates c176-c197
+// (from c190 for a one-plate ship) and the light c200-c202 (EngineLightAbi), two calls; c198-c199 (the twins' DEFs)
+// are never written.
 HRESULT MotionOutput::engine_light_upload() noexcept {
     using Abi = renderer::EngineLightAbi;
-    static_assert(Abi::plate_count == engine_light::core::plate_slots &&
-                      sizeof(EngineLightState::constants) == Abi::block_registers * 4 * sizeof(float) && Abi::block_light == 10,
-                  "the staging block: eight plates, two unused rows, the light at offset 10 registers (engine_light_prepare)");
-    HRESULT hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF, Abi::plate_constant, engine_light_->constants,
-                                              Abi::plate_count);
+    namespace el = engine_light::core;
+    static_assert(Abi::plate_count == el::plate_slots && Abi::light_constant == el::block_first &&
+                      Abi::block_registers == el::block_registers && Abi::block_plates * 4 == el::block_plates &&
+                      Abi::block_light * 4 == el::block_light && el::block_lights == 0 &&
+                      sizeof(EngineLightState::constants) == Abi::block_registers * 4 * sizeof(float),
+                  "the staging block: seven plate lights, eight plates, two unused rows, the light (block_constants)");
+    // A one-plate draw (tier 0) starts at the plates c190: its twin never reads the plate lights c176-c189.
+    const unsigned skip = el::block_upload_skip(engine_light_->constants);
+    HRESULT hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF, Abi::light_constant + skip,
+                                              engine_light_->constants + skip * 4, Abi::upload_count - skip);
     if (SUCCEEDED(hr))
         hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF, Abi::pixel_constant,
                                           engine_light_->constants + Abi::block_light * 4, Abi::pixel_constant_count);
@@ -230,12 +256,11 @@ void MotionOutput::engine_light_prepare(MotionRoute& route, bool material) noexc
     if (!light) return;
     ++s.counts.candidates;
     const float* view = engine_light_rows(shadow_.engine_layout.view_inverse);
+    // c176-c202: the plate lights, the plates, the light and the tier in c202.w; c198-c199 stay 0.
     if (!world || !view || hdr_state_ != HdrState::Active ||
-        !engine_light::core::draw_constants(*light, world, view, s.constants + 40)) {
+        !engine_light::core::block_constants(*light, world, view, s.constants)) {
         ++s.counts.no_rows;
         return;
     }
-    // c190-c197 and the tier in c202.w; c198-c199 stay 0.
-    engine_light::core::plate_constants(*light, world, view, s.constants, &s.constants[40 + 11]);
     route.engine_light_want = true;
 }
