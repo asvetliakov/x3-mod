@@ -143,8 +143,9 @@ struct ShipStats {
     // main nozzles beyond the ship's plate_slots (the dimmest give way)
     unsigned records = 0, main = 0, rcs = 0, brake = 0, other_view = 0, invalid = 0, orphan = 0, dropped = 0;
     unsigned unfloored = 0, plates_dropped = 0;
-    // held: entries re-entered by hold_ships without a record; hold_expired: entries whose window ran out
-    unsigned held = 0, hold_expired = 0;
+    // held: entries re-entered by hold_ships without a record; hold_expired: entries whose window ran out;
+    // hold_walked: entries not held because the node-sourced walk read the ship's whole list and found no live nozzle
+    unsigned held = 0, hold_expired = 0, hold_walked = 0;
 };
 struct ShipTable {
     Light lights[ship_capacity];
@@ -497,10 +498,16 @@ inline bool invert_rows(const float rows[12], double inverse[9]) noexcept {
 //   held entry keeps its own flag; a full table takes it in place of its dimmest evictable entry when it is the own
 //   ship's or brighter after the fade (build_ships' rule), counted dropped either way. Colours, radius and values stay
 //   at their bound strength; build_nodes applies the fade.
+// - Walked (engine-nozzle-source.md section 7): a prev entry whose root is among `walked` (the roots whose child list
+//   the node-sourced walk read to its end that frame, at most walked_count of them) is never held: the walk is
+//   authoritative, no live nozzle means dark (hold_walked). The hold stays for roots the walk did not cover (the hull
+//   not drawn in the scene view, a refused or cut walk, engine_nozzle_source = draw: walked empty).
 // Cost: one pass over the log (at most four ship probes per draw, as build_nodes makes two, and up to anchor_slots
 // compares per set), then per held ship one 3x3 inverse and product and nine multiply-adds per plate (positions in
-// double); no allocation (6.5 KB of log indices on the stack).
-inline void hold_ships(const ShipTable& prev, ShipTable* cur, const DrawLog& log, unsigned window) noexcept {
+// double) and a linear scan of `walked` per prev entry without a record; no allocation (6.5 KB of log indices on the
+// stack).
+inline void hold_ships(const ShipTable& prev, ShipTable* cur, const DrawLog& log, unsigned window,
+                       const std::uint32_t* walked = nullptr, unsigned walked_count = 0) noexcept {
     static_assert(log_capacity <= 32767, "a log index fits the anchor arrays");
     if (!window) return;
     // Per cur entry and per prev entry the log indices of its anchor set as drawn now; per prev entry the log index of
@@ -567,6 +574,12 @@ inline void hold_ships(const ShipTable& prev, ShipTable* cur, const DrawLog& log
     for (unsigned p = 0; p < prev.count; ++p) {
         const Light& was = prev.lights[p];
         if (!was.anchor_count || find_ship(*cur, was.root) >= 0) continue;
+        bool covered = false;
+        for (unsigned w = 0; w < walked_count && !covered; ++w) covered = walked[w] == was.root;
+        if (covered) {
+            ++cur->stats.hold_walked;
+            continue;
+        }
         const unsigned age = was.age + 1;
         if (age > window) {
             ++cur->stats.hold_expired;

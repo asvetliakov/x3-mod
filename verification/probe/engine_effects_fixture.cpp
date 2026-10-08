@@ -75,6 +75,7 @@ using RecordFn = int (*)(IDirect3DDevice9*, unsigned, void*, unsigned);
 using EmissionStatus = unsigned (*)(IDirect3DDevice9*, unsigned);
 using PlumesFault = int (*)(IDirect3DDevice9*, unsigned);
 using FarCall = void (*)(std::uint32_t, std::int32_t, std::uint32_t);
+using Gather = void (*)(IDirect3DDevice9*, std::uint32_t, std::uint32_t, std::uint32_t, std::uint32_t);
 using ShimmerProbe = void (*)(IDirect3DDevice9*, int);
 using ShimmerStatus = unsigned (*)(IDirect3DDevice9*, unsigned);
 using CameraInstall = void (*)(const float* const*, const float* const*);
@@ -191,6 +192,7 @@ struct Fixture {
     EmissionStatus emission = nullptr;
     PlumesFault plumes_fault = nullptr;
     FarCall far_call = nullptr; // the small-parts cull stub's far-jet call (x3m_engine_far_jet) on a synthetic node
+    Gather gather = nullptr;    // the node-sourced gather sample_scope makes for a routed draw (x3m_engine_effects_fixture_gather)
     ShimmerProbe shimmer_probe = nullptr;
     ShimmerStatus shimmer_status = nullptr;
     IDirect3DTexture9* bloom = nullptr;          // armed: the application's bloom source (the resolve's copy target)
@@ -501,6 +503,7 @@ struct Fixture {
         unsigned armed, ran, result, nozzles, skipped, drew, references, taa_references, failures, refused, records,
             suppressed, resolved, stage_off, attach_refused, jets_submitted;
         unsigned far_records, far_nozzles, far_copies, last_flags; // keys 44..47 (far engine jets, the distance law)
+        unsigned node_culled, node_records, node_roots, node_walked, node_dupes; // keys 55, 50, 53, 54, 51 (node-sourced nozzles)
         unsigned view_rule, far_duplicates;                        // keys 48, 49
         DWORD px[6];   // p1..p4, far jets 1 and 2
         DWORD prev[6]; // the same pixels in the previous armed frame
@@ -512,6 +515,11 @@ struct Fixture {
     // (+0x70 125 x context 0.01: a 2.13 px nozzle), z 2.0, handed over with a view of the scene camera's handle or of
     // the other camera's.
     alignas(16) std::uint32_t far_node[2][0x260 / 4]{};
+    // The node-sourced walk's ship root (engine_nozzle_walk_core.h): its child list is far jet 0 alone, then the
+    // sentinel; far jet 0's +0x18 and p1's name it, so p1's record makes it a ship root for the next frame's gather
+    // (the gather itself through the seam, with far_view as the camera node: +0x1c the context).
+    alignas(16) std::uint32_t walk_root[0x260 / 4]{};
+    alignas(16) std::uint32_t walk_sentinel[4]{};
     alignas(16) std::uint32_t far_view[0x80 / 4]{};       // the scene camera's view
     alignas(16) std::uint32_t far_view_other[0x80 / 4]{}; // another camera's view (a target monitor)
     alignas(16) std::uint32_t far_context[0x40 / 4]{};
@@ -532,6 +540,10 @@ struct Fixture {
             n[0x130 / 4] = 0x4000001;
             n[0x140 / 4] = 20000;
         }
+        walk_root[0xc / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(far_node[0]));
+        far_node[0][0] = std::uint32_t(reinterpret_cast<std::uintptr_t>(walk_sentinel)); // next: the sentinel (+0 = 0)
+        far_node[0][0x18 / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(walk_root));
+        p1.node.words[0x18 / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(walk_root)); // p1's record: parent = the root
         const float scale = 0.01f;
         std::memcpy(&far_context[0x2c / 4], &scale, 4);
         far_view[0x28 / 4] = scene_camera;
@@ -545,14 +557,17 @@ struct Fixture {
     struct Far {
         unsigned jet;
         bool other_view, before_scene;
+        bool engine_culled = false; // the site's measure 0: the engine's own size verdict (no entry; the culled list)
     };
     void far_copy(const Far& f) {
-        far_call(std::uint32_t(reinterpret_cast<std::uintptr_t>(far_node[f.jet])), 6,
+        far_call(std::uint32_t(reinterpret_cast<std::uintptr_t>(far_node[f.jet])), f.engine_culled ? 0 : 6,
                  std::uint32_t(reinterpret_cast<std::uintptr_t>(f.other_view ? far_view_other : far_view)));
     }
     DWORD last_px_[6]{};
     bool profiled_ = false;
-    Armed armed_frame(const Far* copies = nullptr, unsigned copy_count = 0, bool draw_jets = true) {
+    // walk: the gather seam names walk_root (p1's parent) with far_view as its camera node, as sample_scope would for a
+    // routed hull draw of that ship (the fixture's own draws are suppressed jets, never routed).
+    Armed armed_frame(const Far* copies = nullptr, unsigned copy_count = 0, bool draw_jets = true, bool walk = false) {
         // p1 probed 2 px into the plume (the axis runs to -x): after flight C the mouth is no longer the brightest point
         // (the shock cells ramp in, the ring halved, the mouth terms a soft maximum), and on this 2 px nozzle half the
         // jittered frames sample behind it; p2 (13.65 px) 4 px into it; the far jets 2 px into theirs. p3 / p4 at their
@@ -579,6 +594,10 @@ struct Fixture {
         jets_before = primitive_calls();
         if (draw_jets) {
             jet_draw(p1, false, true, scene_camera);
+            if (walk)
+                gather(device, std::uint32_t(reinterpret_cast<std::uintptr_t>(p1.node.words)),
+                       std::uint32_t(reinterpret_cast<std::uintptr_t>(walk_root)),
+                       std::uint32_t(reinterpret_cast<std::uintptr_t>(far_view)), scene_camera);
             jet_draw(p2, false, true, scene_camera);
             jet_draw(p3, false, true, other_camera);
         }
@@ -586,11 +605,12 @@ struct Fixture {
         api(device->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
         api(device->StretchRect(back, nullptr, bloom_surface, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
         Armed a{};
-        const unsigned keys[20] = {25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 2, 3, 37, 39, 44, 45, 46, 47, 48, 49};
-        unsigned* out[20] = {&a.armed, &a.ran, &a.result, &a.nozzles, &a.skipped, &a.drew, &a.references, &a.taa_references,
+        const unsigned keys[25] = {25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 2, 3, 37, 39, 44, 45, 46, 47, 48, 49, 55, 50, 53, 54, 51};
+        unsigned* out[25] = {&a.armed, &a.ran, &a.result, &a.nozzles, &a.skipped, &a.drew, &a.references, &a.taa_references,
                              &a.failures, &a.refused, &a.records, &a.suppressed, &a.stage_off, &a.attach_refused,
-                             &a.far_records, &a.far_nozzles, &a.far_copies, &a.last_flags, &a.view_rule, &a.far_duplicates};
-        for (unsigned i = 0; i < 20; ++i) *out[i] = status(device, keys[i]);
+                             &a.far_records, &a.far_nozzles, &a.far_copies, &a.last_flags, &a.view_rule, &a.far_duplicates,
+                             &a.node_culled, &a.node_records, &a.node_roots, &a.node_walked, &a.node_dupes};
+        for (unsigned i = 0; i < 25; ++i) *out[i] = status(device, keys[i]);
         a.jets_submitted = jets_submitted;
         a.resolved = emission(device, 97); // this frame's resolve ran and its copy-back succeeded
         pixels(probe, 6, a.px);
@@ -631,9 +651,9 @@ struct Fixture {
                     sum(a.px[0]), sum(a.px[1]), sum(a.px[2]), sum(a.px[3]), sum(a.prev[0]), sum(a.prev[1]));
     }
     static void print_far(const char* phase, unsigned frame, const Armed& a) {
-        std::printf("FAR phase=%s frame=%u ran=%u drew=%u nozzles=%u skipped_other_view=%u records=%u suppressed=%u far_records=%u far_nozzles=%u far_copies=%u far_duplicates=%u view_rule=%u last_flags=%04x jets_submitted=%u far_sums=%u,%u prev=%u,%u p1=%u p2=%u\n",
+        std::printf("FAR phase=%s frame=%u ran=%u drew=%u nozzles=%u skipped_other_view=%u records=%u suppressed=%u far_records=%u far_nozzles=%u far_copies=%u far_duplicates=%u node_culled=%u node_records=%u node_roots=%u node_walked=%u node_dupes=%u view_rule=%u last_flags=%04x jets_submitted=%u far_sums=%u,%u prev=%u,%u p1=%u p2=%u\n",
                     phase, frame, a.ran, a.drew, a.nozzles, a.skipped, a.records, a.suppressed, a.far_records, a.far_nozzles,
-                    a.far_copies, a.far_duplicates, a.view_rule, a.last_flags, a.jets_submitted, sum(a.px[4]), sum(a.px[5]),
+                    a.far_copies, a.far_duplicates, a.node_culled, a.node_records, a.node_roots, a.node_walked, a.node_dupes, a.view_rule, a.last_flags, a.jets_submitted, sum(a.px[4]), sum(a.px[5]),
                     sum(a.prev[4]), sum(a.prev[5]), sum(a.px[0]), sum(a.px[1]));
     }
     // A frame that drew the scene view's records: p2 near-lit, p1 lit, p3 (another camera) and p4 (background phase)
@@ -736,6 +756,22 @@ struct Fixture {
         print_far("before_scene", frame, a);
         check(a.drew && a.nozzles == 3 && a.skipped == 2 && a.far_records == 1 && a.view_rule == 2 && rose(a, 4),
               "armed_far_copy_before_the_scene_phase_drawn");
+        settle();
+        // Node-sourced nozzles (engine_nozzle_walk_core.h): a JET the engine culls by size at the site (measure 0) makes
+        // no entry (far_engine) but its (handle, view) pair enters the handler's culled list, which the stage's node
+        // append reads (node_engine_culled); nothing is drawn for it (its pixel dark). Two frames with the gather seam
+        // naming walk_root (p1's and far jet 0's parent, a ship root since p1's first record) under far_view: each
+        // walks its list (node_roots 1, node_walked 1), finds far jet 0 and drops it as the listed pair (node_dupes 1,
+        // no node record), the second with the first frame's marks renewed.
+        const Far engine_culled[1] = {{0, false, false, true}};
+        for (unsigned pass = 0; pass < 2; ++pass) {
+            a = armed_frame(engine_culled, 1, true, true);
+            ++frame;
+            print_far(pass ? "engine_culled_again" : "engine_culled", frame, a);
+            check(a.drew && a.nozzles == 2 && a.far_records == 0 && a.far_copies == 0 && a.node_culled == 1 && a.node_roots == 1 &&
+                      a.node_walked == 1 && a.node_dupes == 1 && a.node_records == 0 && dark(a.px[4]),
+                  pass ? "armed_engine_culled_jet_walked_again_not_resurrected" : "armed_engine_culled_jet_walked_and_listed_not_drawn");
+        }
         settle();
         // The cull pass twice for one view: the second copy of (node handle, view handle) is dropped (far_duplicates).
         const Far twice[2] = {{0, false, false}, {0, false, false}};
@@ -998,6 +1034,7 @@ int main(int argc, char** argv) {
     f.emission = reinterpret_cast<EmissionStatus>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_linear_emission_fixture_status")));
     f.plumes_fault = reinterpret_cast<PlumesFault>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_plumes_fixture_fault")));
     f.far_call = reinterpret_cast<FarCall>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_far_jets_fixture_call")));
+    f.gather = reinterpret_cast<Gather>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_gather")));
     const auto camera_install = reinterpret_cast<CameraInstall>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_camera_state_fixture_install")));
     const auto seta = reinterpret_cast<SetaSeam>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_effects_fixture_seta")));
     f.shimmer_probe = reinterpret_cast<ShimmerProbe>(reinterpret_cast<void*>(GetProcAddress(f.runtime, "x3m_engine_shimmer_fixture_probe")));

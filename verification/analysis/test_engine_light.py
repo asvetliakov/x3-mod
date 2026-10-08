@@ -737,9 +737,11 @@ class RouteWiringTests(unittest.TestCase):
         # with the plume stage attached), and the frame row carries its two counts.
         frame = inc[inc.index('void MotionOutput::engine_light_frame()'):inc.index('HRESULT MotionOutput::engine_light_upload()')]
         self.assertLess(frame.index('std::swap(s.ships, s.previous);'), frame.index('el::build_ships('))
-        self.assertLess(frame.index('el::build_ships('), frame.index('if (attached) el::hold_ships(*s.previous, s.ships, s.log, s.hold);'))
+        # Since 2026-10-09 the hold takes the node-sourced walk's roots (engine-nozzle-source.md section 7).
+        self.assertLess(frame.index('el::build_ships('),
+                        frame.index('if (attached) el::hold_ships(*s.previous, s.ships, s.log, s.hold, engine_node_walked_, engine_node_walked_count_);'))
         self.assertLess(frame.index('el::hold_ships('), frame.index('el::build_nodes(*s.ships, s.log, &s.nodes);'))
-        self.assertIn('held=%u hold_expired=%u', frame)
+        self.assertIn('held=%u hold_expired=%u hold_walked=%u', frame)
         # The fixture scope carries node+0x18 like object_trace's (the seam case's lit node hangs under the root).
         self.assertIn('route.scope_parent = s.parent; // engine light: the synthetic node+0x18', cpp)
 

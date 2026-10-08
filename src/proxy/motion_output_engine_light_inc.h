@@ -208,14 +208,14 @@ void MotionOutput::engine_light_frame() noexcept {
         };
         handles(own, own_text, sizeof own_text);
         handles(most, most_text, sizeof most_text);
-        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_more=%u plates_max=%u plates_none=%u unfloored=%u plates_dropped=%u lights=%u own_lights=%s most_lights=%s held=%u hold_expired=%u",
+        log("engine_light_frame device=%llu frame=%llu ships=%u ships_drawn=%u nodes=%u candidates=%u draws_lit=%u no_twin=%u no_rows=%u records=%u main=%u rcs=%u brake=%u other_view=%u invalid=%u orphan=%u ships_dropped=%u logged=%u log_dropped=%u matched=%u singular=%u nodes_dropped=%u twins=%u plates=%u,%u,%u,%u,%u,%u,%u,%u plates_more=%u plates_max=%u plates_none=%u unfloored=%u plates_dropped=%u lights=%u own_lights=%s most_lights=%s held=%u hold_expired=%u hold_walked=%u",
             id_, s.built_frame, s.ships->count, s.nodes.ships, s.nodes.count, c.candidates, c.draws_lit, c.no_twin,
             c.no_rows, s.ships->stats.records, s.ships->stats.main, s.ships->stats.rcs, s.ships->stats.brake,
             s.ships->stats.other_view, s.ships->stats.invalid, s.ships->stats.orphan, s.ships->stats.dropped,
             s.nodes.stats.logged, s.nodes.stats.log_dropped, s.nodes.stats.matched, s.nodes.stats.singular,
             s.nodes.stats.dropped, s.twins, by_count[1], by_count[2], by_count[3], by_count[4], by_count[5], by_count[6],
             by_count[7], by_count[8], more, most_plates, by_count[0], s.ships->stats.unfloored, s.ships->stats.plates_dropped, lights,
-            own_text, most_text, s.ships->stats.held, s.ships->stats.hold_expired);
+            own_text, most_text, s.ships->stats.held, s.ships->stats.hold_expired, s.ships->stats.hold_walked);
     }
     s.counts = {};
     s.built_frame = frame_;
@@ -224,6 +224,8 @@ void MotionOutput::engine_light_frame() noexcept {
     // `previous` (its draws are the logged ones) and the older buffer takes this boundary's table.
     std::uint32_t scene_camera = 0;
     const bool attached = engine_ring_ && !engine_plumes_stage_off();
+    // The node-sourced append for a frame whose stage did not run (engine_node_append is a no-op after the stage's).
+    if (attached) engine_node_append();
     std::swap(s.ships, s.previous);
     const bool records = attached && engine_ring_->count &&
                          engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->own,
@@ -236,7 +238,12 @@ void MotionOutput::engine_light_frame() noexcept {
                         preset_scale, s.ships, engine_ring_->own);
     else
         s.ships->clear();
-    if (attached) el::hold_ships(*s.previous, s.ships, s.log, s.hold);
+    if (records) { // the root filter when the stage did not run, and its reset clock
+        engine_scene_camera_last_ = scene_camera;
+        engine_scene_camera_frame_ = frame_;
+    }
+    // The hold, minus the ships whose root the walk covered this frame (engine-nozzle-source.md section 7).
+    if (attached) el::hold_ships(*s.previous, s.ships, s.log, s.hold, engine_node_walked_, engine_node_walked_count_);
     el::build_nodes(*s.ships, s.log, &s.nodes);
     s.log.clear();
 }

@@ -681,3 +681,18 @@ of [engine-exhaust-gap-analysis.md](engine-exhaust-gap-analysis.md) (section 5 t
   units (c17.z). `TravelRamp` takes the true elapsed time with SETA off (a gap without plume frames releases at once;
   under SETA a step stays held to 0.1 s) and starts over on a load epoch change and at Reset. An unreadable SETA tick
   site refuses that frame only (`read`) and is retried; a byte mismatch still latches `site_mismatch`.
+
+**Sources of records (2026-10-09, node-sourced nozzles; [engine-nozzle-source.md](engine-nozzle-source.md)).** The
+ring now takes records from three sources, in this order per frame: the glow-jet *draws* the recogniser suppresses
+(`fill_record`, the draw's own c4-6 rows and serial), the *far* copies the small-parts cull stub hands over for JET
+nodes it culled by projected size (`far_record`, `flag_far`), and the *node* walk of every drawn ship's root child
+list at the stage append (`engine_node_append`, `far_record` over the node block with `flag_node`, the hull draw's
+camera handle, the live throttle from `+0x88`), deduplicated by (node handle, view handle) in that order and against
+the handler's engine-culled pairs. A nozzle the frustum culls while its hull stays on screen keeps its plume from the
+node source; the stage draws all three alike (the view tally counts drawn records only, `view_rule=far` falls back to
+the handle-tagged ones). `engine_nozzle_source = draw` (`--engine-nozzle-source`) keeps the first two sources only.
+Only ship roots are walked (a record named the root as its parent within two frames, or the own ship's root);
+`engine_stage` carries `node_roots= node_walked= node_records= node_dupes= node_guard_rejected= node_hidden=
+node_overflow= node_unreadable= node_engine_culled= node_no_scale= node_root_overflow= node_children= node_other_view=
+node_not_ship= node_invalid= node_walk_us=` (`node_invalid` = `far_record` refusals + RCS jets + ring or dedupe set
+full).

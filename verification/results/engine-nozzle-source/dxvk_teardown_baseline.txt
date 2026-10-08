@@ -1,0 +1,20 @@
+# DXVK teardown fault of the engine-effects fixture at the committed baseline (no node-sourced change), 2026-10-09.
+# Tree: `git archive 4f994eaa0d94309a497eeb1801dfd8004625f581` built with cmake (mingw-i686, RelWithDebInfo,
+# -DPython3_EXECUTABLE=/usr/bin/python3); source_binding() stubbed in the archive copy's runner (no git repo there). Run:
+#   X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py --wine-env CX_GRAPHICS_BACKEND=dxvk
+# Every mode runs its checks to the end (failed=0) and the process then faults at teardown (exit 5): the same fault the
+# node-sourced tree showed under DXVK (0x74666f73 = "soft"), and the fixture passes under wined3d (the records' backend)
+# on both trees. Per-mode exits of the baseline run and the fault lines of its armed and main modes:
+main: exit=5 checks=174 failed=0 problems=1
+native: exit=5 checks=11 failed=0 problems=1
+unverified: exit=5 checks=6 failed=0 problems=1
+unpatched: exit=5 checks=11 failed=0 problems=1
+timing: exit=5 checks=20 failed=0 problems=1
+plumes: exit=5 checks=35 failed=0 problems=1
+armed: exit=5 checks=33 failed=0 problems=1
+armed_refused: exit=5 checks=7 failed=0 problems=1
+armed: Unhandled exception: page fault on execute access to 0x00000000 in wow64 32-bit code (0x00000000).
+main:  Unhandled exception: page fault on execute access to 0x74666f73 in wow64 32-bit code (0x74666f73).
+# The node-sourced tree under DXVK (same command): armed checks=34 failed=0 (one more: armed_engine_culled_jet_listed_not_drawn),
+# every mode exit=5 at teardown; motion_output_fixture seam-engine-light under DXVK: every CHECK PASS, ENGINE_LIGHT_RESULT
+# lit_frames=11 two_plate_frames=3, then the same teardown fault (exit 5).

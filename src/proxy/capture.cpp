@@ -5851,6 +5851,16 @@ extern "C" __declspec(dllexport) void x3m_engine_far_jets_fixture_call(std::uint
     x3m::CaptureLock lock;
     x3m_engine_far_jet(node, measure, view);
 }
+// Node-sourced nozzles seam (engine_effects_fixture.cpp "armed"): the gather the route makes at sample_scope for a routed
+// scene draw (engine_node_gather: the scope's node, its parent root, its camera node and handle), for a fixture whose
+// draws are all suppressed jets (never routed).
+extern "C" __declspec(dllexport) void x3m_engine_effects_fixture_gather(IDirect3DDevice9* device, std::uint32_t node,
+                                                                        std::uint32_t parent, std::uint32_t camera,
+                                                                        std::uint32_t camera_handle) {
+    x3m::CaptureLock lock;
+    const auto it = x3m::devices.find(device);
+    if (it != x3m::devices.end()) it->second->motion_output.fixture_engine_gather(node, parent, camera, camera_handle);
+}
 // Engine plumes seam (engine_effects_fixture.cpp "armed", "armed_refused"): EnginePlumesPass fixture faults (bit 0 the
 // FP16 refusal at attach, bit 1 one failed draw, bit 2 every draw); before the stage's first arming the call creates the
 // (unattached) pass so that the first attach takes the fault; 0 when it cannot.

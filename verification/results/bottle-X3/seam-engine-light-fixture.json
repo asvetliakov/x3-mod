@@ -10,11 +10,11 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "c5b5cbf3cb140122b3278db8f5ce41728df069b10b1558d93383e640ff17e1d8",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "62f2967ea97d2ab5559105e9f48cba2c0e8268a3cf1d1fea5029cdaadb6c5126",
-  "build/d3d9.dll": "011484739f8840698c1d36a29df0d2c348c1a9e048855efb4d9e36b95fd3e3ef"
+  "verification/probe/build/motion_output_fixture.exe": "9490f9601ebf45024c6f2cb1eafdfc011c44667b1c712d67c84302314be2eece",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "7a12b192afc10e8a4ee0b3591eebbe1b47809a699f2a724eec199e01080dc490",
+  "build/d3d9.dll": "6837d1dd13e90f1eb40f65aa94f30018a1e129a0fc56a71091a2de781e7250a3"
  },
- "checks": 107,
+ "checks": 211,
  "frames": [
   {
    "step": "0",
@@ -27,7 +27,17 @@
    "visible": "0",
    "max_relative": "0.000000",
    "zero": "0",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "0",
+   "node_hidden": "0",
+   "node_roots": "0",
+   "node_walked": "0",
+   "plates_max": "0",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "1",
@@ -40,7 +50,17 @@
    "visible": "0",
    "max_relative": "0.000000",
    "zero": "0",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "0",
+   "node_hidden": "0",
+   "node_roots": "0",
+   "node_walked": "0",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "2",
@@ -53,7 +73,17 @@
    "visible": "4845",
    "max_relative": "0.003994",
    "zero": "158",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "3",
@@ -66,7 +96,17 @@
    "visible": "4845",
    "max_relative": "0.003994",
    "zero": "158",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "4",
@@ -79,7 +119,17 @@
    "visible": "4845",
    "max_relative": "0.003994",
    "zero": "158",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "5",
@@ -92,7 +142,17 @@
    "visible": "4845",
    "max_relative": "0.003994",
    "zero": "158",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "6",
@@ -105,7 +165,17 @@
    "visible": "4845",
    "max_relative": "0.003994",
    "zero": "158",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "7",
@@ -118,7 +188,17 @@
    "visible": "4845",
    "max_relative": "0.003994",
    "zero": "158",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
   },
   {
    "step": "8",
@@ -131,15 +211,118 @@
    "visible": "4845",
    "max_relative": "0.003994",
    "zero": "158",
-   "zero_differ": "0"
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
+  },
+  {
+   "step": "9",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2236",
+   "visible": "4845",
+   "max_relative": "0.003994",
+   "zero": "158",
+   "zero_differ": "0",
+   "node_records": "0",
+   "node_dupes": "1",
+   "node_hidden": "1",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "1",
+   "tier": "0",
+   "plate_error": "0",
+   "second_samples": "0",
+   "band": "0"
+  },
+  {
+   "step": "10",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2352",
+   "visible": "6222",
+   "max_relative": "0.003994",
+   "zero": "0",
+   "zero_differ": "0",
+   "node_records": "1",
+   "node_dupes": "1",
+   "node_hidden": "0",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "2",
+   "tier": "1",
+   "plate_error": "1.13e-07",
+   "second_samples": "1176",
+   "band": "49"
+  },
+  {
+   "step": "11",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2352",
+   "visible": "6222",
+   "max_relative": "0.003994",
+   "zero": "0",
+   "zero_differ": "0",
+   "node_records": "1",
+   "node_dupes": "1",
+   "node_hidden": "0",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "2",
+   "tier": "1",
+   "plate_error": "1.13e-07",
+   "second_samples": "1176",
+   "band": "49"
+  },
+  {
+   "step": "12",
+   "reset": "1",
+   "draws_lit": "1",
+   "bound_unlit": "202",
+   "bound_lit": "102",
+   "constant_error": "1.19e-08",
+   "lit_samples": "2352",
+   "visible": "6222",
+   "max_relative": "0.003994",
+   "zero": "0",
+   "zero_differ": "0",
+   "node_records": "1",
+   "node_dupes": "1",
+   "node_hidden": "0",
+   "node_roots": "1",
+   "node_walked": "1",
+   "plates_max": "2",
+   "tier": "1",
+   "plate_error": "1.13e-07",
+   "second_samples": "1176",
+   "band": "49"
   }
  ],
- "lit_frames": 7,
+ "two_plate_frames": 3,
+ "lit_frames": 11,
  "first_lit_after_reset": 1,
  "worst_relative": 0.003994,
- "worst_constant": 1.19e-08,
- "visible": 33915,
- "zero": 1106,
+ "worst_constant": 1.13e-07,
+ "visible": 57426,
+ "zero": 1264,
  "zero_differ": 0,
  "log_rows": {
   "mode": {
@@ -180,7 +363,7 @@
     "rule": "spec_minimum"
    }
   ],
-  "frames_with_candidates": 7,
+  "frames_with_candidates": 11,
   "frame_rows": [
    {
     "frame": "1",
@@ -269,12 +452,56 @@
     "no_rows": "0",
     "twins": "6",
     "plates": "1,0,0,0,0,0,0,0"
+   },
+   {
+    "frame": "9",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6",
+    "plates": "1,0,0,0,0,0,0,0"
+   },
+   {
+    "frame": "10",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6",
+    "plates": "0,1,0,0,0,0,0,0"
+   },
+   {
+    "frame": "11",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6",
+    "plates": "0,1,0,0,0,0,0,0"
+   },
+   {
+    "frame": "12",
+    "ships": "1",
+    "nodes": "1",
+    "candidates": "1",
+    "draws_lit": "1",
+    "no_twin": "0",
+    "no_rows": "0",
+    "twins": "6",
+    "plates": "0,1,0,0,0,0,0,0"
    }
   ]
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-engine-light-20261009-001703-019590",
- "trace_sha256": "67ba08142a556bee4276a5869f8de6d07710cae4dc6716664b765a7ae54a8612",
- "dll_sha256": "62f2967ea97d2ab5559105e9f48cba2c0e8268a3cf1d1fea5029cdaadb6c5126",
- "exe_sha256": "c5b5cbf3cb140122b3278db8f5ce41728df069b10b1558d93383e640ff17e1d8"
+ "directory": "verification/probe/build/motion-output-seam-engine-light-20261009-024759-732754",
+ "trace_sha256": "f6bc298230913809c4f1bbd1d294ac5ccaac4ed55c1b551efdc0b99931f5699c",
+ "dll_sha256": "7a12b192afc10e8a4ee0b3591eebbe1b47809a699f2a724eec199e01080dc490",
+ "exe_sha256": "9490f9601ebf45024c6f2cb1eafdfc011c44667b1c712d67c84302314be2eece"
 }

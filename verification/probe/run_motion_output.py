@@ -1551,16 +1551,33 @@ def validate_engine_light_seam(name, text, trace):
     rows = [fields(l) for l in lines if l.startswith('ENGINE_LIGHT ')]
     result = [fields(l) for l in lines if l.startswith('ENGINE_LIGHT_RESULT ')]
     twins = [fields(l) for l in lines if l.startswith('ENGINE_LIGHT_TWINS ')]
-    assert len(rows) == 9 and len(result) == 1 and len(twins) == 1 and twins[0]['hull'] == '3', (name, len(rows), twins)
+    assert len(rows) == 13 and len(result) == 1 and len(twins) == 1 and twins[0]['hull'] == '3', (name, len(rows), twins)
     lit = [r for r in rows if r['draws_lit'] == '1']
     for r in rows:
         assert r['records'] == '1' and r['suppressed'] == '1' and r['bound_unlit'] == '202' and r['sentinel_kept'] == '1', (name, r)
         assert r['lit_after_unlit'] == '0' and r['no_twin'] == '0' and r['no_rows'] == '0', (name, r)
+        assert r['held'] == '0' and r['hold_walked'] == '0', (name, r)
     assert [r['draws_lit'] for r in rows[:4]] == ['0', '0', '1', '1'] and rows[-1]['draws_lit'] == '1', (name, [r['draws_lit'] for r in rows])
     for r in lit:
         assert r['bound_lit'] == '102' and r['candidates'] == '1' and float(r['constant_error']) <= 1e-5, (name, r)
         assert int(r['visible']) >= 200 and float(r['max_relative']) <= 0.05, (name, r)
-        assert int(r['zero']) >= 50 and r['zero_differ'] == '0' and r['not_brighter'] == '0', (name, r)
+        assert (int(r['zero']) >= 50 or r['plates_max'] == '2') and r['zero_differ'] == '0' and r['not_brighter'] == '0', (name, r)
+        assert int(r['band']) <= 64, (name, r)
+    # Node-sourced nozzles (engine_nozzle_walk_core.h; docs/architecture/engine-nozzle-source.md): from the first
+    # boundary on the jets' root is walked (the other ship's root is unreadable), the drawn jet is a duplicate, the
+    # hidden second jet makes no record until the drive shows it at step 9, then one node record and two plates whose
+    # second register carries its record law and lights its side of the hull.
+    assert (rows[1]['node_roots'], rows[1]['node_walked']) == ('0', '0'), (name, rows[1])  # no ship root known yet
+    for r in rows[2:]:
+        assert (r['node_roots'], r['node_walked'], r['node_dupes']) == ('1', '1', '1'), (name, r)
+    assert [(r['node_records'], r['node_hidden']) for r in rows[2:10]] == [('0', '1')] * 8, (name, [(r['node_records'], r['node_hidden']) for r in rows])
+    assert [(r['node_records'], r['node_hidden'], r['plates_max'], r['tier']) for r in rows[10:]] == [('1', '0', '2', '1')] * 3, (name, rows[10:])
+    for r in rows[10:]:
+        assert float(r['plate_error']) <= 1e-5 and int(r['second_samples']) >= 100 and r['draws_lit'] == '1', (name, r)
+    for r in lit:
+        if int(r['step']) <= 9:
+            assert (r['plates_max'], r['tier'], r['second_samples']) == ('1', '0', '0'), (name, r)
+    assert result[0]['two_plate_frames'] == '3', (name, result)
     for r in rows:
         if r['draws_lit'] == '0':
             assert r['bound_lit'] == '202' and r['zero_differ'] == '0', (name, r)
@@ -1582,15 +1599,21 @@ def validate_engine_light_seam(name, text, trace):
     lit_rows = [f for f in frames if f['candidates'] != '0']
     # One row per frame with a table or a candidate; the last frame's row is never written (no later boundary).
     assert len(lit_rows) >= len(lit) - 1, (name, len(lit_rows), len(lit))
+    two_plate_rows = 0
     for f in lit_rows:
         assert (f['candidates'], f['draws_lit'], f['no_twin'], f['no_rows'], f['ships'], f['nodes']) == ('1', '1', '0', '0', '1', '1'), (name, f)
-        # The one ship's nozzle plates: its one main nozzle (plates= ships by plate count 1..8, plates_more= above).
-        assert (f['plates'], f['plates_more'], f['plates_max'], f['plates_none'], f['plates_dropped']) == (
-            '1,0,0,0,0,0,0,0', '0', '1', '0', '0'), (name, f)
+        # The one ship's nozzle plates: its one main nozzle, then two from the second jet's first lit frame on (plates=
+        # ships by plate count 1..8, plates_more= above); never held.
+        assert (f['plates'], f['plates_max']) in (('1,0,0,0,0,0,0,0', '1'), ('0,1,0,0,0,0,0,0', '2')), (name, f)
+        assert (f['plates_more'], f['plates_none'], f['plates_dropped'], f['held'], f['hold_walked']) == ('0', '0', '0', '0', '0'), (name, f)
+        two_plate_rows += f['plates_max'] == '2'
+    assert two_plate_rows >= 2, (name, 'engine_light_frame rows with two plates', two_plate_rows)
     summary = result[0]
-    return dict(checks=len(rows) * 6 + len(lit) * 6 + 4 + len(lit_rows), frames=[{k: r[k] for k in (
+    return dict(checks=len(rows) * 8 + len(lit) * 7 + 8 + len(lit_rows) * 2, frames=[{k: r[k] for k in (
                     'step', 'reset', 'draws_lit', 'bound_unlit', 'bound_lit', 'constant_error', 'lit_samples', 'visible', 'max_relative',
-                    'zero', 'zero_differ')} for r in rows],
+                    'zero', 'zero_differ', 'node_records', 'node_dupes', 'node_hidden', 'node_roots', 'node_walked', 'plates_max', 'tier',
+                    'plate_error', 'second_samples', 'band')} for r in rows],
+                two_plate_frames=int(summary['two_plate_frames']),
                 lit_frames=int(summary['lit_frames']), first_lit_after_reset=int(summary['first_lit_after_reset']),
                 worst_relative=float(summary['worst_relative']), worst_constant=float(summary['worst_constant']),
                 visible=int(summary['visible']), zero=int(summary['zero']), zero_differ=int(summary['zero_differ']),

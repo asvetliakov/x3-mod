@@ -42,6 +42,7 @@
 #include "lens_flare_gain.h"
 #include "engine_effects_core.h"
 #include "engine_light_core.h"
+#include "engine_nozzle_walk_core.h"
 #include "../renderer/engine_plumes_pass.h"
 #include "../renderer/engine_ribbons_pass.h"
 #include "../renderer/engine_shimmer_pass.h"
@@ -1470,6 +1471,7 @@ public:
     // Engine effects seam (x3m_engine_effects_fixture_status / _record): this frame's counts and records.
     unsigned fixture_engine_status(unsigned key) const noexcept;
     bool fixture_engine_record(unsigned index, void* out, unsigned size) const noexcept;
+    void fixture_engine_gather(std::uint32_t node, std::uint32_t parent, std::uint32_t camera, std::uint32_t camera_handle) noexcept;
     bool fixture_plumes_fault(unsigned faults) noexcept; // EnginePlumesPass::set_faults (creates the pass when absent)
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
@@ -1790,6 +1792,43 @@ private:
     } engine_far_{};
     bool engine_far_counted_ = false;            // this device is among the far block's requesting devices
     engine_far_jets::core::Seen engine_far_seen_; // the append's (node handle, view handle) dedupe, one generation a frame
+    // Node-sourced nozzles (engine_nozzle_walk_core.h; docs/architecture/engine-nozzle-source.md): the roots of the
+    // ships whose hull the route drew this frame (engine_node_gather at sample_scope: one set probe per routed scene
+    // draw), walked once per frame at the plume stage's append (engine_node_append, after engine_far_append) or, when
+    // the stage did not run, at the next frame boundary before the light builds (engine_light_frame); every main jet
+    // found becomes a far record tagged flag_node unless its (node handle, view handle) pair is already in the ring
+    // (draw and far records win) or in the far handler's engine-culled list. The context scale per root comes from the
+    // hull draw's camera node (+0x1c, the view's context; +0x2c there, engine_far_context_scale's memo), one bounded
+    // read per camera per frame. The roots whose walk completed go to the light's hold (hold_ships: never held).
+    engine_nozzle::core::Source engine_nozzle_source_ = engine_nozzle::core::default_source;
+    engine_nozzle::core::RootSet engine_node_roots_;
+    engine_nozzle::core::ShipRoots engine_ship_roots_; // roots a record named within two frames: the gather's ship filter
+    std::uint64_t engine_scene_camera_frame_ = 0;     // the frame of the last scene tally (the root filter's reset clock)
+    static constexpr std::uint64_t engine_scene_camera_hold = 120; // frames without a tally before the filter clears
+    std::uint64_t engine_node_epoch_ = 0;             // the load epoch the filter last saw (a change clears it)
+    std::uint64_t engine_node_roots_frame_ = ~std::uint64_t(0); // the frame the set was begun for
+    engine_far_jets::core::Seen engine_node_seen_;              // the append's dedupe (draw, far, culled, then nodes)
+    bool engine_node_appended_ = false;                         // this frame's ring has had its node append
+    std::uint64_t engine_ring_frame_ = 0;                       // the frame whose records the ring holds
+    std::uint32_t engine_scene_camera_last_ = 0;                // the last known scene view (the root filter)
+    std::uint32_t engine_node_walked_[engine_nozzle::core::RootSet::capacity]{};
+    unsigned engine_node_walked_count_ = 0;
+    struct EngineNodeCounts {
+        unsigned roots = 0, walked = 0, records = 0, duplicates = 0, hidden = 0, guard_rejected = 0, overflow = 0;
+        unsigned unreadable = 0, engine_culled = 0, ring_full = 0, steering = 0, invalid = 0, no_scale = 0;
+        unsigned root_overflow = 0, children = 0, skipped_other_view = 0, not_ship = 0, seen_full = 0;
+        float walk_us = 0.f;
+    } engine_node_{};
+    static constexpr unsigned engine_node_camera_slots = 4; // the frame's cameras -> their context pointers
+    std::uint32_t engine_node_camera_[engine_node_camera_slots]{};
+    std::uint32_t engine_node_context_[engine_node_camera_slots]{};
+    std::uint64_t engine_node_camera_frame_ = ~std::uint64_t(0);
+    unsigned engine_node_camera_next_ = 0;
+    void engine_node_gather(std::uintptr_t node, std::uint32_t parent, std::uintptr_t camera, std::uint32_t camera_handle,
+                            std::uintptr_t registry) noexcept;
+    void engine_node_append() noexcept;
+    float engine_node_context_scale(std::uint32_t camera) noexcept;
+    static bool engine_node_read(void* context, std::uint32_t address, void* out, unsigned size) noexcept;
     void engine_effects_frame_begin() noexcept;
     void engine_effects_frame_end() noexcept;
     // Engine light (motion_output_engine_light_inc.h): the request, the tables (allocated at configure), the twins'

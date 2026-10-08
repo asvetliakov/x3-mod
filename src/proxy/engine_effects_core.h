@@ -199,6 +199,8 @@ enum RecordFlag : std::uint16_t {
     flag_rows_unknown = 1u << 7, // no geometry: not the effects pair, c4-6 not shadowed, or degenerate rows
     flag_additive = 1u << 8,     // DESTBLEND ONE (else the screen law ONE/INVSRCCOLOR or unknown)
     flag_far = 1u << 9,          // a far jet: built from the node the small-parts cull culled (far_record), no draw
+    flag_node = 1u << 10,        // a node-sourced jet: far_record from the ship root's child list walked by the proxy
+                                 // (engine_nozzle_walk_core.h), no draw; flag_far clear
 };
 constexpr unsigned cluster_shift = 12; // bits 12..15: the tint cluster (core::Cluster)
 // One recognised glow-jet draw: a per-frame fact, 64 bytes, no pointer.

@@ -39,6 +39,8 @@ void MotionOutput::engine_effects_frame_begin() noexcept {
     // would otherwise empty it).
     if (plumes_requested_ && engine_far_jets::clears(this)) engine_far_jets::begin_frame();
     engine_far_ = {};
+    engine_node_appended_ = false; // the node-sourced append (engine_node_append) runs once per ring: at the stage or
+    engine_ring_frame_ = frame_;   // at the next boundary (engine_light_frame, before this clear)
     engine_redirects_ = engine_effects::redirects_live(); // one call per frame; the redirects arm once at load
     // off|plumes with the redirects live but the motion route off on this device: the redirects (process-wide) hide
     // the engine's sprites and trails while before_draw returns before this hook, so the glow jets stay native. One
@@ -394,7 +396,22 @@ unsigned MotionOutput::fixture_engine_status(unsigned key) const noexcept {
     if (key == 47) return engine_ring_ && engine_ring_->count ? engine_ring_->records[engine_ring_->count - 1].flags : 0u;
     if (key == 48) return plumes_view_far_ ? 3u : unsigned(plumes_view_rule_);
     if (key == 49) return engine_far_.duplicates;
+    // Node-sourced nozzles (engine_nozzle_walk_core.h): the last append's counts.
+    if (key == 50) return engine_node_.records;
+    if (key == 51) return engine_node_.duplicates;
+    if (key == 52) return engine_node_.hidden;
+    if (key == 53) return engine_node_.roots;
+    if (key == 54) return engine_node_.walked;
+    if (key == 55) return engine_node_.engine_culled;
+    if (key == 56) return engine_node_.guard_rejected;
+    if (key == 57) return engine_nozzle_source_ == engine_nozzle::core::Source::node ? 1u : 0u;
     return 0;
+}
+// The node-sourced gather for a fixture draw the route never samples (x3m_engine_effects_fixture_gather): the same call
+// sample_scope makes, with the seam's registry.
+void MotionOutput::fixture_engine_gather(std::uint32_t node, std::uint32_t parent, std::uint32_t camera,
+                                         std::uint32_t camera_handle) noexcept {
+    engine_node_gather(node, parent, camera, camera_handle, 0x3000);
 }
 bool MotionOutput::fixture_plumes_fault(unsigned faults) noexcept {
     if (!plumes_) plumes_.reset(new (std::nothrow) renderer::EnginePlumesPass); // attached at the next arming

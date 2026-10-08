@@ -7,6 +7,8 @@ namespace {
 namespace core = x3m::engine_far_jets::core;
 core::Raw buffer_[core::capacity];
 unsigned count_ = 0;
+core::CulledPair culled_[core::capacity]; // the engine-culled (node handle, view handle) pairs of the frame
+unsigned culled_count_ = 0;
 core::Stats stats_{};
 core::Requests requests_{};
 inline std::uint32_t word(std::uint32_t base, unsigned offset) noexcept {
@@ -31,6 +33,13 @@ extern "C" void x3m_engine_far_jet(std::uint32_t node, std::int32_t measure, std
     if (core::engine_culls(measure, std::int32_t(word(node, core::threshold_1d8_offset)), parent, parent_1d8,
                            word(node, core::flags12c_offset))) {
         ++stats_.engine;
+        // The node-sourced walk's exclusion list: the game's own size verdict for this jet under this view.
+        if (culled_count_ < core::capacity) {
+            culled_[culled_count_].handle = word(node, core::handle_offset);
+            culled_[culled_count_].view_handle = word(view, core::view_handle_offset);
+            ++culled_count_;
+        } else
+            ++stats_.culled_overflow;
         return;
     }
     if (count_ >= core::capacity) {
@@ -68,7 +77,14 @@ bool clears(const void* device) noexcept {
 }
 void begin_frame() noexcept {
     count_ = 0;
+    culled_count_ = 0;
     stats_ = core::Stats{};
+}
+unsigned culled_count() noexcept {
+    return culled_count_;
+}
+const core::CulledPair* culled() noexcept {
+    return culled_;
 }
 unsigned count() noexcept {
     return count_;
