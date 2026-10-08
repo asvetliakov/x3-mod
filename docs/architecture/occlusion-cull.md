@@ -199,10 +199,99 @@ every 300 frames with the session totals (the same new fields, `test_us` summed,
 
 - A skipped part is not a shadow-replay caster that frame: a hidden turret's sun shadow on visible hull disappears
   while it is skipped (the small-prop cull has the same property).
-- Only the part draws themselves are skipped; nothing is skipped on the engine side. An engine-side skip at the
-  cull/LOD pass was studied 2026-10-08 ([engine-side-occlusion-cull.md](../reverse-engineering/engine-side-occlusion-cull.md)):
-  feasible on the existing `0x0047d2a2` claim, 0.7-1.9 ms expected at close-capital views (inferred), not built.
+- With `on`, only the part draws themselves are skipped; nothing is skipped on the engine side. `engine` (below) adds
+  the engine-side skip studied 2026-10-08 ([engine-side-occlusion-cull.md](../reverse-engineering/engine-side-occlusion-cull.md)),
+  as the note's smallest test build (the duty-cycle probe), 0.35-1.0 ms expected at close-capital views (inferred).
 - A part first seen in a frame is drawn untested and joins the next frame's block: skipping starts on its third frame
   (frame 0 lists it, frame 1 tests it, frame 2 skips), one frame later than the per-part test of Run137.
 - A part last read visible that becomes hidden without moving and without a hull change keeps being drawn until its
   next phase frame (at most K - 1 frames of lost saving, never an artefact).
+
+## Engine-side skip (`occlusion_cull = engine`, 2026-10-08, test build)
+
+The duty-cycle probe of [engine-side-occlusion-cull.md](../reverse-engineering/engine-side-occlusion-cull.md) §5.
+Sources: `src/proxy/occlusion_engine_core.h` (pure: mode parser, ledger, verdict table, window, stub encoder),
+`src/proxy/occlusion_engine_cull.{h,cpp}` (the claim, the stub's words, publish/take), the ledger and publish calls in
+`motion_output_occlusion_cull_inc.h`, the publish site in `MotionOutput::after_clear`.
+
+**Mode.** `X3M_OCCLUSION_CULL=engine` is `on` plus a third stub chained on the shared `cull_small_parts` claim of the
+cull/LOD pass `0x0047cfe0` at `0x0047d2a2` (`cull_small_parts::chain_stub`: one `engine_patch` claim, window
+`0x0047d294..0x0047d2cc` byte-verified, pushed in front of the lens-flare and small-parts stubs when those are live, so
+the chain after install runs engine-skip -> lens-flare -> small-parts -> tail; restored once by
+`cull_small_parts::shutdown`). Claimed on the backend-load path inside the install window after
+`lens_flare_cull::initialize`; refused (`occlusion_engine_cull status=refused reason=`: `executable_mismatch`,
+`late_claim`, `arena_full`, `bytes_mismatch`, `chain_failed`, `rollback_failed`) leaves the draw-level cull alone. With
+the mode `on` or `off` nothing is patched and no engine byte changes (`reason=mode`).
+
+**Rule.** At the sector view's Clear (the scene-phase Clear the route already observes for the camera latch; the
+engine's `0x00472260`, which precedes the view's pass at `0x0047226b`) the route publishes a table of the nodes whose
+every scene draw it skipped in the previous frame (the ledger: every scene draw with a scope node counts at the scene
+gate of `evaluate_draw`, before the small-prop cull and before every refusal of the draw-level cull, user memory, an
+open application query, a failed pass, z/blend state and missing bounds included; only a proxy skip counts against
+the draw, so a node with any other draw is never listed; `engine_partial=` counts those with some but not all draws
+skipped). The stub skips a listed node's whole render visit for that view and frame (the engine's own
+size-cull instruction `0x0047d2c3`: renderable bit cleared, LOD selection and the render visit skipped, children still
+visited). An engine-skipped node has no draws that frame, so it is not listed for the next one, goes through the draw
+path there (decided by the existing draw-level rule from the previous block's test) and is listed again: every hidden
+node alternates proxy-skip and engine-skip, the listing and testing of the draw-level cull run unchanged. The stub is
+armed between the publish and that frame's Present (`occlusion_engine_cull::take` reads its counters and disarms it).
+
+**Guards (per entry, in the stub).** The pass's view argument `[ESP+0x28]` must equal the published sector-view
+pointer (the frame's first scene draw's `object_trace` camera; nodes of other views pay one compare); the node's model
+id `+0x140` must equal the entry's (a freed address reused by another body is not skipped); the entry's frame stamp
+must equal the published one (an entry of another frame is never used); the node's camera-space position
+`+0xf0..+0xf8` must lie inside the entry's window: the position at the node's last skipped draw +- 1/256 of the largest
+|component| (floor 1 unit), six signed compares. The three words are integer fixed point: the node's `+0x30` origin
+relative to the sector camera through its /65536 basis rows
+([chase-lead-reticle.md](../reverse-engineering/chase-lead-reticle.md), "the `+0xf0` vector", writers
+`0x00420ec8`/`0x00420f60`/`0x00420ff8`; the per-view transform walk `0x0047b800` rewrites them before the pass).
+1/256 of the camera-space distance is about 10 px of projected offset for a part on the view axis at the user's
+2560 px focal length (5120 px wide at 90 degrees), the order of the draw-level pixel guard; 1/64 (the first cut) was
+~40 px. `occlusion_engine_sample` rows (at most eight per publish under `--debug`) carry each entry's bounds. A
+position outside the window, a model or stamp mismatch counts in `guard_rejected=model,stamp,position` and the node
+goes down the chain (drawn or proxy-skipped as before). A node whose position words are all zero is not published
+(`engine_no_position=`).
+
+**Withheld on the phase frame.** A fully skipped node is withheld from the table once every `occlusion_cull_retest`
+frames on its own phase (`retest_phase(node, model, K)`, the visible re-test's stagger), `withheld=`; it then goes
+through the draw path that frame, where the draw-level verdict still applies (it is not a forced draw: the proxy-skip
+frame of the duty cycle already lists the part with its current rows).
+
+**Table.** 512 home slots of 48 bytes plus 4 spare (a linear probe of at most 4 never wraps), multiplicative hash of
+the node into the top 9 bits, rebuilt every publish from the previous frame's ledger (the used slots cleared: no
+allocation, no memset of the whole table); a chain that is full drops the node (`engine_overflow=`). Single thread: the
+Clear hook, the pass and the Present hook all run on the engine's render thread, so no lock; the stub reads only
+entries the publish completed before the Clear returned.
+
+**Stub.** 285 bytes, integer only, no call, no Win32, no floating point (LastError and the x87 stack untouched by
+construction); writes EAX and ECX only (both dead at the site), EDX/ESI/EDI/EBX/EBP/ESP untouched, EFLAGS dead on every
+exit as for the other two stubs; the same replay of `0x0047d2a2..0x0047d2b9` before `jmp 0x0047d2c3`. Disarmed: one
+compare and a branch per pass visit; armed outside the sector view: three instructions; in the sector view: the visit
+count, the hash (3) and one 5-instruction probe per occupied chain slot (at most 4), a hit nine compares. Bytes proven
+against the Python twin in `test_occlusion_cull.py`; executed on the synthetic pass of `cull_small_parts_fixture.cpp`
+(`engine_section`: both exits, registers, ESP, x87, LastError, the six counters, the stamp guard, a non-sector view,
+chained with the lens-flare and small-parts stubs in both orders; ledger
+[occlusion-cull.md](../verification/occlusion-cull.md)).
+
+**Cost (measured on the host, inferred for the game).** Host microbenchmark (clang -O2, arm64 native): the ledger of
+300 scene draws over 250 nodes (60 fully skipped) plus the publish 0.85 us per frame; 400 table lookups (the stub's
+logic in C++) 0.41 us per frame. Under FEX the x86 stub runs translated; the pass makes 210-400 visits per frame
+(measured, run14/run15), so the hook's per-frame cost is a few microseconds, under the 10 us budget (inferred: the
+instruction counts above, not a flight measurement). One 12-byte `engine_memory` read per fully skipped node per frame.
+
+**Diagnostics.** The `occlusion_cull` frame row (--debug) and the `occlusion_cull_session` row gain `engine=`,
+`engine_published=`, `engine_skipped_parts=`, `engine_skipped_draws=` (from the entries' ledger draw counts),
+`guard_rejected=model,stamp,position`, `withheld=`, `engine_partial=`, `engine_no_position=`, `engine_overflow=`,
+`engine_dropped=` (ledger chains full), `engine_unarmed=` (frames with nothing published), `engine_visits=` (the
+stub's sector-view visits while armed: `engine_published > 0` with `engine_visits = 0` means the pass's view pointer
+is not the ledger's camera) and `engine_view_changes=` (the ledger's camera pointer differing from the previous
+publish's); `ready_age` and `drawn_late` are unchanged. `occlusion_cull_config` carries `engine= engine_status=`;
+`occlusion_engine_cull status=` once. `frame_phases` is untouched.
+
+**Limits.** A skipped part casts no sun shadow (the shadow replay sees no draw), is no lens-flare occluder (it sits
+behind its hull, which stays one) and its texture animation and light selection pause while skipped (resumed on
+reveal). The duty cycle halves the saving of the full design (every hidden node draws through the proxy every other
+frame). Reveal latency: one frame when the reveal lands on an engine-skip frame, two when it lands on a proxy-skip
+frame (that frame's skip rests on a test issued before the hull changed, and the next frame's table is built from it;
+fixture `mover_drawn_from_h2`), three with an age-2 result; the draw-level cull alone is one (two with age 2). Not
+verified in flight; native Windows execution not verified (the patch infrastructure is the dock-port cull's).

@@ -1,8 +1,8 @@
 {
  "fixture": "build/verification/cull-small-parts/cull_small_parts_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 5.4,
- "checks": 256,
+ "elapsed_s": 5.8,
+ "checks": 285,
  "failures": 0,
  "failure_lines": [],
  "replay_lines": [
@@ -19,28 +19,28 @@
   "DOCK px=4 dock_px=8 threshold=5 upper=10 culled=3 dock_culled=7 exempt=1 flipped_exact=1",
   "CENSUS dock rows=18 culled_dock=7 culled_small=3 kept=8",
   "FAR record origin=-123845.594,-9315.600,-31755.600 axis=-0.70711,-0.00000,0.70711 size=939.220 s=1.000 z=2.000 ratio=2.0000 flags=8204 copies=18 engine=214",
-  "FAR BENCH nodes=64 culled_plain_us=1.0292 culled_far_us=1.3928 per_far_jet_ns=5.7 harness=fixture_call_included game_fps=unmeasured",
+  "FAR BENCH nodes=64 culled_plain_us=1.0496 culled_far_us=1.3759 per_far_jet_ns=5.1 harness=fixture_call_included game_fps=unmeasured",
   "PROPS engine_part_px=11.572",
   "PROPS radius_far_px=1.281 radius_near_px=12.864 threshold_px=4",
   "PROPS budget culled=64 deferred=6 next=70 walks=78 resolves=5"
  ],
  "bench_us": {
-  "native_pass": 0.2252,
-  "patched_disarmed": 0.2351,
-  "patched_armed": 0.2315,
-  "patched_armed_dock": 0.2323
+  "native_pass": 0.2271,
+  "patched_disarmed": 0.2523,
+  "patched_armed": 0.2338,
+  "patched_armed_dock": 0.2322
  },
  "props_bench_ns": {
-  "memo_hit": 2.6,
-  "not_prop_first": 13.8,
-  "prop_culled_first_in_frame": 289.0,
-  "prop_culled_pair_mean": 170.6
+  "memo_hit": 3.0,
+  "not_prop_first": 12.6,
+  "prop_culled_first_in_frame": 275.1,
+  "prop_culled_pair_mean": 190.7
  },
  "far_bench": {
   "nodes": 64,
-  "culled_plain_us": 1.0292,
-  "culled_far_us": 1.3928,
-  "per_far_jet_ns": 5.7
+  "culled_plain_us": 1.0496,
+  "culled_far_us": 1.3759,
+  "per_far_jet_ns": 5.1
  },
  "install_lines": [
   "cull_small_parts requested=0 px=0 patched=0 reason=disabled site=0x0047d2a2 cull=0x0047d2c3 write=none stub=0x00000000 camera=disabled scope=all projectiles=on dock_px=0 dock_requested=unset far_jets=off",
@@ -59,13 +59,16 @@
  "lens_checks": 58,
  "lens_failures": 0,
  "lens_bench": {
-  "restart_scan_us": 221.0,
+  "restart_scan_us": 218.7,
   "slots": 13200,
   "dynamic_named": 2200,
-  "mappings_hold_us": 0.14,
+  "mappings_hold_us": 0.141,
   "mappings": 5
  },
  "lens_failure_lines": [],
+ "engine_checks": 28,
+ "engine_failures": 0,
+ "engine_failure_lines": [],
  "bottle": {
   "name": "X3",
   "wine_arch": "arm64",

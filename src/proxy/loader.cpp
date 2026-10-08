@@ -23,6 +23,7 @@
 #include "sun_occlusion.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
+#include "occlusion_engine_cull.h"
 #include "point_light_admission.h"
 #include "telemetry.h"
 #include "object_trace.h"
@@ -497,6 +498,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
             x3m::music_keep::shutdown(); // same rule: the music keep and trace sites back only on FreeLibrary
         if (reserved == nullptr)
             x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::occlusion_engine_cull::shutdown(); // same rule: disarms the third stub on the small-parts site (below)
         if (reserved == nullptr)
             x3m::lens_flare_cull::shutdown(); // same rule: disarms the second stub on the small-parts site (below)
         if (reserved == nullptr)

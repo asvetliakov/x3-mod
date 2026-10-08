@@ -58,6 +58,9 @@ bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_pro
 // rollback_failed). A chain failure with no stub live yet restores the site
 // (vanilla); with one live it leaves that one in place.
 bool chain_stub(std::uintptr_t site, std::uintptr_t cull_target, void* stub, void** next_slot, const char** status);
+// The checks of chain_stub() alone (arguments, the install window, the window bytes before the first claim, a broken
+// claim), so a module can refuse before emitting its stub into the arena; false with *status naming the refusal.
+bool site_chainable(std::uintptr_t site, std::uintptr_t cull_target, const char** status);
 bool site_claimed();      // the shared claim is live
 const char* site_write(); // none|atomic|plain: which engine_patch::write_code path wrote the jump
 const char* state();

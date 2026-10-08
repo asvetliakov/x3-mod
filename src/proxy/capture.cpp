@@ -26,6 +26,7 @@
 #include "sun_occlusion.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
+#include "occlusion_engine_cull.h"
 #include "engine_effects.h"
 #include "engine_far_jets.h"
 #include "cull_small_parts_core.h"
@@ -192,6 +193,8 @@ bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS (default on): the rend
 float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3M_MOTION_OUTPUT=1 (cull_small_props_core.h)
 bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default on): the occlusion-query skip of hidden ship sub-parts;
                                 // needs X3M_MOTION_OUTPUT=1 (occlusion_cull_core.h)
+bool occlusion_cull_engine = false; // X3M_OCCLUSION_CULL=engine with the engine-side stub installed
+                                    // (occlusion_engine_cull.h): the route publishes the stub's table per frame
 unsigned occlusion_cull_retest = x3m::occlusion_cull::core::retest_default; // X3M_OCCLUSION_CULL_RETEST (1..64, 8)
 float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
@@ -3264,7 +3267,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
                                                  engine_effects::plume_floor()); // plumes: the stage in the resolve
     hooked.motion_output.configure_engine_shimmer(); // after the plumes: X3M_ENGINE_SHIMMER(_PX), requested with them
     hooked.motion_output.configure_cull_small_props(cull_small_props_on, cull_small_props_px); // off unless configured
-    hooked.motion_output.configure_occlusion_cull(occlusion_cull_on, occlusion_cull_retest); // read at start-up
+    hooked.motion_output.configure_occlusion_cull(occlusion_cull_on, occlusion_cull_retest,
+                                                  occlusion_cull_engine); // read at start-up
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0], taa_far[1], taa_far[2], taa_far[3], taa_far[4], taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0], taa_thin_region[1], taa_thin_region[2],
@@ -5581,24 +5585,32 @@ void initialize_log(HMODULE module) {
         }
     }
     {
-        // X3M_OCCLUSION_CULL=on|off (occlusion_cull_core.h, docs/architecture/occlusion-cull.md): no patch; the motion
-        // route tests ship sub-part draws with occlusion queries and skips those its previous frame's test found hidden.
-        // Unset or empty means on; one occlusion_cull_config row on every launch (requested=unset when absent). A device
-        // that refuses occlusion queries logs its own occlusion_cull_device attached=0 row and stays off.
+        // X3M_OCCLUSION_CULL=on|off|engine (occlusion_cull_core.h, docs/architecture/occlusion-cull.md): on = no patch;
+        // the motion route tests ship sub-part draws with occlusion queries and skips those its previous frame's test
+        // found hidden. engine = the same plus a third stub on the small-parts claim of the cull/LOD pass (0x0047d2a2,
+        // occlusion_engine_cull.h) that skips a part's whole render visit when the route skipped every draw of it in
+        // the previous frame; refused (draw-level cull alone) when the claim fails. Unset or empty means on; one
+        // occlusion_cull_config row on every launch (requested=unset when absent). A device that refuses occlusion
+        // queries logs its own occlusion_cull_device attached=0 row and stays off.
         wchar_t mode_text[16]{};
         char mode[16]{};
         const DWORD mode_length = x3m::config::get(L"X3M_OCCLUSION_CULL", mode_text, 16);
         for (DWORD i = 0; i < mode_length && i < 15; ++i)
             mode[i] = mode_text[i] >= 0x21 && mode_text[i] <= 0x7e ? char(mode_text[i]) : '?';
-        bool on = false;
+        namespace engine = occlusion_cull::engine;
+        engine::Mode parsed = engine::Mode::off;
         const char* reason = "ok";
-        if (mode_length >= 16 || !occlusion_cull::core::parse_mode(mode, &on))
+        if (mode_length >= 16 || !engine::parse_mode(mode, &parsed))
             reason = "invalid";
-        else if (!on)
+        else if (parsed == engine::Mode::off)
             reason = "off";
         else if (!motion_output_requested)
             reason = "route_off"; // the test and the skip live in the motion route's draw path
         occlusion_cull_on = !std::strcmp(reason, "ok");
+        // The engine-side stub: claimed here, on the backend-load path inside the install window, after the
+        // small-parts and lens-flare stubs on the same claim (the chain runs the later stub first).
+        occlusion_cull_engine =
+            occlusion_engine_cull::initialize(occlusion_cull_on && parsed == engine::Mode::engine) && occlusion_cull_on;
         // X3M_OCCLUSION_CULL_RETEST: frames between tests of a part last read visible (1..64; unset = 8); anything
         // else keeps the default (retest_status=invalid_setting or too_long).
         wchar_t retest_text[16]{};
@@ -5610,10 +5622,11 @@ void initialize_log(HMODULE module) {
         const bool retest_ok = retest_length < 16 && occlusion_cull::core::parse_retest(retest, &frames);
         occlusion_cull_retest = retest_ok ? frames : occlusion_cull::core::retest_default;
         log("occlusion_cull_config requested=%s configured=%u reason=%s pool=%u retest=%u retest_setting=%s "
-            "retest_status=%s",
+            "retest_status=%s engine=%u engine_status=%s",
             mode_length ? mode : "unset", occlusion_cull_on ? 1u : 0u, reason, occlusion_cull::core::pool_size,
             occlusion_cull_retest, retest_length ? retest : "-",
-            retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting");
+            retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting", occlusion_cull_engine ? 1u : 0u,
+            occlusion_engine_cull::state());
     }
     if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||
         loading_trace::mesh_adjacency_requested())

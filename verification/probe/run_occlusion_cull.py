@@ -27,7 +27,8 @@ RESULTS = ROOT / 'verification/results/occlusion-cull-batched'
 DXVK = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/dxvk/i386-windows/d3d9.dll')
 SOURCES = ('verification/probe/occlusion_cull_fixture.cpp', 'verification/probe/run_occlusion_cull.py',
            'src/renderer/occlusion_cull_pass.cpp', 'src/renderer/occlusion_cull_pass.h', 'src/proxy/occlusion_cull_core.h',
-           'verification/probe/occlusion_cull_scene_inc.h', 'verification/results/occlusion-cull-batched/legacy_cost.cpp')
+           'src/proxy/occlusion_engine_core.h', 'verification/probe/occlusion_cull_scene_inc.h',
+           'verification/results/occlusion-cull-batched/legacy_cost.cpp')
 
 
 def sha(path):
@@ -92,6 +93,8 @@ def main():
     record['unready'] = [fields(line[8:]) for line in lines if line.startswith('UNREADY ')]
     record['real_frames'] = [fields(line[10:]) for line in lines if line.startswith('REALFRAME ')]
     record['real_summary'] = [fields(line[12:]) for line in lines if line.startswith('REALSUMMARY ')]
+    record['engine_frames'] = [fields(line[7:]) for line in lines if line.startswith('ENGINE ')]
+    record['engine_summary'] = [fields(line[14:]) for line in lines if line.startswith('ENGINESUMMARY ')]
     record['cost'] = [fields(line[5:]) for line in lines if line.startswith('COST ')]
     record['derived'] = [fields(line[8:]) for line in lines if line.startswith('DERIVED ')]
     record['adapter'] = next((line[8:] for line in lines if line.startswith('ADAPTER ')), None)
@@ -102,7 +105,7 @@ def main():
     assert record['sources'] == {s: sha(ROOT / s) for s in SOURCES}, 'Provenance changed during run'
     (RESULTS / f'{name}.txt').write_text(f'# {bottle.label()}\n# command: {" ".join(command)}\n' + stdout)
     (RESULTS / f'{name}.json').write_text(json.dumps(record, indent=1) + '\n')
-    print(json.dumps({k: record[k] for k in ('name', 'backend', 'passed', 'exit_code', 'elapsed_s', 'adapter', 'result', 'failed_checks', 'summary', 'unready', 'real_summary', 'derived')}, indent=1))
+    print(json.dumps({k: record[k] for k in ('name', 'backend', 'passed', 'exit_code', 'elapsed_s', 'adapter', 'result', 'failed_checks', 'summary', 'unready', 'real_summary', 'engine_summary', 'derived')}, indent=1))
     return 0 if record['passed'] else 1
 
 

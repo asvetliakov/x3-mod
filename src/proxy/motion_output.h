@@ -38,6 +38,7 @@
 #include "../renderer/gpu_sync_timing_core.h"
 #include "../renderer/sun_occlusion_pass.h"
 #include "../renderer/occlusion_cull_pass.h"
+#include "occlusion_engine_core.h"
 #include "lens_flare_gain.h"
 #include "engine_effects_core.h"
 #include "engine_light_core.h"
@@ -1222,9 +1223,12 @@ public:
     // renderer/occlusion_cull_pass.h, motion_output_occlusion_cull_inc.h): process-start value validated by the caller;
     // off = one bool test per scene draw. retest: X3M_OCCLUSION_CULL_RETEST (frames between tests of a part last read
     // visible, 1..64, default 8), validated by the caller.
-    void configure_occlusion_cull(bool on, unsigned retest) noexcept {
+    // engine: the mode `engine` with the engine-side stub installed (occlusion_engine_cull.h): the draw path keeps a
+    // per-node ledger and the sector view's Clear publishes the stub's table (motion_output_occlusion_cull_inc.h).
+    void configure_occlusion_cull(bool on, unsigned retest, bool engine = false) noexcept {
         occlusion_on_ = on;
         occlusion_retest_ = retest;
+        occlusion_engine_ = on && engine;
         if (occlusion_batcher_) occlusion_batcher_->retest = retest;
     }
     // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.85); validated by the caller and
@@ -1986,6 +1990,22 @@ private:
     bool cull_occluded(const MotionDrawCall& call, MotionRoute& route); // not noexcept, as cull_small_prop
     void occlusion_cull_frame_end() noexcept;
     void release_occlusion_cull() noexcept;
+    // Engine-side skip (occlusion_cull = engine; occlusion_engine_core.h): the per-node ledger of this frame's scene
+    // draws and proxy skips (committed with the classifier), the frame's publish and stub counters, the session totals
+    // and the sample rows (the first engine_sample_cap published entries, raw words: the position units are untraced).
+    bool occlusion_engine_ = false;
+    occlusion_cull::engine::Ledger* occlusion_ledger_ = nullptr; // ~41 KB, one allocation
+    occlusion_cull::engine::Ledger::Slot* occlusion_ledger_slot_ = nullptr; // this scene draw's slot (gate -> cull)
+    std::uintptr_t occlusion_engine_view_ = 0; // the camera pointer of the last publish (view_changes)
+    struct OcclusionEngineStats {
+        unsigned published = 0, withheld = 0, partial = 0, no_position = 0, overflow = 0, dropped = 0, unarmed = 0;
+        unsigned view_changes = 0, visits = 0;
+        unsigned skipped_parts = 0, skipped_draws = 0, rejected_model = 0, rejected_stamp = 0, rejected_position = 0;
+    } occlusion_engine_frame_{}, occlusion_engine_session_{};
+    unsigned occlusion_engine_samples_ = 0; // sample rows this publish (at most engine_sample_cap per frame, debug)
+    static constexpr unsigned engine_sample_cap = 8;
+    void occlusion_ledger_scene_draw() noexcept; // every scene draw at the gate (evaluate_draw), render thread
+    void occlusion_engine_publish() noexcept;    // the sector view's Clear (after_clear), render thread
     std::uint64_t small_prop_rows_frame_ = ~std::uint64_t(0);
     unsigned small_prop_rows_ = 0; // cull_small_prop_box rows this F8 frame (cap 128)
     void log_cull_small_props_window() noexcept;

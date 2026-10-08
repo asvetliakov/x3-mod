@@ -16,6 +16,7 @@
 #include "object_capture.h"
 #include "camera_state.h"
 #include "cull_small_parts.h"
+#include "occlusion_engine_cull.h"
 #include "cull_census.h" // X3M_CULL_SMALL_PROPS: the census's culled_prop verdict
 #include "sun_light_poll.h"
 #include "chase_camera.h"
@@ -414,6 +415,8 @@ MotionOutput::~MotionOutput() {
     delete props_; // plain CPU state (cull_small_props_core.h), no device object
     delete occlusion_classifier_; // plain CPU tables (occlusion_cull_core.h); the pass went with release_resources
     delete occlusion_batcher_;    // plain CPU tables (occlusion_cull_core.h)
+    if (occlusion_engine_) occlusion_engine_cull::disarm(); // the stub's table outlives this device; nothing listed
+    delete occlusion_ledger_;     // plain CPU table (occlusion_engine_core.h); the stub's table is the module's
     delete engine_ring_; // plain CPU records (engine_effects_core.h), no device object
     // The far block's device count: this device withdraws its request (and its claim on the buffer's frame); the far
     // jets stay armed while another device requests the plume stage.
@@ -5496,8 +5499,11 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
     // The scene view's camera is final at the depth-only Clear that starts the
     // scene phase (the view activation issues that Clear right after building
     // the matrices); the background view's at the latching Clear (diagnostics).
-    if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene)
+    if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene) {
         read_camera(true);
+        // The engine-side occlusion skip's table for the pass that follows this Clear (occlusion_cull = engine).
+        if (occlusion_engine_) occlusion_engine_publish();
+    }
     // D3: a multisampled RT0 never latches (the selector's main-target rule
     // requires a single-sampled A8R8G8B8 surface), so a frame whose initial
     // Clear lands on one is refused here by name: RT1/RT2 textures cannot
@@ -8245,6 +8251,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     route.scene = true;
+    // Engine-side occlusion skip (occlusion_cull = engine): every scene draw of a node counts in the frame's ledger
+    // here, before the small-prop cull and every refusal of the draw-level cull, so a node with any draw that is not
+    // a proxy skip is never published to the engine's pass.
+    if (occlusion_engine_) occlusion_ledger_scene_draw();
     // Small-prop cull (X3M_CULL_SMALL_PROPS): before the jitter and every other binding, so a skipped draw has
     // nothing to undo; one bool test with the option off.
     if (props_on_ && cull_small_prop(call, route)) return;

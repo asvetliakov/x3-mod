@@ -21,6 +21,9 @@
 // reference count unchanged by attach/detach. Six frames back to back without readback or GPU wait follow: a skip only
 // ever follows a ready hidden result.
 //
+// Part 1b, the engine-side skip's verdict table (occlusion_cull = engine; src/proxy/occlusion_engine_core.h) driven by
+// the pass's verdicts on the same scene: the duty cycle, the guards and the fall-back to drawn (see engine_duty_cycle).
+//
 // Part 2, the realistic state (occlusion_cull_scene_inc.h: 1280 x 720 HDR MRT binding, a real vs/ps pair bound before
 // every block, three ships of four hull pieces and 50 parts, 111 hidden and 39 visible, one ship drifting, a hull piece
 // removed at frame X = 3K + 2): the cull on and off interleaved frame by frame with every target read back. Asserts:
@@ -42,6 +45,7 @@
 #include <cstring>
 #include <vector>
 #include "../../src/renderer/occlusion_cull_pass.h"
+#include "../../src/proxy/occlusion_engine_core.h"
 #include "occlusion_cull_scene_inc.h"
 
 namespace {
@@ -383,6 +387,263 @@ void unready_frames(Device& dev, OcclusionCullPass& pass, oc::Batcher& batcher, 
         pass.frame_stats() = {};
     }
     wait_gpu(d);
+}
+
+// ---- part 1b: the engine-side skip's verdict table on the production pass (occlusion_cull = engine) ----
+// The duty-cycle probe's table (occlusion_engine_core.h) driven by the pass's verdicts on the part-1 scene, A8R8G8B8,
+// the production buffer, kEngineFrames frames with a GPU wait each (results ready). Per frame the table is published
+// from the previous frame's ledger (as the sector view's Clear does); a part the table lists at its position, model and
+// the frame's stamp is engine-skipped: not visited, not drawn, not listed (mark E). Every other part goes through the
+// pass as in part 1 (mark s = proxy-skipped, D = drawn). The parts' "view-space positions" are synthetic integers:
+// hidden3 drifts 1/256 of its magnitude per frame (inside the 1/64 window), hidden1 drifts 1/32 per frame from frame
+// W on (outside: the position guard draws it from W + 1 on); hidden2 has a second, visible draw under its node (never
+// fully skipped: partial); hidden3's model id changes at frame M (the model guard; the new draw key is a new part);
+// at frame S every lookup uses the wrong stamp (the stamp guard); the hull shrinks at H (the mover revealed). Asserts:
+// an engine skip only ever follows a frame where the proxy skipped every draw of the node; visible parts never E;
+// hidden1 before W alternates proxy-skip and engine-skip except on its phase frame (stamp mod K, the engine skip withheld) and at S;
+// after W it is never E and the position guard counts every frame; the partial node is never E; the guards' counts;
+// the mover drawn from H + 2 on (the duty cycle reveals one frame later than the draw-level cull when the reveal
+// lands on a proxy frame: its last test was issued before the hull changed).
+namespace oe = x3m::occlusion_cull::engine;
+constexpr int kEngineFrames = 30, kEngineK = 4, kEngineW = 19, kEngineM = 11, kEngineS = 14, kEngineH = 23;
+constexpr std::uint32_t kEngineCamera = 0x41c68200u;
+std::uint32_t engine_node(int i) {
+    return std::uint32_t(0x3000 + i * 0x40); // part_key's node
+}
+void engine_pos(int i, int frame, std::int32_t out[3]) {
+    const std::int32_t base = 200000 + i * 7000;
+    out[0] = base;
+    out[1] = -40000 + i * 300;
+    out[2] = 600000;
+    if (i == 2) out[0] = base + frame * (600000 / 256); // hidden3: inside the window every frame
+    if (i == 0 && frame >= kEngineW) out[1] = -40000 + (frame - kEngineW + 1) * (600000 / 32); // hidden1: outside
+}
+void engine_duty_cycle(Device& dev, void* const* native) {
+    IDirect3DDevice9* d = dev.d;
+    dev.format = D3DFMT_A8R8G8B8;
+    dev.mrt = false;
+    if (!dev.targets(true)) {
+        check(false, "engine: targets");
+        return;
+    }
+    OcclusionCullPass pass;
+    oc::Batcher* batcher = new oc::Batcher();
+    batcher->retest = kEngineK;
+    oe::Ledger* ledger = new oe::Ledger();
+    oe::Table* table = new oe::Table();
+    const HRESULT hr = pass.attach(d, native);
+    check(SUCCEEDED(hr), "engine: attach (production buffer)");
+    if (FAILED(hr)) {
+        delete batcher;
+        delete ledger;
+        delete table;
+        dev.targets(false);
+        return;
+    }
+    const int h1 = 0, h2 = 1, h3 = 2, mi = 6;
+    static char mark[kEngineFrames][kParts];
+    unsigned published_total = 0, withheld_total = 0, partial_total = 0, overflow_total = 0, e_total = 0, e_after_full = 0;
+    unsigned rej_model_total = 0, rej_stamp_total = 0, rej_pos_total = 0, rej_model_at_m = 0, rej_stamp_at_s = 0, published_at_s = 0;
+    unsigned rej_pos_after_w = 0, visible_e = 0, partial_e = 0, h1_cycle_ok = 0, h1_cycle_bad = 0, h1_e_before_w = 0, h1_e_after_w = 0;
+    unsigned skipped_draws_total = 0, state_failures = 0, errors = 0;
+    int current_frame = 0;
+    auto read_pos = [&](std::uintptr_t at, void* out, std::size_t n) {
+        for (int i = 0; i < kParts; ++i)
+            if (at == engine_node(i) + oe::position_offset && n == 12) {
+                std::int32_t p[3];
+                engine_pos(i, current_frame, p);
+                std::memcpy(out, p, 12);
+                return true;
+            }
+        return false;
+    };
+    const float reserved[8] = {7, 7, 7, 7, 9, 9, 9, 9};
+    for (int frame = 0; frame < kEngineFrames; ++frame) {
+        current_frame = frame;
+        const std::uint32_t stamp = std::uint32_t(frame + 1);
+        oe::PublishStats st{};
+        unsigned published = 0;
+        if (frame > 0 && ledger->frame == stamp - 1) published = table->publish(*ledger, stamp, kEngineK, &st);
+        published_total += published;
+        withheld_total += st.withheld;
+        partial_total += st.partial;
+        overflow_total += st.overflow;
+        if (frame == kEngineS) published_at_s = published;
+        pass.begin_frame(stamp);
+        batcher->begin(stamp);
+        ledger->begin(stamp, kEngineCamera);
+        d->SetRenderTarget(0, dev.rt);
+        d->SetRenderTarget(1, nullptr);
+        d->SetRenderTarget(2, nullptr);
+        d->SetDepthStencilSurface(dev.depth);
+        d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x80336699, 1.0f, 0);
+        d->BeginScene();
+        d->SetVertexDeclaration(dev.decl);
+        d->SetStreamSource(0, dev.vb, 0, sizeof(V));
+        d->SetVertexShader(dev.vs);
+        d->SetPixelShader(dev.ps);
+        d->SetVertexShaderConstantF(252, reserved, 2);
+        d->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+        d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+        d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+        d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+        d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+        d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
+        d->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+        d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+        const float grey[4] = {.4f, .4f, .4f, 1};
+        d->SetPixelShaderConstantF(0, grey, 1);
+        const bool full_hull = frame < kEngineH;
+        d->DrawPrimitive(D3DPT_TRIANGLELIST, full_hull ? hull_full : hull_upper, 2);
+        batcher->note_hull(kShip, kHullNode, oc::draw_key(kHullNode, 0, full_hull ? hull_full : hull_upper, 6, 5), identity);
+        unsigned rej_model = 0, rej_stamp = 0, rej_pos = 0;
+        for (int i = 0; i < kParts; ++i) {
+            const Part& p = parts[i];
+            const std::uint32_t node = engine_node(i);
+            const std::uint32_t model = i == h3 && frame >= kEngineM ? 8u : 7u;
+            std::int32_t pos[3];
+            engine_pos(i, frame, pos);
+            const std::uint32_t lookup_stamp = frame == kEngineS ? stamp + 1 : stamp;
+            const oe::Verdict verdict = table->lookup(node, model, pos, lookup_stamp);
+            if (verdict == oe::Verdict::model) ++rej_model;
+            if (verdict == oe::Verdict::stamp) ++rej_stamp;
+            if (verdict == oe::Verdict::position) ++rej_pos;
+            if (verdict == oe::Verdict::skip) { // the engine's pass culls the node: no visit, no draw, no ledger entry
+                mark[frame][i] = 'E';
+                ++e_total;
+                if (const oe::Entry* e = table->find(node)) skipped_draws_total += e->draws;
+                continue;
+            }
+            // The draw path: the part (and hidden2's second, visible draw under the same node).
+            oe::Ledger::Slot* slot = ledger->draw(node);
+            d->SetPixelShaderConstantF(0, p.color, 1);
+            if (p.kind == alpha) {
+                d->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+                d->SetRenderState(D3DRS_ALPHAREF, 0x80);
+                d->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATER);
+            }
+            bool skip = false;
+            OcclusionCullPart part{};
+            part.box = part_box(i, 0); // the part-1 teleport stays put here
+            if (oc::test_rect(identity, part.box, kSize, kSize, oc::cmp_lessequal, &part.rect) == oc::RectStatus::ok) {
+                part.key = oc::draw_key(node, 0, 0, 36, model);
+                part.ship = kShip;
+                part.model = model;
+                part.rows = identity;
+                part.hull_drawn = true;
+                part.zfunc = oc::cmp_lessequal;
+                part.vp_width = part.vp_height = float(kSize);
+                OcclusionCullState state{};
+                state.z_write = TRUE;
+                state.alpha_test = p.kind == alpha;
+                state.cull = D3DCULL_NONE;
+                state.reserved = reserved;
+                HRESULT restore = S_OK;
+                skip = pass.part(*batcher, part, state, &restore) == OcclusionCullVerdict::skip;
+                if (FAILED(restore) || !state_back(dev, D3DCULL_NONE, p.kind == alpha, reserved)) ++state_failures;
+            }
+            if (skip)
+                ledger->skipped(slot, model, read_pos);
+            else
+                d->DrawPrimitive(D3DPT_TRIANGLELIST, UINT(parts_base + i * 36), 12);
+            mark[frame][i] = skip ? 's' : 'D';
+            if (i == h2) { // the companion: visible1's geometry under hidden2's node, another draw key
+                oe::Ledger::Slot* slot2 = ledger->draw(node);
+                OcclusionCullPart companion{};
+                companion.box = part_box(3, 0);
+                bool skip2 = false;
+                if (oc::test_rect(identity, companion.box, kSize, kSize, oc::cmp_lessequal, &companion.rect) == oc::RectStatus::ok) {
+                    companion.key = oc::draw_key(node, 0, std::uint32_t(parts_base + 3 * 36), 36, model);
+                    companion.ship = kShip;
+                    companion.model = model;
+                    companion.rows = identity;
+                    companion.hull_drawn = true;
+                    companion.zfunc = oc::cmp_lessequal;
+                    companion.vp_width = companion.vp_height = float(kSize);
+                    OcclusionCullState state{};
+                    state.z_write = TRUE;
+                    state.cull = D3DCULL_NONE;
+                    state.reserved = reserved;
+                    HRESULT restore = S_OK;
+                    skip2 = pass.part(*batcher, companion, state, &restore) == OcclusionCullVerdict::skip;
+                }
+                if (skip2)
+                    ledger->skipped(slot2, model, read_pos);
+                else
+                    d->DrawPrimitive(D3DPT_TRIANGLELIST, UINT(parts_base + 3 * 36), 12);
+            }
+            if (p.kind == alpha) d->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+        }
+        d->EndScene();
+        d->Present(nullptr, nullptr, nullptr, nullptr);
+        wait_gpu(d);
+        const auto& stats = pass.frame_stats();
+        errors += stats.errors + stats.failed;
+        pass.frame_stats() = {};
+        rej_model_total += rej_model;
+        rej_stamp_total += rej_stamp;
+        rej_pos_total += rej_pos;
+        if (frame == kEngineM) rej_model_at_m = rej_model;
+        if (frame == kEngineS) rej_stamp_at_s = rej_stamp;
+        if (frame > kEngineW) rej_pos_after_w += rej_pos;
+        char marks[kParts + 1]{};
+        for (int i = 0; i < kParts; ++i) marks[i] = mark[frame][i];
+        std::printf("ENGINE frame=%d marks=%s published=%u withheld=%u partial=%u rejected=%u,%u,%u skipped_draws=%u\n", frame,
+                    marks, published, st.withheld, st.partial, rej_model, rej_stamp, rej_pos, skipped_draws_total);
+    }
+    // The rules over the marks.
+    for (int f = 0; f < kEngineFrames; ++f)
+        for (int i = 0; i < kParts; ++i) {
+            const Kind k = parts[i].kind;
+            if (mark[f][i] == 'E') {
+                if (f > 0 && mark[f - 1][i] == 's') ++e_after_full;
+                if (k == visible || k == front || k == alpha) ++visible_e;
+                if (i == h2) ++partial_e;
+                if (i == h1) ++(f < kEngineW ? h1_e_before_w : h1_e_after_w);
+            }
+        }
+    // hidden1 before W: after an E comes an s; after an s comes an E unless the frame is its forced phase or S.
+    for (int f = 3; f < kEngineW; ++f) {
+        const std::uint32_t stamp = std::uint32_t(f + 1);
+        const bool forced = stamp % kEngineK == oc::retest_phase(engine_node(h1), 7, kEngineK);
+        const char expected = mark[f - 1][h1] == 'E' ? 's' : (forced || f == kEngineS) ? 's' : 'E';
+        if (mark[f][h1] == expected)
+            ++h1_cycle_ok;
+        else
+            ++h1_cycle_bad;
+    }
+    bool mover_drawn = true;
+    for (int f = kEngineH + 2; f < kEngineFrames; ++f) mover_drawn = mover_drawn && mark[f][mi] == 'D';
+    const bool mover_hidden_before = mark[kEngineH - 1][mi] != 'D' && mark[kEngineH - 2][mi] != 'D';
+    std::printf("ENGINESUMMARY e_total=%u e_after_full=%u visible_e=%u partial_e=%u h1_cycle=%u/%u h1_e_before_w=%u "
+                "h1_e_after_w=%u rej_pos_after_w=%u rej_model=%u rej_model_at_m=%u rej_stamp=%u rej_stamp_at_s=%u "
+                "published_at_s=%u published=%u withheld=%u partial=%u overflow=%u skipped_draws=%u mover_drawn_from_h2=%u "
+                "state_failures=%u errors=%u rej_pos=%u\n",
+                e_total, e_after_full, visible_e, partial_e, h1_cycle_ok, h1_cycle_ok + h1_cycle_bad, h1_e_before_w, h1_e_after_w,
+                rej_pos_after_w, rej_model_total, rej_model_at_m, rej_stamp_total, rej_stamp_at_s, published_at_s, published_total,
+                withheld_total, partial_total, overflow_total, skipped_draws_total, mover_drawn ? 1u : 0u, state_failures, errors,
+                rej_pos_total);
+    check(e_total >= 12 && e_after_full == e_total, "engine: every engine skip follows a frame where the proxy skipped every draw of the node");
+    check(visible_e == 0, "engine: visible, in-front and alpha-tested parts are never engine-skipped");
+    check(partial_e == 0 && partial_total >= 10, "engine: a node with an unskipped draw is never listed (partial, counted)");
+    check(h1_cycle_bad == 0 && h1_e_before_w >= 5 && withheld_total >= 1,
+          "engine: the duty cycle alternates proxy-skip and engine-skip, withheld on the node's phase frame and at the stale stamp");
+    // After W hidden1 is listed every frame but its forced-phase frames (one in K), and rejected on every listing.
+    const unsigned after_w = unsigned(kEngineFrames - kEngineW - 1);
+    check(h1_e_after_w == 0 && rej_pos_after_w >= after_w - (after_w + kEngineK - 1) / kEngineK - 1 && mark[kEngineW + 1][h1] == 's',
+          "engine: position guard: a node outside its window is not skipped by the engine (falls back to the proxy's verdict)");
+    check(rej_model_total == rej_model_at_m && rej_model_at_m == (mark[kEngineM - 1][h3] == 's' ? 1u : 0u) && mark[kEngineM][h3] == 'D',
+          "engine: model guard: a changed model id is not skipped; the new draw key draws untested");
+    check(rej_stamp_total == rej_stamp_at_s && rej_stamp_at_s == published_at_s && published_at_s >= 1,
+          "engine: stamp guard: every listed node rejects a stale stamp");
+    check(mover_hidden_before && mover_drawn, "engine: the revealed part falls back to drawn (from H + 2 at the latest)");
+    check(overflow_total == 0 && state_failures == 0 && errors == 0 && skipped_draws_total == e_total,
+          "engine: no overflow, state back after every part, no query error, skipped draws = one per engine-skipped node");
+    pass.detach();
+    delete batcher;
+    delete ledger;
+    delete table;
+    dev.targets(false);
 }
 
 // ---- part 2: the realistic state ----
@@ -903,6 +1164,7 @@ int run_main(int argc, char** argv) {
          SUCCEEDED(d->CreateOffscreenPlainSurface(kSize, kSize, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &dev.sys2, nullptr));
     check(ok, "RT1/RT2 resources");
     functional(dev, native);
+    engine_duty_cycle(dev, native);
     // Part 2: the realistic state.
     scene::Scene sc;
     ok = sc.create(d);

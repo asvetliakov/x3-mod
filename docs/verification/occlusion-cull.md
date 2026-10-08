@@ -195,3 +195,53 @@ gain of roughly 0.4-0.8 ms per frame, where Run137 lost ~1.7 ms. Not verified in
 Not verified: a flight; native Windows execution; the batched tests' pipeline (GPU) cost.
 
 **2026-10-08, same-build A/B (Run138, run19 off vs run17 on, DXVK): parity.** At matched close-capital windows (237-262 draws) `view_submit_p50` 6.63 ms off vs 6.54 ms on, dt p50 15.5 vs 15.2 ms, both inside the 6.3-6.8 ms spread of the no-cull runs 14/15; issued draws 236 vs 126 at the same draw count, the cull's tests 132 us per frame. A skipped sub-part draw is nearly free on this backend's game thread (inferred). Decision: `occlusion_cull` default off, code kept as an opt-in and as the proxy's only hidden-part oracle; records under `verification/results/run138-dxvk-triage/ab-off-run19/`.
+
+## Engine-side skip (`occlusion_cull = engine`), 2026-10-08/09: built as the duty-cycle probe, fixture-proven, not flown
+
+The smallest test build of [engine-side-occlusion-cull.md](../reverse-engineering/engine-side-occlusion-cull.md) §5
+([architecture, "Engine-side skip"](../architecture/occlusion-cull.md)): a third stub (285 bytes, integer only, EAX/ECX
+only, no call) chained on the shared `0x0047d2a2` claim, a 512-slot verdict table published at the sector view's Clear
+from the previous frame's per-node ledger (every scene draw counted at the scene gate, before the small-prop cull and
+every refusal), guards model id / frame stamp / camera-space window (+-1/256 of the largest |component| of
+`+0xf0..+0xf8`, floor 1 unit; integer fixed point per chase-lead-reticle.md, about 10 px at a 2560 px focal length), the
+skip withheld once per `occlusion_cull_retest` frames on the node's phase. Mode `engine` of the `occlusion_cull` enum
+(builtin stays `off`); `on` and `off` patch nothing.
+
+Host: `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest verification/analysis/test_occlusion_cull.py
+verification/analysis/test_config_schema.py`: 30 tests OK (core driver 129 checks: the engine table's publish rule,
+guards, the withheld phase, overflow, ledger; the stub bytes against the Python twin; the wiring; the records).
+`tools/config/generate.py --check` PASS (259 settings, 109 in the template). `test_logging_tiers`, `test_lens_flare_cull`,
+`test_cull_small_parts`: OK (58 tests). Clean worktree CMake configure and `d3d9` build: 0 warnings, `d3d9.dll`
+157ff9325d6afd4a… (59,494,316 B); `check_no_x87.py` 795 reachable functions, 0 violations.
+
+Stub executed (review 2026-10-08, blocker: the emitted bytes had only been compared): `cull_small_parts_fixture.cpp`
+`engine_section`, the stub chained on the synthetic pass alone, first (production order) and last; both exits, every
+register, ESP, x87, LastError, the six counters, the stamp guard, another view, `take()`, refusals; 285 checks, 0
+failures (engine 28) through `run_cull_small_parts.py` (record `verification/results/cull-small-parts-cpu.json`, row in
+[cull-small-parts.md](cull-small-parts.md)). Execution found two defects the byte comparison could not: `install_at`
+refused on the site check's "ok" status (the stub was never chained in production) and the stub's hash multiplier
+(0x9e3779b9) differed from the table's (0x9e3779b1: no entry was ever found). Both fixed before the records below.
+
+Wine (bottle X3, `run_occlusion_cull.py --repeats 5`, `occlusion_cull_fixture` part 1b: the verdict table driven by the
+production pass's verdicts on the part-1 scene through the table's C++ mirror, 30 frames, K = 4): DXVK 86 checks, 0
+failed; wined3d 86 checks, 0 failed (records `fixture-{dxvk,wined3d}.json`, summary
+`verification/results/occlusion-cull-batched/engine_summary.py`). Both backends identical on the rule: 42 engine
+skips, every one following a frame where the proxy skipped every draw of the node (`e_after_full=42`); visible,
+in-front and alpha-tested parts never engine-skipped; the node with a second, visible draw never listed (partial
+counted 27); hidden1's duty cycle 16/16 frames as predicted (proxy-skip, engine-skip, withheld on its phase frame and
+at the stale-stamp frame, `withheld=7`); position guard: after its position leaves the window hidden1 is never
+engine-skipped again and is rejected on every listing (7 of 10 frames, the other 3 its phase); model guard 1 rejection
+at M and the new draw key drawn untested; stamp guard: all 3 listed nodes rejected at S; the revealed mover drawn from
+H + 1 here (one frame late; two when the reveal lands on a proxy-skip frame, three with an age-2 result, see the
+architecture note); no overflow, state back after every part, no query error; `skipped_draws` = one per engine-skipped
+node. The realistic and part-1 checks are unchanged (constants buffer about 1.2 / 0.7 us per test, 7.5-9.5 us per
+block on DXVK / wined3d, measured).
+
+Cost: host microbenchmark `engine_bench.cpp` (clang -O2, arm64 native, measured): ledger of 300 scene draws plus the
+publish 0.73-0.85 us per frame, 400 lookups (the stub's logic in C++) 0.41 us; the stub itself is 2 instructions per
+pass visit disarmed, 5 outside the sector view, about 13-31 on a sector-view visit (210-400 visits per frame measured
+in run14/run15): under 10 us per frame inferred, not measured in flight. CPU fixture bench per 12-node pass with the
+chain live: native 0.227 us, patched disarmed 0.252, armed 0.234 (Wine/FEX, harness included, not game FPS).
+
+Not verified: a flight (the saving, the reveal pop, `engine_visits`/`engine_view_changes` on the real view pointer);
+native Windows execution.

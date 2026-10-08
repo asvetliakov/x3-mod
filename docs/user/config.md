@@ -67,9 +67,13 @@ changes what is drawn: the turrets still aim, fire and can be hit, and parts on 
 target are always drawn. It needs `cull_small_parts_px` above 0. With it on, `x3m.log` carries one
 `cull_small_props_frame` line every 300 frames with how many part draws were skipped (`culled=`) and drawn (`kept=`).
 
-`occlusion_cull` (default `on`) skips drawing turrets, docking bays and similar ship parts that the previous frame's
-occlusion test found completely hidden behind their ship's hull; a part that comes into view appears one frame late.
-`occlusion_cull = off` draws them. Every log carries an `occlusion_cull_session` line every 300 frames with how many
+`occlusion_cull` (default `off` since 2026-10-08: measured on CrossOver/DXVK, no frame-time change) skips drawing
+turrets, docking bays and similar ship parts that the previous frame's occlusion test found completely hidden behind
+their ship's hull; a part that comes into view appears one frame late (two when the previous frame's test was not
+ready yet). `occlusion_cull = on` skips them, `off` draws them. `occlusion_cull = engine` (test build, 2026-10-08)
+additionally lets the game itself skip such a part's whole render step every other frame; a part that comes into view
+then appears one to two frames late (three when the test was not ready), and a hidden part casts no shadow and its
+textures pause while skipped. Every log carries an `occlusion_cull_session` line every 300 frames with how many
 part draws were tested (`tested=`) and skipped (`skipped=`). `occlusion_cull_retest` (default `8`, 1 to 64) is how
 many frames pass before a part that was found visible is tested again; hidden parts are tested every frame.
 

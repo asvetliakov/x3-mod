@@ -143,8 +143,9 @@ scope).
   view). Its `rel` stays as last drawn: rigid parts are exact, a turret that turns while skipped is tested at its old
   angle. The hidden-node set is almost entirely turret parts (§2), so a forced draw every K frames (refreshing rows
   and `rel`) is required, not optional.
-- **Reveal latency.** Same as the draw-level cull when the verdict pipeline is the same: a part revealed while the
-  rectangle is stable is missing for one frame (two with an age-2 result). The engine-level skip removes the
+- **Reveal latency.** Draw-level cull: a part revealed while the rectangle is stable is missing for one frame (two
+  with an age-2 result). Duty-cycle probe (as built): one frame when the reveal lands on an engine-skip frame, two on
+  a proxy-skip frame, three with an age-2 result (§5). The engine-level skip removes the
   draw-level "unstable → draw this frame" protection unless the view-space window replaces it. Firing is unaffected:
   muzzle positions come from the Components table and the node/ship transforms the scene update keeps
   (lod-child-hide.md §3); no fire-control path reads bit 2. A turret revealed after a skip shows its current
@@ -184,7 +185,10 @@ node in frame N only when the proxy skipped all of that node's draws in frame N�
 the window). The node then draws in N+1 (the table is rebuilt from N's proxy skips, which did not include it), is
 decided there by the existing draw-level logic from the N−1-list test, and is engine-skipped again in N+2: every hidden
 node alternates proxy-skip and engine-skip, so the existing listing and testing keep running unchanged, reveal latency
-stays one frame, and the measured saving is about half the full design's (0.35–1.0 ms at the run14/run15 views [i]).
+is one frame when the reveal lands on an engine-skip frame and two when it lands on a proxy-skip frame (that frame's
+skip rests on a test issued before the hull changed and the next table is built from it; three with an age-2 result;
+fixture-observed 2026-10-08, occlusion-cull.md "Engine-side skip"), and the measured saving is about half the full
+design's (0.35–1.0 ms at the run14/run15 views [i]).
 The alternation needs the ship's block in the engine-skip frame, i.e. at least one part of that ship drawn then; a
 ship whose hidden parts all phase-lock gets no block in that frame, its next decision has no result for them and they
 draw until a test lands (a saving loss, not an artefact; the probe's `ready_age` and per-ship block counts show it).
