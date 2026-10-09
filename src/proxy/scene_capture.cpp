@@ -16,6 +16,36 @@ template <class T> struct Ref {
     Ref(const Ref&) = delete;
     Ref& operator=(const Ref&) = delete;
 };
+// Container cache (describe_surface). Key: the resource_id allocation identity.
+// Identities come from one process-wide 64-bit counter (capture_state.cpp,
+// `id = next_resource_id++`) and live as private data on the backend surface
+// (the ownership wrapper's Surface::SetPrivateData forwards to native_,
+// d3d9_forwarders_inc.h), which the runtime frees with the surface: a later
+// allocation, even at a recycled address or behind a re-created wrapper, starts
+// untagged and receives a fresh value, so an identity never names a second
+// object within the process. A D3D9 surface's container is fixed at creation
+// (texture level, swap chain or device), so identity alone is a safe key; the
+// Reset/destroy/cap clears only bound memory. GetDesc stays on the hit path (it
+// was there before and keeps the failure semantics) and must match the stored
+// fields, else the entry is re-queried. Called under the capture mutex, like
+// resource_id. Fixed storage: no allocation on any path.
+struct ContainerEntry {
+    std::uint64_t id, container;
+    std::uint32_t width, height, format, msaa;
+};
+constexpr unsigned container_slots = 512; // power of two, open addressing; load factor <= 1/2
+constexpr unsigned container_cap = 256;
+ContainerEntry container_table[container_slots];
+unsigned container_count = 0;
+SurfaceContainerCacheStats container_stats{};
+unsigned container_slot(std::uint64_t id) noexcept {
+    return unsigned((id * 0x9E3779B97F4A7C15ull) >> 55) & (container_slots - 1);
+}
+void container_clear() noexcept {
+    if (!container_count) return;
+    for (auto& entry : container_table) entry.id = 0;
+    container_count = 0;
+}
 } // namespace
 renderer::Surface describe_surface(IDirect3DSurface9* surface) noexcept {
     renderer::Surface result{};
@@ -27,6 +57,18 @@ renderer::Surface describe_surface(IDirect3DSurface9* surface) noexcept {
     if (FAILED(surface->GetDesc(&desc))) return result;
     const auto id = resource_id(surface);
     if (!id) return result;
+    const auto format = static_cast<std::uint32_t>(desc.Format);
+    const auto msaa = static_cast<std::uint32_t>(desc.MultiSampleType);
+    unsigned slot = container_slot(id);
+    while (container_table[slot].id && container_table[slot].id != id) slot = (slot + 1) & (container_slots - 1);
+    if (container_table[slot].id == id) {
+        const ContainerEntry& entry = container_table[slot];
+        if (entry.width == desc.Width && entry.height == desc.Height && entry.format == format && entry.msaa == msaa) {
+            ++container_stats.hits;
+            return {true, id, entry.container, desc.Width, desc.Height, format, msaa};
+        }
+    }
+    ++container_stats.misses;
     Ref<IDirect3DBaseTexture9> container;
     const HRESULT hr = surface->GetContainer(IID_IDirect3DBaseTexture9, reinterpret_cast<void**>(&container.p));
     std::uint64_t container_id = 0;
@@ -35,13 +77,26 @@ renderer::Surface describe_surface(IDirect3DSurface9* surface) noexcept {
             return result;
     } else if (hr != E_NOINTERFACE)
         return result;
-    return {true,
-            id,
-            container_id,
-            desc.Width,
-            desc.Height,
-            static_cast<std::uint32_t>(desc.Format),
-            static_cast<std::uint32_t>(desc.MultiSampleType)};
+    // Only a known answer is stored; a mismatching entry for the same identity is rewritten in place.
+    if (container_table[slot].id != id) {
+        if (container_count >= container_cap) {
+            container_clear();
+            ++container_stats.resets;
+            slot = container_slot(id);
+        }
+        ++container_count;
+    }
+    container_table[slot] = {id, container_id, desc.Width, desc.Height, format, msaa};
+    return {true, id, container_id, desc.Width, desc.Height, format, msaa};
+}
+SurfaceContainerCacheStats surface_container_cache_stats() noexcept {
+    return container_stats;
+}
+void surface_container_cache_clear(const char* reason) noexcept {
+    container_clear();
+    log("surface_container_cache reason=%s hits=%llu misses=%llu resets=%llu", reason ? reason : "unknown",
+        static_cast<unsigned long long>(container_stats.hits), static_cast<unsigned long long>(container_stats.misses),
+        static_cast<unsigned long long>(container_stats.resets));
 }
 namespace {
 renderer::Surface describe(IDirect3DSurface9* surface) {

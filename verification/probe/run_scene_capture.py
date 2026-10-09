@@ -54,12 +54,21 @@ def main():
         samples = [line for line in text.splitlines() if line.startswith('SAMPLE ')]
         scenarios = re.findall(r'^SCENARIO (\S+) flags=(\S+) .* PASS$', text, re.M)
         expected = {(name, flags) for name in names for flags in ('00000040', '00000050')}
+        # describe_surface container cache: per surface, GetContainer calls on the first and second description.
+        cache = re.findall(r'^CONTAINER_CACHE surface=(\S+) .* first_calls=(\d+) second_calls=(\d+) ', text, re.M)
+        # DXVK logs one warning per unanswered container query (E_NOINTERFACE); zero lines under wined3d.
+        report['unknown_interface_warnings'] = sum(
+            'Unknown interface query' in line
+            for line in (results / 'scene-capture-wine.log').read_text(errors='replace').splitlines())
+        report['container_cache'] = [dict(surface=s, first_calls=int(f), second_calls=int(n)) for s, f, n in cache]
+        cache_ok = (sorted(s for s, _, _ in cache) == ['back', 'depth', 'level', 'plain']
+                    and all(f == '1' and n == '0' for _, f, n in cache))
         report.update(checks=len(checks), samples=len(samples), scenarios=len(scenarios),
                       failed_checks=[line for line in checks + samples if not line.endswith(' PASS')],
                       source_unchanged_during_run=hashes() == before,
                       executable_unchanged_during_run=hashlib.sha256(executable.read_bytes()).hexdigest() == report['executable_sha256'])
         report['passed'] = (report['exit_code'] == 0 and not report['failed_checks']
-                            and len(samples) == 16 and len(scenarios) == 36 and set(scenarios) == expected
+                            and len(samples) == 16 and len(scenarios) == 36 and set(scenarios) == expected and cache_ok
                             and report['source_unchanged_during_run'] and report['executable_unchanged_during_run']
                             and 'RESULT PASS ' in text)
     (results / 'scene-capture-summary.json').write_text(json.dumps(report, indent=2) + '\n')

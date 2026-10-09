@@ -224,6 +224,131 @@ struct SurfaceDescFault {
     }
     ~SurfaceDescFault() { *reinterpret_cast<void***>(surface) = original; }
 };
+// Counts GetContainer (IDirect3DSurface9 slot 11) on one surface instance and
+// forwards to the original entry; the instance's vtable pointer is restored on exit.
+struct ContainerCallCounter {
+    using Fn = HRESULT(WINAPI*)(IDirect3DSurface9*, REFIID, void**);
+    static ContainerCallCounter* active;
+    IDirect3DSurface9* surface;
+    void** original;
+    std::array<void*, 17> table{};
+    Fn forward = nullptr;
+    unsigned calls = 0;
+    static HRESULT WINAPI count(IDirect3DSurface9* s, REFIID iid, void** out) {
+        ++active->calls;
+        return active->forward(s, iid, out);
+    }
+    explicit ContainerCallCounter(IDirect3DSurface9* s)
+        : surface(s)
+        , original(*reinterpret_cast<void***>(s)) {
+        expect("container counter is not nested", active == nullptr);
+        std::copy(original, original + 17, table.begin());
+        std::memcpy(&forward, &table[11], sizeof forward);
+        auto fn = &count;
+        std::memcpy(&table[11], &fn, sizeof fn);
+        active = this;
+        *reinterpret_cast<void***>(surface) = table.data();
+    }
+    ~ContainerCallCounter() {
+        *reinterpret_cast<void***>(surface) = original;
+        active = nullptr;
+    }
+};
+ContainerCallCounter* ContainerCallCounter::active = nullptr;
+static bool same_surface(const x3m::renderer::Surface& a, const x3m::renderer::Surface& b) {
+    return a.known == b.known && a.identity == b.identity && a.container == b.container && a.width == b.width &&
+           a.height == b.height && a.format == b.format && a.msaa == b.msaa;
+}
+// describe_surface's container cache: the second description of a surface issues
+// no GetContainer (texture level, back buffer and standalone surface), the
+// answers are unchanged, the cap clears and counts, and the clear row is logged.
+static void container_cache(IDirect3D9* api, HWND window) {
+    trace.clear();
+    x3m::surface_container_cache_clear("fixture_start"); // the counters below are deltas; start from an empty table
+    D3DPRESENT_PARAMETERS pp{};
+    pp.Windowed = TRUE;
+    pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    pp.hDeviceWindow = window;
+    pp.BackBufferWidth = 64;
+    pp.BackBufferHeight = 64;
+    pp.BackBufferFormat = D3DFMT_A8R8G8B8;
+    pp.EnableAutoDepthStencil = TRUE;
+    pp.AutoDepthStencilFormat = D3DFMT_D24X8;
+    Com<IDirect3DDevice9> d;
+    ok("cache device", api->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &d.p));
+    {
+        Com<IDirect3DSurface9> back, depth, level, plain;
+        Com<IDirect3DTexture9> texture;
+        ok("cache back buffer", d->GetRenderTarget(0, &back.p));
+        ok("cache depth", d->GetDepthStencilSurface(&depth.p));
+        ok("cache texture",
+           d->CreateTexture(32, 32, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture.p, nullptr));
+        ok("cache level", texture->GetSurfaceLevel(0, &level.p));
+        ok("cache plain", d->CreateOffscreenPlainSurface(16, 16, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &plain.p, nullptr));
+        IDirect3DSurface9* const surfaces[] = {level.p, back.p, depth.p, plain.p};
+        const char* const kinds[] = {"level", "back", "depth", "plain"};
+        unsigned first_total = 0, second_total = 0;
+        for (unsigned i = 0; i < 4; ++i) {
+            const auto before = x3m::surface_container_cache_stats();
+            x3m::renderer::Surface first{}, second{};
+            unsigned first_calls, second_calls;
+            {
+                ContainerCallCounter counter(surfaces[i]);
+                first = x3m::describe_surface(surfaces[i]);
+                first_calls = counter.calls;
+                second = x3m::describe_surface(surfaces[i]);
+                second_calls = counter.calls - first_calls;
+            }
+            const auto after = x3m::surface_container_cache_stats();
+            first_total += first_calls;
+            second_total += second_calls;
+            std::printf("CONTAINER_CACHE surface=%s identity=%llu container=%llu first_calls=%u second_calls=%u hits=%llu misses=%llu\n",
+                        kinds[i], static_cast<unsigned long long>(first.identity),
+                        static_cast<unsigned long long>(first.container), first_calls, second_calls,
+                        static_cast<unsigned long long>(after.hits - before.hits),
+                        static_cast<unsigned long long>(after.misses - before.misses));
+            expect("cached description known with identity", first.known && first.identity != 0);
+            expect("first description queries the container once", first_calls == 1);
+            expect("second description issues no GetContainer", second_calls == 0);
+            expect("cached description equals the queried one", same_surface(first, second));
+            expect("one miss then one hit", after.misses - before.misses == 1 && after.hits - before.hits == 1);
+            expect("texture level carries its container", (i == 0) == (first.container != 0));
+        }
+        std::printf("CONTAINER_CACHE first_total=%u second_total=%u\n", first_total, second_total);
+        // Cap: 300 distinct surfaces exceed the 256-entry bound exactly once.
+        const auto before_cap = x3m::surface_container_cache_stats();
+        std::vector<IDirect3DSurface9*> many;
+        bool all_known = true;
+        for (unsigned i = 0; i < 300; ++i) {
+            IDirect3DSurface9* s = nullptr;
+            ok("cache cap surface",
+               d->CreateOffscreenPlainSurface(4, 4, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &s, nullptr));
+            many.push_back(s);
+            all_known = x3m::describe_surface(s).known && all_known;
+        }
+        const auto after_cap = x3m::surface_container_cache_stats();
+        for (auto* s : many) s->Release();
+        std::printf("CONTAINER_CACHE cap resets=%llu misses=%llu\n",
+                    static_cast<unsigned long long>(after_cap.resets - before_cap.resets),
+                    static_cast<unsigned long long>(after_cap.misses - before_cap.misses));
+        expect("cap overflow clears and counts", all_known && after_cap.resets - before_cap.resets == 1 &&
+                                                     after_cap.misses - before_cap.misses == 300);
+        // After a clear the next description queries again.
+        x3m::surface_container_cache_clear("fixture");
+        bool row = false;
+        for (const auto& line : trace)
+            row = row || (line.rfind("surface_container_cache reason=fixture hits=", 0) == 0 &&
+                          line.find(" misses=") != std::string::npos && line.find(" resets=") != std::string::npos);
+        expect("clear logs the counter row", row);
+        {
+            ContainerCallCounter counter(level.p);
+            x3m::describe_surface(level.p);
+            expect("cleared cache queries again", counter.calls == 1);
+        }
+    }
+    expect("cache device final logical release", d.p->Release() == 0);
+    d.p = nullptr;
+}
 struct Scene {
     IDirect3DDevice9* d;
     Com<IDirect3DSurface9> main, depth, copySurface, aSurface, bSurface;
@@ -663,6 +788,7 @@ int main(int argc, char** argv) {
         const HRESULT hr = own::wrap_factory(native, &factory.p, options);
         if (FAILED(hr)) native->Release();
         ok("copy factory", hr);
+        container_cache(factory.p, window);
         std::uint64_t frame = 0;
         for (DWORD flags : {DWORD(D3DCREATE_HARDWARE_VERTEXPROCESSING),
                             DWORD(D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE)})
