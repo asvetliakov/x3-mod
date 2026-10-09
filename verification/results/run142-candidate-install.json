@@ -1,0 +1,28 @@
+{
+ "run": 142,
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run142-candidate/build/d3d9.dll",
+ "exit": 0,
+ "installed_at": "2026-10-10T01:45+04:00",
+ "commit": "bf5b8c9f",
+ "candidate_record": "verification/results/run142-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "cdb7ba65d0de09e74ebdffaf2dfa3e1ec9b978425d792e299939486c2d5a5581",
+  "bytes": 59572819,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 141,
+  "sha256": "2d65b65f206a846453805e08f4b564467f81fc54204f69dd94a975f00202a351",
+  "bytes": 39937177
+ },
+ "unchanged": [
+  "X3AP.exe",
+  "engine_bodies.json",
+  "fonts",
+  "bottle configuration"
+ ],
+ "trigger": "Mayhem 3 DXVK DxvkMemoryAllocator failures run27/28/29: address_space diagnostic row + container-probe cache; Run 142 A open",
+ "dry_run": "python3 tools/manage.py launch --bottle X3 --debug --dry-run: ok",
+ "producer": "main session"
+}

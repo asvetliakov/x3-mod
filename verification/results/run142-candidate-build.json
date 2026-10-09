@@ -1,0 +1,103 @@
+{
+ "dll": "/tmp/x3-run142-candidate/build/d3d9.dll",
+ "sha256": "cdb7ba65d0de09e74ebdffaf2dfa3e1ec9b978425d792e299939486c2d5a5581",
+ "bytes": 59572819,
+ "commit": "bf5b8c9f",
+ "toolchain": "i686-w64-mingw32-gcc (GCC) 16.2.0; cmake version 4.4.3; RelWithDebInfo, cmake/mingw-i686.cmake, -j4; Python 3.9.6 (/usr/bin/python3, -DPython3_EXECUTABLE=/usr/bin/python3); clean build in a detached git worktree /tmp/x3-run142-candidate (git worktree add --detach bf5b8c9f; build dir /tmp/x3-run142-candidate/build, gitignored; X3M_SOURCE_COMMIT bf5b8c9ff0e399584be4d45226e5c742f3e660b4 written by tools/build/write_source_commit.py, no dirty diff); clean configure+build wall time 47 s; unstripped RelWithDebInfo DLL like Run140 (the installed Run141 is the stripped release DLL)",
+ "gates": "rollback: Run141 = release 1.1.0 stripped DLL 2d65b65f206a8464... (39,937,177 B, mtime Oct 9 03:55) is installed (re-measured) and is the rollback; production diff since Run141's source (git diff --stat 80556bd7..bf5b8c9f -- src cmake CMakeLists.txt tools assets): 7 files, +261/-9: address_space census row (4b63feef: new src/proxy/address_space{.cpp,.h,_core.h}, capture.cpp +11, CMakeLists.txt adds address_space.cpp to both source lists) and describe_surface container cache (e8c75cdd: src/proxy/scene_capture.{cpp,h}, capture.cpp +2); build 0 warnings (configure and build logs, grep -ci warning: 0 and 0; measured); X3M_SOURCE_COMMIT bf5b8c9f..., not dirty; x87 0 violations (check_no_x87.py build/d3d9.dll from the worktree: PASS, 127 roots, 796 reachable functions, equal to Run140; measured); generate --check from the worktree: PASS, 261 settings, 111 in the template (equal to Run140/1.1.0; measured); shader --check run from the worktree, all exit 0: generate_screen_emission_programs, generate_engine_shimmer_program (PASS, 1 shader), generate_bloom_programs (passed, 9 programs), generate_rigid_motion_pixel (PASS); git diff --stat 80556bd7..bf5b8c9f -- src/effects tools/shaders tools/config assets 'verification/probe/verify_*.py' 'src/proxy/*site*.h' empty (no hook site added; site verifier and identity evidence reused); host tests from the worktree (PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_address_space test_scene_graph_census test_logging_tiers): 22 tests OK, 7.8 s, 0 warning/skip lines (per module 4 / 5 / 13; measured); full host suite not run; Wine fixtures from the candidate worktree, one run each under wine_lock with X3M_FIXTURE_BOTTLE=X3: run_scene_graph_census.py (after build_scene_graph_census.py, 0 warnings): exit 0, 44 checks / 0 failures, elapsed 8.1 s, address_space row: 89 regions in 42 us, fragmented 96,090 regions in 43.7 ms (median), resumable pass 22 ticks, 43.85 ms summed, max tick 2,033 us (measured); run_scene_capture.py (DXVK backend, fresh fixture build, exe 63628b14...): exit 1, 1,165 checks, 5 scenarios, container_cache level/back/depth/plain first_calls 1 second_calls 0 (pass), one failed check 'actual held-resource Reset failure' = the known sixth-scenario failure under DXVK, pre-existing since the backend switch (e8c75cdd open item), recorded as known; unknown_interface_warnings 316 (by class: D3D9DeviceEx 308, D3D9SwapChainEx 7, D3D9InterfaceEx 1; by IID: IID_IDirect3DBaseTexture9 315, 02177241-... 1; verification/results/run142-candidate/count_unknown_interface.py -> count_unknown_interface_out.json; measured), against the 13 that e8c75cdd's message states for the same five scenarios: not explained here, open; fixture outputs were written in the throwaway worktree only (copies under /tmp/x3-run142-logs/, worktree results restored with git checkout), the tracked bottle-X3 scene-capture record in main is unchanged (main git status clean); no other fixtures; launch --dry-run not run; X3AP not running before build and fixtures (pgrep); candidate worktree clean after all gates; installed d3d9.dll still Run141 (2d65b65f) and X3AP.exe untouched (no install performed)",
+ "changes": [
+  "c928b9c0 Release 1.1.0 built from 80556bd7: zip f49b2621… (59,800,944 B, 22 entries), stripped DLL 2d65b65f… (39,937,177 B; unstripped acad75c2…, debug add1e16b…), both x3m-regenerate binaries rebu...",
+  "4b63feef address_space census row (perf/debug tier): VirtualQuery walk of the 32-bit address space, one complete walk after CreateDevice (200 ms limit, real device id) and a resumable pass at Prese...",
+  "e8c75cdd describe_surface container cache: one GetContainer(IID_IDirect3DBaseTexture9) per surface identity instead of one per description (about six per frame; each miss on a back buffer or standa...",
+  "bf5b8c9f merge of the describe_surface container cache branch over 4b63feef"
+ ],
+ "engine_bodies": {
+  "path": "<game>/x3m/engine_bodies.json (installed, read-only)",
+  "sha256": "45a1215be6270f0efc7856e56f94a4b4f8ac432b00dd67f74c9106a74a975fcc",
+  "note": "carried over unchanged from the Run140 record; git diff --stat cd479d02..bf5b8c9f -- tools/effects/engine_bodies.py is empty, so no regeneration; installed table not re-measured"
+ },
+ "fonts": [
+  {
+   "name": "Harrier48.abc",
+   "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier48.tga",
+   "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09",
+   "bytes": 2097170
+  },
+  {
+   "name": "Harrier72.abc",
+   "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775",
+   "bytes": 10102
+  },
+  {
+   "name": "Harrier72.tga",
+   "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e",
+   "bytes": 4194322
+  },
+  {
+   "name": "Tahoma26.abc",
+   "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma26.tga",
+   "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f",
+   "bytes": 1048594
+  },
+  {
+   "name": "Tahoma39.abc",
+   "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76",
+   "bytes": 17054
+  },
+  {
+   "name": "Tahoma39.tga",
+   "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550",
+   "bytes": 4194322
+  },
+  {
+   "name": "Zekton52.abc",
+   "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton52.tga",
+   "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f",
+   "bytes": 2097170
+  },
+  {
+   "name": "Zekton78.abc",
+   "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424",
+   "bytes": 7628
+  },
+  {
+   "name": "Zekton78.tga",
+   "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97",
+   "bytes": 4194322
+  },
+  {
+   "name": "ZektonES52.abc",
+   "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES52.tga",
+   "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554",
+   "bytes": 2097170
+  },
+  {
+   "name": "ZektonES78.abc",
+   "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5",
+   "bytes": 24750
+  },
+  {
+   "name": "ZektonES78.tga",
+   "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa",
+   "bytes": 4194322
+  }
+ ],
+ "fonts_note": "carried over unchanged from the Run140 record: git diff --stat cd479d02..bf5b8c9f -- tools/fonts and -- assets/fonts, one path per call, both empty",
+ "producer": "Claude Code implement agent (Opus 5.5), 2026-10-10; git log --oneline --no-merges 80556bd7..bf5b8c9f (3 commits: release record c928b9c0 is not a DLL input) plus the merge bf5b8c9f; shasum -a 256; stat -f %z; warning breakdown verification/results/run142-candidate/count_unknown_interface.py; configure/build/x87/generate/shader/host-test/fixture logs local under /tmp/x3-run142-logs/"
+}

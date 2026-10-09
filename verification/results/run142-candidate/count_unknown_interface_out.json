@@ -1,0 +1,12 @@
+{
+ "total": 316,
+ "by_class": {
+  "D3D9InterfaceEx": 1,
+  "D3D9SwapChainEx": 7,
+  "D3D9DeviceEx": 308
+ },
+ "by_iid": {
+  "02177241-69fc-400c-8ff1-93a44df6861d": 1,
+  "580ca87e-1d3c-4d54-991d-b7d3e3c298ce": 315
+ }
+}
