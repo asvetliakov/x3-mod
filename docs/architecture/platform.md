@@ -132,3 +132,8 @@ D3D9/D3D11 resource sharing remain unverified. The module names and Metal cache 
 alone do not distinguish DXMT from other host implementations. Do not label the
 observed D3D11 run "D3DMetal" solely from that log: that backend identity still
 needs host module identification. The bottle remains configured for DXMT.
+
+
+## DXVK and the 32-bit address space (2026-10-10, Run 142 A)
+
+On CrossOver Preview 27 (wow64, FEX) with the bundled DXVK 1.10.3 and MoltenVK 1.4.2, every DXVK device-memory chunk, textures included, is committed inside the game's 4 GB address space: the `address_space` row counted 164 x 16 MiB private regions (2,624 MB) against a DXVK heap of 2,895 MB seconds before `DxvkMemoryAllocator: Memory allocation failed` on a Mayhem 3 save (run30; `verification/results/run142-triage/address_space_rows.sh`). The driver budget (18 GB) is irrelevant; the limit is 4 GB minus the game's own ~1 GB. `d3d9.evictManagedOnUnlock = True` (now in `C:\X3\dxvk.conf`) removed about 0.9 GB of mapping buffers and only delayed the throw (56 s -> 92 s). Consequences: content whose resident GPU set exceeds about 2.5 GB (Mayhem 3) must run on wined3d (`CX_GRAPHICS_BACKEND=wined3d` for the launch; the bottle default stays dxvk); stock content fits. A DXVK that maps host-visible memory on demand (2.x) would change this; the bundled fork does not.

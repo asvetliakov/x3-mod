@@ -1,0 +1,3 @@
+#!/bin/sh
+# Run 142 A (run30): print the address_space rows of a session log in MB. Usage: address_space_rows.sh /tmp/x3-bottleX3-run30/session-*.log
+grep '^address_space' "$1" | awk '{for(i=1;i<=NF;i++){split($i,a,"=");v[a[1]]=a[2]}; printf "frame=%s when=%s regions=%s free=%.0fMB largest=%.0fMB reserved=%.0fMB priv=%.0fMB mapped=%.0fMB image=%.0fMB chunk16=%s/%.0fMB bigpriv=%s/%.0fMB us=%s\n",v["frame"],v["when"],v["regions"],v["free_total"]/1048576,v["free_largest"]/1048576,v["reserved"]/1048576,v["committed_private"]/1048576,v["committed_mapped"]/1048576,v["committed_image"]/1048576,v["chunk16_count"],v["chunk16_bytes"]/1048576,v["big_private_count"],v["big_private_bytes"]/1048576,v["us"]}'
