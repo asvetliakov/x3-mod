@@ -1430,6 +1430,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
             telemetry::summary(devices.at(d)->stats, "device_destroy", devices.at(d)->frame);
             telemetry::summary(telemetry::process(), "device_destroy", devices.at(d)->frame);
             log("device_destroy ptr=%p device=%llu", d, devices.at(d)->id);
+            surface_container_cache_clear("device_destroy"); // the last destroy is the session-end row
             window_trace::detach(devices.at(d)->id);
             forget_cached_device();
             devices.erase(d);
@@ -2165,6 +2166,7 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
     telemetry::record(ctx.stats, telemetry::Metric::Reset, telemetry::now() - begin, FAILED(hr));
     presentation_parameters("reset_after", ctx.id, ctx.stats.focus_window, p);
     ctx.motion_output.after_reset(hr);
+    surface_container_cache_clear("reset"); // bound only: identities are never reused (scene_capture.cpp)
     gpu_sync_after_reset(ctx, hr);       // recreated after a successful Reset
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::reset(); // a Reset disarms the census stubs, drops the partial frame and re-seeds the LOD-switch table

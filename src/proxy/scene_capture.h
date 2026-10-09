@@ -8,7 +8,16 @@ namespace x3m {
 // Describes a surface binding for the selector: allocation identity (private
 // data), texture container identity, dimensions, format and MSAA. Unknown on
 // any failed query; a null surface is a known null binding.
+// An answered container query is cached per allocation identity, so a surface
+// is asked GetContainer once (scene_capture.cpp states the invalidation rule).
 renderer::Surface describe_surface(IDirect3DSurface9* surface) noexcept;
+struct SurfaceContainerCacheStats {
+    std::uint64_t hits, misses, resets; // process totals; resets = cap-overflow clears
+};
+SurfaceContainerCacheStats surface_container_cache_stats() noexcept;
+// Drops every entry and logs one `surface_container_cache reason= hits= misses=
+// resets=` row: device Reset and device destroy (the last destroy ends the session).
+void surface_container_cache_clear(const char* reason) noexcept;
 // Bounded runtime adapter for the scene-boundary selector. This is diagnostic
 // depth preservation, not a visual temporal pass. It runs only in requested
 // capture frames, holds no application COM references, and never changes the
