@@ -35,11 +35,13 @@ def main():
               'checks': int(total.group(1)) if total else None, 'failures': int(total.group(2)) if total else None,
               'failure_lines': [l for l in lines if l.startswith('FAIL')],
               'walk': [fields(l) for l in lines if l.startswith('SCENE GRAPH WALK')], 'bound': pick('SCENE GRAPH BOUND'), 'insert': pick('SCENE GRAPH INSERT'), 'regions': pick('SCENE GRAPH REGIONS'),
+              'address_space': pick('ADDRESS SPACE ROW'),
+              'address_space_example': next((l.split(' ', 3)[3] for l in lines if l.startswith('ADDRESS SPACE EXAMPLE ')), None),
               'bottle': bottle.describe(name),
               'note': 'nodes are 0x270-byte process-heap blocks linked in a shuffled order; best of 5 per walk variant, '
                       'row_walk_us from the row itself; diagnostic timings, not game FPS'}
     OUT.write_text(json.dumps(record, indent=1) + '\n')
-    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'walk', 'bound', 'insert', 'regions', 'failure_lines')}))
+    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'walk', 'bound', 'insert', 'regions', 'address_space', 'failure_lines')}))
     if run.returncode != 0 and not total:
         print(run.stdout[-2000:], run.stderr[-2000:], file=sys.stderr)
     sys.exit(0 if run.returncode == 0 and total and record['failures'] == 0 else 1)

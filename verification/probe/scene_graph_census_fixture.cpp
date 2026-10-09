@@ -11,6 +11,7 @@
 #include "../../src/proxy/scene_graph_census_core.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/proxy/object_lifetime.h"
+#include "../../src/proxy/address_space.h"
 #include <windows.h>
 #include <algorithm>
 #include <cstdarg>
@@ -358,6 +359,115 @@ int main() {
     const double direct_ns = time_inserts(0x00412345);
     check(t.used == 1 && t.slots[0].site == 0x00412345 && t.slots[0].caller == 0, "insert callers: unknown site, no read");
     std::printf("SCENE GRAPH INSERT autoid_ns=%.1f unknown_site_ns=%.1f\n", autoid_ns, direct_ns);
+
+    // 8. The address_space rows (src/proxy/address_space.cpp) on this large-address-aware process: the create row's
+    // single walk and the Present pass resumed across ticks; the partition invariant over span, the 16 MiB private
+    // chunk class, LastError, the per-tick budget and the walk cost.
+    {
+        auto create_row = [&]() {
+            row_[0] = 0;
+            x3m::address_space::report_create(1, 2);
+            return std::strncmp(row_, "address_space device=1 frame=2 when=create ", 43) == 0;
+        };
+        // Ticks until the pass emits; returns the tick calls and the longest tick (us, timed outside the module).
+        auto present_pass = [&](unsigned& calls, double& max_tick_us) {
+            calls = 0;
+            max_tick_us = 0;
+            row_[0] = 0;
+            bool emitted = false;
+            while (!emitted && calls < 1000) {
+                const std::uint64_t t0 = qpc();
+                emitted = x3m::address_space::tick(1, 30ull * (calls + 1));
+                max_tick_us = std::max(max_tick_us, us_since(t0));
+                ++calls;
+            }
+            return emitted && std::strncmp(row_, "address_space device=1 frame=", 29) == 0 &&
+                   std::strstr(row_, " when=present ") != nullptr;
+        };
+        auto partition_ok = [&]() {
+            return num("free_total") + num("reserved") + num("committed_private") + num("committed_mapped") +
+                       num("committed_image") + num("committed_other") == num("span");
+        };
+        auto whole = [&]() { return num("span") == 0xFFFF0000ull && num("capped") == 0; };
+        SetLastError(0x1234abcd);
+        const bool shaped = create_row();
+        check(shaped && GetLastError() == 0x1234abcd, "address_space: create row emitted, LastError preserved");
+        check(partition_ok(), "address_space: free + reserved + committed_* == span");
+        check(whole() && num("ticks") == 1, "address_space: the create walk covers 0..0xFFFEFFFF in one walk");
+        check(num("total_virtual") > 0x80000000ull && num("avail_virtual") <= num("total_virtual"),
+              "address_space: GlobalMemoryStatusEx fields (LAA: total_virtual above 2 GB)");
+        check(num("chunk16_bytes") <= num("committed_private") && num("free_largest") <= num("free_total"),
+              "address_space: chunk16_bytes <= committed_private, free_largest <= free_total");
+        const unsigned long long base_count = num("chunk16_count"), base_bytes = num("chunk16_bytes"),
+                                 base_big = num("big_private_count"), base_reserved = num("reserved");
+        unsigned calls = 0;
+        double max_tick = 0;
+        SetLastError(0x2345bcde);
+        const bool plain_pass = present_pass(calls, max_tick);
+        check(plain_pass && GetLastError() == 0x2345bcde, "address_space: present tick emits, LastError preserved");
+        check(calls == 1 && num("ticks") == 1 && whole() && partition_ok(),
+              "address_space: the plain space completes in one tick");
+        // Eight committed 16 MiB private regions (DXVK's host-visible chunk), one 4 MiB, one reserved 32 MiB.
+        void* chunks[8]{};
+        for (auto& c : chunks) c = VirtualAlloc(nullptr, 16u << 20, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        void* big = VirtualAlloc(nullptr, 4u << 20, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        void* reserve = VirtualAlloc(nullptr, 32u << 20, MEM_RESERVE, PAGE_NOACCESS);
+        create_row();
+        check(num("chunk16_count") == base_count + 8 && num("chunk16_bytes") == base_bytes + 8ull * (16u << 20),
+              "address_space: eight 16 MiB chunks counted");
+        check(num("big_private_count") == base_big + 1 && num("reserved") >= base_reserved + (32u << 20),
+              "address_space: the 4 MiB region is big_private, the reservation is reserved");
+        check(partition_ok() && num("chunk16_bytes") <= num("committed_private"),
+              "address_space: invariants hold with the chunks");
+        present_pass(calls, max_tick);
+        check(num("chunk16_count") == base_count + 8 && partition_ok() && whole(),
+              "address_space: the present pass counts the chunks too");
+        for (auto& c : chunks) VirtualFree(c, 0, MEM_RELEASE);
+        VirtualFree(big, 0, MEM_RELEASE);
+        VirtualFree(reserve, 0, MEM_RELEASE);
+        create_row();
+        check(num("chunk16_count") == base_count, "address_space: released chunks leave the count");
+        auto time_create = [&](unsigned long long& regions) {
+            unsigned long long us[15];
+            for (auto& u : us) {
+                create_row();
+                u = num("us");
+            }
+            regions = num("regions");
+            std::sort(us, us + 15);
+            return std::pair<unsigned long long, unsigned long long>(us[0], us[7]);
+        };
+        unsigned long long plain_regions = 0, frag_regions = 0;
+        const auto plain = time_create(plain_regions);
+        // Fragmented: 6,000 separate 64 KiB allocations, every other page of each PAGE_NOACCESS, so the
+        // walk sees about 96,000 regions (a stand-in for a game process near the 4 GB wall).
+        std::vector<void*> small;
+        small.reserve(6000);
+        for (unsigned i = 0; i < 6000; ++i) {
+            void* p = VirtualAlloc(nullptr, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (!p) break;
+            DWORD old = 0;
+            for (unsigned page = 1; page < 16; page += 2)
+                VirtualProtect(static_cast<char*>(p) + page * 0x1000, 0x1000, PAGE_NOACCESS, &old);
+            small.push_back(p);
+        }
+        const auto frag = time_create(frag_regions);
+        check(partition_ok() && whole() && frag_regions > 50000,
+              "address_space: the create row walks the fragmented space whole");
+        const bool frag_pass = present_pass(calls, max_tick);
+        const unsigned long long pass_ticks = num("ticks"), pass_us = num("us"), pass_regions = num("regions");
+        check(frag_pass && calls > 1 && pass_ticks == calls,
+              "address_space: the fragmented pass takes several ticks, ticks= counts them");
+        check(whole() && partition_ok() && num("chunk16_bytes") <= num("committed_private"),
+              "address_space: the multi-tick row covers 0..0xFFFEFFFF and its sum holds");
+        check(max_tick < 2500.0, "address_space: every tick stays near the 2 ms budget");
+        for (void* p : small) VirtualFree(p, 0, MEM_RELEASE);
+        std::printf("ADDRESS SPACE ROW regions=%llu us_min=%llu us_median=%llu frag_regions=%llu frag_us_min=%llu "
+                    "frag_us_median=%llu pass_regions=%llu pass_ticks=%llu pass_us=%llu pass_max_tick_us=%.0f\n",
+                    plain_regions, plain.first, plain.second, frag_regions, frag.first, frag.second, pass_regions,
+                    pass_ticks, pass_us, max_tick);
+        std::printf("ADDRESS SPACE EXAMPLE %s\n", row_);
+    }
 
     for (auto* p : nodes_) HeapFree(GetProcessHeap(), 0, p);
     std::printf("SCENE GRAPH CENSUS CPU checks=%u failures=%u\n", checks, failures);

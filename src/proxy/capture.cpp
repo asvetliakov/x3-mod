@@ -72,6 +72,7 @@
 #include "sun_light_poll.h"
 #include "object_lifetime.h"
 #include "scene_graph_census.h"
+#include "address_space.h"
 #include "draw_input.h"
 #include "motion_capture.h"
 #include "motion_output.h"
@@ -2053,6 +2054,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // callers since the previous row. Read-only through engine_memory::read; its own cost is walk_us=.
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0)
         scene_graph_census::report(ctx.id, ctx.frame);
+    // --perf/--debug: every 30 frames one tick (at most 2 ms) of the resumable VirtualQuery walk of the 32-bit
+    // range (address_space.h); the address_space row is emitted when a pass covers the whole range (ticks=, us=).
+    if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 30 == 0)
+        address_space::tick(ctx.id, ctx.frame);
     // --perf/--debug: the dust-leak fix's detour count every 300 frames (one arena word read; nothing per frame).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);
     // --perf/--debug: the lens-flare cull's count every 300 frames (one counter word read; nothing per frame).
@@ -3983,6 +3988,12 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {
         hook_device(*out, p && p->hDeviceWindow ? p->hDeviceWindow : window, window);
+    }
+    // --perf/--debug: the address space right after device creation (address_space.h; the new device's id, frame=0,
+    // 200 ms budget).
+    if (SUCCEEDED(hr) && (log_tier::cached_perf || log_tier::cached_debug)) {
+        const auto created = out && *out ? devices.find(*out) : devices.end();
+        address_space::report_create(created != devices.end() ? created->second->id : 0, 0);
     }
     return hr;
 }

@@ -1,57 +1,70 @@
 {
  "fixture": "build/verification/scene-graph-census/scene_graph_census_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 7.0,
- "checks": 28,
+ "elapsed_s": 9.5,
+ "checks": 44,
  "failures": 0,
  "failure_lines": [],
  "walk": [
   {
    "layout": "shuffled",
    "nodes": 200000.0,
-   "raw_chase_us": 21669.0,
-   "next_only_us": 18058.0,
-   "stride64_us": 14513.0,
-   "stride1_us": 19823.0,
-   "row_walk_us_min": 1823.0,
-   "row_walk_us_median": 1839.0,
-   "row_unattached": 25600.0,
+   "raw_chase_us": 17640.0,
+   "next_only_us": 22140.0,
+   "stride64_us": 20802.0,
+   "stride1_us": 22400.0,
+   "row_walk_us_min": 1819.0,
+   "row_walk_us_median": 1855.0,
+   "row_unattached": 43008.0,
    "capped_rows": 5.0,
-   "row_reads": 51221.0,
-   "row_queries": 120.0
+   "row_reads": 86037.0,
+   "row_queries": 125.0
   },
   {
    "layout": "allocation",
    "nodes": 200000.0,
-   "raw_chase_us": 19121.0,
-   "next_only_us": 38971.0,
-   "stride64_us": 37584.0,
-   "stride1_us": 41571.0,
-   "row_walk_us_min": 1849.0,
-   "row_walk_us_median": 1911.0,
-   "row_unattached": 17408.0,
+   "raw_chase_us": 13942.0,
+   "next_only_us": 38405.0,
+   "stride64_us": 38353.0,
+   "stride1_us": 42440.0,
+   "row_walk_us_min": 1811.0,
+   "row_walk_us_median": 1907.0,
+   "row_unattached": 16384.0,
    "capped_rows": 5.0,
-   "row_reads": 34837.0,
-   "row_queries": 2726.0
+   "row_reads": 32789.0,
+   "row_queries": 2566.0
   }
  ],
  "bound": {
   "nodes": 310000.0,
-  "row_unattached": 26624.0,
+  "row_unattached": 29696.0,
   "row_bounded": 0.0,
   "row_capped": 1.0,
-  "row_walk_us": 1865.0,
-  "unbudgeted_walk_us": 33306.0
+  "row_walk_us": 1845.0,
+  "unbudgeted_walk_us": 33292.0
  },
  "insert": {
-  "autoid_ns": 29.6,
-  "unknown_site_ns": 2.1
+  "autoid_ns": 30.7,
+  "unknown_site_ns": 1.7
  },
  "regions": {
   "sampled": 201.0,
   "mean_region_kb": 7561.0,
   "regions_le_64kb": 1.0
  },
+ "address_space": {
+  "regions": 89.0,
+  "us_min": 42.0,
+  "us_median": 45.0,
+  "frag_regions": 96090.0,
+  "frag_us_min": 43942.0,
+  "frag_us_median": 44183.0,
+  "pass_regions": 96090.0,
+  "pass_ticks": 22.0,
+  "pass_us": 43999.0,
+  "pass_max_tick_us": 2029.0
+ },
+ "address_space_example": "address_space device=1 frame=660 when=present total_virtual=4294836224 avail_virtual=4073041920 span=4294901760 regions=96090 free_total=3669708800 free_largest=2147545088 reserved=16289792 committed_private=597536768 committed_mapped=4677632 committed_image=6688768 committed_other=0 chunk16_count=0 chunk16_bytes=0 big_private_count=18 big_private_bytes=202694656 capped=0 ticks=22 us=43999",
  "bottle": {
   "name": "X3",
   "wine_arch": "arm64",
