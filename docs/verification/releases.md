@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.2.1
+
+2026-10-12, `python3 tools/release/release.py --out /tmp/x3m-release-1.2.1 --regenerate-dir <dir with the 1.1.0 x3m-regenerate.exe>` (exit 0, 53.5 s wall: dll 51.3 s, package 2.2 s) on the WSL2 host (same toolchain as 1.2.0). Clean tree at `72cbed8f` (version bump `19826545` carried an unterminated string in the launcher help text; the release was rebuilt from the fix and the first build discarded). Record [release-1.2.1.json](../../verification/results/release-1.2.1.json).
+
+- Over 1.2.0: the **engine-state chase view restore** ([design](../architecture/chase-view-restore-engine-state.md), four amendments): after a gate jump, jumpdrive or ship change the rear chase view is restored by two engine by-name script calls, `SelectMode(258)` on the main monitor and `UpdateVisibility()` on the monitor manager, both captured from the script task's own frames; no dependence on the compiled script program (the 1.2.0 ticket hard-coded the stock `x3story.obj` and never armed under Mayhem). Native runs: 146 A (never bound: script-published sector), 147 A (crashed: callback-slot argument), 148 A (7/7 restored; crosshair HUD hidden after a ship change), 149 A (4/4 restored with `hud_refresh=ok`, two ship changes and two sector changes, exception=0). New setting `chase_view_restore_retries` (0..5, default 3).
+- DLL: stripped `5d54aa5d…` (40,185,821 B; 0 warnings, x87 0 / 925 reachable, strip identity PASS over 11 sections, 17 exports, debuglink). Installed into native `C:\X3` as Run150, bytes verified, rollback `rollback-d3d9\d3d9.dll.run149` ([install](../../verification/results/run150-release-install.json)).
+- Zip `x3m-1.2.1.zip` `9ce5e2d1…` (59,883,683 B): the same 22 entries in package.py's order; copied to `C:\Users\asvet\Downloads\`.
+- `x3m-regenerate.exe` is the 1.1.0 binary reused again (`bb3ba27b…`): `git diff --stat e97c4644..HEAD` over the bundled sources is empty. The native Windows build path for the exe stays open.
+
 ## Release 1.2.0
 
 2026-10-11, `python3 tools/release/release.py --out /tmp/x3m-release-1.2.0 --regenerate-dir <dir with the 1.1.0 x3m-regenerate.exe>` (dry run, then the real run: exit 0, 54.7 s wall: dll 52.5 s, package 2.2 s), the first release built on the WSL2 host (Ubuntu 26.04, MinGW GCC 16-posix 16.2.0 from Ubuntu 26.10, binutils 2.45.90, cmake 4.2.3, Python 3.14.4 / NumPy 2.3.5; [platform note](../architecture/platform-portability.md) "Native install and build host"). Clean tree at `e97c4644` (version bump over Run144's `47e977dd`). Record [release-1.2.0.json](../../verification/results/release-1.2.0.json).

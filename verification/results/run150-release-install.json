@@ -1,0 +1,14 @@
+{
+  "run": 150,
+  "what": "release 1.2.1 stripped DLL installed into native C:\\X3",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run149; cp /tmp/x3m-release-1.2.1/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+  "installed_at": "2026-10-12T02:16+04:00",
+  "commit": "72cbed8f",
+  "release_record": "verification/results/release-1.2.1.json",
+  "installed": {"path": "C:\\X3\\d3d9.dll", "sha256": "5d54aa5d01b2279a6f0299e5f01f70b83831d4ed8b896b330fae45e8ab8389e0", "bytes": 40185821, "verified_bytes": true},
+  "previous": {"run": 149, "sha256": "819b863b6c8bde5a9eeb8a1583383221729db4b575ce5f7548d2ab03f7a509dc", "bytes": 57834713, "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run149"},
+  "zip_copy": "C:\\Users\\asvet\\Downloads\\x3m-1.2.1.zip (cmp-verified)",
+  "unchanged": ["X3AP.exe", "x3m.ini (1.2.0 template; the 1.2.1 template differs only in its version header)", "x3m-regenerate.exe (the 1.1.0 binary bb3ba27b…, reused in the zip; regenerate sources unchanged since 1.2.0)", "engine_bodies.json", "fog-families.bin/json"],
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "producer": "main session"
+}
