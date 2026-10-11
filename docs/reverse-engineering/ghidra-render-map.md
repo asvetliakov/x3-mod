@@ -39,7 +39,7 @@ In the provisional `0x004dac90` decompilation, input bits `0x08000000`, `0x20000
 
 ## Reproduce targeted analysis
 
-Set `JAVA_HOME` to an installed JDK. On the analyzed host Ghidra's default launcher could not locate Java, but the existing Homebrew JDK at `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home` worked without installing anything.
+Set `JAVA_HOME` to an installed JDK. On the WSL2 host (since 2026-10-11): Ghidra 12.1.4 unpacked at `~/ghidra_12.1.4_PUBLIC`, `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64` (apt `openjdk-21-jdk-headless`), the project at `~/x3-ghidra-research` (not `/tmp`, which WSL clears), re-imported from `/mnt/c/X3/X3AP.exe`; `analyze_loading_profile.py` resolves these from `GHIDRA_HEADLESS` / `JAVA_HOME` / `GHIDRA_PROJECT` or the layout above. On the analyzed host Ghidra's default launcher could not locate Java, but the existing Homebrew JDK at `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home` worked without installing anything.
 
 ```sh
 mkdir -p /tmp/x3-ghidra-research

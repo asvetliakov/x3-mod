@@ -36,9 +36,23 @@ import analyze_iteration08_loading as loading  # noqa: E402
 import summarize_profile as profile  # noqa: E402
 
 LABELS_PATH = Path(__file__).with_name('x3ap_function_labels.json')
-GHIDRA_HEADLESS = '/opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless'
-JAVA_HOME = '/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home'
-GHIDRA_PROJECT = '/tmp/x3-ghidra-research'
+# Host defaults: environment first (GHIDRA_HEADLESS, JAVA_HOME, GHIDRA_PROJECT), then the WSL2 layout
+# (~/ghidra_12.1.4_PUBLIC, OpenJDK 21 from apt, project under the home directory because WSL clears /tmp),
+# then the original Homebrew layout.
+def _first_existing(*candidates):
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return str(candidate)
+    return str(candidates[-1])
+
+
+GHIDRA_HEADLESS = _first_existing(os.environ.get('GHIDRA_HEADLESS'),
+                                  Path.home() / 'ghidra_12.1.4_PUBLIC/support/analyzeHeadless',
+                                  '/opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless')
+JAVA_HOME = _first_existing(os.environ.get('JAVA_HOME'), '/usr/lib/jvm/java-21-openjdk-amd64',
+                            '/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home')
+GHIDRA_PROJECT = _first_existing(os.environ.get('GHIDRA_PROJECT'), Path.home() / 'x3-ghidra-research',
+                                 '/tmp/x3-ghidra-research')
 GHIDRA_PROJECT_NAME = 'X3Render'
 GHIDRA_PROGRAM = 'X3AP.exe'
 DEFAULT_MAIN_BASE = 0x00400000
