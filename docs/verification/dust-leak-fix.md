@@ -29,8 +29,8 @@ memset, free) replaces a leaked 0x270-byte allocation, and the fill ends for the
 background is missing does that replace allocating and dropping the remaining nodes; on a background with some
 bodies present, vanilla keeps filling in the same frame and attaches later good picks, while the patch ends the fill
 at the first failure, so the dust count builds up over several frames instead of one (accepted). Nothing runs on the
-proxy side per frame; the 300-frame row reads one arena word.
-Arena use is about 80 B (stub, slot, counter, tail). All inferred from the code; the in-game timing is the flight's.
+proxy side per frame; the 300-frame row reads one module-global word.
+Arena use is about 76 B (stub, slot, tail; the counter is a DLL global since 2026-10-11). All inferred from the code; the in-game timing is the flight's.
 
 **Not covered.** Native Windows execution: the source uses only documented Win32 (`VirtualProtect`,
 `FlushInstructionCache`, `ReadProcessMemory`, `GetEnvironmentVariableW`, `WriteFile`) and cross-compiles, but it has
@@ -51,3 +51,29 @@ first sector row, 4,853 at the last, maximum 5,477 over 19,826 frames (run383: +
 Frame time p50 16 ms (frames 1000-4000) -> 23 ms (last 3,000 frames) with `input_p50_us` 4,623 -> 7,155: not the node
 walk; unexplained, the view and the sector's activity changed during the stay. The user reports it working; no shimmer
 return after the stay. Accepted; the patch stays on by default.
+
+## Native Windows crash (2026-10-11)
+
+**Symptom.** Access violation on native Windows on the first release-path hit of the stub (minidump `X3Crash.dmp`,
+triaged with the scripts under
+[`verification/results/windows-crash-2026-10-11/`](../../verification/results/windows-crash-2026-10-11/):
+`parse_minidump.py`, `stack_at_fault.py`, `scan_arena_writes.py`). The faulting instruction is the stub's
+`inc dword [hits]` at arena offset +0x461 (stub at +0x440, instruction at stub +0x21; slot +0x470, counter +0x474); its operand pointed at the counter word the module emitted
+into the `engine_patch` arena after the continuation slot (`hits = slot + 4`). The arena is `PAGE_EXECUTE_READ`
+outside emission (`engine_patch.cpp` `ensure_arena`/`arena_writable`), so the write faults by documented page
+protection; Wine/FEX tolerated the write (inferred from the passing Wine fixture and the Run 109 A hit rows), which is why the Wine fixture and Run 109 A passed.
+
+**Fix.** The counter is the module global `x3m_dust_leak_fix_hits` (`volatile std::uint32_t`, the pattern of the
+cull counters); `encode_stub` gets its address, the arena block shrinks by 4 bytes to the stub and its slot
+(`Emitter(stub_length + 3 + 4)`, one data word), each install zeroes the counter before the stub is linked, and
+`report()`/`hits()` read the global. Because the stub now names DLL memory, the module is pinned first
+(`GetModuleHandleExW(... GET_MODULE_HANDLE_EX_FLAG_PIN)`, refusal `pin_failed`), as the cull modules do. The
+emitter decodes the INC operand from the encoded stub and refuses (`counter_in_arena`, nothing emitted) when it
+overlaps the arena; `sites::counter_outside`/`encoded_hits` carry that check, the host harness exercises it and the
+Wine fixture's chain check now requires the encoded counter to be the module global and outside the arena. The INC
+keeps its form (`ff 05 abs32`), so flags and registers are as before.
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-10-11 | Host tests (WSL2): the harness now decodes the INC operand (`encoded_hits`) and checks `counter_outside` at both arena edges, one byte of overlap and the 4 GB wrap; a source check pins the global, the 4-byte-smaller reservation with one data word, the check before any emitted byte, the pin before emission and the fixture's new chain condition | `cd verification/analysis && PYTHONPATH=../probe python3 -m unittest test_dust_leak_fix_site test_logging_tiers` | OK: 21 tests, 2 skipped (installed EXE absent on this host) (measured) |
+| 2026-10-11 | Compile only (no Wine on this host): the Wine fixture with `-Werror` and its build audit, the window bytes from the header's twin; `dust_leak_fix.cpp` with the DLL's flags | `python3 verification/results/windows-crash-2026-10-11/compile_check.py` | fixture built, audit passed; module 0 warnings, 0 x87 mnemonics (measured). Full CMake configure stopped at the NumPy 2.0.2 pin (host has 2.3.5); the fixture was not run and the DLL not linked |

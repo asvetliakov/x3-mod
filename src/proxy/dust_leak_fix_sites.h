@@ -75,7 +75,11 @@ constexpr std::uint32_t scene_offset = 0x1c, model_offset = 0x140, remaining_slo
 
 // The stub pushed in front of the chain: 45 bytes with three fields filled at
 // emission (the rel32 of the release call, the abs32 of the hit counter and
-// of the continuation slot; both words live in the arena after the stub).
+// of the continuation slot). The slot lives in the arena after the stub and is
+// only read (JMP [slot]); the counter is written (INC) and so must live outside
+// the arena, which is PAGE_EXECUTE_READ outside emission: it is a d3d9.dll
+// global (counter_outside() checks the encoded address; native Windows faulted
+// on the first hit when the counter sat in the arena, 2026-10-11).
 //   +00 85 ff                      TEST EDI,EDI
 //   +02 74 23                      JE   +0x27          ; no node (allocation failed): unchanged
 //   +04 83 7f 1c 00                CMP  dword [EDI+0x1c],0
@@ -105,6 +109,16 @@ inline void encode_stub(std::uint32_t stub_at, std::uint32_t release, std::uint3
     put32(out + call_rel32_offset, release - (stub_at + call_rel32_offset + 4));
     put32(out + hits_abs32_offset, hits);
     put32(out + slot_abs32_offset, slot);
+}
+// The counter address the stub's INC writes (the abs32 at hits_abs32_offset).
+inline std::uint32_t encoded_hits(const unsigned char stub[stub_length]) {
+    std::uint32_t v = 0;
+    for (unsigned i = 0; i < 4; ++i) v |= std::uint32_t(stub[hits_abs32_offset + i]) << (8 * i);
+    return v;
+}
+// Whether the four counter bytes at `hits` lie wholly outside [base, base + size) (the arena).
+inline bool counter_outside(std::uint32_t hits, std::uint32_t base, std::uint32_t size) {
+    return std::uint64_t(hits) + 4 <= base || std::uint64_t(hits) >= std::uint64_t(base) + size;
 }
 // The host model of one arrival at the site (the Wine fixture executes the
 // bytes): whether the stub releases the node and leaves the loop.

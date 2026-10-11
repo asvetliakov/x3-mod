@@ -2059,7 +2059,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // range (address_space.h); the address_space row is emitted when a pass covers the whole range (ticks=, us=).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 30 == 0)
         address_space::tick(ctx.id, ctx.frame);
-    // --perf/--debug: the dust-leak fix's detour count every 300 frames (one arena word read; nothing per frame).
+    // --perf/--debug: the dust-leak fix's detour count every 300 frames (one module word read; nothing per frame).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);
     // --perf/--debug: the lens-flare cull's count every 300 frames (one counter word read; nothing per frame).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) lens_flare_cull::report(ctx.frame);

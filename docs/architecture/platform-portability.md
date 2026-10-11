@@ -89,6 +89,14 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
+- Writes into the `engine_patch` arena (native-only failure, 2026-10-11). The arena is `PAGE_EXECUTE_READ` outside
+  emission; Wine/FEX tolerated a stub's data write into it, native Windows faults. The dust-leak stub's
+  `inc dword [hits]` crashed native Windows on its first hit
+  ([dust-leak-fix.md](../verification/dust-leak-fix.md), "Native Windows crash"); its counter is now a pinned DLL
+  global and the emitter refuses an encoded counter inside the arena. No general check exists yet that no other stub
+  encodes a write into the arena (the triage's `verification/results/windows-crash-2026-10-11/scan_arena_writes.py`
+  scans a captured arena for such forms); Wine does not fault such a write, so a fixture catches the class only by checking encoded write operands (the dust_leak_fix check), or by a VirtualQuery of each operand requiring a writable page (not implemented).
+  The fix is cross-compiled and host-checked; native execution is not re-verified.
 - The WMA speech decoder (`<game>/x3m/voice-decoder`, installed by `manage.py voice-decoder --install`; not in the release zip) is a
   CrossOver-only file set; native Windows decodes the voice files itself and never reads the folder. Delivery is
   host-side only: GStreamer reads the Unix environment, so a proxy `SetEnvironmentVariableW` does not reach it

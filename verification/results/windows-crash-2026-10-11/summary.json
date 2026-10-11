@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-11",
+  "platform": "native Windows (first native run), NVIDIA RTX 5070 Ti, C:\\X3, Mayhem 3 installed",
+  "dll": "release 1.1.0 stripped, 39,937,177 B, SHA-256 2d65b65f206a...",
+  "exception": "c0000005 eip=03b90461 write access=03b90474 frame=53096 unhandled=1",
+  "arena": {"base": "03b90000", "size": 24576, "source": "x3m.log voice_dmo_fallback row line 32"},
+  "dust_leak_fix": {"stub": "+0x440", "inc_hits": "+0x461 (stub +0x21, bytes ff 05 74 04 b9 03)", "slot": "+0x470", "hits": "+0x474 (value 0: first hit)"},
+  "dump": {"modules": 141, "module_covering_arena": null, "memory_info_list": false, "captured_arena_bytes": "0x7f1"},
+  "arena_write_scan": {"abs32_refs_into_arena": 56, "write_forms": 1, "write_form_address": "03b90461"},
+  "cause": "counter emitted inside the PAGE_EXECUTE_READ arena; native Windows faults on the write, Wine/FEX tolerated it (inferred from the passing Wine fixture and Run 109 A hits)",
+  "scripts": ["parse_minidump.py X3Crash.dmp 03b90461 03b90474 03b90000", "stack_at_fault.py", "scan_arena_writes.py", "compile_check.py"],
+  "inputs_local_untracked": ["C:\\X3\\X3Crash.dmp", "C:\\X3\\X3Crash.log", "C:\\X3\\x3m.log"]
+}

@@ -674,7 +674,10 @@ pop edx/ecx/eax; mov dword [esp+0x20],1; inc dword [hits]; done: jmp [slot]` →
 the displaced SUB's 1 = 0 makes the JNE fall through. Every register but the dead flags is as the
 engine left it (EAX/ECX/EDX by the pops, the rest callee-saved, ESP balanced), the FPU/SSE state is
 untouched (the release path for such a node runs no x87/SSE code, inferred from its callees), and
-no pointer into the DLL exists in the stub (the counter word lives in the arena after the slot).
+the stub's one pointer into the DLL is the counter `x3m_dust_leak_fix_hits` (a module global, the DLL
+pinned before emission; until 2026-10-11 the counter word sat in the arena after the slot, which is
+`PAGE_EXECUTE_READ` outside emission, and native Windows faulted on the INC: see
+[dust-leak-fix.md](../verification/dust-leak-fix.md), "Native Windows crash").
 
 **3. The loop exit is the function's own.** After the JNE falls through, `0x0041f4dc mov
 ecx,[esp+0x64]` onwards writes EAX/ECX/EDX/EBX/ESI/EDI/EBP before reading them (`0x0041f4dc`-

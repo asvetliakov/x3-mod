@@ -11,9 +11,11 @@
 // through engine_patch and pushes a 45-byte stub in front of the tail
 // (dust_leak_fix_sites.h): for a node that was never attached it calls the
 // engine's own node release 0x00487be0 and makes the loop end for this frame;
-// every other arrival is unchanged. The stub is emitted arena code with no
-// pointer into this module (its hit counter lives in the arena too); it
-// preserves every register but the dead flags. Claimed on the backend-load
+// every other arrival is unchanged. The stub is emitted arena code whose one
+// pointer into this module is its hit counter x3m_dust_leak_fix_hits (a write
+// target, so never in the PAGE_EXECUTE_READ arena; the module is pinned before
+// the stub is emitted, pin_failed otherwise); it preserves every register but
+// the dead flags. Claimed on the backend-load
 // path inside the engine_patch install window (a late call is refused,
 // late_claim) after the structural executable check and a 37-byte window
 // compare (fail closed); the chain link and a read-back of the patched span
@@ -24,6 +26,8 @@
 // the original bytes back on a dynamic unload only while the span still holds
 // our jump (one dust_leak_fix_restore row, written to the log handle without
 // the capture lock; foreign bytes are left alone, restore_not_owned).
+// The stub's counter (INC dword [abs32]); reset to 0 by each install before the stub is linked in.
+extern "C" volatile std::uint32_t x3m_dust_leak_fix_hits;
 namespace x3m::dust_leak_fix {
 bool initialize(); // backend-load path only; logs one dust_leak_fix site= line
 bool shutdown();   // dynamic-unload detach only; true when nothing stays registered

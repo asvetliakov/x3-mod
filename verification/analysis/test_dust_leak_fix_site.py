@@ -47,6 +47,14 @@ int main() {
     expect(!parse_mode("On", &m) && !parse_mode("", &m) && !parse_mode("on ", &m) && !parse_mode((const char*)nullptr, &m), "strict parse");
     expect(default_mode == Mode::on, "default on");
     expect(detours(0x1000, 0) && !detours(0, 0) && !detours(0x1000, 0x2000), "detour model");
+    // The INC's target is decoded from the stub; a counter overlapping the arena by any byte is refused.
+    expect(encoded_hits(out) == 0x00a30034u, "encoded_hits decodes the INC operand");
+    const std::uint32_t base = 0x00a30000u, size = 0x6000u;
+    expect(!counter_outside(0x00a30034u, base, size) && !counter_outside(base, base, size) &&
+           !counter_outside(base - 3, base, size) && !counter_outside(base + size - 1, base, size), "counter inside the arena refused");
+    expect(counter_outside(base - 4, base, size) && counter_outside(base + size, base, size) &&
+           counter_outside(0x6a4c1230u, base, size) && counter_outside(0xfffffffcu, base, size) &&
+           !counter_outside(0xfffffffeu, 0xfffff000u, 0x1000u), "counter outside the arena accepted, no wrap");
     std::printf("dust_leak_fix_core checks_failed=%u\n", failed);
     return failed ? 1 : 0;
 }
@@ -112,8 +120,27 @@ class DustLeakFixCore(unittest.TestCase):
                        '"dust_leak_fix_restore site=%08lx status=%s found=%s registered=%u\\n"'):
             self.assertIn(needle, module)
         self.assertNotIn('windows.h', source_text(ROOT / 'src/proxy/dust_leak_fix_sites.h'))
-        for forbidden in ('float ', 'double ', 'GetModuleHandleEx'):   # no FP, and no pin needed: the stub holds no pointer into the DLL
+        for forbidden in ('float ', 'double '):
             self.assertNotIn(forbidden, module)
+
+    def test_counter_is_a_module_global_outside_the_arena(self):
+        # Native Windows crash 2026-10-11: the counter sat in the PAGE_EXECUTE_READ arena (slot + 4) and the stub's
+        # INC faulted on the first hit. The stub now names the module global, the arena holds only the slot, the
+        # encoded operand is checked against the arena before any byte is emitted, and the module is pinned first.
+        module = source_text(ROOT / 'src/proxy/dust_leak_fix.cpp')
+        self.assertIn('volatile std::uint32_t x3m_dust_leak_fix_hits = 0;', module)
+        self.assertIn('extern "C" volatile std::uint32_t x3m_dust_leak_fix_hits;', source_text(ROOT / 'src/proxy/dust_leak_fix.h'))
+        self.assertIn('std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_dust_leak_fix_hits))', module)
+        self.assertIn('engine_patch::Emitter e(sites::stub_length + 3 + 4);', module)
+        self.assertEqual(module.count('e.dword(0);'), 1)
+        self.assertNotIn('slot + 4', module)
+        self.assertIn('sites::counter_outside(sites::encoded_hits(code)', module)
+        self.assertLess(module.index('return "counter_in_arena";'), module.index('e.bytes(code, sites::stub_length);'))
+        self.assertIn('GET_MODULE_HANDLE_EX_FLAG_PIN', module)
+        self.assertLess(module.index('!pin_self()'), module.index('reason = emit_stub(release, &stub, &slot);'))
+        fixture = source_text(ROOT / 'verification/probe/dust_leak_fix_patch_fixture.cpp')
+        self.assertIn('hits != std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_dust_leak_fix_hits))', fixture)
+        self.assertIn('sites::counter_outside(sites::encoded_hits(stub_bytes)', fixture)
 
 
 @unittest.skipUnless(EXE.is_file(), 'installed executable not present')

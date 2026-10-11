@@ -410,8 +410,9 @@ bool poke(unsigned char* at, const unsigned char* bytes, unsigned n) {
     return ok;
 }
 // The chain the claim built at `site`: jmp dispatcher; dispatcher = jmp [entry]; entry = stub; stub = the 45 bytes
-// with its three fields (the call reaches dlf_release, the counter and the slot follow the stub); *slot = the tail;
-// tail = the displaced SUB + jmp 0x0041f4d6.
+// with its three fields (the call reaches dlf_release, the counter is the module global x3m_dust_leak_fix_hits and
+// lies outside the arena, the slot follows the stub in the arena); *slot = the tail; tail = the displaced SUB + jmp
+// 0x0041f4d6.
 bool chain_ok(std::uintptr_t site, std::uintptr_t stub, char* detail, unsigned size) {
     unsigned char jump[5]{}, dispatcher[6]{}, stub_bytes[sites::stub_length]{}, tail[10]{},
         want[sites::stub_length]{};
@@ -445,7 +446,14 @@ bool chain_ok(std::uintptr_t site, std::uintptr_t stub, char* detail, unsigned s
         std::snprintf(detail, size, "stub bytes");
         return false;
     }
-    if ((slot & 3) || hits != slot + 4 || slot < arena || hits + 4 > arena + engine_patch::arena_capacity() ||
+    if (hits != std::uint32_t(reinterpret_cast<std::uintptr_t>(&x3m_dust_leak_fix_hits)) ||
+        !sites::counter_outside(sites::encoded_hits(stub_bytes), std::uint32_t(arena), engine_patch::arena_capacity())) {
+        std::snprintf(detail, size, "counter %08lx not the module global or inside the arena %08lx", static_cast<unsigned long>(hits),
+                      static_cast<unsigned long>(arena));
+        return false;
+    }
+    if ((slot & 3) || slot < stub + sites::stub_length || slot < arena ||
+        slot + 4 > arena + engine_patch::arena_capacity() ||
         !read_mem(slot, &tail_at, 4) || !read_mem(tail_at, tail, 10) ||
         std::memcmp(tail, sites::expected_site, 5) || tail[5] != 0xe9) {
         std::snprintf(detail, size, "slot %08lx hits %08lx tail %08lx", static_cast<unsigned long>(slot),
