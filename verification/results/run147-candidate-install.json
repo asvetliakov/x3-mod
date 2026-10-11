@@ -1,0 +1,15 @@
+{
+  "run": 147,
+  "platform": "native Windows 11, C:\\X3",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run146; cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+  "installed_at": "2026-10-12T01:21+04:00",
+  "commit": "e6806d1e",
+  "candidate_record": "verification/results/run147-candidate-build.json",
+  "installed": {"path": "C:\\X3\\d3d9.dll", "sha256": "8eb20091d4d21b7b0a27815dc7f0438a2bf28f5ab10e6825361232ad1fa4cdc8", "bytes": 57815199, "verified_bytes": true, "method": "cmp"},
+  "previous": {"run": 146, "sha256": "918a60a0292b366af272e3b2962f356a399f10629c127f5ba33552da8dfd964a", "bytes": 57803562, "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run146"},
+  "release_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run145 (release 1.2.0, 2b03a78a…)",
+  "unchanged": ["X3AP.exe", "x3m.ini (the 1.2.0 template ce51ba0e…, every key commented: defaults)", "engine_bodies.json", "fog-families.bin/json", "x3m-regenerate.exe"],
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "Run 146 A failed to bind; Run 147 A open",
+  "producer": "main session"
+}

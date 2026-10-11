@@ -1,0 +1,20 @@
+{
+  "dll": "scratchpad detached worktree of e6806d1e, build/d3d9.dll (discarded after install)",
+  "sha256": "8eb20091d4d21b7b0a27815dc7f0438a2bf28f5ab10e6825361232ad1fa4cdc8",
+  "bytes": 57815199,
+  "commit": "e6806d1e",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix, binutils 2.45.90, clang, cmake 4.2.3 + Ninja, Python 3.14.4 / NumPy 2.3.5); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0 in src",
+    "x87_audit": "PASS, reachable_functions 925, violations 0",
+    "host_tests": "test_chase_transition test_chase_restore_sites test_chase_camera: 70 OK on main; chase_transition_restore_host 264 checks",
+    "not_run": "Wine CPU-boundary fixture (built, no Wine on this host); native execution is what Run 147 A measures"
+  },
+  "changes_since_run146_source_3d1345ac": [
+    "e6806d1e chase_view_restore binds without the script-published sector (+0x1fc log-only, +0x54 logged too); load-chain cancel constant 0x0041f840; per-ticket soft-refusal diagnostics in the outcome row"
+  ],
+  "trigger": "Run 146 A: four tickets armed, captured the monitor (0xfffffded class 0x25e), went pending and never bound (sector_from=0 on every frame under Mayhem); verification/results/native-chase-view-restore-2026-10-12/",
+  "engine_bodies_and_fonts": "unchanged",
+  "producer": "main session (Fable 5.1), 2026-10-12T01:21+04:00; sha256sum; stat -c %s"
+}
