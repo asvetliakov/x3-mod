@@ -1,0 +1,23 @@
+{
+  "dll": "scratchpad detached worktree of 3d1345ac, build/d3d9.dll (second build of the same commit; the first, 995857ee…, was discarded before install; builds are not byte-reproducible across runs)",
+  "sha256": "918a60a0292b366af272e3b2962f356a399f10629c127f5ba33552da8dfd964a",
+  "bytes": 57803562,
+  "commit": "3d1345ac",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix, binutils 2.45.90, clang, cmake 4.2.3 + Ninja, Python 3.14.4 / NumPy 2.3.5); RelWithDebInfo, unstripped; clean configure+build 39 s (measured, first build)",
+  "gates": {
+    "warnings": "0 in src (both builds)",
+    "x87_audit": "PASS, reachable_functions 925, violations 0 (both builds)",
+    "host_tests": "test_chase_restore_sites test_chase_transition test_config_schema test_launcher_defaults test_chase_camera test_chase_transition_sites: 103 OK on main after the merge; chase_transition_restore_host 236 checks (implementation worktree); generate.py --check PASS 262/112; verify_chase_restore_sites.py --exe C:\\X3\\X3AP.exe PASS",
+    "not_run": "Wine CPU-boundary fixture (built, no Wine on this host); native execution of the four engine sites and the SelectMode call is what Run 146 A measures"
+  },
+  "changes_since_run145_source_e97c4644": [
+    "264bddb1 chase view restore triage (no DLL input)",
+    "3d6208f3 Ghidra paths (no DLL input)",
+    "54d2b5a9 design note (no DLL input)",
+    "f9cceed3 chase_view_restore from engine state (merge 3d1345ac): script-seam ticket replaced by engine-observed ticket + direct SelectMode(258) call; new setting chase_view_restore_retries"
+  ],
+  "trigger": "Run 145 session: restore never armed under Mayhem (arm_identity reason=4; the ticket hard-coded the stock script program); verification/results/native-chase-view-restore-2026-10-11/",
+  "engine_bodies_and_fonts": "unchanged",
+  "producer": "main session (Fable 5.1), 2026-10-12T01:01+04:00; sha256sum; stat -c %s"
+}
