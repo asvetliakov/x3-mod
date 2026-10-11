@@ -113,8 +113,9 @@ user and recorded in the [run queue](docs/verification/user-runs.md).
 ## Build
 
 Requirements: CMake, the i686 MinGW-w64 cross compiler, and Python 3 with NumPy
-2.0.2 (configuration stops with an error when the given interpreter cannot import
-it; nothing is installed for you).
+2.x (configuration stops with an error when the given interpreter cannot import
+it; nothing is installed for you; the pinned fog atlas hashes enforce identical
+output across 2.x releases).
 
 ```sh
 cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake \

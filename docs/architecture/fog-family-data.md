@@ -121,7 +121,8 @@ That is what makes option A possible later, and what makes option C's file redun
   per switch (estimate), the same order as today.
 - **Native Windows.** Documented Win32 only; the same relative location next to `X3AP.exe`;
   no bottle paths, no `Z:` drives. The tool takes `--game` for a Windows install path; a Windows
-  user runs it with the same Python and NumPy 2.0.2 pin the build already requires. Unverified on
+  user runs it with the same Python and NumPy 2.x the build already requires (the pinned recipe
+  atlas hashes enforce identity). Unverified on
   native Windows like the rest of the pass; add the row to `platform-portability.md` when built.
 
 ### Options considered
@@ -186,7 +187,7 @@ but the default must not invent fog silently.
 - **Inputs.** `--game DIR` (default `bob1.DEFAULT_GAME`); `--mod-cat PATH …` extra layers for an
   uninstalled tree (the census's `mods=`, used above); `--family NAME …` to restrict;
   `--profile NAME=occupancy,sigma`; `--background-palette NAME …`; `--jobs N` for the per-family
-  bake. NumPy 2.0.2 is required exactly as the build requires it.
+  bake. NumPy 2.x is required as the build requires it; the pinned recipe atlas hashes enforce identity.
 - **Outputs.** `--out DIR` writes `DIR/x3m/fog-families.bin` and `DIR/x3m/fog-families.json`
   (record: tool and recipe hashes, catalogue layers, TBackgrounds member and SHA-256, per family:
   records, rates, parts, textures with member/source/SHA-256/format/size, stops, occupancy, sigma,

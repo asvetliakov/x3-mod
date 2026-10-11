@@ -201,8 +201,8 @@ def main() -> int:
         return 0
     if args.output_dir is None:
         parser.error('--output-dir is required when baking')
-    if np.__version__ != recipe.REQUIRED_NUMPY:
-        raise SystemExit(f'NumPy {recipe.REQUIRED_NUMPY} required, found {np.__version__}')
+    if not recipe.numpy_supported(np.__version__):
+        raise SystemExit(f'NumPy {recipe.REQUIRED_NUMPY_MAJOR}.x required, found {np.__version__}')
     started = time.monotonic(); args.output_dir.mkdir(parents=True, exist_ok=True)
     carrier, mask, eligible, t1, interpolation = bake_fields(); rows = []
     for name, profile in recipe.PROFILES.items():

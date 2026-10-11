@@ -109,7 +109,7 @@ so keep the file pair (or rerun the tool, which retires it cleanly).
 
 From the repository: `python3 tools/regenerate/build.py` builds
 `dist/x3m-regenerate` for the host (PyInstaller one-file; needs Python with NumPy
-2.0.2, Pillow and `pip install --user pyinstaller`) and runs a smoke test on a
+2.x, Pillow and `pip install --user pyinstaller`) and runs a smoke test on a
 synthetic game directory. `python3 tools/regenerate/build.py --windows` builds
 `dist/x3m-regenerate.exe` on the Mac under Wine in a dedicated CrossOver bottle
 `X3M-Build` (created from the `win10_64` template; Python 3.12.10 x64 from

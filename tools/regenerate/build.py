@@ -2,7 +2,7 @@
 """Build the one-file x3m-regenerate executable (tools/regenerate/x3m_regenerate.spec) and smoke-test it.
 
   build.py                 host build (macOS/Linux): dist/x3m-regenerate with this Python's PyInstaller,
-                           NumPy 2.0.2 and Pillow (pip install --user pyinstaller), then the smoke test
+                           NumPy 2.x and Pillow (pip install --user pyinstaller), then the smoke test
   build.py --windows       dist/x3m-regenerate.exe built by Windows Python + PyInstaller under Wine in the
                            dedicated CrossOver bottle X3M-Build (created on first use from the win10_64
                            template; never the game bottle), then the same smoke test under Wine
@@ -56,6 +56,7 @@ BOTTLE_DIR = Path.home() / 'Library' / 'Application Support' / 'CrossOver' / 'Bo
 PY_VERSION = '3.12.10'
 PY_URL = f'https://www.python.org/ftp/python/{PY_VERSION}/python-{PY_VERSION}-amd64.exe'
 DOWNLOADS = Path('/tmp/x3m-build')
+# The bundled exe's fog_families bake has no pinned-hash gate, so the release exe keeps the NumPy it was measured with.
 WIN_PACKAGES = ['pyinstaller', 'numpy==2.0.2', 'pillow']
 EXPECTED = ('processing fog zzpkg', 'fog layers:', 'processing model ships/x/good', 'refused model ships/x/badtext',
             'slot plan: addon/01', 'engine bodies summary:', 'fog families: check passed', 'all done')
@@ -70,8 +71,8 @@ def run(cmd, **kw):
 
 def host_build():
     import numpy
-    if numpy.__version__ != '2.0.2':
-        raise SystemExit(f'NumPy 2.0.2 required (fog_families checks it at run time), found {numpy.__version__}')
+    if numpy.__version__.split('.', 1)[0] != '2':
+        raise SystemExit(f'NumPy 2.x required (fog_families checks it at run time), found {numpy.__version__}')
     rc = run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--distpath', DIST,
               '--workpath', ROOT / 'build' / 'regenerate', SPEC]).returncode
     if rc:

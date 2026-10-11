@@ -2,7 +2,16 @@
 
 import numpy as np
 
-REQUIRED_NUMPY = "2.0.2"
+# Any NumPy 2.x: the pinned per-profile atlas_sha256 values below are the reproducibility gate
+# (bake_fog_fields.py refuses a mismatch). NumPy 2.0.2 (Python 3.9) and 2.3.5 (Python 3.14) were
+# measured to reproduce all 14 pinned atlases identically.
+REQUIRED_NUMPY_MAJOR = 2
+
+
+def numpy_supported(version=np.__version__):
+    """True when a NumPy version string has the required major version."""
+    return version.split('.', 1)[0] == str(REQUIRED_NUMPY_MAJOR)
+
 PRNG = "numpy.random.default_rng/PCG64"
 PERIOD = 32768.0
 GRID = 128

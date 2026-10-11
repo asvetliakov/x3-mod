@@ -6,9 +6,9 @@ execute_process(
   RESULT_VARIABLE X3M_FOG_NUMPY_STATUS
   OUTPUT_VARIABLE X3M_FOG_NUMPY_VERSION
   ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(NOT X3M_FOG_NUMPY_STATUS EQUAL 0 OR NOT X3M_FOG_NUMPY_VERSION STREQUAL "2.0.2")
+if(NOT X3M_FOG_NUMPY_STATUS EQUAL 0 OR NOT X3M_FOG_NUMPY_VERSION MATCHES "^2\\.")
   message(FATAL_ERROR
-    "Spatial-fog asset generation requires importable NumPy 2.0.2 in "
+    "Spatial-fog asset generation requires importable NumPy 2.x in "
     "Python3_EXECUTABLE='${Python3_EXECUTABLE}' (reported "
     "'${X3M_FOG_NUMPY_VERSION}', import exit ${X3M_FOG_NUMPY_STATUS}). "
     "Select a prepared interpreter with "

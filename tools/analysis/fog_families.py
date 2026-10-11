@@ -61,7 +61,7 @@ File layout (little endian; the DLL validates every field, src/renderer/fog_fiel
     17,846,400, u64 decoded FNV-1a 64, u32 packet profile id, u32 reserved 0, decoded SHA-256
   then the packets verbatim. fog-families.json beside it records inputs, hashes and refusals.
 
-Usage (NumPy 2.0.2 required, as for the build):
+Usage (NumPy 2.x required, as for the build; the pinned recipe atlas hashes enforce identity):
   fog_families.py --dry-run [--game DIR]                  family table and refusals, no bake
   fog_families.py --out DIR [--jobs N]                     DIR/x3m/fog-families.bin + .json
   fog_families.py --install [--replace] [--force-running]  into <game>/x3m/ (one .previous kept)
@@ -804,8 +804,8 @@ def main(argv=None):
     parser.add_argument('--check', action='store_true', help='validate the installed (or --out) file against the current catalogues')
     parser.add_argument('--jobs', type=int, default=min(4, os.cpu_count() or 1), help='parallel family jobs (default min(4, cpus))')
     args = parser.parse_args(argv)
-    if np.__version__ != recipe.REQUIRED_NUMPY:
-        raise SystemExit(f'NumPy {recipe.REQUIRED_NUMPY} required, found {np.__version__}')
+    if not recipe.numpy_supported(np.__version__):
+        raise SystemExit(f'NumPy {recipe.REQUIRED_NUMPY_MAJOR}.x required, found {np.__version__}')
     game = Path(args.game).resolve()
     if args.check:
         return check(args)

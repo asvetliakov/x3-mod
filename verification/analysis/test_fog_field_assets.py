@@ -30,7 +30,7 @@ class FogFieldAssetsTests(unittest.TestCase):
 
     def test_exact_recipe_hashes_and_packet_sizes(self):
         rows = {row['name']: row for row in self.manifest['profiles']}
-        self.assertEqual(self.manifest['numpy'], '2.0.2')
+        self.assertTrue(self.manifest['numpy'].startswith('2.'), self.manifest['numpy'])
         self.assertEqual(self.manifest['prng'], 'numpy.random.default_rng/PCG64')
         self.assertEqual(rows['bluewell']['decoded_sha256'], '4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d')
         self.assertEqual(rows['foggreenoutlands']['decoded_sha256'], 'd0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c')
@@ -105,7 +105,7 @@ class FogFieldAssetsTests(unittest.TestCase):
             self.assertIn(f'"{row["name"]}.fogbin"',rc_rows)
             self.assertEqual(hashlib.sha256((self.a/(row['name']+'.fogbin')).read_bytes()).hexdigest(),row['resource_sha256'])
         self.assertIn('enable_language(RC)', module)
-        self.assertIn('NumPy 2.0.2', module)
+        self.assertIn('NumPy 2.x', module)
         self.assertIn('-DPython3_EXECUTABLE=/absolute/path/to/python3', module)
         self.assertIn('x3m_add_fog_field_assets', module)
         self.assertNotIn('verification/', (ROOT/'tools/build/bake_fog_fields.py').read_text())
@@ -165,7 +165,7 @@ class FogFieldAssetsTests(unittest.TestCase):
                              text=True, capture_output=True)
         diagnostic = bad.stdout + bad.stderr
         self.assertNotEqual(bad.returncode, 0)
-        self.assertIn('requires importable NumPy 2.0.2', diagnostic)
+        self.assertIn('requires importable NumPy 2.x', diagnostic)
         self.assertIn(str(unsupported), diagnostic)
         self.assertIn('-DPython3_EXECUTABLE=/absolute/path/to/python3', diagnostic)
 
