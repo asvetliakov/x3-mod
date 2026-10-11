@@ -1,0 +1,23 @@
+{
+  "dll": "scratchpad detached worktree of 47e977dd, build/d3d9.dll (discarded after install)",
+  "sha256": "ae293432c43b238091cef14609902a6ab5a301eb60bd9a992198edd6b7375c10",
+  "bytes": 57791918,
+  "commit": "47e977dd",
+  "dirty": false,
+  "source_commit_marker": "X3M_SOURCE_COMMIT=47e977dd067a0bf40c630626db60c4fb8982ca89 (one occurrence)",
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix from Ubuntu 26.10 pinned, binutils 2.45.90, clang, cmake+Ninja, Python 3.14.4 / NumPy 2.3.5); RelWithDebInfo, unstripped; clean configure+build 39 s (measured)",
+  "gates": {
+    "warnings": "0 in src",
+    "x87_audit": "PASS, reachable_functions 925, violations 0",
+    "host_tests": "test_fog_cards 3 OK (run278_docked_states admitted=10 refused=25 spaced=1); nothing else changed",
+    "not_run": "Wine fixtures (no Wine on this host); native confirmation is Run 144 A"
+  },
+  "changes_since_run143_source_a84a28b8": [
+    "a005b22d check_no_x87 .cold siblings (tooling, no DLL input)",
+    "54a16308 Run143 records (no DLL input)",
+    "47e977dd fog card state gate admits SEPARATEALPHABLENDENABLE 1 (the cockpit fog on/off flicker fix)"
+  ],
+  "trigger": "Run 143 A: cockpit-view volumetric fog on/off flicker reproduced natively; cockpit stretch 11705-17202 flipped 71 times, all 19 refusal rows sepalpha=1 (verification/results/native-cockpit-fog-flicker-2026-10-11/cockpit_gate_query.out)",
+  "engine_bodies_and_fonts": "unchanged (no change under tools/effects, tools/fonts, assets/fonts since bf5b8c9f)",
+  "producer": "main session (Fable 5.1), 2026-10-11 20:38 +04:00; sha256sum; stat -c %s"
+}
