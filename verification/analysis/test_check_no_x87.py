@@ -69,6 +69,28 @@ class NoX87RootTests(unittest.TestCase):
             self.assertEqual(result, 1)
             self.assertIn('draw_indexed: 2 symbols', summary['error'])
 
+    def test_cold_partition_is_the_same_function(self):
+        # GCC hot/cold splitting: `<root>.cold` is not a second root, is walked
+        # with its parent (reached only by conditional jumps the walker does not
+        # follow), and an x87 instruction in it is still a violation.
+        names = roots()
+        cold = names['set_vs'] + '.cold'
+        functions = dict.fromkeys(names.values(), [])
+        functions[names['set_vs']] = ['  1000:\tjne    2000 <%s>' % cold]
+        functions[cold] = ['  2000:\tldmxcsr -0x70(%ebp)', '  2004:\tjmp    1010 <%s+0x10>' % names['set_vs']]
+        result, summary = run_audit(functions)
+        self.assertEqual(result, 0, summary)
+        self.assertEqual(summary['roots']['set_vs'], names['set_vs'])
+        functions[cold].insert(0, '  1ffc:\tfld    (%eax)')
+        result, summary = run_audit(functions)
+        self.assertEqual(result, 1)
+        self.assertEqual(list(summary['violations']), [cold])
+        functions[cold] = []
+        del functions[names['set_vs']]
+        result, summary = run_audit(functions)
+        self.assertEqual(result, 1)
+        self.assertIn('set_vs: 0 symbols', summary['error'])
+
     def test_nested_thunks_cannot_supply_missing_root(self):
         names = roots()
         functions = dict.fromkeys(names.values(), [])

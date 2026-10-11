@@ -143,6 +143,18 @@ def parse(line):
     return (m.group(1), m.group(2)) if m else (None, '')
 
 
+COLD = '.cold'
+
+
+def hot_names(functions):
+    # GCC's hot/cold block partitioning (-freorder-blocks-and-partition, on at
+    # -O2 in the Ubuntu MinGW build; the macOS build did not split) moves a
+    # function's unlikely blocks into a sibling symbol `<name>.cold` reached by
+    # conditional jumps. The sibling is the same function: it never counts as a
+    # root candidate and is always walked together with its parent.
+    return [n for n in functions if not n.endswith(COLD)]
+
+
 def hook_symbol(functions, hook):
     # Match the function's own qualified name, not an enclosing function name
     # embedded in a local lambda/thunk/template mangling (__ZZ..., __ZN...I...).
@@ -152,7 +164,7 @@ def hook_symbol(functions, hook):
     namespace = '3x3m' + ('13loading_trace' if hook in GZ_HOOKS + CRYPT_HOOKS else '')
     pattern = re.compile(r'^__ZN' + namespace + r'12_GLOBAL__N_1L?'
                          + str(len(hook)) + re.escape(hook) + r'E')
-    matches = [n for n in functions if pattern.match(n)]
+    matches = [n for n in hot_names(functions) if pattern.match(n)]
     return matches
 
 
@@ -163,6 +175,8 @@ def walk(functions, roots):
         if name in seen or name not in functions:
             continue
         seen[name] = []
+        if name + COLD in functions:
+            stack.append(name + COLD)
         for line in functions[name]:
             mnemonic, operands = parse(line)
             if not mnemonic:
@@ -192,14 +206,14 @@ def main():
         roots[hook] = symbols[0]
     for row in LIGHT_LOADING_ROWS:
         prefix = f'{LIGHT_NAMESPACE}{len(row)}{row}E'
-        symbols = [n for n in functions if n.startswith(prefix)]
+        symbols = [n for n in hot_names(functions) if n.startswith(prefix)]
         if len(symbols) != 1:
             print(json.dumps({'result': 'FAIL', 'error': f'light::{row}: {len(symbols)} symbols {symbols}'}))
             return 1
         roots['light::' + row] = symbols[0]
     for name in CRYPT_FUNCTIONS:
         prefix = f'{CRYPT_NAMESPACE}{len(name)}{name}E'
-        symbols = [n for n in functions if n.startswith(prefix)]
+        symbols = [n for n in hot_names(functions) if n.startswith(prefix)]
         if len(symbols) != 1:
             print(json.dumps({'result': 'FAIL', 'error': f'crypt_cache::{name}: {len(symbols)} symbols {symbols}'}))
             return 1
@@ -209,7 +223,7 @@ def main():
             print(json.dumps({'result': 'FAIL', 'error': f'{symbol}: not found'}))
             return 1
         roots[symbol] = symbol
-    light = [n for n in functions if n.startswith(OWNERSHIP_LIGHT)]
+    light = [n for n in hot_names(functions) if n.startswith(OWNERSHIP_LIGHT)]
     if len(light) != 1:
         print(json.dumps({'result': 'FAIL', 'error': f'get_buffer_lock_view_light: {len(light)} symbols {light}'}))
         return 1
