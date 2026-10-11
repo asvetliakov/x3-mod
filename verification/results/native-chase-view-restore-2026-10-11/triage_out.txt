@@ -1,0 +1,42 @@
+L99 chase_view_restore installed=1 requested=1 sites=7 mutation=source_payload_258_at_0xf0c4b prefilter=armed_operand_addresses expiry_updates=600
+L154 fog_sector frame=0 reason=no_cockpit sector=00000000
+L160 chase_camera frame=0 mode=0 connect=0 cockpits_seen=0 snaps=0 coalesced=0 snap_reason=0 applied=0 refused_inactive=0 admitted_unbound=0
+L644 fog_sector frame=18716 reason=family_unsupported sector=265e8e08
+L713 chase_camera frame=18900 mode=1 connect=0 cockpits_seen=1 snaps=0 coalesced=0 snap_reason=0 applied=0 refused_inactive=0 admitted_unbound=0
+L923 chase_view_restore_arm_refused reason=4 cockpit=0x49666798 generation=1 mode=258 readable=7 connect=0 ship=0x47e69ad0 view=0x47e69ad0 handle=2 identity_valid=26
+L929 chase_camera frame=26700 mode=258 connect=0 cockpits_seen=1 snaps=None coalesced=None snap_reason=None applied=None refused_inactive=None admitted_unbound=None
+L931 chase_camera frame=26700 mode=258 connect=0 cockpits_seen=1 snaps=1 coalesced=0 snap_reason=1 applied=163 refused_inactive=0 admitted_unbound=0
+L3302 chase_camera frame=123600 mode=1 connect=0 cockpits_seen=1 snaps=1 coalesced=0 snap_reason=1 applied=96904 refused_inactive=0 admitted_unbound=0
+L3346 chase_camera frame=124200 mode=258 connect=0 cockpits_seen=1 snaps=2 coalesced=0 snap_reason=1 applied=96962 refused_inactive=0 admitted_unbound=0
+L4628 chase_camera frame=169200 mode=1 connect=0 cockpits_seen=1 snaps=2 coalesced=0 snap_reason=1 applied=141774 refused_inactive=0 admitted_unbound=0
+L4824 chase_camera frame=177300 mode=258 connect=0 cockpits_seen=1 snaps=3 coalesced=0 snap_reason=1 applied=141913 refused_inactive=0 admitted_unbound=0
+L6936 fog_sector frame=241433 reason=no_cockpit sector=00000000
+L6938 fog_sector frame=241434 reason=family_unsupported sector=80e89c18
+L6946 chase_camera frame=241500 mode=1 connect=0 cockpits_seen=2 snaps=3 coalesced=0 snap_reason=1 applied=206045 refused_inactive=0 admitted_unbound=0
+L6956 chase_camera frame=241800 mode=1 connect=0 cockpits_seen=1 snaps=3 coalesced=0 snap_reason=1 applied=206045 refused_inactive=0 admitted_unbound=0
+L6962 chase_camera frame=242100 mode=258 connect=0 cockpits_seen=1 snaps=4 coalesced=0 snap_reason=1 applied=206196 refused_inactive=0 admitted_unbound=0
+L7529 fog_sector frame=261351 reason=no_cockpit sector=00000000
+L7531 fog_sector frame=261352 reason=family_unsupported sector=80e8a6d0
+L7546 chase_camera frame=261600 mode=1 connect=0 cockpits_seen=2 snaps=4 coalesced=0 snap_reason=1 applied=225446 refused_inactive=0 admitted_unbound=0
+L7552 chase_camera frame=261900 mode=258 connect=0 cockpits_seen=1 snaps=5 coalesced=0 snap_reason=1 applied=225495 refused_inactive=0 admitted_unbound=0
+L8474 fog_sector frame=293115 reason=no_cockpit sector=00000000
+L8476 fog_sector frame=293116 reason=family_unsupported sector=a3b7b940
+L8515 chase_camera frame=293400 mode=1 connect=0 cockpits_seen=1 snaps=5 coalesced=0 snap_reason=1 applied=256709 refused_inactive=0 admitted_unbound=0
+L8522 chase_camera frame=293700 mode=258 connect=0 cockpits_seen=1 snaps=6 coalesced=0 snap_reason=1 applied=256733 refused_inactive=0 admitted_unbound=0
+L9944 chase_camera frame=347100 mode=1 connect=0 cockpits_seen=1 snaps=6 coalesced=0 snap_reason=1 applied=310107 refused_inactive=0 admitted_unbound=0
+L10002 chase_camera frame=349500 mode=258 connect=0 cockpits_seen=1 snaps=7 coalesced=0 snap_reason=1 applied=310367 refused_inactive=0 admitted_unbound=0
+L12692 chase_camera frame=451800 mode=1 connect=0 cockpits_seen=2 snaps=7 coalesced=0 snap_reason=1 applied=412542 refused_inactive=0 admitted_unbound=0
+L12699 chase_camera frame=452100 mode=1 connect=0 cockpits_seen=1 snaps=7 coalesced=0 snap_reason=1 applied=412542 refused_inactive=0 admitted_unbound=0
+L12785 chase_camera frame=455700 mode=258 connect=0 cockpits_seen=1 snaps=8 coalesced=0 snap_reason=1 applied=412698 refused_inactive=0 admitted_unbound=0
+L13647 fog_sector frame=487287 reason=no_cockpit sector=00000000
+L13649 fog_sector frame=487288 reason=family_unsupported sector=c825c270
+L13662 chase_camera frame=487500 mode=1 connect=0 cockpits_seen=2 snaps=8 coalesced=0 snap_reason=1 applied=444284 refused_inactive=0 admitted_unbound=0
+L13670 chase_camera frame=487800 mode=1 connect=0 cockpits_seen=1 snaps=8 coalesced=0 snap_reason=1 applied=444284 refused_inactive=0 admitted_unbound=0
+L13676 chase_camera frame=488100 mode=258 connect=0 cockpits_seen=1 snaps=9 coalesced=0 snap_reason=1 applied=444567 refused_inactive=0 admitted_unbound=0
+L16307 fog_sector frame=587129 reason=no_cockpit sector=00000000
+L16309 fog_sector frame=587130 reason=family_unsupported sector=c825b198
+L16324 chase_camera frame=587400 mode=1 connect=0 cockpits_seen=2 snaps=9 coalesced=0 snap_reason=1 applied=543595 refused_inactive=0 admitted_unbound=0
+L16330 chase_camera frame=587700 mode=1 connect=0 cockpits_seen=1 snaps=9 coalesced=0 snap_reason=1 applied=543595 refused_inactive=0 admitted_unbound=0
+L16370 fog_sector frame=588556 reason=no_cockpit sector=00000000
+L16379 chase_camera frame=588900 mode=1 connect=0 cockpits_seen=0 snaps=9 coalesced=0 snap_reason=1 applied=543595 refused_inactive=0 admitted_unbound=0
+counts {'chase_view_restore': 1, 'chase_view_restore_site': 7, 'chase_view_restore_arm_refused': 1}

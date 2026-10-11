@@ -1,0 +1,12 @@
+/mnt/c/X3/addon/04.cat offset 10102687 size 2312979 sha256 ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a
+  STRG [2190273]
+  CLAS [1815889]
+  CODE [12]
+  DEFS []
+  PROG []
+/mnt/c/X3/addon/07.cat offset 2468396 size 2182503 sha256 2c3101a8c04ddea76643099758bfdaefd18d79cdf37580095a12a8ce72199298
+  STRG [2058711]
+  CLAS [1912535]
+  CODE [12]
+  DEFS []
+  PROG []
