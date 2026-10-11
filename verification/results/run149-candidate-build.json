@@ -1,0 +1,13 @@
+{
+  "dll": "scratchpad detached worktree of 25daac8b, build/d3d9.dll (discarded after install)",
+  "sha256": "819b863b6c8bde5a9eeb8a1583383221729db4b575ce5f7548d2ab03f7a509dc",
+  "bytes": 57834713,
+  "commit": "25daac8b",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix, binutils 2.45.90, clang, cmake 4.2.3 + Ninja, Python 3.14.4 / NumPy 2.3.5); RelWithDebInfo, unstripped",
+  "gates": {"warnings": "0 in src", "x87_audit": "PASS, reachable_functions 925, violations 0", "host_tests": "test_chase_transition test_chase_restore_sites test_chase_camera test_launcher_defaults: OK; chase_transition_restore_host 306 checks; CPU fixture scenarios 11-12 built (not run: no Wine)", "not_run": "Wine CPU-boundary fixture; native execution is what Run 149 A measures"},
+  "changes_since_run148_source_3454a1cf": ["2d568d33 Run 148 A HUD triage (no DLL input)", "25daac8b UpdateVisibility after SelectMode on the manager captured from the task's return records; hud_refresh fields"],
+  "trigger": "Run 148 A: restore works (7/7 restored attempts=1); the game's crosshair/distance HUD stays hidden after an in-sector ship-change restore (no Show after SelectMode on that path)",
+  "engine_bodies_and_fonts": "unchanged",
+  "producer": "main session (Fable 5.1), 2026-10-12T02:09+04:00; sha256sum; stat -c %s"
+}
