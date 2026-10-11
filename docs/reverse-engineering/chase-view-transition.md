@@ -767,7 +767,7 @@ to the cockpit, ship in the native registry by `[ship+8]` with
 the destructor `0x0041ffc0` of the armed cockpit from caller `0x0042d402`
 (any other caller `cancel=destructor`); the fresh cockpit from constructor
 caller `0x0042d397` becomes due after two consecutive applied frames at mode 1
-with the same proofs, the controller unchanged and `+0x1fc` non-null (any
+with the same proofs and the controller unchanged (`+0x1fc` is script-published and 0 under Mayhem, so log-only; any
 ship, any sector); at the kind-6 store into that cockpit the dispatcher frame
 (`[ebp+4] == 0x4a3909`, `[ebp+0xc]` task, `[task+0x3c]` context) yields the
 storing script object's id and class, the main monitor; at the next
@@ -781,13 +781,13 @@ the callee. The kind-6 observer sees the result synchronously: 258 on the
 bound cockpit `result=restored`, another value `result=other_mode`
 (terminal), nothing `result=no_effect` with up to `retries` more calls ≥ 60
 updates apart, `AL 0` from the wrapper `result=call_refused`. Cancels:
-load-chain constructor (`0x0041f83b`) and the bound cockpit's destruction
+load-chain constructor (return address `0x0041f840`, call at `0x0041f83b`) and the bound cockpit's destruction
 `lifetime`, a destruction while nothing is bound `second_destruction`,
 controller change `identity`, mode ≠ 1 before due `mode_left`, 600 updates
 from pending `expiry`, kind 7 `load`, VM clear/load/EH `epoch`, no captured
 monitor `no_monitor`, an unreported call `call_unwound`. Rows: `chase_view_restore result=… cancel=… attempts=
 monitor= monitor_class= mode_seen= generation_from/to= ship_id_from/to=
-sector_from/to= wait_updates= frame=` once per ticket outcome;
+sector_from/to= sector54_from/to= wait_updates= frame= soft_*= skip_caller= first_skip_caller= first_soft=` once per ticket outcome;
 `chase_view_restore_arm_refused` once per reason; the install line
 `chase_view_restore installed=1 path=engine sites=1 cancel_sites=3
 inject_site=0x00410100 call=0x0049f570 method=SelectMode mode=258 …`; the

@@ -1,0 +1,4 @@
+x3story_04.obj name GetCurrentObjectIDInSector strg_offsets [99116] rows [(132116, '0x18844a', 4, 0)]
+x3story_07.obj name GetCurrentObjectIDInSector strg_offsets [103437] rows [(133480, '0x1a3475', 4, 0)]
+x3story_04.obj name SelectMode strg_offsets [21487] rows [(81312, '0xf07cc', 10, 1)]
+x3story_07.obj name SelectMode strg_offsets [22985] rows [(82760, '0x106b1f', 10, 1)]

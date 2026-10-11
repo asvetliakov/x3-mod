@@ -38,7 +38,7 @@ constexpr unsigned cockpit_scene_camera = 0x08, cockpit_ref_object = 0x0c, cockp
                    cockpit_camera = 0x58, cockpit_view_rel = 0xf0;
 constexpr unsigned cockpit_view_mode = 0x150, cockpit_flags = 0x1a0, cockpit_connect_mode = 0x1c0,
                    cockpit_aim_gun = 0x1d8, cockpit_tracked = 0x1e0, cockpit_tracking_mode = 0x1e4,
-                   cockpit_sector = 0x1fc;
+                   cockpit_sector = 0x1fc, cockpit_sector_object = 0x54;
 constexpr unsigned camera_position = 0x30, camera_basis = 0x40, camera_fov = 0x298, camera_plane_w = 0x300,
                    camera_plane_h = 0x304;
 constexpr unsigned max_cockpits_seen = 8;
@@ -219,6 +219,7 @@ void handle(uint32_t* regs) {
         observed.ref = ref_object;
         observed.view = view_object;
         observed.sector = u32(cockpit_bytes, cockpit_sector);
+        observed.sector54 = u32(cockpit_bytes, cockpit_sector_object);
         chase_transition::restore_observe_frame(observed);
     }
     if (!active) {

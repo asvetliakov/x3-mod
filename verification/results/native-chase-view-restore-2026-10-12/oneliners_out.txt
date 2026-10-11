@@ -1,0 +1,126 @@
+89:chase_transition installed=1 diagnostics=0 observers=1 mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=0 qpc_frequency=0 identity_version=1 origin_pairs=6 identity_scope=admitted_events
+99:chase_view_restore installed=1 requested=1 path=engine sites=1 cancel_sites=3 inject_site=0x00410100 call=0x0049f570 method=SelectMode mode=258 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
+523:;debug = 0
+527:;perf = 0
+827:chase_view_restore result=cancelled cancel=expiry attempts=0 monitor=0xfffffded monitor_class=0x25e mode_seen=0 generation_from=1 generation_to=0 ship_id_from=0xffff02e3 ship_id_to=0x00000000 sector_from=0x00000000 sector_to=0x00000000 wait_updates=601 frame=6600
+1162:chase_view_restore result=cancelled cancel=expiry attempts=0 monitor=0xfffffded monitor_class=0x25e mode_seen=0 generation_from=2 generation_to=0 ship_id_from=0xffff1766 ship_id_to=0x00000000 sector_from=0x00000000 sector_to=0x00000000 wait_updates=601 frame=18000
+1288:chase_view_restore result=cancelled cancel=mode_left attempts=0 monitor=0xfffffded monitor_class=0x25e mode_seen=0 generation_from=3 generation_to=0 ship_id_from=0xffff1766 ship_id_to=0x00000000 sector_from=0x00000000 sector_to=0x00000000 wait_updates=443 frame=22500
+1397:chase_view_restore result=cancelled cancel=mode_left attempts=0 monitor=0xfffffded monitor_class=0x25e mode_seen=0 generation_from=4 generation_to=0 ship_id_from=0xffff02e3 ship_id_to=0x00000000 sector_from=0x00000000 sector_to=0x00000000 wait_updates=556 frame=25800
+0 frames=0 applied=0 inactive=0 unbound=0 seen=0 mode=0 connect=0 flags=0x0
+300 frames=0 applied=0 inactive=0 unbound=0 seen=0 mode=0 connect=0 flags=0x0
+600 frames=0 applied=0 inactive=0 unbound=0 seen=0 mode=0 connect=0 flags=0x0
+900 frames=0 applied=0 inactive=0 unbound=0 seen=0 mode=0 connect=0 flags=0x0
+1200 frames=0 applied=0 inactive=0 unbound=0 seen=0 mode=0 connect=0 flags=0x0
+1500 frames=0 applied=0 inactive=0 unbound=0 seen=0 mode=0 connect=0 flags=0x0
+1800 frames=268 applied=268 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+2100 frames=568 applied=568 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+2400 frames=868 applied=868 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+2700 frames=1168 applied=1168 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+3000 frames=1468 applied=1468 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+3300 frames=1768 applied=1768 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+3600 frames=2068 applied=2068 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+3900 frames=2368 applied=2368 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+4200 frames=2668 applied=2668 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+4500 frames=2968 applied=2968 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+4800 frames=3268 applied=3268 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+5100 frames=3568 applied=3568 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+5400 frames=3868 applied=3868 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+5700 frames=4168 applied=4168 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+6000 frames=4468 applied=4468 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+6300 frames=4768 applied=4660 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+6600 frames=5068 applied=4660 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+6900 frames=5368 applied=4660 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+7200 frames=5668 applied=4660 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+7500 frames=5968 applied=4660 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+7800 frames=6268 applied=4948 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+8100 frames=6568 applied=5248 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+8400 frames=6868 applied=5548 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+8700 frames=7168 applied=5848 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+9000 frames=7468 applied=6148 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+9300 frames=7768 applied=6448 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+9600 frames=8068 applied=6748 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+9900 frames=8368 applied=7048 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+10200 frames=8668 applied=7348 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+10500 frames=8968 applied=7648 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+10800 frames=9268 applied=7948 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+11100 frames=9568 applied=8248 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+11400 frames=9868 applied=8548 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+11700 frames=10168 applied=8848 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+12000 frames=10468 applied=9148 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+12300 frames=10768 applied=9448 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+12600 frames=11068 applied=9748 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+12900 frames=11368 applied=10048 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+13200 frames=11668 applied=10348 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+13500 frames=11968 applied=10648 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+13800 frames=12268 applied=10948 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+14100 frames=12568 applied=11248 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+14400 frames=12868 applied=11548 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+14700 frames=13168 applied=11848 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+15000 frames=13468 applied=12148 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+15300 frames=13768 applied=12448 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+15600 frames=14068 applied=12748 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+15900 frames=14368 applied=13048 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+16200 frames=14668 applied=13348 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+16500 frames=14968 applied=13648 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+16800 frames=15268 applied=13948 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+17100 frames=15568 applied=14248 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+17400 frames=15868 applied=14548 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+17700 frames=16167 applied=14699 inactive=0 unbound=0 seen=2 mode=1 connect=0 flags=0x0
+18000 frames=16467 applied=14699 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+18300 frames=16767 applied=14713 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+18600 frames=17067 applied=15013 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+18900 frames=17367 applied=15313 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+19200 frames=17667 applied=15613 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+19500 frames=17967 applied=15913 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+19800 frames=18267 applied=16213 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+20100 frames=18567 applied=16513 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+20400 frames=18867 applied=16813 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+20700 frames=19167 applied=17113 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+21000 frames=19467 applied=17413 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+21300 frames=19767 applied=17713 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+21600 frames=20067 applied=18013 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+21900 frames=20367 applied=18313 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+22200 frames=20667 applied=18613 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+22500 frames=20967 applied=18666 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+22800 frames=21267 applied=18771 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+23100 frames=21567 applied=19071 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+23400 frames=21867 applied=19371 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+23700 frames=22167 applied=19671 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+24000 frames=22467 applied=19971 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+24300 frames=22767 applied=20271 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+24600 frames=23067 applied=20571 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+24900 frames=23367 applied=20871 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+25200 frames=23667 applied=21171 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+25500 frames=23966 applied=21261 inactive=0 unbound=0 seen=2 mode=1 connect=0 flags=0x0
+25800 frames=24266 applied=21261 inactive=0 unbound=0 seen=1 mode=1 connect=0 flags=0x0
+26100 frames=24566 applied=21515 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+26400 frames=24866 applied=21815 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+26700 frames=25166 applied=22115 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+27000 frames=25466 applied=22415 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+27300 frames=25469 applied=22418 inactive=0 unbound=0 seen=1 mode=258 connect=0 flags=0x0
+     92 coalesced=0
+151:volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000
+499:volumetric_fog_sector device=1 frame=1533 profile=0 reason=family_unsupported sector=4daa56d0 index=52 generation=1 density_scale=1.000
+1125:volumetric_fog_sector device=1 frame=17552 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000
+1127:volumetric_fog_sector device=1 frame=17553 profile=0 reason=family_unsupported sector=9fd981a8 index=245 generation=1 density_scale=1.0
+1369:volumetric_fog_sector device=1 frame=25291 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000
+1371:volumetric_fog_sector device=1 frame=25292 profile=0 reason=family_unsupported sector=9fd98f70 index=52 generation=1 density_scale=1.00
+1445:volumetric_fog_sector device=1 frame=27005 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000
+# 5 cockpit update 0x00421019..0x004210f0, +0x1fc writer (listing cut to the load-bearing instructions):
+00421024 mov [ebx+0x1fc], 0          ; +0x1fc zeroed on every update
+00421034 push 0x137 / 00421039 call  ; class 0x137 lookup; 0 -> skip to 0x004210dc (stays 0)
+00421062 push 0x55b690 / 00421067 call 0x4b0740 ; method-name lookup, name at 0x55b690 (inferred GetCurrentObjectIDInSector, section 6)
+00421092 call 0x49f570                ; script call on class 0x137
+004210a7..004210d2                    ; result id resolved through the registry at 0x60850c
+004210d6 mov [ebx+0x1fc], eax         ; the only other +0x1fc write in this range: the script call result
+derived: +0x1fc is script-published (0 whenever the class-0x137 call yields no object); under Mayhem
+derived: it reads 0 on every frame (sector_from=0x00000000 in all four outcome rows above), while the
+derived: fog sampler's +0x54 path reads non-zero sectors (section 4).
+target=0041f8d0 refs=2 call@0041f83b ret=0041f840 call@0042d392 ret=0042d397
+target=0041fbe8 refs=0 
+target=0041fe04 refs=0 
+target=0041ffc0 refs=2 call@0041ccfb ret=0041cd00 call@0042d3fd ret=0042d402
+x3story_04.obj parsed=146100/146100 classes=280 id_max=0x2329 class_0x137_present=1 chain=['0x137'] GetCurrentObjectIDInSector_resolves=1 first_methods=['Init', 'FindBriefing', 'GetBriefing', 'RemoveBriefing'] owners_of_GetCurrentObjectIDInSector=['0x137']
+x3story_07.obj parsed=146168/146168 classes=273 id_max=0x2329 class_0x137_present=1 chain=['0x137'] GetCurrentObjectIDInSector_resolves=1 first_methods=['Init', 'FindBriefing', 'GetBriefing', 'RemoveBriefing'] owners_of_GetCurrentObjectIDInSector=['0x137']
+x3story_04.obj name GetCurrentObjectIDInSector strg_offsets [99116] rows [(132116, '0x18844a', 4, 0)]
+x3story_07.obj name GetCurrentObjectIDInSector strg_offsets [103437] rows [(133480, '0x1a3475', 4, 0)]

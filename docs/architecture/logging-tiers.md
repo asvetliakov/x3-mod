@@ -416,7 +416,10 @@ the ~5 MB per hour estimated in section 1 (inferred), 1.4 % of its 360 MB.
 
 **Chase view restore (engine path, 2026-10-12).** Every tier: the install rows `chase_view_restore installed=… path=engine
 …` and `chase_view_restore_site` (once each), `chase_view_restore result=… cancel=…` once per ticket outcome (one per
-transit at most, plus one per expired or cancelled ticket) and `chase_view_restore_arm_refused` once per refusal reason per
+transit at most, plus one per expired or cancelled ticket; it carries `sector_from/to` (`+0x1fc`) and `sector54_from/to`
+(`+0x54`), the ticket's soft-refusal counters while pending/due `soft_unreadable= soft_mode_zero= soft_connect_flags_view=
+soft_no_handle= soft_ship_dead=`, `skip_caller=` / `first_skip_caller=` for fresh cockpits of another constructor caller,
+and `first_soft=reason,+0x1fc,+0x54,mode,handle` of the first refused frame; fixed counters, no allocation) and `chase_view_restore_arm_refused` once per refusal reason per
 session. Telemetry only: the windowed `chase_view_restore_state` (phase, counters, results, cancels) and
 `chase_view_restore_timing` per site kind plus `kind=frame` for the chase-hook observer. The former `chase_view_restore_seam`
 and `chase_view_restore_transfer_refused` rows no longer exist.

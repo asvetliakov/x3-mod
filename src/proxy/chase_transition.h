@@ -19,7 +19,7 @@ bool restore_installed();
 // camera already read from the cockpit block. Cheap when nothing is armed.
 struct AppliedFrame {
     std::uintptr_t cockpit = 0;
-    std::uint32_t mode = 0, connect = 0, flags = 0, ref = 0, view = 0, sector = 0;
+    std::uint32_t mode = 0, connect = 0, flags = 0, ref = 0, view = 0, sector = 0, sector54 = 0; // +0x1fc, +0x54
 };
 void restore_observe_frame(const AppliedFrame& frame) noexcept;
 std::uint64_t generation(std::uintptr_t cockpit) noexcept;

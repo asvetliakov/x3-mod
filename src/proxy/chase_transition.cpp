@@ -268,13 +268,22 @@ void restore_emit_sample(const detail::RestoreArmSample& s) {
         unsigned(s.armed));
 }
 void restore_emit_outcome(const detail::RestoreOutcome& o) {
-    log("chase_view_restore result=%s cancel=%s attempts=%u monitor=0x%08lx monitor_class=0x%lx mode_seen=%lu generation_from=%llu generation_to=%llu ship_id_from=0x%08lx ship_id_to=0x%08lx sector_from=0x%08lx sector_to=0x%08lx wait_updates=%lu frame=%llu",
+    log("chase_view_restore result=%s cancel=%s attempts=%u monitor=0x%08lx monitor_class=0x%lx mode_seen=%lu generation_from=%llu generation_to=%llu ship_id_from=0x%08lx ship_id_to=0x%08lx sector_from=0x%08lx sector_to=0x%08lx sector54_from=0x%08lx sector54_to=0x%08lx wait_updates=%lu frame=%llu soft_unreadable=%lu soft_mode_zero=%lu soft_connect_flags_view=%lu soft_no_handle=%lu soft_ship_dead=%lu skip_caller=%lu first_skip_caller=0x%08lx first_soft=%lu,0x%08lx,0x%08lx,%lu,%lu",
         detail::restore_result_name(o.result), detail::restore_cancel_name(o.cancel), o.attempts,
         static_cast<unsigned long>(o.monitor), static_cast<unsigned long>(o.monitor_class),
         static_cast<unsigned long>(o.mode_seen), o.generation_from, o.generation_to,
         static_cast<unsigned long>(o.ship_id_from), static_cast<unsigned long>(o.ship_id_to),
         static_cast<unsigned long>(o.sector_from), static_cast<unsigned long>(o.sector_to),
-        static_cast<unsigned long>(o.wait_updates), restore_report_frame);
+        static_cast<unsigned long>(o.sector54_from), static_cast<unsigned long>(o.sector54_to),
+        static_cast<unsigned long>(o.wait_updates), restore_report_frame,
+        static_cast<unsigned long>(o.soft[detail::soft_unreadable]),
+        static_cast<unsigned long>(o.soft[detail::soft_mode_zero]),
+        static_cast<unsigned long>(o.soft[detail::soft_connect_flags_view]),
+        static_cast<unsigned long>(o.soft[detail::soft_no_handle]),
+        static_cast<unsigned long>(o.soft[detail::soft_ship_dead]), static_cast<unsigned long>(o.skip_caller),
+        static_cast<unsigned long>(o.first_skip_caller), static_cast<unsigned long>(o.first_soft),
+        static_cast<unsigned long>(o.first_soft_sector), static_cast<unsigned long>(o.first_soft_sector54),
+        static_cast<unsigned long>(o.first_soft_mode), static_cast<unsigned long>(o.first_soft_handle));
 }
 struct RestoreRows {
     detail::RestoreArmSample sample;
@@ -300,6 +309,7 @@ void restore_read_frame(std::uintptr_t cockpit, detail::RestoreFrame& f) {
     f.readable = cockpit && !(cockpit & 3) && field(cockpit, 0x150, f.mode) && field(cockpit, 0x1c0, f.connect) &&
                  field(cockpit, 0x1a0, f.flags) && field(cockpit, 0xc, f.ref) && field(cockpit, 0x10, f.view) &&
                  field(cockpit, 0x1fc, f.sector);
+    if (f.readable && !field(cockpit, 0x54, f.sector54)) f.sector54 = 0; // log-only
 }
 // Update-begin (kind 3): the expiry clock, every cockpit update.
 void restore_on_update() {
@@ -804,6 +814,7 @@ void restore_observe_frame(const AppliedFrame& frame) noexcept {
     f.ref = frame.ref;
     f.view = frame.view;
     f.sector = frame.sector;
+    f.sector54 = frame.sector54;
     f.readable = frame.cockpit != 0 && !(frame.cockpit & 3);
     RestoreRows rows;
     {

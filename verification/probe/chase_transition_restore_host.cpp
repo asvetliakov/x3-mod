@@ -35,7 +35,8 @@ struct Probe {
     }
 };
 constexpr std::uint32_t old_cockpit = 0x1000, new_cockpit = 0x2000, side_cockpit = 0x3000, ship = 0x47e69ad0u,
-                        sector_a = 0x265e8e08u, sector_b = 0x80e89c18u, monitor_id = 0xffff6eaeu,
+                        sector_a = 0x265e8e08u, sector_b = 0x80e89c18u, sector54_a = 0x4daa56d0u,
+                        sector54_b = 0x9fd981a8u, monitor_id = 0xffff6eaeu,
                         monitor_class = 0x25e, thread = 11;
 struct World {
     RestoreState st;
@@ -47,6 +48,7 @@ struct World {
         f.mode = restore_rear_mode;
         f.ref = f.view = ship;
         f.sector = sector_a;
+        f.sector54 = sector54_a;
         f.generation = gen;
         f.constructor_caller = restore_alloc_caller;
         f.readable = true;
@@ -57,6 +59,7 @@ struct World {
         RestoreFrame f = rear(cockpit, gen);
         f.mode = mode;
         f.sector = sector;
+        f.sector54 = sector54_b;
         return f;
     }
     bool frame(const RestoreFrame& f) { return st.on_frame(f, p, epoch); }
@@ -467,6 +470,79 @@ int main() {
         RestoreFrame stale = w.rear(old_cockpit, 7);
         stale.connect = 2;
         check(!w.frame(stale) && w.st.phase == phase_armed, "the same address at another generation is not the armed one");
+    }
+    // 21. Run 146 A (Mayhem): +0x1fc reads 0 on every frame; the sector is log-only, so the fresh cockpit
+    // binds, reaches due and restores, and the row carries the +0x54 sectors.
+    {
+        World w;
+        RestoreFrame r = w.rear();
+        r.sector = 0;
+        check(w.frame(r) && w.st.phase == phase_armed && w.st.arm_sector == 0 && w.st.arm_sector54 == sector54_a,
+              "a rear frame with +0x1fc 0 arms and records +0x54");
+        w.st.on_destroy(old_cockpit, 1, restore_free_caller);
+        w.st.on_complete(restore_alloc_caller);
+        w.st.on_mode_store(new_cockpit, 2, restore_internal_mode, thread, restore_alloc_caller, monitor_id, monitor_class);
+        w.due(0);
+        check(w.st.bound_cockpit == new_cockpit && w.st.bound_generation == 2, "+0x1fc 0 binds the fresh cockpit");
+        check(w.inject(0).wanted, "+0x1fc 0 reaches the call");
+        w.st.on_mode_store(new_cockpit, 2, restore_rear_mode, thread, restore_alloc_caller, monitor_id, monitor_class);
+        w.st.on_call_result(true);
+        const RestoreOutcome o = w.st.take_outcome();
+        check(o.result == result_restored && o.sector_from == 0 && o.sector_to == 0 && o.sector54_from == sector54_a &&
+                  o.sector54_to == sector54_b && o.generation_to == 2,
+              "restored with +0x1fc 0; the row logs +0x54 from/to");
+    }
+    // 22. The load chain's constructor is recorded by its return address 0x0041f840 (call at 0x0041f83b).
+    {
+        World w;
+        w.arm_and_free();
+        w.st.on_complete(0x0041f83bu);
+        check(w.st.phase == phase_pending, "the call address 0x0041f83b is not a recorded caller and cancels nothing");
+        w.st.on_complete(0x0041f840u);
+        check(w.st.phase == phase_idle && w.st.cancels[cancel_lifetime] == 1 &&
+                  w.st.take_outcome().cancel == cancel_lifetime,
+              "constructor completion from 0x0041f840 while pending cancels lifetime");
+    }
+    // 23. Soft refusals while pending are counted per reason; the first refused frame is recorded; a
+    // fresh cockpit of another constructor caller counts as skip_caller; the counters reset per ticket.
+    {
+        World w;
+        w.arm_and_free();
+        RestoreFrame f = w.fresh();
+        f.readable = false;
+        check(!w.frame(f), "unreadable frame does not count");
+        check(!w.frame(w.fresh(new_cockpit, 2, sector_b, 0)), "mode 0 frame does not count");
+        f = w.fresh();
+        f.connect = 2;
+        check(!w.frame(f), "connect frame does not count");
+        w.p.control = false;
+        check(!w.frame(w.fresh()), "no active control does not count");
+        w.p.control = true;
+        w.p.live = false;
+        check(!w.frame(w.fresh()) && !w.frame(w.fresh()), "dead ship does not count");
+        w.p.live = true;
+        f = w.fresh(side_cockpit, 5);
+        f.constructor_caller = restore_load_constructor_caller;
+        check(!w.frame(f), "a non-alloc cockpit frame is skipped");
+        check(w.st.phase == phase_pending, "soft refusals keep the ticket pending");
+        w.st.on_load();
+        const RestoreOutcome o = w.st.take_outcome();
+        check(o.cancel == cancel_load && o.soft[soft_unreadable] == 1 && o.soft[soft_mode_zero] == 1 &&
+                  o.soft[soft_connect_flags_view] == 1 && o.soft[soft_no_handle] == 1 && o.soft[soft_ship_dead] == 2 &&
+                  o.skip_caller == 1 && o.first_skip_caller == restore_load_constructor_caller,
+              "the outcome row carries the soft counters and the skipped caller");
+        check(o.first_soft == soft_unreadable && o.first_soft_sector == sector_b && o.first_soft_sector54 == sector54_b &&
+                  o.first_soft_mode == restore_internal_mode && o.first_soft_handle == 0,
+              "the first soft frame is recorded with +0x1fc, +0x54, mode and handle");
+        w.arm_and_free();
+        w.p.live = false;
+        check(!w.frame(w.fresh()), "dead ship on the next ticket");
+        w.p.live = true;
+        w.st.on_load();
+        const RestoreOutcome n = w.st.take_outcome();
+        check(n.soft[soft_unreadable] == 0 && n.soft[soft_ship_dead] == 1 && n.first_soft == soft_ship_dead &&
+                  n.first_soft_handle == w.p.handle && n.skip_caller == 0,
+              "counters reset per ticket; a later refusal records the active-control handle");
     }
     std::printf("chase restore host: %u checks PASS\n", checks);
 }

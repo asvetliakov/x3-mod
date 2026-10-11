@@ -1,0 +1,2 @@
+x3story_04.obj parsed=146100/146100 classes=280 id_max=0x2329 class_0x137_present=1 chain=['0x137'] GetCurrentObjectIDInSector_resolves=1 first_methods=['Init', 'FindBriefing', 'GetBriefing', 'RemoveBriefing'] owners_of_GetCurrentObjectIDInSector=['0x137']
+x3story_07.obj parsed=146168/146168 classes=273 id_max=0x2329 class_0x137_present=1 chain=['0x137'] GetCurrentObjectIDInSector_resolves=1 first_methods=['Init', 'FindBriefing', 'GetBriefing', 'RemoveBriefing'] owners_of_GetCurrentObjectIDInSector=['0x137']

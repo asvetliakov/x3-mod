@@ -6,8 +6,8 @@
 // 2026-10-12). The ticket is armed from applied 258 frames of the player's
 // active-control cockpit, transferred to pending by the cockpit free command,
 // bound to the fresh cockpit from the alloc command by the active-control
-// proof, a registry-live ship and a published sector (any ship, any sector:
-// the trigger is the cockpit replacement itself), and consumed at the input
+// proof and a registry-live ship (any ship, any sector: the trigger is the
+// cockpit replacement itself; the sector is log-only), and consumed at the input
 // routine's entry by the engine's own by-name script call
 // `SelectMode(258)` on the main monitor object captured at the mode store the
 // script made into that cockpit. Every decision is made from the fresh fields
@@ -15,8 +15,10 @@
 // retained across callbacks.
 namespace x3m::chase_transition::detail {
 constexpr std::uint32_t restore_rear_mode = 258, restore_internal_mode = 1;
+// Constructor/destructor callers are native return addresses (call + 5): the load chain's
+// constructor call sits at 0x0041f83b and returns to 0x0041f840.
 constexpr std::uint32_t restore_free_caller = 0x42d402, restore_alloc_caller = 0x42d397,
-                        restore_load_constructor_caller = 0x41f83b;
+                        restore_load_constructor_caller = 0x41f840;
 constexpr std::uint32_t restore_inject_site = 0x410100, restore_script_call = 0x49f570;
 constexpr std::uint32_t restore_game_root = 0x57fc60, restore_cockpit_registry_root = 0x608504;
 constexpr std::uint32_t restore_ship_delete_flag = 0x08000000; // [ship+0x40], deferred delete (sweep 0x0045b660)
@@ -59,6 +61,17 @@ enum RestoreArmRefusal : unsigned {
     arm_unreadable = 6,
     arm_refusal_count = 7
 };
+// Soft refusals of a candidate (fresh, alloc-caller) frame while pending/due: the frame does not count
+// towards due and resets the bound cockpit's count. Diagnostic counters per ticket.
+enum RestoreSoft : unsigned {
+    soft_none = 0,
+    soft_unreadable = 1,
+    soft_mode_zero = 2,
+    soft_connect_flags_view = 3,
+    soft_no_handle = 4,
+    soft_ship_dead = 5,
+    soft_count = 6
+};
 enum RestorePhase : unsigned { phase_idle = 0, phase_armed = 1, phase_pending = 2, phase_due = 3, phase_calling = 4 };
 inline const char* restore_cancel_name(unsigned c) {
     static const char* const names[cancel_count] = {"none",   "destructor", "second_destruction", "lifetime",
@@ -74,9 +87,10 @@ inline const char* restore_result_name(unsigned r) {
 }
 // One chase-hook visit (or the fresh re-read at the injection site). The
 // caller reads the cockpit fields; the walks run through the Probe only when
-// the ticket needs them.
+// the ticket needs them. `sector` is +0x1fc (script-published, 0 under Mayhem),
+// `sector54` the +0x54 sector pointer; both are log-only.
 struct RestoreFrame {
-    std::uint32_t cockpit = 0, mode = 0, connect = 0, flags = 0, ref = 0, view = 0, sector = 0;
+    std::uint32_t cockpit = 0, mode = 0, connect = 0, flags = 0, ref = 0, view = 0, sector = 0, sector54 = 0;
     std::uint32_t constructor_caller = 0;
     std::uint64_t generation = 0;
     bool readable = false;
@@ -92,8 +106,13 @@ struct RestoreOutcome {
     bool wanted = false;
     unsigned result = 0, cancel = 0, attempts = 0;
     std::uint32_t monitor = 0, monitor_class = 0, ship_id_from = 0, ship_id_to = 0, sector_from = 0, sector_to = 0,
-                  wait_updates = 0, mode_seen = 0;
+                  sector54_from = 0, sector54_to = 0, wait_updates = 0, mode_seen = 0;
     std::uint64_t generation_from = 0, generation_to = 0;
+    // Pending/due diagnostics: soft refusals by reason, candidate-shaped frames of another constructor
+    // caller, and the first soft-refused frame (reason, +0x1fc, +0x54, mode, active-control handle).
+    std::uint32_t soft[soft_count]{}, skip_caller = 0, first_skip_caller = 0;
+    std::uint32_t first_soft = 0, first_soft_sector = 0, first_soft_sector54 = 0, first_soft_mode = 0,
+                  first_soft_handle = 0;
 };
 struct RestoreArmSample {
     bool wanted = false, armed = false, ship_live = false;
@@ -105,10 +124,11 @@ struct RestoreState {
     unsigned phase = phase_idle;
     unsigned retries = restore_default_retries;
     // Arm (re-armed on every applied rear frame of the active-control cockpit).
-    std::uint32_t arm_cockpit = 0, arm_ship_id = 0, arm_controller = 0, arm_sector = 0, arm_epoch = 0;
+    std::uint32_t arm_cockpit = 0, arm_ship_id = 0, arm_controller = 0, arm_sector = 0, arm_sector54 = 0,
+                  arm_epoch = 0;
     std::uint64_t arm_generation = 0;
     // Pending/bound/due.
-    std::uint32_t bound_cockpit = 0, bound_sector = 0, bound_ship_id = 0;
+    std::uint32_t bound_cockpit = 0, bound_sector = 0, bound_sector54 = 0, bound_ship_id = 0;
     std::uint64_t bound_generation = 0;
     unsigned due_count = 0;
     std::uint32_t pending_updates = 0, retry_after = 0;
@@ -118,6 +138,10 @@ struct RestoreState {
     // Attempts of this ticket.
     unsigned attempts = 0;
     std::uint32_t attempt_thread = 0, attempt_mode_seen = 0;
+    // Per-ticket soft-refusal diagnostics (fixed counters, copied into the outcome row).
+    std::uint32_t soft_counts[soft_count]{}, skip_caller = 0, first_skip_caller = 0;
+    std::uint32_t first_soft = 0, first_soft_sector = 0, first_soft_sector54 = 0, first_soft_mode = 0,
+                  first_soft_handle = 0;
     // Counters.
     std::uint64_t arms = 0, arm_refusals = 0, pendings = 0, dues = 0, calls = 0, monitors_captured = 0,
                   injections_skipped = 0, rearm_frames = 0;
@@ -131,9 +155,9 @@ struct RestoreState {
     bool wants_injection() const noexcept { return phase == phase_due; }
     void reset_ticket() noexcept {
         phase = phase_idle;
-        arm_cockpit = arm_ship_id = arm_controller = arm_sector = arm_epoch = 0;
+        arm_cockpit = arm_ship_id = arm_controller = arm_sector = arm_sector54 = arm_epoch = 0;
         arm_generation = 0;
-        bound_cockpit = bound_sector = bound_ship_id = 0;
+        bound_cockpit = bound_sector = bound_sector54 = bound_ship_id = 0;
         bound_generation = 0;
         due_count = 0;
         pending_updates = retry_after = 0;
@@ -141,6 +165,9 @@ struct RestoreState {
         monitor_generation = 0;
         attempts = 0;
         attempt_thread = attempt_mode_seen = 0;
+        for (auto& n : soft_counts) n = 0;
+        skip_caller = first_skip_caller = 0;
+        first_soft = first_soft_sector = first_soft_sector54 = first_soft_mode = first_soft_handle = 0;
     }
     void finish(unsigned result, unsigned cancel) noexcept {
         if (phase == phase_idle) return;
@@ -162,6 +189,16 @@ struct RestoreState {
             outcome.ship_id_to = bound_ship_id;
             outcome.sector_from = arm_sector;
             outcome.sector_to = bound_sector;
+            outcome.sector54_from = arm_sector54;
+            outcome.sector54_to = bound_sector54;
+            for (unsigned i = 0; i < soft_count; ++i) outcome.soft[i] = soft_counts[i];
+            outcome.skip_caller = skip_caller;
+            outcome.first_skip_caller = first_skip_caller;
+            outcome.first_soft = first_soft;
+            outcome.first_soft_sector = first_soft_sector;
+            outcome.first_soft_sector54 = first_soft_sector54;
+            outcome.first_soft_mode = first_soft_mode;
+            outcome.first_soft_handle = first_soft_handle;
             outcome.wait_updates = pending_updates;
             outcome.mode_seen = attempt_mode_seen;
         }
@@ -228,8 +265,9 @@ struct RestoreState {
         if (mine) {
             // Re-arm frame: the field checks above hold; the registry walk, the ship hash and the
             // controller read are skipped (the arm's identity decides nothing by itself: the fresh
-            // cockpit is re-proved at due and again at the injection entry). Only the sector refreshes.
+            // cockpit is re-proved at due and again at the injection entry). Only the sectors refresh.
             arm_sector = f.sector;
+            arm_sector54 = f.sector54;
             ++rearm_frames;
             return true;
         }
@@ -252,6 +290,7 @@ struct RestoreState {
         arm_ship_id = ship_id;
         arm_controller = controller;
         arm_sector = f.sector;
+        arm_sector54 = f.sector54;
         arm_epoch = epoch_now;
         return true;
     }
@@ -260,33 +299,40 @@ struct RestoreState {
                f.constructor_caller == restore_alloc_caller;
     }
     // Pending/due: a fresh cockpit from the alloc command. Returns true when the frame counted towards due.
+    // The sector (+0x1fc or +0x54) is not a condition: +0x1fc is script-published and reads 0 under
+    // Mayhem (Run 146 A), and the trigger is the cockpit replacement, not a sector change.
     template <class Probe> bool candidate_frame(const RestoreFrame& f, Probe& p, bool at_injection) noexcept {
-        if (!candidate(f)) return false;
-        if (!f.readable || !f.mode) return soft(f);
+        if (!candidate(f)) {
+            if (!(f.cockpit == arm_cockpit && f.generation == arm_generation) && !skip_caller++)
+                first_skip_caller = f.constructor_caller;
+            return false;
+        }
+        if (!f.readable) return soft(f, soft_unreadable, 0);
+        if (!f.mode) return soft(f, soft_mode_zero, 0);
         if (bound_cockpit && f.cockpit != bound_cockpit && phase == phase_due) return false;
         if (f.mode != restore_internal_mode) {
             // A fresh cockpit shown at 258 already (the script restored itself) or a key the player pressed.
             cancel(cancel_mode_left);
             return false;
         }
-        if (f.connect || (f.flags & 4) || !f.ref || f.view != f.ref) return soft(f);
+        if (f.connect || (f.flags & 4) || !f.ref || f.view != f.ref) return soft(f, soft_connect_flags_view, 0);
         std::uint32_t handle = 0, ship_id = 0, controller = 0;
-        if (!p.active_control(handle)) return soft(f);
+        if (!p.active_control(handle)) return soft(f, soft_no_handle, handle);
         // The ship may differ from the armed one (ship change, death respawn): the trigger is the
         // cockpit replacement, and the restore applies to whatever the player now flies. Only the
         // engine's controller object must be the one the arm saw.
-        if (!p.ship_live(f.ref, ship_id) || !ship_id) return soft(f);
+        if (!p.ship_live(f.ref, ship_id) || !ship_id) return soft(f, soft_ship_dead, handle);
         if (!p.controller(controller) || controller != arm_controller) {
             cancel(cancel_identity);
             return false;
         }
-        if (!f.sector) return soft(f);
         if (bound_cockpit != f.cockpit || bound_generation != f.generation) {
             bound_cockpit = f.cockpit;
             bound_generation = f.generation;
             due_count = 0;
         }
         bound_sector = f.sector;
+        bound_sector54 = f.sector54;
         bound_ship_id = ship_id;
         if (at_injection) return true;
         if (pending_updates < retry_after) return false; // retry spacing: not counted yet
@@ -296,8 +342,15 @@ struct RestoreState {
         }
         return true;
     }
-    bool soft(const RestoreFrame& f) noexcept {
+    bool soft(const RestoreFrame& f, unsigned why, std::uint32_t handle) noexcept {
         if (f.cockpit == bound_cockpit) due_count = 0;
+        if (!soft_counts[why]++ && !first_soft) {
+            first_soft = why;
+            first_soft_sector = f.sector;
+            first_soft_sector54 = f.sector54;
+            first_soft_mode = f.mode;
+            first_soft_handle = handle;
+        }
         return false;
     }
     // Every cockpit update (the expiry clock while a ticket is past the arm).

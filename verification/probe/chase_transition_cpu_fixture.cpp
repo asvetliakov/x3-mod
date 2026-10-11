@@ -369,6 +369,7 @@ void observe(unsigned cockpit) {
     f.ref = get<std::uint32_t>(W(cockpit + 0xc));
     f.view = get<std::uint32_t>(W(cockpit + 0x10));
     f.sector = get<std::uint32_t>(W(cockpit + 0x1fc));
+    f.sector54 = get<std::uint32_t>(W(cockpit + 0x54));
     restore_observe_frame(f);
 }
 // Site I through the actual stub: [ESP] return, [ESP+4] the engine's controlled object, [ESP+8] flag.
@@ -571,7 +572,7 @@ void scenarios() {
         check(restore.phase == phase_idle && restore.cancels[cancel_epoch] >= 1, "the next frame observes the stale epoch");
     }
     arm_free_construct();
-    construct(o_cockpit3, 0x41f83bu);
+    construct(o_cockpit3, restore_load_constructor_caller); // return address 0x0041f840
     check(restore.phase == phase_idle && restore.cancels[cancel_lifetime] == 1, "load-chain constructor cancels");
     arm_free_construct();
     due();

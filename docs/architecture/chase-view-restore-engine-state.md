@@ -158,7 +158,7 @@ cockpit in the same sector (run315), so `+0x1fc == armed sector` cancels
    (`+0x10 == +0xc != 0`, active-control proof, registry-live ship with the
    deferred-delete flag clear), mode 1 for two consecutive updates, connect 0,
    `+0x1a0 & 4` clear, the engine's controller object unchanged
-   (`cancel=identity`), `+0x1fc` non-null, kind-7 cancel, `cancel_mode_left`,
+   (`cancel=identity`), kind-7 cancel, `cancel_mode_left`,
    expiry. Pending/bound stay tied to the free command `0x0042d402` and the
    alloc command `0x0042d397` so a load chain still cancels. The outcome row
    logs `ship_id_from/to` and `sector_from/to` instead of gating on them.
@@ -253,13 +253,19 @@ at the injection entry; `rearm_frames` counts them).
    other caller (`0x0041ccfb` deleting destructor, load chain) cancels
    (`cancel_destructor`). A second destruction while pending cancels.
 3. **Bound** at constructor completion (`0x0041fe04`) of a cockpit whose
-   construction caller was `0x0042d397`; a load-chain constructor
-   (`0x0041f83b`) cancels (`cancel_lifetime`).
+   construction caller was `0x0042d397`; a load-chain constructor (call at
+   `0x0041f83b`, recorded return address `0x0041f840`) cancels
+   (`cancel_lifetime`).
 4. **Due** at the chase hook on the bound cockpit when, for two consecutive
    updates: mode 1, connect 0, `+0x1a0 & 4` clear, `+0x10 == +0xc != 0`,
    active-control proof, registry-live ship with `+0x94` equal to the armed
    value, controller id unchanged, `+0x1fc` non-null. `+0x1fc ==` armed sector
-   cancels (`cancel_same_sector`: dock, carrier, in-sector ship change). Mode
+   cancels (`cancel_same_sector`: dock, carrier, in-sector ship change).
+   (2026-10-12, after amendment 2: `+0x1fc` is no condition at all, because it
+   is script-published, written only from a script call's result at
+   `0x004210d6` and zeroed each update at `0x00421024`, and reads 0 on every
+   frame under Mayhem, so Run 146 A never bound; the outcome row logs it and
+   the `+0x54` sector pointer as `sector_from/to` and `sector54_from/to`.) Mode
    ≠ 1 before due cancels (`cancel_mode_left`: the player already pressed a
    key, or a cinematic). 600 updates from pending cancels (`cancel_expiry`).
 5. **Consume** at site I, `0x00410100` entry (`55 8b ec 83 e4 f0`, 6 bytes),
@@ -319,7 +325,9 @@ sites=1 cancel_sites=3 inject_site=0x00410100 call=0x0049f570
 method=SelectMode mode=258 observers=1 retries=3 retries_valid=1
 expiry_updates=600 due_frames=2 retry_spacing=60`; rows `chase_view_restore
 result=… cancel=… attempts= monitor=0x… monitor_class=0x… mode_seen=
-generation_from/to= ship_id_from/to= sector_from/to= wait_updates= frame=`
+generation_from/to= ship_id_from/to= sector_from/to= sector54_from/to= wait_updates= frame=
+soft_unreadable= soft_mode_zero= soft_connect_flags_view= soft_no_handle= soft_ship_dead=
+skip_caller= first_skip_caller= first_soft=reason,+0x1fc,+0x54,mode,handle`
 once per ticket outcome, `chase_view_restore_arm_refused` once per reason,
 the windowed `chase_view_restore_state` (phase, counters, results, cancels),
 no learn row. The handler moves the ticket to `phase_calling` (never again
