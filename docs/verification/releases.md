@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.2.0
+
+2026-10-11, `python3 tools/release/release.py --out /tmp/x3m-release-1.2.0 --regenerate-dir <dir with the 1.1.0 x3m-regenerate.exe>` (dry run, then the real run: exit 0, 54.7 s wall: dll 52.5 s, package 2.2 s), the first release built on the WSL2 host (Ubuntu 26.04, MinGW GCC 16-posix 16.2.0 from Ubuntu 26.10, binutils 2.45.90, cmake 4.2.3, Python 3.14.4 / NumPy 2.3.5; [platform note](../architecture/platform-portability.md) "Native install and build host"). Clean tree at `e97c4644` (version bump over Run144's `47e977dd`). Record [release-1.2.0.json](../../verification/results/release-1.2.0.json).
+
+- Over 1.1.0: the dust_leak_fix native Windows crash fix (`ed00c53e`; counter out of the RX engine_patch arena, DLL pinned, fail-closed counter_in_arena check; Run 143 A: 7,017 hits, no exception), the fog card state gate admitting `SEPARATEALPHABLENDENABLE` 1 (`47e977dd`; the cockpit-view fog on/off flicker, Run 144 A: steady, 0 `gate:states` in 19,209 frames), the `media_cue` reset form GCC 13 accepts (`a5641bad`), the NumPy 2.x bake (`6bcb39df`, 14/14 pinned atlases reproduced).
+- DLL: stripped `2b03a78a…` (40,170,162 B; 0 warnings, x87 0 / 925 reachable with the `.cold` siblings walked, strip identity PASS over 11 sections, 17 exports, debuglink to `d3d9.debug`). Installed into native `C:\X3` as Run145 at 20:48, bytes verified, rollback `x3m\rollback\d3d9.dll.run144` ([install](../../verification/results/run145-release-install.json)).
+- Zip `x3m-1.2.0.zip` `aba7afbd…` (59,878,443 B): the same 22 entries as 1.1.0 in package.py's order; copied to `C:\Users\asvet\Downloads\`.
+- `x3m-regenerate.exe` is the **1.1.0 binary reused** (`bb3ba27b…`, 29,766,304 B, taken from `C:\X3` where its hash matched the 1.1.0 record): no Wine/CrossOver bottle exists on this host to build it and Windows has no Python installed. Its bundled sources changed since 1.1.0 only in the NumPy version check (`fog_families.py`, `fog_field_recipe.py`, `regenerate/build.py`), which the bundled NumPy 2.0.2 passes either way; the DLL validates `fog-families.bin` by its packet hashes, not by the tool/recipe hash the JSON records (Run 144 A loaded the file the 1.1.0 exe wrote: `event=loaded families=70 packets=35 reason=ok`). The host `x3m-regenerate` binary was not rebuilt. Open: a native Windows build path for the exe (Windows Python 3.12 + PyInstaller, `tools/regenerate/build.py` docstring) before a release that changes the regenerate sources.
+
 ## Release 1.1.0
 
 2026-10-09, `python3 tools/release/release.py --out /tmp/x3m-release-1.1.0` (dry run, then the real run: exit 0, 214.9 s wall: dll 55 s, regenerate host 58 s + Windows 100 s, package 2 s), [record](../../verification/results/release-1.1.0.json); the tool record and every artifact stay under `/tmp/x3m-release-1.1.0/`.
