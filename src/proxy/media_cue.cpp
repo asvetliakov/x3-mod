@@ -154,8 +154,8 @@ void* emit(unsigned index, void*** next_out);
 void reset_state() {
     gate.reset();
     cache.clear();
-    pending = {};
-    ring = {};
+    pending = detail::PendingStack{};
+    ring = detail::TraceRing{};
     limit = {};
     enter_limit = {};
     window.reset();
