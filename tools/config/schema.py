@@ -291,6 +291,9 @@ SETTINGS = [
           'centre = the screen centre.', 'forward', choices=('forward', 'centre'), requires=('camera',), launcher='--chase-hud-anchor'),
     entry('chase_view_restore', 'bool', 'camera', 'Returns to the chase view after a gate jump or jumpdrive. 1 = on, 0 = off.', '1',
           requires=('camera',), launcher='--chase-view-restore'),
+    entry('chase_view_restore_retries', 'int', 'camera', 'How many more times the chase-view restore asks the game for the chase view '
+          'when a first request after a jump changed nothing. 0 to 5.', '3', range=(0, 5), requires=('chase_view_restore',),
+          launcher='--chase-view-restore-retries', since='2026-10-12'),
     entry('chase_scene_fix', 'bool', 'camera', 'Experimental: moves the cockpit-layer scene with the smoothed chase view. 1 = on, '
           '0 = off.', '0', requires=('camera',), launcher='--chase-scene-fix'),
     entry('sun_occlusion', 'bool', 'camera', 'The sun\'s flare fades gradually as a ship or station covers the sun, instead of '

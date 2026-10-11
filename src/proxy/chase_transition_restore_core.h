@@ -1,329 +1,431 @@
 #pragma once
 #include "chase_transition_core.h"
-#include "chase_transition_identity_core.h"
 
-// Portable one-use rear-chase restore ticket (docs/reverse-engineering/
-// chase-view-transition.md, run60 "identity and restoration boundary"). The
-// state holds scalar identities and opaque keys only; every decision is made
-// from fresh checked reads at the seam. No engine pointer is retained across
-// callbacks and no borrowed context survives a callback.
+// Portable one-use rear-chase restore ticket on engine observations only
+// (docs/architecture/chase-view-restore-engine-state.md, section 4 as amended
+// 2026-10-12). The ticket is armed from applied 258 frames of the player's
+// active-control cockpit, transferred to pending by the cockpit free command,
+// bound to the fresh cockpit from the alloc command by the active-control
+// proof, a registry-live ship and a published sector (any ship, any sector:
+// the trigger is the cockpit replacement itself), and consumed at the input
+// routine's entry by the engine's own by-name script call
+// `SelectMode(258)` on the main monitor object captured at the mode store the
+// script made into that cockpit. Every decision is made from the fresh fields
+// the caller passes in or from the Probe it supplies; no engine pointer is
+// retained across callbacks.
 namespace x3m::chase_transition::detail {
-constexpr std::uint32_t restore_mode_pc = 0xf0c4b, restore_player_pc = 0xe5da1, restore_controller_pc = 0x83a03;
-constexpr std::uint32_t restore_killed_pcs[2] = {0x13b48, 0x13b62};
-constexpr std::uint32_t restore_reset_prefix[3] = {0xedc91, 0x16724, 0};
-constexpr std::uint32_t restore_warp_prefix[5] = {0xefbff, 0xedba0, 0xedbe3, 0x1661c, 0};
-constexpr std::uint32_t restore_monitor_class = 0x25e, restore_warp_class = 0x96, restore_rear_mode = 258;
-constexpr std::uint32_t restore_destructor_caller = 0x42d402;
-constexpr unsigned restore_filter_count = 5; // mode, player, controller, killed x2 operand addresses
-constexpr unsigned restore_stack_cells = 64;
+constexpr std::uint32_t restore_rear_mode = 258, restore_internal_mode = 1;
+constexpr std::uint32_t restore_free_caller = 0x42d402, restore_alloc_caller = 0x42d397,
+                        restore_load_constructor_caller = 0x41f83b;
+constexpr std::uint32_t restore_inject_site = 0x410100, restore_script_call = 0x49f570;
+constexpr std::uint32_t restore_game_root = 0x57fc60, restore_cockpit_registry_root = 0x608504;
+constexpr std::uint32_t restore_ship_delete_flag = 0x08000000; // [ship+0x40], deferred delete (sweep 0x0045b660)
+constexpr unsigned restore_pending_update_expiry = 600, restore_due_frames = 2, restore_retry_spacing = 60,
+                   restore_retry_cap = 5, restore_default_retries = 3;
 enum RestoreCancel : unsigned {
     cancel_none = 0,
     cancel_destructor = 1,
     cancel_second_destruction = 2,
-    cancel_selection = 3,
-    cancel_identity_store = 4,
-    cancel_killed_store = 5,
-    cancel_global_slot = 6,
-    cancel_task_complete = 7,
-    cancel_task_abort = 8,
-    cancel_epoch = 9,
-    cancel_proof = 10,
-    cancel_mode_left = 11,
-    cancel_lifetime = 12,
-    cancel_seam_unreadable = 13,
-    cancel_expiry = 14,
-    cancel_count = 15
+    cancel_lifetime = 3,
+    cancel_identity = 4, // the engine's controller object changed between arm and due
+    cancel_mode_left = 5,
+    cancel_expiry = 6,
+    cancel_load = 7,
+    cancel_epoch = 8,
+    cancel_no_monitor = 9,
+    cancel_retries = 10,
+    cancel_call_refused = 11,
+    cancel_other_mode = 12,
+    cancel_call_unwound = 13, // on_call_result never ran (a script error unwound through the call); expiry clock
+    cancel_count = 14
 };
-// Consume/transfer refusal subreasons (diagnostic; any nonzero refuses).
-enum RestoreRefusal : unsigned {
-    refuse_none = 0,
-    refuse_thread = 1,
-    refuse_task = 2,
-    refuse_task_id = 3,
-    refuse_context = 4,
-    refuse_opcode = 5,
-    refuse_monitor_identity = 6,
-    refuse_monitor_class = 7,
-    refuse_mode_cell = 8,
-    refuse_handle_cell = 9,
-    refuse_ref_cell = 10,
-    refuse_globals = 11,
-    refuse_warp = 12,
-    refuse_source = 13,
-    refuse_stack = 14,
-    refuse_writable = 15,
-    refuse_write = 16,
-    refuse_epoch = 17,
-    refuse_provenance = 18,
-    refuse_prefix = 19,
-    refuse_identity = 20,
-    refuse_ref_tag = 21,
-    refuse_monitor_number = 22,
-    refuse_count = 23
+enum RestoreResult : unsigned {
+    result_none = 0,
+    result_restored = 1,
+    result_no_effect = 2,
+    result_other_mode = 3,
+    result_call_refused = 4,
+    result_cancelled = 5,
+    result_count = 6
 };
-// Arm refusal reasons. Preconditions (1..3) are re-checked on every rear
-// update at field-read cost (run68: a fresh generation's first updates carry
-// view 0); an identity refusal (4) or unreadable CODE (5) records the attempt.
+// Arm refusal reasons (1..3 as before; 4 replaces the script identity walk).
 enum RestoreArmRefusal : unsigned {
     arm_ok = 0,
     arm_connect = 1,
     arm_view_not_ready = 2,
     arm_no_handle = 3,
-    arm_identity = 4,
-    arm_code = 5,
-    arm_retry_exhausted = 6,
+    arm_ship_dead = 4,
+    arm_flags = 5,
+    arm_unreadable = 6,
     arm_refusal_count = 7
 };
-constexpr unsigned restore_arm_retry_cap = 64; // precondition retries per cockpit generation
+enum RestorePhase : unsigned { phase_idle = 0, phase_armed = 1, phase_pending = 2, phase_due = 3, phase_calling = 4 };
+inline const char* restore_cancel_name(unsigned c) {
+    static const char* const names[cancel_count] = {"none",   "destructor", "second_destruction", "lifetime",
+                                                    "identity", "mode_left", "expiry",             "load",
+                                                    "epoch",  "no_monitor", "retries",            "call_refused",
+                                                    "other_mode", "call_unwound"};
+    return c < cancel_count ? names[c] : "?";
+}
+inline const char* restore_result_name(unsigned r) {
+    static const char* const names[result_count] = {"none",       "restored",     "no_effect",
+                                                    "other_mode", "call_refused", "cancelled"};
+    return r < result_count ? names[r] : "?";
+}
+// One chase-hook visit (or the fresh re-read at the injection site). The
+// caller reads the cockpit fields; the walks run through the Probe only when
+// the ticket needs them.
+struct RestoreFrame {
+    std::uint32_t cockpit = 0, mode = 0, connect = 0, flags = 0, ref = 0, view = 0, sector = 0;
+    std::uint32_t constructor_caller = 0;
+    std::uint64_t generation = 0;
+    bool readable = false;
+};
+// What the engine call needs, handed out by the state machine; the caller
+// performs `0x0049f570(monitor, 0, monitor, "SelectMode", 1, 1, 258)` and
+// reports back with on_call_result.
+struct RestoreCall {
+    bool wanted = false;
+    std::uint32_t monitor = 0, monitor_class = 0;
+};
+struct RestoreOutcome {
+    bool wanted = false;
+    unsigned result = 0, cancel = 0, attempts = 0;
+    std::uint32_t monitor = 0, monitor_class = 0, ship_id_from = 0, ship_id_to = 0, sector_from = 0, sector_to = 0,
+                  wait_updates = 0, mode_seen = 0;
+    std::uint64_t generation_from = 0, generation_to = 0;
+};
+struct RestoreArmSample {
+    bool wanted = false, armed = false, ship_live = false;
+    unsigned reason = 0;
+    std::uint32_t cockpit = 0, mode = 0, connect = 0, ship = 0, view = 0, handle = 0, ship_id = 0;
+    std::uint64_t generation = 0;
+};
 struct RestoreState {
-    bool armed = false, pending = false;
-    std::uint32_t arm_cockpit = 0, arm_player = 0, arm_controller = 0, arm_native_script = 0, arm_epoch = 0,
-                  arm_code = 0;
+    unsigned phase = phase_idle;
+    unsigned retries = restore_default_retries;
+    // Arm (re-armed on every applied rear frame of the active-control cockpit).
+    std::uint32_t arm_cockpit = 0, arm_ship_id = 0, arm_controller = 0, arm_sector = 0, arm_epoch = 0;
     std::uint64_t arm_generation = 0;
-    std::uint32_t pending_monitor = 0, pending_task = 0, pending_task_id = 0, pending_thread = 0, pending_epoch = 0;
-    std::uint64_t attempt_generation = 0, retry_generation = 0;
-    std::uint32_t attempt_mode = 0, pending_updates = 0, retries = 0;
-    std::uint64_t arms = 0, arm_refusals = 0, transfers = 0, consumed = 0, writes_failed = 0, seam_calls = 0;
-    std::uint64_t cancels[cancel_count]{}, refusals[refuse_count]{}, arm_refusal_reasons[arm_refusal_count]{};
-    std::uint32_t arm_sample_logged = 0, transfer_sample_logged = 0; // once-per-reason sample line masks
-    unsigned last_refusal = 0;
-    void clear_arm(unsigned reason) noexcept {
-        if (armed) ++cancels[reason];
-        armed = false;
-        arm_cockpit = 0;
+    // Pending/bound/due.
+    std::uint32_t bound_cockpit = 0, bound_sector = 0, bound_ship_id = 0;
+    std::uint64_t bound_generation = 0;
+    unsigned due_count = 0;
+    std::uint32_t pending_updates = 0, retry_after = 0;
+    // The monitor object whose SelectMode stored a mode into a fresh cockpit (engine VM frame at 0x0042e742).
+    std::uint32_t monitor_cockpit = 0, monitor = 0, monitor_class = 0;
+    std::uint64_t monitor_generation = 0;
+    // Attempts of this ticket.
+    unsigned attempts = 0;
+    std::uint32_t attempt_thread = 0, attempt_mode_seen = 0;
+    // Counters.
+    std::uint64_t arms = 0, arm_refusals = 0, pendings = 0, dues = 0, calls = 0, monitors_captured = 0,
+                  injections_skipped = 0, rearm_frames = 0;
+    std::uint64_t cancels[cancel_count]{}, results[result_count]{}, arm_refusal_reasons[arm_refusal_count]{};
+    std::uint32_t arm_sample_logged = 0;
+    // One-shot rows captured under the lock, emitted after it is released.
+    RestoreOutcome outcome;
+    RestoreArmSample arm_sample;
+
+    bool ticket_open() const noexcept { return phase != phase_idle; }
+    bool wants_injection() const noexcept { return phase == phase_due; }
+    void reset_ticket() noexcept {
+        phase = phase_idle;
+        arm_cockpit = arm_ship_id = arm_controller = arm_sector = arm_epoch = 0;
         arm_generation = 0;
-        arm_player = 0;
-        arm_controller = 0;
-        arm_native_script = 0;
-        arm_code = 0;
+        bound_cockpit = bound_sector = bound_ship_id = 0;
+        bound_generation = 0;
+        due_count = 0;
+        pending_updates = retry_after = 0;
+        monitor_cockpit = monitor = monitor_class = 0;
+        monitor_generation = 0;
+        attempts = 0;
+        attempt_thread = attempt_mode_seen = 0;
     }
-    void clear_pending(unsigned reason) noexcept {
-        if (pending) ++cancels[reason];
-        take_pending();
-    }
-    void take_pending() noexcept {
-        pending = false;
-        pending_monitor = 0;
-        pending_task = 0;
-        pending_task_id = 0;
-        pending_thread = 0;
-        pending_epoch = 0;
-        pending_updates = 0;
-    }
-    void transfer(std::uint32_t monitor, std::uint32_t task, std::uint32_t task_id, std::uint32_t thread,
-                  std::uint32_t epoch) noexcept {
-        armed = false;
-        pending = true;
-        pending_monitor = monitor;
-        pending_task = task;
-        pending_task_id = task_id;
-        pending_thread = thread;
-        pending_epoch = epoch;
-        pending_updates = 0;
-        ++transfers;
-    }
-    void clear_all(unsigned reason) noexcept {
-        clear_arm(reason);
-        clear_pending(reason);
-    }
-    void refuse(unsigned why) noexcept {
-        last_refusal = why;
-        ++refusals[why];
-    }
-    // A selection/cancellation invalidates the recorded attempt and its retry budget.
-    void reset_attempt() noexcept {
-        attempt_mode = 0;
-        retries = 0;
-    }
-    // 0 idle, 1 armed (operand-address prefilter), 2 pending (every store).
-    std::uint32_t filter_mode() const noexcept { return pending ? 2u : armed ? 1u : 0u; }
-};
-// Registers the optimized store seam presents (docs: 4a3ffd ABI).
-struct SeamRegs {
-    std::uint32_t eax = 0, ebx = 0, esi = 0, edi = 0, ebp = 0, esp = 0, thread = 0;
-};
-struct SeamDecode {
-    std::uint32_t vm = 0, code = 0, pc = 0, opcode = 0, index = 0, discard = 0, task = 0;
-};
-// Bounded live interpreter stack walk from EBX (current top) to the task's
-// stack base. Task+18/+1c are not used: they are stale at this internal seam.
-template <class Reader, class CodeRange>
-bool live_stack_prefix(std::uint32_t task, std::uint32_t ebx, std::uint32_t code, Reader bytes, CodeRange code_address,
-                       const std::uint32_t* expected, unsigned expected_count) {
-    auto field = [&](std::uintptr_t base, unsigned offset, auto& out) { return bytes(base, offset, &out, sizeof out); };
-    std::uint32_t base = 0, capacity = 0;
-    if (!field(task, 0x14, base) || !field(task, 0x10, capacity) || capacity > 1048576 || !ebx || ebx > base)
-        return false;
-    const std::uint32_t span = base - ebx;
-    if (span % 5 || span / 5 > capacity || span / 5 > restore_stack_cells) return false; // truncated proof cancels
-    const unsigned cells = span / 5;
-    unsigned char stack[restore_stack_cells * 5]{};
-    if (!cells || !bytes(ebx, 0, stack, cells * 5)) return false;
-    unsigned count = 0;
-    for (unsigned i = 0; i + 1 < cells; ++i)
-        if (stack[i * 5] == 10 && stack[(i + 1) * 5] == 3) {
-            std::uint32_t context = 0, word0 = 0, ret = 0;
-            std::uintptr_t at = 0;
-            unsigned char op = 0;
-            std::memcpy(&context, stack + i * 5 + 1, 4);
-            std::memcpy(&ret, stack + (i + 1) * 5 + 1, 4);
-            if (!context || (context & 3) || !field(context, 0, word0)) return false;
-            if (!code_address(code, ret, 1, at) || !field(at, 0, op)) return false;
-            if (count == expected_count || ret != expected[count]) return false;
-            ++count;
+    void finish(unsigned result, unsigned cancel) noexcept {
+        if (phase == phase_idle) return;
+        // An armed ticket that is simply disarmed again (mode left, refused frame) logs nothing.
+        const bool silent = phase == phase_armed;
+        if (cancel) ++cancels[cancel];
+        if (!silent) {
+            ++results[result];
+            outcome = {};
+            outcome.wanted = true;
+            outcome.result = result;
+            outcome.cancel = cancel;
+            outcome.attempts = attempts;
+            outcome.monitor = monitor;
+            outcome.monitor_class = monitor_class;
+            outcome.generation_from = arm_generation;
+            outcome.generation_to = bound_generation;
+            outcome.ship_id_from = arm_ship_id;
+            outcome.ship_id_to = bound_ship_id;
+            outcome.sector_from = arm_sector;
+            outcome.sector_to = bound_sector;
+            outcome.wait_updates = pending_updates;
+            outcome.mode_seen = attempt_mode_seen;
         }
-    return count == expected_count;
-}
-// Executing-context contract: current context ID, nonnull live class pointer,
-// registered static descriptor with the expected identity, variable bounds.
-template <class Reader>
-bool borrowed_context(IdentityReader<Reader>& r, std::uint32_t context, std::uint32_t class_id, std::uint32_t& id,
-                      std::uint32_t (&desc)[14]) {
-    std::uint32_t head[3]{};
-    return r.pointer(context) && r.field(context, 0, head) && head[2] && r.descriptor(head[2], desc) &&
-           desc[0] == class_id && (id = head[0], true);
-}
-template <class Reader>
-bool integer_cell(IdentityReader<Reader>& r, std::uint32_t context, const std::uint32_t (&desc)[14], unsigned index,
-                  std::uint32_t& value) {
-    std::uint32_t tag = 0;
-    return r.cell(context, desc, index, tag, value) && tag == 1;
-}
-// Raw tagged cell (bounds and readability checked; the tag is reported, never coerced).
-template <class Reader>
-bool raw_cell(IdentityReader<Reader>& r, std::uint32_t context, const std::uint32_t (&desc)[14], unsigned index,
-              std::uint32_t& tag, std::uint32_t& value) {
-    std::uint32_t cells = 0;
-    unsigned char raw[5]{};
-    if (index >= desc[7] || !r.field(context, 0xc, cells) || !r.read(cells, 5 * index, raw, 5)) return false;
-    tag = raw[0];
-    std::memcpy(&value, raw + 1, 4);
-    return true;
-}
-// cell17 is a verbatim copy of global cell9 (StartMainMonitor), so its tag
-// must equal the tag global cell9 carries now; the observed tag is reported.
-constexpr bool ref_tag_ok(std::uint32_t tag, std::uint32_t global9_tag) {
-    return tag == global9_tag;
-}
-template <class Reader> bool global9_tag(IdentityReader<Reader>& r, std::uint32_t& tag) {
-    std::uint32_t global[14]{}, value = 0;
-    return r.descriptor(r.classes, global) && global[0] == 0 && raw_cell(r, r.classes, global, 9, tag, value);
-}
-// Global player/controller and warp/killed scalars from the class table.
-template <class Reader>
-bool global_scalars(IdentityReader<Reader>& r, std::uint32_t& player, std::uint32_t& controller, std::uint32_t& warp,
-                    std::uint32_t& killed) {
-    std::uint32_t global[14]{}, warp_desc[14]{}, warp_context = 0;
-    if (!r.descriptor(r.classes, global) || global[0] != 0) return false;
-    if (!integer_cell(r, r.classes, global, 9, player) || !integer_cell(r, r.classes, global, 8, controller))
+        reset_ticket();
+    }
+    void cancel(unsigned reason) noexcept { finish(result_cancelled, reason); }
+    void refuse_arm(unsigned reason, const RestoreFrame& f, std::uint32_t handle, bool ship_live,
+                    std::uint32_t ship_id) noexcept {
+        if (reason >= arm_refusal_count) reason = 0;
+        ++arm_refusals;
+        ++arm_refusal_reasons[reason];
+        if (phase == phase_armed && f.cockpit == arm_cockpit && f.generation == arm_generation) cancel(cancel_mode_left);
+        const std::uint32_t bit = 1u << reason;
+        if (arm_sample_logged & bit) return;
+        arm_sample_logged |= bit;
+        arm_sample = {};
+        arm_sample.wanted = true;
+        arm_sample.reason = reason;
+        arm_sample.cockpit = f.cockpit;
+        arm_sample.generation = f.generation;
+        arm_sample.mode = f.mode;
+        arm_sample.connect = f.connect;
+        arm_sample.ship = f.ref;
+        arm_sample.view = f.view;
+        arm_sample.handle = handle;
+        arm_sample.ship_live = ship_live;
+        arm_sample.ship_id = ship_id;
+    }
+    // EH adapter / VM epoch: an armed or pending ticket from an older epoch is gone.
+    void epoch(std::uint32_t e) noexcept {
+        if (ticket_open() && arm_epoch != e) cancel(cancel_epoch);
+    }
+    // Chase hook visit. Probe: bool active_control(uint32_t& handle); bool ship_live(uint32_t ref, uint32_t& ship_id);
+    // bool controller(uint32_t& id). Returns true when the frame armed or counted towards due.
+    template <class Probe> bool on_frame(const RestoreFrame& f, Probe& p, std::uint32_t epoch_now) noexcept {
+        epoch(epoch_now);
+        if (phase == phase_idle || phase == phase_armed) return arm_frame(f, p, epoch_now);
+        if (phase == phase_calling) return false;
+        return candidate_frame(f, p, false);
+    }
+    template <class Probe> bool arm_frame(const RestoreFrame& f, Probe& p, std::uint32_t epoch_now) noexcept {
+        const bool mine = phase == phase_armed && f.cockpit == arm_cockpit && f.generation == arm_generation;
+        if (!f.readable) {
+            if (mine) refuse_arm(arm_unreadable, f, 0, false, 0);
+            return false;
+        }
+        if (f.mode != restore_rear_mode) {
+            if (mine) cancel(cancel_mode_left);
+            return false;
+        }
+        if (!f.ref || !f.view || f.view != f.ref) {
+            if (mine) cancel(cancel_mode_left);
+            else if (phase == phase_idle) refuse_arm(arm_view_not_ready, f, 0, false, 0);
+            return false;
+        }
+        if (f.connect) {
+            refuse_arm(arm_connect, f, 0, false, 0);
+            return false;
+        }
+        if (f.flags & 4) {
+            refuse_arm(arm_flags, f, 0, false, 0);
+            return false;
+        }
+        if (mine) {
+            // Re-arm frame: the field checks above hold; the registry walk, the ship hash and the
+            // controller read are skipped (the arm's identity decides nothing by itself: the fresh
+            // cockpit is re-proved at due and again at the injection entry). Only the sector refreshes.
+            arm_sector = f.sector;
+            ++rearm_frames;
+            return true;
+        }
+        std::uint32_t handle = 0, ship_id = 0, controller = 0;
+        if (!p.active_control(handle)) {
+            // Another cockpit owns control (a side monitor at 258): not a refusal of the armed one.
+            if (phase == phase_armed) return false;
+            refuse_arm(arm_no_handle, f, handle, false, 0);
+            return false;
+        }
+        const bool live = p.ship_live(f.ref, ship_id);
+        if (!live || !ship_id || !p.controller(controller) || !controller) {
+            refuse_arm(arm_ship_dead, f, handle, live, ship_id);
+            return false;
+        }
+        if (phase == phase_idle) ++arms;
+        phase = phase_armed;
+        arm_cockpit = f.cockpit;
+        arm_generation = f.generation;
+        arm_ship_id = ship_id;
+        arm_controller = controller;
+        arm_sector = f.sector;
+        arm_epoch = epoch_now;
+        return true;
+    }
+    bool candidate(const RestoreFrame& f) const noexcept {
+        return !(f.cockpit == arm_cockpit && f.generation == arm_generation) &&
+               f.constructor_caller == restore_alloc_caller;
+    }
+    // Pending/due: a fresh cockpit from the alloc command. Returns true when the frame counted towards due.
+    template <class Probe> bool candidate_frame(const RestoreFrame& f, Probe& p, bool at_injection) noexcept {
+        if (!candidate(f)) return false;
+        if (!f.readable || !f.mode) return soft(f);
+        if (bound_cockpit && f.cockpit != bound_cockpit && phase == phase_due) return false;
+        if (f.mode != restore_internal_mode) {
+            // A fresh cockpit shown at 258 already (the script restored itself) or a key the player pressed.
+            cancel(cancel_mode_left);
+            return false;
+        }
+        if (f.connect || (f.flags & 4) || !f.ref || f.view != f.ref) return soft(f);
+        std::uint32_t handle = 0, ship_id = 0, controller = 0;
+        if (!p.active_control(handle)) return soft(f);
+        // The ship may differ from the armed one (ship change, death respawn): the trigger is the
+        // cockpit replacement, and the restore applies to whatever the player now flies. Only the
+        // engine's controller object must be the one the arm saw.
+        if (!p.ship_live(f.ref, ship_id) || !ship_id) return soft(f);
+        if (!p.controller(controller) || controller != arm_controller) {
+            cancel(cancel_identity);
+            return false;
+        }
+        if (!f.sector) return soft(f);
+        if (bound_cockpit != f.cockpit || bound_generation != f.generation) {
+            bound_cockpit = f.cockpit;
+            bound_generation = f.generation;
+            due_count = 0;
+        }
+        bound_sector = f.sector;
+        bound_ship_id = ship_id;
+        if (at_injection) return true;
+        if (pending_updates < retry_after) return false; // retry spacing: not counted yet
+        if (phase == phase_pending && ++due_count >= restore_due_frames) {
+            phase = phase_due;
+            ++dues;
+        }
+        return true;
+    }
+    bool soft(const RestoreFrame& f) noexcept {
+        if (f.cockpit == bound_cockpit) due_count = 0;
         return false;
-    if (!r.context(restore_warp_class, warp_context, warp_desc) || warp_desc[0] != restore_warp_class) return false;
-    return integer_cell(r, warp_context, warp_desc, 3, warp) && integer_cell(r, warp_context, warp_desc, 6, killed);
-}
-// Decodes the seam: VM from the interpreter frame must be the process VM root,
-// the operand pointer must lie in CODE and name a recognised optimized store.
-template <class Reader, class CodeRange>
-bool seam_decode(const SeamRegs& s, Reader bytes, CodeRange code_address, std::uint32_t vm_root, SeamDecode& d) {
-    auto field = [&](std::uintptr_t base, unsigned offset, auto& out) { return bytes(base, offset, &out, sizeof out); };
-    std::uint32_t root = 0;
-    if (!field(s.esp, 0x18, d.vm) || !field(vm_root, 0, root) || root != d.vm || !d.vm || (d.vm & 3) ||
-        !field(d.vm, 8, d.code))
-        return false;
-    if (!d.code || s.edi <= d.code || s.edi - d.code > 0x1000000) return false;
-    d.pc = s.edi - 1 - d.code;
-    std::uintptr_t at = 0;
-    unsigned char raw[4]{};
-    if (!code_address(d.code, d.pc, 4, at) || !bytes(at, 0, raw, 4)) return false;
-    d.opcode = raw[0];
-    d.index = unsigned(raw[1]) | (unsigned(raw[2]) << 8);
-    d.discard = raw[3];
-    if ((d.opcode != 0x93 && d.opcode != 0x94) || d.discard != 0x24) return false;
-    return field(s.ebp, 8, d.task) && d.task && !(d.task & 3);
-}
-// Full consume proof at the SelectMode(1) assignment. Returns 0 when every
-// check passed and the caller may clear pending and write; otherwise the
-// refusal subreason. No write happens here.
-template <class Reader, class CodeRange>
-unsigned seam_consume_proof(const RestoreState& st, const SeamRegs& s, const SeamDecode& d, std::uint32_t epoch,
-                            Reader bytes, CodeRange code_address, std::uint32_t vm_root) {
-    auto field = [&](std::uintptr_t base, unsigned offset, auto& out) { return bytes(base, offset, &out, sizeof out); };
-    if (st.pending_epoch != epoch) return refuse_epoch;
-    if (s.thread != st.pending_thread) return refuse_thread;
-    if (d.task != st.pending_task) return refuse_task;
-    std::uint32_t task_id = 0, context = 0, task_context = 0;
-    if (!field(d.task, 8, task_id) || task_id != st.pending_task_id) return refuse_task_id;
-    if (!field(s.esp, 0x20, context) || !context || context != s.eax || !field(d.task, 0x3c, task_context) ||
-        task_context != context)
-        return refuse_context;
-    if (d.opcode != 0x94 || d.index != 0 || s.esi != 0 || d.pc != restore_mode_pc) return refuse_opcode;
-    IdentityReader<Reader> r{bytes};
-    r.vm_root = vm_root;
-    if (!r.root() || r.vm != d.vm) return refuse_globals;
-    std::uint32_t monitor = 0, desc[14]{};
-    if (!borrowed_context(r, context, restore_monitor_class, monitor, desc)) return refuse_monitor_class;
-    if (monitor != st.pending_monitor) return refuse_monitor_identity;
-    std::uint32_t mode = 0, handle = 0, ref = 0;
-    if (!integer_cell(r, context, desc, 0, mode) || mode != restore_rear_mode) return refuse_mode_cell;
-    if (!integer_cell(r, context, desc, 1, handle) || handle != 0) return refuse_handle_cell;
-    std::uint32_t player = 0, controller = 0, warp = 0, killed = 0;
-    if (!global_scalars(r, player, controller, warp, killed) || player != st.arm_player ||
-        controller != st.arm_controller || !player)
-        return refuse_globals;
-    if (warp != 1 || killed != 0) return refuse_warp;
-    // run65: cell11 is a camera priority (20), never the player. cell16 is the
-    // main-monitor number (0 from Create); cell17 is the player ref bound by
-    // StartMainMonitor from the same global cell9 validated above.
-    std::uint32_t number = 0, ref_tag = 0, g9_tag = 0;
-    if (!integer_cell(r, context, desc, 16, number) || number != 0) return refuse_monitor_number;
-    if (!global9_tag(r, g9_tag) || !raw_cell(r, context, desc, 17, ref_tag, ref) || !ref_tag_ok(ref_tag, g9_tag))
-        return refuse_ref_tag;
-    if (ref != player) return refuse_ref_cell;
-    unsigned char source[5]{};
-    std::uint32_t requested = 0;
-    if (!bytes(s.ebx, 0, source, 5)) return refuse_source;
-    std::memcpy(&requested, source + 1, 4);
-    if (source[0] != 1 || requested != 1) return refuse_source;
-    if (!live_stack_prefix(d.task, s.ebx, d.code, bytes, code_address, restore_reset_prefix, 3)) return refuse_stack;
-    return refuse_none;
-}
-// Killed store (class96 cell6) at its known PCs: only a well-formed zero store
-// keeps the ticket; a nonzero or malformed store cancels.
-template <class Reader>
-bool killed_store_is_zero(const SeamRegs& s, const SeamDecode& d, Reader bytes, std::uint32_t vm_root) {
-    IdentityReader<Reader> r{bytes};
-    r.vm_root = vm_root;
-    std::uint32_t warp_context = 0, warp_desc[14]{};
-    unsigned char source[5]{};
-    std::uint32_t value = 0;
-    if (d.opcode != 0x94 || d.index != 6 || s.esi != 30 || !r.root() || r.vm != d.vm) return false;
-    if (!r.context(restore_warp_class, warp_context, warp_desc) || warp_desc[0] != restore_warp_class ||
-        s.eax != warp_context)
-        return false;
-    if (!bytes(s.ebx, 0, source, 5) || source[0] != 1) return false;
-    std::memcpy(&value, source + 1, 4);
-    return value == 0;
-}
-// Pending transfer at the warp destructor: the exact measured return prefix,
-// the armed player/controller scalars, live warp1/killed0 and a borrowed
-// monitor context of the expected class.
-template <class Reader>
-unsigned transfer_proof(const RestoreState& st, const Origin& o, Reader bytes, std::uint32_t vm_root,
-                        std::uint32_t& monitor, std::uint32_t& task_id) {
-    auto field = [&](std::uintptr_t base, unsigned offset, auto& out) { return bytes(base, offset, &out, sizeof out); };
-    if (o.valid != 15 || o.flags || o.count != 5) return refuse_provenance;
-    for (unsigned i = 0; i < 5; ++i)
-        if (o.returns[i] != restore_warp_prefix[i] || !o.contexts[i]) return refuse_prefix;
-    if (!o.task || (o.task & 3) || !field(o.task, 8, task_id)) return refuse_task_id;
-    IdentityReader<Reader> r{bytes};
-    r.vm_root = vm_root;
-    std::uint32_t desc[14]{};
-    if (!r.root()) return refuse_globals;
-    if (!borrowed_context(r, o.context, restore_monitor_class, monitor, desc)) return refuse_monitor_class;
-    std::uint32_t player = 0, controller = 0, warp = 0, killed = 0;
-    if (!global_scalars(r, player, controller, warp, killed) || player != st.arm_player ||
-        controller != st.arm_controller)
-        return refuse_identity;
-    if (warp != 1 || killed != 0) return refuse_warp;
-    return refuse_none;
-}
+    }
+    // Every cockpit update (the expiry clock while a ticket is past the arm).
+    void on_update() noexcept {
+        if (phase == phase_pending || phase == phase_due) {
+            if (++pending_updates > restore_pending_update_expiry) cancel(cancel_expiry);
+        } else if (phase == phase_calling) {
+            // on_call_result never ran: a script error unwound through the engine call. The clock keeps
+            // running so the next transit is not blocked behind a stalled ticket.
+            if (++pending_updates > restore_pending_update_expiry) cancel(cancel_call_unwound);
+        }
+    }
+    void on_destroy(std::uint32_t cockpit, std::uint64_t generation, std::uint32_t caller) noexcept {
+        if (phase == phase_armed) {
+            if (cockpit != arm_cockpit) return;
+            if (generation != arm_generation || caller != restore_free_caller) {
+                cancel(cancel_destructor);
+                return;
+            }
+            phase = phase_pending;
+            ++pendings;
+            pending_updates = 0;
+            retry_after = 0;
+            due_count = 0;
+            return;
+        }
+        if (phase == phase_pending || phase == phase_due || phase == phase_calling) {
+            if (bound_cockpit) {
+                if (cockpit == bound_cockpit) cancel(cancel_lifetime);
+                return;
+            }
+            cancel(cancel_second_destruction);
+        }
+    }
+    // Constructor completion: the load chain's constructor cancels; others are candidates by their caller.
+    void on_complete(std::uint32_t caller) noexcept {
+        if (ticket_open() && phase != phase_armed && caller == restore_load_constructor_caller)
+            cancel(cancel_lifetime);
+    }
+    void on_load() noexcept {
+        if (ticket_open()) cancel(cancel_load);
+    }
+    void on_vm() noexcept {
+        if (ticket_open()) cancel(cancel_epoch);
+    }
+    // Kind 6 (0x0042e742, `mov [cockpit+0x150], mode` from the script command): while a ticket is past the
+    // arm, the script object that stores into a candidate cockpit is the monitor that owns it (StartMonitor's
+    // SelectMode(1), and every later Show); during our call the store on the bound cockpit is the result.
+    // monitor/monitor_class are the engine VM frame's current context id (a dynamic object id, negative)
+    // and class, 0 when unreadable or refused. The fresh cockpit may reuse the freed one's address, so
+    // the stored cockpit is identified by (address, generation), never by the address alone.
+    void on_mode_store(std::uint32_t cockpit, std::uint64_t generation, std::uint32_t requested,
+                       std::uint32_t thread, std::uint32_t constructor_caller, std::uint32_t monitor_id,
+                       std::uint32_t monitor_class_id) noexcept {
+        if (phase == phase_calling) {
+            if (thread == attempt_thread && cockpit == bound_cockpit && generation == bound_generation)
+                attempt_mode_seen = requested;
+            return;
+        }
+        if (phase != phase_pending && phase != phase_due) return;
+        if (constructor_caller != restore_alloc_caller || !monitor_id || !generation) return;
+        if (cockpit == arm_cockpit && generation == arm_generation) return;
+        monitor_cockpit = cockpit;
+        monitor_generation = generation;
+        monitor = monitor_id;
+        monitor_class = monitor_class_id;
+        ++monitors_captured;
+    }
+    // Site I entry. The caller re-reads the bound cockpit's frame fresh and passes the engine's controlled
+    // object ([ESP+4]) and the pause bits ([game+0x4a0]).
+    template <class Probe>
+    RestoreCall on_inject_entry(std::uint32_t thread, const RestoreFrame& fresh, std::uint32_t controlled_object,
+                                std::uint32_t pause_bits, Probe& p, std::uint32_t epoch_now) noexcept {
+        RestoreCall c;
+        epoch(epoch_now);
+        if (phase != phase_due) return c;
+        if (!candidate_frame(fresh, p, true) || phase != phase_due) return c;
+        if ((pause_bits & 1) || controlled_object != fresh.ref || controlled_object == 0) {
+            ++injections_skipped;
+            return c;
+        }
+        if (!monitor || monitor_cockpit != bound_cockpit || monitor_generation != bound_generation) {
+            cancel(cancel_no_monitor);
+            return c;
+        }
+        phase = phase_calling;
+        ++attempts;
+        ++calls;
+        attempt_thread = thread;
+        attempt_mode_seen = 0;
+        c.wanted = true;
+        c.monitor = monitor;
+        c.monitor_class = monitor_class;
+        return c;
+    }
+    void on_call_result(bool call_ok) noexcept {
+        if (phase != phase_calling) return; // cancelled during the call (lifetime, load, epoch)
+        const std::uint32_t seen = attempt_mode_seen;
+        if (!call_ok) {
+            finish(result_call_refused, cancel_call_refused);
+            return;
+        }
+        if (seen == restore_rear_mode) {
+            finish(result_restored, cancel_none);
+            return;
+        }
+        if (seen) {
+            finish(result_other_mode, cancel_other_mode); // the script chose another mode: not fought
+            return;
+        }
+        if (attempts > retries) {
+            finish(result_no_effect, cancel_retries);
+            return;
+        }
+        ++results[result_no_effect];
+        phase = phase_pending;
+        due_count = 0;
+        retry_after = pending_updates + restore_retry_spacing;
+    }
+    RestoreOutcome take_outcome() noexcept {
+        RestoreOutcome o = outcome;
+        outcome.wanted = false;
+        return o;
+    }
+    RestoreArmSample take_arm_sample() noexcept {
+        RestoreArmSample s = arm_sample;
+        arm_sample.wanted = false;
+        return s;
+    }
+};
 }

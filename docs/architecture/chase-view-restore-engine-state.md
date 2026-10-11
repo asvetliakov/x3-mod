@@ -5,8 +5,9 @@ Design note, 2026-10-12, for the question: restore the rear chase view (mode
 cell indices, class-variable layouts, CODE PCs and return-address prefixes),
 keeping the guarantees of the current ticket (fail-closed arming from an
 applied 258 frame, one use, never a ship the player no longer flies or after
-death, never a write the script overwrites). Status: **proposed, for
-ratification**; nothing is implemented. Owning notes: this file for the
+death, never a write the script overwrites). Status: **ratified and
+implemented 2026-10-12** as amended in section 4 ("Amendments"); the design
+text below is kept as written, with its superseded parts marked. Owning notes: this file for the
 design; [chase-view-transition.md](../reverse-engineering/chase-view-transition.md)
 for the measured gate sequence; [chase-view-restore-and-hud-anchor.md](chase-view-restore-and-hud-anchor.md)
 item 1 for the superseded script-seam design.
@@ -22,7 +23,15 @@ executable; "inferred" is marked.
 
 ## Recommendation in two sentences
 
-**Ratified 2026-10-12 (main session)** with one amendment: the option keeps its current default (on with `--camera chase`, as the launcher and `x3m.ini` template have had it since 2026-09-25), not "default off"; a session with no learned key fails closed with the `cancel=no_learned_key` row.
+**Ratified 2026-10-12 (main session)** with one amendment: the option keeps its current default (on with `--camera chase`, as the launcher and `x3m.ini` template have had it since 2026-09-25), not "default off". (The `cancel=no_learned_key` row of the original ratification went with the learned key, amendment 3; the engine-only limit is now `cancel=no_monitor`.)
+
+**Implemented 2026-10-12 under three further ratified amendments** (recorded in
+section 4, "Amendments"): the key-replay write path of the text below was
+replaced by the engine's own by-name script call `SelectMode(258)` on the
+monitor object captured from the VM frame at the mode store, the trigger is the
+cockpit replacement itself (no ship-id or sector gate), and `other_mode` is
+terminal. Sections 1 to 3 and the trigger of section 4 stand; the "Learning the
+key" subsection and the key-replay text are history.
 
 Trigger from engine state only (armed cockpit freed through the cockpit-free
 command, a fresh cockpit bound to the same ship-script id and the active
@@ -135,7 +144,81 @@ cockpit in the same sector (run315), so `+0x1fc == armed sector` cancels
 
 ## 4. Recommended design (question 4)
 
-### Learning the key
+### Amendments (ratified 2026-10-12, implemented in `chase_transition_restore_core.h`)
+
+1. **View-cycle keys (superseded by 3).** A learned key may be a view toggle,
+   so `result=other_mode` was to retry with a cycle detector
+   (`cancel=cycle_no_258`) and `chase_view_restore_retries` became 0..5,
+   default 3. The default stays 3; the cycle logic went with the key replay.
+2. **Trigger is the cockpit replacement, not the sector change, and it
+   restores across ship changes.** Step 4 (Due) drops the "`+0x94` equal to
+   the armed value" and "`+0x1fc` differs from the armed sector" conditions
+   (`cancel_same_sector` and the ship-id identity cancel are gone); kept are
+   the bound cockpit being the player's active-control cockpit
+   (`+0x10 == +0xc != 0`, active-control proof, registry-live ship with the
+   deferred-delete flag clear), mode 1 for two consecutive updates, connect 0,
+   `+0x1a0 & 4` clear, the engine's controller object unchanged
+   (`cancel=identity`), `+0x1fc` non-null, kind-7 cancel, `cancel_mode_left`,
+   expiry. Pending/bound stay tied to the free command `0x0042d402` and the
+   alloc command `0x0042d397` so a load chain still cancels. The outcome row
+   logs `ship_id_from/to` and `sector_from/to` instead of gating on them.
+   Rationale: the cockpit-based trigger restores whatever the player now
+   flies; the old ship-switch protection guarded a script-side ticket for a
+   specific monitor, which no longer exists.
+3. **Direct `SelectMode(258)` instead of key replay** (the user judged key
+   replay too fragile). Site L, the learned-key state, the retry-on-cycle
+   logic and `no_learned_key` are dropped. Consume stays at site I
+   (`0x00410100` entry, the input phase, outside the registry walk) and calls
+   `0x0049f570(monitor, 0, monitor, "SelectMode", 1, 1, 258)` with a mod-owned
+   `"SelectMode\0"`. The monitor object comes from engine state: at the kind-6
+   observer `0x0042e742` (the script's `StartMonitor` storing mode 1 into the
+   fresh cockpit, and every later `Show`) the dispatcher frame gives
+   `[ebp+4] == 0x4a3909`, `[ebp+0xc]` = task, `[task+0x3c]` = the executing
+   script object's context, `[context]` = its object id, `[context+8]` = its
+   class descriptor, `[desc]` = class id (0x25e on stock; read, not assumed).
+   Established with Ghidra this session (static): (a) `0x0049f330` writes
+   `task+0x3c` from the context `0x0049f1e0` resolves and `task+0x30` from the
+   first argument, the interpreter's own `DYNCALL` (opcode 0x85) likewise sets
+   `task+0x3c` to the object context it resolved through `0x0049f1e0`; (b) the
+   third argument of `0x0049f570` is the lookup key, not a class hint: `EAX =
+   [ESP+0x44]` (arg 3) at `0x0049f59c` feeds `0x0049f1e0`, which takes a
+   non-negative value to the static class table (`0x004b06f0`) and a negative
+   one to the dynamic object table at `vm+0x12d0` keyed `~id`; the method is
+   then searched by a content `strcmp` (`0x004b0740`, binary search over
+   `[desc+0x2c]`, count `[desc+0x28]`, parent chain `[desc+0x14]`); passing the
+   monitor's own (negative) id as both object and key reproduces the
+   interpreter's `monitors[0].SelectMode(1)` frame; (c) the wrapper returns
+   `AL = 0` when the object or the method is missing (`0x0049f66c`), which the
+   ticket logs as `result=call_refused`. The name is matched by content, so
+   the EXE needs no `SelectMode` literal. Both compiled programs carry exactly
+   one method row named `SelectMode` with argument count 1 (stock
+   `addon/04.cat`, CODE entry `0xf07cc`; Mayhem `addon/07.cat`, `0x106b1f`;
+   `verification/results/native-chase-view-restore-2026-10-11/check_selectmode.py`).
+   A bound cockpit with no captured monitor cancels `cancel=no_monitor`;
+   `result=other_mode` is terminal (`cancel=other_mode`); `no_effect` keeps
+   its bounded retry (`chase_view_restore_retries`, default 3, ≥ 60 updates
+   apart, then `cancel=retries`). Program dependency left: the method name
+   `SelectMode` and its one-argument convention, checked at run time by the
+   call result.
+
+Two corrections from implementation: the input routine's body is
+`[0x00410100, 0x00412250)` (Ghidra function body: 13 ranges, last byte
+`0x0041224f`, the `0x004121fe` figure below summed the size over the alignment
+gaps), and `cancel=second_destruction` applies only while nothing is bound yet
+(after the fresh cockpit is bound, only its own destruction cancels,
+`cancel=lifetime`). Review fixes 2026-10-12: the monitor capture is keyed
+by (cockpit address, generation), so a fresh cockpit reusing the freed address
+restores (host case 17, the reviewer's repro kept under
+`verification/results/native-chase-view-restore-2026-10-11/reuse_repro.cpp`);
+only a negative (dynamic) object id is accepted from the VM frame; the
+injection entry checks the epoch; a call that never reports back expires as
+`cancel=call_unwound`; a refusal on a cockpit other than the armed one no
+longer cancels the arm; the VM frame is read only once a ticket is past the
+arm; re-arm frames of the armed (cockpit, generation) skip the registry walk,
+the ship hash and the controller read (the identity is re-proved at due and
+at the injection entry; `rearm_frames` counts them).
+
+### Learning the key (superseded by amendment 3)
 
 - Site L, `0x0049f570` entry (`83 ec 0c 53 55 56 57`, 7 bytes, whole
   instructions). Prefilter: return address `[ESP]` in
@@ -228,6 +311,25 @@ Deserializer write (kind 7) at any time; VM load `0x004a0880` and clear
 
 ### Config, logging, removal
 
+As implemented (supersedes the bullets that follow): option name unchanged,
+default on with `--camera chase`; `X3M_CHASE_VIEW_RESTORE_RETRIES` /
+`--chase-view-restore-retries` 0..5, default 3, an invalid value refuses the
+install; install line `chase_view_restore installed=1 requested=1 path=engine
+sites=1 cancel_sites=3 inject_site=0x00410100 call=0x0049f570
+method=SelectMode mode=258 observers=1 retries=3 retries_valid=1
+expiry_updates=600 due_frames=2 retry_spacing=60`; rows `chase_view_restore
+result=… cancel=… attempts= monitor=0x… monitor_class=0x… mode_seen=
+generation_from/to= ship_id_from/to= sector_from/to= wait_updates= frame=`
+once per ticket outcome, `chase_view_restore_arm_refused` once per reason,
+the windowed `chase_view_restore_state` (phase, counters, results, cancels),
+no learn row. The handler moves the ticket to `phase_calling` (never again
+due, `attempts` counted) before the engine call rather than clearing it, so
+the kind-6 observer can attribute the store inside the call; a call that
+never reports back (a script error unwinding through it) expires on the
+600-update clock as `cancel=call_unwound`.
+
+Original bullets (superseded):
+
 - Option name unchanged: `--chase-view-restore` / `X3M_CHASE_VIEW_RESTORE=1`,
   requires `--camera chase`, default off. New `X3M_CHASE_VIEW_RESTORE_RETRIES`
   (default 2, 0..5). The install line becomes `chase_view_restore installed=1
@@ -307,11 +409,12 @@ native.
   incoherence (cell stays 1), and the store site cannot tell a re-application
   from a deliberate internal selection without script provenance. Loses.
 - **By-name call of script internals** (`25d::ChangeViewForMonitor`,
-  `25e::SelectMode`) through `0x0049f570`. Coherent, but the names, argument
-  conventions and the monitor object id are program data that a mod may
-  change, and the monitor id has no engine-side source. Loses to replaying an
-  engine-defined call (`Input`, class 0x96) with a value learned from the
-  player.
+  `25e::SelectMode`) through `0x0049f570`. Originally rejected because the
+  monitor object id had no engine-side source; it has one (the VM task frame
+  at the kind-6 store, amendment 3), and the remaining program dependency is
+  the method name and its one-argument convention, which the call result
+  checks at run time. **Adopted (amendment 3)** over key replay, which depends
+  on the binding, the press state and view-cycle semantics.
 - **`InputAction` with a view id.** The EXE defines no such id (§2). Loses.
 - **OS-level key synthesis** (`SendInput`, `PostMessage`). Depends on the
   physical binding, the window focus and the input backend; the engine seam

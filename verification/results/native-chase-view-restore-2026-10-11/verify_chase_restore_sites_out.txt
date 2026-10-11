@@ -1,0 +1,33 @@
+{
+  "result": "PASS",
+  "size": true,
+  "exe_identity": true,
+  "pe": true,
+  "source_specs": true,
+  "function_disassembly": true,
+  "sites": true,
+  "input_routine_extent": true,
+  "no_text_branch_into_span_interior": true,
+  "input_routine": {
+    "ok": true,
+    "last": "0x41224f",
+    "last_mnemonic": "ret",
+    "jumps_out": [],
+    "script_calls": 13,
+    "script_call_returns": [
+      "0x4101a3",
+      "0x4101d7",
+      "0x410696",
+      "0x4106ca",
+      "0x410754",
+      "0x4107ae",
+      "0x41081f",
+      "0x41086e",
+      "0x41097b",
+      "0x4109af",
+      "0x410a4c",
+      "0x410b3c",
+      "0x411d27"
+    ]
+  }
+}

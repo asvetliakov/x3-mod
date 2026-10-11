@@ -5,16 +5,15 @@
 #include <cstdio>
 // log() must never run under the chase SRW lock (present() holds capture's
 // mutex while report() takes this lock); count seam lines and violations.
-static unsigned log_under_lock = 0, seam_lines = 0, arm_refused_lines = 0, transfer_refused_lines = 0;
+static unsigned log_under_lock = 0, outcome_lines = 0, arm_refused_lines = 0;
 namespace x3m {
 void log(const char* format, ...) {
     if (TryAcquireSRWLockExclusive(&x3m::chase_transition::lock))
         ReleaseSRWLockExclusive(&x3m::chase_transition::lock);
     else
         ++log_under_lock;
-    if (!std::strncmp(format, "chase_view_restore_seam ", 24)) ++seam_lines;
+    if (!std::strncmp(format, "chase_view_restore result=", 26)) ++outcome_lines;
     if (!std::strncmp(format, "chase_view_restore_arm_refused ", 31)) ++arm_refused_lines;
-    if (!std::strncmp(format, "chase_view_restore_transfer_refused ", 36)) ++transfer_refused_lines;
 }
 }
 namespace x3m::telemetry {
@@ -136,7 +135,7 @@ static void benchmark(void* continuation, void* const* stubs, void* seam_idle) {
     x3m::chase_lead::hud_enabled.store(false);
     x3m::chase_lead::native_timing_enabled.store(false);
     transition::restore_enabled.store(false);
-    transition::restore_filter[0].store(0); // kind 18: the seam stub's idle prefilter path
+    transition::restore_inject_filter.store(0); // kind 18: the injection stub's idle prefilter path
     fixture_normal_cpu = 1;
     fixture_cw = 0x037f;
     fixture_mxcsr = 0x1f80;
@@ -170,19 +169,26 @@ static void benchmark(void* continuation, void* const* stubs, void* seam_idle) {
             "CHASE STUB BENCH kind=%u trials=%u loops=%u baseline_mean_us=%.6f full_stub_mean_us=%.6f delta_mean_us=%.6f delta_best_trial_us=%.6f scope=%s cpu=normal harness=same_fixture_call native_work=excluded game_fps=unmeasured\n",
             kind, trials, loops, sum_base / double(trials), sum_hook / double(trials),
             (sum_hook - sum_base) / double(trials), best_delta,
-            kind < 18 ? "full_stub_disabled_callback" : "seam_idle_prefilter_skip");
+            kind < 18 ? "full_stub_disabled_callback" : "inject_idle_prefilter_skip");
     }
 }
 
 // ---------------- X3M_CHASE_VIEW_RESTORE scenarios ----------------
+// The engine path (docs/architecture/chase-view-restore-engine-state.md,
+// section 4) through the actual emitted stubs: the injection site's one-word
+// prefilter, the engine call made from the site-I handler under the engine's
+// own x87/MXCSR image (a mock 0x0049f570 records its seven arguments and the
+// CPU state it was entered with), the kind-6 capture of the monitor object
+// from the dispatcher frame, the ticket outcomes, and install/rollback of the
+// four spans on fixture-owned copies.
 namespace restore_fixture {
 using namespace x3m::chase_transition;
 using namespace x3m::chase_transition::detail;
 namespace engine_patch = x3m::engine_patch;
-constexpr std::uint32_t player_id = 0xfffefa78u, controller_id = 0xffff6eafu, monitor_id = 0xffff6eaeu,
-                        native_id = 0x8dbu, task_id = 0x1234u, task2_id = 0x1235u;
+constexpr std::uint32_t native_id = 0x8dbu, monitor_id = 0xffff6eaeu, controller_id = 0xffff6eafu,
+                        sector_a = 0x265e8e08u, sector_b = 0x80e89c18u, ship_script = 0xfffefa78u,
+                        pause_none = 0;
 alignas(16) unsigned char world[0x4000];
-unsigned char* code = nullptr;
 std::uint32_t W(unsigned off) {
     return std::uint32_t(reinterpret_cast<std::uintptr_t>(world + off));
 }
@@ -194,158 +200,30 @@ template <class T> T get(std::uint32_t at) {
     std::memcpy(&v, reinterpret_cast<void*>(at), sizeof v);
     return v;
 }
-void cell(std::uint32_t at, std::uint32_t value, unsigned char tag = 1) {
-    *reinterpret_cast<unsigned char*>(at) = tag;
-    put(at + 1, value);
-}
 // Offsets inside world.
 enum : unsigned {
-    o_roots = 0,
-    o_vm = 0x100,
-    o_classes = 0x1600,
-    o_global_cells = 0x1700,
-    o_warp_cells = 0x1780,
-    o_monitor = 0x1800,
-    o_monitor_cells = 0x1810,
-    o_task = 0x1900,
-    o_stack = 0x1a00,
-    o_stack_base = 0x1a00 + 128 * 5,
-    o_ship = 0x1d00,
-    o_native_registry = 0x1e00,
-    o_native_table = 0x1e20,
-    o_native_bucket = 0x1e40,
-    o_native_row = 0x1e60,
-    o_cockpit_registry = 0x1f00,
-    o_cockpit_table = 0x1f20,
-    o_cockpit_bucket = 0x1f40,
-    o_cockpit_row = 0x1f60,
-    o_cockpit = 0x2000,
-    o_destructor_frame = 0x2300,
-    o_seam_frame = 0x2400,
-    o_task2 = 0x2500,
-    o_seam_frame2 = 0x2540,
-    o_ctx_a = 0x2600,
-    o_ctx_b = 0x2610,
-    o_ctx_c = 0x2620,
-    o_other_monitor = 0x2700,
-    o_other_monitor_cells = 0x2710,
-    o_stack2 = 0x2800,
-    o_stack2_base = 0x2800 + 128 * 5
+    o_roots = 0, // [0] native registry root, [4] cockpit registry root, [8] game root
+    o_game = 0x100,              // +0x418 controller id, +0x4a0 pause bits
+    o_ship = 0x700,              // +8 native id, +0x40 flags, +0x94 ship-script id
+    o_ship2 = 0x800,             // a second ship (ship change)
+    o_native_registry = 0x900,
+    o_native_table = 0x920,
+    o_native_bucket = 0x940,
+    o_native_row = 0x960,
+    o_native_row2 = 0x980,
+    o_cockpit_registry = 0xa00,
+    o_cockpit_table = 0xa20,
+    o_cockpit_bucket = 0xa40,
+    o_cockpit_row = 0xa60,
+    o_cockpit = 0x1000,  // the armed one
+    o_cockpit2 = 0x1400, // the fresh one
+    o_cockpit3 = 0x1800, // a side monitor's
+    o_dispatcher_frame = 0x2000,
+    o_task = 0x2100,
+    o_context = 0x2200,
+    o_descriptor = 0x2300,
+    o_input_frame = 0x2400
 };
-std::uint32_t code_at(std::uint32_t pc) {
-    return std::uint32_t(reinterpret_cast<std::uintptr_t>(code)) + pc;
-}
-std::uint32_t descriptor(unsigned i) {
-    return W(o_classes) + i * 0x38;
-}
-void build_world() {
-    std::memset(world, 0, sizeof world);
-    put(W(o_roots), W(o_vm));
-    put(W(o_roots + 4), W(o_native_registry));
-    put(W(o_roots + 8), W(o_cockpit_registry));
-    put(W(o_vm + 8), code_at(0));
-    put(W(o_vm + 0x1c), 3u);
-    put(W(o_vm + 0x20), W(o_classes));
-    put(W(o_vm + 0x48), 0x42d340u); // group1 dispatch
-    const std::uint32_t ids[3] = {0, restore_warp_class, restore_monitor_class};
-    const unsigned cells[3] = {o_global_cells, o_warp_cells, 0};
-    const unsigned counts[3] = {12, 8, 41};
-    for (unsigned i = 0; i < 3; ++i) {
-        put(descriptor(i), ids[i]);
-        put(descriptor(i) + 8, descriptor(i));
-        put(descriptor(i) + 0xc, cells[i] ? W(cells[i]) : 0u);
-        put(descriptor(i) + 0x1c, counts[i]);
-    }
-    cell(W(o_global_cells) + 5 * 9, player_id);
-    cell(W(o_global_cells) + 5 * 8, controller_id);
-    cell(W(o_warp_cells) + 5 * 3, 1);
-    cell(W(o_warp_cells) + 5 * 6, 0); // mid-warp world: transfer requires warp1/killed0
-    put(W(o_monitor), monitor_id);
-    put(W(o_monitor + 8), descriptor(2));
-    put(W(o_monitor + 0xc), W(o_monitor_cells));
-    cell(W(o_monitor_cells), restore_rear_mode);
-    cell(W(o_monitor_cells) + 5, 0);
-    cell(W(o_monitor_cells) + 55, 20);
-    cell(W(o_monitor_cells) + 80, 0);
-    cell(W(o_monitor_cells) + 85, player_id); // run65 layout: cell11 priority, cell16 number, cell17 ref
-    put(W(o_other_monitor), 0xffff0001u);
-    put(W(o_other_monitor + 8), descriptor(2));
-    put(W(o_other_monitor + 0xc), W(o_other_monitor_cells));
-    cell(W(o_other_monitor_cells), 1);
-    cell(W(o_other_monitor_cells) + 5, 0);
-    cell(W(o_other_monitor_cells) + 55, 60);
-    cell(W(o_other_monitor_cells) + 80, 1);
-    cell(W(o_other_monitor_cells) + 85, 0xffff0002u);
-    put(W(o_task + 8), task_id);
-    put(W(o_task + 0x10), 128u);
-    put(W(o_task + 0x14), W(o_stack_base));
-    put(W(o_task + 0x3c), W(o_monitor));
-    put(W(o_task2 + 8), task2_id);
-    put(W(o_task2 + 0x10), 128u);
-    put(W(o_task2 + 0x14), W(o_stack2_base));
-    put(W(o_task2 + 0x3c), W(o_monitor));
-    put(W(o_ship + 8), native_id);
-    put(W(o_ship + 0x94), player_id);
-    put(W(o_native_registry + 0x14), W(o_native_table));
-    put(W(o_native_table), W(o_native_bucket));
-    put(W(o_native_table + 4), 4u);
-    put(W(o_native_bucket) + 4 * (native_id & 3), W(o_native_row));
-    put(W(o_native_row + 4), native_id);
-    put(W(o_native_row + 8), W(o_ship));
-    put(W(o_cockpit_registry), W(o_cockpit_table));
-    put(W(o_cockpit_registry + 0x10), 7u);
-    put(W(o_cockpit_table), W(o_cockpit_bucket));
-    put(W(o_cockpit_table + 4), 4u);
-    put(W(o_cockpit_bucket) + 4 * (7 & 3), W(o_cockpit_row));
-    put(W(o_cockpit_row + 4), 7u);
-    put(W(o_cockpit_row + 8), W(o_cockpit));
-    put(W(o_cockpit + 0xc), W(o_ship));
-    put(W(o_cockpit + 0x10), W(o_ship));
-    put(W(o_cockpit + 0x150), restore_rear_mode);
-    put(W(o_cockpit + 0x1c0), 0u);
-    put(W(o_destructor_frame + 4), 0x4a3909u);
-    put(W(o_destructor_frame + 0xc), W(o_task));
-    put(W(o_destructor_frame + 0x10), 1u);
-    put(W(o_seam_frame + 8), W(o_task));
-    put(W(o_seam_frame2 + 8), W(o_task2));
-    put(W(o_ctx_a), 1u);
-    put(W(o_ctx_b), 2u);
-    put(W(o_ctx_c), 3u);
-    // CODE: recognised optimized stores at the documented PCs, native call before the destructor PC.
-    const unsigned char mode_store[4] = {0x94, 0, 0, 0x24}, player_store[4] = {0x93, 9, 0, 0x24},
-                        controller_store[4] = {0x93, 8, 0, 0x24}, killed_store[4] = {0x94, 6, 0, 0x24},
-                        unknown_global[4] = {0x93, 9, 0, 0x24};
-    std::memcpy(code + restore_mode_pc, mode_store, 4);
-    std::memcpy(code + restore_player_pc, player_store, 4);
-    std::memcpy(code + restore_controller_pc, controller_store, 4);
-    std::memcpy(code + restore_killed_pcs[0], killed_store, 4);
-    std::memcpy(code + restore_killed_pcs[1], killed_store, 4);
-    std::memcpy(code + 0x1000, unknown_global, 4);
-    const unsigned char native_call[5] = {0x82, 1, 0, 1, 0};
-    std::memcpy(code + 0xf008a - 5, native_call, 5);
-    put(W(o_task + 0x1c), 0xf008au);
-    put(W(o_task + 0x18), std::int32_t(-10));
-}
-// Warp destructor stack (published index) and, later in the same task, the seam stack (live EBX).
-void build_warp_stack() {
-    const std::uint32_t warp_ctx[5] = {W(o_ctx_a), W(o_ctx_b), W(o_ctx_b), W(o_ctx_c), W(o_ctx_c)};
-    for (unsigned i = 0; i < 5; ++i) {
-        cell(W(o_stack_base) - 50 + i * 10, warp_ctx[i], 10);
-        cell(W(o_stack_base) - 45 + i * 10, restore_warp_prefix[i], 3);
-    }
-}
-std::uint32_t seam_source(std::uint32_t base) {
-    return base - 7 * 5;
-}
-void build_seam_stack(std::uint32_t base, std::uint32_t requested = 1, unsigned char tag = 1,
-                      const std::uint32_t* prefix = restore_reset_prefix) {
-    const std::uint32_t ctx[3] = {W(o_ctx_a), W(o_ctx_b), W(o_ctx_c)};
-    cell(seam_source(base), requested, tag);
-    for (unsigned i = 0; i < 3; ++i) {
-        cell(base - 30 + i * 10, ctx[i], 10);
-        cell(base - 25 + i * 10, prefix[i], 3);
-    }
-}
 unsigned checks = 0, failures = 0;
 void check(bool okay, const char* label) {
     ++checks;
@@ -354,620 +232,413 @@ void check(bool okay, const char* label) {
         std::printf("FAIL restore %s\n", label);
     }
 }
+void build_world() {
+    std::memset(world, 0, sizeof world);
+    put(W(o_roots), W(o_native_registry));
+    put(W(o_roots + 4), W(o_cockpit_registry));
+    put(W(o_roots + 8), W(o_game));
+    put(W(o_game + 0x418), controller_id);
+    put(W(o_game + 0x4a0), pause_none);
+    put(W(o_ship + 8), native_id);
+    put(W(o_ship + 0x94), ship_script);
+    put(W(o_ship2 + 8), native_id + 1);
+    put(W(o_ship2 + 0x94), 0xffff1766u);
+    put(W(o_native_registry + 0x14), W(o_native_table));
+    put(W(o_native_table), W(o_native_bucket));
+    put(W(o_native_table + 4), 4u);
+    put(W(o_native_bucket) + 4 * (native_id & 3), W(o_native_row));
+    put(W(o_native_row + 4), native_id);
+    put(W(o_native_row + 8), W(o_ship));
+    put(W(o_native_bucket) + 4 * ((native_id + 1) & 3), W(o_native_row2));
+    put(W(o_native_row2 + 4), native_id + 1);
+    put(W(o_native_row2 + 8), W(o_ship2));
+    put(W(o_cockpit_registry), W(o_cockpit_table));
+    put(W(o_cockpit_registry + 0x10), 7u);
+    put(W(o_cockpit_table), W(o_cockpit_bucket));
+    put(W(o_cockpit_table + 4), 4u);
+    put(W(o_cockpit_bucket) + 4 * (7 & 3), W(o_cockpit_row));
+    put(W(o_cockpit_row + 4), 7u);
+    put(W(o_cockpit_row + 8), W(o_cockpit));
+    for (unsigned c : {o_cockpit, o_cockpit2, o_cockpit3}) {
+        put(W(c + 0xc), W(o_ship));
+        put(W(c + 0x10), W(o_ship));
+        put(W(c + 0x150), c == o_cockpit ? restore_rear_mode : restore_internal_mode);
+        put(W(c + 0x1fc), c == o_cockpit ? sector_a : sector_b);
+    }
+    // Dispatcher frame at the kind-6 store: [ebp+4] = 0x4a3909, [ebp+0xc] = task, task+0x3c = context,
+    // context = monitor id, context+8 = class descriptor, desc = class id.
+    put(W(o_dispatcher_frame + 4), 0x4a3909u);
+    put(W(o_dispatcher_frame + 0xc), W(o_task));
+    put(W(o_task + 0x3c), W(o_context));
+    put(W(o_context), monitor_id);
+    put(W(o_context + 8), W(o_descriptor));
+    put(W(o_descriptor), 0x25eu);
+}
+void control(unsigned cockpit) {
+    put(W(o_cockpit_row + 8), W(cockpit));
+}
+// The mock engine wrapper: records the seven cdecl arguments and the CPU state it
+// was entered with, optionally performs the script's store (the kind-6 observer
+// through the real handler, as the engine's SelectMode -> INS_CockpitSetViewMode
+// does synchronously inside the call), and returns the configured AL.
+struct MockCall {
+    unsigned calls = 0;
+    std::uint32_t args[7]{};
+    const char* name = nullptr;
+    std::uint16_t cw = 0;
+    std::uint32_t mxcsr = 0;
+    std::uint32_t store_mode = restore_rear_mode; // 0: store nothing
+    unsigned store_cockpit = o_cockpit2;
+    std::uint32_t result = 1;
+    std::uint32_t last_error_seen = 0;
+};
+MockCall mock;
+extern "C" std::uint32_t __cdecl mock_script_call(std::uint32_t a, std::uint32_t b, std::uint32_t c, const char* name,
+                                                   std::uint32_t e, std::uint32_t f, std::uint32_t g) {
+    ++mock.calls;
+    const std::uint32_t v[7] = {a, b, c, 0, e, f, g};
+    std::memcpy(mock.args, v, sizeof v);
+    mock.name = name;
+    asm volatile("fnstcw %0\n\tstmxcsr %1" : "=m"(mock.cw), "=m"(mock.mxcsr)::"memory");
+    mock.last_error_seen = GetLastError();
+    if (mock.store_mode) {
+        std::uint32_t regs[9]{};
+        regs[7] = W(mock.store_cockpit);
+        regs[6] = mock.store_mode;
+        regs[2] = W(o_dispatcher_frame);
+        handle(6, regs);
+    }
+    SetLastError(0x5a5a0001u); // the engine may leave any LastError; the stub boundary restores the caller's
+    return mock.result;
+}
 void* stubs[restore_site_count]{};
 void* continuation = nullptr;
+std::uint32_t thread() {
+    return GetCurrentThreadId();
+}
 void reset_state() {
     restore = {};
+    restore.retries = restore_default_retries;
     restore_filter_publish();
     restore_epoch.store(1);
     state = {};
     restore_enabled.store(true);
+    mock = {};
+    build_world();
 }
-std::uint32_t thread() {
-    return GetCurrentThreadId();
-}
-void lifetime() {
-    state.construct(W(o_cockpit), thread());
-    state.complete(W(o_cockpit), thread());
-}
-void update() {
+void construct(unsigned cockpit, std::uint32_t caller = restore_alloc_caller) {
     std::uint32_t frame[4]{};
-    frame[1] = W(o_cockpit);
+    frame[0] = caller;
+    frame[1] = W(cockpit);
+    std::uint32_t regs[9]{};
+    regs[3] = std::uint32_t(reinterpret_cast<std::uintptr_t>(frame)) - 4;
+    handle(0, regs);
+    std::uint32_t complete[9]{};
+    complete[7] = W(cockpit);
+    handle(1, complete);
+}
+void update(unsigned cockpit = o_cockpit2) {
+    std::uint32_t frame[4]{};
+    frame[1] = W(cockpit);
     std::uint32_t regs[9]{};
     regs[3] = std::uint32_t(reinterpret_cast<std::uintptr_t>(frame)) - 4;
     handle(3, regs);
 }
-void destroy(std::uint32_t caller = restore_destructor_caller, std::uint32_t cockpit = 0) {
+void destroy(unsigned cockpit, std::uint32_t caller = restore_free_caller) {
     std::uint32_t frame[4]{};
     frame[0] = caller;
-    frame[1] = cockpit ? cockpit : W(o_cockpit);
+    frame[1] = W(cockpit);
     std::uint32_t regs[9]{};
     regs[3] = std::uint32_t(reinterpret_cast<std::uintptr_t>(frame)) - 4;
-    regs[2] = W(o_destructor_frame);
+    regs[2] = W(o_dispatcher_frame);
     handle(2, regs);
 }
-bool arm() {
-    reset_state();
-    lifetime();
-    update();
-    return restore.armed;
+void store(unsigned cockpit, std::uint32_t mode, std::uint32_t ebp = W(o_dispatcher_frame)) {
+    std::uint32_t regs[9]{};
+    regs[7] = W(cockpit);
+    regs[6] = mode;
+    regs[2] = ebp;
+    handle(6, regs);
 }
-bool arm_pending() {
-    if (!arm()) return false;
-    build_warp_stack();
-    destroy();
-    build_seam_stack(W(o_stack_base));
-    return restore.pending;
+void observe(unsigned cockpit) {
+    AppliedFrame f;
+    f.cockpit = W(cockpit);
+    f.mode = get<std::uint32_t>(W(cockpit + 0x150));
+    f.connect = get<std::uint32_t>(W(cockpit + 0x1c0));
+    f.flags = get<std::uint32_t>(W(cockpit + 0x1a0));
+    f.ref = get<std::uint32_t>(W(cockpit + 0xc));
+    f.view = get<std::uint32_t>(W(cockpit + 0x10));
+    f.sector = get<std::uint32_t>(W(cockpit + 0x1fc));
+    restore_observe_frame(f);
 }
-FrameCall seam_frame(std::uint32_t pc, std::uint32_t ebx, std::uint32_t esi, std::uint32_t eax, std::uint32_t ebp = 0,
-                     std::uint32_t context = 0) {
+// Site I through the actual stub: [ESP] return, [ESP+4] the engine's controlled object, [ESP+8] flag.
+FrameCall input_entry(std::uint32_t controlled = W(o_ship)) {
     FrameCall f{};
-    f.eax = eax;
-    f.ebx = ebx;
-    f.esi = esi;
-    f.edi = code_at(pc) + 1;
-    f.ebp = ebp ? ebp : W(o_seam_frame);
-    f.ecx = 0x11;
-    f.edx = 0x22;
     f.flags = 0x202;
-    f.stack[5] = W(o_vm);
-    f.stack[7] = context ? context : eax;
+    f.eax = 0x11;
+    f.ecx = 0x22;
+    f.edx = 0x33;
+    f.ebx = 0x44;
+    f.esi = 0x55;
+    f.edi = 0x66;
+    f.ebp = 0x77;
+    f.stack[0] = 0x404368;
+    f.stack[1] = controlled;
+    f.stack[2] = 1;
     return f;
 }
-void run(unsigned kind, FrameCall& f) {
-    fixture_call_frame(stubs[kind], &f);
+void run_input(FrameCall& f) {
+    fixture_call_frame(stubs[restore_inject_kind], &f);
 }
-std::uint32_t payload() {
-    return get<std::uint32_t>(seam_source(W(o_stack_base)) + 1);
+// Arm on the old cockpit, free it through the free command, construct the fresh one, let the script store
+// mode 1 into it (the monitor capture), then two applied frames: due.
+void arm_free_construct(bool capture_monitor = true) {
+    reset_state();
+    construct(o_cockpit, 0x41f83bu); // the armed cockpit's own constructor caller is irrelevant
+    observe(o_cockpit);
+    check(restore.phase == phase_armed && restore.arm_ship_id == ship_script && restore.arm_controller == controller_id &&
+              restore.arm_sector == sector_a,
+          "applied rear frame arms from engine state");
+    destroy(o_cockpit);
+    check(restore.phase == phase_pending, "free command transfers to pending");
+    construct(o_cockpit2);
+    if (capture_monitor) store(o_cockpit2, restore_internal_mode);
+    check(restore.monitor == (capture_monitor ? monitor_id : 0) && restore.monitor_class == (capture_monitor ? 0x25eu : 0),
+          "StartMonitor's store captures the monitor object and class from the dispatcher frame");
+    control(o_cockpit2);
+}
+void due() {
+    observe(o_cockpit2);
+    check(restore.phase == phase_pending && restore_inject_filter.load() == 0, "first fresh frame is not due");
+    observe(o_cockpit2);
+    check(restore.phase == phase_due && restore_inject_filter.load() == 1, "second frame is due and publishes the prefilter");
 }
 void scenarios() {
-    build_seam_stack(W(o_stack_base));
-    build_seam_stack(W(o_stack2_base));
-    // Exactly-once source-payload write through the actual seam stub.
-    check(arm_pending(), "arm then warp destructor transfers to pending");
-    check(restore_filter[0].load() == 2 && restore_filter[1].load() == code_at(restore_mode_pc) + 1,
-          "pending publishes mode 2 and mode operand address");
-    const auto calls = restore.seam_calls;
+    // 1. Acceptance: one call with the captured object, the script's 258 store inside the call, restored.
+    arm_free_construct();
+    due();
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(payload() == restore_rear_mode && restore.consumed == 1 && !restore.pending &&
-                  restore.seam_calls == calls + 1,
-              "consume writes 258 into the live source payload once");
-        check(f.out[4] == seam_source(W(o_stack_base)) && f.out[0] == code_at(restore_mode_pc) + 1 &&
-                  f.out[7] == W(o_monitor) && (f.out[8] & 0x8d5) == (0x202 & 0x8d5),
-              "seam stub returns the interpreter registers and flags untouched");
-        check(restore_filter[0].load() == 0, "consumed ticket returns the prefilter to idle");
+        const auto rows = outcome_lines;
+        // Hostile engine state for the call: a non-default x87 control word and MXCSR (the handler's own
+        // clean state must not leak into the callee, and the engine's image must come back afterwards).
+        const std::uint16_t engine_cw = 0x077f;
+        const std::uint32_t engine_mxcsr = 0x3f80;
+        std::uint16_t cw_after = 0;
+        std::uint32_t mxcsr_after = 0;
+        asm volatile("fldcw %0\n\tldmxcsr %1" ::"m"(engine_cw), "m"(engine_mxcsr) : "memory");
+        FrameCall f = input_entry();
+        SetLastError(0x2468ace0);
+        run_input(f);
+        asm volatile("fnstcw %0\n\tstmxcsr %1" : "=m"(cw_after), "=m"(mxcsr_after)::"memory");
+        const std::uint16_t default_cw = 0x037f;
+        const std::uint32_t default_mxcsr = 0x1f80;
+        asm volatile("fninit\n\tfldcw %0\n\tldmxcsr %1" ::"m"(default_cw), "m"(default_mxcsr) : "memory");
+        check(GetLastError() == 0x2468ace0, "LastError restored across the engine call");
+        check(cw_after == engine_cw && mxcsr_after == engine_mxcsr, "the engine's x87 CW and MXCSR image is back after the call");
+        check(mock.calls == 1 && mock.args[0] == monitor_id && mock.args[1] == 0 && mock.args[2] == monitor_id &&
+                  mock.name && !std::strcmp(mock.name, "SelectMode") && mock.args[4] == 1 && mock.args[5] == 1 &&
+                  mock.args[6] == restore_rear_mode,
+              "the engine call is SelectMode(258) on the captured monitor object (object and lookup key)");
+        check(mock.cw == engine_cw && mock.mxcsr == engine_mxcsr, "the engine call runs under the engine's incoming x87 CW and MXCSR");
+        check(restore.phase == phase_idle && restore.results[result_restored] == 1 && restore.attempts == 0 &&
+                  restore_inject_filter.load() == 0,
+              "258 stored on the bound cockpit inside the call is restored; prefilter back to idle");
+        check(outcome_lines == rows + 1, "one chase_view_restore row per ticket outcome, emitted after the lock");
+        check(f.out[7] == 0x11 && f.out[6] == 0x22 && f.out[5] == 0x33 && f.out[4] == 0x44 && f.out[1] == 0x55 &&
+                  f.out[0] == 0x66 && f.out[2] == 0x77 && (f.out[8] & 0x8d5) == (0x202 & 0x8d5),
+              "site I stub returns the input routine's registers and flags untouched after the call");
+        FrameCall g = input_entry();
+        run_input(g);
+        check(mock.calls == 1, "consumed ticket never calls again");
     }
-    build_seam_stack(W(o_stack_base));
+    // 2. Ship change in the same sector, and a different sector with the same ship, both restore.
+    arm_free_construct();
+    put(W(o_cockpit2 + 0xc), W(o_ship2));
+    put(W(o_cockpit2 + 0x10), W(o_ship2));
+    put(W(o_cockpit2 + 0x1fc), sector_a);
+    due();
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(payload() == 1 && restore.consumed == 1 && restore.seam_calls == calls + 1,
-              "idle prefilter skips the handler and never writes again");
+        FrameCall f = input_entry(W(o_ship2));
+        run_input(f);
+        check(mock.calls == 1 && restore.results[result_restored] == 1, "same sector, different ship restores");
     }
-    // Same-valued selection cancels the arm; a direct caller's prefix refuses the pending consume.
-    check(arm(), "re-arm");
-    restore_filter[0].store(1);
-    build_seam_stack(W(o_stack_base), restore_rear_mode);
+    arm_free_construct();
+    due();
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(!restore.armed && restore.cancels[cancel_selection] == 1 && restore.attempt_mode == 0,
-              "same-valued SelectMode(258) while armed cancels the arm");
+        FrameCall f = input_entry();
+        run_input(f);
+        check(mock.calls == 1 && restore.results[result_restored] == 1, "different sector, same ship restores");
     }
+    // 3. Injection skips: another controlled object or the pause bit; the ticket stays due.
+    arm_free_construct();
+    due();
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(!restore.armed && restore.cancels[cancel_selection] == 1, "idle after selection ignores stores");
+        FrameCall f = input_entry(W(o_ship2));
+        run_input(f);
+        check(mock.calls == 0 && restore.phase == phase_due && restore.injections_skipped == 1,
+              "another controlled object at the entry skips the iteration");
+        put(W(o_game + 0x4a0), 1u);
+        FrameCall g = input_entry();
+        run_input(g);
+        check(mock.calls == 0 && restore.phase == phase_due && restore.injections_skipped == 2, "pause bit skips");
+        put(W(o_game + 0x4a0), pause_none);
+        FrameCall h = input_entry();
+        run_input(h);
+        check(mock.calls == 1 && restore.results[result_restored] == 1, "the next iteration calls");
     }
-    check(arm_pending(), "arm/pending for direct-caller prefix");
-    const std::uint32_t direct_prefix[3] = {0xedc91, 0x16000, 0};
-    build_seam_stack(W(o_stack_base), 1, 1, direct_prefix);
+    // 4. No monitor captured: cancel no_monitor, no call. 5. call_refused. 6. no_effect retries. 7. other_mode.
+    arm_free_construct(false);
+    due();
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(payload() == 1 && !restore.pending && restore.last_refusal == refuse_stack &&
-                  restore.cancels[cancel_proof] == 1,
-              "direct SelectMode caller prefix refuses and clears pending without writing");
+        FrameCall f = input_entry();
+        run_input(f);
+        check(mock.calls == 0 && restore.phase == phase_idle && restore.cancels[cancel_no_monitor] == 1,
+              "no captured monitor cancels with no_monitor and makes no call");
     }
-    build_seam_stack(W(o_stack_base));
-    // Foreign monitor selections are ignored while pending; malformed context cancels.
-    check(arm_pending(), "arm/pending for foreign monitor");
+    arm_free_construct();
+    due();
+    mock.result = 0;
+    mock.store_mode = 0;
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_other_monitor));
-        run(0, f);
-        check(restore.pending && payload() == 1, "another monitor's SelectMode leaves pending untouched");
+        FrameCall f = input_entry();
+        run_input(f);
+        check(mock.calls == 1 && restore.phase == phase_idle && restore.cancels[cancel_call_refused] == 1 &&
+                  restore.results[result_call_refused] == 1,
+              "a wrapper returning AL 0 (object or method not found) cancels call_refused");
     }
+    arm_free_construct();
+    restore.retries = 1;
+    due();
+    mock.store_mode = 0;
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor), 0, W(o_other_monitor));
-        run(0, f);
-        check(!restore.pending && payload() == 1 && restore.last_refusal == refuse_context,
-              "current-object/context mismatch cancels pending without writing");
+        FrameCall f = input_entry();
+        run_input(f);
+        check(mock.calls == 1 && restore.phase == phase_pending && restore.results[result_no_effect] == 1,
+              "no store inside the call is no_effect and schedules a retry");
+        for (unsigned i = 0; i < 59; ++i) {
+            update();
+            observe(o_cockpit2);
+        }
+        check(restore.phase == phase_pending, "frames inside the 60-update spacing do not reach due");
+        update();
+        due();
+        FrameCall g = input_entry();
+        run_input(g);
+        check(mock.calls == 2 && restore.phase == phase_idle && restore.cancels[cancel_retries] == 1,
+              "the attempt cap cancels with retries");
     }
-    // A secondary monitor whose variable11 is the player, visited first while pending, never touches the ticket.
-    check(arm_pending(), "arm/pending for secondary player monitor");
-    cell(W(o_other_monitor_cells) + 85, player_id);
+    arm_free_construct();
+    due();
+    mock.store_mode = 3;
     {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_other_monitor));
-        run(0, f);
-        check(restore.pending && payload() == 1 && restore.cancels[cancel_proof] == 0,
-              "secondary monitor viewing the player leaves pending untouched");
+        FrameCall f = input_entry();
+        run_input(f);
+        check(mock.calls == 1 && restore.phase == phase_idle && restore.results[result_other_mode] == 1 &&
+                  restore.cancels[cancel_other_mode] == 1,
+              "another mode stored by the script ends the ticket");
     }
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(!restore.pending && payload() == restore_rear_mode && restore.consumed == 1,
-              "main monitor then consumes once");
-    }
-    cell(W(o_other_monitor_cells) + 85, 0xffff0002u);
-    build_seam_stack(W(o_stack_base));
-    // Side monitors never set cell17 (ef8c4 PUSH 0 / STOREM 17): their SelectMode(0) is foreign, never a cancel.
-    check(arm(), "arm for side monitor SelectMode(0)");
-    cell(W(o_other_monitor_cells) + 85, 0, 0);
-    build_seam_stack(W(o_stack_base), 0);
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_other_monitor));
-        run(0, f);
-        check(restore.armed && restore.cancels[cancel_selection] == 0,
-              "side monitor with unset cell17 leaves the arm untouched");
-    }
-    build_warp_stack();
-    destroy();
-    check(restore.pending, "armed ticket still transfers");
-    build_seam_stack(W(o_stack_base), 0);
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_other_monitor));
-        run(0, f);
-        check(restore.pending && restore.cancels[cancel_proof] == 0,
-              "side monitor SelectMode(0) while pending leaves pending untouched");
-    }
-    build_seam_stack(W(o_stack_base));
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(!restore.pending && payload() == restore_rear_mode && restore.consumed == 1,
-              "main monitor consumes once after side monitors");
-    }
-    cell(W(o_other_monitor_cells) + 85, 0xffff0002u);
-    build_seam_stack(W(o_stack_base));
-    // An exception through the EH adapter while armed must not prevent a later re-arm and gate.
-    check(arm(), "arm before eh bump");
-    {
-        FrameCall f{};
-        f.flags = 0x202;
-        run(6, f);
-    }
-    update();
-    check(restore.armed && restore.arms == 2 && restore.cancels[cancel_epoch] == 1,
-          "admitted rear update re-arms after an eh epoch bump");
-    build_warp_stack();
-    destroy();
-    build_seam_stack(W(o_stack_base));
-    check(restore.pending, "re-armed ticket transfers at the gate");
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(payload() == restore_rear_mode && restore.consumed == 1, "re-armed ticket consumes once");
-    }
-    build_seam_stack(W(o_stack_base));
-    // Deserialization kind7 through the existing mode-load observer clears and advances the epoch.
-    check(arm_pending(), "arm/pending for deserialization");
-    {
-        const auto epoch = restore_epoch.load();
-        std::uint32_t regs[9]{};
-        regs[2] = W(o_cockpit);
-        regs[5] = 1;
-        handle(7, regs);
-        check(!restore.pending && !restore.armed && restore_epoch.load() == epoch + 1 &&
-                  restore.cancels[cancel_epoch] == 1 && restore_filter[0].load() == 0,
-              "kind7 deserialization cancels pending and advances the epoch");
-    }
-    check(arm(), "arm for deserialization");
+    // 8. Cancels: deserializer, VM clear/load (stubs 1/2), EH adapter (stub 3) at the next frame, load-chain
+    //    constructor, bound cockpit destroyed, a second destruction while pending, expiry, mode left.
+    arm_free_construct();
     {
         std::uint32_t regs[9]{};
-        regs[2] = W(o_cockpit);
+        regs[2] = W(o_cockpit2);
         regs[5] = 1;
         handle(7, regs);
-        check(!restore.armed && restore.attempt_mode == 0, "kind7 deserialization clears the arm and allows re-arm");
+        check(restore.phase == phase_idle && restore.cancels[cancel_load] == 1, "kind7 deserialization cancels");
     }
-    update();
-    check(restore.armed, "rear update after deserialization re-arms");
-    // A->B->A identity stores cancel pending and armed tickets.
-    check(arm_pending(), "arm/pending for player store");
-    cell(seam_source(W(o_stack_base)), player_id);
-    {
-        FrameCall f = seam_frame(restore_player_pc, seam_source(W(o_stack_base)), 45, W(o_classes));
-        run(0, f);
-        check(!restore.pending && !restore.armed && restore.cancels[cancel_identity_store] == 1,
-              "global player store to the same value cancels pending");
-    }
-    check(arm(), "arm for controller store");
-    {
-        FrameCall f = seam_frame(restore_controller_pc, seam_source(W(o_stack_base)), 40, W(o_classes));
-        run(0, f);
-        check(!restore.armed && restore.cancels[cancel_identity_store] == 1, "controller setup store cancels the arm");
-    }
-    check(arm_pending(), "arm/pending for unknown global slot store");
-    {
-        FrameCall f = seam_frame(0x1000, seam_source(W(o_stack_base)), 45, W(o_classes));
-        run(0, f);
-        check(!restore.pending && restore.cancels[cancel_global_slot] == 1,
-              "unknown global slot9 store cancels pending");
-    }
-    check(arm(), "arm for unknown global slot while armed");
-    {
-        FrameCall f = seam_frame(0x1000, seam_source(W(o_stack_base)), 45, W(o_classes));
-        run(0, f);
-        check(restore.armed && restore.seam_calls == 0, "armed prefilter skips unknown global stores entirely");
-    }
-    // Killed stores: nonzero cancels, well-formed zero keeps.
-    check(arm(), "arm for killed store");
-    cell(seam_source(W(o_stack_base)), 0);
-    {
-        FrameCall f = seam_frame(restore_killed_pcs[0], seam_source(W(o_stack_base)), 30, descriptor(1));
-        run(0, f);
-        check(restore.armed && restore.seam_calls == 1, "zero killed store keeps the arm");
-    }
-    cell(seam_source(W(o_stack_base)), 1);
-    {
-        FrameCall f = seam_frame(restore_killed_pcs[1], seam_source(W(o_stack_base)), 30, descriptor(1));
-        run(0, f);
-        check(!restore.armed && restore.cancels[cancel_killed_store] == 1, "nonzero killed store cancels the arm");
-    }
-    build_seam_stack(W(o_stack_base));
-    // Yield/re-entry: another task at the seam refuses and clears; the original task then cannot write.
-    check(arm_pending(), "arm/pending for yield");
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack2_base)), 0, W(o_monitor), W(o_seam_frame2));
-        run(0, f);
-        check(!restore.pending && restore.last_refusal == refuse_task &&
-                  get<std::uint32_t>(seam_source(W(o_stack2_base)) + 1) == 1,
-              "re-entered task at the seam refuses and clears pending");
-    }
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(payload() == 1 && restore.consumed == 0, "original task after the yield does not write");
-    }
-    check(arm_pending(), "arm/pending for thread mismatch");
-    restore.pending_thread ^= 1;
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(!restore.pending && restore.last_refusal == refuse_thread && payload() == 1, "other thread refuses");
-    }
-    // Task terminations.
     for (unsigned kind = 1; kind <= 2; ++kind) {
-        check(arm_pending(), "arm/pending for termination");
-        FrameCall other{};
-        other.stack[0] = W(o_vm);
-        other.stack[1] = W(o_task2);
-        other.flags = 0x202;
-        run(kind, other);
-        check(restore.pending, "unrelated task termination keeps pending");
-        FrameCall f{};
-        f.stack[0] = W(o_vm);
-        f.stack[1] = W(o_task);
-        f.flags = 0x202;
-        f.ebx = 0x77;
-        run(kind, f);
-        check(!restore.pending && restore.cancels[kind == 1 ? cancel_task_complete : cancel_task_abort] == 1,
-              kind == 1 ? "task completion clears pending" : "task abort clears pending");
-        check(f.out[4] == 0x77, "termination stub leaves EBX for the displaced prologue");
-    }
-    // VM construct/clear/load advance the epoch and clear everything.
-    for (unsigned kind = 3; kind <= 5; ++kind) {
-        check(arm_pending(), "arm/pending for vm epoch");
+        arm_free_construct();
         const auto epoch = restore_epoch.load();
         FrameCall f{};
-        f.stack[0] = W(o_vm);
-        f.esi = W(o_vm);
+        f.stack[0] = W(o_game);
+        f.esi = W(o_game);
         f.flags = 0x202;
-        run(kind, f);
-        check(!restore.pending && !restore.armed && restore_epoch.load() == epoch + 1 &&
-                  restore.cancels[cancel_epoch] == 1 && restore_filter[0].load() == 0,
-              "vm boundary bumps epoch and clears");
+        fixture_call_frame(stubs[kind], &f);
+        check(restore.phase == phase_idle && restore_epoch.load() == epoch + 1 && restore.cancels[cancel_epoch] >= 1,
+              "VM clear/load bumps the epoch and cancels");
     }
-    // EH adapter: lock-free epoch bump only; the next seam store observes it.
-    check(arm_pending(), "arm/pending for eh");
+    arm_free_construct();
     {
         const auto epoch = restore_epoch.load();
         const auto bumps = restore_eh_bumps.load();
         FrameCall f{};
         f.flags = 0x202;
-        run(6, f);
-        check(restore.pending && restore_epoch.load() == epoch + 1 && restore_eh_bumps.load() == bumps + 1,
+        fixture_call_frame(stubs[restore_eh_kind], &f);
+        check(restore.phase == phase_pending && restore_epoch.load() == epoch + 1 && restore_eh_bumps.load() == bumps + 1,
               "eh adapter bumps the epoch without touching locked state");
-        FrameCall g = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, g);
-        check(!restore.pending && restore.cancels[cancel_epoch] == 1 && payload() == 1,
-              "stale epoch cancels at the seam without writing");
+        observe(o_cockpit2);
+        check(restore.phase == phase_idle && restore.cancels[cancel_epoch] >= 1, "the next frame observes the stale epoch");
     }
-    // Bad tags and stack bounds refuse.
-    struct Bad {
-        const char* label;
-        unsigned refusal;
-        void (*mutate)();
-        void (*undo)();
-    };
-    const Bad bad[] = {
-        {"source tag 2", refuse_source, [] { cell(seam_source(W(o_stack_base)), 1, 2); },
-         [] { cell(seam_source(W(o_stack_base)), 1); }},
-        {"source payload 2", refuse_source, [] { cell(seam_source(W(o_stack_base)), 2); },
-         [] { cell(seam_source(W(o_stack_base)), 1); }},
-        {"destination mode tag 0", refuse_mode_cell, [] { cell(W(o_monitor_cells), restore_rear_mode, 0); },
-         [] { cell(W(o_monitor_cells), restore_rear_mode); }},
-        {"persistent mode 1", refuse_mode_cell, [] { cell(W(o_monitor_cells), 1); },
-         [] { cell(W(o_monitor_cells), restore_rear_mode); }},
-        {"native handle nonzero", refuse_handle_cell, [] { cell(W(o_monitor_cells) + 5, 0x55); },
-         [] { cell(W(o_monitor_cells) + 5, 0); }},
-        {"cell17 ref not player", refuse_ref_cell, [] { cell(W(o_monitor_cells) + 85, 0xffff0002u); },
-         [] { cell(W(o_monitor_cells) + 85, player_id); }},
-        {"cell17 tag 2", refuse_ref_tag, [] { cell(W(o_monitor_cells) + 85, player_id, 2); },
-         [] { cell(W(o_monitor_cells) + 85, player_id); }},
-        {"cell17 heap tag differs from global9", refuse_ref_tag, [] { cell(W(o_monitor_cells) + 85, player_id, 8); },
-         [] { cell(W(o_monitor_cells) + 85, player_id); }},
-        {"cell17 tag 0 (cleared by Show)", refuse_ref_tag, [] { cell(W(o_monitor_cells) + 85, 0, 0); },
-         [] { cell(W(o_monitor_cells) + 85, player_id); }},
-        {"cell16 monitor number 1", refuse_monitor_number, [] { cell(W(o_monitor_cells) + 80, 1); },
-         [] { cell(W(o_monitor_cells) + 80, 0); }},
-        {"cell11 priority is not consulted", refuse_ref_cell,
-         [] {
-             cell(W(o_monitor_cells) + 55, player_id);
-             cell(W(o_monitor_cells) + 85, 0xffff0002u);
-         },
-         [] {
-             cell(W(o_monitor_cells) + 55, 20);
-             cell(W(o_monitor_cells) + 85, player_id);
-         }},
-        {"warp 0", refuse_warp, [] { cell(W(o_warp_cells) + 15, 0); }, [] { cell(W(o_warp_cells) + 15, 1); }},
-        {"killed 1", refuse_warp, [] { cell(W(o_warp_cells) + 30, 1); }, [] { cell(W(o_warp_cells) + 30, 0); }},
-        {"task id reused", refuse_task_id, [] { put(W(o_task + 8), task_id + 1); },
-         [] { put(W(o_task + 8), task_id); }},
-        {"monitor class not 25e", refuse_monitor_class, [] { put(W(o_monitor + 8), descriptor(1)); },
-         [] { put(W(o_monitor + 8), descriptor(2)); }},
-    };
-    for (const auto& b : bad) {
-        check(arm_pending(), "arm/pending for bad proof");
-        b.mutate();
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        const bool ok = !restore.pending && payload() != restore_rear_mode && restore.last_refusal == b.refusal &&
-                        restore.consumed == 0;
-        if (!ok)
-            std::printf("  bad proof %s refusal=%u pending=%u payload=%lu\n", b.label, restore.last_refusal,
-                        unsigned(restore.pending), static_cast<unsigned long>(payload()));
-        check(ok, "bad tag/identity refuses without writing");
-        b.undo();
-    }
-    check(arm_pending(), "arm/pending for stack overflow");
-    {
-        const std::uint32_t overflow = W(o_stack_base) - 65 * 5;
-        cell(overflow, 1);
-        FrameCall f = seam_frame(restore_mode_pc, overflow, 0, W(o_monitor));
-        run(0, f);
-        check(!restore.pending && restore.last_refusal == refuse_stack && get<std::uint32_t>(overflow + 1) == 1,
-              "stack beyond 64 cells refuses");
-    }
-    check(arm_pending(), "arm/pending for misaligned stack");
-    {
-        const std::uint32_t skew = seam_source(W(o_stack_base)) - 1;
-        cell(skew, 1);
-        FrameCall f = seam_frame(restore_mode_pc, skew, 0, W(o_monitor));
-        run(0, f);
-        check(!restore.pending && restore.last_refusal == refuse_stack && get<std::uint32_t>(skew + 1) == 1,
-              "five-byte misaligned EBX refuses");
-        build_seam_stack(W(o_stack_base));
-    }
-    // Destructor boundaries and update expiry.
-    check(arm(), "arm for arbitrary destructor");
-    destroy(0x41ccfb);
-    check(!restore.armed && restore.cancels[cancel_destructor] == 1, "native deleting destructor clears the arm");
-    check(arm_pending(), "arm/pending for second destruction");
-    destroy();
-    check(!restore.pending && restore.cancels[cancel_second_destruction] == 1, "second destruction clears pending");
-    check(arm(), "arm for wrong warp prefix");
-    build_warp_stack();
-    put(W(o_stack_base) - 45 + 10 + 1, 0xedba1u);
-    destroy();
-    check(!restore.pending && !restore.armed && restore.last_refusal == refuse_prefix,
-          "wrong destructor prefix refuses transfer");
-    check(arm_pending(), "arm/pending for expiry");
-    lifetime();
+    arm_free_construct();
+    construct(o_cockpit3, 0x41f83bu);
+    check(restore.phase == phase_idle && restore.cancels[cancel_lifetime] == 1, "load-chain constructor cancels");
+    arm_free_construct();
+    due();
+    destroy(o_cockpit2, 0x41ccfbu);
+    check(restore.phase == phase_idle && restore.cancels[cancel_lifetime] == 2, "bound cockpit destruction cancels");
+    reset_state();
+    construct(o_cockpit, 0x41f83bu);
+    observe(o_cockpit);
+    destroy(o_cockpit);
+    destroy(o_cockpit3, 0x41ccfbu);
+    check(restore.phase == phase_idle && restore.cancels[cancel_second_destruction] == 1,
+          "a second destruction while pending (nothing bound) cancels");
+    arm_free_construct();
     for (unsigned i = 0; i <= restore_pending_update_expiry; ++i) update();
-    check(!restore.pending && restore.cancels[cancel_expiry] == 1, "bounded update expiry cancels pending");
-    // Arm refusals: mode 1, connect nonzero, native/script mismatch, unarmed update re-attempt only on mode change.
+    check(restore.phase == phase_idle && restore.cancels[cancel_expiry] == 1, "bounded update expiry cancels pending");
+    arm_free_construct();
+    put(W(o_cockpit2 + 0x150), restore_rear_mode);
+    observe(o_cockpit2);
+    check(restore.phase == phase_idle && restore.cancels[cancel_mode_left] == 1,
+          "a fresh cockpit already at 258 cancels mode_left");
+    // 9. Arm refusals and the armed cockpit leaving 258; a side cockpit at 258 without control leaves the arm.
     reset_state();
-    lifetime();
-    put(W(o_cockpit + 0x150), 1u);
-    update();
-    check(!restore.armed && restore.arms == 0, "internal view never arms");
-    put(W(o_cockpit + 0x150), restore_rear_mode);
-    update();
-    check(restore.armed && restore.arms == 1, "return to rear view arms once");
-    update();
-    check(restore.arms == 1, "armed updates perform no further identity walks");
-    reset_state();
-    lifetime();
-    put(W(o_ship + 0x94), controller_id);
-    update();
-    check(!restore.armed && restore.arm_refusals == 1 && restore.arm_refusal_reasons[arm_identity] == 1,
-          "native +94 != global9 refuses arming");
-    put(W(o_ship + 0x94), player_id);
-    update();
-    check(!restore.armed && restore.arm_refusals == 1, "identity refusal is not retried every update");
-    reset_state();
-    lifetime();
+    construct(o_cockpit, 0x41f83bu);
     put(W(o_cockpit + 0x1c0), 2u);
-    update();
-    check(!restore.armed && restore.arm_refusal_reasons[arm_connect] == 1, "connect mode nonzero refuses arming");
+    observe(o_cockpit);
+    check(restore.phase == phase_idle && restore.arm_refusal_reasons[arm_connect] == 1 && arm_refused_lines >= 1,
+          "connect refuses arming and samples once");
     put(W(o_cockpit + 0x1c0), 0u);
-    update();
-    check(restore.armed, "connect precondition is re-checked on the next rear update");
-    // run68: a fresh generation's first updates carry view 0; the precondition must retry, then the gate must transfer
-    // and consume.
-    check(arm_pending(), "arm/pending for run68 regeneration");
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(restore.consumed == 1 && payload() == restore_rear_mode, "consume before regeneration");
-    }
-    lifetime();
     put(W(o_cockpit + 0x10), 0u);
-    update();
-    update();
-    check(!restore.armed && restore.arm_refusal_reasons[arm_view_not_ready] == 2 && restore.arms == 1,
-          "view 0 on the new generation refuses without recording an attempt");
+    observe(o_cockpit);
+    check(restore.arm_refusal_reasons[arm_view_not_ready] == 1, "view 0 refuses arming");
     put(W(o_cockpit + 0x10), W(o_ship));
-    update();
-    check(restore.armed && restore.arms == 2 && restore.arm_generation == state.generation(W(o_cockpit)),
-          "later update with view set re-arms on the new generation");
-    build_warp_stack();
-    destroy();
-    build_seam_stack(W(o_stack_base));
-    check(restore.pending && restore.transfers == 2, "re-armed generation transfers at the next destructor");
-    {
-        FrameCall f = seam_frame(restore_mode_pc, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(restore.consumed == 2 && payload() == restore_rear_mode, "second gate consumes once more");
-    }
-    build_seam_stack(W(o_stack_base));
-    // Sample lines: once per reason for arm and transfer refusals, emitted outside the lock.
-    check(arm_refused_lines == 3, "one arm-refusal sample per reason (identity, connect, view)");
-    reset_state();
-    lifetime();
-    put(W(o_ship + 0x94), controller_id);
-    update();
-    put(W(o_ship + 0x94), player_id);
-    check(arm_refused_lines == 4, "a fresh install state samples the reason again once");
-    // No active registry handle: refused per update (reason 3), no attempt recorded, arms once the row points at the
-    // cockpit.
-    reset_state();
-    lifetime();
     put(W(o_cockpit_row + 8), 0u);
-    update();
-    update();
-    check(!restore.armed && restore.arm_refusal_reasons[arm_no_handle] == 2 && arm_refused_lines == 5,
-          "missing active handle refuses each update and samples once");
+    observe(o_cockpit);
+    check(restore.arm_refusal_reasons[arm_no_handle] == 1, "no active handle refuses arming");
     put(W(o_cockpit_row + 8), W(o_cockpit));
-    update();
-    check(restore.armed, "handle restored arms");
-    // Unreadable CODE base after a valid identity: reason 5, attempt recorded.
-    reset_state();
-    lifetime();
-    put(W(o_vm + 8), 0u);
-    update();
-    update();
-    check(!restore.armed && restore.arm_refusal_reasons[arm_code] == 1 && restore.arm_refusals == 1 &&
-              arm_refused_lines == 6,
-          "zero CODE base refuses once and records the attempt");
-    put(W(o_vm + 8), code_at(0));
-    update();
-    check(!restore.armed, "recorded attempt is not retried until the mode changes");
-    // Retry cap: a persistent view 0 stops costing after restore_arm_retry_cap updates.
-    reset_state();
-    lifetime();
-    put(W(o_cockpit + 0x10), 0u);
-    for (unsigned i = 0; i < restore_arm_retry_cap + 8; ++i) update();
-    check(restore.arm_refusal_reasons[arm_view_not_ready] == restore_arm_retry_cap &&
-              restore.arm_refusal_reasons[arm_retry_exhausted] == 1 &&
-              restore.arm_refusals == restore_arm_retry_cap + 1 && arm_refused_lines == 8,
-          "retry cap records the attempt once and samples retry_exhausted");
-    put(W(o_cockpit + 0x10), W(o_ship));
-    update();
-    check(!restore.armed, "exhausted generation does not re-arm on a later update");
+    put(W(o_ship + 0x40), restore_ship_delete_flag);
+    observe(o_cockpit);
+    check(restore.arm_refusal_reasons[arm_ship_dead] == 1, "deferred-delete ship refuses arming");
+    put(W(o_ship + 0x40), 0u);
+    observe(o_cockpit);
+    observe(o_cockpit);
+    check(restore.phase == phase_armed && restore.arms == 1, "rear frames re-arm each frame and count one arm");
+    construct(o_cockpit3);
+    put(W(o_cockpit3 + 0x150), restore_rear_mode);
+    observe(o_cockpit3);
+    check(restore.phase == phase_armed && restore.arm_cockpit == W(o_cockpit), "a side cockpit at 258 leaves the arm");
     put(W(o_cockpit + 0x150), 1u);
-    update();
-    put(W(o_cockpit + 0x150), restore_rear_mode);
-    update();
-    check(restore.armed, "mode re-entry resets the attempt and arms");
-    // Run78 pose gap: the fresh generation's first updates carry view 0 (36 and 12
-    // updates in run78) while the engine renders the rear view from the cockpit.
-    // The old pose admission (view != 0 && view == ref) refused every one of them;
-    // the registry active-control proof admits the first update of a complete
-    // lifetime and refuses partial, destroyed, foreign or rebound cockpits.
+    observe(o_cockpit);
+    check(restore.phase == phase_idle && restore.cancels[cancel_mode_left] == 1, "the armed cockpit at mode 1 disarms");
+    // 10. An unreadable dispatcher frame captures nothing; a store into the armed (old) cockpit is not a capture.
     reset_state();
-    state.construct(W(o_cockpit), thread());
-    put(W(o_cockpit + 0x10), 0u);
-    {
-        const auto old_logic = [](std::uint32_t ref, std::uint32_t view) { return view != 0 && view == ref; };
-        check(!old_logic(W(o_ship), 0u) && !x3m::chase_camera::admits_pose(W(o_ship), 0u, false),
-              "run78: view 0 refused the pose under the old admission");
-        check(!transition::active_control_cockpit(W(o_cockpit)),
-              "run78: partial lifetime is not the proven control cockpit");
-        state.complete(W(o_cockpit), thread());
-        update();
-        check(transition::active_control_cockpit(W(o_cockpit)) &&
-                  x3m::chase_camera::admits_pose(W(o_ship), 0u, transition::active_control_cockpit(W(o_cockpit))),
-              "run78: first update of the complete generation admits the pose with view 0");
-        check(!restore.armed && restore.arm_refusal_reasons[arm_view_not_ready] == 1,
-              "run78: the restore arm still waits for view == ship");
-        put(W(o_cockpit_row + 8), 0u);
-        check(!transition::active_control_cockpit(W(o_cockpit)), "run78: active handle mapping elsewhere refuses");
-        put(W(o_cockpit_row + 8), W(o_cockpit));
-        put(W(o_cockpit_registry + 0x10), 8u);
-        check(!transition::active_control_cockpit(W(o_cockpit)), "run78: another active handle refuses");
-        put(W(o_cockpit_registry + 0x10), 7u);
-        check(!transition::active_control_cockpit(W(o_cockpit) + 2), "run78: misaligned cockpit refuses");
-        check(!transition::active_control_cockpit(W(o_cockpit) + 4) && !transition::active_control_cockpit(0),
-              "run78: unseen or null cockpit refuses");
-        // Handle 0 indexes bucket slot 0: place the zero-id row there so the walk reaches it and only the handle != 0
-        // guard refuses.
-        put(W(o_cockpit_registry + 0x10), 0u);
-        put(W(o_cockpit_row + 4), 0u);
-        put(W(o_cockpit_bucket), W(o_cockpit_row));
-        check(!transition::active_control_cockpit(W(o_cockpit)),
-              "run78: no active control (handle 0) never matches a reachable zero-id row");
-        put(W(o_cockpit_bucket), 0u);
-        put(W(o_cockpit_registry + 0x10), 7u);
-        put(W(o_cockpit_row + 4), 7u);
-        check(!x3m::chase_camera::admits_pose(W(o_ship), W(o_ship) + 0x100, true),
-              "run78: a view object other than the ref object refuses even with the proof");
-        check(x3m::chase_camera::admits_pose(W(o_ship), W(o_ship), false) &&
-                  !x3m::chase_camera::admits_pose(0u, 0u, true),
-              "run78: bound predicate needs no proof; null ref refuses");
-        std::uint32_t regs[9]{};
-        std::uint32_t frame[4]{};
-        frame[0] = 0x41ccfbu;
-        frame[1] = W(o_cockpit);
-        regs[3] = std::uint32_t(reinterpret_cast<std::uintptr_t>(frame)) - 4;
-        regs[2] = W(o_destructor_frame);
-        handle(2, regs);
-        check(!transition::active_control_cockpit(W(o_cockpit)), "run78: destroyed lifetime refuses");
-        put(W(o_cockpit + 0x10), W(o_ship));
-    }
-    {
-        const auto before = transfer_refused_lines;
-        check(arm(), "arm for transfer sample");
-        build_warp_stack();
-        put(W(o_stack_base) - 45 + 10 + 1, 0xedba1u);
-        destroy();
-        check(transfer_refused_lines == before + 1 && restore.last_refusal == refuse_prefix,
-              "transfer refusal emits one sample");
-        lifetime();
-        update();
-        check(restore.armed, "re-arm for repeated transfer refusal");
-        build_warp_stack();
-        put(W(o_stack_base) - 45 + 10 + 1, 0xedba1u);
-        destroy();
-        check(transfer_refused_lines == before + 1, "repeated transfer refusal reason is sampled once");
-    }
-    check(arm(), "arm for mode-left");
-    put(W(o_cockpit + 0x150), 1u);
-    update();
-    check(!restore.armed && restore.cancels[cancel_mode_left] == 1, "leaving mode 258 disarms");
-    put(W(o_cockpit + 0x150), restore_rear_mode);
-    // Armed prefilter: unrelated operand addresses never reach the handler.
-    check(arm(), "arm for prefilter");
-    {
-        FrameCall f = seam_frame(0x2000, seam_source(W(o_stack_base)), 0, W(o_monitor));
-        run(0, f);
-        check(restore.seam_calls == 0 && restore.armed, "armed prefilter skips unrelated member stores");
-    }
+    construct(o_cockpit, 0x41f83bu);
+    observe(o_cockpit);
+    destroy(o_cockpit);
+    construct(o_cockpit2);
+    store(o_cockpit2, restore_internal_mode, W(o_input_frame));
+    check(restore.monitor == 0, "a frame without the interpreter's return address captures nothing");
+    put(W(o_dispatcher_frame + 4), 0x4a3908u);
+    store(o_cockpit2, restore_internal_mode);
+    check(restore.monitor == 0, "a wrong return address captures nothing");
+    put(W(o_dispatcher_frame + 4), 0x4a3909u);
+    store(o_cockpit2, restore_internal_mode);
+    check(restore.monitor == monitor_id, "the validated frame captures the monitor");
     reset_state();
 }
-// Real install/rollback on fixture-owned copies of the seven spans.
+// Real install/rollback on fixture-owned copies of the four spans.
 struct Synthetic {
     unsigned char* fn[restore_site_count]{};
     unsigned char* memory = nullptr;
@@ -976,15 +647,14 @@ bool build_synthetic(Synthetic& s) {
     s.memory = static_cast<unsigned char*>(
         VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
     if (!s.memory) return false;
-    // Tails discard what the displaced prologues pushed so their register effects stay observable.
-    const unsigned char tails[restore_site_count][4] = {{0xc3},
-                                                        {0x83, 0xc4, 0x04, 0xc3},
-                                                        {0x83, 0xc4, 0x04, 0xc3},
-                                                        {0x83, 0xc4, 0x04, 0xc3},
-                                                        {0x83, 0xc4, 0x0c, 0xc3},
+    // Tails undo what the displaced prologues did to the stack so their register effects stay observable:
+    // inject (push ebp; mov ebp,esp; and esp,-16): restore esp from ebp, pop ebp; vm_clear (sub esp,8; push ebp;
+    // mov ebp,[esp+0x10]): pop ebp, add esp,8; vm_load (push -1; push imm): add esp,8; eh: mov eax only.
+    const unsigned char tails[restore_site_count][8] = {{0x8b, 0xe5, 0x5d, 0xc3},
+                                                        {0x5d, 0x83, 0xc4, 0x08, 0xc3},
                                                         {0x83, 0xc4, 0x08, 0xc3},
                                                         {0xc3}};
-    const unsigned tail_len[restore_site_count] = {1, 4, 4, 4, 4, 4, 1};
+    const unsigned tail_len[restore_site_count] = {4, 5, 4, 1};
     for (unsigned i = 0; i < restore_site_count; ++i) {
         s.fn[i] = s.memory + 0x40 * i;
         std::memcpy(s.fn[i], restore_specs[i].expected, restore_specs[i].length);
@@ -992,21 +662,18 @@ bool build_synthetic(Synthetic& s) {
     }
     return FlushInstructionCache(GetCurrentProcess(), s.memory, 0x1000) != FALSE;
 }
-FrameCall native_frame(unsigned kind, std::uint32_t* scratch) {
+FrameCall native_frame(unsigned kind) {
     FrameCall f{};
     f.flags = 0x246;
-    f.eax = std::uint32_t(reinterpret_cast<std::uintptr_t>(scratch));
-    f.esi = f.eax + 0x40;
+    f.eax = 0x30;
     f.ebx = 0x31;
     f.ebp = 0x32;
     f.ecx = 0x33;
     f.edx = 0x34;
-    f.edi = code_at(0x2000) + 1;
+    f.esi = 0x35;
+    f.edi = 0x36;
     for (unsigned i = 0; i < 12; ++i) f.stack[i] = 0x100 + i;
-    if (kind == 0) {
-        scratch[3] = 0x10;
-    } // [eax+0xc]=0x10 -> esi=scratch+0x50 (readable), CMP byte [esi],8
-    if (kind == 3) scratch[17] = 0xdeadu; // mov [esi+4],ebx(0) clears it
+    (void)kind;
     return f;
 }
 void install_rollback() {
@@ -1018,40 +685,41 @@ void install_rollback() {
         local[i] = restore_specs[i];
         local[i].address = reinterpret_cast<std::uintptr_t>(s.fn[i]);
     }
-    alignas(16) std::uint32_t scratch[32]{};
     FrameCall baseline[restore_site_count];
     for (unsigned i = 0; i < restore_site_count; ++i) {
-        baseline[i] = native_frame(i, scratch);
+        baseline[i] = native_frame(i);
         fixture_call_frame(s.fn[i], &baseline[i]);
     }
-    check(baseline[1].out[4] == 0x101 && baseline[2].out[4] == 0x101 && baseline[3].out[4] == 0 && scratch[17] == 0 &&
-              baseline[4].out[2] == 0x100 && baseline[6].out[7] == 0x56e5f4 && (baseline[0].out[8] & 1),
+    // inject: ebp restored by the tail; vm_clear: ebp = [esp+0x10] after sub 8 and push = the first caller word;
+    // vm_load: registers untouched; eh: eax = 0x56e5f4.
+    check(baseline[0].out[2] == 0x32 && baseline[1].out[2] == 0x100 && baseline[2].out[7] == 0x30 &&
+              baseline[3].out[7] == 0x56e5f4,
           "synthetic spans execute their displaced semantics");
-    // Partial install: a corrupted fourth span rolls the first three back.
-    s.fn[3][1] ^= 1;
+    // Partial install: a corrupted third span rolls the first two back.
+    s.fn[2][1] ^= 1;
     check(!restore_sites_install(local), "corrupted span refuses the install");
     bool clean = true;
     for (unsigned i = 0; i < restore_site_count; ++i)
         clean = clean && !restore_sites[i].patched_in &&
-                !std::memcmp(s.fn[i], i == 3 ? restore_specs[i].expected : local[i].expected,
-                             i == 3 ? 1 : local[i].length);
-    check(clean && !std::strcmp(restore_sites[3].status, "bytes_mismatch"),
+                !std::memcmp(s.fn[i], i == 2 ? restore_specs[i].expected : local[i].expected,
+                             i == 2 ? 1 : local[i].length);
+    check(clean && !std::strcmp(restore_sites[2].status, "bytes_mismatch"),
           "partial install rolls earlier sites back to original bytes");
-    s.fn[3][1] ^= 1;
+    s.fn[2][1] ^= 1;
     for (auto& site : restore_sites) site = {};
     restore = {};
     restore_enabled.store(true);
     restore_filter_publish();
-    check(restore_sites_install(local), "all seven synthetic sites install");
+    check(restore_sites_install(local), "all four synthetic sites install");
     bool patched = true;
     for (unsigned i = 0; i < restore_site_count; ++i)
         patched = patched && restore_sites[i].patched_in && s.fn[i][0] == 0xe9 &&
                   !std::strcmp(restore_sites[i].status, "active");
-    check(patched, "seven sites active with jmp at entry");
-    restore_filter[0].store(2);
-    restore_filter[1].store(code_at(0x2000) + 1); // force the seam's full path once
+    check(patched, "four sites active with jmp at entry");
+    const auto inject_calls = restore_timing[restore_inject_kind].calls;
+    restore_inject_filter.store(1); // force the injection stub's full path once (nothing due: the handler returns)
     for (unsigned i = 0; i < restore_site_count; ++i) {
-        FrameCall f = native_frame(i, scratch);
+        FrameCall f = native_frame(i);
         SetLastError(0x2468ace0);
         fixture_call_frame(s.fn[i], &f);
         const bool same_regs = !std::memcmp(f.out, baseline[i].out, 8 * 4) &&
@@ -1059,8 +727,9 @@ void install_rollback() {
         check(same_regs && GetLastError() == 0x2468ace0,
               "patched span preserves registers, flags, LastError and displaced semantics");
     }
-    check(restore.cancels[cancel_seam_unreadable] == 0 && restore.seam_calls == 1,
-          "store seam handler ran once through the patched span and found nothing armed");
+    check(restore_timing[restore_inject_kind].calls == inject_calls + 1 && restore_inject_filter.load() == 0 &&
+              mock.calls == 0,
+          "injection handler ran once through the patched span, found nothing due and republished idle");
     check(restore_sites_restore(), "restore returns success");
     bool restored = true;
     for (unsigned i = 0; i < restore_site_count; ++i)
@@ -1069,7 +738,7 @@ void install_rollback() {
                    !std::strcmp(restore_sites[i].status, "restored");
     check(restored, "rollback restores every original byte");
     for (unsigned i = 0; i < restore_site_count; ++i) {
-        FrameCall f = native_frame(i, scratch);
+        FrameCall f = native_frame(i);
         fixture_call_frame(s.fn[i], &f);
         check(!std::memcmp(f.out, baseline[i].out, 8 * 4), "restored span behaves as baseline");
     }
@@ -1102,17 +771,29 @@ int main(int argc, char** argv) {
     void* continuation = tail.here();
     tail.byte(0xc3);
     if (!tail.finish()) return 2;
-    // Option-off path first: production initialize() with X3M_CHASE_VIEW_RESTORE unset claims none of the seven sites.
+    // Option-off path first: production initialize() with X3M_CHASE_VIEW_RESTORE unset claims none of the sites.
     SetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE", nullptr);
+    SetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE_RETRIES", nullptr);
     transition::initialize();
     {
         bool none = !transition::restore_installed();
         for (const auto& site : transition::restore_sites) none = none && !site.claimed && !site.patched_in;
-        check(none && !transition::restore_wanted() && transition::restore_filter[0].load() == 0,
+        check(none && !transition::restore_wanted() && transition::restore_inject_filter.load() == 0,
               "option off: no restore site claimed, prefilter idle");
     }
     SetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE", L"1");
     check(transition::restore_wanted(), "option parses X3M_CHASE_VIEW_RESTORE=1");
+    {
+        unsigned r = 99;
+        check(transition::restore_retries(r) && r == transition::detail::restore_default_retries, "retries default");
+        SetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE_RETRIES", L"5");
+        check(transition::restore_retries(r) && r == 5, "retries 5 parses");
+        SetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE_RETRIES", L"6");
+        check(!transition::restore_retries(r), "retries 6 refuses (fail closed)");
+        SetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE_RETRIES", L"x");
+        check(!transition::restore_retries(r), "retries x refuses");
+        SetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE_RETRIES", nullptr);
+    }
     transition::enabled.store(true);
     transition::diagnostic.store(true);
     LARGE_INTEGER timing_frequency{};
@@ -1151,19 +832,14 @@ int main(int argc, char** argv) {
     }
     for (unsigned kind = 0; kind < 9; ++kind)
         check(transition::handler_timing[kind].calls == 1, "each transition handler records one timed CPU-check call");
-    // Restore stubs: the same hostile-state preservation harness, full path (pending prefilter mode) and idle skip
-    // path.
-    restore_fixture::code = static_cast<unsigned char*>(
-        VirtualAlloc(nullptr, 0x100000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
-    check(restore_fixture::code != nullptr, "CODE buffer");
-    if (!restore_fixture::code) return 2;
+    // Restore stubs: the same hostile-state preservation harness; the injection stub on its idle-skip path and
+    // its full path (nothing due).
     restore_fixture::build_world();
-    transition::vm_root = restore_fixture::W(0);
-    transition::native_registry_root = restore_fixture::W(4);
-    transition::cockpit_registry_root = restore_fixture::W(8);
+    transition::native_registry_root = restore_fixture::W(0);
+    transition::cockpit_registry_root = restore_fixture::W(4);
+    transition::game_root = restore_fixture::W(8);
+    transition::script_call_address = reinterpret_cast<std::uintptr_t>(&restore_fixture::mock_script_call);
     transition::restore_enabled.store(true);
-    static unsigned char readable_operand[16]{0x94, 0, 0, 0x24};
-    fixture_edi = std::uint32_t(reinterpret_cast<std::uintptr_t>(readable_operand)) + 1;
     for (unsigned kind = 0; kind < transition::restore_site_count; ++kind) {
         void** next = nullptr;
         void* stub = transition::emit_restore(kind, &next);
@@ -1177,8 +853,7 @@ int main(int argc, char** argv) {
             auto invoke = [&](void* target, Snapshot& out) {
                 fixture_output = &out;
                 SetLastError(0x13572468);
-                transition::restore_filter[0].store(mode ? 2 : 0);
-                transition::restore_filter[1].store(mode ? fixture_edi : 0);
+                transition::restore_inject_filter.store(mode);
                 fixture_call(std::uint32_t(reinterpret_cast<std::uintptr_t>(target)),
                              std::uint32_t(reinterpret_cast<std::uintptr_t>(arguments)),
                              std::uint32_t(reinterpret_cast<std::uintptr_t>(arguments)), 0, 0, 0);
@@ -1186,27 +861,27 @@ int main(int argc, char** argv) {
                 check(fixture_entry_esp == fixture_exit_esp, "restore four-byte caller stack balanced");
                 check(!std::memcmp(fixture_input_x87, out.x87, 108), "restore incoming live x87 image preserved");
             };
-            const auto calls = transition::restore.seam_calls;
+            const auto calls = transition::restore_timing[transition::restore_inject_kind].calls;
             invoke(continuation, baseline);
             invoke(stub, hooked);
             for (unsigned r = 0; r < 9; ++r)
                 if (r != 3) check(baseline.regs[r] == hooked.regs[r], "restore GPR/flags preserved");
             check(!std::memcmp(baseline.xmm, hooked.xmm, 128), "restore XMM0-7 preserved");
             check(baseline.mxcsr == hooked.mxcsr, "restore MXCSR preserved");
-            if (kind == 0)
-                check(transition::restore.seam_calls == calls + (mode ? 1 : 0),
-                      mode ? "pending prefilter reaches the handler" : "idle prefilter skips the handler");
+            if (kind == transition::restore_inject_kind)
+                check(transition::restore_timing[kind].calls == calls + (mode ? 1 : 0),
+                      mode ? "published prefilter reaches the injection handler" : "idle prefilter skips the handler");
         }
     }
-    fixture_edi = 0x98765432;
+    transition::restore_inject_filter.store(0);
     restore_fixture::install_rollback();
     restore_fixture::scenarios();
     restore_fixture::late_window();
     check(log_under_lock == 0, "no log call under the chase SRW lock");
-    check(seam_lines > 0, "pending seam calls emit the chase_view_restore_seam diagnostic after the lock is released");
+    check(outcome_lines > 0, "ticket outcomes emit the chase_view_restore row after the lock is released");
     checks += restore_fixture::checks;
     failures += restore_fixture::failures;
-    if (!cpu_only) benchmark(continuation, stubs, restore_fixture::stubs[0]);
+    if (!cpu_only) benchmark(continuation, stubs, restore_fixture::stubs[transition::restore_inject_kind]);
     std::printf("CHASE TRANSITION LEAD CPU stubs=18 restore_stubs=%u checks=%u failures=%u\n",
                 transition::restore_site_count, checks, failures);
     return failures ? 1 : 0;

@@ -207,6 +207,20 @@ void handle(uint32_t* regs) {
     else if (!bound)
         ++stats_.unbound;
     ReleaseSRWLockExclusive(&stats_lock);
+    // Restore ticket (X3M_CHASE_VIEW_RESTORE): every visit, with the fields
+    // already in hand; the observer returns at one atomic load when the
+    // option is off and makes its registry walks only on frames that matter.
+    {
+        chase_transition::AppliedFrame observed;
+        observed.cockpit = cockpit;
+        observed.mode = u32(cockpit_bytes, cockpit_view_mode);
+        observed.connect = u32(cockpit_bytes, cockpit_connect_mode);
+        observed.flags = u32(cockpit_bytes, cockpit_flags);
+        observed.ref = ref_object;
+        observed.view = view_object;
+        observed.sector = u32(cockpit_bytes, cockpit_sector);
+        chase_transition::restore_observe_frame(observed);
+    }
     if (!active) {
         chase_fire::invalidate_camera(cockpit);
         return;

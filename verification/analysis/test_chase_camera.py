@@ -831,6 +831,17 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
         self.assertEqual(output['env']['X3M_CHASE_VIEW_RESTORE'], '1')
         self.assertEqual(self.invoke('--chase-view-restore')[0], 2)
 
+    def test_view_restore_retries_default_range_and_requirement(self):
+        code, output = self.invoke('--camera', 'chase', '--chase-view-restore')
+        self.assertEqual((code, output['env']['X3M_CHASE_VIEW_RESTORE_RETRIES']), (0, '3'))
+        code, output = self.invoke('--camera', 'chase', '--chase-view-restore', '--chase-view-restore-retries', '0')
+        self.assertEqual((code, output['env']['X3M_CHASE_VIEW_RESTORE_RETRIES']), (0, '0'))
+        code, output = self.invoke('--camera', 'chase', '--chase-view-restore', '--chase-view-restore-retries', '5')
+        self.assertEqual((code, output['env']['X3M_CHASE_VIEW_RESTORE_RETRIES']), (0, '5'))
+        self.assertEqual(self.invoke('--camera', 'chase', '--chase-view-restore', '--chase-view-restore-retries', '6')[0], 2)
+        self.assertEqual(self.invoke('--camera', 'chase', '--chase-view-restore', '--chase-view-restore-retries', '-1')[0], 2)
+        self.assertEqual(self.invoke('--camera', 'chase', '--chase-view-restore-retries', '2')[0], 2)
+
     def test_forward_hud_anchor_requires_chase_mode(self):
         self.assertEqual(self.invoke('--chase-hud-anchor', 'forward')[0], 2)
         self.assertEqual(self.invoke('--camera', 'chase', '--chase-hud-anchor', 'invalid')[0], 2)

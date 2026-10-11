@@ -33,6 +33,18 @@ no separate jumpdrive reproduction is requested now. Item 2 is unchanged.
 
 ## Item 1: restore the external view after a gate jump or jumpdrive
 
+**Superseded 2026-10-12.** The script-seam implementation of this item (the
+seven `restore_specs` sites and the `0xf0c4b` payload mutation) was removed:
+it could never fire under a modified `x3story.obj` (Mayhem 4,
+`verification/results/native-chase-view-restore-2026-10-11/`). The option keeps
+its name and default; the implementation is the engine-state ticket of
+[chase-view-restore-engine-state.md](chase-view-restore-engine-state.md)
+section 4 as amended (arm from applied 258 frames, pending at the cockpit free
+command, bound to the fresh cockpit from the alloc command, consumed at the
+input routine's entry `0x00410100` by the engine's by-name script call
+`SelectMode(258)` on the monitor object captured from the VM frame). The text
+below is the design as it stood.
+
 ### What the engine does (established) and what it does not (unknown)
 
 - The view mode is cockpit `+0x150`. Three writers exist in the EXE:
