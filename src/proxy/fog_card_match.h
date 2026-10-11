@@ -28,15 +28,18 @@ struct FogCardShape {
 // with z 0 and cull NONE (run283, the only differing state). The replacement
 // forces COLORWRITEENABLE to 0 on a masked card and zwrite 0 and stencil 0
 // stay exact, so alpha test can only discard fragments of a draw that writes
-// nothing; the composite sets its own states in a state block. Any other
-// value (2, unknown -1) refuses; pair, declaration, shape, scene and
-// frequency gates stay strict.
+// nothing; the composite sets its own states in a state block.
+// SEPARATEALPHABLENDENABLE takes 0 or 1 on the same reasoning: in cockpit view
+// the engine leaves it 1 from an earlier ONE/ONE/ADD draw (Run143 native,
+// 19 refusal rows, the only differing state), and a separate alpha blend
+// cannot affect a draw that writes nothing. Any other value (2, unknown -1)
+// refuses; pair, declaration, shape, scene and frequency gates stay strict.
 struct FogCardStates {
     long z, zwrite, alpha_test, blend, color_mask, cull, stencil, fill, source, destination, operation, separate_alpha;
     bool matches() const noexcept {
         return (z == 0 || z == 1) && zwrite == 0 && (alpha_test == 0 || alpha_test == 1) && blend == 1 &&
                color_mask == 7 && (cull == 1 || cull == 2) && stencil == 0 && fill == 3 && source == 2 &&
-               destination == 4 && operation == 1 && separate_alpha == 0;
+               destination == 4 && operation == 1 && (separate_alpha == 0 || separate_alpha == 1);
     }
 };
 } // namespace x3m

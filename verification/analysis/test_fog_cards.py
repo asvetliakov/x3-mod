@@ -37,13 +37,15 @@ int main() {
         changed = states; changed.*member += 2; assert(!changed.matches()); // z 2 (USEW), cull 3 (CCW): refused
         changed = states; ++(changed.*member);
         assert(changed.matches() == (member == &FogCardStates::z || member == &FogCardStates::cull ||
-                                     member == &FogCardStates::alpha_test)); // the material's own z/cull; alpha test 0 or 1
+                                     member == &FogCardStates::alpha_test || member == &FogCardStates::separate_alpha)); // the material's own z/cull; alpha test, separate alpha 0 or 1
     }
     FogCardStates docked{1,0,0,1,7,2,0,3,2,4,1,0}; assert(docked.matches()); // run278 docked-at-load variant
     docked.zwrite = 1; assert(!docked.matches());
     FogCardStates run283{0,0,1,1,7,1,0,3,2,4,1,0}; assert(run283.matches()); // measured docked-at-load vector
     for (long atest : {2L, -1L}) { auto changed = run283; changed.alpha_test = atest; assert(!changed.matches()); }
     for (auto member : {&FogCardStates::zwrite, &FogCardStates::stencil}) { auto changed = run283; changed.*member = 1; assert(!changed.matches()); }
+    FogCardStates run143{0,0,0,1,7,1,0,3,2,4,1,1}; assert(run143.matches()); // measured native cockpit vector
+    for (long sepalpha : {2L, -1L}) { auto changed = run143; changed.separate_alpha = sepalpha; assert(!changed.matches()); }
     FogCardPolicy p;
     p.begin(true); assert(p.warmup && !p.may_replace() && p.medium_allowed());
     p.finish(false); p.begin(true); assert(!p.may_replace()); // failed warm-up stays vanilla
@@ -132,7 +134,8 @@ class FogCardPolicyTests(unittest.TestCase):
             self.assertIn('run273_card_refusal named=12 PASS', result.stdout)  # case C: the first refusal of a frame is named
             # run278/run283 case C: the material's own z/cull and the measured run283 vector (z 0, cull NONE, alpha test 1)
             # are admitted; zwrite/stencil 1, alpha test 2 and wrong blend/mask/fill refused; the state row spaced 300 frames
-            self.assertIn('run278_docked_states admitted=8 refused=22 spaced=1 PASS', result.stdout)
+            # run143 (native cockpit): separate alpha 1 admitted, 2 and unknown refused
+            self.assertIn('run278_docked_states admitted=10 refused=25 spaced=1 PASS', result.stdout)
             self.assertIn('volumetric_fog_card_states', source_text(ROOT / 'src/proxy/motion_output_fog_inc.h'))
             for cards in (6, 8):
                 self.assertIn(f'card_native_calls cards={cards} rs_get={12*cards} freq_get={cards} mask_set={2*cards} total={15*cards}', result.stdout)

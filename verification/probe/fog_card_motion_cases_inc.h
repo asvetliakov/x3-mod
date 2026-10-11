@@ -66,11 +66,12 @@ int main() {
  }
  // Hooked and unhooked admission agree on every mismatched required value
  // (ZENABLE 1 is the material's own value, admitted: its refused value is USEW, 2;
- // ALPHATESTENABLE 1 is the run283 docked value, admitted: its refused value is 2).
+ // ALPHATESTENABLE 1 is the run283 docked value, admitted: its refused value is 2;
+ // SEPARATEALPHABLENDENABLE 1 is the run143 cockpit value, admitted: its refused value is 2).
  for(bool hooked:{false,true})for(unsigned state=0;state<12;++state){
-   MotionOutput m;m.state_hooks_=hooked;m.warm();const long flip=state==0||state==2?2:1;
+   MotionOutput m;m.state_hooks_=hooked;m.warm();const long flip=state==0||state==2||state==11?2:1;
    if(state<8){m.device_storage.states[state]^=flip;for(unsigned i=0;i<32;++i)if(shadow_states[i]==state)m.shadow_.states[i]^=DWORD(flip);}
-   else {m.device_storage.blends[state-8]^=1;m.shadow_.composition_blend[state-8]^=1;}
+   else {m.device_storage.blends[state-8]^=flip;m.shadow_.composition_blend[state-8]^=DWORD(flip);}
    m.draw();assert(m.fog_cards_.refused&&m.device_storage.calls==0&&m.device_storage.gets==(hooked?0:12));
  }
  for(int state=0;state<12;++state){
@@ -301,11 +302,14 @@ int main() {
    // pass's override; run283 measured the refused docked vector: z 0, cull NONE, ALPHATESTENABLE 1 (the only differing
    // state). Each is admitted, hooked and unhooked, with the same native calls as the in-flight card. Every other value
    // stays refused, from both the run278 and the run283 bases, and the refused vector's row is spaced 300 frames apart.
+   // run143 (native cockpit): the in-flight vector with SEPARATEALPHABLENDENABLE 1 is admitted; 2 and unknown refused.
    unsigned admitted=0,refused=0;
    auto set=[](MotionOutput& m,unsigned state,long value){m.device_storage.states[state]=value;for(unsigned i=0;i<32;++i)if(shadow_states[i]==state)m.shadow_.states[i]=DWORD(value);};
-   for(bool hooked:{false,true})for(unsigned variant=0;variant<4;++variant){
+   auto set_sepalpha=[](MotionOutput& m,long value){m.device_storage.blends[3]=value;m.shadow_.composition_blend[3]=DWORD(value);};
+   for(bool hooked:{false,true})for(unsigned variant=0;variant<5;++variant){
      MotionOutput m;m.state_hooks_=hooked;m.warm();
-     if(variant==3)set(m,D3DRS_ALPHATESTENABLE,1); // run283: (0,NONE) with alpha test 1
+     if(variant==4)set_sepalpha(m,1); // run143: z 0, cull NONE, alpha test 0, separate alpha 1
+     else if(variant==3)set(m,D3DRS_ALPHATESTENABLE,1); // run283: (0,NONE) with alpha test 1
      else{if(variant!=1)set(m,D3DRS_ZENABLE,1);if(variant!=2)set(m,D3DRS_CULLMODE,2);} // (1,CW), (0,CW), (1,NONE)
      m.draw();assert(!m.fog_cards_.refused&&m.fog_cards_.suppressed==1&&m.device_storage.calls==2&&m.device_storage.gets==(hooked?0:12));
      assert(m.fog_card_states_log_frame_==0&&!m.fog_card_refusal_);++admitted;
@@ -317,6 +321,14 @@ int main() {
       case 3:set(m,D3DRS_ZWRITEENABLE,1);break;case 4:set(m,D3DRS_STENCILENABLE,1);break;
       case 5:set(m,D3DRS_ALPHATESTENABLE,2);break;case 6:set(m,D3DRS_ZWRITEENABLE,1);break;case 7:set(m,D3DRS_STENCILENABLE,1);break;
       case 8:set(m,D3DRS_ALPHABLENDENABLE,0);break;case 9:set(m,D3DRS_FILLMODE,2);break;}
+     m.draw();assert(m.fog_cards_.refused&&m.device_storage.calls==0&&!std::strcmp(m.fog_card_refusal_,"gate:states"));++refused;
+   }
+   for(bool hooked:{false,true}){ // run143 base: separate alpha 2 refused
+     MotionOutput m;m.state_hooks_=hooked;m.warm();set_sepalpha(m,2);
+     m.draw();assert(m.fog_cards_.refused&&m.device_storage.calls==0&&!std::strcmp(m.fog_card_refusal_,"gate:states"));++refused;
+   }
+   { // separate alpha unknown (-1, hooked shadow not known) refused
+     MotionOutput m;m.state_hooks_=true;m.warm();m.shadow_.composition_blend_known[3]=false;
      m.draw();assert(m.fog_cards_.refused&&m.device_storage.calls==0&&!std::strcmp(m.fog_card_refusal_,"gate:states"));++refused;
    }
    for(bool hooked:{false,true}){ // run283 base, wrong colour mask

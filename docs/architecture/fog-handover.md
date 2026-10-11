@@ -626,6 +626,16 @@ unhooked, with the in-flight card's native calls) and refuses 22 (from the run27
 cull 0, zwrite 1, stencil 1; from the run283 base: alpha test 2, zwrite 1, stencil 1, blend 0, fill 2,
 mask 15); `test_fog_cards` checks the matcher admits alpha test 1 and refuses 2 and -1. Not yet flown.
 
+*Run 143 (native Windows, cockpit view) pinned a second state: separate alpha.* All 19 refused vectors were
+`z=0 zwrite=0 atest=0 blend=1 mask=7 cull=1 stencil=0 fill=3 src=2 dst=4 op=1 sepalpha=1`; in the cockpit
+stretch 11705-17202 the outcome alternated 71 runs with 2,867 frames `gate:states`, the chase stretches 0
+transitions (measured, `verification/results/native-cockpit-fog-flicker-2026-10-11/cockpit_gate_query.py`). An
+earlier engine ONE/ONE/ADD draw leaves `SEPARATEALPHABLENDENABLE` 1 (inferred). Fix (`fog_card_match.h`):
+`SEPARATEALPHABLENDENABLE` takes 0 or 1; 2 or unknown (-1) refuses, on the alpha-test safety argument above. The
+state gate is now: `ZENABLE` 0/1, `CULLMODE` NONE/CW, `ALPHATESTENABLE` 0/1, `SEPARATEALPHABLENDENABLE` 0/1;
+`ZWRITEENABLE 0`, `STENCILENABLE 0`, colour mask 7, `ALPHABLENDENABLE 1`, `FILLMODE SOLID`, ONE/INVSRCCOLOR/ADD
+exact. Host: `run278_docked_states` admits 10, refuses 25. Not yet flown.
+
 **D. New game into a fogged sector (16258).** Three parts. (1) The prefill could not start: the
 poll found bluewell 7.1 s into the 12.6 s stall but `prefill_density` refused (`not_posted`)
 because no stored frame had created the density worker (and no `FogPass` existed). Now the poll

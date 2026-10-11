@@ -2848,6 +2848,24 @@ Design and numbers: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step B 
   `check`): PASS 36,549 checks + 4 exit checks, 110 names, 0 FAIL, `legacy_bit_identical_to_baseline` true.
 - Open: a docked save load flight with this matcher.
 
+## Run 143 (native Windows, 2026-10-11): cockpit fog flicker pinned to separate alpha, admitted (uncommitted worktree, not installed)
+
+- Flight (native, Run143 DLL, log session 20261011-202736): in cockpit view the per-frame fog outcome alternates;
+  cockpit stretch 11705-17202 has 71 runs (70 transitions), 2,867 frames `gate:states` in 35 runs; the chase
+  stretches before and after (1736-11704, 17203-25376) have 0 transitions (measured,
+  `verification/results/native-cockpit-fog-flicker-2026-10-11/cockpit_gate_query.py`, output beside it in the main
+  checkout). All 19 `volumetric_fog_card_states` rows carry `z=0 zwrite=0 atest=0 blend=1 mask=7 cull=1 stencil=0
+  fill=3 src=2 dst=4 op=1 sepalpha=1`: `SEPARATEALPHABLENDENABLE` 1 is the only differing state, left on by an
+  earlier engine ONE/ONE/ADD draw (inferred; rs_resyncs 0).
+- Fix: `FogCardStates::matches()` admits `SEPARATEALPHABLENDENABLE` 0 or 1 (2 and unknown -1 refuse), on the
+  alpha-test reasoning: the replacement forces `COLORWRITEENABLE` 0, zwrite 0 and stencil 0 stay exact, so a separate
+  alpha blend cannot affect a draw that writes nothing; the composite sets its own states in a state block; pair,
+  declaration, shape, scene and frequency gates unchanged.
+- Host: `run278_docked_states admitted=10 refused=25` (the run143 vector admitted hooked and unhooked; separate alpha
+  2 refused hooked and unhooked, unknown refused hooked); the flip loop's refused separate-alpha value is 2; the
+  matcher test admits the run143 vector and refuses 2 and -1. `test_fog_cards` 3 tests OK (clang++ host; the mock
+  gained the missing `<string>` include). Not built, not flown.
+
 ## 2026-09-24: fog route step C: quarter-resolution march behind `--fog-march-scale` (uncommitted worktree, default 2, not installed)
 
 Design, program matrix, deviation tables and flight plan: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step C

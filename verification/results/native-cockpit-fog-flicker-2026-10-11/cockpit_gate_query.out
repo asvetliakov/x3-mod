@@ -1,0 +1,38 @@
+joint (card class, fog reason): [(('ok2', 'ok'), 23476), (('idle0', 'card_refused'), 7017), (('gate:states', 'card_refused'), 3689), (('ok1', 'ok'), 180), (('idle0', 'density_filling'), 93), (('idle0', 'density_unprepared'), 1), (('ready:density_drawable', 'card_refused'), 1), (('ready:density_ramp', 'card_refused'), 1)]
+refused card state vectors: {'z=0 zwrite=0 atest=0 blend=1 mask=7 cull=1 stencil=0 fill=3 src=2 dst=4 op=1 sepalpha=1': 19}
+chase_1 1736-11704: frames=9969 runs=1 transitions=0 per_100=0.00
+   ok2: frames=9969 runs=1 short(<=6)=0 min=9969 median=9969 max=9969
+   ok2 ranges: {'observed': (8, 30), 'suppressed': (8, 30), 'refused': (0, 0), 'additive_pair': 156, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+cockpit_A 11705-17202: frames=5498 runs=71 transitions=70 per_100=1.27
+   ok2: frames=2631 runs=36 short(<=6)=24 min=1 median=3 max=425
+   gate:states: frames=2867 runs=35 short(<=6)=13 min=1 median=11 max=663
+   ok2 ranges: {'observed': (9, 30), 'suppressed': (9, 30), 'refused': (0, 0), 'additive_pair': 124, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+   gate:states ranges: {'observed': (9, 31), 'suppressed': (0, 0), 'refused': (1, 1), 'additive_pair': 10, 'fog_applied': (0, 0), 'shadow_maps': (0, 0), 'calls': (0, 0)}
+chase_2 17203-25376: frames=8174 runs=1 transitions=0 per_100=0.00
+   ok2: frames=8174 runs=1 short(<=6)=0 min=8174 median=8174 max=8174
+   ok2 ranges: {'observed': (7, 33), 'suppressed': (7, 33), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+chase_inactive_B 25377-26288: frames=912 runs=37 transitions=36 per_100=3.95
+   gate:states: frames=756 runs=18 short(<=6)=12 min=1 median=2 max=318
+   idle0: frames=23 runs=1 short(<=6)=0 min=23 median=23 max=23
+   ok1: frames=90 runs=1 short(<=6)=0 min=90 median=90 max=90
+   ok2: frames=43 runs=17 short(<=6)=17 min=1 median=2 max=6
+   gate:states ranges: {'observed': (11, 27), 'suppressed': (0, 0), 'refused': (1, 1), 'additive_pair': 0, 'fog_applied': (0, 0), 'shadow_maps': (0, 0), 'calls': (0, 0)}
+   idle0 ranges: {'observed': (21, 21), 'suppressed': (0, 0), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (0, 0), 'shadow_maps': (0, 0), 'calls': (0, 0)}
+   ok1 ranges: {'observed': (21, 21), 'suppressed': (0, 0), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+   ok2 ranges: {'observed': (13, 24), 'suppressed': (13, 24), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+cockpit_B 26289-26531: frames=243 runs=5 transitions=4 per_100=1.65
+   ready:density_drawable: frames=1 runs=1 short(<=6)=1 min=1 median=1 max=1
+   ready:density_ramp: frames=1 runs=1 short(<=6)=1 min=1 median=1 max=1
+   idle0: frames=26 runs=1 short(<=6)=0 min=26 median=26 max=26
+   ok1: frames=90 runs=1 short(<=6)=0 min=90 median=90 max=90
+   ok2: frames=125 runs=1 short(<=6)=0 min=125 median=125 max=125
+   ready:density_drawable ranges: {'observed': (13, 13), 'suppressed': (0, 0), 'refused': (1, 1), 'additive_pair': 0, 'fog_applied': (0, 0), 'shadow_maps': (0, 0), 'calls': (0, 0)}
+   ready:density_ramp ranges: {'observed': (21, 21), 'suppressed': (0, 0), 'refused': (1, 1), 'additive_pair': 0, 'fog_applied': (0, 0), 'shadow_maps': (0, 0), 'calls': (0, 0)}
+   idle0 ranges: {'observed': (21, 21), 'suppressed': (0, 0), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (0, 0), 'shadow_maps': (0, 0), 'calls': (0, 0)}
+   ok1 ranges: {'observed': (17, 23), 'suppressed': (0, 0), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+   ok2 ranges: {'observed': (11, 20), 'suppressed': (11, 20), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+chase_3 26532-29132: frames=2600 runs=3 transitions=2 per_100=0.08
+   ok2: frames=2534 runs=2 short(<=6)=0 min=40 median=2494 max=2494
+   gate:states: frames=66 runs=1 short(<=6)=0 min=66 median=66 max=66
+   ok2 ranges: {'observed': (8, 33), 'suppressed': (8, 33), 'refused': (0, 0), 'additive_pair': 0, 'fog_applied': (1, 1), 'shadow_maps': (2, 2), 'calls': (336, 336)}
+   gate:states ranges: {'observed': (13, 25), 'suppressed': (0, 0), 'refused': (1, 1), 'additive_pair': 0, 'fog_applied': (0, 0), 'shadow_maps': (0, 0), 'calls': (0, 0)}
