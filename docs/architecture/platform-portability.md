@@ -89,6 +89,14 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
+- **Native install and build host (2026-10-11).** The user plays on native Windows 11 (`C:\X3`, RTX 5070 Ti, native
+  `d3d9.dll` runtime, NVIDIA driver) and the repository is built under WSL2 (Ubuntu 26.04, MinGW GCC 16.2 from Ubuntu
+  26.10, binutils 2.45.90, clang for the SEH object). Open: `tools/manage.py install/rollback/status` are bottle-only
+  (Run143 was installed by hand with a `cmp` byte check and a rollback copy under `C:\X3\x3m\rollback\`); no Wine on
+  the build host, so the fixture chain is not runnable there (host tests and the x87 audit are); Ubuntu's GCC splits
+  functions into `.cold` siblings (416 in the DLL), which the x87 audit now walks with their parents (`a005b22d`);
+  DLL bytes are not comparable with the macOS GCC 16.2 builds. Run 143 A is the first native run of a build from here.
+
 - Writes into the `engine_patch` arena (native-only failure, 2026-10-11). The arena is `PAGE_EXECUTE_READ` outside
   emission; Wine/FEX tolerated a stub's data write into it, native Windows faults. The dust-leak stub's
   `inc dword [hits]` crashed native Windows on its first hit

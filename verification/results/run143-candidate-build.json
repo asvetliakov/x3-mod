@@ -1,0 +1,24 @@
+{
+  "dll": "/tmp/claude-1000/.../scratchpad/cand143/build/d3d9.dll (detached worktree of a84a28b8, build dir inside it, discarded after install)",
+  "sha256": "b7839952cd68cd0ec5b2487acba866f1f3064a2b644ee200ad3a6a3d7ebbe527",
+  "bytes": 57791918,
+  "commit": "a84a28b8",
+  "dirty": false,
+  "source_commit_marker": "X3M_SOURCE_COMMIT=a84a28b87f3c757761f991eb124e9b33a1b83fcf (one occurrence in the DLL)",
+  "toolchain": "FIRST WSL2 BUILD HOST: Ubuntu 26.04.1 under WSL2 (Linux 6.18.40.1-microsoft-standard-WSL2); i686-w64-mingw32-g++ 16.2.0 posix from Ubuntu 26.10 'stonking' universe (g++-mingw-w64-i686-posix 16.2.0-3ubuntu1+29ubuntu3, pinned at priority 100, four compiler packages only), binutils-mingw-w64-i686 2.45.90.20260125-1ubuntu1+13.3, mingw-w64 headers/runtime 13.0.0-2ubuntu1, clang (Ubuntu /usr/bin/clang) for the compositor SEH object, cmake + Ninja, Python 3.14.4 /usr/bin/python3 with NumPy 2.3.5 (pinned fog atlases reproduced 14/14, commit 6bcb39df). RelWithDebInfo, cmake/mingw-i686.cmake, unstripped. Clean configure+build wall time 40 s (measured).",
+  "gates": {
+    "warnings": "0 in src (3 -Wrange-loop-construct in verification/probe fixtures, pre-existing)",
+    "x87_audit": "PASS, reachable_functions 925, violations 0 (verification/probe/check_no_x87.py at a005b22d: GCC hot/cold .cold siblings walked with their parent; the macOS GCC 16.2 build did not split and reported 796 reachable)",
+    "host_tests": "test_dust_leak_fix_site + test_logging_tiers 21 OK (2 skipped: no X3AP.exe on the build host); test_check_no_x87 6 OK; test_fog_field_assets 8 OK",
+    "not_run": "Wine fixtures (no Wine on this host); dust_leak_fix_patch_fixture compiled only; native Windows execution of the fix is what Run 143 A measures"
+  },
+  "changes_since_run142_source_bf5b8c9f": [
+    "6bcb39df fog asset bake accepts any NumPy 2.x (tooling; DLL bytes gated by the pinned atlas hashes)",
+    "a5641bad media_cue reset_state explicit PendingStack{} / TraceRing{} (GCC 13 compile fix; same value-initialised result)",
+    "ed00c53e dust_leak_fix hit counter moved out of the PAGE_EXECUTE_READ engine_patch arena into the DLL global x3m_dust_leak_fix_hits; DLL pinned before emission; fail-closed counter_in_arena check (the native Windows crash fix)",
+    "a84a28b8 cockpit fog flicker triage script (no DLL input)"
+  ],
+  "trigger": "User's first native Windows session (2026-10-11, RTX 5070 Ti, C:\\X3, Mayhem 3): unhandled c0000005 at engine_patch arena +0x461 (dust_leak_fix stub INC [hits] into the RX arena) at frame 53096; verification/results/windows-crash-2026-10-11/summary.json",
+  "engine_bodies_and_fonts": "unchanged since Run140/142 (git diff --stat bf5b8c9f..a84a28b8 -- tools/effects/engine_bodies.py tools/fonts assets/fonts: empty)",
+  "producer": "main session (Fable 5.1), 2026-10-11 20:20 +04:00; sha256sum; stat -c %s"
+}

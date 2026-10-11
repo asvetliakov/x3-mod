@@ -1,0 +1,14 @@
+{
+  "run": 143,
+  "platform": "native Windows 11, C:\\X3 (first native install; WSL2 path /mnt/c/X3)",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\x3m\\rollback\\d3d9.dll.run141; cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp (tools/manage.py install is bottle-only; gap recorded in platform-portability.md)",
+  "installed_at": "2026-10-11T20:25+04:00",
+  "commit": "a84a28b8",
+  "candidate_record": "verification/results/run143-candidate-build.json",
+  "installed": {"path": "C:\\X3\\d3d9.dll", "sha256": "b7839952cd68cd0ec5b2487acba866f1f3064a2b644ee200ad3a6a3d7ebbe527", "bytes": 57791918, "verified_bytes": true, "method": "cmp against the build output after the copy"},
+  "previous": {"run": 141, "what": "release 1.1.0 stripped DLL", "sha256": "2d65b65f206a846453805e08f4b564467f81fc54204f69dd94a975f00202a351", "bytes": 39937177, "rollback_copy": "C:\\X3\\x3m\\rollback\\d3d9.dll.run141 (sha256 re-measured after the copy)"},
+  "unchanged": ["X3AP.exe (sha256 fdbf3418d8f0a897... measured; first native measurement, no earlier native reference)", "x3m.ini except [logging] perf = 1 for Run 143 A", "engine_bodies.json", "fog-families.bin/json", "d3dx9_37.dll, dvm.dll (Mayhem 3)"],
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "native Windows dust_leak_fix crash fix; Run 143 A open (crash fix exercised + cockpit fog flicker perf rows)",
+  "producer": "main session"
+}
