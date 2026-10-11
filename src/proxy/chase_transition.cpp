@@ -371,7 +371,11 @@ void restore_on_vm() {
 __attribute__((noinline)) bool restore_engine_select_mode(const detail::RestoreCall& c, x3m::CpuState& cpu) {
     const auto fn = reinterpret_cast<ScriptCall>(script_call_address);
     cpu.restore();
-    const std::uint32_t r = fn(c.monitor, 0, c.monitor, select_mode_name, 1, 1, detail::restore_rear_mode) & 0xff;
+    // Argument 0 is the completion-callback slot (task+0x30; 0 = none): Run147 passed the monitor id
+    // there and the completion code 0x004a2260 -> 0x004ab170 indexed the VM callback table with -531
+    // (only a signed `cmp ecx,0x20; jge` bounds it) and called through heap data. Argument 2 is the
+    // lookup key (negative = dynamic object), argument 4 the return kind.
+    const std::uint32_t r = fn(0, 0, c.monitor, select_mode_name, 1, 1, detail::restore_rear_mode) & 0xff;
     asm volatile("fninit" ::: "memory");
     const unsigned mxcsr = 0x1f80;
     asm volatile("ldmxcsr %0" ::"m"(mxcsr) : "memory");

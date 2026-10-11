@@ -169,7 +169,7 @@ cockpit in the same sector (run315), so `+0x1fc == armed sector` cancels
    replay too fragile). Site L, the learned-key state, the retry-on-cycle
    logic and `no_learned_key` are dropped. Consume stays at site I
    (`0x00410100` entry, the input phase, outside the registry walk) and calls
-   `0x0049f570(monitor, 0, monitor, "SelectMode", 1, 1, 258)` with a mod-owned
+   `0x0049f570(0, 0, monitor, "SelectMode", 1, 1, 258)` with a mod-owned
    `"SelectMode\0"`. The monitor object comes from engine state: at the kind-6
    observer `0x0042e742` (the script's `StartMonitor` storing mode 1 into the
    fresh cockpit, and every later `Show`) the dispatcher frame gives
@@ -357,6 +357,10 @@ Original bullets (superseded):
   history. Run78 remains the only consumed stock witness; the engine path is
   re-validated on stock by the same acceptance rows when the user next runs
   the stock program, not as a prerequisite for the Mayhem install.
+
+### Run147 crash: argument 0 of the engine call (2026-10-12)
+
+Run147 passed the monitor id as argument 0. Measured from the sector-change minidump (`verification/results/native-chase-view-restore-crash-2026-10-12/`): `SelectMode(258)` resolved by name and ran to its return (the crash reporter's `GetMode(258)` label is the task PC having run off the end of SelectMode into the next method's entry); then the task-completion code `0x004a2260` -> `0x004ab170` took `task+0x30` = argument 0 = -531 as a completion-callback slot, passed the only bound check (`cmp ecx,0x20; jge`), loaded `[vm + slot*24 + 0x34]` from heap data and executed `call eax` (eip 0x4d4d5544). The engine's 46 callers pass 0 (no callback) or the game's registered slot `[game+0x418]` (whose callback `0x004a4910` they prime by clearing word `game+0x490`); argument 1 is the callback cookie, argument 2 the lookup key, argument 4 the return kind. The call is now `0x0049f570(0, 0, monitor, "SelectMode", 1, 1, 258)`: with slot 0 the completion step skips the callback entirely (`0x004a2268 test ecx,ecx; je`). The CPU fixture's mock asserts argument 0 == 0.
 
 ### Cost on the hot path
 

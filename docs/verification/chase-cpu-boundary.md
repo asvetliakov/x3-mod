@@ -418,3 +418,16 @@ is removed. Built on the WSL2 host; the Wine fixtures were built, not run
   cancel the arm (case 20); the VM frame is read only past the arm; re-arm
   frames skip the walks (`rearm_frames`). Restore host 236 checks; the six
   focused modules rerun, the DLL rebuilt and audited (figures in the report).
+
+### 2026-10-12: Run 147 A crashed in the engine call (argument 0)
+
+Both Run147 sessions (DLL `8eb20091…`) died at the first transit with c0000005 at eip 0x4d4d5544/46 (ship change at
+frame 2814, sector change at 2947; `C:\X3\X3Crash.dmp` of the sector session parsed under
+[native-chase-view-restore-crash-2026-10-12](../../verification/results/native-chase-view-restore-crash-2026-10-12/)).
+Measured: the ticket armed, bound and went due two updates after the new cockpit (the +0x1fc fix of `e6806d1e`
+worked), the call `0x0049f570(monitor, 0, monitor, "SelectMode", 1, 1, 258)` resolved `SelectMode` by name and ran it
+to its return; the engine's task-completion code then used argument 0 (= the monitor id, -531) as a completion-callback
+slot, passed its only bound check (signed `cmp ecx,0x20; jge`), loaded a function pointer from heap data
+(`[vm + slot*24 + 0x34]`) and called it. Fix: argument 0 = 0 (no callback), as the engine's own callers pass when they
+do not register one; the CPU fixture's mock asserts it (built, not run: no Wine here). Whether the view switched before
+the crash is not established. Rolled the install back to release 1.2.0 at 01:35; Run148 carries the fix.

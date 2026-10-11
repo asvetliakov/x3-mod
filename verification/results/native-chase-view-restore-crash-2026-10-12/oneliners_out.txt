@@ -1,0 +1,434 @@
+streams [0, 3, 4, 5, 6, 7, 15, 21, 22]
+modules 136 memory_ranges 563
+exception thread=16508 code=c0000005 flags=0 address=4d4d5544 params=['0x0', '0xffffffffffffffcf']
+context edi=00106fd2 esi=04ea5d58 ebx=9fc01330 edx=00000000 ecx=00000000 eax=4d4d5544 ebp=04ea5d58 eip=4d4d5544 eflags=00210206 esp=001af790
+--- 4d4d5544 module=None
+  captured range 4d4d53b4+0x520
+module 6e040000+0x4b28000 C:\X3\d3d9.dll
+module 6cad0000+0x179000 C:\Windows\System32\d3d9.dll
+module 00400000+0x2f5000 X3AP.exe
+module 6e040000+0x4b28000 d3d9.dll
+module 6cad0000+0x179000 d3d9.dll
+esp+0x000 001af790: 004ab197 X3AP.exe+0xab197
+esp+0x00c 001af79c: 004a231e X3AP.exe+0xa231e
+esp+0x024 001af7b4: 004a4428 X3AP.exe+0xa4428
+esp+0x03c 001af7cc: 0051133e X3AP.exe+0x11133e
+esp+0x070 001af800: 0049c922 X3AP.exe+0x9c922
+esp+0x074 001af804: 01000000 iconv.dll+0x40000
+esp+0x080 001af810: 004a223b X3AP.exe+0xa223b
+esp+0x098 001af828: 0049f3c6 X3AP.exe+0x9f3c6
+esp+0x0a8 001af838: 0052f298 X3AP.exe+0x12f298
+esp+0x0b4 001af844: 0049f5ad X3AP.exe+0x9f5ad
+esp+0x0c0 001af850: 0049f4b1 X3AP.exe+0x9f4b1
+esp+0x0c8 001af858: 0050401d X3AP.exe+0x10401d
+esp+0x0d0 001af860: 0049f622 X3AP.exe+0x9f622
+esp+0x0e4 001af874: 01000070 iconv.dll+0x40070
+001af880: 6e0a77e4 fffffded 00000000 fffffded 6e4329dc 00000001 00000001 00000102
+001af7a0: 00000000 00106fd2 04ea5d58 001af84c ffffffe7 004a4428 04ea5d58 9fc01330
+04ea5d88: 00000000 00000000 00000000 00000000 00000000 00000000 004ab850 004a4910 004a4980 004a49e0 00579fe0 00000000
+== 0049f570:0049f676
+0049f570 sub esp, 0xc
+0049f573 push ebx
+0049f574 push ebp
+0049f575 push esi
+0049f576 push edi
+0049f577 lea eax, [esp + 0x18]
+0049f57b push eax
+0049f57c mov eax, dword ptr [esp + 0x34]
+0049f580 lea ecx, [esp + 0x18]
+0049f584 push ecx
+0049f585 mov ecx, dword ptr [esp + 0x34]
+0049f589 lea edx, [esp + 0x3c]
+0049f58d push edx
+0049f58e mov edx, dword ptr [esp + 0x30]
+0049f592 push eax
+0049f593 mov eax, dword ptr [esp + 0x30]
+0049f597 push ecx
+0049f598 push edx
+0049f599 xor ebp, ebp
+0049f59b push eax
+0049f59c mov eax, dword ptr [esp + 0x44]
+0049f5a0 mov dword ptr [esp + 0x30], ebp
+0049f5a4 mov dword ptr [esp + 0x34], ebp
+0049f5a8 call 0x49f330
+0049f5ad add esp, 0x1c
+0049f5b0 test al, al
+0049f5b2 je 0x49f66c
+0049f5b8 mov esi, dword ptr [esp + 0x14]
+0049f5bc cmp esi, ebp
+0049f5be je 0x49f66c
+0049f5c4 mov ebx, dword ptr [esp + 0x18]
+0049f5c8 cmp ebx, ebp
+0049f5ca je 0x49f66c
+0049f5d0 mov edi, dword ptr [esp + 0x34]
+0049f5d4 xor ecx, ecx
+0049f5d6 cmp edi, ebp
+0049f5d8 jbe 0x49f5fe
+0049f5da lea edx, [esp + 0x34]
+0049f5de mov edi, edi
+0049f5e0 mov eax, dword ptr [esi + 0x18]
+0049f5e3 mov ebp, dword ptr [edx + 4]
+0049f5e6 add eax, ecx
+0049f5e8 add edx, 4
+0049f5eb lea eax, [eax + eax*4]
+0049f5ee add eax, dword ptr [esi + 0x14]
+0049f5f1 add ecx, 1
+0049f5f4 cmp ecx, edi
+0049f5f6 mov byte ptr [eax], 1
+0049f5f9 mov dword ptr [eax + 1], ebp
+0049f5fc jb 0x49f5e0
+0049f5fe add dword ptr [esi + 0x18], -1
+0049f602 mov eax, dword ptr [esi + 0x18]
+0049f605 mov ecx, dword ptr [ebx + 0xc]
+0049f608 mov ebx, dword ptr [0x6085e4]
+0049f60e lea eax, [eax + eax*4]
+0049f611 add eax, dword ptr [esi + 0x14]
+0049f614 mov byte ptr [eax], 1
+0049f617 mov dword ptr [eax + 1], ecx
+0049f61a mov edi, dword ptr [esi + 8]
+0049f61d call 0x49f430
+0049f622 test al, al
+0049f624 je 0x49f66c
+0049f626 mov eax, dword ptr [ebx]
+0049f628 mov ecx, dword ptr [eax]
+0049f62a test ecx, ecx
+0049f62c je 0x49f662
+0049f62e mov edx, dword ptr [eax + 4]
+0049f631 sub edx, 1
+0049f634 and edx, edi
+0049f636 mov eax, dword ptr [ecx + edx*4]
+0049f639 test eax, eax
+0049f63b je 0x49f662
+0049f63d lea ecx, [ecx]
+0049f640 cmp dword ptr [eax + 4], edi
+0049f643 je 0x49f655
+0049f645 mov eax, dword ptr [eax]
+0049f647 test eax, eax
+0049f649 jne 0x49f640
+0049f64b mov al, 1
+0049f64d pop edi
+0049f64e pop esi
+0049f64f pop ebp
+0049f650 pop ebx
+0049f651 add esp, 0xc
+0049f654 ret 
+0049f655 cmp dword ptr [eax + 8], 0
+0049f659 je 0x49f662
+0049f65b mov eax, esi
+0049f65d call 0x4a21a0
+0049f662 mov al, 1
+0049f664 pop edi
+0049f665 pop esi
+0049f666 pop ebp
+0049f667 pop ebx
+0049f668 add esp, 0xc
+0049f66b ret 
+0049f66c pop edi
+0049f66d pop esi
+0049f66e pop ebp
+0049f66f xor al, al
+0049f671 pop ebx
+0049f672 add esp, 0xc
+0049f675 ret 
+== 0049f330:0049f422
+0049f330 push ebp
+0049f331 mov ebp, dword ptr [0x6085e4]
+0049f337 push esi
+0049f338 mov esi, ebp
+0049f33a call 0x49f1e0
+0049f33f mov esi, eax
+0049f341 test esi, esi
+0049f343 jne 0x49f35c
+0049f345 mov eax, dword ptr [esp + 0xc]
+0049f349 mov ecx, dword ptr [esp + 0x18]
+0049f34d mov edx, dword ptr [esp + 0x10]
+0049f351 push eax
+0049f352 call 0x49f230
+0049f357 pop esi
+0049f358 xor al, al
+0049f35a pop ebp
+0049f35b ret 
+0049f35c push ebx
+0049f35d mov ebx, dword ptr [esi + 8]
+0049f360 push edi
+0049f361 xor edi, edi
+0049f363 test ebx, ebx
+0049f365 je 0x49f38f
+0049f367 mov eax, dword ptr [ebx + 0x28]
+0049f36a test eax, eax
+0049f36c je 0x49f384
+0049f36e mov ecx, dword ptr [esp + 0x1c]
+0049f372 push ecx
+0049f373 mov ecx, dword ptr [ebx + 0x2c]
+0049f376 call 0x4b0740
+0049f37b mov edi, eax
+0049f37d add esp, 4
+0049f380 test edi, edi
+0049f382 jne 0x49f3a8
+0049f384 mov ebx, dword ptr [ebx + 0x14]
+0049f387 test ebx, ebx
+0049f389 jne 0x49f367
+0049f38b test edi, edi
+0049f38d jne 0x49f3a8
+0049f38f mov edx, dword ptr [esp + 0x14]
+0049f393 mov ecx, dword ptr [esp + 0x20]
+0049f397 push edx
+0049f398 mov edx, dword ptr [esp + 0x1c]
+0049f39c call 0x49f230
+0049f3a1 pop edi
+0049f3a2 pop ebx
+0049f3a3 pop esi
+0049f3a4 xor al, al
+0049f3a6 pop ebp
+0049f3a7 ret 
+0049f3a8 mov eax, dword ptr [edi + 0xc]
+0049f3ab mov ebx, dword ptr [esp + 0x24]
+0049f3af cmp dword ptr [ebx], eax
+0049f3b1 jbe 0x49f3b5
+0049f3b3 mov dword ptr [ebx], eax
+0049f3b5 mov eax, dword ptr [edi + 8]
+0049f3b8 mov ecx, dword ptr [edi + 0xc]
+0049f3bb lea edx, [eax + ecx + 7]
+0049f3bf push edx
+0049f3c0 push ebp
+0049f3c1 call 0x4a21e0
+0049f3c6 mov ecx, dword ptr [edi]
+0049f3c8 mov edx, dword ptr [esp + 0x14]
+0049f3cc mov dword ptr [eax + 0x1c], ecx
+0049f3cf mov ecx, dword ptr [esp + 0x18]
+0049f3d3 mov dword ptr [eax + 0x30], edx
+0049f3d6 mov dx, word ptr [esp + 0x20]
+0049f3db mov dword ptr [eax + 0x3c], esi
+0049f3de mov dword ptr [eax + 0x34], ecx
+0049f3e1 mov word ptr [eax + 0x38], dx
+0049f3e5 mov ecx, dword ptr [edi + 0xc]
+0049f3e8 sub dword ptr [eax + 0x18], ecx
+0049f3eb mov edx, dword ptr [ebx]
+0049f3ed cmp edx, dword ptr [edi + 0xc]
+0049f3f0 jae 0x49f40f
+0049f3f2 mov ecx, dword ptr [eax + 0x18]
+0049f3f5 add ecx, edx
+0049f3f7 lea ecx, [ecx + ecx*4]
+0049f3fa add ecx, dword ptr [eax + 0x14]
+0049f3fd add edx, 1
+0049f400 mov byte ptr [ecx], 1
+0049f403 mov dword ptr [ecx + 1], 0
+0049f40a cmp edx, dword ptr [edi + 0xc]
+0049f40d jb 0x49f3f2
+0049f40f mov edx, dword ptr [esp + 0x28]
+0049f413 mov dword ptr [edx], eax
+0049f415 mov eax, dword ptr [esp + 0x2c]
+0049f419 mov dword ptr [eax], edi
+0049f41b pop edi
+0049f41c pop ebx
+0049f41d pop esi
+0049f41e mov al, 1
+0049f420 pop ebp
+0049f421 ret 
+== 0049f430:0049f4b6
+0049f430 add dword ptr [esi + 0x18], -1
+0049f434 mov eax, dword ptr [esi + 0x18]
+0049f437 push ebx
+0049f438 mov ebx, dword ptr [0x6085e4]
+0049f43e push edi
+0049f43f lea edi, [eax + eax*4]
+0049f442 add edi, dword ptr [esi + 0x14]
+0049f445 cmp byte ptr [edi], 8
+0049f448 jb 0x49f451
+0049f44a mov ecx, edi
+0049f44c call 0x4a8240
+0049f451 mov byte ptr [edi], 3
+0049f454 mov dword ptr [edi + 1], 0
+0049f45b add dword ptr [esi + 0x18], -1
+0049f45f mov eax, dword ptr [esi + 0x18]
+0049f462 lea edi, [eax + eax*4]
+0049f465 add edi, dword ptr [esi + 0x14]
+0049f468 cmp byte ptr [edi], 8
+0049f46b jb 0x49f474
+0049f46d mov ecx, edi
+0049f46f call 0x4a8240
+0049f474 mov byte ptr [edi], 0xa
+0049f477 mov dword ptr [edi + 1], 0
+0049f47e mov word ptr [esi + 0x3a], 1
+0049f484 mov eax, dword ptr [ebx + 0x12e0]
+0049f48a mov dword ptr [esi + 4], eax
+0049f48d mov ecx, dword ptr [ebx + 0x12e0]
+0049f493 mov dword ptr [ecx], esi
+0049f495 lea edx, [ebx + 0x12dc]
+0049f49b mov dword ptr [esi], edx
+0049f49d mov dword ptr [ebx + 0x12e0], esi
+0049f4a3 push esi
+0049f4a4 mov ecx, ebx
+0049f4a6 mov dword ptr [ebx + 0x1434], esi
+0049f4ac call 0x4a26a0
+0049f4b1 pop edi
+0049f4b2 mov al, 1
+0049f4b4 pop ebx
+0049f4b5 ret 
+== 004a2260:004a2321
+004a2260 push ebx
+004a2261 mov ebx, dword ptr [esp + 0xc]
+004a2265 mov ecx, dword ptr [ebx + 0x30]
+004a2268 test ecx, ecx
+004a226a push ebp
+004a226b mov ebp, dword ptr [esp + 0xc]
+004a226f push esi
+004a2270 push edi
+004a2271 je 0x4a2321
+004a2277 movsx eax, word ptr [ebx + 0x38]
+004a227b sub eax, 1
+004a227e je 0x4a22fe
+004a2280 sub eax, 1
+004a2283 je 0x4a22a2
+004a2285 sub eax, 1
+004a2288 jne 0x4a2321
+004a228e mov eax, dword ptr [ebx + 0x18]
+004a2291 lea edx, [eax + eax*4]
+004a2294 mov eax, dword ptr [ebx + 0x34]
+004a2297 add edx, dword ptr [ebx + 0x14]
+004a229a push eax
+004a229b call 0x4ab1d0
+004a22a0 jmp 0x4a231e
+004a22a2 mov eax, dword ptr [ebx + 0x18]
+004a22a5 lea eax, [eax + eax*4]
+004a22a8 add eax, dword ptr [ebx + 0x14]
+004a22ab mov cl, byte ptr [eax]
+004a22ad cmp cl, 2
+004a22b0 jne 0x4a22d1
+004a22b2 mov ecx, dword ptr [eax + 1]
+004a22b5 push ecx
+004a22b6 mov ecx, dword ptr [0x6085e8]
+004a22bc call 0x49f180
+004a22c1 mov ecx, dword ptr [ebx + 0x34]
+004a22c4 push ecx
+004a22c5 mov ecx, dword ptr [ebx + 0x30]
+004a22c8 mov edx, eax
+004a22ca call 0x4ab1a0
+004a22cf jmp 0x4a231e
+004a22d1 cmp cl, 0xb
+004a22d4 jne 0x4a22ec
+004a22d6 mov edx, dword ptr [eax + 1]
+004a22d9 mov ecx, dword ptr [ebx + 0x34]
+004a22dc mov eax, dword ptr [edx + 8]
+004a22df push ecx
+004a22e0 mov ecx, dword ptr [ebx + 0x30]
+004a22e3 mov edx, eax
+004a22e5 call 0x4ab1a0
+004a22ea jmp 0x4a231e
+004a22ec mov ecx, dword ptr [ebx + 0x34]
+004a22ef xor eax, eax
+004a22f1 push ecx
+004a22f2 mov ecx, dword ptr [ebx + 0x30]
+004a22f5 mov edx, eax
+004a22f7 call 0x4ab1a0
+004a22fc jmp 0x4a231e
+004a22fe mov eax, dword ptr [ebx + 0x18]
+004a2301 lea eax, [eax + eax*4]
+004a2304 add eax, dword ptr [ebx + 0x14]
+004a2307 cmp byte ptr [eax], 1
+004a230a jne 0x4a2311
+004a230c mov eax, dword ptr [eax + 1]
+004a230f jmp 0x4a2313
+004a2311 xor eax, eax
+004a2313 mov edx, dword ptr [ebx + 0x34]
+004a2316 push edx
+004a2317 mov edx, eax
+004a2319 call 0x4ab170
+004a231e add esp, 4
+== 004ab170:004ab19b
+004ab170 mov eax, dword ptr [0x6085e4]
+004ab175 test eax, eax
+004ab177 je 0x4ab19a
+004ab179 cmp dword ptr [eax + 4], 0
+004ab17d je 0x4ab19a
+004ab17f cmp ecx, 0x20
+004ab182 jge 0x4ab19a
+004ab184 lea ecx, [ecx + ecx*2]
+004ab187 mov eax, dword ptr [eax + ecx*8 + 0x34]
+004ab18b test eax, eax
+004ab18d je 0x4ab19a
+004ab18f mov ecx, dword ptr [esp + 4]
+004ab193 push edx
+004ab194 push ecx
+004ab195 call eax
+004ab197 add esp, 8
+004ab19a ret 
+== 004ab0a0:004ab0fe
+004ab0a0 mov eax, dword ptr [ecx + 0x2c]
+004ab0a3 add eax, 2
+004ab0a6 lea eax, [eax + eax*2]
+004ab0a9 mov dword ptr [ecx + eax*8], edx
+004ab0ac mov eax, dword ptr [ecx + 0x2c]
+004ab0af mov edx, dword ptr [esp + 8]
+004ab0b3 lea eax, [eax + eax*2]
+004ab0b6 mov dword ptr [ecx + eax*8 + 0x34], edx
+004ab0ba mov eax, dword ptr [ecx + 0x2c]
+004ab0bd mov edx, dword ptr [esp + 0xc]
+004ab0c1 lea eax, [eax + eax*2]
+004ab0c4 mov dword ptr [ecx + eax*8 + 0x38], edx
+004ab0c8 mov eax, dword ptr [ecx + 0x2c]
+004ab0cb mov edx, dword ptr [esp + 0x10]
+004ab0cf lea eax, [eax + eax*2]
+004ab0d2 mov dword ptr [ecx + eax*8 + 0x3c], edx
+004ab0d6 mov eax, dword ptr [ecx + 0x2c]
+004ab0d9 mov edx, dword ptr [esp + 4]
+004ab0dd lea eax, [eax + eax*2]
+004ab0e0 mov dword ptr [ecx + eax*8 + 0x40], edx
+004ab0e4 mov eax, dword ptr [ecx + 0x2c]
+004ab0e7 lea eax, [eax + eax*2]
+004ab0ea mov dword ptr [ecx + eax*8 + 0x44], 0
+004ab0f2 mov eax, dword ptr [ecx + 0x2c]
+004ab0f5 lea edx, [eax + 1]
+004ab0f8 mov dword ptr [ecx + 0x2c], edx
+004ab0fb ret 0x10
+== 004a43fe:004a4428
+004a43fe mov ecx, dword ptr [ebp + 8]
+004a4401 sub ebx, dword ptr [ecx + 0x14]
+004a4404 mov esi, dword ptr [esp + 0x18]
+004a4408 sub edi, dword ptr [esi + 8]
+004a440b mov eax, 0x66666667
+004a4410 imul ebx
+004a4412 sar edx, 1
+004a4414 mov eax, edx
+004a4416 shr eax, 0x1f
+004a4419 push ecx
+004a441a add eax, edx
+004a441c push esi
+004a441d mov dword ptr [ecx + 0x1c], edi
+004a4420 mov dword ptr [ecx + 0x18], eax
+004a4423 call 0x4a2260
+target=0049f570 refs=46 call@00401d9a ret=00401d9f call@00402697 ret=0040269c call@004026f2 ret=004026f7 call@004038ee ret=004038f3 call@004039dc ret=004039e1 call@00403a63 ret=00403a68 call@00403c31 ret=00403c36 call@00403c57 ret=00403c5c call@00403cd2 ret=00403cd7 call@00403d2c ret=00403d31 call@00403d6d ret=00403d72 call@00403dae ret=00403db3 call@00403df0 ret=00403df5 call@00403ec1 ret=00403ec6 call@00403eed ret=00403ef2 call@004100c4 ret=004100c9 call@0041019e ret=004101a3 call@004101d2 ret=004101d7 call@00410691 ret=00410696 call@004106c5 ret=004106ca call@0041074f ret=00410754 call@004107a9 ret=004107ae call@0041081a ret=0041081f call@00410869 ret=0041086e call@00410976 ret=0041097b call@004109aa ret=004109af call@00410a47 ret=00410a4c call@00410b37 ret=00410b3c call@00411d22 ret=00411d27 call@00416368 ret=0041636d call@0041e49b ret=0041e4a0 call@0041e581 ret=0041e586 call@0041e8ca ret=0041e8cf call@0041ec7f ret=0041ec84 call@00421092 ret=00421097 call@004231f1 ret=004231f6 call@0042342a ret=0042342f call@0042387a ret=0042387f call@0042a38a ret=0042a38f call@0043ad07 ret=0043ad0c call@0043b6ae ret=0043b6b3 call@0043ba8c ret=0043ba91 call@00445662 ret=00445667 call@00447204 ret=00447209 call@00448c67 ret=00448c6c call@0045e260 ret=0045e265
+target=004a2260 refs=2 call@004a4423 ret=004a4428 call@004a445c ret=004a4461
+target=004ab170 refs=6 call@004632b7 ret=004632bc call@0049b0c0 ret=0049b0c5 call@0049b0f8 ret=0049b0fd call@0049b261 ret=0049b266 call@0049c268 ret=0049c26d call@004a2319 ret=004a231e
+clas+82760 entry=0x106b1f name=SelectMode locals=10 argc=1
+clas+82776 entry=0x106fd2 name=GetMode locals=1 argc=0
+clas+82792 entry=0x106fdb name=IsAutoMode locals=2 argc=0
+clas+82808 entry=0x106ffe name=OpenMonitor locals=3 argc=3
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:99:chase_view_restore installed=1 requested=1 path=en
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:100:chase_view_restore_site index=0 site=0x00410100 p
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:101:chase_view_restore_site index=1 site=0x0049ea80 p
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:102:chase_view_restore_site index=2 site=0x004a0880 p
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:103:chase_view_restore_site index=3 site=0x0052f298 p
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:114:ui_scale_camera frame=0 excluded_camera=00000000 
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:151:volumetric_fog_sector device=1 frame=0 profile=0 
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:493:volumetric_fog_sector device=1 frame=1055 profile
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:551:ui_scale_camera frame=1055 excluded_camera=506377
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:636:volumetric_fog_sector device=1 frame=2944 profile
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:637:ui_scale_camera frame=2944 excluded_camera=000000
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:638:volumetric_fog_sector device=1 frame=2945 profile
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:668:ui_scale_camera frame=2945 excluded_camera=51074b
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-sector.log:672:exception code=c0000005 address=4d4d5544 eip=4d4d
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:99:chase_view_restore installed=1 requested=1 path=engi
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:100:chase_view_restore_site index=0 site=0x00410100 pat
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:101:chase_view_restore_site index=1 site=0x0049ea80 pat
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:102:chase_view_restore_site index=2 site=0x004a0880 pat
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:103:chase_view_restore_site index=3 site=0x0052f298 pat
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:114:ui_scale_camera frame=0 excluded_camera=00000000 pr
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:151:volumetric_fog_sector device=1 frame=0 profile=0 re
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:493:volumetric_fog_sector device=1 frame=1117 profile=0
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:551:ui_scale_camera frame=1117 excluded_camera=4f568e38
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:671:ui_scale_camera frame=2812 excluded_camera=5192bd00
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3m-run147-ship.log:673:exception code=c0000005 address=4d4d5546 eip=4d4d55
+0x677e4 +0x54 x3m::chase_transition::(anonymous namespace)::restore_engine_select_mode(x3m::chase_transi
+0x6dffd +0x46d x3m::chase_transition::(anonymous namespace)::inject_handle(unsigned int*, x3m::CpuState&)
+0x6effe +0x7e x3m_chase_inject_enter

@@ -775,7 +775,7 @@ storing script object's id and class, the main monitor; at the next
 engine's controlled object) against `+0xc` and `[game+0x4a0] & 1`, moves the
 ticket to `phase_calling` (no longer due; `attempts` counted; a call that
 never reports back expires as `cancel=call_unwound`), and calls
-`0x0049f570(monitor, 0, monitor, "SelectMode", 1, 1, 258)`
+`0x0049f570(0, 0, monitor, "SelectMode", 1, 1, 258)` (argument 0 is the completion-callback slot, 0 = none; Run147 passed the monitor id there and crashed in the completion code, see the ledger entry 2026-10-12)
 outside the lock with the engine's own x87/MXCSR/LastError image restored for
 the callee. The kind-6 observer sees the result synchronously: 258 on the
 bound cockpit `result=restored`, another value `result=other_mode`

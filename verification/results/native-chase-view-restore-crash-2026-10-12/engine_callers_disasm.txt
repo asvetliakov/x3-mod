@@ -1,0 +1,90 @@
+== 004100c4
+00410095 je 0x41009c
+00410097 mov esi, 0x1000
+0041009c mov eax, dword ptr [0x57fc60]
+004100a1 mov ecx, dword ptr [eax + 0x418]
+004100a7 or esi, ebp
+004100a9 push esi
+004100aa push 1
+004100ac push 1
+004100ae push 0x55539c
+004100b3 push 0x96
+004100b8 push 0
+004100ba push ecx
+004100bb mov word ptr [eax + 0x490], 0
+004100c4 call 0x49f570
+== 0041019e
+00410168 push 0x607c
+0041016d jne 0x410214
+00410173 lea esi, [edi + 0x128]
+00410179 or esi, dword ptr [esp + 0xc]
+0041017d mov word ptr [eax + 0x490], 0
+00410186 mov eax, dword ptr [eax + 0x418]
+0041018c push esi
+0041018d push 1
+0041018f push 1
+00410191 push 0x55539c
+00410196 push 0x96
+0041019b push 0
+0041019d push eax
+0041019e call 0x49f570
+== 00410691
+0041065a test dword ptr [esi + 0x454], edx
+00410660 je 0x410707
+00410666 lea esi, [edi + 0x118]
+0041066c or esi, dword ptr [esp + 0xc]
+00410670 mov word ptr [eax + 0x490], 0
+00410679 mov eax, dword ptr [eax + 0x418]
+0041067f push esi
+00410680 push 1
+00410682 push 1
+00410684 push 0x55539c
+00410689 push 0x96
+0041068e push 0
+00410690 push eax
+00410691 call 0x49f570
+== 00403c31
+00403c03 mov word ptr [esi + 0x490], bx
+00403c0a movsx ecx, word ptr [eax + 0x416]
+00403c11 movsx edx, word ptr [eax + 0x414]
+00403c18 mov eax, dword ptr [esi + 0x4dc]
+00403c1e push ecx
+00403c1f mov ecx, dword ptr [esi + 0x418]
+00403c25 push edx
+00403c26 push 2
+00403c28 push ebp
+00403c29 push 0x5556fc
+00403c2e push eax
+00403c2f push ebx
+00403c30 push ecx
+00403c31 call 0x49f570
+== 0041e49b
+0041e46e mov edi, edi
+0041e470 mov ecx, dword ptr [esp + 0x18]
+0041e474 mov edx, dword ptr [0x57fc64]
+0041e47a mov eax, dword ptr [esp + 0x1c]
+0041e47e push ebx
+0041e47f push ecx
+0041e480 push 2
+0041e482 push 1
+0041e484 push 0x55b5f0
+0041e489 push 0x96
+0041e48e push 0
+0041e490 push edx
+0041e491 mov dword ptr [eax + 0x587408], 0
+0041e49b call 0x49f570
+== 0042a38a
+0042a35d add byte ptr [ebp + 0xf090], cl
+0042a363 add byte ptr [ebx - 0x7774efc0], cl
+0042a369 xchg esp, eax
+0042a36a add byte ptr [eax], al
+0042a36c add byte ptr [ecx + 0x6a], dl
+0042a36f add dword ptr [edx + 1], ebp
+0042a372 push 0x55b7d0
+0042a377 push 0x96
+0042a37c mov dword ptr [esp + 0x20], edx
+0042a380 mov edx, dword ptr [0x57fc64]
+0042a386 xor esi, esi
+0042a388 push esi
+0042a389 push edx
+0042a38a call 0x49f570

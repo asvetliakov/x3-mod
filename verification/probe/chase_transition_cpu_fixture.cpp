@@ -436,7 +436,7 @@ void scenarios() {
         asm volatile("fninit\n\tfldcw %0\n\tldmxcsr %1" ::"m"(default_cw), "m"(default_mxcsr) : "memory");
         check(GetLastError() == 0x2468ace0, "LastError restored across the engine call");
         check(cw_after == engine_cw && mxcsr_after == engine_mxcsr, "the engine's x87 CW and MXCSR image is back after the call");
-        check(mock.calls == 1 && mock.args[0] == monitor_id && mock.args[1] == 0 && mock.args[2] == monitor_id &&
+        check(mock.calls == 1 && mock.args[0] == 0 && mock.args[1] == 0 && mock.args[2] == monitor_id &&
                   mock.name && !std::strcmp(mock.name, "SelectMode") && mock.args[4] == 1 && mock.args[5] == 1 &&
                   mock.args[6] == restore_rear_mode,
               "the engine call is SelectMode(258) on the captured monitor object (object and lookup key)");
