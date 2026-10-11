@@ -1,0 +1,154 @@
+## 1 HUD rows present (telemetry off: no chase_central_hud_window / chase_lead_window rows)
+0
+105:chase_central_hud installed=1 status=active cleanup=native_when_extra_active hud_anchor=forward
+106:chase_lead installed=1 status=active scope=applied_main_chase_same_sector native_solver=retained telemetry=0
+## 2 restore outcome rows (class by ship_id_from/to)
+2400 restored 0xffff02e3->0xffff1766 s54 0x5183ce00->0x5183ce00 wait=2 att=1
+7200 restored 0xffff1766->0xffff1766 s54 0x5183ce00->0xa21aa068 wait=2 att=1
+10500 restored 0xffff1766->0xffff1766 s54 0xa21aa068->0xa21abf08 wait=2 att=1
+15000 restored 0xffff1766->0xffff02e3 s54 0xa21abf08->0xa21abf08 wait=2 att=1
+26700 restored 0xffff02e3->0xffff1766 s54 0xa21abf08->0xa21abf08 wait=2 att=1
+32400 restored 0xffff1766->0xffff1766 s54 0xa21abf08->0xa21aae30 wait=2 att=1
+35700 restored 0xffff1766->0xffff1766 s54 0xa21aae30->0x518426d0 wait=2 att=1
+## 3 ui_scale_camera transitions (ship: one direct row; sector: via 00000000)
+ui_scale_camera frame=0 excluded_camera=00000000 previous=00000000
+ui_scale_camera frame=718 excluded_camera=515f7f58 previous=00000000
+ui_scale_camera frame=2443 excluded_camera=5203ba78 previous=515f7f58
+ui_scale_camera frame=7300 excluded_camera=00000000 previous=5203ba78
+ui_scale_camera frame=7301 excluded_camera=52039b58 previous=00000000
+ui_scale_camera frame=10794 excluded_camera=00000000 previous=52039b58
+ui_scale_camera frame=10795 excluded_camera=515f7f58 previous=00000000
+ui_scale_camera frame=15011 excluded_camera=5203b2b0 previous=515f7f58
+ui_scale_camera frame=26963 excluded_camera=515f6038 previous=5203b2b0
+ui_scale_camera frame=32519 excluded_camera=00000000 previous=515f6038
+ui_scale_camera frame=32520 excluded_camera=52039b58 previous=00000000
+ui_scale_camera frame=35700 excluded_camera=00000000 previous=52039b58
+ui_scale_camera frame=35701 excluded_camera=515f6038 previous=00000000
+ui_scale_camera frame=38102 excluded_camera=00000000 previous=515f6038
+## 4 chase_camera windows around restores
+2100 app=1383 ref=0 seen=1 snaps=1 sr=1 mode=258 trk=3 dist=16615.1
+2400 app=1683 ref=0 seen=1 snaps=1 sr=1 mode=258 trk=3 dist=16615.0
+2700 app=1981 ref=2 seen=1 snaps=2 sr=1 mode=258 trk=0 dist=12401.4
+3000 app=2281 ref=2 seen=1 snaps=2 sr=1 mode=258 trk=0 dist=12365.6
+6900 app=6181 ref=2 seen=1 snaps=2 sr=1 mode=258 trk=3 dist=12395.0
+7200 app=6481 ref=2 seen=1 snaps=2 sr=1 mode=258 trk=3 dist=12401.3
+7500 app=6778 ref=4 seen=2 snaps=3 sr=1 mode=258 trk=0 dist=10698.7
+7800 app=7078 ref=4 seen=1 snaps=3 sr=1 mode=258 trk=0 dist=10690.1
+10200 app=9478 ref=4 seen=1 snaps=3 sr=1 mode=258 trk=0 dist=10672.0
+10500 app=9778 ref=4 seen=1 snaps=3 sr=1 mode=258 trk=0 dist=10669.3
+10800 app=10075 ref=6 seen=2 snaps=4 sr=1 mode=258 trk=0 dist=10698.7
+11100 app=10375 ref=6 seen=1 snaps=4 sr=1 mode=258 trk=0 dist=10685.2
+14700 app=13975 ref=6 seen=1 snaps=4 sr=1 mode=258 trk=3 dist=10698.1
+15000 app=14275 ref=6 seen=1 snaps=4 sr=1 mode=258 trk=3 dist=10698.1
+15300 app=14573 ref=8 seen=1 snaps=5 sr=1 mode=258 trk=0 dist=16612.8
+15600 app=14873 ref=8 seen=1 snaps=5 sr=1 mode=258 trk=0 dist=16569.0
+26400 app=25673 ref=8 seen=1 snaps=5 sr=1 mode=258 trk=3 dist=16614.6
+26700 app=25973 ref=8 seen=1 snaps=5 sr=1 mode=258 trk=3 dist=16614.6
+27000 app=26271 ref=10 seen=1 snaps=6 sr=1 mode=258 trk=0 dist=10698.0
+27300 app=26571 ref=10 seen=1 snaps=6 sr=1 mode=258 trk=3 dist=10698.0
+32100 app=31371 ref=10 seen=1 snaps=6 sr=1 mode=258 trk=3 dist=10698.0
+32400 app=31671 ref=10 seen=1 snaps=6 sr=1 mode=258 trk=3 dist=10698.0
+32700 app=31968 ref=12 seen=2 snaps=7 sr=1 mode=258 trk=0 dist=10698.7
+33000 app=32268 ref=12 seen=1 snaps=7 sr=1 mode=258 trk=0 dist=10696.2
+35400 app=34668 ref=12 seen=1 snaps=7 sr=1 mode=258 trk=0 dist=10697.2
+35700 app=34967 ref=12 seen=1 snaps=7 sr=1 mode=258 trk=0 dist=10698.0
+36000 app=35265 ref=14 seen=1 snaps=8 sr=1 mode=258 trk=0 dist=10692.7
+36300 app=35565 ref=14 seen=1 snaps=8 sr=1 mode=258 trk=0 dist=10691.9
+## 5 script: calls inside SelectMode / ChangeView2 / ChangeViewForMonitor / ChangePlayerShipTo / RestartAllMonitors / WarpToSector / Show / ShowCockpit / UpdateVisibility / SetLeftOffset
+0x106b1f SelectMode end 0x106fd2
+   0x106fb1 0x82 INS_CockpitSetViewMode
+0x1047bb ChangeView2 end 0x104b0b
+   0x10489b 0x85 SelectMode
+   0x104998 0x85 SelectMode
+   0x104a17 0x85 SelectMode
+   0x104a96 0x85 SelectMode
+   0x104ae3 0x88 UpdateVisibility
+0x104b0b ChangeViewForMonitor end 0x104cea
+   0x104b3b 0x85 SelectMode
+   0x104be6 0x85 SelectMode
+   0x104c15 0x85 SelectMode
+   0x104c83 0x85 SelectMode
+   0x104cae 0x85 SelectMode
+   0x104cc2 0x88 UpdateVisibility
+0xdf5c4 ChangePlayerShipTo end 0xdf75c
+   0xdf5de 0x86 StopAllMonitors
+   0xdf67b 0x86 RestartAllMonitors
+0x103f70 RestartAllMonitors end 0x104021
+   0x103fdd 0x85 SelectMode
+   0x103fe4 0x88 OpenLayout
+0x16185 WarpToSector end 0x169d6
+   0x161b2 0x86 UpdateVisibility
+   0x16273 0x86 ShowWarpInScene
+   0x1632f 0x86 SetOverlayVisible
+   0x16414 0x86 SetOverlayVisible
+   0x1643e 0x86 StopAllMonitors
+   0x16546 0x86 RestartAllMonitors
+   0x16553 0x86 ShowWarpOutScene
+   0x165c9 0x86 WaitForEndOfSpeak
+   0x1672f 0x85 SendMessage
+   0x16749 0x86 WaitForEndOfSpeak
+   0x168dc 0x85 SendMessage
+   0x168f6 0x86 WaitForEndOfSpeak
+0x105e20 Show end 0x105fad
+   0x105f09 0x88 StartMonitor
+   0x105f16 0x88 ShowCockpit
+   0x105f23 0x88 ShowDust
+   0x105f30 0x88 ShowSpace
+   0x105f55 0x88 ShowCockpit
+   0x105f5d 0x88 ShowDust
+   0x105f65 0x88 ShowSpace
+0x1072e9 ShowCockpit end 0x107363
+   0x107317 0x82 INS_CockpitEnableCockpitBody
+   0x107329 0x82 INS_CockpitEnableRadarBody
+   0x10733b 0x82 INS_CockpitEnableDisplayBody
+   0x10734c 0x82 INS_CockpitEnableTargetBodies
+   0x10735b 0x82 INS_CockpitEnableCamera
+0x103da9 UpdateVisibility end 0x103e02
+   0x103ded 0x85 Show
+   0x103df9 0x88 UpdateOverlays
+0x105919 SetLeftOffset end 0x10596f
+   0x105967 0x88 UpdateVisibility
+## 6 script: who calls UpdateVisibility / SetLeftOffset (static)
+0x103da9 ['UpdateVisibility'] 24
+0x1027c9 88 ShowCommWindow
+0x102812 88 ShowInfoWindow
+0x102907 88 HideCommWindow
+0x103d36 88 OnCursorVisible
+0x103da0 88 OnCursorInvisible
+0x104ae3 88 ChangeView2
+0x104cc2 88 ChangeViewForMonitor
+0x105967 88 SetLeftOffset
+0xbc63 86 CheatEquip
+0x20f9e 86 SetActiveMenu
+0x21015 86 ClearActiveMenu
+0xff1b4 86 RestoreAllMonitors
+0xff4a7 86 SetOverlayVisible
+0xff4c0 86 SetRadarOverlayVisible
+0x107ebb 86 SetTracking
+0x107f80 86 TrackPrevNext
+0x109c8e 86 OnContextMenuReturn
+0x109cc4 86 OnContextMenuReturn
+0x109d21 86 OnContextMenuReturn
+0x10c10a 86 Menu
+0x12e5da 86 OnContextMenuReturn
+0x12e600 86 OnContextMenuReturn
+0x133692 86 MenuAction
+0x13cc47 86 MenuAction
+0x105919 ['SetLeftOffset'] 5
+0x1143f8 86 Open
+0x11440b 86 Open
+0x11444b 86 ToggleDrawSidebar
+0x11448f 86 ToggleDrawSidebar
+0x11517b 86 Close
+## 7 EXE: writers of cockpit +0x234 (2D draw) and +0x2a0 (display body)
+0041a58c mov dword ptr [ebp + 0x234], ecx
+0041ba89 mov dword ptr [ebp + 0x2a0], ecx
+0041fd9e mov dword ptr [edi + 0x234], ecx
+0042e775 mov dword ptr [eax + 0x234], ecx
+0042e80e mov dword ptr [eax + 0x2a0], ecx
+0043169a mov dword ptr [ebp + 0x234], edx
+00478b1b mov dword ptr [esp + 0x234], eax
+00478c83 mov dword ptr [esp + 0x2a0], eax
+0047a2d3 mov dword ptr [ebx + 0x234], edx
+004c9594 mov byte ptr [esp + 0x234], 0x80
+004c98ee mov byte ptr [esp + 0x2a0], 0xa9

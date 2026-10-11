@@ -17,3 +17,5 @@ python3 -I callers.py $X 0x0041f8d0 0x0041fbe8 0x0041fe04 0x0041ffc0
 # 6 script program: class 0x137 owns GetCurrentObjectIDInSector in stock (04) and Mayhem (07)
 python3 -I class_lookup.py 0x137 GetCurrentObjectIDInSector $S/x3story_04.obj $S/x3story_07.obj
 python3 -I method_rows.py GetCurrentObjectIDInSector $S/x3story_04.obj $S/x3story_07.obj
+
+# 2026-10-12 Run148 crosshair-after-ship-change triage: see run148_hud_triage.sh (output run148_hud_triage_out.txt)
