@@ -1,0 +1,214 @@
+## opcode table 0x004a4688 -> 0x004a4490 for 0x82..0x88
+0x82 88 0x4a3880
+0x83 89 0x4a3986
+0x84 90 0x4a3a87
+0x85 91 0x4a3adb
+0x86 92 0x4a3cc4
+0x87 93 0x4a3d5e
+0x88 94 0x4a3ed4
+## 0x86 class-static call: resolve the pushed key, push return (tag 3) + caller context (tag 10), set task+0x3c
+004a3cc4 mov edx, dword ptr [edi]
+004a3cc6 mov eax, dword ptr [ebx + 1]
+004a3cc9 mov esi, dword ptr [esp + 0x18]
+004a3cd1 call 0x49f1e0
+004a3cdc jne 0x4a3d14
+004a3d14 mov edx, dword ptr [esp + 0x1c]
+004a3d18 mov eax, esi
+004a3d1a sub edx, dword ptr [eax + 8]
+004a3d1d mov esi, ebx
+004a3d1f add edx, 4
+004a3d22 push edx
+004a3d23 call 0x4a8620
+004a3d28 mov edi, dword ptr [esp + 0x20]
+004a3d2c sub ebx, 5
+004a3d2f mov esi, ebx
+004a3d31 mov dword ptr [esp + 0x14], ebx
+004a3d35 call 0x4a8640
+004a3d3a mov ecx, dword ptr [esp + 0x18]
+004a3d3e mov edx, dword ptr [ecx + 8]
+004a3d54 mov dword ptr [ecx + 0x3c], eax
+## 0x88 static self call: pushes the same pair with the current context, task+0x3c unchanged
+004a3ee1 sub ebx, 5
+004a3ee4 add eax, 4
+004a3ee7 push eax
+004a3ee8 mov esi, ebx
+004a3eea mov dword ptr [esp + 0x38], ecx
+004a3eee call 0x4a8620
+004a3ef3 mov edi, dword ptr [esp + 0x20]
+004a3ef7 sub ebx, 5
+004a3efa mov esi, ebx
+004a3efc mov dword ptr [esp + 0x14], ebx
+004a3f00 call 0x4a8640
+## 0x85 dynamic call: the same pair (0x004a3c85 / 0x004a3c97), new context at 0x004a3cbc
+004a3c81 add ecx, 4
+004a3c84 push ecx
+004a3c85 call 0x4a8620
+004a3c8a mov edi, dword ptr [esp + 0x20]
+004a3c8e sub ebx, 5
+004a3c91 mov esi, ebx
+004a3c93 mov dword ptr [esp + 0x14], ebx
+004a3c97 call 0x4a8640
+004a3c9c mov eax, dword ptr [esp + 0x24]
+004a3cbc mov dword ptr [ecx + 0x3c], eax
+## return-record writers
+004a8620 cmp byte ptr [esi], 8
+004a8623 jb 0x4a862c
+004a8625 mov ecx, esi
+004a8627 call 0x4a8240
+004a862c mov eax, dword ptr [esp + 4]
+004a8630 mov dword ptr [esi + 1], eax
+004a8633 mov byte ptr [esi], 3
+004a8636 mov eax, esi
+004a8638 ret 4
+004a863b int3 
+004a863c int3 
+004a863d int3 
+004a863e int3 
+004a863f int3 
+004a8640 cmp byte ptr [esi], 8
+004a8643 jb 0x4a864c
+004a8645 mov ecx, esi
+004a8647 call 0x4a8240
+004a864c test edi, edi
+004a864e mov byte ptr [esi], 0xa
+004a8651 je 0x4a8663
+004a8653 cmp dword ptr [edi + 8], 0
+004a8657 je 0x4a8663
+004a8659 mov dword ptr [esi + 1], edi
+004a865c add dword ptr [edi + 4], 1
+004a8660 mov eax, esi
+004a8662 ret 
+004a8663 mov dword ptr [esi + 1], 0
+004a866a mov eax, esi
+004a866c ret 
+## return opcode 0x83: scan for tag 10 above tag 3; offset 0 = task end; null or class-less context skipped
+004a39a6 mov esi, dword ptr [ebp + 8]
+004a39a9 mov edx, dword ptr [esi + 0x14]
+004a39ac sub edx, 5
+004a39af cmp ebx, edx
+004a39b1 jae 0x4a3a09
+004a39b3 cmp byte ptr [ebx], 0xa
+004a39b6 jne 0x4a39de
+004a39b8 cmp byte ptr [ebx + 5], 3
+004a39bc jne 0x4a39de
+004a39be mov ecx, dword ptr [ebx + 6]
+004a39c1 test ecx, ecx
+004a39c3 mov eax, dword ptr [ebx + 1]
+004a39c6 mov dword ptr [esp + 0x28], eax
+004a39ca mov dword ptr [esp + 0x2c], ecx
+004a39ce je 0x4a442d
+004a39d4 test eax, eax
+004a39d6 je 0x4a39de
+004a39d8 cmp dword ptr [eax + 8], 0
+004a39dc jne 0x4a39fc
+004a39de cmp byte ptr [ebx], 8
+004a39e1 jb 0x4a39ea
+004a39e3 mov ecx, ebx
+004a39e5 call 0x4a8240
+004a39ea mov byte ptr [ebx], 0
+004a39ed mov eax, dword ptr [esi + 0x14]
+004a39f0 add ebx, 5
+004a39f3 sub eax, 5
+004a39f6 cmp ebx, eax
+004a39f8 jb 0x4a39b3
+004a39fa jmp 0x4a3a09
+004a39fc sub ebx, 5
+004a39ff mov byte ptr [ebx], 1
+004a3a02 mov dword ptr [ebx + 1], 0
+## native dispatch writes the top index task+0x18 (0x004a38d9)
+004a38c0 mov edx, ebx
+004a38c2 sub edx, dword ptr [esi + 0x14]
+004a38c5 mov eax, 0x66666667
+004a38ca imul edx
+004a38cc sar edx, 1
+004a38ce mov eax, edx
+004a38d0 shr eax, 0x1f
+004a38d3 add eax, edx
+004a38d5 mov edx, dword ptr [esp + 0x18]
+004a38d9 mov dword ptr [esi + 0x18], eax
+004a38dc mov eax, edi
+004a38de sub eax, dword ptr [edx + 8]
+004a38e1 mov dword ptr [esi + 0x1c], eax
+## 0x0049f430 bottom pair, 0x0049f1e0 key resolution, 0x004b06f0 static record search
+0049f430 add dword ptr [esi + 0x18], -1
+0049f434 mov eax, dword ptr [esi + 0x18]
+0049f437 push ebx
+0049f438 mov ebx, dword ptr [0x6085e4]
+0049f43e push edi
+0049f43f lea edi, [eax + eax*4]
+0049f442 add edi, dword ptr [esi + 0x14]
+0049f445 cmp byte ptr [edi], 8
+0049f448 jb 0x49f451
+0049f44a mov ecx, edi
+0049f44c call 0x4a8240
+0049f451 mov byte ptr [edi], 3
+0049f454 mov dword ptr [edi + 1], 0
+0049f45b add dword ptr [esi + 0x18], -1
+0049f45f mov eax, dword ptr [esi + 0x18]
+0049f462 lea edi, [eax + eax*4]
+0049f465 add edi, dword ptr [esi + 0x14]
+0049f468 cmp byte ptr [edi], 8
+0049f46b jb 0x49f474
+0049f46d mov ecx, edi
+0049f46f call 0x4a8240
+0049f474 mov byte ptr [edi], 0xa
+0049f477 mov dword ptr [edi + 1], 0
+0049f1e0 test eax, eax
+0049f1e2 jge 0x49f216
+0049f1e4 or ecx, 0xffffffff
+0049f1e7 sub ecx, eax
+0049f1e9 mov eax, dword ptr [esi + 0x12d0]
+0049f1ef mov edx, dword ptr [eax]
+0049f1f1 test edx, edx
+0049f1f3 je 0x49f20f
+0049f1f5 mov eax, dword ptr [eax + 4]
+0049f1f8 sub eax, 1
+0049f1fb and eax, ecx
+0049f1fd mov eax, dword ptr [edx + eax*4]
+0049f200 test eax, eax
+0049f202 je 0x49f20f
+0049f204 cmp dword ptr [eax + 4], ecx
+0049f207 je 0x49f212
+0049f209 mov eax, dword ptr [eax]
+0049f20b test eax, eax
+0049f20d jne 0x49f204
+0049f20f xor eax, eax
+0049f211 ret 
+0049f212 mov eax, dword ptr [eax + 8]
+0049f215 ret 
+0049f216 mov edx, dword ptr [esi + 0x1c]
+0049f219 push eax
+0049f21a mov eax, dword ptr [esi + 0x20]
+0049f21d call 0x4b06f0
+0049f222 add esp, 4
+0049f225 ret 
+004b06f0 test edx, edx
+004b06f2 push ebx
+004b06f3 mov ebx, dword ptr [esp + 8]
+004b06f7 push esi
+004b06f8 push edi
+004b06f9 mov edi, eax
+004b06fb jbe 0x4b0727
+004b06fd lea ecx, [ecx]
+004b0700 mov ecx, edx
+004b0702 shr ecx, 1
+004b0704 lea eax, [ecx*8]
+004b070b sub eax, ecx
+004b070d mov esi, dword ptr [edi + eax*8]
+004b0710 cmp ebx, esi
+004b0712 lea eax, [edi + eax*8]
+004b0715 jl 0x4b072d
+004b0717 jle 0x4b0729
+004b0719 lea edi, [eax + 0x38]
+004b071c or eax, 0xffffffff
+004b071f sub eax, ecx
+004b0721 add edx, eax
+004b0723 test edx, edx
+004b0725 ja 0x4b0700
+004b0727 xor eax, eax
+004b0729 pop edi
+004b072a pop esi
+004b072b pop ebx
+004b072c ret 
+004b072d mov edx, ecx
+004b072f jmp 0x4b0723

@@ -2,17 +2,31 @@
 // The separate site probe verifies displaced spans against the game executable.
 #include "../../src/proxy/chase_transition.cpp"
 #include "../../src/proxy/chase_lead.cpp"
+#include <cstdarg>
 #include <cstdio>
 // log() must never run under the chase SRW lock (present() holds capture's
 // mutex while report() takes this lock); count seam lines and violations.
 static unsigned log_under_lock = 0, outcome_lines = 0, arm_refused_lines = 0;
+static const char* last_hud_refresh = nullptr; // the outcome row's hud_refresh value (a static name)
 namespace x3m {
 void log(const char* format, ...) {
     if (TryAcquireSRWLockExclusive(&x3m::chase_transition::lock))
         ReleaseSRWLockExclusive(&x3m::chase_transition::lock);
     else
         ++log_under_lock;
-    if (!std::strncmp(format, "chase_view_restore result=", 26)) ++outcome_lines;
+    if (!std::strncmp(format, "chase_view_restore result=", 26)) {
+        ++outcome_lines;
+        // result=%s cancel=%s attempts=%u monitor=0x%08lx monitor_class=0x%lx hud_refresh=%s
+        va_list ap;
+        va_start(ap, format);
+        (void)va_arg(ap, const char*);
+        (void)va_arg(ap, const char*);
+        (void)va_arg(ap, unsigned);
+        (void)va_arg(ap, unsigned long);
+        (void)va_arg(ap, unsigned long);
+        last_hud_refresh = va_arg(ap, const char*);
+        va_end(ap);
+    }
     if (!std::strncmp(format, "chase_view_restore_arm_refused ", 31)) ++arm_refused_lines;
 }
 }
@@ -222,8 +236,12 @@ enum : unsigned {
     o_task = 0x2100,
     o_context = 0x2200,
     o_descriptor = 0x2300,
-    o_input_frame = 0x2400
+    o_input_frame = 0x2400,
+    o_manager_context = 0x2500, // the monitor manager's static record: [0] key, [8] class descriptor
+    o_manager_descriptor = 0x2540,
+    o_task_stack_base = 0x3000 // task cells grow down from here (5-byte cells)
 };
+constexpr std::uint32_t manager_key = 0x25du;
 unsigned checks = 0, failures = 0;
 void check(bool okay, const char* label) {
     ++checks;
@@ -277,10 +295,12 @@ void build_world() {
 void control(unsigned cockpit) {
     put(W(o_cockpit_row + 8), W(cockpit));
 }
-// The mock engine wrapper: records the seven cdecl arguments and the CPU state it
-// was entered with, optionally performs the script's store (the kind-6 observer
+// The mock engine wrapper (variadic like the engine's: argc dwords follow argc):
+// records the arguments and the CPU state of the last call and of each of the
+// first four, optionally performs the script's store (the kind-6 observer
 // through the real handler, as the engine's SelectMode -> INS_CockpitSetViewMode
-// does synchronously inside the call), and returns the configured AL.
+// does synchronously inside the call), and returns the configured AL
+// (refresh_result for UpdateVisibility).
 struct MockCall {
     unsigned calls = 0;
     std::uint32_t args[7]{};
@@ -289,18 +309,37 @@ struct MockCall {
     std::uint32_t mxcsr = 0;
     std::uint32_t store_mode = restore_rear_mode; // 0: store nothing
     unsigned store_cockpit = o_cockpit2;
-    std::uint32_t result = 1;
+    std::uint32_t result = 1, refresh_result = 1;
     std::uint32_t last_error_seen = 0;
+    std::uint32_t log_args[4][7]{};
+    const char* log_names[4]{};
+    std::uint16_t log_cw[4]{};
+    std::uint32_t log_mxcsr[4]{}, log_error[4]{};
 };
 MockCall mock;
 extern "C" std::uint32_t __cdecl mock_script_call(std::uint32_t a, std::uint32_t b, std::uint32_t c, const char* name,
-                                                   std::uint32_t e, std::uint32_t f, std::uint32_t g) {
-    ++mock.calls;
+                                                   std::uint32_t e, std::uint32_t f, ...) {
+    std::uint32_t g = 0;
+    if (f) {
+        va_list ap;
+        va_start(ap, f);
+        g = va_arg(ap, std::uint32_t);
+        va_end(ap);
+    }
+    const unsigned slot = mock.calls++;
     const std::uint32_t v[7] = {a, b, c, 0, e, f, g};
     std::memcpy(mock.args, v, sizeof v);
     mock.name = name;
     asm volatile("fnstcw %0\n\tstmxcsr %1" : "=m"(mock.cw), "=m"(mock.mxcsr)::"memory");
     mock.last_error_seen = GetLastError();
+    if (slot < 4) {
+        std::memcpy(mock.log_args[slot], v, sizeof v);
+        mock.log_names[slot] = name;
+        mock.log_cw[slot] = mock.cw;
+        mock.log_mxcsr[slot] = mock.mxcsr;
+        mock.log_error[slot] = mock.last_error_seen;
+    }
+    const bool refresh = name && !std::strcmp(name, "UpdateVisibility");
     if (mock.store_mode) {
         std::uint32_t regs[9]{};
         regs[7] = W(mock.store_cockpit);
@@ -309,7 +348,7 @@ extern "C" std::uint32_t __cdecl mock_script_call(std::uint32_t a, std::uint32_t
         handle(6, regs);
     }
     SetLastError(0x5a5a0001u); // the engine may leave any LastError; the stub boundary restores the caller's
-    return mock.result;
+    return refresh ? mock.refresh_result : mock.result;
 }
 void* stubs[restore_site_count]{};
 void* continuation = nullptr;
@@ -637,6 +676,81 @@ void scenarios() {
     put(W(o_dispatcher_frame + 4), 0x4a3909u);
     store(o_cockpit2, restore_internal_mode);
     check(restore.monitor == monitor_id, "the validated frame captures the monitor");
+    // 11. HUD refresh: the task stack carries the ship-change chain (bottom pair, RestartAllMonitors' record
+    // with the manager's static record, SelectMode's cells); the restored ticket makes the second call
+    // UpdateVisibility() on the manager key, argument 0 = 0, argc 0, under the engine's x87/MXCSR image.
+    for (const std::uint32_t refresh_al : {1u, 0u}) {
+        reset_state();
+        mock.refresh_result = refresh_al;
+        put(W(o_manager_context), manager_key);
+        put(W(o_manager_context + 8), W(o_manager_descriptor));
+        put(W(o_manager_descriptor), 0x25du);
+        unsigned used = 0;
+        auto push = [&](unsigned char tag, std::uint32_t v) {
+            const std::uint32_t at = W(o_task_stack_base) - 5 * ++used;
+            put(at, tag);
+            put(at + 1, v);
+        };
+        push(3, 0), push(10, 0);                     // 0x0049f430's bottom pair
+        push(3, 0x1234), push(10, W(o_manager_context)); // RestartAllMonitors -0x85-> SelectMode
+        for (unsigned i = 0; i < 12; ++i) push(1, i);    // SelectMode's argument, locals, the native's argc
+        put(W(o_task + 0x14), W(o_task_stack_base));
+        put(W(o_task + 0x10), 64u);
+        put(W(o_task + 0x18), std::uint32_t(-std::int32_t(used)));
+        construct(o_cockpit, 0x41f83bu);
+        observe(o_cockpit);
+        destroy(o_cockpit);
+        construct(o_cockpit2);
+        store(o_cockpit2, restore_internal_mode);
+        check(restore.monitor == monitor_id && restore.manager == manager_key && restore.manager_class == 0x25du &&
+                  restore.manager_scan == scan_found,
+              "the store captures the manager from the task's return records");
+        control(o_cockpit2);
+        due();
+        const auto rows = outcome_lines;
+        const std::uint16_t engine_cw = 0x077f;
+        const std::uint32_t engine_mxcsr = 0x3f80;
+        std::uint16_t cw_after = 0;
+        std::uint32_t mxcsr_after = 0;
+        asm volatile("fldcw %0\n\tldmxcsr %1" ::"m"(engine_cw), "m"(engine_mxcsr) : "memory");
+        FrameCall f = input_entry();
+        SetLastError(0x2468ace0);
+        run_input(f);
+        asm volatile("fnstcw %0\n\tstmxcsr %1" : "=m"(cw_after), "=m"(mxcsr_after)::"memory");
+        const std::uint16_t default_cw = 0x037f;
+        const std::uint32_t default_mxcsr = 0x1f80;
+        asm volatile("fninit\n\tfldcw %0\n\tldmxcsr %1" ::"m"(default_cw), "m"(default_mxcsr) : "memory");
+        check(mock.calls == 2 && mock.log_names[0] && !std::strcmp(mock.log_names[0], "SelectMode") &&
+                  mock.log_args[0][0] == 0 && mock.log_args[0][2] == monitor_id && mock.log_args[0][5] == 1,
+              "first call SelectMode(258) on the monitor");
+        check(mock.log_names[1] && !std::strcmp(mock.log_names[1], "UpdateVisibility") && mock.log_args[1][0] == 0 &&
+                  mock.log_args[1][1] == 0 && mock.log_args[1][2] == manager_key && mock.log_args[1][4] == 1 &&
+                  mock.log_args[1][5] == 0,
+              "second call UpdateVisibility() on the manager key, argument 0 = 0, argc 0");
+        check(mock.log_cw[1] == engine_cw && mock.log_mxcsr[1] == engine_mxcsr && mock.log_error[1] == 0x2468ace0,
+              "the second call runs under the engine's incoming x87 CW, MXCSR and LastError");
+        check(GetLastError() == 0x2468ace0 && cw_after == engine_cw && mxcsr_after == engine_mxcsr,
+              "LastError and the engine's x87/MXCSR image are back after both calls");
+        check(f.out[7] == 0x11 && f.out[6] == 0x22 && f.out[5] == 0x33 && f.out[4] == 0x44 && f.out[1] == 0x55 &&
+                  f.out[0] == 0x66 && f.out[2] == 0x77 && (f.out[8] & 0x8d5) == (0x202 & 0x8d5),
+              "site I stub returns the registers and flags untouched after both calls");
+        check(outcome_lines == rows + 1 && last_hud_refresh &&
+                  !std::strcmp(last_hud_refresh, refresh_al ? "ok" : "refused") &&
+                  restore.hud_refreshes[refresh_al ? hud_ok : hud_refused] == 1 && !restore.held.wanted,
+              refresh_al ? "one outcome row with hud_refresh=ok" : "one outcome row with hud_refresh=refused");
+    }
+    // 12. Skipped: an empty task stack (no caller frame) -> one call, hud_refresh=skipped.
+    arm_free_construct();
+    check(restore.manager == 0 && restore.manager_scan == scan_bottom, "no caller frame: no manager (bottom)");
+    due();
+    {
+        const auto rows = outcome_lines;
+        FrameCall f = input_entry();
+        run_input(f);
+        check(mock.calls == 1 && outcome_lines == rows + 1 && last_hud_refresh &&
+                  !std::strcmp(last_hud_refresh, "skipped"),
+              "without a manager one call and hud_refresh=skipped");
+    }
     reset_state();
 }
 // Real install/rollback on fixture-owned copies of the four spans.

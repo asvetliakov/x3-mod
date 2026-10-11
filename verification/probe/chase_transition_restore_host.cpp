@@ -5,6 +5,7 @@
 #include "../../src/proxy/chase_transition_restore_core.h"
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 using namespace x3m::chase_transition::detail;
 static unsigned checks = 0;
 static void check(bool ok, const char* why) {
@@ -82,6 +83,268 @@ struct World {
         return st.on_inject_entry(thread, fresh(new_cockpit, 2, sector), controlled, pause, p, epoch);
     }
 };
+// ---- HUD refresh (UpdateVisibility on the monitor manager after a restored SelectMode) ----
+// Fake engine memory for the caller-frame walk: one arena at a fixed fake address, a checked reader.
+struct Arena {
+    static constexpr std::uint32_t base = 0x10000000u;
+    unsigned char m[0x4000]{};
+    bool refuse = false;
+    bool read(std::uintptr_t at, unsigned off, void* out, unsigned n) const {
+        const std::uintptr_t a = at + off;
+        if (refuse || a < base || a + n > base + sizeof m) return false;
+        std::memcpy(out, m + (a - base), n);
+        return true;
+    }
+    void put32(std::uint32_t a, std::uint32_t v) { std::memcpy(m + (a - base), &v, 4); }
+    void cell(std::uint32_t a, unsigned char tag, std::uint32_t v) {
+        m[a - base] = tag;
+        std::memcpy(m + (a - base) + 1, &v, 4);
+    }
+};
+constexpr std::uint32_t a_task = Arena::base + 0x100, a_monitor_ctx = Arena::base + 0x200,
+                        a_manager_ctx = Arena::base + 0x240, a_other_ctx = Arena::base + 0x280,
+                        a_dead_ctx = Arena::base + 0x2c0, a_monitor_desc = Arena::base + 0x300,
+                        a_manager_desc = Arena::base + 0x340, a_other_desc = Arena::base + 0x380,
+                        a_stack_base = Arena::base + 0x3000, manager_key = 0x25d; // the static-record key
+// A task stack built from the bottom (base - 5) upwards in push order; returns the cells used.
+struct StackBuilder {
+    Arena& a;
+    std::uint32_t used = 0;
+    void push(unsigned char tag, std::uint32_t v) { a.cell(a_stack_base - 5 * ++used, tag, v); }
+    void record(std::uint32_t ret, std::uint32_t ctx) { push(3, ret), push(10, ctx); } // 0x004a8620, 0x004a8640
+    void locals(unsigned n) {
+        for (unsigned i = 0; i < n; ++i) push(1, i);
+    }
+    void finish() {
+        a.put32(a_task + 0x14, a_stack_base);
+        a.put32(a_task + 0x10, 4096);
+        a.put32(a_task + 0x18, std::uint32_t(-std::int32_t(used))); // the top: the native's argc cell
+    }
+};
+void world_contexts(Arena& a) {
+    a.put32(a_monitor_ctx, monitor_id);
+    a.put32(a_monitor_ctx + 8, a_monitor_desc);
+    a.put32(a_monitor_desc, monitor_class);
+    a.put32(a_manager_ctx, manager_key);
+    a.put32(a_manager_ctx + 8, a_manager_desc);
+    a.put32(a_manager_desc, 0x25d);
+    a.put32(a_other_ctx, 0xffff7000u);
+    a.put32(a_other_ctx + 8, a_other_desc);
+    a.put32(a_other_desc, 0x19c);
+    a.put32(a_dead_ctx, 0xffff7001u); // [ctx+8] = 0: a destroyed object's context
+}
+RestoreCaller walk(const Arena& a) {
+    return restore_caller_context(a_task, a_monitor_ctx,
+                                  [&](std::uintptr_t b, unsigned o, void* out, unsigned n) { return a.read(b, o, out, n); });
+}
+// The engine wrapper as the host sees it: every call description the consume sequence issues, in order.
+struct MockEngine {
+    unsigned calls = 0;
+    RestoreEngineCall log[4]{};
+    bool select_ok = true, refresh_ok = true, refresh_reports = true;
+    std::uint32_t store = restore_rear_mode;
+};
+// inject_handle's sequence without the stubs: SelectMode, its result, then the refresh if handed out.
+void consume(World& w, MockEngine& m) {
+    const RestoreCall c = w.inject();
+    if (!c.wanted) return;
+    m.log[m.calls++ & 3] = restore_select_call(c);
+    if (m.store) w.st.on_mode_store(new_cockpit, 2, m.store, thread, restore_alloc_caller, monitor_id, monitor_class);
+    const RestoreRefresh r = w.st.on_call_result(m.select_ok, w.epoch);
+    if (!r.wanted) return;
+    m.log[m.calls++ & 3] = restore_refresh_call(r);
+    if (m.refresh_reports) w.st.on_refresh_result(m.refresh_ok);
+}
+void capture_with_manager(World& w, std::uint32_t manager = manager_key, unsigned scan = scan_found) {
+    check(w.frame(w.rear()) && w.st.phase == phase_armed, "hud: arm");
+    w.st.on_destroy(old_cockpit, 1, restore_free_caller);
+    w.st.on_complete(restore_alloc_caller);
+    w.st.on_mode_store(new_cockpit, 2, restore_internal_mode, thread, restore_alloc_caller, monitor_id, monitor_class,
+                       manager, manager ? 0x25d : 0, scan);
+}
+void hud_refresh_cases() {
+    // 24. Caller-frame walk. Ship change: ChangePlayerShipTo -0x86-> 0x25d::RestartAllMonitors -0x85->
+    // monitor.SelectMode(1) -0x82-> the store; the first record above the native's cells is the manager's.
+    {
+        Arena a;
+        world_contexts(a);
+        StackBuilder s{a};
+        s.record(0, 0); // 0x0049f430's bottom pair
+        s.locals(3);
+        s.record(0x1111, a_other_ctx); // ChangePlayerShipTo's caller
+        s.locals(4);                   // RestartAllMonitors: 4 locals
+        s.record(0x2222, a_manager_ctx);
+        s.locals(10); // SelectMode: 1 argument + locals
+        s.push(1, 1); // the native's argument
+        s.push(1, 1); // argc cell (the top)
+        s.finish();
+        const RestoreCaller c = walk(a);
+        check(c.scan == scan_found && c.id == manager_key && c.class_id == 0x25d && c.frames == 1,
+              "hud 24: the ship-change chain yields the manager's static-record key and class");
+    }
+    // Show path: 0x25d::UpdateVisibility -0x85-> monitor.Show -0x88-> monitor.StartMonitor -> store; the
+    // self call's record (the monitor itself) is passed, then the manager; skipped records (null context,
+    // a context without a class) are passed as the return opcode passes them.
+    {
+        Arena a;
+        world_contexts(a);
+        StackBuilder s{a};
+        s.record(0, 0);
+        s.locals(2);
+        s.record(0x3333, a_manager_ctx); // Show's record: the caller is UpdateVisibility
+        s.locals(5);
+        s.record(0x4444, a_dead_ctx); // skipped: [ctx+8] = 0
+        s.record(0x4445, 0);          // skipped: null context
+        s.record(0x5555, a_monitor_ctx); // StartMonitor's record: 0x88 saves the monitor itself
+        s.locals(12);
+        s.push(1, 0);
+        s.finish();
+        const RestoreCaller c = walk(a);
+        check(c.scan == scan_found && c.id == manager_key && c.frames == 2,
+              "hud 24: the self-call record and skipped records are passed; the manager is found");
+    }
+    {
+        Arena a;
+        world_contexts(a);
+        StackBuilder s{a};
+        s.record(0, 0);
+        s.locals(6);
+        s.record(0x5555, a_monitor_ctx);
+        s.locals(3);
+        s.finish();
+        const RestoreCaller c = walk(a);
+        check(c.scan == scan_bottom && !c.id && c.frames == 1,
+              "hud 24: a task started on the monitor itself has no caller frame (bottom)");
+    }
+    {
+        Arena a;
+        world_contexts(a);
+        StackBuilder s{a};
+        s.record(0, 0);
+        s.record(0x2222, a_manager_ctx);
+        s.locals(restore_caller_scan_cells + 4);
+        s.finish();
+        check(walk(a).scan == scan_truncated && !walk(a).id, "hud 24: a record past the bounded scan is truncated");
+        a.refuse = true;
+        check(walk(a).scan == scan_unreadable && !walk(a).id, "hud 24: a refused read is unreadable");
+    }
+    {
+        Arena a;
+        world_contexts(a);
+        StackBuilder s{a};
+        s.record(0, 0);
+        s.record(0x2222, a_manager_ctx);
+        s.locals(2);
+        s.finish();
+        a.put32(a_task + 0x18, 3); // index > 0: implausible
+        check(walk(a).scan == scan_unreadable, "hud 24: a positive stack index is refused");
+        a.put32(a_task + 0x18, std::uint32_t(-4));
+        a.put32(a_manager_ctx, 0); // key 0 would index the static table with 0
+        check(walk(a).scan == scan_unreadable && !walk(a).id, "hud 24: a zero lookup key is refused");
+    }
+    // 25. Acceptance: manager captured -> SelectMode(258), restored, then UpdateVisibility() on the manager:
+    // the mock records the second call (name, argument 0 == 0, argc 0, key), the row waits for it.
+    {
+        World w;
+        capture_with_manager(w);
+        check(w.st.manager == manager_key && w.st.manager_class == 0x25d && w.st.managers_captured == 1,
+              "hud 25: the store captures the manager with the monitor");
+        w.due();
+        MockEngine m;
+        const RestoreCall c = w.inject();
+        check(c.wanted, "hud 25: due ticket calls");
+        m.log[m.calls++] = restore_select_call(c);
+        w.st.on_mode_store(new_cockpit, 2, restore_rear_mode, thread, restore_alloc_caller, monitor_id, monitor_class);
+        const RestoreRefresh r = w.st.on_call_result(true, w.epoch);
+        check(r.wanted && r.manager == manager_key && r.manager_class == 0x25d && w.st.phase == phase_idle,
+              "hud 25: a restored ticket hands out the refresh on the captured manager");
+        check(!w.st.take_outcome().wanted && w.st.held.wanted, "hud 25: the outcome row is held for the refresh");
+        m.log[m.calls++] = restore_refresh_call(r);
+        w.st.on_refresh_result(true);
+        const RestoreEngineCall& a = m.log[0];
+        const RestoreEngineCall& b = m.log[1];
+        check(m.calls == 2 && a.callback == 0 && a.cookie == 0 && a.key == monitor_id &&
+                  !std::strcmp(a.name, "SelectMode") && a.return_kind == 1 && a.argc == 1 && a.value == restore_rear_mode,
+              "hud 25: first call SelectMode(258) on the monitor, argument 0 = 0");
+        check(b.callback == 0 && b.cookie == 0 && b.key == manager_key && !std::strcmp(b.name, "UpdateVisibility") &&
+                  b.return_kind == 1 && b.argc == 0,
+              "hud 25: second call UpdateVisibility() on the manager, argument 0 = 0, argc 0");
+        const RestoreOutcome o = w.st.take_outcome();
+        check(o.wanted && o.result == result_restored && o.hud_refresh == hud_ok && o.manager == manager_key &&
+                  o.manager_class == 0x25d && o.manager_scan == scan_found && o.monitor == monitor_id &&
+                  !w.st.held.wanted && w.st.hud_refreshes[hud_ok] == 1,
+              "hud 25: one outcome row, restored with hud_refresh=ok and the manager");
+        check(!w.st.take_outcome().wanted, "hud 25: the row is taken once");
+    }
+    // 26. Skipped: no manager captured (bottom scan) -> one call, row at once with hud_refresh=skipped.
+    {
+        World w;
+        capture_with_manager(w, 0, scan_bottom);
+        w.due();
+        MockEngine m;
+        consume(w, m);
+        const RestoreOutcome o = w.st.take_outcome();
+        check(m.calls == 1 && !std::strcmp(m.log[0].name, "SelectMode") && o.wanted && o.result == result_restored &&
+                  o.hud_refresh == hud_skipped && o.manager == 0 && o.manager_scan == scan_bottom &&
+                  w.st.hud_refreshes[hud_skipped] == 1 && !w.st.held.wanted,
+              "hud 26: without a manager the restore logs hud_refresh=skipped and makes no second call");
+    }
+    // 27. Refused refresh (AL 0), and no refresh after a ticket that did not restore.
+    {
+        World w;
+        capture_with_manager(w);
+        w.due();
+        MockEngine m;
+        m.refresh_ok = false;
+        consume(w, m);
+        const RestoreOutcome o = w.st.take_outcome();
+        check(m.calls == 2 && o.result == result_restored && o.hud_refresh == hud_refused,
+              "hud 27: a refused UpdateVisibility logs hud_refresh=refused");
+    }
+    {
+        World w;
+        capture_with_manager(w);
+        w.due();
+        MockEngine m;
+        m.select_ok = false;
+        consume(w, m);
+        const RestoreOutcome o = w.st.take_outcome();
+        check(m.calls == 1 && o.result == result_call_refused && o.hud_refresh == hud_none,
+              "hud 27: a refused SelectMode makes no refresh (hud_refresh=none)");
+        World v;
+        capture_with_manager(v);
+        v.due();
+        MockEngine n;
+        n.store = 3;
+        consume(v, n);
+        check(n.calls == 1 && v.st.take_outcome().hud_refresh == hud_none, "hud 27: other_mode makes no refresh");
+    }
+    // 28. A refresh that never reports back (EH unwind) releases its row as unwound once the epoch moves;
+    // a later store without a caller frame keeps the manager captured for the same cockpit.
+    {
+        World w;
+        capture_with_manager(w);
+        w.st.on_mode_store(new_cockpit, 2, restore_internal_mode, thread, restore_alloc_caller, monitor_id,
+                           monitor_class, 0, 0, scan_bottom);
+        check(w.st.manager == manager_key && w.st.manager_scan == scan_found,
+              "hud 28: a later store with no caller keeps the manager of the same cockpit");
+        w.due();
+        MockEngine m;
+        m.refresh_reports = false;
+        consume(w, m);
+        check(m.calls == 2 && !w.st.take_outcome().wanted && w.st.held.wanted, "hud 28: row held while the call is out");
+        w.frame(w.rear(side_cockpit, 9));
+        check(!w.st.take_outcome().wanted && w.st.held.wanted, "hud 28: same epoch: still held");
+        ++w.epoch;
+        w.frame(w.rear(side_cockpit, 9));
+        const RestoreOutcome o = w.st.take_outcome();
+        check(o.wanted && o.result == result_restored && o.hud_refresh == hud_unwound && !w.st.held.wanted &&
+                  w.st.hud_refreshes[hud_unwound] == 1,
+              "hud 28: the epoch bump releases the row as hud_refresh=unwound");
+        w.st.on_refresh_result(true);
+        check(!w.st.take_outcome().wanted, "hud 28: a late result has no row to release");
+    }
+}
 int main() {
     // 1. The acceptance path: arm, free, construct, capture, due, one call with the captured object, restored.
     {
@@ -544,5 +807,6 @@ int main() {
                   n.first_soft_handle == w.p.handle && n.skip_caller == 0,
               "counters reset per ticket; a later refusal records the active-control handle");
     }
+    hud_refresh_cases();
     std::printf("chase restore host: %u checks PASS\n", checks);
 }

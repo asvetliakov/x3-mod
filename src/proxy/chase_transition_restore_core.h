@@ -10,7 +10,9 @@
 // cockpit replacement itself; the sector is log-only), and consumed at the input
 // routine's entry by the engine's own by-name script call
 // `SelectMode(258)` on the main monitor object captured at the mode store the
-// script made into that cockpit. Every decision is made from the fresh fields
+// script made into that cockpit, followed after a restore by the monitor
+// manager's `UpdateVisibility()` (the manager captured from the storing
+// monitor's caller frame at the same store). Every decision is made from the fresh fields
 // the caller passes in or from the Probe it supplies; no engine pointer is
 // retained across callbacks.
 namespace x3m::chase_transition::detail {
@@ -85,6 +87,92 @@ inline const char* restore_result_name(unsigned r) {
                                                     "other_mode", "call_refused", "cancelled"};
     return r < result_count ? names[r] : "?";
 }
+// The HUD refresh after a restored SelectMode(258): the monitor manager's own `UpdateVisibility()` (the
+// method the script's view keys run after SelectMode: Show -> StartMonitor -> ShowCockpit -> UpdateOverlays).
+// none: no refresh was due (the ticket did not end restored); skipped: no manager captured for the bound
+// cockpit; ok / refused: the wrapper's AL; unwound: the call never reported back (epoch changed first).
+enum RestoreHudRefresh : unsigned { hud_none = 0, hud_skipped = 1, hud_ok = 2, hud_refused = 3, hud_unwound = 4,
+                                    hud_count = 5 };
+inline const char* restore_hud_name(unsigned h) {
+    static const char* const names[hud_count] = {"none", "skipped", "ok", "refused", "unwound"};
+    return h < hud_count ? names[h] : "?";
+}
+// The manager capture: the caller frame of the storing monitor, found by the engine's own return-record
+// scan. found; bottom: the task's bottom record (return offset 0) came first, no caller frame; truncated:
+// more used cells than the bounded scan reads; unreadable: a refused read or an implausible task stack.
+enum RestoreManagerScan : unsigned { scan_none = 0, scan_found = 1, scan_bottom = 2, scan_truncated = 3,
+                                     scan_unreadable = 4, scan_count = 5 };
+inline const char* restore_scan_name(unsigned s) {
+    static const char* const names[scan_count] = {"none", "found", "bottom", "truncated", "unreadable"};
+    return s < scan_count ? names[s] : "?";
+}
+constexpr unsigned restore_caller_scan_cells = 128; // 640 bytes; the chain's frames are 4..12 locals each
+// Mod-owned method names (the EXE carries neither literal; the wrapper matches by content).
+inline constexpr char restore_select_mode_name[] = "SelectMode";
+inline constexpr char restore_update_visibility_name[] = "UpdateVisibility";
+// One cdecl call of the engine's by-name wrapper 0x0049f570(callback slot, cookie, lookup key, name,
+// return kind, argc, args...). Argument 0 stays 0 (no completion callback: Run147 crashed with a non-zero
+// value there); argc 0 passes six dwords, argc 1 seven.
+struct RestoreEngineCall {
+    std::uint32_t callback = 0, cookie = 0, key = 0;
+    const char* name = nullptr;
+    std::uint32_t return_kind = 1, argc = 0, value = 0;
+};
+// Caller frame of the script object making the current native call. Task stack (5-byte cells, tag byte +
+// dword) at [task+0x14] with the signed top index [task+0x18] (written at 0x004a38d9 before the native
+// dispatch, so the top is the native's argc cell); used cells lie in [base + 5*index, base). Every script
+// call opcode (0x85 dynamic 0x004a3c85/0x004a3c97, 0x86 class-static 0x004a3d23/0x004a3d35, 0x88 self
+// 0x004a3eee/0x004a3f00) pushes a tag-3 return offset and below it a tag-10 saved caller context
+// (0x004a8620/0x004a8640); a task created by 0x0049f430 starts with the pair (3: 0, 10: 0). This walk
+// applies the return opcode's own scan (0x004a39b3..0x004a39fc) frame after frame from the top: a tag-10
+// cell directly above a tag-3 cell is a record; return offset 0 is the task bottom; a null context or one
+// whose class pointer [ctx+8] is 0 is skipped as the engine skips it; a frame whose context is the current
+// one (a self call, 0x88) is passed. The first other context is the caller object: [ctx] its lookup key
+// (negative dynamic id, or the non-negative static-record key 0x004b06f0 matches), [[ctx+8]] its class id.
+// Reader: bool(std::uintptr_t base, unsigned offset, void* out, unsigned n), checked.
+struct RestoreCaller {
+    std::uint32_t id = 0, class_id = 0;
+    unsigned scan = scan_none, frames = 0;
+};
+template <class Reader>
+RestoreCaller restore_caller_context(std::uint32_t task, std::uint32_t current, Reader bytes) noexcept {
+    auto field = [&](std::uintptr_t base, unsigned offset, auto& out) { return bytes(base, offset, &out, sizeof out); };
+    RestoreCaller r;
+    r.scan = scan_unreadable;
+    std::uint32_t base = 0, capacity = 0;
+    std::int32_t index = 0;
+    if (!task || (task & 3) || !field(task, 0x14, base) || !field(task, 0x10, capacity) || !field(task, 0x18, index) ||
+        index > 0 || capacity > 1048576 || index < -std::int32_t(capacity))
+        return r;
+    const auto used = std::uint32_t(-std::int64_t(index));
+    if (used > base / 5) return r;
+    const unsigned cells = used < restore_caller_scan_cells ? used : restore_caller_scan_cells;
+    unsigned char stack[restore_caller_scan_cells * 5];
+    if (cells && !bytes(base - used * 5, 0, stack, cells * 5)) return r;
+    for (unsigned i = 0; i + 1 < cells; ++i) {
+        if (stack[i * 5] != 10 || stack[(i + 1) * 5] != 3) continue;
+        std::uint32_t context = 0, ret = 0, desc = 0;
+        std::memcpy(&context, stack + i * 5 + 1, 4);
+        std::memcpy(&ret, stack + (i + 1) * 5 + 1, 4);
+        if (!ret) {
+            r.scan = scan_bottom;
+            return r;
+        }
+        if (!context) continue;
+        if ((context & 3) || !field(context, 8, desc)) return r;
+        if (!desc) continue;
+        ++r.frames;
+        if (context == current) continue;
+        std::uint32_t id = 0, class_id = 0;
+        if ((desc & 3) || !field(context, 0, id) || !id || !field(desc, 0, class_id)) return r;
+        r.id = id;
+        r.class_id = class_id;
+        r.scan = scan_found;
+        return r;
+    }
+    r.scan = used > cells ? scan_truncated : scan_bottom;
+    return r;
+}
 // One chase-hook visit (or the fresh re-read at the injection site). The
 // caller reads the cockpit fields; the walks run through the Probe only when
 // the ticket needs them. `sector` is +0x1fc (script-published, 0 under Mayhem),
@@ -96,17 +184,29 @@ struct RestoreFrame {
     bool readable = false;
 };
 // What the engine call needs, handed out by the state machine; the caller
-// performs `0x0049f570(monitor, 0, monitor, "SelectMode", 1, 1, 258)` and
+// performs `0x0049f570(0, 0, monitor, "SelectMode", 1, 1, 258)` and
 // reports back with on_call_result.
 struct RestoreCall {
     bool wanted = false;
     std::uint32_t monitor = 0, monitor_class = 0;
 };
+// The second call on a restored ticket, handed out by on_call_result: `0x0049f570(0, 0, manager,
+// "UpdateVisibility", 1, 0)`; the caller reports back with on_refresh_result.
+struct RestoreRefresh {
+    bool wanted = false;
+    std::uint32_t manager = 0, manager_class = 0;
+};
+inline RestoreEngineCall restore_select_call(const RestoreCall& c) noexcept {
+    return {0, 0, c.monitor, restore_select_mode_name, 1, 1, restore_rear_mode};
+}
+inline RestoreEngineCall restore_refresh_call(const RestoreRefresh& r) noexcept {
+    return {0, 0, r.manager, restore_update_visibility_name, 1, 0, 0};
+}
 struct RestoreOutcome {
     bool wanted = false;
-    unsigned result = 0, cancel = 0, attempts = 0;
-    std::uint32_t monitor = 0, monitor_class = 0, ship_id_from = 0, ship_id_to = 0, sector_from = 0, sector_to = 0,
-                  sector54_from = 0, sector54_to = 0, wait_updates = 0, mode_seen = 0;
+    unsigned result = 0, cancel = 0, attempts = 0, hud_refresh = hud_none, manager_scan = scan_none;
+    std::uint32_t monitor = 0, monitor_class = 0, manager = 0, manager_class = 0, ship_id_from = 0, ship_id_to = 0,
+                  sector_from = 0, sector_to = 0, sector54_from = 0, sector54_to = 0, wait_updates = 0, mode_seen = 0;
     std::uint64_t generation_from = 0, generation_to = 0;
     // Pending/due diagnostics: soft refusals by reason, candidate-shaped frames of another constructor
     // caller, and the first soft-refused frame (reason, +0x1fc, +0x54, mode, active-control handle).
@@ -135,6 +235,9 @@ struct RestoreState {
     // The monitor object whose SelectMode stored a mode into a fresh cockpit (engine VM frame at 0x0042e742).
     std::uint32_t monitor_cockpit = 0, monitor = 0, monitor_class = 0;
     std::uint64_t monitor_generation = 0;
+    // Its caller frame at the same store (the monitor manager), for the HUD refresh after a restore.
+    std::uint32_t manager = 0, manager_class = 0;
+    unsigned manager_scan = scan_none;
     // Attempts of this ticket.
     unsigned attempts = 0;
     std::uint32_t attempt_thread = 0, attempt_mode_seen = 0;
@@ -144,12 +247,17 @@ struct RestoreState {
                   first_soft_handle = 0;
     // Counters.
     std::uint64_t arms = 0, arm_refusals = 0, pendings = 0, dues = 0, calls = 0, monitors_captured = 0,
-                  injections_skipped = 0, rearm_frames = 0;
-    std::uint64_t cancels[cancel_count]{}, results[result_count]{}, arm_refusal_reasons[arm_refusal_count]{};
+                  injections_skipped = 0, rearm_frames = 0, managers_captured = 0;
+    std::uint64_t cancels[cancel_count]{}, results[result_count]{}, arm_refusal_reasons[arm_refusal_count]{},
+        hud_refreshes[hud_count]{};
     std::uint32_t arm_sample_logged = 0;
     // One-shot rows captured under the lock, emitted after it is released.
     RestoreOutcome outcome;
     RestoreArmSample arm_sample;
+    // A restored outcome waiting for its HUD refresh result (emitted by on_refresh_result, or as
+    // hud_refresh=unwound once the epoch moves past held_epoch without a result).
+    RestoreOutcome held;
+    std::uint32_t held_epoch = 0;
 
     bool ticket_open() const noexcept { return phase != phase_idle; }
     bool wants_injection() const noexcept { return phase == phase_due; }
@@ -163,6 +271,8 @@ struct RestoreState {
         pending_updates = retry_after = 0;
         monitor_cockpit = monitor = monitor_class = 0;
         monitor_generation = 0;
+        manager = manager_class = 0;
+        manager_scan = scan_none;
         attempts = 0;
         attempt_thread = attempt_mode_seen = 0;
         for (auto& n : soft_counts) n = 0;
@@ -183,6 +293,9 @@ struct RestoreState {
             outcome.attempts = attempts;
             outcome.monitor = monitor;
             outcome.monitor_class = monitor_class;
+            outcome.manager = manager;
+            outcome.manager_class = manager_class;
+            outcome.manager_scan = manager_scan;
             outcome.generation_from = arm_generation;
             outcome.generation_to = bound_generation;
             outcome.ship_id_from = arm_ship_id;
@@ -227,9 +340,18 @@ struct RestoreState {
         arm_sample.ship_live = ship_live;
         arm_sample.ship_id = ship_id;
     }
-    // EH adapter / VM epoch: an armed or pending ticket from an older epoch is gone.
+    // EH adapter / VM epoch: an armed or pending ticket from an older epoch is gone, and a HUD refresh
+    // that never reported back (a script error unwound through it) releases its held outcome.
     void epoch(std::uint32_t e) noexcept {
+        if (held.wanted && held_epoch != e) release_held(hud_unwound);
         if (ticket_open() && arm_epoch != e) cancel(cancel_epoch);
+    }
+    void release_held(unsigned hud) noexcept {
+        if (!held.wanted) return;
+        held.hud_refresh = hud;
+        ++hud_refreshes[hud];
+        outcome = held;
+        held = {};
     }
     // Chase hook visit. Probe: bool active_control(uint32_t& handle); bool ship_live(uint32_t ref, uint32_t& ship_id);
     // bool controller(uint32_t& id). Returns true when the frame armed or counted towards due.
@@ -402,9 +524,13 @@ struct RestoreState {
     // monitor/monitor_class are the engine VM frame's current context id (a dynamic object id, negative)
     // and class, 0 when unreadable or refused. The fresh cockpit may reuse the freed one's address, so
     // the stored cockpit is identified by (address, generation), never by the address alone.
+    // manager/manager_class/scan are the storing monitor's caller frame (restore_caller_context): the
+    // monitor manager whose RestartAllMonitors or UpdateVisibility called into the monitor. A store whose
+    // scan found no caller keeps the manager an earlier store captured for the same cockpit.
     void on_mode_store(std::uint32_t cockpit, std::uint64_t generation, std::uint32_t requested,
                        std::uint32_t thread, std::uint32_t constructor_caller, std::uint32_t monitor_id,
-                       std::uint32_t monitor_class_id) noexcept {
+                       std::uint32_t monitor_class_id, std::uint32_t manager_id = 0,
+                       std::uint32_t manager_class_id = 0, unsigned scan = scan_none) noexcept {
         if (phase == phase_calling) {
             if (thread == attempt_thread && cockpit == bound_cockpit && generation == bound_generation)
                 attempt_mode_seen = requested;
@@ -413,11 +539,21 @@ struct RestoreState {
         if (phase != phase_pending && phase != phase_due) return;
         if (constructor_caller != restore_alloc_caller || !monitor_id || !generation) return;
         if (cockpit == arm_cockpit && generation == arm_generation) return;
+        const bool same = monitor_cockpit == cockpit && monitor_generation == generation;
         monitor_cockpit = cockpit;
         monitor_generation = generation;
         monitor = monitor_id;
         monitor_class = monitor_class_id;
         ++monitors_captured;
+        if (manager_id) {
+            manager = manager_id;
+            manager_class = manager_class_id;
+            manager_scan = scan_found;
+            ++managers_captured;
+        } else if (!same || !manager) {
+            manager = manager_class = 0;
+            manager_scan = scan;
+        }
     }
     // Site I entry. The caller re-reads the bound cockpit's frame fresh and passes the engine's controlled
     // object ([ESP+4]) and the pause bits ([game+0x4a0]).
@@ -446,30 +582,53 @@ struct RestoreState {
         c.monitor_class = monitor_class;
         return c;
     }
-    void on_call_result(bool call_ok) noexcept {
-        if (phase != phase_calling) return; // cancelled during the call (lifetime, load, epoch)
+    // SelectMode's result. A restored ticket with a captured manager hands out the HUD refresh and holds
+    // its outcome row until on_refresh_result (epoch_now dates the hold); without a manager the row says
+    // hud_refresh=skipped. Other results make no second call (hud_refresh=none).
+    RestoreRefresh on_call_result(bool call_ok, std::uint32_t epoch_now = 0) noexcept {
+        RestoreRefresh r;
+        if (phase != phase_calling) return r; // cancelled during the call (lifetime, load, epoch)
         const std::uint32_t seen = attempt_mode_seen;
         if (!call_ok) {
             finish(result_call_refused, cancel_call_refused);
-            return;
+            ++hud_refreshes[hud_none];
+            return r;
         }
         if (seen == restore_rear_mode) {
+            r.wanted = manager != 0;
+            r.manager = manager;
+            r.manager_class = manager_class;
             finish(result_restored, cancel_none);
-            return;
+            if (!r.wanted) {
+                outcome.hud_refresh = hud_skipped;
+                ++hud_refreshes[hud_skipped];
+                return r;
+            }
+            const RestoreOutcome restored = outcome;
+            outcome.wanted = false;
+            release_held(hud_unwound); // an older refresh that never reported back takes the row slot
+            held = restored;
+            held_epoch = epoch_now;
+            return r;
         }
         if (seen) {
             finish(result_other_mode, cancel_other_mode); // the script chose another mode: not fought
-            return;
+            ++hud_refreshes[hud_none];
+            return r;
         }
         if (attempts > retries) {
             finish(result_no_effect, cancel_retries);
-            return;
+            ++hud_refreshes[hud_none];
+            return r;
         }
         ++results[result_no_effect];
         phase = phase_pending;
         due_count = 0;
         retry_after = pending_updates + restore_retry_spacing;
+        return r;
     }
+    // UpdateVisibility's result (the wrapper's AL): releases the held outcome row.
+    void on_refresh_result(bool call_ok) noexcept { release_held(call_ok ? hud_ok : hud_refused); }
     RestoreOutcome take_outcome() noexcept {
         RestoreOutcome o = outcome;
         outcome.wanted = false;

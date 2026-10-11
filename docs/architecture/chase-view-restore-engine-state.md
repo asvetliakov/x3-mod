@@ -200,6 +200,45 @@ cockpit in the same sector (run315), so `+0x1fc == armed sector` cancels
    apart, then `cancel=retries`). Program dependency left: the method name
    `SelectMode` and its one-argument convention, checked at run time by the
    call result.
+4. **HUD refresh: `UpdateVisibility()` on the monitor manager after a restored
+   `SelectMode(258)`** (2026-10-12, after Run 148 A: seven `restored
+   attempts=1` rows, but the crosshair/distance HUD stayed off after an
+   in-sector ship change). The script's view keys run `SelectMode` and then
+   `0x25d::UpdateVisibility` (argc 0: `Show` -> `StartMonitor` ->
+   `ShowCockpit` -> `UpdateOverlays`); `ChangePlayerShipTo` calls nothing
+   after `RestartAllMonitors`, so only a sector change got a later refresh
+   (the sidebar's `Open` -> `SetLeftOffset` -> `UpdateVisibility`). Chosen:
+   **capture the manager from the storing monitor's caller frame (option A)**
+   at the same kind-6 store, and call `0x0049f570(0, 0, manager,
+   "UpdateVisibility", 1, 0)` right after a `SelectMode` that ended
+   `restored`, from the same site-I handler, outside the lock, under the
+   engine's CPU image. Every script call opcode (0x85 dynamic, 0x86
+   class-static, 0x88 self) pushes a tag-3 return offset and below it a
+   tag-10 saved caller context on the task's own cell stack
+   (`0x004a8620`/`0x004a8640`); the return opcode finds its record with the
+   same tag-10-above-tag-3 scan (`0x004a39b3..0x004a39fc`: offset 0 ends the
+   task, a null or class-less context is skipped), and a task created by
+   `0x0049f430` starts with the pair (3: 0, 10: 0). Nested calls stay in one
+   task (no new task, no new native frame), so the native's top index
+   `task+0x18` (written at `0x004a38d9` before dispatch) gives the whole
+   chain: the walk passes self-call records (context == the monitor) and
+   takes the first other context, at most 128 cells, one checked read. The
+   key passed is `[ctx+0]`, by construction the value `0x0049f1e0` maps back
+   to that context (negative: the dynamic object table; non-negative: the
+   static record `0x004b06f0` matches on `[rec+0]`). For the ship change this
+   is the 0x25d static record that `ChangePlayerShipTo`'s class-static call
+   `RestartAllMonitors` entered with key 0x25d (the script pushes `06 02 5d`
+   before each of the 16 class-static `UpdateVisibility` calls in both
+   programs), read from the frame, never hard-coded. Fail closed: no manager
+   captured gives one call and `hud_refresh=skipped`; AL 0 `refused`; a
+   refresh that never reports back (script error unwinding, EH epoch bump)
+   releases the held row as `unwound`; a ticket that did not end `restored`
+   makes no second call (`none`). The outcome row is held until the refresh
+   result, so it carries `hud_refresh= manager= manager_class=
+   manager_scan=`. Program dependency added: the method name
+   `UpdateVisibility` (argc 0) on the caller class, present in both programs
+   (`verification/results/native-chase-view-restore-2026-10-12/check_update_visibility.py`)
+   and checked at run time by AL.
 
 Two corrections from implementation: the input routine's body is
 `[0x00410100, 0x00412250)` (Ghidra function body: 13 ranges, last byte
@@ -322,14 +361,18 @@ default on with `--camera chase`; `X3M_CHASE_VIEW_RESTORE_RETRIES` /
 `--chase-view-restore-retries` 0..5, default 3, an invalid value refuses the
 install; install line `chase_view_restore installed=1 requested=1 path=engine
 sites=1 cancel_sites=3 inject_site=0x00410100 call=0x0049f570
-method=SelectMode mode=258 observers=1 retries=3 retries_valid=1
+method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128
+observers=1 retries=3 retries_valid=1
 expiry_updates=600 due_frames=2 retry_spacing=60`; rows `chase_view_restore
-result=… cancel=… attempts= monitor=0x… monitor_class=0x… mode_seen=
+result=… cancel=… attempts= monitor=0x… monitor_class=0x…
+hud_refresh=none|skipped|ok|refused|unwound manager=0x… manager_class=0x…
+manager_scan=none|found|bottom|truncated|unreadable mode_seen=
 generation_from/to= ship_id_from/to= sector_from/to= sector54_from/to= wait_updates= frame=
 soft_unreadable= soft_mode_zero= soft_connect_flags_view= soft_no_handle= soft_ship_dead=
 skip_caller= first_skip_caller= first_soft=reason,+0x1fc,+0x54,mode,handle`
 once per ticket outcome, `chase_view_restore_arm_refused` once per reason,
-the windowed `chase_view_restore_state` (phase, counters, results, cancels),
+the windowed `chase_view_restore_state` (phase, counters, results, cancels,
+`managers_captured=`, `hud=none,skipped,ok,refused,unwound`),
 no learn row. The handler moves the ticket to `phase_calling` (never again
 due, `attempts` counted) before the engine call rather than clearing it, so
 the kind-6 observer can attribute the store inside the call; a call that
@@ -427,6 +470,17 @@ native.
   the method name and its one-argument convention, which the call result
   checks at run time. **Adopted (amendment 3)** over key replay, which depends
   on the binding, the press state and view-cycle semantics.
+- **HUD refresh by `ChangeViewForMonitor` instead of `SelectMode` (option
+  B, amendment 4).** It is a 0x25d method with argc 2 (both programs) whose
+  body chooses among five `SelectMode` calls itself; its argument meaning is
+  not established and it would replace the measured `SelectMode(258)` path.
+  It also needs the same manager source as option A. Loses.
+- **HUD refresh keyed by the caller's class id (option C).** `[[ctx+8]]`
+  equals the static-record key only when the caller is a class's static
+  record; for a dynamic caller it would address the class record instead of
+  the object the script ran in. `[ctx+0]` reaches exactly the captured
+  context either way and has the same value for the 0x25d case, and C also
+  needs option A's frame walk to find the context. Loses to A.
 - **`InputAction` with a view id.** The EXE defines no such id (§2). Loses.
 - **OS-level key synthesis** (`SendInput`, `PostMessage`). Depends on the
   physical binding, the window focus and the input backend; the engine seam

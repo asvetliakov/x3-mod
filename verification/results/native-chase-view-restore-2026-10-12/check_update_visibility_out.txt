@@ -1,0 +1,6 @@
+x3story_04.obj parsed=146100/146100 classes=280 SelectMode_owners=['0x25e']
+  class=0x25d UpdateVisibility argc=0 locals=5 entry=0xeda58 class_static_calls=16 pushed_keys={0x25d: 16}
+  class=0x280 UpdateVisibility argc=0 locals=3 entry=0xfedd2 class_static_calls=2 pushed_keys={0x280: 2}
+x3story_07.obj parsed=146168/146168 classes=273 SelectMode_owners=['0x25e']
+  class=0x25d UpdateVisibility argc=0 locals=5 entry=0x103da9 class_static_calls=16 pushed_keys={0x25d: 16}
+  class=0x280 UpdateVisibility argc=0 locals=3 entry=0x11534f class_static_calls=2 pushed_keys={0x280: 2}

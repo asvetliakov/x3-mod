@@ -431,3 +431,26 @@ slot, passed its only bound check (signed `cmp ecx,0x20; jge`), loaded a functio
 (`[vm + slot*24 + 0x34]`) and called it. Fix: argument 0 = 0 (no callback), as the engine's own callers pass when they
 do not register one; the CPU fixture's mock asserts it (built, not run: no Wine here). Whether the view switched before
 the crash is not established. Rolled the install back to release 1.2.0 at 01:35; Run148 carries the fix.
+
+### 2026-10-12: HUD refresh after the restore (`UpdateVisibility` on the monitor manager)
+
+Run 148 A (DLL `f8122de8…`): seven `restored attempts=1` rows, no exception, but the crosshair/distance HUD stayed
+off after an in-sector ship change until the user switched the view away and back. Cause (static decode, measured):
+`SelectMode` contains no `Show`; the view keys run `SelectMode` then `0x25d::UpdateVisibility`, and
+`ChangePlayerShipTo` calls nothing after `RestartAllMonitors`. Change (source, not installed): the kind-6 store also
+captures the storing monitor's caller frame from the task's return records (tag 10 above tag 3, the return opcode's
+own scan, at most 128 cells, one checked read; the frame-chain layout from `0x004a3c85/0x004a3d23/0x004a3eee`,
+`0x004a8620/0x004a8640`, `0x004a39b3..0x004a39fc`, `0x0049f430` and `0x004a38d9`), and a restored `SelectMode(258)`
+is followed by `0x0049f570(0, 0, [ctx+0], "UpdateVisibility", 1, 0)` from the same site-I handler, outside the lock,
+under the engine's CPU image; the outcome row is held for that result and gains `hud_refresh= manager= manager_class=
+manager_scan=`. Program check
+([check_update_visibility.py](../../verification/results/native-chase-view-restore-2026-10-12/check_update_visibility.py),
+output beside it): stock `addon/04` and Mayhem `addon/07` both carry `UpdateVisibility` argc 0 on class 0x25d (entries
+`0xeda58` / `0x103da9`, 16 class-static calls each, all with pushed key 0x25d) and on 0x280 (`0xfedd2` / `0x11534f`,
+2 calls with key 0x280); `SelectMode` is owned by 0x25e only. Host harness `chase_transition_restore_host.cpp`
+306 checks (cases 24-28: the walk on ship-change and `Show` chains, skipped/self records, bottom, truncated,
+unreadable, zero key; the second call recorded as `UpdateVisibility`, argument 0 = 0, argc 0, key = the manager;
+skipped, refused, none, unwound); `test_chase_transition test_chase_restore_sites test_chase_camera` 70 OK. CPU
+fixture rebuilt (scenarios 11-12: the manager captured from a fixture task stack, both calls through the real site-I
+stub with the engine x87/MXCSR/LastError image on the second call, `hud_refresh=ok|refused|skipped` rows), built,
+not run (no Wine on this host). DLL build 0 warnings, `check_no_x87.py` PASS 925 reachable / 0 violations.

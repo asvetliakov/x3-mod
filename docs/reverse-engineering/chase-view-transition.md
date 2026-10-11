@@ -793,6 +793,53 @@ sector_from/to= sector54_from/to= wait_updates= frame= soft_*= skip_caller= firs
 inject_site=0x00410100 call=0x0049f570 method=SelectMode mode=258 …`; the
 windowed `chase_view_restore_state` with phase, counters, results and cancels.
 
+**HUD refresh after the restore (2026-10-12, static, measured).** `SelectMode`
+(0x25e, argc 1) contains only the native `INS_CockpitSetViewMode`; no `Show`.
+The script's view keys (`0x25d::ChangeView2` / `ChangeViewForMonitor`) run
+`SelectMode` and then `0x25d::UpdateVisibility` (argc 0, 0x88 self call),
+whose body is `Show(GetMonitorVisibility)` (0x85 on the monitor) ->
+`StartMonitor` -> `ShowCockpit` (the `INS_CockpitEnable*Body` natives) and
+`UpdateOverlays`. `ChangePlayerShipTo` runs `StopAllMonitors`, `SetPlayerShip`,
+`SetRefObject/SetTracking` and the class-static `RestartAllMonitors`
+(`SelectMode` + `OpenLayout`) and nothing after it, so after an in-sector ship
+change the restored 258 view has no `Show`; on a sector change the sidebar's
+`Open` -> `SetLeftOffset` -> `UpdateVisibility` supplies it (the 560 ms
+re-application). Both programs carry `UpdateVisibility` argc 0 on class 0x25d
+(stock entry `0xeda58`, Mayhem `0x103da9`) and on 0x280 (`0xfedd2` /
+`0x11534f`); all 16 class-static (0x86) calls to the 0x25d method push key
+0x25d (`06 02 5d`), the 0x280 one is called twice with key 0x280
+([check_update_visibility.py](../../verification/results/native-chase-view-restore-2026-10-12/check_update_visibility.py),
+output beside it; Run 148 A triage in `run148_hud_triage_out.txt`).
+User-measured: switching the view away and back (which runs `UpdateVisibility`)
+brings the crosshair back.
+
+Return records and the caller frame (EXE, static;
+[vm_return_records.sh](../../verification/results/native-chase-view-restore-2026-10-12/vm_return_records.sh)
+and its output). Opcodes 0x85 (`0x004a3adb`), 0x86 (`0x004a3cc4`) and 0x88
+(`0x004a3ed4`) keep running in the same task: each pushes a tag-3 cell with the
+return offset (IP + 4, `0x004a8620`) and below it a tag-10 cell with the caller's
+context (`0x004a8640`, which also increments `[ctx+4]`, a reference count; a null
+or class-less context is stored as 0); 0x85/0x86 then set `task+0x3c` to the
+callee's context (`0x004a3cbc`, `0x004a3d54`), 0x88 leaves it. 0x86 resolves the
+pushed key through `0x0049f1e0` like 0x85; a non-negative key goes to
+`0x004b06f0`, a binary search over 0x38-byte records at `[VM+0x20]` (count
+`[VM+0x1c]`) keyed on `[rec+0]`. The return opcode 0x83 (`0x004a3986`) scans
+upward from the top for a tag-10 cell directly above a tag-3 cell
+(`0x004a39b3`/`0x004a39b8`), ends the task on return offset 0 (`0x004a442d`,
+`0x004a4423` -> `0x004a2260`), skips a null context or one with `[ctx+8] == 0`,
+and restores `task+0x3c` (`0x004a3a7b`). `0x0049f430` seeds every new task with
+the pair (3: 0, 10: 0). The native-call opcode writes the top index `task+0x18`
+(`0x004a38d9`; cells lie in `[base + 5*index, base)`, base `task+0x14`) before
+`call ecx` at `0x004a3907`, so at the kind-6 store the task stack holds the whole
+script call chain: in the ship change the first record above `SelectMode`'s cells
+is `RestartAllMonitors`' (the 0x25d static record, key 0x25d), in the `Show`
+chain `StartMonitor`'s record (the monitor itself) comes first and `Show`'s
+(the 0x25d context of `UpdateVisibility`) next. The restore takes the first
+context other than the monitor as the manager and calls
+`0x0049f570(0, 0, [ctx+0], "UpdateVisibility", 1, 0)` after a restored
+`SelectMode(258)`; argc 0 means the wrapper reads no argument dword
+(`0x0049f5d0..0x0049f5fc`).
+
 ### Implementation (2026-09-15, `--chase-view-restore`, default off; removed 2026-10-12)
 
 Source: `src/proxy/chase_transition_restore_core.h` (portable state machine,

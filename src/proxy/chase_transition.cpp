@@ -224,15 +224,18 @@ detail::HandlerTiming restore_timing[restore_site_count]{}, restore_frame_timing
 std::uint64_t restore_report_frame = 0; // the last reported frame, for the outcome rows
 // Engine roots the CPU fixture aliases to fixture-owned memory. The call
 // target is the engine's by-name script call wrapper (cdecl, caller pops 0x1c):
-// (object, 0, lookup key, name, 1, argc, arg...). The key resolves through
-// 0x0049f1e0 (negative: the dynamic object by ~id, as the interpreter's own
-// DYNCALL does), the method by a content strcmp over the object's class chain
-// (0x004b0740); AL 0 when object or method is missing.
+// (callback slot, cookie, lookup key, name, return kind, argc, arg...). The key
+// resolves through 0x0049f1e0 (negative: the dynamic object by ~id, as the
+// interpreter's own DYNCALL does; non-negative: the static record 0x004b06f0
+// keys, as the script's class-static calls do), the method by a content strcmp
+// over the object's class chain (0x004b0740); AL 0 when object or method is
+// missing. The wrapper reads argc dwords after argc (0x0049f5d0..0x0049f5fc).
 std::uint32_t game_root = detail::restore_game_root;
 std::uintptr_t script_call_address = detail::restore_script_call;
-const char select_mode_name[] = "SelectMode"; // mod-owned; the EXE has no such literal
-using ScriptCall = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::uint32_t, const char*, std::uint32_t,
-                                           std::uint32_t, std::uint32_t);
+using ScriptCall0 = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::uint32_t, const char*, std::uint32_t,
+                                            std::uint32_t);
+using ScriptCall1 = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::uint32_t, const char*, std::uint32_t,
+                                            std::uint32_t, std::uint32_t);
 void restore_filter_publish() {
     restore_inject_filter.store(restore.wants_injection() ? 1u : 0u, std::memory_order_release);
 }
@@ -268,9 +271,11 @@ void restore_emit_sample(const detail::RestoreArmSample& s) {
         unsigned(s.armed));
 }
 void restore_emit_outcome(const detail::RestoreOutcome& o) {
-    log("chase_view_restore result=%s cancel=%s attempts=%u monitor=0x%08lx monitor_class=0x%lx mode_seen=%lu generation_from=%llu generation_to=%llu ship_id_from=0x%08lx ship_id_to=0x%08lx sector_from=0x%08lx sector_to=0x%08lx sector54_from=0x%08lx sector54_to=0x%08lx wait_updates=%lu frame=%llu soft_unreadable=%lu soft_mode_zero=%lu soft_connect_flags_view=%lu soft_no_handle=%lu soft_ship_dead=%lu skip_caller=%lu first_skip_caller=0x%08lx first_soft=%lu,0x%08lx,0x%08lx,%lu,%lu",
+    log("chase_view_restore result=%s cancel=%s attempts=%u monitor=0x%08lx monitor_class=0x%lx hud_refresh=%s manager=0x%08lx manager_class=0x%lx manager_scan=%s mode_seen=%lu generation_from=%llu generation_to=%llu ship_id_from=0x%08lx ship_id_to=0x%08lx sector_from=0x%08lx sector_to=0x%08lx sector54_from=0x%08lx sector54_to=0x%08lx wait_updates=%lu frame=%llu soft_unreadable=%lu soft_mode_zero=%lu soft_connect_flags_view=%lu soft_no_handle=%lu soft_ship_dead=%lu skip_caller=%lu first_skip_caller=0x%08lx first_soft=%lu,0x%08lx,0x%08lx,%lu,%lu",
         detail::restore_result_name(o.result), detail::restore_cancel_name(o.cancel), o.attempts,
         static_cast<unsigned long>(o.monitor), static_cast<unsigned long>(o.monitor_class),
+        detail::restore_hud_name(o.hud_refresh), static_cast<unsigned long>(o.manager),
+        static_cast<unsigned long>(o.manager_class), detail::restore_scan_name(o.manager_scan),
         static_cast<unsigned long>(o.mode_seen), o.generation_from, o.generation_to,
         static_cast<unsigned long>(o.ship_id_from), static_cast<unsigned long>(o.ship_id_to),
         static_cast<unsigned long>(o.sector_from), static_cast<unsigned long>(o.sector_to),
@@ -288,9 +293,9 @@ void restore_emit_outcome(const detail::RestoreOutcome& o) {
 struct RestoreRows {
     detail::RestoreArmSample sample;
     detail::RestoreOutcome outcome;
-    void take() {
-        sample = restore.take_arm_sample();
-        outcome = restore.take_outcome();
+    void take() { // keeps a row an earlier take of the same handler already holds
+        if (const auto s = restore.take_arm_sample(); s.wanted) sample = s;
+        if (const auto o = restore.take_outcome(); o.wanted) outcome = o;
     }
     void emit() const { // never under the Guard: log() takes capture's mutex, which present() holds around report()
         if (sample.wanted) restore_emit_sample(sample);
@@ -335,7 +340,9 @@ void restore_on_complete(std::uintptr_t cockpit) {
 // interpreter's native-call site), [ebp+0xc] task, [task+0x3c] current
 // context, [context] object id, [context+8] class descriptor, [desc] class id.
 // Only a dynamic object id (negative: the interpreter's own DYNCALL resolves it through the object table)
-// is accepted; a non-negative value would make the by-name call index the static class table.
+// is accepted for the monitor. Its caller frame (the monitor manager) comes from the task's return
+// records (detail::restore_caller_context: one bounded checked read of at most 128 cells), read only
+// for a store the ticket can capture (pending/due, a fresh cockpit from the alloc command).
 void restore_on_mode_store(std::uint32_t* regs, std::uint32_t thread) {
     if (!restore_enabled.load(std::memory_order_relaxed) || restore.phase < detail::phase_pending) return;
     const std::uintptr_t cockpit = regs[7];
@@ -348,8 +355,11 @@ void restore_on_mode_store(std::uint32_t* regs, std::uint32_t thread) {
         id = 0;
         class_id = 0;
     }
+    detail::RestoreCaller caller;
+    if (id && restore.phase != detail::phase_calling && life && life->constructor_caller == detail::restore_alloc_caller)
+        caller = detail::restore_caller_context(task, context, bytes);
     restore.on_mode_store(std::uint32_t(cockpit), life && life->complete ? life->generation : 0, requested, thread,
-                          life ? life->constructor_caller : 0, id, class_id);
+                          life ? life->constructor_caller : 0, id, class_id, caller.id, caller.class_id, caller.scan);
     restore_filter_publish();
 }
 // Deserialization kind7 (the existing mode-load observer, 0x419e06): a cancel, no new site.
@@ -363,19 +373,24 @@ void restore_on_vm() {
     restore.on_vm();
     restore_filter_publish();
 }
-// The engine's own by-name script call on the captured monitor object:
-// `SelectMode(258)`, the method the script's view keys end in. The call runs
-// under the engine's incoming x87/MXCSR/LastError image (the callee is engine
-// code) and the handler's clean state is re-established afterwards; the
-// caller's CpuState brings the engine image back at the stub boundary.
-__attribute__((noinline)) bool restore_engine_select_mode(const detail::RestoreCall& c, x3m::CpuState& cpu) {
-    const auto fn = reinterpret_cast<ScriptCall>(script_call_address);
+// The engine's own by-name script calls: `SelectMode(258)` on the captured
+// monitor object (the method the script's view keys end in), then
+// `UpdateVisibility()` on the captured manager (what the keys run next). Each
+// call runs under the engine's incoming x87/MXCSR/LastError image (the callee
+// is engine code) and the handler's clean state is re-established afterwards;
+// the caller's CpuState brings the engine image back at the stub boundary.
+__attribute__((noinline)) bool restore_engine_call(const detail::RestoreEngineCall& c, x3m::CpuState& cpu) {
     cpu.restore();
     // Argument 0 is the completion-callback slot (task+0x30; 0 = none): Run147 passed the monitor id
     // there and the completion code 0x004a2260 -> 0x004ab170 indexed the VM callback table with -531
     // (only a signed `cmp ecx,0x20; jge` bounds it) and called through heap data. Argument 2 is the
-    // lookup key (negative = dynamic object), argument 4 the return kind.
-    const std::uint32_t r = fn(0, 0, c.monitor, select_mode_name, 1, 1, detail::restore_rear_mode) & 0xff;
+    // lookup key, argument 4 the return kind, argument 5 argc (argc 0: six dwords).
+    const std::uint32_t r =
+        (c.argc ? reinterpret_cast<ScriptCall1>(script_call_address)(c.callback, c.cookie, c.key, c.name,
+                                                                     c.return_kind, c.argc, c.value)
+                : reinterpret_cast<ScriptCall0>(script_call_address)(c.callback, c.cookie, c.key, c.name,
+                                                                     c.return_kind, 0)) &
+        0xff;
     asm volatile("fninit" ::: "memory");
     const unsigned mxcsr = 0x1f80;
     asm volatile("ldmxcsr %0" ::"m"(mxcsr) : "memory");
@@ -408,11 +423,20 @@ __attribute__((noinline)) void inject_handle(std::uint32_t* regs, x3m::CpuState&
         rows.take();
     }
     if (call.wanted) {
-        const bool ok = restore_engine_select_mode(call, cpu);
-        Guard guard;
-        restore.on_call_result(ok);
-        restore_filter_publish();
-        rows.take();
+        const bool ok = restore_engine_call(detail::restore_select_call(call), cpu);
+        detail::RestoreRefresh refresh;
+        {
+            Guard guard;
+            refresh = restore.on_call_result(ok, restore_epoch.load(std::memory_order_acquire));
+            restore_filter_publish();
+            rows.take();
+        }
+        if (refresh.wanted) {
+            const bool shown = restore_engine_call(detail::restore_refresh_call(refresh), cpu);
+            Guard guard;
+            restore.on_refresh_result(shown);
+            rows.take();
+        }
     }
     rows.emit();
     if (timing) {
@@ -737,10 +761,11 @@ bool initialize() {
     }
     restore_enabled.store(restore_okay, std::memory_order_release);
     if (restore_requested || restore_okay) {
-        log("chase_view_restore installed=%u requested=%u path=engine sites=1 cancel_sites=%u inject_site=0x%08lx call=0x%08lx method=SelectMode mode=%u observers=%u retries=%u retries_valid=%u expiry_updates=%u due_frames=%u retry_spacing=%u",
+        log("chase_view_restore installed=%u requested=%u path=engine sites=1 cancel_sites=%u inject_site=0x%08lx call=0x%08lx method=SelectMode mode=%u refresh=UpdateVisibility refresh_scan_cells=%u observers=%u retries=%u retries_valid=%u expiry_updates=%u due_frames=%u retry_spacing=%u",
             unsigned(restore_okay), unsigned(restore_requested), restore_site_count - 1,
             static_cast<unsigned long>(detail::restore_inject_site),
-            static_cast<unsigned long>(detail::restore_script_call), detail::restore_rear_mode, unsigned(observers),
+            static_cast<unsigned long>(detail::restore_script_call), detail::restore_rear_mode,
+            detail::restore_caller_scan_cells, unsigned(observers),
             retries, unsigned(retries_ok), detail::restore_pending_update_expiry, detail::restore_due_frames,
             detail::restore_retry_spacing);
         for (unsigned i = 0; i < restore_site_count; ++i)
@@ -886,7 +911,7 @@ void report(std::uint64_t frame) {
             restore_frame_timing = {};
         }
         if (timing)
-            log("chase_view_restore_state frame=%llu phase=%u arms=%llu arm_refusals=%llu arm_refusal_reasons=%llu,%llu,%llu,%llu,%llu,%llu,%llu pendings=%llu dues=%llu calls=%llu monitors_captured=%llu injections_skipped=%llu rearm_frames=%llu eh_bumps=%llu epoch=%lu results=%llu,%llu,%llu,%llu,%llu,%llu cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu monitor=0x%08lx attempts=%u",
+            log("chase_view_restore_state frame=%llu phase=%u arms=%llu arm_refusals=%llu arm_refusal_reasons=%llu,%llu,%llu,%llu,%llu,%llu,%llu pendings=%llu dues=%llu calls=%llu monitors_captured=%llu injections_skipped=%llu rearm_frames=%llu eh_bumps=%llu epoch=%lu results=%llu,%llu,%llu,%llu,%llu,%llu cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu managers_captured=%llu hud=%llu,%llu,%llu,%llu,%llu monitor=0x%08lx attempts=%u",
                 frame, r.phase, r.arms, r.arm_refusals, r.arm_refusal_reasons[0], r.arm_refusal_reasons[1],
                 r.arm_refusal_reasons[2], r.arm_refusal_reasons[3], r.arm_refusal_reasons[4],
                 r.arm_refusal_reasons[5], r.arm_refusal_reasons[6], r.pendings, r.dues, r.calls, r.monitors_captured,
@@ -894,7 +919,8 @@ void report(std::uint64_t frame) {
                 static_cast<unsigned long>(restore_epoch.load(std::memory_order_relaxed)), r.results[0],
                 r.results[1], r.results[2], r.results[3], r.results[4], r.results[5], r.cancels[0], r.cancels[1],
                 r.cancels[2], r.cancels[3], r.cancels[4], r.cancels[5], r.cancels[6], r.cancels[7], r.cancels[8],
-                r.cancels[9], r.cancels[10], r.cancels[11], r.cancels[12], r.cancels[13],
+                r.cancels[9], r.cancels[10], r.cancels[11], r.cancels[12], r.cancels[13], r.managers_captured,
+                r.hud_refreshes[0], r.hud_refreshes[1], r.hud_refreshes[2], r.hud_refreshes[3], r.hud_refreshes[4],
                 static_cast<unsigned long>(r.monitor),
                 r.attempts);
         if (timing)
