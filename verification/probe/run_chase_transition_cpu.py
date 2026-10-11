@@ -29,7 +29,7 @@ def main():
             'stubs':int(total.group(1)) if total else None,'restore_stubs':int(total.group(2)) if total else None,
             'checks':int(total.group(3)) if total else None,'failures':int(total.group(4)) if total else None,
             'failure_lines':[l for l in run.stdout.splitlines() if l.startswith('FAIL')],
-            'seam_idle_prefilter':bench.get('18'),'full_stub_reference':bench.get('0'),'bottle':bottle.describe(name),
+            'inject_idle_prefilter':bench.get('18'),'full_stub_reference':bench.get('0'),'bottle':bottle.describe(name),
             'note':'paired harness estimates, not game FPS'}
     OUT.write_text(json.dumps(record,indent=1)+'\n')
     print(json.dumps({k:record[k] for k in ('checks','failures','stubs','restore_stubs','exit_status')}))

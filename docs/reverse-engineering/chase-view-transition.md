@@ -738,7 +738,62 @@ lookup subchecks; the borrowed current-context contract above avoids inventing
 those readings. No production source, Wine/game execution, build or install was
 performed in this reconstruction.
 
-### Implementation (2026-09-15, `--chase-view-restore`, default off)
+### Implementation (2026-10-12, engine path; the seam implementation below is history)
+
+Source: `src/proxy/chase_transition_restore_core.h` (the pure state machine on
+engine observations), `src/proxy/chase_transition.cpp` (four `restore_specs`
+sites, the injection stub with its one-word prefilter, the engine call, the
+observer callouts, install/rollback, report), `src/proxy/chase_camera.cpp`
+(`chase_transition::restore_observe_frame` from the chase hook with the
+fields it already read), launcher `--chase-view-restore` and
+`--chase-view-restore-retries` (`X3M_CHASE_VIEW_RESTORE=1`,
+`X3M_CHASE_VIEW_RESTORE_RETRIES` 0..5, default 3). Design and the ratified
+amendments: [chase-view-restore-engine-state.md](../architecture/chase-view-restore-engine-state.md)
+section 4. Verification: `docs/verification/chase-cpu-boundary.md`, 2026-10-12.
+
+Sites (plain whole-instruction prologue copies, `verify_chase_restore_sites.py`
+proves the spans, no `.text` branch into their interiors, and the input
+routine's extent `[0x00410100, 0x00412250)` with its 13 calls to `0x0049f570`
+returning inside it): kind 0 inject `0x00410100` (`55 8b ec 83 e4 f0`), 1 VM
+clear `0x0049ea80`, 2 VM load `0x004a0880`, 3 EH adapter `0x0052f298`
+(lock-free epoch bump). The three mode/load/connect observers (`0x0042e742`,
+`0x00419e06`, `0x00422cd0`) are installed with the option as well as with
+telemetry; the restore path needs the mode store and the deserializer.
+
+Mechanics: arm on every applied 258 frame of the active-control cockpit
+(connect 0, `+0x1a0 & 4` clear, `+0x10 == +0xc != 0`, registry handle maps
+to the cockpit, ship in the native registry by `[ship+8]` with
+`[ship+0x40] & 0x08000000` clear, `[*0x0057fc60+0x418]` readable); pending at
+the destructor `0x0041ffc0` of the armed cockpit from caller `0x0042d402`
+(any other caller `cancel=destructor`); the fresh cockpit from constructor
+caller `0x0042d397` becomes due after two consecutive applied frames at mode 1
+with the same proofs, the controller unchanged and `+0x1fc` non-null (any
+ship, any sector); at the kind-6 store into that cockpit the dispatcher frame
+(`[ebp+4] == 0x4a3909`, `[ebp+0xc]` task, `[task+0x3c]` context) yields the
+storing script object's id and class, the main monitor; at the next
+`0x00410100` entry the handler re-reads the cockpit, checks `[ESP+4]` (the
+engine's controlled object) against `+0xc` and `[game+0x4a0] & 1`, moves the
+ticket to `phase_calling` (no longer due; `attempts` counted; a call that
+never reports back expires as `cancel=call_unwound`), and calls
+`0x0049f570(monitor, 0, monitor, "SelectMode", 1, 1, 258)`
+outside the lock with the engine's own x87/MXCSR/LastError image restored for
+the callee. The kind-6 observer sees the result synchronously: 258 on the
+bound cockpit `result=restored`, another value `result=other_mode`
+(terminal), nothing `result=no_effect` with up to `retries` more calls ≥ 60
+updates apart, `AL 0` from the wrapper `result=call_refused`. Cancels:
+load-chain constructor (`0x0041f83b`) and the bound cockpit's destruction
+`lifetime`, a destruction while nothing is bound `second_destruction`,
+controller change `identity`, mode ≠ 1 before due `mode_left`, 600 updates
+from pending `expiry`, kind 7 `load`, VM clear/load/EH `epoch`, no captured
+monitor `no_monitor`, an unreported call `call_unwound`. Rows: `chase_view_restore result=… cancel=… attempts=
+monitor= monitor_class= mode_seen= generation_from/to= ship_id_from/to=
+sector_from/to= wait_updates= frame=` once per ticket outcome;
+`chase_view_restore_arm_refused` once per reason; the install line
+`chase_view_restore installed=1 path=engine sites=1 cancel_sites=3
+inject_site=0x00410100 call=0x0049f570 method=SelectMode mode=258 …`; the
+windowed `chase_view_restore_state` with phase, counters, results and cancels.
+
+### Implementation (2026-09-15, `--chase-view-restore`, default off; removed 2026-10-12)
 
 Source: `src/proxy/chase_transition_restore_core.h` (portable state machine,
 seam decode, consume/transfer proofs, bounded live-stack walk),

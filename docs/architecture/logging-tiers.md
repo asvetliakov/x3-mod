@@ -414,6 +414,13 @@ already telemetry or trace rows). Reason for the deviation: every fixture runner
 so they keep working unchanged, and `--perf` stays exactly equivalent to its individual variables; the cost for `--perf` is
 the ~5 MB per hour estimated in section 1 (inferred), 1.4 % of its 360 MB.
 
+**Chase view restore (engine path, 2026-10-12).** Every tier: the install rows `chase_view_restore installed=… path=engine
+…` and `chase_view_restore_site` (once each), `chase_view_restore result=… cancel=…` once per ticket outcome (one per
+transit at most, plus one per expired or cancelled ticket) and `chase_view_restore_arm_refused` once per refusal reason per
+session. Telemetry only: the windowed `chase_view_restore_state` (phase, counters, results, cancels) and
+`chase_view_restore_timing` per site kind plus `kind=frame` for the chase-hook observer. The former `chase_view_restore_seam`
+and `chase_view_restore_transfer_refused` rows no longer exist.
+
 **Log file** (`src/proxy/session_log.cpp`): as section 3, with `CreateFileW` (`CREATE_ALWAYS`, shared read/write, not
 delete) instead of `_wfopen`; any rename failure other than file/path-not-found opens `x3m-<pid>.log` (`previous=busy`);
 after the open, `x3m-<pid>.log` files of that directory last written before the current `x3m.prev.log` are deleted

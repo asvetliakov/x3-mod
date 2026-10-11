@@ -1,0 +1,7 @@
+eval $H -postScript X3FunctionBody.java "$G/body.txt" 00410100 0049f570 > $G/log3.txt 2>&1
+eval $H -postScript X3ListRange.java "$G/ranges2.txt" 004121f0:00412320 0055537c:00555380 > $G/log4.txt 2>&1
+eval $H -postScript X3DecompileFunctions.java "$G/wrapper.c" 0049f330 0049f1e0 0049f230 004b0740 0049f430 0049f4c0 > $G/log5.txt 2>&1
+eval $H -postScript X3ListRange.java "$G/ranges3.txt" 0042d340:0042d360 004a38c0:004a3910 0042e730:0042e750 > $G/log6.txt 2>&1
+eval $H -postScript X3ListRange.java "$G/ranges4.txt" 0049f5a0:0049f680 0049f330:0049f430 004a21e0:004a2260 > $G/log7.txt 2>&1
+eval $H -postScript X3DecompileFunctions.java "$G/loader.c" 0049d030 004a21e0 > $G/log8.txt 2>&1
+eval $H -postScript X3DecompileFunctions.java "$G/interp.c" 004a26a0 004a21a0 004b06f0 > $G/log9.txt 2>&1

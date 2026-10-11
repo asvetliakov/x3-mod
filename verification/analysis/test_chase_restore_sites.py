@@ -1,4 +1,4 @@
-"""Structural acceptance and refusal tests for the seven view-restore sites."""
+"""Structural acceptance and refusal tests for the four engine-path view-restore sites."""
 import dataclasses
 import unittest
 from pathlib import Path
@@ -14,9 +14,10 @@ class RestoreSites(unittest.TestCase):
   cls.image=probe.common.Image(cls.data)
  def test_production_specs(self):
   self.assertTrue(probe.common.check_source_specs(probe.spec_table(probe.SOURCE.read_text(),'restore_specs'),probe.SITES)['ok'])
- def test_seven_sites_match_run60_proof_table(self):
-  expected={0x4a3ffd:'03700c803e08',0x4a2260:'538b5c240c',0x4a2420:'538b5c240c',0x49ea80:'83ec08558b6c2410',0x49c9a0:'5333db895e04',0x4a0880:'6aff68c8005300',0x52f298:'b8f4e55600'}
+ def test_four_sites_match_design_table(self):
+  expected={0x410100:'558bec83e4f0',0x49ea80:'83ec08558b6c2410',0x4a0880:'6aff68c8005300',0x52f298:'b8f4e55600'}
   self.assertEqual({s.va:s.expected.hex() for s in probe.SITES},expected)
+  self.assertEqual(probe.INPUT_ROUTINE,(0x410100,0x412250))
  def test_all_spans_are_whole_and_plain(self):
   for spec in probe.SITES:
    with self.subTest(site=spec.name):self.assertTrue(probe.common.inspect_site(self.image,spec,self.decoded[(spec.function_start,spec.function_end)])['ok'])
@@ -36,4 +37,15 @@ class RestoreSites(unittest.TestCase):
    with self.subTest(site=spec.name):
     wrong=dataclasses.replace(spec,expected=bytes([spec.expected[0]^1])+spec.expected[1:])
     self.assertFalse(probe.common.inspect_site(self.image,wrong,self.decoded[(spec.function_start,spec.function_end)])['bytes_ok'])
+ def test_input_routine_extent_needs_ret_calls_and_no_escaping_jumps(self):
+  I=probe.common.Instruction;start,end=probe.INPUT_ROUTINE
+  call=lambda va:I(va,b'\xe8\x00\x00\x00\x00','call',hex(probe.SCRIPT_CALL))
+  body=[I(start,b'\x55','push','ebp')]+[call(start+1+5*i) for i in range(13)]
+  filler=I(start+66,b'\x90'*(end-start-67),'nop','')
+  good=body+[filler,I(end-1,b'\xc3','ret','')]
+  self.assertTrue(probe.input_routine_extent(good)['ok'])
+  self.assertFalse(probe.input_routine_extent(good[:-1]+[I(end-1,b'\x90','nop','')])['ok'])
+  self.assertFalse(probe.input_routine_extent(body[:-1]+[filler,I(end-6,b'\x90'*5,'nop',''),I(end-1,b'\xc3','ret','')])['ok'])
+  escaping=body+[I(start+66,b'\xe9\x00\x00\x00\x00','jmp',hex(end+0x100)),I(start+71,b'\x90'*(end-start-72),'nop',''),I(end-1,b'\xc3','ret','')]
+  self.assertFalse(probe.input_routine_extent(escaping)['ok'])
 if __name__=='__main__':unittest.main()

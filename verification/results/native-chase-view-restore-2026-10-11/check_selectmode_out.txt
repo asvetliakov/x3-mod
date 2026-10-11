@@ -1,0 +1,4 @@
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3story_04.obj: size=2312979 strg_offsets=[21487] rows=[{'clas_offset': 81312, 'code_entry': '0xf07cc', 'locals': 10, 'argc': 1}]
+/tmp/claude-1000/-home-asvetl-x3-mod/e54ef5fd-8036-45b2-b638-60c6a2d87dd4/scratchpad/x3story_07.obj: size=2182503 strg_offsets=[22985] rows=[{'clas_offset': 82760, 'code_entry': '0x106b1f', 'locals': 10, 'argc': 1}]
+ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a  x3story_04.obj
+2c3101a8c04ddea76643099758bfdaefd18d79cdf37580095a12a8ce72199298  x3story_07.obj

@@ -33,22 +33,21 @@ constexpr engine_patch::SiteSpec specs[] = {
 };
 // clang-format on
 constexpr unsigned mandatory = 6, site_count = 9;
-// X3M_CHASE_VIEW_RESTORE=1 only (docs/reverse-engineering/chase-view-transition.md,
-// run60 lifecycle table): the shared optimized store seam plus six cancellation
-// boundaries. All plain whole-instruction copies; the seam's displaced ADD/CMP
-// replay after the stub restores GPR/flags, so their live flags are fresh.
+// X3M_CHASE_VIEW_RESTORE=1 only (docs/architecture/chase-view-restore-engine-state.md,
+// section 4): the injection site at the input routine's entry (the main
+// loop's input phase, outside the registry walk and every cockpit update) plus
+// three program-independent VM cancel boundaries. All plain whole-instruction
+// prologue copies (verify_chase_restore_sites.py proves the spans and that no
+// .text branch targets their interiors).
 // clang-format off
 constexpr engine_patch::SiteSpec restore_specs[] = {
-    {"chase_restore_store",0x004a3ffd,{0x03,0x70,0x0c,0x80,0x3e,0x08},6,0,0},
-    {"chase_restore_task_complete",0x004a2260,{0x53,0x8b,0x5c,0x24,0x0c},5,0,0},
-    {"chase_restore_task_abort",0x004a2420,{0x53,0x8b,0x5c,0x24,0x0c},5,0,0},
-    {"chase_restore_vm_construct",0x0049c9a0,{0x53,0x33,0xdb,0x89,0x5e,0x04},6,0,0},
+    {"chase_restore_inject",0x00410100,{0x55,0x8b,0xec,0x83,0xe4,0xf0},6,0,0},
     {"chase_restore_vm_clear",0x0049ea80,{0x83,0xec,0x08,0x55,0x8b,0x6c,0x24,0x10},8,0,0},
     {"chase_restore_vm_load",0x004a0880,{0x6a,0xff,0x68,0xc8,0x00,0x53,0x00},7,0,0},
     {"chase_restore_eh_adapter",0x0052f298,{0xb8,0xf4,0xe5,0x56,0x00},5,0,0}
 };
 // clang-format on
-constexpr unsigned restore_site_count = 7, restore_eh_kind = 6;
+constexpr unsigned restore_site_count = 4, restore_inject_kind = 0, restore_eh_kind = 3;
 engine_patch::Site sites[site_count], restore_sites[restore_site_count];
 std::atomic<bool> enabled{false}, diagnostic{false}, restore_enabled{false};
 bool initialized = false, timing = false;
@@ -109,7 +108,7 @@ void snapshot(std::uintptr_t c, Snapshot& s) {
     if (field(c, 0x130, s.boom)) s.valid |= 128;
 }
 // Process roots; the CPU fixture aliases them to fixture-owned memory.
-std::uint32_t vm_root = 0x6085e4, native_registry_root = 0x60850c, cockpit_registry_root = 0x608504;
+std::uint32_t native_registry_root = 0x60850c, cockpit_registry_root = 0x608504;
 bool active_handle(std::uintptr_t cockpit, std::uint32_t& handle) {
     std::uint32_t registry = 0, table = 0, bucket[2]{}, link = 0;
     if (!field(cockpit_registry_root, 0, registry) || !field(registry, 0, table) || !field(registry, 0x10, handle) ||
@@ -213,436 +212,205 @@ void record(unsigned kind, std::uintptr_t cockpit, std::uint32_t thread, std::ui
     window.push(e);
 }
 // ---- one-use rear-chase restore ticket (X3M_CHASE_VIEW_RESTORE=1) ----
-// The lock-protected state; the epoch is lock-free so the EH adapter can
-// cancel without acquiring anything. The filter words are read racily by the
-// store stub (mode 0 idle, 1 armed: operand addresses, 2 pending: also global
-// slot 8/9 stores); the full path re-validates everything under the lock.
+// Lock-protected state; the epoch is lock-free so the EH adapter can cancel
+// without acquiring anything. The injection prefilter word is read racily by
+// the site-I stub (nonzero only while a ticket is due); the handler
+// re-validates everything under the lock from fresh reads.
 detail::RestoreState restore;
 std::atomic<std::uint32_t> restore_epoch{1};
-std::atomic<std::uint32_t> restore_filter[1 + detail::restore_filter_count]{};
+std::atomic<std::uint32_t> restore_inject_filter{0};
 std::atomic<std::uint64_t> restore_eh_bumps{0};
-detail::HandlerTiming restore_timing[restore_site_count]{};
-constexpr unsigned restore_pending_update_expiry = 600;
-// Once-per-reason arm/transfer refusal samples, captured under the lock and
-// emitted by handle() after it is released (log() must not run under the Guard).
-struct RestoreSample {
-    bool wanted = false, armed = false;
-    unsigned kind = 0, reason = 0, readable = 0;
-    std::uint32_t cockpit = 0, mode = 0, connect = 0, ship = 0, view = 0, handle = 0, valid = 0, refused = 0,
-                  native_script = 0, player = 0;
-    std::uint64_t generation = 0;
-};
-RestoreSample restore_sample;
-// readable: bit0 connect, bit1 ship, bit2 view field reads succeeded (a real 0 is distinguishable from an unreadable
-// field).
-void restore_sample_arm(unsigned reason, std::uintptr_t cockpit, std::uint64_t gen, std::uint32_t mode,
-                        unsigned readable, std::uint32_t connect, std::uint32_t ship, std::uint32_t view,
-                        std::uint32_t handle, const detail::Identity* id) {
-    if (reason >= detail::arm_refusal_count) reason = 0;
-    ++restore.arm_refusal_reasons[reason];
-    const std::uint32_t bit = 1u << reason;
-    if (restore.arm_sample_logged & bit) return;
-    restore.arm_sample_logged |= bit;
-    restore_sample = {};
-    restore_sample.wanted = true;
-    restore_sample.kind = 0;
-    restore_sample.reason = reason;
-    restore_sample.readable = readable;
-    restore_sample.armed = restore.armed;
-    restore_sample.cockpit = std::uint32_t(cockpit);
-    restore_sample.generation = gen;
-    restore_sample.mode = mode;
-    restore_sample.connect = connect;
-    restore_sample.ship = ship;
-    restore_sample.view = view;
-    restore_sample.handle = handle;
-    if (id) {
-        restore_sample.valid = id->valid;
-        restore_sample.refused = id->refused;
-        restore_sample.native_script = id->native_script;
-        restore_sample.player = id->player;
-    }
-}
-void restore_sample_transfer(unsigned reason, std::uintptr_t cockpit, std::uint64_t gen, const Origin& o) {
-    if (reason >= detail::refuse_count) reason = 0;
-    const std::uint32_t bit = 1u << reason;
-    if (restore.transfer_sample_logged & bit) return;
-    restore.transfer_sample_logged |= bit;
-    restore_sample = {};
-    restore_sample.wanted = true;
-    restore_sample.kind = 1;
-    restore_sample.armed = restore.armed;
-    restore_sample.reason = reason;
-    restore_sample.cockpit = std::uint32_t(cockpit);
-    restore_sample.generation = gen;
-    restore_sample.valid = o.valid;
-    restore_sample.refused = o.flags;
-    restore_sample.handle = o.count;
-    restore_sample.ship = o.task;
-    restore_sample.view = o.context;
-}
-RestoreSample restore_take_sample() {
-    RestoreSample s = restore_sample;
-    restore_sample.wanted = false;
-    return s;
-}
-void restore_emit_sample(const RestoreSample& s) {
-    if (s.kind == 0)
-        log("chase_view_restore_arm_refused reason=%u cockpit=0x%08lx generation=%llu mode=%lu readable=%u connect=%lu ship=0x%08lx view=0x%08lx handle=%lu identity_valid=%lu identity_refused=%lu native_script=0x%08lx player=0x%08lx armed=%u",
-            s.reason, static_cast<unsigned long>(s.cockpit), s.generation, static_cast<unsigned long>(s.mode),
-            s.readable, static_cast<unsigned long>(s.connect), static_cast<unsigned long>(s.ship),
-            static_cast<unsigned long>(s.view), static_cast<unsigned long>(s.handle),
-            static_cast<unsigned long>(s.valid), static_cast<unsigned long>(s.refused),
-            static_cast<unsigned long>(s.native_script), static_cast<unsigned long>(s.player), unsigned(s.armed));
-    else
-        log("chase_view_restore_transfer_refused reason=%u cockpit=0x%08lx generation=%llu origin_valid=%lu origin_flags=%lu context_return_count=%lu task=0x%08lx context=0x%08lx",
-            s.reason, static_cast<unsigned long>(s.cockpit), s.generation, static_cast<unsigned long>(s.valid),
-            static_cast<unsigned long>(s.refused), static_cast<unsigned long>(s.handle),
-            static_cast<unsigned long>(s.ship), static_cast<unsigned long>(s.view));
-}
+detail::HandlerTiming restore_timing[restore_site_count]{}, restore_frame_timing{};
+std::uint64_t restore_report_frame = 0; // the last reported frame, for the outcome rows
+// Engine roots the CPU fixture aliases to fixture-owned memory. The call
+// target is the engine's by-name script call wrapper (cdecl, caller pops 0x1c):
+// (object, 0, lookup key, name, 1, argc, arg...). The key resolves through
+// 0x0049f1e0 (negative: the dynamic object by ~id, as the interpreter's own
+// DYNCALL does), the method by a content strcmp over the object's class chain
+// (0x004b0740); AL 0 when object or method is missing.
+std::uint32_t game_root = detail::restore_game_root;
+std::uintptr_t script_call_address = detail::restore_script_call;
+const char select_mode_name[] = "SelectMode"; // mod-owned; the EXE has no such literal
+using ScriptCall = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::uint32_t, const char*, std::uint32_t,
+                                           std::uint32_t, std::uint32_t);
 void restore_filter_publish() {
-    const std::uint32_t pcs[detail::restore_filter_count] = {
-        detail::restore_mode_pc, detail::restore_player_pc, detail::restore_controller_pc,
-        detail::restore_killed_pcs[0], detail::restore_killed_pcs[1]};
-    const std::uint32_t code = restore.armed || restore.pending ? restore.arm_code : 0;
-    for (unsigned i = 0; i < detail::restore_filter_count; ++i)
-        restore_filter[1 + i].store(code ? code + pcs[i] + 1 : 0, std::memory_order_relaxed);
-    restore_filter[0].store(restore.filter_mode(), std::memory_order_release);
+    restore_inject_filter.store(restore.wants_injection() ? 1u : 0u, std::memory_order_release);
 }
-bool restore_epoch_ok() {
-    const auto e = restore_epoch.load(std::memory_order_acquire);
-    // An epoch cancellation (EH adapter) must let a later admitted rear update re-arm.
-    if (restore.armed && restore.arm_epoch != e) {
-        restore.clear_arm(detail::cancel_epoch);
-        restore.reset_attempt();
+// Engine walks the ticket asks for only on the frames that matter (checked
+// reads only; nothing is retained).
+struct EngineProbe {
+    std::uintptr_t cockpit = 0;
+    bool active_control(std::uint32_t& handle) {
+        return active_handle(cockpit, handle) && handle != 0;
     }
-    if (restore.pending && restore.pending_epoch != e) {
-        restore.clear_pending(detail::cancel_epoch);
-        restore.reset_attempt();
+    // Registry membership of the ship by its native id (the resolver SA_GetEventObject 0x004607f4 uses),
+    // deferred-delete flag clear, then the engine's ship-script id +0x94.
+    bool ship_live(std::uint32_t ref, std::uint32_t& ship_id) {
+        detail::IdentityReader<decltype(&bytes)> r{&bytes};
+        r.registry_root = native_registry_root;
+        std::uint32_t native_id = 0, registry = 0, table = 0, live = 0, flags = 0;
+        if (!ref || (ref & 3) || !field(ref, 8, native_id) || !field(native_registry_root, 0, registry) ||
+            !r.pointer(registry) || !field(registry, 0x14, table) || !r.hash(table, native_id, live) || live != ref)
+            return false;
+        if (!field(ref, 0x40, flags) || (flags & detail::restore_ship_delete_flag)) return false;
+        return field(ref, 0x94, ship_id);
     }
-    return restore.armed || restore.pending;
-}
-bool writable_span(std::uintptr_t at, unsigned n) {
-    constexpr DWORD writable = PAGE_READWRITE | PAGE_EXECUTE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_WRITECOPY;
-    MEMORY_BASIC_INFORMATION a{}, b{};
-    if (!at || !n || n > UINT32_MAX - at) return false;
-    return VirtualQuery(reinterpret_cast<void*>(at), &a, sizeof a) == sizeof a &&
-           VirtualQuery(reinterpret_cast<void*>(at + n - 1), &b, sizeof b) == sizeof b && a.State == MEM_COMMIT &&
-           b.State == MEM_COMMIT && !(a.Protect & PAGE_GUARD) && !(b.Protect & PAGE_GUARD) && (a.Protect & writable) &&
-           (b.Protect & writable);
-}
-bool write_payload(std::uintptr_t at, std::uint32_t value) {
-    SIZE_T written = 0;
-    return WriteProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(at), &value, 4, &written) && written == 4;
-}
-// Arm from an admitted rear-chase update: one identity walk per lifetime and
-// per re-entry into mode 258, never per frame while armed.
-void restore_on_update(std::uintptr_t cockpit, std::uint32_t thread) {
-    (void)thread;
-    if (!restore_enabled.load(std::memory_order_relaxed)) return;
-    const auto gen = state.generation(cockpit);
-    std::uint32_t mode = 0;
-    if (!gen || !field(cockpit, 0x150, mode)) return;
-    restore_epoch_ok();
-    if (restore.pending) {
-        if (++restore.pending_updates > restore_pending_update_expiry) {
-            restore.clear_pending(detail::cancel_expiry);
-            restore_filter_publish();
-        }
-        return;
+    bool controller(std::uint32_t& id) {
+        std::uint32_t game = 0;
+        return field(game_root, 0, game) && game && !(game & 3) && field(game, 0x418, id);
     }
-    if (restore.armed) {
-        if (restore.arm_cockpit == cockpit && restore.arm_generation == gen && mode != detail::restore_rear_mode) {
-            restore.clear_arm(detail::cancel_mode_left);
-            restore.attempt_generation = gen;
-            restore.attempt_mode = mode;
-            restore.retries = 0;
-            restore_filter_publish();
-        }
-        return;
-    }
-    if (restore.attempt_generation == gen && restore.attempt_mode == mode) return;
-    if (mode != detail::restore_rear_mode) {
-        restore.attempt_generation = gen;
-        restore.attempt_mode = mode;
-        restore.retries = 0;
-        return;
-    }
-    // Preconditions are re-checked on rear updates (run68: a fresh generation's
-    // first updates carry view 0). Per-update cost on this path: the mode read
-    // above plus up to three `field` reads (each one engine_memory read: a
-    // cached VirtualQuery region check and copy in direct mode, one
-    // NtReadVirtualMemory in rpm mode); active_handle's bounded registry walk
-    // runs only once connect and view pass. Retries are capped per cockpit
-    // generation; exhaustion records the attempt so a persistent refusal costs
-    // nothing further for that lifetime and mode.
-    if (restore.retry_generation != gen) {
-        restore.retry_generation = gen;
-        restore.retries = 0;
-    }
-    if (restore.retries >= detail::restore_arm_retry_cap) {
-        restore.attempt_generation = gen;
-        restore.attempt_mode = mode;
-        ++restore.arm_refusals;
-        restore_sample_arm(detail::arm_retry_exhausted, cockpit, gen, mode, 0, 0, 0, 0, 0, nullptr);
-        return;
-    }
-    ++restore.retries;
-    std::uint32_t connect = 0, ship = 0, view = 0, handle = 0, code = 0;
-    unsigned readable = 0;
-    if (field(cockpit, 0x1c0, connect)) readable |= 1;
-    if (!(readable & 1) || connect) {
-        ++restore.arm_refusals;
-        restore_sample_arm(detail::arm_connect, cockpit, gen, mode, readable, connect, 0, 0, 0, nullptr);
-        return;
-    }
-    if (field(cockpit, 0xc, ship)) readable |= 2;
-    if (field(cockpit, 0x10, view)) readable |= 4;
-    if (readable != 7 || !ship || (ship & 3) || view != ship) {
-        ++restore.arm_refusals;
-        restore_sample_arm(detail::arm_view_not_ready, cockpit, gen, mode, readable, connect, ship, view, 0, nullptr);
-        return;
-    }
-    if (!active_handle(cockpit, handle)) {
-        ++restore.arm_refusals;
-        restore_sample_arm(detail::arm_no_handle, cockpit, gen, mode, readable, connect, ship, view, handle, nullptr);
-        return;
-    }
-    // The identity walk is the expensive step: one attempt per lifetime and mode entry.
-    restore.attempt_generation = gen;
-    restore.attempt_mode = mode;
-    detail::IdentityReader<decltype(&bytes)> reader{&bytes};
-    reader.vm_root = vm_root;
-    reader.registry_root = native_registry_root;
-    detail::Identity id;
-    reader.capture(ship, 0, id);
-    using I = detail::Identity;
-    constexpr std::uint32_t need = I::vm_bit | I::native_bit | I::player_bit | I::controller_bit | I::warp_bit |
-                                   I::killed_bit;
-    if ((id.valid & need) != need || !id.player || id.native_script != id.player || id.killed) {
-        ++restore.arm_refusals;
-        restore_sample_arm(detail::arm_identity, cockpit, gen, mode, readable, connect, ship, view, handle, &id);
-        return;
-    }
-    if (!field(id.vm, 8, code) || !code) {
-        ++restore.arm_refusals;
-        restore_sample_arm(detail::arm_code, cockpit, gen, mode, readable, connect, ship, view, handle, &id);
-        return;
-    }
-    restore.armed = true;
-    restore.arm_cockpit = std::uint32_t(cockpit);
-    restore.arm_generation = gen;
-    restore.arm_player = id.player;
-    restore.arm_controller = id.controller;
-    restore.arm_native_script = id.native_script;
-    restore.arm_code = code;
-    restore.arm_epoch = restore_epoch.load(std::memory_order_acquire);
-    ++restore.arms;
-    restore_filter_publish();
-}
-// Transfer to pending only at the measured warp destructor; any other
-// destructor clears the arm and a second destruction clears pending.
-void restore_on_destroy(std::uintptr_t cockpit, std::uint32_t caller, std::uint32_t ebp, std::uint32_t thread) {
-    if (!restore_enabled.load(std::memory_order_relaxed)) return;
-    restore_epoch_ok();
-    if (restore.pending) {
-        restore.clear_pending(detail::cancel_second_destruction);
-        restore_filter_publish();
-        return;
-    }
-    if (!restore.armed) return;
-    const auto* life = state.find(cockpit);
-    const std::uint64_t gen = life ? life->generation : 0;
-    if (cockpit != restore.arm_cockpit || gen != restore.arm_generation ||
-        caller != detail::restore_destructor_caller) {
-        restore.clear_arm(detail::cancel_destructor);
-        restore.reset_attempt();
-        restore_filter_publish();
-        return;
-    }
-    Origin o;
-    detail::destructor_provenance(caller, ebp, o, bytes, code_address, vm_root);
-    std::uint32_t monitor = 0, task_id = 0;
-    const unsigned why = detail::transfer_proof(restore, o, bytes, vm_root, monitor, task_id);
-    if (why) {
-        restore.refuse(why);
-        restore_sample_transfer(why, cockpit, gen, o);
-        restore.clear_arm(detail::cancel_destructor);
-        restore.reset_attempt();
-        restore_filter_publish();
-        return;
-    }
-    restore.transfer(monitor, o.task, task_id, thread, restore_epoch.load(std::memory_order_acquire));
-    restore_filter_publish();
-}
-// Whether a SelectMode assignment belongs to the armed/pending main monitor.
-// Pending admits only the fresh monitor identity captured at the destructor
-// prefix; armed admits the monitor whose ref cell17 is the player (run65:
-// cell11 is a camera priority). A validated foreign monitor, including one
-// whose cell17 is unset/unreadable (side monitors never set it), is ignored;
-// only an unreadable/foreign-class context itself is malformed and cancels.
-bool restore_store_is_ours(std::uint32_t esp, std::uint32_t eax, bool& malformed) {
-    std::uint32_t context = 0, id = 0, ref = 0, tag = 0, g9_tag = 0, desc[14]{};
-    detail::IdentityReader<decltype(&bytes)> r{&bytes};
-    r.vm_root = vm_root;
-    r.registry_root = native_registry_root;
-    malformed = !field(esp, 0x20, context) || context != eax || !r.root() ||
-                !detail::borrowed_context(r, context, detail::restore_monitor_class, id, desc);
-    if (malformed) return true;
-    if (restore.pending) return id == restore.pending_monitor;
-    return detail::global9_tag(r, g9_tag) && detail::raw_cell(r, context, desc, 17, tag, ref) &&
-           detail::ref_tag_ok(tag, g9_tag) && ref == restore.arm_player;
-}
-// One bounded record per seam call while pending (rare: between the warp
-// destructor and the reset), so the next run measures every proof input.
-// Captured under the lock, emitted by restore_handle after the lock is
-// released: log() takes capture's mutex, which present() holds while calling
-// report() under this same lock.
-struct SeamLog {
-    bool wanted = false, ours = false, ctx = false, src = false, prefix = false;
-    unsigned readable = 0, why = 0;
-    std::uint32_t pc = 0, opcode = 0, index = 0, esi = 0, context = 0, id = 0, pending_monitor = 0, v[4]{}, t[4]{},
-                  requested = 0, epoch = 0;
-    unsigned char source_tag = 0;
 };
-void restore_capture_seam(const detail::SeamRegs& s, const detail::SeamDecode& d, bool ours, unsigned why,
-                          SeamLog& out) {
-    std::uint32_t desc[14]{};
-    unsigned char source[5]{};
-    detail::IdentityReader<decltype(&bytes)> r{&bytes};
-    r.vm_root = vm_root;
-    r.registry_root = native_registry_root;
-    out.wanted = true;
-    out.ours = ours;
-    out.why = why;
-    out.pc = d.pc;
-    out.opcode = d.opcode;
-    out.index = d.index;
-    out.esi = s.esi;
-    out.pending_monitor = restore.pending_monitor;
-    out.ctx = field(s.esp, 0x20, out.context) && r.root() &&
-              detail::borrowed_context(r, out.context, detail::restore_monitor_class, out.id, desc);
-    const unsigned index[4] = {0, 1, 16, 17};
-    if (out.ctx)
-        for (unsigned i = 0; i < 4; ++i)
-            if (detail::raw_cell(r, out.context, desc, index[i], out.t[i], out.v[i])) out.readable |= 1u << i;
-    out.src = bytes(s.ebx, 0, source, 5);
-    if (out.src) {
-        out.source_tag = source[0];
-        std::memcpy(&out.requested, source + 1, 4);
-    }
-    out.prefix = d.task &&
-                 detail::live_stack_prefix(d.task, s.ebx, d.code, bytes, code_address, detail::restore_reset_prefix, 3);
-    out.epoch = restore_epoch.load(std::memory_order_relaxed);
+void restore_emit_sample(const detail::RestoreArmSample& s) {
+    log("chase_view_restore_arm_refused reason=%u cockpit=0x%08lx generation=%llu mode=%lu connect=%lu ship=0x%08lx view=0x%08lx handle=%lu ship_live=%u ship_id=0x%08lx armed=%u",
+        s.reason, static_cast<unsigned long>(s.cockpit), s.generation, static_cast<unsigned long>(s.mode),
+        static_cast<unsigned long>(s.connect), static_cast<unsigned long>(s.ship), static_cast<unsigned long>(s.view),
+        static_cast<unsigned long>(s.handle), unsigned(s.ship_live), static_cast<unsigned long>(s.ship_id),
+        unsigned(s.armed));
 }
-void restore_emit_seam(const SeamLog& o) {
-    log("chase_view_restore_seam pc=0x%lx opcode=0x%lx index=%lu esi=%lu context=0x%08lx monitor=0x%08lx pending_monitor=0x%08lx ours=%u cells_readable=%u cell0=%lu cell1=%lu cell16=%lu cell17_tag=%lu cell17=0x%08lx cell0_tag=%lu cell1_tag=%lu cell16_tag=%lu source_readable=%u source_tag=%u source=%lu prefix_ok=%u refusal=%u epoch=%lu",
-        static_cast<unsigned long>(o.pc), static_cast<unsigned long>(o.opcode), static_cast<unsigned long>(o.index),
-        static_cast<unsigned long>(o.esi), static_cast<unsigned long>(o.context), static_cast<unsigned long>(o.id),
-        static_cast<unsigned long>(o.pending_monitor), unsigned(o.ours), o.readable, static_cast<unsigned long>(o.v[0]),
-        static_cast<unsigned long>(o.v[1]), static_cast<unsigned long>(o.v[2]), static_cast<unsigned long>(o.t[3]),
-        static_cast<unsigned long>(o.v[3]), static_cast<unsigned long>(o.t[0]), static_cast<unsigned long>(o.t[1]),
-        static_cast<unsigned long>(o.t[2]), unsigned(o.src), unsigned(o.source_tag),
-        static_cast<unsigned long>(o.requested), unsigned(o.prefix), o.why, static_cast<unsigned long>(o.epoch));
+void restore_emit_outcome(const detail::RestoreOutcome& o) {
+    log("chase_view_restore result=%s cancel=%s attempts=%u monitor=0x%08lx monitor_class=0x%lx mode_seen=%lu generation_from=%llu generation_to=%llu ship_id_from=0x%08lx ship_id_to=0x%08lx sector_from=0x%08lx sector_to=0x%08lx wait_updates=%lu frame=%llu",
+        detail::restore_result_name(o.result), detail::restore_cancel_name(o.cancel), o.attempts,
+        static_cast<unsigned long>(o.monitor), static_cast<unsigned long>(o.monitor_class),
+        static_cast<unsigned long>(o.mode_seen), o.generation_from, o.generation_to,
+        static_cast<unsigned long>(o.ship_id_from), static_cast<unsigned long>(o.ship_id_to),
+        static_cast<unsigned long>(o.sector_from), static_cast<unsigned long>(o.sector_to),
+        static_cast<unsigned long>(o.wait_updates), restore_report_frame);
 }
-void restore_on_store(std::uint32_t* regs, std::uint32_t esp, std::uint32_t thread, SeamLog& seam_log) {
-    ++restore.seam_calls;
-    if (!restore_epoch_ok()) {
-        restore_filter_publish();
-        return;
+struct RestoreRows {
+    detail::RestoreArmSample sample;
+    detail::RestoreOutcome outcome;
+    void take() {
+        sample = restore.take_arm_sample();
+        outcome = restore.take_outcome();
     }
-    detail::SeamRegs s;
-    s.eax = regs[7];
-    s.ebx = regs[4];
-    s.esi = regs[1];
-    s.edi = regs[0];
-    s.ebp = regs[2];
-    s.esp = esp;
-    s.thread = thread;
-    detail::SeamDecode d;
-    if (!detail::seam_decode(s, bytes, code_address, vm_root, d)) {
-        restore.refuse(detail::refuse_opcode);
-        restore.clear_all(detail::cancel_seam_unreadable);
-        restore.reset_attempt();
-        restore_filter_publish();
-        return;
+    void emit() const { // never under the Guard: log() takes capture's mutex, which present() holds around report()
+        if (sample.wanted) restore_emit_sample(sample);
+        if (outcome.wanted) restore_emit_outcome(outcome);
     }
-    if (d.pc == detail::restore_mode_pc) {
-        bool malformed = false;
-        const bool ours = restore_store_is_ours(esp, s.eax, malformed);
-        if (restore.pending && !ours) {
-            restore_capture_seam(s, d, false, 0, seam_log);
-            return;
-        }
-        if (!ours) return;
-        if (restore.pending) {
-            unsigned why = detail::seam_consume_proof(restore, s, d, restore_epoch.load(std::memory_order_acquire),
-                                                      bytes, code_address, vm_root);
-            if (!why && !writable_span(s.ebx + 1, 4)) why = detail::refuse_writable;
-            restore_capture_seam(s, d, true, why, seam_log);
-            if (why) {
-                restore.refuse(why);
-                restore.clear_pending(detail::cancel_proof);
-                restore_filter_publish();
-                return;
-            }
-            // Clear pending immediately before the single source-payload write.
-            restore.take_pending();
-            restore_filter_publish();
-            if (write_payload(s.ebx + 1, detail::restore_rear_mode))
-                ++restore.consumed;
-            else {
-                ++restore.writes_failed;
-                restore.refuse(detail::refuse_write);
-            }
-            return;
-        }
-        restore.clear_arm(detail::cancel_selection);
-        restore.reset_attempt();
-        restore_filter_publish();
-        return;
+};
+// Fresh frame of a cockpit for the injection re-check: cockpit fields through the checked reader, lifetime
+// facts from the witness table (unseen or partial lifetimes read as generation 0, which the core refuses).
+void restore_read_frame(std::uintptr_t cockpit, detail::RestoreFrame& f) {
+    f = {};
+    f.cockpit = std::uint32_t(cockpit);
+    if (const auto* life = state.find(cockpit)) {
+        f.generation = life->complete ? life->generation : 0;
+        f.constructor_caller = life->constructor_caller;
     }
-    if (d.pc == detail::restore_player_pc || d.pc == detail::restore_controller_pc) {
-        restore.clear_all(detail::cancel_identity_store);
-        restore.reset_attempt();
-        restore_filter_publish();
-        return;
-    }
-    if (d.pc == detail::restore_killed_pcs[0] || d.pc == detail::restore_killed_pcs[1]) {
-        if (!detail::killed_store_is_zero(s, d, bytes, vm_root)) {
-            restore.clear_all(detail::cancel_killed_store);
-            restore.reset_attempt();
-            restore_filter_publish();
-        }
-        return;
-    }
-    if (restore.pending) restore_capture_seam(s, d, false, 0, seam_log);
-    if (restore.pending && d.opcode == 0x93 && (s.esi == 40 || s.esi == 45)) {
-        restore.clear_pending(detail::cancel_global_slot);
-        restore_filter_publish();
-    }
+    f.readable = cockpit && !(cockpit & 3) && field(cockpit, 0x150, f.mode) && field(cockpit, 0x1c0, f.connect) &&
+                 field(cockpit, 0x1a0, f.flags) && field(cockpit, 0xc, f.ref) && field(cockpit, 0x10, f.view) &&
+                 field(cockpit, 0x1fc, f.sector);
 }
-void restore_on_task(unsigned kind, std::uint32_t task) {
-    if (restore.pending && (!task || task == restore.pending_task)) {
-        restore.clear_pending(kind == 1 ? detail::cancel_task_complete : detail::cancel_task_abort);
-        restore_filter_publish();
+// Update-begin (kind 3): the expiry clock, every cockpit update.
+void restore_on_update() {
+    if (!restore_enabled.load(std::memory_order_relaxed) || !restore.ticket_open()) return;
+    restore.on_update();
+    restore_filter_publish();
+}
+void restore_on_destroy(std::uintptr_t cockpit, std::uint32_t caller) {
+    if (!restore_enabled.load(std::memory_order_relaxed) || !restore.ticket_open()) return;
+    const auto* life = state.find(cockpit);
+    restore.on_destroy(std::uint32_t(cockpit), life ? life->generation : 0, caller);
+    restore_filter_publish();
+}
+void restore_on_complete(std::uintptr_t cockpit) {
+    if (!restore_enabled.load(std::memory_order_relaxed) || !restore.ticket_open()) return;
+    const auto* life = state.find(cockpit);
+    restore.on_complete(life ? life->constructor_caller : 0);
+    restore_filter_publish();
+}
+// Kind 6 (0x0042e742: EAX cockpit, ECX mode, EBP the dispatcher frame): the
+// script object making the store is read from the engine's VM task frame,
+// the same chain provenance() validates: [ebp+4] == 0x4a3909 (the
+// interpreter's native-call site), [ebp+0xc] task, [task+0x3c] current
+// context, [context] object id, [context+8] class descriptor, [desc] class id.
+// Only a dynamic object id (negative: the interpreter's own DYNCALL resolves it through the object table)
+// is accepted; a non-negative value would make the by-name call index the static class table.
+void restore_on_mode_store(std::uint32_t* regs, std::uint32_t thread) {
+    if (!restore_enabled.load(std::memory_order_relaxed) || restore.phase < detail::phase_pending) return;
+    const std::uintptr_t cockpit = regs[7];
+    const std::uint32_t requested = regs[6], ebp = regs[2];
+    const auto* life = state.find(cockpit);
+    std::uint32_t return_pc = 0, task = 0, context = 0, id = 0, desc = 0, class_id = 0;
+    if (!(field(ebp, 4, return_pc) && return_pc == 0x4a3909 && field(ebp, 0xc, task) && task && !(task & 3) &&
+          field(task, 0x3c, context) && context && !(context & 3) && field(context, 0, id) &&
+          std::int32_t(id) < 0 && field(context, 8, desc) && desc && !(desc & 3) && field(desc, 0, class_id))) {
+        id = 0;
+        class_id = 0;
     }
+    restore.on_mode_store(std::uint32_t(cockpit), life && life->complete ? life->generation : 0, requested, thread,
+                          life ? life->constructor_caller : 0, id, class_id);
+    restore_filter_publish();
+}
+// Deserialization kind7 (the existing mode-load observer, 0x419e06): a cancel, no new site.
+void restore_on_load() {
+    if (!restore_enabled.load(std::memory_order_relaxed)) return;
+    restore.on_load();
+    restore_filter_publish();
 }
 void restore_on_vm() {
     restore_epoch.fetch_add(1, std::memory_order_acq_rel);
-    restore.clear_all(detail::cancel_epoch);
-    restore.attempt_generation = 0;
-    restore.reset_attempt();
+    restore.on_vm();
     restore_filter_publish();
 }
-// Deserialization kind7 (the existing mode-load observer, 0x419e06) is an
-// additional cancel: same epoch advance as the VM boundaries, no new site.
-void restore_on_load() {
-    if (!restore_enabled.load(std::memory_order_relaxed)) return;
-    restore_on_vm();
+// The engine's own by-name script call on the captured monitor object:
+// `SelectMode(258)`, the method the script's view keys end in. The call runs
+// under the engine's incoming x87/MXCSR/LastError image (the callee is engine
+// code) and the handler's clean state is re-established afterwards; the
+// caller's CpuState brings the engine image back at the stub boundary.
+__attribute__((noinline)) bool restore_engine_select_mode(const detail::RestoreCall& c, x3m::CpuState& cpu) {
+    const auto fn = reinterpret_cast<ScriptCall>(script_call_address);
+    cpu.restore();
+    const std::uint32_t r = fn(c.monitor, 0, c.monitor, select_mode_name, 1, 1, detail::restore_rear_mode) & 0xff;
+    asm volatile("fninit" ::: "memory");
+    const unsigned mxcsr = 0x1f80;
+    asm volatile("ldmxcsr %0" ::"m"(mxcsr) : "memory");
+    return r != 0;
+}
+// Site I (0x00410100 entry, once per main-loop iteration): consume a due
+// ticket. No lock, RAII object or borrowed engine pointer is held across the
+// engine call (a script error unwinds through this frame; the EH adapter's
+// epoch bump is the cancel).
+__attribute__((noinline)) void inject_handle(std::uint32_t* regs, x3m::CpuState& cpu) {
+    if (!restore_enabled.load(std::memory_order_acquire)) return;
+    const auto start = timing ? now() : 0;
+    const auto thread = GetCurrentThreadId();
+    const auto esp = regs[3] + 4;
+    detail::RestoreCall call;
+    RestoreRows rows;
+    {
+        Guard guard;
+        if (restore.wants_injection()) {
+            detail::RestoreFrame fresh;
+            std::uint32_t controlled = 0, game = 0, pause_bits = 0;
+            restore_read_frame(restore.bound_cockpit, fresh);
+            field(esp, 4, controlled);
+            if (field(game_root, 0, game) && game) field(game, 0x4a0, pause_bits);
+            EngineProbe probe{restore.bound_cockpit};
+            call = restore.on_inject_entry(thread, fresh, controlled, controlled ? pause_bits : 1, probe,
+                                           restore_epoch.load(std::memory_order_acquire));
+        }
+        restore_filter_publish();
+        rows.take();
+    }
+    if (call.wanted) {
+        const bool ok = restore_engine_select_mode(call, cpu);
+        Guard guard;
+        restore.on_call_result(ok);
+        restore_filter_publish();
+        rows.take();
+    }
+    rows.emit();
+    if (timing) {
+        const auto end = now();
+        Guard guard;
+        restore_timing[restore_inject_kind].add(start, end);
+    }
 }
 void restore_handle(unsigned kind, std::uint32_t* regs) {
-    if (kind >= restore_site_count || !restore_enabled.load(std::memory_order_acquire)) return;
+    (void)regs;
+    if (kind >= restore_site_count || kind == restore_inject_kind || !restore_enabled.load(std::memory_order_acquire))
+        return;
     if (kind == restore_eh_kind) {
         // Lock-free: native unwinding may pass through this adapter while
         // another observer holds its lock on the same or another thread.
@@ -651,25 +419,13 @@ void restore_handle(unsigned kind, std::uint32_t* regs) {
         return;
     }
     const auto start = timing ? now() : 0;
-    const auto thread = GetCurrentThreadId();
-    const auto esp = regs[3] + 4;
-    SeamLog seam_log;
+    RestoreRows rows;
     {
         Guard guard;
-        switch (kind) {
-        case 0: restore_on_store(regs, esp, thread, seam_log); break;
-        case 1:
-        case 2: {
-            std::uint32_t task = 0;
-            field(esp, 8, task);
-            restore_on_task(kind, task);
-        } break;
-        case 3:
-        case 4:
-        case 5: restore_on_vm(); break;
-        }
+        restore_on_vm();
+        rows.take();
     }
-    if (seam_log.wanted) restore_emit_seam(seam_log); // never under the Guard
+    rows.emit();
     if (timing) {
         const auto end = now();
         Guard guard;
@@ -678,13 +434,14 @@ void restore_handle(unsigned kind, std::uint32_t* regs) {
 }
 void handle(unsigned kind, std::uint32_t* regs) {
     if (kind >= site_count || !enabled.load(std::memory_order_acquire) ||
-        (kind >= mandatory && !diagnostic.load(std::memory_order_relaxed)))
+        (kind >= mandatory && !diagnostic.load(std::memory_order_relaxed) &&
+         !restore_enabled.load(std::memory_order_relaxed)))
         return;
     const auto start = timing ? now() : 0;
     const auto thread = GetCurrentThreadId();
     const auto esp = regs[3] + 4; // PUSHFD precedes PUSHAD's saved ESP.
     std::uint32_t cockpit = 0, caller = 0;
-    RestoreSample sample;
+    RestoreRows rows;
     {
         Guard guard;
         switch (kind) {
@@ -694,20 +451,23 @@ void handle(unsigned kind, std::uint32_t* regs) {
             if (field(esp, 4, cockpit)) {
                 field(esp, 0, caller);
                 chase_lead::native_timing_invalidate(cockpit, thread);
-                state.construct(cockpit, thread);
+                state.construct(cockpit, thread, caller);
                 record(0, cockpit, thread, caller);
             }
             break;
         case 1:
             cockpit = regs[7];
-            if (state.complete(cockpit, thread)) record(1, cockpit, thread);
+            if (state.complete(cockpit, thread)) {
+                record(1, cockpit, thread);
+                restore_on_complete(cockpit);
+            }
             break;
         case 2:
             chase_lead::native_timing_invalidate(0, thread);
             if (field(esp, 4, cockpit)) {
                 field(esp, 0, caller);
                 record(2, cockpit, thread, caller, 0, regs[2]);
-                restore_on_destroy(cockpit, caller, regs[2], thread);
+                restore_on_destroy(cockpit, caller);
                 chase_lead::native_timing_invalidate(cockpit, thread);
                 state.destroy(cockpit);
             }
@@ -718,14 +478,17 @@ void handle(unsigned kind, std::uint32_t* regs) {
             field(esp, 4, cockpit);
             state.begin(cockpit, esp, thread);
             record(3, cockpit, thread);
-            restore_on_update(cockpit, thread);
+            restore_on_update();
             break;
         case 4:
         case 5:
             chase_lead::native_timing_invalidate(0, thread);
             state.end(regs[2] + 4, thread);
             break;
-        case 6: record(6, regs[7], thread, 0x42e742, regs[6], regs[2]); break;
+        case 6:
+            record(6, regs[7], thread, 0x42e742, regs[6], regs[2]);
+            restore_on_mode_store(regs, thread);
+            break;
         case 7:
             record(7, regs[2], thread, 0x419e06, regs[5]);
             restore_on_load();
@@ -735,9 +498,9 @@ void handle(unsigned kind, std::uint32_t* regs) {
             record(8, regs[1], thread, caller, regs[7]);
             break;
         }
-        sample = restore_take_sample();
+        rows.take();
     }
-    if (sample.wanted) restore_emit_sample(sample); // never under the Guard
+    rows.emit(); // never under the Guard
     // Include the handler lock acquisition/release and checked reads. The
     // second lock only aggregates this sample and lies outside its interval.
     if (timing) {
@@ -764,69 +527,42 @@ extern "C" __attribute__((force_align_arg_pointer)) void __cdecl x3m_chase_resto
     asm volatile("ldmxcsr %0" ::"m"(mxcsr) : "memory");
     x3m::chase_transition::restore_handle(kind, regs);
 }
+// Site I: a plain CpuState (no destructor) so a script error unwinding from
+// the engine call through this frame runs nothing of ours; the same capture
+// and restore inventory as the other callbacks.
+extern "C" __attribute__((force_align_arg_pointer)) void __cdecl x3m_chase_inject_enter(unsigned kind,
+                                                                                        std::uint32_t* regs) {
+    (void)kind;
+    x3m::CpuState cpu;
+    cpu.capture();
+    asm volatile("fninit" ::: "memory");
+    const unsigned mxcsr = 0x1f80;
+    asm volatile("ldmxcsr %0" ::"m"(mxcsr) : "memory");
+    x3m::chase_transition::inject_handle(regs, cpu);
+    cpu.restore();
+}
 namespace x3m::chase_transition {
 namespace {
-// Register-saving stub. With `filter` (the store seam) a prefilter runs under
-// the saved flags before any XMM/x87 capture: idle mode skips at one memory
-// compare; armed mode admits only the published operand addresses; pending
-// mode also admits optimized global stores (opcode 93) to slots 8/9. The
-// opcode byte at EDI-1 was fetched by the interpreter's own dispatch.
+// Register-saving stub. With `filter` a one-word prefilter runs under the
+// saved flags before any XMM/x87 capture: `cmp dword [filter], 0; je skip`,
+// so an idle ticket costs the site one memory compare per call.
 void* emit_stub(unsigned kind, const void* callback, void*** next_out, const std::atomic<std::uint32_t>* filter) {
-    engine_patch::Emitter e(320);
+    engine_patch::Emitter e(256);
     if (!e.ok()) return nullptr;
     void* start = e.here();
     e.byte(0x9c); // pushfd
-    const unsigned char* full_at = nullptr;
     const unsigned char* skip_at = nullptr;
     if (filter) {
-        constexpr unsigned prefilter = 13 + 12 * detail::restore_filter_count + 13 + 10 + 9 + 9 + 5, full_path = 116;
-        full_at = static_cast<const unsigned char*>(e.here()) + prefilter;
-        skip_at = full_at + full_path;
-        const auto word = [&](unsigned i) { return std::uint32_t(reinterpret_cast<std::uintptr_t>(filter + i)); };
+        constexpr unsigned prefilter = 7 + 6, full_path = 116;
+        skip_at = static_cast<const unsigned char*>(e.here()) + prefilter + full_path;
         e.byte(0x83);
         e.byte(0x3d);
-        e.dword(word(0));
+        e.dword(std::uint32_t(reinterpret_cast<std::uintptr_t>(filter)));
         e.byte(0);
         e.byte(0x0f);
         e.byte(0x84);
-        e.rel32(skip_at); // cmp [mode],0; je skip
-        for (unsigned i = 0; i < detail::restore_filter_count; ++i) {
-            e.byte(0x3b);
-            e.byte(0x3d);
-            e.dword(word(1 + i));
-            e.byte(0x0f);
-            e.byte(0x84);
-            e.rel32(full_at);
-        } // cmp edi,[addr]; je full
-        e.byte(0x83);
-        e.byte(0x3d);
-        e.dword(word(0));
-        e.byte(2);
-        e.byte(0x0f);
-        e.byte(0x85);
-        e.rel32(skip_at); // cmp [mode],2; jne skip
-        e.byte(0x80);
-        e.byte(0x7f);
-        e.byte(0xff);
-        e.byte(0x93);
-        e.byte(0x0f);
-        e.byte(0x85);
-        e.rel32(skip_at); // cmp byte [edi-1],0x93; jne skip
-        e.byte(0x83);
-        e.byte(0xfe);
-        e.byte(40);
-        e.byte(0x0f);
-        e.byte(0x84);
-        e.rel32(full_at); // cmp esi,40; je full
-        e.byte(0x83);
-        e.byte(0xfe);
-        e.byte(45);
-        e.byte(0x0f);
-        e.byte(0x84);
-        e.rel32(full_at); // cmp esi,45; je full
-        e.byte(0xe9);
-        e.rel32(skip_at);
-        if (e.here() != full_at) return nullptr;
+        e.rel32(skip_at); // cmp dword [filter],0; je skip
+        if (e.here() != skip_at - full_path) return nullptr;
     }
     e.byte(0x60);
     e.byte(0xfc); // pushad; provide the C ABI's clear DF (DF itself is in the saved flags)
@@ -878,8 +614,10 @@ void* emit(unsigned kind, void*** next_out) {
     return emit_stub(kind, reinterpret_cast<const void*>(&x3m_chase_transition_enter), next_out, nullptr);
 }
 void* emit_restore(unsigned kind, void*** next_out) {
-    return emit_stub(kind, reinterpret_cast<const void*>(&x3m_chase_restore_enter), next_out,
-                     kind == 0 ? restore_filter : nullptr);
+    if (kind == restore_inject_kind)
+        return emit_stub(kind, reinterpret_cast<const void*>(&x3m_chase_inject_enter), next_out,
+                         &restore_inject_filter);
+    return emit_stub(kind, reinterpret_cast<const void*>(&x3m_chase_restore_enter), next_out, nullptr);
 }
 bool restore_group(unsigned first, unsigned end) {
     bool okay = true;
@@ -930,6 +668,18 @@ bool restore_wanted() {
     wchar_t setting[8]{};
     return x3m::config::get(L"X3M_CHASE_VIEW_RESTORE", setting, 8) == 1 && setting[0] == L'1';
 }
+// X3M_CHASE_VIEW_RESTORE_RETRIES: 0..5 (default 3); anything else refuses the install (fail closed).
+bool restore_retries(unsigned& out) {
+    wchar_t setting[8]{};
+    const DWORD n = x3m::config::get(L"X3M_CHASE_VIEW_RESTORE_RETRIES", setting, 8);
+    if (n == 0) {
+        out = detail::restore_default_retries;
+        return true;
+    }
+    if (n != 1 || setting[0] < L'0' || setting[0] > L'0' + detail::restore_retry_cap) return false;
+    out = unsigned(setting[0] - L'0');
+    return true;
+}
 }
 bool initialize() {
     const DWORD error = GetLastError();
@@ -945,29 +695,40 @@ bool initialize() {
     timing = okay && telemetry::enabled() && QueryPerformanceFrequency(&f) && f.QuadPart > 0;
     frequency = timing ? std::uint64_t(f.QuadPart) : 0;
     enabled.store(okay, std::memory_order_release);
-    const bool diag = okay && telemetry::enabled() && install_group(mandatory, site_count);
+    // The three mode/load/connect observers are installed with telemetry (the
+    // diagnostic window) or with the restore ticket, which needs the mode
+    // store (monitor capture, call result) and the deserializer (cancel).
+    const bool restore_requested = restore_wanted();
+    unsigned retries = detail::restore_default_retries;
+    const bool retries_ok = restore_retries(retries);
+    const bool observers = okay && (telemetry::enabled() || restore_requested) && install_group(mandatory, site_count);
+    const bool diag = observers && telemetry::enabled();
     diagnostic.store(diag, std::memory_order_release);
-    log("chase_transition installed=%u diagnostics=%u mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=%u qpc_frequency=%llu identity_version=1 origin_pairs=6 identity_scope=admitted_events",
-        unsigned(okay), unsigned(diag), unsigned(timing), frequency);
+    log("chase_transition installed=%u diagnostics=%u observers=%u mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=%u qpc_frequency=%llu identity_version=1 origin_pairs=6 identity_scope=admitted_events",
+        unsigned(okay), unsigned(diag), unsigned(observers), unsigned(timing), frequency);
     for (unsigned i = 0; i < site_count; ++i)
         if (sites[i].patched_in || wanted)
             log("chase_transition_site index=%u site=0x%08lx patched=%u status=%s", i,
                 static_cast<unsigned long>(specs[i].address), unsigned(sites[i].patched_in), sites[i].status);
-    // Default off: with the option unset nothing below is claimed and the
-    // interpreter operands are never read or written.
-    const bool restore_requested = restore_wanted();
-    const bool restore_okay = restore_requested && okay && engine_patch::install_window_open() &&
-                              restore_sites_install(restore_specs);
+    // With the option unset nothing below is claimed. The engine path needs
+    // the observers (kind 6/7); the call target and roots are the EXE's own
+    // (object_trace::executable_verified() bound the image above).
+    const bool restore_okay = restore_requested && okay && observers && retries_ok &&
+                              engine_patch::install_window_open() && restore_sites_install(restore_specs);
     {
         Guard guard;
         restore = {};
+        restore.retries = retries;
         restore_filter_publish();
     }
     restore_enabled.store(restore_okay, std::memory_order_release);
     if (restore_requested || restore_okay) {
-        log("chase_view_restore installed=%u requested=%u sites=%u mutation=source_payload_258_at_0x%lx prefilter=armed_operand_addresses expiry_updates=%u",
-            unsigned(restore_okay), unsigned(restore_requested), restore_site_count,
-            static_cast<unsigned long>(detail::restore_mode_pc), restore_pending_update_expiry);
+        log("chase_view_restore installed=%u requested=%u path=engine sites=1 cancel_sites=%u inject_site=0x%08lx call=0x%08lx method=SelectMode mode=%u observers=%u retries=%u retries_valid=%u expiry_updates=%u due_frames=%u retry_spacing=%u",
+            unsigned(restore_okay), unsigned(restore_requested), restore_site_count - 1,
+            static_cast<unsigned long>(detail::restore_inject_site),
+            static_cast<unsigned long>(detail::restore_script_call), detail::restore_rear_mode, unsigned(observers),
+            retries, unsigned(retries_ok), detail::restore_pending_update_expiry, detail::restore_due_frames,
+            detail::restore_retry_spacing);
         for (unsigned i = 0; i < restore_site_count; ++i)
             log("chase_view_restore_site index=%u site=0x%08lx patched=%u status=%s", i,
                 static_cast<unsigned long>(restore_specs[i].address), unsigned(restore_sites[i].patched_in),
@@ -1027,6 +788,45 @@ bool active_control_cockpit(std::uintptr_t cockpit) noexcept {
     SetLastError(error);
     return result;
 }
+// Chase hook visit (0x00420e06, inside the cockpit update on the game thread).
+// One atomic load when the option is off; otherwise the ticket's arm/due
+// logic under the lock, with the registry walks only on frames that matter.
+// Unseen or partial lifetimes read as generation 0 and never arm.
+void restore_observe_frame(const AppliedFrame& frame) noexcept {
+    if (!restore_enabled.load(std::memory_order_acquire)) return;
+    const DWORD error = GetLastError();
+    const auto start = timing ? now() : 0;
+    detail::RestoreFrame f;
+    f.cockpit = std::uint32_t(frame.cockpit);
+    f.mode = frame.mode;
+    f.connect = frame.connect;
+    f.flags = frame.flags;
+    f.ref = frame.ref;
+    f.view = frame.view;
+    f.sector = frame.sector;
+    f.readable = frame.cockpit != 0 && !(frame.cockpit & 3);
+    RestoreRows rows;
+    {
+        Guard guard;
+        if (const auto* life = state.find(frame.cockpit)) {
+            f.generation = life->complete ? life->generation : 0;
+            f.constructor_caller = life->constructor_caller;
+        }
+        if (f.generation) {
+            EngineProbe probe{frame.cockpit};
+            restore.on_frame(f, probe, restore_epoch.load(std::memory_order_acquire));
+            restore_filter_publish();
+        }
+        rows.take();
+    }
+    rows.emit();
+    if (timing) {
+        const auto end = now();
+        Guard guard;
+        restore_frame_timing.add(start, end);
+    }
+    SetLastError(error);
+}
 void report(std::uint64_t frame) {
     if (!installed()) return;
     detail::Window<Event> out;
@@ -1058,34 +858,40 @@ void report(std::uint64_t frame) {
         }
     if (restore_installed()) {
         detail::RestoreState r;
-        detail::HandlerTiming rt[restore_site_count]{};
+        detail::HandlerTiming rt[restore_site_count]{}, ft{};
         {
             Guard guard;
+            restore_report_frame = frame;
             r = restore;
             for (unsigned i = 0; i < restore_site_count; ++i) {
                 rt[i] = restore_timing[i];
                 restore_timing[i] = {};
             }
+            ft = restore_frame_timing;
+            restore_frame_timing = {};
         }
         if (timing)
-            log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu arm_refusal_reasons=%llu,%llu,%llu,%llu,%llu,%llu,%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu",
-                frame, unsigned(r.armed), unsigned(r.pending), r.arms, r.arm_refusals, r.arm_refusal_reasons[0],
-                r.arm_refusal_reasons[1], r.arm_refusal_reasons[2], r.arm_refusal_reasons[3], r.arm_refusal_reasons[4],
-                r.arm_refusal_reasons[5], r.arm_refusal_reasons[6], r.transfers, r.consumed, r.writes_failed,
-                r.seam_calls, restore_eh_bumps.load(std::memory_order_relaxed),
-                static_cast<unsigned long>(restore_epoch.load(std::memory_order_relaxed)), r.last_refusal, r.cancels[0],
-                r.cancels[1], r.cancels[2], r.cancels[3], r.cancels[4], r.cancels[5], r.cancels[6], r.cancels[7],
-                r.cancels[8], r.cancels[9], r.cancels[10], r.cancels[11], r.cancels[12], r.cancels[13], r.cancels[14],
-                r.refusals[0], r.refusals[1], r.refusals[2], r.refusals[3], r.refusals[4], r.refusals[5], r.refusals[6],
-                r.refusals[7], r.refusals[8], r.refusals[9], r.refusals[10], r.refusals[11], r.refusals[12],
-                r.refusals[13], r.refusals[14], r.refusals[15], r.refusals[16], r.refusals[17], r.refusals[18],
-                r.refusals[19], r.refusals[20], r.refusals[21], r.refusals[22]);
+            log("chase_view_restore_state frame=%llu phase=%u arms=%llu arm_refusals=%llu arm_refusal_reasons=%llu,%llu,%llu,%llu,%llu,%llu,%llu pendings=%llu dues=%llu calls=%llu monitors_captured=%llu injections_skipped=%llu rearm_frames=%llu eh_bumps=%llu epoch=%lu results=%llu,%llu,%llu,%llu,%llu,%llu cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu monitor=0x%08lx attempts=%u",
+                frame, r.phase, r.arms, r.arm_refusals, r.arm_refusal_reasons[0], r.arm_refusal_reasons[1],
+                r.arm_refusal_reasons[2], r.arm_refusal_reasons[3], r.arm_refusal_reasons[4],
+                r.arm_refusal_reasons[5], r.arm_refusal_reasons[6], r.pendings, r.dues, r.calls, r.monitors_captured,
+                r.injections_skipped, r.rearm_frames, restore_eh_bumps.load(std::memory_order_relaxed),
+                static_cast<unsigned long>(restore_epoch.load(std::memory_order_relaxed)), r.results[0],
+                r.results[1], r.results[2], r.results[3], r.results[4], r.results[5], r.cancels[0], r.cancels[1],
+                r.cancels[2], r.cancels[3], r.cancels[4], r.cancels[5], r.cancels[6], r.cancels[7], r.cancels[8],
+                r.cancels[9], r.cancels[10], r.cancels[11], r.cancels[12], r.cancels[13],
+                static_cast<unsigned long>(r.monitor),
+                r.attempts);
         if (timing)
             for (unsigned i = 0; i < restore_site_count; ++i)
                 if (rt[i].calls)
-                    log("chase_view_restore_timing frame=%llu kind=%u calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=handler_after_prefilter native_work=excluded",
+                    log("chase_view_restore_timing frame=%llu kind=%u calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=handler_after_prefilter native_work=%s",
                         frame, i, rt[i].calls, rt[i].samples, rt[i].invalid, as_double(rt[i].ticks) * micros,
-                        as_double(rt[i].max_ticks) * micros);
+                        as_double(rt[i].max_ticks) * micros,
+                        i == restore_inject_kind ? "included_on_call_iterations" : "excluded");
+        if (timing && ft.calls)
+            log("chase_view_restore_timing frame=%llu kind=frame calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=chase_hook_observer native_work=excluded",
+                frame, ft.calls, ft.samples, ft.invalid, as_double(ft.ticks) * micros, as_double(ft.max_ticks) * micros);
     }
     if (!diagnostics_active()) return;
     log("chase_transition_window frame=%llu first=%u last=%u dropped=%llu lifetime_overflow=%llu thread_overflow=%llu origin_refusals_total=%llu suppressed_total=%llu",

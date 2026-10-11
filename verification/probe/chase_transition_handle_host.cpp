@@ -61,16 +61,16 @@ bool field(std::uintptr_t, unsigned offset, std::uint32_t& out) {
 }
 void record(unsigned, std::uintptr_t, std::uint32_t, std::uint32_t = 0, std::uint32_t = 0, std::uint32_t = 0) {}
 // Restore-ticket callouts (X3M_CHASE_VIEW_RESTORE) are inert here; the CPU fixture drives them.
-void restore_on_update(std::uintptr_t, std::uint32_t) {}
-void restore_on_destroy(std::uintptr_t, std::uint32_t, std::uint32_t, std::uint32_t) {}
+std::atomic<bool> restore_enabled{false};
+void restore_on_update() {}
+void restore_on_destroy(std::uintptr_t, std::uint32_t) {}
+void restore_on_complete(std::uintptr_t) {}
+void restore_on_mode_store(std::uint32_t*, std::uint32_t) {}
 void restore_on_load() {}
-struct RestoreSample {
-    bool wanted = false;
+struct RestoreRows {
+    void take() {}
+    void emit() const {}
 };
-RestoreSample restore_take_sample() {
-    return {};
-}
-void restore_emit_sample(const RestoreSample&) {}
 #include "chase_transition_handle_under_test_inc.h"
 }
 }

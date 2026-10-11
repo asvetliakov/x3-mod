@@ -323,3 +323,98 @@ anyway. In run335 the dock transfer was accepted and consumed at `f0c4b` with
 the docking chain refuses with reason 18, the jump path is unchanged, and
 `--chase-view-restore-dock` is an unknown launcher option. Details in
 [chase-view-docking.md](../reverse-engineering/chase-view-docking.md), "Dropped".
+
+## 2026-10-12 chase view restore, engine path (`SelectMode(258)` from the input routine's entry)
+
+Source checkpoint for the ratified design
+[chase-view-restore-engine-state.md](../architecture/chase-view-restore-engine-state.md)
+section 4 with its three amendments (cockpit-replacement trigger, any ship or
+sector; direct by-name `SelectMode(258)` on the monitor object captured from
+the VM frame instead of key replay). The script-seam path (seven sites, the
+`0xf0c4b` payload write, `chase_view_restore_seam`/`transfer_refused` rows)
+is removed. Built on the WSL2 host; the Wine fixtures were built, not run
+(no Wine on this host). Nothing installed.
+
+- Static invariants (Ghidra 12.1.4, read-only on the analysed `X3AP.exe`;
+  queries kept in `verification/results/native-chase-view-restore-2026-10-11/ghidra_impl_queries_*`):
+  `0x0049f570` is cdecl with seven dwords, caller pops `0x1c`; its third
+  argument is the lookup key for `0x0049f1e0` (`EAX = [ESP+0x44]` at
+  `0x0049f59c`; non-negative → static class table `0x004b06f0`, negative →
+  dynamic object table `vm+0x12d0` keyed `~id`), the method is found by a
+  content `strcmp` (`0x004b0740`) over `[desc+0x2c]`/`[desc+0x28]` with the
+  parent chain `[desc+0x14]`, `task+0x3c` receives the resolved context and
+  `task+0x30` the first argument, and `AL = 0` is returned when the object or
+  the method is missing (`0x0049f66c`); the interpreter's `DYNCALL` (opcode
+  0x85) sets `task+0x3c` from the same resolver. The input routine
+  `0x00410100` has exactly two callers (`0x00404363`, `0x00404379` in
+  `0x00404280`, which skips it under `[game+0x4a0] & 1`), a body of 13 ranges
+  with its last byte at `0x0041224f`, and 13 calls to `0x0049f570`; the
+  key-up sequence `0x00410ac3..0x00410b61` is as the design note states
+  (listed, unused after amendment 3). The site prologues match the installed
+  image (`0x00410100` `55 8b ec 83 e4 f0`, `0x0049ea80`, `0x004a0880`,
+  `0x0052f298`).
+- Script programs: `check_selectmode.py` over the two extracted assets
+  (STRG decode and 16-byte CLAS method rows per the loader `0x0049d030`):
+  stock `addon/04.cat` (SHA-256 `ed5786a0…`, the RE note's asset) and Mayhem
+  `addon/07.cat` (`2c3101a8…`) each carry exactly one method row named
+  `SelectMode`, argument count 1, locals 10 (CODE entries `0xf07cc` and
+  `0x106b1f`). Output in `check_selectmode_out.txt`.
+- Site verification: `python3 verification/probe/verify_chase_restore_sites.py
+  --exe /mnt/c/X3/X3AP.exe` → PASS (four exact spans, whole instructions, no
+  relative control, no `.text` branch into a span interior, input routine
+  extent `[0x00410100, 0x00412250)` gap-free, ends in `ret`, no jump leaves it,
+  13 script-call returns inside it); `verify_chase_restore_sites_out.txt`.
+- Host: `cd verification/analysis && PYTHONPATH=../probe:../.. python3 -m
+  unittest test_chase_restore_sites test_chase_transition test_config_schema
+  test_launcher_defaults test_chase_camera test_chase_transition_sites` →
+  103 tests OK. The restore core host (`chase_transition_restore_host.cpp`,
+  212 checks) covers: the acceptance path (arm → free `0x0042d402` →
+  construct `0x0042d397` → monitor captured at the store → two due frames →
+  one call with the captured object → 258 inside the call → `restored`,
+  cleared before the call); same sector with a changed `+0x94` → restored;
+  different sector, same ship → restored; 36 unbound updates then bound (run78
+  shape) → due only after binding; load-chain constructor → `lifetime`; kind
+  7 → `load`; EH/VM epoch → `epoch`; mode left before due and a mode change
+  between due and the entry → `mode_left`; no captured monitor, a monitor
+  captured for another cockpit, unreadable frames → `no_monitor` / nothing
+  captured; `no_effect` retries spaced ≥ 60 updates up to the cap, retries 0;
+  `call_refused`; `other_mode` terminal; stores on other cockpits or threads
+  ignored; 600-update expiry (armed tickets do not expire); controller change
+  → `identity`, unregistered ship and no control wait; deleting destructor,
+  another cockpit's free, second destruction while unbound, bound cockpit
+  destroyed, destruction during the call; the seven arm refusal reasons with
+  once-per-reason samples; pause bit and controlled-object skips; side
+  cockpits never bind.
+- Build: `cmake -S . -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build` → 0 warnings;
+  `python3 verification/probe/check_no_x87.py build/d3d9.dll` → PASS, 925
+  reachable functions, 0 violations. Worktree DLL SHA-256 `7132d807…`
+  (57,785,068 B, evidence only). `python3 tools/config/generate.py --check`
+  clean (262 settings, 112 in the template; `chase_view_restore_retries`
+  added).
+- CPU fixture: `python3 verification/probe/build_chase_transition_cpu.py`
+  builds; the audit of `x3m_chase_transition_enter`, `x3m_chase_restore_enter`
+  and the new `x3m_chase_inject_enter` shows the same boundary inventory
+  (fnsave/frstor/stmxcsr 1, fninit/ldmxcsr 2), `GetLastError` first,
+  `SetLastError` last, no exception-runtime symbols. Not run (no Wine on this
+  host): the scenarios through the emitted stubs (site-I prefilter idle and
+  published paths, the mock `0x0049f570` recording its seven arguments and
+  the x87 CW/MXCSR it was entered with, LastError across the call, outcomes,
+  install/rollback of the four synthetic spans, late window, option off,
+  retries parsing) await the next X3-bottle run:
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_chase_transition_cpu.py`.
+- Not verified: live behaviour (the user's native run with `--chase-view-restore`
+  after one gate jump and one jumpdrive decides `result=restored` versus
+  `no_effect`/`call_refused`/`no_monitor`), `task+0x30` semantics beyond
+  "the first argument" (passed as the monitor id, as the engine's own callers
+  pass their subject object), native Windows execution.
+- Review fixes (2026-10-12, before the candidate): monitor capture keyed by
+  (address, generation) so a reused cockpit address restores (host case 17,
+  reviewer's repro `reuse_repro.cpp` under the results directory); only a
+  negative dynamic object id accepted from the VM frame; epoch checked at the
+  injection entry; a call that never reports back expires as
+  `cancel=call_unwound` (case 18); refusals on other cockpits no longer
+  cancel the arm (case 20); the VM frame is read only past the arm; re-arm
+  frames skip the walks (`rearm_frames`). Restore host 236 checks; the six
+  focused modules rerun, the DLL rebuilt and audited (figures in the report).

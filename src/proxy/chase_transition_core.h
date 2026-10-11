@@ -28,6 +28,7 @@ struct Lifetime {
     std::uint64_t generation = 0;
     std::uint32_t constructor_thread = 0;
     bool complete = false;
+    std::uint32_t constructor_caller = 0; // native return address of the constructor call (0 when unread)
 };
 struct Thread {
     std::uint32_t id = 0;
@@ -53,7 +54,7 @@ struct State {
                 t.token = {};
             }
     }
-    std::uint64_t construct(std::uintptr_t cockpit, std::uint32_t thread) noexcept {
+    std::uint64_t construct(std::uintptr_t cockpit, std::uint32_t thread, std::uint32_t caller = 0) noexcept {
         if (!cockpit || (cockpit & 3) || !thread) return 0;
         revoke(cockpit);
         auto* l = find(cockpit);
@@ -70,7 +71,7 @@ struct State {
         // Counter exhaustion must never wrap and accidentally revive a token.
         *l = {};
         if (next_generation == UINT64_MAX) return 0;
-        *l = {cockpit, ++next_generation, thread, false};
+        *l = {cockpit, ++next_generation, thread, false, caller};
         return l->generation;
     }
     bool complete(std::uintptr_t cockpit, std::uint32_t thread) noexcept {
