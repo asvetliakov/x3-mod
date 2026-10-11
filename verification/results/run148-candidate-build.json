@@ -1,0 +1,13 @@
+{
+  "dll": "scratchpad detached worktree of 3454a1cf, build/d3d9.dll (discarded after install)",
+  "sha256": "f8122de8af7aaa923bf798a8b58862f6093f2da309bff1fbaebc700c3c1309d0",
+  "bytes": 57815199,
+  "commit": "3454a1cf",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix, binutils 2.45.90, clang, cmake 4.2.3 + Ninja, Python 3.14.4 / NumPy 2.3.5); RelWithDebInfo, unstripped",
+  "gates": {"warnings": "0 in src", "x87_audit": "PASS, reachable_functions 925, violations 0", "host_tests": "test_chase_transition test_chase_restore_sites test_chase_camera: 70 OK; CPU fixture rebuilt with the arg0 == 0 assertion (not run: no Wine)", "not_run": "Wine CPU-boundary fixture; native execution is what Run 148 A measures"},
+  "changes_since_run147_source_e6806d1e": ["3454a1cf engine call argument 0 = 0 (completion-callback slot none) instead of the monitor id"],
+  "trigger": "Run 147 A: both sessions crashed at the first transit inside the engine's task-completion code (callback slot -531); verification/results/native-chase-view-restore-crash-2026-10-12/",
+  "engine_bodies_and_fonts": "unchanged",
+  "producer": "main session (Fable 5.1), 2026-10-12T01:32+04:00; sha256sum; stat -c %s"
+}

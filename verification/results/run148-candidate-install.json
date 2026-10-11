@@ -1,0 +1,15 @@
+{
+  "run": 148,
+  "platform": "native Windows 11, C:\\X3",
+  "command": "manual: cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp (the installed DLL before this was the release 1.2.0 rollback made at 01:35 after the Run147 crashes)",
+  "installed_at": "2026-10-12T01:32+04:00",
+  "commit": "3454a1cf",
+  "candidate_record": "verification/results/run148-candidate-build.json",
+  "installed": {"path": "C:\\X3\\d3d9.dll", "sha256": "f8122de8af7aaa923bf798a8b58862f6093f2da309bff1fbaebc700c3c1309d0", "bytes": 57815199, "verified_bytes": true, "method": "cmp"},
+  "previous": {"run": 145, "what": "release 1.2.0 stripped DLL (rolled back to after Run147's crashes)", "sha256": "2b03a78ae1253790a3d446ec3af7ad4c93c43bff7ab3c9b3d669856eb1dc63d4", "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run145"},
+  "kept": ["C:\\X3\\rollback-d3d9\\d3d9.dll.run146", "C:\\X3\\rollback-d3d9\\d3d9.dll.run147 (crashing build, reference only)"],
+  "unchanged": ["X3AP.exe", "x3m.ini (1.2.0 template, defaults)", "engine_bodies.json", "fog-families.bin/json", "x3m-regenerate.exe"],
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "Run 147 A crashed; Run 148 A open",
+  "producer": "main session"
+}
