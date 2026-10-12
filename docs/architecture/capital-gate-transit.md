@@ -652,6 +652,22 @@ Engine facts: [ship-navigation-ai.md](../reverse-engineering/ship-navigation-ai.
   the hand-over, under a path-clearance guard.
 * **Latch diagnostics.** One `ship_gate_capital_latch` row per latch for every capital, traced or not.
 
+**Ratification addendum 2026-10-13 (main session), after the width disassembly**
+([render-node-bounds.md §6](../reverse-engineering/render-node-bounds.md)). The installed capitals are 0.38–0.45 r wide
+(box, median; exact vertices 0.31–0.35 r), not 0.25 r, and a Titan pair sums to 926 m against the 666 m grid pitch. So
+footprint disjointness alone never exempts adjacent lanes for the 1.1 km hulls, while the KC itself parks them there.
+Corrections: (4) **Lane corridor exemption.** Two ships committed to the same gate with *different* lane points are
+(a) exempt whenever each is inside its own corridor: settled (in lane as §16.1 defines it), or joining with a current
+prediction whose e_max and excursion are ≤ 100 m and predicted nose ≤ 8.11° at the plane. The grid pitch is the engine's
+own parking layout; its lateral overlap is vanilla's accepted risk, and the engine's warn (cone and closing speed) stays
+the protection as E suppresses only the lane row for these pairs. (b) follow applies to the **same** lane point only.
+Footprint disjointness at 50 m stays as a second route to (a) (two lanes apart, or small hulls). Everything else (c).
+(5) **Width read.** The hull and every other part are child nodes of the ship's root `[obj+0x70]` (the root carries
+`testbody`); per child, body id `+0x140` > 0, skip `+0x12c & 0x8000000`, model via the body cache hash (never through
+`0x004863c0`), lateral half-extent = max over **all** LOD records of sqrt(e_x² + e_y²) × the node's scale, bounded by
+|e| per axis for rotated parts, maxed with the part's lateral offset. Cache only w per ship (radius generation); the
+model may be freed. Census row per type. The fail-safe w = r stays for any guard failure.
+
 ### 16.0 What Run158 shows
 
 | Finding | Measured | Consequence |
