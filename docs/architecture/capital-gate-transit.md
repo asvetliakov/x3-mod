@@ -615,3 +615,338 @@ and a new `e_verdict` tally):
 | The predictor against the engine's two-axis turn (the model is yaw only; Run156's M1 two-axis rotate took 44.9 s against 29.7 s modelled) | fixture scenarios E–G with both axes; flight `pred_nose_deg` against `cross_nose_deg` |
 | The collision damage law (`"MakeDamage"`) | KC walk of the handler in `x3story.obj` (class 2004) |
 | Whether `SA_StopObject` from a gate warn during the through-slot wait zeroes the speed | moot with the gate branch; the `warn_pre` row would show it |
+
+## Amendment 16 (Run158: capital crowd at one gate)
+
+Design note, 2026-10-12, for ratification by the main session. Run158 (unstripped DLL `011b348c…`, source `aee6d75b`,
+native C:\X3) flew amendment 15. Gate 1 with three capitals worked: all three joined at 100 m/s with 0 s in 0x12. Gate 2
+with five capitals (plus one untraced M1) stalled. Sources **[m]**:
+[`run158-triage/`](../../verification/results/ship-steering/run158-triage/) (`rows_out.txt`, `capital_timeline.txt`,
+`gate2.py`) and three scripts made for this amendment under
+[`capital-crowd/`](../../verification/results/ship-steering/capital-crowd/):
+
+* `latch_states.py` → `latch_states.txt`: when and from which state the join fallback latched.
+* `lane_pairs.py` → `lane_pairs.txt`: the capital-vs-capital detour rows classified by the lane footprint of §16.1.
+* `warn_subjects.py` → `warn_subjects.txt`: the 45 engine evasions by subject, other and verdict.
+
+Engine facts: [ship-navigation-ai.md](../reverse-engineering/ship-navigation-ai.md) §3.1 (the warn test) and §10.2
+(the grid), [render-node-bounds.md](../reverse-engineering/render-node-bounds.md) (per-axis extents of LOD 0). Sections
+0–15 stay as written; this section supersedes them where it says so.
+
+**Ratified 2026-10-12 (main session)** with these corrections. (1) The hull half-width comes from the LOD-0 record (`w_src=lod0`) in production; the inferred 0.25 r is not shipped as a constant, and any read failure or an unconfirmed chain means w = r (today's behaviour). A disassembly confirms the ship node → model → LOD-0 chain and a static read of the installed capital bodies records the real widths before the next flight. (2) The §16.4 small-ship extension of G1 (own target gate on order 4 with the path guard) is implemented with this amendment behind `ship_steering_gates`; the station analogue stays deferred to the docking design. (3) The through-slot model and scenario M as written; the calibrated plant with slip is the only plant. Everything else as recommended.
+
+**Recommendation.**
+
+* **Capital pairs: a lane rule.** Two capitals committed to the same gate are classified by the lateral footprint of
+  their hulls in the plane across the gate axis.
+  * (a) Footprints apart: different lanes. No detour between the two, and site E suppresses the engine's warn for the
+    pair, with no condition on speed or along-axis spacing.
+  * (b) Both in their lanes but the footprints overlap: one is behind the other. The trailing ship holds a following
+    distance outside the engine's warn reach. The leading ship does nothing, and the engine's warn stays live.
+  * (c) Anything else (a crossing): full avoidance, as today.
+* **Join fallback: slow join instead of aiming at A.** When no speed converges within P2's acceptance but the slowest
+  candidate still reaches the crossing plane, the pursuit continues at that speed ("slow join"). It is re-evaluated
+  every second and goes back to join as soon as a candidate passes. The aim-at-A fallback stays only for states the
+  pursuit cannot reach.
+* **Capital gate row.** Extended to every validated capital approach on order 4 (join, slow join or fallback) and to
+  the hand-over, under a path-clearance guard.
+* **Latch diagnostics.** One `ship_gate_capital_latch` row per latch for every capital, traced or not.
+
+### 16.0 What Run158 shows
+
+| Finding | Measured | Consequence |
+| --- | --- | --- |
+| Capital-vs-capital conflicts are our layer's, not the engine's | 1,700 detour rows among the gate-2 capitals (513 with miss < C, minimum miss 1,132 m). Only **1 of the 45** engine evasions is capital vs capital: an M2 against the M1 on order 4. One more involves a capital, a TS against an M2 on order 5 (`warn_subjects.txt`). | The fix is mainly in `excluded()`. E's lane row covers the same pairs so the engine does not take over once our detour is gone. |
+| The grid cannot satisfy the sphere clearance | Lanes 666 m apart, r 755–1,092 m, so r_A + r_B = 1,510–2,184 m > 666 m. | No clearance margin can make adjacent lanes conflict-free while the hulls are modelled as spheres (§16.1). |
+| The detours bent the joins | `0x3a2c2c30` flew 917 of its 1,503 order-4 frames under a detour (749 against `0x8f893d48`, 168 against the M1). Between frames 70694 and 70875 its nose swung from 1.7° to 46.4° while the predictor still forecast 0.1–2.5° at X. It latched at frame 70925 (s −984 m, e 1,023 m, nose 42.5°, 46.7 m/s). `0x8f88cbf0` had 397 order-4 detour rows against the slot-0 M1 from frame 61753; it was untraced until 64828, when it showed up already latched at e 2,762 m ≈ C (2,659 m). `0x8f893d48` had 240 detour rows against three capitals from frame 68994, also untraced until it showed up latched (`latch_states.txt`). | §16.2 |
+| The fallback made the crossing worse, not the predictor's verdict | The slowest candidate (25 m/s) missed P2's acceptance only narrowly: 9.13°/29 m, 9.61°/41 m, and 7.88°/34 m (this one failed on velocity or excursion, which the row does not log). Aiming at A from 1.0–2.8 km lateral then crossed at 99.0°, 30.3° and 111.4°, followed by rotates of 25.1, 8.3 and 30.9 s. | Slow join (§16.2) |
+| Five latches, three traced | `gate_capital_fallback_pred` stepped 0 → 5 in the summary intervals ending at frames 64694, 65985, 67477, 71070 and 71867, all in the gate-2 window. The rows at 64829 and 71912 are trace starts that came after the latch. | Latch row for every capital (§16.2) |
+| The M1 pair was a crossing, and the M1 was on approach | Frame 66141: the warn named M1 `0x3a2b1b30` on **order 4 to the same gate** (`f+0x224` = the gate), d 2,167 m, r 1,022 m. `0xa4c06c10` was then 1,847 m off its lane, nose 77° off F, at 1 m/s (our emergency ramp). | Case (c); no new rule (§16.1) |
+| The KC warp-in queue never waits at five capitals | 20 slots per gate; it only waits when all 20 are taken or stamped (§10.2). | A crowd of up to 20 capitals is normal vanilla traffic. §5 item 2 ("one capital in the window") is not something the KC provides. |
+
+### 16.1 Capital pairs: the lane rule (question 1)
+
+**Committed to the approach.** A capital S is committed to gate Γ when all of the following hold:
+
+* S has a module table entry with a fresh decision (`fresh_window_ms`).
+* Its `GateState` is S's own (object and id match) and holds validated capital grid geometry for Γ:
+  `gate_geometry_capital` passed on the last order-4 decision.
+* `f+0x224 == Γ`, and Γ is class 0x12.
+* S's order is one of:
+  * 4;
+  * 0x1f or 0 within the P2 hand-over (`kHandoverMaxMs`);
+  * 5.
+
+Order 0 with `f+0x224 == 0` (the warn's `SA_StopObject`) and 0x12 are not committed. They are the engine's transient,
+and today's rules apply to them. Both ships of a pair must be committed to the same Γ. Otherwise the pair keeps today's
+rules (§15.1 member row, resolved set, sphere detours).
+
+**Lane of each ship.** All coordinates are in the gate frame: G, R = row 0, U = row 1, F = row 2.
+
+* Lateral position: q_S = ((x_S − G)·R, (x_S − G)·U).
+* On orders 4/0x1f/0, the lane point is ℓ_S = 666 m · (a, b), the grid slot of its validated `given`. It is already
+  computed as `A_local` / `grid_slot_of`.
+* On order 5 the `given` is the gate origin, so the lane is the ship's current lateral position q_S, and its leg runs
+  toward (0, 0).
+* No validated grid point means the ship is not committed. There is no guessed lane.
+
+**Hull reach across the axis.** For a hull of half-length ≤ r and lateral half-width w, with its nose θ off F, the
+projection onto the R–U plane lies inside a disc of radius ρ(θ) = min(r, w + r sin θ) around the centre's projection.
+This is exact for a box of half-dimensions (w, w, r) and conservative for any hull inside it. **No note gives a
+capital's width.** The "hull m" column of [game-scale §4](../reverse-engineering/game-scale-and-ship-classes.md) is
+the largest part's L∞ radius, i.e. the half-length, and equals r for every installed capital. The width is therefore:
+
+* `w_src=lod0`: the LOD-0 record's per-axis half-extents (`+0x20/+0x24/+0x28`, scaled by the node's `+0x70` and
+  `+0x80..+0x88`; [render-node-bounds.md](../reverse-engineering/render-node-bounds.md) §1). The lateral half-width is
+  max(e_x, e_y), maxed with every child part's |offset_xy| + child radius from the existing part walk. The read path
+  ship → node → model → LOD 0 must be confirmed first (§16.6).
+* `w_src=inferred`: w = 0.25 r (a 1:4 beam-to-length hull). This is a stated assumption **[i]**, used until the LOD-0
+  read validates.
+* Any read failure: w = r. Adjacent lanes are then never exempt, which is today's behaviour.
+
+**Footprint Φ_S** (2-D, in the R–U plane):
+
+| State of S | Φ_S |
+| --- | --- |
+| **In lane**: committed on 4 (join mode) or the 0x1f/0 hand-over, \|q_S − ℓ_S\| ≤ 100 m, θ_S ≤ 8.11° | disc(ℓ_S, \|q_S − ℓ_S\| + ρ(θ_S) + 25 m). The 25 m covers one re-classification interval (≤ 250 ms) of lateral motion at ≤ 100 m/s × sin 8.11° **[i]** |
+| **Joining**: order 4 in join or slow-join mode, with a prediction that reaches the crossing plane | The lateral segment from ℓ_S − over·n to ℓ_S + e_max·n, inflated by r_S. n is the unit lateral direction from ℓ_S to q_S. e_max and over are the predicted path's largest offset and its excursion past the line; the predictor already tracks the excursion, and e_max costs one compare per step. The attitude along the turn is not bounded, so the sphere is used. |
+| **Fallback (aim at A), order 5, or no prediction yet** | The segment from q_S to its destination's lateral point (ℓ_S for A; (0, 0) for order 5), inflated by r_S |
+
+**Verdict per pair (A, B), recomputed at every decision of either ship:**
+
+* **(a) Exempt:** dist(Φ_A, Φ_B) ≥ 50 m. Why this is enough: if the projections of two bodies onto a plane are
+  disjoint, the bodies are disjoint, whatever their positions along F. The footprints contain those projections for
+  as long as the classification holds, and it is recomputed within 250 ms of any change. Effects:
+  * `excluded()` drops the pair in both directions (no detour);
+  * site E returns `suppress_lane` for (A, B) and (B, A);
+  * there is no condition on speed or along-axis spacing.
+* **(b) Follow:** both in lane and the footprints overlap. That is the same lane, or adjacent lanes whose hulls are too
+  wide for 666 m.
+  * Neither side detours sideways (`excluded()` true).
+  * The trailing ship T (the smaller (x − G)·F) gets a speed cap at site B (lower-of with the join speed):
+    v_T ≤ max(0, v_L·F) + √(2 a_T max(0, Δs − D)).
+  * Δs = (x_L − x_T)·F. D is the engine's warn reach for the pair, b + clamp(r_T + r_L/10, 30 m, 1 km) + 2 (r_T + r_L)
+    (§3.1, with b = v_close²/2a), plus 100 m. That is ≈ 5.3 km for an M2/M1 pair at matched speed **[i]**.
+  * The leader does nothing. E does **not** suppress the pair, so the engine's warn remains the protection. Holding
+    outside its reach is what keeps it from firing.
+* **(c) Avoid:** anything else, for example one ship joining across the other's lane, or a fallback or order-5 leg
+  whose segment crosses the other's footprint. Today's behaviour applies: sphere detours, the resolved-set branch at E,
+  the emergency ramp, and the engine's warn.
+
+**Adjacent lanes, in numbers** (the w_A + w_B that still gives (a) with a 50 m margin; arithmetic **[i]**):
+
+| Pair (r m) | settled, e 20 m, θ 2° (measured settled joins: e 0–17 m, 0.3–1.4°) | e 50 m, θ 4° | at the in-lane limit, e 100 m, θ 8.11° |
+| --- | --- | --- | --- |
+| M2 1,092 + M2 1,092 | ≤ 500 m (w ≤ 0.23 r) | ≤ 364 m (0.17 r) | ≤ 108 m (0.05 r) |
+| M2 1,092 + M1 1,022 | ≤ 502 m (0.24 r) | ≤ 369 m (0.17 r) | ≤ 118 m |
+| M2 755 + M2 755 | ≤ 523 m (0.35 r) | ≤ 411 m (0.27 r) | ≤ 203 m |
+
+So with the inferred w = 0.25 r, the 755 m M2s are exempt in adjacent lanes once settled. The 1.1 km pairs fall to (b)
+in adjacent lanes and to (a) two lanes apart. The real widths decide how much of the crowd runs in parallel.
+
+**Run158 replayed against the footprints** (`lane_pairs.txt`):
+
+* Only 2 of the 1,700 detour rows have both sides traced. Both have the own ship off its lane, and the footprint gap
+  is 1,237–1,442 m, so both would be (a).
+* 1,165 rows have one side traced and the other side's lane known. With the traced side's footprint taken as its
+  sphere-swept segment to its lane, and the other side assumed in its lane, **761 of 1,165 (65 %) would be (a)** at
+  w = 0.25 r. At 0.15 r the figure is 776, at 0.35 r it is 497 **[m positions, i widths]**. This is an upper bound:
+  364 of the 761 are the in-lane slot-0 M1 against `0x8f88cbf0` assumed in its lane, which it was not by frame 64829.
+  The rest are real crossings and keep avoidance.
+* 533 rows are against the untraced M1 or between two untraced ships and cannot be classified.
+
+**Residual risk.**
+
+* Case (a) is exact for box hulls inside (w, w, r). The exposure is a real hull wider than the w used. With `w_src=lod0`
+  that is limited to geometry outside the LOD-0 box, which is none for the root body and bounded by the child spheres.
+  With `w_src=inferred` it is unknown **[i]**.
+* A contact between in-lane neighbours would be a graze at up to the along-axis speed difference (≤ 100 m/s). The
+  contact impulse is elastic in the relative velocity
+  ([ship-movement.md](../reverse-engineering/ship-movement.md) §13.2). The damage law behind `"MakeDamage"` is not
+  decoded **[i]**.
+* Vanilla parks capitals of the same size side by side at adjacent grid points for the through-slot wait. That relies
+  on the same widths, but at zero relative speed.
+* **Fail-safe:** any read failure, a stale state, an identity mismatch or an uncommitted ship drops the pair to (c).
+  That is today's behaviour: our detour and the engine's warn, as in Run158.
+
+**Capital on approach vs a capital not on approach** (Run158's 31 s 0x12). The premise was wrong: the M1 was committed
+(order 4 to the same gate). `0xa4c06c10` was 1.85 km off its lane with the nose 77° off F, which is case (c). The
+engine's warn at a 2,167 m centre distance between 1,092 m and 1,022 m spheres (a 53 m gap) is protection, not clunk.
+**No new rule.** The lane rule removes the upstream cause (joiners pushed off-lane by in-lane neighbours). A capital not
+committed (escort on 0x14/0x15, 0x12, order 0 without a target) keeps §15.1's member row and today's resolved-set rule.
+
+### 16.2 The join fallback in a crowd (question 2)
+
+**Why it latched.** The predictor simulates the pursuit alone, without obstacles. The detours did not bend the
+*predicted* path. They bent the *actual* path, and so the state handed to the predictor each second:
+
+* `0x3a2c2c30` was forecast to converge at every evaluation up to frame 70892, while its nose was swung to 46° by
+  detours against its slot neighbour.
+* `0x8f88cbf0` was pushed out to e ≈ C beside the slot-0 M1 **[i]**: untraced before 64828, but 397 detour rows.
+
+The window geometry is the second factor, not the first. The latches came at s = −0.66 to −0.93 r_gate only because
+the bent state had run out of room there. Both untraced latches were found displaced **upward**, not sideways:
+
+* `0x8f88cbf0` at frame 64829: 54 m across, 2,692 m up from the slot-0 axis; its own lane is (666, 0).
+* `0x8f893d48` at frame 71912: 3 m across, 1,288 m up; its own lane is also (666, 0).
+
+That is the capital detour's vertical family (world up, `lateral_axis`) **[m positions, i cause]**. If they were in
+lane when the detours began (unknown: untraced), the lane rule makes those pairs (a) or (b) and nothing pushes them
+out. Once a joiner is off its lane, its sphere-swept footprint keeps it in (c) against an adjacent lane until it is
+back in lane (§16.8: the tighter joiner reach).
+
+**Slow join (replaces the latched aim-at-A as the first fallback).**
+
+* At an evaluation where no candidate grades ≥ 1, the mode becomes `slow_join` instead of `fallback`, provided some
+  candidate's prediction reaches the crossing plane (x ≥ 0) with excursion ≤ 100 m and predicted nose ≤ 20°.
+* The written speed is the candidate with the smallest predicted nose error, normally 25 m/s.
+* The carrot pursuit continues, P2 takes the vanilla stop (`why_not=mode`), and 0x1f only rotates the residual above
+  8.11°.
+* For Run158's three latches the residual was about 1–1.5° at 25 m/s: 9.13/9.61° predicted. That is ≈ 3–3.5 s of
+  rotate at a = 0.5°/s² (t = 2√(Δθ/a), §0) against the measured 25.1/30.9 s **[i]**. A failure on velocity alone
+  (7.88°) needs no rotate.
+* The aim-at-A fallback stays for `past_x` and for states where no candidate reaches the plane.
+
+**Re-evaluation and un-latch.**
+
+* Ships in `slow_join` and in the aim-at-A fallback stay in the `JoinRegistry`. Today `fell_back` removes them; there
+  are 8 slots, and the peak was 3 **[m]**.
+* They are evaluated at 1 Hz like join ships.
+* Any candidate at grade ≥ 1 returns the ship to `join` at that speed (counter `gate_capital_unlatch`). `past_x` is
+  final, because the pursuit needs s < 0.
+* Cost: as today, one capital per frame. `join_eval_us_max` was 46 µs **[m]** (bound 81 µs).
+
+**Diagnostics.** `ship_gate_capital_latch`, `--debug` tier, written for **every** capital at each `pred_none` /
+`slow_join` / `unlatch` transition, not only for traced ships. It carries:
+
+* the predictor's input: s, e, ψ, ψ_u, ω, v, W, α, a_lin, r_gate;
+* per candidate: grade, nose, vel, |e|, over, e_max, reached_plane;
+* A's current detour obstacle (`ShipAvoid.obstacle`) and its lane verdicts against every committed neighbour.
+
+Run158 lost the state of three of five latches to the trace window. The 7.88° case cannot be explained without the
+velocity and excursion fields.
+
+### 16.3 The gate row for any validated capital approach (question 3)
+
+`site_e_verdict`'s capital gate branch becomes `suppress_gate` when all of the following hold:
+
+* B == A's `f+0x224`, B is class 0x12, and `GateState.gate == B`.
+* The state is A's own (object and id match) and holds validated capital geometry for this approach.
+* `capital_policy` is on.
+* Either:
+  * A is on order 4 with a fresh decision, in join, `slow_join` or fallback mode, and inside the window extended past
+    X (s ≥ −6 r_gate along F from X; mode `out` passes); or
+  * A is on 0x1f/0 within the hand-over after P2, kept or not.
+* **Path guard:** dist(G, segment[x_A, P_A]) ≥ r_gate + r_A + 0.25 r_gate. P_A is A's grid point, which lies
+  2 (r_gate + r_A) in front of G. A ship heading to it from in front of the grid therefore keeps ≥ 1.4 km of sphere
+  clearance from the gate. A ship that has been pushed between the grid and the gate (`0x8f893d48` reached
+  dG 2,346 m) gets the row only when its path back to P still clears the gate.
+
+Order 5 needs no row: the KC sets `m45 = 0xA0001` for the gate leg (§10.1).
+
+Run158: the three capital-vs-gate evasions (all `0x8f893d48` in fallback, at d 5,160, 3,675 and 2,346 m; 82 s of
+0x12) pass the guard. They become `suppress_gate` **[i]**.
+
+### 16.4 The remaining evasions (question 4)
+
+The brief's premise needs one correction: **41 of the 45 subjects are small ships** (M4/M6/TS/TP), and A is small in
+all of those pairs. The capital branch never ran for them. The "other's order 0" in 25 entries is the order word of
+17 gates, 6 stations and 2 ships. Capitals had 0 evasions against small ships, and every one of the 8,544
+small-pair passes was `b_dock_leg` **[m]**. The hand-over frame is covered: with amendment 15 a small B on order 0 gets
+`suppress_small` (there is no `order_steered` test any more).
+
+| Group (`warn_subjects.txt`) | n | Rule |
+| --- | --- | --- |
+| Capital vs its own target gate, in fallback | 3 | §16.3 |
+| Capital vs committed M1, crossing | 1 | (c): keep |
+| Small ship vs its own target gate on order 4, outside the G1 lead window | 13 (one `pass_not_fresh`), at d 1,440–3,051 m | Extend G1 (`suppress_gate_small`) from "inside the lead-in window" to "order 4 to its own target gate, with dist(G, segment[x, A_small]) ≥ r_gate + r_B + 0.1 r_gate". A_small sits 1.28 r_gate from G, so paths from in front clear it; a ship behind or beside the ring keeps the engine's warn. This belongs to the small-ship gate policy (`ship_steering_gates`), not this amendment's capital key. |
+| Small ship vs a gate that is not its target | 1 | keep |
+| TP vs its own target station on order 4 (d 3.7–5.5 km inside a 4.6 km sphere) | 6 | Same own-target shape, against the station's part model: suppress only when the path to the order's point clears every part sphere, and pass on `part_fallback`. Docking design, deferred. |
+| Small vs small (M4 vs M4 on 0x12 ×9, M4 vs TS on 0x15 ×3, M6 pairs ×7, M4 vs M4 on order 0 ×1) | 20 | keep: vanilla protection; not a capital-crowd item |
+| TS vs M2 on order 5 | 1 | keep (G4: pairs with B on order 5 stay with the engine) |
+
+### 16.5 Verification (question 5)
+
+**Host fixture, scenario M (the brief's "H"; letters H–L are taken by the scenario audit).** It runs in
+`ship_steering_host.cpp --capital` with the calibrated plant with slip, the engine warn model (`0x0044dd90`: cone and
+close range) for every pair, a box hull (w, w, r) per ship for a contact check, and a through-slot model with the
+engine's rules (one at a time, the same-direction exemption).
+
+Setup:
+
+* Five capitals (M2 1,092, M1 1,022, M2 755 ×2, M2 1,092) on slots 0, 1, 2, 3, 4 (a = 0, 1, −1, 2, −2), arriving
+  within 60 s.
+* Starts:
+  * two on axis at 5 r;
+  * one 2.7 km lateral on the far side of slot 1 (Run158's `0x8f88cbf0`);
+  * one joining across a neighbour's lane;
+  * one 1.4 km lateral at s −1.0 km (`0x8f893d48`).
+* Variants: w = 0.15 r, 0.25 r, 0.45 r (the last forces (b) in adjacent lanes), and `w_src` unreadable (w = r).
+
+| Assertion | Target |
+| --- | --- |
+| Capital-vs-capital `ship_avoid_detour` rows between (a) pairs | 0 |
+| Engine warn flag 0x1000 set for an (a) pair | 0; E's verdict `suppress_lane` on every call |
+| (b) pairs | no sideways detour; Δs ≥ D on every frame after the cap engages; no warn for the pair; the leader's speed untouched |
+| (c) pairs | detours present; behaviour equal to amendment 15 |
+| Contact (box hulls) | min hull distance > 0 in every variant; in w = r, verdicts equal to amendment 15 |
+| Joins | every capital crosses in `join` (≤ 8.11°, kept) or `slow_join` (P2 stop, rotate ≤ 5 s); aim-at-A fallback 0 in the nominal variant |
+| Un-latch | a variant where a neighbour leaves the joiner's path: at least one `slow_join → join` transition |
+| Gate row | `suppress_gate` on join, `slow_join` and fallback approaches; no gate warn; the path guard passes a ship placed between the grid and the gate on an inward path |
+| Launches | order 5 one at a time by the through-slot model; no capital on order 5 while the previous holder has not warped |
+| Cost | lane verdict ≤ 2 µs per decision (host); E's capital-pair branch unchanged in order of magnitude |
+
+Existing scenarios A–G, G1 and K are re-run.
+
+**Flight targets** (the next run with a capital crowd at one gate). These need new rows:
+
+* `ship_capital_lane`: pair, verdict a/b/c, gap_m, w_A, w_B, w_src, e, θ, Δs, v_cap; at 1 Hz per traced pair and on
+  every verdict change.
+* `ship_gate_capital_latch` (§16.2).
+* Counters `lane_exempt`, `lane_follow`, `lane_cross`, `e_suppressed_lane`, `gate_capital_slow_join`,
+  `gate_capital_unlatch`.
+
+| Phase | Target (Run158 gate 2 in brackets) |
+| --- | --- |
+| capital-vs-capital detours | 0 rows between (a) pairs; the remaining ones carry verdict (c) (1,700 rows) |
+| engine evasions with a capital subject | 0 against the target gate (3) and against (a) pairs; any against a (c) pair carries a `ship_capital_lane` row with verdict c |
+| joins | crossings: aim-at-A fallbacks ≤ 1 per gate (3 of 5 traced; 5 latches in total); rotate after `slow_join` ≤ 5 s (25.1 / 8.3 / 30.9 s) |
+| crowd | unresolved episodes in the gate window ≤ 2× the gate-1 rate per capital (93 vs 16); emergencies (621 vs 144) likewise |
+| widths | `w_src=lod0` on every capital row once the read lands; the census of (class, r, w) logged once per type |
+
+### 16.6 Cost, option-off, native Windows
+
+* **Lane board.** A fixed table per gate (8 gates × 20 entries), filled from the `GateState`s at each capital
+  decision: lane point, footprint segment and radius, in-lane bit, s, v·F, w. One pair verdict is one 2-D
+  segment–segment distance, about 30 flops. `excluded()` looks the pair up only for a capital s and a capital-coded o
+  (≤ 20 compares). E does one lookup per capital–capital warn-test call. The predictor adds one compare per step
+  (e_max). Hot-path cost is well under 1 µs per capital decision **[i]**; the steering handler's p99 (6.4 µs median)
+  should not move.
+* **Width read.** Once per capital per lifetime (cached with the radius generation, like the station parts).
+* **Option-off.** The lane rule, slow join, un-latch and the extended gate row sit behind
+  `ship_steering_gates_capital`; off means amendment 15. The small-ship G1 extension of §16.4 sits behind
+  `ship_steering_gates`.
+* **Native Windows.** In-process x86 code on game-memory contracts the module already validates (the gate state, the
+  table, the node walk), built with SSE2. No Wine, D3D or window dependence. Run158 itself was native.
+
+### 16.7 Alternatives considered (amendment 16)
+
+| Alternative | Why it loses |
+| --- | --- |
+| The brief's convoy guard: both on approach, parallel axes, along-axis separation, both speeds bounded | It requires matched speeds or flying abreast, which rules out the case that matters: a 100 m/s join passing a neighbour waiting at its point. It also proves nothing about a joiner. The lateral footprint gives the same proof without any along-axis condition. |
+| Bounding-sphere clearance with a smaller margin for capital pairs | No margin works: r_A + r_B = 1.5–2.2 km is greater than the 666 m lane pitch, and the minimum measured miss was 1,132 m. Any sphere rule keeps detouring at the grid. |
+| Treat other capitals like small ships (ignore them) | Removes protection for 1 km hulls crossing lanes, which is the real case (c), and the M1 pair at a 53 m sphere gap. |
+| Un-latch the aim-at-A fallback only (the brief's option) | Aiming at A from 1–2.8 km lateral worsens the state every second: `0x8f88cbf0`'s nose went from 7° to 99°. Nothing ever converges again; it measures as the same 25–31 s rotate. |
+| KC queue patch: one capital in the window per gate (§5 item 2) | It serialises a five-capital crowd into about 5 × 100 s **[i]**. It is a bytecode task with its own risk, and the measured stall is our layer's detours, not the engine's queue. It stays compatible if wanted later. |
+| A fifth predictor candidate at 10–15 m/s | It would turn the 9.1–9.6° near misses into kept crossings, but at 10 m/s the 1024-step bound covers only 2.6 km and the stop is the same. Slow join with a 1–1.5° rotate costs ≈ 3 s **[i]** without a new constant. |
+
+### 16.8 Unknown, and what settles it
+
+| Unknown | Settles it |
+| --- | --- |
+| Capital hull half-widths (the whole (a)/(b) split in adjacent lanes depends on them) | Static: extend `scene_radius.py` to the per-axis LOD-0 extents of the installed capital bodies ([body-format-bob1.md](../reverse-engineering/body-format-bob1.md); no launch). Runtime: confirm the chain ship node `+0x1c` → model → `+0x0c`[0] → LOD record `+0x20..+0x28` by disassembly of `0x004c6c56..0x004c6d5d`, then one census row per type |
+| Why the 7.88° candidate failed (velocity or excursion) | the `ship_gate_capital_latch` row (§16.2) |
+| Which lanes `0x8f88cbf0` and `0x8f893d48` were in when they latched, and where the M1 was | the latch row and `ship_capital_lane`; trace slots 5–6 for a crowd run |
+| Whether the joining footprint (sphere-swept segment) is too conservative to exempt joiners next to an in-lane neighbour | `ship_capital_lane` gap rows; if so, bound the joiner's reach by the predicted ψ along the path (e(t) − r sin ψ(t) − w cos ψ(t), one more min per step) |
+| The collision damage law | KC walk of `"MakeDamage"` (class 2004), as in §15.8 |
+| Whether vanilla busy gates show contacts between parked neighbours (evidence for the widths) | a contact counter on the narrow phase for capital pairs at the grid (diagnostic build) |

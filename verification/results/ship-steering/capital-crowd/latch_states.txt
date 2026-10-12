@@ -1,0 +1,26 @@
+interval end 12927 gate_capital_join 0 -> 1
+interval end 17068 gate_capital_join 1 -> 2
+interval end 18546 gate_capital_join 2 -> 3
+interval end 63502 gate_capital_join 3 -> 4
+interval end 64024 gate_capital_join 4 -> 5
+interval end 64694 gate_capital_fallback_pred 0 -> 1
+interval end 65740 gate_capital_join 5 -> 6
+interval end 65862 gate_capital_join 6 -> 7
+interval end 65985 gate_capital_fallback_pred 1 -> 2
+interval end 67317 gate_capital_join 7 -> 8
+interval end 67477 gate_capital_fallback_pred 2 -> 3
+interval end 67477 gate_capital_join 8 -> 9
+interval end 68868 gate_capital_join 9 -> 10
+interval end 69399 gate_capital_join 10 -> 11
+interval end 71070 gate_capital_fallback_pred 3 -> 4
+interval end 71867 gate_capital_fallback_pred 4 -> 5
+== 0x8f88cbf0 first order-4 cap-vs-cap detour frame 61753 {'0x8f43c4a8': 397}
+  first join row: frame=64829 mode=fallback reason=pred_none s_m=-733 e_m=2762 nose_deg=7.37 vel_deg=4.68 v_ms=68.9 v_cmd=25 pred_nose_deg=9.13 pred_e_m=29
+  first fallback row: frame=64829 mode=fallback reason=pred_none s_m=-733 e_m=2762 nose_deg=7.37 vel_deg=4.68 v_ms=68.9 v_cmd=25 pred_nose_deg=9.13 pred_e_m=29
+== 0x3a2c2c30 first order-4 cap-vs-cap detour frame 69664 {'0x8f893d48': 46, '0x3a2b1b30': 15}
+  first join row: frame=69753 mode=join reason=- s_m=-3636 e_m=2537 nose_deg=53.60 vel_deg=57.20 v_ms=49.7 v_cmd=100 pred_nose_deg=0.29 pred_e_m=3
+  last join-mode row: frame=70925 mode=join reason=- s_m=-984 e_m=1023 nose_deg=42.49 vel_deg=43.50 v_ms=46.7 v_cmd=25 pred_nose_deg=6.35 pred_e_m=28
+  first fallback row: frame=70925 mode=fallback reason=pred_none s_m=-984 e_m=1023 nose_deg=42.49 vel_deg=43.50 v_ms=46.7 v_cmd=25 pred_nose_deg=7.88 pred_e_m=34
+== 0x8f893d48 first order-4 cap-vs-cap detour frame 68994 {'0xa4c06c10': 44, '0x3a2c2c30': 60, '0x3a2b1b30': 136}
+  first join row: frame=71912 mode=fallback reason=pred_none s_m=-1023 e_m=1449 nose_deg=19.63 vel_deg=29.13 v_ms=45.9 v_cmd=25 pred_nose_deg=9.61 pred_e_m=41
+  first fallback row: frame=71912 mode=fallback reason=pred_none s_m=-1023 e_m=1449 nose_deg=19.63 vel_deg=29.13 v_ms=45.9 v_cmd=25 pred_nose_deg=9.61 pred_e_m=41

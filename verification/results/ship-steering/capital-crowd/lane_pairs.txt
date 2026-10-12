@@ -1,0 +1,18 @@
+cap-vs-cap detour rows in window 1700 {'one traced: traced side off lane': 1151, 'neither traced': 396, 'one traced: traced side in lane': 151, 'both traced': 2, '  of which the other is the untraced M1 (lane unknown)': 137}
+both traced: (own in lane, obstacle in lane) -> {(False, True): 2}
+lateral centre distance m n=2 min=2693 med=2694 max=2694
+one traced, other assumed in lane: footprint gap m, w = 0.15 r: n=1165 min=-617 med=223 max=4097  exempt (gap >= 50 m): 776
+one traced, other assumed in lane: footprint gap m, w = 0.25 r: n=1165 min=-692 med=131 max=3988  exempt (gap >= 50 m): 761
+one traced, other assumed in lane: footprint gap m, w = 0.35 r: n=1165 min=-768 med=-2 max=3879  exempt (gap >= 50 m): 497
+footprint gap m, w = 0.15 r: n=2 min=1441 med=1442 max=1442  exempt (gap >= 50 m): 2
+footprint gap m, w = 0.25 r: n=2 min=1339 med=1340 max=1340  exempt (gap >= 50 m): 2
+footprint gap m, w = 0.35 r: n=2 min=1237 med=1238 max=1238  exempt (gap >= 50 m): 2
+one traced (traced, other, exempt at w = 0.25 r):
+   0x3a2c2c30 0x8f893d48 False 55
+   0x3a2c2c30 0x8f893d48 True 33
+   0x8f43c4a8 0x8f88cbf0 False 63
+   0x8f43c4a8 0x8f88cbf0 True 364
+   0x8f88cbf0 0x8f43c4a8 True 6
+   0xa4c06c10 0x3a2c2c30 True 316
+   0xa4c06c10 0x8f893d48 False 286
+   0xa4c06c10 0x8f893d48 True 42

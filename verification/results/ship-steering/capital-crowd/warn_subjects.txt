@@ -1,0 +1,39 @@
+9 M4 subj_prev_order=0x4 other=7/M4 other_order=0x12 other_is_prev_target=0 pass_not_resolved
+8 M6 subj_prev_order=0x4 other=18/- other_order=0x0 other_is_prev_target=1 pass_not_resolved
+6 TP subj_prev_order=0x4 other=5/- other_order=0x0 other_is_prev_target=1 pass_not_resolved
+4 TS subj_prev_order=0x4 other=18/- other_order=0x0 other_is_prev_target=1 pass_not_resolved
+3 M6 subj_prev_order=0x4 other=7/M6 other_order=0x5 other_is_prev_target=0 pass_not_resolved
+3 M4 subj_prev_order=0x4 other=7/TS other_order=0x15 other_is_prev_target=0 pass_not_resolved
+3 M2 subj_prev_order=0x4 other=18/- other_order=0x0 other_is_prev_target=1 pass_not_resolved
+2 M6 subj_prev_order=0x4 other=7/M6 other_order=0x12 other_is_prev_target=0 pass_not_resolved
+1 M6 subj_prev_order=0x14 other=18/- other_order=0x0 other_is_prev_target=0 pass_not_resolved
+1 M6 subj_prev_order=0x4 other=7/M6 other_order=0x4 other_is_prev_target=0 pass_not_resolved
+1 M4 subj_prev_order=0x4 other=18/- other_order=0x0 other_is_prev_target=1 pass_not_fresh
+1 M2 subj_prev_order=0x4 other=7/M1 other_order=0x4 other_is_prev_target=0 pass_not_member
+1 TS subj_prev_order=0x4 other=7/M2 other_order=0x5 other_is_prev_target=0 pass_not_resolved
+1 M4 subj_prev_order=0x4 other=7/M4 other_order=0x0 other_is_prev_target=0 pass_not_resolved
+1 M6 subj_prev_order=0x4 other=7/M6 other_order=0x0 other_is_prev_target=0 pass_not_resolved
+gate/station warns: subject class, other class, other is its target, d_m, r_other_m
+  M2 18 tgt=1 d=2346 r=1105
+  M2 18 tgt=1 d=3675 r=1105
+  M2 18 tgt=1 d=5160 r=1105
+  M4 18 tgt=1 d=2536 r=1105
+  M6 18 tgt=0 d=2867 r=1105
+  M6 18 tgt=1 d=1440 r=1105
+  M6 18 tgt=1 d=1710 r=1105
+  M6 18 tgt=1 d=1720 r=1105
+  M6 18 tgt=1 d=1849 r=1105
+  M6 18 tgt=1 d=1880 r=1105
+  M6 18 tgt=1 d=2128 r=1105
+  M6 18 tgt=1 d=2648 r=1105
+  M6 18 tgt=1 d=2731 r=1105
+  TP 5 tgt=1 d=3686 r=4610
+  TP 5 tgt=1 d=4167 r=4610
+  TP 5 tgt=1 d=4779 r=4610
+  TP 5 tgt=1 d=5239 r=4610
+  TP 5 tgt=1 d=5242 r=4610
+  TP 5 tgt=1 d=5454 r=4610
+  TS 18 tgt=1 d=1804 r=1105
+  TS 18 tgt=1 d=1860 r=1105
+  TS 18 tgt=1 d=2835 r=1105
+  TS 18 tgt=1 d=3051 r=1105
