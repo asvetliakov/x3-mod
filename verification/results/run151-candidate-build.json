@@ -1,0 +1,13 @@
+{
+  "dll": "detached worktree /tmp/x3-run151-candidate of 0062b402, build/d3d9.dll (clean configure + build, 141 steps)",
+  "sha256": "a91efa2438aa8aad7b26824e6448fe242c29e06c8c84be717f80c92ec6554ba3",
+  "bytes": 58094203,
+  "commit": "0062b402",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix, cmake + Ninja); RelWithDebInfo, unstripped",
+  "gates": {"warnings": "0 (build.log)", "x87_audit": "PASS, reachable_functions 939, violations 0", "site_verifier": "verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe: PASS, 16 checks", "host_tests": "test_ship_steering test_ship_steering_sites test_config_schema test_launcher_defaults: 37 OK (host fixture 2203/2203 inside)", "not_run": "Wine fixtures (no Wine on this host); native execution is what Run 151 A/B measure"},
+  "changes_since_run150_release_1.2.1": ["581481fa three RE notes (ship movement, navigation AI, game scale)", "f579ce0e design: ship steering and avoidance (ratified, amendments 1-5)", "c245ca1d design: sector path planning verdict (defer)", "53b07ac6 step 1: smooth steering law behind ship_steering (sites 0x0044ccc0/0x0044c620/0x0044c970/0x004593dd)", "0062b402 step 2: predictive avoidance behind ship_avoidance (+ site 0x0044dd90)"],
+  "trigger": "user request 2026-10-12: smooth modern steering and predictive avoidance for autopilot and AI ships",
+  "engine_bodies_and_fonts": "unchanged",
+  "producer": "main session (Fable 5.1), 2026-10-12; sha256sum; stat -c %s"
+}
