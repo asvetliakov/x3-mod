@@ -22,12 +22,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <initializer_list>
+#include <limits>
 #include <cstring>
 
 namespace core = x3m::ship_steering::core;
 namespace av = x3m::ship_avoidance::core;
 static unsigned checks = 0, failures = 0;
 static bool g_amend12 = true; // amendment 12 (the port hold and the smooth stops) in every Model; the A/B checks clear it
+static bool g_slip = true;    // the integrator's slip term (section 13.2); --capital-noslip clears it to report what slip does to the capital scenarios
 static void check(bool yes, const char* why) {
     ++checks;
     if (!yes) {
@@ -257,6 +259,8 @@ struct Model {
     // step 3: the gate approach (the DLL's P1 policy for order 4 to a gate); last_aim_P = the point the law last steered at (m);
     // step 4 / Run152: the gate frame for the order-5 cornering policy (gate_dock_mode) and its ring test
     bool gate_mode, gate_lead_used, gate_dock_mode, gate_dock_blocked;
+    bool capital_gate_leg;  // amendment 13: a capital on its gate legs (orders 4/5 to a gate): no site-B write outside the capital window
+    bool capital_window;    // the last steer_call's point came from the capital lead-in (inside its 6 r window): the write in both directions
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
     // section 13: order 5 to a port (the engine's port-roll match after the leaf, 0x0045474a..0x004547d6), the port's roll
@@ -321,6 +325,7 @@ struct Model {
         last_obstacle = last_detour_obstacle = 0;
         last_av = av::Result{};
         gate_mode = gate_lead_used = gate_dock_mode = gate_dock_blocked = false;
+        capital_gate_leg = capital_window = false;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
         gate_G[0] = gate_G[1] = gate_G[2] = 0;
@@ -444,17 +449,27 @@ struct Model {
         in.v_ref = float(v_ref_ms);
         in.arrival_ramp = arrival_ramp;
         // the DLL's P1: a non-capital ship on order 4 to a gate: no arrival ramp, the lead-in point, the gate speed at site B;
-        // a capital (amendment 8): the lead-in toward its grid point only (its ramp and stop stay)
+        // a capital (amendment 13, ship_steering_gates_capital): the lead-in toward its validated grid point along F inside the
+        // capital window (core::gate_lead_in_capital), the same write there, the lowering clamp outside it
         bool gate_approach = false, gate_dock = false;
-        if (gate_mode && order == core::kOrderFlyBefore && !capital) { // amendment 10: capitals keep every vanilla step
+        capital_window = false;
+        if (gate_mode && order == core::kOrderFlyBefore) {
             gate_approach = true;
             in.arrival_ramp = false;
             in.d_arr = 0;
             float lead[3], s_line = 0;
-            if (in.d_order < 0 && core::gate_lead_in(gate_geo, in.x, in.v, lead, &s_line)) {
+            bool in_window = false;
+            if (in.d_order < 0) {
+                if (capital)
+                    in_window = core::gate_lead_in_capital(gate_geo, in.x, in.v, std::fmin(dyn.W[0], dyn.W[1]), lead, &s_line);
+                else
+                    in_window = core::gate_lead_in(gate_geo, in.x, in.v, lead, &s_line);
+            }
+            if (in_window) {
                 for (int i = 0; i < 3; ++i) in.P[i] = lead[i];
                 in.d_order = float(dist() / 500.0);
                 gate_lead_used = true;
+                capital_window = capital;
             }
         }
         // the Run152 follow-up: order 5 to a gate: the cornering speed replaces the engine's creep unless the chord arc sweeps the ring
@@ -480,15 +495,19 @@ struct Model {
         if (!s) return; // the table's probe window is full (object ids are 16-byte aligned in the engine: the hash drops 4 bits)
         s->stamp_ms = std::uint32_t(t_ms);
         s->order = order;
-        s->flags = std::uint16_t((gate_mode && capital ? 0 // amendment 10: no site-B write on a capital's gate legs
-                                                       : (in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
-                                                             (gate_approach ? (core::kShipFlagGate | core::kShipFlagClamp) : 0) |
-                                                             (gate_dock ? (core::kShipFlagGateDock | core::kShipFlagClamp) : 0)) |
-                                 (cmd.port_aligned ? core::kShipFlagPortHold : 0)); // amendment 12
+        std::uint16_t speed_flags; // the DLL's decide(): a capital's gate legs get no write outside the capital window (the lowering
+                                   // clamp on a validated order-4 approach, nothing on order 5 or an unvalidated/policy-off approach)
+        if (capital_gate_leg && !capital_window)
+            speed_flags = std::uint16_t(gate_mode && order == core::kOrderFlyBefore && cmd.v_cmd > 0 ? core::kShipFlagClamp : 0);
+        else
+            speed_flags = std::uint16_t((in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
+                                        (gate_approach ? (core::kShipFlagGate | core::kShipFlagClamp) : 0) |
+                                        (gate_dock ? (core::kShipFlagGateDock | core::kShipFlagClamp) : 0));
+        s->flags = std::uint16_t(speed_flags | (cmd.port_aligned ? core::kShipFlagPortHold : 0)); // amendment 12
         for (int i = 0; i < 3; ++i) s->P[i] = Po[i]; // site B measures the order's point
         s->a_lin = dyn.a_lin;
         s->d_arr = gate_dock ? gate_r : in.d_arr;
-        s->v_ref = gate_approach ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : gate_dock ? dyn.v_max : in.v_ref;
+        s->v_ref = (speed_flags & core::kShipFlagGate) ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : gate_dock ? dyn.v_max : in.v_ref;
         s->v_corner = cmd.v_corner;
         s->v_emergency = avoid_on ? astate.v_emergency : 0.0f;
     }
@@ -605,7 +624,7 @@ struct Model {
             v_old[k] = vel[k];
             vel[k] = fx(r16[2][k], speed);
         }
-        if (order != core::kOrderDock && speed != 0) {
+        if (g_slip && order != core::kOrderDock && speed != 0) {
             std::int64_t l0 = 0, l1 = 0;
             for (int j = 0; j < 3; ++j) {
                 l0 += fx(r16[0][j], v_old[j]);
@@ -1054,7 +1073,7 @@ struct World {
             o.leader = m.leader_ptr;
             o.order = m.order;
             o.kind = std::uint8_t(av::Kind::ship);
-            o.size = m.dyn.large ? 1 : 0; // the record code's "large" bit (amendment 11)
+            o.size = m.capital ? 1 : 0; // the record code's capital bit (amendment 13: the ratio decides the rest)
             if (o.r > snap.max_r) snap.max_r = o.r;
         }
     }
@@ -1588,9 +1607,9 @@ static void walk_checks() {
     check(snap.overflow == 1 && snap.count == 0, "walk: no bucket table = pass-through");
 }
 
-// The snapshot's record-code read (amendment 11 review): a class-7 item's size from its TShips record code through the type
-// table slot 0x00606fd4 ([table + type x 0xdb8 + 0x14]); 2 (the r / 3 fallback of av::small_for_capital) when the slot is
-// empty, the type word negative or the code outside the 16 classes.
+// The snapshot's record-code read (amendment 11 review, amendment 13): a class-7 item's size from its TShips record code through
+// the type table slot 0x00606fd4 ([table + type x 0xdb8 + 0x14]): 1 capital-coded, 0 any other code, 2 (the ratio alone in
+// av::small_for_capital) when the slot is empty, the type word negative or the code outside the 16 classes.
 static void walk_record_code_checks() {
     static FakeMem mem;
     mem = FakeMem{};
@@ -1602,36 +1621,37 @@ static void walk_record_code_checks() {
     wk::Stats st;
     const std::uint32_t types = sb.alloc(8 * 0xdb8);
     mem.put(wk::kShipTypeTableSlot, types);
-    const std::uint32_t codes[4] = {4, 7, 0x40, 11}; // M2 (large), M5 (small), out of range, M6 (large)
+    const std::uint32_t codes[4] = {4, 7, 0x40, 11}; // M2 (capital), M5, out of range, M6 (large but not capital)
     for (unsigned k = 0; k < 4; ++k) mem.put(types + (k + 1) * 0xdb8 + 0x14, codes[k]);
-    const std::int32_t p[6][3] = {{100000, 0, 0}, {200000, 0, 0}, {300000, 0, 0}, {400000, 0, 0}, {500000, 0, 0}, {600000, 0, 0}};
-    std::uint32_t o[6];
-    for (unsigned k = 0; k < 6; ++k) o[k] = sb.object(7, p[k], k == 4 ? 200000 : 20000); // r 40 m; the unreadable large one 400 m
+    const std::int32_t p[7][3] = {{100000, 0, 0}, {200000, 0, 0}, {300000, 0, 0}, {400000, 0, 0}, {500000, 0, 0}, {600000, 0, 0}, {700000, 0, 0}};
+    std::uint32_t o[7];
+    for (unsigned k = 0; k < 7; ++k) o[k] = sb.object(7, p[k], k == 4 ? 200000 : k == 3 ? 150000 : 20000); // r 40 m; the unreadable large one 400 m; the M6 300 m
     for (unsigned k = 0; k < 4; ++k) mem.put(o[k] + 0x48, 7u | ((k + 1) << 16)); // types 1..4
     mem.put(o[4] + 0x48, 7u | (0xffffu << 16));                                 // type -1: unreadable
     mem.put(o[5] + 0x48, 7u | (3u << 16));                                      // type 3: code 0x40, unreadable
+    mem.put(o[6] + 0x48, 7u | (4u << 16));                                      // type 4: M6 at 40 m
     wk::fill_snapshot(mem, sb.sector, 1, snap, cache, st, nullptr);
-    std::uint8_t size[6] = {9, 9, 9, 9, 9, 9};
-    const av::Obstacle* item[6] = {};
+    std::uint8_t size[7] = {9, 9, 9, 9, 9, 9, 9};
+    const av::Obstacle* item[7] = {};
     for (unsigned i = 0; i < snap.count; ++i)
-        for (unsigned k = 0; k < 6; ++k)
+        for (unsigned k = 0; k < 7; ++k)
             if (snap.items[i].ptr == o[k]) {
                 size[k] = snap.items[i].size;
                 item[k] = &snap.items[i];
             }
-    check(size[0] == 1 && size[3] == 1, "walk: a large record code (M2 4, M6 11) reads size 1");
-    check(size[1] == 0, "walk: a small record code (M5 7) reads size 0");
+    check(size[0] == 1, "walk: a capital-coded record (M2 4) reads size 1");
+    check(size[1] == 0 && size[3] == 0 && size[6] == 0, "walk: a non-capital record code (M5 7, M6 11) reads size 0 (the engine's large list no longer decides)");
     check(size[2] == 2 && size[4] == 2 && size[5] == 2, "walk: a code outside the classes or a negative type word reads size 2 (unreadable)");
     av::Self cap{};
     cap.capital = true;
     cap.r = 700.0f; // r / 3 = 233 m
     bool ok = true;
-    for (unsigned k = 0; k < 6; ++k) ok = ok && item[k];
+    for (unsigned k = 0; k < 7; ++k) ok = ok && item[k];
     if (ok) {
-        check(!av::small_for_capital(cap, *item[0]) && av::small_for_capital(cap, *item[1]) && !av::small_for_capital(cap, *item[3]),
-              "walk: a capital skips the small-coded ship, not the large-coded ones");
+        check(!av::small_for_capital(cap, *item[0]) && av::small_for_capital(cap, *item[1]) && !av::small_for_capital(cap, *item[3]) && av::small_for_capital(cap, *item[6]),
+              "walk: a capital keeps the capital-coded ship (40 m) and the 300 m M6, skips the 40 m M5 and the 40 m M6 (the ratio, not the large list)");
         check(av::small_for_capital(cap, *item[2]) && !av::small_for_capital(cap, *item[4]),
-              "walk: an unreadable code falls back to r < r_own / 3 (40 m skipped, 400 m kept)");
+              "walk: an unreadable code uses the ratio r < r_own / 3 (40 m skipped, 400 m kept)");
     } else
         check(false, "walk: every class-7 item of the record-code sector is in the snapshot");
     mem.put(wk::kShipTypeTableSlot, 0); // an empty slot: every ship unreadable
@@ -1639,7 +1659,7 @@ static void walk_record_code_checks() {
     unsigned unreadable = 0;
     for (unsigned i = 0; i < snap.count; ++i)
         if (snap.items[i].kind == std::uint8_t(av::Kind::ship) && snap.items[i].size == 2) ++unreadable;
-    check(unreadable == 6, "walk: an empty type table slot reads size 2 for every ship");
+    check(unreadable == 7, "walk: an empty type table slot reads size 2 for every ship");
 }
 // ---- step 2 unit checks -----------------------------------------------------------------
 static void avoidance_unit_checks() {
@@ -2257,6 +2277,7 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     m.init(t, seed);
     m.table = &table;
     m.capital = capital;
+    m.capital_gate_leg = capital;
     m.vanilla = vanilla;
     const double r = 1105.0, ru = r * 500;
     // a capital's point is its grid slot (KC GetWarpInPos: 666 m pitch, 2 (r_gate + r_ship) in front) and its pass point the
@@ -2308,6 +2329,7 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     mem.put(types + 3 * 0xdb8 + 0x14, code);
     const bool noncapital_gate = core::gate_target_noncapital(mem, ship, types);
     const bool keep = core::gate_stop_keeps_speed(noncapital_gate, m.gate_mode && !capital); // the gate state exists only when the decision ran P1
+                                                                                            // (a capital's path: capital_transit_scenario)
     for (int k = 0; k < 3; ++k) {
         m.gate_G[k] = G[k];
         m.gate_rows[0][k] = row0[k];
@@ -2883,7 +2905,7 @@ static void amend12_ab_checks() {
     long worst_turn = 0, worst_arrival = 0;
     int turn_changed = 0, arrival_changed = 0, runs = 0;
     for (const ShipType& t : kShips) {
-        if (!std::strcmp(t.cls, "M2")) continue; // the capital's gate legs are vanilla (amendment 10)
+        if (!std::strcmp(t.cls, "M2")) continue; // the capital transit is capital_transit_scenario (amendment 13); run_gate steers the small ships only
         for (int fps : kFps) {
             const std::uint32_t seed = kSeeds[0];
             g_amend12 = false;
@@ -2925,6 +2947,7 @@ static void amend12_ab_checks() {
     std::printf("amendment 12 A/B: gate legs identical; 180 deg turn settle changed in %d of %d runs (max %ld ms), arrival changed in %d of %d "
                 "(max %ld ms)\n", turn_changed, runs, worst_turn, arrival_changed, runs, worst_arrival);
 }
+static void capital_transit_scenario(const ShipType& t, int fps, std::uint32_t seed);
 static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
     char why[260];
     const bool capital = !std::strcmp(t.cls, "M2");
@@ -2956,27 +2979,8 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
                         theta, t.cls, t.name, fps, g.cross_v, v.cross_v, g.cross_err_deg, v.cross_err_deg, g.misaligned_ticks, v.misaligned_ticks,
                         g.min_v_after_cross, g.v0, v.v0, g.t_launch - g.t_cross, v.t_launch - v.t_cross, g.lead_used ? 1 : 0, g.max_aim_jump_deg);
     }
-    if (capital) {
-        // the capital from 6 km off-axis (30 deg) to its grid point (slot 7 and slot 0), the rotated frame too: the stop and
-        // the launch from rest stay vanilla; the rotate step would complete at once (the error below 0xfd70)
-        const double cap_start[3] = {-6000.0 / 1105.0 * std::sin(30 * M_PI / 180), -0.6, -2.0 * (1105.0 + t.r_m) / 1105.0 - 6000.0 / 1105.0 * std::cos(30 * M_PI / 180)};
-        for (int slot_i = 0; slot_i < 2; ++slot_i) {
-            const int slot = slot_i == 0 ? 7 : 0;
-            const GateFrame& F = slot_i == 0 ? kGateIdentity : kGateRotated;
-            const GateResult g = run_gate(t, fps, seed, 0, true, false, true, cap_start, F, 0.0, 9, slot);
-            const GateResult v = run_gate(t, fps, seed, 0, true, true, false, cap_start, F, 0.0, 9, slot);
-            // amendment 10: the capital flies the vanilla path (no lead-in, no site-B write): the arrival time and heading of vanilla
-            // within two think intervals and 0.5 deg (the module's law and the vanilla leaf steer it by different laws; the
-            // equality held to the frame before the slip term, ship-movement.md section 13.2)
-            std::snprintf(why, sizeof why, "%s %d fps seed %u gate capital 6 km off-axis to grid slot %d%s: the vanilla path (no lead-in, t_A %%.0f ~ vanilla %%.0f), stop at A, launch from rest",
-                          t.cls, fps, seed, slot, slot_i ? " (rotated frame)" : "");
-            checkf(g.arrived_A && g.arrived_B && g.launched && !g.lead_used && g.v_after_A == 0 && g.v0 == 0 && std::labs(g.t_A - v.t_A) <= 100 &&
-                       std::fabs(g.cross_err_deg - v.cross_err_deg) < 0.5,
-                   why, double(g.t_A), double(v.t_A));
-            if (seed == kSeeds[0] && fps == 60)
-                std::printf("gate capital %-3s fps=%3d slot=%d heading_err=%.1f deg (vanilla %.1f) v_after_A=%.1f v0=%.1f t_A=%ld (vanilla %ld)\n", t.cls, fps, slot,
-                            g.cross_err_deg, v.cross_err_deg, g.v_after_A, g.v0, g.t_A, v.t_A);
-        }
+    if (capital) { // amendment 13: the capital's gate transit is capital_transit_scenario (the Boreas record too)
+        capital_transit_scenario(t, fps, seed);
         return;
     }
     // the spread: four ships on the same vanilla line (distinct ring positions from their object pointers) cross at distinct
@@ -3136,6 +3140,745 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
     }
 }
 
+// ---- scenario 11: the capital gate transit (capital-gate-transit.md section 6; amendment 13) ----------------------------
+// The Run156 capitals (ship_trace W/rot/rot_pct/vmax/acc rows, r_ship from the grid depth 2 (r_gate + r_ship)): W 1843 / 1638
+// binary/s, f+0x2b0 0.5 x rot_pct 10 = k 0.05, vmax 55000 / 56500, acc 5000 / 2500 units/s^2, r 1091 / 1022 m.
+static const ShipType kCapitals[2] = {{"M2", "Run156 M2", 110.0, 10.0, 1843.0 / 65536.0 * 360.0, 1091.0, 5, true},
+                                      {"M1", "Run156 M1", 113.0, 5.0, 1638.0 / 65536.0 * 360.0, 1022.0, 5, true}};
+static const double kGateRM = 1105.0;
+static const double kCos0xfd70 = double(0xfd70) / 65536.0; // the 0x1f end test (0x004592d9): forward . F >= cos 8.1 deg
+// budget.py's phase model (inferred, SETA 1): order 5 along the axis from the crossing X (depth_x in front of the origin) at v0
+// to the arrival sphere |v|/10 + r_ship: desired vmax beyond r_gate, the ramp r/5 -> vmax/2, r -> vmax inside, slewed at acc.
+static double budget_order5_s(double depth_x, double v0, double vmax, double acc, double r_ship) {
+    double d = depth_x, v = v0, t = 0;
+    const double dt = 1.0 / 60.0;
+    while (t < 600.0) {
+        if (d <= v / 10.0 + r_ship) return t;
+        const double want = d >= kGateRM ? vmax : (d <= kGateRM / 5 ? vmax / 2 : vmax / 2 + (vmax / 2) * (d - kGateRM / 5) / (kGateRM - kGateRM / 5));
+        v = want > v ? std::fmin(want, v + acc * dt) : std::fmax(want, v - acc * dt);
+        d -= v * dt;
+        t += dt;
+    }
+    return t;
+}
+// budget.py's engine rotate (0x1f with the vanilla leaf: brake when e < w^2/a, else accelerate to W) from theta deg to the tolerance.
+static double budget_rotate_s(double theta, double W_dps, double a_dps2) {
+    double e = theta, w = 0, t = 0;
+    const double dt = 1.0 / 60.0;
+    while (e > double(core::kGateRotateTolDeg) && t < 600.0) {
+        const double w2 = e < w * w / a_dps2 ? std::fmax(0.0, w - a_dps2 * dt) : std::fmin(W_dps, w + a_dps2 * dt);
+        e -= std::fmin(e, 0.5 * (w + w2) * dt);
+        w = w2;
+        t += dt;
+    }
+    return t;
+}
+struct CapitalResult {
+    bool arrived_A = false, arrived_B = false, launched = false, lead_used = false, kept = false, validated = false, nan_seen = false;
+    double cross_v = 0, cross_err_deg = -1, p2_err_deg = -1, cross_dA = 0, cross_lat = 0, v_after_A = 0, v_o5_start = 0, v0 = 0, min_v_o5 = 1e18;
+    double rot_start_err_deg = -1;
+    long t_3r = -1, t_cross = -1, t_A = -1, rot_ms = 0, rot_frames = 0, t_o5_start = -1, t_B = -1, t_launch = -1, t_end = -1;
+    int misaligned_ticks = 0;
+    // the companions (scenario A / C): the capital's bookkeeping against them, the steered M6's dodge, the site-E verdicts
+    unsigned cap_detours = 0, cap_detours_m6 = 0, cap_skipped_small = 0, cap_conflicts = 0;
+    unsigned m6_detours = 0, m6_unresolved = 0;
+    double m6_min_clear = 1e18, m6_manual_min = 1e18;
+    unsigned e_suppress = 0, e_pass_manual = 0, e_pass_order = 0, e_pass_stale = 0, e_other = 0;
+    bool e_small_pair_capitals = false;
+    // the trailing / converging capital (scenario A / B)
+    unsigned cap2_conflicts = 0, cap2_detours = 0, cap2_unresolved = 0, cap2_emergency = 0, cap2_skipped_small = 0;
+    double cap2_min_dist = 1e18;
+    bool cap2_arrived = false, cap2_skipped_first = false; // the pair policy on the snapshot items: a capital never small for the other
+    std::uint32_t cap_last_obstacle = 0;
+};
+struct CapitalSetup {
+    int slot = 0;                 // the KC grid slot of the capital (0..19)
+    const GateFrame* F = &kGateIdentity;
+    double start_lat_r = 3.0;     // the start: this far off the lead-in line (local x, in r_gate) ...
+    double start_back_r = 6.0;    // ... and this far before X along F (in r_gate), heading at A
+    double a_error_r = 0.0;       // the engine's point off the grid by this (in r_gate): the lead-in is refused (vanilla)
+    bool policy = true;           // ship_steering_gates_capital
+    bool m6s = false;             // two M6 escorts of another leader crossing the path: one steered (autopilot), one manual
+    int cap2 = -1;                // a second capital (index into kCapitals) on the adjacent slot: -1 none, else its mode below
+    bool cap2_converge = false;   // false: trailing by cap2_back_m (the queue's spacing); true: timed to arrive while the first rotates
+    double cap2_back_m = 7000.0;  // the queue keeps the next holder behind the window (design section 5.2: > 3 km behind it)
+};
+// One ship's order-4 engine speed law to a gate (ship-navigation-ai.md 10.3): vmax beyond d_slow, the ramp inside, the alignment
+// creep inside d_slow + 3 r + 2 r_ship, the large cap.
+static std::int64_t engine_order4_speed(const Model& m, double dA, const double dA_v[3], bool large) {
+    const double ru = kGateRM * 500;
+    const double d_slow = 0.75 * ru + double(m.vmax) * double(m.vmax) / double(m.accel);
+    std::int64_t des = dA > d_slow ? m.vmax : Model::ramp(dA, 5000, d_slow, m.vmax / 2);
+    if (des < 5000) des = 5000;
+    if (dA < d_slow + 3 * ru + 2 * m.r_units) {
+        double c = 0;
+        for (int k = 0; k < 3; ++k) c += m.row[2][k] * dA_v[k] / dA;
+        des = c <= 0.7 ? 500 : Model::ramp(c - 0.7, 500, 0.3, des);
+    }
+    if (large && des > 50000) des = 50000;
+    return des;
+}
+static void place_heading(Model& m, const double u_in[3]) { // the basis from a forward direction (world up unless nearly vertical)
+    double u[3] = {u_in[0], u_in[1], u_in[2]};
+    const double un = norm3d(u);
+    for (int i = 0; i < 3; ++i) u[i] /= un;
+    double up[3] = {0, 1, 0};
+    if (std::fabs(u[1]) > 0.9) {
+        up[1] = 0;
+        up[2] = 1;
+    }
+    for (int i = 0; i < 3; ++i) m.row[2][i] = u[i];
+    m.row[0][0] = up[1] * u[2] - up[2] * u[1];
+    m.row[0][1] = up[2] * u[0] - up[0] * u[2];
+    m.row[0][2] = up[0] * u[1] - up[1] * u[0];
+    const double r0n = norm3d(m.row[0]);
+    for (int i = 0; i < 3; ++i) m.row[0][i] /= r0n;
+    m.row[1][0] = u[1] * m.row[0][2] - u[2] * m.row[0][1];
+    m.row[1][1] = u[2] * m.row[0][0] - u[0] * m.row[0][2];
+    m.row[1][2] = u[0] * m.row[0][1] - u[1] * m.row[0][0];
+    m.vel_valid = false;
+}
+// The capital's grid point for a slot (KC GetWarpInPos) and the lead-in geometry the DLL derives (gate_geometry_capital).
+static void capital_grid(const ShipType& t, int slot, const GateFrame& F, double a_error_r, double A[3], float Af[3], core::GateGeometry* geo, bool* valid) {
+    const double ru = kGateRM * 500;
+    const int grid_a[5] = {0, 1, -1, 2, -2};
+    const double A_l[3] = {grid_a[slot % 5] * 666.0 * 500, -(slot / 5) * 666.0 * 500, -2.0 * (kGateRM + t.r_m) * 500};
+    local_to_world(F, A_l, A);
+    float G[3] = {0, 0, 0}, row0[3], row1[3], row2[3];
+    for (int k = 0; k < 3; ++k) {
+        Af[k] = float(A[k] / 500 + a_error_r * kGateRM * F.R[0][k]);
+        row0[k] = float(F.R[0][k]);
+        row1[k] = float(F.R[1][k]);
+        row2[k] = float(F.R[2][k]);
+    }
+    *valid = core::gate_geometry_capital(Af, G, row0, row1, row2, float(kGateRM), float(t.r_m), geo);
+    (void)ru;
+}
+// The transit of one capital through the whole gate sequence (order 4 -> P2 -> order 0 -> 0x1f -> order 0 -> order 5 -> P4 ->
+// order 0 -> order 8), with the DLL's rules (the lead-in and the speed write under the policy, P2 keeping the speed of an aligned
+// validated capital, P4/P5 on the validated approach, the engine's 0x1f with the vanilla leaf otherwise) and the optional
+// companions. Two passes when companions must meet the capital: the first records its trajectory.
+static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32_t seed, const CapitalSetup& su) {
+    const double ru = kGateRM * 500;
+    const GateFrame& F = *su.F;
+    double A[3];
+    float Af[3];
+    core::GateGeometry geo;
+    bool valid = false;
+    capital_grid(t, su.slot, F, su.a_error_r, A, Af, &geo, &valid);
+    double X[3], Fw[3];
+    for (int k = 0; k < 3; ++k) {
+        Fw[k] = F.R[2][k];
+        X[k] = A[k] - 0.75 * ru * Fw[k];
+    }
+    // pass 1 (when needed): the capital alone, its position every 100 ms for the companions' collision courses
+    static double traj[4096][3];
+    static double traj_dir[4096][3];
+    unsigned traj_n = 0;
+    long pass0_t_A = -1, pass0_t_3r = -1; // the capital alone (pass 0): its arrival time (the converging capital's timing) and its
+                                          // entry into 3 r before X on the line (the escorts cross the line ahead of it from there)
+    for (int pass = (su.m6s || su.cap2_converge ? 0 : 1); pass < 2; ++pass) {
+        static World w;
+        w = World{};
+        core::ShipTable table{};
+        Model m;
+        m.init(t, seed);
+        m.table = &table;
+        m.capital = true;
+        m.capital_gate_leg = true;
+        m.ptr = 0x9000;
+        m.gate_mode = su.policy && valid;
+        m.gate_geo = geo;
+        m.gate_r = float(kGateRM);
+        for (int k = 0; k < 3; ++k) {
+            m.gate_G[k] = 0;
+            for (int r = 0; r < 3; ++r) m.gate_rows[r][k] = float(F.R[r][k]);
+        }
+        // the start: start_lat_r off the line (local x), start_back_r before X, heading at A
+        const double start_l[3] = {su.start_lat_r * ru, 0.0, -su.start_back_r * ru};
+        double start_w[3];
+        local_to_world(F, start_l, start_w);
+        for (int k = 0; k < 3; ++k) m.pos[k] = X[k] + start_w[k];
+        {
+            const double u[3] = {A[0] - m.pos[0], A[1] - m.pos[1], A[2] - m.pos[2]};
+            place_heading(m, u);
+        }
+        m.order = core::kOrderFlyBefore;
+        for (int k = 0; k < 3; ++k) m.P[k] = A[k];
+        m.d_arr_units = 0.75 * ru;
+        w.attach(m);
+        Model* ships[4] = {&m, nullptr, nullptr, nullptr};
+        unsigned n_ships = 1;
+        // the companions
+        Model m6s[2], cap2;
+        const ShipType& m6t = kShips[2]; // Centaur: 180 m/s, 64.4 m (below r_capital / 3: an ignored pair)
+        for (unsigned i = 0; i < 2; ++i) {
+            m6s[i].init(m6t, seed + 11 * i + 3);
+            m6s[i].ptr = 0x4000 + 0x100 * i;
+        }
+        cap2.init(kCapitals[su.cap2 >= 0 ? su.cap2 : 0], seed + 97);
+        long m6_switch_ms = -1, m6_stale_ms = -1;
+        if (pass == 1 && su.m6s) {
+            // the escorts cross the capital's line ahead of it once it is on the line (design: 2 km and 1 km ahead): the steered one
+            // where the capital is 10 s after entering 3 r before X, the manual one 20 s after (passing 12 s before the capital)
+            const long t3 = pass0_t_3r > 0 ? pass0_t_3r : 40000;
+            const long meet_ms[2] = {t3 + 10000, t3 + 20000};
+            for (unsigned i = 0; i < 2; ++i) {
+                Model& e = m6s[i];
+                e.init(m6t, seed + 11 * i + 3);
+                e.table = &table;
+                e.ptr = 0x4000 + 0x100 * i;
+                e.order = core::kOrderEscort;
+                e.leader_ptr = 0x7777; // escorts of another leader (not in the sector): wingmates of each other
+                const unsigned ti = unsigned(meet_ms[i] / 100);
+                const double* P = traj[ti < traj_n ? ti : traj_n - 1];
+                const double* vd = traj_dir[ti < traj_n ? ti : traj_n - 1];
+                const double upv[3] = {0, 1, 0};
+                double d[3] = {vd[1] * upv[2] - vd[2] * upv[1], vd[2] * upv[0] - vd[0] * upv[2], vd[0] * upv[1] - vd[1] * upv[0]};
+                if (norm3d(d) < 1e-6) {
+                    d[0] = 1;
+                    d[1] = d[2] = 0;
+                }
+                const double dn = norm3d(d);
+                for (int k = 0; k < 3; ++k) d[k] /= dn;
+                const double side = i == 0 ? 1.0 : -1.0;
+                // the manual one passes the point 12 s before the capital gets there (no contact without the engine's own warn)
+                const double lead_s = i == 0 ? 0.0 : 12.0;
+                const double dist_u = m6t.v_ms * (double(meet_ms[i]) / 1000.0 - lead_s) * 500.0;
+                for (int k = 0; k < 3; ++k) {
+                    e.pos[k] = P[k] - side * d[k] * dist_u;
+                    e.P[k] = P[k] + side * d[k] * 20000.0 * 500.0;
+                }
+                const double u[3] = {side * d[0], side * d[1], side * d[2]};
+                place_heading(e, u);
+                e.d_arr_units = 2 * e.r_units;
+                if (i == 0) {
+                    w.attach(e); // steered: the module's avoidance (the pair's small side dodges)
+                } else {
+                    e.vanilla = true; // not under the module: the vanilla leaf, no avoidance, no table entry
+                    e.avoid_on = false;
+                }
+                ships[n_ships++] = &e;
+            }
+            m6_switch_ms = meet_ms[0] + 15000; // the steered M6 is switched to order 0 (stopped by its script) here ...
+            m6_stale_ms = m6_switch_ms + 400;   // ... and back to its escort order without a decision: stale
+        }
+        bool cap2_on = false;
+        double A2[3] = {0, 0, 0};
+        if (su.cap2 >= 0 && pass == 1) {
+            const ShipType& t2 = kCapitals[su.cap2];
+            cap2.init(t2, seed + 97);
+            cap2.table = &table;
+            cap2.capital = true;
+            cap2.capital_gate_leg = true;
+            cap2.ptr = 0x9800;
+            float Af2[3];
+            core::GateGeometry geo2;
+            bool valid2 = false;
+            const int slot2 = (su.slot + 1) % 20;
+            capital_grid(t2, slot2, F, 0.0, A2, Af2, &geo2, &valid2);
+            cap2.gate_mode = su.policy && valid2;
+            cap2.gate_geo = geo2;
+            cap2.gate_r = float(kGateRM);
+            for (int k = 0; k < 3; ++k) {
+                cap2.gate_G[k] = 0;
+                for (int r = 0; r < 3; ++r) cap2.gate_rows[r][k] = float(F.R[r][k]);
+            }
+            double X2[3];
+            for (int k = 0; k < 3; ++k) X2[k] = A2[k] - 0.75 * ru * Fw[k];
+            double s2[3];
+            if (!su.cap2_converge) { // trailing: the mirrored lateral offset, cap2_back_m further back (the queue's spacing)
+                const double l[3] = {-su.start_lat_r * ru, 0.0, -su.start_back_r * ru - su.cap2_back_m * 500.0};
+                local_to_world(F, l, s2);
+            } else { // converging: on its own line, timed to reach X2 about 10 s after the first capital's arrival (pass 0's t_A)
+                const double back_u = (double(pass0_t_A > 0 ? pass0_t_A : 60000) / 1000.0 + 10.0) * 100.0 * 500.0;
+                const double l[3] = {0.0, 0.0, -back_u};
+                local_to_world(F, l, s2);
+            }
+            for (int k = 0; k < 3; ++k) cap2.pos[k] = X2[k] + s2[k];
+            {
+                const double u[3] = {A2[0] - cap2.pos[0], A2[1] - cap2.pos[1], A2[2] - cap2.pos[2]};
+                place_heading(cap2, u);
+            }
+            cap2.order = core::kOrderFlyBefore;
+            for (int k = 0; k < 3; ++k) cap2.P[k] = A2[k];
+            cap2.d_arr_units = 0.75 * ru;
+            w.attach(cap2);
+            ships[n_ships++] = &cap2;
+            cap2_on = true;
+        }
+        CapitalResult res;
+        res.validated = valid && su.policy;
+        // the synthetic objects the shared gate-site rules read: the capital (code M2 4 / M1 3) with a class-0x12 target
+        FakeMem mem;
+        const std::uint32_t ship = 0x2000, flight = 0x3000, gate = 0x4000, types = 0x5000;
+        const unsigned code = !std::strcmp(t.cls, "M1") ? 3 : 4;
+        mem.put(ship + 0x48, 7u | (3u << 16));
+        mem.put(ship + 0x50, flight);
+        mem.put(flight + 0x224, gate);
+        mem.put(gate + 0x48, 0x12);
+        mem.put(types + 3 * 0xdb8 + 0x14, code);
+        const bool cap_target = core::gate_target_capital(mem, ship, types);
+        const bool noncap_target = core::gate_target_noncapital(mem, ship, types);
+        check(cap_target && !noncap_target, "capital transit: the capital's gate target reads as a capital gate approach and not as a non-capital one");
+        Clock clocks[4];
+        int phase = 0; // 0 order 4, 1 order 0 after P2, 5 order 0x1f, 6 order 0 after 0x1f, 2 order 5, 3 order 0 after P4, 4 order 8
+        long phase_t = 0;
+        double launch_start[3] = {0, 0, 0};
+        long long v0 = 0;
+        const std::uint32_t obj = 0x1000, obj2 = 0x1010, obj_m6[2] = {0x1020, 0x1030};
+        bool cap2_done = false;
+        traj_n = 0;
+        const double r_cap = t.r_m;
+        const float C_m6 = av::clearance(float(m6t.r_m), float(r_cap));
+        for (long i = 0; i < 400 * fps; ++i) {
+            const long dt = clocks[0].step(fps);
+            for (unsigned k = 1; k < 4; ++k) clocks[k].step(fps);
+            if (!dt) continue;
+            m.frame_dt_ms = dt;
+            if (pass == 0 && traj_n < 4096 && m.t_ms >= long(traj_n) * 100) {
+                for (int k = 0; k < 3; ++k) {
+                    traj[traj_n][k] = m.pos[k];
+                    traj_dir[traj_n][k] = m.row[2][k];
+                }
+                ++traj_n;
+            }
+            w.fill(ships, n_ships, std::uint32_t(m.t_ms));
+            const double dA_v[3] = {A[0] - m.pos[0], A[1] - m.pos[1], A[2] - m.pos[2]}, dB_v[3] = {-m.pos[0], -m.pos[1], -m.pos[2]};
+            const double dA = norm3d(dA_v), dB = norm3d(dB_v);
+            double s_line = 0, lat2 = 0;
+            {
+                double dx[3];
+                for (int k = 0; k < 3; ++k) dx[k] = (m.pos[k] - X[k]) / 500.0;
+                s_line = dx[0] * Fw[0] + dx[1] * Fw[1] + dx[2] * Fw[2];
+                lat2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2] - s_line * s_line;
+            }
+            if (res.t_3r < 0 && s_line >= -3.0 * kGateRM) {
+                res.t_3r = m.t_ms;
+                if (pass == 0) pass0_t_3r = m.t_ms;
+            }
+            double c_F = 0;
+            for (int k = 0; k < 3; ++k) c_F += m.row[2][k] * Fw[k];
+            if (c_F > 1) c_F = 1;
+            if (c_F < -1) c_F = -1;
+            const double err_F = std::acos(c_F) * 180 / M_PI;
+            bool leaf_call = false;
+            if (phase == 4) { // order 8 (ship-movement.md section 13.3)
+                const long u = m.t_ms - phase_t;
+                if (u >= 900) {
+                    res.launched = true;
+                    res.t_end = m.t_ms;
+                    break;
+                }
+                const std::int32_t sl = core::gate_launch_units(std::int32_t(v0), std::int32_t(u));
+                for (int k = 0; k < 3; ++k) m.pos[k] = launch_start[k] + double(fx(std::llround(Fw[k] * 65536.0), sl));
+                m.speed = m.desired = 0;
+                m.advance(dt);
+            } else if (phase == 0) {
+                if (res.t_cross < 0 && dA <= 0.75 * ru) {
+                    res.t_cross = m.t_ms;
+                    res.cross_v = double(m.speed) / 500.0;
+                    res.cross_dA = dA / 500.0;
+                    res.cross_lat = lat2 > 0 ? std::sqrt(lat2) : 0;
+                    res.cross_err_deg = err_F;
+                }
+                m.steer_call(obj, true, 0); // the leaf every frame
+                leaf_call = true;
+                res.cap_detours = m.detours;
+                res.cap_skipped_small = m.skipped_small;
+                if (m.last_av.adjusted) res.cap_last_obstacle = m.last_av.obstacle;
+                if (m.last_av.conflicts) ++res.cap_conflicts;
+                if (m.last_av.adjusted && (m.last_av.obstacle == m6s[0].ptr || m.last_av.obstacle == m6s[1].ptr)) ++res.cap_detours_m6;
+                if (m.t_ms >= m.next_think) {
+                    m.next_think = m.t_ms + m.rng.next() * 50 / 32768;
+                    if (dA <= 0.75 * ru) { // P2 through the shared rules: the capital keeps its speed only when aligned on a validated approach
+                        m.desired = 0;
+                        res.p2_err_deg = err_F;
+                        res.kept = core::gate_capital_keeps_speed(cap_target, su.policy, m.gate_mode, float(err_F));
+                        if (!res.kept) m.speed = 0;
+                        res.arrived_A = true;
+                        res.t_A = m.t_ms;
+                        if (pass == 0) pass0_t_A = m.t_ms;
+                        res.v_after_A = double(m.speed) / 500.0;
+                        phase = 1;
+                        phase_t = m.t_ms;
+                        m.order = core::kOrderNone;
+                    } else
+                        m.desired = engine_order4_speed(m, dA, dA_v, t.large);
+                }
+            } else if (phase == 1 || phase == 6) { // the KC's hand-over frames: order 0, desired 0
+                m.desired = 0;
+                if (m.t_ms > phase_t) {
+                    if (phase == 1) {
+                        phase = 5;
+                        m.order = core::kOrderRotate;
+                        res.rot_start_err_deg = err_F;
+                        res.rot_frames = 0;
+                    } else {
+                        phase = 2;
+                        m.order = core::kOrderDock;
+                        for (int k = 0; k < 3; ++k) m.P[k] = 0; // the gate origin (section 10.5)
+                        res.t_o5_start = m.t_ms;
+                        res.v_o5_start = double(m.speed) / 500.0;
+                    }
+                    phase_t = m.t_ms;
+                }
+            } else if (phase == 5) { // RotateToAngles 0x1f (0x0045920e): ends on the first frame forward . F >= 0xfd70, else the vanilla leaf at position + F
+                ++res.rot_frames;
+                m.desired = 0;
+                if (c_F >= kCos0xfd70) {
+                    res.rot_ms = m.t_ms - phase_t;
+                    phase = 6;
+                    m.order = core::kOrderNone;
+                    phase_t = m.t_ms;
+                } else {
+                    for (int k = 0; k < 3; ++k) m.P[k] = m.pos[k] + Fw[k] * 1.0e7;
+                    m.vanilla_leaf();
+                    leaf_call = true;
+                }
+            } else if (phase == 2) { // order 5 every frame (section 10.5): the module passes a capital's order 5 through (no site-B write)
+                m.steer_call(obj, false, 0);
+                leaf_call = true;
+                double c = 0;
+                for (int k = 0; k < 3; ++k) c += m.row[2][k] * dB_v[k] / dB;
+                if (c < 0.95) {
+                    m.desired = 500;
+                    ++res.misaligned_ticks;
+                } else
+                    m.desired = dB <= ru / 5 ? m.vmax / 2 : (dB >= ru ? m.vmax : m.vmax / 2 + std::llround(double(m.vmax / 2) * (dB - ru / 5) / (ru - ru / 5)));
+                if (double(m.speed) / 500.0 < res.min_v_o5) res.min_v_o5 = double(m.speed) / 500.0;
+                if (dB <= double(m.speed) / 10.0 + m.r_units) { // P4: the capital keeps v0 on a validated approach under the policy
+                    m.desired = 0;
+                    const bool keep4 = cap_target && su.policy && m.gate_mode;
+                    v0 = keep4 ? m.speed : 0;
+                    if (!keep4) m.speed = 0;
+                    res.arrived_B = true;
+                    res.t_B = m.t_ms;
+                    res.v0 = double(v0) / 500.0;
+                    phase = 3;
+                    phase_t = m.t_ms;
+                    m.order = core::kOrderNone;
+                }
+            } else if (phase == 3) {
+                m.desired = 0;
+                if (m.t_ms > phase_t) {
+                    phase = 4;
+                    m.order = core::kOrderWarpAway;
+                    for (int k = 0; k < 3; ++k) launch_start[k] = m.P[k] = double(std::llround(m.pos[k]));
+                    phase_t = m.t_ms;
+                    res.t_launch = m.t_ms;
+                }
+            }
+            (void)leaf_call;
+            if (phase != 4) {
+                m.clamp(obj); // site B every frame
+                m.advance(dt);
+            }
+            // the companions
+            if (pass == 1 && su.m6s) {
+                if (m6_switch_ms >= 0 && m6s[0].t_ms >= m6_switch_ms && m6s[0].order == core::kOrderEscort && !m6s[0].done) {
+                    m6s[0].order = core::kOrderNone; // its script stopped it: no longer in the steer set
+                    m6s[0].done = true;
+                    m6s[0].desired = 0;
+                }
+                if (m6_stale_ms >= 0 && m6s[0].t_ms >= m6_stale_ms && m6s[0].order == core::kOrderNone) m6s[0].order = core::kOrderEscort; // back in the set, no decision: stale
+                for (unsigned e = 0; e < 2; ++e) m6s[e].frame(dt, obj_m6[e], true, 0, 1);
+                res.m6_detours = m6s[0].detours;
+                res.m6_unresolved = m6s[0].unresolved;
+                for (unsigned e = 0; e < 2; ++e) {
+                    double d = 0;
+                    for (int k = 0; k < 3; ++k) d += (m.pos[k] - m6s[e].pos[k]) * (m.pos[k] - m6s[e].pos[k]);
+                    d = std::sqrt(d) / 500.0;
+                    if (e == 0 && d < res.m6_min_clear) res.m6_min_clear = d;
+                    if (e == 1 && d < res.m6_manual_min) res.m6_manual_min = d;
+                }
+                // site E's small-pair verdict for (capital, M6) each frame, as the DLL computes it from B's fields
+                if (phase == 0 || phase == 2) {
+                    const std::uint32_t now = std::uint32_t(m.t_ms);
+                    const core::Ship* sb = table.find(obj_m6[0]);
+                    const av::SmallPair v0s = av::small_pair_verdict(0x80000u, m6s[0].order, 0, false, sb != nullptr, sb ? sb->stamp_ms : 0u, now);
+                    const av::SmallPair v1s = av::small_pair_verdict(0x40000u, m6s[1].order, 0, false, false, 0u, now); // manual: no autopilot bit
+                    const bool pair0 = av::small_pair(true, float(r_cap), true, false, float(m6t.r_m));
+                    if (!pair0) ++res.e_other;
+                    else if (v0s == av::SmallPair::suppress) ++res.e_suppress;
+                    else if (v0s == av::SmallPair::order_not_steered) ++res.e_pass_order;
+                    else if (v0s == av::SmallPair::stale) ++res.e_pass_stale;
+                    else ++res.e_other;
+                    if (v1s == av::SmallPair::no_autopilot) ++res.e_pass_manual;
+                    else ++res.e_other;
+                }
+            }
+            if (cap2_on && !cap2_done) {
+                const double dA2_v[3] = {A2[0] - cap2.pos[0], A2[1] - cap2.pos[1], A2[2] - cap2.pos[2]};
+                const double dA2 = norm3d(dA2_v);
+                cap2.frame_dt_ms = dt;
+                cap2.steer_call(obj2, true, 0);
+                if (cap2.last_av.conflicts) ++res.cap2_conflicts;
+                if (cap2.last_av.emergency) ++res.cap2_emergency;
+                res.cap2_detours = cap2.detours;
+                res.cap2_unresolved = cap2.unresolved;
+                res.cap2_skipped_small = cap2.skipped_small;
+                if (cap2.t_ms >= cap2.next_think) {
+                    cap2.next_think = cap2.t_ms + cap2.rng.next() * 50 / 32768;
+                    if (dA2 <= 0.75 * ru) {
+                        cap2.desired = 0;
+                        cap2.speed = 0;
+                        cap2.order = core::kOrderNone;
+                        cap2_done = true;
+                        res.cap2_arrived = true;
+                    } else
+                        cap2.desired = engine_order4_speed(cap2, dA2, dA2_v, true);
+                }
+                cap2.clamp(obj2);
+                cap2.advance(dt);
+                double d = 0;
+                for (int k = 0; k < 3; ++k) d += (m.pos[k] - cap2.pos[k]) * (m.pos[k] - cap2.pos[k]);
+                d = std::sqrt(d) / 500.0;
+                if (d < res.cap2_min_dist) res.cap2_min_dist = d;
+                // the capital pair is never a small pair in either direction, and neither capital skips the other in the snapshot
+                if (av::small_pair(true, float(r_cap), true, true, float(kCapitals[su.cap2].r_m)) ||
+                    av::small_pair(true, float(kCapitals[su.cap2].r_m), true, true, float(r_cap)))
+                    res.e_small_pair_capitals = true;
+                av::Self s1{}, s2{};
+                s1.capital = s2.capital = true;
+                s1.r = float(r_cap);
+                s2.r = cap2.dyn.r_own;
+                for (unsigned q = 0; q < w.snap.count; ++q) {
+                    if (w.snap.items[q].ptr == m.ptr && av::small_for_capital(s2, w.snap.items[q])) res.cap2_skipped_first = true;
+                    if (w.snap.items[q].ptr == cap2.ptr && av::small_for_capital(s1, w.snap.items[q])) res.cap2_skipped_first = true;
+                }
+            }
+            for (int k = 0; k < 3; ++k)
+                if (!std::isfinite(m.pos[k]) || (cap2_on && !std::isfinite(cap2.pos[k]))) res.nan_seen = true;
+        }
+        (void)C_m6;
+        res.lead_used = m.gate_lead_used;
+        if (pass == 1) return res;
+    }
+    return CapitalResult{};
+}
+// The scenario: A (the budget with the escorts crossing and a trailing capital), B (misaligned: the grid mismatch, and a
+// validated approach too short to align), C (the escort pair rules), per Run156 record, fps and seed.
+static void capital_transit_scenario(const ShipType& t, int fps, std::uint32_t seed) {
+    char why[320];
+    const bool print = seed == kSeeds[0] && fps == 60;
+    const double a_rot = t.yaw_dps * double(t.k_pct) / 100.0; // deg/s^2: W x k
+    for (int slot_i = 0; slot_i < 2; ++slot_i) {
+        CapitalSetup su;
+        su.slot = slot_i == 0 ? 0 : 19;
+        su.F = slot_i == 0 ? &kGateIdentity : &kGateRotated;
+        su.m6s = true;
+        su.cap2 = t.v_ms < 100.0 ? -1 : !std::strcmp(t.cls, "M2") ? 1 : 0; // the installed records trail each other; the slower Boreas fixture type alone
+        const CapitalResult g = run_capital_transit(t, fps, seed, su);
+        const double depth_x = 2.0 * (kGateRM + t.r_m) + 0.75 * kGateRM; // slot 0: X is this far in front of the origin along the axis
+        const double lat = su.slot == 0 ? 0.0 : std::sqrt(2.0 * 666.0 * 666.0 + 3.0 * 666.0 * 3.0 * 666.0); // slot 19: a = -2, b = -3
+        const double dist_x = std::sqrt(depth_x * depth_x + lat * lat);
+        const double b_o5 = budget_order5_s(dist_x, g.cross_v > 0 ? std::fmin(g.cross_v, 100.0) : 100.0, t.v_ms, t.a_ms2, t.r_m);
+        const double b_approach = 3.0 * kGateRM / std::fmin(t.v_ms, 100.0); // 33.2 s at the large cap (the Boreas fixture type: 47 s at 70 m/s)
+        const double approach_bound = t.v_ms >= 100.0 ? 36.0 : 1.1 * b_approach; // the design's 36 s for the installed capitals
+        const double b_total = b_approach + 1.0 / 60.0 + b_o5 + 0.9;
+        const double cap_v = std::fmin(t.v_ms, double(core::kGateLargeCapMs)); // the crossing speed the policy aims at
+        const double t_approach = double(g.t_cross - g.t_3r) / 1000.0, t_o5 = double(g.t_B - g.t_o5_start) / 1000.0,
+                     t_total = double(g.t_end - g.t_3r) / 1000.0;
+        const char* tag = su.slot == 0 ? "slot 0" : "slot 19 (rotated frame)";
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: validated lead-in, arrived inside 0.75 r (dA %%.0f m), launched, no NaN (lat at X %%.0f m)", t.cls, fps, seed, tag);
+        checkf(g.validated && g.lead_used && g.arrived_A && g.arrived_B && g.launched && !g.nan_seen && g.cross_dA <= 0.75 * kGateRM, why, g.cross_dA, g.cross_lat);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: aligned at P2 within the 0x1f tolerance (%%.2f deg <= %%.2f), the speed kept", t.cls, fps, seed, tag);
+        checkf(g.p2_err_deg >= 0 && g.p2_err_deg <= double(core::kGateRotateTolDeg) && g.kept && g.v_after_A > 0, why, g.p2_err_deg, double(core::kGateRotateTolDeg));
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: crossing speed %%.1f m/s >= 0.9 x the cap (%%.0f; design 90 of 100)", t.cls, fps, seed, tag);
+        checkf(g.cross_v >= 0.9 * cap_v, why, g.cross_v, cap_v);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: 0x1f ends on its first frame (%%.0f frame, %%.0f ms)", t.cls, fps, seed, tag);
+        checkf(g.rot_frames == 1, why, double(g.rot_frames), double(g.rot_ms));
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: order 5 starts at %%.1f m/s >= 0.85 x the cap (%%.0f; design 85 of 100), v0 kept at P4", t.cls, fps, seed, tag);
+        checkf(g.v_o5_start >= 0.85 * cap_v && g.v0 > 0, why, g.v_o5_start, cap_v);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: approach from 3 r before X to the crossing %%.1f s <= %%.1f (design 36 s; model 3 r / v)", t.cls, fps, seed, tag);
+        checkf(g.t_3r >= 0 && t_approach <= approach_bound, why, t_approach, approach_bound);
+        if (su.slot == 0) {
+            std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: order 5 %%.1f s within 20 %% of budget.py's %%.1f s", t.cls, fps, seed, tag);
+            checkf(std::fabs(t_o5 - b_o5) <= 0.2 * b_o5, why, t_o5, b_o5);
+            std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: total from 3 r before X to the launch end %%.1f s <= 1.2 x %%.1f s (design: M2 72, M1 70)", t.cls, fps, seed, tag);
+            checkf(t_total <= 1.2 * b_total, why, t_total, b_total);
+        } else { // the outer slot: the origin is 24.7 deg off the axis, the engine's misaligned order-5 branch (1 m/s) runs until within 18.2 deg
+            std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: order 5 %%.1f s <= 1.6 x the aligned budget %%.1f s (the misaligned branch's turn)", t.cls, fps, seed, tag);
+            checkf(t_o5 <= 1.6 * b_o5, why, t_o5, b_o5);
+        }
+        // scenario A's escorts and C's pair rules
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: no detour against the M6s (%%.0f), skipped_small > 0 (%%.0f), no conflict at all: the line held", t.cls, fps, seed, tag);
+        checkf(g.cap_detours_m6 == 0 && g.cap_detours == 0 && g.cap_conflicts == 0 && g.cap_skipped_small > 0, why, double(g.cap_detours_m6), double(g.cap_skipped_small));
+        const double C = double(av::clearance(float(kShips[2].r_m), float(t.r_m)));
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: the steered M6 dodges the capital (detours %%.0f > 0) with clearance >= C (min %%.0f m)", t.cls, fps, seed, tag);
+        checkf(g.m6_detours > 0 && g.m6_min_clear >= C, why, double(g.m6_detours), g.m6_min_clear);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: site E suppresses the (capital, steered M6) pair every steered frame (%%.0f), passes it through on order 0 (%%.0f) and when stale, the manual M6 always (no autopilot)", t.cls, fps, seed, tag);
+        checkf(g.e_suppress > 0 && g.e_pass_order > 0 && g.e_pass_stale > 0 && g.e_pass_manual > 0 && g.e_other == 0, why, double(g.e_suppress), double(g.e_pass_order));
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: the trailing capital is never a small pair and never skipped in either direction (its own skipped_small %%.0f are the M6s), no conflict at the queue's spacing, no NaN (min dist %%.0f m)", t.cls, fps, seed, tag);
+        if (su.cap2 >= 0) checkf(!g.e_small_pair_capitals && !g.cap2_skipped_first && g.cap2_conflicts == 0 && !g.nan_seen, why, double(g.cap2_skipped_small), g.cap2_min_dist);
+        if (print)
+            std::printf("capital transit %-3s %s fps=%3d: t_3r=%.1f cross=%.1f s (approach %.1f s, model %.1f) cross_v=%.1f err=%.2f deg lat=%.0f m kept=%d "
+                        "rot=%ld frames/%ld ms o5 start v=%.1f o5=%.1f s (budget %.1f, mis_ticks=%d, min_v=%.1f) v0=%.1f launch=%.1f s total=%.1f s (budget %.1f) | "
+                        "cap detours=%u skipped_small=%u conflicts=%u | m6 detours=%u clear=%.0f m (C %.0f) manual_min=%.0f | E sup=%u order=%u stale=%u manual=%u | "
+                        "cap2 conflicts=%u detours=%u unresolved=%u min=%.0f m arrived=%d | cap last obstacle=0x%x\n",
+                        t.cls, tag, fps, double(g.t_3r) / 1000.0, double(g.t_cross) / 1000.0, t_approach, b_approach, g.cross_v, g.p2_err_deg, g.cross_lat,
+                        g.kept ? 1 : 0, g.rot_frames, g.rot_ms, g.v_o5_start, t_o5, b_o5, g.misaligned_ticks, g.min_v_o5, g.v0,
+                        double(g.t_end - g.t_launch) / 1000.0, t_total, b_total, g.cap_detours, g.cap_skipped_small, g.cap_conflicts, g.m6_detours,
+                        g.m6_min_clear, C, g.m6_manual_min, g.e_suppress, g.e_pass_order, g.e_pass_stale, g.e_pass_manual, g.cap2_conflicts,
+                        g.cap2_detours, g.cap2_unresolved, su.cap2 >= 0 ? g.cap2_min_dist : -1.0, g.cap2_arrived ? 1 : 0, unsigned(g.cap_last_obstacle));
+    }
+    // B1: the grid mismatch (the engine's point 5 % of r off the grid): the lead-in is refused, the vanilla stop, the engine's
+    // rotate, order 5 from rest; a second capital converging on the adjacent slot while the first rotates registers its conflict
+    // (never a small pair), is not resolved inside C (the known limit handed to the queue) and never NaNs.
+    {
+        CapitalSetup su;
+        su.slot = 7;
+        su.a_error_r = 0.05;
+        su.cap2 = !std::strcmp(t.cls, "M2") ? 1 : 0;
+        su.cap2_converge = true;
+        const CapitalResult g = run_capital_transit(t, fps, seed, su);
+        const double b_rot = g.rot_start_err_deg > 0 ? budget_rotate_s(g.rot_start_err_deg, t.yaw_dps, a_rot) : 0.0;
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit B1 (grid mismatch): the lead-in refused, vanilla stop at X (v %%.1f), rotate > 1 frame (%%.0f frames), order 5 from rest, launched from rest", t.cls, fps, seed);
+        checkf(!g.validated && !g.lead_used && g.arrived_A && !g.kept && g.v_after_A == 0 && g.rot_frames > 1 && g.v_o5_start == 0 && g.arrived_B && g.v0 == 0 && g.launched && !g.nan_seen,
+               why, g.v_after_A, double(g.rot_frames));
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit B1: the engine's rotate from %%.1f deg takes %%.1f s, within 1.3 x the controller model + 2 s", t.cls, fps, seed);
+        checkf(double(g.rot_ms) / 1000.0 <= 1.3 * b_rot + 2.0, why, g.rot_start_err_deg, double(g.rot_ms) / 1000.0);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit B1: the converging capital keeps the pair (conflicts %%.0f > 0, never small), reports it unresolved or detours (%%.0f), no NaN", t.cls, fps, seed);
+        checkf(g.cap2_conflicts > 0 && !g.e_small_pair_capitals && g.cap2_skipped_small == 0 && (g.cap2_unresolved + g.cap2_detours) > 0 && !g.nan_seen,
+               why, double(g.cap2_conflicts), double(g.cap2_unresolved + g.cap2_detours));
+        if (print)
+            std::printf("capital transit %-3s B1 fps=%3d: cross_v=%.1f err=%.1f deg v_after_A=%.1f rot=%ld frames %.1f s (model %.1f) o5 start v=%.1f t_o5=%.1f s v0=%.1f | "
+                        "cap2 conflicts=%u detours=%u unresolved=%u emergency=%u min=%.0f m arrived=%d\n",
+                        t.cls, fps, g.cross_v, g.rot_start_err_deg, g.v_after_A, g.rot_frames, double(g.rot_ms) / 1000.0, b_rot, g.v_o5_start,
+                        double(g.t_B - g.t_o5_start) / 1000.0, g.v0, g.cap2_conflicts, g.cap2_detours, g.cap2_unresolved, g.cap2_emergency, g.cap2_min_dist,
+                        g.cap2_arrived ? 1 : 0);
+    }
+    // B2: a validated approach too short to align (3 r off the line only 2 r before X): the lead-in runs, the crossing is
+    // misaligned, P2 takes the vanilla stop, the engine rotates, order 5 from rest; P4 keeps v0 on the validated approach.
+    // The installed records only (the Boreas fixture type turns at 13.5 deg/s and aligns from 2 r).
+    if (t.v_ms >= 100.0) {
+        CapitalSetup su;
+        su.slot = 0;
+        su.start_lat_r = 3.0;
+        su.start_back_r = 2.0;
+        const CapitalResult g = run_capital_transit(t, fps, seed, su);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit B2 (join too short): validated but misaligned at P2 (%%.1f deg > 8.11): the vanilla stop, rotate %%.0f frames, order 5 from rest, launched", t.cls, fps, seed);
+        checkf(g.validated && g.lead_used && g.arrived_A && g.p2_err_deg > double(core::kGateRotateTolDeg) && !g.kept && g.v_after_A == 0 && g.rot_frames > 1 &&
+                   g.v_o5_start == 0 && g.arrived_B && g.launched && !g.nan_seen,
+               why, g.p2_err_deg, double(g.rot_frames));
+        if (print)
+            std::printf("capital transit %-3s B2 fps=%3d: cross_v=%.1f err=%.1f deg v_after_A=%.1f rot=%ld frames %.1f s v0=%.1f\n", t.cls, fps, g.cross_v, g.p2_err_deg,
+                        g.v_after_A, g.rot_frames, double(g.rot_ms) / 1000.0, g.v0);
+    }
+    // the policy off (ship_steering_gates_capital = 0): the amendment-10 path, no lead-in, the vanilla stops
+    if (print) {
+        CapitalSetup su;
+        su.slot = 0;
+        su.policy = false;
+        const CapitalResult g = run_capital_transit(t, fps, seed, su);
+        std::snprintf(why, sizeof why, "%s capital transit, policy off: no lead-in, the vanilla stop at X and at the origin (v0 %%.1f), launched (rotate %%.0f frames)", t.cls);
+        checkf(!g.validated && !g.lead_used && g.arrived_A && g.v_after_A == 0 && g.v0 == 0 && g.launched && !g.nan_seen, why, g.v0, double(g.rot_frames));
+    }
+}
+// The pair policy and the site-E small-pair rule, the capital keep rules and the capital lead-in window (amendment 13).
+static void capital_unit_checks() {
+    // small_for_capital: capital-coded never, otherwise the ratio; non-capital self never
+    av::Self cap{};
+    cap.capital = true;
+    cap.r = 1091.0f;
+    av::Obstacle o{};
+    o.kind = std::uint8_t(av::Kind::ship);
+    o.r = 64.4f;
+    o.size = 0;
+    const bool m6_small = av::small_for_capital(cap, o);
+    o.r = 300.0f;
+    const bool m6_300 = av::small_for_capital(cap, o);
+    o.r = 400.0f;
+    const bool m6_400 = av::small_for_capital(cap, o);
+    o.r = 40.0f;
+    o.size = 1;
+    const bool cap_coded = av::small_for_capital(cap, o);
+    o.size = 2;
+    const bool unreadable_small = av::small_for_capital(cap, o);
+    o.r = 400.0f;
+    const bool unreadable_large = av::small_for_capital(cap, o);
+    av::Self small_self{};
+    small_self.capital = false;
+    small_self.r = 1091.0f;
+    o.size = 0;
+    o.r = 10.0f;
+    check(m6_small && m6_300 && !m6_400 && !cap_coded && unreadable_small && !unreadable_large && !av::small_for_capital(small_self, o),
+          "pair policy: an M2 of 1091 m skips ships under 364 m (M6 64, 300) but keeps 400 m, every capital-coded ship and the unreadable 400 m; a non-capital self skips nothing");
+    const float r_m2 = 307.0f; // an M2 of 307 m keeps an M6 of 140 m (design section 1)
+    check(!av::small_pair(true, r_m2, true, false, 140.0f) && av::small_pair(true, 1091.0f, true, false, 140.0f) && !av::small_pair(true, 1091.0f, true, true, 40.0f) &&
+              !av::small_pair(false, 1091.0f, true, false, 40.0f) && !av::small_pair(true, 1091.0f, false, false, 40.0f) &&
+              !av::small_pair(true, std::numeric_limits<float>::quiet_NaN(), true, false, 40.0f),
+          "site E small pair: the ratio on the pair (1091 vs 140 yes, 307 vs 140 no), never for a capital-coded B, a non-capital A, a non-ship B or a NaN radius");
+    // the verdict, reasons in the design's order
+    const std::uint32_t ap = 0x80000u;
+    check(av::small_pair_verdict(ap, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::suppress &&
+              av::small_pair_verdict(ap, core::kOrderDock, 0, false, true, 1000, 1250) == av::SmallPair::suppress &&
+              av::small_pair_verdict(0x40000u, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::no_autopilot &&
+              av::small_pair_verdict(ap, core::kOrderNone, 0, false, true, 1000, 1200) == av::SmallPair::order_not_steered &&
+              av::small_pair_verdict(ap, core::kOrderAvoid, 0, false, true, 1000, 1200) == av::SmallPair::order_not_steered &&
+              av::small_pair_verdict(ap, core::kOrderRotate, 0, false, true, 1000, 1200) == av::SmallPair::order_not_steered &&
+              av::small_pair_verdict(ap, core::kOrderMovePos, 0, true, true, 1000, 1200) == av::SmallPair::class_masked &&
+              av::small_pair_verdict(ap | 0x8000000u, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::not_steerable &&
+              av::small_pair_verdict(ap | 0x200u, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::not_steerable &&
+              av::small_pair_verdict(ap, core::kOrderMovePos, 0x1234, false, true, 1000, 1200) == av::SmallPair::not_steerable &&
+              av::small_pair_verdict(ap, core::kOrderMovePos, 0, false, false, 0, 1200) == av::SmallPair::stale &&
+              av::small_pair_verdict(ap, core::kOrderMovePos, 0, false, true, 1000, 1251) == av::SmallPair::stale,
+          "site E verdict: suppress only with the autopilot bit, a steer-set order other than 0x12, the class unmasked, not deleted/attached/docked and a decision within 250 ms; each failure named");
+    // the keep rules
+    check(core::gate_capital_keeps_speed(true, true, true, 8.1f) && !core::gate_capital_keeps_speed(true, true, true, 8.2f) &&
+              !core::gate_capital_keeps_speed(true, true, true, -1.0f) && !core::gate_capital_keeps_speed(true, false, true, 1.0f) &&
+              !core::gate_capital_keeps_speed(true, true, false, 1.0f) && !core::gate_capital_keeps_speed(false, true, true, 1.0f),
+          "P2 capital rule: the speed is kept only with the policy on, a validated approach, a capital gate target and the crossing within 8.11 deg");
+    // the gate-site rule over a synthetic object: M2 and M1 records are capital gate approaches; the M5 is not; W skips both capitals
+    FakeMem mem;
+    const std::uint32_t ship_o = 0x2000, flight = 0x3000, gate = 0x4000, types = 0x5000, gphys = 0x4800, phys = 0x2800;
+    mem.put(ship_o + 0x48, 7u | (2u << 16));
+    mem.put(ship_o + 0x50, flight);
+    mem.put(ship_o + 0x70, phys);
+    mem.put(ship_o + 0x40, 0x80000);
+    mem.put(flight + 0x224, gate);
+    mem.put(flight + 0x258, 5);
+    mem.put(gate + 0x48, 0x12);
+    mem.put(gate + 0x70, gphys);
+    mem.puts(gate + 0xa4, 552500);
+    mem.puts(gphys + 0x40, 0x10000);
+    mem.puts(gphys + 0x54, 0x10000);
+    mem.puts(gphys + 0x68, 0x10000);
+    bool ok = true;
+    std::int32_t pos[3];
+    for (unsigned code : {4u, 3u, 0u, 2u, 13u}) { // M2, M1, TL, M0, M7
+        mem.put(types + 2 * 0xdb8 + 0x14, code);
+        ok = ok && core::gate_target_capital(mem, ship_o, types) && !core::gate_target_noncapital(mem, ship_o, types) &&
+             !core::gate_warp_in_offset(mem, ship_o, gate, types, 0, pos);
+    }
+    mem.put(types + 2 * 0xdb8 + 0x14, 7); // M5
+    ok = ok && !core::gate_target_capital(mem, ship_o, types) && core::gate_target_noncapital(mem, ship_o, types) && core::gate_warp_in_offset(mem, ship_o, gate, types, 0, pos);
+    mem.put(types + 2 * 0xdb8 + 0x14, 11); // M6: large but not capital
+    ok = ok && !core::gate_target_capital(mem, ship_o, types);
+    mem.put(types + 2 * 0xdb8 + 0x14, 4);
+    mem.put(flight + 0x224, 0x6000);
+    mem.put(0x6000 + 0x48, 17);
+    ok = ok && !core::gate_target_capital(mem, ship_o, types) && !core::gate_target_capital(mem, ship_o, 0) && !core::gate_target_capital(mem, 0, types);
+    check(ok, "gate rule: TL/M0/M1/M2/M7 with a class-0x12 target are capital gate approaches and site W never offsets them; M5 is non-capital (offset), M6 is neither; a non-gate target, no table, no object refused");
+    // the capital lead-in window: 6 r (blended from 5 r) and the turning-radius look-ahead
+    const float r = 1105.0f, G[3] = {0, 0, 0}, row0[3] = {1, 0, 0}, row1[3] = {0, 1, 0}, row2[3] = {0, 0, 1};
+    const float A[3] = {666.0f, -666.0f, -2.0f * (r + 1091.0f)};
+    core::GateGeometry g;
+    check(core::gate_geometry_capital(A, G, row0, row1, row2, r, 1091.0f, &g) && std::fabs(g.h[2] - 1.0f) < 1e-5f && std::fabs(g.X[2] - (A[2] - 0.75f * r)) < 0.1f,
+          "capital lead-in: the grid point (a 1, b -1, depth 2 (r_gate + r_ship)) validates; h = F, X = A - 0.75 r F");
+    float P[3], s = 0, e = 0;
+    const float omega = 1843.0f / 65536.0f * core::kTwoPi; // rad/s, the Run156 M2
+    const float x61[3] = {A[0], A[1], g.X[2] - 6.1f * r}, x59[3] = {A[0], A[1], g.X[2] - 5.9f * r}, x40[3] = {A[0] + 3 * r, A[1], g.X[2] - 4.0f * r};
+    const bool refused = !core::gate_lead_in_capital(g, x61, 100.0f, omega, P, &s, &e) && s < -6.0f * r;
+    const bool near_join = core::gate_lead_in_capital(g, x59, 100.0f, omega, P, &s, &e) && std::fabs(P[2] - (A[2] - 0.1f * (A[2] - (g.X[2] - 5.9f * r + 2.0f * 100.0f / omega)))) < 2.0f;
+    const bool inside = core::gate_lead_in_capital(g, x40, 100.0f, omega, P, &s, &e) && std::fabs(e - 3 * r) < 1.0f && std::fabs(P[0] - A[0]) < 0.01f &&
+                        std::fabs(P[2] - (g.X[2] - 4.0f * r + 2.0f * 100.0f / omega)) < 1.0f;
+    const bool small_window = !core::gate_lead_in(g, x40, 100.0f, P, &s, &e); // the small-ship window (3 r) refuses the same point
+    check(refused && near_join && inside && small_window && 2.0f * 100.0f / omega > 1100.0f && 2.0f * 100.0f / omega < 1200.0f,
+          "capital lead-in window: refused beyond 6 r; at 5.9 r the carrot is 90 % of the way to A; at 4 r, 3 r off the line, the carrot is on the line 2 v / omega (1136 m) ahead; the 3 r small-ship window refuses it");
+}
+
 // --emit-controller: the controller and the integrator's axis step over a deterministic grid of inputs (every branch:
 // W = 0, w < 0, braking, accelerating, cruising, the frame split, the clamp to the remainder, e = 0 with a rate), one
 // line per case "ctl e w W acc dt -> e' w' d" for ship_trace_replay.py's port-equality test.
@@ -3184,12 +3927,25 @@ static int emit_trace(const char* path) {
 int main(int argc, char** argv) {
     if (argc == 3 && !std::strcmp(argv[1], "--emit-trace")) return emit_trace(argv[2]);
     if (argc == 3 && !std::strcmp(argv[1], "--emit-controller")) return emit_controller(argv[2]);
+    if (argc == 2 && (!std::strcmp(argv[1], "--capital") || !std::strcmp(argv[1], "--capital-noslip"))) {
+        // the amendment-13 checks alone (an iteration aid; the full run is the acceptance); --capital-noslip without the slip term
+        g_slip = std::strcmp(argv[1], "--capital-noslip") != 0;
+        capital_unit_checks();
+        for (const ShipType& t : kCapitals)
+            for (int fps : kFps)
+                for (std::uint32_t seed : kSeeds) capital_transit_scenario(t, fps, seed);
+        capital_transit_scenario(kShips[4], 60, kSeeds[0]);
+        std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
+        std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
+        return failures ? 1 : 0;
+    }
     controller_regression();
     unit_checks();
     avoidance_unit_checks();
     walk_checks();
     walk_record_code_checks();
     gate_unit_checks();
+    capital_unit_checks();
     for (const ShipType& t : kShips) {
         degraded_scenario(t);
         for (int fps : kFps)
@@ -3209,6 +3965,9 @@ int main(int argc, char** argv) {
     }
     for (int fps : kFps)
         for (std::uint32_t seed : kSeeds) capital_cloud_scenario(fps, seed);
+    for (const ShipType& t : kCapitals) // amendment 13: the Run156 M2 and M1 through the gate (scenarios A, B, C)
+        for (int fps : kFps)
+            for (std::uint32_t seed : kSeeds) capital_transit_scenario(t, fps, seed);
     {
         static const ShipType m4 = {"M4", "Buster", 180.0, 25.0, 129.375, 12.0, 20, false};
         for (int fps : kFps)

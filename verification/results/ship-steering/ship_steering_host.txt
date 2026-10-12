@@ -84,8 +84,9 @@ flyby@600  M2  Boreas     fps= 60 detours=2210 min_clear=1291.0 m (C=1258.1, par
 flyby@150  M2  Boreas     fps= 60 detours=2240 min_clear=1297.2 m (C=1258.1, part r=200) path=19205 m (x0.960) max_lateral=1660 m back_on_course=12234 ms after pass at 164549 (lateral 1111 m, L=3074 m) side=1
 crossing    M2  Boreas     fps= 60 detours=834/877 min_dist=2243.2 m (C=1763.5, L=3074 m) sides=1/-1 unresolved=0/0
 form+rock   M2  Boreas     fps= 60 leader_detours=1448 follower_detours=0/0 min_rock=1461/3084/3084 m (C=1358) final_slot=228.6/229.0 m (4r=2821.6)
-gate capital M2  fps= 60 slot=7 heading_err=24.2 deg (vanilla 24.2) v_after_A=0.0 v0=0.0 t_A=74116 (vanilla 74116)
-gate capital M2  fps= 60 slot=0 heading_err=30.6 deg (vanilla 30.7) v_after_A=0.0 v0=0.0 t_A=78966 (vanilla 78966)
+capital transit M2  slot 0 fps= 60: t_3r=72.4 cross=119.8 s (approach 47.4 s, model 47.4) cross_v=70.0 err=0.09 deg lat=1 m kept=1 rot=1 frames/17 ms o5 start v=69.3 o5=54.1 s (budget 54.1, mis_ticks=0, min_v=54.4) v0=54.4 launch=0.9 s total=102.5 s (budget 102.4) | cap detours=0 skipped_small=6736 conflicts=0 | m6 detours=917 clear=1523 m (C 802) manual_min=775 | E sup=5843 order=24 stale=4565 manual=10432 | cap2 conflicts=0 detours=0 unresolved=0 min=-1 m arrived=0 | cap last obstacle=0x0
+capital transit M2  slot 19 (rotated frame) fps= 60: t_3r=72.4 cross=119.8 s (approach 47.4 s, model 47.4) cross_v=70.0 err=0.09 deg lat=1 m kept=1 rot=1 frames/17 ms o5 start v=69.3 o5=68.2 s (budget 61.5, mis_ticks=306, min_v=1.0) v0=54.4 launch=0.9 s total=116.6 s (budget 109.8) | cap detours=0 skipped_small=6726 conflicts=0 | m6 detours=954 clear=1523 m (C 802) manual_min=777 | E sup=5843 order=24 stale=5414 manual=11281 | cap2 conflicts=0 detours=0 unresolved=0 min=-1 m arrived=0 | cap last obstacle=0x0
+capital transit M2  B1 fps= 60: cross_v=27.9 err=24.0 deg v_after_A=0.0 rot=468 frames 7.8 s (model 7.7) o5 start v=0.0 t_o5=56.5 s v0=0.0 | cap2 conflicts=1396 detours=1000 unresolved=396 emergency=396 min=2195 m arrived=0
 capital cloud fps= 60 heading_change=0.00 deg capital_detours=0 skipped_small=6478 fighters_detouring=12/12 min_clear=1266.9 m (C=739.6)
 capital cloud   fighter  0 detours=265 min_dist=1267 m unresolved=0
 capital cloud   fighter  1 detours=268 min_dist=1267 m unresolved=0
@@ -99,10 +100,18 @@ capital cloud   fighter  8 detours=265 min_dist=1267 m unresolved=0
 capital cloud   fighter  9 detours=271 min_dist=1267 m unresolved=0
 capital cloud   fighter 10 detours=276 min_dist=1267 m unresolved=0
 capital cloud   fighter 11 detours=270 min_dist=1267 m unresolved=0
+capital transit M2  slot 0 fps= 60: t_3r=45.7 cross=79.2 s (approach 33.5 s, model 33.1) cross_v=100.0 err=0.62 deg lat=9 m kept=1 rot=1 frames/17 ms o5 start v=99.5 o5=37.5 s (budget 37.5, mis_ticks=0, min_v=99.3) v0=109.8 launch=0.9 s total=71.9 s (budget 71.6) | cap detours=0 skipped_small=8041 conflicts=0 | m6 detours=764 clear=1717 m (C 1188) manual_min=1028 | E sup=4245 order=24 stale=2731 manual=7000 | cap2 conflicts=0 detours=0 unresolved=0 min=5834 m arrived=0 | cap last obstacle=0x0
+capital transit M2  slot 19 (rotated frame) fps= 60: t_3r=45.7 cross=79.2 s (approach 33.5 s, model 33.1) cross_v=100.0 err=0.62 deg lat=9 m kept=1 rot=1 frames/17 ms o5 start v=99.5 o5=45.6 s (budget 41.6, mis_ticks=286, min_v=51.7) v0=109.9 launch=0.9 s total=80.0 s (budget 75.6) | cap detours=0 skipped_small=7540 conflicts=0 | m6 detours=675 clear=1641 m (C 1188) manual_min=1046 | E sup=4245 order=24 stale=3219 manual=7488 | cap2 conflicts=0 detours=0 unresolved=0 min=5925 m arrived=0 | cap last obstacle=0x0
+capital transit M2  B1 fps= 60: cross_v=28.3 err=23.5 deg v_after_A=0.0 rot=467 frames 7.8 s (model 8.7) o5 start v=0.0 t_o5=42.8 s v0=0.0 | cap2 conflicts=4555 detours=4498 unresolved=57 emergency=37 min=2299 m arrived=0
+capital transit M2  B2 fps= 60: cross_v=100.0 err=32.0 deg v_after_A=0.0 rot=675 frames 11.2 s v0=109.9
+capital transit M1  slot 0 fps= 60: t_3r=44.5 cross=78.2 s (approach 33.6 s, model 33.1) cross_v=100.0 err=1.30 deg lat=19 m kept=1 rot=1 frames/16 ms o5 start v=99.8 o5=36.0 s (budget 36.0, mis_ticks=0, min_v=99.7) v0=109.8 launch=0.9 s total=70.6 s (budget 70.1) | cap detours=0 skipped_small=8091 conflicts=0 | m6 detours=728 clear=1633 m (C 1119) manual_min=1022 | E sup=4172 order=24 stale=2652 manual=6848 | cap2 conflicts=0 detours=0 unresolved=0 min=6224 m arrived=0 | cap last obstacle=0x0
+capital transit M1  slot 19 (rotated frame) fps= 60: t_3r=44.5 cross=78.2 s (approach 33.6 s, model 33.1) cross_v=100.0 err=1.30 deg lat=19 m kept=1 rot=1 frames/16 ms o5 start v=99.8 o5=44.9 s (budget 40.1, mis_ticks=407, min_v=66.0) v0=109.9 launch=0.9 s total=79.5 s (budget 74.1) | cap detours=0 skipped_small=7932 conflicts=0 | m6 detours=661 clear=1747 m (C 1119) manual_min=1047 | E sup=4172 order=24 stale=3186 manual=7382 | cap2 conflicts=0 detours=0 unresolved=0 min=6244 m arrived=0 | cap last obstacle=0x0
+capital transit M1  B1 fps= 60: cross_v=21.4 err=24.0 deg v_after_A=0.0 rot=633 frames 10.6 s (model 9.4) o5 start v=0.0 t_o5=47.1 s v0=0.0 | cap2 conflicts=2790 detours=2790 unresolved=0 emergency=0 min=3566 m arrived=1
+capital transit M1  B2 fps= 60: cross_v=100.0 err=37.4 deg v_after_A=0.0 rot=916 frames 15.3 s v0=109.8
 gate dock M4  fps= 60 theta -45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13783) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
 gate dock M4  fps= 60 theta  +0 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13266 ms (vanilla 14016) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
 gate dock M4  fps= 60 theta +45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13783) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
 gate dock M4  fps= 60 theta  +0 sub=5 min_v=90.0 m/s (vanilla 90.0) t_B=13266 ms (vanilla 14016) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
 amendment 12 A/B: gate legs identical; 180 deg turn settle changed in 0 of 15 runs (max 0 ms), arrival changed in 1 of 15 (max 0 ms)
-ship_steering_host checks=4175 failures=0 slip_gaps=131
+ship_steering_host checks=5052 failures=0 slip_gaps=131
 checks PASS

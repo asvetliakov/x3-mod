@@ -340,9 +340,18 @@ class LauncherDefaults(unittest.TestCase):
         self.assertEqual(self.env('--ship-steering')['X3M_SHIP_STEERING_GATES'], '1')
         self.assertEqual(self.env('--ship-steering', '--ship-steering-gates')['X3M_SHIP_STEERING_GATES'], '1')
         self.assertEqual(self.env('--ship-steering', '--no-ship-steering-gates')['X3M_SHIP_STEERING_GATES'], '0')
+        # the capital half (amendment 13): explicit with the gates, never set without them (the DLL refuses it with a row)
+        self.assertNotIn('X3M_SHIP_STEERING_GATES_CAPITAL', env)
+        self.assertNotIn('X3M_SHIP_STEERING_GATES_CAPITAL', self.env(inherited={'X3M_SHIP_STEERING_GATES_CAPITAL': '1'}))
+        self.assertEqual(self.env('--ship-steering')['X3M_SHIP_STEERING_GATES_CAPITAL'], '1')
+        self.assertEqual(self.env('--ship-steering', '--ship-steering-gates-capital')['X3M_SHIP_STEERING_GATES_CAPITAL'], '1')
+        self.assertEqual(self.env('--ship-steering', '--no-ship-steering-gates-capital')['X3M_SHIP_STEERING_GATES_CAPITAL'], '0')
+        self.assertNotIn('X3M_SHIP_STEERING_GATES_CAPITAL', self.env('--ship-steering', '--no-ship-steering-gates'))
         for args, vanilla in ((('--ship-steering',), True), (('--ship-steering', '--ship-steering-classes', 'M9'), False),
                               (('--ship-steering-classes', 'M1'), False), (('--ship-avoidance',), False),
-                              (('--ship-steering', '--ship-avoidance'), True), (('--no-ship-steering-gates',), False)):
+                              (('--ship-steering', '--ship-avoidance'), True), (('--no-ship-steering-gates',), False),
+                              (('--no-ship-steering-gates-capital',), False),
+                              (('--ship-steering', '--no-ship-steering-gates', '--no-ship-steering-gates-capital'), False)):
             with self.subTest(args=args, vanilla=vanilla):
                 code, _, error = self.launch(*args, vanilla=vanilla)
                 self.assertEqual(code, 2, error[-200:])

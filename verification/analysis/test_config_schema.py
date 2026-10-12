@@ -200,11 +200,16 @@ class ConfigSchema(unittest.TestCase):
         gates = schema.BY_KEY['ship_steering_gates']
         self.assertEqual((gates['type'], gates['default'], gates['builtin'], gates['requires'], gates['launcher']),
                          ('bool', None, '1', ('ship_steering',), '--ship-steering-gates'))
+        # amendment 13: the capital half of the gate approach, on by default, a kill switch under the gates
+        capital = schema.BY_KEY['ship_steering_gates_capital']
+        self.assertEqual((capital['type'], capital['default'], capital['builtin'], capital['requires'], capital['launcher']),
+                         ('bool', None, '1', ('ship_steering_gates',), '--ship-steering-gates-capital'))
         template = TEMPLATE.read_text()
         self.assertIn(';ship_steering = 0\n', template)
         self.assertIn(';ship_steering_classes =\n', template)
         self.assertIn(';ship_avoidance = 0\n', template)
         self.assertIn(';ship_steering_gates = 1\n', template)
+        self.assertIn(';ship_steering_gates_capital = 1\n', template)
 
     def test_launcher_fields_are_registered_options(self):
         # (see also OptOuts below: the resolved values of every opt-out, default launch and player mode)

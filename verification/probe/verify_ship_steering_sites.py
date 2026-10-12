@@ -61,6 +61,11 @@ E_CALLER_TRUE_PATH = (0x0044e52b, bytes.fromhex('814b4000100000'))  # or dword [
 WALK_FACTS = (
     ('bucket_table_order_loop', 0x00452b4a, bytes.fromhex('8d1440' '8b4508' '8b4850' '8b1c91' '833b00')),      # lea edx,[eax+eax*2]; mov eax,[ebp+8]; mov ecx,[eax+0x50]; mov ebx,[ecx+edx*4]; cmp [ebx],0
     ('bucket_table_collide_L0', 0x0045d275, bytes.fromhex('8b4250' '8b0401' '3938')),                          # mov eax,[edx+0x50]; mov eax,[ecx+eax]; cmp [eax],edi
+    # the engine's obstacle list (ship_steering_sites.h kFlightObstacle*; amendment 13's ship_avoid_engine_warn row): L0 clears
+    # f+0x1e0, the warn caller appends B at f+0x1e4[n] and d at f+0x1f8[n] while n < 5 (capstone listing 2026-10-12)
+    ('obstacle_count_clear_L0', 0x0045d298, bytes.fromhex('89bbe0010000')),                                      # mov [ebx+0x1e0],edi
+    ('obstacle_list_append', 0x0044e54c, bytes.fromhex('8b81e0010000' '83f805' '7d26' '89ac81e4010000')),         # mov eax,[ecx+0x1e0]; cmp eax,5; jge; mov [ecx+eax*4+0x1e4],ebp
+    ('obstacle_dist_append', 0x0044e565, bytes.fromhex('898c82f8010000')),                                       # mov [edx+eax*4+0x1f8],ecx
     ('bucket_table_collide_pairs', 0x0045cbf4, bytes.fromhex('8b4b54' '8b5150' '8b442410' '8b3c10' '833f00')),  # mov ecx,[ebx+0x54]; mov edx,[ecx+0x50]; mov eax,[esp+0x10]; mov edi,[eax+edx]; cmp [edi],0
     ('child_list_head_sentinel', 0x0048aa46, bytes.fromhex('8b7b0c' '833f00')),                                # mov edi,[ebx+0xc]; cmp [edi],0
     ('child_list_next_sentinel', 0x00488248, bytes.fromhex('8b6d00' '837d0000' '0f85')),                       # mov ebp,[ebp]; cmp [ebp],0; jne
