@@ -185,10 +185,16 @@ D 578 (1790), E 331 (822), F 190 (232), G 112 (185), H 60 (130), I 29 (47), J 15
 | placed asteroids (t=17) | 54,990; 14/**194**/732 per sector | 2,882; 0/6/98 per sector |
 | placed asteroid radius m (min/p10/med/p90/max) | 15/15/**60**/1075/3512 | 331/2033/2033/2033/3512 |
 | per-sector median asteroid nearest-neighbour km | 0.48/0.94/**1.61**/3.64/36.5 | 0.0/6.4/10.5/23.1/68.3 |
-| gate radius m | 1105 (types 0–3, 5–14), 2900 (type 4), 3208 (21–24), 0 (15–20, no scene) | 2999, 2498, 7181 (5–8), 2995, 3208 |
+| gate radius m | 1105 (types 0–3, 5–14), 2900 (type 4), 3208 (21–24), 0 (15–20, empty body stub) | 1362 (0–3), 2498 (4), 7181 (5–8), 1359 (9–20), 1428 (21–24); corrected 2026-10-12, see below |
 | stations in the map | **0** (Mayhem places stations at game start) | 1794; 0/9/23 per sector |
 | station nearest-neighbour, per-sector minimum km | — | 3.02/5.69/**10.16**/24.05/161 (min/p10/med/p90/max over 203 sectors) |
 | station nearest-neighbour, per-sector median km | — | 3.58/8.54/**14.3**/30.6/161 |
+
+**Stock gate radii corrected (2026-10-12) [m].** `map_stats.py` ran the installed view first, and `scene_radius._BV`
+caches body values by name across views, so its stock gate radii (2999, 2995, 3208 m) used the Mayhem bodies. A fresh
+cache gives the values above ([ship-navigation-ai.md](ship-navigation-ai.md) §10.9, `gate_hole.py`). Other stock
+radii in `map_stats.json`/`ships_by_class.json` that share a body name with an installed override are suspect for the
+same reason; they were not recomputed.
 
 **Gate trigger distance: not tabulated.** TGates carries only the shared trailing fields
 (`128;10000;25;1;0;10000;-100000`) and the scene **[m]**. The jump is triggered by the collision path

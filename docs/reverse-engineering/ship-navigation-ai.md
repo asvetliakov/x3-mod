@@ -817,7 +817,7 @@ for gate targets.
 * whether M7 derives from KC class 2019;
 * the `m41 == g8` reading (owned by the player), which differs from the §3.2 reading ("the player's ship"); both
   are **[i]**;
-* the visual size of the hole relative to the 0.55 r pass offset (model geometry was not read);
+* ~~the visual size of the hole relative to the 0.55 r pass offset~~: resolved in §10.9;
 * every timing in §10.6 (a model, not flight data).
 
 A flight row that settles the model:
@@ -831,4 +831,158 @@ These give the real crossing speeds and hand-over gaps per class.
 python3 -I verification/results/ship-navigation-ai/gates/check_sites.py     # RESULT PASS (73 checks)
 python3 -I verification/results/ship-navigation-ai/gates/kc_gate_flow.py    # KC pseudo-statements, stock + Mayhem
 python3 -I verification/results/ship-navigation-ai/gates/gate_timeline.py   # model timings [i]
+python3 -I verification/results/ship-navigation-ai/gates/gate_hole.py       # §10.9, RESULT PASS (41 byte strings), ~40 s
 ```
+
+### 10.9 Gate hole geometry
+
+2026-10-12, static study of the same `X3AP.exe` and of the installed catalogues (stock view = the pinned AP set
+`01–13.cat` + `addon/01–04.cat`; installed view = every catalogue plus loose files). Nothing was launched.
+[`gate_hole.py`](../../verification/results/ship-navigation-ai/gates/gate_hole.py) re-reads the 41 EXE byte strings
+quoted below (`RESULT PASS`). It resolves every TGates scene and body, applies the radius rule of
+[game-scale-and-ship-classes.md](game-scale-and-ship-classes.md) §2 with a fresh body cache per view, applies the
+collision-tree rules below to every part, and measures the meshes. Its output is
+[`gate_hole.txt`](../../verification/results/ship-navigation-ai/gates/gate_hole.txt). Raw decompiles stayed in the
+session scratchpad. Gate-local frame as in §10: z is the gate axis (row 2), and every gate scene part has zero rotation
+keys **[m]**. A mesh point is `point × LOD-0 value / 65536 + part offset` **[i]** ([body-format-bob1.md](body-format-bob1.md)
+§3). **Hole `h`** = the clear coaxial radius: the smallest distance from the axis `x = y = 0` to any triangle of the
+collision mesh projected along z, over the whole axial extent. A ship that moves parallel to the axis with
+`lateral + r_ship ≤ h·r` never touches the mesh.
+
+**Answer.**
+
+* **Installed ordinary gates (TGates rows 0–3 and 5–14, which includes subtypes 5..8): there is no ring.** The Mayhem
+  scene `others\terraformer_gate_active_scene` (`addon/06.cat`) has one part, `others\terraformer_gate_effect`
+  (`addon/06.cat`, `.bob`), at `(0, 0, 47500)`. That part is a blended `effects.fx` **sphere shell**: every vertex lies at
+  0.914 r (504,774 units, 1010 m) from its centre, and the centre is 0.086 r along +z. It has no colliding group, so it
+  gets no collision tree, and a ship can never make contact with these gates **[m]**. The stock ring bodies are
+  overridden by 28-byte comment-only stubs (`addon/11.cat`, "NoAdsign-mod"), and the Mayhem scene does not reference
+  them anyway. **Physical hole: unbounded.** Visual bound: the bubble's section in the plane z = 0 has radius 0.910 r.
+  `r` = 552,274 units = **1104.5 m** **[m]**.
+* **Installed Terran gates (rows 21–24, `patch20\terran_gate_scene`): the only installed ring.** `h` = **0.663 r**
+  (2125 m), with `r` = 1,603,754 units = 3207.5 m **[m]**.
+* Installed row 4 (Xenon, blended disc only) and rows 15–20 (inactive hubs, whose body is an empty stub) have no
+  collision mesh. The pair loop never raises `"CanWarp"` for subtypes 4 and 0xf..0x14 (`0x0045d73b..0x0045d77b`) **[m]**.
+* Stock AP, for reference: Argon ring (rows 0–3) **0.605 r**, terraformer ring (9–20) **0.607 r**, Terran ring (21–24)
+  **0.654 r**, catapult (5–8) a tube of inner radius **0.127 r**, destroyed gate (4) no hole **[m]**.
+* Consequence for amendment 8: `kGateHoleFraction = 0.55` and the 0.5 r chord bound are conservative in the installed
+  game. The ordinary gates impose no physical limit. On a Terran gate a chord crossing at ≤ 0.5 r, 34° off the axis,
+  with r_ship = 140 m still clears the rim by 0.026 r (83 m) **[i]** (arithmetic below).
+
+**Q1: geometry per TGates family** (`r` from the radius rule; hole, outer radius and axial extents from the collision
+mesh; the rim band is the triangles within 0.05 r of the hole, i.e. the inner lip's axial thickness) **[m]**:
+
+| View | Rows | Scene (catalogue) | Collision part: body (catalogue), LOD-0 value, collision LOD | `r` units / m | Hole `h` | Outer | Body z extent | Rim band z |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| installed | 0–3, 5–14 | `terraformer_gate_active_scene` (addon/06) | none: `terraformer_gate_effect` (addon/06) is blended, sphere 0.914 r centred at z = +0.086 r | 552,274 / 1104.5 | unbounded (visual 0.910 r at z = 0) | (0.914) | (−0.828..+1.000) | — |
+| installed | 4 | `argon_gate_scene` (addon/06; ring part commented out) | none: `argon_gate_effect` (addon/11, 1,449,877) is a blended disc | 1,449,877 / 2899.8 | unbounded | (1.002) | (−0.091..+0.133) | — |
+| installed | 15–20 | `terraformer_gate_inactive_scene` (01) | none: `terraformer_gate` (addon/11) is an empty stub, no model | 47 (root only) | — | — | — | — |
+| installed | 21–24 | `patch20\terran_gate_scene` (07) | `patch20\terran_gate` (addon/11 `.bob`, 1,601,122, 1 LOD → LOD 0; material 3 blended, out) | 1,603,754 / 3207.5 | **0.663 r = 2125 m** | 1.026 r | −0.498..+0.179 r | −0.116..+0.138 r (817 m) |
+| stock | 0–3 | `argon_gate_scene` (01) | `others\argon_gate` (01, 678,369, LOD 4 of 5; its 12 materials are opaque) | 681,001 / 1362.0 | **0.605 r = 824 m** | 0.996 r | −0.648..+0.655 r | −0.121..+0.130 r (342 m) |
+| stock | 4 | `argon_gate_destroyed_scene` (01) | `argon_gate_destroyed` (01, 1,248,973, its only LOD) | 1,248,973 / 2497.9 | 0 (debris across the axis) | 1.013 r | −0.411..+0.246 r | — |
+| stock | 5–8 | `terran_catapult_gate_scene` (01) | `terran_catapult_gate` (01, 1,797,099 at z = +1,793,560, LOD 3 of 4) | 3,590,659 / 7181.3 | **0.127 r = 912 m** (tube interior) | 0.169 r | −0.001..+0.539 r (visual to +1.000) | tube length |
+| stock | 9–14, 15–20 | `terraformer_gate_active_scene` / `_inactive_scene` (01) | `others\terraformer_gate` (01, 679,472, LOD 3 of 4) | 679,472 / 1358.9 | **0.607 r = 825 m** | 1.000 r | −0.651..+0.300 r | −0.124..+0.125 r (339 m) |
+| stock | 21–24 | `patch20\terran_gate_scene` (07) | `patch20\terran_gate` (07 `.pbb`, 711,610, LOD 2 of 3; material 3 out) | 714,242 / 1428.5 | **0.654 r = 934 m** | 1.024 r | −0.495..+0.180 r | −0.111..+0.120 r (330 m) |
+
+* **The radius cross-check.** The installed 552,274 units (1104.5 m) is the same rule and the same number as the 1105 m
+  of game-scale §6. It is a static estimate. No runtime `[gate+0xa4]` is on record: the Run152 `ship_gate_approach`
+  rows predate `offset_m`, which is 0.25 r. The rule itself was validated once, on a station (9,205,962) **[m]**.
+  **Correction:** the stock gate radii in game-scale §6 (2999, 2995, 3208 m) were computed with the installed bodies'
+  cached values (`scene_radius._BV` is keyed by name across views, and `map_stats.py` runs the installed view first).
+  The stock values are those in the table above.
+* **The hole is centred on the axis.** The largest clear disc anywhere in the projection is at most 0.006 r larger than
+  `h`, and its centre lies within 0.008 r of the axis, for all four rings **[m]**.
+* **Off the rim, the clear radius grows.** In 0.05 r slabs the Terran ring clears 0.663–0.680 r for |z| ≤ 0.15 r and
+  0.72–0.84 r beyond. The stock Argon ring clears 0.605–0.623 r for |z| ≤ 0.15 r and ≥ 0.70 r beyond. The stock
+  terraformer ring clears 0.607 r for |z| ≤ 0.15 r and ≥ 0.73 r beyond (`gate_hole.txt`) **[m]**.
+* **Visual vs collision.** The visual (LOD 0, all groups) holes are within 0.005 r of the collision holes. The
+  exception is the catapult, where two LOD-0 triangles cross the axis at z = 0.022–0.046 r; they are not in the
+  collision LOD **[m]**.
+* **The subtype 5..8 special case** (pass y = −0.05 r, `"CanWarp"` within 0.14 r, §10.5) fits the stock catapult: a tube
+  of inner radius 0.127 r whose mouth sits at the gate origin. In the installed game rows 5–8 use the ordinary
+  bubble scene, so only the smaller pass offset and trigger distance remain **[i]**.
+
+**Q2: which parts collide, and is there a mesh test for gates [m]:**
+
+* **Broad phase.** Ship × gate takes the class-7 path of the pair loop (`[obj+0xa4]` box `3·r_sum + 250000`, then the
+  float distance against `1.01·r_sum`, [sector-collide.md](sector-collide.md) §3). The filter `0x0045c780` then **skips
+  the pair outright when the gate's `[+0x40]` has bit 0x100000** (every class-0x12 object, `0x00440e95`) **and the
+  ship's order `[flight+0x258]` is 5 or 0x1e with `[flight+0x224]` = this gate** (`0x0045c7b3..0x0045c7e3`). So an AI ship
+  flying order 5 (the pass) or 0x1e (clear after arrival) to a gate cannot collide with that gate at all. Orders 4,
+  8 and 0x21 are not exempt.
+* **Narrow phase.** A surviving pair goes to `0x0048ac80` → `0x0048a890`, which walks both scene-node trees and runs
+  the RAPID mesh test only for a node pair where both nodes carry `[+0x12c] & 0x1000000` (a collision tree) and neither
+  carries 0x8000000 (`0x0048a92f..0x0048a95d`). **There is no sphere-only contact**: a pair without trees yields 0 and no
+  response (`0x0045e130` runs only on > 0).
+* **Which scene parts get a tree.** The scene-part builder `0x0043d1d0` (`0x0043d801..0x0043d8e6`) gives no tree to:
+  * a node flagged 0x10004000, i.e. a body in `types/Bodies` SBTYPE_2D (→ 0x4000, `0x004346d0`) or SBTYPE_2D2
+    (→ 0x10000000, `0x004346e7`);
+  * a JET (`[+0x130] & 1`);
+  * a DOCKPOINT body (`0x0043d822`), or body 0x4a56;
+  * a part already flagged by the builder.
+
+  Every other part with a body gets `0x0047eb90(node, nLOD − 1)`, the **coarsest LOD record** (record 1 for a class-5
+  owner or a `0x0043fd00` ship). A LOD record with flags & 0x10 is built first, all groups, by the body setter
+  (`0x00487f10..0x00487f1f`). A body with the BodyData flag (`model+0x50 & 0x40`) gets 0x8100000 (`0x00487eea`). None of
+  the gate bodies is in any `types/Bodies` list or has a 0x10 LOD (both views, `gate_hole.txt`).
+* **Which groups.** `0x0047eb90` skips parts with flags & 0xa0 (`0x0047ec95`) and groups with `[+0xc] & 1`
+  (`0x0047ecb4`). The binary loader sets `[+0xc] = 1` when the material flags have any of **0x486** (DESTINATIONBLEND,
+  ALPHABLEND, MULTIPLY, SRCCOLOR; `0x00482adb`). For an effect material the flags come from `0x00481780`: a LONG
+  parameter `g_AlphaBlendEnable` (semantic 0x13) ≠ 0 adds 2 unless `g_ALPHATESTENABLE` (0x12) ≠ 0, which adds 1 instead
+  (`0x00481a46..0x00481a8e`). So **a blended effect material without alpha test never collides**. When no group
+  collides, `0x0046ed00` marks the body slot −1 and no node with that body is ever flagged 0x1000000
+  (`0x0047ecde..0x0047ecf5`, `0x0046ed4b`).
+* Result: every `argon_gate_effect` and `terraformer_gate_effect` (blend 1, alpha test 0) is non-colliding. The rings
+  collide with their opaque groups (Terran material 3 is blended and drops out). The stock Argon ring's blended
+  material 1 carries alpha test and is not in the collision LOD anyway. The stock destroyed gate's blended materials
+  carry alpha test and collide.
+* **`0x0044d9c0` is not a mesh test.** It is the box test that `0x0044dd90` (`CollisionWarn`, §3.1) calls at
+  `0x0044e2b5`/`0x0044e3ad`. Per part node with a loaded body it compares the LOD-0 record box (`+0x20..+0x2c`) ×
+  node scale, plus the ship radius, × 1.2, against the node distance. It ignores materials, so the Mayhem bubble's cube
+  (±0.914 r about z = +0.086 r) is a warn obstacle even though it can never be hit.
+
+**Q3: the safe crossing fraction** (`h` from Q1; installed non-capital ship radius ≤ 140 m, the M6 maximum in
+`ships_by_class.json`):
+
+| Family | `h` | Axis-parallel crossing at lateral ≤ | Oblique crossing at α ≤ 34° (rim half-thickness `w`) | Exit spread 0.3 r |
+| --- | --- | --- | --- | --- |
+| installed ordinary (0–3, 5–14) | none | any (no collision mesh) | any | no contact possible; ends inside the bubble (0.3 r < 0.910 r) |
+| installed Terran (21–24) | 0.663 | 0.663 r − r_ship | 0.663 r − r_ship − 0.093 r (`w` = 0.138 r) | clear iff r_ship ≤ 1163 m; margin 1023 m at 140 m |
+| stock Argon (0–3) | 0.605 | 0.605 r − r_ship | − 0.088 r (`w` = 0.130 r) | clear iff r_ship ≤ 416 m |
+| stock terraformer (9–20) | 0.607 | 0.607 r − r_ship | − 0.084 r (`w` = 0.125 r) | clear iff r_ship ≤ 417 m |
+| stock Terran (21–24) | 0.654 | 0.654 r − r_ship | − 0.081 r (`w` = 0.120 r) | clear iff r_ship ≤ 506 m |
+| stock catapult (5–8) | 0.127 | 0.127 r − r_ship (inside the tube) | tube length 0.54 r: keep within the tube | 0.3 r is outside the tube (outer 0.169 r) |
+
+* The table values are **[m]**. The oblique bound is conservative **[i]**: the lateral position can change by at most
+  `w·tan α` while the ship is inside the rim band.
+* For amendment 8 on a Terran gate: a chord crossing at 0.5 r, 34° off the axis, needs 0.5 + 0.093 + 140/3207.5 =
+  0.637 r ≤ 0.663 r. The 0.55 r arc check needs `w·tan α` ≤ 0.07 r at r_ship = 140 m, i.e. α ≤ 27° on a Terran gate
+  **[i]**.
+* **Order 8 launch (vanilla).** It starts at B, whose lateral offset is 0.55·cos θ·r ∈ [0.389, 0.55] r, and runs
+  parallel to the axis. It clears the installed Terran ring for r_ship ≤ 0.113 r (362 m). On the stock Argon ring it
+  would touch for r_ship > 0.055 r (75 m) **[i]**.
+* **Warp-in (exit spread).** `SA_WarpObjectIn` writes `f+0x240 = P` (the ship's position at the call, after the site-W
+  offset). It then places the ship at `P + 1,348,650 · row 2` (`0x00465bec..0x00465c0a`), and the handler moves it back
+  to `P` along the axis over 900 ms. The path is axis-parallel at the offset lateral distance, so the clear-cylinder
+  rule applies over its whole length. 1,348,650 units is 2.44 r for the 1104.5 m gates and 0.84 r for the installed
+  Terran gate. Order 0x21 is not exempt from the pair filter; the following 0x1e is.
+* With `P` at the gate origin before the offset **[i]**, the arriving ship sits at 0.3 r in the gate plane:
+  * on an ordinary installed gate it cannot collide and ends inside the bubble;
+  * on a Terran gate it clears the ring by 1023 m at r_ship = 140 m.
+
+**Q4: still inferred or open:**
+
+* The point scale `value / 65536` ([body-format-bob1.md](body-format-bob1.md) §3). Supporting evidence: the Mayhem
+  bubble's vertices lie exactly at the LOD-0 value from its centre, and the engine's own pass arc (0.55 r) and
+  `"CanWarp"` radii sit just inside the stock holes (0.605 r, and 0.127–0.14 r for the catapult).
+* The effect-parameter object layout read at `0x00481a44..0x00481a63`: `+0` semantic, `+0x20` type word (0 = LONG),
+  `+0x24` value.
+* That a 28-byte comment-only text body loads as no model. The engine's text loader was not traced for this case;
+  `bob1.parse` refuses it.
+* That named bodies keep the BodyData slot `+0x04` = −2 (default LOD, no "all groups"), per body-format §6.
+* The gate root node (TGates column 0: body 0, the 47-unit test body, or 477, missing). It may carry a ≤ 0.1 m
+  collision mesh at the origin; not traced.
+* The ship's position `P` at `SA_WarpObjectIn`: the sector-entry placement was not traced.
+* No runtime `[gate+0xa4]` on record. A Run 153 `ship_gate_approach` row (`offset_m` = 0.25 r) would measure it.
+* Whether Mayhem places other colliding objects at its gates (stations, debris from the director or the map) was not
+  checked.

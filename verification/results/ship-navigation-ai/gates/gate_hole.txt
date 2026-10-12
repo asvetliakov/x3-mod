@@ -1,0 +1,241 @@
+Gate hole geometry (owning note: docs/reverse-engineering/ship-navigation-ai.md section 10.9)
+EXE /mnt/c/X3/X3AP.exe
+  ok   0x0045c7b3 8b 46 40 c1 e8 14 a8 01          pair filter: first object (the gate) [+0x40] bit 0x100000
+  ok   0x0045c7c1 66 83 fa 07                      pair filter: other object is class 7
+  ok   0x0045c7d1 66 3d 05 00                      pair filter: its order [flight+0x258] == 5 (FlyObjectIntoContainer)
+  ok   0x0045c7d7 66 3d 1e 00                      pair filter: or == 0x1e (ClearObjectFromHangar)
+  ok   0x0045c7dd 39 b1 24 02 00 00                pair filter: and [flight+0x224] == this gate -> skip pair (no contact at all)
+  ok   0x0045d73b 66 83 f9 04                      CanWarp: gate subtype 4 excluded
+  ok   0x0045d745 66 83 f9 0f                      CanWarp: subtypes 0xf..0x14 excluded (first)
+  ok   0x0045d777 66 83 f9 14                      CanWarp: subtypes 0xf..0x14 excluded (last)
+  ok   0x0048a92f f7 c1 00 00 00 01                narrow phase: node A [+0x12c] & 0x1000000 (has a collision tree)
+  ok   0x0048a941 a9 00 00 00 01                   narrow phase: node B [+0x12c] & 0x1000000
+  ok   0x0048a94c f7 c1 00 00 00 08                narrow phase: node A not 0x8000000 (no-collision)
+  ok   0x004346d0 81 8e 2c 01 00 00 00 40 00 00    node class: SBTYPE_2D body -> [+0x12c] |= 0x4000
+  ok   0x004346e7 0d 00 00 00 10                   node class: SBTYPE_2D2 body -> [+0x12c] |= 0x10000000
+  ok   0x0043d822 8b 0d 14 71 60 00                scene part: SBTYPE_DOCKPOINT list -> no collision
+  ok   0x0043d88f a9 00 40 00 10                   scene part: [+0x12c] & 0x10004000 -> no collision
+  ok   0x0043d8a3 0d 00 00 00 08                   scene part: ... -> [+0x12c] |= 0x8000000
+  ok   0x0043d8c7 66 83 7f 48 05                   scene part: owner class 5 (or 0x0043fd00 ship) -> LOD record 1
+  ok   0x0043d8dd 0f bf 4e 10 83 e9 01             scene part: otherwise LOD record nLOD - 1 (the coarsest)
+  ok   0x00487ee4 f6 45 50 40                      body set: model [+0x50] & 0x40 (BodyData flag) ...
+  ok   0x00487eea 81 8e 2c 01 00 00 00 00 10 08    ... -> node [+0x12c] |= 0x8100000
+  ok   0x00487f10 b3 10                            body set: every LOD with record flags & 0x10 ...
+  ok   0x00487f18 84 59 30                         ... builds the collision tree first (0x0047eb90)
+  ok   0x0047ebed 83 f8 ff                         tree build: body slot [+4] == -1 -> no tree
+  ok   0x0047ec43 a9 00 01 00 00                   tree build: slot [+4] & 0x100 -> all groups
+  ok   0x0047ec4a f6 43 30 10                      tree build: LOD record flags & 0x10 -> all groups
+  ok   0x0047ec95 f6 46 60 a0                      tree build: part flags & 0xa0 -> part skipped
+  ok   0x0047ecb4 f6 40 0c 01                      tree build: group [+0xc] & 1 -> group skipped
+  ok   0x0047ecf5 81 8f 2c 01 00 00 00 00 00 08    tree build: no colliding group -> no tree
+  ok   0x0047eed0 81 8f 2c 01 00 00 00 00 00 01    tree build: tree present -> node [+0x12c] |= 0x1000000
+  ok   0x0046ed4b c7 44 90 04 ff ff ff ff          0x0046ed00: body slot [+4] = -1 (remember: no tree)
+  ok   0x00482adb a9 86 04 00 00                   body load: material flags & 0x486 ...
+  ok   0x00482ae2 c7 47 0c 01 00 00 00             ... -> group [+0xc] = 1 (not colliding)
+  ok   0x00481a46 83 3a 13                         effect material: parameter semantic 0x13 (g_AlphaBlendEnable)
+  ok   0x00481a5c 66 83 78 20 00                   effect material: parameter type word 0 (LONG)
+  ok   0x00481a63 83 78 24 00                      effect material: value != 0
+  ok   0x00481a69 ba 12 00 00 00                   effect material: semantic 0x12 (g_ALPHATESTENABLE) looked up
+  ok   0x00481a86 83 4b 28 01                      effect material: blend + alpha test -> flags |= 1 (still colliding)
+  ok   0x00481a8e 83 4b 28 02                      effect material: blend, no alpha test -> flags |= 2 (0x486: not colliding)
+  ok   0x00465bec b8 e8 67 19 00                   SA_WarpObjectIn: 1665000 ...
+  ok   0x00465bf1 ba 10 5c 0c 00                   ... x 810000 / 10^6 = 1,348,650 units
+  ok   0x00465c0a 8b 48 60                         ... along gate row 2 ([gate+0x70]+0x60)
+installed non-capital ship radius max 140 m (M6; ships_by_class.json)
+
+==== stock TGates addon/01.cat (64ce4c764b74)
+
+-- rows 0,1,2,3  root body col0 ['0']  scene others\argon_gate_scene (01.cat)  r = 681001 units = 1362.0 m
+   part 0 body others\argon_gate offset (209, -2632, 2136) rot0=True Bodies-lists none -> 01.cat:objects/others/argon_gate.pbb value 678369, 5 LOD, collision LOD 4
+      material 0: effect argon.fx blend=0 atest=0 -> collides
+      material 2: effect argon.fx blend=0 atest=0 -> collides
+      material 3: effect argon.fx blend=0 atest=0 -> collides
+      material 4: effect argon.fx blend=0 atest=0 -> collides
+      material 7: effect argon.fx blend=0 atest=0 -> collides
+      material 8: effect argon.fx blend=0 atest=0 -> collides
+      material 9: effect argon.fx blend=0 atest=0 -> collides
+      material 10: effect argon.fx blend=0 atest=0 -> collides
+      material 12: effect argon.fx blend=0 atest=0 -> collides
+      material 13: effect argon.fx blend=0 atest=0 -> collides
+      material 14: effect argon.fx blend=0 atest=0 -> collides
+      material 15: effect argon.fx blend=0 atest=0 -> collides
+      visual    tris 23744  clear 0.604 r (823 m)  outer 0.996 r (1357 m)  z -0.648..+0.655 r  rim z -0.102..+0.109 r (287 m thick)
+      collision tris 1240  clear 0.605 r (824 m)  outer 0.996 r (1357 m)  z -0.648..+0.655 r  rim z -0.121..+0.130 r (342 m thick)
+   part 1 body others\argon_gate_effect offset (0, 0, 49802) rot0=True Bodies-lists none -> 01.cat:objects/others/argon_gate_effect.pbb value 483135, 1 LOD, collision LOD 0
+      material 0: effect effects.fx blend=1 atest=0 -> no collision
+      material 1: effect effects.fx blend=1 atest=0 -> no collision
+      |vertex - (0,0,49802)| / r: min 0.070 median 0.714 max 0.715
+      visual    tris 96  clear 0.000 r (0 m)  outer 0.711 r (968 m)  z -0.006..+0.153 r  rim z -0.006..+0.143 r (204 m thick)  axis-covering tris 32
+      collision none (no colliding group: no tree, node never flagged 0x1000000)
+   scene collision: tris 1240  clear 0.605 r (824 m)  outer 0.996 r (1357 m)  z -0.648..+0.655 r  rim z -0.121..+0.130 r (342 m thick)
+   largest clear disc 0.606 r (825 m) centred at (+0.000, -0.004) r
+   clear radius by z slab (r): [-0.65,-0.60]0.796 [-0.60,-0.55]0.783 [-0.55,-0.50]0.783 [-0.50,-0.45]0.783 [-0.45,-0.40]0.743 [-0.40,-0.35]0.743 [-0.35,-0.30]0.752 [-0.30,-0.25]0.752 [-0.25,-0.20]0.744 [-0.20,-0.15]0.726 [-0.15,-0.10]0.623 [-0.10,-0.05]0.606 [-0.05,+0.00]0.605 [+0.00,+0.05]0.605 [+0.05,+0.10]0.605 [+0.10,+0.15]0.605 [+0.15,+0.20]0.702 [+0.20,+0.25]0.745 [+0.25,+0.30]0.809 [+0.30,+0.35]0.783 [+0.35,+0.40]0.783 [+0.40,+0.45]0.783 [+0.45,+0.50]0.783 [+0.50,+0.55]0.783 [+0.55,+0.60]0.783 [+0.60,+0.65]0.796 [+0.65,+0.70]0.796
+   Q3 h = 0.605; axis-parallel crossing clear iff lateral <= 0.605 r - r_ship; at 34 deg to the axis subtract rim half-thickness x tan = 0.088 r
+   Q3 exit spread: lateral 0.30 r + r_ship <= 0.605 r iff r_ship <= 416 m; with r_ship 140 m margin 275 m; warp-in start 1348650 units = 1.98 r along +z
+
+-- rows 4  root body col0 ['477']  scene others\argon_gate_destroyed_scene (01.cat)  r = 1248973 units = 2497.9 m
+   part 0 body others\argon_gate_destroyed offset (0, 0, 0) rot0=True Bodies-lists none -> 01.cat:objects/others/argon_gate_destroyed.pbb value 1248973, 1 LOD, collision LOD 0
+      material 0: effect argon.fx blend=0 atest=0 -> collides
+      material 1: effect argon.fx blend=1 atest=1 -> collides
+      material 2: effect argon.fx blend=0 atest=0 -> collides
+      material 3: effect argon.fx blend=0 atest=0 -> collides
+      material 4: effect argon.fx blend=0 atest=0 -> collides
+      material 5: effect argon.fx blend=0 atest=0 -> collides
+      material 6: effect argon.fx blend=0 atest=0 -> collides
+      material 7: effect argon.fx blend=0 atest=0 -> collides
+      material 8: effect argon.fx blend=0 atest=0 -> collides
+      material 9: effect argon.fx blend=0 atest=0 -> collides
+      material 10: effect argon.fx blend=0 atest=0 -> collides
+      material 11: effect argon.fx blend=1 atest=1 -> collides
+      material 12: effect argon.fx blend=0 atest=0 -> collides
+      material 13: effect argon.fx blend=0 atest=0 -> collides
+      material 14: effect argon.fx blend=0 atest=0 -> collides
+      material 15: effect argon.fx blend=0 atest=0 -> collides
+      material 16: effect standard_lighting.fx blend=1 atest=1 -> collides
+      visual    tris 20478  clear 0.000 r (0 m)  outer 1.013 r (2532 m)  z -0.411..+0.246 r  rim z -0.216..+0.238 r (1134 m thick)  axis-covering tris 2
+      collision tris 20478  clear 0.000 r (0 m)  outer 1.013 r (2532 m)  z -0.411..+0.246 r  rim z -0.216..+0.238 r (1134 m thick)  axis-covering tris 2
+   scene collision: tris 20478  clear 0.000 r (0 m)  outer 1.013 r (2532 m)  z -0.411..+0.246 r  rim z -0.216..+0.238 r (1134 m thick)  axis-covering tris 2
+   largest clear disc 0.000 r (0 m) centred at (-0.250, -0.250) r
+   clear radius by z slab (r): [-0.45,-0.40]0.289 [-0.40,-0.35]0.204 [-0.35,-0.30]0.197 [-0.30,-0.25]0.166 [-0.25,-0.20]0.047 [-0.20,-0.15]0.000 [-0.15,-0.10]0.000 [-0.10,-0.05]0.021 [-0.05,-0.00]0.076 [-0.00,+0.05]0.075 [+0.05,+0.10]0.023 [+0.10,+0.15]0.023 [+0.15,+0.20]0.020 [+0.20,+0.25]0.014
+   Q3 h = 0.000; axis-parallel crossing clear iff lateral <= 0.000 r - r_ship; at 34 deg to the axis subtract rim half-thickness x tan = 0.161 r
+   Q3 exit spread: lateral 0.30 r + r_ship <= 0.000 r iff r_ship <= -749 m; with r_ship 140 m margin -890 m; warp-in start 1348650 units = 1.08 r along +z
+
+-- rows 5,6,7,8  root body col0 ['0']  scene others\terran_catapult_gate_scene (01.cat)  r = 3590659 units = 7181.3 m
+   part 0 body others\terran_catapult_gate offset (0, 0, 1793560) rot0=True Bodies-lists none -> 01.cat:objects/others/terran_catapult_gate.pbb value 1797099, 4 LOD, collision LOD 3
+      material 0: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      material 1: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      visual    tris 35568  clear 0.000 r (0 m)  outer 0.172 r (1237 m)  z -0.001..+1.000 r  rim z +0.022..+0.046 r (175 m thick)  axis-covering tris 2
+      collision tris 818  clear 0.127 r (912 m)  outer 0.169 r (1217 m)  z -0.001..+0.539 r  rim z -0.001..+0.539 r (3876 m thick)
+   scene collision: tris 818  clear 0.127 r (912 m)  outer 0.169 r (1217 m)  z -0.001..+0.539 r  rim z -0.001..+0.539 r (3876 m thick)
+   largest clear disc 0.226 r (1621 m) centred at (-0.262, +0.262) r
+   clear radius by z slab (r): [-0.05,+0.00]0.130 [+0.00,+0.05]0.129 [+0.05,+0.10]0.127 [+0.10,+0.15]0.127 [+0.15,+0.20]0.132 [+0.20,+0.25]0.132 [+0.25,+0.30]0.132 [+0.30,+0.35]0.133 [+0.35,+0.40]0.133 [+0.40,+0.45]0.133 [+0.45,+0.50]0.133 [+0.50,+0.55]0.133
+   Q3 h = 0.127; axis-parallel crossing clear iff lateral <= 0.127 r - r_ship; at 34 deg to the axis subtract rim half-thickness x tan = 0.364 r
+   Q3 exit spread: lateral 0.30 r + r_ship <= 0.127 r iff r_ship <= -1242 m; with r_ship 140 m margin -1383 m; warp-in start 1348650 units = 0.38 r along +z
+
+-- rows 9,10,11,12,13,14  root body col0 ['0']  scene others\terraformer_gate_active_scene (01.cat)  r = 679472 units = 1358.9 m
+   part 0 body others\terraformer_gate offset (0, 0, 0) rot0=True Bodies-lists none -> 01.cat:objects/others/terraformer_gate.pbb value 679472, 4 LOD, collision LOD 3
+      material 0: effect argon.fx blend=0 atest=0 -> collides
+      material 2: effect argon.fx blend=0 atest=0 -> collides
+      material 3: effect argon.fx blend=0 atest=0 -> collides
+      material 4: effect argon.fx blend=0 atest=0 -> collides
+      material 7: effect argon.fx blend=0 atest=0 -> collides
+      material 8: effect argon.fx blend=0 atest=0 -> collides
+      material 9: effect argon.fx blend=0 atest=0 -> collides
+      material 10: effect argon.fx blend=0 atest=0 -> collides
+      material 12: effect argon.fx blend=0 atest=0 -> collides
+      material 13: effect argon.fx blend=0 atest=0 -> collides
+      material 14: effect argon.fx blend=0 atest=0 -> collides
+      material 15: effect argon.fx blend=0 atest=0 -> collides
+      visual    tris 23504  clear 0.606 r (824 m)  outer 1.000 r (1359 m)  z -0.653..+0.314 r  rim z -0.105..+0.106 r (287 m thick)
+      collision tris 581  clear 0.607 r (825 m)  outer 1.000 r (1359 m)  z -0.651..+0.300 r  rim z -0.124..+0.125 r (339 m thick)
+   part 1 body others\argon_gate_effect offset (0, 0, 47500) rot0=True Bodies-lists none -> 01.cat:objects/others/argon_gate_effect.pbb value 483135, 1 LOD, collision LOD 0
+      material 0: effect effects.fx blend=1 atest=0 -> no collision
+      material 1: effect effects.fx blend=1 atest=0 -> no collision
+      |vertex - (0,0,47500)| / r: min 0.070 median 0.716 max 0.717
+      visual    tris 96  clear 0.000 r (0 m)  outer 0.713 r (968 m)  z -0.010..+0.150 r  rim z -0.010..+0.140 r (204 m thick)  axis-covering tris 32
+      collision none (no colliding group: no tree, node never flagged 0x1000000)
+   scene collision: tris 581  clear 0.607 r (825 m)  outer 1.000 r (1359 m)  z -0.651..+0.300 r  rim z -0.124..+0.125 r (339 m thick)
+   largest clear disc 0.607 r (825 m) centred at (+0.000, +0.000) r
+   clear radius by z slab (r): [-0.70,-0.65]0.808 [-0.65,-0.60]0.808 [-0.60,-0.55]0.808 [-0.55,-0.50]0.808 [-0.50,-0.45]0.808 [-0.45,-0.40]0.751 [-0.40,-0.35]0.751 [-0.35,-0.30]0.790 [-0.30,-0.25]0.790 [-0.25,-0.20]0.792 [-0.20,-0.15]0.732 [-0.15,-0.10]0.607 [-0.10,-0.05]0.607 [-0.05,+0.00]0.607 [+0.00,+0.05]0.607 [+0.05,+0.10]0.607 [+0.10,+0.15]0.607 [+0.15,+0.20]0.746 [+0.20,+0.25]0.812 [+0.25,+0.30]0.812
+   Q3 h = 0.607; axis-parallel crossing clear iff lateral <= 0.607 r - r_ship; at 34 deg to the axis subtract rim half-thickness x tan = 0.084 r
+   Q3 exit spread: lateral 0.30 r + r_ship <= 0.607 r iff r_ship <= 417 m; with r_ship 140 m margin 277 m; warp-in start 1348650 units = 1.98 r along +z
+
+-- rows 15,16,17,18,19,20  root body col0 ['0']  scene others\terraformer_gate_inactive_scene (01.cat)  r = 679472 units = 1358.9 m
+   part 0 body others\terraformer_gate offset (0, 0, 0) rot0=True Bodies-lists none -> 01.cat:objects/others/terraformer_gate.pbb value 679472, 4 LOD, collision LOD 3
+      material 0: effect argon.fx blend=0 atest=0 -> collides
+      material 2: effect argon.fx blend=0 atest=0 -> collides
+      material 3: effect argon.fx blend=0 atest=0 -> collides
+      material 4: effect argon.fx blend=0 atest=0 -> collides
+      material 7: effect argon.fx blend=0 atest=0 -> collides
+      material 8: effect argon.fx blend=0 atest=0 -> collides
+      material 9: effect argon.fx blend=0 atest=0 -> collides
+      material 10: effect argon.fx blend=0 atest=0 -> collides
+      material 12: effect argon.fx blend=0 atest=0 -> collides
+      material 13: effect argon.fx blend=0 atest=0 -> collides
+      material 14: effect argon.fx blend=0 atest=0 -> collides
+      material 15: effect argon.fx blend=0 atest=0 -> collides
+      visual    tris 23504  clear 0.606 r (824 m)  outer 1.000 r (1359 m)  z -0.653..+0.314 r  rim z -0.105..+0.106 r (287 m thick)
+      collision tris 581  clear 0.607 r (825 m)  outer 1.000 r (1359 m)  z -0.651..+0.300 r  rim z -0.124..+0.125 r (339 m thick)
+   scene collision: tris 581  clear 0.607 r (825 m)  outer 1.000 r (1359 m)  z -0.651..+0.300 r  rim z -0.124..+0.125 r (339 m thick)
+   largest clear disc 0.607 r (825 m) centred at (+0.000, +0.000) r
+   clear radius by z slab (r): [-0.70,-0.65]0.808 [-0.65,-0.60]0.808 [-0.60,-0.55]0.808 [-0.55,-0.50]0.808 [-0.50,-0.45]0.808 [-0.45,-0.40]0.751 [-0.40,-0.35]0.751 [-0.35,-0.30]0.790 [-0.30,-0.25]0.790 [-0.25,-0.20]0.792 [-0.20,-0.15]0.732 [-0.15,-0.10]0.607 [-0.10,-0.05]0.607 [-0.05,+0.00]0.607 [+0.00,+0.05]0.607 [+0.05,+0.10]0.607 [+0.10,+0.15]0.607 [+0.15,+0.20]0.746 [+0.20,+0.25]0.812 [+0.25,+0.30]0.812
+   Q3 h = 0.607; axis-parallel crossing clear iff lateral <= 0.607 r - r_ship; at 34 deg to the axis subtract rim half-thickness x tan = 0.084 r
+   Q3 exit spread: lateral 0.30 r + r_ship <= 0.607 r iff r_ship <= 417 m; with r_ship 140 m margin 277 m; warp-in start 1348650 units = 1.98 r along +z
+
+-- rows 21,22,23,24  root body col0 ['0']  scene patch20\terran_gate_scene (07.cat)  r = 714242 units = 1428.5 m
+   part 0 body 100000 offset (0, 0, 0) rot0=True Bodies-lists none -> missing
+   part 1 body others\argon_gate_effect offset (0, 0, 53844) rot0=True Bodies-lists none -> 01.cat:objects/others/argon_gate_effect.pbb value 483135, 1 LOD, collision LOD 0
+      material 0: effect effects.fx blend=1 atest=0 -> no collision
+      material 1: effect effects.fx blend=1 atest=0 -> no collision
+      |vertex - (0,0,53844)| / r: min 0.067 median 0.681 max 0.682
+      visual    tris 96  clear 0.000 r (0 m)  outer 0.678 r (968 m)  z -0.000..+0.151 r  rim z -0.000..+0.142 r (204 m thick)  axis-covering tris 32
+      collision none (no colliding group: no tree, node never flagged 0x1000000)
+   part 2 body patch20\terran_gate offset (209, -2632, 2136) rot0=True Bodies-lists none -> 07.cat:objects/patch20/terran_gate.pbb value 711610, 3 LOD, collision LOD 2
+      material 0: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      material 1: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      material 2: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      material 3: effect XT_standard_lighting.fx blend=1 atest=0 -> no collision
+      visual    tris 75192  clear 0.659 r (942 m)  outer 1.026 r (1466 m)  z -0.495..+0.180 r  rim z -0.114..+0.140 r (363 m thick)
+      collision tris 10035  clear 0.654 r (934 m)  outer 1.024 r (1463 m)  z -0.495..+0.180 r  rim z -0.111..+0.120 r (330 m thick)
+   scene collision: tris 10035  clear 0.654 r (934 m)  outer 1.024 r (1463 m)  z -0.495..+0.180 r  rim z -0.111..+0.120 r (330 m thick)
+   largest clear disc 0.660 r (943 m) centred at (+0.000, -0.008) r
+   clear radius by z slab (r): [-0.50,-0.45]0.835 [-0.45,-0.40]0.803 [-0.40,-0.35]0.783 [-0.35,-0.30]0.783 [-0.30,-0.25]0.744 [-0.25,-0.20]0.716 [-0.20,-0.15]0.716 [-0.15,-0.10]0.660 [-0.10,-0.05]0.654 [-0.05,-0.00]0.654 [-0.00,+0.05]0.655 [+0.05,+0.10]0.655 [+0.10,+0.15]0.660 [+0.15,+0.20]0.793
+   Q3 h = 0.654; axis-parallel crossing clear iff lateral <= 0.654 r - r_ship; at 34 deg to the axis subtract rim half-thickness x tan = 0.081 r
+   Q3 exit spread: lateral 0.30 r + r_ship <= 0.654 r iff r_ship <= 506 m; with r_ship 140 m margin 365 m; warp-in start 1348650 units = 1.89 r along +z
+
+==== installed TGates addon/10.cat (d76b8e437ac8)
+
+-- rows 0,1,2,3,5,6,7,8,9,10,11,12,13,14  root body col0 ['0']  scene others\terraformer_gate_active_scene (addon/06.cat)  r = 552274 units = 1104.5 m
+   part 0 body others\terraformer_gate_effect offset (0, 0, 47500) rot0=True Bodies-lists none -> addon/06.cat:objects/others/terraformer_gate_effect.bob value 504774, 1 LOD, collision LOD 0
+      material 0: effect effects.fx blend=1 atest=0 -> no collision
+      |vertex - (0,0,47500)| / r: min 0.914 median 0.914 max 0.914
+      visual    tris 33120  clear 0.000 r (0 m)  outer 0.914 r (1010 m)  z -0.828..+1.000 r  rim z -0.828..+1.000 r (2019 m thick)  axis-covering tris 22
+      collision none (no colliding group: no tree, node never flagged 0x1000000)
+   scene collision: none -> no ship-gate contact possible; visual tris 33120  clear 0.000 r (0 m)  outer 0.914 r (1010 m)  z -0.828..+1.000 r  rim z -0.828..+1.000 r (2019 m thick)  axis-covering tris 22
+
+-- rows 4  root body col0 ['477']  scene others\argon_gate_scene (addon/06.cat)  r = 1449877 units = 2899.8 m
+   part 0 body others\argon_gate_effect offset (0, 0, 0) rot0=True Bodies-lists none -> addon/11.cat:objects/others/argon_gate_effect.pbd value 1449877, 1 LOD, collision LOD 0
+      material 0: effect effects.fx blend=1 atest=0 -> no collision
+      material 1: effect effects.fx blend=1 atest=0 -> no collision
+      |vertex - (0,0,0)| / r: min 0.120 median 1.005 max 1.006
+      visual    tris 96  clear 0.000 r (0 m)  outer 1.002 r (2906 m)  z -0.091..+0.133 r  rim z -0.091..+0.120 r (612 m thick)  axis-covering tris 32
+      collision none (no colliding group: no tree, node never flagged 0x1000000)
+   scene collision: none -> no ship-gate contact possible; visual tris 96  clear 0.000 r (0 m)  outer 1.002 r (2906 m)  z -0.091..+0.133 r  rim z -0.091..+0.120 r (612 m thick)  axis-covering tris 32
+
+-- rows 15,16,17,18,19,20  root body col0 ['0']  scene others\terraformer_gate_inactive_scene (01.cat)  r = 47 units = 0.1 m
+   part 0 body others\terraformer_gate offset (0, 0, 0) rot0=True Bodies-lists none -> no model (addon/11.cat: text body has no body record)
+   no geometry
+
+-- rows 21,22,23,24  root body col0 ['0']  scene patch20\terran_gate_scene (07.cat)  r = 1603754 units = 3207.5 m
+   part 0 body 100000 offset (0, 0, 0) rot0=True Bodies-lists none -> missing
+   part 1 body others\argon_gate_effect offset (0, 0, 53844) rot0=True Bodies-lists none -> addon/11.cat:objects/others/argon_gate_effect.pbd value 1449877, 1 LOD, collision LOD 0
+      material 0: effect effects.fx blend=1 atest=0 -> no collision
+      material 1: effect effects.fx blend=1 atest=0 -> no collision
+      |vertex - (0,0,53844)| / r: min 0.109 median 0.909 max 0.910
+      visual    tris 96  clear 0.000 r (0 m)  outer 0.906 r (2906 m)  z -0.049..+0.154 r  rim z -0.049..+0.142 r (612 m thick)  axis-covering tris 32
+      collision none (no colliding group: no tree, node never flagged 0x1000000)
+   part 2 body patch20\terran_gate offset (209, -2632, 2136) rot0=True Bodies-lists none -> addon/11.cat:objects/patch20/terran_gate.bob value 1601122, 1 LOD, collision LOD 0
+      material 0: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      material 1: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      material 2: effect XT_standard_lighting.fx blend=0 atest=0 -> collides
+      material 3: effect XT_standard_lighting.fx blend=1 atest=0 -> no collision
+      visual    tris 75192  clear 0.663 r (2125 m)  outer 1.027 r (3295 m)  z -0.498..+0.179 r  rim z -0.116..+0.138 r (817 m thick)
+      collision tris 74544  clear 0.663 r (2125 m)  outer 1.026 r (3290 m)  z -0.498..+0.179 r  rim z -0.116..+0.138 r (817 m thick)
+   scene collision: tris 74544  clear 0.663 r (2125 m)  outer 1.026 r (3290 m)  z -0.498..+0.179 r  rim z -0.116..+0.138 r (817 m thick)
+   largest clear disc 0.667 r (2140 m) centred at (+0.000, -0.006) r
+   clear radius by z slab (r): [-0.50,-0.45]0.843 [-0.45,-0.40]0.805 [-0.40,-0.35]0.787 [-0.35,-0.30]0.787 [-0.30,-0.25]0.744 [-0.25,-0.20]0.719 [-0.20,-0.15]0.719 [-0.15,-0.10]0.680 [-0.10,-0.05]0.663 [-0.05,-0.00]0.663 [-0.00,+0.05]0.670 [+0.05,+0.10]0.663 [+0.10,+0.15]0.679 [+0.15,+0.20]0.795
+   Q3 h = 0.663; axis-parallel crossing clear iff lateral <= 0.663 r - r_ship; at 34 deg to the axis subtract rim half-thickness x tan = 0.093 r
+   Q3 exit spread: lateral 0.30 r + r_ship <= 0.663 r iff r_ship <= 1163 m; with r_ship 140 m margin 1023 m; warp-in start 1348650 units = 0.84 r along +z
+
+==== summary (h = clear coaxial radius of the collision mesh / r)
+  stock     rows 0,1,2,3                others\argon_gate_scene                        r   1362 m  h 0.605 (824 m)  ring
+  stock     rows 4                      others\argon_gate_destroyed_scene              r   2498 m  h 0.000 (0 m)  see profile
+  stock     rows 5,6,7,8                others\terran_catapult_gate_scene              r   7181 m  h 0.127 (912 m)  ring
+  stock     rows 9,10,11,12,13,14       others\terraformer_gate_active_scene           r   1359 m  h 0.607 (825 m)  ring
+  stock     rows 15,16,17,18,19,20      others\terraformer_gate_inactive_scene         r   1359 m  h 0.607 (825 m)  ring
+  stock     rows 21,22,23,24            patch20\terran_gate_scene                      r   1428 m  h 0.654 (934 m)  ring
+  installed rows 0,1,2,3,5,6,7,8,9,10,11,12,13,14 others\terraformer_gate_active_scene           r   1105 m  h none  no collision mesh
+  installed rows 4                      others\argon_gate_scene                        r   2900 m  h none  no collision mesh
+  installed rows 15,16,17,18,19,20      others\terraformer_gate_inactive_scene         r      0 m  h none  no collision mesh
+  installed rows 21,22,23,24            patch20\terran_gate_scene                      r   3208 m  h 0.663 (2125 m)  ring
+RESULT PASS (41 of 41 EXE byte strings match)
