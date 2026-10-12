@@ -1,0 +1,20 @@
+{
+  "dll": "detached worktree /tmp/x3-run155-candidate of 05696413, build/d3d9.dll (clean configure + build)",
+  "sha256": "2fb5aef2a62e9dcac865a7ab38af79d2c392cf7a97a3965a0e1da2c0ca282e48",
+  "bytes": 58262411,
+  "commit": "05696413",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 954, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "test_ship_steering test_ship_steering_sites test_ship_trace_format test_config_schema OK (fixture 3649/3649)"
+  },
+  "changes_since_run154": [
+    "24ef18bc Run154 triage",
+    "amendment 10: pass point on the gate disc, lead-in to the arc centre, capitals vanilla, leader-side follower exclusion, stuck reset, transition geometry, ship_trace"
+  ],
+  "trigger": "Run154: order-5 override rejected on 90/91 legs (B model wrong), capitals circling (capital lead-in vs 222 m arrival), user decision: trace capture for model conformance",
+  "producer": "main session (Fable 5.1), 2026-10-12"
+}

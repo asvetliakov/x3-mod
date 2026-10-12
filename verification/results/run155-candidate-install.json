@@ -1,0 +1,31 @@
+{
+  "run": 155,
+  "platform": "native Windows 11, C:\\X3",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run154; cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+  "installed_at": "2026-10-12",
+  "commit": "05696413",
+  "candidate_record": "verification/results/run155-candidate-build.json",
+  "installed": {
+    "path": "C:\\X3\\d3d9.dll",
+    "sha256": "2fb5aef2a62e9dcac865a7ab38af79d2c392cf7a97a3965a0e1da2c0ca282e48",
+    "bytes": 58262411,
+    "verified_bytes": true,
+    "method": "cmp"
+  },
+  "previous": {
+    "run": 154,
+    "sha256": "57e528271b22ded488ab38375006844d8d83077ff11af99951b4ed1b2bfef568",
+    "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run154"
+  },
+  "release_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run150 (release 1.2.1)",
+  "x3m_ini_changes": {
+    "[engine]": [
+      "ship_trace = 1",
+      "ship_trace_max = 4"
+    ],
+    "note": "trace rows ~250 KB/s while 4 ships are followed; remove after the conformance traces are captured"
+  },
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "amendment 10; Run 155 A open",
+  "producer": "main session"
+}
