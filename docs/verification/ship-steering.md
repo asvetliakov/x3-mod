@@ -875,6 +875,132 @@ adjacent slots inside C are unresolved by design (the queue's spacing); the fixt
 line once it is on the line (the predictive layer extrapolates an obstacle's velocity straight, so a crossing during the
 capital's join is not covered by this scenario; a question for the slip-aware design).
 
+## Slip-aware law (2026-10-12, Opus 5.5 / Fable 5.1; amendment 14, design [slip-aware-steering.md](../architecture/slip-aware-steering.md))
+
+The work started as a WIP commit (`ade25410`) and was completed in source; it is not installed. Sources:
+`ship_steering_core.h` (`steer`: the velocity state, the lead, `ω_c`, the closing-speed solve, the formation law,
+`gate_look_s` with the lateral shortening, `lag_deg`, `one_minus_exp_neg`, `cbrt_f`), `ship_avoidance_core.h`
+(`Self.slip`, the swept test, `lookahead` with `v·τ`, `turn_in_slip`, the push and the behind test on `û`, the resolved set on
+the velocity's miss, the `kTieMissFrac` tie-break), `ship_avoidance_walk_core.h` (the obstacles' `obj+0x60`), `ship_steering.cpp`
+(decide's slip and leader reads, the detour flag, the gate carrot's α, `Ship.v_slip`, the trace's `slip=`, the decision row),
+`ship_steering_sites.h` (`kObjSlip`). Design text: amendment 14 in
+[ship-steering-and-avoidance.md](../architecture/ship-steering-and-avoidance.md).
+
+**Fixture** (calibrated engine model with the slip term; all values measured): **checks PASS 5282/5282, slip_gaps 0**
+(the model calibration left 131 gaps), and the capital checks alone (`--capital`) 655/655. Every gap is now a hard
+assertion, four new families check the velocity's angle to the gate line (θ, spread, far/rotated, lateral), and
+`slip_unit_checks` adds 13 unit checks: the CRT-free helpers, the gate carrot, the lead's sign, the detour and order-5
+exceptions, the attack cap, the closing speed, `ω_c`, velocity matching and the crossing tie-break.
+`vanilla_notes=2`: the Boreas's vanilla leaf does not settle the diagonal 179° turn at 144 fps (seeds 1 and 1234567). That
+is the vanilla's own deficit (design §5), printed as `NOTE` and no longer counted. Outputs:
+[stdout](../../verification/results/ship-steering/ship_steering_host.txt),
+[stderr](../../verification/results/ship-steering/ship_steering_host_gaps.txt) (the two notes),
+[vanilla rows](../../verification/results/ship-steering/ship_steering_host_vanilla_rows.txt) (`--vanilla-rows`: every ship on
+the engine's leaf, no avoidance; the engine's own warn is not modelled). The full before/after table, scenario by class
+with each threshold, is [slip_law_table.txt](../../verification/results/ship-steering/slip_law_table.txt), produced by
+[slip_law_table.py](../../verification/results/ship-steering/slip_law_table.py) (old = `af5ec4cf`'s output). Condensed
+(60 fps, seed 1; V = vanilla leaf, O = old law with the slip, N = slip-aware law):
+
+| Scenario | M5 V / O / N | M3 V / O / N | M6 V / O / N | TS V / O / N | M2 V / O / N | Threshold, all 9 runs |
+| --- | --- | --- | --- | --- | --- | --- |
+| formation slot RMS, m | 473.5 / 185.9 / **21.0** | 20.3 / 20.4 / 3.0 | 39.6 / 39.6 / 56.3 | 15.4 / 15.4 / 22.5 | 1355.5 / 1355.6 / 1378.7 | ≤ 2 r; M5 ≤ 30 (floor 24.9 × 1.2) |
+| formation 2 s window increases | 11 / 12 / 0 | 1 / 1 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 |
+| flyby@150 min clearance, m (C) | 150 / 284.9 / 293.1 (234.2) | 150 / 242.6 / 306.1 (236.9) | 150 / 339.1 / 384.8 (296.6) | 150 / **21.8 / 342.4** (263.5) | 150 / 1297.2 / 1393.0 (1258.1) | ≥ C; unresolved ≤ 5 + detours/100 |
+| crossing min distance, m (C) | 1.8 / **0.8 / 86.9** (43.4) | 0.2 / 87.0 / 97.9 (48.8) | 0.4 / 292.4 / 307.5 (161.0) | 0.1 / 165.6 / 186.9 (102.0) | 0.1 / 2243.2 / 2318.1 (1763.5) | ≥ C, side flips 0 |
+| gate θ −45 / 0 / +45 nose to B, ° | V 33.3 / 19.0 / 13.7 all classes; O 7.9 / 14.2 / 27.0; N 6.5 / 13.2 / 25.4 | O 18.8 / 32.0 / 42.0; N 5.6 / 11.3 / 23.5 | O 7.0 / 20.2 / 31.2; N 6.4 / 10.5 / 22.8 | O 4.1 / 16.1 / 27.6; N 7.8 / 9.4 / 21.9 | — | ≤ 22; θ +45: M5 27, M3 24, M6 24 |
+| gate velocity to the line at the crossing, ° | 32.9 / – / **20.9** | 32.9 / – / 2.0 | 32.9 / – / 2.9 | 32.9 / – / 2.8 | — | ≤ 13; M5 ≤ 22 |
+| gate spread, max nose (velocity), ° | O 18.1; N 18.5 (31.6) | O 21.7; N 15.4 (4.1) | O 9.5; N 15.6 (3.5) | O 8.5; N 17.7 (3.5) | — | nose ≤ 24 (unchanged); velocity ≤ 20.7, M5 ≤ 33 |
+| gate far/rotated, lateral 3 r nose, ° | O 33.8 / 22.0; N 13.7 / 3.3 | O 8.0 / 13.1; N 8.4 / 7.7 | O 7.7 / 11.3; N 8.3 / 8.0 | O 7.8 / 10.1; N 8.3 / 8.1 | — | ≤ 22; velocity ≤ 13 (max 4.1) |
+
+The ranges over the nine fps × seed runs behind the re-based thresholds were measured with a temporarily instrumented
+build (not retained): M5 slot RMS 20.0–24.9 m; θ +45 nose M5 25.2–26.4°, M3 23.5–23.6°, M6 22.8–23.2°, TS 21.8–21.9°;
+velocity to the line M5 20.3–21.1°, every other class ≤ 3.2°; spread velocity M5 31.2–31.8°, others ≤ 4.2°. The
+clearance margins over C were at least 58.0 m (M5 flyby@150) and 43 m (M5 crossing, 86.3 m). The fixture's own assertions
+bound all of these.
+
+**Findings (no scenario below its clearance C):**
+
+1. *M5 at a gate:* at 532 m/s the velocity turns at most 0.43 rad/s (R_eff 1.24 km), so from the standard start (inside
+   the window, 1.3–1.7 r off the line) the M5 crosses with its velocity 20.9° off the line (31.6° from the spread's far
+   rings; vanilla 32.9° at 210 m/s). Its nose stays within the order-5 bounds. Only a lower approach speed would close this,
+   and that is not in the design.
+2. *θ +45 nose above the design's 22°* for the M5, M3 and M6 (25.4 / 23.5 / 22.8°). This is down from the old law's
+   27.0 / 42.0 / 31.2°. The `−0.5·e` carrot shortening that the spread needs costs this: with the full carrot θ +45 was
+   19.3 / 21.5 / 20.4° but the spread failed at 39.0° (M5) and 26.5° (M6).
+3. *Inside their thresholds but worse than the old law:* formation M6 39.6 → 56.3 m and TS 15.4 → 22.5 m (the design's
+   2-D replica predicted 6.1 and 2.6 m); spread nose M6 9.5 → 15.6° and TS 8.5 → 17.7°; θ −45 TS 4.1 → 7.8°.
+4. *Three changes are not in the design,* and each was needed for a hard check. The lead is off on detour points (M5
+   flyby@150 225.8 → 293.1 m). Near-centre sides come from the relative velocity (M5 crossing 0.2–5.2 m with 1–2 side flips
+   → 86.3–87.2 m, 0 flips, 0 unresolved). The carrot is shortened by e/2 (spread M5 39.0 → 18.5°, M6 26.5 → 15.6°).
+
+**Review fixes (same day, measured):**
+
+1. *The cornering term caps the nose speed.* The closing-speed solve now divides the arrival ramp alone, never raises it
+   with the point more than 60° off the nose, and `v_corner` caps the result (site B the same). A point behind the nose
+   takes the tightest circle, `ω_c·d/2`. Measured by `steer()` on an M5 at 300 m (`ade25410` → now): abeam
+   129.0 → 64.5 m/s, abeam with a 100 m/s slip away 329.0 → 64.5, behind 248.9 → 64.5. The new unit check also covers a TS
+   at 85° and the no-raise rule.
+2. *The slip is bounded.* |slip| > 2·v_max is treated as 0 for the ship (`core::slip_usable`, in the DLL's decide and
+   in `steer()`) and for the leader (2·max(v_max, v_lead)). The detour push uses at most 3 v and 30 km. The snapshot's
+   p+0x100 + obj+0x60 is summed in 64 bits and saturated to int32: a plain int64 → float conversion compiled to x87 `fild`,
+   which the x87 audit caught.
+3. *A formation follower whose N points behind brakes instead of looping.* New `formation_brake_scenario`, nine runs
+   per class. Before the fix, a follower started 6 r ahead of its slot (leader straight at 0.5 v_max) turned round
+   370–490° on every class but the Boreas, and after a leader stopped dead the TS and M6 orbited at v_max (329 / 541 m
+   from the slot after 90 s). After the fix the follower ahead of its slot rotates 0° and ends 1.0–4.3 m from it. After
+   the stop the overshoot is ≤ 2 × the braking distance from 0.9 v_max + 4 r (M5 972, M3 517, M6 1,121, TS 461 m), and the
+   follower ends within 4 r of the slot at 0–1.3 m/s. The rotation after the stop (443–969°) is the turn back plus the
+   fixture engine model's close-in branch, which hands the leaf a point 20 r ahead of a stopped leader's slot **[i]**.
+   **The circle scenario's slot RMS is unchanged** (M6 56.3, TS 22.5 m): these fixes do not recover the old law's
+   39.6 / 15.4 m. A slot-closing brake that changes N's direction was tried and made it worse (M6 91.4, TS 30.5 m),
+   because the close-in branch's point is not the slot.
+
+**Notes for flight:**
+
+* The resolved set now requires the velocity's miss ≥ C, so site E suppresses fewer pairs than before. Watch the
+  summary's `e_calls` against `e_suppressed`, and the `CollisionWarn` dispatches.
+* The fixture's gate α now uses the DLL's expression (`core::slower_axis_alpha`: positive caps only, k > 0).
+* The cost figures come from [steer_cost_bench.py](../../verification/results/ship-steering/steer_cost_bench.py),
+  [output](../../verification/results/ship-steering/steer_cost_bench.txt). On the x86-64 host, `steer()` went
+  53.4 → 75.8 ns and `resolve(420)` 179.2 → 200.3 ns. This is not the i686 DLL.
+* The M5's θ +45 nose bound is 27° against a measured 26.4°, a 0.6° margin: check it on the first gate trace.
+
+**Replay lag, Run157** (amendment-13 build, `x3m.log`, 35 ships, the old law; its rows carry no `slip=`): from the
+replay's per-step `lag_obs`, the angle between the step's displacement and the next row's nose
+([replay_lag.py](../../verification/results/ship-steering/replay_lag.py) over `ship_trace_replay.py --json`,
+[output](../../verification/results/ship-steering/replay_lag_run157.txt); measured):
+
+| Order / class | steps | p50 | p95 | p99 | max |
+| --- | --- | --- | --- | --- | --- |
+| all | 116,043 | 0.12° | 15.96° | 32.21° | 153.56° |
+| 0x4 | 78,203 | 0.10° | 14.44° | 31.06° | 153.56° |
+| 0x5 | 21,224 | 0.03° | 3.22° | 9.35° | 37.81° |
+| 0x12 | 16,479 | 7.12° | 24.39° | 42.06° | 93.29° |
+| 0x0 | 137 | 7.32° | 34.76° | 48.20° | 70.73° |
+| M4 / TP / TS / M2 / M1 | 18,285 / 17,802 / 49,597 / 26,742 / 2,507 | 0.02 / 0.03 / 0.15 / 1.96 / 0.07° | 26.79 / 17.02 / 14.92 / 12.17 / 14.19° | | |
+
+The model's lag fits the flown one (|flown − model| p50 0.00°, p95 0.18°). The design's order-4 expectation (p50 ≈ 6°,
+p95 ≈ 25°, inferred from §13.2's |slip|/v) overstated the median: most order-4 frames fly straight.
+
+**Trace and replay.** `ship_trace` rows end in `slip=x,y,z` (units/s at site B); the parser keeps it optional for older
+rows. The replay seeds its carried slip from a row's `slip=` and reports `slip_res`, the carried value's distance to the
+row's, together with `lag_obs`, `lag_model` and `lag_row` per step and per-order lag statistics (`lag_deg` lines). On the
+fixture's emitted trace: `slip_res` max 0.006–0.018 m/s (the rows' 5-decimal fwd), |flown − model| p95 0.000°, M5
+order-4 lag p95 31.4°.
+
+**Acceptance (measured):** `cmake … && cmake --build build 2>&1 | grep -c warning` → 0; `check_no_x87.py build/d3d9.dll`
+→ PASS, 955 reachable, 0 violations; `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` → PASS (EXE `fdbf3418…`); the six
+host modules (`test_ship_steering`, `_sites`, `test_ship_trace_format`, `_replay`, `test_config_schema`,
+`test_launcher_defaults`) → 52 tests OK; `run_host_suite.py` → 297 modules, 2,928 tests, 36 failing modules (the
+host-environment set; none of the six).
+
+**Flight rows that decide it** (the next trace with this build): the `ship_trace` rows carry `slip=`, and
+`ship_trace_replay.py` reports `slip_res` p95 below 0.05 m/s (the read is right) and per-order `lag_deg` lines. On
+order 4 the lag should shrink after a turn, not grow; a lag that grows means a wrong sign in the lead. The
+`ship_steering_decision` rows give `lag_deg`/`aim_off_deg`/`v_slip_ms`. Formation followers hold their slot within
+2 r; for an M5 the bound is 30 m. Capital rows follow the amendment-13 targets above unchanged; the fixture's capital
+checks are 655/655 with the new law.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

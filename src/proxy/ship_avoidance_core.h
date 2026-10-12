@@ -48,6 +48,8 @@ constexpr float kCommitFactor = 2.0f;  // a detour in progress (direction rememb
 constexpr std::uint32_t kResolvedAgeMs = 100; // suppression window at site E (two think intervals)
 constexpr float kHorizonMaxS = 30.0f;  // amendment 11: the swept-sphere horizon is min(L / v, 30 s) of flight (Run155: a
                                        // stalled Boreas at 2 m/s saw conflicts 222 s out and never left its detour point)
+constexpr float kTieMissFrac = 0.25f;  // amendment 14: a moving obstacle's miss below this fraction of C takes its side from the
+                                       // relative velocity (closest_approach), not from the noise of a near-centre miss
 
 enum class Kind : std::uint8_t { ship = 0, station = 1, asteroid = 2, gate = 3, debris = 4 };
 struct Obstacle {
@@ -237,6 +239,15 @@ inline bool closest_approach(const Self& s, const float c[3], const float w[3], 
     for (int i = 0; i < 3; ++i) {
         c_at[i] = c[i] + w[i] * t;
         e[i] = -rel[i];
+    }
+    // Amendment 14: a near-centre miss on a moving obstacle (below kTieMissFrac C) carries no usable direction once the slip
+    // enters the prediction (a metre either way between two ships on a symmetric collision course), and the two ships'
+    // lateral axes differ on a crossing: e's sign there picks "both pass in front" as often as not, which keeps the
+    // collision (the calibrated fixture's M5 crossing, 0.2-5 m). The side then comes from the relative velocity, e = dv x up:
+    // the obstacle computes -dv, so the pair always takes opposite sides of the relative motion and the miss grows.
+    if (m < kTieMissFrac * C && sc::dot3(w, w) > 1.0f) {
+        cross3(dv, s.up, e);
+        if (norm3(e) == 0.0f) e[0] = e[1] = e[2] = 0.0f;
     }
     if (norm3(e) == 0.0f) { // dead centre: any lateral direction; take the one perpendicular to f in the up plane
         cross3(s.f, s.up, e);
@@ -636,9 +647,11 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
             // without crossing the body it was built for (every part of it); otherwise the un-pushed point stands (the
             // review's case: the push into a body behind the CPA)
             const float along = sc::dot3(toPp, u_hat);
-            float ahead = kAheadS * u_len;
+            // bounded: |u| at most 3 v (the DLL refuses a slip beyond 2 v_max) and the push at most the lookahead's cap
+            float ahead = kAheadS * sc::fmin_f(u_len, 3.0f * s.v);
             const float d_turn = turn_in_slip(s.v, s.omega, s.alpha, first.C * factor);
             if (d_turn > ahead) ahead = d_turn;
+            if (ahead > kLookaheadMaxM) ahead = kLookaheadMaxM;
             if (along < ahead) {
                 float moved[3];
                 for (int i = 0; i < 3; ++i) moved[i] = Pp[i] + u_hat[i] * (ahead - along);

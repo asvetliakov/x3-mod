@@ -1,0 +1,20 @@
+formation   M5  Discoverer fps= 60 slot_rms=473.5 m (2r=18.4) max_after_entry=1837.0 m window_increases=11
+flyby@600  M5  Discoverer fps= 60 detours=0 min_clear=600.0 m (C=234.2, part r=200) path=19982 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 20316 (lateral 0 m, L=4211 m) side=0
+flyby@150  M5  Discoverer fps= 60 detours=0 min_clear=150.0 m (C=234.2, part r=200) path=19982 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 20316 (lateral 0 m, L=4211 m) side=0
+crossing    M5  Discoverer fps= 60 detours=0/0 min_dist=1.8 m (C=43.4, L=3900 m) sides=0/0 unresolved=0/0
+formation   M3  Nova       fps= 60 slot_rms=20.3 m (2r=23.8) max_after_entry=47.5 m window_increases=1
+flyby@600  M3  Nova       fps= 60 detours=0 min_clear=600.0 m (C=236.9, part r=200) path=19977 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 43649 (lateral 0 m, L=2737 m) side=0
+flyby@150  M3  Nova       fps= 60 detours=0 min_clear=150.0 m (C=236.9, part r=200) path=19977 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 43649 (lateral 0 m, L=2737 m) side=0
+crossing    M3  Nova       fps= 60 detours=0/0 min_dist=0.2 m (C=48.8, L=2454 m) sides=0/0 unresolved=0/0
+formation   M6  Centaur    fps= 60 slot_rms=39.6 m (2r=128.8) max_after_entry=257.5 m window_increases=0
+flyby@600  M6  Centaur    fps= 60 detours=0 min_clear=600.0 m (C=296.6, part r=200) path=19872 m (x0.994) max_lateral=0 m back_on_course=0 ms after pass at 60016 (lateral 0 m, L=4789 m) side=0
+flyby@150  M6  Centaur    fps= 60 detours=0 min_clear=150.0 m (C=296.6, part r=200) path=19872 m (x0.994) max_lateral=0 m back_on_course=0 ms after pass at 60016 (lateral 0 m, L=4789 m) side=0
+crossing    M6  Centaur    fps= 60 detours=0/0 min_dist=0.4 m (C=161.0, L=4581 m) sides=0/0 unresolved=0/0
+formation   TS  Mercury    fps= 60 slot_rms=15.4 m (2r=77.0) max_after_entry=153.7 m window_increases=0
+flyby@600  TS  Mercury    fps= 60 detours=0 min_clear=600.0 m (C=263.5, part r=200) path=19924 m (x0.996) max_lateral=0 m back_on_course=0 ms after pass at 87100 (lateral 0 m, L=1932 m) side=0
+flyby@150  TS  Mercury    fps= 60 detours=0 min_clear=150.0 m (C=263.5, part r=200) path=19924 m (x0.996) max_lateral=0 m back_on_course=0 ms after pass at 87100 (lateral 0 m, L=1932 m) side=0
+crossing    TS  Mercury    fps= 60 detours=0/0 min_dist=0.1 m (C=102.0, L=1932 m) sides=0/0 unresolved=0/0
+formation   M2  Boreas     fps= 60 slot_rms=1355.5 m (2r=1410.8) max_after_entry=2115.1 m window_increases=0
+flyby@600  M2  Boreas     fps= 60 detours=0 min_clear=600.0 m (C=1258.1, part r=200) path=18591 m (x0.930) max_lateral=0 m back_on_course=0 ms after pass at 154300 (lateral 0 m, L=3214 m) side=0
+flyby@150  M2  Boreas     fps= 60 detours=0 min_clear=150.0 m (C=1258.1, part r=200) path=18591 m (x0.930) max_lateral=0 m back_on_course=0 ms after pass at 154300 (lateral 0 m, L=3214 m) side=0
+crossing    M2  Boreas     fps= 60 detours=0/0 min_dist=0.1 m (C=1763.5, L=3214 m) sides=0/0 unresolved=0/0

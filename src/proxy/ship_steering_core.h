@@ -193,12 +193,16 @@ __attribute__((always_inline)) inline float acos_deg(float c) noexcept {
     if (c <= -1.0f) return 180.0f;
     return 2.0f * atan2_f(sqrt_ss(1.0f - c), sqrt_ss(1.0f + c)) * (180.0f / kPi);
 }
-// 1 - e^(-x) for x >= 0 as the (2,2) Pade form x / (1 + x/2 + x^2/12) (3 % low at x = 3, exact to 1e-3 below 1), no CRT
-// call; the slip's settled fraction after x time constants (amendment 14).
+// 1 - e^(-x) for x >= 0: e^(-x) = (e^(-x/4))^4 with the (2,2) Pade form of e^(-y), y = x/4 <= 2 (within 1e-4 over 0..8;
+// 1 beyond 8, where e^(-x) < 3.4e-4), no CRT call; the slip's settled fraction after x time constants (amendment 14).
 __attribute__((always_inline)) inline float one_minus_exp_neg(float x) noexcept {
     if (!(x > 0.0f)) return 0.0f;
-    if (x > 6.0f) return 1.0f;
-    return x / (1.0f + 0.5f * x + x * x * (1.0f / 12.0f));
+    if (x > 8.0f) return 1.0f;
+    const float y = 0.25f * x, q = y * y * (1.0f / 12.0f);
+    float r = (1.0f - 0.5f * y + q) / (1.0f + 0.5f * y + q);
+    r *= r;
+    r *= r;
+    return 1.0f - r;
 }
 // Cube root of x >= 0 (the ramp-phase turn-in distance of amendment 14): the exponent-third seed, three Newton steps
 // (relative error under 1e-6 over the floats used here), no CRT call.
@@ -211,6 +215,16 @@ __attribute__((always_inline)) inline float cbrt_f(float x) noexcept {
     std::memcpy(&y, &bits, 4);
     for (int i = 0; i < 3; ++i) y = y - (y - x / (y * y)) * (1.0f / 3.0f);
     return y;
+}
+
+// Amendment 14: the slip obj+0x60 is an int32 the integrator, the contact response, glide and undock all write; a value
+// beyond kSlipMaxFactor x v_max (the integrator's own increment is bounded by the nose speed) is not the lag the law models
+// and is treated as 0 (fail closed to the nose model). v_max <= 0 (unknown) refuses any slip.
+constexpr float kSlipMaxFactor = 2.0f;
+__attribute__((always_inline)) inline bool slip_usable(const float slip[3], float v_max) noexcept {
+    if (!finite_f(slip[0]) || !finite_f(slip[1]) || !finite_f(slip[2]) || !(v_max > 0.0f)) return false;
+    const float b = kSlipMaxFactor * v_max;
+    return slip[0] * slip[0] + slip[1] * slip[1] + slip[2] * slip[2] <= b * b;
 }
 
 // ---- The law ----------------------------------------------------------------
@@ -244,6 +258,8 @@ struct Inputs {
     // it as 0 on order 5. For a formation follower (orders 0x14/0x15 with a ship target) the leader's actual velocity
     // v_lead f_lead + slip_lead (m/s, world): the velocity-matching law replaces the pursuit of P and the arrival ramp.
     float slip[3] = {0, 0, 0};
+    bool detour = false;    // P is the avoidance layer's detour point: built on the velocity's swept path (x + u t_cpa, pushed
+                            // along u), it already carries the slip, so the lateral-velocity lead is not applied again
     bool formation = false;
     float u_lead[3] = {0, 0, 0};
     float nose_lead[3] = {0, 0, 0}; // the leader's nose velocity v_lead f_lead (m/s, world): nose_lead - u_lead = tau du_lead/dt, the
@@ -262,13 +278,13 @@ struct Command {
     float v_cmd = 0;         // m/s, the clamp for site B (0 = none)
     bool held = false;       // inside the arrival hold: angles 0
     bool port_aligned = false; // a port leg whose written triple is below kPortMatchLimit (the engine's match runs this tick)
-    // Amendment 14 diagnostics and site-B inputs: the velocity used (m/s), its lag behind the nose, the lead's angle between
-    // the aim and the line of sight, the additive nose-speed correction site B applies to the schedule (the nose speed that
-    // closes at the scheduled speed minus the schedule; 0 without a schedule), and whether the speed is the formation law's
-    // |N| (no arrival ramp at site B: v_cmd is the whole command).
+    // Amendment 14 diagnostics and site-B inputs: the velocity used (m/s; its lag behind the nose is lag_deg(), off the hot path),
+    // the cosine of the lead's angle between the aim and the line of sight (the degrees: acos_deg, off the hot path), the
+    // additive nose-speed correction site B applies to the schedule (the nose speed that closes at the scheduled speed minus
+    // the schedule; 0 without a schedule), and whether the speed is the formation law's |N| (no arrival ramp at site B: v_cmd
+    // is the whole command).
     float u[3] = {0, 0, 0};
-    float lag_deg = 0;
-    float aim_off_deg = 0;
+    float aim_cos = 1;
     float v_slip = 0;
     bool formation_speed = false;
 };
@@ -359,11 +375,9 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
     c.d_order = in.d_order >= 0.0f ? in.d_order : c.d;
     // Amendment 14: the velocity u = v f + slip (the slip is 0 on order 5: the integrator adds nothing to it there and the
     // leg keeps its amendment-12 behaviour), its lag behind the nose.
-    const bool slip_on = in.order != kOrderDock && finite_f(in.slip[0]) && finite_f(in.slip[1]) && finite_f(in.slip[2]);
+    const bool slip_on = in.order != kOrderDock && slip_usable(in.slip, dyn.v_max);
     const float slip[3] = {slip_on ? in.slip[0] : 0.0f, slip_on ? in.slip[1] : 0.0f, slip_on ? in.slip[2] : 0.0f};
     for (unsigned i = 0; i < 3; ++i) c.u[i] = in.v * in.row[2][i] + slip[i];
-    const float u_n = sqrt_ss(dot3(c.u, c.u));
-    c.lag_deg = u_n > 1e-3f ? acos_deg(dot3(c.u, in.row[2]) / u_n) : 0.0f;
     // Target in the basis rows. Inside the order's arrival distance (section 2.1) the heading is held: all three
     // angles 0, the engine's own arrival test runs on the next tick. A detour point (step 2) never holds: the
     // hold and the ramp below measure the order's own point.
@@ -394,12 +408,36 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
             float N[3];
             for (unsigned i = 0; i < 3; ++i) N[i] = c.u[i] + kFormationGain * (u_des[i] - c.u[i]) + (in.nose_lead[i] - in.u_lead[i]);
             const float n = sqrt_ss(dot3(N, N));
-            if (n > kFormationMinSpeed) {
-                const float reach = c.d > kFormationAimMinM ? c.d : kFormationAimMinM;
-                for (unsigned i = 0; i < 3; ++i) aim[i] = N[i] * (reach / n);
-                v_N = n;
+            // The speed is also capped by the same law with the slot-closing term braked to sqrt(2 a (d - d_arr)), the relative
+            // speed the follower can still stop from before the point (a stopped leader, a far slot): the direction stays N's.
+            float n_cap = n;
+            if (in.arrival_ramp && dyn.a_lin > 0.0f) {
+                const float over = c.d - in.d_arr, closing = c.d * (1.0f / kFormationTf);
+                const float brake = over > 0.0f ? sqrt_ss(2.0f * dyn.a_lin * over) : 0.0f;
+                if (brake < closing) {
+                    float Nb[3];
+                    for (unsigned i = 0; i < 3; ++i)
+                        Nb[i] = c.u[i] + kFormationGain * (in.u_lead[i] + d[i] * (brake / c.d) - c.u[i]) + (in.nose_lead[i] - in.u_lead[i]);
+                    n_cap = sqrt_ss(dot3(Nb, Nb));
+                }
             }
-        } else if (slip_on) {
+            const float reach = c.d > kFormationAimMinM ? c.d : kFormationAimMinM;
+            const float lead_fwd = dot3(in.u_lead, in.row[2]);
+            if (n > kFormationMinSpeed && dot3(N, in.row[2]) > 0.0f) { // N ahead of the nose: steer along it
+                for (unsigned i = 0; i < 3; ++i) aim[i] = N[i] * (reach / n);
+                v_N = n_cap < n ? n_cap : n;
+            } else if (lead_fwd > kFormationMinSpeed || dot3(u_des, in.row[2]) > 0.0f) {
+                // N behind the nose while the leader (or the wanted velocity) still moves ahead: the follower is faster than its slot
+                // needs (e.g. ahead of it). The nose speed acts at once (only the direction lags), so it brakes at the floor speed along
+                // the leader's velocity and lets the slot come back, instead of turning round (the loop of the review's case)
+                const float* dir = lead_fwd > kFormationMinSpeed ? in.u_lead : u_des;
+                const float m2 = sqrt_ss(dot3(dir, dir));
+                if (m2 > kFormationMinSpeed)
+                    for (unsigned i = 0; i < 3; ++i) aim[i] = dir[i] * (reach / m2);
+                v_N = kFloorMs;
+            } else if (n > kFormationMinSpeed) // the leader stopped (or coming back) and the slot behind: turn toward the slot itself
+                v_N = n_cap < n ? n_cap : n;   // (aim = P - x); the cornering term below brakes the turn
+        } else if (slip_on && !in.detour) {
             // Section 2.1: the aim leads the velocity's component across the line of sight by T_d = tau, so the velocity
             // (not the nose) ends on the line; for an order without an arrival distance (the attack orders and the rest
             // of the no-ramp set, ratification) T_d = min(tau, t_go) so a near target is aimed at directly. The lead is
@@ -412,9 +450,11 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
             }
             float lead[3];
             for (unsigned i = 0; i < 3; ++i) lead[i] = (c.u[i] - ut * th[i]) * Td;
-            const float ln = sqrt_ss(dot3(lead, lead)), lmax = kSlipLeadTan60 * c.d;
-            if (ln > lmax)
-                for (unsigned i = 0; i < 3; ++i) lead[i] *= lmax / ln;
+            const float ln2 = dot3(lead, lead), lmax = kSlipLeadTan60 * c.d;
+            if (ln2 > lmax * lmax) { // rare: the square root only when the clamp applies
+                const float k = lmax / sqrt_ss(ln2);
+                for (unsigned i = 0; i < 3; ++i) lead[i] *= k;
+            }
             for (unsigned i = 0; i < 3; ++i) aim[i] = d[i] - lead[i];
         }
         const float an = sqrt_ss(dot3(aim, aim));
@@ -423,7 +463,7 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
             t[0] = dot3(aim, in.row[0]) * ia;
             t[1] = dot3(aim, in.row[1]) * ia;
             t[2] = dot3(aim, in.row[2]) * ia;
-            c.aim_off_deg = acos_deg(dot3(aim, th) * ia);
+            c.aim_cos = dot3(aim, th) * ia;
         } else {
             t[0] = tP[0];
             t[1] = tP[1];
@@ -521,27 +561,45 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
     }
     // Cornering (section 2.5): the turning circle at the slower axis must pass through P; amendment 14 (section 2.2): off
     // order 5 the rate is bounded by kSlipCornerRate, the fastest the velocity direction can rotate whatever the nose does.
+    // A point behind the nose (f . t < 0) takes the tightest circle, d / 2 (sin taken as 1): the chord's d / (2 sin) grows
+    // without bound toward 180 deg, which would leave a ship that overshot its point at full speed (the orbit). The formation
+    // law's cornering is the same rule on its slot direction, applied only when N points behind the nose (a follower
+    // ahead of its slot or a stopping leader: it brakes instead of looping); ahead, |N| is the speed.
     float omega_min = fmin_f(yaw_ok ? dyn.W[0] : 1e30f, pitch_ok ? dyn.W[1] : 1e30f);
     if (slip_on && omega_min > kSlipCornerRate) omega_min = kSlipCornerRate;
-    c.v_corner = (!c.held && !in.formation && sin_P > kCornerSinMin && omega_min < 1e29f) ? omega_min * c.d / (2.0f * sin_P) : 0.0f;
+    if (c.held || !(omega_min < 1e29f) || (in.formation && dot3(in.u_lead, in.u_lead) >= kFloorMs * kFloorMs && t[2] >= 0.0f))
+        c.v_corner = 0.0f;
+    else if (ft < 0.0f || (in.formation && t[2] < 0.0f))
+        c.v_corner = omega_min * c.d * 0.5f;
+    else
+        c.v_corner = sin_P > kCornerSinMin ? omega_min * c.d / (2.0f * sin_P) : 0.0f;
     // Section 6.2: a record without a max speed or an acceleration gets no clamp at all (steering still runs).
     const bool clamp_ok = dyn.v_max > 0.0f && dyn.a_lin > 0.0f;
-    if (clamp_ok && v_N > 0.0f) { // the formation law's nose speed (section 2.5): no ramp, no cornering term
-        c.v_cmd = v_N > dyn.v_max ? dyn.v_max : (v_N < kFloorMs ? kFloorMs : v_N);
-        c.formation_speed = true;
-    } else
-        c.v_cmd = clamp_ok ? schedule_speed(c.d_order, in.d_arr, dyn.a_lin, in.v_ref, in.arrival_ramp, c.v_corner) : 0.0f;
-    // Section 2.3: the schedule is the closing speed u . t; the nose speed that closes at it is (v_sched - slip . t) /
-    // max(f . t, 0.5), clamped to [floor, v_max]. Site B recomputes the schedule with the distance of its frame and adds
-    // the difference measured here (v_slip), so its reads stay the position alone.
-    if (slip_on && !c.formation_speed && !c.held && c.v_cmd > 0.0f) {
+    // The arrival ramp alone (the cornering term is a cap on the nose speed, applied after the closing-speed solve).
+    float ramp = clamp_ok ? schedule_speed(c.d_order, in.d_arr, dyn.a_lin, in.v_ref, in.arrival_ramp, 0.0f) : 0.0f;
+    // Section 2.3: the ramp is a closing speed u . t; the nose speed that closes at it is (v_ramp - slip . t) / max(f . t, 0.5),
+    // clamped to [floor, v_max]; with the point more than 60 deg off the nose (f . t <= 0.5) the solve only lowers. Site B
+    // recomputes the ramp with the distance of its frame and adds the difference measured here (v_slip) to the ramp term only.
+    if (slip_on && !in.formation && !c.held && ramp > 0.0f) {
         const float fwd = ft > kSlipMinForwardCos ? ft : kSlipMinForwardCos;
-        float v_c = (c.v_cmd - st) / fwd;
+        float v_c = (ramp - st) / fwd;
+        if (ft <= kSlipMinForwardCos && v_c > ramp) v_c = ramp;
         if (v_c > dyn.v_max) v_c = dyn.v_max;
         if (v_c < kFloorMs) v_c = kFloorMs;
-        c.v_slip = v_c - c.v_cmd;
-        c.v_cmd = v_c;
+        c.v_slip = v_c - ramp;
+        ramp = v_c;
     }
+    if (clamp_ok && v_N > 0.0f) { // the formation law's nose speed (section 2.5), lowered by the cornering term on a turn toward the slot behind
+        float v = v_N > dyn.v_max ? dyn.v_max : v_N;
+        if (c.v_corner > 0.0f && c.v_corner < v) v = c.v_corner;
+        c.v_cmd = v < kFloorMs ? kFloorMs : v;
+        c.formation_speed = true;
+    } else if (clamp_ok) {
+        float v = ramp;
+        if (c.v_corner > 0.0f && (v <= 0.0f || c.v_corner < v)) v = c.v_corner;
+        c.v_cmd = v > 0.0f && v < kFloorMs ? kFloorMs : v;
+    } else
+        c.v_cmd = 0.0f;
     if (!finite_f(c.v_cmd) || !finite_f(c.v_corner) || !finite_f(c.v_slip)) return Reason::not_finite;
     *out = c;
     return Reason::handled;
@@ -654,14 +712,21 @@ __attribute__((always_inline)) inline float clamp_for(const Ship& s, const float
     } else {
         const float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
         const float dist = sqrt_ss(dot3(d, d));
-        v = schedule_speed(dist, s.d_arr, s.a_lin, s.v_ref, (s.flags & kShipFlagRamp) != 0, s.v_corner);
-        if (v > 0.0f && s.v_slip != 0.0f) { // amendment 14: the nose speed for the scheduled closing speed (steer() measured the difference)
+        v = schedule_speed(dist, s.d_arr, s.a_lin, s.v_ref, (s.flags & kShipFlagRamp) != 0, 0.0f);
+        if (v > 0.0f && s.v_slip != 0.0f) { // amendment 14: the ramp's nose speed for its closing speed (steer() measured the difference)
             v += s.v_slip;
             if (v < kFloorMs) v = kFloorMs;
         }
+        if (s.v_corner > 0.0f && (v <= 0.0f || s.v_corner < v)) v = s.v_corner; // the cornering term caps the nose speed
+        if (v > 0.0f && v < kFloorMs) v = kFloorMs;
     }
     if (s.v_emergency > 0.0f && (v <= 0.0f || s.v_emergency < v)) v = fmax_f(s.v_emergency, kFloorMs);
     return finite_f(v) ? v : 0.0f;
+}
+// The velocity's lag behind the nose, deg (amendment 14 diagnostics: the --debug decision row and the fixture's traces).
+__attribute__((always_inline)) inline float lag_deg(const float u[3], const float fwd[3]) noexcept {
+    const float n = sqrt_ss(dot3(u, u));
+    return n > 1e-3f ? acos_deg(dot3(u, fwd) / n) : 0.0f;
 }
 // ---- the gate approach (amendment 7; ship-navigation-ai.md section 10.7 P1, P4, P5) -----------------------------
 // A non-capital ship on order 4 to a gate (target class 0x12) keeps the engine's point A = G + R(0, -0.8, -1) r in
@@ -836,15 +901,30 @@ inline bool gate_lead_in_window(const GateGeometry& g, const float x[3], float j
 // Amendment 14 (slip-aware-steering.md section 2.4): the carrot sits max(kGateLookS, tau + t_10) of flight ahead, t_10 =
 // 2 sqrt(10 deg / alpha) the nose's own time to turn 10 deg at the angular acceleration alpha (rad/s^2) of the slower axis:
 // a carrot shorter than the velocity's 2 s memory plus the nose's lag under-damps the line follow (the 27-42 deg crossing
-// errors of the calibrated fixture). alpha <= 0 (unknown) keeps kGateLookS.
+// errors of the calibrated fixture). alpha <= 0 (unknown) keeps kGateLookS. Far off the line the long carrot gives an intercept
+// too shallow to reach it inside the window (the spread's start, 1.66 r off its shifted line at 1.55 r before the crossing: an
+// M5 crossed 39 deg off, an M6 26.5 deg), so the look-ahead is shortened by kGateLookLateral times the lateral offset e, never
+// below kGateLookS of flight: on the line (e -> 0) the full damping carrot, far off it a steeper join.
 constexpr float kGateLookTurnRad = 0.17453f; // 10 deg
+constexpr float kGateLookLateral = 0.5f;     // m of look-ahead per m of lateral offset
 __attribute__((always_inline)) inline float gate_look_s(float alpha) noexcept {
     if (!(alpha > 1e-6f)) return kGateLookS;
     const float t = kSlipTau + 2.0f * sqrt_ss(kGateLookTurnRad / alpha);
     return t > kGateLookS ? t : kGateLookS;
 }
+// alpha for gate_look_s: the slower of the positive yaw/pitch caps times k (0 when neither is known); the DLL and the fixture.
+__attribute__((always_inline)) inline float slower_axis_alpha(const Dynamics& dyn) noexcept {
+    const float w = fmin_f(dyn.W[0] > 0.0f ? dyn.W[0] : 1e30f, dyn.W[1] > 0.0f ? dyn.W[1] : 1e30f);
+    return w < 1e29f && dyn.k > 0.0f ? w * dyn.k : 0.0f;
+}
 inline bool gate_lead_in(const GateGeometry& g, const float x[3], float v, float alpha, float P[3], float* s_out, float* e_out = nullptr) noexcept {
-    return gate_lead_in_window(g, x, kGateJoinR, kGateJoinInnerR, gate_look_s(alpha) * (v > 0.0f ? v : 0.0f), P, s_out, e_out);
+    const float vv = v > 0.0f ? v : 0.0f;
+    float look = gate_look_s(alpha) * vv;
+    const float dx[3] = {x[0] - g.X[0], x[1] - g.X[1], x[2] - g.X[2]};
+    const float s = dot3(dx, g.h), e2 = dot3(dx, dx) - s * s;
+    look -= kGateLookLateral * (e2 > 0.0f ? sqrt_ss(e2) : 0.0f);
+    if (look < kGateLookS * vv) look = kGateLookS * vv;
+    return gate_lead_in_window(g, x, kGateJoinR, kGateJoinInnerR, look, P, s_out, e_out);
 }
 // The capital lead-in (capital-gate-transit.md section 2.1): the same line toward the validated grid point with direction
 // F (gate_geometry_capital), a window of kGateCapitalJoinR r before X blended from kGateCapitalJoinInnerR r (a 90 deg turn of an

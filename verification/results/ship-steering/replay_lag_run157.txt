@@ -1,0 +1,15 @@
+source /mnt/c/X3/x3m.log ships=35
+lag all                n= 116043 p50=  0.12 p95= 15.96 p99= 32.21 max=153.56
+lag order 0x0          n=    137 p50=  7.32 p95= 34.76 p99= 48.20 max= 70.73
+lag order 0x4          n=  78203 p50=  0.10 p95= 14.44 p99= 31.06 max=153.56
+lag order 0x5          n=  21224 p50=  0.03 p95=  3.22 p99=  9.35 max= 37.81
+lag order 0x12         n=  16479 p50=  7.12 p95= 24.39 p99= 42.06 max= 93.29
+lag class M1           n=   2507 p50=  0.07 p95= 14.19 p99= 17.23 max= 19.98
+lag class M2           n=  26742 p50=  1.96 p95= 12.17 p99= 19.31 max= 93.29
+lag class M4           n=  18285 p50=  0.02 p95= 26.79 p99= 43.02 max= 73.59
+lag class M6           n=    968 p50=  0.59 p95= 19.42 p99= 20.40 max= 21.64
+lag class M8           n=    142 p50=  0.34 p95=  2.48 p99=  3.22 max=  3.44
+lag class TP           n=  17802 p50=  0.03 p95= 17.02 p99= 97.09 max=153.56
+lag class TS           n=  49597 p50=  0.15 p95= 14.92 p99= 19.45 max= 46.83
+|flown - model| deg    n= 116022 p50=  0.00 p95=  0.18 p99=  1.09 max= 90.99
+slip_res m/s           n=0

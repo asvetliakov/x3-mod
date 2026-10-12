@@ -85,6 +85,24 @@ class ShipTraceReplay(unittest.TestCase):
                 self.assertLess(st['pos'], 0.005, (hex(obj), st['frame']))
         self.assertGreater(launch, 20)
 
+    def test_velocity_lag_and_the_slip_read(self):
+        # amendment 14: the rows carry obj+0x60 (slip=), the replay seeds its carried slip from it and reports the velocity's lag
+        # behind the nose; on the fixture's own trace the carried slip matches the row's within the 5-decimal fwd's rounding,
+        # and the flown lag equals the model's
+        for obj, s in self.replay().items():
+            lag = s['lag']
+            self.assertGreater(lag['row']['n'], 500, hex(obj))
+            self.assertLess(lag['slip_res']['max'], 0.05, hex(obj))  # m/s
+            self.assertLess(lag['obs_minus_model']['p95'], 0.01, hex(obj))  # deg
+        m5 = self.replay()[0x3741e840]['lag']  # the M5 on the rotated gate: the order-4 lead-in turns, its velocity lags
+        self.assertGreater(m5['by_order']['0x4']['p95'], 20.0)
+        self.assertLess(abs(m5['row']['p95'] - m5['obs']['p95']), 1.0)
+        rows = [dict(r, slip=None) for r in self.groups[0x3741e840]]  # rows before amendment 14: the lag from the displacement alone
+        steps, skipped, dt_match = R.replay_ship(rows)
+        old = R.summarise(0x3741e840, rows, steps, skipped, dt_match)['lag']
+        self.assertEqual(old['row']['n'], 0)
+        self.assertGreater(old['obs']['n'], 500)
+
     def test_dock_at_a_station_port(self):
         # the port's roll (30 deg = 5461 binary, floored) from the aligned match steps
         self.assertEqual(set(R.port_rolls(self.dock).values()), {5461})

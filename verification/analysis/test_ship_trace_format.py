@@ -11,7 +11,7 @@ ROWS = [
     'ship_trace frame=1234 t_ms=560000 obj=0x8e19d750 class=TS order=0x4 tgt=0x4b51efe8 tgt_class=18 pos=-1234567,98765,4567890 '
     'fwd=0.12345,-0.00500,0.99235 up=0.00100,0.99999,0.00400 rate=-120,35,0 v=62000 des=50000 des_engine=62000 point=-1230000,97000,4600000 '
     'given=-1200000,90000,4650000 e=-1200,300,0 dt_ms=6 W=3840,3840,3072 rot=0x00010000 rot_pct=20 vmax=62000 acc=15000 emg=1 '
-    'omega_cmd=-12.50,3.25,0.00 obst=0x9030de88',
+    'omega_cmd=-12.50,3.25,0.00 obst=0x9030de88 slip=-123456,7890,-45678',
     'ship_trace frame=1235 t_ms=560006 obj=0x8e19d750 class=TS order=0x4 tgt=0x4b51efe8 tgt_class=18 pos=-1234200,98780,4568260 '
     'fwd=0.12300,-0.00480,0.99240 up=0.00100,0.99999,0.00400 rate=-118,34,0 v=62000 des=62000 des_engine=62000 point=-1200000,90000,4650000 '
     'given=-1200000,90000,4650000 e=- dt_ms=6 W=3840,3840,3072 rot=0x00010000 rot_pct=20 vmax=62000 acc=15000 emg=0 '
@@ -38,6 +38,7 @@ class ShipTraceFormat(unittest.TestCase):
         self.assertEqual((r['point'], r['given'], r['e']), ((-1230000, 97000, 4600000), (-1200000, 90000, 4650000), (-1200, 300, 0)))
         self.assertEqual((r['W'], r['rot'], r['rot_pct'], r['vmax'], r['acc']), ((3840, 3840, 3072), 0x10000, 20, 62000, 15000))
         self.assertEqual((r['emg'], r['omega_cmd'], r['obst']), (1, (-12.5, 3.25, 0.0), 0x9030de88))  # amendment 11
+        self.assertEqual(r['slip'], (-123456, 7890, -45678))  # amendment 14
         self.assertTrue(r['leaf_call'])
 
     def test_a_frame_without_a_leaf_call_omits_e_and_repeats_the_engine_point(self):
@@ -57,15 +58,22 @@ class ShipTraceFormat(unittest.TestCase):
             self.assertIn(key, ts[1])
         self.assertEqual(ts[1]['t_ms'] - ts[0]['t_ms'], ts[0]['dt_ms'])
 
+    def test_rows_before_amendment_14_parse_without_slip(self):
+        rows = st.parse_rows(ROWS)
+        self.assertIsNone(rows[1]['slip'])
+        self.assertEqual(rows[1]['obst'], 0)
+        self.assertIsNone(st.parse_row(ROWS[0].replace(' slip=-123456,7890,-45678', ' slip=1,2')))
+
     def test_a_malformed_row_is_not_a_trace_row(self):
         self.assertIsNone(st.parse_row('ship_trace frame=1 obj=0x1 pos=1,2'))
         self.assertIsNone(st.parse_row(ROWS[0].replace(' e=-1200,300,0', ' e=1,2')))
 
     def test_byte_rate_estimate(self):
-        # the row the DLL writes is up to ~420 bytes (amendment 11 added emg, omega_cmd, obst): 6 ships at 173 fps are ~1,040 rows/s, ~440 KB/s
+        # the row the DLL writes is up to ~450 bytes (amendment 11 added emg, omega_cmd, obst; amendment 14 slip): 6 ships at 173 fps
+        # are ~1,040 rows/s, ~470 KB/s
         longest = max(len(r) for r in ROWS if r.startswith('ship_trace'))
-        self.assertLessEqual(longest, 440)
-        self.assertLessEqual(6 * 173 * longest, 460_000)
+        self.assertLessEqual(longest, 470)
+        self.assertLessEqual(6 * 173 * longest, 490_000)
 
 
 if __name__ == '__main__':

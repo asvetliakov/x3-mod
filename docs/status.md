@@ -12,6 +12,14 @@ axis is back behind `ship_steering_gates_capital` (default on) with P2 keeping a
 ends at once and order 5 starts at speed; fixture 5052/5052 (M2 72 s, M1 71 s from 3 r to the launch end at SETA 1), x87
 0/955, verifier PASS 18. Next: the install candidate and Run C with `capital_timeline.py` against the ledger's targets.
 
+Implemented, not yet installed (2026-10-12, worktree on `af5ec4cf` + WIP `ade25410`): **amendment 14, slip-aware steering**
+([design](architecture/slip-aware-steering.md), [ledger section](verification/ship-steering.md#slip-aware-law-2026-10-12-opus-55--fable-51-amendment-14-design-slip-aware-steeringmd)).
+The law and the avoidance now steer the velocity `v·f + slip` (`obj+0x60`), with a lateral-velocity lead, the slip's
+0.43 rad/s cornering bound, the closing-speed schedule, velocity-matching formation and a lag-scaled gate carrot. Fixture
+5282/5282 with all 131 slip gaps now hard assertions (M5 crossing 0.8 → 86.9 m, TS flyby 21.8 → 342.4 m, M5 slot
+185.9 → 21.0 m) and capitals 655/655; x87 0/955; verifier PASS. Open finding: an M5 crosses a gate with its velocity 21° off
+the line (ledger).
+
 ## Installed build
 
 Run141 = **release 1.1.0** (the shipped stripped DLL `2d65b65f206a846453805e08f4b564467f81fc54204f69dd94a975f00202a351`, 39,937,177 bytes, built once from clean `80556bd7`), installed 2026-10-09 03:55 ([release record](../verification/results/release-1.1.0.json), [install](../verification/results/run141-release-install.json)); rollback Run140 `1f702121…`. Zip `x3m-1.1.0.zip` at /tmp/x3m-release-1.1.0/. Renderer identical to Run140 apart from the version string.

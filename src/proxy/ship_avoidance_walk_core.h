@@ -295,7 +295,13 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
             if (cls == kClassShip) {
                 it.kind = std::uint8_t(av::Kind::ship);
                 // the actual velocity p+0x100 + obj+0x60 (amendment 14: the slip term moves the ship too; three more reads per ship)
-                for (unsigned c = 0; c < 3; ++c) it.v[c] = float(mem.s32(ph + kPhysVelocity + 4 * c) + mem.s32(o + kObjSlip + 4 * c)) / kUnits;
+                // (summed in 64 bits and saturated to int32: two fields of any value never overflow, and the conversion stays the
+                // SSE2 int32 one, cvtsi2ss: an int64 -> float conversion is x87 fild on i686)
+                for (unsigned c = 0; c < 3; ++c) {
+                    const std::int64_t sum = std::int64_t(mem.s32(ph + kPhysVelocity + 4 * c)) + std::int64_t(mem.s32(o + kObjSlip + 4 * c));
+                    const std::int32_t sat = sum > 2147483647 ? 2147483647 : sum < -2147483647 - 1 ? -2147483647 - 1 : std::int32_t(sum);
+                    it.v[c] = float(sat) / kUnits;
+                }
                 const std::uint32_t fl = mem.u32(o + kObjFlight);
                 if (fl) {
                     it.leader = mem.u32(fl + kFlightTarget);
