@@ -1,0 +1,290 @@
+====================================================================================================
+stock AP: build id 1510658513, file 2312979 B; CODE file offset = CODE offset + 20
+
+-- option A constants
+   CODE 90cfb file +0090d0f  new 05 05                       m16 = now + 5
+                                 old pushb 60
+   CODE 90d44 file +0090d58  new 05 05                       m14[i + 20] = now + 5
+                                 old pushb 60
+   CODE bcc6d file +00bcc81  new 06 00 fa 06 03 e8           SA_Idle(m3, 250 + SE_Random(1000))
+                                 old pushw 1000; pushw 10000
+   CODE bcc8a file +00bcc9e  new 06 03 e8 06 00 fa           TI_WaitRandomForInterrupt(250, 1000, this)
+                                 old pushw 10000; pushw 1000
+   CODE bcd2d file +00bcd41  new 06 03 e8 06 00 fa           TI_WaitRandomForInterrupt(250, 1000, this)
+                                 old pushw 10000; pushw 1000
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6818 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    ReleaseSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 5 <= frame 5
+   ok    __EnterHyperspace: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 16 <= frame 17
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option A5 always grant
+   CODE 90c6b file +0090c7f  new 00 09 0c 6f                 jf target -> next instruction: the through slot is always granted
+                                 old jf 90c92
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6818 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __requestWarpThroughSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 3 <= frame 4
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option A6 exemption out of sector
+   CODE 90c3b file +0090c4f  new 00 09 0c 3f                 jf target -> next instruction: same-direction exemption without the gate m3 test
+                                 old jf 90c51
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6818 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __requestWarpThroughSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 3 <= frame 4
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option A7 hold instead of wander
+   CODE bcc6d file +00bcc81  new 06 00 fa 06 03 e8           SA_Idle(m3, 250 + SE_Random(1000))
+                                 old pushw 1000; pushw 10000
+   CODE bcc7a file +00bcc8e  new 02 82 00 00 2a 99 01 24 64  TI_Delay(250 + SE_Random(1000)) instead of SA_Idle (no wander order); old continuation bcc83 kept
+                                 old ldmem 3; push2; native SA_Idle
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6818 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __EnterHyperspace: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 16 <= frame 17
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; natives removed: bcc83 SA_Idle
+
+-- option B clearance test
+   CODE 90bca file +0090bde  210 bytes replaced (__requestWarpThroughSlot rewritten: 205 of 210 B used, max depth 5)
+      +000  6e 00 05 01 0e 00 08 85 00 00 29 8c 0f 00 0f 34 00 09 0c 03 0f 00 0f 02
+      +018  82 00 00 00 23 64 33 00 09 0b f9 0d 00 05 0f 00 0f 5b 34 00 09 0c 03 01
+      +030  16 00 0f 24 01 16 00 10 24 0f 00 10 02 82 00 00 06 6e 05 08 5b 34 00 09
+      +048  0c 6b 02 0f 00 10 10 0d 00 02 5e 33 00 09 0c 66 0d 00 06 0f 00 11 5b 33
+      +060  00 09 0c 66 01 0f 00 10 10 02 82 00 00 00 23 64 33 00 09 0c 66 0d 00 07
+      +078  34 00 09 0c 93 0d 00 07 01 01 0f 00 10 10 85 00 00 00 a5 03 82 00 00 03
+      +090  5b 07 00 16 e3 60 5d 34 00 09 0c 93 01 16 00 10 24 0f 00 0f 33 00 09 0c
+      +0a8  93 0d 00 05 02 88 00 09 0c 9c 24 0d 00 05 16 00 0f 24 01 16 00 10 24 0d
+      +0c0  00 06 16 00 11 24 24 01 83 24 05 ff 83 01 01 01 01 01
+      then 01 padding to 90c9c
+   CODE 90c9c file +0090cb0  197 bytes replaced (ReleaseSlot rewritten: 172 of 197 B used, max depth 5)
+      +000  6e 00 05 01 0e 00 08 85 00 00 29 8c 0f 00 12 33 00 09 0c da 01 88 00 09
+      +018  13 9b 0d 00 01 34 00 09 0c d9 01 0d 00 02 85 00 00 d4 28 34 00 09 0c d9
+      +030  0d 00 06 02 0d 00 03 85 00 00 d4 1c 24 24 0d 00 05 0f 00 0f 5b 34 00 09
+      +048  0c fb 0d 00 01 05 3c 46 0d 00 06 28 00 02 16 00 10 24 01 16 00 0f 24 01
+      +060  0d 00 01 05 14 5c 34 00 09 0d 44 0d 00 06 0d 00 02 0f 00 0e 10 5b 34 00
+      +078  09 0d 36 01 0d 00 02 0f 00 0e 17 24 0d 00 02 05 3c 46 0d 00 02 05 14 46
+      +090  0f 00 0e 17 24 32 00 09 0d 44 0d 00 01 02 46 14 00 02 24 32 00 09 0c fc
+      +0a8  24 24 01 83 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01
+      then 01 padding to 90d61
+   patched 2014::__requestWarpThroughSlot (pseudo-statements):
+      90bca d0  frame 5
+      90bd1 d1  call g8.GetAge()
+      90bd9 d1  if not (m15) goto 90c03
+      90be2 d2  call SE_ObjectExists(m15)
+      90be8 d1  if (!(SE_ObjectExists(m15))) goto 90bf9
+      90bf4 d1  if not ((p-4 == m15)) goto 90c03
+      90bfa d2  m15 = 0
+      90bff d2  m16 = 0
+      90c07 d2  call SE_GetExprType(m16)
+      90c0f d1  if not ((SE_GetExprType(m16) == 8)) goto 90c6b
+      90c19 d3  let p0 = g8.GetAge()
+      90c1d d1  if ((m16[1] <= p0)) goto 90c66
+      90c29 d1  if ((p-5 == m17)) goto 90c66
+      90c34 d2  call SE_ObjectExists(m16[0])
+      90c3a d1  if (!(SE_ObjectExists(m16[0]))) goto 90c66
+      90c42 d1  if not (p-6) goto 90c93
+      90c50 d3  call m16[0].GetObjectID()
+      90c56 d2  call SA_Distance(m16[0].GetObjectID(), p-6)
+      90c61 d1  if not ((SA_Distance(m16[0].GetObjectID(), p-6) > 1500000)) goto 90c93
+      90c67 d2  m16 = 0
+      90c6e d1  if (m15) goto 90c93
+      90c77 d2  call 2014::ReleaseSlot(p-4)
+      90c80 d2  m15 = p-4
+      90c85 d2  m16 = 0
+      90c8c d2  m17 = p-5
+      90c92 d1  return p0
+      90c96 d1  return p0
+   patched 2014::ReleaseSlot (pseudo-statements):
+      90c9c d0  frame 5
+      90ca3 d1  call g8.GetAge()
+      90cab d1  if (m18) goto 90cda
+      90cb1 d2  call 2014::GetDestinationGate()
+      90cb6 d3  let p1 = 2014::GetDestinationGate()
+      90cb9 d2  if not (p1) goto 90cd9
+      90cc2 d3  call p1.IsWarpController()
+      90cc7 d2  if not (p1.IsWarpController()) goto 90cd9
+      90cd3 d3  call p1.ReleaseSlot(p-4)
+      90ce1 d1  if not ((p-4 == m15)) goto 90cfb
+      90ce6 d2  let p0 = g8.GetAge()
+      90cf2 d2  m16 = {p-4, (p0 + 60)}
+      90cf7 d2  m15 = 0
+      90d02 d2  if not ((p1 < 20)) goto 90d44
+      90d12 d2  if not ((p-4 == m14[p1])) goto 90d36
+      90d1e d3  m14[p1] = 0
+      90d2f d3  m14[(p1 + 20)] = (p0 + 60)
+      90d31 d2  goto 90d44
+      90d3b d3  p1 = (p1 + 1)
+      90d3f d2  goto 90cfc
+      90d47 d1  return p0
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6818 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __requestWarpThroughSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 5 <= frame 5
+   ok    ReleaseSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 5 <= frame 5
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option C no RotateToAngles
+   CODE bce4d file +00bce61  27 bytes replaced (push1; jmp continuation; padding)
+      +000  02 32 00 0b ce 68 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01
+      then 01 padding to bce68
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6818 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __EnterHyperspace: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 16 <= frame 17
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; natives removed: bce68 SA_RotateToAngles
+====================================================================================================
+Mayhem 4: build id 1462141839, file 2182503 B; CODE file offset = CODE offset + 20
+
+-- option A constants
+   CODE a6b66 file +00a6b7a  new 05 05                       m16 = now + 5
+                                 old pushb 60
+   CODE a6baf file +00a6bc3  new 05 05                       m14[i + 20] = now + 5
+                                 old pushb 60
+   CODE d542c file +00d5440  new 06 00 fa 06 03 e8           SA_Idle(m3, 250 + SE_Random(1000))
+                                 old pushw 1000; pushw 10000
+   CODE d5449 file +00d545d  new 06 03 e8 06 00 fa           TI_WaitRandomForInterrupt(250, 1000, this)
+                                 old pushw 10000; pushw 1000
+   CODE d54ec file +00d5500  new 06 03 e8 06 00 fa           TI_WaitRandomForInterrupt(250, 1000, this)
+                                 old pushw 10000; pushw 1000
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6815 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    ReleaseSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 5 <= frame 5
+   ok    __EnterHyperspace: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 16 <= frame 17
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option A5 always grant
+   CODE a6ad6 file +00a6aea  new 00 0a 6a da                 jf target -> next instruction: the through slot is always granted
+                                 old jf a6afd
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6815 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __requestWarpThroughSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 3 <= frame 4
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option A6 exemption out of sector
+   CODE a6aa6 file +00a6aba  new 00 0a 6a aa                 jf target -> next instruction: same-direction exemption without the gate m3 test
+                                 old jf a6abc
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6815 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __requestWarpThroughSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 3 <= frame 4
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option A7 hold instead of wander
+   CODE d542c file +00d5440  new 06 00 fa 06 03 e8           SA_Idle(m3, 250 + SE_Random(1000))
+                                 old pushw 1000; pushw 10000
+   CODE d5439 file +00d544d  new 02 82 00 00 2e ca 01 24 64  TI_Delay(250 + SE_Random(1000)) instead of SA_Idle (no wander order); old continuation d5442 kept
+                                 old ldmem 3; push2; native SA_Idle
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6815 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __EnterHyperspace: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 16 <= frame 17
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; natives removed: d5442 SA_Idle
+
+-- option B clearance test
+   CODE a6a35 file +00a6a49  210 bytes replaced (__requestWarpThroughSlot rewritten: 205 of 210 B used, max depth 5)
+      +000  6e 00 05 01 0e 00 09 85 00 00 2d bd 0f 00 11 34 00 0a 6a 6e 0f 00 11 02
+      +018  82 00 00 00 23 64 33 00 0a 6a 64 0d 00 05 0f 00 11 5b 34 00 0a 6a 6e 01
+      +030  16 00 11 24 01 16 00 12 24 0f 00 12 02 82 00 00 08 6a 05 08 5b 34 00 0a
+      +048  6a d6 02 0f 00 12 10 0d 00 02 5e 33 00 0a 6a d1 0d 00 06 0f 00 13 5b 33
+      +060  00 0a 6a d1 01 0f 00 12 10 02 82 00 00 00 23 64 33 00 0a 6a d1 0d 00 07
+      +078  34 00 0a 6a fe 0d 00 07 01 01 0f 00 12 10 85 00 00 00 a5 03 82 00 00 03
+      +090  47 07 00 16 e3 60 5d 34 00 0a 6a fe 01 16 00 12 24 0f 00 11 33 00 0a 6a
+      +0a8  fe 0d 00 05 02 88 00 0a 6b 07 24 0d 00 05 16 00 11 24 01 16 00 12 24 0d
+      +0c0  00 06 16 00 13 24 24 01 83 24 05 ff 83 01 01 01 01 01
+      then 01 padding to a6b07
+   CODE a6b07 file +00a6b1b  197 bytes replaced (ReleaseSlot rewritten: 172 of 197 B used, max depth 5)
+      +000  6e 00 05 01 0e 00 09 85 00 00 2d bd 0f 00 14 33 00 0a 6b 45 01 88 00 0a
+      +018  72 06 0d 00 01 34 00 0a 6b 44 01 0d 00 02 85 00 00 e3 a2 34 00 0a 6b 44
+      +030  0d 00 06 02 0d 00 03 85 00 00 e3 96 24 24 0d 00 05 0f 00 11 5b 34 00 0a
+      +048  6b 66 0d 00 01 05 3c 46 0d 00 06 28 00 02 16 00 12 24 01 16 00 11 24 01
+      +060  0d 00 01 05 14 5c 34 00 0a 6b af 0d 00 06 0d 00 02 0f 00 10 10 5b 34 00
+      +078  0a 6b a1 01 0d 00 02 0f 00 10 17 24 0d 00 02 05 3c 46 0d 00 02 05 14 46
+      +090  0f 00 10 17 24 32 00 0a 6b af 0d 00 01 02 46 14 00 02 24 32 00 0a 6b 67
+      +0a8  24 24 01 83 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01
+      then 01 padding to a6bcc
+   patched 2014::__requestWarpThroughSlot (pseudo-statements):
+      a6a35 d0  frame 5
+      a6a3c d1  call g9.GetAge()
+      a6a44 d1  if not (m17) goto a6a6e
+      a6a4d d2  call SE_ObjectExists(m17)
+      a6a53 d1  if (!(SE_ObjectExists(m17))) goto a6a64
+      a6a5f d1  if not ((p-4 == m17)) goto a6a6e
+      a6a65 d2  m17 = 0
+      a6a6a d2  m18 = 0
+      a6a72 d2  call SE_GetExprType(m18)
+      a6a7a d1  if not ((SE_GetExprType(m18) == 8)) goto a6ad6
+      a6a84 d3  let p0 = g9.GetAge()
+      a6a88 d1  if ((m18[1] <= p0)) goto a6ad1
+      a6a94 d1  if ((p-5 == m19)) goto a6ad1
+      a6a9f d2  call SE_ObjectExists(m18[0])
+      a6aa5 d1  if (!(SE_ObjectExists(m18[0]))) goto a6ad1
+      a6aad d1  if not (p-6) goto a6afe
+      a6abb d3  call m18[0].GetObjectID()
+      a6ac1 d2  call SA_Distance(m18[0].GetObjectID(), p-6)
+      a6acc d1  if not ((SA_Distance(m18[0].GetObjectID(), p-6) > 1500000)) goto a6afe
+      a6ad2 d2  m18 = 0
+      a6ad9 d1  if (m17) goto a6afe
+      a6ae2 d2  call 2014::ReleaseSlot(p-4)
+      a6aeb d2  m17 = p-4
+      a6af0 d2  m18 = 0
+      a6af7 d2  m19 = p-5
+      a6afd d1  return p0
+      a6b01 d1  return p0
+   patched 2014::ReleaseSlot (pseudo-statements):
+      a6b07 d0  frame 5
+      a6b0e d1  call g9.GetAge()
+      a6b16 d1  if (m20) goto a6b45
+      a6b1c d2  call 2014::GetDestinationGate()
+      a6b21 d3  let p1 = 2014::GetDestinationGate()
+      a6b24 d2  if not (p1) goto a6b44
+      a6b2d d3  call p1.IsWarpController()
+      a6b32 d2  if not (p1.IsWarpController()) goto a6b44
+      a6b3e d3  call p1.ReleaseSlot(p-4)
+      a6b4c d1  if not ((p-4 == m17)) goto a6b66
+      a6b51 d2  let p0 = g9.GetAge()
+      a6b5d d2  m18 = {p-4, (p0 + 60)}
+      a6b62 d2  m17 = 0
+      a6b6d d2  if not ((p1 < 20)) goto a6baf
+      a6b7d d2  if not ((p-4 == m16[p1])) goto a6ba1
+      a6b89 d3  m16[p1] = 0
+      a6b9a d3  m16[(p1 + 20)] = (p0 + 60)
+      a6b9c d2  goto a6baf
+      a6ba6 d3  p1 = (p1 + 1)
+      a6baa d2  goto a6b67
+      a6bb2 d1  return p0
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6815 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __requestWarpThroughSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 5 <= frame 5
+   ok    ReleaseSlot: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 5 <= frame 5
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; no suspend point removed
+
+-- option C no RotateToAngles
+   CODE d560c file +00d5620  27 bytes replaced (push1; jmp continuation; padding)
+      +000  02 32 00 0d 56 27 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01
+      then 01 padding to d5627
+   ok    length, header, build id unchanged
+   ok    CODE decodes to its exact end
+   ok    all 6815 method entries are instruction starts
+   ok    instruction starts outside the windows unchanged
+   ok    __EnterHyperspace: tracker conflicts 0, depth-walk conflicts 0, jumps outside 0, max depth 16 <= frame 17
+   ok    every __EnterHyperspace resume IP is still an instruction start reached with the same depth; natives removed: d5627 SA_RotateToAngles
+
+RESULT PASS

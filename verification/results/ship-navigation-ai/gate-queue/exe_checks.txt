@@ -1,0 +1,65 @@
+ok    X3AP.exe SHA-256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+ok    0x0049d199 83 8b f0 12 00 00 10           loader: VM+0x12f0 |= 0x10 (story not verified) before the check
+ok    0x0049d215 e8 76 dc 02 00                 loader: call 0x004cae90 (verify the obj, NULs replaced by spaces, against addon\x3files.xml)
+ok    0x0049d221 83 a3 f0 12 00 00 ef           loader: clear bit 0x10 only when the signature verifies
+ok    0x0049d276 3d 21 03 00 00                 loader: version field compared with 801 (0x321)
+ok    0x0049d2a7 89 83 3c 14 00 00              loader: header build id -> VM+0x143c
+ok    0x0049dc69 8b bb 40 14 00 00              loader PTCH: table VM+0x1440 ...
+ok    0x0049dc71 e8 7a 1f 05 00                 ... insert(old build id -> offset map) 0x004efbf0
+ok    0x0049e426 e8 c5 00 00 00                 operand byte-swap/native resolution pass 0x0049e1a0 ends by calling the peephole pass 0x0049e4f0
+ok    0x004a317a 8b 3f 8b 54 24 18 03 7a 08     jmp 0x32: IP = BE32 operand (swapped to LE at load) + CODE base [VM+8]: absolute CODE offset
+ok    0x004a35bc 0f bf 0f                       frame 0x6e: N = s16 operand ...
+ok    0x004a35c8 8d 4c 08 04 39 4e 10           ... capacity check: used cells + N + 4 <= task+0x10, else grow
+ok    0x004a3501 e8 3a 56 00 00                 lt 0x5c: 0x004a8b40 (a < b on int/double cells; false for other types)
+ok    0x004a351e e8 8d 56 00 00                 gt 0x5d: 0x004a8bb0 (a > b; false for other types)
+ok    0x004a353b e8 70 56 00 00                 le 0x5e: !(0x004a8bb0) ...
+ok    0x004a3544 83 c0 01                       ... so "array <= int" is true (used by option B for stock compatibility)
+ok    0x004a0941 e8 ea c6 ff ff                 save load: re-load the story object through 0x0049d030
+ok    0x004a0973 3b 83 3c 14 00 00              save load: saved build id == object build id?
+ok    0x004a097d 74 2a                          ... equal: no remap
+ok    0x004a097f 83 8b f0 12 00 00 08           ... differs: VM+0x12f0 |= 8 and look up a PTCH table
+ok    0x004a098f 8b 8b 40 14 00 00              ... in VM+0x1440 ...
+ok    0x004a0997 e8 64 90 fc ff                 ... with 0x00469a00
+ok    0x004a09a2 75 0c                          ... found: continue
+ok    0x004a09a4 e9 78 0a 00 00                 ... not found: jmp 0x004a1421 (save load fails)
+ok    0x004af539 f6 86 f0 12 00 00 10           SE_SignGameStats (SE 151): refuses when bit 0x10 is set
+ok    0x004af54e e8 3d b9 01 00                 SE_SignGameStats: re-verifies the story with 0x004cae90
+ok    0x004e7ce1 80 7c 24 12 00                 lookup: loose-file match found?
+ok    0x004e7ce6 0f 85 3d 09 00 00              ... yes: skip the catalogue scan (loose file wins over every catalogue)
+ok    0x004e7d0c 0f bf 81 c8 00 00 00           catalogue scan starts at the last registered catalogue (newest first)
+ok    0x004ecab2 c7 80 d8 00 00 00 08 c0 57 00  path table 0x0057c008; +0x20 is the story path format
+ok    0x004e922b 83 e1 03                       read: XOR 0x33 only when the handle flags & 3 == 3 (catalogue) ...
+ok    0x004e922e 80 f9 03 75 41                 ... (loose files are read as plain bytes)
+ok    0x004e9260 80 34 19 33                    ... xor byte [ecx+ebx], 0x33
+ok    0x004a2c03 8b 46 10 8b 17 03 c1 89 10     mkarr 0x28: element k <- the cell k below the top (element 0 = last pushed) ...
+ok    0x004a882e c6 06 08                       ... and the result cell gets tag 8 (array)
+ok    0x004ae477 0f b6 11                       SE_GetExprType (SE 60): returns the argument cell tag (8 = array)
+ok    0x004b13ee e8 cd cd 03 00                 TI_WaitRandomForInterrupt (TI 6): rand(arg1) ...
+ok    0x004b13f6 8b 4b 0b 8b 53 01              ... object = arg2, base = arg0 ...
+ok    0x004b1401 03 d0                          ... wait = arg0 + rand(arg1) ms
+ok    0x004632f5 e8 26 5f fb ff                 SA_Distance (SA 272): 0x00419220 = |pos(a) - pos(b)| of two engine objects, no sector test
+ok    0x004607d4 6a 00                          SA_Distance: unknown object -> result 0
+ok    0x00465acc 66 83 78 48 12                 SA_IsWarpOutSlotAvailable (SA 325): gate (class 0x12) only ...
+ok    0x00465b00 83 f9 06                       ... 6 warp-out slots per gate
+ok    0x00443b53 81 c1 20 4e 00 00              SA_StartInHangar into a gate: reserves a warp-out slot for 20000 ms
+ok    name table 0x00579fe0[149] = SE_VerifyData, case 0x4af3b2
+ok    name table 0x00579fe0[151] = SE_SignGameStats, case 0x4af4fe
+ok    name table 0x0057a7f0[272] = SA_Distance, case 0x4632c4
+ok    name table 0x0057a7f0[325] = SA_IsWarpOutSlotAvailable, case 0x465ab4
+ok    name table 0x0057a7f0[25] = SA_StartInHangar, case 0x4626e2
+ok    name table 0x0057a7f0[26] = SA_Idle, case 0x46274e
+ok    name table 0x00579f80[6] = TI_WaitRandomForInterrupt, case -
+ok    name table 0x00579fe0[60] = SE_GetExprType, case 0x4ae474
+ok    opcode 0x32 -> handler 0x004a317a (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x33 -> handler 0x004a3188 (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x34 -> handler 0x004a31a9 (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x6e -> handler 0x004a35ad (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x82 -> handler 0x004a3880 (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x83 -> handler 0x004a3986 (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x84 -> handler 0x004a3a87 (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x85 -> handler 0x004a3adb (tables 0x004a4688 / 0x004a4490)
+ok    opcode 0x88 -> handler 0x004a3ed4 (tables 0x004a4688 / 0x004a4490)
+ok    path table 0x0057c008: [+0] -> 'X3AP', [+0x20] -> 'L\\%s' (story file "L\x3story" + ".obj", relative to the working directory; no "addon" prefix)
+ok    string 0x00562424 = 'obj'
+ok    string 0x0054d3f8 = 'x3story'
+RESULT PASS (64 checks)

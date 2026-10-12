@@ -655,10 +655,13 @@ Both slot methods are KC (gate class 2014), not natives:
   for capital types), clamped to the sector, at `vmax/2` (`0x00453e64`, `0x00453ec1`, `0x00453eea`, `0x00453fb8`).
   So the queued capital cruises on for 1–11 s per poll. For the through slot, `TI_WaitRandomForInterrupt(1000,
   10000)` with **no order**: the ship sits stopped at its grid point (`2·(r_gate + r_ship)` in front: 4.9 km for the M2 median, 4.5 km for TL **[i]**), rotated to the gate axis (order 4 zeroed its
-  speed; nothing restarts it), and polls every 1–10 s **[m]** calls, **[i]** the argument meaning from the name.
+  speed; nothing restarts it), and polls every 1–11 s: TI case 6 waits `arg0 + rand(arg1)` ms (`0x004b13ee`), so
+  1–10 s was wrong (corrected 2026-10-12, [gate-queue-script.md](gate-queue-script.md) §3) **[m]**.
 * **Release:** at the exit of `__EnterHyperspace`, i.e. after `SA_WarpObjectAway` has run its 900 ms. Also on the
   reset paths (attack → 7, order-5 result 7, re-entering the sector). Each released slot is closed for 60 s. The
-  through slot is exempt when traffic keeps the same direction **[m]**.
+  through slot is exempt when traffic keeps the same direction **[m]**, but only when the requesting gate has a native
+  object (`gm3 != 0`, the player's sector **[i]**); out of sector every transit waits 60 s. The bytecode, the patch
+  sites and the file-level patch options are in [gate-queue-script.md](gate-queue-script.md).
 
 ### 10.3 Q2: approach geometry and order 4 [m]
 
@@ -814,8 +817,8 @@ for gate targets.
 **Still inferred or open:**
 
 * the resume latency of a woken KC task (§7);
-* the meaning of `TI_WaitRandomForInterrupt`'s arguments;
-* the gate's `m3` in the same-direction exemption;
+* ~~the meaning of `TI_WaitRandomForInterrupt`'s arguments~~: `arg0 + rand(arg1)` ms, object `arg2` (gate-queue-script.md §3);
+* ~~the gate's `m3` in the same-direction exemption~~: the requesting gate's `m3`, i.e. in-sector only **[i]** (gate-queue-script.md §2);
 * the time-factor reading of `[*0x606f34+0xcc]`;
 * whether AI ships carry `[ship+0x40] & 2`;
 * the order-5 result 7;

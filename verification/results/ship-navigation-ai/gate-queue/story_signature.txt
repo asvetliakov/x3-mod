@@ -1,0 +1,22 @@
+key: PUBLICKEYBLOB 276 B from KC CODE 0x25a5, alg 0x00002400, 2048 bits, e = 65537, modulus SHA-256 f956e1f963089f53
+
+addon/x3files.xml: 25295 B, SHA-256 1cdee0e8b476eaf0
+  <data> block 24886 B: signed MD5 9dcbe362944d0615fb3b13d1aeb6ce01, actual MD5 9dcbe362944d0615fb3b13d1aeb6ce01 -> VERIFIES
+  58 (file, signature) pairs; first: L\x3story.obj
+  L\x3story.obj signed MD5 67841644ae7f569031ceb6484b9535f0
+    03.cat         x3story.obj  1814312 B build id 1220834009: MD5 raw e1e74e9f5b123918d9b9ee24c00ec9e1  no match
+    04.cat         x3story.obj  1833974 B build id 1223997089: MD5 raw a07edac3a439523c988302c4e8ed9ce7  no match
+    05.cat         x3story.obj  1847795 B build id 1228158587: MD5 raw c7e3302aa4ad9d64edcc5a58c6b2424b  no match
+    06.cat         x3story.obj  1850154 B build id 1229697856: MD5 raw 1c82cfc2f901ad050a021d8c48256517  no match
+    07.cat         x3story.obj  1856806 B build id 1234196396: MD5 raw 5bce3efcdca86f8f94b67cfcbd773010  no match
+    08.cat         x3story.obj  1889256 B build id 1243527337: MD5 raw 619ab09fb2b3e884508066876afde205  no match
+    09.cat         x3story.obj  1946185 B build id 1252606627: MD5 raw 0fc224873805226671174204b9af8049  no match
+    10.cat         x3story.obj  1990599 B build id 1270117510: MD5 raw 1d14d4a53dfa40c514b1465752761de9  no match
+    11.cat         x3story.obj  2003586 B build id 1274786256: MD5 raw 88b5eef87f50cba00d069f935ed3c7ea  no match
+    13.cat         x3story.obj  3776752 B build id 1510657421: MD5 raw bd71c96ab5ec9d2e0599cd470b71a083  no match
+    addon/01.cat   x3story.obj  2066791 B build id 1323793106: MD5 raw 8b7d19a91443be7a064c86c0e5a21b85  no match
+    addon/02.cat   x3story.obj  2239966 B build id 1328010164: MD5 raw 54119488873563a65c8b623bdf00d055  no match
+    addon/03.cat   x3story.obj  2292724 B build id 1367929478: MD5 raw 2ebae60d66c0bba20b7f00b89d4cde11  no match
+    addon/04.cat   x3story.obj  2312979 B build id 1510658513: MD5 raw 2fe9dbab129de1309c63dcfe4b2fef56  MATCHES (NUL->space)
+    addon/07.cat   x3story.obj  2182503 B build id 1462141839: MD5 raw c3b2da5bfc003f2f51eccc1a5115ec8f  no match
+  loose x3story.obj present: none

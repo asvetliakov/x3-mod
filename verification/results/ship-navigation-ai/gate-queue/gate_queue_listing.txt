@@ -1,0 +1,666 @@
+====================================================================================================
+stock AP: addon/04.cat:L/x3story.obj  2312979 B  SHA-256 ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a
+  version 801, build id 1510658513 (2017-11-14 11:21 UTC), CODE 1812069 B at file offset 20 (file offset = CODE offset + 20)
+  sections: CODE@12+1812069, SYMB@1812089+2948, VARS@1815045+836, CLAS@1815889+146100, PTCH@1961997+228268, STRG@2190273+122694
+  PTCH: 29 save-remap tables keyed by older build ids 1323793106..1486632380
+  class 2014 members (stock name -> this build): m14->m14, m15->m15, m16->m16, m17->m17, m18->m18; GetAge global g8
+  subclasses of 2014: none; slot-member accesses: Create st m14 st m15 st m16 st m17 st m18; Destruct st m14; IsWarpController ld m18; ReleaseSlot ld m14 ld m15 ld m18 st m15 st m16; RequestWarpInSlot ld m14; RequestWarpThroughSlot ld m18 st m18; __requestWarpThroughSlot ld m15 ld m16 ld m17 st m15 st m16 st m17
+  class 2014 entries: Create 906ee, RequestWarpInSlot 90a59, IsWarpController 90b65, RequestWarpThroughSlot 90b6e, __requestWarpThroughSlot 90bca, ReleaseSlot 90c9c, GetWarpInPos 90d61, GetDestinationGate 9139b
+
+-- 2014::RequestWarpInSlot entry 90a59 (file +0090a6d)
+   90a59  file+0090a6d  w3  frame(6e) 7
+   90a5c  file+0090a70  w1  push0(01) 
+   90a5d  file+0090a71  w3  ldglob(0e) 8
+   90a60  file+0090a74  w5  callobj(85) GetAge
+   90a65  file+0090a79  w1  push0(01) 
+   90a66  file+0090a7a  w2  pushb(05) -1
+   90a68  file+0090a7c  w1  push0(01) 
+   90a69  file+0090a7d  w3  stloc(14) 3
+   90a6c  file+0090a80  w1  drop(24) 
+   90a6d  file+0090a81  w3  ldloc(0d) 2
+   90a70  file+0090a84  w2  pushb(05) 20
+   90a72  file+0090a86  w1  lt(5c)   
+   90a73  file+0090a87  w5  jf(34)   90b56
+   90a78  file+0090a8c  w5  jmp(32)  90a8d
+   90a7d  file+0090a91  w3  ldloc(0d) 2
+   90a80  file+0090a94  w1  push1(02) 
+   90a81  file+0090a95  w1  add(46)  
+   90a82  file+0090a96  w3  stloc(14) 3
+   90a85  file+0090a99  w1  push1(02) 
+   90a86  file+0090a9a  w1  sub(4b)  
+   90a87  file+0090a9b  w1  drop(24) 
+   90a88  file+0090a9c  w5  jmp(32)  90a6d
+   90a8d  file+0090aa1  w3  ldloc(0d) 2
+   90a90  file+0090aa4  w3  ldmem(0f) 14
+   90a93  file+0090aa7  w1  index(10) 
+   90a94  file+0090aa8  w3  ldloc(0d) 1
+   90a97  file+0090aab  w5  jf(34)   90ac9
+   90a9c  file+0090ab0  w3  ldloc(0d) 1
+   90a9f  file+0090ab3  w1  push1(02) 
+   90aa0  file+0090ab4  w5  native(82) SE_ObjectExists
+   90aa5  file+0090ab9  w1  not(64)  
+   90aa6  file+0090aba  w5  jt(33)   90abd
+   90aab  file+0090abf  w3  ldloc(0d) 8
+   90aae  file+0090ac2  w3  ldloc(0d) 2
+   90ab1  file+0090ac5  w1  eq(5b)   
+   90ab2  file+0090ac6  w5  jt(33)   90abd
+   90ab7  file+0090acb  w1  push0(01) 
+   90ab8  file+0090acc  w5  jmp(32)  90abe
+   90abd  file+0090ad1  w1  push1(02) 
+   90abe  file+0090ad2  w5  jf(34)   90ac9
+   90ac3  file+0090ad7  w1  push1(02) 
+   90ac4  file+0090ad8  w5  jmp(32)  90aca
+   90ac9  file+0090add  w1  push0(01) 
+   90aca  file+0090ade  w5  jf(34)   90ae9
+   90acf  file+0090ae3  w1  push0(01) 
+   90ad0  file+0090ae4  w3  ldloc(0d) 4
+   90ad3  file+0090ae7  w3  ldmem(0f) 14
+   90ad6  file+0090aea  w1  stidx(17) 
+   90ad7  file+0090aeb  w1  drop(24) 
+   90ad8  file+0090aec  w1  push0(01) 
+   90ad9  file+0090aed  w3  ldloc(0d) 4
+   90adc  file+0090af0  w2  pushb(05) 20
+   90ade  file+0090af2  w1  add(46)  
+   90adf  file+0090af3  w3  ldmem(0f) 14
+   90ae2  file+0090af6  w1  stidx(17) 
+   90ae3  file+0090af7  w1  drop(24) 
+   90ae4  file+0090af8  w1  push0(01) 
+   90ae5  file+0090af9  w3  stloc(14) 2
+   90ae8  file+0090afc  w1  drop(24) 
+   90ae9  file+0090afd  w3  ldloc(0d) 2
+   90aec  file+0090b00  w1  push0(01) 
+   90aed  file+0090b01  w1  lt(5c)   
+   90aee  file+0090b02  w5  jf(34)   90b03
+   90af3  file+0090b07  w3  ldloc(0d) 1
+   90af6  file+0090b0a  w1  push0(01) 
+   90af7  file+0090b0b  w1  eq(5b)   
+   90af8  file+0090b0c  w5  jf(34)   90b03
+   90afd  file+0090b11  w1  push1(02) 
+   90afe  file+0090b12  w5  jmp(32)  90b04
+   90b03  file+0090b17  w1  push0(01) 
+   90b04  file+0090b18  w5  jf(34)   90b22
+   90b09  file+0090b1d  w3  ldloc(0d) 3
+   90b0c  file+0090b20  w2  pushb(05) 20
+   90b0e  file+0090b22  w1  add(46)  
+   90b0f  file+0090b23  w3  ldmem(0f) 14
+   90b12  file+0090b26  w1  index(10) 
+   90b13  file+0090b27  w3  ldloc(0d) 5
+   90b16  file+0090b2a  w1  le(5e)   
+   90b17  file+0090b2b  w5  jf(34)   90b22
+   90b1c  file+0090b30  w1  push1(02) 
+   90b1d  file+0090b31  w5  jmp(32)  90b23
+   90b22  file+0090b36  w1  push0(01) 
+   90b23  file+0090b37  w5  jf(34)   90b50
+   90b28  file+0090b3c  w3  ldloc(0d) 8
+   90b2b  file+0090b3f  w1  push1(02) 
+   90b2c  file+0090b40  w5  callself(88) 2014::ReleaseSlot
+   90b31  file+0090b45  w1  drop(24) 
+   90b32  file+0090b46  w3  ldloc(0d) 8
+   90b35  file+0090b49  w3  ldloc(0d) 4
+   90b38  file+0090b4c  w3  ldmem(0f) 14
+   90b3b  file+0090b4f  w1  stidx(17) 
+   90b3c  file+0090b50  w1  drop(24) 
+   90b3d  file+0090b51  w1  push0(01) 
+   90b3e  file+0090b52  w3  ldloc(0d) 4
+   90b41  file+0090b55  w2  pushb(05) 20
+   90b43  file+0090b57  w1  add(46)  
+   90b44  file+0090b58  w3  ldmem(0f) 14
+   90b47  file+0090b5b  w1  stidx(17) 
+   90b48  file+0090b5c  w1  drop(24) 
+   90b49  file+0090b5d  w3  ldloc(0d) 3
+   90b4c  file+0090b60  w3  stloc(14) 3
+   90b4f  file+0090b63  w1  drop(24) 
+   90b50  file+0090b64  w1  drop(24) 
+   90b51  file+0090b65  w5  jmp(32)  90a7d
+   90b56  file+0090b6a  w3  ldloc(0d) 1
+   90b59  file+0090b6d  w3  stloc(14) 4
+   90b5c  file+0090b70  w3  dropn(23) 3
+   90b5f  file+0090b73  w1  ret(83)  
+   90b60  file+0090b74  w3  dropn(23) 3
+   90b63  file+0090b77  w1  push0(01) 
+   90b64  file+0090b78  w1  ret(83)  
+
+-- 2014::RequestWarpThroughSlot entry 90b6e (file +0090b82)
+   90b6e  file+0090b82  w3  frame(6e) 6
+   90b71  file+0090b85  w3  ldmem(0f) 18
+   90b74  file+0090b88  w5  jf(34)   90b87
+   90b79  file+0090b8d  w3  ldmem(0f) 3
+   90b7c  file+0090b90  w1  push1(02) 
+   90b7d  file+0090b91  w3  ldloc(0d) 6
+   90b80  file+0090b94  w1  push3(04) 
+   90b81  file+0090b95  w5  callself(88) 2014::__requestWarpThroughSlot
+   90b86  file+0090b9a  w1  ret(83)  
+   90b87  file+0090b9b  w1  push0(01) 
+   90b88  file+0090b9c  w5  callself(88) 2014::GetDestinationGate
+   90b8d  file+0090ba1  w1  push0(01) 
+   90b8e  file+0090ba2  w3  ldloc(0d) 2
+   90b91  file+0090ba5  w5  callobj(85) IsWarpController
+   90b96  file+0090baa  w5  jf(34)   90bb0
+   90b9b  file+0090baf  w3  ldmem(0f) 3
+   90b9e  file+0090bb2  w1  push0(01) 
+   90b9f  file+0090bb3  w3  ldloc(0d) 7
+   90ba2  file+0090bb6  w1  push3(04) 
+   90ba3  file+0090bb7  w3  ldloc(0d) 5
+   90ba6  file+0090bba  w5  callobj(85) __requestWarpThroughSlot
+   90bab  file+0090bbf  w3  stloc(14) 2
+   90bae  file+0090bc2  w1  drop(24) 
+   90baf  file+0090bc3  w1  ret(83)  
+   90bb0  file+0090bc4  w1  push1(02) 
+   90bb1  file+0090bc5  w3  stmem(16) 18
+   90bb4  file+0090bc8  w1  drop(24) 
+   90bb5  file+0090bc9  w3  ldmem(0f) 3
+   90bb8  file+0090bcc  w1  push1(02) 
+   90bb9  file+0090bcd  w3  ldloc(0d) 7
+   90bbc  file+0090bd0  w1  push3(04) 
+   90bbd  file+0090bd1  w5  callself(88) 2014::__requestWarpThroughSlot
+   90bc2  file+0090bd6  w3  stloc(14) 2
+   90bc5  file+0090bd9  w1  drop(24) 
+   90bc6  file+0090bda  w1  ret(83)  
+   90bc7  file+0090bdb  w1  drop(24) 
+   90bc8  file+0090bdc  w1  push0(01) 
+   90bc9  file+0090bdd  w1  ret(83)  
+
+-- 2014::__requestWarpThroughSlot entry 90bca (file +0090bde)
+   90bca  file+0090bde  w3  frame(6e) 4
+   90bcd  file+0090be1  w1  push0(01) 
+   90bce  file+0090be2  w3  ldglob(0e) 8
+   90bd1  file+0090be5  w5  callobj(85) GetAge
+   90bd6  file+0090bea  w3  ldmem(0f) 15
+   90bd9  file+0090bed  w5  jf(34)   90c0b
+   90bde  file+0090bf2  w3  ldmem(0f) 15
+   90be1  file+0090bf5  w1  push1(02) 
+   90be2  file+0090bf6  w5  native(82) SE_ObjectExists
+   90be7  file+0090bfb  w1  not(64)  
+   90be8  file+0090bfc  w5  jt(33)   90bff
+   90bed  file+0090c01  w3  ldloc(0d) 5
+   90bf0  file+0090c04  w3  ldmem(0f) 15
+   90bf3  file+0090c07  w1  eq(5b)   
+   90bf4  file+0090c08  w5  jt(33)   90bff
+   90bf9  file+0090c0d  w1  push0(01) 
+   90bfa  file+0090c0e  w5  jmp(32)  90c00
+   90bff  file+0090c13  w1  push1(02) 
+   90c00  file+0090c14  w5  jf(34)   90c0b
+   90c05  file+0090c19  w1  push1(02) 
+   90c06  file+0090c1a  w5  jmp(32)  90c0c
+   90c0b  file+0090c1f  w1  push0(01) 
+   90c0c  file+0090c20  w5  jf(34)   90c21
+   90c11  file+0090c25  w1  push0(01) 
+   90c12  file+0090c26  w3  stmem(16) 15
+   90c15  file+0090c29  w1  drop(24) 
+   90c16  file+0090c2a  w1  push0(01) 
+   90c17  file+0090c2b  w3  stmem(16) 16
+   90c1a  file+0090c2e  w1  drop(24) 
+   90c1b  file+0090c2f  w2  pushb(05) -1
+   90c1d  file+0090c31  w3  stmem(16) 17
+   90c20  file+0090c34  w1  drop(24) 
+   90c21  file+0090c35  w3  ldmem(0f) 15
+   90c24  file+0090c38  w1  push0(01) 
+   90c25  file+0090c39  w1  eq(5b)   
+   90c26  file+0090c3a  w5  jf(34)   90c69
+   90c2b  file+0090c3f  w3  ldmem(0f) 16
+   90c2e  file+0090c42  w3  ldloc(0d) 2
+   90c31  file+0090c45  w1  le(5e)   
+   90c32  file+0090c46  w5  jt(33)   90c5d
+   90c37  file+0090c4b  w3  ldloc(0d) 7
+   90c3a  file+0090c4e  w5  jf(34)   90c51
+   90c3f  file+0090c53  w3  ldloc(0d) 6
+   90c42  file+0090c56  w3  ldmem(0f) 17
+   90c45  file+0090c59  w1  eq(5b)   
+   90c46  file+0090c5a  w5  jf(34)   90c51
+   90c4b  file+0090c5f  w1  push1(02) 
+   90c4c  file+0090c60  w5  jmp(32)  90c52
+   90c51  file+0090c65  w1  push0(01) 
+   90c52  file+0090c66  w5  jt(33)   90c5d
+   90c57  file+0090c6b  w1  push0(01) 
+   90c58  file+0090c6c  w5  jmp(32)  90c5e
+   90c5d  file+0090c71  w1  push1(02) 
+   90c5e  file+0090c72  w5  jf(34)   90c69
+   90c63  file+0090c77  w1  push1(02) 
+   90c64  file+0090c78  w5  jmp(32)  90c6a
+   90c69  file+0090c7d  w1  push0(01) 
+   90c6a  file+0090c7e  w5  jf(34)   90c92
+   90c6f  file+0090c83  w3  ldloc(0d) 5
+   90c72  file+0090c86  w1  push1(02) 
+   90c73  file+0090c87  w5  callself(88) 2014::ReleaseSlot
+   90c78  file+0090c8c  w1  drop(24) 
+   90c79  file+0090c8d  w3  ldloc(0d) 5
+   90c7c  file+0090c90  w3  stmem(16) 15
+   90c7f  file+0090c93  w1  drop(24) 
+   90c80  file+0090c94  w1  push0(01) 
+   90c81  file+0090c95  w3  stmem(16) 16
+   90c84  file+0090c98  w1  drop(24) 
+   90c85  file+0090c99  w3  ldloc(0d) 6
+   90c88  file+0090c9c  w3  stmem(16) 17
+   90c8b  file+0090c9f  w1  drop(24) 
+   90c8c  file+0090ca0  w1  push0(01) 
+   90c8d  file+0090ca1  w3  stloc(14) 2
+   90c90  file+0090ca4  w1  drop(24) 
+   90c91  file+0090ca5  w1  ret(83)  
+   90c92  file+0090ca6  w2  pushb(05) -1
+   90c94  file+0090ca8  w3  stloc(14) 2
+   90c97  file+0090cab  w1  drop(24) 
+   90c98  file+0090cac  w1  ret(83)  
+   90c99  file+0090cad  w1  drop(24) 
+   90c9a  file+0090cae  w1  push0(01) 
+   90c9b  file+0090caf  w1  ret(83)  
+
+-- 2014::ReleaseSlot entry 90c9c (file +0090cb0)
+   90c9c  file+0090cb0  w3  frame(6e) 5
+   90c9f  file+0090cb3  w1  push0(01) 
+   90ca0  file+0090cb4  w3  ldglob(0e) 8
+   90ca3  file+0090cb7  w5  callobj(85) GetAge
+   90ca8  file+0090cbc  w3  ldmem(0f) 18
+   90cab  file+0090cbf  w1  not(64)  
+   90cac  file+0090cc0  w5  jf(34)   90ce7
+   90cb1  file+0090cc5  w1  push0(01) 
+   90cb2  file+0090cc6  w5  callself(88) 2014::GetDestinationGate
+   90cb7  file+0090ccb  w3  ldloc(0d) 1
+   90cba  file+0090cce  w5  jf(34)   90cd3
+   90cbf  file+0090cd3  w1  push0(01) 
+   90cc0  file+0090cd4  w3  ldloc(0d) 2
+   90cc3  file+0090cd7  w5  callobj(85) IsWarpController
+   90cc8  file+0090cdc  w5  jf(34)   90cd3
+   90ccd  file+0090ce1  w1  push1(02) 
+   90cce  file+0090ce2  w5  jmp(32)  90cd4
+   90cd3  file+0090ce7  w1  push0(01) 
+   90cd4  file+0090ce8  w5  jf(34)   90ce6
+   90cd9  file+0090ced  w3  ldloc(0d) 6
+   90cdc  file+0090cf0  w1  push1(02) 
+   90cdd  file+0090cf1  w3  ldloc(0d) 3
+   90ce0  file+0090cf4  w5  callobj(85) ReleaseSlot
+   90ce5  file+0090cf9  w1  drop(24) 
+   90ce6  file+0090cfa  w1  drop(24) 
+   90ce7  file+0090cfb  w3  ldloc(0d) 5
+   90cea  file+0090cfe  w3  ldmem(0f) 15
+   90ced  file+0090d01  w1  eq(5b)   
+   90cee  file+0090d02  w5  jf(34)   90d02
+   90cf3  file+0090d07  w1  push0(01) 
+   90cf4  file+0090d08  w3  stmem(16) 15
+   90cf7  file+0090d0b  w1  drop(24) 
+   90cf8  file+0090d0c  w3  ldloc(0d) 1
+   90cfb  file+0090d0f  w2  pushb(05) 60
+   90cfd  file+0090d11  w1  add(46)  
+   90cfe  file+0090d12  w3  stmem(16) 16
+   90d01  file+0090d15  w1  drop(24) 
+   90d02  file+0090d16  w1  push0(01) 
+   90d03  file+0090d17  w1  push0(01) 
+   90d04  file+0090d18  w3  stloc(14) 2
+   90d07  file+0090d1b  w1  drop(24) 
+   90d08  file+0090d1c  w3  ldloc(0d) 1
+   90d0b  file+0090d1f  w2  pushb(05) 20
+   90d0d  file+0090d21  w1  lt(5c)   
+   90d0e  file+0090d22  w5  jf(34)   90d5c
+   90d13  file+0090d27  w5  jmp(32)  90d28
+   90d18  file+0090d2c  w3  ldloc(0d) 1
+   90d1b  file+0090d2f  w1  push1(02) 
+   90d1c  file+0090d30  w1  add(46)  
+   90d1d  file+0090d31  w3  stloc(14) 2
+   90d20  file+0090d34  w1  push1(02) 
+   90d21  file+0090d35  w1  sub(4b)  
+   90d22  file+0090d36  w1  drop(24) 
+   90d23  file+0090d37  w5  jmp(32)  90d08
+   90d28  file+0090d3c  w3  ldloc(0d) 6
+   90d2b  file+0090d3f  w3  ldloc(0d) 2
+   90d2e  file+0090d42  w3  ldmem(0f) 14
+   90d31  file+0090d45  w1  index(10) 
+   90d32  file+0090d46  w1  eq(5b)   
+   90d33  file+0090d47  w5  jf(34)   90d57
+   90d38  file+0090d4c  w1  push0(01) 
+   90d39  file+0090d4d  w3  ldloc(0d) 2
+   90d3c  file+0090d50  w3  ldmem(0f) 14
+   90d3f  file+0090d53  w1  stidx(17) 
+   90d40  file+0090d54  w1  drop(24) 
+   90d41  file+0090d55  w3  ldloc(0d) 2
+   90d44  file+0090d58  w2  pushb(05) 60
+   90d46  file+0090d5a  w1  add(46)  
+   90d47  file+0090d5b  w3  ldloc(0d) 2
+   90d4a  file+0090d5e  w2  pushb(05) 20
+   90d4c  file+0090d60  w1  add(46)  
+   90d4d  file+0090d61  w3  ldmem(0f) 14
+   90d50  file+0090d64  w1  stidx(17) 
+   90d51  file+0090d65  w1  drop(24) 
+   90d52  file+0090d66  w5  jmp(32)  90d5c
+   90d57  file+0090d6b  w5  jmp(32)  90d18
+   90d5c  file+0090d70  w3  dropn(23) 2
+   90d5f  file+0090d73  w1  push0(01) 
+   90d60  file+0090d74  w1  ret(83)  
+
+-- 2004::ReleaseFromSlot entry aae41 (file +00aae55)
+   aae41  file+00aae55  w3  frame(6e) 3
+   aae44  file+00aae58  w3  ldmem(0f) 84
+   aae47  file+00aae5b  w5  jf(34)   aae60
+   aae4c  file+00aae60  w3  ldmem(0f) 84
+   aae4f  file+00aae63  w1  push1(02) 
+   aae50  file+00aae64  w5  native(82) SE_ObjectExists
+   aae55  file+00aae69  w5  jf(34)   aae60
+   aae5a  file+00aae6e  w1  push1(02) 
+   aae5b  file+00aae6f  w5  jmp(32)  aae61
+   aae60  file+00aae74  w1  push0(01) 
+   aae61  file+00aae75  w5  jf(34)   aae71
+   aae66  file+00aae7a  w1  this(2e) 
+   aae67  file+00aae7b  w1  push1(02) 
+   aae68  file+00aae7c  w3  ldmem(0f) 84
+   aae6b  file+00aae7f  w5  callobj(85) ReleaseSlot
+   aae70  file+00aae84  w1  drop(24) 
+   aae71  file+00aae85  w1  push0(01) 
+   aae72  file+00aae86  w3  stmem(16) 84
+   aae75  file+00aae89  w1  drop(24) 
+   aae76  file+00aae8a  w2  pushb(05) -1
+   aae78  file+00aae8c  w3  stmem(16) 85
+   aae7b  file+00aae8f  w1  drop(24) 
+   aae7c  file+00aae90  w3  ldmem(0f) 3
+   aae7f  file+00aae93  w5  jf(34)   aae90
+   aae84  file+00aae98  w2  pushb(05) -1
+   aae86  file+00aae9a  w3  ldmem(0f) 3
+   aae89  file+00aae9d  w1  push2(03) 
+   aae8a  file+00aae9e  w5  native(82) SA_SetShipDockPortNr
+   aae8f  file+00aaea3  w1  drop(24) 
+   aae90  file+00aaea4  w1  push0(01) 
+   aae91  file+00aaea5  w1  ret(83)  
+
+-- 2004::__EnterHyperspace entry bca8e: windows (slot requests and waits, rotate step); tracker conflicts 0
+   bcc0b  file+00bcc1f  w1  push0(01) 
+   bcc0c  file+00bcc20  w5  jf(34)   bcc20
+   bcc11  file+00bcc25  w3  ldloc(0d) 1
+   bcc14  file+00bcc28  w1  not(64)  
+   bcc15  file+00bcc29  w5  jf(34)   bcc20
+   bcc1a  file+00bcc2e  w1  push1(02) 
+   bcc1b  file+00bcc2f  w5  jmp(32)  bcc21
+   bcc20  file+00bcc34  w1  push0(01) 
+   bcc21  file+00bcc35  w5  jf(34)   bcc9e
+   bcc26  file+00bcc3a  w1  this(2e) 
+   bcc27  file+00bcc3b  w1  push1(02) 
+   bcc28  file+00bcc3c  w3  ldloc(0d) 13
+   bcc2b  file+00bcc3f  w5  callobj(85) RequestWarpInSlot
+   bcc30  file+00bcc44  w3  ldloc(0d) 1
+   bcc33  file+00bcc47  w1  push0(01) 
+   bcc34  file+00bcc48  w1  ge(5f)   
+   bcc35  file+00bcc49  w5  jf(34)   bcc4d
+   bcc3a  file+00bcc4e  w3  ldloc(0d) 12
+   bcc3d  file+00bcc51  w3  stmem(16) 84
+   bcc40  file+00bcc54  w1  drop(24) 
+   bcc41  file+00bcc55  w3  ldloc(0d) 1
+   bcc44  file+00bcc58  w3  stmem(16) 85
+   bcc47  file+00bcc5b  w1  drop(24) 
+   bcc48  file+00bcc5c  w5  jmp(32)  bcc9d
+   bcc4d  file+00bcc61  w3  ldmem(0f) 3
+   bcc50  file+00bcc64  w5  jf(34)   bcc89
+   bcc55  file+00bcc69  w3  ldmem(0f) 93
+   bcc58  file+00bcc6c  w3  ldmem(0f) 3
+   bcc5b  file+00bcc6f  w1  push2(03) 
+   bcc5c  file+00bcc70  w5  native(82) SA_SetSpeedLimit
+   bcc61  file+00bcc75  w1  drop(24) 
+   bcc62  file+00bcc76  w1  push1(02) 
+   bcc63  file+00bcc77  w3  ldmem(0f) 3
+   bcc66  file+00bcc7a  w1  push2(03) 
+   bcc67  file+00bcc7b  w5  native(82) SA_SetFlightMode
+   bcc6c  file+00bcc80  w1  drop(24) 
+   bcc6d  file+00bcc81  w3  pushw(06) 1000
+   bcc70  file+00bcc84  w3  pushw(06) 10000
+   bcc73  file+00bcc87  w1  push1(02) 
+   bcc74  file+00bcc88  w5  native(82) SE_Random
+   bcc79  file+00bcc8d  w1  add(46)  
+   bcc7a  file+00bcc8e  w3  ldmem(0f) 3
+   bcc7d  file+00bcc91  w1  push2(03) 
+   bcc7e  file+00bcc92  w5  native(82) SA_Idle
+   bcc83  file+00bcc97  w1  drop(24) 
+   bcc84  file+00bcc98  w5  jmp(32)  bcc97
+   bcc89  file+00bcc9d  w1  this(2e) 
+   bcc8a  file+00bcc9e  w3  pushw(06) 10000
+   bcc8d  file+00bcca1  w3  pushw(06) 1000
+   bcc90  file+00bcca4  w1  push3(04) 
+   bcc91  file+00bcca5  w5  native(82) TI_WaitRandomForInterrupt
+   bcc96  file+00bccaa  w1  drop(24) 
+   ...
+   bcce5  file+00bccf9  w1  push1(02) 
+   bcce6  file+00bccfa  w1  eq(5b)   
+   bcce7  file+00bccfb  w5  jf(34)   bccfa
+   bccec  file+00bcd00  w3  ldloc(0d) 5
+   bccef  file+00bcd03  w5  jf(34)   bccfa
+   bccf4  file+00bcd08  w1  push1(02) 
+   bccf5  file+00bcd09  w5  jmp(32)  bccfb
+   bccfa  file+00bcd0e  w1  push0(01) 
+   bccfb  file+00bcd0f  w5  jf(34)   bcd41
+   bcd00  file+00bcd14  w1  this(2e) 
+   bcd01  file+00bcd15  w1  push1(02) 
+   bcd02  file+00bcd16  w3  ldloc(0d) 13
+   bcd05  file+00bcd19  w5  callobj(85) RequestWarpThroughSlot
+   bcd0a  file+00bcd1e  w3  ldloc(0d) 1
+   bcd0d  file+00bcd21  w1  push0(01) 
+   bcd0e  file+00bcd22  w1  ge(5f)   
+   bcd0f  file+00bcd23  w5  jf(34)   bcd2c
+   bcd14  file+00bcd28  w3  ldloc(0d) 12
+   bcd17  file+00bcd2b  w3  stmem(16) 84
+   bcd1a  file+00bcd2e  w1  drop(24) 
+   bcd1b  file+00bcd2f  w3  ldloc(0d) 1
+   bcd1e  file+00bcd32  w3  stmem(16) 85
+   bcd21  file+00bcd35  w1  drop(24) 
+   bcd22  file+00bcd36  w1  push2(03) 
+   bcd23  file+00bcd37  w3  stloc(14) 3
+   bcd26  file+00bcd3a  w1  drop(24) 
+   bcd27  file+00bcd3b  w5  jmp(32)  bcd40
+   bcd2c  file+00bcd40  w1  this(2e) 
+   bcd2d  file+00bcd41  w3  pushw(06) 10000
+   bcd30  file+00bcd44  w3  pushw(06) 1000
+   bcd33  file+00bcd47  w1  push3(04) 
+   bcd34  file+00bcd48  w5  native(82) TI_WaitRandomForInterrupt
+   bcd39  file+00bcd4d  w1  drop(24) 
+   bcd3a  file+00bcd4e  w1  drop(24) 
+   bcd3b  file+00bcd4f  w5  jmp(32)  bcb21
+   bcd40  file+00bcd54  w1  drop(24) 
+   bcd41  file+00bcd55  w1  push0(01) 
+   bcd42  file+00bcd56  w3  ldloc(0d) 12
+   bcd45  file+00bcd59  w5  callobj(85) GetObjectID
+   bcd4a  file+00bcd5e  w3  ldmem(0f) 3
+   bcd4d  file+00bcd61  w5  jf(34)   bcf3e
+   bcd52  file+00bcd66  w3  ldmem(0f) 88
+   bcd55  file+00bcd69  w1  push0(01) 
+   bcd56  file+00bcd6a  w1  gt(5d)   
+   bcd57  file+00bcd6b  w1  push1(02) 
+   bcd58  file+00bcd6c  w5  callself(88) 2004::SetNoSafePosOnActivate
+   bcd5d  file+00bcd71  w1  drop(24) 
+   bcd5e  file+00bcd72  w1  push0(01) 
+   bcd5f  file+00bcd73  w3  stloc(14) 4
+   bcd62  file+00bcd76  w1  drop(24) 
+   bcd63  file+00bcd77  w3  ldloc(0d) 8
+   bcd66  file+00bcd7a  w1  not(64)  
+   ...
+   bce41  file+00bce55  w1  push1(02) 
+   bce42  file+00bce56  w5  jmp(32)  bce48
+   bce47  file+00bce5b  w1  push0(01) 
+   bce48  file+00bce5c  w5  jf(34)   bce7e
+   bce4d  file+00bce61  w3  ldloc(0d) 1
+   bce50  file+00bce64  w1  push1(02) 
+   bce51  file+00bce65  w5  native(82) SA_GetRotBeta
+   bce56  file+00bce6a  w3  ldloc(0d) 2
+   bce59  file+00bce6d  w1  push1(02) 
+   bce5a  file+00bce6e  w5  native(82) SA_GetRotAlpha
+   bce5f  file+00bce73  w3  ldmem(0f) 3
+   bce62  file+00bce76  w1  push3(04) 
+   bce63  file+00bce77  w5  native(82) SA_RotateToAngles
+   bce68  file+00bce7c  w1  push1(02) 
+   bce69  file+00bce7d  w1  eq(5b)   
+   bce6a  file+00bce7e  w5  jf(34)   bce79
+   bce6f  file+00bce83  w1  push2(03) 
+   bce70  file+00bce84  w3  stloc(14) 9
+   bce73  file+00bce87  w1  drop(24) 
+   bce74  file+00bce88  w1  push1(02) 
+   bce75  file+00bce89  w3  stloc(14) 3
+   bce78  file+00bce8c  w1  drop(24) 
+   bce79  file+00bce8d  w5  jmp(32)  bcf39
+   bce7e  file+00bce92  w3  ldmem(0f) 87
+   bce81  file+00bce95  w3  ldmem(0f) 3
+   bce84  file+00bce98  w1  push2(03) 
+   bce85  file+00bce99  w5  native(82) SA_SetShipRotAccel
+   bce8a  file+00bce9e  w1  drop(24) 
+   bce8b  file+00bce9f  w3  ldmem(0f) 93
+   bce8e  file+00bcea2  w3  ldmem(0f) 3
+   bce91  file+00bcea5  w1  push2(03) 
+   bce92  file+00bcea6  w5  native(82) SA_SetSpeedLimit
+   bce97  file+00bceab  w1  drop(24) 
+   bce98  file+00bceac  w1  push0(01) 
+   bce99  file+00bcead  w3  ldmem(0f) 3
+   bce9c  file+00bceb0  w1  push2(03) 
+   bce9d  file+00bceb1  w5  native(82) SA_SetFlightMode
+   bcea2  file+00bceb6  w1  drop(24) 
+   bcea3  file+00bceb7  w5  pushd(07) 655361
+   bcea8  file+00bcebc  w3  stmem(16) 45
+   bceab  file+00bcebf  w1  drop(24) 
+   bceac  file+00bcec0  w3  ldloc(0d) 1
+   bceaf  file+00bcec3  w3  stmem(16) 46
+   bceb2  file+00bcec6  w1  drop(24) 
+   bceb3  file+00bcec7  w2  pushb(05) -1
+   bceb5  file+00bcec9  w3  ldloc(0d) 2
+   bceb8  file+00bcecc  w3  ldmem(0f) 3
+   bcebb  file+00bcecf  w1  push3(04) 
+   bcebc  file+00bced0  w5  native(82) SA_FlyObjectIntoContainer
+   bcec1  file+00bced5  w3  ldloc(0d) 1
+   bcec4  file+00bced8  w1  push1(02) 
+   bcec5  file+00bced9  w1  eq(5b)   
+   ...
+   bd087  file+00bd09b  w5  jf(34)   bd092
+   bd08c  file+00bd0a0  w1  push1(02) 
+   bd08d  file+00bd0a1  w5  jmp(32)  bd093
+   bd092  file+00bd0a6  w1  push0(01) 
+   bd093  file+00bd0a7  w5  jf(34)   bd0da
+   bd098  file+00bd0ac  w1  push0(01) 
+   bd099  file+00bd0ad  w3  ldloc(0d) 10
+   bd09c  file+00bd0b0  w5  callobj(85) GetObjectID
+   bd0a1  file+00bd0b5  w3  ldloc(0d) 1
+   bd0a4  file+00bd0b8  w5  jf(34)   bd0be
+   bd0a9  file+00bd0bd  w3  ldloc(0d) 1
+   bd0ac  file+00bd0c0  w1  push1(02) 
+   bd0ad  file+00bd0c1  w5  native(82) SA_IsWarpOutSlotAvailable
+   bd0b2  file+00bd0c6  w1  not(64)  
+   bd0b3  file+00bd0c7  w5  jf(34)   bd0be
+   bd0b8  file+00bd0cc  w1  push1(02) 
+   bd0b9  file+00bd0cd  w5  jmp(32)  bd0bf
+   bd0be  file+00bd0d2  w1  push0(01) 
+   bd0bf  file+00bd0d3  w5  jf(34)   bd0d9
+   bd0c4  file+00bd0d8  w1  this(2e) 
+   bd0c5  file+00bd0d9  w3  pushw(06) 1000
+   bd0c8  file+00bd0dc  w2  pushb(05) 100
+   bd0ca  file+00bd0de  w1  push3(04) 
+   bd0cb  file+00bd0df  w5  native(82) TI_WaitRandomForInterrupt
+   bd0d0  file+00bd0e4  w1  drop(24) 
+   bd0d1  file+00bd0e5  w3  dropn(23) 4
+   bd0d4  file+00bd0e8  w5  jmp(32)  bcb21
+   bd0d9  file+00bd0ed  w1  drop(24) 
+   bd0da  file+00bd0ee  w1  push3(04) 
+   bd0db  file+00bd0ef  w3  stloc(14) 7
+   bd0de  file+00bd0f2  w1  drop(24) 
+   bd0df  file+00bd0f3  w3  dropn(23) 3
+   bd0e2  file+00bd0f6  w5  jmp(32)  bd10e
+   bd0e7  file+00bd0fb  w5  jmp(32)  bd105
+   bd0ec  file+00bd100  w3  ldloc(0d) 1
+   bd0ef  file+00bd103  w2  pushb(05) 6
+   bd0f1  file+00bd105  w1  eq(5b)   
+   bd0f2  file+00bd106  w5  jf(34)   bd105
+   bd0f7  file+00bd10b  w2  pushb(05) 8
+   bd0f9  file+00bd10d  w3  stloc(14) 7
+   bd0fc  file+00bd110  w1  drop(24) 
+   bd0fd  file+00bd111  w3  dropn(23) 3
+   bd100  file+00bd114  w5  jmp(32)  bd10e
+   bd105  file+00bd119  w3  dropn(23) 2
+   bd108  file+00bd11c  w1  drop(24) 
+   bd109  file+00bd11d  w5  jmp(32)  bcb21
+   bd10e  file+00bd122  w1  push0(01) 
+   bd10f  file+00bd123  w5  callself(88) 2004::ReleaseFromSlot
+   bd114  file+00bd128  w1  drop(24) 
+   bd115  file+00bd129  w1  push0(01) 
+   bd116  file+00bd12a  w3  stmem(16) 45
+   bd119  file+00bd12d  w1  drop(24) 
+   ...
+
+-- 2004::__EnterHyperspace suspend points (continuation IP after each native call; the saved task IP when it blocks)
+   bcc7e  -> resume at bcc83  SA_Idle                          depth before call 9
+   bcc91  -> resume at bcc96  TI_WaitRandomForInterrupt        depth before call 9
+   bcd34  -> resume at bcd39  TI_WaitRandomForInterrupt        depth before call 9
+   bcda2  -> resume at bcda7  SA_AvoidObjectCollision          depth before call 9
+   bcdda  -> resume at bcddf  SA_FlyObjectBeforeContainerPos   depth before call 10
+   bcdf3  -> resume at bcdf8  SA_FlyObjectBeforeContainer      depth before call 10
+   bce63  -> resume at bce68  SA_RotateToAngles                depth before call 9
+   bcebc  -> resume at bcec1  SA_FlyObjectIntoContainer        depth before call 9
+   bcf04  -> resume at bcf09  SA_WarpObjectAway                depth before call 10
+   bd0cb  -> resume at bd0d0  TI_WaitRandomForInterrupt        depth before call 12
+
+-- patch sites (located by pattern, unique inside the method)
+   A1 through cooldown  2014::ReleaseSlot              CODE 90cfb file +0090d0f len 2  | pushb 60
+                        pushb 60 in "m16 = now + 60" (through slot closed 60 s after release)
+   A2 warp-in stamp     2014::ReleaseSlot              CODE 90d44 file +0090d58 len 2  | pushb 60
+                        pushb 60 in "m14[i + 20] = now + 60" (warp-in slot closed 60 s after release)
+   B0 keep holder       2014::ReleaseSlot              CODE 90cf3 file +0090d07 len 5  | push0; stmem 15; drop
+                        push0; stmem m15; drop  ("m15 = 0" at release)
+   A3 idle wander       2004::__EnterHyperspace        CODE bcc6d file +00bcc81 len 6  | pushw 1000; pushw 10000
+                        pushw 1000; pushw 10000 -> SA_Idle(m3, 1000 + SE_Random(10000)) while no warp-in slot (ship in sector)
+   A4 slot poll#0       2004::__EnterHyperspace        CODE bcc8a file +00bcc9e len 6  | pushw 10000; pushw 1000
+                        pushw 10000; pushw 1000 -> TI_WaitRandomForInterrupt(1000, 10000, this): wait 1000 + rand(10000) ms; #0 warp-in slot (ship out of sector), #1 through slot
+   A4 slot poll#1       2004::__EnterHyperspace        CODE bcd2d file +00bcd41 len 6  | pushw 10000; pushw 1000
+                        pushw 10000; pushw 1000 -> TI_WaitRandomForInterrupt(1000, 10000, this): wait 1000 + rand(10000) ms; #0 warp-in slot (ship out of sector), #1 through slot
+   cooldown test        2014::__requestWarpThroughSlot CODE 90c2b file +0090c3f len 9  | ldmem 16; ldloc 2; le; jt 90c5d
+                        ldmem m16; ldloc now; le; jt grant  ("m16 <= now")
+   A6 m3 test           2014::__requestWarpThroughSlot CODE 90c3a file +0090c4e len 5  | jf 90c51
+                        jf after ldloc gm3 (same-direction exemption only when the requesting gate has a native object)
+   free test            2014::__requestWarpThroughSlot CODE 90c26 file +0090c3a len 5  | jf 90c69
+                        jf after "m15 == 0" (slot busy -> -1)
+   A5 grant jf          2014::__requestWarpThroughSlot CODE 90c6a file +0090c7e len 5  | jf 90c92
+                        jf -> "return -1" (deny); retarget to the next instruction = always grant
+   C rotate             2004::__EnterHyperspace        CODE bce4d file +00bce61 len 27 | ldloc 1; push1; native SA_GetRotBeta; ldloc 2; push1; native SA_GetRotAlpha; ldmem 3; push3; native SA_RotateToAngles ...
+                        args + SA_GetRotBeta + SA_GetRotAlpha + SA_RotateToAngles(m3, a, b); continuation bce68
+
+====================================================================================================
+Mayhem 4: addon/07.cat:L/x3story.obj  2182503 B  SHA-256 2c3101a8c04ddea76643099758bfdaefd18d79cdf37580095a12a8ce72199298
+  version 801, build id 1462141839 (2016-05-01 22:30 UTC), CODE 1908859 B at file offset 20 (file offset = CODE offset + 20)
+  sections: CODE@12+1908859, SYMB@1908879+2788, VARS@1911675+852, CLAS@1912535+146168, STRG@2058711+123780
+  PTCH: none (a save whose build id differs from 1462141839 cannot be loaded with this object)
+  class 2014 members (stock name -> this build): m14->m16, m15->m17, m16->m18, m17->m19, m18->m20; GetAge global g9
+  subclasses of 2014: none; slot-member accesses: Create st m16 st m17 st m18 st m19 st m20; Destruct st m16; IsWarpController ld m20; ReleaseSlot ld m16 ld m17 ld m20 st m17 st m18; RequestWarpInSlot ld m16; RequestWarpThroughSlot ld m20 st m20; __requestWarpThroughSlot ld m17 ld m18 ld m19 st m17 st m18 st m19
+  class 2014 entries: Create a6559, RequestWarpInSlot a68c4, IsWarpController a69d0, RequestWarpThroughSlot a69d9, __requestWarpThroughSlot a6a35, ReleaseSlot a6b07, GetWarpInPos a6bcc, GetDestinationGate a7206
+  2014::RequestWarpInSlot: 111 instructions, opcode sequence equal to stock: True; other operand differences: 0e 8->9, 0f 14->16
+  2014::RequestWarpThroughSlot: 38 instructions, opcode sequence equal to stock: True; other operand differences: 0f 18->20, 16 18->20
+  2014::__requestWarpThroughSlot: 82 instructions, opcode sequence equal to stock: True; other operand differences: 0e 8->9, 0f 15->17, 0f 16->18, 0f 17->19, 16 15->17, 16 16->18, 16 17->19
+  2014::ReleaseSlot: 79 instructions, opcode sequence equal to stock: True; other operand differences: 0e 8->9, 0f 14->16, 0f 15->17, 0f 18->20, 16 15->17, 16 16->18
+  2004::ReleaseFromSlot: 31 instructions, opcode sequence equal to stock: True; other operand differences: 0f 84->87, 16 84->87, 16 85->88
+  2004::__EnterHyperspace: 685 instructions, opcode sequence equal to stock: True; other operand differences: 0e 8->9, 0e 9->10, 0f 12->14, 0f 41->43, 0f 84->87, 0f 85->88, 0f 87->90, 0f 88->91, 0f 93->96, 16 12->14, 16 45->47, 16 46->48, 16 55->56, 16 56->57, 16 84->87, 16 85->88, 16 88->91
+  2014::Create: 113 instructions, opcode sequence equal to stock: True; other operand differences: 0e 7->8, 16 10->12, 16 11->13, 16 12->14, 16 13->15, 16 14->16, 16 15->17, 16 16->18, 16 17->19, 16 18->20, 16 6->8, 16 7->9, 16 8->10, 16 9->11
+  2014::GetWarpInPos: 160 instructions, opcode sequence equal to stock: True; other operand differences: none
+  (full listings: see the stock section; jump/call operands differ only by the method offsets)
+
+-- 2004::__EnterHyperspace entry d524d: windows (slot requests and waits, rotate step); tracker conflicts 0
+
+-- 2004::__EnterHyperspace suspend points (continuation IP after each native call; the saved task IP when it blocks)
+   d543d  -> resume at d5442  SA_Idle                          depth before call 9
+   d5450  -> resume at d5455  TI_WaitRandomForInterrupt        depth before call 9
+   d54f3  -> resume at d54f8  TI_WaitRandomForInterrupt        depth before call 9
+   d5561  -> resume at d5566  SA_AvoidObjectCollision          depth before call 9
+   d5599  -> resume at d559e  SA_FlyObjectBeforeContainerPos   depth before call 10
+   d55b2  -> resume at d55b7  SA_FlyObjectBeforeContainer      depth before call 10
+   d5622  -> resume at d5627  SA_RotateToAngles                depth before call 9
+   d567b  -> resume at d5680  SA_FlyObjectIntoContainer        depth before call 9
+   d56c3  -> resume at d56c8  SA_WarpObjectAway                depth before call 10
+   d588a  -> resume at d588f  TI_WaitRandomForInterrupt        depth before call 12
+
+-- patch sites (located by pattern, unique inside the method)
+   A1 through cooldown  2014::ReleaseSlot              CODE a6b66 file +00a6b7a len 2  | pushb 60
+                        pushb 60 in "m16 = now + 60" (through slot closed 60 s after release)
+   A2 warp-in stamp     2014::ReleaseSlot              CODE a6baf file +00a6bc3 len 2  | pushb 60
+                        pushb 60 in "m14[i + 20] = now + 60" (warp-in slot closed 60 s after release)
+   B0 keep holder       2014::ReleaseSlot              CODE a6b5e file +00a6b72 len 5  | push0; stmem 17; drop
+                        push0; stmem m15; drop  ("m15 = 0" at release)
+   A3 idle wander       2004::__EnterHyperspace        CODE d542c file +00d5440 len 6  | pushw 1000; pushw 10000
+                        pushw 1000; pushw 10000 -> SA_Idle(m3, 1000 + SE_Random(10000)) while no warp-in slot (ship in sector)
+   A4 slot poll#0       2004::__EnterHyperspace        CODE d5449 file +00d545d len 6  | pushw 10000; pushw 1000
+                        pushw 10000; pushw 1000 -> TI_WaitRandomForInterrupt(1000, 10000, this): wait 1000 + rand(10000) ms; #0 warp-in slot (ship out of sector), #1 through slot
+   A4 slot poll#1       2004::__EnterHyperspace        CODE d54ec file +00d5500 len 6  | pushw 10000; pushw 1000
+                        pushw 10000; pushw 1000 -> TI_WaitRandomForInterrupt(1000, 10000, this): wait 1000 + rand(10000) ms; #0 warp-in slot (ship out of sector), #1 through slot
+   cooldown test        2014::__requestWarpThroughSlot CODE a6a96 file +00a6aaa len 9  | ldmem 18; ldloc 2; le; jt a6ac8
+                        ldmem m16; ldloc now; le; jt grant  ("m16 <= now")
+   A6 m3 test           2014::__requestWarpThroughSlot CODE a6aa5 file +00a6ab9 len 5  | jf a6abc
+                        jf after ldloc gm3 (same-direction exemption only when the requesting gate has a native object)
+   free test            2014::__requestWarpThroughSlot CODE a6a91 file +00a6aa5 len 5  | jf a6ad4
+                        jf after "m15 == 0" (slot busy -> -1)
+   A5 grant jf          2014::__requestWarpThroughSlot CODE a6ad5 file +00a6ae9 len 5  | jf a6afd
+                        jf -> "return -1" (deny); retarget to the next instruction = always grant
+   C rotate             2004::__EnterHyperspace        CODE d560c file +00d5620 len 27 | ldloc 1; push1; native SA_GetRotBeta; ldloc 2; push1; native SA_GetRotAlpha; ldmem 3; push3; native SA_RotateToAngles ...
+                        args + SA_GetRotBeta + SA_GetRotAlpha + SA_RotateToAngles(m3, a, b); continuation d5627
+
