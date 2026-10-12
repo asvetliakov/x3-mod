@@ -1,0 +1,60 @@
+| Scenario | Class | Vanilla | Old law + slip | Slip-aware law | Hard threshold (9 runs) |
+| --- | --- | --- | --- | --- | --- |
+| formation slot RMS (m) | M5 | 473.5 | 185.9 | 21.0 | <= 30 m (floor x 1.2) |
+| formation slot RMS (m) | M3 | 20.3 | 20.4 | 3.0 | <= 2r = 23.8 m |
+| formation slot RMS (m) | M6 | 39.6 | 39.6 | 56.3 | <= 2r = 128.8 m |
+| formation slot RMS (m) | TS | 15.4 | 15.4 | 22.5 | <= 2r = 77.0 m |
+| formation slot RMS (m) | M2 | 1355.5 | 1355.6 | 1378.7 | <= 2r = 1410.8 m |
+| formation window increases | M5 | 11 | 12 | 0 | 0 |
+| formation window increases | M3 | 1 | 1 | 0 | 0 |
+| formation window increases | M6 | 0 | 0 | 0 | 0 |
+| formation window increases | TS | 0 | 0 | 0 | 0 |
+| formation window increases | M2 | 0 | 0 | 0 | 0 |
+| flyby@150 min clearance (m) | M5 | 150.0 | 284.9 | 293.1 | >= C = 234.2 |
+| flyby@150 min clearance (m) | M3 | 150.0 | 242.6 | 306.1 | >= C = 236.9 |
+| flyby@150 min clearance (m) | M6 | 150.0 | 339.1 | 384.8 | >= C = 296.6 |
+| flyby@150 min clearance (m) | TS | 150.0 | 21.8 | 342.4 | >= C = 263.5 |
+| flyby@150 min clearance (m) | M2 | 150.0 | 1297.2 | 1393.0 | >= C = 1258.1 |
+| flyby@600 min clearance (m) | M2 | 600.0 | 1291.0 | 1380.1 | >= C = 1258.1 |
+| crossing min distance (m) | M5 | 1.8 | 0.8 | 86.9 | >= C = 43.4 |
+| crossing min distance (m) | M3 | 0.2 | 87.0 | 97.9 | >= C = 48.8 |
+| crossing min distance (m) | M6 | 0.4 | 292.4 | 307.5 | >= C = 161.0 |
+| crossing min distance (m) | TS | 0.1 | 165.6 | 186.9 | >= C = 102.0 |
+| crossing min distance (m) | M2 | 0.1 | 2243.2 | 2318.1 | >= C = 1763.5 |
+| crossing unresolved ticks (a+b) | M5 | - | 9 | 0 | side flips 0 |
+| crossing unresolved ticks (a+b) | M3 | - | 0 | 0 | side flips 0 |
+| crossing unresolved ticks (a+b) | M6 | - | 0 | 0 | side flips 0 |
+| crossing unresolved ticks (a+b) | TS | - | 0 | 0 | side flips 0 |
+| crossing unresolved ticks (a+b) | M2 | - | 0 | 0 | side flips 0 |
+| gate theta -45 nose to B at the crossing (deg) | M5 | 33.3 | 7.9 | 6.5 | <= 22 |
+| gate theta -45 nose to B at the crossing (deg) | M3 | 33.3 | 18.8 | 5.6 | <= 22 |
+| gate theta -45 nose to B at the crossing (deg) | M6 | 33.3 | 7.0 | 6.4 | <= 22 |
+| gate theta -45 nose to B at the crossing (deg) | TS | 33.3 | 4.1 | 7.8 | <= 22 |
+| gate theta +0 nose to B at the crossing (deg) | M5 | 19.0 | 14.2 | 13.2 | <= 22 |
+| gate theta +0 nose to B at the crossing (deg) | M3 | 19.0 | 32.0 | 11.3 | <= 22 |
+| gate theta +0 nose to B at the crossing (deg) | M6 | 19.0 | 20.2 | 10.5 | <= 22 |
+| gate theta +0 nose to B at the crossing (deg) | TS | 19.0 | 16.1 | 9.4 | <= 22 |
+| gate theta +45 nose to B at the crossing (deg) | M5 | 13.7 | 27.0 | 25.4 | <= 27 |
+| gate theta +45 nose to B at the crossing (deg) | M3 | 13.7 | 42.0 | 23.5 | <= 24 |
+| gate theta +45 nose to B at the crossing (deg) | M6 | 13.7 | 31.2 | 22.8 | <= 24 |
+| gate theta +45 nose to B at the crossing (deg) | TS | 13.7 | 27.6 | 21.9 | <= 22 |
+| gate (theta any) velocity to the line at the crossing (deg) | M5 | 32.9 | not measured | 20.9 | <= 22 |
+| gate (theta any) velocity to the line at the crossing (deg) | M3 | 32.9 | not measured | 2.0 | <= 13 |
+| gate (theta any) velocity to the line at the crossing (deg) | M6 | 32.9 | not measured | 2.9 | <= 13 |
+| gate (theta any) velocity to the line at the crossing (deg) | TS | 32.9 | not measured | 2.8 | <= 13 |
+| gate spread max nose to pass point (deg) | M5 | - | 18.1 | 18.5 | <= 24 |
+| gate spread max nose to pass point (deg) | M3 | - | 21.7 | 15.4 | <= 24 |
+| gate spread max nose to pass point (deg) | M6 | - | 9.5 | 15.6 | <= 24 |
+| gate spread max nose to pass point (deg) | TS | - | 8.5 | 17.7 | <= 24 |
+| gate spread max velocity to the line (deg) | M5 | - | not measured | 31.6 | <= 33 |
+| gate spread max velocity to the line (deg) | M3 | - | not measured | 4.1 | <= 20.7 |
+| gate spread max velocity to the line (deg) | M6 | - | not measured | 3.5 | <= 20.7 |
+| gate spread max velocity to the line (deg) | TS | - | not measured | 3.5 | <= 20.7 |
+| gate far/rotated nose (deg) | M5 | - | 33.8 | 13.7 (velocity 4.0) | <= 22 (velocity <= 13) |
+| gate far/rotated nose (deg) | M3 | - | 8.0 | 8.4 (velocity 1.4) | <= 22 (velocity <= 13) |
+| gate far/rotated nose (deg) | M6 | - | 7.7 | 8.3 (velocity 0.3) | <= 22 (velocity <= 13) |
+| gate far/rotated nose (deg) | TS | - | 7.8 | 8.3 (velocity 0.2) | <= 22 (velocity <= 13) |
+| gate lateral 3 r nose (deg) | M5 | 22.4 | 22.0 | 3.3 (velocity 2.7) | <= 22 (velocity <= 13) |
+| gate lateral 3 r nose (deg) | M3 | 22.4 | 13.1 | 7.7 (velocity 1.9) | <= 22 (velocity <= 13) |
+| gate lateral 3 r nose (deg) | M6 | 22.4 | 11.3 | 8.0 (velocity 0.6) | <= 22 (velocity <= 13) |
+| gate lateral 3 r nose (deg) | TS | 22.4 | 10.1 | 8.1 (velocity 0.4) | <= 22 (velocity <= 13) |

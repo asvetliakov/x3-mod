@@ -1,0 +1,2 @@
+old (af5ec4cf)   steer 53.4 ns  resolve(420) 179.2 ns
+slip-aware       steer 75.8 ns  resolve(420) 200.3 ns

@@ -24,6 +24,13 @@ Evidence produced for this note (both under `verification/results/ship-steering/
 
 **Ratified 2026-10-12 (main session)** as amendment 13 of the ship steering design, full scope (avoidance on the velocity vector, the lateral-velocity lead, the schedule for the closing speed, velocity-matching formation, the lag-scaled gate carrot), with one amendment: the attack-order lead is capped at min(τ, t_go) as §6 proposes, and the fixture thresholds that move back from "gap" to hard assertions are set from the implemented law's measured numbers, not from this note's targets, and are recorded in the ledger with the before/after table.
 
+**Implemented 2026-10-12** as amendment 14 of [ship-steering-and-avoidance.md](ship-steering-and-avoidance.md). It is
+numbered 14 because the capital gate transit took 13. Three additions found on the calibrated fixture are not in this note:
+the lateral-velocity lead is not applied to a detour point; the gate carrot is shortened by half the lateral offset; and a
+moving obstacle's near-centre miss takes its side from the relative velocity. Two further points differ from the note: the
+slip is 0 on order 5 rather than a `min(τ, t_go)` lead, and the formation law feeds forward the leader's own lag. Numbers are
+in the ledger's "Slip-aware law" section.
+
 ## Recommendation
 
 Treat the ship's **velocity vector `u = v·f̂ + slip`** (`slip` = `obj+0x60..+0x68`, three more dwords read per call)

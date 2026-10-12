@@ -9,8 +9,9 @@
 // its scenario. SSE2 scalar float only (the helpers of ship_steering_core.h),
 // no allocation, no CRT math: it runs inside the leaf on the light envelope.
 //
-// Model (section 3.3): the ship moves along its nose at v for L metres; an
-// obstacle moves at its velocity; a conflict is a closest approach within
+// Model (section 3.3, amendment 14): the ship moves along its velocity u = v f + slip
+// (obj+0x60, the integrator's lag) for L metres; a ship obstacle moves at its
+// actual velocity p+0x100 + obj+0x60; a conflict is a closest approach within
 // C = r_own + r_obs + max(25 m, 0.5 r_own) inside the horizon T = L/v with
 // L = clamp(0.5 s v + 1.25 min(sqrt(C(C + 2R)), v^2/2a), C + r_own, 30 km),
 // R = v/omega. The earliest conflict gets a tangent detour P' at the
@@ -47,6 +48,8 @@ constexpr float kCommitFactor = 2.0f;  // a detour in progress (direction rememb
 constexpr std::uint32_t kResolvedAgeMs = 100; // suppression window at site E (two think intervals)
 constexpr float kHorizonMaxS = 30.0f;  // amendment 11: the swept-sphere horizon is min(L / v, 30 s) of flight (Run155: a
                                        // stalled Boreas at 2 m/s saw conflicts 222 s out and never left its detour point)
+constexpr float kTieMissFrac = 0.25f;  // amendment 14: a moving obstacle's miss below this fraction of C takes its side from the
+                                       // relative velocity (closest_approach), not from the noise of a near-centre miss
 
 enum class Kind : std::uint8_t { ship = 0, station = 1, asteroid = 2, gate = 3, debris = 4 };
 struct Obstacle {
@@ -78,7 +81,8 @@ struct PartSet {
     float r[kMaxParts];
 };
 struct Self {
-    float x[3], f[3];      // m, unit forward
+    float x[3], f[3];      // m, unit forward (the detour plane and the side memory)
+    float slip[3];         // m/s, world: the integrator's slip obj+0x60 (amendment 14): the swept path is along u = v f + slip
     float v, r, a, omega;  // m/s, m, m/s^2, rad/s (the slower of yaw/pitch)
     float alpha;           // rad/s^2, the angular acceleration of that axis (0 = ignore the ramp)
     float up[3];           // world up for the capital preference
@@ -152,16 +156,36 @@ inline float clearance(float r_own, float r_obs) noexcept {
 }
 // Lookahead for a clearance C (section 3.3): the swept path length. `alpha` adds the distance flown while the
 // rate ramps up to omega and back (2 omega / alpha seconds; the design's formula assumes the full rate at once,
-// which the fixture showed leaves slow-ramping ships (TS, M6, capitals) no room to complete a detour).
+// which the fixture showed leaves slow-ramping ships (TS, M6, capitals) no room to complete a detour). Amendment 14
+// (slip-aware-steering.md section 3): plus the lag distance v tau, the detour starting 2 s later than the nose model assumed.
 inline float lookahead(float v, float a, float omega, float r_own, float C, float alpha = 0.0f) noexcept {
     const float R = omega > 1e-4f ? v / omega : 1e6f;
     const float d_turn = sc::sqrt_ss(C * (C + 2.0f * R));
     const float d_stop = a > 1e-3f ? v * v / (2.0f * a) : 1e9f;
     const float ramp = (alpha > 1e-6f && omega > 1e-4f) ? v * (2.0f * omega / alpha) : 0.0f;
-    float L = kReactionS * v + ramp + kRampMargin * sc::fmin_f(d_turn, d_stop);
+    float L = kReactionS * v + ramp + kRampMargin * sc::fmin_f(d_turn, d_stop) + sc::kSlipTau * v;
     if (L < C + r_own) L = C + r_own;
     if (L > kLookaheadMaxM) L = kLookaheadMaxM;
     return L;
+}
+// The slip-aware turn-in distance (amendment 14, section 3): the forward distance at which the flown path reaches a lateral
+// offset C. The nose path under the angular ramp alpha from rest (lateral v alpha t^3 / 6, so t = (6 C / (v alpha))^(1/3))
+// or the constant-rate arc sqrt(C (C + 2 R)), whichever is longer; plus the slip's share v tau (1 - e^(-t_nose / tau)):
+// the velocity keeps its old direction while the nose turns. Fitted to the calibrated port within 10 % (design table 2).
+inline float turn_in_slip(float v, float omega, float alpha, float C) noexcept {
+    const float R = omega > 1e-4f ? v / omega : 1e6f;
+    float d_nose = sc::sqrt_ss(C * (C + 2.0f * R));
+    if (alpha > 1e-6f && v > 1e-3f) {
+        const float d_ramp = v * sc::cbrt_f(6.0f * C / (v * alpha));
+        if (d_ramp > d_nose) d_nose = d_ramp;
+    }
+    const float t_nose = v > 1e-3f ? d_nose / v : 0.0f;
+    return d_nose + sc::kSlipTau * v * sc::one_minus_exp_neg(t_nose / sc::kSlipTau);
+}
+// The ship's velocity v f + slip (amendment 14): the swept path and the "behind" tests use it; the nose stays the detour plane.
+inline float velocity(const Self& s, float u[3]) noexcept { // returns |u|
+    for (int i = 0; i < 3; ++i) u[i] = s.v * s.f[i] + s.slip[i];
+    return sc::sqrt_ss(sc::dot3(u, u));
 }
 // The swept-sphere time horizon for a lookahead L at speed v: L / v, at most kHorizonMaxS (amendment 11). A body already
 // inside C is found at t = 0 whatever the horizon, so the cap only drops far, slow conflicts.
@@ -191,13 +215,14 @@ inline float norm3(float v[3]) noexcept { // normalises in place, returns the le
     v[0] = v[1] = v[2] = 0.0f;
     return 0.0f;
 }
-// Closest approach of our point x + v f t to a sphere centre c moving at w, over t in [0, T].
+// Closest approach of our point x + u t (u = v f + slip: what the ship does if the nose does nothing, amendment 14) to a
+// sphere centre c moving at w, over t in [0, T].
 // Returns false when the miss distance is not below C; else fills t, miss, the centre at t and e.
 inline bool closest_approach(const Self& s, const float c[3], const float w[3], float T, float C, float* t_out, float* miss,
                              float c_at[3], float e[3]) noexcept {
     float dx[3], dv[3];
     sub3(c, s.x, dx);
-    for (int i = 0; i < 3; ++i) dv[i] = w[i] - s.v * s.f[i];
+    for (int i = 0; i < 3; ++i) dv[i] = w[i] - (s.v * s.f[i] + s.slip[i]);
     const float vv = sc::dot3(dv, dv);
     float t = vv > 1e-6f ? -sc::dot3(dx, dv) / vv : 0.0f;
     if (t < 0.0f) { // already separating (the closest approach is in the past): nothing to avoid
@@ -214,6 +239,15 @@ inline bool closest_approach(const Self& s, const float c[3], const float w[3], 
     for (int i = 0; i < 3; ++i) {
         c_at[i] = c[i] + w[i] * t;
         e[i] = -rel[i];
+    }
+    // Amendment 14: a near-centre miss on a moving obstacle (below kTieMissFrac C) carries no usable direction once the slip
+    // enters the prediction (a metre either way between two ships on a symmetric collision course), and the two ships'
+    // lateral axes differ on a crossing: e's sign there picks "both pass in front" as often as not, which keeps the
+    // collision (the calibrated fixture's M5 crossing, 0.2-5 m). The side then comes from the relative velocity, e = dv x up:
+    // the obstacle computes -dv, so the pair always takes opposite sides of the relative motion and the miss grows.
+    if (m < kTieMissFrac * C && sc::dot3(w, w) > 1.0f) {
+        cross3(dv, s.up, e);
+        if (norm3(e) == 0.0f) e[0] = e[1] = e[2] = 0.0f;
     }
     if (norm3(e) == 0.0f) { // dead centre: any lateral direction; take the one perpendicular to f in the up plane
         cross3(s.f, s.up, e);
@@ -530,6 +564,12 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     if (!n_cand) return res;
     const Candidate& first = cand[0];
     const Obstacle& o = snap.items[first.index];
+    float u_hat[3];
+    const float u_len = velocity(s, u_hat);
+    if (u_len > 1e-3f) {
+        for (int i = 0; i < 3; ++i) u_hat[i] /= u_len;
+    } else
+        for (int i = 0; i < 3; ++i) u_hat[i] = s.f[i];
     res.obstacle = o.ptr;
     res.obstacle_kind = o.kind;
     res.obstacle_leader = o.leader;
@@ -600,14 +640,21 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         sub3(P, s.x, toP);
         sub3(Pp, s.x, toPp);
         {
-            // keep the point at least kAheadS of flight ahead along the heading (the lateral offset unchanged): the aim
-            // angle stays bounded as the ship draws level with the body, so the pursuit converges instead of overshooting.
-            // The moved point must still be reached without crossing the body it was built for (every part of it);
-            // otherwise the un-pushed point stands (the review's case: the push into a body behind the CPA)
-            const float along = sc::dot3(toPp, s.f), ahead = kAheadS * s.v;
+            // keep the point at least kAheadS of flight ahead along the velocity (amendment 14: along u_hat, not the nose),
+            // and at least the slip-aware turn-in distance for the point's lateral offset (the lateral offset unchanged): the
+            // aim angle stays bounded as the ship draws level with the body, and the point is one the flown path, which
+            // keeps its old direction for ~tau while the nose turns, can reach. The moved point must still be reached
+            // without crossing the body it was built for (every part of it); otherwise the un-pushed point stands (the
+            // review's case: the push into a body behind the CPA)
+            const float along = sc::dot3(toPp, u_hat);
+            // bounded: |u| at most 3 v (the DLL refuses a slip beyond 2 v_max) and the push at most the lookahead's cap
+            float ahead = kAheadS * sc::fmin_f(u_len, 3.0f * s.v);
+            const float d_turn = turn_in_slip(s.v, s.omega, s.alpha, first.C * factor);
+            if (d_turn > ahead) ahead = d_turn;
+            if (ahead > kLookaheadMaxM) ahead = kLookaheadMaxM;
             if (along < ahead) {
                 float moved[3];
-                for (int i = 0; i < 3; ++i) moved[i] = Pp[i] + s.f[i] * (ahead - along);
+                for (int i = 0; i < 3; ++i) moved[i] = Pp[i] + u_hat[i] * (ahead - along);
                 if (clears_body(s.x, moved, first, s.r, parts, part_sets))
                     for (int i = 0; i < 3; ++i) {
                         Pp[i] = moved[i];
@@ -615,10 +662,10 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
                     }
             }
         }
-        // not behind the ship relative to P, not more than 120 degrees off the nose (an obstacle abeam inside C gets a
-        // detour point abeam, away from it), not through another candidate's sphere (a committed detour keeps its
-        // direction: the other candidate gets its turn when it becomes the earliest)
-        bool ok = sc::dot3(toP, toPp) > 0.0f && sc::dot3(toPp, s.f) > -0.5f * sc::sqrt_ss(sc::dot3(toPp, toPp));
+        // not behind the ship relative to P, not more than 120 degrees off the velocity (amendment 14; an obstacle abeam
+        // inside C gets a detour point abeam, away from it), not through another candidate's sphere (a committed detour
+        // keeps its direction: the other candidate gets its turn when it becomes the earliest)
+        bool ok = sc::dot3(toP, toPp) > 0.0f && sc::dot3(toPp, u_hat) > -0.5f * sc::sqrt_ss(sc::dot3(toPp, toPp));
         if (!ok) why = Unresolved::behind;
         const bool committed = mem && attempt == 0;
         // the detour point must not sit inside another part of the same body either (the candidate holds only the
@@ -681,12 +728,16 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     }
     // The resolved set (section 3.6): a candidate is suppressed at site E only when its detour is flyable (the body
     // beyond the turn-in distance sqrt(C(C + 2R)) and beyond the stopping distance v^2/2a: pairs inside D_stop are
-    // never suppressed) and the straight path to the detour point clears its whole body by C; station fallbacks never.
+    // never suppressed), the velocity's swept path already clears the body by C (amendment 14: the candidates are found
+    // on u with the commit factor, so only a detour in progress whose velocity has swung clear, C <= miss < 2 C,
+    // qualifies; a conflict the velocity still carries the ship into stays with the engine's warn, which is itself on the
+    // nose ray) and the straight path to the detour point clears its whole body by C; station fallbacks never.
     const float R_turn = s.omega > 1e-4f ? s.v / s.omega : 1e6f;
     const float D_stop = s.a > 1e-3f ? s.v * s.v / (2.0f * s.a) : 1e9f;
     for (unsigned j = 0; j < n_cand; ++j) {
         const Obstacle& oj = snap.items[cand[j].index];
         if (oj.kind == std::uint8_t(Kind::station) && !cand[j].part) continue;
+        if (!(cand[j].miss >= cand[j].C)) continue;
         const float d_turn = sc::sqrt_ss(cand[j].C * (cand[j].C + 2.0f * R_turn));
         if (!(cand[j].d > d_turn) || !(cand[j].d > D_stop)) continue;
         if (!clears_body(s.x, res.P, cand[j], s.r, parts, part_sets)) continue;

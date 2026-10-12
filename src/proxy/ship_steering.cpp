@@ -353,6 +353,7 @@ struct TraceRow {
     std::uint32_t obj, order, tgt, dt_ms, t_ms, obstacle;
     std::uint16_t code, tgt_class;
     std::int32_t pos[3], rate[3], v, des, des_engine, point[3], given[3], e[3], W[3], rot_raw, rot_pct, vmax, accel;
+    std::int32_t slip[3]; // amendment 14: obj+0x60..+0x68 at site B (units/s), the integrator's slip the law reads
     float fwd[3], up[3], omega_cmd[3];
     std::uint8_t has_e, emergency;
 };
@@ -396,6 +397,7 @@ std::uint32_t last_logged_seq_ = 0; // the sample row is logged once per written
 struct Sample {
     std::uint32_t obj, order, code, leaf, flags;
     float theta_deg, n_y, n_p, omega_dps, d, v, v_cmd, v_corner, d_arr, v_ref;
+    float lag_deg, aim_cos, v_slip, slip[3]; // amendment 14: the velocity's lag and the lead (cosines), the closing-speed correction, obj+0x60 (m/s)
     std::int32_t e[3], w[3], rot_accel_raw, rot_pct;
     float P[3], x[3], W_dps[3], k, a_dps[3], omega_axis_dps[3];
     bool held;
@@ -547,6 +549,7 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     for (unsigned c = 0; c < 3; ++c) {
         self.x[c] = in.x[c];
         self.f[c] = in.row[2][c];
+        self.slip[c] = in.slip[c]; // amendment 14: the swept path along u = v f + slip (decide() read obj+0x60 once)
     }
     self.up[0] = 0.0f;
     self.up[1] = 1.0f;
@@ -686,6 +689,11 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         for (unsigned c = 0; c < 3; ++c) in.row[r][c] = fixed16(rds32(fl + sites::kFlightBasis + 0x10 * r + 4 * c));
     in.v = float(rds32(obj + sites::kObjSpeed)) / core::kUnitsPerMetre;
     for (unsigned i = 0; i < 3; ++i) in.w[i] = float(rds32(obj + sites::kObjRates + 4 * i)) * core::kRadPerBinary;
+    // Amendment 14: the integrator's slip velocity obj+0x60..+0x68 (units/s, ship-movement.md section 13.2), read once per call;
+    // core::steer() checks it finite and treats it as 0 on order 5 (the integrator only decays it there); avoidance uses it too
+    for (unsigned i = 0; i < 3; ++i) in.slip[i] = float(rds32(obj + sites::kObjSlip + 4 * i)) / core::kUnitsPerMetre;
+    if (order == core::kOrderDock || !core::slip_usable(in.slip, dyn.v_max)) // beyond 2 v_max: not the lag (glide, contact, undock)
+        in.slip[0] = in.slip[1] = in.slip[2] = 0.0f;
     // The target: the caller's buffer, read only. Step 2 adjusts it here and
     // redirects EDX to a ring slot (never the caller's buffer, never f+0x240).
     const std::uint32_t target = f->edx;
@@ -716,6 +724,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             std::int32_t detour[3];
             const float dd[3] = {order_point[0] - in.x[0], order_point[1] - in.x[1], order_point[2] - in.x[2]};
             in.d_order = core::sqrt_ss(core::dot3(dd, dd)); // the hold and the ramp keep measuring the order's point
+            in.detour = true; // amendment 14: the detour point already carries the velocity (no lateral-velocity lead)
             for (unsigned i = 0; i < 3; ++i) {
                 in.P[i] = P[i];
                 detour[i] = core::round_to_int(P[i] * core::kUnitsPerMetre);
@@ -821,8 +830,8 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                     float omega = core::fmin_f(dyn.W[0] > 0.0f ? dyn.W[0] : 1e30f, dyn.W[1] > 0.0f ? dyn.W[1] : 1e30f);
                     if (omega >= 1e29f) omega = 0.0f;
                     in_window = core::gate_lead_in_capital(g, in.x, in.v, omega, lead, &s_line);
-                } else
-                    in_window = core::gate_lead_in(g, in.x, in.v, lead, &s_line);
+                } else // the carrot by the nose's lag (amendment 14): alpha = the slower of yaw/pitch times k
+                    in_window = core::gate_lead_in(g, in.x, in.v, core::slower_axis_alpha(dyn), lead, &s_line);
                 if (in_window) {
                     std::int32_t units[3];
                     for (unsigned i = 0; i < 3; ++i) {
@@ -930,6 +939,19 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                 const float v_lead = float(rds32(tgt + sites::kObjSpeed)) / core::kUnitsPerMetre;
                 const float along = core::dot3(lead, in.row[2]);
                 in.v_ref = along > 0.0f ? v_lead * along : 0.0f;
+                // Amendment 14 (slip-aware-steering.md section 2.5): velocity matching on the leader's actual velocity, its
+                // nose velocity v_lead row 2 plus its slip obj+0x60 (a live, undeleted ship; the same reads the snapshot does)
+                if (!(rd32(tgt + sites::kObjFlags) & sites::kFlagDeleted)) {
+                    in.formation = true;
+                    float ls[3];
+                    for (unsigned c = 0; c < 3; ++c) ls[c] = float(rds32(tgt + sites::kObjSlip + 4 * c)) / core::kUnitsPerMetre;
+                    // the leader's slip under the same bound (2 x the larger of the follower's v_max and the leader's speed)
+                    const bool ok = core::slip_usable(ls, dyn.v_max > v_lead ? dyn.v_max : v_lead);
+                    for (unsigned c = 0; c < 3; ++c) {
+                        in.nose_lead[c] = v_lead * lead[c];
+                        in.u_lead[c] = in.nose_lead[c] + (ok ? ls[c] : 0.0f);
+                    }
+                }
             }
         }
     }
@@ -957,7 +979,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     if (capital_gate && !capital_window)
         speed_flags = std::uint16_t(capital_policy && gate_lead && cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0);
     else
-        speed_flags = std::uint16_t((in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0) |
+        speed_flags = std::uint16_t((in.arrival_ramp && !cmd.formation_speed ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0) |
                                     (gate_lead ? (core::kShipFlagGate | core::kShipFlagClamp) : 0) |
                                     (gate_dock ? (core::kShipFlagGateDock | core::kShipFlagClamp) : 0));
     s->flags = std::uint16_t(speed_flags | (cmd.port_aligned ? core::kShipFlagPortHold : 0)); // amendment 12: the next call's hold
@@ -971,9 +993,11 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     // order 5 to a gate: vmax for the ramp
     s->v_ref = (speed_flags & core::kShipFlagGate) && !v_emergency_bits ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner)
                : gate_dock ? dyn.v_max : in.v_ref;
-    s->v_corner = cmd.v_corner;
+    // amendment 14: the formation law's |N| rides in the cornering slot (no ramp: site B returns it floored); the closing-speed
+    // correction applies to the ramp/cornering schedule only (not on the gate legs, whose speed is the module's own)
+    s->v_corner = cmd.formation_speed ? cmd.v_cmd : cmd.v_corner;
+    s->v_slip = (speed_flags & (core::kShipFlagGate | core::kShipFlagGateDock)) || cmd.formation_speed ? 0.0f : cmd.v_slip;
     std::memcpy(&s->v_emergency, &v_emergency_bits, 4);
-    s->calls = s->calls + 1;
     s->last_call_ms = now;
     if (order == core::kOrderMovePos) {
         if (core::stuck_update(*s, cmd.d_order, now)) {
@@ -1035,6 +1059,10 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         S.v_corner = cmd.v_corner;
         S.d_arr = in.d_arr;
         S.v_ref = in.v_ref;
+        S.lag_deg = core::lag_deg(cmd.u, in.row[2]); // the sampled call only (one per second)
+        S.aim_cos = cmd.aim_cos;
+        S.v_slip = cmd.v_slip;
+        for (unsigned i = 0; i < 3; ++i) S.slip[i] = in.slip[i];
         for (unsigned i = 0; i < 3; ++i) {
             S.e[i] = cmd.e[i];
             S.w[i] = rds32(obj + sites::kObjRates + 4 * i);
@@ -1220,6 +1248,7 @@ inline void trace_frame(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph, s
         r.fwd[i] = fixed16(rds32(fl + sites::kFlightBasis + 0x20 + 4 * i));
         r.up[i] = fixed16(rds32(fl + sites::kFlightBasis + 0x10 + 4 * i));
         r.W[i] = ts->W[i];
+        r.slip[i] = rds32(obj + sites::kObjSlip + 4 * i);
     }
     r.v = rds32(obj + sites::kObjSpeed);
     r.des = rds32(obj + sites::kObjDesiredSpeed);
@@ -1674,7 +1703,7 @@ bool initialize() {
                 trace_max_ = unsigned(m);
         }
         if (trace_on_)
-            log("ship_trace installed=1 max_ships=%u ring=%u idle_ms=%lu bytes_per_row_est=370", trace_max_, kTraceRing,
+            log("ship_trace installed=1 max_ships=%u ring=%u idle_ms=%lu bytes_per_row_est=390", trace_max_, kTraceRing,
                 static_cast<unsigned long>(kTraceIdleMs));
     }
     timing_ = (perf_ || debug_) && qpc_frequency_ != 0;
@@ -1755,7 +1784,8 @@ void frame_boundary(std::uint64_t frame) {
                 log("ship_steering_decision frame=%llu obj=0x%08lx order=0x%lx class=%s leaf=%lu held=%u theta_deg=%.2f n_yaw=%.3f "
                     "n_pitch=%.3f omega_dps=%.2f e=%ld,%ld,%ld w=%ld,%ld,%ld W_dps=%.1f,%.1f,%.1f k=%.3f d_m=%.1f d_arr_m=%.1f "
                     "v_ms=%.1f v_cmd_ms=%.1f v_corner_ms=%.1f v_ref_ms=%.1f P_m=%.1f,%.1f,%.1f x_m=%.1f,%.1f,%.1f flags=0x%08lx "
-                    "a_dps2=%.2f,%.2f,%.2f f2b0=0x%08lx rot_pct=%ld omega_cmd_dps=%.2f,%.2f,%.2f",
+                    "a_dps2=%.2f,%.2f,%.2f f2b0=0x%08lx rot_pct=%ld omega_cmd_dps=%.2f,%.2f,%.2f lag_deg=%.1f aim_off_deg=%.1f v_slip_ms=%.1f "
+                    "slip_ms=%.1f,%.1f,%.1f",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(S.obj), static_cast<unsigned long>(S.order),
                     S.code < core::kClassCount ? core::kClassNames[S.code] : "?", static_cast<unsigned long>(S.leaf), S.held ? 1u : 0u,
                     double(S.theta_deg), double(S.n_y), double(S.n_p), double(S.omega_dps), long(S.e[0]), long(S.e[1]), long(S.e[2]),
@@ -1763,7 +1793,8 @@ void frame_boundary(std::uint64_t frame) {
                     double(S.d), double(S.d_arr), double(S.v), double(S.v_cmd), double(S.v_corner), double(S.v_ref), double(S.P[0]),
                     double(S.P[1]), double(S.P[2]), double(S.x[0]), double(S.x[1]), double(S.x[2]), static_cast<unsigned long>(S.flags),
                     double(S.a_dps[0]), double(S.a_dps[1]), double(S.a_dps[2]), static_cast<unsigned long>(S.rot_accel_raw), long(S.rot_pct),
-                    double(S.omega_axis_dps[0]), double(S.omega_axis_dps[1]), double(S.omega_axis_dps[2]));
+                    double(S.omega_axis_dps[0]), double(S.omega_axis_dps[1]), double(S.omega_axis_dps[2]), double(S.lag_deg),
+                    double(core::acos_deg(S.aim_cos)), double(S.v_slip), double(S.slip[0]), double(S.slip[1]), double(S.slip[2]));
                 sample_request_.store(true, std::memory_order_relaxed);
             }
         } else if ((!seq || seq == last_logged_seq_) && now - last_sample_tick_ >= 1000) {
@@ -1844,7 +1875,7 @@ void frame_boundary(std::uint64_t frame) {
             if (r.has_e)
                 log("ship_trace frame=%llu t_ms=%lu obj=0x%08lx class=%s order=0x%lx tgt=0x%08lx tgt_class=%u pos=%ld,%ld,%ld "
                     "fwd=%.5f,%.5f,%.5f up=%.5f,%.5f,%.5f rate=%ld,%ld,%ld v=%ld des=%ld des_engine=%ld point=%ld,%ld,%ld given=%ld,%ld,%ld "
-                    "e=%ld,%ld,%ld dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx",
+                    "e=%ld,%ld,%ld dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx slip=%ld,%ld,%ld",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj),
                     r.code < core::kClassCount ? core::kClassNames[r.code] : "?", static_cast<unsigned long>(r.order),
                     static_cast<unsigned long>(r.tgt), unsigned(r.tgt_class), long(r.pos[0]), long(r.pos[1]), long(r.pos[2]), double(r.fwd[0]),
@@ -1852,11 +1883,12 @@ void frame_boundary(std::uint64_t frame) {
                     long(r.rate[2]), long(r.v), long(r.des), long(r.des_engine), long(r.point[0]), long(r.point[1]), long(r.point[2]), long(r.given[0]), long(r.given[1]),
                     long(r.given[2]), long(r.e[0]), long(r.e[1]), long(r.e[2]), static_cast<unsigned long>(r.dt_ms), long(r.W[0]), long(r.W[1]),
                     long(r.W[2]), static_cast<unsigned long>(r.rot_raw), long(r.rot_pct), long(r.vmax), long(r.accel), unsigned(r.emergency),
-                    double(r.omega_cmd[0]), double(r.omega_cmd[1]), double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle));
+                    double(r.omega_cmd[0]), double(r.omega_cmd[1]), double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle), long(r.slip[0]),
+                    long(r.slip[1]), long(r.slip[2]));
             else
                 log("ship_trace frame=%llu t_ms=%lu obj=0x%08lx class=%s order=0x%lx tgt=0x%08lx tgt_class=%u pos=%ld,%ld,%ld "
                     "fwd=%.5f,%.5f,%.5f up=%.5f,%.5f,%.5f rate=%ld,%ld,%ld v=%ld des=%ld des_engine=%ld point=%ld,%ld,%ld given=%ld,%ld,%ld "
-                    "e=- dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx",
+                    "e=- dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx slip=%ld,%ld,%ld",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj),
                     r.code < core::kClassCount ? core::kClassNames[r.code] : "?", static_cast<unsigned long>(r.order),
                     static_cast<unsigned long>(r.tgt), unsigned(r.tgt_class), long(r.pos[0]), long(r.pos[1]), long(r.pos[2]), double(r.fwd[0]),
@@ -1864,7 +1896,7 @@ void frame_boundary(std::uint64_t frame) {
                     long(r.rate[2]), long(r.v), long(r.des), long(r.des_engine), long(r.point[0]), long(r.point[1]), long(r.point[2]), long(r.given[0]), long(r.given[1]),
                     long(r.given[2]), static_cast<unsigned long>(r.dt_ms), long(r.W[0]), long(r.W[1]), long(r.W[2]), static_cast<unsigned long>(r.rot_raw),
                     long(r.rot_pct), long(r.vmax), long(r.accel), unsigned(r.emergency), double(r.omega_cmd[0]), double(r.omega_cmd[1]),
-                    double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle));
+                    double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle), long(r.slip[0]), long(r.slip[1]), long(r.slip[2]));
         }
     }
     if (debug_ && gates_on_) {

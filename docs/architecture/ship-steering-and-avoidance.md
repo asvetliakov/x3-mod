@@ -237,6 +237,56 @@ named, its class/record code, radius and centre distance). (4) *Spreads.* No exi
 `gate_warp_skipped` keeps counting them). Order 5 of a capital stays vanilla (the cornering override for capitals and the
 slip-aware steering are separate designs).
 
+**Amendment 14 (2026-10-12, slip-aware steering; the design is [slip-aware-steering.md](slip-aware-steering.md), ratified
+at full scope with the attack-order cap and fixture thresholds from the implemented law; fixture numbers in the ledger's
+"Slip-aware law" section):** the steered state is the velocity `u = v·f̂ + slip`, with `slip` the integrator's
+`obj+0x60..+0x68` ([ship-movement.md](../reverse-engineering/ship-movement.md) §13.2), read once per call (three dwords),
+and 0 on order 5 (the integrator only decays it there, so the dock legs keep amendment 12) or when |slip| > 2·v_max
+(`core::slip_usable`: the field is an int32 that glide, the contact response and undock also write; the leader's slip is
+bounded by 2·max(v_max, v_lead)). (1) *Pursuit
+lead:* the aim is `P − T_d·u_⊥`, with `u_⊥` the velocity across the line of sight, `T_d = τ = 2 s`, and the aim kept within 60°
+of the line of sight. Orders without an arrival ramp (the attack set) use `T_d = min(τ, d/v)`. The lead is not applied to an
+avoidance detour point: that point is built on the velocity's swept path already, and leading it a second time cost the M5
+flyby@150 its clearance (225.8 against 293.1 m). (2) *Cornering:* `ω_c = min(ω_axis, 0.43 rad/s)` off order 5; a point behind the nose (f̂·t̂ < 0) takes the tightest
+circle, `ω_c·d/2` (the chord's `d/(2 sin θ)` grows without bound toward 180°). (3) *Schedule for the closing speed:* the
+arrival ramp alone is solved for the nose speed, `v_ramp' = clamp((v_ramp − slip·t̂)/max(f̂·t̂, 0.5), 10 m/s, v_max)`, never
+raised when f̂·t̂ ≤ 0.5, and the cornering term then caps the nose speed: `v_cmd = min(v_ramp', v_corner)` (review fix: the
+first version divided min(ramp, v_corner) and doubled the cornering speed for a point abeam, an M5 at 300 m 64.5 → 129 m/s,
+329 with a 100 m/s slip). Site B adds the difference measured at the decision (`Ship.v_slip`, which replaces the unused
+`calls` counter; the struct stays 64 B) to the ramp it recomputes at its own distance and caps by `v_corner`, but not on
+gate legs or under the formation law. (4) *Formation by velocity matching:*
+this applies to orders 0x14/0x15 with a live (not deleted) ship target. `u_des = u_lead + (P − x)/2 s` (capped at v_max),
+`N = u + 2(u_des − u) + (v_lead·f̂_lead − u_lead)`. The last term is the leader's own lag, `τ·u̇_lead`, as feed-forward;
+without it a follower on a turning leader holds its slot only at the error that supplies the nose lead. With `N` ahead of the nose, the nose is
+steered along `N̂` (the aim point `max(d, 50 m)` along `N`) at `|N|`, capped by the same law with the slot-closing term braked
+to `sqrt(2a(d − d_arr))` (direction unchanged). With `N` behind the nose while the leader (or `u_des`) still moves ahead, the
+follower is faster than its slot needs: it keeps its heading along the leader's velocity at the floor speed and lets the slot
+come back (the nose speed acts at once, only the direction lags). With the leader stopped and the slot behind, it turns toward
+the slot under the cornering term. The cornering term applies to the formation leg only when the leader is slower than
+10 m/s or the aim is behind the nose. Review fix: the first version wrote `|N|` without cornering, so a follower whose `N`
+pointed behind turned round at full speed (370–490° of rotation for a follower 6 r ahead of its slot; the TS and M6 orbited
+at v_max after the leader stopped). The nose speed is clamped to [10, v_max] at site B (lowering only, no arrival ramp). The leader's reads are `[tgt+0x10]`, its flight row 2 and its `obj+0x60`. (5) *Gate carrot:* the
+look-ahead is `max(0.75 s, τ + 2√(10°/α))·v − 0.5·e` (α the slower axis's angular acceleration, e the lateral offset from
+the line), never under 0.75 s of flight or 0.3 r. The `−0.5·e` term is not in the design: with the full carrot the spread
+start (1.66 r off its shifted line at 1.55 r before the crossing) crossed 39° (M5) and 26.5° (M6) off its pass point,
+against the hard bound of 24°. *Avoidance:*
+`Self.slip`. The swept test runs on `u`, and ship obstacles carry `p+0x100 + obj+0x60` (three more reads per ship in the
+snapshot walk, summed in 64 bits and saturated to int32). `L` gains `v·τ`. The detour point is pushed along `û` by `max(1 s·min(|u|, 3v), d_turn,slip(C·f))`, at most 30 km, (`turn_in_slip`:
+the ramp or arc turn-in plus `v·τ·(1 − e^{−t/τ})`). The "behind" test runs on `û`. The resolved set (site E) requires the
+velocity's miss ≥ C. A miss below 0.25 C on a moving obstacle takes its side from `Δv × up` (`kTieMissFrac`), not from the
+near-centre miss vector, which is not in the design: with the slip in the prediction a 1 m miss picked "both pass in
+front" on the symmetric crossing, and the M5 crossing went from 0.2–5.2 m to 86.3–87.2 m (C = 43.4). The engine's own
+warn `0x0044dd90` still looks along A's nose (forward axis and `[A+0x10]`): its test is as blind to the slip as the vanilla
+leaf, so a pair the velocity carries into a conflict is never suppressed by a nose that turned away. *Diagnostics:*
+`ship_trace` rows gain `slip=` (units/s at site B); `ship_steering_decision` gains `lag_deg`, `aim_off_deg`, `v_slip_ms`
+and `slip_ms`, computed on the sampled call only. *Cost (host x86-64 -O2, `steer()` and `resolve()` against the af5ec4cf
+headers; [steer_cost_bench.py](../../verification/results/ship-steering/steer_cost_bench.py),
+[output](../../verification/results/ship-steering/steer_cost_bench.txt)):* `steer()` 53.4 → 75.8 ns per call and `resolve()`
+with 420 obstacles 179.2 → 200.3 ns, both measured. At the design's
+200 ships × 40 calls/s the 44 ns add 0.35 ms per second, about 0.006 ms per frame at 60 fps (inferred). The read path adds 3 dwords per call, 3 per snapshot ship and 3 per
+formation leader. The law makes no allocation, takes no lock and does no formatting; it is SSE2 scalar only (x87 audit 0
+violations).
+
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
 shared handler that, for class-7 ships under the autopilot flag and a point-steering order, computes a

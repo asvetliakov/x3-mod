@@ -31,6 +31,13 @@ A divergent step (any judged residual over its tolerance) is classified, first m
 Consecutive divergent steps form a window; a window is "order boundary" when all its steps are, otherwise the most
 frequent class of its other steps.
 
+The velocity's lag behind the nose (amendment 14, slip-aware-steering.md section 5) per step, in degrees: lag_obs the
+angle between row n -> n+1's displacement and fwd(n+1) (the flown velocity, judged when the step moved at least
+LAG_MIN_UNITS and outside the final zone and order 8), lag_model the same for the model's conditional displacement, and
+lag_row the angle between v fwd + slip of row n and fwd(n) when the row carries `slip=` (the value the law read). A row
+with `slip=` seeds the carried slip (the integrator's obj+0x60 between two frames); slip_res is the carried value's
+distance to it (m/s, after the first step of a run). The summary gives lag p50/p95/max overall and per order.
+
 e: the row's written remainders when the module called the leaf; on an `e=-` row the remainder the model carried
 from the previous step (the integrator consumes obj+0x30 across frames); a step with no known remainder is skipped.
 The angular acceleration is acc_i = fx(W_i, k) with k = trunc(rot x rot_pct / 100) in 16.16 (ship-movement.md section 3:
@@ -55,6 +62,7 @@ RAD_PER_BINARY = struct.unpack('f', struct.pack('f', 6.28318530717959))[0] / 655
 UNITS_PER_M = 500.0
 CLASSES = ('order boundary', 'final zone', 'position', 'rate controller', 'orientation', 'speed law')
 TOL = {'rate': 0.5, 'speed': 0.002, 'heading': 0.01, 'pos': 0.01, 'pos_c': 0.01}  # binary/s, m/s, deg, m, m
+LAG_MIN_UNITS = 200  # a step shorter than 0.4 m carries no usable velocity direction (whole-unit positions)
 
 
 # ---- the port of ship_steering_host.cpp (same names, same integer arithmetic) ----
@@ -363,6 +371,11 @@ def replay_ship(rows, tol=TOL, dt_source='row'):
         dt_t = b['t_ms'] - a['t_ms']
         dt_match['row' if dt_t == a['dt_ms'] else 'next' if dt_t == b['dt_ms'] else 'neither'] += 1
         dt = a['dt_ms'] if dt_source == 'row' else b['dt_ms']
+        slip_res = None
+        if a.get('slip') is not None:  # amendment 14: the row's obj+0x60 seeds the carried slip
+            if a['t_ms'] != run_t0:
+                slip_res = max(abs(slip[k] - a['slip'][k]) for k in range(3)) / UNITS_PER_M
+            slip = list(a['slip'])
         basis_a = basis_from_row(a['fwd'], a['up'])
         basis_b = basis_from_row(b['fwd'], b['up'])
         v_old = [fx(x, a['v']) for x in rows16(basis_a)[2]]
@@ -457,6 +470,15 @@ def replay_ship(rows, tol=TOL, dt_source='row'):
         else:  # row n+1's Euler step applied to row n's basis (a convention check, not a prediction), and the glide speed
             rec['fz_euler_heading'] = _angle_deg(rotate(basis_a, [wrap16(x) * RAD_PER_BINARY for x in b['rate']])[2], b['fwd'])
             rec['fz_glide_ms'] = math.dist(a['pos'], b['pos']) / UNITS_PER_M / (b['dt_ms'] / 1000.0) if b['dt_ms'] else None
+        # the velocity's lag behind the nose (amendment 14): flown (the observed displacement), modelled, and as the law read it
+        d_obs = [b['pos'][k] - a['pos'][k] for k in range(3)]
+        if not fz and a['order'] != 8 and b['order'] != 8 and _dot(d_obs, d_obs) >= LAG_MIN_UNITS ** 2:
+            rec['lag_obs'] = _angle_deg(d_obs, b['fwd'])
+            rec['lag_model'] = _angle_deg(disp_c, b['fwd']) if any(disp_c) else None
+        if a.get('slip') is not None:
+            u_row = [v_old[k] + a['slip'][k] for k in range(3)]
+            rec['lag_row'] = _angle_deg(u_row, a['fwd']) if _dot(u_row, u_row) >= 1 else None
+        rec['slip_res'] = slip_res
         rec['class'] = classify(res, boundary, tol, fz) if divergent(res, tol) else None
         rec['boundary'] = boundary
         steps.append(rec)
@@ -520,10 +542,29 @@ def summarise(obj, rows, steps, skipped, dt_match, worst_n=5):
         if s['unmodelled']:
             unmodelled[s['unmodelled']] = unmodelled.get(s['unmodelled'], 0) + 1
     return {'obj': '0x%08x' % obj, 'class': rows[0]['class'], 'rows': len(rows), 'steps': len(steps), 'skipped': skipped,
-            'unmodelled': unmodelled,
+            'unmodelled': unmodelled, 'lag': lag_summary(steps),
             'dt_vs_t_ms': dt_match, 'divergent_steps': sum(counts.values()), 'step_classes': counts,
             'windows': len(wins), 'window_classes': wcounts, 'window_list': wins[:50], 'residuals': stats, 'worst_frames': worst,
             'orders': sorted({r['order'] for r in rows}), 'tgt_classes': sorted({r['tgt_class'] for r in rows})}
+
+
+def _stats(vals):
+    return {'n': len(vals), 'p50': _pct(vals, 50), 'p95': _pct(vals, 95), 'max': max(vals) if vals else None}
+
+
+def lag_summary(steps):
+    """The velocity-vs-nose lag (deg) of a ship's steps: flown, modelled, as read from the row's slip, the flown lag per order
+    (hex), the flown-minus-modelled difference and the carried slip's distance to the row's (m/s)."""
+    obs = [s['lag_obs'] for s in steps if s.get('lag_obs') is not None]
+    by_order = {}
+    for s in steps:
+        if s.get('lag_obs') is not None:
+            by_order.setdefault('0x%x' % s['order'], []).append(s['lag_obs'])
+    diff = [abs(s['lag_obs'] - s['lag_model']) for s in steps if s.get('lag_obs') is not None and s.get('lag_model') is not None]
+    return {'obs': _stats(obs), 'model': _stats([s['lag_model'] for s in steps if s.get('lag_model') is not None]),
+            'row': _stats([s['lag_row'] for s in steps if s.get('lag_row') is not None]),
+            'by_order': {o: _stats(v) for o, v in sorted(by_order.items())}, 'obs_minus_model': _stats(diff),
+            'slip_res': _stats([s['slip_res'] for s in steps if s.get('slip_res') is not None])}
 
 
 # ---- --gate ----
@@ -600,6 +641,15 @@ def print_report(report, gate=False, out=sys.stdout):
                                                            ','.join(str(f) for f, _ in s['worst_frames'][k])), file=out)
         print('  steps by class: ' + ' '.join('%s=%d' % (c.replace(' ', '_'), n) for c, n in s['step_classes'].items()), file=out)
         print('  windows by class: ' + ' '.join('%s=%d' % (c.replace(' ', '_'), n) for c, n in s['window_classes'].items()), file=out)
+        lag = s.get('lag')
+        if lag and lag['obs']['n']:
+            print('  lag_deg (velocity vs nose) flown n=%d p50=%s p95=%s max=%s | model p50=%s p95=%s | |flown-model| p95=%s | row n=%d p95=%s '
+                  '| slip_res m/s p95=%s max=%s' % (lag['obs']['n'], _fmt(lag['obs']['p50'], 2), _fmt(lag['obs']['p95'], 2), _fmt(lag['obs']['max'], 2),
+                                                    _fmt(lag['model']['p50'], 2), _fmt(lag['model']['p95'], 2),
+                                                    _fmt(lag['obs_minus_model']['p95'], 3), lag['row']['n'], _fmt(lag['row']['p95'], 2),
+                                                    _fmt(lag['slip_res']['p95'], 3), _fmt(lag['slip_res']['max'], 3)), file=out)
+            print('  lag_deg by order: ' + ' '.join('%s n=%d p50=%s p95=%s' % (o, v['n'], _fmt(v['p50'], 1), _fmt(v['p95'], 1))
+                                                    for o, v in lag['by_order'].items()), file=out)
         if s['unmodelled']:
             print('  unmodelled steps: ' + ' '.join('%s=%d' % (c.replace(' ', '_'), n) for c, n in sorted(s['unmodelled'].items())), file=out)
         if gate and s.get('gate'):
