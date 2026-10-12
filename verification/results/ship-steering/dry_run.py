@@ -50,7 +50,8 @@ def dry_run(directory, *args):
 
 
 with tempfile.TemporaryDirectory(prefix='x3-ship-steering-dry-') as d:
-    for args in (('--ship-steering',), ('--ship-steering', '--ship-steering-classes', 'm1,M2,tl'), ('--ship-steering', '--ship-avoidance'), (),
+    for args in (('--ship-steering',), ('--ship-steering', '--ship-steering-classes', 'm1,M2,tl'), ('--ship-steering', '--ship-avoidance'),
+                 ('--ship-steering', '--no-ship-steering-gates'), ('--no-ship-steering-gates',), (),
                  ('--vanilla', '--ship-steering'), ('--ship-steering', '--ship-steering-classes', 'M9'), ('--ship-steering-classes', 'M1')):
         code, env, extra = dry_run(d, *args)
         print(f'launch --dry-run {" ".join(args):50s} exit={code} {env if code == 0 else extra} {"X3M_* count=" + str(extra) if code == 0 else ""}')

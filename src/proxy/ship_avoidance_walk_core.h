@@ -16,13 +16,18 @@
 // c = [c]` (0x0048aa46, 0x00488248: the node whose first dword is 0 is the
 // sentinel, not a part); a child's local offset `+0x30..` is scaled by the
 // parent's 16.16 `+0x70` when `[child+0x12c] & 0x40` (0x004881a9..0x004881e7);
-// the child's cached subtree radius is `+0xa4` (-1 = dirty).
+// the child's subtree radius is the engine getter 0x00488170's value: its cache
+// `+0xa4` when filled (>= 0), else the getter's recursion replicated read-only
+// below (fact (g), resolved 2026-10-12): the walk never calls the getter and
+// never writes `+0xa4`.
 namespace x3m::ship_avoidance::walk {
 namespace av = x3m::ship_avoidance::core;
 namespace sc = x3m::ship_steering::core;
 constexpr unsigned kBuckets[6] = {5, 6, 7, 17, 18, 28};
 constexpr unsigned kWalkLimit = 8192; // objects visited per snapshot at most: beyond it the snapshot is overflow (pass-through)
 constexpr unsigned kChildLimit = 256; // nodes visited per station at most: beyond it the station uses the fallback body
+constexpr unsigned kRadiusDepth = 3;  // the replicated getter recurses at most this deep below a part (deeper unfilled caches: fallback)
+constexpr unsigned kRadiusBudget = 64; // and visits at most this many nodes per station
 constexpr std::uint16_t kClassShip = 7, kClassStationA = 5, kClassStationB = 6, kClassAsteroid = 17, kClassGate = 18, kClassDebris = 28;
 constexpr std::uint32_t kSectorBuckets = 0x50, kBucketStride = 0xc;
 constexpr std::uint32_t kObjFlags = 0x40, kObjFlags2 = 0x44, kObjClass = 0x48, kObjFlight = 0x50, kObjPhys = 0x70, kObjRadius = 0xa4,
@@ -40,14 +45,22 @@ struct Census {
     std::uint16_t classes[32];
     std::uint16_t buckets[32];
     std::uint32_t station, station_root_r, station_scale, station_children, station_valid;
+    std::uint32_t station_own_r, station_dirty, station_scaled, station_extent; // own radius (units), dirty / flagged children, extent (units)
     std::int32_t part_offset[4][3];
-    std::int32_t part_r[4];
+    std::int32_t part_r[4];       // the subtree radius used (the cache, or the replicated getter's value)
+    std::int32_t part_cache[4];   // +0xa4 as read (-1 = the engine's getter 0x00488170 has not run; replicated then)
+    std::int32_t part_own[4];     // +0xa0, the node's own radius
+    std::uint32_t part_scale[4];  // +0x70, the node's scale
     std::uint32_t part_flags[4];
 };
 struct Stats {
-    unsigned visited = 0, stations = 0, part_built = 0, part_fallback = 0, part_invalid = 0, part_cached = 0;
+    unsigned visited = 0, stations = 0, part_built = 0, part_fallback = 0, part_invalid = 0, part_cached = 0,
+             part_dirty = 0,  // stations with at least one unfilled child cache (+0xa4 = -1): the radius was replicated
+             part_scaled = 0; // stations with at least one flagged child (offset scaled by the parent's +0x70)
     bool overflow = false;
 };
+constexpr float kExtentFraction = 0.9f; // the parts must reach at least this fraction of the root radius (the engine computes
+                                        // the root radius from the same offsets and radii: a collapsed model is a wrong one)
 inline std::uint32_t fnv1a(std::uint32_t h, std::uint32_t v) noexcept {
     for (unsigned i = 0; i < 4; ++i) {
         h ^= (v >> (8 * i)) & 0xff;
@@ -83,11 +96,43 @@ struct PartCache {
 inline float fixed16(std::int32_t v) noexcept {
     return float(v) * (1.0f / 65536.0f);
 }
-// The station part walk into `out` (false = fallback body: dirty radii only, an empty list, more than kMaxParts
-// children, the node limit, or a part outside the root sphere).
+// The engine's subtree radius getter 0x00488170, replicated read-only (fact (g)): a filled cache `+0xa4` (>= 0) is
+// the value; otherwise the max over the children of |offset_i x (flag 0x40 ? parent +0x70 : 1)| + radius(child) on
+// each axis, seeded by the node's own radius `+0xa0`, exactly the engine's loop (0x004881a0..0x00488256: per axis
+// `max(r, off + rc, rc - off)`). Depth- and budget-limited: -1 = not computable (the caller falls back and retries
+// on the next snapshot). Never writes the cache.
+template <class Mem>
+inline std::int32_t subtree_radius(Mem& mem, std::uint32_t node, unsigned depth, unsigned& budget) noexcept {
+    const std::int32_t cached = mem.s32(node + kNodeRadius);
+    if (cached >= 0) return cached;
+    if (depth >= kRadiusDepth) return -1;
+    std::int32_t r = mem.s32(node + kNodeOwnRadius);
+    if (r < 0) r = 0;
+    const std::int32_t scale = mem.s32(node + kNodeScale);
+    for (std::uint32_t c = mem.u32(node + kNodeChildren); c && mem.u32(c) != 0; c = mem.u32(c)) {
+        if (!budget) return -1;
+        --budget;
+        const std::int32_t rc = subtree_radius(mem, c, depth + 1, budget);
+        if (rc < 0) return -1;
+        const bool scaled = (mem.u32(c + kNodeFlags) & kNodeFlagScaled) != 0;
+        for (unsigned i = 0; i < 3; ++i) {
+            std::int32_t off = mem.s32(c + kNodeOffset + 4 * i);
+            if (scaled) off = std::int32_t((std::int64_t(off) * std::int64_t(scale) + 0x8000) >> 16);
+            const std::int32_t hi = off + rc, lo = rc - off;
+            if (hi > r) r = hi;
+            if (lo > r) r = lo;
+        }
+    }
+    return r;
+}
+// The station part walk into `out` (false = fallback body: a radius the replication cannot settle, an empty list,
+// more than kMaxParts children, the node limit, or a part outside the root sphere).
+struct WalkOut { // what a walk saw besides its model: the counts the DLL reports per station
+    unsigned children = 0, dirty = 0, scaled = 0;
+};
 template <class Mem>
 inline bool part_walk(Mem& mem, std::uint32_t node, const float pos[3], float root_r, av::PartSet& out, Census* census,
-                      unsigned* children_out) noexcept {
+                      WalkOut* seen) noexcept {
     float centres[av::kMaxParts][3], radii[av::kMaxParts];
     unsigned n = 0, children = 0, visited = 0;
     float basis[3][3];
@@ -102,37 +147,65 @@ inline bool part_walk(Mem& mem, std::uint32_t node, const float pos[3], float ro
         radii[n++] = float(own) / kUnits;
     }
     bool ok = true;
+    unsigned dirty = 0, scaled = 0, budget = kRadiusBudget;
+    float extent = own > 0 ? float(own) / kUnits : 0.0f;
     for (std::uint32_t c = mem.u32(node + kNodeChildren); c && mem.u32(c) != 0; c = mem.u32(c)) {
         if (++visited > kChildLimit) {
             ok = false;
             break;
         }
         std::int32_t off[3] = {mem.s32(c + kNodeOffset), mem.s32(c + kNodeOffset + 4), mem.s32(c + kNodeOffset + 8)};
-        const std::int32_t r = mem.s32(c + kNodeRadius);
+        const std::int32_t cache = mem.s32(c + kNodeRadius);
+        const std::int32_t r = cache >= 0 ? cache : subtree_radius(mem, c, 1, budget); // the engine's value, or its replication
         const std::uint32_t flags = mem.u32(c + kNodeFlags);
-        if (flags & kNodeFlagScaled)
+        if (flags & kNodeFlagScaled) {
+            ++scaled;
             for (unsigned i = 0; i < 3; ++i) off[i] = std::int32_t((std::int64_t(off[i]) * std::int64_t(scale) + 0x8000) >> 16);
+        }
         if (census && children < 4) {
             for (unsigned i = 0; i < 3; ++i) census->part_offset[children][i] = off[i];
             census->part_r[children] = r;
+            census->part_cache[children] = cache;
+            census->part_own[children] = mem.s32(c + kNodeOwnRadius);
+            census->part_scale[children] = mem.u32(c + kNodeScale);
             census->part_flags[children] = flags;
         }
         ++children;
-        if (r <= 0) continue; // dirty or empty subtree: not a body
+        if (cache < 0) ++dirty; // unfilled cache: replicated
+        if (r < 0) { // beyond the replication's depth or budget: no model (retried on the next snapshot)
+            ok = false;
+            break;
+        }
+        if (r == 0) continue; // empty subtree: not a body
         if (n >= av::kMaxParts) { // more parts than the model keeps: the fallback body (section 3.5 item 3)
             ok = false;
             break;
         }
         for (unsigned k = 0; k < 3; ++k)
             centres[n][k] = pos[k] + (float(off[0]) * basis[0][k] + float(off[1]) * basis[1][k] + float(off[2]) * basis[2][k]) / kUnits;
-        radii[n++] = float(r) / kUnits;
+        radii[n] = float(r) / kUnits;
+        const float dc[3] = {centres[n][0] - pos[0], centres[n][1] - pos[1], centres[n][2] - pos[2]};
+        const float reach = sc::sqrt_ss(sc::dot3(dc, dc)) + radii[n];
+        if (reach > extent) extent = reach;
+        ++n;
     }
     if (census) {
         census->station_scale = std::uint32_t(scale);
         census->station_children = children;
+        census->station_own_r = std::uint32_t(own);
+        census->station_dirty = dirty;
+        census->station_scaled = scaled;
+        census->station_extent = std::uint32_t(std::int32_t(extent * kUnits)); // via int32: a float to uint32 cast compiles to x87 fistp on i686
     }
-    if (children_out) *children_out = children;
+    if (seen) {
+        seen->children = children;
+        seen->dirty = dirty;
+        seen->scaled = scaled;
+    }
     if (!ok) return false;
+    // the parts must reach the root radius the engine computed from the same offsets and radii (a model whose parts
+    // collapsed to the centre passes the inside-root check and would still be wrong)
+    if (extent < kExtentFraction * root_r) return false;
     return av::build_parts(out, 0, root_r, pos, centres, radii, n);
 }
 // The part model index for a station (cached per object, root radius and position/basis stamp), or
@@ -150,9 +223,11 @@ inline unsigned station_parts(Mem& mem, PartCache& cache, std::uint32_t obj, std
         return hit;
     }
     ++stats.stations;
-    unsigned children = 0;
+    WalkOut seen;
     if (census) census->station = obj;
-    const bool built = part_walk(mem, node, pos, root_r, cache.scratch, census, &children);
+    const bool built = part_walk(mem, node, pos, root_r, cache.scratch, census, &seen);
+    if (seen.dirty) ++stats.part_dirty;   // stations with an unfilled child cache (the radius replicated)
+    if (seen.scaled) ++stats.part_scaled; // stations with a flagged child (offset scaled by the parent's +0x70)
     if (census) {
         std::memcpy(&census->station_root_r, &root_r, 4);
         census->station_valid = built ? 1 : 0;
@@ -160,7 +235,7 @@ inline unsigned station_parts(Mem& mem, PartCache& cache, std::uint32_t obj, std
     if (!built) {
         cache.invalidate(obj); // a stale model of a moved station must not survive its failed rebuild
         ++stats.part_invalid;
-        return av::kStationCapacity;
+        return av::kStationCapacity; // not cached: a station the replication could not settle is retried on the next snapshot
     }
     const unsigned slot = cache.slot_for(obj);
     cache.sets[slot] = cache.scratch;

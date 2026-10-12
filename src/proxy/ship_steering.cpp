@@ -45,6 +45,22 @@ void __cdecl x3m_ship_steering_clamp(std::uint32_t obj);
 void* x3m_ship_avoid_next_e = nullptr;
 void x3m_ship_avoid_e_stub();
 int __cdecl x3m_ship_avoid_suppress(std::uint32_t a, std::uint32_t b);
+// Step 3 (gate approach): the three gate sites' continuation slots (the claim tails: pass-through), the resume
+// addresses the live stubs jump to (absolute engine addresses, constants: the EXE is not relocatable), the live
+// byte the stubs test first, the stubs and their handlers.
+void* x3m_ship_gate_next_a = nullptr;
+void* x3m_ship_gate_next_b = nullptr;
+void* x3m_ship_gate_next_l = nullptr;
+void* x3m_ship_gate_resume_a = reinterpret_cast<void*>(sites::kGateStopAResume);
+void* x3m_ship_gate_resume_b = reinterpret_cast<void*>(sites::kGateStopBResume);
+void* x3m_ship_gate_resume_l = reinterpret_cast<void*>(sites::kGateLaunchResume);
+volatile unsigned char x3m_ship_gates_live = 0;
+void x3m_ship_gate_p2_stub();
+void x3m_ship_gate_p4_stub();
+void x3m_ship_gate_p5_stub();
+void __cdecl x3m_ship_gate_stop_a(std::uint32_t obj);
+void __cdecl x3m_ship_gate_stop_b(std::uint32_t obj);
+std::int32_t __cdecl x3m_ship_gate_launch(std::uint32_t obj, std::int32_t t_ms);
 }
 
 // A1-A3 (X3M_SS_LEAF): save EAX/ECX/EDX and XMM0-7, call the handler with the
@@ -140,6 +156,44 @@ _x3m_ship_avoid_e_stub:
     jmp dword ptr [_x3m_ship_avoid_next_e]
 1:  xor eax, eax
     ret 0x10
+    .p2align 4
+    .globl _x3m_ship_gate_p2_stub
+_x3m_ship_gate_p2_stub:
+    cmp byte ptr [_x3m_ship_gates_live], 0
+    je 1f
+    X3M_SS_SAVE
+    push ebx
+    call _x3m_ship_gate_stop_a
+    add esp, 4
+    X3M_SS_RESTORE
+    jmp dword ptr [_x3m_ship_gate_resume_a]
+1:  jmp dword ptr [_x3m_ship_gate_next_a]
+    .p2align 4
+    .globl _x3m_ship_gate_p4_stub
+_x3m_ship_gate_p4_stub:
+    cmp byte ptr [_x3m_ship_gates_live], 0
+    je 1f
+    X3M_SS_SAVE
+    push ebx
+    call _x3m_ship_gate_stop_b
+    add esp, 4
+    X3M_SS_RESTORE
+    jmp dword ptr [_x3m_ship_gate_resume_b]
+1:  jmp dword ptr [_x3m_ship_gate_next_b]
+    .p2align 4
+    .globl _x3m_ship_gate_p5_stub
+_x3m_ship_gate_p5_stub:
+    cmp byte ptr [_x3m_ship_gates_live], 0
+    je 1f
+    X3M_SS_SAVE
+    push dword ptr [esp+0x88]
+    push ebx
+    call _x3m_ship_gate_launch
+    add esp, 8
+    mov [esp+0x88], eax
+    X3M_SS_RESTORE
+    jmp dword ptr [_x3m_ship_gate_resume_l]
+1:  jmp dword ptr [_x3m_ship_gate_next_l]
     .att_syntax
 )");
 
@@ -176,6 +230,26 @@ std::uint32_t census_read_ = 0, census_logged_sectors_[8] = {};
 unsigned census_logged_count_ = 0;
 std::int32_t target_ring_[4][3];  // the step-2 seam: a redirected EDX points here, never at the caller's buffer
 unsigned target_depth_ = 0;
+// Step 3: the gate approach (X3M_SHIP_STEERING_GATES, default on with the steering): the three sites as a group.
+bool gates_on_ = false;
+std::atomic<bool> gates_live_{false};
+engine_patch::Site gate_patches_[sites::GateCount];
+const char* gates_state_ = "not_claimed";
+struct GateState { // per table slot: the crossing of the 0.75 r sphere and the speed kept at the pass point
+    std::uint32_t obj, cross_stamp, v0_stamp, launch_stamp;
+    std::int32_t v0_units;
+    float cross_v, cross_err_deg;
+    std::uint8_t crossed, launched;
+};
+GateState gate_[core::kShipCapacity];
+struct GateEvent { // --debug: one row per launch (the crossing data and the time from the crossing to the warp)
+    std::uint32_t obj, code, cross_to_launch_ms;
+    std::int32_t v0_units;
+    float cross_v, cross_err_deg;
+};
+GateEvent gate_events_[8];
+std::atomic<std::uint32_t> gate_event_write_{0};
+std::uint32_t gate_event_read_ = 0;
 
 // Counters: written by the engine thread with plain relaxed stores (one
 // writer), read at the frame boundary.
@@ -187,13 +261,16 @@ struct Counter {
 Counter calls_, handled_, reasons_[core::kReasonCount], leaf_calls_[3], clamp_calls_, clamp_applied_, clamp_stale_;
 Counter handled_by_order_[0x40], redirected_;
 Counter av_calls_, av_conflicts_, av_detours_, av_unresolved_, av_overflow_, av_snapshots_, av_walk_objects_, av_emergency_;
+Counter av_unresolved_why_[unsigned(av::Unresolved::count)], av_unresolved_episodes_, av_conflict_episodes_, part_dirty_, part_scaled_;
 Counter e_calls_, e_suppressed_, part_built_, part_fallback_, part_invalid_;
+Counter gate_lead_, gate_cross_, gate_p2_, gate_stops_skipped_, gate_p4_, gate_v0_kept_, gate_p5_, gate_launch_continued_, gate_speed_writes_;
+std::uint32_t rep_gate_[9] = {};
 std::atomic<std::uint32_t> qpc_hist_[32];
 std::atomic<std::uint32_t> qpc_max_{0};
 // Reported totals (frame boundary only).
 std::uint32_t rep_calls_ = 0, rep_handled_ = 0, rep_reasons_[core::kReasonCount] = {}, rep_clamp_calls_ = 0,
               rep_clamp_applied_ = 0, rep_clamp_stale_ = 0, rep_leaf_[3] = {}, rep_redirected_ = 0;
-std::uint32_t rep_av_[13] = {};
+std::uint32_t rep_av_[13] = {}, rep_av_why_[unsigned(av::Unresolved::count)] = {}, rep_av_ep_[4] = {};
 unsigned long long last_detour_tick_ = 0;
 unsigned detour_rows_this_second_ = 0;
 unsigned long long last_summary_tick_ = 0, last_sample_tick_ = 0;
@@ -331,6 +408,8 @@ const av::Snapshot* snapshot_for(std::uint32_t sector, std::uint32_t now) noexce
     part_built_.add(stats.part_built);
     part_fallback_.add(stats.part_fallback);
     part_invalid_.add(stats.part_invalid);
+    part_dirty_.add(stats.part_dirty);
+    part_scaled_.add(stats.part_scaled);
     if (census) {
         const std::uint32_t w = census_write_.load(std::memory_order_relaxed);
         if (w - census_read_ < 4) {
@@ -386,9 +465,18 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     av::ShipAvoid& state = avoid_[slot];
     if (state.obj != obj) state = av::ShipAvoid{}; // the slot was another ship's: no stale sides or resolved set
     state.obj = obj;
+    const bool was_unresolved = state.unresolved;
     const av::Result r = av::resolve(*snap, part_cache_.sets, part_cache_.count, self, P, state, now);
     if (r.conflicts) av_conflicts_.add(r.conflicts);
-    if (r.unresolved) av_unresolved_.add();
+    if (r.unresolved) {
+        av_unresolved_.add();
+        av_unresolved_why_[r.reason < unsigned(av::Unresolved::count) ? r.reason : 0u].add();
+    }
+    // episodes: a conflict (or an unresolved call) counts once per run of consecutive calls, not per call
+    const bool conflict_now = r.conflicts > 0;
+    if (conflict_now && !state.in_conflict) av_conflict_episodes_.add();
+    if (r.unresolved && !was_unresolved) av_unresolved_episodes_.add();
+    state.in_conflict = conflict_now;
     if (r.emergency) av_emergency_.add();
     std::memcpy(v_emergency_out, &state.v_emergency, 4);
     if (!r.adjusted) return;
@@ -452,6 +540,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     if (dyn.a_lin < 0.0f) dyn.a_lin = 0.0f;
     dyn.r_own = float(rds32(obj + sites::kObjRadius)) / core::kUnitsPerMetre;
     dyn.large = code < core::kClassCount && ((core::kLargeMask >> code) & 1u);
+    const bool capital = code < core::kClassCount && ((core::kCapitalMask >> code) & 1u); // 0x0043fd50 (class 7 checked above)
     core::Inputs in;
     for (unsigned i = 0; i < 3; ++i) in.x[i] = float(rds32(ph + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
     for (unsigned r = 0; r < 3; ++r)
@@ -470,6 +559,15 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     core::Ship* s = table_.find_or_insert(obj, now);
     if (!s) return core::Reason::table_full;
     const unsigned slot = unsigned(s - table_.entries);
+    // The servo budget (core::servo_tick): the measured interval since this ship's previous call for an order that
+    // calls the leaf every frame, 50 ms for a gated one (Run151: per-frame orders carried a 50 ms rate surplus).
+    {
+        const std::uint32_t clock = rd32(sites::kGameClock);
+        std::uint32_t frame_ms = clock ? rd32(clock + sites::kGameTimeOffset - 4) : 0; // [root+0x714] = the frame dt
+        if (frame_ms < 1 || frame_ms > 1000) frame_ms = 1;
+        const std::uint32_t gap = s->last_call_ms && now >= s->last_call_ms ? now - s->last_call_ms : 50;
+        in.tick_s = core::servo_tick(gap, frame_ms, s->per_frame_run);
+    }
     std::uint32_t v_emergency_bits = 0;
     float order_point[3] = {in.P[0], in.P[1], in.P[2]};
     if (avoidance_on_ && policy.avoidance) {
@@ -487,8 +585,59 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         }
     } else if (adjusted != point)
         redirect_target(f, adjusted);
+    // Step 3, P1: a non-capital ship on order 4 to a gate is steered along the lead-in line (core::gate_lead_in) with
+    // no arrival ramp and the module's approach speed; the engine's point A in f+0x240 is never written. The gate
+    // frame is read from the target's phys block; a layout other than the pinned one keeps the vanilla point.
+    bool gate_approach = false;
+    GateState* gs = nullptr;
+    if (gates_live_.load(std::memory_order_relaxed) && order == core::kOrderFlyBefore && !capital) {
+        const std::uint32_t tgt = rd32(fl + sites::kFlightTarget);
+        const std::uint32_t gph = tgt && rd16(tgt + sites::kObjClass) == sites::kClassGate ? rd32(tgt + sites::kObjPhys) : 0;
+        if (gph) {
+            float G[3], row1[3], row2[3];
+            for (unsigned i = 0; i < 3; ++i) {
+                G[i] = float(rds32(gph + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+                row1[i] = fixed16(rds32(gph + sites::kPhysBasis + 0x10 + 4 * i));
+                row2[i] = fixed16(rds32(gph + sites::kPhysBasis + 0x20 + 4 * i));
+            }
+            core::GateGeometry g;
+            if (core::gate_geometry(order_point, G, row1, row2, float(rds32(tgt + sites::kObjRadius)) / core::kUnitsPerMetre, &g)) {
+                gate_approach = true;
+                gate_lead_.add();
+                gs = &gate_[slot];
+                if (gs->obj != obj) {
+                    *gs = GateState{};
+                    gs->obj = obj;
+                }
+                const float dA[3] = {g.A[0] - in.x[0], g.A[1] - in.x[1], g.A[2] - in.x[2]};
+                const float d_A = core::sqrt_ss(core::dot3(dA, dA));
+                if (!gs->crossed && d_A <= core::kGateCrossFraction * g.r) { // the crossing: the order's own arrival test fires next
+                    gs->crossed = 1;
+                    gs->launched = 0;
+                    gs->cross_stamp = now;
+                    gs->cross_v = in.v;
+                    float c = core::dot3(in.row[2], g.h);
+                    if (c > 1.0f) c = 1.0f;
+                    if (c < -1.0f) c = -1.0f;
+                    gs->cross_err_deg = core::acos_deg(c);
+                    gate_cross_.add();
+                } else if (gs->crossed && d_A > 2.0f * g.r)
+                    gs->crossed = 0; // a new approach
+                float lead[3], s_line = 0.0f;
+                if (!v_emergency_bits && in.d_order < 0.0f && core::gate_lead_in(g, in.x, in.v, lead, &s_line)) { // no detour, not an emergency
+                    std::int32_t units[3];
+                    for (unsigned i = 0; i < 3; ++i) {
+                        in.P[i] = lead[i];
+                        units[i] = core::round_to_int(lead[i] * core::kUnitsPerMetre);
+                    }
+                    in.d_order = d_A;
+                    redirect_target(f, units);
+                }
+            }
+        }
+    }
     // Arrival parameters (section 2.5).
-    in.arrival_ramp = policy.arrival_ramp;
+    in.arrival_ramp = policy.arrival_ramp && !gate_approach;
     if (in.arrival_ramp) {
         const std::uint32_t tgt = rd32(fl + sites::kFlightTarget);
         if (order == core::kOrderFlyBefore) {
@@ -529,14 +678,17 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     wr32(obj + sites::kObjRemaining + 8, cmd.e[2]);
     s->stamp_ms = now;
     s->order = order;
-    s->flags = std::uint16_t((in.arrival_ramp ? 1 : 0) | (cmd.v_cmd > 0.0f ? 2 : 0));
+    s->flags = std::uint16_t((in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0) |
+                             (gate_approach ? (core::kShipFlagGate | core::kShipFlagClamp) : 0));
     for (unsigned i = 0; i < 3; ++i) s->P[i] = order_point[i]; // site B measures the order's point, not a detour
     s->a_lin = dyn.a_lin;
     s->d_arr = in.d_arr;
-    s->v_ref = in.v_ref;
+    // the gate approach: site B's speed (never under an avoidance emergency: the emergency ramp is site B's value then)
+    s->v_ref = gate_approach && !v_emergency_bits ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : in.v_ref;
     s->v_corner = cmd.v_corner;
     std::memcpy(&s->v_emergency, &v_emergency_bits, 4);
     s->calls = s->calls + 1;
+    s->last_call_ms = now;
     if (order == core::kOrderMovePos) {
         if (core::stuck_update(*s, cmd.d_order, now)) {
             const std::uint32_t n = stuck_count_.load(std::memory_order_relaxed);
@@ -685,12 +837,101 @@ extern "C" void __cdecl x3m_ship_steering_clamp(std::uint32_t obj) {
         clamp_stale_.add();
         return;
     }
+    if (s->flags & core::kShipFlagGate) { // the gate approach (step 3, P1): the module's speed replaces the engine's stop ramp
+        const std::int32_t units = core::gate_speed_units(v, rds32(obj + sites::kObjDesiredSpeed));
+        if (units > 0) {
+            wr32(obj + sites::kObjDesiredSpeed, units);
+            gate_speed_writes_.add();
+        }
+        return;
+    }
     // Lowering only (compared in float before any conversion: core::clamp_units), never below the engine's own floor.
     const std::int32_t units = core::clamp_units(v, rds32(obj + sites::kObjDesiredSpeed));
     if (units > 0) {
         wr32(obj + sites::kObjDesiredSpeed, units);
         clamp_applied_.add();
     }
+}
+// Step 3: the gate sites' handlers. Each runs on the light envelope inside the order handlers of the command pass
+// (no log, no allocation, no lock); the stubs pass through to the claim tails when the group is not live.
+namespace {
+// The shared rule (core::gate_target_noncapital over the engine's memory): a class-7 non-capital ship with a gate target.
+inline bool gate_target_noncapital(std::uint32_t obj) noexcept {
+    RawMem mem;
+    return core::gate_target_noncapital(mem, obj, rd32(sites::kShipTypeTableSlot));
+}
+inline GateState* gate_state_of(std::uint32_t obj) noexcept {
+    const core::Ship* s = table_.find(obj);
+    if (!s) return nullptr;
+    GateState* g = &gate_[unsigned(s - table_.entries)];
+    return g->obj == obj ? g : nullptr;
+}
+}
+// P2 (0x00454b91): the order-4 arrival. [obj+0x14] = 0 always; [obj+0x10] = 0 unless a non-capital ship arrived at a
+// gate's approach point (its speed carries into the KC's order 5).
+extern "C" void __cdecl x3m_ship_gate_stop_a(std::uint32_t obj) {
+    Envelope env;
+    gate_p2_.add();
+    wr32(obj + sites::kObjDesiredSpeed, 0);
+    // fail closed: only a ship the policy steered (a gate state from the decision: class not excluded, the gate frame
+    // and A validated) with a gate target and a non-capital record keeps its speed
+    if (installed_.load(std::memory_order_relaxed) && core::gate_stop_keeps_speed(gate_target_noncapital(obj), gate_state_of(obj) != nullptr)) {
+        gate_stops_skipped_.add();
+        return;
+    }
+    wr32(obj + sites::kObjSpeed, 0);
+}
+// P4 (0x00454700): the order-5 arrival. [obj+0x14] = 0 always; for a non-capital ship at a gate's pass point the
+// speed is kept and recorded for the launch (P5), else zeroed as the engine does.
+extern "C" void __cdecl x3m_ship_gate_stop_b(std::uint32_t obj) {
+    Envelope env;
+    gate_p4_.add();
+    wr32(obj + sites::kObjDesiredSpeed, 0);
+    GateState* g = installed_.load(std::memory_order_relaxed) ? gate_state_of(obj) : nullptr;
+    if (core::gate_stop_keeps_speed(gate_target_noncapital(obj), g != nullptr)) {
+        g->v0_units = rds32(obj + sites::kObjSpeed);
+        g->v0_stamp = game_time_ms();
+        g->launched = 0;
+        gate_v0_kept_.add();
+        return;
+    }
+    wr32(obj + sites::kObjSpeed, 0);
+}
+// P5 (0x0045526f): the order-8 launch distance after t ms: the engine's t^2 law plus v0 t for a ship whose speed
+// was kept at the pass point within the last 5 s (any other ship: the engine's own value).
+extern "C" std::int32_t __cdecl x3m_ship_gate_launch(std::uint32_t obj, std::int32_t t_ms) {
+    Envelope env;
+    gate_p5_.add();
+    std::int32_t v0 = 0;
+    if (installed_.load(std::memory_order_relaxed)) {
+        GateState* g = gate_state_of(obj);
+        const std::uint32_t now = game_time_ms();
+        if (g && g->v0_stamp && now - g->v0_stamp <= 5000) {
+            v0 = g->v0_units > 0 ? g->v0_units : 0;
+            if (!g->launched) {
+                g->launched = 1;
+                g->launch_stamp = now;
+                if (v0 > 0) gate_launch_continued_.add();
+                if (debug_) {
+                    const std::uint32_t w = gate_event_write_.load(std::memory_order_relaxed);
+                    if (w - gate_event_read_ < 8) {
+                        GateEvent& e = gate_events_[w & 7];
+                        e.obj = obj;
+                        e.code = 0;
+                        const std::int32_t type = std::int16_t(rd16(obj + sites::kObjType));
+                        const std::uint32_t table = rd32(sites::kShipTypeTableSlot);
+                        if (table && type >= 0) e.code = rd32(table + std::uint32_t(type) * sites::kRecordStride + sites::kRecordClassCode);
+                        e.cross_to_launch_ms = g->crossed ? now - g->cross_stamp : 0;
+                        e.v0_units = v0;
+                        e.cross_v = g->crossed ? g->cross_v : -1.0f;
+                        e.cross_err_deg = g->crossed ? g->cross_err_deg : -1.0f;
+                        gate_event_write_.store(w + 1, std::memory_order_release);
+                    }
+                }
+            }
+        }
+    }
+    return core::gate_launch_units(v0, t_ms);
 }
 // Site E: 1 = suppress the reactive warn for (A, B) (B is in A's fresh resolved set and A is steered by us and
 // not under the engine's own avoid order), 0 = the original warn test runs.
@@ -770,6 +1011,57 @@ bool initialize() {
         } else
             warn_state_ = warn_site_.status;
     }
+    // Step 3: X3M_SHIP_STEERING_GATES (default on with the steering). The three gate sites are claimed as a group:
+    // every span preflighted, claims in table order, every claimed gate site rolled back on the first failure; the
+    // gate policy (P1) runs only with all three live. Steering and avoidance are unaffected by a refusal here.
+    wchar_t gates_text[8]{};
+    const DWORD gates_length = x3m::config::get(L"X3M_SHIP_STEERING_GATES", gates_text, 8);
+    bool gates_on = true;
+    if (gates_length == 0)
+        gates_on = true;
+    else if (gates_length >= 8 || !core::parse_switch(gates_text, gates_length, &gates_on)) {
+        gates_on = false;
+        gates_state_ = "invalid_setting";
+        log("ship_steering_gates_refused reason=invalid_setting");
+    }
+    gates_on_ = gates_on;
+    if (gates_on_) {
+        const char* why = nullptr;
+        char gate_detail[64] = {};
+        for (unsigned i = 0; i < sites::GateCount && !why; ++i)
+            if (!engine_patch::verify_bytes(sites::kGateSites[i].address, sites::kGateSites[i].expected, sites::kGateSites[i].length)) {
+                why = "bytes_mismatch";
+                std::snprintf(gate_detail, sizeof gate_detail, "%s", sites::kGateSites[i].name);
+            }
+        for (unsigned i = 0; i < sites::GateCount && !why; ++i) {
+            gate_patches_[i] = engine_patch::Site{};
+            void** slot = i == sites::GateStopA ? &x3m_ship_gate_next_a : i == sites::GateStopB ? &x3m_ship_gate_next_b : &x3m_ship_gate_next_l;
+            void* stub = i == sites::GateStopA ? reinterpret_cast<void*>(&x3m_ship_gate_p2_stub)
+                         : i == sites::GateStopB ? reinterpret_cast<void*>(&x3m_ship_gate_p4_stub)
+                                                 : reinterpret_cast<void*>(&x3m_ship_gate_p5_stub);
+            if (engine_patch::claim(gate_patches_[i], sites::kGateSites[i])) {
+                *slot = *gate_patches_[i].entry;
+                std::atomic_thread_fence(std::memory_order_release);
+                if (engine_patch::push_front(gate_patches_[i], stub)) continue;
+                why = "stub_chain_failed";
+            } else
+                why = gate_patches_[i].status;
+            std::snprintf(gate_detail, sizeof gate_detail, "%s", sites::kGateSites[i].name);
+            bool restored = true;
+            for (unsigned j = sites::GateCount; j-- > 0;)
+                if (gate_patches_[j].patched_in && !engine_patch::restore(gate_patches_[j])) restored = false;
+            if (!restored) why = "rollback_failed_live_sites_pass_through"; // the stubs pass through: the live byte stays 0
+        }
+        if (why) {
+            gates_state_ = why;
+            log("ship_steering_gates_refused reason=%s%s%s sites=%u", why, gate_detail[0] ? "_" : "", gate_detail, unsigned(sites::GateCount));
+        } else {
+            gates_state_ = "active";
+            gates_live_.store(true, std::memory_order_release);
+            x3m_ship_gates_live = 1;
+        }
+    } else if (gates_state_[0] != 'i')
+        gates_state_ = "off";
     LARGE_INTEGER f{};
     qpc_frequency_ = QueryPerformanceFrequency(&f) && f.QuadPart > 0 ? std::uint64_t(f.QuadPart) : 0;
     perf_ = log_tier::cached_perf;
@@ -795,6 +1087,26 @@ bool initialize() {
             sites::kSnapshotSlots, av::kStationCapacity, av::kMaxParts, av::kMaxCandidates,
             static_cast<unsigned long>(av::kResolvedAgeMs),
             static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_ship_avoid_suppress)));
+    if (gates_on_) {
+        log("ship_steering_gates installed=%u status=%s sites=%u lead_in_deg=23.6 cross_fraction=%.2f look_s=%.2f look_min_r=%.2f join_r=%.1f "
+            "large_cap_ms=%.0f handler_p2=0x%08lx handler_p4=0x%08lx handler_p5=0x%08lx",
+            gates_live_.load(std::memory_order_relaxed) ? 1u : 0u, gates_state_, unsigned(sites::GateCount), double(core::kGateCrossFraction),
+            double(core::kGateLookS), double(core::kGateLookMinR), double(core::kGateJoinR), double(core::kGateLargeCapMs),
+            static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_ship_gate_stop_a)),
+            static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_ship_gate_stop_b)),
+            static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_ship_gate_launch)));
+        for (unsigned i = 0; i < sites::GateCount; ++i) {
+            void* stub = i == sites::GateStopA ? reinterpret_cast<void*>(&x3m_ship_gate_p2_stub)
+                         : i == sites::GateStopB ? reinterpret_cast<void*>(&x3m_ship_gate_p4_stub)
+                                                 : reinterpret_cast<void*>(&x3m_ship_gate_p5_stub);
+            void* tail = i == sites::GateStopA ? x3m_ship_gate_next_a : i == sites::GateStopB ? x3m_ship_gate_next_b : x3m_ship_gate_next_l;
+            log("ship_steering_gate_site index=%u site=0x%08lx name=%s status=%s write=%s stub=0x%08lx tail=0x%08lx resume=0x%08lx", i,
+                static_cast<unsigned long>(sites::kGateSites[i].address), sites::kGateSites[i].name, gate_patches_[i].status,
+                write_name(gate_patches_[i]), static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(stub)),
+                static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(tail)),
+                static_cast<unsigned long>(i == sites::GateStopA ? sites::kGateStopAResume : i == sites::GateStopB ? sites::kGateStopBResume : sites::kGateLaunchResume));
+        }
+    }
     SetLastError(error);
     return true;
 }
@@ -862,14 +1174,22 @@ void frame_boundary(std::uint64_t frame) {
             log("ship_avoid_census frame=%llu sector=0x%08lx objects=%lu overflow=%lu classes=%s buckets=%s", static_cast<unsigned long long>(frame),
                 static_cast<unsigned long>(c.sector), static_cast<unsigned long>(c.objects), static_cast<unsigned long>(c.overflow), classes, buckets);
             if (c.station)
-                log("ship_avoid_station frame=%llu sector=0x%08lx obj=0x%08lx root_r_m=%.1f scale=0x%08lx children=%lu model=%s "
-                    "parts=%ld,%ld,%ld:%ld:%08lx|%ld,%ld,%ld:%ld:%08lx|%ld,%ld,%ld:%ld:%08lx|%ld,%ld,%ld:%ld:%08lx",
+                log("ship_avoid_station frame=%llu sector=0x%08lx obj=0x%08lx root_r_m=%.1f node_scale_0x70=0x%08lx own_r_units=%lu children=%lu "
+                    "unfilled=%lu scaled=%lu extent_units=%lu model=%s parts_offset_units:radius_units:cache_units:own_units:scale:flags="
+                    "%ld,%ld,%ld:%ld:%ld:%ld:%08lx:%08lx|%ld,%ld,%ld:%ld:%ld:%ld:%08lx:%08lx|%ld,%ld,%ld:%ld:%ld:%ld:%08lx:%08lx|"
+                    "%ld,%ld,%ld:%ld:%ld:%ld:%08lx:%08lx",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(c.sector), static_cast<unsigned long>(c.station), double(root_r),
-                    static_cast<unsigned long>(c.station_scale), static_cast<unsigned long>(c.station_children), c.station_valid ? "parts" : "fallback",
-                    long(c.part_offset[0][0]), long(c.part_offset[0][1]), long(c.part_offset[0][2]), long(c.part_r[0]), static_cast<unsigned long>(c.part_flags[0]),
-                    long(c.part_offset[1][0]), long(c.part_offset[1][1]), long(c.part_offset[1][2]), long(c.part_r[1]), static_cast<unsigned long>(c.part_flags[1]),
-                    long(c.part_offset[2][0]), long(c.part_offset[2][1]), long(c.part_offset[2][2]), long(c.part_r[2]), static_cast<unsigned long>(c.part_flags[2]),
-                    long(c.part_offset[3][0]), long(c.part_offset[3][1]), long(c.part_offset[3][2]), long(c.part_r[3]), static_cast<unsigned long>(c.part_flags[3]));
+                    static_cast<unsigned long>(c.station_scale), static_cast<unsigned long>(c.station_own_r), static_cast<unsigned long>(c.station_children),
+                    static_cast<unsigned long>(c.station_dirty), static_cast<unsigned long>(c.station_scaled), static_cast<unsigned long>(c.station_extent),
+                    c.station_valid ? "parts" : "fallback",
+                    long(c.part_offset[0][0]), long(c.part_offset[0][1]), long(c.part_offset[0][2]), long(c.part_r[0]), long(c.part_cache[0]),
+                    long(c.part_own[0]), static_cast<unsigned long>(c.part_scale[0]), static_cast<unsigned long>(c.part_flags[0]),
+                    long(c.part_offset[1][0]), long(c.part_offset[1][1]), long(c.part_offset[1][2]), long(c.part_r[1]), long(c.part_cache[1]),
+                    long(c.part_own[1]), static_cast<unsigned long>(c.part_scale[1]), static_cast<unsigned long>(c.part_flags[1]),
+                    long(c.part_offset[2][0]), long(c.part_offset[2][1]), long(c.part_offset[2][2]), long(c.part_r[2]), long(c.part_cache[2]),
+                    long(c.part_own[2]), static_cast<unsigned long>(c.part_scale[2]), static_cast<unsigned long>(c.part_flags[2]),
+                    long(c.part_offset[3][0]), long(c.part_offset[3][1]), long(c.part_offset[3][2]), long(c.part_r[3]), long(c.part_cache[3]),
+                    long(c.part_own[3]), static_cast<unsigned long>(c.part_scale[3]), static_cast<unsigned long>(c.part_flags[3]));
         }
         if (now - last_detour_tick_ >= 1000) {
             last_detour_tick_ = now;
@@ -885,6 +1205,16 @@ void frame_boundary(std::uint64_t frame) {
                 static_cast<unsigned long>(e.obstacle), static_cast<unsigned long>(e.kind), long(std::int32_t(e.side)),
                 static_cast<unsigned long>(e.vertical), double(e.t_cpa), double(e.miss), double(e.C), double(e.L), double(e.P[0]), double(e.P[1]),
                 double(e.P[2]), double(e.x[0]), double(e.x[1]), double(e.x[2]));
+        }
+    }
+    if (debug_ && gates_on_) {
+        for (std::uint32_t w = gate_event_write_.load(std::memory_order_acquire); gate_event_read_ != w; ++gate_event_read_) {
+            const GateEvent& e = gate_events_[gate_event_read_ & 7];
+            log("ship_gate_approach frame=%llu obj=0x%08lx class=%s cross_v_ms=%.1f cross_heading_err_deg=%.1f cross_to_launch_ms=%lu "
+                "v0_ms=%.1f",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(e.obj),
+                e.code < core::kClassCount ? core::kClassNames[e.code] : "?", double(e.cross_v), double(e.cross_err_deg),
+                static_cast<unsigned long>(e.cross_to_launch_ms), double(e.v0_units) / double(core::kUnitsPerMetre));
         }
     }
     if (now - last_summary_tick_ < 1000) return;
@@ -910,6 +1240,11 @@ void frame_boundary(std::uint64_t frame) {
         return 0.0;
     };
     const double us_max = qpc_frequency_ ? double(max_ticks) * 1e6 / double(qpc_frequency_) : 0.0;
+    // the percentiles are bucket upper bounds (powers of two): never above the measured maximum
+    auto clamped = [&](double p) {
+        const double v = percentile(p);
+        return v > us_max ? us_max : v;
+    };
     const unsigned ships = table_.live(game_time_ms(), 1000);
     const double per_ship = ships ? double(d_calls) * 1000.0 / double(interval) / double(ships) : 0.0;
     char reasons[512];
@@ -930,7 +1265,7 @@ void frame_boundary(std::uint64_t frame) {
         if (k > 0 && n + k < int(sizeof orders)) n += k;
     }
     const std::uint32_t l0 = leaf_calls_[0].get(), l1 = leaf_calls_[1].get(), l2 = leaf_calls_[2].get();
-    char avoidance[400] = "";
+    char avoidance[640] = "";
     if (avoidance_on_) {
         const Counter* cs[13] = {&av_calls_, &av_conflicts_, &av_detours_, &av_unresolved_, &av_overflow_, &av_snapshots_, &av_walk_objects_,
                                  &av_emergency_, &e_calls_, &e_suppressed_, &part_built_, &part_fallback_, &part_invalid_};
@@ -943,25 +1278,60 @@ void frame_boundary(std::uint64_t frame) {
         unsigned snap_max = 0;
         for (unsigned i = 0; i < sites::kSnapshotSlots; ++i)
             if (snaps_[i].count > snap_max) snap_max = snaps_[i].count;
+        std::uint32_t why[unsigned(av::Unresolved::count)];
+        for (unsigned i = 0; i < unsigned(av::Unresolved::count); ++i) {
+            const std::uint32_t v = av_unresolved_why_[i].get();
+            why[i] = v - rep_av_why_[i];
+            rep_av_why_[i] = v;
+        }
+        const Counter* ep[4] = {&av_conflict_episodes_, &av_unresolved_episodes_, &part_dirty_, &part_scaled_};
+        std::uint32_t e[4];
+        for (unsigned i = 0; i < 4; ++i) {
+            const std::uint32_t v = ep[i]->get();
+            e[i] = v - rep_av_ep_[i];
+            rep_av_ep_[i] = v;
+        }
         std::snprintf(avoidance, sizeof avoidance,
-                      " avoid_calls=%lu conflicts=%lu detours=%lu unresolved=%lu snapshot_overflow=%lu snapshots=%lu walked=%lu "
-                      "emergency=%lu e_calls=%lu e_suppressed=%lu part_models=%lu part_fallback=%lu part_invalid=%lu snapshot_max=%u warn=%s",
-                      static_cast<unsigned long>(d[0]), static_cast<unsigned long>(d[1]), static_cast<unsigned long>(d[2]),
+                      " avoid_calls=%lu conflicts=%lu conflict_episodes=%lu detours=%lu unresolved=%lu unresolved_episodes=%lu "
+                      "unresolved_inside_stop=%lu unresolved_inside_turn=%lu unresolved_blocked=%lu unresolved_behind=%lu unresolved_degenerate=%lu "
+                      "snapshot_overflow=%lu snapshots=%lu walked=%lu emergency=%lu e_calls=%lu e_suppressed=%lu part_models=%lu "
+                      "part_fallback=%lu part_invalid=%lu part_unfilled=%lu part_scaled=%lu snapshot_max=%u warn=%s",
+                      static_cast<unsigned long>(d[0]), static_cast<unsigned long>(d[1]), static_cast<unsigned long>(e[0]),
+                      static_cast<unsigned long>(d[2]), static_cast<unsigned long>(d[3]), static_cast<unsigned long>(e[1]),
+                      static_cast<unsigned long>(why[1]), static_cast<unsigned long>(why[2]), static_cast<unsigned long>(why[3]),
+                      static_cast<unsigned long>(why[4]), static_cast<unsigned long>(why[5]), static_cast<unsigned long>(d[4]),
+                      static_cast<unsigned long>(d[5]), static_cast<unsigned long>(d[6]), static_cast<unsigned long>(d[7]),
+                      static_cast<unsigned long>(d[8]), static_cast<unsigned long>(d[9]), static_cast<unsigned long>(d[10]),
+                      static_cast<unsigned long>(d[11]), static_cast<unsigned long>(d[12]), static_cast<unsigned long>(e[2]),
+                      static_cast<unsigned long>(e[3]), snap_max, warn_state_);
+    }
+    char gates[400] = "";
+    if (gates_on_) {
+        const Counter* gc[9] = {&gate_lead_, &gate_cross_, &gate_p2_, &gate_stops_skipped_, &gate_p4_, &gate_v0_kept_, &gate_p5_,
+                                &gate_launch_continued_, &gate_speed_writes_};
+        std::uint32_t d[9];
+        for (unsigned i = 0; i < 9; ++i) {
+            const std::uint32_t v = gc[i]->get();
+            d[i] = v - rep_gate_[i];
+            rep_gate_[i] = v;
+        }
+        std::snprintf(gates, sizeof gates,
+                      " gates=%s gate_lead_calls=%lu gate_crossings=%lu gate_p2=%lu gate_stops_skipped=%lu gate_p4=%lu gate_v0_kept=%lu "
+                      "gate_p5=%lu gate_launch_continued=%lu gate_speed_writes=%lu",
+                      gates_state_, static_cast<unsigned long>(d[0]), static_cast<unsigned long>(d[1]), static_cast<unsigned long>(d[2]),
                       static_cast<unsigned long>(d[3]), static_cast<unsigned long>(d[4]), static_cast<unsigned long>(d[5]),
-                      static_cast<unsigned long>(d[6]), static_cast<unsigned long>(d[7]), static_cast<unsigned long>(d[8]),
-                      static_cast<unsigned long>(d[9]), static_cast<unsigned long>(d[10]), static_cast<unsigned long>(d[11]),
-                      static_cast<unsigned long>(d[12]), snap_max, warn_state_);
+                      static_cast<unsigned long>(d[6]), static_cast<unsigned long>(d[7]), static_cast<unsigned long>(d[8]));
     }
     log("ship_steering_summary frame=%llu interval_ms=%llu claims=%u calls=%lu handled=%lu ships=%u calls_per_ship_s=%.1f "
         "leaf_calls=%lu,%lu,%lu%s clamp_calls=%lu clamp_applied=%lu clamp_stale=%lu redirected=%lu timed=%lu "
-        "handler_us_p50=%.2f handler_us_p99=%.2f handler_us_max=%.2f handled_by_order_total=%s stuck_total=%lu%s",
+        "handler_us_p50=%.2f handler_us_p99=%.2f handler_us_max=%.2f handled_by_order_total=%s stuck_total=%lu%s%s",
         static_cast<unsigned long long>(frame), interval, unsigned(sites::Count), static_cast<unsigned long>(d_calls),
         static_cast<unsigned long>(handled - rep_handled_), ships, per_ship, static_cast<unsigned long>(l0 - rep_leaf_[0]),
         static_cast<unsigned long>(l1 - rep_leaf_[1]), static_cast<unsigned long>(l2 - rep_leaf_[2]), reasons,
         static_cast<unsigned long>(ccalls - rep_clamp_calls_), static_cast<unsigned long>(capplied - rep_clamp_applied_),
         static_cast<unsigned long>(cstale - rep_clamp_stale_), static_cast<unsigned long>(redirected - rep_redirected_),
-        static_cast<unsigned long>(total), percentile(0.5), percentile(0.99), us_max, orders,
-        static_cast<unsigned long>(stuck_count_.load(std::memory_order_relaxed)), avoidance);
+        static_cast<unsigned long>(total), clamped(0.5), clamped(0.99), us_max, orders,
+        static_cast<unsigned long>(stuck_count_.load(std::memory_order_relaxed)), avoidance, gates);
     rep_calls_ = calls;
     rep_handled_ = handled;
     rep_clamp_calls_ = ccalls;
@@ -977,11 +1347,16 @@ bool shutdown() {
     // restored in reverse order; a site whose restore fails again stays registered for the next attempt.
     bool any = warn_site_.patched_in;
     for (unsigned i = 0; i < sites::Count; ++i) any = any || patches_[i].patched_in;
+    for (unsigned i = 0; i < sites::GateCount; ++i) any = any || gate_patches_[i].patched_in;
     if (!any) return true;
     const DWORD error = GetLastError();
     installed_.store(false, std::memory_order_release); // the handlers pass through from here on
     warn_live_.store(false, std::memory_order_release);
+    gates_live_.store(false, std::memory_order_release);
+    x3m_ship_gates_live = 0; // the gate stubs pass through to their tails from here on
     bool restored = true;
+    for (unsigned i = sites::GateCount; i-- > 0;)
+        if (gate_patches_[i].patched_in && !engine_patch::restore(gate_patches_[i])) restored = false;
     if (warn_site_.patched_in && !engine_patch::restore(warn_site_)) restored = false;
     for (unsigned i = sites::Count; i-- > 0;)
         if (patches_[i].patched_in && !engine_patch::restore(patches_[i])) restored = false;

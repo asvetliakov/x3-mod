@@ -154,7 +154,7 @@ the bucket walk stops at 8192 objects.
 | Build | `cmake --build build 2>&1 \| grep -c warning` | **0** warnings (measured) |
 | x87 audit | `python3 verification/probe/check_no_x87.py build/d3d9.dll` | **PASS, 0 violations**, 939 reachable; new roots `_x3m_ship_avoid_e_stub`, `_x3m_ship_avoid_suppress` (measured) |
 | Site verifier | `python3 verification/probe/verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` ([output](../../verification/results/ship-steering/verify_ship_steering_sites_out.json)) | **RESULT PASS, 16 checks** (the step-1 fourteen plus `warn_test_site`: the function decodes gap-free to `0x0044e442`, 4 × `ret 0x10`, exactly the 3 callers, each `test eax,eax; je` after the call, the `&out` local initialised and unread; the header's `kWarnSite` equals the derived row; and `snapshot_walk_facts`: the double indirection at the three bucket-table readers, the 0-dword child sentinel at both child loops, the `+0x12c & 0x40` scale test and the parent's `+0x70` multiply) |
-| Host fixture | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering` ([output](../../verification/results/ship-steering/ship_steering_host.txt)) | **checks PASS, 2203/2203**: step 1's 1164 plus the step-2 unit checks (the snapshot and part walks over a synthetic sector: bucket table pointer, intrusive lists with the 0-dword sentinel, scaled and unscaled children, a dirty child, a sentinel-only list, a part outside the root sphere, a > 64-child station, the walk limit, no table; the cache by object/radius/stamp and its invalidation; the review's head-on case never suppressed inside D_stop) (the §3.3 formula reproduces the design's L numbers at the design's 0.5 s reaction and the implemented L at 1 s; closest approach on head-on, crossing and clear cases; part validation; E aging; the exclusion rules; overflow pass-through; a constant-side detour with the resolved set; the station fallback never suppressed) and 5 ships × 3 fps × 3 seeds × {flyby at 600 m, flyby at 150 m, crossing, formation + asteroid} |
+| Host fixture | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering` ([output](../../verification/results/ship-steering/ship_steering_host.txt)) | **checks PASS, 3365/3365** (2203 before the Run151 follow-up, 2341 before step 3, 3020 before its review): step 1's 1164 plus the step-2 unit checks (the snapshot and part walks over a synthetic sector: bucket table pointer, intrusive lists with the 0-dword sentinel, scaled and unscaled children, a dirty child, a sentinel-only list, a part outside the root sphere, a > 64-child station, the walk limit, no table; the cache by object/radius/stamp and its invalidation; the review's head-on case never suppressed inside D_stop) (the §3.3 formula reproduces the design's L numbers at the design's 0.5 s reaction and the implemented L at 1 s; closest approach on head-on, crossing and clear cases; part validation; E aging; the exclusion rules; overflow pass-through; a constant-side detour with the resolved set; the station fallback never suppressed) and 5 ships × 3 fps × 3 seeds × {flyby at 600 m, flyby at 150 m, crossing, formation + asteroid} |
 | Tests | the four modules | 37 OK (`test_ship_steering_is_an_opt_in` and `test_ship_steering_keys` extended for `ship_avoidance`; `test_close_probe_never_suppresses_inside_the_stopping_distance` runs the reviewer's probe `verification/results/ship-steering/close_probe.cpp`) |
 | Host suite | `/usr/bin/python3 verification/probe/run_host_suite.py` | 295 modules / 2913 tests / 36 failing modules, 53.3 s (rerun after the step-2 review fixes): the same 36 host-environment modules as the step-1 run and the pristine-HEAD baseline (37 there); no module fails that passed in the baseline; `test_ship_steering`, `test_ship_steering_sites`, `test_config_schema`, `test_launcher_defaults`, `test_logging_tiers` pass (measured) |
 | Launcher | `python3 verification/results/ship-steering/dry_run.py` ([output](../../verification/results/ship-steering/dry_run.txt)) | `--ship-steering --ship-avoidance` → `X3M_SHIP_AVOIDANCE=1` with `X3M_SHIP_STEERING=1`; `--ship-avoidance` alone and under `--vanilla` refused (exit 2); the default launch sends neither |
@@ -235,6 +235,175 @@ active sector per frame. Site E: 36-instruction stub + ≈ 50 executed instructi
 set scan) + the envelope ≈ 60–80 ns per warn-test call. The summary's `handler_us_*` fields measure the whole in
 flight.
 
+## Run151 flight (2026-10-12, native Windows, the user) and the follow-up (Fable 5.1)
+
+Flight (measured from `/mnt/c/X3/x3m.log` by `verification/results/ship-steering/run151-triage/rows.sh`, output
+`rows_out.txt`): 331.8 s, 57,245 frames, 1 device reset, 0 exceptions; `ship_steering installed=1 sites=4`, the four
+sites and site E `active`, 0 refused/late/mismatch; 268 summary rows; `calls` 774,850, `handled` 762,538
+(`pass_order_not_steered` 7,605, `pass_not_ship` 4,707, every other pass 0; `pass_no_autopilot` 0 settles the
+`0x80000` question: NPC ships carry it); handled by order 0x15 309,462 / 0x14 158,039 / 0x4 132,559 / 0x19 88,889 /
+0x5 68,227 / 0x12 5,362; `stuck` 0; `clamp_applied` 14,629; ships median 23 (10-31); `calls_per_ship_s` median 152.6
+(design 20-60); `handler_us_p50` median 0.8 (max 3.2), `handler_us_p99` median 6.4 (max 25.6), `handler_us_max`
+46.4, 109/268 rows with p99 > max; avoidance `conflicts` 59,253, `detours` 34,601, `unresolved` 5,764 (9.7 % of
+conflicts, gate <= 5 %), `emergency` 1,172, `e_calls` 1,278,443 vs `e_suppressed` 16,872, `snapshot_max` 152,
+`snapshot_overflow` 0, census `5:1 6:9 7:37 17:102 18:3`; `ship_avoid_station` `root_r_m=4609.8 scale=0x000000a5
+children=12 model=parts`, the first children `offset:radius:flags` = `0,0,0:-1:01001000`,
+`-292437,-1796844,1320:-1:08300000`, ...; decision rows per class TS 104, M1 67, M8 60, M6 20, M3 7, M2 6, TP 3, M4 1
+with `k=` TS 0.200, M8 0.100, M6 0.100, M1 0.050, M2 0.050, TP 0.175, M3 0.320, M4 0.200 (the fixture assumed
+0.5/0.3/0.1); the `e=` triple is `cmd.e[0..2]` = the yaw, pitch, roll remainders written to `obj+0x30/+0x34/+0x38`
+(ship_steering.cpp `S.e[i] = cmd.e[i]`). Four findings, each fixed below:
+
+1. **Per-frame calls.** The think gates pinned in step 1 (escort 0x00458252, follow 0x00458b2e, fly-before
+   0x004549e9: `js` to a timeout-only path) gate the order *step*, not the leaf: the handled orders 0x15/0x14/0x4/0x19/0x5
+   call the steering leaf every frame (152.6 calls per ship-second at about 173 fps with 23 ships), so the servo's fixed
+   50 ms rate surplus (`e = w^2/a + w*tick`) was about 8 frames too long. Fix: `core::servo_tick(gap, frame, run)`: the
+   servo horizon is the measured interval since the ship's previous call (`Ship.last_call_ms`, the frame dt from
+   `[root+0x714]`), clamped to [one frame, 50 ms], once the ship's cadence is established (8 consecutive gaps within
+   1.5 frames, `Ship.per_frame_run`); a gated order (random 0..50 ms gaps) keeps the 50 ms horizon, because its previous
+   gap does not predict the next one and a short horizon makes the engine's controller brake to a stop before the next
+   call (the fixture with the raw measured gap: 3-62 yaw reversals per 180 deg turn for the M5/M3 at 144 fps; with the
+   cadence rule 0). Fixture: the arrival scenario gets a per-frame-order variant (`every_frame`, the dock approach
+   and Run151's follow/escort cadence): arrived, one entry, floor-speed entry, no reversal, within 500 ms of the gated
+   run (45 cases, all pass).
+2. **Unresolved 9.7 %.** `unresolved` counts calls, not conflicts: a lingering conflict whose detour fails stays
+   unresolved every frame until it clears. The summary now carries `conflict_episodes` and `unresolved_episodes`
+   (an edge per ship, `ShipAvoid.in_conflict`; the 5 % gate applies to episodes) and the per-call reasons
+   `unresolved_inside_stop` (the body inside v^2/2a: the emergency ramp applies), `unresolved_inside_turn` (inside
+   sqrt(C(C+2R)): no tangent), `unresolved_blocked` (every detour point inside another part or across another
+   candidate), `unresolved_behind` (every point behind the ship or past the order's point), `unresolved_degenerate`
+   (no detour axis). At 173 fps with per-frame calls the fixture's crossing and flyby would count `behind` or
+   `blocked` per call while the ship draws level with the body (the detour point abeam fails the 120 deg test), which
+   is the second fix: the detour point stays at least `kAheadS` = 1 s of flight ahead along the heading (the lateral
+   offset unchanged). With the measured `k` (M6 0.10, TS 0.20, M2 0.05 instead of 0.30/0.30/0.10) the abeam point also
+   made slow-ramping ships overshoot: the M6 flyby at 150 m cut to 218 m (C 296.6) after a 34 deg pitch-down command
+   at the next part's CPA 22 m ahead; with the point ahead the clearances are M6 369 m, TS 319 m, M5 301 m, M3 308 m,
+   M2 1505 m (seed 1, 60 fps) and `unresolved` ticks <= 5 everywhere. The fixture's reversal metric now ignores rates
+   under 0.1 deg/s (18 units): at k 0.05 the integer controller's brake quantum (acc x dt = 4 units per 30 fps frame)
+   leaves a -1/+3 ringing after a cleared remainder, which the vanilla leaf never shows only because it writes a
+   non-zero remainder down to 0.7 units.
+3. **Station row.** `scale` is the station node's `+0x70` (0xa5), printed regardless of the flag; the sampled children
+   carry flags `0x01001000` / `0x08300000` (bit 0x40 clear, so no offset scaling applied) and radius `-1`, which the
+   old walk treated as "not a body": Run151's `model=parts` was the hull part only (own radius `+0xa0`), so the part
+   model under-approximated every station. Listing (settles it; camera-and-lights.md already names the getter):
+   `0x004880e0` (node init / set-scale: `+0x70` = the scale argument, `+0x80/+0x84/+0x88` = 0x10000 axis scales,
+   `+0xa0` = `+0x70`, `+0xa4` = -1, children rescaled proportionally), `0x00488270` (per-axis scale: `+0xa0` =
+   `+0x70` x max axis >> 16, `+0xa4` = -1, recursion into flagged children), `0x00488170` (the subtree radius getter,
+   thiscall ECX = node: returns `+0xa4` when >= 0, else the max over the children of |offset x (flag 0x40 ? parent
+   `+0x70` : 1)| + child radius seeded by `+0xa0`, stores `+0xa4`; callers 0x004140d9, 0x0041415f, 0x004141a5,
+   0x00441c38, 0x00448aef, 0x004491b8). So `+0xa4 = -1` means "never queried", not "being computed", and a station the
+   engine has not queried never gets a part radius from the raw field. Resolution (orchestrator decision, same day):
+   the walk replicates the getter read-only (`subtree_radius`: a filled cache as is, else the per-axis max over the
+   children of |offset x (flag 0x40 ? parent `+0x70` : 1)| + radius(child) seeded by `+0xa0`, depth 3 and 64 nodes per
+   station, never calling 0x00488170 and never writing `+0xa4`); a station beyond that depth or budget uses the
+   fallback body and is retried (`part_invalid`); the per-axis radius lets a part sit up to sqrt(3) x the root radius
+   out in the Euclidean metric, so `build_parts` admits that slack (`kRootSlack`) and the parts must still reach 0.9 x
+   the root radius. The row prints `node_scale_0x70`, `own_r_units`, `unfilled`, `scaled`, `extent_units` and per child
+   `offset:radius:cache:own:scale:flags` (`+0x30`, the radius used, `+0xa4` as read, `+0xa0`, `+0x70`, `+0x12c`); the
+   summary's `part_unfilled` counts stations with a replicated child radius. Fixture: unfilled caches at two depths
+   (child own 50 m, grandchild at 150 m with 100 m: the child's replicated radius 250 m); a flagged child under the
+   non-unit scale 0xa5 sits where the engine's rule puts it (the centre) and the model is kept; a chain of unfilled
+   caches five deep falls back; a collapsed model falls back; the sentinel-only station keeps its hull.
+4. **p99 > max.** The percentile interpolation over the bucketed histogram exceeded the exact max in 109/268 rows:
+   `handler_us_p50/p99` are now clamped to `handler_us_max`.
+
+Also: the fixture's per-class `k` is the measured set (M3 0.32, M6 0.10, TS 0.20, M2 0.05; the M5 keeps 0.5, not
+sampled). Acceptance rerun (measured): build 0 warnings; x87 PASS 939 reachable / 0 violations (one `fistpll` from the
+census's float-to-uint32 extent cast appeared and was routed through int32); fixture **checks PASS 2341/2341**; the
+four test modules 37 OK; site verifier PASS 16 (unchanged); dry run `X3M_SHIP_STEERING=1`, `X3M_SHIP_AVOIDANCE=1`;
+host suite 295 modules / 2913 tests / 36 failing modules, all in the pristine baseline's set (the baseline's 37th,
+`test_proxy_identity`, passes now). Not flown: Run151's successor decides the per-frame servo horizon, the episode
+gate and the station fallback in flight.
+
+(The interim fallback, before the replication above, was the 0.35 x sphere body of section 3.5: 1613 m for the
+sampled station, not its 4.6 km root sphere as the first report said.)
+
+## Step 3: the gate approach (2026-10-12, Fable 5.1; design amendment 7)
+
+Feature: `ship_steering_gates` (bool, default on, effective only with `ship_steering`; `--no-ship-steering-gates` /
+`X3M_SHIP_STEERING_GATES=0` turns it off; the launcher sends the value explicitly with `--ship-steering`). Scope: the
+ships that are not capital per the engine predicate 0x0043fd50 (class word 7, record `+0x14` in `kCapitalMask`
+0x211d: TL, M0, M1, M2, TL_P, M7); capitals keep every vanilla step. Built from ship-navigation-ai.md section 10.7
+P1 + P2 + P4 + P5 with the section 10.8 site facts (ship_steering_sites.h (h)-(k)).
+
+1. **Sites pinned and the stub contracts (measured by the verifier, 18 checks PASS).**
+
+   | Site | Window | Facts verified | Stub (live) |
+   | --- | --- | --- | --- |
+   | P2 `0x00454b91` (`ship_gate_stop_a`) | `89 43 14` `89 43 10` (6 B, two whole `mov`s), then `call 0x00460560; jmp 0x004593dd` | `mov ecx,[ebx+0x50]; xor eax,eax; mov [ecx+0x258],ax; push 1; mov esi,ebx` precede: EAX = 0, EBX = ESI = obj, ECX = flight, flags dead; no branch into the interior (the raw sweep's 0x00454c08 hit is the 0x70 displacement byte of `mov ecx,[ebx+0x70]`, reported and excluded by instruction-start classification); no data dword into the window | `cmp byte [live],0; je tail`; SAVE (EAX/ECX/EDX, XMM0-7, `cld`); `push ebx; call x3m_ship_gate_stop_a; add esp,4`; RESTORE; `jmp [resume = 0x00454b97]`. The handler writes `[obj+0x14] = 0` and `[obj+0x10] = 0` unless the ship is non-capital with a class-0x12 target. ESP exact, EAX/ECX/EDX/ESI preserved |
+   | P4 `0x00454700` (`ship_gate_stop_b`) | the same 6 B, then `mov [ecx+0x250],-1` | `mov ecx,[ebx+0x50]; xor eax,eax` precede: EAX = 0 (reused at 0x00454717), EBX = obj, ECX = flight; the join 0x00454710 (from 0x00459191, the only incoming branch) lies after the resume | as P2 with `x3m_ship_gate_stop_b`: `[obj+0x14] = 0`; `[obj+0x10]` kept and recorded (`v0`, stamped) for a non-capital ship at a gate, else zeroed; `jmp 0x00454706` |
+   | P5 `0x0045526f` (`ship_gate_launch`) | `b8 e8 67 19 00` (5 B), then `mov edx,[esp+0x10]; mov ecx,0xf4240; imul edx; idiv ecx` (skipped) and the resume `mov edx,[ebx+0x50]` at 0x00455281 | `or [ebx+0x40],0x400; lea eax,[ecx+0x384]; mov ecx,eax; imul ecx,eax; mov [esp+0x10],ecx` precede: EAX = t ms, ECX = `[esp+0x10]` = t^2 (both rewritten after the window), EBX = obj; EDX overwritten at the resume | SAVE; `push [esp+0x88]` (t), `push ebx`; `call x3m_ship_gate_launch; add esp,8`; the result stored over the saved EAX; RESTORE; `jmp 0x00455281`. EAX = `v0 t / 1000 + t^2 x 1665000 / 1000000` (int64, v0 = the speed kept at the pass point within the last 5 s, else 0 = the engine's own value) |
+
+   All three are claimed as a group after the steering sites and site E (every span preflighted, claims in table
+   order, every claimed gate site restored in reverse on the first failure); a refusal logs
+   `ship_steering_gates_refused reason=…` and leaves the gate policy off with steering and avoidance untouched; a
+   failed rollback leaves the stubs chained but passing through (the live byte stays 0). Shutdown restores the group
+   first. The handlers run on the light envelope (MXCSR + LastError), no log, no allocation, no lock; the capital
+   test replicates 0x0043fd50 from the record (the verifier derives 0x211d from its byte table). P1 lives in the
+   decision: for order 4 with a class-0x12 target the gate frame (`[gate+0x70]+0x30` position, `+0x50/+0x60` rows 1
+   and 2), `[gate+0xa4]` and the engine's own point A (f+0x240, read through the leaf's EDX) are validated against
+   `A = G + R(0, -0.8, -1) r` within 2 % of r (else the vanilla point); the lead-in direction is
+   `h = sin 23.6 deg row1 + cos 23.6 deg row2`, the crossing point `X = A - 0.75 r h`, the carrot
+   `X + h (s + max(0.75 s x v, 0.3 r))` with s the ship's projection from X (the ship aims at A itself more than 3 r
+   before X); the point goes through the ring-buffer redirect, f+0x240 untouched; no arrival ramp; the speed at site B
+   is `gate_speed` = vmax (100 m/s for large hulls, the engine's own order-4 cap 0x004550ed), lowered by the
+   cornering term, written in both directions (`Ship.flags` bit 2, `v_ref` carries it).
+2. **Fixture numbers** (`verification/results/ship-steering/ship_steering_host.txt`, **checks PASS 3020/3020**; the
+   gate scenario: M5/M3/M6/TS x 3 fps x 3 seeds x theta in {-45, 0, +45} deg, from 3 km at 30 deg off the axis, the
+   vanilla run beside each; the M2 as the capital case). Seed 1, 60 fps:
+
+   | Class | Crossing speed (vanilla) | Heading error to B at the crossing (vanilla) | Order-5 creep ticks (vanilla) | Min speed crossing to B | v0 kept (vanilla) | Crossing to warp (vanilla) |
+   | --- | --- | --- | --- | --- | --- | --- |
+   | M5 | 532.0 m/s (209.6) | 4.2-8.4 deg (19.1-22.5) | 0 (9-19) | 409 m/s | 409 (0) | 3.3-4.7 s (8.0-9.9) |
+   | M3 | 247.5 (50.0) | 4.0-6.1 (19.1-22.5) | 0 (14-29) | 124 | 124 (0) | 8.7-11.9 (11.7-15.1) |
+   | M6 | 100.0 (37.1) | 3.9-6.4 (19.1-22.5) | 0 (40-84) | 90 | 90 (0) | 12.3-16.7 (16.4-21.2) |
+   | TS | 100.0 (42.2) | 4.2-5.7 (19.1-22.5) | 0 (35-75) | 62 | 62 (0) | 17.1-23.5 (19.3-26.0) |
+
+   Every case: crossing speed >= 0.5 vmax, heading error <= 18.2 deg, 0 creep ticks, min speed between the crossing
+   and the pass point >= 0.25 vmax, v0 > 0 with the first launch frame at >= v0; the M2 stops at A, uses no lead-in
+   and launches from rest (27 cases). The engine model: order 4 with the leaf every frame and the arrival test /
+   speed law at the think tick, one frame of order 0 per hand-over, order 5 every frame with the 0.95 alignment
+   test and the r/5 -> r ramp, the arrival at |v|/10 + r_ship, order 8 for 900 ms along the axis.
+3. **Verifier / x87 / tests (measured).** `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, 18 checks
+   (the three gate windows in `sites`, `gate_sites` with 16 byte facts and the three resumes as instruction starts,
+   `capital_predicate_mask` 0x211d, `header_specs` over `kGateSites`); `check_no_x87.py build/d3d9.dll`: PASS 946
+   reachable / 0 (roots: the three gate stubs and handlers; the float-returning core helpers are `always_inline`,
+   an out-of-line float return travels through st(0)); build 0 warnings; the four test modules 37 OK (config schema
+   and launcher cases for the key and the flags); host suite: see the acceptance line below.
+4. **Deviations.** (a) P1's "vanilla speed passed through" is not implemented as written: the engine's order-4 law
+   to a gate ramps the desired speed to 5000 units/s at A (0x00455052; the fixture's vanilla crossing speeds above,
+   37-210 m/s), so the acceptance gate "crossing speed >= 0.5 vmax" is unreachable with it; the module writes its
+   own approach speed at site B in both directions for this one case (the only raise site B performs; everything
+   else stays lowering-only). (b) The heading error is measured to the actual pass point of the run (theta drawn per
+   run), not to the 23.6 deg line. (c) Site P3 and the order-0x1f tolerance (optional in the study) are not
+   claimed. (d) The `ship_gate_approach` row is written at the launch (when the crossing-to-warp time exists), at
+   most 8 per frame boundary; a ship that never launches leaves no row.
+
+5. **Review fixes (2026-10-12, two reviews; measured, fixture 3365/3365).** (1) `gate_lead_in` applies only in the
+   window -3 r <= s <= 0 along h (in front of the crossing plane); beside / behind / above / laterally off at A's
+   depth give s > 0 and aim at A; the carrot never passes A; the far end is blended between 3 r and 2 r (the aim
+   direction's largest per-frame jump in the far-start case: 0.1-1.0 deg). Fixture starts added (each with the
+   vanilla run beside it, arrival at A within 1.3 x the vanilla time, no path through the ring [0.55 r, r] during
+   the approach): beside 3 r, behind 2 r, above 3 r, laterally off 3 r at A's depth; the far start (6 km, 20 deg,
+   through the 3 r switch) in a rotated gate frame (axis +x, up +z): crossing 5.5-5.6 deg, no creep, t_A M5 10.8 s
+   (vanilla 37.0), M3 23.3 (31.3), M6 56.2 (61.0), TS 57.6 (56.0, the 100 m/s cap); the lateral approach 3 r off the
+   line at the join depth: crossing 5.5-5.6 deg (vanilla 23.1), creep 0 (vanilla 23-105), t_A M5 9.9 s (vanilla 32.5),
+   M3 21.4 (28.5), M6 51.4 (54.1), TS 52.8 (49.1); a mismatched A (5 % of r off) refuses the lead-in. The reviewers'
+   probes are kept as regression witnesses: `verification/results/ship-steering/gate_starts.cpp` and `lead.cpp`.
+   (2) `clamp_for`: the gate branch now feeds the same emergency check as the schedule (unit check: gate speed 532 →
+   25 m/s under an emergency), and the decision leaves `v_ref` alone under an emergency. (3) P2 keeps the speed only
+   with a gate state from the decision (`core::gate_stop_keeps_speed`), as P4; the predicate is the shared
+   `core::gate_target_noncapital` over the memory reader (unit-checked on a synthetic ship / flight / gate / record:
+   M5 kept, M2 refused, a non-gate target refused, no table refused). (4) The push-ahead re-checks the segment to
+   the moved point against the body it was built for (`clears_body`) and keeps the un-pushed point otherwise.
+   (5) The envelope is stated in amendment 7 and above; the fixture covers the lateral approach (in front: joined;
+   at A's depth: vanilla-like). (6) The fixture starts before the 3 r switch (far start), uses a rotated frame,
+   rejects a mismatched A, and drives P2/P4/P5 through the shared rule and `gate_launch_units`. Notes: a negative t
+   at P5 is clamped to 0 (the engine squares it; t is never negative at the site: `lea eax,[ecx+0x384]` with
+   ecx >= -900); a negative `+0xa0` seed is clamped to 0 in the replicated getter (the engine's `esi` would carry
+   it); the unused site constants were deleted; an empty `X3M_SHIP_STEERING_GATES` means on; `servo_tick`'s
+   1.5-frame tolerance can latch a 33 ms horizon for gated orders at <= 45 fps (0 reversals at 30 fps in the
+   fixture); the engine's 1 m/s alignment rule on order 4 is intentionally replaced by the cornering term on gate
+   approaches; AI ships' bit 2 for CanWarp and KC class 2027's identity remain inferred.
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),
@@ -260,3 +429,13 @@ flight.
    confirm the node layout statically assumed; `ship_avoid_detour` samples with `kind=` and `C_m` plausible; the
    user's report: no ship scraping a station, traffic crossing without the stop-and-avoid churn, formations crossing
    obstacles and re-forming, docking and gate transit as before.
+5. **Run C, gates (after Run B, or with it).** `ship_steering_gates` on (the default): `ship_steering_gates
+   installed=1 status=active` and three `ship_steering_gate_site … status=active` rows (a `ship_steering_gates_refused`
+   row = the policy is off, steering stays: report it); the summary's `gate_crossings` > 0 with
+   `gate_stops_skipped` ≈ `gate_p2` for non-capital gate arrivals, `gate_v0_kept` ≈ `gate_p4`, `gate_launch_continued`
+   ≈ `gate_p5` / 54 (one launch = 54 frames at 60 fps), `gate_speed_writes` > 0; `--debug` `ship_gate_approach` rows
+   with `cross_v_ms` ≥ 0.5 vmax of the class, `cross_heading_err_deg` ≤ 18.2 and `cross_to_launch_ms` below the
+   vanilla model's (section 10.6: M5 8 s, TS 20 s); the user's report: small ships flow through gates without the
+   stop-turn-stop at the approach point, capitals as before. A ship stuck at a gate or a collision with the gate
+   ring (the lead-in crosses 0.75 r above the axis, inside the ring's hole only if the model's hole is at least
+   0.55 r wide: open in section 10.8) ends the run.

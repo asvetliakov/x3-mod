@@ -82,8 +82,47 @@
 //     (0x004881a9 `test byte [ebp+0x12c],0x40`, 0x004881c4..0x004881e3 `imul; add 0x8000; adc; shrd 16`), else used
 //     as is; the child's cached subtree radius is `+0xa4`. The part model (ship_avoidance_walk_core.h) applies the
 //     scale under that flag and keeps the model only when every part sphere lies inside the root sphere.
+//     Run151 follow-up (listing): `+0xa4` is a lazy cache. `0x004880e0` (init / set-scale) writes `+0x70` = the scale
+//     argument, `+0x80/+0x84/+0x88` = 0x10000, `+0xa0` = `+0x70`, `+0xa4` = -1; `0x00488270` (per-axis scale) writes
+//     `+0xa0` = `+0x70` x max axis >> 16 and `+0xa4` = -1 (recursing into flagged children); `0x00488170` (thiscall,
+//     ECX = node) returns `+0xa4` when >= 0, else the max over the children of |offset x (flag ? parent +0x70 : 1)| +
+//     child radius seeded by `+0xa0`, and stores it. Resolution (decision 2026-10-12): the walk replicates that
+//     getter read-only (ship_avoidance_walk_core.h subtree_radius: a filled cache is used as is, an unfilled one is
+//     recomputed from `+0xa0`, the children's `+0x30` offsets scaled by the parent's `+0x70` under flag 0x40, the
+//     per-axis max; depth 3, 64 nodes per station), never calls 0x00488170 and never writes `+0xa4`; a station the
+//     replication cannot settle uses the fallback body and is retried. The engine's radius is per axis, so the
+//     part validation admits sqrt(3) x the root radius in the Euclidean metric (core::kRootSlack).
+//
+// Step 3 (gate approach, amendment 7), pinned by listing 2026-10-12 (ship-navigation-ai.md section 10.8; every byte
+// re-derived by verify_ship_steering_sites.py):
+// (h) P2 `0x00454b91`: the order-4 gate arrival writes `mov [ebx+0x14],eax` | `mov [ebx+0x10],eax` (6 B, two whole
+//     instructions), then `call 0x00460560` (the wake). EAX = 0 (`xor eax,eax` at 0x00454b84), EBX = ESI = obj
+//     (`mov esi,ebx` at 0x00454b8f), ECX = flight (`mov ecx,[ebx+0x50]` at 0x00454b81); `push 1` already on the
+//     stack; flags dead. The stub (live) calls the handler, which writes `[obj+0x14] = 0` and `[obj+0x10] = 0` unless
+//     the ship is not capital (record +0x14 code outside kCapitalMask, the predicate 0x0043fd50) and `[flight+0x224]`
+//     is class 0x12; then `jmp 0x00454b97` with EAX/ECX/EDX/ESI preserved and ESP exact. Not live: the claim tail.
+// (i) P4 `0x00454700`: the order-5 arrival writes the same 6 bytes; EAX = 0 (used at 0x00454717 for the order word),
+//     EBX = obj, ECX = flight; flags dead; the join 0x00454710 (from 0x00459191) lies after the window. The handler
+//     writes `[obj+0x14] = 0`, keeps `[obj+0x10]` and records it for P5 when the target is a gate and the ship is not
+//     capital, else writes both; `jmp 0x00454706`.
+// (j) P5 `0x0045526f`: the order-8 launch law `mov eax,0x1967e8` (5 B); EAX = t ms (`lea eax,[ecx+0x384]` at
+//     0x00455260), ECX = t^2 and `[esp+0x10]` = t^2 (both rewritten after the window: 0x00455291, 0x00455284),
+//     EBX = obj (`or [ebx+0x40],0x400` at 0x00455259); EDX is overwritten at 0x00455281. The stub returns with
+//     EAX = v0 t / 1000 + t^2 x 1665000 / 1000000 (units) and `jmp 0x00455281`, skipping the engine's
+//     `imul edx; idiv ecx`.
+// (k) The capital predicate 0x0043fd50: class word 7, record +0x14 <= 0xd, byte table at 0x0043fd8c
+//     {0,1,0,0,0,1,1,1,0,1,1,1,1,0} indexing {true, false} -> mask 0x211d (core::kCapitalMask).
 namespace x3m::ship_steering::sites {
 enum Index : unsigned { LeafYawPitch = 0, LeafRollYaw = 1, LeafRollPitch = 2, LoopContinue = 3, Count = 4 };
+// Step 3: the three gate sites, claimed as a group after the steering sites (all or nothing; the gate policy is off
+// when any of them refuses, steering stays on).
+enum GateIndex : unsigned { GateStopA = 0, GateStopB = 1, GateLaunch = 2, GateCount = 3 };
+constexpr engine_patch::SiteSpec kGateSites[GateCount] = {
+    {"ship_gate_stop_a", 0x00454b91, {0x89, 0x43, 0x14, 0x89, 0x43, 0x10}, 6, 0, 0},
+    {"ship_gate_stop_b", 0x00454700, {0x89, 0x43, 0x14, 0x89, 0x43, 0x10}, 6, 0, 0},
+    {"ship_gate_launch", 0x0045526f, {0xb8, 0xe8, 0x67, 0x19, 0x00}, 5, 0, 0},
+};
+constexpr std::uintptr_t kGateStopAResume = 0x00454b97, kGateStopBResume = 0x00454706, kGateLaunchResume = 0x00455281;
 // Site E, claimed separately (avoidance runs without it when its bytes mismatch).
 constexpr engine_patch::SiteSpec kWarnSite = {"ship_avoid_warn_test", 0x0044dd90, {0x55, 0x8b, 0xec, 0x83, 0xe4, 0xf0}, 6, 0x10, 0};
 constexpr std::uintptr_t kWarnTestEnd = 0x0044e445; // after the last `ret 0x10` at 0x0044e442

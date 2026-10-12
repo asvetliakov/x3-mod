@@ -45,6 +45,46 @@ the call. The sector snapshot reads the bucket table through `[sector+0x50]` (a 
 six obstacle buckets, and the station part walk ends on the 0-dword sentinel and applies the parent's `+0x70` scale
 under `[child+0x12c] & 0x40` (open fact (g) settled by listing).
 
+**Amendment 6 (2026-10-12, Run151 follow-up; the numbers in the ledger's Run151 section):** the servo horizon is
+the measured interval since the ship's previous call, clamped to [one frame, 50 ms], once the ship's cadence is
+established (8 consecutive gaps within 1.5 frames); a gated order keeps the 50 ms worst case. The handled orders call
+the leaf every frame (the think gates gate the order step, not the leaf). The detour point sits at least 1 s of
+flight ahead along the heading, the lateral offset unchanged, so a point abeam never asks for a near-right-angle aim.
+`unresolved` is reported per call and per episode with a reason; the 5 % gate applies to episodes. A station child
+whose subtree radius `+0xa4` is -1 (never queried by the engine's getter `0x00488170`) holds the station on the
+fallback body until it is computed; a flagged child under a non-unit node scale falls back; the parts must reach
+0.9 x the root radius. (Superseded the same day for the station part model: the walk replicates the engine's
+subtree-radius getter 0x00488170 read-only, depth 3 and 64 nodes per station, a filled cache used as is; the flagged
+child under a non-unit scale follows the engine's rule; the validation admits sqrt(3) x the root radius, the per-axis
+metric of that getter.)
+
+**Amendment 7 (2026-10-12, step 3: the gate approach; ship-navigation-ai.md section 10.7 P1 + P2 + P4 + P5, the
+site facts of section 10.8; the ledger's Step 3 section has the fixture numbers):** behind the sub-key
+`ship_steering_gates` (bool, default on, effective only with `ship_steering`; `--no-ship-steering-gates`), for
+ships that are not capital per 0x0043fd50 (`kCapitalMask` 0x211d; capitals keep every vanilla step, their next
+order 0x1f expects a stationary ship). P1 (no new site): order 4 with a class-0x12 target keeps the engine's point
+A = G + R(0, -0.8, -1) r in f+0x240 (validated within 2 % of r, else the vanilla point) and is steered through the
+ring-buffer redirect at the carrot on the lead-in line through A with direction h = sin 23.6 deg row1 + cos 23.6
+deg row2 (0.75 s of flight, at least 0.3 r, ahead of the ship's projection, never beyond A). The lead-in applies
+only in the window in front of the crossing plane, -3 r <= s <= 0 along h from the crossing point X = A - 0.75 r h:
+a ship beside, above or behind the gate or already past the crossing (s > 0), or farther than 3 r before it, aims
+at A as the engine does (the review's failure: a carrot beyond such a ship's own projection drove it away from A;
+the disc lies at s >= 1.6 r, so no path from the window to a point at or before A crosses it); between 3 r and 2 r
+before the crossing the carrot slides from A to the near carrot, so the switch is continuous. Envelope (fixture):
+an approach that enters the window with its lateral offset up to 3 r crosses within 10 deg of the line (the
+pursuit turns toward the line first); a ship that reaches the arrival sphere from s > 0 crosses as vanilla does
+(the 1 m/s turn of order 5 follows). No arrival ramp; the
+speed at site B is vmax (100 m/s for large hulls, the engine's order-4 cap) lowered by the cornering term and
+written in both directions, replacing the engine's ramp to 5000 units/s at A (the one case where site B raises);
+an avoidance emergency ramp still wins over it.
+P2: the new 6-byte site 0x00454b91 skips `[obj+0x10] = 0` at the order-4 arrival for such a ship (`[obj+0x14] = 0`
+kept). P4: the 6-byte site 0x00454700 keeps `[obj+0x10]` at the order-5 arrival and records it. P5: the 5-byte
+site 0x0045526f launches order 8 with s = v0 t / 1000 + 1.665 t^2 (v0 kept within 5 s, else the engine's law).
+The three sites are one group: all or none, claimed after site E, rolled back in reverse on the first failure,
+restored first at shutdown; a refusal reports `ship_steering_gates_refused` and leaves steering and avoidance on.
+Rows: `ship_steering_gates installed=`, `ship_steering_gate_site`, the `gate_*` summary fields, `ship_gate_approach`
+(`--debug`: crossing speed, heading error to the pass point, crossing-to-warp time, v0).
+
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
 shared handler that, for class-7 ships under the autopilot flag and a point-steering order, computes a

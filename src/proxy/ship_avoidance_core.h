@@ -36,6 +36,11 @@ constexpr float kDetourFactor = 1.3f, kDetourFactorMoving = 1.75f; // sideways o
                                                                     // leaves a 1 % shortfall after the servo lag on capitals; moving obstacles
                                                                     // react too, with their own lag: a wider margin)
 constexpr float kClearanceMinM = 25.0f, kFallbackSphereFactor = 0.35f, kFallbackFloorM = 500.0f;
+constexpr float kRootSlack = 1.7321f; // sqrt(3): the engine's subtree radius is per axis (|offset|_inf + r, 0x00488170), so a
+                                      // part may sit up to sqrt(3) x the root radius out in the Euclidean metric
+constexpr float kAheadS = 1.0f;        // the detour point sits at least this flight time ahead along the heading: a point
+                                       // abeam (the part just passed, the next part's CPA a few metres ahead) would ask
+                                       // for a near-right-angle aim that a slow-ramping ship (k 0.05..0.2) overshoots
 constexpr float kCommitFactor = 2.0f;  // a detour in progress (direction remembered, obstacle ahead) keeps its conflict until the
                                        // predicted miss exceeds 2 C (beyond both detour offsets): no chatter between the detour point
                                        // and the order's point before the detour is complete
@@ -99,6 +104,17 @@ struct ShipAvoid {
     float L = 0;           // the last lookahead, m
     float v_emergency = 0; // m/s, 0 = none (the braking ramp when no detour exists)
     bool unresolved = false;
+    bool in_conflict = false; // a conflict was seen on the last call (episode counting: an edge is one episode)
+};
+// Why a call with a conflict ended without a detour (the summary counts each; per call and per episode).
+enum class Unresolved : std::uint8_t {
+    none = 0,
+    inside_stop,     // the earliest body inside the stopping distance v^2/2a (the emergency ramp applies)
+    inside_turn,     // the earliest body inside the turn-in distance sqrt(C(C + 2R)): no tangent exists
+    blocked,         // every detour point tried sits inside another part or crosses another candidate's body
+    behind,          // every detour point tried lies behind the ship or past the order's point
+    degenerate,      // no detour axis (the heading, the body direction and up are parallel)
+    count
 };
 struct Candidate {
     unsigned index;        // snapshot item
@@ -120,6 +136,7 @@ struct Result {
     std::int8_t side = 0;
     float dir[3] = {0, 0, 0}; // the detour direction (world, unit)
     bool vertical = false, emergency = false;
+    std::uint8_t reason = 0;  // Unresolved
     float v_emergency = 0;
 };
 
@@ -207,8 +224,8 @@ inline bool segment_hits(const float x[3], const float P[3], const float c[3], f
     return sc::dot3(q, q) < C * C;
 }
 // The station part model from the walk results the DLL (or the fixture) provides: validated per section 3.5
-// (finite, every part sphere inside the bounding sphere: |c - pos| + r <= root_r, at most kMaxParts). Returns false
-// when the layout does not validate.
+// (finite, every part sphere inside the bounding sphere up to the per-axis slack: |c - pos| + r <= kRootSlack x root_r,
+// at most kMaxParts). Returns false when the layout does not validate.
 inline bool build_parts(PartSet& set, std::uint32_t station, float root_r, const float pos[3], const float centres[][3], const float radii[],
                         unsigned n) noexcept {
     set.station = 0;
@@ -216,9 +233,9 @@ inline bool build_parts(PartSet& set, std::uint32_t station, float root_r, const
     if (n == 0 || n > kMaxParts || !(root_r > 0.0f)) return false;
     for (unsigned i = 0; i < n; ++i) {
         if (!sc::finite_f(centres[i][0]) || !sc::finite_f(centres[i][1]) || !sc::finite_f(centres[i][2]) || !sc::finite_f(radii[i])) return false;
-        if (!(radii[i] > 0.0f) || radii[i] > root_r) return false;
+        if (!(radii[i] > 0.0f) || radii[i] > kRootSlack * root_r) return false;
         const float dc[3] = {centres[i][0] - pos[0], centres[i][1] - pos[1], centres[i][2] - pos[2]};
-        if (sc::sqrt_ss(sc::dot3(dc, dc)) + radii[i] > root_r + 0.5f) return false;
+        if (sc::sqrt_ss(sc::dot3(dc, dc)) + radii[i] > kRootSlack * root_r + 0.5f) return false;
         set.c[i][0] = centres[i][0];
         set.c[i][1] = centres[i][1];
         set.c[i][2] = centres[i][2];
@@ -496,6 +513,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         }
     }
     if (n_tries > 4) n_tries = 4;
+    Unresolved why = Unresolved::degenerate;
     for (unsigned attempt = 0; attempt < n_tries; ++attempt) {
         ++res.tries;
         float axis[3];
@@ -510,10 +528,27 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         float toP[3], toPp[3];
         sub3(P, s.x, toP);
         sub3(Pp, s.x, toPp);
+        {
+            // keep the point at least kAheadS of flight ahead along the heading (the lateral offset unchanged): the aim
+            // angle stays bounded as the ship draws level with the body, so the pursuit converges instead of overshooting.
+            // The moved point must still be reached without crossing the body it was built for (every part of it);
+            // otherwise the un-pushed point stands (the review's case: the push into a body behind the CPA)
+            const float along = sc::dot3(toPp, s.f), ahead = kAheadS * s.v;
+            if (along < ahead) {
+                float moved[3];
+                for (int i = 0; i < 3; ++i) moved[i] = Pp[i] + s.f[i] * (ahead - along);
+                if (clears_body(s.x, moved, first, s.r, parts, part_sets))
+                    for (int i = 0; i < 3; ++i) {
+                        Pp[i] = moved[i];
+                        toPp[i] = Pp[i] - s.x[i];
+                    }
+            }
+        }
         // not behind the ship relative to P, not more than 120 degrees off the nose (an obstacle abeam inside C gets a
         // detour point abeam, away from it), not through another candidate's sphere (a committed detour keeps its
         // direction: the other candidate gets its turn when it becomes the earliest)
         bool ok = sc::dot3(toP, toPp) > 0.0f && sc::dot3(toPp, s.f) > -0.5f * sc::sqrt_ss(sc::dot3(toPp, toPp));
+        if (!ok) why = Unresolved::behind;
         const bool committed = mem && attempt == 0;
         // the detour point must not sit inside another part of the same body either (the candidate holds only the
         // earliest-hit part): every part of every candidate body is tested
@@ -522,11 +557,17 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
             for (unsigned p = 0; p < set.count && ok; ++p) {
                 const float dp[3] = {Pp[0] - set.c[p][0], Pp[1] - set.c[p][1], Pp[2] - set.c[p][2]};
                 const float Cp = clearance(s.r, set.r[p]);
-                if (sc::dot3(dp, dp) < Cp * Cp) ok = false;
+                if (sc::dot3(dp, dp) < Cp * Cp) {
+                    ok = false;
+                    why = Unresolved::blocked;
+                }
             }
         }
         for (unsigned j = 1; j < n_cand && ok && !committed; ++j)
-            if (!clears_body(s.x, Pp, cand[j], s.r, parts, part_sets)) ok = false;
+            if (!clears_body(s.x, Pp, cand[j], s.r, parts, part_sets)) {
+                ok = false;
+                why = Unresolved::blocked;
+            }
         if (ok) {
             res.adjusted = true;
             res.side = side;
@@ -544,6 +585,16 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     if (!res.adjusted) {
         res.unresolved = true;
         state.unresolved = true;
+        // the geometric reasons rank above the try failures: inside the stopping or the turn-in distance no tangent exists
+        {
+            const float R_t = s.omega > 1e-4f ? s.v / s.omega : 1e6f;
+            const float D_st = s.a > 1e-3f ? s.v * s.v / (2.0f * s.a) : 1e9f;
+            if (!(first.d > D_st))
+                why = Unresolved::inside_stop;
+            else if (!(first.d > sc::sqrt_ss(first.C * (first.C + 2.0f * R_t))))
+                why = Unresolved::inside_turn;
+        }
+        res.reason = std::uint8_t(why);
         // Emergency ramp (section 3.4): no detour and the obstacle inside the braking distance.
         const float d_body = first.d;
         if (d_body > first.C && s.a > 1e-3f) {

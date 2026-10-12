@@ -334,9 +334,15 @@ class LauncherDefaults(unittest.TestCase):
         self.assertFalse({'X3M_SHIP_STEERING', 'X3M_SHIP_STEERING_CLASSES', 'X3M_SHIP_AVOIDANCE'} & set(self.env(inherited=stale)))
         self.assertNotIn('X3M_SHIP_AVOIDANCE', self.env('--ship-steering'))
         self.assertEqual(self.env('--ship-steering', '--ship-avoidance')['X3M_SHIP_AVOIDANCE'], '1')
+        # the gate approach: on with the steering, explicit either way, off only by --no-ship-steering-gates, never alone
+        self.assertNotIn('X3M_SHIP_STEERING_GATES', env)
+        self.assertNotIn('X3M_SHIP_STEERING_GATES', self.env(inherited={'X3M_SHIP_STEERING_GATES': '1'}))
+        self.assertEqual(self.env('--ship-steering')['X3M_SHIP_STEERING_GATES'], '1')
+        self.assertEqual(self.env('--ship-steering', '--ship-steering-gates')['X3M_SHIP_STEERING_GATES'], '1')
+        self.assertEqual(self.env('--ship-steering', '--no-ship-steering-gates')['X3M_SHIP_STEERING_GATES'], '0')
         for args, vanilla in ((('--ship-steering',), True), (('--ship-steering', '--ship-steering-classes', 'M9'), False),
                               (('--ship-steering-classes', 'M1'), False), (('--ship-avoidance',), False),
-                              (('--ship-steering', '--ship-avoidance'), True)):
+                              (('--ship-steering', '--ship-avoidance'), True), (('--no-ship-steering-gates',), False)):
             with self.subTest(args=args, vanilla=vanilla):
                 code, _, error = self.launch(*args, vanilla=vanilla)
                 self.assertEqual(code, 2, error[-200:])

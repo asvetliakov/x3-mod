@@ -107,6 +107,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_ship_steering_enter', '_x3m_ship_steering_clamp',
                 # step 2: the warn-test entry stub (site E) and the suppression lookup it calls (X3M_SHIP_AVOIDANCE=1)
                 '_x3m_ship_avoid_e_stub', '_x3m_ship_avoid_suppress',
+                # step 3: the three gate-site stubs (P2 0x00454b91, P4 0x00454700, P5 0x0045526f) and their handlers (X3M_SHIP_STEERING_GATES)
+                '_x3m_ship_gate_p2_stub', '_x3m_ship_gate_p4_stub', '_x3m_ship_gate_p5_stub',
+                '_x3m_ship_gate_stop_a', '_x3m_ship_gate_stop_b', '_x3m_ship_gate_launch',
                 # engine-effect call redirects (src/proxy/engine_effects_patch.cpp, X3M_ENGINE_EFFECTS=off|plumes): the two class-test
                 # stubs on 0x004147eb and 0x0041482c, per spawn site per frame on the game thread; integer only, no call
                 '_x3m_engine_effects_stub_a', '_x3m_engine_effects_stub_b',

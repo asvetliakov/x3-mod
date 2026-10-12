@@ -173,11 +173,13 @@ struct ShipType {
     int k_pct;
     bool large;
 };
+// k (record +0xd0 / 100) per class as measured in Run151's decision rows: M3 0.32, M6 0.10, TS 0.20, M2 0.05
+// (M4 0.20, M8 0.10, M1 0.05, TP 0.175); the M5 was not sampled and keeps the design's assumption 0.5.
 static const ShipType kShips[5] = {{"M5", "Discoverer", 532.0, 55.0, 147.66, 9.2, 50, false},
-                                   {"M3", "Nova", 247.5, 40.0, 92.81, 11.9, 50, false},
-                                   {"M6", "Centaur", 180.0, 20.0, 33.75, 64.4, 30, true},
-                                   {"TS", "Mercury", 124.0, 30.0, 21.09, 38.5, 30, true},
-                                   {"M2", "Boreas", 70.0, 15.0, 13.5, 705.4, 10, true}};
+                                   {"M3", "Nova", 247.5, 40.0, 92.81, 11.9, 32, false},
+                                   {"M6", "Centaur", 180.0, 20.0, 33.75, 64.4, 10, true},
+                                   {"TS", "Mercury", 124.0, 30.0, 21.09, 38.5, 20, true},
+                                   {"M2", "Boreas", 70.0, 15.0, 13.5, 705.4, 5, true}};
 
 // ---- the engine model ----------------------------------------------------
 struct Lcg { // the think tick's rand(): 0..32767 like the CRT
@@ -211,6 +213,9 @@ struct Model {
     core::Reason last_reason;
     core::Command last_cmd;
     bool vanilla;                   // the engine's own yaw+pitch leaf 0x0044ccc0 instead of the core (the baseline)
+    bool every_frame;               // the order calls the leaf every frame (no think gate): the servo gets the measured interval
+    long last_call_ms, frame_dt_ms;
+    std::uint32_t per_frame_run;
     // step 2: the avoidance layer in the target seam
     bool avoid_on;
     const av::Snapshot* snap;
@@ -225,6 +230,10 @@ struct Model {
     float last_dir[3];
     std::uint32_t last_obstacle, last_detour_obstacle;
     av::Result last_av;
+    // step 3: the gate approach (the DLL's P1 policy for order 4 to a gate); last_aim_P = the point the law last steered at (m)
+    bool gate_mode, gate_lead_used;
+    core::GateGeometry gate_geo;
+    float last_aim_P[3];
     void init(const ShipType& t, std::uint32_t seed) {
         const std::int64_t yaw = std::llround(t.yaw_dps / 360.0 * 65536);
         W[0] = yaw;
@@ -259,6 +268,10 @@ struct Model {
         last_reason = core::Reason::handled;
         last_cmd = core::Command{};
         vanilla = false;
+        every_frame = false;
+        last_call_ms = -1;
+        frame_dt_ms = 16;
+        per_frame_run = 0;
         avoid_on = false;
         snap = nullptr;
         parts = nullptr;
@@ -275,6 +288,9 @@ struct Model {
         last_dir[0] = last_dir[1] = last_dir[2] = 0;
         last_obstacle = last_detour_obstacle = 0;
         last_av = av::Result{};
+        gate_mode = gate_lead_used = false;
+        gate_geo = core::GateGeometry{};
+        last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
     }
     // The avoidance adjustment of the steering point (site A seam): P (m) in, P' (m) out.
     void avoid_adjust(float Pm[3]) {
@@ -365,22 +381,41 @@ struct Model {
         }
         in.v = float(double(speed) / 500.0);
         in.order = order;
+        // the DLL's servo budget: the measured gap for a per-frame caller, 50 ms for a gated order (core::servo_tick)
+        const long gap = last_call_ms >= 0 ? t_ms - last_call_ms : 50;
+        in.tick_s = core::servo_tick(std::uint32_t(gap), std::uint32_t(frame_dt_ms), per_frame_run);
+        last_call_ms = t_ms;
         in.d_arr = float(d_arr_units / 500.0);
         in.v_ref = float(v_ref_ms);
         in.arrival_ramp = arrival_ramp;
+        // the DLL's P1: a non-capital ship on order 4 to a gate: no arrival ramp, the lead-in point, the gate speed at site B
+        bool gate_approach = false;
+        if (gate_mode && order == core::kOrderFlyBefore && !capital) {
+            gate_approach = true;
+            in.arrival_ramp = false;
+            in.d_arr = 0;
+            float lead[3], s_line = 0;
+            if (in.d_order < 0 && core::gate_lead_in(gate_geo, in.x, in.v, lead, &s_line)) {
+                for (int i = 0; i < 3; ++i) in.P[i] = lead[i];
+                in.d_order = float(dist() / 500.0);
+                gate_lead_used = true;
+            }
+        }
         core::Command cmd;
         last_reason = core::steer(in, dyn, &cmd);
         if (last_reason != core::Reason::handled) return;
         last_cmd = cmd;
+        for (int i = 0; i < 3; ++i) last_aim_P[i] = in.P[i];
         for (int i = 0; i < 3; ++i) e[i] = cmd.e[i];
         core::Ship* s = table->find_or_insert(obj_id, std::uint32_t(t_ms));
         s->stamp_ms = std::uint32_t(t_ms);
         s->order = order;
-        s->flags = std::uint16_t((arrival_ramp ? 1 : 0) | (cmd.v_cmd > 0 ? 2 : 0));
+        s->flags = std::uint16_t((in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
+                                 (gate_approach ? (core::kShipFlagGate | core::kShipFlagClamp) : 0));
         for (int i = 0; i < 3; ++i) s->P[i] = Po[i]; // site B measures the order's point
         s->a_lin = dyn.a_lin;
         s->d_arr = in.d_arr;
-        s->v_ref = in.v_ref;
+        s->v_ref = gate_approach ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : in.v_ref;
         s->v_corner = cmd.v_corner;
         s->v_emergency = avoid_on ? astate.v_emergency : 0.0f;
     }
@@ -392,6 +427,11 @@ struct Model {
         for (int i = 0; i < 3; ++i) x[i] = float(pos[i] / 500.0);
         const float v = core::clamp_for(*s, x, order, std::uint32_t(t_ms), 250);
         v_cmd_last = v;
+        if (s->flags & core::kShipFlagGate) { // the gate approach: the module's speed in both directions
+            const std::int32_t units = core::gate_speed_units(v, std::int32_t(desired));
+            if (units > 0) desired = units;
+            return;
+        }
         const std::int32_t units = core::clamp_units(v, std::int32_t(desired)); // the DLL's own conversion and compare
         if (units > 0) desired = units;
     }
@@ -415,8 +455,9 @@ struct Model {
     }
     void frame(long dt_ms, std::uint32_t obj_id, bool arrival_ramp, double v_ref_ms, int mode) { // 0 fixed, 1 MovePos, 2 escort
         // pass A: the order step at the think tick
+        frame_dt_ms = dt_ms;
         if (!done && t_ms >= next_think) {
-            next_think = t_ms + rng.next() * 50 / 32768;
+            next_think = every_frame ? t_ms : t_ms + rng.next() * 50 / 32768;
             if (mode == 2) {
                 double slot[3];
                 for (int i = 0; i < 3; ++i) slot[i] = leader_pos[i] - leader_fwd[i] * slot_back_units;
@@ -460,6 +501,10 @@ struct Model {
         }
         // site B, every frame
         if (!done) clamp(obj_id);
+        advance(dt_ms);
+    }
+    // the slew and pass B of one frame: the speed toward desired at the acceleration, the rotation, the position
+    void advance(long dt_ms) {
         // the slew (the max speed, then the script's speed limit f+0x278)
         if (desired > vmax) desired = vmax;
         if (speed_limit > 0 && desired > speed_limit) desired = speed_limit;
@@ -663,12 +708,13 @@ struct ArrivalResult {
     double entry_speed, min_d, beyond;
     long t_entry, t_arrive;
 };
-static ArrivalResult run_arrival(const ShipType& t, int fps, std::uint32_t seed, bool vanilla) {
+static ArrivalResult run_arrival(const ShipType& t, int fps, std::uint32_t seed, bool vanilla, bool every_frame = false) {
     core::ShipTable table{};
     Model m;
     m.init(t, seed);
     m.table = &table;
     m.vanilla = vanilla;
+    m.every_frame = every_frame;
     m.order = core::kOrderMovePos;
     const double L = 20000.0 * 500;
     m.P[0] = L * std::sin(45 * M_PI / 180);
@@ -686,7 +732,10 @@ static ArrivalResult run_arrival(const ShipType& t, int fps, std::uint32_t seed,
         if (!dt) continue;
         m.frame(dt, 2, true, 0, 1);
         const double d = m.dist();
-        const int sg = m.w[0] > 0 ? 1 : (m.w[0] < 0 ? -1 : 0);
+        // a reversal is a yaw-rate sign change above 0.1 deg/s (18 units): under that the integer controller's brake
+        // quantum (acc x dt, 4 units per 30 fps frame at k 0.05) leaves a residual rate ringing about 0 after a cleared
+        // remainder, which is no hunting
+        const int sg = m.w[0] > 18 ? 1 : (m.w[0] < -18 ? -1 : 0);
         if (sg && last_sign && sg != last_sign && reversal_count < 256) reversal_times[reversal_count++] = m.t_ms;
         if (sg) last_sign = sg;
         if (d < r.min_d) r.min_d = d;
@@ -737,6 +786,18 @@ static void arrival_scenario(const ShipType& t, int fps, std::uint32_t seed) {
         std::printf("arrival     %-3s %-10s fps=%3d t=%6ld ms (vanilla %6ld) entries=%d entry_speed=%.1f m/s (vanilla %.1f) min_d=%.1f m d_arr=%.1f m beyond=%.1f m reversals=%d\n",
                     t.cls, t.name, fps, r.t_arrive, v.t_arrive, r.entries, r.entry_speed, v.entry_speed, r.min_d / 500.0, 2 * t.r_m,
                     r.beyond / 500.0, r.reversals);
+    // the per-frame order (no think gate, as the dock approach and Run151's follow/escort calls): the servo budget is the
+    // measured interval, so the arrival stays as clean as with the 50 ms tick (one entry, floor speed, no reversal)
+    const ArrivalResult pf = run_arrival(t, fps, seed, false, true);
+    std::snprintf(why, sizeof why, "%s %d fps seed %u arrival per-frame order: arrived, entries %%.0f == 1, reversals %%.0f <= 1", t.cls, fps, seed);
+    checkf(pf.done && pf.entries == 1 && pf.reversals <= 1, why, pf.entries, pf.reversals);
+    std::snprintf(why, sizeof why, "%s %d fps seed %u arrival per-frame order: entry speed %%.1f <= floor + 20 (%%.1f)", t.cls, fps, seed);
+    checkf(pf.entry_speed >= 0 && pf.entry_speed <= floor_ms + 20.0, why, pf.entry_speed, floor_ms + 20.0);
+    std::snprintf(why, sizeof why, "%s %d fps seed %u arrival per-frame order: time %%.0f ms <= the gated run's %%.0f ms + 500", t.cls, fps, seed);
+    checkf(double(pf.t_arrive) <= double(r.t_arrive) + 500, why, double(pf.t_arrive), double(r.t_arrive));
+    if (seed == kSeeds[0] && fps == 60)
+        std::printf("arrival/pf  %-3s %-10s fps=%3d t=%6ld ms entries=%d entry_speed=%.1f m/s reversals=%d\n", t.cls, t.name, fps, pf.t_arrive, pf.entries,
+                    pf.entry_speed, pf.reversals);
 }
 
 // ---- scenario 3: a formation slot behind a leader on a 5 km circle ----------
@@ -1223,14 +1284,17 @@ struct SectorBuilder {
         mem.put(n + 0x1f0, sentinel); // the child list tail (fixture bookkeeping)
         return n;
     }
-    // appends a child node to a parent's list (before the sentinel: the new node takes the old sentinel as next)
-    std::uint32_t child(std::uint32_t parent, const std::int32_t off[3], std::int32_t sub_r, bool scaled) {
+    // appends a child node to a parent's list (before the sentinel: the new node takes the old sentinel as next); a
+    // parent without a list yet (a child node) gets its sentinel first. own_r = +0xa0, scale = +0x70 (its own children)
+    std::uint32_t child(std::uint32_t parent, const std::int32_t off[3], std::int32_t sub_r, bool scaled, std::int32_t own_r = 0,
+                        std::int32_t scale = 0x10000) {
         const std::uint32_t c = alloc(0x200);
         for (int i = 0; i < 3; ++i) mem.puts(c + 0x30 + 4 * i, off[i]);
         mem.puts(c + 0xa4, sub_r);
+        mem.puts(c + 0xa0, own_r);
+        mem.puts(c + 0x70, scale);
         mem.put(c + 0x12c, scaled ? 0x40 : 0);
-        const std::uint32_t sentinel = alloc(0x10);
-        mem.put(c, sentinel);
+        if (mem.u32(parent + 0xc) == 0) mem.put(parent + 0xc, alloc(0x10)); // the list's sentinel
         // insert at the head: [parent+0xc] -> c; c's next = the previous head
         const std::uint32_t prev = mem.u32(parent + 0xc);
         mem.put(c, prev);
@@ -1289,14 +1353,29 @@ static void walk_checks() {
     sb.object(17, p1, 30000, 0x200);
     sb.object(7, p1, 5000, 0, 0x20000);
     const std::int32_t ps[3] = {5000000, 0, 0};
-    const std::uint32_t plain = sb.object(5, ps, 750000, 0, 0, 0, 100000); // root sphere 1500 m, own hull 200 m, no children
-    const std::uint32_t station = sb.object(6, ps, 750000, 0, 0, 0, 100000, 0x20000); // scale 2.0
+    const std::uint32_t plain = sb.object(6, ps, 750000, 0, 0, 0, 750000); // root sphere 1500 m = its hull, no children
+    const std::uint32_t station = sb.object(5, ps, 750000, 0, 0, 0, 100000, 0x10000); // unit scale; bucket 5 walks first: the census station
     const std::uint32_t snode = mem.u32(station + 0x70);
-    const std::int32_t o1[3] = {200000, 0, 0}, o2[3] = {0, 100000, 0}, o3[3] = {0, 0, 300000};
+    const std::int32_t o1[3] = {200000, 0, 0}, o2[3] = {0, 200000, 0}, o3[3] = {0, 0, 300000}, o4[3] = {0, 0, -600000};
     sb.child(snode, o1, 100000, false); // unscaled: at +400 m, r 200 m
-    sb.child(snode, o2, 50000, true);   // scaled x2: at +400 m up, r 100 m
-    sb.child(snode, o3, -1, false);     // dirty radius: not a body
+    sb.child(snode, o2, 50000, true);   // flagged, scale 1.0: at +400 m up, r 100 m
+    // an unfilled cache at two depths (the engine's getter 0x00488170 never ran): the child at +600 m with own radius
+    // 50 m and a grandchild at a further (0, 0, +150 m) of radius 100 m, itself unfilled with own radius 100 m: the
+    // replicated getter gives the grandchild 100 m and the child max(50, 150 + 100) = 250 m
+    const std::uint32_t unfilled = sb.child(snode, o3, -1, false, 25000);
+    const std::int32_t og[3] = {0, 0, 75000};
+    sb.child(unfilled, og, -1, false, 50000);
+    sb.child(snode, o4, 150000, false); // at -1200 m, r 300 m: the parts reach the 1500 m root sphere
     wk::fill_snapshot(mem, sb.sector, 2, snap, cache, st, &census);
+    check(st.part_dirty == 1 && st.part_invalid == 0 && st.part_built == 2, "walk: a station with unfilled caches builds its model from the replicated getter");
+    check(census.station == station && census.station_children == 4 && census.station_dirty == 1,
+          "walk: the census reports the station's four children and the one unfilled cache");
+    {
+        bool got = false;
+        for (unsigned k = 0; k < 4; ++k)
+            if (census.part_cache[k] == -1 && census.part_r[k] == 125000 && census.part_offset[k][2] == 300000) got = true;
+        check(got, "walk: the replicated subtree radius of the unfilled child is max(own 50 m, |150 m| + 100 m) = 250 m");
+    }
     check(snap.count == 8 && !snap.overflow, "walk: 3 ships + asteroid + gate + debris + 2 stations = 8 obstacles; bullet, deleted, docked, attached and no-pair skipped");
     check(census.classes[7] == 6 && census.classes[0] == 0 && census.classes[5] == 1 && census.classes[6] == 1 && census.classes[17] == 2 &&
               census.buckets[7] == 6 && census.buckets[0] == 0,
@@ -1308,8 +1387,8 @@ static void walk_checks() {
         if (snap.items[i].kind == std::uint8_t(av::Kind::station) && (snap.items[i].flags & 1)) ++stations_with_parts;
         if (snap.items[i].ptr == station) station_item = &snap.items[i];
     }
-    check(ships == 3 && stations_with_parts == 2 && st.part_built == 2 && st.part_invalid == 0, "walk: both stations build a part model");
-    check(station_item && station_item->flags == 1 && cache.sets[station_item->parts].count == 3, "walk: the station with children has 3 parts (hull + 2 children; the dirty child skipped)");
+    check(ships == 3 && stations_with_parts == 2 && st.part_built == 2 && st.part_cached == 0 && st.part_invalid == 0, "walk: both stations hold a part model on the first snapshot");
+    check(station_item && station_item->flags == 1 && cache.sets[station_item->parts].count == 5, "walk: the station with children has 5 parts (hull + 4 children)");
     if (station_item) {
         const av::PartSet& set = cache.sets[station_item->parts];
         bool unscaled = false, scaled = false;
@@ -1317,7 +1396,49 @@ static void walk_checks() {
             if (std::fabs(set.c[p][0] - 10400.0f) < 0.5f && std::fabs(set.r[p] - 200.0f) < 0.1f) unscaled = true;
             if (std::fabs(set.c[p][1] - 400.0f) < 0.5f && std::fabs(set.c[p][0] - 10000.0f) < 0.5f && std::fabs(set.r[p] - 100.0f) < 0.1f) scaled = true;
         }
-        check(unscaled && scaled, "walk: the unscaled child sits at its raw offset, the flagged child at offset x the parent's scale");
+        bool replicated = false;
+        for (unsigned p = 0; p < set.count; ++p)
+            if (std::fabs(set.c[p][2] - 600.0f) < 0.5f && std::fabs(set.r[p] - 250.0f) < 0.1f) replicated = true;
+        check(unscaled && scaled && replicated, "walk: the unscaled child sits at its raw offset, the flagged child at offset x the unit scale, the unfilled child carries its replicated radius");
+    }
+    {
+        // a flagged child under a non-unit parent scale (Run151: +0x70 = 0xa5 on a station node): the engine's rule applies as
+        // it is (offset x 0xa5 >> 16 ~ 0: the part sits at the centre), the model is kept and reaches the root through an
+        // unscaled child; the replication's depth limit: a chain of unfilled caches deeper than kRadiusDepth falls back
+        const std::int32_t pq[3] = {-5000000, 0, 0};
+        const std::uint32_t odd = sb.object(5, pq, 750000, 0, 0, 0, 100000, 0xa5);
+        const std::int32_t oq[3] = {300000, 0, 0}, oz[3] = {-650000, 0, 0};
+        sb.child(mem.u32(odd + 0x70), oq, 100000, true);
+        sb.child(mem.u32(odd + 0x70), oz, 100000, false);
+        const std::int32_t pd[3] = {0, 5000000, 0};
+        const std::uint32_t deep = sb.object(5, pd, 750000, 0, 0, 0, 100000, 0x10000);
+        const std::int32_t step[3] = {0, 0, 150000};
+        std::uint32_t chain = sb.child(mem.u32(deep + 0x70), step, -1, false, 50000);
+        for (unsigned k = 0; k < 4; ++k) chain = sb.child(chain, step, -1, false, 50000); // depth 5 below the root: beyond kRadiusDepth
+        // a collapsed model: the root radius says 1500 m but every part sits at the centre with a small radius
+        const std::int32_t pc[3] = {0, -5000000, 0};
+        const std::uint32_t collapsed = sb.object(5, pc, 750000, 0, 0, 0, 50000, 0x10000);
+        const std::int32_t zero[3] = {0, 0, 0};
+        sb.child(mem.u32(collapsed + 0x70), zero, 50000, false);
+        wk::fill_snapshot(mem, sb.sector, 2, snap, cache, st, nullptr);
+        bool odd_fb = false, col_fb = false, deep_fb = false;
+        const av::Obstacle* odd_item = nullptr;
+        for (unsigned i = 0; i < snap.count; ++i) {
+            if (snap.items[i].ptr == odd) {
+                odd_fb = !(snap.items[i].flags & 1);
+                odd_item = &snap.items[i];
+            }
+            if (snap.items[i].ptr == collapsed) col_fb = !(snap.items[i].flags & 1);
+            if (snap.items[i].ptr == deep) deep_fb = !(snap.items[i].flags & 1);
+        }
+        bool at_centre = false;
+        if (!odd_fb && odd_item)
+            for (unsigned p = 0; p < cache.sets[odd_item->parts].count; ++p)
+                if (std::fabs(cache.sets[odd_item->parts].c[p][0] + 10000.0f) < 5.0f && std::fabs(cache.sets[odd_item->parts].r[p] - 200.0f) < 0.1f)
+                    at_centre = true;
+        check(!odd_fb && at_centre && st.part_scaled >= 1, "walk: a flagged child under the non-unit scale 0xa5 sits where the engine's rule puts it (the centre); the model is kept");
+        check(col_fb, "walk: parts that do not reach the root radius (a collapsed model) fail validation");
+        check(deep_fb && st.part_invalid >= 1, "walk: unfilled caches deeper than the replication's depth limit leave the station on the fallback body (retried)");
     }
     // the sentinel is never read as a part: a sentinel-only child list gives the hull only
     const av::Obstacle* plain_item = nullptr;
@@ -1326,18 +1447,18 @@ static void walk_checks() {
     check(plain_item && (plain_item->flags & 1) && cache.sets[plain_item->parts].count == 1, "walk: a station without children keeps its hull sphere only (the sentinel is not a part)");
     // the cache: a second fill reuses both models; a moved station rebuilds; a child outside the root sphere invalidates
     wk::fill_snapshot(mem, sb.sector, 3, snap, cache, st, nullptr);
-    check(st.part_cached == 2 && st.part_built == 0, "walk: the part models are cached by object, radius and position stamp");
+    check(st.part_cached == 3 && st.part_built == 0, "walk: the part models are cached by object, radius and position stamp");
     mem.puts(snode + 0x30, 5100000);
     wk::fill_snapshot(mem, sb.sector, 4, snap, cache, st, nullptr);
-    check(st.part_built == 1 && st.part_cached == 1 && cache.count == 2, "walk: a moved station rebuilds into the same slot");
-    const std::int32_t far[3] = {700000, 0, 0};
-    sb.child(snode, far, 100000, false); // |c - pos| + r = 1600 m > 1500 m root
+    check(st.part_built == 1 && st.part_cached == 2 && cache.count == 3, "walk: a moved station rebuilds into the same slot");
+    const std::int32_t far[3] = {1300000, 0, 0};
+    sb.child(snode, far, 100000, false); // |c - pos| + r = 2800 m > sqrt(3) x 1500 m root
     mem.puts(snode + 0x34, 1000);        // the model is keyed on position/basis/radius, not on the child list: move it to rebuild
     wk::fill_snapshot(mem, sb.sector, 5, snap, cache, st, nullptr);
     bool fallback = false;
     for (unsigned i = 0; i < snap.count; ++i)
         if (snap.items[i].ptr == station) fallback = !(snap.items[i].flags & 1);
-    check(fallback && st.part_invalid == 1 && st.part_fallback == 1, "walk: a part outside the root sphere fails validation: the fallback body");
+    check(fallback && st.part_invalid >= 1 && st.part_fallback >= 1, "walk: a part outside the root sphere fails validation: the fallback body");
     unsigned live = 0;
     for (unsigned i = 0; i < cache.count; ++i)
         if (cache.sets[i].station == station) ++live;
@@ -1418,11 +1539,13 @@ static void avoidance_unit_checks() {
     const float origin[3] = {0, 0, 0};
     float centres[3][3] = {{0, 0, 0}, {100, 0, 0}, {0, 100, 0}}, radii[3] = {50, 60, 70};
     check(av::build_parts(set, 0x5000, 500, origin, centres, radii, 3) && set.count == 3, "parts: a valid model builds");
-    radii[1] = 600;
-    check(!av::build_parts(set, 0x5000, 500, origin, centres, radii, 3) && set.count == 0, "parts: a part larger than the root sphere is refused");
+    radii[1] = 900;
+    check(!av::build_parts(set, 0x5000, 500, origin, centres, radii, 3) && set.count == 0, "parts: a part larger than sqrt(3) x the root sphere is refused");
     radii[1] = 60;
-    centres[1][0] = 460; // |c - pos| + r = 520 > 500: outside the root sphere although r < root
-    check(!av::build_parts(set, 0x5000, 500, origin, centres, radii, 3), "parts: a part reaching outside the root sphere is refused");
+    centres[1][0] = 820; // |c - pos| + r = 880 > 866 = sqrt(3) x 500: outside the root sphere beyond the per-axis slack
+    check(!av::build_parts(set, 0x5000, 500, origin, centres, radii, 3), "parts: a part reaching outside sqrt(3) x the root sphere is refused");
+    centres[1][0] = 460; // |c - pos| + r = 520: inside the slack (the engine's per-axis radius admits it)
+    check(av::build_parts(set, 0x5000, 500, origin, centres, radii, 3) && set.count == 3, "parts: a part within the per-axis slack of the root sphere is kept");
     centres[1][0] = 100;
     centres[2][1] = __builtin_inff();
     check(!av::build_parts(set, 0x5000, 500, origin, centres, radii, 3), "parts: a non-finite centre is refused");
@@ -1751,11 +1874,422 @@ static void unit_checks() {
     }
 }
 
+// ---- scenario 9: the gate approach (amendment 7; ship-navigation-ai.md section 10) ------------------------------
+// The engine's gate transit for one ship: order 4 to A = G + R(0, -0.8, -1) r (the leaf every frame, the arrival test
+// dist(A) <= 0.75 r and the speed law at the think tick: vmax beyond d_slow = 0.75 r + vmax^2/a, ramp(dist; 0 -> 5000,
+// d_slow -> vmax/2) inside, the alignment ramp (0.7 -> 500, 1.0 -> desired) inside d_slow + 3 r + 2 r_ship, large hulls
+// capped at 50000), P2 at the arrival, one frame of order 0, order 5 to B = G + R(0, -0.55 cos th, 0.55 sin th) r
+// every frame (500 while forward . dir < 0.95, else ramp(dist; r/5 -> vmax/2, r -> vmax); arrival at dist <= |v|/10 +
+// r_ship), P4 at the arrival, one frame of order 0, order 8 for 900 ms along the axis with s = v0 t / 1000 + 1.665 t^2.
+// gates_on && !capital = the module's path (P1 lead-in and speed, P2/P4 keep the speed through the shared rule
+// core::gate_stop_keeps_speed over core::gate_target_noncapital on a synthetic object, P5 through gate_launch_units);
+// otherwise the vanilla stops and the launch from rest. The gate frame R (rows) and the start (gate-local, in r)
+// are parameters; the disc (local z = 0, radius r) must never be crossed.
+struct GateResult {
+    bool arrived_A, arrived_B, launched, lead_used, disc_crossed;
+    double cross_v, cross_err_deg, min_v_after_cross, v_after_A, v0, launch_first_v, max_aim_jump_deg;
+    long t_cross, t_A, t_B, t_launch;
+    int misaligned_ticks;
+};
+static double norm3d(const double a[3]) {
+    return std::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+}
+struct GateFrame {
+    double R[3][3]; // rows: local x, y (up), z (the axis) in world
+};
+static const GateFrame kGateIdentity = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+// a gate whose axis points along world +x and whose up is world +z (a right-handed frame: x_local = y x z)
+static const GateFrame kGateRotated = {{{0, 1, 0}, {0, 0, 1}, {1, 0, 0}}};
+static void local_to_world(const GateFrame& F, const double l[3], double w[3]) {
+    for (int k = 0; k < 3; ++k) w[k] = l[0] * F.R[0][k] + l[1] * F.R[1][k] + l[2] * F.R[2][k];
+}
+static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, double theta_deg, bool capital, bool vanilla, bool gates_on,
+                           const double start_local_r[3], const GateFrame& F, double a_error_r = 0.0) {
+    core::ShipTable table{};
+    Model m;
+    m.init(t, seed);
+    m.table = &table;
+    m.capital = capital;
+    m.vanilla = vanilla;
+    const double r = 1105.0, ru = r * 500;
+    const double A_l[3] = {0, -0.8 * ru, -1.0 * ru};
+    const double th = theta_deg * M_PI / 180;
+    const double B_l[3] = {0, -0.55 * std::cos(th) * ru, 0.55 * std::sin(th) * ru};
+    double A[3], B[3], start[3];
+    local_to_world(F, A_l, A);
+    local_to_world(F, B_l, B);
+    const double start_l[3] = {start_local_r[0] * ru, start_local_r[1] * ru, start_local_r[2] * ru};
+    local_to_world(F, start_l, start);
+    // the geometry the DLL derives from the target's phys block (A as the engine wrote it, or off by a_error_r: rejected)
+    float Af[3], G[3] = {0, 0, 0}, row1[3], row2[3];
+    for (int k = 0; k < 3; ++k) {
+        Af[k] = float(A[k] / 500 + a_error_r * r * F.R[0][k]);
+        row1[k] = float(F.R[1][k]);
+        row2[k] = float(F.R[2][k]);
+    }
+    m.gate_mode = gates_on && core::gate_geometry(Af, G, row1, row2, float(r), &m.gate_geo);
+    // the synthetic object the shared gate-site rule reads: a class-7 ship of a type whose record code is the class's
+    // (M2 = 4 capital, M5 = 7, M3 = 5, M6 = 11, TS = 1), its flight block targeting a class-0x12 gate object
+    FakeMem mem;
+    const std::uint32_t ship = 0x2000, flight = 0x3000, gate = 0x4000, types = 0x5000;
+    const unsigned code = capital ? 4 : (!std::strcmp(t.cls, "M5") ? 7 : !std::strcmp(t.cls, "M3") ? 5 : !std::strcmp(t.cls, "M6") ? 11 : 1);
+    mem.put(ship + 0x48, 7u | (3u << 16)); // class word 7, type 3
+    mem.put(ship + 0x50, flight);
+    mem.put(flight + 0x224, gate);
+    mem.put(gate + 0x48, 0x12);
+    mem.put(types + 3 * 0xdb8 + 0x14, code);
+    const bool noncapital_gate = core::gate_target_noncapital(mem, ship, types);
+    const bool keep = core::gate_stop_keeps_speed(noncapital_gate, m.gate_mode && !capital); // the gate state exists only when the decision ran P1
+    // the start, heading at A at full speed
+    for (int i = 0; i < 3; ++i) m.pos[i] = start[i];
+    double u[3] = {A[0] - start[0], A[1] - start[1], A[2] - start[2]};
+    const double un = norm3d(u);
+    for (int i = 0; i < 3; ++i) u[i] /= un;
+    double up[3] = {0, 1, 0};
+    if (std::fabs(u[1]) > 0.9) {
+        up[1] = 0;
+        up[2] = 1;
+    }
+    for (int i = 0; i < 3; ++i) m.row[2][i] = u[i];
+    m.row[0][0] = up[1] * u[2] - up[2] * u[1];
+    m.row[0][1] = up[2] * u[0] - up[0] * u[2];
+    m.row[0][2] = up[0] * u[1] - up[1] * u[0];
+    const double r0n = norm3d(m.row[0]);
+    for (int i = 0; i < 3; ++i) m.row[0][i] /= r0n;
+    m.row[1][0] = u[1] * m.row[0][2] - u[2] * m.row[0][1];
+    m.row[1][1] = u[2] * m.row[0][0] - u[0] * m.row[0][2];
+    m.row[1][2] = u[0] * m.row[0][1] - u[1] * m.row[0][0];
+    m.order = core::kOrderFlyBefore;
+    for (int i = 0; i < 3; ++i) m.P[i] = A[i];
+    GateResult res{};
+    res.min_v_after_cross = 1e18;
+    res.t_cross = res.t_A = res.t_B = res.t_launch = -1;
+    res.cross_err_deg = -1;
+    Clock clock;
+    int phase = 0; // 0 order 4, 1 order 0 after A, 2 order 5, 3 order 0 after B, 4 order 8
+    long phase_t = 0;
+    double launch_start[3] = {0, 0, 0}, last_pos[3] = {m.pos[0], m.pos[1], m.pos[2]}, last_aim[3] = {0, 0, 0};
+    bool have_aim = false;
+    long long v0 = 0;
+    const std::uint32_t obj = 9;
+    for (long i = 0; i < 400 * fps; ++i) {
+        const long dt = clock.step(fps);
+        if (!dt) continue;
+        m.frame_dt_ms = dt;
+        const double dA_v[3] = {A[0] - m.pos[0], A[1] - m.pos[1], A[2] - m.pos[2]}, dB_v[3] = {B[0] - m.pos[0], B[1] - m.pos[1], B[2] - m.pos[2]};
+        const double dA = norm3d(dA_v), dB = norm3d(dB_v);
+        if (phase == 4) {
+            const long tl = m.t_ms - phase_t;
+            if (tl >= 900) {
+                res.launched = true;
+                break;
+            }
+            const std::int32_t s = core::gate_launch_units(std::int32_t(v0), std::int32_t(tl + dt));
+            for (int k = 0; k < 3; ++k) m.pos[k] = launch_start[k] + double(s) * F.R[2][k];
+            m.speed = m.desired = 0;
+            if (tl == 0) res.launch_first_v = double(s) / double(dt) * 1000.0 / 500.0; // m/s over the first launch frame
+            m.t_ms += dt;
+            continue;
+        }
+        if (phase == 0) {
+            if (res.t_cross < 0 && dA <= 0.75 * ru) { // the crossing of the arrival sphere
+                res.t_cross = m.t_ms;
+                res.cross_v = double(m.speed) / 500.0;
+                double c = 0;
+                for (int k = 0; k < 3; ++k) c += m.row[2][k] * dB_v[k] / dB;
+                if (c > 1) c = 1;
+                if (c < -1) c = -1;
+                res.cross_err_deg = std::acos(c) * 180 / M_PI;
+            }
+            m.steer_call(obj, true, 0); // the leaf every frame (Run151)
+            if (!vanilla && m.last_reason == core::Reason::handled) { // the aim direction's per-frame jump (the switch at the join point)
+                double d[3] = {double(m.last_aim_P[0]) - m.pos[0] / 500.0, double(m.last_aim_P[1]) - m.pos[1] / 500.0, double(m.last_aim_P[2]) - m.pos[2] / 500.0};
+                const double dn = norm3d(d);
+                if (dn > 1) {
+                    for (int k = 0; k < 3; ++k) d[k] /= dn;
+                    if (have_aim) {
+                        double c = d[0] * last_aim[0] + d[1] * last_aim[1] + d[2] * last_aim[2];
+                        if (c > 1) c = 1;
+                        if (c < -1) c = -1;
+                        const double jump = std::acos(c) * 180 / M_PI;
+                        if (jump > res.max_aim_jump_deg) res.max_aim_jump_deg = jump;
+                    }
+                    for (int k = 0; k < 3; ++k) last_aim[k] = d[k];
+                    have_aim = true;
+                }
+            }
+            if (m.t_ms >= m.next_think) {
+                m.next_think = m.t_ms + m.rng.next() * 50 / 32768;
+                if (dA <= 0.75 * ru) { // the arrival: P2 through the shared rule
+                    m.desired = 0;
+                    if (!keep) m.speed = 0;
+                    res.arrived_A = true;
+                    res.t_A = m.t_ms;
+                    res.v_after_A = double(m.speed) / 500.0;
+                    phase = 1;
+                    phase_t = m.t_ms;
+                    m.order = core::kOrderNone;
+                } else { // the engine's speed law to a gate (section 10.3)
+                    const double d_slow = 0.75 * ru + double(m.vmax) * double(m.vmax) / double(m.accel);
+                    std::int64_t des = dA > d_slow ? m.vmax : Model::ramp(dA, 5000, d_slow, m.vmax / 2);
+                    if (des < 5000) des = 5000;
+                    if (dA < d_slow + 3 * ru + 2 * m.r_units) {
+                        double c = 0;
+                        for (int k = 0; k < 3; ++k) c += m.row[2][k] * dA_v[k] / dA;
+                        des = c <= 0.7 ? 500 : Model::ramp(c - 0.7, 500, 0.3, des);
+                    }
+                    if (t.large && des > 50000) des = 50000;
+                    m.desired = des;
+                }
+            }
+        } else if (phase == 1) { // the KC's hand-over: one frame of order 0
+            m.desired = 0;
+            if (m.t_ms > phase_t) {
+                phase = 2;
+                m.order = core::kOrderDock;
+                for (int k = 0; k < 3; ++k) m.P[k] = B[k];
+            }
+        } else if (phase == 2) { // order 5 every frame (section 10.5)
+            m.steer_call(obj, false, 0);
+            double c = 0;
+            for (int k = 0; k < 3; ++k) c += m.row[2][k] * dB_v[k] / dB;
+            if (c < 0.95) {
+                m.desired = 500;
+                ++res.misaligned_ticks;
+            } else
+                m.desired = dB <= ru / 5 ? m.vmax / 2 : (dB >= ru ? m.vmax : m.vmax / 2 + std::llround(double(m.vmax / 2) * (dB - ru / 5) / (ru - ru / 5)));
+            if (dB <= double(m.speed) / 10.0 + m.r_units) { // the arrival: P4 through the shared rule
+                m.desired = 0;
+                v0 = keep ? m.speed : 0;
+                if (!keep) m.speed = 0;
+                res.arrived_B = true;
+                res.t_B = m.t_ms;
+                res.v0 = double(v0) / 500.0;
+                phase = 3;
+                phase_t = m.t_ms;
+                m.order = core::kOrderNone;
+            }
+        } else if (phase == 3) {
+            m.desired = 0;
+            if (m.t_ms > phase_t) {
+                phase = 4;
+                m.order = core::kOrderWarpAway;
+                for (int k = 0; k < 3; ++k) launch_start[k] = m.pos[k];
+                phase_t = m.t_ms;
+                res.t_launch = m.t_ms;
+                continue; // the launch moves the ship from the next frame
+            }
+        }
+        m.clamp(obj); // site B every frame
+        m.advance(dt);
+        if (res.t_cross >= 0 && !res.arrived_B && double(m.speed) / 500.0 < res.min_v_after_cross) res.min_v_after_cross = double(m.speed) / 500.0;
+        // the ring: during the approach to A (the lead-in's domain) the segment of this frame must not cross the gate
+        // plane (local z = 0) inside the ring; the pass points lie on a 0.55 r arc, so the hole is at least that wide
+        // (section 10.8 leaves the model's hole open) and the ring is [0.55 r, r]
+        if (phase <= 1) {
+            double z0 = 0, z1 = 0;
+            for (int k = 0; k < 3; ++k) {
+                z0 += last_pos[k] * F.R[2][k];
+                z1 += m.pos[k] * F.R[2][k];
+            }
+            if ((z0 < 0) != (z1 < 0) && z0 != z1) {
+                const double f = z0 / (z0 - z1);
+                double px = 0, py = 0;
+                for (int k = 0; k < 3; ++k) {
+                    const double p = last_pos[k] + f * (m.pos[k] - last_pos[k]);
+                    px += p * F.R[0][k];
+                    py += p * F.R[1][k];
+                }
+                const double lat = std::sqrt(px * px + py * py);
+                if (lat >= 0.55 * ru && lat < ru) res.disc_crossed = true;
+            }
+        }
+        for (int k = 0; k < 3; ++k) last_pos[k] = m.pos[k];
+    }
+    res.lead_used = m.gate_lead_used;
+    return res;
+}
+
+// ---- the gate law's unit checks (review fixes 1 and 2) --------------------------------------------------------------
+static void gate_unit_checks() {
+    const float r = 1105.0f, G[3] = {0, 0, 0}, row1[3] = {0, 1, 0}, row2[3] = {0, 0, 1};
+    const float A[3] = {0, -0.8f * r, -1.0f * r};
+    core::GateGeometry g;
+    check(core::gate_geometry(A, G, row1, row2, r, &g) && std::fabs(g.h[1] - core::kGateSin) < 1e-5f && std::fabs(g.h[2] - core::kGateCos) < 1e-5f &&
+              std::fabs(g.X[2] - (A[2] - 0.75f * r * core::kGateCos)) < 0.1f,
+          "gate: the pinned geometry validates; h = (0, sin 23.6, cos 23.6), X = A - 0.75 r h");
+    const float A_off[3] = {0.05f * r, -0.8f * r, -1.0f * r}, row_bad[3] = {0, 0, 2};
+    core::GateGeometry g2;
+    check(!core::gate_geometry(A_off, G, row1, row2, r, &g2) && !core::gate_geometry(A, G, row1, row_bad, r, &g2) && !core::gate_geometry(A, G, row1, row2, 0.5f, &g2),
+          "gate: A off by 5 % of r, a non-unit row and a tiny radius are refused (the vanilla point)");
+    float P[3], s = 0, e = 0;
+    // beside, behind, above, laterally off at A's depth: s > 0, refused
+    const float beside[3] = {3 * r, 0, 0}, behind[3] = {0, 0, 2 * r}, above[3] = {0, 3 * r, 0}, lateral_A[3] = {3 * r, -0.8f * r, -1.0f * r};
+    bool refused = true;
+    for (const float* x : {beside, behind, above, lateral_A})
+        if (core::gate_lead_in(g, x, 100.0f, P, &s, &e) || !(s > 0.0f)) refused = false;
+    check(refused, "gate lead-in: beside, behind, above and laterally off at A's depth lie past the crossing plane (s > 0): aim at A");
+    // far before the join point: refused; on the line inside the window: the carrot ahead, never beyond A
+    float far_x[3], mid[3], near[3];
+    for (int k = 0; k < 3; ++k) {
+        far_x[k] = g.X[k] - 4.0f * r * g.h[k];
+        mid[k] = g.X[k] - 1.0f * r * g.h[k];
+        near[k] = g.X[k] - 0.05f * r * g.h[k];
+    }
+    check(!core::gate_lead_in(g, far_x, 100.0f, P, &s, &e) && s < -3.9f * r, "gate lead-in: 4 r before the crossing: the straight approach (aim at A)");
+    bool mid_ok = core::gate_lead_in(g, mid, 100.0f, P, &s, &e);
+    float along = 0;
+    for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
+    check(mid_ok && std::fabs(along - (-1.0f * r + 0.3f * r)) < 1.0f && e < 1.0f, "gate lead-in: 1 r before the crossing at 100 m/s: the carrot 0.3 r ahead on the line");
+    mid_ok = core::gate_lead_in(g, near, 2000.0f, P, &s, &e);
+    along = 0;
+    for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
+    check(mid_ok && std::fabs(along - 0.75f * r) < 1.0f, "gate lead-in: a fast ship just before the crossing aims at A at most, never beyond");
+    // the blended switch: at 3 r the carrot is A, at 2 r the near carrot
+    float at3[3], at2[3];
+    for (int k = 0; k < 3; ++k) {
+        at3[k] = g.X[k] - 2.999f * r * g.h[k];
+        at2[k] = g.X[k] - 2.0f * r * g.h[k];
+    }
+    core::gate_lead_in(g, at3, 100.0f, P, &s, &e);
+    along = 0;
+    for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
+    const bool at3_A = std::fabs(along - 0.75f * r) < 5.0f;
+    core::gate_lead_in(g, at2, 100.0f, P, &s, &e);
+    along = 0;
+    for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
+    check(at3_A && std::fabs(along - (-2.0f * r + 0.3f * r)) < 1.0f, "gate lead-in: the carrot slides from A at the join point (3 r) to the near carrot at 2 r (a continuous switch)");
+    // a ship laterally off the line inside the window: the carrot is on the line (e reported), never past A
+    const float off[3] = {3 * r + g.X[0], g.X[1] - 2.0f * r * g.h[1], g.X[2] - 2.0f * r * g.h[2]};
+    mid_ok = core::gate_lead_in(g, off, 100.0f, P, &s, &e);
+    check(mid_ok && std::fabs(e - 3 * r) < 1.0f && std::fabs(P[0] - g.X[0]) < 0.01f, "gate lead-in: 3 r off the line at 2 r before the crossing: the carrot is on the line (the ship turns toward it)");
+    // site B: the emergency ramp wins over the gate speed
+    core::Ship ship{};
+    ship.obj = 1;
+    ship.order = core::kOrderFlyBefore;
+    ship.flags = std::uint16_t(core::kShipFlagGate | core::kShipFlagClamp);
+    ship.v_ref = 532.0f;
+    ship.stamp_ms = 1000;
+    const float x0[3] = {0, 0, 0};
+    check(std::fabs(core::clamp_for(ship, x0, core::kOrderFlyBefore, 1100, 250) - 532.0f) < 0.01f, "site B: the gate approach returns the gate speed");
+    ship.v_emergency = 25.0f;
+    check(std::fabs(core::clamp_for(ship, x0, core::kOrderFlyBefore, 1100, 250) - 25.0f) < 0.01f, "site B: an avoidance emergency wins over the gate speed (25 m/s, not 532)");
+    check(core::gate_speed_units(25.0f, 266000) == 12500 && core::gate_speed_units(25.0f, 12500) == 0, "site B: the gate write lowers to the emergency speed and writes nothing when equal");
+    // the shared gate-site rule over a synthetic object
+    FakeMem mem;
+    const std::uint32_t ship_o = 0x2000, flight = 0x3000, gate = 0x4000, types = 0x5000, rock = 0x6000;
+    mem.put(ship_o + 0x48, 7u | (2u << 16));
+    mem.put(ship_o + 0x50, flight);
+    mem.put(flight + 0x224, gate);
+    mem.put(gate + 0x48, 0x12);
+    mem.put(rock + 0x48, 17);
+    mem.put(types + 2 * 0xdb8 + 0x14, 7); // M5
+    check(core::gate_target_noncapital(mem, ship_o, types), "gate rule: a class-7 M5 with a class-0x12 target is a non-capital gate approach");
+    mem.put(types + 2 * 0xdb8 + 0x14, 4); // M2
+    check(!core::gate_target_noncapital(mem, ship_o, types), "gate rule: an M2 (capital mask) is refused");
+    mem.put(types + 2 * 0xdb8 + 0x14, 7);
+    mem.put(flight + 0x224, rock);
+    check(!core::gate_target_noncapital(mem, ship_o, types), "gate rule: a non-gate target is refused");
+    mem.put(flight + 0x224, gate);
+    check(!core::gate_target_noncapital(mem, ship_o, 0) && !core::gate_target_noncapital(mem, 0, types), "gate rule: no type table or no object: refused");
+    check(core::gate_stop_keeps_speed(true, true) && !core::gate_stop_keeps_speed(true, false) && !core::gate_stop_keeps_speed(false, true),
+          "gate rule: the speed is kept only with a validated gate state (P2 fails closed like P4)");
+    check(core::gate_launch_units(0, 900) == 1348650 && core::gate_launch_units(100000, 900) == 1348650 + 90000 && core::gate_launch_units(100000, -5) == 0,
+          "P5: 1.665 t^2 from rest, + v0 t / 1000 with a kept speed, a negative t clamped");
+}
+static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
+    char why[260];
+    const bool capital = !std::strcmp(t.cls, "M2");
+    const double thetas[3] = {-45, 0, 45};
+    // the standard approach: 3 km before A, 30 deg off the axis (local coordinates in r)
+    const double std_start[3] = {-3000.0 / 1105.0 * std::sin(30 * M_PI / 180), -0.8, -1.0 - 3000.0 / 1105.0 * std::cos(30 * M_PI / 180)};
+    for (double theta : thetas) {
+        const GateResult v = run_gate(t, fps, seed, theta, capital, true, false, std_start, kGateIdentity);
+        const GateResult g = run_gate(t, fps, seed, theta, capital, false, true, std_start, kGateIdentity);
+        if (capital) {
+            // the capital keeps the vanilla path: the stop at A, no lead-in, the launch from rest
+            std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: capital on the vanilla path (stop at A, no lead-in, launch from rest)", t.cls, fps, seed, theta);
+            check(g.arrived_A && g.arrived_B && g.launched && g.v_after_A == 0 && !g.lead_used && g.v0 == 0, why);
+            continue;
+        }
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: arrived at A and B and launched (vanilla too), the disc never crossed", t.cls, fps, seed, theta);
+        check(g.arrived_A && g.arrived_B && g.launched && v.arrived_A && v.arrived_B && v.launched && !g.disc_crossed && !v.disc_crossed, why);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: crossing speed %%.1f m/s >= 0.5 vmax (%%.1f)", t.cls, fps, seed, theta);
+        checkf(g.cross_v >= 0.5 * t.v_ms, why, g.cross_v, 0.5 * t.v_ms);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: heading error to B at the crossing %%.1f deg <= 18.2 (%%.1f)", t.cls, fps, seed, theta);
+        checkf(g.cross_err_deg >= 0 && g.cross_err_deg <= 18.2, why, g.cross_err_deg, 18.2);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: order 5 never creeps (misaligned ticks %%.0f == 0)", t.cls, fps, seed, theta);
+        checkf(g.misaligned_ticks == 0, why, g.misaligned_ticks, 0);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: no stop between the crossing and the pass point (min speed %%.1f m/s >= 0.25 vmax %%.1f)", t.cls, fps, seed, theta);
+        checkf(g.min_v_after_cross >= 0.25 * t.v_ms, why, g.min_v_after_cross, 0.25 * t.v_ms);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: the launch continues the pass-point speed (v0 %%.1f m/s, first launch frame %%.1f m/s)", t.cls, fps, seed, theta);
+        checkf(g.v0 > 0 && g.launch_first_v >= 0.95 * g.v0, why, g.v0, g.launch_first_v);
+        if (seed == kSeeds[0] && fps == 60)
+            std::printf("gate theta %+3.0f %-3s %-10s fps=%3d cross_v=%.1f m/s (vanilla %.1f) heading_err=%.1f deg (vanilla %.1f) creep_ticks=%d (vanilla %d) "
+                        "min_v=%.1f v0=%.1f (vanilla %.1f) t_cross->launch=%ld ms (vanilla %ld) lead_in=%d aim_jump=%.1f deg\n",
+                        theta, t.cls, t.name, fps, g.cross_v, v.cross_v, g.cross_err_deg, v.cross_err_deg, g.misaligned_ticks, v.misaligned_ticks,
+                        g.min_v_after_cross, g.v0, v.v0, g.t_launch - g.t_cross, v.t_launch - v.t_cross, g.lead_used ? 1 : 0, g.max_aim_jump_deg);
+    }
+    if (capital) return;
+    // the far start (6 km before A, 20 deg off the axis: the straight approach, the blended switch at 3 r, the lead-in),
+    // in the rotated gate frame (axis +x, up +z)
+    {
+        const double far_start[3] = {-6000.0 / 1105.0 * std::sin(20 * M_PI / 180), -0.8, -1.0 - 6000.0 / 1105.0 * std::cos(20 * M_PI / 180)};
+        const GateResult g = run_gate(t, fps, seed, 0, false, false, true, far_start, kGateRotated);
+        const GateResult v = run_gate(t, fps, seed, 0, false, true, false, far_start, kGateRotated);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate far start, rotated frame: crossing %%.1f m/s >= 0.5 vmax, heading error %%.1f deg <= 18.2, no creep, no disc, launched", t.cls, fps, seed);
+        checkf(g.arrived_A && g.arrived_B && g.launched && !g.disc_crossed && g.cross_v >= 0.5 * t.v_ms && g.cross_err_deg >= 0 && g.cross_err_deg <= 18.2 &&
+                   g.misaligned_ticks == 0 && g.lead_used,
+               why, g.cross_v, g.cross_err_deg);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate far start: the aim direction never jumps more than 12 deg between frames (%%.1f <= %%.1f)", t.cls, fps, seed);
+        checkf(g.max_aim_jump_deg <= 12.0, why, g.max_aim_jump_deg, 12.0);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate far start: at A within 1.3 x the vanilla time (%%.0f ms <= %%.0f)", t.cls, fps, seed);
+        checkf(g.t_A >= 0 && v.t_A >= 0 && double(g.t_A) <= 1.3 * double(v.t_A) + 500, why, double(g.t_A), 1.3 * double(v.t_A) + 500);
+        if (seed == kSeeds[0] && fps == 60)
+            std::printf("gate far/rot %-3s fps=%3d cross_v=%.1f heading_err=%.1f creep=%d t_A=%ld (vanilla %ld) aim_jump=%.1f deg\n", t.cls, fps, g.cross_v, g.cross_err_deg,
+                        g.misaligned_ticks, g.t_A, v.t_A, g.max_aim_jump_deg);
+    }
+    // the lateral approach in front of the crossing: at the join point's depth, 3 r off the line (local +x)
+    {
+        const double lat_start[3] = {3.0, -0.8 - 0.75 * core::kGateSin - 3.0 * core::kGateSin, -1.0 - 0.75 * core::kGateCos - 3.0 * core::kGateCos};
+        const GateResult g = run_gate(t, fps, seed, 0, false, false, true, lat_start, kGateIdentity);
+        const GateResult v = run_gate(t, fps, seed, 0, false, true, false, lat_start, kGateIdentity);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate lateral 3 r at the join depth: heading error at the crossing %%.1f deg <= 18.2, no creep, no disc (vanilla %%.1f deg)", t.cls, fps, seed);
+        checkf(g.arrived_A && g.arrived_B && g.launched && !g.disc_crossed && g.cross_err_deg >= 0 && g.cross_err_deg <= 18.2 && g.misaligned_ticks == 0, why,
+               g.cross_err_deg, v.cross_err_deg);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate lateral 3 r: at A within 1.3 x the vanilla time (%%.0f ms <= %%.0f)", t.cls, fps, seed);
+        checkf(g.t_A >= 0 && v.t_A >= 0 && double(g.t_A) <= 1.3 * double(v.t_A) + 500, why, double(g.t_A), 1.3 * double(v.t_A) + 500);
+        if (seed == kSeeds[0] && fps == 60)
+            std::printf("gate lateral %-3s fps=%3d heading_err=%.1f (vanilla %.1f) creep=%d (vanilla %d) t_A=%ld (vanilla %ld)\n", t.cls, fps, g.cross_err_deg, v.cross_err_deg,
+                        g.misaligned_ticks, v.misaligned_ticks, g.t_A, v.t_A);
+    }
+    // starts the lead-in must refuse (s > 0): beside the gate, behind it, above it, laterally off at A's depth: the ship aims
+    // at A as vanilla does, arrives within 1.3 x the vanilla time and never crosses the disc
+    {
+        const double starts[4][3] = {{3.0, 0.0, 0.0}, {0.0, 0.0, 2.0}, {0.0, 3.0, 0.0}, {3.0, -0.8, -1.0}};
+        const char* names[4] = {"beside 3 r", "behind 2 r", "above 3 r", "laterally off 3 r at A's depth"};
+        for (unsigned k = 0; k < 4; ++k) {
+            const GateResult g = run_gate(t, fps, seed, 0, false, false, true, starts[k], kGateIdentity);
+            const GateResult v = run_gate(t, fps, seed, 0, false, true, false, starts[k], kGateIdentity);
+            std::snprintf(why, sizeof why, "%s %d fps seed %u gate start %s: at A within 1.3 x the vanilla time (%%.0f ms <= %%.0f), the disc never crossed, launched", t.cls, fps, seed, names[k]);
+            checkf(g.arrived_A && g.arrived_B && g.launched && !g.disc_crossed && v.arrived_A && !v.disc_crossed && double(g.t_A) <= 1.3 * double(v.t_A) + 500, why,
+                   double(g.t_A), 1.3 * double(v.t_A) + 500);
+        }
+    }
+    // a mismatched A (the engine's point 5 % of r off the pinned geometry): the lead-in is refused, the vanilla point steers
+    if (fps == 60 && seed == kSeeds[0]) {
+        const GateResult g = run_gate(t, fps, seed, 0, false, false, true, std_start, kGateIdentity, 0.05);
+        std::snprintf(why, sizeof why, "%s gate: a mismatched A (5 %% of r off) refuses the lead-in and still arrives", t.cls);
+        check(!g.lead_used && g.arrived_A && g.arrived_B && g.launched, why);
+    }
+}
+
 int main() {
     controller_regression();
     unit_checks();
     avoidance_unit_checks();
     walk_checks();
+    gate_unit_checks();
     for (const ShipType& t : kShips) {
         degraded_scenario(t);
         for (int fps : kFps)
@@ -1768,6 +2302,7 @@ int main() {
                 flyby_scenario(t, fps, seed, 150.0); // a close pass: the body is inside every class's C
                 crossing_scenario(t, fps, seed);
                 formation_obstacle_scenario(t, fps, seed);
+                gate_scenario(t, fps, seed);
             }
     }
     std::printf("ship_steering_host checks=%u failures=%u\n", checks, failures);

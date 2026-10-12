@@ -395,6 +395,10 @@ SETTINGS = [
     entry('ship_avoidance', 'bool', 'engine', 'Computer-flown ships steer around ships, stations, asteroids and gates on their '
           'predicted path instead of stopping for the game\'s collision warning (needs ship_steering). Experimental. '
           '1 = on, 0 = off.', builtin='0', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
+    entry('ship_steering_gates', 'bool', 'engine', 'Computer-flown ships other than capital ships fly through gates in one '
+          'continuous approach: they line up with the gate on the way in, keep their speed at the approach point and the '
+          'pass point instead of stopping twice, and the jump launch continues at that speed (needs ship_steering). '
+          '1 = on, 0 = off.', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '

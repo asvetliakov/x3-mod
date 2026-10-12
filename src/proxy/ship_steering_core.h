@@ -149,13 +149,13 @@ inline bool finite_f(float v) noexcept {
 }
 // atan on [-1, 1]: odd minimax polynomial of degree 11, |error| < 1.5e-5 rad
 // (the engine's own angles are quantised to 1/65536 turn = 9.6e-5 rad).
-inline float atan_unit(float x) noexcept {
+__attribute__((always_inline)) inline float atan_unit(float x) noexcept {
     const float x2 = x * x;
     return x * (0.99997726f +
                 x2 * (-0.33262347f + x2 * (0.19354346f + x2 * (-0.11643287f + x2 * (0.05265332f + x2 * -0.01172120f)))));
 }
 // atan2(y, x) in (-pi, pi], no CRT call. (0, 0) -> 0.
-inline float atan2_f(float y, float x) noexcept {
+__attribute__((always_inline)) inline float atan2_f(float y, float x) noexcept {
     const float ax = fabs_f(x), ay = fabs_f(y);
     if (ax == 0.0f && ay == 0.0f) return 0.0f;
     float r;
@@ -194,6 +194,7 @@ struct Inputs {
     bool arrival_ramp = false;
     float d_order = -1.0f;    // distance to the order's own point when P is a detour (m; < 0 = P is the order's point):
                               // the arrival hold, the ramp and the stuck witness measure progress to the order, not to the detour
+    float tick_s = kTickS;    // the servo's rate-surplus horizon (s): servo_tick() below
 };
 struct Command {
     std::int32_t e[3] = {0, 0, 0}; // the remaining angles to write (binary)
@@ -211,11 +212,30 @@ struct Command {
 // The rate servo of section 2.4: the remaining angle that makes the engine's
 // controller accelerate toward |omega| and brake above it, never beyond the
 // geometric remainder.
-inline float servo_angle(float theta_axis, float omega_axis, float a_axis) noexcept {
+// The servo's horizon: the interval the rate surplus must cover until the next call. An order that calls the leaf
+// every frame (Run151: follow/escort/dock, calls_per_ship_s 152 at 173 fps, carried a 50 ms surplus) gets the
+// measured gap since the ship's previous call, clamped to [one frame, kTickS], once its cadence is established
+// (kPerFrameRun consecutive gaps within 1.5 frames). A gated order, whose next call is a random 0..50 ms away, keeps
+// the 50 ms worst case: its previous gap does not predict the next one, and a short budget lets the engine's
+// controller brake to a stop before the next call (fixture: yaw reversals at 144 fps under the raw measured gap).
+constexpr std::uint32_t kPerFrameRun = 8;
+inline float servo_tick(std::uint32_t gap_ms, std::uint32_t frame_ms, std::uint32_t& run) noexcept {
+    if (frame_ms < 1) frame_ms = 1;
+    if (gap_ms <= frame_ms + frame_ms / 2) {
+        if (run < kPerFrameRun) ++run;
+    } else {
+        run = 0;
+    }
+    if (run < kPerFrameRun) return kTickS;
+    if (gap_ms < frame_ms) gap_ms = frame_ms;
+    if (gap_ms > 50) gap_ms = 50;
+    return float(gap_ms) * 0.001f;
+}
+inline float servo_angle(float theta_axis, float omega_axis, float a_axis, float tick_s = kTickS) noexcept {
     const float mag = fabs_f(theta_axis);
     if (omega_axis == 0.0f || mag == 0.0f) return 0.0f;
     const float ow = fabs_f(omega_axis);
-    float e = ow * ow / a_axis + ow * kTickS;
+    float e = ow * ow / a_axis + ow * tick_s;
     if (e > mag) e = mag;
     return omega_axis < 0.0f ? -e : e;
 }
@@ -306,8 +326,9 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
     c.omega = rate_command(theta_eff, W_n, a_n);
     c.omega_axis[0] = c.omega * s_y;
     c.omega_axis[1] = c.omega * s_p;
-    c.e_rad[0] = yaw_ok ? servo_angle(geo_y, c.omega_axis[0], dyn.W[0] * dyn.k) : 0.0f;
-    c.e_rad[1] = pitch_ok ? servo_angle(geo_p, c.omega_axis[1], dyn.W[1] * dyn.k) : 0.0f;
+    const float tick = (in.tick_s > 0.0f && in.tick_s < kTickS) ? in.tick_s : kTickS;
+    c.e_rad[0] = yaw_ok ? servo_angle(geo_y, c.omega_axis[0], dyn.W[0] * dyn.k, tick) : 0.0f;
+    c.e_rad[1] = pitch_ok ? servo_angle(geo_p, c.omega_axis[1], dyn.W[1] * dyn.k, tick) : 0.0f;
     // Roll policy (section 2.6): the roll from level (row0 horizontal, row1 up)
     // plus the bank, through the same servo.
     float e_roll = 0.0f;
@@ -322,7 +343,7 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
         const float a_r = dyn.W[2] * dyn.k;
         const float w_r = rate_command(fabs_f(phi_cmd), dyn.W[2], a_r);
         c.omega_axis[2] = phi_cmd < 0.0f ? -w_r : w_r;
-        e_roll = servo_angle(phi_cmd, c.omega_axis[2], a_r);
+        e_roll = servo_angle(phi_cmd, c.omega_axis[2], a_r, tick);
     }
     c.e_rad[2] = e_roll;
     for (unsigned i = 0; i < 3; ++i) {
@@ -357,12 +378,14 @@ struct Ship {
     std::uint32_t best_stamp = 0; // when best_d last improved
     std::uint32_t calls = 0;
     float v_emergency = 0;        // m/s, the avoidance layer's braking ramp when no detour exists (0 = none)
-    std::uint32_t reserved[2] = {0, 0};
+    std::uint32_t last_call_ms = 0; // game time of the previous handled call (the servo's measured interval)
+    std::uint32_t per_frame_run = 0; // consecutive calls one frame apart (servo_tick)
 };
 static_assert(sizeof(Ship) == 64, "one cache line per ship");
 constexpr unsigned kShipCapacity = 1024;
 constexpr unsigned kProbeLimit = 8;
 constexpr std::uint32_t kStaleMs = 5000; // an entry older than this may be reused
+constexpr std::uint16_t kShipFlagRamp = 1, kShipFlagClamp = 2, kShipFlagGate = 4; // Ship.flags: arrival ramp, clamp enabled, gate approach
 inline unsigned ship_hash(std::uint32_t obj) noexcept {
     return ((obj >> 4) * 0x9e3779b1u) >> (32 - 10);
 }
@@ -408,13 +431,141 @@ struct ShipTable {
 // decision, recomputed with the current distance; 0 when nothing applies
 // (stale, another order, no schedule).
 inline float clamp_for(const Ship& s, const float x[3], std::uint16_t order, std::uint32_t now_ms, std::uint32_t max_age_ms) noexcept {
-    if (!(s.flags & 2) && s.v_emergency <= 0.0f) return 0.0f;
+    if (!(s.flags & kShipFlagClamp) && s.v_emergency <= 0.0f) return 0.0f;
     if (s.order != order || now_ms - s.stamp_ms > max_age_ms) return 0.0f;
-    const float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
-    const float dist = sqrt_ss(dot3(d, d));
-    float v = schedule_speed(dist, s.d_arr, s.a_lin, s.v_ref, (s.flags & 1) != 0, s.v_corner);
+    float v;
+    if (s.flags & kShipFlagGate) // the gate approach: v_ref holds gate_speed(); the emergency ramp below still wins
+        v = finite_f(s.v_ref) && s.v_ref > 0.0f ? s.v_ref : 0.0f;
+    else {
+        const float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
+        const float dist = sqrt_ss(dot3(d, d));
+        v = schedule_speed(dist, s.d_arr, s.a_lin, s.v_ref, (s.flags & kShipFlagRamp) != 0, s.v_corner);
+    }
     if (s.v_emergency > 0.0f && (v <= 0.0f || s.v_emergency < v)) v = fmax_f(s.v_emergency, kFloorMs);
     return finite_f(v) ? v : 0.0f;
+}
+// acos in degrees for a cosine in [-1, 1] (the crossing heading error of the --debug row): the identity
+// acos(c) = 2 atan2(sqrt(1 - c), sqrt(1 + c)) over the module's own atan2, no CRT call.
+// always inlined: an out-of-line float return would travel through st(0) on i386 (the x87 audit)
+__attribute__((always_inline)) inline float acos_deg(float c) noexcept {
+    if (c >= 1.0f) return 0.0f;
+    if (c <= -1.0f) return 180.0f;
+    return 2.0f * atan2_f(sqrt_ss(1.0f - c), sqrt_ss(1.0f + c)) * (180.0f / kPi);
+}
+// ---- the gate approach (amendment 7; ship-navigation-ai.md section 10.7 P1, P4, P5) -----------------------------
+// A non-capital ship on order 4 to a gate (target class 0x12) keeps the engine's point A = G + R(0, -0.8, -1) r in
+// f+0x240 (the order's own arrival test, dist(A) <= 0.75 r, is unchanged) but is steered along the lead-in line
+// through A with direction h = sin(23.6 deg) row1 + cos(23.6 deg) row2 (the middle of the pass point's 13-34 deg
+// bearing spread), so it crosses the 0.75 r sphere heading within 10.4 deg of any pass point B: order 5 then never
+// takes its 1 m/s turn. The point handed to the leaf is the carrot on that line kGateLookS of flight (at least
+// kGateLookMinR r) ahead of the ship's projection; farther than kGateJoinR r before the crossing the ship aims at A
+// itself (a straight approach, the join at the end). The speed is the module's: vmax, lowered by the cornering
+// term and the engine's own cap for large hulls (0x004550ed: 50000 units/s), written at site B in both directions
+// (the engine's order-4 ramp to 5000 units/s at A, 0x00455052, is the stop P2 removes). Capitals keep every vanilla
+// step (their next order, 0x1f RotateToAngles, expects a stationary ship).
+constexpr float kGateSin = 0.40035f, kGateCos = 0.91636f; // sin / cos 23.6 deg
+constexpr float kGateCrossFraction = 0.75f;               // the order's arrival radius around A, in r (0x00454b1a)
+constexpr float kGateApproachY = -0.8f, kGateApproachZ = -1.0f; // the approach vector [gate+0x50]+0x1a0 (0x00440e75..)
+constexpr float kGateLookS = 0.75f, kGateLookMinR = 0.3f, kGateJoinR = 3.0f, kGateJoinInnerR = 2.0f;
+constexpr float kGateLargeCapMs = 100.0f;                 // 50000 units/s, the engine's cap for large hulls on order 4
+constexpr float kGateGeometryTol = 0.02f;                 // |A - (G + R a r)| <= this x r, else the vanilla point (fail closed)
+struct GateGeometry {
+    float h[3];  // the lead-in direction, unit, world
+    float X[3];  // the crossing point A - 0.75 r h, m
+    float A[3];  // the approach point, m
+    float r;     // the gate's collision radius, m
+};
+// Validates the engine's point A against the gate frame (fail closed: a layout other than the pinned one gives false
+// and the ship keeps the vanilla point) and fills the lead-in geometry.
+inline bool gate_geometry(const float A[3], const float G[3], const float row1[3], const float row2[3], float r, GateGeometry* out) noexcept {
+    if (!(r > 1.0f) || !finite_f(r)) return false;
+    float expect[3], d[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        expect[i] = G[i] + (kGateApproachY * row1[i] + kGateApproachZ * row2[i]) * r;
+        d[i] = A[i] - expect[i];
+        if (!finite_f(A[i]) || !finite_f(G[i]) || !finite_f(row1[i]) || !finite_f(row2[i])) return false;
+    }
+    if (dot3(d, d) > kGateGeometryTol * kGateGeometryTol * r * r) return false;
+    for (unsigned i = 0; i < 3; ++i) {
+        out->h[i] = kGateSin * row1[i] + kGateCos * row2[i];
+        out->A[i] = A[i];
+    }
+    const float n = sqrt_ss(dot3(out->h, out->h));
+    if (!(n > 0.9f) || !(n < 1.1f)) return false; // the rows are unit vectors (16.16): anything else is not the pinned frame
+    for (unsigned i = 0; i < 3; ++i) {
+        out->h[i] /= n;
+        out->X[i] = A[i] - kGateCrossFraction * r * out->h[i];
+    }
+    out->r = r;
+    return true;
+}
+// The point to steer at for a ship at x with speed v (m/s), or false = steer at the engine's A. s = the ship's
+// projection along the line from X (< 0 before the crossing), e = its distance from the line. The lead-in applies
+// only in front of the crossing plane and within kGateJoinR r of it (-kGateJoinR r <= s <= 0): a ship beside, above
+// or behind the gate, or already past the crossing (s > 0), aims at A as the engine does (the reviewed failure: a
+// carrot beyond such a ship's own projection drove it away from A; the disc lies at s >= 1.6 r, so no path from
+// s <= 0 to a point at or before A crosses it). Inside the window the point is the carrot kGateLookS of flight
+// (at least kGateLookMinR r) ahead of the ship's projection, never beyond A; a ship laterally off the line turns
+// toward it first (the pursuit converges within ~3 lookaheads). The far end is blended: between kGateJoinInnerR r
+// and kGateJoinR r before the crossing the carrot slides from A to the near carrot, so the switch from the straight
+// approach is continuous. Envelope (fixture): approaches that enter the window with the lateral offset below ~2 r
+// cross within 10 deg of the line; a ship that reaches the arrival sphere from s > 0 crosses as vanilla does.
+inline bool gate_lead_in(const GateGeometry& g, const float x[3], float v, float P[3], float* s_out, float* e_out = nullptr) noexcept {
+    const float dx[3] = {x[0] - g.X[0], x[1] - g.X[1], x[2] - g.X[2]};
+    const float s = dot3(dx, g.h);
+    if (s_out) *s_out = s;
+    const float d2 = dot3(dx, dx) - s * s;
+    if (e_out) *e_out = d2 > 0.0f ? sqrt_ss(d2) : 0.0f;
+    if (s > 0.0f || s < -kGateJoinR * g.r) return false;
+    float look = kGateLookS * (v > 0.0f ? v : 0.0f);
+    if (look < kGateLookMinR * g.r) look = kGateLookMinR * g.r;
+    const float a_along = kGateCrossFraction * g.r; // A's position along the line from X
+    float along = s + look;
+    if (along > a_along) along = a_along;
+    const float t = (-s - kGateJoinInnerR * g.r) / ((kGateJoinR - kGateJoinInnerR) * g.r); // 0 at the inner edge, 1 at the join point
+    if (t > 0.0f) along += (t < 1.0f ? t : 1.0f) * (a_along - along);
+    for (unsigned i = 0; i < 3; ++i) P[i] = g.X[i] + g.h[i] * along;
+    return true;
+}
+// The gate-site rule shared by the DLL handlers (P2, P4) and the fixture: `obj` is a class-7 ship whose order target
+// f+0x224 is a gate (class 0x12) and whose record code (+0x14 of the TShips record) is not capital (0x0043fd50:
+// kCapitalMask). Reads through the same memory reader the walk core uses.
+constexpr std::uint32_t kGateObjClass = 0x48, kGateObjType = 0x4a, kGateObjFlight = 0x50, kGateFlightTarget = 0x224;
+constexpr std::uint32_t kGateRecordStride = 0xdb8, kGateRecordClassCode = 0x14;
+constexpr std::uint16_t kGateClassShip = 7, kGateClassGate = 0x12;
+template <class Mem>
+inline bool gate_target_noncapital(Mem& mem, std::uint32_t obj, std::uint32_t type_table) noexcept {
+    if (!obj || mem.u16(obj + kGateObjClass) != kGateClassShip) return false;
+    const std::uint32_t fl = mem.u32(obj + kGateObjFlight);
+    if (!fl) return false;
+    const std::uint32_t tgt = mem.u32(fl + kGateFlightTarget);
+    if (!tgt || mem.u16(tgt + kGateObjClass) != kGateClassGate) return false;
+    const std::int32_t type = std::int16_t(mem.u16(obj + kGateObjType));
+    if (!type_table || type < 0) return false;
+    const std::uint32_t code = mem.u32(type_table + std::uint32_t(type) * kGateRecordStride + kGateRecordClassCode);
+    return !(code < kClassCount && ((kCapitalMask >> code) & 1u));
+}
+// P2 / P4: the speed is kept only for a ship the policy steers (a gate state exists: the decision validated the gate
+// frame and A) whose target is still a gate and which is not capital; anything else takes the engine's stop.
+inline bool gate_stop_keeps_speed(bool noncapital_gate_target, bool state_valid) noexcept {
+    return noncapital_gate_target && state_valid;
+}
+// The approach speed written at site B (m/s): vmax, the large-hull cap, the cornering term when it is lower.
+__attribute__((always_inline)) inline float gate_speed(float v_max, bool large, float v_corner) noexcept {
+    float v = v_max;
+    if (large && kGateLargeCapMs < v) v = kGateLargeCapMs;
+    if (v_corner > 0.0f && v_corner < v) v = v_corner;
+    return v < kFloorMs ? kFloorMs : v;
+}
+// P5: the order-8 launch distance after t ms, units: v0 t / 1000 + t^2 x 1665000 / 1000000 (the engine's
+// 0x0045526f..0x0045527f with the v0 term added; v0 = the speed kept at the pass point, units/s).
+inline std::int32_t gate_launch_units(std::int32_t v0_units, std::int32_t t_ms) noexcept {
+    if (t_ms < 0) t_ms = 0;
+    if (v0_units < 0) v0_units = 0;
+    const std::int64_t t = t_ms;
+    std::int64_t s = std::int64_t(v0_units) * t / 1000 + t * t * 1665000 / 1000000;
+    if (s > 0x7fffffff) s = 0x7fffffff;
+    return std::int32_t(s);
 }
 // The site-B write for a clamp v (m/s, > 0) against the current desired speed (units/s): the units value to
 // store, or 0 for no write. Compared in float before any conversion, so a schedule beyond 2^31 units/s (a
@@ -425,6 +576,15 @@ inline std::int32_t clamp_units(float v_ms, std::int32_t desired) noexcept {
     const float units = v_ms * kUnitsPerMetre;
     if (!(units < float(desired)) || units >= 2147483520.0f) return 0;
     return round_to_int(units);
+}
+// The site-B write for the gate approach (kShipFlagGate): the speed in both directions (the engine's ramp to A is
+// replaced), 0 when nothing changes or the value is not representable.
+inline std::int32_t gate_speed_units(float v_ms, std::int32_t desired) noexcept {
+    if (!(v_ms > 0.0f) || !finite_f(v_ms)) return 0;
+    const float units = v_ms * kUnitsPerMetre;
+    if (units >= 2147483520.0f) return 0;
+    const std::int32_t u = round_to_int(units);
+    return u > 0 && u != desired ? u : 0;
 }
 // The ship_steering_stuck witness (section 6.3): true once when the distance
 // to a MovePos point has not improved for kStuckMs.

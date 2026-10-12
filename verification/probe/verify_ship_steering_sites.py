@@ -12,7 +12,12 @@ five engine getters' conventions (obj in EAX, or ECX for the acceleration getter
 first instruction, their returns and the MovePos call sites; the slew block is the body of a second bucket loop
 that runs after the order loop (no branch from outside it; the order loop's bucket advance falls through into it);
 the leaves' fpatan operand sequences witness the axis sign conventions; the "large" predicate's byte table yields
-the core's mask.
+the core's mask. Step 3 (the gate approach): the three gate sites P2 0x00454b91 / P4 0x00454700 (`mov [ebx+0x14],eax`
+| `mov [ebx+0x10],eax`, 6 B) and P5 0x0045526f (`mov eax,0x1967e8`, 5 B) decoded in their handlers' neighbourhoods,
+the register facts before and after each window (EAX = 0 from `xor eax,eax`, EBX = obj, ECX = flight; the t / t^2
+sequence before P5 and the `imul; idiv` the stub skips), the resume addresses as instruction starts, the capital
+predicate 0x0043fd50's byte table against the core's mask, and the order-4 / order-5 gate facts of ship-navigation-ai.md
+section 10.3 and 10.5 the lead-in relies on.
 
 usage: verify_ship_steering_sites.py [--exe PATH] [--json]
 """
@@ -62,14 +67,49 @@ WALK_FACTS = (
     ('child_offset_scale_flag', 0x004881a9, bytes.fromhex('f6852c01000040')),                                   # test byte [ebp+0x12c],0x40
     ('child_offset_scale_mul', 0x004881c4, bytes.fromhex('8b5070')),                                            # mov edx,[eax+0x70] (the parent's scale)
 )
+# Step 3: the gate sites (ship_steering_sites.h (h)-(k)), their decode windows and the facts around them.
+STOP_BYTES = bytes.fromhex('894314894310')
+P2_VA, P4_VA, P5_VA = 0x00454b91, 0x00454700, 0x0045526f
+P2_WINDOW, P4_WINDOW, P5_WINDOW = (0x00454b74, 0x00454ba1), (0x004546f1, 0x00454728), (0x0045523c, 0x004552a0)
+P2_RESUME, P4_RESUME, P5_RESUME = 0x00454b97, 0x00454706, 0x00455281
+GATE_FACTS = (
+    # P2: ecx = flight; eax = 0; the result word; push 1; esi = obj; then the window; then the wake call and the jump to the loop continue
+    ('p2_registers', 0x00454b81, bytes.fromhex('8b4b50' '33c0' '66898158020000' '6a01' '8bf3')),
+    ('p2_window', P2_VA, STOP_BYTES),
+    ('p2_resume_call_wake', P2_RESUME, bytes.fromhex('e8c4b90000' 'e93c480000')),  # call 0x00460560; jmp 0x004593dd
+    # P4: ecx = flight; eax = 0; the window; then flight+0x250 = -1 (the resume)
+    ('p4_registers', 0x004546fb, bytes.fromhex('8b4b50' '33c0')),
+    ('p4_window', P4_VA, STOP_BYTES),
+    ('p4_resume', P4_RESUME, bytes.fromhex('c78150020000ffffffff')),
+    # P5: ship |= 0x400 (ebx = obj); eax = t = ecx + 900; ecx = t^2; [esp+0x10] = t^2; the window; the engine's
+    # imul/idiv the stub skips; the resume `mov edx,[ebx+0x50]`
+    ('p5_registers', 0x00455259, bytes.fromhex('814b4000040000' '8d8184030000' '8bc8' '0fafc8' '894c2410')),
+    ('p5_window', P5_VA, bytes.fromhex('b8e8671900')),
+    ('p5_skipped_imul_idiv', 0x00455274, bytes.fromhex('8b542410' 'b940420f00' 'f7ea' 'f7f9')),
+    ('p5_resume', P5_RESUME, bytes.fromhex('8b5350')),
+    # the order-4 gate facts the lead-in relies on (section 10.3): target class 0x12 test, the arrival radius 3 r / 4,
+    # the approach vector (0, -0.8, -1.0) written for every class-0x12 object, the point read from flight+0x240
+    ('order4_target_class_0x12', 0x00454b09, bytes.fromhex('0fb74748' '663d1200')),
+    ('order4_arrival_radius_3r_4', 0x00454b1a, bytes.fromhex('8b87a4000000' '8d0440' '99' '83e203' '03c2' 'c1f802')),
+    ('gate_approach_vector', 0x00440e75, bytes.fromhex('8998a0010000' '8b4d50' 'c781a40100003433ffff' '8b5550')),  # [gate+0x50]+0x1a0 = 0, +0x1a4 = -0.8 (0xffff3334)
+    ('order4_point_from_flight_0x240', 0x00454a20, bytes.fromhex('83b85002000000')),
+    # the order-5 facts the crossing heading targets (section 10.5): the 0.95 alignment test, the 500 units/s creep
+    ('order5_aligned_0x95', 0x00454897, bytes.fromhex('3d33f30000' '7d1a')),
+    ('order5_creep_500', 0x004548a5, bytes.fromhex('c74314f4010000')),
+)
+CAPITAL_PREDICATE, CAPITAL_JUMP_TABLE, CAPITAL_BYTE_TABLE, CAPITAL_TABLE_LEN = 0x0043fd50, 0x0043fd84, 0x0043fd8c, 14
+CAPITAL_PROLOGUE = bytes.fromhex('6683784807' '752a' '0fbf404a' '8b0dd46f6000' '69c0b80d0000' '8b440814' '83f80d' '7711')
 SITES = (
     H('ship_steer_leaf_yaw_pitch', 0x0044ccc0, LEAF_BYTES, 0x0044ccc0, 0x0044d014),
     H('ship_steer_leaf_roll_yaw', 0x0044c620, LEAF_BYTES, 0x0044c620, 0x0044c963),
     H('ship_steer_leaf_roll_pitch', 0x0044c970, LEAF_BYTES, 0x0044c970, 0x0044ccb5),
     H('ship_steer_loop_continue', B_VA, bytes.fromhex('8b1b833b00'), *B_WINDOW),
     H('ship_avoid_warn_test', E_VA, bytes.fromhex('558bec83e4f0'), E_VA, E_END),
+    H('ship_gate_stop_a', P2_VA, STOP_BYTES, *P2_WINDOW),
+    H('ship_gate_stop_b', P4_VA, STOP_BYTES, *P4_WINDOW),
+    H('ship_gate_launch', P5_VA, bytes.fromhex('b8e8671900'), *P5_WINDOW),
 )
-RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0, E_VA: 0x10}
+RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0, E_VA: 0x10, P2_VA: 0, P4_VA: 0, P5_VA: 0}
 # Getters: (va, first instruction bytes, the register that carries obj, the plain `ret` addresses).
 GETTERS = {
     'max_speed': (0x00450980, bytes.fromhex('83ec0853568bf0'), 'eax', (0x00450b20,)),            # sub esp,8; push ebx; push esi; mov esi,eax
@@ -97,9 +137,23 @@ LARGE_PROLOGUE = bytes.fromhex('6683784807' '752a' '0fbf404a' '8b0dd46f6000' '69
 _BRANCH = re.compile(r'^\s*([0-9a-f]+):\s+(?:[0-9a-f]{2} )+\s*(j[a-z]+|call|loop[a-z]*)\s+(?:short\s+)?0x([0-9a-f]+)', re.M)
 
 
+_STARTS = re.compile(r'^\s*([0-9a-f]+):\s+[0-9a-f]{2}', re.M)
+_listing_cache = {}
+
+
+def text_listing(exe):
+    if exe not in _listing_cache:
+        run = subprocess.run([common.OBJDUMP, '-d', '-Mintel', '-j', '.text', str(exe)], check=True, capture_output=True, text=True, timeout=300)
+        _listing_cache[exe] = run.stdout
+    return _listing_cache[exe]
+
+
 def text_branches(exe):
-    run = subprocess.run([common.OBJDUMP, '-d', '-Mintel', '-j', '.text', str(exe)], check=True, capture_output=True, text=True, timeout=300)
-    return [(int(m.group(1), 16), m.group(2), int(m.group(3), 16)) for m in _BRANCH.finditer(run.stdout)]
+    return [(int(m.group(1), 16), m.group(2), int(m.group(3), 16)) for m in _BRANCH.finditer(text_listing(exe))]
+
+
+def text_instruction_starts(exe):
+    return {int(m.group(1), 16) for m in _STARTS.finditer(text_listing(exe))}
 
 
 def raw_branch_targets(image, lo, hi):
@@ -154,6 +208,8 @@ def header_specs(text):
     table = text[start:text.index('};', start)]
     e_start = text.index('constexpr engine_patch::SiteSpec kWarnSite')
     table += text[e_start:text.index(';', e_start)]
+    g_start = text.index('constexpr engine_patch::SiteSpec kGateSites[GateCount]')
+    table += text[g_start:text.index('};', g_start)]
     rows = []
     for m in _SPEC_RE.finditer(table):
         rows.append({'name': m.group(1), 'va': int(m.group(2), 16),
@@ -216,15 +272,49 @@ def verify(exe=DEFAULT_EXE, whole_text=True):
             for s in SITES:
                 if s.va < tgt < s.end:
                     interior.append({'at': hex(at), 'mnemonic': mn, 'target': hex(tgt), 'site': s.name})
-    raw_interior = [h for s in SITES for h in raw_branch_targets(image, s.va + 1, s.end)]
+    # the decoder-free sweep over-approximates: a hit whose source byte is not an instruction start of the linear
+    # .text decode is an operand byte (0x00454c08: the 0x70 displacement of `mov ecx,[ebx+0x70]` read as `jo` into P2's
+    # window) and is reported, not counted
+    raw_all = [h for s in SITES for h in raw_branch_targets(image, s.va + 1, s.end)]
+    starts = text_instruction_starts(exe) if whole_text else None
+
+    def is_instruction_start(va):
+        if starts is not None:
+            return va in starts
+        # the fast mode: decode a window around the source (the decoder resynchronises well within 48 bytes)
+        listing = common.parse_objdump(common.objdump_window(exe, va - 48, va + 16, timeout=60), va - 48, va + 16)
+        return any(i.va == va for i in listing)
+
+    raw_interior = [h for h in raw_all if is_instruction_start(h[0])]
     checks['no_text_branch_into_span_interior'] = {'ok': not interior and not raw_interior, 'interior_branches': interior,
-                                                   'raw_interior': [hex(h[0]) for h in raw_interior]}
+                                                   'raw_interior': [hex(h[0]) for h in raw_interior],
+                                                   'raw_operand_bytes_ignored': [hex(h[0]) for h in raw_all if h not in raw_interior]}
     # no dword anywhere (every section, every alignment) points into a span interior; dwords equal to a span
     # start are incoming edges and are reported (the leaves: none expected; B: the two jump-table entries)
     interior_dwords = {s.name: [hex(at) for at, v in dwords_into(image, data, s.va + 1, s.end)] for s in SITES}
     start_dwords = {s.name: [hex(at) for at, v in dwords_into(image, data, s.va, s.va + 1)] for s in SITES}
     checks['no_data_dword_into_window'] = {'ok': not any(interior_dwords.values()) and all(not start_dwords[s.name] for s in SITES[:3] + SITES[4:]),
                                            'interior': interior_dwords, 'start_edges': start_dwords}
+    # 4b. step 3: the gate windows are whole instructions in their handlers (check 1 above covers the span and the interior
+    #     branches), the register facts before and after each window hold, every resume address is an instruction start,
+    #     the window of P4 lies before the join 0x00454710, and no branch anywhere targets a window interior or a resume
+    #     other than as an instruction start (the join into 0x00454710 is after P4's resume)
+    gate_facts = {name: image.read(at, len(b)) == b for name, at, b in GATE_FACTS}
+    resumes = {}
+    for name, (lo, hi), resume, va in (('p2', P2_WINDOW, P2_RESUME, P2_VA), ('p4', P4_WINDOW, P4_RESUME, P4_VA), ('p5', P5_WINDOW, P5_RESUME, P5_VA)):
+        listing = decoded[(lo, hi)]
+        starts = {i.va for i in listing}
+        span = [i for i in listing if va <= i.va < resume]
+        resumes[name] = {'resume_is_instruction_start': resume in starts, 'window_instructions': [common._instruction_dict(i) for i in span],
+                         'window_ends_at_resume': bool(span) and span[-1].end == resume}
+    p4_join_after = all(not (P4_VA < tgt < P4_RESUME) for _, _, tgt in (text_branches(exe) if whole_text else []))
+    p4_join = [hex(at) for at, _, tgt in (text_branches(exe) if whole_text else []) if tgt == 0x00454710]
+    checks['gate_sites'] = {'ok': all(gate_facts.values()) and all(r['resume_is_instruction_start'] and r['window_ends_at_resume'] for r in resumes.values())
+                            and all([i['mnemonic'] for i in r['window_instructions']] == (['mov', 'mov'] if n != 'p5' else ['mov', 'mov', 'mov', 'imul', 'idiv'])
+                                    for n, r in resumes.items())
+                            and p4_join_after and (not whole_text or p4_join == ['0x459191']),
+                            'facts': gate_facts, 'resumes': resumes, 'join_0x00454710_from': p4_join,
+                            'pinned': 'P2/P4: EAX = 0, EBX = obj, ECX = flight, flags dead; P5: EAX = t ms, ECX = [esp+0x10] = t^2, EBX = obj; resume 0x00454b97 / 0x00454706 / 0x00455281'}
     # 5b. site E: the whole function decodes gap-free to its last `ret 0x10`, all four returns are `ret 0x10`, exactly the
     #     three callers reach it (rel32 calls in .text), each consumes EAX with `test eax,eax; je` right after the call
     #     (EFLAGS dead after the call), the proximity handler initialises its &out local to 0 and its true path sets the
@@ -295,6 +385,14 @@ def verify(exe=DEFAULT_EXE, whole_text=True):
     core_mask = int(re.search(r'kLargeMask\s*=\s*(0x[0-9a-fA-F]+)', CORE_HEADER.read_text()).group(1), 16)
     checks['large_predicate_mask'] = {'ok': image.read(LARGE_PREDICATE, len(LARGE_PROLOGUE)) == LARGE_PROLOGUE and mask == core_mask,
                                       'derived_mask': hex(mask) if mask is not None else None, 'core_mask': hex(core_mask), 'byte_table': table}
+    # 9. the capital predicate 0x0043fd50 (step 3: the gate handlers keep capitals on the vanilla path) yields the core's mask
+    cjt = [struct.unpack_from('<I', image.read(CAPITAL_JUMP_TABLE + 4 * i, 4))[0] for i in range(2)]
+    ctable = list(image.read(CAPITAL_BYTE_TABLE, CAPITAL_TABLE_LEN))
+    ctrue = next((i for i, v in enumerate(cjt) if image.read(v, 2) == bytes.fromhex('b001')), None)
+    cmask = sum(1 << code for code, idx in enumerate(ctable) if idx == ctrue) if ctrue is not None else None
+    capital_mask = int(re.search(r'kCapitalMask\s*=\s*(0x[0-9a-fA-F]+)', CORE_HEADER.read_text()).group(1), 16)
+    checks['capital_predicate_mask'] = {'ok': image.read(CAPITAL_PREDICATE, len(CAPITAL_PROLOGUE)) == CAPITAL_PROLOGUE and cmask == capital_mask,
+                                        'derived_mask': hex(cmask) if cmask is not None else None, 'core_mask': hex(capital_mask), 'byte_table': ctable}
     report['result'] = 'PASS' if all(c['ok'] for c in checks.values()) else 'FAIL'
     return report
 
@@ -315,6 +413,8 @@ def main():
                    'b_incoming': {k: v for k, v in r['checks']['b_incoming'].items() if k != 'kinds'},
                    'warn_test': {k: v for k, v in r['checks']['warn_test_site'].items() if k in ('ok', 'callers', 'out_local_initialised_and_unread')},
                    'large_mask': r['checks']['large_predicate_mask']['derived_mask'],
+                   'capital_mask': r['checks']['capital_predicate_mask']['derived_mask'],
+                   'gate_join_0x00454710_from': r['checks']['gate_sites']['join_0x00454710_from'],
                    'sha256_info': r['exe_info'].get('sha256') if isinstance(r['exe_info'], dict) else None}
         print(json.dumps(summary, indent=2))
     return 0 if r['result'] == 'PASS' else 1

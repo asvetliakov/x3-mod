@@ -1,7 +1,7 @@
 {
   "result": "PASS",
   "exe": "/mnt/c/X3/X3AP.exe",
-  "checks": 16,
+  "checks": 18,
   "exe_identity": true,
   "pe": true,
   "sites": true,
@@ -24,6 +24,7 @@
   },
   "no_text_branch_into_span_interior": true,
   "no_data_dword_into_window": true,
+  "gate_sites": true,
   "snapshot_walk_facts": true,
   "warn_test_site": true,
   "header_specs": true,
@@ -31,6 +32,7 @@
   "slew_after_b": true,
   "sign_witnesses": true,
   "large_predicate_mask": true,
+  "capital_predicate_mask": true,
   "warn_test": {
     "ok": true,
     "callers": [
@@ -41,5 +43,9 @@
     "out_local_initialised_and_unread": true
   },
   "large_mask": "0xe91d",
+  "capital_mask": "0x211d",
+  "gate_join_0x00454710_from": [
+    "0x459191"
+  ],
   "sha256_info": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
 }
