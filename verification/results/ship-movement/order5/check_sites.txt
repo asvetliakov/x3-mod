@@ -1,0 +1,7 @@
+sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab OK
+command word 0x5 -> 0x00453fc2
+command word 0x8 -> 0x004551fe
+command word 0x21 -> 0x0045533b
+instruction starts checked: 72
+byte strings checked: 72
+RESULT PASS

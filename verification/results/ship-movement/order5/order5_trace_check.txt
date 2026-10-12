@@ -1,0 +1,55 @@
+source /mnt/c/X3/x3m.log: 138259 ship_trace rows, 52 ships
+A. order-5 steps (target, leaf flag): count
+  ('gate', 'leaf') 11315
+  ('tgt_class=5', 'leaf') 9688
+  ('tgt_class=6', 'e=-') 2980
+  ('tgt_class=6', 'leaf') 8461
+B. order-5 leaf steps, roll (target, port-roll-match condition, divergence[, e=0 rule]): count
+  ('gate', 'no_match_cond', 'roll_div', 'actual_roll_rate==0', 'e_roll==0') 17
+  ('gate', 'no_match_cond', 'roll_ok', 'actual_roll_rate==0', 'e_roll==0') 11298
+  ('port', 'match_cond', 'roll_div', 'feasible(some e)') 4445
+  ('port', 'match_cond', 'roll_div', 'infeasible') 7
+  ('port', 'match_cond', 'roll_ok', 'rate moving') 914
+  ('port', 'match_cond', 'roll_ok', 'rates 0->0') 8660
+  ('port', 'no_match_cond', 'roll_div', 'actual_roll_rate==0', 'e_roll==0') 3
+  ('port', 'no_match_cond', 'roll_ok', 'actual_roll_rate==0', 'e_roll==0') 4120
+B2. port-roll-match dynamics on port legs: count
+  cond toggles (consecutive port leaf frames) 49
+  roll rate cut to 0 in one frame (condition false, |w| > 0) 3
+  roll starts (condition true, w = 0 -> w != 0) 61
+C. order-5 e=- rows (v, des, class, |rate(n+1)| as signed per-frame Euler step vs 0x38e/0x71c * dt(n+1)/1000 +-2.5): count
+  ('v==0', 'des==0', 'TP', '|wrapped rate(n+1)| ~0x38e*dt/1000') 1349
+  ('v==0', 'des==0', 'TS', '|wrapped rate(n+1)| 0') 110
+  ('v==0', 'des==0', 'TS', '|wrapped rate(n+1)| ~0x38e*dt/1000') 1521
+   yaw/pitch divergent e=- steps (target, v): count
+  ('port', 'v==0') 2870
+D. lateral pos_c (m) without / with the slip term: order kind run steps | p50 p95 p99 | p50 p95 p99
+  order=4 straight first3s   2120 | 0.001 0.198 0.448 | 0.001 0.124 0.412
+  order=4 straight warm     64141 | 0.001 0.030 0.217 | 0.001 0.008 0.019
+  order=4 turning  first3s   5863 | 0.380 7.751 11.836 | 0.071 3.151 6.272
+  order=4 turning  warm     33324 | 0.306 3.444 10.129 | 0.003 0.042 0.366
+  order=5 straight first3s    702 | 0.001 0.002 0.002 | 0.001 0.002 0.002
+  order=5 straight warm      9899 | 0.001 0.006 0.045 | 0.001 0.006 0.052
+  order=5 turning  first3s   2334 | 0.145 1.868 5.271 | 0.145 2.079 4.717
+  order=5 turning  warm     16529 | 0.001 0.100 0.583 | 0.001 0.074 0.316
+  order=5 v=0      warm      2980 | 0.187 0.389 0.468 | 0.187 0.389 0.468
+  order=8 straight warm        34 | 79.786 173.457 204.523 | 79.786 173.457 204.523
+D2. modelled |slip| / v (before the decay of the step): order kind run steps p50 p95 max
+  order=4 straight first3s   2120  0.000 0.003 0.064
+  order=4 straight warm     64141  0.000 0.005 0.561
+  order=4 turning  first3s   5863  0.083 0.602 6.358
+  order=4 turning  warm     33324  0.105 0.457 26.232
+  order=5 straight first3s    702  0.000 0.000 0.000
+  order=5 straight warm      9899  0.000 0.003 0.070
+  order=5 turning  first3s   2334  0.000 0.000 0.449
+  order=5 turning  warm     16516  0.000 0.007 0.327
+E. order-8 rows: s(u) = trunc(u^2 * 1665000 / 1e6) + v0 u / 1000, u = t - t(first order-8 row): count
+  disp == fx(0xffff, s(u)) +-1 36
+  fwd unchanged 36
+  rows 36
+  v == 0 and des == 0 36
+  v0 (speed before) == 0 36
+  |disp - s(u)| <= 1 + s/65536 (16.16 unit axis) 36
+F. leaf rows with e_axis == 0 and rate_axis != 0 (port-match frames excluded), all orders: count
+  ('actual rate(n+1) == 0', 'model (brakes) != 0') 74
+  ('actual rate(n+1) == 0', 'model (brakes) == 0') 11
