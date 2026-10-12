@@ -1,0 +1,915 @@
+== addon/04.cat L/x3story.obj (stock AP): CODE 1812069 B
+class 2019 parent chain [2019, 2033, 2073, 2134, 2004, 702, 1000] children [2021, 2022, 2027, 2032]
+
+-- 2004::__EnterHyperspace entry bca8e args 1, depth conflicts 0
+  bca8e d0   frame 17
+  bca97 d1   if ((p-4 == 0)) goto bcab1
+  bcaa0 d2   call SE_ObjectExists(p-4)
+  bcaa6 d1   if (!(SE_ObjectExists(p-4))) goto bcab1
+  bcaac d2   goto bcab2
+  bcab2 d1   if not (0) goto bcabe
+  bcab9 d2   p0 = 6
+  bcabd d1   return p0
+  bcac2 d2   call p-4.GetDestinationGate()
+  bcac7 d3   let p1 = p-4.GetDestinationGate()
+  bcacc d2   if ((p1 == 0)) goto bcae6
+  bcad5 d3   call SE_ObjectExists(p1)
+  bcadb d2   if (!(SE_ObjectExists(p1))) goto bcae6
+  bcae1 d3   goto bcae7
+  bcae7 d2   if not (0) goto bcaf5
+  bcaee d3   p0 = 6
+  bcaf4 d1   return p0
+  bcaf7 d3   m85 = -1
+  bcafc d3   m84 = 0
+  bcb05 d3   call SE_IsClass(this, 2019)
+  bcb10 d8   call 2004::NoSafePosOnActivate()
+  bcb15 d8   m88 = 2004::NoSafePosOnActivate()
+  bcb1b d8   call 2004::CheckSpeedLimit(0)
+  bcb22 d7   if not (1) goto bd10e
+  bcb2e d7   if not ((m12 & 128)) goto bcb49
+  bcb3a d8   m12 = (m12 & -129)
+  bcb40 d8   p4 = 7
+  bcb44 d7   goto bd10e
+  bcb4a d8   m55 = 3
+  bcb51 d8   m56 = p-4
+  bcb56 d8   m45 = 0
+  bcb5b d8   call 2004::GetAttacker()
+  bcb65 d7   if (!(p-4)) goto bcb7f
+  bcb6e d8   call SE_ObjectExists(p-4)
+  bcb74 d7   if (!(SE_ObjectExists(p-4))) goto bcb7f
+  bcb7a d8   goto bcb80
+  bcb80 d7   if not (0) goto bcb90
+  bcb87 d8   p4 = 8
+  bcb8b d7   goto bd10e
+  bcb94 d8   call p-4.GetDestinationGate()
+  bcb9d d7   if not ((p-4.GetDestinationGate() != p1)) goto bcbad
+  bcba4 d8   p4 = 8
+  bcba8 d7   goto bd10e
+  bcbb0 d7   if not (m3) goto bcbc3
+  bcbb5 d8   let p5 = 0
+  bcbb8 d7   if not (p5) goto bcbc3
+  bcbbe d8   goto bcbc4
+  bcbc4 d7   if not (1) goto bcbd7
+  bcbc9 d8   let p0 = 0
+  bcbcc d7   if not (p0) goto bcbd7
+  bcbd2 d8   goto bcbd8
+  bcbd8 d7   if not (1) goto bcbf3
+  bcbde d8   p0 = 0
+  bcbe3 d8   call 2004::ReleaseFromSlot()
+  bcbea d8   p6 = 0
+  bcbef d8   p3 = 0
+  bcbf3 d8   let p2 = SE_IsClass(this, 2019)
+  bcbf6 d7   if not (p2) goto bcc0b
+  bcc00 d7   if not ((m84 == 0)) goto bcc0b
+  bcc06 d8   goto bcc0c
+  bcc0c d7   if not (1) goto bcc20
+  bcc11 d8   let p6 = 0
+  bcc15 d7   if not (!(p6)) goto bcc20
+  bcc1b d8   goto bcc21
+  bcc21 d7   if not (1) goto bcc9e
+  bcc2b d8   call p-4.RequestWarpInSlot(this)
+  bcc30 d9   let p7 = p-4.RequestWarpInSlot(this)
+  bcc35 d8   if not ((p7 >= 0)) goto bcc4d
+  bcc3d d9   m84 = p-4
+  bcc44 d9   m85 = p7
+  bcc48 d8   goto bcc9d
+  bcc50 d8   if not (m3) goto bcc89
+  bcc5c d9   call SA_SetSpeedLimit(m3, m93)
+  bcc67 d9   call SA_SetFlightMode(m3, 1)
+  bcc74 d10  call SE_Random(10000)
+  bcc7e d9   call SA_Idle(m3, (1000 + SE_Random(10000)))
+  bcc84 d8   goto bcc97
+  bcc91 d9   call TI_WaitRandomForInterrupt(1000, 10000, this)
+  bcc98 d7   goto bcb21
+  bcca1 d7   if not (m84) goto bccb6
+  bccab d7   if not ((m85 >= 0)) goto bccb6
+  bccb1 d8   goto bccb7
+  bccb7 d7   if not (1) goto bcccb
+  bccc0 d7   if not (!(p6)) goto bcccb
+  bccc6 d8   goto bcccc
+  bcccc d7   if not (1) goto bcce2
+  bccd9 d8   call p-4.GetWarpInPos(m85, this)
+  bccde d8   p3 = p-4.GetWarpInPos(m85, this)
+  bcce7 d7   if not ((p6 == 1)) goto bccfa
+  bccef d7   if not (p2) goto bccfa
+  bccf5 d8   goto bccfb
+  bccfb d7   if not (1) goto bcd41
+  bcd05 d8   call p-4.RequestWarpThroughSlot(this)
+  bcd0f d8   if not ((p7 >= 0)) goto bcd2c
+  bcd17 d9   m84 = p-4
+  bcd1e d9   m85 = p7
+  bcd23 d9   p6 = 2
+  bcd27 d8   goto bcd40
+  bcd34 d9   call TI_WaitRandomForInterrupt(1000, 10000, this)
+  bcd3b d7   goto bcb21
+  bcd45 d8   call p-4.GetObjectID()
+  bcd4d d8   if not (m3) goto bcf3e
+  bcd58 d9   call 2004::SetNoSafePosOnActivate((m88 > 0))
+  bcd5f d9   p5 = 0
+  bcd67 d8   if not (!(p0)) goto bce2f
+  bcd73 d9   call SA_SetSpeedLimit(m3, m93)
+  bcd7e d9   call SA_SetFlightMode(m3, 1)
+  bcd88 d9   call SA_CollisionObject(m3)
+  bcd8d d8   if not (SA_CollisionObject(m3)) goto bcdad
+  bcd94 d9   m55 = 12
+  bcd99 d9   m56 = 0
+  bcda2 d9   call SA_AvoidObjectCollision(m3, 0)
+  bcda8 d8   goto bce2a
+  bcdb4 d9   call SA_SetShipRotAccel(m3, m87)
+  bcdbb d10  let p3 = 0
+  bcdbe d9   if not (p3) goto bcde8
+  bcdda d10  call SA_FlyObjectBeforeContainerPos(m3, p7, p3[0], p3[1], p3[2])
+  bcddf d10  p8 = SA_FlyObjectBeforeContainerPos(m3, p7, p3[0], p3[1], p3[2])
+  bcde3 d9   goto bcdfc
+  bcdf3 d10  call SA_FlyObjectBeforeContainer(m3, p7, -1, 0)
+  bcdf8 d10  p8 = SA_FlyObjectBeforeContainer(m3, p7, -1, 0)
+  bcdfc d10  let p8 = 0
+  bce01 d9   if not ((p8 == 1)) goto bce10
+  bce07 d10  p0 = 1
+  bce0b d9   goto bce29
+  bce16 d9   if not ((p8 == 5)) goto bce29
+  bce1d d10  p4 = 8
+  bce24 d7   goto bd10e
+  bce2a d8   goto bcf39
+  bce32 d8   if not (p2) goto bce47
+  bce3c d8   if not ((p0 == 1)) goto bce47
+  bce42 d9   goto bce48
+  bce48 d8   if not (1) goto bce7e
+  bce51 d9   call SA_GetRotBeta(p7)
+  bce5a d10  call SA_GetRotAlpha(p7)
+  bce63 d9   call SA_RotateToAngles(m3, SA_GetRotAlpha(p7), SA_GetRotBeta(p7))
+  bce6a d8   if not ((SA_RotateToAngles(m3, SA_GetRotAlpha(p7), SA_GetRotBeta(p7)) == 1)) goto bce79
+  bce70 d9   p0 = 2
+  bce75 d9   p6 = 1
+  bce79 d8   goto bcf39
+  bce85 d9   call SA_SetShipRotAccel(m3, m87)
+  bce92 d9   call SA_SetSpeedLimit(m3, m93)
+  bce9d d9   call SA_SetFlightMode(m3, 0)
+  bcea8 d9   m45 = 655361
+  bceaf d9   m46 = p7
+  bcebc d9   call SA_FlyObjectIntoContainer(m3, p7, -1)
+  bcec6 d9   if not ((p8 == 1)) goto bcf17
+  bcecf d10  call p-4.HasDestination()
+  bced5 d9   if not (!(p-4.HasDestination())) goto bcee8
+  bcedc d10  p4 = 8
+  bcee3 d7   goto bd10e
+  bceed d9   if not ((this != g9)) goto bcf0a
+  bcef7 d10  call SA_SetDesiredSpeed(m3, 0)
+  bcf04 d10  call SA_WarpObjectAway(m3, p7)
+  bcf0b d10  p4 = 3
+  bcf12 d7   goto bd10e
+  bcf1d d9   if not ((p8 == 7)) goto bcf38
+  bcf23 d10  p0 = 0
+  bcf28 d10  call 2004::ReleaseFromSlot()
+  bcf2f d10  p6 = 0
+  bcf34 d10  p3 = 0
+  bcf39 d8   goto bd108
+  bcf3f d9   p5 = 1
+  bcf47 d9   if not (p2) goto bcf5b
+  bcf50 d9   if not (!(p0)) goto bcf5b
+  bcf56 d10  goto bcf5c
+  bcf5c d9   if not (1) goto bcf79
+  bcf67 d10  call 2004::SetNoSafePosOnActivate((m88 > 0))
+  bcf70 d10  p8 = p3
+  bcf74 d9   goto bcfb6
+  bcf7c d9   if not (p2) goto bcf8f
+  bcf84 d9   if not (p0) goto bcf8f
+  bcf8a d10  goto bcf90
+  bcf90 d9   if not (1) goto bcfa9
+  bcf97 d10  call 2004::SetNoSafePosOnActivate(1)
+  bcfa0 d10  p8 = p3
+  bcfa4 d9   goto bcfb6
+  bcfad d10  call p-4.GetPos()
+  bcfb2 d10  p8 = p-4.GetPos()
+  bcfce d10  call 2004::__galaxyFlightStep(p8[0], p8[1], p8[2], 0, 1000, m93)
+  bcfd3 d11  let p9 = 2004::__galaxyFlightStep(p8[0], p8[1], p8[2], 0, 1000, m93)
+  bcfd9 d10  if not ((p9 == 10)) goto bd0ec
+  bcfe1 d10  if not (p2) goto bcff6
+  bcfeb d10  if not ((p0 == 0)) goto bcff6
+  bcff1 d11  goto bcff7
+  bcff7 d10  if not (1) goto bd00b
+  bd000 d10  if not (!(p6)) goto bd00b
+  bd006 d11  goto bd00c
+  bd00c d10  if not (1) goto bd059
+  bd012 d11  p0 = 2
+  bd017 d11  p6 = 1
+  bd01d d11  call 2004::SetNoSafePosOnActivate(1)
+  bd027 d11  call p-4.GetDirectionVector()
+  bd02d d13  let p10 = p-4.GetDirectionVector()
+  bd036 d12  m0[6] = p10[0]
+  bd042 d12  m0[7] = p10[1]
+  bd04e d12  m0[8] = p10[2]
+  bd053 d7   goto bcb21
+  bd05d d11  call p-4.GetDestinationGate()
+  bd066 d10  if not ((p-4.GetDestinationGate() != p1)) goto bd079
+  bd06d d11  p4 = 8
+  bd074 d7   goto bd10e
+  bd07e d10  if not ((this != g9)) goto bd092
+  bd087 d10  if not (!(p2)) goto bd092
+  bd08d d11  goto bd093
+  bd093 d10  if not (1) goto bd0da
+  bd09c d11  call p1.GetObjectID()
+  bd0a4 d11  if not (p10) goto bd0be
+  bd0ad d12  call SA_IsWarpOutSlotAvailable(p10)
+  bd0b3 d11  if not (!(SA_IsWarpOutSlotAvailable(p10))) goto bd0be
+  bd0b9 d12  goto bd0bf
+  bd0bf d11  if not (1) goto bd0d9
+  bd0cb d12  call TI_WaitRandomForInterrupt(100, 1000, this)
+  bd0d4 d7   goto bcb21
+  bd0db d11  p4 = 3
+  bd0e2 d7   goto bd10e
+  bd0f2 d10  if not ((p9 == 6)) goto bd105
+  bd0f9 d11  p4 = 8
+  bd100 d7   goto bd10e
+  bd109 d7   goto bcb21
+  bd10f d8   call 2004::ReleaseFromSlot()
+  bd116 d8   m45 = 0
+  bd120 d8   call 2004::SetNoSafePosOnActivate((m88 > 0))
+  bd128 d8   m88 = -1
+  bd12c d8   let p4 = 4
+  bd131 d7   if not ((p4 == 3)) goto bd15e
+  bd13b d7   if not ((this != g9)) goto bd147
+  bd141 d8   call Remove()
+  bd14e d7   if not ((m41 == g8)) goto bd15e
+  bd158 d8   call p-4.SetKnown(1)
+  bd161 d8   p0 = p4
+  bd167 d1   return p0
+
+-- 2014::RequestWarpInSlot entry 90a59 args 1, depth conflicts 0
+  90a59 d0   frame 7
+  90a60 d1   call g8.GetAge()
+  90a69 d4   p1 = 0
+  90a6d d4   let p1 = 0
+  90a73 d3   if not ((p1 < 20)) goto 90b56
+  90a78 d3   goto 90a8d
+  90a82 d4   p1 = (p1 + 1)
+  90a88 d3   goto 90a6d
+  90a94 d5   let p3 = m14[p1]
+  90a97 d4   if not (p3) goto 90ac9
+  90aa0 d5   call SE_ObjectExists(p3)
+  90aa6 d4   if (!(SE_ObjectExists(p3))) goto 90abd
+  90ab2 d4   if ((p-4 == p3)) goto 90abd
+  90ab8 d5   goto 90abe
+  90abe d4   if not (0) goto 90ac9
+  90ac4 d5   goto 90aca
+  90aca d4   if not (1) goto 90ae9
+  90ad6 d5   m14[p1] = 0
+  90ae2 d5   m14[(p1 + 20)] = 0
+  90ae5 d5   p3 = 0
+  90ae9 d5   let p2 = -1
+  90aee d4   if not ((p2 < 0)) goto 90b03
+  90af8 d4   if not ((p3 == 0)) goto 90b03
+  90afe d5   goto 90b04
+  90b04 d4   if not (1) goto 90b22
+  90b13 d6   let p0 = g8.GetAge()
+  90b17 d4   if not ((m14[(p1 + 20)] <= p0)) goto 90b22
+  90b1d d5   goto 90b23
+  90b23 d4   if not (1) goto 90b50
+  90b2c d5   call 2014::ReleaseSlot(p-4)
+  90b3b d5   m14[p1] = p-4
+  90b47 d5   m14[(p1 + 20)] = 0
+  90b4c d5   p2 = p1
+  90b51 d3   goto 90a7d
+  90b59 d4   p0 = p2
+  90b5f d1   return p0
+
+-- 2014::RequestWarpThroughSlot entry 90b6e args 1, depth conflicts 0
+  90b6e d0   frame 6
+  90b74 d0   if not (m18) goto 90b87
+  90b81 d1   call 2014::__requestWarpThroughSlot(p-4, 1, m3)
+  90b86 d1   return p0
+  90b88 d1   call 2014::GetDestinationGate()
+  90b8e d3   let p0 = 2014::GetDestinationGate()
+  90b91 d2   call p0.IsWarpController()
+  90b96 d1   if not (p0.IsWarpController()) goto 90bb0
+  90ba6 d2   call p0.__requestWarpThroughSlot(p-4, 0, m3)
+  90bab d2   p0 = p0.__requestWarpThroughSlot(p-4, 0, m3)
+  90baf d1   return p0
+  90bb1 d2   m18 = 1
+  90bbd d2   call 2014::__requestWarpThroughSlot(p-4, 1, m3)
+  90bc2 d2   p0 = 2014::__requestWarpThroughSlot(p-4, 1, m3)
+  90bc6 d1   return p0
+
+-- 2014::__requestWarpThroughSlot entry 90bca args 3, depth conflicts 0
+  90bca d0   frame 4
+  90bd1 d1   call g8.GetAge()
+  90bd9 d1   if not (m15) goto 90c0b
+  90be2 d2   call SE_ObjectExists(m15)
+  90be8 d1   if (!(SE_ObjectExists(m15))) goto 90bff
+  90bf4 d1   if ((p-4 == m15)) goto 90bff
+  90bfa d2   goto 90c00
+  90c00 d1   if not (0) goto 90c0b
+  90c06 d2   goto 90c0c
+  90c0c d1   if not (1) goto 90c21
+  90c12 d2   m15 = 0
+  90c17 d2   m16 = 0
+  90c1d d2   m17 = -1
+  90c26 d1   if not ((m15 == 0)) goto 90c69
+  90c2e d3   let p0 = g8.GetAge()
+  90c32 d1   if ((m16 <= p0)) goto 90c5d
+  90c3a d1   if not (p-6) goto 90c51
+  90c46 d1   if not ((p-5 == m17)) goto 90c51
+  90c4c d2   goto 90c52
+  90c52 d1   if (1) goto 90c5d
+  90c58 d2   goto 90c5e
+  90c5e d1   if not (0) goto 90c69
+  90c64 d2   goto 90c6a
+  90c6a d1   if not (1) goto 90c92
+  90c73 d2   call 2014::ReleaseSlot(p-4)
+  90c7c d2   m15 = p-4
+  90c81 d2   m16 = 0
+  90c88 d2   m17 = p-5
+  90c8d d2   p0 = 0
+  90c91 d1   return p0
+  90c94 d2   p0 = -1
+  90c98 d1   return p0
+
+-- 2014::ReleaseSlot entry 90c9c args 1, depth conflicts 0
+  90c9c d0   frame 5
+  90ca3 d1   call g8.GetAge()
+  90cac d1   if not (!(m18)) goto 90ce7
+  90cb2 d2   call 2014::GetDestinationGate()
+  90cb7 d3   let p1 = 2014::GetDestinationGate()
+  90cba d2   if not (p1) goto 90cd3
+  90cc3 d3   call p1.IsWarpController()
+  90cc8 d2   if not (p1.IsWarpController()) goto 90cd3
+  90cce d3   goto 90cd4
+  90cd4 d2   if not (1) goto 90ce6
+  90ce0 d3   call p1.ReleaseSlot(p-4)
+  90cee d1   if not ((p-4 == m15)) goto 90d02
+  90cf4 d2   m15 = 0
+  90cf8 d2   let p0 = g8.GetAge()
+  90cfe d2   m16 = (p0 + 60)
+  90d04 d3   p1 = 0
+  90d0e d2   if not ((p1 < 20)) goto 90d5c
+  90d13 d2   goto 90d28
+  90d1d d3   p1 = (p1 + 1)
+  90d23 d2   goto 90d08
+  90d33 d2   if not ((p-4 == m14[p1])) goto 90d57
+  90d3f d3   m14[p1] = 0
+  90d50 d3   m14[(p1 + 20)] = (p0 + 60)
+  90d52 d2   goto 90d5c
+  90d57 d2   goto 90d18
+  90d60 d1   return p0
+
+-- 2014::GetWarpInPos entry 90d61 args 2, depth conflicts 0
+  90d61 d0   frame 13
+  90d65 d1   call 1000::UpdatePosition()
+  90d7d d1   call SE_GetRotMatrixFromAngles(m0[3], m0[4], m0[5])
+  90d83 d2   call 2014::GetSize()
+  90d8c d3   call p-5.GetSize()
+  90d99 d4   let p1 = ((2014::GetSize() + p-5.GetSize()) * 2)
+  90d9e d7   let p0 = SE_GetRotMatrixFromAngles(m0[3], m0[4], m0[5])
+  90da4 d4   call SE_MulFix(p0[2][0], p1)
+  90dba d5   call SE_MulFix(p0[2][1], p1)
+  90dd0 d6   call SE_MulFix(p0[2][2], p1)
+  90de6 d8   let p5 = {0, 1, -1, 2, -2}
+  90df6 d9   p1 = 333000
+  90dfa d9   let p6 = p5[(p-4 % 5)]
+  90e01 d9   p6 = (p6 * p1)
+  90e05 d9   let p7 = -((p-4 / 5))
+  90e0c d9   p7 = (p7 * p1)
+  90e10 d9   let p2 = (m0[0] - SE_MulFix(p0[2][0], p1))
+  90e1e d10  call SE_MulFix(p0[0][0], p6)
+  90e2f d10  call SE_MulFix(p0[1][0], p7)
+  90e35 d9   p2 = ((p2 + SE_MulFix(p0[0][0], p6)) + SE_MulFix(p0[1][0], p7))
+  90e39 d9   let p3 = (m0[1] - SE_MulFix(p0[2][1], p1))
+  90e47 d10  call SE_MulFix(p0[0][1], p6)
+  90e58 d10  call SE_MulFix(p0[1][1], p7)
+  90e5e d9   p3 = ((p3 + SE_MulFix(p0[0][1], p6)) + SE_MulFix(p0[1][1], p7))
+  90e62 d9   let p4 = (m0[2] - SE_MulFix(p0[2][2], p1))
+  90e70 d10  call SE_MulFix(p0[0][2], p6)
+  90e81 d10  call SE_MulFix(p0[1][2], p7)
+  90e87 d9   p4 = ((p4 + SE_MulFix(p0[0][2], p6)) + SE_MulFix(p0[1][2], p7))
+  90e97 d9   p0 = {p2, p3, p4}
+  90e9d d1   return p0
+
+-- 2014::IsWarpController entry 90b65 args 0, depth conflicts 0
+  90b65 d0   frame 1
+  90b6b d1   return p0
+
+-- 2014::HasDestination entry 910ed args 0, depth conflicts 0
+  910ed d0   frame 2
+  910f5 d1   return p0
+
+-- 2004::ReleaseFromSlot entry aae41 args 0, depth conflicts 0
+  aae41 d0   frame 3
+  aae47 d0   if not (m84) goto aae60
+  aae50 d1   call SE_ObjectExists(m84)
+  aae55 d0   if not (SE_ObjectExists(m84)) goto aae60
+  aae5b d1   goto aae61
+  aae61 d0   if not (1) goto aae71
+  aae6b d1   call m84.ReleaseSlot(this)
+  aae72 d1   m84 = 0
+  aae78 d1   m85 = -1
+  aae7f d0   if not (m3) goto aae90
+  aae8a d1   call SA_SetShipDockPortNr(m3, -1)
+  aae91 d1   return p0
+
+-- 402::GetAge entry e46ee args 0, depth conflicts 0
+  e46ee d0   frame 1
+  e46f4 d1   return p0
+
+-- 402::UpdateAge entry e497b args 0, depth conflicts 0
+  e497b d0   frame 7
+  e497f d1   call TI_GetAbsTime()
+  e4987 d3   let p0 = TI_GetAbsTime()
+  e498b d2   call TI_CmpTime(p0, m9)
+  e4993 d3   m9 = p0
+  e499a d4   let p1 = TI_CmpTime(p0, m9)
+  e499e d3   m10 = (m10 + p1)
+  e49a5 d2   if not (((m10 + p1) >= 1000)) goto e49c4
+  e49b5 d3   m8 = (m8 + (m10 / 1000))
+  e49c0 d3   m10 = (m10 % 1000)
+  e49c5 d3   call TI_GetRealTime()
+  e49cd d5   let p2 = TI_GetRealTime()
+  e49d1 d4   call TI_CmpTime(p2, m12)
+  e49d9 d5   m12 = p2
+  e49dd d5   let p3 = TI_CmpTime(p2, m12)
+  e49e4 d4   if not ((p3 > p1)) goto e49f0
+  e49ec d5   p3 = p1
+  e49f7 d5   m13 = (m13 + p3)
+  e49fe d4   if not (((m13 + p3) >= 1000)) goto e4a1d
+  e4a0e d5   m11 = (m11 + (m13 / 1000))
+  e4a19 d5   m13 = (m13 % 1000)
+  e4a21 d1   return p0
+
+-- 2004::__FlyToNextSector entry b7231 args 2, depth conflicts 2
+  b7231 d0   frame 8
+  b7236 d1   m55 = 9
+  b723d d1   m56 = p-4
+  b7249 d3   call p-4.GetY()
+  b7252 d4   call p-4.GetX()
+  b725e d6   call m1.GetY()
+  b7267 d7   call m1.GetX()
+  b726e d2   call GS_Route(m1.GetX(), m1.GetY(), m0, p-4.GetX(), p-4.GetY(), p-5)
+  b7273 d3   let p1 = GS_Route(m1.GetX(), m1.GetY(), m0, p-4.GetX(), p-4.GetY(), p-5)
+  b7278 d2   if not ((p1 < 0)) goto b7286
+  b727f d3   p0 = 6
+  b7285 d1   return p0
+  b728d d3   call m1.GetGate(p1)
+  b7292 d3   p0 = m1.GetGate(p1)
+  b7297 d3   call 2004::CanMoveThroughGates()
+  b729d d2   if not (!(2004::CanMoveThroughGates())) goto b72ab
+  b72a4 d3   p0 = 6
+  b72aa d1   return p0
+  b72ac d2   let p0 = 0
+  b72b0 d2   call 2004::__EnterHyperspace(p0)
+  b72bb d2   if not ((p1 == 7)) goto b72cf
+  b72c1 d3   m55 = 0
+  b72c8 d3   p0 = p1
+  b72ce d1   return p0
+  b72d4 d2   if not ((p1 != 3)) goto b72f5
+  b72e0 d3   call TI_DelayRandom(2000, 3000)
+  b72e7 d3   m55 = 0
+  b72ee d3   p0 = p1
+  b72f4 d1   return p0
+
+== addon/07.cat L/x3story.obj (Mayhem 4): CODE 1908859 B
+class 2019 parent chain [2019, 2033, 2073, 2134, 2004, 702, 1000] children [2021, 2022, 2027, 2032]
+
+-- 2004::__EnterHyperspace entry d524d args 1, depth conflicts 0
+  d524d d0   frame 17
+  d5256 d1   if ((p-4 == 0)) goto d5270
+  d525f d2   call SE_ObjectExists(p-4)
+  d5265 d1   if (!(SE_ObjectExists(p-4))) goto d5270
+  d526b d2   goto d5271
+  d5271 d1   if not (0) goto d527d
+  d5278 d2   p0 = 6
+  d527c d1   return p0
+  d5281 d2   call p-4.GetDestinationGate()
+  d5286 d3   let p1 = p-4.GetDestinationGate()
+  d528b d2   if ((p1 == 0)) goto d52a5
+  d5294 d3   call SE_ObjectExists(p1)
+  d529a d2   if (!(SE_ObjectExists(p1))) goto d52a5
+  d52a0 d3   goto d52a6
+  d52a6 d2   if not (0) goto d52b4
+  d52ad d3   p0 = 6
+  d52b3 d1   return p0
+  d52b6 d3   m88 = -1
+  d52bb d3   m87 = 0
+  d52c4 d3   call SE_IsClass(this, 2019)
+  d52cf d8   call 2004::NoSafePosOnActivate()
+  d52d4 d8   m91 = 2004::NoSafePosOnActivate()
+  d52da d8   call 2004::CheckSpeedLimit(0)
+  d52e1 d7   if not (1) goto d58cd
+  d52ed d7   if not ((m14 & 128)) goto d5308
+  d52f9 d8   m14 = (m14 & -129)
+  d52ff d8   p4 = 7
+  d5303 d7   goto d58cd
+  d5309 d8   m56 = 3
+  d5310 d8   m57 = p-4
+  d5315 d8   m47 = 0
+  d531a d8   call 2004::GetAttacker()
+  d5324 d7   if (!(p-4)) goto d533e
+  d532d d8   call SE_ObjectExists(p-4)
+  d5333 d7   if (!(SE_ObjectExists(p-4))) goto d533e
+  d5339 d8   goto d533f
+  d533f d7   if not (0) goto d534f
+  d5346 d8   p4 = 8
+  d534a d7   goto d58cd
+  d5353 d8   call p-4.GetDestinationGate()
+  d535c d7   if not ((p-4.GetDestinationGate() != p1)) goto d536c
+  d5363 d8   p4 = 8
+  d5367 d7   goto d58cd
+  d536f d7   if not (m3) goto d5382
+  d5374 d8   let p5 = 0
+  d5377 d7   if not (p5) goto d5382
+  d537d d8   goto d5383
+  d5383 d7   if not (1) goto d5396
+  d5388 d8   let p0 = 0
+  d538b d7   if not (p0) goto d5396
+  d5391 d8   goto d5397
+  d5397 d7   if not (1) goto d53b2
+  d539d d8   p0 = 0
+  d53a2 d8   call 2004::ReleaseFromSlot()
+  d53a9 d8   p6 = 0
+  d53ae d8   p3 = 0
+  d53b2 d8   let p2 = SE_IsClass(this, 2019)
+  d53b5 d7   if not (p2) goto d53ca
+  d53bf d7   if not ((m87 == 0)) goto d53ca
+  d53c5 d8   goto d53cb
+  d53cb d7   if not (1) goto d53df
+  d53d0 d8   let p6 = 0
+  d53d4 d7   if not (!(p6)) goto d53df
+  d53da d8   goto d53e0
+  d53e0 d7   if not (1) goto d545d
+  d53ea d8   call p-4.RequestWarpInSlot(this)
+  d53ef d9   let p7 = p-4.RequestWarpInSlot(this)
+  d53f4 d8   if not ((p7 >= 0)) goto d540c
+  d53fc d9   m87 = p-4
+  d5403 d9   m88 = p7
+  d5407 d8   goto d545c
+  d540f d8   if not (m3) goto d5448
+  d541b d9   call SA_SetSpeedLimit(m3, m96)
+  d5426 d9   call SA_SetFlightMode(m3, 1)
+  d5433 d10  call SE_Random(10000)
+  d543d d9   call SA_Idle(m3, (1000 + SE_Random(10000)))
+  d5443 d8   goto d5456
+  d5450 d9   call TI_WaitRandomForInterrupt(1000, 10000, this)
+  d5457 d7   goto d52e0
+  d5460 d7   if not (m87) goto d5475
+  d546a d7   if not ((m88 >= 0)) goto d5475
+  d5470 d8   goto d5476
+  d5476 d7   if not (1) goto d548a
+  d547f d7   if not (!(p6)) goto d548a
+  d5485 d8   goto d548b
+  d548b d7   if not (1) goto d54a1
+  d5498 d8   call p-4.GetWarpInPos(m88, this)
+  d549d d8   p3 = p-4.GetWarpInPos(m88, this)
+  d54a6 d7   if not ((p6 == 1)) goto d54b9
+  d54ae d7   if not (p2) goto d54b9
+  d54b4 d8   goto d54ba
+  d54ba d7   if not (1) goto d5500
+  d54c4 d8   call p-4.RequestWarpThroughSlot(this)
+  d54ce d8   if not ((p7 >= 0)) goto d54eb
+  d54d6 d9   m87 = p-4
+  d54dd d9   m88 = p7
+  d54e2 d9   p6 = 2
+  d54e6 d8   goto d54ff
+  d54f3 d9   call TI_WaitRandomForInterrupt(1000, 10000, this)
+  d54fa d7   goto d52e0
+  d5504 d8   call p-4.GetObjectID()
+  d550c d8   if not (m3) goto d56fd
+  d5517 d9   call 2004::SetNoSafePosOnActivate((m91 > 0))
+  d551e d9   p5 = 0
+  d5526 d8   if not (!(p0)) goto d55ee
+  d5532 d9   call SA_SetSpeedLimit(m3, m96)
+  d553d d9   call SA_SetFlightMode(m3, 1)
+  d5547 d9   call SA_CollisionObject(m3)
+  d554c d8   if not (SA_CollisionObject(m3)) goto d556c
+  d5553 d9   m56 = 12
+  d5558 d9   m57 = 0
+  d5561 d9   call SA_AvoidObjectCollision(m3, 0)
+  d5567 d8   goto d55e9
+  d5573 d9   call SA_SetShipRotAccel(m3, m90)
+  d557a d10  let p3 = 0
+  d557d d9   if not (p3) goto d55a7
+  d5599 d10  call SA_FlyObjectBeforeContainerPos(m3, p7, p3[0], p3[1], p3[2])
+  d559e d10  p8 = SA_FlyObjectBeforeContainerPos(m3, p7, p3[0], p3[1], p3[2])
+  d55a2 d9   goto d55bb
+  d55b2 d10  call SA_FlyObjectBeforeContainer(m3, p7, -1, 0)
+  d55b7 d10  p8 = SA_FlyObjectBeforeContainer(m3, p7, -1, 0)
+  d55bb d10  let p8 = 0
+  d55c0 d9   if not ((p8 == 1)) goto d55cf
+  d55c6 d10  p0 = 1
+  d55ca d9   goto d55e8
+  d55d5 d9   if not ((p8 == 5)) goto d55e8
+  d55dc d10  p4 = 8
+  d55e3 d7   goto d58cd
+  d55e9 d8   goto d56f8
+  d55f1 d8   if not (p2) goto d5606
+  d55fb d8   if not ((p0 == 1)) goto d5606
+  d5601 d9   goto d5607
+  d5607 d8   if not (1) goto d563d
+  d5610 d9   call SA_GetRotBeta(p7)
+  d5619 d10  call SA_GetRotAlpha(p7)
+  d5622 d9   call SA_RotateToAngles(m3, SA_GetRotAlpha(p7), SA_GetRotBeta(p7))
+  d5629 d8   if not ((SA_RotateToAngles(m3, SA_GetRotAlpha(p7), SA_GetRotBeta(p7)) == 1)) goto d5638
+  d562f d9   p0 = 2
+  d5634 d9   p6 = 1
+  d5638 d8   goto d56f8
+  d5644 d9   call SA_SetShipRotAccel(m3, m90)
+  d5651 d9   call SA_SetSpeedLimit(m3, m96)
+  d565c d9   call SA_SetFlightMode(m3, 0)
+  d5667 d9   m47 = 655361
+  d566e d9   m48 = p7
+  d567b d9   call SA_FlyObjectIntoContainer(m3, p7, -1)
+  d5685 d9   if not ((p8 == 1)) goto d56d6
+  d568e d10  call p-4.HasDestination()
+  d5694 d9   if not (!(p-4.HasDestination())) goto d56a7
+  d569b d10  p4 = 8
+  d56a2 d7   goto d58cd
+  d56ac d9   if not ((this != g10)) goto d56c9
+  d56b6 d10  call SA_SetDesiredSpeed(m3, 0)
+  d56c3 d10  call SA_WarpObjectAway(m3, p7)
+  d56ca d10  p4 = 3
+  d56d1 d7   goto d58cd
+  d56dc d9   if not ((p8 == 7)) goto d56f7
+  d56e2 d10  p0 = 0
+  d56e7 d10  call 2004::ReleaseFromSlot()
+  d56ee d10  p6 = 0
+  d56f3 d10  p3 = 0
+  d56f8 d8   goto d58c7
+  d56fe d9   p5 = 1
+  d5706 d9   if not (p2) goto d571a
+  d570f d9   if not (!(p0)) goto d571a
+  d5715 d10  goto d571b
+  d571b d9   if not (1) goto d5738
+  d5726 d10  call 2004::SetNoSafePosOnActivate((m91 > 0))
+  d572f d10  p8 = p3
+  d5733 d9   goto d5775
+  d573b d9   if not (p2) goto d574e
+  d5743 d9   if not (p0) goto d574e
+  d5749 d10  goto d574f
+  d574f d9   if not (1) goto d5768
+  d5756 d10  call 2004::SetNoSafePosOnActivate(1)
+  d575f d10  p8 = p3
+  d5763 d9   goto d5775
+  d576c d10  call p-4.GetPos()
+  d5771 d10  p8 = p-4.GetPos()
+  d578d d10  call 2004::__galaxyFlightStep(p8[0], p8[1], p8[2], 0, 1000, m96)
+  d5792 d11  let p9 = 2004::__galaxyFlightStep(p8[0], p8[1], p8[2], 0, 1000, m96)
+  d5798 d10  if not ((p9 == 10)) goto d58ab
+  d57a0 d10  if not (p2) goto d57b5
+  d57aa d10  if not ((p0 == 0)) goto d57b5
+  d57b0 d11  goto d57b6
+  d57b6 d10  if not (1) goto d57ca
+  d57bf d10  if not (!(p6)) goto d57ca
+  d57c5 d11  goto d57cb
+  d57cb d10  if not (1) goto d5818
+  d57d1 d11  p0 = 2
+  d57d6 d11  p6 = 1
+  d57dc d11  call 2004::SetNoSafePosOnActivate(1)
+  d57e6 d11  call p-4.GetDirectionVector()
+  d57ec d13  let p10 = p-4.GetDirectionVector()
+  d57f5 d12  m0[6] = p10[0]
+  d5801 d12  m0[7] = p10[1]
+  d580d d12  m0[8] = p10[2]
+  d5812 d7   goto d52e0
+  d581c d11  call p-4.GetDestinationGate()
+  d5825 d10  if not ((p-4.GetDestinationGate() != p1)) goto d5838
+  d582c d11  p4 = 8
+  d5833 d7   goto d58cd
+  d583d d10  if not ((this != g10)) goto d5851
+  d5846 d10  if not (!(p2)) goto d5851
+  d584c d11  goto d5852
+  d5852 d10  if not (1) goto d5899
+  d585b d11  call p1.GetObjectID()
+  d5863 d11  if not (p10) goto d587d
+  d586c d12  call SA_IsWarpOutSlotAvailable(p10)
+  d5872 d11  if not (!(SA_IsWarpOutSlotAvailable(p10))) goto d587d
+  d5878 d12  goto d587e
+  d587e d11  if not (1) goto d5898
+  d588a d12  call TI_WaitRandomForInterrupt(100, 1000, this)
+  d5893 d7   goto d52e0
+  d589a d11  p4 = 3
+  d58a1 d7   goto d58cd
+  d58b1 d10  if not ((p9 == 6)) goto d58c4
+  d58b8 d11  p4 = 8
+  d58bf d7   goto d58cd
+  d58c8 d7   goto d52e0
+  d58ce d8   call 2004::ReleaseFromSlot()
+  d58d5 d8   m47 = 0
+  d58df d8   call 2004::SetNoSafePosOnActivate((m91 > 0))
+  d58e7 d8   m91 = -1
+  d58eb d8   let p4 = 4
+  d58f0 d7   if not ((p4 == 3)) goto d591d
+  d58fa d7   if not ((this != g10)) goto d5906
+  d5900 d8   call Remove()
+  d590d d7   if not ((m43 == g9)) goto d591d
+  d5917 d8   call p-4.SetKnown(1)
+  d5920 d8   p0 = p4
+  d5926 d1   return p0
+
+-- 2014::RequestWarpInSlot entry a68c4 args 1, depth conflicts 0
+  a68c4 d0   frame 7
+  a68cb d1   call g9.GetAge()
+  a68d4 d4   p1 = 0
+  a68d8 d4   let p1 = 0
+  a68de d3   if not ((p1 < 20)) goto a69c1
+  a68e3 d3   goto a68f8
+  a68ed d4   p1 = (p1 + 1)
+  a68f3 d3   goto a68d8
+  a68ff d5   let p3 = m16[p1]
+  a6902 d4   if not (p3) goto a6934
+  a690b d5   call SE_ObjectExists(p3)
+  a6911 d4   if (!(SE_ObjectExists(p3))) goto a6928
+  a691d d4   if ((p-4 == p3)) goto a6928
+  a6923 d5   goto a6929
+  a6929 d4   if not (0) goto a6934
+  a692f d5   goto a6935
+  a6935 d4   if not (1) goto a6954
+  a6941 d5   m16[p1] = 0
+  a694d d5   m16[(p1 + 20)] = 0
+  a6950 d5   p3 = 0
+  a6954 d5   let p2 = -1
+  a6959 d4   if not ((p2 < 0)) goto a696e
+  a6963 d4   if not ((p3 == 0)) goto a696e
+  a6969 d5   goto a696f
+  a696f d4   if not (1) goto a698d
+  a697e d6   let p0 = g9.GetAge()
+  a6982 d4   if not ((m16[(p1 + 20)] <= p0)) goto a698d
+  a6988 d5   goto a698e
+  a698e d4   if not (1) goto a69bb
+  a6997 d5   call 2014::ReleaseSlot(p-4)
+  a69a6 d5   m16[p1] = p-4
+  a69b2 d5   m16[(p1 + 20)] = 0
+  a69b7 d5   p2 = p1
+  a69bc d3   goto a68e8
+  a69c4 d4   p0 = p2
+  a69ca d1   return p0
+
+-- 2014::RequestWarpThroughSlot entry a69d9 args 1, depth conflicts 0
+  a69d9 d0   frame 6
+  a69df d0   if not (m20) goto a69f2
+  a69ec d1   call 2014::__requestWarpThroughSlot(p-4, 1, m3)
+  a69f1 d1   return p0
+  a69f3 d1   call 2014::GetDestinationGate()
+  a69f9 d3   let p0 = 2014::GetDestinationGate()
+  a69fc d2   call p0.IsWarpController()
+  a6a01 d1   if not (p0.IsWarpController()) goto a6a1b
+  a6a11 d2   call p0.__requestWarpThroughSlot(p-4, 0, m3)
+  a6a16 d2   p0 = p0.__requestWarpThroughSlot(p-4, 0, m3)
+  a6a1a d1   return p0
+  a6a1c d2   m20 = 1
+  a6a28 d2   call 2014::__requestWarpThroughSlot(p-4, 1, m3)
+  a6a2d d2   p0 = 2014::__requestWarpThroughSlot(p-4, 1, m3)
+  a6a31 d1   return p0
+
+-- 2014::__requestWarpThroughSlot entry a6a35 args 3, depth conflicts 0
+  a6a35 d0   frame 4
+  a6a3c d1   call g9.GetAge()
+  a6a44 d1   if not (m17) goto a6a76
+  a6a4d d2   call SE_ObjectExists(m17)
+  a6a53 d1   if (!(SE_ObjectExists(m17))) goto a6a6a
+  a6a5f d1   if ((p-4 == m17)) goto a6a6a
+  a6a65 d2   goto a6a6b
+  a6a6b d1   if not (0) goto a6a76
+  a6a71 d2   goto a6a77
+  a6a77 d1   if not (1) goto a6a8c
+  a6a7d d2   m17 = 0
+  a6a82 d2   m18 = 0
+  a6a88 d2   m19 = -1
+  a6a91 d1   if not ((m17 == 0)) goto a6ad4
+  a6a99 d3   let p0 = g9.GetAge()
+  a6a9d d1   if ((m18 <= p0)) goto a6ac8
+  a6aa5 d1   if not (p-6) goto a6abc
+  a6ab1 d1   if not ((p-5 == m19)) goto a6abc
+  a6ab7 d2   goto a6abd
+  a6abd d1   if (1) goto a6ac8
+  a6ac3 d2   goto a6ac9
+  a6ac9 d1   if not (0) goto a6ad4
+  a6acf d2   goto a6ad5
+  a6ad5 d1   if not (1) goto a6afd
+  a6ade d2   call 2014::ReleaseSlot(p-4)
+  a6ae7 d2   m17 = p-4
+  a6aec d2   m18 = 0
+  a6af3 d2   m19 = p-5
+  a6af8 d2   p0 = 0
+  a6afc d1   return p0
+  a6aff d2   p0 = -1
+  a6b03 d1   return p0
+
+-- 2014::ReleaseSlot entry a6b07 args 1, depth conflicts 0
+  a6b07 d0   frame 5
+  a6b0e d1   call g9.GetAge()
+  a6b17 d1   if not (!(m20)) goto a6b52
+  a6b1d d2   call 2014::GetDestinationGate()
+  a6b22 d3   let p1 = 2014::GetDestinationGate()
+  a6b25 d2   if not (p1) goto a6b3e
+  a6b2e d3   call p1.IsWarpController()
+  a6b33 d2   if not (p1.IsWarpController()) goto a6b3e
+  a6b39 d3   goto a6b3f
+  a6b3f d2   if not (1) goto a6b51
+  a6b4b d3   call p1.ReleaseSlot(p-4)
+  a6b59 d1   if not ((p-4 == m17)) goto a6b6d
+  a6b5f d2   m17 = 0
+  a6b63 d2   let p0 = g9.GetAge()
+  a6b69 d2   m18 = (p0 + 60)
+  a6b6f d3   p1 = 0
+  a6b79 d2   if not ((p1 < 20)) goto a6bc7
+  a6b7e d2   goto a6b93
+  a6b88 d3   p1 = (p1 + 1)
+  a6b8e d2   goto a6b73
+  a6b9e d2   if not ((p-4 == m16[p1])) goto a6bc2
+  a6baa d3   m16[p1] = 0
+  a6bbb d3   m16[(p1 + 20)] = (p0 + 60)
+  a6bbd d2   goto a6bc7
+  a6bc2 d2   goto a6b83
+  a6bcb d1   return p0
+
+-- 2014::GetWarpInPos entry a6bcc args 2, depth conflicts 0
+  a6bcc d0   frame 13
+  a6bd0 d1   call 1000::UpdatePosition()
+  a6be8 d1   call SE_GetRotMatrixFromAngles(m0[3], m0[4], m0[5])
+  a6bee d2   call 2014::GetSize()
+  a6bf7 d3   call p-5.GetSize()
+  a6c04 d4   let p1 = ((2014::GetSize() + p-5.GetSize()) * 2)
+  a6c09 d7   let p0 = SE_GetRotMatrixFromAngles(m0[3], m0[4], m0[5])
+  a6c0f d4   call SE_MulFix(p0[2][0], p1)
+  a6c25 d5   call SE_MulFix(p0[2][1], p1)
+  a6c3b d6   call SE_MulFix(p0[2][2], p1)
+  a6c51 d8   let p5 = {0, 1, -1, 2, -2}
+  a6c61 d9   p1 = 333000
+  a6c65 d9   let p6 = p5[(p-4 % 5)]
+  a6c6c d9   p6 = (p6 * p1)
+  a6c70 d9   let p7 = -((p-4 / 5))
+  a6c77 d9   p7 = (p7 * p1)
+  a6c7b d9   let p2 = (m0[0] - SE_MulFix(p0[2][0], p1))
+  a6c89 d10  call SE_MulFix(p0[0][0], p6)
+  a6c9a d10  call SE_MulFix(p0[1][0], p7)
+  a6ca0 d9   p2 = ((p2 + SE_MulFix(p0[0][0], p6)) + SE_MulFix(p0[1][0], p7))
+  a6ca4 d9   let p3 = (m0[1] - SE_MulFix(p0[2][1], p1))
+  a6cb2 d10  call SE_MulFix(p0[0][1], p6)
+  a6cc3 d10  call SE_MulFix(p0[1][1], p7)
+  a6cc9 d9   p3 = ((p3 + SE_MulFix(p0[0][1], p6)) + SE_MulFix(p0[1][1], p7))
+  a6ccd d9   let p4 = (m0[2] - SE_MulFix(p0[2][2], p1))
+  a6cdb d10  call SE_MulFix(p0[0][2], p6)
+  a6cec d10  call SE_MulFix(p0[1][2], p7)
+  a6cf2 d9   p4 = ((p4 + SE_MulFix(p0[0][2], p6)) + SE_MulFix(p0[1][2], p7))
+  a6d02 d9   p0 = {p2, p3, p4}
+  a6d08 d1   return p0
+
+-- 2014::IsWarpController entry a69d0 args 0, depth conflicts 0
+  a69d0 d0   frame 1
+  a69d6 d1   return p0
+
+-- 2014::HasDestination entry a6f58 args 0, depth conflicts 0
+  a6f58 d0   frame 2
+  a6f60 d1   return p0
+
+-- 2004::ReleaseFromSlot entry c22e7 args 0, depth conflicts 0
+  c22e7 d0   frame 3
+  c22ed d0   if not (m87) goto c2306
+  c22f6 d1   call SE_ObjectExists(m87)
+  c22fb d0   if not (SE_ObjectExists(m87)) goto c2306
+  c2301 d1   goto c2307
+  c2307 d0   if not (1) goto c2317
+  c2311 d1   call m87.ReleaseSlot(this)
+  c2318 d1   m87 = 0
+  c231e d1   m88 = -1
+  c2325 d0   if not (m3) goto c2336
+  c2330 d1   call SA_SetShipDockPortNr(m3, -1)
+  c2337 d1   return p0
+
+-- 402::GetAge entry fbd8d args 0, depth conflicts 0
+  fbd8d d0   frame 1
+  fbd93 d1   return p0
+
+-- 402::UpdateAge entry fc026 args 0, depth conflicts 0
+  fc026 d0   frame 7
+  fc02a d1   call TI_GetAbsTime()
+  fc032 d3   let p0 = TI_GetAbsTime()
+  fc036 d2   call TI_CmpTime(p0, m9)
+  fc03e d3   m9 = p0
+  fc045 d4   let p1 = TI_CmpTime(p0, m9)
+  fc049 d3   m10 = (m10 + p1)
+  fc050 d2   if not (((m10 + p1) >= 1000)) goto fc06f
+  fc060 d3   m8 = (m8 + (m10 / 1000))
+  fc06b d3   m10 = (m10 % 1000)
+  fc070 d3   call TI_GetRealTime()
+  fc078 d5   let p2 = TI_GetRealTime()
+  fc07c d4   call TI_CmpTime(p2, m12)
+  fc084 d5   m12 = p2
+  fc088 d5   let p3 = TI_CmpTime(p2, m12)
+  fc08f d4   if not ((p3 > p1)) goto fc09b
+  fc097 d5   p3 = p1
+  fc0a2 d5   m13 = (m13 + p3)
+  fc0a9 d4   if not (((m13 + p3) >= 1000)) goto fc0c8
+  fc0b9 d5   m11 = (m11 + (m13 / 1000))
+  fc0c4 d5   m13 = (m13 % 1000)
+  fc0cc d1   return p0
+
+2004::__EnterHyperspace stock vs Mayhem: statements equal after masking member/global slots and offsets: True (232 statements)
+2014::RequestWarpInSlot stock vs Mayhem: statements equal after masking member/global slots and offsets: True (36 statements)
+2014::RequestWarpThroughSlot stock vs Mayhem: statements equal after masking member/global slots and offsets: True (15 statements)
+2014::__requestWarpThroughSlot stock vs Mayhem: statements equal after masking member/global slots and offsets: True (32 statements)
+2014::ReleaseSlot stock vs Mayhem: statements equal after masking member/global slots and offsets: True (26 statements)
+2014::GetWarpInPos stock vs Mayhem: statements equal after masking member/global slots and offsets: True (30 statements)
+2014::IsWarpController stock vs Mayhem: statements equal after masking member/global slots and offsets: True (2 statements)
+2014::HasDestination stock vs Mayhem: statements equal after masking member/global slots and offsets: True (2 statements)
+2004::ReleaseFromSlot stock vs Mayhem: statements equal after masking member/global slots and offsets: True (12 statements)
+402::GetAge stock vs Mayhem: statements equal after masking member/global slots and offsets: True (2 statements)
+402::UpdateAge stock vs Mayhem: statements equal after masking member/global slots and offsets: True (22 statements)
+page 2006 names (13.cat t/0001-L044): {2004: 'Ship', 2014: 'Warp Gate', 2019: None, 2021: 'M1', 2022: 'M2', 2027: None, 2032: 'TL', 2033: 'Carrier', 2073: 'Big Ship'}

@@ -1,0 +1,16 @@
+gate radius 1105 m; A = (0.0, -884.0, -1105.0) m; B(theta) = (0, -0.55 cos, 0.55 sin) r; |A-B0| = 1139 m
+  theta -45 deg: B = (0, -430, -430) m, |AB| = 814 m, bearing A->B off the gate axis 33.9 deg
+  theta  +0 deg: B = (0, -608, 0) m, |AB| = 1139 m, bearing A->B off the gate axis 14.0 deg
+  theta +45 deg: B = (0, -430, 430) m, |AB| = 1601 m, bearing A->B off the gate axis 16.5 deg
+  bearing A->B over theta in [-45, 45]: 13.2..33.9 deg above the axis; 31% of theta exceed 18.2 deg for an axial arrival; aiming the arrival heading 23.6 deg above the axis leaves <= 10.4 deg
+order 8: s(t) = 1.665 t^2 units (t ms): 2697 m in 0.9 s, end speed 5994 m/s
+
+cls     vmax o4 vanilla     o4 mod | o5 axial arrival: turn+fly s, v@B | o5 side arrival (90 deg)    
+M5     541 m/s    45.3 m/s    10.0 m/s |  0.0 +  6.5 s, 270.5 m/s stop |  0.5 +  6.5 s, then 0.9 s warp
+M3     267 m/s    49.2 m/s    10.0 m/s |  0.0 +  9.0 s, 133.5 m/s stop |  0.8 +  9.0 s, then 0.9 s warp
+TS     124 m/s    37.0 m/s    10.0 m/s |  0.0 + 15.6 s,  62.0 m/s stop |  4.0 + 15.6 s, then 0.9 s warp
+M6     186 m/s    36.9 m/s    10.0 m/s |  0.0 + 12.1 s,  93.0 m/s stop |  2.2 + 12.1 s, then 0.9 s warp
+
+capital slots: P_s = G - 2 (r_gate + r_ship) z + 666 m (a x + b y), a = {0,1,-1,2,-2}[s%5], b = -(s/5)
+M2: D = 4884 m; order-5 bearing off axis 0.0..26.2 deg; slots needing a second in-place turn: [13, 14, 15, 16, 17, 18, 19]; order 5 slot 0: 39.2 s to the origin, 104.0 m/s stop; RotateToAngles from 90 deg >= 7.3 s
+TL: D = 4480 m; order-5 bearing off axis 0.0..28.2 deg; slots needing a second in-place turn: [8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19]; order 5 slot 0: 37.3 s to the origin, 104.0 m/s stop; RotateToAngles from 90 deg >= 6.1 s

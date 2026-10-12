@@ -552,3 +552,283 @@ python3 -I verification/results/ship-navigation-ai/kc_method_flow.py   # wrapper
 Ghidra (read-only, serialised): `X3DecompileFunctions.java` on `00460630 00452ad0 0044e450 0044dd90
 0044d4c0 0044d020 0044ccc0 00450980 00450b80 00460560`, `X3XrefsTo.java` on the hook sites of §6,
 `X3GrepInsns.java` with `0x25[08]\]|0x224\]` for the order-field users.
+
+## 10. Gate transit, step by step
+
+2026-10-12, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`) and both `x3story.obj` versions; nothing was
+launched. Scripts and their outputs are under
+[`verification/results/ship-navigation-ai/gates/`](../../verification/results/ship-navigation-ai/gates/):
+[`kc_gate_flow.py`](../../verification/results/ship-navigation-ai/gates/kc_gate_flow.py) (symbolic stack walk of the
+KC methods, pseudo-statements only, zero depth conflicts in every listed method; stock and Mayhem equal after masking
+member/global slots), [`check_sites.py`](../../verification/results/ship-navigation-ai/gates/check_sites.py) (every
+EXE byte string below plus the hook-window branch scan, 73 checks, `RESULT PASS`) and
+[`gate_timeline.py`](../../verification/results/ship-navigation-ai/gates/gate_timeline.py) (kinematic model of the
+engine laws with the Mayhem class medians; its numbers are **[i]**). Raw decompiles stayed in `~/x3-nav-study/`.
+`r` = the gate's collision radius `[gate+0xa4]`; the Mayhem map's ordinary gates are 1105 m
+([game-scale-and-ship-classes.md](game-scale-and-ship-classes.md)). Gate-local axes: z is the gate axis (row 2 of
+`[gate+0x70]+0x40`, the axis order 8 and the `"CanWarp"` test use), ships enter from −z and leave along +z **[m]**
+(order 8 moves along row 2; KC `GetWarpInPos` places capitals at −z; `RotateToAngles` turns them to the gate's +z).
+
+**Answer.**
+
+* **No ship uses the gate disc.** A non-capital ship flies order 4 to **one approach point shared by every ship** at
+  that gate, `A = G + R·(0, −0.8, −1.0)·r` (1 r in front, 0.8 r below the model origin), then order 5 to a pass point
+  `B = G + R·(0, −0.55 cos θ, 0.55 sin θ)·r` with θ uniform in ±45° per issue (−0.05 instead of −0.55 for gate
+  subtypes 5..8). B always has local x = 0: the spread is a short arc in the gate's vertical centre plane, partly
+  along the axis, never across the disc **[m]** constants, **[i]** the geometric reading. Capital ships get one of
+  20 per-slot approach points (a 5 × 4 grid, 666 m pitch, `2·(r_gate + r_ship)` in front) and then fly order 5 to
+  the gate's **origin** **[m]**.
+* **Main cause of the clunk:** both engine legs end with an instantaneous stop. Order 4 and order 5 each write 0 to
+  the *current* speed `[obj+0x10]` at arrival (`0x00454b94`, `0x00454703`), and order 5 starts with a turn at
+  500 units/s (1 m/s) while the ship is more than 18.2° off its pass point. Order 8 then launches the ship from rest
+  along the axis **[m]**. The slot queue exists only for capital ships (KC class 2019: M1, M2, TL and class 2027). Small ships never queue
+  and never call `RotateToAngles` **[m]**. Every small ship converges on the same point A with `CollisionWarn` live,
+  so the reactive stop/avoid loop also fires there **[m]** mechanism, **[i]** frequency.
+* **The installed steering law makes the last ~1 km slower, not smoother:** order 4 to a gate has the arrival ramp
+  to the 5000 units/s floor at `d_arr = 0.75 r`, so the ship reaches the stop at 10 m/s instead of the vanilla
+  37–49 m/s (model) **[i]**.
+
+### 10.1 The script loop, `2004::__EnterHyperspace` [m]
+
+Stock `0xbca8e`, Mayhem `0xd524d`; all 221 statements are equal after masking member/global slots (stock m84/m85 =
+Mayhem m87/m88, m45 = m47, g9 = g10). Arguments are listed with argument 0 first. `big = SE_IsClass(this, 2019)`.
+`m3` is the ship's native object, `phase` (p0) 0/1/2, `slot_type` (p6) 0/1/2, `pos` (p3) the warp-in position.
+
+```
+loop (head 0xbcb21):
+  (m12 & 0x80) -> return 7                              attacked; __FlyToNextSector returns at once
+  gate gone / destination gate changed -> return 8
+  m45 = 0                                               CollisionWarn active (default branch: SA_StopObject)
+  if big && no slot && slot_type == 0:
+      s = gate.RequestWarpInSlot(this)                  0xbcc2b
+      s < 0: SA_SetSpeedLimit; SA_SetFlightMode(1); SA_Idle(ship, 1000 + SE_Random(10000)); continue   0xbcc7e
+  if slot held && slot_type == 0: pos = gate.GetWarpInPos(slot, this)                                 0xbccd9
+  if slot_type == 1 && big:
+      gate.RequestWarpThroughSlot(this) < 0: TI_WaitRandomForInterrupt(1000, 10000, this); continue  0xbcd34
+      slot_type = 2
+  phase 0:  SA_CollisionObject(ship) ? SA_AvoidObjectCollision(ship, 0)
+            : r = pos ? SA_FlyObjectBeforeContainerPos(ship, gate, pos) : SA_FlyObjectBeforeContainer(ship, gate, -1, 0)
+            r == 1 -> phase 1;  r == 5 -> return 8
+  phase 1 && big:  SA_RotateToAngles(ship, SA_GetRotAlpha(gate), SA_GetRotBeta(gate)) == 1 -> phase 2, slot_type 1
+  else (phase 1 small, phase 2 big):
+            SA_SetFlightMode(ship, 0); m45 = 0xA0001 (bit 0x80000: CollisionWarn returns without action)
+            r = SA_FlyObjectIntoContainer(ship, gate, -1)                                             0xbcebc
+            r == 1 -> (this != g9) SA_SetDesiredSpeed(ship, 0); SA_WarpObjectAway(ship, gate); return 3
+            r == 7 -> phase 0, ReleaseFromSlot, slot_type 0, pos 0
+exit (0xbd10e): ReleaseFromSlot(); r == 3 -> Remove() (this != g9), gate.SetKnown(1) (m41 == g8)
+```
+
+`g9` is read as the player ship and `m41 == g8` as "owned by the player" **[i]** (`__FlyToNextSector` sends
+`this == g9` to `150::StartGateWarp`). Every `SA_` call blocks until its order ends (§1.1). Each step is therefore serialised behind the previous order's
+completion, plus the scheduler's resume of the task (one frame **[i]**, §7). `__FlyToNextSector` (stock `0xb7231`) calls
+`TI_DelayRandom(2000, 3000)` only when `__EnterHyperspace` returns neither 3 nor 7 (`0xb72e0`, the failure path); after
+a successful transit (3) a non-player ship goes straight to `__LeaveHyperspace` **[m]**. The out-of-sector branch
+(`m3 == 0`, `__galaxyFlightStep`, `SA_IsWarpOutSlotAvailable`, `TI_WaitRandomForInterrupt(100, 1000)`) is not
+visible flight and is not covered here.
+
+**Which ships take the capital path [m]:** KC class 2019 has no name on text page 2006. Its parent chain is 2033
+"Carrier" → 2073 "Big Ship" → 2134 "Moveable Ship" → 2004 "Ship". Its children are 2021 "M1", 2022 "M2",
+2032 "TL" and 2027 (no name). M6 (2026), TM (2141), TS, TP, M3–M5 are outside it. The native side makes the
+same split with the capital predicate `0x0043fd50` {TL, M0, M1, M2, TL_P, M7}
+(`0x004608ea`). Whether an M7 also derives from 2019 in KC was not established.
+
+### 10.2 Q1: the slot queue (capital ships only) [m]
+
+Both slot methods are KC (gate class 2014), not natives:
+
+| Method | Stock entry | Rule |
+| --- | --- | --- |
+| `RequestWarpInSlot(ship)` | `0x90a59` | 20 slots per gate in `m14[0..19]`, release stamps in `m14[20..39]`. One pass clears dead entries and the ship's own entry. It takes the first empty slot whose stamp is `<= now`, stores the ship and returns the index, else −1. |
+| `GetWarpInPos(slot, ship)` | `0x90d61` | `G − 2·(GetSize(gate) + GetSize(ship))·F + 333000·(a·R + b·U)`, with `a = {0, 1, −1, 2, −2}[slot % 5]`, `b = −(slot / 5)`. `R, U, F` are the rows of `SE_GetRotMatrixFromAngles` of the gate's angles: a 5 × 4 grid with a 666 m pitch in front of the gate. |
+| `RequestWarpThroughSlot(ship)` | `0x90b6e` → `__requestWarpThroughSlot` `0x90bca` | **One slot per gate pair**, held at the "controller" gate (the first of the pair to ask sets `m18`). It is granted when free and either the cooldown `m16 <= now` has passed or the request comes from the same side as the last holder (`m17`) with the requesting gate's `m3` non-zero. Otherwise −1. |
+| `ReleaseSlot(ship)` | `0x90c9c` | Also forwarded to the controller. It frees the through slot with `m16 = now + 60` and the ship's warp-in slot with `m14[i+20] = now + 60`. |
+| `2004::ReleaseFromSlot()` | `0xaae41` | `gate.ReleaseSlot(this)`, slot fields reset, `SA_SetShipDockPortNr(ship, −1)` |
+
+`now` is `g8.GetAge()` = class-402 `m8`, which `UpdateAge` (`0xe497b`) advances by the `TI_GetAbsTime` delta / 1000. The
+60 is therefore **60 game seconds** **[m]** arithmetic, **[i]** that the delta is milliseconds of game time.
+
+* **How many at once:** up to 20 capital ships per gate hold a warp-in slot (approach, rotate, wait). Only **one** per
+  gate pair is past the through-slot gate at any time **[m]**.
+* **How a ship waits:** for a warp-in slot, `SA_Idle(ship, 1000 + rand(10000))`. That is **not** a stop. Order 0x1d
+  re-plans to a wander point ≥ 1,110,000 units (2.2 km) ahead along the heading, at a world y in ±1,110,000 (+5,000,000
+  for capital types), clamped to the sector, at `vmax/2` (`0x00453e64`, `0x00453ec1`, `0x00453eea`, `0x00453fb8`).
+  So the queued capital cruises on for 1–11 s per poll. For the through slot, `TI_WaitRandomForInterrupt(1000,
+  10000)` with **no order**: the ship sits stopped at its grid point (`2·(r_gate + r_ship)` in front: 4.9 km for the M2 median, 4.5 km for TL **[i]**), rotated to the gate axis (order 4 zeroed its
+  speed; nothing restarts it), and polls every 1–10 s **[m]** calls, **[i]** the argument meaning from the name.
+* **Release:** at the exit of `__EnterHyperspace`, i.e. after `SA_WarpObjectAway` has run its 900 ms. Also on the
+  reset paths (attack → 7, order-5 result 7, re-entering the sector). Each released slot is closed for 60 s. The
+  through slot is exempt when traffic keeps the same direction **[m]**.
+
+### 10.3 Q2: approach geometry and order 4 [m]
+
+* **Non-capital ships:** `SA_FlyObjectBeforeContainer(ship, gate, −1, 0)` (`0x00460cae`). The gate has
+  `[gate+0x40] |= 0x100000` (`0x00440e95`), and port < 0 takes `0x00460dd5`. That path rotates the gate's approach
+  vector `[gate+0x50]+0x1a0 = (0, −0.8, −1.0)` (16.16, written for every class-0x12 object at
+  `0x00440e75..0x00440e8b`) by the gate frame, scales it by `r` and adds the gate position. Order 4 then reads this point from
+  `flight+0x240` (port < 0, `0x00454a20`). **Every non-capital ship gets the same point A** **[m]**.
+* **Capital ships:** `SA_FlyObjectBeforeContainerPos(ship, gate, GetWarpInPos(slot))` (`0x0046533c`, port −1),
+  one grid point per slot (§10.2).
+* **Arrival:** `dist(ship, A) <= 3·r/4` for a gate target (`0x00454b1a`, compare `0x00454b70`). The test sits inside the
+  re-plan gate (`now − flight+0x210 >= 0`), so it is checked every `rand(50·type[+0x50])` ms. On arrival:
+  `flight+0x250 = −1`, order 0, **`[obj+0x14] = 0` and `[obj+0x10] = 0`** (`0x00454b91` `89 43 14 89 43 10`), wake with 1.
+* **Speed law to a gate [m]:** desired = vmax beyond `d_slow = 3r/4 + vmax²/a` (`0x00455014`). Inside it,
+  `ramp(dist; 0 → 5000, d_slow → vmax/2)` (`0x00455052`), floor `container speed + 5000`. Inside
+  `d_slow + 3·r + 2·r_ship` the result is scaled by alignment: `ramp(forward·dir; 0.7 → 500, 1.0 → desired)`
+  (`0x004550c7`), so a ship more than 45.6° off the point slows to 1 m/s. "Large" ships are capped at 50000
+  (`0x004550ed`). The container detour of §3.4 applies to the gate too.
+* **Crossing speed at the 3r/4 stop (model, axial approach, Mayhem medians) [i]:** M5 45, M3 49, TS 37, M6 37 m/s
+  vanilla. With the installed steering law (`d_arr = 0.75 r`, floor 10 m/s), 10 m/s. Either way it is then zeroed.
+
+### 10.4 Q3: `RotateToAngles` is order 0x1f, not 6 TurnTo [m]
+
+* `SA_RotateToAngles(ship, α, β)` (`0x004653d1`): order 0x1f, `flight+0x240/+0x244` = the gate's yaw/pitch
+  (`SA_GetRotAlpha/Beta(gate)`). With three arguments `+0x248 = 0x80000000` (no roll target, `0x00465466`). The case
+  writes no speed.
+* Handler `0x0045920e`: target direction from the angles. While `forward·target < 0xfd70` (cos 8.1°, `0x004592d9`) it
+  steers `0x0044ccc0` at `position + direction`. Once inside, with no roll target, the order ends with result 1.
+* **The ship is stationary throughout:** order 4 left `[obj+0x14] = [obj+0x10] = 0`, and neither the case nor the
+  handler raises them. The turn runs at the leaf's rates. Only capital ships reach it (§10.1). `SA_RotateToAngles` has
+  one KC call site, in `__EnterHyperspace` (stock `0xbce63`, Mayhem `0xd5622`, `kc_movement_calls.txt`), so in
+  `x3story.obj` order 0x1f always means "align before a gate". Other KC objects were not scanned.
+* The installed steering module passes order 0x1f through to the original leaf (§1.4 of the steering design).
+
+### 10.5 Q4: order 5 to a gate, and the 900 ms of order 8 [m]
+
+**Pass point (`SA_FlyObjectIntoContainer` `0x0046082e`, class-0x12 branch `0x004608de`).** A capital ship (`0x0043fd50`)
+gets the **gate origin** (`0x00460c1a`). Any other ship gets θ = `rand(0x4000) − 0x2000` (`0x004608f7`, ±45°) and the
+gate's pass vector `[gate+0x50]+0x190 = (0, y0, −0.01)` with `y0 = −0.55`, or −0.05 for subtypes 5..8 (`0x00440e37`,
+`0x00440e4f`, `0x00440e5b`, `0x00440e68`). From these it computes `(x0, y0·cos θ, −y0·sin θ)` (`0x004609db`, `0x004609e8`;
+the stored z is overwritten), scales by `r`, rotates by the gate frame and adds the position. The rendezvous
+`flight+0x230` is the same point. So θ moves the target on a radius-0.55 r arc in the local y–z plane, ±0.39 r
+along the axis. A new θ is drawn each time the KC re-issues order 5 **[m]**.
+
+**Order 5 handler `0x00453fc2`, gate path:**
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| steer | `0x0044ccc0` toward B every frame (no re-plan gate) | `0x00454745` |
+| misaligned | `forward·dir < 0.95` (18.2°) → desired **500** (1 m/s), gate flagged `0x10000000` | `0x00454897`, `0x004548a5` |
+| aligned | gate `[+0x40] |= 0x2000000`; desired = `ramp(dist; r/5 → vmax/2, r → vmax)` from `0x00450980` directly | `0x004548cf`, `0x004548f5`, `0x00454903`, `0x00454977` |
+| arrival | `dist <= (|v|/10 + r_ship)·(1 + (tf − 1)/4)`, tf = `[*0x606f34+0xcc]` (time factor **[i]**) | `0x0045430c`, `0x00454323`, `0x004546e3` |
+| on arrival | **`[obj+0x14] = 0`, `[obj+0x10] = 0`**, port −1, order 0, result 1 | `0x00454700`, `0x00454713` |
+
+* **The 75000/50000 docking caps do not apply to gates.** They bound a local copy of the max speed that only the
+  non-gate branch uses (`[esp+0x2f4]` at `0x00454969`); the gate branch calls `0x00450980` itself. This corrects
+  ship-movement.md §9 ("a ramp around half its max speed"): the ramp runs from vmax at `r` down to vmax/2 at `r/5`.
+* **What ends it:** the arrival test above, not `"CanWarp"`. `0x0044d4c0` raises `"CanWarp"` only with
+  `[ship+0x40] & 2` or manual control (§4). Whether AI ships ever carry bit 2 was not established.
+* The KC sets `m45 = 0xA0001` before order 5, so `CollisionWarn` takes its "ignore" branch for the whole leg.
+* **Order 8 (`0x004551fe`):** `SA_WarpObjectAway` stores the current position in `flight+0x240` and sets
+  `+0x214 = now + 900`. Each frame until then the handler sets `[gate+0x40] |= 0x2000000` and `[ship+0x40] |= 0x400`,
+  takes `t` = elapsed ms (`0x00455260`), `s = t²·1665000/1000000` units (`0x0045526f`, `0x00455278`), and writes
+  `position = start + s·(gate row 2)` (`0x00455291`) with `[obj+0x14] = [obj+0x10] = 0` (`0x00455330`). That is
+  a kinematic launch from rest along the gate axis: 2697 m in 0.9 s, ending at 5994 m/s. Then order 0, flag `0x400`
+  cleared, the task wakes, KC releases the slots and calls `Remove()`. The KC's `SA_SetDesiredSpeed(ship, 0)`
+  before it (`0xbcef7`) is redundant with the handler.
+
+### 10.6 Q5: time from the approach point to the warp [i]
+
+Small ship, from rest at A (vanilla engine laws, Mayhem medians, `r` = 1105 m, rotation at the full yaw rate, so turn
+times are lower bounds; `gate_timeline.txt`):
+
+| Class | KC hand-overs | Turn at 1 m/s (arriving 90° off) | Order 5 flight | Speed zeroed at B | Order 8 |
+| --- | --- | --- | --- | --- | --- |
+| M5 | 2 × ≥ 1 frame | 0.5 s | 6.5 s | 271 m/s | 0.9 s |
+| M3 | 2 × ≥ 1 frame | 0.8 s | 9.0 s | 134 m/s | 0.9 s |
+| TS | 2 × ≥ 1 frame | 4.0 s | 15.6 s | 62 m/s | 0.9 s |
+| M6 | 2 × ≥ 1 frame | 2.2 s | 12.1 s | 93 m/s | 0.9 s |
+
+`|AB|` is 814–1601 m depending on θ. The bearing A→B lies 13.2–33.9° off the gate axis toward local +y. For 31 %
+of the θ range it exceeds 18.2° even for a ship that arrives exactly along the axis, so a turn at 1 m/s happens
+at the start of order 5 even in the best case.
+
+Capital ship (M2 / TL medians): `RotateToAngles` from 90° ≥ 7.3 / 6.1 s. Then the through-slot wait: 0 when free,
+otherwise 1–10 s polls up to the 60 s cooldown on a direction change. Order 5 to the origin from slot 0 takes
+39.2 / 37.3 s and stops dead at 104 m/s. From grid slots 13–19 (M2) or 8, 9, 11–19 (TL) the origin is more than
+18.2° off the axis the ship was just rotated to, so order 5 starts with a second turn at 1 m/s.
+
+### 10.7 Q6: causes of the clunk, and the smallest engine-side change
+
+| # | Cause | Evidence | Side | Reachable by the installed hooks? |
+| --- | --- | --- | --- | --- |
+| 1 | Hard stop at A (`[obj+0x10] = 0`) | `0x00454b91` | engine | No: site B lowers `[obj+0x14]` only and runs after; a new 6-byte site is needed (P2) |
+| 2 | All small ships target the same A, with `CollisionWarn` live (`m45 = 0`) | `0x00460dd5`, KC `0xbcb56` | engine point, script mode | Partly: site A can steer to a different point without touching `flight+0x240`, and site E suppresses warns for flyable detours. The order still ends at A |
+| 3 | Turn at 1 m/s at the start of order 5 (arrival heading ≠ bearing to B) | `0x00454897`/`0x004548a5` | engine | Indirectly: site A can make the ship arrive heading toward B (P1); B cannot raise 500 |
+| 4 | Re-acceleration from 0 over ~1.1 km | follows from 1 | engine | with P2 |
+| 5 | Hard stop at B, then a launch from rest | `0x00454700`, `0x00455330`, `0x0045526f` | engine | No: new sites P4/P5 |
+| 6 | Installed arrival ramp: 10 m/s at `0.75 r` before stop 1 | `ship_steering.cpp` order-4 `d_arr` for class 0x12 | mod | Yes: policy change (P1) |
+| 7 | Capital: warp-in queue with `SA_Idle` wander, single through slot with 60 s cooldown and 1–10 s polls, stationary `RotateToAngles`, second in-place turn toward the origin | §10.2–10.4 | script (queue, cooldown, polls); engine (rotate, turn) | Queue and cooldowns: no. Rotate and turn: only by new sites |
+| 8 | Random delays | `TI_DelayRandom(2000, 3000)` only on failed transits; the `SA_Idle`/wait timers only for capitals | script | not a cause for small ships |
+
+**Smallest change that makes the small-ship approach continuous (P1 + P2) [i] design, [m] sites:**
+
+* **P1 (no new site; steering-module policy for order 4 with a class-0x12 target):** drop the arrival ramp for this
+  case and pass the vanilla speed through. Steer the leaf at a lead-in point, not at A, so that the ship crosses
+  `0.75 r` from A heading 23.6° above the gate axis in the gate's y–z plane: the middle of the 13.2–33.9° bearing spread
+  of B. That leaves ≤ 10.4° to any B, below the 18.2° turn threshold. The lead-in point goes through the existing
+  ring-buffer redirect. `flight+0x240` stays A, so order 4's own arrival test is unchanged. Inputs: target
+  `flight+0x224`, class word `+0x48 == 0x12`, subtype `+0x4a`, `[gate+0x70]+0x30/+0x40..` (position, frame rows),
+  `[gate+0xa4]`, `[gate+0x50]+0x190/+0x1a0`.
+* **P2 (new site `0x00454b91`):** skip the `[obj+0x10] = 0` write when the order-4 target is a gate and the ship
+  is not a capital. Keep `[obj+0x14] = 0`: order 0 runs for the one or more frames until the KC issues order 5, so
+  the slew decelerates at `a` for that time only. Order 5 then starts at the crossing speed and, when aligned, ramps
+  toward vmax.
+* Capital ships keep the stop in P2: their next step, `RotateToAngles`, sets no speed and expects a stationary ship.
+* **Second step (P4 + P5), for the stop at B:** at `0x00454700`, record `|v|` for a gate target (and optionally keep
+  it). At `0x0045526f`, replace `s = 1.665·t²` with `s = v0·t + 1.665·t²`. The launch then continues the arrival speed
+  along the axis instead of restarting from rest. The kink between the arrival heading and the axis remains
+  (13–34° for small ships).
+* **What the mod cannot fix without the script:** these all live in KC classes 2004/2014, shared by stock and
+  Mayhem. A script patch, or an interception of the `SA_` calls at the dispatcher, could change them:
+  * the capital slot queue: 20 warp-in slots, one through slot per gate pair, the 60 s cooldowns, the 1–10 s polls;
+  * the `SA_Idle` wander while queued;
+  * `RotateToAngles` as a separate blocking step;
+  * the per-step blocking hand-over (≥ 1 frame each);
+  * `m45 = 0` (`CollisionWarn` active) on the leg to A.
+
+  Engine-side, the rotate step can be shortened by loosening the 0xfd70 tolerance at `0x004592d9`. Order 0x1f is
+  issued only by the gate path in `x3story.obj`.
+
+### 10.8 Q7: hook-site facts
+
+All windows are instruction starts in a linear sweep of `.text`, with no direct branch into their interior bytes
+(`check_sites.py`). The only nearby join, `0x00454710` (from `0x00459191`, order 0x20), lies after the P4 window.
+All run on the game thread inside `0x00452ad0` with no script call below them. The x87 contract of §6 applies.
+
+| Site | Window | Live in / out | Stub contract |
+| --- | --- | --- | --- |
+| P2 `0x00454b91` | `89 43 14` / `89 43 10` (6 B, two instructions), then `call 0x00460560` | EAX = 0, EBX = ESI = obj, ECX = flight; `push 1` already on the stack; flags dead | write `[ebx+0x14] = eax`; write `[ebx+0x10] = eax` unless `[[ebx+0x50]+0x224]` has class word 0x12 and the record class code is not capital; preserve EAX/ECX/EDX/ESI; ESP exact; `jmp 0x00454b97` |
+| P4 `0x00454700` | `89 43 14` / `89 43 10` (6 B) | EAX = 0 (used at `0x00454717` for the order word), EBX = obj, ECX = flight; flags dead | as P2; record `[ebx+0x10]` per ship for P5; `jmp 0x00454706` |
+| P5 `0x0045526f` | `b8 e8 67 19 00` (5 B) | EAX = t (ms), ECX = t², `[esp+0x10]` = t²; EDX/ECX are overwritten at `0x00455281`/`0x00455291` | EAX = `v0·t/1000 + t²·1665000/1000000` in units; ESP exact; `jmp 0x00455281` (skips the `imul`/`idiv`) |
+| P3 (optional) `0x004548a5` | `c7 43 14 f4 01 00 00` (7 B) | EAX = container (`[esp+0x2ac]`), EBX = obj; flags dead (`or` follows) | write a cornering speed instead of 500 when EAX has class 0x12; `jmp 0x004548ac` |
+| order-0x1f tolerance `0x004592d9` | `3d 70 fd 00 00` (immediate) | flags live into `jl` | immediate patch only, no stub |
+
+P1 uses the installed site A as it is. It adds one class-word test per order-4 steering call and a few multiplies
+for gate targets.
+
+**Still inferred or open:**
+
+* the resume latency of a woken KC task (§7);
+* the meaning of `TI_WaitRandomForInterrupt`'s arguments;
+* the gate's `m3` in the same-direction exemption;
+* the time-factor reading of `[*0x606f34+0xcc]`;
+* whether AI ships carry `[ship+0x40] & 2`;
+* the order-5 result 7;
+* whether M7 derives from KC class 2019;
+* the `m41 == g8` reading (owned by the player), which differs from the §3.2 reading ("the player's ship"); both
+  are **[i]**;
+* the visual size of the hole relative to the 0.55 r pass offset (model geometry was not read);
+* every timing in §10.6 (a model, not flight data).
+
+A flight row that settles the model:
+
+* at `0x00454b91` and `0x00454700`: ship, class code, `[obj+0x10]` before the write, target class;
+* at the `SA_` dispatcher, ids 0x09/0x0a/0x0c/0x0e/0x1d: frame number.
+
+These give the real crossing speeds and hand-over gaps per class.
+
+```sh
+python3 -I verification/results/ship-navigation-ai/gates/check_sites.py     # RESULT PASS (73 checks)
+python3 -I verification/results/ship-navigation-ai/gates/kc_gate_flow.py    # KC pseudo-statements, stock + Mayhem
+python3 -I verification/results/ship-navigation-ai/gates/gate_timeline.py   # model timings [i]
+```

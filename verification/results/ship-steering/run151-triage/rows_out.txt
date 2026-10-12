@@ -1,0 +1,98 @@
+== sessions
+1
+proxy_identity sha256=a91efa24
+hdr_frame device=1 frame=57244
+clock_anchor utc=2026-10-12T09:55:34.264Z qpc=797891074773 q
+2026-10-12 01:23:43.773746000 /mnt/c/X3/X3Crash.dmp
+2026-10-12 01:23:43.625124500 /mnt/c/X3/X3Crash.log
+== row kinds ship_*
+      1 ship_avoid_census
+   5116 ship_avoid_detour
+      1 ship_avoid_station
+      1 ship_avoidance
+      1 ship_steering
+    268 ship_steering_decision
+      4 ship_steering_site
+    268 ship_steering_summary
+== install
+ship_steering installed=1 sites=4 class_mask=0x0000 timing=1 tau_s=0.15 tick_s=0.05 floor_ms=10 bank_deg=35 handler_a=0x686df270 handler_b=0
+ship_steering_site index=0 site=0x0044ccc0 name=ship_steer_leaf_yaw_pitch status=active write=atomic stub=0x686dc780 tail=0x04150b1c
+ship_steering_site index=1 site=0x0044c620 name=ship_steer_leaf_roll_yaw status=active write=atomic stub=0x686dc800 tail=0x04150b34
+ship_steering_site index=2 site=0x0044c970 name=ship_steer_leaf_roll_pitch status=active write=atomic stub=0x686dc880 tail=0x04150b4c
+ship_steering_site index=3 site=0x004593dd name=ship_steer_loop_continue status=active write=plain stub=0x686dc900 tail=0x04150b64
+ship_avoidance installed=1 warn_site=0x0044dd90 warn_status=active write=atomic snapshot_capacity=1024 snapshot_slots=4 station_capacity=64 
+refused/late/mismatch:
+0
+== summary aggregate
+rows 268
+{'calls': 774850, 'handled': 762538, 'pass_not_ship': 4707, 'pass_no_autopilot': 0, 'pass_deleted': 0, 'pass_no_flight': 0, 'pass_no_phys': 0, 'pass_order_not_steered': 7605, 'pass_class_excluded': 0, 'pass_no_angular_accel': 0, 'pass_no_rotation': 0, 'pass_not_finite': 0, 'pass_table_full': 0, 'pass_no_record': 0, 'clamp_calls': 1612538, 'clamp_applied': 14629, 'clamp_stale': 162698, 'redirected': 34601, 'avoid_calls': 688949, 'conflicts': 59253, 'detours': 34601, 'unresolved': 5764, 'snapshot_overflow': 0, 'snapshots': 53620, 'emergency': 1172, 'e_calls': 1278443, 'e_suppressed': 16872, 'part_models': 10, 'part_fallback': 0, 'part_invalid': 0}
+max {'handler_us_max': 46.4, 'snapshot_max': 152.0, 'handler_us_p99': 25.6, 'ships': 31.0}
+p50 median 0.8 min 0.4 max 3.2
+p99 median 6.4 min 3.2 max 25.6
+cps median 152.60000000000002 min 0.0 max 276.0
+ships median 23.0 min 10 max 31
+rows_p99_gt_max 109
+last handled_by_order_total 0x4:132559,0x5:68227,0x12:5362,0x14:158039,0x15:309462,0x19:88889 stuck_total 0
+== stuck
+0
+== census/station
+ship_avoid_census frame=2598 sector=0x4b51efe8 objects=152 overflow=0 classes=5:1,6:9,7:37,17:102,18:3 buckets=0,0,0,0,0,1,9,37,0,0,0,0,0,0,0,0,0,102,3,0,0,0,0,0,0,0,0,0,0,0,0,0
+ship_avoid_station frame=2598 sector=0x4b51efe8 obj=0x8f4d3980 root_r_m=4609.8 scale=0x000000a5 children=12 model=parts parts=0,0,0:-1:01001000|-292437,-1796844,1320:-1:08300000|383969,-1750227,-80028
+== decision per class
+{'TS': 104, 'M8': 60, 'M6': 20, 'M1': 67, 'M2': 6, 'TP': 3, 'M3': 7, 'M4': 1}
+ship_steering_decision frame=2598 obj=0x381f89b8 order=0x19 class=TS leaf=0 held=0 theta_deg=0.00 n_yaw=0.998 n_pitch=0.065 omega_dps=0.03 e=0,0,9 w=0,0,0 W_dps=22.8,22.8,18.2 k=0.200 d_m=5098.5 d_arr_m=3310.7 v_ms=93.0 v_cmd_ms=267.4 v_corner_ms=0.0 v_ref_ms=0.0 P_m=35232.0,-1918.0,10819.0 x_m=3101
+ship_steering_decision frame=3747 obj=0x381f8268 order=0x14 class=M8 leaf=0 held=0 theta_deg=0.07 n_yaw=-0.976 n_pitch=0.220 omega_dps=0.45 e=-10,1,-2 w=-110,0,-36 W_dps=60.7,60.7,48.6 k=0.100 d_m=4519.5 d_arr_m=27.5 v_ms=140.1 v_cmd_ms=405.0 v_corner_ms=0.0 v_ref_ms=105.3 P_m=405.4,-1669.3,-16714.2
+ship_steering_decision frame=4314 obj=0x381fa5c0 order=0x14 class=M6 leaf=0 held=0 theta_deg=0.85 n_yaw=0.399 n_pitch=0.917 omega_dps=1.77 e=33,143,-23 w=133,284,-101 W_dps=33.8,33.8,27.0 k=0.100 d_m=2171.8 d_arr_m=64.4 v_ms=140.1 v_cmd_ms=313.1 v_corner_ms=0.0 v_ref_ms=107.8 P_m=-876.8,-3586.0,-160
+ship_steering_decision frame=26138 obj=0x8f09cac0 order=0x4 class=M1 leaf=0 held=0 theta_deg=18.66 n_yaw=-0.058 n_pitch=-0.998 omega_dps=2.90 e=-13,-3392,0 w=-30,-526,0 W_dps=9.0,9.0,7.2 k=0.050 d_m=2848.2 d_arr_m=828.4 v_ms=1.0 v_cmd_ms=65.4 v_corner_ms=698.9 v_ref_ms=0.0 P_m=-9560.3,8169.8,-52629.
+ship_steering_decision frame=27119 obj=0x8f4c3378 order=0x4 class=M2 leaf=0 held=0 theta_deg=95.78 n_yaw=-0.208 n_pitch=-0.978 omega_dps=7.04 e=-784,-17055,0 w=-264,271,0 W_dps=10.1,10.1,8.1 k=0.050 d_m=3989.8 d_arr_m=828.4 v_ms=88.1 v_cmd_ms=194.3 v_corner_ms=354.3 v_ref_ms=0.0 P_m=-8149.7,5524.4,-
+ship_steering_decision frame=50898 obj=0x381ff288 order=0x5 class=TP leaf=0 held=0 theta_deg=102.60 n_yaw=-0.070 n_pitch=0.998 omega_dps=24.65 e=-108,18632,0 w=-337,1129,0 W_dps=33.8,33.8,27.0 k=0.175 d_m=630.5 d_arr_m=0.0 v_ms=1.0 v_cmd_ms=190.3 v_corner_ms=190.3 v_ref_ms=0.0 P_m=2391.3,-4640.9,-13
+ship_steering_decision frame=53060 obj=0x8f09a9d8 order=0x15 class=M3 leaf=0 held=0 theta_deg=0.01 n_yaw=0.701 n_pitch=-0.713 omega_dps=0.07 e=0,0,0 w=0,0,0 W_dps=92.8,92.8,74.2 k=0.320 d_m=59625.7 d_arr_m=5000.0 v_ms=247.5 v_cmd_ms=1478.2 v_corner_ms=0.0 v_ref_ms=0.0 P_m=4259.0,-18037.0,31134.0 x_m
+ship_steering_decision frame=54395 obj=0x381e78b8 order=0x4 class=M4 leaf=0 held=0 theta_deg=0.01 n_yaw=0.553 n_pitch=-0.833 omega_dps=0.06 e=0,0,0 w=0,0,0 W_dps=123.8,123.8,99.0 k=0.200 d_m=1239.6 d_arr_m=828.4 v_ms=64.4 v_cmd_ms=128.3 v_corner_ms=0.0 v_ref_ms=0.0 P_m=-51926.5,-12394.6,2177.0 x_m=-
+== detour kinds/rate
+{'0': 4973, '2': 25, '3': 118} frames 2598 43453
+ship_avoid_detour frame=2598 obj=0x8f096bb0 order=0x4 obstacle=0x381fa5c0 kind=0 side=1 vertical=1 t_cpa_s=6.00 miss_m=1268.0 C_m=1701.7 L_m=5146 P_m=-590.7,-1515.0,-13800.5 x_m=-1434.1,-3958.9,-12789.0
+ship_avoid_detour frame=2599 obj=0x8f096bb0 order=0x4 obstacle=0x381fa5c0 kind=0 side=1 vertical=1 t_cpa_s=5.84 miss_m=1266.8 C_m=1701.7 L_m=5146 P_m=-596.1,-1502.5,-13831.7 x_m=-1440.2,-3944.2,-12829.1
+ship_avoid_detour frame=2600 obj=0x8f096bb0 order=0x4 obstacle=0x381fa5c0 kind=0 side=1 vertical=1 t_cpa_s=5.65 miss_m=1266.8 C_m=1701.7 L_m=5146 P_m=-596.3,-1501.9,-13833.5 x_m=-1443.2,-3936.9,-12849.1
+== exceptions
+1
+      1 session_end frames=57245 elapsed_ms=331834 devices=1 resets=1 exception=0 dropped=0 filter=ours
+== roll sign flips per ship (e third component), large classes
+M1 0x8f09cac0 n 67 nonzero_roll 4 flips 1 max|roll| 4984
+M2 0x8f4c3378 n 6 nonzero_roll 1 flips 0 max|roll| 6206
+TP 0x381ff288 n 3 nonzero_roll 0 flips 0 max|roll| 0
+TS 0x381e6058 n 5 nonzero_roll 0 flips 0 max|roll| 0
+TS 0x381ebcf8 n 5 nonzero_roll 4 flips 0 max|roll| 5
+TS 0x381f89b8 n 12 nonzero_roll 4 flips 0 max|roll| 9
+TS 0x381f9990 n 4 nonzero_roll 0 flips 0 max|roll| 0
+TS 0x381f9e70 n 8 nonzero_roll 0 flips 0 max|roll| 0
+TS 0x381fe520 n 9 nonzero_roll 0 flips 0 max|roll| 0
+TS 0x8f097090 n 10 nonzero_roll 0 flips 0 max|roll| 0
+TS 0x8f4e03f8 n 4 nonzero_roll 0 flips 0 max|roll| 0
+TS 0x8f4e7f10 n 23 nonzero_roll 4 flips 0 max|roll| 252
+TS 0x8f4ebac8 n 4 nonzero_roll 0 flips 0 max|roll| 0
+== detours per second (session 331.8 s; frames 57245)
+5116
+== warn/error/fail row kinds: this log vs x3m.prev.log
+2,8c2,5
+<       1 bolt_flag_refused
+<       1 bolt_footprint_refused
+<       1 chase_view_restore_arm_refused
+<      64 emission_source_gain_refused_state
+<      50 hull_emission_refused
+<      48 hull_emission_refused_state
+<       1 screen_emission_additive_refused
+---
+>      32 emission_source_gain_refused_state
+>      16 hull_emission_refused
+>      32 hull_emission_refused_state
+>     190 screen_emission_additive_refused_window
+9a7
+>    3043 taa_invalidate
+source_commit=72cbed8f
+== new kinds detail
+taa_invalidate device=1 frame=0 site=not_resolved
+screen_emission_additive_refused_window device=1 frame=299 frames=300 pair_draws=0 admitted=0 refused=0 apply_failures=0 not_reached=0 state=0 draw_shape=0 scene=0 no_fp16_target=0 no_variant=0 srgb_s
+      4 site=fog_transition
+   3037 site=not_resolved
+      1 site=present_failed
+      1 site=reset
