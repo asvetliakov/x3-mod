@@ -395,6 +395,12 @@ SETTINGS = [
     entry('ship_avoidance', 'bool', 'engine', 'Computer-flown ships steer around ships, stations, asteroids and gates on their '
           'predicted path instead of stopping for the game\'s collision warning (needs ship_steering). Experimental. '
           '1 = on, 0 = off.', builtin='0', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
+    entry('ship_trace', 'bool', 'logging', 'Diagnostic: follows a few computer-flown ships through a gate or dock approach and '
+          'writes one ship_trace log row per frame for each (positions, heading, rates, speeds, the steering point given and '
+          'returned) for the model conformance replay. Needs ship_steering and debug. 1 = on, 0 = off.', builtin='0',
+          requires=('ship_steering',), since='2026-10-12'),
+    entry('ship_trace_max', 'int', 'logging', 'How many ships ship_trace follows at once (1..16).', builtin='6', range=(1, 16),
+          requires=('ship_trace',), since='2026-10-12'),
     entry('ship_steering_gates', 'bool', 'engine', 'Computer-flown ships other than capital ships fly through gates in one '
           'continuous approach: they line up with the gate on the way in, keep their speed at the approach point and the '
           'pass point instead of stopping twice, and the jump launch continues at that speed (needs ship_steering). '

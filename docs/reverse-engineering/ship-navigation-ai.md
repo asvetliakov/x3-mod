@@ -573,9 +573,10 @@ engine laws with the Mayhem class medians; its numbers are **[i]**). Raw decompi
 
 * **No ship uses the gate disc.** A non-capital ship flies order 4 to **one approach point shared by every ship** at
   that gate, `A = G + R·(0, −0.8, −1.0)·r` (1 r in front, 0.8 r below the model origin), then order 5 to a pass point
-  `B = G + R·(0, −0.55 cos θ, 0.55 sin θ)·r` with θ uniform in ±45° per issue (−0.05 instead of −0.55 for gate
-  subtypes 5..8). B always has local x = 0: the spread is a short arc in the gate's vertical centre plane, partly
-  along the axis, never across the disc **[m]** constants, **[i]** the geometric reading. Capital ships get one of
+  `B = G + R·(0.55 sin θ, −0.55 cos θ, −0.01)·r` with θ uniform in ±45° per issue (−0.05 instead of −0.55 for gate
+  subtypes 5..8): an arc **on the gate disc**, 0.55 r from the centre within ±45° of straight down, on the gate plane
+  (corrected 2026-10-12 from Run154's 91 transitions and the listing: the earlier reading put the arc in the
+  vertical y–z plane) **[m]**. Capital ships get one of
   20 per-slot approach points (a 5 × 4 grid, 666 m pitch, `2·(r_gate + r_ship)` in front) and then fly order 5 to
   the gate's **origin** **[m]**.
 * **Main cause of the clunk:** both engine legs end with an instantaneous stop. Order 4 and order 5 each write 0 to
@@ -697,10 +698,14 @@ Both slot methods are KC (gate class 2014), not natives:
 **Pass point (`SA_FlyObjectIntoContainer` `0x0046082e`, class-0x12 branch `0x004608de`).** A capital ship (`0x0043fd50`)
 gets the **gate origin** (`0x00460c1a`). Any other ship gets θ = `rand(0x4000) − 0x2000` (`0x004608f7`, ±45°) and the
 gate's pass vector `[gate+0x50]+0x190 = (0, y0, −0.01)` with `y0 = −0.55`, or −0.05 for subtypes 5..8 (`0x00440e37`,
-`0x00440e4f`, `0x00440e5b`, `0x00440e68`). From these it computes `(x0, y0·cos θ, −y0·sin θ)` (`0x004609db`, `0x004609e8`;
-the stored z is overwritten), scales by `r`, rotates by the gate frame and adds the position. The rendezvous
-`flight+0x230` is the same point. So θ moves the target on a radius-0.55 r arc in the local y–z plane, ±0.39 r
-along the axis. A new θ is drawn each time the KC re-issues order 5 **[m]**.
+`0x00440e4f`, `0x00440e5b`, `0x00440e68`). From these it computes `(−y0·sin θ, y0·cos θ, z0)`: at `0x004609d5..0x004609e4`
+the first `MulFix(y0, sin θ)` (`0x004609db`) is negated and stored through `[esp+0x20]` with **four** pushes live, i.e.
+the local **x** (`[esp+0x10]`), and the second `MulFix(y0, cos θ)` (`0x004609e8`) lands in the local y (`[esp+0x14]`,
+`0x00460a01`); z keeps the pass vector's −0.01. It scales by `r`, rotates by the gate frame (rows) and adds the
+position. The rendezvous `flight+0x230` is the same point. So θ moves the target on a radius-0.55 r arc **on the gate
+disc** within ±45° of straight down (Run154: 91 of 91 transitions at hypot(x, y) = 0.544–0.556 r, z = −0.01 r;
+corrected 2026-10-12, the earlier reading had the arc in the y–z plane). A new θ is drawn each time the KC
+re-issues order 5 **[m]**.
 
 **Order 5 handler `0x00453fc2`, gate path:**
 

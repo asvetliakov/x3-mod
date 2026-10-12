@@ -132,7 +132,28 @@ floor 20 m/s capped by the engine's aligned ramp). The chord test against the ri
 ring hole's lower bound; stock 0.605-0.654 r, the installed Terran gates 0.663 r; the installed Mayhem gates are a
 blended effect bubble with no collision tree, their hole unbounded; every pass point at 0.55 r lies inside) is a
 diagnostic only and never lowers the speed: the engine's collision pair filter (0x0045c7b3..0x0045c7e3) skips the
-ship-gate pair while the ship is on order 5 or 0x1e to that gate, so contact on that leg is impossible. Gate
+ship-gate pair while the ship is on order 5 or 0x1e to that gate, so contact on that leg is impossible.
+
+**Amendment 10 (2026-10-12, Run154):** (1) the pass point B lies on the gate disc, B = G + R (0.55 sin θ, −0.55 cos
+θ, −0.01) r within ±45° of straight down (section 10.5 corrected; the listing: the sin lookup feeds local x, the cos
+lookup local y, z keeps −0.01); the order-5 validation accepts hypot(x, y) within 3 % of 0.55 r (0.05 r for subtypes
+5..8), |z + 0.01 r| ≤ 0.05 r and |θ| ≤ 50°, everything else fails closed to the engine's creep. (2) The lead-in line
+from A aims at the arc's centre point (0, −0.55, −0.01) r: direction (0, 0.25, 0.99) normalised = (0, 0.2448, 0.9696),
+14.17° above the axis in the gate's vertical plane; the heading error to any B at the crossing is then lateral, 13.0°
+on the line and 20.7° with the 0.25 r spread (`spread_bound.py`), which the order-5 cornering absorbs; the window rule
+and the spread are unchanged. (3) Capitals fly every vanilla step on their gate legs: no lead-in and no site-B write on
+orders 4 and 5 to a gate (the engine's capital arrival radius clamp(r_own, 22200, 111000) units, 222 m for a 1 km
+ship, is reached by vanilla's 1 m/s alignment creep inside 3 r, which the write overrode: the M1 leader sat on order
+4 for 263 s); `gate_capital_aligned` stays as a diagnostic of what would have qualified; P2/P4 keep stopping them.
+(4) A leader never treats its own escort/follow partners (f+0x224 = the leader, order 0x14/0x15) as obstacles, wherever
+they are (`avoid_excluded_followers`); a far-away own follower is therefore never avoided either (accepted: the
+formation's own spacing keeps them apart, and the follower still avoids everything but its leader). Capitals keep
+the avoidance emergency clamp at site B on their gate legs (the emergency is site B's value regardless of the flags). (5) The stuck witness restarts when the MovePos point changes, not only the
+order. (6) `ship_gate_transition` adds the crossing (P2) and the order-5 start in the gate frame: position / r,
+forward, the last lead-in carrot / r, dist(A) and dist(B) / r, game-ms since P2; `gate_lead_validated/fallback` count
+per approach at P2. (7) `ship_trace` (`--debug` tier, default off; `ship_trace_max` ships, default 6): one row per
+frame for the first N non-capital ships on a gate or dock approach with the engine state the fixture's model needs
+and what the module handed back (the ledger's Step 4 section has the row), for the model-conformance replay. Gate
 subtypes 5..8 (the same bubble scene in the installed game; only the pass offset -0.05 r and the 0.14 r warp
 trigger differ) get the same policy with their own pass vector in the validation. The order-4 lead-in and the exit
 spread are unchanged: orders 4, 8 and 0x21 are not exempt from the pair filter, the bubble has no collision tree,

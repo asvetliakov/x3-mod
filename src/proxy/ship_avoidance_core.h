@@ -131,6 +131,7 @@ struct Result {
     unsigned candidates = 0, conflicts = 0, tries = 0;
     float P[3] = {0, 0, 0};
     float t_cpa = 0, miss = 0, C = 0, L = 0;
+    unsigned excluded_followers = 0; // this ship's own escort/follow partners skipped as obstacles (amendment 10)
     std::uint32_t obstacle = 0;
     std::uint8_t obstacle_kind = 0;
     std::int8_t side = 0;
@@ -299,6 +300,11 @@ inline void forget_passed(ShipAvoid& a, const Snapshot& snap, const Self& s) noe
         if (!present || behind) a.sides[i] = SideMemory{};
     }
 }
+// A ship on escort/follow whose partner (f+0x224) is this ship: its leader never treats it as an obstacle (the follower
+// excludes its leader likewise), so a formation does not detour against itself (Run154: 453 leader detours).
+inline bool own_follower(const Self& s, const Obstacle& o) noexcept {
+    return o.kind == std::uint8_t(Kind::ship) && o.leader == s.ptr && (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow);
+}
 // Whether the obstacle item is excluded for this ship (section 3.2 and 4).
 inline bool excluded(const Self& s, const Obstacle& o) noexcept {
     if (o.ptr == s.ptr) return true;
@@ -310,11 +316,7 @@ inline bool excluded(const Self& s, const Obstacle& o) noexcept {
         sub3(o.x, s.leader_x, d);
         if (sc::dot3(d, d) <= s.envelope * s.envelope) return true; // a wingmate inside the formation envelope
     }
-    if (o.kind == std::uint8_t(Kind::ship) && o.leader == s.ptr && (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow)) {
-        float d[3];
-        sub3(o.x, s.x, d);
-        if (sc::dot3(d, d) <= s.envelope * s.envelope) return true; // our own followers inside the envelope
-    }
+    if (own_follower(s, o)) return true; // our own followers, wherever they are (amendment 10: the leader detoured against them)
     return false;
 }
 // The effective body of a station without a part model (section 3.5 fallback).
@@ -373,7 +375,10 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     for (unsigned k = 0; k < snap.count; ++k) {
         const Obstacle& o = snap.items[k];
         if (sc::fabs_f(o.x[0] - s.x[0]) > reach || sc::fabs_f(o.x[1] - s.x[1]) > reach || sc::fabs_f(o.x[2] - s.x[2]) > reach) continue;
-        if (excluded(s, o)) continue;
+        if (excluded(s, o)) {
+            if (own_follower(s, o)) ++res.excluded_followers;
+            continue;
+        }
         float dx[3];
         sub3(o.x, s.x, dx);
         const float d = sc::sqrt_ss(sc::dot3(dx, dx));

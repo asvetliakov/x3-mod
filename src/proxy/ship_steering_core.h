@@ -487,7 +487,12 @@ __attribute__((always_inline)) inline float acos_deg(float c) noexcept {
 // term and the engine's own cap for large hulls (0x004550ed: 50000 units/s), written at site B in both directions
 // (the engine's order-4 ramp to 5000 units/s at A, 0x00455052, is the stop P2 removes). Capitals keep every vanilla
 // step (their next order, 0x1f RotateToAngles, expects a stationary ship).
-constexpr float kGateSin = 0.40035f, kGateCos = 0.91636f; // sin / cos 23.6 deg
+// Amendment 10 (Run154): the pass points lie on the gate DISC, B = G + R (0.55 sin theta, -0.55 cos theta, -0.01) r
+// (|theta| <= 45 deg about straight down); the lead-in line from A aims at the arc's centre point (0, -0.55, -0.01) r:
+// direction (0, 0.25, 0.99) normalised, 14.17 deg above the axis in the gate's vertical plane, so the heading error to
+// any B at the crossing is lateral, 13.0 deg at most on the line and 20.7 deg with the 0.25 r spread
+// (verification/results/ship-steering/spread_bound.py); the order-5 cornering absorbs it.
+constexpr float kGateSin = 0.24484f, kGateCos = 0.96956f; // the lead-in direction's y / z components
 constexpr float kGateCrossFraction = 0.75f;               // the order's arrival radius around A, in r (0x00454b1a)
 constexpr float kGateApproachY = -0.8f, kGateApproachZ = -1.0f; // the approach vector [gate+0x50]+0x1a0 (0x00440e75..)
 constexpr float kGateLookS = 0.75f, kGateLookMinR = 0.3f, kGateJoinR = 3.0f, kGateJoinInnerR = 2.0f;
@@ -583,10 +588,12 @@ inline bool gate_geometry(const float A[3], const float G[3], const float row0[3
     out->r = r;
     return true;
 }
-// Order 5 to a gate: B must be the pinned pass point, B - G in gate rows = (0, -0.55 cos theta, 0.55 sin theta) r with
-// |theta| <= 45 deg (section 10.5; gate subtypes 5..8 use the pass offset -0.05 r on the same bubble scene: amendment
-// 9), the rows orthonormal, r_gate > 0. Anything else keeps the engine's own speed law (fail closed).
+// Order 5 to a gate: B must be the pinned pass point on the gate disc, B - G in gate rows = (y0 sin theta, -y0 cos theta,
+// -0.01) r (section 10.5 as corrected by Run154 and the listing 0x004609d5..0x00460a01: the sin lookup feeds x, the
+// cos lookup y, z keeps the pass vector's -0.01), |theta| <= 50 deg accepted, y0 = 0.55 (0.05 for gate subtypes 5..8
+// on the same scene: amendment 9), the rows orthonormal, r_gate > 0. Anything else keeps the engine's own speed law.
 constexpr float kGatePassY0 = 0.55f, kGatePassY0Small = 0.05f, kGatePassTol = 0.03f; // the tolerance is absolute, in r
+constexpr float kGatePassZ = -0.01f, kGatePassZTol = 0.05f, kGatePassCos50 = 0.6428f, kGatePassSin50 = 0.7660f;
 inline float gate_pass_y0(std::uint16_t gate_subtype) noexcept {
     return gate_subtype >= 5 && gate_subtype <= 8 ? kGatePassY0Small : kGatePassY0;
 }
@@ -598,13 +605,14 @@ inline bool gate_pass_point_valid(const float B[3], const float G[3], const floa
         if (!finite_f(B[i]) || !finite_f(G[i])) return false;
         d[i] = B[i] - G[i];
     }
-    const float y0 = gate_pass_y0(gate_subtype), tol = kGatePassTol * r;
+    const float y0 = gate_pass_y0(gate_subtype);
+    const float tol = y0 * r * 0.3f < kGatePassTol * r ? y0 * r * 0.3f : kGatePassTol * r; // 3 % of r, at most 30 % of the pass radius
     const float lx = dot3(d, row0), ly = dot3(d, row1), lz = dot3(d, row2);
-    if (fabs_f(lx) > tol) return false;
-    const float rho = sqrt_ss(ly * ly + lz * lz);
+    if (fabs_f(lz - kGatePassZ * r) > kGatePassZTol * r) return false;
+    const float rho = sqrt_ss(lx * lx + ly * ly);
     if (fabs_f(rho - y0 * r) > tol) return false;
-    // |theta| <= 45 deg: ly = -y0 cos theta r <= -0.707 y0 r, |lz| <= 0.707 y0 r
-    return ly <= -0.7071f * y0 * r + tol && fabs_f(lz) <= 0.7071f * y0 * r + tol;
+    // |theta| <= 50 deg about straight down: ly = -y0 cos theta r <= -0.643 y0 r, |lx| <= 0.766 y0 r
+    return ly <= -kGatePassCos50 * y0 * r + tol && fabs_f(lx) <= kGatePassSin50 * y0 * r + tol;
 }
 // The point to steer at for a ship at x with speed v (m/s), or false = steer at the engine's A. s = the ship's
 // projection along the line from X (< 0 before the crossing), e = its distance from the line. The lead-in applies
