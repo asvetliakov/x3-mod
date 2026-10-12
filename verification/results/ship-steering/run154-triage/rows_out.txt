@@ -1,0 +1,165 @@
+== 1 identity
+sha256=57e528271b22ded488ab38375006844d8d83077ff11af99951b4ed1b2bfef568 bytes=58225705
+source_commit=709b163c521f98b75d6ce437166cade424a25024
+log_open file=C:\X3\x3m.log source=game previous=renamed session=20261012-172431-20456 stale_removed=0
+session_end frames=59731 elapsed_ms=411474 devices=1 resets=0 exception=0 dropped=0 filter=ours
+crash files newer than the log start (none listed = none):
+-rwxrwxrwx 1 asvetl asvetl 867612 2026-10-12 01:23:43.773746000 +0400 /mnt/c/X3/X3Crash.dmp
+-rwxrwxrwx 1 asvetl asvetl   8091 2026-10-12 01:23:43.625124500 +0400 /mnt/c/X3/X3Crash.log
+== 2 module and gate site rows
+ship_steering installed=1 sites=4 class_mask=0x0000 timing=1 tau_s=0.15 tick_s=0.05 floor_ms=10 bank_deg=35 handler_a=0x686b27f0 handler_b=0x686adf80
+ship_steering_site index=0 site=0x0044ccc0 name=ship_steer_leaf_yaw_pitch status=active write=atomic stub=0x686ac780 tail=0x03200b1c
+ship_steering_site index=1 site=0x0044c620 name=ship_steer_leaf_roll_yaw status=active write=atomic stub=0x686ac800 tail=0x03200b34
+ship_steering_site index=2 site=0x0044c970 name=ship_steer_leaf_roll_pitch status=active write=atomic stub=0x686ac880 tail=0x03200b4c
+ship_steering_site index=3 site=0x004593dd name=ship_steer_loop_continue status=active write=plain stub=0x686ac900 tail=0x03200b64
+ship_avoidance installed=1 warn_site=0x0044dd90 warn_status=active write=atomic snapshot_capacity=1024 snapshot_slots=4 station_capacity=64 parts_per_station=64 candidate
+ship_steering_gates installed=1 status=active sites=4 lead_in_deg=23.6 cross_fraction=0.75 look_s=0.75 look_min_r=0.30 join_r=3.0 large_cap_ms=100 spread_r=0.25 exit_spre
+ship_steering_gate_site index=0 site=0x00454b91 name=ship_gate_stop_a status=active write=atomic stub=0x686aca20 tail=0x03200b94 resume=0x00454b97
+ship_steering_gate_site index=1 site=0x00454700 name=ship_gate_stop_b status=active write=atomic stub=0x686acaa0 tail=0x03200bac resume=0x00454706
+ship_steering_gate_site index=2 site=0x0045526f name=ship_gate_launch status=active write=plain stub=0x686acb20 tail=0x03200bc4 resume=0x00455281
+ship_steering_gate_site index=3 site=0x00465bac name=ship_gate_warp_in status=active write=plain stub=0x686acbb0 tail=0x03200bdc resume=0x00000000
+== 3 summary counters summed over 385 intervals (cumulative *_total: last value)
+avoid_calls 1331730
+clamp_applied 17043
+clamp_calls 2185779
+clamp_stale 212536
+conflict_episodes 923
+conflicts 122218
+detours 86096
+e_calls 2786055
+e_suppressed 62725
+emergency 6328
+gate_capital_aligned 0
+gate_crossings 91
+gate_dock_blocked 0
+gate_dock_invalid 26423
+gate_dock_writes 176
+gate_exit_offsets 0
+gate_launch_continued 91
+gate_lead_calls 118632
+gate_lead_fallback 2
+gate_lead_validated 102884
+gate_lead_window_rejected 57235
+gate_p2 124
+gate_p2_capital 0
+gate_p2_no_gate_target 33
+gate_p2_no_state 0
+gate_p4 127
+gate_p4_capital 0
+gate_p4_no_gate_target 35
+gate_p4_no_state 1
+gate_p5 1396
+gate_rows_dropped 0
+gate_speed_writes 72250
+gate_spread_offsets 91
+gate_stops_skipped 91
+gate_v0_kept 91
+gate_warp_calls 0
+gate_warp_skipped 0
+part_fallback 9
+part_invalid 9
+part_models 10
+part_scaled 0
+part_unfilled 10
+pass_class_excluded 0
+pass_deleted 0
+pass_no_angular_accel 0
+pass_no_autopilot 0
+pass_no_flight 0
+pass_no_phys 0
+pass_no_record 0
+pass_no_rotation 0
+pass_not_finite 0
+pass_not_ship 0
+pass_order_not_steered 7182
+pass_table_full 0
+redirected 137750
+snapshot_overflow 0
+unresolved 16745
+unresolved_behind 13843
+unresolved_blocked 64
+unresolved_degenerate 0
+unresolved_episodes 443
+unresolved_inside_stop 140
+unresolved_inside_turn 2698
+stuck_total(last) 8 handled_by_order_total(last) 0x4:162894,0x5:51718,0x12:29467,0x14:585692,0x15:454776,0x19:128368
+gate_dock_writes by interval (nonzero): [('40371', '30'), ('40507', '105'), ('40646', '41')]
+handler_us_p50 median 0.8 p99 median 6.4 p99 max 28.7 p99>5 322 max_us 58.9 max>50 1 calls_per_ship_s median 127.7 max 195.4
+== 4 ship_gate_transition 91 class {'TS': 47, 'M4': 34, 'M6': 6, 'TP': 2, 'M3': 2} capital {'0': 91} validated {'matched': 91} crossed {'1': 91} dock_blocked {'1': 90, '0': 1} desired_ms {'0.0': 91}
+err_B_deg n=91 min=22.2 p25=46.6 med=60.7 p75=73.7 max=161.7 | >18.2: 91 >45.6: 72
+v_ms n=91 min=79.0 p25=121.0 med=142.0 p75=324.3 max=491.1 | <20: 0
+last_dA_r n=91 min=0.75 p25=0.76 med=1.04 p75=1.23 max=1.50
+  M3 err_B n=2 min=44.3 p25=44.3 med=50.0 p75=55.8 max=55.8 | v n=2 min=239.2 p25=239.2 med=241.9 p75=244.7 max=244.7
+  M4 err_B n=34 min=32.9 p25=53.2 med=71.5 p75=84.7 max=103.4 | v n=34 min=308.2 p25=312.8 med=340.1 p75=489.8 max=491.1
+  M6 err_B n=6 min=22.2 p25=41.3 med=45.9 p75=51.9 max=71.0 | v n=6 min=98.6 p25=98.8 med=135.8 p75=174.0 max=179.6
+  TP err_B n=2 min=35.5 p25=35.5 med=53.8 p75=72.1 max=72.1 | v n=2 min=140.9 p25=140.9 med=144.2 p75=147.5 max=147.5
+  TS err_B n=47 min=24.3 p25=46.0 med=60.0 p75=66.6 max=161.7 | v n=47 min=79.0 p25=107.6 med=121.9 p75=140.6 max=158.8
+A_gate_r distinct {'0.00,-0.80,-1.00': 91}
+B_gate_r: |x| n=91 min=0.00 p25=0.13 med=0.25 p75=0.31 max=0.39 | z values {-0.01: 91}
+B_gate_r: hypot(x,y) n=91 min=0.544 p25=0.548 med=0.551 p75=0.553 max=0.556 | hypot(y,z) (pinned rho) n=91 min=0.390 p25=0.460 med=0.490 p75=0.530 max=0.550
+B passes the pinned check (|x|<=0.03 and |hypot(y,z)-0.55|<=0.03): 1 of 91
+implied theta=atan2(|x|,-y) deg n=91 min=0.0 p25=13.8 med=27.0 p75=34.0 max=45.0 x>0 41 x<0 49
+geometric err_B at the crossing point heading h (r_gate from offset_m: [1105] m): n=91 min=1.3 p25=5.9 med=9.9 p75=14.0 max=18.0
+transitions whose crossing heading was <=13.9 deg off h: 13 their measured err_B n=13 min=30.2 p25=31.4 med=58.4 p75=65.6 max=92.6
+== ship_gate_approach 91 class {'TS': 47, 'M4': 34, 'M6': 6, 'TP': 2, 'M3': 2} capital {'0': 91}
+cross_heading_err_deg n=91 min=0.6 p25=20.9 med=35.2 p75=58.9 max=114.7 | >13.9: 78
+cross_v_ms n=91 min=81.1 p25=124.0 med=143.0 p75=327.5 max=495.0
+v0_ms n=91 min=46.7 p25=62.0 med=80.0 p75=162.1 max=326.3 | <20: 0
+  M3 cross_to_launch_s n=2 min=8.5 p25=8.5 med=9.2 p75=9.9 max=9.9 | v0 n=2 min=123.8 p25=123.8 med=131.3 p75=138.8 max=138.8
+  M4 cross_to_launch_s n=34 min=5.0 p25=5.8 med=7.4 p75=8.3 max=9.3 | v0 n=34 min=157.8 p25=158.1 med=171.3 p75=255.8 max=326.3
+  M6 cross_to_launch_s n=6 min=10.8 p25=12.0 med=13.1 p75=14.1 max=15.5 | v0 n=6 min=94.7 p25=94.9 med=101.9 p75=102.3 max=102.3
+  TP cross_to_launch_s n=2 min=14.4 p25=14.4 med=18.4 p75=22.4 max=22.4 | v0 n=2 min=71.5 p25=71.5 med=73.0 p75=74.5 max=74.5
+  TS cross_to_launch_s n=47 min=16.3 p25=19.1 med=22.7 p75=25.4 max=30.5 | v0 n=47 min=46.7 p25=55.1 med=62.0 p75=74.8 max=80.0
+== 4 decision samples: orders {'0x19': 5, '0x15': 15, '0x5': 11, '0x4': 8, '0x14': 341, '0x12': 5} classes {'TS': 37, 'M8': 302, 'M6': 44, 'TP': 1, 'M4': 1}
+  2459 t=28.3s 0x35a016c0 0x5 TS theta 0.02 v 40.0 v_corner 0.0 d_m 130.9 d_arr 0.0 omega 0.11 omega_cmd 0.08,0.08,0.00 W 21.1,21.1,16.9 a 3.16,3.16,2.53 f2b0 0x00008000 rot_pct 30 P -6476.3,-6157.7,31766.1
+  3059 t=31.3s 0x35a03400 0x5 TS theta 19.15 v 1.0 v_corner 905.2 d_m 1551.2 d_arr 0.0 omega 9.03 omega_cmd -8.14,3.89,0.00 W 21.9,21.9,17.5 a 3.84,3.84,3.07 f2b0 0x00008000 rot_pct 35 P -53020.0,-11989.2,2551.6
+  3249 t=32.3s 0x359fefc0 0x4 TS theta 0.01 v 139.5 v_corner 0.0 d_m 1292.8 d_arr 167.3 omega 0.04 omega_cmd 0.01,-0.03,0.00 W 16.9,16.9,13.5 a 1.69,1.69,1.35 f2b0 0x00008000 rot_pct 20 P -33671.3,-4261.1,-11505.6
+  4345 t=37.3s 0x35a03400 0x5 TS theta 0.04 v 99.8 v_corner 0.0 d_m 940.0 d_arr 0.0 omega 0.29 omega_cmd -0.17,0.24,0.00 W 21.9,21.9,17.5 a 3.84,3.84,3.07 f2b0 0x00008000 rot_pct 35 P -53020.0,-11989.2,2551.6
+  4881 t=40.3s 0x359fe9a8 0x4 TS theta 0.18 v 93.0 v_corner 0.0 d_m 2353.9 d_arr 192.6 omega 0.94 omega_cmd -0.36,-0.87,0.00 W 22.8,22.8,18.2 a 4.56,4.56,3.64 f2b0 0x00008000 rot_pct 40 P 34866.5,-3417.1,10801.7
+  5058 t=41.3s 0x359fe9a8 0x4 TS theta 0.01 v 93.0 v_corner 0.0 d_m 1427.5 d_arr 192.6 omega 0.04 omega_cmd -0.02,-0.03,0.00 W 22.8,22.8,18.2 a 4.56,4.56,3.64 f2b0 0x00008000 rot_pct 40 P 34866.5,-3417.1,10801.7
+  5238 t=42.3s 0x359fe9a8 0x4 TS theta 0.01 v 93.0 v_corner 0.0 d_m 498.9 d_arr 192.6 omega 0.05 omega_cmd -0.04,-0.04,0.00 W 22.8,22.8,18.2 a 4.56,4.56,3.64 f2b0 0x00008000 rot_pct 40 P 34866.5,-3417.1,10801.7
+  5407 t=43.3s 0x359fe9a8 0x5 TS theta 41.79 v 1.0 v_corner 132.5 d_m 444.2 d_arr 0.0 omega 13.84 omega_cmd 1.54,13.76,0.00 W 22.8,22.8,18.2 a 4.56,4.56,3.64 f2b0 0x00008000 rot_pct 40 P 34949.9,-3018.9,10810.5
+  5580 t=44.3s 0x359fe9a8 0x5 TS theta 8.76 v 92.9 v_corner 1157.7 d_m 886.5 d_arr 0.0 omega 6.37 omega_cmd 1.13,6.27,0.00 W 22.8,22.8,18.2 a 4.56,4.56,3.64 f2b0 0x00008000 rot_pct 40 P 35157.6,-2027.0,10832.4
+  5752 t=45.3s 0x359fe9a8 0x5 TS theta 0.00 v 40.0 v_corner 0.0 d_m 339.4 d_arr 0.0 omega 0.02 omega_cmd 0.02,-0.01,0.00 W 22.8,22.8,18.2 a 4.56,4.56,3.64 f2b0 0x00008000 rot_pct 40 P 35157.6,-2027.0,10832.4
+  7224 t=53.3s 0x35a05ea8 0x5 TP theta 0.02 v 40.0 v_corner 0.0 d_m 817.6 d_arr 0.0 omega 0.15 omega_cmd 0.11,0.10,0.00 W 33.8,33.8,27.0 a 5.91,5.91,4.72 f2b0 0x00008000 rot_pct 35 P -6488.9,-6157.7,31766.1
+  11959 t=76.3s 0x8c8fa340 0x4 M4 theta 0.04 v 335.8 v_corner 0.0 d_m 3930.3 d_arr 0.0 omega 0.28 omega_cmd 0.20,0.20,0.00 W 112.5,112.5,90.0 a 25.31,25.31,20.25 f2b0 0x00008000 rot_pct 45 P 4153.3,-20228.3,27620.2
+  12801 t=80.3s 0x35a05140 0x4 TS theta 0.09 v 143.0 v_corner 0.0 d_m 8038.7 d_arr 0.0 omega 0.60 omega_cmd -0.33,-0.50,0.00 W 20.2,20.2,16.2 a 3.54,3.54,2.83 f2b0 0x00008000 rot_pct 35 P 4259.0,-18920.6,30029.5
+  14340 t=88.3s 0x35a03ef8 0x5 TS theta 0.09 v 124.0 v_corner 0.0 d_m 1133.2 d_arr 0.0 omega 0.60 omega_cmd 0.41,0.45,0.00 W 21.1,21.1,16.9 a 3.16,3.16,2.53 f2b0 0x00008000 rot_pct 30 P -7237.3,10225.3,-57558.0
+  14696 t=90.3s 0x35a03ef8 0x5 TS theta 0.01 v 71.1 v_corner 0.0 d_m 350.1 d_arr 0.0 omega 0.06 omega_cmd 0.03,0.05,0.00 W 21.1,21.1,16.9 a 3.16,3.16,2.53 f2b0 0x00008000 rot_pct 30 P -7237.3,10225.3,-57558.0
+  14883 t=91.3s 0x35a03ef8 0x5 TS theta 0.01 v 66.3 v_corner 0.0 d_m 281.7 d_arr 0.0 omega 0.10 omega_cmd 0.07,0.06,0.00 W 21.1,21.1,16.9 a 3.16,3.16,2.53 f2b0 0x00008000 rot_pct 30 P -7237.3,10225.3,-57558.0
+  17500 t=107.3s 0x8c4d21a0 0x4 TS theta 0.00 v 110.0 v_corner 0.0 d_m 9322.0 d_arr 186.9 omega 0.02 omega_cmd -0.01,-0.02,0.00 W 21.9,21.9,17.5 a 3.84,3.84,3.07 f2b0 0x00008000 rot_pct 35 P -2608.5,-6157.7,31664.8
+  19746 t=122.3s 0x359fdb08 0x4 TS theta 17.13 v 110.0 v_corner 228.6 d_m 351.8 d_arr 0.0 omega 8.15 omega_cmd 1.16,8.07,0.00 W 21.9,21.9,17.5 a 3.84,3.84,3.07 f2b0 0x00008000 rot_pct 35 P 4153.3,-19970.3,28210.8
+  23463 t=148.3s 0x8c8f95d8 0x5 TS theta 70.32 v 1.0 v_corner 58.6 d_m 374.6 d_arr 0.0 omega 10.90 omega_cmd -0.70,10.88,0.00 W 16.9,16.9,13.5 a 1.69,1.69,1.35 f2b0 0x00008000 rot_pct 20 P 20689.4,775.7,-22458.3
+== 5 capitals
+ship obstacles with C_m>800 against known small ships (C = r_own + r_obs + max(25, r_own/2)): r_obs ~ C - r_small - 25..50
+   0xa5f64630 minC 1618 n 8
+   0x8c8d30a8 minC 1605 n 3
+   0xa5f600b8 minC 1598 n 23
+   0x8c8d1ab8 minC 1131 n 743
+   0x8c4d3ee0 minC 1131 n 22
+   0x8c4db038 minC 1061 n 779
+   0xa5f553a8 minC 852 n 43
+   0x35a07498 minC 808 n 29
+detour rows by (kind,order): [(('0', '0x14'), 6393), (('0', '0x15'), 183), (('0', '0x19'), 7), (('0', '0x4'), 1784), (('1', '0x14'), 640), (('1', '0x19'), 24), (('1', '0x4'), 6), (('2', '0x19'), 78), (('3', '0x14'), 1408), (('3', '0x15'), 31)]
+0x8c4d3ee0 rows 1670 frames 1586-59277 orders {'0x4': 1670} kinds {'0': 1670} top obstacles [('0x359fff98', 453), ('0x8c8f3f50', 430), ('0x8c8f89a8', 135), ('0x8c8d1ab8', 80)] | dist to G2 from frame 22740: 3068-11437 m | gate_lead_calls in its intervals min 3 med 276
+   frame:dist_G2/apparent_m_per_real_s 1586:47km/110 4332:46km/- 8366:32km/- 10533:22km/- 12172:19km/198 15060:15km/864 20068:7km/- 22740:5km/459 24767:6km/313 28208:8km/- 30033:8km/297 33530:3km/271 37197:5km/457 39111:7km/279 42324:8km/620 45146:8km/270 48784:6km/394 51221:4km/802 56579:5km/- 57125:6km/480
+0x8c8d1ab8 rows 1618 frames 2531-56584 orders {'0x14': 1618} kinds {'0': 1607, '3': 11} top obstacles [('0x8c8f89a8', 285), ('0x8c4db038', 236), ('0x35a032c8', 227), ('0x359ef720', 183)] | dist to G2 from frame 22740: 3538-11937 m | gate_lead_calls in its intervals min 0 med 302
+   frame:dist_G2/apparent_m_per_real_s 2531:81km/- 4704:78km/1069 8748:63km/1029 9157:61km/1085 20174:18km/1018 21024:13km/685 24113:6km/235 27334:7km/766 30202:6km/438 33141:7km/355 37339:8km/499 39409:10km/424 42088:5km/291 45313:9km/371 48235:9km/186 51069:7km/310 54096:4km/324
+0x8c4db038 rows 1150 frames 2945-58698 orders {'0x14': 1150} kinds {'0': 899, '1': 85, '3': 166} top obstacles [('0x8c8d1ab8', 246), ('0x8c8d7890', 166), ('0x35a09e08', 111), ('0x35a032c8', 91)] | dist to G2 from frame 22740: 2130-13847 m | gate_lead_calls in its intervals min 24 med 358
+   frame:dist_G2/apparent_m_per_real_s 2945:73km/- 3000:73km/112 8580:56km/1101 9157:53km/1130 19132:20km/1009 22369:6km/863 24783:5km/377 27472:9km/698 30473:7km/196 33007:8km/347 37053:3km/346 39090:4km/185 42760:9km/248 46278:9km/989 48784:6km/537 51956:5km/944 54096:8km/493 57000:4km/531
+order-0x14 ships within 12 km of G2: 21
+== SETA check: known TS 0x8c901498 detour displacement / real time (its [obj+0x10] at its transition: 158.6 m/s)
+  frames 33007-33276 real 2.06 s moved 3223 m -> 1566 m/s
+== 6 avoidance by kind {'0': 8367, '1': 670, '2': 78, '3': 1439} gate-kind by order {'0x14': 1408, '0x15': 31}
+stuck rows 8
+   47671 0x359ea6b0 0x19 34515.9 1151.3
+   48138 0x359ea6b0 0x19 32657.5 1151.3
+   48554 0x359ea6b0 0x19 28931.7 1151.3
+   48970 0x359ea6b0 0x19 25208.4 1151.3
+   49392 0x359ea6b0 0x19 21482.7 1151.3
+   49817 0x359ea6b0 0x19 17758.3 1151.3
+   50250 0x359ea6b0 0x19 14033.9 1151.3
+   50680 0x359ea6b0 0x19 10313.1 1151.3
+== 6 Run152 (previous log) handler p99
+log_open file=C:\X3\x3m.log source=game previous=renamed session=20261012-154155-7840 stale_removed=0
+summaries 227 p99 median 6.4 p99>5 154 max>50 0
