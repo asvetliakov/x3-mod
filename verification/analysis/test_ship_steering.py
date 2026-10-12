@@ -21,6 +21,20 @@ class ShipSteeringCore(unittest.TestCase):
             self.assertIn('checks PASS', run.stdout)
             self.assertIn('failures=0', run.stdout)
 
+    def test_close_probe_never_suppresses_inside_the_stopping_distance(self):
+        # the step-2 review's probe: a head-on ship 45..200 m ahead of an M5 at 100 m/s (D_stop 250 m) is never a resolved pair
+        with tempfile.TemporaryDirectory(prefix='x3-ship-close-') as d:
+            exe = Path(d) / 'probe'
+            build = subprocess.run(['c++', '-std=c++17', '-O2', '-Wall', '-Wextra', '-I', str(ROOT / 'src/proxy'),
+                                    str(ROOT / 'verification/results/ship-steering/close_probe.cpp'), '-o', str(exe)],
+                                   capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(exe)], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            lines = [l for l in run.stdout.splitlines() if l.startswith('d=')]
+            self.assertEqual(len(lines), 5, run.stdout)
+            self.assertTrue(all('suppressed=0' in l and 'n_resolved=0' in l for l in lines), run.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,4 +1,4 @@
-"""The four ship-steering sites (verify_ship_steering_sites.py): the installed EXE verifies PASS when present, the
+"""The five ship-steering sites (four of step 1 and the warn test of step 2) (verify_ship_steering_sites.py): the installed EXE verifies PASS when present, the
 header's SiteSpec table is the derived table, and the structural checks refuse an interior branch, a truncated span
 and a changed byte (on the installed image's decoded listings, read-only)."""
 import dataclasses
@@ -28,6 +28,9 @@ class ShipSteeringSites(unittest.TestCase):
         self.assertEqual(len(report['checks']['b_incoming']['dword_edges']), 2)
         self.assertEqual(report['checks']['no_data_dword_into_window']['interior'], {s.name: [] for s in probe.SITES})
         self.assertEqual(report['checks']['large_predicate_mask']['derived_mask'], '0xe91d')
+        self.assertEqual(report['checks']['warn_test_site']['callers'], ['0x44e522', '0x44e540', '0x456c02'])
+        self.assertTrue(report['checks']['warn_test_site']['out_local_initialised_and_unread'])
+        self.assertTrue(all(report['checks']['snapshot_walk_facts']['facts'].values()))
 
     def test_header_specs_match(self):
         self.assertEqual(probe.header_specs(probe.SITES_HEADER.read_text()), probe.expected_specs())

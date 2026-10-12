@@ -3,25 +3,45 @@ turn(diag)  M5  finish yaw=3283 ms pitch=2283 ms (rel 0.305; the roll policy re-
 turn(diag) M5  Discoverer fps= 60 settle=  3316 ms vanilla=  3699 ms oracle=  3648 ms ratio=0.909 overshoot=0.000 deg (vanilla 0.003) peak=73.6 deg/s
 arrival     M5  Discoverer fps= 60 t= 65599 ms (vanilla  65549) entries=1 entry_speed=10.0 m/s (vanilla 11.9) min_d=17.3 m d_arr=18.4 m beyond=0.0 m reversals=0
 formation   M5  Discoverer fps= 60 slot_rms=8.0 m (2r=18.4) max_after_entry=36.7 m window_increases=0
+flyby@600  M5  Discoverer fps= 60 detours=0 min_clear=600.0 m (C=234.2, part r=200) path=19982 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 20316 (lateral 0 m, L=3147 m) side=0
+flyby@150  M5  Discoverer fps= 60 detours=261 min_clear=267.0 m (C=234.2, part r=200) path=20012 m (x1.001) max_lateral=359 m back_on_course=66 ms after pass at 20350 (lateral 359 m, L=3147 m) side=-1
+crossing    M5  Discoverer fps= 60 detours=802/844 min_dist=101.5 m (C=43.4, L=2836 m) sides=-1/-1 unresolved=0/0
+form+rock   M5  Discoverer fps= 60 leader_detours=211 follower_detours=215/201 min_rock=434/434/434 m (C=334) final_slot=92.1/92.1 m (4r=36.8)
 turn       M3  Nova       fps= 60 settle=  4449 ms vanilla=  4649 ms oracle=  4624 ms ratio=0.962 overshoot=0.000 deg (vanilla 0.000) peak=68.9 deg/s
 turn(diag)  M3  finish yaw=4149 ms pitch=2999 ms (rel 0.277; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.820 vanilla_pitch_zero_ticks=83
 turn(diag) M3  Nova       fps= 60 settle=  4166 ms vanilla=  4633 ms oracle=  4608 ms ratio=0.904 overshoot=0.000 deg (vanilla 0.000) peak=56.5 deg/s
 arrival     M3  Nova       fps= 60 t= 93583 ms (vanilla  93500) entries=1 entry_speed=10.0 m/s (vanilla 13.8) min_d=22.6 m d_arr=23.8 m beyond=0.0 m reversals=0
 formation   M3  Nova       fps= 60 slot_rms=3.8 m (2r=23.8) max_after_entry=47.4 m window_increases=0
+flyby@600  M3  Nova       fps= 60 detours=0 min_clear=600.0 m (C=236.9, part r=200) path=19977 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 43649 (lateral 0 m, L=1686 m) side=0
+flyby@150  M3  Nova       fps= 60 detours=377 min_clear=307.9 m (C=236.9, part r=200) path=19985 m (x0.999) max_lateral=164 m back_on_course=0 ms after pass at 43666 (lateral 155 m, L=1686 m) side=-1
+crossing    M3  Nova       fps= 60 detours=839/883 min_dist=98.6 m (C=48.8, L=1402 m) sides=-1/-1 unresolved=0/0
+form+rock   M3  Nova       fps= 60 leader_detours=263 follower_detours=271/264 min_rock=438/438/438 m (C=337) final_slot=117.7/117.7 m (4r=47.6)
 turn       M6  Centaur    fps= 60 settle= 10016 ms vanilla= 10016 ms oracle=  9920 ms ratio=1.010 overshoot=0.000 deg (vanilla 0.000) peak=33.8 deg/s
 turn(diag)  M6  finish yaw=8883 ms pitch=5100 ms (rel 0.426; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.713 vanilla_pitch_zero_ticks=215
 turn(diag) M6  Centaur    fps= 60 settle=  8950 ms vanilla=  9983 ms oracle=  9888 ms ratio=0.905 overshoot=0.000 deg (vanilla 0.003) peak=30.2 deg/s
 arrival     M6  Centaur    fps= 60 t=122816 ms (vanilla 122000) entries=1 entry_speed=10.0 m/s (vanilla 23.5) min_d=126.1 m d_arr=128.8 m beyond=0.0 m reversals=0
 formation   M6  Centaur    fps= 60 slot_rms=57.7 m (2r=128.8) max_after_entry=257.3 m window_increases=0
+flyby@600  M6  Centaur    fps= 60 detours=0 min_clear=600.0 m (C=296.6, part r=200) path=19871 m (x0.994) max_lateral=0 m back_on_course=0 ms after pass at 60016 (lateral 0 m, L=2029 m) side=0
+flyby@150  M6  Centaur    fps= 60 detours=610 min_clear=350.1 m (C=296.6, part r=200) path=19893 m (x0.995) max_lateral=249 m back_on_course=0 ms after pass at 60166 (lateral 247 m, L=2029 m) side=-1
+crossing    M6  Centaur    fps= 60 detours=164/221 min_dist=283.4 m (C=161.0, L=1821 m) sides=-1/-1 unresolved=41/0
+form+rock   M6  Centaur    fps= 60 leader_detours=424 follower_detours=0/0 min_rock=516/575/575 m (C=397) final_slot=542.8/542.8 m (4r=257.6)
 turn       TS  Mercury    fps= 60 settle= 13116 ms vanilla= 13116 ms oracle= 13040 ms ratio=1.006 overshoot=0.000 deg (vanilla 0.000) peak=21.1 deg/s
 turn(diag)  TS  finish yaw=11499 ms pitch=6600 ms (rel 0.426; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.641 vanilla_pitch_zero_ticks=298
 turn(diag) TS  Mercury    fps= 60 settle= 11566 ms vanilla= 13083 ms oracle= 12992 ms ratio=0.890 overshoot=0.000 deg (vanilla 0.000) peak=21.1 deg/s
 arrival     TS  Mercury    fps= 60 t=165433 ms (vanilla 164616) entries=1 entry_speed=10.0 m/s (vanilla 27.2) min_d=75.0 m d_arr=77.0 m beyond=0.0 m reversals=0
 formation   TS  Mercury    fps= 60 slot_rms=19.8 m (2r=77.0) max_after_entry=154.0 m window_increases=0
+flyby@600  TS  Mercury    fps= 60 detours=0 min_clear=600.0 m (C=263.5, part r=200) path=19923 m (x0.996) max_lateral=0 m back_on_course=0 ms after pass at 87100 (lateral 0 m, L=1271 m) side=0
+flyby@150  TS  Mercury    fps= 60 detours=914 min_clear=310.0 m (C=263.5, part r=200) path=20131 m (x1.007) max_lateral=256 m back_on_course=9900 ms after pass at 91066 (lateral 244 m, L=1271 m) side=-1
+crossing    TS  Mercury    fps= 60 detours=151/160 min_dist=204.8 m (C=102.0, L=1271 m) sides=-1/1 unresolved=0/0
+form+rock   TS  Mercury    fps= 60 leader_detours=385 follower_detours=382/366 min_rock=473/473/473 m (C=364) final_slot=231.6/231.6 m (4r=154.0)
 turn       M2  Boreas     fps= 60 settle= 27533 ms vanilla= 27533 ms oracle= 26960 ms ratio=1.021 overshoot=0.000 deg (vanilla 0.000) peak=12.7 deg/s
 turn(diag)  M2  finish yaw=24466 ms pitch=13949 ms (rel 0.430; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.695 vanilla_pitch_zero_ticks=642
 turn(diag) M2  Boreas     fps= 60 settle= 24683 ms vanilla= 27500 ms oracle= 26880 ms ratio=0.918 overshoot=0.000 deg (vanilla 0.000) peak=11.0 deg/s
 arrival     M2  Boreas     fps= 60 t=270983 ms (vanilla 267016) entries=1 entry_speed=10.0 m/s (vanilla 70.0) min_d=1407.5 m d_arr=1410.8 m beyond=0.0 m reversals=0
 formation   M2  Boreas     fps= 60 slot_rms=1365.6 m (2r=1410.8) max_after_entry=2115.1 m window_increases=0
-ship_steering_host checks=1164 failures=0
+flyby@600  M2  Boreas     fps= 60 detours=2021 min_clear=1405.6 m (C=1258.1, part r=200) path=19196 m (x0.960) max_lateral=1742 m back_on_course=783 ms after pass at 160633 (lateral 1728 m, L=1964 m) side=1
+flyby@150  M2  Boreas     fps= 60 detours=2066 min_clear=1417.2 m (C=1258.1, part r=200) path=19118 m (x0.956) max_lateral=1643 m back_on_course=750 ms after pass at 159783 (lateral 1630 m, L=1964 m) side=1
+crossing    M2  Boreas     fps= 60 detours=730/757 min_dist=2108.4 m (C=1763.5, L=2469 m) sides=1/-1 unresolved=0/0
+form+rock   M2  Boreas     fps= 60 leader_detours=1582 follower_detours=0/0 min_rock=1531/3070/3069 m (C=1358) final_slot=225.2/225.2 m (4r=2821.6)
+ship_steering_host checks=2203 failures=0
 checks PASS

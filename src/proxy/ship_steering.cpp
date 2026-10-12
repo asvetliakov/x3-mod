@@ -1,5 +1,7 @@
 #include "ship_steering.h"
 #include "ship_steering_core.h"
+#include "ship_avoidance_core.h"
+#include "ship_avoidance_walk_core.h"
 #include "ship_steering_sites.h"
 #include "config.h"
 #include "cpu_state.h"
@@ -39,6 +41,10 @@ void x3m_ship_steering_a2_stub();
 void x3m_ship_steering_b_stub();
 int __cdecl x3m_ship_steering_enter(sites::Frame* frame, int leaf);
 void __cdecl x3m_ship_steering_clamp(std::uint32_t obj);
+// Site E (step 2): the warn test's entry; the stub answers a resolved pair with EAX = 0, `ret 0x10`.
+void* x3m_ship_avoid_next_e = nullptr;
+void x3m_ship_avoid_e_stub();
+int __cdecl x3m_ship_avoid_suppress(std::uint32_t a, std::uint32_t b);
 }
 
 // A1-A3 (X3M_SS_LEAF): save EAX/ECX/EDX and XMM0-7, call the handler with the
@@ -51,6 +57,11 @@ void __cdecl x3m_ship_steering_clamp(std::uint32_t obj);
 // them before the `jne`). Both envelopes execute `cld`: DF leaves cleared,
 // the state every compiled caller assumes between string operations (the
 // engine never calls a leaf with DF set), and the handlers rely on it.
+// E (step 2): the same envelope around the suppression
+// lookup with the stdcall arguments A = [esp+4], B = [esp+8] re-pushed from
+// the saved frame (0x8c bytes above); a hit returns EAX = 0 through `ret 0x10`
+// with ECX/EDX and EFLAGS dead at every caller (ship_steering_sites.h (e)),
+// a miss continues into the claim tail (the original warn test).
 asm(R"(
     .intel_syntax noprefix
     .text
@@ -115,6 +126,20 @@ _x3m_ship_steering_b_stub:
     add esp, 4
     X3M_SS_RESTORE
 1:  jmp dword ptr [_x3m_ship_steering_next_b]
+    .p2align 4
+    .globl _x3m_ship_avoid_e_stub
+_x3m_ship_avoid_e_stub:
+    X3M_SS_SAVE
+    push dword ptr [esp+0x94]
+    push dword ptr [esp+0x94]
+    call _x3m_ship_avoid_suppress
+    add esp, 8
+    test eax, eax
+    X3M_SS_RESTORE
+    jnz 1f
+    jmp dword ptr [_x3m_ship_avoid_next_e]
+1:  xor eax, eax
+    ret 0x10
     .att_syntax
 )");
 
@@ -126,7 +151,29 @@ const char* state_ = "not_initialized";
 engine_patch::Site patches_[sites::Count];
 std::uint32_t class_mask_ = 0;
 std::uint64_t qpc_frequency_ = 0;
-core::ShipTable table_; // 64 KB of .bss, the only per-ship state
+core::ShipTable table_; // 64 KB of .bss, the per-ship steering state
+namespace av = x3m::ship_avoidance::core;
+bool avoidance_on_ = false;
+std::atomic<bool> warn_live_{false}; // site E chained
+engine_patch::Site warn_site_{};
+const char* warn_state_ = "not_claimed";
+av::Snapshot snaps_[sites::kSnapshotSlots];     // per-sector per-frame obstacle snapshots (fixed capacity)
+namespace wk = x3m::ship_avoidance::walk;
+wk::PartCache part_cache_;                       // station part models, keyed on object, root radius and position/basis
+av::ShipAvoid avoid_[core::kShipCapacity];      // parallel to table_.entries (same slot index)
+// --debug witnesses: detour events and one census per sector (first snapshot), drained at the frame boundary.
+struct DetourEvent {
+    std::uint32_t obj, obstacle, kind, side, vertical, order;
+    float t_cpa, miss, C, L, P[3], x[3];
+};
+DetourEvent detours_[16];
+std::atomic<std::uint32_t> detour_write_{0};
+std::uint32_t detour_read_ = 0;
+using Census = wk::Census;
+Census census_[4];
+std::atomic<std::uint32_t> census_write_{0};
+std::uint32_t census_read_ = 0, census_logged_sectors_[8] = {};
+unsigned census_logged_count_ = 0;
 std::int32_t target_ring_[4][3];  // the step-2 seam: a redirected EDX points here, never at the caller's buffer
 unsigned target_depth_ = 0;
 
@@ -139,11 +186,16 @@ struct Counter {
 };
 Counter calls_, handled_, reasons_[core::kReasonCount], leaf_calls_[3], clamp_calls_, clamp_applied_, clamp_stale_;
 Counter handled_by_order_[0x40], redirected_;
+Counter av_calls_, av_conflicts_, av_detours_, av_unresolved_, av_overflow_, av_snapshots_, av_walk_objects_, av_emergency_;
+Counter e_calls_, e_suppressed_, part_built_, part_fallback_, part_invalid_;
 std::atomic<std::uint32_t> qpc_hist_[32];
 std::atomic<std::uint32_t> qpc_max_{0};
 // Reported totals (frame boundary only).
 std::uint32_t rep_calls_ = 0, rep_handled_ = 0, rep_reasons_[core::kReasonCount] = {}, rep_clamp_calls_ = 0,
               rep_clamp_applied_ = 0, rep_clamp_stale_ = 0, rep_leaf_[3] = {}, rep_redirected_ = 0;
+std::uint32_t rep_av_[13] = {};
+unsigned long long last_detour_tick_ = 0;
+unsigned detour_rows_this_second_ = 0;
 unsigned long long last_summary_tick_ = 0, last_sample_tick_ = 0;
 std::uint32_t last_logged_seq_ = 0; // the sample row is logged once per written sample
 // The sampled decision (--debug): a seqlock written by the handler when requested.
@@ -219,6 +271,9 @@ inline void record_time(std::uint64_t ticks) noexcept {
     qpc_hist_[bucket].store(qpc_hist_[bucket].load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
     if (t > qpc_max_.load(std::memory_order_relaxed)) qpc_max_.store(t, std::memory_order_relaxed);
 }
+inline float sc_max(float a, float b) noexcept {
+    return a > b ? a : b;
+}
 inline float fixed16(std::int32_t v) noexcept {
     return float(v) * (1.0f / 65536.0f);
 }
@@ -240,6 +295,128 @@ inline void redirect_target(sites::Frame* f, const std::int32_t point[3]) noexce
     slot[2] = point[2];
     f->edx = std::uint32_t(reinterpret_cast<std::uintptr_t>(slot));
     redirected_.add();
+}
+// ---- step 2: the sector snapshot and the station part model ------------------
+// The walk itself is the portable ship_avoidance_walk_core.h (the fixture runs it over a synthetic sector); here it
+// reads the engine's memory directly. Census rows (--debug): at most one per sector per session.
+struct RawMem {
+    std::uint32_t u32(std::uint32_t at) const noexcept { return rd32(at); }
+    std::int32_t s32(std::uint32_t at) const noexcept { return rds32(at); }
+    std::uint16_t u16(std::uint32_t at) const noexcept { return rd16(at); }
+};
+const av::Snapshot* snapshot_for(std::uint32_t sector, std::uint32_t now) noexcept {
+    unsigned slot = 0;
+    for (unsigned i = 0; i < sites::kSnapshotSlots; ++i) {
+        if (snaps_[i].sector == sector && snaps_[i].epoch == now && snaps_[i].count + snaps_[i].overflow) return &snaps_[i];
+        if (snaps_[i].sector == sector) slot = i;
+        else if (snaps_[slot].sector != sector && snaps_[i].epoch < snaps_[slot].epoch) slot = i;
+    }
+    av::Snapshot& s = snaps_[slot];
+    bool want_census = debug_;
+    for (unsigned i = 0; i < census_logged_count_ && want_census; ++i)
+        if (census_logged_sectors_[i] == sector) want_census = false;
+    Census* census = nullptr;
+    Census local{};
+    if (want_census && census_logged_count_ < 8) {
+        census_logged_sectors_[census_logged_count_++] = sector;
+        census = &local;
+        census->sector = sector;
+    }
+    RawMem mem;
+    wk::Stats stats;
+    wk::fill_snapshot(mem, sector, now, s, part_cache_, stats, census);
+    av_snapshots_.add();
+    av_walk_objects_.add(stats.visited);
+    if (s.overflow) av_overflow_.add();
+    part_built_.add(stats.part_built);
+    part_fallback_.add(stats.part_fallback);
+    part_invalid_.add(stats.part_invalid);
+    if (census) {
+        const std::uint32_t w = census_write_.load(std::memory_order_relaxed);
+        if (w - census_read_ < 4) {
+            census_[w & 3] = local;
+            census_write_.store(w + 1, std::memory_order_release);
+        }
+    }
+    return &s;
+}
+// The avoidance adjustment of the order's point for one steering call (av::resolve over the sector snapshot).
+void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, const core::Dynamics& dyn, std::uint32_t code,
+                  unsigned slot, std::uint32_t now, float P[3], std::uint32_t* v_emergency_out) noexcept {
+    const std::uint32_t sector = rd32(obj + sites::kObjSector);
+    av_calls_.add();
+    if (!sector) return;
+    const av::Snapshot* snap = snapshot_for(sector, now);
+    av::Self self;
+    for (unsigned c = 0; c < 3; ++c) {
+        self.x[c] = in.x[c];
+        self.f[c] = in.row[2][c];
+    }
+    self.up[0] = 0.0f;
+    self.up[1] = 1.0f;
+    self.up[2] = 0.0f;
+    self.v = in.v;
+    self.r = dyn.r_own;
+    self.a = dyn.a_lin;
+    self.omega = core::fmin_f(dyn.W[0] > 0.0f ? dyn.W[0] : 1e30f, dyn.W[1] > 0.0f ? dyn.W[1] : 1e30f);
+    if (self.omega >= 1e29f) self.omega = 0.0f;
+    self.alpha = self.omega * dyn.k;
+    self.ptr = obj;
+    self.target = rd32(fl + sites::kFlightTarget);
+    self.leader = (in.order == core::kOrderEscort || in.order == core::kOrderFollow) ? self.target : 0;
+    self.leader_x[0] = self.leader_x[1] = self.leader_x[2] = 0.0f;
+    self.L_leader = 0.0f;
+    if (self.leader) {
+        const std::uint32_t lph = rd32(self.leader + sites::kObjPhys);
+        if (lph)
+            for (unsigned c = 0; c < 3; ++c) self.leader_x[c] = float(rds32(lph + sites::kPhysPosition + 4 * c)) / core::kUnitsPerMetre;
+        const core::Ship* ls = table_.find(self.leader);
+        if (ls) {
+            const av::ShipAvoid& la = avoid_[unsigned(ls - table_.entries)];
+            if (la.obj == self.leader && now - la.stamp_ms <= sites::kClampMaxAgeMs) self.L_leader = la.L; // a fresh decision only
+        }
+    }
+    self.envelope = float(rds32(fl + sites::kFlightDistance)) / core::kUnitsPerMetre * float(av::kFormationEnvelopeFactor);
+    if (self.envelope < 0.0f) self.envelope = 0.0f;
+    self.order = in.order;
+    self.capital = code < core::kClassCount && ((core::kCapitalMask >> code) & 1u);
+    self.exclude_target = in.order == core::kOrderFlyBefore || in.order == core::kOrderDock || in.order == core::kOrderEscort ||
+                          in.order == core::kOrderFollow || in.order == core::kOrderAttack || in.order == core::kOrderAttackBig ||
+                          in.order == core::kOrderCapture;
+    av::ShipAvoid& state = avoid_[slot];
+    if (state.obj != obj) state = av::ShipAvoid{}; // the slot was another ship's: no stale sides or resolved set
+    state.obj = obj;
+    const av::Result r = av::resolve(*snap, part_cache_.sets, part_cache_.count, self, P, state, now);
+    if (r.conflicts) av_conflicts_.add(r.conflicts);
+    if (r.unresolved) av_unresolved_.add();
+    if (r.emergency) av_emergency_.add();
+    std::memcpy(v_emergency_out, &state.v_emergency, 4);
+    if (!r.adjusted) return;
+    av_detours_.add();
+    P[0] = r.P[0];
+    P[1] = r.P[1];
+    P[2] = r.P[2];
+    if (debug_) {
+        const std::uint32_t w = detour_write_.load(std::memory_order_relaxed);
+        if (w - detour_read_ < 16) {
+            DetourEvent& e = detours_[w & 15];
+            e.obj = obj;
+            e.obstacle = r.obstacle;
+            e.kind = r.obstacle_kind;
+            e.side = std::uint32_t(std::int32_t(r.side));
+            e.vertical = r.vertical ? 1 : 0;
+            e.order = in.order;
+            e.t_cpa = r.t_cpa;
+            e.miss = r.miss;
+            e.C = r.C;
+            e.L = r.L;
+            for (unsigned c = 0; c < 3; ++c) {
+                e.P[c] = r.P[c];
+                e.x[c] = in.x[c];
+            }
+            detour_write_.store(w + 1, std::memory_order_release);
+        }
+    }
 }
 // ---- the steering decision -------------------------------------------
 core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
@@ -287,9 +464,29 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     if (!target) return core::Reason::not_finite;
     const std::int32_t point[3] = {rds32(target), rds32(target + 4), rds32(target + 8)};
     const std::int32_t* adjusted = policy.avoidance ? adjust_target(obj, order, point) : point; // never 0x12 or 5
-    if (adjusted != point) redirect_target(f, adjusted);
     for (unsigned i = 0; i < 3; ++i) in.P[i] = float(adjusted[i]) / core::kUnitsPerMetre;
     in.order = order;
+    const std::uint32_t now = game_time_ms();
+    core::Ship* s = table_.find_or_insert(obj, now);
+    if (!s) return core::Reason::table_full;
+    const unsigned slot = unsigned(s - table_.entries);
+    std::uint32_t v_emergency_bits = 0;
+    float order_point[3] = {in.P[0], in.P[1], in.P[2]};
+    if (avoidance_on_ && policy.avoidance) {
+        float P[3] = {in.P[0], in.P[1], in.P[2]};
+        avoid_adjust(obj, fl, in, dyn, code, slot, now, P, &v_emergency_bits);
+        if (P[0] != in.P[0] || P[1] != in.P[1] || P[2] != in.P[2]) {
+            std::int32_t detour[3];
+            const float dd[3] = {order_point[0] - in.x[0], order_point[1] - in.x[1], order_point[2] - in.x[2]};
+            in.d_order = core::sqrt_ss(core::dot3(dd, dd)); // the hold and the ramp keep measuring the order's point
+            for (unsigned i = 0; i < 3; ++i) {
+                in.P[i] = P[i];
+                detour[i] = core::round_to_int(P[i] * core::kUnitsPerMetre);
+            }
+            redirect_target(f, detour); // a pass-through leaf (if any) sees the adjusted point too
+        }
+    } else if (adjusted != point)
+        redirect_target(f, adjusted);
     // Arrival parameters (section 2.5).
     in.arrival_ramp = policy.arrival_ramp;
     if (in.arrival_ramp) {
@@ -309,7 +506,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             in.d_arr = float(units) / core::kUnitsPerMetre;
         } else {
             in.d_arr = float(rds32(fl + sites::kFlightDistance)) / core::kUnitsPerMetre;
-            if (order == core::kOrderEscort && in.d_arr < dyn.r_own) in.d_arr = dyn.r_own;
+            if (order == core::kOrderEscort) in.d_arr = sc_max(in.d_arr, dyn.r_own);
         }
         if (in.d_arr < 0.0f) in.d_arr = 0.0f;
         if ((order == core::kOrderEscort || order == core::kOrderFollow) && tgt && rd16(tgt + sites::kObjClass) == sites::kClassShip) {
@@ -326,9 +523,6 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     core::Command cmd;
     const core::Reason r = core::steer(in, dyn, &cmd);
     if (r != core::Reason::handled) return r;
-    const std::uint32_t now = game_time_ms();
-    core::Ship* s = table_.find_or_insert(obj, now);
-    if (!s) return core::Reason::table_full;
     // The write: exactly the leaf's three outputs.
     wr32(obj + sites::kObjRemaining, cmd.e[0]);
     wr32(obj + sites::kObjRemaining + 4, cmd.e[1]);
@@ -336,14 +530,15 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     s->stamp_ms = now;
     s->order = order;
     s->flags = std::uint16_t((in.arrival_ramp ? 1 : 0) | (cmd.v_cmd > 0.0f ? 2 : 0));
-    for (unsigned i = 0; i < 3; ++i) s->P[i] = in.P[i];
+    for (unsigned i = 0; i < 3; ++i) s->P[i] = order_point[i]; // site B measures the order's point, not a detour
     s->a_lin = dyn.a_lin;
     s->d_arr = in.d_arr;
     s->v_ref = in.v_ref;
     s->v_corner = cmd.v_corner;
+    std::memcpy(&s->v_emergency, &v_emergency_bits, 4);
     s->calls = s->calls + 1;
     if (order == core::kOrderMovePos) {
-        if (core::stuck_update(*s, cmd.d, now)) {
+        if (core::stuck_update(*s, cmd.d_order, now)) {
             const std::uint32_t n = stuck_count_.load(std::memory_order_relaxed);
             if (n < 8) {
                 stuck_[n] = Stuck{obj, order, cmd.d, s->best_d};
@@ -497,6 +692,21 @@ extern "C" void __cdecl x3m_ship_steering_clamp(std::uint32_t obj) {
         clamp_applied_.add();
     }
 }
+// Site E: 1 = suppress the reactive warn for (A, B) (B is in A's fresh resolved set and A is steered by us and
+// not under the engine's own avoid order), 0 = the original warn test runs.
+extern "C" int __cdecl x3m_ship_avoid_suppress(std::uint32_t a, std::uint32_t b) {
+    if (!installed_.load(std::memory_order_relaxed) || !warn_live_.load(std::memory_order_relaxed)) return 0;
+    Envelope env;
+    e_calls_.add();
+    if (!a || !b || rd16(a + sites::kObjClass) != sites::kClassShip) return 0;
+    const std::uint32_t fl = rd32(a + sites::kObjFlight);
+    if (!fl || rd16(fl + sites::kFlightOrder) == core::kOrderAvoid) return 0;
+    const core::Ship* s = table_.find(a);
+    if (!s) return 0;
+    if (!av::suppressed(avoid_[unsigned(s - table_.entries)], a, b, game_time_ms())) return 0;
+    e_suppressed_.add();
+    return 1;
+}
 
 namespace x3m::ship_steering {
 bool initialize() {
@@ -534,6 +744,32 @@ bool initialize() {
         SetLastError(error);
         return false;
     }
+    // Step 2: X3M_SHIP_AVOIDANCE=1 (requires the steering above). Site E is claimed separately; a refusal there
+    // leaves avoidance running without the suppression (the reactive loop stays as today).
+    wchar_t avoid_text[8]{};
+    const DWORD avoid_length = x3m::config::get(L"X3M_SHIP_AVOIDANCE", avoid_text, 8);
+    bool avoid_on = false;
+    if (avoid_length >= 8 || !core::parse_switch(avoid_text, avoid_length, &avoid_on)) {
+        avoid_on = false;
+        log("ship_avoidance_refused reason=invalid_setting");
+    }
+    avoidance_on_ = avoid_on;
+    if (avoidance_on_) {
+        warn_site_ = engine_patch::Site{};
+        if (!engine_patch::verify_bytes(sites::kWarnSite.address, sites::kWarnSite.expected, sites::kWarnSite.length))
+            warn_state_ = "bytes_mismatch";
+        else if (engine_patch::claim(warn_site_, sites::kWarnSite)) {
+            x3m_ship_avoid_next_e = *warn_site_.entry;
+            std::atomic_thread_fence(std::memory_order_release);
+            if (engine_patch::push_front(warn_site_, reinterpret_cast<void*>(&x3m_ship_avoid_e_stub))) {
+                warn_state_ = "active";
+                warn_live_.store(true, std::memory_order_release);
+            } else {
+                warn_state_ = engine_patch::restore(warn_site_) ? "stub_chain_failed" : "stub_chain_failed_live_pass_through";
+            }
+        } else
+            warn_state_ = warn_site_.status;
+    }
     LARGE_INTEGER f{};
     qpc_frequency_ = QueryPerformanceFrequency(&f) && f.QuadPart > 0 ? std::uint64_t(f.QuadPart) : 0;
     perf_ = log_tier::cached_perf;
@@ -552,6 +788,13 @@ bool initialize() {
             static_cast<unsigned long>(sites::kSites[i].address), sites::kSites[i].name, patches_[i].status,
             write_name(patches_[i]), static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(stub_of(i))),
             static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(*slot_of(i))));
+    if (avoidance_on_)
+        log("ship_avoidance installed=1 warn_site=0x%08lx warn_status=%s write=%s snapshot_capacity=%u snapshot_slots=%u "
+            "station_capacity=%u parts_per_station=%u candidates=%u resolved_age_ms=%lu handler_e=0x%08lx",
+            static_cast<unsigned long>(sites::kWarnSite.address), warn_state_, write_name(warn_site_), av::kSnapshotCapacity,
+            sites::kSnapshotSlots, av::kStationCapacity, av::kMaxParts, av::kMaxCandidates,
+            static_cast<unsigned long>(av::kResolvedAgeMs),
+            static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_ship_avoid_suppress)));
     SetLastError(error);
     return true;
 }
@@ -597,6 +840,53 @@ void frame_boundary(std::uint64_t frame) {
             sample_request_.store(true, std::memory_order_relaxed);
         }
     }
+    if (debug_ && avoidance_on_) {
+        // the census rows (once per sector per session) and the detour samples (at most 32 rows per second)
+        for (std::uint32_t w = census_write_.load(std::memory_order_acquire); census_read_ != w; ++census_read_) {
+            const Census& c = census_[census_read_ & 3];
+            char classes[256], buckets[256];
+            int n = 0;
+            for (unsigned k = 0; k < 32; ++k)
+                if (c.classes[k]) {
+                    const int m = std::snprintf(classes + n, sizeof classes - size_t(n), "%s%u:%u", n ? "," : "", k, unsigned(c.classes[k]));
+                    if (m > 0 && n + m < int(sizeof classes)) n += m;
+                }
+            if (!n) classes[0] = 0;
+            n = 0;
+            for (unsigned k = 0; k < 32; ++k) {
+                const int m = std::snprintf(buckets + n, sizeof buckets - size_t(n), "%s%u", k ? "," : "", unsigned(c.buckets[k]));
+                if (m > 0 && n + m < int(sizeof buckets)) n += m;
+            }
+            float root_r;
+            std::memcpy(&root_r, &c.station_root_r, 4);
+            log("ship_avoid_census frame=%llu sector=0x%08lx objects=%lu overflow=%lu classes=%s buckets=%s", static_cast<unsigned long long>(frame),
+                static_cast<unsigned long>(c.sector), static_cast<unsigned long>(c.objects), static_cast<unsigned long>(c.overflow), classes, buckets);
+            if (c.station)
+                log("ship_avoid_station frame=%llu sector=0x%08lx obj=0x%08lx root_r_m=%.1f scale=0x%08lx children=%lu model=%s "
+                    "parts=%ld,%ld,%ld:%ld:%08lx|%ld,%ld,%ld:%ld:%08lx|%ld,%ld,%ld:%ld:%08lx|%ld,%ld,%ld:%ld:%08lx",
+                    static_cast<unsigned long long>(frame), static_cast<unsigned long>(c.sector), static_cast<unsigned long>(c.station), double(root_r),
+                    static_cast<unsigned long>(c.station_scale), static_cast<unsigned long>(c.station_children), c.station_valid ? "parts" : "fallback",
+                    long(c.part_offset[0][0]), long(c.part_offset[0][1]), long(c.part_offset[0][2]), long(c.part_r[0]), static_cast<unsigned long>(c.part_flags[0]),
+                    long(c.part_offset[1][0]), long(c.part_offset[1][1]), long(c.part_offset[1][2]), long(c.part_r[1]), static_cast<unsigned long>(c.part_flags[1]),
+                    long(c.part_offset[2][0]), long(c.part_offset[2][1]), long(c.part_offset[2][2]), long(c.part_r[2]), static_cast<unsigned long>(c.part_flags[2]),
+                    long(c.part_offset[3][0]), long(c.part_offset[3][1]), long(c.part_offset[3][2]), long(c.part_r[3]), static_cast<unsigned long>(c.part_flags[3]));
+        }
+        if (now - last_detour_tick_ >= 1000) {
+            last_detour_tick_ = now;
+            detour_rows_this_second_ = 0;
+        }
+        for (std::uint32_t w = detour_write_.load(std::memory_order_acquire); detour_read_ != w; ++detour_read_) {
+            if (detour_rows_this_second_ >= 32) continue;
+            ++detour_rows_this_second_;
+            const DetourEvent& e = detours_[detour_read_ & 15];
+            log("ship_avoid_detour frame=%llu obj=0x%08lx order=0x%lx obstacle=0x%08lx kind=%lu side=%ld vertical=%lu t_cpa_s=%.2f miss_m=%.1f "
+                "C_m=%.1f L_m=%.0f P_m=%.1f,%.1f,%.1f x_m=%.1f,%.1f,%.1f",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(e.obj), static_cast<unsigned long>(e.order),
+                static_cast<unsigned long>(e.obstacle), static_cast<unsigned long>(e.kind), long(std::int32_t(e.side)),
+                static_cast<unsigned long>(e.vertical), double(e.t_cpa), double(e.miss), double(e.C), double(e.L), double(e.P[0]), double(e.P[1]),
+                double(e.P[2]), double(e.x[0]), double(e.x[1]), double(e.x[2]));
+        }
+    }
     if (now - last_summary_tick_ < 1000) return;
     const unsigned long long interval = last_summary_tick_ ? now - last_summary_tick_ : 1000;
     last_summary_tick_ = now;
@@ -640,16 +930,38 @@ void frame_boundary(std::uint64_t frame) {
         if (k > 0 && n + k < int(sizeof orders)) n += k;
     }
     const std::uint32_t l0 = leaf_calls_[0].get(), l1 = leaf_calls_[1].get(), l2 = leaf_calls_[2].get();
+    char avoidance[400] = "";
+    if (avoidance_on_) {
+        const Counter* cs[13] = {&av_calls_, &av_conflicts_, &av_detours_, &av_unresolved_, &av_overflow_, &av_snapshots_, &av_walk_objects_,
+                                 &av_emergency_, &e_calls_, &e_suppressed_, &part_built_, &part_fallback_, &part_invalid_};
+        std::uint32_t d[13];
+        for (unsigned i = 0; i < 13; ++i) {
+            const std::uint32_t v = cs[i]->get();
+            d[i] = v - rep_av_[i];
+            rep_av_[i] = v;
+        }
+        unsigned snap_max = 0;
+        for (unsigned i = 0; i < sites::kSnapshotSlots; ++i)
+            if (snaps_[i].count > snap_max) snap_max = snaps_[i].count;
+        std::snprintf(avoidance, sizeof avoidance,
+                      " avoid_calls=%lu conflicts=%lu detours=%lu unresolved=%lu snapshot_overflow=%lu snapshots=%lu walked=%lu "
+                      "emergency=%lu e_calls=%lu e_suppressed=%lu part_models=%lu part_fallback=%lu part_invalid=%lu snapshot_max=%u warn=%s",
+                      static_cast<unsigned long>(d[0]), static_cast<unsigned long>(d[1]), static_cast<unsigned long>(d[2]),
+                      static_cast<unsigned long>(d[3]), static_cast<unsigned long>(d[4]), static_cast<unsigned long>(d[5]),
+                      static_cast<unsigned long>(d[6]), static_cast<unsigned long>(d[7]), static_cast<unsigned long>(d[8]),
+                      static_cast<unsigned long>(d[9]), static_cast<unsigned long>(d[10]), static_cast<unsigned long>(d[11]),
+                      static_cast<unsigned long>(d[12]), snap_max, warn_state_);
+    }
     log("ship_steering_summary frame=%llu interval_ms=%llu claims=%u calls=%lu handled=%lu ships=%u calls_per_ship_s=%.1f "
         "leaf_calls=%lu,%lu,%lu%s clamp_calls=%lu clamp_applied=%lu clamp_stale=%lu redirected=%lu timed=%lu "
-        "handler_us_p50=%.2f handler_us_p99=%.2f handler_us_max=%.2f handled_by_order_total=%s stuck_total=%lu",
+        "handler_us_p50=%.2f handler_us_p99=%.2f handler_us_max=%.2f handled_by_order_total=%s stuck_total=%lu%s",
         static_cast<unsigned long long>(frame), interval, unsigned(sites::Count), static_cast<unsigned long>(d_calls),
         static_cast<unsigned long>(handled - rep_handled_), ships, per_ship, static_cast<unsigned long>(l0 - rep_leaf_[0]),
         static_cast<unsigned long>(l1 - rep_leaf_[1]), static_cast<unsigned long>(l2 - rep_leaf_[2]), reasons,
         static_cast<unsigned long>(ccalls - rep_clamp_calls_), static_cast<unsigned long>(capplied - rep_clamp_applied_),
         static_cast<unsigned long>(cstale - rep_clamp_stale_), static_cast<unsigned long>(redirected - rep_redirected_),
         static_cast<unsigned long>(total), percentile(0.5), percentile(0.99), us_max, orders,
-        static_cast<unsigned long>(stuck_count_.load(std::memory_order_relaxed)));
+        static_cast<unsigned long>(stuck_count_.load(std::memory_order_relaxed)), avoidance);
     rep_calls_ = calls;
     rep_handled_ = handled;
     rep_clamp_calls_ = ccalls;
@@ -663,12 +975,14 @@ void frame_boundary(std::uint64_t frame) {
 bool shutdown() {
     // Every site still registered as patched (an installed module, or a site left live by a failed rollback) is
     // restored in reverse order; a site whose restore fails again stays registered for the next attempt.
-    bool any = false;
+    bool any = warn_site_.patched_in;
     for (unsigned i = 0; i < sites::Count; ++i) any = any || patches_[i].patched_in;
     if (!any) return true;
     const DWORD error = GetLastError();
     installed_.store(false, std::memory_order_release); // the handlers pass through from here on
+    warn_live_.store(false, std::memory_order_release);
     bool restored = true;
+    if (warn_site_.patched_in && !engine_patch::restore(warn_site_)) restored = false;
     for (unsigned i = sites::Count; i-- > 0;)
         if (patches_[i].patched_in && !engine_patch::restore(patches_[i])) restored = false;
     state_ = restored ? "restored" : "restore_failed_retry_at_next_shutdown";

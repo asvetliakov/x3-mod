@@ -192,6 +192,8 @@ struct Inputs {
     float d_arr = 0;          // arrival distance, m (section 2.5)
     float v_ref = 0;          // reference speed at arrival (the leader's projected speed), m/s
     bool arrival_ramp = false;
+    float d_order = -1.0f;    // distance to the order's own point when P is a detour (m; < 0 = P is the order's point):
+                              // the arrival hold, the ramp and the stuck witness measure progress to the order, not to the detour
 };
 struct Command {
     std::int32_t e[3] = {0, 0, 0}; // the remaining angles to write (binary)
@@ -201,6 +203,7 @@ struct Command {
     float omega = 0;         // commanded scalar rate, rad/s
     float omega_axis[3] = {0, 0, 0};
     float d = 0;             // distance to P, m
+    float d_order = 0;       // distance to the order's point, m (= d without a detour)
     float v_corner = 0;      // m/s (0 = no limit)
     float v_cmd = 0;         // m/s, the clamp for site B (0 = none)
     bool held = false;       // inside the arrival hold: angles 0
@@ -251,11 +254,13 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
     float d[3] = {in.P[0] - in.x[0], in.P[1] - in.x[1], in.P[2] - in.x[2]};
     c.d = sqrt_ss(dot3(d, d));
     if (!finite_f(c.d)) return Reason::not_finite;
+    c.d_order = in.d_order >= 0.0f ? in.d_order : c.d;
     // Target in the basis rows. Inside the order's arrival distance (section 2.1) the heading is held: all three
-    // angles 0, the engine's own arrival test runs on the next tick.
+    // angles 0, the engine's own arrival test runs on the next tick. A detour point (step 2) never holds: the
+    // hold and the ramp below measure the order's own point.
     const float hold = (in.arrival_ramp && in.d_arr > kArrivalHoldM) ? in.d_arr : kArrivalHoldM;
     float t[3] = {0, 0, 0};
-    if (c.d > hold) {
+    if (c.d_order > hold && c.d > kArrivalHoldM) {
         const float inv = 1.0f / c.d;
         t[0] = dot3(d, in.row[0]) * inv;
         t[1] = dot3(d, in.row[1]) * inv;
@@ -331,7 +336,7 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
     const float omega_min = fmin_f(yaw_ok ? dyn.W[0] : 1e30f, pitch_ok ? dyn.W[1] : 1e30f);
     c.v_corner = (!c.held && sin_t > kCornerSinMin && omega_min < 1e29f) ? omega_min * c.d / (2.0f * sin_t) : 0.0f;
     // Section 6.2: a record without a max speed or an acceleration gets no clamp at all (steering still runs).
-    c.v_cmd = (dyn.v_max > 0.0f && dyn.a_lin > 0.0f) ? schedule_speed(c.d, in.d_arr, dyn.a_lin, in.v_ref, in.arrival_ramp, c.v_corner) : 0.0f;
+    c.v_cmd = (dyn.v_max > 0.0f && dyn.a_lin > 0.0f) ? schedule_speed(c.d_order, in.d_arr, dyn.a_lin, in.v_ref, in.arrival_ramp, c.v_corner) : 0.0f;
     if (!finite_f(c.v_cmd) || !finite_f(c.v_corner)) return Reason::not_finite;
     *out = c;
     return Reason::handled;
@@ -351,7 +356,8 @@ struct Ship {
     float best_d = -1.0f;         // the closest the ship has been to its MovePos point, m (-1 = not started)
     std::uint32_t best_stamp = 0; // when best_d last improved
     std::uint32_t calls = 0;
-    std::uint32_t reserved[3] = {0, 0, 0}; // step 2: the resolved-pair stamp and detour side
+    float v_emergency = 0;        // m/s, the avoidance layer's braking ramp when no detour exists (0 = none)
+    std::uint32_t reserved[2] = {0, 0};
 };
 static_assert(sizeof(Ship) == 64, "one cache line per ship");
 constexpr unsigned kShipCapacity = 1024;
@@ -402,10 +408,12 @@ struct ShipTable {
 // decision, recomputed with the current distance; 0 when nothing applies
 // (stale, another order, no schedule).
 inline float clamp_for(const Ship& s, const float x[3], std::uint16_t order, std::uint32_t now_ms, std::uint32_t max_age_ms) noexcept {
-    if (!(s.flags & 2) || s.order != order || now_ms - s.stamp_ms > max_age_ms) return 0.0f;
+    if (!(s.flags & 2) && s.v_emergency <= 0.0f) return 0.0f;
+    if (s.order != order || now_ms - s.stamp_ms > max_age_ms) return 0.0f;
     const float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
     const float dist = sqrt_ss(dot3(d, d));
-    const float v = schedule_speed(dist, s.d_arr, s.a_lin, s.v_ref, (s.flags & 1) != 0, s.v_corner);
+    float v = schedule_speed(dist, s.d_arr, s.a_lin, s.v_ref, (s.flags & 1) != 0, s.v_corner);
+    if (s.v_emergency > 0.0f && (v <= 0.0f || s.v_emergency < v)) v = fmax_f(s.v_emergency, kFloorMs);
     return finite_f(v) ? v : 0.0f;
 }
 // The site-B write for a clamp v (m/s, > 0) against the current desired speed (units/s): the units value to

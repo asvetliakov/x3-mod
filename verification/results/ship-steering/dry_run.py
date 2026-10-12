@@ -46,11 +46,11 @@ def dry_run(directory, *args):
         except SystemExit as e:
             return e.code, None, err.getvalue().strip().splitlines()[-1] if err.getvalue().strip() else ''
     env = json.loads(out.getvalue())['env']
-    return 0, {k: v for k, v in env.items() if k.startswith('X3M_SHIP_STEERING')}, len([k for k in env if k.startswith('X3M_')])
+    return 0, {k: v for k, v in env.items() if k.startswith('X3M_SHIP_')}, len([k for k in env if k.startswith('X3M_')])
 
 
 with tempfile.TemporaryDirectory(prefix='x3-ship-steering-dry-') as d:
-    for args in (('--ship-steering',), ('--ship-steering', '--ship-steering-classes', 'm1,M2,tl'), (),
+    for args in (('--ship-steering',), ('--ship-steering', '--ship-steering-classes', 'm1,M2,tl'), ('--ship-steering', '--ship-avoidance'), (),
                  ('--vanilla', '--ship-steering'), ('--ship-steering', '--ship-steering-classes', 'M9'), ('--ship-steering-classes', 'M1')):
         code, env, extra = dry_run(d, *args)
         print(f'launch --dry-run {" ".join(args):50s} exit={code} {env if code == 0 else extra} {"X3M_* count=" + str(extra) if code == 0 else ""}')

@@ -56,8 +56,49 @@
 // (d) The "large" predicate 0x0043fd00: record +0x14 <= 0xf, byte table at
 //     0x0043fd3c {0,1,0,0,0,1,1,1,0,1,1,0,1,0,0,0} indexing {true,false} ->
 //     mask 0xe91d over the SG_SH code (core::kLargeMask).
+//
+// Step 2 (avoidance), pinned by listing 2026-10-12:
+// (e) Site E, the warn test `0x0044dd90(A, B, d, &out)` (stdcall, `ret 0x10`, prologue `push ebp; mov ebp,esp;
+//     and esp,-16` = 6 B, three whole instructions). Callers: `0x0044e522` and `0x0044e540` in the proximity
+//     handler `0x0044e450` (the second on the order-0x12 refresh path), and `0x00456c02` in the avoid order's
+//     handler. At all three the result is consumed by `test eax,eax; je` immediately after the call (EFLAGS
+//     dead after the call) and `&out` is read only on a true return: `0x0044e450` initialises its local
+//     `[esp+0x18] = 0` at `0x0044e460` and never reads it (the true path appends `d` = `[esp+0x1c]`);
+//     `0x00456c02`'s caller reads `[esp+0x18]` only after `test eax,eax; je`. ECX/EDX are reloaded before any
+//     use after the call. So a false return needs no `&out` write: the stub answers a resolved pair with
+//     `xor eax,eax; ret 0x10`. The callee's early true return `0x0044dec7` (close range) writes nothing to
+//     `&out` either; the mesh path passes it to `0x0044d9c0`.
+// (f) Sector buckets (2026-10-12 review, measured at 0x00452b4d, 0x0045d275, 0x0045cbf4): `table = [sector+0x50]`
+//     is a pointer, the list heads are `[table + 0xc*k]` (`lea edx,[eax+eax*2]; mov eax,[ebp+8]; mov ecx,[eax+0x50];
+//     mov ebx,[ecx+edx*4]`), two dereferences; each list is linked at `[obj+0]` and ended by a node whose first
+//     dword is 0 (the loops run while `[node] != 0`); the bucket index is the class word, so the snapshot walks
+//     only the buckets 5/6 stations, 7 ships, 17 asteroids, 18 gates, 28 debris (sector-collide.md,
+//     sector-path-planning.md 3.1).
+// (g) Station body (measured): the render node is `[obj+0x70]` (position `+0x30..`, basis `+0x40`, 16.16 scale
+//     `+0x70`, own radius `+0xa0`, cached subtree radius `+0xa4` from `0x00488170`, recursive over the children);
+//     the child list is `c = [node+0xc]; while [c] != 0; c = [c]` (0x0048aa46 `mov edi,[ebx+0xc]; cmp [edi],0`,
+//     0x00488248 `mov ebp,[ebp]; cmp [ebp],0; jne`): the node whose first dword is 0 is the sentinel, not a part;
+//     each child's local offset `+0x30/+0x34/+0x38` is multiplied by the parent's `+0x70` when `[child+0x12c] & 0x40`
+//     (0x004881a9 `test byte [ebp+0x12c],0x40`, 0x004881c4..0x004881e3 `imul; add 0x8000; adc; shrd 16`), else used
+//     as is; the child's cached subtree radius is `+0xa4`. The part model (ship_avoidance_walk_core.h) applies the
+//     scale under that flag and keeps the model only when every part sphere lies inside the root sphere.
 namespace x3m::ship_steering::sites {
 enum Index : unsigned { LeafYawPitch = 0, LeafRollYaw = 1, LeafRollPitch = 2, LoopContinue = 3, Count = 4 };
+// Site E, claimed separately (avoidance runs without it when its bytes mismatch).
+constexpr engine_patch::SiteSpec kWarnSite = {"ship_avoid_warn_test", 0x0044dd90, {0x55, 0x8b, 0xec, 0x83, 0xe4, 0xf0}, 6, 0x10, 0};
+constexpr std::uintptr_t kWarnTestEnd = 0x0044e445; // after the last `ret 0x10` at 0x0044e442
+constexpr std::uintptr_t kWarnCallSites[3] = {0x0044e522, 0x0044e540, 0x00456c02};
+constexpr std::uintptr_t kWarnCallerOutInit = 0x0044e460; // mov dword [esp+0x18], 0
+constexpr std::uintptr_t kSectorBuckets = 0x50, kBucketStride = 0xc;
+constexpr unsigned kBucketCount = 32;
+constexpr std::uint32_t kObjSector = 0x54;
+constexpr std::uint32_t kPhysVelocity = 0x100, kNodeChildren = 0xc, kNodeOffset = 0x30, kNodeScale = 0x70, kNodeOwnRadius = 0xa0,
+                        kNodeRadius = 0xa4, kNodeFlags = 0x12c, kNodeFlagScaled = 0x40;
+constexpr std::uintptr_t kBucketTableSites[3] = {0x00452b4d, 0x0045d275, 0x0045cbf4}; // table = [sector+0x50]; head = [table + 0xc*k]
+constexpr std::uintptr_t kChildWalkSites[2] = {0x0048aa46, 0x00488248};                // c = [node+0xc]; while [c] != 0; c = [c]
+constexpr std::uintptr_t kChildScaleSite = 0x004881a9;                                 // test byte [child+0x12c], 0x40 -> offset x [parent+0x70]
+constexpr std::uint16_t kClassStationA = 5, kClassStationB = 6, kClassAsteroid = 17, kClassDebris = 28;
+constexpr std::uint32_t kFlags2NoPair = 0x20000;
 constexpr engine_patch::SiteSpec kSites[Count] = {
     {"ship_steer_leaf_yaw_pitch", 0x0044ccc0, {0x83, 0xec, 0x18, 0x8b, 0x02}, 5, 4, 0},
     {"ship_steer_leaf_roll_yaw", 0x0044c620, {0x83, 0xec, 0x18, 0x8b, 0x02}, 5, 4, 0},
@@ -101,4 +142,6 @@ struct Frame {
 static_assert(sizeof(Frame) == 0x94, "stub frame layout");
 constexpr unsigned kSettingCapacity = 128; // X3M_SHIP_STEERING_CLASSES: at most 127 characters
 constexpr std::uint32_t kClampMaxAgeMs = 250; // a decision older than this no longer clamps at B
+constexpr unsigned kSnapshotSlots = 4;      // sectors snapshotted per frame (active sectors are few)
+constexpr unsigned kBucketWalkLimit = 8192; // objects visited per sector snapshot at most (a corrupt list ends the walk)
 }

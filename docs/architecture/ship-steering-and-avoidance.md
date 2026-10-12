@@ -33,6 +33,17 @@ waypoint. Also from that review: orders 4 and 5 write roll `obj+0x38 = 0` (the v
 arrival distance (§2.1), a record with `v_max = 0` or `a = 0` gets no speed clamp at all (§6.2), and the linear tail's
 τ is 0.15 s (0.3 s made the final approach of fighters slower than the vanilla leaf by 3–5 %; the host fixture now
 asserts "no slower than vanilla").
+**Amendment 5 (2026-10-12, step 2 as built; details and the fixture findings in the ledger's Step 2 section):** the
+lookahead's reaction term is 1 s and L adds the rate-ramp distance `2·v·ω/α`; the detour offset is 1.3 C for bodies
+and 1.75 C for ships; a detour in progress keeps its conflict to 2 C and never changes side; the side memory is a
+world direction; the plane of least turn uses the body's current direction; the vertical family is world up with an
+identity tie-break for symmetric head-on pairs; the station broad phase is a reach test and the hit part is the body
+detoured and every part of a body is tested; separating conflicts are ignored; a pair is suppressed at site E only when
+its detour is flyable (the body beyond the turn-in and the stopping distance) and the straight path clears the whole
+body by C. Site E is claimed: at all three callers `&out` is unread on a false return and EFLAGS/ECX/EDX are dead after
+the call. The sector snapshot reads the bucket table through `[sector+0x50]` (a pointer; heads at `+0xc·k`), only the
+six obstacle buckets, and the station part walk ends on the 0-dword sentinel and applies the parent's `+0x70` scale
+under `[child+0x12c] & 0x40` (open fact (g) settled by listing).
 
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one

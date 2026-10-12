@@ -39,13 +39,37 @@ B_WINDOW = (0x004593c2, 0x00459403)          # the loop tail: `jle` ... the buck
 SLEW_REGION = (0x00459403, 0x004595de)       # the second bucket loop (speed slew) up to the pass's `ret 4` at 0x004595db
 SLEW_LOOP_HEAD, SLEW_CALL, SLEW_BUCKET_HEAD, PASS_RET = 0x004594b0, 0x004594ef, 0x00459490, 0x004595db
 ORDER_JUMP_TABLE, ORDER_BYTE_TABLE, ORDER_BYTE_COUNT = 0x0045963c, 0x00459694, 0x25
+# Site E (step 2): the warn test 0x0044dd90, stdcall (A, B, d, &out), `ret 0x10` x4, decoded as a whole function.
+E_VA, E_END = 0x0044dd90, 0x0044e445
+E_RETS = (0x0044ded2, 0x0044e2c6, 0x0044e3c5, 0x0044e442)
+# Its three callers: (call site, the bytes from the call through the `test eax,eax; je` that consume the result).
+E_CALLERS = (
+    (0x0044e522, bytes.fromhex('e869f8ffff' '85c0' '7452')),  # 0x0044e450 proximity handler, normal path
+    (0x0044e540, bytes.fromhex('e84bf8ffff' '85c0' '7434')),  # 0x0044e450, the order-0x12 refresh path
+    (0x00456c02, bytes.fromhex('e88971ffff' '85c0' '744c')),  # the avoid order's handler
+)
+E_OUT_INIT = (0x0044e460, bytes.fromhex('c744241800000000'))  # mov dword [esp+0x18], 0: the caller's &out local
+E_CALLER_TRUE_PATH = (0x0044e52b, bytes.fromhex('814b4000100000'))  # or dword [ebx+0x40], 0x1000 (the true branch; no read of [esp+0x18])
+# The snapshot walk's engine facts (ship_steering_sites.h (f) and (g), ship_avoidance_walk_core.h): the bucket table is
+# `[sector+0x50]` and the heads `[table + 0xc*k]` (two dereferences) at the three readers; the child walk ends on the
+# node whose first dword is 0; a child's offset is scaled by the parent's +0x70 under `[child+0x12c] & 0x40`.
+WALK_FACTS = (
+    ('bucket_table_order_loop', 0x00452b4a, bytes.fromhex('8d1440' '8b4508' '8b4850' '8b1c91' '833b00')),      # lea edx,[eax+eax*2]; mov eax,[ebp+8]; mov ecx,[eax+0x50]; mov ebx,[ecx+edx*4]; cmp [ebx],0
+    ('bucket_table_collide_L0', 0x0045d275, bytes.fromhex('8b4250' '8b0401' '3938')),                          # mov eax,[edx+0x50]; mov eax,[ecx+eax]; cmp [eax],edi
+    ('bucket_table_collide_pairs', 0x0045cbf4, bytes.fromhex('8b4b54' '8b5150' '8b442410' '8b3c10' '833f00')),  # mov ecx,[ebx+0x54]; mov edx,[ecx+0x50]; mov eax,[esp+0x10]; mov edi,[eax+edx]; cmp [edi],0
+    ('child_list_head_sentinel', 0x0048aa46, bytes.fromhex('8b7b0c' '833f00')),                                # mov edi,[ebx+0xc]; cmp [edi],0
+    ('child_list_next_sentinel', 0x00488248, bytes.fromhex('8b6d00' '837d0000' '0f85')),                       # mov ebp,[ebp]; cmp [ebp],0; jne
+    ('child_offset_scale_flag', 0x004881a9, bytes.fromhex('f6852c01000040')),                                   # test byte [ebp+0x12c],0x40
+    ('child_offset_scale_mul', 0x004881c4, bytes.fromhex('8b5070')),                                            # mov edx,[eax+0x70] (the parent's scale)
+)
 SITES = (
     H('ship_steer_leaf_yaw_pitch', 0x0044ccc0, LEAF_BYTES, 0x0044ccc0, 0x0044d014),
     H('ship_steer_leaf_roll_yaw', 0x0044c620, LEAF_BYTES, 0x0044c620, 0x0044c963),
     H('ship_steer_leaf_roll_pitch', 0x0044c970, LEAF_BYTES, 0x0044c970, 0x0044ccb5),
     H('ship_steer_loop_continue', B_VA, bytes.fromhex('8b1b833b00'), *B_WINDOW),
+    H('ship_avoid_warn_test', E_VA, bytes.fromhex('558bec83e4f0'), E_VA, E_END),
 )
-RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0}
+RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0, E_VA: 0x10}
 # Getters: (va, first instruction bytes, the register that carries obj, the plain `ret` addresses).
 GETTERS = {
     'max_speed': (0x00450980, bytes.fromhex('83ec0853568bf0'), 'eax', (0x00450b20,)),            # sub esp,8; push ebx; push esi; mov esi,eax
@@ -122,17 +146,19 @@ def decode(exe):
     return out
 
 
-_SPEC_RE = re.compile(r'\{\s*"([^"]+)"\s*,\s*(0x[0-9a-fA-F]+)\s*,\s*\{([^}]*)\}\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}')
+_SPEC_RE = re.compile(r'\{\s*"([^"]+)"\s*,\s*(0x[0-9a-fA-F]+)\s*,\s*\{([^}]*)\}\s*,\s*(\d+)\s*,\s*(0x[0-9a-fA-F]+|\d+)\s*,\s*(\d+)\s*\}')
 
 
 def header_specs(text):
     start = text.index('constexpr engine_patch::SiteSpec kSites[Count]')
     table = text[start:text.index('};', start)]
+    e_start = text.index('constexpr engine_patch::SiteSpec kWarnSite')
+    table += text[e_start:text.index(';', e_start)]
     rows = []
     for m in _SPEC_RE.finditer(table):
         rows.append({'name': m.group(1), 'va': int(m.group(2), 16),
                      'bytes': bytes(int(v, 16) for v in re.findall(r'0x([0-9a-fA-F]{1,2})', m.group(3))),
-                     'length': int(m.group(4)), 'ret_pop': int(m.group(5)), 'rel32_offset': int(m.group(6))})
+                     'length': int(m.group(4)), 'ret_pop': int(m.group(5), 0), 'rel32_offset': int(m.group(6))})
     return rows
 
 
@@ -197,8 +223,29 @@ def verify(exe=DEFAULT_EXE, whole_text=True):
     # start are incoming edges and are reported (the leaves: none expected; B: the two jump-table entries)
     interior_dwords = {s.name: [hex(at) for at, v in dwords_into(image, data, s.va + 1, s.end)] for s in SITES}
     start_dwords = {s.name: [hex(at) for at, v in dwords_into(image, data, s.va, s.va + 1)] for s in SITES}
-    checks['no_data_dword_into_window'] = {'ok': not any(interior_dwords.values()) and all(not start_dwords[s.name] for s in SITES[:3]),
+    checks['no_data_dword_into_window'] = {'ok': not any(interior_dwords.values()) and all(not start_dwords[s.name] for s in SITES[:3] + SITES[4:]),
                                            'interior': interior_dwords, 'start_edges': start_dwords}
+    # 5b. site E: the whole function decodes gap-free to its last `ret 0x10`, all four returns are `ret 0x10`, exactly the
+    #     three callers reach it (rel32 calls in .text), each consumes EAX with `test eax,eax; je` right after the call
+    #     (EFLAGS dead after the call), the proximity handler initialises its &out local to 0 and its true path sets the
+    #     warn bit without reading that local: a false return needs no &out write (ship_steering_sites.h (e))
+    e_listing = decoded[(E_VA, E_END)]
+    e_rets = {hex(r): image.read(r, 3) == bytes.fromhex('c21000') for r in E_RETS}
+    e_calls = sorted(at for at, mn, tgt in raw_branch_targets(image, E_VA, E_VA + 1) if mn == 'rel32' and image.read(at, 1) == b'\xe8')
+    e_callers = {hex(at): image.read(at, len(b)) == b for at, b in E_CALLERS}
+    e_out = image.read(E_OUT_INIT[0], len(E_OUT_INIT[1])) == E_OUT_INIT[1] and image.read(E_CALLER_TRUE_PATH[0], len(E_CALLER_TRUE_PATH[1])) == E_CALLER_TRUE_PATH[1]
+    # no instruction of the proximity handler after the call reads [esp+0x18] (the &out local) except the lea that passes its address
+    handler = common.parse_objdump(common.objdump_window(exe, 0x0044e450, 0x0044e584, timeout=60), 0x0044e450, 0x0044e584)
+    out_reads = [common._instruction_dict(i) for i in handler if 'esp+0x18]' in i.operands.replace(' ', '') and i.mnemonic not in ('lea',)
+                 and i.va != E_OUT_INIT[0]]
+    facts = {name: image.read(at, len(b)) == b for name, at, b in WALK_FACTS}
+    checks['snapshot_walk_facts'] = {'ok': all(facts.values()), 'facts': facts,
+                                     'pinned': 'table = [sector+0x50], head = [table + 0xc*k]; child walk ends on the 0-dword sentinel; offsets scaled under [child+0x12c] & 0x40'}
+    checks['warn_test_site'] = {'ok': bool(e_listing) and e_listing[-1].va == E_RETS[-1] and all(e_rets.values()) and e_calls == sorted(at for at, _ in E_CALLERS)
+                               and all(e_callers.values()) and e_out and not out_reads,
+                               'rets': e_rets, 'callers': [hex(a) for a in e_calls], 'callers_consume_eax_with_test_je': e_callers,
+                               'out_local_initialised_and_unread': e_out and not out_reads, 'out_reads': out_reads,
+                               'pinned': 'false return: no &out write needed; EFLAGS, ECX, EDX dead after the call at all three callers'}
     # 5. the header's SiteSpec rows equal the derived rows (name, va, bytes, length, ret_pop, rel32)
     actual = header_specs(SITES_HEADER.read_text())
     expected = expected_specs()
@@ -266,6 +313,7 @@ def main():
     else:
         summary = {'result': r['result'], 'exe': str(a.exe), 'checks': len(r['checks']), **{k: v['ok'] for k, v in r['checks'].items()},
                    'b_incoming': {k: v for k, v in r['checks']['b_incoming'].items() if k != 'kinds'},
+                   'warn_test': {k: v for k, v in r['checks']['warn_test_site'].items() if k in ('ok', 'callers', 'out_local_initialised_and_unread')},
                    'large_mask': r['checks']['large_predicate_mask']['derived_mask'],
                    'sha256_info': r['exe_info'].get('sha256') if isinstance(r['exe_info'], dict) else None}
         print(json.dumps(summary, indent=2))

@@ -1,6 +1,7 @@
 launch --dry-run --ship-steering                                    exit=0 {'X3M_SHIP_STEERING': '1'} X3M_* count=135
 launch --dry-run --ship-steering --ship-steering-classes m1,M2,tl   exit=0 {'X3M_SHIP_STEERING': '1', 'X3M_SHIP_STEERING_CLASSES': 'M1,M2,TL'} X3M_* count=136
+launch --dry-run --ship-steering --ship-avoidance                   exit=0 {'X3M_SHIP_AVOIDANCE': '1', 'X3M_SHIP_STEERING': '1'} X3M_* count=136
 launch --dry-run                                                    exit=0 {} X3M_* count=134
-launch --dry-run --vanilla --ship-steering                          exit=2 manage.py: error: --ship-steering/--ship-steering-classes cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the steering leaves never runs 
+launch --dry-run --vanilla --ship-steering                          exit=2 manage.py: error: --ship-steering/--ship-steering-classes/--ship-avoidance cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the steering leaves never runs 
 launch --dry-run --ship-steering --ship-steering-classes M9         exit=2 manage.py: error: --ship-steering-classes: unknown class name(s) ['M9'] (expected a comma list of TL,TS,M0,M1,M2,M3,M4,M5,TL_P,TS_P,GO,M6,TP,M7,TM,M8) 
 launch --dry-run --ship-steering-classes M1                         exit=2 manage.py: error: --ship-steering-classes requires --ship-steering. 

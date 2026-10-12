@@ -392,6 +392,9 @@ SETTINGS = [
     entry('ship_steering_classes', 'string', 'engine', 'Ship classes the smoother steering leaves to the game, as a comma list '
           'of class names (TL, TS, M0, M1, M2, M3, M4, M5, TL_P, TS_P, GO, M6, TP, M7, TM, M8). Empty = every class.',
           builtin='', requires=('ship_steering',), launcher='--ship-steering-classes', since='2026-10-12'),
+    entry('ship_avoidance', 'bool', 'engine', 'Computer-flown ships steer around ships, stations, asteroids and gates on their '
+          'predicted path instead of stopping for the game\'s collision warning (needs ship_steering). Experimental. '
+          '1 = on, 0 = off.', builtin='0', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '

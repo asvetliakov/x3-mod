@@ -330,10 +330,13 @@ class LauncherDefaults(unittest.TestCase):
         with_classes = self.env('--ship-steering', '--ship-steering-classes', 'm1, M2,tl_p')
         self.assertEqual(with_classes['X3M_SHIP_STEERING'], '1')
         self.assertEqual(with_classes['X3M_SHIP_STEERING_CLASSES'], 'M1,M2,TL_P')
-        stale = {'X3M_SHIP_STEERING': '1', 'X3M_SHIP_STEERING_CLASSES': 'M1'}
-        self.assertFalse({'X3M_SHIP_STEERING', 'X3M_SHIP_STEERING_CLASSES'} & set(self.env(inherited=stale)))
+        stale = {'X3M_SHIP_STEERING': '1', 'X3M_SHIP_STEERING_CLASSES': 'M1', 'X3M_SHIP_AVOIDANCE': '1'}
+        self.assertFalse({'X3M_SHIP_STEERING', 'X3M_SHIP_STEERING_CLASSES', 'X3M_SHIP_AVOIDANCE'} & set(self.env(inherited=stale)))
+        self.assertNotIn('X3M_SHIP_AVOIDANCE', self.env('--ship-steering'))
+        self.assertEqual(self.env('--ship-steering', '--ship-avoidance')['X3M_SHIP_AVOIDANCE'], '1')
         for args, vanilla in ((('--ship-steering',), True), (('--ship-steering', '--ship-steering-classes', 'M9'), False),
-                              (('--ship-steering-classes', 'M1'), False)):
+                              (('--ship-steering-classes', 'M1'), False), (('--ship-avoidance',), False),
+                              (('--ship-steering', '--ship-avoidance'), True)):
             with self.subTest(args=args, vanilla=vanilla):
                 code, _, error = self.launch(*args, vanilla=vanilla)
                 self.assertEqual(code, 2, error[-200:])

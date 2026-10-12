@@ -1,0 +1,5 @@
+d=   45 adjusted=1 unresolved=0 n_resolved=0 suppressed=0 C=43.4 d_turn=72.4 D_stop=250 P'=0.0,76.0,45.0
+d=   55 adjusted=1 unresolved=0 n_resolved=0 suppressed=0 C=43.4 d_turn=72.4 D_stop=250 P'=0.0,76.0,55.0
+d=   70 adjusted=1 unresolved=0 n_resolved=0 suppressed=0 C=43.4 d_turn=72.4 D_stop=250 P'=0.0,76.0,70.0
+d=  100 adjusted=1 unresolved=0 n_resolved=0 suppressed=0 C=43.4 d_turn=72.4 D_stop=250 P'=0.0,76.0,100.0
+d=  200 adjusted=1 unresolved=0 n_resolved=0 suppressed=0 C=43.4 d_turn=72.4 D_stop=250 P'=0.0,76.0,200.0
