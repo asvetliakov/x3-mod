@@ -1,0 +1,16 @@
+log=/mnt/c/X3/x3m.log
+trace frames with dt_ms: 37835
+dt_ms p10=4 p50=50 p90=70 p99=90 max=1230
+  frames with dt_ms > 50: 13451 (35.6 %)
+  frames with dt_ms > 100: 166 (0.4 %)
+  frames with dt_ms > 167: 14 (0.0 %)
+  frames with dt_ms > 250: 9 (0.0 %)
+  frames with dt_ms > 333: 7 (0.0 %)
+  frames with dt_ms > 1000: 1 (0.0 %)
+  seta=0: frames 11764 dt_ms p50=5 p90=6 max=200
+  seta=1: frames 26071 dt_ms p50=60 p90=70 max=1230
+site E per summary interval, grouped by the interval's median game dt per frame:
+  dt<=100: intervals 212 e_calls 1277192 e_suppressed(resolved) 14474 (11.33 per 1000 calls)
+  100<dt<=250: no intervals
+  dt>250: no intervals
+  cumulative at the last summary (these three fields are running totals in the row): e_suppressed_small 37784 e_small_pass_stale 68 e_small_pass_order 17932

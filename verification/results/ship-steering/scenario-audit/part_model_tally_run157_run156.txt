@@ -1,0 +1,14 @@
+== /mnt/c/X3/x3m.log
+part_fallback 9
+part_invalid 9
+part_models 10
+part_scaled 0
+part_unfilled 10
+snapshot_overflow 0
+== /mnt/c/X3/x3m.prev.log
+part_fallback 9
+part_invalid 9
+part_models 10
+part_scaled 0
+part_unfilled 10
+snapshot_overflow 0

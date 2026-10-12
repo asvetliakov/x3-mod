@@ -1,0 +1,22 @@
+log=/mnt/c/X3/x3m.log rows=60
+subject_class prev_order prev_tgt_class -> obstacle_class code : n
+  TS   0x4   tgt_class=18  -> class=18 code=- : 16
+  M2   0x4   tgt_class=18  -> class=7 code=M6 : 13
+  M4   0x4   tgt_class=18  -> class=18 code=- : 13
+  TP   0x4   tgt_class=5   -> class=5 code=- : 6
+  M4   0x4   tgt_class=18  -> class=7 code=TS : 3
+  M2   0x4   tgt_class=18  -> class=7 code=M8 : 2
+  M2   0x4   tgt_class=18  -> class=7 code=M1 : 2
+  M2   0x4   tgt_class=18  -> class=7 code=M2 : 2
+  M2   0x4   tgt_class=18  -> class=18 code=- : 1
+  M6   0x4   tgt_class=18  -> class=7 code=M6 : 1
+  M4   0x4   tgt_class=18  -> class=7 code=M1 : 1
+gate-named warns: 30; subjects ['M2', 'M4', 'TS']; d_m [1537, 1629, 1677, 1728, 1792, 1855, 1868, 1886, 1936, 2047, 2253, 2572, 2674, 2685, 2706, 2727, 2728, 2729, 2737, 2740, 2792, 2851, 2856, 2862, 2864, 2929, 2943, 2968, 3108, 6898]
+traced 0x12 legs by (obstacle class named, subject class): n, total s, median s
+  ('7', 'M2'): n=19 total=500.3 s median=18.2 s max=93.3 s
+  ('18', 'TS'): n=16 total=125.3 s median=6.1 s max=21.8 s
+  ('5', 'TP'): n=6 total=56.5 s median=5.4 s max=24.5 s
+  ('18', 'M4'): n=13 total=26.6 s median=2.0 s max=3.8 s
+  ('18', 'M2'): n=1 total=24.0 s median=24.0 s max=24.0 s
+  ('7', 'M4'): n=4 total=6.0 s median=1.8 s max=2.1 s
+  ('7', 'M6'): n=1 total=5.0 s median=5.0 s max=5.0 s
