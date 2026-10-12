@@ -1,0 +1,12 @@
+TL 0.0375  w=  2458 acc=   246 angle= 10.0  settle(<0.5deg)=  5.47 s peak=   3.0 deg/s  accel/cruise/brake frames=149/47/146
+TS 0.0586  w=  3840 acc=  1152 angle= 10.0  settle(<0.5deg)=  2.54 s peak=   6.5 deg/s  accel/cruise/brake frames=79/1/79
+M4 0.3594  w= 23552 acc= 11776 angle= 10.0  settle(<0.5deg)=  0.80 s peak=  20.5 deg/s  accel/cruise/brake frames=27/0/23
+TL 0.0375  w=  2458 acc=   246 angle= 45.0  settle(<0.5deg)= 12.91 s peak=   6.4 deg/s  accel/cruise/brake frames=335/136/336
+TS 0.0586  w=  3840 acc=  1152 angle= 45.0  settle(<0.5deg)=  6.00 s peak=  13.7 deg/s  accel/cruise/brake frames=178/9/188
+M4 0.3594  w= 23552 acc= 11776 angle= 45.0  settle(<0.5deg)=  1.87 s peak=  44.2 deg/s  accel/cruise/brake frames=59/0/58
+TL 0.0375  w=  2458 acc=   246 angle= 90.0  settle(<0.5deg)= 18.74 s peak=   9.0 deg/s  accel/cruise/brake frames=503/154/514
+TS 0.0586  w=  3840 acc=  1152 angle= 90.0  settle(<0.5deg)=  8.72 s peak=  19.5 deg/s  accel/cruise/brake frames=262/9/274
+M4 0.3594  w= 23552 acc= 11776 angle= 90.0  settle(<0.5deg)=  2.72 s peak=  62.7 deg/s  accel/cruise/brake frames=74/3/93
+TL 0.0375  w=  2458 acc=   246 angle=180.0  settle(<0.5deg)= 26.96 s peak=  12.8 deg/s  accel/cruise/brake frames=699/189/797
+TS 0.0586  w=  3840 acc=  1152 angle=180.0  settle(<0.5deg)= 13.04 s peak=  21.1 deg/s  accel/cruise/brake frames=291/227/297
+M4 0.3594  w= 23552 acc= 11776 angle=180.0  settle(<0.5deg)=  3.92 s peak=  88.8 deg/s  accel/cruise/brake frames=117/0/128

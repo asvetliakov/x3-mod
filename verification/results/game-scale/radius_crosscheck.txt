@@ -1,0 +1,2 @@
+stock TDocks[26] (addon/03.cat) SG_DOCK_EQUIP scene stations\station_scenes\terran\usc_dock_e_scene: estimate 9205962 runtime 9205962 EQUAL
+installed TDocks[26] (addon/12.cat) SG_DOCK_EQUIP scene stations\station_scenes\others\argon_equipmentdock_scene: estimate 1147525 runtime 9205962 differ by -8058437

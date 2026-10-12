@@ -1,0 +1,140 @@
+X3AP.exe 2153984 B sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab MATCH
+ok   0x0043a38e 56 e8 bc 2e 02 00 56 e8 36 87 01 00 per-sector driver: collide 0x45d250 then simulate 0x452ad0
+ok   0x004344c7 c7 04 c8 30 06 46 00               SA_ module record +0x30 = dispatcher 0x460630
+ok   0x004344d4 c7 44 d0 34 d0 04 46 00            SA_ module record +0x34 = completion callback 0x4604d0
+ok   0x004344f6 c7 44 c8 40 f0 a7 57 00            SA_ module record +0x40 = name table 0x57a7f0
+ok   0x00460630 55 8b ec 83 e4 f0                  SA dispatcher prologue
+ok   0x0046065a 81 fb 79 01 00 00                  SA dispatcher: cmp cmd, 0x179
+ok   0x0046067a ff 24 9d f0 90 46 00               SA dispatcher: jmp [cmd*4+0x4690f0]
+ok   0x00462352 66 c7 82 58 02 00 00 19 00         SA_MovePos: ship+0x258 = 0x19
+ok   0x00462361 89 91 60 02 00 00                  SA_MovePos: ship+0x260 = arg4 (precision)
+ok   0x0046236d 89 91 40 02 00 00                  SA_MovePos: ship+0x240 = x
+ok   0x00462379 89 91 44 02 00 00                  SA_MovePos: ship+0x244 = y
+ok   0x00462385 89 91 48 02 00 00                  SA_MovePos: ship+0x248 = z
+ok   0x0046238e 89 48 7c                           SA_MovePos: obj+0x7c = module slot
+ok   0x00462391 89 b0 80 00 00 00                  SA_MovePos: obj+0x80 = task id
+ok   0x0046108c 66 c7 82 58 02 00 00 12 00         SA_AvoidObjectCollision: ship+0x258 = 0x12
+ok   0x00461106 05 f0 49 02 00                     SA_AvoidObjectCollision: default radius obj+0xa4 + 150000
+ok   0x0046110e 89 81 60 02 00 00                  SA_AvoidObjectCollision: ship+0x260 = radius
+ok   0x00461f30 66 c7 81 58 02 00 00 00 00         SA_StopObject: ship+0x258 = 0
+ok   0x00460510 66 c7 80 84 00 00 00 01 00         completion callback: task+0x84 = 1
+ok   0x00460560 8b 46 7c                           completion notify 0x460560 reads obj+0x7c (ESI = obj)
+ok   0x00453ce0 0f bf 86 58 02 00 00               order interpreter: movsx eax, word [ship+0x258]
+ok   0x00453ce7 83 f8 24                           order interpreter: cmp eax, 0x24
+ok   0x00453cf0 0f b6 90 94 96 45 00               order interpreter: byte table 0x459694
+ok   0x00453cf7 ff 24 95 3c 96 45 00               order interpreter: jump table 0x45963c
+ok   0x00456527 e8 94 67 ff ff                     order 0x19: call 0x44ccc0
+ok   0x00456530 e8 eb 6a ff ff                     order 0x19: call 0x44d020
+ok   0x00456576 3b b0 60 02 00 00                  order 0x19: arrival when dist <= ship+0x260
+ok   0x00456592 e8 c9 9f 00 00                     order 0x19: call 0x460560 (wake task)
+ok   0x00456798 81 c1 c8 00 00 00                  order 0x12: re-plan every 200 ms
+ok   0x00454b48 3d b8 56 00 00                     order 4: arrival radius floor 0x56b8
+ok   0x00454b5d 3d 98 b1 01 00                     order 4: arrival radius cap 0x1b198
+ok   0x004542d2 3d f8 24 01 00                     order 5: approach speed cap 75000 (large classes)
+ok   0x004542f1 3d 50 c3 00 00                     order 5: approach speed cap 50000 (other classes)
+ok   0x004404a1 6b c9 32 89 8a 0c 02 00 00         ship init: ship+0x20c = type+0x50 * 50
+ok   0x0044ccc0 83 ec 18 8b 02                     aim-at-point 0x44ccc0 entry (EDX = point)
+ok   0x0044d011 c2 04 00                           0x44ccc0 ret 4
+ok   0x0044d020 55 8b ec 83 e4 f0                  steer-to-point 0x44d020 entry
+ok   0x0044d107 e8 b4 fb ff ff                     0x44d020 tail call 0x44ccc0
+ok   0x0044d112 c2 08 00                           0x44d020 ret 8
+ok   0x004593dd 8b 1b 83 3b 00 0f 85 78 97 ff ff   object-loop continue (post-order join)
+ok   0x0045d280 81 60 40 ff cf 9f ff               collide L0 clears obj+0x40 bits 0x1000/0x2000
+ok   0x0045d298 89 bb e0 01 00 00                  collide L0 clears ship+0x1e0 obstacle count
+ok   0x0045d51c ba 00 00 03 00                     class-7 box gate: r_sum * 3
+ok   0x0045d538 05 90 d0 03 00                     class-7 box gate: + 250000
+ok   0x0045d844 e8 07 0c ff ff                     collide: proximity 0x44e450(A, B, d)
+ok   0x0045d867 e8 e4 0b ff ff                     collide: proximity 0x44e450(B, A, d)
+ok   0x0044e450 53 8b 5c 24 08                     proximity 0x44e450 entry
+ok   0x0044e52b 81 4b 40 00 10 00 00               proximity: obj+0x40 |= 0x1000 (warn)
+ok   0x0044e552 83 f8 05                           proximity: obstacle list cap 5
+ok   0x0044e56c 81 4b 40 00 20 00 00               proximity: obj+0x40 |= 0x2000 (listed)
+ok   0x0044e581 c2 0c 00                           0x44e450 ret 0xc
+ok   0x0044dd90 55 8b ec 83 e4 f0                  warn test 0x44dd90 entry
+ok   0x0044ded2 c2 10 00                           0x44dd90 ret 0x10
+ok   0x0044ded9 ba 33 33 01 00                     warn test: 1.2 * r_sum (0x13333)
+ok   0x0044df25 81 fe 98 3a 00 00                  warn test: margin floor 15000
+ok   0x0044df34 81 fe 20 a1 07 00                  warn test: margin cap 500000
+ok   0x0044e07c 3d cc cc 00 00                     warn test: B speed term only when A heads at B (cos > 0.8)
+ok   0x0045e05a 66 83 ba 58 02 00 00 12            collide L3: no CollisionWarn while order 0x12
+ok   0x0045e079 68 74 fd 55 00                     collide L3: push "CollisionWarn"
+ok   0x0045e089 e8 32 14 04 00                     collide L3: call 0x49f4c0
+ok   0x004637df 8b 40 40                           SA_GetFlags returns obj+0x40
+ok   0x00463e88 81 48 40 00 00 08 00               SA_SetAutopilot: obj+0x40 |= 0x80000
+ok   0x0044d5de c7 44 24 10 33 b3 00 00            gate test: plane window 0.7 * gate radius
+ok   0x0044d5e8 c7 44 24 10 d7 23 00 00            gate test: plane window 0.14 * radius (gate subtypes 5..8)
+ok   0x0044d7d9 3d 20 53 14 00                     dock test: range floor 0x145320 (1,331,000)
+ok   0x0044d89b 05 a8 61 00 00                     dock test: port reach obj+0xa4 + 25000
+ok   0x00452ae7 3d e8 03 00 00                     sector_simulate: dt clamp 1000 ms
+ok   SA id 0x009 name SA_FlyObjectIntoContainer case 0x46082e
+ok   SA id 0x00a name SA_FlyObjectBeforeContainer case 0x460cae
+ok   SA id 0x00c name SA_FlyObjectBeforeContainerPos case 0x46533c
+ok   SA id 0x00d name SA_ClearObjectFromHangar case 0x46117e
+ok   SA id 0x00e name SA_WarpObjectAway case 0x46126a
+ok   SA id 0x00f name SA_AvoidObjectCollision case 0x46104c
+ok   SA id 0x011 name SA_AttackObject case 0x4614da
+ok   SA id 0x012 name SA_AttackObjectBig case 0x4616e0
+ok   SA id 0x013 name SA_DefensiveMove case 0x4617cf
+ok   SA id 0x014 name SA_EscortObject case 0x4618a6
+ok   SA id 0x016 name SA_TurnToObject case 0x461fdd
+ok   SA id 0x01a name SA_Idle case 0x46274e
+ok   SA id 0x01b name SA_FollowObject case 0x46196f
+ok   SA id 0x01c name SA_FollowObjectByCut case 0x461a13
+ok   SA id 0x01d name SA_RotateToAngles case 0x4653d1
+ok   SA id 0x01e name SA_MovePos case 0x46232c
+ok   SA id 0x01f name SA_MovePosContinue case 0x46239c
+ok   SA id 0x020 name SA_GlidePos case 0x4656f3
+ok   SA id 0x021 name SA_WarpObjectIn case 0x465b22
+ok   SA id 0x040 name SA_SetSpeed case 0x464226
+ok   SA id 0x042 name SA_SetDesiredSpeed case 0x4641c6
+ok   SA id 0x052 name SA_SetMaxAvoidShield case 0x463689
+ok   SA id 0x0fa name SA_StopObject case 0x461e89
+ok   SA id 0x105 name SA_CollisionObject case 0x46101f
+ok   SA id 0x106 name SA_GetCollisionObjects case 0x463a7e
+ok   SA id 0x119 name SA_SetPlayerLand case 0x463bc4
+ok   SA id 0x120 name SA_SetAutopilot case 0x463e6e
+ok   SA id 0x144 name SA_SetDestination case 0x465a03
+ok   SA id 0x148 name SA_SetSpeedLimit case 0x465d1a
+ok   SA id 0x149 name SA_SetMaxSpeedOverride case 0x465d4e
+ok   SA id 0x178 name SA_SetFlightMode case 0x468db4
+ok   order 0x00 handler 0x458f8e
+ok   order 0x04 handler 0x4549c2
+ok   order 0x05 handler 0x453fc2
+ok   order 0x06 handler 0x4554af
+ok   order 0x08 handler 0x4551fe
+ok   order 0x0a handler 0x455486
+ok   order 0x10 handler 0x455e8c
+ok   order 0x11 handler 0x455e8c
+ok   order 0x12 handler 0x456722
+ok   order 0x14 handler 0x45820d
+ok   order 0x15 handler 0x458aea
+ok   order 0x16 handler 0x458e93
+ok   order 0x18 handler 0x455e8c
+ok   order 0x19 handler 0x4564cd
+ok   order 0x1b handler 0x45512c
+ok   order 0x1d handler 0x453cfe
+ok   order 0x1e handler 0x457bc3
+ok   order 0x1f handler 0x45920e
+ok   order 0x20 handler 0x459141
+ok   order 0x21 handler 0x45533b
+ok   order 0x22 handler 0x455696
+ok   order 0x23 handler 0x45659c
+ok   order 0x24 handler 0x455ae5
+ok   type+0x14 code  0 = SG_SH_TL
+ok   type+0x14 code  1 = SG_SH_TS
+ok   type+0x14 code  2 = SG_SH_M0
+ok   type+0x14 code  3 = SG_SH_M1
+ok   type+0x14 code  4 = SG_SH_M2
+ok   type+0x14 code  5 = SG_SH_M3
+ok   type+0x14 code  6 = SG_SH_M4
+ok   type+0x14 code  7 = SG_SH_M5
+ok   type+0x14 code  8 = SG_SH_TL_P
+ok   type+0x14 code  9 = SG_SH_TS_P
+ok   type+0x14 code 10 = SG_SH_GO
+ok   type+0x14 code 11 = SG_SH_M6
+ok   type+0x14 code 12 = SG_SH_TP
+ok   type+0x14 code 13 = SG_SH_M7
+ok   type+0x14 code 14 = SG_SH_TM
+ok   type+0x14 code 15 = SG_SH_M8
+ok   string 0x55fd74 = CollisionWarn
+RESULT PASS

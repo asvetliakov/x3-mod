@@ -1,0 +1,22 @@
+installed addon/12.cat addon/12.cat n 38 range m {'min': 3000.0, 'p25': 4000.0, 'median': 5300.0, 'p75': 8400.0, 'max': 21700.0} speed med 2000.0
+                                          3000 m    1500 m/s  2000 ms
+   Impulse Ray Emitter                    3900 m    1500 m/s  2600 ms
+   Electro-Magnetic Plasma Cannon         3900 m    1500 m/s  2600 ms
+   Plasma Burst Generator                 4050 m    1500 m/s  2700 ms
+   Beta Kyon Emitter                      5000 m    2000 m/s  2500 ms
+   Plasma Beam Cannon                     5400 m    6000 m/s  900 ms
+   Starburst Shockwave Cannon             5600 m    2000 m/s  2800 ms
+                                          8400 m    2000 m/s  4200 ms
+   Incendiary Bomb Launcher              18200 m    3500 m/s  5200 ms
+   Gauss Cannon                          21000 m    3500 m/s  6000 ms
+stock addon/01.cat addon/02.cat n 39 range m {'min': 787.5, 'p25': 1974.5, 'median': 2324.4, 'p75': 4857.2, 'max': 100000.0} speed med 739.0
+   Plasma Burst Generator                  788 m     375 m/s  2100 ms
+   Impulse Ray Emitter                    1394 m    1162 m/s  1200 ms
+   Particle Accelerator Cannon            1926 m     703 m/s  2740 ms
+   Tractor Beam                           2000 m    4000 m/s  500 ms
+   Flak Artillery Array                   2115 m    7051 m/s  300 ms
+   Energy Bolt Chaingun                   2815 m     604 m/s  4660 ms
+   Matter/Anti-Matter Launcher            3627 m     445 m/s  8150 ms
+   Mobile Drilling System                 4830 m      84 m/s  57500 ms
+   Plasma Beam Cannon                     5854 m   10644 m/s  550 ms
+   Photon Pulse Cannon                    6623 m     333 m/s  19890 ms

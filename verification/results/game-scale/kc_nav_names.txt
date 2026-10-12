@@ -1,0 +1,680 @@
+== addon/04.cat L/x3story.obj (stock): methods 6857, nav-related methods 256
+   method AddAllFollowersToTable
+   method AddDock
+   method AddDocksWithWareToTable
+   method AddFormationShip
+   method AddGate
+   method AddGatelessSector
+   method AddSpeedUpgrades
+   method AddToFormation
+   method AddWing
+   method BuildFormation
+   method CanMoveThroughGates
+   method ChangeWingFilter
+   method CheckBoardingDistance
+   method CheckDockingAllowed
+   method CheckDockingPossible
+   method CheckFormation
+   method CheckIsDocked
+   method CheckRange
+   method CheckSpeedLimit
+   method CollisionWarn
+   method CreateWarObjectWings
+   method CreateWingGroup
+   method CurrentShipDockHere
+   method DestructWarObjectWings
+   method DisableFollowSteering
+   method DisconnectGate
+   method DoAddWingToGroup
+   method DoRealignGate
+   method DoSetFormation
+   method DoSetWing
+   method DoSetWingCommand
+   method DoTempRemoveFromWing
+   method DoWingSelection
+   method DockPlayerShipTo
+   method DockingAllowed
+   method DockingPossible
+   method DrawDistance
+   method DrawSpeed
+   method DrawSpeedBar
+   method EvalDistanceValue
+   method EvalFormation
+   method EvalFormationValue
+   method EvalGate
+   method EvalGateValue
+   method EvalObjectTableRangeValue
+   method EvalWing
+   method EvalWingTableValue
+   method EvalWingValue
+   method ExtractAlphaBetaRadius
+   method ExtractAlphaBetaRadiusNested
+   method FindEnemyInFiringRangeOfTurret
+   method FindGate
+   method FindGateObject
+   method FindNearestGate
+   method FindNearestGateForSector
+   method FindWing
+   method FindWingByName
+   method GateLinkExists
+   method GetAllowedMaxSpeed
+   method GetAutojumpMinRange
+   method GetBaseSpeed
+   method GetCameraDistance
+   method GetCmdSize
+   method GetCommandUpgradeMapWing
+   method GetCommandUpgradeScriptWing
+   method GetCommandUpgradeWing
+   method GetCurrentSpeed
+   method GetCursorIconForSteering
+   method GetDefaultFormationType
+   method GetDefaultFormationTypeFromRace
+   method GetDestinationGate
+   method GetDestinationGateID
+   method GetDistance
+   method GetDockBaySize
+   method GetDockingHangar
+   method GetDocks
+   method GetEastGate
+   method GetEquipmentDock
+   method GetExtraTradeContainerSize
+   method GetFormationDist
+   method GetFormationDistToLeader
+   method GetFormationLeader
+   method GetFormationLeaders
+   method GetFormationShips
+   method GetFormationSize
+   method GetFormationType
+   method GetFormationTypeState
+   method GetGSize
+   method GetGate
+   method GetGateDirXY
+   method GetGateID
+   method GetGateIDs
+   method GetGateLastRealignTime
+   method GetGateLink
+   method GetGatelessSectors
+   method GetGates
+   method GetHasShipTempLeftWingState
+   method GetInnerRange
+   method GetIsPlayerWingMenState
+   method GetJobJumpRange
+   method GetJumpRange
+   method GetKeepAutopilot
+   method GetLastDockingTime
+   method GetLastKnownRadius
+   method GetLinkForGateDirection
+   method GetLongTermSteeringMode
+   method GetMapGateState
+   method GetMappingCollisionVKs
+   method GetMaxFollowers
+   method GetMaxFormationSpeed
+   method GetMaxSpeed
+   method GetMaxUpgradedSpeed
+   method GetMinimumTradeContainerSize
+   method GetNebulaRanges
+   method GetNorthGate
+   method GetNumActiveWings
+   method GetNumLeadFormations
+   method GetNumOfDockedShips
+   method GetNumWings
+   method GetOuterRange
+   method GetParDefSize
+   method GetParSize
+   method GetRadarRange
+   method GetReferenceRadius
+   method GetScannerRange
+   method GetShipsIncludingDocked
+   method GetSize
+   method GetSouthGate
+   method GetSpeedLimit
+   method GetSteeringMode
+   method GetTradeContainerSize
+   method GetWantedDistance
+   method GetWarWingID
+   method GetWareTypeContainerSize
+   method GetWestGate
+   method GetWing
+   method GetWingID
+   method GetWingIndex
+   method GetWingName
+   method GetWingObjCmds
+   method GetWingState
+   method GetWings
+   method GiveFormationLeadershipTo
+   method HasCommandUpgradeWing
+   method HasFreeDockPort
+   method HasFreeDockPortGSubType
+   method HasFreeDockPortSubType
+   method HasJumpableGate
+   method HasTerranGate
+   method IsAutopilotActive
+   method IsAutopilotON
+   method IsDebugInformation
+   method IsDocked
+   method IsDockingAllowedForShip
+   method IsDockingNotAllowedForNPCs
+   method IsDockingPossibleOf
+   method IsFollowSteering
+   method IsFollowSteeringDisabled
+   method IsGateSetLocked
+   method IsHubGate
+   method IsInCaptureRange
+   method IsInFollowMode
+   method IsMissileApproaching
+   method IsPlayerWingMen
+   method IsTargetInFiringRangeOfTurret
+   method IsTerranGate
+   method IssueWingmenOrder
+   method LinkGates
+   method ListDocksFacs
+   method ListGates
+   method ListWings
+   method LockGateSet
+   method MoveNearGate
+   method MoveToBoardFollower
+   method MyDockingMenu
+   method NotifyCollisionWarn
+   method NotifyDockingAbort
+   method NotifyIntoLaserRange
+   method NotifyOutofLaserRange
+   method NotifyPlanetCollision
+   method OpenDockedStation
+   method Patch13_AddDockTechWares
+   method Patch16_CheckDockSlots
+   method Patch17_CheckCargoSize
+   method Patch31_RemoveLeftOverConvoyEscorts
+   method Patch3_RemoveMarinesFromDocks
+   method ReadFormation
+   method ReadGate
+   method ReadWing
+   method RealignGate
+   method RemoveAllFormationShips
+   method RemoveDock
+   method RemoveFormationShip
+   method RemoveFromFormation
+   method RemoveFromWings
+   method RemoveGate
+   method RemoveGatelessSector
+   method ReorgFormation
+   method RequestDockPort
+   method ResetFollowSteering
+   method Resize
+   method SelectNewFormationLeader
+   method SetAutojumpMinRange
+   method SetAutopilot
+   method SetCommandUpgradeWing
+   method SetCommandUpgradeWing2
+   method SetDebugInformation
+   method SetDockingHangar
+   method SetDockingNotAllowedForNPCs
+   method SetExtraTradeContainerSize
+   method SetFollowMode
+   method SetFormationLeader
+   method SetFormationPos
+   method SetFormationType
+   method SetInnerRange
+   method SetKeepAutopilot
+   method SetLastKnownRadius
+   method SetMaxFollowers
+   method SetMissileApproaching
+   method SetNumLeadFormations
+   method SetOuterRange
+   method SetPlayerWingMen
+   method SetRadarRange
+   method SetSize
+   method SetSpeed
+   method SetSteeringMode
+   method SetUsrAvrSpeed
+   method SetWantedDistance
+   method SetWarWingID
+   method SetWing
+   method Signal_Docked
+   method Signal_FollowerNeedsHelp
+   method Signal_FormationLeaderChanged
+   method Signal_RequestUnDock
+   method Signal_WingRemove
+   method SortShipsByWing
+   method SpecialResize
+   method StartFadeInstWithSpeed
+   method StartFollowLeader
+   method StartGateWarp
+   method StartMoveInstWithSpeed
+   method StrengthInRange
+   method ToggleClassicSteering
+   method ToggleMouseSteering
+   method Undock
+   method UpdateCursorSteering
+   method UpdateNebulaRanges
+   method UpdateRangeData
+   method UpdateWings
+   method ValidateGateSystem
+   method __EscortObject
+   method __ExcuseFollowers
+   method __FindShipIncludingDocked
+   method __SetSteeringMode
+   method __requestDockPort
+   method __selectNewFormationLeader
+   nav-related native/const strings 59
+   INS_CockpitGetDistanceToObj                   call sites 1
+   INS_CockpitGetRadarRange                      call sites 4
+   SA_AvoidObjectCollision                       call sites 13
+   SA_CollisionObject                            call sites 13
+   SA_Distance                                   call sites 33
+   SA_DistanceFromCockpit                        call sites 1
+   SA_EscortObject                               call sites 2
+   SA_FindNearestDockPort                        call sites 2
+   SA_FindNearestDockPortRendezvous              call sites 1
+   SA_FollowObject                               call sites 5
+   SA_GetCollisionObjects                        call sites 2
+   SA_GetDesiredSpeed                            call sites 4
+   SA_GetDockPortPosInst                         call sites 1
+   SA_GetLaserTypeRange                          call sites 24
+   SA_GetLaserTypeSpeed                          call sites 7
+   SA_GetMaxSpeed                                call sites 7
+   SA_GetMissileTypeRange                        call sites 7
+   SA_GetMissileTypeSpeed                        call sites 5
+   SA_GetShipTypeMaxExtraRotSpeed                call sites 9
+   SA_GetShipTypeMaxExtraSpeed                   call sites 15
+   SA_GetShipTypeMaxTradeContainerSize           call sites 7
+   SA_GetShipTypeTradeContainerSize              call sites 13
+   SA_GetSize                                    call sites 1
+   SA_GetSpeed                                   call sites 7
+   SA_GetTotalDistance                           call sites 3
+   SA_GetTotalSize                               call sites 45
+   SA_GetTypeCanUseDockPort                      call sites 2
+   SA_GetTypeDockBaySize                         call sites 2
+   SA_GetTypeDockPortAnimFlags                   call sites 1
+   SA_GetTypeDockPortFlags                       call sites 1
+   SA_GetTypeIsDockingPossibleOf                 call sites 5
+   SA_GetTypeMaxSpeed                            call sites 12
+   SA_GetTypeNumDockPorts                        call sites 4
+   SA_IsInApproach                               call sites 1
+   SA_IsTargetInFiringRangeOfTurret              call sites 7
+   SA_MaxDistance                                call sites 3
+   SA_SetAutopilot                               call sites 10
+   SA_SetDesiredDistance                         call sites 2
+   SA_SetDesiredSpeed                            call sites 25
+   SA_SetExtraRotSpeed                           call sites 3
+   SA_SetExtraSpeed                              call sites 3
+   SA_SetMaxAvoidShield                          call sites 1
+   SA_SetRotSpeed                                call sites 3
+   SA_SetSectorSize                              call sites 2
+   SA_SetShipAtDockPort                          call sites 8
+   SA_SetShipDockPortNr                          call sites 6
+   SA_SetSpeed                                   call sites 15
+   SA_SetSpeedLimit                              call sites 24
+   SA_StartDockPortAnim                          call sites 4
+   SE_ArrayResize                                call sites 89
+   SE_ArraySize                                  call sites 1316
+   SE_CompressRangeData                          call sites 1
+   SE_Distance3                                  call sites 13
+   SE_DistanceA3                                 call sites 2
+   SE_DistanceAA                                 call sites 50
+   SE_FSize                                      call sites 19
+   SE_IsPosInRangeA                              call sites 2
+   SE_TableSize                                  call sites 595
+   X2_UpdateCursorSteering                       call sites 1
+   GetFormationDist @CODE+0xab2f3 (15 B): virtual GetSize; x 4 (op 0x50 imul)
+   GetFormationDist @CODE+0xd2318 (23 B): virtual GetSize; native SE_MulFix; push 73728 (16.16 = 1.125)
+   GetFormationDist @CODE+0xd6954 (23 B): self GetSize; native SE_MulFix; push 90112 (16.16 = 1.375)
+   GetFormationDist @CODE+0xd869b (15 B): self GetSize; x 4 (op 0x50 imul)
+   GetSize @CODE+0x2debf (7 B): 
+   GetSize @CODE+0x891e2 (9 B): 
+   GetSize @CODE+0x8f710 (9 B): 
+   GetSize @CODE+0x8fd5a (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0x9126c (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0x923a0 (27 B): native SA_GetTotalSize; return 1000
+   GetSize @CODE+0x927e1 (27 B): native SA_GetTotalSize; return 1000
+   GetSize @CODE+0x9328a (27 B): native SA_GetTotalSize; return 1000
+   GetSize @CODE+0x93dcd (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0x94a4a (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0x977be (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0xac9a7 (27 B): native SA_GetTotalSize; return 10000
+   GetSize @CODE+0xd233a (29 B): native SA_GetTotalSize; push 50000 (16.16 = 0.762939); return 50000
+   GetSize @CODE+0xd6939 (27 B): native SA_GetTotalSize; return 30000
+   GetSize @CODE+0xd8680 (27 B): native SA_GetTotalSize; return 20000
+== addon/07.cat L/x3story.obj (installed): methods 6856, nav-related methods 264
+   method AddAllFollowersToTable
+   method AddDock
+   method AddDocksWithWareToTable
+   method AddFormationShip
+   method AddGate
+   method AddGatelessSector
+   method AddSpeedUpgrades
+   method AddToFormation
+   method AddWing
+   method CanMoveThroughGates
+   method ChangeWingFilter
+   method CheckBoardingDistance
+   method CheckBuildStationToGateBuffer
+   method CheckDockingAllowed
+   method CheckDockingPossible
+   method CheckFormation
+   method CheckIsDocked
+   method CheckRange
+   method CheckSpeedLimit
+   method CollisionWarn
+   method CreateWarObjectWings
+   method CreateWingGroup
+   method CurrentShipDockHere
+   method DestructWarObjectWings
+   method DisableFollowSteering
+   method DisconnectGate
+   method DoAddWingToGroup
+   method DoRealignGate
+   method DoSetFormation
+   method DoSetWing
+   method DoSetWingCommand
+   method DoTempRemoveFromWing
+   method DoWingSelection
+   method DockPlayerShipTo
+   method DockingAllowed
+   method DockingPossible
+   method DrawDistance
+   method DrawSpeed
+   method DrawSpeedBar
+   method EvalDistanceValue
+   method EvalFormation
+   method EvalFormationValue
+   method EvalGate
+   method EvalGateValue
+   method EvalObjectTableRangeValue
+   method EvalWing
+   method EvalWingTableValue
+   method EvalWingValue
+   method ExtractAlphaBetaRadius
+   method ExtractAlphaBetaRadiusNested
+   method FindDocksWithWare
+   method FindEnemyInFiringRangeOfTurret
+   method FindFlyingWaresInScannerRange
+   method FindGate
+   method FindGateObject
+   method FindNearestGate
+   method FindNearestGateForSector
+   method FindShipsInScannerRange
+   method FindStationsInScannerRange
+   method FindWing
+   method FindWingByName
+   method GateLinkExists
+   method GetAllowedMaxSpeed
+   method GetAutojumpMinRange
+   method GetBaseSpeed
+   method GetCameraDistance
+   method GetCmdSize
+   method GetCommandUpgradeMapWing
+   method GetCommandUpgradeReferenceConditionWing
+   method GetCommandUpgradeScriptWing
+   method GetCommandUpgradeWing
+   method GetCurrentSpeed
+   method GetCursorIconForSteering
+   method GetDefaultFormationType
+   method GetDefaultFormationTypeFromRace
+   method GetDestinationGate
+   method GetDestinationGateID
+   method GetDistance
+   method GetDockBaySize
+   method GetDockingHangar
+   method GetDocks
+   method GetEastGate
+   method GetEquipmentDock
+   method GetExtraTradeContainerSize
+   method GetFormationDist
+   method GetFormationDistToLeader
+   method GetFormationLeader
+   method GetFormationLeaders
+   method GetFormationShips
+   method GetFormationSize
+   method GetFormationType
+   method GetFormationTypeState
+   method GetGSize
+   method GetGate
+   method GetGateDirXY
+   method GetGateID
+   method GetGateIDs
+   method GetGateLastRealignTime
+   method GetGateLink
+   method GetGatelessSectors
+   method GetGates
+   method GetHasShipTempLeftWingState
+   method GetInnerRange
+   method GetIsPlayerWingMenState
+   method GetJobJumpRange
+   method GetJumpRange
+   method GetKeepAutopilot
+   method GetLastDockingTime
+   method GetLastKnownRadius
+   method GetLinkForGateDirection
+   method GetLongTermSteeringMode
+   method GetMapGateState
+   method GetMappingCollisionVKs
+   method GetMaxFollowers
+   method GetMaxFormationSpeed
+   method GetMaxSpeed
+   method GetMaxUpgradedSpeed
+   method GetMinimumTradeContainerSize
+   method GetNebulaRanges
+   method GetNorthGate
+   method GetNumActiveWings
+   method GetNumLeadFormations
+   method GetNumOfDockedShips
+   method GetNumWings
+   method GetOuterRange
+   method GetParDefSize
+   method GetParSize
+   method GetRadarRange
+   method GetReferenceRadius
+   method GetScannerRange
+   method GetShipsIncludingDocked
+   method GetSize
+   method GetSouthGate
+   method GetSpeedLimit
+   method GetSteeringMode
+   method GetTradeContainerSize
+   method GetWantedDistance
+   method GetWarWingID
+   method GetWareTypeContainerSize
+   method GetWestGate
+   method GetWing
+   method GetWingID
+   method GetWingIndex
+   method GetWingName
+   method GetWingObjCmds
+   method GetWingState
+   method GetWings
+   method GiveFormationLeadershipTo
+   method HasCommandUpgradeWing
+   method HasFreeDockPort
+   method HasFreeDockPortGSubType
+   method HasFreeDockPortSubType
+   method HasJumpableGate
+   method HasTerranGate
+   method Initialize_Drawing
+   method IsAutopilotActive
+   method IsAutopilotON
+   method IsDebugInformation
+   method IsDocked
+   method IsDockingAllowedForShip
+   method IsDockingNotAllowedForNPCs
+   method IsDockingPossibleOf
+   method IsFollowSteering
+   method IsFollowSteeringDisabled
+   method IsGateSetLocked
+   method IsHubGate
+   method IsInCaptureRange
+   method IsInFollowMode
+   method IsMissileApproaching
+   method IsPlayerWingMen
+   method IsTargetInFiringRangeOfTurret
+   method IsTerranGate
+   method IssueWingmenOrder
+   method LinkGates
+   method ListDocksFacs
+   method ListGates
+   method ListWings
+   method LockGateSet
+   method MaxJumpRangeBasedOnEnergy
+   method MoveNearGate
+   method MoveToBoardFollower
+   method MyDockingMenu
+   method NotifyCollisionWarn
+   method NotifyDockingAbort
+   method NotifyIntoLaserRange
+   method NotifyOutofLaserRange
+   method NotifyPlanetCollision
+   method OpenDockedStation
+   method Patch13_AddDockTechWares
+   method Patch16_CheckDockSlots
+   method Patch3_RemoveMarinesFromDocks
+   method ReadFormation
+   method ReadGate
+   method ReadWing
+   method RealignGate
+   method RemoveAllFormationShips
+   method RemoveDock
+   method RemoveFormationShip
+   method RemoveFromFormation
+   method RemoveFromWings
+   method RemoveGate
+   method RemoveGatelessSector
+   method ReorgFormation
+   method RequestDockPort
+   method ResetFollowSteering
+   method Resize
+   method SafeUndock
+   method SelectNewFormationLeader
+   method SetAutojumpMinRange
+   method SetAutopilot
+   method SetCommandUpgradeReferenceConditionWing
+   method SetCommandUpgradeWing
+   method SetCommandUpgradeWing2
+   method SetDebugInformation
+   method SetDockingHangar
+   method SetDockingNotAllowedForNPCs
+   method SetExtraTradeContainerSize
+   method SetFollowMode
+   method SetFormationLeader
+   method SetFormationPos
+   method SetFormationType
+   method SetInnerRange
+   method SetKeepAutopilot
+   method SetLastKnownRadius
+   method SetMaxFollowers
+   method SetMissileApproaching
+   method SetNumLeadFormations
+   method SetOuterRange
+   method SetPlayerWingMen
+   method SetRadarRange
+   method SetSize
+   method SetSpeed
+   method SetSpeedForTime
+   method SetSteeringMode
+   method SetUsrAvrSpeed
+   method SetWantedDistance
+   method SetWarWingID
+   method SetWing
+   method Signal_Docked
+   method Signal_FollowerNeedsHelp
+   method Signal_FormationLeaderChanged
+   method Signal_RequestUnDock
+   method Signal_WingRemove
+   method SortShipsByWing
+   method SpecialResize
+   method StartFadeInstWithSpeed
+   method StartFollowLeader
+   method StartGateWarp
+   method StartMoveInstWithSpeed
+   method StrengthInRange
+   method ToggleClassicSteering
+   method ToggleMouseSteering
+   method Undock
+   method UpdateCursorSteering
+   method UpdateNebulaRanges
+   method UpdateRangeData
+   method UpdateWings
+   method ValidateGateSystem
+   method __EscortObject
+   method __ExcuseFollowers
+   method __FindShipIncludingDocked
+   method __SetSteeringMode
+   method __requestDockPort
+   method __selectNewFormationLeader
+   nav-related native/const strings 59
+   INS_CockpitGetDistanceToObj                   call sites 1
+   INS_CockpitGetRadarRange                      call sites 4
+   SA_AvoidObjectCollision                       call sites 14
+   SA_CollisionObject                            call sites 14
+   SA_Distance                                   call sites 36
+   SA_DistanceFromCockpit                        call sites 1
+   SA_EscortObject                               call sites 3
+   SA_FindNearestDockPort                        call sites 2
+   SA_FindNearestDockPortRendezvous              call sites 1
+   SA_FollowObject                               call sites 6
+   SA_GetCollisionObjects                        call sites 4
+   SA_GetDesiredSpeed                            call sites 2
+   SA_GetDockPortPosInst                         call sites 1
+   SA_GetLaserTypeRange                          call sites 28
+   SA_GetLaserTypeSpeed                          call sites 7
+   SA_GetMaxSpeed                                call sites 8
+   SA_GetMissileTypeRange                        call sites 7
+   SA_GetMissileTypeSpeed                        call sites 6
+   SA_GetShipTypeMaxExtraRotSpeed                call sites 15
+   SA_GetShipTypeMaxExtraSpeed                   call sites 15
+   SA_GetShipTypeMaxTradeContainerSize           call sites 10
+   SA_GetShipTypeTradeContainerSize              call sites 16
+   SA_GetSize                                    call sites 1
+   SA_GetSpeed                                   call sites 7
+   SA_GetTotalDistance                           call sites 3
+   SA_GetTotalSize                               call sites 49
+   SA_GetTypeCanUseDockPort                      call sites 2
+   SA_GetTypeDockBaySize                         call sites 5
+   SA_GetTypeDockPortAnimFlags                   call sites 3
+   SA_GetTypeDockPortFlags                       call sites 1
+   SA_GetTypeIsDockingPossibleOf                 call sites 6
+   SA_GetTypeMaxSpeed                            call sites 16
+   SA_GetTypeNumDockPorts                        call sites 9
+   SA_IsInApproach                               call sites 1
+   SA_IsTargetInFiringRangeOfTurret              call sites 7
+   SA_MaxDistance                                call sites 3
+   SA_SetAutopilot                               call sites 10
+   SA_SetDesiredDistance                         call sites 2
+   SA_SetDesiredSpeed                            call sites 25
+   SA_SetExtraRotSpeed                           call sites 2
+   SA_SetExtraSpeed                              call sites 2
+   SA_SetMaxAvoidShield                          call sites 1
+   SA_SetRotSpeed                                call sites 4
+   SA_SetSectorSize                              call sites 2
+   SA_SetShipAtDockPort                          call sites 9
+   SA_SetShipDockPortNr                          call sites 9
+   SA_SetSpeed                                   call sites 18
+   SA_SetSpeedLimit                              call sites 26
+   SA_StartDockPortAnim                          call sites 4
+   SE_ArrayResize                                call sites 92
+   SE_ArraySize                                  call sites 1405
+   SE_CompressRangeData                          call sites 1
+   SE_Distance3                                  call sites 12
+   SE_DistanceA3                                 call sites 3
+   SE_DistanceAA                                 call sites 55
+   SE_FSize                                      call sites 19
+   SE_IsPosInRangeA                              call sites 6
+   SE_TableSize                                  call sites 591
+   X2_UpdateCursorSteering                       call sites 1
+   GetFormationDist @CODE+0xc2799 (15 B): virtual GetSize; x 4 (op 0x50 imul)
+   GetFormationDist @CODE+0xea570 (23 B): virtual GetSize; native SE_MulFix; push 73728 (16.16 = 1.125)
+   GetFormationDist @CODE+0xeeb44 (23 B): self GetSize; native SE_MulFix; push 90112 (16.16 = 1.375)
+   GetFormationDist @CODE+0xf0886 (15 B): self GetSize; x 4 (op 0x50 imul)
+   GetSize @CODE+0x2d6b9 (7 B): 
+   GetSize @CODE+0x9e230 (9 B): 
+   GetSize @CODE+0xa5354 (9 B): 
+   GetSize @CODE+0xa5b17 (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0xa70d7 (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0xa825d (27 B): native SA_GetTotalSize; return 1000
+   GetSize @CODE+0xa86a6 (27 B): native SA_GetTotalSize; return 1000
+   GetSize @CODE+0xa91f4 (27 B): native SA_GetTotalSize; return 1000
+   GetSize @CODE+0xa9dbc (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0xaaa39 (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0xada51 (29 B): native SA_GetTotalSize; push 200000 (16.16 = 3.05176); return 200000
+   GetSize @CODE+0xc3e4d (27 B): native SA_GetTotalSize; return 10000
+   GetSize @CODE+0xea592 (29 B): native SA_GetTotalSize; push 50000 (16.16 = 0.762939); return 50000
+   GetSize @CODE+0xeeb29 (27 B): native SA_GetTotalSize; return 30000
+   GetSize @CODE+0xf086b (27 B): native SA_GetTotalSize; return 20000

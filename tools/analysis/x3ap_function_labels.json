@@ -18,7 +18,10 @@
     "docs/reverse-engineering/object-lifetimes.md",
     "docs/reverse-engineering/gui-scale.md",
     "docs/reverse-engineering/font-rendering.md",
-    "docs/reverse-engineering/engine-effects.md"
+    "docs/reverse-engineering/engine-effects.md",
+    "docs/reverse-engineering/ship-movement.md",
+    "docs/reverse-engineering/ship-navigation-ai.md",
+    "docs/reverse-engineering/game-scale-and-ship-classes.md"
   ],
   "labels": {
     "0x00402710": {
@@ -77,6 +80,10 @@
       "label": "flight input accumulation (yaw/pitch/roll into 0x00608e74..; calls 0x0040e8c0)",
       "source": "external-camera.md"
     },
+    "0x00410100": {
+      "label": "player ship flight control (input accumulation 0x0040fec0, speed keys 0x0040f350/0x0040f4f0/0x0040f720 write obj+0x14)",
+      "source": "ship-movement.md"
+    },
     "0x00412440": {
       "label": "sqrtf helper (15 bytes, x87 SQRT)",
       "source": "loading-profile-run1.md"
@@ -88,6 +95,10 @@
     "0x004124c0": {
       "label": "16.16 per-axis vector multiply with rounding (ESI = scale, EDI = vector, ECX = out; writes 3 dwords)",
       "source": "engine-effects.md"
+    },
+    "0x00412620": {
+      "label": "int[3] x n / d (EAX = &d, ESI = out, args vec, &n)",
+      "source": "ship-movement.md"
     },
     "0x004126d0": {
       "label": "types/Effects loader: 1,000 rows at 0x00580068, stride 0x14 (+0 count, +4 flags, +0x10 elements, stride 0x70, EEDF flags +0x3c); row index = header field 1",
@@ -217,6 +228,10 @@
       "label": "cockpit +0x79c HUD target list: copies cockpit-scene FOV/plane/viewport, scales by 1/tan(cockpit+0x230 half)",
       "source": "field-of-view.md"
     },
+    "0x00429600": {
+      "label": "GetGlobal pair variant (EDI=id) storing into [ESI],[ESI+4]",
+      "source": "game-scale-and-ship-classes.md"
+    },
     "0x004299a0": {
       "label": "target-overlay icon hit test at a pixel position (cockpit+0x3ac)",
       "source": "gui-scale.md"
@@ -233,9 +248,37 @@
       "label": "INS_ script command dispatcher (switch over the INS_Cockpit*/INS_* index; cases inline the cockpit fields)",
       "source": "external-camera.md"
     },
+    "0x0042f850": {
+      "label": "float distance |[ECX] - [EAX]| of two int[3] positions",
+      "source": "ship-movement.md"
+    },
+    "0x0042fb20": {
+      "label": "clamped linear ramp (ECX = x, EAX = x1, EDI = y1, stack x0, y0; caller pops): y0 at x<=x0 .. y1 at x>=x1",
+      "source": "ship-movement.md"
+    },
+    "0x004333a0": {
+      "label": "Globals post-load: copies SG_ values to statics, metre values x500 (COMM 0x0057a6d0, tractor 0x0057a764/68/6c)",
+      "source": "game-scale-and-ship-classes.md"
+    },
+    "0x00433e50": {
+      "label": "bullet-type range: TBullets(+0x50 * +0x54)/1000",
+      "source": "game-scale-and-ship-classes.md"
+    },
+    "0x00433e90": {
+      "label": "laser-type range: TBullets(+0x50 lifetime ms * +0x54 speed units/s)/1000 via TLaser +0x4c",
+      "source": "game-scale-and-ship-classes.md"
+    },
+    "0x00433ee0": {
+      "label": "laser-type bullet speed: TBullets +0x54 via TLaser +0x4c",
+      "source": "game-scale-and-ship-classes.md"
+    },
     "0x00434620": {
       "label": "scene node classification by model id: JET list -> +0x130 |= 0x4000001 (0x00434708), SMALLJET -> |= 0x4000000, +0x1d8 = 5 (0x00434730), TURRET -> +0x1d8 = 10",
       "source": "engine-effects.md"
+    },
+    "0x00434c30": {
+      "label": "types/Globals loader: SG_ (id, value) pairs into 0x00606fa4 (count 0x00606fa8)",
+      "source": "game-scale-and-ship-classes.md"
     },
     "0x00434e40": {
       "label": "type-table load (addon\\types\\*, TBullets..TShipsWrecks; O(n^2) scan at 0x004381c2)",
@@ -245,9 +288,21 @@
       "label": "universe teardown/reset candidate (1,100 bytes)",
       "source": "loading-orchestration.md"
     },
+    "0x00439ff0": {
+      "label": "GetGlobal(ESI=id, default) over the Globals pairs",
+      "source": "game-scale-and-ship-classes.md"
+    },
     "0x0043a360": {
       "label": "sector update loop: 0x004596e0 for every class-1 object of *(0x0060850c)+8 (0x0043a3bf)",
       "source": "engine-effects.md"
+    },
+    "0x0043a690": {
+      "label": "base max speed by class (AX = class, CX = subtype): bullet record +0x54, ship/missile record +0x44",
+      "source": "ship-movement.md"
+    },
+    "0x0043ad20": {
+      "label": "per-axis rotation controller (stdcall 7 args, ret 0x1c): (remaining angle, rate, max rate, angular accel, &new rate, &delta, dt ms); trapezoid with early braking at w*w/a",
+      "source": "ship-movement.md"
     },
     "0x0043ce30": {
       "label": "type-table object construction: type lookup 0x00492970, node create 0x00486d10, per-part loop (+0x50, stride 0x44) via 0x0043d1d0",
@@ -259,6 +314,18 @@
       "hooked_apis": [
         "gzread"
       ]
+    },
+    "0x0043fd00": {
+      "label": "ship type code in {TL, M0, M1, M2, TL_P, M6, M7, TM, M8} (record +0x14 SG_SH code; EAX = obj)",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x0043fd50": {
+      "label": "ship type code in {TL, M0, M1, M2, TL_P, M7} (capital; EAX = obj)",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x0043ff80": {
+      "label": "manual player control: [obj+0x40] & 0x40000 and not & 0x80000 (autopilot)",
+      "source": "ship-navigation-ai.md"
     },
     "0x004421a0": {
       "label": "universe construction callee of 0x0043f420",
@@ -272,21 +339,89 @@
       "label": "player ship fire control: mouse-aim ray = 0x00489780(cursor, sector camera) x cockpit+0xf0 x gun mount x ship basis",
       "source": "external-camera.md"
     },
+    "0x0044a520": {
+      "label": "tractor beam update: speed limit vs [obj+0x10], break distance vs position distance (engine units)",
+      "source": "game-scale-and-ship-classes.md"
+    },
     "0x0044aab0": {
       "label": "universe construction callee of 0x0043f420; thiscall ECX = obj object-removal notification: clears references to obj in the sector objects, then 0x00416e10 drops its effect instances and trail links (0x0044abb8)",
       "source": "loading-orchestration.md, engine-effects.md"
     },
     "0x0044c620": {
-      "label": "orientation/rotation math (fsin/fcos/fpatan, helper 0x0052b5d0; from 0x0042fb20)",
-      "source": "loading-profile-bottle-x3.md"
+      "label": "orientation/rotation math (fsin/fcos/fpatan, helper 0x0052b5d0; from 0x0042fb20); steering leaf roll+yaw (EDX = target, push obj, ret 4): writes obj+0x30 yaw, +0x34 = 0, +0x38 roll; yaw 0 while |roll| > 45 deg",
+      "source": "loading-profile-bottle-x3.md; ship-movement.md"
+    },
+    "0x0044c970": {
+      "label": "steering leaf roll+pitch (EDX = target, push obj, ret 4): writes obj+0x30 = 0, +0x34 pitch, +0x38 roll; pitch 0 while |roll| > 45 deg",
+      "source": "ship-movement.md"
     },
     "0x0044ccc0": {
-      "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20)",
-      "source": "loading-profile-bottle-x3.md"
+      "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20); steering leaf yaw+pitch (EDX = target, push obj, ret 4): writes obj+0x30 yaw, +0x34 pitch, +0x38 = 0; pitch 0 while |yaw| > 90 deg",
+      "source": "loading-profile-bottle-x3.md; ship-movement.md"
+    },
+    "0x0044d020": {
+      "label": "steering dispatcher (stdcall obj, const int target[3]; ret 8): <=100 units or rate order picks 0x0044c620/0x0044c970, aligned within 4.4 deg -> 0x0044ccc0",
+      "source": "ship-movement.md"
+    },
+    "0x0044d2f0": {
+      "label": "collision-warn obstacle filter (EDI = ship, arg = obstacle): capitals ignore small ships, escort/follow partners ignored",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x0044d4c0": {
+      "label": "dock/gate trigger (A ship, B container, d): 3 = gate plane crossed (\"CanWarp\"), 2 = within r+25000 of a dock port (\"CanLand\"), 1 = in dock range (container |= 0x400000)",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x0044dd90": {
+      "label": "predictive collision-warn test (stdcall A, B, d, out*; ret 0x10): braking distance v_close^2/2a (cap 300000) + margin clamp(..,15000,500000) + cone vs (rA+rB+20000); mesh test 0x0044d9c0 for large B",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x0044e450": {
+      "label": "ship proximity (stdcall A, B, d; ret 0xc): obstacle filter 0x0044d2f0, warn test 0x0044dd90; on warn [A+0x40] |= 0x1000, append B to flight+0x1e4[] (max 5), |= 0x2000",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x00450540": {
+      "label": "SA_SetFlightMode worker: ship attitude-offset targets flight+0x8b8..+0x8c0",
+      "source": "ship-movement.md"
+    },
+    "0x00450980": {
+      "label": "ship max speed (EAX = obj): 0x0043a690 x (1 + flight+0x274), override flight+0x27c, hull ramp 30 % at 10 % hull .. 100 % at 90 % (obj+0xec vs 0x0044e910), timed factor flight+0x914, limit flight+0x278, sector cap 20000",
+      "source": "ship-movement.md"
+    },
+    "0x00450b80": {
+      "label": "acceleration (ECX = obj): ship/missile record +0x48 x (1 + flight+0x274); class 0x13 1000000",
+      "source": "ship-movement.md"
+    },
+    "0x00450cf0": {
+      "label": "effective pitch rate (EAX = obj): record +0x0c x (1 + flight+0x270)",
+      "source": "ship-movement.md"
+    },
+    "0x00450d60": {
+      "label": "effective yaw rate (EAX = obj): record +0x08 x (1 + flight+0x270)",
+      "source": "ship-movement.md"
+    },
+    "0x00450dd0": {
+      "label": "effective roll rate (EAX = obj): record +0x10 x (1 + flight+0x270)",
+      "source": "ship-movement.md"
+    },
+    "0x00452ad0": {
+      "label": "sector_simulate (pass A, stdcall sector): per-object command pass; ship command word flight+0x258 switch (SA_ commands -> steering leaves, desired speed obj+0x14), tail slews obj+0x10 toward obj+0x14 at 0x00450b80 x dt/1000",
+      "source": "ship-movement.md"
     },
     "0x004596e0": {
-      "label": "sector object update (32 object lists): engine jet z-scale drive, calls 0x00414590 per object at 0x0045ac7d behind *(*0x0060850c) != 0",
-      "source": "engine-effects.md"
+      "label": "sector object update (32 object lists): engine jet z-scale drive, calls 0x00414590 per object at 0x0045ac7d behind *(*0x0060850c) != 0; also the per-object movement integrator (ship-movement.md): dt = time - obj+0xa8 (<=1000 ms); autopilot (obj+0x40 & 0x80000) drives 0x0043ad20 per axis from errors obj+0x30/34/38, else rates obj+0x24/28/2c x dt; velocity physics+0x100 = forward row x obj+0x10; position physics+0x30 += (v + slip obj+0x60) x dt/1000",
+      "source": "engine-effects.md; ship-movement.md"
+    },
+    "0x004604d0": {
+      "label": "SA_ module completion callback (task_id, result): finds the task in the hash at [[0x0060850c]+0x14], sets task+0x84 = 1, stores result as int cell at task+0x8c",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x00460560": {
+      "label": "command completion (ESI = obj): calls module callback [*0x006085e4+0x34+obj+0x7c*0x18](obj+0x80, result) and clears obj+0x7c/+0x80",
+      "source": "ship-movement.md"
+    },
+    "0x00460630": {
+      "label": "SA_ script command module dispatcher (378 commands, names at 0x0057a7f0, case table 0x004690f0); writes the ship command word flight+0x258",
+      "source": "ship-movement.md"
     },
     "0x00469a30": {
       "label": "muldiv trunc(a*b/c), 0 for c=0",
@@ -410,6 +545,14 @@
     "0x00487e30": {
       "label": "object body bind (calls the texture-animation collector 0x00487810)",
       "source": "texture-lookup.md"
+    },
+    "0x00488170": {
+      "label": "object radius [obj+0xa4] (ECX = obj), computed lazily from child bounds when negative; SA_GetTotalSize",
+      "source": "ship-navigation-ai.md"
+    },
+    "0x00488270": {
+      "label": "node scale setter: +0x80..+0x88, +0xa0 = +0x70 * max scale, invalidates radius +0xa4",
+      "source": "game-scale-and-ship-classes.md"
     },
     "0x004885a0": {
       "label": "node allocator (handle map)",
@@ -936,6 +1079,10 @@
       "label": "load named resource into a buffer",
       "source": "loading-orchestration.md"
     },
+    "0x004ec490": {
+      "label": "type-table decimal field parser: value x 65536.0 -> 16.16 integer",
+      "source": "ship-movement.md"
+    },
     "0x004ec9e0": {
       "label": "file-system / catalogue mount (%02d.cat, __chdir)",
       "source": "loading-orchestration.md"
@@ -943,6 +1090,14 @@
     "0x004ed750": {
       "label": "CAT directory parse (_atol, _toupper, _qsort)",
       "source": "loading-orchestration.md"
+    },
+    "0x004ee1c0": {
+      "label": "rand() x n / 0x8000 (cdecl n)",
+      "source": "ship-movement.md"
+    },
+    "0x004ee1e0": {
+      "label": "game clock tick: [*0x00606f34+0x714] = delta of +0x718 (ms, 1..0x7fff), +0x71c likewise",
+      "source": "ship-movement.md"
     },
     "0x004eeab0": {
       "label": "thin wrapper over 0x004db520",

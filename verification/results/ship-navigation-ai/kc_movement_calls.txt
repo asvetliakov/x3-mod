@@ -1,0 +1,460 @@
+== addon/04.cat L/x3story.obj (stock AP): sha256 ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a CODE 1812069 B, 8781 method rows
+SA_MovePos                           3 sites in   3 methods
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7efa
+    class 0x7d4 __MovePos                                entry 0x0b87ae x1 0xb88f9
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0bbb58 x1 0xbbf73
+SA_MovePosContinue                   2 sites in   2 methods
+    class 0x7d4 __MovePosContinue                        entry 0x0b896c x1 0xb8ab7
+    class 0x810 MoveToBoard                              entry 0x0dc1b5 x1 0xdc427
+SA_GlidePos                          0 sites in   0 methods
+SA_FollowObject                      5 sites in   5 methods
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7ec0
+    class 0x7d4 __EscortObject                           entry 0x0b8b2a x1 0xb8e60
+    class 0x80d __LandInHangar                           entry 0x0dd17e x1 0xdd3e0
+    class 0x810 MoveToBoardFollower                      entry 0x0dc124 x1 0xdc19e
+    class 0x810 MoveToBoard                              entry 0x0dc1b5 x1 0xdc36e
+SA_FollowObjectByCut                 0 sites in   0 methods
+SA_EscortObject                      2 sites in   2 methods
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7f81
+    class 0x7d4 __EscortObject                           entry 0x0b8b2a x1 0xb8f09
+SA_AttackObject                      2 sites in   2 methods
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0bc0a4 x1 0xbc34b
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0bc3fd x1 0xbc60d
+SA_AttackObjectBig                   1 sites in   1 methods
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0bc0a4 x1 0xbc327
+SA_DefensiveMove                     1 sites in   1 methods
+    class 0x7d4 __DefensiveMove                          entry 0x0bb9c9 x1 0xbbb0c
+SA_TurnToObject                      1 sites in   1 methods
+    class 0x7db ___startDefendThread                     entry 0x0df2a7 x1 0xdf57a
+SA_RotateToAngles                    1 sites in   1 methods
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbce63
+SA_Idle                              3 sites in   3 methods
+    class 0x7d4 __Idle                                   entry 0x0b84a8 x1 0xb85a7
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x1 0xbc78c
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcc7e
+SA_StopObject                       17 sites in  15 methods
+    class 0x7d4 Deactivate                               entry 0x0aefc0 x1 0xaefe6
+    class 0x7d4 CollisionWarn                            entry 0x0bdfd6 x2 0xbe069 0xbe086
+    class 0x7d4 CallbackInterruptThisScript              entry 0x0be08e x2 0xbe0ec 0xbe0fe
+    class 0x7d4 KilledBy                                 entry 0x0c0542 x1 0xc0838
+    class 0x7d4 DoKill                                   entry 0x0c0988 x1 0xc09c1
+    class 0x7d4 Stop                                     entry 0x0c0ed0 x1 0xc0efb
+    class 0x7d4 MakeBreak                                entry 0x0c1a86 x1 0xc1a97
+    class 0x7d4 CanLand                                  entry 0x0c719e x1 0xc7287
+    class 0x7de KilledBy                                 entry 0x091a9f x1 0x91ad7
+    class 0x7f1 Deactivate                               entry 0x0d4f3b x1 0xd4f4f
+    class 0x813 AttackedByHandler                        entry 0x0dfbb2 x1 0xdfc64
+    class 0x816 KilledBy                                 entry 0x0dcc82 x1 0xdccfe
+    class 0x816 CollisionWarn                            entry 0x0dcf25 x1 0xdcf2d
+    class 0x82c AttackedByHandler                        entry 0x0e02bc x1 0xe039c
+    class 0x866 AttackedByHandler                        entry 0x0e07fc x1 0xe08c7
+SA_FlyObjectIntoContainer            2 sites in   2 methods
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb8053
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcebc
+SA_FlyObjectBeforeContainer          2 sites in   2 methods
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7fd7
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcdf3
+SA_FlyObjectBeforeContainerPos       1 sites in   1 methods
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcdda
+SA_ClearObjectFromHangar             2 sites in   2 methods
+    class 0x7d4 __StartInHangar                          entry 0x0b75c9 x1 0xb7aa0
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0bd671 x1 0xbd71e
+SA_WarpObjectAway                    2 sites in   2 methods
+    class 0x096 ShowWarpInScene                          entry 0x016209 x1 0x16293
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcf04
+SA_WarpObjectIn                      2 sites in   2 methods
+    class 0x096 ShowWarpOutScene                         entry 0x0162cc x1 0x16354
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0bd671 x1 0xbd6ec
+SA_SetPlayerLand                     5 sites in   3 methods
+    class 0x096 DockingAllowed                           entry 0x017202 x1 0x1727c
+    class 0x7d4 CanLand                                  entry 0x0c719e x3 0xc727b 0xc73c5 0xc74bc
+    class 0x7d4 EnableScriptFromMonitor                  entry 0x0c89f9 x1 0xc8a72
+SA_CollectDebris                     1 sites in   1 methods
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x1 0xbc940
+SA_CaptureObject                     1 sites in   1 methods
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x1 0xbc96e
+SA_AvoidObjectCollision             13 sites in  13 methods
+    class 0x7d4 __StartInHangar                          entry 0x0b75c9 x1 0xb7b7e
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7e78
+    class 0x7d4 __Idle                                   entry 0x0b84a8 x1 0xb8570
+    class 0x7d4 __MovePos                                entry 0x0b87ae x1 0xb886a
+    class 0x7d4 __MovePosContinue                        entry 0x0b896c x1 0xb8a28
+    class 0x7d4 __EscortObject                           entry 0x0b8b2a x1 0xb8dfa
+    class 0x7d4 __DefensiveMove                          entry 0x0bb9c9 x1 0xbba94
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0bbb58 x1 0xbbd64
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0bc0a4 x1 0xbc2ec
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x1 0xbc8e6
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcda2
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0bd671 x1 0xbd76a
+    class 0x80d __LandInHangar                           entry 0x0dd17e x1 0xdd3b7
+SA_CollisionObject                  13 sites in  13 methods
+    class 0x7d4 __StartInHangar                          entry 0x0b75c9 x1 0xb7b58
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7e5e
+    class 0x7d4 __Idle                                   entry 0x0b84a8 x1 0xb8556
+    class 0x7d4 __MovePos                                entry 0x0b87ae x1 0xb882f
+    class 0x7d4 __MovePosContinue                        entry 0x0b896c x1 0xb89ed
+    class 0x7d4 __EscortObject                           entry 0x0b8b2a x1 0xb8dd5
+    class 0x7d4 __DefensiveMove                          entry 0x0bb9c9 x1 0xbba6e
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0bbb58 x1 0xbbced
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0bc0a4 x1 0xbc2c6
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x1 0xbc8cc
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcd88
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0bd671 x1 0xbd750
+    class 0x80d __LandInHangar                           entry 0x0dd17e x1 0xdd39d
+SA_GetCollisionObjects               2 sites in   2 methods
+    class 0x7d4 CollisionWarn                            entry 0x0bdfd6 x1 0xbe038
+    class 0x8b5 SpecialUpdate                            entry 0x11c46c x1 0x11d075
+SA_SetMaxAvoidShield                 1 sites in   1 methods
+    class 0x7d4 Activate                                 entry 0x0aeafc x1 0xaecf8
+SA_SetDesiredSpeed                  25 sites in  19 methods
+    class 0x096 Run                                      entry 0x0130c8 x1 0x1391b
+    class 0x096 WarpToSector                             entry 0x01635e x2 0x163fc 0x16761
+    class 0x096 LockThrottle                             entry 0x018821 x1 0x1883d
+    class 0x096 BrakeReverse                             entry 0x018845 x2 0x1886b 0x18881
+    class 0x25d ClickInfoPanel                           entry 0x0ea905 x1 0xeabe1
+    class 0x26f Build                                    entry 0x01ad46 x2 0x1ae57 0x1ae80
+    class 0x26f BuildComplex                             entry 0x01b629 x2 0x1baa1 0x1baca
+    class 0x2be __runScript                              entry 0x038137 x1 0x72fd8
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb8138
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x1 0xbcef7
+    class 0x7d4 __LeaveHyperspace                        entry 0x0bd16d x1 0xbd479
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0bd671 x1 0xbd6d5
+    class 0x7d4 JumpToSector                             entry 0x0bd7a3 x1 0xbdda7
+    class 0x7d4 JumpOutOfExistence                       entry 0x0bdf50 x1 0xbdf7b
+    class 0x7d4 StopShip                                 entry 0x0c0e27 x1 0xc0e51
+    class 0x7d4 SetSpeed                                 entry 0x0c0e75 x1 0xc0eba
+    class 0x7d4 ChangePlayerShipTo                       entry 0x0c6ecf x1 0xc6fa7
+    class 0x7d4 CanLand                                  entry 0x0c719e x3 0xc726f 0xc73b9 0xc74b0
+    class 0x7e0 StartPlayerShip                          entry 0x09c07d x1 0x9c0d1
+SA_SetSpeed                         15 sites in  10 methods
+    class 0x096 WarpToSector                             entry 0x01635e x2 0x1640d 0x16774
+    class 0x12e RebuildLocalShips                        entry 0x17e07e x1 0x17e246
+    class 0x26f Build                                    entry 0x01ad46 x2 0x1ae62 0x1ae8b
+    class 0x26f BuildComplex                             entry 0x01b629 x2 0x1baac 0x1bad5
+    class 0x270 UpdateCloneEnvironments                  entry 0x028ef5 x1 0x28fe4
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb812d
+    class 0x7d4 StopShip                                 entry 0x0c0e27 x1 0xc0e46
+    class 0x7d4 SetSpeed                                 entry 0x0c0e75 x1 0xc0ec7
+    class 0x7d4 CanLand                                  entry 0x0c719e x3 0xc7264 0xc73ae 0xc74a5
+    class 0x7e0 StartPlayerShip                          entry 0x09c07d x1 0x9c0c6
+SA_SetSpeedLimit                    24 sites in  17 methods
+    class 0x7d4 __StartInHangar                          entry 0x0b75c9 x1 0xb7a40
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x2 0xb7e3a 0xb8034
+    class 0x7d4 __Idle                                   entry 0x0b84a8 x1 0xb8541
+    class 0x7d4 __MovePos                                entry 0x0b87ae x1 0xb881a
+    class 0x7d4 __MovePosContinue                        entry 0x0b896c x1 0xb89d8
+    class 0x7d4 __EscortObject                           entry 0x0b8b2a x1 0xb8dc0
+    class 0x7d4 __DefensiveMove                          entry 0x0bb9c9 x1 0xbba64
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0bbb58 x2 0xbbca4 0xbbf3e
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0bc0a4 x2 0xbc2b1 0xbc30b
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0bc3fd x2 0xbc5d4 0xbc5f9
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x2 0xbc775 0xbc8b7
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x3 0xbcc5c 0xbcd73 0xbce92
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0bd671 x1 0xbd6ca
+    class 0x7d4 __stopCommand                            entry 0x0c0f62 x1 0xc103f
+    class 0x80d __LandInHangar                           entry 0x0dd17e x1 0xdd36d
+    class 0x810 MoveToBoardFollower                      entry 0x0dc124 x1 0xdc139
+    class 0x810 MoveToBoard                              entry 0x0dc1b5 x1 0xdc246
+SA_SetMaxSpeedOverride               0 sites in   0 methods
+SA_SetDestination                    7 sites in   2 methods
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7e54
+    class 0x8a8 SpecialUpdate                            entry 0x1336bb x6 0x135c1d 0x135c45 0x135c78 0x135cdf 0x135d07 0x135d3a
+SA_SetAutopilot                     10 sites in   9 methods
+    class 0x096 WarpToSector                             entry 0x01635e x2 0x16519 0x165cc
+    class 0x7d4 SetOwner                                 entry 0x0adbf8 x1 0xadd88
+    class 0x7d4 Activate                                 entry 0x0aeafc x1 0xaed94
+    class 0x7d4 SetAsPlayerShip                          entry 0x0af7ba x1 0xaf7f1
+    class 0x7d4 DisableScriptFromMonitor                 entry 0x0c8953 x1 0xc89f0
+    class 0x7d4 EnableScriptFromMonitor                  entry 0x0c89f9 x1 0xc8b08
+    class 0x7d4 CallbackBeginStartThisScript             entry 0x0c9df9 x1 0xc9e30
+    class 0x7d4 CallbackEndStartThisScript               entry 0x0c9e79 x1 0xc9eb0
+    class 0x7d4 CallbackStopThisScript                   entry 0x0c9ee4 x1 0xc9f28
+SA_SetFlightMode                    15 sites in  12 methods
+    class 0x7d4 __StartInHangar                          entry 0x0b75c9 x1 0xb7727
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x2 0xb7e2d 0xb803f
+    class 0x7d4 __Idle                                   entry 0x0b84a8 x1 0xb854c
+    class 0x7d4 __MovePos                                entry 0x0b87ae x1 0xb8825
+    class 0x7d4 __MovePosContinue                        entry 0x0b896c x1 0xb89e3
+    class 0x7d4 __EscortObject                           entry 0x0b8b2a x1 0xb8dcb
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0bc0a4 x1 0xbc2bc
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0bc3fd x1 0xbc5df
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x1 0xbc8c2
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x3 0xbcc67 0xbcd7e 0xbce9d
+    class 0x810 MoveToBoardFollower                      entry 0x0dc124 x1 0xdc12c
+    class 0x810 MoveToBoard                              entry 0x0dc1b5 x1 0xdc239
+SA_ForceMove                         0 sites in   0 methods
+SA_IsInApproach                      1 sites in   1 methods
+    class 0x7f1 GetCmdConsoleCommands                    entry 0x0d5618 x1 0xd5721
+SA_SetShipDockPortNr                 6 sites in   3 methods
+    class 0x7d4 ReleaseFromSlot                          entry 0x0aae41 x1 0xaae8a
+    class 0x7d4 __StartInHangar                          entry 0x0b75c9 x2 0xb78d0 0xb7b1c
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x3 0xb7e47 0xb7f53 0xb833e
+SA_FindNearestDockPort               2 sites in   1 methods
+    class 0x7e0 __requestDockPort                        entry 0x095c42 x2 0x95e17 0x95f75
+SA_FindNearestDockPortRendezvous     1 sites in   1 methods
+    class 0x7e0 __requestDockPort                        entry 0x095c42 x1 0x95f93
+SA_GetDockPortRendezvousPos          0 sites in   0 methods
+SA_GetDestination                    0 sites in   0 methods
+SA_GetDesiredSpeed                   4 sites in   4 methods
+    class 0x096 LockThrottle                             entry 0x018821 x1 0x1882e
+    class 0x096 BrakeReverse                             entry 0x018845 x1 0x18852
+    class 0x25d DrawInfoPanel                            entry 0x0e952e x1 0xe96cd
+    class 0x2be __runScript                              entry 0x038137 x1 0x72e62
+SA_SetShipRotAccel                  23 sites in  15 methods
+    class 0x7d4 SetRotAccelLimit                         entry 0x0a996f x1 0xa9997
+    class 0x7d4 Activate                                 entry 0x0aeafc x1 0xaec65
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb7dc9
+    class 0x7d4 __Idle                                   entry 0x0b84a8 x1 0xb8582
+    class 0x7d4 __MovePos                                entry 0x0b87ae x1 0xb887c
+    class 0x7d4 __MovePosContinue                        entry 0x0b896c x1 0xb8a3a
+    class 0x7d4 __EscortObject                           entry 0x0b8b2a x2 0xb8e31 0xb8e43
+    class 0x7d4 __DefensiveMove                          entry 0x0bb9c9 x2 0xbbaa6 0xbbb39
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0bbb58 x2 0xbbf31 0xbc085
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0bc0a4 x2 0xbc2fe 0xbc3de
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0bc3fd x2 0xbc5ec 0xbc6a0
+    class 0x7d4 __CaptureObject                          entry 0x0bc6bf x2 0xbc909 0xbc95e
+    class 0x7d4 __EnterHyperspace                        entry 0x0bca8e x2 0xbcdb4 0xbce85
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0bd671 x2 0xbd6a0 0xbd77f
+    class 0x80d __LandInHangar                           entry 0x0dd17e x1 0xdd360
+SA_SetGlide                          4 sites in   4 methods
+    class 0x096 WarpToSector                             entry 0x01635e x1 0x1642b
+    class 0x3e9 SetGlide                                 entry 0x09237f x1 0x92398
+    class 0x7d4 __LandInHangar                           entry 0x0b7c25 x1 0xb8146
+    class 0x7d4 StopShip                                 entry 0x0c0e27 x1 0xc0e5f
+== addon/07.cat L/x3story.obj (installed Mayhem 4 override): sha256 2c3101a8c04ddea76643099758bfdaefd18d79cdf37580095a12a8ce72199298 CODE 1908859 B, 8794 method rows
+SA_MovePos                           4 sites in   4 methods
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfc23
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd04c9
+    class 0x7d4 __MovePos                                entry 0x0d0d7b x1 0xd0ec6
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0d4149 x1 0xd4667
+SA_MovePosContinue                   2 sites in   2 methods
+    class 0x7d4 __MovePosContinue                        entry 0x0d0f39 x1 0xd1084
+    class 0x810 MoveToBoard                              entry 0x0f4423 x1 0xf4695
+SA_GlidePos                          0 sites in   0 methods
+SA_FollowObject                      6 sites in   6 methods
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfbe9
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd048f
+    class 0x7d4 __EscortObject                           entry 0x0d10f7 x1 0xd142d
+    class 0x80d __LandInHangar                           entry 0x0f543e x1 0xf56a0
+    class 0x810 MoveToBoardFollower                      entry 0x0f4392 x1 0xf440c
+    class 0x810 MoveToBoard                              entry 0x0f4423 x1 0xf45dc
+SA_FollowObjectByCut                 0 sites in   0 methods
+SA_EscortObject                      3 sites in   3 methods
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfcaa
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd0550
+    class 0x7d4 __EscortObject                           entry 0x0d10f7 x1 0xd14d6
+SA_AttackObject                      2 sites in   2 methods
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0d4798 x1 0xd4b0a
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0d4bbc x1 0xd4dcc
+SA_AttackObjectBig                   1 sites in   1 methods
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0d4798 x1 0xd4ae6
+SA_DefensiveMove                     1 sites in   1 methods
+    class 0x7d4 __DefensiveMove                          entry 0x0d3fba x1 0xd40fd
+SA_TurnToObject                      1 sites in   1 methods
+    class 0x7db ___startDefendThread                     entry 0x0f757b x1 0xf784e
+SA_RotateToAngles                    1 sites in   1 methods
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd5622
+SA_Idle                              3 sites in   3 methods
+    class 0x7d4 __Idle                                   entry 0x0d0a75 x1 0xd0b74
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x1 0xd4f4b
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd543d
+SA_StopObject                       16 sites in  14 methods
+    class 0x7d4 Deactivate                               entry 0x0c64c7 x1 0xc64ed
+    class 0x7d4 CollisionWarn                            entry 0x0d67f6 x2 0xd6889 0xd68a6
+    class 0x7d4 CallbackInterruptThisScript              entry 0x0d68ae x2 0xd690c 0xd691e
+    class 0x7d4 KilledBy                                 entry 0x0d8faf x1 0xd92f2
+    class 0x7d4 DoKill                                   entry 0x0d9429 x1 0xd9462
+    class 0x7d4 Stop                                     entry 0x0d9a23 x1 0xd9a4e
+    class 0x7d4 MakeBreak                                entry 0x0da61f x1 0xda630
+    class 0x7d4 CanLand                                  entry 0x0df893 x1 0xdf97c
+    class 0x7de KilledBy                                 entry 0x0a795c x1 0xa7994
+    class 0x7f1 Deactivate                               entry 0x0ed17b x1 0xed18f
+    class 0x813 AttackedByHandler                        entry 0x0f7e85 x1 0xf7f37
+    class 0x816 KilledBy                                 entry 0x0f4ef0 x1 0xf4f6c
+    class 0x816 CollisionWarn                            entry 0x0f5193 x1 0xf519b
+    class 0x82c AttackedByHandler                        entry 0x0f858f x1 0xf866f
+SA_FlyObjectIntoContainer            3 sites in   3 methods
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfd7c
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd0622
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd567b
+SA_FlyObjectBeforeContainer          3 sites in   3 methods
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfd00
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd05a6
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd55b2
+SA_FlyObjectBeforeContainerPos       1 sites in   1 methods
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd5599
+SA_ClearObjectFromHangar             2 sites in   2 methods
+    class 0x7d4 __StartInHangar                          entry 0x0cf2eb x1 0xcf7c9
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0d5e3a x1 0xd5ee7
+SA_WarpObjectAway                    2 sites in   2 methods
+    class 0x096 ShowWarpInScene                          entry 0x016030 x1 0x160ba
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd56c3
+SA_WarpObjectIn                      2 sites in   2 methods
+    class 0x096 ShowWarpOutScene                         entry 0x0160f3 x1 0x1617b
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0d5e3a x1 0xd5eb5
+SA_SetPlayerLand                     5 sites in   3 methods
+    class 0x096 DockingAllowed                           entry 0x017037 x1 0x170b1
+    class 0x7d4 CanLand                                  entry 0x0df893 x3 0xdf970 0xdfab9 0xdfbaf
+    class 0x7d4 EnableScriptFromMonitor                  entry 0x0e0db2 x1 0xe0e2b
+SA_CollectDebris                     1 sites in   1 methods
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x1 0xd50ff
+SA_CaptureObject                     1 sites in   1 methods
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x1 0xd512d
+SA_AvoidObjectCollision             14 sites in  14 methods
+    class 0x7d4 __StartInHangar                          entry 0x0cf2eb x1 0xcf8a7
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfba1
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd0447
+    class 0x7d4 __Idle                                   entry 0x0d0a75 x1 0xd0b3d
+    class 0x7d4 __MovePos                                entry 0x0d0d7b x1 0xd0e37
+    class 0x7d4 __MovePosContinue                        entry 0x0d0f39 x1 0xd0ff5
+    class 0x7d4 __EscortObject                           entry 0x0d10f7 x1 0xd13c7
+    class 0x7d4 __DefensiveMove                          entry 0x0d3fba x1 0xd4085
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0d4149 x1 0xd4355
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0d4798 x1 0xd4aab
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x1 0xd50a5
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd5561
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0d5e3a x1 0xd5f33
+    class 0x80d __LandInHangar                           entry 0x0f543e x1 0xf5677
+SA_CollisionObject                  14 sites in  14 methods
+    class 0x7d4 __StartInHangar                          entry 0x0cf2eb x1 0xcf881
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfb87
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd042d
+    class 0x7d4 __Idle                                   entry 0x0d0a75 x1 0xd0b23
+    class 0x7d4 __MovePos                                entry 0x0d0d7b x1 0xd0dfc
+    class 0x7d4 __MovePosContinue                        entry 0x0d0f39 x1 0xd0fba
+    class 0x7d4 __EscortObject                           entry 0x0d10f7 x1 0xd13a2
+    class 0x7d4 __DefensiveMove                          entry 0x0d3fba x1 0xd405f
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0d4149 x1 0xd42de
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0d4798 x1 0xd4a85
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x1 0xd508b
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd5547
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0d5e3a x1 0xd5f19
+    class 0x80d __LandInHangar                           entry 0x0f543e x1 0xf565d
+SA_GetCollisionObjects               4 sites in   4 methods
+    class 0x2be __runScript                              entry 0x038afa x1 0x81afc
+    class 0x7d4 Bounce                                   entry 0x0c180e x1 0xc1952
+    class 0x7d4 CollisionWarn                            entry 0x0d67f6 x1 0xd6858
+    class 0x8b5 SpecialUpdate                            entry 0x133be0 x1 0x13480f
+SA_SetMaxAvoidShield                 1 sites in   1 methods
+    class 0x7d4 Activate                                 entry 0x0c5fd9 x1 0xc61ff
+SA_SetDesiredSpeed                  25 sites in  19 methods
+    class 0x096 Run                                      entry 0x013a0e x1 0x14261
+    class 0x096 WarpToSector                             entry 0x016185 x2 0x16223 0x16588
+    class 0x25d ClickInfoPanel                           entry 0x102172 x1 0x10244e
+    class 0x26f Build                                    entry 0x01aa83 x2 0x1ab9a 0x1abc3
+    class 0x26f BuildComplex                             entry 0x01b00f x2 0x1b487 0x1b4b0
+    class 0x2be __runScript                              entry 0x038afa x1 0x86139
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfe60
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd0706
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x1 0xd56b6
+    class 0x7d4 __LeaveHyperspace                        entry 0x0d592c x1 0xd5c42
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0d5e3a x1 0xd5e9e
+    class 0x7d4 JumpToSector                             entry 0x0d5f6c x1 0xd6597
+    class 0x7d4 JumpOutOfExistence                       entry 0x0d6770 x1 0xd679b
+    class 0x7d4 StopShip                                 entry 0x0d98c8 x1 0xd98f2
+    class 0x7d4 SetSpeed                                 entry 0x0d9916 x1 0xd995b
+    class 0x7d4 SetSpeedForTime                          entry 0x0d9971 x2 0xd99c7 0xd9a0f
+    class 0x7d4 ChangePlayerShipTo                       entry 0x0df5c4 x1 0xdf69c
+    class 0x7d4 CanLand                                  entry 0x0df893 x3 0xdf964 0xdfaad 0xdfba3
+    class 0x7e0 StartPlayerShip                          entry 0x0b250a x1 0xb255e
+SA_SetSpeed                         18 sites in  12 methods
+    class 0x096 WarpToSector                             entry 0x016185 x2 0x16234 0x1659b
+    class 0x12e RebuildLocalShips                        entry 0x1994b1 x1 0x199679
+    class 0x26f Build                                    entry 0x01aa83 x2 0x1aba5 0x1abce
+    class 0x26f BuildComplex                             entry 0x01b00f x2 0x1b492 0x1b4bb
+    class 0x270 UpdateCloneEnvironments                  entry 0x0285e9 x1 0x286d8
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfe55
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd06fb
+    class 0x7d4 StopShip                                 entry 0x0d98c8 x1 0xd98e7
+    class 0x7d4 SetSpeed                                 entry 0x0d9916 x1 0xd9968
+    class 0x7d4 SetSpeedForTime                          entry 0x0d9971 x2 0xd99d4 0xd9a1a
+    class 0x7d4 CanLand                                  entry 0x0df893 x3 0xdf959 0xdfaa2 0xdfb98
+    class 0x7e0 StartPlayerShip                          entry 0x0b250a x1 0xb2553
+SA_SetSpeedLimit                    26 sites in  18 methods
+    class 0x7d4 __StartInHangar                          entry 0x0cf2eb x1 0xcf769
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x2 0xcfb63 0xcfd5d
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x2 0xd0409 0xd0603
+    class 0x7d4 __Idle                                   entry 0x0d0a75 x1 0xd0b0e
+    class 0x7d4 __MovePos                                entry 0x0d0d7b x1 0xd0de7
+    class 0x7d4 __MovePosContinue                        entry 0x0d0f39 x1 0xd0fa5
+    class 0x7d4 __EscortObject                           entry 0x0d10f7 x1 0xd138d
+    class 0x7d4 __DefensiveMove                          entry 0x0d3fba x1 0xd4055
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0d4149 x2 0xd4295 0xd4632
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0d4798 x2 0xd49a5 0xd4aca
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0d4bbc x2 0xd4d93 0xd4db8
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x2 0xd4f34 0xd5076
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x3 0xd541b 0xd5532 0xd5651
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0d5e3a x1 0xd5e93
+    class 0x7d4 __stopCommand                            entry 0x0d9ab5 x1 0xd9b92
+    class 0x80d __LandInHangar                           entry 0x0f543e x1 0xf562d
+    class 0x810 MoveToBoardFollower                      entry 0x0f4392 x1 0xf43a7
+    class 0x810 MoveToBoard                              entry 0x0f4423 x1 0xf44b4
+SA_SetMaxSpeedOverride               0 sites in   0 methods
+SA_SetDestination                    8 sites in   3 methods
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfb7d
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd0423
+    class 0x8a8 SpecialUpdate                            entry 0x14be85 x6 0x14e58c 0x14e5b4 0x14e5e7 0x14e64e 0x14e676 0x14e6a9
+SA_SetAutopilot                     10 sites in   9 methods
+    class 0x096 WarpToSector                             entry 0x016185 x2 0x16340 0x163f3
+    class 0x7d4 SetOwner                                 entry 0x0c50c5 x1 0xc5255
+    class 0x7d4 Activate                                 entry 0x0c5fd9 x1 0xc629b
+    class 0x7d4 SetAsPlayerShip                          entry 0x0c6db3 x1 0xc6dea
+    class 0x7d4 DisableScriptFromMonitor                 entry 0x0e0d0c x1 0xe0da9
+    class 0x7d4 EnableScriptFromMonitor                  entry 0x0e0db2 x1 0xe0ec1
+    class 0x7d4 CallbackBeginStartThisScript             entry 0x0e213e x1 0xe2175
+    class 0x7d4 CallbackEndStartThisScript               entry 0x0e21be x1 0xe21f5
+    class 0x7d4 CallbackStopThisScript                   entry 0x0e2229 x1 0xe226d
+SA_SetFlightMode                    17 sites in  13 methods
+    class 0x7d4 __StartInHangar                          entry 0x0cf2eb x1 0xcf449
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x2 0xcfb56 0xcfd68
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x2 0xd03fc 0xd060e
+    class 0x7d4 __Idle                                   entry 0x0d0a75 x1 0xd0b19
+    class 0x7d4 __MovePos                                entry 0x0d0d7b x1 0xd0df2
+    class 0x7d4 __MovePosContinue                        entry 0x0d0f39 x1 0xd0fb0
+    class 0x7d4 __EscortObject                           entry 0x0d10f7 x1 0xd1398
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0d4798 x1 0xd49b0
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0d4bbc x1 0xd4d9e
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x1 0xd5081
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x3 0xd5426 0xd553d 0xd565c
+    class 0x810 MoveToBoardFollower                      entry 0x0f4392 x1 0xf439a
+    class 0x810 MoveToBoard                              entry 0x0f4423 x1 0xf44a7
+SA_ForceMove                         0 sites in   0 methods
+SA_IsInApproach                      1 sites in   1 methods
+    class 0x7f1 GetCmdConsoleCommands                    entry 0x0ed854 x1 0xed95d
+SA_SetShipDockPortNr                 9 sites in   4 methods
+    class 0x7d4 ReleaseFromSlot                          entry 0x0c22e7 x1 0xc2330
+    class 0x7d4 __StartInHangar                          entry 0x0cf2eb x2 0xcf5f2 0xcf845
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x3 0xcfb70 0xcfc7c 0xd0066
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x3 0xd0416 0xd0522 0xd090c
+SA_FindNearestDockPort               2 sites in   1 methods
+    class 0x7e0 __requestDockPort                        entry 0x0abe8d x2 0xac062 0xac1c0
+SA_FindNearestDockPortRendezvous     1 sites in   1 methods
+    class 0x7e0 __requestDockPort                        entry 0x0abe8d x1 0xac1de
+SA_GetDockPortRendezvousPos          0 sites in   0 methods
+SA_GetDestination                    0 sites in   0 methods
+SA_GetDesiredSpeed                   2 sites in   2 methods
+    class 0x25d DrawInfoPanel                            entry 0x100d95 x1 0x100f34
+    class 0x2be __runScript                              entry 0x038afa x1 0x85fc3
+SA_SetShipRotAccel                  24 sites in  16 methods
+    class 0x7d4 SetRotAccelLimit                         entry 0x0c05d4 x1 0xc05fc
+    class 0x7d4 Activate                                 entry 0x0c5fd9 x1 0xc616c
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfaf2
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd0398
+    class 0x7d4 __Idle                                   entry 0x0d0a75 x1 0xd0b4f
+    class 0x7d4 __MovePos                                entry 0x0d0d7b x1 0xd0e49
+    class 0x7d4 __MovePosContinue                        entry 0x0d0f39 x1 0xd1007
+    class 0x7d4 __EscortObject                           entry 0x0d10f7 x2 0xd13fe 0xd1410
+    class 0x7d4 __DefensiveMove                          entry 0x0d3fba x2 0xd4097 0xd412a
+    class 0x7d4 __MoveToBreakDebris                      entry 0x0d4149 x2 0xd4625 0xd4779
+    class 0x7d4 __AttackRunOnTarget                      entry 0x0d4798 x2 0xd4abd 0xd4b9d
+    class 0x7d4 __MarineRunOnTarget                      entry 0x0d4bbc x2 0xd4dab 0xd4e5f
+    class 0x7d4 __CaptureObject                          entry 0x0d4e7e x2 0xd50c8 0xd511d
+    class 0x7d4 __EnterHyperspace                        entry 0x0d524d x2 0xd5573 0xd5644
+    class 0x7d4 __LeaveHyperspaceWarpIn                  entry 0x0d5e3a x2 0xd5e69 0xd5f48
+    class 0x80d __LandInHangar                           entry 0x0f543e x1 0xf5620
+SA_SetGlide                          5 sites in   5 methods
+    class 0x096 WarpToSector                             entry 0x016185 x1 0x16252
+    class 0x3e9 SetGlide                                 entry 0x0a823c x1 0xa8255
+    class 0x7d4 __LandInHangar                           entry 0x0cf94e x1 0xcfe6e
+    class 0x7d4 __MoveToHangar                           entry 0x0d01f4 x1 0xd0714
+    class 0x7d4 StopShip                                 entry 0x0d98c8 x1 0xd9900

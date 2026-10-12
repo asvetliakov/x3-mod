@@ -1,0 +1,738 @@
+{
+ "installed": {
+  "sources": {
+   "TDocks": "addon/12.cat",
+   "TFactories": "addon/10.cat",
+   "TGates": "addon/10.cat",
+   "TAsteroids": "addon/07.cat",
+   "universe": "loose:addon/maps/x3_universe.xml"
+  },
+  "sectors": 247,
+  "sector_size_attr_km": {
+   "n": 247,
+   "min": 37.1,
+   "p10": 38.7,
+   "median": 46.14,
+   "p90": 52.28,
+   "max": 54.97
+  },
+  "object_extent_linf_km": {
+   "n": 247,
+   "min": 23.24,
+   "p10": 48.3,
+   "median": 64.05,
+   "p90": 106.65,
+   "max": 1937.84
+  },
+  "gates_per_sector": {
+   "min": 1,
+   "median": 2,
+   "max": 4
+  },
+  "gate_to_gate_km": {
+   "n": 529,
+   "min": 27.18,
+   "p10": 47.16,
+   "median": 65.34,
+   "p90": 91.95,
+   "max": 131.66
+  },
+  "gate_to_nearest_station_km": null,
+  "stations_per_sector": {
+   "min": 0,
+   "median": 0,
+   "max": 0,
+   "total": 0
+  },
+  "station_nn_per_sector_min_km": null,
+  "station_nn_per_sector_p10_km": null,
+  "station_nn_per_sector_median_km": null,
+  "station_radius_by_family_m": {
+   "DOCK_EQUIP": {
+    "n": 38,
+    "min_m": 1351,
+    "median_m": 4594,
+    "max_m": 52487
+   },
+   "DOCK_EXCHANGE": {
+    "n": 7,
+    "min_m": 1351,
+    "median_m": 1574,
+    "max_m": 1686
+   },
+   "DOCK_GONER": {
+    "n": 2,
+    "min_m": 1514,
+    "median_m": 2324,
+    "max_m": 3134
+   },
+   "DOCK_HQ": {
+    "n": 1,
+    "min_m": 3510,
+    "median_m": 3510,
+    "max_m": 3510
+   },
+   "DOCK_PIRATES": {
+    "n": 2,
+    "min_m": 1121,
+    "median_m": 1121,
+    "max_m": 1121
+   },
+   "DOCK_TRADE": {
+    "n": 24,
+    "min_m": 10,
+    "median_m": 1480,
+    "max_m": 52487
+   },
+   "FAC_BIO": {
+    "n": 29,
+    "min_m": 677,
+    "median_m": 1268,
+    "max_m": 2556
+   },
+   "FAC_FOOD": {
+    "n": 29,
+    "min_m": 615,
+    "median_m": 1198,
+    "max_m": 1814
+   },
+   "FAC_MINE": {
+    "n": 51,
+    "min_m": 783,
+    "median_m": 4137,
+    "max_m": 6756
+   },
+   "FAC_POWER": {
+    "n": 23,
+    "min_m": 697,
+    "median_m": 2513,
+    "max_m": 3135
+   },
+   "FAC_SHIP": {
+    "n": 44,
+    "min_m": 1800,
+    "median_m": 4559,
+    "max_m": 52487
+   },
+   "FAC_STORAGE": {
+    "n": 2,
+    "min_m": 74,
+    "median_m": 342,
+    "max_m": 609
+   },
+   "FAC_TECH": {
+    "n": 692,
+    "min_m": 528,
+    "median_m": 1800,
+    "max_m": 2404
+   }
+  },
+  "biggest_station_types_m": [
+   [
+    52487.276,
+    "SS_FAC_LC_6",
+    "SG_FAC_SHIP"
+   ],
+   [
+    52487.276,
+    "SS_DOCK_LC_5",
+    "SG_DOCK_EQUIP"
+   ],
+   [
+    52487.276,
+    "SS_DOCK_LC_2",
+    "SG_DOCK_TRADE"
+   ],
+   [
+    52487.276,
+    "SS_DOCK_LC_1",
+    "SG_DOCK_TRADE"
+   ],
+   [
+    8071.928,
+    "Federal Argon Shipyard",
+    "SG_FAC_SHIP"
+   ],
+   [
+    7090.464,
+    "Teladi Shipyard",
+    "SG_FAC_SHIP"
+   ]
+  ],
+  "gate_radius_m": {
+   "n": 600,
+   "min": 1105.0,
+   "p10": 1105.0,
+   "median": 1105.0,
+   "p90": 1105.0,
+   "max": 1105.0
+  },
+  "gate_types": {
+   "0": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "1": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "2": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "3": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "4": {
+    "radius_m": 2900,
+    "scene": "others\\argon_gate_scene"
+   },
+   "5": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "6": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "7": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "8": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "9": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "10": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "11": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "12": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "13": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "14": {
+    "radius_m": 1105,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "15": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "16": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "17": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "18": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "19": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "20": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "21": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   },
+   "22": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   },
+   "23": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   },
+   "24": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   }
+  },
+  "asteroid_types": {
+   "0": {
+    "radius_m": 3512,
+    "with_scene_m": 8686,
+    "scene": "environments\\asteroids\\AtoCDE_scene_dummypositions"
+   },
+   "1": {
+    "radius_m": 2033,
+    "with_scene_m": 4328,
+    "scene": "environments\\asteroids\\BtoCDE_scene_dummypositions"
+   },
+   "2": {
+    "radius_m": 1075,
+    "with_scene_m": 2093,
+    "scene": "environments\\asteroids\\CtoFGH_scene_dummypositions"
+   },
+   "3": {
+    "radius_m": 578,
+    "with_scene_m": 1790,
+    "scene": "environments\\asteroids\\DtoFGH_scene_dummypositions"
+   },
+   "4": {
+    "radius_m": 331,
+    "with_scene_m": 822,
+    "scene": "environments\\asteroids\\EtoFGH_scene_dummypositions"
+   },
+   "5": {
+    "radius_m": 190,
+    "with_scene_m": 232,
+    "scene": "environments\\asteroids\\FtoIJ_scene_dummypositions"
+   },
+   "6": {
+    "radius_m": 112,
+    "with_scene_m": 185,
+    "scene": "environments\\asteroids\\GtoIJ_scene_dummypositions"
+   },
+   "7": {
+    "radius_m": 60,
+    "with_scene_m": 130,
+    "scene": "environments\\asteroids\\HtoIJ_scene_dummypositions"
+   },
+   "8": {
+    "radius_m": 29,
+    "with_scene_m": 47,
+    "scene": "environments\\asteroids\\ItoJ_scene_dummypositions"
+   },
+   "9": {
+    "radius_m": 15,
+    "with_scene_m": 15,
+    "scene": "0"
+   }
+  },
+  "asteroid_radius_placed_m": {
+   "n": 54990,
+   "min": 15.0,
+   "p10": 15.0,
+   "median": 60.0,
+   "p90": 1075.0,
+   "max": 3512.0
+  },
+  "asteroids_per_sector": {
+   "min": 14,
+   "median": 194,
+   "max": 732,
+   "total": 54990
+  },
+  "asteroid_nn_median_per_sector_km": {
+   "n": 247,
+   "min": 0.48,
+   "p10": 0.94,
+   "median": 1.61,
+   "p90": 3.64,
+   "max": 36.49
+  },
+  "gate_to_nearest_asteroid_centre_km": {
+   "n": 600,
+   "min": 1.44,
+   "p10": 11.78,
+   "median": 35.89,
+   "p90": 87.17,
+   "max": 159.45
+  },
+  "station_types_not_in_tables": 0
+ },
+ "stock": {
+  "sources": {
+   "TDocks": "addon/03.cat",
+   "TFactories": "addon/03.cat",
+   "TGates": "addon/01.cat",
+   "TAsteroids": "addon/01.cat",
+   "universe": "addon/02.cat"
+  },
+  "sectors": 239,
+  "sector_size_attr_km": {
+   "n": 239,
+   "min": 20.0,
+   "p10": 25.0,
+   "median": 40.0,
+   "p90": 60.0,
+   "max": 300.0
+  },
+  "object_extent_linf_km": {
+   "n": 238,
+   "min": 11.25,
+   "p10": 28.22,
+   "median": 44.28,
+   "p90": 87.52,
+   "max": 434.33
+  },
+  "gates_per_sector": {
+   "min": 0,
+   "median": 2,
+   "max": 6
+  },
+  "gate_to_gate_km": {
+   "n": 469,
+   "min": 12.57,
+   "p10": 38.49,
+   "median": 58.45,
+   "p90": 100.93,
+   "max": 418.53
+  },
+  "gate_to_nearest_station_km": {
+   "n": 515,
+   "min": 5.36,
+   "p10": 13.4,
+   "median": 21.74,
+   "p90": 44.14,
+   "max": 128.6
+  },
+  "stations_per_sector": {
+   "min": 0,
+   "median": 9,
+   "max": 23,
+   "total": 1794
+  },
+  "station_nn_per_sector_min_km": {
+   "n": 203,
+   "min": 3.02,
+   "p10": 5.69,
+   "median": 10.16,
+   "p90": 24.05,
+   "max": 161.2
+  },
+  "station_nn_per_sector_p10_km": {
+   "n": 203,
+   "min": 3.02,
+   "p10": 5.69,
+   "median": 10.16,
+   "p90": 24.36,
+   "max": 161.2
+  },
+  "station_nn_per_sector_median_km": {
+   "n": 203,
+   "min": 3.58,
+   "p10": 8.54,
+   "median": 14.3,
+   "p90": 30.58,
+   "max": 161.2
+  },
+  "station_radius_by_family_m": {
+   "DOCK_EQUIP": {
+    "n": 28,
+    "min_m": 1863,
+    "median_m": 5565,
+    "max_m": 52487
+   },
+   "DOCK_EXCHANGE": {
+    "n": 8,
+    "min_m": 1351,
+    "median_m": 1547,
+    "max_m": 15574
+   },
+   "DOCK_GONER": {
+    "n": 2,
+    "min_m": 1514,
+    "median_m": 2324,
+    "max_m": 3134
+   },
+   "DOCK_HQ": {
+    "n": 2,
+    "min_m": 3053,
+    "median_m": 6728,
+    "max_m": 10402
+   },
+   "DOCK_PIRATES": {
+    "n": 1,
+    "min_m": 1121,
+    "median_m": 1121,
+    "max_m": 1121
+   },
+   "DOCK_TRADE": {
+    "n": 18,
+    "min_m": 778,
+    "median_m": 2030,
+    "max_m": 52487
+   },
+   "FAC_BIO": {
+    "n": 33,
+    "min_m": 677,
+    "median_m": 1283,
+    "max_m": 2897
+   },
+   "FAC_FOOD": {
+    "n": 31,
+    "min_m": 615,
+    "median_m": 1350,
+    "max_m": 4390
+   },
+   "FAC_MINE": {
+    "n": 53,
+    "min_m": 2458,
+    "median_m": 4390,
+    "max_m": 6756
+   },
+   "FAC_POWER": {
+    "n": 23,
+    "min_m": 697,
+    "median_m": 2513,
+    "max_m": 11840
+   },
+   "FAC_SHIP": {
+    "n": 42,
+    "min_m": 2404,
+    "median_m": 4559,
+    "max_m": 52487
+   },
+   "FAC_STORAGE": {
+    "n": 2,
+    "min_m": 74,
+    "median_m": 342,
+    "max_m": 609
+   },
+   "FAC_TECH": {
+    "n": 258,
+    "min_m": 528,
+    "median_m": 991,
+    "max_m": 6954
+   }
+  },
+  "biggest_station_types_m": [
+   [
+    52487.276,
+    "Unknown Aldrin Base",
+    "SG_DOCK_TRADE"
+   ],
+   [
+    52487.276,
+    "Unknown Aldrin Base",
+    "SG_DOCK_TRADE"
+   ],
+   [
+    52487.276,
+    "Unknown Aldrin Base",
+    "SG_DOCK_EQUIP"
+   ],
+   [
+    52487.276,
+    "Aldrin Ship Production Base",
+    "SG_FAC_SHIP"
+   ],
+   [
+    36706.41,
+    "Earth Torus",
+    "SG_DOCK_TRADE"
+   ],
+   [
+    29962.716,
+    "Military Base",
+    "SG_DOCK_EQUIP"
+   ]
+  ],
+  "gate_radius_m": {
+   "n": 557,
+   "min": 2498.0,
+   "p10": 2999.0,
+   "median": 2999.0,
+   "p90": 7181.0,
+   "max": 7181.0
+  },
+  "gate_types": {
+   "0": {
+    "radius_m": 2999,
+    "scene": "others\\argon_gate_scene"
+   },
+   "1": {
+    "radius_m": 2999,
+    "scene": "others\\argon_gate_scene"
+   },
+   "2": {
+    "radius_m": 2999,
+    "scene": "others\\argon_gate_scene"
+   },
+   "3": {
+    "radius_m": 2999,
+    "scene": "others\\argon_gate_scene"
+   },
+   "4": {
+    "radius_m": 2498,
+    "scene": "others\\argon_gate_destroyed_scene"
+   },
+   "5": {
+    "radius_m": 7181,
+    "scene": "others\\terran_catapult_gate_scene"
+   },
+   "6": {
+    "radius_m": 7181,
+    "scene": "others\\terran_catapult_gate_scene"
+   },
+   "7": {
+    "radius_m": 7181,
+    "scene": "others\\terran_catapult_gate_scene"
+   },
+   "8": {
+    "radius_m": 7181,
+    "scene": "others\\terran_catapult_gate_scene"
+   },
+   "9": {
+    "radius_m": 2995,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "10": {
+    "radius_m": 2995,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "11": {
+    "radius_m": 2995,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "12": {
+    "radius_m": 2995,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "13": {
+    "radius_m": 2995,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "14": {
+    "radius_m": 2995,
+    "scene": "others\\terraformer_gate_active_scene"
+   },
+   "15": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "16": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "17": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "18": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "19": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "20": {
+    "radius_m": 0,
+    "scene": "others\\terraformer_gate_inactive_scene"
+   },
+   "21": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   },
+   "22": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   },
+   "23": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   },
+   "24": {
+    "radius_m": 3208,
+    "scene": "patch20\\terran_gate_scene"
+   }
+  },
+  "asteroid_types": {
+   "0": {
+    "radius_m": 3512,
+    "with_scene_m": 8686,
+    "scene": "environments\\asteroids\\AtoCDE_scene_dummypositions"
+   },
+   "1": {
+    "radius_m": 2033,
+    "with_scene_m": 4328,
+    "scene": "environments\\asteroids\\BtoCDE_scene_dummypositions"
+   },
+   "2": {
+    "radius_m": 1075,
+    "with_scene_m": 2093,
+    "scene": "environments\\asteroids\\CtoFGH_scene_dummypositions"
+   },
+   "3": {
+    "radius_m": 578,
+    "with_scene_m": 1790,
+    "scene": "environments\\asteroids\\DtoFGH_scene_dummypositions"
+   },
+   "4": {
+    "radius_m": 331,
+    "with_scene_m": 822,
+    "scene": "environments\\asteroids\\EtoFGH_scene_dummypositions"
+   },
+   "5": {
+    "radius_m": 190,
+    "with_scene_m": 232,
+    "scene": "environments\\asteroids\\FtoIJ_scene_dummypositions"
+   },
+   "6": {
+    "radius_m": 112,
+    "with_scene_m": 185,
+    "scene": "environments\\asteroids\\GtoIJ_scene_dummypositions"
+   },
+   "7": {
+    "radius_m": 60,
+    "with_scene_m": 130,
+    "scene": "environments\\asteroids\\HtoIJ_scene_dummypositions"
+   },
+   "8": {
+    "radius_m": 29,
+    "with_scene_m": 47,
+    "scene": "environments\\asteroids\\ItoJ_scene_dummypositions"
+   },
+   "9": {
+    "radius_m": 15,
+    "with_scene_m": 15,
+    "scene": "0"
+   }
+  },
+  "asteroid_radius_placed_m": {
+   "n": 2882,
+   "min": 331.0,
+   "p10": 2033.0,
+   "median": 2033.0,
+   "p90": 2033.0,
+   "max": 3512.0
+  },
+  "asteroids_per_sector": {
+   "min": 0,
+   "median": 6,
+   "max": 98,
+   "total": 2882
+  },
+  "asteroid_nn_median_per_sector_km": {
+   "n": 168,
+   "min": 0.0,
+   "p10": 6.4,
+   "median": 10.54,
+   "p90": 23.13,
+   "max": 68.31
+  },
+  "gate_to_nearest_asteroid_centre_km": {
+   "n": 402,
+   "min": 4.68,
+   "p10": 10.86,
+   "median": 22.25,
+   "p90": 46.46,
+   "max": 193.75
+  },
+  "station_types_not_in_tables": 0
+ }
+}

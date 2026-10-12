@@ -1,0 +1,11 @@
+/mnt/c/X3/ZMap/TShips.txt: version 50, header count 521, rows 521
+col  2 -> record +0x08  rotation X (yaw rate), decimal x 65536         0.0375 | 0.058594 | 0.359375
+col  3 -> record +0x0c  rotation Y (pitch rate), decimal x 65536       0.0375 | 0.058594 | 0.359375
+col  4 -> record +0x10  rotation Z (roll rate), decimal x 65536        0.03 | 0.046875 | 0.2875
+col  5 -> record +0x14  ship class (SG_SH_*)                           SG_SH_TL | SG_SH_TS | SG_SH_M4
+col  7 -> record +0x44  max speed                                      56500 | 62000 | 191875
+col  8 -> record +0x48  acceleration                                   2500 | 15000 | 30000
+col 10 -> record +0x50  reaction delay (x 50 ms think interval)        1 | 1 | 1
+col 51 -> record +0xd0  rotation acceleration (% of max rate per s)    10 | 30 | 50
+col 10 distribution [('1', 521)]
+col 51 distribution [('10', 112), ('15', 60), ('40', 51), ('20', 51), ('45', 49), ('30', 28), ('50', 27), ('9', 21), ('25', 19), ('35', 16), ('60', 13), ('0', 12)]

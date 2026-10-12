@@ -1,0 +1,176 @@
+ok   sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab size 2153984
+ok   00452adc a1 34 6f 60 00 8b 80 14 07 00 00 3d e8 03 00 00 simulate: dt = [*0x606f34+0x714], clamp 1000 ms
+ok   004597dd 2b b3 a8 00 00 00 integrator: per-object dt = time - [obj+0xa8]
+ok   00453232 0f bf 43 48 83 f8 14 0f 87 9e 61 00 00 0f b6 88 00 96 45 00 ff 24 8d e0 95 45 00 simulate: class switch
+ok   00453ce0 0f bf 86 58 02 00 00 83 f8 24 simulate: ship command word [flight+0x258]
+ok   00459926 f7 c1 00 00 08 00 integrator: autopilot flag 0x80000 test (hook candidate C)
+ok   004597a5 8b 4b 40 f7 c1 00 00 00 08 integrator: ECX = [obj+0x40] (live to site C)
+ok   004597db 8b f7 2b b3 a8 00 00 00 integrator: ESI = time - [obj+0xa8], EDI = time
+ok   0045992c 0f 84 a9 03 00 00 integrator: je 0x00459cdb (manual-rate path) after site C
+ok   00459943 69 c0 b8 0d 00 00 8b 94 08 d0 00 00 00 integrator: record +0xd0 (rotation acceleration %)
+ok   00459953 8b 88 b0 02 00 00 integrator: flight+0x2b0 rotation-accel factor
+ok   00459969 b9 64 00 00 00 f7 ea f7 f9 integrator: x/100
+ok   00459978 c7 44 24 28 00 00 01 00 integrator: non-ship accel factor 1.0
+ok   004599d4 e8 47 13 fe ff integrator: call 0x0043ad20 (roll axis)
+ok   004599aa 3b c7 0f 84 ea 00 00 00 integrator: axis skipped when the angular acceleration is 0
+ok   0043ad20 83 ec 08 55 56 per-axis controller entry (hook candidate D)
+ok   0043ad58 c2 1c 00 per-axis controller ret 0x1c
+ok   0045a590 8b 43 10 8b 94 0e 20 ff ff ff velocity = basis row 2 x speed [obj+0x10]
+ok   0045a5aa f7 ea 05 00 80 00 00 83 d2 00 0f ac d0 10 16.16 multiply
+ok   0045a5bb 89 04 11 store physics+0x100..0x108
+ok   0045a5d4 66 83 b8 58 02 00 00 05 lateral slip skipped while docking (command 5)
+ok   0045a619 03 84 24 90 00 00 00 slip += lateral part of the old velocity
+ok   0045a69a 8b 4b 60 03 88 00 01 00 00 total velocity = [obj+0x60] + physics+0x100
+ok   0045a6e9 e8 32 7f fb ff call 0x00412620: v*dt/1000
+ok   0045a70d 8b 08 03 ca position x += dx
+ok   0045a74e b9 d0 07 00 00 2b 4c 24 24 slip decay (2000-dt)/2000
+ok   004594ef e8 8c 74 ff ff 39 46 14 desired speed clamped to max 0x00450980
+ok   0045950d 8b 81 78 02 00 00 flight+0x278 speed limit
+ok   00459562 e8 19 76 ff ff call 0x00450b80 acceleration
+ok   0045956c b8 d3 4d 62 10 /1000 magic
+ok   0045958e 85 c9 75 05 b9 01 00 00 00 minimum speed step 1
+ok   004595a3 89 56 10 store current speed
+ok   00450bc6 69 d2 b8 0d 00 00 a1 d4 6f 60 00 8b 89 74 02 00 00 85 c9 8b 44 02 48 acceleration = ship record +0x48 x (1 + flight+0x274)
+ok   00450be3 81 c1 00 00 01 00 acceleration: 1.0 + engine tuning
+ok   0043a6a6 8b 15 d4 6f 60 00 0f bf c9 69 c9 b8 0d 00 00 8b 44 11 44 base max speed = ship record +0x44
+ok   00450992 e8 f9 9c fe ff max speed 0x00450980 starts from 0x0043a690
+ok   004509e8 8b 46 40 a9 00 00 00 40 max speed: hull ramp skipped when obj+0x40 & 0x40000000
+ok   00450a13 e8 f8 de ff ff max speed: type maximum hull 0x0044e910
+ok   00450a20 c1 e1 04 2b cf 03 c9 max speed: y0 = 30 % of speed
+ok   00450a3a 6b c9 5a max speed: x1 = 90 % of max hull
+ok   00450a53 8d 0c 9b 03 c9 max speed: x0 = 10 % of max hull
+ok   00450a6e 8b 8e ec 00 00 00 e8 a7 f0 fd ff max speed: ramp(current hull obj+0xec)
+ok   0044d020 55 8b ec 83 e4 f0 83 ec 14 steering dispatcher prologue (hook candidate B)
+ok   0044d060 83 f8 64 dead zone 100 units
+ok   0044d07f 66 83 7b 48 07 75 0b 8b 7b 50 81 c7 70 08 00 00 ship basis flight+0x870
+ok   0044d0fc 3d 3b ff 00 00 aligned test cos >= 0xff3b
+ok   0044d115 0f bf 53 4a 0f bf 4b 48 69 d2 b8 0d 00 00 8b 04 8d b8 6f 60 00 rates from record +8/+0xc/+0x10
+ok   0044d112 c2 08 00 dispatcher ret 8
+ok   0044d12a 8b 4c 10 08 03 c2 8b 50 0c 3b ca 8b 40 10 53 7e 15 3b d0 8b 55 0c 7f c5 dispatcher: yaw>pitch? pitch>roll -> 0x0044ccc0
+ok   0044d150 3b c8 8b 55 0c 7f b0 e8 14 f8 ff ff dispatcher: yaw>roll -> 0x0044ccc0 else 0x0044c970
+ok   0046065a 81 fb 79 01 00 00 SA_ dispatcher: 0x17a cases
+ok   004344c7 c7 04 c8 30 06 46 00 SA_ module registration of 0x00460630
+ok   0044ccc0 83 ec 18 8b 02 yaw/pitch leaf entry (hook candidate A)
+ok   0044cfe7 81 fe 00 40 00 00 7f 08 81 fe 00 c0 ff ff 7d 02 33 c0 pitch suppressed while |yaw| > 90 deg
+ok   0044cffd 89 77 30 89 47 34 c7 47 38 00 00 00 00 writes yaw, pitch, roll=0
+ok   0044d011 c2 04 00 leaf ret 4
+ok   0044c620 83 ec 18 8b 02 roll+yaw leaf entry (hook candidate A)
+ok   0044c93f 3d 00 20 00 00 yaw suppressed while |roll| > 45 deg
+ok   0044c94c 89 48 30 c7 40 34 00 00 00 00 89 70 38 writes yaw, pitch=0, roll
+ok   0044c960 c2 04 00 leaf ret 4
+ok   0044c970 83 ec 18 8b 02 roll+pitch leaf entry (hook candidate A)
+ok   0044cc91 3d 00 20 00 00 pitch suppressed while |roll| > 45 deg
+ok   0044cc9e c7 40 30 00 00 00 00 89 48 34 89 70 38 writes yaw=0, pitch, roll
+ok   0044ccb2 c2 04 00 leaf ret 4
+ok   004564cd 8b 0d 34 6f 60 00 8b 91 18 07 00 00 2b 96 10 02 00 00 0f 88 f8 2e 00 00 MovePos: think timer flight+0x210
+ok   0045651b e8 40 a8 ff ff 85 c0 74 0a 53 8b d7 e8 94 67 ff ff MovePos: yaw rate != 0 -> 0x0044ccc0
+ok   0045652e 57 53 e8 eb 6a ff ff MovePos: else 0x0044d020
+ok   0045654b 68 88 13 00 00 MovePos: speed 5000 at distance 0
+ok   0045655c e8 cf 34 01 00 MovePos: brake distance v*v/a
+ok   00456568 e8 b3 95 fd ff 89 43 14 MovePos: desired speed = ramp
+ok   00456576 3b b0 60 02 00 00 MovePos: arrival distance <= flight+0x260
+ok   00456584 89 4b 14 MovePos: desired speed 0 on arrival
+ok   004543da 8b 8b a4 00 00 00 8d 84 09 a8 61 00 00 dock: final zone 2r + 25000
+ok   004543f3 33 c0 39 84 24 c0 02 00 00 89 43 14 89 43 10 89 43 60 89 43 64 89 43 68 dock: final zone zeroes speeds and slip
+ok   004544f3 e8 f8 4b fc ff dock: kinematic glide 0x004190f0
+ok   00454745 e8 76 85 ff ff dock approach: 0x0044ccc0
+ok   00454770 3d 1e 05 00 00 dock: roll match when errors < 0x51e
+ok   00454897 3d 33 f3 00 00 dock: facing test cos < 0xf333
+ok   004548a5 c7 43 14 f4 01 00 00 dock: desired speed 500 while not facing
+ok   00454323 8b 82 cc 00 00 00 03 8b a4 00 00 00 2d 00 00 01 00 dock/gate arrival radius |v|/10 + r scaled by time factor
+ok   00454b48 3d b8 56 00 00 FlyBefore: approach distance floor 22200
+ok   00454b5d 3d 98 b1 01 00 FlyBefore: approach distance cap 111000
+ok   00458290 8b 48 1c 8b 50 18 6a 00 51 52 Escort: R(leader alpha, beta, 0)
+ok   004582ac 81 c6 40 02 00 00 Escort: offset vector flight+0x240
+ok   004582c0 e8 db 8a 09 00 Escort: rotate offset
+ok   004582cf 8b 48 30 8b 50 34 Escort: + leader position
+ok   0044049d 8b 4c 07 50 6b c9 32 89 8a 0c 02 00 00 creation: think interval = record +0x50 x 50 ms
+ok   004ee1c9 8b 44 24 08 8b 14 24 b9 00 80 00 00 f7 ea f7 f9 rand() x n / 0x8000
+ok   00462352 66 c7 82 58 02 00 00 19 00 SA_MovePos -> command 0x19
+ok   0046236d 89 91 40 02 00 00 SA_MovePos: target flight+0x240
+ok   00462361 89 91 60 02 00 00 SA_MovePos: radius flight+0x260
+ok   004618e3 66 c7 82 58 02 00 00 14 00 SA_EscortObject -> command 0x14
+ok   004618ef 89 81 24 02 00 00 SA_EscortObject: leader flight+0x224
+ok   004619ac 66 c7 81 58 02 00 00 15 00 SA_FollowObject -> command 0x15
+ok   00460c72 66 c7 81 58 02 00 00 05 00 SA_FlyObjectIntoContainer -> command 5
+ok   0046108c 66 c7 82 58 02 00 00 12 00 SA_AvoidObjectCollision -> command 0x12
+ok   004641f5 89 50 14 SA_SetDesiredSpeed -> obj+0x14
+ok   0046329f 89 78 24 89 50 28 89 48 2c SA_SetRotSpeed -> obj+0x24/0x28/0x2c
+ok   004642d9 89 82 74 02 00 00 SA_SetExtraSpeed -> flight+0x274
+ok   0046433a 89 82 70 02 00 00 SA_SetExtraRotSpeed -> flight+0x270
+ok   004676b2 89 81 b0 02 00 00 SA_SetShipRotAccel -> flight+0x2b0
+ok   00465d3b 89 91 78 02 00 00 SA_SetSpeedLimit -> flight+0x278
+ok   00465d6f 89 91 7c 02 00 00 SA_SetMaxSpeedOverride -> flight+0x27c
+ok   00465da3 89 91 80 02 00 00 SA_SetMaxStrafeSpeedOverride -> flight+0x280
+ok   00463e88 81 48 40 00 00 08 00 SA_SetAutopilot sets 0x80000
+ok   00463ea7 81 60 40 ff ff f7 ff SA_SetAutopilot clears 0x80000
+ok   00462120 8b 50 18 SA_GetRotAlpha <- obj+0x18
+ok   00462147 8b 40 1c SA_GetRotBeta <- obj+0x1c
+ok   00462210 8b 48 20 SA_GetRotGamma <- obj+0x20
+ok   00462909 8b 48 10 SA_GetSpeed <- obj+0x10
+ok   00462931 e8 4a e0 fe ff SA_GetMaxSpeed = 0x00450980
+ok   0046288b 8b 50 70 8b 42 70 SA_GetSize <- physics+0x70
+ok   004364d0 e8 eb 4a 0b 00 89 45 08 rotation X column -> record +0x08 (16.16)
+ok   004364da e8 e1 4a 0b 00 89 45 0c rotation Y column -> record +0x0c
+ok   004364e4 e8 d7 4a 0b 00 rotation Z column parse
+ok   004364f1 89 45 10 rotation Z -> record +0x10
+ok   004373eb e8 20 32 0b 00 89 45 44 TShips speed -> record +0x44
+ok   004373f5 e8 16 32 0b 00 89 45 48 TShips acceleration -> record +0x48
+ok   0043740e 89 45 50 TShips reaction delay -> record +0x50
+ok   004376e9 89 85 d0 00 00 00 TShips rotation acceleration -> record +0xd0
+ok   004376f1 c7 85 d0 00 00 00 64 00 00 00 record +0xd0 default 100 (old files)
+ok   004ec5ce dc 0d c0 54 56 00 decimal parser x 65536.0
+ok   class 7 (ship) -> 0x00453cd7
+ok   class 10 (missile) -> 0x0045324d
+ok   ship command 0x0 -> 0x00458f8e
+ok   ship command 0x4 -> 0x004549c2
+ok   ship command 0x5 -> 0x00453fc2
+ok   ship command 0x6 -> 0x004554af
+ok   ship command 0x12 -> 0x00456722
+ok   ship command 0x14 -> 0x0045820d
+ok   ship command 0x15 -> 0x00458aea
+ok   ship command 0x19 -> 0x004564cd
+ok   ship command 0x1d -> 0x00453cfe
+ok   ship command 0x23 -> 0x0045659c
+ok   SA case 9 SA_FlyObjectIntoContainer -> 0x0046082e
+ok   SA case 15 SA_AvoidObjectCollision -> 0x0046104c
+ok   SA case 20 SA_EscortObject -> 0x004618a6
+ok   SA case 27 SA_FollowObject -> 0x0046196f
+ok   SA case 30 SA_MovePos -> 0x0046232c
+ok   SA case 66 SA_SetDesiredSpeed -> 0x004641c6
+ok   SA case 69 SA_SetRotSpeed -> 0x00463280
+ok   SA case 288 SA_SetAutopilot -> 0x00463e6e
+ok   0x005654e0 = 1/65536 (float)
+ok   0x005654f8 = 2*pi (float)
+ok   0x005654c0 = 65536.0 (double)
+ok   0044ccc0 reached by 17 rel32 calls (expected 17)
+ok   0044ccc0 no rel32 branch into +1..+4 (found 0)
+ok   0044ccc0 +5 is an instruction boundary in the linear sweep
+ok   0044ccc0 no branch in 0044ccc0..0044d014 into the patch bytes (found 0)
+ok   0044ccc0 no aligned data dword points into the patch bytes (found 0)
+ok   0044c620 reached by 2 rel32 calls (expected 2)
+ok   0044c620 no rel32 branch into +1..+4 (found 0)
+ok   0044c620 +5 is an instruction boundary in the linear sweep
+ok   0044c620 no branch in 0044c620..0044c962 into the patch bytes (found 0)
+ok   0044c620 no aligned data dword points into the patch bytes (found 0)
+ok   0044c970 reached by 2 rel32 calls (expected 2)
+ok   0044c970 no rel32 branch into +1..+4 (found 0)
+ok   0044c970 +5 is an instruction boundary in the linear sweep
+ok   0044c970 no branch in 0044c970..0044ccb3 into the patch bytes (found 0)
+ok   0044c970 no aligned data dword points into the patch bytes (found 0)
+ok   0044d020 reached by 15 rel32 calls (expected 15)
+ok   0044d020 no rel32 branch into +1..+5 (found 0)
+ok   0044d020 +6 is an instruction boundary in the linear sweep
+ok   0044d020 no branch in 0044d020..0044d163 into the patch bytes (found 0)
+ok   0044d020 no aligned data dword points into the patch bytes (found 0)
+ok   0043ad20 reached by 20 rel32 calls (expected 20)
+ok   0043ad20 no rel32 branch into +1..+4 (found 0)
+ok   0043ad20 +5 is an instruction boundary in the linear sweep
+ok   0043ad20 no branch in 0043ad20..0043b0a7 into the patch bytes (found 0)
+ok   0043ad20 no aligned data dword points into the patch bytes (found 0)
+ok   00459926 no rel32 branch into +1..+5 (found 0)
+ok   00459926 +6 is an instruction boundary in the linear sweep
+ok   00459926 no branch in 004596e0..0045b627 into the patch bytes (found 0)
+ok   00459926 no aligned data dword points into the patch bytes (found 0)
+checks 121 byte strings; failures 0
+RESULT PASS

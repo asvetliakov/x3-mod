@@ -1,0 +1,741 @@
+{
+ "installed": {
+  "tlaser": {
+   "source": "addon/12.cat",
+   "member": "addon/types/TLaser.txt",
+   "decoded_sha256": "ae77a64272d56565ac873f918d5cfebe00f8b7b3f7d5c552ea4f7ae274837173"
+  },
+  "tbullets": {
+   "source": "addon/12.cat",
+   "member": "addon/types/TBullets.pck",
+   "decoded_sha256": "7b4ab0a6cea2cb0748085ce1155779698a7039e3d5286d11376c5c50e74cd2a2"
+  },
+  "n": 38,
+  "range_m": {
+   "min": 3000.0,
+   "p25": 4000.0,
+   "median": 5300.0,
+   "p75": 8400.0,
+   "max": 21700.0
+  },
+  "speed_mps_median": 2000.0,
+  "lasers": [
+   {
+    "id": "SS_LASER_APC",
+    "subtype": "SG_LASER_TERRAN_LIGHT",
+    "name": "",
+    "bullet": 29,
+    "lifetime_ms": 2000,
+    "speed_mps": 1500.0,
+    "range_m": 3000.0
+   },
+   {
+    "id": "SS_LASER_PG",
+    "subtype": "SG_LASER_TERRAN_LIGHT",
+    "name": "",
+    "bullet": 36,
+    "lifetime_ms": 2300,
+    "speed_mps": 1500.0,
+    "range_m": 3450.0
+   },
+   {
+    "id": "SS_LASER_AKE",
+    "subtype": "SG_LASER_KYON",
+    "name": "Alpha Kyon Emitter",
+    "bullet": 32,
+    "lifetime_ms": 2300,
+    "speed_mps": 1500.0,
+    "range_m": 3450.0
+   },
+   {
+    "id": "SS_LASER_FBL",
+    "subtype": "SG_LASER_PARANID_LIGHT",
+    "name": "Fragmentation Bomb Launcher",
+    "bullet": 5,
+    "lifetime_ms": 7600,
+    "speed_mps": 500.0,
+    "range_m": 3800.0
+   },
+   {
+    "id": "SS_LASER_IRE",
+    "subtype": "SG_LASER_IRE",
+    "name": "Impulse Ray Emitter",
+    "bullet": 0,
+    "lifetime_ms": 2600,
+    "speed_mps": 1500.0,
+    "range_m": 3900.0
+   },
+   {
+    "id": "SS_LASER_PRG",
+    "subtype": "SG_LASER_ARGON_LIGHT",
+    "name": "Phased Repeater Gun",
+    "bullet": 3,
+    "lifetime_ms": 2600,
+    "speed_mps": 1500.0,
+    "range_m": 3900.0
+   },
+   {
+    "id": "SS_LASER_HEPT",
+    "subtype": "SG_LASER_HEPT",
+    "name": "High Energy Plasma Thrower",
+    "bullet": 6,
+    "lifetime_ms": 3900,
+    "speed_mps": 1000.0,
+    "range_m": 3900.0
+   },
+   {
+    "id": "SS_LASER_PBE",
+    "subtype": "SG_LASER_PBE",
+    "name": "Pulsed Beam Emitter",
+    "bullet": 8,
+    "lifetime_ms": 2600,
+    "speed_mps": 1500.0,
+    "range_m": 3900.0
+   },
+   {
+    "id": "SS_LASER_EMPC",
+    "subtype": "SG_LASER_TERRAN_LIGHT",
+    "name": "Electro-Magnetic Plasma Cannon",
+    "bullet": 10,
+    "lifetime_ms": 2600,
+    "speed_mps": 1500.0,
+    "range_m": 3900.0
+   },
+   {
+    "id": "SS_LASER_MD",
+    "subtype": "SG_LASER_MASS",
+    "name": "Mass Driver",
+    "bullet": 2,
+    "lifetime_ms": 1600,
+    "speed_mps": 2500.0,
+    "range_m": 4000.0
+   },
+   {
+    "id": "SS_LASER_PAC",
+    "subtype": "SG_LASER_PAC",
+    "name": "Particle Accelerator Cannon",
+    "bullet": 1,
+    "lifetime_ms": 2700,
+    "speed_mps": 1500.0,
+    "range_m": 4050.0
+   },
+   {
+    "id": "SS_LASER_ID",
+    "subtype": "SG_LASER_BORON_LIGHT",
+    "name": "Ion Disruptor",
+    "bullet": 7,
+    "lifetime_ms": 2700,
+    "speed_mps": 1500.0,
+    "range_m": 4050.0
+   },
+   {
+    "id": "SS_LASER_PBG",
+    "subtype": "SG_LASER_PIRATE_LIGHT",
+    "name": "Plasma Burst Generator",
+    "bullet": 9,
+    "lifetime_ms": 2700,
+    "speed_mps": 1500.0,
+    "range_m": 4050.0
+   },
+   {
+    "id": "SS_LASER_EBC",
+    "subtype": "SG_LASER_TELADI_LIGHT",
+    "name": "Energy Bolt Chaingun",
+    "bullet": 4,
+    "lifetime_ms": 3000,
+    "speed_mps": 1500.0,
+    "range_m": 4500.0
+   },
+   {
+    "id": "SS_LASER_FAA",
+    "subtype": "SG_LASER_TELADI_AF",
+    "name": "Flak Artillery Array",
+    "bullet": 15,
+    "lifetime_ms": 5000,
+    "speed_mps": 1000.0,
+    "range_m": 5000.0
+   },
+   {
+    "id": "SS_LASER_CFA",
+    "subtype": "SG_LASER_ARGON_AF",
+    "name": "Cluster Flak Array",
+    "bullet": 16,
+    "lifetime_ms": 5000,
+    "speed_mps": 1000.0,
+    "range_m": 5000.0
+   },
+   {
+    "id": "SS_LASER_BKE",
+    "subtype": "SG_LASER_KYON",
+    "name": "Beta Kyon Emitter",
+    "bullet": 33,
+    "lifetime_ms": 2500,
+    "speed_mps": 2000.0,
+    "range_m": 5000.0
+   },
+   {
+    "id": "SS_LASER_RL",
+    "subtype": "SG_LASER_SPECIAL",
+    "name": "Repair Laser",
+    "bullet": 35,
+    "lifetime_ms": 1000,
+    "speed_mps": 5000.0,
+    "range_m": 5000.0
+   },
+   {
+    "id": "SS_LASER_MAML",
+    "subtype": "SG_LASER_TERRAN_MEDIUM",
+    "name": "Matter/Anti-Matter Launcher",
+    "bullet": 14,
+    "lifetime_ms": 2600,
+    "speed_mps": 2000.0,
+    "range_m": 5200.0
+   },
+   {
+    "id": "SS_LASER_CIG",
+    "subtype": "SG_LASER_CIG",
+    "name": "Concussion Impulse Generator",
+    "bullet": 11,
+    "lifetime_ms": 2700,
+    "speed_mps": 2000.0,
+    "range_m": 5400.0
+   },
+   {
+    "id": "SS_LASER_PBC",
+    "subtype": "SG_LASER_UNKNOWN1",
+    "name": "Plasma Beam Cannon",
+    "bullet": 25,
+    "lifetime_ms": 900,
+    "speed_mps": 6000.0,
+    "range_m": 5400.0
+   },
+   {
+    "id": "SS_LASER_GRC",
+    "subtype": "SG_LASER_TERRAN_MEDIUM",
+    "name": "",
+    "bullet": 30,
+    "lifetime_ms": 2700,
+    "speed_mps": 2000.0,
+    "range_m": 5400.0
+   },
+   {
+    "id": "SS_LASER_IPG",
+    "subtype": "SG_LASER_BORON_MEDIUM",
+    "name": "Ion Pulse Generator",
+    "bullet": 12,
+    "lifetime_ms": 3700,
+    "speed_mps": 1500.0,
+    "range_m": 5550.0
+   },
+   {
+    "id": "SS_LASER_ISR",
+    "subtype": "SG_LASER_SPLIT_MEDIUM",
+    "name": "Ion Shard Railgun",
+    "bullet": 13,
+    "lifetime_ms": 2800,
+    "speed_mps": 2000.0,
+    "range_m": 5600.0
+   },
+   {
+    "id": "SS_LASER_SSC",
+    "subtype": "SG_LASER_TERRAN_AF",
+    "name": "Starburst Shockwave Cannon",
+    "bullet": 19,
+    "lifetime_ms": 2800,
+    "speed_mps": 2000.0,
+    "range_m": 5600.0
+   },
+   {
+    "id": "SS_LASER_PSG",
+    "subtype": "SG_LASER_PARANID_AF",
+    "name": "Phased Shockwave Generator",
+    "bullet": 18,
+    "lifetime_ms": 2900,
+    "speed_mps": 2000.0,
+    "range_m": 5800.0
+   },
+   {
+    "id": "SS_LASER_PALC",
+    "subtype": "SG_LASER_SPLIT_MEDIUM",
+    "name": "Phased Array Laser Cannon",
+    "bullet": 17,
+    "lifetime_ms": 3000,
+    "speed_mps": 2000.0,
+    "range_m": 6000.0
+   },
+   {
+    "id": "SS_LASER_MDS",
+    "subtype": "SG_LASER_UNKNOWN2",
+    "name": "Mobile Drilling System",
+    "bullet": 37,
+    "lifetime_ms": 6000,
+    "speed_mps": 1000.0,
+    "range_m": 6000.0
+   },
+   {
+    "id": "SS_LASER_RG",
+    "subtype": "SG_LASER_UNKNOWN1",
+    "name": "",
+    "bullet": 28,
+    "lifetime_ms": 4200,
+    "speed_mps": 2000.0,
+    "range_m": 8400.0
+   },
+   {
+    "id": "SS_LASER_PAA",
+    "subtype": "SG_LASER_SPLIT_AF",
+    "name": "",
+    "bullet": 31,
+    "lifetime_ms": 6700,
+    "speed_mps": 2500.0,
+    "range_m": 16750.0
+   },
+   {
+    "id": "SS_LASER_GKE",
+    "subtype": "SG_LASER_KYON",
+    "name": "Gamma Kyon Emitter",
+    "bullet": 34,
+    "lifetime_ms": 4800,
+    "speed_mps": 3500.0,
+    "range_m": 16800.0
+   },
+   {
+    "id": "SS_LASER_TBC",
+    "subtype": "SG_LASER_PARANID_BEAM",
+    "name": "Tri-Beam Cannon",
+    "bullet": 26,
+    "lifetime_ms": 5000,
+    "speed_mps": 3500.0,
+    "range_m": 17500.0
+   },
+   {
+    "id": "SS_LASER_IBL",
+    "subtype": "SG_LASER_PIRATE_HEAVY",
+    "name": "Incendiary Bomb Launcher",
+    "bullet": 23,
+    "lifetime_ms": 5200,
+    "speed_mps": 3500.0,
+    "range_m": 18200.0
+   },
+   {
+    "id": "SS_LASER_PPC",
+    "subtype": "SG_LASER_PPC",
+    "name": "Photon Pulse Cannon",
+    "bullet": 20,
+    "lifetime_ms": 5500,
+    "speed_mps": 3500.0,
+    "range_m": 19250.0
+   },
+   {
+    "id": "SS_LASER_FBC",
+    "subtype": "SG_LASER_TERRAN_BEAM",
+    "name": "Fusion Beam Cannon",
+    "bullet": 27,
+    "lifetime_ms": 5700,
+    "speed_mps": 3500.0,
+    "range_m": 19950.0
+   },
+   {
+    "id": "SS_LASER_IC",
+    "subtype": "SG_LASER_BORON_HEAVY",
+    "name": "Ion Cannon",
+    "bullet": 21,
+    "lifetime_ms": 6700,
+    "speed_mps": 3000.0,
+    "range_m": 20100.0
+   },
+   {
+    "id": "SS_LASER_GC",
+    "subtype": "SG_LASER_TELADI_HEAVY",
+    "name": "Gauss Cannon",
+    "bullet": 22,
+    "lifetime_ms": 6000,
+    "speed_mps": 3500.0,
+    "range_m": 21000.0
+   },
+   {
+    "id": "SS_LASER_PSP",
+    "subtype": "SG_LASER_TERRAN_HEAVY",
+    "name": "Point Singularity Projector",
+    "bullet": 24,
+    "lifetime_ms": 6200,
+    "speed_mps": 3500.0,
+    "range_m": 21700.0
+   }
+  ]
+ },
+ "stock": {
+  "tlaser": {
+   "source": "addon/01.cat",
+   "member": "addon/types/TLaser.pck",
+   "decoded_sha256": "0dbf9016032496a3386d32c62b996204468400fb5142db9f1589083821d37cd7"
+  },
+  "tbullets": {
+   "source": "addon/02.cat",
+   "member": "addon/types/TBullets.pck",
+   "decoded_sha256": "be762076cdc38b03c3435432dea2708e92865ffbbc886f723d0ad3141dfad39a"
+  },
+  "n": 39,
+  "range_m": {
+   "min": 787.5,
+   "p25": 1974.5,
+   "median": 2324.4,
+   "p75": 4857.2,
+   "max": 100000.0
+  },
+  "speed_mps_median": 739.0,
+  "lasers": [
+   {
+    "id": "SS_LASER_PD",
+    "subtype": "SG_LASER_PIRATE_LIGHT",
+    "name": "Plasma Burst Generator",
+    "bullet": 9,
+    "lifetime_ms": 2100,
+    "speed_mps": 375.0,
+    "range_m": 787.5
+   },
+   {
+    "id": "SS_LASER_IOND",
+    "subtype": "SG_LASER_BORON_LIGHT",
+    "name": "Ion Disruptor",
+    "bullet": 7,
+    "lifetime_ms": 463,
+    "speed_mps": 2027.252,
+    "range_m": 938.617676
+   },
+   {
+    "id": "SS_LASER_PBE",
+    "subtype": "SG_LASER_PBE",
+    "name": "Pulsed Beam Emitter",
+    "bullet": 8,
+    "lifetime_ms": 140,
+    "speed_mps": 6980.0,
+    "range_m": 977.2
+   },
+   {
+    "id": "SS_LASER_MASS",
+    "subtype": "SG_LASER_MASS",
+    "name": "Mass Driver",
+    "bullet": 2,
+    "lifetime_ms": 1350,
+    "speed_mps": 739.0,
+    "range_m": 997.65
+   },
+   {
+    "id": "SS_LASER_IRE",
+    "subtype": "SG_LASER_IRE",
+    "name": "Impulse Ray Emitter",
+    "bullet": 0,
+    "lifetime_ms": 1200,
+    "speed_mps": 1162.0,
+    "range_m": 1394.4
+   },
+   {
+    "id": "SS_LASER_PSG",
+    "subtype": "SG_LASER_PARANID_AF",
+    "name": "Phased Shockwave Generator",
+    "bullet": 18,
+    "lifetime_ms": 5682,
+    "speed_mps": 254.0,
+    "range_m": 1443.228
+   },
+   {
+    "id": "SS_LASER_DUMMY2",
+    "subtype": "SG_LASER_UNKNOWN2",
+    "name": "(do not speak)SPARE LASER 2",
+    "bullet": 31,
+    "lifetime_ms": 300,
+    "speed_mps": 5993.99,
+    "range_m": 1798.197
+   },
+   {
+    "id": "SS_LASER_KH_ALPHA",
+    "subtype": "SG_LASER_KYON",
+    "name": "Alpha Kyon Emitter",
+    "bullet": 32,
+    "lifetime_ms": 300,
+    "speed_mps": 5993.99,
+    "range_m": 1798.197
+   },
+   {
+    "id": "SS_LASER_PAC",
+    "subtype": "SG_LASER_PAC",
+    "name": "Particle Accelerator Cannon",
+    "bullet": 1,
+    "lifetime_ms": 2740,
+    "speed_mps": 703.0,
+    "range_m": 1926.22
+   },
+   {
+    "id": "SS_LASER_FBL",
+    "subtype": "SG_LASER_PARANID_LIGHT",
+    "name": "Fragmentation Bomb Launcher",
+    "bullet": 5,
+    "lifetime_ms": 5500,
+    "speed_mps": 359.0,
+    "range_m": 1974.5
+   },
+   {
+    "id": "SS_LASER_FLAK_CLUSTER",
+    "subtype": "SG_LASER_ARGON_AF",
+    "name": "Cluster Flak Array",
+    "bullet": 16,
+    "lifetime_ms": 900,
+    "speed_mps": 2200.0,
+    "range_m": 1980.0
+   },
+   {
+    "id": "SS_LASER_TERRANANTIFIGHTER",
+    "subtype": "SG_LASER_TERRAN_AF",
+    "name": "Starburst Shockwave Cannon",
+    "bullet": 19,
+    "lifetime_ms": 1000,
+    "speed_mps": 2000.0,
+    "range_m": 2000.0
+   },
+   {
+    "id": "SS_LASER_TUG",
+    "subtype": "SG_LASER_SPECIAL",
+    "name": "Tractor Beam",
+    "bullet": 29,
+    "lifetime_ms": 500,
+    "speed_mps": 4000.0,
+    "range_m": 2000.0
+   },
+   {
+    "id": "SS_LASER_TERRANANTIFIGHTER_1",
+    "subtype": "SG_LASER_UNKNOWN1",
+    "name": "Prototype Starburst Shockwave Cannon",
+    "bullet": 19,
+    "lifetime_ms": 1000,
+    "speed_mps": 2000.0,
+    "range_m": 2000.0
+   },
+   {
+    "id": "SS_LASER_EMP",
+    "subtype": "SG_LASER_TERRAN_LIGHT",
+    "name": "Electro-Magnetic Plasma Cannon",
+    "bullet": 10,
+    "lifetime_ms": 3405,
+    "speed_mps": 588.0,
+    "range_m": 2002.14
+   },
+   {
+    "id": "SS_LASER_EMP_1",
+    "subtype": "SG_LASER_UNKNOWN1",
+    "name": "Experimental Electro-Magnetic Plasma Cannon",
+    "bullet": 10,
+    "lifetime_ms": 3405,
+    "speed_mps": 588.0,
+    "range_m": 2002.14
+   },
+   {
+    "id": "SS_LASER_FLAK_ALPHA",
+    "subtype": "SG_LASER_TELADI_AF",
+    "name": "Flak Artillery Array",
+    "bullet": 15,
+    "lifetime_ms": 300,
+    "speed_mps": 7051.0,
+    "range_m": 2115.3
+   },
+   {
+    "id": "SS_LASER_REPAIR",
+    "subtype": "SG_LASER_SPECIAL",
+    "name": "Repair Laser",
+    "bullet": 35,
+    "lifetime_ms": 500,
+    "speed_mps": 4400.0,
+    "range_m": 2200.0
+   },
+   {
+    "id": "SS_LASER_HEPT",
+    "subtype": "SG_LASER_HEPT",
+    "name": "High Energy Plasma Thrower",
+    "bullet": 6,
+    "lifetime_ms": 5360,
+    "speed_mps": 431.0,
+    "range_m": 2310.16
+   },
+   {
+    "id": "SS_LASER_PRG",
+    "subtype": "SG_LASER_ARGON_LIGHT",
+    "name": "Phased Repeater Gun",
+    "bullet": 3,
+    "lifetime_ms": 1490,
+    "speed_mps": 1560.0,
+    "range_m": 2324.4
+   },
+   {
+    "id": "SS_LASER_EBC",
+    "subtype": "SG_LASER_TELADI_LIGHT",
+    "name": "Energy Bolt Chaingun",
+    "bullet": 4,
+    "lifetime_ms": 4660,
+    "speed_mps": 604.0,
+    "range_m": 2814.64
+   },
+   {
+    "id": "SS_LASER_ESR",
+    "subtype": "SG_LASER_SPLIT_MEDIUM",
+    "name": "Ion Shard Railgun",
+    "bullet": 13,
+    "lifetime_ms": 6700,
+    "speed_mps": 498.0,
+    "range_m": 3336.6
+   },
+   {
+    "id": "SS_LASER_KH_BETA",
+    "subtype": "SG_LASER_KYON",
+    "name": "Beta Kyon Emitter",
+    "bullet": 33,
+    "lifetime_ms": 350,
+    "speed_mps": 9765.764,
+    "range_m": 3418.0173999999997
+   },
+   {
+    "id": "SS_LASER_CIG",
+    "subtype": "SG_LASER_CIG",
+    "name": "Concussion Impulse Generator",
+    "bullet": 11,
+    "lifetime_ms": 8250,
+    "speed_mps": 420.0,
+    "range_m": 3465.0
+   },
+   {
+    "id": "SS_LASER_MAM",
+    "subtype": "SG_LASER_TERRAN_MEDIUM",
+    "name": "Matter/Anti-Matter Launcher",
+    "bullet": 14,
+    "lifetime_ms": 8150,
+    "speed_mps": 445.0,
+    "range_m": 3626.75
+   },
+   {
+    "id": "SS_LASER_MAM_1",
+    "subtype": "SG_LASER_UNKNOWN1",
+    "name": "Prototype Matter/Anti-Matter Launcher",
+    "bullet": 14,
+    "lifetime_ms": 8150,
+    "speed_mps": 445.0,
+    "range_m": 3626.75
+   },
+   {
+    "id": "SS_LASER_IPG",
+    "subtype": "SG_LASER_BORON_MEDIUM",
+    "name": "Ion Pulse Generator",
+    "bullet": 12,
+    "lifetime_ms": 11200,
+    "speed_mps": 347.0,
+    "range_m": 3886.4
+   },
+   {
+    "id": "SS_LASER_GAUSS",
+    "subtype": "SG_LASER_TELADI_HEAVY",
+    "name": "Gauss Cannon",
+    "bullet": 22,
+    "lifetime_ms": 13560,
+    "speed_mps": 353.0,
+    "range_m": 4786.68
+   },
+   {
+    "id": "SS_LASER_MINING",
+    "subtype": "SG_LASER_SPECIAL",
+    "name": "Mobile Drilling System",
+    "bullet": 28,
+    "lifetime_ms": 57500,
+    "speed_mps": 84.0,
+    "range_m": 4830.0
+   },
+   {
+    "id": "SS_LASER_KH_GAMMA",
+    "subtype": "SG_LASER_KYON",
+    "name": "Gamma Kyon Emitter",
+    "bullet": 34,
+    "lifetime_ms": 400,
+    "speed_mps": 12143.0,
+    "range_m": 4857.2
+   },
+   {
+    "id": "SS_LASER_IONC",
+    "subtype": "SG_LASER_BORON_HEAVY",
+    "name": "Ion Cannon",
+    "bullet": 21,
+    "lifetime_ms": 13250,
+    "speed_mps": 387.0,
+    "range_m": 5127.75
+   },
+   {
+    "id": "SS_LASER_IBL",
+    "subtype": "SG_LASER_PIRATE_HEAVY",
+    "name": "Incendiary Bomb Launcher",
+    "bullet": 23,
+    "lifetime_ms": 16500,
+    "speed_mps": 312.0,
+    "range_m": 5148.0
+   },
+   {
+    "id": "SS_LASER_PBC",
+    "subtype": "SG_LASER_ARGON_BEAM",
+    "name": "Plasma Beam Cannon",
+    "bullet": 25,
+    "lifetime_ms": 550,
+    "speed_mps": 10644.0,
+    "range_m": 5854.2
+   },
+   {
+    "id": "SS_LASER_TRIBEAM",
+    "subtype": "SG_LASER_PARANID_BEAM",
+    "name": "Tri-Beam Cannon",
+    "bullet": 26,
+    "lifetime_ms": 1100,
+    "speed_mps": 5630.0,
+    "range_m": 6193.0
+   },
+   {
+    "id": "SS_LASER_PAL",
+    "subtype": "SG_LASER_SPLIT_AF",
+    "name": "Phased Array Laser Cannon",
+    "bullet": 17,
+    "lifetime_ms": 2490,
+    "speed_mps": 2561.0,
+    "range_m": 6376.89
+   },
+   {
+    "id": "SS_LASER_PSP",
+    "subtype": "SG_LASER_TERRAN_HEAVY",
+    "name": "Point Singularity Projector",
+    "bullet": 24,
+    "lifetime_ms": 20000,
+    "speed_mps": 321.0,
+    "range_m": 6420.0
+   },
+   {
+    "id": "SS_LASER_PPC",
+    "subtype": "SG_LASER_PPC",
+    "name": "Photon Pulse Cannon",
+    "bullet": 20,
+    "lifetime_ms": 19890,
+    "speed_mps": 333.0,
+    "range_m": 6623.37
+   },
+   {
+    "id": "SS_LASER_FUSIONBEAM",
+    "subtype": "SG_LASER_TERRAN_BEAM",
+    "name": "Fusion Beam Cannon",
+    "bullet": 27,
+    "lifetime_ms": 2493,
+    "speed_mps": 2660.768,
+    "range_m": 6633.294624
+   },
+   {
+    "id": "SS_LASER_DUMMY1",
+    "subtype": "SG_LASER_UNKNOWN2",
+    "name": "(do not speak)SPARE LASER 1",
+    "bullet": 30,
+    "lifetime_ms": 4000,
+    "speed_mps": 25000.0,
+    "range_m": 100000.0
+   }
+  ]
+ }
+}

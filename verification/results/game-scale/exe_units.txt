@@ -1,0 +1,19 @@
+X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+PASS global 0x60 name: SG_MAX_DISTANCE_COMM
+PASS global 0x7a name: SG_TRACTOR_BREAK_DIST
+PASS global 0x7d name: SG_TRACTOR_SPEED_LIMIT
+PASS COMM x500: ['imul eax, eax, 0x1f4', 'test ecx, ecx']
+PASS TRACTOR_BREAK x500: ['imul eax, eax, 0x1f4', 'test ecx, ecx']
+PASS TRACTOR_SPEED x500: ['imul eax, eax, 0x1f4', 'test ecx, ecx']
+PASS speed limit vs obj+0x10: ['mov ecx, dword ptr [0x57a76c]']
+PASS break dist vs |dpos|: ['mov ecx, dword ptr [0x57a764]']
+PASS angle scale 1/65536: 1.52587890625e-05
+PASS angle scale 2pi: True
+PASS mask 0xffff in 0x004f0270: ['mov eax, 0xffff']
+PASS rate*dt/1000: ['mov eax, dword ptr [esp + 0x14]', 'mov edx, dword ptr [esp + 0x24]', 'mov ecx, 0x3e8', 'imul edx', 'idiv ecx']
+PASS dt clamp 1000 ms: ['cmp esi, 0x3e8']
+PASS rot X getter +8: ['mov ecx, dword ptr [edx + eax + 8]']
+PASS accel getter +0x48: ['mov eax, dword ptr [edx + eax + 0x48]']
+PASS laser range getter: ['mov ecx, dword ptr [edx + eax + 0x50]', 'mov ecx, 0x3e8', 'imul edx', 'idiv ecx']
+PASS radius from 0x488170: ['call 0x488170', 'mov dword ptr [ebp + 0xa4], eax']
+fails 0
