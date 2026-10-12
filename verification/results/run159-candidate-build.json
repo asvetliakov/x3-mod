@@ -1,0 +1,22 @@
+{
+  "dll": "detached worktree /tmp/x3-run159-candidate of 7efafee5, build/d3d9.dll (clean configure + build)",
+  "sha256": "fd925fbfbbcbf207004b3e45fd45d1baf8a398b8ed691caf0d4c027da8e71846",
+  "bytes": 58679644,
+  "commit": "7efafee5",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 969, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites OK (candidate tree); fixture 7260/7260, capital 2633/2633, E vs amendment 15 0/400k, Run158 replay byte-identical (implementer, same commit, docs/verification/ship-steering.md)"
+  },
+  "changes_since_run158": [
+    "36726cfc amendment 16 design",
+    "453d12ed addendum (widths, chain)",
+    "198fede0 backlog",
+    "7efafee5 amendments 16 + 16b implementation"
+  ],
+  "trigger": "Run158: five capitals at gate 2 stalled (capital-vs-capital detours at the grid, join fallback latches, gate warn in fallback)",
+  "producer": "main session (Fable 5.1), 2026-10-13"
+}
