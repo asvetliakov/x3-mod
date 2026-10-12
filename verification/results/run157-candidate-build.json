@@ -1,0 +1,24 @@
+{
+  "dll": "detached worktree /tmp/x3-run157-candidate of af5ec4cf, build/d3d9.dll (clean configure + build)",
+  "sha256": "ecd0504677128ff29fb893704a1dc3939e39f0b60cf23fb0b94393d27d45d0ac",
+  "bytes": 58300771,
+  "commit": "af5ec4cf",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 955, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "test_ship_steering test_ship_steering_sites test_config_schema OK (fixture 5052/5052, 131 slip gaps reported)"
+  },
+  "changes_since_run156": [
+    "1f06f52d Run156 triage",
+    "bd2366b1 design capital gate transit",
+    "e81d4d8f model calibration + amendment 12 (port-roll hysteresis, stopping angle)",
+    "2b1d88a7 design slip-aware steering (not yet implemented)",
+    "01d5793d gate queue script RE",
+    "af5ec4cf capital gate transit (amendment 13)"
+  ],
+  "trigger": "Run156: capitals pass but churn in the engine's avoid order and rotate 30-45 s at the grid point; user decision: capitals ignore ships < r/3",
+  "producer": "main session (Fable 5.1), 2026-10-12"
+}
