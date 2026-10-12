@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run153-candidate of e8213104, build/d3d9.dll (clean configure + build)",
+  "sha256": "ff19c50fcd70d73811868d8c61f96c11b924ab9f73baec96a8c3ba1b90f2250c",
+  "bytes": 58228777,
+  "commit": "e8213104",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix, cmake + Ninja); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 953, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "4 modules 37 OK (fixture 3595/3595)",
+    "not_run": "Wine fixtures (no Wine on this host)"
+  },
+  "changes_since_run152_4dd5be62": [
+    "3db414a0 Run152 triage",
+    "step 4: approach spread, exit spread (site W 0x00465bac), capital lead-in, order-5 cornering, per-approach gate verdict, gate transition diagnostic"
+  ],
+  "trigger": "Run152: small ships still stop before the gate (order 5 starts 61-70 deg off the pass point); user decision: approach/exit spread and capital alignment",
+  "producer": "main session (Fable 5.1), 2026-10-12"
+}

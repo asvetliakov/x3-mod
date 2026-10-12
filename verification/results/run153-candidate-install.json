@@ -1,0 +1,25 @@
+{
+  "run": 153,
+  "platform": "native Windows 11, C:\\X3",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run152; cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+  "installed_at": "2026-10-12",
+  "commit": "e8213104",
+  "candidate_record": "verification/results/run153-candidate-build.json",
+  "installed": {
+    "path": "C:\\X3\\d3d9.dll",
+    "sha256": "ff19c50fcd70d73811868d8c61f96c11b924ab9f73baec96a8c3ba1b90f2250c",
+    "bytes": 58228777,
+    "verified_bytes": true,
+    "method": "cmp"
+  },
+  "previous": {
+    "run": 152,
+    "sha256": "7d0f683841c4369ef1106d59650435c8c9c9830fc0aeb7e21b41031c6d012f37",
+    "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run152"
+  },
+  "release_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run150 (release 1.2.1)",
+  "x3m_ini": "unchanged (ship_steering=1, ship_avoidance=1, perf=1, debug=1; ship_steering_gates default on)",
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "step 4; Run 153 A open",
+  "producer": "main session"
+}
