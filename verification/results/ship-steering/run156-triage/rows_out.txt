@@ -1,0 +1,149 @@
+== 1 identity
+sha256=b17fb4eb79088e15e3facb82a308db746a329775736af77278fc702e71332c9a bytes=58267592
+source_commit=9a4e1b2e739051c822ac66fabc428d40ceca938f
+log_open file=C:\X3\x3m.log source=game previous=renamed session=20261012-192902-35060 stale_removed=0
+session_end frames=39944 elapsed_ms=224242 devices=1 resets=0 exception=0 dropped=0 filter=ours
+exception rows in the whole log: 0
+crash files newer than the log start (none listed = none):
+ship_trace installed=1 max_ships=4 ring=128 idle_ms=5000 bytes_per_row_est=370
+ship_steering installed=1 sites=4 class_mask=0x0000 timing=1 tau_s=0.15 tick_s=0.05 floor_ms=10 bank_deg=35 ha
+ship_steering_site index=0 site=0x0044ccc0 name=ship_steer_leaf_yaw_pitch status=active write=atomic stub=0x68
+ship_steering_site index=1 site=0x0044c620 name=ship_steer_leaf_roll_yaw status=active write=atomic stub=0x686
+ship_steering_site index=2 site=0x0044c970 name=ship_steer_leaf_roll_pitch status=active write=atomic stub=0x6
+ship_steering_site index=3 site=0x004593dd name=ship_steer_loop_continue status=active write=plain stub=0x6867
+ship_avoidance installed=1 warn_site=0x0044dd90 warn_status=active write=atomic snapshot_capacity=1024 snapsho
+ship_steering_gates installed=1 status=active sites=4 lead_in_deg=14.17 cross_fraction=0.75 look_s=0.75 look_m
+ship_steering_gate_site index=0 site=0x00454b91 name=ship_gate_stop_a status=active write=atomic stub=0x6867ca
+ship_steering_gate_site index=1 site=0x00454700 name=ship_gate_stop_b status=active write=atomic stub=0x6867ca
+ship_steering_gate_site index=2 site=0x0045526f name=ship_gate_launch status=active write=plain stub=0x6867cb2
+ship_steering_gate_site index=3 site=0x00465bac name=ship_gate_warp_in status=active write=plain stub=0x6867cb
+refused rows: 0
+SETA: trace game 1506 s over real 201 s, ratio 7.49
+== 1 summary health over 202 intervals (interval_ms sum 208765)
+counter                          Run156     Run155
+conflict_episodes                    86        593
+unresolved_episodes                  73        267
+unresolved                         1324      11053
+unresolved_inside_stop                5         99
+unresolved_inside_turn              283       2027
+unresolved_blocked                    0        154
+unresolved_behind                  1036       8773
+detours                            6454      54321
+emergency                           510       3322
+avoid_calls                      557776     859967
+avoid_skipped_small               71934          0
+avoid_excluded_followers          68811     172222
+gate_crossings                       38         49
+gate_p2                              58         73
+gate_p4                              59         75
+gate_p5                             887        897
+gate_p2_capital                       3          0
+gate_p4_capital                       3          0
+gate_capital_aligned                  0          0
+gate_lead_validated                  38         47
+gate_lead_fallback                    0          0
+gate_dock_writes                  12020      11360
+gate_dock_blocked                   337         83
+gate_dock_invalid                     0          0
+gate_warp_calls                       0          0
+gate_warp_skipped                     0          0
+gate_rows_dropped                     0          0
+snapshot_overflow                     0          0
+pass_order_not_steered             5389       6031
+pass_table_full                       0          0
+pass_not_finite                       0          0
+ship_trace_rows                  131154     138259
+ship_trace_dropped                    0          0
+stuck_total(last) 0 stuck rows 0 | handled_by_order_total(last) 0x4:101868,0x5:40942,0x12:6436,0x14:133115,0x15:258118,0x19:64675
+handler_us_p50 med 0.8 p99 med 6.4 p99 max 29.1 p99>5: 138 max_us 30.3 max>50: 0
+== 3 small ships: ship_gate_transition 38 approach 41
+class {'TS': 22, 'M4': 5, 'M6': 10, 'M8': 1} capital {'0': 38} validated {'matched': 38} dock_blocked {'0': 35, '1': 3}
+  all transitions 38 err_B_deg n=38 min=27.4 p25=38.2 med=55.8 p75=73.0 max=163.1 >18.2: 38
+   v_ms at o5 start n=38 min=78.7 p25=110.0 med=150.0 p75=178.8 max=405.0 | cross_heading_err n=38 min=0.8 p25=18.9 med=35.9 p75=58.5 max=123.5 | cross_v n=38 min=81.5 p25=111.2 med=151.5 p75=180.0 max=406.2
+    M4 n=5 cross_to_launch_s n=5 min=6.3 p25=6.5 med=6.5 p75=6.7 max=7.0
+    M6 n=10 cross_to_launch_s n=10 min=9.1 p25=12.0 med=15.6 p75=19.3 max=22.2
+    M8 n=1 cross_to_launch_s n=1 min=11.0 p25=11.0 med=11.0 p75=11.0 max=11.0
+    TS n=22 cross_to_launch_s n=22 min=12.2 p25=16.0 med=19.0 p75=21.8 max=26.9
+  gate 0x8cb546d8 (traced) transitions 9 err_B_deg n=9 min=29.4 p25=37.9 med=52.2 p75=60.5 max=81.5 >18.2: 9
+   v_ms at o5 start n=9 min=110.0 p25=141.6 med=159.2 p75=174.0 max=325.9 | cross_heading_err n=9 min=11.7 p25=17.3 med=35.7 p75=43.4 max=69.4 | cross_v n=9 min=111.2 p25=143.0 med=160.0 p75=175.0 max=327.5
+    M4 n=2 cross_to_launch_s n=2 min=6.3 p25=6.3 med=6.5 p75=6.7 max=6.7
+    M6 n=2 cross_to_launch_s n=2 min=9.1 p25=9.1 med=11.6 p75=14.2 max=14.2
+    TS n=5 cross_to_launch_s n=5 min=12.2 p25=13.6 med=21.0 p75=21.8 max=26.9
+capital approach rows: [('0x8c71c728', 'M2', '26.6', '98.7', '0'), ('0x8cb4e7c8', 'M2', '28.3', '152.1', '0'), ('0x8c7228a8', 'M1', '21.4', '109.3', '0')]
+== 4 small-ship detours vs capital obstacles
+rows 180 subjects 3 miss<C 86 miss n=180 min=1000 p25=1092 med=1538 p75=1674 max=1831 C ['1185.0']
+   0x359c3560 vs {'0x8cb4e7c8': 47} min miss 1061 min t_cpa 4.0 leader {'0x8c71c728'}
+   0x359d2098 vs {'0x8cb4e7c8': 55} min miss 1026 min t_cpa 3.1 leader {'0x8c71c728'}
+   0x8cb71758 vs {'0x8c71c728': 78} min miss 1000 min t_cpa 4.6 leader {'0x8cb546d8'}
+capital-as-subject detours 640 vs small (C<2000) 381 distinct small obstacles 5
+per-interval nonzero: unresolved_inside_stop 1 emergency 18 max emergency 86
+== 2 capital timeline: capital_timeline.py > capital_timeline.txt
+== 0x8c71c728 class M2 gate 0x8cb546d8 rows 16712 | G_m [-7498, 10774, -57569] F [0.0, 0.0, -1.0] | order-4 givens 2
+   first row within 3 r_gate (3315 m) of G: frame 14773 t 23138.1 s; warp end t 23329.3 s; total 191.2 s
+   order-4 total 356.2 s in 14 segs; order-0x12 total 256.8 s in 13 segs; first o4 t 22669.2 s
+   0x1f at frame 16904: hdg_err start 98.8 end 8.2 deg, rows with v!=0 0, max rate |y,p,r| [1062, 601, 0], dP 823 m, dG 4476 m
+== 0x8cb4e7c8 class M2 gate 0x8cb546d8 rows 3449 | G_m [-7498, 10774, -57569] F [0.0, 0.0, -1.0] | order-4 givens 1
+   first row within 3 r_gate (3315 m) of G: frame 19023 t 23420.3 s; warp end t 23554.8 s; total 134.5 s
+   order-4 total 58.8 s in 4 segs; order-0x12 total 110.3 s in 3 segs; first o4 t 23342.4 s
+   0x1f at frame 20515: hdg_err start 152.1 end 8.1 deg, rows with v!=0 0, max rate |y,p,r| [1314, 364, 0], dP 826 m, dG 3808 m
+== 0x8c7228a8 class M1 gate 0x8cb546d8 rows 3556 | G_m [-7498, 10774, -57569] F [0.0, 0.0, -1.0] | order-4 givens 1
+   first row within 3 r_gate (3315 m) of G: frame 24836 t 23723.4 s; warp end t 23724.3 s; total 0.8 s
+   order-4 total 102.3 s in 1 segs; order-0x12 total 0.0 s in 0 segs; first o4 t 23559.9 s
+   0x1f at frame 23529: hdg_err start 109.3 end 8.2 deg, rows with v!=0 0, max rate |y,p,r| [1329, 863, 0], dP 828 m, dG 3987 m
+== replay --gate (capitals)
+   order=4 frames=120 dur=7460ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=110.0/36.0/36.0 dist_first=2293.4m head_err first/last=119.2/121.4 deg
+   order=4 frames=31 dur=2030ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=110.0/90.4/90.4 dist_first=3597.3m head_err first/last=140.2/141.2 deg
+   order=4 frames=180 dur=12620ms given_rel_prev=[0.0, 0.0, 89.7] drift=0.0m v first/last/min=110.0/1.0/1.0 dist_first=5241.6m head_err first/last=124.0/86.8 deg
+   order=4 frames=377 dur=27050ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=110.0/100.0/1.0 dist_first=5229.0m head_err first/last=78.0/1.5 deg
+   order=4 frames=488 dur=33980ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=110.0/26.7/26.7 dist_first=2651.4m head_err first/last=2.2/11.2 deg
+   order=0 frames=1 dur=80ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=827.4m head_err first/last=11.5/11.5 deg
+   order=31 frames=412 dur=29260ms given_rel_prev=[7563.54, -10774.0, -4241880.02] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=4241818.4m head_err first/last=98.7/8.1 deg
+   order=0 frames=1 dur=70ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=4241817.6m head_err first/last=8.0/8.0 deg
+   order=5 frames=192 dur=13710ms given_rel_prev=[-7563.54, 10774.0, 4237398.3] drift=0.0m v first/last/min=0.0/107.8/0.0 dist_first=4475.0m head_err first/last=4.5/0.0 deg
+   order=0 frames=1 dur=70ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=3576.8m head_err first/last=0.0/0.0 deg
+   order=8 frames=13 dur=930ms given_rel_prev=[549.41, 409.1, 3510.64] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=0.0m head_err first/last=-/169.0 deg
+   order=0 frames=1 dur=70ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=2405.9m head_err first/last=169.0/169.0 deg
+  gate orders=4/4/4/4/0/31/0/5/0/8/0 min_v_order5=0.0 m/s
+   order=4 frames=145 dur=8520ms given_rel_prev=None drift=0.0m v first/last/min=109.5/100.0/99.6 dist_first=5511.4m head_err first/last=13.9/3.1 deg
+   order=4 frames=99 dur=6140ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=110.0/78.3/67.7 dist_first=2922.9m head_err first/last=29.9/23.9 deg
+   order=4 frames=151 dur=9190ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=110.0/20.7/20.7 dist_first=1076.5m head_err first/last=55.4/59.4 deg
+   order=4 frames=580 dur=35230ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=110.0/28.3/28.3 dist_first=2228.9m head_err first/last=36.5/0.0 deg
+   order=0 frames=1 dur=70ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=826.0m head_err first/last=0.0/0.0 deg
+   order=31 frames=534 dur=34480ms given_rel_prev=[8229.53, -10774.0, -4241790.33] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=4241083.2m head_err first/last=151.9/8.0 deg
+   order=0 frames=1 dur=50ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=4241083.2m head_err first/last=7.8/7.8 deg
+   order=5 frames=121 dur=6950ms given_rel_prev=[-7563.54, 10774.0, 4237398.3] drift=0.0m v first/last/min=0.0/69.1/0.0 dist_first=3808.1m head_err first/last=8.1/9.6 deg
+   order=0 frames=1 dur=50ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=3568.6m head_err first/last=9.6/9.6 deg
+   order=8 frames=16 dur=930ms given_rel_prev=[-1016.67, 102.68, 3419.15] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=0.0m head_err first/last=-/171.2 deg
+   order=0 frames=1 dur=60ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=2520.4m head_err first/last=171.0/171.0 deg
+  pos_c      p50=0.0018 p95=0.1626 max=261.4000 worst=24850,24852,24848,24851,24845
+  steps by class: order_boundary=6 position=542 rate_controller=836 orientation=130 speed_law=0
+  windows by class: order_boundary=2 position=5 rate_controller=1 orientation=0 speed_law=0
+  gate orders=4/0/31/0/5/0/8/0 min_v_order5=0.0 m/s
+   order=4 frames=2229 dur=102350ms given_rel_prev=None drift=0.0m v first/last/min=1.0/21.4/1.0 dist_first=5785.1m head_err first/last=50.5/0.0 deg
+   order=0 frames=1 dur=50ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=827.7m head_err first/last=0.0/0.0 deg
+   order=31 frames=968 dur=44930ms given_rel_prev=[6897.55, -10774.0, -4241651.7] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=4241398.6m head_err first/last=109.2/8.1 deg
+   order=0 frames=1 dur=50ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=4241398.6m head_err first/last=8.0/8.0 deg
+   order=5 frames=335 dur=16010ms given_rel_prev=[-7563.54, 10774.0, 4237398.3] drift=0.0m v first/last/min=0.0/79.8/0.0 dist_first=3987.5m head_err first/last=11.3/0.0 deg
+   order=0 frames=1 dur=50ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=3346.2m head_err first/last=0.0/0.0 deg
+   order=8 frames=20 dur=930ms given_rel_prev=[-73.1, -194.33, 3339.76] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=0.0m head_err first/last=-/176.5 deg
+   order=0 frames=1 dur=50ms given_rel_prev=[0.0, 0.0, 0.0] drift=0.0m v first/last/min=0.0/0.0/0.0 dist_first=2637.7m head_err first/last=176.5/176.5 deg
+== SETA (seta= field per frame) over the capital phase windows: seta=1 frames / frames
+session seta=1 frames 28352 of 39843
+812-4372 615/3561
+13495-16902 3408/3408
+16904-17315 412/412
+17317-17508 192/192
+17510-17522 13/13
+17740-20513 2774/2774
+20515-21048 534/534
+21050-21170 121/121
+21299-23527 2229/2229
+23529-24496 968/968
+24498-24832 335/335
+24834-24853 20/20
+== classes of the small (C<2000 m) obstacles the capitals still detour around (from any row naming them as obj)
+0x359b8988 rows_as_obstacle=166       2 class=M6 
+0x359d2a58 rows_as_obstacle=50      64 class=M8 
+0x359d5020 rows_as_obstacle=117       7 class=M6 
+0x359d6fd0 rows_as_obstacle=16       4 class=M6 
+0x8c7213f0 rows_as_obstacle=32       2 class=M6 
