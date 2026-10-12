@@ -156,6 +156,15 @@ multiplied into `p+0x40` (`0x004f17f0`), re-orthonormalised (`0x004f15d0`) and
 converted back to `obj+0x18..+0x20` **[s]**. The rotation is applied in the
 ship's local frame **[i]** (matrix order not traced).
 
+**Axis signs (2026-10-12, step-1 review of the steering replacement) [s].** From the matrix builder `0x004f0270`
+with yaw α, pitch β, roll γ, the built rows are row2 = (−cos β sin α, sin β, cos β cos α), row0 = (…, sin γ cos β, …)
+and row1 = (−sin γ cos α …, cos γ cos β, …): a positive yaw moves the nose toward −row0, a positive pitch toward
++row1, and a positive roll moves row0 toward +row1. This is consistent with the leaf's own `fpatan` operands at
+`0x0044cee8` (yaw `+0x30 = atan2(−t0, t2)`) and `0x0044cf9d` (pitch `+0x34 = atan2(t1, t2′)`), with
+`t = (d·row0, d·row1, d·row2)` over the flight basis `f+0x870`, and with the roll leaf's `atan2(t1, t0)` at
+`0x0044c823`. The replacement law (`src/proxy/ship_steering_core.h`) writes its angles in these row terms; only the
+bank *direction* still rests on row 0 being the ship's right **[i]**.
+
 **Velocity and position** **[m]**:
 
 ```

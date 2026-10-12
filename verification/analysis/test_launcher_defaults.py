@@ -319,6 +319,26 @@ class LauncherDefaults(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertFalse(set(self.module.REMOVED_VARIABLES) & set(data['env']), vanilla)
 
+    def test_ship_steering_is_an_opt_in(self):
+        # docs/verification/ship-steering.md: off unless asked, the class list travels only with the switch, a stale
+        # shell value never claims the steering leaves, refused under --vanilla, class names validated and normalised.
+        env = self.env()
+        self.assertNotIn('X3M_SHIP_STEERING', env)
+        self.assertNotIn('X3M_SHIP_STEERING_CLASSES', env)
+        self.assertEqual(self.env('--ship-steering')['X3M_SHIP_STEERING'], '1')
+        self.assertNotIn('X3M_SHIP_STEERING_CLASSES', self.env('--ship-steering'))
+        with_classes = self.env('--ship-steering', '--ship-steering-classes', 'm1, M2,tl_p')
+        self.assertEqual(with_classes['X3M_SHIP_STEERING'], '1')
+        self.assertEqual(with_classes['X3M_SHIP_STEERING_CLASSES'], 'M1,M2,TL_P')
+        stale = {'X3M_SHIP_STEERING': '1', 'X3M_SHIP_STEERING_CLASSES': 'M1'}
+        self.assertFalse({'X3M_SHIP_STEERING', 'X3M_SHIP_STEERING_CLASSES'} & set(self.env(inherited=stale)))
+        for args, vanilla in ((('--ship-steering',), True), (('--ship-steering', '--ship-steering-classes', 'M9'), False),
+                              (('--ship-steering-classes', 'M1'), False)):
+            with self.subTest(args=args, vanilla=vanilla):
+                code, _, error = self.launch(*args, vanilla=vanilla)
+                self.assertEqual(code, 2, error[-200:])
+                self.assertIn('ship-steering', error)
+
 
 if __name__ == '__main__':
     unittest.main()

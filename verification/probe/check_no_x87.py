@@ -100,6 +100,11 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
                 # handler, once per process on the game's init thread; its row is formatted behind call_preserved
                 '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',
+                # ship steering (src/proxy/ship_steering.cpp, X3M_SHIP_STEERING=1): the three leaf-entry stubs and the loop-continue
+                # stub assembled into the DLL, and the two handlers they call inside the engine's command pass on the light envelope
+                # (MXCSR + LastError): SSE2 only, the engine getters are indirect calls (not walked), no CRT math, no log call
+                '_x3m_ship_steering_a0_stub', '_x3m_ship_steering_a1_stub', '_x3m_ship_steering_a2_stub', '_x3m_ship_steering_b_stub',
+                '_x3m_ship_steering_enter', '_x3m_ship_steering_clamp',
                 # engine-effect call redirects (src/proxy/engine_effects_patch.cpp, X3M_ENGINE_EFFECTS=off|plumes): the two class-test
                 # stubs on 0x004147eb and 0x0041482c, per spawn site per frame on the game thread; integer only, no call
                 '_x3m_engine_effects_stub_a', '_x3m_engine_effects_stub_b',

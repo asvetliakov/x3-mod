@@ -1,0 +1,27 @@
+turn       M5  Discoverer fps= 60 settle=  3599 ms vanilla=  3699 ms oracle=  3664 ms ratio=0.982 overshoot=0.000 deg (vanilla 0.000) peak=89.6 deg/s
+turn(diag)  M5  finish yaw=3283 ms pitch=2283 ms (rel 0.305; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.879 vanilla_pitch_zero_ticks=60
+turn(diag) M5  Discoverer fps= 60 settle=  3316 ms vanilla=  3699 ms oracle=  3648 ms ratio=0.909 overshoot=0.000 deg (vanilla 0.003) peak=73.6 deg/s
+arrival     M5  Discoverer fps= 60 t= 65599 ms (vanilla  65549) entries=1 entry_speed=10.0 m/s (vanilla 11.9) min_d=17.3 m d_arr=18.4 m beyond=0.0 m reversals=0
+formation   M5  Discoverer fps= 60 slot_rms=8.0 m (2r=18.4) max_after_entry=36.7 m window_increases=0
+turn       M3  Nova       fps= 60 settle=  4449 ms vanilla=  4649 ms oracle=  4624 ms ratio=0.962 overshoot=0.000 deg (vanilla 0.000) peak=68.9 deg/s
+turn(diag)  M3  finish yaw=4149 ms pitch=2999 ms (rel 0.277; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.820 vanilla_pitch_zero_ticks=83
+turn(diag) M3  Nova       fps= 60 settle=  4166 ms vanilla=  4633 ms oracle=  4608 ms ratio=0.904 overshoot=0.000 deg (vanilla 0.000) peak=56.5 deg/s
+arrival     M3  Nova       fps= 60 t= 93583 ms (vanilla  93500) entries=1 entry_speed=10.0 m/s (vanilla 13.8) min_d=22.6 m d_arr=23.8 m beyond=0.0 m reversals=0
+formation   M3  Nova       fps= 60 slot_rms=3.8 m (2r=23.8) max_after_entry=47.4 m window_increases=0
+turn       M6  Centaur    fps= 60 settle= 10016 ms vanilla= 10016 ms oracle=  9920 ms ratio=1.010 overshoot=0.000 deg (vanilla 0.000) peak=33.8 deg/s
+turn(diag)  M6  finish yaw=8883 ms pitch=5100 ms (rel 0.426; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.713 vanilla_pitch_zero_ticks=215
+turn(diag) M6  Centaur    fps= 60 settle=  8950 ms vanilla=  9983 ms oracle=  9888 ms ratio=0.905 overshoot=0.000 deg (vanilla 0.003) peak=30.2 deg/s
+arrival     M6  Centaur    fps= 60 t=122816 ms (vanilla 122000) entries=1 entry_speed=10.0 m/s (vanilla 23.5) min_d=126.1 m d_arr=128.8 m beyond=0.0 m reversals=0
+formation   M6  Centaur    fps= 60 slot_rms=57.7 m (2r=128.8) max_after_entry=257.3 m window_increases=0
+turn       TS  Mercury    fps= 60 settle= 13116 ms vanilla= 13116 ms oracle= 13040 ms ratio=1.006 overshoot=0.000 deg (vanilla 0.000) peak=21.1 deg/s
+turn(diag)  TS  finish yaw=11499 ms pitch=6600 ms (rel 0.426; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.641 vanilla_pitch_zero_ticks=298
+turn(diag) TS  Mercury    fps= 60 settle= 11566 ms vanilla= 13083 ms oracle= 12992 ms ratio=0.890 overshoot=0.000 deg (vanilla 0.000) peak=21.1 deg/s
+arrival     TS  Mercury    fps= 60 t=165433 ms (vanilla 164616) entries=1 entry_speed=10.0 m/s (vanilla 27.2) min_d=75.0 m d_arr=77.0 m beyond=0.0 m reversals=0
+formation   TS  Mercury    fps= 60 slot_rms=19.8 m (2r=77.0) max_after_entry=154.0 m window_increases=0
+turn       M2  Boreas     fps= 60 settle= 27533 ms vanilla= 27533 ms oracle= 26960 ms ratio=1.021 overshoot=0.000 deg (vanilla 0.000) peak=12.7 deg/s
+turn(diag)  M2  finish yaw=24466 ms pitch=13949 ms (rel 0.430; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.695 vanilla_pitch_zero_ticks=642
+turn(diag) M2  Boreas     fps= 60 settle= 24683 ms vanilla= 27500 ms oracle= 26880 ms ratio=0.918 overshoot=0.000 deg (vanilla 0.000) peak=11.0 deg/s
+arrival     M2  Boreas     fps= 60 t=270983 ms (vanilla 267016) entries=1 entry_speed=10.0 m/s (vanilla 70.0) min_d=1407.5 m d_arr=1410.8 m beyond=0.0 m reversals=0
+formation   M2  Boreas     fps= 60 slot_rms=1365.6 m (2r=1410.8) max_after_entry=2115.1 m window_increases=0
+ship_steering_host checks=1164 failures=0
+checks PASS

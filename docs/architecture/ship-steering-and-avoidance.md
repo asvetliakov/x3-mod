@@ -25,6 +25,14 @@ listing, otherwise avoidance ships without E. (3) The four open facts of the las
 (getter conventions, slew-block order, E's caller contract, the station node root) are pinned by the
 implementing agent's own listings before the corresponding site is claimed; a fact that cannot be pinned
 takes the documented fallback, never a guess.
+**Amendment 4 (2026-10-12, step-1 review):** order 0x23 MovePosContinue gets the cornering clamp only, no arrival
+ramp: the engine's 0x23 case writes `[obj+0x14] = vmax·f(alignment)` with no distance term (`0x00456705`–`0x0045671b`)
+and completes at `f+0x260`, so the ramp of §2.5 (which listed 0x23 by mistake) would stop patrol ships at every
+waypoint. Also from that review: orders 4 and 5 write roll `obj+0x38 = 0` (the vanilla leaf's value; the docking match
+`0x00454767`–`0x004547d6` runs only when all three angles are below `0x51e`), the heading is held inside the order's
+arrival distance (§2.1), a record with `v_max = 0` or `a = 0` gets no speed clamp at all (§6.2), and the linear tail's
+τ is 0.15 s (0.3 s made the final approach of fighters slower than the vanilla leaf by 3–5 %; the host fixture now
+asserts "no slower than vanilla").
 
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
@@ -501,7 +509,7 @@ five ships of §5, at 30, 60 and 144 fps and three tick-sequence seeds each:
 
 | Scenario | Assertion |
 | --- | --- |
-| 180° turn to a point 20 km away | heading overshoot ≤ 1°; the rate never changes sign after its first zero crossing; settle (< 0.5°) ≤ 1.15 × the model's single-axis time for the same angle (the engine's own profile is the bound); pitch and yaw finish within 10 % of each other when `n̂` is diagonal |
+| 180° turn to a point 20 km away | heading overshoot ≤ 1°; the rate never changes sign after its first zero crossing; settle (< 0.5°) ≤ 1.15 × the model's single-axis time for the same angle (the engine's own profile is the bound); both axes execute proportionally when `n̂` is diagonal (each engaged while the bearing is large, no vanilla-style axis sequencing; finish times may differ because the roll policy re-levels late in the turn, amendment 4) |
 | arrival at a MovePos point with `f+0x260 = 2·r_own` from full speed, approach from 45° | the ship enters the radius exactly once, speed at entry ≤ 20 m/s above the floor, no pass beyond `P` by more than `f+0x260`, at most one heading sign reversal in the last 5 s (no orbiting) |
 | station flyby (1.5 km sphere whose centre is 600 m off the straight line; narrow phase as a 1.5 × 0.4 × 0.4 km box in step 2) | minimum clearance ≥ `C`; detour side constant; the path length ≤ 1.3 × the straight line; the ship returns to the line within `L` after passing |
 | crossing traffic (one ship of the same class at 90°, collision course, `t_cpa = L/v`) | both detour, min distance ≥ `C`, no side flip |
