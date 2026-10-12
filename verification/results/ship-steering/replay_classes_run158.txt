@@ -1,0 +1,41 @@
+source /mnt/c/X3/x3m.log steps 312146
+pos_c (m, non-boundary steps; warm = warm_ms or more after the first row of the run, where the slip starts at 0): order kind run steps | along p50 p95 p99 | lateral p50 p95 p99 max
+  order=0 straight early       36 | 0.0000 0.0000 0.0003 | 0.0000 0.0000 0.0019 0.002
+  order=0 straight warm      5192 | 0.0000 0.0000 0.0018 | 0.0000 0.0000 0.0019 0.003
+  order=0 turning  early       25 | 0.0000 0.0017 0.0017 | 0.0000 0.0019 0.0028 2.863
+  order=0 turning  warm      1392 | 0.0000 0.0003 0.0018 | 0.0000 0.0005 0.0020 0.003
+  order=4 straight early     3077 | 0.0000 0.0005 0.0019 | 0.0000 0.0007 0.0019 0.003
+  order=4 straight warm     92747 | 0.0000 0.0007 0.0019 | 0.0000 0.0019 0.0020 0.032
+  order=4 turning  early     3729 | 0.0000 0.0000 0.0018 | 0.0000 0.0000 0.0019 0.179
+  order=4 turning  warm     62316 | 0.0000 0.0003 0.0017 | 0.0000 0.0007 0.0019 0.005
+  order=5 straight early      718 | 0.0000 0.0000 0.0000 | 0.0000 0.0000 0.0000 0.000
+  order=5 straight warm     13677 | 0.0000 0.0020 0.0020 | 0.0000 0.0000 0.0003 0.002
+  order=5 turning  early      772 | 0.0000 0.0000 0.0013 | 0.0000 0.0000 0.0014 0.922
+  order=5 turning  warm     30138 | 0.0000 0.0000 0.0017 | 0.0000 0.0000 0.0007 0.002
+  order=8 straight warm         1 | 0.0009 0.0009 0.0009 | 0.0008 0.0008 0.0008 0.001
+  order=8 turning  warm         1 | 0.0003 0.0003 0.0003 | 0.0003 0.0003 0.0003 0.000
+  order=18 straight warm       435 | 0.0000 0.0010 0.3993 | 0.0000 0.0007 0.0019 0.003
+  order=18 turning  early        2 | 0.0000 0.0000 0.0000 | 0.0000 0.0000 0.0000 0.000
+  order=18 turning  warm      9689 | 0.0000 0.0007 0.0019 | 0.0000 0.0012 0.0020 2.585
+  order=20 straight early      198 | 0.0000 0.0007 0.0019 | 0.0000 0.0017 0.0020 0.003
+  order=20 straight warm     50127 | 0.0000 0.0003 0.0019 | 0.0000 0.0006 0.0020 0.245
+  order=20 turning  early      732 | 0.0000 0.0000 0.0012 | 0.0000 0.0000 0.0013 0.002
+  order=20 turning  warm     31145 | 0.0000 0.0004 0.0019 | 0.0000 0.0008 0.0020 0.003
+  order=31 turning  warm      1020 | 0.0000 0.0000 0.0000 | 0.0000 0.0000 0.0000 0.000
+divergent steps: order -> class counts
+  order 0 steps 7068 divergent 17 {'order boundary': 13, 'position': 1, 'rate controller': 3}
+  order 4 steps 162001 divergent 24867 {'position': 5, 'order boundary': 18, 'speed law': 24819, 'rate controller': 25}
+  order 5 steps 49364 divergent 4865 {'rate controller': 2804, 'position': 2, 'order boundary': 17, 'speed law': 2042}
+  order 8 steps 4 divergent 1 {'order boundary': 1}
+  order 18 steps 10216 divergent 206 {'rate controller': 116, 'position': 87, 'order boundary': 3}
+  order 20 steps 82467 divergent 3 {'position': 3}
+  order 31 steps 1026 divergent 1026 {'order boundary': 6, 'rate controller': 1020}
+all classes {'position': 98, 'order boundary': 58, 'rate controller': 3968, 'speed law': 26861}
+unmodelled steps {'final zone': 3933, 'launch axis': 1, 'port roll unknown': 209}
+rate-controller steps (order, worst axis, e source, size): {(5, 'roll', 'leaf', 'small'): 2804, (18, 'yaw', 'leaf', 'small'): 8, (18, 'yaw', 'carried', 'small'): 76, (18, 'roll', 'leaf', 'small'): 4, (18, 'roll', 'carried', 'small'): 13, (0, 'pitch', 'carried', 'small'): 3, (18, 'pitch', 'carried', 'small'): 11, (18, 'pitch', 'leaf', 'small'): 4, (31, 'yaw', 'carried', 'small'): 518, (31, 'yaw', 'carried', 'big'): 205, (31, 'pitch', 'carried', 'small'): 290, (4, 'roll', 'carried', 'small'): 25, (31, 'pitch', 'carried', 'big'): 7}
+rate-controller steps by order and worst residual (binary/s): {(0, '>3'): 3, (4, '<=3'): 24, (4, '>3'): 1, (5, '<=1'): 1462, (5, '<=3'): 628, (5, '>3'): 714, (18, '<=1'): 2, (18, '<=3'): 43, (18, '>3'): 71, (31, '>3'): 1020}
+position steps by order, run age and pos_c: {(0, 'early', '>0.02m'): 1, (4, 'early', '>0.02m'): 2, (4, 'warm', '>0.02m'): 3, (5, 'early', '>0.02m'): 2, (18, 'warm', '<=0.02m'): 3, (18, 'warm', '>0.02m'): 84, (20, 'warm', '>0.02m'): 3}
+speed-law steps (order, actual): {(4, 'held below des'): 24484, (4, 'other'): 335, (5, 'held below des'): 2039, (5, 'other'): 3}
+final zone steps 3933: rate magnitude off 0; Euler-step heading p50 0.0168 p95 0.0952 max 4.243 deg; glide m/s p50 5.99 max 99.34
+order 8 (non-boundary) steps 2: pos p50 0.0004 max 0.0012 m; launch-axis (magnitude only) 0
+worst non-boundary pos_c steps (frame, order, class, pos_c m, rates): [(43276, 4, 'position', 195.016, [0, 0, 0]), (43276, 20, 'position', 42.815, [0, 0, 0]), (43276, 4, 'position', 32.927, [0, 0, 0]), (5750, 20, 'position', 32.232, [0, 0, 0]), (936, 4, 'position', 32.013, [61, 49, 0])]

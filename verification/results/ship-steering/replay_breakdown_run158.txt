@@ -1,0 +1,55 @@
+pos_c split (m): key steps along_p50 along_p95 lat_p50 lat_p95
+  order=0 straight   5469  0.0015 0.0156  0.0014 0.1926
+  order=0 turning    1599  0.0269 0.3998  0.3241 1.5414
+  order=4 straight  95857  0.0014 0.0027  0.0015 0.0121
+  order=4 turning   66144  0.0094 0.5815  0.0954 1.9955
+  order=5 straight  14601  0.0015 0.0028  0.0013 0.0053
+  order=5 turning   34763  0.0017 0.2299  0.0016 0.2433
+  order=8 straight      2  0.0000 0.0000  0.0000 0.0000
+  order=8 turning       2  382.3541 382.3541  342.6118 342.6118
+  order=18 straight    440  0.0035 0.0478  0.0075 0.0720
+  order=18 turning    9776  0.0805 1.9071  0.2328 4.0336
+  order=20 straight  50477  0.0014 0.0025  0.0013 0.0204
+  order=20 turning   31990  0.0078 0.3030  0.1401 1.4297
+  order=31 turning    1026  0.0000 0.0025  0.0000 0.0176
+rate-controller steps (order, worst axis, size, e source, e/w sign, e=0 hypothesis): count
+  (5, 'roll', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 5411
+  (5, 'pitch', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 2882
+  (5, 'yaw', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 574
+  (31, 'yaw', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 519
+  (5, 'roll', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 303
+  (31, 'pitch', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 289
+  (31, 'yaw', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 205
+  (18, 'yaw', 'small', 'carried', 'e*w<0', 'actual!=ctl(e=0)') 60
+  (5, 'roll', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 33
+  (4, 'roll', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 26
+  (5, 'roll', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 22
+  (18, 'yaw', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 16
+  (18, 'roll', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 13
+  (18, 'pitch', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 11
+  (31, 'pitch', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 7
+  (18, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 5
+  (18, 'roll', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 5
+  (18, 'yaw', 'small', 'leaf', 'e*w<0', 'actual!=ctl(e=0)') 5
+  (18, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 4
+  (5, 'yaw', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 3
+  (0, 'pitch', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 3
+  (5, 'pitch', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 3
+  (5, 'roll', 'big', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 3
+  (5, 'roll', 'big', 'carried', 'e*w<0', 'actual==ctl(e=0)') 2
+  (4, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 1
+  (5, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 1
+  (5, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 1
+  (0, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 1
+  (5, 'roll', 'big', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 1
+  (31, 'yaw', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 1
+  (31, 'yaw', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 1
+  (31, 'pitch', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 1
+  (5, 'roll', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 1
+examples (frame class axis e w pred actual W acc dt e_next):
+   (936, 'TS', 0, -33, -84, -61, 0, 3072, 307, 200, 0)
+   (4922, 'TS', 2, 0, 0, 0, -15, 2457, 246, 60, -1)
+   (4923, 'TS', 2, -1, -15, 0, -30, 2457, 246, 60, -2)
+   (4924, 'TS', 2, -2, -30, -18, -42, 2457, 246, 50, -4)
+   (4925, 'TS', 2, -4, -42, -30, -54, 2457, 246, 50, -6)
+   (4926, 'TS', 2, -6, -54, -39, -69, 2457, 246, 60, -10)
