@@ -1,0 +1,23 @@
+{
+  "dll": "detached worktree /tmp/x3-run158-candidate of aee6d75b, build/d3d9.dll (clean configure + build)",
+  "sha256": "011b348cc5a43f3a55106a17b4a8a0d72460eb9a5dad98a49117dfa5772bbf06",
+  "bytes": 58457822,
+  "commit": "aee6d75b",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 958, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "test_ship_steering test_ship_steering_sites test_ship_trace_format test_config_schema OK (fixture 6148/6148, slip gaps 0, capital 1521/1521)"
+  },
+  "changes_since_run157": [
+    "bdbd9bb6 Run157 triage",
+    "81918f6a slip-aware law (amendment 14)",
+    "b11cd29e design amendment 15",
+    "9c173d51 scenario audit",
+    "aee6d75b amendment 15 + audit G1-G4"
+  ],
+  "trigger": "Run157: capitals worse (escort cascade through E's order condition, formation memory lost in 0x12, join cut by the engine's warn); slip-aware law from the calibrated model; audit items",
+  "producer": "main session (Fable 5.1), 2026-10-12"
+}
