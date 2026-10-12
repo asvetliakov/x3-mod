@@ -1,0 +1,20 @@
+{
+  "dll": "detached worktree /tmp/x3-run154-candidate of 709b163c, build/d3d9.dll (clean configure + build)",
+  "sha256": "57e528271b22ded488ab38375006844d8d83077ff11af99951b4ed1b2bfef568",
+  "bytes": 58225705,
+  "commit": "709b163c",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 953, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "test_ship_steering test_ship_steering_sites OK (fixture 3649/3649)"
+  },
+  "changes_since_run153": [
+    "6894a812 gate hole geometry (\u00a710.9)",
+    "709b163c amendment 9: order-5 cornering over the whole pass arc, subtypes 5..8, 20 m/s floor"
+  ],
+  "trigger": "\u00a710.9: installed gates have no collision tree and the engine skips ship-gate contact on order 5, so the half-arc restriction of Run153 is lifted; Run153 was installed but not flown",
+  "producer": "main session (Fable 5.1), 2026-10-12"
+}
