@@ -195,6 +195,21 @@ trigger differ) get the same policy with their own pass vector in the validation
 spread are unchanged: orders 4, 8 and 0x21 are not exempt from the pair filter, the bubble has no collision tree,
 and the Terran ring at 0.663 r still bounds the 0.3 r exit offset.
 
+**Amendment 12 (2026-10-12, ship-movement.md section 13.4; fixture numbers in the ledger's "Model calibration"):**
+(1) *Port legs.* On order 5 to a port (the target is not a gate and the port index `f+0x250` is ≥ 0; the engine's
+port-roll match at `0x004547d6` needs port data, which a gate never has) roll stays 0, never a bank. Once a call of the
+leg wrote a triple below `0x51e` (the match then replaces the roll with the port's), the next call (order 5 at the
+previous call, at most 250 ms old: `Ship.flags` bit `kShipFlagPortHold`) clamps the written yaw and pitch to ±`0x51d`
+while the bearing error is below `2·0x51e` (14.4°), and the roll (0 or its stopping angle) to ±`0x51d` on every port
+call, so the match stays engaged instead of toggling as yaw/pitch cross `0x51e` (the rendezvous-point switch and any
+lead-in shaping). The clamp moves only the braking point of the engine's trapezoid, not the turn direction; above
+14.4° the hold releases and the match drops as before. Gate legs are untouched. (2) *Smooth stops.* An axis the law
+stops (its angle exactly 0: the roll of orders 4 and 5, the arrival hold, a zero command) while it still turns gets
+the stopping angle `sign(w)·⌈w²/2a⌉` instead of 0: the integrator sets the rate to 0 at once on a zero remainder
+(`0x00459a99`), so a written 0 is a one-frame cut; with `w²/2a` the controller brakes at `a` (it brakes while
+`e < w²/a`) and ends with `δ = e`, `w = 0`. A servo angle that rounds to 0 is the geometric remainder, not a stop, and
+keeps the engine's clamp (replacing it too moved the order-4 gate approach by up to 0.12° at the crossing).
+
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
 shared handler that, for class-7 ships under the autopilot flag and a point-steering order, computes a
@@ -256,7 +271,9 @@ tuning fractions, without the hull ramp (documented difference, not a failure).
   Every call writes all three (the original `0x0044ccc0` writes zeros inside the 100-unit dead band; the roll
   leaves return without writing **[m]**; we always write). The written value is never larger in magnitude
   than the geometric remaining angle on that axis (§2.4), which keeps the property the docking code tests
-  afterwards: all three small when the ship faces the target (`0x00454760`–`0x00454790` **[m]**).
+  afterwards: all three small when the ship faces the target (`0x00454760`–`0x00454790` **[m]**). Amendment 12's
+  exception: an axis the law stops while it still turns gets its stopping angle `w²/2a` (on a port leg at most
+  `0x51d`, below the match limit), and on a port leg yaw/pitch are held below `0x51e` once aligned.
 * **The target buffer.** Avoidance replaces `EDX` with a pointer to a DLL-global `int32[3]` (a 4-deep ring in
   the module's `.data`, one slot per nested call; the leaves are not recursive **[s]**). Never the caller's
   buffer (often a stack local **[m]**), never `f+0x240` (order state **[m]**), never the arena
@@ -396,7 +413,9 @@ sag before the next call. The rate error is bounded by `a_axis × 50 ms`: 3.7°/
 (2.5 % of its cap), 0.07°/s for the Boreas (0.5 %) (design_numbers.txt, k assumed, §5). In the braking phase
 `ω = sqrt(a·θ)` gives `e = θ`: the written angle *is* the geometric remainder, exactly the original law, so
 the final approach is the engine's own profile. The cap `|e| ≤ |θ_axis|` means the controller's own
-`delta = min(delta, e)` clamp still guarantees no overshoot past the target.
+`delta = min(delta, e)` clamp still guarantees no overshoot past the target. A written 0 is not a brake: the
+integrator sets the rate to 0 at once when the remainder is 0 (`0x00459a99`, ship-movement.md section 13.1 row 8),
+so an axis the law stops gets the stopping angle `w²/2a` instead (amendment 12).
 
 Why shape rather than bypass: the controller is time-optimal, non-overshooting and already uses the record's
 `+0xd0` angular acceleration, `f+0x2b0` and the tuning bonus **[m]**; bypassing it needs site D (20 callers,

@@ -541,12 +541,9 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     self.ptr = obj;
     self.target = rd32(fl + sites::kFlightTarget);
     self.leader = (in.order == core::kOrderEscort || in.order == core::kOrderFollow) ? self.target : 0;
-    self.leader_x[0] = self.leader_x[1] = self.leader_x[2] = 0.0f;
+    self.leader_x[0] = self.leader_x[1] = self.leader_x[2] = 0.0f; // diagnostics only since amendment 11: not read here
     self.L_leader = 0.0f;
     if (self.leader) {
-        const std::uint32_t lph = rd32(self.leader + sites::kObjPhys);
-        if (lph)
-            for (unsigned c = 0; c < 3; ++c) self.leader_x[c] = float(rds32(lph + sites::kPhysPosition + 4 * c)) / core::kUnitsPerMetre;
         const core::Ship* ls = table_.find(self.leader);
         if (ls) {
             const av::ShipAvoid& la = avoid_[unsigned(ls - table_.entries)];
@@ -902,6 +899,13 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             }
         }
     }
+    // Amendment 12: order 5 to a port (a target other than a gate, with a port index: the engine's port-roll match needs
+    // its port data, which a gate never has) and the leg's hold from this ship's previous call.
+    if (order == core::kOrderDock) {
+        const std::uint32_t tg = rd32(fl + sites::kFlightTarget);
+        in.port_leg = tg && rd16(tg + sites::kObjClass) != sites::kClassGate && rds32(fl + sites::kFlightPortIndex) >= 0;
+        in.port_hold = in.port_leg && core::port_hold_active(*s, order, now);
+    }
     core::Command cmd;
     const core::Reason r = core::steer(in, dyn, &cmd);
     if (r != core::Reason::handled) return r;
@@ -913,10 +917,11 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     s->order = order;
     // the gate speed policy: the non-capital approach (no ramp) and the capital lead-in (its ramp kept: the engine's
     // alignment rule, 1 m/s beyond 45.6 deg off A, would otherwise stall the lateral join); the order-5 leg
-    s->flags = capital_gate ? std::uint16_t(0) // amendment 10: no site-B write on a capital's gate legs
-                            : std::uint16_t((in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0) |
-                                            (gate_lead ? (core::kShipFlagGate | core::kShipFlagClamp) : 0) |
-                                            (gate_dock ? (core::kShipFlagGateDock | core::kShipFlagClamp) : 0));
+    s->flags = std::uint16_t((capital_gate ? 0 // amendment 10: no site-B write on a capital's gate legs
+                                           : (in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0) |
+                                                 (gate_lead ? (core::kShipFlagGate | core::kShipFlagClamp) : 0) |
+                                                 (gate_dock ? (core::kShipFlagGateDock | core::kShipFlagClamp) : 0)) |
+                             (cmd.port_aligned ? core::kShipFlagPortHold : 0)); // amendment 12: the next call's hold
     if (order == core::kOrderMovePos && s->order == order &&
         (s->P[0] != order_point[0] || s->P[1] != order_point[1] || s->P[2] != order_point[2]))
         s->best_d = -1.0f; // a new MovePos point: the stuck witness restarts (Run154: 8 false rows while d fell 34.5 -> 10.3 km)
@@ -956,7 +961,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             ts->last_seen_ms = now;
             ts->leaf_this_frame = 1;
             ts->emergency = v_emergency_bits ? 1 : 0;
-            ts->obstacle = avoid_[slot].obj == obj ? avoid_[slot].obstacle : 0;
+            ts->obstacle = avoid_[slot].obj == obj && avoid_[slot].stamp_ms == now ? avoid_[slot].obstacle : 0; // this frame's resolve only
             for (unsigned i = 0; i < 3; ++i) {
                 ts->W[i] = call_eax(i == 0 ? sites::kGetYawCap : i == 1 ? sites::kGetPitchCap : sites::kGetRollCap, obj);
                 ts->given[i] = point[i];
@@ -1113,8 +1118,9 @@ extern "C" int __cdecl x3m_ship_steering_enter(sites::Frame* frame, int leaf) {
 }
 namespace {
 // The ship_trace row of this frame for a followed ship, pushed at site B after the module's speed write (the row carries
-// `des` as left by the write and `des_engine` as the engine set it), before the slew. An order outside 0 (the KC's
-// hand-over), 4, 5 and 8 ends the approach and frees the slot.
+// `des` as left by the write and `des_engine` as the engine set it), before the slew. Orders 0 (the KC's hand-over and
+// SA_StopObject), 4, 5, 8, 0x12 (the engine's avoid order after a collision warn) and 0x1f (RotateToAngles, the capital's
+// alignment) keep the slot; any other order ends the approach and frees it.
 inline void trace_frame(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph, std::int32_t des_engine) noexcept {
     TraceSlot* ts = trace_slot_of(obj);
     if (!ts) return;

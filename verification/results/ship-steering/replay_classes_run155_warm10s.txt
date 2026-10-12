@@ -1,0 +1,26 @@
+source run155 (the ship_trace rows of C:\X3\x3m.prev.log, session 20261012-181404, proxy 2fb5aef2) steps 138123
+pos_c (m, non-boundary steps; warm = warm_ms or more after the first row of the run, where the slip starts at 0): order kind run steps | along p50 p95 p99 | lateral p50 p95 p99 max
+  order=4 straight early     9708 | 0.0000 0.0058 0.0366 | 0.0008 0.0463 0.1744 0.927
+  order=4 straight warm     56553 | 0.0002 0.0021 0.0040 | 0.0015 0.0108 0.0167 0.091
+  order=4 turning  early    10972 | 0.0082 1.6195 4.8907 | 0.0253 2.0812 4.9445 17.516
+  order=4 turning  warm     28215 | 0.0005 0.0018 0.0035 | 0.0019 0.0045 0.0075 0.298
+  order=5 straight early     1953 | 0.0000 0.0153 0.6135 | 0.0000 0.0506 0.4186 0.730
+  order=5 straight warm      8648 | 0.0000 0.0020 0.0020 | 0.0000 0.0000 0.0028 0.053
+  order=5 turning  early     6516 | 0.0119 0.4640 1.3320 | 0.0213 0.9041 3.4402 7.158
+  order=5 turning  warm     12304 | 0.0000 0.0000 0.0020 | 0.0000 0.0000 0.0019 0.059
+  order=8 straight early       17 | 0.0004 0.0011 0.0011 | 0.0003 0.0008 0.0008 0.001
+  order=8 straight warm        15 | 0.0006 0.0011 0.0011 | 0.0005 0.0010 0.0010 0.001
+divergent steps: order -> class counts
+  order 0 steps 32 divergent 6 {'order boundary': 6}
+  order 4 steps 105553 divergent 10407 {'position': 10346, 'order boundary': 57, 'speed law': 4}
+  order 5 steps 32502 divergent 5595 {'rate controller': 852, 'position': 4703, 'order boundary': 34, 'speed law': 6}
+  order 8 steps 36 divergent 0 {}
+all classes {'position': 15049, 'order boundary': 97, 'rate controller': 852, 'speed law': 10}
+unmodelled steps {'final zone': 2993, 'launch axis': 2, 'port roll unknown': 289}
+rate-controller steps (order, worst axis, e source, size): {(5, 'roll', 'leaf', 'small'): 852}
+rate-controller steps by order and worst residual (binary/s): {(5, '<=1'): 360, (5, '<=3'): 305, (5, '>3'): 187}
+position steps by order, run age and pos_c: {(4, 'early', '<=0.02m'): 469, (4, 'early', '>0.02m'): 6537, (4, 'warm', '<=0.02m'): 2947, (4, 'warm', '>0.02m'): 393, (5, 'early', '<=0.02m'): 973, (5, 'early', '>0.02m'): 3705, (5, 'warm', '<=0.02m'): 8, (5, 'warm', '>0.02m'): 17}
+speed-law steps (order, actual): {(4, 'held below des'): 4, (5, 'held below des'): 6}
+final zone steps 2993: rate magnitude off 0; Euler-step heading p50 0.0430 p95 0.1087 max 4.241 deg; glide m/s p50 8.80 max 101.76
+order 8 (non-boundary) steps 32: pos p50 0.0007 max 0.0020 m; launch-axis (magnitude only) 0
+worst non-boundary pos_c steps (frame, order, class, pos_c m, rates): [(723, 4, 'position', 32.026, [38, 33, 0]), (723, 4, 'position', 28.596, [0, 0, 0]), (27931, 4, 'position', 20.696, [0, 0, 0]), (27932, 4, 'position', 17.57, [0, 0, 0]), (36694, 4, 'position', 14.826, [0, 0, 0])]

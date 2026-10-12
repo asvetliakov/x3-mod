@@ -1,0 +1,23 @@
+rot values (class, rot, pct): steps [(('TS', '0x8000', 35), 24264), (('TP', '0x8000', 35), 23401), (('M4', '0x8000', 40), 16229), (('TS', '0x8000', 20), 12636), (('M2', '0x8000', 10), 12052), (('TS', '0x8000', 30), 9288), (('TS', '0x8000', 40), 7562), (('M2', '0xb333', 10), 6897), (('M1', '0x8000', 10), 3548), (('M4', '0x8000', 30), 3071), (('TP', '0x10000', 35), 2581), (('M4', '0x8000', 45), 2091)]
+gamma rounding on match steps with a known port roll (variant, |roll rate residual|):
+   ('floor', '0') 10137
+   ('floor', '<=1') 124
+   ('floor', '<=3') 98
+   ('floor', '>3') 119
+   ('round', '0') 9923
+   ('round', '<=1') 212
+   ('round', '<=3') 157
+   ('round', '>3') 186
+   ('trunc', '0') 9703
+   ('trunc', '<=1') 238
+   ('trunc', '<=3') 293
+   ('trunc', '>3') 244
+acceleration operation order on leaf steps (variant, rot == 1.0, yaw+pitch exact):
+   ('fx(W,fx(rot,pct))', False, False) 427
+   ('fx(W,fx(rot,pct))', False, True) 75763
+   ('fx(W,rot)*pct/100', False, False) 3680
+   ('fx(W,rot)*pct/100', False, True) 72510
+   ('fx(W,rot*pct/100)', False, False) 2
+   ('fx(W,rot*pct/100)', False, True) 76188
+   ('fx(fx(W,rot),pct)', False, False) 750
+   ('fx(fx(W,rot),pct)', False, True) 75440

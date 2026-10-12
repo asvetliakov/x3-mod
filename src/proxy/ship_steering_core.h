@@ -195,6 +195,11 @@ struct Inputs {
     float d_order = -1.0f;    // distance to the order's own point when P is a detour (m; < 0 = P is the order's point):
                               // the arrival hold, the ramp and the stuck witness measure progress to the order, not to the detour
     float tick_s = kTickS;    // the servo's rate-surplus horizon (s): servo_tick() below
+    // Amendment 12 (ship-movement.md section 13.4): order 5 to a port (not a gate) and the hysteresis state of its
+    // port-roll match (the previous call of this leg wrote a triple below kPortMatchLimit: port_hold_active()).
+    bool port_leg = false;
+    bool port_hold = false;
+    bool smooth_stop = true;  // a stopped axis gets its stopping angle instead of 0 (the DLL never clears it; the fixture's A/B)
 };
 struct Command {
     std::int32_t e[3] = {0, 0, 0}; // the remaining angles to write (binary)
@@ -208,7 +213,27 @@ struct Command {
     float v_corner = 0;      // m/s (0 = no limit)
     float v_cmd = 0;         // m/s, the clamp for site B (0 = none)
     bool held = false;       // inside the arrival hold: angles 0
+    bool port_aligned = false; // a port leg whose written triple is below kPortMatchLimit (the engine's match runs this tick)
 };
+// Amendment 12. The engine's port-roll match (0x0045474a..0x004547d6) replaces the roll remainder when all three written
+// angles are below kPortMatchLimit (strict, signed); on a port leg the module keeps the triple below it once aligned while
+// the bearing error stays under kPortHoldRad, so the match is not toggled on and off as yaw/pitch cross the limit.
+constexpr std::int32_t kPortMatchLimit = 0x51e;
+constexpr std::int32_t kPortHoldClamp = kPortMatchLimit - 1;
+constexpr float kPortHoldRad = float(2 * kPortMatchLimit) * kRadPerBinary; // 14.4 deg
+constexpr std::uint32_t kPortHoldGapMs = 250; // a previous call older than this ends the leg's hold (order 5 calls every frame)
+// The stopping angle of a rate w (rad/s) at the axis acceleration a (rad/s^2): w^2 / 2a in binary angle, rounded up,
+// signed like w, at least 1. The integrator sets the rate to 0 at once on a zero remainder (0x00459a99); this remainder
+// makes the controller 0x0043ad20 brake at a (it brakes while e < w^2/a) and end with delta = e and w = 0.
+inline std::int32_t stop_angle(float w, float a) noexcept {
+    if (!(a > 0.0f) || w == 0.0f || !finite_f(w)) return 0;
+    float b = w * w / (2.0f * a) * kBinaryPerRad;
+    if (!(b < 32767.0f)) b = 32767.0f;
+    std::int32_t n = std::int32_t(b);
+    if (float(n) < b) ++n;
+    if (n < 1) n = 1;
+    return w < 0.0f ? -n : n;
+}
 // The rate servo of section 2.4: the remaining angle that makes the engine's
 // controller accelerate toward |omega| and brake above it, never beyond the
 // geometric remainder.
@@ -353,6 +378,27 @@ inline Reason steer(const Inputs& in, const Dynamics& dyn, Command* out) noexcep
         if (b < -32768.0f) b = -32768.0f;
         c.e[i] = round_to_int(b);
     }
+    // Amendment 12, smooth stops: an axis the law stops (its angle exactly 0: the roll of orders 4 and 5, the arrival
+    // hold, a zero command) while it still turns brakes instead of being cut. A servo angle below half a binary unit that
+    // rounds to 0 is the geometric remainder, not a stop, and keeps the engine's clamp.
+    if (in.smooth_stop) {
+        const bool live[3] = {yaw_ok, pitch_ok, roll_ok};
+        for (unsigned i = 0; i < 3; ++i)
+            if (c.e_rad[i] == 0.0f && live[i] && in.w[i] != 0.0f) c.e[i] = stop_angle(in.w[i], dyn.W[i] * dyn.k);
+    }
+    // Amendment 12, port legs: roll stays 0 (or its stopping angle) below the match limit, and once the leg is aligned
+    // yaw and pitch are held below it while the bearing error is under kPortHoldRad (the clamp moves only the braking
+    // point of the engine's trapezoid, not the turn direction).
+    if (in.port_leg) {
+        const bool hold = in.port_hold && c.theta < kPortHoldRad;
+        for (unsigned i = 0; i < 3; ++i) {
+            if (i < 2 && !hold) continue;
+            if (c.e[i] > kPortHoldClamp) c.e[i] = kPortHoldClamp;
+            if (c.e[i] < -kPortHoldClamp) c.e[i] = -kPortHoldClamp;
+        }
+        c.port_aligned = c.e[0] < kPortMatchLimit && c.e[0] > -kPortMatchLimit && c.e[1] < kPortMatchLimit && c.e[1] > -kPortMatchLimit &&
+                         c.e[2] < kPortMatchLimit && c.e[2] > -kPortMatchLimit;
+    }
     // Cornering (section 2.5): the turning circle at the slower axis must pass through P.
     const float omega_min = fmin_f(yaw_ok ? dyn.W[0] : 1e30f, pitch_ok ? dyn.W[1] : 1e30f);
     c.v_corner = (!c.held && sin_t > kCornerSinMin && omega_min < 1e29f) ? omega_min * c.d / (2.0f * sin_t) : 0.0f;
@@ -386,7 +432,13 @@ constexpr unsigned kShipCapacity = 1024;
 constexpr unsigned kProbeLimit = 8;
 constexpr std::uint32_t kStaleMs = 5000; // an entry older than this may be reused
 constexpr std::uint16_t kShipFlagRamp = 1, kShipFlagClamp = 2, kShipFlagGate = 4, // Ship.flags: arrival ramp, clamp enabled, gate approach
-                        kShipFlagGateDock = 8; // order 5 to a gate: the cornering speed toward B replaces the engine's 1 m/s creep
+                        kShipFlagGateDock = 8, // order 5 to a gate: the cornering speed toward B replaces the engine's 1 m/s creep
+                        kShipFlagPortHold = 16; // amendment 12: order 5 to a port, the last call wrote a triple below the match limit
+// Amendment 12: the port leg's hold for this call: the ship's previous handled call was on order 5 to a port, wrote an
+// aligned triple and is at most kPortHoldGapMs old.
+__attribute__((always_inline)) inline bool port_hold_active(const Ship& s, std::uint16_t order, std::uint32_t now_ms) noexcept {
+    return order == kOrderDock && s.order == kOrderDock && (s.flags & kShipFlagPortHold) && now_ms - s.stamp_ms <= kPortHoldGapMs;
+}
 constexpr float kGateDockFloorMs = 20.0f; // order 5 to a gate: the cornering speed's floor (the engine's creep is 1 m/s)
 // Order 5 to a gate: the engine's ramp (0x004548f5..0x00454977): vmax/2 at r/5, vmax at r, linear between.
 __attribute__((always_inline)) inline float gate_dock_ramp(float d, float r, float v_max) noexcept {

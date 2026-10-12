@@ -1,8 +1,10 @@
 """ship_trace_replay.py against the host fixture (verification/probe/ship_steering_host.cpp): the Python port of the
 controller equals the C++ on 4000 grid cases (every branch), the replay of the fixture's own gate runs written as
-ship_trace rows (--emit-trace) has zero rate and speed residuals and floating-point heading and position residuals,
-two deliberate perturbations of that trace (rate and remainder sign flipped, dt doubled) and a third (W halved) are
-classified as orientation, position and rate controller, and the --gate summary carries its transition facts."""
+ship_trace rows (--emit-trace) has zero rate and speed residuals and floating-point heading and position residuals
+(the slip term, the order-8 launch), the dock run at a station port recovers the port's roll from its aligned steps and
+replays the port-roll match and the final zone, two deliberate perturbations of the gate trace (rate and remainder sign
+flipped, dt doubled) and a third (W halved) are classified as orientation, position and rate controller, and the --gate
+summary carries its transition facts."""
 import json
 import subprocess
 import sys
@@ -13,6 +15,7 @@ from pathlib import Path
 import ship_trace_replay as R
 
 ROOT = Path(__file__).resolve().parents[2]
+DOCK = 0x5d0c4a90
 TOOL = ROOT / 'verification/probe/ship_trace_replay.py'
 
 
@@ -34,6 +37,7 @@ class ShipTraceReplay(unittest.TestCase):
         cls.groups = {}
         for r in R.iter_rows(str(cls.trace)):
             cls.groups.setdefault(r['obj'], []).append(r)
+        cls.dock = cls.groups.pop(DOCK)  # the station dock run: its own test; the others are the gate runs
 
     @classmethod
     def tearDownClass(cls):
@@ -60,6 +64,7 @@ class ShipTraceReplay(unittest.TestCase):
 
     def test_fixture_trace_replays_with_zero_residuals(self):
         self.assertEqual(len(self.groups), 3)
+        launch = 0
         for obj, s in self.replay().items():
             self.assertGreater(s['steps'], 500)
             self.assertEqual(s['skipped'], {'gap': 0, 'no_e': 0})
@@ -72,6 +77,31 @@ class ShipTraceReplay(unittest.TestCase):
             nonboundary = {c: n for c, n in s['step_classes'].items() if c != 'order boundary'}
             self.assertEqual(sum(nonboundary.values()), 0, (hex(obj), s['step_classes']))
             self.assertLessEqual(s['step_classes']['order boundary'], 1)
+        for obj, rows in self.groups.items():  # order 8 (the vanilla M6's launch): pos = f+0x240 + axis s(u) to the unit
+            steps, _, _ = R.replay_ship(rows)
+            o8 = [st for st in steps if st['order'] == 8 and not st['boundary']]
+            launch += len(o8)
+            for st in o8:
+                self.assertLess(st['pos'], 0.005, (hex(obj), st['frame']))
+        self.assertGreater(launch, 20)
+
+    def test_dock_at_a_station_port(self):
+        # the port's roll (30 deg = 5461 binary, floored) from the aligned match steps
+        self.assertEqual(set(R.port_rolls(self.dock).values()), {5461})
+        steps, skipped, _ = R.replay_ship(self.dock)
+        s = R.summarise(DOCK, self.dock, steps, skipped, {'row': 0, 'next': 0, 'neither': 0})
+        self.assertEqual(skipped, {'gap': 0, 'no_e': 0})
+        self.assertGreater(sum(1 for r in self.dock if R.match_condition(r)), 300)  # the match ran on the approach
+        self.assertGreater(s['unmodelled'].get('final zone', 0), 300)
+        self.assertNotIn('port roll unknown', s['unmodelled'])
+        self.assertEqual(s['residuals']['rate_yaw']['max'], 0)
+        self.assertEqual(s['residuals']['rate_pitch']['max'], 0)
+        # the roll of the match steps: exact but for the ship's roll read off the row's 5-decimal fwd/up (one frame of
+        # roll acceleration on at most 2 steps; 0 with 9 decimals)
+        self.assertLessEqual(s['residuals']['rate_roll']['max'], 10)
+        self.assertLessEqual(s['step_classes']['rate controller'], 2)
+        self.assertEqual(s['step_classes']['final zone'] + s['step_classes']['position'] + s['step_classes']['orientation'] +
+                         s['step_classes']['speed law'] + s['step_classes']['order boundary'], 0, s['step_classes'])
 
     def _dominant(self, summaries):
         for obj, s in summaries.items():
@@ -86,13 +116,13 @@ class ShipTraceReplay(unittest.TestCase):
             self.assertEqual(top, 'orientation', (hex(obj), other))
             self.assertEqual(other['orientation'], sum(other.values()), (hex(obj), other))
             self.assertEqual(s['residuals']['rate_yaw']['max'], 0)  # the rates still match: a convention, not the controller
-            self.assertEqual({c for c, n in s['window_classes'].items() if n}, {'orientation'})
+            self.assertEqual({c for c, n in s['window_classes'].items() if n and c != 'order boundary'}, {'orientation'})
 
     def test_dt_doubled_is_position(self):
         for obj, s, top, other in self._dominant(self.replay(lambda r: dict(r, dt_ms=2 * r['dt_ms']))):
             self.assertEqual(top, 'position', (hex(obj), other))
             self.assertEqual(other['position'], sum(other.values()), (hex(obj), other))
-            self.assertEqual({c for c, n in s['window_classes'].items() if n}, {'position'})
+            self.assertEqual({c for c, n in s['window_classes'].items() if n and c != 'order boundary'}, {'position'})
 
     def test_rate_cap_halved_is_rate_controller(self):
         def half(r):
