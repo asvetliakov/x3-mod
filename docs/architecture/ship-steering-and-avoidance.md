@@ -85,6 +85,47 @@ restored first at shutdown; a refusal reports `ship_steering_gates_refused` and 
 Rows: `ship_steering_gates installed=`, `ship_steering_gate_site`, the `gate_*` summary fields, `ship_gate_approach`
 (`--debug`: crossing speed, heading error to the pass point, crossing-to-warp time, v0).
 
+**Amendment 8 (2026-10-12, step 4: gate crowding and the capital approach, engine side only; the Run152
+follow-up folded in; the ledger's Step 4 section has the numbers):**
+(1) *Approach spread.* A non-capital ship's lead-in line is shifted in the gate's x-y plane by a per-ship offset on
+an 8-point ring of radius 0.25 r (the ring index from a multiplicative hash of the object pointer, stable for the
+ship's life); the direction h and the window rule of amendment 7 are unchanged and f+0x240 (the engine's A, its
+arrival test) is untouched. The shifted line still enters the 0.75 r completion sphere (margin 0.5 r); the worst
+heading error to a pass point on the 0.55 r / +-45 deg arc is 13.9 deg geometrically at 0.25 r (12.1 at 0.20 r, 15.8 at
+0.30 r, 17.8 at 0.35 r; `verification/results/ship-steering/spread_bound.py`), under the 18.2 deg creep threshold;
+adjacent ring positions cross 211 m apart. (2) *Exit spread.* Site W, the `SA_WarpObjectIn` case 0x00465bac (6 B,
+`mov ecx,[ebx+0x70]` | `mov edx,[ebx+0x50]`): before the case copies the ship's position into f+0x240 the stub
+offsets `phys+0x30..` laterally by the ship's ring position at 0.3 r_gate (never along the axis) for a non-capital
+ship warping in at a class-0x12 target; the case's own write (`f+0x240 + 1348650 x row 2`), the handler's per-frame
+writes and its final snap all derive from that copy, so the whole warp-in carries the offset (ship_steering_sites.h
+(l)). The site joins the gate group (all four or none). (3) *Capital alignment.* The lead-in (window rule, no
+spread) extends to capitals toward their grid point A = G - 2 (r_gate + r_ship) F + 666 m (a R + b U) (validated
+against that grid within 10 % of the depth and 20 m of the pitch), with direction F = row 2: `SA_RotateToAngles`
+writes the gate's alpha/beta to f+0x240/+0x244 and the 0x1f handler compares the ship's forward with the forward row
+of the matrix of those angles against 0xfd70 = cos 8.1 deg (0x004592d9, untouched), so the target heading is the
+gate axis (ship_steering_sites.h (m)). A capital's stop at A (P2), its arrival ramp and its launch from rest stay;
+site B writes the lower of the gate speed and the ramp in both directions for it, because the engine's own
+alignment rule (1 m/s beyond 45.6 deg off A) would stall the lateral join. (4) *Order 5 to a gate (Run152).* The
+engine's misaligned branch (500 units/s while > 18.2 deg off B, 0x004548a5) is replaced at site B by the cornering
+speed: min(the engine's own ramp r/5 -> vmax/2, r -> vmax, omega d / (2 sin theta)) (the chord rule: the turning
+circle passes through B), never below the floor, never above the aligned ramp, only when the chord arc and the
+straight chord to B neither cross the gate plane inside the ring band (a crossing is accepted inside 0.55 r, the
+pass arc, for the arc and 0.5 r for the chord: a pass point on the plane itself keeps the engine's turn in place)
+nor require more than 100 deg of turn, and only when B validates as the pinned pass point of a gate whose frame is
+orthonormal (subtypes 5..8 vanilla); otherwise the engine's value stands (`gate_dock_blocked`, `gate_dock_invalid`).
+The approach verdict (`validated`) is per approach: recomputed on every order-4 call, reset on a target change or
+when the ship leaves the gate's 2 r sphere; P2 and P4 keep the speed only on a validated approach. Site W's rule
+(`core::gate_warp_in_offset`) requires the autopilot flag, no deleted/attached flag, a class not excluded by
+`ship_steering_classes`, no order 0x21 in progress and an orthonormal gate frame. (5) *The crossing is recorded at P2*: the engine's order-4 arrival test
+runs before the frame's leaf call, so a per-call distance test never sees d <= 0.75 r (Run152: 0 crossings over
+59,836 lead-in calls); P2 marks the crossing from the last decision's heading error. (6) *Diagnostic* (`--debug`,
+<= 8 per boundary): `ship_gate_transition` at the order 4 -> 5 transition with dist(A)/r at the last order-4 call,
+the crossing flag, the heading error to B at the order-5 start, `[obj+0x10]`, `[obj+0x14]`, B and A in the gate
+frame / r, the validation outcome and the ring verdict; `ship_gate_approach` gains the ring index and the offset;
+the summary gains `gate_spread_offsets`, `gate_exit_offsets`, `gate_capital_aligned`, `gate_warp_calls`,
+`gate_lead_validated/fallback/window_rejected`, `gate_dock_writes/blocked` and the P2/P4 vanilla-stop reasons
+(`no_gate_target`, `capital`, `no_state`).
+
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
 shared handler that, for class-7 ships under the autopilot flag and a point-steering order, computes a
