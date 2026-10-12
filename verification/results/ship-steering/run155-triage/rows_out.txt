@@ -1,0 +1,143 @@
+== 1 identity
+sha256=2fb5aef2a62e9dcac865a7ab38af79d2c392cf7a97a3965a0e1da2c0ca282e48 bytes=58262411
+source_commit=05696413c418ddaf77bca6248209abfa4fe99ce9
+log_open file=C:\X3\x3m.log source=game previous=renamed session=20261012-181404-17368 stale_removed=0
+session_end frames=44289 elapsed_ms=294895 devices=1 resets=0 exception=0 dropped=0 filter=ours
+crash files newer than the previous log (none listed = none):
+ship_trace installed=1 max_ships=4 ring=128 idle_ms=5000 bytes_per_row_est=330
+ship_steering installed=1 sites=4 class_mask=0x0000 timing=1 tau_s=0.15 tick_s=0.05 floor_ms=10 bank_deg=35 handler_a=0x
+ship_steering_site index=0 site=0x0044ccc0 name=ship_steer_leaf_yaw_pitch status=active write=atomic stub=0x6867c780 tai
+ship_steering_site index=1 site=0x0044c620 name=ship_steer_leaf_roll_yaw status=active write=atomic stub=0x6867c800 tail
+ship_steering_site index=2 site=0x0044c970 name=ship_steer_leaf_roll_pitch status=active write=atomic stub=0x6867c880 ta
+ship_steering_site index=3 site=0x004593dd name=ship_steer_loop_continue status=active write=plain stub=0x6867c900 tail=
+ship_avoidance installed=1 warn_site=0x0044dd90 warn_status=active write=atomic snapshot_capacity=1024 snapshot_slots=4 
+ship_steering_gates installed=1 status=active sites=4 lead_in_deg=14.17 cross_fraction=0.75 look_s=0.75 look_min_r=0.30 
+ship_steering_gate_site index=0 site=0x00454b91 name=ship_gate_stop_a status=active write=atomic stub=0x6867ca20 tail=0x
+ship_steering_gate_site index=1 site=0x00454700 name=ship_gate_stop_b status=active write=atomic stub=0x6867caa0 tail=0x
+ship_steering_gate_site index=2 site=0x0045526f name=ship_gate_launch status=active write=plain stub=0x6867cb20 tail=0x0
+ship_steering_gate_site index=3 site=0x00465bac name=ship_gate_warp_in status=active write=plain stub=0x6867cbb0 tail=0x
+== 1 summary health over 273 intervals
+avoid_calls=859967 avoid_excluded_followers=172222 clamp_applied=11336 clamp_calls=1565969 clamp_stale=165792 conflict_episodes=593 conflicts=80067 detours=54321 e_calls=2045890 e_suppressed=48483 emergency=3322 gate_crossings=49 gate_dock_blocked=83 gate_dock_writes=11360 gate_launch_continued=49 gate_lead_calls=65424 gate_lead_validated=47 gate_lead_window_rejected=34222 gate_p2=73 gate_p2_no_gate_target=23 gate_p2_no_state=1 gate_p4=75 gate_p4_no_gate_target=24 gate_p4_no_state=2 gate_p5=897 gate_speed_writes=30037 gate_spread_offsets=49 gate_stops_skipped=49 gate_v0_kept=49 pass_order_not_steered=6031 redirected=84611 ship_trace_rows=138259 unresolved=11053 unresolved_behind=8773 unresolved_blocked=154 unresolved_episodes=267 unresolved_inside_stop=99 unresolved_inside_turn=2027
+stuck_total(last) 0 stuck rows 0 | handled_by_order_total(last) 0x4:111666,0x5:37381,0x12:16885,0x14:365476,0x15:296698,0x19:86127
+handler_us_p50 med 0.8 p99 med 6.4 p99 max 27.5 p99>5: 229 max_us 65.7 max>50: 1 calls_per_ship_s med 126.6
+ship_trace rows printed 42851 frames; ship_trace_rows sum 138259 dropped 0
+game/real time ratio (SETA): game 2070 s over real 272 s
+gate 0x902e4fe8 centre_m [-53020. -11511.   2177.] arc 607 m (r_gate 1105) A_m [-51926. -12395.   2177.] front=[ 0.78 -0.63 -0.  ]
+gate 0x902e2c90 centre_m [ -7498.  10774. -57558.] arc 607 m (r_gate 1105) A_m [ -7498.   9890. -56464.] front=[ 0.   -0.63  0.78]
+gate 0x902e2b58 centre_m [  4259. -18037.  31123.] arc 607 m (r_gate 1105) A_m [  4259. -18921.  30029.] front=[-0.   -0.63 -0.78]
+== 2 ship_gate_transition 49
+Run155 transitions 49 class {'TS': 33, 'M6': 2, 'M4': 12, 'M3': 2} capital {'0': 49} validated {'matched': 49} dock_blocked {'0': 49}
+  err_B_deg n=49 min=28.1 p25=42.6 med=55.5 p75=66.8 max=85.8 >18.2: 49 >45.6: 31
+  v_ms at o5 start n=49 min=70.6 p25=107.6 med=140.9 p75=243.5 max=404.5
+  approach cross_heading_err_deg n=49 min=0.6 p25=13.9 med=26.6 p75=54.1 max=110.6 | cross_v_ms n=49 min=73.3 p25=110.0 med=143.0 p75=247.5 max=406.2 | v0_ms n=49 min=45.9 p25=55.1 med=74.6 p75=138.8 max=328.6
+    M3 n=2 cross_to_launch_s n=2 min=7.1 p25=7.1 med=9.3 p75=11.4 max=11.4
+    M4 n=12 cross_to_launch_s n=12 min=5.7 p25=6.9 med=7.4 p75=7.9 max=9.6
+    M6 n=2 cross_to_launch_s n=2 min=11.7 p25=11.7 med=13.4 p75=15.1 max=15.1
+    TS n=33 cross_to_launch_s n=33 min=12.1 p25=16.9 med=19.0 p75=21.8 max=30.0
+Run154 transitions 91 class {'TS': 47, 'M4': 34, 'M6': 6, 'TP': 2, 'M3': 2} capital {'0': 91} validated {'matched': 91} dock_blocked {'1': 90, '0': 1}
+  err_B_deg n=91 min=22.2 p25=46.6 med=60.7 p75=73.7 max=161.7 >18.2: 91 >45.6: 72
+  v_ms at o5 start n=91 min=79.0 p25=121.0 med=142.0 p75=324.3 max=491.1
+  approach cross_heading_err_deg n=91 min=0.6 p25=20.9 med=35.2 p75=58.9 max=114.7 | cross_v_ms n=91 min=81.1 p25=124.0 med=143.0 p75=327.5 max=495.0 | v0_ms n=91 min=46.7 p25=62.0 med=80.0 p75=162.1 max=326.3
+    M3 n=2 cross_to_launch_s n=2 min=8.5 p25=8.5 med=9.2 p75=9.9 max=9.9
+    M4 n=34 cross_to_launch_s n=34 min=5.0 p25=5.8 med=7.4 p75=8.3 max=9.3
+    M6 n=6 cross_to_launch_s n=6 min=10.8 p25=12.0 med=13.1 p75=14.1 max=15.5
+    TP n=2 cross_to_launch_s n=2 min=14.4 p25=14.4 med=18.4 p75=22.4 max=22.4
+    TS n=47 cross_to_launch_s n=47 min=16.3 p25=19.1 med=22.7 p75=25.4 max=30.5
+  angle(p2_fwd, h)                           n=49 min=21.94 p25=34.49 med=49.03 p75=60.40 max=110.65
+  angle(p2_fwd, carrot-pos): servo lag       n=49 min=3.25 p25=64.26 med=153.81 p75=165.08 max=176.57
+  angle(carrot-pos, h): carrot geometry      n=49 min=22.59 p25=57.96 med=141.38 p75=153.94 max=171.11
+  angle(o5_fwd, B-o5_pos) (= err_B check)    n=49 min=28.06 p25=42.39 med=56.02 p75=66.83 max=85.45
+  |p2_pos - A| / r                           n=49 min=0.35 p25=0.62 med=0.71 p75=0.74 max=0.75
+  p2_pos z / r (A at -1.0)                   n=49 min=-1.74 p25=-1.67 med=-1.56 p75=-1.44 max=-0.58
+  p2 off the lead line in y (r, x ignored)   n=49 min=0.05 p25=0.20 med=0.29 p75=0.42 max=0.74
+  carrot ahead in z (r)                      n=49 min=-0.77 p25=-0.35 med=-0.24 p75=0.23 max=0.58
+  ms_since_p2                                n=49 min=5.00 p25=51.00 med=60.00 p75=80.00 max=90.00
+  gate_dock_writes 11360 gate_dock_invalid 0 gate_dock_blocked 83
+== 3 capitals
+Run155 subjects with minC>1400 m and >100 ship detours: ['0x902de370', '0x902bc4f0', '0x902c4ea8']
+   C(0x902de370 vs 0x902c4ea8)=2659.4
+   C(0x902bc4f0 vs 0x902de370)=2728.8
+   C(0x902bc4f0 vs 0x902c4ea8)=2659.4
+   C(0x902c4ea8 vs 0x902de370)=2624.8
+  radii (inferred from C pairs) m: {'0x902bc4f0': 1092, '0x902de370': 1092, '0x902c4ea8': 1022} leader 0x902bc4f0
+  0x902bc4f0 r=1092 rows 548 orders {'0x4': 548} | within 12 km of gate 0x902e2c90: rows 443 frames 14811-41393 real 93-271 s
+     dist to gate m n=443 min=2951 p25=4511 med=5058 p75=6450 max=12000 | depth (+front) m n=443 min=-2868 p25=-86 med=3977 p75=5295 max=11645 behind plane: 132
+     dist to nearest candidate grid point (depth 4393 m, both x signs) m n=443 min=345 p25=1183 med=2252 p75=6426 max=12414 <222: 0 <666: 61
+     kinds {'0': 443} vertical {'1': 400, '0': 43} vs formation capitals 102 vs r_obs<200 m (r_obs=C-1.5 r_own) 341 distinct 11 r_obs n=341 min=8 p25=8 med=62 p75=64 max=86
+     miss_m n=443 min=132 p25=859 med=1664 p75=2110 max=3124 miss>C: 124 | t_cpa_s n=443 min=0.0 p25=10.1 med=29.4 p75=54.1 max=1206.4 | |P-x| m n=443 min=798 p25=2191 med=3322 p75=4311 max=6994
+     real seconds with a detour row 45 of 179 in its near-gate window
+  0x902de370 r=1092 rows 1123 orders {'0x14': 1123} | within 12 km of gate 0x902e2c90: rows 629 frames 18199-43321 real 117-287 s
+     dist to gate m n=629 min=3148 p25=6562 med=7681 p75=8352 max=11823 | depth (+front) m n=629 min=-2755 p25=2228 med=5079 p75=6855 max=11440 behind plane: 49
+     dist to nearest candidate grid point (depth 4393 m, both x signs) m n=629 min=1237 p25=2997 med=4798 p75=6930 max=13024 <222: 0 <666: 0
+     kinds {'0': 629} vertical {'1': 629} vs formation capitals 123 vs r_obs<200 m (r_obs=C-1.5 r_own) 506 distinct 11 r_obs n=506 min=8 p25=8 med=64 p75=81 max=91
+     miss_m n=629 min=136 p25=1533 med=2043 p75=2905 max=3793 miss>C: 389 | t_cpa_s n=629 min=0.0 p25=13.2 med=25.5 p75=45.4 max=564.5 | |P-x| m n=629 min=393 p25=2589 med=3713 p75=5077 max=9098
+     real seconds with a detour row 48 of 172 in its near-gate window
+  0x902c4ea8 r=1022 rows 1176 orders {'0x14': 1176} | within 12 km of gate 0x902e2c90: rows 967 frames 16980-43192 real 108-286 s
+     dist to gate m n=967 min=2711 p25=5900 med=7099 p75=8437 max=11006 | depth (+front) m n=967 min=-1321 p25=1164 med=5665 p75=7370 max=10395 behind plane: 141
+     dist to nearest candidate grid point (depth 4255 m, both x signs) m n=967 min=731 p25=2384 med=3680 p75=4875 max=10704 <222: 0 <666: 0
+     kinds {'0': 967} vertical {'1': 838, '0': 129} vs formation capitals 137 vs r_obs<200 m (r_obs=C-1.5 r_own) 830 distinct 11 r_obs n=830 min=8 p25=64 med=64 p75=91 max=91
+     miss_m n=967 min=136 p25=1332 med=2024 p75=2592 max=5239 miss>C: 544 | t_cpa_s n=967 min=0.1 p25=10.1 med=28.6 p75=44.4 max=350.0 | |P-x| m n=967 min=594 p25=3108 med=4157 p75=5596 max=9127
+     real seconds with a detour row 77 of 180 in its near-gate window
+Run154 subjects with minC>1400 m and >100 ship detours: ['0x8c4d3ee0', '0x8c8d1ab8', '0x8c4db038']
+   C(0x8c4d3ee0 vs 0x8c8d1ab8)=2728.8
+   C(0x8c4d3ee0 vs 0x8c4db038)=2659.4
+   C(0x8c8d1ab8 vs 0x8c4db038)=2659.4
+   C(0x8c4db038 vs 0x8c8d1ab8)=2624.8
+  radii (inferred from C pairs) m: {'0x8c4d3ee0': 1092, '0x8c8d1ab8': 1092, '0x8c4db038': 1022} leader 0x8c4d3ee0
+  0x8c4d3ee0 r=1092 rows 1670 orders {'0x4': 1670} | within 12 km of gate 0x902e2c90: rows 818 frames 16570-59277 real 101-407 s
+     dist to gate m n=818 min=2694 p25=4662 med=6312 p75=7962 max=11543 | depth (+front) m n=818 min=-5666 p25=3274 med=5366 p75=7259 max=10457 behind plane: 88
+     dist to nearest candidate grid point (depth 4393 m, both x signs) m n=818 min=56 p25=2109 med=3102 p75=4159 max=10065 <222: 7 <666: 94
+     kinds {'0': 818} vertical {'1': 618, '0': 200} vs formation capitals 157 vs r_obs<200 m (r_obs=C-1.5 r_own) 595 distinct 17 r_obs n=661 min=8 p25=14 med=62 p75=64 max=755
+     miss_m n=818 min=104 p25=1475 med=1684 p75=2359 max=4954 miss>C: 270 | t_cpa_s n=818 min=0.0 p25=7.1 med=19.5 p75=36.6 max=47.8 | |P-x| m n=818 min=203 p25=2961 med=4769 p75=5628 max=9200
+     real seconds with a detour row 65 of 307 in its near-gate window
+  0x8c8d1ab8 r=1092 rows 1618 orders {'0x14': 1618} | within 12 km of gate 0x902e2c90: rows 1256 frames 21180-56584 real 132-383 s
+     dist to gate m n=1256 min=3015 p25=6161 med=7602 p75=8937 max=11775 | depth (+front) m n=1256 min=-4941 p25=2447 med=5742 p75=7666 max=11341 behind plane: 172
+     dist to nearest candidate grid point (depth 4393 m, both x signs) m n=1256 min=241 p25=3027 med=4841 p75=6752 max=9890 <222: 0 <666: 16
+     kinds {'0': 1245, '3': 11} vertical {'1': 1090, '0': 166} vs formation capitals 236 vs r_obs<200 m (r_obs=C-1.5 r_own) 1009 distinct 17 r_obs n=1020 min=8 p25=8 med=64 p75=81 max=1105
+     miss_m n=1256 min=107 p25=1677 med=2524 p75=3064 max=5223 miss>C: 823 | t_cpa_s n=1256 min=0.1 p25=10.4 med=22.3 p75=38.0 max=66.7 | |P-x| m n=1256 min=106 p25=2546 med=4081 p75=5547 max=11245
+     real seconds with a detour row 91 of 252 in its near-gate window
+  0x8c4db038 r=1022 rows 1150 orders {'0x14': 1150} | within 12 km of gate 0x902e2c90: rows 898 frames 22369-58698 real 141-402 s
+     dist to gate m n=898 min=2643 p25=3715 med=5451 p75=6795 max=11128 | depth (+front) m n=898 min=-9053 p25=-1870 med=815 p75=4179 max=10306 behind plane: 274
+     dist to nearest candidate grid point (depth 4255 m, both x signs) m n=898 min=674 p25=3721 med=4507 p75=6265 max=13311 <222: 0 <666: 0
+     kinds {'0': 732, '3': 166} vertical {'1': 765, '0': 133} vs formation capitals 246 vs r_obs<200 m (r_obs=C-1.5 r_own) 456 distinct 14 r_obs n=652 min=10 p25=64 med=64 p75=1104 max=1104
+     miss_m n=898 min=164 p25=1224 med=2309 p75=3029 max=4912 miss>C: 455 | t_cpa_s n=898 min=0.8 p25=10.7 med=24.3 p75=41.3 max=79.9 | |P-x| m n=898 min=389 p25=2837 med=3917 p75=5529 max=8936
+     real seconds with a detour row 73 of 262 in its near-gate window
+  leader 0x902bc4f0, 20-game-s bins near gate 0x902e2c90: game_s frames rows | mean rel x,y,depth m | apparent m/s (game) | top obstacle
+   23220 16423-16576 18 | -849,590,5404 | 51 | [('0x9030de88', 18)]
+   23240 16701-16857 20 | -895,722,5312 | 1 | [('0x9030de88', 20)]
+   23260 16980-17130 19 | -903,711,5303 | 1 | [('0x9030de88', 19)]
+   23280 17261-17407 18 | -912,697,5292 | 1 | [('0x903165d0', 10)]
+   23300 17535-17541 7 | -917,678,5275 | - | [('0x9030de88', 7)]
+   23360 18331-18341 11 | 347,-1015,3975 | - | [('0x902c4ea8', 11)]
+   23420 19132-19142 11 | 342,1365,3092 | - | [('0x9030de88', 11)]
+   23440 20256-20256 1 | -2749,3175,3675 | - | [('0x4361d568', 1)]
+   23500 20911-21061 26 | -4201,2795,5324 | 48 | [('0x9030de88', 15)]
+   23520 21173-21317 27 | -3258,2510,5229 | 53 | [('0x9030de88', 27)]
+   23600 22607-22656 14 | 1051,1167,3585 | 48 | [('0x43616dd0', 11)]
+   23620 23070-23088 19 | 2064,-1121,2609 | 23 | [('0x902de370', 19)]
+   23760 25357-25363 7 | 505,-4159,5005 | - | [('0x4362e8d8', 7)]
+   23920 27428-27432 5 | 161,722,5007 | - | [('0x902de370', 5)]
+   23940 27844-27848 5 | -559,-1346,3719 | - | [('0x43614f58', 5)]
+   24020 28806-29344 50 | -973,-1364,4178 | 30 | [('0x902be4a0', 47)]
+   24040 29786-29801 16 | -754,-352,5609 | 81 | [('0x902be4a0', 16)]
+   24060 29940-29941 2 | -700,-149,5854 | - | [('0x43633810', 2)]
+   24140 31181-31193 13 | 2058,3418,2035 | - | [('0x4361d568', 13)]
+   24200 31861-31863 3 | 513,4243,810 | - | [('0x902de370', 3)]
+   24320 33599-33615 17 | 5792,5880,-1532 | 105 | [('0x4361d568', 17)]
+   24340 33897-33901 5 | 4510,7109,-769 | - | [('0x902de370', 5)]
+   24400 35001-35022 22 | 7351,8057,-2866 | 106 | [('0x4362bcf8', 22)]
+   24460 36935-36943 9 | 3653,7223,-2863 | - | [('0x43633810', 9)]
+   24520 39281-40699 72 | -34,4592,-168 | 36 | [('0x902de370', 49)]
+   24540 40854-40872 7 | -90,4598,-76 | - | [('0x902de370', 7)]
+   24560 41378-41393 16 | 455,2529,1496 | 78 | [('0x90308938', 16)]
+  stall window frames 16571-17541: game 23230.8-23300.7 s, rows 70, obstacle {'0x9030de88': 60, '0x903165d0': 10}, C ['1645.3', '1693.0'], miss n=70 min=188 p25=2105 med=2110 p75=2122 max=2613, t_cpa n=70 min=7.9 p25=71.6 med=222.3 p75=275.1 max=1206.4, P-x n=70 min=1840 p25=2181 med=2192 p75=2211 max=2220
+  obstacle 0x9030de88: rows 347, C values ['137.7', '1541.3', '1645.3', '60.5'] (r_obs ~ 8 m), as subject rows 0
+  decision rows by class {'TS': 36, 'M8': 186, 'M6': 50, 'TP': 1} | ship_trace classes {'TS': 46981, 'M6': 3576, 'M4': 25607, 'M3': 790}
+  pass_order_not_steered intervals 75 sum 6031 max per interval 461
+  emergency per interval: nonzero 82 max 199
+== 2b trace: lead-in carrot liveness in the last 40 order-4 rows (trace_crossing.py)
+transitions in trace 24 | last-40 order-4 rows 960 redirected 871 angle(fwd,point-pos) med 5.9 p75 18.7 max 63.9
+last order-4 row per transition: obj class frame ang(fwd,point) redirected |pos-A|/r ang(fwd,A)
+== 2c trace: gap before order 5 (trace_gap.py)
+traced transitions 31 | game-ms gap last o4 row -> first o5 row: min 100 med 6570 max 48930, >1000 ms: 24, >5000 ms: 20
+|pos-A|/r at the last o4 row: med 1.19 min 0.75 max 1.57 | at the first o5 row: med 0.71

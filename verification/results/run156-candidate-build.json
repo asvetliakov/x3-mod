@@ -1,0 +1,20 @@
+{
+  "dll": "detached worktree /tmp/x3-run156-candidate of 9a4e1b2e, build/d3d9.dll (clean configure + build)",
+  "sha256": "b17fb4eb79088e15e3facb82a308db746a329775736af77278fc702e71332c9a",
+  "bytes": 58267592,
+  "commit": "9a4e1b2e",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 954, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "test_ship_steering test_ship_steering_sites test_ship_trace_format OK (fixture 3676/3676)"
+  },
+  "changes_since_run155": [
+    "fc5b8838 replay conformance tool",
+    "9a4e1b2e amendment 11: capitals ignore small ships (engine filter mirrored), formation exclusion both ways, 30 s horizon, capital trace slot, trace through 0x12/0x1f"
+  ],
+  "trigger": "Run155: capitals circling = avoidance detours against 8-86 m ships (user decision: capitals ignore small ships)",
+  "producer": "main session (Fable 5.1), 2026-10-12"
+}
