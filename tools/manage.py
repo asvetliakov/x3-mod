@@ -293,6 +293,9 @@ def apply_promoted_defaults(args):
 # The default 90 gives F' = 0x3470 (vertical 58.72 deg), the value the earlier vertical default produced.
 FOV_MIN_DEG, FOV_MAX_DEG = 70.0, 100.0
 FOV_DEFAULT_SETTING = '90'
+# --ship-steering-classes: the SG_SH_* codes 0..15 of the ship record (docs/reverse-engineering/ship-navigation-ai.md,
+# section 5), the names src/proxy/ship_steering_core.h parses into its exclusion mask.
+SHIP_CLASS_NAMES = ('TL', 'TS', 'M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'TL_P', 'TS_P', 'GO', 'M6', 'TP', 'M7', 'TM', 'M8')
 
 
 def fov_setting(text):
@@ -1323,6 +1326,8 @@ def main():
     parser.add_argument('--engine-light-hold', type=int, default=None, metavar='FRAMES', help='How many frames the engine light on the hull outlives a ship\'s last main-jet record while its hull is still drawn (an engine nozzle off screen), following the hull and fading out over the last third, 0..600, 0 = out at once (X3M_ENGINE_LIGHT_HOLD, ini engine_light_hold; nothing is sent unless given, i.e. 60, also the DLL default; an inherited shell value is dropped; refused under --vanilla). Read once at load (docs/architecture/engine-light.md "Hold")')
     parser.add_argument('--engine-shimmer-max', type=int, default=None, metavar='N', help='How many nozzles get the engine heat shimmer per frame, the largest on screen first, 0..16, 0 = none (X3M_ENGINE_SHIMMER_MAX, ini engine_shimmer_max; nothing is sent unless given, i.e. 4, also the DLL default: the own ship plus the nearest, about 0.4 ms worst case at 5120x1440; an inherited shell value is dropped; refused under --vanilla). Read once at load')
     parser.add_argument('--sun-flare-fix', choices=('on', 'off'), default=None, help='Keep the sun\'s lens flare when a far sun is near the view centre on wide displays by saturating the lens collector\'s overflowing horizontal bound (X3M_SUN_FLARE_FIX; default on for every modded launch, refused under --vanilla; off, or the variable unset, leaves the engine\'s bytes untouched; the first multiply of the same test still wraps for tan(F/2) >= 2, F >= 126.9 deg, which the --fov range never reaches, only script cameras; docs/reverse-engineering/field-of-view.md section 9.1)')
+    parser.add_argument('--ship-steering', action='store_true', help='Smooth ship steering for every computer-flown class-7 ship under an engine order (X3M_SHIP_STEERING=1; default absent = nothing patched; refused under --vanilla): the three steering-leaf entries 0x0044ccc0 / 0x0044c620 / 0x0044c970 and the command pass\'s object-loop continue 0x004593dd are claimed through engine_patch (all four or none); one handler computes a shortest-arc rotation and a curvature-limited rate command and writes it as the three remaining angles (a rate servo through the engine\'s own per-axis controller), and a per-frame clamp lowers the desired speed to an arrival ramp and a cornering limit (never raises it, floor 10 m/s). Docking final zones, gate transit, warp, undock, glide and manual flight are untouched. Rows: ship_steering_summary (--perf, 1 Hz), ship_steering_decision (--debug), ship_steering_stuck (always). Exact executable and bytes only, otherwise fails closed to vanilla (docs/architecture/ship-steering-and-avoidance.md, docs/verification/ship-steering.md)')
+    parser.add_argument('--ship-steering-classes', default=None, metavar='LIST', help='Ship classes the smooth steering leaves to the game under --ship-steering (X3M_SHIP_STEERING_CLASSES): a comma list of SG_SH names (TL,TS,M0,M1,M2,M3,M4,M5,TL_P,TS_P,GO,M6,TP,M7,TM,M8), e.g. M1,M2,TL; empty = every class. Requires --ship-steering')
     parser.add_argument('--dust-leak-fix', choices=('on', 'off'), default=None, help='Stop the engine\'s dust-scene fill 0x0041efc0 from leaking one scene node per missing dust body per frame (X3M_DUST_LEAK_FIX; default on for every modded launch, also the DLL default when the variable is unset; refused under --vanilla). on claims the loop tail\'s SUB at 0x0041f4d1 through engine_patch: a node whose dust body failed to load is released with the engine\'s own node release 0x00487be0 and the fill stops for that frame (at most one failed attempt per frame); off leaves the engine\'s bytes. Sectors on backgrounds with missing dust bodies (170 Mayhem 3 rows, 1 stock) otherwise grow by NumDustInstances nodes per frame until the next load (docs/reverse-engineering/object-lifetimes.md, Run383)')
     parser.add_argument('--fov', default=None, metavar='N|game', help='Field of view as the game counts it, like X4: N is the horizontal angle in degrees on a 16:9 screen, 70..100 (the in-game FOV menu\'s range; decimals allowed), default 90 on every modded launch; or game. The vertical angle is derived (70 -> 43.0 deg, 80 -> 50.5, 90 -> 58.7, 100 -> 67.7) and stays the same on every display at least as wide as 4:3, so wider screens get more width: at 90, 21:9 shows 106 deg (2560x1080; 107 on 3440x1440) and 32:9 127 (5120x1440). The in-game FOV menu always starts from its own 90 whatever --fov is (the game keeps that number in its script and never sees --fov), so its first press jumps to the value of 91 (or 89); from then on the menu works in the same units as --fov (its number is remapped the same way: engine focus of N 50..130 through a table; other values unchanged). game keeps the vanilla model, where the number is the horizontal angle of the central 4:3 area (90 = 73.74 deg vertical, 106 horizontal on 16:9, 139 on 32:9), and patches nothing. --fov seeds a new game; after a savegame load the savegame\'s own value wins, as with the menu: a save written without the patch (or under --fov game) that holds the game\'s number N is converted to the same units on load (its 90 means 90 whatever --fov is), a save written with the patch loads as saved (a decimal --fov that would land on such a number is moved by 1/65536 of a turn so its saves do too); saves are written in the units in play, so a patched save loads narrower under --fov game. The DLL writes the registry constructor\'s default (0x0041c9dc) and hooks the INS_SetFocus store (0x0042dbf8) and the savegame load store (0x0041c8c1), all three verified or none (refused under --vanilla, where the proxy is not loaded); zoom scales the result; displays narrower than 4:3 get a slightly larger vertical angle (docs/reverse-engineering/field-of-view.md)')
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
@@ -1974,6 +1979,16 @@ def main():
         parser.error('--sun-flare-fix cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the lens collector never runs')
     if args.vanilla and args.dust_leak_fix is not None:
         parser.error('--dust-leak-fix cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the dust-scene fill never runs')
+    if args.vanilla and (args.ship_steering or args.ship_steering_classes is not None):
+        parser.error('--ship-steering/--ship-steering-classes cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the steering leaves never runs')
+    if args.ship_steering_classes is not None and not args.ship_steering:
+        parser.error('--ship-steering-classes requires --ship-steering.')
+    if args.ship_steering_classes is not None:
+        names = [n.strip().upper() for n in args.ship_steering_classes.split(',') if n.strip()]
+        unknown = [n for n in names if n not in SHIP_CLASS_NAMES]
+        if unknown or len(args.ship_steering_classes) > 127:
+            parser.error(f'--ship-steering-classes: unknown class name(s) {unknown} (expected a comma list of {",".join(SHIP_CLASS_NAMES)})')
+        args.ship_steering_classes = ','.join(names)
     if args.vanilla and args.fov is not None:
         parser.error('--fov cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that sets the field of view never runs')
     if args.fov is not None:
@@ -2483,6 +2498,17 @@ def main():
             env.pop('X3M_DUST_LEAK_FIX', None)
         else:
             env['X3M_DUST_LEAK_FIX'] = args.dust_leak_fix or 'on'
+        # Ship steering: opt-in, set only when requested so a stale shell value cannot claim the steering leaves;
+        # the class list travels only with it.
+        if args.ship_steering:
+            env['X3M_SHIP_STEERING'] = '1'
+            if args.ship_steering_classes:
+                env['X3M_SHIP_STEERING_CLASSES'] = args.ship_steering_classes
+            else:
+                env.pop('X3M_SHIP_STEERING_CLASSES', None)
+        else:
+            env.pop('X3M_SHIP_STEERING', None)
+            env.pop('X3M_SHIP_STEERING_CLASSES', None)
         # Field of view: always explicit on a modded launch (N = 90 unless --fov), so a stale
         # shell value cannot select another angle; dropped under --vanilla (refused above).
         if args.vanilla:

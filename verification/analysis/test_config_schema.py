@@ -186,6 +186,18 @@ class ConfigSchema(unittest.TestCase):
             self.assertNotIn(hull, launch_env(module, game, wine, '--config', '--hull-lightmap-gain', '3'))
             self.assertEqual(launch_env(module, game, wine, '--config', '--emission-source-gain', '3')[hull], '3.0')
 
+    def test_ship_steering_keys(self):
+        # docs/verification/ship-steering.md: an experimental opt-in with no schema default (the DLL's own built-in off),
+        # its class list a plain string that requires it; both in the template, commented at their defaults.
+        steering, classes = schema.BY_KEY['ship_steering'], schema.BY_KEY['ship_steering_classes']
+        self.assertEqual((steering['type'], steering['section'], steering['default'], steering['builtin'], steering['launcher']),
+                         ('bool', 'engine', None, '0', '--ship-steering'))
+        self.assertEqual((classes['type'], classes['default'], classes['builtin'], classes['requires'], classes['launcher']),
+                         ('string', None, '', ('ship_steering',), '--ship-steering-classes'))
+        template = TEMPLATE.read_text()
+        self.assertIn(';ship_steering = 0\n', template)
+        self.assertIn(';ship_steering_classes =\n', template)
+
     def test_launcher_fields_are_registered_options(self):
         # (see also OptOuts below: the resolved values of every opt-out, default launch and player mode)
         registered = set(re.findall(r"add_argument\('(--[a-z0-9-]+)'", (ROOT / 'tools/manage.py').read_text()))

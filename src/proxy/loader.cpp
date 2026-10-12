@@ -13,6 +13,7 @@
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
+#include "ship_steering.h"
 #include "fov.h"
 #include "ui_scale.h"
 #include "text_density.h"
@@ -486,6 +487,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
                                             // jump
         if (reserved == nullptr)
             x3m::dust_leak_fix::shutdown(); // same rule: the five SUB bytes back only on FreeLibrary, only over our jump
+        if (reserved == nullptr)
+            x3m::ship_steering::shutdown(); // same rule: the three leaf entries and the loop continue back only on FreeLibrary
         if (reserved == nullptr)
             x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary

@@ -386,6 +386,12 @@ SETTINGS = [
     entry('dust_leak_fix', 'enum', 'engine', 'Stops a slowdown in sectors whose background names missing dust models: the game '
           'would otherwise create a few dozen invisible objects every frame and never remove them. on or off.', 'on',
           choices=('on', 'off'), launcher='--dust-leak-fix'),
+    entry('ship_steering', 'bool', 'engine', 'Smoother steering for computer-flown ships: turns follow one curve instead of '
+          'yaw-then-pitch, and ships slow for their arrival point and for tight corners. Experimental. 1 = on, 0 = off.',
+          builtin='0', launcher='--ship-steering', since='2026-10-12'),
+    entry('ship_steering_classes', 'string', 'engine', 'Ship classes the smoother steering leaves to the game, as a comma list '
+          'of class names (TL, TS, M0, M1, M2, M3, M4, M5, TL_P, TS_P, GO, M6, TP, M7, TM, M8). Empty = every class.',
+          builtin='', requires=('ship_steering',), launcher='--ship-steering-classes', since='2026-10-12'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '
