@@ -136,6 +136,12 @@ amendment 15 adds.
    snapshot item, read by `small_for_capital`.
 8. The servo surplus beyond 50 ms frames (row 15c).
 9. The side memory across an order change (row 25).
+10. Box or capsule hulls for capital-to-capital pairs (2026-10-13, after amendment 16). The lane corridor exemption
+    trusts the KC grid (hulls 0.38–0.45 r wide overlap on paper by ≈ 260 m per Titan pair, `render-node-bounds.md` §6);
+    a geometry-true pair test on the measured hull boxes would replace it and handle crossings. Trigger: `ship_capital_lane`
+    rows showing grazes or neighbours bouncing at the grid.
+11. Capitals jumping in together (exit spread covers non-capitals only); combat flight; save/load mid-approach;
+    the "held below des" speed-law gap (replay 61eeb790).
 
 ## Verification
 
