@@ -46,9 +46,10 @@ gate theta +45 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_e
 gate spread M6  fps= 60 rings=3,2,0,7 min_sep=193 m max_dA=829 m max_heading_err=14.9 deg
 gate far/rot M6  fps= 60 cross_v=100.0 heading_err=8.2 creep=0 t_A=56183 (vanilla 61016) aim_jump=3.1 deg
 gate lateral M6  fps= 60 heading_err=8.0 (vanilla 23.1) creep=0 (vanilla 105) t_A=54266 (vanilla 54099)
-gate dock M6  fps= 60 theta -45 min_v=87.7 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=745 (vanilla 489) v0=87.7
-gate dock M6  fps= 60 theta  +0 min_v=17.0 m/s (vanilla 17.0) t_B=21016 ms (vanilla 21016) creep_ticks=489 (vanilla 489) v0=90.0
-gate dock M6  fps= 60 theta +45 min_v=17.0 m/s (vanilla 17.0) t_B=21016 ms (vanilla 21016) creep_ticks=489 (vanilla 489) v0=90.0
+gate dock M6  fps= 60 theta -45 sub=0 min_v=87.7 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=745 (vanilla 489) v0=87.7 ring=0
+gate dock M6  fps= 60 theta  +0 sub=0 min_v=87.7 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=745 (vanilla 489) v0=87.7 ring=1
+gate dock M6  fps= 60 theta +45 sub=0 min_v=87.7 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=745 (vanilla 489) v0=87.7 ring=0
+gate dock M6  fps= 60 theta  +0 sub=5 min_v=87.7 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=745 (vanilla 489) v0=87.7 ring=1
 turn       TS  Mercury    fps= 60 settle= 15533 ms vanilla= 15533 ms oracle= 15424 ms ratio=1.007 overshoot=0.000 deg (vanilla 0.000) peak=21.1 deg/s
 turn(diag)  TS  finish yaw=13766 ms pitch=7883 ms (rel 0.427; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.706 vanilla_pitch_zero_ticks=350
 turn(diag) TS  Mercury    fps= 60 settle= 13883 ms vanilla= 15533 ms oracle= 15392 ms ratio=0.902 overshoot=0.000 deg (vanilla 0.000) peak=19.6 deg/s
@@ -65,9 +66,10 @@ gate theta +45 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.2) heading_e
 gate spread TS  fps= 60 rings=3,2,0,7 min_sep=193 m max_dA=828 m max_heading_err=13.4 deg
 gate far/rot TS  fps= 60 cross_v=100.0 heading_err=8.1 creep=0 t_A=57566 (vanilla 55999) aim_jump=3.1 deg
 gate lateral TS  fps= 60 heading_err=8.1 (vanilla 23.1) creep=0 (vanilla 93) t_A=55599 (vanilla 49083)
-gate dock TS  fps= 60 theta -45 min_v=62.0 m/s (vanilla 1.0) t_B=20233 ms (vanilla 24683) creep_ticks=445 (vanilla 364) v0=62.0
-gate dock TS  fps= 60 theta  +0 min_v=1.0 m/s (vanilla 1.0) t_B=24683 ms (vanilla 24683) creep_ticks=364 (vanilla 364) v0=62.0
-gate dock TS  fps= 60 theta +45 min_v=1.0 m/s (vanilla 1.0) t_B=24683 ms (vanilla 24683) creep_ticks=364 (vanilla 364) v0=62.0
+gate dock TS  fps= 60 theta -45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=20233 ms (vanilla 24683) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
+gate dock TS  fps= 60 theta  +0 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=20233 ms (vanilla 24683) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
+gate dock TS  fps= 60 theta +45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=20233 ms (vanilla 24683) creep_ticks=445 (vanilla 364) v0=62.0 ring=1
+gate dock TS  fps= 60 theta  +0 sub=5 min_v=62.0 m/s (vanilla 1.0) t_B=20233 ms (vanilla 24683) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
 turn       M2  Boreas     fps= 60 settle= 39200 ms vanilla= 39200 ms oracle= 38096 ms ratio=1.029 overshoot=0.000 deg (vanilla 0.000) peak=9.0 deg/s
 turn(diag)  M2  finish yaw=34766 ms pitch=19666 ms (rel 0.434; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.695 vanilla_pitch_zero_ticks=923
 turn(diag) M2  Boreas     fps= 60 settle= 35066 ms vanilla= 39100 ms oracle= 37984 ms ratio=0.923 overshoot=0.000 deg (vanilla 0.000) peak=7.8 deg/s
@@ -80,8 +82,9 @@ crossing    M2  Boreas     fps= 60 detours=837/880 min_dist=2331.8 m (C=1763.5, 
 form+rock   M2  Boreas     fps= 60 leader_detours=1808 follower_detours=0/0 min_rock=1590/3103/3103 m (C=1358) final_slot=222.8/222.8 m (4r=2821.6)
 gate capital M2  fps= 60 slot=7 heading_err=2.4 deg (vanilla 24.2) v_after_A=0.0 v0=0.0 t_A=80700 (vanilla 73999)
 gate capital M2  fps= 60 slot=0 heading_err=2.1 deg (vanilla 30.6) v_after_A=0.0 v0=0.0 t_A=87683 (vanilla 78866)
-gate dock M4  fps= 60 theta -45 min_v=90.0 m/s (vanilla 90.0) t_B=13249 ms (vanilla 13999) creep_ticks=155 (vanilla 151) v0=90.0
-gate dock M4  fps= 60 theta  +0 min_v=90.0 m/s (vanilla 90.0) t_B=13999 ms (vanilla 13999) creep_ticks=151 (vanilla 151) v0=90.0
-gate dock M4  fps= 60 theta +45 min_v=90.0 m/s (vanilla 90.0) t_B=13999 ms (vanilla 13999) creep_ticks=151 (vanilla 151) v0=90.0
-ship_steering_host checks=3595 failures=0
+gate dock M4  fps= 60 theta -45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13249 ms (vanilla 13999) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+gate dock M4  fps= 60 theta  +0 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13249 ms (vanilla 13999) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+gate dock M4  fps= 60 theta +45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13249 ms (vanilla 13999) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+gate dock M4  fps= 60 theta  +0 sub=5 min_v=90.0 m/s (vanilla 90.0) t_B=13249 ms (vanilla 13999) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+ship_steering_host checks=3649 failures=0
 checks PASS

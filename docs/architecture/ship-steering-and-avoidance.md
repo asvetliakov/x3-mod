@@ -126,6 +126,18 @@ the summary gains `gate_spread_offsets`, `gate_exit_offsets`, `gate_capital_alig
 `gate_lead_validated/fallback/window_rejected`, `gate_dock_writes/blocked` and the P2/P4 vanilla-stop reasons
 (`no_gate_target`, `capital`, `no_state`).
 
+**Amendment 9 (2026-10-12, the gate hole; ship-navigation-ai.md section 10.9):** the order-5 cornering override
+applies over the whole pass arc, B on or behind the gate plane included, with the same speed law (the chord rule,
+floor 20 m/s capped by the engine's aligned ramp). The chord test against the ring's hole bound 0.60 r (the stock
+ring hole's lower bound; stock 0.605-0.654 r, the installed Terran gates 0.663 r; the installed Mayhem gates are a
+blended effect bubble with no collision tree, their hole unbounded; every pass point at 0.55 r lies inside) is a
+diagnostic only and never lowers the speed: the engine's collision pair filter (0x0045c7b3..0x0045c7e3) skips the
+ship-gate pair while the ship is on order 5 or 0x1e to that gate, so contact on that leg is impossible. Gate
+subtypes 5..8 (the same bubble scene in the installed game; only the pass offset -0.05 r and the 0.14 r warp
+trigger differ) get the same policy with their own pass vector in the validation. The order-4 lead-in and the exit
+spread are unchanged: orders 4, 8 and 0x21 are not exempt from the pair filter, the bubble has no collision tree,
+and the Terran ring at 0.663 r still bounds the 0.3 r exit offset.
+
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
 shared handler that, for class-7 ships under the autopilot flag and a point-steering order, computes a

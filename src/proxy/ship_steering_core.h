@@ -387,6 +387,7 @@ constexpr unsigned kProbeLimit = 8;
 constexpr std::uint32_t kStaleMs = 5000; // an entry older than this may be reused
 constexpr std::uint16_t kShipFlagRamp = 1, kShipFlagClamp = 2, kShipFlagGate = 4, // Ship.flags: arrival ramp, clamp enabled, gate approach
                         kShipFlagGateDock = 8; // order 5 to a gate: the cornering speed toward B replaces the engine's 1 m/s creep
+constexpr float kGateDockFloorMs = 20.0f; // order 5 to a gate: the cornering speed's floor (the engine's creep is 1 m/s)
 // Order 5 to a gate: the engine's ramp (0x004548f5..0x00454977): vmax/2 at r/5, vmax at r, linear between.
 __attribute__((always_inline)) inline float gate_dock_ramp(float d, float r, float v_max) noexcept {
     if (!(r > 0.0f)) return v_max;
@@ -454,7 +455,10 @@ __attribute__((always_inline)) inline float clamp_for(const Ship& s, const float
         const float ramp = gate_dock_ramp(sqrt_ss(dot3(d, d)), s.d_arr, s.v_ref);
         v = ramp;
         if (s.v_corner > 0.0f && s.v_corner < v) v = s.v_corner;
-        const float floor = ramp < kFloorMs ? ramp : kFloorMs; // never above the engine's own aligned value (vmax/2 < 10 m/s)
+        // the floor: the cornering term collapses near B while the ship is still off heading (the pursuit's singularity);
+        // kGateDockFloorMs keeps the leg moving (the engine's arrival radius |v|/10 + r_ship absorbs the small miss), never
+        // above the engine's own aligned value (vmax/2 can be below it)
+        const float floor = ramp < kGateDockFloorMs ? ramp : kGateDockFloorMs;
         if (v < floor) v = floor;
     } else {
         const float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
@@ -580,24 +584,27 @@ inline bool gate_geometry(const float A[3], const float G[3], const float row0[3
     return true;
 }
 // Order 5 to a gate: B must be the pinned pass point, B - G in gate rows = (0, -0.55 cos theta, 0.55 sin theta) r with
-// |theta| <= 45 deg (section 10.5; gate subtypes 5..8 use -0.05 and another shape: vanilla), the rows orthonormal,
-// r_gate > 0. Anything else keeps the engine's own speed law (fail closed).
-constexpr float kGatePassY0 = 0.55f, kGatePassTol = 0.03f;
+// |theta| <= 45 deg (section 10.5; gate subtypes 5..8 use the pass offset -0.05 r on the same bubble scene: amendment
+// 9), the rows orthonormal, r_gate > 0. Anything else keeps the engine's own speed law (fail closed).
+constexpr float kGatePassY0 = 0.55f, kGatePassY0Small = 0.05f, kGatePassTol = 0.03f; // the tolerance is absolute, in r
+inline float gate_pass_y0(std::uint16_t gate_subtype) noexcept {
+    return gate_subtype >= 5 && gate_subtype <= 8 ? kGatePassY0Small : kGatePassY0;
+}
 inline bool gate_pass_point_valid(const float B[3], const float G[3], const float row0[3], const float row1[3], const float row2[3], float r,
                                   std::uint16_t gate_subtype) noexcept {
-    if (gate_subtype >= 5 && gate_subtype <= 8) return false;
     if (!(r > 1.0f) || !finite_f(r) || !gate_rows_valid(row0, row1, row2)) return false;
     float d[3];
     for (unsigned i = 0; i < 3; ++i) {
         if (!finite_f(B[i]) || !finite_f(G[i])) return false;
         d[i] = B[i] - G[i];
     }
+    const float y0 = gate_pass_y0(gate_subtype), tol = kGatePassTol * r;
     const float lx = dot3(d, row0), ly = dot3(d, row1), lz = dot3(d, row2);
-    if (fabs_f(lx) > kGatePassTol * r) return false;
-    const float rho = sqrt_ss(ly * ly + lz * lz) / (kGatePassY0 * r);
-    if (rho < 1.0f - kGatePassTol || rho > 1.0f + kGatePassTol) return false;
-    // |theta| <= 45 deg: ly = -0.55 cos theta r <= -0.389 r, |lz| <= 0.389 r
-    return ly <= -(0.7071f - kGatePassTol) * kGatePassY0 * r && fabs_f(lz) <= (0.7071f + kGatePassTol) * kGatePassY0 * r;
+    if (fabs_f(lx) > tol) return false;
+    const float rho = sqrt_ss(ly * ly + lz * lz);
+    if (fabs_f(rho - y0 * r) > tol) return false;
+    // |theta| <= 45 deg: ly = -y0 cos theta r <= -0.707 y0 r, |lz| <= 0.707 y0 r
+    return ly <= -0.7071f * y0 * r + tol && fabs_f(lz) <= 0.7071f * y0 * r + tol;
 }
 // The point to steer at for a ship at x with speed v (m/s), or false = steer at the engine's A. s = the ship's
 // projection along the line from X (< 0 before the crossing), e = its distance from the line. The lead-in applies
@@ -708,12 +715,14 @@ __attribute__((always_inline)) inline float gate_speed(float v_max, bool large, 
 // The chord arc from x (heading f) to B at the commanded rate sweeps the gate's ring (the torus band between the
 // hole and the rim, in the gate plane) when a sampled point of the arc crosses the plane local z = 0 at a lateral
 // distance in [hole, r_gate + r_ship]. 16 samples; a nearly aligned ship is a straight segment. Returns true when clear.
-constexpr float kGateHoleFraction = 0.55f; // the pass arc itself: the hole's known extent (section 10.8 leaves the
-                                          // model's hole open): a plane crossing of the arc or the chord is accepted only inside 0.6 r, so the
-                                          // flown curve (behind the ideal arc by the turn lag) keeps a margin to the arc's edge
-constexpr float kGateChordFraction = 0.5f;      // the straight chord's plane crossing must stay inside half the radius
+constexpr float kGateHoleFraction = 0.6f;  // the stock ring hole's lower bound (section 10.9: stock 0.605-0.654 r, installed Terran
+                                           // 0.663 r, installed Mayhem gates a collision-free bubble): every pass point at 0.55 r
+                                           // lies inside it. A visual bound only: the engine's collision pair filter
+                                           // (0x0045c7b3..0x0045c7e3) skips the ship-gate pair while the ship is on order 5 to
+                                           // that gate, so contact on this leg is impossible (amendment 9)
+constexpr float kGateChordFraction = kGateHoleFraction; // the straight chord's plane crossing: the hole bound
 constexpr float kGateDockMaxTurnCos = -0.1736f; // cos 100 deg: a sharper turn keeps the engine's turn in place (its creep)
-constexpr unsigned kGateArcSamples = 8; // per mode: 16 segment tests per order-5 call
+constexpr unsigned kGateArcSamples = 8; // segment tests per order-5 call
 inline bool gate_chord_clears_ring(const float x[3], const float f[3], const float B[3], const float G[3], const float row0[3],
                                    const float row1[3], const float row2[3], float r_gate, float r_ship) noexcept {
     float d[3] = {B[0] - x[0], B[1] - x[1], B[2] - x[2]};
@@ -721,32 +730,13 @@ inline bool gate_chord_clears_ring(const float x[3], const float f[3], const flo
     if (!(D > 1.0f)) return true;
     const float cos_t = dot3(f, d) / D;
     if (cos_t < kGateDockMaxTurnCos) return false; // more than 100 deg off: the chord circle would be wider than the leg
-    float n[3] = {d[0] - cos_t * D * f[0], d[1] - cos_t * D * f[1], d[2] - cos_t * D * f[2]};
-    const float nn = sqrt_ss(dot3(n, n));
-    const float sin_t = nn / D;
-    const bool curved = sin_t >= 0.02f;
-    const float R = curved ? D / (2.0f * sin_t) : 0.0f, theta = curved ? atan2_f(sin_t, cos_t) : 0.0f; // once per call
-    // both the ideal arc and the straight chord are swept: the flown curve, lagging the commanded turn, lies between them
-    for (unsigned mode = 0; mode < 2; ++mode) {
+    // the straight chord to B (the aligned ship's path; the ideal arc of the initial turn lies on the ship's side of it
+    // and the pair filter exempts the leg from collision: amendment 9), sampled in kGateArcSamples segments
     float prev[3] = {x[0], x[1], x[2]};
     for (unsigned k = 1; k <= kGateArcSamples; ++k) {
         const float u = float(k) / float(kGateArcSamples);
         float p[3];
-        if (mode == 1 || !curved) {
-            for (unsigned i = 0; i < 3; ++i) p[i] = x[i] + d[i] * u;
-        } else {
-            // sin/cos of phi = 2 theta u from the half angle theta u in [0, pi]: Taylor series after folding to [0, pi/2]
-            // (max error 1e-4), no CRT call; cos(phi) = c^2 - s^2, sin(phi) = 2 s c
-            float half = theta * u;
-            const bool fold = half > 0.5f * kPi;
-            if (fold) half = kPi - half;
-            const float h2 = half * half;
-            const float sh = half * (1.0f - h2 / 6.0f + h2 * h2 / 120.0f - h2 * h2 * h2 / 5040.0f);
-            const float ch = (1.0f - h2 / 2.0f + h2 * h2 / 24.0f - h2 * h2 * h2 / 720.0f) * (fold ? -1.0f : 1.0f);
-            const float sphi = 2.0f * sh * ch, cphi2 = ch * ch - sh * sh;
-            for (unsigned i = 0; i < 3; ++i) p[i] = x[i] + R * ((n[i] / nn) * (1.0f - cphi2) + f[i] * sphi);
-        }
-        // the plane crossing of the segment prev -> p
+        for (unsigned i = 0; i < 3; ++i) p[i] = x[i] + d[i] * u;
         float z0 = 0.0f, z1 = 0.0f;
         for (unsigned i = 0; i < 3; ++i) {
             z0 += (prev[i] - G[i]) * row2[i];
@@ -761,14 +751,9 @@ inline bool gate_chord_clears_ring(const float x[3], const float f[3], const flo
                 ly += q * row1[i];
             }
             const float lat = sqrt_ss(lx * lx + ly * ly);
-            // the straight chord is held to a tighter bound (kGateChordFraction) than the arc: the flown curve of a
-            // slow-ramping hull (k 0.1) lags toward the chord. A pass point on the plane itself (theta = 0: B at 0.55 r)
-            // is a crossing at the arc's edge: the override stays off and the engine's own turn-in-place applies
-            const float bound = (mode == 1 ? kGateChordFraction : kGateHoleFraction) * r_gate;
-            if (lat >= bound && lat - r_ship <= r_gate) return false;
+            if (lat >= kGateChordFraction * r_gate && lat - r_ship <= r_gate) return false;
         }
         for (unsigned i = 0; i < 3; ++i) prev[i] = p[i];
-    }
     }
     return true;
 }

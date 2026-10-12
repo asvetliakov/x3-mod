@@ -737,7 +737,9 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         const bool valid = core::gate_pass_point_valid(order_point, G, row0, row1, row2, r_gate, rd16(gate_tgt + sites::kObjType));
         const bool clear = valid && core::gate_chord_clears_ring(in.x, in.row[2], order_point, G, row0, row1, row2, r_gate, dyn.r_own);
         gs->dock_blocked = clear ? 0 : 1;
-        gate_dock = clear;
+        gate_dock = valid; // the override runs over the whole leg (amendment 9): the chord test against the ring's hole bound is a
+                           // visual diagnostic only (`dock_blocked` in the transition row, `gate_dock_blocked`): the engine's collision
+                           // pair filter exempts the ship-gate pair on this leg and the installed gates are collision-free bubbles
         if (!valid) gate_dock_invalid_.add();
         else if (!clear) gate_dock_blocked_.add();
         if (gs->pending && debug_) { // the transition diagnostic: one row per approach

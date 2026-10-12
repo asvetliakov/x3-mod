@@ -411,7 +411,7 @@ struct Model {
         // the Run152 follow-up: order 5 to a gate: the cornering speed replaces the engine's creep unless the chord arc sweeps the ring
         if (gate_dock_mode && order == core::kOrderDock && !capital) {
             gate_dock_blocked = !core::gate_chord_clears_ring(in.x, in.row[2], Po, gate_G, gate_rows[0], gate_rows[1], gate_rows[2], gate_r, dyn.r_own);
-            gate_dock = !gate_dock_blocked;
+            gate_dock = true; // the whole leg (amendment 9); the chord test is a diagnostic only (the pair filter)
         }
         core::Command cmd;
         last_reason = core::steer(in, dyn, &cmd);
@@ -1921,7 +1921,8 @@ static void local_to_world(const GateFrame& F, const double l[3], double w[3]) {
 // obj_id selects the ship's ring position (the spread); capital_slot the grid point of a capital (-1 = slot 7)
 static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, double theta_deg, bool capital, bool vanilla, bool gates_on,
                            const double start_local_r[3], const GateFrame& F, double a_error_r = 0.0, std::uint32_t obj_id = 9, int capital_slot = -1,
-                           double dock_start_m = 0.0, double dock_err_deg = 0.0) { // dock_start_m > 0: begin on order 5 that far from B, heading off by dock_err_deg
+                           double dock_start_m = 0.0, double dock_err_deg = 0.0, std::uint16_t gate_subtype = 0) { // dock_start_m > 0: begin on order 5
+                           // that far from B, heading off by dock_err_deg; subtypes 5..8: the pass offset 0.05 r
     core::ShipTable table{};
     Model m;
     m.init(t, seed);
@@ -1936,7 +1937,8 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     const double A_l[3] = {capital ? grid_a[slot % 5] * 666.0 * 500 : 0.0, capital ? -(slot / 5) * 666.0 * 500 : -0.8 * ru,
                            capital ? -2.0 * (r + t.r_m) * 500 : -1.0 * ru};
     const double th = theta_deg * M_PI / 180;
-    const double B_l[3] = {0, capital ? 0.0 : -0.55 * std::cos(th) * ru, capital ? 0.0 : 0.55 * std::sin(th) * ru};
+    const double y0 = double(core::gate_pass_y0(gate_subtype));
+    const double B_l[3] = {0, capital ? 0.0 : -y0 * std::cos(th) * ru, capital ? 0.0 : y0 * std::sin(th) * ru};
     double A[3], B[3], start[3];
     local_to_world(F, A_l, A);
     local_to_world(F, B_l, B);
@@ -1986,7 +1988,7 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     {
         float Bf[3];
         for (int k = 0; k < 3; ++k) Bf[k] = float(B[k] / 500);
-        m.gate_dock_mode = gates_on && !capital && core::gate_pass_point_valid(Bf, G, row0, row1, row2, float(r), 0); // the DLL's order-5 validation
+        m.gate_dock_mode = gates_on && !capital && core::gate_pass_point_valid(Bf, G, row0, row1, row2, float(r), gate_subtype); // the DLL's order-5 validation
     }
     const bool dock_start = dock_start_m > 0.0;
     if (dock_start) { // the order-5 start: dock_start_m from B along the direction from B back toward A, heading rotated in the gate's y-z plane
@@ -2277,11 +2279,13 @@ static void gate_unit_checks() {
     {
         const float B0[3] = {0, -0.55f * r, 0}, B45[3] = {0, -0.389f * r, 0.389f * r}, Bx[3] = {0.1f * r, -0.55f * r, 0}, Bfar[3] = {0, -0.7f * r, 0},
                     Bup[3] = {0, 0.55f * r, 0};
+        const float B5[3] = {0, -0.05f * r, 0};
         check(core::gate_pass_point_valid(B0, G, row0, row1, row2, r, 0) && core::gate_pass_point_valid(B45, G, row0, row1, row2, r, 2) &&
                   !core::gate_pass_point_valid(Bx, G, row0, row1, row2, r, 0) && !core::gate_pass_point_valid(Bfar, G, row0, row1, row2, r, 0) &&
                   !core::gate_pass_point_valid(Bup, G, row0, row1, row2, r, 0) && !core::gate_pass_point_valid(B0, G, row0, row1, row2, r, 5) &&
+                  core::gate_pass_point_valid(B5, G, row0, row1, row2, r, 5) && !core::gate_pass_point_valid(B5, G, row0, row1, row2, r, 0) &&
                   !core::gate_pass_point_valid(B0, G, row0, row1, row2, 0.0f, 0),
-              "order 5 validation: the arc points pass; off the plane, off the radius, above the axis, subtype 5 and r = 0 are refused");
+              "order 5 validation: the 0.55 r arc passes for subtypes 0..4, the 0.05 r arc for subtypes 5..8; off the plane, off the radius, above the axis, the wrong arc and r = 0 are refused");
     }
     // order 5: the engine's ramp (r/5 -> vmax/2, r -> vmax) and the chord arc's ring test
     check(std::fabs(core::gate_dock_ramp(100.0f, 1105.0f, 124.0f) - 62.0f) < 0.01f && std::fabs(core::gate_dock_ramp(2000.0f, 1105.0f, 124.0f) - 124.0f) < 0.01f &&
@@ -2307,23 +2311,22 @@ static void gate_unit_checks() {
 static void gate_dock_scenario(const ShipType& t, int fps, std::uint32_t seed) {
     char why[260];
     const double std_start[3] = {0, -0.8, -3.0};
-    for (double theta : {-45.0, 0.0, 45.0}) {
-        const GateResult g = run_gate(t, fps, seed, theta, false, false, true, std_start, kGateIdentity, 0.0, 9, -1, 1700.0, 65.0);
-        const GateResult v = run_gate(t, fps, seed, theta, false, true, false, std_start, kGateIdentity, 0.0, 9, -1, 1700.0, 65.0);
-        // the ring (the band beyond 0.65 r in the gate plane) is never swept by the module's path unless the engine's own
-        // path (the vanilla run, B behind the plane) sweeps it as well: the module adds no sweep
-        std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off at 1.7 km (theta %+.0f): reaches B and launches, no ring sweep the vanilla path does not make", t.cls, fps, seed, theta);
-        check(g.arrived_B && g.launched && (!g.disc_crossed || v.disc_crossed), why);
-        if (theta >= 0) { // B on or behind the gate plane at 0.55 r: the chord arc reaches the ring band, the engine's own creep stands (never worse than vanilla)
-            std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off (theta %+.0f, B on or behind the plane): the ring test keeps the creep, never slower than vanilla (%%.0f ms <= %%.0f)", t.cls, fps, seed, theta);
-            checkf(g.min_v_after_cross >= v.min_v_after_cross - 0.01 && g.t_B <= v.t_B + 50, why, double(g.t_B), double(v.t_B));
-        } else {
-            std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off (theta %+.0f): the speed never drops below 20 m/s (min %%.1f >= %%.0f)", t.cls, fps, seed, theta);
+    // the whole pass arc (amendment 9: the ship-gate pair is exempt from collision on order 5, the ring bound is visual),
+    // the ordinary subtype and a subtype-5 gate (its pass offset 0.05 r)
+    for (unsigned sub_i = 0; sub_i < 2; ++sub_i) {
+        const std::uint16_t subtype = sub_i ? 5 : 0;
+        for (double theta : {-45.0, 0.0, 45.0}) {
+            if (subtype && theta != 0.0) continue;
+            const GateResult g = run_gate(t, fps, seed, theta, false, false, true, std_start, kGateIdentity, 0.0, 9, -1, 1700.0, 65.0, subtype);
+            const GateResult v = run_gate(t, fps, seed, theta, false, true, false, std_start, kGateIdentity, 0.0, 9, -1, 1700.0, 65.0, subtype);
+            std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off at 1.7 km (theta %+.0f, subtype %u): reaches B and launches", t.cls, fps, seed, theta, subtype);
+            check(g.arrived_B && g.launched, why);
+            std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off (theta %+.0f, subtype %u): the speed never drops below 20 m/s (min %%.1f >= %%.0f)", t.cls, fps, seed, theta, subtype);
             checkf(g.min_v_after_cross >= 20.0, why, g.min_v_after_cross, 20.0);
+            if (seed == kSeeds[0] && fps == 60)
+                std::printf("gate dock %-3s fps=%3d theta %+3.0f sub=%u min_v=%.1f m/s (vanilla %.1f) t_B=%ld ms (vanilla %ld) creep_ticks=%d (vanilla %d) v0=%.1f ring=%d\n", t.cls,
+                            fps, theta, subtype, g.min_v_after_cross, v.min_v_after_cross, g.t_B, v.t_B, g.misaligned_ticks, v.misaligned_ticks, g.v0, g.disc_crossed ? 1 : 0);
         }
-        if (seed == kSeeds[0] && fps == 60)
-            std::printf("gate dock %-3s fps=%3d theta %+3.0f min_v=%.1f m/s (vanilla %.1f) t_B=%ld ms (vanilla %ld) creep_ticks=%d (vanilla %d) v0=%.1f\n", t.cls, fps,
-                        theta, g.min_v_after_cross, v.min_v_after_cross, g.t_B, v.t_B, g.misaligned_ticks, v.misaligned_ticks, g.v0);
     }
 }
 static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
