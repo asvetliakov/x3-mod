@@ -199,6 +199,14 @@ constexpr std::uint32_t kFlightRotAccel = 0x2b0, kFlightBasis = 0x870;
 // 0x0044e565 `mov [edx+eax*4+0x1f8],ecx`).
 constexpr std::uint32_t kFlightObstacleCount = 0x1e0, kFlightObstacleList = 0x1e4, kFlightObstacleDist = 0x1f8;
 constexpr std::uint32_t kFlightObstacleMax = 5;
+// Amendment 15 (capital-gate-transit.md section 15.4): the warn bits of [obj+0x40]: the warn caller sets 0x1000 on a true
+// verdict (0x0044e52b, E_CALLER_TRUE_PATH of the verifier) and both bits stand on the frame the KC's CollisionWarn ran, until L0
+// of the next collision pass clears them (ship-navigation-ai.md section 3.2); read only, by the warn_pre row of a traced ship.
+constexpr std::uint32_t kFlagWarnBits = 0x3000;
+// The engine's native object id `ship+8` (docs/reverse-engineering/chase-view-transition.md, the SA_GetEventObject row: the
+// native body ID 0x004607dc looks up through 0x0043a4f0 before 0x004607f4 reads +0x94; ship+8 must resolve to the exact ship;
+// chase_transition_identity_core.h reads it the same way): the identity of the membership memory (section 15.2), read only.
+constexpr std::uint32_t kObjId = 0x08;
 constexpr std::uint32_t kRecordClassCode = 0x14, kRecordRotAccel = 0xd0;
 constexpr std::uint32_t kClassShip = 7, kClassGate = 0x12;
 // The stub frame the A handler receives (ship_steering.cpp, the stubs).

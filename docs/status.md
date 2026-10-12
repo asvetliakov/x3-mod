@@ -20,6 +20,17 @@ The law and the avoidance now steer the velocity `v·f + slip` (`obj+0x60`), wit
 185.9 → 21.0 m) and capitals 655/655; x87 0/955; verifier PASS. Open finding: an M5 crosses a gate with its velocity 21° off
 the line (ledger).
 
+Implemented, not yet committed or installed (2026-10-12, worktree on `9c173d51`): **amendment 15, the Run157 corrections**
+([design §15](architecture/capital-gate-transit.md), [ledger section](verification/ship-steering.md#amendment-15-run157-corrections-2026-10-12-opus-55-design-15-scenario-audit-g1g4))
+with the scenario audit's G1–G4: a capital ignores ships under r/3 on any order (B on 5/0x1e/0x20, manual, docked or masked
+excepted), escort capitals in the engine's 0x12/0 transient are suppressed through a 20 s formation memory keyed on
+`[obj+0x08]` and stay excluded from the leader's detours, the join keeps 100 m/s where a speed predictor (100/60/40/25)
+says it converges and otherwise slows or falls back to a 25 m/s slow entry, site E drops the warn against the ship's own
+gate (capitals in join and hand-over, small ships on the lead-in), freshness windows scale with the frame step under SETA;
+three `--debug` rows (`ship_gate_capital_join`, `ship_avoid_e_verdict`, `ship_avoid_engine_warn_pre`). Fixture 6148/6148
+(capitals 1521/1521), x87 0/958, verifier PASS 18, host suite 36 failing modules (environment set). Next: review, commit,
+the install candidate and Run D against the ledger's per-phase targets.
+
 ## Installed build
 
 Run141 = **release 1.1.0** (the shipped stripped DLL `2d65b65f206a846453805e08f4b564467f81fc54204f69dd94a975f00202a351`, 39,937,177 bytes, built once from clean `80556bd7`), installed 2026-10-09 03:55 ([release record](../verification/results/release-1.1.0.json), [install](../verification/results/run141-release-install.json)); rollback Run140 `1f702121…`. Zip `x3m-1.1.0.zip` at /tmp/x3m-release-1.1.0/. Renderer identical to Run140 apart from the version string.

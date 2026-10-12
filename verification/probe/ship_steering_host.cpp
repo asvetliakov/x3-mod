@@ -17,6 +17,7 @@
 #include "../../src/proxy/ship_avoidance_core.h"
 #include "../../src/proxy/ship_avoidance_walk_core.h"
 #include <unordered_map>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -274,6 +275,16 @@ struct Model {
     bool gate_mode, gate_lead_used, gate_dock_mode, gate_dock_blocked;
     bool capital_gate_leg;  // amendment 13: a capital on its gate legs (orders 4/5 to a gate): no site-B write outside the capital window
     bool capital_window;    // the last steer_call's point came from the capital lead-in (inside its 6 r window): the write in both directions
+    // amendment 15: the engine id [obj+0x08] and the autopilot bit (the membership memory), the capital join (the DLL's decide():
+    // core::join_on_decision, the plane for the frame-end predictor, the fallback's slow entry), the previous handled order
+    std::uint32_t obj_id;
+    bool autopilot;
+    core::JoinState join;
+    bool join_fb_write;
+    float join_fb_v;
+    unsigned join_changes;
+    std::uint16_t last_steer_order;
+    long lead_ms;           // audit G1: a non-capital's last call with the lead-in inside its window (-1 = none)
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
     // section 13: order 5 to a port (the engine's port-roll match after the leaf, 0x0045474a..0x004547d6), the port's roll
@@ -341,6 +352,14 @@ struct Model {
         last_av = av::Result{};
         gate_mode = gate_lead_used = gate_dock_mode = gate_dock_blocked = false;
         capital_gate_leg = capital_window = false;
+        obj_id = 0;
+        autopilot = true;
+        join = core::JoinState{};
+        join_fb_write = false;
+        join_fb_v = 0;
+        join_changes = 0;
+        last_steer_order = 0;
+        lead_ms = -1;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
         gate_G[0] = gate_G[1] = gate_G[2] = 0;
@@ -485,13 +504,44 @@ struct Model {
         // capital window (core::gate_lead_in_capital), the same write there, the lowering clamp outside it
         bool gate_approach = false, gate_dock = false;
         capital_window = false;
+        join_fb_write = false;
         if (gate_mode && order == core::kOrderFlyBefore) {
             gate_approach = true;
             in.arrival_ramp = false;
             in.d_arr = 0;
             float lead[3], s_line = 0;
-            bool in_window = false;
-            if (in.d_order < 0) {
+            bool in_window = false, cap_join = true;
+            if (capital) { // amendment 15: the DLL's join state per order-4 decision (section 15.3)
+                const float dX[3] = {in.x[0] - gate_geo.X[0], in.x[1] - gate_geo.X[1], in.x[2] - gate_geo.X[2]};
+                const float s_now = core::dot3(dX, gate_geo.h), e2 = core::dot3(dX, dX) - s_now * s_now;
+                const float e_now = e2 > 0 ? std::sqrt(e2) : 0.0f;
+                float c = core::dot3(in.row[2], gate_geo.h);
+                c = c > 1 ? 1 : c < -1 ? -1 : c;
+                const bool converged = core::acos_deg(c) <= core::kJoinConvergedNoseDeg && e_now <= core::kJoinConvergedLatM;
+                bool changed = false;
+                const core::JoinMode mode = core::join_on_decision(join, Po, s_now, gate_geo.r, converged, last_steer_order == core::kOrderFlyBefore,
+                                                                   std::uint32_t(t_ms), &changed);
+                if (changed) ++join_changes;
+                const float u[3] = {in.v * in.row[2][0] + in.slip[0], in.v * in.row[2][1] + in.slip[1], in.v * in.row[2][2] + in.slip[2]};
+                if (core::join_plane(gate_geo, in.x, in.row, in.w, u, in.v, &join.plane)) {
+                    join.plane_ms = t_ms > 0 ? std::uint32_t(t_ms) : 1u;
+                    join.params.W = std::fmin(dyn.W[0], dyn.W[1]);
+                    join.params.alpha = join.params.W * dyn.k;
+                    join.params.v_max = dyn.v_max;
+                    join.params.a_lin = dyn.a_lin;
+                    join.params.r_gate = gate_geo.r;
+                }
+                cap_join = mode == core::JoinMode::join;
+                if (mode == core::JoinMode::fallback && in.d_order < 0) {
+                    const float dA[3] = {Po[0] - in.x[0], Po[1] - in.x[1], Po[2] - in.x[2]};
+                    const float d_A = std::sqrt(core::dot3(dA, dA));
+                    float ca = d_A > 0 ? core::dot3(in.row[2], dA) / d_A : 1.0f;
+                    ca = ca > 1 ? 1 : ca < -1 ? -1 : ca;
+                    join_fb_v = core::join_fallback_speed(d_A, core::acos_deg(ca) * float(M_PI / 180.0), dyn.a_lin, gate_geo.r);
+                    join_fb_write = true;
+                }
+            }
+            if (in.d_order < 0 && cap_join) {
                 if (capital)
                     in_window = core::gate_lead_in_capital(gate_geo, in.x, in.v, std::fmin(dyn.W[0], dyn.W[1]), lead, &s_line);
                 else
@@ -502,6 +552,7 @@ struct Model {
                 in.d_order = float(dist() / 500.0);
                 gate_lead_used = true;
                 capital_window = capital;
+                if (!capital) lead_ms = t_ms; // audit G1
             }
         }
         // the Run152 follow-up: order 5 to a gate: the cornering speed replaces the engine's creep unless the chord arc sweeps the ring
@@ -530,7 +581,7 @@ struct Model {
         s->order = order;
         std::uint16_t speed_flags; // the DLL's decide(): a capital's gate legs get no write outside the capital window (the lowering
                                    // clamp on a validated order-4 approach, nothing on order 5 or an unvalidated/policy-off approach)
-        if (capital_gate_leg && !capital_window)
+        if (capital_gate_leg && !capital_window && !join_fb_write)
             speed_flags = std::uint16_t(gate_mode && order == core::kOrderFlyBefore && cmd.v_cmd > 0 ? core::kShipFlagClamp : 0);
         else
             speed_flags = std::uint16_t((in.arrival_ramp && !cmd.formation_speed ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
@@ -541,6 +592,11 @@ struct Model {
         s->a_lin = dyn.a_lin;
         s->d_arr = gate_dock ? gate_r : in.d_arr;
         s->v_ref = (speed_flags & core::kShipFlagGate) ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : gate_dock ? dyn.v_max : in.v_ref;
+        if (speed_flags & core::kShipFlagGate) { // amendment 15: the predictor's speed in join mode, the slow entry in fallback
+            if (capital_window && join.v_cmd < s->v_ref) s->v_ref = join.v_cmd;
+            if (join_fb_write && join_fb_v < s->v_ref) s->v_ref = join_fb_v;
+        }
+        last_steer_order = order;
         // amendment 14: the formation law's |N| rides in the cornering slot (no ramp: site B returns it floored); the closing-speed
         // correction applies to the ramp/cornering schedule only (not on the gate approach, whose speed is the cap)
         s->v_corner = cmd.formation_speed ? cmd.v_cmd : cmd.v_corner;
@@ -1204,7 +1260,9 @@ struct World {
         snap.overflow = 0;
         snap.max_r = 0;
         for (unsigned i = 0; i < n_static; ++i) {
-            snap.items[snap.count++] = statics[i];
+            snap.items[snap.count] = statics[i];
+            av::Obstacle& o = snap.items[snap.count++];
+            if (o.kind == std::uint8_t(av::Kind::ship)) o.member_of = av::member_order(o.order) ? o.leader : 0; // kinematic ships (scenario D)
             if (statics[i].r > snap.max_r) snap.max_r = statics[i].r;
         }
         for (unsigned i = 0; i < n; ++i) {
@@ -1221,9 +1279,15 @@ struct World {
             o.order = m.order;
             o.kind = std::uint8_t(av::Kind::ship);
             o.size = m.capital ? 1 : 0; // the record code's capital bit (amendment 13: the ratio decides the rest)
+            o.id = m.obj_id ? m.obj_id : (m.ptr ^ 0x5a000000u); // amendment 15: [obj+0x08]
+            if (m.autopilot) o.flags = std::uint8_t(o.flags | av::kObstacleAutopilot);
+            o.member_of = av::member_order(o.order) ? o.leader : 0; // the walk's live effective leader
             if (o.r > snap.max_r) snap.max_r = o.r;
         }
+        if (members) av::update_members(snap, *members, epoch, mstats); // amendment 15: the walk's membership pass
     }
+    av::Members* members = nullptr; // amendment 15: the membership memory (scenario D), off elsewhere (live leaders only)
+    av::MemberStats mstats;
     void attach(Model& m) {
         m.snap = &snap;
         m.parts = parts;
@@ -2079,28 +2143,38 @@ static void avoidance_unit_checks() {
     me.target = 2;
     me.exclude_target = true;
     me.leader_x[0] = 1000;
+    // amendment 15: the item's effective leader as the walk sets it (the live f+0x224 on 0x14/0x15; update_members adds the remembered one)
+    auto live = [](av::Obstacle& x) { x.member_of = av::member_order(x.order) ? x.leader : 0; };
     av::Obstacle o{};
     o.kind = std::uint8_t(av::Kind::ship);
     o.ptr = 1;
+    live(o);
     check(av::excluded(me, o), "excluded: self");
     o.ptr = 2;
+    live(o);
     check(av::excluded(me, o), "excluded: the leader");
     o.ptr = 3;
     o.leader = 2;
     o.order = core::kOrderEscort;
     o.x[0] = 1050;
+    live(o);
     check(av::excluded(me, o), "excluded: a wingmate near the leader");
     o.x[0] = 20000;
+    live(o);
     check(av::excluded(me, o), "excluded: a wingmate of the same leader far from it (every direction)");
     o.order = core::kOrderFollow;
+    live(o);
     check(av::excluded(me, o), "excluded: a wingmate on order 0x15");
     o.order = core::kOrderMovePos;
+    live(o);
     check(!av::excluded(me, o), "not excluded: a ship whose stale f+0x224 is our leader but is not on 0x14/0x15");
     o.x[0] = 0;
     o.leader = 1;
     o.order = core::kOrderEscort;
+    live(o);
     check(av::excluded(me, o), "excluded: our own follower");
     o.x[0] = 30000;
+    live(o);
     check(av::excluded(me, o), "excluded: our own follower far away");
     {
         av::Self lead{}; // the leader's view: its follower is excluded, the follower's view: the leader is (both directions)
@@ -2112,6 +2186,7 @@ static void avoidance_unit_checks() {
         f.leader = 2;
         f.order = core::kOrderFollow;
         f.x[0] = 15000;
+        live(f);
         check(av::excluded(lead, f), "excluded: the leader never avoids its follower, wherever it is");
         av::Self fol{};
         fol.ptr = 1;
@@ -2561,6 +2636,29 @@ static void capital_cloud_scenario(int fps, std::uint32_t seed) {
 // core::gate_stop_keeps_speed over core::gate_target_noncapital on a synthetic object, P5 through gate_launch_units);
 // otherwise the vanilla stops and the launch from rest. The gate frame R (rows) and the start (gate-local, in r)
 // are parameters; the disc (local z = 0, radius r) must never be crossed.
+// The engine's warn test against the gate (ship-navigation-ai.md section 3.1, join_budget.py gate_warn): the gate inside the
+// reach b + L + 2 (rA + rB) and inside the cone, b = v^2 / 2a capped at 600 m, L = clamp(rA + rB / 10, 30 m, 1 km) + (rA + rB)
+// + rA cos(theta). Positions in units, the gate at G (units), radii m. The fixture's model of the warn flag 0x1000 for that pair.
+static bool gate_warn_cone(const Model& m, const double G[3], double ra, double rb) {
+    const double v = double(m.speed) / 500.0;
+    if (v <= 0) return false;
+    double dx[3], d = 0;
+    for (int k = 0; k < 3; ++k) {
+        dx[k] = (G[k] - m.pos[k]) / 500.0;
+        d += dx[k] * dx[k];
+    }
+    d = std::sqrt(d);
+    if (d < 1) return true;
+    double cos_t = 0;
+    for (int k = 0; k < 3; ++k) cos_t += m.row[2][k] * dx[k] / d;
+    const double a = double(m.accel) / 500.0;
+    const double b = std::fmin(600.0, a > 0 ? v * v / (2 * a) : 600.0);
+    const double L = std::fmin(std::fmax(ra + rb / 10, 30.0), 1000.0) + (ra + rb) + (cos_t > 0 ? ra * cos_t : 0.0);
+    if (b + L + (ra + rb) < d || cos_t <= 0) return false;
+    if (d <= b) return true;
+    const double q = (ra + rb + 40.0) / (d - b);
+    return cos_t * cos_t > 1 - q * q;
+}
 struct GateResult {
     bool arrived_A, arrived_B, launched, lead_used, disc_crossed;
     double cross_v, cross_err_deg, min_v_after_cross, v_after_A, v0, launch_first_v, max_aim_jump_deg;
@@ -2570,6 +2668,9 @@ struct GateResult {
     long t_cross, t_A, t_B, t_launch;
     int misaligned_ticks;
     unsigned ring;
+    // audit G1: site E's verdict for (ship, its target gate) on order 4 through av::site_e_verdict: frames with the lead-in active
+    // (suppressed / not), frames before the window (passed / suppressed), and the engine's warn cone against the gate unsuppressed
+    unsigned g1_in = 0, g1_in_sup = 0, g1_out = 0, g1_out_sup = 0, g1_warn = 0, g1_warn_unsup = 0;
 };
 static double norm3d(const double a[3]) {
     return std::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
@@ -2824,6 +2925,32 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
                 res.cross_vel_line_deg = std::acos(std::fmin(1.0, std::fmax(-1.0, cl))) * 180 / M_PI;
             }
             m.steer_call(obj, true, 0); // the leaf every frame (Run151)
+            if (!capital && !vanilla && gates_on) { // audit G1: the gate row for the small ship's own target gate
+                const core::Ship* sa = table.find(obj);
+                av::SiteE in;
+                in.a_order = m.order;
+                in.a_target = 0x4000;
+                in.a_in_table = sa != nullptr;
+                in.a_age_ms = sa ? std::uint32_t(m.t_ms) - sa->stamp_ms : 0xffffffffu;
+                in.frame_ms = std::uint32_t(dt);
+                in.b_gate = in.gates_live = true;
+                in.gate_state = m.gate_mode; // validated, B = its target
+                in.lead_age_ms = m.lead_ms >= 0 ? std::uint32_t(m.t_ms - m.lead_ms) : 0xffffffffu;
+                const av::EVerdict v = av::site_e_verdict(in);
+                const bool active = m.lead_ms == m.t_ms; // this call's point came from the lead-in
+                if (active) {
+                    ++res.g1_in;
+                    if (v == av::EVerdict::suppress_gate_small) ++res.g1_in_sup;
+                } else if (m.lead_ms < 0) {
+                    ++res.g1_out;
+                    if (av::e_suppresses(v)) ++res.g1_out_sup;
+                }
+                const double G0[3] = {0, 0, 0};
+                if (active && gate_warn_cone(m, G0, t.r_m, r)) {
+                    ++res.g1_warn;
+                    if (!av::e_suppresses(v)) ++res.g1_warn_unsup;
+                }
+            }
             if (!vanilla && m.last_reason == core::Reason::handled) { // the aim direction's per-frame jump (the switch at the join point)
                 double d[3] = {double(m.last_aim_P[0]) - m.pos[0] / 500.0, double(m.last_aim_P[1]) - m.pos[1] / 500.0, double(m.last_aim_P[2]) - m.pos[2] / 500.0};
                 const double dn = norm3d(d);
@@ -3594,7 +3721,16 @@ struct CapitalResult {
     unsigned cap_detours = 0, cap_detours_m6 = 0, cap_skipped_small = 0, cap_conflicts = 0;
     unsigned m6_detours = 0, m6_unresolved = 0;
     double m6_min_clear = 1e18, m6_manual_min = 1e18;
-    unsigned e_suppress = 0, e_pass_manual = 0, e_pass_order = 0, e_pass_stale = 0, e_other = 0;
+    unsigned e_suppress = 0, e_pass_manual = 0, e_pass_order = 0, e_pass_stale = 0, e_other = 0, e_sup_order0 = 0;
+    // amendment 15: the join (modes, the predictor's speed, the fallback), P2's keep verdict, the gate row, the axis excursion
+    unsigned join_modes = 0;                 // bit per core::JoinMode seen on order 4
+    core::JoinReason join_reason = core::JoinReason::none;
+    core::JoinKeep keep_why = core::JoinKeep::mode;
+    double v_cmd_min = 1e9, v_cmd_last = 0, cross_vel_deg = -1, over_m = 0, fb_write_max = 0, fb_entry_v = -1;
+    unsigned axis_crossings = 0, evals = 0, predictions = 0, slowed = 0, fell_pred = 0, v60_rows = 0;
+    double eval_us_max = 0;
+    unsigned e_gate_sup = 0, e_gate_handover_sup = 0, e_gate_warn_unsup = 0, gate_warn_frames = 0;
+    long t_join = -1;                        // the first frame in join mode
     bool e_small_pair_capitals = false;
     // the trailing / converging capital (scenario A / B)
     unsigned cap2_conflicts = 0, cap2_detours = 0, cap2_unresolved = 0, cap2_emergency = 0, cap2_skipped_small = 0;
@@ -3613,6 +3749,8 @@ struct CapitalSetup {
     int cap2 = -1;                // a second capital (index into kCapitals) on the adjacent slot: -1 none, else its mode below
     bool cap2_converge = false;   // false: trailing by cap2_back_m (the queue's spacing); true: timed to arrive while the first rotates
     double cap2_back_m = 7000.0;  // the queue keeps the next holder behind the window (design section 5.2: > 3 km behind it)
+    double start_lat_m = -1.0;    // amendment 15: the lateral offset in m (overrides start_lat_r when >= 0)
+    double start_psi_deg = 1e9;   // the nose's angle off F in the plane of the offset, positive away from the axis (1e9: at A)
 };
 // One ship's order-4 engine speed law to a gate (ship-navigation-ai.md 10.3): vmax beyond d_slow, the ramp inside, the alignment
 // creep inside d_slow + 3 r + 2 r_ship, the large cap.
@@ -3705,15 +3843,25 @@ static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32
             m.gate_G[k] = 0;
             for (int r = 0; r < 3; ++r) m.gate_rows[r][k] = float(F.R[r][k]);
         }
-        // the start: start_lat_r off the line (local x), start_back_r before X, heading at A
-        const double start_l[3] = {su.start_lat_r * ru, 0.0, -su.start_back_r * ru};
+        // the start: start_lat_r off the line (local x), start_back_r before X, heading at A (or start_psi_deg off F, positive away
+        // from the axis, amendment 15)
+        const double lat_u = su.start_lat_m >= 0 ? su.start_lat_m * 500.0 : su.start_lat_r * ru;
+        const double start_l[3] = {lat_u, 0.0, -su.start_back_r * ru};
         double start_w[3];
         local_to_world(F, start_l, start_w);
         for (int k = 0; k < 3; ++k) m.pos[k] = X[k] + start_w[k];
-        {
+        if (su.start_psi_deg < 1e8) {
+            const double ps = su.start_psi_deg * M_PI / 180, side = lat_u >= 0 ? 1.0 : -1.0;
+            const double u[3] = {std::cos(ps) * F.R[2][0] + side * std::sin(ps) * F.R[0][0], std::cos(ps) * F.R[2][1] + side * std::sin(ps) * F.R[0][1],
+                                 std::cos(ps) * F.R[2][2] + side * std::sin(ps) * F.R[0][2]};
+            place_heading(m, u);
+        } else {
             const double u[3] = {A[0] - m.pos[0], A[1] - m.pos[1], A[2] - m.pos[2]};
             place_heading(m, u);
         }
+        const double side0 = lat_u > 0 ? 1.0 : lat_u < 0 ? -1.0 : 0.0; // the start's side of the axis (0: on it)
+        double side_now = side0;
+        bool handover = false; // P2 kept the speed: the gate row's hand-over until order 5 (audit G3)
         m.order = core::kOrderFlyBefore;
         for (int k = 0; k < 3; ++k) m.P[k] = A[k];
         m.d_arr_units = 0.75 * ru;
@@ -3895,6 +4043,27 @@ static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32
                 }
                 m.steer_call(obj, true, 0); // the leaf every frame
                 leaf_call = true;
+                if (m.capital && m.gate_mode) { // amendment 15: the join's bookkeeping
+                    res.join_modes |= 1u << unsigned(m.join.mode);
+                    res.join_reason = m.join.reason;
+                    if (m.join.mode == core::JoinMode::join) {
+                        if (res.t_join < 0) res.t_join = m.t_ms;
+                        res.v_cmd_min = std::fmin(res.v_cmd_min, double(m.join.v_cmd));
+                        res.v_cmd_last = m.join.v_cmd;
+                        if (m.join.v_cmd == 60.0f) ++res.v60_rows;
+                    }
+                    if (m.join_fb_write) res.fb_write_max = std::fmax(res.fb_write_max, double(m.join_fb_v));
+                }
+                if (side0 != 0.0) { // the axis crossings and the excursion past the axis (local x is the offset's side)
+                    double y = 0;
+                    for (int k = 0; k < 3; ++k) y += (m.pos[k] - X[k]) / 500.0 * F.R[0][k];
+                    const double side = y >= 0 ? 1.0 : -1.0;
+                    if (side != side_now) {
+                        ++res.axis_crossings;
+                        side_now = side;
+                    }
+                    if (res.axis_crossings) res.over_m = std::fmax(res.over_m, std::fabs(y));
+                }
                 res.cap_detours = m.detours;
                 res.cap_skipped_small = m.skipped_small;
                 if (m.last_av.adjusted) res.cap_last_obstacle = m.last_av.obstacle;
@@ -3902,10 +4071,25 @@ static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32
                 if (m.last_av.adjusted && (m.last_av.obstacle == m6s[0].ptr || m.last_av.obstacle == m6s[1].ptr)) ++res.cap_detours_m6;
                 if (m.t_ms >= m.next_think) {
                     m.next_think = m.t_ms + m.rng.next() * 50 / 32768;
-                    if (dA <= 0.75 * ru) { // P2 through the shared rules: the capital keeps its speed only when aligned on a validated approach
+                    if (dA <= 0.75 * ru) { // P2 (amendment 15): the capital keeps its speed only in join mode, aligned (nose and velocity),
+                                           // under the coast bound
                         m.desired = 0;
                         res.p2_err_deg = err_F;
-                        res.kept = core::gate_capital_keeps_speed(cap_target, su.policy, m.gate_mode, float(err_F));
+                        double uv[3], un = 0, cu = 0, xg = 0;
+                        for (int k = 0; k < 3; ++k) {
+                            uv[k] = double(m.vel[k] + m.slip[k]);
+                            un += uv[k] * uv[k];
+                            xg += X[k] / 500.0 * X[k] / 500.0;
+                        }
+                        un = std::sqrt(un);
+                        for (int k = 0; k < 3; ++k) cu += un > 0 ? uv[k] / un * Fw[k] : 0.0;
+                        res.cross_vel_deg = un > 0 ? std::acos(std::fmin(1.0, std::fmax(-1.0, cu))) * 180 / M_PI : err_F;
+                        const float v_ms = float(double(m.speed) / 500.0);
+                        res.keep_why = core::join_keep_verdict(cap_target && su.policy && m.gate_mode && m.join.mode == core::JoinMode::join, float(err_F),
+                                                               float(res.cross_vel_deg), v_ms, core::join_coast_bound(float(std::sqrt(xg)), float(t.r_m), v_ms, float(t.a_ms2)));
+                        res.kept = res.keep_why == core::JoinKeep::kept;
+                        handover = res.kept;
+                        if (m.join.mode == core::JoinMode::fallback) res.fb_entry_v = double(m.speed) / 500.0;
                         if (!res.kept) m.speed = 0;
                         res.arrived_A = true;
                         res.t_A = m.t_ms;
@@ -3981,9 +4165,65 @@ static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32
                 }
             }
             (void)leaf_call;
+            if (phase == 2) handover = false; // order 5 ends the hand-over
+            // amendment 15 / audit G3: site E's gate row for (capital, its gate) through the DLL's decision, against the engine's warn
+            // cone toward the gate: counted in the join (order 4) and the kept hand-over (orders 0 / 0x1f) spans
+            if (phase != 4 && phase != 3 && m.gate_mode) {
+                const core::Ship* sa = table.find(obj);
+                av::SiteE in;
+                in.a_order = m.order;
+                in.a_in_table = sa != nullptr;
+                in.a_age_ms = sa ? std::uint32_t(m.t_ms) - sa->stamp_ms : 0xffffffffu;
+                in.frame_ms = std::uint32_t(dt);
+                in.b_gate = in.gates_live = true;
+                in.capital_policy = su.policy;
+                in.gate_state = true;
+                in.gate_capital = true;
+                in.gate_join = phase == 0 && m.join.mode == core::JoinMode::join;
+                in.gate_handover = handover;
+                in.p2_age_ms = res.t_A >= 0 ? std::uint32_t(m.t_ms - res.t_A) : 0xffffffffu;
+                const av::EVerdict v = av::site_e_verdict(in);
+                const bool span = (phase == 0 && m.join.mode == core::JoinMode::join) || ((phase == 1 || phase == 5 || phase == 6) && res.kept);
+                const double G0[3] = {0, 0, 0};
+                if (v == av::EVerdict::suppress_gate) {
+                    ++res.e_gate_sup;
+                    if (phase != 0) ++res.e_gate_handover_sup;
+                }
+                if (span && gate_warn_cone(m, G0, t.r_m, kGateRM)) {
+                    ++res.gate_warn_frames;
+                    if (!av::e_suppresses(v)) ++res.e_gate_warn_unsup;
+                }
+            }
             if (phase != 4) {
                 m.clamp(obj); // site B every frame
                 m.advance(dt);
+            }
+            // amendment 15: the frame-end predictor (one capital: the DLL's frame boundary)
+            if (m.capital && m.gate_mode && su.policy) {
+                bool fell = false, slowed = false;
+                unsigned preds = 0;
+                const auto t0 = std::chrono::steady_clock::now();
+                if (core::join_evaluate(m.join, std::uint32_t(m.t_ms), av::fresh_window_ms(av::kSteeredFreshMs, std::uint32_t(dt)), &fell, &slowed, &preds)) {
+                    const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+                    res.eval_us_max = std::fmax(res.eval_us_max, us);
+                    ++res.evals;
+                    res.predictions += preds;
+                    if (slowed) ++res.slowed;
+                    if (fell) ++res.fell_pred;
+                    // X3M_SS_JOIN_TRACE=<class>: every evaluation of the 60 fps seed-1 runs (the predictor's start state and verdict per candidate)
+                    if (std::getenv("X3M_SS_JOIN_TRACE") && !std::strcmp(std::getenv("X3M_SS_JOIN_TRACE"), t.cls) && fps == 60 && seed == kSeeds[0]) {
+                        std::printf("jtrace %s slot=%d lat=%.0f back=%.2f t=%ld s=%.0f y=%.0f psi=%.2f upsi=%.2f w=%.3f v=%.1f -> v_cmd=%.0f mode=%u |", t.cls, su.slot,
+                                    su.start_lat_m, su.start_back_r, m.t_ms, double(m.join.plane.s), double(m.join.plane.y), double(m.join.plane.psi) * 180 / M_PI,
+                                    double(m.join.plane.upsi) * 180 / M_PI, double(m.join.plane.w) * 180 / M_PI, double(m.join.plane.v), double(m.join.v_cmd),
+                                    unsigned(m.join.mode));
+                        for (float vc : core::kJoinCandidates) {
+                            float pn, py;
+                            const int gr = core::join_predict_grade(m.join.plane, m.join.params, vc, &pn, &py);
+                            std::printf(" %.0f:%d(%.1f,%.0f)", double(vc), gr, double(pn), double(py));
+                        }
+                        std::printf("\n");
+                    }
+                }
             }
             // the companions
             if (pass == 1 && su.m6s) {
@@ -4003,20 +4243,40 @@ static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32
                     if (e == 0 && d < res.m6_min_clear) res.m6_min_clear = d;
                     if (e == 1 && d < res.m6_manual_min) res.m6_manual_min = d;
                 }
-                // site E's small-pair verdict for (capital, M6) each frame, as the DLL computes it from B's fields
+                // site E's verdict for (capital, M6) each frame through the DLL's decision (av::site_e_verdict) over B's fields; amendment
+                // 15: suppressed whatever the steered M6's order (its order-0 and no-decision spans included), the manual M6 always passes
                 if (phase == 0 || phase == 2) {
                     const std::uint32_t now = std::uint32_t(m.t_ms);
-                    const core::Ship* sb = table.find(obj_m6[0]);
-                    const av::SmallPair v0s = av::small_pair_verdict(0x80000u, m6s[0].order, 0, false, sb != nullptr, sb ? sb->stamp_ms : 0u, now);
-                    const av::SmallPair v1s = av::small_pair_verdict(0x40000u, m6s[1].order, 0, false, false, 0u, now); // manual: no autopilot bit
-                    const bool pair0 = av::small_pair(true, float(r_cap), true, false, float(m6t.r_m));
-                    if (!pair0) ++res.e_other;
-                    else if (v0s == av::SmallPair::suppress) ++res.e_suppress;
-                    else if (v0s == av::SmallPair::order_not_steered) ++res.e_pass_order;
-                    else if (v0s == av::SmallPair::stale) ++res.e_pass_stale;
-                    else ++res.e_other;
-                    if (v1s == av::SmallPair::no_autopilot) ++res.e_pass_manual;
-                    else ++res.e_other;
+                    const core::Ship* sa = table.find(obj);
+                    for (unsigned e = 0; e < 2; ++e) {
+                        av::SiteE in;
+                        in.a_order = m.order;
+                        in.a_in_table = sa != nullptr;
+                        in.a_age_ms = sa ? now - sa->stamp_ms : 0xffffffffu;
+                        in.frame_ms = std::uint32_t(dt);
+                        in.a_capital = true;
+                        in.r_a = float(r_cap);
+                        in.b_ship = in.b_readable = true;
+                        in.r_b = float(m6t.r_m);
+                        in.b_flags = e == 0 ? 0x80000u : 0x40000u; // the manual one: no autopilot bit
+                        in.b_order = m6s[e].order;
+                        in.avoidance_on = true;
+                        const av::EVerdict v = av::site_e_verdict(in);
+                        const bool order0 = m6s[0].order == core::kOrderNone;
+                        const bool nodecision = m6_stale_ms >= 0 && m6s[0].t_ms >= m6_stale_ms && m6s[0].order == core::kOrderEscort && !table.find(obj_m6[0]);
+                        if (e == 0) {
+                            if (!av::small_pair(true, float(r_cap), true, false, float(m6t.r_m))) ++res.e_other;
+                            else if (v == av::EVerdict::suppress_small) {
+                                ++res.e_suppress;
+                                if (order0) ++res.e_sup_order0;
+                            } else if (order0) ++res.e_pass_order;
+                            else if (nodecision) ++res.e_pass_stale;
+                            else if (v != av::EVerdict::pass_not_fresh) ++res.e_other; // the capital's own decision gap (fail closed) is not a B verdict
+                        } else if (v == av::EVerdict::pass_no_autopilot || v == av::EVerdict::pass_not_fresh)
+                            res.e_pass_manual += v == av::EVerdict::pass_no_autopilot ? 1u : 0u;
+                        else
+                            ++res.e_other;
+                    }
                 }
             }
             if (cap2_on && !cap2_done) {
@@ -4119,8 +4379,9 @@ static void capital_transit_scenario(const ShipType& t, int fps, std::uint32_t s
         const double C = double(av::clearance(float(kShips[2].r_m), float(t.r_m)));
         std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: the steered M6 dodges the capital (detours %%.0f > 0) with clearance >= C (min %%.0f m)", t.cls, fps, seed, tag);
         checkf(g.m6_detours > 0 && g.m6_min_clear >= C, why, double(g.m6_detours), g.m6_min_clear);
-        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: site E suppresses the (capital, steered M6) pair every steered frame (%%.0f), passes it through on order 0 (%%.0f) and when stale, the manual M6 always (no autopilot)", t.cls, fps, seed, tag);
-        checkf(g.e_suppress > 0 && g.e_pass_order > 0 && g.e_pass_stale > 0 && g.e_pass_manual > 0 && g.e_other == 0, why, double(g.e_suppress), double(g.e_pass_order));
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: site E suppresses the (capital, steered M6) pair on every frame (%%.0f), its order-0 span too (%%.0f; amendment 15: no order or staleness pass, those read 0), the manual M6 always passes (no autopilot)", t.cls, fps, seed, tag);
+        checkf(g.e_suppress > 0 && g.e_sup_order0 > 0 && g.e_pass_order == 0 && g.e_pass_stale == 0 && g.e_pass_manual > 0 && g.e_other == 0, why,
+               double(g.e_suppress), double(g.e_sup_order0));
         std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit %s: the trailing capital is never a small pair and never skipped in either direction (its own skipped_small %%.0f are the M6s), no conflict at the queue's spacing, no NaN (min dist %%.0f m)", t.cls, fps, seed, tag);
         if (su.cap2 >= 0) checkf(!g.e_small_pair_capitals && !g.cap2_skipped_first && g.cap2_conflicts == 0 && !g.nan_seen, why, double(g.cap2_skipped_small), g.cap2_min_dist);
         if (print)
@@ -4160,22 +4421,22 @@ static void capital_transit_scenario(const ShipType& t, int fps, std::uint32_t s
                         double(g.t_B - g.t_o5_start) / 1000.0, g.v0, g.cap2_conflicts, g.cap2_detours, g.cap2_unresolved, g.cap2_emergency, g.cap2_min_dist,
                         g.cap2_arrived ? 1 : 0);
     }
-    // B2: a validated approach too short to align (3 r off the line only 2 r before X): the lead-in runs, the crossing is
-    // misaligned, P2 takes the vanilla stop, the engine rotates, order 5 from rest; P4 keeps v0 on the validated approach.
-    // The installed records only (the Boreas fixture type turns at 13.5 deg/s and aligns from 2 r).
+    // B2: a validated approach too short to align at 100 m/s (3 r off the line only 2 r before X; amendment 13 crossed it 32-37 deg
+    // off and stopped). Amendment 15's predictor slows the join to a candidate that converges: aligned at P2, the speed kept, 0x1f
+    // one frame, launched (the misaligned vanilla stop is scenario G, the fallback). The installed records only.
     if (t.v_ms >= 100.0) {
         CapitalSetup su;
         su.slot = 0;
         su.start_lat_r = 3.0;
         su.start_back_r = 2.0;
         const CapitalResult g = run_capital_transit(t, fps, seed, su);
-        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit B2 (join too short): validated but misaligned at P2 (%%.1f deg > 8.11): the vanilla stop, rotate %%.0f frames, order 5 from rest, launched", t.cls, fps, seed);
-        checkf(g.validated && g.lead_used && g.arrived_A && g.p2_err_deg > double(core::kGateRotateTolDeg) && !g.kept && g.v_after_A == 0 && g.rot_frames > 1 &&
-                   g.v_o5_start == 0 && g.arrived_B && g.launched && !g.nan_seen,
-               why, g.p2_err_deg, double(g.rot_frames));
+        std::snprintf(why, sizeof why, "%s %d fps seed %u capital transit B2 (join too short at 100 m/s): the predictor slows it (v_cmd min %%.0f < 100), aligned and kept at P2 (%%.1f deg), 0x1f one frame, launched", t.cls, fps, seed);
+        checkf(g.validated && g.lead_used && g.arrived_A && g.v_cmd_min < 100.0 && g.p2_err_deg >= 0 && g.p2_err_deg <= double(core::kGateRotateTolDeg) && g.kept &&
+                   g.rot_frames == 1 && g.arrived_B && g.launched && !g.nan_seen,
+               why, g.v_cmd_min, g.p2_err_deg);
         if (print)
-            std::printf("capital transit %-3s B2 fps=%3d: cross_v=%.1f err=%.1f deg v_after_A=%.1f rot=%ld frames %.1f s v0=%.1f\n", t.cls, fps, g.cross_v, g.p2_err_deg,
-                        g.v_after_A, g.rot_frames, double(g.rot_ms) / 1000.0, g.v0);
+            std::printf("capital transit %-3s B2 fps=%3d: cross_v=%.1f err=%.1f deg vel=%.1f deg v_cmd_min=%.0f kept=%d rot=%ld frames v0=%.1f evals=%u slowed=%u\n", t.cls,
+                        fps, g.cross_v, g.p2_err_deg, g.cross_vel_deg, g.v_cmd_min, g.kept ? 1 : 0, g.rot_frames, g.v0, g.evals, g.slowed);
     }
     // the policy off (ship_steering_gates_capital = 0): the amendment-10 path, no lead-in, the vanilla stops
     if (print) {
@@ -4185,6 +4446,744 @@ static void capital_transit_scenario(const ShipType& t, int fps, std::uint32_t s
         const CapitalResult g = run_capital_transit(t, fps, seed, su);
         std::snprintf(why, sizeof why, "%s capital transit, policy off: no lead-in, the vanilla stop at X and at the origin (v0 %%.1f), launched (rotate %%.0f frames)", t.cls);
         checkf(!g.validated && !g.lead_used && g.arrived_A && g.v_after_A == 0 && g.v0 == 0 && g.launched && !g.nan_seen, why, g.v0, double(g.rot_frames));
+    }
+}
+// ---- scenario 12: amendment 15 (capital-gate-transit.md section 15.5) and the scenario audit's G1/G4 cases --------------------
+// E-G: the capital join through the whole transit (run_capital_transit) from the starts of join_budget.py, the model times from
+// verification/results/ship-steering/capital-gate-transit/a15_fixture_budget.txt (inferred); D: the escort cascade over the
+// membership memory; K: a capital past an M6 on a dock order-5 leg (audit G4); G1: a small ship's own target gate (audit G1).
+struct JoinCase {
+    const char* tag;
+    double lat_m, back_r, psi_deg; // the start: lateral offset, along before X (negative: past X), nose off F (1e9: at A)
+    double model_t[2];             // a15_fixture_budget.txt: time to X (M2, M1), s
+    int kind;                      // 0 E (join at 100), 1 F (late join, slowed), 2 G (infeasible: pred_none), 3 G (past X: past_x)
+};
+static const JoinCase kJoinCases[] = {
+    {"E1 6435 m 5.58 r at A", 6435.0, 5.58, 1e9, {100.3, 98.7}, 0},
+    {"E2 6435 m 5 r at A", 6435.0, 5.0, 1e9, {94.2, 92.6}, 0},
+    {"E3 on axis 5 r", 0.0, 5.0, 0.0, {55.3, 55.3}, 0},
+    {"F1 627 m 2.97 r +68", 627.0, 2.97, 68.0, {67.2, 68.9}, 1},
+    {"F2 6435 m 5 r +60", 6435.0, 5.0, 60.0, {111.9, 133.8}, 1},
+    {"G1 1645 m 0.70 r -91", 1645.0, 0.70, -91.0, {26.2, 29.1}, 2},
+    {"G2 3252 m s+2.05 r +135", 3252.0, -2.05, 135.0, {52.8, 59.1}, 3},
+};
+static double g_join_eval_us_max = 0; // the predictor's slowest evaluation over every scenario (host, inferred for the DLL)
+struct JoinAgg { // per ship and case over every fps x seed x slot: the ranges the ledger quotes
+    unsigned runs = 0, crossings_max = 0, kept = 0;
+    double nose_max = 0, vel_max = 0, e_max = 0, over_max = 0, cross_v_min = 1e9, cross_v_max = 0, t_ratio_min = 1e9, t_ratio_max = 0, v_cmd_min = 1e9,
+           fb_entry_max = 0, rot_ratio_max = 0;
+};
+static JoinAgg g_join_agg[2][7];
+static void capital_join_scenario(const ShipType& t, int fps, std::uint32_t seed) {
+    const bool print = seed == kSeeds[0] && fps == 60;
+    const int ti = !std::strcmp(t.cls, "M1") ? 1 : 0;
+    const double a_rot = t.yaw_dps * double(t.k_pct) / 100.0;
+    char why[480];
+    for (const JoinCase& c : kJoinCases)
+        for (int slot_i = 0; slot_i < 2; ++slot_i) {
+            if (c.kind != 0 && slot_i) continue; // slot 19 on the rotated frame for the E starts
+            CapitalSetup su;
+            su.slot = slot_i ? 19 : 0;
+            su.F = slot_i ? &kGateRotated : &kGateIdentity;
+            su.start_lat_m = c.lat_m;
+            su.start_back_r = c.back_r;
+            su.start_psi_deg = c.psi_deg;
+            const CapitalResult g = run_capital_transit(t, fps, seed, su);
+            g_join_eval_us_max = std::fmax(g_join_eval_us_max, g.eval_us_max);
+            const double t_x = double(g.t_cross) / 1000.0, model = c.model_t[ti];
+            const bool joined = (g.join_modes & (1u << unsigned(core::JoinMode::join))) != 0;
+            const bool fell = (g.join_modes & (1u << unsigned(core::JoinMode::fallback))) != 0;
+            const char* sl = slot_i ? "slot 19 rotated" : "slot 0";
+            {
+                JoinAgg& a = g_join_agg[ti][&c - kJoinCases];
+                ++a.runs;
+                a.crossings_max = std::max(a.crossings_max, g.axis_crossings);
+                a.kept += g.kept ? 1u : 0u;
+                a.nose_max = std::fmax(a.nose_max, g.p2_err_deg);
+                a.vel_max = std::fmax(a.vel_max, g.cross_vel_deg);
+                a.e_max = std::fmax(a.e_max, g.cross_lat);
+                a.over_max = std::fmax(a.over_max, g.over_m);
+                a.cross_v_min = std::fmin(a.cross_v_min, g.cross_v);
+                a.cross_v_max = std::fmax(a.cross_v_max, g.cross_v);
+                a.t_ratio_min = std::fmin(a.t_ratio_min, t_x / model);
+                a.t_ratio_max = std::fmax(a.t_ratio_max, t_x / model);
+                a.v_cmd_min = std::fmin(a.v_cmd_min, g.v_cmd_min);
+                a.fb_entry_max = std::fmax(a.fb_entry_max, g.fb_entry_v);
+                const double br = g.rot_start_err_deg > 0 ? budget_rotate_s(g.rot_start_err_deg, t.yaw_dps, a_rot) : 0.0;
+                if (br > 0.05) a.rot_ratio_max = std::fmax(a.rot_ratio_max, double(g.rot_ms) / 1000.0 / br);
+            }
+            if (c.kind <= 1) {
+                std::snprintf(why, sizeof why, "%s %d fps seed %u join %s %s: converged in join mode, nose at X %%.2f deg <= 8.11, velocity <= 10, |e| <= 100 m, excursion past the axis <= 100 m (%%.0f), kept, 0x1f one frame, launched",
+                              t.cls, fps, seed, c.tag, sl);
+                checkf(joined && !fell && g.arrived_A && g.p2_err_deg >= 0 && g.p2_err_deg <= double(core::kGateRotateTolDeg) && g.cross_vel_deg <= 10.0 &&
+                           g.cross_lat <= 100.0 && g.over_m <= 100.0 && g.kept && g.rot_frames == 1 && g.launched && !g.nan_seen,
+                       why, g.p2_err_deg, g.over_m);
+                if (c.kind == 0) {
+                    std::snprintf(why, sizeof why, "%s %d fps seed %u join %s %s: v_cmd 100 throughout (min %%.0f), crossing %%.1f m/s >= 90 and under the coast bound (kept)", t.cls, fps, seed, c.tag, sl);
+                    checkf(g.v_cmd_min >= 100.0 && g.cross_v >= 90.0, why, g.v_cmd_min, g.cross_v);
+                    std::snprintf(why, sizeof why, "%s %d fps seed %u join %s %s: time to X %%.1f s within 15 %% of the model %%.1f s (a15_fixture_budget.txt)", t.cls, fps, seed, c.tag, sl);
+                    checkf(g.t_cross >= 0 && std::fabs(t_x - model) <= 0.15 * model, why, t_x, model);
+                } else {
+                    std::snprintf(why, sizeof why, "%s %d fps seed %u join %s: the predictor slows the join (v_cmd 60 frames %%.0f > 0) and no instant stop at P2 (kept, v after A %%.1f)", t.cls, fps, seed, c.tag);
+                    checkf(g.v60_rows > 0 && g.slowed > 0 && g.kept && g.v_after_A > 0, why, double(g.v60_rows), g.v_after_A);
+                }
+                std::snprintf(why, sizeof why, "%s %d fps seed %u join %s %s: site E's gate row suppresses the gate pair (%%.0f frames, %%.0f in the hand-over) and the engine's gate warn is never left unsuppressed in the join and hand-over",
+                              t.cls, fps, seed, c.tag, sl);
+                checkf(g.e_gate_sup > 0 && g.e_gate_handover_sup > 0 && g.e_gate_warn_unsup == 0, why, double(g.e_gate_sup), double(g.e_gate_handover_sup));
+            } else {
+                const double b_rot = g.rot_start_err_deg > 0 ? budget_rotate_s(g.rot_start_err_deg, t.yaw_dps, a_rot) : 0.0;
+                const double rot_s = double(g.rot_ms) / 1000.0;
+                const core::JoinReason want = c.kind == 2 ? core::JoinReason::pred_none : core::JoinReason::past_x;
+                std::snprintf(why, sizeof why, "%s %d fps seed %u join %s: the fallback latched (reason %s), sphere entry %%.1f m/s <= 30, the vanilla stop at P2, no write above 100 m/s (max %%.1f), launched",
+                              t.cls, fps, seed, c.tag, c.kind == 2 ? "pred_none" : "past_x");
+                checkf(fell && g.join_reason == want && g.fb_entry_v >= 0 && g.fb_entry_v <= 30.0 && !g.kept && g.v_after_A == 0 &&
+                           g.fb_write_max <= 100.0 && g.arrived_B && g.launched && !g.nan_seen,
+                       why, g.fb_entry_v, g.fb_write_max);
+                std::snprintf(why, sizeof why, "%s %d fps seed %u join %s: the engine's rotate %%.1f s at most 20 %% above the model's %%.1f s (budget_rotate_s from rest at the arrival error; the fixture's two-axis rotate keeps the arrival rate and is faster)", t.cls, fps, seed, c.tag);
+                checkf(rot_s <= 1.2 * b_rot + 0.05, why, rot_s, b_rot);
+            }
+            if (print)
+                std::printf("capital join %-3s %-24s %-15s fps=%3d: modes=0x%x reason=%u t_X=%.1f s (model %.1f) nose=%.2f vel=%.2f deg e=%.0f m over=%.0f m crossings=%u "
+                            "cross_v=%.1f v_cmd_min=%.0f v60=%u slowed=%u kept=%d why=%u rot=%ld frames %.1f s (from %.1f deg) fb_entry=%.1f fb_max=%.1f "
+                            "evals=%u predictions=%u eval_us_max=%.1f E_gate=%u handover=%u warn_frames=%u unsup=%u\n",
+                            t.cls, c.tag, sl, fps, g.join_modes, unsigned(g.join_reason), t_x, model, g.p2_err_deg, g.cross_vel_deg, g.cross_lat, g.over_m,
+                            g.axis_crossings, g.cross_v, g.v_cmd_min > 1e8 ? -1.0 : g.v_cmd_min, g.v60_rows, g.slowed, g.kept ? 1 : 0, unsigned(g.keep_why),
+                            g.rot_frames, double(g.rot_ms) / 1000.0, g.rot_start_err_deg, g.fb_entry_v, g.fb_write_max, g.evals, g.predictions, g.eval_us_max,
+                            g.e_gate_sup, g.e_gate_handover_sup, g.gate_warn_frames, g.e_gate_warn_unsup);
+        }
+}
+// D: the escort cascade (section 15.5). An M2 leader on MovePos with two M6 escorts and one M1 escort on 0x14 (kinematic
+// snapshot items, the walk's fields: pointer, id, order, target, autopilot). t 10-25 s: one M6 forced into 0x12 (target 0) 1.5 km
+// ahead, then order 0; t 30-55 s: the M1 into 0x12 (target 0) 2.4 km beside the leader's path (a conflict inside C, the hulls
+// apart), order 0 from 48 s, back to 0x14 at 55 s; t 60 s: the M1 switched to order 4 (a gate target); t 64-66 s: the M1 on
+// 0x12 and at 65 s its pointer re-used by a new object (another id). memory = false: the amendment-13 snapshot (no memory).
+struct CascadeResult {
+    unsigned m6_frames = 0, m6_sup = 0, m1_span = 0, m1_span_sup = 0, m1_after = 0, m1_after_sup = 0, m1_detours = 0, m1_remembered = 0;
+    unsigned escort_side = 0, escort_side_sup = 0, warn_unsup = 0;
+    bool cleared_order4 = false, cleared_id = false, docked_pass = false, manual_pass = false, dock_leg_pass = false, nan_seen = false;
+    av::MemberStats st;
+    double m1_min_d = 1e18;
+};
+static CascadeResult run_cascade(int fps, std::uint32_t seed, bool memory) {
+    CascadeResult res;
+    const ShipType& lt = kCapitals[0];
+    core::ShipTable table{};
+    static World w;
+    w = World{};
+    static av::Members mem;
+    mem = av::Members{};
+    w.members = memory ? &mem : nullptr;
+    Model m;
+    m.init(lt, seed);
+    m.table = &table;
+    m.capital = true;
+    m.ptr = 0x9000;
+    m.obj_id = 0x11111;
+    m.order = core::kOrderMovePos;
+    m.P[0] = m.P[1] = 0;
+    m.P[2] = 200000.0 * 500.0;
+    m.d_arr_units = 1000.0 * 500.0;
+    w.attach(m);
+    struct Esc {
+        std::uint32_t ptr, id;
+        float r;
+        bool capital;
+        double slot[3];
+        std::uint16_t order;
+        std::uint32_t target;
+        double pos[3], vel[3]; // m, m/s
+        std::uint32_t flags;
+        bool in_slot;
+    };
+    Esc esc[3] = {{0x4100, 0x22221, 64.4f, false, {-300, 0, -600}, core::kOrderEscort, 0x9000, {0, 0, 0}, {0, 0, 0}, 0x80000u, true},
+                  {0x4200, 0x22222, 64.4f, false, {300, 0, -600}, core::kOrderEscort, 0x9000, {0, 0, 0}, {0, 0, 0}, 0x80000u, true},
+                  {0x4300, 0x22223, 1022.0f, true, {2400, 0, 0}, core::kOrderEscort, 0x9000, {0, 0, 0}, {0, 0, 0}, 0x80000u, true}};
+    const std::uint32_t obj = 0x1000;
+    Clock clock;
+    int last_stage[3] = {-1, -1, -1};
+    for (long i = 0; i < 75 * fps; ++i) {
+        const long dt = clock.step(fps);
+        if (!dt) continue;
+        m.frame_dt_ms = dt;
+        const double ts = double(m.t_ms) / 1000.0;
+        double lp[3], lv[3];
+        for (int k = 0; k < 3; ++k) {
+            lp[k] = m.pos[k] / 500.0;
+            lv[k] = (m.row[2][k] * double(m.speed) + double(m.slip[k])) / 500.0;
+        }
+        // the escorts' stages
+        for (int e = 0; e < 3; ++e) {
+            Esc& x = esc[e];
+            int stage = 0;
+            if (e == 0) stage = ts < 10 ? 0 : ts < 20 ? 1 : ts < 25 ? 2 : 0;
+            if (e == 2) stage = ts < 30 ? 0 : ts < 48 ? 1 : ts < 55 ? 2 : ts < 60 ? 0 : ts < 61 ? 3 : ts < 64 ? 0 : ts < 66 ? 4 : 0;
+            const bool entered = stage != last_stage[e];
+            last_stage[e] = stage;
+            if (stage == 0) { // 0x14 in the slot (the leader flies along +z: the slot is a world offset)
+                x.order = core::kOrderEscort;
+                x.target = m.ptr;
+                x.in_slot = true;
+            } else if (stage == 1) { // the engine's 0x12: target cleared
+                x.order = core::kOrderAvoid;
+                x.target = 0;
+                if (entered) {
+                    x.in_slot = false;
+                    const double off[3] = {e == 0 ? 0.0 : 2400.0, 0.0, 1500.0};
+                    for (int k = 0; k < 3; ++k) x.pos[k] = lp[k] + off[k];
+                    x.vel[0] = e == 0 ? 150.0 : 5.0;
+                    x.vel[1] = x.vel[2] = 0.0;
+                }
+            } else if (stage == 2) { // order 0 without a target (the hand-over), stopped
+                x.order = core::kOrderNone;
+                x.target = 0;
+                x.vel[0] = x.vel[1] = x.vel[2] = 0.0;
+            } else if (stage == 3) { // order 4 to a gate: clears the membership at once
+                x.order = core::kOrderFlyBefore;
+                x.target = 0x7700;
+                x.in_slot = true;
+            } else if (stage == 4) { // 0x12 in the slot; at 65 s the object at this pointer is a new one (another id)
+                x.order = core::kOrderAvoid;
+                x.target = 0;
+                x.in_slot = true;
+                if (ts >= 65.0) x.id = 0x33333;
+            }
+            if (x.in_slot)
+                for (int k = 0; k < 3; ++k) {
+                    x.pos[k] = lp[k] + x.slot[k];
+                    x.vel[k] = lv[k];
+                }
+            else
+                for (int k = 0; k < 3; ++k) x.pos[k] += x.vel[k] * double(dt) / 1000.0;
+            av::Obstacle& o = w.statics[e];
+            o = av::Obstacle{};
+            for (int k = 0; k < 3; ++k) {
+                o.x[k] = float(x.pos[k]);
+                o.v[k] = float(x.vel[k]);
+            }
+            o.r = x.r;
+            o.ptr = x.ptr;
+            o.id = x.id;
+            o.leader = x.target;
+            o.order = x.order;
+            o.kind = std::uint8_t(av::Kind::ship);
+            o.size = x.capital ? 1 : 0;
+            o.flags = (x.flags & 0x80000u) ? av::kObstacleAutopilot : 0;
+        }
+        w.n_static = 3;
+        const unsigned cleared0 = w.mstats.cleared, idmm0 = w.mstats.id_mismatch;
+        Model* ships[1] = {&m};
+        w.fill(ships, 1, std::uint32_t(m.t_ms));
+        if (ts >= 60.0 && ts < 61.0 && !res.cleared_order4 && memory) res.cleared_order4 = w.mstats.cleared > cleared0 && !mem.find(esc[2].ptr);
+        if (ts >= 65.0 && ts < 66.0 && !res.cleared_id && memory) res.cleared_id = w.mstats.id_mismatch > idmm0 && !mem.find(esc[2].ptr);
+        for (unsigned q = 0; q < w.snap.count; ++q)
+            if (w.snap.items[q].ptr == esc[2].ptr && ts >= 30 && ts < 50 && (w.snap.items[q].flags & av::kObstacleRemembered) && w.snap.items[q].member_of == m.ptr)
+                ++res.m1_remembered;
+        m.frame(dt, obj, true, 0, 1);
+        if (ts >= 30 && ts < 50 && m.last_av.adjusted && m.last_av.obstacle == esc[2].ptr) ++res.m1_detours;
+        for (int k = 0; k < 3; ++k)
+            if (!std::isfinite(m.pos[k])) res.nan_seen = true;
+        // site E for (leader, escort) through the DLL's decision, for the escorts that reach it (not on 0x14/0x15: the partner filter)
+        const core::Ship* sa = table.find(obj);
+        const std::uint32_t now = std::uint32_t(m.t_ms);
+        for (int e = 0; e < 3; ++e) {
+            const Esc& x = esc[e];
+            if (av::member_order(x.order)) continue;
+            double d = 0;
+            for (int k = 0; k < 3; ++k) d += (x.pos[k] - m.pos[k] / 500.0) * (x.pos[k] - m.pos[k] / 500.0);
+            d = std::sqrt(d);
+            if (e == 2) res.m1_min_d = std::fmin(res.m1_min_d, d);
+            av::SiteE in;
+            in.a_order = m.order;
+            in.a_target = 0;
+            in.a_in_table = sa != nullptr;
+            in.a_age_ms = sa ? now - sa->stamp_ms : 0xffffffffu;
+            in.frame_ms = std::uint32_t(dt);
+            in.a_capital = true;
+            in.r_a = float(lt.r_m);
+            in.b_ship = in.b_readable = true;
+            in.b_capital_code = x.capital;
+            in.r_b = x.r;
+            in.b_flags = x.flags;
+            in.b_order = x.order;
+            in.b_target = x.target;
+            in.b_member_current = memory && mem.current(x.ptr, m.ptr, x.id, m.obj_id, now) != nullptr;
+            in.d = float(d);
+            in.avoidance_on = true;
+            in.b_resolved = av::suppressed(m.astate, m.ptr, x.ptr, now, av::fresh_window_ms(av::kResolvedAgeMs, std::uint32_t(dt)));
+            const av::EVerdict v = av::site_e_verdict(in);
+            if (e == 0 && ts >= 10 && ts < 25) {
+                ++res.m6_frames;
+                if (v == av::EVerdict::suppress_small) ++res.m6_sup;
+                else if (in.a_age_ms <= av::fresh_window_ms(av::kSteeredFreshMs, in.frame_ms)) ++res.warn_unsup;
+                if (ts >= 12 && !res.docked_pass) { // the variants: docked, manual (no autopilot), on a dock leg (audit G4)
+                    av::SiteE vd = in, vm = in, vk = in;
+                    vd.b_docked = 0x1234;
+                    vm.b_flags = 0x40000u;
+                    vk.b_order = core::kOrderDock;
+                    res.docked_pass = av::site_e_verdict(vd) == av::EVerdict::pass_not_steerable;
+                    res.manual_pass = av::site_e_verdict(vm) == av::EVerdict::pass_no_autopilot;
+                    res.dock_leg_pass = av::site_e_verdict(vk) == av::EVerdict::pass_b_dock_leg;
+                }
+            }
+            if (e == 2 && ts >= 30 && ts < 49.9) {
+                ++res.m1_span;
+                if (v == av::EVerdict::suppress_member) ++res.m1_span_sup;
+                else if (in.a_age_ms <= av::fresh_window_ms(av::kSteeredFreshMs, in.frame_ms)) ++res.warn_unsup;
+            }
+            if (e == 2 && ts >= 50.5 && ts < 55) {
+                ++res.m1_after;
+                if (av::e_suppresses(v)) ++res.m1_after_sup;
+            }
+            if (e == 2 && x.order == core::kOrderAvoid && ts >= 30 && ts < 48) { // the escort's side: (M1 on 0x12, its leader): never suppressed
+                av::SiteE es;
+                es.a_order = core::kOrderAvoid;
+                es.a_in_table = true;
+                es.a_age_ms = 0;
+                es.frame_ms = std::uint32_t(dt);
+                es.a_capital = true;
+                es.r_a = x.r;
+                es.b_ship = es.b_readable = es.b_capital_code = true;
+                es.r_b = float(lt.r_m);
+                es.b_flags = 0x80000u;
+                es.b_order = m.order;
+                es.b_member_current = memory && mem.current(m.ptr, x.ptr, m.obj_id, x.id, now) != nullptr;
+                es.b_is_a_leader = memory && mem.current(x.ptr, m.ptr, x.id, m.obj_id, now) != nullptr;
+                es.d = float(d);
+                es.avoidance_on = true;
+                ++res.escort_side;
+                if (av::e_suppresses(av::site_e_verdict(es))) ++res.escort_side_sup;
+            }
+        }
+    }
+    res.st = w.mstats;
+    return res;
+}
+static void cascade_scenario(int fps, std::uint32_t seed) {
+    char why[480];
+    const CascadeResult r = run_cascade(fps, seed, true), r0 = run_cascade(fps, seed, false);
+    std::snprintf(why, sizeof why, "%d fps seed %u cascade D: (leader, M6 on 0x12 / order 0) = suppress_small on every frame (%%.0f of %%.0f); docked, manual and order-5 variants pass", fps, seed);
+    checkf(r.m6_frames > 0 && r.m6_sup == r.m6_frames && r.docked_pass && r.manual_pass && r.dock_leg_pass, why, double(r.m6_sup), double(r.m6_frames));
+    std::snprintf(why, sizeof why, "%d fps seed %u cascade D: (leader, M1 on 0x12 / order 0) = suppress_member while <= 20 s since its last 0x14 (%%.0f of %%.0f frames), then pass", fps, seed);
+    checkf(r.m1_span > 0 && r.m1_span_sup == r.m1_span && r.m1_after > 0 && r.m1_after_sup == 0 && r.st.expire > 0, why, double(r.m1_span_sup), double(r.m1_span));
+    std::snprintf(why, sizeof why, "%d fps seed %u cascade D: the M1 is remembered in the snapshot (%%.0f frames) and the leader never detours against it in the span (%%.0f; without the memory it does: %%.0f)", fps, seed);
+    char why2[560];
+    std::snprintf(why2, sizeof why2, why, double(r.m1_remembered), double(r.m1_detours), double(r0.m1_detours));
+    check(r.m1_remembered > 0 && r.m1_detours == 0 && r0.m1_detours > 0 && r0.m1_span_sup == 0, why2);
+    std::snprintf(why, sizeof why, "%d fps seed %u cascade D: the order-4 switch (%%.0f) and the id swap (%%.0f) clear the membership in the same snapshot; the escort's own warn against its leader is never suppressed; no warn left unsuppressed for an escort pair; no NaN", fps, seed);
+    checkf(r.cleared_order4 && r.cleared_id && r.escort_side > 0 && r.escort_side_sup == 0 && r.warn_unsup == 0 && !r.nan_seen, why, double(r.cleared_order4),
+           double(r.cleared_id));
+    if (seed == kSeeds[0] && fps == 60)
+        std::printf("cascade D fps=%3d: m6 sup=%u/%u m1 member sup=%u/%u after=%u (sup %u) remembered=%u detours=%u (no memory: %u, member sup %u) escort_side sup=%u/%u "
+                    "warn_unsup=%u m1_min_d=%.0f m | member set=%u refresh=%u replace=%u expire=%u leader_gone=%u id_mismatch=%u reversed=%u player=%u cleared=%u full=%u\n",
+                    fps, r.m6_sup, r.m6_frames, r.m1_span_sup, r.m1_span, r.m1_after, r.m1_after_sup, r.m1_remembered, r.m1_detours, r0.m1_detours, r0.m1_span_sup,
+                    r.escort_side_sup, r.escort_side, r.warn_unsup, r.m1_min_d, r.st.set, r.st.refresh, r.st.replace, r.st.expire, r.st.leader_gone, r.st.id_mismatch,
+                    r.st.reversed, r.st.player, r.st.cleared, r.st.full);
+}
+// K (audit G4): an M2 on MovePos past an M6 on a dock order-5 leg that crosses its path 1 km ahead. The capital skips the M6 (small)
+// and site E keeps the engine's warn for the pair (pass_b_dock_leg): the module does not avoid on order 5, so the engine must.
+static void dock_leg_pair_scenario(int fps, std::uint32_t seed) {
+    const ShipType& ct = kCapitals[0];
+    core::ShipTable table{};
+    static World w;
+    w = World{};
+    Model m;
+    m.init(ct, seed);
+    m.table = &table;
+    m.capital = true;
+    m.ptr = 0x9000;
+    m.order = core::kOrderMovePos;
+    m.P[2] = 200000.0 * 500.0;
+    m.d_arr_units = 1000.0 * 500.0;
+    w.attach(m);
+    const double v6 = 90.0, T = 30.0, zc = 110.0 * T + 1000.0; // the M6 on the capital's line when the capital is 1 km short of it
+    double p6[3] = {-v6 * T, 0.0, zc};
+    Clock clock;
+    unsigned frames = 0, dock_leg = 0, sup = 0, contrast_sup = 0;
+    double min_d = 1e18;
+    for (long i = 0; i < 60 * fps; ++i) {
+        const long dt = clock.step(fps);
+        if (!dt) continue;
+        m.frame_dt_ms = dt;
+        p6[0] += v6 * double(dt) / 1000.0;
+        av::Obstacle& o = w.statics[0];
+        o = av::Obstacle{};
+        for (int k = 0; k < 3; ++k) o.x[k] = float(p6[k]);
+        o.v[0] = float(v6);
+        o.r = float(kShips[2].r_m);
+        o.ptr = 0x4100;
+        o.id = 0x4101;
+        o.order = core::kOrderDock;
+        o.leader = 0x7700;
+        o.kind = std::uint8_t(av::Kind::ship);
+        o.flags = av::kObstacleAutopilot;
+        w.n_static = 1;
+        Model* ships[1] = {&m};
+        w.fill(ships, 1, std::uint32_t(m.t_ms));
+        m.frame(dt, 0x1000, true, 0, 1);
+        double d = 0;
+        for (int k = 0; k < 3; ++k) d += (p6[k] - m.pos[k] / 500.0) * (p6[k] - m.pos[k] / 500.0);
+        d = std::sqrt(d);
+        min_d = std::fmin(min_d, d);
+        const core::Ship* sa = table.find(0x1000);
+        if (!sa || std::uint32_t(m.t_ms) - sa->stamp_ms > av::fresh_window_ms(av::kSteeredFreshMs, std::uint32_t(dt))) continue;
+        av::SiteE in;
+        in.a_order = m.order;
+        in.a_in_table = true;
+        in.a_age_ms = std::uint32_t(m.t_ms) - sa->stamp_ms;
+        in.frame_ms = std::uint32_t(dt);
+        in.a_capital = true;
+        in.r_a = float(ct.r_m);
+        in.b_ship = in.b_readable = true;
+        in.r_b = float(kShips[2].r_m);
+        in.b_flags = 0x80000u;
+        in.b_order = core::kOrderDock;
+        in.b_target = 0x7700;
+        in.avoidance_on = true;
+        const av::EVerdict v = av::site_e_verdict(in);
+        ++frames;
+        if (v == av::EVerdict::pass_b_dock_leg) ++dock_leg;
+        if (av::e_suppresses(v)) ++sup;
+        in.b_order = core::kOrderEscort; // the same pair with B on a steered order: the small-ship row suppresses
+        if (av::site_e_verdict(in) == av::EVerdict::suppress_small) ++contrast_sup;
+    }
+    const float C = av::clearance(float(ct.r_m), float(kShips[2].r_m));
+    char why[400];
+    std::snprintf(why, sizeof why, "%d fps seed %u K (audit G4): (M2, M6 on order 5) = pass_b_dock_leg on every fresh frame (%%.0f of %%.0f), never suppressed; the pair is a real conflict (min %%.0f m < C)", fps, seed);
+    char why2[480];
+    std::snprintf(why2, sizeof why2, why, double(dock_leg), double(frames), min_d);
+    check(frames > 0 && dock_leg == frames && sup == 0 && contrast_sup == frames && min_d < double(C) && m.skipped_small > 0, why2);
+    if (seed == kSeeds[0] && fps == 60)
+        std::printf("dock-leg pair K fps=%3d: frames=%u pass_b_dock_leg=%u suppressed=%u (B on 0x14 instead: suppressed %u) min_d=%.0f m C=%.0f m capital skipped_small=%u\n", fps,
+                    frames, dock_leg, sup, contrast_sup, min_d, double(C), m.skipped_small);
+}
+// G1 (audit): a small ship's order-4 gate approach from 5 km before A (outside the 3 r window first): site E's verdict for (ship, its
+// target gate) is suppress_gate_small on every frame with the lead-in active and never before the window; the engine's warn cone
+// toward the gate (the Run157 stop -> 0x12 legs) is never left unsuppressed while the lead-in is active.
+static const ShipType kM4 = {"M4", "Buster", 180.0, 25.0, 129.375, 12.0, 20, false};
+static void small_gate_row_scenario(const ShipType& t, int fps, std::uint32_t seed) {
+    const double s30 = std::sin(30 * M_PI / 180), c30 = std::cos(30 * M_PI / 180);
+    const double start5[3] = {-5000.0 / 1105.0 * s30, -0.8, -1.0 - 5000.0 / 1105.0 * c30};
+    const GateResult g = run_gate(t, fps, seed, 0, false, false, true, start5, kGateIdentity);
+    char why[400];
+    std::snprintf(why, sizeof why, "%s %d fps seed %u G1 (audit): (ship, its gate) = suppress_gate_small on every lead-in frame (%%.0f of %%.0f), none before the window, no gate warn left unsuppressed", t.cls, fps, seed);
+    checkf(g.g1_in > 0 && g.g1_in_sup == g.g1_in && g.g1_out > 0 && g.g1_out_sup == 0 && g.g1_warn_unsup == 0 && g.arrived_A && g.launched, why, double(g.g1_in_sup),
+           double(g.g1_in));
+    if (seed == kSeeds[0] && fps == 60)
+        std::printf("small gate row G1 %-3s fps=%3d: lead-in frames=%u suppressed=%u before the window=%u (suppressed %u) gate warn cone frames in the lead-in=%u unsuppressed=%u cross_err=%.1f deg\n",
+                    t.cls, fps, g.g1_in, g.g1_in_sup, g.g1_out, g.g1_out_sup, g.g1_warn, g.g1_warn_unsup, g.cross_err_deg);
+}
+// Amendment 15's pieces one by one: the trig, the plane, the predictor against join_budget.py's verdicts, the fallback speed, the
+// keep verdict and its bound, the join state machine, the membership rules, the member row, site E's decision and the freshness window.
+static void amend15_unit_checks() {
+    char why[400];
+    double err = 0;
+    for (int i = -3600; i <= 3600; ++i) {
+        const float a = float(i) * float(M_PI) / 3600.0f;
+        float s, c;
+        core::sincos_f(a, &s, &c);
+        err = std::fmax(err, std::fmax(std::fabs(double(s) - std::sin(double(a))), std::fabs(double(c) - std::cos(double(a)))));
+    }
+    std::snprintf(why, sizeof why, "amendment 15: sincos_f over [-pi, pi] within 1e-5 (max %%.2g)");
+    checkf(err < 1e-5, why, err, 0);
+    // the plane: a ship 1000 m off a line along +z on +x, nose 30 deg toward the axis, a positive yaw rate (toward -row0 = -x)
+    {
+        core::GateGeometry g{};
+        g.h[2] = 1;
+        g.r = 1105;
+        const float x[3] = {1000, 0, -3000};
+        const float sp = std::sin(float(M_PI) / 6), cp = std::cos(float(M_PI) / 6);
+        const float rows[3][3] = {{cp, 0, sp}, {0, 1, 0}, {-sp, 0, cp}}; // row2 toward -x by 30 deg, row0 = up x row2
+        const float w[3] = {0.1f, 0, 0}, u[3] = {-100 * sp, 0, 100 * cp};
+        core::JoinPlane p;
+        const bool ok = core::join_plane(g, x, rows, w, u, 100.0f, &p);
+        check(ok && std::fabs(p.s + 3000) < 0.5f && std::fabs(p.y - 1000) < 0.5f && std::fabs(p.psi + float(M_PI) / 6) < 1e-3f &&
+                  std::fabs(p.upsi + float(M_PI) / 6) < 1e-3f && std::fabs(p.w + 0.1f) < 1e-4f,
+              "amendment 15: join_plane: s -3000 m, y 1000 m, nose and velocity -30 deg (toward the axis), a yaw rate toward -row0 reads -0.1 rad/s");
+    }
+    // the predictor against join_budget.py (predictor_dt.txt / join_budget.txt verdicts, M2): S2 at 100 yes; S6 at 100 no, 60 yes; S7 none
+    {
+        core::JoinParams p;
+        p.W = float(1843.0 / 65536.0 * 2 * M_PI);
+        p.alpha = p.W * 0.05f;
+        p.v_max = 110;
+        p.a_lin = 10;
+        p.r_gate = 1105;
+        auto st = [](double s, double y, double psi_deg) {
+            core::JoinPlane q;
+            q.s = float(s);
+            q.y = float(y);
+            q.psi = q.upsi = float(psi_deg * M_PI / 180);
+            q.w = 0;
+            q.v = 100;
+            return q;
+        };
+        float nose, ye, v = 0;
+        const core::JoinPlane s2 = st(-5.58 * 1105, 6435, -std::atan2(6435.0, 0.75 * 1105 + 5.58 * 1105) * 180 / M_PI);
+        const core::JoinPlane s6 = st(-2.97 * 1105, 627, 68), s7 = st(-0.70 * 1105, 1645, -91);
+        const bool p2 = core::join_predict(s2, p, 100, &nose, &ye);
+        const float n2 = nose;
+        const bool p6_100 = core::join_predict(s6, p, 100, &nose, &ye), p6_60 = core::join_predict(s6, p, 60, &nose, &ye);
+        unsigned preds = 0;
+        const bool p7 = core::join_choose(s7, p, 100.0f, &v, &nose, &ye, &preds);
+        std::snprintf(why, sizeof why, "amendment 15: the predictor matches join_budget.py: S2 converges at 100 (nose %%.2f deg), S6 not at 100 but at 60, S7 at no candidate (%%.0f predictions)");
+        checkf(p2 && n2 <= core::kJoinNoseDeg && !p6_100 && p6_60 && !p7 && preds == 4, why, n2, preds);
+        // the cost of the worst evaluation (four failing candidates), host time
+        const auto t0 = std::chrono::steady_clock::now();
+        unsigned reps = 0;
+        for (; reps < 200; ++reps) core::join_choose(s7, p, 100.0f, &v, &nose, &ye, nullptr);
+        const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count() / reps;
+        const core::JoinPlane s4 = st(-35.8 * 1105, 15932, -22); // the far start: the longest prediction at 25 m/s
+        const auto t1 = std::chrono::steady_clock::now();
+        for (unsigned k = 0; k < 50; ++k) core::join_predict(s4, p, 25, &nose, &ye);
+        const double us4 = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t1).count() / 50;
+        std::printf("amendment 15 predictor cost (host): worst choose (4 failing candidates) %.1f us, the longest single prediction (S4 at 25 m/s) %.1f us\n", us, us4);
+        g_join_eval_us_max = std::fmax(g_join_eval_us_max, us);
+    }
+    // the fallback speed: >= 90 deg the floor; at the sphere aligned the entry speed; far and aligned the cap; the chord when turning
+    check(core::join_fallback_speed(3000, float(M_PI) / 2, 10, 1105) == core::kJoinFloorMs &&
+              std::fabs(core::join_fallback_speed(0.75f * 1105, 0, 10, 1105) - 25.0f) < 0.01f && core::join_fallback_speed(20000, 0, 10, 1105) == 100.0f &&
+              std::fabs(core::join_fallback_speed(3000, 1.2f, 10, 1105) - core::kJoinOmegaEff * 3000 / (2 * std::sin(1.2f))) < 0.1f,
+          "amendment 15: the fallback speed: the floor from 90 deg, 25 m/s at the sphere, the cap far out, the chord omega_eff d / (2 sin theta) when turning");
+    // the keep verdict and the coast bound (design: 181 / 132 m/s at SETA 10 for the Run156 M2 / M1)
+    {
+        const float b2 = core::join_coast_bound(5221, 1091, 100, 10), b1 = core::join_coast_bound(5082, 1022, 100, 5);
+        std::snprintf(why, sizeof why, "amendment 15: P2 coast bound at SETA 10: M2 %%.0f m/s (design 181), M1 %%.0f (132); the keep verdict names mode, nose, vel, bound");
+        checkf(std::fabs(b2 - 181) < 2 && std::fabs(b1 - 132) < 2 && core::join_keep_verdict(true, 8.1f, 9.9f, 100, b2) == core::JoinKeep::kept &&
+                   core::join_keep_verdict(false, 1, 1, 100, b2) == core::JoinKeep::mode && core::join_keep_verdict(true, 8.2f, 1, 100, b2) == core::JoinKeep::nose &&
+                   core::join_keep_verdict(true, 1, 10.1f, 100, b2) == core::JoinKeep::vel && core::join_keep_verdict(true, 1, 1, 200, b2) == core::JoinKeep::bound,
+               why, b2, b1);
+    }
+    // the join state machine
+    {
+        core::JoinState j;
+        const float A[3] = {0, 0, 0}, A2[3] = {50, 0, 0};
+        bool ch;
+        const float r = 1105;
+        const bool past = core::join_on_decision(j, A, 10, r, true, false, 1000, &ch) == core::JoinMode::fallback && j.reason == core::JoinReason::past_x;
+        const bool latched = core::join_on_decision(j, A, -3000, r, false, true, 1020, &ch) == core::JoinMode::fallback && !ch;
+        const bool new_point = core::join_on_decision(j, A2, -3000, r, false, true, 1040, &ch) == core::JoinMode::join && ch && j.eval_ms == 0;
+        const bool out = core::join_on_decision(j, A2, -7000, r, false, false, 1060, &ch) == core::JoinMode::out;
+        const bool enter = core::join_on_decision(j, A2, -6000, r, false, true, 1080, &ch) == core::JoinMode::join && ch && j.window_ms == 1080;
+        const bool unconverged = core::join_on_decision(j, A2, 5, r, false, true, 1100, &ch) == core::JoinMode::fallback && j.reason == core::JoinReason::past_x;
+        core::JoinState k;
+        core::join_on_decision(k, A, -3000, r, false, false, 1000, &ch);
+        const bool converged_past = core::join_on_decision(k, A, 5, r, true, true, 1020, &ch) == core::JoinMode::join;
+        const bool gap = core::join_on_decision(k, A, -3000, r, false, true, 1020 + core::kJoinNewLegMs + 1, &ch) == core::JoinMode::join && ch == false && k.window_ms != 0;
+        check(past && latched && new_point && out && enter && unconverged && converged_past && gap,
+              "amendment 15: the join state: the first decision past X -> fallback past_x, latched on the same point, reset by a new point or a new leg; out beyond 6 r; join "
+              "on entering with an immediate evaluation; past the plane unconverged -> fallback, converged -> join");
+    }
+    // the predictor's registry (review blocker): 12 capitals cycled through transits, each with order-4 decisions for 50 s from
+    // t = 20 s x c (at most three in their windows at a time) and none afterwards (the transit done); swept at every frame end as
+    // the DLL's frame boundary does. Without the sweep the ninth capital is refused (amendment 13's failure: no predictor).
+    for (int sweep = 1; sweep >= 0; --sweep) {
+        core::JoinRegistry reg;
+        static core::JoinState st[12];
+        bool in_reg[12] = {}, ever[12] = {};
+        unsigned max_count = 0, registered = 0;
+        for (unsigned c = 0; c < 12; ++c) st[c] = core::JoinState{};
+        for (std::uint32_t t = 1000; t < 12u * 20000u + 61000u; t += 16) {
+            for (unsigned c = 0; c < 12; ++c) {
+                const std::uint32_t t0 = 1000u + 20000u * c;
+                if (t < t0 || t >= t0 + 50000u) continue;
+                bool ch;
+                const float A[3] = {float(c) * 1000.0f, 0, 0};
+                core::join_on_decision(st[c], A, -3000.0f + float(t - t0) * 0.06f, 1105.0f, false, t > t0, t, &ch);
+                st[c].plane_ms = t ? t : 1;
+                if (st[c].mode == core::JoinMode::join && !in_reg[c]) {
+                    in_reg[c] = reg.add(c);
+                    if (in_reg[c] && !ever[c]) {
+                        ever[c] = true;
+                        ++registered;
+                    }
+                }
+            }
+            if (sweep)
+                for (unsigned i = 0; i < reg.count;) {
+                    const unsigned c = reg.slots[i];
+                    if (!core::join_registry_keep(st[c], true, t)) {
+                        in_reg[c] = false;
+                        reg.remove_at(i);
+                        continue;
+                    }
+                    ++i;
+                }
+            max_count = std::max(max_count, reg.count);
+        }
+        core::JoinState live;
+        live.mode = core::JoinMode::join;
+        live.plane_ms = 1000;
+        if (sweep) {
+            std::snprintf(why, sizeof why, "amendment 15 registry: 12 capitals through transits, all registered (%%.0f), never saturated (max %%.0f of 8 slots), every slot dropped after its transit; a reused table entry drops at once");
+            checkf(registered == 12 && reg.refused == 0 && max_count <= 3 && reg.dropped == 12 && reg.count == 0 && core::join_registry_keep(live, true, 2000) &&
+                       !core::join_registry_keep(live, false, 2000) && !core::join_registry_keep(live, true, 1000 + core::kJoinNewLegMs + 1),
+                   why, double(registered), double(max_count));
+            std::printf("amendment 15 registry: 12 capitals, registered %u, max %u slots, dropped %u, refused %u\n", registered, max_count, reg.dropped, reg.refused);
+        } else
+            check(registered == core::kJoinSlots && reg.refused > 0, "amendment 15 registry without the sweep: the ninth capital is refused (the review's failure the sweep removes)");
+    }
+    // the membership rules over a hand-built snapshot
+    {
+        static av::Snapshot s;
+        static av::Members mm;
+        mm = av::Members{};
+        av::MemberStats st;
+        auto item = [](av::Obstacle& o, std::uint32_t ptr, std::uint32_t id, std::uint16_t order, std::uint32_t target, bool ap) {
+            o = av::Obstacle{};
+            o.kind = std::uint8_t(av::Kind::ship);
+            o.ptr = ptr;
+            o.id = id;
+            o.order = order;
+            o.leader = target;
+            o.flags = ap ? av::kObstacleAutopilot : 0;
+            o.r = 1000;
+        };
+        const std::uint32_t L = 0xA000, F = 0xB000;
+        auto run = [&](std::uint16_t f_order, std::uint32_t f_target, std::uint32_t l_id, bool f_ap, std::uint16_t l_order, std::uint32_t l_target, bool with_l,
+                       std::uint32_t now) {
+            s.count = 0;
+            item(s.items[s.count++], F, 2, f_order, f_target, f_ap);
+            if (with_l) item(s.items[s.count++], L, l_id, l_order, l_target, true);
+            av::update_members(s, mm, now, st);
+        };
+        run(core::kOrderEscort, L, 1, true, core::kOrderMovePos, 0, true, 1000);
+        const bool set = st.set == 1 && mm.current(F, L, 2, 1, 1000);
+        run(core::kOrderAvoid, 0, 1, true, core::kOrderMovePos, 0, true, 2000);
+        const bool kept_avoid = s.items[0].member_of == L && (s.items[0].flags & av::kObstacleRemembered) && mm.current(F, L, 2, 1, 2000);
+        run(core::kOrderNone, 0, 1, true, core::kOrderMovePos, 0, true, 3000);
+        const bool kept_zero = s.items[0].member_of == L;
+        run(core::kOrderNone, 0x7700, 1, true, core::kOrderMovePos, 0, true, 3100);
+        const bool cleared = st.cleared == 1 && !mm.find(F);
+        run(core::kOrderEscort, L, 1, true, core::kOrderMovePos, 0, true, 4000);
+        run(core::kOrderAvoid, 0, 9, true, core::kOrderMovePos, 0, true, 4100);
+        const bool idmm = st.id_mismatch == 1 && !mm.find(F);
+        run(core::kOrderEscort, L, 1, true, core::kOrderMovePos, 0, true, 5000);
+        run(core::kOrderAvoid, 0, 1, true, core::kOrderEscort, F, true, 5100);
+        const bool reversed = st.reversed == 1 && !mm.find(F);
+        run(core::kOrderEscort, L, 1, true, core::kOrderMovePos, 0, true, 6000);
+        run(core::kOrderAvoid, 0, 1, false, core::kOrderMovePos, 0, true, 6100);
+        const bool player = st.player == 1 && !mm.find(F);
+        run(core::kOrderEscort, L, 1, true, core::kOrderMovePos, 0, true, 7000);
+        run(core::kOrderAvoid, 0, 1, true, core::kOrderMovePos, 0, false, 7100);
+        const bool gone = st.leader_gone == 1 && !mm.find(F);
+        run(core::kOrderEscort, L, 1, true, core::kOrderMovePos, 0, true, 8000);
+        run(core::kOrderAvoid, 0, 1, true, core::kOrderMovePos, 0, true, 8000 + av::kMemberExpiryMs);
+        const bool not_yet = mm.find(F) != nullptr;
+        run(core::kOrderAvoid, 0, 1, true, core::kOrderMovePos, 0, true, 8001 + av::kMemberExpiryMs);
+        const bool expired = st.expire == 1 && !mm.find(F);
+        run(core::kOrderEscort, L, 1, true, core::kOrderMovePos, 0, true, 9000);
+        run(core::kOrderEscort, 0xC000, 1, true, core::kOrderMovePos, 0, true, 9100); // another leader not in the snapshot: dropped
+        const bool other_gone = st.leader_gone == 2 && !mm.find(F);
+        // a full table: 600 followers of one leader; the probe window refuses some (counted), never overwrites a live one
+        s.count = 0;
+        item(s.items[s.count++], L, 1, core::kOrderMovePos, 0, true);
+        for (unsigned i = 0; i < 600; ++i) item(s.items[s.count++], 0x100000 + 0x40 * i, 100 + i, core::kOrderEscort, L, true);
+        const unsigned set0 = st.set;
+        av::update_members(s, mm, 10000, st);
+        const bool full = st.full > 0 && st.set - set0 + st.full + 1 >= 600 && st.set - set0 <= av::kMemberCapacity;
+        // the pass's cost on Run157's census shape (152 objects, 37 class-7 ships: 3 leaders with 4 escorts each on 0x14 / 0x12)
+        {
+            static av::Members mc;
+            mc = av::Members{};
+            av::MemberStats sc;
+            s.count = 0;
+            for (unsigned i = 0; i < 152; ++i) {
+                av::Obstacle& o = s.items[s.count++];
+                if (i < 37) {
+                    const unsigned leader = i / 5 * 5;
+                    item(o, 0x200000 + 0x1a0 * i, 1000 + i, i == leader ? core::kOrderMovePos : (i & 1) ? core::kOrderEscort : core::kOrderAvoid,
+                         i == leader ? 0u : 0x200000 + 0x1a0 * leader, true);
+                } else {
+                    o = av::Obstacle{};
+                    o.kind = std::uint8_t(av::Kind::asteroid);
+                    o.ptr = 0x400000 + 0x40 * i;
+                }
+            }
+            av::update_members(s, mc, 20000, sc); // the escorts on 0x14 set their entries first
+            const auto t0 = std::chrono::steady_clock::now();
+            for (unsigned k = 0; k < 1000; ++k) av::update_members(s, mc, 20000 + k, sc);
+            const double ns = std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count() / 1000.0;
+            std::printf("amendment 15 membership pass cost (host): %.0f ns per snapshot of 152 objects / 37 ships (%.0f ns per ship)\n", ns, ns / 37.0);
+        }
+        std::snprintf(why, sizeof why, "amendment 15: membership: set on 0x14, kept on 0x12 and order 0 without a target, cleared by an order with a target, dropped on an id "
+                                       "change, a role reversal, a player takeover, the leader gone, at 20 s; 600 followers: %%.0f refused, %%.0f set");
+        checkf(set && kept_avoid && kept_zero && cleared && idmm && reversed && player && gone && not_yet && expired && other_gone && full, why, double(st.full),
+               double(st.set - set0));
+    }
+    // the member row and site E's decision order
+    {
+        using EVs = av::EVerdict;
+        av::SiteE b; // a capital A, fresh, a small B on 0x12
+        b.a_order = core::kOrderFlyBefore;
+        b.a_in_table = true;
+        b.a_age_ms = 0;
+        b.frame_ms = 16;
+        b.a_capital = true;
+        b.r_a = 1091;
+        b.b_ship = b.b_readable = true;
+        b.r_b = 64;
+        b.b_flags = 0x80000u;
+        b.b_order = core::kOrderAvoid;
+        b.avoidance_on = true;
+        av::SiteE a0 = b, own = b, stale = b, seta = b, m = b, mt = b, mtouch = b, mnot = b, mres = b, mavoid = b, gate = b, gstale = b, hand = b, hand_old = b,
+                  small = b, small_stale = b, small_seta = b;
+        a0.a_order = core::kOrderAvoid; // A on 0x12: the small row still acts
+        own.b_is_a_leader = true;
+        stale.a_age_ms = 260;
+        seta.a_age_ms = 260;
+        seta.frame_ms = 70; // G2: 4 x 70 = 280 ms
+        m.r_b = 1022;
+        m.b_capital_code = true;
+        m.b_member_current = true;
+        m.d = 2400;
+        mt = m;
+        mt.b_order = core::kOrderNone;
+        mt.b_target = 0x7700;
+        mtouch = m;
+        mtouch.d = 2000;
+        mnot = m;
+        mnot.b_member_current = false;
+        mres = mnot;
+        mres.b_resolved = true;
+        mavoid = m;
+        mavoid.a_order = core::kOrderAvoid;
+        gate = b;
+        gate.b_ship = false;
+        gate.b_gate = gate.gates_live = gate.capital_policy = gate.gate_state = gate.gate_capital = gate.gate_join = true;
+        gstale = gate;
+        gstale.a_age_ms = 300;
+        hand = gate;
+        hand.a_order = core::kOrderRotate;
+        hand.gate_join = false;
+        hand.gate_handover = true;
+        hand.a_age_ms = 30000; // G3: no decisions in the hand-over
+        hand.p2_age_ms = 5000;
+        hand_old = hand;
+        hand_old.p2_age_ms = av::kHandoverMaxMs + 1;
+        small = gate;
+        small.gate_capital = small.gate_join = false;
+        small.a_capital = false;
+        small.lead_age_ms = 16;
+        small_stale = small;
+        small_stale.lead_age_ms = 300;
+        small_seta = small_stale;
+        small_seta.lead_age_ms = 230;
+        small_seta.frame_ms = 70;
+        check(av::site_e_verdict(b) == EVs::suppress_small && av::site_e_verdict(a0) == EVs::suppress_small && av::site_e_verdict(own) == EVs::pass_own_leader &&
+                  av::site_e_verdict(stale) == EVs::pass_not_fresh && av::site_e_verdict(seta) == EVs::suppress_small &&
+                  av::site_e_verdict(m) == EVs::suppress_member && av::site_e_verdict(mt) == EVs::pass_not_transient &&
+                  av::site_e_verdict(mtouch) == EVs::pass_touching && av::site_e_verdict(mnot) == EVs::pass_not_member &&
+                  av::site_e_verdict(mres) == EVs::suppress_resolved && av::site_e_verdict(mavoid) == EVs::pass_a_avoid &&
+                  av::site_e_verdict(gate) == EVs::suppress_gate && av::site_e_verdict(gstale) != EVs::suppress_gate &&
+                  av::site_e_verdict(hand) == EVs::suppress_gate && av::site_e_verdict(hand_old) != EVs::suppress_gate &&
+                  av::site_e_verdict(small) == EVs::suppress_gate_small && av::site_e_verdict(small_stale) != EVs::suppress_gate_small &&
+                  av::site_e_verdict(small_seta) == EVs::suppress_gate_small,
+              "amendment 15 site E: small row on any order and with A on 0x12, own leader passes, member row (transient, apart, current), the resolved branch after it, "
+              "no member row for A on 0x12, the capital gate row (join fresh; hand-over keyed on P2 without decisions, bounded), the small gate row (G1), the SETA window (G2)");
+        check(av::fresh_window_ms(250, 5) == 250 && av::fresh_window_ms(250, 70) == 280 && av::fresh_window_ms(250, 167) == 668 && av::fresh_window_ms(250, 333) == 1000 &&
+                  av::fresh_window_ms(100, 16) == 100 && av::fresh_window_ms(250, 5, 200) == 250 && av::fresh_window_ms(250, 70, 200) == 340 &&
+                  av::fresh_window_ms(250, 100, 200) == 400 && av::fresh_window_ms(250, 167, 200) == 668 && av::fresh_window_ms(250, 333, 200) == 1000,
+              "audit G2: the decision-age window max(250 ms, 4 frame steps, with the re-plan 200 ms + 2 frame steps at E: 340 ms at 70 ms steps) covers the 0x12 re-plan plus two frames; capped at 1 s");
     }
 }
 // The pair policy and the site-E small-pair rule, the capital keep rules and the capital lead-in window (amendment 13).
@@ -4223,19 +5222,22 @@ static void capital_unit_checks() {
           "site E small pair: the ratio on the pair (1091 vs 140 yes, 307 vs 140 no), never for a capital-coded B, a non-capital A, a non-ship B or a NaN radius");
     // the verdict, reasons in the design's order
     const std::uint32_t ap = 0x80000u;
-    check(av::small_pair_verdict(ap, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::suppress &&
-              av::small_pair_verdict(ap, core::kOrderDock, 0, false, true, 1000, 1250) == av::SmallPair::suppress &&
-              av::small_pair_verdict(0x40000u, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::no_autopilot &&
-              av::small_pair_verdict(ap, core::kOrderNone, 0, false, true, 1000, 1200) == av::SmallPair::order_not_steered &&
-              av::small_pair_verdict(ap, core::kOrderAvoid, 0, false, true, 1000, 1200) == av::SmallPair::order_not_steered &&
-              av::small_pair_verdict(ap, core::kOrderRotate, 0, false, true, 1000, 1200) == av::SmallPair::order_not_steered &&
-              av::small_pair_verdict(ap, core::kOrderMovePos, 0, true, true, 1000, 1200) == av::SmallPair::class_masked &&
-              av::small_pair_verdict(ap | 0x8000000u, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::not_steerable &&
-              av::small_pair_verdict(ap | 0x200u, core::kOrderMovePos, 0, false, true, 1000, 1200) == av::SmallPair::not_steerable &&
-              av::small_pair_verdict(ap, core::kOrderMovePos, 0x1234, false, true, 1000, 1200) == av::SmallPair::not_steerable &&
-              av::small_pair_verdict(ap, core::kOrderMovePos, 0, false, false, 0, 1200) == av::SmallPair::stale &&
-              av::small_pair_verdict(ap, core::kOrderMovePos, 0, false, true, 1000, 1251) == av::SmallPair::stale,
-          "site E verdict: suppress only with the autopilot bit, a steer-set order other than 0x12, the class unmasked, not deleted/attached/docked and a decision within 250 ms; each failure named");
+    // amendment 15: whatever B's order (0x12, 0, 0x1f, 8, the steer set), except the manual ship, deleted/attached/docked, a masked
+    // class and (audit G4) B on order 5, 0x1e or 0x20; no freshness of B
+    check(av::small_pair_verdict(ap, core::kOrderMovePos, 0, false) == av::SmallPair::suppress &&
+              av::small_pair_verdict(ap, core::kOrderNone, 0, false) == av::SmallPair::suppress &&
+              av::small_pair_verdict(ap, core::kOrderAvoid, 0, false) == av::SmallPair::suppress &&
+              av::small_pair_verdict(ap, core::kOrderRotate, 0, false) == av::SmallPair::suppress &&
+              av::small_pair_verdict(ap, core::kOrderWarpAway, 0, false) == av::SmallPair::suppress &&
+              av::small_pair_verdict(ap, core::kOrderDock, 0, false) == av::SmallPair::b_dock_leg &&
+              av::small_pair_verdict(ap, core::kOrderUndock, 0, false) == av::SmallPair::b_dock_leg &&
+              av::small_pair_verdict(ap, core::kOrderGlide, 0, false) == av::SmallPair::b_dock_leg &&
+              av::small_pair_verdict(0x40000u, core::kOrderMovePos, 0, false) == av::SmallPair::no_autopilot &&
+              av::small_pair_verdict(ap, core::kOrderMovePos, 0, true) == av::SmallPair::class_masked &&
+              av::small_pair_verdict(ap | 0x8000000u, core::kOrderMovePos, 0, false) == av::SmallPair::not_steerable &&
+              av::small_pair_verdict(ap | 0x200u, core::kOrderMovePos, 0, false) == av::SmallPair::not_steerable &&
+              av::small_pair_verdict(ap, core::kOrderMovePos, 0x1234, false) == av::SmallPair::not_steerable,
+          "site E small-ship row (amendment 15): suppress on any order (0x19, 0, 0x12, 0x1f, 8) with the autopilot bit; pass for the manual ship, a masked class, deleted/attached/docked, and B on 5/0x1e/0x20 (audit G4); each failure named");
     // the keep rules
     check(core::gate_capital_keeps_speed(true, true, true, 8.1f) && !core::gate_capital_keeps_speed(true, true, true, 8.2f) &&
               !core::gate_capital_keeps_speed(true, true, true, -1.0f) && !core::gate_capital_keeps_speed(true, false, true, 1.0f) &&
@@ -4335,6 +5337,29 @@ static int emit_trace(const char* path) {
     std::printf("ship_steering_host trace_rows=%lu\n", g_trace_rows);
     return 0;
 }
+static void amend15_scenarios() {
+    amend15_unit_checks();
+    for (const ShipType& t : kCapitals) // amendment 15 E-G: the join, the predictor, the fallback
+        for (int fps : kFps)
+            for (std::uint32_t seed : kSeeds) capital_join_scenario(t, fps, seed);
+    for (int fps : kFps)
+        for (std::uint32_t seed : kSeeds) {
+            cascade_scenario(fps, seed);      // D
+            dock_leg_pair_scenario(fps, seed); // K (audit G4)
+            small_gate_row_scenario(kShips[3], fps, seed); // G1 (audit): TS and M4
+            small_gate_row_scenario(kM4, fps, seed);
+        }
+    for (int ti = 0; ti < 2; ++ti)
+        for (unsigned ci = 0; ci < sizeof kJoinCases / sizeof kJoinCases[0]; ++ci) {
+            const JoinAgg& a = g_join_agg[ti][ci];
+            if (!a.runs) continue;
+            std::printf("capital join range %s %-24s runs=%u kept=%u nose_max=%.2f vel_max=%.2f e_max=%.0f m over_max=%.0f m crossings_max=%u cross_v=%.1f-%.1f "
+                        "t_X/model=%.3f-%.3f v_cmd_min=%.0f fb_entry_max=%.1f rotate/model_max=%.2f\n",
+                        kCapitals[ti].cls, kJoinCases[ci].tag, a.runs, a.kept, a.nose_max, a.vel_max, a.e_max, a.over_max, a.crossings_max, a.cross_v_min,
+                        a.cross_v_max, a.t_ratio_min, a.t_ratio_max, a.v_cmd_min > 1e8 ? -1.0 : a.v_cmd_min, a.fb_entry_max, a.rot_ratio_max);
+        }
+    std::printf("amendment 15 predictor: slowest evaluation %.1f us (host)\n", g_join_eval_us_max);
+}
 int main(int argc, char** argv) {
     if (argc == 3 && !std::strcmp(argv[1], "--emit-trace")) return emit_trace(argv[2]);
     if (argc == 3 && !std::strcmp(argv[1], "--emit-controller")) return emit_controller(argv[2]);
@@ -4358,6 +5383,7 @@ int main(int argc, char** argv) {
             for (int fps : kFps)
                 for (std::uint32_t seed : kSeeds) capital_transit_scenario(t, fps, seed);
         capital_transit_scenario(kShips[4], 60, kSeeds[0]);
+        amend15_scenarios();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
         return failures ? 1 : 0;
@@ -4399,6 +5425,7 @@ int main(int argc, char** argv) {
             for (std::uint32_t seed : kSeeds) gate_dock_scenario(m4, fps, seed);
     }
     amend12_ab_checks();
+    amend15_scenarios();
     std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u vanilla_notes=%u\n", checks, failures, slip_gaps, vanilla_notes);
     std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
     return failures ? 1 : 0;

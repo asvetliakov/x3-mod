@@ -940,6 +940,343 @@ inline bool gate_lead_in_capital(const GateGeometry& g, const float x[3], float 
     if (!finite_f(look)) return false;
     return gate_lead_in_window(g, x, kGateCapitalJoinR, kGateCapitalJoinInnerR, look, P, s_out, e_out);
 }
+// ---- Amendment 15 (capital-gate-transit.md section 15.3): the capital join's speed predictor and the slow-entry fallback ------
+// The amendment-13 pursuit is kept (gate_lead_in_capital). Once per second of game time, at the frame end (never in the
+// steering handler), a capital in join mode has the same pursuit simulated in the plane of its lateral offset at each candidate
+// speed {100, 60, 40, 25} m/s from its last decision's state (s, e, nose angle and rate, velocity direction, speed), with the
+// live caps (W the slower of yaw/pitch, alpha = W k, the hull's acceleration), in 0.25 s steps; a higher speed is taken only
+// when its prediction reaches X with the nose <= 4 deg, the velocity <= 6 deg, |e| <= 50 m and no excursion past the axis beyond
+// 50 m (the margin over the 8.11 deg acceptance), the current one is kept while it meets P2's acceptance, and otherwise the
+// speed is lowered at once (join_choose). No candidate within the acceptance, or the leg's first decision past the crossing
+// plane (s > 0), or a join-mode ship past the plane unconverged: the fallback, latched until the order or its point changes:
+// aim at A, min(100, sqrt(25^2 + 2 a (d_A - 0.75 r)), omega_eff d_A / (2 sin theta)) floored at 10 m/s (the floor from 90 deg
+// off A), written both ways, the vanilla stop at P2 and the engine's rotate. The plant is join_budget.py's (the controller
+// 0x0043ad20 with the module's servo, the 2 s slip lag, the speed slew); predictor_dt.py: 0.25 s gives the 1/30 s verdict in
+// 56 of 56 cases [i].
+constexpr unsigned kJoinCandidateCount = 4;
+constexpr float kJoinCandidates[kJoinCandidateCount] = {100.0f, 60.0f, 40.0f, 25.0f};
+constexpr float kJoinStepS = 0.25f;
+constexpr unsigned kJoinMaxSteps = 1024; // 256 s of predicted flight per candidate at most (fail = not converged): bounds an
+                                         // evaluation at 4 x 1024 steps (review: 156 us host worst at 4096 for a 19 km lateral
+                                         // state, pred_cost.cpp); a join from the 6.6 km window takes <= 120 s at 60-100 m/s, and
+                                         // where only 25 m/s could still converge beyond 256 s (6.4 km of path) the fallback's
+                                         // own slow entry is the same speed at the sphere
+constexpr float kJoinNoseDeg = 4.0f, kJoinVelDeg = 6.0f, kJoinLatM = 50.0f, kJoinOverM = 50.0f;
+constexpr float kJoinConvergedNoseDeg = kGateRotateTolDeg, kJoinConvergedLatM = 100.0f; // a join-mode ship past the plane
+constexpr std::uint32_t kJoinEvalMs = 1000;
+constexpr float kJoinEntryMs = 25.0f, kJoinFloorMs = 10.0f;
+constexpr float kJoinOmegaEff = 0.0401426f;                 // 2.3 deg/s, the measured join rate (Run157 frame 18240)
+constexpr float kJoinKeepVelDeg = 10.0f;                    // P2 keeps the speed only with the velocity within 10 deg of F
+constexpr float kJoinSetaFactor = 10.0f;                    // P2's coast bound at SETA x10 (the smallest bound; no SETA read)
+constexpr float kJoinServoTickS = 0.05f;
+constexpr std::uint32_t kJoinNewLegMs = 2000;              // a gap in the order-4 decisions this long starts a new leg
+// sin and cos of a in [-pi, pi] (any finite a is wrapped first): odd/even Taylor polynomials to degree 11/10 on [-pi/2, pi/2]
+// (|error| < 2e-6), no CRT call.
+__attribute__((always_inline)) inline float wrap_pi(float a) noexcept {
+    for (int i = 0; i < 4 && a > kPi; ++i) a -= kTwoPi;
+    for (int i = 0; i < 4 && a < -kPi; ++i) a += kTwoPi;
+    return a;
+}
+__attribute__((always_inline)) inline void sincos_f(float a, float* s_out, float* c_out) noexcept {
+    a = wrap_pi(a);
+    float sgn_c = 1.0f;
+    if (a > 0.5f * kPi) {
+        a = kPi - a;
+        sgn_c = -1.0f;
+    } else if (a < -0.5f * kPi) {
+        a = -kPi - a;
+        sgn_c = -1.0f;
+    }
+    const float x2 = a * a;
+    *s_out = a * (1.0f + x2 * (-1.0f / 6.0f + x2 * (1.0f / 120.0f + x2 * (-1.0f / 5040.0f + x2 * (1.0f / 362880.0f + x2 * (-1.0f / 39916800.0f))))));
+    *c_out = sgn_c * (1.0f + x2 * (-0.5f + x2 * (1.0f / 24.0f + x2 * (-1.0f / 720.0f + x2 * (1.0f / 40320.0f + x2 * (-1.0f / 3628800.0f))))));
+}
+// The state in the plane of the lateral offset: s along h from X (< 0 before the crossing), y the distance from the line
+// (>= 0: the ship's side is +y), the nose and velocity angles off h (rad, positive toward +y, i.e. away from the line), the nose
+// rate about the plane's normal (rad/s, same sign) and the speed.
+struct JoinPlane {
+    float s = 0, y = 0, psi = 0, upsi = 0, w = 0, v = 0;
+};
+struct JoinParams {
+    float W = 0, alpha = 0, v_max = 0, a_lin = 0, r_gate = 0; // rad/s, rad/s^2, m/s, m/s^2, m
+};
+// Projects the decision's 3-D state (position x, basis rows, body rates w = yaw/pitch/roll rad/s in the engine's signs: a
+// positive yaw turns row 2 toward -row 0, a positive pitch toward +row 1; the velocity u = v row2 + slip) onto the plane
+// through the line (X, h) and the ship. False when not finite.
+inline bool join_plane(const GateGeometry& g, const float x[3], const float rows[3][3], const float w[3], const float u[3], float v,
+                       JoinPlane* out) noexcept {
+    float dx[3] = {x[0] - g.X[0], x[1] - g.X[1], x[2] - g.X[2]};
+    const float s = dot3(dx, g.h);
+    float n[3] = {dx[0] - s * g.h[0], dx[1] - s * g.h[1], dx[2] - s * g.h[2]};
+    float e = sqrt_ss(dot3(n, n));
+    if (e > 1.0f) {
+        for (unsigned i = 0; i < 3; ++i) n[i] /= e;
+    } else { // on the line: the plane of the nose
+        const float fh = dot3(rows[2], g.h);
+        for (unsigned i = 0; i < 3; ++i) n[i] = rows[2][i] - fh * g.h[i];
+        const float nn = sqrt_ss(dot3(n, n));
+        if (nn > 1e-4f) {
+            for (unsigned i = 0; i < 3; ++i) n[i] /= nn;
+        } else {
+            for (unsigned i = 0; i < 3; ++i) n[i] = rows[0][i];
+        }
+        e = 0.0f;
+    }
+    const float psi = atan2_f(dot3(rows[2], n), dot3(rows[2], g.h));
+    const float uu = sqrt_ss(dot3(u, u));
+    const float upsi = uu > 1e-3f ? atan2_f(dot3(u, n), dot3(u, g.h)) : psi;
+    float df[3], sp, cp;
+    for (unsigned i = 0; i < 3; ++i) df[i] = -w[0] * rows[0][i] + w[1] * rows[1][i];
+    sincos_f(psi, &sp, &cp);
+    float m[3];
+    for (unsigned i = 0; i < 3; ++i) m[i] = -sp * g.h[i] + cp * n[i];
+    out->s = s;
+    out->y = e;
+    out->psi = psi;
+    out->upsi = upsi;
+    out->w = dot3(df, m);
+    out->v = v > 0.0f ? v : 0.0f;
+    return finite_f(out->s) && finite_f(out->y) && finite_f(out->psi) && finite_f(out->upsi) && finite_f(out->w) && finite_f(out->v);
+}
+// One prediction at the written speed vc: 2 when the simulated pursuit reaches the crossing plane within the margins (nose <= 4,
+// velocity <= 6 deg, |e| and the excursion <= 50 m), 1 when only within P2's acceptance (8.11 deg, 10 deg, 100 m, 100 m), 0 when
+// neither. nose_out / y_out: the predicted nose error (deg) and |e| (m) at the plane (or where the prediction stopped).
+inline int join_predict_grade(const JoinPlane& st, const JoinParams& p, float vc, float* nose_out, float* y_out) noexcept {
+    *nose_out = -1.0f;
+    *y_out = -1.0f;
+    if (!(p.W > 1e-4f) || !(p.alpha > 1e-6f) || !(p.r_gate > 1.0f) || !(vc > 0.0f)) return 0;
+    const float dt = kJoinStepS, a_along = kGateCrossFraction * p.r_gate;
+    const float k_lag = one_minus_exp_neg(dt / kSlipTau);
+    const float v_des = p.v_max > 0.0f && p.v_max < vc ? p.v_max : vc;
+    float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
+    const float ay0 = fabs_f(y);
+    float t_max = 3.0f * (-x + ay0) / vc + 60.0f;
+    if (t_max > float(kJoinMaxSteps) * dt) t_max = float(kJoinMaxSteps) * dt;
+    float ref = y >= 0.0f ? 1.0f : -1.0f, over = 0.0f;
+    bool crossed = false;
+    float t = 0.0f;
+    for (unsigned step = 0; step < kJoinMaxSteps && x < 0.0f && t < t_max; ++step) {
+        float look = 0.75f * v;
+        if (2.0f * v / p.W > look) look = 2.0f * v / p.W;
+        if (kGateLookMinR * p.r_gate > look) look = kGateLookMinR * p.r_gate;
+        float along = x + look;
+        if (along > a_along) along = a_along;
+        const float theta = wrap_pi(atan2_f(-y, along - x) - psi);
+        const float a = fabs_f(theta);
+        float w_cmd = sqrt_ss(p.alpha * a);
+        if (a / kTau < w_cmd) w_cmd = a / kTau;
+        if (p.W < w_cmd) w_cmd = p.W;
+        float e_wr = w_cmd * w_cmd / p.alpha + w_cmd * kJoinServoTickS;
+        if (e_wr > a) e_wr = a;
+        const float sgn = theta >= 0.0f ? 1.0f : -1.0f;
+        float wr = w * sgn;
+        if (wr < 0.0f) {
+            wr += p.alpha * dt;
+            if (wr > 0.0f) wr = 0.0f;
+        } else if (e_wr < wr * wr / p.alpha) {
+            wr -= p.alpha * dt;
+            if (wr < 0.0f) wr = 0.0f;
+        } else {
+            wr += p.alpha * dt;
+            if (wr > p.W) wr = p.W;
+        }
+        float turn = wr * dt;
+        if (turn > 0.0f && turn > a) turn = a;
+        psi = wrap_pi(psi + sgn * turn);
+        w = sgn * wr;
+        if (v < v_des) {
+            v += p.a_lin * dt;
+            if (v > v_des) v = v_des;
+        } else {
+            v -= p.a_lin * dt;
+            if (v < v_des) v = v_des;
+        }
+        upsi = wrap_pi(upsi + wrap_pi(psi - upsi) * k_lag);
+        float su, cu;
+        sincos_f(upsi, &su, &cu);
+        x += v * cu * dt;
+        y += v * su * dt;
+        const float side = y >= 0.0f ? 1.0f : -1.0f;
+        if (side != ref) {
+            crossed = true;
+            ref = side;
+        }
+        if (crossed && fabs_f(y) > over) over = fabs_f(y);
+        if (over > kJoinConvergedLatM) break; // the excursion only grows: both verdicts are already no
+        t += dt;
+    }
+    *nose_out = fabs_f(psi) * (180.0f / kPi);
+    *y_out = fabs_f(y);
+    const float vel_deg = fabs_f(upsi) * (180.0f / kPi);
+    if (!(x >= 0.0f)) return 0;
+    if (*nose_out <= kJoinNoseDeg && vel_deg <= kJoinVelDeg && *y_out <= kJoinLatM && over <= kJoinOverM) return 2;
+    if (*nose_out <= kJoinConvergedNoseDeg && vel_deg <= kJoinKeepVelDeg && *y_out <= kJoinConvergedLatM && over <= kJoinConvergedLatM) return 1;
+    return 0;
+}
+inline bool join_predict(const JoinPlane& st, const JoinParams& p, float vc, float* nose_out, float* y_out) noexcept {
+    return join_predict_grade(st, p, vc, nose_out, y_out) == 2;
+}
+// The speed, highest candidate first, from the current written speed v_cur: a higher candidate only when it meets the margins
+// (raised only when it passes: a re-acceleration cannot spend the margin); the current one kept while it meets P2's acceptance;
+// otherwise lowered at once to the highest lower candidate within the margins, else the highest lower one within the acceptance.
+// False = no candidate within the acceptance (the fallback). Keeping on the acceptance is this implementation's reading: the
+// strict "highest within the margins" lowered the fixture's M1 from 6.4 km to 60/25 m/s for 10 s before X although its prediction
+// (4.9 deg, 70 m at 100 m/s) matched its flown crossing (4.6 deg) and no speed reached the margin that close to X.
+// nose_out / y_out: the chosen candidate's prediction, or the last one's; *margin_out: the chosen one met the margins.
+inline bool join_choose(const JoinPlane& st, const JoinParams& p, float v_cur, float* v_out, float* nose_out, float* y_out, unsigned* predictions,
+                        bool* margin_out = nullptr) noexcept {
+    float accept_v = 0.0f, accept_nose = -1.0f, accept_y = -1.0f;
+    for (unsigned i = 0; i < kJoinCandidateCount; ++i) {
+        const float c = kJoinCandidates[i];
+        if (predictions) ++*predictions;
+        const int grade = join_predict_grade(st, p, c, nose_out, y_out);
+        const bool keep = c > v_cur - 0.5f && c < v_cur + 0.5f;
+        if (grade == 2 || (keep && grade == 1)) {
+            *v_out = c;
+            if (margin_out) *margin_out = grade == 2;
+            return true;
+        }
+        if (grade == 1 && c < v_cur && accept_v == 0.0f) {
+            accept_v = c;
+            accept_nose = *nose_out;
+            accept_y = *y_out;
+        }
+    }
+    if (margin_out) *margin_out = false;
+    if (accept_v == 0.0f) return false;
+    *v_out = accept_v;
+    *nose_out = accept_nose;
+    *y_out = accept_y;
+    return true;
+}
+// The fallback speed (m/s): d_A the distance to A, theta the nose's angle off the direction to A (rad), a the hull's acceleration.
+__attribute__((always_inline)) inline float join_fallback_speed(float d_A, float theta, float a_lin, float r_gate) noexcept {
+    if (!finite_f(d_A) || !finite_f(theta) || !(theta < 0.5f * kPi)) return kJoinFloorMs;
+    const float room = d_A - kGateCrossFraction * r_gate;
+    float v = sqrt_ss(kJoinEntryMs * kJoinEntryMs + 2.0f * (a_lin > 0.0f ? a_lin : 0.0f) * (room > 0.0f ? room : 0.0f));
+    if (v > kGateLargeCapMs) v = kGateLargeCapMs;
+    if (theta > 1e-3f) {
+        float st, ct;
+        sincos_f(theta, &st, &ct);
+        const float chord = kJoinOmegaEff * d_A / (2.0f * st);
+        if (chord < v) v = chord;
+    }
+    return v < kJoinFloorMs ? kJoinFloorMs : v;
+}
+// P2's keep verdict for a capital (section 15.3 item 4): join mode, the nose within 8.11 deg of F, the velocity within 10 deg,
+// and v at most the coast bound sqrt(2 a (|X - G| - (r_ship + v/10)(1 + (tf - 1)/4))) at tf = kJoinSetaFactor.
+enum class JoinKeep : std::uint8_t { kept = 0, mode, nose, vel, bound, count };
+__attribute__((always_inline)) inline float join_coast_bound(float xg_m, float r_ship, float v, float a_lin) noexcept {
+    const float room = xg_m - (r_ship + v / 10.0f) * (1.0f + (kJoinSetaFactor - 1.0f) / 4.0f);
+    return room > 0.0f && a_lin > 0.0f ? sqrt_ss(2.0f * a_lin * room) : 0.0f;
+}
+inline JoinKeep join_keep_verdict(bool join_mode, float nose_deg, float vel_deg, float v, float v_bound) noexcept {
+    if (!join_mode) return JoinKeep::mode;
+    if (!(nose_deg >= 0.0f) || !(nose_deg <= kGateRotateTolDeg)) return JoinKeep::nose;
+    if (!(vel_deg >= 0.0f) || !(vel_deg <= kJoinKeepVelDeg)) return JoinKeep::vel;
+    if (!(v <= v_bound)) return JoinKeep::bound;
+    return JoinKeep::kept;
+}
+// The per-approach join state machine shared by the DLL's decide() and the fixture.
+enum class JoinMode : std::uint8_t { none = 0, out, join, fallback };
+enum class JoinReason : std::uint8_t { none = 0, pred_none, past_x, grid_invalid };
+struct JoinState {
+    JoinMode mode = JoinMode::none;
+    JoinReason reason = JoinReason::none;
+    std::uint8_t first_done = 0;
+    std::uint8_t pad = 0;
+    float v_cmd = kGateLargeCapMs;  // the predictor's speed, m/s
+    float pred_nose = -1.0f, pred_y = -1.0f;
+    float A[3] = {0, 0, 0};         // the given point the latch keys on, m
+    std::uint32_t last_call_ms = 0, window_ms = 0, eval_ms = 0, plane_ms = 0;
+    JoinPlane plane;                // the last join-mode decision's state (the predictor's start)
+    JoinParams params;
+};
+// One order-4 decision of a capital on a validated approach: s = the ship's projection from X, converged = nose within 8.11 deg
+// and e within 100 m now, prev_order_4 = the ship's previous handled call was on order 4 (a 4 -> 0 -> 4 re-issue to the same
+// point is the same leg; 0x12 in between is a new one). Returns the mode for this call; `changed` reports a mode change.
+inline JoinMode join_on_decision(JoinState& j, const float A[3], float s, float r_gate, bool converged, bool prev_order_4,
+                                 std::uint32_t now, bool* changed) noexcept {
+    const JoinMode before = j.mode;
+    const float dA[3] = {A[0] - j.A[0], A[1] - j.A[1], A[2] - j.A[2]};
+    const bool new_leg = j.mode == JoinMode::none || dot3(dA, dA) > 1.0f || !prev_order_4 || now - j.last_call_ms > kJoinNewLegMs;
+    if (new_leg) {
+        j = JoinState{};
+        for (unsigned i = 0; i < 3; ++i) j.A[i] = A[i];
+    }
+    j.last_call_ms = now;
+    if (!j.first_done) {
+        j.first_done = 1;
+        if (s > 0.0f) {
+            j.mode = JoinMode::fallback;
+            j.reason = JoinReason::past_x;
+        }
+    }
+    if (j.mode != JoinMode::fallback) {
+        if (s < -kGateCapitalJoinR * r_gate) {
+            j.mode = JoinMode::out;
+        } else {
+            if (j.mode != JoinMode::join) {
+                j.mode = JoinMode::join;
+                j.window_ms = now;
+                j.eval_ms = 0; // evaluate at the next frame end
+                j.v_cmd = kGateLargeCapMs;
+            }
+            if (s > 0.0f && !converged) {
+                j.mode = JoinMode::fallback;
+                j.reason = JoinReason::past_x;
+            }
+        }
+    }
+    *changed = j.mode != before;
+    return j.mode;
+}
+// The frame-end evaluation: due when in join mode and never evaluated or kJoinEvalMs since the last one, with a decision state at
+// most max_age_ms old. Returns true when it ran; `fell_back` when no candidate converged (the fallback latched), `slowed` when the
+// chosen speed is below the previous one.
+inline bool join_evaluate(JoinState& j, std::uint32_t now, std::uint32_t max_age_ms, bool* fell_back, bool* slowed, unsigned* predictions) noexcept {
+    *fell_back = *slowed = false;
+    if (j.mode != JoinMode::join || !j.plane_ms || now - j.plane_ms > max_age_ms) return false;
+    if (j.eval_ms && now - j.eval_ms < kJoinEvalMs) return false;
+    j.eval_ms = now ? now : 1;
+    float v = 0.0f;
+    if (!join_choose(j.plane, j.params, j.v_cmd, &v, &j.pred_nose, &j.pred_y, predictions)) {
+        j.mode = JoinMode::fallback;
+        j.reason = JoinReason::pred_none;
+        *fell_back = true;
+        return true;
+    }
+    *slowed = v < j.v_cmd;
+    j.v_cmd = v;
+    return true;
+}
+// The frame-end predictor's registry of capitals in join mode (table slot indices, at most kJoinSlots at a time; a capital
+// refused while it is full keeps v_cmd 100, the amendment-13 pursuit). A slot leaves it at the sweep before each evaluation
+// when the table entry is no longer the registered ship's, the state left join mode, or its last order-4 decision is older than
+// kJoinNewLegMs (the transit completed, the ship died or was redirected: no order-4 decision comes any more). The DLL never
+// dereferences the ship here.
+constexpr unsigned kJoinSlots = 8;
+struct JoinRegistry {
+    std::uint16_t slots[kJoinSlots] = {};
+    unsigned count = 0, next = 0, dropped = 0, refused = 0;
+    bool add(unsigned slot) noexcept {
+        for (unsigned i = 0; i < count; ++i)
+            if (slots[i] == slot) return true;
+        if (count >= kJoinSlots) {
+            ++refused;
+            return false;
+        }
+        slots[count++] = std::uint16_t(slot);
+        return true;
+    }
+    void remove_at(unsigned i) noexcept {
+        slots[i] = slots[--count];
+        ++dropped;
+    }
+};
+inline bool join_registry_keep(const JoinState& j, bool same_ship, std::uint32_t now) noexcept {
+    return same_ship && j.mode == JoinMode::join && j.plane_ms && now - j.plane_ms <= kJoinNewLegMs;
+}
 // The gate-site rule shared by the DLL handlers (P2, P4) and the fixture: `obj` is a class-7 ship whose order target
 // f+0x224 is a gate (class 0x12) and whose record code (+0x14 of the TShips record) is not capital (0x0043fd50:
 // kCapitalMask). Reads through the same memory reader the walk core uses.

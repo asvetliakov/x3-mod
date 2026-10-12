@@ -875,6 +875,129 @@ adjacent slots inside C are unresolved by design (the queue's spacing); the fixt
 line once it is on the line (the predictive layer extrapolates an obstacle's velocity straight, so a crossing during the
 capital's join is not covered by this scenario; a question for the slip-aware design).
 
+### Amendment 15 (Run157 corrections; 2026-10-12, Opus 5.5; design §15, scenario audit G1–G4)
+
+Implemented on main `9c173d51` (worktree, not committed, not installed). Sources: `ship_avoidance_core.h` (`small_pair_verdict`
+on any order, `MemberPair`, `Members` + `update_members`, `excluded` on `member_of`, `fresh_window_ms`, `SiteE` /
+`site_e_verdict`: site E's whole decision as a pure function the DLL and the fixture share), `ship_avoidance_walk_core.h`
+(`[obj+0x08]`, the autopilot bit, the live effective leader, the membership pass after the walk), `ship_steering_core.h`
+(`join_plane`, `join_predict_grade`, `join_choose`, `join_fallback_speed`, `join_keep_verdict`/`join_coast_bound`,
+`JoinState`/`join_on_decision`/`join_evaluate`, `sincos_f`), `ship_steering.cpp` (decide's join and fallback writes, P2's
+keep verdict and hand-over flag, E, the frame-end predictor, the three rows, the counters, escort trace slots),
+`ship_steering_sites.h` (`kObjId` 0x08, `kFlagWarnBits` 0x3000).
+
+**Site E as built** (order of the tests): gate rows first, for B = A's own gate in A's gate state on a validated approach:
+a capital on order 4 in join mode decided within the fresh window, or on 0x1f / order 0 after P2 kept its speed (keyed on
+the gate state and the P2 stamp, ≤ 120 s, cleared by any handled order other than 4/0x1f: audit G3) → `suppress_gate`; a
+non-capital on order 4 whose validated lead-in was active within the fresh window → `suppress_gate_small` (audit G1).
+Then A's last decision within `max(250 ms, 4 × frame step)` (step clamped at 250 ms, audit G2) else pass. A capital-coded A
+with readable codes: B < r_A / 3 → suppressed on any order (0x12 and A on 0x12 included) except no autopilot, deleted /
+attached / docked, masked class, B on 5 / 0x1e / 0x20 (`b_dock_leg`, audit G4) and B = A's own live or remembered leader;
+a non-small B with A not on 0x12 → `suppress_member` when B is a current member of A (entry, both ids, ≤ 20 s), B on 0x12 or
+order 0 without a target, centre distance > r_A + r_B. Last the resolved set (A not on 0x12, window `max(100 ms, 4 × step)`).
+
+**Membership table:** 256 entries × 20 B (follower, leader, leader_id, follower_id, confirmed_ms), probe window 8, plus a
+4 KB per-snapshot pointer index. Set/refresh on 0x14/0x15 with the leader a ship of the same snapshot; cleared at once by
+any other order with a target (`member_cleared`); kept without refresh on 0x12, order 0 without a target or any order
+without a target; dropped the same snapshot on leader missing, id change, role reversal, autopilot bit lost on either
+ship, 20 s since the last confirmation. Host cost (measured, x86-64 -O2): 208–221 ns per 152-object / 37-ship snapshot.
+
+**Join:** the amendment-13 pursuit; the predictor (frame end, one capital per frame, 1 Hz game time, 0.25 s steps, ≤ 4096
+steps) grades each candidate 100/60/40/25: margin (nose ≤ 4°, velocity ≤ 6°, |e| ≤ 50 m, excursion ≤ 50 m) or P2's
+acceptance (8.11°, 10°, 100 m, 100 m). A higher speed needs the margin, the current one is kept on the acceptance, a lower
+one is the highest margin candidate else the highest accepted one; none accepted → fallback `pred_none`. First decision
+past X, or a join-mode ship past X unconverged → fallback `past_x`. Fallback (latched until the point moves, the leg's
+previous handled order is not 4, or 2 s without an order-4 decision): aim at A, `min(100, √(25² + 2a(d − 0.75r)),
+0.0401·d / (2 sin θ))`, floor 10 m/s and the floor from 90°, written both ways. P2 keeps only in join mode with nose ≤ 8.11°,
+velocity ≤ 10° and v ≤ `√(2a(|X−G| − (r + v/10)·3.25))` (SETA ×10; 181 / 132 m/s for the M2 / M1, measured by the unit check).
+Predictor cost (measured, host): bounded at 1024 steps (256 s) per candidate after review; the review's sweep over window
+states ([pred_cost.cpp](../../verification/results/ship-steering/capital-gate-transit/pred_cost.cpp), s −6..−0.1 r, lateral
+100 m–20 km, every nose angle, best of 7) gives a worst evaluation of 80.8–81.3 µs at 19.5 km lateral (155.9 µs with 4096
+steps); single scenario evaluations peaked at 42–87 µs (one timing each, noisy); the fixture's scenario ranges are identical
+with the cap. Registry (review blocker): `core::JoinRegistry`, 8 slots, swept at every frame end before the evaluation; a slot
+leaves when its table entry belongs to another ship, its join mode ended (any handled order other than 4 clears it: order 5,
+0x12, a redirect) or its last order-4 decision is older than 2 s (transit done, ship dead or redirected); a capital in join
+mode re-registers on every decision until it is in. Counters `join_slots`, `join_slots_dropped`, `join_slots_refused`
+(refused calls). Fixture: 12 capitals cycled through transits (three windows overlapping) are all registered, the registry
+peaks at 3 of 8 slots and drops all 12; without the sweep the ninth is refused.
+
+**Fixture** ([output](../../verification/results/ship-steering/ship_steering_host.txt) **checks PASS 6148/6148, slip_gaps 0**;
+capital checks alone [fixture_capital.txt](../../verification/results/ship-steering/capital-gate-transit/fixture_capital.txt)
+**1521/1521** (655 before); model times [a15_fixture_budget.py](../../verification/results/ship-steering/capital-gate-transit/a15_fixture_budget.py)
+→ [txt](../../verification/results/ship-steering/capital-gate-transit/a15_fixture_budget.txt), inferred). Ranges over 3 fps ×
+3 seeds (× slots 0 and 19 for E), measured:
+
+| Start | Ship | Mode | Nose / velocity at X | \|e\| / excursion past the axis | Crossing v | t_X / model | Lowest v_cmd | P2 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| E1 6435 m, 5.58 r, at A | M2 / M1 | join | ≤ 1.91° / 1.91°; ≤ 3.65° / 3.73° | ≤ 28 / 9 m; ≤ 53 / 0 m | 100 | 0.988–0.994; 0.982–0.998 (100.3 / 98.7 s) | 100 | kept 18/18 each |
+| E2 6435 m, 5 r, at A | M2 / M1 | join | ≤ 3.14° / 3.28°; ≤ 6.11° / 6.20° | ≤ 46 / 9 m; ≤ 88 / 0 m | 100 | 0.987–0.994; 0.981–0.992 (94.2 / 92.6 s) | 100 | kept 18/18 each |
+| E3 on axis, 5 r | M2 / M1 | join | 0° | 0 | 100 | 0.996–0.999 (55.3 s) | 100 | kept |
+| F1 627 m, 2.97 r, 68° away | M2 / M1 | join, slowed | ≤ 0.95° / 2.03°; ≤ 6.01° / 7.08° | ≤ 37 / 37 m; ≤ 82 / 47 m | 100; 60–80.7 | 0.921–0.987; 0.981–1.091 | 60; 40 | kept 9/9 each |
+| F2 6435 m, 5 r, 60° away | M2 / M1 | join, slowed | ≤ 5.07° / 6.85°; ≤ 5.99° / 7.46° | ≤ 62 / 0 m; ≤ 82 / 0 m | 60–100 | 1.002–1.087; 1.021–1.189 | 60 | kept 9/9 each |
+| G1 1645 m, 0.70 r, 91° toward | M2 / M1 | fallback `pred_none` | ≤ 17.9°; ≤ 12.7° | ≤ 193; ≤ 132 m | 25.0–25.3; 25.0–25.1 | 0.93–1.07 | – | vanilla stop; rotate ≤ 0.65× model |
+| G2 s +2.05 r, 3252 m, 135° | M2 / M1 | fallback `past_x` | 82.6°; 74.3° | 821; 797 m | 25.0–25.7; 25.8–29.0 | 0.95–1.07 | – | vanilla stop; rotate ≤ 1.00× / 1.07× model |
+
+E: v_cmd 100 throughout, crossing ≥ 90 m/s, 0x1f one frame; the engine's gate warn cone fires on 1,057–1,080 frames
+(17.6–18.0 s at 60 fps, the design's 17.7 s) at slot 0 and is suppressed on every one of them through the crossing and the
+hand-over (`e_gate_sup` 5,455–5,946 frames, 3 in the hand-over, 0 unsuppressed). B2 (3 r lateral only 2 r before X,
+amendment 13's misaligned case) now joins slowed (M2 40 m/s, crossing 68.5 m/s at 2.9°; M1 25 m/s at 6.3°) and is kept;
+the misaligned vanilla stop is G. Scenario A is unchanged against the pre-change fixture at `9c173d51` (M2 0.17° / 3 m,
+total 71.8 s; the tracked `fixture_capital.txt` of amendment 13, 0.62°, predated amendment 14's plant).
+**D (cascade, 60 fps seed 1; all 9 runs pass):** (leader, M6 on 0x12 / order 0) `suppress_small` 899/899 frames; docked,
+manual and order-5 variants pass; (leader, M1 on 0x12 / order 0) `suppress_member` 1195/1195 frames while ≤ 20 s, then 270
+frames passed (`member_expire` 1); the M1 is remembered in the snapshot 1200 frames and the leader detours against it 0
+times (886 without the memory); order 4 and the id swap each drop the entry in the same snapshot (`member_cleared` 1,
+`member_id_mismatch` 1); (M1 on 0x12, its leader) never suppressed (0/1081); M1 never closer than 2,400 m (> r_A + r_B).
+**K (audit G4):** (M2, M6 on order 5 crossing 1 km ahead) `pass_b_dock_leg` 3600/3600, min distance 635 m < C 1,701 m (the
+engine must handle it; the same pair with B on 0x14 is suppressed 3600/3600). **G1:** (ship, its gate) `suppress_gate_small`
+on every lead-in frame (TS 2871/2871, M4 1612/1612), none before the window (18 / 12 frames), the engine's warn cone fires on
+281 / 272 lead-in frames and none is unsuppressed. `--capital-noslip` is now a report only (45 failures: the predictor
+models the slip lag).
+
+**Deviations from §15 as written:** the speed rule keeps the current speed on P2's acceptance and falls back only when no
+candidate reaches the acceptance (the strict "highest within the margin" slowed the fixture's M1 from 6.4 km to 60/25 m/s
+for 10 s before X although its 100 m/s prediction, 4.9° / 70 m, matched its flown crossing, 4.6°, and no speed reached the
+margin there); P2's bound uses SETA ×10 (no SETA read); "the player takes either ship" is the autopilot bit; the member row
+does not run while A is on 0x12; small B = A's own leader passes (`e_small_pass_own_leader`); extra counters
+`member_cleared`, `member_full`, `join_evals`, `join_predictions`, `join_eval_us_max`; the `warn_pre` row is taken at site B
+of the traced ship (the object is live there) on the first frame the bits stand, not by dereferencing it at the frame end;
+the E scenario's excursion bound holds (≤ 9 m) but the M2 crosses the axis once at 30 fps, so "no axis crossing" is
+reported, not asserted.
+
+**Review notes (2026-10-12):** the capital branch's window at E is `max(250, 200 + 2·dt, 4·dt)` ms (340 ms at 70 ms steps;
+the 4·dt form alone could lapse by a few ms after a jittery frame); the resolved set keeps `max(100, 4·dt)`. The capital
+gate row covers join mode and the kept hand-over only: a fallback approach still gets the engine's gate warn (and its
+`SA_StopObject`), by design. The hand-over row is keyed on A's gate state; if A's table entry is reused by another ship the
+state goes with it and the row lapses (fails closed to the engine's warn). A follower whose target is not a ship of the
+snapshot (a station, a ship in another sector) drops its entry as `member_leader_gone` (the index holds ships only), not as
+`member_player`. `e_record` (`--debug`) is guarded against a null B. `pass_unreadable` is unreachable in the DLL (an
+unreadable A code never makes A a capital). The object id `ship+8` is the native body id of
+[chase-view-transition.md](../reverse-engineering/chase-view-transition.md) (the `SA_GetEventObject` row), cited in
+`ship_steering_sites.h`. Design §15.6's option-off sentence is corrected in the note: site E's small-ship row follows
+`ship_avoidance`, not `ship_steering_gates_capital`.
+
+**Run D targets per phase** (the capital and its escorts traced: `ship_trace_max = 4`; the escorts of slot 0's capital
+now take trace slots):
+
+| Phase | Rows / counters | Target |
+| --- | --- | --- |
+| install | `ship_steering_gates_capital installed=1 … member_capacity=256 member_expiry_ms=20000` | present |
+| cascade | the leader's 0x12 rows; `ship_avoid_engine_warn_pre` (`entries_other:class:code:order:leader:member:d_m:r_m:e_verdict`); `ship_avoid_e_verdict` tallied by `verdict` and `B_order` | 0x12 legs 0; any remaining leg's `warn_pre` names a non-small, non-member obstacle; no `e_small_pass_order` (removed); `ship_avoid_detour` rows against members 0, `avoid_excluded_member` > 0 when escorts were in 0x12 |
+| membership | `member_set/refresh/replace/expire/leader_gone/id_mismatch/reversed/player/cleared/full` | `member_expire` ≪ `member_set`; `member_id_mismatch` 0 unless a ship died; `member_full` 0 |
+| join | `ship_gate_capital_join` (`mode reason s_m e_m nose_deg vel_deg rate_dps v_ms v_cmd carrot_m pred_nose_deg pred_e_m`, 1 Hz and per mode change); `gate_capital_join`, `gate_capital_slowed` | one order-4 segment per approach; `mode=join` at the window entry; excursion past the axis ≤ 100 m (`signed_lateral.py`) |
+| crossing | the join row's `cross_nose_deg cross_vel_deg cross_v kept why_not window_s`; `gate_capital_kept`, `gate_capital_not_kept_{mode,nose,vel,bound}` | nose ≤ 8.1°, v ≥ 90 m/s at v_cmd 100, `kept=1`; `gate_capital_kept` = the capital approaches |
+| gate | `e_suppressed_gate`, `e_suppressed_gate_small`; `warn_pre` entries of class 18 | > 0 per aligned approach; no `warn_pre` row naming the gate for slot 0; small ships: no class-18 first-0x12 rows inside the lead-in window (`engine_warn_tally.py`) |
+| hand-over | 0x1f rows; the first order-5 row | 0x1f ≤ 2 rows; order-5 start ≥ 85 m/s when the slot is granted at once |
+| fallback | join rows `mode=fallback reason=pred_none|past_x` and their crossing row; `gate_capital_fallback_{pred,past_x}` | `cross_v` ≤ 30 m/s; rotate within 20 % of `rotate_time` |
+| pairs | `e_suppressed_small`, `e_small_pass_{no_autopilot,not_steerable,class,b_dock_leg,own_leader}`, `e_suppressed_member` | `b_dock_leg` > 0 only near docking traffic; small-ship predicted misses < C fall from Run157's 321 |
+| cost | `join_eval_us_max`, `join_evals`, `join_slots_dropped`, `join_slots_refused`; `handler_us_p99` | ≤ ~100 µs; `join_slots_refused` 0; p99 unchanged against Run157 (6.4 µs median) |
+
+**Acceptance (measured):** `cmake … && cmake --build build 2>&1 | grep -c warning` → 0; `check_no_x87.py build/d3d9.dll`
+→ 958 reachable, 0 violations (`frame_boundary`, not an audit root, keeps its 10 pre-existing 64-bit summary conversions,
+identical to the pre-change TU; the predictor and the membership pass have none); `verify_ship_steering_sites.py --exe
+/mnt/c/X3/X3AP.exe` → PASS, 18 checks; the six host modules → 52 tests OK; `run_host_suite.py` → 297 modules, 2,928 tests,
+36 failing modules (the host-environment set; none ship-related).
+
 ## Slip-aware law (2026-10-12, Opus 5.5 / Fable 5.1; amendment 14, design [slip-aware-steering.md](../architecture/slip-aware-steering.md))
 
 The work started as a WIP commit (`ade25410`) and was completed in source; it is not installed. Sources:

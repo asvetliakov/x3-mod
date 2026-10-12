@@ -583,8 +583,11 @@ and a new `e_verdict` tally):
 * **Predictor.** At most about 4k steps of a few tens of flops per evaluation: tens of microseconds **[i]**. It runs
   at the frame-end hook, not in the steering handler: one capital per frame, each at 1 Hz. Site A reads the chosen
   speed and mode from the ship entry, so the handler's p99 (Run157: 6.4 µs median, 29 µs max) does not change.
-* **Option-off.** Everything sits behind `ship_steering_gates_capital`, except the membership memory and the escort
-  member rows, which sit behind `ship_avoidance`. Off means amendment 13's or vanilla behaviour respectively.
+* **Option-off.** The join, the predictor, the fallback, P2's keep rule and the capital gate row sit behind
+  `ship_steering_gates_capital`. Site E as a whole, so the small-ship row, the membership memory and the member rows, sit
+  behind `ship_avoidance` (corrected at implementation: an earlier wording put the small-ship row behind the capital key);
+  the small-ship gate row of the scenario audit (G1) behind `ship_steering_gates`. Off means amendment 13's or vanilla
+  behaviour respectively.
 * **Native Windows.** Everything is in-process x86 code on game-memory contracts the module already validates, and
   the build is SSE2. Nothing touches Wine, D3D or windowing. Run157 itself was native.
 

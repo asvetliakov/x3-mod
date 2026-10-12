@@ -34,6 +34,7 @@ constexpr std::uint32_t kObjFlags = 0x40, kObjFlags2 = 0x44, kObjClass = 0x48, k
                         kObjDocked = 0xf8;
 constexpr std::uint32_t kFlagDeleted = 0x8000000, kFlagAttached = 0x200, kFlags2NoPair = 0x20000;
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightOrder = 0x258;
+constexpr std::uint32_t kObjId = 0x08; // the engine's native object id (SA_GetEventObject 0x004607f4 resolves it through the registry)
 constexpr std::uint32_t kObjType = 0x4a, kShipTypeTableSlot = 0x00606fd4, kRecordStride = 0xdb8, kRecordClassCode = 0x14;
 constexpr std::uint32_t kPhysPosition = 0x30, kPhysBasis = 0x40, kPhysVelocity = 0x100;
 constexpr std::uint32_t kObjSlip = 0x60; // the integrator's slip velocity (ship-movement.md section 13.2); a ship's actual velocity is p+0x100 + it
@@ -251,7 +252,7 @@ inline unsigned station_parts(Mem& mem, PartCache& cache, std::uint32_t obj, std
 // layer passes the point through rather than acting on a partial picture).
 template <class Mem>
 inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av::Snapshot& s, PartCache& cache, Stats& stats,
-                          Census* census) noexcept {
+                          Census* census, av::Members* members = nullptr, av::MemberStats* member_stats = nullptr) noexcept {
     s.sector = sector;
     s.epoch = now;
     s.count = 0;
@@ -307,6 +308,10 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
                     it.leader = mem.u32(fl + kFlightTarget);
                     it.order = mem.u16(fl + kFlightOrder);
                 }
+                // amendment 15: the identity and the autopilot bit (the membership memory), the live effective leader
+                it.id = mem.u32(o + kObjId);
+                if (flags & av::kObjFlagAutopilot) it.flags = std::uint8_t(it.flags | av::kObstacleAutopilot);
+                it.member_of = av::member_order(it.order) ? it.leader : 0;
                 // the record code -> capital-coded (amendment 13: a capital keeps every capital-coded ship and ignores other
                 // ships below r / 3); 2 when it cannot be read
                 const std::int32_t type = std::int16_t(mem.u16(o + kObjType));
@@ -339,5 +344,6 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
         s.count = 0;
     }
     if (census) census->overflow = s.overflow;
+    if (members && member_stats && !s.overflow) av::update_members(s, *members, now, *member_stats); // amendment 15
 }
 }

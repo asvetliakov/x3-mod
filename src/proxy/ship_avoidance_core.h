@@ -65,7 +65,12 @@ struct Obstacle {
     std::uint8_t size;    // ships: 1 = capital-coded (0x0043fd50: the record code in kCapitalMask), 0 = any other code, 2 = the code
                           // could not be read (capital-gate-transit.md section 1: the engine's "large" list no longer decides)
     std::uint8_t pad;
+    std::uint32_t id;        // ships: the engine's native object id [obj+0x08] (amendment 15: the membership memory's identity)
+    std::uint32_t member_of; // ships: the effective leader: the live f+0x224 on 0x14/0x15, else the remembered one (update_members), 0 = none
 };
+// Obstacle.flags bits for ships (stations use bit 0 for the part model).
+constexpr std::uint8_t kObstacleRemembered = 2; // member_of comes from the membership memory, not the live order
+constexpr std::uint8_t kObstacleAutopilot = 4;  // [obj+0x40] & 0x80000 at the walk
 struct Snapshot {
     std::uint32_t sector = 0, epoch = 0;
     unsigned count = 0, overflow = 0;
@@ -140,6 +145,7 @@ struct Result {
     float t_cpa = 0, miss = 0, C = 0, L = 0;
     unsigned excluded_followers = 0; // this ship's own escort/follow partners skipped as obstacles (amendment 10)
     unsigned skipped_small = 0;      // small ships a capital left to their own avoidance (amendment 11)
+    unsigned excluded_members = 0;   // formation members excluded through the membership memory alone (amendment 15)
     std::uint32_t obstacle = 0;
     std::uint32_t obstacle_leader = 0; // the obstacle's f+0x224 and f+0x258 (ships), for the detour row (amendment 11)
     std::uint16_t obstacle_order = 0;
@@ -348,9 +354,14 @@ inline void forget_passed(ShipAvoid& a, const Snapshot& snap, const Self& s) noe
     }
 }
 // A ship on escort/follow whose partner (f+0x224) is this ship: its leader never treats it as an obstacle (the follower
-// excludes its leader likewise), so a formation does not detour against itself (Run154: 453 leader detours).
+// excludes its leader likewise), so a formation does not detour against itself (Run154: 453 leader detours). Amendment 15
+// (capital-gate-transit.md section 15.2): the partner is the effective leader `member_of`, the live f+0x224 on 0x14/0x15 or
+// the membership memory's leader while the follower is in the engine's transient (0x12, or order 0 without a target).
 inline bool own_follower(const Self& s, const Obstacle& o) noexcept {
-    return o.kind == std::uint8_t(Kind::ship) && o.leader == s.ptr && (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow);
+    return o.kind == std::uint8_t(Kind::ship) && o.member_of && o.member_of == s.ptr;
+}
+inline bool wingmate(const Self& s, const Obstacle& o) noexcept {
+    return o.kind == std::uint8_t(Kind::ship) && s.leader && o.member_of == s.leader;
 }
 // Amendment 11 as amended by capital-gate-transit.md section 1 (amendment 13): a capital does not avoid small ships; the
 // small ship dodges it. A steered capital's obstacle set keeps stations, asteroids, gates, every capital-coded ship
@@ -364,50 +375,302 @@ inline bool small_for_capital(const Self& s, const Obstacle& o) noexcept {
     if (o.size == 1) return false; // capital-coded: always an obstacle
     return o.r < s.r * kSmallShipRatio;
 }
-// Site E's second branch (capital-gate-transit.md section 1): for an ignored pair (A capital-coded and steered, B a class-7
-// ship with a readable non-capital record code and r_B < r_A / 3) the engine's warn is suppressed only when B is under the
-// module's steering this frame; any other B stays with the engine (the capital reacts as vanilla does). Evaluated per call
-// and per frame: a small ship that stops, falls out of the steer set or is no longer decided on is handed back to the engine
-// on the next collision pass.
+// Site E's small-ship row (capital-gate-transit.md section 15.1, amendment 15): for a pair the capital ignores (A capital-coded
+// and freshly decided on, B a class-7 ship with a readable non-capital record code and r_B < r_A / 3) the engine's warn is
+// suppressed whatever B's order (0x12, 0, 0x1f, ...), except: B without the autopilot bit (the manually flown player ship, or
+// any ship the integrator does not drive), B deleted/attached/docked, B's class masked (leave its pairs vanilla), and (scenario
+// audit G4, main-session decision 2026-10-12) B on a leg the module does not avoid on: order 5 (dock or gate pass), 0x1e
+// (undock), 0x20 (glide): there the pair must stay with the engine, or neither side avoids.
 inline bool small_pair(bool a_capital, float r_a, bool b_ship, bool b_capital_code, float r_b) noexcept {
     return a_capital && b_ship && !b_capital_code && sc::finite_f(r_a) && sc::finite_f(r_b) && r_b < r_a * kSmallShipRatio;
 }
 enum class SmallPair : std::uint8_t {
-    suppress = 0,      // B is steered by the module this frame: the engine's warn for (A, B) is dropped
-    no_autopilot,      // [B+0x40] without 0x80000 (the player under manual control, or a ship the integrator does not drive)
-    order_not_steered, // B's order outside the steer set, or the engine's own avoid order 0x12 (the engine owns its evasion)
-    class_masked,      // B's class is excluded by ship_steering_classes
-    not_steerable,     // B deleted, attached or docked
-    stale,             // no decision for B within kSteeredFreshMs (not in the table, or an older entry)
+    suppress = 0,  // the engine's warn for (A, B) is dropped
+    no_autopilot,  // [B+0x40] without 0x80000 (the player under manual control, or a ship the integrator does not drive)
+    not_steerable, // B deleted, attached or docked
+    class_masked,  // B's class is excluded by ship_steering_classes
+    b_dock_leg,    // B on order 5, 0x1e or 0x20: the module does not avoid on those legs (audit G4)
+    own_leader,    // B is A's own leader (live or remembered): the escort's warn against its leader is never suppressed
     count
 };
-constexpr std::uint32_t kSteeredFreshMs = 250; // B's last decision at most this old (the site-B clamp window)
+constexpr std::uint32_t kSteeredFreshMs = 250; // A's last decision at most this old (the site-B clamp window), at least 4 frames
 constexpr std::uint32_t kObjFlagAutopilot = 0x80000, kObjFlagDeleted = 0x8000000, kObjFlagAttached = 0x200;
-inline SmallPair small_pair_verdict(std::uint32_t b_flags, std::uint16_t b_order, std::uint32_t b_docked, bool b_class_masked, bool b_in_table,
-                                    std::uint32_t b_stamp_ms, std::uint32_t now_ms) noexcept {
+constexpr std::uint16_t kOrderUndock = 0x1e, kOrderGlide = 0x20;
+inline SmallPair small_pair_verdict(std::uint32_t b_flags, std::uint16_t b_order, std::uint32_t b_docked, bool b_class_masked) noexcept {
     if (!(b_flags & kObjFlagAutopilot)) return SmallPair::no_autopilot;
-    if (!sc::order_steered(b_order) || b_order == sc::kOrderAvoid) return SmallPair::order_not_steered;
-    if (b_class_masked) return SmallPair::class_masked;
     if ((b_flags & (kObjFlagDeleted | kObjFlagAttached)) || b_docked) return SmallPair::not_steerable;
-    if (!b_in_table || now_ms - b_stamp_ms > kSteeredFreshMs) return SmallPair::stale;
+    if (b_class_masked) return SmallPair::class_masked;
+    if (b_order == sc::kOrderDock || b_order == kOrderUndock || b_order == kOrderGlide) return SmallPair::b_dock_leg;
     return SmallPair::suppress;
 }
 inline const char* small_pair_name(SmallPair v) noexcept {
-    static const char* const names[unsigned(SmallPair::count)] = {"suppress", "no_autopilot", "order_not_steered", "class_masked",
-                                                                  "not_steerable", "stale"};
+    static const char* const names[unsigned(SmallPair::count)] = {"suppress", "no_autopilot", "not_steerable", "class", "b_dock_leg", "own_leader"};
     return unsigned(v) < unsigned(SmallPair::count) ? names[unsigned(v)] : "?";
+}
+// The decision-age window at site E (scenario audit G2, main-session decision): max(base, 4 x the current frame step). Under
+// SETA the game-time frame step is 60-70 ms and the 0x12 leaf runs every 200 ms, so a fixed 250 ms window lapses on the
+// re-plan cadence. The frame step is clamped to 250 ms (a load hitch must not stretch the window beyond 1 s). replan_ms > 0 adds
+// replan + 2 frame steps (A's decision age at E reaches the 200 ms re-plan plus up to two frames after a jittery frame; review).
+constexpr std::uint32_t kSteeredReplanMs = 200;
+inline std::uint32_t fresh_window_ms(std::uint32_t base_ms, std::uint32_t frame_ms, std::uint32_t replan_ms = 0) noexcept {
+    if (frame_ms > 250) frame_ms = 250;
+    std::uint32_t w = 4 * frame_ms;
+    if (replan_ms && replan_ms + 2 * frame_ms > w) w = replan_ms + 2 * frame_ms;
+    return w > base_ms ? w : base_ms;
+}
+// ---- Amendment 15 (capital-gate-transit.md section 15.2): the formation membership memory ------------------------------
+// A fixed table of 256 entries keyed by the follower pointer (probe window 8, no allocation), filled by the sector snapshot
+// (update_members, after the walk): set or refreshed only while the follower is on 0x14/0x15 with a leader that is a ship of the
+// same snapshot; kept without refresh while the follower is in the engine's transient (0x12, or order 0 without a target) or on
+// any other order without a target; cleared at once by any other order with a target; dropped the same snapshot when the leader
+// is missing from it, either object id [obj+0x08] changed, the roles reversed, either ship lacks the autopilot bit (the player
+// took it over), or 20 s of game time passed since the last 0x14/0x15 confirmation. Membership alone never suppresses the
+// engine's warn (site E's member row also needs the live transient order and the hulls apart).
+constexpr unsigned kMemberCapacity = 256, kMemberProbe = 8, kMemberIndex = 2048;
+constexpr std::uint32_t kMemberExpiryMs = 20000;
+struct Member {
+    std::uint32_t follower, leader, leader_id, follower_id, confirmed_ms;
+};
+struct MemberStats {
+    unsigned set = 0, refresh = 0, replace = 0, expire = 0, leader_gone = 0, id_mismatch = 0, reversed = 0, player = 0,
+             cleared = 0, full = 0;
+};
+inline unsigned member_hash(std::uint32_t p) noexcept {
+    return ((p >> 4) * 0x9e3779b1u) >> 24; // 0..255
+}
+inline bool member_order(std::uint16_t order) noexcept {
+    return order == sc::kOrderEscort || order == sc::kOrderFollow;
+}
+struct Members {
+    Member e[kMemberCapacity] = {};
+    std::uint16_t index[kMemberIndex] = {}; // scratch of update_members: a ship's snapshot item + 1, keyed on its pointer
+    Member* find(std::uint32_t follower) noexcept {
+        if (!follower) return nullptr;
+        unsigned i = member_hash(follower);
+        for (unsigned k = 0; k < kMemberProbe; ++k, i = (i + 1) & (kMemberCapacity - 1))
+            if (e[i].follower == follower) return &e[i];
+        return nullptr;
+    }
+    const Member* find(std::uint32_t follower) const noexcept { return const_cast<Members*>(this)->find(follower); }
+    // A free or expired slot in the follower's probe window (an expired one counts as expire), nullptr when the window is full.
+    Member* slot_for(std::uint32_t follower, std::uint32_t now, MemberStats& st) noexcept {
+        unsigned i = member_hash(follower);
+        Member* expired = nullptr;
+        for (unsigned k = 0; k < kMemberProbe; ++k, i = (i + 1) & (kMemberCapacity - 1)) {
+            if (!e[i].follower) return &e[i];
+            if (!expired && now - e[i].confirmed_ms > kMemberExpiryMs) expired = &e[i];
+        }
+        if (expired) ++st.expire;
+        return expired;
+    }
+    // The current membership of `follower` in `leader`'s formation (site E's member row, the trace rows): the entry exists, both
+    // ids match the live objects and the last confirmation is at most kMemberExpiryMs old.
+    const Member* current(std::uint32_t follower, std::uint32_t leader, std::uint32_t follower_id, std::uint32_t leader_id,
+                          std::uint32_t now) const noexcept {
+        const Member* m = find(follower);
+        if (!m || m->leader != leader || m->follower_id != follower_id || m->leader_id != leader_id) return nullptr;
+        return now - m->confirmed_ms <= kMemberExpiryMs ? m : nullptr;
+    }
+};
+inline unsigned item_hash(std::uint32_t p) noexcept {
+    return ((p >> 4) * 0x9e3779b1u) >> 21; // 0..2047
+}
+// The membership pass over a filled snapshot (the DLL's walk and the fixture's World call it): the effective leader of every
+// ship item (member_of, kObstacleRemembered) and the table's updates. One index insert, one table probe and a few compares
+// per ship; the index is cleared per call (4 KB).
+inline void update_members(Snapshot& snap, Members& m, std::uint32_t now, MemberStats& st) noexcept {
+    std::memset(m.index, 0, sizeof m.index);
+    for (unsigned k = 0; k < snap.count; ++k) {
+        Obstacle& o = snap.items[k];
+        if (o.kind != std::uint8_t(Kind::ship) || !o.ptr) continue;
+        o.member_of = member_order(o.order) ? o.leader : 0;
+        o.flags = std::uint8_t(o.flags & ~kObstacleRemembered);
+        unsigned i = item_hash(o.ptr);
+        for (unsigned probe = 0; probe < kMemberIndex; ++probe, i = (i + 1) & (kMemberIndex - 1))
+            if (!m.index[i]) {
+                m.index[i] = std::uint16_t(k + 1);
+                break;
+            }
+    }
+    auto lookup = [&](std::uint32_t ptr) -> const Obstacle* {
+        if (!ptr) return nullptr;
+        unsigned i = item_hash(ptr);
+        for (unsigned probe = 0; probe < kMemberIndex; ++probe, i = (i + 1) & (kMemberIndex - 1)) {
+            const unsigned v = m.index[i];
+            if (!v) return nullptr;
+            if (snap.items[v - 1].ptr == ptr) return &snap.items[v - 1];
+        }
+        return nullptr;
+    };
+    auto drop = [](Member* e, unsigned& counter) {
+        if (!e) return;
+        *e = Member{};
+        ++counter;
+    };
+    for (unsigned k = 0; k < snap.count; ++k) {
+        Obstacle& F = snap.items[k];
+        if (F.kind != std::uint8_t(Kind::ship) || !F.ptr) continue;
+        Member* E = m.find(F.ptr);
+        const bool f_ap = (F.flags & kObstacleAutopilot) != 0;
+        if (member_order(F.order) && F.leader) { // rule 1: set or refresh
+            const Obstacle* L = lookup(F.leader);
+            if (!L) {
+                drop(E, st.leader_gone);
+                continue;
+            }
+            if (member_order(L->order) && L->leader == F.ptr) {
+                drop(E, st.reversed);
+                continue;
+            }
+            if (!f_ap || !(L->flags & kObstacleAutopilot)) {
+                drop(E, st.player);
+                continue;
+            }
+            if (E) {
+                if (E->leader == L->ptr && E->leader_id == L->id && E->follower_id == F.id) ++st.refresh;
+                else ++st.replace;
+            } else {
+                E = m.slot_for(F.ptr, now, st);
+                if (!E) {
+                    ++st.full;
+                    continue;
+                }
+                ++st.set;
+            }
+            *E = Member{F.ptr, L->ptr, L->id, F.id, now};
+            continue;
+        }
+        if (!E) continue;
+        if (F.order != sc::kOrderAvoid && F.leader) { // rule 2: any other order with a target clears at once
+            drop(E, st.cleared);
+            continue;
+        }
+        // rule 3 (0x12, order 0 without a target, any other order without a target): keep without refresh while still valid
+        const Obstacle* L = lookup(E->leader);
+        if (!L) drop(E, st.leader_gone);
+        else if (L->id != E->leader_id || F.id != E->follower_id) drop(E, st.id_mismatch);
+        else if (member_order(L->order) && L->leader == F.ptr) drop(E, st.reversed);
+        else if (!f_ap || !(L->flags & kObstacleAutopilot)) drop(E, st.player);
+        else if (now - E->confirmed_ms > kMemberExpiryMs) drop(E, st.expire);
+        else {
+            F.member_of = E->leader;
+            F.flags = std::uint8_t(F.flags | kObstacleRemembered);
+        }
+    }
+}
+// Site E's member row (section 15.1): a non-small B is suppressed for a capital A when B is a current member of A's formation,
+// B is in the engine's transient (0x12, or order 0 without a target: the partner filter 0x0044d385.. no longer drops it) and the
+// hulls do not touch (d > r_A + r_B).
+enum class MemberPair : std::uint8_t { suppress = 0, not_member, not_transient, touching, count };
+inline MemberPair member_pair_verdict(bool member_current, std::uint16_t b_order, std::uint32_t b_target, float d, float r_a, float r_b) noexcept {
+    if (!member_current) return MemberPair::not_member;
+    if (!(b_order == sc::kOrderAvoid || (b_order == sc::kOrderNone && !b_target))) return MemberPair::not_transient;
+    if (!(d > r_a + r_b)) return MemberPair::touching;
+    return MemberPair::suppress;
+}
+// ---- Site E's whole decision (amendment 15 with the scenario audit's G1-G4), pure over the reads the DLL makes ---------------
+enum class EVerdict : std::uint8_t {
+    none = 0, suppress_small, suppress_member, suppress_gate, suppress_gate_small, suppress_resolved, pass_no_autopilot,
+    pass_not_steerable, pass_class, pass_b_dock_leg, pass_own_leader, pass_not_fresh, pass_unreadable, pass_not_member,
+    pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship, count
+};
+inline const char* e_verdict_name(EVerdict v) noexcept {
+    static const char* const names[unsigned(EVerdict::count)] = {
+        "-", "suppress_small", "suppress_member", "suppress_gate", "suppress_gate_small", "suppress_resolved", "pass_no_autopilot",
+        "pass_not_steerable", "pass_class", "pass_b_dock_leg", "pass_own_leader", "pass_not_fresh", "pass_unreadable", "pass_not_member",
+        "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship"};
+    return unsigned(v) < unsigned(EVerdict::count) ? names[unsigned(v)] : "?";
+}
+inline bool e_suppresses(EVerdict v) noexcept {
+    return v == EVerdict::suppress_small || v == EVerdict::suppress_member || v == EVerdict::suppress_gate ||
+           v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved;
+}
+constexpr std::uint32_t kHandoverMaxMs = 120000; // the capital gate row's hand-over bound after P2 (the through-slot wait is 0-60 s)
+struct SiteE {
+    // A (class 7 checked by the caller), its table entry and the frame step
+    std::uint16_t a_order = 0;
+    std::uint32_t a_target = 0;      // f+0x224
+    bool a_in_table = false;
+    std::uint32_t a_age_ms = 0;      // now - A's last decision
+    std::uint32_t frame_ms = 0;      // the frame's game-time step ([root+0x714])
+    bool a_capital = false;          // A's record code is capital (0x0043fd50)
+    bool codes_readable = true;      // the type table, both type words (class-7 B) read
+    float r_a = 0;
+    // B = a gate (class 0x12) and A's gate state
+    bool b_gate = false;
+    bool gates_live = false, capital_policy = false; // ship_steering_gates live, ship_steering_gates_capital on
+    bool gate_state = false;         // A's gate state is A's, its gate is B and the approach validated (A matched)
+    bool gate_capital = false;       // the state is a capital's
+    bool gate_join = false;          // the capital's join mode
+    bool gate_handover = false;      // P2 kept the speed (cleared at order 5 / any other handled order)
+    std::uint32_t p2_age_ms = 0xffffffffu;
+    std::uint32_t lead_age_ms = 0xffffffffu; // a non-capital's last order-4 call with the lead-in inside its window
+    // B = a ship (class 7)
+    bool b_ship = false;
+    bool b_readable = false;         // B's record code < 16
+    bool b_capital_code = false;
+    float r_b = 0;
+    std::uint32_t b_flags = 0, b_docked = 0, b_target = 0;
+    std::uint16_t b_order = 0;
+    bool b_class_masked = false;
+    bool b_is_a_leader = false;      // B is A's live (0x14/0x15 target) or remembered leader
+    bool b_member_current = false;   // B is a current remembered member of A's formation (Members::current)
+    float d = -1.0f;                 // the centre distance, m (< 0 unreadable: never apart)
+    bool avoidance_on = false;
+    bool b_resolved = false;         // B in A's resolved set (ShipAvoid) within max(kResolvedAgeMs, 4 frame steps)
+};
+inline EVerdict site_e_verdict(const SiteE& in) noexcept {
+    if (!in.a_in_table) return EVerdict::pass_not_fresh;
+    const std::uint32_t fresh = fresh_window_ms(kSteeredFreshMs, in.frame_ms, kSteeredReplanMs);
+    // the gate rows: B is A's own target gate
+    if (in.b_gate && in.gates_live && in.gate_state) {
+        if (in.gate_capital) {
+            if (in.capital_policy &&
+                ((in.a_order == sc::kOrderFlyBefore && in.gate_join && in.a_age_ms <= fresh) ||
+                 ((in.a_order == sc::kOrderNone || in.a_order == sc::kOrderRotate) && in.gate_handover && in.p2_age_ms <= kHandoverMaxMs)))
+                return EVerdict::suppress_gate;
+        } else if (in.a_order == sc::kOrderFlyBefore && in.lead_age_ms <= fresh)
+            return EVerdict::suppress_gate_small;
+    }
+    if (in.a_age_ms > fresh) return EVerdict::pass_not_fresh;
+    EVerdict v = EVerdict::none;
+    if (in.b_ship && in.a_capital) {
+        if (!in.codes_readable) return EVerdict::pass_unreadable;
+        if (in.b_readable) {
+            if (small_pair(true, in.r_a, true, in.b_capital_code, in.r_b)) {
+                if (in.b_is_a_leader) return EVerdict::pass_own_leader;
+                switch (small_pair_verdict(in.b_flags, in.b_order, in.b_docked, in.b_class_masked)) {
+                case SmallPair::suppress: return EVerdict::suppress_small;
+                case SmallPair::no_autopilot: return EVerdict::pass_no_autopilot;
+                case SmallPair::not_steerable: return EVerdict::pass_not_steerable;
+                case SmallPair::class_masked: return EVerdict::pass_class;
+                case SmallPair::b_dock_leg: return EVerdict::pass_b_dock_leg;
+                default: return EVerdict::pass_own_leader;
+                }
+            }
+            if (in.a_order != sc::kOrderAvoid && in.avoidance_on) {
+                const MemberPair mv = member_pair_verdict(in.b_member_current, in.b_order, in.b_target, in.d, in.r_a, in.r_b);
+                if (mv == MemberPair::suppress) return EVerdict::suppress_member;
+                v = mv == MemberPair::not_transient ? EVerdict::pass_not_transient : mv == MemberPair::touching ? EVerdict::pass_touching
+                                                                                                                 : EVerdict::pass_not_member;
+            }
+        }
+    }
+    // the first branch: B in A's fresh resolved set, A not on the engine's own avoid order
+    if (in.a_order == sc::kOrderAvoid) return v == EVerdict::none ? EVerdict::pass_a_avoid : v;
+    if (in.b_resolved) return EVerdict::suppress_resolved;
+    return v == EVerdict::none ? EVerdict::pass_not_resolved : v;
 }
 // Whether the obstacle item is excluded for this ship (section 3.2 and 4). The formation is excluded in every direction
 // (amendment 11): the follower never avoids its leader, the leader never avoids its followers, and wingmates of one
 // leader never avoid each other, wherever they are (the amendment-10 envelope condition is gone: Run155's Boreas leader
-// still detoured 453 times against its own formation outside it).
+// still detoured 453 times against its own formation outside it). Amendment 15: followers and wingmates by member_of (live
+// or remembered), so escort capitals on 0x12/0 stay excluded (Run157: 195 leader detours against them).
 inline bool excluded(const Self& s, const Obstacle& o) noexcept {
     if (o.ptr == s.ptr) return true;
     if (s.leader && o.ptr == s.leader) return true;
     if (s.exclude_target && s.target && o.ptr == s.target) return true;
-    if (o.kind == std::uint8_t(Kind::ship) && s.leader && o.leader == s.leader &&
-        (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow))
-        return true; // a wingmate of the same leader
+    if (wingmate(s, o)) return true;     // a wingmate of the same leader
     if (own_follower(s, o)) return true; // our own followers, wherever they are (amendment 10: the leader detoured against them)
     if (small_for_capital(s, o)) return true; // amendment 11 / 13: the ratio rule, the small ship dodges
     return false;
@@ -472,6 +735,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         if (excluded(s, o)) {
             if (own_follower(s, o)) ++res.excluded_followers;
             else if (small_for_capital(s, o)) ++res.skipped_small;
+            if ((o.flags & kObstacleRemembered) && (own_follower(s, o) || wingmate(s, o))) ++res.excluded_members;
             continue;
         }
         float dx[3];
@@ -746,8 +1010,10 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     return res;
 }
 // Site E (section 3.6): suppress the reactive warn for (A, B) when the state is A's and B is in its fresh resolved set.
-inline bool suppressed(const ShipAvoid& a, std::uint32_t A, std::uint32_t B, std::uint32_t now_ms) noexcept {
-    if (!a.obj || a.obj != A || now_ms - a.stamp_ms > kResolvedAgeMs) return false;
+// The age window is kResolvedAgeMs, or max(that, 4 frame steps) from the DLL (scenario audit G2: under SETA a 60-70 ms game step
+// leaves a fixed 100 ms window covering about one frame).
+inline bool suppressed(const ShipAvoid& a, std::uint32_t A, std::uint32_t B, std::uint32_t now_ms, std::uint32_t age_ms = kResolvedAgeMs) noexcept {
+    if (!a.obj || a.obj != A || now_ms - a.stamp_ms > age_ms) return false;
     for (unsigned i = 0; i < a.n_resolved; ++i)
         if (a.resolved[i] == B) return true;
     return false;

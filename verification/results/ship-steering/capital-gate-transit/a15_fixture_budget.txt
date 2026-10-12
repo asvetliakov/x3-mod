@@ -1,0 +1,15 @@
+Model budget (join_budget.py's plant and its A15 law, inferred) for the amendment-15 host-fixture scenarios E-G
+M2 E1 6435 m lateral, 5.58 r, nose at A     psi0  -42.6  mode=join     t_X= 100.3s nose=  1.0 vel=  1.1 v_X=100.0 e_X=   15m cross=1 over=  47m v_min=100.0 rotate= 0.0s
+M2 E2 6435 m lateral, 5 r, nose at A        psi0  -45.4  mode=join     t_X=  94.2s nose=  2.0 vel=  1.9 v_X=100.0 e_X=   28m cross=1 over=  47m v_min=100.0 rotate= 0.0s
+M2 E3 on axis, 5 r, aligned                 psi0   +0.0  mode=join     t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 rotate= 0.0s
+M2 F1 627 m, 2.97 r, nose 68 deg away       psi0  +68.0  mode=join     t_X=  67.2s nose=  1.0 vel=  1.5 v_X=100.0 e_X=   46m cross=1 over=  46m v_min= 60.0 rotate= 0.0s
+M2 F2 6435 m, 5 r, nose 60 deg away         psi0  +60.0  mode=join     t_X= 111.9s nose=  2.3 vel=  5.6 v_X=100.0 e_X=   28m cross=1 over=  28m v_min= 60.0 rotate= 0.0s
+M2 G1 1645 m, 0.70 r, nose 91 deg toward    psi0  -91.0  mode=fallback t_X=  26.2s nose= 17.8 vel= 22.1 v_X= 25.2 e_X=  166m cross=0 over=   0m v_min= 25.2 rotate= 6.5s
+M2 G2 3252 m, s +2.05 r, nose 135 deg       psi0 +135.0  mode=fallback t_X=  52.8s nose= 81.3 vel= 81.4 v_X= 25.7 e_X=  819m cross=0 over=   0m v_min= 10.0 rotate=23.0s
+M1 E1 6435 m lateral, 5.58 r, nose at A     psi0  -42.6  mode=join     t_X=  98.7s nose=  0.9 vel=  0.8 v_X=100.0 e_X=   13m cross=1 over=  21m v_min=100.0 rotate= 0.0s
+M1 E2 6435 m lateral, 5 r, nose at A        psi0  -45.4  mode=join     t_X=  92.6s nose=  1.3 vel=  0.8 v_X=100.0 e_X=   20m cross=1 over=  21m v_min=100.0 rotate= 0.0s
+M1 E3 on axis, 5 r, aligned                 psi0   +0.0  mode=join     t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 rotate= 0.0s
+M1 F1 627 m, 2.97 r, nose 68 deg away       psi0  +68.0  mode=join     t_X=  68.9s nose=  3.0 vel=  6.0 v_X= 92.2 e_X=   11m cross=1 over=  11m v_min= 60.0 rotate= 0.0s
+M1 F2 6435 m, 5 r, nose 60 deg away         psi0  +60.0  mode=join     t_X= 133.8s nose=  3.3 vel=  6.0 v_X=100.0 e_X=    5m cross=0 over=   0m v_min= 60.0 rotate= 0.0s
+M1 G1 1645 m, 0.70 r, nose 91 deg toward    psi0  -91.0  mode=fallback t_X=  29.1s nose= 13.5 vel= 17.1 v_X= 25.1 e_X=  125m cross=0 over=   0m v_min= 25.1 rotate= 4.9s
+M1 G2 3252 m, s +2.05 r, nose 135 deg       psi0 +135.0  mode=fallback t_X=  59.1s nose= 75.1 vel= 75.1 v_X= 25.2 e_X=  800m cross=0 over=   0m v_min= 25.2 rotate=23.1s
