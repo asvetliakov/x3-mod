@@ -1,0 +1,51 @@
+slip_sweep.py: the fixture's calibrated integrator (fixed point), 60 fps, yaw only; measured on this port
+
+1. Steady constant-rate turn at the yaw cap (after 11 s): ground speed |u|/v, |slip|/v, velocity-nose lag,
+   R = v/omega (the nose circle) and R_eff = |u|/omega (the circle the ship flies); predicted = the first-order
+   lag u' = (v f - u)/tau with tau = 2 s: |u|/v = 1/sqrt(1+(w tau)^2), lag = atan(w tau)
+cls   v m/s omega deg/s  w*tau  |u|/v  (pred)  |slip|/v (pred)  lag deg (pred)   R m   R_eff m
+M5    532.0     147.66   5.15  0.210 (0.190)   0.978 (0.982)     77.9 ( 79.0)     206       43
+M3    247.5      92.81   3.24  0.308 (0.295)   0.948 (0.956)     71.5 ( 72.8)     153       47
+M6    180.0      33.75   1.18  0.654 (0.647)   0.755 (0.762)     49.1 ( 49.7)     306      200
+TS    124.0      21.09   0.74  0.807 (0.805)   0.589 (0.593)     36.1 ( 36.4)     337      272
+M2     70.0      13.50   0.47  0.907 (0.905)   0.422 (0.426)     25.0 ( 25.2)     297      269
+
+2. Turn-in: one 90 deg yaw command through the controller 0x0043ad20 (cap W, accel W k) from straight full-speed
+   flight. d_turn(C) = forward distance (m, along the original heading) at which the lateral offset reaches C,
+   without the slip (the nose path) and with it; C_ship = clearance(r, r) (the crossing), C_sta = clearance(r, 200)
+   (the flyby part); the design's sqrt(C(C+2R)) for comparison; peak lag; forward drift after the nose finished.
+cls  C_ship  d_turn nose / slip   sqrtC(C+2R)  | C_sta  d_turn nose / slip  sqrtC(C+2R) | peak lag  t_nose s  drift_after m
+M5    43.4     385 /     735         141 |  234.2     632 /    1153        389 |   53.0     2.55       624
+M3    48.8     323 /     540         132 |  236.9     501 /     807        358 |   42.6     4.02       221
+M6   161.0     795 /    1045         353 |  296.6     947 /    1218        519 |   21.2    11.95        52
+TS   102.0     493 /     659         281 |  263.5     639 /     832        497 |   23.0    10.65        41
+M2  1763.5    none /    none        2039 | 1258.1    1077 /    1212       1527 |   10.9    26.95         6
+
+3. Small turns (10 / 30 / 90 deg commands): the asymptotic offset of the flown path from the nose path, 8 s after
+   the nose finished, perpendicular to the final heading (outward, +) and along it (behind, -); peak lag; the
+   first-order prediction for a turn much faster than tau is tau v sin(beta) outward and tau v (cos(beta) - 1) behind.
+cls   10: peak lag  out m  behind m (pred out) | 30: peak lag  out m  behind m (pred) | 90: peak lag  out m  behind m (pred)
+M5           8.0    181      -16 (  185) |         21.1    523     -138 (  532) |         53.0   1059    -1048 ( 1064) |
+M3           7.2     84       -8 (   86) |         18.1    244      -65 (  247) |         42.6    492     -489 (  495) |
+M6           4.7     61       -6 (   63) |         10.4    178      -49 (  180) |         21.2    357     -358 (  360) |
+TS           5.0     41       -4 (   43) |         11.1    121      -33 (  124) |         23.0    245     -246 (  248) |
+M2           2.8     22       -3 (   24) |          5.7     67      -20 (   70) |         10.9    136     -136 (  140) |
+
+3b. Turn-in distance for the detour offsets the avoidance uses (1.75 C_ship for ships, 1.3 C_sta for a part):
+    the forward distance at which the flown path reaches that lateral offset, nose path / with slip, and the
+    implemented push-ahead 1 s v and lookahead L = 1 s v + 2 v / k + 1.25 min(sqrt(C(C+2R)), v^2/2a).
+cls  1.75 C_ship  d nose / slip | 1.3 C_sta  d nose / slip | 1 s v   L_ship  L_sta
+M5         76.0    458 /    855 |     304.5    673 /   1235 |   532    2836   3147
+M3         85.4    382 /    627 |     308.0    530 /    856 |   248    1959   2242
+M6        281.8    935 /   1204 |     385.6   1016 /   1297 |   180    4221   4429
+TS        178.5    577 /    759 |     342.6    680 /    879 |   124    1684   1684
+M2       3086.1   none /   none |    1635.5   1077 /   none |    70    3074   3074
+
+4. The formation circle of the fixture (leader at 0.9 v on R_c = max(5 km, 40 r)): the steady lag of a follower
+   holding the circle, and the nose speed it needs for a ground speed of 0.9 v (v / cos lag).
+cls   R_c m  omega_c deg/s  lag deg  nose speed m/s (cap)
+M5     5000         5.49     10.8      487.5 (532)
+M3     5000         2.55      5.1      223.6 (248)
+M6     5000         1.86      3.7      162.3 (180)
+TS     5000         1.28      2.6      111.7 (124)
+M2    28216         0.13      0.3       63.0 (70)
