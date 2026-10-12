@@ -335,6 +335,8 @@ struct Model {
         amend12 = g_amend12;
         port_gamma = 0;
         trace_tgt_class = 0x12;
+        for (int i = 0; i < 3; ++i) leader_pos[i] = leader_fwd[i] = leader_nose[i] = leader_slip[i] = 0;
+        v_lead = prec_units = slot_back_units = 0;
     }
     // obj+0x20: the third Euler angle of the basis (the builder 0x004f0270: row0.y = sin g cos b, row1.y = cos g cos b), binary
     std::int64_t gamma_binary() const {
@@ -361,6 +363,7 @@ struct Model {
         self.up[0] = 0;
         self.up[1] = 1;
         self.up[2] = 0;
+        for (int i = 0; i < 3; ++i) self.slip[i] = order != core::kOrderDock ? float(double(slip[i]) / 500.0) : 0.0f; // amendment 14: the swept path on u
         self.v = float(speed / 500.0);
         self.r = dyn.r_own;
         self.a = dyn.a_lin;
@@ -441,6 +444,16 @@ struct Model {
         }
         in.v = float(double(speed) / 500.0);
         in.order = order;
+        // amendment 14: the slip (the DLL's three obj+0x60 reads; steer() treats it as 0 on order 5) and, for a formation
+        // follower, the leader's actual velocity (the DLL's reads of the leader's speed, row 2 and slip through f+0x224)
+        for (int i = 0; i < 3; ++i) in.slip[i] = float(double(slip[i]) / 500.0);
+        if (order == core::kOrderEscort || order == core::kOrderFollow) {
+            in.formation = true;
+            for (int i = 0; i < 3; ++i) {
+                in.nose_lead[i] = float(leader_nose[i] / 500.0);
+                in.u_lead[i] = float((leader_nose[i] + leader_slip[i]) / 500.0);
+            }
+        }
         // the DLL's servo budget: the measured gap for a per-frame caller, 50 ms for a gated order (core::servo_tick)
         const long gap = last_call_ms >= 0 ? t_ms - last_call_ms : 50;
         in.tick_s = core::servo_tick(std::uint32_t(gap), std::uint32_t(frame_dt_ms), per_frame_run);
@@ -463,7 +476,7 @@ struct Model {
                 if (capital)
                     in_window = core::gate_lead_in_capital(gate_geo, in.x, in.v, std::fmin(dyn.W[0], dyn.W[1]), lead, &s_line);
                 else
-                    in_window = core::gate_lead_in(gate_geo, in.x, in.v, lead, &s_line);
+                    in_window = core::gate_lead_in(gate_geo, in.x, in.v, std::fmin(dyn.W[0], dyn.W[1]) * dyn.k, lead, &s_line); // the carrot by the nose's lag (amendment 14)
             }
             if (in_window) {
                 for (int i = 0; i < 3; ++i) in.P[i] = lead[i];
@@ -500,7 +513,7 @@ struct Model {
         if (capital_gate_leg && !capital_window)
             speed_flags = std::uint16_t(gate_mode && order == core::kOrderFlyBefore && cmd.v_cmd > 0 ? core::kShipFlagClamp : 0);
         else
-            speed_flags = std::uint16_t((in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
+            speed_flags = std::uint16_t((in.arrival_ramp && !cmd.formation_speed ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
                                         (gate_approach ? (core::kShipFlagGate | core::kShipFlagClamp) : 0) |
                                         (gate_dock ? (core::kShipFlagGateDock | core::kShipFlagClamp) : 0));
         s->flags = std::uint16_t(speed_flags | (cmd.port_aligned ? core::kShipFlagPortHold : 0)); // amendment 12
@@ -508,7 +521,10 @@ struct Model {
         s->a_lin = dyn.a_lin;
         s->d_arr = gate_dock ? gate_r : in.d_arr;
         s->v_ref = (speed_flags & core::kShipFlagGate) ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : gate_dock ? dyn.v_max : in.v_ref;
-        s->v_corner = cmd.v_corner;
+        // amendment 14: the formation law's |N| rides in the cornering slot (no ramp: site B returns it floored); the closing-speed
+        // correction applies to the ramp/cornering schedule only (not on the gate approach, whose speed is the cap)
+        s->v_corner = cmd.formation_speed ? cmd.v_cmd : cmd.v_corner;
+        s->v_slip = (speed_flags & (core::kShipFlagGate | core::kShipFlagGateDock)) || cmd.formation_speed ? 0.0f : cmd.v_slip;
         s->v_emergency = avoid_on ? astate.v_emergency : 0.0f;
     }
     // Site B: the clamp from the stored decision at the current position.
@@ -539,7 +555,10 @@ struct Model {
     // leader's speed through a distance ramp (modelled linear over 10 x prec; the point is anchored to the slot
     // here so that a leader on a circle is followed, the operand roles being [i]); otherwise the slot at the
     // leader's speed. Our law sees whichever point the branch hands to the leaf; site B lowers the speed.
-    double leader_pos[3], leader_fwd[3], v_lead, prec_units, slot_back_units;
+    // leader_fwd: the leader's velocity direction (the engine model's slot and branches are on it); leader_nose: its nose velocity
+    // v_nose f_nose (units/s, the DLL's [tgt+0x10] x row 2); leader_slip: its obj+0x60 (units/s). A Model leader supplies all three;
+    // the analytic circle leader of formation_scenario gets the nose a real ship would need on that circle (amendment 14).
+    double leader_pos[3], leader_fwd[3], leader_nose[3], leader_slip[3], v_lead, prec_units, slot_back_units;
     double slot_error() const {
         double s[3];
         for (int i = 0; i < 3; ++i) s[i] = leader_pos[i] - leader_fwd[i] * slot_back_units - pos[i];
@@ -798,8 +817,12 @@ static void turn_scenario(const ShipType& t, int fps, std::uint32_t seed, bool d
     // no worse than the vanilla leaf on the same scenario: settle within one think tick (50 ms) and 2 %, overshoot not above
     std::snprintf(why, sizeof why, "%s %d fps seed %u turn%s: settle %%.0f ms <= vanilla %%.0f ms x 1.02 + 50", t.cls, fps, seed, tag);
     if (v.settle_ms >= 0) checkf(double(r.settle_ms) <= double(v.settle_ms) * 1.02 + 50, why, double(r.settle_ms), double(v.settle_ms));
-    std::snprintf(why, sizeof why, "%s %d fps seed %u turn%s: overshoot past the target %%.3f <= vanilla %%.3f + 0.05", t.cls, fps, seed, tag);
-    checkf(r.overshoot <= v.overshoot + 0.05, why, r.overshoot, v.overshoot);
+    // amendment 14: the nose leads the velocity's lateral component by tau, so after the turn it points past the target by up to
+    // atan(tau |slip| / d) (the slip at the cap, d = 20 km: M5 3.0 deg, M3 1.4, M6 1.0, TS 0.7, M2 0.4) while the velocity, not
+    // the nose, settles on the line; the bound is added to the vanilla comparison (the nose's own overshoot stays under 1 deg above)
+    const double lead_deg = std::atan(double(core::kSlipTau) * t.v_ms / 20000.0) * 180 / M_PI;
+    std::snprintf(why, sizeof why, "%s %d fps seed %u turn%s: overshoot past the target %%.3f <= vanilla %%.3f + 0.05 + the slip lead", t.cls, fps, seed, tag);
+    checkf(r.overshoot <= v.overshoot + 0.05 + lead_deg, why, r.overshoot, v.overshoot);
     if (diagonal) {
         // The great-circle law executes both axes in proportion for the whole large-bearing part of the turn
         // (the diagonal axis keeps |w_p| close to |w_y| until the roll policy re-levels the ship), where the
@@ -974,6 +997,17 @@ static void formation_scenario(const ShipType& t, int fps, std::uint32_t seed) {
         if (!dt) continue;
         const double ts = m.t_ms / 1000.0;
         leader_at(ts, m.leader_pos, m.leader_fwd);
+        // the nose a real ship holds on this circle (amendment 14, design table 4): rotated inward from the tangent by the lag
+        // lambda = atan(omega tau) at the nose speed v_lead / cos(lambda); its slip is the difference to the tangent velocity
+        {
+            const double lam = std::atan(omega * double(core::kSlipTau)), v_nose = v_lead / std::cos(lam);
+            double inward[3];
+            for (int i = 0; i < 3; ++i) inward[i] = -m.leader_pos[i] / R; // toward the circle's centre (the origin)
+            for (int i = 0; i < 3; ++i) {
+                m.leader_nose[i] = v_nose * (std::cos(lam) * m.leader_fwd[i] + std::sin(lam) * inward[i]);
+                m.leader_slip[i] = v_lead * m.leader_fwd[i] - m.leader_nose[i];
+            }
+        }
         m.frame(dt, 3, true, 0, 2);
         const double err = m.slot_error();
         if (std::getenv("X3M_SS_TRACE") && seed == kSeeds[0] && fps == 60 && (m.t_ms / dt) % (2 * fps) == 0)
@@ -1066,7 +1100,7 @@ struct World {
             o = av::Obstacle{};
             for (int k = 0; k < 3; ++k) {
                 o.x[k] = float(m.pos[k] / 500.0);
-                o.v[k] = float(m.row[2][k] * double(m.speed) / 500.0);
+                o.v[k] = float((m.row[2][k] * double(m.speed) + double(m.slip[k])) / 500.0); // the actual velocity p+0x100 + obj+0x60 (amendment 14)
             }
             o.r = m.dyn.r_own;
             o.ptr = m.ptr;
@@ -1225,11 +1259,13 @@ static void crossing_scenario(const ShipType& t, int fps, std::uint32_t seed) {
         for (int k = 0; k < 3; ++k) d += (a.pos[k] - b.pos[k]) * (a.pos[k] - b.pos[k]);
         d = std::sqrt(d) / 500.0;
         if (d < min_dist) min_dist = d;
-        if (std::getenv("X3M_SS_TRACE") && seed == kSeeds[0] && fps == 60 && !std::strcmp(t.cls, "M3") && (a.t_ms / dt) % (fps / 4) == 0)
-            std::printf("ctrace t=%6ld d=%8.1f a: adj=%d unres=%d side=%d vert=%d t_cpa=%.1f miss=%.0f tries=%u P=%.0f,%.0f,%.0f x=%.0f,%.0f,%.0f bearing=%.1f | b: adj=%d unres=%d side=%d vert=%d miss=%.0f\n",
+        if (std::getenv("X3M_SS_TRACE") && seed == kSeeds[0] && fps == 60 && !std::strcmp(t.cls, std::getenv("X3M_SS_TRACE_CLS") ? std::getenv("X3M_SS_TRACE_CLS") : "M3") &&
+            (a.t_ms / dt) % (fps / 4) == 0)
+            std::printf("ctrace t=%6ld d=%8.1f a: adj=%d unres=%d side=%d vert=%d t_cpa=%.1f miss=%.0f tries=%u P=%.0f,%.0f,%.0f x=%.0f,%.0f,%.0f bearing=%.1f lag=%.1f v=%.0f e=%lld,%lld | b: adj=%d unres=%d side=%d vert=%d miss=%.0f x=%.0f,%.0f,%.0f lag=%.1f\n",
                         a.t_ms, d, a.last_av.adjusted, a.last_av.unresolved, a.last_av.side, a.last_av.vertical, a.last_av.t_cpa, a.last_av.miss,
                         a.last_av.tries, a.last_av.P[0], a.last_av.P[1], a.last_av.P[2], a.pos[0] / 500, a.pos[1] / 500, a.pos[2] / 500,
-                        a.bearing_deg(), b.last_av.adjusted, b.last_av.unresolved, b.last_av.side, b.last_av.vertical, b.last_av.miss);
+                        a.bearing_deg(), a.last_cmd.lag_deg, a.speed / 500.0, (long long)a.e[0], (long long)a.e[1], b.last_av.adjusted, b.last_av.unresolved, b.last_av.side,
+                        b.last_av.vertical, b.last_av.miss, b.pos[0] / 500, b.pos[1] / 500, b.pos[2] / 500, b.last_cmd.lag_deg);
         ++frames;
         if (a.t_ms > 4 * double(D) / 500.0 / t.v_ms * 1000 + 5000) break; // well past the crossing
     }
@@ -1302,6 +1338,8 @@ static void formation_obstacle_scenario(const ShipType& t, int fps, std::uint32_
             for (int c = 0; c < 3; ++c) {
                 f.leader_pos[c] = lead.pos[c];
                 f.leader_fwd[c] = lead.row[2][c];
+                f.leader_nose[c] = lead.row[2][c] * double(lead.speed); // the leader's nose velocity and obj+0x60 (amendment 14: the
+                f.leader_slip[c] = double(lead.slip[c]);                // follower matches u_lead with the leader's lag fed forward)
                 f.leader_x_m[c] = float(lead.pos[c] / 500.0);
             }
             // the slot: beside and behind the leader (row0 = the leader's lateral axis)
@@ -1680,7 +1718,8 @@ static void avoidance_unit_checks() {
         // of it, and the implemented lookahead (reaction kReactionS, no ramp here: alpha = 0) must equal it with that term.
         auto formula = [&](double r_obs, double reaction) {
             const double C = r.r + r_obs + std::fmax(25.0, 0.5 * r.r), R = r.v / (r.om * M_PI / 180);
-            const double L = reaction * r.v + 1.25 * std::fmin(std::sqrt(C * (C + 2 * R)), r.v * r.v / (2 * r.a));
+            const double L = reaction * r.v + 1.25 * std::fmin(std::sqrt(C * (C + 2 * R)), r.v * r.v / (2 * r.a)) +
+                             (reaction == av::kReactionS ? double(core::kSlipTau) * r.v : 0.0); // the implemented L adds the lag distance (amendment 14)
             return std::fmin(std::fmax(L, C + r.r), 30000.0);
         };
         char why[220];
@@ -1848,8 +1887,16 @@ static void avoidance_unit_checks() {
     s.ptr = 1;
     r = av::resolve(snap, nullptr, 0, s, P, st, 1);
     const av::Result r2 = av::resolve(snap, nullptr, 0, s, P, st, 2);
-    check(r.adjusted && r2.adjusted && r.side == r2.side && std::fabs(r.P[0]) + std::fabs(r.P[1]) > 50 && st.n_resolved == 1 && st.resolved[0] == 0x7000,
-          "detour: head-on asteroid, constant side, resolved for site E");
+    // amendment 14: while the velocity still carries the ship into the body (miss 0 < C) the pair is not resolved for site E
+    check(r.adjusted && r2.adjusted && r.side == r2.side && std::fabs(r.P[0]) + std::fabs(r.P[1]) > 50 && st.n_resolved == 0,
+          "detour: head-on asteroid, constant side, not resolved for site E while the velocity's path hits the body");
+    // the velocity swung clear on the detour's side (slip 40 m/s up: the swept path misses by 89 m, between C = 85 and the committed 2 C):
+    // the same side, the straight path to the point clears, resolved for site E
+    s.slip[1] = 40.0f;
+    const av::Result r3 = av::resolve(snap, nullptr, 0, s, P, st, 3);
+    check(r3.adjusted && r3.side == r.side && r3.miss > 85.0f && r3.miss < 170.0f && st.n_resolved == 1 && st.resolved[0] == 0x7000,
+          "detour: head-on asteroid, the velocity's swept path clear by C on the detour's side: resolved for site E");
+    s.slip[1] = 0.0f;
     snap.items[0].kind = std::uint8_t(av::Kind::station);
     snap.items[0].r = 2000;
     snap.max_r = 2000;
@@ -2218,6 +2265,7 @@ static void capital_cloud_scenario(int fps, std::uint32_t seed) {
 struct GateResult {
     bool arrived_A, arrived_B, launched, lead_used, disc_crossed;
     double cross_v, cross_err_deg, min_v_after_cross, v_after_A, v0, launch_first_v, max_aim_jump_deg;
+    double cross_vel_err_deg; // amendment 14: the velocity's (p+0x100 + slip) angle to the same reference at the crossing
     double cross_pos[3], cross_dA, off[2]; // the crossing point (m, world), its distance to A, the spread offset (m, gate x / y)
     long t_cross, t_A, t_B, t_launch;
     int misaligned_ticks;
@@ -2261,10 +2309,11 @@ static void emit_trace_row(const Model& m, const char* cls, std::uint32_t obj, l
         std::fprintf(g_trace, "e=%ld,%ld,%ld", long(m.e[0]), long(m.e[1]), long(m.e[2]));
     else
         std::fprintf(g_trace, "e=-");
-    std::fprintf(g_trace, " dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx\n",
+    std::fprintf(g_trace, " dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx slip=%ld,%ld,%ld\n",
                  static_cast<unsigned long>(dt), long(m.W[0]), long(m.W[1]), long(m.W[2]), 0x10000ul, long(rot_pct), long(m.vmax), long(m.accel),
                  m.last_av.emergency ? 1u : 0u, m.last_cmd.omega_axis[0] * 180 / M_PI, m.last_cmd.omega_axis[1] * 180 / M_PI,
-                 m.last_cmd.omega_axis[2] * 180 / M_PI, static_cast<unsigned long>(m.last_av.adjusted ? m.last_av.obstacle : 0u));
+                 m.last_cmd.omega_axis[2] * 180 / M_PI, static_cast<unsigned long>(m.last_av.adjusted ? m.last_av.obstacle : 0u), long(m.slip[0]),
+                 long(m.slip[1]), long(m.slip[2]));
     ++g_trace_rows;
 }
 // obj_id selects the ship's ring position (the spread); capital_slot the grid point of a capital (-1 = slot 7)
@@ -2384,7 +2433,7 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     m.d_arr_units = 0.75 * ru; // the DLL's d_arr for a gate target (3 r / 4): the capital's ramp
     res.min_v_after_cross = 1e18;
     res.t_cross = res.t_A = res.t_B = res.t_launch = -1;
-    res.cross_err_deg = -1;
+    res.cross_err_deg = res.cross_vel_err_deg = -1;
     Clock clock;
     int phase = dock_start ? 2 : 0; // 0 order 4, 1 order 0 after A, 2 order 5, 3 order 0 after B, 4 order 8
     if (dock_start) {
@@ -2398,12 +2447,33 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     bool have_aim = false;
     long long v0 = 0;
     const std::uint32_t obj = obj_id;
+    const bool gtrace = std::getenv("X3M_SS_GATE_TRACE") && seed == kSeeds[0] && fps == 60 && !capital && !vanilla && !dock_start &&
+                        !std::strcmp(t.cls, std::getenv("X3M_SS_GATE_TRACE")) && gates_on;
+    long next_gtrace = 0;
     for (long i = 0; i < 400 * fps; ++i) {
         const long dt = clock.step(fps);
         if (!dt) continue;
         m.frame_dt_ms = dt;
         const double dA_v[3] = {A[0] - m.pos[0], A[1] - m.pos[1], A[2] - m.pos[2]}, dB_v[3] = {B[0] - m.pos[0], B[1] - m.pos[1], B[2] - m.pos[2]};
         const double dA = norm3d(dA_v), dB = norm3d(dB_v);
+        if (gtrace && phase == 0 && m.t_ms >= next_gtrace) { // the approach: along / lateral to the (shifted) line, the nose and velocity angles to B
+            next_gtrace += 200;
+            double s_l = 0, e2 = 0, cb = 0, cu = 0, un = 0, u[3], ca = 0;
+            for (int k = 0; k < 3; ++k) {
+                const double dx = m.pos[k] / 500.0 - m.gate_geo.X[k];
+                s_l += dx * m.gate_geo.h[k];
+                e2 += dx * dx;
+                u[k] = double(m.vel[k] + m.slip[k]);
+                un += u[k] * u[k];
+                cb += m.row[2][k] * dB_v[k] / dB;
+                ca += (double(m.last_aim_P[k]) - m.pos[k] / 500.0) * m.gate_geo.h[k];
+            }
+            un = std::sqrt(un);
+            for (int k = 0; k < 3; ++k) cu += un > 0 ? u[k] / un * dB_v[k] / dB : 0;
+            std::printf("gtrace %s theta=%+.0f ring=%u t=%6ld s=%7.0f e=%6.0f nose_B=%5.1f vel_B=%5.1f lag=%5.1f aim_along=%6.0f v=%5.1f e=%lld,%lld\n", t.cls,
+                        theta_deg, res.ring, m.t_ms, s_l, std::sqrt(std::fmax(e2 - s_l * s_l, 0.0)), std::acos(std::fmin(1.0, std::fmax(-1.0, cb))) * 180 / M_PI,
+                        std::acos(std::fmin(1.0, std::fmax(-1.0, cu))) * 180 / M_PI, m.last_cmd.lag_deg, ca, m.speed / 500.0, (long long)m.e[0], (long long)m.e[1]);
+        }
         if (phase == 4) { // order 8 (ship-movement.md section 13.3): u = now - f+0x214 + 900 with the deadline 900 ms after the order
             const long u = m.t_ms - phase_t;
             if (u >= 900) {
@@ -2432,6 +2502,17 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
                 if (c > 1) c = 1;
                 if (c < -1) c = -1;
                 res.cross_err_deg = std::acos(c) * 180 / M_PI;
+                // the velocity's angle to the same reference (amendment 14): u = p+0x100 + slip, as the integrator moves the ship
+                double u[3], un = 0, cu = 0;
+                for (int k = 0; k < 3; ++k) {
+                    u[k] = double(m.vel[k] + m.slip[k]);
+                    un += u[k] * u[k];
+                }
+                un = std::sqrt(un);
+                for (int k = 0; k < 3; ++k) cu += un > 0 ? (capital ? u[k] / un * F.R[2][k] : u[k] / un * dB_v[k] / dB) : 0.0;
+                if (cu > 1) cu = 1;
+                if (cu < -1) cu = -1;
+                res.cross_vel_err_deg = un > 0 ? std::acos(cu) * 180 / M_PI : 0.0;
             }
             m.steer_call(obj, true, 0); // the leaf every frame (Run151)
             if (!vanilla && m.last_reason == core::Reason::handled) { // the aim direction's per-frame jump (the switch at the join point)
@@ -2561,8 +2642,8 @@ static void gate_unit_checks() {
     const float beside[3] = {3 * r, 0, 0}, behind[3] = {0, 0, 2 * r}, above[3] = {0, 3 * r, 0}, lateral_A[3] = {3 * r, -0.8f * r, -1.0f * r};
     bool refused = true;
     for (const float* x : {beside, behind, above})
-        if (core::gate_lead_in(g, x, 100.0f, P, &s, &e) || !(s > 0.75f * r)) refused = false;
-    const bool lat_ok = core::gate_lead_in(g, lateral_A, 100.0f, P, &s, &e) && std::fabs(P[0] - A[0]) < 1.0f && std::fabs(P[1] - A[1]) < 1.0f &&
+        if (core::gate_lead_in(g, x, 100.0f, 0.0f, P, &s, &e) || !(s > 0.75f * r)) refused = false;
+    const bool lat_ok = core::gate_lead_in(g, lateral_A, 100.0f, 0.0f, P, &s, &e) && std::fabs(P[0] - A[0]) < 1.0f && std::fabs(P[1] - A[1]) < 1.0f &&
                         std::fabs(P[2] - A[2]) < 1.0f;
     check(refused && lat_ok, "gate lead-in: beside, behind and above lie past the line's end (s > 0.75 r): aim at A; laterally off at A's depth: the line's end = A");
     // far before the join point: refused; on the line inside the window: the carrot ahead, never beyond A
@@ -2572,12 +2653,12 @@ static void gate_unit_checks() {
         mid[k] = g.X[k] - 1.0f * r * g.h[k];
         near[k] = g.X[k] - 0.05f * r * g.h[k];
     }
-    check(!core::gate_lead_in(g, far_x, 100.0f, P, &s, &e) && s < -3.9f * r, "gate lead-in: 4 r before the crossing: the straight approach (aim at A)");
-    bool mid_ok = core::gate_lead_in(g, mid, 100.0f, P, &s, &e);
+    check(!core::gate_lead_in(g, far_x, 100.0f, 0.0f, P, &s, &e) && s < -3.9f * r, "gate lead-in: 4 r before the crossing: the straight approach (aim at A)");
+    bool mid_ok = core::gate_lead_in(g, mid, 100.0f, 0.0f, P, &s, &e);
     float along = 0;
     for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
     check(mid_ok && std::fabs(along - (-1.0f * r + 0.3f * r)) < 1.0f && e < 1.0f, "gate lead-in: 1 r before the crossing at 100 m/s: the carrot 0.3 r ahead on the line");
-    mid_ok = core::gate_lead_in(g, near, 2000.0f, P, &s, &e);
+    mid_ok = core::gate_lead_in(g, near, 2000.0f, 0.0f, P, &s, &e);
     along = 0;
     for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
     check(mid_ok && std::fabs(along - 0.75f * r) < 1.0f, "gate lead-in: a fast ship just before the crossing aims at A at most, never beyond");
@@ -2587,17 +2668,17 @@ static void gate_unit_checks() {
         at3[k] = g.X[k] - 2.999f * r * g.h[k];
         at2[k] = g.X[k] - 2.0f * r * g.h[k];
     }
-    core::gate_lead_in(g, at3, 100.0f, P, &s, &e);
+    core::gate_lead_in(g, at3, 100.0f, 0.0f, P, &s, &e);
     along = 0;
     for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
     const bool at3_A = std::fabs(along - 0.75f * r) < 5.0f;
-    core::gate_lead_in(g, at2, 100.0f, P, &s, &e);
+    core::gate_lead_in(g, at2, 100.0f, 0.0f, P, &s, &e);
     along = 0;
     for (int k = 0; k < 3; ++k) along += (P[k] - g.X[k]) * g.h[k];
     check(at3_A && std::fabs(along - (-2.0f * r + 0.3f * r)) < 1.0f, "gate lead-in: the carrot slides from A at the join point (3 r) to the near carrot at 2 r (a continuous switch)");
     // a ship laterally off the line inside the window: the carrot is on the line (e reported), never past A
     const float off[3] = {3 * r + g.X[0], g.X[1] - 2.0f * r * g.h[1], g.X[2] - 2.0f * r * g.h[2]};
-    mid_ok = core::gate_lead_in(g, off, 100.0f, P, &s, &e);
+    mid_ok = core::gate_lead_in(g, off, 100.0f, 0.0f, P, &s, &e);
     check(mid_ok && std::fabs(e - 3 * r) < 1.0f && std::fabs(P[0] - g.X[0]) < 0.01f, "gate lead-in: 3 r off the line at 2 r before the crossing: the carrot is on the line (the ship turns toward it)");
     // site B: the emergency ramp wins over the gate speed
     core::Ship ship{};
@@ -2975,9 +3056,10 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
         checkf(g.v0 > 0 && g.launch_first_v >= 0.95 * g.v0, why, g.v0, g.launch_first_v);
         if (seed == kSeeds[0] && fps == 60)
             std::printf("gate theta %+3.0f %-3s %-10s fps=%3d cross_v=%.1f m/s (vanilla %.1f) heading_err=%.1f deg (vanilla %.1f) creep_ticks=%d (vanilla %d) "
-                        "min_v=%.1f v0=%.1f (vanilla %.1f) t_cross->launch=%ld ms (vanilla %ld) lead_in=%d aim_jump=%.1f deg\n",
+                        "min_v=%.1f v0=%.1f (vanilla %.1f) t_cross->launch=%ld ms (vanilla %ld) lead_in=%d aim_jump=%.1f deg vel_err=%.1f deg (vanilla %.1f)\n",
                         theta, t.cls, t.name, fps, g.cross_v, v.cross_v, g.cross_err_deg, v.cross_err_deg, g.misaligned_ticks, v.misaligned_ticks,
-                        g.min_v_after_cross, g.v0, v.v0, g.t_launch - g.t_cross, v.t_launch - v.t_cross, g.lead_used ? 1 : 0, g.max_aim_jump_deg);
+                        g.min_v_after_cross, g.v0, v.v0, g.t_launch - g.t_cross, v.t_launch - v.t_cross, g.lead_used ? 1 : 0, g.max_aim_jump_deg,
+                        g.cross_vel_err_deg, v.cross_vel_err_deg);
     }
     if (capital) { // amendment 13: the capital's gate transit is capital_transit_scenario (the Boreas record too)
         capital_transit_scenario(t, fps, seed);
@@ -3100,8 +3182,8 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
         std::snprintf(why, sizeof why, "%s %d fps seed %u gate far start: at A within 1.3 x the vanilla time (%%.0f ms <= %%.0f)", t.cls, fps, seed);
         checkf(g.t_A >= 0 && v.t_A >= 0 && double(g.t_A) <= 1.3 * double(v.t_A) + 500, why, double(g.t_A), 1.3 * double(v.t_A) + 500);
         if (seed == kSeeds[0] && fps == 60)
-            std::printf("gate far/rot %-3s fps=%3d cross_v=%.1f heading_err=%.1f creep=%d t_A=%ld (vanilla %ld) aim_jump=%.1f deg\n", t.cls, fps, g.cross_v, g.cross_err_deg,
-                        g.misaligned_ticks, g.t_A, v.t_A, g.max_aim_jump_deg);
+            std::printf("gate far/rot %-3s fps=%3d cross_v=%.1f heading_err=%.1f creep=%d t_A=%ld (vanilla %ld) aim_jump=%.1f deg vel_err=%.1f deg\n", t.cls, fps, g.cross_v,
+                        g.cross_err_deg, g.misaligned_ticks, g.t_A, v.t_A, g.max_aim_jump_deg, g.cross_vel_err_deg);
     }
     // the lateral approach in front of the crossing: at the join point's depth, 3 r off the line (local +x)
     {
@@ -3116,8 +3198,8 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
         std::snprintf(why, sizeof why, "%s %d fps seed %u gate lateral 3 r: at A within 1.3 x the vanilla time (%%.0f ms <= %%.0f)", t.cls, fps, seed);
         checkf(g.t_A >= 0 && v.t_A >= 0 && double(g.t_A) <= 1.3 * double(v.t_A) + 500, why, double(g.t_A), 1.3 * double(v.t_A) + 500);
         if (seed == kSeeds[0] && fps == 60)
-            std::printf("gate lateral %-3s fps=%3d heading_err=%.1f (vanilla %.1f) creep=%d (vanilla %d) t_A=%ld (vanilla %ld)\n", t.cls, fps, g.cross_err_deg, v.cross_err_deg,
-                        g.misaligned_ticks, v.misaligned_ticks, g.t_A, v.t_A);
+            std::printf("gate lateral %-3s fps=%3d heading_err=%.1f (vanilla %.1f) creep=%d (vanilla %d) t_A=%ld (vanilla %ld) vel_err=%.1f deg\n", t.cls, fps, g.cross_err_deg,
+                        v.cross_err_deg, g.misaligned_ticks, v.misaligned_ticks, g.t_A, v.t_A, g.cross_vel_err_deg);
     }
     // starts the lead-in must refuse (s > 0): beside the gate, behind it, above it, laterally off at A's depth: the ship aims
     // at A as vanilla does, arrives within 1.3 x the vanilla time and never crosses the disc
@@ -3874,7 +3956,7 @@ static void capital_unit_checks() {
     const bool near_join = core::gate_lead_in_capital(g, x59, 100.0f, omega, P, &s, &e) && std::fabs(P[2] - (A[2] - 0.1f * (A[2] - (g.X[2] - 5.9f * r + 2.0f * 100.0f / omega)))) < 2.0f;
     const bool inside = core::gate_lead_in_capital(g, x40, 100.0f, omega, P, &s, &e) && std::fabs(e - 3 * r) < 1.0f && std::fabs(P[0] - A[0]) < 0.01f &&
                         std::fabs(P[2] - (g.X[2] - 4.0f * r + 2.0f * 100.0f / omega)) < 1.0f;
-    const bool small_window = !core::gate_lead_in(g, x40, 100.0f, P, &s, &e); // the small-ship window (3 r) refuses the same point
+    const bool small_window = !core::gate_lead_in(g, x40, 100.0f, 0.0f, P, &s, &e); // the small-ship window (3 r) refuses the same point
     check(refused && near_join && inside && small_window && 2.0f * 100.0f / omega > 1100.0f && 2.0f * 100.0f / omega < 1200.0f,
           "capital lead-in window: refused beyond 6 r; at 5.9 r the carrot is 90 % of the way to A; at 4 r, 3 r off the line, the carrot is on the line 2 v / omega (1136 m) ahead; the 3 r small-ship window refuses it");
 }

@@ -186,6 +186,7 @@ constexpr std::uint32_t kGameTimeOffset = 0x718, kRecordStride = 0xdb8;
 constexpr std::uint32_t kObjNext = 0x00, kObjSpeed = 0x10, kObjDesiredSpeed = 0x14, kObjRates = 0x24, kObjRemaining = 0x30;
 constexpr std::uint32_t kObjFlags = 0x40, kObjFlags2 = 0x44, kObjClass = 0x48, kObjType = 0x4a, kObjFlight = 0x50;
 constexpr std::uint32_t kObjPhys = 0x70, kObjRadius = 0xa4, kObjDocked = 0xf8;
+constexpr std::uint32_t kObjSlip = 0x60; // the integrator's slip velocity, units/s (ship-movement.md section 13.2, 0x0045a610..0x0045a63b); amendment 14 reads it
 constexpr std::uint32_t kFlagAutopilot = 0x80000, kFlagDeleted = 0x8000000, kFlagAttached = 0x200;
 constexpr std::uint32_t kPhysPosition = 0x30, kPhysBasis = 0x40;
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightPoint = 0x240, kFlightOrder = 0x258, kFlightDistance = 0x260;

@@ -36,6 +36,7 @@ constexpr std::uint32_t kFlagDeleted = 0x8000000, kFlagAttached = 0x200, kFlags2
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightOrder = 0x258;
 constexpr std::uint32_t kObjType = 0x4a, kShipTypeTableSlot = 0x00606fd4, kRecordStride = 0xdb8, kRecordClassCode = 0x14;
 constexpr std::uint32_t kPhysPosition = 0x30, kPhysBasis = 0x40, kPhysVelocity = 0x100;
+constexpr std::uint32_t kObjSlip = 0x60; // the integrator's slip velocity (ship-movement.md section 13.2); a ship's actual velocity is p+0x100 + it
 constexpr std::uint32_t kNodeChildren = 0xc, kNodeOffset = 0x30, kNodeScale = 0x70, kNodeOwnRadius = 0xa0, kNodeRadius = 0xa4,
                         kNodeFlags = 0x12c, kNodeFlagScaled = 0x40;
 constexpr float kUnits = sc::kUnitsPerMetre;
@@ -293,7 +294,8 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
             it.ptr = o;
             if (cls == kClassShip) {
                 it.kind = std::uint8_t(av::Kind::ship);
-                for (unsigned c = 0; c < 3; ++c) it.v[c] = float(mem.s32(ph + kPhysVelocity + 4 * c)) / kUnits;
+                // the actual velocity p+0x100 + obj+0x60 (amendment 14: the slip term moves the ship too; three more reads per ship)
+                for (unsigned c = 0; c < 3; ++c) it.v[c] = float(mem.s32(ph + kPhysVelocity + 4 * c) + mem.s32(o + kObjSlip + 4 * c)) / kUnits;
                 const std::uint32_t fl = mem.u32(o + kObjFlight);
                 if (fl) {
                     it.leader = mem.u32(fl + kFlightTarget);
