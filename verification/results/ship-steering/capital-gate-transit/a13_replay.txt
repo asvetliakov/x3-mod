@@ -1,0 +1,2 @@
+model at +17.55 s: |e| 422 m (measured 430), nose 31.7 deg (measured 32.3), rate 2.4 deg/s (measured 2.3)
+model continued to X (no 0x12): t 64.7 s, nose 0.2 deg, |e| 3 m, axis crossings 1, largest excursion past the axis 64 m

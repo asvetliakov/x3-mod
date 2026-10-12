@@ -339,3 +339,276 @@ native rows; the design adds no Windows-specific gap.
 | `SA_SetShipRotAccel`'s write and whether anything but the KC and the 0x12 exits write `f+0x2b0` | listing of the SA_ case (name table index of `SetShipRotAccel`) and a write-xref sweep of `+0x2b0` on the flight block |
 | The order-0 under-autopilot speed zeroing is **[m]** for the idle handler; that the KC hand-over is ≤ 2 frames between 0x1f and the through-slot request is **[i]** | the next trace: rows between the last 0x1f row and the first order-5 row |
 | The two-axis rotate time (the M1's 44.9 s against 29.7 s modelled) | not needed for the nominal path; `axis_controller_sim.py` with both axes if the fallback levers are built |
+
+## Amendment 15 (Run157 corrections)
+
+**Ratified 2026-10-12 (main session)**: the unconditional small-ship rule for capitals (any order; manual player ship, deleted/attached/docked and masked classes excepted), the 20 s formation memory keyed on the object id with same-frame drops, the amendment-13 join with the speed predictor and the slow-entry fallback, the gate-warn rule at site E, and the three diagnostic rows. Amendment: the escort-capital suppression (membership current, escort in 0x12/0, hulls not touching) is accepted; the open "escort already in the leader's list" case is left to the flight rows and must not be worked around by a new site.
+
+Design note, 2026-10-12, for ratification by the main session. Run157 (unstripped DLL `ecd05046…`, source `af5ec4cf`,
+native C:\X3, SETA mostly on) flew amendment 13 and made the traced M2 leader worse: 524 s in the engine's avoid order
+0x12 in 20 legs against 257 s / 13 in Run156, `gate_capital_aligned` 0. Sources:
+[`run157-triage/rows_out.txt`](../../verification/results/ship-steering/run157-triage/rows_out.txt) and
+[`capital_timeline.txt`](../../verification/results/ship-steering/run157-triage/capital_timeline.txt) **[m]**; three
+evidence scripts made for this amendment under
+[`capital-gate-transit/`](../../verification/results/ship-steering/capital-gate-transit/):
+`signed_lateral.py` → `signed_lateral.txt` (where the leader crossed the gate axis, from the Run157 log) **[m]**,
+`a13_replay.py` → `a13_replay.txt` (the join model replayed against the measured lead-in leg) **[m]** for the check,
+`join_budget.py` → `join_budget.txt`, `a13_feasibility.py` → `a13_feasibility.txt` and `predictor_dt.py` →
+`predictor_dt.txt` (the 2-D join model: the controller `0x0043ad20`, the module's servo, the 2 s slip lag, the
+hull's linear acceleration) **[i]**. Engine facts: [ship-navigation-ai.md](../reverse-engineering/ship-navigation-ai.md)
+§3.1–3.3 and §10.1–10.4, [ship-movement.md](../reverse-engineering/ship-movement.md) §4 and §13.2. Sections 0–6 above
+stay as written; this section supersedes them where it says so.
+
+### 15.0 What each amendment-13 assumption got wrong
+
+| Amendment-13 assumption | Run157 **[m]** | Correction |
+| --- | --- | --- |
+| §1: suppress the capital's warn for a small B only while B is under the module's steering (order in the steer set, fresh decision) | 15 of the leader's 20 warns named its own M6/M8 escorts (r 27–86 m, far below r_A/3 = 364 m); site E passed 17,932 small pairs for reason `order` and 68 for `stale`, suppressed 37,784 | The escorts that trigger the cascade are by construction not on a steered order when the warn fires: they are in their own 0x12 or in the order-0 hand-over. The control test excluded exactly the pairs that matter. §15.1 drops it. |
+| §1: the capital's escorts never reach E, the engine's partner filter (`0x0044d385..`) drops them | the escort pairs did reach the warn | The partner filter keys on `f+0x224`, which 0x12 and order 0 clear (0x12 rows carry `tgt=0`). Partners are exempt only while they are on 0x14/0x15. |
+| Amendment 11: the formation exclusion reads `f+0x224` | 210 leader detours, 195 of them against its escort capitals M1/M2 on 0x12 or order 0 (194 with leader 0) | The exclusion needs a memory of membership that survives the engine's transient orders (§15.2). |
+| §1 fail-safe: never suppress while A is on 0x12 | 20 legs of 12.7–93.3 s; 8 of 20 legs end at 15.1–15.7 s | The 0x12 handler re-scores its list every 200 ms through the same warn test `0x0044dd90`, so the small escorts it recorded keep the leg alive. Site E now answers on that path too (§15.1). |
+| §2.1: the lead-in geometry, carrot max(0.75 v, 2 v/W, 0.3 r) = 1132 m, assumes W | Measured join rate 2.3°/s against the 10.1°/s cap (frame 18240, `rate=418` binary/s). The brief read "crossed the axis at 32°" as a lead-in failure. | **The lead-in did not fail.** The leg 17778–18242 converged (e 1838 → 421 m, nose 71.1° → 31.9° toward the axis) and was cut by the engine's warn at 18243. The axis crossing (frame 18350, nose 33.9°, 110 m/s, s −3.55 r) happened inside 0x12 (`signed_lateral.txt`). The model replays that leg to within 2 % (e 422 vs 430 m, nose 31.7 vs 32.3°, rate 2.4 vs 2.3°/s). Continued without the 0x12, it reaches X with the nose 0.2° off and a 64 m excursion (`a13_replay.txt`). The pursuit's √(αθ) rate shaping is what makes the 1132 m carrot work at a 2.3°/s effective rate. |
+| §2.2: 100 m/s written in both directions throughout the window | The escort M2 started order 4 only 0.70 r before X, 1645 m lateral, nose 91° off. It weaved for 41.6 s at 85–100 m/s and hit the sphere at 100 m/s, 85° off. P2 then stopped it instantly (`[obj+0x10] = 0`, `0x00454b91`). | Nothing checked whether a state could still converge. §15.3 adds a predictor and a fallback that enters the sphere slowly. |
+| §2.1: outside the window, or past X (s > 0), the engine's law stands | The M1 started order 4 at s +2.05 r, 3.3 km lateral. It spent 103.8 s at 1–21 m/s in the engine's alignment creep, then rotated 92° in 24.5 s. | The fallback of §15.3 also covers s > 0. |
+| §2.3, §5: an aligned approach is warn-free | One warn against the gate itself at d 6898 m on order 4 (frame 19947) | **New.** Inside `b + L + 2 (rA + rB)` of the gate a moving capital that heads at it warns: 6983 m for the M2 and 6874 m for the M1 at 100 m/s; X sits at 5221 / 5082 m **[i]** (§3.1 formula; `join_budget.txt`). So every aligned slot-0 approach spends its last ≈ 1.8 km, ≈ 17.7 s, inside the gate's warn (model). In phase 0 the KC turns that warn into 0x12, with the gate as a must-turn-away obstacle of weight 150. Run157 hit it only once because no approach got aligned. §15.1 adds a gate branch. |
+| §6: capital transitions are logged | no `ship_gate_transition` row for a capital | §15.4. |
+
+### 15.1 Pair policy, corrected (question 1)
+
+Site E (`x3m_ship_avoid_suppress(A, B)`, the entry of the warn test `0x0044dd90`) evaluates the **capital branch**
+when A is a class-7 ship whose record code is capital and A's last decision is at most `kSteeredFreshMs` (250 ms) old.
+Since 0x12 is in the steer set, a capital on 0x12 stays fresh, and the branch now also runs while A is on 0x12, i.e.
+on the 200 ms re-score. On that path only the small-ship row acts. The handler sends large and capital-type obstacles
+straight to the mesh test `0x0044d9c0` (§3.3 **[m]**), past E. So an escort capital already in the leader's 0x12 list
+leaves it only geometrically; the member row prevents the next warn. The first branch (B in A's resolved set) keeps "A not on 0x12". Any read failure returns 0.
+
+| B | Verdict | Counter |
+| --- | --- | --- |
+| class 7, readable non-capital code, `r_B < r_A / 3`, any order (0x12, 0, 0x1e, 0x1f, …) | **suppress**, except in the three rows below | `e_suppressed_small` |
+| … without `[B+0x40] & 0x80000` (the manually flown player ship, or any ship the integrator does not drive) | pass | `e_small_pass_no_autopilot` |
+| … deleted (0x8000000), attached (0x200) or docked (`[B+0xf8]`) | pass | `e_small_pass_not_steerable` |
+| … class in `ship_steering_classes`' mask | pass (the mask means "leave this class's pairs vanilla") | `e_small_pass_class` |
+| not small, a remembered member of A's formation (§15.2, fresh, identity matching), currently in the engine's transient (order 0x12, or order 0 with `f+0x224 == 0`), and `d > r_A + r_B` | **suppress** | `e_suppressed_member` |
+| A's order target (`f+0x224 == B`), class 0x12 (a gate), while A is on its validated capital approach in join mode (§15.3): order 4, or the 0x1f / order-0 hand-over after P2 kept the speed, until order 5 starts | **suppress** | `e_suppressed_gate` |
+| anything else | pass (the engine's warn test runs) | — |
+
+**Why unconditional for small B.** A small ship near a capital is in one of two states. Either the module steers it,
+and it carries the predictive detour against the capital, with the engine's own warn on its side when unresolved. Or it
+is already evading under the engine. Either way the capital reacting adds nothing but the cascade: escort evades →
+the capital warns against the evading escort → the capital evades → the escorts follow. The user's rule ("a capital
+ignores ships smaller than a third of its radius") is the policy. `e_small_pass_order` and `_stale` disappear.
+
+**The escort cascade.** On the capital's side the small escorts fall under the row above whatever their order, and
+the escort capitals under the member row. On the escort's side (escort A on 0x12 or 0, leader B) **E does not
+suppress**. While A is on 0x12 the KC sends no `CollisionWarn` (L3 skips order 0x12, §3.2), so a suppression there
+would only drop the leader from the escort's re-score. Keeping it means the follower gives way: with the leader no
+longer reacting, the evasion is one-sided and the loop is open. Suppressing both sides would leave a pair of 1 km
+hulls in which nobody avoids, while the escort is off its slot.
+
+**Residual risk.** A small ship that neither dodges nor evades: parked under autopilot on order 0 (zero speed, so its
+own warn test never fires), on a pass-through order (0x1e undock, 0x20 glide, 8/0x21 warp), or a class-masked ship.
+A steered capital no longer reacts to an M6/M8/TM in that state and can ram it. Vanilla capitals already ignore every
+non-"large" ship (fighters, TS, TP), so the new exposure is limited to M6 (≤ 140 m), M8 (≤ 83 m) and TM (≤ 128 m)
+hulls that are stationary in a capital's path. The contact response is the elastic impulse of `0x0045e130`
+([ship-movement.md](../reverse-engineering/ship-movement.md) §13.2). The small ship takes weight
+`2 m_cap / (m_cap + m_small)` ≈ 2 of the relative velocity, so it is pushed aside **[i]**. The damage law behind
+`"MakeDamage"` is script-side and not decoded **[i]**.
+
+**Fail-safe.** Option off, A not fresh, A's code unreadable, B's code unreadable, any field unreadable: return 0, and
+the engine's warn test runs as vanilla.
+
+### 15.2 Formation membership memory (question 2)
+
+**Store.** A fixed open-addressing table keyed by the follower pointer, 256 entries, no allocation. It is filled by
+the sector snapshot walk, which already reads every ship's order (`f+0x258`) and partner (`f+0x224`) each snapshot.
+Entry: `follower, leader, leader_id, follower_id, confirmed_ms` (game time). The ids are the engine's native object
+id `[obj+0x08]`. The same field `chase_transition_identity_core.h` resolves through the native registry (`+0x14`
+table) for `SA_GetEventObject`, so a freed pointer re-used by a new object carries a different id **[i]** (monotonic
+assignment not listed).
+
+**Update per snapshot, per ship F with entry E:**
+
+1. F on 0x14/0x15 with `f+0x224 = L != 0`, L a class-7 ship in the snapshot: set or refresh `(L, id(L), id(F), now)`.
+   A different L replaces the entry.
+2. F on any other order with `f+0x224 != 0` (order 4 to a gate, an attack target, a dock): clear immediately.
+3. F on 0x12, or order 0 with `f+0x224 == 0`: keep, no refresh.
+4. Clear the same frame when:
+   * L is absent from this sector's snapshot, or `[L+0x08] != leader_id`, or `[F+0x08] != follower_id`;
+   * L is seen on 0x14/0x15 with `f+0x224 == F` (role reversal);
+   * either ship lacks the autopilot bit or is the player's ship (the player has taken it over);
+   * `now − confirmed_ms > 20 s` of game time.
+
+**Expiry 20 s.** The engine's avoid leg ends only once the list is empty and the ship is more than `f+0x260` from
+its start. The leader's legs cluster at 15.1–15.7 s (8 of 20 **[m]**), so the floor for these hulls is about 15.5 s
+**[i]**. Any expiry under about 16 s would lapse in the middle of every escort 0x12 leg. 20 s is the top of the
+allowed range: it covers the floor plus the order-0 hand-over and the KC's re-issue of 0x14. A longer leg (10 of 20
+are above 20 s) loses the membership, and the pair returns to vanilla reactive behaviour.
+
+**Uses.**
+
+* `av::excluded`: `own_follower` and the wingmate test accept "o is a remembered member of s" (or "of s's
+  leader") in addition to o on 0x14/0x15. The capital's obstacle filter therefore keeps escort capitals on 0x12/0
+  excluded, which removes the 195 detours. The snapshot item carries the effective leader (the live `f+0x224` on
+  0x14/0x15, else the remembered one) and a remembered bit.
+* E's member row (§15.1).
+
+**Fail-safe direction.** Membership alone never suppresses the engine's warn. The member row also needs the live
+transient order on B and `d > r_A + r_B`. A stale or wrong membership costs at most 20 s of "the leader's predictive
+layer ignores that escort", with the escort's own 0x12 and the engine's warn on the escort's side intact.
+
+**Cost.** One hash probe and three compares per ship per snapshot (37 class-7 ships among 152 objects in Run157's census), plus
+one 4-byte read of `[obj+0x08]` per ship **[i]**: well under a microsecond per snapshot. One probe per capital-capital
+pair at E.
+
+### 15.3 The capital join (question 3)
+
+**Keep the amendment-13 pursuit; add a predictor that chooses the speed, and a fallback.** The replay above shows the
+pursuit was not the failure. A carrot rebuilt from the effective rate is worse (alternatives, §15.7).
+
+1. **Geometry (unchanged).** The carrot is on the gate axis through the validated grid point,
+   `max(0.75 v, 2 v/W, 0.3 r)` ahead of the projection, never beyond A. The window is 6 r_gate before X, blended
+   from A between 6 r and 5 r. Approaches into the window with the nose at A converge for any lateral offset up to
+   8 km within 4.0 km (M2) / 4.4 km (M1) of X at 100 m/s (`a13_feasibility.txt` **[i]**). The window (6.6 km) covers
+   that.
+2. **Predictor (new).** Once per second of game time, for a capital in the window on a validated approach and in join
+   mode, the predictor simulates the same pursuit in the plane of the lateral offset at each candidate speed
+   {100, 60, 40, 25 m/s}. It starts from the last decision's state (s, e, nose angle and rate, speed and slip), uses
+   the live W and α = W · `f+0x2b0` · rot_pct/100, and steps 0.25 s with the speed slewing at the hull's
+   acceleration. The written speed is the highest candidate whose prediction reaches X with the nose ≤ 4°, the
+   velocity ≤ 6°, |e| ≤ 50 m and no excursion beyond 50 m. That is a margin over the 8.11° acceptance, so a
+   re-acceleration cannot spend it. Speed is lowered at once and raised only when the higher candidate passes. This is
+   the cornering rule: it slows a capital only when the turn it still needs does not fit at the cap. The 0.25 s step
+   gives the same verdict as 1/30 s in 56 of 56 cases (`predictor_dt.txt` **[i]**).
+3. **Infeasible** = no candidate passes, or the first decision on the approach finds the ship past the crossing plane
+   (s > 0). Fallback is then latched until the order or its given point changes: aim at A; write
+   `min(100, √(25² + 2 a (d − 0.75 r)), ω_eff d / (2 sin θ))`, floor 10 m/s, the floor itself when the nose is 90° or
+   more off A, with ω_eff = 2.3°/s (the measured join rate). This is written in both directions because the engine's
+   alignment creep (1 m/s beyond 45.6°) is what stalled the M1. The ship enters the sphere at ≈ 25 m/s, the vanilla
+   crossing speed (21–28 m/s), not at 100 m/s. P2 takes the vanilla stop and 0x1f rotates. In the model the fallback
+   costs 4–5 s against arriving at 100 m/s and stopping instantly (S7). What it buys is that the instant
+   100 → 0 m/s stop is gone.
+4. **P2 keeps the speed** only when all hold at the crossing:
+   * the approach is in join mode (not fallback);
+   * the nose is within 8.11° of F (the engine's 0x1f test, `0xfd70`);
+   * the velocity (nose plus slip) is within 10° of F;
+   * `v ≤ v_bound = √(2 a (|X − G| − (r_ship + v/10)(1 + (tf − 1)/4)))`. The coast under order 0 must end before
+     the order-5 arrival sphere. That gives 181 m/s (M2) and 132 m/s (M1) at SETA 10, 287 / 201 m/s at SETA 1, so
+     the bound does not bind at the 100 m/s cap **[i]**.
+
+   The order-4 arrival test itself fires at 100 m/s: the escort M2's leg ended at 830 → 825 m from P, within ≈ 5 m of
+   the sphere **[m]**. The coast while the KC waits for the through slot is v²/2a = 500 m (M2) or 1 km (M1). That
+   leaves the bodies ≥ 2.5 km (M2) and ≥ 1.9 km (M1) apart from the gate.
+5. **The gate branch at E** (§15.1) covers the last 1.8 km of order 4 and the coast. Without it, every successful join
+   would turn into an 0x12 away from the gate at 5–7 km.
+
+**Budget** (model, `join_budget.txt` **[i]**; total = to X + order 5 + launch, SETA 1 / SETA 10; a fallback adds the
+rotate and order 5 from rest):
+
+| Start | M2 to X | M2 total | M1 to X | M1 total | Path |
+| --- | --- | --- | --- | --- | --- |
+| 6.0 km lateral, 5 r before X, nose at A (brief) | 90.5 s, nose 1.9°, 100 m/s, excursion 47 m | 128.9 / 106.4 s | 89.0 s, 1.3° | 125.9 / 105.3 s | join at 100 |
+| 6.4 km lateral, 5.58 r, nose at A (fixture; Run157 frame 17272) | 100.3 s, 1.0° | 138.7 / 116.2 | 98.7 s, 0.9° | 135.6 / 115.0 | join at 100 |
+| on axis, 5 r, aligned | 55.3 s | 93.7 / 71.2 | 55.3 s | 92.2 / 71.6 | join at 100 |
+| 6.4 km, 5 r, nose 60° away (after an 0x12 leg) | 111.9 s, 2.3°, slows to 60 | 150.3 / 127.8 | 133.8 s, 3.3° | 170.8 / 150.2 | join, slowed (A13: 16.6° / 26.8° at 100, stop) |
+| Run157 frame 18472: 627 m, 2.97 r, nose 68° away | 67.2 s, 1.0° | 105.7 / 83.2 | 68.9 s, 3.0° | 105.8 / 85.2 | join, slowed (A13: 31.6° / 37.8°) |
+| Run157 escort M2: 1645 m, 0.70 r, nose 91° | 26.2 s to the sphere at 25 m/s, 17.8°, rotate 6.5 s | 76.5 / 54.0 | 29.1 s, 13.5°, 4.9 s | 82.1 / 61.6 | fallback |
+| Run157 M1: s +2.05 r, 3.3 km, nose 135° | 52.8 s at 25 m/s, 81°, rotate 23.0 s | 119.6 / 97.1 | 59.1 s, 75°, 23.1 s | 130.3 / 109.8 | fallback (Run157 measured: 103.8 + 24.5 + 18.7 s) |
+
+The model under-reads the escort M2's state: it predicts 19° at 100 m/s where the flight weaved to 85°. The fallback
+rule is the safer side of that error.
+
+The turn radius at the measured join rate is v/ω_eff: 2.5 km at 100 m/s and 1.5 km at 60 m/s. At the cap rate it is
+566 m (M2) / 637 m (M1). The predictor's slow-down is what makes the radius fit, not a fixed schedule.
+
+### 15.4 Diagnostics (question 4)
+
+All rows are `--debug` tier, written to fixed rings in the handlers and formatted at the frame end.
+
+* **`ship_gate_capital_join`**, per traced capital on a gate approach: at 1 Hz, on every mode change, and at the
+  crossing.
+  * Fields: `frame obj class slot mode=join|fallback|out reason=pred_none|past_x|grid_invalid|latched s_m e_m
+    nose_deg vel_deg rate_dps v_ms v_cmd carrot_m pred_nose_deg pred_e_m`.
+  * At the crossing, also `cross_nose_deg cross_vel_deg cross_v kept=0|1 why_not=mode|nose|vel|bound` and the
+    seconds since the window entry.
+  * This is the capital `ship_gate_transition` that Run157 lacked.
+* **`ship_avoid_e_verdict`**, for trace slot 0 as A: one row per (A, B) pair per second of game time, deduplicated by
+  a 16-entry last-logged table.
+  * Fields: `frame A A_order B B_class B_code B_order B_leader B_flags (autopilot, deleted, attached bits) member_leader member_age_ms
+    d_m r_B A_age_ms B_age_ms verdict=suppress_small|suppress_member|suppress_gate|suppress_resolved|pass_<reason>`.
+  * Every pair with a "pass" verdict whose warn then fires is visible.
+* **`ship_avoid_engine_warn_pre`**, for every traced ship, at the frame end. It is written when
+  `[obj+0x40] & 0x3000 == 0x3000` and the order is not 0x12. That is the frame the KC's `CollisionWarn` ran, before
+  `SA_StopObject` and 0x12; L0 of the next pass clears the bits (§3.2).
+  * Fields: `order tgt count=f+0x1e0` and, for each of up to five entries, `other class code order leader member d_m
+    (f+0x1f8[i]) r_m e_verdict` (the last verdict E gave for that pair this frame).
+  * The existing first-0x12-frame row stays.
+* **Counters** (summary): `e_suppressed_member`, `e_suppressed_gate`, `member_{set,refresh,replace,expire,
+  leader_gone,id_mismatch,reversed,player}`, `avoid_excluded_member`, `gate_capital_join`, `gate_capital_slowed`,
+  `gate_capital_fallback_{pred,past_x}`, `gate_capital_kept` (`gate_capital_stop_kept` renamed),
+  `gate_capital_not_kept_{mode,nose,vel,bound}`.
+* **Trace slots.** Trace the capital and its escorts (max_ships 4: the leader, two escorts, one escort capital), so
+  the escort side of the cascade gets `warn_pre` rows too.
+
+### 15.5 Verification (question 5)
+
+**Host fixture** (`verification/probe/ship_steering_host.cpp`, `--capital`, the calibrated plant with slip; no Wine):
+
+| Scenario | Assertions |
+| --- | --- |
+| D. Cascade: M2 leader on order 4 with two M6 escorts and one M1 escort on 0x14. At t1 one M6 is forced into 0x12 (target 0) inside the leader's warn cone; at t2 the M1 goes 0x12 → 0 → 0x14 across 30 s. Variants: the M6 docked; the M6 without the autopilot bit; the M1 switched to order 4 (gate); the M1 despawned and a new object placed at its pointer | Verdicts: (leader, M6 on 0x12 / order 0) = `suppress_small` on every call; docked and manual variants = pass. (leader, M1) = `suppress_member` while 0x12/0 and ≤ 20 s since the last 0x14, then pass. `excluded()` true for the M1 over the same span, so the leader's `ship_avoid_detour` rows against it = 0. Order-4 switch, despawn and id swap: membership cleared the same snapshot. The leader's `warn` flag 0x1000 is never set for an escort pair. (escort M1 on 0x12, leader) = pass. |
+| E. Join from 6.4 km lateral at 5.58 r and at 5 r, nose at A; slots 0 and 19; M2 and M1 | nose at X ≤ 8.1° (model ≤ 1.9°); velocity ≤ 10°; \|e\| ≤ 100 m; excursion past the axis ≤ 100 m (model 47 m); `v_cmd` 100 throughout; crossing ≥ 90 m/s; P2 keeps (`gate_capital_kept` 1); 0x1f one frame; `e_suppressed_gate` > 0 and the gate pair's warn flag never set; time to X within 15 % of `join_budget.txt` |
+| F. Late join: 627 m, 2.97 r, nose 68° away; and 6.4 km, 5 r, nose 60° away | at least one `v_cmd` = 60 row; converges with the same assertions as E; no instant stop |
+| G. Infeasible: escort state (1645 m, 0.70 r, 91°) and past X (s +2.05 r) | `mode=fallback` latched, reason `pred_none` / `past_x`; sphere entry ≤ 30 m/s; P2 vanilla stop; rotate within 20 % of `rotate_time`; no write above 100 m/s |
+| A/B/C of §6 | unchanged, re-run (B's `order` and `stale` pass reasons now read 0; its manual M6 still passes) |
+
+**Flight targets** (next run with the capital and its escorts traced; `capital_timeline.py`, `signed_lateral.py`
+and a new `e_verdict` tally):
+
+| Phase | Target |
+| --- | --- |
+| cascade | 0x12 legs of the leader: 0. Any remaining leg must have a `warn_pre` row naming a non-small, non-member obstacle. `e_small_pass_order` absent. Leader detours against members: 0. |
+| membership | `member_expire` ≪ `member_set`; `member_id_mismatch` 0 unless a ship died |
+| join | one order-4 segment per approach; `ship_gate_capital_join` mode=join at the window entry; no axis crossing in order 4 (`signed_lateral.py`); at the crossing nose ≤ 8.1°, v ≥ 90 m/s, `kept=1` |
+| gate | `e_suppressed_gate` > 0 per aligned approach; no `warn_pre` row naming the gate |
+| hand-over | 0x1f ≤ 2 rows; order-5 start ≥ 85 m/s when the through slot is granted at once |
+| fallback | every fallback row has entry ≤ 30 m/s and a rotate within 20 % of the model |
+| small ships | detours against capitals are reported, not targeted: small ships dodging is the intended side. A predicted miss < C after the capitals stop evading should fall from 321. |
+
+### 15.6 Cost, option-off, native Windows
+
+* **Site E.** The small branch gets cheaper: B's table probe and order read are gone, and flags plus docked are read
+  as before. The member branch is one table probe, for capital–capital pairs only. The gate branch is one compare
+  against A's `f+0x224`, which is already read.
+* **Snapshot.** See §15.2.
+* **Predictor.** At most about 4k steps of a few tens of flops per evaluation: tens of microseconds **[i]**. It runs
+  at the frame-end hook, not in the steering handler: one capital per frame, each at 1 Hz. Site A reads the chosen
+  speed and mode from the ship entry, so the handler's p99 (Run157: 6.4 µs median, 29 µs max) does not change.
+* **Option-off.** Everything sits behind `ship_steering_gates_capital`, except the membership memory and the escort
+  member rows, which sit behind `ship_avoidance`. Off means amendment 13's or vanilla behaviour respectively.
+* **Native Windows.** Everything is in-process x86 code on game-memory contracts the module already validates, and
+  the build is SSE2. Nothing touches Wine, D3D or windowing. Run157 itself was native.
+
+### 15.7 Alternatives considered (amendment 15)
+
+| Alternative | Why it loses |
+| --- | --- |
+| The brief's carrot `max(2 v/ω_eff, k_join e)` with ω_eff = 2.3°/s (k 1.5) | A 5 km carrot inside a 6.6 km window aims at A, so the ship never converges. Model: 19–62° at X from every lateral start, against 0.3–3.3° for the kept pursuit with the predictor (`join_budget.txt`, ALT and A15 rows). |
+| Bounded-intercept corridor from far out (carrot max(15 s v, 1.5 e), no window) | No gain from far: the M2 from Run157's frame-761 start takes 442.5 s against 431.8 s. It also fails from every window-entry start: 43° at X from 6 km at 5 r, because a bounded intercept needs about k·e of along distance (`join_budget.txt`, CORRIDOR rows). |
+| Keep amendment 13's control test and add "B on 0x12 or 0" to the suppress set | It covers the measured cascade, but a parked small ship (order 0, zero speed) would still be the only case left with the engine. The user's rule is unconditional, and the residual risk is the same. |
+| Suppress (escort, leader) on the escort side too | Nobody would avoid within a pair of 1 km hulls while the escort is off its slot (§15.1). |
+| Patch the partner filter `0x0044d385..` to ignore the order | An immediate patch on a shared engine predicate: it changes vanilla behaviour for every formation, including ones the module does not steer, and needs a memory the engine does not have. |
+| Lookup table for feasibility instead of the predictor | T(e, ψ) depends on v, α and the start rate jointly (`a13_feasibility.txt`: 600 m + v·T with T 9–50 s). A table per class is calibration debt; the predictor uses the live caps. |
+| Fallback at 100 m/s (A13's arrival plus the engine's instant stop) | 4–5 s faster in the model, but it keeps the visible 100 → 0 m/s snap the design exists to remove. |
+
+### 15.8 Unknown, and what settles it
+
+| Unknown | Settles it |
+| --- | --- |
+| Whether `[obj+0x08]` ids are never reused within a session | listing of the id assignment at object creation (the registry insert reached from `SA_GetEventObject` `0x004607f4`) |
+| What fires the escorts' own 0x12 legs (warns against the leader in the order-0 frames, against each other, against third ships) | `warn_pre` rows for traced escorts (§15.4) |
+| Whether the 0x12 re-score's mesh-test branch for large obstacles really bypasses the `0x0044dd90` entry (so E cannot drop an escort capital already listed) | listing of the re-score loop in `0x00456722` (§3.3) |
+| Whether the 0x12 re-score on A also adds new obstacles (the "only refreshes the list" path of `0x0044e450`) | listing of `0x0044e450`'s 0x12 branch; with §15.1 it no longer changes a verdict |
+| The capital's slot spacing in formation vs `1.2 (rA + rB)` (do escort capitals warn on each other as wingmates?) | `warn_pre` rows; if they do, a wingmate row like the member row |
+| The predictor against the engine's two-axis turn (the model is yaw only; Run156's M1 two-axis rotate took 44.9 s against 29.7 s modelled) | fixture scenarios E–G with both axes; flight `pred_nose_deg` against `cross_nose_deg` |
+| The collision damage law (`"MakeDamage"`) | KC walk of the handler in `x3story.obj` (class 2004) |
+| Whether `SA_StopObject` from a gate warn during the through-slot wait zeroes the speed | moot with the gate branch; the `warn_pre` row would show it |

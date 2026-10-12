@@ -1,0 +1,15 @@
+rows 28551 frames 761..29311
+axis crossings (frame, order, s/r, nose angle to F deg, v m/s, lead-in active, |e| before/after m):
+  18350 0x12 -3.55 33.9 110 False 14/14
+  20912 0x12 1.41 75.4 110 False 575/580
+min |e| per order-4 lead segment (frame range, min e m, at frame, nose angle there, s/r):
+  6097-6394 12189 @6097 hdg 45.7 s/r -26.61
+  17272-17552 4942 @17552 hdg 76.1 s/r -4.78
+  17778-18242 421 @18242 hdg 31.9 s/r -4.19
+  18472-19266 627 @18472 hdg 68.1 s/r -2.97
+  19594-19945 2702 @19594 hdg 64.8 s/r -2.28
+  21887-22079 2987 @22079 hdg 103.6 s/r 0.67
+  22464-23449 1911 @22464 hdg 91.4 s/r 1.00
+  23850-24137 2482 @23850 hdg 59.0 s/r 2.29
+  26479-26633 4520 @26479 hdg 30.6 s/r 0.42
+  27471-28741 724 @28741 hdg 119.2 s/r 1.12

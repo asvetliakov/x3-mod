@@ -1,0 +1,97 @@
+Capital join model for docs/architecture/capital-gate-transit.md, amendment 15 (inferred unless a line says measured).
+ok = X reached with the nose within 8.11 deg, |e| <= 100 m, no excursion beyond 100 m past the axis.
+total = to X + order 5 + launch (continuous when ok, else stop + 0x1f + order 5 from rest), SETA 1 / SETA 10.
+
+== M2: W 10.1 deg/s, alpha 0.51 deg/s^2, a_lin 10.0 m/s^2, r 1091 m, X-G 5221 m; A13 carrot at 100 m/s 1132 m
+  S1 brief: 6000 m lateral, 5 r before X, nose at A (psi -43)
+    A13 installed   t_X=  90.5s nose=  1.9 vel=  1.9 v_X=100.0 e_X=   27m cross=1 over=  47m v_min=100.0 w_pk= 3.4d/s gate_warn= 17.5s ok=True total 128.9/106.4
+    ALT k=1.5       t_X=  76.0s nose= 43.4 vel= 43.4 v_X=100.0 e_X=  782m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 134.5/112.0
+    CORRIDOR k=1.5  t_X=  76.0s nose= 43.4 vel= 43.4 v_X=100.0 e_X=  782m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 134.5/112.0
+    A15 join        t_X=  90.5s nose=  1.9 vel=  1.9 v_X=100.0 e_X=   27m cross=1 over=  47m v_min=100.0 w_pk= 3.4d/s gate_warn= 17.5s rotate  0.0s total 128.9/106.4
+  S2 fixture: 6435 m lateral, 5.58 r (Run157 frame 17272 position), nose at A (psi -43)
+    A13 installed   t_X= 100.3s nose=  1.0 vel=  1.1 v_X=100.0 e_X=   15m cross=1 over=  47m v_min=100.0 w_pk= 3.1d/s gate_warn= 17.7s ok=True total 138.7/116.2
+    ALT k=1.5       t_X=  83.8s nose= 42.6 vel= 42.6 v_X=100.0 e_X=  761m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 142.1/119.6
+    CORRIDOR k=1.5  t_X=  83.8s nose= 42.6 vel= 42.6 v_X=100.0 e_X=  761m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 142.1/119.6
+    A15 join        t_X= 100.3s nose=  1.0 vel=  1.1 v_X=100.0 e_X=   15m cross=1 over=  47m v_min=100.0 w_pk= 3.1d/s gate_warn= 17.7s rotate  0.0s total 138.7/116.2
+  S3 on axis, 5 r before X, aligned (psi +0)
+    A13 installed   t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 17.7s ok=True total  93.7/ 71.2
+    ALT k=1.5       t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 17.7s ok=True total  93.7/ 71.2
+    CORRIDOR k=1.5  t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 17.7s ok=True total  93.7/ 71.2
+    A15 join        t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 17.7s rotate  0.0s total  93.7/ 71.2
+  S4 far: Run157 frame 761 (15932 m lateral, 35.8 r), nose at A (psi -22)
+    A13 installed   t_X= 431.8s nose=  0.4 vel=  0.4 v_X=100.0 e_X=    6m cross=1 over=  48m v_min=100.0 w_pk= 3.2d/s gate_warn= 17.7s ok=True total 470.2/447.7
+    ALT k=1.5       t_X= 425.4s nose= 20.0 vel= 20.0 v_X=100.0 e_X=  301m cross=0 over=   0m v_min=100.0 w_pk= 1.7d/s gate_warn= 17.9s ok=False total 476.6/454.1
+    CORRIDOR k=1.5  t_X= 442.5s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 2.0d/s gate_warn= 17.6s ok=True total 480.9/458.4
+    A15 join        t_X= 431.8s nose=  0.4 vel=  0.4 v_X=100.0 e_X=    6m cross=1 over=  48m v_min=100.0 w_pk= 3.2d/s gate_warn= 17.7s rotate  0.0s total 470.2/447.7
+  S5 6.4 km lateral, 5 r, nose 60 deg away (after an 0x12 leg) (psi +60)
+    A13 installed   t_X= 107.9s nose= 16.6 vel= 20.7 v_X=100.0 e_X=  133m cross=0 over=   0m v_min=100.0 w_pk= 6.9d/s gate_warn=  5.9s ok=False total 157.7/135.2
+    ALT k=1.5       t_X=  94.0s nose= 61.1 vel= 61.1 v_X=100.0 e_X= 1498m cross=0 over=   0m v_min=100.0 w_pk= 6.2d/s gate_warn=  0.0s ok=False total 156.7/134.2
+    CORRIDOR k=1.5  t_X=  94.0s nose= 61.1 vel= 61.1 v_X=100.0 e_X= 1498m cross=0 over=   0m v_min=100.0 w_pk= 6.2d/s gate_warn=  0.0s ok=False total 156.7/134.2
+    A15 join        t_X= 111.9s nose=  2.3 vel=  5.6 v_X=100.0 e_X=   28m cross=1 over=  28m v_min= 60.0 w_pk= 7.0d/s gate_warn= 11.6s rotate  0.0s total 150.3/127.8
+  S6 Run157 frame 18472 after 0x12: 627 m, 2.97 r, nose 68 deg away (psi +68)
+    A13 installed   t_X=  45.1s nose= 31.6 vel= 35.0 v_X=100.0 e_X=  420m cross=0 over=   0m v_min=100.0 w_pk= 6.5d/s gate_warn=  0.8s ok=False total 100.3/ 77.8
+    ALT k=1.5       t_X=  43.3s nose= 45.4 vel= 45.1 v_X=100.0 e_X=  839m cross=0 over=   0m v_min=100.0 w_pk= 5.6d/s gate_warn=  6.7s ok=False total 102.3/ 79.8
+    CORRIDOR k=1.5  t_X=  43.2s nose= 44.7 vel= 44.5 v_X=100.0 e_X=  818m cross=0 over=   0m v_min=100.0 w_pk= 5.9d/s gate_warn=  6.6s ok=False total 102.1/ 79.6
+    A15 join        t_X=  67.2s nose=  1.0 vel=  1.5 v_X=100.0 e_X=   46m cross=1 over=  46m v_min= 60.0 w_pk= 6.7d/s gate_warn= 13.4s rotate  0.0s total 105.7/ 83.2
+  S7 Run157 escort M2 order-4 start: 1645 m, 0.70 r, nose 91 deg toward (psi -91)
+    A13 installed   t_X=  21.4s nose= 18.9 vel= 27.0 v_X=100.0 e_X=  200m cross=1 over= 200m v_min=100.0 w_pk= 4.4d/s gate_warn=  1.8s ok=False total  72.2/ 49.7
+    ALT k=1.5       t_X=  21.2s nose= 18.6 vel= 26.5 v_X=100.0 e_X=  182m cross=1 over= 182m v_min=100.0 w_pk= 4.7d/s gate_warn=  2.0s ok=False total  71.9/ 49.4
+    CORRIDOR k=1.5  t_X=  21.2s nose= 18.6 vel= 26.6 v_X=100.0 e_X=  182m cross=1 over= 182m v_min=100.0 w_pk= 4.7d/s gate_warn=  2.0s ok=False total  71.9/ 49.4
+    A15 fallback    t_X=  26.2s nose= 17.8 vel= 22.1 v_X= 25.2 e_X=  166m cross=0 over=   0m v_min= 25.2 w_pk= 4.4d/s gate_warn=  4.9s rotate  6.5s total  76.5/ 54.0
+  S8 Run157 M1 order-4 start: 3252 m, s +2.05 r (past X), nose 135 deg (psi +135)
+    A15 fallback    t_X=  52.8s nose= 81.3 vel= 81.4 v_X= 25.7 e_X=  819m cross=0 over=   0m v_min= 10.0 w_pk= 6.3d/s gate_warn=  0.0s rotate 23.0s total 119.6/ 97.1
+
+== M1: W 9.0 deg/s, alpha 0.45 deg/s^2, a_lin 5.0 m/s^2, r 1022 m, X-G 5082 m; A13 carrot at 100 m/s 1274 m
+  S1 brief: 6000 m lateral, 5 r before X, nose at A (psi -43)
+    A13 installed   t_X=  89.0s nose=  1.3 vel=  0.9 v_X=100.0 e_X=   19m cross=1 over=  21m v_min=100.0 w_pk= 3.2d/s gate_warn= 17.8s ok=True total 125.9/105.3
+    ALT k=1.5       t_X=  76.0s nose= 43.4 vel= 43.4 v_X=100.0 e_X=  782m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 139.6/119.1
+    CORRIDOR k=1.5  t_X=  76.0s nose= 43.4 vel= 43.4 v_X=100.0 e_X=  782m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 139.6/119.1
+    A15 join        t_X=  89.0s nose=  1.3 vel=  0.9 v_X=100.0 e_X=   19m cross=1 over=  21m v_min=100.0 w_pk= 3.2d/s gate_warn= 17.8s rotate  0.0s total 125.9/105.3
+  S2 fixture: 6435 m lateral, 5.58 r (Run157 frame 17272 position), nose at A (psi -43)
+    A13 installed   t_X=  98.7s nose=  0.9 vel=  0.8 v_X=100.0 e_X=   13m cross=1 over=  21m v_min=100.0 w_pk= 2.9d/s gate_warn= 17.9s ok=True total 135.6/115.0
+    ALT k=1.5       t_X=  83.8s nose= 42.6 vel= 42.6 v_X=100.0 e_X=  761m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 147.2/126.7
+    CORRIDOR k=1.5  t_X=  83.8s nose= 42.6 vel= 42.6 v_X=100.0 e_X=  761m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn=  0.0s ok=False total 147.2/126.7
+    A15 join        t_X=  98.7s nose=  0.9 vel=  0.8 v_X=100.0 e_X=   13m cross=1 over=  21m v_min=100.0 w_pk= 2.9d/s gate_warn= 17.9s rotate  0.0s total 135.6/115.0
+  S3 on axis, 5 r before X, aligned (psi +0)
+    A13 installed   t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 18.0s ok=True total  92.2/ 71.6
+    ALT k=1.5       t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 18.0s ok=True total  92.2/ 71.6
+    CORRIDOR k=1.5  t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 18.0s ok=True total  92.2/ 71.6
+    A15 join        t_X=  55.3s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 0.0d/s gate_warn= 18.0s rotate  0.0s total  92.2/ 71.6
+  S4 far: Run157 frame 761 (15932 m lateral, 35.8 r), nose at A (psi -22)
+    A13 installed   t_X= 431.1s nose=  0.3 vel=  0.4 v_X=100.0 e_X=    5m cross=1 over=  21m v_min=100.0 w_pk= 3.0d/s gate_warn= 18.0s ok=True total 468.0/447.4
+    ALT k=1.5       t_X= 425.4s nose= 20.0 vel= 20.0 v_X=100.0 e_X=  301m cross=0 over=   0m v_min=100.0 w_pk= 1.5d/s gate_warn= 18.2s ok=False total 481.3/460.8
+    CORRIDOR k=1.5  t_X= 442.5s nose=  0.0 vel=  0.0 v_X=100.0 e_X=    0m cross=0 over=   0m v_min=100.0 w_pk= 1.9d/s gate_warn= 18.0s ok=True total 479.4/458.8
+    A15 join        t_X= 431.1s nose=  0.3 vel=  0.4 v_X=100.0 e_X=    5m cross=1 over=  21m v_min=100.0 w_pk= 3.0d/s gate_warn= 18.0s rotate  0.0s total 468.0/447.4
+  S5 6.4 km lateral, 5 r, nose 60 deg away (after an 0x12 leg) (psi +60)
+    A13 installed   t_X= 106.3s nose= 26.8 vel= 29.7 v_X=100.0 e_X=  357m cross=0 over=   0m v_min=100.0 w_pk= 6.5d/s gate_warn=  4.0s ok=False total 164.7/144.2
+    ALT k=1.5       t_X=  94.7s nose= 62.0 vel= 62.0 v_X=100.0 e_X= 1558m cross=0 over=   0m v_min=100.0 w_pk= 5.8d/s gate_warn=  0.0s ok=False total 163.0/142.5
+    CORRIDOR k=1.5  t_X=  94.7s nose= 62.0 vel= 62.0 v_X=100.0 e_X= 1558m cross=0 over=   0m v_min=100.0 w_pk= 5.8d/s gate_warn=  0.0s ok=False total 163.0/142.5
+    A15 join        t_X= 133.8s nose=  3.3 vel=  6.0 v_X=100.0 e_X=    5m cross=0 over=   0m v_min= 60.0 w_pk= 6.6d/s gate_warn= 13.1s rotate  0.0s total 170.8/150.2
+  S6 Run157 frame 18472 after 0x12: 627 m, 2.97 r, nose 68 deg away (psi +68)
+    A13 installed   t_X=  44.9s nose= 37.8 vel= 39.7 v_X=100.0 e_X=  613m cross=0 over=   0m v_min=100.0 w_pk= 6.1d/s gate_warn=  2.6s ok=False total 106.8/ 86.3
+    ALT k=1.5       t_X=  43.5s nose= 48.8 vel= 47.9 v_X=100.0 e_X=  948m cross=0 over=   0m v_min=100.0 w_pk= 5.3d/s gate_warn=  8.3s ok=False total 108.6/ 88.1
+    CORRIDOR k=1.5  t_X=  43.5s nose= 48.3 vel= 47.5 v_X=100.0 e_X=  928m cross=0 over=   0m v_min=100.0 w_pk= 5.5d/s gate_warn=  8.2s ok=False total 108.4/ 87.9
+    A15 join        t_X=  68.9s nose=  3.0 vel=  6.0 v_X= 92.2 e_X=   11m cross=1 over=  11m v_min= 60.0 w_pk= 6.3d/s gate_warn= 12.5s rotate  0.0s total 105.8/ 85.2
+  S7 Run157 escort M2 order-4 start: 1645 m, 0.70 r, nose 91 deg toward (psi -91)
+    A13 installed   t_X=  21.9s nose= 19.4 vel= 27.4 v_X=100.0 e_X=  252m cross=1 over= 252m v_min=100.0 w_pk= 4.3d/s gate_warn=  1.7s ok=False total  77.5/ 57.0
+    ALT k=1.5       t_X=  21.8s nose= 19.3 vel= 27.3 v_X=100.0 e_X=  244m cross=1 over= 244m v_min=100.0 w_pk= 4.5d/s gate_warn=  1.7s ok=False total  77.4/ 56.9
+    CORRIDOR k=1.5  t_X=  21.8s nose= 19.3 vel= 27.3 v_X=100.0 e_X=  245m cross=1 over= 245m v_min=100.0 w_pk= 4.5d/s gate_warn=  1.7s ok=False total  77.4/ 56.9
+    A15 fallback    t_X=  29.1s nose= 13.5 vel= 17.1 v_X= 25.1 e_X=  125m cross=0 over=   0m v_min= 25.1 w_pk= 4.3d/s gate_warn=  7.2s rotate  4.9s total  82.1/ 61.6
+  S8 Run157 M1 order-4 start: 3252 m, s +2.05 r (past X), nose 135 deg (psi +135)
+    A15 fallback    t_X=  59.1s nose= 75.1 vel= 75.1 v_X= 25.2 e_X=  800m cross=0 over=   0m v_min= 25.2 w_pk= 6.1d/s gate_warn=  0.0s rotate 23.1s total 130.3/109.8
+
+== gate warn reach (slot 0, nose at G): d at which b + L + 2(rA + rB) >= d, by speed
+  M2 v= 10 m/s: reach   6488 m (X at 5221 m from G)
+  M2 v= 28 m/s: reach   6522 m (X at 5221 m from G)
+  M2 v= 50 m/s: reach   6608 m (X at 5221 m from G)
+  M2 v=100 m/s: reach   6983 m (X at 5221 m from G)
+  M1 v= 10 m/s: reach   6284 m (X at 5082 m from G)
+  M1 v= 28 m/s: reach   6353 m (X at 5082 m from G)
+  M1 v= 50 m/s: reach   6524 m (X at 5082 m from G)
+  M1 v=100 m/s: reach   6874 m (X at 5082 m from G)
+
+== P2 keep-speed bound: coast under order 0 (v^2 / 2a) must end before the order-5 arrival sphere
+  M2 SETA  1: order-5 sphere  1101 m, room  4120 m, v_bound   287 m/s
+  M2 SETA 10: order-5 sphere  3578 m, room  1642 m, v_bound   181 m/s
+  M1 SETA  1: order-5 sphere  1032 m, room  4050 m, v_bound   201 m/s
+  M1 SETA 10: order-5 sphere  3352 m, room  1729 m, v_bound   132 m/s

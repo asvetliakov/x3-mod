@@ -1,0 +1,15 @@
+M2 S1               100:Y/Y   60:Y/Y   40:Y/Y   25:Y/Y
+M2 S2               100:Y/Y   60:Y/Y   40:Y/Y   25:Y/Y
+M2 S5               100:n/n   60:Y/Y   40:Y/Y   25:Y/Y
+M2 S6               100:n/n   60:Y/Y   40:Y/Y   25:Y/Y
+M2 S7               100:n/n   60:n/n   40:n/n   25:n/n
+M2 edge 4r/4km/+60  100:n/n   60:Y/Y   40:Y/Y   25:Y/Y
+M2 edge 3r/2km/+30  100:n/n   60:Y/Y   40:Y/Y   25:Y/Y
+M1 S1               100:Y/Y   60:Y/Y   40:Y/Y   25:Y/Y
+M1 S2               100:Y/Y   60:Y/Y   40:Y/Y   25:Y/Y
+M1 S5               100:n/n   60:Y/Y   40:Y/Y   25:Y/Y
+M1 S6               100:n/n   60:Y/Y   40:Y/Y   25:Y/Y
+M1 S7               100:n/n   60:n/n   40:n/n   25:n/n
+M1 edge 4r/4km/+60  100:n/n   60:Y/Y   40:Y/Y   25:Y/Y
+M1 edge 3r/2km/+30  100:n/n   60:n/n   40:Y/Y   25:Y/Y
+verdict mismatches (1/30 s vs 0.25 s): 0
