@@ -1,0 +1,129 @@
+Replay before the model calibration (ship_trace_replay.py and replay_breakdown.py as of commit b88407f0), on the same
+two traces as replay_classes_run155.txt / replay_classes_run156.txt. Produced by:
+  copy verification/probe/ship_trace_replay.py, ship_trace_rows.py and results/ship-steering/replay_breakdown.py of b88407f0
+  into one directory old/ (the breakdown importing old/ship_trace_replay.py), then
+  python3 -I old/ship_trace_replay.py <trace> --json old.json
+  python3 -I old/replay_breakdown.py <trace>
+  python3 -I verification/results/ship-steering/replay_classes.py old.json   (its divergent-step sections)
+<trace>: the ship_trace rows of the Run155 session (x3m.prev.log, 20261012-181404) and the Run156 session (x3m.log,
+20261012-192902). The breakdown's pos_c split covers every step by order(n) (boundary steps included); turning = a rate
+!= 0 at n or n+1.
+
+== Run155 replay_breakdown (old)
+pos_c split (m): key steps along_p50 along_p95 lat_p50 lat_p95
+  order=0 straight     25  0.0000 0.0000  0.0000 0.0000
+  order=0 turning       7  1.3139 2.5316  1.5151 6.5122
+  order=4 straight  66288  0.0017 0.0045  0.0014 0.0332
+  order=4 turning   39265  0.0351 1.8895  0.3240 4.3527
+  order=5 straight  10745  0.0016 0.0072  0.0014 0.0075
+  order=5 turning   21757  0.0019 0.7443  0.0017 0.3788
+  order=8 straight     36  102.5013 233.7025  77.5991 173.4570
+rate-controller steps (order, worst axis, size, e source, e/w sign, e=0 hypothesis): count
+  (5, 'roll', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 4454
+  (5, 'yaw', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 1513
+  (5, 'pitch', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 1227
+  (4, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 297
+  (5, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 291
+  (4, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 175
+  (4, 'yaw', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 116
+  (5, 'roll', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 110
+  (5, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 99
+  (4, 'pitch', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 73
+  (4, 'yaw', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 39
+  (5, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 35
+  (5, 'roll', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 22
+  (4, 'roll', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 16
+  (4, 'roll', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 12
+  (4, 'pitch', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 11
+  (4, 'yaw', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 11
+  (5, 'roll', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 10
+  (4, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 10
+  (5, 'yaw', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 8
+  (5, 'yaw', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 3
+  (5, 'pitch', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 3
+  (5, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 3
+  (5, 'pitch', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 1
+  (4, 'pitch', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 1
+  (5, 'pitch', 'big', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 1
+  (5, 'yaw', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 1
+
+== Run155 divergent steps (old)
+divergent steps: order -> class counts
+  order 0 steps 32 divergent 8 {'order boundary': 8}
+  order 4 steps 105553 divergent 46521 {'position': 46420, 'order boundary': 101}
+  order 5 steps 32502 divergent 12895 {'rate controller': 4696, 'position': 8164, 'order boundary': 34, 'speed law': 1}
+  order 8 steps 36 divergent 34 {'order boundary': 2, 'position': 32}
+all classes {'position': 54616, 'order boundary': 145, 'rate controller': 4696, 'speed law': 1}
+
+== Run156 replay_breakdown (old)
+pos_c split (m): key steps along_p50 along_p95 lat_p50 lat_p95
+  order=0 straight     28  0.0000 0.0031  0.0000 0.0225
+  order=0 turning     141  0.1944 3.6004  0.8263 6.5864
+  order=4 straight  45812  0.0016 0.0032  0.0014 0.0223
+  order=4 turning   40920  0.0094 0.7874  0.1110 2.1868
+  order=5 straight   7709  0.0013 0.0023  0.0013 0.0025
+  order=5 turning   18990  0.0016 0.4831  0.0014 0.3320
+  order=8 straight     16  125.5035 423.5749  24.4871 82.6440
+  order=8 turning      36  132.9440 260.9015  10.6888 37.7367
+  order=18 straight    743  0.0022 0.2442  0.0021 0.0641
+  order=18 turning   14802  0.0646 1.3692  0.4375 2.6879
+  order=31 turning    1914  0.0000 0.0001  0.0000 0.0028
+rate-controller steps (order, worst axis, size, e source, e/w sign, e=0 hypothesis): count
+  (5, 'roll', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 3102
+  (31, 'yaw', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 819
+  (5, 'yaw', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 778
+  (5, 'pitch', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 619
+  (31, 'pitch', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 515
+  (31, 'yaw', 'small', 'carried', 'e*w<0', 'actual!=ctl(e=0)') 250
+  (5, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 134
+  (4, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 106
+  (4, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 92
+  (5, 'roll', 'small', 'carried', 'e=0', 'actual!=ctl(e=0)') 92
+  (5, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 77
+  (31, 'pitch', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 60
+  (31, 'yaw', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 50
+  (4, 'roll', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 20
+  (4, 'roll', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 19
+  (18, 'yaw', 'small', 'carried', 'e*w<0', 'actual!=ctl(e=0)') 17
+  (18, 'yaw', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 17
+  (4, 'pitch', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 14
+  (18, 'roll', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 14
+  (4, 'roll', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 10
+  (5, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 9
+  (4, 'yaw', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 8
+  (18, 'roll', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 6
+  (18, 'yaw', 'small', 'leaf', 'e*w<0', 'actual!=ctl(e=0)') 5
+  (5, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 5
+  (4, 'yaw', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 4
+  (4, 'yaw', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 4
+  (18, 'yaw', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 4
+  (5, 'roll', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 4
+  (18, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 4
+  (18, 'pitch', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 4
+  (18, 'yaw', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 4
+  (4, 'pitch', 'small', 'leaf', 'e*w>=0', 'actual==ctl(e=0)') 4
+  (18, 'roll', 'small', 'leaf', 'e*w>=0', 'actual!=ctl(e=0)') 3
+  (18, 'pitch', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 3
+  (31, 'yaw', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 3
+  (5, 'pitch', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 3
+  (5, 'yaw', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 2
+  (5, 'yaw', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 2
+  (4, 'pitch', 'small', 'carried', 'e*w>=0', 'actual!=ctl(e=0)') 2
+  (5, 'pitch', 'big', 'leaf', 'e=0', 'actual!=ctl(e=0)') 2
+  (4, 'pitch', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 1
+  (4, 'roll', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 1
+  (31, 'pitch', 'small', 'carried', 'e*w>=0', 'actual==ctl(e=0)') 1
+  (5, 'pitch', 'small', 'leaf', 'e*w<0', 'actual!=ctl(e=0)') 1
+  (18, 'yaw', 'small', 'leaf', 'e=0', 'actual!=ctl(e=0)') 1
+  (5, 'roll', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 1
+  (5, 'pitch', 'big', 'carried', 'e=0', 'actual!=ctl(e=0)') 1
+
+== Run156 divergent steps (old)
+divergent steps: order -> class counts
+  order 0 steps 169 divergent 136 {'order boundary': 136}
+  order 4 steps 86732 divergent 40777 {'position': 39481, 'order boundary': 128, 'speed law': 1161, 'rate controller': 7}
+  order 5 steps 26699 divergent 8088 {'rate controller': 3231, 'position': 4780, 'order boundary': 39, 'speed law': 38}
+  order 8 steps 52 divergent 48 {'order boundary': 4, 'position': 44}
+  order 18 steps 15545 divergent 14576 {'order boundary': 112, 'position': 14464}
+  order 31 steps 1914 divergent 1887 {'order boundary': 6, 'position': 67, 'rate controller': 1628, 'orientation': 186}
+all classes {'position': 58836, 'order boundary': 425, 'rate controller': 4866, 'speed law': 1199, 'orientation': 186}

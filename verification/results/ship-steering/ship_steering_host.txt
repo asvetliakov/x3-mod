@@ -1,104 +1,108 @@
 boreas horizon: L=3074 m v=70 m/s L/v=43.9 s horizon=30.0 s swept=2100 m (C vs a 50 m asteroid 1108 m)
-turn       M5  Discoverer fps= 60 settle=  3599 ms vanilla=  3699 ms oracle=  3664 ms ratio=0.982 overshoot=0.000 deg (vanilla 0.000) peak=89.6 deg/s
-turn(diag)  M5  finish yaw=3283 ms pitch=2283 ms (rel 0.305; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.879 vanilla_pitch_zero_ticks=60
-turn(diag) M5  Discoverer fps= 60 settle=  3316 ms vanilla=  3699 ms oracle=  3648 ms ratio=0.909 overshoot=0.000 deg (vanilla 0.003) peak=73.6 deg/s
-arrival     M5  Discoverer fps= 60 t= 65599 ms (vanilla  65549) entries=1 entry_speed=10.0 m/s (vanilla 11.9) min_d=17.3 m d_arr=18.4 m beyond=0.0 m reversals=0
-arrival/pf  M5  Discoverer fps= 60 t= 65633 ms entries=1 entry_speed=10.0 m/s reversals=0
-formation   M5  Discoverer fps= 60 slot_rms=8.0 m (2r=18.4) max_after_entry=36.7 m window_increases=0
+turn       M5  Discoverer fps= 60 settle=  3616 ms vanilla=  3716 ms oracle=  3664 ms ratio=0.987 overshoot=0.000 deg (vanilla 0.007) peak=89.6 deg/s
+turn(diag)  M5  finish yaw=3283 ms pitch=2283 ms (rel 0.305; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.871 vanilla_pitch_zero_ticks=59
+turn(diag) M5  Discoverer fps= 60 settle=  3333 ms vanilla=  3699 ms oracle=  3648 ms ratio=0.914 overshoot=0.000 deg (vanilla 0.007) peak=73.6 deg/s
+arrival     M5  Discoverer fps= 60 t= 66283 ms (vanilla  66249) entries=1 entry_speed=10.0 m/s (vanilla 11.9) min_d=17.6 m d_arr=18.4 m beyond=0.0 m reversals=0
+arrival/pf  M5  Discoverer fps= 60 t= 66333 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M5  Discoverer fps= 60 slot_rms=185.9 m (2r=18.4) max_after_entry=215.8 m window_increases=12
 flyby@600  M5  Discoverer fps= 60 detours=0 min_clear=600.0 m (C=234.2, part r=200) path=19982 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 20316 (lateral 0 m, L=3147 m) side=0
-flyby@150  M5  Discoverer fps= 60 detours=262 min_clear=301.2 m (C=234.2, part r=200) path=20006 m (x1.000) max_lateral=342 m back_on_course=0 ms after pass at 20350 (lateral 340 m, L=3147 m) side=-1
-crossing    M5  Discoverer fps= 60 detours=802/844 min_dist=101.5 m (C=43.4, L=2836 m) sides=-1/-1 unresolved=0/0
-form+rock   M5  Discoverer fps= 60 leader_detours=211 follower_detours=215/201 min_rock=434/434/434 m (C=334) final_slot=92.1/92.1 m (4r=36.8)
-gate theta -45 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=9.2 deg (vanilla 33.3) creep_ticks=0 (vanilla 36) min_v=409.3 v0=409.3 (vanilla 0.0) t_cross->launch=3917 ms (vanilla 9133) lead_in=1 aim_jump=0.6 deg
-gate theta  +0 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=8.4 deg (vanilla 19.0) creep_ticks=0 (vanilla 9) min_v=409.3 v0=409.3 (vanilla 0.0) t_cross->launch=3817 ms (vanilla 8700) lead_in=1 aim_jump=0.6 deg
-gate theta +45 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=20.9 deg (vanilla 13.7) creep_ticks=21 (vanilla 0) min_v=409.3 v0=409.3 (vanilla 0.0) t_cross->launch=4150 ms (vanilla 8967) lead_in=1 aim_jump=0.6 deg
-gate spread M5  fps= 60 rings=3,2,0,7 min_sep=205 m max_dA=827 m max_heading_err=22.1 deg
-gate far/rot M5  fps= 60 cross_v=532.0 heading_err=8.2 creep=0 t_A=10416 (vanilla 36966) aim_jump=3.3 deg
-gate lateral M5  fps= 60 heading_err=8.0 (vanilla 22.4) creep=0 (vanilla 21) t_A=10366 (vanilla 32483)
-turn       M3  Nova       fps= 60 settle=  5616 ms vanilla=  5816 ms oracle=  5776 ms ratio=0.972 overshoot=0.000 deg (vanilla 0.003) peak=55.9 deg/s
-turn(diag)  M3  finish yaw=5200 ms pitch=3583 ms (rel 0.311; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.882 vanilla_pitch_zero_ticks=112
-turn(diag) M3  Nova       fps= 60 settle=  5216 ms vanilla=  5816 ms oracle=  5760 ms ratio=0.906 overshoot=0.000 deg (vanilla 0.001) peak=46.5 deg/s
-arrival     M3  Nova       fps= 60 t= 93666 ms (vanilla  93550) entries=1 entry_speed=10.0 m/s (vanilla 13.8) min_d=22.4 m d_arr=23.8 m beyond=0.0 m reversals=0
-arrival/pf  M3  Nova       fps= 60 t= 93683 ms entries=1 entry_speed=10.0 m/s reversals=0
-formation   M3  Nova       fps= 60 slot_rms=3.8 m (2r=23.8) max_after_entry=47.4 m window_increases=0
+flyby@150  M5  Discoverer fps= 60 detours=283 min_clear=284.9 m (C=234.2, part r=200) path=20340 m (x1.017) max_lateral=714 m back_on_course=2867 ms after pass at 20466 (lateral 426 m, L=3147 m) side=-1
+crossing    M5  Discoverer fps= 60 detours=343/361 min_dist=0.8 m (C=43.4, L=2836 m) sides=-1/-1 unresolved=4/5
+form+rock   M5  Discoverer fps= 60 leader_detours=205 follower_detours=211/198 min_rock=411/411/411 m (C=334) final_slot=92.1/92.1 m (4r=36.8)
+gate theta -45 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=7.9 deg (vanilla 33.3) creep_ticks=0 (vanilla 36) min_v=390.0 v0=390.0 (vanilla 0.0) t_cross->launch=5017 ms (vanilla 9133) lead_in=1 aim_jump=0.9 deg
+gate theta  +0 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=14.2 deg (vanilla 19.0) creep_ticks=34 (vanilla 9) min_v=391.0 v0=391.0 (vanilla 0.0) t_cross->launch=4567 ms (vanilla 8700) lead_in=1 aim_jump=0.9 deg
+gate theta +45 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=27.0 deg (vanilla 13.7) creep_ticks=68 (vanilla 0) min_v=397.4 v0=397.4 (vanilla 0.0) t_cross->launch=4634 ms (vanilla 8967) lead_in=1 aim_jump=0.9 deg
+gate spread M5  fps= 60 rings=3,2,0,7 min_sep=215 m max_dA=828 m max_heading_err=18.1 deg
+gate far/rot M5  fps= 60 cross_v=532.0 heading_err=33.8 creep=33 t_A=11149 (vanilla 37033) aim_jump=3.3 deg
+gate lateral M5  fps= 60 heading_err=22.0 (vanilla 22.4) creep=11 (vanilla 21) t_A=11966 (vanilla 32533)
+turn       M3  Nova       fps= 60 settle=  5650 ms vanilla=  5833 ms oracle=  5776 ms ratio=0.978 overshoot=0.000 deg (vanilla 0.048) peak=55.9 deg/s
+turn(diag)  M3  finish yaw=5216 ms pitch=3566 ms (rel 0.316; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.878 vanilla_pitch_zero_ticks=111
+turn(diag) M3  Nova       fps= 60 settle=  5233 ms vanilla=  5833 ms oracle=  5760 ms ratio=0.909 overshoot=0.000 deg (vanilla 0.007) peak=46.5 deg/s
+arrival     M3  Nova       fps= 60 t= 94333 ms (vanilla  94233) entries=1 entry_speed=10.0 m/s (vanilla 13.8) min_d=22.4 m d_arr=23.8 m beyond=0.0 m reversals=0
+arrival/pf  M3  Nova       fps= 60 t= 94366 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M3  Nova       fps= 60 slot_rms=20.4 m (2r=23.8) max_after_entry=47.4 m window_increases=1
 flyby@600  M3  Nova       fps= 60 detours=0 min_clear=600.0 m (C=236.9, part r=200) path=19977 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 43649 (lateral 0 m, L=2242 m) side=0
-flyby@150  M3  Nova       fps= 60 detours=445 min_clear=308.0 m (C=236.9, part r=200) path=19984 m (x0.999) max_lateral=164 m back_on_course=0 ms after pass at 43666 (lateral 156 m, L=2242 m) side=-1
-crossing    M3  Nova       fps= 60 detours=1108/1145 min_dist=110.1 m (C=48.8, L=1959 m) sides=-1/-1 unresolved=0/0
-form+rock   M3  Nova       fps= 60 leader_detours=333 follower_detours=345/337 min_rock=438/438/438 m (C=337) final_slot=117.7/117.6 m (4r=47.6)
-gate theta -45 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=9.9 deg (vanilla 33.3) creep_ticks=0 (vanilla 56) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=10101 ms (vanilla 13667) lead_in=1 aim_jump=0.3 deg
-gate theta  +0 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=8.0 deg (vanilla 19.0) creep_ticks=0 (vanilla 13) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=9884 ms (vanilla 13001) lead_in=1 aim_jump=0.3 deg
-gate theta +45 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=20.5 deg (vanilla 13.7) creep_ticks=28 (vanilla 0) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=10567 ms (vanilla 13501) lead_in=1 aim_jump=0.3 deg
-gate spread M3  fps= 60 rings=3,2,0,7 min_sep=204 m max_dA=828 m max_heading_err=21.2 deg
-gate far/rot M3  fps= 60 cross_v=247.5 heading_err=8.2 creep=0 t_A=22483 (vanilla 31250) aim_jump=3.3 deg
-gate lateral M3  fps= 60 heading_err=8.2 (vanilla 22.4) creep=0 (vanilla 32) t_A=22483 (vanilla 28483)
-turn       M6  Centaur    fps= 60 settle= 17499 ms vanilla= 17516 ms oracle= 17088 ms ratio=1.024 overshoot=0.000 deg (vanilla 0.000) peak=20.1 deg/s
-turn(diag)  M6  finish yaw=15516 ms pitch=8833 ms (rel 0.431; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.701 vanilla_pitch_zero_ticks=397
-turn(diag) M6  Centaur    fps= 60 settle= 15666 ms vanilla= 17483 ms oracle= 17040 ms ratio=0.919 overshoot=0.000 deg (vanilla 0.000) peak=17.4 deg/s
-arrival     M6  Centaur    fps= 60 t=123200 ms (vanilla 122400) entries=1 entry_speed=10.0 m/s (vanilla 23.6) min_d=126.2 m d_arr=128.8 m beyond=0.0 m reversals=0
-arrival/pf  M6  Centaur    fps= 60 t=123216 ms entries=1 entry_speed=10.0 m/s reversals=0
-formation   M6  Centaur    fps= 60 slot_rms=42.3 m (2r=128.8) max_after_entry=257.6 m window_increases=0
-flyby@600  M6  Centaur    fps= 60 detours=0 min_clear=600.0 m (C=296.6, part r=200) path=19871 m (x0.994) max_lateral=0 m back_on_course=0 ms after pass at 60016 (lateral 0 m, L=4429 m) side=0
-flyby@150  M6  Centaur    fps= 60 detours=1009 min_clear=369.4 m (C=296.6, part r=200) path=19905 m (x0.995) max_lateral=437 m back_on_course=1900 ms after pass at 60133 (lateral 437 m, L=4429 m) side=-1
-crossing    M6  Centaur    fps= 60 detours=415/450 min_dist=314.6 m (C=161.0, L=4221 m) sides=-1/-1 unresolved=0/0
-form+rock   M6  Centaur    fps= 60 leader_detours=839 follower_detours=0/0 min_rock=515/575/575 m (C=397) final_slot=542.7/542.7 m (4r=257.6)
-gate theta -45 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=8.6 deg (vanilla 33.3) creep_ticks=0 (vanilla 166) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=14267 ms (vanilla 19933) lead_in=1 aim_jump=0.1 deg
-gate theta  +0 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=8.8 deg (vanilla 19.0) creep_ticks=0 (vanilla 39) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=13984 ms (vanilla 17900) lead_in=1 aim_jump=0.1 deg
-gate theta +45 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=21.3 deg (vanilla 13.7) creep_ticks=99 (vanilla 0) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=14950 ms (vanilla 18250) lead_in=1 aim_jump=0.1 deg
-gate spread M6  fps= 60 rings=3,2,0,7 min_sep=206 m max_dA=829 m max_heading_err=19.6 deg
-gate far/rot M6  fps= 60 cross_v=100.0 heading_err=8.2 creep=0 t_A=54133 (vanilla 61016) aim_jump=3.3 deg
-gate lateral M6  fps= 60 heading_err=8.1 (vanilla 22.4) creep=0 (vanilla 94) t_A=54183 (vanilla 54099)
-gate dock M6  fps= 60 theta -45 sub=0 min_v=88.3 m/s (vanilla 25.3) t_B=15649 ms (vanilla 19933) creep_ticks=702 (vanilla 464) v0=88.3 ring=1
-gate dock M6  fps= 60 theta  +0 sub=0 min_v=87.7 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=745 (vanilla 489) v0=87.7 ring=1
-gate dock M6  fps= 60 theta +45 sub=0 min_v=88.3 m/s (vanilla 25.3) t_B=15649 ms (vanilla 19933) creep_ticks=702 (vanilla 464) v0=88.3 ring=1
-gate dock M6  fps= 60 theta  +0 sub=5 min_v=87.7 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=745 (vanilla 489) v0=87.7 ring=1
-turn       TS  Mercury    fps= 60 settle= 15533 ms vanilla= 15533 ms oracle= 15424 ms ratio=1.007 overshoot=0.000 deg (vanilla 0.000) peak=21.1 deg/s
-turn(diag)  TS  finish yaw=13766 ms pitch=7883 ms (rel 0.427; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.706 vanilla_pitch_zero_ticks=350
-turn(diag) TS  Mercury    fps= 60 settle= 13883 ms vanilla= 15533 ms oracle= 15392 ms ratio=0.902 overshoot=0.000 deg (vanilla 0.000) peak=19.6 deg/s
-arrival     TS  Mercury    fps= 60 t=165583 ms (vanilla 164783) entries=1 entry_speed=10.0 m/s (vanilla 27.1) min_d=75.0 m d_arr=77.0 m beyond=0.0 m reversals=0
-arrival/pf  TS  Mercury    fps= 60 t=165566 ms entries=1 entry_speed=10.0 m/s reversals=0
-formation   TS  Mercury    fps= 60 slot_rms=18.0 m (2r=77.0) max_after_entry=153.7 m window_increases=0
+flyby@150  M3  Nova       fps= 60 detours=447 min_clear=242.6 m (C=236.9, part r=200) path=19994 m (x1.000) max_lateral=192 m back_on_course=716 ms after pass at 43783 (lateral 81 m, L=2242 m) side=-1
+crossing    M3  Nova       fps= 60 detours=1108/1145 min_dist=87.0 m (C=48.8, L=1959 m) sides=-1/-1 unresolved=0/0
+form+rock   M3  Nova       fps= 60 leader_detours=328 follower_detours=339/332 min_rock=434/434/434 m (C=337) final_slot=117.7/117.7 m (4r=47.6)
+gate theta -45 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=18.8 deg (vanilla 33.3) creep_ticks=9 (vanilla 56) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=10567 ms (vanilla 13684) lead_in=1 aim_jump=0.5 deg
+gate theta  +0 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=32.0 deg (vanilla 19.0) creep_ticks=57 (vanilla 14) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=10051 ms (vanilla 13034) lead_in=1 aim_jump=0.5 deg
+gate theta +45 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=42.0 deg (vanilla 13.7) creep_ticks=86 (vanilla 0) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=10601 ms (vanilla 13517) lead_in=1 aim_jump=0.5 deg
+gate spread M3  fps= 60 rings=3,2,0,7 min_sep=235 m max_dA=829 m max_heading_err=21.7 deg
+gate far/rot M3  fps= 60 cross_v=247.5 heading_err=8.0 creep=0 t_A=23750 (vanilla 31300) aim_jump=3.3 deg
+gate lateral M3  fps= 60 heading_err=13.1 (vanilla 22.4) creep=0 (vanilla 32) t_A=24116 (vanilla 28483)
+dock M3  fps= 60 gamma=30 engagements=1 toggles=0 roll_cuts=0 match_end_stops=0 nonmonotone=0 err_at_zone=0.00 deg t_zone=32400 t_docked=37683 | previous handler: engagements=2 toggles=2 roll_cuts=1 nonmonotone=0 err_at_zone=0.00 t_docked=37683 | vanilla: engagements=2 toggles=2 roll_cuts=1 err_at_zone=0.00 t_docked=37683
+turn       M6  Centaur    fps= 60 settle= 17616 ms vanilla= 17616 ms oracle= 17088 ms ratio=1.031 overshoot=0.000 deg (vanilla 0.000) peak=20.1 deg/s
+turn(diag)  M6  finish yaw=15583 ms pitch=8833 ms (rel 0.433; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.705 vanilla_pitch_zero_ticks=395
+turn(diag) M6  Centaur    fps= 60 settle= 15733 ms vanilla= 17583 ms oracle= 17040 ms ratio=0.923 overshoot=0.000 deg (vanilla 0.000) peak=17.4 deg/s
+arrival     M6  Centaur    fps= 60 t=123916 ms (vanilla 123133) entries=1 entry_speed=10.0 m/s (vanilla 23.6) min_d=126.3 m d_arr=128.8 m beyond=0.0 m reversals=0
+arrival/pf  M6  Centaur    fps= 60 t=123933 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M6  Centaur    fps= 60 slot_rms=39.6 m (2r=128.8) max_after_entry=257.5 m window_increases=0
+flyby@600  M6  Centaur    fps= 60 detours=0 min_clear=600.0 m (C=296.6, part r=200) path=19872 m (x0.994) max_lateral=0 m back_on_course=0 ms after pass at 60016 (lateral 0 m, L=4429 m) side=0
+flyby@150  M6  Centaur    fps= 60 detours=1033 min_clear=339.1 m (C=296.6, part r=200) path=19926 m (x0.996) max_lateral=439 m back_on_course=2767 ms after pass at 60266 (lateral 242 m, L=4429 m) side=-1
+crossing    M6  Centaur    fps= 60 detours=397/435 min_dist=292.4 m (C=161.0, L=4221 m) sides=-1/-1 unresolved=0/0
+form+rock   M6  Centaur    fps= 60 leader_detours=838 follower_detours=0/0 min_rock=515/576/576 m (C=397) final_slot=543.1/543.1 m (4r=257.6)
+gate theta -45 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=7.0 deg (vanilla 33.3) creep_ticks=0 (vanilla 166) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=14467 ms (vanilla 19949) lead_in=1 aim_jump=0.2 deg
+gate theta  +0 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=20.2 deg (vanilla 19.0) creep_ticks=78 (vanilla 38) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=14100 ms (vanilla 17883) lead_in=1 aim_jump=0.2 deg
+gate theta +45 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=31.2 deg (vanilla 13.7) creep_ticks=212 (vanilla 0) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=15133 ms (vanilla 18249) lead_in=1 aim_jump=0.2 deg
+gate spread M6  fps= 60 rings=3,2,0,7 min_sep=220 m max_dA=828 m max_heading_err=9.5 deg
+gate far/rot M6  fps= 60 cross_v=100.0 heading_err=7.7 creep=0 t_A=55249 (vanilla 61116) aim_jump=3.3 deg
+gate lateral M6  fps= 60 heading_err=11.3 (vanilla 22.4) creep=0 (vanilla 94) t_A=55699 (vanilla 54183)
+gate dock M6  fps= 60 theta -45 sub=0 min_v=88.5 m/s (vanilla 25.3) t_B=15649 ms (vanilla 19933) creep_ticks=701 (vanilla 464) v0=88.5 ring=1
+gate dock M6  fps= 60 theta  +0 sub=0 min_v=88.0 m/s (vanilla 17.3) t_B=16299 ms (vanilla 21000) creep_ticks=743 (vanilla 488) v0=88.0 ring=1
+gate dock M6  fps= 60 theta +45 sub=0 min_v=88.5 m/s (vanilla 25.3) t_B=15649 ms (vanilla 19933) creep_ticks=701 (vanilla 464) v0=88.5 ring=1
+gate dock M6  fps= 60 theta  +0 sub=5 min_v=88.0 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=743 (vanilla 489) v0=88.0 ring=1
+dock M6  fps= 60 gamma=30 engagements=1 toggles=0 roll_cuts=0 match_end_stops=0 nonmonotone=0 err_at_zone=0.01 deg t_zone=24033 t_docked=39233 | previous handler: engagements=2 toggles=2 roll_cuts=1 nonmonotone=0 err_at_zone=0.01 t_docked=39233 | vanilla: engagements=2 toggles=2 roll_cuts=1 err_at_zone=0.01 t_docked=39233
+turn       TS  Mercury    fps= 60 settle= 15616 ms vanilla= 15599 ms oracle= 15424 ms ratio=1.012 overshoot=0.000 deg (vanilla 0.004) peak=21.1 deg/s
+turn(diag)  TS  finish yaw=13816 ms pitch=7883 ms (rel 0.429; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.708 vanilla_pitch_zero_ticks=349
+turn(diag) TS  Mercury    fps= 60 settle= 13933 ms vanilla= 15566 ms oracle= 15392 ms ratio=0.905 overshoot=0.000 deg (vanilla 0.004) peak=19.5 deg/s
+arrival     TS  Mercury    fps= 60 t=166299 ms (vanilla 165483) entries=1 entry_speed=10.0 m/s (vanilla 27.3) min_d=75.1 m d_arr=77.0 m beyond=0.0 m reversals=0
+arrival/pf  TS  Mercury    fps= 60 t=166283 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   TS  Mercury    fps= 60 slot_rms=15.4 m (2r=77.0) max_after_entry=153.7 m window_increases=0
 flyby@600  TS  Mercury    fps= 60 detours=0 min_clear=600.0 m (C=263.5, part r=200) path=19923 m (x0.996) max_lateral=0 m back_on_course=0 ms after pass at 87100 (lateral 0 m, L=1684 m) side=0
-flyby@150  TS  Mercury    fps= 60 detours=888 min_clear=319.3 m (C=263.5, part r=200) path=20013 m (x1.001) max_lateral=224 m back_on_course=5800 ms after pass at 90300 (lateral 99 m, L=1684 m) side=-1
-crossing    TS  Mercury    fps= 60 detours=214/220 min_dist=216.2 m (C=102.0, L=1684 m) sides=-1/1 unresolved=0/0
-form+rock   TS  Mercury    fps= 60 leader_detours=497 follower_detours=486/473 min_rock=473/473/473 m (C=364) final_slot=232.8/232.8 m (4r=154.0)
-gate theta -45 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.2) heading_err=9.6 deg (vanilla 33.3) creep_ticks=0 (vanilla 148) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=19900 ms (vanilla 23416) lead_in=1 aim_jump=0.1 deg
-gate theta  +0 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.2) heading_err=8.1 deg (vanilla 19.0) creep_ticks=0 (vanilla 34) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=19483 ms (vanilla 21633) lead_in=1 aim_jump=0.1 deg
-gate theta +45 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.2) heading_err=20.6 deg (vanilla 13.7) creep_ticks=76 (vanilla 0) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=20883 ms (vanilla 22466) lead_in=1 aim_jump=0.1 deg
-gate spread TS  fps= 60 rings=3,2,0,7 min_sep=205 m max_dA=828 m max_heading_err=20.6 deg
-gate far/rot TS  fps= 60 cross_v=100.0 heading_err=8.2 creep=0 t_A=55583 (vanilla 55999) aim_jump=3.3 deg
-gate lateral TS  fps= 60 heading_err=8.2 (vanilla 22.4) creep=0 (vanilla 84) t_A=55549 (vanilla 49083)
-gate dock TS  fps= 60 theta -45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=19816 ms (vanilla 24183) creep_ticks=417 (vanilla 342) v0=62.0 ring=0
-gate dock TS  fps= 60 theta  +0 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=20233 ms (vanilla 24683) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
-gate dock TS  fps= 60 theta +45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=19816 ms (vanilla 24183) creep_ticks=417 (vanilla 342) v0=62.0 ring=0
-gate dock TS  fps= 60 theta  +0 sub=5 min_v=62.0 m/s (vanilla 1.0) t_B=20233 ms (vanilla 24683) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
-turn       M2  Boreas     fps= 60 settle= 39200 ms vanilla= 39200 ms oracle= 38096 ms ratio=1.029 overshoot=0.000 deg (vanilla 0.000) peak=9.0 deg/s
-turn(diag)  M2  finish yaw=34766 ms pitch=19666 ms (rel 0.434; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.695 vanilla_pitch_zero_ticks=923
-turn(diag) M2  Boreas     fps= 60 settle= 35066 ms vanilla= 39100 ms oracle= 37984 ms ratio=0.923 overshoot=0.000 deg (vanilla 0.000) peak=7.8 deg/s
-arrival     M2  Boreas     fps= 60 t=271599 ms (vanilla 267649) entries=1 entry_speed=10.0 m/s (vanilla 70.0) min_d=1407.4 m d_arr=1410.8 m beyond=0.0 m reversals=0
-arrival/pf  M2  Boreas     fps= 60 t=271599 ms entries=1 entry_speed=10.0 m/s reversals=0
-formation   M2  Boreas     fps= 60 slot_rms=1360.1 m (2r=1410.8) max_after_entry=2115.1 m window_increases=0
-flyby@600  M2  Boreas     fps= 60 detours=2125 min_clear=1401.9 m (C=1258.1, part r=200) path=19197 m (x0.960) max_lateral=1747 m back_on_course=1233 ms after pass at 160666 (lateral 1720 m, L=3074 m) side=1
-flyby@150  M2  Boreas     fps= 60 detours=2157 min_clear=1414.1 m (C=1258.1, part r=200) path=19119 m (x0.956) max_lateral=1646 m back_on_course=1600 ms after pass at 159799 (lateral 1622 m, L=3074 m) side=1
-crossing    M2  Boreas     fps= 60 detours=822/866 min_dist=2315.3 m (C=1763.5, L=3074 m) sides=1/-1 unresolved=0/0
-form+rock   M2  Boreas     fps= 60 leader_detours=1451 follower_detours=0/0 min_rock=1484/3069/3069 m (C=1358) final_slot=224.7/224.7 m (4r=2821.6)
-gate capital M2  fps= 60 slot=7 heading_err=24.2 deg (vanilla 24.2) v_after_A=0.0 v0=0.0 t_A=73999 (vanilla 73999)
-gate capital M2  fps= 60 slot=0 heading_err=30.6 deg (vanilla 30.6) v_after_A=0.0 v0=0.0 t_A=78866 (vanilla 78866)
-capital cloud fps= 60 heading_change=0.00 deg capital_detours=0 skipped_small=6478 fighters_detouring=12/12 min_clear=1305.2 m (C=739.6)
-capital cloud   fighter  0 detours=325 min_dist=1305 m unresolved=3
-capital cloud   fighter  1 detours=181 min_dist=1542 m unresolved=6
-capital cloud   fighter  2 detours=327 min_dist=1305 m unresolved=1
-capital cloud   fighter  3 detours=179 min_dist=1582 m unresolved=4
-capital cloud   fighter  4 detours=318 min_dist=1305 m unresolved=2
-capital cloud   fighter  5 detours=177 min_dist=1607 m unresolved=4
-capital cloud   fighter  6 detours=333 min_dist=1305 m unresolved=2
-capital cloud   fighter  7 detours=180 min_dist=1554 m unresolved=5
-capital cloud   fighter  8 detours=321 min_dist=1305 m unresolved=2
-capital cloud   fighter  9 detours=181 min_dist=1585 m unresolved=5
-capital cloud   fighter 10 detours=343 min_dist=1305 m unresolved=2
-capital cloud   fighter 11 detours=182 min_dist=1548 m unresolved=6
-gate dock M4  fps= 60 theta -45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13766) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
-gate dock M4  fps= 60 theta  +0 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13249 ms (vanilla 13999) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
-gate dock M4  fps= 60 theta +45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13766) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
-gate dock M4  fps= 60 theta  +0 sub=5 min_v=90.0 m/s (vanilla 90.0) t_B=13249 ms (vanilla 13999) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
-ship_steering_host checks=3676 failures=0
+flyby@150  TS  Mercury    fps= 60 detours=934 min_clear=21.8 m (C=263.5, part r=200) path=20705 m (x1.035) max_lateral=693 m back_on_course=9600 ms after pass at 96700 (lateral 23 m, L=1684 m) side=1
+crossing    TS  Mercury    fps= 60 detours=256/279 min_dist=165.6 m (C=102.0, L=1684 m) sides=-1/-1 unresolved=0/0
+form+rock   TS  Mercury    fps= 60 leader_detours=487 follower_detours=483/468 min_rock=472/472/472 m (C=364) final_slot=232.2/232.2 m (4r=154.0)
+gate theta -45 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.1) heading_err=4.1 deg (vanilla 33.3) creep_ticks=0 (vanilla 148) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=20083 ms (vanilla 23433) lead_in=1 aim_jump=0.2 deg
+gate theta  +0 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.1) heading_err=16.1 deg (vanilla 19.0) creep_ticks=0 (vanilla 34) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=19600 ms (vanilla 21650) lead_in=1 aim_jump=0.2 deg
+gate theta +45 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.1) heading_err=27.6 deg (vanilla 13.7) creep_ticks=119 (vanilla 0) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=20983 ms (vanilla 22500) lead_in=1 aim_jump=0.2 deg
+gate spread TS  fps= 60 rings=3,2,0,7 min_sep=214 m max_dA=828 m max_heading_err=8.5 deg
+gate far/rot TS  fps= 60 cross_v=100.0 heading_err=7.8 creep=0 t_A=56666 (vanilla 56083) aim_jump=3.3 deg
+gate lateral TS  fps= 60 heading_err=10.1 (vanilla 22.4) creep=0 (vanilla 84) t_A=56999 (vanilla 49133)
+gate dock TS  fps= 60 theta -45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=19833 ms (vanilla 24200) creep_ticks=417 (vanilla 342) v0=62.0 ring=0
+gate dock TS  fps= 60 theta  +0 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=20250 ms (vanilla 24700) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
+gate dock TS  fps= 60 theta +45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=19833 ms (vanilla 24200) creep_ticks=417 (vanilla 342) v0=62.0 ring=0
+gate dock TS  fps= 60 theta  +0 sub=5 min_v=62.0 m/s (vanilla 1.0) t_B=20250 ms (vanilla 24700) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
+dock TS  fps= 60 gamma=30 engagements=1 toggles=0 roll_cuts=0 match_end_stops=1 nonmonotone=0 err_at_zone=0.00 deg t_zone=27650 t_docked=37966 | previous handler: engagements=2 toggles=2 roll_cuts=1 nonmonotone=0 err_at_zone=0.01 t_docked=37966 | vanilla: engagements=2 toggles=2 roll_cuts=1 err_at_zone=0.01 t_docked=37966
+turn       M2  Boreas     fps= 60 settle= 39216 ms vanilla= 39216 ms oracle= 38096 ms ratio=1.029 overshoot=0.000 deg (vanilla 0.000) peak=9.0 deg/s
+turn(diag)  M2  finish yaw=34883 ms pitch=19683 ms (rel 0.436; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.698 vanilla_pitch_zero_ticks=921
+turn(diag) M2  Boreas     fps= 60 settle= 35166 ms vanilla= 39166 ms oracle= 37984 ms ratio=0.926 overshoot=0.000 deg (vanilla 0.000) peak=7.8 deg/s
+arrival     M2  Boreas     fps= 60 t=272583 ms (vanilla 268583) entries=1 entry_speed=10.0 m/s (vanilla 70.0) min_d=1407.3 m d_arr=1410.8 m beyond=0.0 m reversals=0
+arrival/pf  M2  Boreas     fps= 60 t=272566 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M2  Boreas     fps= 60 slot_rms=1355.6 m (2r=1410.8) max_after_entry=2115.1 m window_increases=0
+flyby@600  M2  Boreas     fps= 60 detours=2210 min_clear=1291.0 m (C=1258.1, part r=200) path=19298 m (x0.965) max_lateral=1759 m back_on_course=15617 ms after pass at 166099 (lateral 1160 m, L=3074 m) side=1
+flyby@150  M2  Boreas     fps= 60 detours=2240 min_clear=1297.2 m (C=1258.1, part r=200) path=19205 m (x0.960) max_lateral=1660 m back_on_course=12234 ms after pass at 164549 (lateral 1111 m, L=3074 m) side=1
+crossing    M2  Boreas     fps= 60 detours=834/877 min_dist=2243.2 m (C=1763.5, L=3074 m) sides=1/-1 unresolved=0/0
+form+rock   M2  Boreas     fps= 60 leader_detours=1448 follower_detours=0/0 min_rock=1461/3084/3084 m (C=1358) final_slot=228.6/229.0 m (4r=2821.6)
+gate capital M2  fps= 60 slot=7 heading_err=24.2 deg (vanilla 24.2) v_after_A=0.0 v0=0.0 t_A=74116 (vanilla 74116)
+gate capital M2  fps= 60 slot=0 heading_err=30.6 deg (vanilla 30.7) v_after_A=0.0 v0=0.0 t_A=78966 (vanilla 78966)
+capital cloud fps= 60 heading_change=0.00 deg capital_detours=0 skipped_small=6478 fighters_detouring=12/12 min_clear=1266.9 m (C=739.6)
+capital cloud   fighter  0 detours=265 min_dist=1267 m unresolved=0
+capital cloud   fighter  1 detours=268 min_dist=1267 m unresolved=0
+capital cloud   fighter  2 detours=267 min_dist=1267 m unresolved=0
+capital cloud   fighter  3 detours=269 min_dist=1267 m unresolved=0
+capital cloud   fighter  4 detours=267 min_dist=1267 m unresolved=0
+capital cloud   fighter  5 detours=276 min_dist=1268 m unresolved=0
+capital cloud   fighter  6 detours=275 min_dist=1273 m unresolved=0
+capital cloud   fighter  7 detours=265 min_dist=1267 m unresolved=0
+capital cloud   fighter  8 detours=265 min_dist=1267 m unresolved=0
+capital cloud   fighter  9 detours=271 min_dist=1267 m unresolved=0
+capital cloud   fighter 10 detours=276 min_dist=1267 m unresolved=0
+capital cloud   fighter 11 detours=270 min_dist=1267 m unresolved=0
+gate dock M4  fps= 60 theta -45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13783) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
+gate dock M4  fps= 60 theta  +0 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13266 ms (vanilla 14016) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+gate dock M4  fps= 60 theta +45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13783) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
+gate dock M4  fps= 60 theta  +0 sub=5 min_v=90.0 m/s (vanilla 90.0) t_B=13266 ms (vanilla 14016) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+amendment 12 A/B: gate legs identical; 180 deg turn settle changed in 0 of 15 runs (max 0 ms), arrival changed in 1 of 15 (max 0 ms)
+ship_steering_host checks=4175 failures=0 slip_gaps=131
 checks PASS

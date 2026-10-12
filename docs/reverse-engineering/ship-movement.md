@@ -744,6 +744,16 @@ is cleared through a register mask **[i]**. The exact geometry of `0x004f1c50`/`
 and the meaning of `f+0x930` (the previous step axis **[i]**). The P5 term on a launch with v0 > 0 (no such row
 yet). Whether the 74 `e = 0` rate cuts are visible in flight.
 
+**Replay check (2026-10-12, Run156 trace [t]).** With these rules in the fixture model and the replay (ledger
+`docs/verification/ship-steering.md`, "Model calibration"), two rounding details fit the trace:
+`k = ⌊f+0x2b0 · record+0xd0 / 100⌋` in 16.16 and `accel = fx(W, k)` (yaw and pitch exact on 76,188 of 76,190 leaf
+steps; `fx(W, fx(rot, pct·0x10000/100))` 75,763), and `[obj+0x20]` as the floored third Euler angle of the basis
+(10,137 exact port-roll match steps; rounded 9,923, truncated 9,703)
+([replay_rounding.py](../../verification/results/ship-steering/replay_rounding.py)). The port roll is constant per
+leg (spread ≤ 6 binary over 9-2,576 aligned samples). Still open: on 114 match steps the actual roll brakes 5-10
+binary/s later than `wrap(Γ − γ)` predicts while yaw/pitch also turn, which points at the decomposition `0x004f0640`
+away from β = 0 **[i]**; order 0x1f and order 0x12 write remainders (and 0x12 the speed) of their own.
+
 Reproduce:
 
 ```sh

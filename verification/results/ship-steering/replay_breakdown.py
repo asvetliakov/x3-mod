@@ -4,6 +4,8 @@
    steps and decaying lateral residuals after them; a dt or unit error predicts longitudinal ones);
 2. the rate-controller steps: the e and rate signs of row n, the leaf_call flag, |rate(n+1) - pred| buckets, and
    whether the actual rate is consistent with a rate computed from a different e (e = 0, or the written e sign).
+The translation here is the pre-calibration law (pos(n) + fwd(n+1) v(n+1) dt / 1000, no slip); since the model
+calibration of 2026-10-12 replay_classes.py over ship_trace_replay.py --json gives the calibrated split and classes.
 Usage: python3 -I replay_breakdown.py x3m.log"""
 import collections
 import math

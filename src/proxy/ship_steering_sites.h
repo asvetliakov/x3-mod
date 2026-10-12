@@ -189,6 +189,7 @@ constexpr std::uint32_t kObjPhys = 0x70, kObjRadius = 0xa4, kObjDocked = 0xf8;
 constexpr std::uint32_t kFlagAutopilot = 0x80000, kFlagDeleted = 0x8000000, kFlagAttached = 0x200;
 constexpr std::uint32_t kPhysPosition = 0x30, kPhysBasis = 0x40;
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightPoint = 0x240, kFlightOrder = 0x258, kFlightDistance = 0x260;
+constexpr std::uint32_t kFlightPortIndex = 0x250; // dword, -1 = no port (a gate); 0x00453fd9, 0x00454706 (ship-movement.md section 13.1)
 constexpr std::uint32_t kFlightRotAccel = 0x2b0, kFlightBasis = 0x870;
 constexpr std::uint32_t kRecordClassCode = 0x14, kRecordRotAccel = 0xd0;
 constexpr std::uint32_t kClassShip = 7, kClassGate = 0x12;
