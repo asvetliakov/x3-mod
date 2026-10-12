@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run152-candidate of 4dd5be62, build/d3d9.dll (clean configure + build)",
+  "sha256": "7d0f683841c4369ef1106d59650435c8c9c9830fc0aeb7e21b41031c6d012f37",
+  "bytes": 58156786,
+  "commit": "4dd5be62",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2 Ubuntu 26.04, MinGW GCC 16.2.0 posix, cmake + Ninja); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0 (build.log)",
+    "x87_audit": "PASS, reachable_functions 946, violations 0",
+    "site_verifier": "verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe: PASS, 18 checks",
+    "host_tests": "test_ship_steering test_ship_steering_sites test_config_schema test_launcher_defaults: 37 OK (host fixture 3365/3365 inside)",
+    "not_run": "Wine fixtures (no Wine on this host)"
+  },
+  "changes_since_run151_0062b402": [
+    "56582c7f gate transit RE + Run151 triage",
+    "4dd5be62 step 3 continuous gate approach (ship_steering_gates, sites 0x00454b91/0x00454700/0x0045526f) + Run151 fixes (servo cadence, avoidance counters and push-ahead, station part radii from the engine getter, p99 clamp)"
+  ],
+  "trigger": "Run151 flight: armed, exception=0; gate approach clunky (user) and slowed by the arrival ramp (RE \u00a710); Run151 triage items",
+  "producer": "main session (Fable 5.1), 2026-10-12; sha256sum; stat -c %s"
+}
