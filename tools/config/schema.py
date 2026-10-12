@@ -405,6 +405,11 @@ SETTINGS = [
           'continuous approach: they line up with the gate on the way in, keep their speed at the approach point and the '
           'pass point instead of stopping twice, and the jump launch continues at that speed (needs ship_steering). '
           '1 = on, 0 = off.', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
+    entry('ship_steering_gates_capital', 'bool', 'engine', 'Capital ships (M1, M2, TL and the like) fly the gate approach the same '
+          'way: they line up with the gate axis on the way to their waiting point and, when they arrive facing the gate, keep '
+          'their speed through the alignment step into the final run instead of stopping and turning in place (needs '
+          'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off.', builtin='1',
+          requires=('ship_steering_gates',), launcher='--ship-steering-gates-capital', since='2026-10-12'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '

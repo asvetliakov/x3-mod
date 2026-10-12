@@ -787,6 +787,94 @@ tests: + the dock run), `test_config_schema`, `test_launcher_defaults`: 50 tests
 tests, 36 failing modules (render, capture, fog and installed-game modules; none ship-related, the host's
 environment set).
 
+## Capital gate transit (2026-10-12, Fable 5.1; amendment 13, design [capital-gate-transit.md](../architecture/capital-gate-transit.md))
+
+Implemented on main `e81d4d8f` (worktree, not installed): the pair policy (the ratio r_B ≥ r_A / 3 with capital-coded ships
+always kept, the engine's large list withdrawn) and site E's small-pair branch, both part of `ship_avoidance`; the capital
+lead-in and speed write, P2 keeping an aligned capital's speed and P4/P5 on the validated approach behind
+`ship_steering_gates_capital` (default on, needs the gate group; `--no-ship-steering-gates-capital`; off restores the
+previous (amendment 10) gate behaviour for capitals while the pair policy keeps following `ship_avoidance`); the
+`ship_avoid_engine_warn` trace row; the fixture scenarios of the design's §6. Sources: `src/proxy/ship_avoidance_core.h` (`small_for_capital`, `small_pair`, `small_pair_verdict`),
+`ship_avoidance_walk_core.h` (the capital bit), `ship_steering_core.h` (`gate_lead_in_capital`, `gate_target_capital`,
+`gate_capital_keeps_speed`), `ship_steering.cpp` (decide, P2, P4, E, trace, summary), `ship_steering_sites.h` (the obstacle
+list offsets), the schema/launcher plumbing.
+
+**Fixture** (`verification/probe/ship_steering_host.cpp`, scenario 11 and `capital_unit_checks`; the calibrated engine model
+with the slip term; measured, 60 fps seed 1, all 3 fps × 3 seeds pass the same bounds;
+[output](../../verification/results/ship-steering/ship_steering_host.txt) **checks PASS 5052/5052, slip_gaps 131**
+(4175 before this step; the two `gate capital` vanilla-equality rows are replaced by the scenarios below), the capital
+checks alone [fixture_capital.txt](../../verification/results/ship-steering/capital-gate-transit/fixture_capital.txt) 655/655,
+without the slip term [fixture_capital_noslip.txt](../../verification/results/ship-steering/capital-gate-transit/fixture_capital_noslip.txt),
+both by [run_fixture_capital.sh](../../verification/results/ship-steering/capital-gate-transit/run_fixture_capital.sh)).
+The Run156 records (W 1843 / 1638, k 0.05, vmax 110 / 113, a 10 / 5, r 1091 / 1022 m), from 3 r_gate off the line and 6 r
+before X heading at A, with two M6 escorts of another leader crossing the line ahead of the capital (one steered, one
+manual) and a second capital trailing on the adjacent slot at the queue's spacing (7 km):
+
+| Scenario A | approach 3 r → X | crossing v, error to F, lateral | P2 | 0x1f | order 5 (budget.py) | total 3 r → launch end (design) |
+| --- | --- | --- | --- | --- | --- | --- |
+| M2 slot 0 | 33.5 s (model 33.1) | 100.0 m/s, 0.62°, 9 m | kept | 1 frame | 37.5 s (37.5) | 71.9 s (71.6; design 72) |
+| M2 slot 19, rotated frame | 33.5 s | 100.0 m/s, 0.62°, 9 m | kept | 1 frame | 45.6 s (41.6 aligned; 286 misaligned ticks, min 51.7 m/s) | 80.0 s (75.6) |
+| M1 slot 0 | 33.6 s | 100.0 m/s, 1.30°, 19 m | kept | 1 frame | 36.0 s (36.0) | 70.6 s (70.1; design 70) |
+| M1 slot 19, rotated frame | 33.6 s | 100.0 m/s, 1.30°, 19 m | kept | 1 frame | 44.9 s (40.1; 407 ticks, min 66.0 m/s) | 79.5 s (74.1) |
+
+Per run: capital detours 0, conflicts 0, `skipped_small` 7,540–8,091 (the M6s), the steered M6 detours (661–764 calls) with a
+minimum centre distance of 1,633–1,747 m ≥ C (1,119 / 1,188 m); the manual M6 passes 1,022–1,047 m ahead; the site-E verdict
+for (capital, steered M6) is `suppress` on every steered frame (4,245 M2 / 4,172 M1), `order_not_steered` on the 24 frames after its script
+stopped it (order 0), `stale` once it is back in the steer set without a decision, `no_autopilot` for the manual M6 on every
+frame; the capital pair is never a small pair in either direction and neither skips the other; no NaN. Bounds asserted:
+approach ≤ 36 s, crossing speed ≥ 90 m/s, P2 error ≤ 8.11° and the speed kept, 0x1f one frame, order-5 start ≥ 85 m/s and
+v0 kept, order 5 within 20 % of `budget.py` (slot 0) or ≤ 1.6× the aligned budget (slot 19: the engine's misaligned
+order-5 branch, the cornering override for capitals is a follow-up), total ≤ 1.2× the budget (slot 0). **Slip:** without
+the slip term the crossing error is 0.29° / 0.67° (M2 / M1) against 0.62° / 1.30° with it, the lateral offset 3 / 8 m
+against 9 / 19 m, the approach 0.1–0.2 s shorter; the order-5 and total times are identical to 0.2 s; the steered M6's
+minimum centre distance 1,617–1,789 m without slip against 1,633–1,747 m with it (both ≥ C). Slip costs the capital
+alignment under 0.7° of the 8.1° tolerance.
+
+**Scenario B** (misaligned): B1, the engine's point 5 % of r off the grid: the lead-in refused, vanilla crossing at
+28.3 / 21.4 m/s 23.5° / 24.0° off F, the vanilla stop (v 0), the engine's 0x1f 467 / 633 frames = 7.8 / 10.6 s (controller
+model 8.7 / 9.4 s), order 5 from rest 42.8 / 47.1 s, launch from rest; the converging capital (timed to reach the adjacent
+slot 10 s after the first's arrival) registers the pair (4,555 / 2,790 conflict calls, never a small pair, never skipped),
+detours (4,498 / 2,790) and reports it unresolved inside C with the emergency ramp (M2 trailing M1: 57 unresolved, 37
+emergency, min 2,299 m) — the known limit handed to the queue task (design §5.2). B2, a validated approach 3 r off the line
+only 2 r before X: the lead-in runs, the crossing is 32.0° / 37.4° off, P2 takes the vanilla stop, 0x1f 675 / 916 frames,
+order 5 from rest, P4 keeps v0 on the validated approach. Policy off: no lead-in, the vanilla stops at X and at the origin.
+The Boreas fixture type (70 m/s) runs scenario A alone at its own cap (crossing 70.0 m/s, 0.09°, total 102.5 s against the
+model's 102.4).
+
+**Unit checks** (`capital_unit_checks`, `walk_record_code_checks`): the ratio (an M2 of 1,091 m skips 64 and 300 m, keeps
+400 m and every capital-coded ship; 307 m vs an M6 of 140 m kept); `small_pair` never for a capital-coded B, a non-capital
+A, a non-ship B or a NaN radius; `small_pair_verdict` reasons in the design's order (autopilot, order incl. 0x12 and 0x1f,
+class mask, deleted/attached/docked, 251 ms stale); `gate_capital_keeps_speed` (8.1° kept, 8.2° not, −1 not, policy off,
+unvalidated, non-capital target); `gate_target_capital` for TL/M0/M1/M2/M7 with site W refusing them (M5 non-capital and
+offset, M6 neither); the capital window (refused beyond 6 r, 90 % blended at 5.9 r, the carrot 2 v / ω = 1,136 m ahead on the
+line at 4 r with 3 r lateral where the 3 r small-ship window refuses); the walk's size bit (M2 1, M5/M6 0, unreadable 2).
+
+**Acceptance (measured):** `cmake … && cmake --build build 2>&1 | grep -c warning` → 0 (69 objects relinked);
+`check_no_x87.py build/d3d9.dll` → PASS, 955 reachable, 0 violations; `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`
+→ PASS, 18 checks (`snapshot_walk_facts` now also pins the obstacle list: `obstacle_count_clear_L0` 0x0045d298, `obstacle_list_append` 0x0044e54c, `obstacle_dist_append` 0x0044e565), EXE `fdbf3418…`; the six host modules (`test_ship_steering`, `_sites`, `test_ship_trace_format`,
+`_replay`, `test_config_schema`, `test_launcher_defaults`) → 50 tests OK; `run_host_suite.py` → 297 modules, 2,926 tests,
+36 failing modules (the host-environment set, none of the six above). Schema: 269 settings, 119 in the template.
+
+**Flight rows that decide it (Run C, the next capital trace; `verification/results/ship-steering/run156-triage/capital_timeline.py`
+on the `ship_trace` rows of slot 0, targets per traced capital at the run's SETA):**
+
+| Phase | Row | Target |
+| --- | --- | --- |
+| install | `ship_steering_gates_capital installed=1 status=active` | present (a `ship_steering_gates_capital_refused` row = the policy is off) |
+| approach | order-4 segments per approach in the timeline | 1 (no 0x12 segment, no order-0 row with the target cleared); `hdg_err_deg` falling monotonically inside 6 r |
+| crossing | `hdg_err_deg` and `v` at the last order-4 row (`dP` 823–829 m) | ≤ 8.1°; ≥ 90 m/s (SETA 1) |
+| stop | summary `gate_capital_aligned`, `gate_capital_stop_kept`, `gate_capital_lead_validated` | = the number of capital approaches; `gate_capital_lead_fallback` 0, `gate_p2_capital` 0 |
+| rotate | rows on 0x1f | ≤ 2, `v != 0` on them |
+| order 5 | `v` at the first order-5 row; the segment's time | ≥ 85 m/s; within 20 % of `budget.py` for the run's SETA (slot 0: 37.5 / 36.0 s at SETA 1, 15.0 / 15.4 s at SETA 10) |
+| launch | order 8 rows; `gate_launch_continued` | 0.9 s; = the capital launches |
+| pairs | `e_suppressed_small` vs `e_small_pass_*`; 0x12 rows for traced capitals; `ship_avoid_engine_warn` | > 0 when escorts were near; 0 0x12 rows; any remaining avoid leg names its pair (`other=`, `code=`) |
+
+Known limits (open): order 5 from the outer slots takes the engine's misaligned branch (1 m/s until within 18.2°: +8–9 s in
+the fixture; the cornering override of amendment 8 (4) extended to capitals is a follow-up); two capitals converging on
+adjacent slots inside C are unresolved by design (the queue's spacing); the fixture crosses the escorts over the capital's
+line once it is on the line (the predictive layer extrapolates an obstacle's velocity straight, so a crossing during the
+capital's join is not covered by this scenario; a question for the slip-aware design).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

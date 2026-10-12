@@ -210,6 +210,33 @@ the stopping angle `sign(w)·⌈w²/2a⌉` instead of 0: the integrator sets the
 `e < w²/a`) and ends with `δ = e`, `w = 0`. A servo angle that rounds to 0 is the geometric remainder, not a stop, and
 keeps the engine's clamp (replacing it too moved the order-4 gate approach by up to 0.12° at the crossing).
 
+**Amendment 13 (2026-10-12, the capital gate transit; the design is [capital-gate-transit.md](capital-gate-transit.md),
+ratified with two amendments; fixture numbers in the ledger's "Capital gate transit" section):** (1) *Pair policy.* A
+steered capital's obstacle set keeps stations, asteroids, gates, every capital-coded ship (0x0043fd50) and any ship with
+r_B ≥ r_A / 3; every other ship is skipped (`avoid_skipped_small`). The engine's "large" list (0x0043fd00) no longer
+overrides the ratio (amendment 11's precedence is withdrawn: `Obstacle.size` carries the capital bit, `small_for_capital`
+is the ratio for every non-capital code). Site E's second branch (`av::small_pair`, `av::small_pair_verdict`): for a pair
+the capital ignores (A capital-coded and decided on within 250 ms, B a class-7 ship with a readable non-capital record
+code and r_B < r_A / 3) the engine's warn is suppressed only when B is under the module's steering that frame (autopilot
+bit, order in the steer set and not 0x12, class not masked, not deleted/attached/docked, B's last decision within 250 ms);
+every other such B stays with the engine, counted per reason (`e_suppressed_small`, `e_small_pass_*`). (2) *Arrive
+aligned.* The capital lead-in of amendment 8 (3) is re-instated behind `ship_steering_gates_capital` (default on, needs the
+gate group live; off = the amendment-10 vanilla path): toward the validated grid point with direction F, window 6 r_gate
+before X blended from 5 r (`core::gate_lead_in_capital`), carrot look-ahead max(0.75 s v, 2 v / ω, 0.3 r), the module's
+speed in both directions inside the window (large cap 100 m/s, the cornering term, the avoidance emergency), no arrival
+ramp; outside the window the engine's law stands (the clamp lowers only). Amendment 10 (3)'s rationale is corrected: the
+capital's order-4 arrival sphere at a gate is 0.75 r_gate (0x00454b1a; Run156 stops at 823–828 m from the grid point),
+not clamp(r_own, 22200, 111000). P2 keeps `[obj+0x10]` for a capital on a validated approach whose last decision's
+heading error to F is ≤ 8.11° (`core::gate_capital_keeps_speed`; `gate_capital_stop_kept`), so 0x1f ends on its first
+frame and order 5 starts at the crossing speed; a misaligned or unvalidated capital takes the vanilla stop. P4/P5 keep
+and launch with v0 on the same validated approach. Counters `gate_capital_aligned`, `gate_capital_stop_kept`,
+`gate_capital_lead_validated/fallback`, `gates_capital=` in the summary. (3) *Rotate.* Nothing on the nominal path; the
+fallback levers of the design's §3 are not built. `ship_trace` logs `ship_avoid_engine_warn` at a followed ship's first
+order-0x12 row: the head of the engine's own obstacle list (f+0x1e0 count, f+0x1e4[0], f+0x1f8[0]: the object the warn
+named, its class/record code, radius and centre distance). (4) *Spreads.* No exit offset for capitals (site W unchanged,
+`gate_warp_skipped` keeps counting them). Order 5 of a capital stays vanilla (the cornering override for capitals and the
+slip-aware steering are separate designs).
+
 
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
 shared handler that, for class-7 ships under the autopilot flag and a point-steering order, computes a

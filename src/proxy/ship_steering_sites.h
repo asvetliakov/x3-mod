@@ -191,6 +191,13 @@ constexpr std::uint32_t kPhysPosition = 0x30, kPhysBasis = 0x40;
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightPoint = 0x240, kFlightOrder = 0x258, kFlightDistance = 0x260;
 constexpr std::uint32_t kFlightPortIndex = 0x250; // dword, -1 = no port (a gate); 0x00453fd9, 0x00454706 (ship-movement.md section 13.1)
 constexpr std::uint32_t kFlightRotAccel = 0x2b0, kFlightBasis = 0x870;
+// The engine's own obstacle list of the collision pass (ship-navigation-ai.md section 3.1, 0x0044e552): count at f+0x1e0,
+// up to kFlightObstacleMax objects at f+0x1e4[] and their centre distances (units) at f+0x1f8[]; read only, by the
+// ship_trace at a followed ship's first order-0x12 row (capital-gate-transit.md section 6). Pinned by the verifier's
+// WALK_FACTS (0x0045d298 `mov [ebx+0x1e0],edi`; 0x0044e54c `mov eax,[ecx+0x1e0]; cmp eax,5; jge; mov [ecx+eax*4+0x1e4],ebp`;
+// 0x0044e565 `mov [edx+eax*4+0x1f8],ecx`).
+constexpr std::uint32_t kFlightObstacleCount = 0x1e0, kFlightObstacleList = 0x1e4, kFlightObstacleDist = 0x1f8;
+constexpr std::uint32_t kFlightObstacleMax = 5;
 constexpr std::uint32_t kRecordClassCode = 0x14, kRecordRotAccel = 0xd0;
 constexpr std::uint32_t kClassShip = 7, kClassGate = 0x12;
 // The stub frame the A handler receives (ship_steering.cpp, the stubs).

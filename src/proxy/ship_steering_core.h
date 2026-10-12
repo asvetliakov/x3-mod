@@ -497,7 +497,8 @@ __attribute__((always_inline)) inline float clamp_for(const Ship& s, const float
     float v;
     if (s.flags & kShipFlagGate) { // the gate approach: v_ref holds gate_speed(); the emergency ramp below still wins
         v = finite_f(s.v_ref) && s.v_ref > 0.0f ? s.v_ref : 0.0f;
-        if (s.flags & kShipFlagRamp) { // a capital (amendment 8): its arrival ramp to the grid point stays, the lower of the two
+        if (s.flags & kShipFlagRamp) { // the ramp flag with the gate flag: the lower of the two (unset since capital-gate-transit.md:
+                                       // the capital approach has no arrival ramp, the crossing is geometric)
             const float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
             const float ramp = schedule_speed(sqrt_ss(dot3(d, d)), s.d_arr, s.a_lin, 0.0f, true, s.v_corner);
             if (ramp > 0.0f && ramp < v) v = ramp;
@@ -537,8 +538,9 @@ __attribute__((always_inline)) inline float acos_deg(float c) noexcept {
 // kGateLookMinR r) ahead of the ship's projection; farther than kGateJoinR r before the crossing the ship aims at A
 // itself (a straight approach, the join at the end). The speed is the module's: vmax, lowered by the cornering
 // term and the engine's own cap for large hulls (0x004550ed: 50000 units/s), written at site B in both directions
-// (the engine's order-4 ramp to 5000 units/s at A, 0x00455052, is the stop P2 removes). Capitals keep every vanilla
-// step (their next order, 0x1f RotateToAngles, expects a stationary ship).
+// (the engine's order-4 ramp to 5000 units/s at A, 0x00455052, is the stop P2 removes). Capitals (capital-gate-transit.md,
+// amendment 13): the lead-in along the gate axis toward the validated grid point (gate_geometry_capital, gate_lead_in_capital),
+// the same speed write, and P2 keeps the speed when the crossing is within the 0x1f tolerance (gate_capital_keeps_speed).
 // Amendment 10 (Run154): the pass points lie on the gate DISC, B = G + R (0.55 sin theta, -0.55 cos theta, -0.01) r
 // (|theta| <= 45 deg about straight down); the lead-in line from A aims at the arc's centre point (0, -0.55, -0.01) r:
 // direction (0, 0.25, 0.99) normalised, 14.17 deg above the axis in the gate's vertical plane, so the heading error to
@@ -677,22 +679,42 @@ inline bool gate_pass_point_valid(const float B[3], const float G[3], const floa
 // and kGateJoinR r before the crossing the carrot slides from A to the near carrot, so the switch from the straight
 // approach is continuous. Envelope (fixture): approaches that enter the window with the lateral offset below ~2 r
 // cross within 10 deg of the line; a ship that reaches the arrival sphere from s > 0 crosses as vanilla does.
-inline bool gate_lead_in(const GateGeometry& g, const float x[3], float v, float P[3], float* s_out, float* e_out = nullptr) noexcept {
+// The windowed core: join_r / inner_r the window and its blend (in r), look_m the carrot look-ahead (m, at least
+// kGateLookMinR r).
+inline bool gate_lead_in_window(const GateGeometry& g, const float x[3], float join_r, float inner_r, float look_m, float P[3], float* s_out,
+                                float* e_out) noexcept {
     const float dx[3] = {x[0] - g.X[0], x[1] - g.X[1], x[2] - g.X[2]};
     const float s = dot3(dx, g.h);
     if (s_out) *s_out = s;
     const float d2 = dot3(dx, dx) - s * s;
     if (e_out) *e_out = d2 > 0.0f ? sqrt_ss(d2) : 0.0f;
     const float a_along = kGateCrossFraction * g.r; // A's position along the line from X (the line ends at A, or A + the spread)
-    if (s > a_along + 1.0f || s < -kGateJoinR * g.r) return false;
-    float look = kGateLookS * (v > 0.0f ? v : 0.0f);
+    if (s > a_along + 1.0f || s < -join_r * g.r) return false;
+    float look = look_m > 0.0f ? look_m : 0.0f;
     if (look < kGateLookMinR * g.r) look = kGateLookMinR * g.r;
     float along = s + look;
     if (along > a_along) along = a_along;
-    const float t = (-s - kGateJoinInnerR * g.r) / ((kGateJoinR - kGateJoinInnerR) * g.r); // 0 at the inner edge, 1 at the join point
+    const float t = (-s - inner_r * g.r) / ((join_r - inner_r) * g.r); // 0 at the inner edge, 1 at the join point
     if (t > 0.0f) along += (t < 1.0f ? t : 1.0f) * (a_along - along);
     for (unsigned i = 0; i < 3; ++i) P[i] = g.X[i] + g.h[i] * along;
-    return true;
+    return finite_f(P[0]) && finite_f(P[1]) && finite_f(P[2]);
+}
+inline bool gate_lead_in(const GateGeometry& g, const float x[3], float v, float P[3], float* s_out, float* e_out = nullptr) noexcept {
+    return gate_lead_in_window(g, x, kGateJoinR, kGateJoinInnerR, kGateLookS * (v > 0.0f ? v : 0.0f), P, s_out, e_out);
+}
+// The capital lead-in (capital-gate-transit.md section 2.1): the same line toward the validated grid point with direction
+// F (gate_geometry_capital), a window of kGateCapitalJoinR r before X blended from kGateCapitalJoinInnerR r (a 90 deg turn of an
+// installed capital at 0.5 deg/s^2 takes 27-28 s and 2.7-2.8 km of path before any convergence), and a carrot look-ahead
+// of max(kGateLookS v, kGateCapitalLookTurns v / omega, kGateLookMinR r): at least the turning radius at the cap, so the
+// pursuit converges instead of weaving. omega = the slower of yaw/pitch (rad/s; 0 = unknown, the time term only).
+constexpr float kGateCapitalJoinR = 6.0f, kGateCapitalJoinInnerR = 5.0f, kGateCapitalLookTurns = 2.0f;
+inline bool gate_lead_in_capital(const GateGeometry& g, const float x[3], float v, float omega, float P[3], float* s_out,
+                                 float* e_out = nullptr) noexcept {
+    const float vv = v > 0.0f ? v : 0.0f;
+    float look = kGateLookS * vv;
+    if (omega > 1e-4f && kGateCapitalLookTurns * vv / omega > look) look = kGateCapitalLookTurns * vv / omega;
+    if (!finite_f(look)) return false;
+    return gate_lead_in_window(g, x, kGateCapitalJoinR, kGateCapitalJoinInnerR, look, P, s_out, e_out);
 }
 // The gate-site rule shared by the DLL handlers (P2, P4) and the fixture: `obj` is a class-7 ship whose order target
 // f+0x224 is a gate (class 0x12) and whose record code (+0x14 of the TShips record) is not capital (0x0043fd50:
@@ -721,6 +743,27 @@ inline bool gate_target_noncapital(Mem& mem, std::uint32_t obj, std::uint32_t ty
 // frame and A) whose target is still a gate and which is not capital; anything else takes the engine's stop.
 inline bool gate_stop_keeps_speed(bool noncapital_gate_target, bool state_valid) noexcept {
     return noncapital_gate_target && state_valid;
+}
+// The capital counterpart (capital-gate-transit.md section 2.3; ship_steering_gates_capital): a class-7 capital-coded ship
+// whose order target is a gate.
+template <class Mem>
+inline bool gate_target_capital(Mem& mem, std::uint32_t obj, std::uint32_t type_table) noexcept {
+    if (!obj || mem.u16(obj + kGateObjClass) != kGateClassShip) return false;
+    const std::uint32_t fl = mem.u32(obj + kGateObjFlight);
+    if (!fl) return false;
+    const std::uint32_t tgt = mem.u32(fl + kGateFlightTarget);
+    if (!tgt || mem.u16(tgt + kGateObjClass) != kGateClassGate) return false;
+    const std::int32_t type = std::int16_t(mem.u16(obj + kGateObjType));
+    if (!type_table || type < 0) return false;
+    const std::uint32_t code = mem.u32(type_table + std::uint32_t(type) * kGateRecordStride + kGateRecordClassCode);
+    return code < kClassCount && ((kCapitalMask >> code) & 1u);
+}
+// P2 for a capital: `[obj+0x10]` is kept (so RotateToAngles 0x1f ends on its first frame and order 5 starts at the crossing
+// speed) only with the capital policy on, a validated approach (A matched the KC grid: the lead-in ran) and the last
+// decision's heading error to F within the 0x1f tolerance (0xfd70 = cos 8.1 deg); a misaligned or unvalidated capital takes
+// the vanilla stop. P4/P5 keep the speed at the order-5 arrival and launch with it on the same validated approach.
+inline bool gate_capital_keeps_speed(bool capital_gate_target, bool capital_policy, bool state_valid, float cross_err_deg) noexcept {
+    return capital_gate_target && capital_policy && state_valid && cross_err_deg >= 0.0f && cross_err_deg <= kGateRotateTolDeg;
 }
 // The exit spread (site W, amendment 8): the ship's position offset by its ring position at kGateExitSpreadR r_gate in
 // the gate's x-y plane, for a class-7 non-capital ship under the autopilot flag (never the player's ship), not deleted

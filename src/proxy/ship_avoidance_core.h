@@ -59,7 +59,8 @@ struct Obstacle {
     std::uint8_t kind;    // Kind
     std::uint8_t flags;   // bit 0: station part model available (parts index valid)
     std::uint16_t parts;  // index into the part store
-    std::uint8_t size;    // ships: 1 = "large" (0x0043fd00: the record code in kLargeMask), 0 = small, 2 = the code could not be read
+    std::uint8_t size;    // ships: 1 = capital-coded (0x0043fd50: the record code in kCapitalMask), 0 = any other code, 2 = the code
+                          // could not be read (capital-gate-transit.md section 1: the engine's "large" list no longer decides)
     std::uint8_t pad;
 };
 struct Snapshot {
@@ -317,16 +318,50 @@ inline void forget_passed(ShipAvoid& a, const Snapshot& snap, const Self& s) noe
 inline bool own_follower(const Self& s, const Obstacle& o) noexcept {
     return o.kind == std::uint8_t(Kind::ship) && o.leader == s.ptr && (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow);
 }
-// Amendment 11: a capital does not avoid small ships; the small ship dodges it. The engine's own proximity filter
-// 0x0044d2f0 (0x0044d326..0x0044d366, measured) rejects a class-7 candidate B for a ship A whose record code is capital
-// (0x0043fd50: TL, M0, M1, M2, TL_P, M7) unless B is "large" (0x0043fd00: TL, M0, M1, M2, TL_P, M6, M7, TM, M8); that
-// rule is mirrored on the candidate's record code. When the code could not be read (size 2) the fallback is the radius
-// ratio: skip when r_candidate < r_own / 3 (the user's rule; the engine's predicate takes precedence where pinned).
+// Amendment 11 as amended by capital-gate-transit.md section 1 (amendment 13): a capital does not avoid small ships; the
+// small ship dodges it. A steered capital's obstacle set keeps stations, asteroids, gates, every capital-coded ship
+// (0x0043fd50: TL, M0, M1, M2, TL_P, M7; pinned by the engine's own filter 0x0044d2f0, never ignored) and any ship with
+// r_candidate >= r_own / 3; every other ship is skipped (`skipped_small`). The engine's "large" list (0x0043fd00, which
+// keeps M6/M8/TM) no longer overrides the ratio: the engine still applies it on its own side, which is why site E acts
+// (small_pair_verdict below). An unreadable code (size 2) uses the ratio alone.
 constexpr float kSmallShipRatio = 1.0f / 3.0f;
 inline bool small_for_capital(const Self& s, const Obstacle& o) noexcept {
     if (!s.capital || o.kind != std::uint8_t(Kind::ship)) return false;
-    if (o.size == 2) return o.r < s.r * kSmallShipRatio;
-    return o.size == 0;
+    if (o.size == 1) return false; // capital-coded: always an obstacle
+    return o.r < s.r * kSmallShipRatio;
+}
+// Site E's second branch (capital-gate-transit.md section 1): for an ignored pair (A capital-coded and steered, B a class-7
+// ship with a readable non-capital record code and r_B < r_A / 3) the engine's warn is suppressed only when B is under the
+// module's steering this frame; any other B stays with the engine (the capital reacts as vanilla does). Evaluated per call
+// and per frame: a small ship that stops, falls out of the steer set or is no longer decided on is handed back to the engine
+// on the next collision pass.
+inline bool small_pair(bool a_capital, float r_a, bool b_ship, bool b_capital_code, float r_b) noexcept {
+    return a_capital && b_ship && !b_capital_code && sc::finite_f(r_a) && sc::finite_f(r_b) && r_b < r_a * kSmallShipRatio;
+}
+enum class SmallPair : std::uint8_t {
+    suppress = 0,      // B is steered by the module this frame: the engine's warn for (A, B) is dropped
+    no_autopilot,      // [B+0x40] without 0x80000 (the player under manual control, or a ship the integrator does not drive)
+    order_not_steered, // B's order outside the steer set, or the engine's own avoid order 0x12 (the engine owns its evasion)
+    class_masked,      // B's class is excluded by ship_steering_classes
+    not_steerable,     // B deleted, attached or docked
+    stale,             // no decision for B within kSteeredFreshMs (not in the table, or an older entry)
+    count
+};
+constexpr std::uint32_t kSteeredFreshMs = 250; // B's last decision at most this old (the site-B clamp window)
+constexpr std::uint32_t kObjFlagAutopilot = 0x80000, kObjFlagDeleted = 0x8000000, kObjFlagAttached = 0x200;
+inline SmallPair small_pair_verdict(std::uint32_t b_flags, std::uint16_t b_order, std::uint32_t b_docked, bool b_class_masked, bool b_in_table,
+                                    std::uint32_t b_stamp_ms, std::uint32_t now_ms) noexcept {
+    if (!(b_flags & kObjFlagAutopilot)) return SmallPair::no_autopilot;
+    if (!sc::order_steered(b_order) || b_order == sc::kOrderAvoid) return SmallPair::order_not_steered;
+    if (b_class_masked) return SmallPair::class_masked;
+    if ((b_flags & (kObjFlagDeleted | kObjFlagAttached)) || b_docked) return SmallPair::not_steerable;
+    if (!b_in_table || now_ms - b_stamp_ms > kSteeredFreshMs) return SmallPair::stale;
+    return SmallPair::suppress;
+}
+inline const char* small_pair_name(SmallPair v) noexcept {
+    static const char* const names[unsigned(SmallPair::count)] = {"suppress", "no_autopilot", "order_not_steered", "class_masked",
+                                                                  "not_steerable", "stale"};
+    return unsigned(v) < unsigned(SmallPair::count) ? names[unsigned(v)] : "?";
 }
 // Whether the obstacle item is excluded for this ship (section 3.2 and 4). The formation is excluded in every direction
 // (amendment 11): the follower never avoids its leader, the leader never avoids its followers, and wingmates of one
@@ -340,7 +375,7 @@ inline bool excluded(const Self& s, const Obstacle& o) noexcept {
         (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow))
         return true; // a wingmate of the same leader
     if (own_follower(s, o)) return true; // our own followers, wherever they are (amendment 10: the leader detoured against them)
-    if (small_for_capital(s, o)) return true; // amendment 11: the engine's own rule, the small ship dodges
+    if (small_for_capital(s, o)) return true; // amendment 11 / 13: the ratio rule, the small ship dodges
     return false;
 }
 // The effective body of a station without a part model (section 3.5 fallback).

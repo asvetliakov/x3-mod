@@ -299,12 +299,13 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
                     it.leader = mem.u32(fl + kFlightTarget);
                     it.order = mem.u16(fl + kFlightOrder);
                 }
-                // the record code -> "large" (amendment 11: a capital ignores the others); 2 when it cannot be read
+                // the record code -> capital-coded (amendment 13: a capital keeps every capital-coded ship and ignores other
+                // ships below r / 3); 2 when it cannot be read
                 const std::int32_t type = std::int16_t(mem.u16(o + kObjType));
                 const std::uint32_t table = mem.u32(kShipTypeTableSlot);
                 if (table && type >= 0) {
                     const std::uint32_t code = mem.u32(table + std::uint32_t(type) * kRecordStride + kRecordClassCode);
-                    it.size = code < sc::kClassCount ? std::uint8_t((sc::kLargeMask >> code) & 1u) : std::uint8_t(2);
+                    it.size = code < sc::kClassCount ? std::uint8_t((sc::kCapitalMask >> code) & 1u) : std::uint8_t(2);
                 } else
                     it.size = 2;
             } else {
