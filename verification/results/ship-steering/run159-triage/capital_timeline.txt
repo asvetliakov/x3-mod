@@ -1,0 +1,96 @@
+== 0x91713fd0 class M2 gate 0x91ba79b0 rows 15192 | G_m [-7498, 10774, -57569] F [-0.0, -0.0, -1.0] (B-plane(18)) r_gate 1105 m | order-4 givens 1
+   grid point P [-7498, 10774, -53177] rel G: depth -4392 m (=> r_ship 1091 m from -2(r_gate+r_ship)) lateral 0 m (0.00 x 666 m) |P-G| 4392 m
+   order tgt frames t0_s dur_s n | v_ms min..max start/end | dG_m s/e | depth_m s/e | dP_m s/e | hdg_err s/e | s_r s/e | e_m s/e | lead rows(in window) | des!=des_engine rows | emg | obst(top)
+   0x4   0x91ba79b0 813-15735 22669.2 406.1 14923 | 100..108 108/100 | 47530/5225 | -44780/-5225 | 43417/833 | 22/0 | -35.82/-0.00 | 15932/1 | 1363(1855) | 887 | 0 | []
+      closest to P: frame 15735 dP 833 m (arrival 0.75 r = 828 m) v 100 m/s des 100 des_engine 28 hdg_err 0 aim_err 0 s_r -0.00 e 1 m lead False
+   0x0   0x91ba79b0 15736-15737 23075.3 0.1 2 | 100..100 100/100 | 5218/5213 | -5218/-5213 | 826/821 | 0/0 | 0.00/0.01 | 1/1 | 0(2) | 0 | 0 | []
+   0x5   0x91ba79b0 15738-16003 23075.4 15.1 266 | 99..108 99/108 | 5208/3588 | -5208/-3588 | 816/804 | 0/0 | 0.01/1.48 | 1/1 | 0(132) | 0 | 0 | []
+   0x0   0x91ba79b0 16004-16004 23090.5 0.0 1 | 108..108 108/108 | 3582/3582 | -3582/-3582 | 810/810 | 0/0 | 1.48/1.48 | 1/1 | 0(0) | 0 | 0 | []
+   first row within 3 r_gate of G: never; last row t 23090.5 s
+   order-4 total 406.1 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.1 s; rows in the 6 r window 1855 of 14923 order-4 rows, lead rows 1363
+== 0x9171b398 class M1 gate 0x91ba79b0 rows 1226 | G_m [-7498, 10774, -57569] F [-0.0, -0.0, -1.0] (B-plane(18)) r_gate 1105 m | order-4 givens 1
+   grid point P [-7498, 10774, -53316] rel G: depth -4253 m (=> r_ship 1022 m from -2(r_gate+r_ship)) lateral 0 m (0.00 x 666 m) |P-G| 4253 m
+   order tgt frames t0_s dur_s n | v_ms min..max start/end | dG_m s/e | depth_m s/e | dP_m s/e | hdg_err s/e | s_r s/e | e_m s/e | lead rows(in window) | des!=des_engine rows | emg | obst(top)
+   0x4   0x91ba79b0 19549-20519 23241.8 55.2 971 | 100..113 113/100 | 9858/5082 | -9278/-5082 | 6028/831 | 20/6 | -3.80/0.00 | 3330/71 | 891(971) | 755 | 0 | []
+      closest to P: frame 20519 dP 831 m (arrival 0.75 r = 828 m) v 100 m/s des 100 des_engine 21 hdg_err 6 aim_err 1 s_r 0.00 e 71 m lead False
+   0x0   0x91ba79b0 20520-20521 23297.1 0.1 2 | 100..100 100/100 | 5077/5071 | -5077/-5071 | 826/820 | 6/6 | 0.00/0.01 | 70/70 | 0(2) | 0 | 0 | []
+   0x5   0x91ba79b0 20522-20773 23297.2 15.3 252 | 99..113 99/113 | 5064/3361 | -5064/-3361 | 813/893 | 6/0 | 0.02/1.56 | 69/26 | 0(122) | 0 | 0 | []
+   0x0   0x91ba79b0 20774-20774 23312.5 0.0 1 | 113..113 113/113 | 3353/3353 | -3353/-3353 | 901/901 | 0/0 | 1.57/1.57 | 26/26 | 0(0) | 0 | 0 | []
+   first row within 3 r_gate of G: never; last row t 23312.5 s
+   order-4 total 55.2 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.3 s; rows in the 6 r window 971 of 971 order-4 rows, lead rows 891
+== 0x91ba2e20 class M2 gate 0x91ba79b0 rows 1283 | G_m [-7498, 10774, -57569] F [-0.0, -0.0, -1.0] (B-plane(18)) r_gate 1105 m | order-4 givens 1
+   grid point P [-8164, 10774, -53177] rel G: depth -4392 m (=> r_ship 1091 m from -2(r_gate+r_ship)) lateral 666 m (1.00 x 666 m) |P-G| 4442 m
+   order tgt frames t0_s dur_s n | v_ms min..max start/end | dG_m s/e | depth_m s/e | dP_m s/e | hdg_err s/e | s_r s/e | e_m s/e | lead rows(in window) | des!=des_engine rows | emg | obst(top)
+   0x4   0x91ba79b0 21124-22118 23331.0 52.5 995 | 100..110 110/100 | 9632/5261 | -9281/-5221 | 5710/830 | 16/2 | -3.68/-0.00 | 2950/33 | 928(995) | 853 | 0 | []
+      closest to P: frame 22118 dP 830 m (arrival 0.75 r = 828 m) v 100 m/s des 100 des_engine 28 hdg_err 2 aim_err 0 s_r -0.00 e 33 m lead False
+   0x0   0x91ba79b0 22119-22120 23383.6 0.1 2 | 100..100 100/100 | 5257/5252 | -5217/-5212 | 826/821 | 2/2 | 0.00/0.01 | 33/32 | 0(2) | 0 | 0 | []
+   0x5   0x91ba79b0 22121-22405 23383.7 15.2 285 | 99..110 99/110 | 5245/3584 | -5205/-3550 | 814/860 | 2/8 | 0.01/1.51 | 32/173 | 0(143) | 0 | 0 | []
+   0x0   0x91ba79b0 22406-22406 23398.9 0.0 1 | 110..110 110/110 | 3577/3577 | -3543/-3543 | 866/866 | 8/8 | 1.52/1.52 | 174/174 | 0(0) | 0 | 0 | []
+   first row within 3 r_gate of G: never; last row t 23398.9 s
+   order-4 total 52.5 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.2 s; rows in the 6 r window 995 of 995 order-4 rows, lead rows 928
+== 0x91707928 class M1 gate 0x91ba8ac0 rows 33058 | G_m [4259, -18037, 31134] F [-0.0, -0.0, 1.0] (B-plane(18)) r_gate 1105 m | order-4 givens 1
+   grid point P [4259, -18037, 26881] rel G: depth -4253 m (=> r_ship 1022 m from -2(r_gate+r_ship)) lateral 0 m (0.00 x 666 m) |P-G| 4253 m
+   order tgt frames t0_s dur_s n | v_ms min..max start/end | dG_m s/e | depth_m s/e | dP_m s/e | hdg_err s/e | s_r s/e | e_m s/e | lead rows(in window) | des!=des_engine rows | emg | obst(top)
+   0x4   0x91ba8ac0 33289-66107 23848.9 1263.5 32819 | 48..112 112/69 | 90340/5082 | -84805/-5082 | 86360/829 | 0/0 | -72.18/-0.00 | 31138/0 | 1300(1540) | 1116 | 47 | ['0x91bb5b28:25']
+      closest to P: frame 66107 dP 829 m (arrival 0.75 r = 828 m) v 69 m/s des 100 des_engine 21 hdg_err 0 aim_err 0 s_r -0.00 e 0 m lead False
+   0x0   0x91ba8ac0 66108-66109 25112.5 0.1 2 | 68..69 69/68 | 5078/5073 | -5078/-5073 | 825/820 | 0/0 | 0.00/0.01 | 0/0 | 0(2) | 0 | 0 | []
+   0x5   0x91ba8ac0 66110-66345 25112.6 25.1 236 | 68..69 68/69 | 5069/3350 | -5069/-3350 | 815/904 | 0/0 | 0.01/1.57 | 0/0 | 0(123) | 0 | 0 | []
+   0x0   0x91ba8ac0 66346-66346 25137.9 0.0 1 | 69..69 69/69 | 3341/3341 | -3341/-3341 | 912/912 | 0/0 | 1.58/1.58 | 0/0 | 0(0) | 0 | 0 | []
+   first row within 3 r_gate of G: never; last row t 25137.9 s
+   order-4 total 1263.5 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 25.1 s; rows in the 6 r window 1540 of 32819 order-4 rows, lead rows 1300
+== 0x91bb5b28 class M2 gate 0x91ba8ac0 rows 1628 | G_m [4259, -18037, 31134] F [-0.0, -0.0, 1.0] (B-plane(18)) r_gate 1105 m | order-4 givens 1
+   grid point P [4925, -18037, 26742] rel G: depth -4392 m (=> r_ship 1092 m from -2(r_gate+r_ship)) lateral 666 m (1.00 x 666 m) |P-G| 4442 m
+   order tgt frames t0_s dur_s n | v_ms min..max start/end | dG_m s/e | depth_m s/e | dP_m s/e | hdg_err s/e | s_r s/e | e_m s/e | lead rows(in window) | des!=des_engine rows | emg | obst(top)
+   0x4   0x91ba8ac0 66347-66778 25138.0 47.9 432 | 100..100 100/100 | 9773/5607 | -9622/-5567 | 5540/1175 | 60/0 | -3.98/-0.31 | 1827/1 | 432(432) | 289 | 0 | []
+      closest to P: frame 66778 dP 1175 m (arrival 0.75 r = 828 m) v 100 m/s des 100 des_engine 36 hdg_err 0 aim_err 0 s_r -0.31 e 1 m lead True
+   0x0   0x00000000 66779-66779 25186.1 0.0 1 | 100..100 100/100 | 5596/5596 | -5556/-5556 | 1164/1164 | 0/0 | -0.30/-0.30 | 1/1 | 0(1) | 0 | 0 | []
+   0x12  0x00000000 66780-66959 25186.2 21.5 180 | 99..110 99/110 | 5583/3702 | -5544/-3405 | 1151/1276 | 0/38 | -0.29/1.64 | 1/809 | 80(89) | 0 | 0 | []
+   0x0   0x00000000 66960-66960 25207.9 0.0 1 | 110..110 110/110 | 3695/3695 | -3395/-3395 | 1290/1290 | 38/38 | 1.65/1.65 | 817/817 | 0(0) | 0 | 0 | []
+   0x4   0x91ba8ac0 66961-67621 25208.0 42.5 661 | 10..110 110/26 | 3687/3747 | -3382/-3655 | 1306/829 | 38/148 | 1.66/1.42 | 828/379 | 24(0) | 493 | 0 | ['0x91bd8ab8:24']
+      closest to P: frame 67621 dP 829 m (arrival 0.75 r = 828 m) v 26 m/s des 25 des_engine 27 hdg_err 148 aim_err 8 s_r 1.42 e 379 m lead False
+   0x0   0x91ba8ac0 67622-67622 25250.7 0.0 1 | 0..0 0/0 | 3749/3749 | -3658/-3658 | 826/826 | 148/148 | 1.41/1.41 | 377/377 | 0(0) | 0 | 0 | []
+   0x1f  0x91ba8ac0 67623-67919 25250.8 33.7 297 | 0..0 0/0 | 3749/3746 | -3657/-3656 | 826/827 | 148/8 | 1.42/1.42 | 377/377 | 0(0) | 0 | 0 | []
+   0x0   0x91ba8ac0 67920-67920 25284.5 0.0 1 | 0..0 0/0 | 3746/3746 | -3656/-3656 | 827/827 | 8/8 | 1.42/1.42 | 377/377 | 0(0) | 0 | 0 | []
+   0x5   0x91ba8ac0 67921-67973 25284.7 5.9 53 | 0..60 0/60 | 3746/3567 | -3656/-3477 | 827/981 | 8/10 | 1.42/1.58 | 377/354 | 0(0) | 0 | 0 | []
+   0x0   0x91ba8ac0 67974-67974 25290.7 0.0 1 | 61..61 61/61 | 3561/3561 | -3471/-3471 | 987/987 | 10/10 | 1.58/1.58 | 353/353 | 0(0) | 0 | 0 | []
+   first row within 3 r_gate of G: frame 67411 t 25228.9 s (61.8 s before the last row); last row t 25290.7 s
+   order-4 total 90.4 s in 2 segs; order-0x12 total 21.5 s in 1 segs; 0x1f 33.7 s; 5 5.9 s; rows in the 6 r window 432 of 1093 order-4 rows, lead rows 456
+   0x1f at frame 67623: hdg_err start 148.2 end 8.2 deg, v start 0 m/s, dP 826 m, dG 3749 m, s_r 1.42
+== 0xab6c21a0 class M1 gate 0x91ba8ac0 rows 7535 | G_m [4259, -18037, 31134] F [-0.0, -0.0, 1.0] (B-plane(18)) r_gate 1105 m | order-4 givens 2
+   grid point P [3593, -18037, 26881] rel G: depth -4253 m (=> r_ship 1022 m from -2(r_gate+r_ship)) lateral 666 m (1.00 x 666 m) |P-G| 4305 m
+   order tgt frames t0_s dur_s n | v_ms min..max start/end | dG_m s/e | depth_m s/e | dP_m s/e | hdg_err s/e | s_r s/e | e_m s/e | lead rows(in window) | des!=des_engine rows | emg | obst(top)
+   0x4   0x91ba8ac0 67975-72803 25290.8 403.8 4829 | 0..113 113/40 | 14513/8895 | -12338/-8878 | 11370/4633 | 45/46 | -6.57/-3.44 | 7996/277 | 4558(4750) | 4583 | 0 | ['0xab6dbb20:91', '0x91bd58c0:71']
+      closest to P: frame 72803 dP 4633 m (arrival 0.75 r = 828 m) v 40 m/s des 40 des_engine 16 hdg_err 46 aim_err 37 s_r -3.44 e 277 m lead True
+   0x0   0x00000000 72804-72804 25694.7 0.0 1 | 40..40 40/40 | 8893/8893 | -8876/-8876 | 4630/4630 | 46/46 | -3.43/-3.43 | 274/274 | 0(1) | 0 | 0 | ['0x91bd58c0:1']
+   0x12  0x00000000 72805-73118 25694.8 24.3 314 | 40..113 40/113 | 8890/7520 | -8874/-7328 | 4628/3346 | 46/46 | -3.43/-2.03 | 272/1319 | 105(314) | 0 | 0 | []
+   0x0   0x00000000 73119-73119 25719.2 0.0 1 | 113..113 113/113 | 7516/7516 | -7324/-7324 | 3343/3343 | 46/46 | -2.03/-2.03 | 1324/1324 | 0(1) | 0 | 0 | []
+   0x4   0x91ba8ac0 73120-73589 25719.2 32.5 470 | 19..113 113/25 | 7513/6471 | -7319/-6141 | 3341/2529 | 46/88 | -2.03/-0.96 | 1329/1683 | 443(470) | 449 | 25 | ['0xab6df330:200']
+      closest to P: frame 73589 dP 2529 m (arrival 0.75 r = 828 m) v 25 m/s des 25 des_engine 1 hdg_err 88 aim_err 58 s_r -0.96 e 1683 m lead True
+   0x0   0x00000000 73590-73590 25751.8 0.0 1 | 25..25 25/25 | 6470/6470 | -6141/-6141 | 2528/2528 | 88/88 | -0.96/-0.96 | 1682/1682 | 0(1) | 0 | 0 | ['0xab6df330:1']
+   0x12  0x00000000 73591-74044 25751.9 30.9 454 | 25..113 25/113 | 6470/5357 | -6141/-4809 | 2527/2049 | 88/52 | -0.96/0.25 | 1680/1972 | 60(454) | 0 | 0 | []
+   0x0   0x00000000 74045-74045 25782.8 0.0 1 | 113..113 113/113 | 5355/5355 | -4804/-4804 | 2054/2054 | 52/52 | 0.25/0.25 | 1979/1979 | 0(1) | 0 | 0 | []
+   0x4   0x91ba8ac0 74046-74779 25782.9 49.9 734 | 26..113 113/26 | 5353/4047 | -4799/-3882 | 2058/779 | 52/114 | 0.26/1.09 | 1985/684 | 199(134) | 533 | 0 | ['0xab6dbb20:110', '0xab6df330:89']
+      closest to P: frame 74779 dP 779 m (arrival 0.75 r = 828 m) v 26 m/s des 25 des_engine 20 hdg_err 114 aim_err 14 s_r 1.09 e 684 m lead False
+   0x0   0x91ba8ac0 74780-74780 25832.8 0.0 1 | 0..0 0/0 | 4047/4047 | -3882/-3882 | 777/777 | 114/114 | 1.09/1.09 | 682/682 | 0(0) | 0 | 0 | []
+   0x1f  0x91ba8ac0 74781-75256 25832.9 32.0 476 | 0..0 0/0 | 4047/4047 | -3882/-3882 | 777/777 | 114/8 | 1.09/1.09 | 682/682 | 0(0) | 0 | 0 | []
+   0x0   0x91ba8ac0 75257-75257 25864.9 0.0 1 | 0..0 0/0 | 4047/4047 | -3882/-3882 | 777/777 | 8/8 | 1.09/1.09 | 682/682 | 0(0) | 0 | 0 | []
+   0x5   0x91ba8ac0 75258-75508 25865.0 16.7 251 | 0..84 0/84 | 4047/3350 | -3882/-3202 | 777/1189 | 8/17 | 1.09/1.70 | 682/555 | 0(0) | 0 | 0 | []
+   0x0   0x91ba8ac0 75509-75509 25881.8 0.0 1 | 84..84 84/84 | 3345/3345 | -3197/-3197 | 1193/1193 | 17/17 | 1.71/1.71 | 554/554 | 0(0) | 0 | 0 | []
+   first row within 3 r_gate of G: never; last row t 25881.8 s
+   order-4 total 486.1 s in 3 segs; order-0x12 total 55.2 s in 2 segs; 0x1f 32.0 s; 5 16.7 s; rows in the 6 r window 5354 of 6033 order-4 rows, lead rows 5200
+   0x1f at frame 74781: hdg_err start 113.7 end 8.1 deg, v start 0 m/s, dP 777 m, dG 4047 m, s_r 1.09
+== 0x91bd58c0 class M2 gate 0x91ba8ac0 rows 4539 | G_m [4259, -18037, 31134] F [-0.0, -0.0, 1.0] (B-plane(18)) r_gate 1105 m | order-4 givens 2
+   grid point P [4925, -18037, 27415] rel G: depth -3719 m (=> r_ship 755 m from -2(r_gate+r_ship)) lateral 666 m (1.00 x 666 m) |P-G| 3778 m
+   order tgt frames t0_s dur_s n | v_ms min..max start/end | dG_m s/e | depth_m s/e | dP_m s/e | hdg_err s/e | s_r s/e | e_m s/e | lead rows(in window) | des!=des_engine rows | emg | obst(top)
+   0x4   0x91ba8ac0 75511-76822 25881.9 82.4 1312 | 0..40 40/40 | 6386/6013 | -6317/-5971 | 2614/2252 | 46/24 | -1.60/-1.29 | 284/49 | 1312(1312) | 1312 | 0 | ['0xab6df330:88']
+      closest to P: frame 76822 dP 2252 m (arrival 0.75 r = 828 m) v 40 m/s des 40 des_engine 53 hdg_err 24 aim_err 44 s_r -1.29 e 49 m lead True
+   0x0   0x00000000 76823-76823 25964.3 0.0 1 | 40..40 40/40 | 6011/6011 | -5969/-5969 | 2250/2250 | 24/24 | -1.29/-1.29 | 48/48 | 0(1) | 0 | 0 | ['0xab6df330:1']
+   0x12  0x00000000 76824-77282 25964.4 26.4 459 | 39..70 39/70 | 6009/6083 | -5967/-5872 | 2249/2443 | 24/134 | -1.29/-1.20 | 47/1154 | 30(459) | 0 | 0 | []
+   0x0   0x00000000 77283-77283 25990.9 0.0 1 | 70..70 70/70 | 6086/6086 | -5875/-5875 | 2447/2447 | 134/134 | -1.20/-1.20 | 1157/1157 | 0(1) | 0 | 0 | []
+   0x4   0x91ba8ac0 77284-79469 25991.0 124.5 2186 | 0..70 70/70 | 6090/4597 | -5879/-4549 | 2451/830 | 134/0 | -1.21/-0.00 | 1160/2 | 2182(2186) | 2182 | 0 | ['0xab6dbb20:17', '0xab6df330:16']
+      closest to P: frame 79469 dP 830 m (arrival 0.75 r = 828 m) v 70 m/s des 70 des_engine 28 hdg_err 0 aim_err 0 s_r -0.00 e 2 m lead True
+   0x0   0x91ba8ac0 79470-79471 26115.5 0.1 2 | 69..70 70/69 | 4594/4591 | -4545/-4542 | 826/823 | 0/0 | 0.00/0.00 | 2/2 | 0(2) | 0 | 0 | []
+   0x5   0x91ba8ac0 79472-80048 26115.6 30.1 577 | 68..70 68/70 | 4586/2480 | -4537/-2450 | 818/1300 | 0/9 | 0.01/1.90 | 2/284 | 0(231) | 0 | 0 | []
+   0x0   0x91ba8ac0 80049-80049 26145.8 0.0 1 | 70..70 70/70 | 2476/2476 | -2447/-2447 | 1304/1304 | 9/9 | 1.90/1.90 | 285/285 | 0(0) | 0 | 0 | []
+   first row within 3 r_gate of G: frame 79827 t 26133.8 s (11.9 s before the last row); last row t 26145.8 s
+   order-4 total 206.8 s in 2 segs; order-0x12 total 26.4 s in 1 segs; 0x1f 0.0 s; 5 30.1 s; rows in the 6 r window 3498 of 3498 order-4 rows, lead rows 3494

@@ -1,0 +1,84 @@
+capitals seen: 12 {'M2': 6, 'M1': 4, 'M7': 2}
+capital-vs-capital detour rows 1601 of 6988 | by obj order {'0x15': 21, '0x14': 548, '0x4': 1032} obstacle order {'0x4': 592, '0x0': 187, '0x14': 364, '0x12': 415, '0x1f': 1, '0x8': 42}
+  last lane verdict no lane row (untraced pair) 1440  first (42047, '0x9171b398', '0x15', '0x91707928', '0x4')  (obj order, obstacle order) {('0x15', '0x4'): 21, ('0x14', '0x0'): 67, ('0x14', '0x14'): 358, ('0x14', '0x12'): 104, ('0x4', '0x0'): 120, ('0x4', '0x14'): 6, ('0x14', '0x4'): 19, ('0x4', '0x12'): 249, ('0x4', '0x4'): 475, ('0x4', '0x1f'): 1, ('0x4', '0x8'): 20}
+  last lane verdict c/- recent               108  first (64860, '0x91707928', '0x4', '0x91bb5b28', '0x12')  (obj order, obstacle order) {('0x4', '0x12'): 31, ('0x4', '0x4'): 77}
+  last lane verdict s/along recent           36  first (72733, '0xab6c21a0', '0x4', '0x91bd58c0', '0x12')  (obj order, obstacle order) {('0x4', '0x12'): 31, ('0x4', '0x8'): 5}
+  last lane verdict s/lat recent             17  first (79370, '0x91bd58c0', '0x4', '0xab6dbb20', '0x8')  (obj order, obstacle order) {('0x4', '0x8'): 17}
+ pairs (obj, obstacle, obj order, obstacle order) x rows:
+    ('0xab6be990', '0x91bd58c0', '0x4', '0x4') 281 frames 70621-72002
+    ('0x91bd8ab8', '0x91bd58c0', '0x14', '0x14') 192 frames 58377-61190
+    ('0xab6c21a0', '0xab6dbb20', '0x4', '0x0') 102 frames 65574-70518
+    ('0xab6be990', '0x91bd58c0', '0x14', '0x14') 88 frames 62176-63325
+    ('0xab6c21a0', '0xab6df330', '0x4', '0x12') 67 frames 73371-74268
+    ('0x91bd58c0', '0x3c04daa8', '0x4', '0x4') 63 frames 69443-69532
+    ('0x91bd8ab8', '0xab6be990', '0x14', '0x12') 59 frames 66787-67287
+    ('0x91bd58c0', '0xab6be990', '0x14', '0x14') 56 frames 62329-63155
+    ('0xab6df330', '0x91bd58c0', '0x4', '0x4') 53 frames 75594-76242
+    ('0xab6dbb20', '0xab6df330', '0x4', '0x4') 52 frames 76364-76545
+    ('0x91bd8ab8', '0x3c04daa8', '0x4', '0x12') 48 frames 68526-69293
+    ('0xab6be990', '0x91bd58c0', '0x14', '0x0') 46 frames 62932-62979
+    ('0xab6be990', '0x3c04daa8', '0x4', '0x12') 46 frames 68810-68921
+    ('0x91bd58c0', '0xab6be990', '0x4', '0x4') 43 frames 70620-70835
+    ('0xab6df330', '0x91bd58c0', '0x14', '0x12') 40 frames 72993-73111
+    ('0x3c04daa8', '0x91bd8ab8', '0x4', '0x12') 38 frames 67849-68704
+    ('0x3c04daa8', '0x91bd8ab8', '0x4', '0x4') 35 frames 68218-68319
+    ('0xab6be990', '0x91bd8ab8', '0x4', '0x12') 32 frames 68666-68809
+    ('0xab6c21a0', '0x91bd58c0', '0x4', '0x12') 31 frames 72733-72763
+    ('0xab6dbb20', '0x91bd58c0', '0x4', '0x4') 25 frames 78654-78678
+    ('0x91bd58c0', '0x91bd8ab8', '0x14', '0x14') 22 frames 58377-58416
+    ('0x9171b398', '0x91707928', '0x15', '0x4') 21 frames 42047-42176
+    ('0x91bd8ab8', '0x91bd58c0', '0x14', '0x0') 21 frames 58356-58376
+    ('0xab6be990', '0x3c04daa8', '0x14', '0x4') 19 frames 67843-67939
+    ('0x91bd58c0', '0xab6df330', '0x4', '0x12') 19 frames 76735-76753
+    ('0xab6c21a0', '0xab6df330', '0x4', '0x0') 17 frames 73327-74204
+    ('0x91bd58c0', '0xab6dbb20', '0x4', '0x8') 17 frames 79370-79386
+    ('0xab6dbb20', '0xab6df330', '0x4', '0x12') 13 frames 76741-76753
+    ('0x91707928', '0x91bb5b28', '0x4', '0x12') 12 frames 64860-64871
+    ('0xab6be990', '0x3c04daa8', '0x4', '0x8') 10 frames 70493-70502
+    ('0x3c04daa8', '0x91bd8ab8', '0x4', '0x8') 9 frames 69845-69853
+    ('0x3c04daa8', '0xab6be990', '0x4', '0x14') 6 frames 67843-67848
+    ('0xab6be990', '0x91bd58c0', '0x14', '0x12') 5 frames 63361-63365
+    ('0xab6c21a0', '0xab6dbb20', '0x4', '0x12') 5 frames 74685-74689
+    ('0x91bd58c0', '0xab6df330', '0x4', '0x8') 5 frames 78284-78288
+    ('0x3c04daa8', '0x91bd8ab8', '0x4', '0x1f') 1 frames 69410-69410
+    ('0xab6be990', '0x3c04daa8', '0x4', '0x0') 1 frames 70503-70503
+    ('0xab6dbb20', '0xab6df330', '0x4', '0x8') 1 frames 78288-78288
+E verdict rows capital A vs capital B 2235 {'suppress_lane': 1269, 'pass_not_member': 689, 'suppress_resolved': 1, 'pass_not_transient': 28, 'pass_a_avoid': 176, 'pass_not_fresh': 72}
+  by (A_order, B_order, verdict) [(('0x4', '0x4', 'suppress_lane'), 1097), (('0x4', '0x12', 'pass_not_member'), 304), (('0x4', '0x4', 'pass_not_member'), 146), (('0x12', '0x12', 'pass_a_avoid'), 111), (('0x4', '0x0', 'pass_not_member'), 81), (('0x4', '0x1f', 'pass_not_member'), 65), (('0x4', '0x5', 'suppress_lane'), 61), (('0x4', '0x15', 'pass_not_member'), 53), (('0x1f', '0x12', 'pass_not_fresh'), 52), (('0x5', '0x4', 'suppress_lane'), 46), (('0x5', '0x12', 'pass_not_member'), 37), (('0x1f', '0x4', 'suppress_lane'), 36)]
+engine warn rows with a capital subject [('66780', '0x91bb5b28', '0x3c0544b0', 'M6', '3786.9'), ('72805', '0xab6c21a0', '0x91bd58c0', 'M2', '2266.6'), ('73591', '0xab6c21a0', '0xab6df330', 'M7', '2167.6'), ('76824', '0x91bd58c0', '0xab6df330', 'M7', '1839.4')]
+0x12 episodes per capital (frames first-last 0x12 observation, game s span; traced ships exact, untraced lower bounds):
+  0x3c04daa8 M2 n=3 total 89.5 s: 68322-68648(34.8) 68730-68995(26.3) 69058-69351(28.4)
+  0x91bb5b28 M2 n=3 total 49.6 s: 64854-65140(28.0) 66780-66959(21.5) 66960-66960(0.0)
+  0x91bd58c0 M2 n=7 total 112.3 s: 42035-42056(1.5) 42441-42470(2.1) 56551-56833(1.3) 63361-63365(0.2) 72631-73325(51.7) 73355-73773(28.9) 76824-77282(26.5)
+  0x91bd8ab8 M1 n=3 total 50.1 s: 65411-65490(8.1) 67849-68079(25.3) 68652-68815(16.7)
+  0xab6be990 M2 n=5 total 88.5 s: 50046-50239(3.8) 66770-66962(23.2) 67021-67428(15.5) 68280-68568(30.2) 68944-69105(15.8)
+  0xab6c21a0 M1 n=2 total 55.2 s: 72805-73118(24.3) 73591-74044(30.9)
+  0xab6dbb20 M7 n=3 total 83.2 s: 74513-74692(12.2) 74904-75473(38.3) 76856-77422(32.7)
+  0xab6df330 M7 n=5 total 101.8 s: 73371-73621(17.6) 73851-73988(9.3) 74205-74403(13.6) 74952-75528(38.7) 76731-77122(22.6)
+E rows of the capital as A in the 60 frames before each 0x12 onset (frame >= 64000): (B, B code, B_order, verdict, d_m) x n
+  0x3c04daa8 onset 68322: {}
+  0x3c04daa8 onset 68730: {}
+  0x3c04daa8 onset 69058: {}
+  0x91bb5b28 onset 64854: {}
+  0x91bb5b28 onset 66780: {('0x91bb5648', '-', '0x0', 'pass_not_resolved', '20683'): 1, ('0x9171dbd0', 'M6', '0x0', 'suppress_small', '2428'): 1, ('0x917212a8', 'M6', '0x0', 'suppress_small', '2233'): 1, ('0x3c0544b0', 'M6', '0x4', 'suppress_small', '3865'): 1}
+  0x91bb5b28 onset 66960: {('0x91bd4f00', 'M6', '0x0', 'suppress_small', '1982'): 1, ('0xab6be990', 'M2', '0x12', 'pass_a_avoid', '7443'): 1, ('0x91bd5c68', 'M8', '0x0', 'suppress_small', '4249'): 1, ('0x91ba8ac0', '-', '0x0', 'pass_a_avoid', '4107'): 1}
+  0x91bd58c0 onset 72631: {}
+  0x91bd58c0 onset 73355: {}
+  0x91bd58c0 onset 76824: {('0x91bb5648', '-', '0x0', 'pass_not_resolved', '20711'): 1, ('0xab6dbb20', 'M7', '0x4', 'pass_not_member', '3380'): 1, ('0xab6df330', 'M7', '0x12', 'pass_not_member', '1988'): 1, ('0x91ba8ac0', '-', '0x0', 'suppress_gate', '6123'): 1}
+  0x91bd8ab8 onset 65411: {}
+  0x91bd8ab8 onset 67849: {}
+  0x91bd8ab8 onset 68652: {}
+  0xab6be990 onset 66770: {}
+  0xab6be990 onset 67021: {}
+  0xab6be990 onset 68280: {}
+  0xab6be990 onset 68944: {}
+  0xab6c21a0 onset 72805: {('0x91bb5648', '-', '0x0', 'pass_not_resolved', '20915'): 1, ('0x91bd58c0', 'M2', '0x12', 'pass_not_member', '2397'): 1, ('0xab6be990', 'M2', '0x1f', 'suppress_lane', '4894'): 1, ('0x91bb5648', '-', '0x0', 'pass_not_resolved', '20914'): 1}
+  0xab6c21a0 onset 73591: {('0xab6df330', 'M7', '0x12', 'pass_not_member', '2416'): 1, ('0x91ba8ac0', '-', '0x0', 'suppress_gate', '6510'): 1, ('0xab6d92e8', 'M6', '0x12', 'suppress_small', '2620'): 1, ('0x91bb5648', '-', '0x0', 'pass_not_resolved', '20876'): 1}
+  0xab6dbb20 onset 74513: {}
+  0xab6dbb20 onset 74904: {}
+  0xab6dbb20 onset 76856: {}
+  0xab6df330 onset 73371: {}
+  0xab6df330 onset 73851: {}
+  0xab6df330 onset 74205: {}
+  0xab6df330 onset 74952: {}
+  0xab6df330 onset 76731: {}

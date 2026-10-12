@@ -1,0 +1,117 @@
+== 0x91713fd0 M2 gate 0x91ba79b0 P lateral 0 m from the axis, P depth -4392 m; rows 15192 frames 813-16004
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:out             813-13880 | 22669.2 328.5 66.8 | -44780/-11851 | 15932/2947 | 22/22 | 108..108 | 0 35397
+   o4:join            13881-15735 | 22997.7 77.6 10.2 | -11846/-5225 | 2945/1 | 22/0 | 100..108 | 98 7246
+   order0             15736-15737 | 23075.3 0.1 0.0 | -5218/-5213 | 1/1 | 0/0 | 100..100 | 0 5
+   launch5            15738-16003 | 23075.4 15.1 1.5 | -5208/-3588 | 1/1 | 0/0 | 99..108 | 0 1619
+   order0             16004-16004 | 23090.5 0.1 0.0 | -3582/-3582 | 1/1 | 0/0 | 108..108 | 0 0
+   totals (game s): {'o4:out': 328.5, 'o4:join': 77.6, 'order0': 0.2, 'launch5': 15.1}
+== 0x9171b398 M1 gate 0x91ba79b0 P lateral 0 m from the axis, P depth -4253 m; rows 1226 frames 19549-20774
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            19550-20519 | 23241.9 55.2 5.5 | -9273/-5082 | 3328/71 | 20/6 | 100..112 | 98 5308
+   order0             20520-20521 | 23297.1 0.1 0.0 | -5077/-5071 | 70/70 | 6/6 | 100..100 | 0 6
+   launch5            20522-20773 | 23297.2 15.3 1.5 | -5064/-3361 | 69/26 | 6/0 | 99..113 | 5 1703
+   order0             20774-20774 | 23312.5 0.1 0.0 | -3353/-3353 | 26/26 | 0/0 | 113..113 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 55.2, 'order0': 0.2, 'launch5': 15.3}
+== 0x91ba2e20 M2 gate 0x91ba79b0 P lateral 666 m from the axis, P depth -4392 m; rows 1283 frames 21124-22406
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            21125-22118 | 23331.0 52.5 5.2 | -9275/-5221 | 2949/33 | 16/2 | 100..109 | 107 4994
+   order0             22119-22120 | 23383.6 0.1 0.0 | -5217/-5212 | 33/32 | 2/2 | 100..100 | 0 5
+   launch5            22121-22405 | 23383.7 15.3 1.5 | -5205/-3550 | 32/173 | 2/8 | 99..110 | 10 1662
+   order0             22406-22406 | 23398.9 0.1 0.0 | -3543/-3543 | 174/174 | 8/8 | 110..110 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 52.5, 'order0': 0.2, 'launch5': 15.3}
+== 0x91707928 M1 gate 0x91ba8ac0 P lateral 0 m from the axis, P depth -4253 m; rows 33058 frames 33289-66346
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:out             33289-64567 | 23848.9 1142.0 179.4 | -84805/-11711 | 31138/2918 | 0/21 | 69..112 | 22 78352
+      vs 0x91bb5b28 rows 668 {'s/lat': 626, 's/along': 42} bind=1 0 ds -28987..-3915 seq_cap rows 0 min - trail=A 0 | A e_m med 11543 theta med 21.4
+   o4:join            64568-66107 | 24990.9 121.6 15.1 | -11708/-5082 | 2917/0 | 21/0 | 48..69 | 131 7239
+      vs 0x91bb5b28 rows 90 {'s/along': 22, 'c/-': 1, 's/lat': 67} bind=1 0 ds -5614..-2944 seq_cap rows 0 min - trail=A 0 | A e_m med 14 theta med 1.9
+      vs 0xab6c21a0 rows 38 {'s/lat': 38} bind=1 0 ds -21383..-20856 seq_cap rows 0 min - trail=A 0 | A e_m med 0 theta med 0.3
+   order0             66108-66109 | 25112.5 0.1 0.0 | -5078/-5073 | 0/0 | 0/0 | 68..69 | 0 5
+   launch5            66110-66345 | 25112.6 25.2 2.7 | -5069/-3350 | 0/0 | 0/0 | 68..69 | 0 1719
+   order0             66346-66346 | 25137.9 0.1 0.0 | -3341/-3341 | 0/0 | 0/0 | 69..69 | 0 0
+   totals (game s): {'o4:out': 1142.0, 'o4:join': 121.6, 'order0': 0.3, 'launch5': 25.2}
+== 0x91bb5b28 M2 gate 0x91ba8ac0 P lateral 666 m from the axis, P depth -4392 m; rows 1628 frames 66347-67974
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            66348-66778 | 25138.1 47.9 4.8 | -9615/-5567 | 1814/1 | 60/0 | 100..100 | 60 4435
+      vs 0x91707928 rows 1 {'s/along': 1} bind=1 1 ds 6272..6272 seq_cap rows 1 min 273.2 trail=A 1 | A e_m med 1827 theta med 60.0
+      vs 0xab6c21a0 rows 34 {'s/lat': 34} bind=1 0 ds -15056..-14487 seq_cap rows 0 min - trail=A 0 | A e_m med 505 theta med 31.1
+   order0             66779-66779 | 25186.1 0.1 0.0 | -5556/-5556 | 1/1 | 0/0 | 100..100 | 0 0
+   evade0x12          66780-66959 | 25186.2 21.7 2.2 | -5544/-3405 | 1/809 | 0/38 | 99..110 | 38 2287
+   order0             66960-66960 | 25207.9 0.1 0.0 | -3395/-3395 | 817/817 | 38/38 | 110..110 | 0 0
+   o4:fallback        66962-67621 | 25208.2 42.4 6.4 | -3370/-3655 | 837/379 | 38/148 | 10..109 | 209 770
+      vs 0xab6c21a0 rows 41 {'s/lat': 41} bind=1 0 ds -15505..-11912 seq_cap rows 0 min - trail=A 0 | A e_m med 1018 theta med 94.6
+   order0             67622-67622 | 25250.7 0.1 0.0 | -3658/-3658 | 377/377 | 148/148 | 0..0 | 0 0
+   rotate             67623-67919 | 25250.8 33.8 3.4 | -3657/-3656 | 377/377 | 148/8 | 0..0 | 152 6
+   order0             67920-67920 | 25284.5 0.1 0.0 | -3656/-3656 | 377/377 | 8/8 | 0..0 | 0 0
+   launch5            67921-67973 | 25284.7 6.0 0.6 | -3656/-3477 | 377/354 | 8/10 | 0..60 | 10 180
+   order0             67974-67974 | 25290.7 0.1 0.0 | -3471/-3471 | 353/353 | 10/10 | 61..61 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 48.1, 'order0': 0.6, 'evade0x12': 21.7, 'o4:fallback': 42.4, 'rotate': 33.8, 'launch5': 6.0}
+== 0xab6c21a0 M1 gate 0x91ba8ac0 P lateral 666 m from the axis, P depth -4253 m; rows 7535 frames 67975-75509
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:out             67975-68053 | 25290.8 8.2 0.8 | -12338/-11715 | 7996/7379 | 45/45 | 94..113 | 1 877
+      vs 0x3c04daa8 rows 8 {'s/lat': 8} bind=1 5 ds 3458..3833 seq_cap rows 8 min 112.6 trail=A 8 | A e_m med 7712 theta med 44.7
+      vs 0x91bb5b28 rows 1 {'s/lat': 1} bind=1 0 ds 8860..8860 seq_cap rows 1 min 250.8 trail=A 1 | A e_m med 7996 theta med 44.7
+      vs 0xab6be990 rows 4 {'s/lat': 4} bind=1 4 ds 3439..3582 seq_cap rows 4 min 95.3 trail=A 4 | A e_m med 7538 theta med 44.7
+   o4:join            68054-68574 | 25299.0 54.0 5.4 | -11708/-10158 | 7372/3667 | 45/71 | 34..100 | 41 4017
+      vs 0x3c04daa8 rows 26 {'s/lat': 26} bind=1 5 ds 2974..3396 seq_cap rows 26 min 90.1 trail=A 26 | A e_m med 6648 theta med 60.4
+      vs 0xab6be990 rows 21 {'s/lat': 21} bind=1 21 ds 2628..3383 seq_cap rows 21 min 34.9 trail=A 21 | A e_m med 6760 theta med 57.1
+      vs 0x91bd8ab8 rows 43 {'s/lat': 43} bind=1 26 ds 5558..5985 seq_cap rows 43 min 176.9 trail=A 43 | A e_m med 5790 theta med 72.5
+   o4:join+floor      68575-68848 | 25353.4 28.3 2.8 | -10155/-9870 | 3658/2706 | 71/83 | 0..100 | 13 993
+      vs 0xab6be990 rows 31 {'s/lat': 27, 'c/-': 2, 's/along': 2} bind=1 31 ds 2071..2481 seq_cap rows 31 min 0.0 trail=A 31 | A e_m med 2752 theta med 81.1
+      vs 0x91bd8ab8 rows 10 {'s/lat': 10} bind=1 0 ds 5312..5576 seq_cap rows 10 min 170.1 trail=A 10 | A e_m med 3211 theta med 73.0
+      vs 0x3c04daa8 rows 7 {'s/lat': 7} bind=1 0 ds 4127..4291 seq_cap rows 7 min 140.5 trail=A 7 | A e_m med 2844 theta med 78.7
+   o4:join            68849-68871 | 25381.7 2.2 0.2 | -9870/-9869 | 2706/2694 | 83/83 | 0..11 | 0 12
+      vs 0xab6be990 rows 2 {'s/along': 2} bind=1 2 ds 2513..2546 seq_cap rows 2 min 12.9 trail=A 2 | A e_m med 2703 theta med 83.0
+      vs 0x91bd8ab8 rows 2 {'s/lat': 2} bind=1 0 ds 5304..5308 seq_cap rows 2 min 169.9 trail=A 2 | A e_m med 2700 theta med 83.0
+   o4:join+floor      68872-70430 | 25383.9 150.9 15.1 | -9869/-9867 | 2693/2681 | 83/83 | 0..11 | 0 12
+      vs 0x91bd58c0 rows 145 {'s/lat': 27, 'c/-': 44, 's/along': 74} bind=1 145 ds 649..2142 seq_cap rows 145 min 0.0 trail=A 145 | A e_m med 2681 theta med 83.0
+      vs 0xab6be990 rows 130 {'s/along': 4, 's/lat': 126} bind=1 0 ds 2577..4395 seq_cap rows 130 min 28.3 trail=A 130 | A e_m med 2681 theta med 83.0
+      vs 0x91bd8ab8 rows 92 {'s/lat': 92} bind=1 0 ds 5285..6783 seq_cap rows 92 min 169.3 trail=A 92 | A e_m med 2681 theta med 83.0
+      vs 0x3c04daa8 rows 105 {'s/lat': 105} bind=1 0 ds 4409..6979 seq_cap rows 105 min 150.4 trail=A 105 | A e_m med 2681 theta med 83.0
+   o4:join            70431-71116 | 25534.8 55.0 5.5 | -9867/-9103 | 2681/616 | 83/62 | 0..73 | 39 2202
+      vs 0x3c04daa8 rows 5 {'s/lat': 5} bind=1 0 ds 7054..7341 seq_cap rows 5 min 221.5 trail=A 5 | A e_m med 2663 theta med 82.9
+      vs 0xab6be990 rows 56 {'s/lat': 38, 'c/-': 18} bind=1 0 ds 4366..4923 seq_cap rows 56 min 136.7 trail=A 56 | A e_m med 1301 theta med 64.6
+      vs 0x91bd58c0 rows 53 {'s/along': 53} bind=1 53 ds 2148..2655 seq_cap rows 53 min 2.5 trail=A 53 | A e_m med 1348 theta med 64.5
+   o4:join            72619-72803 | 25680.5 14.2 1.4 | -9102/-8878 | 610/277 | 61/46 | 0..40 | 20 401
+      vs 0xab6be990 rows 16 {'c/-': 7, 's/lat': 9} bind=1 16 ds 4127..4337 seq_cap rows 16 min 127.3 trail=A 16 | A e_m med 521 theta med 59.1
+   order0             72804-72804 | 25694.7 0.1 0.0 | -8876/-8876 | 274/274 | 46/46 | 40..40 | 0 0
+   evade0x12          72805-73118 | 25694.8 24.4 2.4 | -8874/-7328 | 272/1319 | 46/46 | 40..113 | 0 2213
+   order0             73119-73119 | 25719.2 0.1 0.0 | -7324/-7324 | 1324/1324 | 46/46 | 113..113 | 0 0
+   o4:slow_join       73122-73534 | 25719.4 28.6 2.9 | -7309/-6160 | 1339/1764 | 46/78 | 23..113 | 127 1225
+   o4:join            73535-73589 | 25748.0 3.8 0.4 | -6160/-6141 | 1763/1683 | 78/88 | 19..25 | 10 84
+   order0             73590-73590 | 25751.8 0.1 0.0 | -6141/-6141 | 1682/1682 | 88/88 | 25..25 | 0 0
+   evade0x12          73591-74044 | 25751.9 30.9 3.1 | -6141/-4809 | 1680/1972 | 88/52 | 25..113 | 143 1373
+   order0             74045-74045 | 25782.8 0.1 0.0 | -4804/-4804 | 1979/1979 | 52/52 | 113..113 | 0 0
+   o4:fallback        74048-74779 | 25783.0 49.8 5.0 | -4786/-3882 | 2000/684 | 52/114 | 26..113 | 179 1597
+      vs 0x91bd58c0 rows 49 {'s/lat': 49} bind=1 0 ds -3511..-2496 seq_cap rows 0 min - trail=A 0 | A e_m med 2218 theta med 70.5
+   order0             74780-74780 | 25832.8 0.1 0.0 | -3882/-3882 | 682/682 | 114/114 | 0..0 | 0 0
+   rotate             74781-75256 | 25832.9 32.0 3.2 | -3882/-3882 | 682/682 | 114/8 | 0..0 | 119 1
+   order0             75257-75257 | 25864.9 0.1 0.0 | -3882/-3882 | 682/682 | 8/8 | 0..0 | 0 0
+   launch5            75258-75508 | 25865.0 16.8 1.7 | -3882/-3202 | 682/555 | 8/17 | 0..84 | 22 698
+   order0             75509-75509 | 25881.8 0.1 0.0 | -3197/-3197 | 554/554 | 17/17 | 84..84 | 0 0
+   totals (game s): {'o4:out': 8.2, 'o4:join': 173.7, 'o4:join+floor': 225.7, 'order0': 0.5, 'evade0x12': 55.3, 'o4:slow_join': 28.6, 'o4:fallback': 49.8, 'rotate': 32.0, 'launch5': 16.8}
+== 0x91bd58c0 M2 gate 0x91ba8ac0 P lateral 666 m from the axis, P depth -3719 m; rows 4539 frames 75511-80049
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            75512-75594 | 25882.0 5.4 0.5 | -6316/-6161 | 282/133 | 46/32 | 40..40 | 15 214
+      vs 0xab6c21a0 rows 1 {'s/along': 1} bind=1 1 ds 3115..3115 seq_cap rows 1 min 168.9 trail=A 1 | A e_m med 284 theta med 46.2
+      vs 0xab6dbb20 rows 5 {'s/lat': 5} bind=1 5 ds 4111..4289 seq_cap rows 5 min 260.2 trail=A 5 | A e_m med 190 theta med 38.0
+   o4:join+floor      75595-76730 | 25887.4 71.6 7.2 | -6159/-6120 | 132/97 | 31/16 | 0..40 | 15 53
+      vs 0xab6df330 rows 70 {'s/lat': 22, 'c/-': 48} bind=1 70 ds 1251..1737 seq_cap rows 70 min 0.0 trail=A 70 | A e_m med 97 theta med 16.3
+      vs 0xab6dbb20 rows 69 {'s/lat': 67, 'c/-': 2} bind=1 0 ds 3060..4628 seq_cap rows 69 min 191.2 trail=A 69 | A e_m med 97 theta med 16.3
+   o4:join            76731-76822 | 25959.0 5.3 0.5 | -6120/-5971 | 97/49 | 16/24 | 0..40 | 10 157
+      vs 0xab6dbb20 rows 5 {'c/-': 5} bind=1 5 ds 2917..3052 seq_cap rows 5 min 178.2 trail=A 5 | A e_m med 84 theta med 18.1
+   order0             76823-76823 | 25964.3 0.1 0.0 | -5969/-5969 | 48/48 | 24/24 | 40..40 | 0 0
+   evade0x12          76824-77282 | 25964.4 26.5 2.6 | -5967/-5872 | 47/1154 | 24/134 | 39..70 | 140 1152
+   order0             77283-77283 | 25990.9 0.1 0.0 | -5875/-5875 | 1157/1157 | 134/134 | 70..70 | 0 0
+   o4:join            77284-78412 | 25991.0 65.7 6.6 | -5879/-5372 | 1160/44 | 134/7 | 18..70 | 228 1304
+      vs 0xab6df330 rows 59 {'s/lat': 26, 'c/-': 20, 's/along': 13} bind=1 28 ds 2553..3318 seq_cap rows 59 min 146.1 trail=A 59 | A e_m med 847 theta med 71.9
+      vs 0xab6dbb20 rows 57 {'s/lat': 57} bind=1 37 ds 1849..4149 seq_cap rows 57 min 4.2 trail=A 57 | A e_m med 578 theta med 61.8
+   o4:join+floor      78413-79210 | 26056.7 44.8 4.5 | -5371/-5361 | 44/48 | 7/8 | 0..18 | 2 11
+      vs 0xab6dbb20 rows 45 {'s/lat': 18, 'c/-': 27} bind=1 45 ds 1709..1837 seq_cap rows 45 min 0.0 trail=A 45 | A e_m med 48 theta med 8.2
+   o4:join            79211-79469 | 26101.5 14.0 1.4 | -5361/-4549 | 48/2 | 8/0 | 0..70 | 10 814
+      vs 0xab6dbb20 rows 8 {'s/lat': 8} bind=1 8 ds 1901..2424 seq_cap rows 8 min 40.5 trail=A 8 | A e_m med 28 theta med 5.8
+   order0             79470-79471 | 26115.5 0.1 0.0 | -4545/-4542 | 2/2 | 0/0 | 69..70 | 0 3
+   launch5            79472-80048 | 26115.6 30.2 3.0 | -4537/-2450 | 2/284 | 0/9 | 68..70 | 9 2107
+   order0             80049-80049 | 26145.8 0.1 0.0 | -2447/-2447 | 285/285 | 9/9 | 70..70 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 90.4, 'o4:join+floor': 116.5, 'order0': 0.3, 'evade0x12': 26.5, 'launch5': 30.2}

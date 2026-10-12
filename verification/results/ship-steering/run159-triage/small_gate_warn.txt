@@ -1,0 +1,8 @@
+frame obj class d_m | last order-4 row frame, v | s_m lat_m (x vs G) | A_small s_m lat_m | guard dist(G,[x,A]) - 1.1 r_gate (needs >= r_B)
+66242 0x3c056940 no order-4 trace row
+66318 0x3c056940 no order-4 trace row
+66385 0x3c056940 no order-4 trace row
+66418 0x3c0382f8 M6 1690.2 | 66416 81 | -389 1653 | -1105 884 | -14  (tgt 0x91ba8ac0)
+66850 0x3c0386a0 M6 1402.0 | 66848 123 | 932 1049 | -1105 884 | -492  (tgt 0x91ba8ac0)
+67257 0x3c0386a0 M6 2310.3 | 67255 100 | 348 2290 | -1105 884 | 38  (tgt 0x91ba8ac0)
+68094 0x917212a8 M6 1286.3 | 68092 100 | -1203 497 | -1105 884 | 61  (tgt 0x91ba8ac0)

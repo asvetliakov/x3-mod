@@ -1369,3 +1369,57 @@ uses the actual offset and nose, so the (a) certificate stays geometric. Rows: `
   row is reported, not asserted. 26.6 s at 0.25 r.
 * *§16.1's footprint certificate* (E's footprint route of (a)) still uses reach() and spheres of radius r; at large noses or w = r a
   hull can reach h > r. Not changed here (pre-existing).
+
+## Amendment 17 (Run159: the sequencing cap stalls the crowd)
+
+Orchestrator decision, 2026-10-13, from the Run159 triage
+([`run159-triage/`](../../verification/results/ship-steering/run159-triage/), `capital_phases.txt`, `chain_*.txt`,
+`floor_windows.txt`, `capcap.txt`, `circling_small.txt`, `small_gate_warn.txt`; all game seconds, SETA on for 73 % of the
+frames). Run159 flew amendments 16 + 16b (main `7efafee5`).
+
+**What Run159 shows [m].** The width read worked on every capital type (`w_src=lod`, 0.45–0.60 r). No (a)/(b) row
+ever appeared at the crowded gate; every pair was a watch pair with (s)-lat 1,658, (s)-along 302 and (c) 213 rows. The
+stall is the 16b trailer cap: with room ≤ 0 it returns the 1 unit/s floor, the floor passes down linear chains up to four
+ships deep (gaps 82–2,226 m against D_x 2,147–2,497 m), and the chain heads were not moving along the axis (crossed in
+fallback at 88–148°, rotating on 0x1f, or creeping at 1 m/s). A leader off its lane gives no speed credit, and the cap
+limits total speed, so a held joiner also stops moving toward its lane: `0xab6c21a0` sat 151 s at 2.7 km off its lane,
+nose 83°, 0.002 m/s. Floor time 413.6 s inside 190 s of game time, a mean of 2.2 and a peak of 4 capitals held at once.
+Released ships were still off-lane, fell to slow join or fallback, were pushed into 0x12 and rotated: six of nine
+capitals crossed X at 88–148° (Run158: three of five). No wait cycle. The slow join accepted crossings 3,094 m and
+4,123 m off the lane (no bound on the offset in `slow_join_ok`), and one un-latch rested on a degenerate candidate
+(0.00° / 0.00° / 0 m). Capital-vs-capital detours between two committed ships: 0. Engine warns with a capital subject: 4
+(one against an M6 on its order-5 dock leg at 3.8 km, which put the slot-1 M2 into 0x12 for 21.7 s, 1 km past its grid
+point, then fallback, a 148° crossing and a 33.8 s rotate; three against capitals already on 0x12). Six of the ten
+circling small ships were escorts orbiting a held or rotating capital; four were M6s approaching the gate from beside or
+behind the ring, where the small-ship path guard correctly left the engine's warn live.
+
+**Decision.** The sequencing cap goes. For two capitals committed to the same gate on different lane points our layer
+neither detours nor caps, whatever their corridors; the protection between them is the engine's own warn, which is
+vanilla's (Run158: 1 capital–capital evasion in 45, Run159: 3, all against ships already on 0x12). Site E keeps
+suppressing the lane warn only under a geometric certificate ((a) footprint-disjoint, (s) by (i)/(ii)), exactly as 16b
+built it; the certificates are kept for E and the rows, not for speed. The same-lane (b) follow cap stays. In detail:
+
+1. `ship_steering_gates_capital_seq` now gates only the certificates at E; the D_x trailer cap and its floor are
+   removed from every write path (`apply_cap` keeps only the (b) cap). Counters `lane_seq_capped`, `lane_seq_floor_ms`,
+   `lane_seq_lapse` go; `lane_seq_lat/along/cross` stay as certificate counts.
+2. `excluded()` / the inline lane block drop every committed–committed pair on different lane points (no corridor
+   condition). Our avoidance between a committed capital and an uncommitted one is unchanged.
+3. Slow join is bounded: the chosen candidate's crossing offset |e| at the plane ≤ 100 m and `over` ≤ 100 m (the
+   corridor), else the aim-at-A fallback as before. An un-latch requires a candidate with `reached_plane`, steps > 0 and
+   a finite non-degenerate state (not all of nose, vel and |e| exactly 0).
+4. The user's rule applies in full: a capital ignores any ship under r/3 on every order, dock legs 5/0x1e/0x20
+   included; the manual player ship, docked/attached and masked classes stay excepted. The orchestrator's earlier
+   safety exception for dock legs is withdrawn after the Run159 M6 case (the small ship on its leg is the engine's to
+   steer, and its contact with a parked capital is vanilla's elastic bounce).
+5. Diagnostics for the next flight: `ship_trace_max` default 8; warn, warn_pre and E rows for every capital subject,
+   traced or not; the census row names the widest part (body id, o_x/o_y, e_x/e_y, LOD index).
+
+**Fixture.** Scenario M keeps its targets with the cap removed: joins kept or slow-joined within the corridor, 0
+aim-at-A fallbacks in the staggered variant, no hull contact outside the grid zone with the box check, and a new
+assertion that no committed capital is ever written a speed below the join's own by the lane layer. The sequencing
+sub-scenarios M-c/M-d become certificate-only checks (E verdicts), with no speed assertions. The simultaneous variant's
+contact figure is reported, not asserted: with no cap, a crossing joiner and a parked neighbour may overlap in the box
+model as they do in vanilla.
+
+**Later (design, not this build):** why joiners arrive 2.7 km off their lane in a crowd (the KC's grid assignment vs the
+arrival side), and whether a box-hull pair model (audit backlog 10) can replace the engine's warn as the protection.

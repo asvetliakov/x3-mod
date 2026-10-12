@@ -1,0 +1,6 @@
+census w -> r: {583: 1092.0, 546: 1022.0, 454: 755.0, 382: 760.0, 352: 778.0}
+rows 2173 verdict/route {'s/lat': 1658, 's/along': 302, 'c/-': 213} watch=1 2173
+watch rows by verdict/route {'s/lat': 1658, 's/along': 302, 'c/-': 213}
+w = 0.45 r: (c) watch rows that would pass route (i): 87 of 213
+w = 0.38 r: (c) watch rows that would pass route (i): 123 of 213
+(c) watch rows: lat_gap - (50 + mot) quartiles [-1229, -587, -173, -75, -50]

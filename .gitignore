@@ -76,3 +76,4 @@ tools/voice-decoder/v4/registry/
 verification/results/bottle-*/gpu-backend-ab/fixture.txt
 # game-derived engine body tables (tools/effects/engine_bodies.py); where they ship is the owner's call
 verification/results/engine-effects-census/engine_bodies.*.json
+verification/results/ship-steering/*/x3m.log

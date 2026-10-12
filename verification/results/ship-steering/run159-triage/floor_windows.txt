@@ -1,0 +1,7 @@
+frames | game_s of the window | floor_s summed | mean capitals at floor | peak interval | seq-capped decisions
+67929-68314 | 40.0 | 25.6 | 0.64 | 1.00 | 850
+68506-70441 | 190.0 | 413.6 | 2.18 | 4.00 | 5253
+70686-72695 | 130.7 | 143.9 | 1.10 | 1.51 | 3531
+75578-76857 | 80.0 | 100.6 | 1.26 | 2.00 | 2378
+77377-79301 | 110.0 | 90.5 | 0.82 | 1.00 | 2708
+total floor_s 774.1 (last counter 774052 ms)
