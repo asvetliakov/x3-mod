@@ -230,10 +230,11 @@ struct Model {
     float last_dir[3];
     std::uint32_t last_obstacle, last_detour_obstacle;
     av::Result last_av;
-    // step 3: the gate approach (the DLL's P1 policy for order 4 to a gate); last_aim_P = the point the law last steered at (m)
-    bool gate_mode, gate_lead_used;
+    // step 3: the gate approach (the DLL's P1 policy for order 4 to a gate); last_aim_P = the point the law last steered at (m);
+    // step 4 / Run152: the gate frame for the order-5 cornering policy (gate_dock_mode) and its ring test
+    bool gate_mode, gate_lead_used, gate_dock_mode, gate_dock_blocked;
     core::GateGeometry gate_geo;
-    float last_aim_P[3];
+    float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
     void init(const ShipType& t, std::uint32_t seed) {
         const std::int64_t yaw = std::llround(t.yaw_dps / 360.0 * 65536);
         W[0] = yaw;
@@ -288,9 +289,12 @@ struct Model {
         last_dir[0] = last_dir[1] = last_dir[2] = 0;
         last_obstacle = last_detour_obstacle = 0;
         last_av = av::Result{};
-        gate_mode = gate_lead_used = false;
+        gate_mode = gate_lead_used = gate_dock_mode = gate_dock_blocked = false;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
+        gate_G[0] = gate_G[1] = gate_G[2] = 0;
+        std::memset(gate_rows, 0, sizeof gate_rows);
+        gate_r = 0;
     }
     // The avoidance adjustment of the steering point (site A seam): P (m) in, P' (m) out.
     void avoid_adjust(float Pm[3]) {
@@ -388,18 +392,26 @@ struct Model {
         in.d_arr = float(d_arr_units / 500.0);
         in.v_ref = float(v_ref_ms);
         in.arrival_ramp = arrival_ramp;
-        // the DLL's P1: a non-capital ship on order 4 to a gate: no arrival ramp, the lead-in point, the gate speed at site B
-        bool gate_approach = false;
-        if (gate_mode && order == core::kOrderFlyBefore && !capital) {
-            gate_approach = true;
-            in.arrival_ramp = false;
-            in.d_arr = 0;
+        // the DLL's P1: a non-capital ship on order 4 to a gate: no arrival ramp, the lead-in point, the gate speed at site B;
+        // a capital (amendment 8): the lead-in toward its grid point only (its ramp and stop stay)
+        bool gate_approach = false, gate_dock = false;
+        if (gate_mode && order == core::kOrderFlyBefore) {
+            gate_approach = true; // the speed policy for both; the capital keeps its ramp (the lower of the two at site B)
+            if (!capital) {
+                in.arrival_ramp = false;
+                in.d_arr = 0;
+            }
             float lead[3], s_line = 0;
             if (in.d_order < 0 && core::gate_lead_in(gate_geo, in.x, in.v, lead, &s_line)) {
                 for (int i = 0; i < 3; ++i) in.P[i] = lead[i];
                 in.d_order = float(dist() / 500.0);
                 gate_lead_used = true;
             }
+        }
+        // the Run152 follow-up: order 5 to a gate: the cornering speed replaces the engine's creep unless the chord arc sweeps the ring
+        if (gate_dock_mode && order == core::kOrderDock && !capital) {
+            gate_dock_blocked = !core::gate_chord_clears_ring(in.x, in.row[2], Po, gate_G, gate_rows[0], gate_rows[1], gate_rows[2], gate_r, dyn.r_own);
+            gate_dock = !gate_dock_blocked;
         }
         core::Command cmd;
         last_reason = core::steer(in, dyn, &cmd);
@@ -411,11 +423,12 @@ struct Model {
         s->stamp_ms = std::uint32_t(t_ms);
         s->order = order;
         s->flags = std::uint16_t((in.arrival_ramp ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
-                                 (gate_approach ? (core::kShipFlagGate | core::kShipFlagClamp) : 0));
+                                 (gate_approach ? (core::kShipFlagGate | core::kShipFlagClamp) : 0) |
+                                 (gate_dock ? (core::kShipFlagGateDock | core::kShipFlagClamp) : 0));
         for (int i = 0; i < 3; ++i) s->P[i] = Po[i]; // site B measures the order's point
         s->a_lin = dyn.a_lin;
-        s->d_arr = in.d_arr;
-        s->v_ref = gate_approach ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : in.v_ref;
+        s->d_arr = gate_dock ? gate_r : in.d_arr;
+        s->v_ref = gate_approach ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : gate_dock ? dyn.v_max : in.v_ref;
         s->v_corner = cmd.v_corner;
         s->v_emergency = avoid_on ? astate.v_emergency : 0.0f;
     }
@@ -427,7 +440,7 @@ struct Model {
         for (int i = 0; i < 3; ++i) x[i] = float(pos[i] / 500.0);
         const float v = core::clamp_for(*s, x, order, std::uint32_t(t_ms), 250);
         v_cmd_last = v;
-        if (s->flags & core::kShipFlagGate) { // the gate approach: the module's speed in both directions
+        if (s->flags & (core::kShipFlagGate | core::kShipFlagGateDock)) { // the gate approach and the order-5 leg: the module's speed in both directions
             const std::int32_t units = core::gate_speed_units(v, std::int32_t(desired));
             if (units > 0) desired = units;
             return;
@@ -1888,8 +1901,10 @@ static void unit_checks() {
 struct GateResult {
     bool arrived_A, arrived_B, launched, lead_used, disc_crossed;
     double cross_v, cross_err_deg, min_v_after_cross, v_after_A, v0, launch_first_v, max_aim_jump_deg;
+    double cross_pos[3], cross_dA, off[2]; // the crossing point (m, world), its distance to A, the spread offset (m, gate x / y)
     long t_cross, t_A, t_B, t_launch;
     int misaligned_ticks;
+    unsigned ring;
 };
 static double norm3d(const double a[3]) {
     return std::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
@@ -1903,8 +1918,10 @@ static const GateFrame kGateRotated = {{{0, 1, 0}, {0, 0, 1}, {1, 0, 0}}};
 static void local_to_world(const GateFrame& F, const double l[3], double w[3]) {
     for (int k = 0; k < 3; ++k) w[k] = l[0] * F.R[0][k] + l[1] * F.R[1][k] + l[2] * F.R[2][k];
 }
+// obj_id selects the ship's ring position (the spread); capital_slot the grid point of a capital (-1 = slot 7)
 static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, double theta_deg, bool capital, bool vanilla, bool gates_on,
-                           const double start_local_r[3], const GateFrame& F, double a_error_r = 0.0) {
+                           const double start_local_r[3], const GateFrame& F, double a_error_r = 0.0, std::uint32_t obj_id = 9, int capital_slot = -1,
+                           double dock_start_m = 0.0, double dock_err_deg = 0.0) { // dock_start_m > 0: begin on order 5 that far from B, heading off by dock_err_deg
     core::ShipTable table{};
     Model m;
     m.init(t, seed);
@@ -1912,22 +1929,41 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     m.capital = capital;
     m.vanilla = vanilla;
     const double r = 1105.0, ru = r * 500;
-    const double A_l[3] = {0, -0.8 * ru, -1.0 * ru};
+    // a capital's point is its grid slot (KC GetWarpInPos: 666 m pitch, 2 (r_gate + r_ship) in front) and its pass point the
+    // gate's origin (section 10.5); a small ship's the shared A and the arc point B
+    const int slot = capital_slot < 0 ? 7 : capital_slot;
+    const int grid_a[5] = {0, 1, -1, 2, -2};
+    const double A_l[3] = {capital ? grid_a[slot % 5] * 666.0 * 500 : 0.0, capital ? -(slot / 5) * 666.0 * 500 : -0.8 * ru,
+                           capital ? -2.0 * (r + t.r_m) * 500 : -1.0 * ru};
     const double th = theta_deg * M_PI / 180;
-    const double B_l[3] = {0, -0.55 * std::cos(th) * ru, 0.55 * std::sin(th) * ru};
+    const double B_l[3] = {0, capital ? 0.0 : -0.55 * std::cos(th) * ru, capital ? 0.0 : 0.55 * std::sin(th) * ru};
     double A[3], B[3], start[3];
     local_to_world(F, A_l, A);
     local_to_world(F, B_l, B);
     const double start_l[3] = {start_local_r[0] * ru, start_local_r[1] * ru, start_local_r[2] * ru};
     local_to_world(F, start_l, start);
     // the geometry the DLL derives from the target's phys block (A as the engine wrote it, or off by a_error_r: rejected)
-    float Af[3], G[3] = {0, 0, 0}, row1[3], row2[3];
+    float Af[3], G[3] = {0, 0, 0}, row0[3], row1[3], row2[3];
     for (int k = 0; k < 3; ++k) {
         Af[k] = float(A[k] / 500 + a_error_r * r * F.R[0][k]);
+        row0[k] = float(F.R[0][k]);
         row1[k] = float(F.R[1][k]);
         row2[k] = float(F.R[2][k]);
     }
-    m.gate_mode = gates_on && core::gate_geometry(Af, G, row1, row2, float(r), &m.gate_geo);
+    GateResult res{};
+    if (capital)
+        m.gate_mode = gates_on && core::gate_geometry_capital(Af, G, row0, row1, row2, float(r), float(t.r_m), &m.gate_geo);
+    else {
+        m.gate_mode = gates_on && core::gate_geometry(Af, G, row0, row1, row2, float(r), &m.gate_geo);
+        if (m.gate_mode) { // the per-ship spread (the DLL's decision): the lead-in line shifted on the ring, A unchanged
+            float off[3];
+            res.ring = core::gate_spread_index(obj_id);
+            core::gate_spread_offset(res.ring, core::kGateSpreadR * m.gate_geo.r, row0, row1, off);
+            for (int k = 0; k < 3; ++k) m.gate_geo.X[k] += off[k];
+            res.off[0] = double(off[0] * row0[0] + off[1] * row0[1] + off[2] * row0[2]);
+            res.off[1] = double(off[0] * row1[0] + off[1] * row1[1] + off[2] * row1[2]);
+        }
+    }
     // the synthetic object the shared gate-site rule reads: a class-7 ship of a type whose record code is the class's
     // (M2 = 4 capital, M5 = 7, M3 = 5, M6 = 11, TS = 1), its flight block targeting a class-0x12 gate object
     FakeMem mem;
@@ -1940,9 +1976,39 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     mem.put(types + 3 * 0xdb8 + 0x14, code);
     const bool noncapital_gate = core::gate_target_noncapital(mem, ship, types);
     const bool keep = core::gate_stop_keeps_speed(noncapital_gate, m.gate_mode && !capital); // the gate state exists only when the decision ran P1
-    // the start, heading at A at full speed
+    for (int k = 0; k < 3; ++k) {
+        m.gate_G[k] = G[k];
+        m.gate_rows[0][k] = row0[k];
+        m.gate_rows[1][k] = row1[k];
+        m.gate_rows[2][k] = row2[k];
+    }
+    m.gate_r = float(r);
+    {
+        float Bf[3];
+        for (int k = 0; k < 3; ++k) Bf[k] = float(B[k] / 500);
+        m.gate_dock_mode = gates_on && !capital && core::gate_pass_point_valid(Bf, G, row0, row1, row2, float(r), 0); // the DLL's order-5 validation
+    }
+    const bool dock_start = dock_start_m > 0.0;
+    if (dock_start) { // the order-5 start: dock_start_m from B along the direction from B back toward A, heading rotated in the gate's y-z plane
+        double ub[3] = {A[0] - B[0], A[1] - B[1], A[2] - B[2]};
+        const double un0 = norm3d(ub);
+        for (int i = 0; i < 3; ++i) ub[i] /= un0;
+        for (int i = 0; i < 3; ++i) start[i] = B[i] + dock_start_m * 500.0 * ub[i];
+    }
+    // the start, heading at A (or at B rotated by the dock error) at full speed
     for (int i = 0; i < 3; ++i) m.pos[i] = start[i];
     double u[3] = {A[0] - start[0], A[1] - start[1], A[2] - start[2]};
+    if (dock_start) {
+        // the heading: the direction to B rotated by dock_err_deg about the gate's x axis
+        double tb[3] = {B[0] - start[0], B[1] - start[1], B[2] - start[2]};
+        const double tn = norm3d(tb);
+        for (int i = 0; i < 3; ++i) tb[i] /= tn;
+        const double ly = tb[0] * row1[0] + tb[1] * row1[1] + tb[2] * row1[2], lz = tb[0] * row2[0] + tb[1] * row2[1] + tb[2] * row2[2];
+        const double lx = tb[0] * row0[0] + tb[1] * row0[1] + tb[2] * row0[2];
+        const double ce = std::cos(dock_err_deg * M_PI / 180), se = std::sin(dock_err_deg * M_PI / 180);
+        const double ry = ly * ce - lz * se, rz = ly * se + lz * ce;
+        for (int i = 0; i < 3; ++i) u[i] = lx * row0[i] + ry * row1[i] + rz * row2[i];
+    }
     const double un = norm3d(u);
     for (int i = 0; i < 3; ++i) u[i] /= un;
     double up[3] = {0, 1, 0};
@@ -1961,17 +2027,23 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
     m.row[1][2] = u[0] * m.row[0][1] - u[1] * m.row[0][0];
     m.order = core::kOrderFlyBefore;
     for (int i = 0; i < 3; ++i) m.P[i] = A[i];
-    GateResult res{};
+    m.d_arr_units = 0.75 * ru; // the DLL's d_arr for a gate target (3 r / 4): the capital's ramp
     res.min_v_after_cross = 1e18;
     res.t_cross = res.t_A = res.t_B = res.t_launch = -1;
     res.cross_err_deg = -1;
     Clock clock;
-    int phase = 0; // 0 order 4, 1 order 0 after A, 2 order 5, 3 order 0 after B, 4 order 8
+    int phase = dock_start ? 2 : 0; // 0 order 4, 1 order 0 after A, 2 order 5, 3 order 0 after B, 4 order 8
+    if (dock_start) {
+        m.order = core::kOrderDock;
+        for (int k = 0; k < 3; ++k) m.P[k] = B[k];
+        res.arrived_A = true;
+        res.t_cross = 0;
+    }
     long phase_t = 0;
     double launch_start[3] = {0, 0, 0}, last_pos[3] = {m.pos[0], m.pos[1], m.pos[2]}, last_aim[3] = {0, 0, 0};
     bool have_aim = false;
     long long v0 = 0;
-    const std::uint32_t obj = 9;
+    const std::uint32_t obj = obj_id;
     for (long i = 0; i < 400 * fps; ++i) {
         const long dt = clock.step(fps);
         if (!dt) continue;
@@ -1995,8 +2067,11 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
             if (res.t_cross < 0 && dA <= 0.75 * ru) { // the crossing of the arrival sphere
                 res.t_cross = m.t_ms;
                 res.cross_v = double(m.speed) / 500.0;
+                res.cross_dA = dA / 500.0;
+                for (int k = 0; k < 3; ++k) res.cross_pos[k] = m.pos[k] / 500.0;
+                // the heading error: to the pass point for a small ship, to the gate axis (order 0x1f's target) for a capital
                 double c = 0;
-                for (int k = 0; k < 3; ++k) c += m.row[2][k] * dB_v[k] / dB;
+                for (int k = 0; k < 3; ++k) c += capital ? m.row[2][k] * F.R[2][k] : m.row[2][k] * dB_v[k] / dB;
                 if (c > 1) c = 1;
                 if (c < -1) c = -1;
                 res.cross_err_deg = std::acos(c) * 180 / M_PI;
@@ -2086,7 +2161,7 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
         // the ring: during the approach to A (the lead-in's domain) the segment of this frame must not cross the gate
         // plane (local z = 0) inside the ring; the pass points lie on a 0.55 r arc, so the hole is at least that wide
         // (section 10.8 leaves the model's hole open) and the ring is [0.55 r, r]
-        if (phase <= 1) {
+        if (phase <= 1 || (phase == 2 && dock_start)) { // the approach, and the order-5 leg of the dock scenario
             double z0 = 0, z1 = 0;
             for (int k = 0; k < 3; ++k) {
                 z0 += last_pos[k] * F.R[2][k];
@@ -2101,7 +2176,7 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
                     py += p * F.R[1][k];
                 }
                 const double lat = std::sqrt(px * px + py * py);
-                if (lat >= 0.55 * ru && lat < ru) res.disc_crossed = true;
+                if (lat >= 0.65 * ru && lat < ru) res.disc_crossed = true; // the hole: the 0.55 r pass arc plus the largest small hull
             }
         }
         for (int k = 0; k < 3; ++k) last_pos[k] = m.pos[k];
@@ -2112,23 +2187,25 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
 
 // ---- the gate law's unit checks (review fixes 1 and 2) --------------------------------------------------------------
 static void gate_unit_checks() {
-    const float r = 1105.0f, G[3] = {0, 0, 0}, row1[3] = {0, 1, 0}, row2[3] = {0, 0, 1};
+    const float r = 1105.0f, G[3] = {0, 0, 0}, row0[3] = {1, 0, 0}, row1[3] = {0, 1, 0}, row2[3] = {0, 0, 1};
     const float A[3] = {0, -0.8f * r, -1.0f * r};
     core::GateGeometry g;
-    check(core::gate_geometry(A, G, row1, row2, r, &g) && std::fabs(g.h[1] - core::kGateSin) < 1e-5f && std::fabs(g.h[2] - core::kGateCos) < 1e-5f &&
+    check(core::gate_geometry(A, G, row0, row1, row2, r, &g) && std::fabs(g.h[1] - core::kGateSin) < 1e-5f && std::fabs(g.h[2] - core::kGateCos) < 1e-5f &&
               std::fabs(g.X[2] - (A[2] - 0.75f * r * core::kGateCos)) < 0.1f,
           "gate: the pinned geometry validates; h = (0, sin 23.6, cos 23.6), X = A - 0.75 r h");
     const float A_off[3] = {0.05f * r, -0.8f * r, -1.0f * r}, row_bad[3] = {0, 0, 2};
     core::GateGeometry g2;
-    check(!core::gate_geometry(A_off, G, row1, row2, r, &g2) && !core::gate_geometry(A, G, row1, row_bad, r, &g2) && !core::gate_geometry(A, G, row1, row2, 0.5f, &g2),
-          "gate: A off by 5 % of r, a non-unit row and a tiny radius are refused (the vanilla point)");
+    check(!core::gate_geometry(A_off, G, row0, row1, row2, r, &g2) && !core::gate_geometry(A, G, row0, row1, row_bad, r, &g2) && !core::gate_geometry(A, G, row0, row1, row2, 0.5f, &g2) && !core::gate_geometry(A, G, row1, row1, row2, r, &g2),
+          "gate: A off by 5 % of r, a non-unit row, a tiny radius and a non-orthogonal frame are refused (the vanilla point)");
     float P[3], s = 0, e = 0;
     // beside, behind, above, laterally off at A's depth: s > 0, refused
     const float beside[3] = {3 * r, 0, 0}, behind[3] = {0, 0, 2 * r}, above[3] = {0, 3 * r, 0}, lateral_A[3] = {3 * r, -0.8f * r, -1.0f * r};
     bool refused = true;
-    for (const float* x : {beside, behind, above, lateral_A})
-        if (core::gate_lead_in(g, x, 100.0f, P, &s, &e) || !(s > 0.0f)) refused = false;
-    check(refused, "gate lead-in: beside, behind, above and laterally off at A's depth lie past the crossing plane (s > 0): aim at A");
+    for (const float* x : {beside, behind, above})
+        if (core::gate_lead_in(g, x, 100.0f, P, &s, &e) || !(s > 0.75f * r)) refused = false;
+    const bool lat_ok = core::gate_lead_in(g, lateral_A, 100.0f, P, &s, &e) && std::fabs(P[0] - A[0]) < 1.0f && std::fabs(P[1] - A[1]) < 1.0f &&
+                        std::fabs(P[2] - A[2]) < 1.0f;
+    check(refused && lat_ok, "gate lead-in: beside, behind and above lie past the line's end (s > 0.75 r): aim at A; laterally off at A's depth: the line's end = A");
     // far before the join point: refused; on the line inside the window: the carrot ahead, never beyond A
     float far_x[3], mid[3], near[3];
     for (int k = 0; k < 3; ++k) {
@@ -2196,6 +2273,58 @@ static void gate_unit_checks() {
           "gate rule: the speed is kept only with a validated gate state (P2 fails closed like P4)");
     check(core::gate_launch_units(0, 900) == 1348650 && core::gate_launch_units(100000, 900) == 1348650 + 90000 && core::gate_launch_units(100000, -5) == 0,
           "P5: 1.665 t^2 from rest, + v0 t / 1000 with a kept speed, a negative t clamped");
+    // order 5: the pass point must be the pinned arc point (|theta| <= 45 deg, 0.55 r in the gate's y-z plane); subtypes 5..8 vanilla
+    {
+        const float B0[3] = {0, -0.55f * r, 0}, B45[3] = {0, -0.389f * r, 0.389f * r}, Bx[3] = {0.1f * r, -0.55f * r, 0}, Bfar[3] = {0, -0.7f * r, 0},
+                    Bup[3] = {0, 0.55f * r, 0};
+        check(core::gate_pass_point_valid(B0, G, row0, row1, row2, r, 0) && core::gate_pass_point_valid(B45, G, row0, row1, row2, r, 2) &&
+                  !core::gate_pass_point_valid(Bx, G, row0, row1, row2, r, 0) && !core::gate_pass_point_valid(Bfar, G, row0, row1, row2, r, 0) &&
+                  !core::gate_pass_point_valid(Bup, G, row0, row1, row2, r, 0) && !core::gate_pass_point_valid(B0, G, row0, row1, row2, r, 5) &&
+                  !core::gate_pass_point_valid(B0, G, row0, row1, row2, 0.0f, 0),
+              "order 5 validation: the arc points pass; off the plane, off the radius, above the axis, subtype 5 and r = 0 are refused");
+    }
+    // order 5: the engine's ramp (r/5 -> vmax/2, r -> vmax) and the chord arc's ring test
+    check(std::fabs(core::gate_dock_ramp(100.0f, 1105.0f, 124.0f) - 62.0f) < 0.01f && std::fabs(core::gate_dock_ramp(2000.0f, 1105.0f, 124.0f) - 124.0f) < 0.01f &&
+              std::fabs(core::gate_dock_ramp(663.0f, 1105.0f, 124.0f) - 93.0f) < 0.1f,
+          "order 5 ramp: vmax/2 inside r/5, vmax beyond r, linear between");
+    {
+        const float x0[3] = {0, 0, 0}, row0_[3] = {1, 0, 0}, row1_[3] = {0, 1, 0}, row2_[3] = {0, 0, 1};
+        // a ship in front of the gate heading away from B: the chord arc to B (at 0.55 r in front, below) stays in front of the plane
+        const float xs[3] = {0, -0.8f * r, -2.5f * r}, fwd[3] = {0, 0.8f, 0.6f}, Bf[3] = {0, -0.389f * r, -0.389f * r};
+        check(core::gate_chord_clears_ring(xs, fwd, Bf, x0, row0_, row1_, row2_, r, 40.0f), "chord ring test: an arc that stays in front of the gate plane is clear");
+        // a ship beside the gate on the plane, heading along the plane toward the far side: the arc crosses the plane inside the ring
+        const float xb[3] = {1.2f * r, 0, 0.2f * r}, fb[3] = {-1, 0, 0}, Bb[3] = {0.4f * r, 0, -0.2f * r};
+        check(!core::gate_chord_clears_ring(xb, fb, Bb, x0, row0_, row1_, row2_, r, 40.0f), "chord ring test: an arc through the ring band is blocked");
+        // through the hole: a ship behind the gate on the axis heading at the gate, B just in front: clear (the hole)
+        const float xh[3] = {0, 0, 1.5f * r}, fh[3] = {0, 0, -1}, Bh[3] = {0, 0.1f * r, -0.5f * r};
+        check(core::gate_chord_clears_ring(xh, fh, Bh, x0, row0_, row1_, row2_, r, 40.0f), "chord ring test: a path through the hole is not the ring");
+    }
+}
+// The Run152 follow-up: order 5 started 1.7 km from B with a 65 deg heading error (the measured start of the leg in
+// flight). The engine creeps at 1 m/s until aligned; the module writes the chord-rule cornering speed, so the ship
+// flies a curve to B without the speed dropping below 20 m/s and without sweeping the ring. TS and M6 from the
+// class table; an M4 (Buster: 180 m/s, 25 m/s^2, 129 deg/s, 12 m, k 0.2 from Run151) for the fast small hull.
+static void gate_dock_scenario(const ShipType& t, int fps, std::uint32_t seed) {
+    char why[260];
+    const double std_start[3] = {0, -0.8, -3.0};
+    for (double theta : {-45.0, 0.0, 45.0}) {
+        const GateResult g = run_gate(t, fps, seed, theta, false, false, true, std_start, kGateIdentity, 0.0, 9, -1, 1700.0, 65.0);
+        const GateResult v = run_gate(t, fps, seed, theta, false, true, false, std_start, kGateIdentity, 0.0, 9, -1, 1700.0, 65.0);
+        // the ring (the band beyond 0.65 r in the gate plane) is never swept by the module's path unless the engine's own
+        // path (the vanilla run, B behind the plane) sweeps it as well: the module adds no sweep
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off at 1.7 km (theta %+.0f): reaches B and launches, no ring sweep the vanilla path does not make", t.cls, fps, seed, theta);
+        check(g.arrived_B && g.launched && (!g.disc_crossed || v.disc_crossed), why);
+        if (theta >= 0) { // B on or behind the gate plane at 0.55 r: the chord arc reaches the ring band, the engine's own creep stands (never worse than vanilla)
+            std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off (theta %+.0f, B on or behind the plane): the ring test keeps the creep, never slower than vanilla (%%.0f ms <= %%.0f)", t.cls, fps, seed, theta);
+            checkf(g.min_v_after_cross >= v.min_v_after_cross - 0.01 && g.t_B <= v.t_B + 50, why, double(g.t_B), double(v.t_B));
+        } else {
+            std::snprintf(why, sizeof why, "%s %d fps seed %u gate order-5 start 65 deg off (theta %+.0f): the speed never drops below 20 m/s (min %%.1f >= %%.0f)", t.cls, fps, seed, theta);
+            checkf(g.min_v_after_cross >= 20.0, why, g.min_v_after_cross, 20.0);
+        }
+        if (seed == kSeeds[0] && fps == 60)
+            std::printf("gate dock %-3s fps=%3d theta %+3.0f min_v=%.1f m/s (vanilla %.1f) t_B=%ld ms (vanilla %ld) creep_ticks=%d (vanilla %d) v0=%.1f\n", t.cls, fps,
+                        theta, g.min_v_after_cross, v.min_v_after_cross, g.t_B, v.t_B, g.misaligned_ticks, v.misaligned_ticks, g.v0);
+    }
 }
 static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
     char why[260];
@@ -2204,14 +2333,9 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
     // the standard approach: 3 km before A, 30 deg off the axis (local coordinates in r)
     const double std_start[3] = {-3000.0 / 1105.0 * std::sin(30 * M_PI / 180), -0.8, -1.0 - 3000.0 / 1105.0 * std::cos(30 * M_PI / 180)};
     for (double theta : thetas) {
+        if (capital) break; // the capital's cases follow (its point is a grid slot, its start the 6 km off-axis one)
         const GateResult v = run_gate(t, fps, seed, theta, capital, true, false, std_start, kGateIdentity);
         const GateResult g = run_gate(t, fps, seed, theta, capital, false, true, std_start, kGateIdentity);
-        if (capital) {
-            // the capital keeps the vanilla path: the stop at A, no lead-in, the launch from rest
-            std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: capital on the vanilla path (stop at A, no lead-in, launch from rest)", t.cls, fps, seed, theta);
-            check(g.arrived_A && g.arrived_B && g.launched && g.v_after_A == 0 && !g.lead_used && g.v0 == 0, why);
-            continue;
-        }
         std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: arrived at A and B and launched (vanilla too), the disc never crossed", t.cls, fps, seed, theta);
         check(g.arrived_A && g.arrived_B && g.launched && v.arrived_A && v.arrived_B && v.launched && !g.disc_crossed && !v.disc_crossed, why);
         std::snprintf(why, sizeof why, "%s %d fps seed %u gate theta %+.0f: crossing speed %%.1f m/s >= 0.5 vmax (%%.1f)", t.cls, fps, seed, theta);
@@ -2230,7 +2354,126 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
                         theta, t.cls, t.name, fps, g.cross_v, v.cross_v, g.cross_err_deg, v.cross_err_deg, g.misaligned_ticks, v.misaligned_ticks,
                         g.min_v_after_cross, g.v0, v.v0, g.t_launch - g.t_cross, v.t_launch - v.t_cross, g.lead_used ? 1 : 0, g.max_aim_jump_deg);
     }
-    if (capital) return;
+    if (capital) {
+        // the capital from 6 km off-axis (30 deg) to its grid point (slot 7 and slot 0), the rotated frame too: the stop and
+        // the launch from rest stay vanilla; the rotate step would complete at once (the error below 0xfd70)
+        const double cap_start[3] = {-6000.0 / 1105.0 * std::sin(30 * M_PI / 180), -0.6, -2.0 * (1105.0 + t.r_m) / 1105.0 - 6000.0 / 1105.0 * std::cos(30 * M_PI / 180)};
+        for (int slot_i = 0; slot_i < 2; ++slot_i) {
+            const int slot = slot_i == 0 ? 7 : 0;
+            const GateFrame& F = slot_i == 0 ? kGateIdentity : kGateRotated;
+            const GateResult g = run_gate(t, fps, seed, 0, true, false, true, cap_start, F, 0.0, 9, slot);
+            const GateResult v = run_gate(t, fps, seed, 0, true, true, false, cap_start, F, 0.0, 9, slot);
+            std::snprintf(why, sizeof why, "%s %d fps seed %u gate capital 6 km off-axis to grid slot %d%s: heading error to the axis %%.1f deg <= %%.2f (vanilla %.1f), stop at A, launch from rest",
+                          t.cls, fps, seed, slot, slot_i ? " (rotated frame)" : "", v.cross_err_deg);
+            checkf(g.arrived_A && g.arrived_B && g.launched && g.lead_used && g.v_after_A == 0 && g.v0 == 0 && g.cross_err_deg >= 0 &&
+                       g.cross_err_deg <= core::kGateRotateTolDeg && !g.disc_crossed,
+                   why, g.cross_err_deg, core::kGateRotateTolDeg);
+            if (seed == kSeeds[0] && fps == 60)
+                std::printf("gate capital %-3s fps=%3d slot=%d heading_err=%.1f deg (vanilla %.1f) v_after_A=%.1f v0=%.1f t_A=%ld (vanilla %ld)\n", t.cls, fps, slot,
+                            g.cross_err_deg, v.cross_err_deg, g.v_after_A, g.v0, g.t_A, v.t_A);
+        }
+        return;
+    }
+    // the spread: four ships on the same vanilla line (distinct ring positions from their object pointers) cross at distinct
+    // points >= 2 r_ship apart, each within 0.75 r of A and within 18.2 deg of its pass point (theta -45: the worst arc end)
+    {
+        std::uint32_t ids[4];
+        unsigned rings[4], n = 0;
+        for (std::uint32_t id = 0x381f0000; n < 4; id += 0x1c8) {
+            const unsigned k = core::gate_spread_index(id);
+            bool dup = false;
+            for (unsigned j = 0; j < n; ++j) dup = dup || rings[j] == k;
+            if (!dup) {
+                ids[n] = id;
+                rings[n++] = k;
+            }
+        }
+        GateResult g[4];
+        bool ok = true;
+        double min_sep = 1e18, max_dA = 0, max_err = 0;
+        for (unsigned i = 0; i < 4; ++i) {
+            g[i] = run_gate(t, fps, seed, -45, false, false, true, std_start, kGateIdentity, 0.0, ids[i]);
+            ok = ok && g[i].arrived_A && g[i].arrived_B && g[i].launched && g[i].misaligned_ticks == 0 && g[i].ring == rings[i];
+            if (g[i].cross_dA > max_dA) max_dA = g[i].cross_dA;
+            if (g[i].cross_err_deg > max_err) max_err = g[i].cross_err_deg;
+            const double o = std::sqrt(g[i].off[0] * g[i].off[0] + g[i].off[1] * g[i].off[1]);
+            ok = ok && std::fabs(o - core::kGateSpreadR * 1105.0) < 1.0;
+        }
+        for (unsigned i = 0; i < 4; ++i)
+            for (unsigned j = i + 1; j < 4; ++j) {
+                const double d[3] = {g[i].cross_pos[0] - g[j].cross_pos[0], g[i].cross_pos[1] - g[j].cross_pos[1], g[i].cross_pos[2] - g[j].cross_pos[2]};
+                const double sep = norm3d(d);
+                if (sep < min_sep) min_sep = sep;
+            }
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate spread: four ships cross >= 2 r_ship apart (min %%.0f m >= %%.0f), each within 0.75 r of A and <= 18.2 deg to its pass point", t.cls, fps, seed);
+        checkf(ok && min_sep >= 2.0 * t.r_m && max_dA <= 0.75 * 1105.0 && max_err <= 18.2, why, min_sep, 2.0 * t.r_m);
+        if (seed == kSeeds[0] && fps == 60)
+            std::printf("gate spread %-3s fps=%3d rings=%u,%u,%u,%u min_sep=%.0f m max_dA=%.0f m max_heading_err=%.1f deg\n", t.cls, fps, rings[0], rings[1], rings[2], rings[3],
+                        min_sep, max_dA, max_err);
+        // the exit spread through the shared site-W rule (core::gate_warp_in_offset, the DLL handler's decision and write
+        // value) on a synthetic ship and gate in a FakeMem: the written position carries the ring offset in the gate plane,
+        // the case's copy (f+0x240 = phys+0x30) and its write (copy + 1348650 x row 2) keep it, so two ships warping in a
+        // second apart end >= 2 r_ship apart laterally; the player's ship (no autopilot flag), a capital record, a ship
+        // already on order 0x21 and a non-gate target get nothing
+        FakeMem wm;
+        const std::uint32_t gate = 0x4000, gphys = 0x4800, types = 0x5000, player = 0x7000;
+        wm.put(gate + 0x48, 0x12);
+        wm.put(gate + 0x70, gphys);
+        wm.puts(gate + 0xa4, 552500); // r = 1105 m
+        wm.puts(gphys + 0x40, 0x10000);
+        wm.puts(gphys + 0x54, 0x10000);
+        wm.puts(gphys + 0x68, 0x10000);
+        double final_pos[2][3];
+        const unsigned code = !std::strcmp(t.cls, "M5") ? 7 : !std::strcmp(t.cls, "M3") ? 5 : !std::strcmp(t.cls, "M6") ? 11 : 1;
+        wm.put(types + 3 * 0xdb8 + 0x14, code);
+        bool exit_ok = true;
+        for (unsigned i = 0; i < 2; ++i) {
+            const std::uint32_t ship = ids[i], flight = ids[i] + 0x1000, phys = ids[i] + 0x2000;
+            wm.put(ship + 0x48, 7u | (3u << 16));
+            wm.put(ship + 0x40, 0x80000); // autopilot
+            wm.put(ship + 0x50, flight);
+            wm.put(ship + 0x70, phys);
+            wm.put(flight + 0x258, 5);
+            wm.puts(phys + 0x30, 1000);
+            wm.puts(phys + 0x34, -2000);
+            wm.puts(phys + 0x38, 300000);
+            std::int32_t pos[3];
+            const bool ok = core::gate_warp_in_offset(wm, ship, gate, types, 0, pos);
+            float off[3];
+            const float r0[3] = {1, 0, 0}, r1[3] = {0, 1, 0};
+            core::gate_spread_offset(rings[i], core::kGateExitSpreadR * 1105.0f, r0, r1, off);
+            exit_ok = exit_ok && ok && std::abs(pos[0] - (1000 + core::round_to_int(off[0] * 500))) <= 1 && std::abs(pos[1] - (-2000 + core::round_to_int(off[1] * 500))) <= 1 &&
+                      pos[2] == 300000;
+            // the DLL writes pos; the case then copies it into f+0x240 and writes phys+0x30 = copy + 1348650 x row 2
+            for (int k = 0; k < 3; ++k) wm.puts(phys + 0x30 + 4 * k, pos[k]);
+            for (int k = 0; k < 3; ++k) wm.puts(flight + 0x240 + 4 * k, wm.s32(phys + 0x30 + 4 * k));
+            for (int k = 0; k < 3; ++k) final_pos[i][k] = (wm.s32(flight + 0x240 + 4 * k) + (k == 2 ? 1348650 : 0)) / 500.0;
+            // a second SA_WarpObjectIn while on order 0x21: no further offset
+            wm.put(flight + 0x258, 0x21);
+            exit_ok = exit_ok && !core::gate_warp_in_offset(wm, ship, gate, types, 0, pos);
+            wm.put(flight + 0x258, 5);
+            exit_ok = exit_ok && !core::gate_warp_in_offset(wm, ship, gate, types, 1u << code, pos); // the class excluded
+        }
+        const double lat = std::sqrt((final_pos[0][0] - final_pos[1][0]) * (final_pos[0][0] - final_pos[1][0]) + (final_pos[0][1] - final_pos[1][1]) * (final_pos[0][1] - final_pos[1][1]));
+        wm.put(player + 0x48, 7u | (3u << 16));
+        wm.put(player + 0x40, 0); // the player's ship: no autopilot flag
+        wm.put(player + 0x50, player + 0x1000);
+        wm.put(player + 0x70, player + 0x2000);
+        wm.put(player + 0x1000 + 0x258, 5);
+        std::int32_t pp[3];
+        const bool player_skipped = !core::gate_warp_in_offset(wm, player, gate, types, 0, pp);
+        wm.put(player + 0x40, 0x80000 | 0x8000000); // deleted
+        const bool deleted_skipped = !core::gate_warp_in_offset(wm, player, gate, types, 0, pp);
+        wm.put(types + 3 * 0xdb8 + 0x14, 4); // M2: capital
+        wm.put(player + 0x40, 0x80000);
+        const bool capital_skipped = !core::gate_warp_in_offset(wm, player, gate, types, 0, pp);
+        wm.put(types + 3 * 0xdb8 + 0x14, code);
+        wm.put(gate + 0x48, 17);
+        const bool rock_skipped = !core::gate_warp_in_offset(wm, player, gate, types, 0, pp);
+        wm.put(gate + 0x48, 0x12);
+        std::snprintf(why, sizeof why, "%s %d fps seed %u gate exit spread (site W rule): two ships a second apart end >= 2 r_ship apart laterally (%%.0f m >= %%.0f); no offset for the player, a deleted ship, a capital, a non-gate, a re-issued warp-in, an excluded class", t.cls, fps, seed);
+        checkf(exit_ok && lat >= 2.0 * t.r_m && player_skipped && deleted_skipped && capital_skipped && rock_skipped, why, lat, 2.0 * t.r_m);
+    }
     // the far start (6 km before A, 20 deg off the axis: the straight approach, the blended switch at 3 r, the lead-in),
     // in the rotated gate frame (axis +x, up +z)
     {
@@ -2279,8 +2522,8 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
     // a mismatched A (the engine's point 5 % of r off the pinned geometry): the lead-in is refused, the vanilla point steers
     if (fps == 60 && seed == kSeeds[0]) {
         const GateResult g = run_gate(t, fps, seed, 0, false, false, true, std_start, kGateIdentity, 0.05);
-        std::snprintf(why, sizeof why, "%s gate: a mismatched A (5 %% of r off) refuses the lead-in and still arrives", t.cls);
-        check(!g.lead_used && g.arrived_A && g.arrived_B && g.launched, why);
+        std::snprintf(why, sizeof why, "%s gate: a mismatched A (5 %% of r off) refuses the lead-in, keeps the vanilla stops at A and B (no v0), still arrives", t.cls);
+        check(!g.lead_used && g.arrived_A && g.arrived_B && g.launched && g.v_after_A == 0 && g.v0 == 0, why);
     }
 }
 
@@ -2303,7 +2546,13 @@ int main() {
                 crossing_scenario(t, fps, seed);
                 formation_obstacle_scenario(t, fps, seed);
                 gate_scenario(t, fps, seed);
+                if (!std::strcmp(t.cls, "TS") || !std::strcmp(t.cls, "M6")) gate_dock_scenario(t, fps, seed);
             }
+    }
+    {
+        static const ShipType m4 = {"M4", "Buster", 180.0, 25.0, 129.375, 12.0, 20, false};
+        for (int fps : kFps)
+            for (std::uint32_t seed : kSeeds) gate_dock_scenario(m4, fps, seed);
     }
     std::printf("ship_steering_host checks=%u failures=%u\n", checks, failures);
     std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
