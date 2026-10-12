@@ -148,11 +148,47 @@ ship, is reached by vanilla's 1 m/s alignment creep inside 3 r, which the write 
 (4) A leader never treats its own escort/follow partners (f+0x224 = the leader, order 0x14/0x15) as obstacles, wherever
 they are (`avoid_excluded_followers`); a far-away own follower is therefore never avoided either (accepted: the
 formation's own spacing keeps them apart, and the follower still avoids everything but its leader). Capitals keep
-the avoidance emergency clamp at site B on their gate legs (the emergency is site B's value regardless of the flags). (5) The stuck witness restarts when the MovePos point changes, not only the
+the avoidance emergency clamp at site B on their gate legs (the emergency is site B's value regardless of the flags).
+
+**Amendment 11 (2026-10-12, the user's decision):** capitals do not avoid small ships; small ships avoid capitals.
+The engine's own rule, pinned in the proximity obstacle filter 0x0044d2f0 (0x0044d326..0x0044d366, measured): for a
+ship A whose record code is capital (0x0043fd50: TL, M0, M1, M2, TL_P, M7) a class-7 candidate B is rejected unless B
+is "large" (0x0043fd00: TL, M0, M1, M2, TL_P, M6, M7, TM, M8); the same filter rejects B when it is A's own
+escort/follow partner (0x0044d385..: the amendment-10 rule) and class 0xa. The obstacle filter mirrors it on the
+candidate's record code (the snapshot walk reads it through the type table); when the code cannot be read the
+fallback is the radius ratio r_candidate < r_own / 3 (the user's rule: most M7 frigates dodge too; where the engine's
+predicate is pinned it takes precedence, so an M7 is still avoided by a capital). Stations, asteroids, gates and
+large/capital ships stay obstacles for capitals with the emergency clamp; site E's semantics are unchanged (a
+skipped pair is simply not resolved by the module; the engine's reactive loop stays for it); small ships' avoidance
+of capitals is unchanged. Counter `avoid_skipped_small`.
+**Amendment 11 additions (2026-10-12, Run155 triage: the capital circling was avoidance against small ships and its
+own formation, and the trace lost the approach before order 5):** (a) the formation is excluded in every direction:
+the follower never avoids its leader, the leader never avoids its followers, and wingmates of one leader never
+avoid each other, wherever they are (the amendment-10 envelope condition `10 x f+0x260` is gone; `Self.envelope`
+removed); `ship_avoid_detour` carries the obstacle's `leader=` (f+0x224) and `obstacle_order=` so a formation
+detour is visible in the row. (b) The swept-sphere horizon is `min(L / v, 30 s)` of flight (`av::horizon_s`,
+`kHorizonMaxS`): a body already inside C is found at t = 0 whatever the horizon, so the cap drops only far, slow
+conflicts (Run155's stalled Boreas at a few m/s saw t_cpa 72-1206 s at a 2.1 km miss and never left its detour
+point); the broad-phase reach and the follower's `L_leader` keep the uncapped L; `L_m` in the detour row is the swept
+length actually tested (`T x v`). Boreas (fixture type: v 70 m/s, a 15 m/s^2, 13.5 deg/s, k 0.05, r 705 m):
+L = 3,074 m (the ramp term 2,800 m dominates, independent of C), L / v = 43.9 s, capped to 30 s = 2,100 m swept;
+stopped (v -> 0) the horizon is 30 s instead of unbounded. (c) `ship_trace` slot 0 is reserved for a capital on an
+order-4 approach to a gate; the other `ship_trace_max - 1` slots follow non-capital gate/dock approaches as before;
+every row ends with `emg=` (the avoidance braking ramp active at the last leaf call), `omega_cmd=y,p,r` (the
+commanded rate per axis, deg/s) and `obst=` (the current detour's obstacle, 0 = none). (d) The trace gap before
+order 5 (Run155: 31 traced transitions, median 6.6 s, 24 > 1 s): every gap was one order-0 row with the target
+cleared (SA_StopObject after a collision warn) followed by 70-900 frames without rows and no detour row, then P2
+80 ms before the first order-5 row: the engine's own avoid order 0x12 ran (the wrapper loop of
+[ship-navigation-ai.md](../reverse-engineering/ship-navigation-ai.md)), the slot was released on it and re-claimed
+only at order 5. The slot now stays through 0x12 and RotateToAngles 0x1f (the capital's alignment step); the
+rows will show the 0x12 leg. The carrot in `ship_gate_transition` is the last lead-in call's (`carrot_local` is
+written only there); the row now carries `carrot_age_ms` (order-5 start minus that call, -1 = none) so a stale
+carrot is measurable instead of inferred. (5) The stuck witness restarts when the MovePos point changes, not only the
 order. (6) `ship_gate_transition` adds the crossing (P2) and the order-5 start in the gate frame: position / r,
 forward, the last lead-in carrot / r, dist(A) and dist(B) / r, game-ms since P2; `gate_lead_validated/fallback` count
 per approach at P2. (7) `ship_trace` (`--debug` tier, default off; `ship_trace_max` ships, default 6): one row per
-frame for the first N non-capital ships on a gate or dock approach with the engine state the fixture's model needs
+frame for the first N ships on a gate or dock approach (slot 0 a capital on order 4 to a gate since amendment 11,
+the others non-capital) with the engine state the fixture's model needs
 and what the module handed back (the ledger's Step 4 section has the row), for the model-conformance replay. Gate
 subtypes 5..8 (the same bubble scene in the installed game; only the pass offset -0.05 r and the 0.14 r warp
 trigger differ) get the same policy with their own pass vector in the validation. The order-4 lead-in and the exit
@@ -533,10 +569,12 @@ the one disassembly step of step 2 (§10).
 
 ## 4. Formations and groups (question 4)
 
-* **The leader is never an obstacle.** For orders 0x14/0x15 the target `f+0x224` is excluded; so is every ship
-  whose `f+0x224` equals ours with order 0x14/0x15 (a wingmate), while within the **formation envelope**
-  `10 × f+0x260` of the leader (the engine's own catch-up threshold **[m]**). Outside the envelope (a
-  straggler rejoining) wingmates are ordinary obstacles.
+* **The formation is never an obstacle, in any direction (amendment 11).** For orders 0x14/0x15 the target
+  `f+0x224` (the leader) is excluded; so is every ship whose `f+0x224` equals ours with order 0x14/0x15 (a
+  wingmate), and a leader excludes its own partners (amendment 10), wherever they are. The amendment-10 envelope
+  condition (`10 × f+0x260`, the engine's catch-up threshold **[m]**) is gone: Run155's Boreas leader still
+  detoured against its formation outside it. The engine's own filter 0x0044d385.. rejects a ship's partners the
+  same way (§amendment 11).
 * **Slot keeping.** The slot is recomputed each tick in the leader's yaw/pitch frame **[m]**; our law aims at
   it with `v_ref` = the leader's speed along our heading (§2.5), so a follower approaches at a relative ramp
   and the cornering clamp removes the full-speed overshoot of the catch-up branch. The engine's close-in

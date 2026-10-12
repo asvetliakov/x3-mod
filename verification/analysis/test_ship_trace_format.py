@@ -10,14 +10,16 @@ import ship_trace_rows as st
 ROWS = [
     'ship_trace frame=1234 t_ms=560000 obj=0x8e19d750 class=TS order=0x4 tgt=0x4b51efe8 tgt_class=18 pos=-1234567,98765,4567890 '
     'fwd=0.12345,-0.00500,0.99235 up=0.00100,0.99999,0.00400 rate=-120,35,0 v=62000 des=50000 des_engine=62000 point=-1230000,97000,4600000 '
-    'given=-1200000,90000,4650000 e=-1200,300,0 dt_ms=6 W=3840,3840,3072 rot=0x00010000 rot_pct=20 vmax=62000 acc=15000',
+    'given=-1200000,90000,4650000 e=-1200,300,0 dt_ms=6 W=3840,3840,3072 rot=0x00010000 rot_pct=20 vmax=62000 acc=15000 emg=1 '
+    'omega_cmd=-12.50,3.25,0.00 obst=0x9030de88',
     'ship_trace frame=1235 t_ms=560006 obj=0x8e19d750 class=TS order=0x4 tgt=0x4b51efe8 tgt_class=18 pos=-1234200,98780,4568260 '
     'fwd=0.12300,-0.00480,0.99240 up=0.00100,0.99999,0.00400 rate=-118,34,0 v=62000 des=62000 des_engine=62000 point=-1200000,90000,4650000 '
-    'given=-1200000,90000,4650000 e=- dt_ms=6 W=3840,3840,3072 rot=0x00010000 rot_pct=20 vmax=62000 acc=15000',
+    'given=-1200000,90000,4650000 e=- dt_ms=6 W=3840,3840,3072 rot=0x00010000 rot_pct=20 vmax=62000 acc=15000 emg=0 '
+    'omega_cmd=0.00,0.00,0.00 obst=0x00000000',
     'ship_steering_summary frame=1235 interval_ms=1000 claims=4 calls=1 handled=1 ships=1',
     'ship_trace frame=1235 t_ms=560006 obj=0x3741e840 class=M6 order=0x5 tgt=0x4b51efe8 tgt_class=18 pos=0,0,0 '
     'fwd=0.00000,0.00000,1.00000 up=0.00000,1.00000,0.00000 rate=0,0,0 v=0 des=10000 des_engine=500 point=1,2,3 given=1,2,3 e=0,0,0 dt_ms=7 '
-    'W=2211,2211,1769 rot=0x0000c000 rot_pct=10 vmax=90000 acc=10000',
+    'W=2211,2211,1769 rot=0x0000c000 rot_pct=10 vmax=90000 acc=10000 emg=0 omega_cmd=1.00,-1.00,0.00 obst=0x00000000',
 ]
 
 
@@ -35,6 +37,7 @@ class ShipTraceFormat(unittest.TestCase):
         self.assertEqual((r['v'], r['des'], r['des_engine'], r['dt_ms']), (62000, 50000, 62000, 6))  # des after the module's write, des_engine before
         self.assertEqual((r['point'], r['given'], r['e']), ((-1230000, 97000, 4600000), (-1200000, 90000, 4650000), (-1200, 300, 0)))
         self.assertEqual((r['W'], r['rot'], r['rot_pct'], r['vmax'], r['acc']), ((3840, 3840, 3072), 0x10000, 20, 62000, 15000))
+        self.assertEqual((r['emg'], r['omega_cmd'], r['obst']), (1, (-12.5, 3.25, 0.0), 0x9030de88))  # amendment 11
         self.assertTrue(r['leaf_call'])
 
     def test_a_frame_without_a_leaf_call_omits_e_and_repeats_the_engine_point(self):
@@ -59,10 +62,10 @@ class ShipTraceFormat(unittest.TestCase):
         self.assertIsNone(st.parse_row(ROWS[0].replace(' e=-1200,300,0', ' e=1,2')))
 
     def test_byte_rate_estimate(self):
-        # the row the DLL writes is up to ~370 bytes: 6 ships at 173 fps are ~1,040 rows/s, ~385 KB/s
+        # the row the DLL writes is up to ~420 bytes (amendment 11 added emg, omega_cmd, obst): 6 ships at 173 fps are ~1,040 rows/s, ~440 KB/s
         longest = max(len(r) for r in ROWS if r.startswith('ship_trace'))
-        self.assertLessEqual(longest, 400)
-        self.assertLessEqual(6 * 173 * longest, 420_000)
+        self.assertLessEqual(longest, 440)
+        self.assertLessEqual(6 * 173 * longest, 460_000)
 
 
 if __name__ == '__main__':

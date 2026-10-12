@@ -45,7 +45,8 @@ constexpr float kCommitFactor = 2.0f;  // a detour in progress (direction rememb
                                        // predicted miss exceeds 2 C (beyond both detour offsets): no chatter between the detour point
                                        // and the order's point before the detour is complete
 constexpr std::uint32_t kResolvedAgeMs = 100; // suppression window at site E (two think intervals)
-constexpr std::uint32_t kFormationEnvelopeFactor = 10; // wingmates inside 10 x f+0x260 of the leader are not obstacles
+constexpr float kHorizonMaxS = 30.0f;  // amendment 11: the swept-sphere horizon is min(L / v, 30 s) of flight (Run155: a
+                                       // stalled Boreas at 2 m/s saw conflicts 222 s out and never left its detour point)
 
 enum class Kind : std::uint8_t { ship = 0, station = 1, asteroid = 2, gate = 3, debris = 4 };
 struct Obstacle {
@@ -58,7 +59,8 @@ struct Obstacle {
     std::uint8_t kind;    // Kind
     std::uint8_t flags;   // bit 0: station part model available (parts index valid)
     std::uint16_t parts;  // index into the part store
-    std::uint16_t pad;
+    std::uint8_t size;    // ships: 1 = "large" (0x0043fd00: the record code in kLargeMask), 0 = small, 2 = the code could not be read
+    std::uint8_t pad;
 };
 struct Snapshot {
     std::uint32_t sector = 0, epoch = 0;
@@ -80,8 +82,7 @@ struct Self {
     float alpha;           // rad/s^2, the angular acceleration of that axis (0 = ignore the ramp)
     float up[3];           // world up for the capital preference
     std::uint32_t ptr, leader, target; // self, f+0x224 when it is a leader/partner, the order's target object
-    float leader_x[3];     // the leader's position (valid when leader != 0)
-    float envelope;        // 10 x f+0x260, m
+    float leader_x[3];     // the leader's position (valid when leader != 0; diagnostics only since amendment 11)
     std::uint16_t order;
     bool capital;
     bool exclude_target;   // the order's target object is not an obstacle (orders 4/5/0x14/0x15/0x10/0x11/0x18)
@@ -103,6 +104,7 @@ struct ShipAvoid {
     SideMemory sides[kMaxSides] = {};
     float L = 0;           // the last lookahead, m
     float v_emergency = 0; // m/s, 0 = none (the braking ramp when no detour exists)
+    std::uint32_t obstacle = 0; // the current detour's obstacle (0 = no detour on the last call; the trace row carries it)
     bool unresolved = false;
     bool in_conflict = false; // a conflict was seen on the last call (episode counting: an edge is one episode)
 };
@@ -132,7 +134,10 @@ struct Result {
     float P[3] = {0, 0, 0};
     float t_cpa = 0, miss = 0, C = 0, L = 0;
     unsigned excluded_followers = 0; // this ship's own escort/follow partners skipped as obstacles (amendment 10)
+    unsigned skipped_small = 0;      // small ships a capital left to their own avoidance (amendment 11)
     std::uint32_t obstacle = 0;
+    std::uint32_t obstacle_leader = 0; // the obstacle's f+0x224 and f+0x258 (ships), for the detour row (amendment 11)
+    std::uint16_t obstacle_order = 0;
     std::uint8_t obstacle_kind = 0;
     std::int8_t side = 0;
     float dir[3] = {0, 0, 0}; // the detour direction (world, unit)
@@ -156,6 +161,13 @@ inline float lookahead(float v, float a, float omega, float r_own, float C, floa
     if (L < C + r_own) L = C + r_own;
     if (L > kLookaheadMaxM) L = kLookaheadMaxM;
     return L;
+}
+// The swept-sphere time horizon for a lookahead L at speed v: L / v, at most kHorizonMaxS (amendment 11). A body already
+// inside C is found at t = 0 whatever the horizon, so the cap only drops far, slow conflicts.
+inline float horizon_s(float L, float v) noexcept {
+    if (!(v > 1e-3f)) return kHorizonMaxS;
+    const float t = L / v;
+    return t < kHorizonMaxS ? t : kHorizonMaxS;
 }
 inline void sub3(const float a[3], const float b[3], float out[3]) noexcept {
     out[0] = a[0] - b[0];
@@ -305,18 +317,30 @@ inline void forget_passed(ShipAvoid& a, const Snapshot& snap, const Self& s) noe
 inline bool own_follower(const Self& s, const Obstacle& o) noexcept {
     return o.kind == std::uint8_t(Kind::ship) && o.leader == s.ptr && (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow);
 }
-// Whether the obstacle item is excluded for this ship (section 3.2 and 4).
+// Amendment 11: a capital does not avoid small ships; the small ship dodges it. The engine's own proximity filter
+// 0x0044d2f0 (0x0044d326..0x0044d366, measured) rejects a class-7 candidate B for a ship A whose record code is capital
+// (0x0043fd50: TL, M0, M1, M2, TL_P, M7) unless B is "large" (0x0043fd00: TL, M0, M1, M2, TL_P, M6, M7, TM, M8); that
+// rule is mirrored on the candidate's record code. When the code could not be read (size 2) the fallback is the radius
+// ratio: skip when r_candidate < r_own / 3 (the user's rule; the engine's predicate takes precedence where pinned).
+constexpr float kSmallShipRatio = 1.0f / 3.0f;
+inline bool small_for_capital(const Self& s, const Obstacle& o) noexcept {
+    if (!s.capital || o.kind != std::uint8_t(Kind::ship)) return false;
+    if (o.size == 2) return o.r < s.r * kSmallShipRatio;
+    return o.size == 0;
+}
+// Whether the obstacle item is excluded for this ship (section 3.2 and 4). The formation is excluded in every direction
+// (amendment 11): the follower never avoids its leader, the leader never avoids its followers, and wingmates of one
+// leader never avoid each other, wherever they are (the amendment-10 envelope condition is gone: Run155's Boreas leader
+// still detoured 453 times against its own formation outside it).
 inline bool excluded(const Self& s, const Obstacle& o) noexcept {
     if (o.ptr == s.ptr) return true;
     if (s.leader && o.ptr == s.leader) return true;
     if (s.exclude_target && s.target && o.ptr == s.target) return true;
     if (o.kind == std::uint8_t(Kind::ship) && s.leader && o.leader == s.leader &&
-        (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow)) {
-        float d[3];
-        sub3(o.x, s.leader_x, d);
-        if (sc::dot3(d, d) <= s.envelope * s.envelope) return true; // a wingmate inside the formation envelope
-    }
+        (o.order == sc::kOrderEscort || o.order == sc::kOrderFollow))
+        return true; // a wingmate of the same leader
     if (own_follower(s, o)) return true; // our own followers, wherever they are (amendment 10: the leader detoured against them)
+    if (small_for_capital(s, o)) return true; // amendment 11: the engine's own rule, the small ship dodges
     return false;
 }
 // The effective body of a station without a part model (section 3.5 fallback).
@@ -355,6 +379,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     state.unresolved = false;
     state.n_resolved = 0;
     state.v_emergency = 0.0f;
+    state.obstacle = 0;
     state.stamp_ms = now_ms;
     ++state.tick;
     if (snap.overflow) {
@@ -377,6 +402,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         if (sc::fabs_f(o.x[0] - s.x[0]) > reach || sc::fabs_f(o.x[1] - s.x[1]) > reach || sc::fabs_f(o.x[2] - s.x[2]) > reach) continue;
         if (excluded(s, o)) {
             if (own_follower(s, o)) ++res.excluded_followers;
+            else if (small_for_capital(s, o)) ++res.skipped_small;
             continue;
         }
         float dx[3];
@@ -404,13 +430,14 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
                     const float Cp = clearance(s.r, set->r[p]);
                     const float Lp = sc::fmax_f(lookahead(s.v, s.a, s.omega, s.r, Cp, s.alpha), s.L_leader);
                     float tp, mp, catp[3], ep[3];
-                    if (!closest_approach(s, set->c[p], o.v, Lp / s.v, Cp * commit, &tp, &mp, catp, ep)) continue;
+                    const float Tp = horizon_s(Lp, s.v);
+                    if (!closest_approach(s, set->c[p], o.v, Tp, Cp * commit, &tp, &mp, catp, ep)) continue;
                     if (tp < best_t) {
                         best_t = tp;
                         c.t_cpa = tp;
                         c.miss = mp;
                         c.C = Cp;
-                        c.L = Lp;
+                        c.L = Tp * s.v; // the swept length actually tested
                         c.part = true;
                         for (int i = 0; i < 3; ++i) {
                             c.x_cpa[i] = catp[i];
@@ -425,11 +452,12 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
                 const float rf = fallback_radius(o.r);
                 const float Cf = clearance(s.r, rf);
                 const float Lf = sc::fmax_f(lookahead(s.v, s.a, s.omega, s.r, Cf, s.alpha), s.L_leader);
-                if (!closest_approach(s, o.x, o.v, Lf / s.v, Cf * commit, &t, &m, cat, e)) continue;
+                const float Tf = horizon_s(Lf, s.v);
+                if (!closest_approach(s, o.x, o.v, Tf, Cf * commit, &t, &m, cat, e)) continue;
                 c.t_cpa = t;
                 c.miss = m;
                 c.C = Cf;
-                c.L = Lf;
+                c.L = Tf * s.v;
                 for (int i = 0; i < 3; ++i) {
                     c.x_cpa[i] = cat[i];
                     c.e[i] = e[i];
@@ -440,12 +468,13 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         } else {
             const float C = clearance(s.r, o.r);
             const float L = sc::fmax_f(lookahead(s.v, s.a, s.omega, s.r, C, s.alpha), s.L_leader);
+            const float T = horizon_s(L, s.v);
             float t, m, cat[3], e[3];
-            if (!closest_approach(s, o.x, o.v, L / s.v, C * commit, &t, &m, cat, e)) continue;
+            if (!closest_approach(s, o.x, o.v, T, C * commit, &t, &m, cat, e)) continue;
             c.t_cpa = t;
             c.miss = m;
             c.C = C;
-            c.L = L;
+            c.L = T * s.v;
             for (int i = 0; i < 3; ++i) {
                 c.x_cpa[i] = cat[i];
                 c.e[i] = e[i];
@@ -468,6 +497,8 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     const Obstacle& o = snap.items[first.index];
     res.obstacle = o.ptr;
     res.obstacle_kind = o.kind;
+    res.obstacle_leader = o.leader;
+    res.obstacle_order = o.order;
     res.t_cpa = first.t_cpa;
     res.miss = first.miss;
     res.C = first.C;
@@ -575,6 +606,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
             }
         if (ok) {
             res.adjusted = true;
+            state.obstacle = o.ptr;
             res.side = side;
             res.dir[0] = ddir[0];
             res.dir[1] = ddir[1];

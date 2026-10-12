@@ -233,7 +233,7 @@ wk::PartCache part_cache_;                       // station part models, keyed o
 av::ShipAvoid avoid_[core::kShipCapacity];      // parallel to table_.entries (same slot index)
 // --debug witnesses: detour events and one census per sector (first snapshot), drained at the frame boundary.
 struct DetourEvent {
-    std::uint32_t obj, obstacle, kind, side, vertical, order;
+    std::uint32_t obj, obstacle, kind, side, vertical, order, obstacle_leader, obstacle_order;
     float t_cpa, miss, C, L, P[3], x[3];
 };
 DetourEvent detours_[16];
@@ -262,6 +262,7 @@ struct GateState { // per table slot: the approach's last call, the crossing (se
     float carrot_local[3];    // the last lead-in carrot in the gate frame / r
     float p2_pos[3], p2_fwd[3], p2_dA_r; // at P2: position in the gate frame / r, the forward vector in gate rows, dist(A) / r
     std::uint32_t p2_stamp;   // game ms at P2
+    std::uint32_t carrot_ms;  // game ms of the last lead-in call that wrote carrot_local (0 = none; amendment 11)
     std::uint32_t gate;       // the target the approach is to: another target or leaving its 2 r sphere starts a new approach
     std::uint8_t crossed, launched, capital, spread_k;
     std::uint8_t lead_counted; // the approach's verdict was counted at its first P2
@@ -274,6 +275,7 @@ struct GateTransition { // --debug: one row per order 4 -> 0 -> 5 transition at 
     std::uint32_t obj, code, ms_since_p2;
     float dA_r, err_B_deg, v_ms, desired_ms, B_local[3], A_local[3];
     float p2_pos[3], p2_fwd[3], p2_carrot[3], o5_pos[3], o5_fwd[3], o5_dA_r, o5_dB_r; // amendment 10: the crossing and the order-5 start
+    std::int32_t carrot_age_ms; // order-5 start minus the last lead-in call (-1: no lead-in call on this slot; amendment 11)
     std::uint8_t validated, crossed, capital, dock_blocked;
 };
 GateTransition gate_trans_[8];
@@ -307,8 +309,8 @@ Counter gate_lead_, gate_cross_, gate_p2_, gate_stops_skipped_, gate_p4_, gate_v
 Counter gate_spread_offsets_, gate_exit_offsets_, gate_capital_aligned_, gate_warp_calls_;
 Counter gate_lead_validated_, gate_lead_fallback_, gate_lead_window_rejected_, gate_dock_writes_, gate_dock_blocked_;
 Counter gate_p2_no_gate_target_, gate_p2_capital_, gate_p2_no_state_, gate_p4_no_gate_target_, gate_p4_capital_, gate_p4_no_state_;
-Counter gate_dock_invalid_, gate_warp_skipped_, gate_rows_dropped_, avoid_excluded_followers_;
-std::uint32_t rep_gate_[28] = {};
+Counter gate_dock_invalid_, gate_warp_skipped_, gate_rows_dropped_, avoid_excluded_followers_, avoid_skipped_small_;
+std::uint32_t rep_gate_[29] = {};
 // Step 4 item 7: ship_trace (--debug tier, X3M_SHIP_TRACE=1, X3M_SHIP_TRACE_MAX ships): the module follows the first N
 // non-capital class-7 autopilot ships that enter a gate approach (order 4 with a class-0x12 target) or a dock approach
 // (order 4 with a class-5/6 target, or order 5) and writes one row per frame for each from a ring drained at the frame
@@ -323,15 +325,17 @@ struct TraceSlot {
     std::uint32_t obj, last_seen_ms;
     std::int32_t W[3], rot_raw, rot_pct, vmax, accel; // the dynamics the leaf call read (the last known)
     std::int32_t point[3], given[3], e[3];           // this frame's leaf call: ours, the engine's, the written remainders
-    std::uint8_t leaf_this_frame;
+    std::uint32_t obstacle;                          // the current detour's obstacle at the last leaf call (0 = none)
+    float omega_cmd[3];                              // the commanded rate per axis at the last leaf call, deg/s
+    std::uint8_t leaf_this_frame, emergency;         // emergency: the avoidance braking ramp was active at the last leaf call
 };
 TraceSlot trace_slots_[kTraceMax];
 struct TraceRow {
-    std::uint32_t obj, order, tgt, dt_ms, t_ms;
+    std::uint32_t obj, order, tgt, dt_ms, t_ms, obstacle;
     std::uint16_t code, tgt_class;
     std::int32_t pos[3], rate[3], v, des, des_engine, point[3], given[3], e[3], W[3], rot_raw, rot_pct, vmax, accel;
-    float fwd[3], up[3];
-    std::uint8_t has_e;
+    float fwd[3], up[3], omega_cmd[3];
+    std::uint8_t has_e, emergency;
 };
 TraceRow trace_ring_[kTraceRing];
 std::atomic<std::uint32_t> trace_write_{0};
@@ -343,8 +347,11 @@ inline TraceSlot* trace_slot_of(std::uint32_t obj) noexcept {
         if (trace_slots_[i].obj == obj) return &trace_slots_[i];
     return nullptr;
 }
-inline TraceSlot* trace_claim(std::uint32_t obj, std::uint32_t now) noexcept {
-    for (unsigned i = 0; i < trace_max_ && i < kTraceMax; ++i)
+// Slot 0 is reserved for a capital on an order-4 gate approach (amendment 11: the Run155 Boreas circled for minutes
+// with no per-frame rows); the other trace_max_ - 1 slots follow non-capital gate/dock approaches.
+inline TraceSlot* trace_claim(std::uint32_t obj, std::uint32_t now, bool capital) noexcept {
+    const unsigned first = capital ? 0u : 1u, end = capital ? 1u : (trace_max_ < kTraceMax ? trace_max_ : kTraceMax);
+    for (unsigned i = first; i < end; ++i)
         if (!trace_slots_[i].obj) {
             trace_slots_[i] = TraceSlot{};
             trace_slots_[i].obj = obj;
@@ -546,8 +553,6 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
             if (la.obj == self.leader && now - la.stamp_ms <= sites::kClampMaxAgeMs) self.L_leader = la.L; // a fresh decision only
         }
     }
-    self.envelope = float(rds32(fl + sites::kFlightDistance)) / core::kUnitsPerMetre * float(av::kFormationEnvelopeFactor);
-    if (self.envelope < 0.0f) self.envelope = 0.0f;
     self.order = in.order;
     self.capital = code < core::kClassCount && ((core::kCapitalMask >> code) & 1u);
     self.exclude_target = in.order == core::kOrderFlyBefore || in.order == core::kOrderDock || in.order == core::kOrderEscort ||
@@ -570,6 +575,7 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     state.in_conflict = conflict_now;
     if (r.emergency) av_emergency_.add();
     if (r.excluded_followers) avoid_excluded_followers_.add(r.excluded_followers);
+    if (r.skipped_small) avoid_skipped_small_.add(r.skipped_small);
     std::memcpy(v_emergency_out, &state.v_emergency, 4);
     if (!r.adjusted) return;
     av_detours_.add();
@@ -586,6 +592,8 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
             e.side = std::uint32_t(std::int32_t(r.side));
             e.vertical = r.vertical ? 1 : 0;
             e.order = in.order;
+            e.obstacle_leader = r.obstacle_leader;
+            e.obstacle_order = r.obstacle_order;
             e.t_cpa = r.t_cpa;
             e.miss = r.miss;
             e.C = r.C;
@@ -795,6 +803,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                     redirect_target(f, units);
                     const float c_rel[3] = {lead[0] - G[0], lead[1] - G[1], lead[2] - G[2]};
                     for (unsigned i = 0; i < 3; ++i) gs->carrot_local[i] = r_gate > 0.0f ? core::dot3(c_rel, gs->rows[i]) / r_gate : 0.0f;
+                    gs->carrot_ms = now;
                 } else
                     gate_lead_window_rejected_.add();
             }
@@ -854,6 +863,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                     e.o5_dB_r = r_gate > 0.0f ? dn / r_gate : 0.0f;
                 }
                 e.ms_since_p2 = gs->p2_stamp ? now - gs->p2_stamp : 0;
+                e.carrot_age_ms = gs->carrot_ms ? std::int32_t(now - gs->carrot_ms) : -1;
                 gate_trans_write_.store(w + 1, std::memory_order_release);
             }
         } else if (gs->pending)
@@ -933,21 +943,26 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     handled_by_order_[order & 0x3f].add();
     if (trace_on_) { // the followed ships: claim on entering a gate or dock approach, note this frame's leaf call
         TraceSlot* ts = trace_slot_of(obj);
-        if (!ts && !capital) {
+        if (!ts) {
             const std::uint32_t tg = rd32(fl + sites::kFlightTarget);
             const std::uint16_t tc = tg ? rd16(tg + sites::kObjClass) : 0;
-            const bool approach = (order == core::kOrderFlyBefore && (tc == sites::kClassGate || tc == sites::kClassStationA || tc == sites::kClassStationB)) ||
-                                  order == core::kOrderDock;
-            if (approach) ts = trace_claim(obj, now);
+            // a capital only on order 4 to a gate (slot 0); a non-capital on order 4 to a gate or station, or on order 5
+            const bool approach = capital ? order == core::kOrderFlyBefore && tc == sites::kClassGate
+                                          : (order == core::kOrderFlyBefore && (tc == sites::kClassGate || tc == sites::kClassStationA || tc == sites::kClassStationB)) ||
+                                                order == core::kOrderDock;
+            if (approach) ts = trace_claim(obj, now, capital);
         }
         if (ts) {
             ts->last_seen_ms = now;
             ts->leaf_this_frame = 1;
+            ts->emergency = v_emergency_bits ? 1 : 0;
+            ts->obstacle = avoid_[slot].obj == obj ? avoid_[slot].obstacle : 0;
             for (unsigned i = 0; i < 3; ++i) {
                 ts->W[i] = call_eax(i == 0 ? sites::kGetYawCap : i == 1 ? sites::kGetPitchCap : sites::kGetRollCap, obj);
                 ts->given[i] = point[i];
                 ts->point[i] = core::round_to_int(in.P[i] * core::kUnitsPerMetre);
                 ts->e[i] = cmd.e[i];
+                ts->omega_cmd[i] = cmd.omega_axis[i] * 180.0f / core::kPi;
             }
             ts->rot_raw = rds32(fl + sites::kFlightRotAccel);
             ts->rot_pct = rot_pct;
@@ -1105,7 +1120,11 @@ inline void trace_frame(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph, s
     if (!ts) return;
     const std::uint32_t now = game_time_ms();
     const std::uint16_t order_now = rd16(fl + sites::kFlightOrder);
-    if (order_now != core::kOrderNone && order_now != core::kOrderFlyBefore && order_now != core::kOrderDock && order_now != core::kOrderWarpAway) {
+    // The approach passes through order 0 (the arrival, and SA_StopObject after a collision warn), the engine's own avoid
+    // order 0x12 (Run155: every trace gap before order 5 was a stop row followed by 70-900 frames on 0x12, the slot
+    // released here and re-claimed only at order 5) and RotateToAngles 0x1f (the capital's alignment step).
+    if (order_now != core::kOrderNone && order_now != core::kOrderFlyBefore && order_now != core::kOrderDock && order_now != core::kOrderWarpAway &&
+        order_now != core::kOrderAvoid && order_now != core::kOrderRotate) {
         ts->obj = 0; // the approach is over (another order)
         return;
     }
@@ -1142,6 +1161,9 @@ inline void trace_frame(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph, s
     r.vmax = ts->vmax;
     r.accel = ts->accel;
     r.has_e = ts->leaf_this_frame;
+    r.emergency = ts->emergency;
+    r.obstacle = ts->obstacle;
+    for (unsigned i = 0; i < 3; ++i) r.omega_cmd[i] = ts->omega_cmd[i];
     for (unsigned i = 0; i < 3; ++i) {
         if (ts->leaf_this_frame) {
             r.point[i] = ts->point[i];
@@ -1498,7 +1520,7 @@ bool initialize() {
                 trace_max_ = unsigned(m);
         }
         if (trace_on_)
-            log("ship_trace installed=1 max_ships=%u ring=%u idle_ms=%lu bytes_per_row_est=330", trace_max_, kTraceRing,
+            log("ship_trace installed=1 max_ships=%u ring=%u idle_ms=%lu bytes_per_row_est=370", trace_max_, kTraceRing,
                 static_cast<unsigned long>(kTraceIdleMs));
     }
     timing_ = (perf_ || debug_) && qpc_frequency_ != 0;
@@ -1638,11 +1660,12 @@ void frame_boundary(std::uint64_t frame) {
             ++detour_rows_this_second_;
             const DetourEvent& e = detours_[detour_read_ & 15];
             log("ship_avoid_detour frame=%llu obj=0x%08lx order=0x%lx obstacle=0x%08lx kind=%lu side=%ld vertical=%lu t_cpa_s=%.2f miss_m=%.1f "
-                "C_m=%.1f L_m=%.0f P_m=%.1f,%.1f,%.1f x_m=%.1f,%.1f,%.1f",
+                "C_m=%.1f L_m=%.0f P_m=%.1f,%.1f,%.1f x_m=%.1f,%.1f,%.1f leader=0x%08lx obstacle_order=0x%lx",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(e.obj), static_cast<unsigned long>(e.order),
                 static_cast<unsigned long>(e.obstacle), static_cast<unsigned long>(e.kind), long(std::int32_t(e.side)),
                 static_cast<unsigned long>(e.vertical), double(e.t_cpa), double(e.miss), double(e.C), double(e.L), double(e.P[0]), double(e.P[1]),
-                double(e.P[2]), double(e.x[0]), double(e.x[1]), double(e.x[2]));
+                double(e.P[2]), double(e.x[0]), double(e.x[1]), double(e.x[2]), static_cast<unsigned long>(e.obstacle_leader),
+                static_cast<unsigned long>(e.obstacle_order));
         }
     }
     if (trace_on_) {
@@ -1655,25 +1678,27 @@ void frame_boundary(std::uint64_t frame) {
             if (r.has_e)
                 log("ship_trace frame=%llu t_ms=%lu obj=0x%08lx class=%s order=0x%lx tgt=0x%08lx tgt_class=%u pos=%ld,%ld,%ld "
                     "fwd=%.5f,%.5f,%.5f up=%.5f,%.5f,%.5f rate=%ld,%ld,%ld v=%ld des=%ld des_engine=%ld point=%ld,%ld,%ld given=%ld,%ld,%ld "
-                    "e=%ld,%ld,%ld dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld",
+                    "e=%ld,%ld,%ld dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj),
                     r.code < core::kClassCount ? core::kClassNames[r.code] : "?", static_cast<unsigned long>(r.order),
                     static_cast<unsigned long>(r.tgt), unsigned(r.tgt_class), long(r.pos[0]), long(r.pos[1]), long(r.pos[2]), double(r.fwd[0]),
                     double(r.fwd[1]), double(r.fwd[2]), double(r.up[0]), double(r.up[1]), double(r.up[2]), long(r.rate[0]), long(r.rate[1]),
                     long(r.rate[2]), long(r.v), long(r.des), long(r.des_engine), long(r.point[0]), long(r.point[1]), long(r.point[2]), long(r.given[0]), long(r.given[1]),
                     long(r.given[2]), long(r.e[0]), long(r.e[1]), long(r.e[2]), static_cast<unsigned long>(r.dt_ms), long(r.W[0]), long(r.W[1]),
-                    long(r.W[2]), static_cast<unsigned long>(r.rot_raw), long(r.rot_pct), long(r.vmax), long(r.accel));
+                    long(r.W[2]), static_cast<unsigned long>(r.rot_raw), long(r.rot_pct), long(r.vmax), long(r.accel), unsigned(r.emergency),
+                    double(r.omega_cmd[0]), double(r.omega_cmd[1]), double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle));
             else
                 log("ship_trace frame=%llu t_ms=%lu obj=0x%08lx class=%s order=0x%lx tgt=0x%08lx tgt_class=%u pos=%ld,%ld,%ld "
                     "fwd=%.5f,%.5f,%.5f up=%.5f,%.5f,%.5f rate=%ld,%ld,%ld v=%ld des=%ld des_engine=%ld point=%ld,%ld,%ld given=%ld,%ld,%ld "
-                    "e=- dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld",
+                    "e=- dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj),
                     r.code < core::kClassCount ? core::kClassNames[r.code] : "?", static_cast<unsigned long>(r.order),
                     static_cast<unsigned long>(r.tgt), unsigned(r.tgt_class), long(r.pos[0]), long(r.pos[1]), long(r.pos[2]), double(r.fwd[0]),
                     double(r.fwd[1]), double(r.fwd[2]), double(r.up[0]), double(r.up[1]), double(r.up[2]), long(r.rate[0]), long(r.rate[1]),
                     long(r.rate[2]), long(r.v), long(r.des), long(r.des_engine), long(r.point[0]), long(r.point[1]), long(r.point[2]), long(r.given[0]), long(r.given[1]),
                     long(r.given[2]), static_cast<unsigned long>(r.dt_ms), long(r.W[0]), long(r.W[1]), long(r.W[2]), static_cast<unsigned long>(r.rot_raw),
-                    long(r.rot_pct), long(r.vmax), long(r.accel));
+                    long(r.rot_pct), long(r.vmax), long(r.accel), unsigned(r.emergency), double(r.omega_cmd[0]), double(r.omega_cmd[1]),
+                    double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle));
         }
     }
     if (debug_ && gates_on_) {
@@ -1682,7 +1707,7 @@ void frame_boundary(std::uint64_t frame) {
             log("ship_gate_transition frame=%llu obj=0x%08lx class=%s capital=%u validated=%s crossed=%u last_dA_r=%.2f err_B_deg=%.1f "
                 "v_ms=%.1f desired_ms=%.1f B_gate_r=%.2f,%.2f,%.2f A_gate_r=%.2f,%.2f,%.2f dock_blocked=%u "
                 "p2_pos_r=%.2f,%.2f,%.2f p2_fwd=%.2f,%.2f,%.2f p2_carrot_r=%.2f,%.2f,%.2f o5_pos_r=%.2f,%.2f,%.2f o5_fwd=%.2f,%.2f,%.2f "
-                "o5_dA_r=%.2f o5_dB_r=%.2f ms_since_p2=%lu",
+                "o5_dA_r=%.2f o5_dB_r=%.2f ms_since_p2=%lu carrot_age_ms=%ld",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(e.obj),
                 e.code < core::kClassCount ? core::kClassNames[e.code] : "?", unsigned(e.capital),
                 e.validated == 1 ? "matched" : e.validated == 2 ? "fallback" : "none", unsigned(e.crossed), double(e.dA_r), double(e.err_B_deg),
@@ -1690,7 +1715,7 @@ void frame_boundary(std::uint64_t frame) {
                 double(e.A_local[1]), double(e.A_local[2]), unsigned(e.dock_blocked), double(e.p2_pos[0]), double(e.p2_pos[1]), double(e.p2_pos[2]),
                 double(e.p2_fwd[0]), double(e.p2_fwd[1]), double(e.p2_fwd[2]), double(e.p2_carrot[0]), double(e.p2_carrot[1]), double(e.p2_carrot[2]),
                 double(e.o5_pos[0]), double(e.o5_pos[1]), double(e.o5_pos[2]), double(e.o5_fwd[0]), double(e.o5_fwd[1]), double(e.o5_fwd[2]),
-                double(e.o5_dA_r), double(e.o5_dB_r), static_cast<unsigned long>(e.ms_since_p2));
+                double(e.o5_dA_r), double(e.o5_dB_r), static_cast<unsigned long>(e.ms_since_p2), long(e.carrot_age_ms));
         }
         for (std::uint32_t w = gate_event_write_.load(std::memory_order_acquire); gate_event_read_ != w; ++gate_event_read_) {
             const GateEvent& e = gate_events_[gate_event_read_ & 7];
@@ -1790,16 +1815,17 @@ void frame_boundary(std::uint64_t frame) {
                       static_cast<unsigned long>(d[11]), static_cast<unsigned long>(d[12]), static_cast<unsigned long>(e[2]),
                       static_cast<unsigned long>(e[3]), snap_max, warn_state_);
     }
-    char gates[1100] = "";
+    char gates[1200] = "";
     if (gates_on_) {
-        const Counter* gc[28] = {&gate_lead_, &gate_cross_, &gate_p2_, &gate_stops_skipped_, &gate_p4_, &gate_v0_kept_, &gate_p5_,
+        const Counter* gc[29] = {&gate_lead_, &gate_cross_, &gate_p2_, &gate_stops_skipped_, &gate_p4_, &gate_v0_kept_, &gate_p5_,
                                  &gate_launch_continued_, &gate_speed_writes_, &gate_spread_offsets_, &gate_exit_offsets_,
                                  &gate_capital_aligned_, &gate_warp_calls_, &gate_lead_validated_, &gate_lead_fallback_,
                                  &gate_lead_window_rejected_, &gate_dock_writes_, &gate_dock_blocked_, &gate_p2_no_gate_target_,
                                  &gate_p2_capital_, &gate_p2_no_state_, &gate_p4_no_gate_target_, &gate_p4_capital_, &gate_p4_no_state_,
-                                 &gate_dock_invalid_, &gate_warp_skipped_, &gate_rows_dropped_, &avoid_excluded_followers_};
-        std::uint32_t d[28];
-        for (unsigned i = 0; i < 28; ++i) {
+                                 &gate_dock_invalid_, &gate_warp_skipped_, &gate_rows_dropped_, &avoid_excluded_followers_,
+                                 &avoid_skipped_small_};
+        std::uint32_t d[29];
+        for (unsigned i = 0; i < 29; ++i) {
             const std::uint32_t v = gc[i]->get();
             d[i] = v - rep_gate_[i];
             rep_gate_[i] = v;
@@ -1810,7 +1836,7 @@ void frame_boundary(std::uint64_t frame) {
                       "gate_capital_aligned=%lu gate_warp_calls=%lu gate_lead_validated=%lu gate_lead_fallback=%lu "
                       "gate_lead_window_rejected=%lu gate_dock_writes=%lu gate_dock_blocked=%lu gate_p2_no_gate_target=%lu "
                       "gate_p2_capital=%lu gate_p2_no_state=%lu gate_p4_no_gate_target=%lu gate_p4_capital=%lu gate_p4_no_state=%lu "
-                      "gate_dock_invalid=%lu gate_warp_skipped=%lu gate_rows_dropped=%lu avoid_excluded_followers=%lu",
+                      "gate_dock_invalid=%lu gate_warp_skipped=%lu gate_rows_dropped=%lu avoid_excluded_followers=%lu avoid_skipped_small=%lu",
                       gates_state_, static_cast<unsigned long>(d[0]), static_cast<unsigned long>(d[1]), static_cast<unsigned long>(d[2]),
                       static_cast<unsigned long>(d[3]), static_cast<unsigned long>(d[4]), static_cast<unsigned long>(d[5]),
                       static_cast<unsigned long>(d[6]), static_cast<unsigned long>(d[7]), static_cast<unsigned long>(d[8]),
@@ -1820,7 +1846,7 @@ void frame_boundary(std::uint64_t frame) {
                       static_cast<unsigned long>(d[18]), static_cast<unsigned long>(d[19]), static_cast<unsigned long>(d[20]),
                       static_cast<unsigned long>(d[21]), static_cast<unsigned long>(d[22]), static_cast<unsigned long>(d[23]),
                       static_cast<unsigned long>(d[24]), static_cast<unsigned long>(d[25]), static_cast<unsigned long>(d[26]),
-                      static_cast<unsigned long>(d[27]));
+                      static_cast<unsigned long>(d[27]), static_cast<unsigned long>(d[28]));
     }
     char trace[96] = "";
     if (trace_on_) {

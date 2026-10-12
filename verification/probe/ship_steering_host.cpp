@@ -226,7 +226,7 @@ struct Model {
     std::uint32_t ptr, leader_ptr, target_ptr;
     bool capital;
     float envelope_m, leader_x_m[3], L_leader_m;
-    unsigned detours, unresolved, side_flips, excluded_followers;
+    unsigned detours, unresolved, side_flips, excluded_followers, skipped_small;
     std::int8_t last_side;
     float last_dir[3];
     std::uint32_t last_obstacle, last_detour_obstacle;
@@ -285,7 +285,7 @@ struct Model {
         envelope_m = 0;
         leader_x_m[0] = leader_x_m[1] = leader_x_m[2] = 0;
         L_leader_m = 0;
-        detours = unresolved = side_flips = excluded_followers = 0;
+        detours = unresolved = side_flips = excluded_followers = skipped_small = 0;
         last_side = 0;
         last_dir[0] = last_dir[1] = last_dir[2] = 0;
         last_obstacle = last_detour_obstacle = 0;
@@ -316,7 +316,6 @@ struct Model {
         self.ptr = ptr;
         self.leader = leader_ptr;
         self.target = target_ptr;
-        self.envelope = envelope_m;
         self.order = order;
         self.capital = capital;
         self.exclude_target = order == core::kOrderEscort || order == core::kOrderFollow || order == core::kOrderFlyBefore;
@@ -325,6 +324,7 @@ struct Model {
         last_av = av::resolve(*snap, parts, n_parts, self, Pm, astate, std::uint32_t(t_ms));
         if (last_av.unresolved) ++unresolved;
         excluded_followers += last_av.excluded_followers;
+        skipped_small += last_av.skipped_small;
         if (!last_av.adjusted) return;
         ++detours;
         // a side flip: the detour direction for the same obstacle reverses (the sign on the recomputed axis may differ)
@@ -420,6 +420,7 @@ struct Model {
         for (int i = 0; i < 3; ++i) last_aim_P[i] = in.P[i];
         for (int i = 0; i < 3; ++i) e[i] = cmd.e[i];
         core::Ship* s = table->find_or_insert(obj_id, std::uint32_t(t_ms));
+        if (!s) return; // the table's probe window is full (object ids are 16-byte aligned in the engine: the hash drops 4 bits)
         s->stamp_ms = std::uint32_t(t_ms);
         s->order = order;
         s->flags = gate_mode && capital ? std::uint16_t(0) // amendment 10: no site-B write on a capital's gate legs
@@ -968,6 +969,7 @@ struct World {
             o.leader = m.leader_ptr;
             o.order = m.order;
             o.kind = std::uint8_t(av::Kind::ship);
+            o.size = m.dyn.large ? 1 : 0; // the record code's "large" bit (amendment 11)
             if (o.r > snap.max_r) snap.max_r = o.r;
         }
     }
@@ -1573,13 +1575,12 @@ static void avoidance_unit_checks() {
     check(av::suppressed(a, 0x1000, 0x2000, 1050) && !av::suppressed(a, 0x1000, 0x3000, 1050) && !av::suppressed(a, 0x1000, 0x2000, 1200) &&
               !av::suppressed(a, 0x1001, 0x2000, 1050),
           "E: resolved pair within 100 ms only, and only for the state's own ship");
-    // exclusions: self, leader, the order's target, wingmates inside the envelope, own followers
+    // exclusions: self, leader, the order's target, the formation in every direction (amendment 11), own followers
     av::Self me{};
     me.ptr = 1;
     me.leader = 2;
     me.target = 2;
     me.exclude_target = true;
-    me.envelope = 100;
     me.leader_x[0] = 1000;
     av::Obstacle o{};
     o.kind = std::uint8_t(av::Kind::ship);
@@ -1591,12 +1592,82 @@ static void avoidance_unit_checks() {
     o.leader = 2;
     o.order = core::kOrderEscort;
     o.x[0] = 1050;
-    check(av::excluded(me, o), "excluded: a wingmate inside the envelope");
-    o.x[0] = 2000;
-    check(!av::excluded(me, o), "not excluded: a straggler outside the envelope");
+    check(av::excluded(me, o), "excluded: a wingmate near the leader");
+    o.x[0] = 20000;
+    check(av::excluded(me, o), "excluded: a wingmate of the same leader far from it (every direction)");
+    o.order = core::kOrderFollow;
+    check(av::excluded(me, o), "excluded: a wingmate on order 0x15");
+    o.order = core::kOrderMovePos;
+    check(!av::excluded(me, o), "not excluded: a ship whose stale f+0x224 is our leader but is not on 0x14/0x15");
     o.x[0] = 0;
     o.leader = 1;
-    check(av::excluded(me, o), "excluded: our own follower inside the envelope");
+    o.order = core::kOrderEscort;
+    check(av::excluded(me, o), "excluded: our own follower");
+    o.x[0] = 30000;
+    check(av::excluded(me, o), "excluded: our own follower far away");
+    {
+        av::Self lead{}; // the leader's view: its follower is excluded, the follower's view: the leader is (both directions)
+        lead.ptr = 2;
+        lead.order = core::kOrderMovePos;
+        av::Obstacle f{};
+        f.kind = std::uint8_t(av::Kind::ship);
+        f.ptr = 1;
+        f.leader = 2;
+        f.order = core::kOrderFollow;
+        f.x[0] = 15000;
+        check(av::excluded(lead, f), "excluded: the leader never avoids its follower, wherever it is");
+        av::Self fol{};
+        fol.ptr = 1;
+        fol.leader = 2;
+        fol.order = core::kOrderFollow;
+        av::Obstacle l{};
+        l.kind = std::uint8_t(av::Kind::ship);
+        l.ptr = 2;
+        check(av::excluded(fol, l), "excluded: the follower never avoids its leader");
+    }
+    // the horizon cap (amendment 11): min(L / v, 30 s) of flight; the Boreas's L / v is 43.9 s uncapped
+    {
+        const ShipType& b = kShips[4];
+        const float om = float(b.yaw_dps * M_PI / 180);
+        const float Cb = av::clearance(float(b.r_m), 50.0f);
+        const float Lb = av::lookahead(float(b.v_ms), float(b.a_ms2), om, float(b.r_m), Cb, om * float(b.k_pct) / 100.0f);
+        const float Tb = av::horizon_s(Lb, float(b.v_ms));
+        std::printf("boreas horizon: L=%.0f m v=%.0f m/s L/v=%.1f s horizon=%.1f s swept=%.0f m (C vs a 50 m asteroid %.0f m)\n", Lb, b.v_ms,
+                    Lb / b.v_ms, Tb, Tb * float(b.v_ms), Cb);
+        checkf(Lb / b.v_ms > av::kHorizonMaxS && Tb == av::kHorizonMaxS, "boreas: the uncapped horizon %.1f s is capped to %.0f s", Lb / b.v_ms, Tb);
+        check(av::horizon_s(Lb, 0.0f) == av::kHorizonMaxS && av::horizon_s(100.0f, 50.0f) == 2.0f, "horizon: v = 0 gives the cap, a short L its own time");
+        static av::Snapshot sb;
+        av::Self cap{};
+        cap.f[2] = 1;
+        cap.up[1] = 1;
+        cap.v = float(b.v_ms);
+        cap.r = float(b.r_m);
+        cap.a = float(b.a_ms2);
+        cap.omega = om;
+        cap.alpha = om * float(b.k_pct) / 100.0f;
+        cap.ptr = 0x9000;
+        cap.order = core::kOrderMovePos;
+        cap.capital = true;
+        const float Pc[3] = {0, 0, 20000};
+        for (int pass = 0; pass < 2; ++pass) {
+            sb = av::Snapshot{};
+            sb.count = 1;
+            sb.max_r = 50;
+            av::Obstacle& a = sb.items[0];
+            a = av::Obstacle{};
+            a.kind = std::uint8_t(av::Kind::asteroid);
+            a.ptr = 0x7000;
+            a.r = 50;
+            a.x[2] = pass == 0 ? Tb * float(b.v_ms) + Cb + 200.0f : Tb * float(b.v_ms) + Cb - 200.0f; // 200 m beyond / inside the capped reach
+            av::ShipAvoid st{};
+            st.obj = cap.ptr;
+            av::Result rr = av::resolve(sb, nullptr, 0, cap, Pc, st, 1);
+            if (pass == 0)
+                checkf(rr.conflicts == 0 && a.x[2] < Lb + Cb, "horizon: an asteroid %.0f m ahead (inside the uncapped L + C %.0f m) is no conflict", a.x[2], Lb + Cb);
+            else
+                checkf(rr.conflicts == 1 && rr.L == Tb * float(b.v_ms), "horizon: an asteroid %.0f m ahead is a conflict, L_m reports the swept %.0f m", a.x[2], rr.L);
+        }
+    }
     // the snapshot overflow passes the point through
     static av::Snapshot snap;
     snap = av::Snapshot{};
@@ -1888,6 +1959,91 @@ static void unit_checks() {
     }
 }
 
+// ---- scenario 8b: a capital through a cloud of fighters (amendment 11) ------------------------------------------------
+// The M2 flies a straight 20 km leg; 12 M5 fighters cross its path in front of it (a wall of crossing courses, each
+// on a collision course with the capital at its own time). The capital must not deviate (the engine's own proximity
+// filter lets a capital ignore small ships: it skips them, `skipped_small`), the fighters detour around it with
+// clearance >= C. A second capital crossing the first's path is still detoured.
+static void capital_cloud_scenario(int fps, std::uint32_t seed) {
+    static World w;
+    w = World{};
+    core::ShipTable table{};
+    const ShipType& cap = kShips[4]; // M2
+    const ShipType& fighter = kShips[0]; // M5
+    Model c;
+    c.init(cap, seed);
+    c.table = &table;
+    c.ptr = 0x9000;
+    c.order = core::kOrderMovePos;
+    c.capital = true;
+    c.P[2] = 20000.0 * 500;
+    c.d_arr_units = 2 * c.r_units;
+    w.attach(c);
+    Model fighters[12];
+    Model* ships[13];
+    ships[0] = &c;
+    const double v_c = cap.v_ms, v_f = fighter.v_ms;
+    for (unsigned i = 0; i < 12; ++i) {
+        Model& m = fighters[i];
+        m.init(fighter, seed + 7 * i + 1);
+        m.table = &table;
+        m.ptr = 0x4000 + 0x100 * i;
+        m.order = core::kOrderMovePos;
+        // the crossing point on the capital's line at z = 3 km + i x 600 m; the fighter starts to the side so that both
+        // reach it at the same time (a collision course), alternating sides and a vertical offset of +-30 m
+        const double z = 2000.0 + 400.0 * i, t_meet = z / v_c, side = (i & 1) ? -1.0 : 1.0;
+        m.pos[0] = side * v_f * t_meet * 500.0;
+        m.pos[1] = (int(i % 3) - 1) * 30.0 * 500.0;
+        m.pos[2] = z * 500.0;
+        m.row[0][0] = 0;
+        m.row[0][2] = side; // heading -side x: row2 = (-side, 0, 0), row0 = (0, 0, side) keeps the basis orthonormal
+        m.row[2][0] = -side;
+        m.row[2][2] = 0;
+        m.P[0] = -side * 20000.0 * 500.0;
+        m.P[1] = m.pos[1];
+        m.P[2] = m.pos[2];
+        m.d_arr_units = 2 * m.r_units;
+        w.attach(m);
+        ships[i + 1] = &m;
+    }
+    Clock clocks[13];
+    const float C = av::clearance(float(fighter.r_m), float(cap.r_m));
+    double min_clear = 1e18, max_heading_deg = 0, per_min[12];
+    for (unsigned k = 0; k < 12; ++k) per_min[k] = 1e18;
+    for (long i = 0; i < 200 * fps; ++i) {
+        const long dt = clocks[0].step(fps);
+        for (unsigned k = 1; k < 13; ++k) clocks[k].step(fps);
+        if (!dt) continue;
+        w.fill(ships, 13, std::uint32_t(c.t_ms));
+        c.frame(dt, 0x1000, true, 0, 1); // object ids 16 bytes apart, as the engine's objects are (the table's hash drops 4 bits)
+        for (unsigned k = 0; k < 12; ++k) fighters[k].frame(dt, 0x1010 + 0x10 * k, true, 0, 1);
+        double hc = std::acos(std::fmax(-1.0, std::fmin(1.0, c.row[2][2]))) * 180 / M_PI; // the capital's heading off +z
+        if (hc > max_heading_deg) max_heading_deg = hc;
+        for (unsigned k = 0; k < 12; ++k) {
+            double d = 0;
+            for (int j = 0; j < 3; ++j) d += (c.pos[j] - fighters[k].pos[j]) * (c.pos[j] - fighters[k].pos[j]);
+            d = std::sqrt(d) / 500.0;
+            if (d < min_clear) min_clear = d;
+            if (d < per_min[k]) per_min[k] = d;
+        }
+        if (c.pos[2] / 500.0 > 2000.0 + 400.0 * 11 + 2000.0) break; // past the last crossing
+    }
+    unsigned detouring = 0, skipped = c.skipped_small;
+    for (unsigned k = 0; k < 12; ++k)
+        if (fighters[k].detours > 0) ++detouring;
+    char why[220];
+    std::snprintf(why, sizeof why, "%d fps seed %u capital through 12 fighters: the capital never deviates (heading change %%.2f deg <= 1), 0 detours, small ships skipped (%%.0f)", fps, seed);
+    checkf(max_heading_deg <= 1.0 && c.detours == 0 && skipped > 0, why, max_heading_deg, double(skipped));
+    std::snprintf(why, sizeof why, "%d fps seed %u capital through 12 fighters: every fighter detours (%%.0f of 12) with clearance >= C (min %%.1f m)", fps, seed);
+    checkf(detouring == 12 && min_clear >= C, why, double(detouring), min_clear);
+    if (seed == kSeeds[0] && fps == 60) {
+        std::printf("capital cloud fps=%3d heading_change=%.2f deg capital_detours=%u skipped_small=%u fighters_detouring=%u/12 min_clear=%.1f m (C=%.1f)\n", fps,
+                    max_heading_deg, c.detours, skipped, detouring, min_clear, C);
+        for (unsigned k = 0; k < 12; ++k)
+            std::printf("capital cloud   fighter %2u detours=%u min_dist=%.0f m unresolved=%u\n", k, fighters[k].detours, per_min[k], fighters[k].unresolved);
+    }
+}
+
 // ---- scenario 9: the gate approach (amendment 7; ship-navigation-ai.md section 10) ------------------------------
 // The engine's gate transit for one ship: order 4 to A = G + R(0, -0.8, -1) r (the leaf every frame, the arrival test
 // dist(A) <= 0.75 r and the speed law at the think tick: vmax beyond d_slow = 0.75 r + vmax^2/a, ramp(dist; 0 -> 5000,
@@ -1945,8 +2101,10 @@ static void emit_trace_row(const Model& m, const char* cls, std::uint32_t obj, l
         std::fprintf(g_trace, "e=%ld,%ld,%ld", long(m.e[0]), long(m.e[1]), long(m.e[2]));
     else
         std::fprintf(g_trace, "e=-");
-    std::fprintf(g_trace, " dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld\n", static_cast<unsigned long>(dt), long(m.W[0]),
-                 long(m.W[1]), long(m.W[2]), 0x10000ul, long(rot_pct), long(m.vmax), long(m.accel));
+    std::fprintf(g_trace, " dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx\n",
+                 static_cast<unsigned long>(dt), long(m.W[0]), long(m.W[1]), long(m.W[2]), 0x10000ul, long(rot_pct), long(m.vmax), long(m.accel),
+                 m.last_av.emergency ? 1u : 0u, m.last_cmd.omega_axis[0] * 180 / M_PI, m.last_cmd.omega_axis[1] * 180 / M_PI,
+                 m.last_cmd.omega_axis[2] * 180 / M_PI, static_cast<unsigned long>(m.last_av.adjusted ? m.last_av.obstacle : 0u));
     ++g_trace_rows;
 }
 // obj_id selects the ship's ring position (the spread); capital_slot the grid point of a capital (-1 = slot 7)
@@ -2637,6 +2795,8 @@ int main(int argc, char** argv) {
                 if (!std::strcmp(t.cls, "TS") || !std::strcmp(t.cls, "M6")) gate_dock_scenario(t, fps, seed);
             }
     }
+    for (int fps : kFps)
+        for (std::uint32_t seed : kSeeds) capital_cloud_scenario(fps, seed);
     {
         static const ShipType m4 = {"M4", "Buster", 180.0, 25.0, 129.375, 12.0, 20, false};
         for (int fps : kFps)

@@ -34,6 +34,7 @@ constexpr std::uint32_t kObjFlags = 0x40, kObjFlags2 = 0x44, kObjClass = 0x48, k
                         kObjDocked = 0xf8;
 constexpr std::uint32_t kFlagDeleted = 0x8000000, kFlagAttached = 0x200, kFlags2NoPair = 0x20000;
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightOrder = 0x258;
+constexpr std::uint32_t kObjType = 0x4a, kShipTypeTableSlot = 0x00606fd4, kRecordStride = 0xdb8, kRecordClassCode = 0x14;
 constexpr std::uint32_t kPhysPosition = 0x30, kPhysBasis = 0x40, kPhysVelocity = 0x100;
 constexpr std::uint32_t kNodeChildren = 0xc, kNodeOffset = 0x30, kNodeScale = 0x70, kNodeOwnRadius = 0xa0, kNodeRadius = 0xa4,
                         kNodeFlags = 0x12c, kNodeFlagScaled = 0x40;
@@ -298,6 +299,14 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
                     it.leader = mem.u32(fl + kFlightTarget);
                     it.order = mem.u16(fl + kFlightOrder);
                 }
+                // the record code -> "large" (amendment 11: a capital ignores the others); 2 when it cannot be read
+                const std::int32_t type = std::int16_t(mem.u16(o + kObjType));
+                const std::uint32_t table = mem.u32(kShipTypeTableSlot);
+                if (table && type >= 0) {
+                    const std::uint32_t code = mem.u32(table + std::uint32_t(type) * kRecordStride + kRecordClassCode);
+                    it.size = code < sc::kClassCount ? std::uint8_t((sc::kLargeMask >> code) & 1u) : std::uint8_t(2);
+                } else
+                    it.size = 2;
             } else {
                 it.kind = std::uint8_t(cls == kClassAsteroid ? av::Kind::asteroid
                                        : cls == kClassGate     ? av::Kind::gate

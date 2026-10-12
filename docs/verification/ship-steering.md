@@ -154,7 +154,7 @@ the bucket walk stops at 8192 objects.
 | Build | `cmake --build build 2>&1 \| grep -c warning` | **0** warnings (measured) |
 | x87 audit | `python3 verification/probe/check_no_x87.py build/d3d9.dll` | **PASS, 0 violations**, 939 reachable; new roots `_x3m_ship_avoid_e_stub`, `_x3m_ship_avoid_suppress` (measured) |
 | Site verifier | `python3 verification/probe/verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` ([output](../../verification/results/ship-steering/verify_ship_steering_sites_out.json)) | **RESULT PASS, 16 checks** (the step-1 fourteen plus `warn_test_site`: the function decodes gap-free to `0x0044e442`, 4 × `ret 0x10`, exactly the 3 callers, each `test eax,eax; je` after the call, the `&out` local initialised and unread; the header's `kWarnSite` equals the derived row; and `snapshot_walk_facts`: the double indirection at the three bucket-table readers, the 0-dword child sentinel at both child loops, the `+0x12c & 0x40` scale test and the parent's `+0x70` multiply) |
-| Host fixture | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering` ([output](../../verification/results/ship-steering/ship_steering_host.txt)) | **checks PASS, 3649/3649** (2203 before the Run151 follow-up, 2341 before step 3, 3020 before its review, 3365 before step 4, 3594 before its review, 3595 before amendment 9, the disc-arc model since amendment 10): step 1's 1164 plus the step-2 unit checks (the snapshot and part walks over a synthetic sector: bucket table pointer, intrusive lists with the 0-dword sentinel, scaled and unscaled children, a dirty child, a sentinel-only list, a part outside the root sphere, a > 64-child station, the walk limit, no table; the cache by object/radius/stamp and its invalidation; the review's head-on case never suppressed inside D_stop) (the §3.3 formula reproduces the design's L numbers at the design's 0.5 s reaction and the implemented L at 1 s; closest approach on head-on, crossing and clear cases; part validation; E aging; the exclusion rules; overflow pass-through; a constant-side detour with the resolved set; the station fallback never suppressed) and 5 ships × 3 fps × 3 seeds × {flyby at 600 m, flyby at 150 m, crossing, formation + asteroid} |
+| Host fixture | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering` ([output](../../verification/results/ship-steering/ship_steering_host.txt)) | **checks PASS, 3676/3676** (2203 before the Run151 follow-up, 2341 before step 3, 3020 before its review, 3365 before step 4, 3594 before its review, 3595 before amendment 9, the disc-arc model since amendment 10, 3649 before amendment 11, 3667 before its additions): step 1's 1164 plus the step-2 unit checks (the snapshot and part walks over a synthetic sector: bucket table pointer, intrusive lists with the 0-dword sentinel, scaled and unscaled children, a dirty child, a sentinel-only list, a part outside the root sphere, a > 64-child station, the walk limit, no table; the cache by object/radius/stamp and its invalidation; the review's head-on case never suppressed inside D_stop) (the §3.3 formula reproduces the design's L numbers at the design's 0.5 s reaction and the implemented L at 1 s; closest approach on head-on, crossing and clear cases; part validation; E aging; the exclusion rules; overflow pass-through; a constant-side detour with the resolved set; the station fallback never suppressed) and 5 ships × 3 fps × 3 seeds × {flyby at 600 m, flyby at 150 m, crossing, formation + asteroid} |
 | Tests | the four modules | 37 OK (`test_ship_steering_is_an_opt_in` and `test_ship_steering_keys` extended for `ship_avoidance`; `test_close_probe_never_suppresses_inside_the_stopping_distance` runs the reviewer's probe `verification/results/ship-steering/close_probe.cpp`) |
 | Host suite | `/usr/bin/python3 verification/probe/run_host_suite.py` | 295 modules / 2913 tests / 36 failing modules, 53.3 s (rerun after the step-2 review fixes): the same 36 host-environment modules as the step-1 run and the pristine-HEAD baseline (37 there); no module fails that passed in the baseline; `test_ship_steering`, `test_ship_steering_sites`, `test_config_schema`, `test_launcher_defaults`, `test_logging_tiers` pass (measured) |
 | Launcher | `python3 verification/results/ship-steering/dry_run.py` ([output](../../verification/results/ship-steering/dry_run.txt)) | `--ship-steering --ship-avoidance` → `X3M_SHIP_AVOIDANCE=1` with `X3M_SHIP_STEERING=1`; `--ship-avoidance` alone and under `--vanilla` refused (exit 2); the default launch sends neither |
@@ -614,6 +614,47 @@ dt 50–80 ms, rows of 52 ships: 35 TS, 11 M4, 2 TP, 2 M6, 2 M3).** 138,259 rows
    (0.99 r: A at −1 r, B at −0.01 r on the axis, the gates' axes along world axes [i]); the heading error at the first
    order-5 row (24 direct changes) is 0–81°, median 46.5°; the minimum speed on order 5 is 46–176 m/s on 33 ships and
    0.0 / 1.0 m/s on the two TS / M4 sequences 5/0/8/0 (traced from order 5 on).
+
+**Amendment 11 (2026-10-12; measured).** Capitals do not avoid small ships. The engine's predicate pinned in the
+proximity obstacle filter 0x0044d2f0: EDI = A (the steered ship, `[A+0x48] == 7` checked at 0x0044d2f1), EBP = B (the
+candidate); the jump table is on B's class; the class-7 case at 0x0044d326 reads A's record code
+`[*0x606fd4 + [A+0x4a] x 0xdb8 + 0x14]`; a code in {0, 2, 3, 4, 8, 0xd} (the capital set) calls 0x0043fd00 (large) on B
+and rejects the pair when B is not large (review correction 2026-10-12; the engine additionally ignores a large B when
+0x0043fe80(B) holds, a record +0xc8 id check, which the mirror omits on the fail-safe side); 0x0044d385..0x0044d3a5 rejects a
+class-7 B on order 0x14/0x15 whose f+0x224 is A. Mirrored as `small_for_capital` (the candidate's `size` from its
+record code, read by the snapshot walk; fallback r_candidate < r_own / 3 when the code is unreadable), counted
+`avoid_skipped_small`. Fixture (measured, `checks PASS 3667/3667`, 60 fps seed 1): the M2 on a straight 20 km leg
+through a wall of 12 M5 fighters on collision courses (crossings 2.0-6.4 km ahead, alternating sides, +-30 m
+vertical): heading change 0.00 deg, 0 capital detours, 6,478 small-ship candidates skipped; 12 of 12 fighters detour
+(181-343 detour calls each) with minimum clearance 1,305 m (C = 740 m); the M2-vs-M2 crossing still detours on both
+sides (837 / 880 detours, minimum distance 2,332 m >= C 1,764 m). Verifier PASS 18, x87 PASS 954 / 0, build 0
+warnings, the five test modules OK.
+
+**Amendment 11 additions (2026-10-12, after the Run155 triage; measured unless marked).** (a) Formation exclusion in
+every direction (`av::excluded`: leader, own followers, wingmates of the same leader, no envelope); the detour row
+gains `leader=` and `obstacle_order=`. Fixture: 8 exclusion unit checks (near and far wingmate, order 0x15, a stale
+f+0x224 on another order is not excluded, own follower near and far, the leader's and the follower's view); the TS
+formation-with-asteroid run's follower detours 527/511 -> 486/473 (wingmates no longer avoid each other outside the
+envelope), min_rock unchanged 473 m. (b) Horizon cap `min(L / v, 30 s)`: the fixture prints
+`boreas horizon: L=3074 m v=70 m/s L/v=43.9 s horizon=30.0 s swept=2100 m` and checks an asteroid 200 m beyond the
+capped reach (3,408 m, inside the uncapped L + C 4,182 m) is no conflict while one 200 m inside it (3,008 m) is, with
+`L_m` = 2,100 m; the Boreas scenarios move with it: flyby@600 min_clear 1,499 -> 1,402 m (C 1,258), flyby@150
+1,505 -> 1,414 m, back on course 2,900 -> 1,233 ms after the pass, crossing min_dist 2,332 -> 2,315 m (C 1,764),
+formation-with-asteroid leader detours 1,808 -> 1,451, min_rock 1,590 -> 1,484 m (C 1,358): all still above C.
+Run155's stalled Boreas (inferred from its detour rows: t_cpa 72-1206 s at a 2.1 km miss, v a few m/s, L on the
+floor C + r = 2,737 m) would see a 30 s horizon of tens of metres instead. (c) `ship_trace` slot 0 reserved for a
+capital on order 4 to a gate; rows end with `emg= omega_cmd= obst=`; the parser, its test (row <= 440 B, 6 ships at
+173 fps <= 460 KB/s; the longest sample row is 421 B) and the fixture's emitter carry the fields. (d) The trace gap
+before order 5: [run155_trace_gap_why.py](../../verification/results/ship-steering/run155_trace_gap_why.py) over
+the Run155 log ([output](../../verification/results/ship-steering/run155_trace_gap_why.txt)): 31 traced transitions,
+every one has exactly one order-0 row (target 0) between the last order-4 row and the first order-5 row, 0 detour
+rows in the gap, 2-918 frames without rows; the transition row's `ms_since_p2` is 80 ms at the order-5 start (P2 at
+the end of the gap, not its start). Cause: SA_StopObject (order 0, one row) then the engine's avoid order 0x12,
+on which `trace_frame` released the slot; re-claimed only at order 5 (inferred: no row is written on the releasing
+frame; the 0x12 rows will show in the next run). Fix: the slot stays through 0x12 and 0x1f; `carrot_age_ms` in
+`ship_gate_transition` (the carrot was already the last lead-in call's). Build 0 warnings, x87 PASS 954 / 0, fixture
+`checks PASS 3676/3676` (9 new checks), verifier PASS 18, five test modules OK (43 tests), dry run 9 cases, host
+suite in the ledger's acceptance table.
 
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
