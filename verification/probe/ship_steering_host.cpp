@@ -11,6 +11,7 @@
 //
 //   c++ -std=c++17 -O2 -Wall -Wextra -Werror ship_steering_host.cpp && ./a.out
 //   X3M_SS_TRACE=1 ./a.out   # adds the 30 fps diagonal-turn and 60 fps formation time series (seed 1)
+//   ./a.out --emit-trace rows.log | --emit-controller ctl.txt   # inputs for ship_trace_replay.py (no checks run)
 #include "../../src/proxy/ship_steering_core.h"
 #include "../../src/proxy/ship_avoidance_core.h"
 #include "../../src/proxy/ship_avoidance_walk_core.h"
@@ -1918,6 +1919,36 @@ static const GateFrame kGateRotated = {{{0, 1, 0}, {0, 0, 1}, {1, 0, 0}}};
 static void local_to_world(const GateFrame& F, const double l[3], double w[3]) {
     for (int k = 0; k < 3; ++k) w[k] = l[0] * F.R[0][k] + l[1] * F.R[1][k] + l[2] * F.R[2][k];
 }
+// --emit-trace: the gate scenario's frames as ship_trace rows in the DLL's format (src/proxy/ship_steering.cpp), one row
+// per frame at site B (after the module's speed write, before the slew and pass B), for ship_trace_replay.py's
+// conformance check of its Python port of this model. The launch (order 8) frames move the ship by gate_launch_units,
+// not by the integrator, and the DLL frees the trace slot at P5, so they are not emitted.
+static std::FILE* g_trace = nullptr;
+static unsigned long long g_trace_frame = 0;
+static unsigned long g_trace_rows = 0;
+static void emit_trace_row(const Model& m, const char* cls, std::uint32_t obj, long dt, bool leaf_call, std::int64_t des_engine, int rot_pct) {
+    if (!g_trace) return;
+    long point[3], given[3];
+    const bool handed = leaf_call && !m.vanilla && m.last_reason == core::Reason::handled;
+    for (int k = 0; k < 3; ++k) {
+        given[k] = long(std::llround(m.P[k]));
+        point[k] = handed ? long(std::llround(double(m.last_aim_P[k]) * 500.0)) : given[k];
+    }
+    std::fprintf(g_trace,
+                 "ship_trace frame=%llu t_ms=%lu obj=0x%08lx class=%s order=0x%lx tgt=0x%08lx tgt_class=%u pos=%ld,%ld,%ld "
+                 "fwd=%.5f,%.5f,%.5f up=%.5f,%.5f,%.5f rate=%ld,%ld,%ld v=%ld des=%ld des_engine=%ld point=%ld,%ld,%ld given=%ld,%ld,%ld ",
+                 ++g_trace_frame, static_cast<unsigned long>(m.t_ms), static_cast<unsigned long>(obj), cls, static_cast<unsigned long>(m.order),
+                 0x4000ul, 18u, long(std::llround(m.pos[0])), long(std::llround(m.pos[1])), long(std::llround(m.pos[2])), m.row[2][0], m.row[2][1],
+                 m.row[2][2], m.row[1][0], m.row[1][1], m.row[1][2], long(m.w[0]), long(m.w[1]), long(m.w[2]), long(m.speed), long(m.desired),
+                 long(des_engine), point[0], point[1], point[2], given[0], given[1], given[2]);
+    if (leaf_call)
+        std::fprintf(g_trace, "e=%ld,%ld,%ld", long(m.e[0]), long(m.e[1]), long(m.e[2]));
+    else
+        std::fprintf(g_trace, "e=-");
+    std::fprintf(g_trace, " dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld\n", static_cast<unsigned long>(dt), long(m.W[0]),
+                 long(m.W[1]), long(m.W[2]), 0x10000ul, long(rot_pct), long(m.vmax), long(m.accel));
+    ++g_trace_rows;
+}
 // obj_id selects the ship's ring position (the spread); capital_slot the grid point of a capital (-1 = slot 7)
 static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, double theta_deg, bool capital, bool vanilla, bool gates_on,
                            const double start_local_r[3], const GateFrame& F, double a_error_r = 0.0, std::uint32_t obj_id = 9, int capital_slot = -1,
@@ -2066,6 +2097,7 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
             m.t_ms += dt;
             continue;
         }
+        const int frame_phase = phase; // the leaf runs on this frame's order (0 and 2), before any transition below
         if (phase == 0) {
             if (res.t_cross < 0 && dA <= 0.75 * ru) { // the crossing of the arrival sphere
                 res.t_cross = m.t_ms;
@@ -2158,7 +2190,9 @@ static GateResult run_gate(const ShipType& t, int fps, std::uint32_t seed, doubl
                 continue; // the launch moves the ship from the next frame
             }
         }
+        const std::int64_t des_engine = m.desired;
         m.clamp(obj); // site B every frame
+        emit_trace_row(m, t.cls, obj, dt, frame_phase == 0 || frame_phase == 2, des_engine, t.k_pct);
         m.advance(dt);
         if (res.t_cross >= 0 && !res.arrived_B && double(m.speed) / 500.0 < res.min_v_after_cross) res.min_v_after_cross = double(m.speed) / 500.0;
         // the ring: during the approach to A (the lead-in's domain) the segment of this frame must not cross the gate
@@ -2536,7 +2570,52 @@ static void gate_scenario(const ShipType& t, int fps, std::uint32_t seed) {
     }
 }
 
-int main() {
+// --emit-controller: the controller and the integrator's axis step over a deterministic grid of inputs (every branch:
+// W = 0, w < 0, braking, accelerating, cruising, the frame split, the clamp to the remainder, e = 0 with a rate), one
+// line per case "ctl e w W acc dt -> e' w' d" for ship_trace_replay.py's port-equality test.
+static int emit_controller(const char* path) {
+    std::FILE* f = std::fopen(path, "w");
+    if (!f) return 2;
+    Lcg rng{12345};
+    unsigned n = 0;
+    for (int i = 0; i < 4000; ++i) {
+        const std::int64_t wmax = (i % 23 == 0) ? 0 : 500 + rng.next() % 30000;
+        const std::int64_t acc = (i % 17 == 0) ? 0 : fx(wmax, (0x10000 * (1 + rng.next() % 60)) / 100);
+        std::int64_t w = std::int64_t(rng.next() % 40000) - 8000;
+        if (i % 5 == 0) w = wmax;
+        std::int64_t e = std::int64_t(rng.next() % 65536) - 32768;
+        if (i % 7 == 0) e = std::int64_t(rng.next() % 200) - 100;
+        if (i % 11 == 0) e = 0;
+        const std::int64_t dt = (i % 13 == 0) ? 1000 : 1 + rng.next() % 250;
+        std::int64_t e1 = e, w1 = w;
+        double turned = 0;
+        integrate_axis(e1, w1, wmax, acc, dt, &turned);
+        std::fprintf(f, "ctl %lld %lld %lld %lld %lld -> %lld %lld\n", (long long)e, (long long)w, (long long)wmax, (long long)acc, (long long)dt,
+                     (long long)e1, (long long)w1);
+        ++n;
+    }
+    std::fclose(f);
+    std::printf("ship_steering_host controller_rows=%u\n", n);
+    return 0;
+}
+// --emit-trace: three gate runs as ship_trace rows (TS 60 fps seed 1 theta 0 with the module; M5 144 fps seed 7 theta -45 with
+// the module on the rotated gate; M6 30 fps seed 1234567 theta +45 vanilla from the order-5 start 1.7 km from B at 65 deg).
+static int emit_trace(const char* path) {
+    g_trace = std::fopen(path, "w");
+    if (!g_trace) return 2;
+    const double std_start[3] = {-3000.0 / 1105.0 * std::sin(30 * M_PI / 180), -0.8, -1.0 - 3000.0 / 1105.0 * std::cos(30 * M_PI / 180)};
+    const double dock_start[3] = {0, -0.8, -3.0};
+    run_gate(kShips[3], 60, 1, 0, false, false, true, std_start, kGateIdentity, 0.0, 0x8e19d750u);
+    run_gate(kShips[0], 144, 7, -45, false, false, true, std_start, kGateRotated, 0.0, 0x3741e840u);
+    run_gate(kShips[2], 30, 1234567, 45, false, true, false, dock_start, kGateIdentity, 0.0, 0x436289c8u, -1, 1700.0, 65.0);
+    std::fclose(g_trace);
+    g_trace = nullptr;
+    std::printf("ship_steering_host trace_rows=%lu\n", g_trace_rows);
+    return 0;
+}
+int main(int argc, char** argv) {
+    if (argc == 3 && !std::strcmp(argv[1], "--emit-trace")) return emit_trace(argv[2]);
+    if (argc == 3 && !std::strcmp(argv[1], "--emit-controller")) return emit_controller(argv[2]);
     controller_regression();
     unit_checks();
     avoidance_unit_checks();

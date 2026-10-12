@@ -548,6 +548,73 @@ stuck rows; `gate_warp_calls` 0 (no warp-in reached site W in 411 s: noted, unch
    `verification/analysis/test_ship_trace_format.py` (5 tests over a synthetic row set) carry the format; the replay
    tool (feeding a row's inputs to the fixture's engine model and comparing with the next row) is the next task.
 
+## Replay conformance (2026-10-12, Opus 5.5; `ship_trace_replay.py`)
+
+**What it checks.** `verification/probe/ship_trace_replay.py` streams the `ship_trace` rows of a trace file or a whole
+`x3m.log`, groups them per ship and, for each pair of consecutive frames (n, n+1), runs frame n's inputs (pos, fwd, up,
+rate, v, des, e, W, rot, rot_pct, vmax, acc, dt_ms) through a Python port of the fixture's engine model
+(`ship_steering_host.cpp`: `controller` 0x0043ad20 in 16.16 integers, `integrate_axis`, the slew of `Model::advance`,
+`Model::rotate`, position += row2 × v × dt / 1000) and compares the predicted rate, v, fwd and pos with row n+1.
+Residuals per step: rate per axis (binary/s), speed (m/s), heading (deg between predicted and actual fwd), position
+(m), and the conditional position `pos_c` (m: pos(n) + fwd(n+1) × v(n+1) × dt / 1000 against pos(n+1), the
+translation law alone). On an `e=-` row the model carries its own remainder from the previous step (the integrator
+consumes `obj+0x30` across frames). The angular acceleration is `fx(W, fx(rot, rot_pct·0x10000/100))`; with the
+fixture's rot = 1.0 this is its `fx(W, k_pct·0x10000/100)`, the engine's operation order for rot ≠ 1.0 is [i].
+`--dt-source next` uses row n+1's dt_ms instead of row n's.
+
+**Classification** (a step is divergent when any residual exceeds its tolerance: rate 0.5 binary/s, speed 0.002 m/s,
+heading 0.01°, position and pos_c 0.01 m; `--tol-*` overrides); first match wins: *order boundary* (the order differs
+between n−1, n or n+1), *position* (pos_c over tolerance: units, dt or the slip term the model lacks), *rate
+controller* (a rate residual), *orientation* (a heading residual while the rates match: a sign or axis convention),
+*speed law* (a speed residual while the rates match). Consecutive divergent steps form a window; a window is "order
+boundary" when all its steps are, otherwise its most frequent other class. The printout per ship gives rows, steps,
+skipped pairs (frame gap, unknown remainder), the dt convention count (t_ms delta equal to row n's or row n+1's
+dt_ms), p50/p95/max and the five worst frames per quantity, and the step and window counts per class.
+`--gate` adds, for ships with a class-0x12 target, each run of equal order: frames, duration, `given` relative to the
+previous run's first `given` (B − A at the 4→5 change), the drift of `given` inside the run, v first/last/min, the
+distance to `given` and the heading error between fwd and (given − pos) at the run's first and last row, and the
+minimum speed on order 5. `--json` writes the summaries and every step's residuals.
+
+```sh
+python3 -I verification/probe/ship_trace_replay.py /mnt/c/X3/x3m.log --gate --json /tmp/replay.json   # C:\X3\x3m.log
+python3 -I verification/results/ship-steering/replay_aggregate.py /tmp/replay.json   # all ships: percentiles, classes per order
+python3 -I verification/results/ship-steering/replay_breakdown.py /mnt/c/X3/x3m.log   # pos_c along/lateral, rate steps by axis
+```
+
+**Validation (measured).** `ship_steering_host --emit-trace` writes three fixture gate runs as rows in the DLL's
+format (TS 60 fps θ 0 with the module, M5 144 fps θ −45 rotated gate, M6 30 fps θ +45 vanilla order-5 start; 4,756
+rows, the order-8 launch frames not emitted); `--emit-controller` writes 4,000 controller cases over every branch.
+`test_ship_trace_replay` (7 tests): the port equals the C++ on 4,000/4,000 cases; the replay of the emitted trace has
+rate and speed residuals 0, heading max 0.0008°, position max 0.0028 m (the row's 5-decimal fwd and whole-unit pos),
+one divergent step (the vanilla P4 stop sets v = 0 outside the slew: order boundary); the remainder and rate sign
+flipped classify every divergent step as orientation (rates still exact), dt doubled as position, W halved as rate
+controller; `--gate` gives the TS orders 4/0/5/0, B − A = (0, 276.25, 1093.95) m, min v on order 5 62.0 m/s.
+
+**First real result (measured; `x3m.log` session 20261012-181404, proxy 2fb5aef2 = Run155, 295 s, SETA frames with
+dt 50–80 ms, rows of 52 ships: 35 TS, 11 M4, 2 TP, 2 M6, 2 M3).** 138,259 rows, 138,123 steps, 84 frame gaps.
+1. dt: t_ms(n+1) − t_ms(n) equals row n+1's dt_ms on 89,829 steps (row n's on 48,294 where dt is constant): dt_ms is
+   the delta to the previous frame. Row n's dt nevertheless predicts row n+1 (speed p99 0.13 m/s, heading p95
+   0.0016°; with row n+1's dt heading p95 0.12°, pos p50 0.40 m): the integrator of frame n uses frame n's dt, as the
+   model does.
+2. Row n's dt: speed residual p50/p95 0, max 171 m/s; heading p95 0.0016°, p99 0.30°, max 4.5°; rates p95 0–1
+   binary/s, p99 41–53, max 65,535 (wraps); pos p50 0.003 m, p95 1.68 m, p99 7.0 m. Divergent steps: position 54,616,
+   rate controller 4,696, order boundary 145, speed law 1, orientation 0 (windows: position 900, rate controller 892,
+   order boundary 35). No sign or axis convention error appears.
+3. Position: pos_c on straight steps (rate 0 at n and n+1) p95 0.005 m along / 0.03 m lateral on order 4; on turning
+   steps p95 1.9 m along / 4.4 m lateral on order 4 but 0.74 / 0.38 m on order 5, consistent with the slip term of
+   section 3 of the movement note (added only for command ≠ 5, decaying afterwards) that the model omits [i]. Order 8
+   (the launch, 36 steps) is not modelled.
+4. Rate controller: on order 5 only (4,696 of 4,696 classified steps). The breakdown: 4,454 steps on roll with the
+   module's written e_roll = 0 while the engine's roll rate keeps accelerating at about acc × dt, and 2,740 yaw/pitch
+   steps on `e=-` frames where the carried remainder reached 0 and the engine still turns: on order 5 something other
+   than the module's leaf call writes the remainders (the dock command's own alignment or the attitude offset are the
+   candidates) [i].
+5. `--gate`: 46 ships with a gate target; of 31 order-4→5 changes, 24 go 4→5 with no order-0 row between (the
+   fixture models one order-0 frame) and 7 show 4/0/5. On every 4→5 change one world component of B − A is ±1093.5 m
+   (0.99 r: A at −1 r, B at −0.01 r on the axis, the gates' axes along world axes [i]); the heading error at the first
+   order-5 row (24 direct changes) is 0–81°, median 46.5°; the minimum speed on order 5 is 46–176 m/s on 33 ships and
+   0.0 / 1.0 m/s on the two TS / M4 sequences 5/0/8/0 (traced from order 5 on).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),
