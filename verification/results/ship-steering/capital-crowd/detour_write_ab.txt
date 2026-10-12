@@ -1,0 +1,17 @@
+lines before=206 after=206
+differing lines (timing removed): 12
+    1  amendment 15 membership pass
+    1  amendment 15 predictor <t>
+    1  capital transit M1 B1
+    2  capital transit M2 B1
+    1  crowd M same lane
+    1  crowd M simultaneous w
+    1  crowd M unlatch fps=
+    1  crowd M unlatch: 9
+    1  crowd M w 0.25
+    1  crowd M w 0.45
+    1  crowd M w =
+TARGET MISS before: 27 {'crossings in join or slow join with the rotate <= 5 s': 9, 'no aim-at-A fallback': 9, 'the box hulls never touch outside the corridor pairs': 9}
+TARGET MISS after: 27 {'crossings in join or slow join with the rotate <= 5 s': 9, 'no aim-at-A fallback': 9, 'the box hulls never touch outside the corridor pairs': 9}
+simultaneous before: most fallback 1870 frames at 30 fps = 62.3 s (summed over ships, 2 fallback crossings), longest rotate 19.3 s, minimum box separation -990 m
+simultaneous after: most fallback 3824 frames at 60 fps = 63.7 s (summed over ships, 3 fallback crossings), longest rotate 26.9 s, minimum box separation -1319 m

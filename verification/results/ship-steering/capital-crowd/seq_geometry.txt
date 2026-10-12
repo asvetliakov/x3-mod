@@ -1,0 +1,50 @@
+## w = 0.45 r
+# joiner J behind parked N | h_J h_N | D_x | cert | A_N - X_J | corridor needed before X_J
+Titan behind Titan |   1197   1197 |   2495 |   2445 |    829 |   1616
+Titan behind M1    |   1197   1121 |   2418 |   2368 |    969 |   1399
+Titan behind M2s   |   1197    828 |   2125 |   2075 |   1503 |    573
+M1    behind Titan |   1121   1197 |   2418 |   2368 |    689 |   1679
+M1    behind M1    |   1121   1121 |   2341 |   2291 |    829 |   1463
+M1    behind M2s   |   1121    828 |   2049 |   1999 |   1363 |    636
+M2s   behind Titan |    828   1197 |   2125 |   2075 |    155 |   1921
+M2s   behind M1    |    828   1121 |   2049 |   1999 |    295 |   1704
+M2s   behind M2s   |    828    828 |   1756 |   1706 |    829 |    877
+## w = 0.25 r
+# joiner J behind parked N | h_J h_N | D_x | cert | A_N - X_J | corridor needed before X_J
+Titan behind Titan |   1126   1126 |   2351 |   2301 |    829 |   1472
+Titan behind M1    |   1126   1053 |   2279 |   2229 |    969 |   1260
+Titan behind M2s   |   1126    778 |   2004 |   1954 |   1503 |    451
+M1    behind Titan |   1053   1126 |   2279 |   2229 |    689 |   1540
+M1    behind M1    |   1053   1053 |   2207 |   2157 |    829 |   1328
+M1    behind M2s   |   1053    778 |   1932 |   1882 |   1363 |    519
+M2s   behind Titan |    778   1126 |   2004 |   1954 |    155 |   1799
+M2s   behind M1    |    778   1053 |   1932 |   1882 |    295 |   1587
+M2s   behind M2s   |    778    778 |   1656 |   1606 |    829 |    778
+## w = r
+# joiner J behind parked N | h_J h_N | D_x | cert | A_N - X_J | corridor needed before X_J
+Titan behind Titan |   1544   1544 |   3189 |   3139 |    829 |   2310
+Titan behind M1    |   1544   1445 |   3090 |   3040 |    969 |   2071
+Titan behind M2s   |   1544   1068 |   2712 |   2662 |   1503 |   1159
+M1    behind Titan |   1445   1544 |   3090 |   3040 |    689 |   2351
+M1    behind M1    |   1445   1445 |   2991 |   2941 |    829 |   2112
+M1    behind M2s   |   1445   1068 |   2613 |   2563 |   1363 |   1200
+M2s   behind Titan |   1068   1544 |   2712 |   2662 |    155 |   2507
+M2s   behind M1    |   1068   1445 |   2613 |   2563 |    295 |   2268
+M2s   behind M2s   |   1068   1068 |   2235 |   2185 |    829 |   1357
+## scenario M simultaneous at t = 0 (gate frame: s = (x - G).F, q = lateral R)
+Titan s0  r  1092 lane      0 q      0 s_gate  -10748
+M1 s1     r  1022 lane    666 q    666 s_gate  -10608
+M2s s3    r   755 lane   1332 q   3366 s_gate  -10626
+M2s s2    r   755 lane   -666 q    700 s_gate  -13389
+Titan s4  r  1092 lane  -1332 q  -2732 s_gate   -6223
+# pair | ds (B - A) | h_A + h_B + 50 (w 0.45 r) | |dq| - (w_A + w_B) (lateral gap at theta 0, before margins)
+Titan s0  - M1 s1     |     140 |   2368 |   -285
+Titan s0  - M2s s3    |     122 |   2075 |   2535
+Titan s0  - M2s s2    |   -2641 |   2075 |   -131
+Titan s0  - Titan s4  |    4525 |   2445 |   1749
+M1 s1     - M2s s3    |     -18 |   1999 |   1900
+M1 s1     - M2s s2    |   -2781 |   1999 |   -766
+M1 s1     - Titan s4  |    4385 |   2368 |   2447
+M2s s3    - M2s s2    |   -2762 |   1706 |   1986
+M2s s3    - Titan s4  |    4404 |   2075 |   5267
+M2s s2    - Titan s4  |    7166 |   2075 |   2601

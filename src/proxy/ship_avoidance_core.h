@@ -1,5 +1,6 @@
 #pragma once
 #include "ship_steering_core.h"
+#include "ship_capital_lane_core.h"
 
 // Portable core of the predictive collision avoidance (docs/architecture/
 // ship-steering-and-avoidance.md sections 3, 4 and 6; step 2). It sits in the
@@ -97,7 +98,31 @@ struct Self {
     bool capital;
     bool exclude_target;   // the order's target object is not an obstacle (orders 4/5/0x14/0x15/0x10/0x11/0x18)
     float L_leader;        // the leader's last lookahead (0 = none): the follower sees at least as far
+    // Amendment 16 (capital-gate-transit.md section 16.1) with 16b and the review fixes: this decision's lane pass (lane::run_pass:
+    // the verdicts from the stored board, the trailing caps site B applies); null = no lane rule, today's rules
+    const lane::Pass* lane = nullptr;
 };
+// Binds the lane rule for a deciding capital (ship_steering_gates_capital on) to this decision's pass, when the pass bound (its own
+// fresh entry on the deciding order, on the board of its live target: lane::run_pass). Otherwise unbound.
+inline void lane_bind(Self& s, const lane::Pass* pass) noexcept {
+    s.lane = pass && pass->self && s.capital && (s.order == sc::kOrderFlyBefore || s.order == sc::kOrderDock) ? pass : nullptr;
+}
+// The lane verdict for (s, o): the pass's (stored board, both directions), none unless o is also committed to s's gate by its live
+// order, f+0x224 and id from the snapshot.
+inline lane::Verdict lane_pair(const Self& s, const Obstacle& o) noexcept {
+    if (!s.lane || o.kind != std::uint8_t(Kind::ship) || o.size != 1) return lane::Verdict::none;
+    unsigned i = 0;
+    const lane::Verdict v = lane::pass_verdict(*s.lane, o.ptr, &i);
+    if (v == lane::Verdict::none) return v;
+    const lane::Pass& p = *s.lane;
+    if (!lane::committed(p.g->e[i], p.now, p.fresh_ms, o.order, o.leader, p.g->gate, o.id)) return lane::Verdict::none;
+    return v;
+}
+// The pairs the avoidance drops (in both directions): (a), (b) and (s). The trailer's cap of (b) and of an obliged (s) / (c) pair
+// comes from the same pass (site B).
+__attribute__((always_inline)) inline bool lane_excludes(lane::Verdict v) noexcept {
+    return v == lane::Verdict::exempt || v == lane::Verdict::follow || v == lane::Verdict::seq;
+}
 struct SideMemory {
     std::uint32_t obstacle;
     float dir[3];          // the detour direction (world, unit), 0 = free: the side is re-derived as sign(axis . dir)
@@ -146,6 +171,7 @@ struct Result {
     unsigned excluded_followers = 0; // this ship's own escort/follow partners skipped as obstacles (amendment 10)
     unsigned skipped_small = 0;      // small ships a capital left to their own avoidance (amendment 11)
     unsigned excluded_members = 0;   // formation members excluded through the membership memory alone (amendment 15)
+    unsigned lane_exempt = 0, lane_follow = 0, lane_cross = 0, lane_seq = 0; // amendment 16 / 16b: capital pairs committed to this capital's gate, by verdict
     std::uint32_t obstacle = 0;
     std::uint32_t obstacle_leader = 0; // the obstacle's f+0x224 and f+0x258 (ships), for the detour row (amendment 11)
     std::uint16_t obstacle_order = 0;
@@ -572,20 +598,21 @@ inline MemberPair member_pair_verdict(bool member_current, std::uint16_t b_order
 enum class EVerdict : std::uint8_t {
     none = 0, suppress_small, suppress_member, suppress_gate, suppress_gate_small, suppress_resolved, pass_no_autopilot,
     pass_not_steerable, pass_class, pass_b_dock_leg, pass_own_leader, pass_not_fresh, pass_unreadable, pass_not_member,
-    pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship, count
+    pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship, suppress_lane, count
 };
 inline const char* e_verdict_name(EVerdict v) noexcept {
     static const char* const names[unsigned(EVerdict::count)] = {
         "-", "suppress_small", "suppress_member", "suppress_gate", "suppress_gate_small", "suppress_resolved", "pass_no_autopilot",
         "pass_not_steerable", "pass_class", "pass_b_dock_leg", "pass_own_leader", "pass_not_fresh", "pass_unreadable", "pass_not_member",
-        "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship"};
+        "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship", "suppress_lane"};
     return unsigned(v) < unsigned(EVerdict::count) ? names[unsigned(v)] : "?";
 }
 inline bool e_suppresses(EVerdict v) noexcept {
     return v == EVerdict::suppress_small || v == EVerdict::suppress_member || v == EVerdict::suppress_gate ||
-           v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved;
+           v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved || v == EVerdict::suppress_lane;
 }
 constexpr std::uint32_t kHandoverMaxMs = 120000; // the capital gate row's hand-over bound after P2 (the through-slot wait is 0-60 s)
+static_assert(kHandoverMaxMs == lane::kHandoverMaxMs, "the lane commitment and the gate row share the hand-over bound");
 struct SiteE {
     // A (class 7 checked by the caller), its table entry and the frame step
     std::uint16_t a_order = 0;
@@ -605,6 +632,17 @@ struct SiteE {
     bool gate_handover = false;      // P2 kept the speed (cleared at order 5 / any other handled order)
     std::uint32_t p2_age_ms = 0xffffffffu;
     std::uint32_t lead_age_ms = 0xffffffffu; // a non-capital's last order-4 call with the lead-in inside its window
+    // amendment 16 (sections 16.3, 16.4); the defaults reproduce amendment 15
+    bool gate_slow_join = false;     // the capital's slow join
+    bool gate_fallback = false;      // the capital's aim-at-A fallback (pred_none or past_x)
+    bool gate_window_ok = true;      // s >= -6 r_gate along F from X at the last decision (mode `out` passes)
+    bool gate_p2_seen = false;       // P2 on this approach, kept or not (the hand-over of section 16.3)
+    bool gate_path_ok = true;        // dist(G, segment[x_A, P_A]) >= r_gate + r_A + 0.25 r_gate
+    bool gate_small_guard = false;   // a validated small approach decided on within the window with dist(G, segment[x, A]) >=
+                                     // r_gate + r_ship + 0.1 r_gate (the G1 extension; ship_steering_gates)
+    // B = a capital committed to A's gate with A (section 16.1): the pair's lane verdict carries a geometric certificate (the footprint
+    // route of (a), or (s) by the lateral or along-axis route; review F1: a corridor-only (a) pair keeps the engine's warn)
+    bool lane_exempt = false;
     // B = a ship (class 7)
     bool b_ship = false;
     bool b_readable = false;         // B's record code < 16
@@ -625,13 +663,19 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
     // the gate rows: B is A's own target gate
     if (in.b_gate && in.gates_live && in.gate_state) {
         if (in.gate_capital) {
-            if (in.capital_policy &&
-                ((in.a_order == sc::kOrderFlyBefore && in.gate_join && in.a_age_ms <= fresh) ||
-                 ((in.a_order == sc::kOrderNone || in.a_order == sc::kOrderRotate) && in.gate_handover && in.p2_age_ms <= kHandoverMaxMs)))
-                return EVerdict::suppress_gate;
-        } else if (in.a_order == sc::kOrderFlyBefore && in.lead_age_ms <= fresh)
-            return EVerdict::suppress_gate_small;
+            // amendment 16 (section 16.3): any validated approach on order 4 (join, slow join, fallback; inside the window extended
+            // past X) and the hand-over after P2 kept or not, under the path guard
+            const bool approach = in.a_order == sc::kOrderFlyBefore && in.a_age_ms <= fresh && in.gate_window_ok &&
+                                  (in.gate_join || in.gate_slow_join || in.gate_fallback);
+            const bool hand = (in.a_order == sc::kOrderNone || in.a_order == sc::kOrderRotate) && (in.gate_handover || in.gate_p2_seen) &&
+                              in.p2_age_ms <= kHandoverMaxMs;
+            if (in.capital_policy && (approach || hand) && in.gate_path_ok) return EVerdict::suppress_gate;
+        } else if (in.a_order == sc::kOrderFlyBefore && (in.lead_age_ms <= fresh || (in.gate_small_guard && in.a_age_ms <= fresh)))
+            return EVerdict::suppress_gate_small; // G1, and its section-16.4 extension to the whole order-4 leg under the guard
     }
+    // amendment 16 (section 16.1) / 16b: two capitals committed to A's gate whose pair carries a certificate (the commitment carries
+    // its own freshness: the hand-over has no decision)
+    if (in.b_ship && in.lane_exempt) return EVerdict::suppress_lane;
     if (in.a_age_ms > fresh) return EVerdict::pass_not_fresh;
     EVerdict v = EVerdict::none;
     if (in.b_ship && in.a_capital) {
@@ -666,7 +710,7 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
 // leader never avoid each other, wherever they are (the amendment-10 envelope condition is gone: Run155's Boreas leader
 // still detoured 453 times against its own formation outside it). Amendment 15: followers and wingmates by member_of (live
 // or remembered), so escort capitals on 0x12/0 stay excluded (Run157: 195 leader detours against them).
-inline bool excluded(const Self& s, const Obstacle& o) noexcept {
+inline bool excluded_base(const Self& s, const Obstacle& o) noexcept {
     if (o.ptr == s.ptr) return true;
     if (s.leader && o.ptr == s.leader) return true;
     if (s.exclude_target && s.target && o.ptr == s.target) return true;
@@ -732,11 +776,21 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     for (unsigned k = 0; k < snap.count; ++k) {
         const Obstacle& o = snap.items[k];
         if (sc::fabs_f(o.x[0] - s.x[0]) > reach || sc::fabs_f(o.x[1] - s.x[1]) > reach || sc::fabs_f(o.x[2] - s.x[2]) > reach) continue;
-        if (excluded(s, o)) {
+        if (excluded_base(s, o)) {
             if (own_follower(s, o)) ++res.excluded_followers;
             else if (small_for_capital(s, o)) ++res.skipped_small;
             if ((o.flags & kObstacleRemembered) && (own_follower(s, o) || wingmate(s, o))) ++res.excluded_members;
             continue;
+        }
+        if (s.lane) { // amendment 16 / 16b: (a), (b) and (s) pairs are not obstacles in either direction (lane_excludes)
+            const lane::Verdict lv = lane_pair(s, o);
+            if (lane_excludes(lv)) {
+                if (lv == lane::Verdict::exempt) ++res.lane_exempt;
+                else if (lv == lane::Verdict::follow) ++res.lane_follow;
+                else ++res.lane_seq;
+                continue;
+            }
+            if (lv == lane::Verdict::cross) ++res.lane_cross;
         }
         float dx[3];
         sub3(o.x, s.x, dx);

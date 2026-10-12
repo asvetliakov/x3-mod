@@ -347,6 +347,12 @@ The 1.1 km Titan/Colossus pairs of Run158 are **never** exempt in adjacent lanes
 radius. With the runtime box read, among the ~755 m M2s only the Boreas pair is. The inferred w = 0.25 r is too
 narrow: the median is 0.38–0.45 r with the box read and 0.31–0.35 r with the vertex radius.
 
+**Along-axis extent (amendment 16b, 2026-10-13) [m].** The same script now also takes, per resolved part and over all its LOD
+records, l = max |o_z| + e_z and the runtime width w_rt = max √((|o_x| + e_x)² + (|o_y| + e_y)²) (≤ r). l ≤ √(r² + w_rt²) holds for
+130 of the 131 capitals (l/h median 0.914, max 1.324; l/r 0.42 / 1.00 / 1.40). The exception is the unnamed Stellaris M1
+`machineFlagship` (TShips 509): r 4,583 m, l 6,417 m against h 4,847 m. The runtime therefore takes the half-length max(r, l) from the
+width read ([capital-gate-transit.md §16.11](../architecture/capital-gate-transit.md)).
+
 ### 6.3 Not established
 
 * The runtime census itself: these are static figures from the scene's first key frame. Animated or rotated parts,

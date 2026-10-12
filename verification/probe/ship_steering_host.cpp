@@ -28,6 +28,13 @@
 
 namespace core = x3m::ship_steering::core;
 namespace av = x3m::ship_avoidance::core;
+namespace ln = x3m::ship_avoidance::lane;
+static bool g_detour_write = true; // the amendment-16 fix (the join's speed write on a detour); cleared for the before/after rows
+static bool g_amend16 = true; // amendment 16 (capital-gate-transit.md section 16): the slow join, the un-latch and the extended rows; the
+                               // option-off A/B checks clear it (ship_steering_gates_capital off = no capital lane, join or gate row)
+static unsigned g_emerg_cap = 0, g_emerg_cap_floor = 0; // amendment 16b: capped decisions under an avoidance emergency (the gate write is
+                                                         // the emergency ramp: the cap is not applied there), and those whose cap < 10 m/s
+static bool g_seq = true; // amendment 16b (section 16.10): ship_steering_gates_capital_seq; X3M_SEQ_OFF=1 clears it (the option-off stdout)
 static unsigned checks = 0, failures = 0;
 static bool g_amend12 = true; // amendment 12 (the port hold and the smooth stops) in every Model; the A/B checks clear it
 static bool g_all_vanilla = false; // --vanilla-rows: every Model on the engine's own leaf (no module, no avoidance), the rows only
@@ -275,6 +282,7 @@ struct Model {
     bool gate_mode, gate_lead_used, gate_dock_mode, gate_dock_blocked;
     bool capital_gate_leg;  // amendment 13: a capital on its gate legs (orders 4/5 to a gate): no site-B write outside the capital window
     bool capital_window;    // the last steer_call's point came from the capital lead-in (inside its 6 r window): the write in both directions
+    bool capital_detour;    // amendment 16 fix: join / slow_join on an avoidance detour: the join's write kept (both directions)
     // amendment 15: the engine id [obj+0x08] and the autopilot bit (the membership memory), the capital join (the DLL's decide():
     // core::join_on_decision, the plane for the frame-end predictor, the fallback's slow entry), the previous handled order
     std::uint32_t obj_id;
@@ -285,6 +293,19 @@ struct Model {
     unsigned join_changes;
     std::uint16_t last_steer_order;
     long lead_ms;           // audit G1: a non-capital's last call with the lead-in inside its window (-1 = none)
+    // amendment 16: the lane board (the DLL's lanes_; null = not modelled), the gate object (f+0x224 on the gate legs), the hull's
+    // half-width and its source, the lane pass's cap of the last decision, the predictor's last evaluation (the scenario's frame end);
+    // amendment 16b with the review fixes: the decision's pass (the DLL's decide(): one pass for the exclusion and site B's caps)
+    ln::Pass pass;
+    bool pass_ok;
+    float seq_cap;
+    std::uint32_t seq_leader;
+    ln::Board* lanes;
+    std::uint32_t gate_ptr;
+    float hull_w;
+    std::uint8_t hull_src;
+    float lane_cap;
+    ln::Verdict last_detour_lane;
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
     // section 13: order 5 to a port (the engine's port-roll match after the leaf, 0x0045474a..0x004547d6), the port's roll
@@ -351,7 +372,7 @@ struct Model {
         last_obstacle = last_detour_obstacle = 0;
         last_av = av::Result{};
         gate_mode = gate_lead_used = gate_dock_mode = gate_dock_blocked = false;
-        capital_gate_leg = capital_window = false;
+        capital_gate_leg = capital_window = capital_detour = false;
         obj_id = 0;
         autopilot = true;
         join = core::JoinState{};
@@ -360,6 +381,16 @@ struct Model {
         join_changes = 0;
         last_steer_order = 0;
         lead_ms = -1;
+        pass = ln::Pass{};
+        pass_ok = false;
+        seq_cap = -1.0f;
+        seq_leader = 0;
+        lanes = nullptr;
+        gate_ptr = 0;
+        hull_w = float(t.r_m);
+        hull_src = std::uint8_t(ln::WidthSrc::unread);
+        lane_cap = -1.0f;
+        last_detour_lane = ln::Verdict::none;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
         gate_G[0] = gate_G[1] = gate_G[2] = 0;
@@ -411,8 +442,19 @@ struct Model {
         self.capital = capital;
         self.exclude_target = order == core::kOrderEscort || order == core::kOrderFollow || order == core::kOrderFlyBefore;
         self.L_leader = L_leader_m;
+        if (lanes && capital && gate_ptr) { // amendment 16: the DLL's lane_bind (the gate legs' target is the gate) to this decision's pass
+            self.target = gate_ptr;
+            av::lane_bind(self, pass_ok ? &pass : nullptr);
+        }
         astate.obj = ptr;
         last_av = av::resolve(*snap, parts, n_parts, self, Pm, astate, std::uint32_t(t_ms));
+        last_detour_lane = ln::Verdict::none; // amendment 16: the lane verdict of the detour's obstacle (scenario M)
+        if (last_av.adjusted && self.lane)
+            for (unsigned q = 0; q < snap->count; ++q)
+                if (snap->items[q].ptr == last_av.obstacle) {
+                    last_detour_lane = av::lane_pair(self, snap->items[q]);
+                    break;
+                }
         if (last_av.unresolved) ++unresolved;
         excluded_followers += last_av.excluded_followers;
         skipped_small += last_av.skipped_small;
@@ -426,6 +468,53 @@ struct Model {
         last_side = last_av.side;
         for (int i = 0; i < 3; ++i) last_dir[i] = last_av.dir[i];
         for (int i = 0; i < 3; ++i) Pm[i] = last_av.P[i];
+    }
+    std::uint32_t native_id() const { return obj_id ? obj_id : (ptr ^ 0x5a000000u); } // [obj+0x08] as the snapshot fills it
+    // Amendment 16: the DLL's lane_decision (the board entry of an order-4/5 decision on the validated approach, after the pass).
+    void lane_refresh(const float x[3], const float A[3], core::JoinMode mode) {
+        if (!lanes || !gate_ptr || !capital) return;
+        ln::Decision d;
+        d.ship = ptr;
+        d.id = native_id();
+        d.gate = gate_ptr;
+        d.order = order;
+        d.mode = std::uint8_t(mode);
+        d.pred = (mode == core::JoinMode::join || mode == core::JoinMode::slow_join) && join.eval_ms && join.pred_reached ? 1 : 0;
+        for (int i = 0; i < 3; ++i) {
+            d.G[i] = gate_G[i];
+            d.R[i] = gate_rows[0][i];
+            d.U[i] = gate_rows[1][i];
+            d.F[i] = gate_rows[2][i];
+            d.x[i] = x[i];
+            d.f[i] = float(row[2][i]);
+            d.u[i] = float((row[2][i] * double(speed) + double(slip[i])) / 500.0);
+            d.A[i] = A[i];
+        }
+        d.r = dyn.r_own;
+        d.w = hull_w;
+        d.w_src = hull_src;
+        d.a_lin = dyn.a_lin;
+        d.e_max = join.pred_e_max;
+        d.over = join.pred_over;
+        d.pred_nose = join.pred_nose;
+        float wv[3];
+        for (int i = 0; i < 3; ++i) wv[i] = float(double(w[i]) * core::kRadPerBinary);
+        ln::seq_rates(dyn, wv, &d.omega, &d.alpha);
+        ln::refresh(*lanes, d, std::uint32_t(t_ms));
+    }
+    // Amendment 16b / review F2, F5, F6: the DLL's per-decision lane pass (before the avoidance; the stored board).
+    void lane_pass_run() {
+        pass_ok = false;
+        lane_cap = -1.0f;
+        seq_cap = -1.0f;
+        seq_leader = 0;
+        if (!lanes || !gate_ptr || !capital || !g_amend16 || order != core::kOrderFlyBefore) return; // the DLL: order 4 only
+        pass_ok = ln::run_pass(*lanes, gate_ptr, ptr, native_id(), order, std::uint32_t(t_ms),
+                               av::fresh_window_ms(av::kSteeredFreshMs, std::uint32_t(frame_dt_ms), av::kSteeredReplanMs), g_seq, &pass);
+        if (!pass_ok) return;
+        lane_cap = pass.cap();
+        seq_cap = pass.seq_cap;
+        seq_leader = pass.seq_leader;
     }
     // The vanilla leaf 0x0044ccc0 (ship-movement.md section 5.1): the 100-unit dead band, yaw = atan2(-t0, t2),
     // pitch = atan2(t1, F') with F' the forward component after the yaw, pitch held at 0 while |yaw| > 90 deg,
@@ -469,6 +558,7 @@ struct Model {
         core::Inputs in;
         float Pm[3] = {float(P[0] / 500.0), float(P[1] / 500.0), float(P[2] / 500.0)};
         const float Po[3] = {Pm[0], Pm[1], Pm[2]};
+        lane_pass_run(); // the DLL: every capital decision on order 4 under the capital policy (binds only on its gate's board)
         if (avoid_on && snap && core::order_policy(order).avoidance) avoid_adjust(Pm);
         if (Pm[0] != Po[0] || Pm[1] != Po[1] || Pm[2] != Po[2]) {
             in.d_order = float(dist() / 500.0);
@@ -504,6 +594,7 @@ struct Model {
         // capital window (core::gate_lead_in_capital), the same write there, the lowering clamp outside it
         bool gate_approach = false, gate_dock = false;
         capital_window = false;
+        capital_detour = false;
         join_fb_write = false;
         if (gate_mode && order == core::kOrderFlyBefore) {
             gate_approach = true;
@@ -531,7 +622,9 @@ struct Model {
                     join.params.a_lin = dyn.a_lin;
                     join.params.r_gate = gate_geo.r;
                 }
-                cap_join = mode == core::JoinMode::join;
+                cap_join = mode == core::JoinMode::join || (g_amend16 && mode == core::JoinMode::slow_join);
+                capital_detour = g_amend16 && g_detour_write && cap_join && in.detour; // the DLL's amendment-16 fix: the join's write on a detour
+                if (g_amend16) lane_refresh(in.x, Po, mode); // amendment 16: the lane entry and the follow cap
                 if (mode == core::JoinMode::fallback && in.d_order < 0) {
                     const float dA[3] = {Po[0] - in.x[0], Po[1] - in.x[1], Po[2] - in.x[2]};
                     const float d_A = std::sqrt(core::dot3(dA, dA));
@@ -555,6 +648,7 @@ struct Model {
                 if (!capital) lead_ms = t_ms; // audit G1
             }
         }
+        if (g_amend16 && gate_mode && capital && order == core::kOrderDock) lane_refresh(in.x, Po, join.mode); // amendment 16: the order-5 leg
         // the Run152 follow-up: order 5 to a gate: the cornering speed replaces the engine's creep unless the chord arc sweeps the ring
         if (gate_dock_mode && order == core::kOrderDock && !capital) {
             gate_dock_blocked = !core::gate_chord_clears_ring(in.x, in.row[2], Po, gate_G, gate_rows[0], gate_rows[1], gate_rows[2], gate_r, dyn.r_own);
@@ -581,7 +675,7 @@ struct Model {
         s->order = order;
         std::uint16_t speed_flags; // the DLL's decide(): a capital's gate legs get no write outside the capital window (the lowering
                                    // clamp on a validated order-4 approach, nothing on order 5 or an unvalidated/policy-off approach)
-        if (capital_gate_leg && !capital_window && !join_fb_write)
+        if (capital_gate_leg && !capital_window && !join_fb_write && !capital_detour)
             speed_flags = std::uint16_t(gate_mode && order == core::kOrderFlyBefore && cmd.v_cmd > 0 ? core::kShipFlagClamp : 0);
         else
             speed_flags = std::uint16_t((in.arrival_ramp && !cmd.formation_speed ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
@@ -591,9 +685,13 @@ struct Model {
         for (int i = 0; i < 3; ++i) s->P[i] = Po[i]; // site B measures the order's point
         s->a_lin = dyn.a_lin;
         s->d_arr = gate_dock ? gate_r : in.d_arr;
-        s->v_ref = (speed_flags & core::kShipFlagGate) ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner) : gate_dock ? dyn.v_max : in.v_ref;
-        if (speed_flags & core::kShipFlagGate) { // amendment 15: the predictor's speed in join mode, the slow entry in fallback
-            if (capital_window && join.v_cmd < s->v_ref) s->v_ref = join.v_cmd;
+        // the DLL's decide(): under an avoidance emergency the gate write is the emergency ramp, unless a capital's join on a detour
+        // keeps its write (amendment 16 fix)
+        const bool emerg = avoid_on && astate.v_emergency != 0.0f;
+        s->v_ref = (speed_flags & core::kShipFlagGate) && (!emerg || capital_detour) ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner)
+                   : gate_dock ? dyn.v_max : in.v_ref;
+        if ((speed_flags & core::kShipFlagGate) && (!emerg || capital_detour)) { // amendment 15: the predictor's speed in join mode, the slow entry in fallback
+            if ((capital_window || capital_detour) && join.v_cmd < s->v_ref) s->v_ref = join.v_cmd;
             if (join_fb_write && join_fb_v < s->v_ref) s->v_ref = join_fb_v;
         }
         last_steer_order = order;
@@ -602,6 +700,13 @@ struct Model {
         s->v_corner = cmd.formation_speed ? cmd.v_cmd : cmd.v_corner;
         s->v_slip = (speed_flags & (core::kShipFlagGate | core::kShipFlagGateDock)) || cmd.formation_speed ? 0.0f : cmd.v_slip;
         s->v_emergency = avoid_on ? astate.v_emergency : 0.0f;
+        if (pass_ok && order == core::kOrderFlyBefore && lane_cap >= 0.0f) {
+            if (emerg && !capital_detour && (speed_flags & core::kShipFlagGate)) { // the emergency ramp is the write (floored at 10 m/s)
+                ++g_emerg_cap;
+                if (lane_cap < core::kFloorMs) ++g_emerg_cap_floor;
+            }
+            ln::apply_cap(*s, lane_cap); // review F2: on the module's writes
+        }
     }
     // Site B: the clamp from the stored decision at the current position.
     void clamp(std::uint32_t obj_id) {
@@ -1275,7 +1380,7 @@ struct World {
             }
             o.r = m.dyn.r_own;
             o.ptr = m.ptr;
-            o.leader = m.leader_ptr;
+            o.leader = m.gate_ptr ? m.gate_ptr : m.leader_ptr; // f+0x224: the gate on a capital's gate legs (amendment 16, scenario M)
             o.order = m.order;
             o.kind = std::uint8_t(av::Kind::ship);
             o.size = m.capital ? 1 : 0; // the record code's capital bit (amendment 13: the ratio decides the rest)
@@ -2149,33 +2254,33 @@ static void avoidance_unit_checks() {
     o.kind = std::uint8_t(av::Kind::ship);
     o.ptr = 1;
     live(o);
-    check(av::excluded(me, o), "excluded: self");
+    check(av::excluded_base(me, o), "excluded: self");
     o.ptr = 2;
     live(o);
-    check(av::excluded(me, o), "excluded: the leader");
+    check(av::excluded_base(me, o), "excluded: the leader");
     o.ptr = 3;
     o.leader = 2;
     o.order = core::kOrderEscort;
     o.x[0] = 1050;
     live(o);
-    check(av::excluded(me, o), "excluded: a wingmate near the leader");
+    check(av::excluded_base(me, o), "excluded: a wingmate near the leader");
     o.x[0] = 20000;
     live(o);
-    check(av::excluded(me, o), "excluded: a wingmate of the same leader far from it (every direction)");
+    check(av::excluded_base(me, o), "excluded: a wingmate of the same leader far from it (every direction)");
     o.order = core::kOrderFollow;
     live(o);
-    check(av::excluded(me, o), "excluded: a wingmate on order 0x15");
+    check(av::excluded_base(me, o), "excluded: a wingmate on order 0x15");
     o.order = core::kOrderMovePos;
     live(o);
-    check(!av::excluded(me, o), "not excluded: a ship whose stale f+0x224 is our leader but is not on 0x14/0x15");
+    check(!av::excluded_base(me, o), "not excluded: a ship whose stale f+0x224 is our leader but is not on 0x14/0x15");
     o.x[0] = 0;
     o.leader = 1;
     o.order = core::kOrderEscort;
     live(o);
-    check(av::excluded(me, o), "excluded: our own follower");
+    check(av::excluded_base(me, o), "excluded: our own follower");
     o.x[0] = 30000;
     live(o);
-    check(av::excluded(me, o), "excluded: our own follower far away");
+    check(av::excluded_base(me, o), "excluded: our own follower far away");
     {
         av::Self lead{}; // the leader's view: its follower is excluded, the follower's view: the leader is (both directions)
         lead.ptr = 2;
@@ -2187,7 +2292,7 @@ static void avoidance_unit_checks() {
         f.order = core::kOrderFollow;
         f.x[0] = 15000;
         live(f);
-        check(av::excluded(lead, f), "excluded: the leader never avoids its follower, wherever it is");
+        check(av::excluded_base(lead, f), "excluded: the leader never avoids its follower, wherever it is");
         av::Self fol{};
         fol.ptr = 1;
         fol.leader = 2;
@@ -2195,7 +2300,7 @@ static void avoidance_unit_checks() {
         av::Obstacle l{};
         l.kind = std::uint8_t(av::Kind::ship);
         l.ptr = 2;
-        check(av::excluded(fol, l), "excluded: the follower never avoids its leader");
+        check(av::excluded_base(fol, l), "excluded: the follower never avoids its leader");
     }
     // the horizon cap (amendment 11): min(L / v, 30 s) of flight; the Boreas's L / v is 43.9 s uncapped
     {
@@ -3730,6 +3835,7 @@ struct CapitalResult {
     unsigned axis_crossings = 0, evals = 0, predictions = 0, slowed = 0, fell_pred = 0, v60_rows = 0;
     double eval_us_max = 0;
     unsigned e_gate_sup = 0, e_gate_handover_sup = 0, e_gate_warn_unsup = 0, gate_warn_frames = 0;
+    unsigned slow_entered = 0, unlatched = 0, e_gate_sup_fallback = 0, e_gate_warn_fb = 0; // amendment 16
     long t_join = -1;                        // the first frame in join mode
     bool e_small_pair_capitals = false;
     // the trailing / converging capital (scenario A / B)
@@ -4182,7 +4288,25 @@ static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32
                 in.gate_join = phase == 0 && m.join.mode == core::JoinMode::join;
                 in.gate_handover = handover;
                 in.p2_age_ms = res.t_A >= 0 ? std::uint32_t(m.t_ms - res.t_A) : 0xffffffffu;
+                if (g_amend16 && su.policy) { // amendment 16 (section 16.3): the DLL's extended inputs and the path guard
+                    in.gate_slow_join = phase == 0 && m.join.mode == core::JoinMode::slow_join;
+                    in.gate_fallback = phase == 0 && m.join.mode == core::JoinMode::fallback;
+                    in.gate_window_ok = m.join.plane_ms && m.join.plane.s >= -core::kGateCapitalJoinR * float(kGateRM);
+                    in.gate_p2_seen = res.t_A >= 0 && phase != 2;
+                    float xa[3], Pa[3];
+                    const float G0f[3] = {0, 0, 0};
+                    for (int k = 0; k < 3; ++k) {
+                        xa[k] = float(m.pos[k] / 500.0);
+                        Pa[k] = float(A[k] / 500.0);
+                    }
+                    in.gate_path_ok = ln::path_guard(G0f, xa, Pa, float(kGateRM), float(t.r_m), ln::kCapitalGuardR);
+                }
                 const av::EVerdict v = av::site_e_verdict(in);
+                if (phase == 0 && m.join.mode == core::JoinMode::fallback) { // amendment 16: the fallback approach's gate row
+                    if (v == av::EVerdict::suppress_gate) ++res.e_gate_sup_fallback;
+                    const double G00[3] = {0, 0, 0};
+                    if (gate_warn_cone(m, G00, t.r_m, kGateRM) && !av::e_suppresses(v)) ++res.e_gate_warn_fb;
+                }
                 const bool span = (phase == 0 && m.join.mode == core::JoinMode::join) || ((phase == 1 || phase == 5 || phase == 6) && res.kept);
                 const double G0[3] = {0, 0, 0};
                 if (v == av::EVerdict::suppress_gate) {
@@ -4203,7 +4327,18 @@ static CapitalResult run_capital_transit(const ShipType& t, int fps, std::uint32
                 bool fell = false, slowed = false;
                 unsigned preds = 0;
                 const auto t0 = std::chrono::steady_clock::now();
-                if (core::join_evaluate(m.join, std::uint32_t(m.t_ms), av::fresh_window_ms(av::kSteeredFreshMs, std::uint32_t(dt)), &fell, &slowed, &preds)) {
+                bool ran;
+                if (g_amend16) { // amendment 16: the DLL's frame end (slow join, un-latch)
+                    core::JoinEval ev;
+                    ran = core::join_evaluate16(m.join, std::uint32_t(m.t_ms), av::fresh_window_ms(av::kSteeredFreshMs, std::uint32_t(dt)), &ev);
+                    fell = ev.fell_back;
+                    slowed = ev.slowed;
+                    preds = ev.predictions;
+                    if (ev.slow_entered) ++res.slow_entered;
+                    if (ev.unlatched) ++res.unlatched;
+                } else
+                    ran = core::join_evaluate(m.join, std::uint32_t(m.t_ms), av::fresh_window_ms(av::kSteeredFreshMs, std::uint32_t(dt)), &fell, &slowed, &preds);
+                if (ran) {
                     const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
                     res.eval_us_max = std::fmax(res.eval_us_max, us);
                     ++res.evals;
@@ -4531,14 +4666,33 @@ static void capital_join_scenario(const ShipType& t, int fps, std::uint32_t seed
                               t.cls, fps, seed, c.tag, sl);
                 checkf(g.e_gate_sup > 0 && g.e_gate_handover_sup > 0 && g.e_gate_warn_unsup == 0, why, double(g.e_gate_sup), double(g.e_gate_handover_sup));
             } else {
-                const double b_rot = g.rot_start_err_deg > 0 ? budget_rotate_s(g.rot_start_err_deg, t.yaw_dps, a_rot) : 0.0;
-                const double rot_s = double(g.rot_ms) / 1000.0;
+                const bool slow16 = g_amend16 && c.kind == 2;
+                if (slow16) { // amendment 16 (section 16.2): the infeasible join becomes a slow join, not the aim-at-A fallback
+                    const bool slow = (g.join_modes & (1u << unsigned(core::JoinMode::slow_join))) != 0;
+                    const double rot16 = double(g.rot_ms) / 1000.0;
+                    std::snprintf(why, sizeof why, "%s %d fps seed %u join %s (amendment 16): slow join, no aim-at-A fallback, sphere entry %%.1f m/s <= 40 (a slow candidate), P2's vanilla stop "
+                                  "(why_not=mode), rotate %%.1f s <= 5, the gate row on the slow approach (no unsuppressed gate warn), launched", t.cls, fps, seed, c.tag);
+                    checkf(slow && !fell && g.slow_entered > 0 && g.cross_v <= 40.0 && !g.kept && g.keep_why == core::JoinKeep::mode && g.v_after_A == 0 &&
+                               rot16 <= 5.0 && g.e_gate_sup > 0 && g.e_gate_warn_unsup == 0 && g.arrived_B && g.launched && !g.nan_seen,
+                           why, g.cross_v, rot16);
+                }
+                // the amendment-15 latch (ship_steering_gates_capital's join without section 16.2): kept as the A/B of the old path
+                CapitalResult g15;
+                if (slow16) {
+                    g_amend16 = false;
+                    g15 = run_capital_transit(t, fps, seed, su);
+                    g_amend16 = true;
+                }
+                const CapitalResult& gq = slow16 ? g15 : g;
+                const bool fell = (gq.join_modes & (1u << unsigned(core::JoinMode::fallback))) != 0;
+                const double b_rot = gq.rot_start_err_deg > 0 ? budget_rotate_s(gq.rot_start_err_deg, t.yaw_dps, a_rot) : 0.0;
+                const double rot_s = double(gq.rot_ms) / 1000.0;
                 const core::JoinReason want = c.kind == 2 ? core::JoinReason::pred_none : core::JoinReason::past_x;
                 std::snprintf(why, sizeof why, "%s %d fps seed %u join %s: the fallback latched (reason %s), sphere entry %%.1f m/s <= 30, the vanilla stop at P2, no write above 100 m/s (max %%.1f), launched",
                               t.cls, fps, seed, c.tag, c.kind == 2 ? "pred_none" : "past_x");
-                checkf(fell && g.join_reason == want && g.fb_entry_v >= 0 && g.fb_entry_v <= 30.0 && !g.kept && g.v_after_A == 0 &&
-                           g.fb_write_max <= 100.0 && g.arrived_B && g.launched && !g.nan_seen,
-                       why, g.fb_entry_v, g.fb_write_max);
+                checkf(fell && gq.join_reason == want && gq.fb_entry_v >= 0 && gq.fb_entry_v <= 30.0 && !gq.kept && gq.v_after_A == 0 &&
+                           gq.fb_write_max <= 100.0 && gq.arrived_B && gq.launched && !gq.nan_seen,
+                       why, gq.fb_entry_v, gq.fb_write_max);
                 std::snprintf(why, sizeof why, "%s %d fps seed %u join %s: the engine's rotate %%.1f s at most 20 %% above the model's %%.1f s (budget_rotate_s from rest at the arrival error; the fixture's two-axis rotate keeps the arrival rate and is faster)", t.cls, fps, seed, c.tag);
                 checkf(rot_s <= 1.2 * b_rot + 0.05, why, rot_s, b_rot);
             }
@@ -5337,6 +5491,1005 @@ static int emit_trace(const char* path) {
     std::printf("ship_steering_host trace_rows=%lu\n", g_trace_rows);
     return 0;
 }
+// ---- amendment 16: the amendment-15 site E verdict, verbatim (git aee6d75b..36726cfc ship_avoidance_core.h), the reference of the
+// option-off identity check (ship_steering_gates_capital off: the amendment-16 inputs keep their defaults) -------------------
+namespace x3m::ship_avoidance::core {
+inline EVerdict site_e_verdict_a15(const SiteE& in) noexcept {
+    if (!in.a_in_table) return EVerdict::pass_not_fresh;
+    const std::uint32_t fresh = fresh_window_ms(kSteeredFreshMs, in.frame_ms, kSteeredReplanMs);
+    // the gate rows: B is A's own target gate
+    if (in.b_gate && in.gates_live && in.gate_state) {
+        if (in.gate_capital) {
+            if (in.capital_policy &&
+                ((in.a_order == sc::kOrderFlyBefore && in.gate_join && in.a_age_ms <= fresh) ||
+                 ((in.a_order == sc::kOrderNone || in.a_order == sc::kOrderRotate) && in.gate_handover && in.p2_age_ms <= kHandoverMaxMs)))
+                return EVerdict::suppress_gate;
+        } else if (in.a_order == sc::kOrderFlyBefore && in.lead_age_ms <= fresh)
+            return EVerdict::suppress_gate_small;
+    }
+    if (in.a_age_ms > fresh) return EVerdict::pass_not_fresh;
+    EVerdict v = EVerdict::none;
+    if (in.b_ship && in.a_capital) {
+        if (!in.codes_readable) return EVerdict::pass_unreadable;
+        if (in.b_readable) {
+            if (small_pair(true, in.r_a, true, in.b_capital_code, in.r_b)) {
+                if (in.b_is_a_leader) return EVerdict::pass_own_leader;
+                switch (small_pair_verdict(in.b_flags, in.b_order, in.b_docked, in.b_class_masked)) {
+                case SmallPair::suppress: return EVerdict::suppress_small;
+                case SmallPair::no_autopilot: return EVerdict::pass_no_autopilot;
+                case SmallPair::not_steerable: return EVerdict::pass_not_steerable;
+                case SmallPair::class_masked: return EVerdict::pass_class;
+                case SmallPair::b_dock_leg: return EVerdict::pass_b_dock_leg;
+                default: return EVerdict::pass_own_leader;
+                }
+            }
+            if (in.a_order != sc::kOrderAvoid && in.avoidance_on) {
+                const MemberPair mv = member_pair_verdict(in.b_member_current, in.b_order, in.b_target, in.d, in.r_a, in.r_b);
+                if (mv == MemberPair::suppress) return EVerdict::suppress_member;
+                v = mv == MemberPair::not_transient ? EVerdict::pass_not_transient : mv == MemberPair::touching ? EVerdict::pass_touching
+                                                                                                                 : EVerdict::pass_not_member;
+            }
+        }
+    }
+    // the first branch: B in A's fresh resolved set, A not on the engine's own avoid order
+    if (in.a_order == sc::kOrderAvoid) return v == EVerdict::none ? EVerdict::pass_a_avoid : v;
+    if (in.b_resolved) return EVerdict::suppress_resolved;
+    return v == EVerdict::none ? EVerdict::pass_not_resolved : v;
+}
+} // namespace x3m::ship_avoidance::core
+// ---- amendment 16 unit checks (capital-gate-transit.md section 16 with the ratification addendum 2026-10-13) ----------------
+// The lane core (ship_capital_lane_core.h), the hull width reader (ship_avoidance_walk_core.h hull_width), site E's new rows and
+// the option-off identity, the slow join and the un-latch (join_evaluate16), the path guards; the cost of the lane work.
+static const std::uint32_t kLaneGate = 0x4000;
+static const ln::Entry* lane_put(ln::Board& b, std::uint32_t ship, std::uint16_t order, core::JoinMode mode, bool pred, float e_max, float over,
+                                 float pred_nose, float lx, float ly, float qx, float qy, float s, float theta_deg, float v, float r, float w,
+                                 std::uint32_t now, float omega = 0.0f, float alpha = 0.0088f, float a_lin = 10.0f) {
+    ln::Decision d;
+    d.ship = ship;
+    d.id = ship ^ 0x5a000000u;
+    d.gate = kLaneGate;
+    d.order = order;
+    d.mode = std::uint8_t(mode);
+    d.pred = pred ? 1 : 0;
+    const float th = theta_deg * float(M_PI / 180.0);
+    for (int i = 0; i < 3; ++i) {
+        d.G[i] = 0.0f;
+        d.R[i] = i == 0 ? 1.0f : 0.0f;
+        d.U[i] = i == 1 ? 1.0f : 0.0f;
+        d.F[i] = i == 2 ? 1.0f : 0.0f;
+    }
+    d.x[0] = qx;
+    d.x[1] = qy;
+    d.x[2] = s;
+    d.f[0] = std::sin(th);
+    d.f[1] = 0.0f;
+    d.f[2] = std::cos(th);
+    for (int i = 0; i < 3; ++i) d.u[i] = v * d.f[i];
+    d.A[0] = lx;
+    d.A[1] = ly;
+    d.A[2] = -4394.0f;
+    d.r = r;
+    d.w = w;
+    d.w_src = std::uint8_t(ln::WidthSrc::lod);
+    d.a_lin = a_lin;
+    d.e_max = e_max;
+    d.over = over;
+    d.pred_nose = pred_nose;
+    d.omega = omega;
+    d.alpha = alpha;
+    return ln::refresh(b, d, now);
+}
+static ln::Verdict lane_v(const ln::Board& b, std::uint32_t a, std::uint32_t c, std::uint32_t now, ln::PairInfo* info = nullptr) {
+    const ln::Gate* g = ln::gate_of(b, kLaneGate);
+    const ln::Entry* ea = g ? ln::find(*g, a) : nullptr;
+    const ln::Entry* ec = g ? ln::find(*g, c) : nullptr;
+    if (!ea || !ec) return ln::Verdict::none;
+    ln::Side A, C;
+    ln::side_of(*g, *ea, nullptr, nullptr, ea->order, now, &A);
+    ln::side_of(*g, *ec, nullptr, nullptr, ec->order, now, &C);
+    return ln::pair_verdict(A, C, info);
+}
+static double g_lane_us = 0; // the measured lane work per capital decision (host), printed by amend16_unit_checks
+static void amend16_unit_checks() {
+    char why[320];
+    const float T = 1092.0f, Tw = 0.45f * 1092.0f; // a Titan-class M2 at the nominal width (render-node-bounds.md section 6.2: 0.38-0.45 r)
+    // reach: min(r, w + r sin theta)
+    check(std::fabs(ln::reach(T, Tw, 1.0f) - Tw) < 0.5f, "a16 lane: reach on the axis = w");
+    check(std::fabs(ln::reach(T, Tw, std::cos(8.11f * float(M_PI / 180.0))) - (Tw + T * std::sin(8.11f * float(M_PI / 180.0)))) < 0.5f,
+          "a16 lane: reach at 8.11 deg = w + r sin theta");
+    check(ln::reach(T, T, 0.9f) == T, "a16 lane: reach never above r (w = r: the sphere)");
+    {
+        const float a0[2] = {0, 0}, a1[2] = {10, 0}, b0[2] = {5, -5}, b1[2] = {5, 5}, c0[2] = {0, 3}, c1[2] = {10, 3}, p[2] = {20, 0};
+        check(ln::seg_seg2(a0, a1, b0, b1) == 0.0f, "a16 lane: crossing segments are 0 apart");
+        check(std::fabs(ln::seg_seg2(a0, a1, c0, c1) - 3.0f) < 1e-4f, "a16 lane: parallel segments 3 m apart");
+        check(std::fabs(ln::seg_seg2(p, p, a0, a1) - 10.0f) < 1e-4f, "a16 lane: a point 10 m past a segment's end");
+    }
+    const std::uint32_t now = 100000;
+    // (a) by the corridor: adjacent Titans settled in their lanes (the footprints overlap: the 50 m route alone never exempts them)
+    {
+        ln::Board b;
+        lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 10, 0, -3000, 2, 100, T, Tw, now);
+        lane_put(b, 0x9800, 4, core::JoinMode::join, true, 6, 0, 1, 666, 0, 660, 5, -2500, 1, 100, T, Tw, now);
+        ln::PairInfo info;
+        const ln::Verdict v = lane_v(b, 0x9000, 0x9800, now, &info);
+        std::snprintf(why, sizeof why, "a16 lane: adjacent Titans settled in lane are (a) by the corridor (footprint gap %%.0f m < 50, different lanes, both in lane) [%s]",
+                      ln::verdict_name(v));
+        checkf(v == ln::Verdict::exempt && info.gap < 50.0f && !info.same_lane && info.corridor_a && info.corridor_b, why, info.gap, 0);
+        check(lane_v(b, 0x9800, 0x9000, now) == ln::Verdict::exempt, "a16 lane: the corridor verdict is symmetric");
+        // one leaves its corridor: 234 m off its lane, no current prediction -> (c)
+        lane_put(b, 0x9800, 4, core::JoinMode::join, false, 0, 0, -1, 666, 0, 900, 0, -2500, 1, 100, T, Tw, now);
+        check(lane_v(b, 0x9000, 0x9800, now) == ln::Verdict::cross, "a16 lane: an adjacent Titan off its lane (234 m, no prediction) is (c)");
+        // joining inside its corridor: a current prediction with e_max 80 m, excursion 20 m, nose 5 deg at the plane -> (a)
+        lane_put(b, 0x9800, 4, core::JoinMode::join, true, 80, 20, 5, 666, 0, 740, 0, -2500, 20, 100, T, Tw, now);
+        ln::PairInfo j;
+        check(lane_v(b, 0x9000, 0x9800, now, &j) == ln::Verdict::exempt && j.foot_b == ln::Foot::joining && j.corridor_b,
+              "a16 lane: a Titan joining inside its corridor (e_max 80, over 20, nose 5) next to a settled one is (a)");
+        lane_put(b, 0x9800, 4, core::JoinMode::join, true, 80, 20, 12, 666, 0, 740, 0, -2500, 20, 100, T, Tw, now);
+        check(lane_v(b, 0x9000, 0x9800, now) == ln::Verdict::cross, "a16 lane: the same join predicted 12 deg at the plane is (c)");
+        lane_put(b, 0x9800, 4, core::JoinMode::slow_join, true, 150, 20, 5, 666, 0, 740, 0, -2500, 20, 100, T, Tw, now);
+        check(lane_v(b, 0x9000, 0x9800, now) == ln::Verdict::cross, "a16 lane: a slow join with e_max 150 m is outside its corridor: (c)");
+        lane_put(b, 0x9800, 4, core::JoinMode::fallback, false, 0, 0, -1, 666, 0, 740, 0, -2500, 20, 100, T, Tw, now);
+        check(lane_v(b, 0x9000, 0x9800, now) == ln::Verdict::cross, "a16 lane: an aim-at-A fallback next to a settled Titan is (c)");
+        // an order-5 leg toward the gate origin across the settled neighbour: no lane point, footprint only -> (c)
+        lane_put(b, 0x9800, 5, core::JoinMode::none, false, 0, 0, -1, 666, 0, 600, 0, -800, 2, 100, T, Tw, now);
+        check(lane_v(b, 0x9000, 0x9800, now) == ln::Verdict::cross, "a16 lane: an order-5 leg next to a settled Titan is (c)");
+    }
+    // (b) the same lane point only, both settled; the trailing ship's cap, the leader none
+    {
+        ln::Board b;
+        lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 5, 0, -2000, 1, 50, T, Tw, now);         // leader
+        lane_put(b, 0x9800, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 5, 0, -9420, 1, 100, 1022.0f, 0.4f * 1022.0f, now); // trailer
+        check(lane_v(b, 0x9800, 0x9000, now) == ln::Verdict::follow, "a16 lane: two settled ships on the same lane point are (b)");
+        const float D = ln::follow_reach(100.0f, 100.0f, 10.0f, 1092.0f, 1022.0f);
+        std::snprintf(why, sizeof why, "a16 lane: D for an M2 trailing an M1 at matched speed = 1000 + 2 (2114) + 1092 + 100 = 6420 m (%%.0f)");
+        checkf(std::fabs(D - 6420.0f) < 1.0f, why, D, 0);
+        check(std::fabs(ln::follow_cap(50.0f, 10.0f, 7420.0f, 6420.0f) - (50.0f + std::sqrt(20000.0f))) < 0.01f &&
+                  ln::follow_cap(-5.0f, 10.0f, 1000.0f, 6420.0f) == 0.0f,
+              "a16 lane: the cap max(0, v_L) + sqrt(2 a max(0, ds - D))");
+        ln::Pass pt, pl;
+        const bool bt = ln::run_pass(b, kLaneGate, 0x9800, 0x9800 ^ 0x5a000000u, 4, now, 250, true, &pt);
+        const bool bl = ln::run_pass(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 4, now, 250, true, &pl);
+        const float cap = pt.cap();
+        const float D2 = ln::follow_reach(100.0f, 50.0f, 10.0f, 1022.0f, 1092.0f);
+        std::snprintf(why, sizeof why, "a16 lane: the trailing ship's cap %%.1f m/s against the leader (ds 7420, D %%.0f) from the pass, the leader uncapped");
+        checkf(bt && bl && pt.follow_leader == 0x9000 && std::fabs(cap - ln::follow_cap(50.0f, 10.0f, 7420.0f, D2, 10.0f)) < 1.0f && pl.cap() < 0.0f &&
+                   pt.seq_cap < 0.0f,
+               why, cap, D2);
+        // different lanes never follow, even settled and overlapping
+        lane_put(b, 0x9800, 4, core::JoinMode::join, true, 10, 0, 1, 666, 0, 666, 0, -9420, 1, 100, 1022.0f, 1022.0f, now);
+        check(lane_v(b, 0x9800, 0x9000, now) == ln::Verdict::exempt, "a16 lane: settled in adjacent lanes with w = r is (a) by the corridor, never (b)");
+    }
+    // (a) by the footprints: 755 m hulls two lanes apart, one on its fallback segment
+    {
+        ln::Board b;
+        lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, -1332, 0, -1332, 0, -3000, 1, 100, 755, 0.25f * 755, now);
+        lane_put(b, 0x9800, 4, core::JoinMode::fallback, false, 0, 0, -1, 1332, 0, 1800, 0, -3000, 40, 30, 755, 0.25f * 755, now);
+        ln::PairInfo info;
+        check(lane_v(b, 0x9000, 0x9800, now, &info) == ln::Verdict::exempt && !info.corridor_b && info.gap >= 50.0f,
+              "a16 lane: 755 m hulls two lanes apart, one in its fallback, are (a) by the 50 m footprint route");
+    }
+    // commitment, identity, the hand-over, mark, the board's capacity
+    {
+        ln::Board b;
+        const ln::Entry* e = lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 5, 0, -3000, 1, 100, T, Tw, now);
+        const std::uint32_t id = 0x9000 ^ 0x5a000000u;
+        check(ln::committed(*e, now + 100, 250, 4, kLaneGate, kLaneGate, id), "a16 lane: committed on order 4 with a fresh decision");
+        check(!ln::committed(*e, now + 300, 250, 4, kLaneGate, kLaneGate, id), "a16 lane: not committed after the fresh window");
+        check(!ln::committed(*e, now, 250, 4, kLaneGate, kLaneGate, id + 1), "a16 lane: not committed for another object id behind the pointer");
+        check(!ln::committed(*e, now, 250, 4, 0x4444, kLaneGate, id), "a16 lane: not committed with f+0x224 another object");
+        check(!ln::committed(*e, now, 250, 0x12, kLaneGate, kLaneGate, id) && !ln::committed(*e, now, 250, 0, 0, kLaneGate, id),
+              "a16 lane: not committed on 0x12 or on order 0 without a target");
+        check(!ln::committed(*e, now, 250, 0x1f, kLaneGate, kLaneGate, id), "a16 lane: 0x1f without P2 is not the hand-over");
+        const float x[3] = {5, 0, -3000}, f[3] = {0, 0, 1};
+        ln::handover(b, kLaneGate, 0x9000, id, now + 1000, x, f, 100.0f);
+        check(ln::committed(*e, now + 60000, 250, 0x1f, kLaneGate, kLaneGate, id) && ln::committed(*e, now + 60000, 250, 0, kLaneGate, kLaneGate, id),
+              "a16 lane: the hand-over after P2 is committed on 0x1f / order 0 with the gate as target");
+        check(!ln::committed(*e, now + 1000 + 120001, 250, 0x1f, kLaneGate, kLaneGate, id), "a16 lane: the hand-over ends after 120 s");
+        float s1, v1;
+        ln::along(*e, now + 1000 + 5000, &s1, &v1);
+        check(std::fabs(v1 - 50.0f) < 0.01f && std::fabs(s1 - (-3000.0f + 100.0f * 5.0f - 0.5f * 10.0f * 25.0f)) < 0.1f,
+              "a16 lane: the hand-over's along-axis state slews down at the hull's acceleration");
+        ln::mark(b, kLaneGate, 0x9000, 0x12);
+        check(!ln::committed_stored(*e, now + 1000, 250), "a16 lane: another handled order un-commits the entry");
+        // capacity: 8 gates, 20 entries; a full board refuses (counted); dead entries are reused
+        ln::Board c;
+        for (unsigned k = 0; k < 9; ++k) {
+            ln::Decision d;
+            d.ship = 0x100;
+            d.id = 1;
+            d.gate = 0x5000 + 0x10 * k;
+            d.order = 4;
+            for (int i = 0; i < 3; ++i) d.G[i] = d.R[i] = d.U[i] = d.F[i] = d.x[i] = d.f[i] = d.u[i] = d.A[i] = 0.0f;
+            ln::refresh(c, d, now);
+        }
+        ln::Board c2;
+        for (unsigned k = 0; k < 21; ++k) lane_put(c2, 0x200 + 0x10 * k, 4, core::JoinMode::join, false, 0, 0, -1, 0, 0, 0, 0, -3000, 0, 50, T, Tw, now);
+        check(c.full_gates == 1 && c2.full_entries == 1 && c2.full_gates == 0, "a16 lane: the board holds 8 gates x 20 capitals and counts the refusals");
+        check(lane_put(c2, 0x900, 4, core::JoinMode::join, false, 0, 0, -1, 0, 0, 0, 0, -3000, 0, 50, T, Tw, now + 120001) != nullptr,
+              "a16 lane: an entry dead for 120 s is reused");
+    }
+    // the avoidance resolve's view: lane_bind and lane_pair over the snapshot's live order, f+0x224 and id; excluded() drops (a)
+    {
+        ln::Board b;
+        lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 10, 0, -3000, 2, 100, T, Tw, now);
+        lane_put(b, 0x9800, 4, core::JoinMode::join, true, 6, 0, 1, 666, 0, 660, 5, -2500, 1, 100, T, Tw, now);
+        av::Self s{};
+        s.x[0] = 10;
+        s.x[2] = -3000;
+        s.f[2] = 1;
+        s.r = T;
+        s.capital = true;
+        s.order = 4;
+        s.ptr = 0x9000;
+        s.target = kLaneGate;
+        ln::Pass p;
+        av::lane_bind(s, ln::run_pass(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 4, now, 250, true, &p) ? &p : nullptr);
+        // the production exclusion (resolve): excluded_base, then lane_excludes over lane_pair (review F12: one function tested)
+        auto excl = [](const av::Self& se, const av::Obstacle& ob) { return av::excluded_base(se, ob) || av::lane_excludes(av::lane_pair(se, ob)); };
+        av::Obstacle o{};
+        o.x[0] = 660;
+        o.x[1] = 5;
+        o.x[2] = -2500;
+        o.r = T;
+        o.ptr = 0x9800;
+        o.leader = kLaneGate;
+        o.order = 4;
+        o.kind = std::uint8_t(av::Kind::ship);
+        o.size = 1;
+        o.id = 0x9800 ^ 0x5a000000u;
+        check(s.lane && av::lane_pair(s, o) == ln::Verdict::exempt && excl(s, o) && !av::excluded_base(s, o),
+              "a16 resolve: a committed adjacent capital in its corridor is excluded (lane_pair (a))");
+        o.order = 0x12;
+        check(av::lane_pair(s, o) == ln::Verdict::none && !excl(s, o), "a16 resolve: the same capital on 0x12 is not committed: today's rules");
+        o.order = 4;
+        o.id ^= 1;
+        check(av::lane_pair(s, o) == ln::Verdict::none, "a16 resolve: another id behind the pointer: today's rules");
+        av::lane_bind(s, nullptr);
+        o.id ^= 1;
+        check(!s.lane && av::lane_pair(s, o) == ln::Verdict::none && !excl(s, o),
+              "a16 resolve: ship_steering_gates_capital off (no board): the amendment-15 exclusion");
+        // review F5: the deciding ship's own entry binds only while fresh (as committed())
+        check(!ln::run_pass(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 4, now + 300, 250, true, &p) &&
+                  ln::run_pass(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 4, now + 200, 250, true, &p) &&
+                  !ln::run_pass(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 5, now, 250, true, &p) &&
+                  !ln::run_pass(b, kLaneGate, 0x9000, 0x9001 ^ 0x5a000000u, 4, now, 250, true, &p),
+              "a16 review F5: the pass binds only on the ship's own fresh entry on its deciding order (stale 300 ms > 250, another order or id: unbound)");
+    }
+    // path guards (sections 16.3 / 16.4): r_gate 1105, Titan 1092: 1.25 r_gate + r_A = 2473 m; small 1.1 r_gate + 25 = 1240.5 m
+    {
+        const float G[3] = {0, 0, 0}, P[3] = {0, 0, -4394}, far[3] = {0, 0, -10000}, between[3] = {1500, 0, -2600}, close[3] = {0, 0, -2000};
+        check(ln::path_guard(G, far, P, 1105, 1092, ln::kCapitalGuardR), "a16 guard: an approach from in front of the grid passes");
+        check(ln::path_guard(G, between, P, 1105, 1092, ln::kCapitalGuardR),
+              "a16 guard: a ship between the grid and the gate (3,001 m from G) on its path back to P passes");
+        check(!ln::path_guard(G, close, P, 1105, 1092, ln::kCapitalGuardR), "a16 guard: 2,000 m from the gate fails (the engine's warn stays)");
+        const float A[3] = {0, -884, -1105}, front[3] = {0, -884, -6000}, behind[3] = {0, 300, 2000};
+        check(ln::path_guard(G, front, A, 1105, 25, ln::kSmallGuardR) && !ln::path_guard(G, behind, A, 1105, 25, ln::kSmallGuardR),
+              "a16 guard: a small ship's path to A from in front passes, from behind the ring fails");
+    }
+    // site E: the lane row, the extended capital gate row, the small ship's guard row
+    {
+        av::SiteE in;
+        in.a_in_table = true;
+        in.a_age_ms = 5000; // the hand-over: no decision
+        in.frame_ms = 16;
+        in.b_ship = true;
+        in.lane_exempt = true;
+        check(av::site_e_verdict(in) == av::EVerdict::suppress_lane && av::e_suppresses(av::EVerdict::suppress_lane),
+              "a16 E: (a) pair -> suppress_lane (the commitment carries its own freshness)");
+        av::SiteE g;
+        g.a_in_table = true;
+        g.frame_ms = 16;
+        g.b_gate = g.gates_live = g.capital_policy = g.gate_state = g.gate_capital = true;
+        g.a_order = 4;
+        g.a_age_ms = 50;
+        g.gate_fallback = true;
+        g.gate_path_ok = true;
+        check(av::site_e_verdict(g) == av::EVerdict::suppress_gate, "a16 E: the fallback approach gets the gate row");
+        g.gate_path_ok = false;
+        check(av::site_e_verdict(g) != av::EVerdict::suppress_gate, "a16 E: not when the path guard fails");
+        g.gate_path_ok = true;
+        g.gate_window_ok = false;
+        check(av::site_e_verdict(g) != av::EVerdict::suppress_gate, "a16 E: not outside the window (mode out)");
+        g.gate_window_ok = true;
+        g.gate_fallback = false;
+        g.gate_slow_join = true;
+        check(av::site_e_verdict(g) == av::EVerdict::suppress_gate, "a16 E: the slow join gets the gate row");
+        g.a_order = 0x1f;
+        g.a_age_ms = 30000;
+        g.gate_slow_join = false;
+        g.gate_p2_seen = true;
+        g.p2_age_ms = 20000;
+        check(av::site_e_verdict(g) == av::EVerdict::suppress_gate, "a16 E: the hand-over after P2 not kept gets the gate row");
+        g.capital_policy = false;
+        check(av::site_e_verdict(g) != av::EVerdict::suppress_gate, "a16 E: ship_steering_gates_capital off: no capital gate row");
+        av::SiteE sm;
+        sm.a_in_table = true;
+        sm.frame_ms = 16;
+        sm.b_gate = sm.gates_live = sm.gate_state = true;
+        sm.a_order = 4;
+        sm.a_age_ms = 50;
+        sm.lead_age_ms = 0xffffffffu; // outside the lead-in window
+        sm.gate_small_guard = true;
+        check(av::site_e_verdict(sm) == av::EVerdict::suppress_gate_small, "a16 E: a small ship on order 4 to its own gate outside the lead-in window under the guard (G1 extension)");
+        sm.gate_small_guard = false;
+        check(av::site_e_verdict(sm) != av::EVerdict::suppress_gate_small, "a16 E: without the guard the engine's warn stays");
+    }
+    // option-off identity: with the amendment-16 inputs at their defaults (what the DLL leaves when ship_steering_gates_capital is
+    // off) the verdict equals amendment 15's for every input (random sweep over every field)
+    {
+        Lcg rng{12345};
+        unsigned diff = 0, n = 0;
+        auto pick = [&](unsigned k) { return unsigned(rng.next()) % k; };
+        const std::uint16_t orders[7] = {0, 4, 5, 0x12, 0x14, 0x1f, 0x1e};
+        const std::uint32_t ages[6] = {0, 100, 240, 340, 2000, 0xffffffffu};
+        for (unsigned it = 0; it < 400000; ++it) {
+            av::SiteE in;
+            in.a_order = orders[pick(7)];
+            in.a_target = pick(2) ? 0x4000 : 0;
+            in.a_in_table = pick(4) != 0;
+            in.a_age_ms = ages[pick(6)];
+            in.frame_ms = pick(2) ? 16 : 70;
+            in.a_capital = pick(2);
+            in.codes_readable = pick(8) != 0;
+            in.r_a = pick(2) ? 1000.0f : 60.0f;
+            in.b_gate = pick(2);
+            in.gates_live = pick(4) != 0;
+            in.capital_policy = pick(2);
+            in.gate_state = pick(3) != 0;
+            in.gate_capital = pick(2);
+            in.gate_join = pick(2);
+            in.gate_handover = pick(2);
+            in.p2_age_ms = ages[pick(6)] * 100;
+            in.lead_age_ms = ages[pick(6)];
+            in.b_ship = !in.b_gate && pick(4) != 0;
+            in.b_readable = pick(6) != 0;
+            in.b_capital_code = pick(2);
+            in.r_b = pick(2) ? 20.0f : 900.0f;
+            in.b_flags = pick(2) ? 0x80000u : pick(2) ? 0x80200u : 0u;
+            in.b_docked = pick(8) == 0;
+            in.b_target = pick(2) ? 0x4000 : 0;
+            in.b_order = orders[pick(7)];
+            in.b_class_masked = pick(8) == 0;
+            in.b_is_a_leader = pick(6) == 0;
+            in.b_member_current = pick(3) == 0;
+            in.d = pick(3) == 0 ? -1.0f : pick(2) ? 500.0f : 3000.0f;
+            in.avoidance_on = pick(4) != 0;
+            in.b_resolved = pick(3) == 0;
+            ++n;
+            if (av::site_e_verdict(in) != av::site_e_verdict_a15(in)) ++diff;
+        }
+        std::snprintf(why, sizeof why, "a16 option-off: site E's verdict equals amendment 15's on %%.0f random inputs (differences %%.0f)");
+        checkf(diff == 0, why, double(n), double(diff));
+    }
+    // the hull width reader over a synthetic node tree (render-node-bounds.md section 6.1)
+    {
+        FakeMem mem;
+        const std::uint32_t OBJ = 0x100000, ROOT = 0x110000, C1 = 0x120000, C2 = 0x130000, C3 = 0x140000, SENT = 0x150000;
+        const std::uint32_t CR = 0x200000, H = 0x210000, BK = 0x220000, E1 = 0x230000, E2 = 0x240000, M1 = 0x250000, M2 = 0x260000, ARR1 = 0x270000,
+                            ARR2 = 0x280000, L0 = 0x290000, L1 = 0x2a0000, L2 = 0x2b0000;
+        mem.put(OBJ + 0x70, ROOT);
+        for (int i = 0; i < 3; ++i) mem.put(ROOT + 0x80 + 4 * i, 0x10000);
+        mem.put(ROOT + 0x0c, C1);
+        mem.put(C1, C3);
+        mem.put(C3, C2);
+        mem.put(C2, SENT);
+        mem.put(0x00608518, CR);
+        mem.put(CR + 0x14, H);
+        mem.put(H, BK);
+        mem.put(H + 4, 8);
+        mem.put(BK + 4 * (6 & 7), E1); // body 5: key 6
+        mem.put(E1 + 4, 6);
+        mem.put(E1 + 8, M1);
+        mem.put(BK + 4 * (8 & 7), E2); // body 7: key 8
+        mem.put(E2 + 4, 8);
+        mem.put(E2 + 8, M2);
+        mem.put(M1 + 0x10, 2);
+        mem.put(M1 + 0x0c, ARR1);
+        mem.put(ARR1, L0);
+        mem.put(ARR1 + 4, L1);
+        const std::int32_t l0[3] = {19661, 21627, 65536}, l1[3] = {20972, 21000, 65000}; // LOD 1 (the coarse collision LOD) wider in x
+        for (int i = 0; i < 3; ++i) {
+            mem.puts(L0 + 0x20 + 4 * i, l0[i]);
+            mem.puts(L1 + 0x20 + 4 * i, l1[i]);
+        }
+        auto node = [&](std::uint32_t c, std::int32_t id, std::uint32_t flags, std::int32_t scale, const std::int32_t off[3], bool rotated) {
+            mem.puts(c + 0x140, id);
+            mem.put(c + 0x12c, flags);
+            mem.puts(c + 0x70, scale);
+            for (int i = 0; i < 3; ++i) {
+                mem.put(c + 0x80 + 4 * i, 0x10000);
+                mem.puts(c + 0x30 + 4 * i, off[i]);
+            }
+            for (int r = 0; r < 3; ++r)
+                for (int k = 0; k < 3; ++k) mem.puts(c + 0x40 + 0x10 * r + 4 * k, rotated ? ((r + 1) % 3 == k ? 0x10000 : 0) : (r == k ? 0x10000 : 0));
+        };
+        const std::int32_t o1[3] = {0, 0, 35 * 500}, o2[3] = {300 * 500, 100 * 500, 0}, o3[3] = {0, 0, 0};
+        node(C1, 5, 0x1000000, 546000, o1, false);  // the hull: e = ext x 546000 / 65536 units
+        node(C3, 9, 0x8000000, 999999, o3, false);  // no collision tree (a jet): skipped, its body is never looked up
+        node(C2, 7, 0x1000000, 50000, o2, true);    // a rotated turret: bounded by |e| per axis
+        mem.put(M2 + 0x10, 1);
+        mem.put(M2 + 0x0c, ARR2);
+        mem.put(ARR2, L2);
+        for (int i = 0; i < 3; ++i) mem.puts(L2 + 0x20 + 4 * i, 6554);
+        const double ex = double((std::int64_t(20972) * 546000 + 0x8000) >> 16) / 500.0, ey = double((std::int64_t(21627) * 546000 + 0x8000) >> 16) / 500.0;
+        const double w_hull = std::sqrt(ex * ex + ey * ey);
+        const double ex0 = double((std::int64_t(19661) * 546000 + 0x8000) >> 16) / 500.0;
+        const wk::HullWidth h = wk::hull_width(mem, OBJ, 1092.0f);
+        std::snprintf(why, sizeof why, "a16 width: hull + turret + a skipped jet: w %%.1f m = the hull's sqrt(e_x^2 + e_y^2) over all LODs %%.1f m (source lod, 2 parts)");
+        checkf(h.src == ln::WidthSrc::lod && h.parts == 2 && std::fabs(double(h.w_m) - w_hull) < 0.5, why, h.w_m, w_hull);
+        check(w_hull > std::sqrt(ex0 * ex0 + ey * ey) + 1.0, "a16 width: the coarse LOD's wider x is taken (not LOD 0 alone)");
+        {
+            FakeMem m2 = mem;
+            m2.put(E1 + 4, 99); // the hull's body missing from the cache: no data
+            const wk::HullWidth f = wk::hull_width(m2, OBJ, 1092.0f);
+            check(f.src == ln::WidthSrc::failed && f.w_m == 1092.0f, "a16 width: a cache miss -> w = r (fail)");
+            // review F4: the miss is retried (every 5 s, at most 3 times): the body in the cache by the retry gives the width
+            m2.put(E1 + 4, 6);
+            const wk::HullWidth g2 = wk::hull_width(m2, OBJ, 1092.0f);
+            const std::uint32_t t0 = 50000;
+            check(g2.src == ln::WidthSrc::lod && std::fabs(double(g2.w_m) - w_hull) < 0.5 && ln::width_reread(false, 0, 0, 0, t0) &&
+                      !ln::width_reread(true, std::uint8_t(ln::WidthSrc::lod), 0, t0, t0 + 60000) &&
+                      !ln::width_reread(true, std::uint8_t(ln::WidthSrc::failed), 0, t0, t0 + 4999) &&
+                      ln::width_reread(true, std::uint8_t(ln::WidthSrc::failed), 0, t0, t0 + 5000) &&
+                      ln::width_reread(true, std::uint8_t(ln::WidthSrc::failed), 2, t0, t0 + 5000) &&
+                      !ln::width_reread(true, std::uint8_t(ln::WidthSrc::failed), 3, t0, t0 + 60000),
+                  "a16 review F4: a failed width read is retried every 5 s at most 3 times (then w = r until the generation changes); the retry finds the body");
+        }
+        {
+            FakeMem m2 = mem;
+            m2.put(M1 + 0x10, 0);
+            check(wk::hull_width(m2, OBJ, 1092.0f).w_m == 1092.0f, "a16 width: an LOD count of 0 -> w = r");
+            m2 = mem;
+            m2.puts(L1 + 0x20, 0x20001);
+            check(wk::hull_width(m2, OBJ, 1092.0f).w_m == 1092.0f, "a16 width: an extent beyond 0x20000 -> w = r");
+            m2 = mem;
+            m2.puts(C1 + 0x70, 0);
+            check(wk::hull_width(m2, OBJ, 1092.0f).w_m == 1092.0f, "a16 width: an unscaled node (+0x70 = 0) -> w = r");
+            m2 = mem;
+            m2.put(OBJ + 0x70, 0);
+            check(wk::hull_width(m2, OBJ, 1092.0f).w_m == 1092.0f, "a16 width: no root node -> w = r");
+            m2 = mem;
+            m2.put(C1 + 0x12c, 0x8000000);
+            m2.put(C2 + 0x12c, 0x8000000);
+            check(wk::hull_width(m2, OBJ, 1092.0f).src == ln::WidthSrc::failed, "a16 width: no collision part at all -> w = r");
+            m2 = mem;
+            m2.put(H + 4, 6); // not a power of two
+            check(wk::hull_width(m2, OBJ, 1092.0f).w_m == 1092.0f, "a16 width: a hash size that is not a power of two -> w = r");
+            // review F7: the scale operands bounded to (0, 16.0] before the int64 products (a guard failure beyond)
+            m2 = mem;
+            m2.puts(C1 + 0x70, 16 * 65536 + 1);
+            const bool s_over = wk::hull_width(m2, OBJ, 1092.0f).src == ln::WidthSrc::failed;
+            m2 = mem;
+            m2.puts(C1 + 0x80, 0x7fffffff);
+            const bool a_over = wk::hull_width(m2, OBJ, 1092.0f).src == ln::WidthSrc::failed;
+            m2 = mem;
+            m2.puts(C1 + 0x70, 16 * 65536);
+            check(s_over && a_over && wk::hull_width(m2, OBJ, 1092.0f).src == ln::WidthSrc::lod,
+                  "a16 review F7: a node scale or axis scale above 16.0 is a guard failure (w = r); 16.0 itself reads");
+            // review F3: the walk's node budget 128 (the installed capitals have at most 108 parts): 100 parts read, 140 fail closed
+            for (unsigned n_parts : {100u, 140u}) {
+                FakeMem m3 = mem;
+                const std::uint32_t base = 0x400000;
+                m3.put(ROOT + 0x0c, C1);
+                m3.put(C1, base);
+                for (unsigned k = 0; k + 1 < n_parts; ++k) {
+                    const std::uint32_t c = base + 0x200 * k;
+                    m3.put(c + 0x12c, 0x8000000); // no collision tree: visited, no body read
+                    m3.puts(c + 0x70, 65536);
+                    for (int i = 0; i < 3; ++i) {
+                        m3.put(c + 0x80 + 4 * i, 0x10000);
+                        for (int k2 = 0; k2 < 3; ++k2) m3.puts(c + 0x40 + 0x10 * i + 4 * k2, i == k2 ? 0x10000 : 0);
+                    }
+                    m3.put(c, k + 2 < n_parts ? c + 0x200 : SENT);
+                }
+                const wk::HullWidth hb = wk::hull_width(m3, OBJ, 1092.0f);
+                if (n_parts == 100)
+                    check(hb.src == ln::WidthSrc::lod && hb.nodes == 100, "a16 review F3: a 100-node hull tree is read within the 128-node budget");
+                else
+                    check(hb.src == ln::WidthSrc::failed, "a16 review F3: a 140-node tree exhausts the budget: w = r (bounded walk)");
+            }
+        }
+    }
+    // the slow join and the un-latch (join_evaluate16), M2 plant (W 10.1 deg/s, k 0.05, a 10 m/s^2, r_gate 1105)
+    {
+        core::JoinParams p;
+        p.W = 1843.0f / 65536.0f * 2.0f * float(M_PI);
+        p.alpha = p.W * 0.05f;
+        p.v_max = 110.0f;
+        p.a_lin = 10.0f;
+        p.r_gate = 1105.0f;
+        core::JoinState j;
+        j.mode = core::JoinMode::fallback;
+        j.reason = core::JoinReason::pred_none;
+        j.plane = core::JoinPlane{-3000.0f, 0.0f, 0.0f, 0.0f, 0.0f, 25.0f};
+        j.params = p;
+        j.plane_ms = 1000;
+        core::JoinEval ev;
+        check(core::join_evaluate16(j, 1000, 250, &ev) && ev.unlatched && j.mode == core::JoinMode::join && j.v_cmd == 100.0f && j.pred_reached,
+              "a16 join: a pred_none fallback whose state converges again un-latches to join at 100 m/s");
+        j.mode = core::JoinMode::fallback;
+        j.reason = core::JoinReason::past_x;
+        j.eval_ms = 0;
+        check(!core::join_evaluate16(j, 3000, 2500, &ev), "a16 join: past_x is final (never re-evaluated)");
+        // the G1 state (1645 m lateral, 0.70 r before X, 91 deg toward the line, 25 m/s): no candidate within P2's acceptance; slow
+        // join at the smallest predicted nose when one reaches the plane within 100 m / 20 deg
+        j = core::JoinState{};
+        j.mode = core::JoinMode::join;
+        j.plane = core::JoinPlane{-0.70f * 1105.0f, 1645.0f, -91.0f * float(M_PI / 180.0), -91.0f * float(M_PI / 180.0), 0.0f, 25.0f};
+        j.params = p;
+        j.plane_ms = 1000;
+        check(core::join_evaluate16(j, 1000, 250, &ev), "a16 join: the G1 state is evaluated");
+        int slow = -1;
+        bool any_accept = false, e_ok = true;
+        for (unsigned i = 0; i < core::kJoinCandidateCount; ++i) {
+            if (ev.cand[i].grade >= 1) any_accept = true;
+            if (core::slow_join_ok(ev.cand[i]) && (slow < 0 || ev.cand[i].nose < ev.cand[slow].nose)) slow = int(i);
+            if (ev.cand[i].grade >= 0 && ev.cand[i].e_max < 1645.0f - 1.0f) e_ok = false; // e_max tracks the start offset
+        }
+        std::snprintf(why, sizeof why, "a16 join: G1 from join mode: no candidate accepted, mode %s at %%.0f m/s (the smallest slow nose %%.1f deg), the predictions all computed",
+                      j.mode == core::JoinMode::slow_join ? "slow_join" : j.mode == core::JoinMode::fallback ? "fallback" : "?");
+        checkf(!any_accept && e_ok && ev.predictions == 4 &&
+                   (slow >= 0 ? (j.mode == core::JoinMode::slow_join && ev.slow_entered && j.v_cmd == core::kJoinCandidates[slow])
+                              : (j.mode == core::JoinMode::fallback && ev.fell_back)),
+               why, j.v_cmd, slow >= 0 ? ev.cand[slow].nose : -1.0f);
+        // the join-mode verdict equals join_choose's (amendment 15) on states where a candidate is accepted
+        Lcg rng{777};
+        unsigned same = 0, cases = 0, slow16 = 0, fb16 = 0;
+        for (unsigned it = 0; it < 120; ++it) {
+            core::JoinState a, b;
+            a.mode = b.mode = core::JoinMode::join;
+            const float s = -float(200 + rng.next() % 6000), y = float(rng.next() % 3000), psi = (float(rng.next() % 1800) - 900.0f) * float(M_PI / 1800.0);
+            const float v = float(10 + rng.next() % 90);
+            a.plane = b.plane = core::JoinPlane{s, y, psi, psi, 0.0f, v};
+            a.params = b.params = p;
+            a.plane_ms = b.plane_ms = 1000;
+            a.v_cmd = b.v_cmd = core::kJoinCandidates[rng.next() % 4];
+            bool fell, slowed;
+            unsigned np;
+            core::join_evaluate(a, 1000, 250, &fell, &slowed, &np);
+            core::join_evaluate16(b, 1000, 250, &ev);
+            if (!fell) {
+                ++cases;
+                if (b.mode == core::JoinMode::join && b.v_cmd == a.v_cmd && ev.slowed == slowed) ++same;
+            } else if (b.mode == core::JoinMode::slow_join)
+                ++slow16;
+            else if (b.mode == core::JoinMode::fallback)
+                ++fb16;
+        }
+        std::snprintf(why, sizeof why, "a16 join: join mode chooses the amendment-15 speed on every accepted state (%%.0f of %%.0f)");
+        checkf(same == cases && cases > 10, why, double(same), double(cases));
+        std::printf("a16 join sweep: 120 random join states: %u accepted (identical to amendment 15), %u slow_join, %u fallback\n", cases, slow16, fb16);
+    }
+    // ---- amendment 16b (section 16.10) and the review fixes F1, F2, F6 ----------------------------------------------------------
+    {
+        const float sM = -10747.75f; // the slot-0 Titan's start at 5 r before its X (absolute s along F)
+        const float W45 = 0.45f;
+        // M-c at t = 0: the in-lane Titan and the slot-2 M2 at q -1,250 abreast, nose 30 deg toward it, both 100 m/s: (c), the M2
+        // trails (the tie: not in its corridor), obliged, its sequencing cap at the floor; the Titan uncapped
+        {
+            ln::Board b;
+            lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 0, 0, sM, 0, 100, T, W45 * T, now);
+            lane_put(b, 0x9800, 4, core::JoinMode::join, false, 0, 0, -1, -666, 0, -1250, 0, sM, 30, 100, 755, W45 * 755, now);
+            const ln::Gate& g = *ln::gate_of(b, kLaneGate);
+            ln::PairInfo info;
+            const ln::Verdict v = ln::verdict_sym(g, *ln::find(g, 0x9000), *ln::find(g, 0x9800), now, 250, true, &info);
+            ln::Pass pm, pt;
+            const bool bm = ln::run_pass(b, kLaneGate, 0x9800, 0x9800 ^ 0x5a000000u, 4, now, 250, true, &pm);
+            ln::run_pass(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 4, now, 250, true, &pt);
+            std::snprintf(why, sizeof why, "a16b M-c: abreast at 30 deg is (c) (lat slack %%.0f m < 0, the M2 trails), obliged, the M2 at the floor (cap %%.4f), the Titan uncapped [%s]",
+                          ln::verdict_name(v));
+            checkf(v == ln::Verdict::cross && info.watch && info.lat_gap < 0.0f && info.trail == 2 && bm && pm.seq_trail[0] && pm.seq_cap == ln::kFollowFloorMs &&
+                       pt.cap() < 0.0f,
+                   why, info.lat_gap, pm.seq_cap);
+        }
+        // scenario M t = 0 (seq_geometry.txt): the Colossus s1 in lane and the M2 s3 2.7 km beyond it (18 m behind, 16 deg): (s) lat;
+        // the Titan s0 and the M2 s2 2,641 m behind it across slot 0's lane (-8 deg, 110 m/s both): (s) along
+        {
+            ln::Board b;
+            lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 666, 0, 666, 0, -10607.75f, 0, 100, 1022, W45 * 1022, now, 0.0f, 0.0088f, 5.0f);
+            lane_put(b, 0x9800, 4, core::JoinMode::join, false, 0, 0, -1, 1332, 0, 3366, 0, -10626.25f, -16, 100, 755, W45 * 755, now);
+            const ln::Gate& g = *ln::gate_of(b, kLaneGate);
+            ln::PairInfo i1;
+            const ln::Verdict v1 = ln::verdict_sym(g, *ln::find(g, 0x9000), *ln::find(g, 0x9800), now, 250, true, &i1);
+            ln::Board c;
+            lane_put(c, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 0, 0, sM, 0, 110, T, W45 * T, now);
+            lane_put(c, 0x9800, 4, core::JoinMode::join, false, 0, 0, -1, -666, 0, 700, 0, -13388.75f, -8, 110, 755, W45 * 755, now);
+            const ln::Gate& gc = *ln::gate_of(c, kLaneGate);
+            ln::PairInfo i2;
+            const ln::Verdict v2 = ln::verdict_sym(gc, *ln::find(gc, 0x9000), *ln::find(gc, 0x9800), now, 250, true, &i2);
+            std::snprintf(why, sizeof why, "a16b t = 0: Colossus s1 / M2 s3 (s) lat (slack %%.0f m) and Titan s0 / M2 s2 (s) along (slack %%.0f m) [%s %s]",
+                          ln::verdict_name(v1), ln::verdict_name(v2));
+            checkf(v1 == ln::Verdict::seq && i1.route == ln::Route::lat && v2 == ln::Verdict::seq && i2.route == ln::Route::along, why, i1.lat_gap,
+                   i2.along_gap);
+            ln::Pass p;
+            ln::run_pass(c, kLaneGate, 0x9800, 0x9800 ^ 0x5a000000u, 4, now, 250, true, &p);
+            const float Dx = std::sqrt(T * T + W45 * W45 * T * T) + std::sqrt(755.0f * 755.0f + W45 * W45 * 755.0f * 755.0f) + 100.0f;
+            std::snprintf(why, sizeof why, "a16b: the M2 s2 trailing the Titan s0 is obliged (crossing its lane), D_x %%.0f m (= h_T + h_L + 100), cap %%.1f m/s");
+            checkf(p.seq_trail[0] && std::fabs(p.seq_Dx - Dx) < 1.0f && p.seq_cap > 0.0f, why, p.seq_Dx, p.seq_cap);
+            // option-off: no (s), no cap
+            ln::PairInfo i3;
+            check(ln::verdict_sym(gc, *ln::find(gc, 0x9000), *ln::find(gc, 0x9800), now, 250, false, &i3) == ln::Verdict::cross &&
+                      ln::run_pass(c, kLaneGate, 0x9800, 0x9800 ^ 0x5a000000u, 4, now, 250, false, &p) && p.cap() < 0.0f,
+                  "a16b option-off (ship_steering_gates_capital_seq = 0): the pair stays (c), no sequencing cap");
+        }
+        // the sequencing cap: the sum, stopping and relative forms against a mirror of seq_cap_undershoot.py's seq_cap (ages 0, the
+        // latency = fresh), floor 1 unit/s; the leader's credit only in lane
+        {
+            unsigned bad = 0, n = 0;
+            for (float vL : {0.0f, 40.0f, 100.0f})
+                for (float vT : {0.0f, 60.0f, 100.0f})
+                    for (float ds : {1500.0f, 2600.0f, 4000.0f, 9000.0f})
+                        for (float aT : {2.0f, 5.0f, 10.0f})
+                            for (float aL : {2.0f, 5.0f, 10.0f}) {
+                                ln::Board b;
+                                lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 0, 0, -3000.0f, 0, vL, T, W45 * T, now, 0.0f, 0.0088f, aL);
+                                lane_put(b, 0x9800, 4, core::JoinMode::join, false, 0, 0, -1, -666, 0, -900, 0, -3000.0f - ds, 0, vT, 755, W45 * 755, now, 0.0f,
+                                         0.0088f, aT);
+                                const ln::Gate& g = *ln::gate_of(b, kLaneGate);
+                                ln::Side sT, sL;
+                                ln::side_of(g, *ln::find(g, 0x9800), nullptr, nullptr, 4, now, &sT);
+                                ln::side_of(g, *ln::find(g, 0x9000), nullptr, nullptr, 4, now, &sL);
+                                const double Dx = double(ln::find(g, 0x9800)->h) + double(ln::find(g, 0x9000)->h) + 100.0;
+                                const double room = double(ds) - Dx - double(vT) * 0.25;
+                                double want = 1.0 / 500.0;
+                                if (room > 0) {
+                                    double cap = std::min(double(vL) + std::sqrt(2 * aT * room), std::sqrt(double(vL) * vL * aT / aL + 2 * aT * room));
+                                    if (aT > aL && vL > 0) {
+                                        const double vrel = std::sqrt(2 * (aT - aL) * room);
+                                        if (vrel * aL <= vL * (aT - aL)) cap = std::min(cap, vL + vrel);
+                                    }
+                                    want = std::max(want, cap);
+                                }
+                                const double got = ln::seq_cap(sT, sL, ln::Foot::in_lane, 250);
+                                ++n;
+                                if (std::fabs(got - want) > 0.01 + 1e-4 * want) ++bad;
+                            }
+            std::snprintf(why, sizeof why, "a16b: the sequencing cap equals the kinematic sweep's seq_cap (seq_cap_undershoot.py, cap 16b) on %%.0f cases (%%.0f differ)");
+            checkf(bad == 0, why, double(n), double(bad));
+        }
+        // review F1: site E suppresses only under a certificate (footprint (a), (s) lat / along); a corridor-only (a) pair keeps the warn
+        {
+            const bool c_foot = ln::certified(ln::Verdict::exempt, ln::Route::foot), c_corr = ln::certified(ln::Verdict::exempt, ln::Route::corr);
+            const bool c_lat = ln::certified(ln::Verdict::seq, ln::Route::lat), c_along = ln::certified(ln::Verdict::seq, ln::Route::along);
+            const bool c_b = ln::certified(ln::Verdict::follow, ln::Route::none), c_c = ln::certified(ln::Verdict::cross, ln::Route::none);
+            av::SiteE in;
+            in.a_in_table = true;
+            in.a_age_ms = 50;
+            in.frame_ms = 16;
+            in.b_ship = true;
+            in.a_order = 4;
+            in.lane_exempt = c_corr;
+            const av::EVerdict ve = av::site_e_verdict(in);
+            check(c_foot && !c_corr && c_lat && c_along && !c_b && !c_c && ve != av::EVerdict::suppress_lane,
+                  "a16b review F1: certified = footprint (a) or (s); the corridor-only (a) pair passes E (the engine's warn stays)");
+        }
+        // review F6: the verdict from the stored board is symmetric (both directions, the more severe); with sequencing off it equals
+        // the as-built pair_verdict (option-off) on random side pairs
+        {
+            Lcg rng{4242};
+            auto uni = [&](float lo, float hi) { return lo + (hi - lo) * float(rng.next()) / 32767.0f; };
+            unsigned asym_sym = 0, off_diff = 0, asym_built = 0, n = 0;
+            const float lanes_x[5] = {0, 666, -666, 1332, -1332}, rs[3] = {755, 1022, 1092}, ws[3] = {0.25f, 0.45f, 1.0f};
+            const core::JoinMode modes[3] = {core::JoinMode::join, core::JoinMode::slow_join, core::JoinMode::fallback};
+            for (unsigned it = 0; it < 200000; ++it) {
+                ln::Board b;
+                const std::uint32_t ptr[2] = {0x9000, 0x9800};
+                for (int k = 0; k < 2; ++k) {
+                    const float lx = lanes_x[rng.next() % 5], r = rs[rng.next() % 3], wr = ws[rng.next() % 3];
+                    const int kind = rng.next() % 4; // 0..1 order 4, 2 order 5, 3 the hand-over
+                    const float near = kind == 0 ? uni(-80, 80) : uni(-1500, 1500);
+                    lane_put(b, ptr[k], kind == 2 ? 5 : 4, modes[rng.next() % 3], rng.next() % 2, uni(0, 250), uni(0, 150), uni(-1, 25), lx, 0,
+                             lx + near, uni(-300, 300), uni(-12000, -3000), uni(-60, 60), uni(0, 110), r, wr * r, now - std::uint32_t(k == 0 ? 200 + rng.next() % 100 : rng.next() % 200),
+                             uni(0, 0.2f), 0.0088f, rng.next() % 2 ? 5.0f : 10.0f);
+                    if (kind == 3) {
+                        const ln::Gate& g0 = *ln::gate_of(b, kLaneGate);
+                        const ln::Entry& e0 = *ln::find(g0, ptr[k]);
+                        const float x[3] = {e0.q[0], e0.q[1], e0.s}, f[3] = {0, 0, 1};
+                        ln::handover(b, kLaneGate, ptr[k], ptr[k] ^ 0x5a000000u, now - std::uint32_t(k == 0 ? 300 : 0), x, f, uni(0, 100)); // P2 after the refresh
+                        if (k == 0) { // its hand-over may be minutes old: shift the stored state back (the board's clock is monotonic)
+                            ln::Entry& em = *ln::find(*ln::gate_of(b, kLaneGate), ptr[k]);
+                            const std::uint32_t back = std::uint32_t(rng.next() % 30000);
+                            em.stamp_ms -= back;
+                            em.handover_ms -= back;
+                        }
+                    }
+                }
+                const ln::Gate& g = *ln::gate_of(b, kLaneGate);
+                const ln::Entry &ea = *ln::find(g, 0x9000), &eb = *ln::find(g, 0x9800);
+                ln::PairInfo iab, iba;
+                const ln::Verdict vab = ln::verdict_sym(g, ea, eb, now, 250, true, &iab), vba = ln::verdict_sym(g, eb, ea, now, 250, true, &iba);
+                if (vab != vba || ln::certified(vab, iab.route) != ln::certified(vba, iba.route)) ++asym_sym;
+                ln::Side sa, sb;
+                ln::side_of(g, ea, nullptr, nullptr, ea.order, now, &sa);
+                ln::side_of(g, eb, nullptr, nullptr, eb.order, now, &sb);
+                if (ln::pair_verdict16b(sa, sb, 250, false) != ln::pair_verdict(sa, sb)) ++off_diff;
+                if (ln::pair_verdict(sa, sb) != ln::pair_verdict(sb, sa)) ++asym_built;
+                n += 2;
+            }
+            std::snprintf(why, sizeof why, "a16b review F6: the symmetric verdict is equal both ways on %%.0f random side pairs (differences %%.0f); option-off equals pair_verdict");
+            checkf(asym_sym == 0 && off_diff == 0, why, double(n), double(asym_sym + off_diff));
+            std::printf("a16b random side pairs: %u, as-built pair_verdict asymmetric on %u (the stored-state pair, both directions), symmetric verdict 0 by construction\n", n,
+                        asym_built);
+        }
+        // review F2: site B carries the pass's cap on the module's writes, lowering only: the gate write's v_ref (not when v_ref is no
+        // write), the lowering clamp's cornering term under site B's own computation (the amendment-14 v_slip included), without the
+        // final 10 m/s floor; the capped value never above the uncapped one
+        {
+            core::Ship s{};
+            s.flags = core::kShipFlagGate | core::kShipFlagClamp;
+            s.v_ref = 100.0f;
+            const bool g1 = ln::apply_cap(s, 3.0f) && s.v_ref == 3.0f;
+            core::Ship z{};
+            z.flags = core::kShipFlagGate | core::kShipFlagClamp; // v_ref 0: the module would not write
+            const bool g2 = !ln::apply_cap(z, 3.0f) && z.v_ref == 0.0f;
+            unsigned worse = 0, n = 0;
+            const float x[3] = {0, 0, 0};
+            for (bool ramp : {false, true})
+                for (float vc : {0.0f, 5.0f, 40.0f})
+                    for (float slip : {-6.0f, 0.0f, 4.0f})
+                        for (float cap : {1.0f / 500.0f, 7.0f, 25.0f, 200.0f})
+                            for (float d : {500.0f, 3000.0f}) {
+                                core::Ship u{};
+                                u.flags = std::uint16_t(core::kShipFlagClamp | (ramp ? core::kShipFlagRamp : 0));
+                                u.order = 4;
+                                u.stamp_ms = 1000;
+                                u.P[2] = d;
+                                u.d_arr = 200.0f;
+                                u.a_lin = 10.0f;
+                                u.v_ref = 20.0f;
+                                u.v_corner = vc;
+                                u.v_slip = slip;
+                                core::Ship c = u;
+                                ln::apply_cap(c, cap);
+                                const float vu = core::clamp_for(u, x, 4, 1100, 250), vk = core::clamp_for(c, x, 4, 1100, 250);
+                                const std::int32_t wu = core::clamp_units(vu, 60000), wk = core::clamp_units(vk, 60000);
+                                const float eff_u = wu > 0 ? float(wu) : 60000.0f, eff_k = wk > 0 ? float(wk) : 60000.0f;
+                                ++n;
+                                if (eff_k > eff_u || (vk > 0.0f && vk > cap * 1.0001f && !(vu > 0.0f && vk <= vu))) ++worse;
+                            }
+            core::Ship f{};
+            f.flags = core::kShipFlagClamp;
+            f.order = 4;
+            f.stamp_ms = 1000;
+            ln::apply_cap(f, 1.0f / 500.0f);
+            const std::int32_t one = core::clamp_units(core::clamp_for(f, x, 4, 1100, 250), 50000);
+            std::snprintf(why, sizeof why, "a16b review F2: the cap lowers the gate write (not a non-write) and the clamp path under site B's own computation: never above the uncapped write (%%.0f of %%.0f), 1 unit/s reachable");
+            checkf(g1 && g2 && worse == 0 && one == 1, why, double(n - worse), double(n));
+            // the avoidance emergency on the gate path (decide(): v_ref = the order's, 0; the emergency ramp is the write, floored at
+            // 10 m/s): the cap is not applied there, so a cap below the floor yields to it (accepted, ledger)
+            core::Ship e{};
+            e.flags = core::kShipFlagGate | core::kShipFlagClamp;
+            e.order = 4;
+            e.stamp_ms = 1000;
+            e.v_ref = 0.0f;
+            e.v_emergency = 3.0f;
+            const bool e_applied = ln::apply_cap(e, 1.0f / 500.0f);
+            const float ve = core::clamp_for(e, x, 4, 1100, 250);
+            std::snprintf(why, sizeof why, "a16b: under an avoidance emergency the gate write is the emergency ramp floored at 10 m/s (%%.1f m/s), the 1 unit/s cap not applied (%%.0f)");
+            checkf(!e_applied && ve == core::kFloorMs, why, ve, e_applied ? 1.0 : 0.0);
+        }
+        // hysteresis on the in-lane classification (section 16.11, ratified addition), scenario-M geometry: the slot-1 Colossus next
+        // to the in-lane slot-0 Titan. Entered at 20 m / 2 deg, then oscillating about the entry threshold (110-140 m, 9-10 deg) it
+        // stays in lane (held), the pair stays (a) by the corridor and the Colossus's resolve never detours against the Titan; at 13 deg
+        // or 160 m it drops out (c) / (s); a ship that never entered is not in lane at 110 m / 9 deg
+        {
+            const float sT = -10747.75f, sC = -10607.75f;
+            auto put_titan = [&](ln::Board& b, std::uint32_t t) {
+                lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 0, 0, sT, 0, 100, T, W45 * T, t);
+            };
+            auto put_col = [&](ln::Board& b, std::uint32_t t, float off, float deg) {
+                return lane_put(b, 0x9800, 4, core::JoinMode::join, true, 10, 0, 1, 666, 0, 666 - off, 0, sC, -deg, 100, 1022, W45 * 1022, t, 0.02f,
+                                0.0088f, 5.0f);
+            };
+            auto titan_obstacle = [&](std::uint32_t t) {
+                (void)t;
+                av::Obstacle o{};
+                o.x[0] = 0;
+                o.x[2] = sT;
+                o.v[2] = 100;
+                o.r = T;
+                o.ptr = 0x9000;
+                o.leader = kLaneGate;
+                o.order = 4;
+                o.kind = std::uint8_t(av::Kind::ship);
+                o.size = 1;
+                o.id = 0x9000 ^ 0x5a000000u;
+                return o;
+            };
+            auto col_resolve = [&](ln::Board& b, std::uint32_t t, float off, float deg, bool bind, av::Result* out) {
+                ln::Pass p;
+                const bool bound = ln::run_pass(b, kLaneGate, 0x9800, 0x9800 ^ 0x5a000000u, 4, t, 250, true, &p);
+                static av::Snapshot sn;
+                sn = av::Snapshot{};
+                sn.count = 1;
+                sn.max_r = T;
+                sn.items[0] = titan_obstacle(t);
+                av::Self s{};
+                const float th = deg * float(M_PI / 180.0);
+                s.x[0] = 666 - off;
+                s.x[2] = sC;
+                s.f[0] = -std::sin(th);
+                s.f[2] = std::cos(th);
+                s.up[1] = 1;
+                s.v = 100;
+                s.r = 1022;
+                s.a = 5;
+                s.omega = 0.15f;
+                s.alpha = 0.0075f;
+                s.ptr = 0x9800;
+                s.target = kLaneGate;
+                s.order = 4;
+                s.capital = true;
+                s.exclude_target = true;
+                av::lane_bind(s, bind && bound ? &p : nullptr);
+                av::ShipAvoid st{};
+                st.obj = 0x9800;
+                const float P[3] = {666, 0, -3000};
+                *out = av::resolve(sn, nullptr, 0, s, P, st, t);
+                return bound ? ln::pass_verdict(p, 0x9000) : ln::Verdict::none;
+            };
+            ln::Board b;
+            std::uint32_t t = now;
+            put_titan(b, t);
+            put_col(b, t, 20, 2);
+            unsigned held = 0, exempt = 0, detours = 0, steps = 0, unbound_conflicts = 0;
+            const float offs[4] = {110, 140, 125, 135}, degs[4] = {9.0f, 10.0f, 9.5f, 9.8f};
+            for (unsigned k = 0; k < 40; ++k) {
+                t += 50;
+                put_titan(b, t);
+                const float off = offs[k % 4], deg = degs[k % 4];
+                put_col(b, t, off, deg);
+                const ln::Gate& g = *ln::gate_of(b, kLaneGate);
+                ln::Side sd;
+                ln::side_of(g, *ln::find(g, 0x9800), nullptr, nullptr, 4, t, &sd);
+                held += ln::lane_state(sd) == 2 ? 1u : 0u;
+                av::Result rr, ru;
+                exempt += col_resolve(b, t, off, deg, true, &rr) == ln::Verdict::exempt ? 1u : 0u;
+                detours += rr.adjusted ? 1u : 0u;
+                col_resolve(b, t, off, deg, false, &ru);
+                unbound_conflicts += ru.conflicts ? 1u : 0u;
+                ++steps;
+            }
+            std::snprintf(why, sizeof why, "a16b hysteresis: oscillating at 110-140 m / 9-10 deg the Colossus stays in lane (held %%.0f of 40) and (a) with the Titan, never detoured (%%.0f detours; unbound: conflicts in every step)");
+            checkf(held == steps && exempt == steps && detours == 0 && unbound_conflicts == steps, why, double(held), double(detours));
+            // out by the nose (13 deg) or the offset (160 m): (c) or (s), no longer in lane
+            t += 50;
+            put_titan(b, t);
+            put_col(b, t, 120, 13.0f);
+            ln::PairInfo i13;
+            const ln::Gate& g = *ln::gate_of(b, kLaneGate);
+            const ln::Verdict v13 = ln::verdict_sym(g, *ln::find(g, 0x9000), *ln::find(g, 0x9800), t, 250, true, &i13);
+            ln::Board b2;
+            std::uint32_t t2 = now;
+            put_titan(b2, t2);
+            put_col(b2, t2, 20, 2);
+            t2 += 50;
+            put_titan(b2, t2);
+            put_col(b2, t2, 130, 9.0f);
+            t2 += 50;
+            put_titan(b2, t2);
+            put_col(b2, t2, 160, 5.0f);
+            const ln::Gate& g2 = *ln::gate_of(b2, kLaneGate);
+            const ln::Verdict v160 = ln::verdict_sym(g2, *ln::find(g2, 0x9000), *ln::find(g2, 0x9800), t2, 250, true);
+            // never entered: 110 m / 9 deg is not in lane
+            ln::Board b3;
+            put_titan(b3, now);
+            put_col(b3, now, 110, 9.0f);
+            const ln::Gate& g3 = *ln::gate_of(b3, kLaneGate);
+            ln::Side s3;
+            ln::side_of(g3, *ln::find(g3, 0x9800), nullptr, nullptr, 4, now, &s3);
+            std::snprintf(why, sizeof why, "a16b hysteresis: at 13 deg (%%.0f) or 160 m (%%.0f) the pair drops to (c)/(s) (3 / 4); never entered at 110 m / 9 deg: not in lane");
+            checkf((v13 == ln::Verdict::cross || v13 == ln::Verdict::seq) && (v160 == ln::Verdict::cross || v160 == ln::Verdict::seq) &&
+                       ln::lane_state(s3) == 0 && ln::find(g, 0x9800)->in_lane == 0,
+                   why, double(int(v13)), double(int(v160)));
+            // the bit is cleared when the ship is not committed: another order, or a gap longer than any fresh window
+            ln::Board b4;
+            put_titan(b4, now);
+            put_col(b4, now, 20, 2);
+            ln::mark(b4, kLaneGate, 0x9800, 0x12);
+            put_col(b4, now + 50, 120, 9.0f);
+            const bool cleared_mark = ln::find(*ln::gate_of(b4, kLaneGate), 0x9800)->in_lane == 0;
+            put_col(b4, now + 100, 20, 2);
+            put_col(b4, now + 100 + ln::kHoldGapMs + 1, 120, 9.0f);
+            check(cleared_mark && ln::find(*ln::gate_of(b4, kLaneGate), 0x9800)->in_lane == 0,
+                  "a16b hysteresis: the in-lane bit is cleared by another order and by a gap longer than any fresh window");
+        }
+        // the lapse memory (lane_seq_lapse): an along-route obliged pair of this trailer that turned (c)
+        {
+            ln::Board b;
+            lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 0, 0, sM, 0, 110, T, W45 * T, now);
+            lane_put(b, 0x9800, 4, core::JoinMode::join, false, 0, 0, -1, -666, 0, 700, 0, -13388.75f, -8, 110, 755, W45 * 755, now);
+            ln::Pass p;
+            ln::SeqMemory mem;
+            ln::run_pass(b, kLaneGate, 0x9800, 0x9800 ^ 0x5a000000u, 4, now, 250, true, &p);
+            const unsigned l0 = ln::seq_lapses(p, mem);
+            lane_put(b, 0x9800, 4, core::JoinMode::join, false, 0, 0, -1, -666, 0, 700, 0, sM - 1500.0f, -8, 110, 755, W45 * 755, now + 10);
+            lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 0, 0, sM, 0, 110, T, W45 * T, now + 10);
+            ln::run_pass(b, kLaneGate, 0x9800, 0x9800 ^ 0x5a000000u, 4, now + 10, 250, true, &p);
+            const unsigned l1 = ln::seq_lapses(p, mem);
+            check(l0 == 0 && l1 == 1, "a16b lane_seq_lapse: an along pair of a capped trailer turned (c) counts one lapse");
+        }
+        // a hand-over side's reach and drift for the lateral route: the nose taken at >= 8.11 deg, the drift over the whole time since P2
+        {
+            ln::Board b;
+            lane_put(b, 0x9000, 4, core::JoinMode::join, true, 10, 0, 1, 0, 0, 0, 0, -4394, 0, 100, T, W45 * T, now - 20000, 0.0f, 0.0088f, 10.0f);
+            const float x[3] = {0, 0, -4394}, f[3] = {0, 0, 1};
+            ln::handover(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, now - 20000, x, f, 100.0f);
+            const ln::Gate& g = *ln::gate_of(b, kLaneGate);
+            ln::Side sd;
+            ln::side_of(g, *ln::find(g, 0x9000), nullptr, nullptr, ln::find(g, 0x9000)->order, now, &sd);
+            float mot = 0;
+            const float rm = ln::seq_reach_moving(sd, 250, &mot);
+            check(rm >= W45 * T + T * 0.14107f - 1.0f, "a16b: a hand-over side's lateral reach is taken at >= 8.11 deg (the 0x1f rotate's end bound)");
+        }
+    }
+    // cost: one capital decision's lane work on a full gate (20 capitals): the refresh, the follow cap over the board, and the
+    // resolve's lane_pair for each of the 19 neighbours (host x86-64 -O2; the DLL is i686 SSE2)
+    {
+        ln::Board b;
+        for (unsigned k = 0; k < 20; ++k)
+            lane_put(b, 0x9000 + 0x10 * k, 4, core::JoinMode::join, true, 20, 0, 1, float((int(k % 5) - 2) * 666), -float(k / 5) * 666.0f,
+                     float((int(k % 5) - 2) * 666) + 5.0f, -float(k / 5) * 666.0f, -3000.0f - 500.0f * float(k), 1.0f, 100.0f, T, Tw, now);
+        av::Obstacle obs[20];
+        for (unsigned k = 0; k < 20; ++k) {
+            obs[k] = av::Obstacle{};
+            obs[k].x[0] = float((int(k % 5) - 2) * 666);
+            obs[k].x[1] = -float(k / 5) * 666.0f;
+            obs[k].x[2] = -3000.0f - 500.0f * float(k);
+            obs[k].ptr = 0x9000 + 0x10 * k;
+            obs[k].leader = kLaneGate;
+            obs[k].order = 4;
+            obs[k].kind = std::uint8_t(av::Kind::ship);
+            obs[k].size = 1;
+            obs[k].id = obs[k].ptr ^ 0x5a000000u;
+        }
+        const unsigned reps = 20000;
+        unsigned exempt = 0;
+        float sink = 0;
+        const auto t0 = std::chrono::steady_clock::now();
+        ln::Pass p;
+        for (unsigned it = 0; it < reps; ++it) {
+            lane_put(b, 0x9000, 4, core::JoinMode::join, true, 20, 0, 1, -1332, 0, -1327, 0, -3000, 1, 100, T, Tw, now + it % 50);
+            ln::run_pass(b, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 4, now + it % 50, 250, true, &p);
+            sink += p.cap();
+            av::Self s{};
+            s.x[0] = -1327;
+            s.x[2] = -3000;
+            s.f[2] = 1;
+            s.r = T;
+            s.capital = true;
+            s.order = 4;
+            s.ptr = 0x9000;
+            s.target = kLaneGate;
+            av::lane_bind(s, &p);
+            for (unsigned k = 1; k < 20; ++k) exempt += av::lane_pair(s, obs[k]) == ln::Verdict::exempt ? 1u : 0u;
+        }
+        g_lane_us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count() / reps;
+        std::snprintf(why, sizeof why, "a16 cost: the lane work of one capital decision on a full gate (20 capitals) %%.3f us <= 2 us (host; %%.0f exempt pairs)");
+        checkf(g_lane_us <= 2.0 && sink == sink, why, g_lane_us, double(exempt) / reps);
+        std::printf("a16 lane cost: %.3f us per capital decision on a full gate (refresh + the pass over 19 in both directions + 19 lane_pair, host)\n", g_lane_us);
+        // amendment 16b's worst case: every neighbour a watch pair (all 20 off their lanes in the aim-at-A fallback, 30 deg): the
+        // lateral and along certificates, the obligation and the sequencing cap for each of the 19 in both directions
+        ln::Board w;
+        for (unsigned k = 0; k < 20; ++k)
+            lane_put(w, 0x9000 + 0x10 * k, 4, core::JoinMode::fallback, false, 0, 0, -1, float((int(k % 5) - 2) * 666), -float(k / 5) * 666.0f,
+                     float((int(k % 5) - 2) * 666) + 600.0f, -float(k / 5) * 666.0f, -3000.0f - 500.0f * float(k), 30.0f, 100.0f, T, Tw, now, 0.05f);
+        unsigned watch = 0, obliged = 0;
+        const auto t1 = std::chrono::steady_clock::now();
+        for (unsigned it = 0; it < reps; ++it) {
+            lane_put(w, 0x9000, 4, core::JoinMode::fallback, false, 0, 0, -1, -1332, 0, -732, 0, -13000, 30, 100, T, Tw, now + it % 50, 0.05f); // the last: trails all
+            ln::run_pass(w, kLaneGate, 0x9000, 0x9000 ^ 0x5a000000u, 4, now + it % 50, 250, true, &p);
+            sink += p.cap();
+            watch += p.n_lat + p.n_along + p.n_watch_cross;
+            obliged += p.n_obliged;
+        }
+        const double us16b = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t1).count() / reps;
+        std::snprintf(why, sizeof why, "a16b cost: a decision's lane pass with 19 watch neighbours %%.3f us <= 2 us (host; %%.0f watch pairs per pass)");
+        checkf(us16b <= 2.0 && sink == sink, why, us16b, double(watch) / reps);
+        std::printf("a16b lane cost: %.3f us per capital decision with 19 watch neighbours (%.1f watch, %.1f obliged per pass; refresh + the pass, host)\n", us16b,
+                    double(watch) / reps, double(obliged) / reps);
+    }
+}
 static void amend15_scenarios() {
     amend15_unit_checks();
     for (const ShipType& t : kCapitals) // amendment 15 E-G: the join, the predictor, the fallback
@@ -5360,9 +6513,1144 @@ static void amend15_scenarios() {
         }
     std::printf("amendment 15 predictor: slowest evaluation %.1f us (host)\n", g_join_eval_us_max);
 }
+static void crowd_scenarios();
+static void amend16_scenarios() {
+    amend16_unit_checks();
+    crowd_scenarios();
+}
+// ---- scenario M: a capital crowd at one gate (capital-gate-transit.md section 16.5 with the ratification addendum) --------------
+// Five capitals on the grid slots 0..4 (a = 0, 1, -1, 2, -2) of one gate, with the calibrated plant (slip on), the module's whole
+// capital path per ship (the join, the slow join and the un-latch at the frame end, one capital per frame, the lane board and its
+// rule in the avoidance resolve, the follow cap, P2's keep verdict, the hand-over), the engine's sequence after P2 (order 0, the
+// 0x1f rotate, the wait for the through slot, order 5, P4, order 8), the engine's warn test 0x0044dd90 (close range and the cone
+// with the closing speed; the mesh test it uses for a capital B is not modelled) for every ordered pair with site E's verdict
+// (av::site_e_verdict over the inputs the DLL reads), the gate warn cone with E's gate row, and the box hulls (w, w, r) for the
+// contact check (the separating-axis test). The through slot: one holder per gate pair, granted when free (the same-direction
+// exemption: no cooldown), released when the holder has warped; a refused ship polls again after 1-11 s.
+static const ShipType kCrowdTitan = {"M2", "Titan-class M2", 110.0, 10.0, 1843.0 / 65536.0 * 360.0, 1092.0, 5, true};
+static const ShipType kCrowdM1 = {"M1", "Colossus-class M1", 113.0, 5.0, 1638.0 / 65536.0 * 360.0, 1022.0, 5, true};
+static const ShipType kCrowdM2s = {"M2", "Exterminator-class M2", 110.0, 10.0, 1843.0 / 65536.0 * 360.0, 755.0, 5, true};
+struct CrowdStart {
+    const ShipType* t;
+    int slot;
+    double lat_x, lat_y; // the start's lateral position (m, gate frame R, U)
+    double s;            // along F from the ship's X (m, negative: before it)
+    double psi_deg;      // the nose's angle off F toward +R (1e9: at A)
+    double v;            // the start speed (m/s; < 0: vmax)
+    long t0_ms = 0;      // the ship enters the scene (its order-4 leg starts) at this time
+    bool s_abs = false;  // amendment 16b sub-scenarios: s is the absolute along-F position (gate frame), not relative to the ship's X
+};
+struct CrowdSetup {
+    const char* tag = "";
+    const CrowdStart* starts = nullptr;
+    unsigned n = 0;
+    double w_r = 0.45;   // the hull half-width / r (the box), < 0: unreadable (w = r)
+    bool policy = true;  // ship_steering_gates_capital
+    long obstacle_until_ms = -1; // the un-latch variant: an uncommitted capital stands in the joiner's path until this time
+    int obstacle_ship = -1;      // ... in front of this ship (index)
+    long slot_busy_until_ms = 0; // the through slot is held by a ship outside the scene until then (scenario M-b)
+    int brake_trailer = -1, brake_leader = -1; // M-d: the leader's desired speed forced to 0 once the trailer's sequencing cap binds
+                                               // against it with ds - D_x < 100 m after the along route first held
+    bool brake_at_along = false;               // ... or at the first frame of the along route (the trailer never closes back to D_x)
+    bool report16b = false;                    // the 16b invariants (certificate, cap) reported, not asserted (w = r)
+};
+struct CrowdShip {
+    Model m;
+    const ShipType* t = nullptr;
+    int slot = 0, phase = 0;
+    long phase_t = 0;
+    bool alive = true, valid = false, pending = false;
+    double A[3] = {0, 0, 0}, X[3] = {0, 0, 0};
+    std::uint32_t obj = 0;
+    // the per-ship outcome
+    bool arrived = false, kept = false, launched = false, nan = false;
+    core::JoinMode cross_mode = core::JoinMode::none;
+    core::JoinKeep why = core::JoinKeep::mode;
+    double cross_err = -1, cross_v = 0, rot_s = 0, t_arrive = -1;
+    unsigned fallback_frames = 0, slow_frames = 0, slow_entries = 0, unlatches = 0, fell = 0;
+    float lane_cap_max = -1.0f; // the follow cap ever computed for it (< 0: never a trailing (b) ship)
+    // amendment 16b: ms at the sequencing cap's floor outside the hand-over, the first bound decision's cap, the lapse memory, M-d
+    long floor_ms = 0, floor_run_ms = 0, floor_run_max_ms = 0; // the total, the current and the longest continuous span at the floor
+    int first_bound = 0;        // 0 no bound decision yet, 1 the first bound decision had a sequencing cap at the floor, 2 it had none
+    ln::SeqMemory seq_mem;
+    bool forced_stop = false;
+};
+struct CrowdResult {
+    unsigned ships = 0, arrived = 0, launched = 0, kept = 0, slow_cross = 0, fallback_cross = 0, fallback_frames = 0, slow_entries = 0, unlatches = 0;
+    unsigned detours_a = 0, detours_b = 0, detours_c = 0, detours_none = 0, detours_cap = 0;
+    unsigned e_calls_a = 0, e_lane_a = 0, warn_raw_a = 0, warn_unsup_a = 0, warn_raw_b = 0, warn_raw_c = 0, warn_unsup_c = 0;
+    unsigned pair_frames_a = 0, pair_frames_b = 0, pair_frames_c = 0, a_titans_adjacent = 0, c_titans_adjacent = 0;
+    unsigned gate_span_frames = 0, gate_warn_span = 0, gate_warn_unsup = 0, gate_sup_join = 0, gate_sup_slow = 0, gate_sup_fb = 0, gate_sup_hand = 0;
+    unsigned order5_overlap = 0, b_cap_frames = 0, b_ds_short = 0, b_warn_after = 0;
+    unsigned sep_a = 0, sep_b = 0;
+    std::uint8_t sep_v = 0;
+    long sep_t = 0;
+    double min_sep_corridor = 1e18, min_sep_none = 1e18, min_sep_launch = 1e18, lane_us_max = 0;
+    double min_sep = 1e18, max_rot_slow = 0, max_cross_err_join = 0, arrive_first = 1e18, arrive_last = 0, b_ds_min = 1e18, b_D_at_min = 0;
+    double e_us_max = 0, e_us_sum = 0;
+    unsigned e_us_n = 0;
+    float leader_cap_max = -1.0f;
+    bool nan = false;
+    // amendment 16b and the review fixes: (a) by route (footprint = certified, corridor only = the engine's warn live), (s) by route,
+    // E and the engine warn on certified and on corridor-only pairs, detours against (s), the (c) frames (one ship on its order-4
+    // approach / the others: hand-over and launch), the first (c) frame, the certificate recomputed from the true state (the cylinder),
+    // the cap invariant (obliged pairs after the along route first held, trailer on order 4), lapses, floor seconds
+    unsigned pair_frames_a_foot = 0, pair_frames_a_corr = 0, pair_frames_s_lat = 0, pair_frames_s_along = 0, detours_s = 0;
+    unsigned e_calls_cert = 0, e_lane_cert = 0, warn_raw_cert = 0, warn_unsup_cert = 0, e_calls_corr = 0, e_lane_corr = 0, warn_raw_corr = 0,
+             warn_unsup_corr = 0;
+    unsigned c_frames_approach = 0, c_frames_launch = 0, c_frames_other = 0, c_titans = 0, s_titans = 0;
+    long c_miss_t = -1;
+    unsigned c_miss_a = 0, c_miss_b = 0;
+    double c_miss_lat = 0, c_miss_along = 0;
+    unsigned cert_frames = 0, cert_viol = 0;
+    long cert_viol_t = -1;
+    double cert_worst = 1e18;
+    unsigned cap_frames = 0, lapses = 0, held_decisions = 0;
+    double cap_gap_min = 1e18;
+    long cap_gap_t = -1;
+    unsigned cap_gap_a = 0, cap_gap_b = 0;
+    double floor_s_max = 0, floor_total_s_max = 0; // the longest continuous span at the floor (one ship), the largest total
+    unsigned floor_ship = 0;
+    // M-c: the pair (0, 1): the first classification's verdict, (c) frames with a detour between them, warns on (c) frames left to
+    // the engine; the trailer's first bound decision capped at the floor
+    int mc_first = -1, mc_trailer_first_bound = 0;
+    bool forced = false;
+};
+// The engine's warn test (ship-navigation-ai.md section 3.1) for A against B, both ships (m units -> m).
+static bool crowd_pair_warn(const Model& a, const Model& b) {
+    const double va = double(a.speed) / 500.0;
+    if (va <= 0) return false;
+    double dx[3], d = 0;
+    for (int k = 0; k < 3; ++k) {
+        dx[k] = (b.pos[k] - a.pos[k]) / 500.0;
+        d += dx[k] * dx[k];
+    }
+    d = std::sqrt(d);
+    const double ra = a.r_units / 500.0, rb = b.r_units / 500.0;
+    if (d < 1) return true;
+    if (rb >= 0.75 * ra && d <= 1.2 * (ra + rb)) return true; // close range
+    double c = 0, vb_toward = 0;
+    for (int k = 0; k < 3; ++k) {
+        c += a.row[2][k] * dx[k] / d;
+        vb_toward -= b.row[2][k] * double(b.speed) / 500.0 * dx[k] / d;
+    }
+    if (c <= 0) return false;
+    const double vc = va * c + (c > 0.8 ? vb_toward : 0.0);
+    const double acc = double(a.accel) / 500.0;
+    const double bb = std::fmin(600.0, acc > 0 ? vc * vc / (2 * acc) : 600.0);
+    const double L = std::fmin(std::fmax(ra + rb / 10, 30.0), 1000.0) + (ra + rb) + ra * c;
+    if (bb + L + (ra + rb) < d) return false;
+    if (d <= bb) return true;
+    const double q = (ra + rb + 40.0) / (d - bb);
+    return c * c > 1 - q * q;
+}
+// The separating-axis distance bound of two box hulls (w, w, r) along their basis rows: > 0 = disjoint (a lower bound on the gap).
+static double crowd_box_sep(const Model& a, double wa, const Model& b, double wb) {
+    const double ha[3] = {wa, wa, a.r_units / 500.0}, hb[3] = {wb, wb, b.r_units / 500.0};
+    double T[3];
+    for (int k = 0; k < 3; ++k) T[k] = (b.pos[k] - a.pos[k]) / 500.0;
+    double best = -1e18;
+    auto test = [&](const double L_in[3]) {
+        double L[3] = {L_in[0], L_in[1], L_in[2]};
+        const double n = std::sqrt(L[0] * L[0] + L[1] * L[1] + L[2] * L[2]);
+        if (n < 1e-6) return;
+        for (int k = 0; k < 3; ++k) L[k] /= n;
+        double ra = 0, rb = 0, t = 0;
+        for (int i = 0; i < 3; ++i) {
+            ra += ha[i] * std::fabs(a.row[i][0] * L[0] + a.row[i][1] * L[1] + a.row[i][2] * L[2]);
+            rb += hb[i] * std::fabs(b.row[i][0] * L[0] + b.row[i][1] * L[1] + b.row[i][2] * L[2]);
+        }
+        t = std::fabs(T[0] * L[0] + T[1] * L[1] + T[2] * L[2]);
+        best = std::fmax(best, t - ra - rb);
+    };
+    for (int i = 0; i < 3; ++i) {
+        test(a.row[i]);
+        test(b.row[i]);
+    }
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j) {
+            const double c[3] = {a.row[i][1] * b.row[j][2] - a.row[i][2] * b.row[j][1], a.row[i][2] * b.row[j][0] - a.row[i][0] * b.row[j][2],
+                                 a.row[i][0] * b.row[j][1] - a.row[i][1] * b.row[j][0]};
+            test(c);
+        }
+    return best;
+}
+// The lane verdict of a pair as site E computes it (the DLL's e_verdict): both committed by the live order, f+0x224 = the gate and
+// the id; the verdict from the stored board in both directions (ln::verdict_sym, review F6), *info with the route.
+static ln::Verdict crowd_lane(const ln::Board& board, const CrowdShip& A, const CrowdShip& B, std::uint32_t now, std::uint32_t fresh, ln::PairInfo* info) {
+    const ln::Gate* g = ln::gate_of(board, kLaneGate);
+    const ln::Entry* ea = g ? ln::find(*g, A.m.ptr) : nullptr;
+    const ln::Entry* eb = g ? ln::find(*g, B.m.ptr) : nullptr;
+    if (!ea || !eb || !ln::committed(*ea, now, fresh, A.m.order, kLaneGate, kLaneGate, A.m.native_id()) ||
+        !ln::committed(*eb, now, fresh, B.m.order, kLaneGate, kLaneGate, B.m.native_id()))
+        return ln::Verdict::none;
+    return ln::verdict_sym(*g, *ea, *eb, now, fresh, g_seq, info);
+}
+// The certificate of an (s) frame recomputed from the true state (section 16.10.5): the hulls as cylinders (radius w, half-length r)
+// at their true attitude. Lateral: |dq| - rho_A - rho_B with rho(theta) = max over the in-plane directions of r t + w sqrt(1 - t^2),
+// t <= sin theta (r sin theta + w cos theta below atan(r / w), sqrt(r^2 + w^2) beyond); along F: |s_B - s_A| - h_A - h_B with
+// h(theta) = r |cos theta| + w sin theta. The larger of the two slacks (m; > 0 = the hulls' projections apart on that axis).
+static double crowd_cyl_slack(const Model& a, double wa, const Model& b, double wb, bool along) {
+    auto rho = [](double r, double w, double c) {
+        const double s = std::sqrt(std::fmax(0.0, 1.0 - c * c));
+        return s * std::sqrt(r * r + w * w) <= r ? r * s + w * std::fabs(c) : std::sqrt(r * r + w * w);
+    };
+    auto hF = [](double r, double w, double c) { return r * std::fabs(c) + w * std::sqrt(std::fmax(0.0, 1.0 - c * c)); };
+    const double ra = a.r_units / 500.0, rb = b.r_units / 500.0;
+    const double ca = a.row[2][2], cb = b.row[2][2]; // the gate frame is the identity: F = z, the R-U plane = x-y
+    if (along) return std::fabs(b.pos[2] - a.pos[2]) / 500.0 - hF(ra, wa, ca) - hF(rb, wb, cb);
+    const double dx = (b.pos[0] - a.pos[0]) / 500.0, dy = (b.pos[1] - a.pos[1]) / 500.0;
+    return std::sqrt(dx * dx + dy * dy) - rho(ra, wa, ca) - rho(rb, wb, cb);
+}
+static CrowdResult run_crowd(const CrowdSetup& su, int fps, std::uint32_t seed) {
+    const double ru = kGateRM * 500;
+    static World w;
+    w = World{};
+    static ln::Board board;
+    board = ln::Board{};
+    core::ShipTable table{};
+    CrowdShip ships[6];
+    Model obstacle; // the un-latch variant's uncommitted capital (order 0x19 MovePos, kinematic)
+    CrowdResult res;
+    res.ships = su.n;
+    for (unsigned k = 0; k < su.n; ++k) {
+        CrowdShip& c = ships[k];
+        const CrowdStart& st = su.starts[k];
+        c.t = st.t;
+        c.slot = st.slot;
+        Model& m = c.m;
+        m.init(*st.t, seed + 31 * k);
+        m.table = &table;
+        m.capital = true;
+        m.capital_gate_leg = true;
+        m.ptr = 0x9000 + 0x100 * k;
+        c.obj = 0x1000 + 0x40 * k;
+        float Af[3];
+        core::GateGeometry geo;
+        capital_grid(*st.t, st.slot, kGateIdentity, 0.0, c.A, Af, &geo, &c.valid);
+        m.gate_mode = su.policy && c.valid;
+        m.gate_geo = geo;
+        m.gate_r = float(kGateRM);
+        for (int i = 0; i < 3; ++i) {
+            m.gate_G[i] = 0;
+            for (int r = 0; r < 3; ++r) m.gate_rows[r][i] = float(kGateIdentity.R[r][i]);
+            c.X[i] = c.A[i] - 0.75 * ru * kGateIdentity.R[2][i];
+        }
+        m.lanes = su.policy ? &board : nullptr;
+        m.gate_ptr = kLaneGate;
+        m.hull_w = su.w_r < 0 ? float(st.t->r_m) : float(su.w_r * st.t->r_m);
+        m.hull_src = std::uint8_t(su.w_r < 0 ? ln::WidthSrc::failed : ln::WidthSrc::lod);
+        m.pos[0] = st.lat_x * 500.0;
+        m.pos[1] = st.lat_y * 500.0;
+        m.pos[2] = st.s_abs ? st.s * 500.0 : c.X[2] + st.s * 500.0;
+        if (st.psi_deg < 1e8) {
+            const double ps = st.psi_deg * M_PI / 180;
+            const double u[3] = {std::sin(ps), 0.0, std::cos(ps)};
+            place_heading(m, u);
+        } else {
+            const double u[3] = {c.A[0] - m.pos[0], c.A[1] - m.pos[1], c.A[2] - m.pos[2]};
+            place_heading(m, u);
+        }
+        if (st.v >= 0) m.speed = m.desired = std::llround(st.v * 500.0);
+        m.order = core::kOrderFlyBefore;
+        for (int i = 0; i < 3; ++i) m.P[i] = c.A[i];
+        m.d_arr_units = 0.75 * ru;
+        w.attach(m);
+    }
+    bool obstacle_on = su.obstacle_ship >= 0 && su.obstacle_until_ms > 0;
+    if (obstacle_on) { // an M1 (order 0x19, not committed to the gate) stationary on the joiner's lane line 1.5 km before its X, gone at obstacle_until_ms
+        obstacle.init(kCrowdM1, seed + 999);
+        obstacle.capital = true;
+        obstacle.ptr = 0x7000;
+        obstacle.vanilla = true;
+        obstacle.order = core::kOrderMovePos;
+        const CrowdShip& j = ships[su.obstacle_ship];
+        for (int k = 0; k < 3; ++k) // stationary on the joiner's lane line, this far before its X
+            obstacle.pos[k] = j.X[k] - kGateIdentity.R[2][k] * 1500.0 * 500.0;
+        const double u[3] = {j.m.row[0][0], j.m.row[0][1], j.m.row[0][2]};
+        place_heading(obstacle, u);
+        obstacle.speed = obstacle.desired = 0;
+    }
+    Clock clock;
+    int slot_holder = -1;
+    long poll_at[6] = {0, 0, 0, 0, 0, 0};
+    unsigned rr = 0;
+    std::uint32_t last_e[6][6];
+    bool ships_engaged[6] = {};
+    unsigned pair_det[6][6] = {};
+    long pair_det_t[6][6] = {};
+    std::uint8_t pair_det_v[6][6] = {};
+    bool along_seen[6][6] = {}; // amendment 16b: the trailer's pass held the along route for this (trailer, leader) obliged pair
+    double along_ref[6][6] = {}; // and min(0, ds - D_x) there (the cap took over below D_x: the invariant is relative to it)
+    const bool dbg = std::getenv("X3M_CROWD_DEBUG") && fps == (std::getenv("X3M_CROWD_FPS") ? std::atoi(std::getenv("X3M_CROWD_FPS")) : 60) &&
+                     seed == (std::getenv("X3M_CROWD_SEED") ? std::uint32_t(std::atoi(std::getenv("X3M_CROWD_SEED"))) : kSeeds[0]);
+    unsigned c_dbg_n[6][6] = {};
+    long c_dbg_last[6][6] = {};
+    std::memset(last_e, 0, sizeof last_e);
+    long sim_ms = 0;
+    for (unsigned k = 0; k < su.n; ++k)
+        if (su.starts[k].t0_ms > 0) {
+            ships[k].alive = false;
+            ships[k].pending = true;
+        }
+    for (long i = 0; i < 900L * fps; ++i) {
+        const long dt = clock.step(fps);
+        if (!dt) continue;
+        Model* live[7];
+        unsigned n_live = 0, pending = 0;
+        for (unsigned k = 0; k < su.n; ++k) {
+            CrowdShip& c = ships[k];
+            if (c.pending && sim_ms >= su.starts[k].t0_ms) { // the ship enters the scene (its order-4 leg starts now)
+                c.pending = false;
+                c.alive = true;
+                c.m.t_ms = sim_ms;
+                c.m.next_think = sim_ms;
+            }
+            pending += c.pending ? 1u : 0u;
+            if (c.alive) live[n_live++] = &c.m;
+        }
+        sim_ms += dt;
+        if (!n_live && !pending) break;
+        if (obstacle_on) live[n_live++] = &obstacle;
+        const long now_ms = sim_ms - dt;
+        w.fill(live, n_live, std::uint32_t(now_ms));
+        const std::uint32_t now = std::uint32_t(now_ms);
+        const std::uint32_t fresh = av::fresh_window_ms(av::kSteeredFreshMs, std::uint32_t(dt), av::kSteeredReplanMs);
+        unsigned in_o5 = 0;
+        for (unsigned k = 0; k < su.n; ++k) {
+            CrowdShip& c = ships[k];
+            if (!c.alive) continue;
+            Model& m = c.m;
+            m.frame_dt_ms = dt;
+            const double* Fw = kGateIdentity.R[2];
+            const double dA_v[3] = {c.A[0] - m.pos[0], c.A[1] - m.pos[1], c.A[2] - m.pos[2]}, dB_v[3] = {-m.pos[0], -m.pos[1], -m.pos[2]};
+            const double dA = norm3d(dA_v), dB = norm3d(dB_v);
+            double c_F = 0;
+            for (int k2 = 0; k2 < 3; ++k2) c_F += m.row[2][k2] * Fw[k2];
+            c_F = std::fmin(1.0, std::fmax(-1.0, c_F));
+            const double err_F = std::acos(c_F) * 180 / M_PI;
+            if (c.phase == 4) { // order 8: 900 ms along F, then gone
+                if (m.t_ms - c.phase_t >= 900) {
+                    c.launched = true;
+                    c.alive = false;
+                    if (slot_holder == int(k)) slot_holder = -1;
+                    m.advance(dt);
+                    continue;
+                }
+                for (int k2 = 0; k2 < 3; ++k2) m.pos[k2] += Fw[k2] * double(m.speed) * double(dt) / 1000.0;
+                m.advance(dt);
+                ++in_o5;
+                continue;
+            }
+            if (c.phase == 0) {
+                m.steer_call(c.obj, true, 0);
+                if (std::getenv("X3M_CROWD_TRACE") && fps == 60 && seed == kSeeds[0] && (m.t_ms / 16) % 312 == 0)
+                    std::printf("  ctrace t=%.1f ship=%u x=%.0f y=%.0f z=%.0f v=%.1f err=%.1f mode=%u vcmd=%.0f det=%d obst=0x%x lane=%s emg=%.1f unres=%d cap=%.2f seq=%.2f lead=0x%x\n",
+                                double(m.t_ms) / 1000.0, k, m.pos[0] / 500, m.pos[1] / 500, m.pos[2] / 500, double(m.speed) / 500, err_F, unsigned(m.join.mode),
+                                double(m.join.v_cmd), m.last_av.adjusted ? 1 : 0, unsigned(m.last_av.obstacle), ln::verdict_name(m.last_detour_lane),
+                                double(m.astate.v_emergency), m.last_av.unresolved ? 1 : 0, double(m.lane_cap), double(m.seq_cap), unsigned(m.seq_leader));
+                if (m.join.mode == core::JoinMode::fallback) ++c.fallback_frames;
+                if (m.join.mode == core::JoinMode::slow_join) ++c.slow_frames;
+                if (m.lane_cap > c.lane_cap_max) c.lane_cap_max = m.lane_cap;
+                if (m.pass_ok && m.pass.self_held) ++res.held_decisions; // section 16.11: in lane by the hysteresis only
+                if (m.pass_ok && m.order == core::kOrderFlyBefore) { // amendment 16b: the trailer's pass
+                    if (!c.first_bound) c.first_bound = m.seq_cap >= 0.0f && m.seq_cap <= ln::kFollowFloorMs ? 1 : 2;
+                    if (m.seq_cap >= 0.0f && m.seq_cap <= ln::kFollowFloorMs && m.lane_cap == m.seq_cap) {
+                        c.floor_ms += dt;
+                        c.floor_run_ms += dt;
+                        if (c.floor_run_ms > c.floor_run_max_ms) c.floor_run_max_ms = c.floor_run_ms;
+                    } else
+                        c.floor_run_ms = 0;
+                    const ln::SeqMemory before = c.seq_mem;
+                    const unsigned lp = ln::seq_lapses(m.pass, c.seq_mem);
+                    res.lapses += lp;
+                    if (lp && dbg)
+                        for (unsigned q = 0; q < 4; ++q) {
+                            unsigned ix = 0;
+                            if (before.leader[q] && ln::pass_verdict(m.pass, before.leader[q], &ix) == ln::Verdict::cross)
+                                std::printf("  lapsedbg t=%.2f ship %u leader 0x%x seq_trail %u\n", double(now_ms) / 1000.0, k, unsigned(before.leader[q]),
+                                            unsigned(m.pass.seq_trail[ix]));
+                        }
+                }
+                if (m.last_av.adjusted && m.last_av.obstacle_kind == std::uint8_t(av::Kind::ship)) {
+                    for (unsigned q = 0; q < su.n; ++q)
+                        if (ships[q].m.ptr == m.last_av.obstacle) {
+                            if (!pair_det[k][q]) pair_det_t[k][q] = now_ms;
+                            ++pair_det[k][q];
+                            pair_det_v[k][q] = std::uint8_t(m.last_detour_lane);
+                        }
+                    switch (m.last_detour_lane) {
+                    case ln::Verdict::exempt: ++res.detours_a; break;
+                    case ln::Verdict::follow: ++res.detours_b; break;
+                    case ln::Verdict::cross: ++res.detours_c; break;
+                    case ln::Verdict::seq: ++res.detours_s; break;
+                    default: ++res.detours_none; break;
+                    }
+                    ++res.detours_cap;
+                }
+                if (m.t_ms >= m.next_think) {
+                    m.next_think = m.t_ms + m.rng.next() * 50 / 32768;
+                    if (dA <= 0.75 * ru) { // P2: the module's keep verdict (section 15.3 item 4)
+                        m.desired = 0;
+                        double uv[3], un = 0, cu = 0, xg = 0;
+                        for (int k2 = 0; k2 < 3; ++k2) {
+                            uv[k2] = double(m.vel[k2] + m.slip[k2]);
+                            un += uv[k2] * uv[k2];
+                            xg += c.X[k2] / 500.0 * c.X[k2] / 500.0;
+                        }
+                        un = std::sqrt(un);
+                        for (int k2 = 0; k2 < 3; ++k2) cu += un > 0 ? uv[k2] / un * Fw[k2] : 0.0;
+                        const double vel_deg = un > 0 ? std::acos(std::fmin(1.0, std::fmax(-1.0, cu))) * 180 / M_PI : err_F;
+                        const float v_ms = float(double(m.speed) / 500.0);
+                        c.why = core::join_keep_verdict(su.policy && m.gate_mode && m.join.mode == core::JoinMode::join, float(err_F), float(vel_deg), v_ms,
+                                                        core::join_coast_bound(float(std::sqrt(xg)), float(c.t->r_m), v_ms, float(c.t->a_ms2)));
+                        c.kept = c.why == core::JoinKeep::kept;
+                        c.cross_mode = m.join.mode;
+                        c.cross_err = err_F;
+                        c.cross_v = v_ms;
+                        if (!c.kept) m.speed = 0;
+                        c.arrived = true;
+                        c.t_arrive = double(m.t_ms) / 1000.0;
+                        if (su.policy && m.gate_mode) {
+                            float x[3], f[3];
+                            for (int k2 = 0; k2 < 3; ++k2) {
+                                x[k2] = float(m.pos[k2] / 500.0);
+                                f[k2] = float(m.row[2][k2]);
+                            }
+                            ln::handover(board, kLaneGate, m.ptr, m.native_id(), now, x, f, c.kept ? v_ms * float(c_F) : 0.0f);
+                        }
+                        c.phase = 1;
+                        c.phase_t = m.t_ms;
+                        m.order = core::kOrderNone;
+                    } else
+                        m.desired = engine_order4_speed(m, dA, dA_v, true);
+                }
+            } else if (c.phase == 1) { // order 0 for one frame, then 0x1f
+                m.desired = 0;
+                if (m.t_ms > c.phase_t) {
+                    c.phase = 5;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderRotate;
+                }
+            } else if (c.phase == 5) { // RotateToAngles: ends on the first frame forward . F >= 0xfd70
+                m.desired = 0;
+                if (c_F >= kCos0xfd70) {
+                    c.rot_s = double(m.t_ms - c.phase_t) / 1000.0;
+                    c.phase = 6;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderNone;
+                    poll_at[k] = m.t_ms; // the through-slot request right after the rotate
+                } else {
+                    for (int k2 = 0; k2 < 3; ++k2) m.P[k2] = m.pos[k2] + Fw[k2] * 1.0e7;
+                    m.vanilla_leaf();
+                }
+            } else if (c.phase == 6) { // the wait for the through slot (no order, desired 0)
+                m.desired = 0;
+                if (m.t_ms >= poll_at[k]) {
+                    if (slot_holder < 0 && now_ms >= su.slot_busy_until_ms) {
+                        slot_holder = int(k);
+                        c.phase = 2;
+                        c.phase_t = m.t_ms;
+                        m.order = core::kOrderDock;
+                        for (int k2 = 0; k2 < 3; ++k2) m.P[k2] = 0;
+                    } else
+                        poll_at[k] = m.t_ms + 1000 + long(m.rng.next()) * 10000 / 32768;
+                }
+            } else if (c.phase == 2) { // order 5 (the engine's law; the module passes a capital's order 5 through and keeps its lane entry)
+                ++in_o5;
+                m.steer_call(c.obj, false, 0);
+                double cb = 0;
+                for (int k2 = 0; k2 < 3; ++k2) cb += m.row[2][k2] * dB_v[k2] / dB;
+                if (cb < 0.95)
+                    m.desired = 500;
+                else
+                    m.desired = dB <= ru / 5 ? m.vmax / 2 : (dB >= ru ? m.vmax : m.vmax / 2 + std::llround(double(m.vmax / 2) * (dB - ru / 5) / (ru - ru / 5)));
+                if (dB <= double(m.speed) / 10.0 + m.r_units) {
+                    m.desired = 0;
+                    c.phase = 3;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderNone;
+                }
+            } else if (c.phase == 3) {
+                ++in_o5;
+                m.desired = 0;
+                if (m.t_ms > c.phase_t) {
+                    c.phase = 4;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderWarpAway;
+                }
+            }
+            m.clamp(c.obj);
+            if (c.forced_stop) m.desired = 0; // M-d: the leader brakes at its full deceleration from here on
+            m.advance(dt);
+            for (int k2 = 0; k2 < 3; ++k2)
+                if (!std::isfinite(m.pos[k2])) c.nan = true;
+        }
+        if (in_o5 > 1) ++res.order5_overlap;
+        if (obstacle_on) {
+            if (now_ms >= su.obstacle_until_ms) {
+                obstacle_on = false; // it leaves (warps out)
+            } else {
+                for (int k = 0; k < 3; ++k) obstacle.pos[k] += obstacle.row[2][k] * double(obstacle.speed) * double(dt) / 1000.0;
+                obstacle.t_ms += dt;
+            }
+        }
+        // the frame end: the predictor, one capital per frame (round robin), the DLL's join_evaluate16
+        if (su.policy)
+            for (unsigned n = 0; n < su.n; ++n) {
+                CrowdShip& c = ships[(rr + n) % su.n];
+                if (!c.alive || c.phase != 0 || !c.m.gate_mode) continue;
+                core::JoinEval ev;
+                if (!core::join_evaluate16(c.m.join, now, fresh, &ev)) continue;
+                rr = (rr + n + 1) % su.n;
+                if (ev.slow_entered) ++c.slow_entries;
+                if (ev.unlatched) ++c.unlatches;
+                if (ev.fell_back) ++c.fell;
+                break;
+            }
+        // the pairs: E on every pair inside the engine's box test, the warn test, the hulls
+        for (unsigned a = 0; a < su.n; ++a) {
+            const CrowdShip& A = ships[a];
+            if (!A.alive) continue;
+            for (unsigned b = 0; b < su.n; ++b) {
+                if (b == a || !ships[b].alive) continue;
+                const CrowdShip& B = ships[b];
+                double d = 0;
+                for (int k = 0; k < 3; ++k) d += (A.m.pos[k] - B.m.pos[k]) * (A.m.pos[k] - B.m.pos[k]);
+                d = std::sqrt(d) / 500.0;
+                const double ra = A.t->r_m, rb = B.t->r_m;
+                ln::PairInfo info;
+                const auto t0 = std::chrono::steady_clock::now();
+                const ln::Verdict lv = su.policy ? crowd_lane(board, A, B, now, fresh, &info) : ln::Verdict::none;
+                const double lane_us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+                if (b > a) { // the box hulls; two ships settled / joining in their corridors on adjacent lane points are the addendum's
+                             // accepted lateral overlap (the KC parks them there): measured apart from every other pair
+                    const double sep = crowd_box_sep(A.m, double(A.m.hull_w < 1 ? ra : A.m.hull_w), B.m, double(B.m.hull_w < 1 ? rb : B.m.hull_w));
+                    // the KC grid's own overlap: two ships at their grid points (within r + 1.5 km of A: arriving, rotating, waiting or leaving
+                    // on order 5) on adjacent lane points (666 m < the two half-widths at 0.38-0.45 r: the addendum)
+                    const double ax = A.m.pos[0] / 500.0 - A.A[0] / 500.0, ay = A.m.pos[1] / 500.0 - A.A[1] / 500.0;
+                    const double bx = B.m.pos[0] / 500.0 - B.A[0] / 500.0, by = B.m.pos[1] / 500.0 - B.A[1] / 500.0;
+                    const double lab = std::sqrt((A.A[0] - B.A[0]) * (A.A[0] - B.A[0]) + (A.A[1] - B.A[1]) * (A.A[1] - B.A[1])) / 500.0;
+                    const double dgA[3] = {A.m.pos[0] - A.A[0], A.m.pos[1] - A.A[1], A.m.pos[2] - A.A[2]}, dgB[3] = {B.m.pos[0] - B.A[0], B.m.pos[1] - B.A[1], B.m.pos[2] - B.A[2]};
+                    const double gA = norm3d(dgA) / 500.0;
+                    const double gB = norm3d(dgB) / 500.0;
+                    (void)ax; (void)ay; (void)bx; (void)by;
+                    const bool corridor_pair = (gA <= 1500.0 + ra && gB <= 1500.0 + rb && lab > 600.0 && lab < 700.0) || (lv == ln::Verdict::exempt && info.route == ln::Route::corr);
+                    // the KC's launch leg itself: a ship on order 5 (or its P4 stop) between its own grid zone (r + 1.5 km before its A)
+                    // and the gate, past the neighbour on the adjacent lane point: the grid's own lateral overlap at these widths, as at
+                    // the grid points; measured apart
+                    auto on_leg = [&](const CrowdShip& S) {
+                        const double z = S.m.pos[2] / 500.0, za = S.A[2] / 500.0;
+                        return (S.phase == 2 || S.phase == 3) && z >= za - (S.t->r_m + 1500.0) && z <= 0.0;
+                    };
+                    const bool launch_pair = (on_leg(A) || on_leg(B)) && lab > 600.0 && lab < 700.0;
+                    if (corridor_pair) {
+                        res.min_sep_corridor = std::fmin(res.min_sep_corridor, sep);
+                    } else if (launch_pair) {
+                        res.min_sep_launch = std::fmin(res.min_sep_launch, sep);
+                    } else if (su.policy && lv == ln::Verdict::none) { // not classified yet (the starts before the board fills): reported
+                        res.min_sep_none = std::fmin(res.min_sep_none, sep);
+                    } else if (sep < res.min_sep) {
+                        res.min_sep = sep;
+                        res.sep_a = a;
+                        res.sep_b = b;
+                        res.sep_t = now_ms;
+                        res.sep_v = std::uint8_t(lv);
+                    }
+                }
+                if (b > a && lv != ln::Verdict::none) { // amendment 16b: the certificate from the true state, the (c) frames
+                    if (a == 0 && b == 1 && res.mc_first < 0) res.mc_first = int(lv);
+                    const double wa = A.m.hull_w, wb = B.m.hull_w;
+                    if (lv == ln::Verdict::seq) {
+                        const double slack = crowd_cyl_slack(A.m, wa, B.m, wb, info.route == ln::Route::along);
+                        ++res.cert_frames;
+                        if (slack < res.cert_worst) res.cert_worst = slack;
+                        if (!(slack > 0.0)) {
+                            if (dbg)
+                                std::printf("  certdbg t=%.2f %u-%u route %s slack %.1f lat_gap %.1f mot %.1f/%.1f along %.1f phases %d/%d\n", double(now_ms) / 1000.0, a,
+                                            b, ln::route_name(info.route), slack, double(info.lat_gap), double(info.mot_a), double(info.mot_b), double(info.along_gap),
+                                            A.phase, B.phase);
+                            if (dbg) {
+                                const ln::Gate* gg = ln::gate_of(board, kLaneGate);
+                                for (const CrowdShip* S : {&A, &B}) {
+                                    const ln::Entry* e = ln::find(*gg, S->m.ptr);
+                                    if (!e) continue;
+                                    std::printf("    ship 0x%x true q %.0f,%.0f cos %.4f stored q %.0f,%.0f cos %.4f order %u age %u v_perp %.2f vF %.1f true vlat %.2f,%.2f speed %.1f slip %.2f,%.2f\n",
+                                                unsigned(S->m.ptr), S->m.pos[0] / 500, S->m.pos[1] / 500, S->m.row[2][2], double(e->q[0]), double(e->q[1]),
+                                                double(e->cos_t), unsigned(e->order), unsigned(ln::entry_age(*e, now)), double(e->v_perp), double(e->vF),
+                                                (S->m.row[2][0] * double(S->m.speed) + double(S->m.slip[0])) / 500, (S->m.row[2][1] * double(S->m.speed) + double(S->m.slip[1])) / 500,
+                                                double(S->m.speed) / 500, double(S->m.slip[0]) / 500, double(S->m.slip[1]) / 500);
+                                }
+                            }
+                            if (!res.cert_viol) res.cert_viol_t = now_ms;
+                            ++res.cert_viol;
+                        }
+                    } else if (lv == ln::Verdict::cross) {
+                        const bool launch = A.phase == 2 || A.phase == 3 || B.phase == 2 || B.phase == 3; // one ship on order 5 (the KC's launch)
+                        if ((A.phase == 0 || B.phase == 0) && launch)
+                            ++res.c_frames_launch;
+                        else if (A.phase == 0 || B.phase == 0) {
+                            if (dbg) {
+                                unsigned ia = 0, ib = 0;
+                                const bool oa = A.m.pass_ok && ln::pass_verdict(A.m.pass, B.m.ptr, &ia) != ln::Verdict::none && A.m.pass.seq_trail[ia];
+                                const bool ob = B.m.pass_ok && ln::pass_verdict(B.m.pass, A.m.ptr, &ib) != ln::Verdict::none && B.m.pass.seq_trail[ib];
+                                if (!c_dbg_n[a][b] || (now_ms - c_dbg_last[a][b]) > 5000)
+                                    std::printf("  cdbg t=%.2f %u-%u phases %d/%d modes %u/%u obliged %d/%d watch %d why %u lat %.0f along %.0f trail %u ds %.0f qA %.0f,%.0f qB %.0f,%.0f thA %.1f thB %.1f vFA %.1f vFB %.1f spB %.1f\n",
+                                                double(now_ms) / 1000.0, a, b, A.phase, B.phase, unsigned(A.m.join.mode), unsigned(B.m.join.mode), oa ? 1 : 0,
+                                                ob ? 1 : 0, info.watch ? 1 : 0, unsigned(info.why), double(info.lat_gap), double(info.along_gap), unsigned(info.trail), double(info.ds),
+                                                A.m.pos[0] / 500, A.m.pos[1] / 500, B.m.pos[0] / 500, B.m.pos[1] / 500, std::acos(std::fmin(1.0, A.m.row[2][2])) * 57.3,
+                                                std::acos(std::fmin(1.0, B.m.row[2][2])) * 57.3, (A.m.row[2][2] * double(A.m.speed) + double(A.m.slip[2])) / 500,
+                                                (B.m.row[2][2] * double(B.m.speed) + double(B.m.slip[2])) / 500, double(B.m.speed) / 500);
+                                ++c_dbg_n[a][b];
+                                c_dbg_last[a][b] = now_ms;
+                            }
+                            if (!res.c_frames_approach) {
+                                res.c_miss_t = now_ms;
+                                res.c_miss_a = a;
+                                res.c_miss_b = b;
+                                res.c_miss_lat = info.watch ? info.lat_gap : -1e9;
+                                res.c_miss_along = info.trail ? info.along_gap : -1e9;
+                            }
+                            ++res.c_frames_approach;
+                        } else
+                            ++res.c_frames_other;
+                    }
+                }
+                // amendment 16b: the cap invariant for (trailer a, leader b) from the trailer's own pass (obliged, on order 4, after the
+                // along route first held): the true ds - D_x
+                if (A.phase == 0 && A.m.pass_ok && A.m.order == core::kOrderFlyBefore) {
+                    unsigned idx = 0;
+                    const bool obliged = ln::pass_verdict(A.m.pass, B.m.ptr, &idx) != ln::Verdict::none && A.m.pass.seq_trail[idx];
+                    if (!obliged) along_seen[a][b] = false; // a new obligation starts a new reference
+                    if (obliged) {
+                        const double Dx = double(A.m.pass.self->h) + double(A.m.pass.g->e[idx].h) + double(ln::kSeqCapExtraM);
+                        const double gap_now = (B.m.pos[2] - A.m.pos[2]) / 500.0 - Dx;
+                        if (!along_seen[a][b] && A.m.pass.v[idx] == ln::Verdict::seq && A.m.pass.route[idx] == ln::Route::along) {
+                            along_seen[a][b] = true; // the reference: D_x, or the spacing where the cap took over below it
+                            along_ref[a][b] = gap_now < 0.0 ? gap_now : 0.0;
+                        }
+                        if (along_seen[a][b]) {
+                            const double gap = gap_now - along_ref[a][b];
+                            ++res.cap_frames;
+                            if (dbg && gap < -10.0 && gap < res.cap_gap_min - 5.0)
+                                std::printf("  capdbg t=%.2f T%u L%u phase %d/%d gap %.1f Dx %.0f vT %.1f vL %.1f cap %.2f lane_cap %.2f leader 0x%x v %s route %s modeT %u\n",
+                                            double(now_ms) / 1000.0, a, b, A.phase, B.phase, gap, Dx, double(A.m.speed) / 500, double(B.m.speed) / 500,
+                                            double(A.m.seq_cap), double(A.m.lane_cap), unsigned(A.m.seq_leader), ln::verdict_name(A.m.pass.v[idx]),
+                                            ln::route_name(A.m.pass.route[idx]), unsigned(A.m.join.mode));
+                            if (gap < res.cap_gap_min) {
+                                res.cap_gap_min = gap;
+                                res.cap_gap_t = now_ms;
+                                res.cap_gap_a = a;
+                                res.cap_gap_b = b;
+                            }
+                            const bool binds = A.m.lane_cap >= 0.0f && A.m.lane_cap == A.m.seq_cap && A.m.seq_leader == B.m.ptr && A.m.seq_cap < A.m.join.v_cmd;
+                            if (su.brake_trailer == int(a) && su.brake_leader == int(b) && !ships[b].forced_stop &&
+                                (su.brake_at_along || (binds && gap_now < 100.0))) {
+                                ships[b].forced_stop = true; // M-d: the leader brakes now
+                                res.forced = true;
+                            }
+                        }
+                    }
+                }
+                if (lv == ln::Verdict::follow && B.m.pos[2] > A.m.pos[2]) { // A trails B on the same lane point: D and the spacing
+                    const double vA = (A.m.row[2][2] * double(A.m.speed) + double(A.m.slip[2])) / 500.0;
+                    const double vB = (B.m.row[2][2] * double(B.m.speed) + double(B.m.slip[2])) / 500.0;
+                    const double ds = (B.m.pos[2] - A.m.pos[2]) / 500.0;
+                    const double D = ln::follow_reach(float(vA), float(vB), float(A.t->a_ms2), float(ra), float(rb));
+                    if (A.m.lane_cap >= 0.0f && A.m.lane_cap < A.m.join.v_cmd) ships_engaged[a] = true; // the cap binds
+                    if (ships_engaged[a]) {
+                        ++res.b_cap_frames;
+                        if (ds < D) ++res.b_ds_short;
+                        if (ds - D < res.b_ds_min) {
+                            res.b_ds_min = ds - D;
+                            res.b_D_at_min = D;
+                        }
+                        if (crowd_pair_warn(A.m, B.m) || crowd_pair_warn(B.m, A.m)) ++res.b_warn_after;
+                    }
+                }
+                if (d > 3 * (ra + rb) + 500.0) continue; // the collision pass's box: no E call
+                av::SiteE in;
+                const core::Ship* sa = table.find(A.obj);
+                in.a_order = A.m.order;
+                in.a_target = kLaneGate;
+                in.a_in_table = sa != nullptr;
+                in.a_age_ms = sa ? now - sa->stamp_ms : 0xffffffffu;
+                in.frame_ms = std::uint32_t(dt);
+                in.a_capital = true;
+                in.r_a = float(ra);
+                in.b_ship = in.b_readable = in.b_capital_code = true;
+                in.r_b = float(rb);
+                in.b_flags = 0x80000;
+                in.b_order = B.m.order;
+                in.b_target = kLaneGate;
+                in.avoidance_on = true;
+                in.b_resolved = A.m.order != core::kOrderAvoid && av::suppressed(A.m.astate, A.m.ptr, B.m.ptr, now, av::fresh_window_ms(av::kResolvedAgeMs, std::uint32_t(dt)));
+                const bool cert = ln::certified(lv, info.route);
+                in.lane_exempt = cert; // review F1: only under a certificate
+                const av::EVerdict v = av::site_e_verdict(in);
+                const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+                res.lane_us_max = std::fmax(res.lane_us_max, lane_us);
+                res.e_us_max = std::fmax(res.e_us_max, us);
+                res.e_us_sum += us;
+                ++res.e_us_n;
+                const bool warn = crowd_pair_warn(A.m, B.m);
+                // the 1.1 km hulls (Titan 1,092 / Colossus 1,022 m) on adjacent lane points (666 m)
+                const bool titans_adjacent = ra > 1000 && rb > 1000 && std::fabs(std::fabs(A.A[0] - B.A[0]) / 500.0 - 666.0) < 1.0 &&
+                                             std::fabs(A.A[1] - B.A[1]) < 500.0;
+                if (cert) {
+                    ++res.e_calls_cert;
+                    if (v == av::EVerdict::suppress_lane) ++res.e_lane_cert;
+                    if (warn) {
+                        ++res.warn_raw_cert;
+                        if (!av::e_suppresses(v)) ++res.warn_unsup_cert;
+                    }
+                } else if (lv == ln::Verdict::exempt) { // corridor only: the engine's warn stays live (review F1)
+                    ++res.e_calls_corr;
+                    if (v == av::EVerdict::suppress_lane) ++res.e_lane_corr;
+                    if (warn) {
+                        ++res.warn_raw_corr;
+                        if (!av::e_suppresses(v)) ++res.warn_unsup_corr;
+                    }
+                }
+                if (lv == ln::Verdict::exempt) {
+                    ++res.pair_frames_a;
+                    ++res.e_calls_a;
+                    if (v == av::EVerdict::suppress_lane) ++res.e_lane_a;
+                    if (warn) {
+                        ++res.warn_raw_a;
+                        if (!av::e_suppresses(v)) ++res.warn_unsup_a;
+                    }
+                    if (info.route == ln::Route::foot) ++res.pair_frames_a_foot;
+                    else ++res.pair_frames_a_corr;
+                    if (titans_adjacent) ++res.a_titans_adjacent;
+                } else if (lv == ln::Verdict::seq) {
+                    if (info.route == ln::Route::lat) ++res.pair_frames_s_lat;
+                    else ++res.pair_frames_s_along;
+                    if (titans_adjacent) ++res.s_titans;
+                } else if (lv == ln::Verdict::follow) {
+                    ++res.pair_frames_b;
+                    if (warn) ++res.warn_raw_b;
+                } else if (lv == ln::Verdict::cross) {
+                    ++res.pair_frames_c;
+                    if (titans_adjacent) {
+                        ++res.c_titans_adjacent;
+                        ++res.c_titans;
+                    }
+                    if (warn) {
+                        ++res.warn_raw_c;
+                        if (!av::e_suppresses(v)) ++res.warn_unsup_c;
+                    }
+                }
+                last_e[a][b] = std::uint32_t(v);
+            }
+        }
+        // the gate row: (capital, its gate) through E with the DLL's amendment-16 inputs, against the engine's warn cone
+        for (unsigned k = 0; k < su.n; ++k) {
+            const CrowdShip& c = ships[k];
+            if (!c.alive || !c.m.gate_mode || c.phase == 2 || c.phase == 3 || c.phase == 4) continue;
+            const core::Ship* sa = table.find(c.obj);
+            av::SiteE in;
+            in.a_order = c.m.order;
+            in.a_in_table = sa != nullptr;
+            in.a_age_ms = sa ? now - sa->stamp_ms : 0xffffffffu;
+            in.frame_ms = std::uint32_t(dt);
+            in.b_gate = in.gates_live = true;
+            in.capital_policy = su.policy;
+            in.gate_state = in.gate_capital = true;
+            const core::JoinMode md = c.m.join.mode;
+            in.gate_join = c.phase == 0 && md == core::JoinMode::join;
+            in.gate_slow_join = c.phase == 0 && md == core::JoinMode::slow_join;
+            in.gate_fallback = c.phase == 0 && md == core::JoinMode::fallback;
+            in.gate_window_ok = c.m.join.plane_ms && c.m.join.plane.s >= -core::kGateCapitalJoinR * float(kGateRM);
+            in.gate_handover = c.kept;
+            in.gate_p2_seen = c.arrived;
+            in.p2_age_ms = c.arrived ? now - std::uint32_t(c.t_arrive * 1000.0) : 0xffffffffu;
+            float xa[3], Pa[3];
+            const float G0[3] = {0, 0, 0};
+            for (int k2 = 0; k2 < 3; ++k2) {
+                xa[k2] = float(c.m.pos[k2] / 500.0);
+                Pa[k2] = float(c.A[k2] / 500.0);
+            }
+            in.gate_path_ok = ln::path_guard(G0, xa, Pa, float(kGateRM), float(c.t->r_m), ln::kCapitalGuardR);
+            const av::EVerdict v = av::site_e_verdict(in);
+            const bool span = (c.phase == 0 && (md == core::JoinMode::join || md == core::JoinMode::slow_join || md == core::JoinMode::fallback)) ||
+                              c.phase == 1 || c.phase == 5 || c.phase == 6;
+            if (v == av::EVerdict::suppress_gate) {
+                if (in.gate_join) ++res.gate_sup_join;
+                else if (in.gate_slow_join) ++res.gate_sup_slow;
+                else if (in.gate_fallback) ++res.gate_sup_fb;
+                else ++res.gate_sup_hand;
+            }
+            const double G00[3] = {0, 0, 0};
+            if (span) {
+                ++res.gate_span_frames;
+                if (gate_warn_cone(c.m, G00, c.t->r_m, kGateRM)) {
+                    ++res.gate_warn_span;
+                    if (!av::e_suppresses(v)) ++res.gate_warn_unsup;
+                }
+            }
+        }
+    }
+    if (dbg) {
+        for (unsigned k = 0; k < su.n; ++k) {
+            const CrowdShip& c = ships[k];
+            std::printf("  crowd %s ship %u slot %d r %.0f: arrive %.1f s mode %u kept %d why %u err %.2f v %.1f rot %.1f s fb_frames %u slow_frames %u slow_in %u "
+                        "unlatch %u fell %u cap_max %.1f launched %d\n", su.tag, k, c.slot, c.t->r_m, c.t_arrive, unsigned(c.cross_mode), c.kept ? 1 : 0,
+                        unsigned(c.why), c.cross_err, c.cross_v, c.rot_s, c.fallback_frames, c.slow_frames, c.slow_entries, c.unlatches, c.fell,
+                        double(c.lane_cap_max), c.launched ? 1 : 0);
+        }
+        std::printf("  crowd %s min box separation %.0f m between ships %u and %u at %.1f s (verdict %s)\n", su.tag, res.min_sep, res.sep_a, res.sep_b,
+                    double(res.sep_t) / 1000.0, ln::verdict_name(ln::Verdict(res.sep_v)));
+        for (unsigned a = 0; a < su.n; ++a)
+            for (unsigned b = 0; b < su.n; ++b)
+                if (pair_det[a][b])
+                    std::printf("  crowd %s detours %u -> %u: %u from %.1f s, last verdict %s\n", su.tag, a, b, pair_det[a][b], double(pair_det_t[a][b]) / 1000.0,
+                                ln::verdict_name(ln::Verdict(pair_det_v[a][b])));
+    }
+    for (unsigned k = 0; k < su.n; ++k) {
+        const CrowdShip& c = ships[k];
+        res.arrived += c.arrived;
+        res.launched += c.launched;
+        res.kept += c.kept;
+        if (c.arrived && c.cross_mode == core::JoinMode::slow_join) {
+            ++res.slow_cross;
+            res.max_rot_slow = std::fmax(res.max_rot_slow, c.rot_s);
+        }
+        if (c.arrived && c.cross_mode == core::JoinMode::fallback) ++res.fallback_cross;
+        if (c.arrived && c.cross_mode == core::JoinMode::join && c.kept) res.max_cross_err_join = std::fmax(res.max_cross_err_join, c.cross_err);
+        res.fallback_frames += c.fallback_frames;
+        res.slow_entries += c.slow_entries;
+        res.unlatches += c.unlatches;
+        if (c.arrived) {
+            res.arrive_first = std::fmin(res.arrive_first, c.t_arrive);
+            res.arrive_last = std::fmax(res.arrive_last, c.t_arrive);
+        }
+        res.nan = res.nan || c.nan;
+        if (k == 0) res.leader_cap_max = c.lane_cap_max; // M-b: ship 0 leads
+        if (double(c.floor_run_max_ms) / 1000.0 > res.floor_s_max) {
+            res.floor_s_max = double(c.floor_run_max_ms) / 1000.0;
+            res.floor_ship = k;
+        }
+        res.floor_total_s_max = std::fmax(res.floor_total_s_max, double(c.floor_ms) / 1000.0);
+    }
+    if (dbg)
+        for (unsigned k = 0; k < su.n; ++k)
+            std::printf("  crowd %s ship %u floor %.1f s (longest %.1f s) first_bound %d forced %d\n", su.tag, k, double(ships[k].floor_ms) / 1000.0,
+                        double(ships[k].floor_run_max_ms) / 1000.0, ships[k].first_bound,
+                        ships[k].forced_stop ? 1 : 0);
+    res.mc_trailer_first_bound = su.n >= 2 ? ships[1].first_bound : 0; // M-c: ship 1 (the M2) trails
+    return res;
+}
+// The five starts (section 16.5): the slot-0 Titan and the slot-1 M1 on their lanes' axes at 5 r (the adjacent 1.1 km pair of the
+// addendum), the slot-3 M2 2.7 km lateral on the far side of slot 1 (Run158's 0x8f88cbf0: x = 666 + 2,700 m), the slot-2 M2
+// joining across slot 0's lane (from x = +700 m, 8 r back: no box overlap at the start), the slot-4 Titan 1.4 km lateral (outward)
+// at s -1.0 km, 50 deg toward its lane at 25 m/s (Run158's 0x8f893d48).
+//  * kCrowd: all five at t = 0, as section 16.5 writes it. With amendment 16b (section 16.10.5) every target is asserted at w 0.45 r
+//    and 0.25 r and reported at w = r; with X3M_SEQ_OFF (amendment 16 as built with the review fixes) they are reported as TARGET rows.
+//  * kCrowdStaggered: the same starts entering one approach at a time near the grid (slots 3 and 4 at 0 s, slots 0 and 1 together at
+//    180 s, slot 2 at 340 s).
+static const CrowdStart kCrowd[5] = {
+    {&kCrowdTitan, 0, 0.0, 0.0, -5.0 * 1105.0, 0.0, -1, 0},
+    {&kCrowdM1, 1, 666.0, 0.0, -5.0 * 1105.0, 0.0, -1, 0},
+    {&kCrowdM2s, 3, 666.0 + 2700.0, 0.0, -5.5 * 1105.0, 1e9, -1, 0},
+    {&kCrowdM2s, 2, 700.0, 0.0, -8.0 * 1105.0, 1e9, -1, 0},
+    {&kCrowdTitan, 4, -1332.0 - 1400.0, 0.0, -1000.0, 50.0, 25.0, 0},
+};
+static const CrowdStart kCrowdStaggered[5] = {
+    {&kCrowdTitan, 0, 0.0, 0.0, -5.0 * 1105.0, 0.0, -1, 180000},
+    {&kCrowdM1, 1, 666.0, 0.0, -5.0 * 1105.0, 0.0, -1, 180000},
+    {&kCrowdM2s, 3, 666.0 + 2700.0, 0.0, -5.5 * 1105.0, 1e9, -1, 0},
+    {&kCrowdM2s, 2, 700.0, 0.0, -8.0 * 1105.0, 1e9, -1, 340000},
+    {&kCrowdTitan, 4, -1332.0 - 1400.0, 0.0, -1000.0, 50.0, 25.0, 0},
+};
+// M-b: two Titans on the same lane point (slot 0; the KC never hands one slot to two ships at once, the rule's own test): the
+// leader on the axis at 5.9 r waits in its hand-over while the through slot is held until 150 s; the trailer starts on the same axis
+// 6.7 km behind it (outside the 6 r window: (b) engages when it enters, both moving, the spacing above D at matched speed) and must
+// hold outside the engine's warn reach while the leader brakes and waits.
+static const CrowdStart kCrowdFollow[2] = {
+    {&kCrowdTitan, 0, 0.0, 0.0, -5.9 * 1105.0, 0.0, -1, 0},
+    {&kCrowdTitan, 0, 0.0, 0.0, -5.9 * 1105.0 - 6700.0, 0.0, -1, 0},
+};
+// Amendment 16b sub-scenarios (section 16.10.5), absolute s along F (the slot-0 Titan's start at 5 r before its X = -10,747.75 m):
+//  * M-c ((c) kept when the hulls can meet): the slot-2 M2 755 (lane -666) abreast of the in-lane slot-0 Titan at q = -1,250 (584 m
+//    beyond its lane), its nose 30 deg toward the Titan, both at 100 m/s: lateral gap 1,250 - 717 - 491 = 42 m < 50 m + motion, ds 0.
+//  * M-d (2) (the leader brakes, a_T < a_L): a Colossus joiner 1 km beyond its lane (q = 1,666) and 300 m behind the slot-0 Titan
+//    (a 10), aiming at its A, both at 100 m/s; the Titan's desired speed forced to 0 once the cap binds with ds - D_x < 100 m.
+static const CrowdStart kCrowdMc[2] = {
+    {&kCrowdTitan, 0, 0.0, 0.0, -10747.75, 0.0, 100.0, 0, true},
+    {&kCrowdM2s, 2, -1250.0, 0.0, -10747.75, 30.0, 100.0, 0, true},
+};
+static const CrowdStart kCrowdMd2[2] = {
+    {&kCrowdTitan, 0, 0.0, 0.0, -10747.75, 0.0, 100.0, 0, true},
+    {&kCrowdM1, 1, 1666.0, 0.0, -10747.75 - 300.0, 1e9, 100.0, 0, true},
+};
+static unsigned g_crowd_targets_missed = 0;
+static void crowd_target(bool yes, const char* why, double a, double b) { // a measured target, reported, not counted as a failure
+    if (yes) return;
+    ++g_crowd_targets_missed;
+    char line[600];
+    std::snprintf(line, sizeof line, why, a, b);
+    std::printf("TARGET MISS %s\n", line);
+}
+static void crowd_print(const char* tag, int fps, std::uint32_t seed, const CrowdResult& r) {
+    std::printf("crowd M %-22s fps=%3d seed=%u: arrived=%u launched=%u kept=%u slow_cross=%u fb_cross=%u fb_frames=%u slow_entries=%u unlatch=%u "
+                "arrive=%.0f-%.0f s detours a/b/c/none=%u/%u/%u/%u pairs a/b/c=%u/%u/%u adj1.1km a/c=%u/%u E_a lane=%u/%u warn a raw/unsup=%u/%u "
+                "c raw/unsup=%u/%u b raw=%u gate sup join/slow/fb/hand=%u/%u/%u/%u gate_warn span/unsup=%u/%u min_box_sep=%.0f m (corridor pairs %.0f m) "
+                "o5_overlap=%u rot_slow_max=%.1f s join_err_max=%.2f b cap_frames=%u ds<D=%u ds-D_min=%.0f (D %.0f) b_warn=%u leader_cap=%.1f "
+                "lane_us_max=%.1f E_us mean/max=%.3f/%.1f\n",
+                tag, fps, seed, r.arrived, r.launched, r.kept, r.slow_cross, r.fallback_cross, r.fallback_frames, r.slow_entries, r.unlatches,
+                r.arrive_first, r.arrive_last, r.detours_a, r.detours_b, r.detours_c, r.detours_none, r.pair_frames_a, r.pair_frames_b,
+                r.pair_frames_c, r.a_titans_adjacent, r.c_titans_adjacent, r.e_lane_a, r.e_calls_a, r.warn_raw_a, r.warn_unsup_a, r.warn_raw_c,
+                r.warn_unsup_c, r.warn_raw_b, r.gate_sup_join, r.gate_sup_slow, r.gate_sup_fb, r.gate_sup_hand, r.gate_warn_span, r.gate_warn_unsup,
+                r.min_sep, r.min_sep_corridor > 1e17 ? 0.0 : r.min_sep_corridor, r.order5_overlap, r.max_rot_slow, r.max_cross_err_join, r.b_cap_frames,
+                r.b_ds_short, r.b_ds_min > 1e17 ? 0.0 : r.b_ds_min, r.b_D_at_min, r.b_warn_after, double(r.leader_cap_max), r.lane_us_max,
+                r.e_us_n ? r.e_us_sum / r.e_us_n : 0.0, r.e_us_max);
+    std::printf("crowd M16b %-22s fps=%3d seed=%u: pairs a foot/corr=%u/%u s lat/along=%u/%u c approach/launch/other=%u/%u/%u detours_s=%u E cert lane=%u/%u "
+                "warn cert raw/unsup=%u/%u E corr lane=%u/%u warn corr raw/unsup=%u/%u cert frames/viol=%u/%u (worst slack %.0f m) cap frames=%u "
+                "ds-Dx_min=%.0f m lapses=%u floor_longest=%.1f s (ship %u) floor_total_max=%.1f s adj1.1km s=%u forced=%d box_unclassified=%.0f m box_launch_adjacent=%.0f m held_decisions=%u\n",
+                tag, fps, seed, r.pair_frames_a_foot, r.pair_frames_a_corr, r.pair_frames_s_lat, r.pair_frames_s_along, r.c_frames_approach,
+                r.c_frames_launch, r.c_frames_other, r.detours_s, r.e_lane_cert, r.e_calls_cert, r.warn_raw_cert, r.warn_unsup_cert, r.e_lane_corr, r.e_calls_corr,
+                r.warn_raw_corr, r.warn_unsup_corr, r.cert_frames, r.cert_viol, r.cert_worst > 1e17 ? 0.0 : r.cert_worst, r.cap_frames,
+                r.cap_gap_min > 1e17 ? 0.0 : r.cap_gap_min, r.lapses, r.floor_s_max, r.floor_ship, r.floor_total_s_max, r.s_titans, r.forced ? 1 : 0, r.min_sep_none > 1e17 ? 0.0 : r.min_sep_none, r.min_sep_launch > 1e17 ? 0.0 : r.min_sep_launch, r.held_decisions);
+    if (r.c_frames_approach)
+        std::printf("crowd M16b %-22s fps=%3d seed=%u: first (c) frame on an approach at %.2f s ships %u-%u lat_now-margin %.0f m along slack %.0f m\n", tag, fps,
+                    seed, double(r.c_miss_t) / 1000.0, r.c_miss_a, r.c_miss_b, r.c_miss_lat, r.c_miss_along);
+}
+// The lane-rule invariants (every variant): no detour against an (a) or (b) pair, E's suppress_lane on every call for an (a) pair
+// and no (a) warn left, launches one at a time, no NaN, E's capital-pair work.
+static void crowd_invariants(const char* tag, int fps, std::uint32_t seed, const CrowdResult& r, bool need_a = true, bool report16b = false) {
+    char why[480];
+    std::snprintf(why, sizeof why, "M %s %d fps seed %u: no capital-vs-capital detour against an (a) pair (%%.0f) or a (b) pair (%%.0f), nor an (s) pair", tag, fps, seed);
+    checkf(r.detours_a == 0 && r.detours_b == 0 && r.detours_s == 0, why, double(r.detours_a), double(r.detours_b));
+    std::snprintf(why, sizeof why, "M %s %d fps seed %u: E returns suppress_lane on every call for a certified pair ((a) footprint, (s)) (%%.0f of %%.0f), no certified warn left", tag, fps, seed);
+    checkf(r.e_lane_cert == r.e_calls_cert && r.warn_unsup_cert == 0 && (r.e_calls_cert > 0 || !need_a), why, double(r.e_lane_cert), double(r.e_calls_cert));
+    std::snprintf(why, sizeof why, "M %s %d fps seed %u: review F1: a corridor-only (a) pair keeps the engine's warn (suppress_lane %%.0f of %%.0f calls) and is never detoured (above)", tag, fps, seed);
+    checkf(r.e_lane_corr == 0, why, double(r.e_lane_corr), double(r.e_calls_corr));
+    std::snprintf(why, sizeof why, "M %s %d fps seed %u: every (s) frame holds its certificate on the true state (cylinders; violations %%.0f, worst slack %%.0f m)", tag, fps, seed);
+    (report16b ? crowd_target : checkf)(r.cert_viol == 0, why, double(r.cert_viol), r.cert_worst > 1e17 ? 0.0 : r.cert_worst);
+    std::snprintf(why, sizeof why, "M %s %d fps seed %u: the cap invariant: an obliged trailer on order 4 after the along route held keeps ds - D_x >= -10 m (min %%.1f m; below D_x at the start: from there), no lapse (%%.0f)", tag, fps, seed);
+    (report16b ? crowd_target : checkf)((r.cap_frames == 0 || r.cap_gap_min >= -10.0) && r.lapses == 0, why, r.cap_frames ? r.cap_gap_min : 0.0, double(r.lapses));
+    std::snprintf(why, sizeof why, "M %s %d fps seed %u: launches one at a time through the through slot (frames with two on order 5 / 8: %%.0f), no NaN", tag, fps, seed);
+    checkf(r.order5_overlap == 0 && !r.nan, why, double(r.order5_overlap), 0);
+    std::snprintf(why, sizeof why, "M %s %d fps seed %u: E's capital-pair work (the lane verdict and site_e_verdict) mean %%.3f us <= 2 us (slowest single call %%.1f us, timer noise; host)", tag, fps, seed);
+    checkf(r.e_us_n > 0 && r.e_us_sum / r.e_us_n <= 2.0, why, r.e_us_n ? r.e_us_sum / r.e_us_n : 0.0, r.e_us_max);
+}
+static void crowd_scenarios() {
+    char why[480];
+    if (const char* only = std::getenv("X3M_CROWD_ONLY")) { // an iteration aid: a subset of the starts (a bit mask; 60 fps seed 1)
+        static CrowdStart subset[5];
+        CrowdSetup su;
+        su.tag = "alone";
+        const unsigned mask = unsigned(std::atoi(only));
+        for (unsigned k = 0; k < 5; ++k)
+            if (mask & (1u << k)) subset[su.n++] = std::getenv("X3M_CROWD_SIM") ? kCrowd[k] : kCrowdStaggered[k];
+        su.starts = subset;
+        if (std::getenv("X3M_CROWD_W")) su.w_r = std::atof(std::getenv("X3M_CROWD_W"));
+        const int fps = std::getenv("X3M_CROWD_FPS") ? std::atoi(std::getenv("X3M_CROWD_FPS")) : 60;
+        const std::uint32_t seed = std::getenv("X3M_CROWD_SEED") ? std::uint32_t(std::atoi(std::getenv("X3M_CROWD_SEED"))) : kSeeds[0];
+        const CrowdResult r = run_crowd(su, fps, seed);
+        crowd_print("alone", fps, seed, r);
+        return;
+    }
+    struct Variant {
+        const char* tag;
+        double w_r;
+        bool nominal;
+    };
+    static const Variant kVariants[3] = {{"w 0.45 r", 0.45, true}, {"w 0.25 r", 0.25, false}, {"w = r (unreadable)", -1.0, false}};
+    for (const Variant& va : kVariants)
+        for (int fps : kFps)
+            for (std::uint32_t seed : kSeeds) {
+                CrowdSetup su;
+                su.tag = va.tag;
+                su.starts = kCrowdStaggered;
+                su.n = 5;
+                su.w_r = va.w_r;
+                const CrowdResult r = run_crowd(su, fps, seed);
+                if (seed == kSeeds[0] && fps == 60) crowd_print(va.tag, fps, seed, r);
+                crowd_invariants(va.tag, fps, seed, r);
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: all five arrive (%%.0f) and launch (%%.0f)", va.tag, fps, seed);
+                checkf(r.arrived == 5 && r.launched == 5, why, double(r.arrived), double(r.launched));
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: the box hulls never touch outside the corridor pairs (min separation %%.0f m > 0; corridor pairs %%.0f m)", va.tag, fps, seed);
+                checkf(r.min_sep > 0.0, why, r.min_sep, r.min_sep_corridor > 1e17 ? 0.0 : r.min_sep_corridor);
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: the adjacent 1.1 km pair (Titan, Colossus) exempt in their corridors (%%.0f pair frames) and (c) or (s) out of them (%%.0f), certificate held", va.tag, fps, seed);
+                checkf(r.a_titans_adjacent > 0 && r.c_titans_adjacent + r.s_titans > 0, why, double(r.a_titans_adjacent), double(r.c_titans_adjacent + r.s_titans));
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: every crossing in join (kept, <= 8.11 deg: max %%.2f) or slow join (P2 stop, rotate <= 5 s: max %%.1f s)", va.tag, fps, seed);
+                checkf(r.kept + r.slow_cross == 5 && r.fallback_cross == 0 && r.max_cross_err_join <= double(core::kGateRotateTolDeg) && r.max_rot_slow <= 5.0, why,
+                       r.max_cross_err_join, r.max_rot_slow);
+                if (va.nominal) {
+                    std::snprintf(why, sizeof why, "M %s %d fps seed %u: no aim-at-A fallback in the nominal variant (crossings %%.0f, frames %%.0f)", va.tag, fps, seed);
+                    checkf(r.fallback_cross == 0 && r.fallback_frames == 0, why, double(r.fallback_cross), double(r.fallback_frames));
+                }
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: the gate row on the join / slow-join approaches and the hand-over, no gate warn left (%%.0f warn frames, %%.0f unsuppressed)", va.tag, fps, seed);
+                checkf(r.gate_sup_join > 0 && r.gate_sup_hand > 0 && r.gate_warn_unsup == 0 && (r.slow_cross == 0 || r.gate_sup_slow > 0), why,
+                       double(r.gate_warn_span), double(r.gate_warn_unsup));
+            }
+    // the five at once (section 16.10.5): with sequencing on, every target is asserted at w 0.45 r (nominal) and 0.25 r; w = r is
+    // reported (TARGET rows: the Titan s0 / M2 s2 pair needs 2,662 m along F and starts 2,641 m apart). With X3M_SEQ_OFF (amendment
+    // 16 as built with the review fixes) all three are reported.
+    struct SimVariant {
+        const char* tag;
+        double w_r;
+        bool asserted;
+    };
+    static const SimVariant kSim[3] = {{"simultaneous w 0.45 r", 0.45, true}, {"simultaneous w 0.25 r", 0.25, true}, {"simultaneous w = r", -1.0, false}};
+    for (const SimVariant& sv : kSim) {
+        struct Agg {
+            unsigned runs = 0, arrived = 0, launched = 0, kept = 0, slow = 0, fb_cross = 0, fb_frames = 0, c_app = 0, c_launch = 0, viol = 0, lapses = 0;
+            double arrive_last = 0, rot = 0, err = 0, sep = 1e18, gap = 1e18, floor = 0;
+        } ag;
+        for (int fps : kFps)
+            for (std::uint32_t seed : kSeeds) {
+                CrowdSetup su;
+                su.tag = sv.tag;
+                su.starts = kCrowd;
+                su.n = 5;
+                su.w_r = sv.w_r;
+                const CrowdResult r = run_crowd(su, fps, seed);
+                ++ag.runs;
+                ag.arrived += r.arrived;
+                ag.launched += r.launched;
+                ag.kept += r.kept;
+                ag.slow += r.slow_cross;
+                ag.fb_cross += r.fallback_cross;
+                ag.fb_frames += r.fallback_frames;
+                ag.c_app += r.c_frames_approach;
+                ag.c_launch += r.c_frames_launch;
+                ag.viol += r.cert_viol;
+                ag.lapses += r.lapses;
+                ag.arrive_last = std::fmax(ag.arrive_last, r.arrive_last);
+                ag.rot = std::fmax(ag.rot, r.max_rot_slow);
+                ag.err = std::fmax(ag.err, r.max_cross_err_join);
+                ag.sep = std::fmin(ag.sep, r.min_sep);
+                if (r.cap_frames) ag.gap = std::fmin(ag.gap, r.cap_gap_min);
+                ag.floor = std::fmax(ag.floor, r.floor_s_max);
+                if (seed == kSeeds[0] && fps == 60) crowd_print(su.tag, fps, seed, r);
+                const bool hard = sv.asserted && g_seq;
+                crowd_invariants(su.tag, fps, seed, r, true, !hard);
+                auto target = [&](bool yes, const char* w, double a, double b) {
+                    if (hard) checkf(yes, w, a, b);
+                    else crowd_target(yes, w, a, b);
+                };
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: no (c) pair frame with a ship on its order-4 approach (%%.0f; reported: against a ship on its order-5 launch %%.0f)", su.tag, fps, seed);
+                target(r.c_frames_approach == 0, why, double(r.c_frames_approach), double(r.c_frames_launch));
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: all five arrive (%%.0f) and launch (%%.0f)", su.tag, fps, seed);
+                target(r.arrived == 5 && r.launched == 5, why, double(r.arrived), double(r.launched));
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: no aim-at-A fallback (crossings %%.0f, frames %%.0f)", su.tag, fps, seed);
+                target(r.fallback_cross == 0 && r.fallback_frames == 0, why, double(r.fallback_cross), double(r.fallback_frames));
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: crossings in join or slow join with the rotate <= 5 s (max %%.1f s, join error max %%.2f deg)", su.tag, fps, seed);
+                target(r.kept + r.slow_cross == 5 && r.max_rot_slow <= 5.0 && r.max_cross_err_join <= double(core::kGateRotateTolDeg), why, r.max_rot_slow,
+                       r.max_cross_err_join);
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: the box hulls never touch outside the corridor pairs (min separation %%.0f m; corridor pairs %%.0f m)", su.tag, fps, seed);
+                target(r.min_sep > 0.0, why, r.min_sep, r.min_sep_corridor > 1e17 ? 0.0 : r.min_sep_corridor);
+                std::snprintf(why, sizeof why, "M %s %d fps seed %u: liveness: no capital at the sequencing floor for > 60 s outside the hand-over (longest span %%.1f s), last arrival %%.0f s", su.tag, fps, seed);
+                crowd_target(r.floor_s_max <= 60.0, why, r.floor_s_max, r.arrive_last); // reported (section 16.11: the chain wait behind a parked neighbour)
+            }
+        std::printf("crowd M16b over the %u runs of %-22s: arrived %u launched %u (of %u) kept %u slow %u fallback crossings %u frames %u; (c) frames on an "
+                    "approach %u, against a launch %u; certificate violations %u, lapses %u; last arrival %.0f s, rotate after a slow join max %.1f s, "
+                    "join error max %.2f deg, box min %.0f m, trailer ds - D_x min %.1f m, longest floor span %.1f s\n",
+                    ag.runs, sv.tag, ag.arrived, ag.launched, 5 * ag.runs, ag.kept, ag.slow, ag.fb_cross, ag.fb_frames, ag.c_app, ag.c_launch, ag.viol,
+                    ag.lapses, ag.arrive_last, ag.rot, ag.err, ag.sep, ag.gap > 1e17 ? 0.0 : ag.gap, ag.floor);
+    }
+    // M-c: (c) kept when the hulls can meet; the trailer capped from its first bound decision
+    for (int fps : kFps)
+        for (std::uint32_t seed : kSeeds) {
+            CrowdSetup su;
+            su.tag = "M-c abreast 30 deg";
+            su.starts = kCrowdMc;
+            su.n = 2;
+            const CrowdResult r = run_crowd(su, fps, seed);
+            if (seed == kSeeds[0] && fps == 60) crowd_print(su.tag, fps, seed, r);
+            crowd_invariants(su.tag, fps, seed, r, false);
+            if (!g_seq) continue;
+            std::snprintf(why, sizeof why, "M-c %d fps seed %u: the first classification is (c) (%%.0f = 3), with detours (%%.0f) on the (c) frames", fps, seed);
+            checkf(r.mc_first == int(ln::Verdict::cross) && r.detours_c > 0, why, double(r.mc_first), double(r.detours_c));
+            std::snprintf(why, sizeof why, "M-c %d fps seed %u: the engine's warn on the (c) frames left live (%%.0f warns, %%.0f unsuppressed)", fps, seed);
+            checkf(r.warn_unsup_c == r.warn_raw_c, why, double(r.warn_raw_c), double(r.warn_unsup_c));
+            std::snprintf(why, sizeof why, "M-c %d fps seed %u: the trailer (the M2, tie: not in its corridor) capped at the floor from its first bound decision (%%.0f = 1)", fps, seed);
+            checkf(r.mc_trailer_first_bound == 1, why, double(r.mc_trailer_first_bound), 0);
+        }
+    // M-d: the leader brakes to 0 once the sequencing cap binds near D_x (a_T > a_L: the simultaneous M2 s3 behind the Colossus;
+    // a_T < a_L: a Colossus joiner behind the slot-0 Titan): ds - D_x >= -10 m and the along certificate on every frame
+    for (int variant = 0; variant < 2; ++variant)
+        for (int fps : kFps)
+            for (std::uint32_t seed : kSeeds) {
+                CrowdSetup su;
+                su.tag = variant == 0 ? "M-d aT>aL (M2 behind M1)" : "M-d aT<aL (M1 behind M2)";
+                su.starts = variant == 0 ? kCrowd : kCrowdMd2;
+                su.n = variant == 0 ? 5 : 2;
+                su.brake_trailer = variant == 0 ? 2 : 1;
+                su.brake_leader = variant == 0 ? 1 : 0;
+                su.brake_at_along = variant == 0; // the M2 s3 never closes back to D_x behind the Colossus (its join is slower): the
+                                                  // leader brakes at the first frame of the along route, below D_x
+                const CrowdResult r = run_crowd(su, fps, seed);
+                if (seed == kSeeds[0] && fps == 60) crowd_print(su.tag, fps, seed, r);
+                crowd_invariants(su.tag, fps, seed, r, false);
+                if (!g_seq) continue;
+                std::snprintf(why, sizeof why, "M-d %s %d fps seed %u: the leader was stopped near D_x (%%.0f) and the trailer kept ds - D_x >= -10 m (min %%.1f m)", su.tag, fps, seed);
+                checkf(r.forced && r.cap_gap_min >= -10.0, why, r.forced ? 1.0 : 0.0, r.cap_frames ? r.cap_gap_min : 0.0);
+            }
+    // the un-latch: an uncommitted capital stands on the slot-3 joiner's lane line 1.5 km before its X for 40 s and leaves (the detour
+    // bends the join into a slow join; with the join's speed kept on the detour a farther or shorter obstacle no longer does)
+    {
+        unsigned unl = 0, runs = 0, runs_with = 0;
+        for (int fps : kFps)
+            for (std::uint32_t seed : kSeeds) {
+                CrowdSetup su;
+                su.tag = "unlatch";
+                su.starts = kCrowdStaggered;
+                su.n = 5;
+                su.obstacle_ship = 2;
+                su.obstacle_until_ms = 40000;
+                const CrowdResult r = run_crowd(su, fps, seed);
+                if (seed == kSeeds[0] && fps == 60) crowd_print(su.tag, fps, seed, r);
+                crowd_invariants(su.tag, fps, seed, r);
+                unl += r.unlatches;
+                runs_with += r.unlatches > 0 ? 1u : 0u;
+                ++runs;
+            }
+        std::printf("crowd M unlatch: %u slow_join/fallback -> join transitions over %u runs (%u runs with one)\n", unl, runs, runs_with);
+        std::snprintf(why, sizeof why, "M unlatch: slow_join -> join transitions after the neighbour leaves the joiner's path (%%.0f over 9 runs, %%.0f runs with one)");
+        checkf(unl > 0, why, double(unl), double(runs_with));
+    }
+    // M-b: the same lane point (b): the trailer holds D behind the leader, no warn for the pair, the leader untouched
+    for (int fps : kFps)
+        for (std::uint32_t seed : kSeeds) {
+            CrowdSetup su;
+            su.tag = "same lane (b)";
+            su.starts = kCrowdFollow;
+            su.n = 2;
+            su.slot_busy_until_ms = 150000;
+            const CrowdResult r = run_crowd(su, fps, seed);
+            CrowdSetup lone = su;
+            lone.tag = "leader alone";
+            lone.n = 1;
+            const CrowdResult l = run_crowd(lone, fps, seed);
+            if (seed == kSeeds[0] && fps == 60) crowd_print(su.tag, fps, seed, r);
+            crowd_invariants(su.tag, fps, seed, r, false);
+            std::snprintf(why, sizeof why, "M-b %d fps seed %u: the pair is (b) (%%.0f frames), no sideways detour between them (%%.0f)", fps, seed);
+            checkf(r.pair_frames_b > 0 && r.detours_b == 0, why, double(r.pair_frames_b), double(r.detours_b));
+            std::snprintf(why, sizeof why, "M-b %d fps seed %u: after the cap engages (%%.0f frames) the spacing never falls below D (min ds - D %%.1f m; 2 m numerical tolerance: the hold at the 1 unit/s floor)", fps, seed);
+            checkf(r.b_cap_frames > 0 && r.b_ds_min >= -2.0, why, double(r.b_cap_frames), r.b_ds_min);
+            std::snprintf(why, sizeof why, "M-b %d fps seed %u: no engine warn for the pair after the cap engages (%%.0f), both arrive and launch (%%.0f)", fps, seed);
+            checkf(r.b_warn_after == 0 && r.arrived == 2 && r.launched == 2, why, double(r.b_warn_after), double(r.launched));
+            std::snprintf(why, sizeof why, "M-b %d fps seed %u: the leader's speed untouched: never capped, its arrival %%.2f s = alone %%.2f s", fps, seed);
+            checkf(r.leader_cap_max < 0.0f && std::fabs(r.arrive_first - l.arrive_first) < 1e-6, why, r.arrive_first, l.arrive_first);
+        }
+    std::printf("crowd M: %u measured targets missed (TARGET MISS rows; the simultaneous starts)\n", g_crowd_targets_missed);
+    std::printf("crowd M16b: capped decisions under an avoidance emergency (the emergency ramp writes, floored at 10 m/s; the cap not applied) %u, "
+                "of which the cap was below 10 m/s %u\n", g_emerg_cap, g_emerg_cap_floor);
+}
 int main(int argc, char** argv) {
+    if (std::getenv("X3M_SEQ_OFF")) g_seq = false; // amendment 16b off: amendment 16 with the review fixes (the option-off stdout)
     if (argc == 3 && !std::strcmp(argv[1], "--emit-trace")) return emit_trace(argv[2]);
     if (argc == 3 && !std::strcmp(argv[1], "--emit-controller")) return emit_controller(argv[2]);
+    if (argc == 2 && !std::strcmp(argv[1], "--crowd")) { // amendment 16 alone (an iteration aid; --capital and the full run include it)
+        amend16_scenarios();
+        std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
+        std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
+        return failures ? 1 : 0;
+    }
     if (argc == 2 && !std::strcmp(argv[1], "--vanilla-rows")) {
         // the ledger's before/after baseline (amendment 14): the formation, flyby and crossing rows (60 fps, seed 1) with every
         // ship on the vanilla leaf; no assertion is meaningful here (no avoidance: the engine's own warn is not modelled)
@@ -5384,6 +7672,7 @@ int main(int argc, char** argv) {
                 for (std::uint32_t seed : kSeeds) capital_transit_scenario(t, fps, seed);
         capital_transit_scenario(kShips[4], 60, kSeeds[0]);
         amend15_scenarios();
+        amend16_scenarios();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
         return failures ? 1 : 0;
@@ -5426,6 +7715,7 @@ int main(int argc, char** argv) {
     }
     amend12_ab_checks();
     amend15_scenarios();
+    amend16_scenarios();
     std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u vanilla_notes=%u\n", checks, failures, slip_gaps, vanilla_notes);
     std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
     return failures ? 1 : 0;

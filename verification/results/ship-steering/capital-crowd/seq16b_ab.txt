@@ -1,0 +1,104 @@
+# A: 2952a324 (amendment 16 as built) -> this change (16b on, the review fixes, the hysteresis)
+lines before=206 after=247
+differing lines (timing removed): -38 +79
+  +  42  TARGET MISS M simultaneous
+  -  27  TARGET MISS M simultaneous
+  +   1  a16 lane <t> <t>
+  -   1  a16 lane <t> <t>
+  +   1  a16b lane <t> <t>
+  +   1  a16b random side pairs:
+  +   1  amendment 15 membership pass
+  -   1  amendment 15 membership pass
+  +   1  amendment 15 predictor <t>
+  -   1  amendment 15 predictor <t>
+  +   1  crowd M M-c abreast
+  +   1  crowd M M-d aT<aL
+  +   1  crowd M M-d aT>aL
+  +   1  crowd M same lane
+  -   1  crowd M same lane
+  +   3  crowd M simultaneous w
+  -   1  crowd M simultaneous w
+  +   1  crowd M unlatch fps=
+  -   1  crowd M unlatch fps=
+  +   1  crowd M w 0.25
+  -   1  crowd M w 0.25
+  +   1  crowd M w 0.45
+  -   1  crowd M w 0.45
+  +   1  crowd M w =
+  -   1  crowd M w =
+  +   2  crowd M16b M-c abreast
+  +   2  crowd M16b M-d aT<aL
+  +   1  crowd M16b M-d aT>aL
+  +   3  crowd M16b over the
+  +   2  crowd M16b same lane
+  +   4  crowd M16b simultaneous w
+  +   1  crowd M16b unlatch fps=
+  +   1  crowd M16b w 0.25
+  +   1  crowd M16b w 0.45
+  +   1  crowd M16b w =
+  +   1  crowd M16b: capped decisions
+  -   1  crowd M: 27 measured
+  +   1  crowd M: 42 measured
+  -   1  ship_steering_host checks=6655 failures=0 slip_gaps=0
+  +   1  ship_steering_host checks=7260 failures=0 slip_gaps=0
+before: TARGET MISS rows 27
+    9  crossings in join or slow join with the rotate <= # s
+    9  no aim-at-A fallback
+    9  the box hulls never touch outside the corridor pairs
+after: TARGET MISS rows 42
+   15  liveness: no capital at the sequencing floor for > # s outside the hand-over, last arrival # s
+    9  no (c) pair frame with a ship on its order# approach
+    9  the box hulls never touch outside the corridor pairs
+    9  the cap invariant: an obliged trailer on order # after the along route held keeps ds - D_x >= # m, no lapse
+
+# B: 2952a324 -> this change with X3M_SEQ_OFF=1 (ship_steering_gates_capital_seq off: amendment 16 with the review fixes)
+lines before=206 after=316
+differing lines (timing removed): -11 +121
+  +  81  TARGET MISS M simultaneous
+  +   1  a16 lane <t> <t>
+  -   1  a16 lane <t> <t>
+  +   1  a16b lane <t> <t>
+  +   1  a16b random side pairs:
+  +   1  amendment 15 membership pass
+  -   1  amendment 15 membership pass
+  +   1  amendment 15 predictor <t>
+  -   1  amendment 15 predictor <t>
+  +   1  crowd M M-c abreast
+  +   1  crowd M M-d aT<aL
+  +   1  crowd M M-d aT>aL
+  +   1  crowd M same lane
+  -   1  crowd M same lane
+  +   3  crowd M simultaneous w
+  -   1  crowd M simultaneous w
+  +   1  crowd M unlatch fps=
+  -   1  crowd M unlatch fps=
+  +   1  crowd M w 0.25
+  -   1  crowd M w 0.25
+  +   1  crowd M w 0.45
+  -   1  crowd M w 0.45
+  +   1  crowd M w =
+  -   1  crowd M w =
+  +   2  crowd M16b M-c abreast
+  +   2  crowd M16b M-d aT<aL
+  +   2  crowd M16b M-d aT>aL
+  +   3  crowd M16b over the
+  +   2  crowd M16b same lane
+  +   6  crowd M16b simultaneous w
+  +   1  crowd M16b unlatch fps=
+  +   1  crowd M16b w 0.25
+  +   1  crowd M16b w 0.45
+  +   1  crowd M16b w =
+  +   1  crowd M16b: capped decisions
+  +   1  crowd M: 108 measured
+  -   1  crowd M: 27 measured
+  -   1  ship_steering_host checks=6655 failures=0 slip_gaps=0
+  +   1  ship_steering_host checks=7089 failures=0 slip_gaps=0
+before: TARGET MISS rows 27
+    9  crossings in join or slow join with the rotate <= # s
+    9  no aim-at-A fallback
+    9  the box hulls never touch outside the corridor pairs
+after: TARGET MISS rows 108
+   27  crossings in join or slow join with the rotate <= # s
+   27  no (c) pair frame with a ship on its order# approach
+   27  no aim-at-A fallback
+   27  the box hulls never touch outside the corridor pairs

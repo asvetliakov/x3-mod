@@ -19,6 +19,10 @@ Width figures (m), lateral = the ship's x (beam) and y (height); z is the nose a
   all_x/y/z every resolved non-effect part as a box in the root frame (parts under a rotated part: offsets and
             extents bounded by their norms); effect parts (effects\\...) are excluded and counted
   r         the engine collision radius estimate [obj+0xa4] (scene_radius.py, validated there)
+  l, w_rt   amendment 16b (capital-gate-transit.md section 16.10.9): as the runtime walk (ship_avoidance_walk_core.h hull_width)
+            sees each resolved non-effect part, per axis the max over ALL its LOD records placed by its offset: l = max over parts
+            of |o_z| + e_z (the along-axis half-extent), w_rt = max over parts of sqrt((|o_x| + e_x)^2 + (|o_y| + e_y)^2), at most
+            r; h = sqrt(r^2 + w_rt^2), the along-F bound the sequencing rule uses; l <= h is the check
 Usage: capital_widths.py -> capital_widths.txt and capital_widths.json beside this script. Reads /mnt/c/X3 only.
 """
 import json, math, re, statistics, sys
@@ -117,6 +121,7 @@ def ship_widths(assets, scene):
     by = {p['idx']: p for p in ps}
     out = dict(src=src, parts=len(ps), effects=0, unresolved=0)
     allb = [0.0, 0.0, 0.0]
+    l_any, w_any = 0.0, 0.0   # amendment 16b: the runtime walk's view (all LOD records per part)
     hull = None
     for p in ps:
         b = (p['body'] or '')
@@ -147,6 +152,12 @@ def ship_widths(assets, scene):
         box = [abs(exact[k]) + slack + ee[k] for k in range(3)]
         for k in range(3):
             allb[k] = max(allb[k], box[k])
+        ea = [world(value, x) for x in anyl]
+        if rotated or rot_above and len(chain) > 1:
+            ea = [math.sqrt(sum(v * v for v in ea))] * 3
+        box_any = [abs(exact[k]) + slack + ea[k] for k in range(3)]
+        l_any = max(l_any, box_any[2])
+        w_any = max(w_any, math.hypot(box_any[0], box_any[1]))
         is_hull_cand = not ('dummy' in bl or b.isdigit())
         if is_hull_cand and (hull is None or value + max(abs(v) for v in p['pos']) > hull['key']):
             hull = dict(key=value + max(abs(v) for v in p['pos']), name=b, idx=p['idx'], value=value, e=e, box=box,
@@ -154,6 +165,7 @@ def ship_widths(assets, scene):
                         pre=npre, nparts=nparts, coarse=[world(value, x) for x in coarse],
                         anyl=[abs(exact[k]) + slack + ([world(value, x) for x in anyl] if not (rotated or rot_above and len(chain) > 1) else [math.sqrt(sum(world(value, x) ** 2 for x in anyl))] * 3)[k] for k in range(3)])
     out['all'] = allb
+    out['l_any'], out['w_any'] = l_any, w_any
     out['hull'] = hull
     return out
 
@@ -188,6 +200,10 @@ def main():
                        effects=w['effects'], unresolved=w['unresolved'], parts=w['parts'],
                        wb_r=round(lat_box / rec['r_m'], 3), wv_r=round(h['lat_vtx'] / U / rec['r_m'], 3),
                        wa_r=round(all_lat / rec['r_m'], 3), wl_r=round(math.hypot(h['anyl'][0], h['anyl'][1]) / U / rec['r_m'], 3), maxexy_r=round(max(h['box'][0], h['box'][1]) / U / rec['r_m'], 3))
+            w_rt = min(w['w_any'] / U, rec['r_m'])
+            h16b = math.hypot(rec['r_m'], w_rt)
+            rec.update(l_m=round(w['l_any'] / U, 1), w_rt_m=round(w_rt, 1), h_m=round(h16b, 1), l_h=round(w['l_any'] / U / h16b, 3),
+                       l_r=round(w['l_any'] / U / rec['r_m'], 3))
             lines.append('%-4s %-34s %7.0f | %-44s %3d %6.0f %6.0f %6.0f %3s | %6.0f %6.0f %5.2f %5.2f | %6.0f %6.0f %6.0f %5.2f'
                          % (rec['cls'], ('%s (%d)' % (nm, i))[:34], rec['r_m'], h['name'][-44:], h['idx'],
                             h['box'][0] / U, h['box'][1] / U, h['box'][2] / U, 'y' if h['rot'] else '-',
@@ -207,6 +223,16 @@ def main():
         summ.append('%-3s n=%3d  wb/r %s  wl/r %s  wv/r %s  wa/r %s  max(ex,ey)/r %s  hull rotated %d  hull ez/r %s'
                     % (c, len(rs), q('wb_r'), q('wl_r'), q('wv_r'), q('wa_r'), q('maxexy_r'), sum(x['hull_rot'] for x in rs),
                        '%.2f/%.2f/%.2f' % tuple((lambda v: (v[0], statistics.median(v), v[-1]))(sorted(x['hull_e_m'][2] / x['r_m'] for x in rs)))))
+    lx = [x for x in recs if 'l_h' in x]
+    if lx:
+        over_h = [x for x in lx if x['l_h'] > 1.0]
+        v = sorted(x['l_h'] for x in lx)
+        vr = sorted(x['l_r'] for x in lx)
+        summ.append('amendment 16b along-axis extent l = max over parts |o_z| + e_z (all LODs) against h = sqrt(r^2 + w_rt^2): %d of %d within h; '
+                    'l/h min/median/max %.3f/%.3f/%.3f; l/r %.3f/%.3f/%.3f%s'
+                    % (len(lx) - len(over_h), len(lx), v[0], statistics.median(v), v[-1], vr[0], statistics.median(vr), vr[-1],
+                       (' (beyond h: ' + ', '.join('%s %s l %.0f h %.0f' % (x['cls'], x['name'] or x['index'], x['l_m'], x['h_m']) for x in over_h[:8]) + ')')
+                       if over_h else ''))
     cx = [x for x in recs if 'hull_coarse_e_m' in x]
     over = [x for x in cx if any(x['hull_coarse_e_m'][k] > 1.01 * x['hull_e_m'][k] + 0.5 for k in range(2))]
     summ.append('hulls whose coarsest LOD (the collision LOD of a ship part) exceeds LOD 0 laterally by > 1 %%: %d of %d%s'

@@ -1,0 +1,8 @@
+4032 window states, 1 sweep(s)
+worst join_choose (amendment 15)         84.8 us at s=-6.0 r y=19462 m psi=105 deg
+worst join_evaluate16 from join          84.8 us at s=-6.0 r y=19462 m psi=105 deg
+worst join_evaluate16 from the fallback  84.7 us at s=-6.0 r y=19462 m psi=105 deg
+4032 window states, 5 sweep(s)
+worst join_choose (amendment 15)         81.2 us at s=-5.0 r y=19462 m psi=105 deg
+worst join_evaluate16 from join          81.2 us at s=-5.5 r y=19462 m psi=105 deg
+worst join_evaluate16 from the fallback  81.2 us at s=-5.0 r y=19462 m psi=105 deg

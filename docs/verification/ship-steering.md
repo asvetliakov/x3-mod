@@ -1124,6 +1124,223 @@ order 4 the lag should shrink after a turn, not grow; a lag that grows means a w
 2 r; for an M5 the bound is 30 m. Capital rows follow the amendment-13 targets above unchanged; the fixture's capital
 checks are 655/655 with the new law.
 
+## Capital gate transit amendment 16 (2026-10-13, Opus 5.5; design §16 with the ratification addendum, implementation notes §16.9)
+
+Implemented on main `453d12ed` (worktree, not committed, not installed). Sources: `ship_capital_lane_core.h` (new: the lane
+board, commitment, footprints, the verdict with the corridor route, D and the follow cap, the path guards),
+`ship_avoidance_core.h` (`Self.lane_*`, `lane_bind`, `lane_pair`, `excluded_base` / `excluded`, the resolve's lane counters,
+`SiteE`'s amendment-16 inputs and `suppress_lane`), `ship_avoidance_walk_core.h` (`hull_width`: the §6.1 chain of
+render-node-bounds.md), `ship_steering_core.h` (`JoinMode::slow_join`, `JoinPred`, `join_evaluate16`,
+`join_registry_keep16`), `ship_steering.cpp` (decide's lane entry and follow cap, the order-5 refresh, P2's hand-over, E's
+lane and extended gate rows, the frame-end evaluation, `ship_capital_lane` / `ship_gate_capital_latch` / `ship_capital_census`
+rows, counters `lane_exempt lane_follow lane_cross lane_capped e_suppressed_lane gate_capital_slow_join gate_capital_unlatch
+lane_board_full`), `ship_trace_rows.py` (`parse_kv_rows` for the three rows). No hook site added.
+
+**Acceptance (measured, WSL2 host, MinGW GCC 16.2):** `cmake … && cmake --build build 2>&1 | grep -c warning` → 0;
+`check_no_x87.py build/d3d9.dll` → PASS, 963 reachable, 0 violations (four lane helpers returning float were out of line at
+first and returned in st(0); now always_inline); `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` → PASS, 18 checks;
+host fixture ([output](../../verification/results/ship-steering/ship_steering_host.txt)) **6655/6655, slip_gaps 0,
+vanilla_notes 2**; `--capital` ([output](../../verification/results/ship-steering/capital-gate-transit/fixture_capital.txt))
+**2028/2028** (`--capital-noslip`, a report: 33 failures, 45 before); the four ship host modules plus the config/launcher
+tests → 55 tests OK; Run158 replay (`ship_trace_replay.py /mnt/c/X3/x3m.log --json` → `replay_lag.py`) byte-identical to
+[replay_lag_run158.txt](../../verification/results/ship-steering/replay_lag_run158.txt), |flown − model| p95 0.00°.
+
+**Cost (host x86-64 -O2, measured):** one capital decision's lane work on a full gate (refresh, follow cap over 19, 19
+`lane_pair`) 0.345 µs; E's capital-pair work (lane verdict + `site_e_verdict`) mean 0.12–0.14 µs per call in scenario M;
+predictor worst over the 4,032 window states of the review sweep: `join_choose` 81.4 µs, `join_evaluate16` 81.2 µs from join,
+81.6 µs from the fallback ([pred_cost16.cpp](../../verification/results/ship-steering/capital-crowd/pred_cost16.cpp) →
+[txt](../../verification/results/ship-steering/capital-crowd/pred_cost16.txt)). The DLL's i686 figures are not measured.
+
+**Option-off:** E's verdict with the amendment-16 inputs at their defaults (what the DLL leaves with
+`ship_steering_gates_capital` off) equals the verbatim amendment-15 function on 400,000 random inputs (0 differences); with
+no board the resolve is the amendment-15 exclusion (unit check). Join mode decides the amendment-15 speed on all 95 accepted
+states of 120 random join states (15 → slow_join, 10 → fallback). The §16.4 small-ship extension follows `ship_steering_gates`.
+
+**Hull width:** `hull_width` over a synthetic node tree: hull (2 LODs, the coarse one wider in x) + a rotated turret + a
+skipped no-collision jet → w 502 m = the hull's √(e_x² + e_y²) over all LODs, source `lod`, 2 parts; a cache miss, LOD count 0,
+an extent > 0x20000, an unscaled node, no root, no collision part, a non-power-of-two hash → w = r (`fail`). Not run against
+the game: the census row is a flight target.
+
+**Scenario M** (`crowd_scenarios`, calibrated plant with slip, five capitals on slots 0–4: Titan 1,092 / Colossus 1,022 on
+their axes at 5 r, an M2 755 2.7 km lateral beyond slot 1, an M2 755 joining across slot 0's lane, a Titan 1.4 km lateral at
+s −1.0 km, 50° toward its lane at 25 m/s; 3 fps × 3 seeds per variant; 60 fps seed 1 figures):
+
+| Variant | Result |
+| --- | --- |
+| Staggered entry, w 0.45 r (nominal), 0.25 r, w = r | all asserted: 5/5 arrive and launch; 4 kept joins (error ≤ 0.68°), 1 slow join (12.6°, rotate 3.8 s); fallback 0; detours against (a)/(b) pairs 0; E `suppress_lane` 12,808/12,808 (a)-pair calls, 7,059 engine warns of (a) pairs all suppressed; the adjacent Titan–Colossus pair (a) in its corridors 6,618 pair frames, (c) out of them 4,368; gate row join/slow/hand-over 14,697/4,185/4,905 frames, 0 unsuppressed gate warns; one launch at a time; box separation outside the grid zone ≥ 791 / 138 / 627 m |
+| Simultaneous (§16.5 as written) | invariants asserted (0 (a)/(b) detours, `suppress_lane` 27,380/27,380, one launch at a time, (c) detours 35,464 present); targets measured, 27 TARGET MISS rows over 9 runs: fallback frames in every run (1,320 at 60 fps s1), rotate after a slow join up to 19.3 s, box overlap −516 m outside the grid zone |
+| Un-latch (an uncommitted M1 standing 2.5 km in the slot-3 joiner's path for 30 s) | 8 slow_join/fallback → join transitions in 9 runs (asserted: > 0) |
+| M-b (two Titans on one lane point, the slot held until 150 s) | (b) 10,396 pair frames, 0 sideways detours; after the cap binds (5,160 frames) Δs − D ≥ −1 m (D 6,560 m at rest; 2 m tolerance for the 1 unit/s floor), 0 engine warns for the pair; the leader never capped, its arrival equal to the leader alone |
+
+**Findings:** (1) The §16.5 simultaneous starts fail the join targets for a reason outside this change: a lateral joiner
+within the sphere clearance of an occupied lane is (c) until it is within 100 m of its lane (the joining corridor needs
+e_max ≤ 100 m), and a capital on a detour loses the lead-in (in.d_order ≥ 0), so site B only lowers and the engine's order-4
+law holds it at its 1 m/s alignment creep (traced: two capitals 2.9 km apart at 1.0 m/s for > 80 s). (2) The box hulls of
+adjacent grid points overlap by the KC layout itself (0.45 r: 926 m against the 666 m pitch); the contact check exempts two
+ships at adjacent grid points (within r + 1.5 km of A) and corridor pairs and asserts every other pair. (3) D as §16.1 writes
+it omits the warn test's r_A·cos θ term (implemented with it, 6.4–7.1 km for 1.1 km hulls), and the §16.1 cap lets Δs fall
+167 m below D when the leader brakes at the trailer's deceleration (implemented as the lower of it and the stopping-distance
+form). (4) With D ≈ 7.1 km at 100 m/s closing, a trailer that enters the 6 r window behind a leader already parked at the same
+point is inside D from the start.
+
+**Flight targets** (the next run with a capital crowd; `--debug`, `ship_trace_max` ≥ 6):
+
+| Phase | Rows / counters | Target |
+| --- | --- | --- |
+| install | `ship_steering_gates_capital … lane_gates=8 lane_entries=20 … corridor_m=100 slow_join_nose_deg=20 … width=lod_all` | present |
+| widths | `ship_capital_census type= class= r_m= w_m= w_r= w_src=` | `w_src=lod` on every capital type, w/r 0.3–0.5 (render-node-bounds.md §6.2) |
+| lanes | `ship_capital_lane` (verdict, gap, foot, e, θ, Δs, v_cap, D); `lane_exempt/follow/cross`, `e_suppressed_lane` | no `ship_avoid_detour` between a pair whose last lane row is a; settled neighbours a |
+| joins | `ship_gate_capital_latch event=pred_none|slow_join|unlatch` for every capital; `gate_capital_slow_join`, `gate_capital_unlatch`, `gate_capital_fallback_pred` | aim-at-A fallbacks ≤ 1 per gate; rotate after a slow join ≤ 5 s |
+| gate | `e_suppressed_gate`, `warn_pre` entries of class 18 | no capital gate warn on a validated approach outside 1.25 r_gate + r of the gate |
+| cost | `join_eval_us_max`, `handler_us_p99` | ≤ ~100 µs; p99 unchanged |
+
+**Ratified 2026-10-13 (main session):** the three deviations and four interpretations above, as built (listed at the end of
+design §16.9).
+
+**Detour speed-write fix (2026-10-13):** a capital in join or slow join on order 4 with a validated gate state keeps the join's
+site-B write while the avoidance hands the leaf a detour point (`decide()`: `capital_detour`; the fixture's `steer_call` the
+same): min(gate speed with the cornering term, the predictor's or slow-join speed, the (b) cap), lowered at site B to the
+emergency ramp; P2's hand-over and the fallback's own write unchanged; counter `gate_capital_detour_write`. Before/after over
+the whole host fixture ([detour_write_ab.py](../../verification/results/ship-steering/capital-crowd/detour_write_ab.py) →
+[txt](../../verification/results/ship-steering/capital-crowd/detour_write_ab.txt); the pre-fix stdout is
+[ship_steering_host_before_detour_write.txt](../../verification/results/ship-steering/capital-crowd/ship_steering_host_before_detour_write.txt)),
+measured:
+
+| Item | Before | After |
+| --- | --- | --- |
+| Simultaneous TARGET MISS rows (9 runs) | 27 (fallback 9, rotate 9, box 9) | **27** (fallback 9, rotate 9, box 9) |
+| Most fallback in one run (frames summed over ships) | 1,870 at 30 fps = 62.3 s, 2 fallback crossings | 3,824 at 60 fps = 63.7 s, 3 fallback crossings |
+| Longest rotate after a slow join | 19.3 s | 26.9 s |
+| Minimum box separation outside the grid zone | −990 m | −1,319 m |
+| Arrivals, simultaneous 60 fps s1 | 93–334 s | 83–167 s (no 1 m/s stall) |
+| Staggered variants (60 fps s1) | (c) detours 2, (c) warns 2,144 | 3, 2,146; gate-warn span frames 5,175 → 5,176 (0 unsuppressed); a-pair frames, E calls, joins and gate-row counts equal; box min 791 → 858 m (grid zone −412 → −452 m) |
+| Un-latch variant (obstacle 2.5 km on the joiner's heading, 30 s) | 8 transitions in 9 runs | 0: the joiner keeps join at speed; moved to a stationary M1 on the joiner's lane line 1.5 km before X for 40 s → 9 runs of 9 with one |
+| Amendment-13 B1 (converging second capital, no lane board) | cap2 min 2,195 / 2,226 / 3,585 m | 1,659 / 2,226 / 2,852 m; checks pass |
+| Every other line of the fixture's stdout | — | equal (timing fields aside) |
+
+The simultaneous misses remaining, one line each: **fallback** — the lateral joiners (slot-1 M1, slot-2 crossing M2) are (c)
+with occupied lanes until within 100 m of their own, their sphere detours (now at the join's speed) bend the pursuit until no
+candidate reaches the plane within 100 m / 20°; **rotate** — the on-axis slot-0 Titan is detoured off its line by those (c)
+joiners and crosses in slow join at 16° (rotate 16.6 s at 60 fps s1); **box** — the same Titan, pushed out of its corridor,
+is (c) with its adjacent Colossus and the two fast detours meet (−1,095 m at 42 s, 60 fps s1). All three are the joining
+footprint / sphere-clearance question of §16.8, for the design follow-up.
+
+**Acceptance after the fix (measured):** build warnings 0; `check_no_x87.py` PASS, 964 reachable, 0 violations;
+`verify_ship_steering_sites.py` PASS, 18 checks; host fixture 6655/6655 (slip_gaps 0, vanilla_notes 2); `--capital`
+2028/2028 (`--capital-noslip` report 34 failures); 55 host tests OK; the Run158 replay's `replay_lag.py` output byte-identical
+to `replay_lag_run158.txt` (|flown − model| p95 0.00°). DLL sha256 `dc328968…` (worktree build, not a candidate).
+
+**Amendment 16b and the review fixes (2026-10-13, Opus 5.5; design §16.10 with its ratification, implementation §16.11).**
+Worktree on `2952a324`, not committed, not installed. Sources: `ship_capital_lane_core.h` (verdict (s), `Route`, the motions on the
+board, `pair_verdict16b`, `verdict_sym`, `certified`, `seq_obliged`, `seq_cap`, `Pass` / `run_pass`, `seq_lapses`, `apply_cap`,
+`width_reread`), `ship_avoidance_core.h` (`Self.lane` = the pass, `lane_bind(Self&, const Pass*)`, `lane_excludes`; `excluded()`
+removed), `ship_avoidance_walk_core.h` (budget 128, scale bound), `ship_steering_core.h` (`kShipFlagLower`), `ship_steering.cpp`
+(the pass in `decide()`, the cap at site B, E's symmetric certified verdict, the width retry, rows and counters, key
+`X3M_SHIP_STEERING_GATES_CAPITAL_SEQ`), `tools/config/schema.py` (+ generated `config_schema_inc.h`, `assets/x3m.ini`). No hook site.
+
+Review findings on `40383a1e`:
+
+| Item | Fix |
+| --- | --- |
+| F1 E suppressed corridor-only (a) | E's `lane_exempt` is now `certified(verdict, route)`: footprint (a) or (s) lat / along. Corridor-only (a) pairs pass E (the engine's warn stays live) and are still never detoured; scenario M asserts both halves (`E corr lane=0/6618` and 0 (a) detours at w 0.45 r, 60 fps s1). |
+| F2 cap only under `join_write` | One pass per order-4 capital decision (`run_pass`, before the avoidance) feeds the exclusion and site B; `apply_cap` only lowers: the gate write's v_ref when it is a write (> 0; not under an avoidance emergency, where the emergency ramp floored at 10 m/s writes: accepted, exercised by a unit check, 0 such decisions in scenario M), the lowering clamp's cornering term under site B's own computation (ramp with the amendment-14 v_slip, then v_corner; `kShipFlagLower` drops only the final 10 m/s floor), and on the engine's law with no module write a lowering-only write of the cap (`clamp_units`). A sweep of 144 states: the capped write never above the uncapped one. |
+| F3 budget 64 | `kHullBudget` 128 (100-node tree reads, 140 fails closed: unit checks). |
+| F4 cache miss cached w = r | `width_reread`: a failed read retried every 5 s, at most 3 times, then w = r until the radius bits or the root change; census row once final with `retries=`. |
+| F5 `lane_bind` freshness | The pass binds only on the ship's own entry that is fresh (`committed_stored`), on its order, on its live target's board (unit check: stale 300 ms unbound). |
+| F6 asymmetric verdict | `verdict_sym`: both sides from the stored board, both directions, the more severe (rank a-foot < s < a-corr < b < c < none). Random check: 400,000 side pairs, 0 asymmetric (the as-built function is symmetric on stored sides, 0 of 400,000: its asymmetry came from the live/stored mix). |
+| F7 int64 operands | Node and axis scales outside (0, 16.0] fail the read (unit checks). |
+| F10 | the duplicated scenario comment merged, stagger times 180 / 340 s. |
+| F12 | `excluded()` dropped; the fixture tests `excluded_base` and `lane_excludes(lane_pair())`, the resolve's path. |
+| F8, F11 | no change. |
+| F9 (watch) | slow_join / fallback capitals stay in the 8-slot `JoinRegistry`; a crowd of more than 8 capitals refuses registrations (`join_slots_refused`). Watch it in the next crowd run; no change. |
+
+**Acceptance (measured, WSL2, MinGW GCC 16.2):** build warnings 0; `check_no_x87.py build/d3d9.dll` PASS, 968 reachable, 0 violations
+(`seq_cap` and `Pass::cap` are `always_inline`: out of line they returned in st(0)); 969 reachable after the second review round;
+`verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS, 18 checks; host fixture
+([output](../../verification/results/ship-steering/ship_steering_host.txt)) **7260/7260**, slip_gaps 0, vanilla_notes 2; `--capital`
+([output](../../verification/results/ship-steering/capital-gate-transit/fixture_capital.txt)) **2633/2633**; `--capital-noslip` (report) 43 failures (34 before: the 7 new are scenario M without the slip term, 6 rotates of
+5.0 s at the 5 s bound and one cap-invariant miss of 185.5 m at 60 fps s7); 55 host tests OK (the six ship / config / launcher
+modules); Run158 replay → `replay_lag.py` byte-identical to `replay_lag_run158.txt`; E vs amendment 15 on 400,000 random inputs with
+the capital key off: 0 differences. DLL sha256 `0a947cb2…` (worktree build after the second review round, not a candidate). Every fixture line outside scenario M
+and the amendment-16 unit block is unchanged (timing aside;
+[seq16b_ab.py](../../verification/results/ship-steering/capital-crowd/seq16b_ab.py) →
+[seq16b_ab.txt](../../verification/results/ship-steering/capital-crowd/seq16b_ab.txt), A: HEAD → this change).
+
+**Scenario M, simultaneous** (kCrowd, 3 fps × 3 seeds each; the 27 TARGET MISS rows are assertions at w 0.45 r and 0.25 r; w = r
+reported), measured over the 9 runs:
+
+| Variant | Arrive / launch | kept + slow | fallback | (c) frames with an approach | certificate violations | trailer Δs − D_x min | box min | rotate max | longest floor span |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| w 0.45 r | 45/45 | 36 + 9 | 0 crossings, 0 frames | 0 (704 against a launch, reported) | 0 | −0.0 m | 249 m | 4.0 s | 67.0 s (reported) |
+| w 0.25 r | 45/45 | 36 + 9 | 0, 0 | 0 (0) | 0 | +41.1 m | 138 m | 4.0 s | 26.6 s |
+| w = r | 45/45 | 36 + 9 | 0, 0 | 146,035 (11,489) | 0 | 0.0 m, 9 lapses | −333 m | 3.8 s | 145.4 s |
+
+Last arrivals 179 / 174 / 256 s (before: 83–167 s with 3 fallback crossings and a 26.9 s rotate at 60 fps s1). The w = r variant is
+(c) where the note expects it (the Titan s0 / M2 s2 pair needs 2,662 m and starts at 2,641 m).
+
+**Staggered, M-b, un-latch** (60 fps s1, before → after): staggered w 0.45 r (c) pair frames 8,772 → 2,930 with (s) 4,406 lat +
+1,438 along, (c) detours 3 → 1, the adjacent 1.1 km pair (a) 6,618 / (c) 4,368 → (a) 6,618 / (c) 2,930 / (s) 1,438, E suppress_lane
+12,808/12,808 → 6,188/12,806 (the 6,618 corridor-only calls now pass: F1, 6,618 engine warns left live), box min 858 → 1,534 m, rotate
+3.8 → 4.0 s, arrivals 67–430 s unchanged; at w 0.25 r (c) 5,194 → 2,774 and every (a) by the footprint; M-b (c) frames 12,508 → 7,900
+(stored sides, F6), (b) 10,396 unchanged, Δs − D ≥ −1 m; un-latch 9 transitions in 9 runs (unchanged). All asserted.
+
+**Sub-scenarios** (asserted, 9 runs each): M-c — the first classification (c), (c) detours present (736 at 60 fps s1), every warn on
+a (c) frame left to the engine (1,623/1,623), the M2 at the floor from its first bound decision, 0 certificate violations, box −288 m
+(they can meet; reported). M-d — a_T > a_L (the M2 s3 behind the Colossus, the leader stopped at the first frame of the along route:
+the M2 never closes back to D_x, its join is slower) and a_T < a_L (a Colossus joiner 1 km beyond its lane, 300 m behind the slot-0
+Titan, the Titan stopped once the cap binds with Δs − D_x < 100 m): Δs − D_x ≥ −10 m on every obliged frame (min −0.0 / 0.0 m),
+0 violations, 0 lapses.
+
+**Cost (host x86-64 -O2, measured):** a decision's lane pass on a full gate, 19 neighbours in both directions: 0.59 µs settled,
+1.07–1.10 µs with 19 watch neighbours (16 watch, 16 obliged); E's capital-pair work mean 0.14–0.18 µs per call in scenario M (0.12–0.14
+before); predictor ([pred_cost16.txt](../../verification/results/ship-steering/capital-crowd/pred_cost16.txt)) 81.2 µs over 5 sweeps
+with each state's best kept (one sweep: 84.7–84.8 µs; separate single sweeps measured 85.9 µs and 148.9 µs, the latter on amendment
+15's unchanged `join_choose`, at states that measure 81 µs in every other sweep: host preemption across all 7 back-to-back runs of one
+state, not the code; the multi-sweep form bounds it). The predictor is not modified. i686 figures not measured.
+
+**Static along-axis check** ([capital_widths.py](../../verification/results/ship-steering/capital-widths/capital_widths.py) →
+txt/json, measured over the 131 installed capitals as the runtime walk sees them, all LOD records per part): l = max over parts of
+|o_z| + e_z ≤ h = √(r² + w_rt²) for **130 of 131** (l/h median 0.914, max 1.324); the exception is the unnamed Stellaris M1
+`machineFlagship` (TShips 509, r 4,583 m, l 6,417 m, h 4,847 m). Production therefore uses the half-length max(r, l) with l from the
+same width read (h = √(max(r, l)² + w²); w = r on a failed read gives √2 r = 6,481 m there).
+
+**Flight targets** (the next crowd run; `--debug`, `ship_trace_max` ≥ 6), added to the amendment-16 table:
+
+| Phase | Rows / counters | Target |
+| --- | --- | --- |
+| install | `ship_steering_gates_capital … width_retry_ms=5000 width_retries=3 seq=1 seq_lat_gap_m=50 seq_along_m=50 seq_cap_extra_m=100` | present |
+| widths | `ship_capital_census … retries= l_m= h_rw_m= len_m= h_m=` (h_rw = √(r² + w²); len = max(r, l), h = √(len² + w²) the rule uses) | `w_src=lod`; l_m ≤ h_rw_m except the Stellaris flagship |
+| lanes | `ship_capital_lane … route= watch= lat_gap= mot= h_T= h_L= Dx= trail= seq_cap= bind= held=`; `lane_seq_lat/along/cross/capped`, `lane_capped` (writes the cap lowered, as Run158), `lane_cap_carried`, `lane_hysteresis_hold` | 0 `ship_avoid_detour` against a pair whose last row is a or s |
+| invariant | `lane_seq_lapse` | 0 |
+| liveness | `lane_seq_floor_ms`, rows with `bind=1` | no capital at the floor > 60 s outside the hand-over (fixture: 67.0 s at w 0.45 r, 30 / 60 fps; see §16.11) |
+| latches | `ship_gate_capital_latch … seq_cap= seq_leader=` | latches under a binding cap counted |
+| E | engine evasions between corridor neighbours (F1) | expected again (vanilla's own); none for a pair whose last row is s or a-foot |
+
+**Second review round (2026-10-13, on `0c261c96`), all in place above:** `apply_cap` lowers only (above); `lane_capped` counts the
+writes the cap lowered again (comparable with Run158), `lane_cap_carried` every decision carrying a cap; the census row labels
+`h_rw_m` = √(r² + w²) beside `len_m` and `h_m`; an unbound decision clears the lapse memory and `seq_lapses` reads the objects the
+pass captured, never the board after `refresh()`; the fixture's decision mirror has the DLL's `(!v_emergency_bits || capital_detour)`
+gate-write condition (no change in any output line); the box classification of the KC launch is narrowed to the launch leg itself
+(the ship on order 5 / its P4 stop between r + 1.5 km before its A and the gate, against the adjacent lane point; the −217 m of
+60 fps s7 is still in it, every other classified separation unchanged). `box_unclassified` −285 m (simultaneous w 0.45 r, 60 fps
+s1; reported) is the start geometry: the slot-0 Titan and the slot-1 Colossus abreast on adjacent lane axes at 5 r (491 + 460 m half-widths
+against the 666 m pitch) before the board has classified them; from the first classification they are a corridor (a) pair.
+
+**Hysteresis on the in-lane classification (ratified addition, §16.11):** in at |q − ℓ| ≤ 100 m and ≤ 8.11°, held until > 150 m or
+> 12°; a held state uses the exit values in the margins (footprint margin 37 m, a hand-over's nose floor 12° in the lateral
+certificate, the leader credit less v (1 − cos 12°)); the bit lives on the board entry and is cleared by another order, order 5 or
+a refresh gap > 1 s. Fixture (scenario-M geometry, measured): the Colossus oscillating at 110–140 m / 9–10° next to the in-lane
+Titan stays in lane on 40 of 40 decisions, (a) with the Titan, 0 detours (unbound: a conflict on every one); at 13° or 160 m the
+pair is (c) / (s); never entered at 110 m / 9°: not in lane; the bit cleared by another order and by a 1,001 ms gap. In the
+dynamic runs it holds 0 decisions at w 0.45 r and 0.25 r (115 in the w = r simultaneous run, 83 in M-c at 60 fps s1); every
+scenario-M row is unchanged. Row `held=`, counter `lane_hysteresis_hold`, install row `lane_hold_m=150 lane_hold_deg=12`.
+X3M_SEQ_OFF stdout tracked ([ship_steering_host_seq_off.txt](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt), 63 KB).
+
+Open from this entry (§16.11): the 60 s liveness row is reported, not met at w 0.45 r (67.0 s in 6 of 9 runs); approach-vs-launch (c) frames and
+the launch-transient box overlap are measured apart; the hand-over attitude bound (8.11°) is an assumption the fixture's free drift
+(3.7° in 4 s) satisfies; the 16.1 footprint's r cap is not a cylinder bound (a pre-existing gap in the footprint certificate at large
+noses).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

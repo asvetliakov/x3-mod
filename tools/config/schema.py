@@ -410,6 +410,10 @@ SETTINGS = [
           'their speed through the alignment step into the final run instead of stopping and turning in place (needs '
           'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off.', builtin='1',
           requires=('ship_steering_gates',), launcher='--ship-steering-gates-capital', since='2026-10-12'),
+    entry('ship_steering_gates_capital_seq', 'bool', 'engine', 'When several capital ships join the same gate, one that has to cross '
+          'or slide in next to another ship\'s lane waits behind it until the two cannot touch, instead of swerving around it (needs '
+          'ship_steering_gates_capital; 0 = they swerve as before). 1 = on, 0 = off.', builtin='1',
+          requires=('ship_steering_gates_capital',), since='2026-10-13'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '

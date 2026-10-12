@@ -1,0 +1,316 @@
+boreas horizon: L=3214 m v=70 m/s L/v=45.9 s horizon=30.0 s swept=2100 m (C vs a 50 m asteroid 1108 m)
+turn       M5  Discoverer fps= 60 settle=  3483 ms vanilla=  3716 ms oracle=  3664 ms ratio=0.951 overshoot=0.806 deg (vanilla 0.007) peak=89.6 deg/s
+turn(diag)  M5  finish yaw=3283 ms pitch=2283 ms (rel 0.305; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.880 vanilla_pitch_zero_ticks=59
+turn(diag) M5  Discoverer fps= 60 settle=  3199 ms vanilla=  3699 ms oracle=  3648 ms ratio=0.877 overshoot=0.774 deg (vanilla 0.007) peak=73.7 deg/s
+arrival     M5  Discoverer fps= 60 t= 66316 ms (vanilla  66249) entries=1 entry_speed=10.0 m/s (vanilla 11.9) min_d=17.3 m d_arr=18.4 m beyond=0.0 m reversals=0
+arrival/pf  M5  Discoverer fps= 60 t= 66333 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M5  Discoverer fps= 60 slot_rms=21.0 m (2r=18.4) max_after_entry=36.7 m window_increases=0
+formation brake M5  kind=0 (the leader stops) rot=527 deg overshoot=972 m final_err=23.0 m (4r=36.8) final_v=0.0 m/s
+formation brake M5  kind=1 (the follower 6 r ahead of its slot) rot=0 deg overshoot=696 m final_err=4.3 m (4r=36.8) final_v=266.8 m/s
+flyby@600  M5  Discoverer fps= 60 detours=0 min_clear=600.0 m (C=234.2, part r=200) path=19982 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 20316 (lateral 0 m, L=4211 m) side=0
+flyby@150  M5  Discoverer fps= 60 detours=321 min_clear=293.1 m (C=234.2, part r=200) path=20011 m (x1.001) max_lateral=428 m back_on_course=0 ms after pass at 20350 (lateral 413 m, L=4211 m) side=-1
+crossing    M5  Discoverer fps= 60 detours=182/190 min_dist=86.9 m (C=43.4, L=3900 m) sides=1/-1 unresolved=0/0
+form+rock   M5  Discoverer fps= 60 leader_detours=269 follower_detours=276/267 min_rock=420/457/457 m (C=334) final_slot=92.1/92.1 m (4r=36.8)
+gate theta -45 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=6.5 deg (vanilla 33.3) creep_ticks=0 (vanilla 36) min_v=399.2 v0=399.2 (vanilla 0.0) t_cross->launch=4183 ms (vanilla 9133) lead_in=1 aim_jump=0.3 deg vel_err=26.0 deg (vanilla 33.3) vel_line=20.9 deg (vanilla 32.9)
+gate theta  +0 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=13.2 deg (vanilla 19.0) creep_ticks=0 (vanilla 9) min_v=402.9 v0=402.9 (vanilla 0.0) t_cross->launch=3967 ms (vanilla 8700) lead_in=1 aim_jump=0.3 deg vel_err=13.9 deg (vanilla 19.0) vel_line=20.9 deg (vanilla 32.9)
+gate theta +45 M5  Discoverer fps= 60 cross_v=532.0 m/s (vanilla 209.6) heading_err=25.4 deg (vanilla 13.7) creep_ticks=35 (vanilla 0) min_v=406.5 v0=406.5 (vanilla 0.0) t_cross->launch=4217 ms (vanilla 8967) lead_in=1 aim_jump=0.3 deg vel_err=17.8 deg (vanilla 13.7) vel_line=20.9 deg (vanilla 32.9)
+gate spread M5  fps= 60 rings=3,2,0,7 min_sep=152 m max_dA=827 m max_heading_err=18.5 deg max_vel_line=31.6 deg
+gate far/rot M5  fps= 60 cross_v=532.0 heading_err=13.7 creep=0 t_A=10249 (vanilla 37033) aim_jump=3.3 deg vel_err=7.6 deg vel_line=4.0 deg
+gate lateral M5  fps= 60 heading_err=3.3 (vanilla 22.4) creep=0 (vanilla 21) t_A=10483 (vanilla 32533) vel_err=12.1 deg vel_line=2.7 deg
+turn       M3  Nova       fps= 60 settle=  5533 ms vanilla=  5833 ms oracle=  5776 ms ratio=0.958 overshoot=0.363 deg (vanilla 0.048) peak=55.9 deg/s
+turn(diag)  M3  finish yaw=5200 ms pitch=3566 ms (rel 0.314; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.882 vanilla_pitch_zero_ticks=111
+turn(diag) M3  Nova       fps= 60 settle=  5116 ms vanilla=  5833 ms oracle=  5760 ms ratio=0.888 overshoot=0.358 deg (vanilla 0.007) peak=46.5 deg/s
+arrival     M3  Nova       fps= 60 t= 94350 ms (vanilla  94233) entries=1 entry_speed=10.0 m/s (vanilla 13.8) min_d=22.6 m d_arr=23.8 m beyond=0.0 m reversals=0
+arrival/pf  M3  Nova       fps= 60 t= 94350 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M3  Nova       fps= 60 slot_rms=3.0 m (2r=23.8) max_after_entry=47.5 m window_increases=0
+formation brake M3  kind=0 (the leader stops) rot=443 deg overshoot=517 m final_err=29.7 m (4r=47.6) final_v=0.0 m/s
+formation brake M3  kind=1 (the follower 6 r ahead of its slot) rot=0 deg overshoot=262 m final_err=2.0 m (4r=47.6) final_v=124.2 m/s
+flyby@600  M3  Nova       fps= 60 detours=0 min_clear=600.0 m (C=236.9, part r=200) path=19976 m (x0.999) max_lateral=0 m back_on_course=0 ms after pass at 43666 (lateral 0 m, L=2737 m) side=0
+flyby@150  M3  Nova       fps= 60 detours=503 min_clear=306.1 m (C=236.9, part r=200) path=19985 m (x0.999) max_lateral=201 m back_on_course=0 ms after pass at 43699 (lateral 196 m, L=2737 m) side=-1
+crossing    M3  Nova       fps= 60 detours=241/258 min_dist=97.9 m (C=48.8, L=2454 m) sides=1/-1 unresolved=0/0
+form+rock   M3  Nova       fps= 60 leader_detours=393 follower_detours=408/403 min_rock=435/436/436 m (C=337) final_slot=117.7/117.7 m (4r=47.6)
+gate theta -45 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=5.6 deg (vanilla 33.3) creep_ticks=0 (vanilla 56) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=10283 ms (vanilla 13684) lead_in=1 aim_jump=0.3 deg vel_err=12.2 deg (vanilla 33.3) vel_line=2.0 deg (vanilla 32.9)
+gate theta  +0 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=11.3 deg (vanilla 19.0) creep_ticks=0 (vanilla 14) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=9983 ms (vanilla 13034) lead_in=1 aim_jump=0.3 deg vel_err=7.0 deg (vanilla 19.0) vel_line=2.0 deg (vanilla 32.9)
+gate theta +45 M3  Nova       fps= 60 cross_v=247.5 m/s (vanilla 50.0) heading_err=23.5 deg (vanilla 13.7) creep_ticks=38 (vanilla 0) min_v=123.8 v0=123.8 (vanilla 0.0) t_cross->launch=10633 ms (vanilla 13517) lead_in=1 aim_jump=0.3 deg vel_err=19.3 deg (vanilla 13.7) vel_line=2.0 deg (vanilla 32.9)
+gate spread M3  fps= 60 rings=3,2,0,7 min_sep=208 m max_dA=829 m max_heading_err=15.4 deg max_vel_line=4.1 deg
+gate far/rot M3  fps= 60 cross_v=247.5 heading_err=8.4 creep=0 t_A=22966 (vanilla 31300) aim_jump=3.3 deg vel_err=8.7 deg vel_line=1.4 deg
+gate lateral M3  fps= 60 heading_err=7.7 (vanilla 22.4) creep=0 (vanilla 32) t_A=23183 (vanilla 28483) vel_err=7.0 deg vel_line=1.9 deg
+dock M3  fps= 60 gamma=30 engagements=1 toggles=0 roll_cuts=0 match_end_stops=0 nonmonotone=0 err_at_zone=0.00 deg t_zone=32400 t_docked=37683 | previous handler: engagements=2 toggles=2 roll_cuts=1 nonmonotone=0 err_at_zone=0.00 t_docked=37683 | vanilla: engagements=2 toggles=2 roll_cuts=1 err_at_zone=0.00 t_docked=37683
+turn       M6  Centaur    fps= 60 settle= 17383 ms vanilla= 17616 ms oracle= 17088 ms ratio=1.017 overshoot=0.092 deg (vanilla 0.000) peak=20.1 deg/s
+turn(diag)  M6  finish yaw=15533 ms pitch=8833 ms (rel 0.431; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.704 vanilla_pitch_zero_ticks=395
+turn(diag) M6  Centaur    fps= 60 settle= 15549 ms vanilla= 17583 ms oracle= 17040 ms ratio=0.912 overshoot=0.114 deg (vanilla 0.000) peak=17.4 deg/s
+arrival     M6  Centaur    fps= 60 t=123933 ms (vanilla 123133) entries=1 entry_speed=10.0 m/s (vanilla 23.6) min_d=126.3 m d_arr=128.8 m beyond=0.0 m reversals=0
+arrival/pf  M6  Centaur    fps= 60 t=123933 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M6  Centaur    fps= 60 slot_rms=56.3 m (2r=128.8) max_after_entry=257.4 m window_increases=0
+formation brake M6  kind=0 (the leader stops) rot=969 deg overshoot=1121 m final_err=160.9 m (4r=257.6) final_v=1.3 m/s
+formation brake M6  kind=1 (the follower 6 r ahead of its slot) rot=0 deg overshoot=588 m final_err=1.4 m (4r=257.6) final_v=90.1 m/s
+flyby@600  M6  Centaur    fps= 60 detours=0 min_clear=600.0 m (C=296.6, part r=200) path=19871 m (x0.994) max_lateral=0 m back_on_course=0 ms after pass at 60033 (lateral 0 m, L=4789 m) side=0
+flyby@150  M6  Centaur    fps= 60 detours=1074 min_clear=384.8 m (C=296.6, part r=200) path=19903 m (x0.995) max_lateral=465 m back_on_course=0 ms after pass at 60149 (lateral 464 m, L=4789 m) side=-1
+crossing    M6  Centaur    fps= 60 detours=569/604 min_dist=307.5 m (C=161.0, L=4581 m) sides=-1/-1 unresolved=0/0
+form+rock   M6  Centaur    fps= 60 leader_detours=898 follower_detours=915/897 min_rock=515/451/452 m (C=397) final_slot=543.5/543.5 m (4r=257.6)
+gate theta -45 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=6.4 deg (vanilla 33.3) creep_ticks=0 (vanilla 166) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=14333 ms (vanilla 19949) lead_in=1 aim_jump=0.2 deg vel_err=7.8 deg (vanilla 33.3) vel_line=2.9 deg (vanilla 32.9)
+gate theta  +0 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=10.5 deg (vanilla 19.0) creep_ticks=0 (vanilla 38) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=14017 ms (vanilla 17883) lead_in=1 aim_jump=0.2 deg vel_err=9.3 deg (vanilla 19.0) vel_line=2.9 deg (vanilla 32.9)
+gate theta +45 M6  Centaur    fps= 60 cross_v=100.0 m/s (vanilla 37.1) heading_err=22.8 deg (vanilla 13.7) creep_ticks=121 (vanilla 0) min_v=90.0 v0=90.0 (vanilla 0.0) t_cross->launch=15000 ms (vanilla 18249) lead_in=1 aim_jump=0.2 deg vel_err=21.7 deg (vanilla 13.7) vel_line=2.9 deg (vanilla 32.9)
+gate spread M6  fps= 60 rings=3,2,0,7 min_sep=210 m max_dA=829 m max_heading_err=15.6 deg max_vel_line=3.5 deg
+gate far/rot M6  fps= 60 cross_v=100.0 heading_err=8.3 creep=0 t_A=54783 (vanilla 61116) aim_jump=3.3 deg vel_err=8.3 deg vel_line=0.3 deg
+gate lateral M6  fps= 60 heading_err=8.0 (vanilla 22.4) creep=0 (vanilla 94) t_A=55149 (vanilla 54183) vel_err=7.7 deg vel_line=0.6 deg
+gate dock M6  fps= 60 theta -45 sub=0 min_v=88.5 m/s (vanilla 25.3) t_B=15649 ms (vanilla 19933) creep_ticks=701 (vanilla 464) v0=88.5 ring=1
+gate dock M6  fps= 60 theta  +0 sub=0 min_v=88.0 m/s (vanilla 17.3) t_B=16299 ms (vanilla 21000) creep_ticks=743 (vanilla 488) v0=88.0 ring=1
+gate dock M6  fps= 60 theta +45 sub=0 min_v=88.5 m/s (vanilla 25.3) t_B=15649 ms (vanilla 19933) creep_ticks=701 (vanilla 464) v0=88.5 ring=1
+gate dock M6  fps= 60 theta  +0 sub=5 min_v=88.0 m/s (vanilla 17.0) t_B=16299 ms (vanilla 21016) creep_ticks=743 (vanilla 489) v0=88.0 ring=1
+dock M6  fps= 60 gamma=30 engagements=1 toggles=0 roll_cuts=0 match_end_stops=0 nonmonotone=0 err_at_zone=0.01 deg t_zone=24033 t_docked=39233 | previous handler: engagements=2 toggles=2 roll_cuts=1 nonmonotone=0 err_at_zone=0.01 t_docked=39233 | vanilla: engagements=2 toggles=2 roll_cuts=1 err_at_zone=0.01 t_docked=39233
+turn       TS  Mercury    fps= 60 settle= 15466 ms vanilla= 15599 ms oracle= 15424 ms ratio=1.003 overshoot=0.070 deg (vanilla 0.004) peak=21.1 deg/s
+turn(diag)  TS  finish yaw=13766 ms pitch=7883 ms (rel 0.427; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.708 vanilla_pitch_zero_ticks=349
+turn(diag) TS  Mercury    fps= 60 settle= 13799 ms vanilla= 15566 ms oracle= 15392 ms ratio=0.897 overshoot=0.089 deg (vanilla 0.004) peak=19.6 deg/s
+arrival     TS  Mercury    fps= 60 t=166349 ms (vanilla 165483) entries=1 entry_speed=10.0 m/s (vanilla 27.3) min_d=75.4 m d_arr=77.0 m beyond=0.0 m reversals=0
+arrival/pf  TS  Mercury    fps= 60 t=166283 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   TS  Mercury    fps= 60 slot_rms=22.5 m (2r=77.0) max_after_entry=153.8 m window_increases=0
+formation brake TS  kind=0 (the leader stops) rot=498 deg overshoot=461 m final_err=96.2 m (4r=154.0) final_v=0.0 m/s
+formation brake TS  kind=1 (the follower 6 r ahead of its slot) rot=0 deg overshoot=294 m final_err=1.0 m (4r=154.0) final_v=62.0 m/s
+flyby@600  TS  Mercury    fps= 60 detours=0 min_clear=600.0 m (C=263.5, part r=200) path=19923 m (x0.996) max_lateral=0 m back_on_course=0 ms after pass at 87150 (lateral 0 m, L=1932 m) side=0
+flyby@150  TS  Mercury    fps= 60 detours=818 min_clear=342.4 m (C=263.5, part r=200) path=19939 m (x0.997) max_lateral=244 m back_on_course=0 ms after pass at 87283 (lateral 212 m, L=1932 m) side=-1
+crossing    TS  Mercury    fps= 60 detours=371/389 min_dist=186.9 m (C=102.0, L=1932 m) sides=-1/-1 unresolved=0/0
+form+rock   TS  Mercury    fps= 60 leader_detours=557 follower_detours=560/541 min_rock=471/483/483 m (C=364) final_slot=231.9/231.9 m (4r=154.0)
+gate theta -45 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.1) heading_err=7.8 deg (vanilla 33.3) creep_ticks=0 (vanilla 148) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=19983 ms (vanilla 23433) lead_in=1 aim_jump=0.2 deg vel_err=7.5 deg (vanilla 33.3) vel_line=2.8 deg (vanilla 32.9)
+gate theta  +0 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.1) heading_err=9.4 deg (vanilla 19.0) creep_ticks=0 (vanilla 34) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=19533 ms (vanilla 21650) lead_in=1 aim_jump=0.2 deg vel_err=9.6 deg (vanilla 19.0) vel_line=2.8 deg (vanilla 32.9)
+gate theta +45 TS  Mercury    fps= 60 cross_v=100.0 m/s (vanilla 42.1) heading_err=21.9 deg (vanilla 13.7) creep_ticks=82 (vanilla 0) min_v=62.0 v0=62.0 (vanilla 0.0) t_cross->launch=20917 ms (vanilla 22500) lead_in=1 aim_jump=0.2 deg vel_err=22.1 deg (vanilla 13.7) vel_line=2.8 deg (vanilla 32.9)
+gate spread TS  fps= 60 rings=3,2,0,7 min_sep=208 m max_dA=828 m max_heading_err=17.7 deg max_vel_line=3.5 deg
+gate far/rot TS  fps= 60 cross_v=100.0 heading_err=8.3 creep=0 t_A=56266 (vanilla 56083) aim_jump=3.3 deg vel_err=8.3 deg vel_line=0.2 deg
+gate lateral TS  fps= 60 heading_err=8.1 (vanilla 22.4) creep=0 (vanilla 84) t_A=56499 (vanilla 49133) vel_err=7.9 deg vel_line=0.4 deg
+gate dock TS  fps= 60 theta -45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=19833 ms (vanilla 24200) creep_ticks=417 (vanilla 342) v0=62.0 ring=0
+gate dock TS  fps= 60 theta  +0 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=20250 ms (vanilla 24700) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
+gate dock TS  fps= 60 theta +45 sub=0 min_v=62.0 m/s (vanilla 1.0) t_B=19833 ms (vanilla 24200) creep_ticks=417 (vanilla 342) v0=62.0 ring=0
+gate dock TS  fps= 60 theta  +0 sub=5 min_v=62.0 m/s (vanilla 1.0) t_B=20250 ms (vanilla 24700) creep_ticks=445 (vanilla 364) v0=62.0 ring=0
+dock TS  fps= 60 gamma=30 engagements=1 toggles=0 roll_cuts=0 match_end_stops=1 nonmonotone=0 err_at_zone=0.00 deg t_zone=27650 t_docked=37966 | previous handler: engagements=2 toggles=2 roll_cuts=1 nonmonotone=0 err_at_zone=0.01 t_docked=37966 | vanilla: engagements=2 toggles=2 roll_cuts=1 err_at_zone=0.01 t_docked=37966
+turn       M2  Boreas     fps= 60 settle= 39183 ms vanilla= 39216 ms oracle= 38096 ms ratio=1.029 overshoot=0.000 deg (vanilla 0.000) peak=9.0 deg/s
+turn(diag)  M2  finish yaw=34750 ms pitch=19666 ms (rel 0.434; the roll policy re-splits the axes late in the turn) min_axis_ratio=0.698 vanilla_pitch_zero_ticks=921
+turn(diag) M2  Boreas     fps= 60 settle= 35033 ms vanilla= 39166 ms oracle= 37984 ms ratio=0.922 overshoot=0.000 deg (vanilla 0.000) peak=7.8 deg/s
+arrival     M2  Boreas     fps= 60 t=272616 ms (vanilla 268583) entries=1 entry_speed=10.0 m/s (vanilla 70.0) min_d=1407.4 m d_arr=1410.8 m beyond=0.0 m reversals=0
+arrival/pf  M2  Boreas     fps= 60 t=272566 ms entries=1 entry_speed=10.0 m/s reversals=0
+formation   M2  Boreas     fps= 60 slot_rms=1378.7 m (2r=1410.8) max_after_entry=2115.1 m window_increases=0
+formation brake M2  kind=0 (the leader stops) rot=0 deg overshoot=992 m final_err=992.5 m (4r=2821.6) final_v=10.0 m/s
+formation brake M2  kind=1 (the follower 6 r ahead of its slot) rot=0 deg overshoot=4273 m final_err=2102.0 m (4r=2821.6) final_v=10.0 m/s
+flyby@600  M2  Boreas     fps= 60 detours=2116 min_clear=1380.1 m (C=1258.1, part r=200) path=19271 m (x0.964) max_lateral=1871 m back_on_course=917 ms after pass at 161566 (lateral 1861 m, L=3214 m) side=1
+flyby@150  M2  Boreas     fps= 60 detours=2158 min_clear=1393.0 m (C=1258.1, part r=200) path=19182 m (x0.959) max_lateral=1763 m back_on_course=750 ms after pass at 160599 (lateral 1753 m, L=3214 m) side=1
+crossing    M2  Boreas     fps= 60 detours=893/932 min_dist=2318.1 m (C=1763.5, L=3214 m) sides=1/-1 unresolved=0/0
+form+rock   M2  Boreas     fps= 60 leader_detours=1352 follower_detours=0/0 min_rock=1460/3074/3074 m (C=1358) final_slot=231.9/231.8 m (4r=2821.6)
+capital transit M2  slot 0 fps= 60: t_3r=72.3 cross=119.7 s (approach 47.4 s, model 47.4) cross_v=70.0 err=0.09 deg lat=1 m kept=1 rot=1 frames/16 ms o5 start v=69.3 o5=54.1 s (budget 54.1, mis_ticks=0, min_v=54.4) v0=54.4 launch=0.9 s total=102.5 s (budget 102.4) | cap detours=0 skipped_small=6884 conflicts=0 | m6 detours=938 clear=1523 m (C 802) manual_min=771 | E sup=10427 order=0 stale=0 manual=10427 | cap2 conflicts=0 detours=0 unresolved=0 min=-1 m arrived=0 | cap last obstacle=0x0
+capital transit M2  slot 19 (rotated frame) fps= 60: t_3r=72.3 cross=119.7 s (approach 47.4 s, model 47.4) cross_v=70.0 err=0.09 deg lat=1 m kept=1 rot=1 frames/16 ms o5 start v=69.3 o5=68.2 s (budget 61.5, mis_ticks=306, min_v=1.0) v0=54.4 launch=0.9 s total=116.6 s (budget 109.8) | cap detours=0 skipped_small=6869 conflicts=0 | m6 detours=927 clear=1524 m (C 802) manual_min=776 | E sup=11276 order=0 stale=0 manual=11276 | cap2 conflicts=0 detours=0 unresolved=0 min=-1 m arrived=0 | cap last obstacle=0x0
+capital transit M2  B1 fps= 60: cross_v=27.9 err=24.0 deg v_after_A=0.0 rot=468 frames 7.8 s (model 7.7) o5 start v=0.0 t_o5=56.5 s v0=0.0 | cap2 conflicts=1185 detours=918 unresolved=267 emergency=0 min=1659 m arrived=1
+capital cloud fps= 60 heading_change=0.00 deg capital_detours=0 skipped_small=6545 fighters_detouring=12/12 min_clear=1276.5 m (C=739.6)
+capital cloud   fighter  0 detours=324 min_dist=1277 m unresolved=0
+capital cloud   fighter  1 detours=319 min_dist=1278 m unresolved=0
+capital cloud   fighter  2 detours=316 min_dist=1277 m unresolved=0
+capital cloud   fighter  3 detours=326 min_dist=1277 m unresolved=0
+capital cloud   fighter  4 detours=312 min_dist=1277 m unresolved=0
+capital cloud   fighter  5 detours=317 min_dist=1277 m unresolved=0
+capital cloud   fighter  6 detours=321 min_dist=1277 m unresolved=0
+capital cloud   fighter  7 detours=319 min_dist=1277 m unresolved=0
+capital cloud   fighter  8 detours=318 min_dist=1277 m unresolved=0
+capital cloud   fighter  9 detours=321 min_dist=1278 m unresolved=0
+capital cloud   fighter 10 detours=324 min_dist=1278 m unresolved=0
+capital cloud   fighter 11 detours=320 min_dist=1277 m unresolved=0
+capital transit M2  slot 0 fps= 60: t_3r=46.8 cross=80.2 s (approach 33.4 s, model 33.1) cross_v=100.0 err=0.17 deg lat=3 m kept=1 rot=1 frames/16 ms o5 start v=99.5 o5=37.4 s (budget 37.5, mis_ticks=0, min_v=99.3) v0=109.9 launch=0.9 s total=71.8 s (budget 71.6) | cap detours=0 skipped_small=8157 conflicts=0 | m6 detours=952 clear=2305 m (C 1188) manual_min=1044 | E sup=7060 order=0 stale=0 manual=7060 | cap2 conflicts=0 detours=0 unresolved=0 min=5732 m arrived=0 | cap last obstacle=0x0
+capital transit M2  slot 19 (rotated frame) fps= 60: t_3r=46.8 cross=80.2 s (approach 33.4 s, model 33.1) cross_v=100.0 err=0.17 deg lat=3 m kept=1 rot=1 frames/16 ms o5 start v=99.5 o5=45.5 s (budget 41.6, mis_ticks=281, min_v=52.5) v0=109.9 launch=0.9 s total=79.9 s (budget 75.6) | cap detours=0 skipped_small=7666 conflicts=0 | m6 detours=969 clear=2244 m (C 1188) manual_min=1047 | E sup=7544 order=0 stale=0 manual=7544 | cap2 conflicts=0 detours=0 unresolved=0 min=5714 m arrived=0 | cap last obstacle=0x0
+capital transit M2  B1 fps= 60: cross_v=28.3 err=23.6 deg v_after_A=0.0 rot=460 frames 7.7 s (model 8.7) o5 start v=0.0 t_o5=42.8 s v0=0.0 | cap2 conflicts=4937 detours=4546 unresolved=391 emergency=127 min=2226 m arrived=0
+capital transit M2  B2 fps= 60: cross_v=68.5 err=2.9 deg vel=5.7 deg v_cmd_min=40 kept=1 rot=1 frames v0=109.9 evals=86 slowed=1
+capital transit M1  slot 0 fps= 60: t_3r=44.5 cross=78.1 s (approach 33.6 s, model 33.1) cross_v=100.0 err=1.44 deg lat=21 m kept=1 rot=1 frames/16 ms o5 start v=99.8 o5=36.0 s (budget 36.0, mis_ticks=0, min_v=99.7) v0=109.8 launch=0.9 s total=70.6 s (budget 70.1) | cap detours=0 skipped_small=8140 conflicts=0 | m6 detours=820 clear=2205 m (C 1119) manual_min=1024 | E sup=6848 order=0 stale=0 manual=6848 | cap2 conflicts=0 detours=0 unresolved=0 min=6226 m arrived=0 | cap last obstacle=0x0
+capital transit M1  slot 19 (rotated frame) fps= 60: t_3r=44.5 cross=78.1 s (approach 33.6 s, model 33.1) cross_v=100.0 err=1.44 deg lat=21 m kept=1 rot=1 frames/16 ms o5 start v=99.8 o5=44.9 s (budget 40.1, mis_ticks=409, min_v=65.9) v0=109.8 launch=0.9 s total=79.5 s (budget 74.1) | cap detours=0 skipped_small=8068 conflicts=0 | m6 detours=914 clear=2107 m (C 1119) manual_min=1049 | E sup=7383 order=0 stale=0 manual=7383 | cap2 conflicts=0 detours=0 unresolved=0 min=6241 m arrived=0 | cap last obstacle=0x0
+capital transit M1  B1 fps= 60: cross_v=21.4 err=24.0 deg v_after_A=0.0 rot=633 frames 10.6 s (model 9.4) o5 start v=0.0 t_o5=47.1 s v0=0.0 | cap2 conflicts=3336 detours=2790 unresolved=546 emergency=516 min=2852 m arrived=1
+capital transit M1  B2 fps= 60: cross_v=25.0 err=6.3 deg vel=7.3 deg v_cmd_min=25 kept=1 rot=1 frames v0=109.8 evals=118 slowed=2
+gate dock M4  fps= 60 theta -45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13783) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
+gate dock M4  fps= 60 theta  +0 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13266 ms (vanilla 14016) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+gate dock M4  fps= 60 theta +45 sub=0 min_v=90.0 m/s (vanilla 90.0) t_B=13116 ms (vanilla 13783) creep_ticks=146 (vanilla 141) v0=90.0 ring=0
+gate dock M4  fps= 60 theta  +0 sub=5 min_v=90.0 m/s (vanilla 90.0) t_B=13266 ms (vanilla 14016) creep_ticks=155 (vanilla 151) v0=90.0 ring=0
+amendment 12 A/B: gate legs identical; 180 deg turn settle changed in 0 of 15 runs (max 0 ms), arrival changed in 1 of 15 (max 0 ms)
+amendment 15 predictor cost (host): worst choose (4 failing candidates) 16.4 us, the longest single prediction (S4 at 25 m/s) 19.8 us
+amendment 15 registry: 12 capitals, registered 12, max 3 slots, dropped 12, refused 0
+amendment 15 membership pass cost (host): 238 ns per snapshot of 152 objects / 37 ships (6 ns per ship)
+capital join M2  E1 6435 m 5.58 r at A    slot 0          fps= 60: modes=0x4 reason=0 t_X=99.0 s (model 100.3) nose=1.77 vel=1.78 deg e=26 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 1.8 deg) fb_entry=-1.0 fb_max=0.0 evals=100 predictions=100 eval_us_max=18.3 E_gate=5946 handover=3 warn_frames=1059 unsup=0
+capital join M2  E1 6435 m 5.58 r at A    slot 19 rotated fps= 60: modes=0x4 reason=0 t_X=99.0 s (model 100.3) nose=1.77 vel=1.78 deg e=26 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 1.8 deg) fb_entry=-1.0 fb_max=0.0 evals=100 predictions=100 eval_us_max=11.6 E_gate=5946 handover=3 warn_frames=0 unsup=0
+capital join M2  E2 6435 m 5 r at A       slot 0          fps= 60: modes=0x4 reason=0 t_X=93.0 s (model 94.2) nose=3.13 vel=3.26 deg e=46 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 3.1 deg) fb_entry=-1.0 fb_max=0.0 evals=94 predictions=94 eval_us_max=10.5 E_gate=5581 handover=3 warn_frames=1057 unsup=0
+capital join M2  E2 6435 m 5 r at A       slot 19 rotated fps= 60: modes=0x4 reason=0 t_X=93.0 s (model 94.2) nose=3.13 vel=3.26 deg e=46 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 3.1 deg) fb_entry=-1.0 fb_max=0.0 evals=94 predictions=94 eval_us_max=10.5 E_gate=5581 handover=3 warn_frames=0 unsup=0
+capital join M2  E3 on axis 5 r           slot 0          fps= 60: modes=0x4 reason=0 t_X=55.2 s (model 55.3) nose=0.00 vel=0.00 deg e=0 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 0.0 deg) fb_entry=-1.0 fb_max=0.0 evals=56 predictions=56 eval_us_max=4.3 E_gate=3316 handover=3 warn_frames=1061 unsup=0
+capital join M2  E3 on axis 5 r           slot 19 rotated fps= 60: modes=0x4 reason=0 t_X=55.2 s (model 55.3) nose=0.00 vel=0.00 deg e=0 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 0.0 deg) fb_entry=-1.0 fb_max=0.0 evals=56 predictions=56 eval_us_max=4.1 E_gate=3316 handover=3 warn_frames=762 unsup=0
+capital join M2  F1 627 m 2.97 r +68      slot 0          fps= 60: modes=0x4 reason=0 t_X=65.5 s (model 67.2) nose=0.93 vel=1.69 deg e=35 m over=35 m crossings=1 cross_v=100.0 v_cmd_min=60 v60=3360 slowed=1 kept=1 why=0 rot=1 frames 0.0 s (from 1.0 deg) fb_entry=-1.0 fb_max=0.0 evals=66 predictions=122 eval_us_max=16.1 E_gate=3933 handover=3 warn_frames=764 unsup=0
+capital join M2  F2 6435 m 5 r +60        slot 0          fps= 60: modes=0x4 reason=0 t_X=121.7 s (model 111.9) nose=4.96 vel=6.12 deg e=61 m over=0 m crossings=0 cross_v=60.0 v_cmd_min=60 v60=2922 slowed=2 kept=1 why=0 rot=1 frames 0.0 s (from 4.9 deg) fb_entry=-1.0 fb_max=0.0 evals=122 predictions=171 eval_us_max=30.2 E_gate=7305 handover=3 warn_frames=1001 unsup=0
+capital join M2  G1 1645 m 0.70 r -91     slot 0          fps= 60: modes=0x14 reason=1 t_X=62.5 s (model 26.2) nose=12.54 vel=15.31 deg e=50 m over=0 m crossings=0 cross_v=29.5 v_cmd_min=100 v60=0 slowed=1 kept=0 why=1 rot=130 frames 2.2 s (from 12.5 deg) fb_entry=-1.0 fb_max=0.0 evals=63 predictions=252 eval_us_max=16.9 E_gate=3881 handover=132 warn_frames=0 unsup=0
+capital join M2  G2 3252 m s+2.05 r +135  slot 0          fps= 60: modes=0x8 reason=2 t_X=52.7 s (model 52.8) nose=82.58 vel=82.58 deg e=821 m over=0 m crossings=0 cross_v=25.0 v_cmd_min=-1 v60=0 slowed=0 kept=0 why=1 rot=1356 frames 22.6 s (from 82.6 deg) fb_entry=25.0 fb_max=100.0 evals=0 predictions=0 eval_us_max=0.0 E_gate=4519 handover=1358 warn_frames=0 unsup=0
+capital join M1  E1 6435 m 5.58 r at A    slot 0          fps= 60: modes=0x4 reason=0 t_X=97.0 s (model 98.7) nose=3.65 vel=3.73 deg e=53 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 3.6 deg) fb_entry=-1.0 fb_max=0.0 evals=98 predictions=98 eval_us_max=11.4 E_gate=5822 handover=3 warn_frames=1080 unsup=0
+capital join M1  E1 6435 m 5.58 r at A    slot 19 rotated fps= 60: modes=0x4 reason=0 t_X=97.0 s (model 98.7) nose=3.65 vel=3.73 deg e=53 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 3.6 deg) fb_entry=-1.0 fb_max=0.0 evals=98 predictions=98 eval_us_max=19.4 E_gate=5822 handover=3 warn_frames=0 unsup=0
+capital join M1  E2 6435 m 5 r at A       slot 0          fps= 60: modes=0x4 reason=0 t_X=90.9 s (model 92.6) nose=6.11 vel=6.20 deg e=88 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 6.1 deg) fb_entry=-1.0 fb_max=0.0 evals=92 predictions=92 eval_us_max=10.2 E_gate=5455 handover=3 warn_frames=1078 unsup=0
+capital join M1  E2 6435 m 5 r at A       slot 19 rotated fps= 60: modes=0x4 reason=0 t_X=90.9 s (model 92.6) nose=6.11 vel=6.20 deg e=88 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 6.1 deg) fb_entry=-1.0 fb_max=0.0 evals=92 predictions=92 eval_us_max=12.2 E_gate=5455 handover=3 warn_frames=0 unsup=0
+capital join M1  E3 on axis 5 r           slot 0          fps= 60: modes=0x4 reason=0 t_X=55.1 s (model 55.3) nose=0.00 vel=0.00 deg e=0 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 0.0 deg) fb_entry=-1.0 fb_max=0.0 evals=56 predictions=56 eval_us_max=4.1 E_gate=3308 handover=3 warn_frames=1079 unsup=0
+capital join M1  E3 on axis 5 r           slot 19 rotated fps= 60: modes=0x4 reason=0 t_X=55.1 s (model 55.3) nose=0.00 vel=0.00 deg e=0 m over=0 m crossings=0 cross_v=100.0 v_cmd_min=100 v60=0 slowed=0 kept=1 why=0 rot=1 frames 0.0 s (from 0.0 deg) fb_entry=-1.0 fb_max=0.0 evals=56 predictions=56 eval_us_max=4.1 E_gate=3308 handover=3 warn_frames=350 unsup=0
+capital join M1  F1 627 m 2.97 r +68      slot 0          fps= 60: modes=0x4 reason=0 t_X=75.2 s (model 68.9) nose=1.20 vel=4.48 deg e=47 m over=47 m crossings=1 cross_v=80.7 v_cmd_min=40 v60=4020 slowed=2 kept=1 why=0 rot=1 frames 0.0 s (from 1.2 deg) fb_entry=-1.0 fb_max=0.0 evals=76 predictions=151 eval_us_max=13.3 E_gate=4514 handover=3 warn_frames=618 unsup=0
+capital join M1  F2 6435 m 5 r +60        slot 0          fps= 60: modes=0x4 reason=0 t_X=159.1 s (model 133.8) nose=5.71 vel=6.83 deg e=78 m over=0 m crossings=0 cross_v=60.0 v_cmd_min=60 v60=7804 slowed=2 kept=1 why=0 rot=1 frames 0.0 s (from 5.7 deg) fb_entry=-1.0 fb_max=0.0 evals=160 predictions=291 eval_us_max=32.9 E_gate=9547 handover=3 warn_frames=1081 unsup=0
+capital join M1  G1 1645 m 0.70 r -91     slot 0          fps= 60: modes=0x14 reason=1 t_X=48.9 s (model 29.1) nose=7.41 vel=9.60 deg e=51 m over=0 m crossings=0 cross_v=29.6 v_cmd_min=25 v60=0 slowed=1 kept=0 why=1 rot=1 frames 0.0 s (from 7.4 deg) fb_entry=-1.0 fb_max=0.0 evals=50 predictions=200 eval_us_max=22.0 E_gate=2941 handover=3 warn_frames=0 unsup=0
+capital join M1  G2 3252 m s+2.05 r +135  slot 0          fps= 60: modes=0x8 reason=2 t_X=63.1 s (model 59.1) nose=74.31 vel=74.31 deg e=797 m over=0 m crossings=0 cross_v=26.2 v_cmd_min=-1 v60=0 slowed=0 kept=0 why=1 rot=1470 frames 24.5 s (from 74.3 deg) fb_entry=26.1 fb_max=100.0 evals=0 predictions=0 eval_us_max=0.0 E_gate=5262 handover=1472 warn_frames=0 unsup=0
+cascade D fps= 60: m6 sup=899/899 m1 member sup=1195/1195 after=270 (sup 0) remembered=1200 detours=0 (no memory: 886, member sup 0) escort_side sup=0/1081 warn_unsup=0 m1_min_d=2400 m | member set=6 refresh=10914 replace=0 expire=1 leader_gone=0 id_mismatch=1 reversed=0 player=0 cleared=1 full=0
+dock-leg pair K fps= 60: frames=3600 pass_b_dock_leg=3600 suppressed=0 (B on 0x14 instead: suppressed 3600) min_d=635 m C=1701 m capital skipped_small=1842
+small gate row G1 TS  fps= 60: lead-in frames=2871 suppressed=2871 before the window=18 (suppressed 0) gate warn cone frames in the lead-in=281 unsuppressed=0 cross_err=8.3 deg
+small gate row G1 M4  fps= 60: lead-in frames=1612 suppressed=1612 before the window=12 (suppressed 0) gate warn cone frames in the lead-in=272 unsuppressed=0 cross_err=8.2 deg
+capital join range M2 E1 6435 m 5.58 r at A    runs=18 kept=18 nose_max=1.91 vel_max=1.91 e_max=28 m over_max=9 m crossings_max=1 cross_v=100.0-100.0 t_X/model=0.988-0.994 v_cmd_min=100 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M2 E2 6435 m 5 r at A       runs=18 kept=18 nose_max=3.14 vel_max=3.28 e_max=46 m over_max=9 m crossings_max=1 cross_v=100.0-100.0 t_X/model=0.987-0.994 v_cmd_min=100 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M2 E3 on axis 5 r           runs=18 kept=18 nose_max=0.00 vel_max=0.00 e_max=0 m over_max=0 m crossings_max=0 cross_v=100.0-100.0 t_X/model=0.998-0.999 v_cmd_min=100 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M2 F1 627 m 2.97 r +68      runs=9 kept=9 nose_max=0.95 vel_max=2.03 e_max=37 m over_max=37 m crossings_max=1 cross_v=100.0-100.0 t_X/model=0.921-0.987 v_cmd_min=60 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M2 F2 6435 m 5 r +60        runs=9 kept=9 nose_max=5.07 vel_max=6.85 e_max=62 m over_max=0 m crossings_max=0 cross_v=60.0-100.0 t_X/model=1.002-1.087 v_cmd_min=60 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M2 G1 1645 m 0.70 r -91     runs=9 kept=0 nose_max=14.79 vel_max=17.65 e_max=63 m over_max=0 m crossings_max=0 cross_v=25.0-29.5 t_X/model=2.366-2.389 v_cmd_min=100 fb_entry_max=0.0 rotate/model_max=0.59
+capital join range M2 G2 3252 m s+2.05 r +135  runs=9 kept=0 nose_max=82.58 vel_max=82.58 e_max=821 m over_max=0 m crossings_max=0 cross_v=25.0-25.7 t_X/model=0.961-1.009 v_cmd_min=-1 fb_entry_max=25.7 rotate/model_max=1.00
+capital join range M1 E1 6435 m 5.58 r at A    runs=18 kept=18 nose_max=3.65 vel_max=3.73 e_max=53 m over_max=0 m crossings_max=0 cross_v=100.0-100.0 t_X/model=0.982-0.998 v_cmd_min=100 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M1 E2 6435 m 5 r at A       runs=18 kept=18 nose_max=6.11 vel_max=6.20 e_max=88 m over_max=0 m crossings_max=0 cross_v=100.0-100.0 t_X/model=0.981-0.992 v_cmd_min=100 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M1 E3 on axis 5 r           runs=18 kept=18 nose_max=0.00 vel_max=0.00 e_max=0 m over_max=0 m crossings_max=0 cross_v=100.0-100.0 t_X/model=0.996-0.996 v_cmd_min=100 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M1 F1 627 m 2.97 r +68      runs=9 kept=9 nose_max=6.01 vel_max=7.08 e_max=82 m over_max=47 m crossings_max=1 cross_v=60.0-80.7 t_X/model=0.981-1.091 v_cmd_min=40 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M1 F2 6435 m 5 r +60        runs=9 kept=9 nose_max=5.99 vel_max=7.46 e_max=82 m over_max=0 m crossings_max=0 cross_v=60.0-100.0 t_X/model=1.021-1.189 v_cmd_min=60 fb_entry_max=0.0 rotate/model_max=0.00
+capital join range M1 G1 1645 m 0.70 r -91     runs=9 kept=0 nose_max=11.50 vel_max=14.83 e_max=81 m over_max=0 m crossings_max=0 cross_v=29.0-30.0 t_X/model=1.548-1.682 v_cmd_min=25 fb_entry_max=0.0 rotate/model_max=0.80
+capital join range M1 G2 3252 m s+2.05 r +135  runs=9 kept=0 nose_max=74.31 vel_max=74.31 e_max=797 m over_max=0 m crossings_max=0 cross_v=25.8-29.0 t_X/model=0.948-1.068 v_cmd_min=-1 fb_entry_max=29.0 rotate/model_max=1.07
+amendment 15 predictor: slowest evaluation 61.3 us (host)
+a16 join sweep: 120 random join states: 95 accepted (identical to amendment 15), 15 slow_join, 10 fallback
+a16b random side pairs: 400000, as-built pair_verdict asymmetric on 0 (the stored-state pair, both directions), symmetric verdict 0 by construction
+a16 lane cost: 0.610 us per capital decision on a full gate (refresh + the pass over 19 in both directions + 19 lane_pair, host)
+a16b lane cost: 1.128 us per capital decision with 19 watch neighbours (16.0 watch, 16.0 obliged per pass; refresh + the pass, host)
+crowd M w 0.45 r               fps= 60 seed=1: arrived=5 launched=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 slow_entries=1 unlatch=0 arrive=67-430 s detours a/b/c/none=0/0/3/1 pairs a/b/c=12806/0/8774 adj1.1km a/c=6618/4368 E_a lane=6188/12806 warn a raw/unsup=7059/6618 c raw/unsup=2146/2146 b raw=0 gate sup join/slow/fb/hand=14697/4185/0/4905 gate_warn span/unsup=5176/0 min_box_sep=1534 m (corridor pairs -452 m) o5_overlap=0 rot_slow_max=3.8 s join_err_max=0.68 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=9.2 E_us mean/max=0.145/27.4
+crowd M16b w 0.45 r               fps= 60 seed=1: pairs a foot/corr=6188/6618 s lat/along=0/0 c approach/launch/other=0/189/4198 detours_s=0 E cert lane=6188/6188 warn cert raw/unsup=441/0 E corr lane=0/6618 warn corr raw/unsup=6618/6618 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=1603 m box_launch_adjacent=858 m held_decisions=0
+crowd M w 0.25 r               fps= 60 seed=1: arrived=5 launched=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 slow_entries=1 unlatch=0 arrive=67-430 s detours a/b/c/none=0/0/3/1 pairs a/b/c=12806/0/8774 adj1.1km a/c=6618/4368 E_a lane=12806/12806 warn a raw/unsup=7059/0 c raw/unsup=2146/2146 b raw=0 gate sup join/slow/fb/hand=14697/4185/0/4905 gate_warn span/unsup=5176/0 min_box_sep=138 m (corridor pairs -16 m) o5_overlap=0 rot_slow_max=3.8 s join_err_max=0.68 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=7.5 E_us mean/max=0.142/13.9
+crowd M16b w 0.25 r               fps= 60 seed=1: pairs a foot/corr=12806/0 s lat/along=0/0 c approach/launch/other=0/189/4198 detours_s=0 E cert lane=12806/12806 warn cert raw/unsup=7059/0 E corr lane=0/0 warn corr raw/unsup=0/0 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=1817 m box_launch_adjacent=1168 m held_decisions=0
+crowd M w = r (unreadable)     fps= 60 seed=1: arrived=5 launched=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 slow_entries=1 unlatch=0 arrive=67-430 s detours a/b/c/none=0/0/3/1 pairs a/b/c=12806/0/8774 adj1.1km a/c=6618/4368 E_a lane=6188/12806 warn a raw/unsup=7059/6618 c raw/unsup=2146/2146 b raw=0 gate sup join/slow/fb/hand=14697/4185/0/4905 gate_warn span/unsup=5176/0 min_box_sep=627 m (corridor pairs -1660 m) o5_overlap=0 rot_slow_max=3.8 s join_err_max=0.68 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=9.4 E_us mean/max=0.141/9.8
+crowd M16b w = r (unreadable)     fps= 60 seed=1: pairs a foot/corr=6188/6618 s lat/along=0/0 c approach/launch/other=0/189/4198 detours_s=0 E cert lane=6188/6188 warn cert raw/unsup=441/0 E corr lane=0/6618 warn corr raw/unsup=6618/6618 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=666 m box_launch_adjacent=270 m held_decisions=0
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1: no (c) pair frame with a ship on its order-4 approach (32292; reported: against a ship on its order-5 launch 7763)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1: no aim-at-A fallback (crossings 1, frames 1238)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 26.9 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -1319 m; corridor pairs -1050 m)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 7: no (c) pair frame with a ship on its order-4 approach (32346; reported: against a ship on its order-5 launch 7686)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 7: no aim-at-A fallback (crossings 1, frames 1210)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 19.8 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -1319 m; corridor pairs -1050 m)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (32255; reported: against a ship on its order-5 launch 7706)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1234567: no aim-at-A fallback (crossings 1, frames 1295)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 20.4 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w 0.45 r 30 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -1319 m; corridor pairs -1048 m)
+crowd M simultaneous w 0.45 r  fps= 60 seed=1: arrived=5 launched=5 kept=0 slow_cross=2 fb_cross=3 fb_frames=3824 slow_entries=5 unlatch=2 arrive=83-167 s detours a/b/c/none=0/0/18697/5 pairs a/b/c=16964/0/190162 adj1.1km a/c=894/20330 E_a lane=16070/16964 warn a raw/unsup=1478/894 c raw/unsup=73011/72285 b raw=0 gate sup join/slow/fb/hand=28672/5329/3823/14148 gate_warn span/unsup=3295/0 min_box_sep=-1095 m (corridor pairs -848 m) o5_overlap=0 rot_slow_max=16.6 s join_err_max=0.00 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=83.8 E_us mean/max=0.159/84.6
+crowd M16b simultaneous w 0.45 r  fps= 60 seed=1: pairs a foot/corr=16070/894 s lat/along=0/0 c approach/launch/other=65991/13123/17158 detours_s=0 E cert lane=16070/16070 warn cert raw/unsup=584/0 E corr lane=0/894 warn corr raw/unsup=894/894 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=-285 m box_launch_adjacent=-187 m held_decisions=226
+crowd M16b simultaneous w 0.45 r  fps= 60 seed=1: first (c) frame on an approach at 0.02 s ships 0-3 lat_now-margin -1000000000 m along slack -1000000000 m
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1: no (c) pair frame with a ship on its order-4 approach (65991; reported: against a ship on its order-5 launch 13123)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1: no aim-at-A fallback (crossings 3, frames 3824)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 16.6 s, join error max 0.00 deg)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -1095 m; corridor pairs -848 m)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 7: no (c) pair frame with a ship on its order-4 approach (66045; reported: against a ship on its order-5 launch 12850)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 7: no aim-at-A fallback (crossings 3, frames 3767)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 16.6 s, join error max 0.00 deg)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -1095 m; corridor pairs -848 m)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (66753; reported: against a ship on its order-5 launch 12135)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1234567: no aim-at-A fallback (crossings 2, frames 3726)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 16.5 s, join error max 4.65 deg)
+TARGET MISS M simultaneous w 0.45 r 60 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -1095 m; corridor pairs -848 m)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1: no (c) pair frame with a ship on its order-4 approach (144423; reported: against a ship on its order-5 launch 32364)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1: no aim-at-A fallback (crossings 1, frames 1330)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 7.89 deg)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -1302 m; corridor pairs -1087 m)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 7: no (c) pair frame with a ship on its order-4 approach (143765; reported: against a ship on its order-5 launch 31429)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 7: no aim-at-A fallback (crossings 1, frames 1330)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.36 deg)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -1302 m; corridor pairs -1087 m)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (143311; reported: against a ship on its order-5 launch 31411)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1234567: no aim-at-A fallback (crossings 1, frames 1268)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w 0.45 r 144 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -1302 m; corridor pairs -1087 m)
+crowd M16b over the 9 runs of simultaneous w 0.45 r : arrived 45 launched 45 (of 45) kept 22 slow 9 fallback crossings 14 frames 18988; (c) frames on an approach 727181, against a launch 156467; certificate violations 0, lapses 0; last arrival 191 s, rotate after a slow join max 26.9 s, join error max 7.89 deg, box min -1319 m, trailer ds - D_x min 0.0 m, longest floor span 0.0 s
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1: no (c) pair frame with a ship on its order-4 approach (32269; reported: against a ship on its order-5 launch 8623)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1: no aim-at-A fallback (crossings 2, frames 379)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.99 deg)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -738 m; corridor pairs -90 m)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 7: no (c) pair frame with a ship on its order-4 approach (32526; reported: against a ship on its order-5 launch 8150)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 7: no aim-at-A fallback (crossings 3, frames 909)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.75 deg)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -738 m; corridor pairs -63 m)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (32141; reported: against a ship on its order-5 launch 8830)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1234567: no aim-at-A fallback (crossings 3, frames 618)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.99 deg)
+TARGET MISS M simultaneous w 0.25 r 30 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -738 m; corridor pairs -18 m)
+crowd M simultaneous w 0.25 r  fps= 60 seed=1: arrived=5 launched=5 kept=2 slow_cross=1 fb_cross=2 fb_frames=2959 slow_entries=9 unlatch=6 arrive=103-200 s detours a/b/c/none=0/0/24556/5 pairs a/b/c=23980/0/210908 adj1.1km a/c=894/28694 E_a lane=23324/23980 warn a raw/unsup=1722/596 c raw/unsup=105089/104981 b raw=0 gate sup join/slow/fb/hand=36863/6519/2959/12228 gate_warn span/unsup=3094/0 min_box_sep=-674 m (corridor pairs -667 m) o5_overlap=0 rot_slow_max=0.0 s join_err_max=6.00 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=46.3 E_us mean/max=0.159/46.5
+crowd M16b simultaneous w 0.25 r  fps= 60 seed=1: pairs a foot/corr=23324/656 s lat/along=0/0 c approach/launch/other=80360/13897/12394 detours_s=0 E cert lane=23324/23324 warn cert raw/unsup=1126/0 E corr lane=0/656 warn corr raw/unsup=596/596 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=138 m box_launch_adjacent=670 m held_decisions=165
+crowd M16b simultaneous w 0.25 r  fps= 60 seed=1: first (c) frame on an approach at 0.02 s ships 0-3 lat_now-margin -1000000000 m along slack -1000000000 m
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1: no (c) pair frame with a ship on its order-4 approach (80360; reported: against a ship on its order-5 launch 13897)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1: no aim-at-A fallback (crossings 2, frames 2959)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.00 deg)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -674 m; corridor pairs -667 m)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 7: no (c) pair frame with a ship on its order-4 approach (76778; reported: against a ship on its order-5 launch 11279)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 7: no aim-at-A fallback (crossings 1, frames 2126)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 14.8 s, join error max 5.96 deg)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -674 m; corridor pairs -538 m)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (83286; reported: against a ship on its order-5 launch 15667)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1234567: no aim-at-A fallback (crossings 3, frames 6202)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 5.97 deg)
+TARGET MISS M simultaneous w 0.25 r 60 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -674 m; corridor pairs -702 m)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1: no (c) pair frame with a ship on its order-4 approach (158803; reported: against a ship on its order-5 launch 30220)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1: no aim-at-A fallback (crossings 0, frames 3024)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 13.8 s, join error max 6.46 deg)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -489 m; corridor pairs -547 m)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 7: no (c) pair frame with a ship on its order-4 approach (161580; reported: against a ship on its order-5 launch 32245)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 7: no aim-at-A fallback (crossings 2, frames 18382)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 12.5 s, join error max 6.45 deg)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -489 m; corridor pairs -346 m)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (160837; reported: against a ship on its order-5 launch 38974)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1234567: no aim-at-A fallback (crossings 1, frames 18191)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 13.0 s, join error max 7.57 deg)
+TARGET MISS M simultaneous w 0.25 r 144 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -489 m; corridor pairs -529 m)
+crowd M16b over the 9 runs of simultaneous w 0.25 r : arrived 45 launched 45 (of 45) kept 21 slow 7 fallback crossings 17 frames 52790; (c) frames on an approach 818580, against a launch 167885; certificate violations 0, lapses 0; last arrival 246 s, rotate after a slow join max 14.8 s, join error max 7.57 deg, box min -738 m, trailer ds - D_x min 0.0 m, longest floor span 0.0 s
+TARGET MISS M simultaneous w = r 30 fps seed 1: no (c) pair frame with a ship on its order-4 approach (32576; reported: against a ship on its order-5 launch 7874)
+TARGET MISS M simultaneous w = r 30 fps seed 1: no aim-at-A fallback (crossings 1, frames 1238)
+TARGET MISS M simultaneous w = r 30 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 26.9 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w = r 30 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -2557 m; corridor pairs -2329 m)
+TARGET MISS M simultaneous w = r 30 fps seed 7: no (c) pair frame with a ship on its order-4 approach (32629; reported: against a ship on its order-5 launch 7793)
+TARGET MISS M simultaneous w = r 30 fps seed 7: no aim-at-A fallback (crossings 1, frames 1210)
+TARGET MISS M simultaneous w = r 30 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 19.7 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w = r 30 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -2557 m; corridor pairs -2329 m)
+TARGET MISS M simultaneous w = r 30 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (32523; reported: against a ship on its order-5 launch 7801)
+TARGET MISS M simultaneous w = r 30 fps seed 1234567: no aim-at-A fallback (crossings 1, frames 1295)
+TARGET MISS M simultaneous w = r 30 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 21.5 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w = r 30 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -2557 m; corridor pairs -2328 m)
+crowd M simultaneous w = r     fps= 60 seed=1: arrived=5 launched=5 kept=0 slow_cross=2 fb_cross=3 fb_frames=3824 slow_entries=5 unlatch=2 arrive=83-167 s detours a/b/c/none=0/0/18697/5 pairs a/b/c=16064/0/191062 adj1.1km a/c=894/20330 E_a lane=15170/16064 warn a raw/unsup=1478/894 c raw/unsup=73011/72285 b raw=0 gate sup join/slow/fb/hand=28672/5329/3823/14148 gate_warn span/unsup=3295/0 min_box_sep=-2583 m (corridor pairs -1853 m) o5_overlap=0 rot_slow_max=16.6 s join_err_max=0.00 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=10.2 E_us mean/max=0.154/19.0
+crowd M16b simultaneous w = r     fps= 60 seed=1: pairs a foot/corr=15170/894 s lat/along=0/0 c approach/launch/other=66441/13123/17158 detours_s=0 E cert lane=15170/15170 warn cert raw/unsup=584/0 E corr lane=0/894 warn corr raw/unsup=894/894 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=-1448 m box_launch_adjacent=-1276 m held_decisions=226
+crowd M16b simultaneous w = r     fps= 60 seed=1: first (c) frame on an approach at 0.02 s ships 0-2 lat_now-margin -1000000000 m along slack -1000000000 m
+TARGET MISS M simultaneous w = r 60 fps seed 1: no (c) pair frame with a ship on its order-4 approach (66441; reported: against a ship on its order-5 launch 13123)
+TARGET MISS M simultaneous w = r 60 fps seed 1: no aim-at-A fallback (crossings 3, frames 3824)
+TARGET MISS M simultaneous w = r 60 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 16.6 s, join error max 0.00 deg)
+TARGET MISS M simultaneous w = r 60 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -2583 m; corridor pairs -1853 m)
+TARGET MISS M simultaneous w = r 60 fps seed 7: no (c) pair frame with a ship on its order-4 approach (66495; reported: against a ship on its order-5 launch 12850)
+TARGET MISS M simultaneous w = r 60 fps seed 7: no aim-at-A fallback (crossings 3, frames 3767)
+TARGET MISS M simultaneous w = r 60 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 16.6 s, join error max 0.00 deg)
+TARGET MISS M simultaneous w = r 60 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -2583 m; corridor pairs -1857 m)
+TARGET MISS M simultaneous w = r 60 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (67203; reported: against a ship on its order-5 launch 12135)
+TARGET MISS M simultaneous w = r 60 fps seed 1234567: no aim-at-A fallback (crossings 2, frames 3726)
+TARGET MISS M simultaneous w = r 60 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 16.5 s, join error max 4.65 deg)
+TARGET MISS M simultaneous w = r 60 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -2583 m; corridor pairs -1857 m)
+TARGET MISS M simultaneous w = r 144 fps seed 1: no (c) pair frame with a ship on its order-4 approach (145878; reported: against a ship on its order-5 launch 32392)
+TARGET MISS M simultaneous w = r 144 fps seed 1: no aim-at-A fallback (crossings 1, frames 1330)
+TARGET MISS M simultaneous w = r 144 fps seed 1: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 7.89 deg)
+TARGET MISS M simultaneous w = r 144 fps seed 1: the box hulls never touch outside the corridor pairs (min separation -2341 m; corridor pairs -1955 m)
+TARGET MISS M simultaneous w = r 144 fps seed 7: no (c) pair frame with a ship on its order-4 approach (145217; reported: against a ship on its order-5 launch 31429)
+TARGET MISS M simultaneous w = r 144 fps seed 7: no aim-at-A fallback (crossings 1, frames 1330)
+TARGET MISS M simultaneous w = r 144 fps seed 7: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.36 deg)
+TARGET MISS M simultaneous w = r 144 fps seed 7: the box hulls never touch outside the corridor pairs (min separation -2341 m; corridor pairs -1955 m)
+TARGET MISS M simultaneous w = r 144 fps seed 1234567: no (c) pair frame with a ship on its order-4 approach (144766; reported: against a ship on its order-5 launch 31411)
+TARGET MISS M simultaneous w = r 144 fps seed 1234567: no aim-at-A fallback (crossings 1, frames 1268)
+TARGET MISS M simultaneous w = r 144 fps seed 1234567: crossings in join or slow join with the rotate <= 5 s (max 0.0 s, join error max 6.27 deg)
+TARGET MISS M simultaneous w = r 144 fps seed 1234567: the box hulls never touch outside the corridor pairs (min separation -2341 m; corridor pairs -1955 m)
+crowd M16b over the 9 runs of simultaneous w = r    : arrived 45 launched 45 (of 45) kept 22 slow 9 fallback crossings 14 frames 18988; (c) frames on an approach 733728, against a launch 156808; certificate violations 0, lapses 0; last arrival 191 s, rotate after a slow join max 26.9 s, join error max 7.89 deg, box min -2583 m, trailer ds - D_x min 0.0 m, longest floor span 0.0 s
+crowd M M-c abreast 30 deg     fps= 60 seed=1: arrived=2 launched=2 kept=0 slow_cross=0 fb_cross=2 fb_frames=2762 slow_entries=2 unlatch=0 arrive=94-129 s detours a/b/c/none=0/0/4717/3 pairs a/b/c=0/0/17930 adj1.1km a/c=0/0 E_a lane=0/0 warn a raw/unsup=0/0 c raw/unsup=7610/7610 b raw=0 gate sup join/slow/fb/hand=8343/2280/2762/2540 gate_warn span/unsup=1278/0 min_box_sep=-655 m (corridor pairs -252 m) o5_overlap=0 rot_slow_max=0.0 s join_err_max=0.00 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=8.9 E_us mean/max=0.155/9.4
+crowd M16b M-c abreast 30 deg     fps= 60 seed=1: pairs a foot/corr=0/0 s lat/along=0/0 c approach/launch/other=6552/1194/1219 detours_s=0 E cert lane=0/0 warn cert raw/unsup=0/0 E corr lane=0/0 warn corr raw/unsup=0/0 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=86 m box_launch_adjacent=65 m held_decisions=63
+crowd M16b M-c abreast 30 deg     fps= 60 seed=1: first (c) frame on an approach at 0.02 s ships 0-1 lat_now-margin -1000000000 m along slack -1000000000 m
+crowd M M-d aT>aL (M2 behind M1) fps= 60 seed=1: arrived=5 launched=5 kept=0 slow_cross=2 fb_cross=3 fb_frames=3824 slow_entries=5 unlatch=2 arrive=83-167 s detours a/b/c/none=0/0/18697/5 pairs a/b/c=16964/0/190162 adj1.1km a/c=894/20330 E_a lane=16070/16964 warn a raw/unsup=1478/894 c raw/unsup=73011/72285 b raw=0 gate sup join/slow/fb/hand=28672/5329/3823/14148 gate_warn span/unsup=3295/0 min_box_sep=-1095 m (corridor pairs -848 m) o5_overlap=0 rot_slow_max=16.6 s join_err_max=0.00 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=27.3 E_us mean/max=0.155/27.9
+crowd M16b M-d aT>aL (M2 behind M1) fps= 60 seed=1: pairs a foot/corr=16070/894 s lat/along=0/0 c approach/launch/other=65991/13123/17158 detours_s=0 E cert lane=16070/16070 warn cert raw/unsup=584/0 E corr lane=0/894 warn corr raw/unsup=894/894 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=-285 m box_launch_adjacent=-187 m held_decisions=226
+crowd M16b M-d aT>aL (M2 behind M1) fps= 60 seed=1: first (c) frame on an approach at 0.02 s ships 0-3 lat_now-margin -1000000000 m along slack -1000000000 m
+crowd M M-d aT<aL (M1 behind M2) fps= 60 seed=1: arrived=2 launched=2 kept=2 slow_cross=0 fb_cross=0 fb_frames=0 slow_entries=0 unlatch=0 arrive=89-197 s detours a/b/c/none=0/0/4089/3 pairs a/b/c=0/0/15192 adj1.1km a/c=0/15192 E_a lane=0/0 warn a raw/unsup=0/0 c raw/unsup=5872/5872 b raw=0 gate sup join/slow/fb/hand=17143/0/0/6 gate_warn span/unsup=1605/0 min_box_sep=-121 m (corridor pairs 0 m) o5_overlap=0 rot_slow_max=0.0 s join_err_max=6.89 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=13.6 E_us mean/max=0.163/13.8
+crowd M16b M-d aT<aL (M1 behind M2) fps= 60 seed=1: pairs a foot/corr=0/0 s lat/along=0/0 c approach/launch/other=5349/2247/0 detours_s=0 E cert lane=0/0 warn cert raw/unsup=0/0 E corr lane=0/0 warn corr raw/unsup=0/0 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=571 m box_launch_adjacent=872 m held_decisions=74
+crowd M16b M-d aT<aL (M1 behind M2) fps= 60 seed=1: first (c) frame on an approach at 0.02 s ships 0-1 lat_now-margin -1000000000 m along slack -1000000000 m
+crowd M unlatch                fps= 60 seed=1: arrived=5 launched=5 kept=5 slow_cross=0 fb_cross=0 fb_frames=0 slow_entries=1 unlatch=1 arrive=72-430 s detours a/b/c/none=0/0/3/2651 pairs a/b/c=13154/0/9260 adj1.1km a/c=6618/4368 E_a lane=6536/13154 warn a raw/unsup=7215/6618 c raw/unsup=2537/2537 b raw=0 gate sup join/slow/fb/hand=19005/2340/0/2920 gate_warn span/unsup=5453/0 min_box_sep=1349 m (corridor pairs -452 m) o5_overlap=0 rot_slow_max=0.0 s join_err_max=5.31 b cap_frames=0 ds<D=0 ds-D_min=0 (D 0) b_warn=0 leader_cap=-1.0 lane_us_max=21.0 E_us mean/max=0.156/21.3
+crowd M16b unlatch                fps= 60 seed=1: pairs a foot/corr=6536/6618 s lat/along=0/0 c approach/launch/other=0/2052/2578 detours_s=0 E cert lane=6536/6536 warn cert raw/unsup=597/0 E corr lane=0/6618 warn corr raw/unsup=6618/6618 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=1456 m box_launch_adjacent=858 m held_decisions=0
+crowd M unlatch: 9 slow_join/fallback -> join transitions over 9 runs (9 runs with one)
+crowd M same lane (b)          fps= 60 seed=1: arrived=2 launched=2 kept=2 slow_cross=0 fb_cross=0 fb_frames=0 slow_entries=0 unlatch=0 arrive=65-218 s detours a/b/c/none=0/0/0/0 pairs a/b/c=0/10396/12508 adj1.1km a/c=0/0 E_a lane=0/0 warn a raw/unsup=0/0 c raw/unsup=0/0 b raw=0 gate sup join/slow/fb/hand=13044/0/0/5242 gate_warn span/unsup=2721/0 min_box_sep=4375 m (corridor pairs 0 m) o5_overlap=0 rot_slow_max=0.0 s join_err_max=0.00 b cap_frames=5159 ds<D=4551 ds-D_min=-1 (D 6560) b_warn=0 leader_cap=-1.0 lane_us_max=8.8 E_us mean/max=0.133/9.2
+crowd M16b same lane (b)          fps= 60 seed=1: pairs a foot/corr=0/0 s lat/along=0/0 c approach/launch/other=3950/2304/0 detours_s=0 E cert lane=0/0 warn cert raw/unsup=0/0 E corr lane=0/0 warn corr raw/unsup=0/0 cert frames/viol=0/0 (worst slack 0 m) cap frames=0 ds-Dx_min=0 m lapses=0 floor_longest=0.0 s (ship 0) floor_total_max=0.0 s adj1.1km s=0 forced=0 box_unclassified=4375 m box_launch_adjacent=0 m held_decisions=0
+crowd M16b same lane (b)          fps= 60 seed=1: first (c) frame on an approach at 0.02 s ships 0-1 lat_now-margin -1000000000 m along slack -1000000000 m
+crowd M: 108 measured targets missed (TARGET MISS rows; the simultaneous starts)
+crowd M16b: capped decisions under an avoidance emergency (the emergency ramp writes, floored at 10 m/s; the cap not applied) 0, of which the cap was below 10 m/s 0
+ship_steering_host checks=7089 failures=0 slip_gaps=0 vanilla_notes=2
+checks PASS

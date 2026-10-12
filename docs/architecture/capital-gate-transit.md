@@ -966,3 +966,406 @@ Existing scenarios A–G, G1 and K are re-run.
 | Whether the joining footprint (sphere-swept segment) is too conservative to exempt joiners next to an in-lane neighbour | `ship_capital_lane` gap rows; if so, bound the joiner's reach by the predicted ψ along the path (e(t) − r sin ψ(t) − w cos ψ(t), one more min per step) |
 | The collision damage law | KC walk of `"MakeDamage"` (class 2004), as in §15.8 |
 | Whether vanilla busy gates show contacts between parked neighbours (evidence for the widths) | a contact counter on the narrow phase for capital pairs at the grid (diagnostic build) |
+
+### 16.9 Implementation
+
+Implemented 2026-10-13 on `453d12ed` (worktree, not committed, not installed); evidence and numbers in the ledger
+[ship-steering.md](../verification/ship-steering.md), "Amendment 16". Where the code reads this section:
+
+* **Lane core** `src/proxy/ship_capital_lane_core.h` (pure, shared by the DLL and the fixture): the board (8 gates × 20
+  entries keyed on pointer and native id), commitment from live reads (E, the avoidance resolve over the snapshot's order,
+  f+0x224 and id) or from the stored board (decide() never dereferences another ship), footprints, the verdict with the
+  addendum's corridor route (different lane points, both settled in lane or joining with e_max, excursion ≤ 100 m and
+  predicted nose ≤ 8.11°: (a); the same lane point, both settled: (b); 50 m footprint gap: (a)), the follow cap, the path
+  guards. Lane points closer than 333 m are the same lane; an order-5 leg has no lane point (footprint route only).
+* **Hand-over in the board:** P2 (kept or not) records the state at the crossing and the speed P2 leaves; on 0x1f / order 0
+  the entry's along-axis state is extrapolated with the hull's deceleration (desired 0), no other ship is read.
+* **D** includes the warn test's r_A·cos θ term at its bound r_T (the §16.1 sum omits it; without it the engine fires
+  inside D): ≈ 6.4 km for an M2 trailing an M1 at matched speed. **The cap** is the lower of §16.1's
+  `max(0, v_L) + √(2a_T(Δs − D))` and the stopping-distance form `√(v_L²·a_T/a_L + 2a_T(Δs − D))`: the sum alone let Δs
+  fall 167 m below D when the leader braked at the trailer's own deceleration (fixture M-b), and inside D it only matched the
+  leader. Floor 1 unit/s (0 is "no write" at site B).
+* **Slow join** `core::join_evaluate16`: join mode decides exactly as `join_choose` (lazy, highest first); none accepted →
+  slow_join at the smallest predicted nose among candidates that reach the plane with excursion ≤ 100 m and nose ≤ 20°,
+  else the fallback. slow_join and the pred_none fallback stay registered and re-evaluate at 1 Hz; any grade ≥ 1 → join
+  (the highest grade-2 speed, else the highest grade-1). A slow join past X keeps its pursuit (no past_x switch; it crosses
+  unconverged by design). `e_max` costs one compare per step; the predictor's worst evaluation is unchanged (81.2–81.6 µs
+  against 81.4 µs for amendment 15, host, same sweep).
+* **Hull width** (addendum (5), [render-node-bounds.md §6.1](../reverse-engineering/render-node-bounds.md)):
+  `walk::hull_width` over the root's descendants (depth 3, 64 nodes), the body-cache hash read-only (power-of-two size,
+  64 chain steps), the max over all LOD records, the box bounded by |e| when any basis on the path is not the identity,
+  w = max √((|o_x| + e_x)² + (|o_y| + e_y)²) ≤ r; any guard → w = r (`fail`). Cached per ship on its gate state with the
+  radius bits and the root pointer; one `ship_capital_census` row per type.
+* **E:** `suppress_lane` sits after the gate rows and before the freshness test (the hand-over has no decision); the capital
+  gate row is §16.3's for every input (its amendment-15 inputs keep their meaning, the new ones default to amendment 15);
+  the small-ship row is G1 *or* the §16.4 guard on a fresh validated order-4 decision.
+* **Option-off:** with `ship_steering_gates_capital` off the board is never filled, the resolve is unbound, E's new inputs
+  keep their defaults and the predictor does not run: E's verdict equals amendment 15's on 400,000 random inputs (fixture).
+  The §16.4 extension follows `ship_steering_gates`.
+
+* **Speed on a detour** (main-session fix, 2026-10-13): a capital in join or slow join on order 4 with a validated gate state
+  keeps the join's site-B write (both ways) while the avoidance hands the leaf a detour point: min(the gate speed with the
+  cornering term, the predictor's candidate or the slow-join speed, the (b) follow cap), lowered at site B to the emergency
+  ramp (`clamp_for`). Before it, a detour took the lead-in away and the engine's order-4 law held the capital at its 1 m/s
+  alignment creep (two capitals 2.9 km apart at 1.0 m/s for > 80 s in the fixture). P2's hand-over is unchanged; the aim-at-A
+  fallback keeps its own write rule. Counter `gate_capital_detour_write` (decisions).
+
+**What the fixture shows about the design** (scenario M, measured): the lane rule holds its invariants in every variant
+(no detour against an (a) or (b) pair, `suppress_lane` on every E call for an (a) pair, one launch at a time). With the five
+starts of §16.5 at the same time, the stall is gone (arrivals 83–167 s against 93–334 s) but the join targets are still not
+met: a lateral joiner within the sphere clearance (r_A + r_B + 0.5 r_A ≈ 2.6 km) of an occupied lane stays (c) until it is
+within 100 m of its lane, and its sphere detours, now flown at the join's speed, bend the joins of in-lane neighbours too.
+Entered one approach at a time near the grid, every §16.5 target passes. The §16.8 row "joining footprint too conservative"
+is the open design question.
+
+**Ratified deviations** (main session, 2026-10-13):
+
+1. D includes the warn test's r_A·cos θ term at its bound r_T.
+2. The follow cap is the lower of §16.1's sum and the stopping-distance form.
+3. The box-contact check exempts two ships at adjacent grid points (within r + 1.5 km of their A) and corridor pairs; every
+   other pair is asserted.
+4. Interpretations: `suppress_lane` for every (a) pair, corridor pairs included; "in w = r, verdicts equal amendment 15" no
+   longer applies (the corridor route does not depend on w); a slow join past X keeps its pursuit; the hand-over is committed
+   only with f+0x224 = the gate on 0x1f / order 0.
+
+### 16.10 Joiner corridor (amendment 16b)
+
+**Ratified 2026-10-13 (main session)** with one correction that also settles review finding F1 on §16.9: site E
+suppresses the lane warn only under a geometric certificate (footprint-disjoint (a), or (s) by (i) lateral or (ii)
+along-axis separation). A corridor-only (a) pair (addendum rule 4, no certificate) keeps the engine's warn live; our
+avoidance still does not detour it. Everything else as recommended; `ship_steering_gates_capital_seq` defaults on with
+the capital key.
+
+Design note, 2026-10-13, for ratification by the main session. Question: which pair rule exempts a lateral joiner from a
+neighbour whose lane it must cross when the two hulls cannot meet, and keeps (c) when they can. Inputs: §16.1 with the
+addendum, §16.9, the ledger entry "Capital gate transit amendment 16" (27 simultaneous TARGET MISS rows and their causes) and
+[`detour_write_ab.txt`](../../verification/results/ship-steering/capital-crowd/detour_write_ab.txt). Two scripts were made for
+this section under [`capital-crowd/`](../../verification/results/ship-steering/capital-crowd/):
+
+* `seq_geometry.py` → `seq_geometry.txt`: the grid arithmetic and the scenario-M starts **[arithmetic]**.
+* `seq_cap_undershoot.py` → `seq_cap_undershoot.txt`: a kinematic sweep of the trailing cap under leader braking **[m, model]**.
+
+**Recommendation.** This is the brief's option 3 (sequencing) in a form that can be proved. It replaces the swept-footprint
+verdict only for the pairs that amendment 16 leaves at (c). For such a pair the verdict is decided at every classification by
+an *instantaneous separating plane*, and the trailing ship's speed cap is what makes the plane along F appear and stay.
+
+* **New verdict (s), "sequenced".** It applies to a pair that amendment 16 classifies (c) on different lane points (or on an
+  order-5 leg), when at this classification either:
+  * (i) the hulls' current lateral projections are apart by a margin that covers the motion until the next classification; or
+  * (ii) their projections onto F are apart, with the trailer held behind.
+
+  Effects are those of (a): no sideways detour, and E returns `suppress_lane`. If neither (i) nor (ii) holds, the verdict
+  stays (c).
+* **Sequencing cap.** In every such pair where a lateral mover's path comes within reach of the other ship, the trailing ship
+  (smaller s) gets a site-B speed cap that holds its centre at least D_x = h_T + h_L + 100 m behind the leader. The cap uses
+  h = √(r² + w²), the hull's largest half-extent along F, and is robust to the leader braking at any moment, to latency and
+  to stale board state.
+* **No prediction is involved.** The predictor, its bound and the corridor route of the addendum are unchanged. Option-off is
+  amendment 16 as built.
+
+#### 16.10.1 Why the joining footprint is not the thing to fix
+
+* **The lateral footprint cannot exempt adjacent lanes.** The joining footprint is conservative, but that is not the core
+  problem. A hull in its own lane overlaps the adjacent lane's hull in projection: the half-widths alone sum to
+  0.45 (r_A + r_B) = 680–983 m at w = 0.45 r, against the 666 m pitch, before any tilt. Only the ratified corridor route
+  exempts such a pair. A joiner between 100 m off its lane and lateral disjointness (≈ 450 m off on the far side at 20°
+  **[i]**, more on the near side) therefore really can touch an abreast neighbour. Shrinking the footprint with the predicted
+  ψ (§16.8) changes the verdict only for pairs two lanes apart.
+* **What separates such a pair is distance along F.** Two hulls whose projections onto F are disjoint cannot meet, whatever
+  their lateral positions. This is the same theorem as §16.1's, on the other axis.
+* **The brief's premise about X needs a correction.** The joiner's crossing plane X_J does lie ahead of the grid. But a parked
+  neighbour's grid point is only 0.75 r_gate + 2 (r_J − r_N) = 155–1,503 m beyond X_J along F, while the along-axis
+  separation needed is h_J + h_N + 50 m = 1,706–2,445 m. A joiner therefore has to be inside its corridor 573–1,921 m before
+  its own X to pass a parked adjacent neighbour without waiting (`seq_geometry.txt`, w = 0.45 r). Otherwise the cap holds it
+  until that neighbour launches. This holds by geometry; it is not a defect of the rule.
+* **The along-F extent is not r.** r is the half-length (§16.1), and a tilted cylinder of radius w and half-length r reaches
+  r cos θ + w sin θ ≤ √(r² + w²) along F: 1.097 r at w = 0.45 r, and √2 r when w = r. The rule uses h = √(r² + w²) at every
+  tilt, so it needs no attitude prediction.
+
+#### 16.10.2 The rule
+
+**Watch pair.** Both ships are committed to the same gate (§16.1), amendment 16's verdict is (c), and the pair is not on the
+same lane point. Same-lane pairs keep §16.1: (b) when both are settled, otherwise (c). For a watch pair:
+
+```
+verdict16b(A, B):                                   // after pair_verdict(A, B) == cross, sequencing on
+  if same lane point (neither on order 5): return cross
+  if lat_now(A, B) >= kSeqLatGapM + mot(A) + mot(B): return seq            // route "lat"
+  (T, L) = trailer and leader by s (along(): the hand-over extrapolated)
+  if along_ok(T, L): return seq                                             // route "along"
+  return cross
+
+lat_now(A, B) = |q_A - q_B| - rho_A - rho_B          // the current projections; rho = reach(r, w, cos_t) of section 16.1
+mot(S)        = tau_S * (v_perp_S + r_S * (|omega_S| + alpha_S * tau_S)),  tau_S = min(1 s, age_S + fresh_ms)
+along_ok(T, L):
+  L: cos_t >= 0.5 and vF >= 0                       // the leader moves forward over the next interval
+  T on order 4: s_T* = s_T;  T in the hand-over: s_T* = s_T + vF_T^2 / (2 a_T);  T on order 5: false
+  s_L - s_T* >= h_T + h_L + kSeqAlongM + tau_T * max(0, vF_T - vF_L)
+```
+
+* **Who trails.** The smaller s trails. When |Δs| < 1 m, the ship not in its corridor trails, then the higher pointer. The
+  order is total, so trailing creates no cycle: the frontmost ship of any chain is never capped (the liveness argument).
+* **Sequencing obligation.** A watch pair carries the cap when at least one ship is a lateral mover and the movers' lateral
+  paths come within reach of each other.
+  * A lateral mover is a ship on order 4 not in lane, or on order 5. Its path is the segment from q to its lane point (order
+    5: to (0, 0)).
+  * A settled ship (in lane or in the hand-over) is its point q with reach ρ(θ) + 25 m.
+  * A mover's reach is its corridor reach ρ_c = 100 m + w + r sin 8.11°, the reach it will have once in its corridor.
+  * The pair is obliged when dist(path_A, path_B) < reach_A + reach_B + kSeqLatGapM.
+
+  So a joiner sliding into the lane beside a neighbour, or across its lane, is obliged. A joiner whose lane lies two lanes
+  away is not: M2 s3 against Titan s0 clears by 1,332 − 546 − 516 = 270 m. Two settled ships cannot close laterally, so they
+  are never obliged.
+
+  This trigger is a liveness choice, not part of the proof. A pair whose (i) lapses without a cap falls to (c), which is
+  today's behaviour. It uses only geometry (lane points and q), never speed, so the cap cannot switch itself off by slowing
+  the ship.
+* **Sequencing cap.** It is computed at the trailer's site B for every obliged pair in which the trailer is on order 4. It
+  applies in (s) and in (c). It only ever lowers the speed (lower-of with the join, slow-join, fallback and detour writes,
+  the (b) follow cap and the emergency ramp):
+
+```
+D_x   = h_T + h_L + kSeqCapExtraM
+v_c   = (L in lane or in the hand-over, a_L > 0) ? max(0, vF_L - a_L * age_L) : 0   // the leader's along-F credit
+room  = s_L - s_T - D_x - vF_T * (fresh_ms + age_L)                               // the latency
+cap   = room <= 0 ? floor : min(v_c + sqrt(2 a_T room), sqrt(v_c^2 a_T / a_L + 2 a_T room))
+if a_T > a_L and v_c > 0: v_rel = sqrt(2 (a_T - a_L) room); if v_rel * a_L <= v_c * (a_T - a_L): cap = min(cap, v_c + v_rel)
+cap   = max(cap, 1 unit/s)
+```
+
+* **The three forms.** The sum form covers a leader holding its speed and the stopping form a leader braking to a stop. The
+  relative form covers a leader braking at a_L while it is still faster than the trailer can follow, when a_T > a_L. Without
+  it, the minimum of the gap falls between the two stopping points.
+* **Leader credit.** A leader that is neither in lane nor in the hand-over gets v_c = 0: the trailer stops behind the
+  leader's current s, as if the leader stopped dead. A joiner turning at up to W may lose v·F faster than a_lin, so it earns
+  no stopping credit.
+* **Fail-closed.** All of these drop the route and the pair stays (c): a non-finite field, a_T ≤ 0, an unknown v⊥ / ω / α on
+  either entry, a leader with cos_t < 0.5 or vF < 0, or a trailer on order 5 for (ii).
+* **One pass.** The pair verdicts and the caps are computed once per decision, in one pass over the gate's entries. That
+  pass is shared by `excluded()` and the cap; today `lane_pair` and `follow_cap_for` each walk the board.
+
+**The proof per instant.**
+
+* **Route (i).** The projections onto the R–U plane are disjoint now, by kSeqLatGapM plus the most they can close before the
+  next classification. The centre moves at v⊥, and the reach grows by at most r (ωτ + ½ατ²). The pair is reclassified within
+  fresh_ms of either ship's decision or E call.
+* **Route (ii).** The projections onto F are disjoint by kSeqAlongM plus the closing within τ. Under the cap the gap never
+  falls more than 5.3 m below D_x **[m, model]**, which is 50 m above the certificate threshold, so a capped pair keeps (ii)
+  once it has it.
+* **What it proves.** Either route means the cylinders (w, r) cannot meet before the next classification. The engine's warn
+  is then redundant, and E's `suppress_lane` is as justified as for (a).
+* **When neither route holds.** The hulls *can* meet: the pair stays (c), with our detour and the engine's warn as today.
+
+**Board.** Each `Entry` gains `h`, computed once per refresh as √(r² + w²) (with w = r when unread). It also gains `v_perp`
+(|u − (u·F)F|), `omega` (|body rate|, the slower of yaw and pitch) and `alpha` (W k, `slower_axis_alpha`). All four come from
+the deciding ship's own decision, with no new memory read: 16 B per entry, 2.5 KB for the board.
+
+#### 16.10.3 Constants
+
+| Constant | Value | Derivation |
+| --- | --- | --- |
+| h | √(r² + w²) | The largest projection onto F of a cylinder (radius w, half-length r) at any tilt. With w = r (unread or failed): √2 r. |
+| kSeqLatGapM | 50 m | = kExemptGapM, the clearance between projections, kept separate from motion. |
+| mot(S) | τ (v⊥ + r (\|ω\| + α τ)), τ ≤ 1 s | Lateral centre speed plus reach growth r·Δθ ≤ r(ωτ + ½ατ²). The slip lag changes v⊥ by about v·ω·τ ≈ 2 m in 0.5 s, which the 50 m absorbs. Example **[i]**: a joining M2 at 100 m/s, 30° and 2.3°/s plus an in-lane M1 at τ = 0.5 s gives 42 + 12 = 54 m, so the route needs a gap ≥ 104 m. |
+| kSeqAlongM | 50 m | The certificate's slack over h_T + h_L. τ·(closing) is added explicitly. |
+| kSeqCapExtraM | 100 m | D_x − certificate = 50 m ≥ 10 × the cap's worst kinematic undershoot. That undershoot is 5.3 m over a_T, a_L ∈ {2, 5, 10} m/s², τ ∈ {0.25, 0.5, 1} s, leader stops at any time (`seq_cap_undershoot.txt`, cap 16b). The as-built (b) cap in the same sweep undershoots by up to 142.9 m: it has no latency, staleness or relative-braking term, which is why it is not reused unchanged. |
+| leader nose | cos_t ≥ 0.5 | Within τ ≤ 1 s at the capital's W ≈ 10°/s, the nose stays below 70°, so v·F ≥ 0 until the next classification **[i]**. |
+| v_c credit | in lane or hand-over only | θ ≤ 8.11° keeps the loss of v·F from turning ≤ v (1 − cos 8.11°) ≈ 1 m/s. |
+| ρ_c (obligation reach of a mover) | 100 m + w + r sin 8.11° | the reach of a ship at the corridor limit (in-lane bound of §16.1): 546 / 745 / 704 m for the M2 755 / Titan / Colossus at w = 0.45 r |
+| tie | 1 m | below one frame of motion |
+| floor | 1 unit/s | = kFollowFloorMs (0 = "no write" at site B) |
+
+Values for the scenario-M hulls at w = 0.45 r (`seq_geometry.txt`): h = 1,197 / 1,121 / 828 m (Titan / Colossus / M2 755);
+D_x = 1,756–2,495 m; at w = r, D_x = 2,235–3,189 m.
+
+#### 16.10.4 Scenario M simultaneous, walked through (t = 0 from `seq_geometry.txt`; the dynamics **[i]**)
+
+| Pair | Δs (m) | Route at t = 0 | Then |
+| --- | --- | --- | --- |
+| Titan s0 – Colossus s1 | 140 | corridor (a), unchanged | both stay in lane: nothing pushes them any more |
+| Colossus s1 – M2 s3 (2.7 km beyond) | M2 trails by 18 | (s) lat: gap 1,900 m at θ 0, about 1,690 m at the start's 16° | Its cap is at the floor from frame 1 (room < 0): the M2 brakes (10 s) while the Colossus runs on. (ii) holds once Δs ≥ 1,999 m, ≈ 25–30 s. (i) lapses near 450 m off its lane, later than that because braking also slows its lateral convergence. |
+| Titan s0 – M2 s2 (crossing slot 0) | M2 trails by 2,641 | (s) along (≥ 2,075) | capped behind the Titan until it is in its corridor; must be in it 1.9 km before its X if the Titan is parked |
+| Colossus s1 – M2 s2 | M2 trails by 2,781 | (s) along (≥ 1,999) | as above |
+| Titan s0 – Titan s4 (1.4 km out, 50°) | s0 trails by 4,525 | (s) lat (1,749 m at θ 0) or along (≥ 2,445) | s4 settles in lane, then the footprint gives (a) (gap 300 m) |
+| the other five | any | (a) footprint or (s) lat (lateral gap ≥ 1,986 m at θ 0) | — |
+
+No pair starts in (c). Obliged pairs (the trailer capped): M2 s3 behind the Colossus; M2 s2 behind the Titan s0, the
+Colossus and the Titan s4 (the cap binds only once Δs nears D_x plus braking). Not obliged: Titan s0 / M2 s3 (path clearance
+270 m) and Titan s0 / Titan s4 (1,332 − 745 − 516 = 71 m ≥ 50 m). The Titan s0 is in no detour, so the chain behind the
+"rotate 16.6 s" and "box −1,095 m" misses cannot start. The cost is sequencing: the M2 s3 waits about 25 s behind the
+Colossus. A joiner that is not in its corridor by the distance given in §16.10.1 (573–1,921 m before its X) waits behind
+a parked neighbour until that neighbour launches.
+
+#### 16.10.5 Verification (host fixture, scenario M)
+
+**Simultaneous variant** (`kCrowd`, 3 fps × 3 seeds; w 0.45 r is nominal, w 0.25 r is also asserted, w = r is reported). In
+the w = r variant the Titan s0 / M2 s2 pair needs 2,662 m and starts at 2,641 m, so (c) is expected there.
+
+| Assertion | Target |
+| --- | --- |
+| Invariants (as now) plus (s) | 0 detours against (a), (b) and (s) pairs; `suppress_lane` on every E call for an (s) pair; no unsuppressed engine warn for an (s) pair |
+| Certificate, recomputed from the fixture's true state (not the board) on every (s) frame | route lat: \|Δq\| > ρ_A(θ_true) + ρ_B(θ_true); route along: s_L − s_T > h_T(θ_T) + h_L(θ_L), with h(θ) = r cos θ + w sin θ. Violations: 0 |
+| Cap invariant | for every obliged pair after (ii) first holds, while the trailer is on order 4: min(Δs − D_x) ≥ −10 m |
+| (c) pair frames between committed capitals | 0 at w 0.45 r and 0.25 r (on a miss: the pair, frame, lat_now − margin, Δs − threshold) |
+| Joins (the 27 TARGET MISS rows become assertions) | kept + slow_cross = 5; aim-at-A fallback crossings 0 and frames 0; rotate after a slow join ≤ 5 s; join error ≤ 8.11° |
+| Contact | the existing box check (outside the adjacent-grid and corridor exemptions) min separation > 0 |
+| Liveness | 5 arrive and 5 launch; no capital at the cap floor for > 60 s outside the hand-over; the per-ship floor seconds and the last arrival are reported (expected ≤ 300 s **[i]**) |
+
+**New sub-scenarios:**
+
+* **M-c ((c) kept when they can meet).** The M2 755 of slot 2 (lane −666) starts abreast (Δs 0) of the in-lane slot-0
+  Titan, at q = −1,250 (584 m beyond its own lane) with the nose 30° toward it. Both fly at 100 m/s. The lateral gap is
+  1,250 − 717 − 491 = 42 m, below 50 m plus the margin, and Δs = 0 is below 2,075 m. Assert:
+  * verdict (c) on the first classification, with detours and the engine warn unsuppressed on the (c) frames;
+  * the trailer's cap from frame 1;
+  * no (s) frame without its certificate.
+* **M-d (the leader brakes).**
+  * Ratio a_T > a_L: the simultaneous M2 s3 (a 10) behind the Colossus (a 5). At the first frame after the cap binds with
+    Δs − D_x < 100 m, the Colossus's desired speed is forced to 0.
+  * Ratio a_T < a_L: a Colossus joiner starting 1 km beyond its lane and 300 m behind the slot-0 Titan (a 10), with the
+    Titan forced to 0 at the same point.
+  * Assert, on every frame: Δs − D_x ≥ −10 m and the along certificate.
+* **Option-off.** With `ship_steering_gates_capital_seq` off, the whole fixture's stdout equals today's (timing removed, as
+  `detour_write_ab.py` compares), including the 27 TARGET MISS rows. `pair_verdict` equals the as-built one on 400,000 random
+  side pairs, and E equals amendment 16 on 400,000 random inputs.
+* **Staggered and M-b.** Every assertion stays, with one restatement: "the adjacent 1.1 km pair (c) out of its corridors"
+  becomes "(c) or (s), certificate held". M-b (same lane) is untouched by construction.
+* **Cost (host).** E's capital-pair work mean ≤ 2 µs per call. A decision's lane pass (refresh, verdicts, caps, 19
+  neighbours) is reported, expected ≤ 1 µs **[i]** against 0.345 µs today. `pred_cost16` is unchanged because the predictor
+  is not modified.
+
+#### 16.10.6 Flight rows (the next crowd run; `--debug`, `ship_trace_max` ≥ 6)
+
+* **Install row.** `ship_steering_gates_capital … seq=1 seq_lat_gap_m=50 seq_along_m=50 seq_cap_extra_m=100`.
+* **`ship_capital_lane` gains** `route=foot|corr|lat|along|-`, `watch=`, `lat_gap=`, `mot=`, `ds=`, `h_T=`, `h_L=`, `Dx=`,
+  `trail=`, `seq_cap=` and `bind=`, at 1 Hz per traced pair and on every verdict or route change.
+* **`ship_gate_capital_latch` gains** `seq_cap=` and `seq_leader=`. They show whether a latch happened under a binding cap
+  (the predictor grades speeds that a capped ship does not fly).
+* **`ship_capital_census` gains** `l_m=`: the max over parts of |o_z| + e_z, scaled. This settles h ≥ the real along-axis
+  half-extent.
+* **New counters:** `lane_seq_lat`, `lane_seq_along`, `lane_seq_cross` (watch pairs left at (c)), `lane_seq_capped`,
+  `lane_seq_floor_ms`, and `lane_seq_lapse` (an along-route pair that turned (c) while the trailer's cap was applied: the
+  invariant's flight check).
+
+| Assumption or target | Row that settles it | Target |
+| --- | --- | --- |
+| Capital-vs-capital detours | `ship_avoid_detour` against a pair whose last lane row is a or s | 0 |
+| The cap invariant in the real plant | `lane_seq_lapse` | 0 |
+| A leader's along-F deceleration ≤ a_lin (the stopping credit) | consecutive `ship_capital_lane` rows of capped pairs: −ΔvF_L/Δt of in-lane or hand-over leaders | ≤ a_lin + 0.5 m/s² |
+| h covers the hull | `ship_capital_census l_m` against √(r² + w²) | l_m ≤ h for every type; otherwise h takes max(h, l_m) |
+| Sequencing cost | `lane_seq_floor_ms` per capital, and the rows with `bind=1` | no capital at the floor for > 60 s outside the hand-over |
+| Joins and the gate | as in §16.5 and the amendment-16 ledger | aim-at-A ≤ 1 per gate; rotate after a slow join ≤ 5 s |
+
+#### 16.10.7 Cost, option-off, native Windows
+
+* **Hot path.** The predictor is not touched, so its 81.6 µs worst holds as measured. Per watch pair the verdict adds three
+  `sqrtss` (two reaches and one distance) and about 50 flops: about 30 ns **[i]**. The obligation test (one segment–segment
+  distance, as §16.1 already has) and the cap add up to seven more `sqrtss`. Only watch pairs pay; pairs settled by the
+  footprint or the corridor return as today. With the single pass of §16.10.2, a decision's lane work stays ≤ 1 µs **[i]**
+  against the 2 µs bound, and E adds one route check per watch-pair call.
+* **Option-off.** `ship_steering_gates_capital_seq` (it requires `ship_steering_gates_capital`). Off means no (s), no
+  sequencing cap, no new fields written and the new board fields unused: amendment 16 as built.
+* **Native Windows.** Portable header code on the existing board, in SSE2 scalar float with `sqrt_ss`. The float-returning
+  helpers are `always_inline` (the `check_no_x87` finding of the amendment-16 ledger). No new hook or game read: v⊥, ω and α
+  come from the deciding ship's own decision inputs. Nothing depends on Wine.
+
+#### 16.10.8 Alternatives considered (amendment 16b)
+
+| Alternative | Why it loses |
+| --- | --- |
+| (1) Time-resolved crossing: exempt when \|s_cross − s_N(t)\| > r_A + r_B + margin along the joiner's predicted path | Its soundness rests on the neighbour's future speed, which our own P2 (keep or stop), the follow caps and the engine's stops change after the verdict. The only physical bound (N brakes now) credits N 0.5–1 km of advance at a = 10 / 5 m/s², which exempts none of scenario M's crossings: the M2 s2 advances about 4 km before its corridor **[i]**. It does nothing about the abreast pair (Colossus / M2 s3, Δs 18 m), so that pair stays (c) and the cascade stays. It uses r where the along-F extent is up to 1.1 r. It adds per-neighbour work to each of 4 × 1,024 predictor steps, about +40 %, so ≈ 115 µs **[i]** over the 81 µs bound. And it ties a per-decision verdict to a prediction up to 1 s old. |
+| (2) Swept box (w + r sin ψ(t)) per predictor step against the ≤ 4 lanes in reach | A tighter lateral reach does not help, because the end state in an adjacent lane overlaps anyway (half-widths 680–983 m against the 666 m pitch). The joiner stays (c) until its corridor unless the along-F dimension is added, and then it inherits (1)'s dependence on N's future. An SAT test per step per lane also costs more than (1). |
+| (3) as stated: the joiner always yields speed | When the joiner is ahead (Titan s4 is 4.5 km ahead of Titan s0), yielding means falling 7 km back. Two joiners can each yield to the other (no total order). And without a certificate the pair is neither exempt from E nor provable while the yield is under way. "The trailer yields, and the exemption holds only under a certificate" is the provable form of (3) and is the recommendation. |
+| Corridor-equivalent intrusion: exempt a joiner whose reach toward N does not exceed what a corridor ship's may (100 m + w + r sin 8.11°) | It would remove the M2 s3's wait, because a far-side joiner's reach toward the Colossus stays below the corridor's. But it is not a certificate: the hulls can touch, and it extends vanilla's parked-grid risk to moving pairs at join speed, which the brief excludes. It can be ratified separately if the measured sequencing waits are too long. |
+| Reuse the as-built (b) cap with D = D_x | It undershoots D by up to 142.9 m under leader braking with τ = 0.25–1 s (`seq_cap_undershoot.txt`, cap a16), which is more than the 50 m slack. The 16b cap undershoots by at most 5.3 m. (b) itself keeps its cap: its D is the warn reach, and E is not suppressed there. |
+
+#### 16.10.9 Unknown, and what settles it
+
+| Unknown | Settles it |
+| --- | --- |
+| Whether every installed capital's hull fits along F inside √(r² + w²). This needs each part's \|o_z\| + e_z ≤ that bound; r is the largest part's L∞ radius, not a bound over offset parts. | Static: extend `capital_widths.py` (render-node-bounds.md §6) with l = max over parts of (\|o_z\| + e_z) × scale over the 131 hulls; no launch. In flight, `l_m` on the census row. |
+| A leader's along-F deceleration bound (a_lin, the engine's speed slew) under engine orders and contact impulses | the leader rows of capped pairs (§16.10.6); [ship-movement.md](../reverse-engineering/ship-movement.md) §13.2 for the impulse |
+| Whether a joiner in a real crowd reaches its corridor before the parked neighbour's D_x line (573–1,921 m before its X), or waits for that neighbour's launch, and whether the 120 s hand-over expiry then drops the pair to today's rules | fixture: the per-ship floor seconds and the expiry count; flight: `lane_seq_floor_ms` and `ship_capital_lane` rows with `bind=1` |
+| Whether the predictor latches more while a seq cap binds (it grades speeds the capped ship does not fly) | the `seq_cap` field of `ship_gate_capital_latch`; the fixture's latch count under a binding cap |
+| The fixture's contact box (w, w, r) is √2 wider in its corners than the production cylinder (w is a radius, §16.9). The existing box check is therefore more conservative than the rule's hull model; the certificate assertion uses the cylinder. | none needed for flight; a cylinder distance in the fixture would align the two if a box-only miss appears |
+
+### 16.11 Implementation of 16b
+
+**Ratified 2026-10-13 (main session), as built:** the six fixture-driven changes listed below (lateral reach capped at
+h, hand-over drift and the ≥ 8.11° nose assumption, the wider obligation with the 100 m allowance and settled–settled
+obligations, the 1 m/s backward-drift leader, half-length max(r, l), the cap on every write path); the 60 s liveness
+row is reported, not asserted (67.0 s worst floor span in the simultaneous variant, a wait chain behind a parked
+neighbour; the flight row `lane_seq_floor_ms` decides whether it needs a rule); the box-contact exemption extends to the
+launch leg from an adjacent grid point (vanilla's own layout). Flight expectation accepted: the engine's warn may fire
+between neighbours parked side by side, as in vanilla (Run158: 1 capital–capital evasion in 45).
+
+Implemented 2026-10-13 on `2952a324` (worktree, not committed, not installed) together with the review fixes F1–F7, F10, F12 on
+§16.9; evidence and numbers in the ledger [ship-steering.md](../verification/ship-steering.md), "Amendment 16b and the review fixes".
+
+**Where the code reads §16.10.**
+
+* `ship_capital_lane_core.h`: `Verdict::seq`, `Route` (foot / corr / lat / along); the board's `h`, `len`, `v_perp`, `omega`, `alpha`
+  per entry from the deciding ship's own decision (`seq_rates`: ω the yaw-pitch body rate, α = W k of the faster of yaw and pitch, equal
+  on the capitals); `pair_verdict16b` (amendment 16's verdict, then (i) and (ii) for a watch pair); `verdict_sym` (stored sides, both
+  directions, the more severe: review F6); `certified` (E's input: review F1); `seq_obliged`, `seq_cap` (the three forms; the latency
+  counts both stored ages); `run_pass` (one pass per order-4 capital decision, before the avoidance: the verdicts `lane_pair` returns
+  and the (b) follow cap and the sequencing cap site B applies: review F2); `seq_lapses`; `apply_cap`; `width_reread` (review F4).
+* `ship_steering.cpp` `decide()`: the pass under `ship_steering_gates_capital` on order 4, bound to the avoidance (`lane_bind`), its
+  cap through `apply_cap` after site B's fields are set; the entry refreshed afterwards (`lane_decision`). E (`e_verdict`): live
+  commitment of both, `verdict_sym` with the key, `certified`. Key `X3M_SHIP_STEERING_GATES_CAPITAL_SEQ` (default on, only under
+  the capital key); off = §16.9 with the review fixes.
+* Rows and counters as §16.10.6, plus `retries=` and `h_m=` on the census row, `width_retry_ms` / `width_retries` on the install row.
+
+**Implementation decisions** (each forced by a measured failure of the rule as written; scenario M, the calibrated plant):
+
+1. *The 16b lateral reach is the cylinder's.* `reach()` of §16.1 caps at r, which a tilted cylinder (w, r) exceeds beyond atan(r / w)
+   (its bounding radius is h). The lateral route uses min(h, w + len sin θ), and the reach growth is capped at h too. With the r cap the
+   true-state certificate failed 219–14,058 frames at w = r (worst −396 m).
+2. *The hand-over's state is minutes old.* τ ≤ 1 s covers a fresh decision, not P2's sample: a hand-over side's lateral drift is
+   bounded over the whole time since P2 (v⊥ (T − T²/(2 t_stop)), the speed slewing down at a_lin) and its nose taken at no less than
+   8.11° (the 0x1f rotate's end bound; order 0 holds no attitude [i]). Without it the true-state certificate missed by 2.3 m (a
+   waiting Titan's nose drifted 0° → 3.7° in 4 s).
+3. *The obligation is wider.* With the corridor reach ρ_c a joiner's lateral route lapsed mid-join (the Titan s4 at 42.6° reaches
+   1,230 m, ρ_c = 745 m) and a hand-over off its corridor next to an in-lane trailer was never obliged (two settled ships), giving
+   1,681–8,653 (c) frames with an approach per run at w 0.45 r and box overlaps down to −321 m. The mover's reach is h (its nose along the join is not bounded), the paths need 50 m + 100 m
+   (`kSeqObligeM`, the lateral motion) beyond the reaches, and two settled ships of a watch pair are tested the same way. Still
+   geometry only.
+4. *The leader may be stopped.* "vF ≥ 0" failed on a stopped leader's −0.1 m/s slip residue; the route accepts vF ≥ −1 m/s, which the
+   closing term τ (vF_T − vF_L) carries.
+5. *h covers the measured length.* The static census found one installed capital longer than √(r² + w²) (Stellaris `machineFlagship`,
+   l 6,417 m against h 4,847 m), so the half-length is max(r, l) with l from the same width read (§16.10.9's "otherwise h takes
+   max(h, l_m)").
+6. *Site B (F2), lowering only.* On the module's gate write the cap lowers v_ref when v_ref is a write; under an avoidance emergency
+   the gate write is the emergency ramp floored at 10 m/s and the cap is not applied (accepted). On the lowering clamp path the cap
+   lowers the cornering term, so site B's own computation (ramp with v_slip, v_corner, emergency) runs under it, without only the final
+   10 m/s floor (`kShipFlagLower`); on the engine's law with no module write the cap is a lowering-only write of the engine's speed.
+   The pass runs on order 4 only (order 5 has neither avoidance nor a cap).
+
+**Ratified addition (main session, 2026-10-13): hysteresis on the in-lane classification.** A ship enters in lane at |q − ℓ| ≤
+100 m and the nose ≤ 8.11° off F (order 4 in join mode, or the hand-over) and stays in lane until |q − ℓ| > 150 m or the nose >
+12°, so a ship at the threshold does not flip verdicts. The per-ship bit (`Entry.in_lane`) lives on the lane board and is cleared when
+the ship is no longer committed (another handled order, order 5, a refresh more than 1 s after the previous one: longer than any
+fresh window). A state held only by the hysteresis uses the exit values wherever a margin assumed the entry bound: the footprint's
+re-classification margin 37 m (25 m × sin 12° / sin 8.11°), a hand-over's nose floor of 12° in the lateral certificate and the
+obligation's settled reach, and the leader's along-F credit less v (1 − cos 12°). The footprint itself (radius |q − ℓ| + reach + margin)
+uses the actual offset and nose, so the (a) certificate stays geometric. Rows: `ship_capital_lane held=`, counter
+`lane_hysteresis_hold`.
+
+**Measured against §16.10.5** (9 runs per variant): at w 0.45 r and 0.25 r every target holds — 5/5 arrive and launch, kept + slow =
+5, aim-at-A fallback 0, rotate after a slow join ≤ 4.0 s, join error ≤ 0.89°, box ≥ 138 m, 0 certificate violations, trailer
+Δs − D_x ≥ −0.0 m, 0 (c) frames with a ship on its approach — except the liveness row (below). w = r is (c) as the note expects.
+
+**What the rule does not cover, measured:**
+
+* *Launch transients.* A capital in its corridor approaching its grid point next to a waiting neighbour is a corridor (a) pair; when
+  the neighbour gets the through slot (order 5) the pair is a watch pair abreast, and only the along route could certify it. Those
+  (c) frames (704 over the 9 runs at w 0.45 r, 0 at 0.25 r) and one box overlap of −217 m during such a launch (60 fps s7) are the KC
+  grid's own lateral overlap at these widths (adjacent hulls 831 m against the 666 m pitch); the fixture counts them apart, with the
+  grid-point exemption extended to the launch leg from an adjacent grid point. Remedies (holding approaching capitals D_x behind any
+  adjacent waiting neighbour) would sequence the grid itself.
+* *Liveness.* The longest continuous span at the cap floor is 67.0 s at w 0.45 r in the 30 and 60 fps runs (55.0 s at 144 fps): the
+  slot-0 Titan waits behind the M2 s3, which waits behind the parked Colossus until it launches (the chain of §16.10.4 with decision
+  3's wider obligation; with the note's ρ_c a capital's total floor time was 73–80 s per run and the (c) frames returned). The 60 s
+  row is reported, not asserted. 26.6 s at 0.25 r.
+* *§16.1's footprint certificate* (E's footprint route of (a)) still uses reach() and spheres of radius r; at large noses or w = r a
+  hull can reach h > r. Not changed here (pre-existing).

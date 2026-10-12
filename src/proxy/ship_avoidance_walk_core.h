@@ -346,4 +346,154 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
     if (census) census->overflow = s.overflow;
     if (members && member_stats && !s.overflow) av::update_members(s, *members, now, *member_stats); // amendment 15
 }
+// ---- Amendment 16 (capital-gate-transit.md section 16.1, ratification addendum 2026-10-13 (5)): the hull's lateral half-width ---
+// render-node-bounds.md section 6.1. The ship's root node [obj+0x70] carries `testbody`; the hull and every other part are its
+// descendants (`c = [n+0xc]; while c && [c] != 0; c = [c]`, at most kHullDepth deep and kHullBudget nodes). Per node: body id
+// [c+0x140] > 0 and not [c+0x12c] & 0x8000000 (no collision tree); the model through the body cache hash, read-only (H =
+// [[0x00608518]+0x14], buckets [H], size [H+4], key = id + 1, bucket [buckets + 4 (key & (size - 1))], entries [e+4] == key ->
+// model [e+8], next [e]); the engine's lookup 0x004863c0 is never called (it writes and may load from disk). LOD records:
+// n = (int16)[model+0x10] in 1..16, L_i = [[model+0xc] + 4 i]; the per-axis max over ALL records of [L+0x20/0x24/0x28] (each
+// in [0, 0x20000], normalised 65536 = 1.0; the collision LOD can be wider than LOD 0), world half-extent
+// ((ext x [c+0x70] + 0x8000) >> 16) x [c+0x80 + 4 i] / 65536 units. Placement: the offset [c+0x30..0x38] in the parent frame
+// x parent [+0x80..] / 65536 unless parent [+0x12c] & 0x10000, x parent [+0x70] / 65536 when [c+0x12c] & 0x40; a node whose
+// basis [c+0x40..] (3 rows of 4 dwords, 16.16) or an ancestor's is not the identity is bounded by |e| (and |o|) on every axis.
+// w = max over the parts of sqrt((|o_x| + e_x)^2 + (|o_y| + e_y)^2), in m, at most r. Any failed guard (a null pointer, a
+// missing model, a count or extent out of range, a non-positive scale, no part at all) gives w = r with `failed`.
+constexpr std::uint32_t kBodyCacheRoot = 0x00608518, kBodyCacheHash = 0x14, kNodeBodyId = 0x140, kNodeAxisScale = 0x80, kNodeBasis = 0x40;
+constexpr std::uint32_t kNodeFlagNoCollision = 0x8000000, kNodeFlagUnscaledOffset = 0x10000;
+constexpr std::uint32_t kModelLods = 0x0c, kModelLodCount = 0x10, kLodExtent = 0x20;
+// kHullBudget: the installed capitals have at most 108 parts (render-node-bounds.md section 6.2; review F3), the walk stays bounded.
+constexpr unsigned kHullDepth = 3, kHullBudget = 128, kHullChainSteps = 64, kHullLodMax = 16;
+constexpr std::int32_t kLodExtentMax = 0x20000, kBasisTol = 0x40;
+constexpr std::int32_t kHullScaleMax = 16 * 0x10000; // review F7: a node or axis scale outside (0, 16.0] is a guard failure (the
+                                                      // int64 products below then stay far from overflow)
+struct HullWidth {
+    float w_m = 0, half_len_m = 0;
+    unsigned parts = 0, nodes = 0;
+    x3m::ship_avoidance::lane::WidthSrc src = x3m::ship_avoidance::lane::WidthSrc::failed;
+};
+template <class Mem>
+inline bool hull_model(Mem& mem, std::int32_t id, std::uint32_t* model) noexcept {
+    const std::uint32_t root = mem.u32(kBodyCacheRoot);
+    const std::uint32_t H = root ? mem.u32(root + kBodyCacheHash) : 0;
+    if (!H) return false;
+    const std::uint32_t buckets = mem.u32(H), size = mem.u32(H + 4);
+    if (!buckets || !size || size > 0x100000u || (size & (size - 1))) return false;
+    const std::uint32_t key = std::uint32_t(id) + 1;
+    std::uint32_t e = mem.u32(buckets + 4 * (key & (size - 1)));
+    for (unsigned steps = 0; e && steps < kHullChainSteps; ++steps, e = mem.u32(e))
+        if (mem.u32(e + 4) == key) {
+            *model = mem.u32(e + 8);
+            return *model != 0;
+        }
+    return false;
+}
+template <class Mem>
+inline bool basis_identity(Mem& mem, std::uint32_t node) noexcept {
+    for (unsigned r = 0; r < 3; ++r)
+        for (unsigned c = 0; c < 3; ++c) {
+            const std::int32_t v = mem.s32(node + kNodeBasis + 0x10 * r + 4 * c);
+            const std::int32_t want = r == c ? 0x10000 : 0;
+            if (v - want > kBasisTol || want - v > kBasisTol) return false;
+        }
+    return true;
+}
+__attribute__((always_inline)) inline std::int32_t scale16(std::int32_t v, std::int32_t s) noexcept {
+    std::int64_t p = std::int64_t(v) * std::int64_t(s) / 65536;
+    if (p > 0x7fffffffLL) p = 0x7fffffffLL;
+    if (p < -0x7fffffffLL) p = -0x7fffffffLL;
+    return std::int32_t(p);
+}
+// One node's children (depth = their depth below the root; px/py the parent's lateral offset bound in the root frame, units).
+template <class Mem>
+inline bool hull_children(Mem& mem, std::uint32_t parent, unsigned depth, float px, float py, float pz, bool aligned, unsigned& budget,
+                          HullWidth& out, float& w_units, float& len_units) noexcept {
+    const std::uint32_t pflags = mem.u32(parent + kNodeFlags);
+    const std::int32_t pscale = mem.s32(parent + kNodeScale);
+    unsigned visited = 0;
+    for (std::uint32_t c = mem.u32(parent + kNodeChildren); c && mem.u32(c) != 0; c = mem.u32(c)) {
+        if (++visited > kChildLimit || !budget) return false;
+        --budget;
+        ++out.nodes;
+        const std::uint32_t flags = mem.u32(c + kNodeFlags);
+        std::int32_t o[3];
+        for (unsigned i = 0; i < 3; ++i) {
+            o[i] = mem.s32(c + kNodeOffset + 4 * i);
+            if (!(pflags & kNodeFlagUnscaledOffset)) o[i] = scale16(o[i], mem.s32(parent + kNodeAxisScale + 4 * i));
+            if (flags & kNodeFlagScaled) o[i] = scale16(o[i], pscale);
+        }
+        const float of[3] = {float(o[0]), float(o[1]), float(o[2])};
+        float cx, cy, cz;
+        if (aligned) {
+            cx = px + sc::fabs_f(of[0]);
+            cy = py + sc::fabs_f(of[1]);
+            cz = pz + sc::fabs_f(of[2]);
+        } else { // an ancestor is rotated: the offset may point anywhere
+            const float on = sc::sqrt_ss(sc::dot3(of, of));
+            cx = px + on;
+            cy = py + on;
+            cz = pz + on;
+        }
+        const bool here_aligned = aligned && basis_identity(mem, c);
+        const std::int32_t id = mem.s32(c + kNodeBodyId);
+        if (id > 0 && !(flags & kNodeFlagNoCollision)) {
+            std::uint32_t model = 0;
+            if (!hull_model(mem, id, &model)) return false;
+            const std::int32_t n = std::int16_t(mem.u16(model + kModelLodCount));
+            const std::uint32_t arr = mem.u32(model + kModelLods);
+            if (n < 1 || n > std::int32_t(kHullLodMax) || !arr) return false;
+            std::int32_t ext[3] = {0, 0, 0};
+            for (std::int32_t k = 0; k < n; ++k) {
+                const std::uint32_t L = mem.u32(arr + 4 * std::uint32_t(k));
+                if (!L) return false;
+                for (unsigned i = 0; i < 3; ++i) {
+                    const std::int32_t v = mem.s32(L + kLodExtent + 4 * i);
+                    if (v < 0 || v > kLodExtentMax) return false;
+                    if (v > ext[i]) ext[i] = v;
+                }
+            }
+            const std::int32_t s = mem.s32(c + kNodeScale);
+            if (s <= 0 || s > kHullScaleMax) return false;
+            float e[3];
+            for (unsigned i = 0; i < 3; ++i) {
+                const std::int32_t si = mem.s32(c + kNodeAxisScale + 4 * i);
+                if (si <= 0 || si > kHullScaleMax) return false;
+                const std::int64_t base = (std::int64_t(ext[i]) * std::int64_t(s) + 0x8000) >> 16;
+                const std::int64_t v = base * std::int64_t(si) / 65536;
+                e[i] = float(std::int32_t(v > 0x7fffffffLL ? 0x7fffffffLL : v));
+            }
+            if (!here_aligned) {
+                const float en = sc::sqrt_ss(sc::dot3(e, e));
+                e[0] = e[1] = e[2] = en;
+            }
+            const float lx = cx + e[0], ly = cy + e[1];
+            const float lat = sc::sqrt_ss(lx * lx + ly * ly);
+            if (!sc::finite_f(lat)) return false;
+            if (lat > w_units) w_units = lat;
+            if (cz + e[2] > len_units) len_units = cz + e[2];
+            ++out.parts;
+        }
+        if (depth < kHullDepth && !hull_children(mem, c, depth + 1, cx, cy, cz, here_aligned, budget, out, w_units, len_units)) return false;
+    }
+    return true;
+}
+template <class Mem>
+inline HullWidth hull_width(Mem& mem, std::uint32_t obj, float r_m) noexcept {
+    HullWidth out;
+    out.w_m = r_m;
+    const std::uint32_t root = obj ? mem.u32(obj + kObjPhys) : 0;
+    if (!root || !(r_m > 0.0f) || !sc::finite_f(r_m)) return out;
+    unsigned budget = kHullBudget;
+    float w_units = 0.0f, len_units = 0.0f;
+    if (!hull_children(mem, root, 1, 0.0f, 0.0f, 0.0f, true, budget, out, w_units, len_units) || !out.parts) {
+        out.w_m = r_m;
+        return out;
+    }
+    const float w = w_units / kUnits;
+    if (!sc::finite_f(w) || !(w > 0.0f)) return out;
+    out.w_m = w < r_m ? w : r_m;
+    out.half_len_m = len_units / kUnits;
+    out.src = x3m::ship_avoidance::lane::WidthSrc::lod;
+    return out;
+}
 }

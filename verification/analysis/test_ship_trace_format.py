@@ -76,5 +76,58 @@ class ShipTraceFormat(unittest.TestCase):
         self.assertLessEqual(6 * 173 * longest, 490_000)
 
 
+# Amendment 16: the DLL's three new row formats (frame_boundary in ship_steering.cpp) with synthetic values.
+KV_ROWS = [
+    'ship_capital_lane frame=70694 A=0x3a2c2c30 B=0x8f893d48 verdict=a gap_m=-285 w_A=491 w_B=460 w_src=lod,lod foot=lane,joining '
+    'e_m=12 theta_deg=1.20 ds_m=-140 v_cap=-1.0 D_m=-1 route=lat watch=1 lat_gap=37 mot=54 h_T=828 h_L=1121 Dx=2049 trail=0x3a2c2c30 '
+    'seq_cap=12.5 bind=1 held=1',
+    'ship_gate_capital_latch frame=64829 obj=0x8f88cbf0 class=M1 slot=1 event=slow_join from=join to=slow_join v_cmd=25 s_m=-984 e_m=1023 '
+    'psi_deg=42.50 upsi_deg=40.10 w_dps=0.100 v_ms=46.7 W_dps=9.000 alpha_dps2=0.4500 a_ms2=5.00 r_gate_m=1105 '
+    'cands_v:grade:nose:vel:e:over:e_max:reached=100:0:30.00:31.00:500:0:1023:1|60:0:25.00:26.00:300:0:1023:1|'
+    '40:0:12.00:14.00:120:20:1023:1|25:0:9.13:9.50:29:10:1023:1 obstacle=0x00000000 lanes_other:verdict:gap=0x3a2b1b30:c:-300|0x8f893d48:s:60 '
+    'seq_cap=0.0 seq_leader=0x3a2b1b30',
+    'ship_gate_capital_latch frame=1 obj=0x8f88cbf0 class=M1 slot=1 event=pred_none from=slow_join to=fallback v_cmd=25 s_m=-100 e_m=900 '
+    'psi_deg=80.00 upsi_deg=70.00 w_dps=0.000 v_ms=25.0 W_dps=9.000 alpha_dps2=0.4500 a_ms2=5.00 r_gate_m=1105 '
+    'cands_v:grade:nose:vel:e:over:e_max:reached=100:0:90.00:85.00:900:0:900:0|60:0:90.00:85.00:900:0:900:0|'
+    '40:0:90.00:85.00:900:0:900:0|25:0:90.00:85.00:900:0:900:0 obstacle=0x3a2b1b30 lanes_other:verdict:gap=- seq_cap=-1.0 seq_leader=0x00000000',
+    'ship_capital_census frame=100 type=211 class=M2 r_m=1092 w_m=463 w_r=0.424 w_src=lod retries=1 l_m=1092 h_rw_m=1186 len_m=1092 h_m=1186',
+    'ship_trace frame=1 t_ms=1 obj=0x1',
+]
+
+
+class CapitalCrowdRows(unittest.TestCase):
+    def test_lane_row(self):
+        r = st.parse_kv_rows(KV_ROWS, 'ship_capital_lane')[0]
+        self.assertEqual((r['frame'], r['A'], r['B'], r['verdict']), (70694, 0x3a2c2c30, 0x8f893d48, 'a'))
+        self.assertEqual((r['gap_m'], r['w_A'], r['w_B'], r['w_src'], r['foot']), (-285, 491, 460, ('lod', 'lod'), ('lane', 'joining')))
+        self.assertEqual((r['e_m'], r['theta_deg'], r['ds_m'], r['v_cap'], r['D_m']), (12, 1.2, -140, -1.0, -1))
+        # amendment 16b (section 16.10.6)
+        self.assertEqual((r['route'], r['watch'], r['lat_gap'], r['mot'], r['h_T'], r['h_L'], r['Dx']), ('lat', 1, 37, 54, 828, 1121, 2049))
+        self.assertEqual((r['trail'], r['seq_cap'], r['bind'], r['held']), (0x3a2c2c30, 12.5, 1, 1))
+
+    def test_latch_rows(self):
+        rows = st.parse_kv_rows(KV_ROWS, 'ship_gate_capital_latch')
+        self.assertEqual([r['event'] for r in rows], ['slow_join', 'pred_none'])
+        r = rows[0]
+        self.assertEqual((r['obj'], r['class'], r['slot'], r['from'], r['to'], r['v_cmd']), (0x8f88cbf0, 'M1', 1, 'join', 'slow_join', 25))
+        self.assertEqual((r['s_m'], r['e_m'], r['psi_deg'], r['upsi_deg'], r['w_dps'], r['v_ms']), (-984, 1023, 42.5, 40.1, 0.1, 46.7))
+        self.assertEqual((r['W_dps'], r['alpha_dps2'], r['a_ms2'], r['r_gate_m'], r['obstacle']), (9.0, 0.45, 5.0, 1105, 0))
+        cands = r['cands_v:grade:nose:vel:e:over:e_max:reached']
+        self.assertEqual(len(cands), 4)
+        self.assertEqual(cands[3], (25, 0, 9.13, 9.5, 29, 10, 1023, 1))
+        self.assertEqual(r['lanes_other:verdict:gap'], [(0x3a2b1b30, 'c', -300), (0x8f893d48, 's', 60)])
+        self.assertEqual((r['seq_cap'], r['seq_leader'], rows[1]['seq_cap'], rows[1]['seq_leader']), (0.0, 0x3a2b1b30, -1.0, 0))
+        self.assertEqual(rows[1]['lanes_other:verdict:gap'], [])
+        self.assertEqual(rows[1]['obstacle'], 0x3a2b1b30)
+
+    def test_census_row_and_others(self):
+        r = st.parse_kv_rows(KV_ROWS, 'ship_capital_census')[0]
+        self.assertEqual((r['type'], r['class'], r['r_m'], r['w_m'], r['w_r'], r['w_src']), (211, 'M2', 1092, 463, 0.424, 'lod'))
+        self.assertEqual((r['retries'], r['l_m'], r['h_rw_m'], r['len_m'], r['h_m']), (1, 1092, 1186, 1092, 1186))
+        self.assertEqual(len(st.parse_kv_rows(KV_ROWS)), 4)  # the trace row is not one of them
+        self.assertIsNone(st.parse_kv_row(KV_ROWS[-1]))
+        self.assertEqual(st.parse_rows(KV_ROWS), [])  # and the kv rows are not trace rows
+
+
 if __name__ == '__main__':
     unittest.main()

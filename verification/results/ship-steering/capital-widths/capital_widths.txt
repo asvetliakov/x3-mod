@@ -4,6 +4,7 @@ M1  n= 27  wb/r 0.14/0.44/1.31  wl/r 0.14/0.45/1.41  wv/r 0.11/0.34/1.30  wa/r 0
 M2  n= 45  wb/r 0.19/0.38/1.49  wl/r 0.19/0.38/1.49  wv/r 0.15/0.31/0.81  wa/r 0.23/0.43/1.49  max(ex,ey)/r 0.15/0.29/1.05  hull rotated 1  hull ez/r 0.43/1.00/1.00
 M7  n= 46  wb/r 0.03/0.41/1.06  wl/r 0.03/0.41/1.06  wv/r 0.03/0.35/1.06  wa/r 0.20/0.47/1.06  max(ex,ey)/r 0.02/0.34/1.00  hull rotated 2  hull ez/r 0.00/1.00/1.00
 TL  n= 13  wb/r 0.22/0.48/1.19  wl/r 0.22/0.48/1.19  wv/r 0.21/0.36/1.17  wa/r 0.29/0.49/1.19  max(ex,ey)/r 0.16/0.35/1.00  hull rotated 0  hull ez/r 0.06/1.00/1.00
+amendment 16b along-axis extent l = max over parts |o_z| + e_z (all LODs) against h = sqrt(r^2 + w_rt^2): 130 of 131 within h; l/h min/median/max 0.294/0.914/1.324; l/r 0.416/1.000/1.400 (beyond h: M1 509 l 6417 h 4847)
 hulls whose coarsest LOD (the collision LOD of a ship part) exceeds LOD 0 laterally by > 1 %: 40 of 131 (Mammoth [254.8, 383.4]>[235.3, 355.0], Colossus [172.8, 351.3]>[163.7, 332.8], Titan [185.6, 350.5]>[302.9, 332.7], Cerberus [95.6, 159.5]>[91.5, 155.6], Minotaur [81.2, 96.8]>[85.6, 94.2], Pteranodon [859.9, 670.2]>[771.1, 610.8])
 rows with unresolved part bodies (numeric ids outside objects/v, scene references): 67 of 131; precomputed-bounds hulls: 130
 pairs (w_A + w_B m as lat_box / lat_anylod / lat_vtx / max(ex,ey)), limit 500 m for the 1.1 km pairs, 523 m for the 755 m pair:

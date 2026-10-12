@@ -229,6 +229,7 @@ engine_patch::Site warn_site_{};
 const char* warn_state_ = "not_claimed";
 av::Snapshot snaps_[sites::kSnapshotSlots];     // per-sector per-frame obstacle snapshots (fixed capacity)
 namespace wk = x3m::ship_avoidance::walk;
+namespace ln = x3m::ship_avoidance::lane;
 wk::PartCache part_cache_;                       // station part models, keyed on object, root radius and position/basis
 av::ShipAvoid avoid_[core::kShipCapacity];      // parallel to table_.entries (same slot index)
 // --debug witnesses: detour events and one census per sector (first snapshot), drained at the frame boundary.
@@ -257,6 +258,9 @@ const char* gates_state_ = "not_claimed";
 // are part of X3M_SHIP_AVOIDANCE and do not depend on this key.
 bool gates_capital_on_ = false;
 const char* gates_capital_state_ = "off";
+// Amendment 16b (capital-gate-transit.md section 16.10): X3M_SHIP_STEERING_GATES_CAPITAL_SEQ (default on with the capital key):
+// the sequenced verdict (s) and the sequencing cap. Off = amendment 16 as built (with the review fixes).
+bool seq_on_ = false;
 struct GateState { // per table slot: the approach's last call, the crossing (set at P2: the engine's arrival test runs before
                    // the frame's leaf call, so a per-call distance test never sees it: Run152), the spread offset, the
                    // speed kept at the pass point, and the order 4 -> 5 transition diagnostic
@@ -289,6 +293,23 @@ struct GateState { // per table slot: the approach's last call, the crossing (se
     std::uint32_t lead_ms;     // audit G1: a non-capital's last order-4 call with the lead-in inside its window (game ms; 0 = none)
     float join_e, join_carrot; // the last decision's lateral offset and carrot distance (m), for the row
     std::uint32_t join_code;   // the record code at the last decision (the frame-end row never dereferences the ship)
+    // Amendment 16 (section 16): the native id [obj+0x08] at the approach's first decision (E's gate row and the lane entry key on
+    // it), P2 seen kept or not (the extended hand-over; cleared like `handover`), the hull half-width cached per ship with the
+    // radius bits, and the follow cap of the last decision
+    std::uint32_t id;
+    std::uint8_t p2_seen, w_src, w_tries, pad16; // w_tries: the width reads retried after a failure (review F4)
+    std::int32_t w_gen;        // the radius bits [obj+0xa4] the width was read with
+    std::uint32_t w_root;      // and the root node [obj+0x70] (a regenerated model re-walks)
+    float w;                   // the lateral half-width, m
+    float lane_cap;            // the lane pass's cap at the last decision (the (b) follow and 16b sequencing caps; m/s, < 0 none)
+    // review F4 and amendment 16b: the last width read (a failure is retried every 5 s, at most 3 times), the along-axis half-extent
+    // max |o_z| + e_z of that read (the census's l_m); the sequencing cap and its leader at the last decision, the lapse memory, the
+    // last decision at the cap floor (lane_seq_floor_ms)
+    std::uint32_t w_read_ms;
+    float w_len;
+    float seq_cap;
+    std::uint32_t seq_leader, seq_floor_ms;
+    ln::SeqMemory seq_mem;
 };
 struct GateTransition { // --debug: one row per order 4 -> 0 -> 5 transition at a gate (<= 8 per boundary)
     std::uint32_t obj, code, ms_since_p2;
@@ -356,6 +377,51 @@ WarnPreRow warn_pre_[8];
 std::atomic<std::uint32_t> warn_pre_write_{0};
 std::uint32_t warn_pre_read_ = 0;
 using EV = av::EVerdict; // site E's verdicts (ship_avoidance_core.h site_e_verdict), the --debug rows
+// Amendment 16 (capital-gate-transit.md section 16): the lane board (8 gates x 20 capitals, filled at each capital decision on a
+// validated approach and at P2; ship_capital_lane_core.h), behind ship_steering_gates_capital; amendment 16b behind
+// ship_steering_gates_capital_seq.
+ln::Board lanes_;
+struct LaneRow { // ship_capital_lane (--debug, traced A): 1 Hz per pair and on every verdict or route change
+    std::uint32_t a, b, trail;
+    std::uint8_t verdict, foot_a, foot_b, w_src_a, w_src_b, route, watch, bind, held, pad16b[3];
+    float gap, w_a, w_b, e_a, theta_a, ds, v_cap, D;
+    float lat_gap, mot, h_t, h_l, Dx, seq_cap; // amendment 16b (section 16.10.6)
+};
+LaneRow lane_rows_[16];
+std::atomic<std::uint32_t> lane_row_write_{0};
+std::uint32_t lane_row_read_ = 0;
+struct LaneSeen { // the last verdict and route per traced pair and its row time
+    std::uint32_t a, b, ms;
+    std::uint8_t verdict, route;
+};
+LaneSeen lane_seen_[32];
+unsigned lane_seen_next_ = 0;
+struct LatchRow { // ship_gate_capital_latch (--debug, every capital): at each pred_none / slow_join / unlatch transition
+    std::uint32_t obj, code, obstacle;
+    std::uint8_t event, before, after, slot, n_lanes, pad[3];
+    core::JoinPlane plane;
+    core::JoinParams params;
+    float v_cmd;
+    core::JoinPred cand[core::kJoinCandidateCount];
+    std::uint32_t lane_other[6];
+    std::uint8_t lane_verdict[6];
+    float lane_gap[6];
+    float seq_cap;               // amendment 16b: the sequencing cap at the ship's last decision (< 0 none) and its leader
+    std::uint32_t seq_leader;
+};
+LatchRow latch_rows_[8];
+std::atomic<std::uint32_t> latch_row_write_{0};
+std::uint32_t latch_row_read_ = 0;
+struct WidthCensus { // ship_capital_census: one row per capital type (the record index [obj+0x4a])
+    std::uint32_t type, code;
+    float r, w, l;           // l: max over the parts of |o_z| + e_z (amendment 16b: h = sqrt(r^2 + w^2) must cover it)
+    std::uint8_t w_src, retries;
+};
+WidthCensus width_census_[8];
+std::atomic<std::uint32_t> width_census_write_{0};
+std::uint32_t width_census_read_ = 0;
+std::int32_t width_census_types_[32];
+unsigned width_census_count_ = 0;
 
 
 // Counters: written by the engine thread with plain relaxed stores (one
@@ -375,6 +441,13 @@ Counter e_suppressed_member_, e_suppressed_gate_, e_suppressed_gate_small_, avoi
 Counter gate_capital_kept_, gate_capital_lead_validated_, gate_capital_lead_fallback_;
 Counter gate_capital_join_, gate_capital_slowed_, gate_capital_fallback_pred_, gate_capital_fallback_past_x_;
 Counter gate_capital_not_kept_[unsigned(core::JoinKeep::count)];
+Counter lane_exempt_, lane_follow_, lane_cross_, e_suppressed_lane_, gate_capital_slow_join_, gate_capital_unlatch_, lane_capped_; // amendment 16
+Counter gate_capital_detour_write_; // amendment 16 fix: decisions of a join / slow join on a detour that kept the join's speed write
+// amendment 16b (section 16.10.6): watch pairs by route per decision (lat, along, left at (c)), decisions with the sequencing cap
+// applied, ms at its floor, along-route pairs of a capped trailer that turned (c)
+Counter lane_seq_lat_, lane_seq_along_, lane_seq_cross_, lane_seq_capped_, lane_seq_floor_ms_, lane_seq_lapse_;
+Counter lane_cap_carried_; // decisions that carry a lane cap (lane_capped: those whose write it lowered)
+Counter lane_hysteresis_hold_; // decisions whose own in-lane state is held by the hysteresis only (section 16.11)
 Counter gate_lead_, gate_cross_, gate_p2_, gate_stops_skipped_, gate_p4_, gate_v0_kept_, gate_p5_, gate_launch_continued_, gate_speed_writes_;
 Counter gate_spread_offsets_, gate_exit_offsets_, gate_capital_aligned_, gate_warp_calls_;
 Counter gate_lead_validated_, gate_lead_fallback_, gate_lead_window_rejected_, gate_dock_writes_, gate_dock_blocked_;
@@ -497,6 +570,11 @@ inline std::uint32_t game_time_ms() noexcept {
     const std::uint32_t clock = rd32(sites::kGameClock);
     return clock ? rd32(clock + sites::kGameTimeOffset) : 0;
 }
+inline std::uint32_t frame_step_ms() noexcept {
+    const std::uint32_t clock = rd32(sites::kGameClock);
+    const std::uint32_t ms = clock ? rd32(clock + sites::kGameTimeOffset - 4) : 0; // [root+0x714], the frame's game-time step
+    return ms <= 1000 ? ms : 0;
+}
 // The engine getters (conventions pinned in ship_steering_sites.h).
 inline std::int32_t call_eax(std::uintptr_t fn, std::uint32_t obj) noexcept {
     std::uint32_t v = obj;
@@ -606,7 +684,7 @@ const av::Snapshot* snapshot_for(std::uint32_t sector, std::uint32_t now) noexce
 }
 // The avoidance adjustment of the order's point for one steering call (av::resolve over the sector snapshot).
 void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, const core::Dynamics& dyn, std::uint32_t code,
-                  unsigned slot, std::uint32_t now, float P[3], std::uint32_t* v_emergency_out) noexcept {
+                  unsigned slot, std::uint32_t now, float P[3], std::uint32_t* v_emergency_out, const ln::Pass* lane) noexcept {
     const std::uint32_t sector = rd32(obj + sites::kObjSector);
     av_calls_.add();
     if (!sector) return;
@@ -643,6 +721,9 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     self.exclude_target = in.order == core::kOrderFlyBefore || in.order == core::kOrderDock || in.order == core::kOrderEscort ||
                           in.order == core::kOrderFollow || in.order == core::kOrderAttack || in.order == core::kOrderAttackBig ||
                           in.order == core::kOrderCapture;
+    // amendment 16 / 16b (section 16.1, 16.10): a capital committed to its gate gets the lane rule against the capitals committed to
+    // the same gate, from this decision's pass (decide(): the same pass site B takes the caps from)
+    av::lane_bind(self, lane);
     av::ShipAvoid& state = avoid_[slot];
     if (state.obj != obj) state = av::ShipAvoid{}; // the slot was another ship's: no stale sides or resolved set
     state.obj = obj;
@@ -662,6 +743,9 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     if (r.excluded_followers) avoid_excluded_followers_.add(r.excluded_followers);
     if (r.skipped_small) avoid_skipped_small_.add(r.skipped_small);
     if (r.excluded_members) avoid_excluded_member_.add(r.excluded_members);
+    if (r.lane_exempt) lane_exempt_.add(r.lane_exempt);
+    if (r.lane_follow) lane_follow_.add(r.lane_follow);
+    if (r.lane_cross) lane_cross_.add(r.lane_cross);
     std::memcpy(v_emergency_out, &state.v_emergency, 4);
     if (!r.adjusted) return;
     av_detours_.add();
@@ -763,6 +847,202 @@ inline void join_row(const GateState& g, std::uint32_t obj, std::uint32_t now, b
     r.cross_v = cross_v;
     join_row_write_.store(w + 1, std::memory_order_release);
 }
+// ship_gate_capital_latch (--debug, every capital, section 16.2): at each pred_none / slow_join / unlatch transition of the
+// frame-end predictor, its inputs, the four candidates, the ship's current detour obstacle and its lane verdicts against every
+// committed neighbour (the stored board; the ship is never dereferenced here).
+void latch_row(const GateState& g, unsigned slot, const core::JoinEval& ev) noexcept {
+    const std::uint32_t w = latch_row_write_.load(std::memory_order_relaxed);
+    if (w - latch_row_read_ >= 8) {
+        gate_rows_dropped_.add();
+        return;
+    }
+    LatchRow& r = latch_rows_[w & 7];
+    r = LatchRow{};
+    r.obj = g.obj;
+    r.code = g.join_code;
+    r.obstacle = slot < core::kShipCapacity && avoid_[slot].obj == g.obj ? avoid_[slot].obstacle : 0;
+    r.event = ev.unlatched ? 2 : ev.slow_entered ? 1 : 0; // 0 pred_none (the fallback), 1 slow_join, 2 unlatch
+    r.before = std::uint8_t(ev.before);
+    r.after = std::uint8_t(ev.after);
+    r.slot = g.grid_slot;
+    r.plane = g.join.plane;
+    r.params = g.join.params;
+    r.v_cmd = g.join.v_cmd;
+    for (unsigned i = 0; i < core::kJoinCandidateCount; ++i) r.cand[i] = ev.cand[i];
+    r.seq_cap = g.seq_cap;
+    r.seq_leader = g.seq_leader;
+    if (const ln::Gate* lg = ln::gate_of(lanes_, g.gate)) {
+        const ln::Entry* me = ln::find(*lg, g.obj);
+        const std::uint32_t now = game_time_ms(), fresh = av::fresh_window_ms(av::kSteeredFreshMs, frame_step_ms(), av::kSteeredReplanMs);
+        if (me) {
+            for (unsigned i = 0; i < lg->n && r.n_lanes < 6; ++i) {
+                const ln::Entry& o = lg->e[i];
+                if (&o == me || !ln::committed_stored(o, now, fresh)) continue;
+                ln::PairInfo info;
+                r.lane_verdict[r.n_lanes] = std::uint8_t(ln::verdict_sym(*lg, *me, o, now, fresh, seq_on_, &info));
+                r.lane_other[r.n_lanes] = o.ship;
+                r.lane_gap[r.n_lanes] = info.gap;
+                ++r.n_lanes;
+            }
+        }
+    }
+    latch_row_write_.store(w + 1, std::memory_order_release);
+}
+// ---- amendment 16: the lane board's per-decision work (capital-gate-transit.md section 16.1) -----------------------------
+// The hull's lateral half-width (m) and its source (section 16.1 with the ratification addendum 2026-10-13 (5); the chain and
+// guards of render-node-bounds.md section 6.1): the descendants of the root node [obj+0x70] with a body id > 0 and a collision
+// tree, each model found read-only through the body cache hash, the per-axis max over all its LOD records times the node scale,
+// placed by the node offsets (wk::hull_width). Any failed guard: w = r (`fail`). Plain reads on the game thread at the decision
+// site (the cache hash has no lock), never an engine call; only w is cached (models may be freed).
+__attribute__((always_inline)) inline float capital_half_width(std::uint32_t obj, float r_m, ln::WidthSrc* src, float* len_m) noexcept {
+    RawMem mem;
+    const wk::HullWidth h = wk::hull_width(mem, obj, r_m);
+    *src = h.src;
+    *len_m = h.half_len_m;
+    return h.w_m;
+}
+// Cached per ship on its gate state with the radius bits [obj+0xa4] and the root node [obj+0x70]; a failed read (a body not in the
+// cache yet, any guard) is retried every 5 s at most 3 times, then w = r until the radius generation or the root changes (review
+// F4: ln::width_reread). One census row per capital type (--debug) once the read is final (lod, or failed after the retries).
+inline void width_ensure(GateState& g, std::uint32_t obj, std::uint32_t code, float r_m, std::uint32_t now) noexcept {
+    const std::int32_t gen = rds32(obj + sites::kObjRadius);
+    const std::uint32_t root = rd32(obj + sites::kObjPhys);
+    const bool cached = g.w > 0.0f && g.w_gen == gen && g.w_root == root;
+    if (!ln::width_reread(cached, g.w_src, g.w_tries, g.w_read_ms, now)) return;
+    g.w_tries = cached ? std::uint8_t(g.w_tries + 1) : 0;
+    ln::WidthSrc src = ln::WidthSrc::unread;
+    float len = 0.0f;
+    float w = capital_half_width(obj, r_m, &src, &len);
+    if (!(w > 0.0f) || !core::finite_f(w) || !(w <= r_m)) {
+        w = r_m;
+        if (src == ln::WidthSrc::lod) src = ln::WidthSrc::failed;
+    }
+    if (src != ln::WidthSrc::lod) src = ln::WidthSrc::failed; // w = r: retried while due
+    g.w = w;
+    g.w_src = std::uint8_t(src);
+    g.w_gen = gen;
+    g.w_root = root;
+    g.w_read_ms = now;
+    g.w_len = src == ln::WidthSrc::lod ? len : 0.0f;
+    if (!debug_ || (src != ln::WidthSrc::lod && g.w_tries < ln::kWidthRetries)) return;
+    const std::int32_t type = std::int16_t(rd16(obj + sites::kObjType));
+    for (unsigned i = 0; i < width_census_count_; ++i)
+        if (width_census_types_[i] == type) return;
+    if (width_census_count_ >= 32) return;
+    const std::uint32_t wr = width_census_write_.load(std::memory_order_relaxed);
+    if (wr - width_census_read_ >= 8) return; // the ring is full: logged at a later decision of the type
+    width_census_types_[width_census_count_++] = type;
+    width_census_[wr & 7] = WidthCensus{std::uint32_t(type), code, r_m, w, g.w_len, std::uint8_t(src), g.w_tries};
+    width_census_write_.store(wr + 1, std::memory_order_release);
+}
+// ship_capital_lane (--debug, traced A): the decision's pass verdict against every committed neighbour, at 1 Hz per pair and on
+// every verdict or route change; the fields from the stored board in A's direction (amendment 16b: section 16.10.6).
+void lane_rows(const ln::Pass& p) noexcept {
+    const ln::Gate& lg = *p.g;
+    const ln::Entry& me = *p.self;
+    const std::uint32_t now = p.now;
+    ln::Side a;
+    ln::side_of(lg, me, nullptr, nullptr, me.order, now, &a);
+    const float cap_all = p.cap();
+    for (unsigned i = 0; i < lg.n; ++i) {
+        const ln::Entry& o = lg.e[i];
+        const ln::Verdict v = p.v[i];
+        if (&o == &me || v == ln::Verdict::none) continue;
+        unsigned k = 0;
+        while (k < 32 && !(lane_seen_[k].a == me.ship && lane_seen_[k].b == o.ship)) ++k;
+        if (k < 32 && lane_seen_[k].verdict == std::uint8_t(v) && lane_seen_[k].route == std::uint8_t(p.route[i]) && now - lane_seen_[k].ms < 1000)
+            continue;
+        const std::uint32_t w = lane_row_write_.load(std::memory_order_relaxed);
+        if (w - lane_row_read_ >= 16) {
+            gate_rows_dropped_.add();
+            return;
+        }
+        if (k == 32) {
+            k = lane_seen_next_;
+            lane_seen_next_ = (lane_seen_next_ + 1) & 31;
+        }
+        lane_seen_[k] = LaneSeen{me.ship, o.ship, now, std::uint8_t(v), std::uint8_t(p.route[i])};
+        ln::Side b;
+        ln::side_of(lg, o, nullptr, nullptr, o.order, now, &b);
+        ln::PairInfo info;
+        (void)ln::pair_verdict16b(a, b, p.fresh_ms, p.seq, &info);
+        LaneRow& r = lane_rows_[w & 15];
+        r = LaneRow{};
+        r.a = me.ship;
+        r.b = o.ship;
+        r.verdict = std::uint8_t(v);
+        r.route = std::uint8_t(p.route[i]);
+        r.watch = info.watch ? 1 : 0;
+        r.held = ln::lane_state(a) == 2 ? 1 : 0; // A in lane by the hysteresis only (section 16.11)
+        r.foot_a = std::uint8_t(info.foot_a);
+        r.foot_b = std::uint8_t(info.foot_b);
+        r.w_src_a = me.w_src;
+        r.w_src_b = o.w_src;
+        r.gap = info.gap;
+        r.w_a = me.w;
+        r.w_b = o.w;
+        const float dq[2] = {a.q[0] - me.lane[0], a.q[1] - me.lane[1]};
+        r.e_a = core::sqrt_ss(dq[0] * dq[0] + dq[1] * dq[1]);
+        r.theta_a = core::acos_deg(me.cos_t > 1.0f ? 1.0f : me.cos_t < -1.0f ? -1.0f : me.cos_t);
+        r.ds = info.ds;
+        r.v_cap = -1.0f;
+        r.D = -1.0f;
+        r.lat_gap = info.lat_gap;
+        r.mot = info.mot_a + info.mot_b;
+        r.trail = info.trail == 1 ? me.ship : info.trail == 2 ? o.ship : 0u;
+        r.h_t = info.trail == 2 ? o.h : me.h;
+        r.h_l = info.trail == 2 ? me.h : o.h;
+        r.Dx = -1.0f;
+        r.seq_cap = -1.0f;
+        if (v == ln::Verdict::follow && info.ds > 0.0f) { // this ship trails: its cap against this leader
+            r.D = ln::follow_reach(a.vF, b.vF, me.a_lin, me.r, o.r);
+            r.v_cap = ln::follow_cap(b.vF, me.a_lin, info.ds, r.D, o.a_lin);
+        }
+        if (p.seq_trail[i]) { // an obliged watch pair in which this ship trails: its sequencing cap
+            r.trail = me.ship;
+            r.h_t = me.h;
+            r.h_l = o.h;
+            float ds = 0.0f;
+            r.seq_cap = ln::seq_cap(a, b, info.foot_b, p.fresh_ms, &ds, &r.Dx);
+            r.bind = cap_all >= 0.0f && p.seq_leader == o.ship && cap_all == p.seq_cap ? 1 : 0;
+        }
+        lane_row_write_.store(w + 1, std::memory_order_release);
+    }
+}
+// One capital decision on a validated approach (order 4 under the capital policy, or order 5): the board entry (refreshed after
+// this decision's pass, for the next decision and the other ships) and the trace rows of the pass.
+void lane_decision(GateState& g, std::uint32_t obj, const core::Inputs& in, const core::Dynamics& dyn, const float A[3], const float G[3],
+                   const float row0[3], const float row1[3], const float row2[3], core::JoinMode mode, std::uint32_t now, const ln::Pass* pass) noexcept {
+    width_ensure(g, obj, g.join_code, dyn.r_own, now);
+    ln::Decision d;
+    d.ship = obj;
+    d.id = g.id;
+    d.gate = g.gate;
+    d.order = in.order;
+    d.mode = std::uint8_t(mode);
+    d.pred = (mode == core::JoinMode::join || mode == core::JoinMode::slow_join) && g.join.eval_ms && g.join.pred_reached ? 1 : 0;
+    for (unsigned i = 0; i < 3; ++i) {
+        d.G[i] = G[i];
+        d.R[i] = row0[i];
+        d.U[i] = row1[i];
+        d.F[i] = row2[i];
+        d.x[i] = in.x[i];
+        d.f[i] = in.row[2][i];
+        d.u[i] = in.v * in.row[2][i] + in.slip[i];
+        d.A[i] = A[i];
+    }
+    d.r = dyn.r_own;
+    d.w = g.w;
+    d.w_src = g.w_src;
+    d.a_lin = dyn.a_lin;
+    d.e_max = g.join.pred_e_max;
+    d.over = g.join.pred_over;
+    d.pred_nose = g.join.pred_nose;
+    ln::seq_rates(dyn, in.w, &d.omega, &d.alpha);
+    d.l = g.w_src == std::uint8_t(ln::WidthSrc::lod) ? g.w_len : 0.0f;
+    if (pass && pass->g && trace_on_ && debug_ && trace_slot_of(obj)) lane_rows(*pass); // the pass's state, before the refresh
+    ln::refresh(lanes_, d, now);
+}
 // ---- the steering decision -------------------------------------------
 core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     const std::uint32_t obj = f->obj;
@@ -832,9 +1112,19 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     }
     std::uint32_t v_emergency_bits = 0;
     float order_point[3] = {in.P[0], in.P[1], in.P[2]};
+    // Amendment 16b with review F2, F5, F6: one lane pass per capital decision on order 4 under the capital policy (order 5 has no
+    // avoidance and no site-B cap), from the stored board (this ship's own entry fresh, on the board of its live target): the verdicts
+    // the avoidance excludes on and the trailing caps site B applies below. The ship's entry is refreshed after it (lane_decision), for
+    // the next decision and the others.
+    ln::Pass lane_pass;
+    const ln::Pass* lane = nullptr;
+    const std::uint32_t lane_fresh = av::fresh_window_ms(av::kSteeredFreshMs, frame_step_ms(), av::kSteeredReplanMs);
+    if (gates_capital_on_ && capital && order == core::kOrderFlyBefore &&
+        ln::run_pass(lanes_, rd32(fl + sites::kFlightTarget), obj, rd32(obj + sites::kObjId), order, now, lane_fresh, seq_on_, &lane_pass))
+        lane = &lane_pass;
     if (avoidance_on_ && policy.avoidance) {
         float P[3] = {in.P[0], in.P[1], in.P[2]};
-        avoid_adjust(obj, fl, in, dyn, code, slot, now, P, &v_emergency_bits);
+        avoid_adjust(obj, fl, in, dyn, code, slot, now, P, &v_emergency_bits, lane);
         if (P[0] != in.P[0] || P[1] != in.P[1] || P[2] != in.P[2]) {
             std::int32_t detour[3];
             const float dd[3] = {order_point[0] - in.x[0], order_point[1] - in.x[1], order_point[2] - in.x[2]};
@@ -868,10 +1158,16 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         }
         r_gate = float(rds32(gate_tgt + sites::kObjRadius)) / core::kUnitsPerMetre;
         gs = &gate_[slot];
-        if (gs->obj != obj || gs->gate != gate_tgt) { // another ship in the slot, or another gate: a new approach
+        const std::uint32_t obj_id = rd32(obj + sites::kObjId);
+        // another ship in the slot, or another gate: a new approach; amendment 16: under the capital policy also another object
+        // behind the same pointer (the lane entry and E's gate row key on the id)
+        if (gs->obj != obj || gs->gate != gate_tgt || (capital && gates_capital_on_ && gs->id != obj_id)) {
             *gs = GateState{};
             gs->obj = obj;
             gs->gate = gate_tgt;
+            gs->id = obj_id;
+            gs->lane_cap = -1.0f;
+            gs->seq_cap = -1.0f;
         }
         gs->capital = capital ? 1 : 0;
         gs->r_gate = r_gate;
@@ -893,6 +1189,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     const bool capital_policy = capital_gate && gates_capital_on_;
     bool capital_window = false; // this call's point came from the capital lead-in (inside its window): the site-B write
     bool capital_fb_write = false; // amendment 15: the fallback's slow entry toward A this call (the site-B write, both ways)
+    bool capital_detour = false;   // amendment 16 fix: join / slow_join on an avoidance detour: the join's speed write is kept
     float capital_fb_v = 0.0f;
     if (gph && order == core::kOrderFlyBefore) {
         core::GateGeometry g;
@@ -928,6 +1225,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             gs->crossed = 0;
             gs->validated = 0;
         }
+        if (capital_policy && !gate_lead) ln::drop(lanes_, gate_tgt, obj); // amendment 16: no validated grid point, no lane
         gs->validated = gate_lead ? 1 : 2; // per approach, recomputed on every order-4 call (the container detour of section
                                            // 3.4 hands the leaf another point: that call is a fallback); counted at P2
         if (gate_lead) {
@@ -970,7 +1268,8 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                     gs->join.params.a_lin = dyn.a_lin;
                     gs->join.params.r_gate = r_gate;
                 }
-                if (mode == core::JoinMode::join) join_register(slot); // also after a sweep dropped it (a stale gap, then the same leg)
+                // also after a sweep dropped it (a stale gap, then the same leg); amendment 16: slow_join and the pred_none fallback too
+                if (core::join_eligible16(gs->join)) join_register(slot);
                 if (changed) {
                     if (mode == core::JoinMode::join) {
                         gate_capital_join_.add();
@@ -991,6 +1290,12 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                     gs->join_row_ms = now;
                     gs->join_logged_mode = std::uint8_t(mode);
                 }
+                cap_join = cap_join || mode == core::JoinMode::slow_join; // amendment 16: the slow join keeps the carrot pursuit
+                // a detour hands the leaf another point (the lead-in is skipped below); the leg is still steered, so site B keeps the
+                // join's speed both ways instead of the engine's 1 m/s alignment creep (Run158 crowd; fixture scenario M)
+                capital_detour = cap_join && in.detour;
+                // Amendment 16 (section 16.1): this decision's lane entry, the follow cap of a trailing (b) ship, the lane rows
+                lane_decision(*gs, obj, in, dyn, order_point, G, row0, row1, row2, mode, now, lane);
             }
             if (!v_emergency_bits && in.d_order < 0.0f && cap_join) {
                 bool in_window;
@@ -1020,6 +1325,11 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             }
         } else if (!capital)
             gs->last_err_deg = -1.0f;
+    } else if (gph && order == core::kOrderDock && capital) {
+        // amendment 16 (section 16.1): a capital's order-5 leg on its validated approach keeps its lane entry current (the leg's
+        // footprint runs from its lateral position to the gate origin); the engine's speed law stands (no site-B write)
+        if (capital_policy && gs->validated == 1)
+            lane_decision(*gs, obj, in, dyn, order_point, G, row0, row1, row2, gs->join.mode, now, lane);
     } else if (gph && order == core::kOrderDock && !capital) {
         // order 5 to a gate: the cornering speed toward B at site B (the chord rule) when B is the pinned pass point of a
         // gate whose frame validates (fail closed to the engine's creep), unless the arc would sweep the ring
@@ -1147,7 +1457,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     // capital outside the window on a validated approach gets the lowering clamp only (the engine's law stands); any other
     // capital gate leg (orders 4 and 5: the amendment-10 path, order 5 always) gets no site-B write; the order-5 leg
     std::uint16_t speed_flags;
-    if (capital_gate && !capital_window && !capital_fb_write)
+    if (capital_gate && !capital_window && !capital_fb_write && !capital_detour)
         speed_flags = std::uint16_t(capital_policy && gate_lead && cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0);
     else
         speed_flags = std::uint16_t((in.arrival_ramp && !cmd.formation_speed ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0) |
@@ -1162,22 +1472,62 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     s->d_arr = gate_dock ? r_gate : in.d_arr; // order 5 to a gate: the engine's ramp runs over r_gate
     // the gate approach: site B's speed (never under an avoidance emergency: the emergency ramp is site B's value then);
     // order 5 to a gate: vmax for the ramp
-    s->v_ref = (speed_flags & core::kShipFlagGate) && !v_emergency_bits ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner)
+    // amendment 16 fix: a capital's join on a detour keeps the join's write; site B lowers it to the emergency ramp (clamp_for)
+    const bool join_write = capital_window || capital_detour;
+    s->v_ref = (speed_flags & core::kShipFlagGate) && (!v_emergency_bits || capital_detour) ? core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner)
                : gate_dock ? dyn.v_max : in.v_ref;
     // amendment 15: a capital in join mode at most the predictor's speed, in fallback the slow entry
-    if ((speed_flags & core::kShipFlagGate) && !v_emergency_bits && gs) {
-        if (capital_window && gs->join.v_cmd < s->v_ref) s->v_ref = gs->join.v_cmd;
+    if ((speed_flags & core::kShipFlagGate) && (!v_emergency_bits || capital_detour) && gs) {
+        if (join_write && gs->join.v_cmd < s->v_ref) s->v_ref = gs->join.v_cmd;
         if (capital_fb_write && capital_fb_v < s->v_ref) s->v_ref = capital_fb_v;
+        if (capital_detour) gate_capital_detour_write_.add();
     }
     if (order != core::kOrderFlyBefore && order != core::kOrderRotate && gate_[slot].obj == obj) {
         gate_[slot].handover = 0; // order 5 (or 0x12, any other handled order) ends the hand-over's gate row
-        if (gate_[slot].join.mode == core::JoinMode::join) gate_[slot].join.mode = core::JoinMode::none; // and the join (the registry's sweep drops it)
+        gate_[slot].p2_seen = 0;  // amendment 16: the extended hand-over too
+        // and the join (the registry's sweep drops it); amendment 16: the slow join and the fallback as well
+        if (gate_[slot].join.mode == core::JoinMode::join || gate_[slot].join.mode == core::JoinMode::slow_join ||
+            gate_[slot].join.mode == core::JoinMode::fallback)
+            gate_[slot].join.mode = core::JoinMode::none;
+        if (order != core::kOrderDock && gates_capital_on_ && gate_[slot].gate) ln::mark(lanes_, gate_[slot].gate, obj, order); // not committed
     }
     // amendment 14: the formation law's |N| rides in the cornering slot (no ramp: site B returns it floored); the closing-speed
     // correction applies to the ramp/cornering schedule only (not on the gate legs, whose speed is the module's own)
     s->v_corner = cmd.formation_speed ? cmd.v_cmd : cmd.v_corner;
     s->v_slip = (speed_flags & (core::kShipFlagGate | core::kShipFlagGateDock)) || cmd.formation_speed ? 0.0f : cmd.v_slip;
     std::memcpy(&s->v_emergency, &v_emergency_bits, 4);
+    // Review F2 / amendment 16b: the pass's trailing caps on order 4 ((b) follow, sequencing) are in force at site B on the module's
+    // writes (ln::apply_cap: lowering only); the same pass dropped those pairs from the avoidance above. lane_capped counts the
+    // decisions whose write the cap lowered (as in Run158), lane_cap_carried every decision that carries one.
+    if (lane && order == core::kOrderFlyBefore) {
+        const float cap = lane->cap();
+        if (cap >= 0.0f) {
+            lane_cap_carried_.add();
+            if (ln::apply_cap(*s, cap)) lane_capped_.add();
+            if (lane->seq_cap >= 0.0f) lane_seq_capped_.add();
+        }
+        if (lane->self_held) lane_hysteresis_hold_.add();
+        if (lane->n_lat) lane_seq_lat_.add(lane->n_lat);
+        if (lane->n_along) lane_seq_along_.add(lane->n_along);
+        if (lane->n_watch_cross) lane_seq_cross_.add(lane->n_watch_cross);
+        if (gs) {
+            gs->lane_cap = cap;
+            gs->seq_cap = lane->seq_cap;
+            gs->seq_leader = lane->seq_leader;
+            if (const unsigned lapses = ln::seq_lapses(*lane, gs->seq_mem)) lane_seq_lapse_.add(lapses);
+            if (lane->seq_cap >= 0.0f && lane->seq_cap <= ln::kFollowFloorMs && cap == lane->seq_cap) { // at the floor: the time since
+                if (gs->seq_floor_ms && now - gs->seq_floor_ms < 1000u) lane_seq_floor_ms_.add(now - gs->seq_floor_ms); // the last such decision
+                gs->seq_floor_ms = now ? now : 1;
+            } else
+                gs->seq_floor_ms = 0;
+        }
+    } else if (gs && gs->obj == obj) {
+        gs->lane_cap = -1.0f;
+        gs->seq_cap = -1.0f;
+        gs->seq_leader = 0;
+        gs->seq_floor_ms = 0;
+        gs->seq_mem = ln::SeqMemory{}; // an unbound decision: no lapse is ever counted against a leader remembered before it
+    }
     s->last_call_ms = now;
     if (order == core::kOrderMovePos) {
         if (core::stuck_update(*s, cmd.d_order, now)) {
@@ -1528,7 +1878,8 @@ inline void clamp_apply(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) n
         }
         return;
     }
-    // Lowering only (compared in float before any conversion: core::clamp_units), never below the engine's own floor.
+    // Lowering only (compared in float before any conversion: core::clamp_units), never below the engine's own floor; a capital's lane
+    // cap on this path rides in v_corner (kShipFlagLower, review F2).
     const std::int32_t units = core::clamp_units(v, rds32(obj + sites::kObjDesiredSpeed));
     if (units > 0) {
         wr32(obj + sites::kObjDesiredSpeed, units);
@@ -1664,6 +2015,21 @@ extern "C" void __cdecl x3m_ship_gate_stop_a(std::uint32_t obj) {
         cap_keep = live && why == core::JoinKeep::kept;
         g->kept = cap_keep ? 1 : 0;
         g->handover = cap_keep ? 1 : 0; // site E's gate row covers 0x1f / order 0 until order 5 (audit G3)
+        // amendment 16 (sections 16.1, 16.3): the hand-over after P2 kept or not (E's gate row under the path guard; the lane entry
+        // stays committed on 0x1f / order 0 with the state at the crossing and the speed P2 leaves)
+        if (live && gates_capital_on_ && cap && g->validated == 1 && g->gate == tgt) {
+            g->p2_seen = 1;
+            const std::uint32_t php = rd32(obj + sites::kObjPhys), flp = rd32(obj + sites::kObjFlight);
+            if (php && flp) {
+                float x[3], fwd[3];
+                for (unsigned i = 0; i < 3; ++i) {
+                    x[i] = float(rds32(php + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+                    fwd[i] = fixed16(rds32(flp + sites::kFlightBasis + 0x20 + 4 * i));
+                }
+                const float vF = cap_keep ? v_ms * core::dot3(fwd, g->rows[2]) : 0.0f;
+                ln::handover(lanes_, g->gate, obj, rd32(obj + sites::kObjId), game_time_ms(), x, fwd, vF);
+            }
+        }
         if (first && gates_capital_on_ && cap && g->validated == 1) {
             if (cap_keep) gate_capital_kept_.add();
             else gate_capital_not_kept_[unsigned(why) < unsigned(core::JoinKeep::count) ? unsigned(why) : 0u].add();
@@ -1767,11 +2133,6 @@ extern "C" void __cdecl x3m_ship_gate_warp_in(std::uint32_t obj, std::uint32_t t
 //  * the first branch: A not on 0x12 and B in A's resolved set within max(100 ms, 4 frame steps).
 // Fail-safe: any unreadable field, A not in the table or not fresh: 0.
 namespace {
-inline std::uint32_t frame_step_ms() noexcept {
-    const std::uint32_t clock = rd32(sites::kGameClock);
-    const std::uint32_t ms = clock ? rd32(clock + sites::kGameTimeOffset - 4) : 0; // [root+0x714], the frame's game-time step
-    return ms <= 1000 ? ms : 0;
-}
 __attribute__((always_inline)) inline float pair_distance_m(std::uint32_t a, std::uint32_t b) noexcept { // centre distance, m (-1: unreadable)
     const std::uint32_t pa = rd32(a + sites::kObjPhys), pb = rd32(b + sites::kObjPhys);
     if (!pa || !pb) return -1.0f;
@@ -1870,8 +2231,45 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
         in.gate_handover = g.handover != 0;
         in.p2_age_ms = g.p2_stamp ? now - g.p2_stamp : 0xffffffffu;
         in.lead_age_ms = g.lead_ms ? now - g.lead_ms : 0xffffffffu;
+        if (in.gate_state && in.gates_live) { // amendment 16 (sections 16.3 and 16.4): the extended rows and their path guards
+            const std::uint32_t pa = rd32(a + sites::kObjPhys);
+            float x[3], P[3];
+            for (unsigned i = 0; i < 3; ++i) {
+                x[i] = pa ? float(rds32(pa + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre : 0.0f;
+                P[i] = g.G[i] + (g.A_local[0] * g.rows[0][i] + g.A_local[1] * g.rows[1][i] + g.A_local[2] * g.rows[2][i]) * g.r_gate;
+            }
+            const float r_a = float(rds32(a + sites::kObjRadius)) / core::kUnitsPerMetre;
+            if (g.capital && gates_capital_on_) {
+                if (g.id != rd32(a + sites::kObjId)) in.gate_state = false; // the state is A's own: object and id
+                in.gate_slow_join = g.join.mode == core::JoinMode::slow_join && in.a_target == b;
+                in.gate_fallback = g.join.mode == core::JoinMode::fallback && in.a_target == b;
+                in.gate_window_ok = g.join.plane_ms && g.join.plane.s >= -core::kGateCapitalJoinR * g.r_gate;
+                in.gate_p2_seen = g.p2_seen && g.p2_stamp;
+                in.gate_path_ok = pa && ln::path_guard(g.G, x, P, g.r_gate, r_a, ln::kCapitalGuardR);
+            } else if (!g.capital && in.a_order == core::kOrderFlyBefore && pa)
+                in.gate_small_guard = ln::path_guard(g.G, x, P, g.r_gate, r_a, ln::kSmallGuardR);
+        }
     } else if (cls_b == sites::kClassShip) {
         in.b_ship = true;
+        // amendment 16 / 16b (sections 16.1, 16.10): both capitals committed to A's gate (live order, f+0x224 and id) and the pair's
+        // verdict from the stored board in both directions (review F6) carries a certificate (review F1: the footprint route of (a),
+        // or (s) lateral / along F) -> suppress_lane; a corridor-only (a) pair keeps the engine's warn
+        if (gates_capital_on_) {
+            const ln::Gate* lg = ln::gate_of(lanes_, in.a_target);
+            const ln::Entry* ea = lg ? ln::find(*lg, a) : nullptr;
+            const ln::Entry* eb = ea ? ln::find(*lg, b) : nullptr;
+            const std::uint32_t fl_b = eb ? rd32(b + sites::kObjFlight) : 0;
+            if (fl_b) {
+                const std::uint32_t fresh = av::fresh_window_ms(av::kSteeredFreshMs, in.frame_ms, av::kSteeredReplanMs);
+                const std::uint16_t b_order = rd16(fl_b + sites::kFlightOrder);
+                if (ln::committed(*ea, now, fresh, in.a_order, in.a_target, lg->gate, rd32(a + sites::kObjId)) &&
+                    ln::committed(*eb, now, fresh, b_order, rd32(fl_b + sites::kFlightTarget), lg->gate, rd32(b + sites::kObjId))) {
+                    ln::PairInfo info;
+                    const ln::Verdict lv = ln::verdict_sym(*lg, *ea, *eb, now, fresh, seq_on_, &info);
+                    in.lane_exempt = ln::certified(lv, info.route);
+                }
+            }
+        }
         const std::uint32_t table = rd32(sites::kShipTypeTableSlot);
         const std::int32_t type_a = std::int16_t(rd16(a + sites::kObjType)), type_b = std::int16_t(rd16(b + sites::kObjType));
         in.codes_readable = table && type_a >= 0 && type_b >= 0;
@@ -1909,6 +2307,7 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
     case EV::suppress_gate: e_suppressed_gate_.add(); return 1;
     case EV::suppress_gate_small: e_suppressed_gate_small_.add(); return 1;
     case EV::suppress_resolved: e_suppressed_.add(); return 1;
+    case EV::suppress_lane: e_suppressed_lane_.add(); return 1;
     case EV::pass_no_autopilot: case EV::pass_not_steerable: case EV::pass_class: case EV::pass_b_dock_leg: case EV::pass_own_leader: {
         e_small_pass_.add();
         const unsigned k = v == EV::pass_no_autopilot ? unsigned(av::SmallPair::no_autopilot) : v == EV::pass_not_steerable ? unsigned(av::SmallPair::not_steerable)
@@ -2069,6 +2468,15 @@ bool initialize() {
             log("ship_steering_gates_capital_refused reason=%s", cap_why);
         } else
             gates_capital_state_ = cap_on ? "active" : "off";
+        // amendment 16b: the sequencing key (default on; only under the capital key)
+        wchar_t seq_text[8]{};
+        const DWORD seq_length = x3m::config::get(L"X3M_SHIP_STEERING_GATES_CAPITAL_SEQ", seq_text, 8);
+        bool seq_on = true;
+        if (seq_length && (seq_length >= 8 || !core::parse_switch(seq_text, seq_length, &seq_on))) {
+            seq_on = false;
+            log("ship_steering_gates_capital_seq_refused reason=invalid_setting");
+        }
+        seq_on_ = seq_on && gates_capital_on_;
     }
     LARGE_INTEGER f{};
     qpc_frequency_ = QueryPerformanceFrequency(&f) && f.QuadPart > 0 ? std::uint64_t(f.QuadPart) : 0;
@@ -2141,12 +2549,17 @@ bool initialize() {
         }
         log("ship_steering_gates_capital installed=%u status=%s join_r=%.1f inner_r=%.1f look_turns=%.1f tol_deg=%.2f small_ratio=%.3f "
             "fresh_ms=%lu fresh_frames=4 join_candidates_ms=100,60,40,25 join_eval_ms=%lu join_step_s=%.2f join_margin=%.0f/%.0f/%.0f/%.0f "
-            "fallback_entry_ms=%.0f keep_vel_deg=%.0f member_capacity=%u member_expiry_ms=%lu",
+            "fallback_entry_ms=%.0f keep_vel_deg=%.0f member_capacity=%u member_expiry_ms=%lu lane_gates=%u lane_entries=%u lane_in_m=%.0f "
+            "lane_gap_m=%.0f corridor_m=%.0f slow_join_nose_deg=%.0f slow_join_over_m=%.0f guard_r=%.2f/%.2f width=lod_all "
+            "width_retry_ms=%lu width_retries=%u seq=%u seq_lat_gap_m=%.0f seq_along_m=%.0f seq_cap_extra_m=%.0f lane_hold_m=%.0f lane_hold_deg=12",
             gates_capital_on_ ? 1u : 0u, gates_capital_state_, double(core::kGateCapitalJoinR), double(core::kGateCapitalJoinInnerR),
             double(core::kGateCapitalLookTurns), double(core::kGateRotateTolDeg), double(av::kSmallShipRatio),
             static_cast<unsigned long>(av::kSteeredFreshMs), static_cast<unsigned long>(core::kJoinEvalMs), double(core::kJoinStepS),
             double(core::kJoinNoseDeg), double(core::kJoinVelDeg), double(core::kJoinLatM), double(core::kJoinOverM), double(core::kJoinEntryMs),
-            double(core::kJoinKeepVelDeg), av::kMemberCapacity, static_cast<unsigned long>(av::kMemberExpiryMs));
+            double(core::kJoinKeepVelDeg), av::kMemberCapacity, static_cast<unsigned long>(av::kMemberExpiryMs), ln::kLaneGates, ln::kLaneEntries,
+            double(ln::kInLaneM), double(ln::kExemptGapM), double(ln::kCorridorM), double(core::kSlowJoinNoseDeg), double(core::kSlowJoinOverM),
+            double(ln::kCapitalGuardR), double(ln::kSmallGuardR), static_cast<unsigned long>(ln::kWidthRetryMs), ln::kWidthRetries,
+            seq_on_ ? 1u : 0u, double(ln::kSeqLatGapM), double(ln::kSeqAlongM), double(ln::kSeqCapExtraM), double(ln::kHoldM));
     }
     SetLastError(error);
     return true;
@@ -2174,7 +2587,7 @@ void frame_boundary(std::uint64_t frame) {
         for (unsigned i = 0; i < join_reg_.count;) { // the sweep: a completed, dead, redirected or reused slot leaves (review blocker)
             GateState& g = gate_[join_reg_.slots[i]];
             const bool same_ship = g.obj && g.join_registered && table_.entries[join_reg_.slots[i]].obj == g.obj;
-            if (!core::join_registry_keep(g.join, same_ship, t_now)) {
+            if (!core::join_registry_keep16(g.join, same_ship, t_now)) { // amendment 16: slow_join and the pred_none fallback stay
                 g.join_registered = 0;
                 join_reg_.remove_at(i);
                 continue;
@@ -2185,24 +2598,23 @@ void frame_boundary(std::uint64_t frame) {
             const unsigned idx = (join_reg_.next + n) % join_reg_.count;
             GateState& g = gate_[join_reg_.slots[idx]];
             const std::uint64_t t0 = timing_ ? qpc() : 0;
-            bool fell = false, slowed = false;
-            unsigned predictions = 0;
-            if (!core::join_evaluate(g.join, t_now, av::fresh_window_ms(av::kSteeredFreshMs, frame_step_ms()), &fell, &slowed, &predictions)) continue;
+            core::JoinEval ev;
+            if (!core::join_evaluate16(g.join, t_now, av::fresh_window_ms(av::kSteeredFreshMs, frame_step_ms()), &ev)) continue;
+            const bool fell = ev.fell_back, slowed = ev.slowed;
             join_reg_.next = idx + 1;
             ++join_evals_;
-            join_predictions_ += predictions;
+            join_predictions_ += ev.predictions;
             if (timing_) {
                 const std::uint64_t dt = qpc() - t0;
                 const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
                 if (ticks > join_eval_max_ticks_) join_eval_max_ticks_ = ticks;
             }
             if (slowed) gate_capital_slowed_.add();
-            if (fell) {
-                gate_capital_fallback_pred_.add();
-                g.join_registered = 0;
-                join_reg_.remove_at(idx);
-            }
-            if ((fell || slowed) && trace_on_ && trace_slot_of(g.obj)) {
+            if (fell) gate_capital_fallback_pred_.add(); // amendment 16: stays registered (1 Hz re-evaluation, the un-latch)
+            if (ev.slow_entered) gate_capital_slow_join_.add();
+            if (ev.unlatched) gate_capital_unlatch_.add();
+            if (debug_ && (fell || ev.slow_entered || ev.unlatched)) latch_row(g, join_reg_.slots[idx], ev);
+            if ((fell || slowed || ev.slow_entered || ev.unlatched) && trace_on_ && trace_slot_of(g.obj)) {
                 join_row(g, g.obj, t_now, false, -1.0f, -1.0f, -1.0f, 0, 0);
                 g.join_row_ms = t_now;
                 g.join_logged_mode = std::uint8_t(g.join.mode);
@@ -2297,6 +2709,49 @@ void frame_boundary(std::uint64_t frame) {
                 static_cast<unsigned long>(e.obstacle_order));
         }
     }
+    if (debug_) { // amendment 16 (sections 16.2, 16.5): the latch rows of every capital and the width census per capital type
+        static const char* const kLatchEvent[3] = {"pred_none", "slow_join", "unlatch"};
+        static const char* const kLatchModes[5] = {"none", "out", "join", "fallback", "slow_join"};
+        for (std::uint32_t w = latch_row_write_.load(std::memory_order_acquire); latch_row_read_ != w; ++latch_row_read_) {
+            const LatchRow& r = latch_rows_[latch_row_read_ & 7];
+            char cands[320] = "", lanes[200] = "";
+            int n = 0;
+            for (unsigned i = 0; i < core::kJoinCandidateCount; ++i) {
+                const core::JoinPred& p = r.cand[i];
+                const int m = std::snprintf(cands + n, sizeof cands - size_t(n), "%s%.0f:%d:%.2f:%.2f:%.0f:%.0f:%.0f:%u", i ? "|" : "",
+                                            double(core::kJoinCandidates[i]), int(p.grade), double(p.nose), double(p.vel), double(p.y),
+                                            double(p.over), double(p.e_max), unsigned(p.reached));
+                if (m > 0 && n + m < int(sizeof cands)) n += m;
+            }
+            n = 0;
+            for (unsigned i = 0; i < r.n_lanes && i < 6; ++i) {
+                const int m = std::snprintf(lanes + n, sizeof lanes - size_t(n), "%s0x%08lx:%s:%.0f", i ? "|" : "", static_cast<unsigned long>(r.lane_other[i]),
+                                            ln::verdict_name(ln::Verdict(r.lane_verdict[i])), double(r.lane_gap[i]));
+                if (m > 0 && n + m < int(sizeof lanes)) n += m;
+            }
+            log("ship_gate_capital_latch frame=%llu obj=0x%08lx class=%s slot=%u event=%s from=%s to=%s v_cmd=%.0f s_m=%.0f e_m=%.0f psi_deg=%.2f "
+                "upsi_deg=%.2f w_dps=%.3f v_ms=%.1f W_dps=%.3f alpha_dps2=%.4f a_ms2=%.2f r_gate_m=%.0f "
+                "cands_v:grade:nose:vel:e:over:e_max:reached=%s obstacle=0x%08lx lanes_other:verdict:gap=%s seq_cap=%.1f seq_leader=0x%08lx",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.obj), r.code < core::kClassCount ? core::kClassNames[r.code] : "?",
+                unsigned(r.slot), r.event < 3 ? kLatchEvent[r.event] : "?", r.before < 5 ? kLatchModes[r.before] : "?",
+                r.after < 5 ? kLatchModes[r.after] : "?", double(r.v_cmd), double(r.plane.s), double(r.plane.y),
+                double(r.plane.psi) * 180.0 / double(core::kPi), double(r.plane.upsi) * 180.0 / double(core::kPi),
+                double(r.plane.w) * 180.0 / double(core::kPi), double(r.plane.v), double(r.params.W) * 180.0 / double(core::kPi),
+                double(r.params.alpha) * 180.0 / double(core::kPi), double(r.params.a_lin), double(r.params.r_gate), cands[0] ? cands : "-",
+                static_cast<unsigned long>(r.obstacle), lanes[0] ? lanes : "-", double(r.seq_cap), static_cast<unsigned long>(r.seq_leader));
+        }
+        for (std::uint32_t w = width_census_write_.load(std::memory_order_acquire); width_census_read_ != w; ++width_census_read_) {
+            const WidthCensus& c = width_census_[width_census_read_ & 7];
+            // amendment 16b: h_rw_m = sqrt(r^2 + w^2) (the note's h; l_m must not exceed it), len_m = max(r, l) and h_m = sqrt(len^2 + w^2),
+            // the half-length and h the rule uses
+            const float len = c.l > c.r ? c.l : c.r;
+            const double h_rw = core::sqrt_ss(c.r * c.r + c.w * c.w), h = core::sqrt_ss(len * len + c.w * c.w);
+            log("ship_capital_census frame=%llu type=%lu class=%s r_m=%.0f w_m=%.0f w_r=%.3f w_src=%s retries=%u l_m=%.0f h_rw_m=%.0f len_m=%.0f h_m=%.0f",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(c.type), c.code < core::kClassCount ? core::kClassNames[c.code] : "?",
+                double(c.r), double(c.w), c.r > 0.0f ? double(c.w / c.r) : 0.0, ln::width_src_name(ln::WidthSrc(c.w_src)), unsigned(c.retries),
+                double(c.l), h_rw, double(len), h);
+        }
+    }
     if (trace_on_) {
         const std::uint32_t t_now = game_time_ms();
         for (unsigned i = 0; i < kTraceMax; ++i) // a followed ship not seen for kTraceIdleMs frees its slot (gone, or no longer steered)
@@ -2309,7 +2764,7 @@ void frame_boundary(std::uint64_t frame) {
                 e.code < core::kClassCount ? core::kClassNames[e.code] : "-", double(e.r), double(e.d));
         }
         // amendment 15 (section 15.4): the capital join, site E's verdicts for slot 0, the engine's list on the warn frame
-        static const char* const kModes[4] = {"none", "out", "join", "fallback"};
+        static const char* const kModes[5] = {"none", "out", "join", "fallback", "slow_join"};
         static const char* const kReasons[4] = {"-", "pred_none", "past_x", "grid_invalid"};
         static const char* const kWhy[5] = {"-", "mode", "nose", "vel", "bound"};
         for (std::uint32_t w = join_row_write_.load(std::memory_order_acquire); join_row_read_ != w; ++join_row_read_) {
@@ -2322,9 +2777,23 @@ void frame_boundary(std::uint64_t frame) {
             log("ship_gate_capital_join frame=%llu obj=0x%08lx class=%s slot=%u mode=%s reason=%s s_m=%.0f e_m=%.0f nose_deg=%.2f vel_deg=%.2f "
                 "rate_dps=%.2f v_ms=%.1f v_cmd=%.0f carrot_m=%.0f pred_nose_deg=%.2f pred_e_m=%.0f%s",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.obj), r.code < core::kClassCount ? core::kClassNames[r.code] : "?",
-                unsigned(r.slot), r.mode < 4 ? kModes[r.mode] : "?", r.latched ? "latched" : r.reason < 4 ? kReasons[r.reason] : "?", double(r.s),
+                unsigned(r.slot), r.mode < 5 ? kModes[r.mode] : "?", r.latched ? "latched" : r.reason < 4 ? kReasons[r.reason] : "?", double(r.s),
                 double(r.e), double(r.nose), double(r.vel), double(r.rate_dps), double(r.v), double(r.v_cmd), double(r.carrot), double(r.pred_nose),
                 double(r.pred_e), cross);
+        }
+        // amendment 16 (section 16.5): the lane verdicts of the traced capitals (1 Hz per pair and on every change)
+        static const char* const kFoot[4] = {"-", "lane", "joining", "segment"};
+        for (std::uint32_t w = lane_row_write_.load(std::memory_order_acquire); lane_row_read_ != w; ++lane_row_read_) {
+            const LaneRow& r = lane_rows_[lane_row_read_ & 15];
+            log("ship_capital_lane frame=%llu A=0x%08lx B=0x%08lx verdict=%s gap_m=%.0f w_A=%.0f w_B=%.0f w_src=%s,%s foot=%s,%s e_m=%.0f theta_deg=%.2f "
+                "ds_m=%.0f v_cap=%.1f D_m=%.0f route=%s watch=%u lat_gap=%.0f mot=%.0f h_T=%.0f h_L=%.0f Dx=%.0f trail=0x%08lx seq_cap=%.1f bind=%u "
+                "held=%u",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.a), static_cast<unsigned long>(r.b),
+                ln::verdict_name(ln::Verdict(r.verdict)), double(r.gap), double(r.w_a), double(r.w_b), ln::width_src_name(ln::WidthSrc(r.w_src_a)),
+                ln::width_src_name(ln::WidthSrc(r.w_src_b)), r.foot_a < 4 ? kFoot[r.foot_a] : "?", r.foot_b < 4 ? kFoot[r.foot_b] : "?", double(r.e_a),
+                double(r.theta_a), double(r.ds), double(r.v_cap), double(r.D), ln::route_name(ln::Route(r.route)), unsigned(r.watch), double(r.lat_gap),
+                double(r.mot), double(r.h_t), double(r.h_l), double(r.Dx), static_cast<unsigned long>(r.trail), double(r.seq_cap), unsigned(r.bind),
+                unsigned(r.held));
         }
         for (std::uint32_t w = e_row_write_.load(std::memory_order_acquire); e_row_read_ != w; ++e_row_read_) {
             const EVerdictRow& r = e_rows_[e_row_read_ & 15];
@@ -2511,7 +2980,7 @@ void frame_boundary(std::uint64_t frame) {
                       static_cast<unsigned long>(e_suppressed_gate_small_.get()), static_cast<unsigned long>(avoid_excluded_member_.get()), ms.set,
                       ms.refresh, ms.replace, ms.expire, ms.leader_gone, ms.id_mismatch, ms.reversed, ms.player, ms.cleared, ms.full);
     }
-    char gates[2048] = "";
+    char gates[3072] = "";
     if (gates_on_) {
         const Counter* gc[32] = {&gate_lead_, &gate_cross_, &gate_p2_, &gate_stops_skipped_, &gate_p4_, &gate_v0_kept_, &gate_p5_,
                                  &gate_launch_continued_, &gate_speed_writes_, &gate_spread_offsets_, &gate_exit_offsets_,
@@ -2561,6 +3030,21 @@ void frame_boundary(std::uint64_t frame) {
                                            double(std::int32_t(qpc_frequency_ > 0x7fffffffull ? 0x7fffffffu : std::uint32_t(qpc_frequency_)))
                                      : 0.0,
                       join_reg_.count, join_reg_.dropped, join_reg_.refused);
+        // amendment 16 (section 16.5): the lane rule, the slow join and the un-latch, totals since install
+        const std::size_t used16 = std::strlen(gates);
+        std::snprintf(gates + used16, sizeof gates - used16,
+                      " lane_exempt=%lu lane_follow=%lu lane_cross=%lu lane_capped=%lu e_suppressed_lane=%lu gate_capital_slow_join=%lu "
+                      "gate_capital_unlatch=%lu gate_capital_detour_write=%lu lane_board_full=%u,%u lane_seq_lat=%lu lane_seq_along=%lu "
+                      "lane_seq_cross=%lu lane_seq_capped=%lu lane_seq_floor_ms=%lu lane_seq_lapse=%lu lane_cap_carried=%lu lane_hysteresis_hold=%lu",
+                      static_cast<unsigned long>(lane_exempt_.get()), static_cast<unsigned long>(lane_follow_.get()),
+                      static_cast<unsigned long>(lane_cross_.get()), static_cast<unsigned long>(lane_capped_.get()),
+                      static_cast<unsigned long>(e_suppressed_lane_.get()), static_cast<unsigned long>(gate_capital_slow_join_.get()),
+                      static_cast<unsigned long>(gate_capital_unlatch_.get()), static_cast<unsigned long>(gate_capital_detour_write_.get()),
+                      lanes_.full_gates, lanes_.full_entries, static_cast<unsigned long>(lane_seq_lat_.get()),
+                      static_cast<unsigned long>(lane_seq_along_.get()), static_cast<unsigned long>(lane_seq_cross_.get()),
+                      static_cast<unsigned long>(lane_seq_capped_.get()), static_cast<unsigned long>(lane_seq_floor_ms_.get()),
+                      static_cast<unsigned long>(lane_seq_lapse_.get()), static_cast<unsigned long>(lane_cap_carried_.get()),
+                      static_cast<unsigned long>(lane_hysteresis_hold_.get()));
     }
     char trace[96] = "";
     if (trace_on_) {

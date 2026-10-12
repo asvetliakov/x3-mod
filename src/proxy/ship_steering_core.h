@@ -629,7 +629,9 @@ constexpr unsigned kProbeLimit = 8;
 constexpr std::uint32_t kStaleMs = 5000; // an entry older than this may be reused
 constexpr std::uint16_t kShipFlagRamp = 1, kShipFlagClamp = 2, kShipFlagGate = 4, // Ship.flags: arrival ramp, clamp enabled, gate approach
                         kShipFlagGateDock = 8, // order 5 to a gate: the cornering speed toward B replaces the engine's 1 m/s creep
-                        kShipFlagPortHold = 16; // amendment 12: order 5 to a port, the last call wrote a triple below the match limit
+                        kShipFlagPortHold = 16, // amendment 12: order 5 to a port, the last call wrote a triple below the match limit
+                        kShipFlagLower = 32;    // amendment 16b / review F2: on the lowering clamp path v_corner carries a capital's lane
+                                                // cap (ship_capital_lane_core.h apply_cap): site B skips the final 10 m/s floor
 // Amendment 12: the port leg's hold for this call: the ship's previous handled call was on order 5 to a port, wrote an
 // aligned triple and is at most kPortHoldGapMs old.
 __attribute__((always_inline)) inline bool port_hold_active(const Ship& s, std::uint16_t order, std::uint32_t now_ms) noexcept {
@@ -718,7 +720,7 @@ __attribute__((always_inline)) inline float clamp_for(const Ship& s, const float
             if (v < kFloorMs) v = kFloorMs;
         }
         if (s.v_corner > 0.0f && (v <= 0.0f || s.v_corner < v)) v = s.v_corner; // the cornering term caps the nose speed
-        if (v > 0.0f && v < kFloorMs) v = kFloorMs;
+        if (v > 0.0f && v < kFloorMs && !(s.flags & kShipFlagLower)) v = kFloorMs; // a lane cap below the floor stands (apply_cap)
     }
     if (s.v_emergency > 0.0f && (v <= 0.0f || s.v_emergency < v)) v = fmax_f(s.v_emergency, kFloorMs);
     return finite_f(v) ? v : 0.0f;
@@ -1041,10 +1043,21 @@ inline bool join_plane(const GateGeometry& g, const float x[3], const float rows
 // One prediction at the written speed vc: 2 when the simulated pursuit reaches the crossing plane within the margins (nose <= 4,
 // velocity <= 6 deg, |e| and the excursion <= 50 m), 1 when only within P2's acceptance (8.11 deg, 10 deg, 100 m, 100 m), 0 when
 // neither. nose_out / y_out: the predicted nose error (deg) and |e| (m) at the plane (or where the prediction stopped).
-inline int join_predict_grade(const JoinPlane& st, const JoinParams& p, float vc, float* nose_out, float* y_out) noexcept {
+// Amendment 16 (section 16.2): `detail` (optional) also gets the velocity's angle, the excursion past the line, the largest
+// offset on the start side (e_max, one compare per step) and whether the plane was reached.
+struct JoinPred {
+    std::int8_t grade = -1; // -1 = not evaluated
+    std::uint8_t reached = 0;
+    float nose = -1.0f, vel = -1.0f, y = -1.0f, over = 0.0f, e_max = 0.0f;
+};
+inline int join_predict_grade(const JoinPlane& st, const JoinParams& p, float vc, float* nose_out, float* y_out, JoinPred* detail = nullptr) noexcept {
     *nose_out = -1.0f;
     *y_out = -1.0f;
-    if (!(p.W > 1e-4f) || !(p.alpha > 1e-6f) || !(p.r_gate > 1.0f) || !(vc > 0.0f)) return 0;
+    if (detail) *detail = JoinPred{};
+    if (!(p.W > 1e-4f) || !(p.alpha > 1e-6f) || !(p.r_gate > 1.0f) || !(vc > 0.0f)) {
+        if (detail) detail->grade = 0;
+        return 0;
+    }
     const float dt = kJoinStepS, a_along = kGateCrossFraction * p.r_gate;
     const float k_lag = one_minus_exp_neg(dt / kSlipTau);
     const float v_des = p.v_max > 0.0f && p.v_max < vc ? p.v_max : vc;
@@ -1052,7 +1065,7 @@ inline int join_predict_grade(const JoinPlane& st, const JoinParams& p, float vc
     const float ay0 = fabs_f(y);
     float t_max = 3.0f * (-x + ay0) / vc + 60.0f;
     if (t_max > float(kJoinMaxSteps) * dt) t_max = float(kJoinMaxSteps) * dt;
-    float ref = y >= 0.0f ? 1.0f : -1.0f, over = 0.0f;
+    float ref = y >= 0.0f ? 1.0f : -1.0f, over = 0.0f, e_max = y;
     bool crossed = false;
     float t = 0.0f;
     for (unsigned step = 0; step < kJoinMaxSteps && x < 0.0f && t < t_max; ++step) {
@@ -1102,16 +1115,27 @@ inline int join_predict_grade(const JoinPlane& st, const JoinParams& p, float vc
             ref = side;
         }
         if (crossed && fabs_f(y) > over) over = fabs_f(y);
+        if (y > e_max) e_max = y;
         if (over > kJoinConvergedLatM) break; // the excursion only grows: both verdicts are already no
         t += dt;
     }
     *nose_out = fabs_f(psi) * (180.0f / kPi);
     *y_out = fabs_f(y);
     const float vel_deg = fabs_f(upsi) * (180.0f / kPi);
-    if (!(x >= 0.0f)) return 0;
-    if (*nose_out <= kJoinNoseDeg && vel_deg <= kJoinVelDeg && *y_out <= kJoinLatM && over <= kJoinOverM) return 2;
-    if (*nose_out <= kJoinConvergedNoseDeg && vel_deg <= kJoinKeepVelDeg && *y_out <= kJoinConvergedLatM && over <= kJoinConvergedLatM) return 1;
-    return 0;
+    int grade = 0;
+    if (!(x >= 0.0f)) grade = 0;
+    else if (*nose_out <= kJoinNoseDeg && vel_deg <= kJoinVelDeg && *y_out <= kJoinLatM && over <= kJoinOverM) grade = 2;
+    else if (*nose_out <= kJoinConvergedNoseDeg && vel_deg <= kJoinKeepVelDeg && *y_out <= kJoinConvergedLatM && over <= kJoinConvergedLatM) grade = 1;
+    if (detail) {
+        detail->grade = std::int8_t(grade);
+        detail->reached = x >= 0.0f ? 1 : 0;
+        detail->nose = *nose_out;
+        detail->vel = vel_deg;
+        detail->y = *y_out;
+        detail->over = over;
+        detail->e_max = e_max > 0.0f ? e_max : 0.0f;
+    }
+    return grade;
 }
 inline bool join_predict(const JoinPlane& st, const JoinParams& p, float vc, float* nose_out, float* y_out) noexcept {
     return join_predict_grade(st, p, vc, nose_out, y_out) == 2;
@@ -1178,15 +1202,18 @@ inline JoinKeep join_keep_verdict(bool join_mode, float nose_deg, float vel_deg,
     return JoinKeep::kept;
 }
 // The per-approach join state machine shared by the DLL's decide() and the fixture.
-enum class JoinMode : std::uint8_t { none = 0, out, join, fallback };
+// Amendment 16 (section 16.2): slow_join = no candidate within P2's acceptance, but one reaches the crossing plane with the
+// excursion <= 100 m and the nose <= 20 deg: the pursuit continues at that candidate's speed (the vanilla stop at P2).
+enum class JoinMode : std::uint8_t { none = 0, out, join, fallback, slow_join };
 enum class JoinReason : std::uint8_t { none = 0, pred_none, past_x, grid_invalid };
 struct JoinState {
     JoinMode mode = JoinMode::none;
     JoinReason reason = JoinReason::none;
     std::uint8_t first_done = 0;
-    std::uint8_t pad = 0;
+    std::uint8_t pred_reached = 0;  // amendment 16: the chosen candidate's prediction reaches the crossing plane (the lane footprint)
     float v_cmd = kGateLargeCapMs;  // the predictor's speed, m/s
     float pred_nose = -1.0f, pred_y = -1.0f;
+    float pred_e_max = 0.0f, pred_over = 0.0f; // amendment 16: the chosen candidate's largest offset and excursion past the line, m
     float A[3] = {0, 0, 0};         // the given point the latch keys on, m
     std::uint32_t last_call_ms = 0, window_ms = 0, eval_ms = 0, plane_ms = 0;
     JoinPlane plane;                // the last join-mode decision's state (the predictor's start)
@@ -1216,13 +1243,15 @@ inline JoinMode join_on_decision(JoinState& j, const float A[3], float s, float 
         if (s < -kGateCapitalJoinR * r_gate) {
             j.mode = JoinMode::out;
         } else {
-            if (j.mode != JoinMode::join) {
+            if (j.mode != JoinMode::join && j.mode != JoinMode::slow_join) {
                 j.mode = JoinMode::join;
                 j.window_ms = now;
                 j.eval_ms = 0; // evaluate at the next frame end
                 j.v_cmd = kGateLargeCapMs;
             }
-            if (s > 0.0f && !converged) {
+            // amendment 16: a slow join crosses unconverged by design (P2's vanilla stop and the rotate of the residual); only a
+            // join-mode ship past the plane unconverged takes the fallback
+            if (j.mode == JoinMode::join && s > 0.0f && !converged) {
                 j.mode = JoinMode::fallback;
                 j.reason = JoinReason::past_x;
             }
@@ -1248,6 +1277,109 @@ inline bool join_evaluate(JoinState& j, std::uint32_t now, std::uint32_t max_age
     }
     *slowed = v < j.v_cmd;
     j.v_cmd = v;
+    return true;
+}
+// Amendment 16 (section 16.2): the frame-end evaluation with the slow join and the un-latch. Runs for join, slow_join and the
+// pred_none fallback (past_x is final: the pursuit needs s < 0), due and fresh as join_evaluate. Join mode: join_choose's verdict
+// over the same predictions (lazy, highest first); none within P2's acceptance -> slow_join when a candidate reaches the plane
+// with the excursion <= 100 m and the nose <= 20 deg (the speed: the smallest predicted nose), else the fallback. slow_join and
+// the fallback: any candidate at grade >= 1 -> join at the highest grade-2 speed, else the highest grade-1 one (`unlatched`);
+// else the slow-join test again (a fallback may enter it; a slow join that fails it falls back).
+constexpr float kSlowJoinNoseDeg = 20.0f, kSlowJoinOverM = 100.0f;
+struct JoinEval {
+    JoinMode before = JoinMode::none, after = JoinMode::none;
+    bool fell_back = false, slowed = false, slow_entered = false, unlatched = false;
+    unsigned predictions = 0;
+    JoinPred cand[kJoinCandidateCount];
+};
+__attribute__((always_inline)) inline bool slow_join_ok(const JoinPred& p) noexcept {
+    return p.grade >= 0 && p.reached && p.over <= kSlowJoinOverM && p.nose >= 0.0f && p.nose <= kSlowJoinNoseDeg;
+}
+inline bool join_eligible16(const JoinState& j) noexcept {
+    return j.mode == JoinMode::join || j.mode == JoinMode::slow_join || (j.mode == JoinMode::fallback && j.reason == JoinReason::pred_none);
+}
+inline bool join_evaluate16(JoinState& j, std::uint32_t now, std::uint32_t max_age_ms, JoinEval* out) noexcept {
+    *out = JoinEval{};
+    out->before = out->after = j.mode;
+    if (!join_eligible16(j) || !j.plane_ms || now - j.plane_ms > max_age_ms) return false;
+    if (j.eval_ms && now - j.eval_ms < kJoinEvalMs) return false;
+    j.eval_ms = now ? now : 1;
+    auto predict = [&](unsigned i) -> const JoinPred& {
+        JoinPred& p = out->cand[i];
+        if (p.grade < 0) {
+            float n, y;
+            ++out->predictions;
+            join_predict_grade(j.plane, j.params, kJoinCandidates[i], &n, &y, &p);
+        }
+        return p;
+    };
+    auto take = [&](unsigned i) {
+        const JoinPred& p = out->cand[i];
+        j.pred_nose = p.nose;
+        j.pred_y = p.y;
+        j.pred_e_max = p.e_max;
+        j.pred_over = p.over;
+        j.pred_reached = p.reached;
+    };
+    int chosen = -1;
+    if (j.mode == JoinMode::join) { // join_choose over the lazily computed grades (the same verdict)
+        int accept = -1;
+        for (unsigned i = 0; i < kJoinCandidateCount && chosen < 0; ++i) {
+            const float c = kJoinCandidates[i];
+            const int grade = predict(i).grade;
+            const bool keep = c > j.v_cmd - 0.5f && c < j.v_cmd + 0.5f;
+            if (grade == 2 || (keep && grade == 1)) chosen = int(i);
+            else if (grade == 1 && c < j.v_cmd && accept < 0) accept = int(i);
+        }
+        if (chosen < 0) chosen = accept;
+        if (chosen >= 0) {
+            out->slowed = kJoinCandidates[chosen] < j.v_cmd;
+            j.v_cmd = kJoinCandidates[chosen];
+            take(unsigned(chosen));
+            out->after = j.mode;
+            return true;
+        }
+    } else { // slow_join / fallback: the un-latch on any candidate at grade >= 1
+        int one = -1;
+        for (unsigned i = 0; i < kJoinCandidateCount && chosen < 0; ++i) {
+            const int grade = predict(i).grade;
+            if (grade == 2) chosen = int(i);
+            else if (grade == 1 && one < 0) one = int(i);
+        }
+        if (chosen < 0) chosen = one;
+        if (chosen >= 0) {
+            j.mode = JoinMode::join;
+            j.reason = JoinReason::none;
+            j.v_cmd = kJoinCandidates[chosen];
+            take(unsigned(chosen));
+            out->unlatched = true;
+            out->after = j.mode;
+            return true;
+        }
+    }
+    // no candidate within P2's acceptance (all four predicted): the slow join, else the fallback
+    int slow = -1;
+    for (unsigned i = 0; i < kJoinCandidateCount; ++i) {
+        const JoinPred& p = predict(i);
+        if (slow_join_ok(p) && (slow < 0 || p.nose < out->cand[slow].nose)) slow = int(i);
+    }
+    if (slow >= 0) {
+        out->slow_entered = j.mode != JoinMode::slow_join;
+        out->slowed = kJoinCandidates[slow] < j.v_cmd;
+        j.mode = JoinMode::slow_join;
+        j.reason = JoinReason::pred_none;
+        j.v_cmd = kJoinCandidates[slow];
+        take(unsigned(slow));
+    } else {
+        out->fell_back = j.mode != JoinMode::fallback;
+        j.mode = JoinMode::fallback;
+        j.reason = JoinReason::pred_none;
+        j.pred_reached = 0;
+        const JoinPred& last = out->cand[kJoinCandidateCount - 1];
+        j.pred_nose = last.nose;
+        j.pred_y = last.y;
+    }
+    out->after = j.mode;
     return true;
 }
 // The frame-end predictor's registry of capitals in join mode (table slot indices, at most kJoinSlots at a time; a capital
@@ -1276,6 +1408,10 @@ struct JoinRegistry {
 };
 inline bool join_registry_keep(const JoinState& j, bool same_ship, std::uint32_t now) noexcept {
     return same_ship && j.mode == JoinMode::join && j.plane_ms && now - j.plane_ms <= kJoinNewLegMs;
+}
+// Amendment 16: slow_join and the pred_none fallback stay registered (re-evaluated at 1 Hz for the un-latch).
+inline bool join_registry_keep16(const JoinState& j, bool same_ship, std::uint32_t now) noexcept {
+    return same_ship && join_eligible16(j) && j.plane_ms && now - j.plane_ms <= kJoinNewLegMs;
 }
 // The gate-site rule shared by the DLL handlers (P2, P4) and the fixture: `obj` is a class-7 ship whose order target
 // f+0x224 is a gate (class 0x12) and whose record code (+0x14 of the TShips record) is not capital (0x0043fd50:
