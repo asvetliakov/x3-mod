@@ -1,0 +1,76 @@
+=== run159: 476 summary rows, 81743 frame_end rows
+us fields: handler_us_max, handler_us_p50, handler_us_p99, join_eval_us_max
+  handler_us_p50: p50=1.60 p90=1.60 p99=1.60 max=3.20
+  handler_us_p99: p50=6.40 p90=11.00 p99=12.80 max=34.10
+  handler_us_max: p50=10.00 p90=19.20 p99=34.10 max=57.10
+  join_eval_us_max: max=41.9 (rows with value>0: 409)
+  calls: p50=3631 max=8535.0
+  ships: p50=32 max=49.0
+  walked: p50=27633 max=37464.0
+  snapshots: p50=178 max=227.0
+  e_calls: p50=6274 max=17430.0
+  timed: p50=3631 max=8535.0
+  interval_ms: p50=1000 max=7578.0
+  note: SETA share field: none in summary rows
+  budget calls*p50/interval, % of wall time: p50=0.44072 max=1.36560
+  budget us per frame (calls*p50/frames in interval): p50=28.133 max=76.129
+  frame dt_ms (all frames in windows): n=80551 p50=5 p90=8 p99=11 max=1203
+  corr(interval mean dt_ms, handler_us_p50)=0.079  corr(.., handler_us_max)=-0.047  n=475
+=== run160: 427 summary rows, 84498 frame_end rows
+us fields: handler_us_max, handler_us_p50, handler_us_p99, join_eval_us_max
+  handler_us_p50: p50=1.60 p90=1.60 p99=1.60 max=6.40
+  handler_us_p99: p50=6.40 p90=6.40 p99=6.40 max=36.50
+  handler_us_max: p50=8.50 p90=19.20 p99=29.40 max=36.50
+  join_eval_us_max: max=17.6 (rows with value>0: 353)
+  calls: p50=3290 max=5255.0
+  ships: p50=23 max=31.0
+  walked: p50=30441 max=35340.0
+  snapshots: p50=208 max=230.0
+  e_calls: p50=4116 max=8819.0
+  timed: p50=3290 max=5255.0
+  interval_ms: p50=1000 max=7610.0
+  note: SETA share field: none in summary rows
+  budget calls*p50/interval, % of wall time: p50=0.29480 max=0.84080
+  budget us per frame (calls*p50/frames in interval): p50=15.012 max=45.376
+  frame dt_ms (all frames in windows): n=82926 p50=4 p90=6 p99=9 max=465
+  corr(interval mean dt_ms, handler_us_p50)=-0.084  corr(.., handler_us_max)=0.082  n=426
+=== run160b: 350 summary rows, 63448 frame_end rows
+us fields: handler_us_max, handler_us_p50, handler_us_p99, join_eval_us_max
+  handler_us_p50: p50=0.80 p90=1.60 p99=1.60 max=6.40
+  handler_us_p99: p50=6.40 p90=6.40 p99=12.80 max=36.80
+  handler_us_max: p50=10.00 p90=18.30 p99=29.80 max=41.40
+  join_eval_us_max: max=37.8 (rows with value>0: 296)
+  calls: p50=3655 max=8444.0
+  ships: p50=27 max=48.0
+  walked: p50=26850 max=37074.0
+  snapshots: p50=184 max=230.0
+  e_calls: p50=4719 max=17117.0
+  timed: p50=3655 max=8444.0
+  interval_ms: p50=1000 max=8360.0
+  note: SETA share field: none in summary rows
+  budget calls*p50/interval, % of wall time: p50=0.31240 max=1.35104
+  budget us per frame (calls*p50/frames in interval): p50=19.461 max=69.608
+  frame dt_ms (all frames in windows): n=62187 p50=4 p90=7 p99=10 max=475
+  corr(interval mean dt_ms, handler_us_p50)=-0.001  corr(.., handler_us_max)=0.240  n=349
+=== run161: 416 summary rows, 71382 frame_end rows
+us fields: ctl_arrival_us_max, ctl_decide_us_max, ctl_frame_us_max, dock_e_us_max, handler_us_max, handler_us_p50, handler_us_p99, join_eval_us_max
+  handler_us_p50: p50=1.60 p90=1.60 p99=1.60 max=3.20
+  handler_us_p99: p50=6.40 p90=10.10 p99=12.80 max=41.20
+  handler_us_max: p50=10.20 p90=18.80 p99=28.40 max=124.30
+  ctl_arrival_us_max: max=2.6 (rows with value>0: 379)
+  ctl_decide_us_max: max=30.8 (rows with value>0: 416)
+  ctl_frame_us_max: max=41.9 (rows with value>0: 416)
+  dock_e_us_max: max=18.9 (rows with value>0: 415)
+  join_eval_us_max: max=25.7 (rows with value>0: 362)
+  calls: p50=3449 max=7329.0
+  ships: p50=28 max=46.0
+  walked: p50=26280 max=35343.0
+  snapshots: p50=179 max=235.0
+  e_calls: p50=4919 max=16247.0
+  timed: p50=3449 max=7329.0
+  interval_ms: p50=1000 max=8703.0
+  note: SETA share field: none in summary rows
+  budget calls*p50/interval, % of wall time: p50=0.39872 max=1.17264
+  budget us per frame (calls*p50/frames in interval): p50=27.542 max=72.166
+  frame dt_ms (all frames in windows): n=70309 p50=4 p90=8 p99=12 max=1220
+  corr(interval mean dt_ms, handler_us_p50)=0.148  corr(.., handler_us_max)=-0.008  n=415
