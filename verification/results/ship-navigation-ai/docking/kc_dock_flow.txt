@@ -1,0 +1,1315 @@
+== addon/04.cat L/x3story.obj (stock AP): CODE 1812069 B
+
+-- 2004::__LandInHangar entry b7c25, depth conflicts 4
+  b7c25 d0   frame 21
+  b7c2a d2   call IsAbleToLand()
+  b7c30 d1   if not (!(IsAbleToLand())) goto b7c3c
+  b7c37 d2   p0 = 6
+  b7c3b d1   return p0
+  b7c3f d1   if not (p-4) goto b7c5a
+  b7c49 d2   call p-4.IsDockingPossibleOf(this)
+  b7c4f d1   if not (!(p-4.IsDockingPossibleOf(this))) goto b7c5a
+  b7c55 d2   goto b7c5b
+  b7c5b d1   if not (1) goto b7c67
+  b7c62 d2   p0 = 6
+  b7c66 d1   return p0
+  b7c69 d2   call 2004::CheckSpeedLimit(0)
+  b7c72 d3   call 2004::ReleaseFromSlot()
+  b7c79 d3   call 2004::GetFormationSize()
+  b7c82 d4   call p-4.GetSize()
+  b7c89 d5   let p2 = (2004::GetFormationSize() + p-4.GetSize())
+  b7c8e d4   call SE_Random((2 * p2))
+  b7c9d d5   call SE_Random((2 * p2))
+  b7cb0 d7   call p-4.GetDockBaySize()
+  b7cbc d8   call SE_IsClass(p-4, 2033)
+  b7cc4 d9   call SE_Random(10)
+  b7ccb d10  if not (1) goto b8321
+  b7cd2 d12  m55 = 2
+  b7cd9 d12  m56 = p-4
+  b7cde d12  m45 = 0
+  b7ce3 d12  call 2004::GetAttacker()
+  b7cf0 d11  if not ((m12 & 128)) goto b7d0c
+  b7cfc d12  m12 = (m12 & -129)
+  b7d02 d12  p1 = 7
+  b7d07 d10  goto b8321
+  b7d10 d12  call SE_ObjectExists(p-4)
+  b7d16 d11  if not (!(SE_ObjectExists(p-4))) goto b7d27
+  b7d1d d12  p1 = 8
+  b7d22 d10  goto b8321
+  b7d2e d13  call p-4.GetEnvironment()
+  b7d34 d11  if ((m1 != p-4.GetEnvironment())) goto b7d51
+  b7d40 d12  call SE_IsClass(m1, 2001)
+  b7d46 d11  if (!(SE_IsClass(m1, 2001))) goto b7d51
+  b7d4c d12  goto b7d52
+  b7d52 d11  if not (0) goto b7d63
+  b7d59 d12  p1 = 8
+  b7d5e d10  goto b8321
+  b7d68 d12  call p-4.IsDockingAllowedForShip(this)
+  b7d6e d11  if not (!(p-4.IsDockingAllowedForShip(this))) goto b7d7f
+  b7d75 d12  p1 = 8
+  b7d7a d10  goto b8321
+  b7d7f d12  let p9 = 0
+  b7d82 d11  if not (p9) goto b7d8d
+  b7d88 d10  goto b8321
+  b7d91 d12  call p-4.GetObjectID()
+  b7d96 d12  p10 = p-4.GetObjectID()
+  b7d9d d11  if not (m3) goto b81b6
+  b7da2 d12  let p10 = 0
+  b7da6 d12  call SA_FindObject(p10)
+  b7dac d11  if not (!(SA_FindObject(p10))) goto b7dc2
+  b7db3 d12  p1 = 8
+  b7db8 d10  goto b8321
+  b7dc9 d12  call SA_SetShipRotAccel(m3, m87)
+  b7dcf d12  let p0 = 0
+  b7dd3 d11  if not (!(p0)) goto b7dea
+  b7ddf d11  if not ((m84 == p-4)) goto b7dea
+  b7de5 d12  goto b7deb
+  b7deb d11  if not (1) goto b7e00
+  b7df5 d11  if not ((m85 >= 0)) goto b7e00
+  b7dfb d12  goto b7e01
+  b7e01 d11  if not (1) goto b7e1f
+  b7e10 d12  call SA_IsObjectBeforeContainer(m3, p10, m85)
+  b7e15 d11  if not (SA_IsObjectBeforeContainer(m3, p10, m85)) goto b7e1f
+  b7e1b d12  p0 = 1
+  b7e23 d11  if not (!(p0)) goto b801d
+  b7e2d d12  call SA_SetFlightMode(m3, 1)
+  b7e3a d12  call SA_SetSpeedLimit(m3, m93)
+  b7e47 d12  call SA_SetShipDockPortNr(m3, m85)
+  b7e54 d12  call SA_SetDestination(m3, p10)
+  b7e5e d12  call SA_CollisionObject(m3)
+  b7e63 d11  if not (SA_CollisionObject(m3)) goto b7e84
+  b7e6a d12  m55 = 12
+  b7e6f d12  m56 = 0
+  b7e78 d12  call SA_AvoidObjectCollision(m3, 0)
+  b7e7f d10  goto b7cca
+  b7e8b d12  call SA_Distance(m3, p10)
+  b7e96 d14  call SA_GetTotalSize(p10)
+  b7e9d d11  if not ((SA_Distance(m3, p10) > (5 * SA_GetTotalSize(p10)))) goto b7f25
+  b7ea3 d13  let p7 = SE_IsClass(p-4, 2033)
+  b7ea6 d12  if not (p7) goto b7ece
+  b7eb2 d15  call SA_GetTotalSize(p10)
+  b7ec0 d13  call SA_FollowObject(m3, p10, (4 * SA_GetTotalSize(p10)), 0)
+  b7ec5 d13  p11 = SA_FollowObject(m3, p10, (4 * SA_GetTotalSize(p10)), 0)
+  b7ec9 d12  goto b7f03
+  b7ed4 d14  call SA_GetTotalSize(p10)
+  b7ede d14  call SA_GetPosZ(p10)
+  b7ee7 d15  call SA_GetPosY(p10)
+  b7ef0 d16  call SA_GetPosX(p10)
+  b7efa d13  call SA_MovePos(m3, SA_GetPosX(p10), SA_GetPosY(p10), SA_GetPosZ(p10), (4 * SA_GetTotalSize(p10)))
+  b7eff d13  p11 = SA_MovePos(m3, SA_GetPosX(p10), SA_GetPosY(p10), SA_GetPosZ(p10), (4 * SA_GetTotalSize(p10)))
+  b7f03 d13  let p11 = 0
+  b7f09 d12  if not ((p11 == 5)) goto b7f1c
+  b7f10 d13  p1 = 8
+  b7f17 d10  goto b8321
+  b7f1f d10  goto b7cca
+  b7f2a d11  if not ((m84 == 0)) goto b7f47
+  b7f35 d12  call p-4.RequestDockPort(this, 0)
+  b7f3c d11  if not ((p-4.RequestDockPort(this, 0) < 0)) goto b7f47
+  b7f42 d12  goto b7f48
+  b7f48 d11  if not (1) goto b7fc9
+  b7f53 d12  call SA_SetShipDockPortNr(m3, -1)
+  b7f5c d11  if not (p7) goto b7fa5
+  b7f63 d12  m55 = 14
+  b7f6b d13  call GetSize()
+  b7f70 d14  let p5 = (-2 * p2)
+  b7f73 d15  let p4 = (SE_Random((2 * p2)) - p2)
+  b7f76 d16  let p3 = (SE_Random((2 * p2)) - p2)
+  b7f81 d12  call SA_EscortObject(m3, p10, p3, p4, p5, GetSize(), 15000)
+  b7f8c d12  if not ((p11 == 5)) goto b7f9f
+  b7f93 d13  p1 = 8
+  b7f9a d10  goto b8321
+  b7fa0 d11  goto b7fc3
+  b7fa9 d12  call 2004::__Idle(15000)
+  b7fae d12  p1 = 2004::__Idle(15000)
+  b7fb8 d11  if not ((p1 != 4)) goto b7fc3
+  b7fbe d10  goto b8321
+  b7fc4 d10  goto b7cca
+  b7fc9 d12  let p8 = SE_Random(10)
+  b7fd7 d12  call SA_FlyObjectBeforeContainer(m3, p10, m85, p8)
+  b7fe1 d12  if not ((p11 == 1)) goto b7ffe
+  b7fea d13  call SE_ObjectExists(p-4)
+  b7fef d12  if not (SE_ObjectExists(p-4)) goto b7ff9
+  b7ff5 d13  p0 = 1
+  b7ff9 d12  goto b8017
+  b8004 d12  if not ((p11 == 5)) goto b8017
+  b800b d13  p1 = 8
+  b8012 d10  goto b8321
+  b8018 d11  goto b81b1
+  b8022 d12  m45 = 655361
+  b8029 d12  m46 = p10
+  b8034 d12  call SA_SetSpeedLimit(m3, m93)
+  b803f d12  call SA_SetFlightMode(m3, 0)
+  b8053 d12  call SA_FlyObjectIntoContainer(m3, p10, m85, p8)
+  b805d d12  if not ((p11 == 1)) goto b8187
+  b8063 d13  m45 = 0
+  b806a d12  if not (p7) goto b8087
+  b806f d13  let p6 = p-4.GetDockBaySize()
+  b8076 d14  call p-4.GetNumOfLandedShips()
+  b807c d12  if not ((p6 <= p-4.GetNumOfLandedShips())) goto b8087
+  b8082 d13  goto b8088
+  b8088 d12  if not (1) goto b817a
+  b8092 d12  if not ((this != g9)) goto b810a
+  b8098 d13  p0 = 0
+  b80a3 d13  call SA_MoveObjectIntoContainer(m3, p10)
+  b80af d13  call 2004::SetShield(1000000)
+  b80ba d13  call m1.RemoveShip(this)
+  b80c5 d13  call p-4.AddShip(this)
+  b80ce d12  if not (m41) goto b80e5
+  b80da d12  if not ((m41 != g8)) goto b80e5
+  b80e0 d13  goto b80e6
+  b80e6 d12  if not (1) goto b80f3
+  b80ed d13  call SetRelationsFromNotoriety(1)
+  b80f7 d13  call 2004::__StartInHangar(p-4)
+  b8100 d10  goto b7cca
+  b810a d12  marker 6f
+  b810b d11  if (SA_FlyObjectIntoContainer(m3, p10, m85, p8)) goto b8168
+  b8111 d12  call 2004::StopCommand()
+  b8118 d12  call 2004::ReleaseFromSlot()
+  b8122 d12  call 150::StopFastForward()
+  b812d d12  call SA_SetSpeed(m3, 0)
+  b8138 d12  call SA_SetDesiredSpeed(m3, 0)
+  b8146 d12  call SA_SetGlide(m3, 0, 0, 0)
+  b8154 d12  call SA_SetRotSpeed(m3, 0, 0, 0)
+  b8161 d12  call 150::NotifyDockingAbort(m3)
+  b8167 d11  marker 70
+  b816e d12  call TI_Delay(100000)
+  b8175 d11  if (1) goto b8168
+  b817b d13  p1 = 2
+  b8182 d10  goto b8321
+  b818d d12  if not ((p11 == 5)) goto b81a0
+  b8194 d13  p1 = 8
+  b819b d10  goto b8321
+  b81a6 d12  if not ((p11 == 7)) goto b81b0
+  b81ac d13  p0 = 0
+  b81b1 d11  goto b831b
+  b81b7 d12  p0 = 0
+  b81bf d12  call p-4.GetPos()
+  b81c9 d13  if not (!(m84)) goto b81ef
+  b81d5 d14  call SE_DistanceAA(m0, p11)
+  b81de d15  call p-4.GetGSize()
+  b81e4 d13  if not ((SE_DistanceAA(m0, p11) > p-4.GetGSize())) goto b81ef
+  b81ea d14  goto b81f0
+  b81f0 d13  if not (1) goto b8241
+  b820c d14  call 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m93)
+  b8211 d14  p12 = 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m93)
+  b8215 d14  let p12 = 0
+  b821b d13  if not ((p12 == 11)) goto b8228
+  b8223 d10  goto b7cca
+  b822e d13  if not ((p12 != 10)) goto b8241
+  b8235 d14  p1 = 8
+  b823c d10  goto b8321
+  b8246 d13  if not ((m84 == 0)) goto b8263
+  b8251 d14  call p-4.RequestDockPort(this, 0)
+  b8258 d13  if not ((p-4.RequestDockPort(this, 0) < 0)) goto b8263
+  b825e d14  goto b8264
+  b8264 d13  if not (1) goto b82ca
+  b8270 d14  call SE_IsClass(p-4, 2004)
+  b8275 d13  if not (SE_IsClass(p-4, 2004)) goto b82a5
+  b827c d14  m55 = 14
+  b8297 d14  call 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m93)
+  b829c d14  p12 = 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m93)
+  b82a0 d13  goto b82c5
+  b82a9 d14  call 2004::__Idle(15000)
+  b82ae d14  p1 = 2004::__Idle(15000)
+  b82b8 d13  if not ((p1 != 4)) goto b82c5
+  b82c0 d10  goto b8321
+  b82c5 d13  goto b82ff
+  b82e1 d14  call 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m93)
+  b82e6 d14  p12 = 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m93)
+  b82f0 d13  if not ((p12 == 10)) goto b82ff
+  b82f6 d14  p9 = 1
+  b82fb d14  p1 = 2
+  b8305 d13  if not ((p12 == 6)) goto b8318
+  b830c d14  p1 = 8
+  b8313 d10  goto b8321
+  b831c d10  goto b7cca
+  b8322 d11  m45 = 0
+  b8327 d11  m55 = 0
+  b832c d11  m56 = 0
+  b8333 d10  if not (m3) goto b8344
+  b833e d11  call SA_SetShipDockPortNr(m3, -1)
+  b8344 d11  let p1 = 4
+  b8349 d10  if not ((p1 != 2)) goto b835a
+  b834f d11  call 2004::ReleaseFromSlot()
+  b8355 d10  goto b8485
+  b835d d10  if not (p-4) goto b8376
+  b8366 d11  call SE_ObjectExists(p-4)
+  b836b d10  if not (SE_ObjectExists(p-4)) goto b8376
+  b8371 d11  goto b8377
+  b8377 d10  if not (1) goto b8485
+  b8383 d11  call SE_IsClass(p-4, 2016)
+  b8388 d10  if not (SE_IsClass(p-4, 2016)) goto b839f
+  b8394 d10  if not ((m41 == g8)) goto b839f
+  b839a d11  goto b83a0
+  b83a0 d10  if not (1) goto b83b0
+  b83aa d11  call p-4.SetKnown(1)
+  b83b5 d10  if not ((this == g9)) goto b83e5
+  b83ba d10  marker 6f
+  b83bb d9   if (0) goto b83ce
+  b83c7 d10  call 150::LandPlayerShipAt(p-5)
+  b83cd d9   marker 70
+  b83d4 d10  call TI_Delay(100000)
+  b83db d9   if (1) goto b83ce
+  b83e0 d9   goto b8480
+  b83eb d11  call 2004::SetShield(100000000)
+  b83f6 d11  call m1.RemoveShip(this)
+  b8401 d11  call p-4.AddShip(this)
+  b840a d10  if not (m3) goto b8423
+  b8413 d11  call p-4.GetObjectID()
+  b8418 d10  if not (p-4.GetObjectID()) goto b8423
+  b841e d11  goto b8424
+  b8424 d10  if not (1) goto b8458
+  b842d d11  call p-4.GetObjectID()
+  b8436 d11  call SA_MoveObjectIntoContainer(m3, p-4.GetObjectID())
+  b844b d14  call p-4.GetObjectID()
+  b8452 d11  call SA_SetShipAtDockPort(p-4.GetObjectID(), m85, m3, 65536)
+  b845b d10  if not (m41) goto b8472
+  b8467 d10  if not ((m41 != g8)) goto b8472
+  b846d d11  goto b8473
+  b8473 d10  if not (1) goto b8480
+  b847a d11  call SetRelationsFromNotoriety(1)
+  b8481 d10  p0 = 2
+  b848a d10  if not ((p1 == 2)) goto b8499
+  b8493 d11  call 2004::Signal_Docked(p-4)
+  b849c d11  p0 = p1
+  b84a2 d1   return p0
+
+-- 2004::__StartInHangar entry b75c9, depth conflicts 1
+  b75c9 d0   frame 10
+  b75d5 d3   call SE_IsClass(p-4, 2033)
+  b75da d4   let p2 = SE_IsClass(p-4, 2033)
+  b75dd d3   if (p2) goto b7653
+  b75e6 d4   call p-4.GetSubType()
+  b75ef d5   call p-4.GetType()
+  b75f5 d4   call SA_GetTypeDockPortFlags(p-4.GetType(), p-4.GetSubType())
+  b7600 d3   if not ((SA_GetTypeDockPortFlags(p-4.GetType(), p-4.GetSubType()) & 2097152)) goto b7647
+  b760a d3   if ((m85 < 0)) goto b763b
+  b7616 d5   call p-4.GetSubType()
+  b761f d6   call p-4.GetType()
+  b7625 d4   call SA_GetTypeDockPortAnimFlags(p-4.GetType(), p-4.GetSubType(), m85)
+  b7630 d3   if ((SA_GetTypeDockPortAnimFlags(p-4.GetType(), p-4.GetSubType(), m85) & 1048576)) goto b763b
+  b7636 d4   goto b763c
+  b763c d3   if not (0) goto b7647
+  b7642 d4   goto b7648
+  b7648 d3   if (1) goto b7653
+  b764e d4   goto b7654
+  b7654 d5   let p3 = 0
+  b7657 d4   if not (p3) goto b7663
+  b765d d5   call 2004::ReleaseFromSlot()
+  b7664 d5   call 2004::IsDocked()
+  b766d d4   if not ((2004::IsDocked() != p-4)) goto b767b
+  b7674 d5   p0 = 6
+  b767a d1   return p0
+  b767f d4   if (!(p-4)) goto b7699
+  b7688 d5   call SE_ObjectExists(p-4)
+  b768e d4   if (!(SE_ObjectExists(p-4))) goto b7699
+  b7694 d5   goto b769a
+  b769a d4   if not (0) goto b76a8
+  b76a1 d5   p0 = 6
+  b76a7 d1   return p0
+  b76ad d4   if not ((this == g9)) goto b76bc
+  b76b3 d5   m55 = 0
+  b76b7 d4   goto b7700
+  b76bd d5   m55 = 1
+  b76c4 d5   m56 = p-4
+  b76cb d4   if not (p2) goto b76e4
+  b76d4 d5   call p-4.IsDocked()
+  b76d9 d4   if not (p-4.IsDocked()) goto b76e4
+  b76df d5   goto b76e5
+  b76e5 d4   if not (1) goto b7700
+  b76f5 d5   call TI_DelayRandom(120000, 60000)
+  b76fb d4   goto b7894
+  b7704 d5   call p-4.GetObjectID()
+  b7709 d5   p0 = p-4.GetObjectID()
+  b7711 d5   call p-4.GetSector()
+  b7716 d5   p1 = p-4.GetSector()
+  b771d d4   if not (m3) goto b788f
+  b7727 d5   call SA_SetFlightMode(m3, 0)
+  b7730 d4   if not (p3) goto b77dd
+  b773a d4   if not ((m84 == 0)) goto b77d8
+  b7749 d5   call p-4.RequestDockPort(this, 2097152)
+  b7750 d4   if not ((p-4.RequestDockPort(this, 2097152) < 0)) goto b7780
+  b775a d4   if not ((this == g9)) goto b776e
+  b7763 d5   call TI_Delay(500)
+  b7769 d4   goto b777b
+  b7775 d5   call TI_DelayRandom(15000, 1000)
+  b777b d4   goto b7894
+  b7785 d4   if not ((this == g9)) goto b77ac
+  b778d d4   if not (p0) goto b77a7
+  b7794 d6   call 2004::GetGSubType()
+  b77a1 d5   call SA_StartDockPortAnim(p0, m85, 2004::GetGSubType(), 2)
+  b77a7 d4   goto b77d8
+  b77af d4   if not (p0) goto b77c9
+  b77b6 d6   call 2004::GetGSubType()
+  b77c3 d5   call SA_StartDockPortAnim(p0, m85, 2004::GetGSubType(), 0)
+  b77cd d5   call TI_Delay(3000)
+  b77d3 d4   goto b7894
+  b77d8 d4   goto b77f3
+  b77e2 d4   if not ((m85 < 0)) goto b77f3
+  b77ed d5   call p-4.RequestDockPort(this, 0)
+  b77fd d5   call SA_StartInHangar(m3, p0, m85)
+  b7807 d5   if not ((p4 != 1)) goto b781d
+  b7812 d5   if not ((p4 != 6)) goto b781d
+  b7818 d6   goto b781e
+  b781e d5   if not (1) goto b7833
+  b7827 d6   call TI_Delay(1000)
+  b782e d4   goto b7894
+  b7836 d5   if not (m3) goto b7850
+  b783f d6   call SA_FindObject(m3)
+  b7845 d5   if not (!(SA_FindObject(m3))) goto b7850
+  b784b d6   goto b7851
+  b7851 d5   if (1) goto b786c
+  b785a d6   call p1.GetObjectID()
+  b7861 d5   if ((p1.GetObjectID() == 0)) goto b786c
+  b7867 d6   goto b786d
+  b786d d5   if (0) goto b7883
+  b7878 d5   if ((p4 == 6)) goto b7883
+  b787e d6   goto b7884
+  b7884 d5   if not (0) goto b788e
+  b788a d6   m3 = 0
+  b788f d4   goto b789a
+  b7895 d4   if (1) goto b7663
+  b789e d5   if not (m3) goto b78b7
+  b78a7 d6   call SA_FindObject(m3)
+  b78ac d5   if not (SA_FindObject(m3)) goto b78b7
+  b78b2 d6   goto b78b8
+  b78b8 d5   if not (1) goto b78db
+  b78c4 d6   call SA_GetPosRotAndDirection(m3, m0)
+  b78d0 d6   call SA_SetShipDockPortNr(m3, -1)
+  b78d6 d5   goto b793e
+  b78dc d6   m3 = 0
+  b78e4 d6   call p-4.GetPos()
+  b78ea d8   let p5 = p-4.GetPos()
+  b78f2 d7   m0[0] = p5[0]
+  b78fd d7   m0[1] = p5[1]
+  b7908 d7   m0[2] = p5[2]
+  b790f d7   m0[3] = 0
+  b7917 d7   m0[4] = 0
+  b791f d7   m0[5] = 0
+  b7927 d7   m0[6] = 0
+  b792f d7   m0[7] = 0
+  b793b d7   m0[8] = 65536
+  b7943 d6   call p-4.RemoveShip(this)
+  b794b d8   let p1 = 0
+  b794e d6   call p1.AddShip(this)
+  b7958 d6   call g8.GetAge()
+  b795e d6   call SetLaunchTime(g8.GetAge())
+  b7966 d6   call 2004::SetAttacker(0)
+  b796e d6   m93 = -1
+  b7977 d5   if not ((this == g9)) goto b798a
+  b797f d5   if not (p3) goto b798a
+  b7985 d6   goto b798b
+  b798b d5   if not (1) goto b799e
+  b7993 d5   if not (p2) goto b799e
+  b7999 d6   goto b799f
+  b799f d5   if not (1) goto b79da
+  b79a8 d6   call 605::StopAllMonitors()
+  b79b4 d8   call 605::GetMainMonitor()
+  b79b9 d6   call 605::GetMainMonitor().SetCockpitNumber(0)
+  b79c5 d8   call 605::GetMainMonitor()
+  b79ca d6   call 605::GetMainMonitor().SetTracking(0)
+  b79d4 d6   call 605::RestartAllMonitors()
+  b79de d6   call p-4.GetObjectID()
+  b79e3 d6   p0 = p-4.GetObjectID()
+  b79ea d5   if not (m3) goto b7a33
+  b79f2 d5   if (p3) goto b7a07
+  b79fc d5   if ((this != g9)) goto b7a07
+  b7a02 d6   goto b7a08
+  b7a08 d5   if (0) goto b7a27
+  b7a11 d6   call SA_GetFlags(m3)
+  b7a1c d5   if ((SA_GetFlags(m3) & 524288)) goto b7a27
+  b7a22 d6   goto b7a28
+  b7a28 d5   if not (0) goto b7a33
+  b7a2e d6   goto b7a34
+  b7a34 d5   if not (1) goto b7b0e
+  b7a40 d6   call SA_SetSpeedLimit(m3, m93)
+  b7a49 d5   if not (p3) goto b7a70
+  b7a55 d5   if not ((p-4 == g9)) goto b7a70
+  b7a5e d6   call SA_GetFlags2(m3)
+  b7a65 d7   op 54
+  b7a6a d7   call SA_SetFlags2(m3, 8)
+  b7a73 d5   if not (p3) goto b7a86
+  b7a7d d6   m45 = 327683
+  b7a81 d5   goto b7a8f
+  b7a8b d6   m45 = 589826
+  b7a8f d6   let p0 = 0
+  b7a92 d6   m46 = p0
+  b7aa0 d6   call SA_ClearObjectFromHangar(m3, p0, m85)
+  b7aaa d6   call SE_ObjectExists(p-4)
+  b7aaf d5   if not (SE_ObjectExists(p-4)) goto b7ac2
+  b7ab7 d5   if not (p3) goto b7ac2
+  b7abd d6   goto b7ac3
+  b7ac3 d5   if not (1) goto b7adc
+  b7acc d6   call p-4.GetObjectID()
+  b7ad1 d5   if not (p-4.GetObjectID()) goto b7adc
+  b7ad7 d6   goto b7add
+  b7add d5   if not (1) goto b7afd
+  b7ae4 d7   call 2004::GetGSubType()
+  b7af0 d9   call p-4.GetObjectID()
+  b7af7 d6   call SA_StartDockPortAnim(p-4.GetObjectID(), m85, 2004::GetGSubType(), 1)
+  b7afe d6   call 2004::ReleaseFromSlot()
+  b7b05 d6   p4 = 0
+  b7b0a d6   m45 = 0
+  b7b11 d5   if not (m3) goto b7b22
+  b7b1c d6   call SA_SetShipDockPortNr(m3, -1)
+  b7b27 d5   if ((this != g9)) goto b7b46
+  b7b30 d6   call SA_GetFlags(m3)
+  b7b3b d5   if ((SA_GetFlags(m3) & 524288)) goto b7b46
+  b7b41 d6   goto b7b47
+  b7b47 d5   if not (0) goto b7b8e
+  b7b4f d5   if not (m3) goto b7b68
+  b7b58 d6   call SA_CollisionObject(m3)
+  b7b5d d5   if not (SA_CollisionObject(m3)) goto b7b68
+  b7b63 d6   goto b7b69
+  b7b69 d5   if not (1) goto b7b8e
+  b7b70 d6   m55 = 12
+  b7b75 d6   m56 = 0
+  b7b7e d6   call SA_AvoidObjectCollision(m3, 0)
+  b7b85 d6   m55 = 0
+  b7b8a d6   m56 = 0
+  b7b91 d5   if not (m3) goto b7bac
+  b7b9a d6   call SA_GetFlags2(m3)
+  b7ba6 d6   call SA_SetFlags2(m3, (SA_GetFlags2(m3) & -9))
+  b7bad d6   m55 = 0
+  b7bb1 d6   let p4 = 1
+  b7bb4 d5   if not (p4) goto b7c17
+  b7bbd d6   call SE_ObjectExists(p-4)
+  b7bc2 d5   if not (SE_ObjectExists(p-4)) goto b7bd5
+  b7bca d5   if not (p3) goto b7bd5
+  b7bd0 d6   goto b7bd6
+  b7bd6 d5   if not (1) goto b7bef
+  b7bdf d6   call p-4.GetObjectID()
+  b7be4 d5   if not (p-4.GetObjectID()) goto b7bef
+  b7bea d6   goto b7bf0
+  b7bf0 d5   if not (1) goto b7c10
+  b7bf7 d7   call 2004::GetGSubType()
+  b7c03 d9   call p-4.GetObjectID()
+  b7c0a d6   call SA_StartDockPortAnim(p-4.GetObjectID(), m85, 2004::GetGSubType(), 1)
+  b7c11 d6   call 2004::ReleaseFromSlot()
+  b7c19 d6   p0 = 4
+  b7c1f d1   return p0
+
+-- 2004::SafeUndock not found
+
+-- 2004::CollisionWarn entry bdfd6, depth conflicts 0
+  bdfd6 d0   frame 6
+  bdfe0 d0   if not ((m41 == g8)) goto be000
+  bdfe9 d1   call SA_GetFlags(m3)
+  bdff5 d0   if not (!((SA_GetFlags(m3) & 524288))) goto be000
+  bdffb d1   goto be001
+  be001 d0   if not (1) goto be016
+  be00b d1   call 150::NotifyCollisionWarn(1)
+  be011 d0   goto be08c
+  be01f d0   if not ((m45 & 524288)) goto be026
+  be025 d1   return p0
+  be02f d0   if not ((m45 & 262144)) goto be081
+  be038 d1   call SA_GetCollisionObjects(m3)
+  be03e d3   let p0 = SA_GetCollisionObjects(m3)
+  be042 d3   call SE_ArraySize(p0)
+  be047 d4   let p2 = SE_ArraySize(p0)
+  be04a d3   if not (p2) goto be079
+  be054 d4   p2 = (p2 - 1)
+  be05f d3   if not ((p0[(p2 - 1)] != m46)) goto be074
+  be069 d4   call SA_StopObject(m3, 2)
+  be073 d1   return p0
+  be074 d3   goto be047
+  be07d d1   return p0
+  be086 d1   call SA_StopObject(m3, 2)
+  be08d d1   return p0
+
+-- 2004::__Idle entry b84a8, depth conflicts 0
+  b84a8 d0   frame 17
+  b84ac d1   call 2004::__StartIntoSpace()
+  b84b4 d1   call 2004::CheckSpeedLimit(0)
+  b84bd d2   call TI_GetAbsTime()
+  b84c4 d3   if not (1) goto b8793
+  b84c9 d4   let p1 = TI_GetAbsTime()
+  b84cd d5   call TI_GetAbsTime()
+  b84d3 d4   call TI_CmpTime(TI_GetAbsTime(), p1)
+  b84d8 d4   p2 = TI_CmpTime(TI_GetAbsTime(), p1)
+  b84dc d4   let p2 = 0
+  b84e3 d3   if not ((p2 >= p-4)) goto b84f3
+  b84ea d4   p0 = 4
+  b84ee d3   goto b8793
+  b84fa d4   p2 = (p-4 - p2)
+  b8500 d4   m55 = 8
+  b8505 d4   m56 = 0
+  b850a d4   call 2004::GetAttacker()
+  b8517 d3   if not ((m12 & 128)) goto b8532
+  b8523 d4   m12 = (m12 & -129)
+  b8529 d4   p0 = 7
+  b852d d3   goto b8793
+  b8535 d3   if not (m3) goto b85b9
+  b8541 d4   call SA_SetSpeedLimit(m3, m93)
+  b854c d4   call SA_SetFlightMode(m3, 1)
+  b8556 d4   call SA_CollisionObject(m3)
+  b855b d3   if not (SA_CollisionObject(m3)) goto b857b
+  b8562 d4   m55 = 12
+  b8567 d4   m56 = 0
+  b8570 d4   call SA_AvoidObjectCollision(m3, 0)
+  b8576 d3   goto b85b4
+  b8582 d4   call SA_SetShipRotAccel(m3, m87)
+  b8591 d3   if not ((p2 > 60000)) goto b85a0
+  b859b d4   goto b85a3
+  b85a7 d4   call SA_Idle(m3, 60000)
+  b85ae d4   call 2004::UpdatePosition()
+  b85b4 d3   goto b878e
+  b85bc d3   if not (m1) goto b85d5
+  b85c5 d4   call m1.HasUpdateFocus()
+  b85ca d3   if not (m1.HasUpdateFocus()) goto b85d5
+  b85d0 d4   goto b85d6
+  b85d6 d3   if not (1) goto b85ee
+  b85dc d4   call 2004::GetMaxSpeed()
+  b85e3 d3   if not ((2004::GetMaxSpeed() >= 3)) goto b85ee
+  b85e9 d4   goto b85ef
+  b85ef d3   if not (1) goto b8781
+  b85f5 d4   call 2004::GetMaxSpeed()
+  b8601 d4   if not ((m93 >= 0)) goto b8618
+  b8606 d5   let p3 = (2004::GetMaxSpeed() / 3)
+  b860d d4   if not ((p3 > m93)) goto b8618
+  b8613 d5   goto b8619
+  b8619 d4   if not (1) goto b8625
+  b8621 d5   p3 = m93
+  b8636 d9   call GetSector()
+  b863b d8   call GetSector().GetSize()
+  b8646 d9   let p4 = m0[0]
+  b8649 d10  let p7 = (GetSector().GetSize() + 2500000)
+  b864f d10  call SE_Random((p7 * 2))
+  b8659 d9   p4 = (p4 + (SE_Random((p7 * 2)) - p7))
+  b865d d9   let p5 = m0[1]
+  b8666 d10  call SE_Random((p7 * 2))
+  b8670 d9   p5 = (p5 + (SE_Random((p7 * 2)) - p7))
+  b8674 d9   let p6 = m0[2]
+  b867d d10  call SE_Random((p7 * 2))
+  b8687 d9   p6 = (p6 + (SE_Random((p7 * 2)) - p7))
+  b8692 d8   if not ((p4 > p7)) goto b86a3
+  b869a d9   p4 = p7
+  b869e d8   goto b86b8
+  b86ab d8   if not ((p4 < -(p7))) goto b86b8
+  b86b4 d9   p4 = -(p7)
+  b86c1 d8   if not ((p5 > (p7 / 2))) goto b86d4
+  b86cb d9   p5 = (p7 / 2)
+  b86cf d8   goto b86ed
+  b86de d8   if not ((p5 < (-(p7) / 2))) goto b86ed
+  b86e9 d9   p5 = (-(p7) / 2)
+  b86f4 d8   if not ((p6 > p7)) goto b8705
+  b86fc d9   p6 = p7
+  b8700 d8   goto b871a
+  b870d d8   if not ((p6 < -(p7))) goto b871a
+  b8716 d9   p6 = -(p7)
+  b8736 d9   call SE_Distance3((p4 - m0[0]), (p5 - m0[1]), (p6 - m0[2]))
+  b873b d10  let p8 = SE_Distance3((p4 - m0[0]), (p5 - m0[1]), (p6 - m0[2]))
+  b874a d10  p8 = (p8 - ((p3 * p2) / 1000))
+  b8753 d9   if not ((p8 < 0)) goto b875d
+  b8759 d10  p8 = 0
+  b8770 d10  call 2004::__galaxyFlightStep(p4, p5, p6, p8, -1, p3)
+  b8775 d10  p0 = 2004::__galaxyFlightStep(p4, p5, p6, p8, -1, p3)
+  b877c d3   goto b878e
+  b8788 d4   call TI_WaitForInterrupt((p2 + 1), this)
+  b878e d3   goto b84c3
+  b8794 d4   call 2004::UpdatePosition()
+  b879b d4   m55 = 0
+  b879f d4   let p0 = 4
+  b87a2 d4   p0 = p0
+  b87a8 d1   return p0
+
+-- 2004::GetFormationSize entry ab269, depth conflicts 0
+  ab269 d0   frame 7
+  ab26f d0   if not (m16) goto ab2ea
+  ab279 d2   call SE_ArraySize(m16)
+  ab280 d4   p2 = 0
+  ab284 d4   let p2 = 0
+  ab287 d5   let p1 = SE_ArraySize(m16)
+  ab28b d3   if not ((p2 < p1)) goto ab2ce
+  ab290 d3   goto ab2a3
+  ab29a d4   p2 = (p2 + 1)
+  ab29e d3   goto ab284
+  ab2ab d6   let p3 = m16[p2]
+  ab2ae d5   call p3.GetFormationDistToLeader()
+  ab2b3 d6   let p0 = 0
+  ab2b6 d7   let p4 = p3.GetFormationDistToLeader()
+  ab2ba d5   if not ((p0 < p4)) goto ab2c6
+  ab2c2 d6   p0 = p4
+  ab2c9 d3   goto ab295
+  ab2d2 d5   call GetFormationDist()
+  ab2d8 d3   if not ((p0 >= GetFormationDist())) goto ab2e7
+  ab2e0 d4   p0 = p0
+  ab2e6 d1   return p0
+  ab2eb d1   call GetFormationDist()
+  ab2f0 d1   return p0
+
+== addon/07.cat L/x3story.obj (Mayhem 4): CODE 1908859 B
+
+-- 2004::__LandInHangar entry cf94e, depth conflicts 3
+  cf94e d0   frame 21
+  cf953 d2   call IsAbleToLand()
+  cf959 d1   if not (!(IsAbleToLand())) goto cf965
+  cf960 d2   p0 = 6
+  cf964 d1   return p0
+  cf968 d1   if not (p-4) goto cf983
+  cf972 d2   call p-4.IsDockingPossibleOf(this)
+  cf978 d1   if not (!(p-4.IsDockingPossibleOf(this))) goto cf983
+  cf97e d2   goto cf984
+  cf984 d1   if not (1) goto cf990
+  cf98b d2   p0 = 6
+  cf98f d1   return p0
+  cf992 d2   call 2004::CheckSpeedLimit(0)
+  cf99b d3   call 2004::ReleaseFromSlot()
+  cf9a2 d3   call 2004::GetFormationSize()
+  cf9ab d4   call p-4.GetSize()
+  cf9b2 d5   let p2 = (2004::GetFormationSize() + p-4.GetSize())
+  cf9b7 d4   call SE_Random((2 * p2))
+  cf9c6 d5   call SE_Random((2 * p2))
+  cf9d9 d7   call p-4.GetDockBaySize()
+  cf9e5 d8   call SE_IsClass(p-4, 2033)
+  cf9ed d9   call SE_Random(10)
+  cf9f4 d10  if not (1) goto d0049
+  cf9fb d12  m56 = 2
+  cfa02 d12  m57 = p-4
+  cfa07 d12  m47 = 0
+  cfa0c d12  call 2004::GetAttacker()
+  cfa19 d11  if not ((m14 & 128)) goto cfa35
+  cfa25 d12  m14 = (m14 & -129)
+  cfa2b d12  p1 = 7
+  cfa30 d10  goto d0049
+  cfa39 d12  call SE_ObjectExists(p-4)
+  cfa3f d11  if not (!(SE_ObjectExists(p-4))) goto cfa50
+  cfa46 d12  p1 = 8
+  cfa4b d10  goto d0049
+  cfa57 d13  call p-4.GetEnvironment()
+  cfa5d d11  if ((m1 != p-4.GetEnvironment())) goto cfa7a
+  cfa69 d12  call SE_IsClass(m1, 2001)
+  cfa6f d11  if (!(SE_IsClass(m1, 2001))) goto cfa7a
+  cfa75 d12  goto cfa7b
+  cfa7b d11  if not (0) goto cfa8c
+  cfa82 d12  p1 = 8
+  cfa87 d10  goto d0049
+  cfa91 d12  call p-4.IsDockingAllowedForShip(this)
+  cfa97 d11  if not (!(p-4.IsDockingAllowedForShip(this))) goto cfaa8
+  cfa9e d12  p1 = 8
+  cfaa3 d10  goto d0049
+  cfaa8 d12  let p9 = 0
+  cfaab d11  if not (p9) goto cfab6
+  cfab1 d10  goto d0049
+  cfaba d12  call p-4.GetObjectID()
+  cfabf d12  p10 = p-4.GetObjectID()
+  cfac6 d11  if not (m3) goto cfede
+  cfacb d12  let p10 = 0
+  cfacf d12  call SA_FindObject(p10)
+  cfad5 d11  if not (!(SA_FindObject(p10))) goto cfaeb
+  cfadc d12  p1 = 8
+  cfae1 d10  goto d0049
+  cfaf2 d12  call SA_SetShipRotAccel(m3, m90)
+  cfaf8 d12  let p0 = 0
+  cfafc d11  if not (!(p0)) goto cfb13
+  cfb08 d11  if not ((m87 == p-4)) goto cfb13
+  cfb0e d12  goto cfb14
+  cfb14 d11  if not (1) goto cfb29
+  cfb1e d11  if not ((m88 >= 0)) goto cfb29
+  cfb24 d12  goto cfb2a
+  cfb2a d11  if not (1) goto cfb48
+  cfb39 d12  call SA_IsObjectBeforeContainer(m3, p10, m88)
+  cfb3e d11  if not (SA_IsObjectBeforeContainer(m3, p10, m88)) goto cfb48
+  cfb44 d12  p0 = 1
+  cfb4c d11  if not (!(p0)) goto cfd46
+  cfb56 d12  call SA_SetFlightMode(m3, 1)
+  cfb63 d12  call SA_SetSpeedLimit(m3, m96)
+  cfb70 d12  call SA_SetShipDockPortNr(m3, m88)
+  cfb7d d12  call SA_SetDestination(m3, p10)
+  cfb87 d12  call SA_CollisionObject(m3)
+  cfb8c d11  if not (SA_CollisionObject(m3)) goto cfbad
+  cfb93 d12  m56 = 12
+  cfb98 d12  m57 = 0
+  cfba1 d12  call SA_AvoidObjectCollision(m3, 0)
+  cfba8 d10  goto cf9f3
+  cfbb4 d12  call SA_Distance(m3, p10)
+  cfbbf d14  call SA_GetTotalSize(p10)
+  cfbc6 d11  if not ((SA_Distance(m3, p10) > (5 * SA_GetTotalSize(p10)))) goto cfc4e
+  cfbcc d13  let p7 = SE_IsClass(p-4, 2033)
+  cfbcf d12  if not (p7) goto cfbf7
+  cfbdb d15  call SA_GetTotalSize(p10)
+  cfbe9 d13  call SA_FollowObject(m3, p10, (4 * SA_GetTotalSize(p10)), 0)
+  cfbee d13  p11 = SA_FollowObject(m3, p10, (4 * SA_GetTotalSize(p10)), 0)
+  cfbf2 d12  goto cfc2c
+  cfbfd d14  call SA_GetTotalSize(p10)
+  cfc07 d14  call SA_GetPosZ(p10)
+  cfc10 d15  call SA_GetPosY(p10)
+  cfc19 d16  call SA_GetPosX(p10)
+  cfc23 d13  call SA_MovePos(m3, SA_GetPosX(p10), SA_GetPosY(p10), SA_GetPosZ(p10), (4 * SA_GetTotalSize(p10)))
+  cfc28 d13  p11 = SA_MovePos(m3, SA_GetPosX(p10), SA_GetPosY(p10), SA_GetPosZ(p10), (4 * SA_GetTotalSize(p10)))
+  cfc2c d13  let p11 = 0
+  cfc32 d12  if not ((p11 == 5)) goto cfc45
+  cfc39 d13  p1 = 8
+  cfc40 d10  goto d0049
+  cfc48 d10  goto cf9f3
+  cfc53 d11  if not ((m87 == 0)) goto cfc70
+  cfc5e d12  call p-4.RequestDockPort(this, 0)
+  cfc65 d11  if not ((p-4.RequestDockPort(this, 0) < 0)) goto cfc70
+  cfc6b d12  goto cfc71
+  cfc71 d11  if not (1) goto cfcf2
+  cfc7c d12  call SA_SetShipDockPortNr(m3, -1)
+  cfc85 d11  if not (p7) goto cfcce
+  cfc8c d12  m56 = 14
+  cfc94 d13  call GetSize()
+  cfc99 d14  let p5 = (-2 * p2)
+  cfc9c d15  let p4 = (SE_Random((2 * p2)) - p2)
+  cfc9f d16  let p3 = (SE_Random((2 * p2)) - p2)
+  cfcaa d12  call SA_EscortObject(m3, p10, p3, p4, p5, GetSize(), 15000)
+  cfcb5 d12  if not ((p11 == 5)) goto cfcc8
+  cfcbc d13  p1 = 8
+  cfcc3 d10  goto d0049
+  cfcc9 d11  goto cfcec
+  cfcd2 d12  call 2004::__Idle(15000)
+  cfcd7 d12  p1 = 2004::__Idle(15000)
+  cfce1 d11  if not ((p1 != 4)) goto cfcec
+  cfce7 d10  goto d0049
+  cfced d10  goto cf9f3
+  cfcf2 d12  let p8 = SE_Random(10)
+  cfd00 d12  call SA_FlyObjectBeforeContainer(m3, p10, m88, p8)
+  cfd0a d12  if not ((p11 == 1)) goto cfd27
+  cfd13 d13  call SE_ObjectExists(p-4)
+  cfd18 d12  if not (SE_ObjectExists(p-4)) goto cfd22
+  cfd1e d13  p0 = 1
+  cfd22 d12  goto cfd40
+  cfd2d d12  if not ((p11 == 5)) goto cfd40
+  cfd34 d13  p1 = 8
+  cfd3b d10  goto d0049
+  cfd41 d11  goto cfed9
+  cfd4b d12  m47 = 655361
+  cfd52 d12  m48 = p10
+  cfd5d d12  call SA_SetSpeedLimit(m3, m96)
+  cfd68 d12  call SA_SetFlightMode(m3, 0)
+  cfd7c d12  call SA_FlyObjectIntoContainer(m3, p10, m88, p8)
+  cfd86 d12  if not ((p11 == 1)) goto cfeaf
+  cfd8c d13  m47 = 0
+  cfd93 d12  if not (p7) goto cfdb0
+  cfd98 d13  let p6 = p-4.GetDockBaySize()
+  cfd9f d14  call p-4.GetNumOfLandedShips()
+  cfda5 d12  if not ((p6 <= p-4.GetNumOfLandedShips())) goto cfdb0
+  cfdab d13  goto cfdb1
+  cfdb1 d12  if not (1) goto cfea2
+  cfdbb d12  if not ((this != g10)) goto cfe32
+  cfdc1 d13  p0 = 0
+  cfdcc d13  call SA_MoveObjectIntoContainer(m3, p10)
+  cfdd7 d13  call m1.RemoveShip(this)
+  cfde2 d13  call p-4.AddShip(this)
+  cfdeb d12  if not (m43) goto cfe02
+  cfdf7 d12  if not ((m43 != g9)) goto cfe02
+  cfdfd d13  goto cfe03
+  cfe03 d12  if not (1) goto cfe10
+  cfe0a d13  call SetRelationsFromNotoriety(1)
+  cfe14 d13  call 2004::__StartInHangar(p-4)
+  cfe1f d13  call 304::Add(this)
+  cfe28 d10  goto cf9f3
+  cfe32 d12  marker 6f
+  cfe33 d11  if (SA_FlyObjectIntoContainer(m3, p10, m88, p8)) goto cfe90
+  cfe39 d12  call 2004::StopCommand()
+  cfe40 d12  call 2004::ReleaseFromSlot()
+  cfe4a d12  call 150::StopFastForward()
+  cfe55 d12  call SA_SetSpeed(m3, 0)
+  cfe60 d12  call SA_SetDesiredSpeed(m3, 0)
+  cfe6e d12  call SA_SetGlide(m3, 0, 0, 0)
+  cfe7c d12  call SA_SetRotSpeed(m3, 0, 0, 0)
+  cfe89 d12  call 150::NotifyDockingAbort(m3)
+  cfe8f d11  marker 70
+  cfe96 d12  call TI_Delay(100000)
+  cfe9d d11  if (1) goto cfe90
+  cfea3 d13  p1 = 2
+  cfeaa d10  goto d0049
+  cfeb5 d12  if not ((p11 == 5)) goto cfec8
+  cfebc d13  p1 = 8
+  cfec3 d10  goto d0049
+  cfece d12  if not ((p11 == 7)) goto cfed8
+  cfed4 d13  p0 = 0
+  cfed9 d11  goto d0043
+  cfedf d12  p0 = 0
+  cfee7 d12  call p-4.GetPos()
+  cfef1 d13  if not (!(m87)) goto cff17
+  cfefd d14  call SE_DistanceAA(m0, p11)
+  cff06 d15  call p-4.GetGSize()
+  cff0c d13  if not ((SE_DistanceAA(m0, p11) > p-4.GetGSize())) goto cff17
+  cff12 d14  goto cff18
+  cff18 d13  if not (1) goto cff69
+  cff34 d14  call 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m96)
+  cff39 d14  p12 = 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m96)
+  cff3d d14  let p12 = 0
+  cff43 d13  if not ((p12 == 11)) goto cff50
+  cff4b d10  goto cf9f3
+  cff56 d13  if not ((p12 != 10)) goto cff69
+  cff5d d14  p1 = 8
+  cff64 d10  goto d0049
+  cff6e d13  if not ((m87 == 0)) goto cff8b
+  cff79 d14  call p-4.RequestDockPort(this, 0)
+  cff80 d13  if not ((p-4.RequestDockPort(this, 0) < 0)) goto cff8b
+  cff86 d14  goto cff8c
+  cff8c d13  if not (1) goto cfff2
+  cff98 d14  call SE_IsClass(p-4, 2004)
+  cff9d d13  if not (SE_IsClass(p-4, 2004)) goto cffcd
+  cffa4 d14  m56 = 14
+  cffbf d14  call 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m96)
+  cffc4 d14  p12 = 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m96)
+  cffc8 d13  goto cffed
+  cffd1 d14  call 2004::__Idle(15000)
+  cffd6 d14  p1 = 2004::__Idle(15000)
+  cffe0 d13  if not ((p1 != 4)) goto cffed
+  cffe8 d10  goto d0049
+  cffed d13  goto d0027
+  d0009 d14  call 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m96)
+  d000e d14  p12 = 2004::__galaxyFlightStep(p11[0], p11[1], p11[2], 0, -1, m96)
+  d0018 d13  if not ((p12 == 10)) goto d0027
+  d001e d14  p9 = 1
+  d0023 d14  p1 = 2
+  d002d d13  if not ((p12 == 6)) goto d0040
+  d0034 d14  p1 = 8
+  d003b d10  goto d0049
+  d0044 d10  goto cf9f3
+  d004a d11  m47 = 0
+  d004f d11  m56 = 0
+  d0054 d11  m57 = 0
+  d005b d10  if not (m3) goto d006c
+  d0066 d11  call SA_SetShipDockPortNr(m3, -1)
+  d006c d11  let p1 = 4
+  d0071 d10  if not ((p1 != 2)) goto d0082
+  d0077 d11  call 2004::ReleaseFromSlot()
+  d007d d10  goto d01ac
+  d0085 d10  if not (p-4) goto d009e
+  d008e d11  call SE_ObjectExists(p-4)
+  d0093 d10  if not (SE_ObjectExists(p-4)) goto d009e
+  d0099 d11  goto d009f
+  d009f d10  if not (1) goto d01ac
+  d00ab d11  call SE_IsClass(p-4, 2016)
+  d00b0 d10  if not (SE_IsClass(p-4, 2016)) goto d00c7
+  d00bc d10  if not ((m43 == g9)) goto d00c7
+  d00c2 d11  goto d00c8
+  d00c8 d10  if not (1) goto d00d8
+  d00d2 d11  call p-4.SetKnown(1)
+  d00dd d10  if not ((this == g10)) goto d010d
+  d00e2 d10  marker 6f
+  d00e3 d9   if (0) goto d00f6
+  d00ef d10  call 150::LandPlayerShipAt(p-5)
+  d00f5 d9   marker 70
+  d00fc d10  call TI_Delay(100000)
+  d0103 d9   if (1) goto d00f6
+  d0108 d9   goto d01a7
+  d0112 d11  call m1.RemoveShip(this)
+  d011d d11  call p-4.AddShip(this)
+  d0126 d10  if not (m3) goto d013f
+  d012f d11  call p-4.GetObjectID()
+  d0134 d10  if not (p-4.GetObjectID()) goto d013f
+  d013a d11  goto d0140
+  d0140 d10  if not (1) goto d0174
+  d0149 d11  call p-4.GetObjectID()
+  d0152 d11  call SA_MoveObjectIntoContainer(m3, p-4.GetObjectID())
+  d0167 d14  call p-4.GetObjectID()
+  d016e d11  call SA_SetShipAtDockPort(p-4.GetObjectID(), m88, m3, 65536)
+  d0177 d10  if not (m43) goto d018e
+  d0183 d10  if not ((m43 != g9)) goto d018e
+  d0189 d11  goto d018f
+  d018f d10  if not (1) goto d019c
+  d0196 d11  call SetRelationsFromNotoriety(1)
+  d01a1 d11  call 304::Add(this)
+  d01a8 d10  p0 = 2
+  d01b1 d10  if not ((p1 == 2)) goto d01c0
+  d01ba d11  call 2004::Signal_Docked(p-4)
+  d01c3 d11  p0 = p1
+  d01c9 d1   return p0
+
+-- 2004::__StartInHangar entry cf2eb, depth conflicts 1
+  cf2eb d0   frame 10
+  cf2f7 d3   call SE_IsClass(p-4, 2033)
+  cf2fc d4   let p2 = SE_IsClass(p-4, 2033)
+  cf2ff d3   if (p2) goto cf375
+  cf308 d4   call p-4.GetSubType()
+  cf311 d5   call p-4.GetType()
+  cf317 d4   call SA_GetTypeDockPortFlags(p-4.GetType(), p-4.GetSubType())
+  cf322 d3   if not ((SA_GetTypeDockPortFlags(p-4.GetType(), p-4.GetSubType()) & 2097152)) goto cf369
+  cf32c d3   if ((m88 < 0)) goto cf35d
+  cf338 d5   call p-4.GetSubType()
+  cf341 d6   call p-4.GetType()
+  cf347 d4   call SA_GetTypeDockPortAnimFlags(p-4.GetType(), p-4.GetSubType(), m88)
+  cf352 d3   if ((SA_GetTypeDockPortAnimFlags(p-4.GetType(), p-4.GetSubType(), m88) & 1048576)) goto cf35d
+  cf358 d4   goto cf35e
+  cf35e d3   if not (0) goto cf369
+  cf364 d4   goto cf36a
+  cf36a d3   if (1) goto cf375
+  cf370 d4   goto cf376
+  cf376 d5   let p3 = 0
+  cf379 d4   if not (p3) goto cf385
+  cf37f d5   call 2004::ReleaseFromSlot()
+  cf386 d5   call 2004::IsDocked()
+  cf38f d4   if not ((2004::IsDocked() != p-4)) goto cf39d
+  cf396 d5   p0 = 6
+  cf39c d1   return p0
+  cf3a1 d4   if (!(p-4)) goto cf3bb
+  cf3aa d5   call SE_ObjectExists(p-4)
+  cf3b0 d4   if (!(SE_ObjectExists(p-4))) goto cf3bb
+  cf3b6 d5   goto cf3bc
+  cf3bc d4   if not (0) goto cf3ca
+  cf3c3 d5   p0 = 6
+  cf3c9 d1   return p0
+  cf3cf d4   if not ((this == g10)) goto cf3de
+  cf3d5 d5   m56 = 0
+  cf3d9 d4   goto cf422
+  cf3df d5   m56 = 1
+  cf3e6 d5   m57 = p-4
+  cf3ed d4   if not (p2) goto cf406
+  cf3f6 d5   call p-4.IsDocked()
+  cf3fb d4   if not (p-4.IsDocked()) goto cf406
+  cf401 d5   goto cf407
+  cf407 d4   if not (1) goto cf422
+  cf417 d5   call TI_DelayRandom(120000, 60000)
+  cf41d d4   goto cf5b6
+  cf426 d5   call p-4.GetObjectID()
+  cf42b d5   p0 = p-4.GetObjectID()
+  cf433 d5   call p-4.GetSector()
+  cf438 d5   p1 = p-4.GetSector()
+  cf43f d4   if not (m3) goto cf5b1
+  cf449 d5   call SA_SetFlightMode(m3, 0)
+  cf452 d4   if not (p3) goto cf4ff
+  cf45c d4   if not ((m87 == 0)) goto cf4fa
+  cf46b d5   call p-4.RequestDockPort(this, 2097152)
+  cf472 d4   if not ((p-4.RequestDockPort(this, 2097152) < 0)) goto cf4a2
+  cf47c d4   if not ((this == g10)) goto cf490
+  cf485 d5   call TI_Delay(500)
+  cf48b d4   goto cf49d
+  cf497 d5   call TI_DelayRandom(15000, 1000)
+  cf49d d4   goto cf5b6
+  cf4a7 d4   if not ((this == g10)) goto cf4ce
+  cf4af d4   if not (p0) goto cf4c9
+  cf4b6 d6   call 2004::GetGSubType()
+  cf4c3 d5   call SA_StartDockPortAnim(p0, m88, 2004::GetGSubType(), 2)
+  cf4c9 d4   goto cf4fa
+  cf4d1 d4   if not (p0) goto cf4eb
+  cf4d8 d6   call 2004::GetGSubType()
+  cf4e5 d5   call SA_StartDockPortAnim(p0, m88, 2004::GetGSubType(), 0)
+  cf4ef d5   call TI_Delay(3000)
+  cf4f5 d4   goto cf5b6
+  cf4fa d4   goto cf515
+  cf504 d4   if not ((m88 < 0)) goto cf515
+  cf50f d5   call p-4.RequestDockPort(this, 0)
+  cf51f d5   call SA_StartInHangar(m3, p0, m88)
+  cf529 d5   if not ((p4 != 1)) goto cf53f
+  cf534 d5   if not ((p4 != 6)) goto cf53f
+  cf53a d6   goto cf540
+  cf540 d5   if not (1) goto cf555
+  cf549 d6   call TI_Delay(1000)
+  cf550 d4   goto cf5b6
+  cf558 d5   if not (m3) goto cf572
+  cf561 d6   call SA_FindObject(m3)
+  cf567 d5   if not (!(SA_FindObject(m3))) goto cf572
+  cf56d d6   goto cf573
+  cf573 d5   if (1) goto cf58e
+  cf57c d6   call p1.GetObjectID()
+  cf583 d5   if ((p1.GetObjectID() == 0)) goto cf58e
+  cf589 d6   goto cf58f
+  cf58f d5   if (0) goto cf5a5
+  cf59a d5   if ((p4 == 6)) goto cf5a5
+  cf5a0 d6   goto cf5a6
+  cf5a6 d5   if not (0) goto cf5b0
+  cf5ac d6   m3 = 0
+  cf5b1 d4   goto cf5bc
+  cf5b7 d4   if (1) goto cf385
+  cf5c0 d5   if not (m3) goto cf5d9
+  cf5c9 d6   call SA_FindObject(m3)
+  cf5ce d5   if not (SA_FindObject(m3)) goto cf5d9
+  cf5d4 d6   goto cf5da
+  cf5da d5   if not (1) goto cf5fd
+  cf5e6 d6   call SA_GetPosRotAndDirection(m3, m0)
+  cf5f2 d6   call SA_SetShipDockPortNr(m3, -1)
+  cf5f8 d5   goto cf660
+  cf5fe d6   m3 = 0
+  cf606 d6   call p-4.GetPos()
+  cf60c d8   let p5 = p-4.GetPos()
+  cf614 d7   m0[0] = p5[0]
+  cf61f d7   m0[1] = p5[1]
+  cf62a d7   m0[2] = p5[2]
+  cf631 d7   m0[3] = 0
+  cf639 d7   m0[4] = 0
+  cf641 d7   m0[5] = 0
+  cf649 d7   m0[6] = 0
+  cf651 d7   m0[7] = 0
+  cf65d d7   m0[8] = 65536
+  cf661 d6   call 2004::SafeUndock()
+  cf66c d6   call p-4.RemoveShip(this)
+  cf674 d8   let p1 = 0
+  cf677 d6   call p1.AddShip(this)
+  cf681 d6   call g9.GetAge()
+  cf687 d6   call SetLaunchTime(g9.GetAge())
+  cf68f d6   call 2004::SetAttacker(0)
+  cf697 d6   m96 = -1
+  cf6a0 d5   if not ((this == g10)) goto cf6b3
+  cf6a8 d5   if not (p3) goto cf6b3
+  cf6ae d6   goto cf6b4
+  cf6b4 d5   if not (1) goto cf6c7
+  cf6bc d5   if not (p2) goto cf6c7
+  cf6c2 d6   goto cf6c8
+  cf6c8 d5   if not (1) goto cf703
+  cf6d1 d6   call 605::StopAllMonitors()
+  cf6dd d8   call 605::GetMainMonitor()
+  cf6e2 d6   call 605::GetMainMonitor().SetCockpitNumber(0)
+  cf6ee d8   call 605::GetMainMonitor()
+  cf6f3 d6   call 605::GetMainMonitor().SetTracking(0)
+  cf6fd d6   call 605::RestartAllMonitors()
+  cf707 d6   call p-4.GetObjectID()
+  cf70c d6   p0 = p-4.GetObjectID()
+  cf713 d5   if not (m3) goto cf75c
+  cf71b d5   if (p3) goto cf730
+  cf725 d5   if ((this != g10)) goto cf730
+  cf72b d6   goto cf731
+  cf731 d5   if (0) goto cf750
+  cf73a d6   call SA_GetFlags(m3)
+  cf745 d5   if ((SA_GetFlags(m3) & 524288)) goto cf750
+  cf74b d6   goto cf751
+  cf751 d5   if not (0) goto cf75c
+  cf757 d6   goto cf75d
+  cf75d d5   if not (1) goto cf837
+  cf769 d6   call SA_SetSpeedLimit(m3, m96)
+  cf772 d5   if not (p3) goto cf799
+  cf77e d5   if not ((p-4 == g10)) goto cf799
+  cf787 d6   call SA_GetFlags2(m3)
+  cf78e d7   op 54
+  cf793 d7   call SA_SetFlags2(m3, 8)
+  cf79c d5   if not (p3) goto cf7af
+  cf7a6 d6   m47 = 327683
+  cf7aa d5   goto cf7b8
+  cf7b4 d6   m47 = 589826
+  cf7b8 d6   let p0 = 0
+  cf7bb d6   m48 = p0
+  cf7c9 d6   call SA_ClearObjectFromHangar(m3, p0, m88)
+  cf7d3 d6   call SE_ObjectExists(p-4)
+  cf7d8 d5   if not (SE_ObjectExists(p-4)) goto cf7eb
+  cf7e0 d5   if not (p3) goto cf7eb
+  cf7e6 d6   goto cf7ec
+  cf7ec d5   if not (1) goto cf805
+  cf7f5 d6   call p-4.GetObjectID()
+  cf7fa d5   if not (p-4.GetObjectID()) goto cf805
+  cf800 d6   goto cf806
+  cf806 d5   if not (1) goto cf826
+  cf80d d7   call 2004::GetGSubType()
+  cf819 d9   call p-4.GetObjectID()
+  cf820 d6   call SA_StartDockPortAnim(p-4.GetObjectID(), m88, 2004::GetGSubType(), 1)
+  cf827 d6   call 2004::ReleaseFromSlot()
+  cf82e d6   p4 = 0
+  cf833 d6   m47 = 0
+  cf83a d5   if not (m3) goto cf84b
+  cf845 d6   call SA_SetShipDockPortNr(m3, -1)
+  cf850 d5   if ((this != g10)) goto cf86f
+  cf859 d6   call SA_GetFlags(m3)
+  cf864 d5   if ((SA_GetFlags(m3) & 524288)) goto cf86f
+  cf86a d6   goto cf870
+  cf870 d5   if not (0) goto cf8b7
+  cf878 d5   if not (m3) goto cf891
+  cf881 d6   call SA_CollisionObject(m3)
+  cf886 d5   if not (SA_CollisionObject(m3)) goto cf891
+  cf88c d6   goto cf892
+  cf892 d5   if not (1) goto cf8b7
+  cf899 d6   m56 = 12
+  cf89e d6   m57 = 0
+  cf8a7 d6   call SA_AvoidObjectCollision(m3, 0)
+  cf8ae d6   m56 = 0
+  cf8b3 d6   m57 = 0
+  cf8ba d5   if not (m3) goto cf8d5
+  cf8c3 d6   call SA_GetFlags2(m3)
+  cf8cf d6   call SA_SetFlags2(m3, (SA_GetFlags2(m3) & -9))
+  cf8d6 d6   m56 = 0
+  cf8da d6   let p4 = 1
+  cf8dd d5   if not (p4) goto cf940
+  cf8e6 d6   call SE_ObjectExists(p-4)
+  cf8eb d5   if not (SE_ObjectExists(p-4)) goto cf8fe
+  cf8f3 d5   if not (p3) goto cf8fe
+  cf8f9 d6   goto cf8ff
+  cf8ff d5   if not (1) goto cf918
+  cf908 d6   call p-4.GetObjectID()
+  cf90d d5   if not (p-4.GetObjectID()) goto cf918
+  cf913 d6   goto cf919
+  cf919 d5   if not (1) goto cf939
+  cf920 d7   call 2004::GetGSubType()
+  cf92c d9   call p-4.GetObjectID()
+  cf933 d6   call SA_StartDockPortAnim(p-4.GetObjectID(), m88, 2004::GetGSubType(), 1)
+  cf93a d6   call 2004::ReleaseFromSlot()
+  cf942 d6   p0 = 4
+  cf948 d1   return p0
+
+-- 2004::SafeUndock entry cf240, depth conflicts 1
+  cf240 d0   frame 6
+  cf246 d3   call TI_GetAbsTime()
+  cf24b d3   p0 = TI_GetAbsTime()
+  cf250 d3   call 1000::GetObjectID()
+  cf255 d4   let p2 = 1000::GetObjectID()
+  cf258 d3   if not (p2) goto cf2e6
+  cf25d d3   marker 6f
+  cf25e d2   if (1000::GetObjectID()) goto cf2e6
+  cf263 d3   let p1 = 0
+  cf267 d3   call SA_GetFlags2(p1)
+  cf271 d4   op 54
+  cf276 d4   call SA_SetFlags2(p2, 131072)
+  cf27d d3   if not (1) goto cf2c0
+  cf286 d4   call TI_Delay(3000)
+  cf28e d4   call SE_ObjectExists(this)
+  cf294 d3   if not (!(SE_ObjectExists(this))) goto cf29e
+  cf299 d3   goto cf2c0
+  cf29e d4   let p0 = 0
+  cf2a2 d5   call TI_GetAbsTime()
+  cf2a8 d4   call TI_CmpTime(TI_GetAbsTime(), p0)
+  cf2b1 d3   if not ((TI_CmpTime(TI_GetAbsTime(), p0) > 2000)) goto cf2bb
+  cf2b6 d3   goto cf2c0
+  cf2bb d3   goto cf27c
+  cf2c2 d4   call SE_ObjectExists(this)
+  cf2c7 d3   if not (SE_ObjectExists(this)) goto cf2e5
+  cf2d0 d4   call SA_GetFlags2(p2)
+  cf2df d4   call SA_SetFlags2(p2, (SA_GetFlags2(p2) & -131073))
+  cf2e5 d3   marker 70
+  cf2ea d1   return p0
+
+-- 2004::CollisionWarn entry d67f6, depth conflicts 0
+  d67f6 d0   frame 6
+  d6800 d0   if not ((m43 == g9)) goto d6820
+  d6809 d1   call SA_GetFlags(m3)
+  d6815 d0   if not (!((SA_GetFlags(m3) & 524288))) goto d6820
+  d681b d1   goto d6821
+  d6821 d0   if not (1) goto d6836
+  d682b d1   call 150::NotifyCollisionWarn(1)
+  d6831 d0   goto d68ac
+  d683f d0   if not ((m47 & 524288)) goto d6846
+  d6845 d1   return p0
+  d684f d0   if not ((m47 & 262144)) goto d68a1
+  d6858 d1   call SA_GetCollisionObjects(m3)
+  d685e d3   let p0 = SA_GetCollisionObjects(m3)
+  d6862 d3   call SE_ArraySize(p0)
+  d6867 d4   let p2 = SE_ArraySize(p0)
+  d686a d3   if not (p2) goto d6899
+  d6874 d4   p2 = (p2 - 1)
+  d687f d3   if not ((p0[(p2 - 1)] != m48)) goto d6894
+  d6889 d4   call SA_StopObject(m3, 2)
+  d6893 d1   return p0
+  d6894 d3   goto d6867
+  d689d d1   return p0
+  d68a6 d1   call SA_StopObject(m3, 2)
+  d68ad d1   return p0
+
+-- 2004::__Idle entry d0a75, depth conflicts 0
+  d0a75 d0   frame 17
+  d0a79 d1   call 2004::__StartIntoSpace()
+  d0a81 d1   call 2004::CheckSpeedLimit(0)
+  d0a8a d2   call TI_GetAbsTime()
+  d0a91 d3   if not (1) goto d0d60
+  d0a96 d4   let p1 = TI_GetAbsTime()
+  d0a9a d5   call TI_GetAbsTime()
+  d0aa0 d4   call TI_CmpTime(TI_GetAbsTime(), p1)
+  d0aa5 d4   p2 = TI_CmpTime(TI_GetAbsTime(), p1)
+  d0aa9 d4   let p2 = 0
+  d0ab0 d3   if not ((p2 >= p-4)) goto d0ac0
+  d0ab7 d4   p0 = 4
+  d0abb d3   goto d0d60
+  d0ac7 d4   p2 = (p-4 - p2)
+  d0acd d4   m56 = 8
+  d0ad2 d4   m57 = 0
+  d0ad7 d4   call 2004::GetAttacker()
+  d0ae4 d3   if not ((m14 & 128)) goto d0aff
+  d0af0 d4   m14 = (m14 & -129)
+  d0af6 d4   p0 = 7
+  d0afa d3   goto d0d60
+  d0b02 d3   if not (m3) goto d0b86
+  d0b0e d4   call SA_SetSpeedLimit(m3, m96)
+  d0b19 d4   call SA_SetFlightMode(m3, 1)
+  d0b23 d4   call SA_CollisionObject(m3)
+  d0b28 d3   if not (SA_CollisionObject(m3)) goto d0b48
+  d0b2f d4   m56 = 12
+  d0b34 d4   m57 = 0
+  d0b3d d4   call SA_AvoidObjectCollision(m3, 0)
+  d0b43 d3   goto d0b81
+  d0b4f d4   call SA_SetShipRotAccel(m3, m90)
+  d0b5e d3   if not ((p2 > 60000)) goto d0b6d
+  d0b68 d4   goto d0b70
+  d0b74 d4   call SA_Idle(m3, 60000)
+  d0b7b d4   call 2004::UpdatePosition()
+  d0b81 d3   goto d0d5b
+  d0b89 d3   if not (m1) goto d0ba2
+  d0b92 d4   call m1.HasUpdateFocus()
+  d0b97 d3   if not (m1.HasUpdateFocus()) goto d0ba2
+  d0b9d d4   goto d0ba3
+  d0ba3 d3   if not (1) goto d0bbb
+  d0ba9 d4   call 2004::GetMaxSpeed()
+  d0bb0 d3   if not ((2004::GetMaxSpeed() >= 3)) goto d0bbb
+  d0bb6 d4   goto d0bbc
+  d0bbc d3   if not (1) goto d0d4e
+  d0bc2 d4   call 2004::GetMaxSpeed()
+  d0bce d4   if not ((m96 >= 0)) goto d0be5
+  d0bd3 d5   let p3 = (2004::GetMaxSpeed() / 3)
+  d0bda d4   if not ((p3 > m96)) goto d0be5
+  d0be0 d5   goto d0be6
+  d0be6 d4   if not (1) goto d0bf2
+  d0bee d5   p3 = m96
+  d0c03 d9   call GetSector()
+  d0c08 d8   call GetSector().GetSize()
+  d0c13 d9   let p4 = m0[0]
+  d0c16 d10  let p7 = (GetSector().GetSize() + 2500000)
+  d0c1c d10  call SE_Random((p7 * 2))
+  d0c26 d9   p4 = (p4 + (SE_Random((p7 * 2)) - p7))
+  d0c2a d9   let p5 = m0[1]
+  d0c33 d10  call SE_Random((p7 * 2))
+  d0c3d d9   p5 = (p5 + (SE_Random((p7 * 2)) - p7))
+  d0c41 d9   let p6 = m0[2]
+  d0c4a d10  call SE_Random((p7 * 2))
+  d0c54 d9   p6 = (p6 + (SE_Random((p7 * 2)) - p7))
+  d0c5f d8   if not ((p4 > p7)) goto d0c70
+  d0c67 d9   p4 = p7
+  d0c6b d8   goto d0c85
+  d0c78 d8   if not ((p4 < -(p7))) goto d0c85
+  d0c81 d9   p4 = -(p7)
+  d0c8e d8   if not ((p5 > (p7 / 2))) goto d0ca1
+  d0c98 d9   p5 = (p7 / 2)
+  d0c9c d8   goto d0cba
+  d0cab d8   if not ((p5 < (-(p7) / 2))) goto d0cba
+  d0cb6 d9   p5 = (-(p7) / 2)
+  d0cc1 d8   if not ((p6 > p7)) goto d0cd2
+  d0cc9 d9   p6 = p7
+  d0ccd d8   goto d0ce7
+  d0cda d8   if not ((p6 < -(p7))) goto d0ce7
+  d0ce3 d9   p6 = -(p7)
+  d0d03 d9   call SE_Distance3((p4 - m0[0]), (p5 - m0[1]), (p6 - m0[2]))
+  d0d08 d10  let p8 = SE_Distance3((p4 - m0[0]), (p5 - m0[1]), (p6 - m0[2]))
+  d0d17 d10  p8 = (p8 - ((p3 * p2) / 1000))
+  d0d20 d9   if not ((p8 < 0)) goto d0d2a
+  d0d26 d10  p8 = 0
+  d0d3d d10  call 2004::__galaxyFlightStep(p4, p5, p6, p8, -1, p3)
+  d0d42 d10  p0 = 2004::__galaxyFlightStep(p4, p5, p6, p8, -1, p3)
+  d0d49 d3   goto d0d5b
+  d0d55 d4   call TI_WaitForInterrupt((p2 + 1), this)
+  d0d5b d3   goto d0a90
+  d0d61 d4   call 2004::UpdatePosition()
+  d0d68 d4   m56 = 0
+  d0d6c d4   let p0 = 4
+  d0d6f d4   p0 = p0
+  d0d75 d1   return p0
+
+-- 2004::GetFormationSize entry c270f, depth conflicts 0
+  c270f d0   frame 7
+  c2715 d0   if not (m18) goto c2790
+  c271f d2   call SE_ArraySize(m18)
+  c2726 d4   p2 = 0
+  c272a d4   let p2 = 0
+  c272d d5   let p1 = SE_ArraySize(m18)
+  c2731 d3   if not ((p2 < p1)) goto c2774
+  c2736 d3   goto c2749
+  c2740 d4   p2 = (p2 + 1)
+  c2744 d3   goto c272a
+  c2751 d6   let p3 = m18[p2]
+  c2754 d5   call p3.GetFormationDistToLeader()
+  c2759 d6   let p0 = 0
+  c275c d7   let p4 = p3.GetFormationDistToLeader()
+  c2760 d5   if not ((p0 < p4)) goto c276c
+  c2768 d6   p0 = p4
+  c276f d3   goto c273b
+  c2778 d5   call GetFormationDist()
+  c277e d3   if not ((p0 >= GetFormationDist())) goto c278d
+  c2786 d4   p0 = p0
+  c278c d1   return p0
+  c2791 d1   call GetFormationDist()
+  c2796 d1   return p0
+
+2004::__LandInHangar stock vs Mayhem: statements equal after masking slots and offsets: False (272 vs 272 statements)
+2004::__StartInHangar stock vs Mayhem: statements equal after masking slots and offsets: False (213 vs 214 statements)
+2004::CollisionWarn stock vs Mayhem: statements equal after masking slots and offsets: True (24 vs 24 statements)
+2004::__Idle stock vs Mayhem: statements equal after masking slots and offsets: True (94 vs 94 statements)
+2004::GetFormationSize stock vs Mayhem: statements equal after masking slots and offsets: True (23 vs 23 statements)

@@ -1216,3 +1216,382 @@ python3 -I verification/results/ship-navigation-ai/gates/kc_arrival_flow.py   # 
 python3 -I verification/results/ship-navigation-ai/gates/arrival_sites.py --log verification/results/ship-steering/run159-triage/x3m.log
 # -> rows 476, gate_warp_calls 0, gate_p4 167, gate_p5 2093 (local log, untracked)
 ```
+
+## 11. Docking approach
+
+2026-10-13, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`) and both `x3story.obj` versions, for the
+docking-approach design ("ships evading their own dock station"). Nothing was launched and no Wine command ran. Engine
+facts come from capstone listings over the PE map and Ghidra 12.1.4 headless decompiles (read-only, under
+`flock /tmp/x3-ghidra.lock`); raw listings and decompiles stayed in `~/x3-nav-study/dock/` (untracked).
+[`dock_sites.py`](../../verification/results/ship-navigation-ai/docking/dock_sites.py) re-reads every quoted site, the
+SA and order jump-table entries (175 checks, `RESULT PASS`,
+[`dock_sites_out.txt`](../../verification/results/ship-navigation-ai/docking/dock_sites_out.txt)).
+[`kc_dock_flow.py`](../../verification/results/ship-navigation-ai/docking/kc_dock_flow.py) prints the KC methods
+([`kc_dock_flow.txt`](../../verification/results/ship-navigation-ai/docking/kc_dock_flow.txt)): stock and Mayhem
+`__LandInHangar` differ only in `SetShield` vs `304::Add`, `__StartInHangar` only in Mayhem's `SafeUndock` call;
+`CollisionWarn`, `__Idle` and `GetFormationSize` are equal. Mayhem member numbers are used below (`m47` = stock `m45`,
+the `CollisionWarn` mode word; `m88` = the reserved port).
+
+Symbols: `C` container centre (`phys+0x30`), `r_C` = `[cont+0xa4]` (bounding radius), `S`, `r_S` the ship, `N` the
+port's path node (world), `P` the approach point, `R` the order-5 rendezvous, `f` = the ship's flight block. Worked
+numbers use a 3 km station and the Mayhem TP medians (r_S 74 m, 160 m/s, 15 m/s²,
+[game-scale-and-ship-classes.md](game-scale-and-ship-classes.md) §4); they are **[i]**.
+
+**Answer.**
+
+* **Approach point [m].** `P` lies on the port node's axis, outward from the node: the first candidate is
+  `N + dir·T/2`, then steps of `2·r_S + 250000` (2 r_S + 500 m) until `|P − C| >= T`, with
+  `T = r_C + 2·r_S + 250000` (`+ 1110000` for the undock exit point). `dir` is −z of the node frame (tilted 30° or 60°
+  toward −y for port types flagged `0x800000` / `0x1000000`). So `P` is always outside the container's bounding sphere,
+  by at least `2·r_S + 500 m`, and at least `T/2` out from the port. 3 km station, TP: `T` = 3648 m; a port on the
+  sphere facing radially out gives `|P − C|` = 4.82 km **[i]**.
+* **The straight line to `P` is not protected [m]+[i].** Nothing makes the ship→`P` line clear the station. The order-4
+  detour (sphere tangent) engages only when the ship is within `2·r_C` of `P` and farther from `C` than
+  `1.05·|P − C|`. A ship that starts order 4 on the far side (the KC far leg ends at `4·r_C`) can only meet that
+  condition from inside the sphere, so it flies straight at the station until the warn fires.
+* **Why a TP on order 4 warns on its own station [m].** The warn test has no own-target exemption on orders 4 or 5. A
+  station is a mesh obstacle: the warn needs (1) centre distance `<= b + clamp(rA + rB/10, 30 m, 1 km) + rA·cosθ +
+  2(rA + rB)` (7.2 km for the TP at a 3 km station), (2) the cone (θ < 66° at d = 4 km), and (3) the part-box test of
+  `0x0044d9c0`: the ship is inside, or its forward ray hits, a part's model box inflated to `1.2·(half-extent + rA)`
+  within reach `|v| + b` (760 m at 160 m/s). During order 4 `m47 = 0`, so `CollisionWarn` stops the ship.
+* **Order 5 [m].** The engine still sets the warn flag, but the KC sets `m47 = 0xA0001` for the whole order-5 leg, so
+  `CollisionWarn` takes no action. Within `2·r_S + 50 m` of the node the engine moves the ship kinematically: no leaf
+  call, speeds zeroed, ends 3 m from the node. This is not order 0x20.
+* **Carriers [m].** The same port code serves class-7 containers. Order 4 rebuilds `P` from the carrier's live pose
+  at every re-plan, and order 5 rebuilds `N` and `R` every frame. Neither adds a velocity lead. Any ship on order 5 at
+  a dock-capable container with bit `0x80000` forces that container's desired speed and turn commands to 0 every
+  frame. Undocking does not. A carrier never warns against non-large ships.
+
+### 11.1 Q1: the approach point and the port path [m]
+
+**Port record (`[cont.f+0x1c8] + port·0x44`, count from `0x0043a8d0(class, subtype)`).**
+
+| Field | Meaning |
+| --- | --- |
+| `+0x00` | index into the type's dock-port table `cont.f+0x1c0` (`[[+0x1c0]+4][idx]` → entry; entry `+4` = port type flags) |
+| `+0x04..+0x18`, count `+0x1c` | animated sub-objects (doors), driven by `0x004522b0` |
+| `+0x20..+0x2c`, count `+0x30` | path nodes: bodies in the container's model tree (local pose `+0x30`/`+0x40`, parent `+0x18`) |
+| `+0x3c` | state: `1` order 5 in progress, `2` undock in progress, `0x10`/`0x20` player, `0x40` door state |
+
+Port type flags used here: `0x20000` reversible axis, `0x100000` path-indexed node and no final zone, `0x200000` tube
+launch on undock, `0x800000` / `0x1000000` tilted axis, `0x1800000` short final zone.
+
+**Node choice `0x00451e70`** (ESI = record, EAX = path, ECX = ship type code, stack = container): with type flag
+`0x100000` and path ≥ 0, `node[path % count]`. Otherwise by ship type: M3/M4/M5 take node 0, then node 1; TS, TS_P,
+GO and TP take node 1; all others take node 2; failing those, the first non-null node (`0x00451ec0..0x00451f07`). The
+node's world pose is composed live through the parent chain (`0x00488480` position, `0x004884f0` rotation).
+
+**`0x00451f30`** is a fastcall wrapper (ECX = port, EDX = container; stack: ship, path, out, reverse flag, extra;
+`ret 0x14`) around **`0x00451f80`** (EAX = ship; stdcall 9 args, `ret 0x24`):
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| margins | `T = r_C + (2·r_S + 250000) + extra` (25000 instead of `2·r_S` with no ship); step `= 2·r_S + 250000` | `0x00451fe5`, `0x00451fef`, `0x00451ff4` |
+| axis | plain port: `−row 2` of the node frame (`+row 2` when reverse is requested and type flag `0x20000` is set); `0x800000`: local `(0, −0.5, ∓0.866)`; `0x1000000`: local `(0, −0.866, ∓0.5)`, rotated local→world | `0x00452029..0x004520d3` |
+| first candidate | `N + dir·T/2` | `0x00452104`, `0x0045211b`, `0x00452128` |
+| stepping | while `|P − C| < T`: `P += dir·step` | `0x00452146`, `0x00452198`, `0x004521a2`, `0x0045222b` |
+
+**Frames.**
+
+* `SA_FlyObjectBeforeContainer` (port ≥ 0, container flag `0x100000`) calls it with reverse 0 and extra 0. It stores
+  `P − C` projected on the container's rows into `f+0x240`. That is a **container-local** offset (`0x4f0c00`,
+  world→local, `0x00460d7a`, `0x00460d9c`). Order 4 re-composes it every re-plan with the live container rotation and
+  position (`0x00454a29`, `0x00454a48`).
+* With port < 0 the case uses the gate vector `[cont.f+0x1a0]·r_C`. A container without flag `0x100000` gets its
+  centre.
+
+**Order 5 points (`SA_FlyObjectIntoContainer`, `0x00460a58..0x00460bc3`):**
+
+* Final point: `f+0x240 = N` (world).
+* Rendezvous: `f+0x230 = R = N + 0.7·(P − N)`, where `P` comes from the same `0x00451f80` call (`0xb333` at
+  `0x00460b50`).
+* Both are world coordinates fixed at issue for a station. For a class-7 container the handler rebuilds them every
+  frame (§11.6).
+* The KC passes the same random path `p8 = SE_Random(10)` to both orders. The path matters only for `0x100000` ports.
+
+**Order 5 at a port, handler `0x00453fc2` (non-gate path):**
+
+| Phase | Condition | Engine action | Site |
+| --- | --- | --- | --- |
+| to the rendezvous | `d_N > |R − N| + r_S` | leaf `0x44ccc0` at `R` | `0x004541cd`, `0x004541e2` |
+| along the axis | otherwise | leaf at `N + r_S·unit(N − R)` (a point `r_S` past the node, inward) | `0x00454218` |
+| misaligned | `forward·dir(R)` (then `dir(N)`) `< 0.95` | desired 500 (1 m/s) | `0x00454897` |
+| speed | aligned | `ramp(d_N; r_C'/2 → min(vmax, 20000), r_C' → min(vmax, cap))`, `r_C' = min(r_C, 1000000)`, cap 75000/50000 by class | `0x0045494c` |
+| busy flags | every frame | port record `|= 1`; container `|= 0x10000000` | `0x0045438f`, `0x004543ad` |
+| **final zone** | `d_N <= 2·r_S + 25000` (plain ports) | §11.5 | `0x004543da` |
+| flagged port | type flag `0x100000` | gate rule: arrival at `d <= (|v|/10 + r_S)(1 + (tf − 1)/4)` | `0x004543cf`, `0x004546ce` |
+| end | `d_N <= 1500` (3 m) in the final zone | speeds 0, port −1, order 0, result 1 | `0x00454510`, `0x00454700` |
+
+So order 5 at a dock is **not** the gate test: it ends on 3 m to the node after the kinematic glide. Only `0x100000`
+ports use the gate-style radius.
+
+**Order 4 at a station:**
+
+* Arrival radius: `clamp(3·r_S (r_S for "large"), 22200, 111000)`, 222 m for the TP. A class-7 container gets
+  111000 and a gate 0.75 r (`0x00454b2e`, `0x00454b48`). The ship stops dead on arrival (`0x00454b91`, as for gates).
+* Speed: floor = the container's current speed + 5000 inside `d_slow` (`0x00455060`), container flag `0x10000000`.
+* Alignment slowdown within `d_slow + 3·r_C + 2·r_S` (`0x00455095`).
+
+**The order-4 container detour, operands now read [m]** (corrects §3.4's **[i]**). With `u = unit(P − S)` and
+`W = C − S`, the handler replaces `P` only if all five hold:
+
+| # | Condition | Site |
+| --- | --- | --- |
+| a | `u·(P − C) > 0` | `0x00454c2c` |
+| b | `|P − S| < 2·r_C` | `0x00454c41` |
+| c | `|C − S| > 1.05·|P − C|` | `0x00454c68`, `0x00454c84` |
+| d | the line `S + t·u` passes within `r_C` of `C` | `0x00454cef` |
+| e | `|C − S| > r_C/20` | `0x00454d0a` |
+
+The replacement is `P' = S + r_C·unit(m)` with `m = W × (u × W)` (the travel direction's component perpendicular to
+the ship→centre line), its y component halved before normalising (`0x00454eb8..0x00454ef2`). It is recomputed every
+re-plan and handed to `0x0044d020` (`0x00454f81`). It is a bounding-sphere detour; it knows nothing of the parts.
+
+**Does the line to `P` cross the station? [i] from the rules above.**
+
+* `P` itself is outside the sphere by construction.
+* The KC far leg ends at `4·r_C` from `C` (§11.3). The detour needs `|P − S| < 2·r_C`.
+* For a port on the far side, `|P − S| < 2·r_C` implies the ship is already within about `r_C − 0.6 km` of `C`,
+  i.e. inside the sphere. The order flies straight through the station's volume and only the warn reacts.
+* For a port at 90° to the approach bearing, the detour engages at `|S − C| < √(4r_C² − |P − C|²)` (3.6 km for the
+  3 km station with `|P − C|` = 4.8 km), just outside the sphere.
+
+### 11.2 Q2: the warn between a ship and its own container [m]
+
+`0x0044e450(A, B, d)` → filter `0x0044d2f0` → `0x0044dd90`. Findings for B = the ship's `f+0x224` container:
+
+* **No own-target exemption** on orders 4, 5, 0x14, 0x15 or 0x19. The only container skips are on **order 0x1e**: the
+  container itself (`0x0044e4d6`), and every obstacle while `|A − C| <= 0.8·r_C` (`0x0044e4ec`, `0x0044e50d`). Order
+  0x12 only refreshes the list (`0x0044e488`). Gates are not skipped either; for both gates and docks the order-5
+  exemption is the KC's `m47 = 0xA0001`, not the engine's.
+* **Mesh obstacles:** class 5/6, capital-type ships (`0x0043fd50` on B, `0x0044ddd5`) and the class-0x14 subtypes of
+  §3.1.
+* **Close range (corrects §3.1):** `d <= 1.2·(rA + rB)` returns true **only for non-mesh B** (`0x0044def1`). For a
+  station or capital, `d <= rA + rB` goes to the mesh test instead (`0x0044e282`). The attack-target rule
+  (`d <= rA + rB`) applies only on orders 0x10/0x11 and random-avoid 0x12.
+* **Range gate:** false if `d > b + clamp(rA + rB/10, 15000, 500000) + rA·cosθ⁺ + 2·(rA + rB)` (`rA + rB` enters
+  twice, once in `L` and once in the comparison).
+* **Cone** (when `d > b`): `cos²θ > 1 − ((rA + rB + 20000)/(d − b))²`, and B must be ahead.
+* **Mesh test `0x0044d9c0(B.body, |vA| + b, out, 1.2, 0)`** (thiscall ECX = A, recursive over the body's children
+  `[body+0xc]`). Each part with a model (`[body+0x140] >= 0`, `0x004863c0`) yields an oriented box: half-extents =
+  model box `[+0x20..+0x28]` × part scale `[body+0x70]`, plus `rA`, × 1.2. Its centre and rows are the part's world
+  pose (`+0xb0`, world→local `0x4f0c00`). Hit if A's centre is inside a box. Otherwise the Euclidean distance to the
+  box must be within the reach `|vA| + b`, **and** a slab test of A's forward ray (`flight+0x870` row 2, t ≥ 0) must
+  meet the box. So the decision is part boxes, not the bounding sphere and not the collision mesh. The reach adds the
+  speed in units/s to a distance, i.e. one second of travel **[i]** on intent.
+
+**Numbers, TP at a 3 km station [i]:**
+
+* `b = min((160·cosθ)²/30, 600) m`.
+* Range gate: 7.2 km head-on.
+* Cone: 66° at d = 4 km, 45° at d = 5 km.
+* Mesh: forward ray within 760 m of a part box grown by `0.2·half-extent + 89 m`. For a part 2 km across that is
+  289 m beyond the hull. `P`'s margin is `2·r_S + 500 m` = 648 m beyond the *sphere*. That covers the hull but not
+  every box corner, so a ray toward `P` that grazes the station can hit.
+
+**Which case fires in practice [i]:** order 4 aimed through or past the station (the far-side case of §11.1) gives a
+forward ray into a part box within 760 m. The ship then stops (`CollisionWarn` default branch, `m47 = 0` during order
+4). While stopped on arrival (`[obj+0x10] = [obj+0x14] = 0`) the test returns false (`0x0044dda2`).
+
+### 11.3 Q3: the avoid order against a container, and the KC resume [m]
+
+**Order 0x12 (§3.3), with the end rule and escape distance now read:**
+
+* `SA_AvoidObjectCollision(ship, 0)` from `__LandInHangar` takes the default radius `f+0x260 = r_S + 150000`.
+* Every 200 ms with obstacles still listed, the escape point is `S + dir·4440000` (8.88 km, `0x00457863`), and
+  `f+0x230` is reset to the current position (`0x00457842`).
+* A station counts as "must turn away": weight 50 for candidates with `dot <= −0.8`.
+* The order ends once nothing warns any more *and* the ship is more than `f+0x260` (+ the random term) from
+  `f+0x230` (`0x00456f2c`, `0x00456f73`). Each leg therefore ends `r_S + 300 m` past the last re-plan at which the
+  station still warned.
+
+**KC `__LandInHangar` loop (Mayhem `0xcf94e`, stock `0xb7c25`):**
+
+```
+loop (head cf9f3):  m47 = 0                                   CollisionWarn default: SA_StopObject(ship, 2)
+  p0 = 0 unless (m87 == station, m88 >= 0, SA_IsObjectBeforeContainer(ship, station, m88))
+  if !p0:
+      SA_SetFlightMode(1); SA_SetSpeedLimit; SA_SetShipDockPortNr(m88); SA_SetDestination(station)
+      SA_CollisionObject(ship) -> SA_AvoidObjectCollision(ship, 0); continue
+      d > 5·size -> carrier (2033): SA_FollowObject(ship, c, 4·size, 0) | else SA_MovePos(ship, centre, 4·size); continue
+      no port reserved -> SA_SetShipDockPortNr(-1); carrier: SA_EscortObject(slot, §11.4) | else __Idle(15000); continue
+      p8 = SE_Random(10); r = SA_FlyObjectBeforeContainer(ship, station, m88, p8); r == 1 -> p0 = 1; continue
+  else:
+      m47 = 0xA0001 (CollisionWarn ignore); SA_SetFlightMode(0)
+      r = SA_FlyObjectIntoContainer(ship, station, m88, p8)
+      r == 1 -> SA_MoveObjectIntoContainer, SA_SetShipAtDockPort, Signal_Docked (or relaunch if a carrier bay is full)
+      r == 7 -> p0 = 0;  r == 5 -> abort
+```
+
+**The resume after a warn [m]:**
+
+1. `SA_StopObject(2)` wakes `FlyObjectBeforeContainer` with 2.
+2. The loop finds bit `0x1000` still set and issues the avoid order.
+3. When the avoid order ends, the loop re-issues `FlyObjectBeforeContainer` **from scratch**: same port, a new `p8`,
+   and `P` recomputed. For a static station and a plain port, `P` is the same point **[m]**.
+4. The ship again flies the straight line from wherever the avoid leg left it.
+
+**Repeated legs [i]:** the cycle (warn → stop → 8.88 km escape heading away → re-issue → straight back) repeats until
+an avoid leg happens to end where the line to `P` clears the station's part boxes, or where detour conditions a–e
+hold. That is the mechanism behind the Run157 trace (six 0x12 legs, 56.5 s, own dock station, order 4).
+
+### 11.4 Q4: holding while queued [m]
+
+When `RequestDockPort(this, 0) < 0` within `5·size` (`cfc53..cfced`):
+
+* **Carriers (KC class 2033):** `SA_EscortObject(ship, carrier, x, y, z, GetSize(), 15000)`. The slot is
+  `x = U(−p2, p2)`, `y = U(−p2, p2)`, `z = −2·p2`, with `p2 = GetFormationSize() + carrier.GetSize()`.
+  `GetFormationSize` is the largest member `GetFormationDistToLeader`, else `GetFormationDist = 4·GetSize()` of the
+  ship. The slot is in the leader frame rotated by the carrier's yaw/pitch (order 0x14, §1.3), i.e. behind the carrier
+  **[i]** (−z read as aft). Its distance from `C` is at least `2·p2 >= 2·r_C + 8·r_S`, so it is always outside the
+  carrier's sphere. Escort pairs get half the braking distance against the leader and against co-escorts (§3.1).
+  15 s timeout, precision = the ship's own size.
+* **Stations:** no slot. `__Idle(15000)` issues `SA_Idle(ship, 60000)` (order 0x1d; `CollisionWarn` default). Order
+  0x1d cruises to a wander point at least 2.2 km **ahead along the current heading** at vmax/2 (§10.2). A ship queued
+  within `5·r_C`, having just flown toward the station centre, therefore heads on toward the station **[i]**. It meets
+  the same warn → stop → avoid → re-idle cycle. That fits a TP circling a station with hundreds of 0x12 rows
+  (Run160 `circ_cause.txt`) **[i]**. The engine has no holding pattern for stations. How long the in-sector
+  `__Idle` waits (the 60 s order versus the 15000 argument) was not traced.
+
+### 11.5 Q5: the final zone [m]
+
+The boundary is confirmed: `d_N <= 2·r_S + 25000` (`0x004543da`), for ports without type flag `0x100000`. Inside it
+order 5 does not call a leaf (it jumps past `0x00454745`). Every frame:
+
+* `[obj+0x14] = [obj+0x10] = 0` and the drift velocity `[obj+0x60..0x6c] = 0` (`0x004543fc`).
+* The turn commands `[obj+0x30..0x38]` are zeroed. The orientation is slerped toward the node's at
+  `0x71c` (`0x38e` for some type codes) per second **[i]** (`0x0045451b..0x00454647`).
+* While `d_N > 1500`, the **position is written directly**:
+  * `S += (N − S)·step/d_N` (`0x004544f3`, `0x004544f8`);
+  * `step = ramp(d_N; 0 → 500, L → min(vmax, 20000))·dt/1000`;
+  * `L = 2·r_S + 25000` for type flag `0x1800000`, else `vmax²/(2a) + 10000`.
+* Doors animate below 8880 units (`0x0045465d`). The order ends at 3 m.
+
+This is not `SA_GlidePos` (order 0x20). `SA_MoveObjectIntoContainer` is the KC's step *after* result 1. It links the
+ship into the container (`0x004497b0`, §10.10) and writes no position. For a `0x100000` port there is no final zone;
+the ship flies to the gate-style radius and `SA_SetShipAtDockPort` parks it.
+
+### 11.6 Q6: docking at a moving carrier [m]
+
+| Item | Rule | Site |
+| --- | --- | --- |
+| code path | same as a station: `0x00451f30`/`0x00451f80`, node choice `0x00451e70` | §11.1 |
+| order 4 point | container-local offset, re-composed with the carrier's **live** rotation and position at every re-plan (`rand(50·type[+0x50])` ms); no velocity lead | `0x00454a29`, `0x00454a48` |
+| order 4 arrival | 111000 (222 m) for a class-7 container | `0x00454b2e` |
+| order 4 speed floor | carrier's current speed + 5000 inside `d_slow` | `0x00455060` |
+| order 5 points | **every frame** for a class-7 container: `f+0x240 = N` (live), `f+0x230 = N − (r_C/2)·row 2(node)`; the tilt flags and the 0.7·`P` rendezvous of stations are not used | `0x0045406a..0x00454135` |
+| order 5 speed | the dock ramp of §11.1, no carrier-speed term | `0x0045494c` |
+| final zone | kinematic step toward the **live** node, ≤ 40 m/s; drift velocity zeroed | §11.5 |
+| carrier held still | speed loop `0x00459490`: a class-7 object with `[+0x40]` bits `0x100000` and `0x80000` and either `0x10000000` (set this frame by an approaching ship) or `now < f+0x180` gets desired speed 0 and turn commands 0 | `0x0045951f..0x00459558` |
+| flag lifetime | the post pass `0x0045b720` clears `0x10000000` and `0x2000000` every frame and sets `f+0x180 = now` for non-gate objects | `0x0045b741`, `0x0045b7f3` |
+
+Who sets `0x10000000` on the container:
+
+* every frame of a docking ship's order 5 (`0x004543ad`, `0x004548ac`, `0x0045498f`);
+* order 4 inside `d_slow`, on re-plan frames only (`0x00455083`);
+* the player's order 0x1b near the station (`0x00455196`).
+
+So a carrier that carries bit `0x80000` stops and stops turning while any ship is on order 5 to it.
+
+Whether AI carriers carry bit `0x80000` is **[i]** open. It is the `SA_SetAutopilot` bit (§2.2), which the KC sets
+from `IsAutopilotActive`. If they do not, nothing slows the carrier: order 5's ramp ends at 40 m/s, so a carrier
+faster than that outruns the final glide **[i]**.
+
+**Warn pairs at a carrier:**
+
+* Fighter A on 4/5 → its carrier: mesh obstacle, no exemption. `m47` gives the same KC handling as at a station.
+* Fighter → the carrier's escorts (order 0x14 to the carrier): ordinary obstacles. The pair exemption covers only B
+  escorting or following *A* (`0x0044d2f0`). The braking halving needs A itself on 0x14/0x15.
+* Carrier A → fighters: a capital A ignores non-"large" class-7 B entirely (`0x0044d2f0`). The carrier warns only on
+  M6/TM/M8 and larger.
+* The far leg to a carrier is `SA_FollowObject(ship, carrier, 4·size, 0)`: order 0x15, braking halved against the
+  carrier.
+
+### 11.7 Q7: undocking [m]
+
+**KC `__StartInHangar` (Mayhem `0xcf2eb`).** The sequence is `RequestDockPort(this, 0x200000)` → door animation →
+`SA_StartInHangar(ship, container, port)` → `SafeUndock()` (Mayhem) → `RemoveShip`/`AddShip` →
+`SA_ClearObjectFromHangar(ship, container, m88)` with `m47 = 0x90002` (ignore) or `0x50003` (targeted with
+`m48 = 0`, so it never stops **[i]**). Then `m47 = 0`, an avoid if bit `0x1000` is set, and `Flags2 &= ~8`.
+`CollisionWarn` is therefore inert for the whole undock order.
+
+**`SafeUndock` (`0xcf240`)** sets `Flags2 |= 0x20000` on the ship, then waits `TI_Delay(3000)` until more than
+2000 ms have passed, then clears the bit. The body sits between markers `6f`/`70`, and the caller continues at the
+end marker. The same pattern encloses `__LandInHangar`'s background abort loop, so it is read as a forked block
+**[i]**. On that reading the 3 s window opens a few statements before `SA_ClearObjectFromHangar` and covers the first
+≈3 s of order 0x1e. In that window the ship is out of the pair loop as B ([sector-collide.md](sector-collide.md) §3)
+and the KC skips avoid orders.
+
+**Exit point.** `SA_ClearObjectFromHangar` (`0x0046117e`, containers of class 5/6/7/0x12):
+
+* order 0x1e, `f+0x224` = container, `f+0x230` = current position;
+* `f+0x240 = 0x00451f30(port, path −1, reverse 1, extra 1110000)` (`0x0046123b`), in **world coordinates fixed at
+  issue**;
+* `T = r_C + 2·r_S + 2.72 km`. The axis is the approach axis (node −z, tilted per type), reversed to +z for ports of
+  type flag `0x20000`.
+
+**Order 0x1e handler `0x00457bc3`, non-gate containers:**
+
+| Port type | Rule | Site |
+| --- | --- | --- |
+| tube (`0x200000`) | the ship's orientation is set to the node's; position `= N + row 2·50000·t/1000` (100 m/s along node +z, kinematic, no leaf); clearance `25000 + 4·r_S + 45000` (AI) | `0x00457e0c`, `0x00457f9c`, `0x00457ff8`, `0x00457e76` |
+| tube, cleared | `[obj+0x10] = 50000`, desired `min(vmax, 50000)`. A carrier: drift velocity `[obj+0x60..] = carrier phys+0x100 + [carrier+0x60]` (the fighter **inherits the carrier's velocity**) and the order ends. A station: the ship coasts straight on until `|S − C| >= r_C` | `0x00457eb2`, `0x00457ed6`, `0x00457f0e` |
+| plain | port record `|= 2`; within `2·r_S` of the node, stopped and facing inward (`forward·row 2 >= −0.45`): turn in place; then leaf `0x44ccc0` to the world exit point. Carrier: desired vmax. Station: ramp up to `min(vmax, 50000)` inside `r_C/2` | `0x0045809e`, `0x004580ef`, `0x0045811d`, `0x0045814e`, `0x00458199` |
+| end | centre distance ship–container `>= r_C` (`0x00419220`), order 0, result 1 | `0x004581d7` |
+
+**Into the carrier's path or its escorts [i]:**
+
+* The exit point is a world point on the port axis, fixed when the order is issued. Nothing checks it against the
+  carrier's motion or its escorts.
+* For a moving carrier and a plain port, the ship steers at full speed toward a point the carrier may be overrunning.
+  The engine's warn test skips the carrier always, and every obstacle while `|S − C| <= 0.8·r_C`; the KC ignores
+  warns until order 0x1e ends.
+* A tube launch leaves along the node's +z with the carrier's velocity added, so its relative path is the tube axis.
+
+**Carrier side [m]:**
+
+* The carrier gets no warns against launching or landing fighters: a capital ignores non-large ships (§11.6). That is
+  the vanilla counterpart of our amendment-15 `r/3` rule.
+* Undocking writes no container speed or flag: order 0x1e sets only the port record bit `2`. So a carrier does not
+  stop for launches.
+* It does stop for landings, through the order-5 flag of §11.6, subject to the `0x80000` condition.
+* The dock post pass `0x0044b750` (container port state; it calls `0x00451f80` three times) was not examined.
+
+### 11.8 What the leaf hook (site A) sees during docking [m]
+
+| Phase | Site A call | Point |
+| --- | --- | --- |
+| order 4 | `0x0044d020` (`0x00454f81`), at the re-plan rate | `P` (live for carriers) or the sphere detour `P'` |
+| order 5, outside the final zone | `0x0044ccc0` (`0x00454745`), every frame | `R`, then `N + r_S·axis` |
+| order 5, final zone | none | kinematic position writes |
+| order 0x1e plain port | `0x0044ccc0` (`0x00458160`, `0x004581c5`) | the world exit point |
+| order 0x1e tube | none | kinematic position writes |
+| holding | order 0x14 (carrier slot) or 0x1d (station idle wander) through their own leaf calls | slot / wander point |
+
+The order-5 and 0x1e end tests read `f+0x240`/`f+0x230` and centre distances, not the leaf point (as at gates,
+§10.10), so a replacement leaf target never moves a trigger.
+
+**Corrections to earlier sections.**
+* §3.1: the close-range return applies to non-mesh obstacles only; for stations and capitals `d <= rA + rB` goes to the
+  part-box test. `rA + rB` enters the range gate twice. The mesh test is per-part oriented boxes plus a forward ray,
+  not a collision mesh.
+* §3.4: the detour's operand roles are measured (table in §11.1). The 2·r_C bound is on the ship's distance to `P`.
+* §4 "AI docking": the holding slot exists for carriers only; stations use `__Idle` (order 0x1d). Order 5 at a
+  plain port ends at 3 m from the node after a kinematic final zone.
+* §7: `0x0044d9c0` internals are now read (§11.2).
+
+**Still inferred or open.**
+* Whether AI carriers carry `[obj+0x40] & 0x80000`, the condition for the carrier stop rule. A row at `0x00459533`
+  (carrier, flags, approaching count) would settle it.
+* The fork reading of KC markers `6f`/`70` (`SafeUndock` window timing).
+* How long the in-sector `__Idle(15000)` waits.
+* The slerp rate unit in the final zone.
+* `0x0044b750`.
+* The part-box sizes of real stations, which decide how often a ray toward `P` grazes. A `ship_dock_warn` row at
+  `0x0044e52b` filtered to `B == f+0x224` (order, d, the part hit from `out`, `|P − C|`, `|S − C|`) would measure the
+  far-side case directly.
+
+```sh
+python3 -I verification/results/ship-navigation-ai/docking/dock_sites.py      # RESULT PASS (175 checks)
+python3 -I verification/results/ship-navigation-ai/docking/kc_dock_flow.py    # KC docking methods, stock + Mayhem
+```

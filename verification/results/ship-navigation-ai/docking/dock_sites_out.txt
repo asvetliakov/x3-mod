@@ -1,0 +1,176 @@
+X3AP.exe 2153984 B sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab MATCH
+ok   0x00451f35 0x451f30: port record = [cont.f+0x1c8] + port*0x44 (ecx*17*4); port type table = cont.f+0x1c0
+ok   0x00451f63 0x451f30: EAX = ship (stack arg 1); pushes port record and container; calls 0x451f80
+ok   0x00451f80 0x451f80 prologue (frame-aligned, stdcall ret 0x24)
+ok   0x00451fb7 0x451f80: esi = port record, eax = path arg -> node selector 0x451e70
+ok   0x00451fe5 0x451f80: ship present -> 2*r_ship
+ok   0x00451fef 0x451f80: no ship -> 25000
+ok   0x00451ff4 0x451f80: T = r_cont + (2*r_ship + 250000) + extra ([ebp+0x28]); step = 2*r_ship + 250000
+ok   0x00452029 0x451f80: reverse flag = arg byte [ebp+0x1c] && entry flag 0x20000
+ok   0x00452036 0x451f80: entry flag 0x800000 (tilted 30 deg approach)
+ok   0x00452045 0x451f80: 0x800000 -> local dir (0, -0.5, -0.866 or +0.866 reversed)
+ok   0x0045205f 0x451f80: entry flag 0x1000000 (tilted 60 deg approach)
+ok   0x00452066 0x451f80: 0x1000000 -> local dir (0, -0.866, -0.5 or +0.5 reversed)
+ok   0x0045208e 0x451f80: tilted dir rotated into the node's world frame (0x4f0da0, local -> world)
+ok   0x004520a3 0x451f80: plain port: local z = -1 (+1 reversed)
+ok   0x004520be 0x451f80: plain port: world dir = -row 2 of the node frame ([esp+0x80])
+ok   0x004520d3 0x451f80: plain port: negate row 2
+ok   0x00452104 0x451f80: first candidate distance T/2 from the node
+ok   0x0045211b 0x451f80: dir * T/2 (0x40e780 16.16 scale)
+ok   0x00452128 0x451f80: + node world position ([esp+0x40] from 0x488480)
+ok   0x00452146 0x451f80: distance of the candidate from the container centre phys+0x30
+ok   0x00452198 0x451f80: while distance < T ...
+ok   0x004521a2 0x451f80: ... step the candidate by dir * (2*r_ship + 250000)
+ok   0x0045222b 0x451f80: loop back while distance < T
+ok   0x00451e84 0x451e70: path >= 0 ...
+ok   0x00451ea0 0x451e70: ... and entry flag 0x100000 -> node[path % count]
+ok   0x00451eac 0x451e70: idiv by the node count [rec+0x30]
+ok   0x00451eb7 0x451e70: otherwise select by ship type code (default 7)
+ok   0x00451ed6 0x451e70: preference node0 (+0x20), node1 (+0x24), node2 (+0x28)
+ok   0x00488480 0x488480: node world position = local +0x30 composed through the parent chain [+0x18]
+ok   0x004884f8 0x4884f0: node world rotation = local +0x40 (12 dwords) composed through the parent chain
+ok   0x00460d16 SA 0x0a FlyObjectBeforeContainer: container dock flag 0x100000
+ok   0x00460d24 SA 0x0a: port >= 0 -> port approach point
+ok   0x00460d5b SA 0x0a: call 0x451f30 (flag 0, extra 0)
+ok   0x00460d7a SA 0x0a: approach point - container centre (0x412490)
+ok   0x00460d9c SA 0x0a: projected on the container rows (0x4f0c00 world -> local) into f+0x240
+ok   0x00460db9 SA 0x0a: f+0x250 = port
+ok   0x00460dc6 SA 0x0a: f+0x254 = path
+ok   0x00460e6b SA 0x0a: order 4
+ok   0x00460f8e SA 0x0b IsObjectBeforeContainer: approach point via 0x451f80
+ok   0x00460fe1 SA 0x0b: outward axis . ship row 2 <= -0.08
+ok   0x00460ff1 SA 0x0b: |R - S| <= |R - N|
+ok   0x00461003 SA 0x0b: forward . dir(R) >= 0.92
+ok   0x00460a7e SA 0x09 FlyObjectIntoContainer: container check 0x4191e0
+ok   0x00460acc SA 0x09: node selector (0x451e50 -> 0x451e70)
+ok   0x00460af3 SA 0x09: f+0x240 = node world position (final point)
+ok   0x00460b38 SA 0x09: approach point via 0x451f80 (flag 0, extra 0)
+ok   0x00460b50 SA 0x09: factor 0.7 (0xb333)
+ok   0x00460b58 SA 0x09: approach point - node
+ok   0x00460b6a SA 0x09: * 0.7
+ok   0x00460b7d SA 0x09: + node
+ok   0x00460b8b SA 0x09: f+0x230 = rendezvous
+ok   0x00460c72 SA 0x09: order 5
+ok   0x004611f3 SA 0x0d ClearObjectFromHangar: order 0x1e
+ok   0x00461211 SA 0x0d: f+0x230 = current position
+ok   0x0046123b SA 0x0d: exit point into f+0x240 via 0x451f30 (flag 1 = reversed for 0x20000 ports, extra 1110000 = 2.22 km)
+ok   0x00454a20 order 4: port >= 0 ...
+ok   0x00454a29 order 4: ... f+0x240 is container-local: rotated by the live container rows (0x4f0da0) ...
+ok   0x00454a48 order 4: ... plus the live container position, every re-plan
+ok   0x00454b0d order 4: gate target -> 0.75 r_gate
+ok   0x00454b2e order 4: class-7 container (carrier) -> arrival 111000
+ok   0x00454b48 order 4: otherwise clamp(3 r_ship or r_ship, 22200, 111000)
+ok   0x00454b70 order 4: arrival test d_P <= radius
+ok   0x00454b91 order 4: arrival zeroes desired and current speed
+ok   0x00454bc3 order 4 detour: P - C (C = container centre)
+ok   0x00454bd7 order 4 detour: |P - C|
+ok   0x00454be7 order 4 detour: r_C = 0x488170 (bounding radius)
+ok   0x00454c01 order 4 detour: u . (P - C)
+ok   0x00454c27 order 4 detour: W = C - S
+ok   0x00454c2c order 4 detour: (a) u . (P - C) > 0.0
+ok   0x00454c41 order 4 detour: (b) |P - S| < 2 r_C
+ok   0x00454c68 order 4 detour: 1.05 |P - C|
+ok   0x00454c84 order 4 detour: (c) |C - S| > 1.05 |P - C|
+ok   0x00454cad order 4 detour: t = u . W
+ok   0x00454cdc order 4 detour: closest point of line - C
+ok   0x00454cef order 4 detour: (d) miss distance < r_C
+ok   0x00454d0a order 4 detour: (e) |C - S| > r_C / 20
+ok   0x00454eb8 order 4 detour: tangent y component halved
+ok   0x00454ec6 order 4 detour: length r_C ...
+ok   0x00454ed5 order 4 detour: ... normalise to r_C (0x42f970)
+ok   0x00454ef2 order 4 detour: P' = S + r_C * m
+ok   0x00454f81 order 4: steering hand-off 0x44d020 (site A) with P or P'
+ok   0x00455060 order 4 speed: floor = container current speed [cont+0x10] + 5000
+ok   0x00455083 order 4 speed: container flag 0x10000000 (being approached)
+ok   0x00455095 order 4 speed: alignment zone d_slow + 3 r_C + 2 r_ship
+ok   0x0045406a order 5: class-7 container ...
+ok   0x00454083 order 5: ... node world pose recomputed every frame
+ok   0x004540a7 order 5: f+0x240 = live node position
+ok   0x004540d6 order 5: r_C / 2
+ok   0x004540fe order 5: (r_C/2) * row 2 of the node frame
+ok   0x00454114 order 5: node - (r_C/2) row 2
+ok   0x0045411c order 5: f+0x230 = live rendezvous
+ok   0x004541cd order 5 (non-gate): |f+0x230 - f+0x240| + r_ship
+ok   0x004541e2 order 5: d_N > that -> leaf target = rendezvous
+ok   0x00454218 order 5: else leaf target = N + r_ship * unit(N - R)
+ok   0x0045423a order 5: r_ship scale
+ok   0x0045438f order 5: port record busy |= 1
+ok   0x004543ad order 5: container flag 0x10000000 every frame
+ok   0x004543cf order 5: entry flag 0x100000 -> gate-style radius test
+ok   0x004543da order 5: final zone d_N <= 2 r_ship + 25000
+ok   0x004543fc order 5 final zone: [obj+0x14], [obj+0x10], [obj+0x60..0x6c] = 0
+ok   0x00454414 order 5 final zone: d_N > 1500 -> kinematic step
+ok   0x004544f3 order 5 final zone: step vector = (N - S) * step / d (0x4190f0)
+ok   0x004544f8 order 5 final zone: position += step (0x40e750 on phys+0x30)
+ok   0x00454510 order 5 final zone: d_N <= 1500 -> arrived
+ok   0x0045451b order 5 final zone: turn commands zeroed; orientation slerped toward the node
+ok   0x0045465d order 5 final zone: door animation below 8880 units
+ok   0x004546ce order 5: flagged port: d <= (|v|/10 + r_ship)(1 + (tf-1)/4)
+ok   0x00454700 order 5 end: speeds 0
+ok   0x00454745 order 5: leaf 0x44ccc0 outside the final zone only
+ok   0x00454897 order 5: forward . dir(leaf target) < 0.95 -> desired 500
+ok   0x00454916 order 5 ramp: r_C' clamp 25000 for the inner branch
+ok   0x0045494c order 5 ramp: r_C' = min(r_C, 1000000)
+ok   0x0044ddd5 warn: capital-type B (0x43fd50 on B) -> mesh test
+ok   0x0044ddc9 warn: class 5/6 B -> mesh test
+ok   0x0044de89 warn: close-range branch (rB >= 0.75 rA, class 5/6/0x11, vmax 0)
+ok   0x0044deb3 warn: attack/avoid-random target: d <= rA + rB
+ok   0x0044ded5 warn: else d <= 1.2 (rA + rB) ...
+ok   0x0044def1 warn: ... only for non-mesh B
+ok   0x0044e282 warn: d <= rA + rB and mesh -> mesh test
+ok   0x0044e2a6 warn: mesh test inflation 1.2
+ok   0x0044e3a0 warn: mesh test after the cone
+ok   0x0044e424 warn: mesh test when b >= d
+ok   0x0044e492 warn caller: order 0x1e branch
+ok   0x0044e4c4 warn caller: container class 5/6/7 ...
+ok   0x0044e4d6 warn caller: ... the container itself skipped
+ok   0x0044e4ec warn caller: 0.8 r_C
+ok   0x0044e50d warn caller: every obstacle skipped while |A - C| <= 0.8 r_C
+ok   0x0044e488 warn caller: order 0x12 only refreshes the list
+ok   0x00456f2c order 0x12 end: distance from f+0x230 vs f+0x260 (+ random term)
+ok   0x00456f73 order 0x12 end: beyond -> order 0, result 1
+ok   0x00457842 order 0x12: f+0x230 refreshed to the current position when a new escape point is chosen
+ok   0x00457863 order 0x12: escape point = position + dir * 4440000 (8.88 km)
+ok   0x00457bc3 order 0x1e: skip while [obj+0x40] & 0x8000404
+ok   0x00457e0c order 0x1e: entry flag 0x200000 -> tube launch
+ok   0x00457e76 order 0x1e tube: AI clearance 4 r_ship + 45000 (+ 25000 base)
+ok   0x00457ea3 order 0x1e tube: beyond clearance ...
+ok   0x00457eb2 order 0x1e tube: ... current speed 50000
+ok   0x00457ed6 order 0x1e tube: station check 0x419200
+ok   0x00457f0e order 0x1e tube: drift velocity [obj+0x60..] = container phys+0x100 + [cont+0x60]
+ok   0x00457f9c order 0x1e tube: ship orientation := node world rotation (0x4884f0 into phys+0x40)
+ok   0x00457ff8 order 0x1e tube: position = node + row 2 * 50000 * t / 1000
+ok   0x0045809e order 0x1e plain port: port record |= 2
+ok   0x004580ef order 0x1e plain port: not reversed and d_N <= 2 r_ship
+ok   0x0045811d order 0x1e plain port: turn in place while forward . node row 2 < -0.45
+ok   0x00458145 order 0x1e plain port: class-7 container ...
+ok   0x0045814e order 0x1e plain port: ... desired vmax, leaf 0x44ccc0 to f+0x240
+ok   0x00458199 order 0x1e plain port: station: ramp inside r_C / 2
+ok   0x004581d7 order 0x1e end: centre distance ship-container >= r_C
+ok   0x0045951f speed loop: dock-capable (0x100000) and 0x80000 ...
+ok   0x00459533 speed loop: ... being approached (0x10000000) ...
+ok   0x0045953a speed loop: ... or now < f+0x180
+ok   0x0045954d speed loop: desired speed 0 and turn commands 0
+ok   0x0045b741 post pass: mask clears 0x10000000 and 0x2000000
+ok   0x0045b7f3 post pass: f+0x180 = now for non-gate objects; flags masked
+ok   SA id 0x9 case 0x0046082e
+ok   SA id 0xa case 0x00460cae
+ok   SA id 0xb case 0x00460ea7
+ok   SA id 0xd case 0x0046117e
+ok   SA id 0xf case 0x0046104c
+ok   SA id 0x14 case 0x004618a6
+ok   SA id 0x1a case 0x0046274e
+ok   SA id 0x1b case 0x0046196f
+ok   SA id 0x1e case 0x0046232c
+ok   SA id 0x19 case 0x004626e2
+ok   SA id 0x15f case 0x00466f1d
+ok   SA id 0x160 case 0x00466fc4
+ok   order 0x4 handler 0x004549c2
+ok   order 0x5 handler 0x00453fc2
+ok   order 0x12 handler 0x00456722
+ok   order 0x14 handler 0x0045820d
+ok   order 0x15 handler 0x00458aea
+ok   order 0x19 handler 0x004564cd
+ok   order 0x1d handler 0x00453cfe
+ok   order 0x1e handler 0x00457bc3
+RESULT PASS (175 checks)
