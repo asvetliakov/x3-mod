@@ -1,0 +1,20 @@
+{
+  "dll": "detached worktree /tmp/x3-run163-candidate of 7fffea7c, build/d3d9.dll (clean configure + build)",
+  "sha256": "30d4a99b1f7aa0d41a52ec834ded9dc085a07d82f565be0f4a27df25e0c1b940",
+  "bytes": 59325490,
+  "commit": "7fffea7c",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 997, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites OK (candidate tree); fixture 9399/9399, capital 3741/3741, key-off identities 0 (implementer, same tree, ledger)"
+  },
+  "changes_since_run162": [
+    "5b3b11ed Run162 triage",
+    "7fffea7c controller B.2"
+  ],
+  "trigger": "Run162: sequencer deadlock (head skip put a leader behind its escorts; skip on inbound ships; holders cruising at petal speed) and funnel ships evicted by the own-gate warn",
+  "producer": "main session (Fable 5.1), 2026-10-13"
+}
