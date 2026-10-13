@@ -1,0 +1,16 @@
+{
+  "run": "165-rollback",
+  "platform": "native Windows 11, C:\\X3",
+  "installed_at": "2026-10-14",
+  "command": "cp C:\\X3\\rollback-d3d9\\d3d9.dll.run164 C:\\X3\\d3d9.dll; cmp",
+  "installed": {
+    "path": "C:\\X3\\d3d9.dll",
+    "sha256": "fa0b9812e7c38a4eabe79e97298e855e28a8a56cde1b77eee9f92e9e8242587a",
+    "bytes": 59364614,
+    "verified_bytes": true,
+    "method": "cmp",
+    "is": "Run164 DLL (controller B.3)"
+  },
+  "reason": "Run165 (B.4) crashed the game: ctl_member_frame read a freed ship pointer (run165-triage); rolled back until B.5 is installed",
+  "producer": "main session"
+}
