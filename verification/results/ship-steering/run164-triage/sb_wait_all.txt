@@ -1,0 +1,77 @@
+== 0x8e037b68 id 24965: entry f 5729 game 22669.2 real 42.6 -> release f 18071 game 23001.7 real 105.1: 332.6 game s 62.5 real s
+   332.6   62.6  committed inbound (beyond ring + 2 km) (first f 5729)
+== 0x8e03e7e0 id 25287: entry f 5812 game 22669.8 real 43.0 -> release f 27015 game 23414.2 real 153.1: 744.4 game s 110.1 real s
+   332.0   62.1  escort inbound, leader inbound (first f 5812)
+   206.0   27.3  escort inbound, leader launch (first f 20370)
+    79.0    7.9  escort inbound, leader funnel (first f 18072)
+    77.9    7.8  escort hold, leader launch (first f 25663)
+    35.0    3.5  evicted (0x12) (first f 19487)
+    14.5    1.5  escort inbound, leader dock (first f 20111)
+== 0x8e049da0 id 25763: entry f 6228 game 22671.6 real 44.8 -> release f 29066 game 23530.8 real 164.7: 859.2 game s 119.9 real s
+   330.5   60.3  escort inbound, leader inbound (first f 6228)
+   156.5   15.6  evicted (0x12) (first f 24570)
+   143.0   21.0  escort inbound, leader launch (first f 20367)
+   113.5   11.4  escort inbound, leader funnel (first f 18077)
+    75.0    7.5  hold, funnel busy by other (funnel) (first f 27294)
+    15.0    1.5  hold, funnel busy by other (dock) (first f 28804)
+    14.5    1.5  escort inbound, leader dock (first f 20108)
+    10.5    1.0  EXCESS hold, head, funnel free, window=0 timing=1 (first f 28621)
+     0.7    0.1  hold, funnel busy by other (launch) (first f 29054)
+== 0x3837fb20 id 3884: entry f 47795 game 24310.2 real 255.9 -> release f 60923 game 25103.4 real 349.7: 793.2 game s 93.8 real s
+   793.0   93.8  committed inbound (beyond ring + 2 km) (first f 47795)
+     0.2    0.0  own transit funnel (first f 60923)
+== 0x8e043bf8 id 4200: entry f 48853 game 24373.6 real 262.2 -> release f 62627 game 25276.1 real 372.3: 902.5 game s 110.1 real s
+   719.5   86.5  escort inbound, leader inbound (first f 48853)
+    85.5   14.0  escort inbound, leader funnel (first f 60924)
+    51.5    5.1  escort hold, leader launch (first f 62270)
+    20.5    2.1  escort hold, leader funnel (first f 62013)
+    14.5    1.5  escort hold, leader dock (first f 62170)
+    10.5    1.0  evicted (0x12) (first f 49856)
+     0.5    0.0  escort hold, leader handover (first f 62166)
+     0.0    0.0  own transit funnel (first f 62627)
+== 0x8e082750 id 4662: entry f 49776 game 24437.1 real 268.5 -> release f 63026 game 25331.4 real 377.9: 894.3 game s 109.3 real s
+   666.5   81.1  escort inbound, leader inbound (first f 49776)
+   106.0   16.0  escort inbound, leader funnel (first f 60924)
+    69.5    7.0  escort hold, leader launch (first f 62446)
+    26.5    2.6  escort inbound, leader launch (first f 62270)
+    14.5    1.5  escort inbound, leader dock (first f 62170)
+    10.8    1.1  hold, funnel busy by other (funnel) (first f 62959)
+     0.5    0.0  escort inbound, leader handover (first f 62166)
+== 0x8e0744a0 id 4849: entry f 58168 game 24963.3 real 329.4 -> release f 63268 game 25367.4 real 381.5: 404.1 game s 52.1 real s
+   404.1   52.1  committed inbound (beyond ring + 2 km) (first f 58168)
+== 0xaa68cfb0 id 5315: entry f 58168 game 24963.3 real 329.4 -> release f 67460 game 25552.5 real 416.0: 589.2 game s 86.6 real s
+   389.5   47.4  escort inbound, leader inbound (first f 58168)
+   101.5   23.8  escort hold, leader funnel (first f 63635)
+    49.0    4.9  escort inbound, leader funnel (first f 63272)
+    29.7    8.8  evicted (0x12) (first f 59946)
+    16.0    1.6  escort hold, leader dock (first f 66595)
+     3.5    0.4  escort hold, leader launch (first f 66798)
+== 0xaa68fe00 id 5475: entry f 58168 game 24963.3 real 329.4 -> release f 73621 game 25588.1 real 453.3: 624.8 game s 123.9 real s
+   314.0   43.1  escort inbound, leader inbound (first f 58168)
+   150.5   28.7  escort hold, leader funnel (first f 63272)
+    90.5    9.0  escort hold, leader inbound (first f 62633)
+    46.0   32.0  escort hold, leader launch (first f 66798)
+    16.0    1.6  escort hold, leader dock (first f 66595)
+     7.5    9.5  hold, funnel busy by other (funnel) (first f 72351)
+     0.3    0.4  own transit funnel (first f 73621)
+== 0xab18e1b0 id 7319: entry f 63347 game 25378.6 real 382.6 -> release f 73861 game 25588.5 real 454.3: 209.9 game s 71.7 real s
+   209.9   71.1  committed inbound (beyond ring + 2 km) (first f 63347)
+== ALL members
+  2752.0  380.5  escort inbound, leader inbound
+  1739.6  279.6  committed inbound (beyond ring + 2 km)
+   433.0   54.1  escort inbound, leader funnel
+   375.5   51.0  escort inbound, leader launch
+   272.5   54.5  escort hold, leader funnel
+   248.4   52.2  escort hold, leader launch
+   231.7   29.0  evicted (0x12)
+    93.3   18.1  hold, funnel busy by other (funnel)
+    90.5    9.0  escort hold, leader inbound
+    46.5    4.7  escort hold, leader dock
+    43.5    4.4  escort inbound, leader dock
+    15.0    1.5  hold, funnel busy by other (dock)
+    10.5    1.0  EXCESS hold, head, funnel free, window=0 timing=1
+     0.7    0.1  hold, funnel busy by other (launch)
+     0.5    0.5  own transit funnel
+     0.5    0.0  escort hold, leader handover
+     0.5    0.0  escort inbound, leader handover
+EXCESS samples (0.5 game s each): 21 [('0x8e049da0', 28621, 'EXCESS hold, head, funnel free, window=0 timing=1'), ('0x8e049da0', 28630, 'EXCESS hold, head, funnel free, window=0 timing=1'), ('0x8e049da0', 28640, 'EXCESS hold, head, funnel free, window=0 timing=1'), ('0x8e049da0', 28648, 'EXCESS hold, head, funnel free, window=0 timing=1'), ('0x8e049da0', 28657, 'EXCESS hold, head, funnel free, window=0 timing=1')]

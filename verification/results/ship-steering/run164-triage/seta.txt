@@ -1,0 +1,5 @@
+all {'0': 25714, '1': 47933} seta share 0.65
+convoy 1 at 0x8e051030 (24965/25287/25763) {'0': 7346, '1': 17595} seta share 0.71
+convoy 2 at 0x8e04ff20 (3884/4200/4662) {'1': 14057, '0': 1989} seta share 0.88
+convoy 3 at 0x8e051030 (4849/5315/5475) to log end {'1': 5830, '0': 9864} seta share 0.37
+after 4849 launch {'1': 267, '0': 6802} seta share 0.04

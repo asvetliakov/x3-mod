@@ -1,0 +1,48 @@
+(a) evictions
+ id 25287 0x8e03e7e0 f 19486 stage inbound | 0x12 other 0x8e05a4e0 class 6 code - d_m 3157.3 r_m 1353.8 | E A=evictee vs other: {('0x14', 'pass_not_resolved'): 22} | E A=other vs evictee: {}
+ id 25763 0x8e049da0 f 24562 stage inbound | 0x12 other 0x8e03e7e0 class 7 code M1 d_m 2555.7 r_m 1022.2 | E A=evictee vs other: {} | E A=other vs evictee: {}
+ id 4200 0x8e043bf8 f 49851 stage inbound | 0x12 other 0x8e0388d0 class 7 code M6 d_m 2498.0 r_m 80.8 | E A=evictee vs other: {('0x14', 'suppress_small'): 26, ('0x0', 'pass_not_fresh'): 2, ('0x12', 'suppress_small'): 1} | E A=other vs evictee: {}
+ id 5315 0xaa68cfb0 f 59890 stage inbound | 0x12 other 0x8e037070 class 7 code M6 d_m 1742.8 r_m 86.5 | E A=evictee vs other: {('0x0', 'pass_not_fresh'): 2} | E A=other vs evictee: {}
+ id 5315 0xaa68cfb0 f 60602 stage inbound | 0x12 other 0x8e037070 class 7 code M6 d_m 1495.4 r_m 86.5 | E A=evictee vs other: {('0x12', 'suppress_small'): 5, ('0x14', 'suppress_small'): 23, ('0x0', 'suppress_small'): 1, ('0x0', 'pass_not_fresh'): 1, ('0x12', 'pass_not_fresh'): 1} | E A=other vs evictee: {}
+ id 5315 0xaa68cfb0 f 66845 stage hold | 0x12 other 0xab1b7508 class 7 code M6 d_m 2602.8 r_m 85.0 | E A=evictee vs other: {('0x14', 'suppress_small'): 4, ('0x0', 'pass_not_fresh'): 3} | E A=other vs evictee: {}
+(b) E rows vs gates by (A member role, stage, verdict, gate_row)
+    201 ('committed', 'funnel', '0x4', 'suppress_gate', 'suppress')
+    103 ('committed', 'dock', '0x5', 'suppress_gate', 'suppress')
+     97 ('committed', 'inbound', '0x4', 'suppress_arrival_gate', 'not_member')
+     95 ('escort', 'inbound', '0x14', 'suppress_arrival_gate', 'not_member')
+     88 ('arrival', 'none', '0x14', 'suppress_arrival_gate', 'not_member')
+     51 ('arrival', 'none', '0x0', 'suppress_arrival_gate', 'not_member')
+     51 ('arrival', 'none', '0x19', 'suppress_arrival_gate', 'not_member')
+     44 ('committed', 'inbound', '0x4', 'pass_not_resolved', 'not_member')
+     11 ('escort', 'inbound', '0x14', 'pass_not_resolved', 'not_member')
+     10 ('none', 'none', '0x19', 'pass_not_resolved', '-')
+     10 ('none', 'none', '0x14', 'pass_not_resolved', '-')
+      6 ('escort', 'inbound', '0x0', 'suppress_arrival_gate', 'not_member')
+      2 ('arrival', 'none', '0x1e', 'suppress_arrival_gate', 'not_member')
+      2 ('committed', 'handover', '0x4', 'suppress_gate', 'suppress')
+      1 ('committed', 'handover', '0x1f', 'suppress_gate', 'suppress')
+(c) pass_not_fresh rows by (A role/stage, B role/stage, B_class), step_ms max
+     89 (('escort', 'inbound'), ('none', 'none'), '6')
+     83 (('escort', 'inbound'), ('none', 'none'), '7')
+     83 (('none', 'none'), ('none', 'none'), '7')
+     59 (('escort', 'hold'), ('none', 'none'), '7')
+     33 (('none', 'none'), ('none', 'none'), '6')
+     22 (('escort', 'hold'), ('committed', 'inbound'), '7')
+     13 (('arrival', 'none'), ('escort', 'inbound'), '7')
+      9 (('arrival', 'none'), ('none', 'none'), '7')
+      9 (('escort', 'hold'), ('none', 'none'), '5')
+      8 (('escort', 'inbound'), ('none', 'none'), '5')
+      6 (('arrival', 'none'), ('committed', 'inbound'), '7')
+      4 (('escort', 'inbound'), ('arrival', 'none'), '7')
+      3 (('none', 'none'), ('none', 'none'), '5')
+      3 (('committed', 'inbound'), ('none', 'none'), '6')
+      3 (('evicted', 'inbound'), ('escort', 'inbound'), '7')
+      2 (('evicted', 'inbound'), ('none', 'none'), '6')
+      2 (('escort', 'inbound'), ('escort', 'inbound'), '7')
+      2 (('evicted', 'inbound'), ('none', 'none'), '7')
+      2 (('escort', 'hold'), ('evicted', 'hold'), '7')
+      1 (('committed', 'inbound'), ('none', 'none'), '7')
+      1 (('escort', 'inbound'), ('committed', 'inbound'), '7')
+      1 (('evicted', 'hold'), ('none', 'none'), '7')
+  step_ms max on those rows 0 | step_ms max on all E rows 1110
+(d) gate_row=stale rows 0 | funnel/handover/dock members on E vs own gate not suppressed: 0
