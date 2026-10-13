@@ -108,20 +108,32 @@ inline void lane_bind(Self& s, const lane::Pass* pass) noexcept {
     s.lane = pass && pass->self && s.capital && (s.order == sc::kOrderFlyBefore || s.order == sc::kOrderDock) ? pass : nullptr;
 }
 // The lane verdict for (s, o): the pass's (stored board, both directions), none unless o is also committed to s's gate by its live
-// order, f+0x224 and id from the snapshot.
-inline lane::Verdict lane_pair(const Self& s, const Obstacle& o) noexcept {
+// order, f+0x224 and id from the snapshot. *apart (optional): the pair is on different lane points or has an order-5 leg.
+inline lane::Verdict lane_pair(const Self& s, const Obstacle& o, bool* apart = nullptr) noexcept {
+    if (apart) *apart = false;
     if (!s.lane || o.kind != std::uint8_t(Kind::ship) || o.size != 1) return lane::Verdict::none;
     unsigned i = 0;
     const lane::Verdict v = lane::pass_verdict(*s.lane, o.ptr, &i);
     if (v == lane::Verdict::none) return v;
     const lane::Pass& p = *s.lane;
     if (!lane::committed(p.g->e[i], p.now, p.fresh_ms, o.order, o.leader, p.g->gate, o.id)) return lane::Verdict::none;
+    if (apart) *apart = p.apart[i] != 0;
     return v;
 }
-// The pairs the avoidance drops (in both directions): (a), (b) and (s). The trailer's cap of (b) and of an obliged (s) / (c) pair
-// comes from the same pass (site B).
-__attribute__((always_inline)) inline bool lane_excludes(lane::Verdict v) noexcept {
-    return v == lane::Verdict::exempt || v == lane::Verdict::follow || v == lane::Verdict::seq;
+// The pairs the avoidance drops (in both directions): (a), (b) and (s), and since amendment 17 (section 17 item 2) every committed
+// pair on different lane points (or with an order-5 leg) whatever its verdict, with no corridor condition: the engine's own warn is
+// the protection between them, as in vanilla. A same-lane (c) pair keeps today's rules; the (b) trailer's cap comes from the same
+// pass (site B).
+__attribute__((always_inline)) inline bool lane_excludes(lane::Verdict v, bool apart) noexcept {
+    return v == lane::Verdict::exempt || v == lane::Verdict::follow || v == lane::Verdict::seq || (v != lane::Verdict::none && apart);
+}
+// The resolve's lane exclusion for one obstacle (the production path; *verdict the pair's lane verdict, *apart_out its lane points).
+__attribute__((always_inline)) inline bool lane_excluded(const Self& s, const Obstacle& o, lane::Verdict* verdict = nullptr, bool* apart_out = nullptr) noexcept {
+    bool apart = false;
+    const lane::Verdict v = lane_pair(s, o, &apart);
+    if (verdict) *verdict = v;
+    if (apart_out) *apart_out = apart;
+    return lane_excludes(v, apart);
 }
 struct SideMemory {
     std::uint32_t obstacle;
@@ -172,6 +184,7 @@ struct Result {
     unsigned skipped_small = 0;      // small ships a capital left to their own avoidance (amendment 11)
     unsigned excluded_members = 0;   // formation members excluded through the membership memory alone (amendment 15)
     unsigned lane_exempt = 0, lane_follow = 0, lane_cross = 0, lane_seq = 0; // amendment 16 / 16b: capital pairs committed to this capital's gate, by verdict
+    unsigned lane_apart = 0; // amendment 17: (c) pairs on different lane points dropped (lane_cross: the same-lane (c) pairs kept)
     std::uint32_t obstacle = 0;
     std::uint32_t obstacle_leader = 0; // the obstacle's f+0x224 and f+0x258 (ships), for the detour row (amendment 11)
     std::uint16_t obstacle_order = 0;
@@ -406,7 +419,9 @@ inline bool small_for_capital(const Self& s, const Obstacle& o) noexcept {
 // suppressed whatever B's order (0x12, 0, 0x1f, ...), except: B without the autopilot bit (the manually flown player ship, or
 // any ship the integrator does not drive), B deleted/attached/docked, B's class masked (leave its pairs vanilla), and (scenario
 // audit G4, main-session decision 2026-10-12) B on a leg the module does not avoid on: order 5 (dock or gate pass), 0x1e
-// (undock), 0x20 (glide): there the pair must stay with the engine, or neither side avoids.
+// (undock), 0x20 (glide): there the pair must stay with the engine, or neither side avoids. Amendment 17 (section 17 item 4) withdraws
+// that dock-leg exception under ship_steering_gates_capital (`dock_legs`): the small ship on its leg is the engine's to steer and its
+// contact with a capital is vanilla's elastic bounce; the other exceptions stay.
 inline bool small_pair(bool a_capital, float r_a, bool b_ship, bool b_capital_code, float r_b) noexcept {
     return a_capital && b_ship && !b_capital_code && sc::finite_f(r_a) && sc::finite_f(r_b) && r_b < r_a * kSmallShipRatio;
 }
@@ -415,18 +430,19 @@ enum class SmallPair : std::uint8_t {
     no_autopilot,  // [B+0x40] without 0x80000 (the player under manual control, or a ship the integrator does not drive)
     not_steerable, // B deleted, attached or docked
     class_masked,  // B's class is excluded by ship_steering_classes
-    b_dock_leg,    // B on order 5, 0x1e or 0x20: the module does not avoid on those legs (audit G4)
+    b_dock_leg,    // B on order 5, 0x1e or 0x20: the module does not avoid on those legs (audit G4; not under amendment 17)
     own_leader,    // B is A's own leader (live or remembered): the escort's warn against its leader is never suppressed
     count
 };
 constexpr std::uint32_t kSteeredFreshMs = 250; // A's last decision at most this old (the site-B clamp window), at least 4 frames
 constexpr std::uint32_t kObjFlagAutopilot = 0x80000, kObjFlagDeleted = 0x8000000, kObjFlagAttached = 0x200;
 constexpr std::uint16_t kOrderUndock = 0x1e, kOrderGlide = 0x20;
-inline SmallPair small_pair_verdict(std::uint32_t b_flags, std::uint16_t b_order, std::uint32_t b_docked, bool b_class_masked) noexcept {
+inline SmallPair small_pair_verdict(std::uint32_t b_flags, std::uint16_t b_order, std::uint32_t b_docked, bool b_class_masked,
+                                    bool dock_legs = false) noexcept {
     if (!(b_flags & kObjFlagAutopilot)) return SmallPair::no_autopilot;
     if ((b_flags & (kObjFlagDeleted | kObjFlagAttached)) || b_docked) return SmallPair::not_steerable;
     if (b_class_masked) return SmallPair::class_masked;
-    if (b_order == sc::kOrderDock || b_order == kOrderUndock || b_order == kOrderGlide) return SmallPair::b_dock_leg;
+    if (!dock_legs && (b_order == sc::kOrderDock || b_order == kOrderUndock || b_order == kOrderGlide)) return SmallPair::b_dock_leg;
     return SmallPair::suppress;
 }
 inline const char* small_pair_name(SmallPair v) noexcept {
@@ -651,6 +667,7 @@ struct SiteE {
     std::uint32_t b_flags = 0, b_docked = 0, b_target = 0;
     std::uint16_t b_order = 0;
     bool b_class_masked = false;
+    bool small_dock_legs = false;    // amendment 17 (ship_steering_gates_capital): the small-ship row on B's dock legs 5/0x1e/0x20 too
     bool b_is_a_leader = false;      // B is A's live (0x14/0x15 target) or remembered leader
     bool b_member_current = false;   // B is a current remembered member of A's formation (Members::current)
     float d = -1.0f;                 // the centre distance, m (< 0 unreadable: never apart)
@@ -683,7 +700,7 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
         if (in.b_readable) {
             if (small_pair(true, in.r_a, true, in.b_capital_code, in.r_b)) {
                 if (in.b_is_a_leader) return EVerdict::pass_own_leader;
-                switch (small_pair_verdict(in.b_flags, in.b_order, in.b_docked, in.b_class_masked)) {
+                switch (small_pair_verdict(in.b_flags, in.b_order, in.b_docked, in.b_class_masked, in.small_dock_legs)) {
                 case SmallPair::suppress: return EVerdict::suppress_small;
                 case SmallPair::no_autopilot: return EVerdict::pass_no_autopilot;
                 case SmallPair::not_steerable: return EVerdict::pass_not_steerable;
@@ -782,12 +799,13 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
             if ((o.flags & kObstacleRemembered) && (own_follower(s, o) || wingmate(s, o))) ++res.excluded_members;
             continue;
         }
-        if (s.lane) { // amendment 16 / 16b: (a), (b) and (s) pairs are not obstacles in either direction (lane_excludes)
-            const lane::Verdict lv = lane_pair(s, o);
-            if (lane_excludes(lv)) {
+        if (s.lane) { // amendment 16 / 16b / 17: (a), (b), (s) and different-lane pairs are not obstacles in either direction (lane_excludes)
+            lane::Verdict lv = lane::Verdict::none;
+            if (lane_excluded(s, o, &lv)) {
                 if (lv == lane::Verdict::exempt) ++res.lane_exempt;
                 else if (lv == lane::Verdict::follow) ++res.lane_follow;
-                else ++res.lane_seq;
+                else if (lv == lane::Verdict::seq) ++res.lane_seq;
+                else ++res.lane_apart;
                 continue;
             }
             if (lv == lane::Verdict::cross) ++res.lane_cross;

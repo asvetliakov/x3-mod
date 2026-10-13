@@ -77,15 +77,17 @@ def by_ship(rows):
 
 # Amendment 16 (capital-gate-transit.md section 16.5): the key=value diagnostic rows of a capital crowd at a gate.
 #   ship_capital_lane frame= A= B= verdict=a|b|c|s gap_m= w_A= w_B= w_src=<A>,<B> foot=<A>,<B> e_m= theta_deg= ds_m= v_cap= D_m=
-#     route=foot|corr|lat|along|- watch= lat_gap= mot= h_T= h_L= Dx= trail= seq_cap= bind= held=   (amendment 16b, section 16.10.6;
-#     held = A in lane by the hysteresis of section 16.11 only)
+#     route=foot|corr|lat|along|- watch= lat_gap= mot= h_T= h_L= trail= bind= held=   (amendment 16b, section 16.10.6; held = A in lane
+#     by the hysteresis of section 16.11 only; amendment 17: v_cap / D_m / bind for a (b) trailer only, Dx= and seq_cap= gone)
 #   ship_gate_capital_latch frame= obj= class= slot= event=pred_none|slow_join|unlatch from= to= v_cmd= s_m= e_m= psi_deg= upsi_deg=
-#     w_dps= v_ms= W_dps= alpha_dps2= a_ms2= r_gate_m= cands_v:grade:nose:vel:e:over:e_max:reached=<4 x, |-separated>
-#     obstacle= lanes_other:verdict:gap=<|-separated, or -> seq_cap= seq_leader=
+#     w_dps= v_ms= W_dps= alpha_dps2= a_ms2= r_gate_m= cands_v:grade:nose:vel:e:over:e_max:reached:steps=<4 x, |-separated>
+#     obstacle= lanes_other:verdict:gap=<|-separated, or ->   (amendment 17: steps added, seq_cap= seq_leader= gone; logs before it
+#     carry cands_v:grade:nose:vel:e:over:e_max:reached and seq_cap= seq_leader=)
 #   ship_capital_census frame= type= class= r_m= w_m= w_r= w_src=unread|lod|fail retries= l_m= h_rw_m= (sqrt(r^2 + w^2)) len_m= (max(r, l))
-#     h_m= (sqrt(len^2 + w^2), the h the rule uses)
+#     h_m= (sqrt(len^2 + w^2), the h the rule uses) part_id= part_lod= o_x= o_y= e_x= e_y= (amendment 17: the widest part's body id,
+#     its widest LOD record, its lateral offset bound and half-extents, m)
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census')
-LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'lanes_other:verdict:gap')
+LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap')
 _KV = re.compile(r'(\S+?)=(\S*)')
 _INT = re.compile(r'-?\d+')
 _FLOAT = re.compile(r'-?\d+\.\d*|-?\d*\.\d+')

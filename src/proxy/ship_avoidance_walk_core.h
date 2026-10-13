@@ -371,6 +371,11 @@ struct HullWidth {
     float w_m = 0, half_len_m = 0;
     unsigned parts = 0, nodes = 0;
     x3m::ship_avoidance::lane::WidthSrc src = x3m::ship_avoidance::lane::WidthSrc::failed;
+    // amendment 17 (section 17 item 5, the census row): the part that sets w: its body id, its lateral offset bound (|o_x|, |o_y|
+    // accumulated in the root frame, m), its lateral half-extents (e_x, e_y, m) and the LOD record with the widest lateral extent
+    std::int32_t widest_id = 0;
+    float widest_o[2] = {0, 0}, widest_e[2] = {0, 0};
+    std::int32_t widest_lod = -1;
 };
 template <class Mem>
 inline bool hull_model(Mem& mem, std::int32_t id, std::uint32_t* model) noexcept {
@@ -443,13 +448,20 @@ inline bool hull_children(Mem& mem, std::uint32_t parent, unsigned depth, float 
             const std::uint32_t arr = mem.u32(model + kModelLods);
             if (n < 1 || n > std::int32_t(kHullLodMax) || !arr) return false;
             std::int32_t ext[3] = {0, 0, 0};
+            std::int32_t lod = -1, lod_lat = -1; // the record with the widest lateral extent max(x, y) (the census row)
             for (std::int32_t k = 0; k < n; ++k) {
                 const std::uint32_t L = mem.u32(arr + 4 * std::uint32_t(k));
                 if (!L) return false;
+                std::int32_t lat = 0;
                 for (unsigned i = 0; i < 3; ++i) {
                     const std::int32_t v = mem.s32(L + kLodExtent + 4 * i);
                     if (v < 0 || v > kLodExtentMax) return false;
                     if (v > ext[i]) ext[i] = v;
+                    if (i < 2 && v > lat) lat = v;
+                }
+                if (lat > lod_lat) {
+                    lod_lat = lat;
+                    lod = k;
                 }
             }
             const std::int32_t s = mem.s32(c + kNodeScale);
@@ -469,7 +481,15 @@ inline bool hull_children(Mem& mem, std::uint32_t parent, unsigned depth, float 
             const float lx = cx + e[0], ly = cy + e[1];
             const float lat = sc::sqrt_ss(lx * lx + ly * ly);
             if (!sc::finite_f(lat)) return false;
-            if (lat > w_units) w_units = lat;
+            if (lat > w_units) {
+                w_units = lat;
+                out.widest_id = id;
+                out.widest_o[0] = cx / kUnits;
+                out.widest_o[1] = cy / kUnits;
+                out.widest_e[0] = e[0] / kUnits;
+                out.widest_e[1] = e[1] / kUnits;
+                out.widest_lod = lod;
+            }
             if (cz + e[2] > len_units) len_units = cz + e[2];
             ++out.parts;
         }

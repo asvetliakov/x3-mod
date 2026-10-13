@@ -1341,6 +1341,124 @@ the launch-transient box overlap are measured apart; the hand-over attitude boun
 (3.7° in 4 s) satisfies; the 16.1 footprint's r cap is not a cylinder bound (a pre-existing gap in the footprint certificate at large
 noses).
 
+## Capital gate transit amendment 17 (2026-10-13, Opus 5.5; decision §17, implementation §17.1)
+
+Worktree on main `0d1f28a7`, not committed, not installed. Changed sources:
+
+* `ship_capital_lane_core.h`: the sequencing cap, its obligation and its lapse memory deleted; `Pass::cap()` is the (b) cap
+  only; `Pass.apart`.
+* `ship_avoidance_core.h`: `lane_pair(…, &apart)`, `lane_excludes(v, apart)`, `lane_excluded`; `SiteE.small_dock_legs`,
+  `small_pair_verdict(…, dock_legs)`.
+* `ship_steering_core.h`: `kSlowJoinOffsetM`, `JoinPred.steps`, `unlatch_ok`.
+* `ship_avoidance_walk_core.h`: the widest part in `HullWidth`.
+* `ship_steering.cpp`: the cap path, counters and rows (§17.1 item 1); `small_dock_legs` from the capital key; the capital
+  warn watch; E rows for capitals; census part fields; `ship_trace_max` 8.
+* `tools/config/schema.py`, with `assets/x3m.ini` regenerated: `ship_trace_max` 8 and the seq key's text.
+* Fixture, `ship_trace_rows.py` and `test_ship_trace_format.py`.
+
+No hook site changed.
+
+**Acceptance (measured, WSL2, MinGW GCC 16.2):**
+
+* Build: 0 warnings.
+* `check_no_x87.py build/d3d9.dll`: PASS, 970 reachable functions, 0 violations.
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, 18 checks.
+* Host fixture ([output](../../verification/results/ship-steering/ship_steering_host.txt)): **7214/7214**, slip_gaps 0,
+  vanilla_notes 2. It was 7260.
+* `--capital` ([output](../../verification/results/ship-steering/capital-gate-transit/fixture_capital.txt)): **2587/2587**. It
+  was 2633.
+* `--capital-noslip` (a report): 40 failures, down from 43.
+* X3M_SEQ_OFF run ([output](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt)):
+  7124/7124, up from 7089.
+* Host tests `test_ship_trace_format`, `test_config_schema`, `test_ship_steering_sites`, `test_ship_trace_replay`: 43 tests OK.
+* Run158 replay (`ship_trace_replay.py /mnt/c/X3/x3m.prev.log --json` → `replay_lag.py`): byte-identical to
+  `replay_lag_run158.txt` except line 1, the source path. Run158's log is now `x3m.prev.log`; `x3m.log` is Run159's.
+* E vs amendment 15 on 400,000 random inputs with the amendment-16/17 inputs at their option-off defaults: 0 differences.
+  `small_dock_legs` defaults off.
+* DLL sha256 `3984bdc0…`, 58,720,956 B (worktree build after the review fixes F1–F7, not a candidate).
+
+**Check count (−46 in both runs, by construction):**
+
+| Change | Checks |
+| --- | --- |
+| Simultaneous at w 0.45 / 0.25 r: the (c)-frame, fallback and box targets become reports | −54 |
+| M-c's trailer-floor check removed | −9 |
+| Unit checks: two 16b cap checks removed; added the a17 resolve pair, slow-join bound, un-latch, on-plane un-latch, dock-leg small pair, census, live nose and the review-F1 probe at two widths | +8 |
+| K under the capital key (9 runs) | +9 |
+| Per-run invariants: the cap invariant (90) replaced by `lane_low` = 0 (90) | 0 |
+
+**Scenario M before → after** ([a17_m_ab.py](../../verification/results/ship-steering/capital-crowd/a17_m_ab.py) →
+[a17_m_ab.txt](../../verification/results/ship-steering/capital-crowd/a17_m_ab.txt); measured):
+
+| Variant | Arrive / launch | kept + slow | fallback crossings / frames | rotate max | box min | floor time | last arrival |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Staggered w 0.45 r (60 fps s1) | 5/5 → 5/5 | 4+1 → 4+1 | 0/0 → 0/0 | 4.0 → 3.8 s | 1,534 → 1,534 m | — → 0 | 430 → 430 s |
+| Staggered w 0.25 r | 5/5 → 5/5 | 4+1 → 4+1 | 0/0 → 0/0 | 4.0 → 3.8 s | 138 → 138 m | — → 0 | 430 → 430 s |
+| Simultaneous w 0.45 r (9 runs) | 45/45 → 45/45 | 36+9 → 36+9 | 0/0 → 0/0 | 4.0 → 3.8 s | 249 → **−185 m** (9 of 9 runs, reported) | 67.0 s longest span → 0 | 179 → 91 s |
+| Simultaneous w 0.25 r | 45/45 → 45/45 | 36+9 → 36+9 | 0/0 → 0/0 | 4.0 → 3.8 s | 138 → 138 m | 26.6 s → 0 | 174 → 91 s |
+| Simultaneous w = r | 45/45 → 45/45 | 36+9 → 36+9 | 0/0 → 0/0 | 3.8 → 3.8 s | −333 → −1,268 m | 145.4 s → 0 | 256 → 91 s |
+
+Simultaneous w 0.45 r detail:
+
+* The −185 m overlap is the M2 s3 crossing the Colossus's lane. The pair is (c) and on different lanes, so it is not detoured
+  and E leaves the engine's warn live. The fixture does not model the engine's evasion.
+* (c) frames with a ship on its approach: 0 → 51,286 at 0.45 r, 0 → 11,583 at 0.25 r, 146,035 → 146,041 at w = r. These are
+  the crossing joiners, now neither capped nor detoured, and are reported.
+* `lane_low` = 0 and `detours_c_apart` = 0 in every scenario-M run.
+* M-b keeps the (b) cap: 5,160 lowered decisions at 60 fps s1, Δs − D ≥ −2 m as before.
+* M-c: the first verdict is (c), with 0 detours between the pair (736 before). The engine's warn is left live on every (c)
+  frame. Box −175 m (reported; −288 m before).
+* M-d: the leader stops at the pair's first (s) frame, with 0 certificate violations in 18 runs. Box minimum −456 m (a_T > a_L)
+  and −16 m (a_T < a_L) at 60 fps seed 1, reported (225 / −182 m before). With no cap the trailer flies its join past the stopped
+  leader [i]; the pair is (s) or (c), so E leaves the engine's warn live whenever no certificate holds.
+* Missed targets: 45 TARGET MISS rows, all in the simultaneous variant, all reports the decision expects.
+  * 27 are "(c) frames with a ship on its approach", 9 runs × 3 widths: the crossing joiners, no longer capped.
+  * 18 are box contact at w 0.45 r and w = r, 9 runs each: a crossing joiner and a neighbour overlap in the box model with the
+    engine's evasion unmodelled.
+  * 0 hand-over attitude rows after the live nose.
+* Un-latch: 9 transitions in 9 runs (unchanged).
+* Dock-leg pair K: 3,600 of 3,600 fresh frames `suppress_small` with the key on; `pass_b_dock_leg` 3,600 of 3,600 with it off.
+
+**Certificate finding, then fixed (measured).** Before the fix, the simultaneous runs at 30 fps seed 7 contained (s) frames whose
+hand-over side was turned beyond the 12° the lateral certificate assumed: 179 frames at w 0.45 r (worst −454 m) and 568 at 0.25 r
+(−548 m). The slot-0 Titan's P2 frame carried an unbound capital detour (verdict none). Its 55.8° pitch remainder kept turning
+the Titan on order 0 to 56° off F over 20 s. With the cap the Titan had arrived at 127 s, without that detour. This refutes the
+16b entry's "the fixture's free drift satisfies the hand-over bound" for this timeline.
+
+Main-session fix (§17.1): at E a hand-over side's nose is the larger of the live forward row's angle and P2's. The lateral
+certificate keeps its 8.11° / 12° floor, and an unreadable row means no certificate. Result:
+
+* 0 such frames.
+* The pair is (c) there: (c) frames on an approach 2,104 → 2,862 (0.45 r), 856 → 1,672 (0.25 r), 6,103 → 7,119 (w = r) at 30 fps
+  seed 7.
+* Every other scenario-M line of the fixture output is unchanged, comparing `--crowd` stdout before and after with timings
+  stripped.
+* Unit check: certified on P2's nose, (c) at a live 56°, unchanged at 2°, (c) when unreadable.
+
+**Cost (host x86-64 -O2, measured):**
+
+* Lane pass on a full gate: 0.58–0.66 µs settled, 0.94–1.11 µs with 19 watch neighbours over the runs (1.07–1.10 before).
+* E's capital-pair work: mean 0.139–0.166 µs per call in scenario M (0.145–0.162 after the review fixes; the live nose costs
+  three reads and two dot products per hand-over side).
+* Predictor ([pred_cost16.cpp](../../verification/results/ship-steering/capital-crowd/pred_cost16.cpp) with 5 sweeps):
+  81.0–81.2 µs.
+* Trace lookups at site B over 300 ship calls per frame, now with the watch's two game-memory reads (the order through the
+  flight pointer, the flags) over 300 records (review F3;
+  [trace_scan_cost.cpp](../../verification/results/ship-steering/capital-crowd/trace_scan_cost.cpp) →
+  [trace_scan_cost.txt](../../verification/results/ship-steering/capital-crowd/trace_scan_cost.txt), host caches warm):
+  * 0.47 µs at 6 slots;
+  * 0.53 µs at 8 slots;
+  * 0.56 µs with the watch idle;
+  * 1.34 µs with all 16 watch slots held.
+* Watch slots now expire 20 s after their last hit, so they cannot stay held for the session.
+
+i686 figures were not measured. Log volume at 8 slots (inferred from `bytes_per_row_est=390`): ≤ 8 trace rows per frame,
+≈ 187 KB/s at 60 fps (140 KB/s at 6). The capital rows are bounded:
+
+* warn_pre and warn: ≤ 8 each per frame.
+* E: ≤ 8 per frame and ≤ 32 per game second, ≈ 9 KB per game second at ≈ 280 B a row (inferred); a new pair beyond the 32-pair
+  table is dropped and counted (review F4).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

@@ -1,0 +1,4 @@
+6 slots (before): 0.47 us per frame for 300 ship calls (best of 5)
+8 slots: 0.53 us per frame for 300 ship calls (best of 5)
+8 slots + the amendment-17 capital watch, 16 slots held: 1.34 us per frame for 300 ship calls (best of 5)
+8 slots + the amendment-17 capital watch, none held: 0.56 us per frame for 300 ship calls (best of 5)

@@ -1,0 +1,32 @@
+== before: 0d1f28a7:verification/results/ship-steering/capital-gate-transit/fixture_capital.txt
+  staggered/sub w 0.45 r             60 fps s1: arrived=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 rot_slow_max=4.0 min_box_sep=1534 detours a/b/c/none=0/0/1/1 arrive=67-430
+  staggered/sub w 0.25 r             60 fps s1: arrived=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 rot_slow_max=4.0 min_box_sep=138 detours a/b/c/none=0/0/0/1 arrive=67-430
+  staggered/sub w = r (unreadable)   60 fps s1: arrived=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 rot_slow_max=4.0 min_box_sep=627 detours a/b/c/none=0/0/1/1 arrive=67-430
+  staggered/sub M-c abreast          60 fps s1: arrived=2 kept=2 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=-288 detours a/b/c/none=0/0/736/3 arrive=56-89
+  staggered/sub M-d aT>aL            60 fps s1: arrived=1 kept=1 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=225 detours a/b/c/none=0/0/0/5 arrive=56-56
+  staggered/sub M-d aT<aL            60 fps s1: arrived=0 kept=0 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=-182 detours a/b/c/none=0/0/0/3 arrive=1000000000000000000-0
+  staggered/sub unlatch              60 fps s1: arrived=5 kept=5 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=1659 detours a/b/c/none=0/0/1/2651 arrive=72-430
+  staggered/sub same lane (b)        60 fps s1: arrived=2 kept=2 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=4375 detours a/b/c/none=0/0/0/0 arrive=65-218
+  dock-leg pair K fps= 60: frames=3600 pass_b_dock_leg=3600 suppressed=0 (B on 0x14 instead: suppressed 3600) min_d=635 m C=1701 m capital skipped_small=1842
+  crowd M16b over the 9 runs of simultaneous w 0.45 r : arrived 45 launched 45 (of 45) kept 36 slow 9 fallback crossings 0 frames 0; (c) frames on an approach 0, against a launch 704; certificate violations 0, lapses 0; last arrival 179 s, rotate after a slow join max 4.0 s, join error max 0.89 deg, box min 249 m, trailer ds - D_x min -0.0 m, longest floor span 67.0 s
+  crowd M16b over the 9 runs of simultaneous w 0.25 r : arrived 45 launched 45 (of 45) kept 36 slow 9 fallback crossings 0 frames 0; (c) frames on an approach 0, against a launch 0; certificate violations 0, lapses 0; last arrival 174 s, rotate after a slow join max 4.0 s, join error max 0.33 deg, box min 138 m, trailer ds - D_x min 41.1 m, longest floor span 26.6 s
+  crowd M16b over the 9 runs of simultaneous w = r    : arrived 45 launched 45 (of 45) kept 36 slow 9 fallback crossings 0 frames 0; (c) frames on an approach 146035, against a launch 11489; certificate violations 0, lapses 9; last arrival 256 s, rotate after a slow join max 3.8 s, join error max 2.50 deg, box min -333 m, trailer ds - D_x min 0.0 m, longest floor span 145.4 s
+  crowd M unlatch: 9 slow_join/fallback -> join transitions over 9 runs (9 runs with one)
+  crowd M: 42 measured targets missed (TARGET MISS rows; the simultaneous starts)
+  ship_steering_host checks=2633 failures=0 slip_gaps=0
+== after: verification/results/ship-steering/capital-gate-transit/fixture_capital.txt
+  staggered/sub w 0.45 r             60 fps s1: arrived=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 rot_slow_max=3.8 min_box_sep=1534 detours a/b/c/none=0/0/0/1 lane_low=0 detours_c_apart=0 arrive=67-430
+  staggered/sub w 0.25 r             60 fps s1: arrived=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 rot_slow_max=3.8 min_box_sep=138 detours a/b/c/none=0/0/0/1 lane_low=0 detours_c_apart=0 arrive=67-430
+  staggered/sub w = r (unreadable)   60 fps s1: arrived=5 kept=4 slow_cross=1 fb_cross=0 fb_frames=0 rot_slow_max=3.8 min_box_sep=627 detours a/b/c/none=0/0/0/1 lane_low=0 detours_c_apart=0 arrive=67-430
+  staggered/sub M-c abreast          60 fps s1: arrived=2 kept=2 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=-175 detours a/b/c/none=0/0/0/4 lane_low=0 detours_c_apart=0 arrive=55-63
+  staggered/sub M-d aT>aL            60 fps s1: arrived=4 kept=3 slow_cross=1 fb_cross=0 fb_frames=0 rot_slow_max=3.8 min_box_sep=-456 detours a/b/c/none=0/0/0/5 lane_low=0 detours_c_apart=0 arrive=55-90
+  staggered/sub M-d aT<aL            60 fps s1: arrived=1 kept=1 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=-16 detours a/b/c/none=0/0/0/3 lane_low=0 detours_c_apart=0 arrive=61-61
+  staggered/sub unlatch              60 fps s1: arrived=5 kept=5 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=1349 detours a/b/c/none=0/0/0/2651 lane_low=0 detours_c_apart=0 arrive=72-430
+  staggered/sub same lane (b)        60 fps s1: arrived=2 kept=2 slow_cross=0 fb_cross=0 fb_frames=0 rot_slow_max=0.0 min_box_sep=4375 detours a/b/c/none=0/0/0/0 lane_low=5160 detours_c_apart=0 arrive=65-218
+  dock-leg pair K fps= 60: frames=3600 pass_b_dock_leg=3600 suppressed=0 (B on 0x14 instead: suppressed 3600; amendment 17 key on: suppressed 3600) min_d=635 m C=1701 m capital skipped_small=1842
+  crowd M17 over the 9 runs of simultaneous w 0.45 r : arrived 45 launched 45 (of 45) kept 36 slow 9 fallback crossings 0 frames 0; (c) frames on an approach 51286, against a launch 8279; certificate violations 0 (hand-over attitude beyond 12 deg 0); last arrival 91 s, rotate after a slow join max 3.8 s, join error max 0.76 deg, box min -185 m (runs with contact 9), lane-lowered decisions 0, floor time 0 s (no sequencing cap)
+  crowd M17 over the 9 runs of simultaneous w 0.25 r : arrived 45 launched 45 (of 45) kept 36 slow 9 fallback crossings 0 frames 0; (c) frames on an approach 11583, against a launch 0; certificate violations 0 (hand-over attitude beyond 12 deg 0); last arrival 91 s, rotate after a slow join max 3.8 s, join error max 0.76 deg, box min 138 m (runs with contact 0), lane-lowered decisions 0, floor time 0 s (no sequencing cap)
+  crowd M17 over the 9 runs of simultaneous w = r    : arrived 45 launched 45 (of 45) kept 36 slow 9 fallback crossings 0 frames 0; (c) frames on an approach 146041, against a launch 18722; certificate violations 0 (hand-over attitude beyond 12 deg 0); last arrival 91 s, rotate after a slow join max 3.8 s, join error max 0.76 deg, box min -1268 m (runs with contact 9), lane-lowered decisions 0, floor time 0 s (no sequencing cap)
+  crowd M unlatch: 9 slow_join/fallback -> join transitions over 9 runs (9 runs with one)
+  crowd M: 45 measured targets missed (TARGET MISS rows; the simultaneous starts)
+  ship_steering_host checks=2587 failures=0 slip_gaps=0

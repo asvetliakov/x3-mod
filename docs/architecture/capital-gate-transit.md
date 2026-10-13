@@ -388,6 +388,7 @@ leaves it only geometrically; the member row prevents the next warn. The first b
 | … without `[B+0x40] & 0x80000` (the manually flown player ship, or any ship the integrator does not drive) | pass | `e_small_pass_no_autopilot` |
 | … deleted (0x8000000), attached (0x200) or docked (`[B+0xf8]`) | pass | `e_small_pass_not_steerable` |
 | … class in `ship_steering_classes`' mask | pass (the mask means "leave this class's pairs vanilla") | `e_small_pass_class` |
+| … on a dock leg: order 5 (dock or gate pass), 0x1e (undock), 0x20 (glide) (scenario audit G4) | pass with `ship_steering_gates_capital` off; **suppress** with it on (amendment 17 item 4, §17.1: the engine steers the small ship on its leg) | `e_small_pass_b_dock_leg` (key off) |
 | not small, a remembered member of A's formation (§15.2, fresh, identity matching), currently in the engine's transient (order 0x12, or order 0 with `f+0x224 == 0`), and `d > r_A + r_B` | **suppress** | `e_suppressed_member` |
 | A's order target (`f+0x224 == B`), class 0x12 (a gate), while A is on its validated capital approach in join mode (§15.3): order 4, or the 0x1f / order-0 hand-over after P2 kept the speed, until order 5 starts | **suppress** | `e_suppressed_gate` |
 | anything else | pass (the engine's warn test runs) | — |
@@ -406,7 +407,8 @@ longer reacting, the evasion is one-sided and the loop is open. Suppressing both
 hulls in which nobody avoids, while the escort is off its slot.
 
 **Residual risk.** A small ship that neither dodges nor evades: parked under autopilot on order 0 (zero speed, so its
-own warn test never fires), on a pass-through order (0x1e undock, 0x20 glide, 8/0x21 warp), or a class-masked ship.
+own warn test never fires), on a pass-through order (0x1e undock, 0x20 glide, 8/0x21 warp; since amendment 17 also
+order 5 under the capital key, §17.1), or a class-masked ship.
 A steered capital no longer reacts to an M6/M8/TM in that state and can ram it. Vanilla capitals already ignore every
 non-"large" ship (fighters, TS, TP), so the new exposure is limited to M6 (≤ 140 m), M8 (≤ 83 m) and TM (≤ 128 m)
 hulls that are stationary in a capital's path. The contact response is the elastic impulse of `0x0045e130`
@@ -1403,7 +1405,8 @@ built it; the certificates are kept for E and the rows, not for speed. The same-
    removed from every write path (`apply_cap` keeps only the (b) cap). Counters `lane_seq_capped`, `lane_seq_floor_ms`,
    `lane_seq_lapse` go; `lane_seq_lat/along/cross` stay as certificate counts.
 2. `excluded()` / the inline lane block drop every committed–committed pair on different lane points (no corridor
-   condition). Our avoidance between a committed capital and an uncommitted one is unchanged.
+   condition). Our avoidance between a committed capital and an uncommitted one is unchanged. Ratified with the implementation:
+   a pair in which one ship is on its order-5 leg counts as on different lane points (as for the 16b watch pair).
 3. Slow join is bounded: the chosen candidate's crossing offset |e| at the plane ≤ 100 m and `over` ≤ 100 m (the
    corridor), else the aim-at-A fallback as before. An un-latch requires a candidate with `reached_plane`, steps > 0 and
    a finite non-degenerate state (not all of nose, vel and |e| exactly 0).
@@ -1423,3 +1426,125 @@ model as they do in vanilla.
 
 **Later (design, not this build):** why joiners arrive 2.7 km off their lane in a crowd (the KC's grid assignment vs the
 arrival side), and whether a box-hull pair model (audit backlog 10) can replace the engine's warn as the protection.
+
+### 17.1 Implementation
+
+Implemented 2026-10-13 on main `0d1f28a7` (worktree, not committed, not installed). Evidence and numbers are in the ledger
+[ship-steering.md](../verification/ship-steering.md), "Capital gate transit amendment 17".
+
+**Where the code reads the decision.**
+
+1. *No sequencing cap.* `ship_capital_lane_core.h`: `seq_cap`, `seq_obliged`, `SeqMemory` / `seq_lapses` and `kSeqCapExtraM` are
+   deleted. `Pass::cap()` is the (b) follow cap alone, so every write path that `apply_cap` serves carries only that cap: the gate
+   write's `v_ref`, the lowering clamp's `v_corner` with `kShipFlagLower`, and the lowering-only write on the engine's law. The
+   1 unit/s floor stays on the (b) cap only (M-b). `ship_steering_gates_capital_seq` gates only the (s) certificates: E's
+   `verdict_sym(..., seq_on_)` → `certified`, and the pass's verdicts for the rows and counts. Counters `lane_seq_capped`,
+   `lane_seq_floor_ms` and `lane_seq_lapse` are gone; `lane_seq_lat/along/cross` stay. The lane row loses `Dx=` and `seq_cap=`.
+   `v_cap=`, `D_m=` and `bind=` are written for a (b) trailer only. The latch row loses `seq_cap=` and `seq_leader=`. The install
+   row loses `seq_cap_extra_m`.
+2. *Different lane points are never obstacles.* `Pass.apart[i]` = the pair's lane points differ, or one side is on an order-5
+   leg. This is the same `same_lane` test that defines a 16b watch pair. `ship_avoidance_core.h`: `lane_pair(s, o, &apart)`,
+   `lane_excludes(verdict, apart)` and `lane_excluded(s, o)` (the resolve's one path). They drop (a), (b) and (s), and any committed
+   pair with `apart` whatever its verdict. Assumption: an order-5 leg counts as "different lane points", as it does for the 16b
+   watch pair. A same-lane (c) pair stays an obstacle. Counter `lane_apart` (the dropped (c) pairs).
+3. *Slow join in the corridor; real un-latch.* `ship_steering_core.h`: `slow_join_ok` also needs the candidate's |e| at the plane
+   ≤ `kSlowJoinOffsetM` (100 m). `JoinPred.steps` counts the simulated steps. `unlatch_ok` needs grade ≥ 1, the plane reached,
+   steps > 0, finite nose / vel / |e|, and not all three exactly 0. `join_evaluate16` un-latches only on such a candidate. The
+   latch row's candidates carry `steps`. Install row: `slow_join_offset_m=100`.
+4. *Small ships on dock legs.* `small_pair_verdict(..., dock_legs)` and `SiteE.small_dock_legs`, which the DLL sets from
+   `ship_steering_gates_capital`. With the key on, a small B on order 5, 0x1e or 0x20 gets `suppress_small`. The manual player
+   ship (no autopilot bit), docked or attached ships and masked classes still pass. With the key off the verdict is amendment
+   15's, so `pass_b_dock_leg` remains for the option-off case only. The avoidance side already ignored small ships on every
+   order (`small_for_capital`). §15.1's table carries the row.
+5. *Diagnostics.*
+   * `ship_trace_max` defaults to 8: the schema, `x3m.ini` and the DLL's fallback. `kTraceMax` stays 16 and the trace ring 128
+     rows, which is 16 frames of 8 ships.
+   * `capital_warn_watch` writes warn_pre and warn rows for untraced capital subjects from site B, edge-triggered. The edge
+     memory holds 16 capitals while their warn bits are set or they are on 0x12. Slots expire 20 s after their last hit (review
+     F3, below). A capital
+     that finds no slot is not logged and counts `gate_rows_dropped`. With no slot in use, a ship that is neither warned nor on
+     0x12 costs two reads.
+   * The rows share the existing rings: 8 warn_pre and 8 warn rows per frame. E rows are written for slot 0 or any capital A,
+     at most one per pair per game second through a 32-pair table and at most 8 per frame (review F4, below). The last-verdict
+     table grows from 32 to 64 entries. Overflow counts `gate_rows_dropped`.
+   * The census row adds `part_id part_lod o_x o_y e_x e_y`. These are the part that sets w, its LOD record with the widest
+     lateral extent (max(x, y)), its lateral offset bound and its half-extents in m.
+
+**Fixture.**
+
+* *Scenario M, staggered:* every amendment-16 target is asserted as before. That covers arrivals and launches, kept or slow
+  crossings with the rotate ≤ 5 s, 0 aim-at-A fallbacks, no box contact outside the grid zone, and the gate row. New invariants
+  in every scenario-M run:
+  * no detour against a (c) pair on different lane points (`detours_c_apart`);
+  * the lane layer never lowers a committed capital's write (`lane_low` = 0; M-b alone, the (b) cap, is exempt).
+* *Scenario M, simultaneous:* arrivals, launches and crossings in join or slow join are asserted at w 0.45 r and 0.25 r. The
+  aim-at-A fallback, the (c) frames on an approach and the box contact are reported.
+* *M-c and M-d:* certificate-only.
+  * M-c: the first verdict is (c), there is no detour between the pair, and E leaves the warn on every (c) frame.
+  * M-d: the leader stops at the pair's first (s) frame, and every (s) frame holds its certificate. The cap invariant, the floor
+    and liveness rows are gone.
+* *K:* with the key on, the (M2, M6 on order 5) pair is `suppress_small` on every fresh frame, with no capital evasion. With
+  the key off it is `pass_b_dock_leg` as before. Cascade D checks both.
+
+**Measured against the fixture paragraph** (9 runs per variant; numbers in the ledger):
+
+* Staggered, all three widths: 5/5 arrive and launch, 0 fallbacks, rotate ≤ 3.8 s, box min unchanged (1,534 / 138 / 627 m at
+  60 fps s1).
+* Simultaneous, all widths: 45/45, kept 36 + slow 9, 0 fallbacks, rotate ≤ 3.8 s, last arrival 91 s (179 s with the cap), floor
+  time 0. Box contact at w 0.45 r is −185 m in 9 of 9 runs (the M2 s3 crossing the Colossus's lane; the engine's warn is live
+  there and the fixture does not model the engine's evasion). At 0.25 r the minimum is 138 m with no contact.
+* `lane_low` = 0 in every scenario-M run except M-b, where the (b) cap's 5,160 lowered decisions occur at 60 fps s1.
+
+**What the fixture found that the decision does not cover.** In the simultaneous runs at 30 fps seed 7 (w 0.45 r and 0.25 r) the
+slot-0 Titan reaches P2 at the same moment as the slot-1 Colossus. On that frame the Titan's decision is not bound to the lane
+rule (verdict none: one of the "none" capital detours that amendments 16 and 16b also had), so it detours vertically. The detour
+leaves a 55.8° pitch remainder (`e` = 10,152 binary). The plant goes on turning by that remainder on order 0, and the waiting
+Titan drifts to 56° off F over 20 s. §16.10's lateral certificate takes a hand-over side's nose at ≤ 12° ([i]: "order 0 holds
+no attitude"). The certificate is therefore violated against the slot-4 Titan launching on order 5: 179 frames, −454 m, at
+0.45 r, and 568 frames, −548 m, at 0.25 r. With the cap the Titan arrived at 127 s instead, with no remainder. Whether the engine
+keeps integrating a stale remainder on order 0 is not decoded **[i]**. If it does, E could suppress a warn for a hand-over capital
+that is turning off-axis.
+
+**Fix (main session, 2026-10-13): the hand-over nose is measured.**
+
+* `live_nose` / `verdict_sym(…, live, fa, fb)`: at site E a hand-over side (order 0 / 0x1f) takes the larger of P2's nose and
+  the live one. The live nose is the forward row `f+kFlightBasis+0x20` that the trace already reads, as a cosine to F.
+* That angle feeds:
+  * the in-lane hysteresis;
+  * the footprint reach;
+  * the lateral certificate, which keeps its floor at the 8.11° / 12° bound (`seq_reach_moving`);
+  * the along route's leader test.
+* A forward row that cannot be read (null, non-finite, |f|² outside [0.9, 1.1]) certifies nothing. The pair is (c) at E
+  (`why=5`) and the engine's warn stays live.
+* The pass and the rows keep P2's nose. Their verdicts never suppress anything, and the (b) follow cap needs the hand-over leader
+  in lane. The DLL reads a live forward row only for a side in the hand-over (review F5).
+* Review F1: a worse live nose never shrinks a footprint. A hand-over side that is in lane on P2's nose but out of lane on the
+  live one keeps the in-lane disc as well: offset + reach at the live nose + 37 m, unioned with its q → lane segment of radius r.
+  The pair's gap is the minimum over both, so the footprint certificate needs both to clear (`live_union_disc`).
+* The reviewer's probe is a fixture unit check: a Titan r 1,022, 100 m off its lane, next to a ship of r 300 (w 0.45 r) in lane
+  on the grid point 1,332 m away.
+
+  | Titan width | P2 nose | Live 56° |
+  | --- | --- | --- |
+  | w = r | (a) by the corridor, gap 25 m, not certified | (c), footprint gap 13 m (the segment alone would clear by 150 m) |
+  | w 0.45 r | (a) by the footprint, 587 m | footprint not certified (13 m); E certifies by the (s) lateral route, 126 m |
+
+  The (s) lateral route at w 0.45 r is the cylinder's bounding radius h = 1,121 m around the Titan's centre q, whatever its
+  attitude. That clears B's reach by 126 m, which is a valid certificate, not a nose assumption.
+
+**Review fixes to the diagnostics (F3, F4, F7).**
+
+* F3: a warn-watch slot is freed when its ship is seen neither warned nor on 0x12, and when a trace slot claims the ship. It is
+  also freed 20 s after its last hit (docked, dead, gone from site B), by the frame-boundary sweep or by the next capital needing
+  a slot.
+* F4: E rows are at most 8 per frame (ring 8). Each pair logs at most one per game second through the 32-pair table; a new pair
+  finding the table full is dropped and counted in `gate_rows_dropped`, never evicted. That bounds E rows to 32 per game second:
+  about 9 KB per game second at about 280 B a row (inferred), ten times that per real second under SETA.
+* F7: every masked ring and table is checked to be a power of two by `static_assert`.
+* The (s) obligation's reach no longer exists, since amendment 17 removed the obligation.
+* Fixture: `crowd_lane` gives E the true forward rows, and a unit check covers the waiting Titan next to the launching slot-4
+  Titan. On P2's nose the pair is certified. With a live nose of 56° it is not; at 2° the verdict is unchanged; unreadable or
+  not a unit vector gives (c).
+* Measured: the 30 fps seed 7 timeline now has 0 frames beyond the assumption (179 and 568 before). The pair is (c) there:
+  (c) frames on an approach rise 2,104 → 2,862 (0.45 r), 856 → 1,672 (0.25 r) and 6,103 → 7,119 (w = r). Every other scenario-M
+  line of the fixture output is unchanged. The `handover_att_viol` count stays in the fixture as a guard (0).

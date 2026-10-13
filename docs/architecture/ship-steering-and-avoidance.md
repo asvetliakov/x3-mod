@@ -186,7 +186,7 @@ written only there); the row now carries `carrot_age_ms` (order-5 start minus th
 carrot is measurable instead of inferred. (5) The stuck witness restarts when the MovePos point changes, not only the
 order. (6) `ship_gate_transition` adds the crossing (P2) and the order-5 start in the gate frame: position / r,
 forward, the last lead-in carrot / r, dist(A) and dist(B) / r, game-ms since P2; `gate_lead_validated/fallback` count
-per approach at P2. (7) `ship_trace` (`--debug` tier, default off; `ship_trace_max` ships, default 6): one row per
+per approach at P2. (7) `ship_trace` (`--debug` tier, default off; `ship_trace_max` ships, default 6, 8 since amendment 17): one row per
 frame for the first N ships on a gate or dock approach (slot 0 a capital on order 4 to a gate since amendment 11,
 the others non-capital) with the engine state the fixture's model needs
 and what the module handed back (the ledger's Step 4 section has the row), for the model-conformance replay. Gate

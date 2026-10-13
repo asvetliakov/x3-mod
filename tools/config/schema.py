@@ -399,7 +399,7 @@ SETTINGS = [
           'writes one ship_trace log row per frame for each (positions, heading, rates, speeds, the steering point given and '
           'returned) for the model conformance replay. Needs ship_steering and debug. 1 = on, 0 = off.', builtin='0',
           requires=('ship_steering',), since='2026-10-12'),
-    entry('ship_trace_max', 'int', 'logging', 'How many ships ship_trace follows at once (1..16).', builtin='6', range=(1, 16),
+    entry('ship_trace_max', 'int', 'logging', 'How many ships ship_trace follows at once (1..16).', builtin='8', range=(1, 16),
           requires=('ship_trace',), since='2026-10-12'),
     entry('ship_steering_gates', 'bool', 'engine', 'Computer-flown ships other than capital ships fly through gates in one '
           'continuous approach: they line up with the gate on the way in, keep their speed at the approach point and the '
@@ -410,9 +410,9 @@ SETTINGS = [
           'their speed through the alignment step into the final run instead of stopping and turning in place (needs '
           'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off.', builtin='1',
           requires=('ship_steering_gates',), launcher='--ship-steering-gates-capital', since='2026-10-12'),
-    entry('ship_steering_gates_capital_seq', 'bool', 'engine', 'When several capital ships join the same gate, one that has to cross '
-          'or slide in next to another ship\'s lane waits behind it until the two cannot touch, instead of swerving around it (needs '
-          'ship_steering_gates_capital; 0 = they swerve as before). 1 = on, 0 = off.', builtin='1',
+    entry('ship_steering_gates_capital_seq', 'bool', 'engine', 'When several capital ships join the same gate on different lanes, the '
+          'game\'s own collision warning between two of them is skipped while their hulls provably cannot touch; otherwise it stays on, '
+          'as in the unmodified game (needs ship_steering_gates_capital; 0 = the warning always stays on). 1 = on, 0 = off.', builtin='1',
           requires=('ship_steering_gates_capital',), since='2026-10-13'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '

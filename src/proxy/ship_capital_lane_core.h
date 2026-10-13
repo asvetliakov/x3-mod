@@ -21,11 +21,14 @@
 // Any missing entry, stale state, identity mismatch or uncommitted side is no verdict (today's rules).
 // Amendment 16b (section 16.10, ratified 2026-10-13): a pair that the rule above leaves at (c) on different lane points (or on an
 // order-5 leg) is (s) "sequenced" when (i) the hulls' lateral projections are apart now by 50 m plus the motion until the next
-// classification, or (ii) their projections onto F are apart with the trailer held behind; the trailing ship of every such pair
-// whose lateral paths come within reach carries the sequencing cap (D_x = h_T + h_L + 100 m, h = sqrt(r^2 + w^2)). Every verdict
+// classification, or (ii) their projections onto F are apart with the trailer held behind (h = sqrt(r^2 + w^2)). Every verdict
 // is computed from the stored board in both directions and the more severe one taken (review F6); one pass per decision feeds both
-// the avoidance's exclusion and site B's caps (review F2); site E suppresses only under a geometric certificate (footprint route of
-// (a), or (s) by (i) / (ii): review F1).
+// the avoidance's exclusion and site B's (b) cap (review F2); site E suppresses only under a geometric certificate (footprint route
+// of (a), or (s) by (i) / (ii): review F1).
+// Amendment 17 (section 17, Run159): the 16b sequencing cap (D_x and its 1 unit/s floor) is gone from every write path; the
+// certificates stay for E and the rows. The avoidance drops every committed pair on different lane points (or with an order-5
+// leg), whatever its verdict: between two committed capitals on different lanes the engine's own warn is the protection, as in
+// vanilla. Same-lane pairs keep (b) (no detour, the follow cap) and (c) (today's rules).
 namespace x3m::ship_avoidance::lane {
 namespace sc = x3m::ship_steering::core;
 constexpr unsigned kLaneGates = 8, kLaneEntries = 20;
@@ -42,7 +45,7 @@ constexpr float kHoldM = 150.0f, kHoldCos = 0.97815f, kMarginHeldM = 37.0f; // c
 constexpr std::uint32_t kHoldGapMs = 1000;
 constexpr float kExemptGapM = 50.0f;
 constexpr float kFollowExtraM = 100.0f;    // D = the engine's warn reach for the pair + 100 m
-constexpr float kFollowFloorMs = 1.0f / sc::kUnitsPerMetre; // the trailing ship's cap floor: 1 unit/s, the smallest site-B write (0 = "no write")
+constexpr float kFollowFloorMs = 1.0f / sc::kUnitsPerMetre; // the (b) trailer's cap floor: 1 unit/s, the smallest site-B write (0 = "no write")
 constexpr std::uint32_t kHandoverMaxMs = 120000; // = ship_avoidance_core.h kHandoverMaxMs (the capital gate row's hand-over bound)
 enum class Verdict : std::uint8_t { none = 0, exempt, follow, cross, seq, count };
 inline const char* verdict_name(Verdict v) noexcept {
@@ -59,7 +62,6 @@ inline const char* route_name(Route r) noexcept {
 // Amendment 16b constants (section 16.10.3).
 constexpr float kSeqLatGapM = 50.0f;       // = kExemptGapM: the clearance between the lateral projections, kept apart from the motion
 constexpr float kSeqAlongM = 50.0f;        // the along-axis certificate's slack over h_T + h_L (the closing within tau added explicitly)
-constexpr float kSeqCapExtraM = 100.0f;    // D_x = h_T + h_L + 100 m: 50 m above the certificate, >= 10 x the cap's kinematic undershoot
 constexpr float kSeqTauMaxS = 1.0f;        // tau = min(1 s, age + fresh)
 constexpr float kSeqLeaderCos = 0.5f;      // the leader's nose within 60 deg of F (with v.F >= 0): it moves forward until the next classification
 constexpr float kSeqBackMs = 1.0f;        // the leader's v.F >= -1 m/s (a stopped hull's slip residue; the closing term carries it)
@@ -312,6 +314,9 @@ struct Side {
     float s = 0, vF = 0;
     std::uint16_t order = 0;
     std::uint32_t age = 0; // ms since the entry's state was sampled (the last refresh, or P2 for the hand-over)
+    std::uint8_t live = 0; // amendment 17 (section 17.1): a hand-over side's nose 0 = P2's stored one (the pass, the rows), 1 = the live
+                           // basis read at E (cos_t is it), 2 = the live basis unreadable: no certificate, the pair stays (c)
+    float cos_p2 = 1.0f;   // live = 1: P2's stored nose (the in-lane state it gave: the union footprint, review F1)
 };
 // The age of an entry's stored state (ms): since its last refresh, or since P2 when the hand-over is later.
 __attribute__((always_inline)) inline std::uint32_t entry_age(const Entry& e, std::uint32_t now) noexcept {
@@ -426,7 +431,7 @@ struct PairInfo {
     bool watch = false;
     std::uint8_t trail = 0;
     std::uint8_t why = 0; // a watch pair left at (c): 1 a motion unknown, 2 the trailer on order 5 or a <= 0, 3 the leader turned or
-                          // moving back, 4 the along spacing short
+                          // moving back, 4 the along spacing short, 5 a hand-over side's live nose unreadable (amendment 17)
     float lat_gap = 0, mot_a = 0, mot_b = 0, along_gap = 0;
 };
 // Ratification addendum 2026-10-13 (4): the corridor of a ship = settled in lane (the in-lane footprint), or joining (order 4 in
@@ -444,9 +449,37 @@ __attribute__((always_inline)) inline bool in_corridor(const Side& sd, Foot kind
 }
 // The verdict (section 16.1 with the addendum): (a) footprints >= 50 m apart, or different lane points with both ships inside
 // their corridors; (b) the same lane point with both settled in lane; (c) anything else.
+// Amendment 17 review F1: a worse live nose never shrinks a footprint. A hand-over side in lane on P2's nose whose live nose takes it
+// out of lane keeps the in-lane disc as well (offset + reach at the live nose + the held margin): its footprint is the union of that
+// disc and the segment, and a gap is the minimum over both.
+__attribute__((always_inline)) inline bool live_union_disc(const Side& sd, Foot kind, Footprint* out) noexcept {
+    if (sd.live != 1 || kind == Foot::in_lane) return false;
+    const Entry& e = *sd.e;
+    const float off = lane_offset(e, sd.q);
+    if (!lane_hold_state(e.in_lane != 0, off, sd.cos_p2)) return false;
+    out->a[0] = out->b[0] = e.lane[0];
+    out->a[1] = out->b[1] = e.lane[1];
+    out->rad = off + reach(e.r, e.w, sd.cos_t) + kMarginHeldM;
+    out->kind = Foot::in_lane;
+    return true;
+}
+__attribute__((always_inline)) inline float foot_gap(const Footprint& fa, const Footprint& fb) noexcept {
+    return seg_seg2(fa.a, fa.b, fb.a, fb.b) - fa.rad - fb.rad;
+}
 inline Verdict pair_verdict(const Side& A, const Side& B, PairInfo* info = nullptr) noexcept {
     const Footprint fa = footprint(A), fb = footprint(B);
-    const float gap = seg_seg2(fa.a, fa.b, fb.a, fb.b) - fa.rad - fb.rad;
+    float gap = foot_gap(fa, fb);
+    Footprint ua, ub;
+    const bool has_ua = live_union_disc(A, fa.kind, &ua), has_ub = live_union_disc(B, fb.kind, &ub);
+    if (has_ua || has_ub) { // the minimum over the union's parts (a NaN anywhere stays NaN: no certificate)
+        const float g1 = has_ua ? foot_gap(ua, fb) : gap, g2 = has_ub ? foot_gap(fa, ub) : gap, g3 = has_ua && has_ub ? foot_gap(ua, ub) : gap;
+        if (!sc::finite_f(g1) || !sc::finite_f(g2) || !sc::finite_f(g3)) gap = g1 + g2 + g3;
+        else {
+            if (g1 < gap) gap = g1;
+            if (g2 < gap) gap = g2;
+            if (g3 < gap) gap = g3;
+        }
+    }
     const float dl[2] = {A.e->lane[0] - B.e->lane[0], A.e->lane[1] - B.e->lane[1]};
     const bool docking = A.order == sc::kOrderDock || B.order == sc::kOrderDock; // an order-5 leg has no lane point
     const bool same = !docking && dl[0] * dl[0] + dl[1] * dl[1] < kSameLaneM * kSameLaneM;
@@ -536,6 +569,11 @@ inline Verdict pair_verdict16b(const Side& A, const Side& B, std::uint32_t fresh
     PairInfo& in = info ? *info : local;
     in = PairInfo{};
     const Verdict v = pair_verdict(A, B, &in);
+    if (A.live == 2 || B.live == 2) { // amendment 17: a hand-over nose that cannot be read certifies nothing ((a) by the footprint
+        in.route = Route::none;       // or (s)): the pair is (c), the engine's warn stays live
+        in.why = 5;
+        return Verdict::cross;
+    }
     if (v != Verdict::cross || !seq || in.same_lane) return v;
     in.watch = true;
     const Entry &ea = *A.e, &eb = *B.e;
@@ -588,13 +626,39 @@ __attribute__((always_inline)) inline unsigned severity(Verdict v, Route r) noex
 __attribute__((always_inline)) inline bool certified(Verdict v, Route r) noexcept {
     return (v == Verdict::exempt && r == Route::foot) || (v == Verdict::seq && (r == Route::lat || r == Route::along));
 }
+// Amendment 17 (section 17.1, main-session fix): a hand-over side's nose is measured, never assumed. Its P2 state is minutes old and
+// order 0 holds no attitude (the fixture measured a 55.8 deg turn remainder carried into the wait), so at E the side's nose is the
+// larger of the live forward row's angle to F and P2's: the in-lane state, the footprint reach, the lateral reach (at no less than
+// the 8.11 / 12 deg hysteresis bound: seq_reach_moving) and the along route's leader test all use it. f_live null, non-finite or not a unit vector (|f|^2 outside
+// [0.9, 1.1]): live = 2, no certificate. A side not in the hand-over keeps its fresh decision's nose (its motion term covers tau).
+__attribute__((always_inline)) inline void live_nose(const Gate& g, const float* f_live, Side* sd) noexcept {
+    if (!handover_side(*sd)) return;
+    if (!f_live) {
+        sd->live = 2;
+        return;
+    }
+    const float n2 = sc::dot3(f_live, f_live), c = sc::dot3(f_live, g.F);
+    if (!sc::finite_f(n2) || !sc::finite_f(c) || !(n2 >= 0.9f && n2 <= 1.1f)) {
+        sd->live = 2;
+        return;
+    }
+    sd->cos_p2 = sd->cos_t;
+    const float cl = c / sc::sqrt_ss(n2);
+    if (cl < sd->cos_t) sd->cos_t = cl; // the larger of the live and P2's angles: measured, never below what P2 recorded
+    sd->live = 1;
+}
 // The pair's verdict from the stored board in both directions, the more severe taken (review F6); *info is A's direction with the
-// chosen route.
+// chosen route. live (site E, amendment 17): fa_live / fb_live are A's and B's live forward rows (null = unreadable) for a hand-over
+// side; without live (the pass, the rows) a hand-over side keeps P2's stored nose.
 inline Verdict verdict_sym(const Gate& g, const Entry& ea, const Entry& eb, std::uint32_t now, std::uint32_t fresh_ms, bool seq,
-                           PairInfo* info = nullptr) noexcept {
+                           PairInfo* info = nullptr, bool live = false, const float* fa_live = nullptr, const float* fb_live = nullptr) noexcept {
     Side a, b;
     side_of(g, ea, nullptr, nullptr, ea.order, now, &a);
     side_of(g, eb, nullptr, nullptr, eb.order, now, &b);
+    if (live) {
+        live_nose(g, fa_live, &a);
+        live_nose(g, fb_live, &b);
+    }
     PairInfo ia, ib;
     const Verdict va = pair_verdict16b(a, b, fresh_ms, seq, &ia);
     const Verdict vb = pair_verdict16b(b, a, fresh_ms, seq, &ib);
@@ -604,70 +668,6 @@ inline Verdict verdict_sym(const Gate& g, const Entry& ea, const Entry& eb, std:
         if (take_b) info->route = ib.route;
     }
     return take_b ? vb : va;
-}
-// The sequencing obligation (section 16.10.2, a liveness choice, not part of the proof; widened in the implementation, section
-// 16.11): a watch pair whose lateral paths come within reach of each other. A lateral mover (order 4 not in lane, or order 5) is the
-// segment q -> its lane point ((0, 0) on order 5) with reach h (its nose along the join is not bounded: the cylinder's bounding
-// radius); a settled ship (in lane, or in the hand-over) is its point q with min(h, w + r sin theta) + 25 m. Obliged when the paths
-// are closer than the two reaches plus 50 m plus kSeqObligeM (the lateral motion until the next classification). Two settled ships
-// of a watch pair (a hand-over off its lane or turned beyond 8.11 deg next to an in-lane neighbour) are obliged by the same test: they
-// can still close along F.
-constexpr float kSeqObligeM = 100.0f;
-inline bool seq_obliged(const Side& A, Foot fa, const Side& B, Foot fb) noexcept {
-    const bool ma = A.order == sc::kOrderDock || (A.order == sc::kOrderFlyBefore && fa != Foot::in_lane);
-    const bool mb = B.order == sc::kOrderDock || (B.order == sc::kOrderFlyBefore && fb != Foot::in_lane);
-    float a0[2] = {A.q[0], A.q[1]}, a1[2] = {A.q[0], A.q[1]}, b0[2] = {B.q[0], B.q[1]}, b1[2] = {B.q[0], B.q[1]};
-    float ra, rb;
-    if (ma) {
-        a1[0] = A.order == sc::kOrderDock ? 0.0f : A.e->lane[0];
-        a1[1] = A.order == sc::kOrderDock ? 0.0f : A.e->lane[1];
-        ra = A.e->h;
-    } else
-        ra = seq_reach(*A.e, A.cos_t) + (lane_state(A) == 2 ? kMarginHeldM : kMarginM);
-    if (mb) {
-        b1[0] = B.order == sc::kOrderDock ? 0.0f : B.e->lane[0];
-        b1[1] = B.order == sc::kOrderDock ? 0.0f : B.e->lane[1];
-        rb = B.e->h;
-    } else
-        rb = seq_reach(*B.e, B.cos_t) + (lane_state(B) == 2 ? kMarginHeldM : kMarginM);
-    const float d = seg_seg2(a0, a1, b0, b1);
-    return !sc::finite_f(d) || d < ra + rb + kSeqLatGapM + kSeqObligeM;
-}
-// The sequencing cap of the trailer T behind the leader L (section 16.10.2; both from the stored board, so the latency counts
-// both ages): D_x = h_T + h_L + 100 m; the leader's along-F credit v_c only in lane or in the hand-over (its state extrapolated to
-// now there); the sum, stopping and relative forms; never below 1 unit/s. *ds_out / *Dx_out: s_L - s_T and D_x.
-// always_inline: a float returned out of line comes back in st(0) on i686 (check_no_x87).
-__attribute__((always_inline)) inline float seq_cap(const Side& T, const Side& L, Foot foot_l, std::uint32_t fresh_ms, float* ds_out = nullptr,
-                                                     float* Dx_out = nullptr) noexcept {
-    const Entry &et = *T.e, &el = *L.e;
-    const float aT = et.a_lin, aL = el.a_lin;
-    const float Dx = et.h + el.h + kSeqCapExtraM;
-    if (ds_out) *ds_out = L.s - T.s;
-    if (Dx_out) *Dx_out = Dx;
-    if (!(aT > 0.0f) || !(et.h > 0.0f) || !(el.h > 0.0f)) return kFollowFloorMs;
-    const bool l_hand = handover_side(L);
-    const std::uint32_t age_l = l_hand ? 0u : (L.age < 2000u ? L.age : 2000u);
-    float vc = 0.0f;
-    if ((foot_l == Foot::in_lane || l_hand) && aL > 0.0f) {
-        vc = L.vF - aL * float(std::int32_t(age_l)) * 0.001f;
-        if (lane_state(L) == 2) vc -= (L.vF > 0.0f ? L.vF : 0.0f) * (1.0f - kHoldCos); // held: the turn's loss of v.F at 12 deg
-        if (!(vc > 0.0f)) vc = 0.0f;
-    }
-    const float vT = T.vF > 0.0f ? T.vF : 0.0f;
-    const std::uint32_t lat_ms = (fresh_ms < 2000u ? fresh_ms : 2000u) + age_l + (T.age < 2000u ? T.age : 2000u);
-    const float room = L.s - T.s - Dx - vT * float(std::int32_t(lat_ms)) * 0.001f;
-    if (!sc::finite_f(room) || room <= 0.0f) return kFollowFloorMs;
-    float cap = vc + sc::sqrt_ss(2.0f * aT * room);
-    if (aL > 0.0f) {
-        const float stop = sc::sqrt_ss(vc * vc * aT / aL + 2.0f * aT * room);
-        if (stop < cap) cap = stop;
-        if (aT > aL && vc > 0.0f) {
-            const float v_rel = sc::sqrt_ss(2.0f * (aT - aL) * room);
-            if (v_rel * aL <= vc * (aT - aL) && vc + v_rel < cap) cap = vc + v_rel;
-        }
-    }
-    if (!sc::finite_f(cap)) return kFollowFloorMs;
-    return cap < kFollowFloorMs ? kFollowFloorMs : cap;
 }
 // The engine's warn reach for a trailing T behind a leader L (ship-navigation-ai.md section 3.1): b + clamp(r_T + r_L / 10, 30 m,
 // 1 km) + (r_T + r_L) + r_T cos theta + (r_T + r_L), b = min(600 m, v_close^2 / 2 a_T), v_close = (u_T - u_L) . F; the cone's
@@ -694,12 +694,12 @@ __attribute__((always_inline)) inline float follow_cap(float vL_F, float a_T, fl
     }
     return cap;
 }
-// ---- one decision's lane pass (review F2, F5, F6; amendment 16b section 16.10.2 "one pass") -----------------------------------
+// ---- one decision's lane pass (review F2, F5, F6; amendment 16b section 16.10.2 "one pass"; amendment 17) ----------------------
 // The deciding capital's own entry binds when it is its own (id), on the deciding order (4 or 5), fresh (committed_stored: review
 // F5) and on the board of its live target. Then every committed neighbour's verdict is computed once from the stored board in both
-// directions (verdict_sym), and the trailing caps of this ship on order 4: the (b) follow cap (section 16.1, as built) and the
-// sequencing cap over every obliged watch pair in which it trails. The avoidance's exclusion (lane_pair) and site B (cap()) read
-// the same pass: a pair is never dropped from avoidance without its cap in force.
+// directions (verdict_sym), whether the pair is on different lane points (amendment 17: the avoidance drops it whatever the
+// verdict), and this ship's (b) follow cap on order 4 (section 16.1, as built; the only lane cap since amendment 17). The
+// avoidance's exclusion (lane_pair) and site B (cap()) read the same pass.
 struct Pass {
     const Gate* g = nullptr;
     const Entry* self = nullptr;
@@ -709,18 +709,14 @@ struct Pass {
     std::uint32_t ship[kLaneEntries] = {};
     Verdict v[kLaneEntries] = {};
     Route route[kLaneEntries] = {};
-    std::uint8_t seq_trail[kLaneEntries] = {}; // 1: an obliged watch pair in which this ship trails (its sequencing cap applies)
-    float follow_cap = -1.0f, seq_cap = -1.0f; // m/s, < 0 none
-    std::uint32_t follow_leader = 0, seq_leader = 0;
-    float follow_ds = 0, follow_D = 0, seq_ds = 0, seq_Dx = 0;
-    unsigned n_follow = 0, n_lat = 0, n_along = 0, n_watch_cross = 0, n_obliged = 0;
+    std::uint8_t apart[kLaneEntries] = {}; // 1: the pair is on different lane points or has an order-5 leg (amendment 17)
+    float follow_cap = -1.0f;              // m/s, < 0 none
+    std::uint32_t follow_leader = 0;
+    float follow_ds = 0, follow_D = 0;
+    unsigned n_follow = 0, n_lat = 0, n_along = 0, n_watch_cross = 0;
     bool self_held = false; // this ship's in-lane state held by the hysteresis (counter lane_hysteresis_hold)
-    // the lower of the two caps (m/s), < 0 when none applies
-    __attribute__((always_inline)) float cap() const noexcept {
-        if (follow_cap < 0.0f) return seq_cap;
-        if (seq_cap < 0.0f) return follow_cap;
-        return follow_cap < seq_cap ? follow_cap : seq_cap;
-    }
+    // the lane cap of this decision (m/s): the (b) follow cap, < 0 when none applies (amendment 17: no sequencing cap)
+    __attribute__((always_inline)) float cap() const noexcept { return follow_cap; }
 };
 inline bool run_pass(const Board& b, std::uint32_t gate, std::uint32_t ship, std::uint32_t id, std::uint16_t order, std::uint32_t now,
                      std::uint32_t fresh_ms, bool seq, Pass* p) noexcept {
@@ -753,6 +749,7 @@ inline bool run_pass(const Board& b, std::uint32_t gate, std::uint32_t ship, std
         const Route r = take_b ? ib.route : ia.route;
         p->v[i] = v;
         p->route[i] = r;
+        p->apart[i] = ia.same_lane ? 0 : 1;
         if (v == Verdict::seq) {
             if (r == Route::lat) ++p->n_lat;
             else ++p->n_along;
@@ -772,18 +769,6 @@ inline bool run_pass(const Board& b, std::uint32_t gate, std::uint32_t ship, std
                 p->follow_D = D;
             }
         }
-        if (!seq || !(ia.watch || ib.watch)) continue;
-        if (!a_trails(a, o, ia.corridor_a, ia.corridor_b) || !seq_obliged(a, ia.foot_a, o, ia.foot_b)) continue;
-        ++p->n_obliged;
-        p->seq_trail[i] = 1;
-        float ds = 0, Dx = 0;
-        const float cap = seq_cap(a, o, ia.foot_b, fresh_ms, &ds, &Dx);
-        if (p->seq_cap < 0.0f || cap < p->seq_cap) {
-            p->seq_cap = cap;
-            p->seq_leader = e.ship;
-            p->seq_ds = ds;
-            p->seq_Dx = Dx;
-        }
     }
     return true;
 }
@@ -797,27 +782,9 @@ __attribute__((always_inline)) inline Verdict pass_verdict(const Pass& p, std::u
         }
     return Verdict::none;
 }
-// The lapse memory of a trailer (the flight check of the cap invariant, counter lane_seq_lapse): the leaders of its obliged pairs
-// that held the along route at its last pass. A lapse is such a pair now (c).
-struct SeqMemory {
-    std::uint32_t leader[4] = {0, 0, 0, 0};
-};
-inline unsigned seq_lapses(const Pass& p, SeqMemory& m) noexcept {
-    unsigned lapses = 0;
-    for (unsigned k = 0; k < 4; ++k) {
-        if (!m.leader[k]) continue;
-        unsigned i = 0;
-        if (pass_verdict(p, m.leader[k], &i) == Verdict::cross && p.seq_trail[i]) ++lapses;
-    }
-    SeqMemory next;
-    unsigned n = 0;
-    for (unsigned i = 0; i < p.n && n < 4; ++i) // the pass's own capture: never the board after refresh()
-        if (p.seq_trail[i] && p.v[i] == Verdict::seq && p.route[i] == Route::along) next.leader[n++] = p.ship[i];
-    m = next;
-    return lapses;
-}
-// Site B (review F2): the pass's cap is in force on the module's own writes, and it only ever lowers them. On the gate write
-// (kShipFlagGate, both directions) it lowers v_ref when v_ref is a write (> 0); otherwise nothing. On the lowering clamp path
+// Site B (review F2): the pass's cap (the (b) follow cap only since amendment 17) is in force on the module's own writes, and it
+// only ever lowers them. On the gate write (kShipFlagGate, both directions) it lowers v_ref when v_ref is a write (> 0); otherwise
+// nothing. On the lowering clamp path
 // (kShipFlagClamp without kShipFlagGate) it lowers the cornering term v_corner, so site B's own computation (the arrival ramp with
 // the amendment-14 v_slip, then v_corner, then the emergency ramp) runs unchanged under it, and kShipFlagLower drops only the final
 // 10 m/s floor (the cap may be 1 unit/s). Where the module writes nothing on this path (no clamp flag, or no cornering term and no
