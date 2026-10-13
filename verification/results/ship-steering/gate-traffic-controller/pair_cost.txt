@@ -1,0 +1,13 @@
+# g++ 15.2.0 -O2 -msse2 -mfpmath=sse, host x86-64 (WSL2), 2026-10-13; three runs
+far (broad only)               62.2 ns per pair sweep (61 samples), narrow tests per sweep 0, result -1
+near (61 narrow, clear)       462.8 ns per pair sweep (61 samples), narrow tests per sweep 61, result -1
+conflict at sample 61         430.8 ns per pair sweep (61 samples), narrow tests per sweep 61, result 60
+sink 116000000
+far (broad only)               60.5 ns per pair sweep (61 samples), narrow tests per sweep 0, result -1
+near (61 narrow, clear)       465.1 ns per pair sweep (61 samples), narrow tests per sweep 61, result -1
+conflict at sample 61         426.2 ns per pair sweep (61 samples), narrow tests per sweep 61, result 60
+sink 116000000
+far (broad only)               60.4 ns per pair sweep (61 samples), narrow tests per sweep 0, result -1
+near (61 narrow, clear)       461.8 ns per pair sweep (61 samples), narrow tests per sweep 61, result -1
+conflict at sample 61         426.3 ns per pair sweep (61 samples), narrow tests per sweep 61, result 60
+sink 116000000

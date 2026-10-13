@@ -1,0 +1,17 @@
+e_verdict frames with 1 rows: 872
+e_verdict frames with 2 rows: 354
+e_verdict frames with 3 rows: 222
+e_verdict frames with 4 rows: 251
+e_verdict frames with 5 rows: 286
+e_verdict frames with 6 rows: 235
+e_verdict frames with 7 rows: 208
+e_verdict frames with 8 rows: 401
+ship_avoid_e_verdict frames 2829 rows 10754 max_per_frame 8
+ship_avoid_engine_warn frames 23 rows 23 max_per_frame 1
+ship_avoid_engine_warn_pre frames 48 rows 48 max_per_frame 1
+ship_capital_lane frames 377 rows 377 max_per_frame 1
+ship_gate_approach frames 44 rows 44 max_per_frame 1
+ship_gate_capital_join frames 406 rows 408 max_per_frame 2
+ship_gate_capital_latch frames 2 rows 2 max_per_frame 1
+ship_gate_transition frames 34 rows 34 max_per_frame 1
+ship_trace frames 8401 rows 67208 max_per_frame 8

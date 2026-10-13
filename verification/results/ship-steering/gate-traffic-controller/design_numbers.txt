@@ -1,0 +1,84 @@
+== 1. Outgoing pass point Q at -U l_o: window [l_min, l_max] per class (tf 1, v 100 m/s)
+   l_max = trigger - 100 m tracking; l_min = top of the hull footprint below the small-arrival fan (U 430 m) by r_small + 50 m
+   class  r m   | w/r 0.5: l_min..l_max  stop before plane at l_min | w/r 0.6: l_min..l_max | Terran ring (h 2126 m): l_o + w <= h - 50
+   M7      216 |      0..126    ok     226 m |      0..126    ok | l_o <= 1969
+   M7      560 |     55..470    ok     567 m |    108..470    ok | l_o <= 1797
+   M7     1431 |    513..1341   ok    1346 m |    649..1341   ok | l_o <= 1361
+   M1      227 |      0..137    ok     237 m |      0..137    ok | l_o <= 1963
+   M1     1170 |    376..1080   ok    1118 m |    487..1080   ok | l_o <= 1492
+   M1     4583 |   2172..4493   ok    4047 m |   2606..4493   ok | l_o <= -215
+   M2      307 |      0..217    ok     317 m |      0..217    ok | l_o <= 1923
+   M2     1337 |    464..1247   ok    1265 m |    591..1247   ok | l_o <= 1408
+   M2     2998 |   1338..2908   ok    2694 m |   1622..2908   ok | l_o <= 578
+   TL      745 |    152..655    ok     739 m |    223..655    ok | l_o <= 1704
+   TL     1135 |    358..1045   ok    1088 m |    465..1045   ok | l_o <= 1509
+   TL     1837 |    727..1747   ok    1698 m |    901..1747   ok | l_o <= 1158
+   Run160 census hulls (measured w):
+   Titan M2     r 1092 w 583 (0.53 r): l_o  370..1002 ok
+   Colossus M1  r 1022 w 546 (0.53 r): l_o  331.. 932 ok
+   M7 a         r  760 w 382 (0.50 r): l_o  162.. 670 ok
+   M7 b         r  778 w 352 (0.45 r): l_o  135.. 688 ok
+
+== 2. Capital arrival at +U 663 m (0.6 r_gate): footprint vs the lower small-departure arc (U <= -430 m) and the departing capital
+   Titan M2     w 583: bottom of the arrival hull U   +80 m; clearance to the lower arc (+r_small)   369 m
+   Colossus M1  w 546: bottom of the arrival hull U  +117 m; clearance to the lower arc (+r_small)   406 m
+   M7 a         w 382: bottom of the arrival hull U  +281 m; clearance to the lower arc (+r_small)   570 m
+   M7 b         w 352: bottom of the arrival hull U  +311 m; clearance to the lower arc (+r_small)   600 m
+   arrival vs departing capital at l_o (both census Titans, w 583): need l_o + 663 >= rho_o + w_a + 50 -> l_o >= 580 m
+
+== 3. Small arrivals while a capital arrival occupies the spawn zone: side spawn (+-0.87 r, +0.2 r) within 0.9 r of the axis
+   Titan M2     w 583: surface clearance (centre distance - w - r_small; must be >= 50 m): fan centre  -668 m, side spawn   335 m
+   Colossus M1  w 546: surface clearance (centre distance - w - r_small; must be >= 50 m): fan centre  -631 m, side spawn   372 m
+   M7 a         w 382: surface clearance (centre distance - w - r_small; must be >= 50 m): fan centre  -467 m, side spawn   536 m
+   M7 b         w 352: surface clearance (centre distance - w - r_small; must be >= 50 m): fan centre  -437 m, side spawn   566 m
+   side spawn radius from the axis 986 m = 0.89 r_gate (visual bubble 0.910 r)
+   M2 median r 1337 at w 0.60 r = 802 m: side spawn surface clearance   115 m
+   M2 median r 1337 at w 0.70 r = 936 m: side spawn surface clearance   -18 m
+   M2 median r 1337 at w 0.75 r = 1003 m: side spawn surface clearance   -85 m
+
+== 4. KC grid slots: a final line through Q that also crosses the slot sphere (|line - A_lat| <= 0.75 r_gate - 150 = 678 m)
+   Titan r 1092 w 583: admissible Q = disc |Q| <= 1002 with Q_U <= -370
+   slot  0 A_lat (   +0,    +0): nearest Q (  -19,  -370),   371 m -> one straight line
+   slot  1 A_lat ( +666,    +0): nearest Q ( +642,  -371),   372 m -> one straight line
+   slot  2 A_lat ( -666,    +0): nearest Q ( -642,  -371),   372 m -> one straight line
+   slot  3 A_lat (+1332,    +0): nearest Q ( +929,  -375),   551 m -> one straight line
+   slot  4 A_lat (-1332,    +0): nearest Q ( -929,  -375),   551 m -> one straight line
+   slot  5 A_lat (   +0,  -666): nearest Q (   -0,  -661),     5 m -> one straight line
+   slot  6 A_lat ( +666,  -666): nearest Q ( +666,  -666),     0 m -> one straight line
+   slot  7 A_lat ( -666,  -666): nearest Q ( -666,  -666),     0 m -> one straight line
+   slot  8 A_lat (+1332,  -666): nearest Q ( +897,  -447),   487 m -> one straight line
+   slot  9 A_lat (-1332,  -666): nearest Q ( -897,  -447),   487 m -> one straight line
+   slot 10 A_lat (   +0, -1332): nearest Q (   -0, -1002),   330 m -> one straight line
+   slot 11 A_lat ( +666, -1332): nearest Q ( +447,  -897),   487 m -> one straight line
+   slot 12 A_lat ( -666, -1332): nearest Q ( -447,  -897),   487 m -> one straight line
+   slot 13 A_lat (+1332, -1332): nearest Q ( +709,  -709),   882 m -> order-5 lateral S of 203 m
+   slot 14 A_lat (-1332, -1332): nearest Q ( -709,  -709),   882 m -> order-5 lateral S of 203 m
+   slot 15 A_lat (   +0, -1998): nearest Q (   -0, -1002),   996 m -> order-5 lateral S of 318 m
+   slot 16 A_lat ( +666, -1998): nearest Q ( +318,  -950),  1104 m -> order-5 lateral S of 426 m
+   slot 17 A_lat ( -666, -1998): nearest Q ( -318,  -950),  1104 m -> order-5 lateral S of 426 m
+   slot 18 A_lat (+1332, -1998): nearest Q ( +553,  -836),  1399 m -> order-5 lateral S of 721 m
+   slot 19 A_lat (-1332, -1998): nearest Q ( -553,  -836),  1399 m -> order-5 lateral S of 721 m
+   slots with one straight final line: 13 of 20
+
+== 5. Holding petals: a racetrack per holder in a plane containing F, on a ring of radius rho_ring around the funnel axis
+   w_max 583 m, petal spacing 30 deg: ring radius >=  2418 m, petals per ring in the lower 240 deg: 9
+   w_max 583 m, petal spacing 36 deg: ring radius >=  2015 m, petals per ring in the lower 240 deg: 7
+   w_max 583 m, petal spacing 45 deg: ring radius >=  1612 m, petals per ring in the lower 240 deg: 6
+   w_max 700 m, petal spacing 30 deg: ring radius >=  2865 m, petals per ring in the lower 240 deg: 9
+   w_max 700 m, petal spacing 36 deg: ring radius >=  2387 m, petals per ring in the lower 240 deg: 7
+   w_max 700 m, petal spacing 45 deg: ring radius >=  1910 m, petals per ring in the lower 240 deg: 6
+   w_max 800 m, petal spacing 30 deg: ring radius >=  3247 m, petals per ring in the lower 240 deg: 9
+   w_max 800 m, petal spacing 36 deg: ring radius >=  2706 m, petals per ring in the lower 240 deg: 7
+   w_max 800 m, petal spacing 45 deg: ring radius >=  2165 m, petals per ring in the lower 240 deg: 6
+   racetrack R_h 1000 m, straight    0 m at 25 m/s: lap  251 s, turn rate 1.4 deg/s
+   racetrack R_h 1000 m, straight 2000 m at 25 m/s: lap  411 s, turn rate 1.4 deg/s
+   racetrack R_h 1000 m, straight    0 m at 40 m/s: lap  157 s, turn rate 2.3 deg/s
+   racetrack R_h 1000 m, straight 2000 m at 40 m/s: lap  257 s, turn rate 2.3 deg/s
+   racetrack R_h 1500 m, straight    0 m at 40 m/s: lap  236 s, turn rate 1.5 deg/s
+   racetrack R_h 1500 m, straight 2000 m at 40 m/s: lap  336 s, turn rate 1.5 deg/s
+   racetrack R_h 1000 m, straight    0 m at 60 m/s: lap  105 s, turn rate 3.4 deg/s
+   racetrack R_h 1000 m, straight 2000 m at 60 m/s: lap  171 s, turn rate 3.4 deg/s
+
+== 6. Through-slot cadence (one capital per gate pair at a time)
+   kept crossings X -> launch (Run160b, measured): [15.3, 15.4, 15.5, 15.4, 15.5] s; + KC hand-over and a 2 s gap -> one departure per 17-18 s
+   after a capital arrival the KC refuses our side for 60 s (direction change; inferred from 10.2); arrivals measured 61-72 s apart
