@@ -157,6 +157,8 @@ CTL_ROWS = [
     'p_m=1200,7400,-56000 off_r_m=0 off_u_m=663 r_gate_m=1105 r_m=1092 w_m=583',
     'ship_capital_census frame=100 type=11 class=M2 r_m=1092 w_m=583 w_r=0.535 w_src=lod retries=0 l_m=1092 h_rw_m=1238 len_m=1092 '
     'h_m=1238 part_id=20071 part_lod=0 o_x=145 o_y=324 e_x=169 e_y=169 l_r=1.000 capsule_L_m=1092',
+    'ship_gate_ctl_seq frame=903 t_ms=24470000 gate=0x8e4fbdb0 holders=3 inbound=1 cand=0x4b9cfd08 key=16 role=committed stage=hold ringed=1 '
+    'busy_by=0x00000000 window=1 timing=- free_ms=-1200 dx_m=8350 v_feas=100 block_ms=0 skips=0 releases=2',
 ]
 
 
@@ -174,7 +176,12 @@ class GateTrafficRows(unittest.TestCase):
         self.assertEqual((lr['p_m'], lr['off_r_m'], lr['off_u_m'], lr['r_gate_m'], lr['w_m']), ((1200, 7400, -56000), 0, 663, 1105, 583))
         cen = st.parse_kv_rows(CTL_ROWS, 'ship_capital_census')[0]
         self.assertEqual((cen['l_r'], cen['capsule_L_m']), (1.0, 1092))
-        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 4)
+        sq = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_seq')[0]  # B.2: the sequencer's state row
+        self.assertEqual((sq['gate'], sq['holders'], sq['inbound'], sq['cand'], sq['key'], sq['role'], sq['stage'], sq['ringed']),
+                         (0x8e4fbdb0, 3, 1, 0x4b9cfd08, 16, 'committed', 'hold', 1))
+        self.assertEqual((sq['busy_by'], sq['window'], sq['timing'], sq['free_ms'], sq['dx_m'], sq['v_feas'], sq['skips'], sq['releases']),
+                         (0, 1, '-', -1200, 8350, 100, 0, 2))
+        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 5)
 
 
 # The docking approach (amendment 18, docking-approach.md): the 1 Hz own-container row.

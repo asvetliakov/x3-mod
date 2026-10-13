@@ -1,0 +1,1 @@
+skips 1; keys L 64 E 17 N 48; E before L: 1; first release 0x9100 (L 0x9000 E 0x9100 N 0x9300); E.sb funnel L.sb hold

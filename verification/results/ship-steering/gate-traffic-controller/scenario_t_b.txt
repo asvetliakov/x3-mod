@@ -1,7 +1,7 @@
 departures (9 runs)
   D.7.2 0x12 episodes between members per run                                                max 0
   certified frames with capsule contact                                                      max 0
-  D.7.1 nose at X, deg (oracle 79-105)                                                       max 5.01
+  D.7.1 nose at X, deg (oracle 79-105)                                                       max 5.04
   D.7.1 crossings not kept at P2                                                             max 0
   D.7.1 0x1f frames (oracle: rotates 84 s)                                                   max 1
   D.7.4 ctl_x_refused                                                                        max 0
@@ -13,18 +13,18 @@ departures (9 runs)
   go-arounds                                                                                 max 0
   Run161: member warns unsuppressed in the order-0 gap                                       max 0
   Run161: committed members past their X depth at once                                       max 1
-  reported: launch after t_launch(k-1) + 18 s (D.7 literal), s                               max 178.8
-  D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 564.7
-  reported: cross (P2) -> launch per ship, s, max                                            max 47.3
+  reported: launch after t_launch(k-1) + 18 s (D.7 literal), s                               max 178.7
+  D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 564.8
+  reported: cross (P2) -> launch per ship, s, max                                            max 47
   reported: cross (P2) -> launch per ship, s, min                                            min 40.2
-  reported: ... the runs' lowest mean, s                                                     min 43.1
+  reported: ... the runs' lowest mean, s                                                     min 43.2
   D.4: a small arrival's spawn against the capital at the plane, surface clearance m         min -1
-  D.7.3 closest capsule gap between capitals, m                                              min 302
-  reported: closest box bound, m                                                             min 58
-  Run161: closest two petal holders, capsule gap m                                           min 302
+  D.7.3 closest capsule gap between capitals, m                                              min 145
+  reported: closest box bound, m                                                             min -146
+  Run161: closest two petal holders, capsule gap m                                           min 312
   departures launched                                                                        min 7
   D.7.5 escorts starting order 4 from a petal                                                min 4
-  Run161: member warns in the order-0 gap (all suppressed when the row above is 0)           sum 37179
+  Run161: member warns in the order-0 gap (all suppressed when the row above is 0)           sum 36188
   escort order-4 starts                                                                      sum 36
 dep w0.6r (9 runs)
   D.7.2 0x12 episodes between members per run                                                max 0
@@ -33,7 +33,7 @@ dep w0.6r (9 runs)
   D.7.1 crossings not kept at P2                                                             max 0
   D.7.1 0x1f frames (oracle: rotates 84 s)                                                   max 1
   D.7.4 ctl_x_refused                                                                        max 0
-  D.7.4 launch after its sequence time, s (+60 s after a direction change)                   max 20
+  D.7.4 launch after its sequence time, s (+60 s after a direction change)                   max 16.1
   D.7.6 order 4 ended outside X                                                              max 0
   D.7.6 frames below 25 m/s on a petal                                                       max 0
   D.7.6 frames below 10 m/s on order 4 (module)                                              max 0
@@ -42,17 +42,17 @@ dep w0.6r (9 runs)
   Run161: member warns unsuppressed in the order-0 gap                                       max 0
   Run161: committed members past their X depth at once                                       max 1
   reported: launch after t_launch(k-1) + 18 s (D.7 literal), s                               max 183.5
-  D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 578.9
+  D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 578.2
   reported: cross (P2) -> launch per ship, s, max                                            max 46.5
-  reported: cross (P2) -> launch per ship, s, min                                            min 40.2
-  reported: ... the runs' lowest mean, s                                                     min 42.9
+  reported: cross (P2) -> launch per ship, s, min                                            min 40.1
+  reported: ... the runs' lowest mean, s                                                     min 43
   D.4: a small arrival's spawn against the capital at the plane, surface clearance m         min -1
-  D.7.3 closest capsule gap between capitals, m                                              min 302
-  reported: closest box bound, m                                                             min -12
-  Run161: closest two petal holders, capsule gap m                                           min 302
+  D.7.3 closest capsule gap between capitals, m                                              min 132
+  reported: closest box bound, m                                                             min -226
+  Run161: closest two petal holders, capsule gap m                                           min 201
   departures launched                                                                        min 7
   D.7.5 escorts starting order 4 from a petal                                                min 4
-  Run161: member warns in the order-0 gap (all suppressed when the row above is 0)           sum 23126
+  Run161: member warns in the order-0 gap (all suppressed when the row above is 0)           sum 24930
   escort order-4 starts                                                                      sum 36
 arrivals (9 runs)
   D.7.2 0x12 episodes between members per run                                                max 0
@@ -125,17 +125,45 @@ mixed (9 runs)
   go-arounds                                                                                 max 0
   Run161: member warns unsuppressed in the order-0 gap                                       max 0
   Run161: committed members past their X depth at once                                       max 1
-  reported: launch after t_launch(k-1) + 18 s (D.7 literal), s                               max 138.7
+  reported: launch after t_launch(k-1) + 18 s (D.7 literal), s                               max 138.5
   D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 429.2
   reported: cross (P2) -> launch per ship, s, max                                            max 45.3
-  reported: cross (P2) -> launch per ship, s, min                                            min 41.1
+  reported: cross (P2) -> launch per ship, s, min                                            min 41
   reported: ... the runs' lowest mean, s                                                     min 43.3
   D.4: a small arrival's spawn against the capital at the plane, surface clearance m         min -1
-  D.7.3 closest capsule gap between capitals, m                                              min 397
+  D.7.3 closest capsule gap between capitals, m                                              min 398
   reported: closest box bound, m                                                             min 23
   Run161: closest two petal holders, capsule gap m                                           min 674
   departures launched                                                                        min 4
   D.7.5 escorts starting order 4 from a petal                                                min 2
   Run161: member warns in the order-0 gap (all suppressed when the row above is 0)           sum 24204
   escort order-4 starts                                                                      sum 18
+run162 (9 runs)
+  D.7.2 0x12 episodes between members per run                                                max 0
+  certified frames with capsule contact                                                      max 0
+  D.7.1 nose at X, deg (oracle 79-105)                                                       max 3.43
+  D.7.1 crossings not kept at P2                                                             max 0
+  D.7.1 0x1f frames (oracle: rotates 84 s)                                                   max 1
+  D.7.4 ctl_x_refused                                                                        max 0
+  D.7.4 launch after its sequence time, s (+60 s after a direction change)                   max 15.8
+  D.7.6 order 4 ended outside X                                                              max 0
+  D.7.6 frames below 25 m/s on a petal                                                       max 0
+  D.7.6 frames below 10 m/s on order 4 (module)                                              max 0
+  D.7.6 ... (engine law)                                                                     max 0
+  go-arounds                                                                                 max 0
+  Run161: member warns unsuppressed in the order-0 gap                                       max 0
+  Run161: committed members past their X depth at once                                       max 1
+  reported: launch after t_launch(k-1) + 18 s (D.7 literal), s                               max 188.7
+  D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 872.2
+  reported: cross (P2) -> launch per ship, s, max                                            max 46.1
+  reported: cross (P2) -> launch per ship, s, min                                            min 39.6
+  reported: ... the runs' lowest mean, s                                                     min 42.9
+  D.4: a small arrival's spawn against the capital at the plane, surface clearance m         min -1
+  D.7.3 closest capsule gap between capitals, m                                              min 283
+  reported: closest box bound, m                                                             min 28
+  Run161: closest two petal holders, capsule gap m                                           min 546
+  departures launched                                                                        min 6
+  D.7.5 escorts starting order 4 from a petal                                                min 4
+  Run161: member warns in the order-0 gap (all suppressed when the row above is 0)           sum 182350
+  escort order-4 starts                                                                      sum 36
 TARGET MISS rows (scenario T) 0, FAIL rows (scenario T and stage-B units) 0

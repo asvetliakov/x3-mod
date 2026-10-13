@@ -797,8 +797,16 @@ struct LaunchRow {
 LaunchRow launch_rows_[8];
 std::atomic<std::uint32_t> launch_row_write_{0};
 std::uint32_t launch_row_read_ = 0;
+// B.2 item 5: ship_gate_ctl_seq (the sequencer's state, one per gate per game second while a holder exists, ring 8; drops count as ctl)
+struct SeqRow {
+    std::uint32_t gate, t_ms, skips, releases;
+    gc::SbSeq s;
+};
+SeqRow seq_rows_[8];
+std::atomic<std::uint32_t> seq_row_write_{0};
+std::uint32_t seq_row_read_ = 0;
 static_assert(pow2(sizeof ctl_rows_ / sizeof ctl_rows_[0]) && pow2(sizeof ctl_pair_rows_ / sizeof ctl_pair_rows_[0]) &&
-                  pow2(sizeof launch_rows_ / sizeof launch_rows_[0]),
+                  pow2(sizeof launch_rows_ / sizeof launch_rows_[0]) && pow2(sizeof seq_rows_ / sizeof seq_rows_[0]),
               "masked rings are powers of two");
 inline void ctl_row(const gc::Gate& g, const gc::Member& m, gc::Role from, gc::Role to, gc::Why why, std::uint32_t now) noexcept {
     if (!debug_) return;
@@ -2650,6 +2658,14 @@ inline void ctl_pass_row(const gc::Gate& g, unsigned i, unsigned j, std::uint32_
 // row takes it as fresh).
 inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std::uint16_t cls_b, std::uint32_t now, av::SiteE& in) noexcept {
     if (cls_b == sites::kClassGate) {
+        if (ctl_ix_.maybe(a)) { // B.2 item 3: a stage-B member against its own gate (funnel / handover / dock / launch, the path guard);
+                                // gc::e_gate_row: the bitmap, the board, the id, the position checked against the member's state (review N6, N8)
+            const std::uint32_t pa = rd32(a + sites::kObjPhys);
+            float x[3] = {0, 0, 0};
+            if (pa)
+                for (unsigned i = 0; i < 3; ++i) x[i] = float(rds32(pa + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+            in.ctl_gate = gc::e_gate_row(ctl_, ctl_ix_, a, rd32(a + sites::kObjId), b, in.a_order, in.a_target, x, pa != 0, now);
+        }
         if (!arr_ix_.maybe(a)) return;
         const gc::Arrival* r = gc::find_arrival(arrivals_, a, now);
         if (!r || r->gate != b || r->id != rd32(a + sites::kObjId)) return;
@@ -3274,12 +3290,13 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
     const std::uint16_t cls_b = rd16(b + sites::kObjClass);
     if (traffic_live_.load(std::memory_order_relaxed)) { // the gate traffic controller's pairs need no steering decision of A
         ctl_e_fields(a, fl, b, cls_b, now, in);
-        if ((in.arrival_gate && cls_b == sites::kClassGate) || (in.ctl_pair && cls_b == sites::kClassShip)) {
+        if (((in.arrival_gate || in.ctl_gate) && cls_b == sites::kClassGate) || (in.ctl_pair && cls_b == sites::kClassShip)) {
             in.b_gate = cls_b == sites::kClassGate;
             in.b_ship = cls_b == sites::kClassShip;
             const EV v = av::site_e_verdict(in);
             *out = v;
             if (v == EV::suppress_arrival_gate) e_suppressed_arrival_gate_.add();
+            else if (v == EV::suppress_gate) e_suppressed_gate_.add(); // B.2 item 3
             else if (v == EV::suppress_ctl) e_suppressed_ctl_.add();
             else if (v == EV::pass_ctl) e_pass_ctl_.add();
             return av::e_suppresses(v) ? 1 : 0;
@@ -3441,6 +3458,7 @@ void sb_frame_all(std::uint32_t now) noexcept {
     for (gc::Gate& g : ctl_.g) {
         if (!g.gate) continue;
         gc::SbStats st;
+        st.seq_on = debug_; // review N7: the sequencer's row state only in the debug tier
         gc::sb_frame(g, now, &st);
         if (st.releases) ctl_releases_.add(st.releases);
         if (st.go_arounds) ctl_go_around_.add(st.go_arounds);
@@ -3453,6 +3471,15 @@ void sb_frame_all(std::uint32_t now) noexcept {
         ctl_x_wait_ms_ += st.x_wait_ms;
         if (st.ev_dropped) for (unsigned k = 0; k < st.ev_dropped; ++k) row_dropped(Drop::ctl);
         if (!debug_) continue;
+        if (st.seq.holders && (!g.seq_row_ms || now - g.seq_row_ms >= 1000u)) { // B.2 item 5: one row per gate per game second
+            g.seq_row_ms = now ? now : 1;
+            const std::uint32_t w = seq_row_write_.load(std::memory_order_relaxed);
+            if (w - seq_row_read_ >= 8) row_dropped(Drop::ctl);
+            else {
+                seq_rows_[w & 7] = SeqRow{g.gate, now, g.sb_skips, g.sb_releases, st.seq};
+                seq_row_write_.store(w + 1, std::memory_order_release);
+            }
+        }
         for (unsigned k = 0; k < st.n_ev; ++k) {
             const gc::SbEvent& e = st.ev[k];
             const int i = gc::find(g, e.ship);
@@ -3479,14 +3506,15 @@ void ctl_frame() noexcept {
     sb_frame_all(now);
     const std::uint64_t t0 = timing_ ? qpc() : 0;
     unsigned done = 0, rollouts = 0;
-    constexpr unsigned total = gc::kGates * gc::kMembers;
-    for (unsigned n = 0; n < total && gc::frame_room(done, rollouts); ++n) {
-        const unsigned k = (ctl_cursor_ + n) % total;
+    // review F2: the funnel's occupants first (their decision stamps keep the occupancy), then the round robin (gc::decide_order)
+    std::uint16_t order[gc::kGates * gc::kMembers];
+    unsigned n_prio = 0;
+    const unsigned n_order = gc::decide_order(ctl_, ctl_cursor_, now, order, &n_prio);
+    for (unsigned q = 0; q < n_order && gc::frame_room(done, rollouts); ++q) {
+        const unsigned k = order[q];
         gc::Gate& g = ctl_.g[k / gc::kMembers];
         const unsigned i = k % gc::kMembers;
-        if (!g.gate || i >= g.n) continue;
         gc::Member& m = g.m[i];
-        if (!gc::due(m, now)) continue;
         const std::uint64_t td = timing_ ? qpc() : 0;
         gc::DecideStats st;
         gc::decide(g, i, now, &st, nullptr, nullptr);
@@ -3504,7 +3532,7 @@ void ctl_frame() noexcept {
         if (st.yields) ctl_yields_.add(st.yields);
         if (st.unresolved) ctl_unresolved_.add(st.unresolved);
         if (st.released) ctl_released_.add(st.released);
-        ctl_cursor_ = k + 1;
+        if (q >= n_prio) ctl_cursor_ = k + 1;
         ++done;
         if (!debug_) continue;
         for (unsigned j = 0; j < g.n; ++j) {
@@ -3586,6 +3614,17 @@ void ctl_rows(unsigned long long frame) noexcept {
             unsigned(r.rank_b), kPairKind[r.kind < 3 ? r.kind : 0], gc::pair_name(gc::PairV(r.verdict)), gc::pair_name(gc::PairV(r.before)),
             r.kind ? gc::ewhy_name(gc::EWhy(r.why)) : "-", r.t_c == 255 ? -1.0 : double(r.t_c) * double(gc::kSampleS),
             kYielder[r.yielder < 3 ? r.yielder : 0], double(r.cap), double(r.d));
+    }
+    for (std::uint32_t w = seq_row_write_.load(std::memory_order_acquire); seq_row_read_ != w; ++seq_row_read_) {
+        const SeqRow& r = seq_rows_[seq_row_read_ & 7];
+        static const char* const kTri[3] = {"0", "1", "-"};
+        x3m::log("ship_gate_ctl_seq frame=%llu t_ms=%lu gate=0x%08lx holders=%u inbound=%u cand=0x%08lx key=%lu role=%s stage=%s ringed=%u "
+            "busy_by=0x%08lx window=%s timing=%s free_ms=%ld dx_m=%.0f v_feas=%.0f block_ms=%ld skips=%lu releases=%lu",
+            frame, static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), unsigned(r.s.holders), unsigned(r.s.inbound),
+            static_cast<unsigned long>(r.s.cand), static_cast<unsigned long>(r.s.key), gc::role_name(gc::Role(r.s.role)),
+            gc::sb_name(gc::Sb(r.s.stage)), unsigned(r.s.ringed), static_cast<unsigned long>(r.s.busy_by), kTri[r.s.window < 3 ? r.s.window : 2],
+            kTri[r.s.timing < 3 ? r.s.timing : 2], static_cast<long>(r.s.free_ms), double(r.s.dx), double(r.s.v_feas),
+            static_cast<long>(r.s.block_ms), static_cast<unsigned long>(r.skips), static_cast<unsigned long>(r.releases));
     }
     for (std::uint32_t w = launch_row_write_.load(std::memory_order_acquire); launch_row_read_ != w; ++launch_row_read_) {
         const LaunchRow& r = launch_rows_[launch_row_read_ & 7];
@@ -4463,6 +4502,7 @@ void frame_boundary(std::uint64_t frame) {
                           // ctl_sb_misc: seq_skipped (the 60 s tie-break), go-arounds within 1 km of X, game-clock resets, small B both sides taken
                           static_cast<unsigned long>(ctl_seq_skipped_.get()), static_cast<unsigned long>(ctl_go_around_near_.get()),
                           static_cast<unsigned long>(ctl_clock_resets_.get()), static_cast<unsigned long>(small_b_both_.get()));
+            ctl_sb_max_ticks_ = 0; // B.2 item 5: ctl_sb_us_max is the summary interval's maximum (the other maxima stay session-lifetime)
         }
     }
     char dock[640] = "";

@@ -1249,3 +1249,166 @@ Reported, not met:
 
 The knobs are the petal radius and spacing, the release lead (L_lead, the release window, the final-straight overlap of two funnels),
 and pipelining the escorts. Tune them against flown cadences, not the fixture alone.
+
+### B.2 Run162 fixes
+
+Built 2026-10-13 (Opus 5.5) on main `5b3b11ed`, with two review rounds folded in (B1, N1–N8; F1, F2); not flown, not installed.
+Triage and witnesses: [`run162-triage/`](../../verification/results/ship-steering/run162-triage/) (`sb_timeline.txt`, `sb_reasons.txt`,
+`sb_gate_e.txt`, `sb_laps.txt`); the reviews' witnesses
+[`review_b2_escort_head_witness.cpp`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_escort_head_witness.cpp)
+→ [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_escort_head_witness.txt) and
+[`review_b2_sibling_skip_witness.cpp`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_sibling_skip_witness.cpp)
+→ [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_sibling_skip_witness.txt) (each on the state it was
+taken on; both are fixture units now).
+Ledger: [ship-steering.md](../verification/ship-steering.md), "B.2 Run162 fixes". Sources: `ship_gate_ctl_core.h` (the order, the
+sequencer, the stage `inbound`, `inbound_carrot`, `ring_extent`, `past_last_stretch`, `occupant`, `sb_gate_row` / `e_gate_row`,
+`SbSeq`), `ship_avoidance_core.h` (`SiteE.ctl_gate` and its clause), `ship_steering.cpp` (E's fields, the `ship_gate_ctl_seq` row, the
+interval maximum).
+
+**What Run162 measured** (gate `bdb0`, `sb_reasons.txt`). The M2 leader committed 47.5 km out was head-skipped after 60 s: its window had
+no distance bound while the predictor's horizon is 256 s, so it was infeasible by distance alone. The skip re-keyed it 16 → 32 behind
+its reserved escorts (17, 18), which cannot be released before their leader: 2,524 game s of waits until a 0x12 broke it. The holders
+cruised at the petal speed of 40 m/s from 47 km. Three of four funnel releases were evicted at 6.6–6.9 km by the engine's 0x12
+against their own gate (E: `pass_not_resolved`; the gate clause covered only the join / slow-join / fallback approaches). A re-commit at
+X (z −4.8 km) put a ship back on hold into a U-turn.
+
+**1. The sequence and the head skip.**
+
+* The order is a strict total order (review B1; the B.1 comparator mixed the burst's distance order with the key order and was not
+  transitive). Committed members without a reservation that entered within 2 s of each other, chained, form a burst; `burst_keys` gives
+  each the burst's lowest key. Each member then has the tuple (group, distance, key, ship, sub, own ship), compared lexicographically:
+  * a committed member: group = its burst key or its key; distance = its entry distance inside a burst (a NaN ranks last), else 0; sub 0;
+  * a reserved member (an escort, or one already committed on its own order 4) whose leader is on the board: its leader's tuple with
+    sub = 1 + its offset behind the leader's key, so it is never reordered relative to its leader or its sibling escorts (the leader is
+    found by `leader`, or by the key class `key & ~15` once `commit_fill` has cleared it);
+  * any other member: its own key as the group.
+* An escort is never a release candidate while its committed leader holds, is inbound or is not yet staged, whatever the keys (review
+  B1). The review's witness (slots L, N, E; L 16, N 32, E 17; L and N one burst, N nearer X) now releases N first.
+* The skip timers run only once the head has reached its petal ring (`ringed`: within the petal's extent from G) and only while the
+  funnel is free.
+* A due skip applies only when another committed non-escort holder (hold, order 4, Q known, within the horizon, outside the head's key
+  class) is feasible: its funnel prediction at most 1 s old, at most one new prediction per frame while the skip waits. A sibling escort
+  already committed on its own order 4 is the head's convoy, not an alternative (review F1).
+* The leader and its convoy move together: the leader takes the next multiple of 16 past the highest key, and every reserved member of
+  its key class (its escorts and a sibling already committed on its own order 4, review F1) the leader's key + 1 + its rank. The skip
+  keeps `enter_ms` (so it creates no burst) and takes the member out of its entry burst (`unburst`). The skip is a `ship_gate_ctl` row
+  with `why=skip`.
+
+**2. Arrival to the ring (`inbound`).**
+
+* A committed member or a capital escort farther than its petal's extent + 2 km from G is `inbound` (back to inbound from hold only
+  beyond + 3 km). The extent is the distance of the petal's farthest point, |back-turn centre| + R_h: 11.9 km for the census Titan's
+  ring-0 petal, so `inbound` begins at 13.9 km.
+* It keeps its petal (assigned as for a holder) and flies toward the petal's inner line (+F at the ring radius). Farther than 1 km from
+  that line it aims at the line's point R_h + 1.5 km behind the petal's back turn; on the line it aims at the inner straight's back end,
+  then along the straight. A holder that has not reached its ring yet keeps the same carrot.
+* The rollout uses the same in-plane carrot as `sb_steer`; the out-of-plane offset decays with the in-plane distance flown toward it
+  (review N4), so the sweep predicts the flown path. This is an approximation: each 0.25 s step shrinks the offset by the step's travel
+  over the 3-D distance to that step's carrot, i.e. a straight line to a carrot held fixed for the step; the plant's turn, the moving
+  carrot and the slip are not modelled out of plane, and the nose is turned only in the petal's plane. The plan stays `petal`, so the
+  yield floor stays 25 m/s.
+* Speed: min(v_max, √(60² + 2 a (d − boundary))) m/s, so it arrives at the boundary at the petals' top speed; site B applies the
+  cornering cap and the 100 m/s large cap. A 110 m/s Titan cruises at 100 m/s: 47.5 km in about 7 min instead of 20 min at 40 m/s **[i]**.
+* It is no release candidate and runs no skip timer. The release window adds dX ≤ v_max · 256 s, the predictor's horizon.
+* **Crossing (review N5, corrected).** The point behind the back turn keeps an inbound ship clear of its own ring's other petals only
+  when it comes from behind (beyond that point along −F). Coming from the side or from ahead of the ring, it flies laterally toward its
+  line at its own depth and can cross other petals of its ring. From any direction its path can cross the deeper rings (1, 2: 6.8 km and
+  13.6 km further back) and the space of another holder still entering; nothing geometric keeps it out. Only the pair sweep's yield cap protects those crossings. Scenario T asserts the closest capsule gap of
+  an inbound member and a holder ≥ 100 m: worst 132 m (w 0.6 r, 144 fps), 145 m census at 144 fps, 180–237 m at 30 / 60 fps, 544 m in
+  `run162` (measured).
+* Applying it to escorts is an assumption beyond the brief's "committed ship": an escort held at 40 m/s from 47 km would arrive about
+  13 min after its leader, past its 60 s reservation **[i]**.
+
+**3. Site E's gate row for a stage-B member** (`gc::e_gate_row` → `gc::sb_gate_row`, `SiteE.ctl_gate`, checked right after the
+arrival-gate row, so it needs no steering decision of A). The DLL's `ctl_e_fields` and the fixture's own-gate model call the same function
+(review N8). The verdict is `suppress_gate` when all of these hold:
+
+* the traffic key is live (E reads the controller only then);
+* A is in the membership bitmap, on the board of gate B (`locate`), with the same object id;
+* A is committed with Q known and live (its state read ≤ 1 s old), in stage funnel, handover, dock or launch;
+* A's `f+0x224` is B, or it is 0 on order 0 or 0x1f (the script's re-issue gap, the P2 hand-over), whatever the order (4, 0, 0x1f, 5);
+* the position read succeeded, is finite and lies within (v_max + 50 m/s) · (the state's age) + 500 m of the member's last state read;
+  the hull radius is the member's own and positive (review N6: fail closed otherwise);
+* dist(G, segment[x_A, P]) ≥ r_gate + r_A + 0.25 r_gate, with P = Λ4's point at X's depth (the funnel's point; the capital rows' guard).
+
+Everything else keeps today's rule (a holder, another target, gate or id, order 5 with the target zeroed, the guard failing near the
+plane). E's counter is `e_suppressed_gate`. With the key off the field is never set (key-off identity below).
+
+**4. No re-hold past the funnel's last stretch.**
+
+* A member that was released and re-enters order 4 past the last stretch goes back to the funnel (`why=rejoin`, a new plan from its
+  speed), never to hold. Past the last stretch means within 1.2 r_gate of Λ4 laterally and either within 1.2 r_gate of Λ4's point at X's
+  depth or beyond it along F (review N1).
+* `enter()` clears `release_ms` when the eviction lapsed (more than 30 s), so only a re-commit within the 30 s window rejoins (review N1).
+* The rejoin checks the funnel as a release would (review N2): with another member occupying it (`occupant`) or the slot blocked, the
+  ship holds (its petal by its bearing), so two ships never converge on X.
+* A funnel member past the last stretch never goes around (it keeps its shaped speed). A first commit there still holds (scenario T's
+  convoy A leader starts 1 km before X).
+* The funnel-busy test counts only members that are live and decided within 5 s (review N3: a dead, deleted or departed member no longer
+  blocks it), and every committed funnel member that is not on its final straight, not only the last released one.
+* The funnel's occupants (committed in funnel, hand-over, order 5, order 8) are decided first in each frame, before the round robin
+  (`gc::decide_order`, used by the DLL's `ctl_frame` and the fixture; review F2). The round robin of a full board under SETA (96 members at
+  18 decisions per game second) takes over 5 s, so their stamps could otherwise lapse and free the funnel under a ship that holds it.
+
+**5. Diagnostics.**
+
+* `ship_gate_ctl_seq` (`--debug`, ring 8, drops counted as `ctl`): one row per gate per game second while any member holds or is
+  inbound, with `holders`, `inbound`, the candidate (`cand`, `key`, `role`, `stage`, `ringed`), `busy_by` (the member keeping the
+  funnel busy), `window` / `timing` (`-` when not evaluated), `free_ms` (t_free − now), `dx_m`, `v_feas`, `block_ms` (the slot block's
+  rest), the gate's `skips` and `releases`. `SbSeq` is filled only when the caller asks (`SbStats.seq_on`: the DLL's debug tier; review N7).
+* `ctl_sb_us_max` is the summary interval's maximum (reset after each summary row); the other maxima stay session-lifetime.
+
+**Scenario T** (producer [`scenario_t_b2.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b2.py) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b2.txt); 9 runs per variant, measured).
+
+The `run162` variant: a Titan leader with an M1 and a Titan escort committed 47.5 km out; an M1 with two M7s committed 90 km out 30 s
+later; the order-4 legs get the script's order-0 gaps (2–3 s every 30–34 s, `f+0x224` zeroed); 2,400 s. Every variant models the
+engine's warn of a stage-B member against its own gate (`gate_warn_cone`) on order 4 and on order 0 / 0x1f before order 5, with E's
+verdict through `gc::e_gate_row`.
+
+| Check (worst of 9 runs) | run162 |
+| --- | --- |
+| launched (no deadlock) | 6 / 6, last launch ≤ 1,318.3 s |
+| head skips; skips short of the ring | 0; 0 |
+| frames a leader was keyed behind its escort | 0 |
+| inbound cruise, 110 m/s class (steered, ≥ 10 s after an order change, outside a yield cap) | min 100.0 m/s, 0 frames < 99.5 |
+| own-gate warns: funnel on order 4 / gap and hand-over; left to the engine | 67,707 / 14,602; 0 |
+| re-holds past 1.2 r_gate of X | 0 |
+| first ship commit → launch vs transit at v_max + 120 s | 486.6–496.1 s ≤ 551.9 s (431.9 + 120) |
+| inbound vs holder, closest capsule gap | 544 m |
+| first crossing to last launch | 872.2 s for 6 |
+
+The yield cap between the two M7 escorts of the second convoy (≤ 6,916 frames per run, excluded from the cruise figure) is the pair's
+separation, not the inbound speed. Under the old clause every one of the gap and hand-over warns would have passed E **[i]**: the clause
+did not cover a stage-B member.
+
+The new units:
+
+* the first review's witness (both burst orders: the nearer releases first, the escort never heads);
+* the second review's sibling witness: the skip moves the committed sibling with its leader (keys 64, 65), and the other holder releases
+  first;
+* 200 randomized boards (slot orders, bursts, entry distances, roles, a never-feasible head, releases that launch and leave, escorts
+  committing on their own order 4 while their leader holds or after its launch): 1,019 releases, 70 skips, 318 siblings committed while
+  their leader held; 0 frames an escort headed and 0 siblings released while their leader held; 0 stalls; the longest wait with the
+  funnel free and a feasible holder 61.3 s (the skip's 60 s plus a prediction; bound 62 s);
+* the funnel's occupancy under SETA: a funnel ship among 90 members at 18 decisions per game second keeps a decision at most one frame
+  old and stays the occupant on every frame (the plain round robin: up to 7.0 s, 38 frames lapsed);
+* the convoy skip; no skip short of the ring; the re-commit at X (a first commit holds, a re-commit keeps the funnel, beyond 1.2 r_gate
+  laterally or with the funnel occupied it holds); E's gate row with its fail-closed cases.
+
+Existing variants (all their checks pass; the B.2 checks added to each): span 564.8 / 578.2 / 429.2 s (B.1 564.7 / 578.9 / 429.2), nose
+5.04 / 4.74 / 5.39°. The closest capsule gap fell from 302 m to 145 m (w 0.6 r: 132 m): the second convoy's two M7s spawn 302 m apart;
+the rear one, beyond the boundary, flies inbound at 100 m/s and closes on the front one until the yield cap holds it. The closest two
+petal holders: 312 / 201 / 674 m (B.1 302 / 302 / 674 m).
+
+**Cost** (host x86-64 -O2, measured; i686 not measured): `sb_frame` on a full board 16.4 µs per frame with a feasibility prediction
+every frame (B.1: 15.7 µs; `burst_keys` is a 24 × 24 pass); `sb_steer` 20 ns; one funnel feasibility 14.2 µs; a decision with 21 petal
+plans 7.7–45.0 µs (B.1: 7.2–44.3 µs); `decide_order` two passes over 96 slots per frame **[i]**; site E's stage-B gate row through `e_gate_row` 11 ns per call (the DLL adds four game-memory
+reads, only for a gate warn of a ship in the bitmap). A pending skip adds at most one funnel prediction per frame (14.2 µs) **[i]**;
+`inbound` adds one `ring_extent` (a sincos and two square roots) per holder per frame **[i]**. Static: Member 1,808 B (+8), Gate
+54,556 B (+200), board 218,232 B (+800), `SbStats` 280 B on the stack (host sizes; the fields are 4-byte types, so i686 matches **[i]**).
+
+**Key off.** `SiteE.ctl_gate` is set only inside `ctl_e_fields`, which runs only while the controller is live; the order, the new stage,
+the skip, the rejoin and the row live in the controller. Key-off identity against `5b3b11ed`: 0 differences (E 0 / 400,000, resolve
+0 / 60,000, steer set 0 / 65,536, site B 0 / 200,000, ship containers 0 / 100,000); fixture lines outside scenario T: 0 differing in all
+three modes (ledger).

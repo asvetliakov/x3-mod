@@ -93,8 +93,11 @@ def by_ship(rows):
 #     l_r= capsule_L_m= (the gate traffic controller: l / r and the capsule half-length max(r, l))
 # The gate traffic controller, stage A (gate-traffic-controller.md D.7, A.1; ship_steering_gates_traffic, --debug):
 #   ship_gate_ctl frame= t_ms= gate= ship= id= seq= order= from= to=none|committed|escort|arrival|evicted why= rank=   (role transitions)
-#     stage B: key= (the sequence key) stage=<from>><to> (none|hold|funnel|handover|dock|launch) petal= (-1 none); why= also
-#     hold|release|go_around|dock|launch (the stage transitions)
+#     stage B: key= (the sequence key) stage=<from>><to> (none|hold|funnel|handover|dock|launch|inbound) petal= (-1 none); why= also
+#     hold|release|go_around|dock|launch|inbound|skip|rejoin (the stage transitions; B.2: skip = the head re-keyed with its escorts,
+#     rejoin = a re-commit past the funnel's last stretch kept in the funnel)
+#   ship_gate_ctl_seq frame= t_ms= gate= holders= inbound= cand= key= role= stage= ringed= busy_by= window=0|1|- timing=0|1|- free_ms=
+#     dx_m= v_feas= block_ms= skips= releases=   (B.2: the sequencer's state, one per gate per game second while a member holds)
 #   ship_gate_ctl_pair frame= t_ms= gate= a= b= seq=<a>,<b> rank=<a>,<b> verdict=none|clear|unresolved before= t_c_s= (-1: none)
 #     yielder=none|a|b cap_ms= (-1: none) d_m=   (a member pair's verdict change, at most once per pair per second)
 #     stage B: kind=verdict|e_pass|order0 why=- or the E reason none|unresolved|stale|starved|on_0x12|rows|order0|not_member
@@ -107,7 +110,7 @@ def by_ship(rows):
 #     reach_m= e=suppress_dock|pass_dock_parts|pass_dock_path|pass_dock_ray|pass_dock_zone|- (site E's row now; - off order 4 or within
 #     0.8 r of a carrier) zone=out|near|in|inner (> 2 r_C, > r_C, <= r_C, a carrier within 0.8 r_C) d_c_m= r_c_m= v_ms= kept= detour=
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
-           'ship_avoid_dock')
+           'ship_avoid_dock', 'ship_gate_ctl_seq')
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap')
 _KV = re.compile(r'(\S+?)=(\S*)')
 _INT = re.compile(r'-?\d+')

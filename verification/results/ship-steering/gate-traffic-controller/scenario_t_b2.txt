@@ -1,0 +1,151 @@
+departures (9 runs)
+  own-gate warns on order 4 (funnel)                                       sum 89071
+  ... left to the engine, per run                                          max 0
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 12640
+  ... left to the engine, per run                                          max 0
+  head skips per run                                                       max 0
+  head skips short of the ring                                             max 0
+  frames a leader was sequenced behind its escort                          max 0
+  re-holds past 1.2 r_gate of X                                            max 0
+  inbound cruise frames (110 m/s class) per run, min                       min 0
+  inbound cruise speed, m/s, min                                           min -1
+  inbound cruise speed, m/s, the runs' lowest mean                         min -1
+  inbound cruise frames < 99.5 m/s                                         max 0
+  inbound frames under (or 10 s after) a yield cap, excluded               max 2077
+  review N5: closest capsule gap inbound vs holder, m (pairs present)      min 145 (per fps: 30 181, 60 180, 144 145)
+  first ship commit -> launch, s, max                                      max 290.9
+  ... its transit at v_max, s                                              max 56.6
+  last launch, game s, max                                                 max 812
+  first crossing to last launch, s, max                                    max 564.8
+  launches per run, min                                                    min 7
+  releases per run, max                                                    max 7
+  go-arounds per run, max                                                  max 0
+dep w0.6r (9 runs)
+  own-gate warns on order 4 (funnel)                                       sum 88827
+  ... left to the engine, per run                                          max 0
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 12411
+  ... left to the engine, per run                                          max 0
+  head skips per run                                                       max 0
+  head skips short of the ring                                             max 0
+  frames a leader was sequenced behind its escort                          max 0
+  re-holds past 1.2 r_gate of X                                            max 0
+  inbound cruise frames (110 m/s class) per run, min                       min 0
+  inbound cruise speed, m/s, min                                           min -1
+  inbound cruise speed, m/s, the runs' lowest mean                         min -1
+  inbound cruise frames < 99.5 m/s                                         max 0
+  inbound frames under (or 10 s after) a yield cap, excluded               max 2234
+  review N5: closest capsule gap inbound vs holder, m (pairs present)      min 132 (per fps: 30 237, 60 236, 144 132)
+  first ship commit -> launch, s, max                                      max 295.2
+  ... its transit at v_max, s                                              max 56.6
+  last launch, game s, max                                                 max 823.7
+  first crossing to last launch, s, max                                    max 578.2
+  launches per run, min                                                    min 7
+  releases per run, max                                                    max 7
+  go-arounds per run, max                                                  max 0
+arrivals (9 runs)
+  own-gate warns on order 4 (funnel)                                       sum 0
+  ... left to the engine, per run                                          max 0
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 0
+  ... left to the engine, per run                                          max 0
+  head skips per run                                                       max 0
+  head skips short of the ring                                             max 0
+  frames a leader was sequenced behind its escort                          max 0
+  re-holds past 1.2 r_gate of X                                            max 0
+  inbound cruise frames (110 m/s class) per run, min                       min 0
+  inbound cruise speed, m/s, min                                           min -1
+  inbound cruise speed, m/s, the runs' lowest mean                         min -1
+  inbound cruise frames < 99.5 m/s                                         max 0
+  inbound frames under (or 10 s after) a yield cap, excluded               max 0
+  first ship commit -> launch, s, max                                      max -1
+  ... its transit at v_max, s                                              max -1
+  last launch, game s, max                                                 max -1
+  first crossing to last launch, s, max                                    max -1
+  launches per run, min                                                    min 0
+  releases per run, max                                                    max 0
+  go-arounds per run, max                                                  max 0
+arr w0.6r (9 runs)
+  own-gate warns on order 4 (funnel)                                       sum 0
+  ... left to the engine, per run                                          max 0
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 0
+  ... left to the engine, per run                                          max 0
+  head skips per run                                                       max 0
+  head skips short of the ring                                             max 0
+  frames a leader was sequenced behind its escort                          max 0
+  re-holds past 1.2 r_gate of X                                            max 0
+  inbound cruise frames (110 m/s class) per run, min                       min 0
+  inbound cruise speed, m/s, min                                           min -1
+  inbound cruise speed, m/s, the runs' lowest mean                         min -1
+  inbound cruise frames < 99.5 m/s                                         max 0
+  inbound frames under (or 10 s after) a yield cap, excluded               max 0
+  first ship commit -> launch, s, max                                      max -1
+  ... its transit at v_max, s                                              max -1
+  last launch, game s, max                                                 max -1
+  first crossing to last launch, s, max                                    max -1
+  launches per run, min                                                    min 0
+  releases per run, max                                                    max 0
+  go-arounds per run, max                                                  max 0
+mixed (9 runs)
+  own-gate warns on order 4 (funnel)                                       sum 51132
+  ... left to the engine, per run                                          max 0
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 7327
+  ... left to the engine, per run                                          max 0
+  head skips per run                                                       max 0
+  head skips short of the ring                                             max 0
+  frames a leader was sequenced behind its escort                          max 0
+  re-holds past 1.2 r_gate of X                                            max 0
+  inbound cruise frames (110 m/s class) per run, min                       min 0
+  inbound cruise speed, m/s, min                                           min -1
+  inbound cruise speed, m/s, the runs' lowest mean                         min -1
+  inbound cruise frames < 99.5 m/s                                         max 0
+  inbound frames under (or 10 s after) a yield cap, excluded               max 0
+  first ship commit -> launch, s, max                                      max 349.6
+  ... its transit at v_max, s                                              max 56.6
+  last launch, game s, max                                                 max 722.2
+  first crossing to last launch, s, max                                    max 429.2
+  launches per run, min                                                    min 4
+  releases per run, max                                                    max 4
+  go-arounds per run, max                                                  max 0
+dep refused (9 runs)
+  own-gate warns on order 4 (funnel)                                       sum 91112
+  ... left to the engine, per run                                          max 0
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 16247
+  ... left to the engine, per run                                          max 0
+  head skips per run                                                       max 0
+  head skips short of the ring                                             max 0
+  frames a leader was sequenced behind its escort                          max 0
+  re-holds past 1.2 r_gate of X                                            max 0
+  inbound cruise frames (110 m/s class) per run, min                       min 0
+  inbound cruise speed, m/s, min                                           min -1
+  inbound cruise speed, m/s, the runs' lowest mean                         min -1
+  inbound cruise frames < 99.5 m/s                                         max 0
+  inbound frames under (or 10 s after) a yield cap, excluded               max 2077
+  review N5: closest capsule gap inbound vs holder, m (pairs present)      min 145 (per fps: 30 181, 60 180, 144 145)
+  first ship commit -> launch, s, max                                      max 341.4
+  ... its transit at v_max, s                                              max 56.6
+  last launch, game s, max                                                 max 1035
+  first crossing to last launch, s, max                                    max 787.8
+  launches per run, min                                                    min 7
+  releases per run, max                                                    max 7
+  go-arounds per run, max                                                  max 0
+run162 (9 runs)
+  own-gate warns on order 4 (funnel)                                       sum 67707
+  ... left to the engine, per run                                          max 0
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 14602
+  ... left to the engine, per run                                          max 0
+  head skips per run                                                       max 0
+  head skips short of the ring                                             max 0
+  frames a leader was sequenced behind its escort                          max 0
+  re-holds past 1.2 r_gate of X                                            max 0
+  inbound cruise frames (110 m/s class) per run, min                       min 64971
+  inbound cruise speed, m/s, min                                           min 100
+  inbound cruise speed, m/s, the runs' lowest mean                         min 100
+  inbound cruise frames < 99.5 m/s                                         max 0
+  inbound frames under (or 10 s after) a yield cap, excluded               max 6916
+  review N5: closest capsule gap inbound vs holder, m (pairs present)      min 544 (per fps: 30 691, 60 686, 144 544)
+  first ship commit -> launch, s, max                                      max 496.1
+  ... its transit at v_max, s                                              max 431.9
+  last launch, game s, max                                                 max 1318.3
+  first crossing to last launch, s, max                                    max 872.2
+  launches per run, min                                                    min 6
+  releases per run, max                                                    max 6
+  go-arounds per run, max                                                  max 0

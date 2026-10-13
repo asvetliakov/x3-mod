@@ -1,0 +1,2 @@
+inverted=0 (N enter_d > L's): slots N=1 L=0 E=2 keys N=32 L=16 E=17 key_res=1; L.sb=funnel N.sb=funnel releases=2 first at 0.0 s; frames the escort headed=0 of 3000
+inverted=1 (N enter_d < L's): slots N=1 L=0 E=2 keys N=32 L=16 E=17 key_res=1; L.sb=funnel N.sb=funnel releases=2 first at 0.0 s; frames the escort headed=0 of 3000

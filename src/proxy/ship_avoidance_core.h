@@ -861,6 +861,8 @@ struct SiteE {
     bool ctl_certified = false;      // ... and ctl::e_certified holds (clear, <= 250 ms, both forward rows, neither on 0x12)
     bool a_arrival = false;          // A is a capital arrival member (< 60 s): the small-ship row takes it as fresh (its path is the
                                      // engine's 0x21 / 0x1e line)
+    bool ctl_gate = false;           // B.2 item 3: A is a stage-B member in funnel / handover / dock / launch against its own gate B, under
+                                     // the path guard (ctl::sb_gate_row; any order: 4, 0, 0x1f, 5)
     // Amendment 18 (ship_steering_dock): A on order 4 and B its container (dock_container), the row's verdict from the DLL's reads
     // (dock_verdict); none = key off or not A's container (today's rules)
     DockE dock = DockE::none;
@@ -868,6 +870,7 @@ struct SiteE {
 inline EVerdict site_e_verdict(const SiteE& in) noexcept {
     // the gate traffic controller first (its pairs need no steering decision of A: arrivals and hand-overs are on engine orders)
     if (in.b_gate && in.arrival_gate) return EVerdict::suppress_arrival_gate;
+    if (in.b_gate && in.ctl_gate) return EVerdict::suppress_gate; // B.2 item 3: the stage-B member against its own gate
     if (in.b_ship && in.ctl_pair) return in.ctl_certified ? EVerdict::suppress_ctl : EVerdict::pass_ctl;
     if (!in.a_in_table && !in.a_arrival) return EVerdict::pass_not_fresh;
     const std::uint32_t fresh = fresh_window_ms(kSteeredFreshMs, in.frame_ms, kSteeredReplanMs);

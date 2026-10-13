@@ -1800,6 +1800,97 @@ small-ship gap row). Not flown, not installed. Measured on the WSL2 host:
 * Host tests `test_ship_trace_format` (+1: the cap tail), `test_ship_steering_sites`, `test_ship_trace_replay`, `test_ship_steering`,
   `test_check_no_x87`, `test_config_schema`, `test_launcher_defaults`: 64 OK. `summary_bound.py`: 4,007 of 4,096.
 
+### B.2 Run162 fixes (2026-10-13, Opus 5.5; design and implementation §B.2)
+
+Built on main `5b3b11ed`; two review rounds (B1 blocking, N1–N8; F1, F2) folded in; not flown, not installed. Fixes the Run 162 A findings
+(`run162-triage/`): the 60 s head skip that put the M2 leader behind its own reserved escorts (2,524 game s deadlock), holders
+cruising at 40 m/s from 47 km, 3 of 4 funnel releases evicted by the engine's 0x12 against their own gate, the re-hold into a U-turn at
+X, the session-lifetime `ctl_sb_us_max`, no sequencer row. Changes (§B.2):
+
+* the sequence is a strict total order and an escort never heads while its leader holds;
+* the skip moves the leader with its reserved escorts and needs a feasible alternative and a head at its ring;
+* the stage `inbound` (beyond the petal's extent + 2 km: its own petal line at up to v_max) and the window's dX ≤ v_max · 256 s;
+* site E's `suppress_gate` for a stage-B member against its own gate under the path guard (`gc::e_gate_row`, fail closed);
+* no re-hold past 1.2 r_gate of X;
+* `ship_gate_ctl_seq` and the interval maximum.
+
+**Review (B1, N1–N8)**, kept as evidence: the reviewer's witness
+[`review_b2_escort_head_witness.cpp`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_escort_head_witness.cpp)
+→ [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_escort_head_witness.txt) (on the reviewed
+state: with N nearer X the escort headed 3,000 of 3,000 frames and nothing was released). Fixed:
+
+* B1: the order is a strict total order (§B.2 item 1); an escort is never a candidate while its committed leader holds or is inbound; a
+  skip keeps `enter_ms`. Unit: the witness now releases N first with 0 escort heads; 200 randomized boards (figures under F1 below): 0
+  escort heads, 0 stalls, the longest wait with the funnel free 61.3 s (bound 62 s: the skip's 60 s plus a prediction). The randomized
+  boards also found a one-frame escort head when one escort was already committed (its leader found by its key class since).
+* N1: the rejoin needs the lateral bound 1.2 r_gate; `enter()` clears `release_ms` after the 30 s eviction window.
+* N2: the rejoin checks the funnel's occupancy and the slot block; occupied, the ship holds.
+* N3: the funnel-busy test counts only live members decided within 5 s.
+* N4: the inbound rollout uses `sb_steer`'s in-plane carrot with the out-of-plane offset decaying along the path.
+* N5: documented (§B.2 item 2, "Crossing"); scenario T asserts the inbound-vs-holder capsule gap ≥ 100 m in every run.
+* N6: `sb_gate_row` fails closed on a stale member, a radius ≤ 0, a failed or out-of-reach position read.
+* N7: `SbSeq` is filled only with `SbStats.seq_on` (the DLL's `--debug`).
+* N8: the fixture's own-gate model goes through `gc::e_gate_row` (bitmap, `locate`, id), as `ctl_e_fields` does.
+
+**Re-review of `4b12b089` (F1, F2)**, the second witness kept as evidence:
+[`review_b2_sibling_skip_witness.cpp`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_sibling_skip_witness.cpp)
+→ [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/review_b2_sibling_skip_witness.txt) (on `4b12b089`: the
+committed sibling kept key 17 after its leader's skip to 64, ranked ahead of it and was released first).
+
+* F1: a skip moves every reserved member of the leader's key class with it, a sibling already committed on its own order 4 included;
+  the alternative-holder loop excludes the head's key class. Units: the sibling witness (keys 64, 65; the other holder releases first);
+  the randomized boards now commit siblings while their leader holds: 1,019 releases, 70 skips, 318 siblings, 0 released while their
+  leader held, 0 escort heads, 0 stalls, the longest wait 61.3 s.
+* F2: the funnel's occupants are decided first in each frame (`gc::decide_order`, used by the DLL's `ctl_frame` and the fixture). Unit: a
+  funnel ship among 90 members at 18 decisions per game second keeps a decision at most one frame old and stays the occupant on every
+  frame (the plain round robin: up to 7.0 s old, 38 frames lapsed).
+* A NaN entry distance ranks last. §B.2 notes the N4 approximation and corrects N5 (the back point keeps an inbound ship clear of its own
+  ring only when it comes from behind).
+
+**Acceptance (measured, WSL2 host, MinGW GCC 16.2):**
+
+* Build: `cmake --build build --clean-first` (with the configure re-run for `fog_field_assets.rc`) → 0 warnings over 126 C++ objects;
+  DLL `2cefa580…`, 59,343,996 B (an unstripped worktree build with the dirty stamp, not a candidate).
+* `check_no_x87.py build/d3d9.dll`: PASS, 997 reachable functions, 0 violations.
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, 20 checks.
+* Fixture: full 9399 / `--capital` 3741 / seq-off 9309, 0 failures (from 9039 / 3381 / 8949; +360 each). The +360: the `run162`
+  variant's 9 runs (15 existing and 3 Run162 checks per run), 3 B.2 checks in each of the 63 scenario T runs, 9 stage-B units (the convoy
+  skip, no skip short of the ring, the re-commit at X, E's gate row, N1/N2, the two review witnesses, the randomized boards, F2's
+  occupancy). A pre-existing unit (1b, the axis variant) zero-initializes its outputs: GCC 16 flagged them maybe-uninitialized under
+  `-Werror` once the file grew. Regenerated:
+  [`ship_steering_host.txt`](../../verification/results/ship-steering/ship_steering_host.txt),
+  [`ship_steering_host_seq_off.txt`](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt),
+  [`scenario_t_b.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.txt).
+* Fixture identity ([`fixture_lines_b2.txt`](../../verification/results/ship-steering/gate-traffic-controller/fixture_lines_b2.txt),
+  `fixture_identity_b.sh 5b3b11ed`): every line outside scenario T and the stage-B lines unchanged in all three modes (326 / 149 / 326 compared, 0 differing), PASS.
+* Key-off identity ([`keyoff_identity_b2.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b2.txt),
+  `keyoff_identity_b.sh 5b3b11ed`): 0 differences (E 0 / 400,000, resolve 0 / 60,000, steer set 0 / 65,536, site B 0 / 200,000, ship
+  containers 0 / 100,000; the row labels still name `ad0e131a`, the header line names the base used).
+* Run162 replay ([`replay_identity_b2.txt`](../../verification/results/ship-steering/gate-traffic-controller/replay_identity_b2.txt),
+  `replay_identity_b.sh run162-triage/x3m.log 5b3b11ed`; `ship_trace_rows.py` gained the `ship_gate_ctl_seq` row): stdout 29,716 B,
+  the 190 MB JSON and the 1,171 B lag summary byte-identical, PASS.
+* Host tests: `PYTHONPATH=../probe python3 -m unittest test_ship_trace_format test_ship_steering_sites test_ship_trace_replay
+  test_ship_steering test_check_no_x87 test_config_schema test_launcher_defaults` (from `verification/analysis`) → 64 OK (12 + 6 + 9 + 2
+  + 6 + 19 + 10; without the last two modules it is 35).
+
+**Scenario T** ([`scenario_t_b2.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b2.py) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b2.txt)), the `run162` variant, worst of 9 runs:
+
+* 6 / 6 launched (no deadlock), last launch ≤ 1,318.3 s; 0 head skips, 0 short of the ring; 0 frames a leader was keyed behind its escort;
+* inbound cruise of the 110 m/s class: 64,952+ frames per run, min 100.0 m/s, 0 below 99.5 (frames under or 10 s after a yield cap
+  between the second convoy's M7s, ≤ 6,916, excluded);
+* own-gate warns of stage-B members: 67,707 on order 4 and 14,602 on order 0 / 0x1f, 0 left to the engine;
+* 0 re-holds past 1.2 r_gate of X; the first ship's commit → launch 486.6–496.1 s ≤ 551.9 s (its transit at v_max 431.9 s + 120 s);
+* inbound vs holder closest capsule gap 544 m; first crossing to last launch 872.2 s for 6.
+
+The existing variants keep every check; span 564.8 / 578.2 / 429.2 s (B.1 564.7 / 578.9 / 429.2). The closest capsule gap in departures
+fell from 302 to 145 m (w 0.6 r: 132 m): the second convoy's rear M7 is inbound at 100 m/s and closes on the front one until the yield cap
+holds it. That is also the worst inbound-vs-holder gap (N5): 145 / 132 m at 144 fps, 180–237 m at 30 and 60 fps (§B.2).
+
+**Cost** (host, measured): `sb_frame` 16.4 µs per frame (B.1 15.7); a decision with 21 petal plans 7.7–45.0 µs (B.1 7.2–44.3); E's
+stage-B gate row through `e_gate_row` 11 ns per call; member-pair lookup 7 ns (unchanged). Static: Member 1,808 B (+8), Gate 54,556 B
+(+200), board 218,232 B (+800).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

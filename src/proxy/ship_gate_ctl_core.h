@@ -84,9 +84,16 @@ constexpr std::uint32_t kEscortSwitchMs = 4500;  // an escort's first order-4 ch
 constexpr float kEscortStageS = 300.0f; // an escort's lap brings it to this point of its inner straight (beyond 10 km) at the script's
                                         // first order-4 chance: its 0x15 legs then carry it forward, heading +F, inside 10 km (D.12)
 constexpr float kEscortSwitchM = 10000.0f;       // ... within 10 km of the gate (Mayhem.Task.Move, D.12)
-enum class Sb : std::uint8_t { none = 0, hold, funnel, handover, dock, launch, count };
+// B.2 (Run162): the arrival to the ring, the release window's horizon, the funnel's last stretch
+constexpr float kInboundM = 2000.0f;     // inbound while farther than the ring's extent + 2 km from the gate
+constexpr float kInboundHystM = 1000.0f; // ... and back to inbound only beyond a further 1 km (no flapping at the boundary)
+constexpr float kHorizonS = float(sc::kJoinMaxSteps) * sc::kJoinStepS; // the predictor's horizon (256 s): the window's dX <= v_max * this
+constexpr float kLastStretchR = 1.2f;    // a ship within 1.2 r_gate of X (or beyond X) is past the funnel's last stretch: never re-held
+// B.2 (Run162): inbound = committed (or an escort) farther than its ring's extent + kInboundM from the gate: it flies toward its petal's
+// entry at the plan speed, is no release candidate and runs no head-skip timer
+enum class Sb : std::uint8_t { none = 0, hold, funnel, handover, dock, launch, inbound, count };
 inline const char* sb_name(Sb s) noexcept {
-    static const char* const n[unsigned(Sb::count)] = {"none", "hold", "funnel", "handover", "dock", "launch"};
+    static const char* const n[unsigned(Sb::count)] = {"none", "hold", "funnel", "handover", "dock", "launch", "inbound"};
     return unsigned(s) < unsigned(Sb::count) ? n[unsigned(s)] : "?";
 }
 
@@ -108,11 +115,11 @@ inline const char* pair_name(PairV v) noexcept {
 }
 // Why a member left the board or changed role (the ship_gate_ctl row).
 enum class Why : std::uint8_t { enter = 0, commit, handover, escort, arrival, evict, order, target, expire, identity, leader, window, reenter,
-                                hold, release, go_around, dock, launch, count };
+                                hold, release, go_around, dock, launch, inbound, skip, rejoin, count };
 inline const char* why_name(Why w) noexcept {
     static const char* const n[unsigned(Why::count)] = {"enter", "commit", "handover", "escort", "arrival", "evict", "order", "target",
                                                         "expire", "identity", "leader", "window", "reenter", "hold", "release",
-                                                        "go_around", "dock", "launch"};
+                                                        "go_around", "dock", "launch", "inbound", "skip", "rejoin"};
     return unsigned(w) < unsigned(Why::count) ? n[unsigned(w)] : "?";
 }
 
@@ -161,6 +168,10 @@ struct Member {
     Sb sb = Sb::none;
     std::int8_t petal = -1;
     std::uint8_t key_res = 0, q_ok = 0, refused = 0;
+    std::uint8_t ringed = 0;    // B.2: reached its petal ring (within the ring's extent) since it last flew inbound (the head skip's precondition)
+    std::uint8_t unburst = 0;   // B.2 review B1: re-keyed by a head skip: out of its entry burst (the distance order no longer applies)
+    std::uint32_t burst_key = 0; // B.2 review B1: the lowest key of its entry burst (committed, no reservation, entered within kBurstMs of
+                                 // another such member; 0 none), computed per frame by burst_keys()
     std::uint16_t go_arounds = 0;
     std::uint32_t key = 0, res_until = 0, pred = 0; // pred: the released ship ahead (its launch frees the funnel)
     std::uint32_t release_ms = 0, plan_x_ms = 0, plan_launch_ms = 0, o8_ms = 0, feas_ms = 0, x_ms = 0, x_pred_ms = 0;
@@ -197,6 +208,7 @@ struct Gate {
     std::uint32_t petal_ship[kPetals] = {};
     std::uint32_t funnel_ship = 0, funnel_end_ms = 0, slot_block_ms = 0, last_arrival_seen = 0;
     std::uint32_t sb_go_arounds = 0, sb_releases = 0, sb_last_ms = 0, sb_tail_key = 0;
+    std::uint32_t sb_skips = 0, seq_row_ms = 0; // B.2: head skips at this gate; the DLL's last ship_gate_ctl_seq row (one per game second)
     std::uint32_t o0_ms[kMembers][kMembers] = {}; // review F5: the last order-0 pair row per pair (one per second; the DLL's --debug)
     std::uint32_t pass_ms[kMembers][kMembers] = {}; // Run161: the last E pass row per pair (one per second; the DLL's --debug)
 };
@@ -435,6 +447,7 @@ inline Member* enter(Board& b, Gate& g, std::uint32_t ship, std::uint32_t id, Ro
         // a change between the pair roles keeps it
         const bool lapsed = m.role == Role::none || (m.role == Role::evicted && now - m.evict_ms > kEvictKeepMs);
         if (lapsed || !m.seq) m.seq = g.next_seq++;
+        if (lapsed) m.release_ms = 0; // B.2 review N1: a re-commit past the last stretch is a rejoin only within the 30 s window
         m.enter_ms = now ? now : 1;
         if (m.role == Role::evicted || m.role == Role::none) {
             clear_pairs(g, unsigned(i));
@@ -757,6 +770,31 @@ __attribute__((always_inline)) inline void petal_carrot(const PetalGeom& pg, flo
     float da, db;
     petal_at(pg, petal_project(pg, a, b) + pursuit_look(v, W, r_gate), ta, tb, &da, &db);
 }
+// B.2 (Run162 item 2): an inbound ship's carrot on its petal's inner line (+F at b = rho). Farther than kInboundLatM from that line, the
+// line's point kInboundBackM beyond the petal's back turn (behind the ring: the ship joins its own line without crossing the other
+// petals; at its own depth plus the look-ahead when already ahead of that point); on the line, the petal's entry (the inner straight's
+// back end a0) while the look-ahead falls short of it, then the straight up to its front end a1. From far behind the ship flies a straight
+// line and arrives heading +F, in its release window. (a, b, off: the ship's components along F, e and the plane's normal.)
+constexpr float kInboundLatM = 1000.0f, kInboundBackM = 1500.0f;
+__attribute__((always_inline)) inline void inbound_carrot(const PetalGeom& pg, float r_gate, float W, float a, float b, float off, float v, float* ta,
+                                                          float* tb) noexcept {
+    float t = a + pursuit_look(v, W, r_gate);
+    const float lb = b - pg.rho, back = pg.a0 - kPetalRh - kInboundBackM;
+    if (lb * lb + off * off > kInboundLatM * kInboundLatM) {
+        if (a <= back) t = back;
+    } else if (t < pg.a0)
+        t = pg.a0;
+    if (t > pg.a1) t = pg.a1;
+    *ta = t;
+    *tb = pg.rho;
+}
+// The distance from G of the farthest point of a member's petal (its back turn's outer side; ring 0's index 0 without a petal).
+__attribute__((always_inline)) inline float ring_extent(const Gate& g, const Member& m) noexcept {
+    PetalGeom pg;
+    petal_geom(g, m.petal >= 0 ? unsigned(m.petal) : 0u, m.zx, &pg);
+    const float bc = pg.rho + kPetalRh;
+    return sc::sqrt_ss(pg.a0 * pg.a0 + bc * bc) + kPetalRh;
+}
 // The plant step of sc::plant_step toward an explicit target (tx, ty) in the plane (the petal's carrot); the same arithmetic.
 __attribute__((always_inline)) inline void plant_step_to(const sc::JoinParams& p, float v_des, float dt, float k_lag, float tx, float ty, float& x,
                                                          float& y, float& psi, float& upsi, float& w, float& v) noexcept {
@@ -884,7 +922,7 @@ inline Plan plan_of(const Member& m) noexcept {
     if (o == sc::kOrderWarpAway) return Plan::launch;
     if (m.role == Role::committed) {
         if (o == sc::kOrderFlyBefore) {
-            if (m.sb == Sb::hold && m.petal >= 0) return Plan::petal; // stage B: holding (or entering) its petal
+            if ((m.sb == Sb::hold || m.sb == Sb::inbound) && m.petal >= 0) return Plan::petal; // stage B: holding (or entering) its petal
             return m.line_ok ? Plan::line : Plan::drift;               // the funnel flies Lambda_4 (line_of)
         }
         if (o == sc::kOrderDock) return m.sb == Sb::dock && m.q_ok ? Plan::line5 : Plan::dock;
@@ -898,7 +936,8 @@ inline Plan plan_of(const Member& m) noexcept {
         if ((m.role == Role::committed || m.role == Role::escort) && gap_plan(m)) return m.last_plan;
         return Plan::brake;
     }
-    if (m.role == Role::escort && (o == sc::kOrderEscort || o == sc::kOrderFollow)) return m.sb == Sb::hold && m.petal >= 0 ? Plan::petal : Plan::follow;
+    if (m.role == Role::escort && (o == sc::kOrderEscort || o == sc::kOrderFollow))
+        return (m.sb == Sb::hold || m.sb == Sb::inbound) && m.petal >= 0 ? Plan::petal : Plan::follow;
     return Plan::drift;
 }
 // The plan's speed: the module's own speed before a yield cap when known and fresh, else the desired speed site B left.
@@ -1029,13 +1068,14 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         }
         break;
     }
-    case Plan::petal: { // stage B: the pursuit of the petal's racetrack carrot in its plane (F, e); the out-of-plane offset kept
+    case Plan::petal: { // stage B: the pursuit of the petal's racetrack carrot in its plane (F, e); the out-of-plane offset kept (B.2: an
+                        // inbound member pursues its petal's entry and inner straight)
         PetalGeom pg;
         petal_geom(g, unsigned(m.petal), m.zx, &pg);
         sc::JoinPlane st;
         if (!plane_state(g.G, g.F, pg.e, m.st.x, m.st.rows, m.st.w, m.st.u, m.st.v, &st) || !(m.params.W > 1e-4f) || !(m.params.alpha > 1e-6f))
             break;
-        const float off = (m.st.x[0] - g.G[0]) * pg.n[0] + (m.st.x[1] - g.G[1]) * pg.n[1] + (m.st.x[2] - g.G[2]) * pg.n[2];
+        float off = (m.st.x[0] - g.G[0]) * pg.n[0] + (m.st.x[1] - g.G[1]) * pg.n[1] + (m.st.x[2] - g.G[2]) * pg.n[2];
         const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(m);
         const float t_brake = gap_brake_s(m);
         const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau);
@@ -1044,8 +1084,17 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         for (unsigned k = 0; k < kSamples; ++k) {
             for (unsigned step = 0; k && step < 2; ++step) {
                 float ta, tb;
-                petal_carrot(pg, m.params.r_gate, m.params.W, x, y, v, &ta, &tb);
+                const bool entering = m.sb == Sb::inbound || !m.ringed;
+                if (entering) inbound_carrot(pg, m.params.r_gate, m.params.W, x, y, off, v, &ta, &tb);
+                else petal_carrot(pg, m.params.r_gate, m.params.W, x, y, v, &ta, &tb);
+                // review N4: sb_steer's carrot lies in the petal's plane, so an entering ship's out-of-plane offset decays along its path:
+                // the 3-D line to the carrot shrinks it with the in-plane distance (the rollout predicts the flown path)
+                const float d0 = sc::sqrt_ss((ta - x) * (ta - x) + (tb - y) * (tb - y) + off * off);
                 plant_step_to(m.params, float(k) * kSampleS < t_brake ? 0.0f : v_des, kStepS, k_lag, ta, tb, x, y, psi, upsi, w, v);
+                if (entering && d0 > 1.0f) {
+                    const float travel = v * kStepS;
+                    off *= travel < d0 ? 1.0f - travel / d0 : 0.0f;
+                }
             }
             for (unsigned i = 0; i < 3; ++i) c[i] = g.G[i] + x * g.F[i] + y * pg.e[i] + off * pg.n[i];
             float sp, cp; // the live nose turned about the plane's normal F x e by the plant's in-plane turn (as the line plan)
@@ -1469,6 +1518,32 @@ __attribute__((always_inline)) inline bool due(const Member& m, std::uint32_t no
 }
 // Whether the frame may start another decision (the frame's bound): the first always; then within kDecisionsPerFrame and while a
 // decision with every yield still fits the rollout budget.
+// B.2 review F2: the members that occupy the funnel (committed in funnel, hand-over, order 5 or order 8) are decided with priority: the
+// funnel's occupancy needs their decision at most kOccupyDecisionMs (5 s) old, and the round robin of a full board under SETA can take
+// longer (96 members at 18 decisions per game second: 5.3 s).
+__attribute__((always_inline)) inline bool sb_priority(const Member& m) noexcept {
+    return m.ship && m.role == Role::committed && (m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch);
+}
+// The frame's decision order (the DLL's ctl_frame, the fixture's frame end): the due priority members first, then the due others in round
+// robin from the cursor. idx: k = gate * kMembers + member (kGates * kMembers entries at most); *n_prio: the leading priority entries (the
+// cursor advances only on the others).
+inline unsigned decide_order(const Board& b, unsigned cursor, std::uint32_t now, std::uint16_t* idx, unsigned* n_prio) noexcept {
+    constexpr unsigned total = kGates * kMembers;
+    unsigned n = 0;
+    for (unsigned k = 0; k < total; ++k) {
+        const Gate& g = b.g[k / kMembers];
+        const unsigned i = k % kMembers;
+        if (g.gate && i < g.n && sb_priority(g.m[i]) && due(g.m[i], now)) idx[n++] = std::uint16_t(k);
+    }
+    *n_prio = n;
+    for (unsigned q = 0; q < total; ++q) {
+        const unsigned k = (cursor + q) % total;
+        const Gate& g = b.g[k / kMembers];
+        const unsigned i = k % kMembers;
+        if (g.gate && i < g.n && !sb_priority(g.m[i]) && due(g.m[i], now)) idx[n++] = std::uint16_t(k);
+    }
+    return n;
+}
 __attribute__((always_inline)) inline bool frame_room(unsigned decisions, unsigned rollouts) noexcept {
     return !decisions || (decisions < kDecisionsPerFrame && rollouts + kMaxRolloutsPerDecision <= kRolloutsPerFrame);
 }
@@ -1516,6 +1591,45 @@ inline EWhy e_reason(const Gate& g, unsigned i, unsigned j, std::uint32_t now, b
 __attribute__((always_inline)) inline bool unit_row(const float f[3]) noexcept {
     const float n2 = sc::dot3(f, f);
     return sc::finite_f(n2) && n2 >= 0.9f && n2 <= 1.1f;
+}
+// B.2 item 3 (Run162: 3 of 4 funnel releases evicted by the engine's 0x12 against their own gate): site E's gate row for a stage-B member.
+// A (committed, Q known) in funnel / handover / dock / launch on B's board, B = its own gate as the live target, or the target zeroed on
+// order 0 / 0x1f (the script's gap, the P2 hand-over), whatever the order; under the path guard dist(G, segment[x, P]) >= r_gate + r_A +
+// 0.25 r_gate with P = Lambda_4's point at X's depth (the funnel's point). True: suppress_gate.
+constexpr float kSbGateGuardR = 0.25f; // ship_capital_lane_core.h kCapitalGuardR (the capital rows' path guard)
+// Review N6: fails closed unless the member is live, its radius is positive and the position read is finite and within reach of the
+// member's last state read ((v_max + 50 m/s) per second of its age + 500 m). The hull radius is the member's own (validated at entry).
+inline bool sb_gate_row(const Gate& g, const Member& m, std::uint32_t gate, std::uint16_t order, std::uint32_t target, const float x[3],
+                        std::uint32_t now) noexcept {
+    if (!gate || g.gate != gate || m.role != Role::committed || !m.q_ok || !(g.r_gate > 0.0f) || !live(m, now)) return false;
+    const float r_a = m.r;
+    if (!(r_a > 0.0f) || !sc::finite_f(r_a) || !sc::finite_f(x[0]) || !sc::finite_f(x[1]) || !sc::finite_f(x[2])) return false;
+    {
+        const float dx[3] = {x[0] - m.st.x[0], x[1] - m.st.x[1], x[2] - m.st.x[2]};
+        const float reach = ((m.params.v_max > 0.0f ? m.params.v_max : 0.0f) + 50.0f) * float(now - m.st.ms) * 0.001f + 500.0f;
+        if (!(sc::dot3(dx, dx) <= reach * reach)) return false;
+    }
+    if (!(m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch)) return false;
+    if (!(target == gate || (!target && (order == sc::kOrderNone || order == sc::kOrderRotate)))) return false;
+    float P[3];
+    lambda4(g, m, P);
+    const float ap[3] = {g.G[0] - x[0], g.G[1] - x[1], g.G[2] - x[2]}, ab[3] = {P[0] - x[0], P[1] - x[1], P[2] - x[2]};
+    const float l2 = sc::dot3(ab, ab);
+    float t = l2 > 1e-6f ? sc::dot3(ap, ab) / l2 : 0.0f;
+    t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+    const float d[3] = {ap[0] - t * ab[0], ap[1] - t * ab[1], ap[2] - t * ab[2]};
+    const float dist = sc::sqrt_ss(sc::dot3(d, d));
+    return sc::finite_f(dist) && dist >= g.r_gate + r_a + kSbGateGuardR * g.r_gate;
+}
+// Review N8: site E's stage-B gate row as the DLL's ctl_e_fields reads it (the fixture's own-gate model calls the same): the membership
+// bitmap, the board of A, B its gate, the object id; then sb_gate_row on the live position read (x_ok: the read succeeded).
+inline bool e_gate_row(Board& b, const Index& ix, std::uint32_t a, std::uint32_t id_a, std::uint32_t gate, std::uint16_t order,
+                       std::uint32_t target, const float x[3], bool x_ok, std::uint32_t now) noexcept {
+    if (!a || !x_ok || !ix.maybe(a)) return false;
+    int i = -1;
+    const Gate* g = locate(b, a, &i);
+    if (!g || i < 0 || g->gate != gate || g->m[i].id != id_a) return false;
+    return sb_gate_row(*g, g->m[i], gate, order, target, x, now);
 }
 
 // ---- D.4: the arrival placement ------------------------------------------------------------------------------------------------
@@ -1622,7 +1736,16 @@ struct SbEvent {
     std::uint8_t from = 0, to = 0, why = 0, petal = 0xff;
 };
 constexpr unsigned kSbEvents = 16;
+// B.2 item 5: the sequencer's state at the frame (the DLL's ship_gate_ctl_seq row, one per gate per game second while a holder exists)
+struct SbSeq {
+    std::uint32_t cand = 0, key = 0, busy_by = 0; // the candidate (first in sequence) and the member keeping the funnel busy
+    std::int32_t free_ms = 0, block_ms = 0;        // t_free - now; the slot block's rest
+    std::uint8_t role = 0, stage = 0, window = 2, timing = 2, ringed = 0, holders = 0, inbound = 0, pad = 0; // window, timing: 2 = n/a
+    float v_feas = -1.0f, dx = -1.0f;
+};
 struct SbStats {
+    bool seq_on = false; // the caller wants seq filled (the DLL's debug tier)
+    SbSeq seq;
     unsigned releases = 0, go_arounds = 0, predictions = 0, deferred = 0, x_refused = 0, guarded = 0, seq_skipped = 0, clock_resets = 0;
     unsigned go_arounds_near = 0; // go-arounds decided within 1 km of X
     std::uint32_t x_wait_ms = 0;
@@ -1643,15 +1766,68 @@ __attribute__((always_inline)) inline void sb_event(SbStats* st, const Member& m
     e.why = std::uint8_t(why);
     e.petal = m.petal >= 0 ? std::uint8_t(m.petal) : 0xff;
 }
-// The sequence order (D.2.5, D.8): by key (seq << 4; an escort right after its leader); committed members that entered within
-// kBurstMs of each other without a reservation (a load rebuilds the board at the members' next decisions) by their distance to X.
-inline bool seq_before(const Member& a, const Member& b) noexcept {
-    if (!a.key_res && !b.key_res && a.role == Role::committed && b.role == Role::committed) {
-        const std::uint32_t d = a.enter_ms > b.enter_ms ? a.enter_ms - b.enter_ms : b.enter_ms - a.enter_ms;
-        if (d <= kBurstMs && a.enter_d != b.enter_d) return a.enter_d < b.enter_d;
+// The sequence order (D.2.5, D.8; B.2 review B1: a strict total order). Committed members without a reservation that entered within
+// kBurstMs of each other (chained: a load rebuilds the board at the members' next decisions) form a burst; burst_keys() gives each burst
+// member the burst's lowest key. Each member then has the tuple (group, distance, key, ship, sub, own ship): a committed member (group =
+// its burst key or its key; distance = enter_d inside a burst, else 0; sub 0); a reserved escort whose committed leader is on the board
+// (or one already committed on its own order 4: the reservation holds) takes its leader's tuple with sub = 1 + its offset behind the
+// leader's key (so it is never reordered relative to its leader or its sibling escorts); any other
+// member its own key as the group. The tuples compare lexicographically.
+inline void burst_keys(Gate& g) noexcept {
+    for (unsigned i = 0; i < g.n; ++i) g.m[i].burst_key = 0;
+    auto eligible = [](const Member& m) { return m.ship && m.role == Role::committed && !m.key_res && !m.unburst && m.key; };
+    bool changed = true;
+    for (unsigned pass = 0; changed && pass < kMembers; ++pass) { // the chained bursts: the lowest key spreads through each cluster
+        changed = false;
+        for (unsigned i = 0; i < g.n; ++i) {
+            Member& a = g.m[i];
+            if (!eligible(a)) continue;
+            for (unsigned j = i + 1; j < g.n; ++j) {
+                Member& b = g.m[j];
+                if (!eligible(b)) continue;
+                const std::uint32_t d = a.enter_ms > b.enter_ms ? a.enter_ms - b.enter_ms : b.enter_ms - a.enter_ms;
+                if (d > kBurstMs) continue;
+                std::uint32_t lo = a.burst_key ? a.burst_key : a.key;
+                const std::uint32_t lb = b.burst_key ? b.burst_key : b.key;
+                if (lb < lo) lo = lb;
+                if (a.burst_key != lo || b.burst_key != lo) {
+                    a.burst_key = b.burst_key = lo;
+                    changed = true;
+                }
+            }
+        }
     }
-    if (a.key != b.key) return a.key < b.key;
-    return a.ship < b.ship;
+}
+struct SeqTuple {
+    std::uint32_t group;
+    float d;
+    std::uint32_t key, ship, sub, own;
+};
+inline SeqTuple seq_tuple(const Gate& g, const Member& m) noexcept {
+    const Member* base = &m;
+    std::uint32_t sub = 0;
+    if (m.key_res && (m.role == Role::escort || m.role == Role::committed)) { // an escort, or one committed on its order 4 (commit_fill
+        int li = m.role == Role::escort ? find(g, m.leader) : -1;                // clears its leader: the leader is the unreserved
+        if (li < 0 && (m.key & 15u))                                              // committed member keyed m.key & ~15)
+            for (unsigned j = 0; j < g.n && li < 0; ++j)
+                if (g.m[j].ship && g.m[j].role == Role::committed && !g.m[j].key_res && g.m[j].key == (m.key & ~15u)) li = int(j);
+        if (li >= 0 && g.m[li].role == Role::committed && g.m[li].key) {
+            base = &g.m[li];
+            sub = 1u + (m.key > base->key ? m.key - base->key : 0u);
+        }
+    }
+    const bool burst = base->burst_key != 0;
+    const float d = burst ? (sc::finite_f(base->enter_d) ? base->enter_d : 3.4e38f) : 0.0f; // review: a NaN distance ranks last
+    return SeqTuple{burst ? base->burst_key : base->key, d, base->key, base->ship, sub, m.ship};
+}
+inline bool seq_before(const Gate& g, const Member& a, const Member& b) noexcept {
+    const SeqTuple x = seq_tuple(g, a), y = seq_tuple(g, b);
+    if (x.group != y.group) return x.group < y.group;
+    if (x.d != y.d) return x.d < y.d;
+    if (x.key != y.key) return x.key < y.key;
+    if (x.ship != y.ship) return x.ship < y.ship;
+    if (x.sub != y.sub) return x.sub < y.sub;
+    return x.own < y.own;
 }
 // The bearing of a gate-frame lateral (r, u) around the axis: rad from -U toward +R, clamped to the petals' 240 deg.
 __attribute__((always_inline)) inline float sb_bearing(float r, float u) noexcept {
@@ -1698,6 +1874,23 @@ __attribute__((always_inline)) inline float dist_x(const Gate& g, const Member& 
     lambda4(g, m, X);
     const float d[3] = {m.st.x[0] - X[0], m.st.x[1] - X[1], m.st.x[2] - X[2]};
     return sc::sqrt_ss(sc::dot3(d, d));
+}
+// B.2 item 4 (review N1): past the funnel's last stretch: within kLastStretchR r_gate of Lambda_4's point at X's depth, or beyond it along
+// F; either way within kLastStretchR r_gate of Lambda_4 laterally.
+__attribute__((always_inline)) inline bool past_last_stretch(const Gate& g, const Member& m) noexcept {
+    float X[3];
+    lambda4(g, m, X);
+    const float d[3] = {m.st.x[0] - X[0], m.st.x[1] - X[1], m.st.x[2] - X[2]};
+    const float r = kLastStretchR * g.r_gate, along = sc::dot3(d, g.F), d2 = sc::dot3(d, d);
+    return d2 - along * along <= r * r && (along > 0.0f || d2 <= r * r);
+}
+// B.2 review N2, N3: the funnel is occupied by another committed member that is live and decided within kOccupyDecisionMs: one released
+// and not yet launched (funnel, hand-over, order 5, order 8 until its end). *busy_by: that member. (The release rule's final-straight
+// exception is the caller's.)
+constexpr std::uint32_t kOccupyDecisionMs = 5000;
+__attribute__((always_inline)) inline bool occupant(const Member& o, std::uint32_t now) noexcept {
+    if (o.role != Role::committed || !o.ship || !live(o, now) || !o.decided_ms || now - o.decided_ms > kOccupyDecisionMs) return false;
+    return o.sb == Sb::funnel || o.sb == Sb::handover || o.sb == Sb::dock || (o.sb == Sb::launch && std::int32_t(now - (o.o8_ms + 900u)) < 0);
 }
 // The predicted end of a released member's order 8 (game ms): the funnel to X at its speed (>= 10 m/s), the hand-over (1 s), the
 // order-5 leg and order 8.
@@ -1775,6 +1968,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             m.x_ms = m.o8_ms = m.head_ms = m.feas_ms = m.x_pred_ms = m.release_ms = m.plan_x_ms = m.plan_launch_ms = 0;
             m.refused = 0;
             m.petal = -1;
+            m.ringed = 0;
             if (m.sb == Sb::funnel) m.sb = Sb::hold;
         }
         if (st) ++st->clock_resets;
@@ -1799,7 +1993,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     for (unsigned p = 0; p < kPetals; ++p) {
         if (!g.petal_ship[p]) continue;
         const int k = find(g, g.petal_ship[p]);
-        if (k < 0 || g.m[k].petal != int(p) || g.m[k].sb != Sb::hold || !pair_role(g.m[k].role)) g.petal_ship[p] = 0;
+        if (k < 0 || g.m[k].petal != int(p) || (g.m[k].sb != Sb::hold && g.m[k].sb != Sb::inbound) || !pair_role(g.m[k].role)) g.petal_ship[p] = 0;
     }
     // keys, Q and the final lines, the stages from the live orders, the petals
     for (unsigned i = 0; i < g.n; ++i) {
@@ -1834,7 +2028,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb == Sb::launch && g.m[li].o8_ms && !m.res_until)
                 m.res_until = g.m[li].o8_ms + kReserveMs; // the leader's launch: the reservation holds kReserveMs (60 s)
             m.zx = zx_estimate(g.r_gate, m.r);
-            m.sb = Sb::hold;
+            if (m.sb != Sb::inbound) m.sb = Sb::hold; // hold or inbound by the distance below (B.2)
         } else {
             if (m.line_ok) {
                 float A[3];
@@ -1850,10 +2044,26 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                 m.zx = zx_estimate(g.r_gate, m.r);
             const std::uint16_t o = m.st.order;
             if (o == sc::kOrderFlyBefore) {
-                if (m.sb != Sb::hold && m.sb != Sb::funnel) {
-                    m.sb = Sb::hold;
+                if (m.sb != Sb::hold && m.sb != Sb::funnel && m.sb != Sb::inbound) {
                     m.x_ms = m.o8_ms = 0;
                     m.refused = 0;
+                    bool occupied = g.slot_block_ms && std::int32_t(g.slot_block_ms - now) > 0; // review N2: as a release would
+                    for (unsigned j = 0; j < g.n && !occupied; ++j) occupied = j != i && occupant(g.m[j], now);
+                    if (m.q_ok && m.release_ms && !occupied && past_last_stretch(g, m)) { // B.2 item 4: a re-commit (released before)
+                        m.sb = Sb::funnel; // past the funnel's last stretch keeps the funnel (never re-held: no U-turn at X); with the
+                                           // funnel occupied it holds (its petal by its bearing): never two converging on X
+                        m.release_ms = now ? now : 1;
+                        m.pred = 0;
+                        m.feas_ms = 0;
+                        float X[3];
+                        lambda4(g, m, X);
+                        const float xg[3] = {X[0] - g.G[0], X[1] - g.G[1], X[2] - g.G[2]};
+                        const float vx = m.st.v > kYieldFloorMs ? m.st.v : kYieldFloorMs;
+                        m.plan_x_ms = now + std::uint32_t(1000.0f * dist_x(g, m) / vx);
+                        m.plan_launch_ms = m.plan_x_ms + std::uint32_t(1000.0f * (1.0f + leg5_s(m, sc::sqrt_ss(sc::dot3(xg, xg)), vx)));
+                        if (!g.funnel_ship) g.funnel_ship = m.ship;
+                    } else
+                        m.sb = Sb::hold;
                 }
                 if (m.sb == Sb::funnel && !m.q_ok) m.sb = Sb::hold;
             } else if ((o == sc::kOrderNone || o == sc::kOrderRotate) && m.handover_ms) {
@@ -1877,8 +2087,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                 if (st) ++st->x_refused;
             }
         }
-        if (m.sb != before) sb_event(st, m, before, m.sb, m.sb == Sb::hold ? Why::hold : m.sb == Sb::dock ? Why::dock : m.sb == Sb::launch ? Why::launch : Why::handover);
-        if (m.sb == Sb::hold && m.petal < 0) {
+        if ((m.sb == Sb::hold || m.sb == Sb::inbound) && m.petal < 0) {
             float r, u, z;
             sb_local(g, m.st.x, &r, &u, &z);
             float phi = sb_bearing(r, u);
@@ -1895,29 +2104,51 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                 g.petal_ship[p] = m.ship;
             }
         }
-        if (m.sb != Sb::hold && m.petal >= 0) {
+        if (m.sb == Sb::hold || m.sb == Sb::inbound) { // B.2 item 2: inbound beyond the ring's extent + 2 km (+ 1 km back out), else hold
+            const float dg[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
+            const float d2 = sc::dot3(dg, dg), ext = ring_extent(g, m);
+            const float lim = ext + kInboundM + (m.sb == Sb::inbound ? 0.0f : kInboundHystM);
+            if (d2 > lim * lim) {
+                m.sb = Sb::inbound;
+                m.ringed = 0;
+            } else {
+                m.sb = Sb::hold;
+                if (d2 <= ext * ext) m.ringed = 1; // reached its petal ring (the head skip may apply from now)
+            }
+        }
+        if (m.sb != before)
+            sb_event(st, m, before, m.sb, m.sb == Sb::hold ? Why::hold : m.sb == Sb::inbound ? Why::inbound : m.sb == Sb::funnel ? Why::rejoin
+                                          : m.sb == Sb::dock ? Why::dock : m.sb == Sb::launch ? Why::launch : Why::handover);
+        if (m.sb != Sb::hold && m.sb != Sb::inbound && m.petal >= 0) {
             if (g.petal_ship[unsigned(m.petal)] == m.ship) g.petal_ship[unsigned(m.petal)] = 0;
             m.petal = -1;
         }
     }
     // the funnel: the last released ship and the time the next X may come (its launch + the gap, never before a blocked slot frees)
     int f = g.funnel_ship ? find(g, g.funnel_ship) : -1;
-    if (f >= 0 && (!pair_role(g.m[f].role) || g.m[f].sb == Sb::hold || g.m[f].sb == Sb::none)) f = -1;
+    if (f >= 0 && (!pair_role(g.m[f].role) || g.m[f].sb == Sb::hold || g.m[f].sb == Sb::inbound || g.m[f].sb == Sb::none)) f = -1;
     if (f < 0) g.funnel_ship = 0;
     auto t_after = [&](int k) -> std::uint32_t {
         std::uint32_t t = (k >= 0 ? eta_launch(g, g.m[k], now) : (g.funnel_end_ms ? g.funnel_end_ms : now)) + kFunnelGapMs;
         if (g.slot_block_ms && std::int32_t(g.slot_block_ms - t) > 0) t = g.slot_block_ms;
         return t;
     };
+    burst_keys(g); // the entry bursts (review B1: the order is a strict total order over (group, distance, key, ship, sub))
     // the candidate: the first in sequence among the holders (committed on order 4 with Q) and the escorts holding a reservation
     int c = -1;
     for (unsigned i = 0; i < g.n; ++i) {
         const Member& m = g.m[i];
         if (!live(m, now)) continue;
         const bool holder = m.role == Role::committed && m.sb == Sb::hold && m.st.order == sc::kOrderFlyBefore && m.q_ok;
-        const bool waiting = m.role == Role::escort && m.key_res;
+        bool waiting = m.role == Role::escort && m.key_res;
+        if (waiting) { // B.2 item 1 (review B1): an escort never heads the sequence while its committed leader holds or is inbound,
+                       // whatever the keys
+            const int li = find(g, m.leader);
+            if (li >= 0 && g.m[li].role == Role::committed && (g.m[li].sb == Sb::hold || g.m[li].sb == Sb::inbound || g.m[li].sb == Sb::none))
+                waiting = false;
+        }
         if (!holder && !waiting) continue;
-        if (c < 0 || seq_before(m, g.m[c])) c = int(i);
+        if (c < 0 || seq_before(g, m, g.m[c])) c = int(i);
     }
     // the backfill: while the first in sequence is an escort waiting for its order 4 (its leader not yet out of the sector, D.12), the
     // first committed holder may go ahead when its predicted launch (released now, the funnel at the nominal 60 m/s) plus the gap
@@ -1927,13 +2158,14 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
         const Member& e = g.m[c];
         const int li = find(g, e.leader);
         std::uint32_t t_l = 0;
-        if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::none) t_l = eta_launch(g, g.m[li], now);
+        if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::inbound && g.m[li].sb != Sb::none)
+            t_l = eta_launch(g, g.m[li], now);
         else if (e.res_until) t_l = e.res_until - kReserveMs;
         int c2 = -1;
         for (unsigned i = 0; t_l && i < g.n; ++i) {
             const Member& m = g.m[i];
             if (!live(m, now) || !(m.role == Role::committed && m.sb == Sb::hold && m.st.order == sc::kOrderFlyBefore && m.q_ok)) continue;
-            if (c2 < 0 || seq_before(m, g.m[c2])) c2 = int(i);
+            if (c2 < 0 || seq_before(g, m, g.m[c2])) c2 = int(i);
         }
         if (c2 >= 0) {
             float r, u, z;
@@ -1954,22 +2186,47 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     }
     // the funnel's order-4 part holds one ship until it is on its final straight (within kFinalLatM of Lambda_4 and kFinalAlongM of X)
     // or past P2: two S-curves never share the funnel (D.2.3)
-    bool funnel_busy = false; // review (D.2.6, Fable 1): any committed member waiting at X (the hand-over) or on order 5 / 8
-    for (unsigned i = 0; i < g.n && !funnel_busy; ++i) {
+    // review (D.2.6, Fable 1): any committed member waiting at X (the hand-over) or on order 5 / 8; B.2: any committed funnel member not yet
+    // on its final straight (the last released one, or a ship re-committed past the last stretch)
+    bool funnel_busy = false;
+    std::uint32_t busy_by = 0;
+    for (unsigned i = 0; i < g.n && !funnel_busy; ++i) { // review N3: only live members decided within 5 s (occupant())
         const Member& o = g.m[i];
-        if (o.role != Role::committed || !o.ship) continue;
-        funnel_busy = o.sb == Sb::handover || o.sb == Sb::dock || (o.sb == Sb::launch && std::int32_t(now - (o.o8_ms + 900u)) < 0);
+        if (!occupant(o, now)) continue;
+        funnel_busy = o.sb != Sb::funnel;
+        if (!funnel_busy) {
+            float X[3];
+            lambda4(g, o, X);
+            const float d[3] = {o.st.x[0] - X[0], o.st.x[1] - X[1], o.st.x[2] - X[2]};
+            const float s_along = sc::dot3(d, g.F), e2 = sc::dot3(d, d) - s_along * s_along;
+            funnel_busy = !(s_along > -kFinalAlongM && e2 < kFinalLatM * kFinalLatM);
+        }
+        if (funnel_busy) busy_by = o.ship;
     }
-    if (f >= 0 && g.m[f].sb == Sb::funnel) {
-        const Member& fm = g.m[f];
-        float X[3];
-        lambda4(g, fm, X);
-        const float d[3] = {fm.st.x[0] - X[0], fm.st.x[1] - X[1], fm.st.x[2] - X[2]};
-        const float s_along = sc::dot3(d, g.F), e2 = sc::dot3(d, d) - s_along * s_along;
-        funnel_busy = funnel_busy || !(s_along > -kFinalAlongM && e2 < kFinalLatM * kFinalLatM);
+    for (unsigned i = 0; i < g.n; ++i) // the tie-break's stamps belong to the head only, and run only while the funnel is free
+        if (int(i) != c || funnel_busy) g.m[i].head_ms = g.m[i].infeas_ms = 0;
+    if (st && st->seq_on) { // review N7: only when the caller asks (the DLL: --debug)
+        st->seq.cand = c >= 0 ? g.m[c].ship : 0;
+        st->seq.key = c >= 0 ? g.m[c].key : 0;
+        st->seq.role = c >= 0 ? std::uint8_t(g.m[c].role) : 0;
+        st->seq.stage = c >= 0 ? std::uint8_t(g.m[c].sb) : 0;
+        st->seq.busy_by = busy_by;
+        st->seq.window = st->seq.timing = 2; // not evaluated (no committed head, or the funnel busy)
+        st->seq.free_ms = std::int32_t(t_after(f) - now);
+        st->seq.block_ms = g.slot_block_ms ? std::int32_t(g.slot_block_ms - now) : 0;
+        st->seq.v_feas = c >= 0 ? g.m[c].v_feas : -1.0f;
+        st->seq.dx = c >= 0 && g.m[c].role == Role::committed && g.m[c].q_ok ? dist_x(g, g.m[c]) : -1.0f;
+        st->seq.ringed = c >= 0 ? g.m[c].ringed : 0;
+        unsigned holders = 0, inbound = 0;
+        for (unsigned i = 0; i < g.n; ++i) {
+            const Member& o = g.m[i];
+            if (o.role != Role::committed && o.role != Role::escort) continue;
+            holders += o.sb == Sb::hold || o.sb == Sb::inbound ? 1u : 0u;
+            inbound += o.sb == Sb::inbound ? 1u : 0u;
+        }
+        st->seq.holders = std::uint8_t(holders);
+        st->seq.inbound = std::uint8_t(inbound);
     }
-    for (unsigned i = 0; i < g.n; ++i)
-        if (int(i) != c) g.m[i].head_ms = g.m[i].infeas_ms = 0; // the tie-break's stamps belong to the head only
     std::uint32_t t_next = 0; // the next holder's target at its release window
     if (c >= 0 && g.m[c].role == Role::committed && !funnel_busy) {
         Member& m = g.m[c];
@@ -1977,32 +2234,71 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
         float r, u, z;
         sb_local(g, m.st.x, &r, &u, &z);
         const float a1 = m.zx - kLeadM - kPetalRh; // the ring-0 straights' front end
-        // behind the petal's straights, heading within 60 deg of F (no U-turn in the funnel); the prediction decides the rest
-        const bool window = z <= a1 + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos;
         const float dX = dist_x(g, m);
+        // behind the petal's straights, heading within 60 deg of F (no U-turn in the funnel), within the predictor's horizon (B.2: dX <=
+        // v_max * 256 s; an inbound ship is no candidate); the prediction decides the rest
+        const bool window = z <= a1 + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos && dX <= m.params.v_max * kHorizonS;
         const bool timing = std::int32_t(t_free - now) <= std::int32_t(dX / kPetalVmin * 1000.0f);
+        if (st && st->seq_on) {
+            st->seq.window = window ? 1 : 0;
+            st->seq.timing = timing ? 1 : 0;
+        }
         // the tie-break (review item 1): a head with the funnel free and its slot due that stays in its release window without a feasible
         // candidate for more than kHeadSkipMs, or whose window never opens within a slowest lap plus kHeadSkipMs, yields its place and
-        // re-queues at the tail (ctl_seq_skipped); a lap in progress is not a deferral
-        if (timing) {
+        // re-queues at the tail (ctl_seq_skipped); a lap in progress is not a deferral. B.2 item 1: the timers run only once the head has
+        // reached its petal ring, and the skip applies only when another committed non-escort holder is feasible; the leader and its
+        // reserved escorts move together (keys key + 1 + rank), so a leader never lands behind its own escorts
+        if (timing && m.ringed) {
             if (!m.head_ms) m.head_ms = now ? now : 1;
         } else
             m.head_ms = 0;
-        if (timing && window && m.feas_ms && m.v_feas <= 0.0f) {
+        if (timing && window && m.ringed && m.feas_ms && m.v_feas <= 0.0f) {
             if (!m.infeas_ms) m.infeas_ms = now ? now : 1;
-        } else if (!window || m.v_feas > 0.0f)
+        } else if (!window || !m.ringed || m.v_feas > 0.0f)
             m.infeas_ms = 0;
         const std::uint32_t lap_ms = std::uint32_t(1000.0f * kLap / kPetalVmin) + kHeadSkipMs;
-        if ((m.infeas_ms && now - m.infeas_ms > kHeadSkipMs) || (m.head_ms && now - m.head_ms > lap_ms)) {
+        const bool skip_due = (m.infeas_ms && now - m.infeas_ms > kHeadSkipMs) || (m.head_ms && now - m.head_ms > lap_ms);
+        bool alt = false; // another committed non-escort holder that is feasible (at most one new prediction per frame)
+        if (skip_due) {
+            bool predicted = false;
+            for (unsigned i = 0; i < g.n && !alt; ++i) {
+                Member& o = g.m[i];
+                if (int(i) == c || !live(o, now) || o.role != Role::committed || o.sb != Sb::hold || o.st.order != sc::kOrderFlyBefore || !o.q_ok)
+                    continue;
+                if ((o.key & ~15u) == (m.key & ~15u)) continue; // review F1: a sibling committed on its own order 4 is the head's convoy
+                if (dist_x(g, o) > o.params.v_max * kHorizonS) continue;
+                if (o.feas_ms && now - o.feas_ms < kFeasMs) {
+                    alt = o.v_feas > 0.0f;
+                    continue;
+                }
+                if (predicted) continue;
+                predicted = true;
+                o.feas_ms = now ? now : 1;
+                o.v_feas = funnel_feasible(g, o, st ? &st->predictions : nullptr);
+                alt = o.v_feas > 0.0f;
+            }
+        }
+        if (skip_due && alt) {
             m.infeas_ms = 0;
             std::uint32_t tail = g.sb_tail_key;
             for (unsigned i = 0; i < g.n; ++i)
                 if (g.m[i].key > tail) tail = g.m[i].key;
+            const std::uint32_t old_key = m.key;
             m.key = ((tail >> 4) + 1u) << 4;
+            for (unsigned i = 0; i < g.n; ++i) { // the convoy moves as one: the reserved escorts right behind their leader again (review F1:
+                Member& e = g.m[i];                 // every reserved member of the leader's key class, a sibling already committed included)
+                if (int(i) == c || !e.ship || !e.key_res) continue;
+                const bool of_leader = (e.role == Role::escort && e.leader == m.ship) || (e.key & ~15u) == old_key;
+                if (!of_leader) continue;
+                const std::uint32_t rank = e.key > old_key && e.key - old_key - 1u < 15u ? e.key - old_key - 1u : 0u;
+                e.key = m.key + 1u + rank;
+            }
             g.sb_tail_key = m.key;
             m.key_res = 0;
             m.head_ms = 0;
-            m.enter_ms = now ? now : 1; // out of any entry burst
+            m.unburst = 1; // out of its entry burst (review B1: enter_ms is kept, so a skip creates no burst)
+            ++g.sb_skips;
+            sb_event(st, m, m.sb, m.sb, Why::skip);
             if (st) ++st->seq_skipped;
         } else if (window && timing && (!m.feas_ms || now - m.feas_ms >= kFeasMs)) {
             m.feas_ms = now ? now : 1;
@@ -2042,7 +2338,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
         if (!live(m, now) || !(m.role == Role::committed || m.role == Role::escort)) continue;
         if (m.sb == Sb::funnel && m.role == Role::committed && m.st.order == sc::kOrderFlyBefore) {
             const int pk = m.pred ? find(g, m.pred) : -1;
-            const int pp = pk >= 0 && pair_role(g.m[pk].role) && g.m[pk].sb != Sb::hold && g.m[pk].sb != Sb::none ? pk : -1;
+            const int pp = pk >= 0 && pair_role(g.m[pk].role) && g.m[pk].sb != Sb::hold && g.m[pk].sb != Sb::inbound && g.m[pk].sb != Sb::none ? pk : -1;
             const std::uint32_t t_target = t_after(pp);
             const float dX = dist_x(g, m);
             const float dt = float(std::int32_t(t_target - now)) * 0.001f;
@@ -2055,6 +2351,10 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                 float t_pred = 0.0f;
                 m.v_feas = funnel_feasible(g, m, st ? &st->predictions : nullptr, &t_pred);
                 if (m.v_feas > 0.0f) m.x_pred_ms = now + std::uint32_t(1000.0f * t_pred);
+            }
+            if ((m.v_feas <= 0.0f || dt - dX / kYieldFloorMs > 10.0f) && past_last_stretch(g, m)) { // B.2 item 4: never re-held there
+                m.v_sb = v;
+                continue;
             }
             if (m.v_feas <= 0.0f || dt - dX / kYieldFloorMs > 10.0f) { // no feasible candidate, or the slot frees too late: go around
                 const Sb before = m.sb;
@@ -2076,12 +2376,22 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             }
             continue;
         }
+        if (m.sb == Sb::inbound) { // B.2 item 2: toward the petal's entry at the plan speed: v_max, braking to the petals' top speed at the
+                                   // boundary (site B caps it at the cornering and large caps)
+            const float dg[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
+            const float d = sc::sqrt_ss(sc::dot3(dg, dg)), lim = ring_extent(g, m) + kInboundM;
+            const float a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f, vmax = m.params.v_max > kPetalVmax ? m.params.v_max : kPetalVmax;
+            const float v = sc::sqrt_ss(kPetalVmax * kPetalVmax + 2.0f * a * (d > lim ? d - lim : 0.0f));
+            m.v_sb = v < vmax ? v : vmax;
+            continue;
+        }
         if (m.sb != Sb::hold) continue;
         std::uint32_t t_rel = 0;
         if (int(i) == c && m.role == Role::committed) t_rel = t_next;
         else if (m.role == Role::escort && m.key_res) { // the escort: at its release window when its order 4 can come (D.12)
             const int li = find(g, m.leader);
-            if (li >= 0 && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::none) t_rel = eta_launch(g, g.m[li], now) + kEscortSwitchMs;
+            if (li >= 0 && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::inbound && g.m[li].sb != Sb::none)
+                t_rel = eta_launch(g, g.m[li], now) + kEscortSwitchMs;
             else if (m.res_until) t_rel = m.res_until - kReserveMs + kEscortSwitchMs;
         }
         float v = lap_speed(g, m, now, t_rel, m.role == Role::escort ? kEscortStageS : kPetalSh - 0.5f * kReleaseWindowM);
@@ -2124,6 +2434,16 @@ inline bool sb_steer(const Gate& g, const Member& m, const float x[3], float v_n
     }
     const bool o4 = m.role == Role::committed && order == sc::kOrderFlyBefore;
     if (o4 || (m.role == Role::escort && (order == sc::kOrderEscort || order == sc::kOrderFollow))) {
+        if (m.sb == Sb::inbound && m.petal >= 0) { // B.2 item 2: toward the petal's entry, then along its inner straight, at the plan speed
+            PetalGeom pg;
+            petal_geom(g, unsigned(m.petal), m.zx, &pg);
+            const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
+            float ta, tb;
+            inbound_carrot(pg, rg, W, sc::dot3(d, g.F), sc::dot3(d, pg.e), sc::dot3(d, pg.n), v_now, &ta, &tb);
+            for (unsigned i = 0; i < 3; ++i) out->P[i] = g.G[i] + ta * g.F[i] + tb * pg.e[i];
+            out->v = m.v_sb > 0.0f ? m.v_sb : kPetalVmax;
+            return sc::finite_f(out->P[0]) && sc::finite_f(out->P[1]) && sc::finite_f(out->P[2]);
+        }
         if (m.sb == Sb::hold && m.petal >= 0) {
             PetalGeom pg;
             petal_geom(g, unsigned(m.petal), m.zx, &pg);
@@ -2140,7 +2460,10 @@ inline bool sb_steer(const Gate& g, const Member& m, const float x[3], float v_n
                 out->v = kPetalVmax;
                 return sc::finite_f(out->P[0]) && sc::finite_f(out->P[1]) && sc::finite_f(out->P[2]);
             }
-            petal_carrot(pg, rg, W, sc::dot3(d, g.F), sc::dot3(d, pg.e), v_now, &ta, &tb);
+            if (!m.ringed) // B.2: a holder not yet at its ring keeps the inbound carrot (behind the ring, along its own petal's plane: no
+                inbound_carrot(pg, rg, W, sc::dot3(d, g.F), sc::dot3(d, pg.e), sc::dot3(d, pg.n), v_now, &ta, &tb); // crossing of the other petals)
+            else
+                petal_carrot(pg, rg, W, sc::dot3(d, g.F), sc::dot3(d, pg.e), v_now, &ta, &tb);
             for (unsigned i = 0; i < 3; ++i) out->P[i] = g.G[i] + ta * g.F[i] + tb * pg.e[i];
             out->v = m.v_sb > 0.0f ? m.v_sb : kPetalVnom;
             return sc::finite_f(out->P[0]) && sc::finite_f(out->P[1]) && sc::finite_f(out->P[2]);
@@ -2171,7 +2494,7 @@ __attribute__((always_inline)) inline bool sb_funnel(const Member& m) noexcept {
 // member keeps the stage-A / amendment-17 join (join on, P2 kept when aligned), never "join off + vanilla stop".
 __attribute__((always_inline)) inline bool sb_managed(const Member& m) noexcept {
     if (m.role != Role::committed || !m.q_ok) return false;
-    if (m.sb == Sb::hold) return m.petal >= 0;
+    if (m.sb == Sb::hold || m.sb == Sb::inbound) return m.petal >= 0;
     return m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch;
 }
 // ---- D.5 (with D.12): a small ship's order-5 pass point while a capital is in the funnel -------------------------------------------
