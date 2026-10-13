@@ -73,8 +73,10 @@ constexpr float kGuardM = 300.0f;     // the grid sphere guard (D.2.4): a holder
 constexpr std::uint32_t kFunnelGapMs = 2000;    // the funnel's gap after a launch (the KC's hand-over frames)
 constexpr std::uint32_t kSlotCooldownMs = 60000; // the through slot after a change of direction (section 10.2)
 constexpr std::uint32_t kSlotArrivalMs = 61000;  // a capital launch at the gate blocks our side this long (t_a + 60 + 1 s)
-constexpr std::uint32_t kReserveMs = 60000;      // an escort's reserved number holds 60 s after its leader's launch (D.3 had 30 s for an
-                                                 // order 4 at 4.2-4.5 s; D.12: beyond 10 km the script first flies 5 s 0x15 legs)
+constexpr std::uint32_t kReserveMs = 300000;     // an escort's reserved number holds 300 s after its leader's launch, refreshed while it is
+                                                 // on 0x15 to the gate or within kReserveKeepM of it (B.3 item 4; Run163: order 4 at +53 s
+                                                 // and +81 s after the leader's launch, outbound legs at +223 / +274 s from 33 km)
+constexpr float kReserveKeepM = 15000.0f;        // B.3 item 4: within this distance of the gate any order keeps the reservation alive
 constexpr std::uint32_t kBurstMs = 2000;         // members entering within 2 s of each other (a load) are sequenced by distance (D.8)
 constexpr std::uint32_t kGapMs = 5000;
 constexpr std::uint32_t kGapEscortMs = 3000; // the escort template's wait (2-3 s): an escort's gap ends by then           // the script's order-0 re-issue gap (escort legs: 2-3 s waits; committed: <= 5 s)
@@ -174,6 +176,11 @@ struct Member {
                                  // another such member; 0 none), computed per frame by burst_keys()
     std::uint16_t go_arounds = 0;
     std::uint32_t key = 0, res_until = 0, pred = 0; // pred: the released ship ahead (its launch frees the funnel)
+    std::uint32_t res_o8_ms = 0; // B.3 item 4: the leader's order-8 stamp the reservation started from (res_until is refreshed)
+    // B.3 item 2: the KC's last warn of this member (site B's warned frame: the obstacle list named its own gate) and a 0x12 episode
+    // kept through (the funnel state stays; avoid_ms: the episode's first kept observation, keep_ms: its last)
+    std::uint32_t warn_ms = 0, avoid_ms = 0, keep_ms = 0;
+    std::uint8_t warn_gate = 0, warn_stage = 0;
     std::uint32_t release_ms = 0, plan_x_ms = 0, plan_launch_ms = 0, o8_ms = 0, feas_ms = 0, x_ms = 0, x_pred_ms = 0;
     std::uint32_t head_ms = 0, infeas_ms = 0; // the tie-break: head with its slot due since; in its window without a feasible candidate since
     float enter_d = 0;          // the distance to X at the entry (the burst order, D.8)
@@ -211,11 +218,40 @@ struct Gate {
     std::uint32_t sb_skips = 0, seq_row_ms = 0; // B.2: head skips at this gate; the DLL's last ship_gate_ctl_seq row (one per game second)
     std::uint32_t o0_ms[kMembers][kMembers] = {}; // review F5: the last order-0 pair row per pair (one per second; the DLL's --debug)
     std::uint32_t pass_ms[kMembers][kMembers] = {}; // Run161: the last E pass row per pair (one per second; the DLL's --debug)
+    // B.3 item 1: the SETA slack of the board's freshness bounds (note_step): the larger of this and the previous frame's game step
+    // (clamped to kStepClampMs)
+    std::uint32_t step_ms = 0;
 };
 struct Board {
     Gate g[kGates];
     unsigned full_gates = 0, full_members = 0;
+    std::uint32_t step_now_ms = 0, step_cur_ms = 0, step_prev_ms = 0; // B.3 item 1: the frame (game ms) the steps belong to
 };
+// B.3 item 1 (Run163: the funnel's gate row failed closed on the two SETA frames whose game step was 2,000 and 1,540 ms, beyond the
+// 1 s state age), with review F5: every liveness and freshness bound of the controller is nominal + the last game-time frame step
+// (the larger of this and the previous frame's: a state read before a long step is two frames old on the frame after it; clamped to
+// kStepClampMs). A record within its nominal age before the step stays within the bound across it; one already stale before the step
+// stays stale. The verdict-class bounds (nominal below kVerdictCapMs: the state, the certificate, the decisions, the rollouts' offset,
+// the commit, the cap) never accept anything older than kVerdictCapMs: a hitch beyond that fails closed until the next read and
+// decision. The windows of kVerdictCapMs and more (the order-0 gap, the occupancy's decision) take the step on top. A state written
+// this frame (age 0) is always within any bound.
+constexpr std::uint32_t kStepClampMs = 5000;
+constexpr std::uint32_t kVerdictCapMs = 2000;
+__attribute__((always_inline)) inline std::uint32_t age_bound(const Gate& g, std::uint32_t nominal) noexcept {
+    const std::uint32_t b = nominal + g.step_ms;
+    return nominal >= kVerdictCapMs || b <= kVerdictCapMs ? b : kVerdictCapMs;
+}
+// The frame's game-time step ([root+0x714] in the DLL; the fixture's dt), noted once per game-time frame from any site (site B, E,
+// the frame end): the first call of a new frame shifts the steps and copies the slack to every gate.
+inline void note_step(Board& b, std::uint32_t now, std::uint32_t step_ms) noexcept {
+    if (now == b.step_now_ms) return;
+    if (step_ms > kStepClampMs) step_ms = kStepClampMs;
+    b.step_now_ms = now;
+    b.step_prev_ms = b.step_cur_ms;
+    b.step_cur_ms = step_ms;
+    const std::uint32_t last = b.step_cur_ms > b.step_prev_ms ? b.step_cur_ms : b.step_prev_ms;
+    for (Gate& g : b.g) g.step_ms = last;
+}
 
 // ---- the membership bitmap: one bit per hashed object pointer, so site B and E probe a ship in two loads ------------------------
 struct Index {
@@ -311,9 +347,10 @@ inline float capsule_gap(const float ca[3], const float fa[3], float La, float w
 __attribute__((always_inline)) inline bool pair_role(Role r) noexcept {
     return r == Role::committed || r == Role::escort || r == Role::arrival;
 }
-// A member takes part in pairs: a pair role and a live state at most kStateMaxAgeMs old.
-__attribute__((always_inline)) inline bool live(const Member& m, std::uint32_t now) noexcept {
-    return m.ship && pair_role(m.role) && m.st.ms && now - m.st.ms <= kStateMaxAgeMs;
+// A member takes part in pairs: a pair role and a live state at most kStateMaxAgeMs old (B.3: the SETA-aware age_bound; age 0, a
+// state written this frame, is always live).
+__attribute__((always_inline)) inline bool live(const Gate& g, const Member& m, std::uint32_t now) noexcept {
+    return m.ship && pair_role(m.role) && m.st.ms && now - m.st.ms <= age_bound(g, kStateMaxAgeMs);
 }
 inline const Gate* gate_of(const Board& b, std::uint32_t gate) noexcept {
     if (!gate) return nullptr;
@@ -390,6 +427,7 @@ inline Gate* acquire_gate(Board& b, std::uint32_t gate, std::uint32_t now, const
         *g = Gate{};
         for (unsigned i = 0; i < kMembers; ++i) clear_pairs(*g, i);
         g->gate = gate;
+        g->step_ms = b.step_cur_ms > b.step_prev_ms ? b.step_cur_ms : b.step_prev_ms; // B.3 item 1: this frame's slack (note_step)
     }
     g->stamp_ms = now ? now : 1;
     g->type = type;
@@ -453,6 +491,8 @@ inline Member* enter(Board& b, Gate& g, std::uint32_t ship, std::uint32_t id, Ro
             clear_pairs(g, unsigned(i));
             m.n = 0;
             m.decided_ms = 0;
+            m.avoid_ms = m.keep_ms = 0; // review F9: no 0x12 episode or its gap carried into a new membership
+            m.warn_gate = 0;
         }
     }
     m.id = id;
@@ -469,6 +509,8 @@ inline void leave(Gate& g, unsigned i, bool evict, std::uint32_t now) noexcept {
     if (evict) {
         m.role = Role::evicted;
         m.evict_ms = now ? now : 1;
+        m.avoid_ms = m.keep_ms = 0; // review F9
+        m.warn_gate = 0;
     } else {
         m = Member{}; // the slot is free: no pointer left behind for locate() or the bitmap
     }
@@ -549,26 +591,32 @@ inline Why validity(const Gate& g, const Member& m, std::uint16_t order, std::ui
     if (m.role == Role::committed) {
         // the script's order-0 re-issue gap (<= kGapMs after the last order-4 / 5 read; order 0 zeroes f+0x224) and the P2 hand-over on
         // order 0 / 0x1f with the target zeroed keep the member (Run161: eviction only on 0x12)
-        if (order == sc::kOrderNone && (target == g.gate || !target) && m.steered_ms && now - m.steered_ms <= kGapMs) return Why::count;
+        const std::uint32_t gap = age_bound(g, kGapMs);
+        if (order == sc::kOrderNone && (target == g.gate || !target) && m.steered_ms && now - m.steered_ms <= gap) return Why::count;
+        // B.3 item 2: the KC's order 0 after a 0x12 episode the member was kept through (keep_through_avoid) keeps it like the gap
+        if (order == sc::kOrderNone && (target == g.gate || !target) && m.keep_ms && now - m.keep_ms <= gap) return Why::count;
         if (!target && (order == sc::kOrderNone || order == sc::kOrderRotate) && m.handover_ms && now - m.handover_ms <= kHandoverMaxMs)
             return Why::count;
         if (target != g.gate) return Why::target;
         if (order == sc::kOrderFlyBefore || order == sc::kOrderDock) // (order 5 right after the hand-over: its first leaf call commits)
-            return now - m.commit_ms > kCommitFreshMs && !(order == sc::kOrderDock && m.handover_ms && now - m.handover_ms <= kHandoverMaxMs)
+            return now - m.commit_ms > age_bound(g, kCommitFreshMs) && !(order == sc::kOrderDock && m.handover_ms && now - m.handover_ms <= kHandoverMaxMs)
                        ? Why::expire : Why::count;
         if (order == sc::kOrderNone || order == sc::kOrderRotate) return !m.handover_ms || now - m.handover_ms > kHandoverMaxMs ? Why::order : Why::count;
         return order == sc::kOrderWarpAway ? Why::count : Why::order;
     }
     if (m.role == Role::escort) {
         // stage B (D.3, D.12): the leader launched (res_until set at its order 8); the escort keeps its petal and its reserved number
-        // on 0x15 to the gate (the script's 5 s legs beyond 10 km) and on order 0 (its waits) until the reservation lapses
-        if (m.key_res && m.res_until && std::int32_t(m.res_until - now) >= 0 && ((order == sc::kOrderFollow && target == g.gate) || order == sc::kOrderNone))
+        // until the reservation lapses. B.3 item 4 (Run163: the script's order 4 at +53 s and +81 s, B.2's 60 s lapsed at +60 s): on any
+        // order but a dock or launch leg to another target (it docks elsewhere or leaves the sector); sb_frame refreshes res_until
+        // (kReserveMs) while the escort is on 0x15 to the gate or within kReserveKeepM of it; its own order 4 commits it
+        if (m.key_res && m.res_until && std::int32_t(m.res_until - now) >= 0 &&
+            !((order == sc::kOrderDock || order == sc::kOrderWarpAway) && target != g.gate))
             return Why::count;
         const int li = find(g, m.leader);
-        if (li < 0 || g.m[li].role != Role::committed || !live(g.m[li], now)) return Why::leader;
+        if (li < 0 || g.m[li].role != Role::committed || !live(g, g.m[li], now)) return Why::leader;
         if (formation_current) return Why::count; // Run161: the formation memory current => a member, whatever the live order
         if (order == sc::kOrderEscort || order == sc::kOrderFollow) return target != m.leader ? Why::leader : Why::count;
-        if (order == sc::kOrderNone) return m.steered_ms && now - m.steered_ms <= kGapMs ? Why::count : Why::order; // the script's waits
+        if (order == sc::kOrderNone) return m.steered_ms && now - m.steered_ms <= age_bound(g, kGapMs) ? Why::count : Why::order; // the script's waits
         return Why::order;
     }
     if (m.role == Role::arrival) return now - m.launch_ms > kArrivalWindowMs ? Why::window : Why::count;
@@ -941,12 +989,13 @@ inline Plan plan_of(const Member& m) noexcept {
     return Plan::drift;
 }
 // The plan's speed: the module's own speed before a yield cap when known and fresh, else the desired speed site B left.
-inline float plan_speed(const Member& m) noexcept {
+inline float plan_speed(const Gate& g, const Member& m) noexcept {
+    const std::uint32_t cap_age = age_bound(g, kCapMaxAgeMs); // B.3 item 1
     if (m.st.order == sc::kOrderNone) { // the order-0 gap: the last plan's speed (the rollout brakes for the gap's rest first)
-        if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= kGapMs + kCapMaxAgeMs) return m.v_plan;
+        if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= kGapMs + cap_age) return m.v_plan;
         return m.st.v > 0.0f ? m.st.v : 0.0f;
     }
-    if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= kCapMaxAgeMs) return m.v_plan;
+    if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= cap_age) return m.v_plan;
     return m.st.v_des > 0.0f ? m.st.v_des : 0.0f;
 }
 __attribute__((always_inline)) inline void put(Sample& s, const float c[3], const float f[3]) noexcept {
@@ -1024,7 +1073,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         float nn[3], LX[3], Lh[3];
         line_of(m, g, LX, Lh); // the grid line, or (stage B, in the funnel) Lambda_4
         if (!line_plane(m, LX, Lh, &st, nn)) break;
-        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(m);
+        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(g, m);
         const float t_brake = gap_brake_s(m); // the order-0 gap: desired 0 for its expected rest, then the plan (Opus question 5)
         const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau), a_along = sc::kGateCrossFraction * m.params.r_gate;
         float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
@@ -1076,7 +1125,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         if (!plane_state(g.G, g.F, pg.e, m.st.x, m.st.rows, m.st.w, m.st.u, m.st.v, &st) || !(m.params.W > 1e-4f) || !(m.params.alpha > 1e-6f))
             break;
         float off = (m.st.x[0] - g.G[0]) * pg.n[0] + (m.st.x[1] - g.G[1]) * pg.n[1] + (m.st.x[2] - g.G[2]) * pg.n[2];
-        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(m);
+        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(g, m);
         const float t_brake = gap_brake_s(m);
         const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau);
         float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
@@ -1162,7 +1211,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
     }
     case Plan::follow: {
         const int li = find(g, m.leader);
-        const Member* L = li >= 0 && live(g.m[li], m.st.ms) && g.m[li].n ? &g.m[li] : nullptr;
+        const Member* L = li >= 0 && live(g, g.m[li], m.st.ms) && g.m[li].n ? &g.m[li] : nullptr;
         if (L) {
             const std::int32_t dms = std::int32_t(m.st.ms - L->roll_ms);
             const std::int32_t koff = dms <= 0 ? 0 : (dms + std::int32_t(kSampleMs / 2)) / std::int32_t(kSampleMs);
@@ -1299,12 +1348,15 @@ struct Sweep {
 // i + round((a_ms - b_ms) / 500 ms); the residual offset (<= 250 ms) adds |offset| x B's largest speed to the margin. The broad test
 // uses the per-pair bound (v_A,max + v_B,max) dt / 2 on |u_A - u_B| dt / 2 (no square root); a sample that fails it is retested
 // with the samples' own relative motion, then narrowly.
-inline Sweep sweep(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vmax, float La, float wa, const Sample* sb, unsigned nb,
-                   std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples = kMinOverlapSamples, bool ends = false,
-                   float drift = kDriftMs) noexcept {
+// B.3: kLim > 0 compiles the sweep for a constant time-offset bound, which bounds the sample offset for the compiler (measured on the
+// host: 73 ns per broad-only sweep against 130 ns compiled for a runtime bound); kLim 0 takes the runtime max_dms (a long step).
+template <std::int32_t kLim> // kLim > 0: a compile-time bound; 0: the runtime max_dms
+inline Sweep sweep_impl(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vmax, float La, float wa, const Sample* sb, unsigned nb,
+                        std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples, bool ends, float drift,
+                        std::uint32_t max_dms) noexcept {
     Sweep out;
-    const std::int32_t dms = std::int32_t(a_ms - b_ms);
-    if (dms > std::int32_t(kRolloutMaxAgeMs) || dms < -std::int32_t(kRolloutMaxAgeMs)) { // the rollouts are too far apart in time
+    const std::int32_t dms = std::int32_t(a_ms - b_ms), lim = kLim > 0 ? kLim : std::int32_t(max_dms);
+    if (dms > lim || dms < -lim) { // the rollouts are too far apart in time
         out.stale = true;
         return out;
     }
@@ -1362,6 +1414,17 @@ inline Sweep sweep(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vm
     out.clear = true;
     return out;
 }
+inline Sweep sweep(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vmax, float La, float wa, const Sample* sb, unsigned nb,
+                   std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples = kMinOverlapSamples, bool ends = false,
+                   float drift = kDriftMs) noexcept {
+    return sweep_impl<std::int32_t(kRolloutMaxAgeMs)>(sa, na, a_ms, a_vmax, La, wa, sb, nb, b_ms, b_vmax, Lb, wb, min_samples, ends, drift, 0);
+}
+constexpr std::uint32_t kSweepNormalMs = kRolloutMaxAgeMs + 250; // the constant-bound sweep's reach (normal steps up to 250 ms)
+inline Sweep sweep_seta(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vmax, float La, float wa, const Sample* sb, unsigned nb,
+                        std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples, bool ends, float drift,
+                        std::uint32_t max_dms) noexcept {
+    return sweep_impl<0>(sa, na, a_ms, a_vmax, La, wa, sb, nb, b_ms, b_vmax, Lb, wb, min_samples, ends, drift, max_dms);
+}
 
 // ---- one decision --------------------------------------------------------------------------------------------------------------
 // A verdict change for the pair rows (the DLL logs it at most once per pair per second; the fixture counts it).
@@ -1398,7 +1461,7 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
     const Member& A = g.m[i];
     bool all = true;
     for (unsigned j = 0; j < g.n; ++j) {
-        if (j == i || !live(g.m[j], now)) continue;
+        if (j == i || !live(g, g.m[j], now)) continue;
         const Member& B = g.m[j];
         ++st->sweeps;
         // fail closed: no samples on either side, a rollout more than 1 s from the other, too short an overlap -> no verdict (none:
@@ -1409,9 +1472,18 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
         const bool triggering = (B.n < kSamples && plan_of(B) == Plan::line5) || (n < kSamples && plan_of(A) == Plan::line5);
         // (a member in the order-0 gap brakes in its rollout for the gap's expected rest: gap_brake_s; the drift k stays kDriftMs)
         const float drift = kDriftMs;
-        const Sweep w = B.n && n ? sweep(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w,
-                                         triggering && !launching ? kMinOverlapSamples : warn_reach_samples(A, B), launching, drift)
-                                 : Sweep{false, 255, 1e30f, 0, true};
+        // B.3: the rollouts' time offset bound is SETA-aware; the nominal bound keeps the constant sweep (sweep_impl)
+        const unsigned min_s = triggering && !launching ? kMinOverlapSamples : warn_reach_samples(A, B);
+        // review F5: the bound is nominal + step on every frame; at normal steps (bound <= kSweepNormalMs) the exact bound is checked here
+        // and the sweep compiled for the constant kSweepNormalMs runs (its own check never fires then)
+        const std::uint32_t max_dms = age_bound(g, kRolloutMaxAgeMs);
+        const std::int32_t dms = std::int32_t(A.st.ms - B.roll_ms);
+        const bool apart = dms > std::int32_t(max_dms) || dms < -std::int32_t(max_dms);
+        const Sweep w = !(B.n && n) || apart ? Sweep{false, 255, 1e30f, 0, true}
+                        : max_dms <= kSweepNormalMs
+                            ? sweep_impl<std::int32_t(kSweepNormalMs)>(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w,
+                                                                        min_s, launching, drift, 0)
+                            : sweep_seta(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w, min_s, launching, drift, max_dms);
         st->narrow += w.narrow;
         if (write) {
             g.v[i][j] = g.v[j][i] = std::uint8_t(w.clear ? PairV::clear : PairV::none);
@@ -1431,7 +1503,7 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
 inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st) noexcept {
     Member& Y = g.m[y];
     if (!can_yield(Y)) return false;
-    const float v = plan_speed(Y) > 0.0f ? plan_speed(Y) : Y.st.v;
+    const float v = plan_speed(g, Y) > 0.0f ? plan_speed(g, Y) : Y.st.v;
     const float cand[3] = {kYieldFrac * v, kYieldMidMs, kYieldFloorMs};
     const float floor = plan_of(Y) == Plan::petal ? kPetalVmin : kYieldFloorMs; // stage B: a petal holder never below 25 m/s (D.7 item 6)
     Sample tmp[kSamples];
@@ -1464,7 +1536,7 @@ inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, Pair
     note_state(A); // Run161: the order-0 gap's steered stamp and plan
     std::uint8_t before[kMembers];
     for (unsigned j = 0; j < kMembers; ++j) before[j] = g.v[i][j];
-    if (!live(A, now)) {
+    if (!live(g, A, now)) {
         clear_pairs(g, i);
         A.n = 0;
         return;
@@ -1513,8 +1585,8 @@ inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, Pair
 }
 
 // Whether member i is due for a decision: live, and never decided, or decided at least kDecideMs ago with a state newer than its rollout.
-__attribute__((always_inline)) inline bool due(const Member& m, std::uint32_t now) noexcept {
-    return live(m, now) && (!m.decided_ms || (now - m.decided_ms >= kDecideMs && m.st.ms != m.roll_ms));
+__attribute__((always_inline)) inline bool due(const Gate& g, const Member& m, std::uint32_t now) noexcept {
+    return live(g, m, now) && (!m.decided_ms || (now - m.decided_ms >= kDecideMs && m.st.ms != m.roll_ms));
 }
 // Whether the frame may start another decision (the frame's bound): the first always; then within kDecisionsPerFrame and while a
 // decision with every yield still fits the rollout budget.
@@ -1533,28 +1605,59 @@ inline unsigned decide_order(const Board& b, unsigned cursor, std::uint32_t now,
     for (unsigned k = 0; k < total; ++k) {
         const Gate& g = b.g[k / kMembers];
         const unsigned i = k % kMembers;
-        if (g.gate && i < g.n && sb_priority(g.m[i]) && due(g.m[i], now)) idx[n++] = std::uint16_t(k);
+        if (g.gate && i < g.n && sb_priority(g.m[i]) && due(g, g.m[i], now)) idx[n++] = std::uint16_t(k);
     }
     *n_prio = n;
     for (unsigned q = 0; q < total; ++q) {
         const unsigned k = (cursor + q) % total;
         const Gate& g = b.g[k / kMembers];
         const unsigned i = k % kMembers;
-        if (g.gate && i < g.n && !sb_priority(g.m[i]) && due(g.m[i], now)) idx[n++] = std::uint16_t(k);
+        if (g.gate && i < g.n && !sb_priority(g.m[i]) && due(g, g.m[i], now)) idx[n++] = std::uint16_t(k);
     }
     return n;
 }
 __attribute__((always_inline)) inline bool frame_room(unsigned decisions, unsigned rollouts) noexcept {
     return !decisions || (decisions < kDecisionsPerFrame && rollouts + kMaxRolloutsPerDecision <= kRolloutsPerFrame);
 }
+// B.3 (user decision 2026-10-13): the frame's budget follows game time, not the frame count: decisions = max(kDecisionsPerFrame,
+// ceil(members x kRefreshPerS x the frame's game step)), rollouts in the same proportion (kRolloutsPerFrame per kDecisionsPerFrame);
+// at 60 fps normal play the budget stays 6 / 14, at SETA x10 and 30 fps with 24 members it is 32 / 75. The DLL's ctl_frame also stops
+// at kFrameCeilingUs (1 ms) of measured time (ctl_budget_cut); the funnel's occupants are still decided first (decide_order).
+constexpr unsigned kRefreshPerS = 4;             // a member's decision record is refreshed 4 times per game second (250 ms)
+constexpr std::uint32_t kRefreshMs = 1000 / kRefreshPerS;
+constexpr unsigned kFrameCeilingUs = 1000;       // the measured-time ceiling of one frame's decisions (DLL; 3 % of a 33 ms SETA frame)
+struct FrameBudget {
+    unsigned decisions = kDecisionsPerFrame, rollouts = kRolloutsPerFrame;
+};
+inline unsigned members_live(const Board& b) noexcept {
+    unsigned n = 0;
+    for (const Gate& g : b.g)
+        if (g.gate)
+            for (unsigned i = 0; i < g.n; ++i) n += g.m[i].ship && pair_role(g.m[i].role) ? 1u : 0u;
+    return n;
+}
+inline FrameBudget frame_budget(unsigned members, std::uint32_t step_ms) noexcept {
+    FrameBudget fb;
+    if (step_ms > kStepClampMs) step_ms = kStepClampMs;
+    const std::uint32_t need = (members * kRefreshPerS * step_ms + 999u) / 1000u; // ceil(members x 4 / s x step)
+    if (need > fb.decisions) {
+        fb.decisions = need;
+        fb.rollouts = (need * kRolloutsPerFrame + kDecisionsPerFrame - 1u) / kDecisionsPerFrame;
+    }
+    return fb;
+}
+__attribute__((always_inline)) inline bool frame_room(unsigned decisions, unsigned rollouts, const FrameBudget& fb) noexcept {
+    return !decisions || (decisions < fb.decisions && rollouts + kMaxRolloutsPerDecision <= fb.rollouts);
+}
 
 // ---- reads for site E and the avoidance ---------------------------------------------------------------------------------------
 // The pair verdict for (i, j) as site E takes it: clear only while at most kCertMaxAgeMs old.
 inline PairV pair_verdict(const Gate& g, unsigned i, unsigned j, std::uint32_t now, std::uint32_t max_age_ms) noexcept {
-    if (i >= g.n || j >= g.n || i == j || !live(g.m[i], now) || !live(g.m[j], now)) return PairV::none;
+    if (i >= g.n || j >= g.n || i == j || !live(g, g.m[i], now) || !live(g, g.m[j], now)) return PairV::none;
     const PairV v = PairV(g.v[i][j]);
-    if (v == PairV::clear && (now - g.vms[i][j] > max_age_ms || !g.m[i].decided_ms || !g.m[j].decided_ms ||
-                              now - g.m[i].decided_ms > kDecisionMaxAgeMs || now - g.m[j].decided_ms > kDecisionMaxAgeMs))
+    const std::uint32_t dec = age_bound(g, kDecisionMaxAgeMs); // B.3 item 1: the SETA-aware bounds
+    if (v == PairV::clear && (now - g.vms[i][j] > age_bound(g, max_age_ms) || !g.m[i].decided_ms || !g.m[j].decided_ms ||
+                              now - g.m[i].decided_ms > dec || now - g.m[j].decided_ms > dec))
         return PairV::none; // a stale verdict, or a member whose decisions starved beyond 1 s: no certificate
     return v;
 }
@@ -1578,12 +1681,13 @@ inline EWhy e_reason(const Gate& g, unsigned i, unsigned j, std::uint32_t now, b
                      std::uint16_t b_order) noexcept {
     if (a_order == sc::kOrderAvoid || b_order == sc::kOrderAvoid) return EWhy::on_0x12;
     if (!fa_ok || !fb_ok) return EWhy::rows;
-    if (i >= g.n || j >= g.n || !live(g.m[i], now) || !live(g.m[j], now)) return EWhy::not_member;
+    if (i >= g.n || j >= g.n || !live(g, g.m[i], now) || !live(g, g.m[j], now)) return EWhy::not_member;
     const PairV v = PairV(g.v[i][j]);
     if (v == PairV::clear) {
-        if (!g.m[i].decided_ms || !g.m[j].decided_ms || now - g.m[i].decided_ms > kDecisionMaxAgeMs || now - g.m[j].decided_ms > kDecisionMaxAgeMs)
+        const std::uint32_t dec = age_bound(g, kDecisionMaxAgeMs);
+        if (!g.m[i].decided_ms || !g.m[j].decided_ms || now - g.m[i].decided_ms > dec || now - g.m[j].decided_ms > dec)
             return EWhy::starved;
-        return now - g.vms[i][j] > kCertMaxAgeMs ? EWhy::stale : EWhy::certified;
+        return now - g.vms[i][j] > age_bound(g, kCertMaxAgeMs) ? EWhy::stale : EWhy::certified;
     }
     if (a_order == sc::kOrderNone || b_order == sc::kOrderNone) return EWhy::order0;
     return v == PairV::unresolved ? EWhy::unresolved : EWhy::none;
@@ -1599,18 +1703,34 @@ __attribute__((always_inline)) inline bool unit_row(const float f[3]) noexcept {
 constexpr float kSbGateGuardR = 0.25f; // ship_capital_lane_core.h kCapitalGuardR (the capital rows' path guard)
 // Review N6: fails closed unless the member is live, its radius is positive and the position read is finite and within reach of the
 // member's last state read ((v_max + 50 m/s) per second of its age + 500 m). The hull radius is the member's own (validated at entry).
-inline bool sb_gate_row(const Gate& g, const Member& m, std::uint32_t gate, std::uint16_t order, std::uint32_t target, const float x[3],
-                        std::uint32_t now) noexcept {
-    if (!gate || g.gate != gate || m.role != Role::committed || !m.q_ok || !(g.r_gate > 0.0f) || !live(m, now)) return false;
+// B.3 item 2: also a member in hold or inbound within kSbGateNearR r_gate of its gate (a ship re-committed near the gate after an
+// eviction), on the same orders and under the same path guard. B.3 item 6: the reason of a pass (the DLL's E row: gate_row=).
+constexpr float kSbGateNearR = 6.0f;
+enum class GateRow : std::uint8_t { suppress = 0, not_member, stale, unreadable, reach, stage, order, guard, count };
+inline const char* gate_row_name(GateRow w) noexcept {
+    static const char* const n[unsigned(GateRow::count)] = {"suppress", "not_member", "stale", "unreadable", "reach", "stage", "order", "guard"};
+    return unsigned(w) < unsigned(GateRow::count) ? n[unsigned(w)] : "?";
+}
+inline GateRow sb_gate_why(const Gate& g, const Member& m, std::uint32_t gate, std::uint16_t order, std::uint32_t target, const float x[3],
+                           std::uint32_t now) noexcept {
+    if (!gate || g.gate != gate || m.role != Role::committed || !m.q_ok || !(g.r_gate > 0.0f)) return GateRow::not_member;
+    // re-review R1: the row's own liveness, uncapped: the 1 s state age + the last step + site B's read interval (the read's reach below
+    // bounds the position; the 2 s cap of age_bound stays on the certificates and the exclusion)
+    if (!m.st.ms || now - m.st.ms > kStateMaxAgeMs + g.step_ms + kStateMs) return GateRow::stale;
     const float r_a = m.r;
-    if (!(r_a > 0.0f) || !sc::finite_f(r_a) || !sc::finite_f(x[0]) || !sc::finite_f(x[1]) || !sc::finite_f(x[2])) return false;
+    if (!(r_a > 0.0f) || !sc::finite_f(r_a) || !sc::finite_f(x[0]) || !sc::finite_f(x[1]) || !sc::finite_f(x[2])) return GateRow::unreadable;
     {
         const float dx[3] = {x[0] - m.st.x[0], x[1] - m.st.x[1], x[2] - m.st.x[2]};
         const float reach = ((m.params.v_max > 0.0f ? m.params.v_max : 0.0f) + 50.0f) * float(now - m.st.ms) * 0.001f + 500.0f;
-        if (!(sc::dot3(dx, dx) <= reach * reach)) return false;
+        if (!(sc::dot3(dx, dx) <= reach * reach)) return GateRow::reach;
     }
-    if (!(m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch)) return false;
-    if (!(target == gate || (!target && (order == sc::kOrderNone || order == sc::kOrderRotate)))) return false;
+    if (!(m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch)) {
+        if (!(m.sb == Sb::hold || m.sb == Sb::inbound)) return GateRow::stage;
+        const float dg[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]}, near = kSbGateNearR * g.r_gate;
+        if (!(sc::dot3(dg, dg) <= near * near)) return GateRow::stage;
+    }
+    // review F3: never on the engine's own avoid order (a member kept through a 0x12 keeps its board state, not the suppression)
+    if (order == sc::kOrderAvoid || !(target == gate || (!target && (order == sc::kOrderNone || order == sc::kOrderRotate)))) return GateRow::order;
     float P[3];
     lambda4(g, m, P);
     const float ap[3] = {g.G[0] - x[0], g.G[1] - x[1], g.G[2] - x[2]}, ab[3] = {P[0] - x[0], P[1] - x[1], P[2] - x[2]};
@@ -1619,17 +1739,64 @@ inline bool sb_gate_row(const Gate& g, const Member& m, std::uint32_t gate, std:
     t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
     const float d[3] = {ap[0] - t * ab[0], ap[1] - t * ab[1], ap[2] - t * ab[2]};
     const float dist = sc::sqrt_ss(sc::dot3(d, d));
-    return sc::finite_f(dist) && dist >= g.r_gate + r_a + kSbGateGuardR * g.r_gate;
+    return sc::finite_f(dist) && dist >= g.r_gate + r_a + kSbGateGuardR * g.r_gate ? GateRow::suppress : GateRow::guard;
+}
+inline bool sb_gate_row(const Gate& g, const Member& m, std::uint32_t gate, std::uint16_t order, std::uint32_t target, const float x[3],
+                        std::uint32_t now) noexcept {
+    return sb_gate_why(g, m, gate, order, target, x, now) == GateRow::suppress;
 }
 // Review N8: site E's stage-B gate row as the DLL's ctl_e_fields reads it (the fixture's own-gate model calls the same): the membership
 // bitmap, the board of A, B its gate, the object id; then sb_gate_row on the live position read (x_ok: the read succeeded).
 inline bool e_gate_row(Board& b, const Index& ix, std::uint32_t a, std::uint32_t id_a, std::uint32_t gate, std::uint16_t order,
-                       std::uint32_t target, const float x[3], bool x_ok, std::uint32_t now) noexcept {
-    if (!a || !x_ok || !ix.maybe(a)) return false;
+                       std::uint32_t target, const float x[3], bool x_ok, std::uint32_t now, GateRow* why = nullptr) noexcept {
+    if (why) *why = GateRow::not_member;
+    if (!a || !ix.maybe(a)) return false;
     int i = -1;
     const Gate* g = locate(b, a, &i);
     if (!g || i < 0 || g->gate != gate || g->m[i].id != id_a) return false;
-    return sb_gate_row(*g, g->m[i], gate, order, target, x, now);
+    if (!x_ok) {
+        if (why) *why = GateRow::unreadable;
+        return false;
+    }
+    const GateRow w = sb_gate_why(*g, g->m[i], gate, order, target, x, now);
+    if (why) *why = w;
+    return w == GateRow::suppress;
+}
+// B.3 item 2: the KC's warn of a member on the frame its CollisionWarn ran (site B; the warn bits set, the order not yet 0x12): own_gate
+// = the obstacle list held the member's own gate and nothing else (the caller's test), and the member's stage then.
+inline void note_warn(Gate& g, Member& m, bool own_gate, std::uint32_t now) noexcept {
+    (void)g;
+    m.warn_ms = now ? now : 1;
+    m.warn_gate = own_gate ? 1 : 0;
+    m.warn_stage = std::uint8_t(m.sb);
+}
+// B.3 item 2 (Run163: the funnel escort evicted twice by the engine's 0x12 against its own gate on the SETA frames our row should have
+// suppressed): a 0x12 is not an eviction when the KC's last warn of the member (within the SETA-aware 1 s before the episode) named its
+// own gate while the member was in funnel or hand-over; the member keeps its role and funnel state through the episode (at most
+// kAvoidKeepMaxMs; the order 0 after it keeps it like the script's gap: validity). *first: the episode's first kept observation (the
+// caller counts ctl_evict_ignored_gate once per episode).
+constexpr std::uint32_t kAvoidKeepMaxMs = 60000;
+inline bool keep_through_avoid(const Gate& g, Member& m, std::uint32_t now, bool* first) noexcept {
+    *first = false;
+    if (m.role != Role::committed) return false;
+    if (m.avoid_ms) { // an episode already kept: to its end, within the bound
+        if (now - m.avoid_ms > kAvoidKeepMaxMs) return false;
+        m.keep_ms = now ? now : 1;
+        return true;
+    }
+    const Sb at = Sb(m.warn_stage);
+    if (!m.warn_gate || !m.warn_ms || now - m.warn_ms > age_bound(g, kDecisionMaxAgeMs) || !(at == Sb::funnel || at == Sb::handover) ||
+        !(m.sb == Sb::funnel || m.sb == Sb::handover))
+        return false;
+    m.avoid_ms = m.keep_ms = now ? now : 1;
+    *first = true;
+    return true;
+}
+// The episode is over (any order but 0x12 read at site B). Review F6: a kept episode refreshes the commit stamp, so the KC's order 4
+// after it does not expire the member (its first order-4 decision commits again).
+__attribute__((always_inline)) inline void avoid_over(Member& m, std::uint32_t now) noexcept {
+    if (m.avoid_ms) m.commit_ms = now ? now : 1;
+    m.avoid_ms = 0;
 }
 
 // ---- D.4: the arrival placement ------------------------------------------------------------------------------------------------
@@ -1888,8 +2055,8 @@ __attribute__((always_inline)) inline bool past_last_stretch(const Gate& g, cons
 // and not yet launched (funnel, hand-over, order 5, order 8 until its end). *busy_by: that member. (The release rule's final-straight
 // exception is the caller's.)
 constexpr std::uint32_t kOccupyDecisionMs = 5000;
-__attribute__((always_inline)) inline bool occupant(const Member& o, std::uint32_t now) noexcept {
-    if (o.role != Role::committed || !o.ship || !live(o, now) || !o.decided_ms || now - o.decided_ms > kOccupyDecisionMs) return false;
+__attribute__((always_inline)) inline bool occupant(const Gate& g, const Member& o, std::uint32_t now) noexcept {
+    if (o.role != Role::committed || !o.ship || !live(g, o, now) || !o.decided_ms || now - o.decided_ms > age_bound(g, kOccupyDecisionMs)) return false;
     return o.sb == Sb::funnel || o.sb == Sb::handover || o.sb == Sb::dock || (o.sb == Sb::launch && std::int32_t(now - (o.o8_ms + 900u)) < 0);
 }
 // The predicted end of a released member's order 8 (game ms): the funnel to X at its speed (>= 10 m/s), the hand-over (1 s), the
@@ -2025,8 +2192,17 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                 m.key = L.key + 1u + (rank < 14u ? rank : 14u);
                 m.key_res = 1;
             }
-            if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb == Sb::launch && g.m[li].o8_ms && !m.res_until)
-                m.res_until = g.m[li].o8_ms + kReserveMs; // the leader's launch: the reservation holds kReserveMs (60 s)
+            if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb == Sb::launch && g.m[li].o8_ms && !m.res_until) {
+                m.res_o8_ms = g.m[li].o8_ms;
+                m.res_until = g.m[li].o8_ms + kReserveMs; // the leader's launch: the reservation holds kReserveMs (300 s)
+            }
+            if (m.res_until && m.key_res) { // B.3 item 4: refreshed while on 0x15 to the gate or within kReserveKeepM of it
+                const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
+                if ((m.st.order == sc::kOrderFollow && m.st.target == g.gate) || sc::dot3(d, d) <= kReserveKeepM * kReserveKeepM) {
+                    const std::uint32_t until = now + kReserveMs;
+                    if (std::int32_t(until - m.res_until) > 0) m.res_until = until;
+                }
+            }
             m.zx = zx_estimate(g.r_gate, m.r);
             if (m.sb != Sb::inbound) m.sb = Sb::hold; // hold or inbound by the distance below (B.2)
         } else {
@@ -2048,18 +2224,51 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                     m.x_ms = m.o8_ms = 0;
                     m.refused = 0;
                     bool occupied = g.slot_block_ms && std::int32_t(g.slot_block_ms - now) > 0; // review N2: as a release would
-                    for (unsigned j = 0; j < g.n && !occupied; ++j) occupied = j != i && occupant(g.m[j], now);
-                    if (m.q_ok && m.release_ms && !occupied && past_last_stretch(g, m)) { // B.2 item 4: a re-commit (released before)
-                        m.sb = Sb::funnel; // past the funnel's last stretch keeps the funnel (never re-held: no U-turn at X); with the
-                                           // funnel occupied it holds (its petal by its bearing): never two converging on X
+                    for (unsigned j = 0; j < g.n && !occupied; ++j) occupied = j != i && occupant(g, g.m[j], now);
+                    // B.2 item 4: a re-commit (released before) past the funnel's last stretch keeps the funnel (never re-held: no
+                    // U-turn at X); with the funnel occupied it holds (its petal by its bearing): never two converging on X. B.3 item 3
+                    // (Run163: the rejoin at 2.6 km went around 2 s later): past the last stretch only while P2's arrival sphere is still
+                    // ahead (not beyond A along F: a ship past A cannot reach P2 forward, the funnel's carrot turns it back to A and the
+                    // first prediction fails), and also from the release window (behind the petals' front, the nose within 60 deg of F,
+                    // within the horizon) when the predictor finds a candidate now: straight into the funnel, no petal lap
+                    float rj_t = 0.0f, rj_v = -1.0f;
+                    bool rejoin = false, predicted = false;
+                    if (m.q_ok && m.release_ms && !occupied) {
+                        float X[3];
+                        lambda4(g, m, X);
+                        const float dx[3] = {m.st.x[0] - X[0], m.st.x[1] - X[1], m.st.x[2] - X[2]};
+                        if (past_last_stretch(g, m)) rejoin = sc::dot3(dx, g.F) < sc::kGateCrossFraction * g.r_gate;
+                        else {
+                            float r, u, z;
+                            sb_local(g, m.st.x, &r, &u, &z);
+                            const bool window = z <= m.zx - kLeadM - kPetalRh + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos &&
+                                                dist_x(g, m) <= m.params.v_max * kHorizonS;
+                            if (window) {
+                                predicted = true;
+                                rj_v = funnel_feasible(g, m, st ? &st->predictions : nullptr, &rj_t);
+                                rejoin = rj_v > 0.0f;
+                            }
+                        }
+                    }
+                    if (rejoin) {
+                        m.sb = Sb::funnel;
                         m.release_ms = now ? now : 1;
+                        // review F2: an occupant at once (occupant() needs a decision within 5 s; enter() cleared it), so a later rejoin
+                        // and this frame's release see the funnel taken: one ship per frame enters the funnel
+                        // re-review R3: dated kDecideMs back, so due() lets its first real decision run at once
+                        m.decided_ms = now > kDecideMs ? now - kDecideMs : 1;
                         m.pred = 0;
-                        m.feas_ms = 0;
+                        m.feas_ms = predicted ? (now ? now : 1) : 0;
+                        if (predicted) {
+                            m.v_feas = rj_v;
+                            m.x_pred_ms = now + std::uint32_t(1000.0f * rj_t);
+                        }
                         float X[3];
                         lambda4(g, m, X);
                         const float xg[3] = {X[0] - g.G[0], X[1] - g.G[1], X[2] - g.G[2]};
-                        const float vx = m.st.v > kYieldFloorMs ? m.st.v : kYieldFloorMs;
+                        const float vx = predicted ? rj_v : m.st.v > kYieldFloorMs ? m.st.v : kYieldFloorMs;
                         m.plan_x_ms = now + std::uint32_t(1000.0f * dist_x(g, m) / vx);
+                        if (predicted && std::int32_t(m.x_pred_ms - m.plan_x_ms) > 0) m.plan_x_ms = m.x_pred_ms;
                         m.plan_launch_ms = m.plan_x_ms + std::uint32_t(1000.0f * (1.0f + leg5_s(m, sc::sqrt_ss(sc::dot3(xg, xg)), vx)));
                         if (!g.funnel_ship) g.funnel_ship = m.ship;
                     } else
@@ -2076,8 +2285,12 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             } else if (o == sc::kOrderDock) {
                 if (m.sb == Sb::handover && m.x_ms && st) st->x_wait_ms += now - m.x_ms > 3000u ? now - m.x_ms - 3000u : 0u;
                 m.sb = Sb::dock;
+                m.handover_ms = m.x_ms = 0; // B.3 item 5: the hand-over is over (Run163: a stale handover_ms re-entered the hand-over
+                m.refused = 0;              // after the launch and counted ctl_x_refused)
             } else if (o == sc::kOrderWarpAway) {
                 m.sb = Sb::launch;
+                m.handover_ms = m.x_ms = 0;
+                m.refused = 0;
                 if (!m.o8_ms) m.o8_ms = m.st.ms;
                 const std::uint32_t end = m.o8_ms + 900u;
                 if (!g.funnel_end_ms || std::int32_t(end - g.funnel_end_ms) > 0) g.funnel_end_ms = end;
@@ -2134,55 +2347,16 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
         return t;
     };
     burst_keys(g); // the entry bursts (review B1: the order is a strict total order over (group, distance, key, ship, sub))
-    // the candidate: the first in sequence among the holders (committed on order 4 with Q) and the escorts holding a reservation
+    // the candidate: the first in sequence among the holders (committed on order 4 with Q). Review F1 (B.3): an escort that has not
+    // committed is never a candidate and never blocks a holder: its reservation is a key (its place once its order 4 commits it), not a
+    // queue slot (B.2's waiting escort with its backfill blocked every holder while the escort loitered, the more so once the
+    // reservation was refreshed within 15 km)
     int c = -1;
     for (unsigned i = 0; i < g.n; ++i) {
         const Member& m = g.m[i];
-        if (!live(m, now)) continue;
-        const bool holder = m.role == Role::committed && m.sb == Sb::hold && m.st.order == sc::kOrderFlyBefore && m.q_ok;
-        bool waiting = m.role == Role::escort && m.key_res;
-        if (waiting) { // B.2 item 1 (review B1): an escort never heads the sequence while its committed leader holds or is inbound,
-                       // whatever the keys
-            const int li = find(g, m.leader);
-            if (li >= 0 && g.m[li].role == Role::committed && (g.m[li].sb == Sb::hold || g.m[li].sb == Sb::inbound || g.m[li].sb == Sb::none))
-                waiting = false;
-        }
-        if (!holder && !waiting) continue;
+        if (!live(g, m, now)) continue;
+        if (!(m.role == Role::committed && m.sb == Sb::hold && m.st.order == sc::kOrderFlyBefore && m.q_ok)) continue;
         if (c < 0 || seq_before(g, m, g.m[c])) c = int(i);
-    }
-    // the backfill: while the first in sequence is an escort waiting for its order 4 (its leader not yet out of the sector, D.12), the
-    // first committed holder may go ahead when its predicted launch (released now, the funnel at the nominal 60 m/s) plus the gap
-    // comes before the escort's earliest X (its leader's launch, the script's switch, the escort's straight line to X at v_max): the
-    // convoy's order through the gate is kept, the funnel's idle time is used
-    if (c >= 0 && g.m[c].role == Role::escort) {
-        const Member& e = g.m[c];
-        const int li = find(g, e.leader);
-        std::uint32_t t_l = 0;
-        if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::inbound && g.m[li].sb != Sb::none)
-            t_l = eta_launch(g, g.m[li], now);
-        else if (e.res_until) t_l = e.res_until - kReserveMs;
-        int c2 = -1;
-        for (unsigned i = 0; t_l && i < g.n; ++i) {
-            const Member& m = g.m[i];
-            if (!live(m, now) || !(m.role == Role::committed && m.sb == Sb::hold && m.st.order == sc::kOrderFlyBefore && m.q_ok)) continue;
-            if (c2 < 0 || seq_before(g, m, g.m[c2])) c2 = int(i);
-        }
-        if (c2 >= 0) {
-            float r, u, z;
-            sb_local(g, e.st.x, &r, &u, &z);
-            const float dz = z - e.zx, d_e = sc::sqrt_ss(dz * dz + r * r + u * u);
-            const float ve = e.params.v_max > kPetalVmax ? e.params.v_max : kPetalVmax;
-            const std::uint32_t e_x = t_l + kEscortSwitchMs + std::uint32_t(1000.0f * d_e / ve);
-            const Member& h = g.m[c2];
-            float X[3];
-            lambda4(g, h, X);
-            const float xg[3] = {X[0] - g.G[0], X[1] - g.G[1], X[2] - g.G[2]};
-            std::uint32_t t_x = now + std::uint32_t(1000.0f * dist_x(g, h) / kPetalVmax);
-            const std::uint32_t t_free = t_after(f);
-            if (std::int32_t(t_free - t_x) > 0) t_x = t_free;
-            const std::uint32_t t_launch = t_x + std::uint32_t(1000.0f * (1.0f + leg5_s(h, sc::sqrt_ss(sc::dot3(xg, xg)), kPetalVmax)));
-            if (std::int32_t(e_x - (t_launch + kFunnelGapMs)) >= 0) c = c2;
-        }
     }
     // the funnel's order-4 part holds one ship until it is on its final straight (within kFinalLatM of Lambda_4 and kFinalAlongM of X)
     // or past P2: two S-curves never share the funnel (D.2.3)
@@ -2192,7 +2366,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     std::uint32_t busy_by = 0;
     for (unsigned i = 0; i < g.n && !funnel_busy; ++i) { // review N3: only live members decided within 5 s (occupant())
         const Member& o = g.m[i];
-        if (!occupant(o, now)) continue;
+        if (!occupant(g, o, now)) continue;
         funnel_busy = o.sb != Sb::funnel;
         if (!funnel_busy) {
             float X[3];
@@ -2263,7 +2437,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             bool predicted = false;
             for (unsigned i = 0; i < g.n && !alt; ++i) {
                 Member& o = g.m[i];
-                if (int(i) == c || !live(o, now) || o.role != Role::committed || o.sb != Sb::hold || o.st.order != sc::kOrderFlyBefore || !o.q_ok)
+                if (int(i) == c || !live(g, o, now) || o.role != Role::committed || o.sb != Sb::hold || o.st.order != sc::kOrderFlyBefore || !o.q_ok)
                     continue;
                 if ((o.key & ~15u) == (m.key & ~15u)) continue; // review F1: a sibling committed on its own order 4 is the head's convoy
                 if (dist_x(g, o) > o.params.v_max * kHorizonS) continue;
@@ -2335,7 +2509,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     // speeds: the funnel's shaping and feasibility (the go-around), the holders' laps, the grid sphere guard
     for (unsigned i = 0; i < g.n; ++i) {
         Member& m = g.m[i];
-        if (!live(m, now) || !(m.role == Role::committed || m.role == Role::escort)) continue;
+        if (!live(g, m, now) || !(m.role == Role::committed || m.role == Role::escort)) continue;
         if (m.sb == Sb::funnel && m.role == Role::committed && m.st.order == sc::kOrderFlyBefore) {
             const int pk = m.pred ? find(g, m.pred) : -1;
             const int pp = pk >= 0 && pair_role(g.m[pk].role) && g.m[pk].sb != Sb::hold && g.m[pk].sb != Sb::inbound && g.m[pk].sb != Sb::none ? pk : -1;
@@ -2392,7 +2566,10 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             const int li = find(g, m.leader);
             if (li >= 0 && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::inbound && g.m[li].sb != Sb::none)
                 t_rel = eta_launch(g, g.m[li], now) + kEscortSwitchMs;
-            else if (m.res_until) t_rel = m.res_until - kReserveMs + kEscortSwitchMs;
+            else if (m.res_until) { // review F1: from live time once the leader's launch + the script's switch is past (its order 4 may come now)
+                t_rel = m.res_o8_ms + kEscortSwitchMs;
+                if (std::int32_t(t_rel - now) < 0) t_rel = now ? now : 1;
+            }
         }
         float v = lap_speed(g, m, now, t_rel, m.role == Role::escort ? kEscortStageS : kPetalSh - 0.5f * kReleaseWindowM);
         if (m.role == Role::committed && m.line_ok) { // the grid sphere guard: order 4 never ends outside X (D.2.4)

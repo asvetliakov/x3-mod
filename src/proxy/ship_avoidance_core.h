@@ -496,6 +496,13 @@ inline const char* small_pair_name(SmallPair v) noexcept {
 // re-plan cadence. The frame step is clamped to 250 ms (a load hitch must not stretch the window beyond 1 s). replan_ms > 0 adds
 // replan + 2 frame steps (A's decision age at E reaches the 200 ms re-plan plus up to two frames after a jittery frame; review).
 constexpr std::uint32_t kSteeredReplanMs = 200;
+// B.3 (Run163): the frame's game-time step as the DLL reads it ([root+0x714]), clamped to 5 s. Amendment 15's reader returned 0 above
+// 1 s, which dropped the window's scaling on exactly the long SETA frames; fresh_window_ms still caps its own term at 250 ms (a window
+// of at most 1 s), the controller's age_bound uses the step itself (ctl::kStepClampMs, the same 5 s).
+constexpr std::uint32_t kFrameStepMaxMs = 5000;
+__attribute__((always_inline)) inline std::uint32_t frame_step_clamp(std::uint32_t raw_ms) noexcept {
+    return raw_ms <= kFrameStepMaxMs ? raw_ms : kFrameStepMaxMs;
+}
 inline std::uint32_t fresh_window_ms(std::uint32_t base_ms, std::uint32_t frame_ms, std::uint32_t replan_ms = 0) noexcept {
     if (frame_ms > 250) frame_ms = 250;
     std::uint32_t w = 4 * frame_ms;

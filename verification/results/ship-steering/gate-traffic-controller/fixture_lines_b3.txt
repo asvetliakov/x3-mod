@@ -1,0 +1,10 @@
+base f2c01be2 vs working tree (B.3): both fixtures built as fixture_identity_b.sh builds them (c++ -std=c++17 -O2 -Wall -Wextra -Werror), run in the three modes, compared by fixture_lines_b.py
+mode full:
+lines before 617 after 683; compared 326 vs 326 (timings masked); differing 0; scenario T / stage-B lines before 290 after 356
+RESULT PASS
+mode capital:
+lines before 440 after 506; compared 149 vs 149 (timings masked); differing 0; scenario T / stage-B lines before 290 after 356
+RESULT PASS
+mode seqoff:
+lines before 617 after 683; compared 326 vs 326 (timings masked); differing 0; scenario T / stage-B lines before 290 after 356
+RESULT PASS

@@ -1,7 +1,7 @@
 departures (9 runs)
-  own-gate warns on order 4 (funnel)                                       sum 89071
+  own-gate warns on order 4 (funnel)                                       sum 88873
   ... left to the engine, per run                                          max 0
-  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 12640
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 12642
   ... left to the engine, per run                                          max 0
   head skips per run                                                       max 0
   head skips short of the ring                                             max 0
@@ -21,9 +21,9 @@ departures (9 runs)
   releases per run, max                                                    max 7
   go-arounds per run, max                                                  max 0
 dep w0.6r (9 runs)
-  own-gate warns on order 4 (funnel)                                       sum 88827
+  own-gate warns on order 4 (funnel)                                       sum 87379
   ... left to the engine, per run                                          max 0
-  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 12411
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 12385
   ... left to the engine, per run                                          max 0
   head skips per run                                                       max 0
   head skips short of the ring                                             max 0
@@ -37,8 +37,8 @@ dep w0.6r (9 runs)
   review N5: closest capsule gap inbound vs holder, m (pairs present)      min 132 (per fps: 30 237, 60 236, 144 132)
   first ship commit -> launch, s, max                                      max 295.2
   ... its transit at v_max, s                                              max 56.6
-  last launch, game s, max                                                 max 823.7
-  first crossing to last launch, s, max                                    max 578.2
+  last launch, game s, max                                                 max 950.3
+  first crossing to last launch, s, max                                    max 702.5
   launches per run, min                                                    min 7
   releases per run, max                                                    max 7
   go-arounds per run, max                                                  max 0
@@ -85,9 +85,9 @@ arr w0.6r (9 runs)
   releases per run, max                                                    max 0
   go-arounds per run, max                                                  max 0
 mixed (9 runs)
-  own-gate warns on order 4 (funnel)                                       sum 51132
+  own-gate warns on order 4 (funnel)                                       sum 54565
   ... left to the engine, per run                                          max 0
-  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 7327
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 7048
   ... left to the engine, per run                                          max 0
   head skips per run                                                       max 0
   head skips short of the ring                                             max 0
@@ -98,17 +98,17 @@ mixed (9 runs)
   inbound cruise speed, m/s, the runs' lowest mean                         min -1
   inbound cruise frames < 99.5 m/s                                         max 0
   inbound frames under (or 10 s after) a yield cap, excluded               max 0
-  first ship commit -> launch, s, max                                      max 349.6
+  first ship commit -> launch, s, max                                      max 346.2
   ... its transit at v_max, s                                              max 56.6
-  last launch, game s, max                                                 max 722.2
-  first crossing to last launch, s, max                                    max 429.2
+  last launch, game s, max                                                 max 731.5
+  first crossing to last launch, s, max                                    max 437.7
   launches per run, min                                                    min 4
   releases per run, max                                                    max 4
   go-arounds per run, max                                                  max 0
 dep refused (9 runs)
-  own-gate warns on order 4 (funnel)                                       sum 91112
+  own-gate warns on order 4 (funnel)                                       sum 91272
   ... left to the engine, per run                                          max 0
-  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 16247
+  own-gate warns on order 0 / 0x1f (the gap, the hand-over)                sum 16187
   ... left to the engine, per run                                          max 0
   head skips per run                                                       max 0
   head skips short of the ring                                             max 0
@@ -122,8 +122,8 @@ dep refused (9 runs)
   review N5: closest capsule gap inbound vs holder, m (pairs present)      min 145 (per fps: 30 181, 60 180, 144 145)
   first ship commit -> launch, s, max                                      max 341.4
   ... its transit at v_max, s                                              max 56.6
-  last launch, game s, max                                                 max 1035
-  first crossing to last launch, s, max                                    max 787.8
+  last launch, game s, max                                                 max 1037
+  first crossing to last launch, s, max                                    max 789.8
   launches per run, min                                                    min 7
   releases per run, max                                                    max 7
   go-arounds per run, max                                                  max 0

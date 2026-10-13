@@ -1891,6 +1891,117 @@ holds it. That is also the worst inbound-vs-holder gap (N5): 145 / 132 m at 144 
 stage-B gate row through `e_gate_row` 11 ns per call; member-pair lookup 7 ns (unchanged). Static: Member 1,808 B (+8), Gate 54,556 B
 (+200), board 218,232 B (+800).
 
+### B.3 Run163 fixes (2026-10-13, Opus 5.5; design and implementation §B.3)
+
+Built on main `f2c01be2` with the orchestrator's B.3 decisions folded in (the 1 ms ceiling, the frame-step reader, the own-gate-only warn
+list, one reverted pass at the SETA TARGET rows, the escort bound); not reviewed, not flown, not installed. Fixes the Run 163 A findings
+([`run163-triage/`](../../verification/results/ship-steering/run163-triage/)). Changes (§B.3):
+
+* SETA-aware freshness bounds: nominal + the last game step, the verdict class capped at 2 s (review F5);
+* the own-gate row for holders and inbound ships within 6 r_gate, and an own-gate 0x12 kept through in funnel / hand-over
+  (`ctl_evict_ignored_gate`);
+* the rejoin: not past A; directly from the release window when feasible;
+* the escort reservation: 300 s, refreshed on 0x15 or within 15 km;
+* the hand-over bookkeeping cleared at order 5 / 8;
+* the `gate_row=` / `ctl_age_ms=` / `step_ms=` tail on the own-gate E row;
+* the game-time frame budget with the 1 ms ceiling (`ctl_budget_cut`; user decision);
+* `frame_step_ms()` returns the real step clamped to 5 s (it returned 0 above 1 s).
+
+Review of `bf872975` (two blocking findings, seven more), all fixed:
+
+* F1: an uncommitted reserved escort is never a release candidate (the backfill is removed);
+* F2: a rejoin is an occupant at once;
+* F3: the own-gate row passes on 0x12;
+* F4: the exclusion requires neither ship on 0x12;
+* F5: the bounds are nominal + step, capped at 2 s for verdicts;
+* F6: the commit is refreshed when a kept 0x12 ends;
+* F7 / F8: docs;
+* F9: an eviction and a re-entry clear the episode.
+
+**Why the Run163 rejoin failed** (§B.3 item 3). It was admitted by position alone, 2.85 km past X and 2.0 km past A **[i]**, the nose
+37° off F and drifting outward at about 65 m/s (`ship_trace` f 69421–69455, lateral 1,608 → 1,735 m, measured). P2 cannot come forward
+from there, the first prediction found no candidate, and the go-around fired once the ship left the last stretch (f 69455).
+
+**Acceptance (measured, WSL2 host, MinGW GCC 16.2):**
+
+* Build: `cmake --build build --clean-first` (with the configure re-run for `fog_field_assets.rc`) → 0 warnings over 126 C++ objects;
+  DLL `b796b026…`, 59,383,120 B (an unstripped worktree build, dirty; not a candidate). `check_no_x87.py`: 997 reachable functions
+  after the review (the backfill removed).
+* `check_no_x87.py build/d3d9.dll`: PASS, 998 reachable functions, 0 violations.
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, 20 checks.
+* Fixture: full 9600 / `--capital` 3942 / seq-off 9510, 0 failures (from 9399 / 3741 / 9309; +201 each). The +201:
+  * the `run162 seta` variant's 9 runs × 21 checks (the run162 variant's 21, three of them now TARGET rows, plus 3 B.3 checks);
+  * 10 B.3 units: the SETA gate row, the 0x12 kept through, the 6 r_gate clause, the rejoin, the Run163 escort timeline, the hand-over
+    bookkeeping, the budget figures, the full-board record age without and under the 1 ms ceiling, and the frame-step reader;
+  * the review's 2 units (F1: a holder behind a loitering reserved escort released at once, bound 62 s; F2: exactly one ship enters the
+    funnel when a head and a rejoiner are both ready). F3, F5, F6 and F9 extend the item 1 and item 2 units.
+
+  The review fixes change the existing variants' scenario T lines (all their checks pass). F1 releases holders ahead of uncommitted
+  escorts: `dep w0.6r` first crossing to last launch 578.2 → 702.5 s (the escorts then wait for those holders' transits) and launch
+  after plan max 16.1 → 20.1 s; `mixed` 429.2 → 437.7 s (late max 11.1 → 15.9 s, closest capsule 398 → 381 m). `departures` and
+  `run162` are unchanged in these figures.
+
+  TARGET MISS rows 47 → 56 (the variant's 9; unchanged by the review). The B.2 unit's "a holder: today's rule" now expects the row within 6 r_gate and today's
+  rule beyond it. Regenerated:
+  [`ship_steering_host.txt`](../../verification/results/ship-steering/ship_steering_host.txt),
+  [`ship_steering_host_seq_off.txt`](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt),
+  [`scenario_t_b.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.txt),
+  [`scenario_t_b2.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b2.txt) (unchanged).
+* Fixture identity ([`fixture_lines_b3.txt`](../../verification/results/ship-steering/gate-traffic-controller/fixture_lines_b3.txt)):
+  every line outside scenario T and the stage-B lines unchanged in all three modes (326 / 149 / 326 compared, 0 differing), PASS.
+  `frame_step_ms()` changes key-off behaviour only on frames above 1 s; the fixture's key-off scenarios run normal steps.
+* Key-off identity ([`keyoff_identity_b3.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b3.txt),
+  `keyoff_identity_b.sh f2c01be2`): 0 differences (E 0 / 400,000, resolve 0 / 60,000, steer set 0 / 65,536, site B 0 / 200,000, ship
+  containers 0 / 100,000).
+* Run163 replay ([`replay_identity_b3.txt`](../../verification/results/ship-steering/gate-traffic-controller/replay_identity_b3.txt),
+  `replay_identity_b.sh run163-triage/x3m.log f2c01be2`): stdout 99,998 B, the 286 MB JSON and the 1,402 B lag summary byte-identical, PASS.
+* Host tests: `PYTHONPATH=../probe python3 -m unittest test_ship_trace_format test_ship_steering_sites test_ship_trace_replay
+  test_ship_steering test_check_no_x87 test_config_schema test_launcher_defaults` (from `verification/analysis`) → 64 OK.
+
+**Scenario T, `run162 seta`** ([`scenario_t_b3.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b3.py)
+→ [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b3.txt)), 9 runs, measured:
+
+* 383–649 long steps per run (1.5–2.0 s, longest 2,000 ms);
+* 0 own-gate warns left to the engine and 0 `pass_not_fresh` of funnel ships;
+* 6 / 6 launched, last launch 1,314–1,355 s;
+* every escort (4 per run) within 120 s + its own funnel time of the launch ahead of it in its convoy, slack ≥ 77.0 s;
+* budget at most 48 decisions in a frame (at most 6 taken: 6 ships).
+
+The TARGET rows (§B.3, with their mechanisms):
+
+* D.7 item 4: late 34.9–42.1 s in 6 runs;
+* D.7 item 2: 2 and 1 evasion episodes in 2 runs;
+* Run161's order-0 gap: 29 of 6,743 in 1 run.
+
+All of them are sibling escorts handed back at 677 m / 911 m capsule gap, or the leader's S-curve overshoot on the long steps; no
+capsule contact in any run.
+
+The bounded attempt (a lead on the funnel's carrot after a long step, a sibling fall-back within the 30 s margin) still left 9 rows
+(D.7 item 4 in 5 runs at 30.6–37.5 s, D.7 item 2 in 3 runs, the gap in 1) and changed 81 lines of the existing variants: reverted (§B.3).
+
+Ablation ([`seta_ablation_b3.sh`](../../verification/results/ship-steering/gate-traffic-controller/seta_ablation_b3.sh) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/seta_ablation_b3.txt)): with the nominal bounds the variant
+launches 0 / 6 in all 9 runs, with 79 failures and the closest capsule gap down to −1,148 m; with the B.3 bounds 6 / 6, 0 failures and
+the closest gap 245 m.
+
+**Budget** (full board, 24 Titans on petal plans, SETA x10 30 fps, 2 % of frames at 1.5–2 s, 600 frames, host measured):
+
+* the budget alone keeps every decision record within 250 ms + one frame step (24 decisions per frame);
+* those 24 decisions take 523 µs mean and 901 µs max per frame (after the review; 504 / 1,050 µs before);
+* under the 1 ms ceiling 0 of 600 frames were cut and 0 records were over (asserted);
+* i686 in game is not measured.
+
+The first build's 300 µs ceiling cut all 600 frames (oldest record 1,724 ms over).
+
+**Cost** (host, measured on an idle host, base `f2c01be2` vs B.3 after the review, three alternating runs): pair sweep broad-only 72–73 /
+71–73 ns, worst clear 447–455 / 449–450 ns; a decision on a full board spread 4.5 / 4.2 µs, packed 6.5 / 6.1–6.2 µs, in conflict
+26.0–26.1 / 25.0–25.1 µs; `sb_frame` 16.4–16.5 / 16.4–16.5 µs; E's gate row 11 / 9 ns. F5's bound (nominal + step on every frame) keeps
+the constant-bound sweep through an exact pre-check in `sweep_all` and a sweep compiled for 1,250 ms.
+
+A first build was slower: it passed the SETA bound to the sweep as a runtime argument, which made the sweep 130 ns broad-only (+57 ns
+per pair, +1.3 µs per decision). The constant-bound sweep is kept for the nominal path (`sweep_impl<false>`), and only a frame with
+SETA slack takes `sweep_seta`. Static: Member 1,828 B (+20), Gate 55,044 B (+488), board 220,196 B (+1,964).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

@@ -1,0 +1,42 @@
+== seta (B.3: max(nominal, 2 x step, 4 x dt))
+run162 seta  fps= 30 seed=1 B.3: seta_steps=397 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=88.0 s budget_max=48
+run162 seta  fps= 30 seed=7 B.3: seta_steps=383 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=79.4 s budget_max=48
+run162 seta  fps= 30 seed=1234567 B.3: seta_steps=402 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=87.0 s budget_max=48
+run162 seta  fps= 60 seed=1 B.3: seta_steps=526 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=87.9 s budget_max=48
+run162 seta  fps= 60 seed=7 B.3: seta_steps=518 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=86.4 s budget_max=48
+run162 seta  fps= 60 seed=1234567 B.3: seta_steps=522 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=77.0 s budget_max=48
+run162 seta  fps=144 seed=1 B.3: seta_steps=648 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=90.4 s budget_max=48
+run162 seta  fps=144 seed=7 B.3: seta_steps=634 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=90.3 s budget_max=48
+run162 seta  fps=144 seed=1234567 B.3: seta_steps=649 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=4 late=0 slack_min=84.6 s budget_max=48
+run162 seta  fps= 30 seed=1 launched=6/6
+run162 seta  fps= 30 seed=7 launched=6/6
+run162 seta  fps= 30 seed=1234567 launched=6/6
+run162 seta  fps= 60 seed=1 launched=6/6
+run162 seta  fps= 60 seed=7 launched=6/6
+run162 seta  fps= 60 seed=1234567 launched=6/6
+run162 seta  fps=144 seed=1 launched=6/6
+run162 seta  fps=144 seed=7 launched=6/6
+run162 seta  fps=144 seed=1234567 launched=6/6
+min capsule gap per run (m): 302 302 302 296 302 302 302 245 302 
+failures in the variant: 0
+== nominal (nominal bounds, B.2)
+run162 seta  fps= 30 seed=1 B.3: seta_steps=1441 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=24
+run162 seta  fps= 30 seed=7 B.3: seta_steps=1409 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=47
+run162 seta  fps= 30 seed=1234567 B.3: seta_steps=1448 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=48
+run162 seta  fps= 60 seed=1 B.3: seta_steps=2888 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=40
+run162 seta  fps= 60 seed=7 B.3: seta_steps=2856 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=47
+run162 seta  fps= 60 seed=1234567 B.3: seta_steps=2925 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=47
+run162 seta  fps=144 seed=1 B.3: seta_steps=6937 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=43
+run162 seta  fps=144 seed=7 B.3: seta_steps=6986 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=47
+run162 seta  fps=144 seed=1234567 B.3: seta_steps=6964 step_max=2000 ms own_gate_pass_not_fresh=0 own_gate_unsuppressed=0 escorts_timed=0 late=0 slack_min=-1.0 s budget_max=44
+run162 seta  fps= 30 seed=1 launched=0/6
+run162 seta  fps= 30 seed=7 launched=0/6
+run162 seta  fps= 30 seed=1234567 launched=0/6
+run162 seta  fps= 60 seed=1 launched=0/6
+run162 seta  fps= 60 seed=7 launched=0/6
+run162 seta  fps= 60 seed=1234567 launched=0/6
+run162 seta  fps=144 seed=1 launched=0/6
+run162 seta  fps=144 seed=7 launched=0/6
+run162 seta  fps=144 seed=1234567 launched=0/6
+min capsule gap per run (m): -769 188 -299 -77 -564 -439 -1117 -909 -1148 
+failures in the variant: 79

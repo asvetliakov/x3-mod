@@ -373,6 +373,9 @@ struct EVerdictRow { // ship_avoid_e_verdict (trace slot 0 as A)
     std::uint16_t a_order, b_order;
     float d, r_b;
     std::uint8_t verdict;
+    std::uint8_t gate_row;    // B.3 item 6: gc::GateRow of the own-gate row for a member A (0xff: not evaluated)
+    std::int32_t gate_age_ms; // ... A's member state age then (-1: none)
+    std::uint32_t step_ms;    // ... the frame's game-time step ([root+0x714], unclamped)
 };
 // amendment 17 (section 17 item 5) with review F4: E rows for every capital A as well: at most kERows rows per frame, one per pair
 // per game second through a kELogged pair table; a new pair finding the table full (kELogged pairs logged within the last second) or
@@ -381,6 +384,8 @@ struct EVerdictRow { // ship_avoid_e_verdict (trace slot 0 as A)
 // 401 of 2,829 crowd frames); member pairs write no per-call row (the ship_gate_ctl_pair row on a verdict change instead).
 constexpr unsigned kERows = 32, kELogged = 128, kELast = 64;
 EVerdictRow e_rows_[kERows];
+std::uint8_t e_gate_why_ = 0xff;  // B.3 item 6: the own-gate row's reason of the current e_verdict call (ctl_e_fields), for e_record
+std::int32_t e_gate_age_ = -1;
 std::atomic<std::uint32_t> e_row_write_{0};
 std::uint32_t e_row_read_ = 0;
 struct EVerdictSeen { // the per-pair dedup (one row per pair per second of game time) and the last verdict per traced pair
@@ -645,10 +650,9 @@ inline std::uint32_t game_time_ms() noexcept {
     const std::uint32_t clock = rd32(sites::kGameClock);
     return clock ? rd32(clock + sites::kGameTimeOffset) : 0;
 }
-inline std::uint32_t frame_step_ms() noexcept {
+inline std::uint32_t frame_step_ms() noexcept { // B.3: the real step clamped to 5 s (it returned 0 above 1 s: av::frame_step_clamp)
     const std::uint32_t clock = rd32(sites::kGameClock);
-    const std::uint32_t ms = clock ? rd32(clock + sites::kGameTimeOffset - 4) : 0; // [root+0x714], the frame's game-time step
-    return ms <= 1000 ? ms : 0;
+    return av::frame_step_clamp(clock ? rd32(clock + sites::kGameTimeOffset - 4) : 0); // [root+0x714], the frame's game-time step
 }
 // The engine getters (conventions pinned in ship_steering_sites.h).
 inline std::int32_t call_eax(std::uintptr_t fn, std::uint32_t obj) noexcept {
@@ -737,6 +741,8 @@ Counter arr_launches_, arr_offset_capital_, arr_small_side_, arr_small_unseparat
 Counter ctl_releases_, ctl_go_around_, ctl_x_refused_, ctl_sb_steered_, ctl_sb_predictions_, ctl_guarded_, ctl_p2_zeroed_, small_b_rewrites_;
 Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed a member pair (not_member: a member against a capital
                                                     // that is not on its board)
+Counter ctl_evict_ignored_gate_, ctl_budget_cut_; // B.3: 0x12 episodes kept through (item 2); frames cut at the 1 ms ceiling
+std::uint64_t ctl_ceiling_ticks_ = 0;             // B.3: gc::kFrameCeilingUs in QPC ticks (0: no ceiling, no QPC)
 Counter e_gate_small_gap_, small_b_both_, ctl_seq_skipped_, ctl_go_around_near_, ctl_clock_resets_;                         // Run161 item 5: the small-ship gate row on order 0 in the hand-over gap
 constexpr std::uint32_t kSmallGapMs = 5000;        // ... while the order-4 decision or the lead-in is at most 5 s old
 std::uint32_t ctl_x_wait_ms_ = 0, ctl_sb_max_ticks_ = 0;
@@ -1237,7 +1243,9 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
         const gc::Gate* cg = ctl_lookup(obj, &mi);
         if (cg && cg->m[mi].id == rd32(obj + sites::kObjId)) {
             for (unsigned j = 0; j < cg->n; ++j)
-                if (int(j) != mi && gc::pair_verdict(*cg, unsigned(mi), j, now, gc::kExcludeMaxAgeMs) == gc::PairV::clear) {
+                // review F4: neither ship on the engine's own avoid order (A's live order, B's last read)
+                if (int(j) != mi && in.order != core::kOrderAvoid && cg->m[j].st.order != core::kOrderAvoid &&
+                    gc::pair_verdict(*cg, unsigned(mi), j, now, gc::kExcludeMaxAgeMs) == gc::PairV::clear) {
                     ctl_ptr[self.n_ctl] = cg->m[j].ship;
                     ctl_id[self.n_ctl] = cg->m[j].id;
                     ++self.n_ctl;
@@ -1591,7 +1599,7 @@ gc::Member* ctl_commit(GateState& g, std::uint32_t obj, const core::Inputs& in, 
 void ctl_escort(std::uint32_t obj, std::uint32_t leader, const core::Inputs& in, const core::Dynamics& dyn, std::uint32_t now) noexcept {
     int li = -1;
     gc::Gate* cg = ctl_lookup(leader, &li);
-    if (!cg || cg->m[li].role != gc::Role::committed || !gc::live(cg->m[li], now)) return;
+    if (!cg || cg->m[li].role != gc::Role::committed || !gc::live(*cg, cg->m[li], now)) return;
     int ei = -1;
     gc::Gate* own = ctl_lookup(obj, &ei);
     if (own && own != cg && ei >= 0) ctl_leave(*own, unsigned(ei), false, gc::Why::leader, now); // another gate's member: it follows
@@ -2197,7 +2205,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             if (gc::pair_role(m.role) && m.id == rd32(obj + sites::kObjId)) {
                 m.v_plan = (s->flags & core::kShipFlagGate) ? s->v_ref : (s->flags & core::kShipFlagClamp) && s->v_corner > 0.0f ? s->v_corner : -1.0f;
                 m.v_plan_ms = now ? now : 1;
-                if (m.cap >= 0.0f && now - m.cap_ms <= gc::kCapMaxAgeMs && gc::can_yield(m) && ln::apply_cap(*s, m.cap)) ctl_capped_.add();
+                if (m.cap >= 0.0f && now - m.cap_ms <= gc::age_bound(*cg, gc::kCapMaxAgeMs) && gc::can_yield(m) && ln::apply_cap(*s, m.cap)) ctl_capped_.add();
             }
         }
     }
@@ -2597,6 +2605,25 @@ namespace {
 // 3 s gaps), behind a committed live leader on the same board. An arrival keeps it for 60 s after its launch while in front of the
 // plane. Anything else leaves the board (the pair falls back to today's rules).
 void ctl_order0_rows(std::uint32_t obj) noexcept; // Run161 item 4 (below)
+// B.3 item 2: the frame after the KC's CollisionWarn ran on a member ([obj+0x40] & 0x3000 both set, the order not yet 0x12; the
+// warn_pre row's moment): whether its obstacle list named the member's own gate, and its stage then (gc::note_warn).
+inline void ctl_note_warn(std::uint32_t obj, std::uint32_t fl) noexcept {
+    if ((rd32(obj + sites::kObjFlags) & sites::kFlagWarnBits) != sites::kFlagWarnBits || rd16(fl + sites::kFlightOrder) == core::kOrderAvoid) return;
+    int i = -1;
+    gc::Gate* g = gc::locate(ctl_, obj, &i);
+    if (!g || i < 0 || g->m[i].role != gc::Role::committed || g->m[i].id != rd32(obj + sites::kObjId)) return;
+    const std::uint32_t count = rd32(fl + sites::kFlightObstacleCount);
+    const unsigned n = count <= sites::kFlightObstacleMax ? count : 0;
+    // the list holds the own gate and nothing else (decision 2026-10-13: the warn's unsuppressed list only the own gate; whether the
+    // collision pass lists an obstacle site E suppressed is not established, so any other entry fails closed: the 0x12 evicts)
+    bool own = false, other = false;
+    for (unsigned q = 0; q < n; ++q) {
+        const std::uint32_t o = rd32(fl + sites::kFlightObstacleList + 4 * q);
+        if (o == g->gate) own = true;
+        else if (o) other = true;
+    }
+    gc::note_warn(*g, g->m[i], own && !other, game_time_ms());
+}
 inline void ctl_observe(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) noexcept {
     int i = -1;
     gc::Gate* g = gc::locate(ctl_, obj, &i);
@@ -2604,6 +2631,7 @@ inline void ctl_observe(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) n
     gc::Member& m = g->m[i];
     if (!gc::pair_role(m.role)) return;
     const std::uint32_t now = game_time_ms();
+    gc::note_step(ctl_, now, frame_step_ms()); // B.3 item 1: the SETA-aware bounds (once per game-time frame)
     if (m.st.ms && now - m.st.ms < gc::kStateMs) return;
     const unsigned k = unsigned(i);
     if (rd32(obj + sites::kObjId) != m.id) {
@@ -2613,9 +2641,16 @@ inline void ctl_observe(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) n
     const std::uint16_t order = rd16(fl + sites::kFlightOrder);
     const std::uint32_t target = rd32(fl + sites::kFlightTarget);
     if (order == core::kOrderAvoid) {
+        bool first = false;
+        if (gc::keep_through_avoid(*g, m, now, &first)) { // B.3 item 2: the KC's warn named the own gate in funnel / hand-over
+            if (first) ctl_evict_ignored_gate_.add();
+            ctl_read_state(m, obj, fl, ph, now);
+            return;
+        }
         ctl_leave(*g, k, true, gc::Why::evict, now);
         return;
     }
+    gc::avoid_over(m, now);
     bool formation_current = false;
     if (m.role == gc::Role::escort && order == core::kOrderNone) {
         const int li = gc::find(*g, m.leader);
@@ -2664,7 +2699,15 @@ inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std
             float x[3] = {0, 0, 0};
             if (pa)
                 for (unsigned i = 0; i < 3; ++i) x[i] = float(rds32(pa + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
-            in.ctl_gate = gc::e_gate_row(ctl_, ctl_ix_, a, rd32(a + sites::kObjId), b, in.a_order, in.a_target, x, pa != 0, now);
+            gc::note_step(ctl_, now, frame_step_ms()); // B.3 item 1: E may run before site B in a frame
+            gc::GateRow why = gc::GateRow::not_member;
+            in.ctl_gate = gc::e_gate_row(ctl_, ctl_ix_, a, rd32(a + sites::kObjId), b, in.a_order, in.a_target, x, pa != 0, now, &why);
+            if (trace_on_) { // the E row's fields (e_record runs only with the trace on)
+                e_gate_why_ = std::uint8_t(why);
+                int mi = -1;
+                const gc::Gate* mg = gc::locate(ctl_, a, &mi);
+                e_gate_age_ = mg && mi >= 0 && mg->m[mi].st.ms ? std::int32_t(now - mg->m[mi].st.ms) : -1;
+            }
         }
         if (!arr_ix_.maybe(a)) return;
         const gc::Arrival* r = gc::find_arrival(arrivals_, a, now);
@@ -2695,7 +2738,7 @@ inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std
     gc::Gate* g = gc::locate(ctl_, a, &ia);
     if (!g) return;
     const int ib = gc::find(*g, b);
-    if (ib < 0 || !gc::live(g->m[ia], now) || !gc::live(g->m[ib], now) || g->m[ia].id != rd32(a + sites::kObjId) ||
+    if (ib < 0 || !gc::live(*g, g->m[ia], now) || !gc::live(*g, g->m[ib], now) || g->m[ia].id != rd32(a + sites::kObjId) ||
         g->m[ib].id != rd32(b + sites::kObjId)) {
         e_pass_ctl_why_[unsigned(gc::EWhy::not_member)].add();
         return;
@@ -2768,6 +2811,7 @@ extern "C" void __cdecl x3m_ship_steering_clamp(std::uint32_t obj) {
     if (trace_on_ && !trace_frame(obj, fl, ph, des_engine)) capital_warn_watch(obj, fl);
     // the gate traffic controller: a member's live state and role (two loads for any other ship: the bitmap)
     if (traffic_live_.load(std::memory_order_relaxed) && ctl_ix_.maybe(obj)) {
+        ctl_note_warn(obj, fl);
         ctl_observe(obj, fl, ph);
         if (debug_ && rd16(fl + sites::kFlightOrder) == core::kOrderNone) ctl_order0_rows(obj);
     }
@@ -2783,7 +2827,7 @@ void ctl_order0_rows(std::uint32_t obj) noexcept {
     const gc::Member& m = g->m[i];
     for (unsigned j = 0; j < g->n; ++j) {
         const gc::Member& b = g->m[j];
-        if (int(j) == i || !gc::live(b, now)) continue;
+        if (int(j) == i || !gc::live(*g, b, now)) continue;
         const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
         if (core::dot3(dx, dx) > 5000.0f * 5000.0f) continue;
         std::uint32_t& last = g->o0_ms[i][j]; // review F5: at most one row per pair per second
@@ -3251,6 +3295,9 @@ void e_record(std::uint32_t a, std::uint32_t b, EV v, std::uint32_t now) noexcep
     r.a = a;
     r.b = b;
     r.verdict = std::uint8_t(v);
+    r.gate_row = e_gate_why_;
+    r.gate_age_ms = e_gate_age_;
+    r.step_ms = frame_step_ms();
     const std::uint32_t fla = rd32(a + sites::kObjFlight);
     r.a_order = fla ? rd16(fla + sites::kFlightOrder) : 0;
     r.b_class = rd16(b + sites::kObjClass);
@@ -3279,6 +3326,7 @@ void e_record(std::uint32_t a, std::uint32_t b, EV v, std::uint32_t now) noexcep
 }
 inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* out) noexcept {
     *out = EV::none;
+    e_gate_why_ = 0xff;
     if (!a || !b || rd16(a + sites::kObjClass) != sites::kClassShip) return 0;
     const std::uint32_t fl = rd32(a + sites::kObjFlight);
     if (!fl) return 0;
@@ -3503,14 +3551,22 @@ void sb_frame_all(std::uint32_t now) noexcept {
 }
 void ctl_frame() noexcept {
     const std::uint32_t now = game_time_ms();
+    const std::uint32_t step = frame_step_ms();
+    gc::note_step(ctl_, now, step); // B.3 item 1
     sb_frame_all(now);
-    const std::uint64_t t0 = timing_ ? qpc() : 0;
+    const std::uint64_t t0 = timing_ || ctl_ceiling_ticks_ ? qpc() : 0;
     unsigned done = 0, rollouts = 0;
     // review F2: the funnel's occupants first (their decision stamps keep the occupancy), then the round robin (gc::decide_order)
     std::uint16_t order[gc::kGates * gc::kMembers];
     unsigned n_prio = 0;
     const unsigned n_order = gc::decide_order(ctl_, ctl_cursor_, now, order, &n_prio);
-    for (unsigned q = 0; q < n_order && gc::frame_room(done, rollouts); ++q) {
+    // B.3: the budget follows game time (gc::frame_budget: 4 decisions per member per game second), under kFrameCeilingUs (1 ms) of measured time
+    const gc::FrameBudget fb = gc::frame_budget(gc::members_live(ctl_), step);
+    for (unsigned q = 0; q < n_order && gc::frame_room(done, rollouts, fb); ++q) {
+        if (done && ctl_ceiling_ticks_ && qpc() - t0 > ctl_ceiling_ticks_) {
+            ctl_budget_cut_.add();
+            break;
+        }
         const unsigned k = order[q];
         gc::Gate& g = ctl_.g[k / gc::kMembers];
         const unsigned i = k % gc::kMembers;
@@ -3865,6 +3921,7 @@ bool initialize() {
     }
     LARGE_INTEGER f{};
     qpc_frequency_ = QueryPerformanceFrequency(&f) && f.QuadPart > 0 ? std::uint64_t(f.QuadPart) : 0;
+    ctl_ceiling_ticks_ = qpc_frequency_ * gc::kFrameCeilingUs / 1000000u; // B.3: the decisions' time ceiling (0 without QPC)
     perf_ = log_tier::cached_perf;
     debug_ = log_tier::cached_debug;
     // Step 4 item 7: X3M_SHIP_TRACE (default off; --debug tier) and X3M_SHIP_TRACE_MAX (1..16, default 8 since amendment 17)
@@ -4205,13 +4262,18 @@ void frame_boundary(std::uint64_t frame) {
         }
         for (std::uint32_t w = e_row_write_.load(std::memory_order_acquire); e_row_read_ != w; ++e_row_read_) {
             const EVerdictRow& r = e_rows_[e_row_read_ & (kERows - 1)];
+            // B.3 item 6: an own-gate row of a member A carries why the row passed (gc::GateRow), A's state age and the game step
+            char gate_tail[96] = "";
+            if (r.gate_row != 0xff)
+                std::snprintf(gate_tail, sizeof gate_tail, " gate_row=%s ctl_age_ms=%ld step_ms=%lu", gc::gate_row_name(gc::GateRow(r.gate_row)),
+                              long(r.gate_age_ms), static_cast<unsigned long>(r.step_ms));
             log("ship_avoid_e_verdict frame=%llu A=0x%08lx A_order=0x%x B=0x%08lx B_class=%lu B_code=%s B_order=0x%x B_leader=0x%08lx B_flags=0x%08lx "
-                "member_leader=0x%08lx member_age_ms=%ld d_m=%.0f r_B=%.1f A_age_ms=%ld B_age_ms=%ld verdict=%s",
+                "member_leader=0x%08lx member_age_ms=%ld d_m=%.0f r_B=%.1f A_age_ms=%ld B_age_ms=%ld verdict=%s%s",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.a), unsigned(r.a_order), static_cast<unsigned long>(r.b),
                 static_cast<unsigned long>(r.b_class), r.b_code < core::kClassCount ? core::kClassNames[r.b_code] : "-", unsigned(r.b_order),
                 static_cast<unsigned long>(r.b_leader), static_cast<unsigned long>(r.b_flags), static_cast<unsigned long>(r.member_leader),
                 long(r.member_age_ms), double(r.d), double(r.r_b), long(r.a_age_ms), long(r.b_age_ms),
-                av::e_verdict_name(EV(r.verdict)));
+                av::e_verdict_name(EV(r.verdict)), gate_tail);
         }
         for (std::uint32_t w = warn_pre_write_.load(std::memory_order_acquire); warn_pre_read_ != w; ++warn_pre_read_) {
             const WarnPreRow& p = warn_pre_[warn_pre_read_ & 7];
@@ -4475,7 +4537,7 @@ void frame_boundary(std::uint64_t frame) {
                           "arr_overwritten=%u ctl_decide_us_max=%.1f ctl_frame_us_max=%.1f ctl_frame_decisions_max=%u ctl_arrival_us_max=%.1f "
                           "ctl_releases=%lu ctl_go_around=%lu ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_sb_steered=%lu ctl_sb_pred=%lu ctl_guarded=%lu "
                           "ctl_p2_zeroed=%lu small_b_rewrites=%lu ctl_sb_us_max=%.1f e_pass_ctl_why=%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu e_gate_small_gap=%lu "
-                          "ctl_sb_misc=%lu,%lu,%lu,%lu",
+                          "ctl_sb_misc=%lu,%lu,%lu,%lu ctl_evict_ignored_gate=%lu ctl_budget_cut=%lu",
                           traffic_state_, members, static_cast<unsigned long>(ctl_decisions_.get()), static_cast<unsigned long>(ctl_rollouts_.get()),
                           static_cast<unsigned long>(ctl_sweeps_.get()), static_cast<unsigned long>(ctl_narrow_.get()),
                           static_cast<unsigned long>(ctl_conflicts_.get()), static_cast<unsigned long>(ctl_yields_.get()),
@@ -4501,7 +4563,9 @@ void frame_boundary(std::uint64_t frame) {
                           static_cast<unsigned long>(e_gate_small_gap_.get()),
                           // ctl_sb_misc: seq_skipped (the 60 s tie-break), go-arounds within 1 km of X, game-clock resets, small B both sides taken
                           static_cast<unsigned long>(ctl_seq_skipped_.get()), static_cast<unsigned long>(ctl_go_around_near_.get()),
-                          static_cast<unsigned long>(ctl_clock_resets_.get()), static_cast<unsigned long>(small_b_both_.get()));
+                          static_cast<unsigned long>(ctl_clock_resets_.get()), static_cast<unsigned long>(small_b_both_.get()),
+                          // B.3: 0x12 episodes kept through (item 2), frames whose decisions stopped at the 1 ms ceiling
+                          static_cast<unsigned long>(ctl_evict_ignored_gate_.get()), static_cast<unsigned long>(ctl_budget_cut_.get()));
             ctl_sb_max_ticks_ = 0; // B.2 item 5: ctl_sb_us_max is the summary interval's maximum (the other maxima stay session-lifetime)
         }
     }

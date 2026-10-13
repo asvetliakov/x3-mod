@@ -943,7 +943,9 @@ The table is after the review fixes (below), at k = 10 m/s.
 **Soundness argument.** A certificate is the claim that two hulls will not touch before the next decision refreshes it.
 It rests on three things.
 
-1. **Refresh.** Every verdict that E or the exclusion uses is at most 250 ms old, and both members decided within 1 s.
+1. **Refresh.** Every verdict that E or the exclusion uses is at most 250 ms old, and both members decided within 1 s. These ages are
+   game time; B.3 (review F5) adds the last frame step to each, so a record fresh before a long SETA step stays fresh across it and a
+   stale one stays stale, and caps the verdict class at 2 s.
    Each decision starts from a state read at most about 100 ms earlier, so the near end of the rollout is the true hull. The
    fixture's sample-0 capsule equals the hull since the nose fix.
 2. **Margin.** 50 m, plus `k·(t + |Δt0|)`, plus the sampled relative motion over half an interval.
@@ -1412,3 +1414,226 @@ reads, only for a gate warn of a ship in the bitmap). A pending skip adds at mos
 the skip, the rejoin and the row live in the controller. Key-off identity against `5b3b11ed`: 0 differences (E 0 / 400,000, resolve
 0 / 60,000, steer set 0 / 65,536, site B 0 / 200,000, ship containers 0 / 100,000); fixture lines outside scenario T: 0 differing in all
 three modes (ledger).
+
+### B.3 Run163 fixes
+
+Built 2026-10-13 (Opus 5.5) on main `f2c01be2`, with the orchestrator's decisions of the same day folded in (the 1 ms ceiling, the
+frame-step reader, the own-gate-only warn, one pass at the SETA TARGET rows, the escort bound); not reviewed, not flown, not installed.
+Triage:
+[`run163-triage/`](../../verification/results/ship-steering/run163-triage/) (`sb_wait.txt`, `sb_gate_e.txt`, `game_steps.txt`,
+`ctl_rows.txt`, `sb_seq_f4f0.txt`). Ledger: [ship-steering.md](../verification/ship-steering.md), "B.3 Run163 fixes". Sources:
+`ship_gate_ctl_core.h` (`age_bound`, `note_step`, `live` and every freshness test, `sweep_impl` / `sweep_seta`, `sb_gate_why`,
+`note_warn` / `keep_through_avoid`, the rejoin in `sb_frame`, `res_o8_ms` and the refreshed `res_until`, `frame_budget`),
+`ship_steering.cpp` (`frame_step_ms`, `ctl_note_warn`, the 0x12 branch of `ctl_observe`, `ctl_frame`'s budget and ceiling, the E
+row's tail, the summary counters).
+
+**What Run163 measured** (gate `f4f0`, SETA on 98 % of the escorts' window). The funnel escort (M1 4510) was evicted twice by the
+engine's 0x12 against its own gate: site E's gate row went from `suppress_gate` to `pass_not_fresh` on the two frames whose game step
+was 2,000 and 1,540 ms (f 68942, f 74116), beyond the 1 s state age of `live()`. After each eviction it flew a 200 s petal lap while its
+sibling (M2 4956) waited behind it in strict order (362 s as head with window 0; 205 s behind it). The reservation of 4956 lapsed at
++60 s (f 66931) while the script gave order 4 at +53 s and +81 s, so 4956 re-entered with a new key (64). `x_refused` rose after
+launches (`launch>handover` at f 65820 from the stale `handover_ms`). The one rejoin went around 2 s after it started (item 3).
+
+**1. SETA-aware bounds** (with review F5). Every liveness and freshness bound of the controller is
+`age_bound(g, nominal) = nominal + last step`. The last step is the larger of this and the previous game-time frame's step, clamped to
+5 s: a state read before a long step is two frames old on the frame after it. `note_step` takes the frame's step from `[root+0x714]`
+(`frame_step_ms`, now the real step clamped to 5 s: item 8) at site B, site E and the frame end, once per game-time frame, and copies
+it to the four gates. A state written this frame (age 0) is always live.
+
+Soundness (review F5). A record within its nominal age before a step stays within the bound across it; one already stale before the
+step stays stale (the bound grows by exactly the time that passed). The verdict class (nominal below 2 s: the state, the certificate,
+the decisions, the rollouts' offset, the commit, the cap) is capped at 2 s. Nothing older than 2 s is accepted: a hitch beyond that
+fails closed until the next read and decision. On a 2,000 ms step a state read on the frame before it is exactly at the cap, and one
+read earlier is not. The windows of 2 s and more (the order-0 gap, the occupancy's decision) take the step on top. The first B.3
+build's max(nominal, 2 x step, 4 x dt) let a pair stale before the step through and had no cap.
+
+* Covered: the state age (`live`, 1 s), the certificate (250 ms), both members' decisions (1 s), the rollouts' time offset (1 s,
+  `sweep_seta`), the exclusion (500 ms, through `pair_verdict`), the funnel occupancy's decision (5 s), the commit refresh (1 s), the
+  order-0 gap (5 s, both roles), the yield cap at site B and the plan speed's cap age (1 s).
+* Not covered: `gap_plan`'s 5 s (the rollout's model of the gap, not a gate), the 120 s hand-over, the 60 s arrival window and the
+  30 s eviction memory (windows, not freshness).
+
+* The constant-bound sweep stays the normal path: compiled for a runtime bound it was 57 ns slower per pair (73 → 130 ns broad-only,
+  measured). `sweep_all` checks the exact bound itself and runs the sweep compiled for 1,250 ms while the bound is within it (steps up to
+  250 ms); a longer step takes `sweep_seta`.
+
+The own-gate row has its own liveness bound (re-review R1): 1 s + the last step + site B's 100 ms read interval, uncapped. The 2 s cap
+stays on the certificates and the exclusion, and the read's reach check bounds the position. Unit: the funnel row keeps `suppress_gate`
+on a 2,000 ms step's frame, on the frame after, and with a state read 2,100 ms before. It fails closed (`stale`) two 16 ms frames later
+and at the same age under 16 ms steps. The certificate and the commit refresh follow. A certificate
+300 ms old before a 1,000 ms step stays stale across it; one 200 ms old is kept. Ablation
+([`seta_ablation_b3.sh`](../../verification/results/ship-steering/gate-traffic-controller/seta_ablation_b3.sh)): the SETA variant
+below with the nominal bounds launches none of its 6 ships in any of its 9 runs. That run also overlapped capsules down to −1,148 m
+(the reviewer's point). Failing closed under 2 s steps is not by itself safe; the scaled bounds are the protection. A flight row will
+show whether any frame still fails closed: `ctl_budget_cut` and the own-gate `pass_not_fresh` count per interval, and the E row's
+`gate_row=stale`.
+
+**2. The own-gate clause and the 0x12 it should have suppressed.**
+
+* `sb_gate_why` (the reason behind `sb_gate_row`) also covers a committed member in `hold` or `inbound` within 6 r_gate of its gate (a
+  ship re-committed near the gate), on the same orders and under the same path guard. For the census Titan X lies 5.2 km out, so the
+  clause reaches about 1.4 km behind X.
+* At site B, on the frame after the KC's CollisionWarn ran on a member (the warn bits set, the order not yet 0x12), `ctl_note_warn`
+  records whether the obstacle list held the member's own gate and nothing else, and the member's stage.
+* A 0x12 that comes within the SETA-aware 1 s of a warn naming the own gate, while the member was in funnel or hand-over, is not an
+  eviction (`keep_through_avoid`). The member keeps its role and funnel state through the episode (at most 60 s, then it is evicted),
+  `ctl_evict_ignored_gate` counts the episode once, and the KC's order 0 after it keeps the member as the script's gap does (`keep_ms`,
+  validity).
+* A warn whose list names any other object, a holder, or an episode beyond 60 s evicts as before.
+
+The engine still flies its 0x12; the board only keeps the funnel reserved and the sequence intact. On 0x12 the member's own-gate row
+always passes (review F3: the suppression is never kept through), and the avoidance's exclusion of a certified partner requires neither
+ship to be on 0x12 (review F4: A's live order, B's last read). When the episode ends, the commit stamp is refreshed, so the KC's order 4
+after it does not expire the member (review F6). An eviction and a re-entry clear the episode (review F9). When order 4 returns, the funnel's
+go-around rule decides as for any funnel ship. The decision asked for the warn's unsuppressed list to hold only the own gate. The row
+carries E's per-entry verdicts only for traced ships, and whether the collision pass lists an obstacle E suppressed is not established
+**[i]**. The rule therefore requires the whole list to be the own gate alone: if suppressed entries are listed, it is stricter than
+asked (such a 0x12 evicts, as under B.2).
+
+**Review F1: a reserved escort is a key, not a queue slot.** An escort that has not committed is never a release candidate and never
+blocks a holder. Its reservation is its place in the sequence once its own order 4 commits it. B.2's waiting escort and its backfill are
+removed. The backfill's earliest X came from the leader's fixed launch time and, once that was past, blocked every holder while the escort
+loitered. With B.3's refreshed reservation that could have lasted indefinitely. The escort's lap target is taken from live time once
+the leader's launch + the script's switch is past. Unit: a holder behind an uncommitted escort loitering on order 4 to a station
+within 15 km (its reservation kept) is released at once (bound 62 s). The price (re-review R2, accepted): holders now pass a convoy whose
+escorts have not committed, and the escorts then wait for those transits. In the wide-hull variant `dep w0.6r` the first crossing to
+last launch grows from 578.2 s to 702.5 s, in `mixed` from 429.2 s to 437.7 s (measured).
+
+**Review F2: release and rejoin are serialized within a frame.** A rejoin dates `decided_ms` 200 ms back (re-review R3). `occupant()`
+sees it in the same `sb_frame`, so a later rejoin and this frame's release find the funnel taken. `due()` still lets its first real
+decision run at once. Unit: a feasible head and a rejoiner from the release window
+in one frame: exactly one in the funnel (the rejoiner; the head holds).
+
+**3. The rejoin, and why Run163's failed.** At f 69421 the re-commit (after 26 s on 0x12 at 113 m/s) was admitted by B.2's
+position-only test (`past_last_stretch`: within 1.2 r_gate of Λ4, or beyond X along F). The ship was 2,234 m in front of the gate plane
+and 1,608 m off the axis, its nose 37° off F, drifting outward at about 65 m/s (trace f 69421–69455: 1,608 → 1,735 m). Its order-4 point
+A lay on the axis 4,254 m out, so X was about 5.08 km out and the ship about 2.85 km past X and 2.0 km past A **[i]** (from the logged
+order point and X = A − 0.75 r_gate F). From there P2 (within 0.75 r_gate of A) cannot come forward. The funnel's carrot is clamped at A
+and turns the ship back, and the first prediction after the rejoin (B.2 reset `feas_ms`) had no feasible candidate. The go-around is
+withheld only inside the last stretch; the lateral drift took the ship out of it, and the go-around fired 2 s (34 frames) later,
+at f 69455. The slot-late branch did not apply: there was no ship ahead and no slot block **[i]**.
+
+Fix: a rejoin (released before, within the 30 s window, the funnel free and no slot block, as in B.2) is admitted:
+
+* past the last stretch only while P2's sphere is still ahead (along F not beyond A: `dot(x − X, F) < 0.75 r_gate`); a ship past A
+  holds (its petal by its bearing), and the extended gate row covers it within 6 r_gate;
+* from the release window (behind the petals' front, the nose within 60° of F, within the 256 s horizon) when the predictor finds a
+  candidate now. It goes straight into the funnel, with no petal lap and no wait for its turn in the sequence (it was released before),
+  and that prediction is kept as its feasibility (no reset).
+
+Units: the Run163 geometry (2,850 m past X, 37° off F) holds; a rejoin from the release window behind another head goes straight into
+the funnel (no petal); a first commit there holds while the head goes first; with the funnel occupied it holds.
+
+**4. The escort reservation.** `kReserveMs` is now 300 s instead of 60 s.
+
+* `res_until` is refreshed to now + 300 s while the escort is on 0x15 to the gate or within 15 km of it.
+* Within `res_until` the escort keeps its reserved number on any order except a dock or launch leg to another target (docking
+  elsewhere, leaving the sector); its own order 4 commits it with the key.
+* The leader's launch time is kept apart (`res_o8_ms`) for the escort's lap target (live time once past; the backfill is gone: F1), which used to read
+  `res_until − kReserveMs`.
+* A ship that leaves the sector unseen stops its state and frees its slot after 60 s, as before.
+
+Unit (the Run163 timeline): the leader launches and leaves the board; the escorts fly 5 s 0x15 legs and 3 s order-0 waits 12 km out.
+Order 4 at +53 s keeps key 17 and at +81 s key 18 (under B.2 the reservation lapsed at +60 s). 20 km out on 0x14 the reservation holds
+to its 300 s and lapses after; a dock leg elsewhere ends it.
+
+**5. The hand-over's bookkeeping.** `handover_ms`, `x_ms` and `refused` are cleared when the stage reads order 5 or order 8, so an
+order 0 after the launch is neither a hand-over nor a refusal. Order 5's validity then needs the commit refresh, which is now
+SETA-aware; every order-5 decision of a capital commits (`ship_steering.cpp` `decide`). Unit: hand-over → 5 (cleared) → 8 → 0 stays
+`launch`, with 0 refusals.
+
+**6. Diagnostics.** The `ship_avoid_e_verdict` row of a member A against a gate carries:
+
+* `gate_row=`: suppress, not_member, stale, unreadable, reach, stage, order or guard;
+* `ctl_age_ms=`: A's member state age;
+* `step_ms=`: the frame's game step (clamped to 5 s, as `frame_step_ms` reads it).
+
+The tail is written only with the trace on (the extra `locate` is skipped otherwise). The summary gains `ctl_evict_ignored_gate=` and
+`ctl_budget_cut=`.
+
+**7. The frame budget follows game time** (user decision, 2026-10-13).
+
+* `frame_budget`: decisions = max(6, ceil(members on all boards x 4 per game second x this frame's step)); rollouts in the same
+  proportion (14 per 6). That gives 6 / 14 at normal play, 32 / 75 at SETA x10 and 30 fps with 24 members, and 192 / 448 on a 2 s step.
+* The funnel's occupants are still decided first (`decide_order`), and each member at most once per frame (`due`).
+* The DLL's `ctl_frame` stops at 1 ms of measured time (decision 2026-10-13: 3 % of a 33 ms SETA frame; one QPC read per decision);
+  `ctl_budget_cut` counts the frames it cut.
+
+Unit: a full board (24 Titans on petal plans) at SETA x10 and 30 fps, with 2 % of frames at 1.5–2 s. It asserts that no decision
+record is older than 250 ms + one frame step at the frame end, both with the budget alone and under the 1 ms ceiling on this host's
+clock.
+
+* The 24 decisions per frame take 523 µs on average and 901 µs at most (no ceiling; 504 / 1,050 µs before the review)
+  **[m, host x86-64]**.
+* Under the ceiling 0 of 600 frames were cut and 0 records were over **[m, host x86-64]**.
+* A frame cut once leaves its skipped members one step old, still within the bound **[i]**.
+
+i686 in game is not measured; the first 300 µs ceiling cut every frame on this host (oldest record 1,724 ms over).
+
+**8. The frame-step reader** (decision 2026-10-13). `frame_step_ms()` returned 0 for steps above 1 s, which dropped amendment 15's
+window scaling on exactly the long frames. It now returns the real step clamped to 5 s (`av::frame_step_clamp`, shared with
+`note_step`). Its consumers:
+
+* E's capital window and the lane pass's freshness use `fresh_window_ms(250, step, 200)`;
+* `join_evaluate16` uses `fresh_window_ms(250, step)` (no re-plan term);
+* the resolved set uses `fresh_window_ms(100, step)`.
+
+`fresh_window_ms` still caps its own term at 250 ms, so on a long frame every one of these windows is 1 s: as on a 250–1,000 ms frame,
+never more. Before the fix such a frame left the windows at their 250 / 100 ms bases. Unaffected:
+
+* the servo tick, which reads `[root+0x714]` itself and keeps its 1..1,000 ms clamp;
+* the formation membership's 20 s;
+* the 120 s hand-over bound.
+
+Unit: the clamp (16 → 16, 2,000 → 2,000, 7,000 → 5,000 ms); the E window 250 ms at 16 ms and 1,000 ms at 2 s (the old reader: 250 ms);
+the resolved window 100 / 1,000 ms; a capital's gate row 900 ms after its decision on a 2 s step now `suppress_gate` (with the old
+reader it passed). This changes key-off behaviour only on frames longer than 1 s: the core comparison, `keyoff_identity_b.sh`, is
+unchanged at 0 differences.
+
+**Scenario T, `run162 seta`** is the Run162 timeline with game steps of 1,500–2,000 ms on 2 % of frames (Run163 had 6 steps above 1 s
+in 82k frames). It keeps every existing check of the variant, three of them as TARGET rows (below), and adds the B.3 checks:
+
+* 0 own-gate warns left to the engine;
+* 0 `pass_not_fresh` of a funnel ship;
+* every escort launching within 120 s of the launch ahead of it in its convoy, plus its own funnel time. For the first escort that is
+  its leader's launch, for the second its sibling's: the funnel takes one ship at a time, so the second escort's release waits for the
+  first's launch even without SETA. This is the bound as accepted on 2026-10-13.
+
+The figures are in the ledger. The TARGET rows of the variant:
+
+* D.7 item 4 (a launch within 30 s of the sequence plan): 34.9–42.1 s in 6 of 9 runs. The released leader's S-curve overshoots on the
+  long steps; its predicted feasible speed falls to 25–40 m/s (no yield cap), and the funnel takes about 30 s longer than planned.
+* D.7 item 2 (no engine evasion between members): 2 and 1 episodes in 2 of 9 runs. Run161's order-0 gap: 29 of 6,743 warns in one
+  run. Each is a pair of sibling escorts handed back (`unresolved`) at a capsule gap of 677 m or 911 m, after a 1.9 s step put the
+  second escort's order 4 within 0.1 s of the first's release. There was no capsule contact: D.7 item 3 holds in every run.
+
+One bounded attempt to make them hard checks (decision 3, reverted, measured). (a) After a long step the funnel's carrot led by the
+step's travel beyond 250 ms. (b) A reserved holder whose released sibling was within the sweep's 30 s margin (L_a + L_b + 50 m +
+10 m/s x 30 s) fell back at the petals' 25 m/s. The variant still had 9 TARGET rows:
+
+* D.7 item 4 in 5 runs, 30.6–37.5 s;
+* D.7 item 2 in 3 runs, 1–2 episodes;
+* the order-0 gap in 1 run, 29 of 6,913.
+
+(b) also changed 81 scenario T lines of the existing variants. So both were reverted, and the rows stay reported with the causes above.
+The long step's overshoot is integrated by the plant after the module's last command, and a lead from the last step cannot anticipate
+the next one **[i]**.
+
+**Cost** (host x86-64 -O2, measured against `f2c01be2` on the same idle host, after the decisions): unchanged within noise.
+
+| Measure | Host time |
+| --- | --- |
+| Pair sweep, broad-only | 73 ns |
+| Pair sweep, worst clear | 448–457 ns |
+| Decision on a full board: spread / packed / in conflict | 4.5 µs / 6.5–7.3 µs / 26.0–31.8 µs |
+| Decision with 21 petal plans, best / worst (noisy in both builds) | 7.5–8.3 µs / 37–43 µs |
+| `sb_frame` | 16.5 µs |
+| E's gate row | 9–11 ns |
+| Member-pair lookup | 7 ns |
+
+Added per frame: `note_step` (one compare after the first call of a frame, four stores on it), `members_live` (96 slots) and one QPC
+read per decision **[i]**. Static: Member 1,828 B (+20), Gate 55,044 B (+488), board 220,196 B (+1,964).
+
+**Key off.** Everything above runs only while the controller is live (`traffic_live_`): `note_step`, `ctl_note_warn`, the 0x12 branch,
+the budget. The E row's tail is written only for a member's gate verdict. Key-off identity against `f2c01be2`: 0 differences. Fixture
+lines outside scenario T and the stage-B lines: 0 differing in all three modes (ledger).
