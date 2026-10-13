@@ -1,0 +1,25 @@
+{
+  "run": 162,
+  "platform": "native Windows 11, C:\\X3",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run161; cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+  "installed_at": "2026-10-13",
+  "commit": "fdcd42d3",
+  "candidate_record": "verification/results/run162-candidate-build.json",
+  "installed": {
+    "path": "C:\\X3\\d3d9.dll",
+    "sha256": "368affb9171b4047c317b1b0c25acc88c67ca26893a1e29e5a4bd0b8b0d52df8",
+    "bytes": 59279689,
+    "verified_bytes": true,
+    "method": "cmp"
+  },
+  "previous": {
+    "run": 161,
+    "sha256": "579c1728b4bd83709c5e217cb5649da97e227adcecda6590ffe679c325b5a85f",
+    "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run161"
+  },
+  "release_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run150 (release 1.2.1)",
+  "x3m_ini": "unchanged",
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "controller stage B; Run 162 A open",
+  "producer": "main session"
+}

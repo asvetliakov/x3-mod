@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run162-candidate of fdcd42d3, build/d3d9.dll (clean configure + build)",
+  "sha256": "368affb9171b4047c317b1b0c25acc88c67ca26893a1e29e5a4bd0b8b0d52df8",
+  "bytes": 59279689,
+  "commit": "fdcd42d3",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 995, violations 0",
+    "site_verifier": "PASS, 20 checks (p2_remainder_contract added)",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites OK (candidate tree); fixture 9039/9039, capital 3381/3381, key-off identities 0 differences (implementer, same tree, ledger)"
+  },
+  "changes_since_run161": [
+    "c604ed0a Run161 triage",
+    "968c6627 perf comparison",
+    "fdcd42d3 controller stage B"
+  ],
+  "trigger": "Run161: capital-capital 0x12 chain in the script's order-0 gap (262 s / 10), script parking/rotate; stage B of the controller design",
+  "producer": "main session (Fable 5.1), 2026-10-13"
+}
