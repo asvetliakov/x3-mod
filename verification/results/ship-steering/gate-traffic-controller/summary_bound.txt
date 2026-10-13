@@ -1,1 +1,1 @@
-gates[] worst case 3614 characters (buffer 4096, 13 drop sources)
+gates[] worst case 4123 characters (declared 4123, buffer 8192, 13 drop sources) PASS

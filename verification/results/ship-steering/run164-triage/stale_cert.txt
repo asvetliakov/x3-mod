@@ -1,0 +1,26 @@
+why=stale e_pass rows 38
+f  22689 0x8e03e7e0 0x8e049da0 d_m  2935 step  672 prev   41,  33 | bound unnoted  291 noted  922 | min age  672 -> stale by the unnoted step
+f  24561 0x8e03e7e0 0x8e049da0 d_m  2553 step  310 prev   50,  40 | bound unnoted  300 noted  560 | min age  310 -> stale by the unnoted step
+f  28492 0x8e03e7e0 0x8e049da0 d_m  5977 step  170 prev   50,  60 | bound unnoted  310 noted  420 | min age  170 -> other
+f  50709 0x8e043bf8 0x3837fb20 d_m  6644 step  420 prev   80,  70 | bound unnoted  330 noted  670 | min age  420 -> stale by the unnoted step
+f  50709 0x8e043bf8 0x8e082750 d_m  6430 step  420 prev   80,  70 | bound unnoted  330 noted  670 | min age  420 -> stale by the unnoted step
+f  53494 0x8e043bf8 0x8e082750 d_m  6570 step  347 prev   39,  39 | bound unnoted  289 noted  597 | min age  347 -> stale by the unnoted step
+f  53916 0x8e043bf8 0x8e082750 d_m  6602 step  380 prev   90,  70 | bound unnoted  340 noted  630 | min age  380 -> stale by the unnoted step
+f  56824 0x8e043bf8 0x8e082750 d_m  6833 step  200 prev   60,  50 | bound unnoted  310 noted  450 | min age  200 -> other
+f  56931 0x8e043bf8 0x8e082750 d_m  6912 step  690 prev   60,  60 | bound unnoted  310 noted  940 | min age  690 -> stale by the unnoted step
+f  60476 0x8e043bf8 0x8e082750 d_m  6986 step  164 prev  100,  91 | bound unnoted  350 noted  414 | min age  164 -> other
+f  60476 0xaa68cfb0 0x8e0744a0 d_m  4264 step  164 prev  100,  91 | bound unnoted  350 noted  414 | min age  164 -> other
+f  60777 0x8e043bf8 0x8e082750 d_m  7047 step  800 prev  160, 190 | bound unnoted  440 noted 1050 | min age  800 -> stale by the unnoted step
+f  60777 0xaa68cfb0 0x8e0744a0 d_m  3529 step  800 prev  160, 190 | bound unnoted  440 noted 1050 | min age  800 -> stale by the unnoted step
+f  61095 0x8e043bf8 0x8e082750 d_m  7076 step  300 prev  190, 200 | bound unnoted  450 noted  550 | min age  300 -> other
+f  61095 0xaa68cfb0 0x8e0744a0 d_m  3627 step  300 prev  190, 200 | bound unnoted  450 noted  550 | min age  300 -> other
+f  62858 0x8e043bf8 0x8e082750 d_m  3640 step  260 prev  180, 180 | bound unnoted  430 noted  510 | min age  260 -> other
+f  62858 0xaa68cfb0 0x8e0744a0 d_m  4449 step  260 prev  180, 180 | bound unnoted  430 noted  510 | min age  260 -> other
+f  62997 0x8e043bf8 0x8e082750 d_m  4387 step  300 prev  190, 160 | bound unnoted  440 noted  550 | min age  300 -> other
+f  63112 0x8e043bf8 0x8e082750 d_m  4704 step  680 prev  110,  90 | bound unnoted  360 noted  930 | min age  680 -> stale by the unnoted step
+f  63160 0x8e043bf8 0x8e082750 d_m  4884 step  370 prev  160, 180 | bound unnoted  430 noted  620 | min age  370 -> other
+f  63285 0xaa68cfb0 0x8e0744a0 d_m  4735 step  260 prev  170, 140 | bound unnoted  420 noted  510 | min age  260 -> other
+f  63334 0xaa68cfb0 0x8e0744a0 d_m  4686 step  530 prev  140, 110 | bound unnoted  390 noted  780 | min age  530 -> stale by the unnoted step
+f  63334 0xaa68fe00 0x8e0744a0 d_m  6714 step  530 prev  140, 110 | bound unnoted  390 noted  780 | min age  530 -> stale by the unnoted step
+pairs-frames: stale by the unnoted step 12, other 11
+ship-vs-ship E rows with A_age_ms == the frame step (E before A site B): 7105 of 8383

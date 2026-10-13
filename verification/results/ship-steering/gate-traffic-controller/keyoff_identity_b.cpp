@@ -19,11 +19,15 @@ namespace sa_sc = sa::x3m::ship_steering::core;
 struct Lcg {
     std::uint32_t s;
     std::uint32_t next() { return (s = s * 1103515245u + 12345u) >> 1; }
-    unsigned pick(unsigned k) { return next() % k; }
+    // B.4: from the high bits (next() % k took the low bits, whose period is 4 for k = 2: the E sweep never drew a small pair with a
+    // stale A); next() < 2^31, so (next() * k) >> 31 is in [0, k)
+    unsigned pick(unsigned k) { return unsigned((std::uint64_t(next()) * k) >> 31); }
     float uni(float lo, float hi) { return lo + (hi - lo) * float(next() % 1000001u) / 1000000.0f; }
 };
 
-static unsigned e_sweep() {
+// B.4: tied = the DLL's capital key (small_any_age = small_dock_legs, the working tree only); a difference is the gap case when A is in
+// the table for its id, its decision older than the fresh window (at most 20 s), the base passed it pass_not_fresh and the tree gives a small-row verdict
+static unsigned e_sweep(bool tied = false, unsigned* gap = nullptr) {
     Lcg rng{20261013u};
     unsigned diff = 0;
     const std::uint16_t orders[9] = {0, 4, 5, 0x12, 0x14, 0x15, 0x1f, 0x1e, 0x1d};
@@ -81,7 +85,21 @@ static unsigned e_sweep() {
         SET(ctl_certified, rng.pick(2) != 0);
         SET(a_arrival, rng.pick(5) == 0);
 #undef SET
-        if (std::strcmp(av::e_verdict_name(av::site_e_verdict(in)), sa_av::e_verdict_name(sa_av::site_e_verdict(o))) != 0) ++diff;
+        if (tied) {
+            in.small_any_age = in.small_dock_legs;
+            in.a_id_ok = rng.pick(8) != 0; // review: a recycled pointer (the tree only)
+        }
+        const av::EVerdict nv = av::site_e_verdict(in);
+        if (std::strcmp(av::e_verdict_name(nv), sa_av::e_verdict_name(sa_av::site_e_verdict(o))) != 0) {
+            const bool small_row = nv == av::EVerdict::suppress_small || nv == av::EVerdict::pass_no_autopilot || nv == av::EVerdict::pass_not_steerable ||
+                                   nv == av::EVerdict::pass_class || nv == av::EVerdict::pass_b_dock_leg || nv == av::EVerdict::pass_own_leader;
+            if (tied && gap && in.a_in_table && in.a_id_ok && !in.a_arrival && in.a_age_ms <= av::kSmallAnyAgeMaxMs &&
+                in.a_age_ms > av::fresh_window_ms(av::kSteeredFreshMs, in.frame_ms, av::kSteeredReplanMs) &&
+                small_row && sa_av::site_e_verdict(o) == sa_av::EVerdict::pass_not_fresh)
+                ++*gap;
+            else
+                ++diff;
+        }
     }
     return diff;
 }
@@ -378,6 +396,8 @@ static unsigned policy_sweep() {
 
 int main() {
     const unsigned e_diff = e_sweep();
+    unsigned e_gap = 0;
+    const unsigned e_tied_diff = e_sweep(true, &e_gap); // B.4: the capital key on (small_any_age with small_dock_legs)
     unsigned resolves = 0, adjusted = 0, with_parts = 0;
     const unsigned r_diff = resolve_sweep(&resolves, &adjusted, &with_parts);
     const unsigned p_diff = policy_sweep();
@@ -397,7 +417,9 @@ int main() {
                 "differences %u; within that reach but beyond 5 r_C %u, differences %u; within 5 r_C %u, differences %u (the intended change: "
                 "the body detour and the dock margin)\n",
                 b5.out_n, b5.out_diff, b5.far_n, b5.far_diff, b5.near_n, b5.near_diff);
-    const bool pass = !e_diff && !r_diff && !p_diff && !c_diff && !f_diff && !b5.out_diff;
+    std::printf("site E, B.4 capital key on (small_any_age = small_dock_legs) vs the base: 400000 random inputs, differences outside the order-0 gap case %u, "
+                "gap-case differences %u (A in the table for its own id, decision older than the fresh window and at most 20 s: pass_not_fresh -> the small-ship row)\n", e_tied_diff, e_gap);
+    const bool pass = !e_tied_diff && !e_diff && !r_diff && !p_diff && !c_diff && !f_diff && !b5.out_diff;
     std::printf(pass ? "RESULT PASS\n" : "RESULT FAIL\n");
     return pass ? 0 : 1;
 }

@@ -2002,6 +2002,101 @@ A first build was slower: it passed the SETA bound to the sweep as a runtime arg
 per pair, +1.3 µs per decision). The constant-bound sweep is kept for the nominal path (`sweep_impl<false>`), and only a frame with
 SETA slack takes `sweep_seta`. Static: Member 1,828 B (+20), Gate 55,044 B (+488), board 220,196 B (+1,964).
 
+### B.4 Run164 fixes (2026-10-14, Opus 5.5; [capital-gate-transit.md](../architecture/capital-gate-transit.md) "Site E branch order (B.4)")
+
+Built on main `a2d7058f`; not reviewed, not flown, not installed. Fixes the Run 164 A residual
+([`run164-triage/`](../../verification/results/ship-steering/run164-triage/)).
+
+**Changes.**
+
+1. *Site E branch order.* Under `ship_steering_gates_capital` (`SiteE.small_any_age`), the capital small-ship row runs before
+   every freshness requirement: the controller's rows, then A without a table entry, then the small-ship row at any age of A's
+   decision up to the formation memory's 20 s horizon (`kSmallAnyAgeMaxMs`), with the table entry stamped for A's native id
+   (`table_id_`, written with the decision stamp at site B; review). §15.1's exceptions are unchanged. A recycled pointer or an
+   older decision goes on to the freshness check. Then the gate rows, the lane certificate, the freshness check, the dock row, the
+   member row and the resolved set. Key off: amendment 15's order. With the key on, only the gap case changes (a fresh A gets the
+   same verdict). Counter `e_small_gap` (avoidance summary), `small_any_age=` (install row).
+2. *Diagnostics.* `ship_gate_ctl_member` (`--debug`): one row per board member per game second, traced or not, with ship, class,
+   role, stage, order, target, `p_m` (gate frame), `nose_f`, `v_ms`, petal, key, `traced`, `st_age_ms`, `dec_age_ms`. Ring 32;
+   drops count in `rows_dropped`' `ctl`, as the seq rows do. Under the
+   traffic key the last 2 of the `ship_trace_max` slots are reserved for board members (`gc::trace_slot_range`). A member searches
+   them first and keeps its slot while on the board (the board refreshes `last_seen`). Review: a slot held as a member
+   (`TraceSlot.member`) is released the frame its holder leaves the board, not by the 5 s idle sweep, so a former member keeps
+   nothing. Small ships and non-member capitals stop at slot 5 of 8.
+3. *The stale member-pair certificate* (25763 vs 25287, frame 24561): `ctl_e_fields` notes the frame's step (`gc::note_step`) on its
+   member-pair branch too, after the membership bitmap check, so E judges the certificate against the stepped bound (cause below).
+4. *The summary's gates buffer* is 8,192 B (`kSummaryGatesBytes`). Its worst case, `kSummaryGatesWorstCase` = 4,123, is
+   `static_assert`ed below it, and `summary_bound.py` (run by `test_ship_steering`) fails when the declared figure differs from the
+   computed one ([`summary_bound.txt`](../../verification/results/ship-steering/gate-traffic-controller/summary_bound.txt)). Up to
+   B.3 the buffer was 4,096 B, below the 4,123 worst case of the base: the tail truncated.
+
+**Why the certificate went stale** ([`stale_cert.py`](../../verification/results/ship-steering/run164-triage/stale_cert.py) →
+[`.txt`](../../verification/results/ship-steering/run164-triage/stale_cert.txt), measured on the Run164 log). It was neither the
+decision cadence nor the 2 s cap. Frame 24561 had a 310 ms SETA step after steps of 50 and 40 ms. E runs before site B within a
+frame: 7,105 of 8,383 ship-pair E rows show `A_age_ms` equal to the frame's step. `ctl_e_fields` calls `gc::note_step` only on its
+gate branch, not on the member-pair branch, so E judged the pair against the previous frames' slack. The bound was
+250 + max(50, 40) = 300 ms, while the verdict was at least 310 ms old (the step itself). With the step noted the bound is 560 ms and
+the pair would have stayed certified. Of the 23 pair-frames with `why=stale` in the log:
+
+* 12 are this case (their own step exceeds the unnoted bound);
+* 11 sit on steps of 164–370 ms after slow frames. They are consistent with the decision quantization (a decision at most every
+  `kDecideMs` on a new state, so every second frame at steps ≥ 100 ms) or with the same missing note. Neither is established
+  without decision stamps; the member row's `dec_age_ms` / `st_age_ms` settle it in the next flight.
+
+None of them is a holder starved by the round robin (0 budget cuts in Run164), so the funnel priority for holders was not added.
+Change 3 removes the 12; a unit checks a 310 ms step after 50 ms steps. There, a verdict swept at the end of the last 50 ms frame
+reads `certified` at E with the step noted and `stale` without it.
+
+**Acceptance (measured, WSL2 host, MinGW GCC 16.2):**
+
+* Build: `cmake --build build --clean-first` → 0 warnings over 126 C++ objects; DLL `a9d74cb3…`, 59,409,876 B (unstripped worktree
+  build, dirty; not a candidate).
+* `check_no_x87.py build/d3d9.dll`: PASS, 1,001 reachable functions, 0 violations.
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, 20 checks.
+* Fixture: full 9692 / `--capital` 4034 / seq-off 9602, 0 failures (from 9600 / 3942 / 9510; +92 each). The +92 are 20 B.4 units and
+  one scenario T check per run (72). The unit: a capital escort on order 0, age 2,900 ms, frame 50 ms, against its convoy's M6 at
+  1.5 km gives `suppress_small` with the key on and `pass_not_fresh` with it off. Further units: at a stale A the manual, docked,
+  attached, masked and own-leader exceptions pass; a dock-leg B is suppressed; no table entry, a capital B and unreadable codes keep
+  `pass_not_fresh`; a fresh A gets the same verdict in both orders; the reserved trace slots; item 3 (a 310 ms step after 50 ms
+  steps: `certified` with the step noted at E, `stale` without); review: a recycled pointer (different id) and a decision past
+  20 s give `pass_not_fresh` (at 20 s still `suppress_small`). TARGET rows 56 (unchanged). Review: the B.3 budget check's 1 ms ceiling
+  pass now cuts at the measured cost per decision (pass 0's least-loaded frame, 18.6 µs here) × the count, not on this frame's wall
+  clock. It had failed 2 of 5 runs on a shared host; 20 concurrent `--traffic` runs on 16 cores gave 0 failures (19.8–23.0 µs).
+  Regenerated: [`ship_steering_host.txt`](../../verification/results/ship-steering/ship_steering_host.txt),
+  [`ship_steering_host_seq_off.txt`](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt).
+* Scenario T, the order-0 gap with the convoy's small escort
+  ([`scenario_t_b4.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b4.py) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b4.txt)). The probe is an M6 on 0x14
+  1.5 km ahead of each capital in its order-0 gap, not flown. Over 72 runs it saw 510,500 engine warns, 0 left unsuppressed;
+  B.3's order would have left 446,215. A's decision age reached 8,524 ms (`run162 seta`). The arrival variants have no gap.
+* Fixture identity ([`fixture_lines_b4.txt`](../../verification/results/ship-steering/gate-traffic-controller/fixture_lines_b4.txt)):
+  every line outside scenario T, the stage-B lines and the 3 B.4 unit lines unchanged in all three modes (326 / 149 / 326, 0
+  differing). Every existing scenario T / stage-B line except two cost-bench ns figures is unchanged (346 per mode).
+* Key-off identity ([`keyoff_identity_b4.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b4.txt),
+  `keyoff_identity_b.cpp` against `a2d7058f`; its steps run by hand):
+  * The harness's `Lcg::pick` now draws from the high bits, `(next() * k) >> 31`. `next() % k` took the low bits, whose period is
+    4 for k = 2, so the E sweep never drew a small pair with a stale A, and B.3's E identity covered less than its count suggests.
+    Every sweep's draws change with it.
+  * E: 0 / 400,000.
+  * The capital key on (`small_any_age = small_dock_legs`, `a_id_ok` drawn 7 in 8): 0 differences outside the gap case and 233
+    gap-case differences (A's own id, decision older than the fresh window and at most 20 s: `pass_not_fresh` → the small-ship row).
+  * Resolve 0 / 60,000 (18,937 scenes with part models, 24,018 adjusted; was 19,110 / 16,262), steer set 0 / 65,536, site B
+    0 / 200,000, containers 0 / 100,000.
+  * Question 3: 50,179 / 0, 1,640 / 71 and 8,181 / 1,248 (was 50,312 / 0, 1,348 / 49, 8,340 / 1,246).
+* Run164 replay ([`replay_identity_b4.txt`](../../verification/results/ship-steering/gate-traffic-controller/replay_identity_b4.txt),
+  `replay_identity_b.sh`'s steps against `a2d7058f`): stdout 84,842 B, the 248 MB JSON and the 1,343 B lag summary byte-identical.
+* Host tests (`test_ship_trace_format test_ship_steering_sites test_ship_trace_replay test_ship_steering test_check_no_x87
+  test_config_schema test_launcher_defaults`): 65 OK (+1: `test_summary_gates_bound`). The format test parses the member row.
+* `summary_bound.py`: worst case 4,123 characters (declared 4,123, buffer 8,192), PASS.
+
+**Cost** ([`e_cost_b4.cpp`](../../verification/results/ship-steering/gate-traffic-controller/e_cost_b4.cpp) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/e_cost_b4.txt), host -O2, 4,096 mixed inputs, three
+alternating runs): `site_e_verdict` costs 1.76–1.82 ns at the base and 1.72–1.76 ns with B.4, so it is unchanged. The DLL's E reads
+are unchanged: the codes and radii were already read for a capital A. A stale `suppress_small` adds one fresh-window compare for
+`e_small_gap`. A member pair at E adds the frame-step read and `note_step`'s same-frame compare (inferred: two loads and a branch;
+not measured). The member row and the slot keeping cost one `trace_slot_of` per member per frame (8 compares), and only with
+`ship_trace` or `--debug`.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

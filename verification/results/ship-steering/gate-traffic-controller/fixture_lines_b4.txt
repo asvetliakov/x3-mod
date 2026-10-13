@@ -1,0 +1,19 @@
+base a2d7058f vs working tree (B.4): both fixtures built as fixture_identity_b.sh builds them (c++ -std=c++17 -O2 -Wall -Wextra -Werror), run in the three modes, the after files without the 3 'b4 ' unit lines, compared by fixture_lines_b.py; then every scenario T / stage-B line except the 72 new 'B.4:' lines compared directly (host timing lines excluded)
+mode full:
+lines before 683 after 755; compared 326 vs 326 (timings masked); differing 0; scenario T / stage-B lines before 356 after 428
+count before: ship_steering_host checks=9600 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=9692 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS
+scenario T / stage-B lines (B.4 lines and timings excluded): before 346 after 346, differing 2 (the cost-bench lines carrying ns figures)
+mode capital:
+lines before 506 after 578; compared 149 vs 149 (timings masked); differing 0; scenario T / stage-B lines before 356 after 428
+count before: ship_steering_host checks=3942 failures=0 slip_gaps=0
+count after:  ship_steering_host checks=4034 failures=0 slip_gaps=0
+RESULT PASS
+scenario T / stage-B lines (B.4 lines and timings excluded): before 346 after 346, differing 2 (the cost-bench lines carrying ns figures)
+mode seqoff:
+lines before 683 after 755; compared 326 vs 326 (timings masked); differing 0; scenario T / stage-B lines before 356 after 428
+count before: ship_steering_host checks=9510 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=9602 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS
+scenario T / stage-B lines (B.4 lines and timings excluded): before 346 after 346, differing 2 (the cost-bench lines carrying ns figures)

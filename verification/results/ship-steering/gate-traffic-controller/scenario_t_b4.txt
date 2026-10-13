@@ -1,0 +1,11 @@
+variant        runs  gap warns  unsuppressed  unsuppressed under B.3 order  A age max ms
+departures        9      47142             0                         42018          3000
+dep w0.6r         9      47554             0                         42347          3000
+arrivals          9          0             0                             0             0
+arr w0.6r         9          0             0                             0             0
+mixed             9      38660             0                         34696          3000
+dep refused       9      58132             0                         51940          5743
+run162            9     244397             0                        219631          4233
+run162 seta       9      74615             0                         55583          8524
+total            72     510500             0                        446215          8524
+RESULT PASS

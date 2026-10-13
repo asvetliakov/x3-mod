@@ -1,0 +1,5 @@
+base a2d7058f vs working tree a2d7058f-dirty (B.4); log x3m.log 1107998538 B
+out: byte-identical (84842 B)
+json: byte-identical (248110085 B)
+lag: byte-identical (1343 B)
+RESULT PASS

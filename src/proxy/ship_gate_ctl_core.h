@@ -1650,6 +1650,32 @@ __attribute__((always_inline)) inline bool frame_room(unsigned decisions, unsign
     return !decisions || (decisions < fb.decisions && rollouts + kMaxRolloutsPerDecision <= fb.rollouts);
 }
 
+// B.4 item 2 (Run164: the three holders untraced, all 8 ship_trace slots held by small ships): under the traffic key the last
+// kTraceMemberSlots of the trace_max slots are reserved for board members (pair roles); a member searches them first, then the shared
+// slots [first, max - reserve). A non-member: a capital from slot 0, a non-capital from slot 1, up to max - reserve. With fewer than
+// kTraceMemberSlots + 2 slots nothing is reserved. Key off: amendment 17's rule (slot 0 for one non-escort capital, others 1..max).
+constexpr unsigned kTraceMemberSlots = 2;
+struct TraceRange {
+    unsigned first = 0, end = 0;       // the shared slots
+    unsigned res_first = 0, res_end = 0; // the reserved slots (a member's first search; empty for a non-member)
+};
+inline TraceRange trace_slot_range(unsigned max, bool traffic, bool capital, bool escort, bool member) noexcept {
+    TraceRange r;
+    if (!traffic) {
+        r.first = capital && !escort ? 0u : 1u;
+        r.end = capital && !escort ? 1u : max;
+        return r;
+    }
+    const unsigned reserve = max >= kTraceMemberSlots + 2 ? kTraceMemberSlots : 0u;
+    r.first = capital || member ? 0u : 1u;
+    r.end = max - reserve;
+    if (member) {
+        r.res_first = max - reserve;
+        r.res_end = max;
+    }
+    return r;
+}
+
 // ---- reads for site E and the avoidance ---------------------------------------------------------------------------------------
 // The pair verdict for (i, j) as site E takes it: clear only while at most kCertMaxAgeMs old.
 inline PairV pair_verdict(const Gate& g, unsigned i, unsigned j, std::uint32_t now, std::uint32_t max_age_ms) noexcept {

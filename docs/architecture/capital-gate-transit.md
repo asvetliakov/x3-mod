@@ -417,7 +417,8 @@ hulls that are stationary in a capital's path. The contact response is the elast
 `"MakeDamage"` is script-side and not decoded **[i]**.
 
 **Fail-safe.** Option off, A not fresh, A's code unreadable, B's code unreadable, any field unreadable: return 0, and
-the engine's warn test runs as vanilla.
+the engine's warn test runs as vanilla. (B.4: with `ship_steering_gates_capital` on, A's age no longer gates the small-ship row;
+see [Site E branch order (B.4)](#site-e-branch-order-b4).)
 
 ### 15.2 Formation membership memory (question 2)
 
@@ -1548,3 +1549,28 @@ that is turning off-axis.
 * Measured: the 30 fps seed 7 timeline now has 0 frames beyond the assumption (179 and 568 before). The pair is (c) there:
   (c) frames on an approach rise 2,104 → 2,862 (0.45 r), 856 → 1,672 (0.25 r) and 6,103 → 7,119 (w = r). Every other scenario-M
   line of the fixture output is unchanged. The `handover_att_viol` count stays in the fixture as a guard (0).
+
+## Site E branch order (B.4)
+
+Run164 ([`run164-triage/`](../../verification/results/ship-steering/run164-triage/), `evict_fresh.txt`, `e_evict.txt`): 4 of the
+6 evictions (42 game s) were capital escorts warned against their convoy's own M6 escorts in the script's order-0 gap, A's last
+decision 550–2,900 ms old. E returned `pass_not_fresh` before it reached the small-ship row, so §15.1's rule lapsed exactly where
+the cascade starts. With `ship_steering_gates_capital` on (`SiteE.small_any_age`, set with `small_dock_legs`), `site_e_verdict`
+runs in this order:
+
+1. the gate traffic controller's rows: the arrival gate, the stage-B own-gate row, a member pair (`suppress_ctl` / `pass_ctl`;
+   the certificate carries its own freshness);
+2. A without a table entry and not a capital arrival: `pass_not_fresh` (the module never decided on A: a masked or unsteered class);
+3. **the capital small-ship row** (§15.1 with §17 item 4), at any age of A's decision up to the formation memory's horizon
+   (`kSmallAnyAgeMaxMs` = 20 s), the table entry stamped for A's native id `[obj+0x08]` (a recycled pointer, or an older decision,
+   goes on to the freshness check and gets `pass_not_fresh`; a capital arrival needs neither). A capital-coded and B small by the live
+   record codes and the live radii (`r_B < r_A / 3`, B's code not capital), both codes readable, B not A's container on the dock
+   row and the pair without a lane certificate. Verdict `suppress_small`, except for the manual player ship, a deleted, attached or
+   docked B, a masked class and A's own leader, which pass as before;
+4. the gate rows of A's own gate, then the lane certificate;
+5. the freshness check (`pass_not_fresh` beyond the fresh window; a capital arrival excepted);
+6. the dock row, the codes check, the member row and the resolved set, all on a fresh decision.
+
+For a fresh A, step 3 gives the verdict the later small-ship branch gave, so only the gap case changes. With the key off the order is
+amendment 15's, and §15.1's fail-safe "A not fresh: pass" holds for small B only with the key off. Counter `e_small_gap` (a
+`suppress_small` with A older than the fresh window, avoidance summary); the install row carries `small_any_age=`.

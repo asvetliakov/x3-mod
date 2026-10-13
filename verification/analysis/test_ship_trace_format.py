@@ -159,6 +159,8 @@ CTL_ROWS = [
     'h_m=1238 part_id=20071 part_lod=0 o_x=145 o_y=324 e_x=169 e_y=169 l_r=1.000 capsule_L_m=1092',
     'ship_gate_ctl_seq frame=903 t_ms=24470000 gate=0x8e4fbdb0 holders=3 inbound=1 cand=0x4b9cfd08 key=16 role=committed stage=hold ringed=1 '
     'busy_by=0x00000000 window=1 timing=- free_ms=-1200 dx_m=8350 v_feas=100 block_ms=0 skips=0 releases=2',
+    'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=hold order=0x15 target=0x8e051030 '
+    'p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 petal=3 key=49 traced=1 st_age_ms=50 dec_age_ms=310',
 ]
 
 
@@ -181,7 +183,12 @@ class GateTrafficRows(unittest.TestCase):
                          (0x8e4fbdb0, 3, 1, 0x4b9cfd08, 16, 'committed', 'hold', 1))
         self.assertEqual((sq['busy_by'], sq['window'], sq['timing'], sq['free_ms'], sq['dx_m'], sq['v_feas'], sq['skips'], sq['releases']),
                          (0, 1, '-', -1200, 8350, 100, 0, 2))
-        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 5)
+        mr = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_member')[0]  # B.4: one per board member per game second
+        self.assertEqual((mr['gate'], mr['ship'], mr['class'], mr['role'], mr['stage'], mr['order'], mr['target']),
+                         (0x8e051030, 0x8e049da0, 'M2', 'escort', 'hold', 0x15, 0x8e051030))
+        self.assertEqual((mr['p_m'], mr['nose_f'], mr['v_ms'], mr['petal'], mr['key'], mr['traced'], mr['st_age_ms'], mr['dec_age_ms']),
+                         ((-1200, 450, -9330), 0.94, 60.0, 3, 49, 1, 50, 310))
+        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 6)
 
 
 # The docking approach (amendment 18, docking-approach.md): the 1 Hz own-container row.

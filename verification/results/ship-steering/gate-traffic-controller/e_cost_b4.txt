@@ -1,0 +1,4 @@
+site_e_verdict per call (host -O2, 4096 inputs, 208 small pairs with a stale A), best of 200 passes:
+  run 1: base 1.76 ns, B.4 1.72 ns
+  run 2: base 1.77 ns, B.4 1.73 ns
+  run 3: base 1.82 ns, B.4 1.76 ns

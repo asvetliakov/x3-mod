@@ -1,0 +1,9 @@
+base a2d7058f (a2d7058f) vs working tree a2d7058f-dirty (B.4 with the review fixes; keyoff_identity_b.sh's steps run by hand; Lcg::pick from the high bits; the row labels name the harness's original base)
+site E (dock = none) vs main ad0e131a (stage A + amendment 18): 400000 random inputs (traffic fields drawn), differences 0
+avoidance resolve (dock_target 0) vs main ad0e131a (stage A + amendment 18): 60000 resolves in 20000 scenes (18937 with station part models, 24018 adjusted), differences 0
+steer set (order_policy over 65536 order words) vs main ad0e131a (stage A + amendment 18): differences 0
+site B clamp, a stationary container (no velocity: key off; zero velocity: key on) vs main ad0e131a (stage A + amendment 18): 200000 random decisions, differences 0 (bitwise); the reference speed of a zero velocity is 0
+ship containers: order 4 to a ship counts only with the dock bit 0x100000 (100000 random flag words), differences 0
+question 3, 0x1d to a station with a model, key on vs key off: beyond the avoidance's reach toward it 50179 decisions, differences 0; within that reach but beyond 5 r_C 1640, differences 71; within 5 r_C 8181, differences 1248 (the intended change: the body detour and the dock margin)
+site E, B.4 capital key on (small_any_age = small_dock_legs) vs the base: 400000 random inputs, differences outside the order-0 gap case 0, gap-case differences 233 (A in the table for its own id, decision older than the fresh window and at most 20 s: pass_not_fresh -> the small-ship row)
+RESULT PASS

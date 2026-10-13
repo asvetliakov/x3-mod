@@ -815,6 +815,8 @@ inline EVerdict dock_e_verdict(DockE v) noexcept {
 }
 constexpr std::uint32_t kHandoverMaxMs = 120000; // the capital gate row's hand-over bound after P2 (the through-slot wait is 0-60 s)
 static_assert(kHandoverMaxMs == lane::kHandoverMaxMs, "the lane commitment and the gate row share the hand-over bound");
+// B.4 review: the any-age small-ship row's horizon on A's last decision (the formation memory's expiry)
+constexpr std::uint32_t kSmallAnyAgeMaxMs = kMemberExpiryMs;
 struct SiteE {
     // A (class 7 checked by the caller), its table entry and the frame step
     std::uint16_t a_order = 0;
@@ -856,6 +858,9 @@ struct SiteE {
     std::uint16_t b_order = 0;
     bool b_class_masked = false;
     bool small_dock_legs = false;    // amendment 17 (ship_steering_gates_capital): the small-ship row on B's dock legs 5/0x1e/0x20 too
+    bool small_any_age = false;      // B.4 (ship_steering_gates_capital): the small-ship row needs no fresh decision of A (A in the table
+                                     // or an arrival; the script's order-0 gap: capital-gate-transit.md "Site E branch order (B.4)")
+    bool a_id_ok = true;             // B.4 review: A's table entry was stamped for A's native id [obj+0x08] (a recycled pointer is not A)
     bool b_is_a_leader = false;      // B is A's live (0x14/0x15 target) or remembered leader
     bool b_member_current = false;   // B is a current remembered member of A's formation (Members::current)
     float d = -1.0f;                 // the centre distance, m (< 0 unreadable: never apart)
@@ -874,12 +879,31 @@ struct SiteE {
     // (dock_verdict); none = key off or not A's container (today's rules)
     DockE dock = DockE::none;
 };
+// The capital small-ship row (section 15.1, amendment 17 item 4) for a small B (small_pair holds): the exceptions, else suppress_small.
+__attribute__((always_inline)) inline EVerdict small_row_verdict(const SiteE& in) noexcept {
+    if (in.b_is_a_leader) return EVerdict::pass_own_leader;
+    switch (small_pair_verdict(in.b_flags, in.b_order, in.b_docked, in.b_class_masked, in.small_dock_legs)) {
+    case SmallPair::suppress: return EVerdict::suppress_small;
+    case SmallPair::no_autopilot: return EVerdict::pass_no_autopilot;
+    case SmallPair::not_steerable: return EVerdict::pass_not_steerable;
+    case SmallPair::class_masked: return EVerdict::pass_class;
+    case SmallPair::b_dock_leg: return EVerdict::pass_b_dock_leg;
+    default: return EVerdict::pass_own_leader;
+    }
+}
 inline EVerdict site_e_verdict(const SiteE& in) noexcept {
     // the gate traffic controller first (its pairs need no steering decision of A: arrivals and hand-overs are on engine orders)
     if (in.b_gate && in.arrival_gate) return EVerdict::suppress_arrival_gate;
     if (in.b_gate && in.ctl_gate) return EVerdict::suppress_gate; // B.2 item 3: the stage-B member against its own gate
     if (in.b_ship && in.ctl_pair) return in.ctl_certified ? EVerdict::suppress_ctl : EVerdict::pass_ctl;
     if (!in.a_in_table && !in.a_arrival) return EVerdict::pass_not_fresh;
+    // B.4: under the capital key the small-ship row comes before every freshness requirement (a capital ignores any ship under r/3
+    // whatever its order, its own decision's age included); a fresh A gets the verdict the row below gives (dock and lane rows excluded).
+    // The table entry must be A's (its native id) and its decision within the formation memory's horizon (kSmallAnyAgeMaxMs; Run164's
+    // gaps reached 2.9 s, the fixture's 8.5 s); else the freshness check below decides (pass_not_fresh for a stale A)
+    if (in.small_any_age && (in.a_arrival || (in.a_in_table && in.a_id_ok && in.a_age_ms <= kSmallAnyAgeMaxMs)) && in.b_ship && in.a_capital &&
+        in.dock == DockE::none && !in.lane_exempt && in.codes_readable && in.b_readable && small_pair(true, in.r_a, true, in.b_capital_code, in.r_b))
+        return small_row_verdict(in);
     const std::uint32_t fresh = fresh_window_ms(kSteeredFreshMs, in.frame_ms, kSteeredReplanMs);
     // the gate rows: B is A's own target gate
     if (in.b_gate && in.gates_live && in.gate_state) {
@@ -908,17 +932,7 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
     if (in.b_ship && in.a_capital) {
         if (!in.codes_readable) return EVerdict::pass_unreadable;
         if (in.b_readable) {
-            if (small_pair(true, in.r_a, true, in.b_capital_code, in.r_b)) {
-                if (in.b_is_a_leader) return EVerdict::pass_own_leader;
-                switch (small_pair_verdict(in.b_flags, in.b_order, in.b_docked, in.b_class_masked, in.small_dock_legs)) {
-                case SmallPair::suppress: return EVerdict::suppress_small;
-                case SmallPair::no_autopilot: return EVerdict::pass_no_autopilot;
-                case SmallPair::not_steerable: return EVerdict::pass_not_steerable;
-                case SmallPair::class_masked: return EVerdict::pass_class;
-                case SmallPair::b_dock_leg: return EVerdict::pass_b_dock_leg;
-                default: return EVerdict::pass_own_leader;
-                }
-            }
+            if (small_pair(true, in.r_a, true, in.b_capital_code, in.r_b)) return small_row_verdict(in);
             if (!a_fresh) return EVerdict::pass_not_fresh;
             if (in.a_order != sc::kOrderAvoid && in.avoidance_on) {
                 const MemberPair mv = member_pair_verdict(in.b_member_current, in.b_order, in.b_target, in.d, in.r_a, in.r_b);
