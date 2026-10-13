@@ -1,0 +1,154 @@
+== 0x8f555530 id=24965
+  f    833 game  22669.2 real  22.3 | ctl commit gate=4e08 seq=1 key=0 order=0x0 none>committed stage=none>none petal=-1
+  f    833 game  22669.2 real  22.3 | ctl inbound gate=4e08 seq=1 key=16 order=0x4 committed>committed stage=none>inbound petal=2
+  f  12097 game  23001.8 real  83.3 | ctl hold gate=4e08 seq=1 key=16 order=0x4 committed>committed stage=inbound>hold petal=2
+  f  12097 game  23001.8 real  83.3 | ctl release gate=4e08 seq=1 key=16 order=0x4 committed>committed stage=hold>funnel petal=2
+  f  13568 game  23115.3 real  94.7 | approach row cross_to_launch_ms=0
+  f  13568 game  23115.3 real  94.7 | ctl handover gate=4e08 seq=1 key=16 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  13569 game  23115.4 real  94.7 | ctl handover gate=4e08 seq=1 key=16 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  13570 game  23115.5 real  94.7 | ctl dock gate=4e08 seq=1 key=16 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  13755 game  23130.1 real  96.1 | approach row cross_to_launch_ms=14780
+  f  13756 game  23130.2 real  96.2 | ctl launch gate=4e08 seq=1 key=16 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x8f55dc78 id=25287
+  f    916 game  22669.8 real  22.8 | ctl escort gate=4e08 seq=2 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f    916 game  22669.8 real  22.8 | ctl inbound gate=4e08 seq=2 key=17 order=0x14 escort>escort stage=none>inbound petal=4
+  f  13181 game  23083.2 real  91.5 | 0x12 warn other=0x8f9aedb0 class=6 code=- d_m=2967.9
+  f  13181 game  23083.2 real  91.5 | ctl evict gate=4e08 seq=2 key=17 order=0x0 escort>evicted stage=inbound>inbound petal=4
+  f  13182 game  23083.3 real  91.5 | 0x12 warn other=0x8f9aedb0 class=6 code=- d_m=2962.8
+  f  13669 game  23123.1 real  95.4 | ctl escort gate=4e08 seq=4 key=17 order=0x0 evicted>escort stage=none>none petal=-1
+  f  13669 game  23123.1 real  95.4 | ctl inbound gate=4e08 seq=4 key=17 order=0x14 escort>escort stage=none>inbound petal=2
+  f  16893 game  23328.3 real 116.0 | ctl hold gate=4e08 seq=4 key=17 order=0x15 escort>escort stage=inbound>hold petal=2
+  f  18025 game  23406.3 real 123.8 | ctl commit gate=4e08 seq=4 key=17 order=0x0 escort>committed stage=hold>hold petal=2
+  f  18025 game  23406.3 real 123.8 | ctl release gate=4e08 seq=4 key=17 order=0x4 committed>committed stage=hold>funnel petal=2
+  f  19566 game  23502.8 real 133.4 | approach row cross_to_launch_ms=0
+  f  19566 game  23502.8 real 133.4 | ctl handover gate=4e08 seq=4 key=17 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  19567 game  23502.9 real 133.4 | ctl handover gate=4e08 seq=4 key=17 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  19568 game  23502.9 real 133.4 | ctl dock gate=4e08 seq=4 key=17 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  19814 game  23518.5 real 135.0 | approach row cross_to_launch_ms=15770
+  f  19814 game  23518.5 real 135.0 | ctl launch gate=4e08 seq=4 key=17 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x8f99f3d8 id=25763
+  f   1327 game  22671.6 real  24.6 | ctl escort gate=4e08 seq=3 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f   1327 game  22671.6 real  24.6 | ctl inbound gate=4e08 seq=3 key=18 order=0x14 escort>escort stage=none>inbound petal=3
+  f  17231 game  23351.4 real 118.3 | ctl hold gate=4e08 seq=3 key=18 order=0x15 escort>escort stage=inbound>hold petal=3
+  f  18421 game  23433.2 real 126.5 | ctl commit gate=4e08 seq=3 key=18 order=0x0 escort>committed stage=hold>hold petal=3
+  f  20368 game  23550.5 real 138.2 | ctl release gate=4e08 seq=3 key=18 order=0x4 committed>committed stage=hold>funnel petal=3
+  f  21842 game  23634.7 real 146.6 | approach row cross_to_launch_ms=0
+  f  21842 game  23634.7 real 146.6 | ctl handover gate=4e08 seq=3 key=18 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  21843 game  23634.7 real 146.6 | ctl handover gate=4e08 seq=3 key=18 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  21844 game  23634.8 real 146.6 | ctl dock gate=4e08 seq=3 key=18 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  22142 game  23651.1 real 148.2 | approach row cross_to_launch_ms=16420
+  f  22142 game  23651.1 real 148.2 | ctl launch gate=4e08 seq=3 key=18 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x39f76850 id=2881
+  f  27827 game  23895.9 real 174.3 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  27827 game  23895.9 real 174.3 | ctl arrival gate=4e08 seq=1 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  27970 game  23904.2 real 175.0 | ctl commit gate=5f18 seq=1 key=0 order=0x0 none>committed stage=none>none petal=-1
+  f  27970 game  23904.2 real 175.0 | ctl inbound gate=5f18 seq=1 key=16 order=0x4 committed>committed stage=none>inbound petal=0
+  f  47836 game  25054.7 real 316.3 | ctl hold gate=5f18 seq=1 key=16 order=0x4 committed>committed stage=inbound>hold petal=0
+  f  47836 game  25054.7 real 316.3 | ctl release gate=5f18 seq=1 key=16 order=0x4 committed>committed stage=hold>funnel petal=0
+  f  49423 game  25220.3 real 333.0 | approach row cross_to_launch_ms=0
+  f  49423 game  25220.3 real 333.0 | ctl handover gate=5f18 seq=1 key=16 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  49423 game  25220.3 real 333.0 | ctl handover gate=5f18 seq=1 key=16 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  49425 game  25220.5 real 333.0 | ctl dock gate=5f18 seq=1 key=16 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  49637 game  25243.6 real 335.3 | approach row cross_to_launch_ms=23300
+  f  49637 game  25243.6 real 335.3 | ctl launch gate=5f18 seq=1 key=16 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x8f9d9378 id=3569
+  f  29348 game  23991.7 real 183.9 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  29348 game  23991.7 real 183.9 | ctl arrival gate=4e08 seq=2 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  29460 game  24001.1 real 184.7 | ctl escort gate=5f18 seq=2 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  29460 game  24001.1 real 184.7 | ctl inbound gate=5f18 seq=2 key=17 order=0x14 escort>escort stage=none>inbound petal=2
+  f  29460 game  24001.1 real 184.7 | ctl leader gate=4e08 seq=2 key=0 order=0x0 arrival>none stage=none>none petal=-1
+  f  49326 game  25210.3 real 332.0 | ctl hold gate=5f18 seq=2 key=17 order=0x14 escort>escort stage=inbound>hold petal=2
+  f  50157 game  25295.0 real 340.5 | ctl commit gate=5f18 seq=2 key=17 order=0x0 escort>committed stage=hold>hold petal=2
+  f  50157 game  25295.0 real 340.5 | ctl release gate=5f18 seq=2 key=17 order=0x4 committed>committed stage=hold>funnel petal=2
+  f  51710 game  25440.2 real 355.0 | approach row cross_to_launch_ms=0
+  f  51710 game  25440.2 real 355.0 | ctl handover gate=5f18 seq=2 key=17 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  51711 game  25440.3 real 355.0 | ctl handover gate=5f18 seq=2 key=17 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  51712 game  25440.4 real 355.0 | ctl dock gate=5f18 seq=2 key=17 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  52000 game  25469.1 real 357.9 | approach row cross_to_launch_ms=28870
+  f  52000 game  25469.1 real 357.9 | ctl launch gate=5f18 seq=2 key=17 order=0x8 committed>committed stage=dock>launch petal=-1
+  f  58884 game  25933.4 real 404.3 | ctl identity gate=5f18 seq=2 key=17 order=0x0 committed>none stage=launch>launch petal=-1
+== 0x8f9c6b50 id=3835
+  f  30500 game  24074.3 real 192.0 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  30500 game  24074.3 real 192.0 | ctl arrival gate=4e08 seq=3 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  30620 game  24083.8 real 193.0 | ctl escort gate=5f18 seq=3 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  30620 game  24083.8 real 193.0 | ctl inbound gate=5f18 seq=3 key=18 order=0x14 escort>escort stage=none>inbound petal=1
+  f  30620 game  24083.8 real 193.0 | ctl leader gate=4e08 seq=3 key=0 order=0x0 arrival>none stage=none>none petal=-1
+  f  49984 game  25279.2 real 338.9 | ctl hold gate=5f18 seq=3 key=18 order=0x0 escort>escort stage=inbound>hold petal=1
+  f  50711 game  25342.0 real 345.2 | ctl commit gate=5f18 seq=3 key=18 order=0x0 escort>committed stage=hold>hold petal=1
+  f  52281 game  25494.3 real 360.4 | ctl release gate=5f18 seq=3 key=18 order=0x4 committed>committed stage=hold>funnel petal=1
+  f  54194 game  25653.2 real 376.3 | approach row cross_to_launch_ms=0
+  f  54194 game  25653.2 real 376.3 | ctl handover gate=5f18 seq=3 key=18 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  54195 game  25653.2 real 376.3 | ctl handover gate=5f18 seq=3 key=18 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  54196 game  25653.3 real 376.3 | ctl dock gate=5f18 seq=3 key=18 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  54570 game  25683.6 real 379.3 | approach row cross_to_launch_ms=30480
+  f  54571 game  25683.7 real 379.4 | ctl launch gate=5f18 seq=3 key=18 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x8f9a1730 id=4451
+  f  33936 game  24315.6 real 218.8 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  33936 game  24315.6 real 218.8 | ctl arrival gate=4e08 seq=1 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  33946 game  24316.7 real 218.9 | ctl commit gate=5f18 seq=4 key=0 order=0x0 none>committed stage=none>none petal=-1
+  f  33946 game  24316.7 real 218.9 | ctl inbound gate=5f18 seq=4 key=64 order=0x4 committed>committed stage=none>inbound petal=3
+  f  48581 game  25131.7 real 324.1 | ctl hold gate=5f18 seq=4 key=64 order=0x4 committed>committed stage=inbound>hold petal=3
+  f  49026 game  25179.8 real 329.0 | ctl release gate=5f18 seq=4 key=64 order=0x4 committed>committed stage=hold>funnel petal=3
+  f  49879 game  25268.9 real 337.9 | approach row cross_to_launch_ms=0
+  f  49879 game  25268.9 real 337.9 | ctl handover gate=5f18 seq=4 key=64 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  49879 game  25268.9 real 337.9 | ctl handover gate=5f18 seq=4 key=64 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  49881 game  25269.1 real 337.9 | ctl dock gate=5f18 seq=4 key=64 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  50046 game  25285.4 real 339.5 | approach row cross_to_launch_ms=16460
+  f  50046 game  25285.4 real 339.5 | ctl launch gate=5f18 seq=4 key=64 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x2f993a38 id=4787
+  f  34806 game  24380.8 real 225.4 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  34806 game  24380.8 real 225.4 | ctl arrival gate=4e08 seq=2 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  34905 game  24387.2 real 226.0 | ctl escort gate=5f18 seq=5 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  34905 game  24387.2 real 226.0 | ctl inbound gate=5f18 seq=5 key=65 order=0x14 escort>escort stage=none>inbound petal=5
+  f  34905 game  24387.2 real 226.0 | ctl leader gate=4e08 seq=2 key=0 order=0x0 arrival>none stage=none>none petal=-1
+  f  45361 game  24845.7 real 291.1 | 0x12 warn other=0x00000000 class=0 code=- d_m=0.0
+  f  45361 game  24845.7 real 291.1 | ctl evict gate=5f18 seq=5 key=65 order=0x0 escort>evicted stage=inbound>inbound petal=5
+  f  45576 game  24867.8 real 293.3 | ctl escort gate=5f18 seq=5 key=65 order=0x0 evicted>escort stage=none>none petal=-1
+  f  45576 game  24867.8 real 293.3 | ctl inbound gate=5f18 seq=5 key=65 order=0x14 escort>escort stage=none>inbound petal=5
+  f  49306 game  25208.2 real 331.8 | ctl hold gate=5f18 seq=5 key=65 order=0x14 escort>escort stage=inbound>hold petal=5
+  f  50581 game  25330.9 real 344.1 | ctl commit gate=5f18 seq=5 key=65 order=0x0 escort>committed stage=hold>hold petal=5
+  f  50843 game  25353.7 real 346.3 | ctl target gate=5f18 seq=5 key=65 order=0x0 committed>none stage=hold>hold petal=5
+  f  50881 game  25357.1 real 346.7 | ctl escort gate=5f18 seq=8 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  50881 game  25357.1 real 346.7 | ctl hold gate=5f18 seq=8 key=114 order=0x14 escort>escort stage=none>hold petal=3
+  f  55293 game  25735.2 real 384.5 | ctl commit gate=5f18 seq=8 key=114 order=0x0 escort>committed stage=hold>hold petal=3
+  f  55293 game  25735.2 real 384.5 | ctl release gate=5f18 seq=8 key=114 order=0x4 committed>committed stage=hold>funnel petal=3
+  f  56377 game  25800.0 real 391.0 | approach row cross_to_launch_ms=0
+  f  56377 game  25800.0 real 391.0 | ctl handover gate=5f18 seq=8 key=114 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  56377 game  25800.0 real 391.0 | ctl handover gate=5f18 seq=8 key=114 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  56379 game  25800.1 real 391.0 | ctl dock gate=5f18 seq=8 key=114 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  56631 game  25814.4 real 392.4 | approach row cross_to_launch_ms=14490
+  f  56631 game  25814.4 real 392.4 | ctl launch gate=5f18 seq=8 key=114 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0xa77c7908 id=4996
+  f  35988 game  24449.6 real 232.3 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  35988 game  24449.6 real 232.3 | ctl arrival gate=4e08 seq=1 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  36140 game  24457.3 real 233.0 | ctl escort gate=5f18 seq=6 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  36140 game  24457.3 real 233.0 | ctl inbound gate=5f18 seq=6 key=66 order=0x14 escort>escort stage=none>inbound petal=4
+  f  36140 game  24457.3 real 233.0 | ctl leader gate=4e08 seq=1 key=0 order=0x0 arrival>none stage=none>none petal=-1
+  f  49960 game  25276.9 real 338.7 | ctl hold gate=5f18 seq=6 key=66 order=0x14 escort>escort stage=inbound>hold petal=4
+  f  55350 game  25738.5 real 384.8 | ctl commit gate=5f18 seq=6 key=66 order=0x0 escort>committed stage=hold>hold petal=4
+  f  57285 game  25846.6 real 395.6 | ctl release gate=5f18 seq=6 key=66 order=0x4 committed>committed stage=hold>funnel petal=4
+  f  58732 game  25922.7 real 403.2 | approach row cross_to_launch_ms=0
+  f  58732 game  25922.7 real 403.2 | ctl handover gate=5f18 seq=6 key=66 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  58733 game  25922.7 real 403.2 | ctl handover gate=5f18 seq=6 key=66 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  58734 game  25922.8 real 403.2 | ctl dock gate=5f18 seq=6 key=66 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  58973 game  25940.9 real 405.1 | approach row cross_to_launch_ms=18250
+  f  58973 game  25940.9 real 405.1 | ctl launch gate=5f18 seq=6 key=66 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x8f555ef0 id=7247
+  f  50789 game  25348.6 real 345.8 | ARRIVAL launch at 5f18 kind=capital_offset off_u_m=663
+  f  50789 game  25348.6 real 345.8 | ctl arrival gate=5f18 seq=7 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  50871 game  25356.1 real 346.6 | ctl commit gate=5f18 seq=7 key=0 order=0x0 arrival>committed stage=none>none petal=-1
+  f  50871 game  25356.1 real 346.6 | ctl hold gate=5f18 seq=7 key=112 order=0x4 committed>committed stage=none>hold petal=6
+  f  53972 game  25635.0 real 374.5 | ctl release gate=5f18 seq=7 key=112 order=0x4 committed>committed stage=hold>funnel petal=6
+  f  55010 game  25715.3 real 382.5 | approach row cross_to_launch_ms=0
+  f  55010 game  25715.3 real 382.5 | ctl handover gate=5f18 seq=7 key=112 order=0x4 committed>committed stage=funnel>funnel petal=-1
+  f  55011 game  25715.4 real 382.5 | ctl handover gate=5f18 seq=7 key=112 order=0x0 committed>committed stage=funnel>handover petal=-1
+  f  55012 game  25715.5 real 382.5 | ctl dock gate=5f18 seq=7 key=112 order=0x5 committed>committed stage=handover>dock petal=-1
+  f  55228 game  25731.1 real 384.1 | approach row cross_to_launch_ms=15820
+  f  55228 game  25731.1 real 384.1 | ctl launch gate=5f18 seq=7 key=112 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x8f5569e8 id=8531
+  f  57934 game  25878.4 real 398.8 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  57934 game  25878.4 real 398.8 | ctl arrival gate=4e08 seq=1 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  58964 game  25938.5 real 404.8 | ctl window gate=4e08 seq=1 key=0 order=0x19 arrival>none stage=none>none petal=-1
+== 0x8f9dbbb0 id=8925
+  f  58969 game  25938.7 real 405.0 | ARRIVAL launch at 4e08 kind=capital_offset off_u_m=663
+  f  58969 game  25938.7 real 405.0 | ctl arrival gate=4e08 seq=2 key=0 order=0x0 none>arrival stage=none>none petal=-1

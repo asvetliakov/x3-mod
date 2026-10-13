@@ -1,0 +1,7 @@
+busy rows per gate: {'4e08': 197, '5f18': 583}
+gate 4e08 head out of window                                    39 game s    4.0 real s
+gate 4e08 no committed candidate (role none)                    75 game s    7.8 real s
+gate 5f18 free, window+timing ok (release that second)           1 game s    0.1 real s
+gate 5f18 head out of window                                   111 game s   11.5 real s
+gate 5f18 no committed candidate (role none)                    61 game s    6.3 real s
+gate 5f18 slot block                                             6 game s    0.6 real s

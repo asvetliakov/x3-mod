@@ -1,0 +1,3 @@
+0x8f9a4e08 -7498.0,10774.0,-57569.0 0.0000,0.0000,-1.0000 1104.5 capital_o5 nB=16 fit_centre_err_m=0 fit_r_gate=1104
+0x8f9a5f18 4259.0,-18037.0,31134.0 -0.0000,-0.0000,1.0000 1104.5 capital_o5 nB=31 fit_centre_err_m=22 fit_r_gate=1105
+0x8f9a8270 -53008.9,-11511.0,2177.0 -1.0000,0.0000,-0.0000 1091.1 circle_fit nB=7 fit_centre_err_m=0 fit_r_gate=1104

@@ -1,0 +1,97 @@
+== 0x8f555530 id 24965
+  f    833- 12097 committed inbound  game  22669.2 + 332.6 real  22.3 + 61.0 | traced 1.00 orders {'0x4': 11264} | turn    14 deg, against-F episodes 0 [] | d_G 14450..47530
+  f  12097- 13568 committed funnel   game  23001.8 + 113.5 real  83.3 + 11.4 | traced 1.00 orders {'0x4': 1471} | turn   137 deg, against-F episodes 0 [] | d_G 5008..14446
+  f  13568- 13569 committed funnel   game  23115.3 +   0.1 real  94.7 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 5002..5002
+  f  13569- 13570 committed handover game  23115.4 +   0.1 real  94.7 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 4995..4995
+  f  13570- 13756 committed dock     game  23115.5 +  14.7 real  94.7 +  1.5 | traced 0.99 orders {'0x5': 184, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 3579..4989
+  f  13756- 60285 committed launch   game  23130.2 +2831.5 real  96.2 +316.8 | traced 0.00 orders {'0x8': 11, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 1286..3539
+== 0x8f55dc78 id 25287
+  f    916- 13181 escort    inbound  game  22669.8 + 413.4 real  22.8 + 68.7 | traced 1.00 orders {'0x14': 11464, '0x0': 801} | turn    28 deg, against-F episodes 0 [] | d_G 33232..73779
+  f  13181- 13669 evicted   inbound  game  23083.2 +  39.9 real  91.5 +  4.0 | traced 0.00 orders {'0x12': 1} | turn     0 deg, against-F episodes 0 [] | d_G 33225..33225
+  f  13669- 16893 escort    inbound  game  23123.1 + 205.2 real  95.4 + 20.5 | traced 1.00 orders {'0x14': 99, '0x0': 173, '0x15': 2952} | turn   128 deg, against-F episodes 0 [] | d_G 14329..32656
+  f  16893- 18025 escort    hold     game  23328.3 +  78.0 real 116.0 +  7.8 | traced 1.00 orders {'0x15': 1100, '0x0': 32} | turn     8 deg, against-F episodes 0 [] | d_G 9850..14325
+  f  18025- 19566 committed funnel   game  23406.3 +  96.5 real 123.8 +  9.6 | traced 1.00 orders {'0x4': 1540} | turn   154 deg, against-F episodes 0 [] | d_G 4914..9838
+  f  19566- 19567 committed funnel   game  23502.8 +   0.1 real 133.4 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 4908..4908
+  f  19567- 19568 committed handover game  23502.9 +   0.1 real 133.4 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 4901..4901
+  f  19568- 19814 committed dock     game  23502.9 +  15.6 real 133.4 +  1.6 | traced 1.00 orders {'0x5': 245, '0x0': 1} | turn     1 deg, against-F episodes 0 [] | d_G 3352..4894
+  f  19814- 60285 committed launch   game  23518.5 +2443.1 real 135.0 +278.0 | traced 0.00 orders {'0x8': 14, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 837..3328
+== 0x8f99f3d8 id 25763
+  f   1327- 17231 escort    inbound  game  22671.6 + 679.8 real  24.6 + 93.7 | traced 1.00 orders {'0x14': 11382, '0x0': 1179, '0x15': 3343} | turn    99 deg, against-F episodes 0 [] | d_G 14447..80914
+  f  17231- 18421 escort    hold     game  23351.4 +  81.8 real 118.3 +  8.2 | traced 1.00 orders {'0x15': 1158, '0x0': 32} | turn     9 deg, against-F episodes 0 [] | d_G 9735..14443
+  f  18421- 20368 committed hold     game  23433.2 + 117.3 real 126.5 + 11.7 | traced 1.00 orders {'0x4': 1946} | turn   305 deg, against-F episodes 1 [69/6.9] | d_G 8977..12466
+  f  20368- 21842 committed funnel   game  23550.5 +  84.2 real 138.2 +  8.4 | traced 1.00 orders {'0x4': 1474} | turn   104 deg, against-F episodes 0 [] | d_G 5192..12155
+  f  21842- 21843 committed funnel   game  23634.7 +   0.1 real 146.6 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 5185..5185
+  f  21843- 21844 committed handover game  23634.7 +   0.0 real 146.6 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 5179..5179
+  f  21844- 22142 committed dock     game  23634.8 +  16.3 real 146.6 +  1.6 | traced 1.00 orders {'0x5': 297, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 3576..5173
+  f  22142- 60285 committed launch   game  23651.1 +2310.6 real 148.2 +264.7 | traced 0.00 orders {'0x8': 17, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 1208..3556
+== 0x39f76850 id 2881
+  f  27827- 27970 arrival   none     game  23895.9 +   8.4 real 174.3 +  0.8 | traced 0.87 orders {'0x0': 130} | turn     0 deg, against-F episodes 0 [] | d_G 1240..1916
+  f  27970- 47836 committed inbound  game  23904.2 +1150.5 real 175.0 +141.3 | traced 1.00 orders {'0x4': 19866} | turn    34 deg, against-F episodes 0 [] | d_G 13992..92529
+  f  47836- 49423 committed funnel   game  25054.7 + 165.6 real 316.3 + 16.7 | traced 1.00 orders {'0x4': 1587} | turn   145 deg, against-F episodes 0 [] | d_G 4908..13988
+  f  49423- 49425 committed handover game  25220.3 +   0.2 real 333.0 +  0.0 | traced 0.45 orders {'0x0': 2} | turn     0 deg, against-F episodes 0 [] | d_G 4896..4903
+  f  49425- 49637 committed dock     game  25220.5 +  23.1 real 333.0 +  2.3 | traced 1.00 orders {'0x5': 211, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 3341..4891
+  f  49637- 60285 committed launch   game  25243.6 + 718.0 real 335.3 + 77.6 | untraced
+== 0x8f9d9378 id 3569
+  f  29348- 29460 arrival   none     game  23991.7 +   9.5 real 183.9 +  0.8 | traced 0.83 orders {'0x0': 86} | turn     0 deg, against-F episodes 0 [] | d_G 1028..1690
+  f  29460- 49326 escort    inbound  game  24001.1 +1209.1 real 184.7 +147.3 | traced 1.00 orders {'0x14': 18631, '0x0': 1234} | turn    38 deg, against-F episodes 0 [] | d_G 13500..92758
+  f  49326- 50157 escort    hold     game  25210.3 +  84.7 real 332.0 +  8.5 | traced 1.00 orders {'0x14': 295, '0x0': 71, '0x15': 465} | turn    10 deg, against-F episodes 0 [] | d_G 9739..13495
+  f  50157- 51710 committed funnel   game  25295.0 + 145.2 real 340.5 + 14.5 | traced 1.00 orders {'0x4': 1552} | turn   175 deg, against-F episodes 0 [] | d_G 4475..9729
+  f  51710- 51711 committed funnel   game  25440.2 +   0.1 real 355.0 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 4468..4468
+  f  51711- 51712 committed handover game  25440.3 +   0.1 real 355.0 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 4462..4462
+  f  51712- 52000 committed dock     game  25440.4 +  28.7 real 355.0 +  2.9 | traced 1.00 orders {'0x5': 287, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 2471..4456
+  f  52000- 58884 committed launch   game  25469.1 + 464.3 real 357.9 + 46.4 | traced 0.00 orders {'0x8': 8, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 386..2416
+  f  58884- 60285 none      launch   game  25933.4 +  28.3 real 404.3 +  8.6 | untraced
+== 0x8f9c6b50 id 3835
+  f  30500- 30620 arrival   none     game  24074.3 +   9.5 real 192.0 +  1.0 | traced 0.90 orders {'0x0': 72} | turn     0 deg, against-F episodes 0 [] | d_G 1028..1681
+  f  30620- 49984 escort    inbound  game  24083.8 +1195.4 real 193.0 +145.9 | traced 1.00 orders {'0x14': 17323, '0x0': 1742, '0x15': 298} | turn    35 deg, against-F episodes 0 [] | d_G 13505..92767
+  f  49984- 50711 escort    hold     game  25279.2 +  62.8 real 338.9 +  6.3 | traced 1.00 orders {'0x0': 25, '0x15': 702} | turn    10 deg, against-F episodes 0 [] | d_G 9921..13499
+  f  50711- 52281 committed hold     game  25342.0 + 152.3 real 345.2 + 15.2 | traced 1.00 orders {'0x4': 1569} | turn   310 deg, against-F episodes 1 [69/6.9] | d_G 8126..11542
+  f  52281- 54194 committed funnel   game  25494.3 + 158.9 real 360.4 + 15.9 | traced 1.00 orders {'0x4': 1913} | turn   132 deg, against-F episodes 0 [] | d_G 4565..11246
+  f  54194- 54195 committed funnel   game  25653.2 +   0.1 real 376.3 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 4558..4558
+  f  54195- 54196 committed handover game  25653.2 +   0.1 real 376.3 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 4552..4552
+  f  54196- 54571 committed dock     game  25653.3 +  30.4 real 376.3 +  3.0 | traced 0.99 orders {'0x5': 373, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 2475..4547
+  f  54571- 60285 committed launch   game  25683.7 + 277.9 real 379.4 + 33.6 | traced 0.00 orders {'0x8': 10, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 659..2428
+== 0x8f9a1730 id 4451
+  f  33936- 33946 arrival   none     game  24315.6 +   1.1 real 218.8 +  0.1 | untraced
+  f  33946- 48581 committed inbound  game  24316.7 + 815.0 real 218.9 +105.2 | untraced
+  f  48581- 49026 committed hold     game  25131.7 +  48.1 real 324.1 +  4.8 | untraced
+  f  49026- 49879 committed funnel   game  25179.8 +  89.1 real 329.0 +  8.9 | traced 0.28 orders {'0x4': 242} | turn    19 deg, against-F episodes 0 [] | d_G 5195..7591
+  f  49879- 49881 committed handover game  25268.9 +   0.2 real 337.9 +  0.0 | traced 0.53 orders {'0x0': 2} | turn     0 deg, against-F episodes 0 [] | d_G 5172..5183
+  f  49881- 50046 committed dock     game  25269.1 +  16.3 real 337.9 +  1.6 | traced 0.99 orders {'0x5': 164, '0x0': 1} | turn     1 deg, against-F episodes 0 [] | d_G 3573..5162
+  f  50046- 60285 committed launch   game  25285.4 + 676.3 real 339.5 + 73.4 | untraced
+== 0x2f993a38 id 4787
+  f  34806- 34905 arrival   none     game  24380.8 +   6.4 real 225.4 +  0.6 | untraced
+  f  34905- 45361 escort    inbound  game  24387.2 + 458.5 real 226.0 + 65.1 | untraced
+  f  45361- 45576 evicted   inbound  game  24845.7 +  22.1 real 291.1 +  2.2 | untraced
+  f  45576- 49306 escort    inbound  game  24867.8 + 340.4 real 293.3 + 38.5 | untraced
+  f  49306- 50581 escort    hold     game  25208.2 + 122.7 real 331.8 + 12.3 | untraced
+  f  50581- 50843 committed hold     game  25330.9 +  22.8 real 344.1 +  2.3 | traced 0.73 orders {'0x4': 136, '0x0': 54} | turn    34 deg, against-F episodes 0 [] | d_G 8892..9387
+  f  50843- 50881 none      hold     game  25353.7 +   3.5 real 346.3 +  0.3 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 8892..8892
+  f  50881- 55293 escort    hold     game  25357.1 + 378.0 real 346.7 + 37.8 | traced 1.00 orders {'0x14': 4048, '0x0': 363} | turn   466 deg, against-F episodes 1 [142/14.2] | d_G 8327..12123
+  f  55293- 56377 committed funnel   game  25735.2 +  64.8 real 384.5 +  6.5 | traced 0.17 orders {'0x4': 192} | turn    17 deg, against-F episodes 0 [] | d_G 5018..5989
+  f  56377- 56379 committed handover game  25800.0 +   0.2 real 391.0 +  0.0 | traced 0.38 orders {'0x0': 2} | turn     0 deg, against-F episodes 0 [] | d_G 4999..5012
+  f  56379- 56631 committed dock     game  25800.1 +  14.3 real 391.0 +  1.4 | traced 1.00 orders {'0x5': 251, '0x0': 1} | turn     1 deg, against-F episodes 0 [] | d_G 3577..4993
+  f  56631- 60285 committed launch   game  25814.4 + 147.2 real 392.4 + 20.5 | untraced
+== 0xa77c7908 id 4996
+  f  35988- 36140 arrival   none     game  24449.6 +   7.7 real 232.3 +  0.8 | untraced
+  f  36140- 49960 escort    inbound  game  24457.3 + 819.6 real 233.0 +105.6 | untraced
+  f  49960- 55350 escort    hold     game  25276.9 + 461.6 real 338.7 + 46.2 | traced 0.83 orders {'0x0': 447, '0x14': 4059} | turn   767 deg, against-F episodes 2 [79/7.9 103/10.3] | d_G 8659..11965
+  f  55350- 57285 committed hold     game  25738.5 + 108.1 real 384.8 + 10.8 | traced 0.39 orders {'0x4': 834} | turn   118 deg, against-F episodes 0 [] | d_G 10913..11964
+  f  57285- 58732 committed funnel   game  25846.6 +  76.1 real 395.6 +  7.6 | traced 1.00 orders {'0x4': 1447} | turn    84 deg, against-F episodes 0 [] | d_G 5070..11700
+  f  58732- 58733 committed funnel   game  25922.7 +   0.0 real 403.2 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 5065..5065
+  f  58733- 58734 committed handover game  25922.7 +   0.0 real 403.2 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 5060..5060
+  f  58734- 58973 committed dock     game  25922.8 +  18.2 real 403.2 +  1.8 | traced 1.00 orders {'0x5': 238, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 3348..5055
+  f  58973- 60285 committed launch   game  25940.9 +  20.7 real 405.1 +  7.9 | untraced
+== 0x8f555ef0 id 7247
+  f  50789- 50871 arrival   none     game  25348.6 +   7.6 real 345.8 +  0.8 | traced 0.87 orders {'0x0': 71} | turn     0 deg, against-F episodes 0 [] | d_G 1298..1801
+  f  50871- 53972 committed hold     game  25356.1 + 278.9 real 346.6 + 27.9 | traced 1.00 orders {'0x4': 3101} | turn   219 deg, against-F episodes 0 [] | d_G 1806..12128
+  f  53972- 55010 committed funnel   game  25635.0 +  80.3 real 374.5 +  8.0 | traced 1.00 orders {'0x4': 1038} | turn    99 deg, against-F episodes 0 [] | d_G 5111..11858
+  f  55010- 55011 committed funnel   game  25715.3 +   0.1 real 382.5 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 5105..5105
+  f  55011- 55012 committed handover game  25715.4 +   0.1 real 382.5 +  0.0 | traced 0.00 orders {'0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 5099..5099
+  f  55012- 55228 committed dock     game  25715.5 +  15.7 real 382.5 +  1.6 | traced 1.00 orders {'0x5': 215, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 3574..5092
+  f  55228- 60285 committed launch   game  25731.1 + 230.5 real 384.1 + 28.9 | traced 0.00 orders {'0x8': 12, '0x0': 1} | turn     0 deg, against-F episodes 0 [] | d_G 1253..3546
+== 0x8f5569e8 id 8531
+  f  57934- 58964 arrival   none     game  25878.4 +  60.1 real 398.8 +  6.0 | untraced
+  f  58964- 60285 none      none     game  25938.5 +  23.2 real 404.8 +  8.1 | untraced
+== 0x8f9dbbb0 id 8925
+  f  58969- 60285 arrival   none     game  25938.7 +  22.9 real 405.0 +  7.9 | traced 0.33 orders {'0x0': 114} | turn     0 deg, against-F episodes 0 [] | d_G 1031..1696
