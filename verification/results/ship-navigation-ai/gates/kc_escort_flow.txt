@@ -1,0 +1,578 @@
+== addon/04.cat L/x3story.obj (stock AP): CODE 1812069 B
+
+-- 2004::__EscortObject entry b8b2a args 4, depth conflicts 0
+  b8b2a d0   frame 15
+  b8b2e d1   call 2004::__StartIntoSpace()
+  b8b38 d0   if not (!(p-6)) goto b8c3b
+  b8b40 d0   if not (m15) goto b8b5a
+  b8b49 d1   call SE_ObjectExists(m15)
+  b8b4f d0   if not (!(SE_ObjectExists(m15))) goto b8b5a
+  b8b55 d1   goto b8b5b
+  b8b5b d0   if not (1) goto b8b65
+  b8b61 d1   m15 = 0
+  b8b69 d0   if (!(m15)) goto b8b80
+  b8b75 d0   if ((m15 != p-4)) goto b8b80
+  b8b7b d1   goto b8b81
+  b8b81 d0   if not (0) goto b8c3b
+  b8b87 d1   call 2004::GetFormationSize()
+  b8b90 d2   call p-4.GetSize()
+  b8b9a d2   if not ((this == g9)) goto b8bc8
+  b8ba5 d3   m0[9] = 0
+  b8bad d3   m0[10] = 0
+  b8bb1 d4   let p0 = 2004::GetFormationSize()
+  b8bb6 d5   let p1 = p-4.GetSize()
+  b8bc1 d3   m0[11] = -(((4 * p0) + (2 * p1)))
+  b8bc3 d2   goto b8c11
+  b8bd8 d4   call SE_Random((4 * p2))
+  b8be8 d4   m0[9] = (SE_Random((4 * p2)) - (2 * p2))
+  b8bf1 d4   call SE_Random((4 * p2))
+  b8c01 d4   m0[10] = (SE_Random((4 * p2)) - (2 * p2))
+  b8c0e d4   m0[11] = (-2 * p2)
+  b8c22 d2   if not ((m0[11] > -((p0 + (2 * p1))))) goto b8c38
+  b8c36 d3   m0[11] = -((p0 + (2 * p1)))
+  b8c3d d1   call 2004::CheckSpeedLimit(1)
+  b8c4b d2   if not ((p-7 > 0)) goto b8c63
+  b8c54 d4   call TI_GetAbsTime()
+  b8c5a d3   call TI_AddTime(TI_GetAbsTime(), p-7)
+  b8c5f d3   p1 = TI_AddTime(TI_GetAbsTime(), p-7)
+  b8c67 d3   call SA_GetGlobalParameter(12, 0)
+  b8c70 d4   call p-4.GetSize()
+  b8c77 d4   call GetSize()
+  b8c7f d4   if not (1) goto b9039
+  b8c87 d4   if not (p-6) goto b8c97
+  b8c8e d5   m55 = 6
+  b8c92 d4   goto b8c9d
+  b8c99 d5   m55 = 14
+  b8ca0 d5   m56 = p-4
+  b8ca5 d5   call 2004::GetAttacker()
+  b8cb2 d4   if not ((m12 & 128)) goto b8ccd
+  b8cbe d5   m12 = (m12 & -129)
+  b8cc4 d5   p0 = 7
+  b8cc8 d4   goto b9039
+  b8cd1 d5   call SE_ObjectExists(p-4)
+  b8cd7 d4   if not (!(SE_ObjectExists(p-4))) goto b8ce7
+  b8cde d5   p0 = 8
+  b8ce2 d4   goto b9039
+  b8cee d6   call p-4.GetEnvironment()
+  b8cf4 d4   if not ((m1 != p-4.GetEnvironment())) goto b8d04
+  b8cfb d5   p0 = 8
+  b8cff d4   goto b9039
+  b8d05 d5   call 2004::IsHiddenInSectorMap()
+  b8d0a d4   if (2004::IsHiddenInSectorMap()) goto b8d23
+  b8d13 d5   call p-4.IsHiddenInSectorMap()
+  b8d18 d4   if (p-4.IsHiddenInSectorMap()) goto b8d23
+  b8d1e d5   goto b8d24
+  b8d24 d4   if not (0) goto b8d67
+  b8d2a d5   call GetOwner()
+  b8d33 d6   call p-4.GetOwner()
+  b8d39 d4   if not ((GetOwner() != p-4.GetOwner())) goto b8d67
+  b8d42 d5   call p-4.GetPos()
+  b8d48 d6   call 2004::GetPos()
+  b8d4e d5   call SE_DistanceAA(2004::GetPos(), p-4.GetPos())
+  b8d53 d6   let p2 = ((SA_GetGlobalParameter(12, 0) + p-4.GetSize()) + GetSize())
+  b8d57 d4   if not ((SE_DistanceAA(2004::GetPos(), p-4.GetPos()) > p2)) goto b8d67
+  b8d5e d5   p0 = 8
+  b8d62 d4   goto b9039
+  b8d67 d5   let p3 = 0
+  b8d6a d4   if not (p3) goto b8d74
+  b8d6f d4   goto b9039
+  b8d7a d5   if not ((p-7 > 0)) goto b8da8
+  b8d80 d6   call TI_GetAbsTime()
+  b8d89 d6   call TI_CmpTime(p1, TI_GetAbsTime())
+  b8d8e d6   p4 = TI_CmpTime(p1, TI_GetAbsTime())
+  b8d92 d6   let p4 = 0
+  b8d97 d5   if not ((p4 <= 0)) goto b8da8
+  b8d9e d6   p0 = 12
+  b8da3 d4   goto b9039
+  b8dab d5   if not (m3) goto b8f37
+  b8db4 d6   call p-4.GetObjectID()
+  b8dc0 d7   call SA_SetSpeedLimit(m3, m93)
+  b8dcb d7   call SA_SetFlightMode(m3, 1)
+  b8dd5 d7   call SA_CollisionObject(m3)
+  b8dda d6   if not (SA_CollisionObject(m3)) goto b8e05
+  b8de1 d7   m55 = 12
+  b8de6 d7   m56 = 0
+  b8deb d7   call GetSize()
+  b8dfa d7   call SA_AvoidObjectCollision(m3, (GetSize() + 50000))
+  b8e00 d6   goto b8f31
+  b8e0a d6   if not ((this == g9)) goto b8e25
+  b8e14 d7   call SE_IsClass(this, 2073)
+  b8e1a d6   if not (!(SE_IsClass(this, 2073))) goto b8e25
+  b8e20 d7   goto b8e26
+  b8e26 d6   if not (1) goto b8e3c
+  b8e31 d7   call SA_SetShipRotAccel(m3, 80)
+  b8e37 d6   goto b8e49
+  b8e43 d7   call SA_SetShipRotAccel(m3, m87)
+  b8e4d d7   if not (p-6) goto b8ea5
+  b8e58 d10  let p5 = p-4.GetObjectID()
+  b8e60 d8   call SA_FollowObject(m3, p5, p-5, p4)
+  b8e65 d8   p6 = SA_FollowObject(m3, p5, p-5, p4)
+  b8e69 d8   let p6 = 0
+  b8e6e d7   if not ((p6 == 1)) goto b8e87
+  b8e77 d8   call SE_ObjectExists(p-4)
+  b8e7c d7   if not (SE_ObjectExists(p-4)) goto b8e87
+  b8e82 d8   goto b8e88
+  b8e88 d7   if not (1) goto b8ea0
+  b8e8f d8   p0 = 10
+  b8e94 d8   p3 = 1
+  b8e9b d4   goto b8c7e
+  b8ea0 d7   goto b8f12
+  b8eaa d7   if not ((p-5 <= 0)) goto b8ee9
+  b8eb0 d8   call 2004::GetMaxSpeed()
+  b8eb6 d9   call GetSize()
+  b8ebb d9   p-5 = GetSize()
+  b8ebf d9   let p7 = 2004::GetMaxSpeed()
+  b8ec4 d8   if not ((p7 > 0)) goto b8edb
+  b8ed0 d8   if not ((p-5 > p7)) goto b8edb
+  b8ed6 d9   goto b8edc
+  b8edc d8   if not (1) goto b8ee8
+  b8ee4 d9   p-5 = p7
+  b8f09 d8   call SA_EscortObject(m3, p5, m0[9], m0[10], m0[11], p-5, p4)
+  b8f0e d8   p6 = SA_EscortObject(m3, p5, m0[9], m0[10], m0[11], p-5, p4)
+  b8f18 d7   if not ((p6 == 13)) goto b8f30
+  b8f1f d8   p0 = 12
+  b8f24 d8   p3 = 1
+  b8f2b d4   goto b8c7e
+  b8f32 d5   goto b9033
+  b8f3c d7   call p-4.GetPos()
+  b8f48 d7   if not ((m41 != g8)) goto b8f5a
+  b8f54 d8   call 302::RemoveRequest(p-4)
+  b8f5e d7   if not (!(p-6)) goto b8fcc
+  b8f6d d9   if not ((p-5 <= 0)) goto b8f7d
+  b8f73 d10  call GetSize()
+  b8f78 d10  goto b8f80
+  b8f91 d8   call 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], GetSize(), -1, m93)
+  b8f96 d8   p5 = 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], GetSize(), -1, m93)
+  b8fa0 d7   if not ((p5 != 11)) goto b8fb6
+  b8fab d7   if not ((p5 != 10)) goto b8fb6
+  b8fb1 d8   goto b8fb7
+  b8fb7 d7   if not (1) goto b8fc7
+  b8fbe d8   p0 = 4
+  b8fc3 d8   p3 = 1
+  b8fc7 d7   goto b9030
+  b8fd2 d10  call GetSize()
+  b8fdb d11  call p-4.GetSize()
+  b8ff6 d8   call 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], ((GetSize() + p-4.GetSize()) + p-5), -1, m93)
+  b8ffb d8   p5 = 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], ((GetSize() + p-4.GetSize()) + p-5), -1, m93)
+  b9005 d7   if not ((p5 == 10)) goto b901a
+  b900b d8   p3 = 1
+  b9011 d8   p0 = 10
+  b9015 d7   goto b9030
+  b9020 d7   if not ((p5 != 11)) goto b9030
+  b9027 d8   p0 = 4
+  b902c d8   p3 = 1
+  b9034 d4   goto b8c7e
+  b903a d5   m55 = 0
+  b9041 d5   p0 = p0
+  b9047 d1   return p0
+
+-- 2004::__MoveToSector entry b7470 args 1, depth conflicts 0
+  b7470 d0   frame 6
+  b7474 d1   call 2004::__StartIntoSpace()
+  b747c d0   if not ((2004::__StartIntoSpace() == 6)) goto b7484
+  b7483 d1   return p0
+  b7488 d0   if (!(p-4)) goto b74a2
+  b7491 d1   call SE_ObjectExists(p-4)
+  b7497 d0   if (!(SE_ObjectExists(p-4))) goto b74a2
+  b749d d1   goto b74a3
+  b74a3 d0   if not (0) goto b74ab
+  b74aa d1   return p0
+  b74af d1   call p-4.GetSector()
+  b74bb d2   call SE_IsClass(p-4, 1000)
+  b74c0 d1   if not (SE_IsClass(p-4, 1000)) goto b74d3
+  b74c9 d2   call p-4.GetPos()
+  b74ce d2   goto b74d4
+  b74d4 d3   let p0 = p-4.GetSector()
+  b74d8 d2   if not (!(p0)) goto b74e6
+  b74df d3   p0 = 6
+  b74e5 d1   return p0
+  b74ed d2   if not ((m1 != p0)) goto b7518
+  b74f2 d3   let p1 = p-4.GetPos()
+  b74f9 d3   call 2004::__FlyToNextSector(p0, p1)
+  b74fe d4   let p2 = 2004::__FlyToNextSector(p0, p1)
+  b7503 d3   if not ((p2 != 3)) goto b7512
+  b750b d4   p0 = p2
+  b7511 d1   return p0
+  b7513 d2   goto b74e6
+  b751a d3   p0 = 4
+  b7520 d1   return p0
+
+-- 2004::__FlyToNextSector entry b7231 args 2, depth conflicts 2
+  b7231 d0   frame 8
+  b7236 d1   m55 = 9
+  b723d d1   m56 = p-4
+  b7249 d3   call p-4.GetY()
+  b7252 d4   call p-4.GetX()
+  b725e d6   call m1.GetY()
+  b7267 d7   call m1.GetX()
+  b726e d2   call GS_Route(m1.GetX(), m1.GetY(), m0, p-4.GetX(), p-4.GetY(), p-5)
+  b7273 d3   let p1 = GS_Route(m1.GetX(), m1.GetY(), m0, p-4.GetX(), p-4.GetY(), p-5)
+  b7278 d2   if not ((p1 < 0)) goto b7286
+  b727f d3   p0 = 6
+  b7285 d1   return p0
+  b728d d3   call m1.GetGate(p1)
+  b7292 d3   p0 = m1.GetGate(p1)
+  b7297 d3   call 2004::CanMoveThroughGates()
+  b729d d2   if not (!(2004::CanMoveThroughGates())) goto b72ab
+  b72a4 d3   p0 = 6
+  b72aa d1   return p0
+  b72ac d2   let p0 = 0
+  b72b0 d2   call 2004::__EnterHyperspace(p0)
+  b72bb d2   if not ((p1 == 7)) goto b72cf
+  b72c1 d3   m55 = 0
+  b72c8 d3   p0 = p1
+  b72ce d1   return p0
+  b72d4 d2   if not ((p1 != 3)) goto b72f5
+  b72e0 d3   call TI_DelayRandom(2000, 3000)
+  b72e7 d3   m55 = 0
+  b72ee d3   p0 = p1
+  b72f4 d1   return p0
+  b72fa d2   if not ((this == g9)) goto b7363
+  b7303 d3   call p0.GetDestinationGate()
+  b7308 d3   marker 6f
+  b7309 d2   if (p0.GetDestinationGate()) goto b731f
+  b7318 d3   call 150::StartGateWarp(p-1, p1)
+  b731e d2   marker 70
+  b7323 d3   call 150::IsWarping()
+  b7328 d2   if not (150::IsWarping()) goto b733b
+  b7330 d3   call TI_Delay(100)
+  b7336 d2   goto b731f
+  b733f d3   call SE_ObjectExists(p1)
+  b7344 d2   if not (SE_ObjectExists(p1)) goto b7353
+  b734d d3   call 2004::__LeaveHyperspaceWarpIn(p1)
+  b7354 d3   m55 = 0
+  b735b d3   p-1 = p0
+  b7361 d0   return p0
+  b7367 d3   call p0.GetDestinationGate()
+  b736d d3   call __LeaveHyperspace(p0.GetDestinationGate())
+  b7372 d3   p1 = __LeaveHyperspace(p0.GetDestinationGate())
+  b7377 d3   m55 = 0
+  b7380 d2   if not ((p1 != 3)) goto b7396
+  b738b d2   if not ((p1 != 7)) goto b7396
+  b7391 d3   goto b7397
+  b7397 d2   if not (1) goto b73b9
+  b739d d3   p1 = 1
+  b73a1 d2   marker 6f
+  b73a2 d1   if (2004::__EnterHyperspace(p0)) goto b73b9
+  b73a9 d2   call TI_Delay(1)
+  b73b2 d2   call SelfDestruct(0, 0)
+  b73b8 d1   marker 70
+  b73bc d3   p0 = p1
+  b73c2 d1   return p0
+
+-- calls of __EscortObject (op 85; last 8 ops before the call: ... arg0 push, 05 argc, object push)
+  3f499 in 702::__runScript: 14 7 | 24 | 01 | 01 | 01 | 0d 4 | 05 4 | 0d 8
+  3f66b in 702::__runScript: 14 9 | 24 | 0d 1 | 01 | 01 | 0d 6 | 05 4 | 0d 10
+  4063e in 702::__runScript: 01 | 02 | 0d 3 | 06 500 | 50 | 0d 6 | 05 4 | 0d 10
+  408a8 in 702::__runScript: 0d 1 | 02 | 0d 5 | 06 500 | 50 | 0d 8 | 05 4 | 0d 12
+
+== addon/07.cat L/x3story.obj (Mayhem 4): CODE 1908859 B
+
+-- 2004::__EscortObject entry d10f7 args 4, depth conflicts 0
+  d10f7 d0   frame 15
+  d10fb d1   call 2004::__StartIntoSpace()
+  d1105 d0   if not (!(p-6)) goto d1208
+  d110d d0   if not (m17) goto d1127
+  d1116 d1   call SE_ObjectExists(m17)
+  d111c d0   if not (!(SE_ObjectExists(m17))) goto d1127
+  d1122 d1   goto d1128
+  d1128 d0   if not (1) goto d1132
+  d112e d1   m17 = 0
+  d1136 d0   if (!(m17)) goto d114d
+  d1142 d0   if ((m17 != p-4)) goto d114d
+  d1148 d1   goto d114e
+  d114e d0   if not (0) goto d1208
+  d1154 d1   call 2004::GetFormationSize()
+  d115d d2   call p-4.GetSize()
+  d1167 d2   if not ((this == g10)) goto d1195
+  d1172 d3   m0[9] = 0
+  d117a d3   m0[10] = 0
+  d117e d4   let p0 = 2004::GetFormationSize()
+  d1183 d5   let p1 = p-4.GetSize()
+  d118e d3   m0[11] = -(((4 * p0) + (2 * p1)))
+  d1190 d2   goto d11de
+  d11a5 d4   call SE_Random((4 * p2))
+  d11b5 d4   m0[9] = (SE_Random((4 * p2)) - (2 * p2))
+  d11be d4   call SE_Random((4 * p2))
+  d11ce d4   m0[10] = (SE_Random((4 * p2)) - (2 * p2))
+  d11db d4   m0[11] = (-2 * p2)
+  d11ef d2   if not ((m0[11] > -((p0 + (2 * p1))))) goto d1205
+  d1203 d3   m0[11] = -((p0 + (2 * p1)))
+  d120a d1   call 2004::CheckSpeedLimit(1)
+  d1218 d2   if not ((p-7 > 0)) goto d1230
+  d1221 d4   call TI_GetAbsTime()
+  d1227 d3   call TI_AddTime(TI_GetAbsTime(), p-7)
+  d122c d3   p1 = TI_AddTime(TI_GetAbsTime(), p-7)
+  d1234 d3   call SA_GetGlobalParameter(12, 0)
+  d123d d4   call p-4.GetSize()
+  d1244 d4   call GetSize()
+  d124c d4   if not (1) goto d1606
+  d1254 d4   if not (p-6) goto d1264
+  d125b d5   m56 = 6
+  d125f d4   goto d126a
+  d1266 d5   m56 = 14
+  d126d d5   m57 = p-4
+  d1272 d5   call 2004::GetAttacker()
+  d127f d4   if not ((m14 & 128)) goto d129a
+  d128b d5   m14 = (m14 & -129)
+  d1291 d5   p0 = 7
+  d1295 d4   goto d1606
+  d129e d5   call SE_ObjectExists(p-4)
+  d12a4 d4   if not (!(SE_ObjectExists(p-4))) goto d12b4
+  d12ab d5   p0 = 8
+  d12af d4   goto d1606
+  d12bb d6   call p-4.GetEnvironment()
+  d12c1 d4   if not ((m1 != p-4.GetEnvironment())) goto d12d1
+  d12c8 d5   p0 = 8
+  d12cc d4   goto d1606
+  d12d2 d5   call 2004::IsHiddenInSectorMap()
+  d12d7 d4   if (2004::IsHiddenInSectorMap()) goto d12f0
+  d12e0 d5   call p-4.IsHiddenInSectorMap()
+  d12e5 d4   if (p-4.IsHiddenInSectorMap()) goto d12f0
+  d12eb d5   goto d12f1
+  d12f1 d4   if not (0) goto d1334
+  d12f7 d5   call GetOwner()
+  d1300 d6   call p-4.GetOwner()
+  d1306 d4   if not ((GetOwner() != p-4.GetOwner())) goto d1334
+  d130f d5   call p-4.GetPos()
+  d1315 d6   call 2004::GetPos()
+  d131b d5   call SE_DistanceAA(2004::GetPos(), p-4.GetPos())
+  d1320 d6   let p2 = ((SA_GetGlobalParameter(12, 0) + p-4.GetSize()) + GetSize())
+  d1324 d4   if not ((SE_DistanceAA(2004::GetPos(), p-4.GetPos()) > p2)) goto d1334
+  d132b d5   p0 = 8
+  d132f d4   goto d1606
+  d1334 d5   let p3 = 0
+  d1337 d4   if not (p3) goto d1341
+  d133c d4   goto d1606
+  d1347 d5   if not ((p-7 > 0)) goto d1375
+  d134d d6   call TI_GetAbsTime()
+  d1356 d6   call TI_CmpTime(p1, TI_GetAbsTime())
+  d135b d6   p4 = TI_CmpTime(p1, TI_GetAbsTime())
+  d135f d6   let p4 = 0
+  d1364 d5   if not ((p4 <= 0)) goto d1375
+  d136b d6   p0 = 12
+  d1370 d4   goto d1606
+  d1378 d5   if not (m3) goto d1504
+  d1381 d6   call p-4.GetObjectID()
+  d138d d7   call SA_SetSpeedLimit(m3, m96)
+  d1398 d7   call SA_SetFlightMode(m3, 1)
+  d13a2 d7   call SA_CollisionObject(m3)
+  d13a7 d6   if not (SA_CollisionObject(m3)) goto d13d2
+  d13ae d7   m56 = 12
+  d13b3 d7   m57 = 0
+  d13b8 d7   call GetSize()
+  d13c7 d7   call SA_AvoidObjectCollision(m3, (GetSize() + 50000))
+  d13cd d6   goto d14fe
+  d13d7 d6   if not ((this == g10)) goto d13f2
+  d13e1 d7   call SE_IsClass(this, 2073)
+  d13e7 d6   if not (!(SE_IsClass(this, 2073))) goto d13f2
+  d13ed d7   goto d13f3
+  d13f3 d6   if not (1) goto d1409
+  d13fe d7   call SA_SetShipRotAccel(m3, 80)
+  d1404 d6   goto d1416
+  d1410 d7   call SA_SetShipRotAccel(m3, m90)
+  d141a d7   if not (p-6) goto d1472
+  d1425 d10  let p5 = p-4.GetObjectID()
+  d142d d8   call SA_FollowObject(m3, p5, p-5, p4)
+  d1432 d8   p6 = SA_FollowObject(m3, p5, p-5, p4)
+  d1436 d8   let p6 = 0
+  d143b d7   if not ((p6 == 1)) goto d1454
+  d1444 d8   call SE_ObjectExists(p-4)
+  d1449 d7   if not (SE_ObjectExists(p-4)) goto d1454
+  d144f d8   goto d1455
+  d1455 d7   if not (1) goto d146d
+  d145c d8   p0 = 10
+  d1461 d8   p3 = 1
+  d1468 d4   goto d124b
+  d146d d7   goto d14df
+  d1477 d7   if not ((p-5 <= 0)) goto d14b6
+  d147d d8   call 2004::GetMaxSpeed()
+  d1483 d9   call GetSize()
+  d1488 d9   p-5 = GetSize()
+  d148c d9   let p7 = 2004::GetMaxSpeed()
+  d1491 d8   if not ((p7 > 0)) goto d14a8
+  d149d d8   if not ((p-5 > p7)) goto d14a8
+  d14a3 d9   goto d14a9
+  d14a9 d8   if not (1) goto d14b5
+  d14b1 d9   p-5 = p7
+  d14d6 d8   call SA_EscortObject(m3, p5, m0[9], m0[10], m0[11], p-5, p4)
+  d14db d8   p6 = SA_EscortObject(m3, p5, m0[9], m0[10], m0[11], p-5, p4)
+  d14e5 d7   if not ((p6 == 13)) goto d14fd
+  d14ec d8   p0 = 12
+  d14f1 d8   p3 = 1
+  d14f8 d4   goto d124b
+  d14ff d5   goto d1600
+  d1509 d7   call p-4.GetPos()
+  d1515 d7   if not ((m43 != g9)) goto d1527
+  d1521 d8   call 302::RemoveRequest(p-4)
+  d152b d7   if not (!(p-6)) goto d1599
+  d153a d9   if not ((p-5 <= 0)) goto d154a
+  d1540 d10  call GetSize()
+  d1545 d10  goto d154d
+  d155e d8   call 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], GetSize(), -1, m96)
+  d1563 d8   p5 = 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], GetSize(), -1, m96)
+  d156d d7   if not ((p5 != 11)) goto d1583
+  d1578 d7   if not ((p5 != 10)) goto d1583
+  d157e d8   goto d1584
+  d1584 d7   if not (1) goto d1594
+  d158b d8   p0 = 4
+  d1590 d8   p3 = 1
+  d1594 d7   goto d15fd
+  d159f d10  call GetSize()
+  d15a8 d11  call p-4.GetSize()
+  d15c3 d8   call 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], ((GetSize() + p-4.GetSize()) + p-5), -1, m96)
+  d15c8 d8   p5 = 2004::__galaxyFlightStep(p6[0], p6[1], p6[2], ((GetSize() + p-4.GetSize()) + p-5), -1, m96)
+  d15d2 d7   if not ((p5 == 10)) goto d15e7
+  d15d8 d8   p3 = 1
+  d15de d8   p0 = 10
+  d15e2 d7   goto d15fd
+  d15ed d7   if not ((p5 != 11)) goto d15fd
+  d15f4 d8   p0 = 4
+  d15f9 d8   p3 = 1
+  d1601 d4   goto d124b
+  d1607 d5   m56 = 0
+  d160e d5   p0 = p0
+  d1614 d1   return p0
+
+-- 2004::__MoveToSector entry cf0e7 args 1, depth conflicts 0
+  cf0e7 d0   frame 6
+  cf0eb d1   call 2004::__StartIntoSpace()
+  cf0f3 d0   if not ((2004::__StartIntoSpace() == 6)) goto cf0fb
+  cf0fa d1   return p0
+  cf0ff d0   if (!(p-4)) goto cf119
+  cf108 d1   call SE_ObjectExists(p-4)
+  cf10e d0   if (!(SE_ObjectExists(p-4))) goto cf119
+  cf114 d1   goto cf11a
+  cf11a d0   if not (0) goto cf122
+  cf121 d1   return p0
+  cf126 d1   call p-4.GetSector()
+  cf132 d2   call SE_IsClass(p-4, 1000)
+  cf137 d1   if not (SE_IsClass(p-4, 1000)) goto cf14a
+  cf140 d2   call p-4.GetPos()
+  cf145 d2   goto cf14b
+  cf14b d3   let p0 = p-4.GetSector()
+  cf14f d2   if not (!(p0)) goto cf15d
+  cf156 d3   p0 = 6
+  cf15c d1   return p0
+  cf164 d2   if not ((m1 != p0)) goto cf18f
+  cf169 d3   let p1 = p-4.GetPos()
+  cf170 d3   call 2004::__FlyToNextSector(p0, p1)
+  cf175 d4   let p2 = 2004::__FlyToNextSector(p0, p1)
+  cf17a d3   if not ((p2 != 3)) goto cf189
+  cf182 d4   p0 = p2
+  cf188 d1   return p0
+  cf18a d2   goto cf15d
+  cf191 d3   p0 = 4
+  cf197 d1   return p0
+
+-- 2004::__FlyToNextSector entry ceea8 args 2, depth conflicts 2
+  ceea8 d0   frame 8
+  ceead d1   m56 = 9
+  ceeb4 d1   m57 = p-4
+  ceec0 d3   call p-4.GetY()
+  ceec9 d4   call p-4.GetX()
+  ceed5 d6   call m1.GetY()
+  ceede d7   call m1.GetX()
+  ceee5 d2   call GS_Route(m1.GetX(), m1.GetY(), m0, p-4.GetX(), p-4.GetY(), p-5)
+  ceeea d3   let p1 = GS_Route(m1.GetX(), m1.GetY(), m0, p-4.GetX(), p-4.GetY(), p-5)
+  ceeef d2   if not ((p1 < 0)) goto ceefd
+  ceef6 d3   p0 = 6
+  ceefc d1   return p0
+  cef04 d3   call m1.GetGate(p1)
+  cef09 d3   p0 = m1.GetGate(p1)
+  cef0e d3   call 2004::CanMoveThroughGates()
+  cef14 d2   if not (!(2004::CanMoveThroughGates())) goto cef22
+  cef1b d3   p0 = 6
+  cef21 d1   return p0
+  cef23 d2   let p0 = 0
+  cef27 d2   call 2004::__EnterHyperspace(p0)
+  cef32 d2   if not ((p1 == 7)) goto cef46
+  cef38 d3   m56 = 0
+  cef3f d3   p0 = p1
+  cef45 d1   return p0
+  cef4b d2   if not ((p1 != 3)) goto cef6c
+  cef57 d3   call TI_DelayRandom(2000, 3000)
+  cef5e d3   m56 = 0
+  cef65 d3   p0 = p1
+  cef6b d1   return p0
+  cef71 d2   if not ((this == g10)) goto cefda
+  cef7a d3   call p0.GetDestinationGate()
+  cef7f d3   marker 6f
+  cef80 d2   if (p0.GetDestinationGate()) goto cef96
+  cef8f d3   call 150::StartGateWarp(p-1, p1)
+  cef95 d2   marker 70
+  cef9a d3   call 150::IsWarping()
+  cef9f d2   if not (150::IsWarping()) goto cefb2
+  cefa7 d3   call TI_Delay(100)
+  cefad d2   goto cef96
+  cefb6 d3   call SE_ObjectExists(p1)
+  cefbb d2   if not (SE_ObjectExists(p1)) goto cefca
+  cefc4 d3   call 2004::__LeaveHyperspaceWarpIn(p1)
+  cefcb d3   m56 = 0
+  cefd2 d3   p-1 = p0
+  cefd8 d0   return p0
+  cefde d3   call p0.GetDestinationGate()
+  cefe4 d3   call __LeaveHyperspace(p0.GetDestinationGate())
+  cefe9 d3   p1 = __LeaveHyperspace(p0.GetDestinationGate())
+  cefee d3   m56 = 0
+  ceff7 d2   if not ((p1 != 3)) goto cf00d
+  cf002 d2   if not ((p1 != 7)) goto cf00d
+  cf008 d3   goto cf00e
+  cf00e d2   if not (1) goto cf030
+  cf014 d3   p1 = 1
+  cf018 d2   marker 6f
+  cf019 d1   if (2004::__EnterHyperspace(p0)) goto cf030
+  cf020 d2   call TI_Delay(1)
+  cf029 d2   call SelfDestruct(0, 0)
+  cf02f d1   marker 70
+  cf033 d3   p0 = p1
+  cf039 d1   return p0
+
+-- calls of __EscortObject (op 85; last 8 ops before the call: ... arg0 push, 05 argc, object push)
+  433b8 in 702::__runScript: 14 7 | 24 | 01 | 01 | 01 | 0d 4 | 05 4 | 0d 8
+  4358a in 702::__runScript: 14 9 | 24 | 0d 1 | 01 | 01 | 0d 6 | 05 4 | 0d 10
+  4455d in 702::__runScript: 01 | 02 | 0d 3 | 06 500 | 50 | 0d 6 | 05 4 | 0d 10
+  447c7 in 702::__runScript: 0d 1 | 02 | 0d 5 | 06 500 | 50 | 0d 8 | 05 4 | 0d 12
+
+2004::__EscortObject stock vs Mayhem: statements equal after masking member/global slots and offsets: True (164 statements)
+2004::__MoveToSector stock vs Mayhem: statements equal after masking member/global slots and offsets: True (29 statements)
+2004::__FlyToNextSector stock vs Mayhem: statements equal after masking member/global slots and offsets: True (61 statements)
+
+== MSCI loose scripts (installed view)
+
+-- !move.follow.template.xml 198084 B sha256 024635783cfb8fbbf86d6e3308f48467275d10231f051d1088c3bf50fd3e30f6
+   70 while $leader -> exists
+   97 = wait randomly from 2000 to 3000 ms
+  261 $timeout = random value between 30000 and 34000
+  270 = [THIS] -> escort ship $target : timeout = $timeout ms
+  314 if [SECTOR] != $leader.sector
+  320 = [THIS] -> call script !move.jump : target = $leader withsupportships = [TRUE]
+
+-- !move.jump.xml 76547 B sha256 b7eb859ac21efccbed4acfee7972554cbc6b45c4ede20f20d4dbbb8e0ffe4985
+   18 if [OWNER] == [Player] or [OWNER] == [Phanon]
+   21 else
+   22 gosub MoveThroughGates :
+   32 gosub MoveThroughGates :
+   40 gosub MoveThroughGates :
+   43 gosub MoveThroughGates :
+   83 [THIS] -> set position : x = $x y = $y z = $z
+   84 else
+   87 gosub MoveThroughGates :
+   88 else
+   89 gosub MoveThroughGates :
+  134 = [THIS] -> call script Mayhem.Task.Move : sector = $sector posArrayOrTarget = $target precision = null
+
+-- Mayhem.Task.Move.xml 129428 B sha256 5881de9d2ea1eea88e373ecd71a6b2bc004ead71739da8caedb1f0bc9316b209
+   83 * 'get next gate on safe path' seems to bug when the current sector is hostile and we order to go through a specific gate. So we set it to Friendly here.
+   87 $nextGateID = [THIS] -> get next gate on safe path : to sector = $sector pos = $posArray
+   89 * Here we trick the "get next gate on safe path" algorithm to force it to ignore all blacklisted sectors. This happens only for [Player].
+   96 $nextGateID = [THIS] -> get next gate on safe path : to sector = $sector pos = $posArray
+  146 gosub FlyThroughNextGate :
+  153 $nextGate = get next gate on route from [SECTOR] to $sector
+  154 gosub FlyThroughNextGate :
+  159 goto label Restart :
+  179 goto label Restart :
+  220 $distance = get distance between [THIS] and $nextGate
+  221 if $distance > 10000
+  222 = [THIS] -> follow object $nextGate with precision 5000 m : timeout = 5000 ms
+  225 $ret = [THIS] -> fly to sector $nextSector

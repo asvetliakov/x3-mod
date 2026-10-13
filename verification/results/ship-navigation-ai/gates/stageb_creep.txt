@@ -1,0 +1,17 @@
+threshold 18.1954 deg, cot 3.0423, sin 0.3123
+Titan r 1092 w 583   t 1102 m  creep iff l >  344 m
+    l  370: test fires from z  1126 m, trigger at z  1038 m, creep distance    88 m
+    l  686: test fires from z  2087 m, trigger at z   862 m, creep distance  1225 m
+    l 1002: test fires from z  3048 m, trigger at z   459 m, creep distance  2590 m
+Colossus 1022/546    t 1032 m  creep iff l >  322 m
+    l  331: test fires from z  1007 m, trigger at z   977 m, creep distance    30 m
+    l  631: test fires from z  1920 m, trigger at z   817 m, creep distance  1103 m
+    l  932: test fires from z  2835 m, trigger at z   443 m, creep distance  2392 m
+M7 760/382           t  770 m  creep iff l >  240 m
+    l  162: test fires from z   493 m, trigger at z   753 m, creep distance     0 m
+    l  416: test fires from z  1266 m, trigger at z   648 m, creep distance   618 m
+    l  670: test fires from z  2038 m, trigger at z   379 m, creep distance  1659 m
+M7 778/352           t  788 m  creep iff l >  246 m
+    l  135: test fires from z   411 m, trigger at z   776 m, creep distance     0 m
+    l  411: test fires from z  1250 m, trigger at z   672 m, creep distance   578 m
+    l  688: test fires from z  2093 m, trigger at z   384 m, creep distance  1709 m

@@ -1,0 +1,112 @@
+X3AP.exe 2153984 B sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab MATCH
+ok   0x0045413e 8d b7 40 02 00 00                            order 5: esi = &f+0x240 (the stored point)
+ok   0x0045418b 8b c6                                        order 5: eax = &f+0x240 ...
+ok   0x004541a6 89 84 24 cc 02 00 00                         ... [esp+0x2cc] = &f+0x240 (a pointer to the live field, not the copy [esp+0x4a0])
+ok   0x004541b4 66 83 78 48 12                               order 5: target class 0x12 (gate) ...
+ok   0x004541c7 0f 84 94 00 00 00                            ... -> 0x454261: skips the f+0x230 rendezvous read and the pointer switch
+ok   0x004541cd 81 c7 30 02 00 00                            order 5, non-gate only: edi = &f+0x230 (rendezvous)
+ok   0x004541fa 89 bc 24 cc 02 00 00                         order 5, non-gate only: [esp+0x2cc] = &f+0x230 while far
+ok   0x00454733 8d 94 24 a4 04 00 00                         order 5: leaf argument edx = &[esp+0x4a0] (the copy; site A redirects it)
+ok   0x00454745 e8 76 85 ff ff                               order 5: leaf 0x44ccc0 (site A) runs before the misalignment test
+ok   0x00454760 66 83 78 48 12 74 72                         order 5: gate target skips the port-roll match -> 0x4547d9
+ok   0x004547d9 8b 94 24 cc 02 00 00                         misaligned test: edx = [esp+0x2cc] = &f+0x240 (gate)
+ok   0x004547e0 8b 4b 70 83 c1 30                            misaligned test: ecx = &phys+0x30 (ship centre)
+ok   0x004547ee e8 9d dc fb ff                               misaligned test: 0x412490 -> [edx] - [ecx] = f+0x240 - centre
+ok   0x00454821 e8 8a 80 04 00                               misaligned test: 0x49c8b0 normalises to 16.16 unit length
+ok   0x0049c8df dc 0d 10 55 56 00                            0x49c8b0: x [0x565510] (1/65536)
+ok   0x00454826 8b c3 e8 f3 bc ff ff                         misaligned test: basis 0x450520(ship)
+ok   0x00450520 66 83 78 48 07 75 09 8b 40 50 05 70 08 00 00 0x450520: class 7 -> f+0x870 (flight basis)
+ok   0x0045482f 8b 41 20                                     misaligned test: basis +0x20 (row 2 x, the nose)
+ok   0x0045484f 8b 51 24                                     misaligned test: row 2 y
+ok   0x00454873 8b 41 28                                     misaligned test: row 2 z
+ok   0x00454897 3d 33 f3 00 00 7d 1a                         misaligned test: nose . dir < 0xf333 (0.95, 18.195 deg)
+ok   0x004548a5 c7 43 14 f4 01 00 00                         misaligned: desired [obj+0x14] = 500 (1 m/s)
+ok   0x004548ac 81 48 40 00 00 00 10                         misaligned: [target+0x40] |= 0x10000000
+ok   0x004548b3 e9 25 4b 00 00                               misaligned: jmp 0x4593dd (site B), skipping the aligned branch
+ok   0x004548cf 81 48 40 00 00 00 02                         aligned, gate: [gate+0x40] |= 0x2000000
+ok   0x0045498f 81 48 40 00 00 00 10                         aligned (ramp tail): [target+0x40] |= 0x10000000
+ok   0x00454996 e9 42 4a 00 00                               aligned: jmp 0x4593dd (site B)
+ok   0x004543ad 81 48 40 00 00 00 10                         order 5 port branch: [target+0x40] |= 0x10000000
+ok   0x00455083 81 4a 40 00 00 00 10                         order 4: [target+0x40] |= 0x10000000
+ok   0x00455196 81 4f 40 00 00 00 10                         order 0x1b (player landing): [target+0x40] |= 0x10000000
+ok   0x004593dd 8b 1b 83 3b 00 0f 85 78 97 ff ff             site B window: object-loop continue (mov ebx,[ebx] | cmp [ebx],0), jne 0x452b60
+ok   0x004594b0 0f b7 46 48 66 3d 07 00 74 10 66 3d 13 00 74 slew loop: classes 7, 0x13, 0xa only (a gate is skipped)
+ok   0x004594ef e8 8c 74 ff ff 39 46 14 7e 0a                slew: desired > vmax ...
+ok   0x00459500 89 46 14                                     ... desired = vmax
+ok   0x0045950d 8b 81 78 02 00 00                            slew, class 7: speed limit f+0x278 ...
+ok   0x0045951c 89 46 14                                     ... desired = min(desired, limit)
+ok   0x0045951f 8b 46 40 8b d0 c1 ea 14 f6 c2 01 74 2f a9 00 slew, class 7: flags 0x100000 and 0x80000, then 0x10000000 (or now < f+0x180) ...
+ok   0x0045954d 33 c0 89 46 14 89 46 30 89 46 34 89 46 38    ... desired and remainders = 0 (the only reader of 0x10000000)
+ok   0x0045b741 bd ff ff ff ed                               post pass: ebp = 0xedffffff ...
+ok   0x0045b7f9 21 6e 40                                     ... [obj+0x40] &= ebp: clears 0x10000000 and 0x2000000 on every object each frame
+ok   0x0044b124 f7 46 40 00 00 00 02                         gate post-pass update 0x44b0c0: reads 0x2000000 (not 0x10000000)
+ok   0x0045406a 66 83 7f 48 07 0f 85 c3 00 00 00             order 5: per-frame rewrite of f+0x240/f+0x230 only for a class-7 target
+ok   0x004540b8 05 40 02 00 00                               order 5, class-7 target: f+0x240 = port position
+ok   0x0045411e 81 c1 30 02 00 00                            order 5, class-7 target: f+0x230 = rendezvous
+ok   0x00460c25 89 91 40 02 00 00                            SA_FlyObjectIntoContainer, gate: f+0x240 = B (or the origin for a capital)
+ok   0x00460c49 8b 91 40 02 00 00 8d 81 40 02 00 00 81 c1 30 SA_FlyObjectIntoContainer, gate: f+0x230 = copy of f+0x240
+ok   0x00460c72 66 c7 81 58 02 00 00 05 00                   SA_FlyObjectIntoContainer: order 5
+ok   0x0044e492 66 83 f9 1e 75 7e                            proximity handler 0x44e450: order 0x1e only ...
+ok   0x0044e4af 8d b0 30 02 00 00                            ... reads f+0x230 (the 0x1e start point)
+ok   0x0044e4bd 3d e0 5a 01 00                               ... within 88800 units (177.6 m): no warn
+ok   0x00456f32 8d 86 30 02 00 00                            order 0x12: reads its own f+0x230
+ok   0x00457842 89 91 30 02 00 00                            order 0x12: f+0x230 = ship position
+ok   0x004610df 81 c1 30 02 00 00                            SA_AvoidObjectCollision: f+0x230 = ship position
+ok   0x00461211 81 c2 30 02 00 00                            SA_ClearObjectFromHangar (0x1e): f+0x230 = ship position
+ok   0x0044997e 66 83 be 58 02 00 00 05                      SA_LandAllObjectsInHangar core 0x449930: ship on order 5 ...
+ok   0x0044998c 39 ae 24 02 00 00                            ... to this container ...
+ok   0x0044999b 8b 96 40 02 00 00                            ... reads f+0x240 ...
+ok   0x00449a05 66 c7 86 58 02 00 00 00 00                   ... within r/2 of it: order 0
+ok   0x004624f9 e8 32 74 fe ff                               SA case 0x121 SA_LandAllObjectsInHangar -> 0x449930
+ok   0x00478bc7 8b 86 30 02 00 00                            serializer 0x478690: copies +0x218..+0x24c (save [i])
+ok   0x0047a2c6 89 8b 30 02 00 00                            deserializer 0x479d10: restores +0x218..+0x24c (load [i])
+ok   0x00458f8e f7 43 40 00 00 08 00 74 16 33 ff f6 43 44 04 order 0, autopilot: desired = 0 (unless [obj+0x44] & 4), f+0x224 = 0, -> tail 0x4590e0
+ok   0x004590e0 8b 53 50 39 ba 18 02 00 00                   order 0 tail: f+0x218 test (no remainder write)
+ok   0x00459926 f7 c1 00 00 08 00 0f 84 a9 03 00 00          integrator: autopilot 0x80000 -> controller branch
+ok   0x00459980 8b 43 38 33 ff 3b c7 7e 7a                   integrator: roll remainder e = [obj+0x38] ...
+ok   0x004599d4 e8 47 13 fe ff                               ... controller 0x43ad20 ...
+ok   0x004599f4 89 43 38                                     ... e -= delta (roll)
+ok   0x00459b0e 89 43 34                                     integrator: e -= delta (pitch)
+ok   0x00459c2c 89 43 30                                     integrator: e -= delta (yaw)
+ok   0x004592d9 3d 70 fd 00 00 0f 8c 7c 00 00 00             order 0x1f: nose within 8.11 deg ...
+ok   0x004592e4 8b 87 48 02 00 00 3d 00 00 00 80 75 1d       ... no roll target ...
+ok   0x004592f4 33 c0 89 43 38 6a 01                         ... roll remainder = 0 only; yaw/pitch remainders stay; order 0, result 1
+ok   0x0045932b 33 c9 3b c1 89 4b 30 89 4b 34 89 43 38       order 0x1f with roll target: yaw = pitch = 0
+ok   0x004593a6 e8 15 39 ff ff                               order 0x1f: leaf only on the not-aligned path
+ok   0x00454b70 3b f0 7f 2d                                  order 4: arrival test (fails -> 0x454ba1, toward the dispatcher)
+ok   0x00454b91 89 43 14 89 43 10 e8 c4 b9 00 00             order 4 arrival (P2): speeds only, wake; no remainder write
+ok   0x00454f83 e8 98 80 ff ff                               order 4: dispatcher 0x44d020 after the arrival exit (not reached on the P2 frame)
+ok   SA id 0x9 case 0x0046082e
+ok   SA id 0xd case 0x0046117e
+ok   SA id 0xf case 0x0046104c
+ok   SA id 0x121 case 0x004624e4
+ok   order 0x0 handler 0x00458f8e
+ok   order 0x4 handler 0x004549c2
+ok   order 0x1b handler 0x0045512c
+ok   order 0x5 handler 0x00453fc2
+ok   order 0x12 handler 0x00456722
+ok   order 0x1e handler 0x00457bc3
+ok   order 0x1f handler 0x0045920e
+ok   double 0x00565510 = 1.52587890625e-05
+linear sweep of .text: 396742 instructions
+ok   sweep: or [reg+0x40], 0x10000000 at 0x4543ad, 0x4548ac, 0x45498f, 0x455083, 0x455196
+ok   sweep: readers of bit 0x10000000 of [reg+0x40]: 0x459533 (the slew loop, class 7 only)
+ok   sweep: and-masks on [reg+0x40] clearing bit 28: immediate [] register ['0x45b7f9'] (ebp = 0xedffffff)
+sweep: f+0x230 references in 0x440000..0x46a000: 11
+     0x0044e4af lea esi, [eax + 0x230]                   in proximity 0x44e450 (0x44e450) [i] by address
+     0x0045411e add ecx, 0x230                           in order 0x5 (0x453fc2) [i] by address
+     0x004541cd add edi, 0x230                           in order 0x5 (0x453fc2) [i] by address
+     0x00456f32 lea eax, [esi + 0x230]                   in order 0x12 (0x456722) [i] by address
+     0x00457842 mov dword ptr [ecx + 0x230], edx         in order 0x12 (0x456722) [i] by address
+     0x0045784b add ecx, 0x230                           in order 0x12 (0x456722) [i] by address
+     0x00460b8b mov dword ptr [ecx + 0x230], edx         in SA_FlyObjectIntoContainer (0x46082e) [i] by address
+     0x00460b94 add ecx, 0x230                           in SA_FlyObjectIntoContainer (0x46082e) [i] by address
+     0x00460c55 add ecx, 0x230                           in SA_FlyObjectIntoContainer (0x46082e) [i] by address
+     0x004610df add ecx, 0x230                           in SA_AvoidObjectCollision (0x46104c) [i] by address
+     0x00461211 add edx, 0x230                           in SA_ClearObjectFromHangar (0x46117e) [i] by address
+ok   order 5 references f+0x230 only at ['0x45411e', '0x4541cd'] (class-7 write, non-gate read)
+ok   order 0 (0x458f8e..0x459141) writes to [obj+0x30/0x34/0x38]: 0
+ok   integrator rotation (0x459926..0x459cdb) reads of the order word f+0x258: 0
+ok   integrator (0x4596e0..0x45a7a0) writes to [obj+0x14]: 0
+     order 5 exits to site B (jmp 0x4593dd): 5 at 0x454647, 0x454723, 0x4548b3, 0x454996, 0x4549bd
+RESULT PASS (97 checks)

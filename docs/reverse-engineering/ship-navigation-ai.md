@@ -1217,6 +1217,273 @@ python3 -I verification/results/ship-navigation-ai/gates/arrival_sites.py --log 
 # -> rows 476, gate_warp_calls 0, gate_p4 167, gate_p5 2093 (local log, untracked)
 ```
 
+### 10.11 Stage-B questions: the misalignment reference, the order-point readers, the escort switch, stale remainders
+
+2026-10-13, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`), both `x3story.obj` versions and the installed
+Mayhem loose scripts (`addon/scripts`), for stage B of the gate traffic controller
+([gate-traffic-controller.md](../architecture/gate-traffic-controller.md) D.2.2, D.3, D.5, D.11). Nothing was launched
+and no Wine command ran. Engine facts come from capstone listings over the PE map (raw listings stayed in the session
+scratch, untracked; no Ghidra decompile was needed).
+[`stageb_sites.py`](../../verification/results/ship-navigation-ai/gates/stageb_sites.py) re-reads every quoted byte
+string, the SA and order jump-table entries, and runs three `.text` sweeps (flag `0x10000000`, `f+0x230` references,
+order-0 remainder writes, integrator writes) (97 checks, `RESULT PASS`,
+[`stageb_sites_out.txt`](../../verification/results/ship-navigation-ai/gates/stageb_sites_out.txt)).
+[`kc_escort_flow.py`](../../verification/results/ship-navigation-ai/gates/kc_escort_flow.py) prints the KC escort and
+sector-move methods for stock and Mayhem, the four `__runScript` call sites of `__EscortObject`, and the deciding MSCI
+lines with the scripts' SHA-256
+([`kc_escort_flow.txt`](../../verification/results/ship-navigation-ai/gates/kc_escort_flow.txt)).
+[`stageb_creep.py`](../../verification/results/ship-navigation-ai/gates/stageb_creep.py) is the creep-zone model
+([`stageb_creep.txt`](../../verification/results/ship-navigation-ai/gates/stageb_creep.txt), **[i]**). Symbols as in
+§10.10; `t = (|v|/10 + r_s)·(1 + (tf − 1)/4)` is the order-5 trigger radius.
+
+**Answer.**
+
+* **Q1. The misalignment test measures the stored point.** It compares the ship's nose (row 2 of the flight basis
+  `f+0x870`) with the direction from the ship's centre to the live field `f+0x240`, reached through a pointer, not
+  the leaf's stack copy. For a capital that is the gate origin. It runs after the leaf (site A) in the same frame
+  **[m]**.
+* **The gate flag `0x10000000` does nothing on a gate.** It is the per-frame "being approached" flag of §11.6. Its
+  only reader is the slew loop, for class-7 objects (a carrier being docked at). The post pass clears it every frame
+  **[m]** (sweep).
+* **A both-direction site-B write overrides the 1 m/s creep on every frame.** Site B (`0x004593dd`) is the target of
+  the misaligned branch's own `jmp`. After it, the engine touches `[obj+0x14]` only through the slew loop's caps (vmax,
+  the `f+0x278` speed limit) and the carrier freeze. The handler writes 500 again on the next frame and site B
+  overrides it again **[m]**.
+* **Consequence for D.2.2 [i].** On an F-parallel final line at lateral `ℓ`, the bearing to the origin exceeds 18.195°
+  when the axial distance `z < 3.04 ℓ`. The trigger fires at `z = √(t² − ℓ²)`. The ship therefore creeps before the
+  trigger whenever `ℓ > 0.312 t`.
+  * For the Run160 census windows (`t = ℓ_max + 100 m`) the limits are Titan 344 m, Colossus 322 m, and the two M7s
+    240 and 246 m.
+  * Those limits lie below the whole Titan and Colossus windows and below most of the M7 windows. So the
+    both-direction write is needed on **every** off-axis capital order-5 leg, not only for slots 13–19.
+  * Without it, the creep distance is 88–2,590 m for the Titan.
+* **Q2. On a gate leg only the order-5 handler reads the order point.** It reads `f+0x240` every frame, and nothing
+  caches it beyond the frame. Nothing reads `f+0x230` on a gate leg. It is a copy of `f+0x240` written by
+  `SA_FlyObjectIntoContainer`; its order-5 reader is the non-gate branch, and its other readers belong to orders
+  0x12 and 0x1e **[m]**. A site-A rewrite of B is seen by that frame's misalignment test and by every test from the
+  next frame on **[m]**.
+* **Q3. The escort switch is in the Mayhem MSCI scripts, not in the KC.**
+  * While the leader is still in the sector, the escort loops on `escort ship … timeout 30–34 s` (order 0x14) with a
+    2–3 s wait between legs.
+  * Once the leader's sector differs, the template calls `!move.jump`, and for an NPC owner that calls
+    `Mayhem.Task.Move`. That script flies `follow object <next gate> with precision 5000 m : timeout 5000 ms`
+    (order 0x15, 5 s legs) while `get distance between [THIS] and $nextGate > 10000`.
+  * At 10 km or less it calls `fly to sector`. That reaches `__MoveToSector`, then `__FlyToNextSector`, then
+    `__EnterHyperspace`: KC order 4 to the escort's own warp-in grid point.
+  * Nothing reacts to an escort being far from its slot. There is no re-issued escort order, no teleport for an NPC
+    owner and no wait beyond the ordinary capital queue **[m]** script text, **[i]** for the distance metric.
+* **Q4. Order 0 keeps a stale remainder.** Under autopilot, order 0 zeroes the desired speed and the target only. It
+  never writes `obj+0x30/+0x34/+0x38`. The integrator consumes any remainder regardless of the order **[m]**.
+  * A capital handed over at P2 with a remainder keeps turning through order 0.
+  * The remainder also survives an order 0x1f that ends on its first frame, because that end path zeroes only the
+    roll remainder. It then survives the through-slot wait.
+  * So a 55° pitch remainder turns the nose about 55° away from the axis while the ship waits **[m]** rules, **[i]**
+    magnitude.
+
+#### Q1: the order-5 misalignment test [m]
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| pointer | `esi = &f+0x240`; `[esp+0x2cc] = esi`: a pointer to the live field. The stack copy `[esp+0x4a0]` is only the leaf's argument | `0x0045413e`, `0x0045418b`, `0x004541a6`, `0x00454733` |
+| gate branch | a class-0x12 target jumps to `0x00454261`. That skips the rendezvous read of `f+0x230` and the switch of the pointer to `f+0x230` (non-gate targets, while far) | `0x004541b4`, `0x004541c7`, `0x004541cd`, `0x004541fa` |
+| order in the frame | distance and trigger (`0x0045413e..0x004546e3`), then the leaf `0x0044ccc0` (site A), then the misalignment test. The port-roll match is skipped for a gate (`0x00454760`) | `0x00454745`, `0x004547d9` |
+| direction | `dir = normalise(*[esp+0x2cc] − p+0x30)` to 16.16 unit length (`0x49c8b0`, scale `[0x565510]` = 1/65536) | `0x004547d9..0x00454821` |
+| basis | `0x00450520(ship)`: class 7 → `f+0x870` (flight basis, ship-movement.md §2); row 2 = the nose (`+0x20/+0x24/+0x28`) | `0x00454828`, `0x0045482f`, `0x0045484f`, `0x00454873` |
+| test | `nose·dir < 0xf333` (0.95, 18.195°) → desired `[obj+0x14] = 500`, `[target+0x40] \|= 0x10000000`, `jmp 0x004593dd`. The aligned branch, with its ramp and `[gate+0x40] \|= 0x2000000`, is skipped | `0x00454897`, `0x004548a5`, `0x004548ac`, `0x004548b3` |
+| aligned | `[gate+0x40] \|= 0x2000000`, ramp, `[target+0x40] \|= 0x10000000` (`0x0045498f`), `jmp 0x004593dd` | `0x004548cf`, `0x00454996` |
+
+So the test is relative to `f+0x240`, which is the gate origin for a capital (§10.5). A leaf target off the axis (site
+A's carrot or a funnel line) does not change it.
+
+**The flag `0x10000000` [m]** (sweep of every immediate `0x10000000` in `.text`; register forms matched to a load of
+`[reg+0x40]` within the 8 previous instructions):
+
+| Role | Sites |
+| --- | --- |
+| setters on `[target+0x40]` | order 5 port branch `0x004543ad`, order 5 misaligned `0x004548ac`, order 5 aligned `0x0045498f`, order 4 `0x00455083`, order 0x1b `0x00455196`: exactly these five |
+| reader | `0x00459533`, the slew loop. It reaches the test only for class 7 (`0x00459503`) with bits `0x100000` and `0x80000`. It then zeroes desired speed and remainders (`0x0045954d`; §11.6 "carrier held still"). The slew loop skips every class other than 7, 0x13 and 0xa (`0x004594b0`), so a gate never reaches it |
+| clear | the post pass `0x0045b720`: `ebp = 0xedffffff` (`0x0045b741`), `and [obj+0x40], ebp` (`0x0045b7f9`) for every object, every frame. No immediate `and` on `[reg+0x40]` clears bit 28 |
+| `0x2000000` (aligned branch, order 8) | read by the gate's post-pass update `0x0044b0c0` (`0x0044b124`), which drives part animation via `0x0044aee0` **[i]** meaning. The misaligned branch does not set it |
+
+**Site B against the creep [m].**
+
+| Step in the frame | Writes `[obj+0x14]` | Site |
+| --- | --- | --- |
+| order-5 handler, misaligned | 500 | `0x004548a5` |
+| site B, the object-loop continue, reached by the handler's `jmp` (order 5 has five exits to it: `0x00454647`, `0x00454723`, `0x004548b3`, `0x00454996`, `0x004549bd`) | the module's value | `0x004593dd` |
+| slew loop, after the object loop (classes 7, 0x13, 0xa) | `min(desired, vmax)` | `0x004594ef..0x00459500` |
+| slew loop, class 7 | `min(desired, f+0x278)` when the limit is ≥ 0 | `0x0045950d..0x0045951c` |
+| slew loop, class 7 with `0x100000`, `0x80000` and (`0x10000000` or `now < f+0x180`) | 0, and remainders 0 | `0x0045951f..0x00459558` |
+| slew | `[obj+0x10]` moves toward `[obj+0x14]` by `accel·dt` | `0x0045955b..0x004595b1` |
+
+* **The write stands on every frame.** The handler rewrites 500 each frame and site B overrides it each frame.
+  This is the mechanism small ships already use (`kShipFlagGateDock`; Run155 counted 11,360 such writes, a counter
+  only **[t]**).
+* **Hook-site facts.** No new site is needed. Site B's contract is unchanged (§6, `ship_steering_sites.h`): all GPRs
+  live, flags dead, ESP exact. It runs on the game thread inside `0x00452ad0` with no script below it, and is not
+  re-entered.
+* **One exception: the carrier freeze.** A departing capital with bits `0x100000` and `0x80000` is frozen for a frame
+  whenever another ship sets `0x10000000` on it that frame: a ship on order 5 to it, or on order 4 inside `d_slow`.
+  That frame its desired speed and remainders are zeroed after site B. The integrator writes no `[obj+0x14]`
+  (listing `0x004596e0..0x0045a7a0`), so there is no other later writer.
+
+**Creep zone for an off-axis capital Q [i]** (`stageb_creep.txt`):
+
+* On an F-parallel line at lateral `ℓ` with the nose along F, the bearing to the origin is `atan(ℓ/z)`. The test fires
+  for `z < ℓ·cot 18.195° = 3.04 ℓ`.
+* The trigger fires at `z_t = √(t² − ℓ²)`. The creep zone is therefore reached first iff `ℓ > t·sin 18.195° = 0.312 t`.
+
+| Census hull (D.2.2 window, `t = ℓ_max + 100 m`) | Creep iff ℓ > | Creep distance at the window's low / middle / high ℓ |
+| --- | --- | --- |
+| Titan r 1092 w 583 (370–1,002 m) | 344 m | 88 / 1,225 / 2,590 m |
+| Colossus 1022/546 (331–932 m) | 322 m | 30 / 1,103 / 2,392 m |
+| M7 760/382 (162–670 m) | 240 m | 0 / 618 / 1,659 m |
+| M7 778/352 (135–688 m) | 246 m | 0 / 578 / 1,709 m |
+
+#### Q2: readers of `f+0x240` and `f+0x230` [m]
+
+Sweep of every non-stack `+0x230` displacement, `lea` and `add` in `0x00440000..0x0046a000` (11 sites). A function
+is assigned to a site by the nearest handler or SA case entry below it **[i]**; the listings confirm it at each site
+quoted. The `+0x240` sites are the full displacement list of the same range.
+
+| Field | Reader or writer | When | Site |
+| --- | --- | --- | --- |
+| `f+0x240` | order-5 handler: trigger distance, leaf copy, misalignment pointer | every frame of order 5 (no re-plan gate) | `0x0045413e`, `0x00454192`, `0x004541a6` |
+| `f+0x240`, `f+0x230` | order-5 handler: rewritten from the port, live | **only** a class-7 target (`cmp [edi+0x48],7; jne` at `0x0045406a`); never for a gate | `0x004540b8`, `0x0045411e` |
+| `f+0x240` | `SA_FlyObjectIntoContainer`, gate branch: B (non-capital) or the origin (capital) | on each KC issue of order 5 | `0x00460c25` |
+| `f+0x230` | same case: `f+0x230 = f+0x240` | same | `0x00460c49..0x00460c6c` |
+| `f+0x230` | order-5 handler, rendezvous read | non-gate targets only (the gate jumps over it at `0x004541c7`) | `0x004541cd` |
+| `f+0x230` | proximity handler `0x0044e450`: no warn within 88,800 units (177.6 m) of the 0x1e start point | order 0x1e only (`0x0044e492`) | `0x0044e4af`, `0x0044e4bd` |
+| `f+0x230` | order 0x12: own start point, written by `SA_AvoidObjectCollision` (`0x004610df`) and the handler | order 0x12 only | `0x00456f32`, `0x00457842` |
+| `f+0x230` | `SA_ClearObjectFromHangar`: the 0x1e start point | order 0x1e | `0x00461211` |
+| `f+0x240` | `SA_LandAllObjectsInHangar` (SA 0x121) core `0x00449930`: every ship on order 5 to the container within `r/2` of its `f+0x240` gets order 0 | only when a script calls it on that container | `0x0044999b`, `0x00449a05` |
+| `+0x218..+0x24c` | serializer `0x00478690` / deserializer `0x00479d10` (save and load **[i]**) | save, load | `0x00478bc7`, `0x0047a2c6` |
+
+Every other `+0x240` site in the range belongs to the handler or SA case of another order, each reading its own
+parameter (§1.3). No SA case returns `f+0x240` or `f+0x230` to a script. `SA_StopObject` reads `f+0x240` only on
+order 0x21 (`0x00461ed2`).
+
+**For the small-ship B rewrite of D.5:**
+
+* Rewrite `f+0x240` from site A and every order-5 reader sees it.
+  * The rewrite happens during the leaf call (`0x00454745`). On that frame the trigger distance (`0x0045413e`) and the
+    leaf copy were already taken with the old B; the misalignment test (`0x004547d9`) reads the new B.
+  * From the next frame on, all three use the new B.
+  * The handler never rewrites `f+0x240` for a gate, so the value holds until the KC re-issues order 5.
+* **Writing `f+0x230` is not needed.** Nothing reads it on a gate leg. Writing it does no harm: orders 0x12 and 0x1e
+  overwrite it before they use it.
+* **Saves.** A save taken during the leg stores the rewritten B **[i]**. After a load, the guard "field equals the
+  engine's arc point" fails, so the module leaves the field alone, and that B is still a lower-arc point.
+* **Capitals [i].** The same reader list means that a site-A rewrite of a capital's `f+0x240` to Q would move the
+  trigger centre and the misalignment reference to Q together.
+
+#### Q3: the escort switch [m] script text, [i] where marked
+
+**KC (stock = Mayhem after masking, 164 / 29 / 61 statements).**
+
+`2004::__EscortObject(leader, dist, follow, timeout)` (stock `b8b2a`, Mayhem `d10f7`) loops as follows:
+
+* return 7 when attacked;
+* return 8 when the leader is gone, when `m1 != leader.GetEnvironment()` (the leader left the sector), or for a
+  different owner beyond `param12 + sizes` while one of the two is hidden;
+* return 12 on the timeout;
+* in sector: `follow` → `SA_FollowObject` (order 0x15); else `SA_EscortObject` (order 0x14);
+* out of sector: `__galaxyFlightStep` toward the leader.
+
+`__runScript` (702) calls it from four MSCI commands (`kc_escort_flow.txt`):
+
+| Command | Call | Order |
+| --- | --- | --- |
+| `escort ship` | `(target, 0, 0, 0)` | 0x14 |
+| `escort ship … timeout` | `(target, 0, 0, t)` | 0x14 |
+| `follow object … with precision d m` | `(target, 500·d, 1, 0)` | 0x15 |
+| `… and timeout t` | `(target, 500·d, 1, t)` | 0x15 |
+
+`2004::__MoveToSector` (`b7470`) loops `__FlyToNextSector` until `m1` is the target sector. `__FlyToNextSector`
+(`b7231`) takes the next gate from `GS_Route` and runs `__EnterHyperspace`. Nothing in these methods tests the
+distance to a slot or to a leader.
+
+**MSCI (installed loose scripts; SHA-256 in `kc_escort_flow.txt`).** `!move.follow.template` (Mayhem-edited, mtime
+2026-10-02) runs the escorts of a squadron leader:
+
+| Step | Rule | Line |
+| --- | --- | --- |
+| loop | `while $leader exists`: wait 2–3 s, attack checks, then `Follow:` | 70, 97 |
+| in the leader's sector | `escort ship $target : timeout = $timeout ms` with `$timeout` = 30,000–34,000 ms: the measured 0x14 legs of about 33 s with 3 s order-0 gaps | 261, 270 |
+| leader left | `CheckLeader`: `[SECTOR] != $leader.sector` → `!move.jump : target = $leader withsupportships = [TRUE]`, then wait 1–2 s and restart | 314, 320 |
+| `!move.jump`, NPC owner | not Player/Phanon → `MoveThroughGates` → `Mayhem.Task.Move : sector = leader's sector, posArrayOrTarget = $leader`. The beacon teleport (`set position`) exists only for Player/Phanon owners | 18–22, 83, 134 |
+| `Mayhem.Task.Move` loop | while `[SECTOR] != $sector`: the next gate on the (safe) route → `FlyThroughNextGate` → `goto Restart`, re-reading the leader's sector each pass | 87–159 |
+| `FlyThroughNextGate` | `$distance = get distance between [THIS] and $nextGate`; **`> 10000` → `follow object $nextGate with precision 5000 m : timeout = 5000 ms`** (order 0x15 to the gate, a 5 s leg); otherwise **`fly to sector $nextSector`** | 220–225 |
+| `fly to sector` | KC `__MoveToSector` → `__FlyToNextSector` → `__EnterHyperspace`: for a capital, warp-in slot → **order 4 to its grid point**, then 0x1f, through slot, order 5 (§10.1) | KC above |
+
+* **The condition [m].** Two things must hold before an escort gets order 4: the leader is no longer in the escort's
+  sector, and the escort is within 10,000 m of the next gate on its route. The template only notices the leader's
+  sector change after its current 0x14 leg ends and its 2–3 s wait has run. The distance is checked once per
+  `Mayhem.Task.Move` pass, i.e. at most every 5 s while the escort is beyond 10 km.
+* **The distance [i].** `get distance between` is taken as the centre distance (`SA_Distance`, gate-queue-script.md
+  §4). Flight 1's switch at 10.0 km agrees.
+* **Timing [i].** The M7s' order 4 came 4.2–4.5 s after the leader's launch: one 2–3 s wait plus the
+  `!move.jump`/`Mayhem.Task.Move` overhead. Run160b's escorts were beyond 10 km, so they flew 5 s 0x15 legs
+  (`cap_orders.txt`: 5.0 s 0x15 segments with about 0.1 s gaps) until 100.5 s and 187.3 s.
+* **An escort far from its slot [m].** Nothing re-issues an escort order, teleports the ship (NPC owner) or waits on
+  it. `__EnterHyperspace` treats the escort as any capital:
+  * it requests a warp-in slot (refused: `SA_Idle` wander for 1–11 s, §10.2);
+  * it flies order 4 from wherever it is to its grid point;
+  * it rotates and requests the through slot.
+
+  The template stays blocked inside `fly to sector` until the next sector is reached or the transit fails. On
+  failure, `__FlyToNextSector` waits 2–3 s and `Mayhem.Task.Move` restarts.
+* **For D.3.**
+  * There is no KC-side 10 km switch. A petal 8–10 km from the gate gets order 4 at the first `FlyThroughNextGate`
+    pass after the leader has left. A petal at 10–12 km first flies one or more 5 s 0x15 legs, which are steered
+    orders, aimed at the gate.
+  * No escort can receive order 4 before its leader is out of the sector.
+
+#### Q4: order 0 and the stale remainder [m]
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| order 0, autopilot `0x80000` | `[obj+0x14] = 0` unless `[obj+0x44] & 4`; `f+0x224 = 0`; then the shared tail: `f+0x218` cleanup, `f+0x28c = 0`, `f+0x210 = now`. **No write to `+0x30/+0x34/+0x38`**: the sweep of `0x00458f8e..0x00459141` finds none | `0x00458f8e..0x00458fa8`, `0x004590e0..0x0045913c` |
+| order 0, manual | decays the rates `+0x24..+0x2c` (not the AI path) | `0x00458fad..0x004590db` |
+| integrator, autopilot | per axis with `e ≠ 0`: controller `0x0043ad20`, `e −= δ` (roll `0x004599f4`, pitch `0x00459b0e`, yaw `0x00459c2c`). No read of the order word in `0x00459926..0x00459cdb` | `0x00459926`, `0x00459980`, `0x004599d4` |
+| order-4 arrival (P2 frame) | speeds and wake only. The dispatcher/leaf call (`0x00454f83`) lies after the arrival exit, so no leaf runs on the P2 frame | `0x00454b70`, `0x00454b91`, `0x00454f83` |
+| order 0x1f, aligned on the first frame, no roll target | `[obj+0x38] = 0`, order 0, result 1; **yaw and pitch remainders untouched**, leaf not called | `0x004592d9`, `0x004592e4`, `0x004592f4` |
+| order 0x1f with a roll target | yaw = pitch = 0, roll = target − roll | `0x0045932b` |
+| order 0x1f, not aligned | leaf `0x0044ccc0` toward position + gate axis (rewrites all three) | `0x004593a6` |
+
+**What happens to a ship with a stale remainder.**
+
+* **Capital.** Whatever the last order-4 leaf call wrote, minus what the integrator consumed since, survives P2 and
+  the ≥ 1 order-0 frame.
+  * If 0x1f then ends on its first frame (amendment 13's goal), the yaw and pitch remainders survive 0x1f as well.
+    They keep turning the ship through the refused-slot wait (`TI_WaitRandomForInterrupt`, order 0) until they are
+    used up.
+  * Order 5 then starts misaligned, and Q1's 1 m/s creep applies unless site B writes the speed.
+  * If 0x1f is not aligned on its first frame, its leaf replaces the stale values with a turn toward the axis.
+* **Small ship.** Order 5 follows P2 after one KC hand-over, and its first frame's leaf rewrites the remainders. The
+  stale remainder lasts only the order-0 frames.
+* **Who carries `0x80000` [i].** The Run160 capitals' trace rows come from site B, whose stub admits only class 7
+  with autopilot, so those ships carried `0x80000`.
+* **Hook-site facts.** P2 (`0x00454b91`) has EBX = obj with flags dead. Writing `[ebx+0x30]/[ebx+0x34]` there (for
+  example 0, or the braking angle of ship-movement.md §13.4 item 3) stays inside its existing contract. Nothing reads
+  the remainders between that site and the integrator (pass B) except a 0x1f leaf on a later frame **[m]** listing,
+  **[i]** for the proposal.
+
+**Still inferred or open.**
+
+* The meaning of `0x2000000` in `0x0044b0c0` (part animation).
+* The save/load reading of `0x00478690`/`0x00479d10`.
+* The distance metric of `get distance between`.
+* Whether every Mayhem capital escort runs `!move.follow.template`. `Mayhem.Squadron.Add` and the squadron task
+  scripts start it; others (`!ship.cmd.protect.std`) also reach it. The Run160 order pattern matches it.
+* The order-0x14 end on a lost leader (§1.3) is taken from the handler table, not re-listed here.
+
+```sh
+python3 -I verification/results/ship-navigation-ai/gates/stageb_sites.py     # RESULT PASS (97 checks)
+python3 -I verification/results/ship-navigation-ai/gates/kc_escort_flow.py   # KC escort/sector methods + MSCI lines
+python3 -I verification/results/ship-navigation-ai/gates/stageb_creep.py     # creep-zone model [i]
+```
+
 ## 11. Docking approach
 
 2026-10-13, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`) and both `x3story.obj` versions, for the

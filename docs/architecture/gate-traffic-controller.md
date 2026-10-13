@@ -629,6 +629,28 @@ uses (QPC for diagnostic timing only).
 * **The off-axis pass is visible.** The hull passes 0.4–1.0 km below the bubble centre, partly outside the bubble's
   0.91 r section. This is a user check at the first flight.
 
+### D.12 Corrections from the stage-B disassembly (ship-navigation-ai.md §10.11, 2026-10-13) [m]
+
+* **D.2.2:** the order-5 misalignment test compares the nose (flight basis row 2) with the direction to the live stored
+  point `f+0x240` (the gate origin for a capital), after the leaf call in the same frame, threshold 18.195°. The 1 m/s
+  creep therefore starts before the trigger whenever ℓ > 0.312 t, i.e. on practically every off-axis Q (Titan creep
+  distance 88–2,590 m). The capital order-5 leg to Q needs the both-direction site-B speed write on **every** off-axis
+  Q, not only slots 13–19; site B runs after the handler's 500 write and nothing but the slew caps touches `[obj+0x14]`
+  afterwards, so the write holds every frame. Exception: a capital carrier being approached that frame (order 5 or close
+  order 4) has its speed and turn zeroed after site B.
+* **D.5:** only the order-5 handler reads `f+0x240` on a gate leg, every frame, uncached, and never rewrites it for a
+  gate; a rewrite from site A is seen by that frame's misalignment test and by the trigger test from the next frame.
+  `f+0x230` is unread on a gate leg (its readers belong to 0x12 and 0x1e): writing it is unnecessary.
+* **D.3:** the escort switch is Mayhem script, not KC: while the leader is in the sector the escort loops "escort ship"
+  (0x14, 30–34 s legs, 2–3 s waits); once the leader's sector differs, beyond 10 km from the gate it issues "follow gate"
+  (0x15, 5 s legs, precision 5 km), within 10 km "fly to sector" → KC order 4 to its own grid point. No escort gets order
+  4 before the leader has left the sector; nothing reacts to an escort far from its slot. Petals for escorts therefore
+  live on 0x14 (leader present) and 0x15 (leader gone, > 10 km); the switch to order 4 happens at 10 km from the gate.
+* **17.1 / D.8:** order 0 never zeroes the turn remainders `obj+0x30/34/38` and the integrator keeps consuming them under
+  autopilot; a first-frame 0x1f zeroes only roll. A capital handed over with a pitch remainder keeps turning through the
+  through-slot wait. Stage B: the P2 stub zeroes the three remainders on a kept hand-over (within its contract), so the
+  ship holds the attitude the funnel delivered.
+
 ### D.9 Level 2 (later)
 
 The DLL would issue order 5 itself once a ship is lined up. A one-line clearance patch in a loose `L\x3story.obj`
