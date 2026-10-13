@@ -93,7 +93,7 @@ ship's life); the direction h and the window rule of amendment 7 are unchanged a
 arrival test) is untouched. The shifted line still enters the 0.75 r completion sphere (margin 0.5 r); the worst
 heading error to a pass point on the 0.55 r / +-45 deg arc is 13.9 deg geometrically at 0.25 r (12.1 at 0.20 r, 15.8 at
 0.30 r, 17.8 at 0.35 r; `verification/results/ship-steering/spread_bound.py`), under the 18.2 deg creep threshold;
-adjacent ring positions cross 211 m apart. (2) *Exit spread.* Site W, the `SA_WarpObjectIn` case 0x00465bac (6 B,
+adjacent ring positions cross 211 m apart. (2) *Exit spread.* **Correction 2026-10-13 [m]:** site W never runs on a gate arrival; the sector post pass launch `0x00444170` starts order 0x21 itself and `SA_WarpObjectIn` exits at `0x00465b68` before the case ([ship-navigation-ai.md §10.10](../reverse-engineering/ship-navigation-ai.md)). The engine's own placement is a 15° fan on the upper 0.55 r arc for non-capitals (6 exit slots) and the axis for capitals; a spread needs the new site `0x00444606`. The stub stays armed but inert; it is to be moved under the gate traffic controller design. Original text: Site W, the `SA_WarpObjectIn` case 0x00465bac (6 B,
 `mov ecx,[ebx+0x70]` | `mov edx,[ebx+0x50]`): before the case copies the ship's position into f+0x240 the stub
 offsets `phys+0x30..` laterally by the ship's ring position at 0.3 r_gate (never along the axis) for a non-capital
 ship warping in at a class-0x12 target; the case's own write (`f+0x240 + 1348650 x row 2`), the handler's per-frame

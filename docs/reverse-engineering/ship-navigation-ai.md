@@ -101,7 +101,7 @@ class 7. Order codes are the values written to the word at `flight+0x258`.
 | 0x09 | `SA_FlyObjectIntoContainer(ship,cont,port,path)` | `0x0046082e` | **5** | `+0x224`; final point `+0x240..` and rendezvous `+0x230..` (dock port path `0x00451f80`, or a gate-axis point for class `0x12` gates); `+0x250/+0x254` |
 | 0x0d | `SA_ClearObjectFromHangar(ship,cont,port)` | `0x0046117e` | 0x1e (undock) | `+0x224`, `+0x230` = current position, `+0x250`; exit point via `0x00451f30` |
 | 0x0e | `SA_WarpObjectAway(ship,gate)` | `0x0046126a` | 8 | `+0x214` = now + 900 ms; `+0x240` = current position; gate flags |
-| 0x21 | `SA_WarpObjectIn(ship,gate)` | `0x00465b22` | 0x21 | **writes the position directly** (`phys+0x30..`) to the gate exit; `+0x214`, `+0x218` |
+| 0x21 | `SA_WarpObjectIn(ship,gate)` | `0x00465b22` | 0x21 | **writes the position directly** (`phys+0x30..`) to the gate exit; `+0x214`, `+0x218`. On a KC gate arrival order 0x21 is already running (started by the launch `0x00444170`), so the case only waits (§10.10) |
 | 0x0f | `SA_AvoidObjectCollision(ship,radius,rand)` | `0x0046104c` | **0x12** | `+0x230..` = start position; `+0x260` = radius, default `[obj+0xa4] + 150000` (`0x00461106` `05 f0 49 02 00`); `+0x264` = 0 or 1..10 random; `+0x278 = -1` (speed limit off) |
 | 0x16 | `SA_TurnToObject` | `0x00461fdd` | 6 | `+0x260` = arg or 400000 |
 | 0x1d | `SA_RotateToAngles` | `0x004653d1` | 0x1f | `+0x240/4/8` = angles (`0x80000000` = none) |
@@ -407,9 +407,9 @@ then `FlyObjectIntoContainer(ship, gate)` (order 5 with a gate-axis point) and `
 900 ms). A ship crossing a gate plane triggers `0x0044d4c0` → 3 → `"CanWarp"`. That happens within
 0.7·r_gate, or 0.14·r_gate for gate subtypes 5..8 (`0x0044d5de`, `0x0044d5e8`), and only when
 `[ship+0x40] & 2` (meaning not established) or manual player control (`0x0043ff80`). AI ships transit
-through orders 5 and 8. Arrival: `WarpObjectIn` (order 0x21) places the ship at the exit, then
-`ClearObjectFromHangar` (order 0x1e) moves it clear. `__LeaveHyperspace` compares `SA_Distance` with
-1750000 (3.5 km) before the next leg **[i]**.
+through orders 5 and 8. Arrival: the engine's post-pass launch `0x00444170` places the ship and starts order 0x21;
+`WarpObjectIn` only waits for it, then `ClearObjectFromHangar` (order 0x1e) moves it clear (§10.10). The
+`SA_Distance` < 1750000 loop in `__LeaveHyperspace` belongs to the tow branch only (§10.10).
 
 **Undocking [m].** Order 0x1e from `__StartInHangar`. The proximity test ignores the carrier being left
 (§3.1). Mayhem additionally sets `Flags2 0x20000` for ≈3 s (`SafeUndock`). As candidate B that bit
@@ -724,7 +724,8 @@ re-issues order 5 **[m]**.
   non-gate branch uses (`[esp+0x2f4]` at `0x00454969`); the gate branch calls `0x00450980` itself. This corrects
   ship-movement.md §9 ("a ramp around half its max speed"): the ramp runs from vmax at `r` down to vmax/2 at `r/5`.
 * **What ends it:** the arrival test above, not `"CanWarp"`. `0x0044d4c0` raises `"CanWarp"` only with
-  `[ship+0x40] & 2` or manual control (§4). Whether AI ships ever carry bit 2 was not established.
+  `[ship+0x40] & 2` or manual control (§4). Bit 2 is the player object (`SA_SetAsPlayerObject`), so AI ships never
+  raise it (§10.10).
 * The KC sets `m45 = 0xA0001` before order 5, so `CollisionWarn` takes its "ignore" branch for the whole leg.
 * **Order 8 (`0x004551fe`):** `SA_WarpObjectAway` stores the current position in `flight+0x240` and sets
   `+0x214 = now + 900`. Each frame until then the handler sets `[gate+0x40] |= 0x2000000` and `[ship+0x40] |= 0x400`,
@@ -820,7 +821,7 @@ for gate targets.
 * ~~the meaning of `TI_WaitRandomForInterrupt`'s arguments~~: `arg0 + rand(arg1)` ms, object `arg2` (gate-queue-script.md §3);
 * ~~the gate's `m3` in the same-direction exemption~~: the requesting gate's `m3`, i.e. in-sector only **[i]** (gate-queue-script.md §2);
 * the time-factor reading of `[*0x606f34+0xcc]`;
-* whether AI ships carry `[ship+0x40] & 2`;
+* ~~whether AI ships carry `[ship+0x40] & 2`~~: bit 2 is the player object, so they do not (§10.10);
 * the order-5 result 7;
 * whether M7 derives from KC class 2019;
 * the `m41 == g8` reading (owned by the player), which differs from the §3.2 reading ("the player's ship"); both
@@ -969,8 +970,8 @@ mesh; the rim band is the triangles within 0.05 r of the hole, i.e. the inner li
 * **Order 8 launch (vanilla).** It starts at B, whose lateral offset is 0.55·cos θ·r ∈ [0.389, 0.55] r, and runs
   parallel to the axis. It clears the installed Terran ring for r_ship ≤ 0.113 r (362 m). On the stock Argon ring it
   would touch for r_ship > 0.055 r (75 m) **[i]**.
-* **Warp-in (exit spread).** `SA_WarpObjectIn` writes `f+0x240 = P` (the ship's position at the call, after the site-W
-  offset). It then places the ship at `P + 1,348,650 · row 2` (`0x00465bec..0x00465c0a`), and the handler moves it back
+* **Warp-in (exit spread).** Superseded by §10.10: on a KC arrival the case below is not reached. `SA_WarpObjectIn`
+  writes `f+0x240 = P` (the ship's position at the call, after the site-W offset). It then places the ship at `P + 1,348,650 · row 2` (`0x00465bec..0x00465c0a`), and the handler moves it back
   to `P` along the axis over 900 ms. The path is axis-parallel at the offset lateral distance, so the clear-cylinder
   rule applies over its whole length. 1,348,650 units is 2.44 r for the 1104.5 m gates and 0.84 r for the installed
   Terran gate. Order 0x21 is not exempt from the pair filter; the following 0x1e is.
@@ -990,7 +991,228 @@ mesh; the rim band is the triangles within 0.05 r of the hole, i.e. the inner li
 * That named bodies keep the BodyData slot `+0x04` = −2 (default LOD, no "all groups"), per body-format §6.
 * The gate root node (TGates column 0: body 0, the 47-unit test body, or 477, missing). It may carry a ≤ 0.1 m
   collision mesh at the origin; not traced.
-* The ship's position `P` at `SA_WarpObjectIn`: the sector-entry placement was not traced.
+* ~~The ship's position `P` at `SA_WarpObjectIn`~~: traced in §10.10. The launch `0x00444170` places the ship, and
+  site W is not reached on KC arrivals.
 * No runtime `[gate+0xa4]` on record. A Run 153 `ship_gate_approach` row (`offset_m` = 0.25 r) would measure it.
 * Whether Mayhem places other colliding objects at its gates (stations, debris from the director or the map) was not
   checked.
+
+### 10.10 The transfer trigger, the arrival placement and arrival signals
+
+2026-10-13, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`) and both `x3story.obj` versions, for the gate
+traffic controller. Nothing was launched and no Wine command ran. Every engine fact below comes from capstone instruction
+listings over the PE map (raw listings stayed in `~/x3-nav-study/traffic/`).
+[`arrival_sites.py`](../../verification/results/ship-navigation-ai/gates/arrival_sites.py) re-reads every quoted byte
+string, the SA and order jump-table entries, the two doubles of the exit fan and the proposed hook window
+(121 checks, `RESULT PASS`, [`arrival_sites_out.txt`](../../verification/results/ship-navigation-ai/gates/arrival_sites_out.txt)).
+[`kc_arrival_flow.py`](../../verification/results/ship-navigation-ai/gates/kc_arrival_flow.py) prints the KC arrival
+methods for stock and Mayhem ([`kc_arrival_flow.txt`](../../verification/results/ship-navigation-ai/gates/kc_arrival_flow.txt)).
+`r` = `[gate+0xa4]`, `r_s` = the ship's `[obj+0xa4]`, `f` = `[obj+0x50]`, `p` = `[obj+0x70]`, gate rows R, U, F = rows
+0, 1, 2 of `[gate+0x70]+0x40` as in §10.
+
+**Answer.**
+
+* **Capital off-axis pass: yes, within a bound.** Order 5 to a gate ends on the distance from the ship's **centre** to
+  the **stored order point** `f+0x240` (the gate origin for a capital). The radius is the ship's own,
+  `(|v|/10 + r_s)·(1 + (tf − 1)/4)`, not the gate's. There is no plane test and no collision test. A capital whose path
+  passes the origin at lateral distance `ℓ` transfers iff `ℓ` is below that radius. At 0.5 r (552 m on a 1104.5 m gate)
+  that holds for the M2/M1/TL medians (1337/1170/1135 m) and fails for hulls below 552 m (the M1/M2/M7 minima are
+  227/307/216 m, the M7 median 560 m)
+  **[m]** rule, **[i]** class numbers. Our steering leaf's point is not what is tested.
+* **Small ship off-axis pass: no.** Its `f+0x240` is the pass point B on the lower 0.55 r arc (§10.5), and the radius is
+  `r_s + |v|/10` (about 40 m for an M3). Only a pass within that distance of B transfers **[m]**.
+* **`"CanWarp"` is not involved for AI ships.** Its bit-2 condition is "the player's ship" (`SA_SetAsPlayerObject`), and
+  the alternative is manual player control **[m]**.
+* **Capital off-axis placement at W: no; at the launch, yes.** The arrival position is computed by the engine's
+  post-pass launch `0x00444170`, which also starts order 0x21 itself. `SA_WarpObjectIn` then finds order 0x21 already
+  running at that gate and returns before the placement code, so site W (`0x00465bac`) is never reached on a KC arrival
+  **[m]**. Run159 logged 0 W entries in 476 summaries **[t]**. A 6-byte window inside the launch, `0x00444606`, is the
+  site where a lateral offset carries through the whole arrival (table below).
+* **Arrival signal.** There is nothing for capitals before the arrival run itself. A non-capital polls
+  `SA_IsWarpOutSlotAvailable(destination gate)` first. With a free slot it arrives in the same KC run **[i]**. Once the engine
+  object exists, the ship is launched within the same main-loop iteration **[i]**, appears 2.7 km behind its exit point
+  and reaches it 900 ms later.
+
+#### Q1: what ends order 5 at a gate, and what the transfer is [m]
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| distance | `d = \|f+0x240 − p+0x30\|` each frame (`0x00412490`: `[arg] − [ecx]`, length `0x00469b80`) into `[esp+0x1c]` | `0x0045413e`, `0x0045414f`, `0x00454182` |
+| leaf target | a stack copy of `f+0x240` (`[esp+0x4a0]`) goes to the leaf `0x0044ccc0` | `0x00454192`, `0x00454733`, `0x00454745` |
+| radius | `t = (\|[obj+0x10]\|/10 + r_s)·(1 + (tf − 1)/4)`, tf = `[*0x606f34+0xcc]` 16.16 (time factor **[i]**) | `0x00454303..0x00454368` |
+| test | gate target → `d <= t` (`setle`), evaluated on every frame | `0x00454384`, `0x004546e3` |
+| end | speeds 0, order 0, result 1 (P4 window of §10.8) | `0x00454700` |
+
+* **The transfer is script-driven.** Result 1 wakes `__EnterHyperspace`, which issues `SA_WarpObjectAway` (order 8,
+  900 ms kinematic launch along +F from wherever the test fired, §10.5). The exit path then runs `ReleaseFromSlot` and
+  `Remove()`, and `__FlyToNextSector` calls `__LeaveHyperspace` in the destination (§10.1) **[m]**.
+* **Leaf point versus stored point.** Site A (and any replacement leaf target) changes only the copy at `[esp+0x4a0]`.
+  The test reads `f+0x240`, so the module can route the ship anywhere without moving the trigger **[m]**.
+* **Where a capital stops.** It stops at `d = t`, not at the plane: for an M2 median at 104 m/s, 1347 m from the origin
+  on the axis **[i]**. At lateral `ℓ` the test fires `√(t² − ℓ²)` before the plane (1229 m at ℓ = 552 m). Order 8 then
+  starts there and crosses the plane at `ℓ`. The ordinary installed gates have no collision mesh. On a Terran ring,
+  `ℓ + r_s ≤ 0.663 r` must hold (§10.9) **[i]**.
+* **If `ℓ ≥ t`** the centre passes the plane without arrival. Order 5 keeps steering at the origin, and the 500 units/s
+  misaligned branch of §10.5 turns the ship back **[i]**.
+* **`"CanWarp"` (`0x0044d4c0` → 3), the player's path only.** The pair loop (`0x0045d727`, centre distance from
+  [sector-collide.md](sector-collide.md)) calls it for a ship against a class-0x12 object (`0x0044d4fe`). It requires:
+  * `[ship+0x40] & 2` (`0x0044d50c`) or `0x0043ff80` (`& 0x40000` and not autopilot `0x80000`, `0x0043ff83`/`0x0043ff8a`);
+  * not order 0x21 (`0x0044d523`);
+  * centre distance `< r` (`0x0044d531`) and `< k·r` with k = 0.7, or 0.14 for subtypes 5..8 (`0x0044d5de`/`0x0044d5e8`/`0x0044d606`);
+  * the velocity `p+0x100 + [obj+0x60]` (`0x0044d6b8`) heading toward the plane, i.e. the same sign as the axial offset
+    `(G − S)·F`;
+  * `|(G − S)·F| <= 0.75 r_s + (|v|/10 + 0.9·|0.01 r|)·(1 + (tf − 1)/4)` (`0x0044d618`, `0x0044d64a`, `0x0044d703`).
+
+  **Bit 2 is the player object:** the only immediate writers in `.text` are `0x0044ada1` (`|= 0x40002`) and
+  `0x0044ae93` (`&= ~2`), both inside `SA_SetAsPlayerObject` (case `0x00463de6`). KC `2004::Activate` calls it with
+  `this == g9`. AI ships never carry the bit, which closes the §10.8 open item **[m]**.
+
+#### Q2: the arrival placement path
+
+**Sequence [m]** (KC statements from `kc_arrival_flow.txt`, stock offsets; Mayhem `__LeaveHyperspace` d592c differs only by a
+`m58 = TI_GetAbsTime()` stamp):
+
+1. **`__LeaveHyperspace`** (bd16d) sets the KC position `m0` to the gate's KC position and `m0[6..8]` to
+   `−gate.GetDirectionVector()`. When the destination gate has an engine object and the ship has none, it sets
+   `m1 = gate` and calls `Activate()`. Because `m1` is a gate, not a sector (2001), `2004::Activate` calls
+   `SA_AllocObject(7, …)` and **`SA_MoveObjectIntoContainer(m3, gate)`**. It does not call `SA_StartObjectInSpace` or
+   `SA_SetPos[Safe]AndDirection` (aedbd..aee2f). `0x004497b0` links the ship into the gate's class-7 list and sets
+   `[obj+0x54] = gate`; it writes no position (`0x004498f9`).
+2. **`SA_StartInHangar(m3, gate, −1)`** (bd2b8, case `0x004626e2` → core `0x00443920`):
+   * sets `f+0x250 = −1` and clears the flight mode;
+   * a **non-capital** (`0x0043fd50` false, `0x00443a93`) takes a random free entry among **6 warp-out slots** (7 for the
+     player ship) in the gate's flight block: occupant `[gate.f+0x1dc+4i] = ship`, expiry
+     `[gate.f+0x1c0+4i] = now + 20000` (`0x00443b3d`, `0x00443b53`);
+   * with no free slot it returns 0, which becomes KC result 10, and the KC retries after `TI_Delay(1000)` (bd2fa).
+     Capitals take no slot;
+   * then `[obj+0x40] |= 0x80` and core result 1 (`0x00444157`, `0x00444160`). The case leaves the task **waiting**
+     (`0x0046272e` → `0x00460e92`) with no order set.
+3. **The launch `0x00444170(ship, gate)`.** The sector post pass `0x0045b720` walks every gate's contained class-7 list
+   `[gate.f+0x54]` and launches each ship with flag 0x80 (`0x0045b777..0x0045b797`). The post pass runs after the order
+   interpreter in pass A (`0x0043a395`). In the main loop the KC scheduler (`0x00403aff`) runs before the sector update
+   (`0x00403b17`). The launch:
+   * sets `[gate.f+0x180] = now + 10000` and order 0;
+   * computes the **exit point P** in the gate frame (table below) and writes `p+0x30 = P`;
+   * builds the orientation as the gate matrix times angles (0x8000, 0, 0) (`0x00444594`, `0x0044459d`, `0x004445b4`):
+     a 180° yaw, so the ship faces −F, out of the gate face **[m]** angle, **[i]** sign;
+   * writes **order 0x21 itself**: `f+0x258 = 0x21`, `f+0x218 = 1`, `f+0x214 = now + 900`, `f+0x240 = P`
+     (`0x00444612`), `[obj+0x40] |= 0x400`, `p+0x30 = P + 1,348,650·F` (2697 m behind the plane side it exits from),
+     `f+0x224 = gate`;
+   * sets speed 120000 (240 m/s), or 60000 for a capital, and desired 20000 clamped to vmax (`0x004448b3`, `0x004448c0`);
+   * moves the ship into the sector through `0x00449510`, the routine `SA_StartObjectInSpace` uses (`0x00462066`), and
+     clears 0x80;
+   * only for the player's capital (bit 2), runs `0x00443620` on class-7 ships within the Chebyshev distance
+     `2·(r_a + r_b)` (`0x00444906..0x004449fb`, not traced);
+   * **wakes the KC task with 1** (`0x00444a32`).
+4. **Order 0x21, 900 ms** (`0x0045533b`). Each frame it writes `p+0x30 = f+0x240 + 1.665·u²·F` with `u` = ms left, sets
+   0x400 and **zeroes `[obj+0x14]` and `[obj+0x10]`** through the shared order-8 tail (`0x00455330`). At the deadline it
+   snaps `p+0x30 = f+0x240` (`0x0045537c`), clears 0x400, sets order 0 and wakes with 1. The ship therefore ends at P
+   **at rest, facing −F**.
+   * The launch frame's integrator (pass B) still moves it one step at the launch speed before the handler's absolute
+     writes take over **[i]**.
+5. **`__LeaveHyperspaceWarpIn`** (bd671), in the resumed task:
+   * calls `SA_SetDesiredSpeed(0)`, then **`SA_WarpObjectIn(m3, gate)`**. The case finds `f+0x258 == 0x21` and
+     `f+0x224 == gate` and jumps to `0x00465c9c` (`0x00465b68`). It only registers the waiting task: **no placement, and
+     site W is skipped**;
+   * then calls **`SA_ClearObjectFromHangar(m3, gate, −1)`** (order 0x1e; port < 0, so no exit point, `0x00461236`);
+   * then `m45 = 0` and, if flagged, `SA_AvoidObjectCollision`. `__LeaveHyperspace` returns 3 right after. Its
+     `SA_Distance < 1750000 + 2·size` loop (bd49a) belongs to the `m80` (tractor tow) branch only, which corrects §4.
+6. **Order 0x1e at a gate** (`0x00457bc3`):
+   * `dz = (S − G)·F` (`0x00457c5e`);
+   * the order ends with result 1 once `|dz| > r` for the "large" set `0x0043fd00` {TL, M0, M1, M2, TL_P, M6, M7, TM, M8},
+     or `|dz| > r/4` for the others (`0x00457c7e`, `0x00457c89`);
+   * until then it steers at `S + F·(dz ∓ r)`, a point on the ship's **own** axis-parallel line, so the lateral offset is
+     kept;
+   * it forces the speed to 60000 (large) or 120000 every frame and the desired speed to vmax (`0x00457d48`, `0x00457d5c`).
+   The ship jumps from rest to 120 or 240 m/s at the first 0x1e frame.
+
+**Exit geometry [m]** (local `(x, y, z)` in R, U, F; rotated by `0x004f0da0`, the helper order 5 uses for B):
+
+| Ship | Local exit point P | Sites | Installed ordinary gate (r = 1104.5 m) **[i]** |
+| --- | --- | --- | --- |
+| non-capital | `(y0·sin φ·r, −y0·cos φ·r, z0·r − r_s)` with the pass vector `(0, y0, z0) = [gate.f+0x190..]` (y0 = −0.55, or −0.05 for subtypes 5..8; z0 = −0.01) and `φ = (i − 3)·65536/24` (15° steps) from the ship's warp-out slot index i | `0x00444335..0x004444f2`, doubles `0x005657b8` = 1/24, `0x005654c0` = 65536 | a fan on the **upper** 0.55 r arc (607 m from the axis) at φ ∈ {−45, −30, −15, 0, 15, 30}° (+45° player), 159 m apart, `11 m + r_s` in front of the plane |
+| capital (`0x0043fd50`) | `(0, 11100 units, z0·r − r_s)`: on the axis, 22.2 m up | `0x00444506..0x0044458d` | M2 median: 1348 m in front, appearing 1349 m behind the plane |
+
+The sin/cos tables at `0x005b6998`… are filled at run time. That they hold sin and cos is read from the quadrant
+structure of the lookups (`0x00444374..0x0044442c`) **[i]**. Every capital arrival at one gate uses the same P **[m]**.
+Consecutive capitals are spaced only by the departure side's through slot (§10.2).
+
+**What depends on P [m].**
+
+| Follow-on state | Depends on the position? | Evidence |
+| --- | --- | --- |
+| orientation | no: built from the gate matrix before P is copied | `0x00444590..0x004445cd` |
+| order 0x21 path and its end point | derived only from `f+0x240`, copied from `p+0x30` after the site | `0x00444612`, `0x0044463a..0x004446bf`, `0x0045537c` |
+| order 0x1e | keeps the lateral offset (axis-parallel exit); its end test uses `dz` only | `0x00457c5e..0x00457d2e` |
+| KC `SA_WarpObjectIn` / waits | order and target only | `0x00465b68` |
+| warp-out slots | ship pointer and a 20 s timer, released by the post pass (`0x0045b7c7..0x0045b7d2`); capitals hold none | `0x00443b3d`, `0x00443b53` |
+| KC `m0` | read back by `SA_GetPosRotAndDirection` right after the launch (bd375); no KC test re-centres | `kc_arrival_flow.txt` |
+| safe-position search | not on this path (`m1` is the gate, so `SA_SetSafePosAndDirection` is skipped) | aedbd..aee2f |
+
+No engine or KC step re-centres the ship. Mayhem's `2004::Activate` additionally starts `2004::Bounce` for non-2019
+ships. It begins with `TI_Delay(1000)` and calls only read natives (`SA_GetCollisionObjects`, `SA_Distance`, `SA_GetInst`);
+its dynamic calls were not traced.
+
+**Hook site for a lateral exit offset (replaces W for arrivals) [m]:**
+
+| Site | Window | Live in / out | Stub contract |
+| --- | --- | --- | --- |
+| launch `0x00444606` | `8b 43 70` / `8b 4b 50` (6 B, two whole instructions; instruction start in the linear sweep; no direct branch into bytes 1..5) | EBX = ship, EDI = gate (set at `0x004444ce` and `0x00444575`, read at `0x00444651`), EBP = frame; `p+0x30` = P already written. EAX/ECX/EDX dead (rewritten at `0x00444606..0x0044460c`); ESI dead (rewritten at `0x0044466f` before any read); flags dead (`add` at `0x0044460f`, no reader before `0x00444630`). ESP = frame − 8: the two cdecl arguments of `0x004f0640` are still on the stack until `add esp, 8` at `0x00444637` | add `ℓ_R·R + ℓ_U·U` to `p+0x30..+0x38` (int32, guarded) for a class-7 ship that is not the player object (bit 2) and not under player control; preserve EBX/EDI/EBP/ESI semantics and ESP exactly (do not disturb `[esp..esp+8]`); no x87 state change (x87 was last used at `0x0044435f..0x0044436f` and popped); re-execute `mov eax,[ebx+0x70]`, `mov ecx,[ebx+0x50]`; `jmp 0x0044460c` |
+
+* **Safety.** It runs on the game thread inside the sector post pass, once per launched ship and frame. The function is
+  not re-entered. No script runs below it, because the KC wake comes later in the same function (`0x00444a32`).
+* **Coverage.** Every gate arrival passes it, capitals included (both branches join at `0x00444590`). Non-gate launches
+  (carriers, stations) take `0x004446d3` and never reach it.
+* **What the offset reaches.** The case's start point, every 0x21 frame, the final snap and the 0x1e exit line all carry
+  the offset.
+* **Bound for a capital at up to 0.6 r.** Ordinary installed gates impose none, because they have no collision mesh
+  (§10.9). On a Terran ring, `ℓ + r_s ≤ 0.663 r`, since the 0x21 path crosses the ring band and order 0x21 is not
+  exempt from the pair filter (§10.9) **[i]**.
+* **Small ships** already arrive on the 15° fan, 607 m up, so an offset composes with it.
+* **Initial state after the arrival [m].** The ship is at P (plus any offset), facing −F, with speed and desired speed 0.
+  Order 0 then lasts at least one frame until the KC issues 0x1e **[i]**. Order 0x1e then moves it at 120 m/s (large)
+  or 240 m/s, axis-parallel, out to `|dz| > r` or `r/4`.
+  * A capital whose `r_s ≥ 0.99 r` is already beyond `r`, so its 0x1e ends on the first frame **[i]**.
+  * An M6 median runs 1003 m (8.4 s) and an M3 250 m (1.0 s) **[i]**.
+
+#### Q3: arrival signals in the destination sector
+
+| Signal | Where | Ships | Lead before the ship appears | Observable by a DLL hook |
+| --- | --- | --- | --- | --- |
+| through slot of the gate pair granted | KC only: controller gate members (§10.2); out-of-sector capitals request it at the source gate when their galaxy flight reaches it (stock bd012 `p6 = 1` → bccfb) | capitals (2019) | from the grant to the end of `__EnterHyperspace`, at least one more `__galaxyFlightStep` **[i]** | no engine mirror; it needs a KC object reader (not established) |
+| `SA_IsWarpOutSlotAvailable(dest gate id)` | `__EnterHyperspace` out-of-sector branch, only when `this != g9`, the ship is not 2019 and the destination gate has an engine object (bd07e..bd0cb); polled every 100–1100 ms while all 6 slots are reserved | non-capitals | 0 when a slot is free (the arrival follows in the same KC run **[i]**); otherwise the congestion wait. Congestion needs more than 6 non-capital arrivals within 20 s at one gate | yes: SA case `0x00465ab4` (`0x00465acc..0x00465b00`), with the gate id as its only argument; no ship object exists yet (the dispatcher's task id is available) |
+| engine object created inside the gate | `SA_AllocObject(7)`, then `SA_MoveObjectIntoContainer(ship, gate)` (`0x004497b0`), then `SA_StartInHangar(ship, gate, −1)` (`0x00443920`), all in one KC run | all | 0 to 1 main-loop iteration before the launch **[i]**; failed non-capital `StartInHangar` calls retry every 1 s with the object already in the gate's list (no 0x80) | yes: `0x00443920` (stdcall ship, container, port; `ret 0xc`) with a class-0x12 container, or SA case `0x004626e2` |
+| warp-out slot table | `[gate.f+0x1c0..+0x1d8]` expiry, `[gate.f+0x1dc..+0x1f4]` occupant | non-capitals | written at `StartInHangar`; it marks an arrival that is in progress or less than 20 s old, not a future one | readable field, no hook needed |
+| launch | `0x00444170` from the post pass: the ship enters the sector at P + 2697 m·F on order 0x21 | all | 0: the first frame in the sector; 900 ms until it reaches P, plus the 0x1e leg | `0x00444170` entry (stdcall ship, gate; `ret 8`) or the window above |
+
+**Answer to Q3.** No engine-side record announces a capital before its arrival run. For a non-capital the earliest
+engine-visible event is the `SA_IsWarpOutSlotAvailable` poll on the destination gate, which precedes the arrival only
+under slot congestion. The earliest per-ship event is the `SA_StartInHangar` call. It falls 0–1 main-loop iterations
+before the launch **[i]**, and the ship reaches its exit point 900 ms after the launch.
+
+**Corrections to earlier sections.**
+* §1.2, row 0x21: the case writes the position only when order 0x21 is not already running at that target; a KC arrival
+  takes the early exit.
+* §4 "Arrival":
+  * the placement is the engine's launch `0x00444170` (sequence above), not `WarpObjectIn`;
+  * the 1750000 compare in `__LeaveHyperspace` is in the tow branch only.
+* §10.9 "Warp-in (exit spread)": `P` is the launch's exit point (table above), and site W is not reached on KC arrivals,
+  so that bullet's offset never applies.
+
+**Still inferred or open.**
+* The time factor reading of `[*0x606f34+0xcc]`.
+* The sin/cos reading of the run-time tables `0x005b6998`… (the 15° fan geometry depends on it).
+* The −F facing (the 0x8000 angle is read; its axis is inferred from `0x004f0270`'s use in order 0x1f).
+* `0x00443620` (the player-capital neighbour pass) and `0x00449510` beyond "enters the sector".
+* Whether the KC resumes the woken task in the next iteration.
+* The lead of the through slot for out-of-sector capitals.
+* Site W's zero count in Run159 corroborates the static finding. It does not prove it: that run has no row that counts
+  arrivals into the sector. A `ship_gate_launch` row at `0x00444606` (ship, class code, slot index, P, gate) would settle
+  both.
+
+```sh
+python3 -I verification/results/ship-navigation-ai/gates/arrival_sites.py      # RESULT PASS (121 checks)
+python3 -I verification/results/ship-navigation-ai/gates/kc_arrival_flow.py   # KC arrival methods, stock + Mayhem
+python3 -I verification/results/ship-navigation-ai/gates/arrival_sites.py --log verification/results/ship-steering/run159-triage/x3m.log
+# -> rows 476, gate_warp_calls 0, gate_p4 167, gate_p5 2093 (local log, untracked)
+```

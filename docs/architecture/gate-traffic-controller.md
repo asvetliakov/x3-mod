@@ -45,3 +45,29 @@ bookkeeping are deep in script and engine; nothing gained over level 2).
    site W without breaking orientation, the order chain, the slot bookkeeping or the +z launch?
 3. Is there any signal in the current sector that a ship is about to arrive, and if not, what is the earliest
    observable event?
+
+## Answers (disassembly 2026-10-13, `ship-navigation-ai.md` §10.10)
+
+1. **Capital off-axis pass: yes, bounded.** Order 5 ends when the ship's centre is within (|v|/10 + r_ship)·(1 + (tf−1)/4)
+   of the stored order point `f+0x240` (the gate origin for a capital), checked every frame at `0x00454138..0x004546e3`;
+   the leaf only gets a stack copy, so our redirected point does not move the trigger. A capital can therefore pass up to
+   about r_ship + |v|/10 off the axis: 0.5 r_gate (552 m) holds for the M2/M1/TL medians and fails for hulls under 552 m.
+   Small ships must pass within ≈ r_ship + |v|/10 of their point B on the 0.55 r arc (≈ 40 m for an M3), so their lane is
+   the stored point the KC sets, so a small-ship lane split needs the KC's B or a write to `f+0x240`. "CanWarp" is player-only.
+2. **Arrival placement: the engine's, and off-axis is possible at a new site.** The sector post pass launch
+   `0x00444170` computes the exit point P (non-capital: a 15° fan by exit slot on the upper 0.55 r arc; capital: on the
+   axis, 22 m up; both r_ship in front of the gate plane), sets the ship facing out, starts order 0x21 (900 ms, speed
+   zeroed, ends at P at rest), then order 0x1e pushes it straight out at 120 m/s (large) / 240 m/s keeping its lateral
+   offset until r_gate (large) / r_gate/4 clear. Nothing re-centres it. Site W never runs on an arrival (the old exit
+   spread was inert). An offset of up to 0.6 r_gate written at `0x00444606` (`8b 43 70 | 8b 4b 50`) carries through;
+   the only geometric limit is Terran rings (offset + r_ship ≤ 0.663 r). The arrival-side half-disc lane is therefore
+   feasible for capitals and small ships alike.
+3. **No advance signal for capitals** (their gate-pair slot is script data only). Non-capitals poll
+   `SA_IsWarpOutSlotAvailable` and give lead time only when all 6 exit slots are taken. The earliest per-ship event is the
+   `SA_StartInHangar` core `0x00443920`, 0–1 main-loop iterations before the launch; the ship reaches P 900 ms after it
+   appears. So the runway-clear rule works from the appearance event, and a `ship_gate_launch` row at `0x00444606` settles
+   the remaining inferred facts in one flight.
+
+Consequence for the design: both halves of the lane split are feasible (outgoing capitals through an off-axis point, since
+the trigger tolerates ≈ r_ship; arrivals placed off-axis at the new site), so the time rule reduces to the appearance
+moment plus the two-Titan coincidence. Small-ship outgoing lanes need the stored order point, not only the leaf point.

@@ -1,0 +1,778 @@
+== addon/04.cat L/x3story.obj (stock AP): CODE 1812069 B
+
+-- 2004::__LeaveHyperspace entry bd16d args 1, depth conflicts 2
+  bd16d d0   frame 18
+  bd174 d0   if (!(p-4)) goto bd18e
+  bd17d d1   call SE_ObjectExists(p-4)
+  bd183 d0   if (!(SE_ObjectExists(p-4))) goto bd18e
+  bd189 d1   goto bd18f
+  bd18f d0   if not (0) goto bd197
+  bd196 d1   return p0
+  bd19b d1   call p-4.GetEnvironment()
+  bd1a4 d2   call p-4.GetObjectID()
+  bd1ad d3   call p-4.GetPos()
+  bd1b5 d3   if not (m1) goto bd1d2
+  bd1c1 d4   call SE_IsClass(m1, 2014)
+  bd1c7 d3   if not (!(SE_IsClass(m1, 2014))) goto bd1d2
+  bd1cd d4   goto bd1d3
+  bd1d3 d3   if not (1) goto bd1e3
+  bd1dd d4   call m1.RemoveShip(this)
+  bd1e4 d4   m1 = 0
+  bd1ea d4   m55 = 13
+  bd1f1 d4   m56 = p-4
+  bd1f6 d5   let p2 = p-4.GetPos()
+  bd1fe d4   m0[0] = p2[0]
+  bd209 d4   m0[1] = p2[1]
+  bd214 d4   m0[2] = p2[2]
+  bd21a d4   call p-4.GetDirectionVector()
+  bd220 d6   let p3 = p-4.GetDirectionVector()
+  bd22a d5   m0[6] = -(p3[0])
+  bd237 d5   m0[7] = -(p3[1])
+  bd244 d5   m0[8] = -(p3[2])
+  bd246 d5   let p1 = p-4.GetObjectID()
+  bd249 d4   if not (p1) goto bd317
+  bd252 d4   if not (!(m3)) goto bd265
+  bd25a d5   m1 = p-4
+  bd25f d5   call Activate()
+  bd267 d7   let p0 = p-4.GetEnvironment()
+  bd26a d5   call p0.AddShip(this)
+  bd274 d5   call p-4.GetObjectID()
+  bd279 d5   p1 = p-4.GetObjectID()
+  bd27c d4   if not (p-4.GetObjectID()) goto bd28f
+  bd284 d4   if not (m3) goto bd28f
+  bd28a d5   goto bd290
+  bd290 d4   if not (1) goto bd2a9
+  bd299 d5   call SA_FindObject(m3)
+  bd29e d4   if not (SA_FindObject(m3)) goto bd2a9
+  bd2a4 d5   goto bd2aa
+  bd2aa d4   if not (1) goto bd307
+  bd2b8 d5   call SA_StartInHangar(m3, p1, -1)
+  bd2bd d6   let p4 = SA_StartInHangar(m3, p1, -1)
+  bd2c2 d5   if not ((p4 != 1)) goto bd2d8
+  bd2cd d5   if not ((p4 != 6)) goto bd2d8
+  bd2d3 d6   goto bd2d9
+  bd2d9 d5   if not (1) goto bd306
+  bd2e2 d6   call SE_ObjectExists(p-4)
+  bd2e8 d5   if not (!(SE_ObjectExists(p-4))) goto bd2f6
+  bd2ef d6   p0 = 6
+  bd2f5 d1   return p0
+  bd2fa d6   call TI_Delay(1000)
+  bd301 d4   goto bd30c
+  bd307 d4   goto bd312
+  bd30d d4   if (1) goto bd270
+  bd312 d4   goto bd321
+  bd31b d5   call AddTo(p0)
+  bd322 d5   m55 = 0
+  bd327 d5   m56 = 0
+  bd32f d5   call p-4.GetObjectID()
+  bd334 d5   p1 = p-4.GetObjectID()
+  bd33b d4   if not (p1) goto bd34e
+  bd343 d4   if not (m3) goto bd34e
+  bd349 d5   goto bd34f
+  bd34f d4   if not (1) goto bd368
+  bd358 d5   call SA_FindObject(m3)
+  bd35d d4   if not (SA_FindObject(m3)) goto bd368
+  bd363 d5   goto bd369
+  bd369 d4   if not (1) goto bd396
+  bd375 d5   call SA_GetPosRotAndDirection(m3, m0)
+  bd37c d5   call 2004::ActivateStartTasks()
+  bd387 d4   if not ((this != g9)) goto bd396
+  bd390 d5   call 2004::__LeaveHyperspaceWarpIn(p-4)
+  bd39a d4   if (!(m3)) goto bd3b4
+  bd3a3 d5   call SA_FindObject(m3)
+  bd3a9 d4   if (!(SA_FindObject(m3))) goto bd3b4
+  bd3af d5   goto bd3b5
+  bd3b5 d4   if not (0) goto bd3ce
+  bd3be d5   call SE_ObjectExists(p-4)
+  bd3c3 d4   if not (SE_ObjectExists(p-4)) goto bd3ce
+  bd3c9 d5   goto bd3cf
+  bd3cf d4   if not (1) goto bd413
+  bd3d8 d5   call 1000::GetDistance(p-4)
+  bd3e3 d4   if not ((1000::GetDistance(p-4) < 1000000)) goto bd413
+  bd3ec d5   call p-4.GetWarpOutPosGalaxy()
+  bd3fa d6   m0[0] = p4[0]
+  bd405 d6   m0[1] = p4[1]
+  bd410 d6   m0[2] = p4[2]
+  bd416 d4   if not (m80) goto bd664
+  bd41b d4   marker 6f
+  bd41c d3   if (p-4.GetDirectionVector()) goto bd664
+  bd425 d5   m80 = 0
+  bd42d d5   call SE_ObjectExists(p3)
+  bd433 d4   if not (!(SE_ObjectExists(p3))) goto bd43e
+  bd439 d3   goto bd663
+  bd442 d5   call p-5.GetDestinationSector()
+  bd44b d6   call p3.GetEnvironment()
+  bd451 d4   if not ((p-5.GetDestinationSector() != p3.GetEnvironment())) goto bd45c
+  bd457 d3   goto bd663
+  bd45d d5   call 2004::GetCommandAndPars()
+  bd466 d6   call TI_Delay(1000)
+  bd470 d6   call SA_GetMaxSpeed(m3)
+  bd479 d6   call SA_SetDesiredSpeed(m3, SA_GetMaxSpeed(m3))
+  bd483 d6   call p-5.GetObjectID()
+  bd488 d5   if not (p-5.GetObjectID()) goto bd4bc
+  bd491 d6   call p-5.GetObjectID()
+  bd49a d6   call SA_Distance(m3, p-5.GetObjectID())
+  bd4a8 d8   call SA_GetTotalSize(m3)
+  bd4b1 d5   if not ((SA_Distance(m3, p-5.GetObjectID()) < (1750000 + (SA_GetTotalSize(m3) * 2)))) goto bd4bc
+  bd4b7 d6   goto bd4bd
+  bd4bd d5   if not (1) goto bd4d0
+  bd4c5 d6   call TI_Delay(100)
+  bd4cb d5   goto bd47f
+  bd4d4 d6   call SE_ObjectExists(p3)
+  bd4da d5   if not (!(SE_ObjectExists(p3))) goto bd4e7
+  bd4e2 d3   goto bd663
+  bd4eb d6   call p-5.GetObjectID()
+  bd4f0 d5   if not (p-5.GetObjectID()) goto bd513
+  bd4f9 d6   call p-5.GetDestinationSector()
+  bd502 d7   call p3.GetEnvironment()
+  bd508 d5   if not ((p-5.GetDestinationSector() == p3.GetEnvironment())) goto bd513
+  bd50e d6   goto bd514
+  bd514 d5   if not (1) goto bd569
+  bd51b d6   call 2004::StopShip(1)
+  bd529 d6   call p3.__FlyToNextSector(p-1, 0)
+  bd533 d6   call SE_ObjectExists(p3)
+  bd538 d5   if not (SE_ObjectExists(p3)) goto bd555
+  bd541 d6   call p3.GetEnvironment()
+  bd54a d5   if not ((p3.GetEnvironment() != p-1)) goto bd555
+  bd550 d6   goto bd556
+  bd556 d5   if not (1) goto bd569
+  bd55e d6   call TI_Delay(100)
+  bd564 d5   goto bd52f
+  bd56d d6   call SE_ObjectExists(p3)
+  bd573 d5   if (!(SE_ObjectExists(p3))) goto bd590
+  bd57f d7   call p3.GetEnvironment()
+  bd585 d5   if ((m1 != p3.GetEnvironment())) goto bd590
+  bd58b d6   goto bd591
+  bd591 d5   if (0) goto bd5ab
+  bd59a d6   call p3.GetObjectID()
+  bd5a0 d5   if (!(p3.GetObjectID())) goto bd5ab
+  bd5a6 d6   goto bd5ac
+  bd5ac d5   if not (0) goto bd5b9
+  bd5b4 d3   goto bd663
+  bd5bc d5   if not (m80) goto bd5c9
+  bd5c4 d3   goto bd663
+  bd5cc d6   m80 = p3
+  bd5d5 d6   call p3.StopShip(1)
+  bd5df d6   call SA_GetInst3D(m3)
+  bd5e4 d7   let p5 = SA_GetInst3D(m3)
+  bd5e8 d7   call B3D_InstGetCollCenterZ(p5)
+  bd5f1 d8   call B3D_InstGetCollCenterY(p5)
+  bd5fa d9   call B3D_InstGetCollCenterX(p5)
+  bd606 d11  call p3.GetObjectID()
+  bd60d d7   call SA_TractorConnect(p3.GetObjectID(), m3, B3D_InstGetCollCenterX(p5), B3D_InstGetCollCenterY(p5), B3D_InstGetCollCenterZ(p5))
+  bd614 d7   call GetCommand()
+  bd61b d6   if not ((GetCommand() == 0)) goto bd65a
+  bd654 d7   call StartExecuteCommand8(p4[0], p4[1], p4[2], p4[3], p4[4], p4[5], p4[6], p4[7], p4[8])
+  bd65e d3   if (0) goto bd421
+  bd663 d3   marker 70
+  bd665 d5   p0 = 3
+  bd66b d1   return p0
+
+-- 2004::__LeaveHyperspaceWarpIn entry bd671 args 1, depth conflicts 0
+  bd671 d0   frame 5
+  bd678 d1   call p-4.GetObjectID()
+  bd680 d1   if not (m3) goto bd693
+  bd685 d2   let p0 = p-4.GetObjectID()
+  bd688 d1   if not (p0) goto bd693
+  bd68e d2   goto bd694
+  bd694 d1   if not (1) goto bd78f
+  bd6a0 d2   call SA_SetShipRotAccel(m3, m87)
+  bd6a8 d2   m55 = 4
+  bd6af d2   m56 = m1
+  bd6b8 d2   m45 = 327684
+  bd6bf d2   m46 = p0
+  bd6ca d2   call SA_SetSpeedLimit(m3, m93)
+  bd6d5 d2   call SA_SetDesiredSpeed(m3, 0)
+  bd6e0 d1   if not ((this != g9)) goto bd6f2
+  bd6ec d2   call SA_WarpObjectIn(m3, p0)
+  bd6f5 d1   if not (m3) goto bd70f
+  bd704 d1   if not (!((m12 & 4194304))) goto bd70f
+  bd70a d2   goto bd710
+  bd710 d1   if not (1) goto bd724
+  bd71e d2   call SA_ClearObjectFromHangar(m3, p0, -1)
+  bd725 d2   m45 = 0
+  bd72c d1   if not (m3) goto bd746
+  bd73b d1   if not (!((m12 & 4194304))) goto bd746
+  bd741 d2   goto bd747
+  bd747 d1   if not (1) goto bd785
+  bd750 d2   call SA_CollisionObject(m3)
+  bd755 d1   if not (SA_CollisionObject(m3)) goto bd770
+  bd75c d2   m55 = 12
+  bd761 d2   m56 = 0
+  bd76a d2   call SA_AvoidObjectCollision(m3, 0)
+  bd773 d1   if not (m3) goto bd785
+  bd77f d2   call SA_SetShipRotAccel(m3, m87)
+  bd786 d2   m55 = 0
+  bd78b d2   m56 = 0
+  bd791 d1   return p0
+
+-- 2004::Activate entry aeafc args 0, depth conflicts 8
+  aeafc d0   frame 7
+  aeb04 d1   call 304::Remove(this)
+  aeb12 d0   if not (!((m12 & 2048))) goto aeb38
+  aeb1a d0   if not (m3) goto aeb29
+  aeb23 d1   call SA_FreeObject(m3)
+  aeb2f d1   call SA_AllocObject(7, m14)
+  aeb34 d1   m3 = SA_AllocObject(7, m14)
+  aeb3c d0   if not (!(m3)) goto aeb46
+  aeb41 d0   goto aef81
+  aeb4b d1   call SA_SetEventObject(m3, this)
+  aeb53 d2   call GetOwner()
+  aeb58 d1   call GetOwner().GetID()
+  aeb61 d1   call SA_SetGroup(m3, GetOwner().GetID())
+  aeb68 d1   call 2004::SetSectorRelations()
+  aeb78 d1   call SA_SetEnemyOfEnabled(m3, (m12 & 16))
+  aeb85 d1   call SA_SetHull(m3, m20)
+  aeb8a d1   m20 = SA_SetHull(m3, m20)
+  aeb97 d0   if not ((m12 & 131072)) goto aebb2
+  aeba0 d1   call SA_GetFlags(m3)
+  aeba7 d2   op 54
+  aebac d2   call SA_SetFlags(m3, 8)
+  aebb6 d1   call SA_GetFlags2(m3)
+  aebc4 d1   if not ((m12 & 33554432)) goto aebd4
+  aebc9 d2   let p0 = SA_GetFlags2(m3)
+  aebcf d3   op 54
+  aebd0 d3   p1 = 8192
+  aebd5 d2   call IsInvincible()
+  aebda d1   if not (IsInvincible()) goto aebec
+  aebe7 d3   op 54
+  aebe8 d3   p1 = 8388608
+  aebf5 d1   if not ((m12 & 536870912)) goto aec07
+  aec02 d3   op 54
+  aec03 d3   p1 = 16777216
+  aec0c d1   if not ((m13 & 1)) goto aec1e
+  aec19 d3   op 54
+  aec1a d3   p1 = 1073741824
+  aec25 d1   if not ((m13 & 512)) goto aec37
+  aec32 d3   op 54
+  aec33 d3   p1 = 65536
+  aec3e d2   call SA_SetFlags2(m3, p0)
+  aec4b d2   call SA_SetHueModifier(m3, m30)
+  aec58 d2   call SA_SetSaturationModifier(m3, m31)
+  aec65 d2   call SA_SetShipRotAccel(m3, m87)
+  aec6e d1   if not (m27) goto aecce
+  aec77 d2   call SE_ArraySize(m27)
+  aec7c d3   let p1 = SE_ArraySize(m27)
+  aec81 d3   p1 = (p1 - 1)
+  aec88 d2   if not ((((p1 - 1) + 1) > 0)) goto aeccd
+  aec97 d2   if not ((m27[p1] != -1)) goto aecc8
+  aeca6 d3   call SA_AllocObject(9, m27[p1])
+  aecae d5   let p2 = SA_AllocObject(9, m27[p1])
+  aecb2 d4   call SA_MoveObjectIntoContainer(p2, m3)
+  aecb8 d3   if not (!(SA_MoveObjectIntoContainer(p2, m3))) goto aecc7
+  aecc1 d4   call SA_FreeObject(p2)
+  aecc8 d2   goto aec7c
+  aecd5 d2   call SA_SetShield(m3, m26)
+  aecda d2   m26 = SA_SetShield(m3, m26)
+  aece2 d2   call SA_GetMaxShield(m3)
+  aeceb d3   call SA_GetMaxHull(m3)
+  aecf8 d2   call SA_SetMaxAvoidShield(m3, ((SA_GetMaxShield(m3) + SA_GetMaxHull(m3)) / 8))
+  aed01 d1   if not (m23) goto aed73
+  aed08 d3   p1 = 0
+  aed13 d2   if not ((p1 < m21)) goto aed72
+  aed18 d2   goto aed2d
+  aed22 d3   p1 = (p1 + 1)
+  aed28 d2   goto aed0c
+  aed37 d2   if not ((m23[p1] != -1)) goto aed6d
+  aed46 d3   call SA_AllocObject(8, m23[p1])
+  aed57 d4   call SA_MoveLaserIntoContainer(p2, m3, (p1 + 1))
+  aed5d d3   if not (!(SA_MoveLaserIntoContainer(p2, m3, (p1 + 1)))) goto aed6c
+  aed66 d4   call SA_FreeObject(p2)
+  aed6d d2   goto aed1d
+  aed79 d1   if (!((this == g9))) goto aed8f
+  aed7f d2   call 2004::IsAutopilotActive()
+  aed84 d1   if (2004::IsAutopilotActive()) goto aed8f
+  aed8a d2   goto aed90
+  aed94 d2   call SA_SetAutopilot(m3, 0)
+  aeda5 d2   call SA_SetPlayerControl(m3, (m41 == g8))
+  aedb4 d2   call SA_SetAsPlayerObject(m3, (this == g9))
+  aedbd d1   if not (m1) goto aee3a
+  aedc9 d2   call SE_IsClass(m1, 2001)
+  aedce d1   if not (SE_IsClass(m1, 2001)) goto aee22
+  aedd7 d2   call m1.GetObjectID()
+  aede0 d2   call SA_StartObjectInSpace(m3, m1.GetObjectID())
+  aede7 d2   call 2004::NoSafePosOnActivate()
+  aedec d1   if not (2004::NoSafePosOnActivate()) goto aee03
+  aedf8 d2   call SA_SetPosAndDirection(m3, m0)
+  aedfe d1   goto aee10
+  aee0a d2   call SA_SetSafePosAndDirection(m3, m0)
+  aee17 d2   call SA_GetPosRotAndDirection(m3, m0)
+  aee1d d1   goto aee35
+  aee26 d2   call m1.GetObjectID()
+  aee2f d2   call SA_MoveObjectIntoContainer(m3, m1.GetObjectID())
+  aee35 d1   goto aee3a
+  aee3d d2   call 2004::ReorgFormation(-1)
+  aee4a d2   call SA_SetExtraSpeed(m3, m69)
+  aee57 d2   call SA_SetExtraRotSpeed(m3, m70)
+  aee5e d2   call GetOwner()
+  aee6a d1   if not ((GetOwner() == g7[8])) goto aeeca
+  aee72 d2   call SE_Random(100)
+  aee7a d1   if not ((SE_Random(100) < 5)) goto aeec5
+  aee81 d3   p1 = 1
+  aee8b d2   if not ((p1 < 20)) goto aeec4
+  aee90 d2   goto aeea3
+  aee9a d4   p2 = (p2 + 1)
+  aee9e d3   goto aee85
+  aeea7 d4   op 58
+  aeeae d3   if not ((p1 & 393790)) goto aeebf
+  aeeb9 d4   call 2004::SetGroupRelation(p2, -1)
+  aeebf d3   goto aee95
+  aeec5 d1   goto aef09
+  aeed1 d1   if not ((m41 != g8)) goto aef02
+  aeed9 d2   call SE_Random(100)
+  aeee1 d1   if not ((SE_Random(100) < 5)) goto aeef6
+  aeeeb d2   call 2004::SetGroupRelation(8, -1)
+  aeef1 d1   goto aeefd
+  aeef7 d2   call 2004::SetRaceRelationsFromNotoriety()
+  aeefd d1   goto aef09
+  aef03 d2   call 2004::SetRaceRelationsFromNotoriety()
+  aef0a d2   call 2004::IsHidden()
+  aef0f d1   if not (2004::IsHidden()) goto aef2a
+  aef18 d2   call SA_GetFlags(m3)
+  aef1f d3   op 54
+  aef24 d3   call SA_SetFlags(m3, 16)
+  aef2b d2   call 1000::Activate()
+  aef34 d1   if not (m84) goto aef4e
+  aef3d d3   call 2004::IsDocked()
+  aef43 d1   if not ((m84 == 2004::IsDocked())) goto aef4e
+  aef49 d2   goto aef4f
+  aef4f d1   if not (1) goto aef78
+  aef59 d1   if not ((m85 >= 0)) goto aef78
+  aef6b d5   call m84.GetObjectID()
+  aef72 d2   call SA_SetShipAtDockPort(m84.GetObjectID(), m85, m3, 259)
+  aef7a d2   call TI_Interrupt(this)
+  aef86 d2   call m1.GetSector()
+  aef8b d1   call m1.GetSector().IsActivated()
+  aef90 d0   if not (m1.GetSector().IsActivated()) goto aefad
+  aef9c d1   call SE_IsClass(m1, 2014)
+  aefa2 d0   if not (!(SE_IsClass(m1, 2014))) goto aefad
+  aefa8 d1   goto aefae
+  aefae d0   if not (1) goto aefba
+  aefb4 d1   call 2004::ActivateStartTasks()
+  aefbd d1   return p0
+
+-- 2004::AddTo2 entry af253 args 2, depth conflicts 0
+  af253 d0   frame 4
+  af25d d1   call SE_IsClass(p-4, 2016)
+  af262 d0   if not (SE_IsClass(p-4, 2016)) goto af27a
+  af26f d1   call p-4.AddShip2(this, p-5)
+  af275 d0   goto af285
+  af27f d1   call p-4.AddShip(this)
+  af289 d1   call p-4.GetObjectID()
+  af28e d0   if not (p-4.GetObjectID()) goto af29a
+  af294 d1   call Activate()
+  af29b d1   return p0
+
+-- 2004::SetNoSafePosOnActivate entry aadf6 args 1, depth conflicts 1
+  aadf6 d0   frame 2
+  aadfc d0   if not (p-4) goto aae10
+  aae06 d2   op 54
+  aae07 d2   m12 = 32
+  aae0b d1   goto aae1a
+  aae16 d1   m12 = (m12 & -33)
+  aae1b d2   return p0
+
+-- 2014::GetDestinationGate entry 9139b args 0, depth conflicts 0
+  9139b d0   frame 5
+  913a3 d0   if not ((m7 < 0)) goto 913aa
+  913a9 d1   return p0
+  913b9 d1   call g6[m8][m9].GetGate(m10)
+  913be d1   return p0
+
+== addon/07.cat L/x3story.obj (Mayhem 4): CODE 1908859 B
+
+-- 2004::__LeaveHyperspace entry d592c args 1, depth conflicts 2
+  d592c d0   frame 18
+  d5933 d0   if (!(p-4)) goto d594d
+  d593c d1   call SE_ObjectExists(p-4)
+  d5942 d0   if (!(SE_ObjectExists(p-4))) goto d594d
+  d5948 d1   goto d594e
+  d594e d0   if not (0) goto d5956
+  d5955 d1   return p0
+  d595a d1   call p-4.GetEnvironment()
+  d5963 d2   call p-4.GetObjectID()
+  d596c d3   call p-4.GetPos()
+  d5974 d3   if not (m1) goto d5991
+  d5980 d4   call SE_IsClass(m1, 2014)
+  d5986 d3   if not (!(SE_IsClass(m1, 2014))) goto d5991
+  d598c d4   goto d5992
+  d5992 d3   if not (1) goto d59a2
+  d599c d4   call m1.RemoveShip(this)
+  d59a3 d4   m1 = 0
+  d59a9 d4   m56 = 13
+  d59ae d4   call TI_GetAbsTime()
+  d59b3 d4   m58 = TI_GetAbsTime()
+  d59ba d4   m57 = p-4
+  d59bf d5   let p2 = p-4.GetPos()
+  d59c7 d4   m0[0] = p2[0]
+  d59d2 d4   m0[1] = p2[1]
+  d59dd d4   m0[2] = p2[2]
+  d59e3 d4   call p-4.GetDirectionVector()
+  d59e9 d6   let p3 = p-4.GetDirectionVector()
+  d59f3 d5   m0[6] = -(p3[0])
+  d5a00 d5   m0[7] = -(p3[1])
+  d5a0d d5   m0[8] = -(p3[2])
+  d5a0f d5   let p1 = p-4.GetObjectID()
+  d5a12 d4   if not (p1) goto d5ae0
+  d5a1b d4   if not (!(m3)) goto d5a2e
+  d5a23 d5   m1 = p-4
+  d5a28 d5   call Activate()
+  d5a30 d7   let p0 = p-4.GetEnvironment()
+  d5a33 d5   call p0.AddShip(this)
+  d5a3d d5   call p-4.GetObjectID()
+  d5a42 d5   p1 = p-4.GetObjectID()
+  d5a45 d4   if not (p-4.GetObjectID()) goto d5a58
+  d5a4d d4   if not (m3) goto d5a58
+  d5a53 d5   goto d5a59
+  d5a59 d4   if not (1) goto d5a72
+  d5a62 d5   call SA_FindObject(m3)
+  d5a67 d4   if not (SA_FindObject(m3)) goto d5a72
+  d5a6d d5   goto d5a73
+  d5a73 d4   if not (1) goto d5ad0
+  d5a81 d5   call SA_StartInHangar(m3, p1, -1)
+  d5a86 d6   let p4 = SA_StartInHangar(m3, p1, -1)
+  d5a8b d5   if not ((p4 != 1)) goto d5aa1
+  d5a96 d5   if not ((p4 != 6)) goto d5aa1
+  d5a9c d6   goto d5aa2
+  d5aa2 d5   if not (1) goto d5acf
+  d5aab d6   call SE_ObjectExists(p-4)
+  d5ab1 d5   if not (!(SE_ObjectExists(p-4))) goto d5abf
+  d5ab8 d6   p0 = 6
+  d5abe d1   return p0
+  d5ac3 d6   call TI_Delay(1000)
+  d5aca d4   goto d5ad5
+  d5ad0 d4   goto d5adb
+  d5ad6 d4   if (1) goto d5a39
+  d5adb d4   goto d5aea
+  d5ae4 d5   call AddTo(p0)
+  d5aeb d5   m56 = 0
+  d5af0 d5   m57 = 0
+  d5af8 d5   call p-4.GetObjectID()
+  d5afd d5   p1 = p-4.GetObjectID()
+  d5b04 d4   if not (p1) goto d5b17
+  d5b0c d4   if not (m3) goto d5b17
+  d5b12 d5   goto d5b18
+  d5b18 d4   if not (1) goto d5b31
+  d5b21 d5   call SA_FindObject(m3)
+  d5b26 d4   if not (SA_FindObject(m3)) goto d5b31
+  d5b2c d5   goto d5b32
+  d5b32 d4   if not (1) goto d5b5f
+  d5b3e d5   call SA_GetPosRotAndDirection(m3, m0)
+  d5b45 d5   call 2004::ActivateStartTasks()
+  d5b50 d4   if not ((this != g10)) goto d5b5f
+  d5b59 d5   call 2004::__LeaveHyperspaceWarpIn(p-4)
+  d5b63 d4   if (!(m3)) goto d5b7d
+  d5b6c d5   call SA_FindObject(m3)
+  d5b72 d4   if (!(SA_FindObject(m3))) goto d5b7d
+  d5b78 d5   goto d5b7e
+  d5b7e d4   if not (0) goto d5b97
+  d5b87 d5   call SE_ObjectExists(p-4)
+  d5b8c d4   if not (SE_ObjectExists(p-4)) goto d5b97
+  d5b92 d5   goto d5b98
+  d5b98 d4   if not (1) goto d5bdc
+  d5ba1 d5   call 1000::GetDistance(p-4)
+  d5bac d4   if not ((1000::GetDistance(p-4) < 1000000)) goto d5bdc
+  d5bb5 d5   call p-4.GetWarpOutPosGalaxy()
+  d5bc3 d6   m0[0] = p4[0]
+  d5bce d6   m0[1] = p4[1]
+  d5bd9 d6   m0[2] = p4[2]
+  d5bdf d4   if not (m83) goto d5e2d
+  d5be4 d4   marker 6f
+  d5be5 d3   if (p-4.GetDirectionVector()) goto d5e2d
+  d5bee d5   m83 = 0
+  d5bf6 d5   call SE_ObjectExists(p3)
+  d5bfc d4   if not (!(SE_ObjectExists(p3))) goto d5c07
+  d5c02 d3   goto d5e2c
+  d5c0b d5   call p-5.GetDestinationSector()
+  d5c14 d6   call p3.GetEnvironment()
+  d5c1a d4   if not ((p-5.GetDestinationSector() != p3.GetEnvironment())) goto d5c25
+  d5c20 d3   goto d5e2c
+  d5c26 d5   call 2004::GetCommandAndPars()
+  d5c2f d6   call TI_Delay(1000)
+  d5c39 d6   call SA_GetMaxSpeed(m3)
+  d5c42 d6   call SA_SetDesiredSpeed(m3, SA_GetMaxSpeed(m3))
+  d5c4c d6   call p-5.GetObjectID()
+  d5c51 d5   if not (p-5.GetObjectID()) goto d5c85
+  d5c5a d6   call p-5.GetObjectID()
+  d5c63 d6   call SA_Distance(m3, p-5.GetObjectID())
+  d5c71 d8   call SA_GetTotalSize(m3)
+  d5c7a d5   if not ((SA_Distance(m3, p-5.GetObjectID()) < (1750000 + (SA_GetTotalSize(m3) * 2)))) goto d5c85
+  d5c80 d6   goto d5c86
+  d5c86 d5   if not (1) goto d5c99
+  d5c8e d6   call TI_Delay(100)
+  d5c94 d5   goto d5c48
+  d5c9d d6   call SE_ObjectExists(p3)
+  d5ca3 d5   if not (!(SE_ObjectExists(p3))) goto d5cb0
+  d5cab d3   goto d5e2c
+  d5cb4 d6   call p-5.GetObjectID()
+  d5cb9 d5   if not (p-5.GetObjectID()) goto d5cdc
+  d5cc2 d6   call p-5.GetDestinationSector()
+  d5ccb d7   call p3.GetEnvironment()
+  d5cd1 d5   if not ((p-5.GetDestinationSector() == p3.GetEnvironment())) goto d5cdc
+  d5cd7 d6   goto d5cdd
+  d5cdd d5   if not (1) goto d5d32
+  d5ce4 d6   call 2004::StopShip(1)
+  d5cf2 d6   call p3.__FlyToNextSector(p-1, 0)
+  d5cfc d6   call SE_ObjectExists(p3)
+  d5d01 d5   if not (SE_ObjectExists(p3)) goto d5d1e
+  d5d0a d6   call p3.GetEnvironment()
+  d5d13 d5   if not ((p3.GetEnvironment() != p-1)) goto d5d1e
+  d5d19 d6   goto d5d1f
+  d5d1f d5   if not (1) goto d5d32
+  d5d27 d6   call TI_Delay(100)
+  d5d2d d5   goto d5cf8
+  d5d36 d6   call SE_ObjectExists(p3)
+  d5d3c d5   if (!(SE_ObjectExists(p3))) goto d5d59
+  d5d48 d7   call p3.GetEnvironment()
+  d5d4e d5   if ((m1 != p3.GetEnvironment())) goto d5d59
+  d5d54 d6   goto d5d5a
+  d5d5a d5   if (0) goto d5d74
+  d5d63 d6   call p3.GetObjectID()
+  d5d69 d5   if (!(p3.GetObjectID())) goto d5d74
+  d5d6f d6   goto d5d75
+  d5d75 d5   if not (0) goto d5d82
+  d5d7d d3   goto d5e2c
+  d5d85 d5   if not (m83) goto d5d92
+  d5d8d d3   goto d5e2c
+  d5d95 d6   m83 = p3
+  d5d9e d6   call p3.StopShip(1)
+  d5da8 d6   call SA_GetInst3D(m3)
+  d5dad d7   let p5 = SA_GetInst3D(m3)
+  d5db1 d7   call B3D_InstGetCollCenterZ(p5)
+  d5dba d8   call B3D_InstGetCollCenterY(p5)
+  d5dc3 d9   call B3D_InstGetCollCenterX(p5)
+  d5dcf d11  call p3.GetObjectID()
+  d5dd6 d7   call SA_TractorConnect(p3.GetObjectID(), m3, B3D_InstGetCollCenterX(p5), B3D_InstGetCollCenterY(p5), B3D_InstGetCollCenterZ(p5))
+  d5ddd d7   call GetCommand()
+  d5de4 d6   if not ((GetCommand() == 0)) goto d5e23
+  d5e1d d7   call StartExecuteCommand8(p4[0], p4[1], p4[2], p4[3], p4[4], p4[5], p4[6], p4[7], p4[8])
+  d5e27 d3   if (0) goto d5bea
+  d5e2c d3   marker 70
+  d5e2e d5   p0 = 3
+  d5e34 d1   return p0
+
+-- 2004::__LeaveHyperspaceWarpIn entry d5e3a args 1, depth conflicts 0
+  d5e3a d0   frame 5
+  d5e41 d1   call p-4.GetObjectID()
+  d5e49 d1   if not (m3) goto d5e5c
+  d5e4e d2   let p0 = p-4.GetObjectID()
+  d5e51 d1   if not (p0) goto d5e5c
+  d5e57 d2   goto d5e5d
+  d5e5d d1   if not (1) goto d5f58
+  d5e69 d2   call SA_SetShipRotAccel(m3, m90)
+  d5e71 d2   m56 = 4
+  d5e78 d2   m57 = m1
+  d5e81 d2   m47 = 327684
+  d5e88 d2   m48 = p0
+  d5e93 d2   call SA_SetSpeedLimit(m3, m96)
+  d5e9e d2   call SA_SetDesiredSpeed(m3, 0)
+  d5ea9 d1   if not ((this != g10)) goto d5ebb
+  d5eb5 d2   call SA_WarpObjectIn(m3, p0)
+  d5ebe d1   if not (m3) goto d5ed8
+  d5ecd d1   if not (!((m14 & 4194304))) goto d5ed8
+  d5ed3 d2   goto d5ed9
+  d5ed9 d1   if not (1) goto d5eed
+  d5ee7 d2   call SA_ClearObjectFromHangar(m3, p0, -1)
+  d5eee d2   m47 = 0
+  d5ef5 d1   if not (m3) goto d5f0f
+  d5f04 d1   if not (!((m14 & 4194304))) goto d5f0f
+  d5f0a d2   goto d5f10
+  d5f10 d1   if not (1) goto d5f4e
+  d5f19 d2   call SA_CollisionObject(m3)
+  d5f1e d1   if not (SA_CollisionObject(m3)) goto d5f39
+  d5f25 d2   m56 = 12
+  d5f2a d2   m57 = 0
+  d5f33 d2   call SA_AvoidObjectCollision(m3, 0)
+  d5f3c d1   if not (m3) goto d5f4e
+  d5f48 d2   call SA_SetShipRotAccel(m3, m90)
+  d5f4f d2   m56 = 0
+  d5f54 d2   m57 = 0
+  d5f5a d1   return p0
+
+-- 2004::Activate entry c5fd9 args 0, depth conflicts 8
+  c5fd9 d0   frame 7
+  c5fdd d1   call 2004::IsDocked()
+  c5fe3 d0   if not (!(2004::IsDocked())) goto c5ff3
+  c5fed d1   call 304::Remove(this)
+  c5ffb d0   if not (!((m14 & 2048))) goto c6021
+  c6003 d0   if not (m3) goto c6012
+  c600c d1   call SA_FreeObject(m3)
+  c6018 d1   call SA_AllocObject(7, m16)
+  c601d d1   m3 = SA_AllocObject(7, m16)
+  c6025 d0   if not (!(m3)) goto c602f
+  c602a d0   goto c6488
+  c6034 d1   call SE_IsClass(this, 2019)
+  c603a d0   if not (!(SE_IsClass(this, 2019))) goto c604d
+  c603f d0   marker 6f
+  c6040 d0   if (?) goto c604d
+  c6046 d1   call 2004::Bounce()
+  c604c d0   marker 70
+  c6052 d1   call SA_SetEventObject(m3, this)
+  c605a d2   call GetOwner()
+  c605f d1   call GetOwner().GetID()
+  c6068 d1   call SA_SetGroup(m3, GetOwner().GetID())
+  c606f d1   call 2004::SetSectorRelations()
+  c607f d1   call SA_SetEnemyOfEnabled(m3, (m14 & 16))
+  c608c d1   call SA_SetHull(m3, m22)
+  c6091 d1   m22 = SA_SetHull(m3, m22)
+  c609e d0   if not ((m14 & 131072)) goto c60b9
+  c60a7 d1   call SA_GetFlags(m3)
+  c60ae d2   op 54
+  c60b3 d2   call SA_SetFlags(m3, 8)
+  c60bd d1   call SA_GetFlags2(m3)
+  c60cb d1   if not ((m14 & 33554432)) goto c60db
+  c60d0 d2   let p0 = SA_GetFlags2(m3)
+  c60d6 d3   op 54
+  c60d7 d3   p1 = 8192
+  c60dc d2   call IsInvincible()
+  c60e1 d1   if not (IsInvincible()) goto c60f3
+  c60ee d3   op 54
+  c60ef d3   p1 = 8388608
+  c60fc d1   if not ((m14 & 536870912)) goto c610e
+  c6109 d3   op 54
+  c610a d3   p1 = 16777216
+  c6113 d1   if not ((m15 & 1)) goto c6125
+  c6120 d3   op 54
+  c6121 d3   p1 = 1073741824
+  c612c d1   if not ((m15 & 512)) goto c613e
+  c6139 d3   op 54
+  c613a d3   p1 = 65536
+  c6145 d2   call SA_SetFlags2(m3, p0)
+  c6152 d2   call SA_SetHueModifier(m3, m32)
+  c615f d2   call SA_SetSaturationModifier(m3, m33)
+  c616c d2   call SA_SetShipRotAccel(m3, m90)
+  c6175 d1   if not (m29) goto c61d5
+  c617e d2   call SE_ArraySize(m29)
+  c6183 d3   let p1 = SE_ArraySize(m29)
+  c6188 d3   p1 = (p1 - 1)
+  c618f d2   if not ((((p1 - 1) + 1) > 0)) goto c61d4
+  c619e d2   if not ((m29[p1] != -1)) goto c61cf
+  c61ad d3   call SA_AllocObject(9, m29[p1])
+  c61b5 d5   let p2 = SA_AllocObject(9, m29[p1])
+  c61b9 d4   call SA_MoveObjectIntoContainer(p2, m3)
+  c61bf d3   if not (!(SA_MoveObjectIntoContainer(p2, m3))) goto c61ce
+  c61c8 d4   call SA_FreeObject(p2)
+  c61cf d2   goto c6183
+  c61dc d2   call SA_SetShield(m3, m28)
+  c61e1 d2   m28 = SA_SetShield(m3, m28)
+  c61e9 d2   call SA_GetMaxShield(m3)
+  c61f2 d3   call SA_GetMaxHull(m3)
+  c61ff d2   call SA_SetMaxAvoidShield(m3, ((SA_GetMaxShield(m3) + SA_GetMaxHull(m3)) / 8))
+  c6208 d1   if not (m25) goto c627a
+  c620f d3   p1 = 0
+  c621a d2   if not ((p1 < m23)) goto c6279
+  c621f d2   goto c6234
+  c6229 d3   p1 = (p1 + 1)
+  c622f d2   goto c6213
+  c623e d2   if not ((m25[p1] != -1)) goto c6274
+  c624d d3   call SA_AllocObject(8, m25[p1])
+  c625e d4   call SA_MoveLaserIntoContainer(p2, m3, (p1 + 1))
+  c6264 d3   if not (!(SA_MoveLaserIntoContainer(p2, m3, (p1 + 1)))) goto c6273
+  c626d d4   call SA_FreeObject(p2)
+  c6274 d2   goto c6224
+  c6280 d1   if (!((this == g10))) goto c6296
+  c6286 d2   call 2004::IsAutopilotActive()
+  c628b d1   if (2004::IsAutopilotActive()) goto c6296
+  c6291 d2   goto c6297
+  c629b d2   call SA_SetAutopilot(m3, 0)
+  c62ac d2   call SA_SetPlayerControl(m3, (m43 == g9))
+  c62bb d2   call SA_SetAsPlayerObject(m3, (this == g10))
+  c62c4 d1   if not (m1) goto c6341
+  c62d0 d2   call SE_IsClass(m1, 2001)
+  c62d5 d1   if not (SE_IsClass(m1, 2001)) goto c6329
+  c62de d2   call m1.GetObjectID()
+  c62e7 d2   call SA_StartObjectInSpace(m3, m1.GetObjectID())
+  c62ee d2   call 2004::NoSafePosOnActivate()
+  c62f3 d1   if not (2004::NoSafePosOnActivate()) goto c630a
+  c62ff d2   call SA_SetPosAndDirection(m3, m0)
+  c6305 d1   goto c6317
+  c6311 d2   call SA_SetSafePosAndDirection(m3, m0)
+  c631e d2   call SA_GetPosRotAndDirection(m3, m0)
+  c6324 d1   goto c633c
+  c632d d2   call m1.GetObjectID()
+  c6336 d2   call SA_MoveObjectIntoContainer(m3, m1.GetObjectID())
+  c633c d1   goto c6341
+  c6344 d2   call 2004::ReorgFormation(-1)
+  c6351 d2   call SA_SetExtraSpeed(m3, m72)
+  c635e d2   call SA_SetExtraRotSpeed(m3, m73)
+  c6365 d2   call GetOwner()
+  c6371 d1   if not ((GetOwner() == g8[8])) goto c63d1
+  c6379 d2   call SE_Random(100)
+  c6381 d1   if not ((SE_Random(100) < 5)) goto c63cc
+  c6388 d3   p1 = 1
+  c6392 d2   if not ((p1 < 31)) goto c63cb
+  c6397 d2   goto c63aa
+  c63a1 d4   p2 = (p2 + 1)
+  c63a5 d3   goto c638c
+  c63ae d4   op 58
+  c63b5 d3   if not ((p1 & 918334)) goto c63c6
+  c63c0 d4   call 2004::SetGroupRelation(p2, -1)
+  c63c6 d3   goto c639c
+  c63cc d1   goto c6410
+  c63d8 d1   if not ((m43 != g9)) goto c6409
+  c63e0 d2   call SE_Random(100)
+  c63e8 d1   if not ((SE_Random(100) < 5)) goto c63fd
+  c63f2 d2   call 2004::SetGroupRelation(8, -1)
+  c63f8 d1   goto c6404
+  c63fe d2   call 2004::SetRaceRelationsFromNotoriety()
+  c6404 d1   goto c6410
+  c640a d2   call 2004::SetRaceRelationsFromNotoriety()
+  c6411 d2   call 2004::IsHidden()
+  c6416 d1   if not (2004::IsHidden()) goto c6431
+  c641f d2   call SA_GetFlags(m3)
+  c6426 d3   op 54
+  c642b d3   call SA_SetFlags(m3, 16)
+  c6432 d2   call 1000::Activate()
+  c643b d1   if not (m87) goto c6455
+  c6444 d3   call 2004::IsDocked()
+  c644a d1   if not ((m87 == 2004::IsDocked())) goto c6455
+  c6450 d2   goto c6456
+  c6456 d1   if not (1) goto c647f
+  c6460 d1   if not ((m88 >= 0)) goto c647f
+  c6472 d5   call m87.GetObjectID()
+  c6479 d2   call SA_SetShipAtDockPort(m87.GetObjectID(), m88, m3, 259)
+  c6481 d2   call TI_Interrupt(this)
+  c648d d2   call m1.GetSector()
+  c6492 d1   call m1.GetSector().IsActivated()
+  c6497 d0   if not (m1.GetSector().IsActivated()) goto c64b4
+  c64a3 d1   call SE_IsClass(m1, 2014)
+  c64a9 d0   if not (!(SE_IsClass(m1, 2014))) goto c64b4
+  c64af d1   goto c64b5
+  c64b5 d0   if not (1) goto c64c1
+  c64bb d1   call 2004::ActivateStartTasks()
+  c64c4 d1   return p0
+
+-- 2004::AddTo2 entry c67d2 args 2, depth conflicts 0
+  c67d2 d0   frame 4
+  c67dc d1   call SE_IsClass(p-4, 2016)
+  c67e1 d0   if not (SE_IsClass(p-4, 2016)) goto c67f9
+  c67ee d1   call p-4.AddShip2(this, p-5)
+  c67f4 d0   goto c6804
+  c67fe d1   call p-4.AddShip(this)
+  c6808 d1   call p-4.GetObjectID()
+  c680d d0   if not (p-4.GetObjectID()) goto c6819
+  c6813 d1   call Activate()
+  c681a d1   return p0
+
+-- 2004::SetNoSafePosOnActivate entry c229c args 1, depth conflicts 1
+  c229c d0   frame 2
+  c22a2 d0   if not (p-4) goto c22b6
+  c22ac d2   op 54
+  c22ad d2   m14 = 32
+  c22b1 d1   goto c22c0
+  c22bc d1   m14 = (m14 & -33)
+  c22c1 d2   return p0
+
+-- 2014::GetDestinationGate entry a7206 args 0, depth conflicts 0
+  a7206 d0   frame 5
+  a720e d0   if not ((m9 < 0)) goto a7215
+  a7214 d1   return p0
+  a7224 d1   call g7[m10][m11].GetGate(m12)
+  a7229 d1   return p0
+
+2004::__LeaveHyperspace stock vs Mayhem: statements equal after masking member/global slots and offsets: False (166 statements)
+2004::__LeaveHyperspaceWarpIn stock vs Mayhem: statements equal after masking member/global slots and offsets: True (36 statements)
+2004::Activate stock vs Mayhem: statements equal after masking member/global slots and offsets: False (143 statements)
+2004::AddTo2 stock vs Mayhem: statements equal after masking member/global slots and offsets: True (10 statements)
+2004::SetNoSafePosOnActivate stock vs Mayhem: statements equal after masking member/global slots and offsets: True (7 statements)
+2014::GetDestinationGate stock vs Mayhem: statements equal after masking member/global slots and offsets: True (5 statements)

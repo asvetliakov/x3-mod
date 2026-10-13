@@ -1,0 +1,122 @@
+X3AP.exe 2153984 B sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab MATCH
+ok   0x0045413e 8d b7 40 02 00 00 83 c1 30                   order 5: esi = &f+0x240 (stored order point); ecx = &phys+0x30 (ship centre)
+ok   0x0045414f e8 3c e3 fb ff                               order 5: f+0x240 - phys+0x30 (0x412490: out = [arg] - [ecx])
+ok   0x00454182 e8 f9 59 01 00 89 44 24 1c                   order 5: [esp+0x1c] = |ship centre - f+0x240| (0x469b80 length)
+ok   0x00454192 89 8c 24 a0 04 00 00                         order 5: leaf target copy [esp+0x4a0] = f+0x240 (x)
+ok   0x004541b4 66 83 78 48 12                               order 5: target class 0x12 (gate) branch
+ok   0x00454303 8b 4b 10                                     order 5 arrival: current speed [obj+0x10]
+ok   0x0045430c b8 67 66 66 66 f7 e9                         order 5 arrival: |v| / 10 (magic 0x66666667, sar 2)
+ok   0x00454323 8b 82 cc 00 00 00                            order 5 arrival: tf = [*0x606f34+0xcc]
+ok   0x00454329 03 8b a4 00 00 00                            order 5 arrival: + r_ship [obj+0xa4]
+ok   0x0045432f 2d 00 00 01 00                               order 5 arrival: (tf - 0x10000)
+ok   0x0045433a c1 f8 02                                     order 5 arrival: / 4
+ok   0x00454384 66 83 78 48 12 0f 84 52 03 00 00             order 5: gate target -> arrival compare at 0x4546e1 every frame
+ok   0x004546e3 39 4c 24 1c 0f 9e c2                         order 5 arrival: dist <= (|v|/10 + r_ship)(1 + (tf-1)/4)
+ok   0x00454733 8d 94 24 a4 04 00 00                         order 5: leaf argument edx = &[esp+0x4a0] (after push ebx)
+ok   0x00454745 e8 76 85 ff ff                               order 5: steering leaf 0x44ccc0
+ok   0x0044d4fe 66 3d 12 00                                  CanWarp 0x44d4c0: other object class 0x12 (gate)
+ok   0x0044d50c f6 c2 01                                     CanWarp: [ship+0x40] bit 2 (after shr 1) ...
+ok   0x0044d513 e8 68 2a ff ff                               CanWarp: ... or 0x43ff80 (manual player control)
+ok   0x0044d523 66 83 b8 58 02 00 00 21                      CanWarp: not on order 0x21
+ok   0x0044d531 39 4d 10                                     CanWarp: centre distance < r_gate
+ok   0x0044d5de c7 44 24 10 33 b3 00 00                      CanWarp: k = 0.7 (0xb333)
+ok   0x0044d5e8 c7 44 24 10 d7 23 00 00                      CanWarp: k = 0.14 (0x23d7) for subtypes 5..8
+ok   0x0044d606 39 45 10                                     CanWarp: centre distance < k r_gate
+ok   0x0044d618 8b 82 98 01 00 00                            CanWarp: pass-vector z [gate.f+0x198] (-0.01) x r_gate
+ok   0x0044d64a ba 66 e6 00 00                               CanWarp: x 0.9 (0xe666)
+ok   0x0044d6b8 81 c2 00 01 00 00                            CanWarp: velocity = phys+0x100 + slip [obj+0x60]
+ok   0x0044d703 8d 04 40                                     CanWarp: 3 r_ship (then sar 2: 0.75 r_ship)
+ok   0x0044d715 b8 03 00 00 00                               CanWarp: return 3
+ok   0x0043ff83 a9 00 00 04 00                               0x43ff80: [obj+0x40] & 0x40000 ...
+ok   0x0043ff8a a9 00 00 08 00                               0x43ff80: ... and not 0x80000 (autopilot)
+ok   0x0044ada1 81 4e 40 02 00 04 00                         SA_SetAsPlayerObject(ship,1) core: [obj+0x40] |= 0x40002 (bit 2 = player object)
+ok   0x0044ae93 83 66 40 fd                                  SA_SetAsPlayerObject(ship,0) core: [obj+0x40] &= ~2
+ok   0x00463e1e 6a 01 e8 6b 6f fe ff                         SA_SetAsPlayerObject case -> 0x44ad90(1)
+ok   0x00462720 e8 fb 11 fe ff                               SA_StartInHangar case: core 0x443920
+ok   0x0046272e 83 f8 01 0f 84 5b e7 ff ff                   SA_StartInHangar: core 1 -> 0x460e92 (task waits, no result)
+ok   0x00460e99 89 4b 7c 89 93 80 00 00 00                   0x460e92: waiting slot [obj+0x7c], task [obj+0x80]
+ok   0x00462746 6a 0a                                        SA_StartInHangar: core 0 -> result 10
+ok   0x00443a86 66 83 7f 48 12                               StartInHangar core: container class 0x12 (gate)
+ok   0x00443a93 e8 b8 c2 ff ff                               StartInHangar core: capital (0x43fd50) skips the warp-out slots
+ok   0x00443aa8 b9 06 00 00 00                               StartInHangar core: 6 warp-out slots ...
+ok   0x00443ab3 b9 07 00 00 00                               StartInHangar core: ... 7 for the player ship ([0x60850c]+0x38)
+ok   0x00443b0b 33 c0                                        StartInHangar core: no free slot -> 0
+ok   0x00443b3d 89 9c 81 dc 01 00 00                         StartInHangar core: occupant [gate.f+0x1dc+4i] = ship
+ok   0x00443b53 81 c1 20 4e 00 00 89 8c 82 c0 01 00 00       StartInHangar core: expiry [gate.f+0x1c0+4i] = now + 20000
+ok   0x00444157 0d 80 00 00 00 89 43 40                      StartInHangar core (gate tail): [ship+0x40] |= 0x80
+ok   0x00444160 b8 01 00 00 00                               StartInHangar core: return 1
+ok   0x0043a395 e8 36 87 01 00 56                            sector update: order interpreter 0x452ad0, then post pass 0x45b720
+ok   0x00403aff e8 6c bc 09 00                               main loop: KC scheduler 0x49f770 (last of three calls) ...
+ok   0x00403b17 e8 44 68 03 00                               main loop: ... then the sector update 0x43a360
+ok   0x0045b777 66 83 7e 48 12                               post pass walk 1: class 0x12 (gate)
+ok   0x0045b785 8b 46 50 8b 78 54                            post pass: the gate contained class-7 list [gate.f+0x54]
+ok   0x0045b790 84 5f 40                                     post pass: contained ship with [ship+0x40] & 0x80 ...
+ok   0x0045b797 e8 d4 89 fe ff                               post pass: ... -> 0x444170 (launch from the gate)
+ok   0x0045b7c7 2b fa 85 ff 7f 0c 89 11                      post pass: expired warp-out slot -> stamp now ...
+ok   0x0045b7d2 c7 04 08 00 00 00 00                         post pass: ... occupant 0
+ok   0x00444187 b8 10 27 00 00                               launch 0x444170: gate -> 10000
+ok   0x004441c3 89 90 80 01 00 00                            launch: [gate.f+0x180] = now + 10000
+ok   0x004441ce 66 89 b9 58 02 00 00                         launch: order 0
+ok   0x00444311 e8 3a ba ff ff                               launch: capital flag 0x43fd50
+ok   0x00444335 8d 8f dc 01 00 00                            launch: search the ship in the occupants [gate.f+0x1dc..]
+ok   0x0044434a 83 f8 07                                     launch: 7 entries
+ok   0x00444358 83 c0 fd                                     launch: phi index = slot - 3
+ok   0x00444363 dc 0d b8 57 56 00 dc 0d c0 54 56 00          launch: x (1/24) x 65536 (doubles at 0x5657b8, 0x5654c0): 15 deg per slot
+ok   0x0044442c 8b 97 90 01 00 00                            launch: pass vector [gate.f+0x190..] (0, y0, -0.01)
+ok   0x00444484 f7 d8                                        launch: y = -(cos phi . y0)
+ok   0x004444a9 2b 8b a4 00 00 00                            launch: z = z0 r - r_ship
+ok   0x004444c9 e8 d2 c8 0a 00                               launch: rotate by the gate frame (0x4f0da0, rows [gate.p+0x40])
+ok   0x004444f2 89 08                                        launch: phys+0x30 = P (non-capital)
+ok   0x00444519 c7 44 24 24 5c 2b 00 00                      launch capital: y = 11100 units (22.2 m), x = 0
+ok   0x00444542 2b 83 a4 00 00 00                            launch capital: z = z0 r - r_ship
+ok   0x00444581 89 08                                        launch: phys+0x30 = P (capital)
+ok   0x00444594 68 00 80 00 00                               launch: relative angles (0x8000, 0, 0) (yaw 180 deg)
+ok   0x0044459d e8 ce bc 0a 00                               launch: angle matrix 0x4f0270
+ok   0x004445b4 e8 37 d2 0a 00                               launch: x gate matrix -> ship matrix (0x4f17f0)
+ok   0x004445d5 66 c7 82 58 02 00 00 21 00                   launch: order 0x21
+ok   0x004445fa 81 c2 84 03 00 00                            launch: deadline now + 900
+ok   0x00444606 8b 43 70 8b 4b 50                            launch: PROPOSED SITE: mov eax,[ebx+0x70] | mov ecx,[ebx+0x50] (6 B) before the copy P -> f+0x240
+ok   0x00444612 89 91 40 02 00 00                            launch: f+0x240 = phys+0x30
+ok   0x00444630 81 4b 40 00 04 00 00                         launch: [ship+0x40] |= 0x400
+ok   0x0044463a b8 e8 67 19 00 ba 10 5c 0c 00                launch: 1665000 x 810000 / 10^6 = 1348650 units along gate row 2
+ok   0x004446c8 89 ba 24 02 00 00                            launch: f+0x224 = gate
+ok   0x004448a5 66 39 77 48                                  launch tail: container class 0x12 ...
+ok   0x004448b3 25 a0 15 ff ff 05 c0 d4 01 00                launch tail: speed = capital ? 60000 : 120000
+ok   0x004448c0 c7 43 14 20 4e 00 00                         launch tail: desired 20000
+ok   0x004448e3 e8 28 4c 00 00                               launch tail: link into the gate sector (0x449510)
+ok   0x004448fc 81 63 40 7f ff ff ff                         launch tail: [ship+0x40] &= ~0x80
+ok   0x00444906 d1 ea f6 c2 01                               launch tail: bit 2 (player object) -> nearby-ship pass (capital)
+ok   0x00444a32 6a 01 51 ff d0                               launch tail: wake the waiting task with 1
+ok   0x00465b68 66 39 91 58 02 00 00 75 0c 39 81 24 02 00 00 0f 84 1f 01 00 00 SA_WarpObjectIn: order 0x21 already on with f+0x224 == target -> 0x465c9c (no placement, site W skipped)
+ok   0x004553df f7 d8                                        order 0x21: u = deadline - now
+ok   0x0045537c 8b 43 50 8b 4b 70                            order 0x21 end: phys+0x30 = f+0x240
+ok   0x00457be9 66 83 ff 12                                  order 0x1e: container class 0x12
+ok   0x00457c24 e8 67 a8 fb ff                               order 0x1e: ship - gate
+ok   0x00457c5e e8 9d 6b fb ff                               order 0x1e: dz = (ship - gate) . gate row 2
+ok   0x00457c67 e8 94 80 fe ff                               order 0x1e: large predicate 0x43fd00
+ok   0x00457c7e c1 f8 02                                     order 0x1e: limit r_gate / 4 for non-large
+ok   0x00457c89 3b d0 7e 0a                                  order 0x1e: |dz| > limit -> done (result 1)
+ok   0x00457d2e e8 8d 4f ff ff                               order 0x1e: steer at ship + row2 (dz -+ r_gate): lateral kept
+ok   0x00457d48 c7 43 10 60 ea 00 00                         order 0x1e: large: speed 60000 every frame
+ok   0x00457d5c c7 43 10 c0 d4 01 00                         order 0x1e: other: speed 120000 every frame
+ok   0x004611ce 66 83 f9 12                                  SA_ClearObjectFromHangar: gate container allowed
+ok   0x00461236 7c 1d                                        SA_ClearObjectFromHangar: port < 0 -> no exit point
+ok   0x0046243c e8 6f 73 fe ff                               SA_MoveObjectIntoContainer case -> 0x4497b0
+ok   0x004498f9 89 73 54                                     0x4497b0: [obj+0x54] = container (no position write)
+ok   0x00465acc 66 83 78 48 12                               SA_IsWarpOutSlotAvailable: class 0x12
+ok   0x00465ae4 05 c0 01 00 00                               SA_IsWarpOutSlotAvailable: slots [gate.f+0x1c0..]
+ok   0x00465b00 83 f9 06                                     SA_IsWarpOutSlotAvailable: 6 slots
+ok   SA id 0xd case 0x0046117e
+ok   SA id 0x19 case 0x004626e2
+ok   SA id 0x21 case 0x00465b22
+ok   SA id 0x5c case 0x0046240c
+ok   SA id 0x11e case 0x00463de6
+ok   SA id 0x145 case 0x00465ab4
+ok   order 0x5 handler 0x00453fc2
+ok   order 0x8 handler 0x004551fe
+ok   order 0x1e handler 0x00457bc3
+ok   order 0x21 handler 0x0045533b
+ok   double 0x005657b8 = 0.04166666666666667
+ok   double 0x005654c0 = 65536.0
+ok   window 0x00444606+6: instruction start in the linear sweep, no direct branch into bytes 1..5 (launch: lateral exit offset before the copy into f+0x240)
+RESULT PASS (121 checks)
