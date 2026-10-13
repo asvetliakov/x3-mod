@@ -1,0 +1,22 @@
+{
+  "dll": "detached worktree /tmp/x3-run160-candidate of e6189042, build/d3d9.dll (clean configure + build)",
+  "sha256": "2356213149e1619eea7ded9265db0d4aac1cd8a4f737425c98d07ccb26b8d18f",
+  "bytes": 58702450,
+  "commit": "e6189042",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 970, violations 0",
+    "site_verifier": "PASS, 18 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites OK (candidate tree); fixture 7214/7214, capital 2587/2587, E vs amendment 15 0/400k (implementer, same tree, ledger)"
+  },
+  "changes_since_run159": [
+    "0d1f28a7 Run159 triage + amendment 17 decision",
+    "079738f0 gate traffic controller note",
+    "e23b2e2b gate transfer/arrival disassembly",
+    "e6189042 amendment 17"
+  ],
+  "trigger": "Run159: the 16b sequencing cap floor stalled wait chains of capitals (413.6 s floor time, peak 4 held)",
+  "producer": "main session (Fable 5.1), 2026-10-13"
+}
