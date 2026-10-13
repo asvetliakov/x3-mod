@@ -1,0 +1,25 @@
+{
+  "run": 161,
+  "platform": "native Windows 11, C:\\X3",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run160; cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+  "installed_at": "2026-10-13",
+  "commit": "ad0e131a",
+  "candidate_record": "verification/results/run161-candidate-build.json",
+  "installed": {
+    "path": "C:\\X3\\d3d9.dll",
+    "sha256": "579c1728b4bd83709c5e217cb5649da97e227adcecda6590ffe679c325b5a85f",
+    "bytes": 59047971,
+    "verified_bytes": true,
+    "method": "cmp"
+  },
+  "previous": {
+    "run": 160,
+    "sha256": "2356213149e1619eea7ded9265db0d4aac1cd8a4f737425c98d07ccb26b8d18f",
+    "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run160"
+  },
+  "release_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run150 (release 1.2.1)",
+  "x3m_ini": "unchanged (new keys ship_steering_gates_traffic, ship_steering_dock default on when absent; ship_trace_max = 8 set on 2026-10-13)",
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "controller stage A + docking; Run 161 A open",
+  "producer": "main session"
+}

@@ -1,0 +1,23 @@
+{
+  "dll": "detached worktree /tmp/x3-run161-candidate of ad0e131a, build/d3d9.dll (clean configure + build)",
+  "sha256": "579c1728b4bd83709c5e217cb5649da97e227adcecda6590ffe679c325b5a85f",
+  "bytes": 59047971,
+  "commit": "ad0e131a",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 987, violations 0",
+    "site_verifier": "PASS, 19 checks (18 + arrival_launch_site 0x00444606)",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites OK (candidate tree); fixture 8520/8520, capital 2862/2862, key-off identities 0 differences (implementers, same tree, ledger)"
+  },
+  "changes_since_run160": [
+    "fc8819e2 Run160 crowd triage",
+    "77ddda08 controller design",
+    "27f706ba docking design",
+    "e23b2e2b/d40d1b1b gate disassembly 10.10/10.11",
+    "ad0e131a controller stage A + docking amendment 18"
+  ],
+  "trigger": "Run160 crowd: engine capital-capital warn chain (195 s), arrival-side 0x12 (158 s); scenario audit row 1 (own dock station) and carrier docking (fighters never reached a moving carrier under our ramp)",
+  "producer": "main session (Fable 5.1), 2026-10-13"
+}
