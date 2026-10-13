@@ -414,6 +414,17 @@ SETTINGS = [
           'game\'s own collision warning between two of them is skipped while their hulls provably cannot touch; otherwise it stays on, '
           'as in the unmodified game (needs ship_steering_gates_capital; 0 = the warning always stays on). 1 = on, 0 = off.', builtin='1',
           requires=('ship_steering_gates_capital',), since='2026-10-13'),
+    entry('ship_steering_gates_traffic', 'bool', 'engine', 'Capital ships at the same gate are coordinated by one traffic controller per '
+          'gate: it predicts every capital\'s path for the next 30 seconds, lets the game skip its own collision warning between two of '
+          'them only while their hulls provably stay apart, slows the lower-priority ship when they would not, and places capital '
+          'ships arriving through the gate above the middle so they do not appear in the departure lane (needs '
+          'ship_steering_gates_capital; 0 = capital ships at a gate behave as before). 1 = on, 0 = off.', builtin='1',
+          requires=('ship_steering_gates_capital',), since='2026-10-13'),
+    entry('ship_steering_dock', 'bool', 'engine', 'Ships flying to dock at a station or a carrier steer around its parts on the way '
+          'to the docking approach point, and the game skips its collision warning against that station or carrier while the ship\'s '
+          'path and heading clear every part with room to spare, so the ship no longer stops and flies away from its own dock; ships '
+          'waiting near a station for a free dock also steer around its parts (needs ship_avoidance; 0 = docking ships behave as '
+          'before). 1 = on, 0 = off.', builtin='1', requires=('ship_avoidance',), since='2026-10-13'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '

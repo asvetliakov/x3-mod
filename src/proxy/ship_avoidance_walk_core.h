@@ -57,6 +57,7 @@ struct Census {
     std::uint32_t part_flags[4];
 };
 struct Stats {
+    unsigned part_pinned_full = 0; // amendment 18: a valid model found no slot (every slot pinned by the current snapshot)
     unsigned visited = 0, stations = 0, part_built = 0, part_fallback = 0, part_invalid = 0, part_cached = 0,
              part_dirty = 0,  // stations with at least one unfilled child cache (+0xa4 = -1): the radius was replicated
              part_scaled = 0; // stations with at least one flagged child (offset scaled by the parent's +0x70)
@@ -78,6 +79,10 @@ struct PartCache {
     av::PartSet sets[av::kStationCapacity];
     unsigned count = 0, next = 0;
     av::PartSet scratch;
+    // amendment 18 (review 6): a slot the current snapshot references is pinned with its epoch and never evicted in that epoch; with every
+    // slot pinned a new model gets no slot (the fallback body), counted in Stats.part_pinned_full
+    std::uint32_t pin[av::kStationCapacity] = {};
+    std::uint32_t epoch = 0; // the pinning epoch (fill_snapshot: the snapshot's game time, never 0)
     unsigned find(std::uint32_t station, std::uint32_t generation, std::uint32_t stamp) const noexcept {
         for (unsigned i = 0; i < count; ++i)
             if (sets[i].station == station && sets[i].generation == generation && sets[i].stamp == stamp) return i;
@@ -87,9 +92,13 @@ struct PartCache {
         for (unsigned i = 0; i < count; ++i)
             if (sets[i].station == station) return i;
         if (count < av::kStationCapacity) return count++;
-        const unsigned s = next;
-        next = (next + 1) % av::kStationCapacity;
-        return s;
+        for (unsigned k = 0; k < av::kStationCapacity; ++k) {
+            const unsigned s = (next + k) % av::kStationCapacity;
+            if (epoch && pin[s] == epoch) continue; // the current snapshot references it
+            next = (s + 1) % av::kStationCapacity;
+            return s;
+        }
+        return av::kStationCapacity;
     }
     void invalidate(std::uint32_t station) noexcept {
         for (unsigned i = 0; i < count; ++i)
@@ -223,6 +232,7 @@ inline unsigned station_parts(Mem& mem, PartCache& cache, std::uint32_t obj, std
     const unsigned hit = cache.find(obj, generation, stamp);
     if (hit < av::kStationCapacity) {
         ++stats.part_cached;
+        cache.pin[hit] = cache.epoch;
         return hit;
     }
     ++stats.stations;
@@ -241,10 +251,16 @@ inline unsigned station_parts(Mem& mem, PartCache& cache, std::uint32_t obj, std
         return av::kStationCapacity; // not cached: a station the replication could not settle is retried on the next snapshot
     }
     const unsigned slot = cache.slot_for(obj);
+    if (slot >= av::kStationCapacity) { // every slot pinned by the current snapshot: no model this time
+        cache.invalidate(obj);
+        ++stats.part_pinned_full;
+        return av::kStationCapacity;
+    }
     cache.sets[slot] = cache.scratch;
     cache.sets[slot].station = obj;
     cache.sets[slot].generation = generation;
     cache.sets[slot].stamp = stamp;
+    cache.pin[slot] = cache.epoch;
     ++stats.part_built;
     return slot;
 }
@@ -259,6 +275,7 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
     s.overflow = 0;
     s.max_r = 0;
     stats = Stats{};
+    cache.epoch = now ? now : 1; // amendment 18: this snapshot's slots are pinned for its epoch
     const std::uint32_t table = mem.u32(sector + kSectorBuckets);
     if (!table) {
         s.overflow = 1;

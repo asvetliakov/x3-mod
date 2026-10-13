@@ -142,5 +142,53 @@ class CapitalCrowdRows(unittest.TestCase):
         self.assertEqual(st.parse_rows(KV_ROWS), [])  # and the kv rows are not trace rows
 
 
+# The gate traffic controller, stage A (gate-traffic-controller.md D.7): its three rows and the census row's capsule fields.
+CTL_ROWS = [
+    'ship_gate_ctl frame=900 t_ms=25503900 gate=0x8e1edfb0 ship=0xa908da10 id=4711 seq=6 order=0x14 from=none to=escort why=escort rank=5',
+    'ship_gate_ctl_pair frame=901 t_ms=25504000 gate=0x8e1edfb0 a=0x8e223c48 b=0xa908da10 seq=4,6 rank=3,5 verdict=unresolved before=clear '
+    't_c_s=12.5 yielder=b cap_ms=-1.0 d_m=2331',
+    'ship_gate_launch frame=902 t_ms=24274300 ship=0x8e1d0090 gate=0x8e1ef948 class=M2 capital=1 slot=-1 gate_type=3 kind=capital_offset '
+    'p_m=1200,7400,-56000 off_r_m=0 off_u_m=663 r_gate_m=1105 r_m=1092 w_m=583',
+    'ship_capital_census frame=100 type=11 class=M2 r_m=1092 w_m=583 w_r=0.535 w_src=lod retries=0 l_m=1092 h_rw_m=1238 len_m=1092 '
+    'h_m=1238 part_id=20071 part_lod=0 o_x=145 o_y=324 e_x=169 e_y=169 l_r=1.000 capsule_L_m=1092',
+]
+
+
+class GateTrafficRows(unittest.TestCase):
+    def test_ctl_rows(self):
+        c = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl')[0]
+        self.assertEqual((c['gate'], c['ship'], c['id'], c['seq'], c['order']), (0x8e1edfb0, 0xa908da10, 4711, 6, 0x14))
+        self.assertEqual((c['from'], c['to'], c['why'], c['rank']), ('none', 'escort', 'escort', 5))
+        p = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_pair')[0]
+        self.assertEqual((p['a'], p['b'], p['seq'], p['rank']), (0x8e223c48, 0xa908da10, (4, 6), (3, 5)))
+        self.assertEqual((p['verdict'], p['before'], p['t_c_s'], p['yielder'], p['cap_ms'], p['d_m']), ('unresolved', 'clear', 12.5, 'b', -1.0, 2331))
+        lr = st.parse_kv_rows(CTL_ROWS, 'ship_gate_launch')[0]
+        self.assertEqual((lr['ship'], lr['class'], lr['capital'], lr['slot'], lr['gate_type'], lr['kind']),
+                         (0x8e1d0090, 'M2', 1, -1, 3, 'capital_offset'))
+        self.assertEqual((lr['p_m'], lr['off_r_m'], lr['off_u_m'], lr['r_gate_m'], lr['w_m']), ((1200, 7400, -56000), 0, 663, 1105, 583))
+        cen = st.parse_kv_rows(CTL_ROWS, 'ship_capital_census')[0]
+        self.assertEqual((cen['l_r'], cen['capsule_L_m']), (1.0, 1092))
+        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 4)
+
+
+# The docking approach (amendment 18, docking-approach.md): the 1 Hz own-container row.
+DOCK_ROWS = [
+    'ship_avoid_dock frame=1200 t_ms=31000400 ship=0x8e2a1000 cont=0x8e1f0040 class=6 order=0x4 parts=1 n_parts=12 path_m=412 ray_m=388 '
+    'margin_m=147 reach_m=760 e=suppress_dock zone=near d_c_m=4210 r_c_m=3000 v_ms=158.4 kept=1 detour=0',
+    'ship_avoid_dock frame=1201 t_ms=31000900 ship=0x8e2a1100 cont=0x8e300000 class=7 order=0x1d parts=0 n_parts=0 path_m=-1 ray_m=-1 '
+    'margin_m=64 reach_m=0 e=- zone=inner d_c_m=500 r_c_m=850 v_ms=60.0 kept=0 detour=0',
+]
+
+
+class DockRows(unittest.TestCase):
+    def test_dock_rows(self):
+        a, b = st.parse_kv_rows(DOCK_ROWS, 'ship_avoid_dock')
+        self.assertEqual((a['ship'], a['cont'], a['class'], a['order'], a['parts'], a['n_parts']), (0x8e2a1000, 0x8e1f0040, 6, 4, 1, 12))
+        self.assertEqual((a['path_m'], a['ray_m'], a['margin_m'], a['reach_m'], a['e'], a['zone']), (412, 388, 147, 760, 'suppress_dock', 'near'))
+        self.assertEqual((a['d_c_m'], a['r_c_m'], a['v_ms'], a['kept'], a['detour']), (4210, 3000, 158.4, 1, 0))
+        self.assertEqual((b['order'], b['parts'], b['path_m'], b['e'], b['zone']), (0x1d, 0, -1, '-', 'inner'))
+        self.assertEqual(st.parse_rows(DOCK_ROWS), [])  # not trace rows
+
+
 if __name__ == '__main__':
     unittest.main()

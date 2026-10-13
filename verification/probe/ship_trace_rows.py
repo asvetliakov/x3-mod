@@ -86,7 +86,19 @@ def by_ship(rows):
 #   ship_capital_census frame= type= class= r_m= w_m= w_r= w_src=unread|lod|fail retries= l_m= h_rw_m= (sqrt(r^2 + w^2)) len_m= (max(r, l))
 #     h_m= (sqrt(len^2 + w^2), the h the rule uses) part_id= part_lod= o_x= o_y= e_x= e_y= (amendment 17: the widest part's body id,
 #     its widest LOD record, its lateral offset bound and half-extents, m)
-KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census')
+#     l_r= capsule_L_m= (the gate traffic controller: l / r and the capsule half-length max(r, l))
+# The gate traffic controller, stage A (gate-traffic-controller.md D.7, A.1; ship_steering_gates_traffic, --debug):
+#   ship_gate_ctl frame= t_ms= gate= ship= id= seq= order= from= to=none|committed|escort|arrival|evicted why= rank=   (role transitions)
+#   ship_gate_ctl_pair frame= t_ms= gate= a= b= seq=<a>,<b> rank=<a>,<b> verdict=none|clear|unresolved before= t_c_s= (-1: none)
+#     yielder=none|a|b cap_ms= (-1: none) d_m=   (a member pair's verdict change, at most once per pair per second)
+#   ship_gate_launch frame= t_ms= ship= gate= class= capital= slot= gate_type= kind=vanilla|capital_offset|small_side|small_unseparated
+#     p_m=<x>,<y>,<z> off_r_m= off_u_m= r_gate_m= r_m= w_m=   (one per launch at 0x00444606)
+# The docking approach, amendment 18 (docking-approach.md; ship_steering_dock, --debug), 1 Hz per ship on order 4 / 0x1d to a container:
+#   ship_avoid_dock frame= t_ms= ship= cont= class= order= parts=0|1 n_parts= path_m= ray_m= (-1: no model) margin_m= (1.2 r + 50 m)
+#     reach_m= e=suppress_dock|pass_dock_parts|pass_dock_path|pass_dock_ray|pass_dock_zone|- (site E's row now; - off order 4 or within
+#     0.8 r of a carrier) zone=out|near|in|inner (> 2 r_C, > r_C, <= r_C, a carrier within 0.8 r_C) d_c_m= r_c_m= v_ms= kept= detour=
+KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
+           'ship_avoid_dock')
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap')
 _KV = re.compile(r'(\S+?)=(\S*)')
 _INT = re.compile(r'-?\d+')

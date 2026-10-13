@@ -27,7 +27,8 @@
 // (floor 500 m) and the pair is never suppressed at site E.
 namespace x3m::ship_avoidance::core {
 namespace sc = x3m::ship_steering::core;
-constexpr unsigned kSnapshotCapacity = 1024; // obstacles per sector snapshot (beyond it: pass-through, counted)
+constexpr unsigned kSnapshotCapacity = 2048; // obstacles per sector snapshot (beyond it: pass-through, counted); the gate traffic
+                                             // controller (gate-traffic-controller.md, stage A) raised it from 1024 (measured maximum 186)
 constexpr unsigned kMaxCandidates = 8;
 constexpr unsigned kMaxResolved = 8;
 constexpr unsigned kMaxSides = 4;      // per-ship side memory
@@ -49,6 +50,11 @@ constexpr float kCommitFactor = 2.0f;  // a detour in progress (direction rememb
 constexpr std::uint32_t kResolvedAgeMs = 100; // suppression window at site E (two think intervals)
 constexpr float kHorizonMaxS = 30.0f;  // amendment 11: the swept-sphere horizon is min(L / v, 30 s) of flight (Run155: a
                                        // stalled Boreas at 2 m/s saw conflicts 222 s out and never left its detour point)
+constexpr float kDockMarginFactor = 1.2f, kDockMarginM = 50.0f; // amendment 18: E's clearance of every part sphere of the ship's own
+                                                                 // container, 1.2 r_ship + 50 m (docking-approach.md item 1)
+constexpr unsigned kDockSet = 0xffffu;
+constexpr float kDockCapCos = 0.98480775f; // cos 10 deg: the order-4 horizon cap only while u points at the approach point
+constexpr float kDockSlipLagS = 2.0f;     // the velocity's lag behind the nose (slip-aware-steering.md: the 2 s decay of obj+0x60) // Candidate.part_set of a carrier's part (Self.dock_set, not the snapshot's part store)
 constexpr float kTieMissFrac = 0.25f;  // amendment 14: a moving obstacle's miss below this fraction of C takes its side from the
                                        // relative velocity (closest_approach), not from the noise of a near-centre miss
 
@@ -101,7 +107,26 @@ struct Self {
     // Amendment 16 (capital-gate-transit.md section 16.1) with 16b and the review fixes: this decision's lane pass (lane::run_pass:
     // the verdicts from the stored board, the trailing caps site B applies); null = no lane rule, today's rules
     const lane::Pass* lane = nullptr;
+    // The gate traffic controller (gate-traffic-controller.md D.1, ship_steering_gates_traffic): the member partners of this capital
+    // whose pair the controller owns (a clear verdict, fresh), by object and native id; dropped from the sphere avoidance in this
+    // direction. n_ctl = 0: no controller pair (amendment 17's rules).
+    const std::uint32_t* ctl_ptr = nullptr;
+    const std::uint32_t* ctl_id = nullptr;
+    unsigned n_ctl = 0;
+    // Amendment 18 (docking-approach.md items 2-4; ship_steering_dock): the order's container whose part model stays an obstacle (a
+    // station's from the snapshot, a carrier's in dock_set); its root sphere is not one. 0 = today's rules (exclude_target decides).
+    std::uint32_t dock_target = 0;
+    const PartSet* dock_set = nullptr; // a carrier's hull parts (ship obstacles carry no part index); stations: the snapshot's model
+    float dock_omega[3] = {0, 0, 0};   // the carrier's angular velocity (rad/s, world): its parts move at v + omega x (c - centre)
+    bool dock_cap_P = false;           // order 4: the target's parts count only up to the order's point (the ship stops there)
 };
+// The controller's exclusion for one obstacle: a capital-coded ship among the clear member partners (pointer and id).
+__attribute__((always_inline)) inline bool ctl_excluded(const Self& s, const Obstacle& o) noexcept {
+    if (!s.n_ctl || o.kind != std::uint8_t(Kind::ship) || o.size != 1) return false;
+    for (unsigned i = 0; i < s.n_ctl; ++i)
+        if (s.ctl_ptr[i] == o.ptr && s.ctl_id[i] == o.id) return true;
+    return false;
+}
 // Binds the lane rule for a deciding capital (ship_steering_gates_capital on) to this decision's pass, when the pass bound (its own
 // fresh entry on the deciding order, on the board of its live target: lane::run_pass). Otherwise unbound.
 inline void lane_bind(Self& s, const lane::Pass* pass) noexcept {
@@ -174,6 +199,7 @@ struct Candidate {
     float d;               // current distance
     bool part;             // a station part (x/r below are the part's)
     float px[3], pr;
+    bool dock;             // amendment 18: a part of the ship's own container (dock_part_clearance; part_set kDockSet for a carrier)
 };
 struct Result {
     bool adjusted = false, unresolved = false, overflow = false;
@@ -185,6 +211,8 @@ struct Result {
     unsigned excluded_members = 0;   // formation members excluded through the membership memory alone (amendment 15)
     unsigned lane_exempt = 0, lane_follow = 0, lane_cross = 0, lane_seq = 0; // amendment 16 / 16b: capital pairs committed to this capital's gate, by verdict
     unsigned lane_apart = 0; // amendment 17: (c) pairs on different lane points dropped (lane_cross: the same-lane (c) pairs kept)
+    unsigned ctl_excluded = 0; // gate traffic controller: member pairs with a clear verdict dropped (the controller owns them)
+    unsigned dock_kept = 0;    // amendment 18: the order's container kept as a part obstacle (0 or 1)
     std::uint32_t obstacle = 0;
     std::uint32_t obstacle_leader = 0; // the obstacle's f+0x224 and f+0x258 (ships), for the detour row (amendment 11)
     std::uint16_t obstacle_order = 0;
@@ -198,6 +226,14 @@ struct Result {
 
 inline float clearance(float r_own, float r_obs) noexcept {
     return r_own + r_obs + sc::fmax_f(kClearanceMinM, 0.5f * r_own);
+}
+inline float dock_margin_m(float r_ship) noexcept {
+    return kDockMarginFactor * r_ship + kDockMarginM;
+}
+// Amendment 18: a part of the ship's own container is kept at E's margin plus the usual minimum (the path the avoidance flies must
+// pass E's row: docking-approach.md items 1-2), never below the plain clearance.
+inline float dock_part_clearance(float r_own, float r_part) noexcept {
+    return sc::fmax_f(clearance(r_own, r_part), r_part + dock_margin_m(r_own) + kClearanceMinM);
 }
 // Lookahead for a clearance C (section 3.3): the swept path length. `alpha` adds the distance flown while the
 // rate ramps up to omega and back (2 omega / alpha seconds; the design's formula assumes the full rate at once,
@@ -346,11 +382,17 @@ inline const SideMemory* remembered(const ShipAvoid& a, std::uint32_t obstacle) 
 }
 // Whether the straight segment x -> P clears the candidate's whole body by its clearance: every part sphere of a
 // station with a part model, else the one sphere.
-inline bool clears_body(const float x[3], const float P[3], const Candidate& c, float r_own, const PartSet* parts, unsigned part_sets) noexcept {
-    if (c.part && c.part_set < part_sets) {
-        const PartSet& set = parts[c.part_set];
-        for (unsigned p = 0; p < set.count; ++p)
-            if (segment_hits(x, P, set.c[p], clearance(r_own, set.r[p]))) return false;
+// Amendment 18: a carrier's part (kDockSet) is in dock_set; a part of the ship's own container keeps dock_part_clearance.
+inline const PartSet* cand_set(const Candidate& c, const PartSet* parts, unsigned part_sets, const PartSet* dock_set) noexcept {
+    if (!c.part) return nullptr;
+    if (c.part_set == kDockSet) return dock_set;
+    return c.part_set < part_sets ? &parts[c.part_set] : nullptr;
+}
+inline bool clears_body(const float x[3], const float P[3], const Candidate& c, float r_own, const PartSet* parts, unsigned part_sets,
+                        const PartSet* dock_set = nullptr) noexcept {
+    if (const PartSet* set = cand_set(c, parts, part_sets, dock_set)) {
+        for (unsigned p = 0; p < set->count; ++p)
+            if (segment_hits(x, P, set->c[p], c.dock ? dock_part_clearance(r_own, set->r[p]) : clearance(r_own, set->r[p]))) return false;
         return true;
     }
     return !segment_hits(x, P, c.x_cpa, c.C);
@@ -610,22 +652,159 @@ inline MemberPair member_pair_verdict(bool member_current, std::uint16_t b_order
     if (!(d > r_a + r_b)) return MemberPair::touching;
     return MemberPair::suppress;
 }
+// ---- Amendment 18: the docking approach (docking-approach.md; ship_steering_dock) ---------------------------------------------------
+// The own-container row at site E (item 1): A on order 4 to its container B (f+0x224: a station of class 5/6 or a carrier) with B's
+// part model valid and current; E suppresses the engine's warn when A's swept path over the engine's reach (along u = v f + slip,
+// relative to B's parts moving at B's velocity) AND A's forward ray over the same reach clear every part sphere by 1.2 r_ship + 50 m,
+// and A is outside the final zone. The reach is the mesh test's |v| (one second of travel) + b, b = v^2 / 2a capped at 600 m
+// (0x0044dd90, ship-navigation-ai.md section 11.2). Part spheres contain the part boxes [i]; the engine enlarges each box to
+// 1.2 (e + r_ship).
+constexpr float kDockBrakeCapM = 600.0f;   // the warn test's braking term cap (300000 units)
+constexpr float kDockCarrierInner = 0.8f;  // a ship within 0.8 r_carrier of its carrier is left alone (the engine skips its warns on undock)
+constexpr float kDockIdleNear = 5.0f;      // a 0x1d ship within 5 r_C of its container is "queued near it" (__LandInHangar's 5 size)
+enum class DockE : std::uint8_t { none = 0, suppress, no_parts, path, ray, zone, count };
+struct DockClear {
+    float path_m = 1e30f, ray_m = 1e30f; // the smallest (centre distance - r_part) over the parts, m
+    float reach_m = 0.0f;
+    unsigned part_path = 0, part_ray = 0; // the parts that set them
+};
+// v_close: the braking term's speed (a station: |v|; a ship container: dock_closing_speed, never below |v|).
+inline float dock_reach_m(float v, float a, float v_close = -1.0f) noexcept {
+    const float vc = v_close >= 0.0f ? v_close : v;
+    const float b = a > 1e-3f ? sc::fmin_f(vc * vc / (2.0f * a), kDockBrakeCapM) : kDockBrakeCapM;
+    return v + b;
+}
+// The warn test's closing speed against a ship B (section 3.1): |v_A| cos(theta) plus B's speed toward A when A heads at B within
+// cos 0.8 (or away beyond -0.8), theta between A's nose and A -> B; never below |v_A| (the station form), so the reach is at least both.
+inline float dock_closing_speed(const float x[3], const float f[3], float v, const float centre[3], const float w[3]) noexcept {
+    float d[3] = {centre[0] - x[0], centre[1] - x[1], centre[2] - x[2]};
+    const float n = sc::sqrt_ss(sc::dot3(d, d));
+    if (!(n > 1e-3f)) return v;
+    for (int i = 0; i < 3; ++i) d[i] /= n;
+    const float c = sc::dot3(f, d);
+    const float toward = -sc::dot3(w, d); // B's speed toward A
+    const float vc = v * c + ((c > 0.8f || c < -0.8f) ? toward : 0.0f);
+    const float a = vc < 0.0f ? -vc : vc;
+    return a > v ? a : v;
+}
+// The distance from c to the segment x + d t, t in [0, 1].
+inline float dock_seg_dist(const float x[3], const float d[3], float dd, const float c[3]) noexcept {
+    float dc[3];
+    sub3(c, x, dc);
+    float t = dd > 1e-6f ? sc::dot3(dc, d) / dd : 0.0f;
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+    float q[3];
+    for (int i = 0; i < 3; ++i) q[i] = dc[i] - d[i] * t;
+    return sc::sqrt_ss(sc::dot3(q, q));
+}
+// Both clearances of A (x, unit forward f, velocity u = v f + slip, speed v, acceleration a) against B's parts (moving at w, m/s).
+// The path: x + u t for t in [0, reach / |u|] relative to the parts (x + (u - w) t against the current centres); the ray: x + f s for
+// s in [0, reach] against the current centres (the engine's instantaneous slab test).
+// A part's velocity on a turning container: the centre's w plus omega x (c_p - centre) (omega null or zero: w).
+inline void dock_part_velocity(const float w[3], const float* omega, const float* centre, const float c[3], float out[3]) noexcept {
+    out[0] = w[0];
+    out[1] = w[1];
+    out[2] = w[2];
+    if (!omega || !centre || (omega[0] == 0.0f && omega[1] == 0.0f && omega[2] == 0.0f)) return;
+    const float r[3] = {c[0] - centre[0], c[1] - centre[1], c[2] - centre[2]};
+    float t[3];
+    cross3(omega, r, t);
+    for (int i = 0; i < 3; ++i) out[i] += t[i];
+}
+inline DockClear dock_clearance(const PartSet& set, const float w[3], const float x[3], const float f[3], const float u[3], float v, float a,
+                                const float* omega = nullptr, const float* centre = nullptr, float v_close = -1.0f) noexcept {
+    DockClear out;
+    out.reach_m = dock_reach_m(v, a, v_close);
+    const float u_len = sc::sqrt_ss(sc::dot3(u, u));
+    const float T = u_len > 1e-3f ? out.reach_m / u_len : 0.0f;
+    float dp[3], dr[3];
+    for (int i = 0; i < 3; ++i) {
+        dp[i] = (u[i] - w[i]) * T;
+        dr[i] = f[i] * out.reach_m;
+    }
+    float ddp = sc::dot3(dp, dp);
+    const float ddr = sc::dot3(dr, dr);
+    const bool turning = omega && centre && (omega[0] != 0.0f || omega[1] != 0.0f || omega[2] != 0.0f);
+    for (unsigned p = 0; p < set.count; ++p) {
+        if (turning) { // each part's own relative motion
+            float wp[3];
+            dock_part_velocity(w, omega, centre, set.c[p], wp);
+            for (int i = 0; i < 3; ++i) dp[i] = (u[i] - wp[i]) * T;
+            ddp = sc::dot3(dp, dp);
+        }
+        const float gp = dock_seg_dist(x, dp, ddp, set.c[p]) - set.r[p];
+        const float gr = dock_seg_dist(x, dr, ddr, set.c[p]) - set.r[p];
+        if (gp < out.path_m) {
+            out.path_m = gp;
+            out.part_path = p;
+        }
+        if (gr < out.ray_m) {
+            out.ray_m = gr;
+            out.part_ray = p;
+        }
+    }
+    return out;
+}
+// The row's verdict from the reads: no model -> the warn stays live; the final zone (the engine owns the ship); then the path and the
+// ray against the margin. A non-finite clearance never suppresses.
+inline DockE dock_verdict(bool parts_ok, bool in_final_zone, const DockClear& c, float r_ship) noexcept {
+    if (!parts_ok) return DockE::no_parts;
+    if (in_final_zone) return DockE::zone;
+    const float m = dock_margin_m(r_ship);
+    if (!(c.path_m >= m)) return DockE::path;
+    if (!(c.ray_m >= m)) return DockE::ray;
+    return DockE::suppress;
+}
+inline const char* dock_e_name(DockE v) noexcept {
+    static const char* const names[unsigned(DockE::count)] = {"-", "suppress_dock", "pass_dock_parts", "pass_dock_path", "pass_dock_ray",
+                                                              "pass_dock_zone"};
+    return unsigned(v) < unsigned(DockE::count) ? names[unsigned(v)] : "?";
+}
+// The order's container for the docking rows (items 1-3): order 4 to a station (class 5/6) or a carrier (class 7), 0x1d to a station
+// (the queue's __Idle keeps f+0x224 = the station from SA_SetDestination [i]; a stale ship target on 0x1d is not a container).
+// A ship counts only when it is dock-capable by the engine's own test, [obj+0x40] & 0x100000 ("has a hangar or dock": the slew loop's
+// carrier rule 0x0045951f..0x00459558 and SA_FlyObjectBeforeContainer's port path, ship-navigation-ai.md sections 5 and 11.6); any
+// other ship target on order 4 keeps today's rules.
+constexpr std::uint32_t kObjFlagDock = 0x100000;
+inline bool dock_container(std::uint16_t order, std::uint16_t target_class, std::uint32_t target_flags = kObjFlagDock) noexcept {
+    if (order == sc::kOrderFlyBefore)
+        return target_class == 5 || target_class == 6 || (target_class == 7 && (target_flags & kObjFlagDock) != 0);
+    if (order == sc::kOrderIdle) return target_class == 5 || target_class == 6;
+    return false;
+}
 // ---- Site E's whole decision (amendment 15 with the scenario audit's G1-G4), pure over the reads the DLL makes ---------------
 enum class EVerdict : std::uint8_t {
     none = 0, suppress_small, suppress_member, suppress_gate, suppress_gate_small, suppress_resolved, pass_no_autopilot,
     pass_not_steerable, pass_class, pass_b_dock_leg, pass_own_leader, pass_not_fresh, pass_unreadable, pass_not_member,
-    pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship, suppress_lane, count
+    pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship, suppress_lane,
+    suppress_ctl, pass_ctl, suppress_arrival_gate, // the gate traffic controller (D.1, D.4; ship_steering_gates_traffic)
+    suppress_dock, pass_dock_parts, pass_dock_path, pass_dock_ray, pass_dock_zone, // amendment 18 (ship_steering_dock)
+    count
 };
 inline const char* e_verdict_name(EVerdict v) noexcept {
     static const char* const names[unsigned(EVerdict::count)] = {
         "-", "suppress_small", "suppress_member", "suppress_gate", "suppress_gate_small", "suppress_resolved", "pass_no_autopilot",
         "pass_not_steerable", "pass_class", "pass_b_dock_leg", "pass_own_leader", "pass_not_fresh", "pass_unreadable", "pass_not_member",
-        "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship", "suppress_lane"};
+        "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship", "suppress_lane",
+        "suppress_ctl", "pass_ctl", "suppress_arrival_gate", "suppress_dock", "pass_dock_parts", "pass_dock_path", "pass_dock_ray",
+        "pass_dock_zone"};
     return unsigned(v) < unsigned(EVerdict::count) ? names[unsigned(v)] : "?";
 }
 inline bool e_suppresses(EVerdict v) noexcept {
     return v == EVerdict::suppress_small || v == EVerdict::suppress_member || v == EVerdict::suppress_gate ||
-           v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved || v == EVerdict::suppress_lane;
+           v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved || v == EVerdict::suppress_lane ||
+           v == EVerdict::suppress_ctl || v == EVerdict::suppress_arrival_gate || v == EVerdict::suppress_dock;
+}
+inline EVerdict dock_e_verdict(DockE v) noexcept {
+    switch (v) {
+    case DockE::suppress: return EVerdict::suppress_dock;
+    case DockE::no_parts: return EVerdict::pass_dock_parts;
+    case DockE::path: return EVerdict::pass_dock_path;
+    case DockE::ray: return EVerdict::pass_dock_ray;
+    case DockE::zone: return EVerdict::pass_dock_zone;
+    default: return EVerdict::none;
+    }
 }
 constexpr std::uint32_t kHandoverMaxMs = 120000; // the capital gate row's hand-over bound after P2 (the through-slot wait is 0-60 s)
 static_assert(kHandoverMaxMs == lane::kHandoverMaxMs, "the lane commitment and the gate row share the hand-over bound");
@@ -673,9 +852,22 @@ struct SiteE {
     float d = -1.0f;                 // the centre distance, m (< 0 unreadable: never apart)
     bool avoidance_on = false;
     bool b_resolved = false;         // B in A's resolved set (ShipAvoid) within max(kResolvedAgeMs, 4 frame steps)
+    // The gate traffic controller (gate-traffic-controller.md D.1 and D.4; ship_steering_gates_traffic). The defaults (key off)
+    // reproduce amendment 17 exactly.
+    bool arrival_gate = false;       // B is A's arrival gate and the arrival-gate row holds (ctl::arrival_gate_row)
+    bool ctl_pair = false;           // A and B are live members of one gate board: the controller owns the pair
+    bool ctl_certified = false;      // ... and ctl::e_certified holds (clear, <= 250 ms, both forward rows, neither on 0x12)
+    bool a_arrival = false;          // A is a capital arrival member (< 60 s): the small-ship row takes it as fresh (its path is the
+                                     // engine's 0x21 / 0x1e line)
+    // Amendment 18 (ship_steering_dock): A on order 4 and B its container (dock_container), the row's verdict from the DLL's reads
+    // (dock_verdict); none = key off or not A's container (today's rules)
+    DockE dock = DockE::none;
 };
 inline EVerdict site_e_verdict(const SiteE& in) noexcept {
-    if (!in.a_in_table) return EVerdict::pass_not_fresh;
+    // the gate traffic controller first (its pairs need no steering decision of A: arrivals and hand-overs are on engine orders)
+    if (in.b_gate && in.arrival_gate) return EVerdict::suppress_arrival_gate;
+    if (in.b_ship && in.ctl_pair) return in.ctl_certified ? EVerdict::suppress_ctl : EVerdict::pass_ctl;
+    if (!in.a_in_table && !in.a_arrival) return EVerdict::pass_not_fresh;
     const std::uint32_t fresh = fresh_window_ms(kSteeredFreshMs, in.frame_ms, kSteeredReplanMs);
     // the gate rows: B is A's own target gate
     if (in.b_gate && in.gates_live && in.gate_state) {
@@ -693,7 +885,10 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
     // amendment 16 (section 16.1) / 16b: two capitals committed to A's gate whose pair carries a certificate (the commitment carries
     // its own freshness: the hand-over has no decision)
     if (in.b_ship && in.lane_exempt) return EVerdict::suppress_lane;
-    if (in.a_age_ms > fresh) return EVerdict::pass_not_fresh;
+    if (in.a_age_ms > fresh && !in.a_arrival) return EVerdict::pass_not_fresh;
+    const bool a_fresh = in.a_in_table && in.a_age_ms <= fresh; // false only for an arrival accepted by the small-ship row (D.4)
+    // amendment 18: B is A's own container on order 4 (a station or a carrier): the row decides, nothing below applies
+    if (in.dock != DockE::none && a_fresh && in.a_order == sc::kOrderFlyBefore) return dock_e_verdict(in.dock);
     EVerdict v = EVerdict::none;
     if (in.b_ship && in.a_capital) {
         if (!in.codes_readable) return EVerdict::pass_unreadable;
@@ -709,6 +904,7 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
                 default: return EVerdict::pass_own_leader;
                 }
             }
+            if (!a_fresh) return EVerdict::pass_not_fresh;
             if (in.a_order != sc::kOrderAvoid && in.avoidance_on) {
                 const MemberPair mv = member_pair_verdict(in.b_member_current, in.b_order, in.b_target, in.d, in.r_a, in.r_b);
                 if (mv == MemberPair::suppress) return EVerdict::suppress_member;
@@ -717,6 +913,7 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
             }
         }
     }
+    if (!a_fresh) return EVerdict::pass_not_fresh;
     // the first branch: B in A's fresh resolved set, A not on the engine's own avoid order
     if (in.a_order == sc::kOrderAvoid) return v == EVerdict::none ? EVerdict::pass_a_avoid : v;
     if (in.b_resolved) return EVerdict::suppress_resolved;
@@ -793,10 +990,24 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     for (unsigned k = 0; k < snap.count; ++k) {
         const Obstacle& o = snap.items[k];
         if (sc::fabs_f(o.x[0] - s.x[0]) > reach || sc::fabs_f(o.x[1] - s.x[1]) > reach || sc::fabs_f(o.x[2] - s.x[2]) > reach) continue;
-        if (excluded_base(s, o)) {
+        // amendment 18 (items 2-4): the order's container with a valid part model stays an obstacle by its parts (its root sphere
+        // only selects); without a model the target rule of today stands
+        const PartSet* dock = nullptr;
+        if (s.dock_target && o.ptr == s.dock_target) {
+            if (o.kind == std::uint8_t(Kind::station)) {
+                if ((o.flags & 1) && o.parts < part_sets && parts[o.parts].station == o.ptr && parts[o.parts].count) dock = &parts[o.parts];
+            } else if (o.kind == std::uint8_t(Kind::ship) && s.dock_set && s.dock_set->station == o.ptr && s.dock_set->count)
+                dock = s.dock_set;
+            if (dock) ++res.dock_kept;
+        }
+        if (!dock && excluded_base(s, o)) {
             if (own_follower(s, o)) ++res.excluded_followers;
             else if (small_for_capital(s, o)) ++res.skipped_small;
             if ((o.flags & kObstacleRemembered) && (own_follower(s, o) || wingmate(s, o))) ++res.excluded_members;
+            continue;
+        }
+        if (s.n_ctl && ctl_excluded(s, o)) { // the gate traffic controller owns the pair (D.1)
+            ++res.ctl_excluded;
             continue;
         }
         if (s.lane) { // amendment 16 / 16b / 17: (a), (b), (s) and different-lane pairs are not obstacles in either direction (lane_excludes)
@@ -819,24 +1030,64 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         c.part = false;
         c.part_set = kStationCapacity;
         c.d = d;
-        if (o.kind == std::uint8_t(Kind::station)) {
+        c.dock = dock != nullptr;
+        if (o.kind == std::uint8_t(Kind::station) || dock) {
             // broad phase on the sphere (a plain reach test: the sphere's centre may already be abeam while parts
             // are still ahead), narrow phase on the parts (or the fallback body)
             const float C_sel = clearance(s.r, o.r);
             const float L_sel = sc::fmax_f(lookahead(s.v, s.a, s.omega, s.r, C_sel, s.alpha), s.L_leader);
-            if (d > L_sel + C_sel) continue;
+            if (!dock && d > L_sel + C_sel) continue;
+            float T_cap = 1e30f; // amendment 18: the time to the order's point on order 4 (the ship stops at the approach point)
+            float T_turn = -1.0f; // amendment 18: the line to the order's point clears the body: a part conflict later than the turn onto it is not one
+            if (dock) {
+                // the container's own parts: the reach widened by the dock margin, by the body's slack beyond its sphere and, for a
+                // carrier, by its travel over the horizon
+                const float C_dock = dock_part_clearance(s.r, o.r);
+                const float L_dock = sc::fmax_f(lookahead(s.v, s.a, s.omega, s.r, C_dock, s.alpha), s.L_leader);
+                const float w_len = sc::sqrt_ss(sc::dot3(o.v, o.v));
+                if (d > L_dock + kRootSlack * C_dock + w_len * horizon_s(L_dock, s.v)) continue;
+                if (s.dock_cap_P) {
+                    float toP[3], uu[3];
+                    sub3(P, s.x, toP);
+                    const float u_len = velocity(s, uu);
+                    const float tl0 = sc::sqrt_ss(sc::dot3(toP, toP));
+                    // the cap only while the velocity points at the point (within 10 deg): otherwise the swept path passes beside it
+                    if (u_len > 0.1f && tl0 > 1.0f && sc::dot3(uu, toP) >= kDockCapCos * u_len * tl0) T_cap = tl0 / u_len;
+                    // the engine flies at the point: when the straight line clears the whole body (the sphere about the centre that
+                    // encloses every part, which no turn of a carrier changes) by the dock clearance, a conflict on the current velocity
+                    // that comes later than the turn onto that line (plus the reaction time) is the turn's business
+                    float Rb = 0.0f;
+                    for (unsigned p = 0; p < dock->count; ++p) {
+                        const float dp[3] = {dock->c[p][0] - o.x[0], dock->c[p][1] - o.x[1], dock->c[p][2] - o.x[2]};
+                        Rb = sc::fmax_f(Rb, sc::sqrt_ss(sc::dot3(dp, dp)) + dock->r[p]);
+                    }
+                    const bool line_clear = !segment_hits(s.x, P, o.x, dock_part_clearance(s.r, Rb));
+                    const float tl = tl0;
+                    // a stationary container only (a moving or turning one changes the line while the ship turns onto it); the turn
+                    // time adds the velocity's lag behind the nose
+                    const bool still = sc::dot3(o.v, o.v) == 0.0f && s.dock_omega[0] == 0.0f && s.dock_omega[1] == 0.0f && s.dock_omega[2] == 0.0f;
+                    if (still && line_clear && tl > 1.0f && s.omega > 1e-3f) {
+                        float c = sc::dot3(toP, s.f) / tl;
+                        c = c > 1.0f ? 1.0f : c < -1.0f ? -1.0f : c;
+                        T_turn = sc::acos_deg(c) * 0.0174532925f / s.omega + (s.alpha > 1e-4f ? s.omega / s.alpha : 0.0f) + kReactionS + kDockSlipLagS;
+                    }
+                }
+            }
             float t, m, cat[3], e[3];
-            const PartSet* set = nullptr;
-            if ((o.flags & 1) && o.parts < part_sets && parts[o.parts].station == o.ptr && parts[o.parts].count) set = &parts[o.parts];
+            const PartSet* set = dock;
+            if (!set && (o.flags & 1) && o.parts < part_sets && parts[o.parts].station == o.ptr && parts[o.parts].count) set = &parts[o.parts];
             if (set) {
-                c.part_set = o.parts;
+                c.part_set = set == s.dock_set && o.kind == std::uint8_t(Kind::ship) ? kDockSet : o.parts;
                 float best_t = 1e30f;
                 for (unsigned p = 0; p < set->count; ++p) {
-                    const float Cp = clearance(s.r, set->r[p]);
+                    const float Cp = dock ? dock_part_clearance(s.r, set->r[p]) : clearance(s.r, set->r[p]);
                     const float Lp = sc::fmax_f(lookahead(s.v, s.a, s.omega, s.r, Cp, s.alpha), s.L_leader);
                     float tp, mp, catp[3], ep[3];
-                    const float Tp = horizon_s(Lp, s.v);
-                    if (!closest_approach(s, set->c[p], o.v, Tp, Cp * commit, &tp, &mp, catp, ep)) continue;
+                    const float Tp = dock ? sc::fmin_f(horizon_s(Lp, s.v), T_cap) : horizon_s(Lp, s.v);
+                    float vp[3];
+                    dock_part_velocity(o.v, dock ? s.dock_omega : nullptr, o.x, set->c[p], vp);
+                    if (!closest_approach(s, set->c[p], vp, Tp, Cp * commit, &tp, &mp, catp, ep)) continue;
+                    if (T_turn >= 0.0f && tp > T_turn) continue;
                     if (tp < best_t) {
                         best_t = tp;
                         c.t_cpa = tp;
@@ -917,8 +1168,73 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     // The detour: the predicted body position plus 1.1 C along the chosen lateral axis. The plane of least turn
     // is spanned by f and the direction to the body's current position (its predicted position lies on our own
     // path when the course is a collision course and would leave the plane undefined).
+    // Amendment 18: a part of the ship's own container is detoured as the whole body, the sphere about the container's centre that
+    // encloses every part, with the dock clearance (the conflict stays the part's): a tangent per part aims into the pockets between
+    // parts (scenario N: the far-side port). The side is the approach point's (from the body's centre at the closest approach).
+    float det_c[3] = {first.x_cpa[0], first.x_cpa[1], first.x_cpa[2]}, det_e[3] = {first.e[0], first.e[1], first.e[2]};
+    float det_px[3] = {first.px[0], first.px[1], first.px[2]};
+    float det_C = first.C;
+    if (first.dock) {
+        float Rb = o.r;
+        if (const PartSet* bs = cand_set(first, parts, part_sets, s.dock_set)) {
+            Rb = 0.0f;
+            for (unsigned p = 0; p < bs->count; ++p) {
+                const float dp[3] = {bs->c[p][0] - o.x[0], bs->c[p][1] - o.x[1], bs->c[p][2] - o.x[2]};
+                Rb = sc::fmax_f(Rb, sc::sqrt_ss(sc::dot3(dp, dp)) + bs->r[p]);
+            }
+        }
+        det_C = dock_part_clearance(s.r, Rb);
+        float dx[3], dv[3];
+        sub3(o.x, s.x, dx);
+        for (int i = 0; i < 3; ++i) dv[i] = o.v[i] - (s.v * s.f[i] + s.slip[i]);
+        const float vv = sc::dot3(dv, dv);
+        float tb = vv > 1e-6f ? -sc::dot3(dx, dv) / vv : 0.0f;
+        const float Tb = horizon_s(sc::fmax_f(lookahead(s.v, s.a, s.omega, s.r, det_C, s.alpha), s.L_leader), s.v);
+        if (tb < 0.0f) tb = 0.0f;
+        if (tb > Tb) tb = Tb;
+        for (int i = 0; i < 3; ++i) {
+            det_c[i] = o.x[i] + o.v[i] * tb;
+            det_e[i] = -(dx[i] + dv[i] * tb);
+            det_px[i] = o.x[i];
+        }
+        // the natural side is the order's point's (the note: around the parts toward the approach point), unless the point sits on
+        // the line through the centre; then the path's own side
+        float toP[3];
+        sub3(P, det_c, toP);
+        const float ref = sc::dot3(toP, toP);
+        if (ref > 1.0f) {
+            float side[3];
+            float n_e[3] = {det_e[0], det_e[1], det_e[2]};
+            const float e_len = norm3(n_e);
+            for (int i = 0; i < 3; ++i) side[i] = toP[i];
+            if (norm3(side) > 0.0f && (e_len < 1e-3f || sc::dot3(side, n_e) > -0.999f))
+                for (int i = 0; i < 3; ++i) det_e[i] = side[i];
+        }
+        // heading at the centre the plane of the nose and the centre is undefined and the detour axis would fall to the vertical: then
+        // (only then) the plane through the order's point when it lies off the nose line
+        {
+            float tc[3], n1[3];
+            sub3(det_px, s.x, tc);
+            cross3(s.f, tc, n1);
+            const float tcl = sc::dot3(tc, tc);
+            if (sc::dot3(n1, n1) < 0.0025f * tcl) {
+                float toPx[3], n2[3];
+                sub3(P, s.x, toPx);
+                cross3(s.f, toPx, n2);
+                if (sc::dot3(n2, n2) > 0.0025f * sc::dot3(toPx, toPx))
+                    for (int i = 0; i < 3; ++i) det_px[i] = P[i];
+            }
+        }
+        if (norm3(det_e) < 1e-3f) { // dead centre: the lateral side perpendicular to the nose in the up plane
+            cross3(s.f, s.up, det_e);
+            if (norm3(det_e) == 0.0f) {
+                det_e[0] = 1.0f;
+                det_e[1] = det_e[2] = 0.0f;
+            }
+        }
+    }
     float dir[3];
-    sub3(first.px, s.x, dir);
+    sub3(det_px, s.x, dir);
     if (norm3(dir) == 0.0f) {
         dir[0] = s.f[0];
         dir[1] = s.f[1];
@@ -946,7 +1262,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         const bool vertical = (fam == 0) ? s.capital : !s.capital;
         float axis[3];
         if (!lateral_axis(s, dir, vertical, axis)) continue;
-        const float along = sc::dot3(first.e, axis);
+        const float along = sc::dot3(det_e, axis);
         std::int8_t natural;
         if (!vertical || sc::fabs_f(along) > 0.05f)
             natural = along >= 0.0f ? 1 : -1; // lateral: e's fallback (f x up) is "turn left" for both ships of a collision
@@ -970,7 +1286,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         float Pp[3], ddir[3];
         for (int i = 0; i < 3; ++i) {
             ddir[i] = axis[i] * float(side);
-            Pp[i] = first.x_cpa[i] + ddir[i] * first.C * factor;
+            Pp[i] = det_c[i] + ddir[i] * det_C * factor;
         }
         float toP[3], toPp[3];
         sub3(P, s.x, toP);
@@ -985,13 +1301,13 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
             const float along = sc::dot3(toPp, u_hat);
             // bounded: |u| at most 3 v (the DLL refuses a slip beyond 2 v_max) and the push at most the lookahead's cap
             float ahead = kAheadS * sc::fmin_f(u_len, 3.0f * s.v);
-            const float d_turn = turn_in_slip(s.v, s.omega, s.alpha, first.C * factor);
+            const float d_turn = turn_in_slip(s.v, s.omega, s.alpha, det_C * factor);
             if (d_turn > ahead) ahead = d_turn;
             if (ahead > kLookaheadMaxM) ahead = kLookaheadMaxM;
             if (along < ahead) {
                 float moved[3];
                 for (int i = 0; i < 3; ++i) moved[i] = Pp[i] + u_hat[i] * (ahead - along);
-                if (clears_body(s.x, moved, first, s.r, parts, part_sets))
+                if (clears_body(s.x, moved, first, s.r, parts, part_sets, s.dock_set))
                     for (int i = 0; i < 3; ++i) {
                         Pp[i] = moved[i];
                         toPp[i] = Pp[i] - s.x[i];
@@ -1006,11 +1322,12 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         const bool committed = mem && attempt == 0;
         // the detour point must not sit inside another part of the same body either (the candidate holds only the
         // earliest-hit part): every part of every candidate body is tested
-        if (ok && first.part && !committed) {
-            const PartSet& set = parts[first.part_set];
+        const PartSet* first_set = ok && first.part && !committed ? cand_set(first, parts, part_sets, s.dock_set) : nullptr;
+        if (first_set) {
+            const PartSet& set = *first_set;
             for (unsigned p = 0; p < set.count && ok; ++p) {
                 const float dp[3] = {Pp[0] - set.c[p][0], Pp[1] - set.c[p][1], Pp[2] - set.c[p][2]};
-                const float Cp = clearance(s.r, set.r[p]);
+                const float Cp = first.dock ? dock_part_clearance(s.r, set.r[p]) : clearance(s.r, set.r[p]);
                 if (sc::dot3(dp, dp) < Cp * Cp) {
                     ok = false;
                     why = Unresolved::blocked;
@@ -1018,7 +1335,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
             }
         }
         for (unsigned j = 1; j < n_cand && ok && !committed; ++j)
-            if (!clears_body(s.x, Pp, cand[j], s.r, parts, part_sets)) {
+            if (!clears_body(s.x, Pp, cand[j], s.r, parts, part_sets, s.dock_set)) {
                 ok = false;
                 why = Unresolved::blocked;
             }
@@ -1076,7 +1393,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         if (!(cand[j].miss >= cand[j].C)) continue;
         const float d_turn = sc::sqrt_ss(cand[j].C * (cand[j].C + 2.0f * R_turn));
         if (!(cand[j].d > d_turn) || !(cand[j].d > D_stop)) continue;
-        if (!clears_body(s.x, res.P, cand[j], s.r, parts, part_sets)) continue;
+        if (!clears_body(s.x, res.P, cand[j], s.r, parts, part_sets, s.dock_set)) continue;
         if (state.n_resolved < kMaxResolved) state.resolved[state.n_resolved++] = oj.ptr;
     }
     return res;

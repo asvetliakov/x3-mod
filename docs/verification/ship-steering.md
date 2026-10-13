@@ -1202,8 +1202,8 @@ site-B write while the avoidance hands the leaf a detour point (`decide()`: `cap
 same): min(gate speed with the cornering term, the predictor's or slow-join speed, the (b) cap), lowered at site B to the
 emergency ramp; P2's hand-over and the fallback's own write unchanged; counter `gate_capital_detour_write`. Before/after over
 the whole host fixture ([detour_write_ab.py](../../verification/results/ship-steering/capital-crowd/detour_write_ab.py) →
-[txt](../../verification/results/ship-steering/capital-crowd/detour_write_ab.txt); the pre-fix stdout is
-[ship_steering_host_before_detour_write.txt](../../verification/results/ship-steering/capital-crowd/ship_steering_host_before_detour_write.txt)),
+[txt](../../verification/results/ship-steering/capital-crowd/detour_write_ab.txt); the pre-fix stdout,
+`ship_steering_host_before_detour_write.txt`, was never tracked),
 measured:
 
 | Item | Before | After |
@@ -1458,6 +1458,263 @@ i686 figures were not measured. Log volume at 8 slots (inferred from `bytes_per_
 * warn_pre and warn: ≤ 8 each per frame.
 * E: ≤ 8 per frame and ≤ 32 per game second, ≈ 9 KB per game second at ≈ 280 B a row (inferred); a new pair beyond the 32-pair
   table is dropped and counted (review F4).
+
+## Gate traffic controller, stage A (2026-10-13, Opus 5.5; design [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) §A.1)
+
+Worktree on main `77ddda08`, not committed by the agent, not installed, not flown. Changed sources:
+
+* `ship_gate_ctl_core.h` (new): the boards, the rollout, the capsule sweep, the decision, E's certificate and the arrival
+  arithmetic.
+* `ship_steering_core.h`: `plant_step()`, shared with the predictor.
+* `ship_avoidance_core.h`: the snapshot capacity 2048, the controller exclusion, three E verdicts and four `SiteE` fields.
+* `ship_steering.cpp`: the key, `0x00444606`, the integration, the rows and the rings.
+* `ship_steering_sites.h` (n).
+* The key `ship_steering_gates_traffic` (schema, `x3m.ini`, `config_schema_inc.h`).
+* `verify_ship_steering_sites.py` and `check_no_x87.py` (new roots).
+* Fixture: scenario T, the unit checks and the cost bench.
+* `ship_trace_rows.py` and its test.
+
+One new hook site: `0x00444606`.
+
+**Acceptance (measured, WSL2, MinGW GCC 16.2, host c++ -O2):**
+
+* Build: 0 warnings. DLL sha256 `c64a6c72…`, 58,958,975 B (worktree build, not a candidate).
+* `check_no_x87.py build/d3d9.dll`: PASS, 979 reachable functions, 0 violations. The new roots are the stub and handler of
+  `0x00444606`.
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, **19 checks** (18 + `arrival_launch_site`). The new span
+  also passes `sites`, `no_text_branch_into_span_interior`, `no_data_dword_into_window` and `header_specs`
+  ([output](../../verification/results/ship-steering/verify_ship_steering_sites_out.json)).
+* Host fixture ([output](../../verification/results/ship-steering/ship_steering_host.txt)): **7470/7470**, up from 7214
+  (+256: the controller's unit checks and scenario T).
+  * `--capital` ([output](../../verification/results/ship-steering/capital-gate-transit/fixture_capital.txt)): 2843/2843, up
+    from 2587.
+  * X3M_SEQ_OFF ([output](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt)): 7380/7380.
+  * Every pre-existing line is unchanged apart from host timings and the final count line; the new section is appended.
+* Host tests `test_ship_steering`, `test_ship_steering_sites`, `test_ship_trace_format`, `test_ship_trace_replay`,
+  `test_config_schema`, `test_check_no_x87`: 52 tests OK. `test_launcher_defaults`: 10 OK.
+* Replay: Run158's log is no longer on disk (both logs are Run160's). On the Run160b log, `ship_trace_replay.py` →
+  `replay_lag.py` is byte-identical between the base tree and the worktree (18 lines, 370,042 steps).
+* Key-off identity
+  ([`keyoff_identity.sh`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity.sh) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity.txt)) against amendment 17's
+  sources:
+  * E: 0 / 400,000 differences;
+  * resolve: 0 / 60,000 differences (24,499 adjusted);
+  * scenario M: every line unchanged;
+  * E vs amendment 15 (the fixture's sweep): 0 / 400,000.
+* Ring replay ([`ring_replay.py`](../../verification/results/ship-steering/gate-traffic-controller/ring_replay.py) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/ring_replay.txt)) on the Run160b crowd window:
+  0 drops at the new sizes. The worst E frame is 16.3 rows (cap 32), the pair table 50 (cap 128), `ship_gate_ctl_pair`
+  26.8 (cap 64) and the warn watch 9 (cap 32). The demand behind the old drop counter is inferred **[i]**.
+
+**Scenario T at k = 5 m/s** (the k = 10 m/s deltas and the current [summary](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_summary.txt) follow below):
+
+* Asserted and passing in every run:
+  * certified pairs never touch: 0 contacts in 2.68 M certified frames, min 42 m;
+  * the arrival variants have 0 member evasions and capsules ≥ 2,558 m apart;
+  * every capital arrival is offset 0.6 r up and keeps the offset to the end of 0x1e;
+  * the arrival-gate row leaves 0 warns unsuppressed;
+  * small side spawns clear the capital capsule by 554 m;
+  * the mixed variant has no capsule contact.
+* 44 TARGET MISS rows: departures 14–155 and mixed 0–5 member 0x12 episodes per run, and capsule contact in the departure
+  streams (−804 m). These are the KC's adjacent grid points (228 of 406 episodes) and crossings near a waiting ship, which
+  speed alone cannot separate (stage B).
+* Rollout drift p95 at 5 / 30 s (k = 5 m/s runs): steered 436 / 2,230 m, engine-moved 10 m at 5 s. The sources are detours,
+  escort catch-up and the yields' own speed changes; stage B models the yields.
+
+**Drift allowance k = 10 m/s (coordinator's decision, 2026-10-13).** The 5 m/s placeholder was not evidence-based; 10 m/s
+keeps the certificate useful and doubles the margin at 30 s. Deltas, measured, k 5 → 10 (9 runs per variant, the
+[summary](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_summary.txt)):
+
+| Variant | certified frames | member warns E suppressed | closest certified approach | 0x12 episodes (sum; per run) |
+| --- | --- | --- | --- | --- |
+| departures | 1,168,248 → 1,158,770 | 76.8 % → 71.7 % | 42 → 55 m | 406 → 569; 14–155 → 5–122 |
+| departures w 0.6 r | 1,187,327 → 1,058,383 | 73.8 % → 49.2 % | 66 → 18 m | 310 → 528; 10–70 → 18–120 |
+| mixed | 323,183 → 318,111 | 89.4 % → 88.2 % | 195 → 235 m | 23 → 24; 0–5 → 0–5 |
+| arrivals (both widths) | 0 → 0 (no pair in range) | — | — | 0 → 0 |
+
+* Certified-frame contact stays 0 in every run.
+* All assertions pass: fixture 7470/7470, `--capital` 2843/2843, seq-off 7380/7380. The 44 TARGET MISS rows are unchanged.
+  The head-on sweep check now derives its expected t_c from k.
+* Per-decision cost (host): unchanged at 4.0 µs spread, 6.9 µs packed and 28.6 µs in conflict. The packed bench case
+  moved from 1.5 to 1.6 km apart so that it stays narrow and clear under k = 10. At 1.5 km it now yields: 21.7 µs worst.
+* The frame bound's worst admitted frame is 63.1 µs and the pair sweep 444 ns worst.
+* Drift in the k = 10 runs: steered 446 / 2,270 m at 5 / 30 s, engine-moved 305 m at 5 s. More yields mean more speed
+  changes that the rollout does not model.
+* Rerun after the change:
+  * build: 0 warnings, DLL `2d596edf…`, 58,958,975 B;
+  * `check_no_x87`: PASS 979 / 0;
+  * the verifier: PASS, 19 checks;
+  * key-off identity: E 0 / 400,000, resolve 0 / 60,000;
+  * host tests: 62 OK.
+* The ledger's dangling link to `ship_steering_host_before_detour_write.txt` is dropped; the file was never tracked.
+
+**Cost (host, measured; i686 not measured):**
+
+* pair sweep 447–448 ns worst (target ≤ 500 ns), 60 ns broad only;
+* a decision on a full board 4.0 / 6.9 / 29.0 µs (spread / packed / in conflict);
+* the frame bound (6 decisions, 14 rollouts) admits at worst 63.6 µs per frame;
+* E's member lookup 6 ns;
+* scenario M's E unchanged with the key off;
+* the predictor 16.2 / 18.8 µs (16.1 / 19.5 before, noise).
+* The handlers are unchanged with the key off. With it on:
+  * site B appends a two-load bitmap probe;
+  * `decide()` appends the escort / cap block after the lane block;
+  * E probes two bitmaps first and returns at once for a member pair.
+
+**Review fixes (two reviews of `d619f4de`, Opus and Fable; 2026-10-13; details in §A.1).**
+
+* **One board per ship.** Enter removes the ship from other boards, a none leave frees the slot, and `locate` prefers pair
+  roles. A unit scenario with two boards checks all four readers on the single entry.
+* **Fail closed.** No certificate with no samples, rollouts more than 1 s apart, or an overlap shorter than the warn reach
+  (at least 4 samples). The drift term is `k·(t + |Δt0|)`.
+* **E's freshness** also needs both members decided within 1 s.
+* The id checks in the exclusion and `ctl_depart`.
+* The escort's yield candidate follows its leader.
+* `gate_no_mesh` takes rows 0–20.
+* `type_width_put` runs only under the key.
+* The summary buffer is bounded: a worst case of 3,614 of 4,096 characters
+  ([summary_bound.txt](../../verification/results/ship-steering/gate-traffic-controller/summary_bound.txt)).
+* Static memory, measured ([static_sizes.txt](../../verification/results/ship-steering/gate-traffic-controller/static_sizes.txt)):
+  * the controller is 191,088 B;
+  * the snapshots are 4 × 106,516 B (+213,072 B over capacity 1,024), not the 112 KB the ratification paragraph gave.
+* **A certificate bug, found and fixed.** The order-4 rollout projected the live nose into the plant's plane. Two M7s were
+  certified while their true capsules overlapped by 29 m: 34 and 625 frames in two 144 fps runs, which surfaced once the
+  rollouts were rebuilt. The nose is now the live nose turned by the plant's in-plane turn.
+* **Fixture.**
+  * The site-B state read now follows each ship's order step.
+  * The arrival variants print "no member pair in range" instead of asserting on member pairs.
+  * D.7 assertion 6 is a hard check on the written speed. Under the engine's own law the actual-speed dips (the fallback on a
+    detour: the 1 m/s creep) are 10 TARGET rows.
+  * The worst frame reached is reported: 3 decisions, 12 rollouts.
+* **The engine-moved drift jump** (10 → 305 m at 5 s after k = 10) was not k. It came from the fixture reading the state
+  before the escort's order step at the end of the KC's order-0 gap, plus a strict order-change filter. It is 15 m after the
+  fix.
+
+**Rerun (measured):**
+
+* Build: 0 warnings, DLL `76cb0d66…`, 58,968,024 B.
+* `check_no_x87`: PASS, 981 functions, 0 violations.
+* The verifier: PASS, 19 checks.
+* Fixture 7489/7489 (+275 over amendment 17's 7214), `--capital` 2862/2862, seq-off 7399/7399.
+* Host tests: 62 OK.
+* Key-off identity: E 0 / 400,000, resolve 0 / 60,000.
+
+Scenario T after the fixes, at k = 10:
+
+| Variant | certified frames, contact, closest | member warns E suppressed | 0x12 episodes per run |
+| --- | --- | --- | --- |
+| departures | 967,331, 0, 74 m | 57.8 % | 24–149 |
+| departures w 0.6 r | 924,445, 0, 77 m | 46.7 % | 24–161 |
+| mixed | 288,444, 0, 233 m | 82.4 % | 2–7 |
+
+* The arrivals have no member pair in range.
+* 54 TARGET MISS rows.
+
+Cost (host): pair sweep 444 ns; a decision 4.2 / 7.0 / 29.9 µs; the worst admitted frame 65.1 µs; E's lookup 7 ns.
+
+## Docking approach, amendment 18 (2026-10-13, Opus 5.5; design and implementation [docking-approach.md](../architecture/docking-approach.md))
+
+Worktree branch on stage A (`23184932`) with main's docs merged; not committed by the agent, not installed, not flown. Items 1-6 of
+the note: the own-container row at site E, the container's parts kept as obstacles on order 4 (stations, carriers) and 0x1d
+(stations), carriers' hull parts through the station walk, the `ship_avoid_dock` row and counters, the key `ship_steering_dock`
+(default on, needs `ship_avoidance`). No new hook site. Beyond the note, each needed by scenario N and described in its
+Implementation section: the dock clearance (E's margin + 25 m), the horizon cap at the order's point on order 4, and the body detour.
+
+**Acceptance (measured, WSL2, MinGW GCC 16.2, host c++ -O2):**
+
+* Build from clean: 0 warnings (117 steps; the configure-time `fog_field_assets.rc` needed a `cmake` re-run after `ninja -t clean`).
+  DLL sha256 `68d0f272…`, 59,024,864 B (worktree build, not a candidate).
+* `check_no_x87.py build/d3d9.dll`: PASS, 985 reachable functions, 0 violations.
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, 19 checks; the output is byte-identical to the tracked
+  [`verify_ship_steering_sites_out.json`](../../verification/results/ship-steering/verify_ship_steering_sites_out.json).
+* Host fixture ([output](../../verification/results/ship-steering/ship_steering_host.txt)) **8442/8442** (+953: scenario N and the
+  dock unit checks); `--capital` ([output](../../verification/results/ship-steering/capital-gate-transit/fixture_capital.txt))
+  2862/2862 unchanged (scenario N is not in it); X3M_SEQ_OFF
+  ([output](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt)) 8352/8352.
+  [`fixture_identity.sh`](../../verification/results/ship-steering/docking-approach/fixture_identity.sh) →
+  [`fixture_lines.txt`](../../verification/results/ship-steering/docking-approach/fixture_lines.txt): stage A's fixture against
+  this one, every pre-existing line equal with the host timings masked (386/386, 270/270, 386/386), 60 new scenario-N lines.
+* Host tests `test_ship_steering`, `test_ship_steering_sites`, `test_ship_trace_format` (+1: the dock row), `test_ship_trace_replay`,
+  `test_config_schema`, `test_check_no_x87`, `test_launcher_defaults`: 63 OK. `generate.py --check`: PASS, 272 settings.
+* Key-off identity ([`keyoff_identity.sh`](../../verification/results/ship-steering/docking-approach/keyoff_identity.sh) →
+  [`.txt`](../../verification/results/ship-steering/docking-approach/keyoff_identity.txt)) against stage A's sources:
+  * E with `dock` = none: 0 / 400,000 (the traffic fields drawn too);
+  * resolve with the dock fields at their defaults: 0 / 60,000, now with station part models in 19,110 of the 20,000 scenes
+    (16,262 adjusted), floats bitwise;
+  * the steer set (`order_policy` over all 65,536 order words): 0 differences;
+  * the fixture's scenarios 1-T: every line unchanged (above).
+* Run160b replay: `ship_trace_replay.py` (imports the changed `ship_trace_rows.py`) → `replay_lag.py` on
+  `run160b-triage/x3m.log`, stage A's scripts against these: stdout, the 219 MB JSON and the 18-line summary byte-identical.
+* E's order: the existing rows unchanged; the dock row after both freshness checks, before the capital small/member rows and the
+  resolved set.
+
+**Question 3 (0x1d away from its container).** 0x1d was already steered with avoidance and without the target exclusion, so the
+key changes only the treatment of the station's parts. Key on against key off for a ship on 0x1d whose `f+0x224` is a station with
+a model (keyoff_identity.txt): beyond the avoidance's reach toward the station (lookahead + sqrt(3) x the dock clearance) 50,312
+decisions, 0 differences; within that reach but beyond 5 r_C 1,348 decisions, 49 differ (fast ships whose lookahead reaches it);
+within 5 r_C 8,340, 1,246 differ (the intended change).
+
+**Scenario N** ([`scenario_n.txt`](../../verification/results/ship-steering/docking-approach/scenario_n.txt); table and assertions in
+the note's Implementation section). Key on against key off, 9 runs per line:
+
+* (a)/(b): 0 own-container warns fired anywhere. At (a) 120 deg the key-off ships fly 9 0x12 legs and touch the part spheres (-79 /
+  -77 m); with the key on, 13,431 / 16,820 detour calls, closest 646 / 732 m, arrival 103.7 / 97.2 s against 110.2 / 106.5 s.
+* (c) far side: TP at 0 deg 51 fired, 47 `suppress_dock`, 4 live (`pass_dock_path`: the path really within 1.2 r + 50 m), 4 legs
+  against 9; closest 78 m against -210 m. M6 at 0 deg and both at 60 deg: 0 fired against 9 legs and contact.
+* Live with the path and the ray clear: 0 frames in every run (the assertion for c).
+* The 0x1d queue: the closest approach stays 335 / 449 / 740 m outside 1.2 r + 50 m (TS / TP / M6) against -645 / -646 / -47 m and
+  26 legs with the key off.
+* Carrier: closest part 580 m, no warn with the key on; key off 9 live warns, 45 m. Arrival 0/18 with the key on or off, 18/18 with
+  the module's order-4 ramp off: **pre-existing**, reported as 9 TARGET MISS rows, not changed here.
+
+**Cost** (host, measured; i686 not measured): the E row's arithmetic 64 ns on 12 parts, 279 ns on 64 (target ≤ 1 µs: met); the
+model's cache lookup 54 ns; the DLL's ~30 reads and a moving carrier's model rebuild are not measured on the host (`dock_e_us_max` in
+the summary).
+
+**Follow-up: the relative order-4 ramp and moving carriers (coordinator's fix, 2026-10-13; note's Implementation section).** For
+order 4 to a ship container under the key, the arrival ramp's reference speed is `clamp(v_C · f, 0, v_max)`, site B measures to the
+live point (moved by v_C over the decision's age) and floors the closing speed at 10 m/s. Order 5 needed nothing: the module writes no
+ramp there, only the cornering cap (lowering) and the port hold (angles). Three avoidance changes came with it, each from scenario N:
+a carrier's parts move with its turn (`v + ω × r`, ω from the rates `obj+0x24..` and the flight basis, in resolve and in E's path),
+the own-container detour takes the approach point's side, and a conflict later than the turn onto a line to the approach point that
+clears the whole body is ignored. Measured:
+
+* Carrier, 9 runs each, every fighter on its own port: 60 m/s 18/18 (worst 0.99 x the engine's own time, closest part 582 m); 120 m/s
+  18/18 (0.99 x, 484 m); turning at the M1 cap 9 deg/s for 180 deg 18/18 (0.90 x, 101 m); no warn fired with the key on. The
+  arrival within the engine's time + 10 %, no part contact and no live warn with a clear path are hard checks now (the 9 TARGET MISS
+  rows are gone). Key off (stage A) still 0/18 in every variant.
+* Stations unchanged in kind: (a) 120 deg and (c) 60 deg closest 270 / 520 m and 271 / 519 m (before 646 / 732 m), no warn; every
+  other station line and the queue as above.
+* Fixture 8516/8516 (+1027 over stage A), `--capital` 2862/2862, X3M_SEQ_OFF 8426/8426; every pre-existing line unchanged
+  ([fixture_lines.txt](../../verification/results/ship-steering/docking-approach/fixture_lines.txt)).
+* Key-off identity: E 0 / 400,000, resolve 0 / 60,000, steer set 0, and site B's clamp with no or zero container velocity 0 / 200,000
+  bitwise against stage A; question 3 as above (0 / 50,312 beyond the reach).
+* Build from clean 0 warnings, DLL `df0fe1b9…`, 59,050,280 B; `check_no_x87` PASS 989 / 0; the verifier PASS 19 (output
+  byte-identical); 63 host tests OK. The Run160b replay was not rerun: no Python changed since its byte-identical run.
+* Cost (host): the E row 66 / 280 ns on 12 / 64 parts, the cache lookup 52 ns.
+
+**Review fixes (review of `658ff8ab`, seven items; 2026-10-13).**
+
+1. A ship container's reach uses the engine's closing speed (`|v| cos θ` + its speed toward A, never below |v|); stations unchanged.
+   Unit check: a carrier closing at 60 m/s on a fighter at 100 m/s (a 50 m/s²) gives a reach of 356 m, and the row passes a part 300 m
+   down the nose (with |v| alone its ray was clear).
+2. A ship is a container only with `[obj+0x40] & 0x100000` (sections 5 and 11.6; not the autopilot bit `0x80000`). Identity: 0 of
+   100,000 random flag words differ from the rule; a carrier without the bit flies key on exactly as key off (9 of 9 runs).
+3. The line skip only for a stationary container, its turn time plus the 2 s slip lag; the horizon cap only with u within 10° of P.
+   Scenario N against the previous output: (a) 120° and (c) 60° TP / M6 arrive 0.4 / 0.6 s later (102.5 / 97.2 s) and pass wider
+   (357 / 704 m against 270 / 520 m); the turning carrier 0.7 s later (56.7 s, closest 118 m); every other line unchanged. The fighter
+   dead ahead of a carrier lost the skip (1.65 x the engine's time) and regained 0.99 x by the degenerate-plane rule (note,
+   Implementation).
+4. ω capped at 0.5 rad/s.
+5. A carrier's model is walked at most every 250 ms (8 records, extrapolated by v and ω between walks); a failed walk waits 5 s.
+6. The station cache never evicts a slot the current snapshot references; all pinned: no model, `dock_parts_evicted`.
+7. `dock_w_` is written with the decision's v_ref, after `steer()` committed it.
+
+Rerun (measured): clean build 0 warnings, DLL `1ad73e5b…`, 59,066,477 B; `check_no_x87` PASS 987 / 0; the verifier PASS 19
+(byte-identical); fixture 8520/8520, `--capital` 2862/2862, X3M_SEQ_OFF 8430/8430, every pre-existing line unchanged; key-off
+identity all 0 (E 400,000, resolve 60,000, steer set, clamp 200,000, the dock-bit rule 100,000; question 3: 0 / 50,312 beyond the
+reach, 1,246 / 8,340 within 5 r_C); 63 host tests OK; cost 64 / 282 ns, lookup 51 ns.
 
 ## Open flight runs (native Windows, the user; the rows that decide them)
 

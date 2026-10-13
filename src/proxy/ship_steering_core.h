@@ -689,7 +689,22 @@ struct ShipTable {
 // Site B (section 2.5): the clamp for the ship at position x (m) from its last
 // decision, recomputed with the current distance; 0 when nothing applies
 // (stale, another order, no schedule).
-__attribute__((always_inline)) inline float clamp_for(const Ship& s, const float x[3], std::uint16_t order, std::uint32_t now_ms, std::uint32_t max_age_ms) noexcept {
+// Amendment 18: a ship's angular velocity (rad/s, world) from its turn rates obj+0x24.. (yaw, pitch, roll, rad/s as the integrator
+// applies them: yaw turns row 2 toward -row 0, pitch toward +row 1, roll turns row 0 toward row 1) and its basis rows (right-handed).
+__attribute__((always_inline)) inline void ship_angular_velocity(const float w[3], const float row[3][3], float out[3]) noexcept {
+    for (int i = 0; i < 3; ++i) out[i] = -w[0] * row[1][i] - w[1] * row[0][i] + w[2] * row[2][i];
+}
+// Amendment 18 (docking-approach.md, Implementation; ship_steering_dock): order 4 to a moving container. The ramp's reference speed is the
+// container's velocity along the ship's nose, floored at 0 and capped at v_max (a stationary container gives 0: today's ramp).
+__attribute__((always_inline)) inline float container_ref_speed(const float w[3], const float f[3], float v_max) noexcept {
+    const float v = dot3(w, f);
+    if (!finite_f(v) || !(v > 0.0f)) return 0.0f;
+    return v > v_max ? v_max : v;
+}
+// w_live (amendment 18): the container's velocity (m/s) for an order-4 decision to a moving container: site B measures the ramp's
+// distance to the live approach point, the decision's point moved by w over the decision's age. Null or zero: today's clamp.
+__attribute__((always_inline)) inline float clamp_for(const Ship& s, const float x[3], std::uint16_t order, std::uint32_t now_ms, std::uint32_t max_age_ms,
+                                                       const float* w_live = nullptr) noexcept {
     if (!(s.flags & kShipFlagClamp) && s.v_emergency <= 0.0f) return 0.0f;
     if (s.order != order || now_ms - s.stamp_ms > max_age_ms) return 0.0f;
     float v;
@@ -712,9 +727,17 @@ __attribute__((always_inline)) inline float clamp_for(const Ship& s, const float
         const float floor = ramp < kGateDockFloorMs ? ramp : kGateDockFloorMs;
         if (v < floor) v = floor;
     } else {
-        const float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
+        float d[3] = {s.P[0] - x[0], s.P[1] - x[1], s.P[2] - x[2]};
+        const bool moving = w_live && (w_live[0] != 0.0f || w_live[1] != 0.0f || w_live[2] != 0.0f);
+        if (moving) {
+            const float age_s = float(std::int32_t(now_ms - s.stamp_ms)) * 0.001f; // <= max_age_ms (checked above)
+            for (int i = 0; i < 3; ++i) d[i] += w_live[i] * age_s;
+        }
         const float dist = sqrt_ss(dot3(d, d));
         v = schedule_speed(dist, s.d_arr, s.a_lin, s.v_ref, (s.flags & kShipFlagRamp) != 0, 0.0f);
+        // the relative ramp keeps the floor as a closing speed (at d_arr the absolute floor sits below the container's speed: the ship
+        // would hold station just outside the arrival radius)
+        if (moving && (s.flags & kShipFlagRamp) && v > 0.0f && v < s.v_ref + kFloorMs) v = s.v_ref + kFloorMs;
         if (v > 0.0f && s.v_slip != 0.0f) { // amendment 14: the ramp's nose speed for its closing speed (steer() measured the difference)
             v += s.v_slip;
             if (v < kFloorMs) v = kFloorMs;
@@ -1040,6 +1063,52 @@ inline bool join_plane(const GateGeometry& g, const float x[3], const float rows
     out->v = v > 0.0f ? v : 0.0f;
     return finite_f(out->s) && finite_f(out->y) && finite_f(out->psi) && finite_f(out->upsi) && finite_f(out->w) && finite_f(out->v);
 }
+// One 0.25 s step of the predictor's plant (the controller 0x0043ad20 with the module's servo, the 2 s slip lag, the speed slew)
+// in the plane of the line: the carrot pursuit of join_predict_grade, shared with the gate traffic controller's member rollout
+// (gate-traffic-controller.md D.1). (x, y) = (s, y) of JoinPlane; the arithmetic is the predictor's, in its order.
+__attribute__((always_inline)) inline void plant_step(const JoinParams& p, float v_des, float dt, float k_lag, float a_along, float& x, float& y,
+                                                      float& psi, float& upsi, float& w, float& v) noexcept {
+    float look = 0.75f * v;
+    if (2.0f * v / p.W > look) look = 2.0f * v / p.W;
+    if (kGateLookMinR * p.r_gate > look) look = kGateLookMinR * p.r_gate;
+    float along = x + look;
+    if (along > a_along) along = a_along;
+    const float theta = wrap_pi(atan2_f(-y, along - x) - psi);
+    const float a = fabs_f(theta);
+    float w_cmd = sqrt_ss(p.alpha * a);
+    if (a / kTau < w_cmd) w_cmd = a / kTau;
+    if (p.W < w_cmd) w_cmd = p.W;
+    float e_wr = w_cmd * w_cmd / p.alpha + w_cmd * kJoinServoTickS;
+    if (e_wr > a) e_wr = a;
+    const float sgn = theta >= 0.0f ? 1.0f : -1.0f;
+    float wr = w * sgn;
+    if (wr < 0.0f) {
+        wr += p.alpha * dt;
+        if (wr > 0.0f) wr = 0.0f;
+    } else if (e_wr < wr * wr / p.alpha) {
+        wr -= p.alpha * dt;
+        if (wr < 0.0f) wr = 0.0f;
+    } else {
+        wr += p.alpha * dt;
+        if (wr > p.W) wr = p.W;
+    }
+    float turn = wr * dt;
+    if (turn > 0.0f && turn > a) turn = a;
+    psi = wrap_pi(psi + sgn * turn);
+    w = sgn * wr;
+    if (v < v_des) {
+        v += p.a_lin * dt;
+        if (v > v_des) v = v_des;
+    } else {
+        v -= p.a_lin * dt;
+        if (v < v_des) v = v_des;
+    }
+    upsi = wrap_pi(upsi + wrap_pi(psi - upsi) * k_lag);
+    float su, cu;
+    sincos_f(upsi, &su, &cu);
+    x += v * cu * dt;
+    y += v * su * dt;
+}
 // One prediction at the written speed vc: 2 when the simulated pursuit reaches the crossing plane within the margins (nose <= 4,
 // velocity <= 6 deg, |e| and the excursion <= 50 m), 1 when only within P2's acceptance (8.11 deg, 10 deg, 100 m, 100 m), 0 when
 // neither. nose_out / y_out: the predicted nose error (deg) and |e| (m) at the plane (or where the prediction stopped).
@@ -1072,46 +1141,7 @@ inline int join_predict_grade(const JoinPlane& st, const JoinParams& p, float vc
     unsigned steps = 0;
     for (unsigned step = 0; step < kJoinMaxSteps && x < 0.0f && t < t_max; ++step) {
         ++steps;
-        float look = 0.75f * v;
-        if (2.0f * v / p.W > look) look = 2.0f * v / p.W;
-        if (kGateLookMinR * p.r_gate > look) look = kGateLookMinR * p.r_gate;
-        float along = x + look;
-        if (along > a_along) along = a_along;
-        const float theta = wrap_pi(atan2_f(-y, along - x) - psi);
-        const float a = fabs_f(theta);
-        float w_cmd = sqrt_ss(p.alpha * a);
-        if (a / kTau < w_cmd) w_cmd = a / kTau;
-        if (p.W < w_cmd) w_cmd = p.W;
-        float e_wr = w_cmd * w_cmd / p.alpha + w_cmd * kJoinServoTickS;
-        if (e_wr > a) e_wr = a;
-        const float sgn = theta >= 0.0f ? 1.0f : -1.0f;
-        float wr = w * sgn;
-        if (wr < 0.0f) {
-            wr += p.alpha * dt;
-            if (wr > 0.0f) wr = 0.0f;
-        } else if (e_wr < wr * wr / p.alpha) {
-            wr -= p.alpha * dt;
-            if (wr < 0.0f) wr = 0.0f;
-        } else {
-            wr += p.alpha * dt;
-            if (wr > p.W) wr = p.W;
-        }
-        float turn = wr * dt;
-        if (turn > 0.0f && turn > a) turn = a;
-        psi = wrap_pi(psi + sgn * turn);
-        w = sgn * wr;
-        if (v < v_des) {
-            v += p.a_lin * dt;
-            if (v > v_des) v = v_des;
-        } else {
-            v -= p.a_lin * dt;
-            if (v < v_des) v = v_des;
-        }
-        upsi = wrap_pi(upsi + wrap_pi(psi - upsi) * k_lag);
-        float su, cu;
-        sincos_f(upsi, &su, &cu);
-        x += v * cu * dt;
-        y += v * su * dt;
+        plant_step(p, v_des, dt, k_lag, a_along, x, y, psi, upsi, w, v);
         const float side = y >= 0.0f ? 1.0f : -1.0f;
         if (side != ref) {
             crossed = true;

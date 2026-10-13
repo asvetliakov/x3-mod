@@ -112,6 +112,8 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_ship_gate_stop_a', '_x3m_ship_gate_stop_b', '_x3m_ship_gate_launch',
                 # step 4: the warp-in site W (0x00465bac) stub and handler (the exit spread)
                 '_x3m_ship_gate_warp_stub', '_x3m_ship_gate_warp_in',
+                # the gate traffic controller, stage A: the launch window 0x00444606 stub and handler (X3M_SHIP_STEERING_GATES_TRAFFIC)
+                '_x3m_ship_gate_arrival_stub', '_x3m_ship_gate_arrival',
                 # engine-effect call redirects (src/proxy/engine_effects_patch.cpp, X3M_ENGINE_EFFECTS=off|plumes): the two class-test
                 # stubs on 0x004147eb and 0x0041482c, per spawn site per frame on the game thread; integer only, no call
                 '_x3m_engine_effects_stub_a', '_x3m_engine_effects_stub_b',

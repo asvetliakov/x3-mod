@@ -1,0 +1,61 @@
+dock N a straight  TP bearing   0 (9 runs): key on  arrived 9 t_max 59.6 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1836 m min_dN 2052 m
+dock N a straight  TP bearing   0 (9 runs): key off arrived 9 t_max 59.6 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1836 m
+dock N a straight  TP bearing  60 (9 runs): key on  arrived 9 t_max 76.7 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1658 m min_dN 1877 m
+dock N a straight  TP bearing  60 (9 runs): key off arrived 9 t_max 76.7 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1658 m
+dock N a straight  TP bearing 120 (9 runs): key on  arrived 9 t_max 102.5 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 11092 min_gap 357 m min_dN 1654 m
+dock N a straight  TP bearing 120 (9 runs): key off arrived 9 t_max 110.2 s 0x12 legs 9 firing 9 suppressed 0 live 9 min_gap -79 m
+dock N a straight  M6 bearing   0 (9 runs): key on  arrived 9 t_max 58.0 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1679 m min_dN 1878 m
+dock N a straight  M6 bearing   0 (9 runs): key off arrived 9 t_max 58.0 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1679 m
+dock N a straight  M6 bearing  60 (9 runs): key on  arrived 9 t_max 73.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1626 m min_dN 1825 m
+dock N a straight  M6 bearing  60 (9 runs): key off arrived 9 t_max 73.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1626 m
+dock N a straight  M6 bearing 120 (9 runs): key on  arrived 9 t_max 97.2 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 16698 min_gap 704 m min_dN 1754 m
+dock N a straight  M6 bearing 120 (9 runs): key off arrived 9 t_max 106.5 s 0x12 legs 9 firing 9 suppressed 0 live 9 min_gap -77 m
+dock N a straight  M2 bearing   0 (9 runs): key on  arrived 9 t_max 77.4 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 3747 m min_dN 4587 m
+dock N a straight  M2 bearing   0 (9 runs): key off arrived 9 t_max 77.4 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 3747 m
+dock N a straight  M2 bearing  60 (9 runs): key on  arrived 9 t_max 151.4 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 3480 m min_dN 4325 m
+dock N a straight  M2 bearing  60 (9 runs): key off arrived 9 t_max 151.4 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 3480 m
+dock N a straight  M2 bearing 120 (9 runs): key on  arrived 9 t_max 236.4 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 526 m min_dN 2697 m
+dock N a straight  M2 bearing 120 (9 runs): key off arrived 9 t_max 236.4 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 526 m
+dock N b tilted 60 TP bearing   0 (9 runs): key on  arrived 9 t_max 65.5 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 2117 m min_dN 2549 m
+dock N b tilted 60 TP bearing   0 (9 runs): key off arrived 9 t_max 65.5 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 2117 m
+dock N b tilted 60 TP bearing  60 (9 runs): key on  arrived 9 t_max 79.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 2022 m min_dN 2478 m
+dock N b tilted 60 TP bearing  60 (9 runs): key off arrived 9 t_max 79.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 2022 m
+dock N b tilted 60 TP bearing 120 (9 runs): key on  arrived 9 t_max 100.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1081 m min_dN 2166 m
+dock N b tilted 60 TP bearing 120 (9 runs): key off arrived 9 t_max 100.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1081 m
+dock N b tilted 60 M6 bearing   0 (9 runs): key on  arrived 9 t_max 63.3 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 2018 m min_dN 2457 m
+dock N b tilted 60 M6 bearing   0 (9 runs): key off arrived 9 t_max 63.3 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 2018 m
+dock N b tilted 60 M6 bearing  60 (9 runs): key on  arrived 9 t_max 75.3 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1989 m min_dN 2429 m
+dock N b tilted 60 M6 bearing  60 (9 runs): key off arrived 9 t_max 75.3 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1989 m
+dock N b tilted 60 M6 bearing 120 (9 runs): key on  arrived 9 t_max 93.8 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1062 m min_dN 2125 m
+dock N b tilted 60 M6 bearing 120 (9 runs): key off arrived 9 t_max 93.8 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1062 m
+dock N c far side  TP bearing   0 (9 runs): key on  arrived 9 t_max 141.3 s 0x12 legs 4 firing 51 suppressed 47 live 4 (path 4 ray 0 parts 0, live with clear 0x0) detours 25108 min_gap 78 m min_dN 1518 m
+dock N c far side  TP bearing   0 (9 runs): key off arrived 9 t_max 133.2 s 0x12 legs 9 firing 9 suppressed 0 live 9 min_gap -210 m
+dock N c far side  TP bearing   0: E with the row 0.16 us per firing frame (host, 51 frames)
+dock N c far side  TP bearing  60 (9 runs): key on  arrived 9 t_max 102.5 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 11100 min_gap 357 m min_dN 1654 m
+dock N c far side  TP bearing  60 (9 runs): key off arrived 9 t_max 110.2 s 0x12 legs 9 firing 9 suppressed 0 live 9 min_gap -79 m
+dock N c far side  TP bearing 120 (9 runs): key on  arrived 9 t_max 76.7 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1658 m min_dN 1877 m
+dock N c far side  TP bearing 120 (9 runs): key off arrived 9 t_max 76.7 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1658 m
+dock N c far side  M6 bearing   0 (9 runs): key on  arrived 9 t_max 122.8 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 24702 min_gap 344 m min_dN 852 m
+dock N c far side  M6 bearing   0 (9 runs): key off arrived 9 t_max 124.0 s 0x12 legs 9 firing 9 suppressed 0 live 9 min_gap -246 m
+dock N c far side  M6 bearing  60 (9 runs): key on  arrived 9 t_max 97.2 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 16666 min_gap 704 m min_dN 1754 m
+dock N c far side  M6 bearing  60 (9 runs): key off arrived 9 t_max 106.5 s 0x12 legs 9 firing 9 suppressed 0 live 9 min_gap -77 m
+dock N c far side  M6 bearing 120 (9 runs): key on  arrived 9 t_max 73.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 (path 0 ray 0 parts 0, live with clear 0x0) detours 0 min_gap 1626 m min_dN 1825 m
+dock N c far side  M6 bearing 120 (9 runs): key off arrived 9 t_max 73.1 s 0x12 legs 0 firing 0 suppressed 0 live 0 min_gap 1626 m
+dock N queue 0x1d (TS, TP, M6; 9 runs of 180 s): key on  margin left TS 335 TP 449 M6 740 m, min part gap 393 m, 0x12 legs 0, firing 0, detours 41718
+dock N queue 0x1d (TS, TP, M6; 9 runs of 180 s): key off margin left TS -645 TP -646 M6 -47 m, min part gap -587 m, 0x12 legs 26, firing 1969, detours 86188
+dock N carrier without the dock bit: key on identical to key off in 9 of 9 runs
+dock N carrier M1 60 m/s (M3, M4 docking, M5 launching; 9 runs): key on  arrived 18/18 t_max 36.5 s 0x12 legs 0 firing 0 suppressed 0 live 0 (inner 0) min part gap 726 m min gap to the launching fighter 1699 m
+dock N carrier M1 60 m/s: key on, the worst arrival time over the engine's own 0.99
+dock N carrier M1 60 m/s (M3, M4 docking, M5 launching; 9 runs): key off arrived 0/18 t_max 0.0 s 0x12 legs 0 firing 0 suppressed 0 live 0 (inner 0) min part gap 582 m min gap to the launching fighter 1691 m
+dock N carrier M1 60 m/s (M3, M4 docking, M5 launching; 9 runs): engine  arrived 18/18 t_max 37.0 s 0x12 legs 0 firing 0 suppressed 0 live 0 (inner 0) min part gap 565 m min gap to the launching fighter 1715 m
+dock N carrier M1 120 m/s (M3, M4 docking, M5 launching; 9 runs): key on  arrived 18/18 t_max 72.7 s 0x12 legs 0 firing 0 suppressed 0 live 0 (inner 0) min part gap 482 m min gap to the launching fighter 2002 m
+dock N carrier M1 120 m/s: key on, the worst arrival time over the engine's own 0.99
+dock N carrier M1 120 m/s (M3, M4 docking, M5 launching; 9 runs): key off arrived 0/18 t_max 0.0 s 0x12 legs 0 firing 0 suppressed 0 live 0 (inner 0) min part gap 342 m min gap to the launching fighter 1976 m
+dock N carrier M1 120 m/s (M3, M4 docking, M5 launching; 9 runs): engine  arrived 18/18 t_max 73.4 s 0x12 legs 0 firing 0 suppressed 0 live 0 (inner 0) min part gap 319 m min gap to the launching fighter 2057 m
+dock N carrier M1 60 m/s turning 9 deg/s for 180 deg (M3, M4 docking, M5 launching; 9 runs): key on  arrived 18/18 t_max 56.7 s 0x12 legs 0 firing 0 suppressed 0 live 0 (inner 0) min part gap 118 m min gap to the launching fighter 77 m
+dock N carrier M1 60 m/s turning 9 deg/s for 180 deg: key on, the worst arrival time over the engine's own 0.90
+dock N carrier M1 60 m/s turning 9 deg/s for 180 deg (M3, M4 docking, M5 launching; 9 runs): key off arrived 0/18 t_max 0.0 s 0x12 legs 22 firing 22 suppressed 0 live 22 (inner 0) min part gap -367 m min gap to the launching fighter 457 m
+dock N carrier M1 60 m/s turning 9 deg/s for 180 deg (M3, M4 docking, M5 launching; 9 runs): engine  arrived 18/18 t_max 78.8 s 0x12 legs 27 firing 27 suppressed 0 live 27 (inner 0) min part gap -137 m min gap to the launching fighter 402 m
+dock N cost (host): the E row (clearance + verdict + site_e_verdict) on 12 parts 64 ns per decision, target <= 1 us: met
+dock N cost (host): the E row (clearance + verdict + site_e_verdict) on 64 parts 282 ns per decision, target <= 1 us: met
+dock N cost (host): the model's cache lookup (stamp hash + find over 64 slots, the last ones) 51 ns (hits 400000)

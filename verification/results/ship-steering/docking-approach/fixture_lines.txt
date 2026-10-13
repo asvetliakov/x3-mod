@@ -1,0 +1,16 @@
+base 23184932 (23184932) vs working tree 32b4e12b
+mode full:
+lines before 387 after 448; compared 386 vs 386 (timings masked); differing 0; scenario N lines 61
+count before: ship_steering_host checks=7489 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=8520 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS
+mode capital:
+lines before 271 after 271; compared 270 vs 270 (timings masked); differing 0; scenario N lines 0
+count before: ship_steering_host checks=2862 failures=0 slip_gaps=0
+count after:  ship_steering_host checks=2862 failures=0 slip_gaps=0
+RESULT PASS
+mode seqoff:
+lines before 387 after 448; compared 386 vs 386 (timings masked); differing 0; scenario N lines 61
+count before: ship_steering_host checks=7399 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=8430 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS

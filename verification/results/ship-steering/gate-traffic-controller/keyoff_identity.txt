@@ -1,0 +1,4 @@
+base 77ddda08 (77ddda08) vs working tree 16a79e5c
+site E (traffic fields at their defaults) vs amendment 17: 400000 random inputs, differences 0
+avoidance resolve (n_ctl = 0, snapshot capacity 2048 vs 1024) vs amendment 17: 60000 resolves in 20000 scenes (24499 adjusted), differences 0
+RESULT PASS

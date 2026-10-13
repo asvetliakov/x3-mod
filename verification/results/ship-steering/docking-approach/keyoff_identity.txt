@@ -1,0 +1,8 @@
+base 23184932 (23184932) vs working tree 32b4e12b
+site E (dock = none) vs stage A: 400000 random inputs (traffic fields drawn), differences 0
+avoidance resolve (dock_target 0) vs stage A: 60000 resolves in 20000 scenes (19110 with station part models, 16262 adjusted), differences 0
+steer set (order_policy over 65536 order words) vs stage A: differences 0
+site B clamp, a stationary container (no velocity: key off; zero velocity: key on) vs stage A: 200000 random decisions, differences 0 (bitwise); the reference speed of a zero velocity is 0
+ship containers: order 4 to a ship counts only with the dock bit 0x100000 (100000 random flag words), differences 0
+question 3, 0x1d to a station with a model, key on vs key off: beyond the avoidance's reach toward it 50312 decisions, differences 0; within that reach but beyond 5 r_C 1348, differences 49; within 5 r_C 8340, differences 1246 (the intended change: the body detour and the dock margin)
+RESULT PASS

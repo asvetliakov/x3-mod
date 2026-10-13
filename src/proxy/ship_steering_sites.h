@@ -143,6 +143,26 @@ constexpr engine_patch::SiteSpec kGateSites[GateCount] = {
     {"ship_gate_warp_in", 0x00465bac, {0x8b, 0x4b, 0x70, 0x8b, 0x53, 0x50}, 6, 0, 0},
 };
 constexpr std::uintptr_t kGateStopAResume = 0x00454b97, kGateStopBResume = 0x00454706, kGateLaunchResume = 0x00455281;
+// The gate traffic controller, stage A (docs/architecture/gate-traffic-controller.md D.4; ship-navigation-ai.md section 10.10),
+// claimed alone after the gate group and only under ship_steering_gates_traffic (all or nothing: a refusal turns the controller off,
+// the gate group stays): (n) the launch `0x00444170`'s window `0x00444606`: `mov eax,[ebx+0x70]` | `mov ecx,[ebx+0x50]` (6 B, two
+//     whole instructions, instruction starts of the linear sweep, no direct branch into bytes 1..5), between `mov [eax+0x214],edx`
+//     (the 0x21 deadline) and `mov edx,[eax+0x30]` / `add eax,0x30` / `mov [ecx+0x240],edx` (the copy P -> f+0x240 at 0x0044460c).
+//     Live in: EBX = the ship, EDI = the gate (read at 0x00444651 `mov eax,[edi+0x70]`), EBP = frame, phys+0x30 = P already written
+//     (0x004444f2 / 0x00444581). Dead: EAX/ECX (the window rewrites them), EDX (rewritten at 0x0044460c), ESI (rewritten at
+//     0x0044466f before any read), EFLAGS (`add eax,0x30` at 0x0044460f writes them; no reader before `add esp,8` at 0x00444637).
+//     ESP = frame - 8 with the two cdecl arguments of 0x004f0640 still on the stack until 0x00444637: the stub never touches
+//     [esp..esp+8]. No x87 state is live (last used 0x0044435f..0x0044436f, popped). The stub (live byte set) saves EAX/ECX/EDX and
+//     XMM0-7, calls the handler (ship = EBX, gate = EDI), which may add an offset to phys+0x30..+0x38 (int32, guarded), restores, and
+//     continues into the claim tail: the replayed window and `jmp 0x0044460c`. Every position of the arrival (the copy into
+//     f+0x240, each 0x21 frame, the final snap, the 0x1e line) carries the offset.
+constexpr engine_patch::SiteSpec kArrivalSite = {"ship_gate_arrival_launch", 0x00444606, {0x8b, 0x43, 0x70, 0x8b, 0x4b, 0x50}, 6, 0, 0};
+constexpr std::uintptr_t kArrivalResume = 0x0044460c;      // the claim tail's jump target (the copy P -> f+0x240)
+constexpr std::uint32_t kGateFlightSlots = 0x1dc;          // [gate.f+0x1dc + 4 i] = the warp-out slot occupant (i < 6)
+constexpr unsigned kGateFlightSlotCount = 6;
+constexpr std::uint32_t kFlightDeadline = 0x214;           // order 0x21: now + 900 at the launch
+constexpr std::uint32_t kFlagPlayerObject = 0x2, kFlagPlayerControl = 0x40000; // [obj+0x40]: SA_SetAsPlayerObject; manual control
+                                                                            // = 0x40000 without the autopilot 0x80000 (0x0043ff80)
 // Site E, claimed separately (avoidance runs without it when its bytes mismatch).
 constexpr engine_patch::SiteSpec kWarnSite = {"ship_avoid_warn_test", 0x0044dd90, {0x55, 0x8b, 0xec, 0x83, 0xe4, 0xf0}, 6, 0x10, 0};
 constexpr std::uintptr_t kWarnTestEnd = 0x0044e445; // after the last `ret 0x10` at 0x0044e442

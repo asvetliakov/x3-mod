@@ -1,0 +1,6 @@
+variant      runs | 0x12 episodes per run min..max (sum grid-bound / other) | min capsule m (all / not grid-bound) min box m | certified frames, contact, min capsule m | decisions yields capped unresolved | member warns E suppress / pass | frame max dec/rollouts
+departures      9 | 24..149 (194 / 330) | -686 / -685 -1047 | 967331, 0, 74 | 61951 3888 47837 17892 | 260626 / 190331 | 3/12
+dep w0.6r       9 | 24..161 (357 / 257) | -803 / -803 -1212 | 924445, 0, 77 | 63972 3644 45815 25157 | 218881 / 250021 | 2/11
+arrivals        9 | 0..0 (0 / 0) | 2560 / 2560 2415 | 0, 0, - | 16164 0 0 0 | 0 / 0 | 1/1
+arr w0.6r       9 | 0..0 (0 / 0) | 2558 / 2558 2392 | 0, 0, - | 16164 0 0 0 | 0 / 0 | 1/1
+mixed           9 | 2..7 (6 / 36) | 233 / 233 -193 | 288444, 0, 233 | 34358 1419 13393 1801 | 74621 / 15983 | 2/5

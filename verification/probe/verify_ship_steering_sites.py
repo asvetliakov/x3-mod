@@ -120,6 +120,27 @@ GATE_FACTS = (
     ('rotate_roll_read', 0x00459211, bytes.fromhex('8b8f48020000')),
     ('rotate_tolerance_0xfd70', 0x004592d9, bytes.fromhex('3d70fd0000')),
 )
+# The gate traffic controller, stage A (ship_steering_sites.h (n); ship-navigation-ai.md section 10.10): the launch 0x00444170
+# (stdcall ship, gate; `ret 8` at 0x00444a4f, a jump table from 0x00444a54) and its window 0x00444606 before the copy P -> f+0x240.
+T_VA, T_WINDOW, T_RESUME = 0x00444606, (0x00444170, 0x00444a52), 0x0044460c
+T_ESP_RESTORE, T_ESI_REWRITE, T_EDI_READ = 0x00444637, 0x0044466f, 0x00444651
+T_EDI_SETS = (0x004444ce, 0x00444575)
+ARRIVAL_FACTS = (
+    ('t_entry_args', 0x0044417a, bytes.fromhex('8b5d08' '56' '8b750c' '66837e4812')),  # mov ebx,[ebp+8] (ship); push esi; mov esi,[ebp+0xc] (gate); cmp [esi+0x48],0x12
+    ('t_edi_gate_noncapital', 0x004444ce, bytes.fromhex('8b7d0c')),                     # mov edi,[ebp+0xc]
+    ('t_edi_gate_capital', 0x00444575, bytes.fromhex('8b7d0c')),
+    ('t_p_written_noncapital', 0x004444ec, bytes.fromhex('8b4370' '83c030' '8908')),    # mov eax,[ebx+0x70]; add eax,0x30; mov [eax],ecx (P)
+    ('t_p_written_capital', 0x0044457b, bytes.fromhex('8b4370' '83c030' '8908')),
+    ('t_deadline_before_window', 0x00444600, bytes.fromhex('899014020000')),            # mov [eax+0x214],edx (now + 900)
+    ('t_window', T_VA, bytes.fromhex('8b43708b4b50')),                                  # mov eax,[ebx+0x70]; mov ecx,[ebx+0x50]
+    ('t_resume_copy', T_RESUME, bytes.fromhex('8b5030' '83c030' '899140020000')),       # mov edx,[eax+0x30]; add eax,0x30; mov [ecx+0x240],edx
+    ('t_or_0x400_add_esp_8', 0x00444630, bytes.fromhex('814b4000040000' '83c408')),     # or [ebx+0x40],0x400; add esp,8
+    ('t_edi_read_gate_phys', T_EDI_READ, bytes.fromhex('8b4770')),                     # mov eax,[edi+0x70]
+    ('t_esi_rewrite', T_ESI_REWRITE, bytes.fromhex('8d742418')),                       # lea esi,[esp+0x18]
+    ('t_wake', 0x00444a32, bytes.fromhex('6a0151ffd0')),                               # push 1; push ecx; call eax (the KC wake, after the site)
+)
+FLAG_READERS = re.compile(r'^(j(?!mp)\w*|set\w+|cmov\w+|adc|sbb|pushf\w*|lahf|rcl|rcr|into|loop\w*)$')
+FLAG_WRITERS = re.compile(r'^(add|sub|and|or|xor|cmp|test|inc|dec|neg|shl|shr|sar|sal|imul|mul|bt\w*|popf\w*|sahf)$')
 CAPITAL_PREDICATE, CAPITAL_JUMP_TABLE, CAPITAL_BYTE_TABLE, CAPITAL_TABLE_LEN = 0x0043fd50, 0x0043fd84, 0x0043fd8c, 14
 CAPITAL_PROLOGUE = bytes.fromhex('6683784807' '752a' '0fbf404a' '8b0dd46f6000' '69c0b80d0000' '8b440814' '83f80d' '7711')
 SITES = (
@@ -132,8 +153,9 @@ SITES = (
     H('ship_gate_stop_b', P4_VA, STOP_BYTES, *P4_WINDOW),
     H('ship_gate_launch', P5_VA, bytes.fromhex('b8e8671900'), *P5_WINDOW),
     H('ship_gate_warp_in', W_VA, bytes.fromhex('8b4b708b5350'), *W_WINDOW),
+    H('ship_gate_arrival_launch', T_VA, bytes.fromhex('8b43708b4b50'), *T_WINDOW),
 )
-RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0, E_VA: 0x10, P2_VA: 0, P4_VA: 0, P5_VA: 0, W_VA: 0}
+RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0, E_VA: 0x10, P2_VA: 0, P4_VA: 0, P5_VA: 0, W_VA: 0, T_VA: 0}
 # Getters: (va, first instruction bytes, the register that carries obj, the plain `ret` addresses).
 GETTERS = {
     'max_speed': (0x00450980, bytes.fromhex('83ec0853568bf0'), 'eax', (0x00450b20,)),            # sub esp,8; push ebx; push esi; mov esi,eax
@@ -234,6 +256,8 @@ def header_specs(text):
     table += text[e_start:text.index(';', e_start)]
     g_start = text.index('constexpr engine_patch::SiteSpec kGateSites[GateCount]')
     table += text[g_start:text.index('};', g_start)]
+    t_start = text.index('constexpr engine_patch::SiteSpec kArrivalSite')
+    table += text[t_start:text.index(';', t_start)]
     rows = []
     for m in _SPEC_RE.finditer(table):
         rows.append({'name': m.group(1), 'va': int(m.group(2), 16),
@@ -349,6 +373,49 @@ def verify(exe=DEFAULT_EXE, whole_text=True):
                             'w_flags_dead_until_test': w_flags_dead,
                             'pinned': 'P2/P4: EAX = 0, EBX = obj, ECX = flight, flags dead; P5: EAX = t ms, ECX = [esp+0x10] = t^2, EBX = obj; resume 0x00454b97 / 0x00454706 / 0x00455281; '
                                       'W: EAX = target, EBX = obj, ECX/EDX/ESI dead, flags dead until test eax,eax at 0x00465bbe; the tail at 0x00465bb2'}
+    # 5a. the gate traffic controller's launch window (ship_steering_sites.h (n)): the two whole instructions at instruction starts of
+    #      the launch's gap-free decode (check 1); the stub contract: EDI = the gate on both branches and not written again before the
+    #      window or before its read at 0x00444651; P written to phys+0x30 on both branches before the window; EAX/ECX rewritten by the
+    #      replayed window, EDX by the resume; ESI rewritten (lea) at 0x0044466f with no read of it after the window before that; the
+    #      flags dead (the first flag access after the window is a write, `add eax,0x30` at 0x0044460f); ESP untouched between the window
+    #      and `add esp,8` at 0x00444637 (no push, pop or call: the two cdecl arguments stay where they are); no x87 instruction from the
+    #      window to 0x00444637; the function returns with `ret 8`
+    t_listing = decoded[T_WINDOW]
+    t_starts = {i.va for i in t_listing}
+    t_facts = {name: image.read(at, len(b)) == b for name, at, b in ARRIVAL_FACTS}
+    t_span = [i for i in t_listing if T_VA <= i.va < T_RESUME]
+    t_after = [i for i in t_listing if T_RESUME <= i.va < T_ESP_RESTORE]
+    first_flag = next((k for k, i in enumerate(t_after) if FLAG_READERS.match(i.mnemonic) or FLAG_WRITERS.match(i.mnemonic)), None)
+    t_flags_dead = first_flag is not None and bool(FLAG_WRITERS.match(t_after[first_flag].mnemonic)) and t_after[first_flag].va == 0x0044460f
+
+    def writes(i, reg):
+        ops = i.operands.replace(' ', '')
+        return (ops.startswith(reg + ',') and i.mnemonic not in ('cmp', 'test', 'push')) or (i.mnemonic == 'pop' and ops == reg) or \
+            (i.mnemonic == 'xchg' and reg in ops.split(','))
+
+    # the two paths: the non-capital branch 0x004444ce .. `jmp 0x00444590` at 0x00444501; the capital branch from 0x00444506 sets EDI at
+    # 0x00444575 and falls through to 0x00444590; both run straight to the window and on to the read at 0x00444651
+    t_jmp = next((i for i in t_listing if i.va == 0x00444501), None)
+    t_paths_ok = t_jmp is not None and t_jmp.mnemonic == 'jmp' and _target(t_jmp) == 0x00444590 and 0x00444506 in t_starts
+    t_edi_writes = [common._instruction_dict(i) for i in t_listing
+                    if (T_EDI_SETS[0] < i.va < 0x00444506 or T_EDI_SETS[1] < i.va < T_EDI_READ) and writes(i, 'edi')]
+    t_esi_reads = [common._instruction_dict(i) for i in t_listing if T_VA <= i.va < T_ESI_REWRITE and 'esi' in i.operands and not writes(i, 'esi')]
+    t_stack = [common._instruction_dict(i) for i in t_after if i.mnemonic in ('push', 'pop', 'call', 'pushf', 'popf', 'pushfd', 'popfd') or
+               'esp' in i.operands.split(',')[0]]
+    t_x87 = [common._instruction_dict(i) for i in t_listing if T_VA <= i.va < T_ESP_RESTORE and i.mnemonic.startswith('f')]
+    t_restore = next((i for i in t_listing if i.va == T_ESP_RESTORE), None)
+    t_ret = image.read(0x00444a4f, 3) == bytes.fromhex('c20800')
+    checks['arrival_launch_site'] = {
+        'ok': all(t_facts.values()) and [i.mnemonic for i in t_span] == ['mov', 'mov'] and bool(t_span) and t_span[-1].end == T_RESUME
+              and T_VA in t_starts and T_RESUME in t_starts and all(va in t_starts for va in T_EDI_SETS) and t_paths_ok and not t_edi_writes
+              and not t_esi_reads
+              and t_flags_dead and not t_stack and not t_x87 and t_restore is not None and t_restore.mnemonic == 'add'
+              and t_restore.operands.replace(' ', '') == 'esp,0x8' and t_ret,
+        'facts': t_facts, 'window_instructions': [common._instruction_dict(i) for i in t_span], 'edi_writes_between': t_edi_writes,
+        'esi_reads_before_rewrite': t_esi_reads, 'flags_dead_first_access': common._instruction_dict(t_after[first_flag]) if first_flag is not None else None,
+        'stack_ops_before_add_esp_8': t_stack, 'x87_between': t_x87, 'ret_8': t_ret,
+        'pinned': 'EBX = ship, EDI = gate, EBP = frame; P at phys+0x30 already written; EAX/ECX/EDX/ESI dead; flags dead; '
+                  'ESP = frame - 8 with two cdecl arguments live until 0x00444637; the tail replays the window and jumps to 0x0044460c'}
     # 5b. site E: the whole function decodes gap-free to its last `ret 0x10`, all four returns are `ret 0x10`, exactly the
     #     three callers reach it (rel32 calls in .text), each consumes EAX with `test eax,eax; je` right after the call
     #     (EFLAGS dead after the call), the proximity handler initialises its &out local to 0 and its true path sets the

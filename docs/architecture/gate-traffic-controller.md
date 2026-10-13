@@ -3,7 +3,7 @@
 Status: queued 2026-10-13 by user decision, to be designed after Run160 (amendment 17) flies. Not implemented.
 
 Level-1 design added 2026-10-13 after the Run160 crowd flight (§Level 1 design below), for ratification by the main session.
-Not implemented.
+Stage A implemented 2026-10-13 (§A.1), not flown and not installed; stage B not implemented.
 
 ## The problem it replaces
 
@@ -108,7 +108,8 @@ sweep on the predictor's plant, `suppress_ctl` at E, member pairs dropped from t
 never below 10 m/s on the lower-priority member, else the pair goes back to the engine; sideways shifts and petals are
 stage B), D.4 in full (placement at `0x00444606`, the arrival-gate row, the small side spawn, `ship_gate_launch`), the
 diagnostic ring changes of D.7, the key `ship_steering_gates_traffic`, and the obstacle snapshot capacity 1024 → 2048
-(orchestrator's call: 112 KB static, fails closed as before, measured maximum 186). The lane board becomes the member
+(orchestrator's call: fails closed as before, measured maximum 186; the static cost is +213,072 B over 1,024, 4 snapshots of
+106,516 B, measured in §A.1, not the 112 KB first written here). The lane board becomes the member
 table; the lane verdicts and certificates are deleted; slow join and the aim-at-A fallback stay until stage B. Stage B
 (Run162): D.2 funnel, pass point Q, sequencer and petals, the capital order-5 both-direction write, D.3 escort petals, D.5
 the small-ship `f+0x240` rewrite, and the deletion of the join fallback paths; it waits for the D.11 disassembly items
@@ -585,7 +586,8 @@ sweep costs. Per frame otherwise:
 * `0x00444606`: once per launch;
 * the `f+0x240` rewrite: once per small order-5 leg.
 
-Memory, all static: 4 boards × 24 members × 61 samples × 24 B ≈ 141 KB, plus the 24 × 24 matrices. No allocation, no lock,
+Memory, all static: 4 boards × 24 members × 61 samples × 24 B ≈ 141 KB, plus the 24 × 24 matrices (as built: 191,088 B
+measured, §A.1). No allocation, no lock,
 game thread only, SSE2 scalar. The performance pass is the host bench, extended to the full decision. The i686 numbers are
 not measured.
 
@@ -698,3 +700,282 @@ to an externally started order 5, both disassembled; and level 1's petals and fu
 | The rollout drift k (5 m/s assumed) | fixture: the 95th percentile of the |rollout − plant| per second of horizon |
 | The forward half-extent l per installed capital | the census row with l (flight) and `capital_widths.py` extended (static) |
 | The i686 cost | the DLL's `join_eval_us_max` / `handler_us_p99` in the first flight |
+
+### A.1 Implementation (stage A)
+
+Built 2026-10-13 (Opus 5.5) on main `77ddda08`; not flown, not installed. Stage A as ratified: D.1 with the speed yield only,
+D.4, the ring changes of D.7, the key, and the snapshot capacity 2048. D.2, D.3 and D.5 are not built. Ledger:
+[ship-steering.md](../verification/ship-steering.md), "Gate traffic controller, stage A".
+
+**Sources.**
+
+* `src/proxy/ship_gate_ctl_core.h` (new, portable, pure). The boards, the members, the rollout, the capsule sweep, a decision,
+  E's certificate and the arrival arithmetic. The DLL and the fixture share it, including the commit and escort fills and
+  the role check.
+* `ship_steering_core.h`: the predictor's step is now `plant_step()`. `join_predict_grade` calls it with the same arithmetic
+  in the same order, and every fixture line is unchanged.
+* `ship_avoidance_core.h`: `kSnapshotCapacity` 2048, `Self.ctl_ptr/ctl_id/n_ctl` with `ctl_excluded()`, and three verdicts
+  (`suppress_ctl`, `pass_ctl`, `suppress_arrival_gate`). It adds four `SiteE` fields whose defaults are amendment 17.
+* `ship_steering.cpp`: the key and the claim, the stub and handler at `0x00444606`, the commit and escort refreshes in
+  `decide()`, the role check at site B, the decisions in `frame_boundary`, E, the avoidance exclusion, the yield cap, the rows
+  and the counters.
+* `ship_steering_sites.h` (n) with `verify_ship_steering_sites.py` check `arrival_launch_site`, and the config key.
+
+**Key.** `ship_steering_gates_traffic` (`X3M_SHIP_STEERING_GATES_TRAFFIC`) defaults to 1 and needs
+`ship_steering_gates_capital` active. Refusal reasons: `invalid_setting`, `needs_gates_capital` (set explicitly),
+`late_claim`, `bytes_mismatch`, a claim status, `stub_chain_failed`, and `rollback_failed_live_site_passes_through`.
+
+* `0x00444606` is claimed alone, after the gate group. All or nothing: a refusal rolls the site back and leaves the
+  controller off, and the gate group stays.
+* The stub tests a live byte, saves EAX/ECX/EDX and XMM0–7, runs `cld`, and calls `x3m_ship_gate_arrival(EBX, EDI)`. It then
+  continues into the claim tail, which replays the window and jumps to `0x0044460c`. ESP and EBX/EDI/EBP/ESI are untouched,
+  and no x87 instruction runs. The handler runs under `Envelope` (MXCSR and LastError).
+* Off is amendment 17. The site is not claimed, no board is fed, there is no E row or exclusion, and the lane board keeps
+  its amendment-17 role. `keyoff_identity.sh` shows this (below).
+
+**Members (D.1).** Up to 4 boards × 24 members (`kGates` = 4), and one board per ship. The table below gives each role's entry and its validity, which site B
+checks every 100 ms (`gc::validity`). 0x12 evicts a member; its sequence number is kept 30 s.
+
+| Role | Entry | Holds while |
+| --- | --- | --- |
+| committed | an order-4 or order-5 decision on validated capital grid geometry. This is the lane board's commit test, at the points where `lane_decision` ran, which it replaces | order 4 or 5 to its gate with a commit within 1 s; order 0 or 0x1f within 120 s of P2; order 8 |
+| escort | a capital on 0x14 or 0x15 whose leader is a committed live member (`decide()`) | 0x14 or 0x15 to that leader; order 0 while the formation memory holds the pair (the KC's 3 s gaps) |
+| arrival | a capital launched at the gate (the `0x00444606` hook) | 60 s, and in front of the plane once 0x21 ends |
+
+* The board slot of a dead member is reused after 60 s without a state read.
+* A full board or a fifth busy gate refuses the ship, and the refusal is counted (`ctl_full`). The ship's pairs then keep
+  amendment 17's rules.
+* Save and load (D.8): an entry left from before the load fails the id check at site B, E or `decide()` and leaves. Members
+  re-enter at their next decision with sequence numbers in entry order, not by distance to X as D.8 says.
+
+**Rollout (61 samples at 0.5 s from 0.25 s steps).** Each member gets one plan:
+
+| Member | Plan |
+| --- | --- |
+| order 4 (`line`) | the predictor's plant along its join line. Past the crossing plane (P2) it brakes at `a` on its last velocity. |
+| order 5 (`dock`) | straight to `f+0x240` until the order's radius `|v|/10 + r_s` |
+| order 0 (`brake`) | brakes at `a` along the nose |
+| 0x1f (`hold`) | in place |
+| 0x21 / 0x1e (`warp_in` / `exit`) | the engine's kinematic path, then axis-parallel at 120 or 240 m/s |
+| order 8 (`launch`) | 0.9 s along +F, then gone |
+| escort on 0x14 / 0x15 (`follow`) | its leader's rollout at its current offset |
+| anything else (`drift`) | its velocity |
+
+* The noses are normalised once per rollout.
+* A rollout older than another is read on the shared 0.5 s grid. The residual offset (≤ 250 ms) × the other ship's
+  largest speed is added to the margin.
+
+**Sweep.** Broad: the centres against `L_A + L_B + m_i`, with the per-pair bound `(v_A,max + v_B,max)·Δt/2` for
+`|u_A − u_B|·Δt/2`. Narrow: the capsule axes' distance (Ericson 5.1.9 specialised to unit noses, one division) against
+`w_A + w_B + 50 m + k·t + |du|₁·Δt/2`. The L1 norm of the sampled relative motion overestimates by at most √3, so the test
+runs on squares. Hulls are w = the LOD width (w = r unread) and L = max(r, l); an arrival takes w and l from the last read
+of its type.
+
+* **k = 10 m/s** (`gc::kDriftMs`), decided 2026-10-13 by the coordinator over D.1's 5 m/s placeholder, which was not
+  evidence-based. 10 m/s keeps the certificate useful and doubles the margin at 30 s.
+  * The measured drift with k = 5 is far larger: p95 436 m at 5 s and 2,230 m at 30 s, for steered plans over horizons
+    without an order change.
+  * Its sources are avoidance detours, escort catch-up and the yields' own speed changes. Stage B models the yields.
+  * The certificate stays sound by refresh, margin and failing closed on staleness (the soundness argument below), not by
+    the k·t term bounding the drift.
+
+**Decisions.**
+
+* Decisions run in `frame_boundary`, never in a handler. Each member decides at most every 200 ms and only on a newer
+  state.
+* The frame bound is 6 decisions and 14 rollouts. A decision with every yield takes 7 rollouts.
+* The verdicts sit in a 24 × 24 matrix with stamps.
+* Yield (stage A): the lower-priority ship tries its plan at 0.6·v, then 25 m/s, then the 10 m/s floor, each only below
+  its plan speed. Priority is arrival > hand-over/5/8 > order 4 > escort, and within a role the higher sequence yields.
+  * Only a committed ship on order 4, or an escort on 0x14 or 0x15, can yield.
+  * The first candidate that clears every pair is taken. Its speed becomes the ship's cap, which `ln::apply_cap` applies in
+    `decide()` (lowering only). The cap lapses when the uncapped rollout clears, or 1 s after it was set.
+  * At most 2 yield resolutions per decision. Any other conflict is handed back (`unresolved`).
+
+**Site E.** Arrival-gate row first, then member pairs, then amendment 17 unchanged.
+
+* The member pairs (both ships live on one board, ids checked) are decided before the steering-table check: `suppress_ctl`
+  iff the verdict is clear and ≤ 250 ms old, both live forward rows are unit vectors, and neither ship is on 0x12. Otherwise
+  `pass_ctl`, and no other row applies.
+* `a_arrival` makes the small-ship row accept a capital arrival without a steering decision. It applies to that row only.
+* With the key on, the lane certificates and E's lane verdict are not computed.
+
+**Avoidance.** A member pair with a clear verdict ≤ 500 ms old is dropped in the deciding ship's resolve. A handed-back,
+unknown or stale pair keeps today's sphere avoidance.
+
+**Arrivals (D.4).** At `0x00444606`, skipping the player's object and manual control:
+
+* A capital gets P += 0.6 r_gate U. On a Terran row (21–24) the offset is min(0.6 r, 0.663 r − w − 50 m), clamped at 0. An
+  unknown row gets no offset.
+* A small ship goes to the side spawn (±0.87 r by its exit slot's parity, +0.2 r) while a capital hull is at the plane: a
+  launch within 6 s, or a member's P4 or order-8 frame within 3 s.
+  * Above w > 0.68 r it is placed vanilla and counted in `arr_small_unseparated`.
+* The int32 write is range-guarded.
+* Every launch is recorded (64 records, 60 s) for the arrival-gate row and gets one `ship_gate_launch` row.
+
+**Rows and rings (D.7).**
+
+* E: 32 rows per frame and a 128-pair table, with no per-call row for a member pair. The warn watch has 32 slots.
+* New rings: `ship_gate_ctl` 32 (role transitions), `ship_gate_ctl_pair` 64, and `ship_gate_launch` 8.
+* A pair row is written on an edge into or out of a hand-back, or on the loss of a certificate. A first certificate is
+  silent. At most one row per pair per second.
+* The summary has `rows_dropped=` per source (gate_event, join, latch, lane, gate_trans, warn_pre, engine_warn, warn_watch,
+  e_table, e_ring, ctl, ctl_pair, launch), and `gate_rows_dropped` stays their sum.
+* The traffic counters: `ctl_*`, `e_suppressed_ctl`, `e_pass_ctl`, `e_suppressed_arrival_gate`, `avoid_ctl_excluded`,
+  `arr_*`, `ctl_decide_us_max`, `ctl_frame_us_max` and `ctl_arrival_us_max`.
+* Stage B's `ctl_go_around`, `ctl_x_refused` and `small_b_rewrites` are not emitted.
+* The census row gains `l_r=` and `capsule_L_m=`. Flight census so far (Run160b, measured): l_m 1092/1022/763/778 for r
+  1092/1022/760/778, so l/r 1.000–1.004. Static l/r 0.416–1.400 (`capital_widths.txt`).
+
+**Kept as built under the key:** slow join and the aim-at-A fallback (stage B deletes them), site W, the gate rows of E, the
+width read and the formation memory.
+
+**Scenario T** (fixture, stage A, 9 runs per variant). Producer:
+[`scenario_t_summary.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_summary.py) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_summary.txt), measured.
+
+* The model is the KC's first-free grid slots and the through slot. That slot has a 60 s cooldown on a change of direction
+  and none for the same direction, and polls every 1–11 s.
+* Escorts take the 3 s order-0 gaps every 33 s, hold 10 km out on 0x15 after their leader's launch, and take order 4 after
+  the Run160b delays (100.5 s and 187.3 s; 4.2 s and 4.5 s).
+* The engine's partner filter is modelled; for two escorts of one leader it is **[i]**.
+* Arrivals are 61–72 s apart, with M6s in the exit slots.
+
+The table is after the review fixes (below), at k = 10 m/s.
+
+| Variant | 0x12 episodes per run (grid-bound / other) | min capsule (all / not grid-bound) | certified frames, contact (closest) | member warns E suppressed | yields / hand-backs |
+| --- | --- | --- | --- | --- | --- |
+| departures (census w) | 24–149 (194 / 330) | −686 / −685 m | 967,331, **0** (74 m) | 57.8 % | 3,888 / 17,892 |
+| departures w 0.6 r | 24–161 (357 / 257) | −803 / −803 m | 924,445, **0** (77 m) | 46.7 % | 3,644 / 25,157 |
+| arrivals (both widths) | no member pair in range | 2,558 m | 0 | — | 0 / 0 |
+| mixed | 2–7 (6 / 36) | **233 m** | 288,444, **0** (233 m) | 82.4 % | 1,419 / 1,801 |
+
+* The worst frame reached 3 decisions and 12 rollouts; the bound is 6 and 14.
+* Coordinator's decisions (2026-10-13):
+  * the departure residual (parked neighbours at 666 m, crossings, escort order-0 gaps) and the save/load sequence order
+    are stage B's;
+  * site W stays, and the key defaults on;
+  * the capsule is the ratified hull bound; the box gap is a bound of a bound and is reported only.
+* **Asserted, all pass:**
+  * no capsule contact on any frame a pair is certified clear (all variants);
+  * no capsule contact in the mixed variant;
+  * D.7 assertion 6: a committed member on order 4, once at 10 m/s, is never written below 10 m/s by the module or the
+    controller (the desired speed after site B);
+  * every capital arrival placed 0.6 r up and kept to the end of 0x1e (6/6 per run);
+  * the arrival-gate row suppresses every arrival warn against its gate inside the window (0 unsuppressed);
+  * small arrivals with a capital at the plane go to the side spawn (min clearance 554 m to the capital capsule).
+* **Not asserted:**
+  * The arrival variants hold no member pair in range (the capitals arrive 61–72 s apart), so nothing about member pairs
+    is asserted there, and each run prints "no member pair in range".
+* **Reported, not met (54 TARGET MISS rows):**
+  * "No engine evasion between members" in the departure and mixed variants.
+    * In the departures, 194 of the 524 episodes are pairs whose KC grid points are closer than w_A + w_B + 50 m
+      (adjacent points 666 m apart, census w + w = 1,129–1,166 m).
+    * The rest are crossings near a waiting ship and escorts in the KC's order-0 gap. Slowing to 10 m/s does not clear
+      these within 30 s.
+  * "No capsule contact" in the departures. Stage A hands such pairs back by design, and the fixture does not model the
+    engine's 0x12 evasion.
+  * The actual speed below 10 m/s on order 4 under the engine's own law (the aim-at-A fallback on a detour gets the engine's
+    1 m/s creep for a misaligned capital, and its slew back up): 50–2,041 frames in 9 of the 18 departure runs, lowest
+    1.0 m/s. This is amendment 16's path, which stage B deletes.
+* **Rollout drift** (p95 of |rollout − flown| over horizons without an order change at or after the read; the worst run):
+  * steered plans 537 / 1,056 / 1,889 / 2,442 m at 5 / 10 / 20 / 30 s (k = 5 build: 436 m at 5 s, 2,230 m at 30 s);
+  * engine-moved plans 15 / 62 / 132 / 139 m.
+* **The engine-moved jump.** After k = 10 the engine-moved figure rose from 10 to 305 m at 5 s. The cause was not k: the
+  plans the engine moves never yield. There were two causes:
+  * The fixture read site B's state before each ship's order step. At the frame where the KC's 3 s order-0 gap of an
+    escort ended, the decision therefore rolled out a braking plan for a ship that was back on 0x14 at 130–143 m/s.
+  * The drift filter compared the order change strictly after the read (`>`), so a change in the read's own frame
+    counted.
+  * k changed the decision cadence, so more decisions landed on those frames. Now the read runs after the order step, as
+    the engine's command pass does, and the filter is `>=`. Engine-moved drift is back to 15 m at 5 s.
+
+**Review fixes (two reviews of `d619f4de`, 2026-10-13).**
+
+* **One board per ship.** `gc::enter` removes the ship from every other board, whatever its role. A leave to none clears
+  the slot, so no pointer is left behind for `locate` or the bitmaps. An eviction keeps ship and id for its 30 s sequence
+  memory. `locate` returns a pair-role entry first, an evicted one only when none exists, and never a none entry. The DLL
+  rebuilds the bitmap on every role change.
+  * Fixture (unit scenario, two boards): an arrival at gate A that then commits to gate B leaves exactly one entry, B's.
+  * Site B's role check, E's lookup, the avoidance's exclusion and the cap block all read that entry.
+  * A none leave leaves nothing for `locate` to find.
+* **Fail closed.** No certificate (verdict none: the engine's warn and the sphere avoidance, not a conflict to resolve)
+  when:
+  * either rollout has no samples (a refused plane, a NaN state);
+  * the two rollouts' t0 lie more than 1 s apart;
+  * fewer samples pair up than the engine's warn reach in time: 1 s plus min(600 m / v, v / 2a) for the faster of the two,
+    and at least 4 samples.
+  * The drift term charges each side from its own t0: `k·(t + |t0_A − t0_B|)`.
+  * Unit checks: a NaN body rate, a partner rollout 30 s older, an overlap below 4 samples or below the warn reach, and a
+    starved decision each give `e_certified = 0`.
+* **Freshness at E** (and the exclusion): a clear verdict counts only while it is ≤ 250 ms old and both members decided
+  within 1 s. A yielder whose decisions starve loses its certificate.
+* **A real certificate bug, found by the fail-closed rerun at 144 fps and fixed.** The order-4 rollout took its nose from
+  the plant's in-plane angle, which drops the live nose's component out of the plane of the line. Two M7s at adjacent grid
+  points were therefore certified while their true capsules overlapped by 29 m (34 and 625 frames in two 144 fps runs).
+  The rollout now turns the live nose about the plane's normal by the plant's in-plane turn, so sample 0 is the true hull.
+  Since the fix: 0 contacts in 2.18 M certified frames.
+* The avoidance exclusion, `ctl_depart` and the fixture's exclusion check the ship's native id against the entry.
+* An escort's yield candidate follows its leader's rollout (`Plan::follow`). It falls back along the leader's path by the
+  leader's speed above the candidate, instead of coasting straight.
+* `gate_no_mesh` takes rows 0–20, per §10.9: row 4 (Xenon, a blended disc only) and rows 15–20 (inactive hubs, an empty
+  body stub) have no collision mesh either. Terran rows 21–24 keep the 0.663 r bound. A row above 24 gets no offset and no
+  arrival-gate row.
+* Key off: `type_width_put` (the per-type width cache for the arrival placement) now runs only under the key. Before, it
+  ran with the key off as a diagnostic-only write that no path read.
+* **The arrival handler's reads.** The ship and gate pointers are null-checked and their class words checked before any
+  other read, as in the other handlers. The gate's phys pointer and its flight block are null-checked, and the frame must
+  be orthonormal. No handler can detect an unmapped page (no SEH), so a valid EDI from the engine is the premise.
+* **The summary row.** Every append to the 4,096-byte gates buffer is bounded (snprintf truncates and the used length is
+  clamped). The worst case is 3,614 characters with every conversion at its widest: producer
+  [`summary_bound.py`](../../verification/results/ship-steering/gate-traffic-controller/summary_bound.py) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/summary_bound.txt).
+* **Boards.** `kGates` = 4 in the spec and the code, with 24 members each. A fifth gate with live members finds no board:
+  `acquire_gate` refuses and counts `ctl_full` (gates), and its capitals stay non-members under amendment 17's rules. A
+  small launch there keeps the vanilla placement. A board without a live member is reused.
+* **Static memory, measured** (`sizeof`, i686 = host layout): producer
+  [`static_sizes.cpp`](../../verification/results/ship-steering/gate-traffic-controller/static_sizes.cpp) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/static_sizes.txt).
+  * Board 188,520 B (Member 1,696 B, Gate 47,128 B), arrivals 1,544 B and two bitmaps of 512 B: the controller is 191,088 B.
+  * Obstacle snapshot at 2,048: 106,516 B each × 4 slots = 426,064 B, which is +213,072 B over 1,024.
+  * The ratification paragraph's "112 KB" was wrong.
+
+**Soundness argument.** A certificate is the claim that two hulls will not touch before the next decision refreshes it.
+It rests on three things.
+
+1. **Refresh.** Every verdict that E or the exclusion uses is at most 250 ms old, and both members decided within 1 s.
+   Each decision starts from a state read at most about 100 ms earlier, so the near end of the rollout is the true hull. The
+   fixture's sample-0 capsule equals the hull since the nose fix.
+2. **Margin.** 50 m, plus `k·(t + |Δt0|)`, plus the sampled relative motion over half an interval.
+3. **Fail closed on staleness.** No samples, rollouts more than 1 s apart, an overlap shorter than the warn reach, a stale
+   verdict or a starved member all give no certificate. The engine's warn then protects the pair.
+
+The `k·t` term does **not** bound the measured drift: at 30 s the drift p95 is ~2.4 km against k·t = 300 m. The 30 s
+horizon is a conflict detector, and safety comes from refreshing faster than the hulls can close the margin. The fixture
+measures this, without proving it: 0 contacts in 2.18 M certified frames across 45 runs, closest 74 m.
+
+**Key-off identity.** Producer:
+[`keyoff_identity.sh`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity.sh) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity.txt). It compares against
+amendment 17's sources extracted from `77ddda08`.
+
+* E: 0 / 400,000 differences.
+* Resolve: 0 / 60,000 (24,499 adjusted), floats bitwise.
+* Every pre-existing fixture line is unchanged apart from host timings, including every scenario-M line.
+
+**Cost** (host x86-64 -O2, measured; i686 not measured):
+
+* pair sweep 61 ns broad only, 444 ns at 61 narrow samples;
+* a decision on a full board (24 members, 23 pairs), after the review fixes: 4.2 µs spread, 7.0 µs packed (1.6 km apart: narrow
+  and clear), 29.9 µs in conflict with yields (4.0 / 6.9 / 28.6 µs before them; the overlap and freshness tests add little);
+* the frame bound's worst admitted frame (5 plain + 1 in conflict) 65.1 µs;
+* site E's member lookup 7 ns (without the game reads);
+* scenario M's E unchanged (key off);
+* the predictor unchanged: 16.1–16.2 / 18.8–19.5 µs, host noise.
+
+**Ring replay.** Producer:
+[`ring_replay.py`](../../verification/results/ship-steering/gate-traffic-controller/ring_replay.py) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/ring_replay.txt), on the Run160b crowd window.
+It finds 0 drops at the new sizes under the retry model: the worst E frame is 16.3 rows (cap 32), the pair table 50 (cap
+128), and the warn watch 9 (cap 32). **[i]**: the log's drop counter counts retries, so the true demand is inferred, and
+the naive bound (every drop its own row) is printed beside it.
