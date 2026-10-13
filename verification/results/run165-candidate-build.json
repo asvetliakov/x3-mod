@@ -1,0 +1,20 @@
+{
+  "dll": "detached worktree /tmp/x3-run165-candidate of 3c627a55, build/d3d9.dll (clean configure + build)",
+  "sha256": "abd17f60c009fd428d88ef30443a5bc83796c5bcda41467b168ef32e7ef67cf6",
+  "bytes": 59391370,
+  "commit": "3c627a55",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1001, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites OK (candidate tree); fixture 9692/9692, capital 4034/4034, key-off identities 0 (implementer, same tree, ledger)"
+  },
+  "changes_since_run164": [
+    "a2d7058f Run164 triage",
+    "3c627a55 controller B.4"
+  ],
+  "trigger": "Run164: capital escorts evading their own M6 escorts in the order-0 gap (E freshness check before the r/3 rule), one stale member certificate, holders untraced",
+  "producer": "main session (Fable 5.1), 2026-10-14"
+}
