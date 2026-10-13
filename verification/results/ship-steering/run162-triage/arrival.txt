@@ -1,0 +1,59 @@
+10118 0x8e5143d8 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 62 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+10708 0x8e519310 TS gate e108 vanilla off_r 0 off_u 0 r_gate 1105 w 56 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+11203 0x8e513c88 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 72 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+15406 0x8e51aca8 TS gate e108 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+18965 0x8e51b2c0 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 39 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+20499 0x8e51e248 M4 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 14 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+21511 0x8e51e380 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 72 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+21705 0x8e51c9e8 M6 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 91 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+22219 0x8e520948 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+22490 0x8e520468 M6 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 91 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+22683 0x8e5249e0 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 56 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+22981 0x8e50dc40 M6 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 91 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+23059 0x8e518e30 M6 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 91 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+23108 0x373e53d0 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 62 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+23197 0x373e5640 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+24083 0x373e9bb8 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 56 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+24092 0x373cc2d8 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 39 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+24273 0x373ca460 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 72 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+25076 0x373e7c08 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+26049 0x373d2458 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+27748 0x373d36a0 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 62 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+29753 0x373d32f8 TS gate e108 vanilla off_r 0 off_u 0 r_gate 1105 w 72 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+29921 0x2e551de8 M4 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 14 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+31135 0x2e5528e0 TS gate e108 vanilla off_r 0 off_u 0 r_gate 1105 w 62 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+31489 0x2e550ba0 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 62 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32128 0x8e51dd68 M4 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 11 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32136 0x8e520810 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 56 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32196 0x8e51e248 M1 gate bdb0 capital_offset off_r 0 off_u 663 r_gate 1105 w 1022 | orders 60s: 0x4@1.7 | 0x12: - | E(ship,arr gate): {'suppress_arrival_gate': 56} | nearest capital: 0x4b9cfd08 M2 d 6641 @+59.6 orders 0x4/0x4 | departing at same gate met: 108
+32317 0x9047dd90 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 85 | orders 60s: 0x1e@1.0 0x12@6.3 0x0@13.7 | 0x12: 7.4s@+6.3 vs no warn row | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32359 0x90480838 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: 0x1e@1.0 0x0@10.4 0x12@16.7 0x0@48.6 | 0x12: 31.9s@+16.7 vs no warn row | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32364 0x9047eea0 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: 0x1e@1.0 0x12@7.3 0x0@30.3 | 0x12: 23.0s@+7.3 vs no warn row | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32373 0x90481468 M8 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 28 | orders 60s: 0x1e@1.1 0x12@3.2 0x0@8.5 | 0x12: 5.3s@+3.2 vs no warn row | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32396 0x90482b90 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 81 | orders 60s: 0x1e@1.0 0x12@3.1 0x0@18.7 | 0x12: 15.6s@+3.1 vs no warn row | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32422 0x90483550 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 86 | orders 60s: 0x1e@1.0 0x12@3.1 0x0@7.2 0x12@12.5 0x0@43.1 | 0x12: 4.1s@+3.1 vs no warn row; 30.7s@+12.5 vs no warn row | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32562 0x90464548 TP gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 51 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32610 0x90465c70 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 85 | orders 60s: 0x1e@1.0 0x0@10.4 | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32611 0x90467d58 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: 0x1e@1.0 0x0@10.3 | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+32638 0x904664f8 M6 gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 85 | orders 60s: 0x1e@1.0 0x12@3.1 0x0@6.2 | 0x12: 3.1s@+3.1 vs no warn row | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+33868 0x9046a590 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 37 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+34023 0x9046a6c8 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 39 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+34359 0x9046b088 M2 gate bdb0 capital_offset off_r 0 off_u 663 r_gate 1105 w 755 | orders 60s: 0x1e@3.2 0x0@4.2 0x14@10.5 0x0@40.6 0x14@43.7 | 0x12: - | E(ship,arr gate): {'suppress_arrival_gate': 55} | nearest capital: 0x4b9cfd08 M2 d 6533 @+59.7 orders 0x14/0x4 | departing at same gate met: 26
+34360 0x90466768 M4 gate bdb0 small_unseparated off_r 0 off_u 0 r_gate 1105 w 14 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+34578 0x9046dc68 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 62 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+34867 0x9046ded8 M3 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 21 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+35079 0x90470980 M3 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 24 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+35115 0x90471340 M2 gate bdb0 capital_offset off_r 0 off_u 663 r_gate 1105 w 755 | orders 60s: 0x1e@1.0 0x0@4.2 0x14@10.5 0x0@45.0 0x14@47.2 | 0x12: - | E(ship,arr gate): {'suppress_arrival_gate': 56} | nearest capital: 0x9046b088 M2 d 2894 @+8.8 orders 0x0/0x14 | departing at same gate met: 88
+36585 0x8e50c3e0 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 37 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+36706 0x8e50c8c0 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 72 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+36708 0x8e51ab70 M3 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 17 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+37088 0x8e51d000 M4 gate e108 vanilla off_r 0 off_u 0 r_gate 1105 w 14 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+37885 0x8e51cb20 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 72 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+38255 0x8e522550 TS gate e108 vanilla off_r 0 off_u 0 r_gate 1105 w 62 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+40095 0x8e5201f8 M4 gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 10 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+40214 0x8e51c160 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 37 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+41145 0x8e513dc0 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 56 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+42014 0x8e51d000 TS gate c158 vanilla off_r 0 off_u 0 r_gate 1105 w 64 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+43028 0x8e51cd90 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 71 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+43045 0x8e5143d8 TS gate bdb0 vanilla off_r 0 off_u 0 r_gate 1105 w 72 | orders 60s: no rows | 0x12: - | E(ship,arr gate): - | nearest capital: - | departing at same gate met: 0
+0x12 game s in the first 60 s by (group, other): {('small', 'no warn row'): 121.2}

@@ -1,0 +1,4 @@
+all {'0': 13374, '1': 32161} seta share 0.71
+arrivals 0x8fa9d688 {'1': 2612, '0': 2333} seta share 0.53
+convoys to 0x8fa9eee8 {} seta share 0.00
+exit 0x8fa9eee8 {} seta share 0.00

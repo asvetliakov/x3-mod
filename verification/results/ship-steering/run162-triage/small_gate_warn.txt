@@ -1,0 +1,3 @@
+frame obj class d_m | last order-4 row frame, v | s_m lat_m (x vs G) | A_small s_m lat_m | guard dist(G,[x,A]) - 1.1 r_gate - r_B (r_B from E rows; pass >= 0 means the guard would clear)
+41239 0x8e4f64b8 gate 0x8e4fbdb0 no order-4 trace row (untraced or capital)
+summary {'untraced': 1}

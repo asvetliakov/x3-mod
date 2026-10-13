@@ -1,0 +1,9 @@
+obj class r_m | first row: gate d_m frame | order-4 run start game/real | cross frame game real hdg_err cross_v | launch game real cross_to_launch_s
+0x4b9cfd08 M2 1091.5 | ('0x8e4fbdb0', 39731, '7129') | 22669.2/25.6 | 39967 24581.2 270.9 15.4 108.1 | 24612.5 274.0 31.3
+0x8e4f64b8 M2 1091.5 | ('0x8e4fbdb0', 41140, '7184') | 24647.5/277.5 | 41467 24722.5 285.0 17.9 110.0 | 24752.9 288.0 30.4
+0x4b9d5870 M1 1022.2 | ('0x8e4fbdb0', 40031, '7381') | 24620.6/274.8 | no crossing | -
+0x8e51e248 M1 1022.2 | ('0x8e4fbdb0', 32215, '1314') | 23828.9/195.6 | no crossing | -
+0x9046b088 M2 755.0 | ('0x8e4fbdb0', 34371, '1257') | - | no crossing | -
+0x90471340 M2 755.0 | ('0x8e4fbdb0', 35140, '1174') | - | no crossing | -
+peak committed (order-4 start..launch) at once: 3 at game 24647.5; most crossings in 120 s: 1 from game 24722.5
+crossing gaps (game s): [141.3]

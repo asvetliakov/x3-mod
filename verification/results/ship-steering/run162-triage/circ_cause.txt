@@ -1,0 +1,6 @@
+0x373cdb38 M6 turn 658 frames 39236-39817 tgts {'0x4b9cfd08': 314, '0x00000000': 268} | leader 0x4b9cfd08 orders in window {'0x4': 137, '0x12': 122} | warns ['39320:7/M2:0x4b9cfd08', '39471:0/-:0x00000000', '39612:7/M2:0x90471340']
+0x373d1348 M6 turn 592 frames 36867-37445 tgts {'0x4b9cfd08': 353, '0x00000000': 226} | leader 0x4b9cfd08 orders in window {'0x4': 322} | warns ['36848:7/M6:0x373caf58', '36977:7/M6:0x373d7fc0', '37197:7/M6:0x373dacd8']
+0x373e5c58 M8 turn 522 frames 33806-34490 tgts {'0x4b9cfd08': 627, '0x00000000': 58} | leader 0x4b9cfd08 orders in window {'0x4': 539} | warns -
+0x373e9948 M6 turn 483 frames 39243-39824 tgts {'0x4b9cfd08': 318, '0x00000000': 264} | leader 0x4b9cfd08 orders in window {'0x4': 133, '0x12': 126} | warns ['39385:7/M2:0x4b9cfd08', '39531:7/M1:0x4b9d5870']
+0x4b9d33e0 M6 turn 456 frames 39291-39873 tgts {'0x4b9cfd08': 560, '0x00000000': 23} | leader 0x4b9cfd08 orders in window {'0x4': 119, '0x12': 148} | warns -
+0x373caf58 M6 turn 386 frames 36880-37458 tgts {'0x4b9cfd08': 499, '0x00000000': 80} | leader 0x4b9cfd08 orders in window {'0x4': 321} | warns ['36865:7/M6:0x373d1348']

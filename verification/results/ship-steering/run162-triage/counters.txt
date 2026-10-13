@@ -1,0 +1,43 @@
+lane_apart final - rises 0 first..last frame - []
+lane_seq_lat final - rises 0 first..last frame - 
+lane_seq_cross final - rises 0 first..last frame - []
+lane_seq_along final - rises 0 first..last frame - []
+lane_capped final - rises 0 first..last frame - []
+lane_cross final - rises 0 first..last frame - []
+lane_follow final - rises 0 first..last frame - []
+lane_exempt final - rises 0 first..last frame - 
+gate_capital_join final 4 rises 4 first..last frame (39063, 40682) [(39063, 1), (39548, 1), (40452, 1), (40682, 1)]
+gate_capital_fallback_pred final - rises 0 first..last frame - []
+gate_capital_fallback_past_x final 1 rises 1 first..last frame (42811, 42811) [(42811, 1)]
+gate_capital_slow_join final 1 rises 1 first..last frame (40452, 40452) [(40452, 1)]
+gate_capital_unlatch final - rises 0 first..last frame - []
+gate_capital_not_kept_mode final 2 rises 2 first..last frame (40041, 41534) [(40041, 1), (41534, 1)]
+gate_capital_slowed final - rises 0 first..last frame - []
+gate_capital_kept final - rises 0 first..last frame - []
+join_slots_dropped final 4 rises 4 first..last frame (39063, 40682) [(39063, 1), (39548, 1), (40452, 1), (40682, 1)]
+e_suppressed_lane final - rises 0 first..last frame - 
+gate_rows_dropped sum 0.0 nonzero intervals 0 frames -
+   window 0 38000 0.0
+   window 38000 52900 0.0
+   window 52900 61300 0
+   window 61300 99999 0
+emergency sum 634.0 nonzero intervals 18 frames (13505, 40901)
+   window 0 38000 339.0
+   window 38000 52900 295.0
+   window 52900 61300 0
+   window 61300 99999 0
+unresolved sum 2430.0 nonzero intervals 36 frames (7253, 41007)
+   window 0 38000 1300.0
+   window 38000 52900 1130.0
+   window 52900 61300 0
+   window 61300 99999 0
+conflict_episodes sum 220.0 nonzero intervals 120 frames (5461, 42414)
+   window 0 38000 156.0
+   window 38000 52900 64.0
+   window 52900 61300 0
+   window 61300 99999 0
+gate_capital_detour_write sum 0.0 nonzero intervals 0 frames -
+   window 0 38000 0.0
+   window 38000 52900 0.0
+   window 52900 61300 0
+   window 61300 99999 0

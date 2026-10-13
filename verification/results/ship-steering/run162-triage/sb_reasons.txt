@@ -1,0 +1,20 @@
+24965 bdb0 f   970- 6620 game  22669.2- 22728.8 real  25.6- 52.7 |    59.6 game s   27.1 real s | head infeasible (predictor: all 4 candidates fail, 4 predictions per game s) -> head skip key 16->32
+24965 bdb0 f  6620-29361 game  22728.8- 23654.0 real  52.7-175.4 |   925.2 game s  122.7 real s | escort-ahead deadlock [i]: escorts key 17/18 reserved ahead of leader key 32; cruise to the petal at 40 m/s
+24965 bdb0 f 29361-38866 game  23654.0- 24468.2 real 175.4-259.6 |   814.2 game s   84.1 real s | escort-ahead deadlock [i]: petal laps at 40 m/s
+24965 bdb0 f 38866-39039 game  24468.2- 24486.4 real 259.6-261.4 |    18.2 game s    1.8 real s | evicted: engine 0x12 vs 3838 (M2, escort of 2782) at 2231 m
+24965 bdb0 f 39039-39186 game  24486.4- 24501.3 real 261.4-262.9 |    14.9 game s    1.5 real s | no feasibility check (out of window after the 0x12 turn) [i]
+2782  c158 f 32215-34361 game  23828.9- 24005.7 real 195.6-213.3 |   176.8 game s   17.7 real s | head infeasible (2 head skips: key 16->32->48)
+2782  c158 f 34361-34514 game  24005.7- 24020.4 real 213.3-214.8 |    14.7 game s    1.5 real s | evicted: engine 0x12 (other=0)
+2782  c158 f 34514-35216 game  24020.4- 24088.2 real 214.8-221.6 |    67.8 game s    6.8 real s | head infeasible (head skip key 48->64)
+2782  c158 f 35216-45645 game  24088.2- 24872.9 real 221.6-314.1 |   784.7 game s   92.5 real s | escort-ahead deadlock [i]: escort 3583 key 49 reserved ahead of leader key 64 (to session end)
+25287 bdb0 f 40352-40666 game  24620.1- 24647.4 real 274.8-277.5 |    27.3 game s    2.7 real s | behind escort 25763 (reserved key 33) waiting for its order 4; no backfill
+25287 bdb0 f 40666-41810 game  24647.4- 24753.9 real 277.5-288.1 |   106.5 game s   10.6 real s | funnel busy / out of window: 25763 funnel -> 0x12 -> order 5 -> order 8 (+0.9 s)
+25287 bdb0 f 42778-45645 game  24826.4- 24872.9 real 295.4-314.1 |    46.5 game s   18.7 real s | re-committed at X after its own 0x12 (vs gate): back to hold, U-turn (to session end)
+== per reason (game s, real s)
+  2524.1  299.4  escort-ahead deadlock [i]
+   304.2   51.6  head infeasible
+   106.5   10.6  funnel busy / out of window
+    46.5   18.7  re-committed at X after its own 0x12
+    33.0    3.3  evicted
+    27.3    2.7  behind escort 25763
+    14.9    1.5  no feasibility check

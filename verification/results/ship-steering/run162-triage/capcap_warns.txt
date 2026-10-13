@@ -1,0 +1,14 @@
+frame A(class,order) B(class,order) d_m E_verdict | role A | role B | last pair row before | 0x12 followed
+37842 0x90471340(M2,0x0) 0x9046b088(M2,0x0) 2013 pass_ctl | escort(c158 seq3 @37722) | escort(c158 seq2 @34514) | (37842, 'clear', 'none', 'none', '-1.0', '-1.0') | True
+38865 0x4b9cfd08(M2,0x0) 0x90471340(M2,0x14) 2234 pass_not_member | committed(bdb0 seq1 @970) | escort(c158 seq3 @38116) | none | True
+38990 0x90471340(M2,0x0) 0x4b9cfd08(M2,0x12) 1811 pass_not_member | escort(c158 seq3 @38116) | evicted(bdb0 seq1 @38866) | none | True
+39041 0x8e4f64b8(M2,0x0) 0x90471340(M2,0x12) 2127 pass_not_member | escort(bdb0 seq9 @39039) | evicted(c158 seq3 @38991) | none | True
+39327 0x4b9cfd08(M2,0x0) 0x90471340(M2,0x12) 1846 pass_not_member | committed(bdb0 seq1 @39186) | evicted(c158 seq3 @38991) | none | True
+39851 0x4b9d5870(M1,0x0) 0x4b9cfd08(M2,0x12) 3538 pass_not_member | none(bdb0 seq10 @39750) | evicted(bdb0 seq1 @39750) | (39750, 'clear', 'none', 'none', '-1.0', '-1.0') | True
+capital-capital warn entries by (E verdict, 0x12 followed): {('pass_ctl', True): 1, ('pass_not_member', True): 5}
+== ctl_pair rows per capital pair: (verdict,before) counts
+['0x4b9d5870', '0x8e4f64b8'] {('none', 'clear'): 3, ('clear', 'none'): 696, ('none', 'none'): 6} frames 7206-41239
+['0x4b9cfd08', '0x8e4f64b8'] {('none', 'clear'): 3, ('clear', 'none'): 36, ('none', 'none'): 3} frames 7206-40094
+['0x4b9cfd08', '0x4b9d5870'] {('none', 'clear'): 2, ('clear', 'none'): 16, ('none', 'none'): 2} frames 7276-40268
+['0x9046b088', '0x90471340'] {('none', 'none'): 136, ('clear', 'none'): 346, ('none', 'clear'): 75} frames 35217-43033
+['0x8e51e248', '0x90471340'] {('none', 'clear'): 74} frames 35250-41149

@@ -1,0 +1,3 @@
+obj class | cross frame t_game real_s heading_err cross_v | launch frame t_game cross_to_launch_s | game s since previous launch
+0x4b9cfd08 M2 | 39967 24581.2 270.9 15.4 108.1 | 40269 24612.5 31.3 | -
+0x8e4f64b8 M2 | 41467 24722.5 285.0 17.9 110.0 | 41798 24752.9 30.4 | 140.4

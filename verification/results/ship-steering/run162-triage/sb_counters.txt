@@ -1,0 +1,89 @@
+frame 1162 game_s 22670.3 real_s 26.6 | ctl_sb_pred 4->8 dock_e_us_max 0.0->1.4
+frame 1388 game_s 22671.3 real_s 27.6 | ctl_sb_pred 8->12
+frame 1608 game_s 22672.3 real_s 28.6 | ctl_sb_pred 12->16
+frame 1805 game_s 22673.3 real_s 29.6 | ctl_sb_pred 16->20 ctl_frame_us_max 11.5->13.8 ctl_decide_us_max 11.0->13.5
+frame 2026 game_s 22674.3 real_s 30.6 | ctl_sb_pred 20->24 dock_e_us_max 1.4->13.5
+frame 2239 game_s 22675.3 real_s 31.6 | ctl_sb_pred 24->28 dock_e_us_max 13.5->23.3
+frame 2466 game_s 22676.3 real_s 32.6 | ctl_sb_pred 28->32
+frame 2694 game_s 22677.3 real_s 33.6 | ctl_sb_pred 32->36
+frame 2908 game_s 22678.3 real_s 34.6 | ctl_sb_pred 36->40
+frame 3115 game_s 22679.3 real_s 35.6 | ctl_sb_pred 40->44
+frame 3311 game_s 22680.3 real_s 36.6 | ctl_sb_pred 44->48
+frame 3529 game_s 22681.3 real_s 37.6 | ctl_sb_pred 48->52
+frame 3739 game_s 22682.3 real_s 38.6 | ctl_sb_pred 52->56
+frame 3959 game_s 22683.3 real_s 39.6 | ctl_sb_pred 56->60
+frame 4172 game_s 22684.3 real_s 40.6 | ctl_sb_pred 60->64
+frame 4390 game_s 22685.3 real_s 41.6 | ctl_sb_pred 64->68
+frame 4616 game_s 22686.3 real_s 42.6 | ctl_sb_pred 68->72
+frame 4837 game_s 22687.3 real_s 43.6 | ctl_sb_pred 72->76
+frame 5056 game_s 22688.3 real_s 44.6 | ctl_sb_pred 76->80
+frame 5271 game_s 22689.3 real_s 45.6 | ctl_sb_pred 80->84
+frame 5461 game_s 22690.3 real_s 46.6 | ctl_sb_pred 84->88
+frame 5679 game_s 22691.3 real_s 47.6 | ctl_sb_pred 88->92
+frame 5889 game_s 22693.4 real_s 48.6 | ctl_sb_pred 92->100
+frame 6088 game_s 22698.9 real_s 49.6 | ctl_sb_pred 100->120
+frame 6261 game_s 22707.8 real_s 50.6 | ctl_sb_pred 120->156 ctl_frame_us_max 13.8->14.8
+frame 6434 game_s 22717.8 real_s 51.6 | ctl_sb_pred 156->196
+frame 6603 game_s 22727.8 real_s 52.6 | ctl_sb_pred 196->232
+frame 6773 game_s 22737.8 real_s 53.6 | ctl_sb_misc 0,0,0,0->1,0,0,0 ctl_sb_pred 232->240 ctl_frame_us_max 14.8->15.2
+frame 7253 game_s 22767.8 real_s 56.6 | ctl_frame_us_max 15.2->17.5
+frame 20686 game_s 23179.9 real_s 122.6 | ctl_frame_us_max 17.5->18.5
+frame 21612 game_s 23229.8 real_s 127.6 | ctl_frame_us_max 18.5->19.0
+frame 21971 game_s 23249.8 real_s 129.6 | ctl_frame_us_max 19.0->26.7 ctl_decide_us_max 13.5->26.3
+frame 23519 game_s 23339.9 real_s 138.6 | ctl_frame_us_max 26.7->26.8
+frame 30346 game_s 23726.1 real_s 182.6 | ctl_evicted 0->1
+frame 32214 game_s 23828.8 real_s 195.6 | arr_offset_capital 0->1
+frame 32333 game_s 23838.8 real_s 196.6 | ctl_sb_pred 240->280
+frame 32454 game_s 23848.8 real_s 197.6 | ctl_sb_pred 280->316
+frame 32578 game_s 23858.8 real_s 198.6 | ctl_sb_pred 316->356
+frame 32700 game_s 23868.8 real_s 199.6 | ctl_sb_pred 356->396
+frame 32819 game_s 23878.8 real_s 200.6 | ctl_sb_pred 396->432
+frame 32940 game_s 23888.8 real_s 201.6 | ctl_sb_pred 432->472
+frame 33065 game_s 23898.8 real_s 202.6 | ctl_sb_misc 1,0,0,0->2,0,0,0 ctl_sb_pred 472->512
+frame 33189 game_s 23908.8 real_s 203.6 | ctl_sb_pred 512->548
+frame 33315 game_s 23918.8 real_s 204.6 | ctl_sb_pred 548->588
+frame 33442 game_s 23928.8 real_s 205.6 | ctl_sb_pred 588->628
+frame 33566 game_s 23938.8 real_s 206.6 | ctl_sb_pred 628->664
+frame 33688 game_s 23948.8 real_s 207.6 | ctl_sb_pred 664->704
+frame 33814 game_s 23958.8 real_s 208.6 | ctl_sb_misc 2,0,0,0->3,0,0,0 ctl_sb_pred 704->744
+frame 33937 game_s 23968.8 real_s 209.6 | ctl_sb_pred 744->784
+frame 34060 game_s 23978.8 real_s 210.6 | ctl_sb_pred 784->820
+frame 34178 game_s 23988.8 real_s 211.6 | ctl_sb_pred 820->860
+frame 34299 game_s 23998.8 real_s 212.6 | ctl_sb_pred 860->900
+frame 34391 game_s 24008.8 real_s 213.6 | ctl_evicted 1->2 ctl_sb_pred 900->916 arr_offset_capital 1->2 arr_small_unseparated 0->1
+frame 34603 game_s 24028.8 real_s 215.6 | ctl_sb_pred 916->952
+frame 34711 game_s 24038.8 real_s 216.6 | ctl_sb_pred 952->988
+frame 34819 game_s 24048.8 real_s 217.6 | ctl_sb_pred 988->1028
+frame 34919 game_s 24058.8 real_s 218.6 | ctl_sb_pred 1028->1064
+frame 35024 game_s 24068.8 real_s 219.6 | ctl_sb_pred 1064->1104
+frame 35126 game_s 24078.8 real_s 220.6 | ctl_sb_pred 1104->1144 arr_offset_capital 2->3
+frame 35221 game_s 24088.7 real_s 221.6 | ctl_sb_misc 3,0,0,0->4,0,0,0 ctl_sb_pred 1144->1148
+frame 35695 game_s 24138.8 real_s 226.6 | ctl_frame_us_max 26.8->27.7
+frame 35889 game_s 24158.8 real_s 228.6 | ctl_released 0->1 ctl_yields 0->1 ctl_conflicts 0->1
+frame 36089 game_s 24178.8 real_s 230.6 | ctl_frame_us_max 27.7->29.6
+frame 36675 game_s 24238.8 real_s 236.6 | ctl_frame_us_max 29.6->32.5
+frame 37622 game_s 24338.8 real_s 246.6 | ctl_evicted 2->3
+frame 37905 game_s 24368.8 real_s 249.6 | ctl_evicted 3->4
+frame 38188 game_s 24398.8 real_s 252.6 | ctl_frame_us_max 32.5->34.2
+frame 38872 game_s 24468.8 real_s 259.6 | ctl_evicted 4->5
+frame 39063 game_s 24488.8 real_s 261.6 | ctl_evicted 5->7
+frame 39262 game_s 24508.8 real_s 263.6 | ctl_releases 0->1 ctl_sb_pred 1148->1156
+frame 39355 game_s 24518.7 real_s 264.6 | ctl_evicted 7->8 ctl_sb_pred 1156->1162
+frame 39548 game_s 24538.8 real_s 266.6 | ctl_releases 1->2 ctl_sb_pred 1162->1172
+frame 39647 game_s 24548.8 real_s 267.6 | ctl_sb_pred 1172->1182
+frame 39746 game_s 24558.8 real_s 268.6 | ctl_sb_pred 1182->1191
+frame 39842 game_s 24568.8 real_s 269.6 | ctl_evicted 8->9 ctl_sb_pred 1191->1192
+frame 40682 game_s 24648.8 real_s 277.6 | ctl_releases 2->3 ctl_sb_pred 1192->1194
+frame 40794 game_s 24658.8 real_s 278.6 | ctl_sb_pred 1194->1203
+frame 40901 game_s 24668.8 real_s 279.6 | ctl_sb_pred 1203->1216
+frame 41007 game_s 24678.8 real_s 280.6 | ctl_sb_pred 1216->1236
+frame 41114 game_s 24688.8 real_s 281.6 | ctl_sb_pred 1236->1254
+frame 41215 game_s 24698.8 real_s 282.6 | ctl_sb_pred 1254->1274
+frame 41323 game_s 24708.8 real_s 283.6 | ctl_evicted 9->10 ctl_sb_pred 1274->1277
+frame 41878 game_s 24758.8 real_s 288.6 | ctl_releases 3->4 ctl_sb_pred 1277->1282
+frame 42014 game_s 24768.8 real_s 289.6 | ctl_sb_pred 1282->1292
+frame 42148 game_s 24778.8 real_s 290.6 | ctl_sb_pred 1292->1302
+frame 42277 game_s 24788.8 real_s 291.6 | ctl_sb_pred 1302->1311
+frame 42414 game_s 24798.8 real_s 292.6 | ctl_sb_pred 1311->1321
+frame 42542 game_s 24808.8 real_s 293.6 | ctl_evicted 10->11 ctl_sb_pred 1321->1329
+frame 42811 game_s 24828.8 real_s 295.6 | ctl_guarded 0->13

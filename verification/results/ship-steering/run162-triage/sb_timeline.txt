@@ -1,0 +1,101 @@
+== 0x4b9cfd08 id=24965
+  f    970 game  22669.2 real  25.6 | ctl commit gate=bdb0 seq=1 key=0 order=0x0 none>committed stage=none>none petal=-1
+  f    970 game  22669.2 real  25.6 | ctl hold gate=bdb0 seq=1 key=16 order=0x4 committed>committed stage=none>hold petal=-1
+  f  38866 game  24468.2 real 259.6 | 0x12 warn other=0x90471340 class=7 code=M2 d_m=2231.3
+  f  38866 game  24468.2 real 259.6 | ctl evict gate=bdb0 seq=1 key=32 order=0x0 committed>evicted stage=hold>hold petal=2
+  f  39039 game  24486.4 real 261.4 | ctl commit gate=bdb0 seq=1 key=32 order=0x0 evicted>committed stage=none>none petal=-1
+  f  39039 game  24486.4 real 261.4 | ctl hold gate=bdb0 seq=1 key=32 order=0x4 committed>committed stage=none>hold petal=-1
+  f  39186 game  24501.3 real 262.9 | ctl release gate=bdb0 seq=1 key=32 order=0x4 committed>committed stage=hold>funnel petal=2
+  f  39328 game  24515.8 real 264.3 | 0x12 warn other=0x90471340 class=7 code=M2 d_m=1843.7
+  f  39328 game  24515.8 real 264.3 | ctl evict gate=bdb0 seq=1 key=32 order=0x4 committed>evicted stage=funnel>funnel petal=-1
+  f  39451 game  24528.9 real 265.6 | ctl commit gate=bdb0 seq=1 key=32 order=0x4 evicted>committed stage=none>none petal=-1
+  f  39451 game  24528.9 real 265.6 | ctl hold gate=bdb0 seq=1 key=32 order=0x4 committed>committed stage=none>hold petal=-1
+  f  39451 game  24528.9 real 265.6 | ctl release gate=bdb0 seq=1 key=32 order=0x4 committed>committed stage=hold>funnel petal=3
+  f  39750 game  24559.3 real 268.7 | 0x12 warn other=0x8e4fbdb0 class=18 code=- d_m=6943.7
+  f  39750 game  24559.3 real 268.7 | ctl evict gate=bdb0 seq=1 key=32 order=0x0 committed>evicted stage=funnel>funnel petal=-1
+  f  39967 game  24581.2 real 270.9 | approach row cross_to_launch_ms=0
+  f  40093 game  24594.0 real 272.2 | ctl commit gate=bdb0 seq=12 key=32 order=0x0 evicted>committed stage=none>none petal=-1
+  f  40093 game  24594.0 real 272.2 | ctl dock gate=bdb0 seq=12 key=32 order=0x5 committed>committed stage=none>dock petal=-1
+  f  40269 game  24612.5 real 274.0 | approach row cross_to_launch_ms=31300
+  f  40269 game  24612.5 real 274.0 | ctl launch gate=bdb0 seq=12 key=32 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x4b9d5870 id=25287
+  f   1034 game  22669.8 real  26.0 | ctl escort gate=bdb0 seq=2 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f   1034 game  22669.8 real  26.0 | ctl hold gate=bdb0 seq=2 key=17 order=0x14 escort>escort stage=none>hold petal=-1
+  f  30253 game  23719.4 real 182.0 | 0x12 warn other=0x8e505fc8 class=6 code=- d_m=2458.1
+  f  30253 game  23719.4 real 182.0 | ctl evict gate=bdb0 seq=2 key=17 order=0x0 escort>evicted stage=hold>hold petal=4
+  f  31280 game  23759.4 real 188.7 | ctl escort gate=bdb0 seq=4 key=17 order=0x0 evicted>escort stage=none>none petal=-1
+  f  31280 game  23759.4 real 188.7 | ctl hold gate=bdb0 seq=4 key=17 order=0x14 escort>escort stage=none>hold petal=-1
+  f  38866 game  24468.2 real 259.6 | ctl leader gate=bdb0 seq=4 key=17 order=0x14 escort>none stage=hold>hold petal=4
+  f  39039 game  24486.4 real 261.4 | ctl escort gate=bdb0 seq=8 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  39039 game  24486.4 real 261.4 | ctl hold gate=bdb0 seq=8 key=33 order=0x14 escort>escort stage=none>hold petal=-1
+  f  39328 game  24515.8 real 264.3 | ctl leader gate=bdb0 seq=8 key=33 order=0x14 escort>none stage=hold>hold petal=4
+  f  39451 game  24528.9 real 265.6 | ctl escort gate=bdb0 seq=10 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  39451 game  24528.9 real 265.6 | ctl hold gate=bdb0 seq=10 key=33 order=0x14 escort>escort stage=none>hold petal=-1
+  f  39750 game  24559.3 real 268.7 | ctl leader gate=bdb0 seq=10 key=33 order=0x14 escort>none stage=hold>hold petal=5
+  f  39852 game  24569.8 real 269.7 | 0x12 warn other=0x4b9cfd08 class=7 code=M2 d_m=3539.1
+  f  40173 game  24602.6 real 273.0 | ctl escort gate=bdb0 seq=14 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  40173 game  24602.6 real 273.0 | ctl hold gate=bdb0 seq=14 key=34 order=0x14 escort>escort stage=none>hold petal=-1
+  f  40352 game  24620.1 real 274.8 | ctl commit gate=bdb0 seq=14 key=34 order=0x0 escort>committed stage=hold>hold petal=6
+  f  41810 game  24753.9 real 288.1 | ctl release gate=bdb0 seq=14 key=34 order=0x4 committed>committed stage=hold>funnel petal=6
+  f  42519 game  24807.0 real 293.4 | 0x12 warn other=0x8e4fbdb0 class=18 code=- d_m=6855.2
+  f  42519 game  24807.0 real 293.4 | ctl evict gate=bdb0 seq=14 key=34 order=0x4 committed>evicted stage=funnel>funnel petal=-1
+  f  42778 game  24826.4 real 295.4 | ctl commit gate=bdb0 seq=14 key=34 order=0x4 evicted>committed stage=none>none petal=-1
+  f  42778 game  24826.4 real 295.4 | ctl hold gate=bdb0 seq=14 key=34 order=0x4 committed>committed stage=none>hold petal=-1
+== 0x8e4f64b8 id=25763
+  f   1443 game  22671.6 real  27.8 | ctl escort gate=bdb0 seq=3 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f   1443 game  22671.6 real  27.8 | ctl hold gate=bdb0 seq=3 key=18 order=0x14 escort>escort stage=none>hold petal=-1
+  f  38866 game  24468.2 real 259.6 | ctl leader gate=bdb0 seq=3 key=18 order=0x14 escort>none stage=hold>hold petal=3
+  f  39039 game  24486.4 real 261.4 | ctl escort gate=bdb0 seq=9 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  39039 game  24486.4 real 261.4 | ctl hold gate=bdb0 seq=9 key=34 order=0x14 escort>escort stage=none>hold petal=-1
+  f  39042 game  24486.7 real 261.4 | 0x12 warn other=0x90471340 class=7 code=M2 d_m=2117.9
+  f  39043 game  24486.8 real 261.4 | ctl evict gate=bdb0 seq=9 key=34 order=0x0 escort>evicted stage=hold>hold petal=3
+  f  39248 game  24507.5 real 263.5 | ctl escort gate=bdb0 seq=9 key=34 order=0x0 evicted>escort stage=none>none petal=-1
+  f  39248 game  24507.5 real 263.5 | ctl hold gate=bdb0 seq=9 key=34 order=0x14 escort>escort stage=none>hold petal=-1
+  f  39328 game  24515.8 real 264.3 | ctl leader gate=bdb0 seq=9 key=34 order=0x14 escort>none stage=hold>hold petal=2
+  f  39451 game  24528.9 real 265.6 | ctl escort gate=bdb0 seq=11 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  39451 game  24528.9 real 265.6 | ctl hold gate=bdb0 seq=11 key=34 order=0x14 escort>escort stage=none>hold petal=-1
+  f  39750 game  24559.3 real 268.7 | ctl leader gate=bdb0 seq=11 key=34 order=0x14 escort>none stage=hold>hold petal=4
+  f  40093 game  24594.0 real 272.2 | ctl escort gate=bdb0 seq=13 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  40093 game  24594.0 real 272.2 | ctl hold gate=bdb0 seq=13 key=33 order=0x14 escort>escort stage=none>hold petal=-1
+  f  40666 game  24647.4 real 277.5 | ctl commit gate=bdb0 seq=13 key=33 order=0x0 escort>committed stage=hold>hold petal=2
+  f  40666 game  24647.4 real 277.5 | ctl release gate=bdb0 seq=13 key=33 order=0x4 committed>committed stage=hold>funnel petal=2
+  f  41239 game  24701.0 real 282.9 | 0x12 warn other=0x8e4fbdb0 class=18 code=- d_m=6647.9
+  f  41239 game  24701.0 real 282.9 | ctl evict gate=bdb0 seq=13 key=33 order=0x4 committed>evicted stage=funnel>funnel petal=-1
+  f  41467 game  24722.5 real 285.0 | approach row cross_to_launch_ms=0
+  f  41601 game  24735.1 real 286.3 | ctl commit gate=bdb0 seq=15 key=33 order=0x4 evicted>committed stage=none>none petal=-1
+  f  41601 game  24735.1 real 286.3 | ctl dock gate=bdb0 seq=15 key=33 order=0x5 committed>committed stage=none>dock petal=-1
+  f  41798 game  24752.9 real 288.0 | approach row cross_to_launch_ms=30430
+  f  41798 game  24752.9 real 288.0 | ctl launch gate=bdb0 seq=15 key=33 order=0x8 committed>committed stage=dock>launch petal=-1
+== 0x8e51e248 id=2782
+  f  32196 game  23827.2 real 195.5 | ARRIVAL launch at bdb0 kind=capital_offset off_u_m=663
+  f  32196 game  23827.2 real 195.5 | ctl arrival gate=bdb0 seq=5 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  32215 game  23828.9 real 195.6 | ctl commit gate=c158 seq=1 key=0 order=0x0 none>committed stage=none>none petal=-1
+  f  32215 game  23828.9 real 195.6 | ctl hold gate=c158 seq=1 key=16 order=0x4 committed>committed stage=none>hold petal=-1
+  f  34361 game  24005.7 real 213.3 | 0x12 warn other=0x00000000 class=0 code=- d_m=0.0
+  f  34361 game  24005.7 real 213.3 | ctl evict gate=c158 seq=1 key=48 order=0x0 committed>evicted stage=hold>hold petal=0
+  f  34514 game  24020.4 real 214.8 | ctl commit gate=c158 seq=1 key=48 order=0x0 evicted>committed stage=none>none petal=-1
+  f  34514 game  24020.4 real 214.8 | ctl hold gate=c158 seq=1 key=48 order=0x4 committed>committed stage=none>hold petal=-1
+== 0x9046b088 id=3583
+  f  34359 game  24003.7 real 213.3 | ARRIVAL launch at bdb0 kind=capital_offset off_u_m=663
+  f  34359 game  24003.7 real 213.3 | ctl arrival gate=bdb0 seq=6 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  34514 game  24020.4 real 214.8 | ctl escort gate=c158 seq=2 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  34514 game  24020.4 real 214.8 | ctl hold gate=c158 seq=2 key=49 order=0x14 escort>escort stage=none>hold petal=-1
+  f  34514 game  24020.4 real 214.8 | ctl leader gate=bdb0 seq=6 key=0 order=0x14 arrival>none stage=none>none petal=-1
+== 0x90471340 id=3838
+  f  35115 game  24077.7 real 220.5 | ARRIVAL launch at bdb0 kind=capital_offset off_u_m=663
+  f  35115 game  24077.7 real 220.5 | ctl arrival gate=bdb0 seq=7 key=0 order=0x0 none>arrival stage=none>none petal=-1
+  f  35216 game  24088.2 real 221.6 | ctl escort gate=c158 seq=3 key=0 order=0x0 none>escort stage=none>none petal=-1
+  f  35216 game  24088.2 real 221.6 | ctl hold gate=c158 seq=3 key=66 order=0x14 escort>escort stage=none>hold petal=-1
+  f  35216 game  24088.2 real 221.6 | ctl leader gate=bdb0 seq=7 key=0 order=0x0 arrival>none stage=none>none petal=-1
+  f  37587 game  24335.1 real 246.3 | 0x12 warn other=0x373d1348 class=7 code=M6 d_m=2211.3
+  f  37587 game  24335.1 real 246.3 | ctl evict gate=c158 seq=3 key=66 order=0x0 escort>evicted stage=hold>hold petal=1
+  f  37722 game  24349.4 real 247.7 | ctl escort gate=c158 seq=3 key=66 order=0x0 evicted>escort stage=none>none petal=-1
+  f  37722 game  24349.4 real 247.7 | ctl hold gate=c158 seq=3 key=66 order=0x14 escort>escort stage=none>hold petal=-1
+  f  37843 game  24362.1 real 249.0 | 0x12 warn other=0x9046b088 class=7 code=M2 d_m=2010.8
+  f  37843 game  24362.1 real 249.0 | ctl evict gate=c158 seq=3 key=66 order=0x0 escort>evicted stage=hold>hold petal=1
+  f  38116 game  24391.3 real 251.9 | ctl escort gate=c158 seq=3 key=66 order=0x0 evicted>escort stage=none>none petal=-1
+  f  38116 game  24391.3 real 251.9 | ctl hold gate=c158 seq=3 key=66 order=0x14 escort>escort stage=none>hold petal=-1
+  f  38991 game  24481.1 real 260.9 | 0x12 warn other=0x4b9cfd08 class=7 code=M2 d_m=1811.2
+  f  38991 game  24481.1 real 260.9 | ctl evict gate=c158 seq=3 key=66 order=0x0 escort>evicted stage=hold>hold petal=1
+  f  39588 game  24542.9 real 267.0 | ctl escort gate=c158 seq=4 key=66 order=0x0 evicted>escort stage=none>none petal=-1
+  f  39588 game  24542.9 real 267.0 | ctl hold gate=c158 seq=4 key=66 order=0x14 escort>escort stage=none>hold petal=-1

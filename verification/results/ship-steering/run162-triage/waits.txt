@@ -1,0 +1,2 @@
+0x4b9cfd08 M2 frames 39967-40092 game 24581.2 dur 12.7 | orders {'0x0': 2, '0x1f': 124} | gate 0x8e4fbdb0 dist 4795 m | v 0.0..0.0 | des<des_engine rows 0 | emg 0 | obst {} | join mode none | lane {} v_cap>=0 0
+waits: 1 | capital E rows with A_order 0x1d (SA_Idle): 0

@@ -1,0 +1,3 @@
+0x8e4fbdb0 -7498.0,10774.0,-57569.0 -0.0000,0.0000,-1.0000 1104.5 capital_o5 nB=7 fit_centre_err_m=0 fit_r_gate=1104
+0x8e4fc158 insufficient
+0x8e4fe108 insufficient

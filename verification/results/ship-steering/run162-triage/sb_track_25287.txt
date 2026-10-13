@@ -1,0 +1,226 @@
+f   6631-  6751 game  22729.4- 22736.6 real  52.7- 53.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   37
+f   6752-  6752 game  22736.6- 22736.6 real  53.5- 53.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f   6753-  6793 game  22736.7- 22739.0 real  53.5- 53.7 | 0x0 0000 v  29- 40 d      0->     0 z - lat - noseF - turn   12
+f   6794-  7273 game  22739.0- 22769.0 real  53.7- 56.7 | 0x14 fd08 v  28- 40 d      0->     0 z - lat - noseF - turn  149
+f   7274-  7287 game  22769.1- 22771.3 real  56.7- 56.9 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    4
+f   7288-  7288 game  22771.4- 22771.4 real  56.9- 56.9 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f   7289-  7325 game  22771.4- 22773.7 real  56.9- 57.2 | 0x0 0000 v  29- 40 d      0->     0 z - lat - noseF - turn   11
+f   7326-  7813 game  22773.8- 22803.8 real  57.2- 60.2 | 0x14 fd08 v  28- 40 d      0->     0 z - lat - noseF - turn  152
+f   7814-  7817 game  22803.8- 22804.0 real  60.2- 60.2 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    1
+f   7818-  7818 game  22804.0- 22804.0 real  60.2- 60.2 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f   7819-  7876 game  22804.1- 22806.9 real  60.2- 60.5 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   17
+f   7877-  9129 game  22807.0- 22837.0 real  60.5- 66.1 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  388
+f   9130-  9178 game  22837.0- 22839.3 real  66.1- 66.3 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   15
+f   9179-  9179 game  22839.4- 22839.4 real  66.3- 66.3 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f   9180-  9226 game  22839.4- 22841.5 real  66.3- 66.5 | 0x0 0000 v  30- 40 d      0->     0 z - lat - noseF - turn   14
+f   9227-  9848 game  22841.6- 22871.5 real  66.5- 69.5 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  193
+f   9849-  9897 game  22871.6- 22873.9 real  69.5- 69.8 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   15
+f   9898-  9898 game  22873.9- 22873.9 real  69.8- 69.8 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f   9899-  9958 game  22873.9- 22876.7 real  69.8- 70.0 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   18
+f   9959- 10594 game  22876.7- 22906.7 real  70.1- 73.1 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  199
+f  10595- 10660 game  22906.8- 22909.9 real  73.1- 73.4 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   20
+f  10661- 10661 game  22910.0- 22910.0 real  73.4- 73.4 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  10662- 10725 game  22910.0- 22913.0 real  73.4- 73.7 | 0x0 0000 v  25- 40 d      0->     0 z - lat - noseF - turn   19
+f  10726- 11346 game  22913.1- 22943.0 real  73.7- 76.7 | 0x14 fd08 v  25- 40 d      0->     0 z - lat - noseF - turn  194
+f  11347- 12091 game  22943.1- 22946.8 real  76.7- 80.1 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn  228
+f  12092- 12092 game  22946.8- 22946.8 real  80.1- 80.1 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  12093- 12587 game  22946.8- 22949.0 real  80.1- 82.3 | 0x0 0000 v  29- 40 d      0->     0 z - lat - noseF - turn  151
+f  12588- 13915 game  22949.0- 22979.0 real  82.3- 88.6 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  370
+f  13916- 13935 game  22979.0- 22980.0 real  88.6- 88.7 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    5
+f  13936- 13936 game  22980.1- 22980.1 real  88.7- 88.7 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  13937- 13987 game  22980.1- 22982.8 real  88.7- 89.0 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   13
+f  13988- 15787 game  22982.9- 23012.8 real  89.0- 98.9 | 0x14 fd08 v  27- 40 d      0->     0 z - lat - noseF - turn  757
+f  15788- 16015 game  23012.9- 23015.4 real  98.9-100.2 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   97
+f  16016- 16016 game  23015.4- 23015.4 real 100.2-100.2 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  16017- 16454 game  23015.4- 23018.0 real 100.2-102.1 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn  186
+f  16455- 17462 game  23018.0- 23048.0 real 102.1-106.8 | 0x14 fd08 v  27- 40 d      0->     0 z - lat - noseF - turn  423
+f  17463- 18002 game  23048.0- 23051.7 real 106.8-109.3 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn  229
+f  18003- 18003 game  23051.7- 23051.7 real 109.3-109.3 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  18004- 18120 game  23051.7- 23054.4 real 109.3-109.9 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   49
+f  18121- 18793 game  23054.5- 23084.5 real 109.9-113.1 | 0x14 fd08 v  27- 40 d      0->     0 z - lat - noseF - turn  277
+f  18794- 18838 game  23084.5- 23086.7 real 113.1-113.3 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   18
+f  18839- 18839 game  23086.7- 23086.7 real 113.3-113.3 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  18840- 18901 game  23086.8- 23089.7 real 113.3-113.6 | 0x0 0000 v  25- 40 d      0->     0 z - lat - noseF - turn   25
+f  18902- 19501 game  23089.8- 23119.7 real 113.6-116.6 | 0x14 fd08 v  25- 40 d      0->     0 z - lat - noseF - turn  246
+f  19502- 19535 game  23119.8- 23121.4 real 116.6-116.8 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   14
+f  19536- 19536 game  23121.5- 23121.5 real 116.8-116.8 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  19537- 19583 game  23121.5- 23123.8 real 116.8-117.0 | 0x0 0000 v  29- 40 d      0->     0 z - lat - noseF - turn   19
+f  19584- 20197 game  23123.8- 23153.8 real 117.0-120.0 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  246
+f  20198- 20198 game  23153.8- 23153.8 real 120.0-120.0 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  20199- 20199 game  23153.9- 23153.9 real 120.0-120.0 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  20200- 20243 game  23153.9- 23156.0 real 120.0-120.2 | 0x0 0000 v  30- 40 d      0->     0 z - lat - noseF - turn   16
+f  20244- 20804 game  23156.0- 23186.0 real 120.2-123.2 | 0x14 fd08 v  30- 40 d      0->     0 z - lat - noseF - turn  213
+f  20805- 20875 game  23186.1- 23189.7 real 123.2-123.6 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   27
+f  20876- 20876 game  23189.8- 23189.8 real 123.6-123.6 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  20877- 20933 game  23189.8- 23192.8 real 123.6-123.9 | 0x0 0000 v  25- 40 d      0->     0 z - lat - noseF - turn   21
+f  20934- 21486 game  23192.9- 23222.9 real 123.9-126.9 | 0x14 fd08 v  25- 40 d      0->     0 z - lat - noseF - turn  211
+f  21487- 21489 game  23222.9- 23223.0 real 126.9-126.9 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    1
+f  21490- 21490 game  23223.1- 23223.1 real 127.0-127.0 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  21491- 21536 game  23223.1- 23225.6 real 127.0-127.2 | 0x0 0000 v  28- 40 d      0->     0 z - lat - noseF - turn   17
+f  21537- 22073 game  23225.6- 23255.6 real 127.2-130.2 | 0x14 fd08 v  28- 40 d      0->     0 z - lat - noseF - turn  205
+f  22074- 22084 game  23255.6- 23256.2 real 130.2-130.3 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    4
+f  22085- 22085 game  23256.3- 23256.3 real 130.3-130.3 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  22086- 22132 game  23256.3- 23258.8 real 130.3-130.5 | 0x0 0000 v  28- 40 d      0->     0 z - lat - noseF - turn   18
+f  22133- 22655 game  23258.9- 23288.8 real 130.5-133.5 | 0x14 fd08 v  28- 40 d      0->     0 z - lat - noseF - turn  240
+f  22656- 22697 game  23288.9- 23291.2 real 133.5-133.8 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   19
+f  22698- 22698 game  23291.2- 23291.2 real 133.8-133.8 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  22699- 22748 game  23291.3- 23294.1 real 133.8-134.1 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   23
+f  22749- 23260 game  23294.1- 23324.1 real 134.1-137.1 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  230
+f  23261- 23292 game  23324.2- 23326.1 real 137.1-137.3 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   14
+f  23293- 23293 game  23326.2- 23326.2 real 137.3-137.3 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  23294- 23338 game  23326.3- 23329.0 real 137.3-137.5 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   19
+f  23339- 23844 game  23329.0- 23359.0 real 137.5-140.5 | 0x14 fd08 v  27- 40 d      0->     0 z - lat - noseF - turn  203
+f  23845- 23852 game  23359.0- 23359.5 real 140.5-140.6 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    3
+f  23853- 23853 game  23359.5- 23359.5 real 140.6-140.6 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  23854- 23901 game  23359.6- 23362.3 real 140.6-140.9 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   19
+f  23902- 24400 game  23362.4- 23392.4 real 140.9-143.9 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  199
+f  24401- 24452 game  23392.4- 23395.5 real 143.9-144.2 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   21
+f  24453- 24453 game  23395.6- 23395.6 real 144.2-144.2 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  24454- 24502 game  23395.6- 23398.6 real 144.2-144.5 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   19
+f  24503- 25005 game  23398.6- 23428.6 real 144.5-147.5 | 0x14 fd08 v  25- 40 d      0->     0 z - lat - noseF - turn  201
+f  25006- 25037 game  23428.6- 23430.5 real 147.5-147.7 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   13
+f  25038- 25038 game  23430.5- 23430.5 real 147.7-147.7 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  25039- 25086 game  23430.6- 23433.4 real 147.7-148.0 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   19
+f  25087- 25594 game  23433.4- 23463.4 real 148.0-151.0 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  163
+f  25595- 25652 game  23463.5- 23466.9 real 151.0-151.3 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   18
+f  25653- 25653 game  23466.9- 23466.9 real 151.3-151.3 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  25654- 25700 game  23467.0- 23469.8 real 151.3-151.6 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   15
+f  25701- 26213 game  23469.9- 23499.9 real 151.6-154.6 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  175
+f  26214- 26276 game  23499.9- 23503.5 real 154.6-155.0 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   21
+f  26277- 26277 game  23503.6- 23503.6 real 155.0-155.0 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  26278- 26320 game  23503.7- 23506.4 real 155.0-155.3 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   14
+f  26321- 27703 game  23506.4- 23536.4 real 155.3-163.7 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  636
+f  27704- 27726 game  23536.4- 23538.0 real 163.7-163.8 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   10
+f  27727- 27727 game  23538.1- 23538.1 real 163.8-163.8 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  27728- 27771 game  23538.1- 23541.1 real 163.8-164.1 | 0x0 0000 v  25- 40 d      0->     0 z - lat - noseF - turn   19
+f  27772- 28220 game  23541.2- 23571.1 real 164.1-167.1 | 0x14 fd08 v  25- 40 d      0->     0 z - lat - noseF - turn  137
+f  28221- 28280 game  23571.2- 23575.1 real 167.1-167.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   18
+f  28281- 28281 game  23575.2- 23575.2 real 167.5-167.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  28282- 28323 game  23575.2- 23577.9 real 167.5-167.8 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   12
+f  28324- 28739 game  23578.0- 23608.0 real 167.8-170.8 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  183
+f  28740- 28741 game  23608.0- 23608.1 real 170.8-170.8 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  28742- 28742 game  23608.2- 23608.2 real 170.8-170.8 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  28743- 28781 game  23608.3- 23611.1 real 170.9-171.1 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   17
+f  28782- 29188 game  23611.1- 23641.1 real 171.1-174.1 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  170
+f  29189- 29236 game  23641.1- 23644.7 real 174.1-174.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   20
+f  29237- 29237 game  23644.7- 23644.7 real 174.5-174.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  29238- 29277 game  23644.8- 23647.7 real 174.5-174.8 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   16
+f  29278- 29688 game  23647.8- 23677.8 real 174.8-177.8 | 0x14 fd08 v  25- 40 d      0->     0 z - lat - noseF - turn  181
+f  29689- 29724 game  23677.9- 23680.3 real 177.8-178.1 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   14
+f  29725- 29725 game  23680.4- 23680.4 real 178.1-178.1 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  29726- 29765 game  23680.5- 23683.3 real 178.1-178.4 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   16
+f  29766- 30171 game  23683.4- 23713.3 real 178.4-181.4 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  185
+f  30172- 30211 game  23713.4- 23716.3 real 181.4-181.7 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    8
+f  30212- 30212 game  23716.4- 23716.4 real 181.7-181.7 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  30213- 30252 game  23716.5- 23719.4 real 181.7-182.0 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn    1
+f  30253- 31144 game  23719.4- 23749.4 real 182.0-187.7 | 0x12 0000 v   0- 71 d      0->     0 z - lat - noseF - turn  399
+f  31145- 31246 game  23749.5- 23756.9 real 187.7-188.4 | 0x12 0000 v  71-108 d      0->     0 z - lat - noseF - turn   27
+f  31247- 31279 game  23757.0- 23759.3 real 188.4-188.7 | 0x0 0000 v  98-109 d      0->     0 z - lat - noseF - turn    8
+f  31280- 31688 game  23759.4- 23789.3 real 188.7-191.7 | 0x14 fd08 v  40- 98 d      0->     0 z - lat - noseF - turn  221
+f  31689- 31713 game  23789.4- 23791.2 real 191.7-191.9 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   10
+f  31714- 31714 game  23791.3- 23791.3 real 191.9-191.9 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  31715- 31754 game  23791.4- 23794.2 real 191.9-192.2 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   16
+f  31755- 32158 game  23794.3- 23824.3 real 192.2-195.2 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  152
+f  32159- 32202 game  23824.3- 23827.8 real 195.2-195.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   17
+f  32203- 32203 game  23827.9- 23827.9 real 195.5-195.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  32204- 32240 game  23828.0- 23830.8 real 195.6-195.8 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn   14
+f  32241- 32603 game  23830.9- 23860.9 real 195.8-198.8 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  112
+f  32604- 32614 game  23860.9- 23861.8 real 198.8-198.9 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    3
+f  32615- 32615 game  23861.9- 23861.9 real 198.9-198.9 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  32616- 32652 game  23861.9- 23864.9 real 198.9-199.2 | 0x0 0000 v  25- 40 d      0->     0 z - lat - noseF - turn   11
+f  32653- 33017 game  23865.0- 23895.0 real 199.3-202.2 | 0x14 fd08 v  25- 40 d      0->     0 z - lat - noseF - turn  122
+f  33018- 33052 game  23895.1- 23897.8 real 202.3-202.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   13
+f  33053- 33053 game  23897.9- 23897.9 real 202.5-202.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  33054- 33080 game  23897.9- 23900.1 real 202.5-202.8 | 0x0 0000 v  30- 40 d      0->     0 z - lat - noseF - turn   10
+f  33081- 33457 game  23900.1- 23930.1 real 202.8-205.8 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  144
+f  33458- 33496 game  23930.1- 23933.1 real 205.8-206.1 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   17
+f  33497- 33497 game  23933.2- 23933.2 real 206.1-206.1 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  33498- 33525 game  23933.3- 23935.4 real 206.1-206.3 | 0x0 0000 v  30- 40 d      0->     0 z - lat - noseF - turn   14
+f  33526- 33896 game  23935.5- 23965.5 real 206.3-209.3 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  161
+f  33897- 33911 game  23965.6- 23966.7 real 209.3-209.4 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    6
+f  33912- 33912 game  23966.8- 23966.8 real 209.4-209.4 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  33913- 33947 game  23966.9- 23969.6 real 209.4-209.7 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   15
+f  33948- 34310 game  23969.7- 23999.7 real 209.7-212.7 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn   91
+f  34311- 34323 game  23999.7- 24000.7 real 212.7-212.8 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    6
+f  34324- 34324 game  24000.8- 24000.8 real 212.8-212.8 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  34325- 34359 game  24000.9- 24003.7 real 212.8-213.3 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn   16
+f  34360- 34672 game  24005.2- 24035.1 real 213.3-216.3 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn  136
+f  34673- 34680 game  24035.2- 24035.9 real 216.3-216.3 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    4
+f  34681- 34681 game  24036.0- 24036.0 real 216.4-216.4 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  34682- 34705 game  24036.1- 24038.2 real 216.4-216.6 | 0x0 0000 v  30- 41 d      0->     0 z - lat - noseF - turn   12
+f  34706- 35019 game  24038.3- 24068.2 real 216.6-219.6 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn   90
+f  35020- 35020 game  24068.3- 24068.3 real 219.6-219.6 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  35021- 35021 game  24068.5- 24068.5 real 219.6-219.6 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  35022- 35050 game  24068.6- 24071.2 real 219.6-219.9 | 0x0 0000 v  27- 41 d      0->     0 z - lat - noseF - turn    6
+f  35051- 35342 game  24071.3- 24101.3 real 219.9-222.9 | 0x14 fd08 v  27- 40 d      0->     0 z - lat - noseF - turn  136
+f  35343- 35373 game  24101.4- 24104.6 real 222.9-223.2 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   13
+f  35374- 35374 game  24104.7- 24104.7 real 223.2-223.2 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  35375- 35395 game  24104.8- 24106.9 real 223.2-223.4 | 0x0 0000 v  30- 41 d      0->     0 z - lat - noseF - turn    9
+f  35396- 35677 game  24107.0- 24136.9 real 223.5-226.4 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  123
+f  35678- 35699 game  24137.0- 24139.2 real 226.5-226.7 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    7
+f  35700- 35700 game  24139.3- 24139.3 real 226.7-226.7 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  35701- 35723 game  24139.4- 24141.7 real 226.7-226.9 | 0x0 0000 v  29- 40 d      0->     0 z - lat - noseF - turn    8
+f  35724- 36018 game  24141.8- 24171.7 real 226.9-229.9 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  113
+f  36019- 36031 game  24171.8- 24173.0 real 229.9-230.1 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    6
+f  36032- 36032 game  24173.1- 24173.1 real 230.1-230.1 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  36033- 36054 game  24173.2- 24175.3 real 230.1-230.3 | 0x0 0000 v  30- 40 d      0->     0 z - lat - noseF - turn   11
+f  36055- 36344 game  24175.4- 24205.3 real 230.3-233.3 | 0x14 fd08 v  30- 40 d      0->     0 z - lat - noseF - turn  111
+f  36345- 36373 game  24205.4- 24208.2 real 233.3-233.6 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   10
+f  36374- 36374 game  24208.3- 24208.3 real 233.6-233.6 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  36375- 36396 game  24208.4- 24210.5 real 233.6-233.8 | 0x0 0000 v  30- 41 d      0->     0 z - lat - noseF - turn   11
+f  36397- 36691 game  24210.6- 24240.5 real 233.8-236.8 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  109
+f  36692- 36703 game  24240.7- 24242.2 real 236.8-237.0 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    3
+f  36704- 36704 game  24242.3- 24242.3 real 237.0-237.0 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  36705- 36723 game  24242.4- 24245.2 real 237.0-237.3 | 0x0 0000 v  27- 40 d      0->     0 z - lat - noseF - turn    9
+f  36724- 37011 game  24245.3- 24275.2 real 237.3-240.3 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn   99
+f  37012- 37032 game  24275.3- 24277.4 real 240.3-240.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    7
+f  37033- 37033 game  24277.5- 24277.5 real 240.5-240.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  37034- 37060 game  24277.6- 24280.2 real 240.5-240.8 | 0x0 0000 v  27- 41 d      0->     0 z - lat - noseF - turn   12
+f  37061- 37349 game  24280.4- 24310.4 real 240.8-243.8 | 0x14 fd08 v  27- 40 d      0->     0 z - lat - noseF - turn  108
+f  37350- 37373 game  24310.5- 24312.9 real 243.8-244.0 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    9
+f  37374- 37374 game  24313.0- 24313.0 real 244.1-244.1 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  37375- 37396 game  24313.1- 24315.3 real 244.1-244.3 | 0x0 0000 v  30- 41 d      0->     0 z - lat - noseF - turn    6
+f  37397- 37683 game  24315.4- 24345.3 real 244.3-247.3 | 0x14 fd08 v  29- 40 d      0->     0 z - lat - noseF - turn  106
+f  37684- 37684 game  24345.5- 24345.5 real 247.3-247.3 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  37685- 37705 game  24345.6- 24347.6 real 247.3-247.5 | 0x0 0000 v  30- 41 d      0->     0 z - lat - noseF - turn    6
+f  37706- 37986 game  24347.7- 24377.7 real 247.5-250.5 | 0x14 fd08 v  30- 40 d      0->     0 z - lat - noseF - turn  104
+f  37987- 37987 game  24377.8- 24377.8 real 250.5-250.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  37988- 37988 game  24377.9- 24377.9 real 250.5-250.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  37989- 38015 game  24378.0- 24380.8 real 250.6-250.8 | 0x0 0000 v  26- 40 d      0->     0 z - lat - noseF - turn    9
+f  38016- 38306 game  24380.9- 24410.9 real 250.8-253.8 | 0x14 fd08 v  26- 40 d      0->     0 z - lat - noseF - turn   99
+f  38307- 38314 game  24411.0- 24411.7 real 253.8-253.9 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    2
+f  38315- 38315 game  24411.8- 24411.8 real 253.9-253.9 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  38316- 38340 game  24411.9- 24414.4 real 253.9-254.2 | 0x0 0000 v  28- 40 d      0->     0 z - lat - noseF - turn    7
+f  38341- 38633 game  24414.5- 24444.5 real 254.2-257.2 | 0x14 fd08 v  28- 40 d      0->     0 z - lat - noseF - turn   98
+f  38634- 38666 game  24444.6- 24447.8 real 257.2-257.5 | 0x14 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn   12
+f  38667- 38667 game  24447.9- 24447.9 real 257.5-257.5 | 0x0 fd08 v  40- 40 d      0->     0 z - lat - noseF - turn    0
+f  38668- 38693 game  24448.0- 24450.4 real 257.6-257.8 | 0x0 0000 v  28- 40 d      0->     0 z - lat - noseF - turn    9
+f  38694- 38985 game  24450.5- 24480.5 real 257.8-260.8 | 0x14 fd08 v  28-101 d      0->     0 z - lat - noseF - turn  145
+f  38986- 39014 game  24480.6- 24483.7 real 260.8-261.1 | 0x14 fd08 v 101-113 d      0->     0 z - lat - noseF - turn   25
+f  39015- 39015 game  24483.8- 24483.8 real 261.1-261.1 | 0x0 fd08 v 113-113 d      0->     0 z - lat - noseF - turn    0
+f  39016- 39038 game  24483.9- 24486.3 real 261.1-261.4 | 0x0 0000 v 101-113 d      0->     0 z - lat - noseF - turn   18
+f  39039- 39333 game  24486.4- 24516.3 real 261.4-264.4 | 0x14 fd08 v  40-101 d      0->     0 z - lat - noseF - turn  181
+f  39334- 39340 game  24516.4- 24517.0 real 264.4-264.5 | 0x14 fd08 v  52- 53 d      0->     0 z - lat - noseF - turn    3
+f  39341- 39341 game  24517.1- 24517.1 real 264.5-264.5 | 0x0 fd08 v  52- 52 d      0->     0 z - lat - noseF - turn    0
+f  39342- 39362 game  24517.2- 24519.6 real 264.5-264.7 | 0x0 0000 v  41- 53 d      0->     0 z - lat - noseF - turn   10
+f  39363- 39655 game  24519.7- 24549.6 real 264.7-267.7 | 0x14 fd08 v  41- 77 d      0->     0 z - lat - noseF - turn  143
+f  39656- 39693 game  24549.7- 24553.4 real 267.7-268.1 | 0x14 fd08 v  60- 60 d      0->     0 z - lat - noseF - turn   15
+f  39694- 39694 game  24553.5- 24553.5 real 268.1-268.1 | 0x0 fd08 v  60- 60 d      0->     0 z - lat - noseF - turn    0
+f  39695- 39717 game  24553.6- 24555.9 real 268.1-268.3 | 0x0 0000 v  49- 60 d      0->     0 z - lat - noseF - turn    7
+f  39718- 39850 game  24556.0- 24569.6 real 268.4-269.7 | 0x14 fd08 v  49-111 d      0->     0 z - lat - noseF - turn   61
+f  39851- 39851 game  24569.7- 24569.7 real 269.7-269.7 | 0x0 0000 v 112-112 d      0->     0 z - lat - noseF - turn    0
+f  39852- 40145 game  24569.8- 24599.7 real 269.7-272.7 | 0x12 0000 v 111-113 d      0->     0 z - lat - noseF - turn  131
+f  40146- 40148 game  24599.8- 24600.1 real 272.7-272.8 | 0x12 0000 v 113-113 d      0->     0 z - lat - noseF - turn    1
+f  40149- 40172 game  24600.2- 24602.5 real 272.8-273.0 | 0x0 0000 v 102-113 d      0->     0 z - lat - noseF - turn   12
+f  40173- 40279 game  24602.6- 24613.5 real 273.0-274.1 | 0x14 fd08 v  60-101 d      0->     0 z - lat - noseF - turn   55
+f  40280- 40351 game  24613.6- 24620.0 real 274.1-274.8 | 0x0 0000 v  29- 60 d      0->     0 z - lat - noseF - turn   49
+f  40913- 41225 game  24669.8- 24699.8 real 279.7-282.7 | 0x4 bdb0 v  60- 60 d   8601-> 10307 z -7381 lat 4414 noseF -0.89 turn  109
+f  41226- 41545 game  24699.8- 24729.8 real 282.7-285.7 | 0x4 bdb0 v  60- 60 d  10312-> 11705 z -9095 lat 4860 noseF -1.00 turn  120
+f  41546- 41892 game  24729.9- 24759.8 real 285.7-288.7 | 0x4 bdb0 v  60- 89 d  11707-> 10970 z -10807 lat 4501 noseF -0.64 turn  173
+f  41893- 42292 game  24759.9- 24789.8 real 288.7-291.7 | 0x4 bdb0 v  90-100 d  10964->  8482 z -10571 lat 2908 noseF 0.83 turn  172
+f  42293- 42517 game  24789.9- 24806.8 real 291.7-293.4 | 0x4 bdb0 v 100-100 d   8476->  6870 z -8412 lat 1040 noseF 0.86 turn   80
+f  42518- 42518 game  24806.9- 24806.9 real 293.4-293.4 | 0x0 0000 v 100-100 d      0->     0 z - lat - noseF - turn    0
+f  42519- 42774 game  24807.0- 24826.1 real 293.4-295.4 | 0x12 0000 v 100-113 d      0->     0 z - lat - noseF - turn   95
+f  42775- 42775 game  24826.1- 24826.1 real 295.4-295.4 | 0x0 0000 v 113-113 d      0->     0 z - lat - noseF - turn    0
+f  42776- 43169 game  24826.2- 24856.2 real 295.4-298.4 | 0x4 bdb0 v  60-113 d   4921->  4983 z -4761 lat 1246 noseF 0.90 turn  205
+f  43170- 44729 game  24856.2- 24872.9 real 298.4-309.1 | 0x4 bdb0 v  60- 60 d   4987->  5978 z -4210 lat 2674 noseF -0.85 turn  539

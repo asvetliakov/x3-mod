@@ -1,0 +1,6 @@
+0x4b9cfd08 M2 frames 970-40269 {'trace': 39299, 'warn_other': 15, 'E_B': 1260, 'join': 3, 'approach': 2}
+0x4b9d5870 M1 frames 6631-44729 {'trace': 37538, 'E_B': 801, 'warn_other': 1, 'join': 3}
+0x8e4f64b8 M2 frames 31082-41798 {'E_B': 870, 'approach': 2}
+0x8e51e248 M1 frames 32249-44729 {'E_B': 581, 'trace': 4461}
+0x9046b088 M2 frames 34840-39560 {'E_B': 847, 'warn_other': 1}
+0x90471340 M2 frames 35125-40774 {'E_B': 1099, 'warn_other': 5}

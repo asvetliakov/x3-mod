@@ -1,0 +1,5 @@
+0x4b9cfd08 release f 39186 game 24501.3 -> evict f 39328 game 24515.8 (14.5 s) | E vs gate {} d_m -..- | engine warn on gate []
+0x4b9cfd08 release f 39451 game 24528.9 -> evict f 39750 game 24559.3 (30.4 s) | E vs gate {('0x4', 'pass_not_resolved'): 2} d_m 7032..7129 | engine warn on gate [(39750, '0x4b9cfd08', '6943.7')]
+0x4b9d5870 release f 41810 game 24753.9 -> evict f 42519 game 24807.0 (53.1 s) | E vs gate {('0x4', 'pass_not_resolved'): 1} d_m 6921..6921 | engine warn on gate [(42519, '0x4b9d5870', '6855.2')]
+0x8e4f64b8 release f 40666 game 24647.4 -> evict f 41239 game 24701.0 (53.6 s) | E vs gate {('0x4', 'pass_not_resolved'): 10} d_m 6680..7184 | engine warn on gate [(41239, '0x8e4f64b8', '6647.9')]
+all E rows vs 0x8e4fbdb0 by verdict {'suppress_arrival_gate': 167, 'pass_not_resolved': 321, 'pass_not_fresh': 18, 'pass_a_avoid': 74, 'suppress_gate': 24}

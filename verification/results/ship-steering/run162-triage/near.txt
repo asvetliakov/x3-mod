@@ -1,0 +1,113 @@
+== Q4 detours (all) by pair class: {'small-small': 4378, 'small-cap': 1682, 'cap-small': 80, 'cap-uncommitted cap': 689, 'cap-cap committed': 38}
+== Q4 detours within 6 r_gate of a gate: rows 625 by (gate, pair class): {('0x8e4fbdb0', 'small-small'): 465, ('0x8e4fbdb0', 'small-cap'): 118, ('0x8e4fbdb0', 'cap-uncommitted cap'): 42}
+   episodes (obj class order -> obstacle class order | gate frames game_s dur_s rows | miss min/C | |x-G| min m | kinds)
+   0x373ca0b8 ? 0x4 -> 0x4b9cdae8 ? 0x14 | 0x8e4fbdb0 11183-11187 22935.1 0.2 5 | 57/75.7 | 4179 | small-small {'0': 5}
+   0x4b9cdae8 ? 0x14 -> 0x373ca0b8 ? 0x4 | 0x8e4fbdb0 11183-11198 22935.1 0.8 16 | 56/75.7 | 4861 | small-small {'0': 16}
+   0x373ca0b8 ? 0x4 -> 0x8e518f68 ? 0x12 | 0x8e4fbdb0 11188-11199 22935.4 0.6 11 | 63/75.7 | 4140 | small-small {'0': 11}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 11544-11636 22944.3 0.4 18 | 924/1141.7 | 4279 | small-small {'3': 18}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 11768-11855 22945.3 0.4 16 | 1843/1141.7 | 4072 | small-small {'3': 16}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 11986-12073 22946.3 0.4 15 | 2045/1141.7 | 3846 | small-small {'3': 15}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 12208-12281 22947.3 0.3 16 | 1763/1141.7 | 3599 | small-small {'3': 16}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 12752-12961 22949.8 1.0 24 | 1853/1141.7 | 3083 | small-small {'3': 24}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 13081-13148 22951.3 0.4 14 | 1948/1141.7 | 2945 | small-small {'3': 14}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 13291-13318 22953.8 0.6 14 | 1853/1141.7 | 2474 | small-small {'3': 14}
+   0x4b9cdae8 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 13505-13524 22959.8 0.7 16 | 1640/1141.7 | 1672 | small-small {'3': 16}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 14130-14184 22985.6 0.2 9 | 1472/1225.8 | 5132 | small-small {'3': 9}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 14359-14418 22986.6 0.3 9 | 1552/1225.8 | 4965 | small-small {'3': 9}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 14584-14634 22987.6 0.2 9 | 1575/1225.8 | 4803 | small-small {'3': 9}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 14795-14845 22988.6 0.3 11 | 1577/1225.8 | 4639 | small-small {'3': 11}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 14970-15008 22989.6 0.2 11 | 1579/1225.8 | 4482 | small-small {'3': 11}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 15138-15181 22990.6 0.3 10 | 1582/1225.8 | 4313 | small-small {'3': 10}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 15301-15339 22991.6 0.3 10 | 1587/1225.8 | 4155 | small-small {'3': 10}
+   0x8e4f5750 ? 0x14 -> 0x8e4fbdb0 ? 0x0 | 0x8e4fbdb0 15458-15461 22994.2 0.1 3 | 1594/1225.8 | 3786 | small-small {'3': 3}
+   0x8e50dc40 M6 0x4 -> 0x8e51e248 M1 0x4 | 0x8e4fbdb0 32454-32463 23848.8 0.7 10 | 933/1159.1 | 3976 | small-cap {'0': 10}
+   0x90464548 ? 0x15 -> 0x8e51e248 M1 0x4 | 0x8e4fbdb0 32588-32598 23859.6 0.8 11 | 852/1098.9 | 688 | small-cap {'0': 11}
+   0x90464548 ? 0x15 -> 0x8e51e248 M1 0x4 | 0x8e4fbdb0 32700-32715 23868.8 1.3 15 | 1938/1098.9 | 1841 | small-cap {'0': 15}
+   0x90464548 ? 0x15 -> 0x8e51e248 M1 0x4 | 0x8e4fbdb0 32848-32858 23881.3 0.8 11 | 1994/1098.9 | 3431 | small-cap {'0': 11}
+   0x90464548 ? 0x15 -> 0x8e51e248 M1 0x4 | 0x8e4fbdb0 32940-32943 23888.8 0.3 4 | 1915/1098.9 | 4420 | small-cap {'0': 4}
+   0x90483550 M6 0x14 -> 0x90480838 M6 0x0 | 0x8e4fbdb0 32822-32839 23879.1 1.5 18 | 156/194.1 | 2303 | small-small {'0': 18}
+   0x8e518e30 M6 0x4 -> 0x8e50dc40 M6 0x8 | 0x8e4fbdb0 32840-32842 23880.6 0.2 3 | 322/228.2 | 2986 | small-small {'0': 3}
+   0x8e518e30 M6 0x4 -> 0x8e51e380 ? 0x8 | 0x8e4fbdb0 32941-32946 23888.9 0.4 6 | 134/208.9 | 2157 | small-small {'0': 6}
+   0x9046b088 M2 0x14 -> 0x90471340 M2 0x1e | 0x8e4fbdb0 35126-35185 24078.8 6.2 32 | 996/1887.4 | 4063 | cap-uncommitted cap {'0': 32}
+   0x8e5249e0 ? 0x4 -> 0x373cc2d8 ? 0x4 | 0x8e4fbdb0 35253-35333 24092.1 8.2 48 | 70/122.2 | 4586 | small-small {'0': 48}
+   0x8e5249e0 ? 0x4 -> 0x373cc2d8 ? 0x4 | 0x8e4fbdb0 35414-35428 24108.8 1.5 15 | 181/122.2 | 3009 | small-small {'0': 15}
+   0x373cc2d8 ? 0x4 -> 0x8e5249e0 ? 0x4 | 0x8e4fbdb0 35318-35333 24098.8 1.6 16 | 231/119.3 | 4021 | small-small {'0': 16}
+   0x373cc2d8 ? 0x4 -> 0x8e5249e0 ? 0x4 | 0x8e4fbdb0 35414-35429 24108.8 1.6 16 | 181/119.3 | 2846 | small-small {'0': 16}
+   0x90471340 M2 0x14 -> 0x9046b088 M2 0x0 | 0x8e4fbdb0 35516-35518 24119.7 0.2 3 | 1649/1887.4 | 2766 | cap-uncommitted cap {'0': 3}
+   0x90471340 M2 0x14 -> 0x9046b088 M2 0x0 | 0x8e4fbdb0 35848-35854 24154.5 0.7 7 | 1638/1887.4 | 3951 | cap-uncommitted cap {'0': 7}
+   0x373d1348 M6 0x14 -> 0x8e519580 ? 0x0 | 0x8e4fbdb0 40247-40254 24610.3 0.7 8 | 43/104.5 | 6547 | small-small {'0': 8}
+   0x373d1348 M6 0x4 -> 0x8e519580 ? 0x0 | 0x8e4fbdb0 40337-40347 24618.8 0.9 11 | 179/104.5 | 5830 | small-small {'0': 11}
+   0x373cdb38 M6 0x4 -> 0x4b9d33e0 M6 0x4 | 0x8e4fbdb0 40452-40467 24628.8 1.2 16 | 218/187.9 | 3305 | small-small {'0': 16}
+   0x373cdb38 M6 0x4 -> 0x4b9d33e0 M6 0x4 | 0x8e4fbdb0 40568-40583 24638.8 1.4 16 | 0/187.9 | 2813 | small-small {'0': 16}
+   0x4b9d33e0 M6 0x4 -> 0x373cdb38 M6 0x4 | 0x8e4fbdb0 40452-40467 24628.8 1.2 16 | 218/201.3 | 3638 | small-small {'0': 16}
+   0x4b9d33e0 M6 0x4 -> 0x373cdb38 M6 0x4 | 0x8e4fbdb0 40568-40583 24638.8 1.4 16 | 0/201.3 | 2945 | small-small {'0': 16}
+   0x4b9d33e0 M6 0x4 -> 0x373cdb38 M6 0x4 | 0x8e4fbdb0 40682-40691 24648.8 0.8 10 | 32/201.3 | 2264 | small-small {'0': 10}
+   0x373caf58 M6 0x4 -> 0x8e519310 ? 0x4 | 0x8e4fbdb0 40682-40684 24648.8 0.2 3 | 263/152.3 | 3706 | small-small {'0': 3}
+   0x8e519310 ? 0x4 -> 0x373caf58 M6 0x4 | 0x8e4fbdb0 40682-40691 24648.8 0.8 10 | 263/148.0 | 3894 | small-small {'0': 10}
+   0x9046a6c8 ? 0x4 -> 0x8e4f64b8 M2 0x12 | 0x8e4fbdb0 41444-41449 24720.4 0.5 6 | 1513/1155.0 | 5899 | small-cap {'0': 6}
+   0x9046a6c8 ? 0x4 -> 0x8e4f64b8 M2 0x5 | 0x8e4fbdb0 41640-41668 24738.8 2.7 29 | 1471/1155.0 | 3929 | small-cap {'0': 29}
+   0x9046a6c8 ? 0x4 -> 0x8e4f64b8 M2 0x5 | 0x8e4fbdb0 41749-41780 24748.8 2.7 32 | 1225/1155.0 | 3196 | small-cap {'0': 32}
+== Q4 engine warns with a capital subject or a capital other
+   29714 23679.6 0x373e5c58 M8 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 679.0
+   30230 23717.7 0x373cdb38 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1382.8
+   30253 23719.4 0x4b9d5870 M1 order 0x12 -> 0x8e505fc8 - class 6 d_m 2458.1
+   31115 23747.3 0x373e5c58 M8 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1118.8
+   33502 23933.6 0x373cdb38 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1093.4
+   34250 23994.7 0x373e9948 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 889.4
+   34361 24005.7 0x8e51e248 M1 order 0x12 -> 0x00000000 - class 0 d_m 0.0
+   36279 24198.6 0x373cdb38 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1043.4
+   36609 24232.0 0x373e9948 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 918.0
+   37334 24308.9 0x373cdb38 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1387.8
+   37587 24335.1 0x90471340 M2 order 0x12 -> 0x373d1348 M6 class 7 d_m 2211.3
+   37656 24342.4 0x373d1348 M6 order 0x12 -> 0x90471340 M2 class 7 d_m 1542.0
+   37843 24362.1 0x90471340 M2 order 0x12 -> 0x9046b088 M2 class 7 d_m 2010.8
+   38677 24448.9 0x373cdb38 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1235.5
+   38866 24468.2 0x4b9cfd08 M2 order 0x12 -> 0x90471340 M2 class 7 d_m 2231.3
+   38991 24481.1 0x90471340 M2 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1811.2
+   39042 24486.7 0x8e4f64b8 M2 order 0x12 -> 0x90471340 M2 class 7 d_m 2117.9
+   39103 24492.8 0x373e9948 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 730.9
+   39320 24514.9 0x373cdb38 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 988.9
+   39328 24515.8 0x4b9cfd08 M2 order 0x12 -> 0x90471340 M2 class 7 d_m 1843.7
+   39385 24522.0 0x373e9948 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 868.4
+   39531 24537.1 0x373e9948 M6 order 0x12 -> 0x4b9d5870 M1 class 7 d_m 1747.1
+   39612 24545.4 0x373cdb38 M6 order 0x12 -> 0x90471340 M2 class 7 d_m 941.2
+   39750 24559.3 0x4b9cfd08 M2 order 0x12 -> 0x8e4fbdb0 - class 18 d_m 6943.7
+   39852 24569.8 0x4b9d5870 M1 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 3539.1
+   39969 24581.4 0x373e9948 M6 order 0x12 -> 0x4b9cfd08 M2 class 7 d_m 1588.0
+   41239 24701.0 0x8e4f64b8 M2 order 0x12 -> 0x8e4fbdb0 - class 18 d_m 6647.9
+   42519 24807.0 0x4b9d5870 M1 order 0x12 -> 0x8e4fbdb0 - class 18 d_m 6855.2
+== Q4 emg=1 trace frames per traced capital: {'0x4b9cfd08': (52, {'0x4': 52}, (37212, 37263))}
+== Q4 min capital-capital centre distance from E rows (upper bound, 1 row/pair/s) and from two traced positions
+   0x8e4f64b8 M2 0x90471340 M2 min d 1556 m frame 39145 game 24497.1 orders 0x12/0x12 verdict pass_a_avoid | rA+rB 1846
+   0x4b9cfd08 M2 0x90471340 M2 min d 1811 m frame 38983 game 24480.3 orders 0x12/0x14 verdict pass_a_avoid | rA+rB 1846
+   0x9046b088 M2 0x90471340 M2 min d 1962 m frame 37873 game 24365.3 orders 0x12/0x14 verdict pass_a_avoid | rA+rB 1510
+   0x4b9cfd08 M2 0x8e51e248 M1 min d 2444 m frame 34407 game 24010.3 orders 0x12/0x4 verdict pass_a_avoid | rA+rB 2114
+   0x4b9cfd08 M2 0x4b9d5870 M1 min d 2603 m frame 40139 game 24599.1 orders 0x12/0x5 verdict pass_a_avoid | rA+rB 2114
+   0x4b9cfd08 M2 0x9046b088 M2 min d 2690 m frame 36932 game 24266.9 orders 0x14/0x4 verdict pass_not_member | rA+rB 1846
+   0x8e4f64b8 M2 0x9046b088 M2 min d 2920 m frame 38155 game 24395.3 orders 0x0/0x14 verdict pass_not_fresh | rA+rB 1846
+   0x8e4f64b8 M2 0x8e51e248 M1 min d 2964 m frame 36597 game 24230.8 orders 0x14/0x4 verdict pass_not_member | rA+rB 2114
+   0x4b9cfd08 M2 0x8e4f64b8 M2 min d 3402 m frame 39228 game 24505.5 orders 0x0/0x4 verdict pass_not_fresh | rA+rB 2183
+   0x4b9d5870 M1 0x90471340 M2 min d 3572 m frame 38443 game 24425.0 orders 0x14/0x14 verdict pass_not_member | rA+rB 1777
+   0x4b9d5870 M1 0x8e51e248 M1 min d 3725 m frame 35988 game 24168.6 orders 0x14/0x4 verdict pass_not_member | rA+rB 2044
+   0x4b9d5870 M1 0x9046b088 M2 min d 4694 m frame 37627 game 24339.4 orders 0x14/0x14 verdict pass_not_member | rA+rB 1777
+   0x4b9d5870 M1 0x8e4f64b8 M2 min d 4924 m frame 34360 game 24005.2 orders 0x14/0x14 verdict pass_not_fresh | rA+rB 2114
+   traced pair 0x4b9cfd08 0x4b9d5870 min 2602 m frame 40135
+   traced pair 0x4b9d5870 0x8e51e248 min 33030 m frame 40269
+== Q4 small subjects warned against a capital, with that capital lane rows (s/a) within +-30 frames
+   29714 0x373e5c58 M8 order 0x12 vs 0x4b9cfd08 M2 d 679.0 | capital lane rows near: -
+   30230 0x373cdb38 M6 order 0x12 vs 0x4b9cfd08 M2 d 1382.8 | capital lane rows near: -
+   31115 0x373e5c58 M8 order 0x12 vs 0x4b9cfd08 M2 d 1118.8 | capital lane rows near: -
+   33502 0x373cdb38 M6 order 0x12 vs 0x4b9cfd08 M2 d 1093.4 | capital lane rows near: -
+   34250 0x373e9948 M6 order 0x12 vs 0x4b9cfd08 M2 d 889.4 | capital lane rows near: -
+   36279 0x373cdb38 M6 order 0x12 vs 0x4b9cfd08 M2 d 1043.4 | capital lane rows near: -
+   36609 0x373e9948 M6 order 0x12 vs 0x4b9cfd08 M2 d 918.0 | capital lane rows near: -
+   37334 0x373cdb38 M6 order 0x12 vs 0x4b9cfd08 M2 d 1387.8 | capital lane rows near: -
+   37656 0x373d1348 M6 order 0x12 vs 0x90471340 M2 d 1542.0 | capital lane rows near: -
+   38677 0x373cdb38 M6 order 0x12 vs 0x4b9cfd08 M2 d 1235.5 | capital lane rows near: -
+   39103 0x373e9948 M6 order 0x12 vs 0x4b9cfd08 M2 d 730.9 | capital lane rows near: -
+   39320 0x373cdb38 M6 order 0x12 vs 0x4b9cfd08 M2 d 988.9 | capital lane rows near: -
+   39385 0x373e9948 M6 order 0x12 vs 0x4b9cfd08 M2 d 868.4 | capital lane rows near: -
+   39531 0x373e9948 M6 order 0x12 vs 0x4b9d5870 M1 d 1747.1 | capital lane rows near: -
+   39612 0x373cdb38 M6 order 0x12 vs 0x90471340 M2 d 941.2 | capital lane rows near: -
+   39969 0x373e9948 M6 order 0x12 vs 0x4b9cfd08 M2 d 1588.0 | capital lane rows near: -
+   small-cap detours near a gate whose obstacle capital had lane rows +-30 frames: 0 of 118
