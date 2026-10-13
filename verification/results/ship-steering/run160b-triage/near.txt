@@ -1,0 +1,135 @@
+== Q4 detours (all) by pair class: {'small-small': 2273, 'small-cap': 1614, 'cap-small': 148, 'cap-uncommitted cap': 1358}
+== Q4 detours within 6 r_gate of a gate: rows 1332 by (gate, pair class): {('0x8e1ef948', 'small-small'): 504, ('0x8e1edfb0', 'small-small'): 241, ('0x8e1ef948', 'small-cap'): 105, ('0x8e1f1550', 'small-small'): 125, ('0x8e1edfb0', 'small-cap'): 357}
+   episodes (obj class order -> obstacle class order | gate frames game_s dur_s rows | miss min/C | |x-G| min m | kinds)
+   0x8e215728 ? 0x4 -> 0x365a37e0 ? 0x5 | 0x8e1ef948 10743-10751 22964.4 0.5 9 | 57/75.7 | 2150 | small-small {'0': 9}
+   0x8e1e92e8 ? 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 11258-11273 22995.9 0.9 16 | 1569/1225.8 | 3591 | small-small {'3': 16}
+   0x365c11f8 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 12479-12510 23066.8 1.8 32 | 1187/1201.2 | 4146 | small-small {'3': 32}
+   0x365c11f8 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 12636-12667 23076.0 1.9 32 | 1542/1201.2 | 3198 | small-small {'3': 32}
+   0x365c11f8 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 12789-12820 23085.9 2.1 32 | 1541/1201.2 | 2242 | small-small {'3': 32}
+   0x365a4c98 M6 0x4 -> 0x365ad3e0 M6 0x12 | 0x8e1ef948 13314-13332 23118.9 1.1 19 | 174/177.4 | 1809 | small-small {'0': 19}
+   0x365a4c98 M6 0x4 -> 0x8e1da2a8 M6 0x5 | 0x8e1ef948 13333-13345 23120.0 0.7 13 | 108/187.9 | 1759 | small-small {'0': 13}
+   0x365bd028 M8 0x4 -> 0x365bed68 TS 0x4 | 0x8e1ef948 13507-13515 23130.5 0.5 9 | 64/108.3 | 2249 | small-small {'0': 9}
+   0x365bed68 TS 0x4 -> 0x365bd028 M8 0x4 | 0x8e1ef948 13507-13518 23130.5 0.7 12 | 64/111.2 | 5342 | small-small {'0': 12}
+   0x365b1208 M6 0x4 -> 0x365bd028 M8 0x4 | 0x8e1ef948 13513-13519 23130.9 0.4 7 | 110/157.2 | 2127 | small-small {'0': 7}
+   0x365bd028 M8 0x4 -> 0x365b1208 M6 0x4 | 0x8e1ef948 13516-13519 23131.1 0.2 4 | 110/139.0 | 2231 | small-small {'0': 4}
+   0x365ad3e0 M6 0x4 -> 0x365bed68 TS 0x4 | 0x8e1ef948 13612-13621 23137.0 0.6 10 | 41/177.0 | 2462 | small-small {'0': 10}
+   0x365bed68 TS 0x4 -> 0x365ad3e0 M6 0x4 | 0x8e1ef948 13612-13621 23137.0 0.6 10 | 41/164.5 | 4407 | small-small {'0': 10}
+   0x8e2122c0 TS 0x4 -> 0x8e21bb18 TS 0x4 | 0x8e1ef948 29109-29167 23834.9 2.8 58 | 52/155.7 | 5434 | small-small {'0': 58}
+   0x8e2122c0 TS 0x4 -> 0x8e21bb18 TS 0x4 | 0x8e1ef948 29344-29360 23846.2 0.8 16 | 144/155.7 | 4098 | small-small {'0': 16}
+   0x8e21bb18 TS 0x4 -> 0x8e2122c0 TS 0x4 | 0x8e1ef948 29344-29360 23846.2 0.8 16 | 274/163.8 | 4365 | small-small {'0': 16}
+   0x8e21ce98 TS 0x4 -> 0x8e2092f0 TS 0x4 | 0x8e1ef948 34545-34618 24094.3 3.5 64 | 117/122.2 | 4637 | small-small {'0': 64}
+   0x8e21ce98 TS 0x4 -> 0x8e2092f0 TS 0x4 | 0x8e1ef948 34800-34816 24106.2 0.7 16 | 143/122.2 | 3386 | small-small {'0': 16}
+   0x8e2092f0 TS 0x4 -> 0x8e21ce98 TS 0x4 | 0x8e1ef948 34800-34817 24106.2 0.8 16 | 143/119.3 | 3413 | small-small {'0': 16}
+   0x8e1c8440 ? 0x14 -> 0x365a5658 ? 0x0 | 0x8e1edfb0 35867-35868 24157.4 0.0 2 | 51/56.8 | 2737 | small-small {'0': 2}
+   0x8e1d1548 M6 0x14 -> 0x8e1d6a98 M6 0x0 | 0x8e1ef948 38997-39010 24315.1 1.0 14 | 143/185.6 | 2715 | small-small {'0': 14}
+   0x8e1d1548 M6 0x14 -> 0x8e1d6a98 M6 0x12 | 0x8e1ef948 39087-39110 24320.5 1.2 24 | 362/185.6 | 3122 | small-small {'0': 24}
+   0x8e1d5d30 M6 0x14 -> 0x8e1dc258 M1 0x0 | 0x8e1ef948 39426-39457 24339.9 1.8 32 | 964/1118.8 | 2472 | small-cap {'0': 32}
+   0x8e1e1dc0 ? 0x4 -> 0x8e1dd710 TS 0x5 | 0x8e1ef948 40271-40297 24391.5 1.6 27 | 117/146.0 | 2437 | small-small {'0': 27}
+   0xa908ae30 M6 0x14 -> 0xa908da10 M7 0x12 | 0x8e1ef948 42151-42251 24530.9 7.8 64 | 288/880.7 | 3224 | small-cap {'0': 64}
+   0xa908ae30 M6 0x14 -> 0xa908da10 M7 0x12 | 0x8e1ef948 42349-42353 24546.3 0.3 5 | 723/880.7 | 5044 | small-cap {'0': 5}
+   0xa9079718 M6 0x14 -> 0xa90936b0 M6 0x12 | 0x8e1edfb0 43720-43756 24616.6 0.3 12 | 142/228.2 | 2842 | small-small {'0': 12}
+   0x8e1c7330 ? 0x15 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44225-44237 24642.6 1.0 13 | 1075/1150.6 | 3272 | small-small {'3': 13}
+   0x8e1c7330 ? 0x15 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44351-44364 24652.6 1.1 14 | 1447/1150.6 | 2282 | small-small {'3': 14}
+   0x8e1c7330 ? 0x15 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44470-44485 24662.5 1.2 16 | 1430/1150.6 | 1701 | small-small {'3': 16}
+   0x8e1c8440 ? 0x14 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44227-44234 24642.7 0.6 8 | 1011/1153.3 | 3329 | small-small {'3': 8}
+   0x8e1c8440 ? 0x14 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44351-44368 24652.6 1.5 18 | 1448/1153.3 | 2503 | small-small {'3': 18}
+   0x8e1c8440 ? 0x14 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44470-44485 24662.5 1.2 16 | 1450/1153.3 | 1818 | small-small {'3': 16}
+   0x8e1c8440 ? 0x14 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44601-44632 24672.9 2.5 32 | 1336/1153.3 | 1429 | small-small {'3': 32}
+   0x8e1c8440 ? 0x14 -> 0x8e1f1550 ? 0x0 | 0x8e1f1550 44849-44856 24692.6 0.5 8 | 1595/1153.3 | 1794 | small-small {'3': 8}
+   0x8e1c6d18 M8 0x4 -> 0x8e1d4ae8 M6 0x12 | 0x8e1edfb0 54419-54421 25133.8 0.2 3 | 202/139.0 | 2120 | small-small {'0': 3}
+   0x8e1d4ae8 M6 0x4 -> 0x8e1d3768 M6 0x4 | 0x8e1edfb0 54564-54564 25145.6 0.0 1 | 181/210.5 | 2387 | small-small {'0': 1}
+   0x8e1d3768 M6 0x4 -> 0x8e1d4ae8 M6 0x4 | 0x8e1edfb0 54564-54564 25145.6 0.0 1 | 181/207.7 | 3183 | small-small {'0': 1}
+   0x8e1d1548 M6 0x4 -> 0x8e1d7ce0 M6 0x5 | 0x8e1edfb0 54683-54697 25155.5 1.2 15 | 77/212.5 | 1787 | small-small {'0': 15}
+   0x8e1d1f08 ? 0x15 -> 0x8e215fb0 ? 0x0 | 0x8e1ef948 55052-55054 25185.0 0.1 3 | 24/45.5 | 2368 | small-small {'0': 3}
+   0xa9080258 M6 0x4 -> 0x8e1dc258 M1 0x12 | 0x8e1edfb0 56583-56605 25265.8 1.7 23 | 2166/1143.4 | 5496 | small-cap {'0': 23}
+   0xa9085ef8 ? 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 56737-56761 25277.9 1.9 25 | 944/1146.0 | 4755 | small-small {'3': 25}
+   0xa9088868 ? 0x4 -> 0x8e1dc258 M1 0x1f | 0x8e1edfb0 57313-57328 25324.2 1.2 16 | 1771/1063.6 | 6398 | small-cap {'0': 16}
+   0xa9088868 ? 0x4 -> 0x8e1dc258 M1 0x1f | 0x8e1edfb0 57438-57447 25334.2 0.8 10 | 1765/1063.6 | 5054 | small-cap {'0': 10}
+   0xa90810f8 M6 0x4 -> 0x8e1dc258 M1 0x1f | 0x8e1edfb0 57438-57448 25334.2 0.8 11 | 1952/1143.4 | 6207 | small-cap {'0': 11}
+   0xa90810f8 M6 0x4 -> 0x8e1dc258 M1 0x5 | 0x8e1edfb0 57559-57574 25344.2 1.2 16 | 1872/1143.4 | 5571 | small-cap {'0': 16}
+   0xa90810f8 M6 0x4 -> 0x8e1dc258 M1 0x5 | 0x8e1edfb0 57684-57699 25354.2 1.2 16 | 1814/1143.4 | 4705 | small-cap {'0': 16}
+   0xa90810f8 M6 0x4 -> 0x8e1dc258 M1 0x8 | 0x8e1edfb0 57810-57815 25365.5 0.4 6 | 1804/1143.4 | 3974 | small-cap {'0': 6}
+   0xa9083f48 ? 0x4 -> 0x8e1dc258 M1 0x5 | 0x8e1edfb0 57795-57820 25364.2 2.1 26 | 1556/1105.8 | 6014 | small-cap {'0': 26}
+   0x8e1d0300 ? 0x15 -> 0x8e1cf1f0 ? 0x12 | 0x8e1edfb0 58465-58491 25414.6 1.9 21 | 2/136.3 | 6449 | small-small {'0': 21}
+   0xa90936b0 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 58604-58647 25424.6 3.0 10 | 964/1241.4 | 3189 | small-small {'3': 10}
+   0xa90936b0 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 59005-59011 25454.2 0.5 7 | 1504/1241.4 | 1587 | small-small {'3': 7}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 58636-58648 25426.9 0.8 13 | 1110/1241.4 | 4364 | small-small {'3': 13}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 58740-58760 25434.2 1.5 21 | 1752/1241.4 | 3427 | small-small {'3': 21}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 58881-58907 25444.2 1.8 27 | 1729/1241.4 | 2496 | small-small {'3': 27}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 59005-59012 25454.2 0.6 8 | 1684/1241.4 | 2073 | small-small {'3': 8}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 59145-59154 25465.0 0.6 10 | 1950/1241.4 | 1981 | small-small {'3': 10}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 59265-59278 25474.2 1.0 14 | 1987/1241.4 | 2005 | small-small {'3': 14}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 59401-59432 25484.2 1.9 32 | 1778/1241.4 | 1936 | small-small {'3': 32}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 59558-59589 25494.1 2.0 32 | 1546/1241.4 | 1715 | small-small {'3': 32}
+   0x8e1e1c88 M6 0x14 -> 0x8e1edfb0 ? 0x0 | 0x8e1edfb0 59714-59717 25504.2 0.2 4 | 1508/1241.4 | 1508 | small-small {'3': 4}
+   0xa9090fb0 M6 0x4 -> 0xa907b0b0 M6 0x12 | 0x8e1ef948 58639-58647 25427.1 0.6 9 | 177/228.2 | 3238 | small-small {'0': 9}
+   0xa9079718 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 58754-58760 25435.2 0.4 7 | 1004/1241.4 | 3341 | small-small {'3': 7}
+   0xa9079718 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 58902-58906 25445.6 0.3 5 | 1566/1241.4 | 2126 | small-small {'3': 5}
+   0xa9079718 M6 0x14 -> 0x8e1ef948 ? 0x0 | 0x8e1ef948 59005-59011 25454.2 0.5 7 | 1597/1241.4 | 1604 | small-small {'3': 7}
+   0xa9090fb0 M6 0x4 -> 0x8e1c9418 M1 0x21 | 0x8e1ef948 58757-58760 25435.5 0.2 4 | 1108/1159.1 | 2570 | small-cap {'0': 4}
+   0x336f5280 M6 0x14 -> 0x8e212188 M2 0x4 | 0x8e1edfb0 59005-59012 25454.2 0.6 8 | 290/1188.1 | 4414 | small-cap {'0': 8}
+   0xa908e778 M6 0x14 -> 0x8e212188 M2 0x4 | 0x8e1edfb0 59005-59008 25454.2 0.2 2 | 1920/1221.2 | 4248 | small-cap {'0': 2}
+   0xa908e778 M6 0x14 -> 0x8e212188 M2 0x4 | 0x8e1edfb0 59143-59154 25464.8 0.8 12 | 2243/1221.2 | 4209 | small-cap {'0': 12}
+   0x8e1e1c88 M6 0x14 -> 0x8e212188 M2 0x4 | 0x8e1edfb0 59135-59144 25464.1 0.7 10 | 656/1228.4 | 1982 | small-cap {'0': 10}
+   0x8e1e1c88 M6 0x14 -> 0x8e212188 M2 0x5 | 0x8e1edfb0 59311-59328 25477.6 1.2 18 | 490/1228.4 | 1988 | small-cap {'0': 18}
+   0x336f53b8 M6 0x4 -> 0xa9091e50 M7 0x4 | 0x8e1edfb0 59826-59914 25510.8 5.1 58 | 214/874.7 | 5048 | small-cap {'0': 58}
+   0x336f53b8 M6 0x4 -> 0xa9091e50 M7 0x4 | 0x8e1edfb0 60227-60244 25534.2 1.0 18 | 886/874.7 | 3953 | small-cap {'0': 18}
+   0x336f53b8 M6 0x4 -> 0xa9091e50 M7 0x1f | 0x8e1edfb0 60323-60326 25539.7 0.2 4 | 961/874.7 | 3537 | small-cap {'0': 4}
+   0xa908e778 M6 0x4 -> 0xa9091e50 M7 0x4 | 0x8e1edfb0 59912-59913 25515.8 0.1 2 | 873/907.9 | 2923 | small-cap {'0': 2}
+   0xa908e778 M6 0x4 -> 0xa9091e50 M7 0x4 | 0x8e1edfb0 60056-60082 25524.2 1.5 27 | 1700/907.9 | 2282 | small-cap {'0': 27}
+   0x336f5280 M6 0x4 -> 0xa9091e50 M7 0x4 | 0x8e1edfb0 60062-60066 25524.5 0.2 5 | 780/874.8 | 4075 | small-cap {'0': 5}
+   0x8e1cd720 TS 0x4 -> 0xa9091e50 M7 0x1f | 0x8e1edfb0 60427-60458 25545.5 1.8 32 | 881/886.2 | 5196 | small-cap {'0': 32}
+   0x8e1cd720 TS 0x4 -> 0xa9091e50 M7 0x5 | 0x8e1edfb0 60578-60609 25554.1 1.7 32 | 1438/886.2 | 4366 | small-cap {'0': 32}
+   0x8e1cd720 TS 0x4 -> 0xa9091e50 M7 0x8 | 0x8e1edfb0 60817-60821 25567.5 0.2 5 | 1614/886.2 | 3688 | small-cap {'0': 5}
+== Q4 engine warns with a capital subject or a capital other
+   38245 24274.3 0x8e1d0090 M2 order 0x12 -> 0x8e1ef948 - class 18 d_m 1138.1
+   39469 24342.4 0x8e1dc258 M1 order 0x12 -> 0x8e1d1548 M6 class 7 d_m 3271.4
+   40066 24378.9 0x8e1dc258 M1 order 0x12 -> 0x8e1d07e0 M6 class 7 d_m 4034.9
+   40439 24402.7 0x8e212188 M2 order 0x12 -> 0x8e1ef948 - class 18 d_m 1599.5
+   41239 24459.1 0x8e223c48 M1 order 0x12 -> 0x8e1ef948 - class 18 d_m 1131.4
+   42061 24523.8 0xa908da10 M7 order 0x12 -> 0x8e1ef948 - class 18 d_m 1121.6
+   42281 24541.1 0xa908da10 M7 order 0x12 -> 0xa908ae30 M6 class 7 d_m 749.6
+   42965 24596.0 0xa9091e50 M7 order 0x12 -> 0x8e1ef948 - class 18 d_m 1121.4
+   45408 24733.6 0x8e1dc258 M1 order 0x12 -> 0x8e1f4e98 - class 6 d_m 3938.6
+   46270 24785.7 0x8e212188 M2 order 0x12 -> 0x8e1dc258 M1 class 7 d_m 2322.6
+   46329 24789.1 0x8e1dc258 M1 order 0x12 -> 0x8e212188 M2 class 7 d_m 2109.6
+   46700 24812.3 0x8e223c48 M1 order 0x12 -> 0xa908da10 M7 class 7 d_m 2217.4
+   47649 24860.8 0x8e223c48 M1 order 0x12 -> 0x8e1f4e98 - class 6 d_m 3534.2
+   47689 24862.7 0xa908da10 M7 order 0x12 -> 0x8e1f4e98 - class 6 d_m 4047.8
+   48489 24900.8 0x8e223c48 M1 order 0x12 -> 0x8e212188 M2 class 7 d_m 3499.6
+   49009 24925.4 0xa908da10 M7 order 0x12 -> 0x8e1dc258 M1 class 7 d_m 2820.0
+   53963 25118.3 0x8e212188 M2 order 0x12 -> 0x00000000 - class 0 d_m 0.0
+   56154 25233.1 0x8e223c48 M1 order 0x12 -> 0xa908da10 M7 class 7 d_m 2321.3
+   56248 25240.3 0x8e1dc258 M1 order 0x12 -> 0x8e223c48 M1 class 7 d_m 2684.7
+   56670 25272.6 0xa908da10 M7 order 0x12 -> 0x8e1e1c88 M6 class 7 d_m 1951.2
+   57426 25333.3 0x8e212188 M2 order 0x12 -> 0x8e1dc258 M1 class 7 d_m 3442.0
+   57500 25339.2 0x8e223c48 M1 order 0x12 -> 0x8e212188 M2 class 7 d_m 2329.7
+   57843 25368.0 0x8e1e1c88 M6 order 0x12 -> 0xa908da10 M7 class 7 d_m 475.6
+   57930 25374.4 0xa908da10 M7 order 0x12 -> 0x00000000 - class 0 d_m 0.0
+   58601 25424.4 0x8e1e1c88 M6 order 0x12 -> 0x8e223c48 M1 class 7 d_m 1112.1
+   58857 25442.5 0x8e1c9418 M1 order 0x12 -> 0xa90936b0 M6 class 7 d_m 872.6
+   58874 25443.7 0x336f5280 M6 order 0x12 -> 0x8e223c48 M1 class 7 d_m 1081.3
+   59026 25455.7 0x336f5280 M6 order 0x12 -> 0x8e212188 M2 class 7 d_m 2122.6
+   59313 25477.7 0x336f53b8 M6 order 0x12 -> 0xa9091e50 M7 class 7 d_m 673.0
+== Q4 emg=1 trace frames per traced capital: {}
+== Q4 min capital-capital centre distance from E rows (upper bound, 1 row/pair/s) and from two traced positions
+   0x8e223c48 M1 0xa908da10 M7 min d 1311 m frame 58002 game 25379.7 orders 0x12/0x12 verdict pass_a_avoid | rA+rB 1782
+   0x8e1dc258 M1 0x8e223c48 M1 min d 1656 m frame 56430 game 25253.8 orders 0x12/0x12 verdict pass_a_avoid | rA+rB 2044
+   0x8e212188 M2 0x8e223c48 M1 min d 1689 m frame 57683 game 25354.1 orders 0x12/0x12 verdict pass_a_avoid | rA+rB 2114
+   0x8e1dc258 M1 0x8e212188 M2 min d 2034 m frame 46401 game 24793.1 orders 0x12/0x12 verdict pass_a_avoid | rA+rB 2114
+   0x8e1dc258 M1 0xa908da10 M7 min d 2036 m frame 49185 game 24933.6 orders 0x12/0x14 verdict pass_a_avoid | rA+rB 1782
+   0xa908da10 M7 0xa9091e50 M7 min d 2959 m frame 60793 game 25566.1 orders 0x0/0x5 verdict pass_not_fresh | rA+rB 1538
+   0x8e223c48 M1 0xa9091e50 M7 min d 3030 m frame 58965 game 25450.7 orders 0x14/0x4 verdict pass_not_member | rA+rB 1800
+   0x8e212188 M2 0xa9091e50 M7 min d 3133 m frame 59176 game 25467.3 orders 0x14/0x5 verdict pass_not_member | rA+rB 1870
+   0x8e212188 M2 0xa908da10 M7 min d 4094 m frame 57694 game 25355.0 orders 0x12/0x14 verdict pass_a_avoid | rA+rB 1851
+   0x8e1d0090 M2 0x8e1dc258 M1 min d 5822 m frame 45221 game 24721.4 orders 0x14/0x4 verdict pass_not_member | rA+rB 2114
+   traced pair 0x8e1c9418 0xa9091e50 min 84379 m frame 59785
+   traced pair 0x8e1d65b8 0x8e1dd368 min 23383 m frame 12855
+   traced pair 0x8e223c48 0xa9091e50 min 3030 m frame 58965
+== Q4 small subjects warned against a capital, with that capital lane rows (s/a) within +-30 frames
+   57843 0x8e1e1c88 M6 order 0x12 vs 0xa908da10 M7 d 475.6 | capital lane rows near: -
+   58601 0x8e1e1c88 M6 order 0x12 vs 0x8e223c48 M1 d 1112.1 | capital lane rows near: {'s': 4}
+   58874 0x336f5280 M6 order 0x12 vs 0x8e223c48 M1 d 1081.3 | capital lane rows near: {'s': 4}
+   59026 0x336f5280 M6 order 0x12 vs 0x8e212188 M2 d 2122.6 | capital lane rows near: {'s': 2}
+   59313 0x336f53b8 M6 order 0x12 vs 0xa9091e50 M7 d 673.0 | capital lane rows near: -
+   small-cap detours near a gate whose obstacle capital had lane rows +-30 frames: 230 of 462

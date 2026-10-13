@@ -1,0 +1,12 @@
+0x8e1c4750 M4 turn 682 frames 54316-55085 tgts {'0x00000000': 406, '0x8e1edfb0': 364} | leader None orders in window - | warns ['54379:18/-:0x8e1edfb0', '54668:18/-:0x8e1edfb0', '54811:18/-:0x8e1edfb0']
+0x365c11f8 M6 turn 677 frames 12932-13913 tgts {'0x8e1ef948': 522, '0x00000000': 460} | leader None orders in window - | warns ['13056:18/-:0x8e1ef948', '13500:7/M6:0x365b1208']
+0x8e1d4ae8 M6 turn 576 frames 53821-54788 tgts {'0x8e1edfb0': 405, '0x00000000': 387} | leader None orders in window - | warns ['54375:18/-:0x8e1edfb0', '54584:7/M6:0x8e1d6a98']
+0xa908e778 M6 turn 547 frames 56317-57085 tgts {'0x8e223c48': 707, '0x00000000': 62} | leader 0x8e223c48 orders in window {'0x12': 189, '0x4': 217} | warns -
+0x8e1e1c88 M6 turn 544 frames 57648-58420 tgts {'0x8e223c48': 527, '0x00000000': 246} | leader 0x8e223c48 orders in window {'0x12': 301, '0x4': 123} | warns ['57843:7/M7:0xa908da10']
+0x8e1c55f0 M6 turn 529 frames 56269-57039 tgts {'0x8e223c48': 706, '0x00000000': 65} | leader 0x8e223c48 orders in window {'0x12': 205, '0x4': 191} | warns -
+0x336f5280 M6 turn 468 frames 58928-59778 tgts {'0x8e223c48': 559, '0x00000000': 292} | leader 0x8e223c48 orders in window {'0x4': 51, '0x1f': 200, '0x5': 88} | warns ['59026:7/M2:0x8e212188']
+0x365ad3e0 M6 turn 434 frames 13018-13890 tgts {'0x8e1ef948': 637, '0x00000000': 236} | leader None orders in window - | warns ['13229:7/M6:0x365c11f8']
+0xa908ae30 M6 turn 422 frames 59587-60612 tgts {'0x8e1edfb0': 764, '0x8e223c48': 138} | leader 0x8e223c48 orders in window {'0x5': 34} | warns ['60364:7/M6:0x336f5280']
+0x336f53b8 M6 turn 388 frames 58923-59771 tgts {'0x8e223c48': 648, '0x00000000': 201} | leader 0x8e223c48 orders in window {'0x4': 53, '0x1f': 200, '0x5': 88} | warns ['59313:7/M7:0xa9091e50']
+0x8e1d6a98 M6 turn 377 frames 52657-53395 tgts {'0x8e1d0090': 669, '0x00000000': 70} | leader 0x8e1d0090 orders in window {'0x4': 103} | warns -
+0x365a5da8 TP turn 362 frames 13112-14097 tgts {'0x8e1fa520': 986} | leader None orders in window - | warns ['13091:5/-:0x8e1fa520']

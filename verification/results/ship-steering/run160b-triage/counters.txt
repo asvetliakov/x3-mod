@@ -1,0 +1,43 @@
+lane_apart final 347 rises 3 first..last frame (57193, 57438) [(57193, 8), (57313, 228), (57438, 111)]
+lane_seq_lat final 26196 rises 108 first..last frame (41592, 61355) 
+lane_seq_cross final 347 rises 3 first..last frame (57193, 57438) [(57193, 8), (57313, 228), (57438, 111)]
+lane_seq_along final - rises 0 first..last frame - []
+lane_capped final - rises 0 first..last frame - []
+lane_cross final - rises 0 first..last frame - []
+lane_follow final - rises 0 first..last frame - []
+lane_exempt final 1033 rises 4 first..last frame (59885, 60403) 
+gate_capital_join final 11 rises 10 first..last frame (11427, 58199) [(11427, 1), (15539, 1), (17179, 1), (53016, 1), (56043, 2), (56689, 1), (56816, 1), (57193, 1), (58064, 1), (58199, 1)]
+gate_capital_fallback_pred final 2 rises 2 first..last frame (56816, 58199) [(56816, 1), (58199, 1)]
+gate_capital_fallback_past_x final 2 rises 1 first..last frame (59885, 59885) [(59885, 2)]
+gate_capital_slow_join final - rises 0 first..last frame - []
+gate_capital_unlatch final - rises 0 first..last frame - []
+gate_capital_not_kept_mode final 4 rises 3 first..last frame (57313, 60403) [(57313, 1), (59135, 1), (60403, 2)]
+gate_capital_slowed final 3 rises 3 first..last frame (56298, 58064) [(56298, 1), (56689, 1), (58064, 1)]
+gate_capital_kept final 0 rises 10 first..last frame (12636, 59401) [(12636, 1), (12789, -1), (16617, 1), (16792, -1), (18360, 1), (18557, -1), (53900, 1), (54011, -1), (59265, 1), (59401, -1)]
+join_slots_dropped final 11 rises 10 first..last frame (12636, 59265) [(12636, 1), (16617, 1), (18360, 1), (53900, 1), (56166, 1), (56298, 1), (57438, 2), (57559, 1), (59135, 1), (59265, 1)]
+e_suppressed_lane final 6496 rises 25 first..last frame (56043, 60757) 
+gate_rows_dropped sum 4125.0 nonzero intervals 38 frames (39365, 59558)
+   window 0 38000 0.0
+   window 38000 52900 40.0
+   window 52900 61300 4085.0
+   window 61300 99999 0.0
+emergency sum 1062.0 nonzero intervals 22 frames (4902, 60227)
+   window 0 38000 32.0
+   window 38000 52900 898.0
+   window 52900 61300 132.0
+   window 61300 99999 0.0
+unresolved sum 2302.0 nonzero intervals 41 frames (4902, 60227)
+   window 0 38000 108.0
+   window 38000 52900 1654.0
+   window 52900 61300 540.0
+   window 61300 99999 0.0
+conflict_episodes sum 301.0 nonzero intervals 133 frames (3368, 60949)
+   window 0 38000 45.0
+   window 38000 52900 166.0
+   window 52900 61300 90.0
+   window 61300 99999 0.0
+gate_capital_detour_write sum 9876.0 nonzero intervals 45 frames (56166, 63098)
+   window 0 38000 0.0
+   window 38000 52900 0.0
+   window 52900 61300 7599.0
+   window 61300 99999 2277.0

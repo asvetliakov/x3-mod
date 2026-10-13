@@ -1,0 +1,63 @@
+pre rows 137 entries 146 subjects 67 subject order {'0x5': 83, '0x0': 52, '0x1e': 2}
+pre rows matching a warn row (same frame,obj) 0 of warn rows 51
+== all entries 146
+ other class/code {('5', '-'): 10, ('18', '-'): 78, ('6', '-'): 14, ('7', 'M6'): 20, ('7', 'TS'): 6, ('7', 'M1'): 10, ('7', 'M2'): 4, ('7', 'M7'): 4}
+ other order {'0x0': 104, '0x12': 12, '0x4': 9, '0x15': 3, '0x14': 15, '0x5': 1, '0x1f': 2} leader!=0 33 member!=0 0 other==subject tgt 84
+ e_verdict {'-': 7, 'pass_not_resolved': 107, 'pass_not_fresh': 19, 'pass_not_member': 11, 'pass_not_transient': 2}
+ subj_order/other class/verdict [(('0x5', '18', 'pass_not_resolved'), 57), (('0x0', '7', 'pass_not_resolved'), 16), (('0x0', '7', 'pass_not_fresh'), 13), (('0x5', '6', 'pass_not_resolved'), 11), (('0x0', '18', 'pass_not_resolved'), 10), (('0x0', '7', 'pass_not_member'), 10), (('0x5', '5', 'pass_not_resolved'), 8), (('0x5', '18', '-'), 5), (('0x0', '18', 'pass_not_fresh'), 4), (('0x0', '6', 'pass_not_resolved'), 3), (('0x1e', '18', 'pass_not_fresh'), 2), (('0x0', '7', 'pass_not_transient'), 2)]
+== matched to a 0x12 warn entries 0
+ other class/code {}
+ other order {} leader!=0 0 member!=0 0 other==subject tgt 0
+ e_verdict {}
+ subj_order/other class/verdict []
+  cap 12627 0x8e1d65b8 0x5 - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:5204:1105:pass_not_resolved
+  cap 16486 0x8e1dd368 0x5 - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:5066:1105:pass_not_resolved
+  cap 18179 0x8e1e9078 0x5 - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:5245:1105:pass_not_resolved
+  cap 38244 0x8e1d0090 0x0 - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1130:1105:pass_not_fresh
+  cap 39364 0x8e1dc258 0x0 - 0x8e1d1548:7:M6:0x14:0x8e1d0090:0x00000000:3223:81:pass_not_fresh
+  cap 39364 0x8e1dc258 0x0 - 0x8e1d4ae8:7:M6:0x14:0x8e1d0090:0x00000000:2833:86:pass_not_fresh
+  cap 39364 0x8e1dc258 0x0 - 0x8e1d6a98:7:M6:0x14:0x8e1d0090:0x00000000:3355:64:pass_not_fresh
+  cap 39364 0x8e1dc258 0x0 - 0x8e1d07e0:7:M6:0x14:0x8e1d0090:0x00000000:2636:64:pass_not_fresh
+  cap 39364 0x8e1dc258 0x0 - 0x8e1d7ce0:7:M6:0x14:0x8e1d0090:0x00000000:2155:91:pass_not_fresh
+  cap 40029 0x8e1dc258 0x0 - 0x8e1d07e0:7:M6:0x14:0x8e1d0090:0x00000000:3970:64:pass_not_fresh
+  cap 40029 0x8e1dc258 0x0 - 0x8e1d5d30:7:M6:0x14:0x8e1d0090:0x00000000:1967:64:pass_not_fresh
+  cap 40366 0x8e212188 0x0 - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1121:1105:pass_not_fresh
+  cap 41238 0x8e223c48 0x0 - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1122:1105:pass_not_fresh
+  cap 42054 0xa908da10 0x1e - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1055:1105:pass_not_fresh
+  cap 42264 0xa908da10 0x0 - 0xa908ae30:7:M6:0x14:0x8e223c48:0x00000000:753:81:pass_not_fresh
+  cap 42960 0xa9091e50 0x1e - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1074:1105:pass_not_fresh
+  cap 45407 0x8e1dc258 0x0 - 0x8e1f4e98:6:-:0x0:0x00000000:0x00000000:3944:1580:pass_not_resolved
+  cap 46269 0x8e212188 0x0 - 0x8e1dc258:7:M1:0x14:0x8e1d0090:0x00000000:2326:1022:pass_not_member
+  cap 46328 0x8e1dc258 0x0 - 0x8e212188:7:M2:0x12:0x00000000:0x00000000:2112:1092:pass_not_member
+  cap 46699 0x8e223c48 0x0 - 0xa908da10:7:M7:0x0:0x8e223c48:0x00000000:2220:760:pass_not_transient
+  cap 47648 0x8e223c48 0x0 - 0x8e1f4e98:6:-:0x0:0x00000000:0x00000000:3538:1580:pass_not_resolved
+  cap 47688 0xa908da10 0x0 - 0x8e1f4e98:6:-:0x0:0x00000000:0x00000000:4052:1580:pass_not_resolved
+  cap 48488 0x8e223c48 0x0 - 0x8e212188:7:M2:0x14:0x8e1d0090:0x00000000:3500:1092:pass_not_member
+  cap 49008 0xa908da10 0x0 - 0x8e1dc258:7:M1:0x14:0x8e1d0090:0x00000000:2825:1022:pass_not_member
+  cap 53819 0x8e1d0090 0x5 - 0x8e1edfb0:18:-:0x0:0x00000000:0x00000000:5200:1105:pass_not_resolved
+  cap 53962 0x8e212188 0x0 - 0x8e223c48:7:M1:0x4:0x8e1edfb0:0x00000000:2991:1022:pass_not_member
+  cap 55307 0xa908da10 0x0 - 0x8e1e1c88:7:M6:0x14:0x8e223c48:0x00000000:3154:91:pass_not_fresh
+  cap 56153 0x8e223c48 0x0 - 0xa908da10:7:M7:0x0:0x8e223c48:0x00000000:2323:760:pass_not_transient
+  cap 56247 0x8e1dc258 0x0 - 0x8e223c48:7:M1:0x12:0x00000000:0x00000000:2693:1022:pass_not_member
+  cap 56641 0xa908da10 0x0 - 0x8e1e1c88:7:M6:0x14:0x8e223c48:0x00000000:1878:91:pass_not_fresh
+  cap 57425 0x8e212188 0x0 - 0x8e1dc258:7:M1:0x1f:0x8e1edfb0:0x00000000:3449:1022:pass_not_member
+  cap 57499 0x8e223c48 0x0 - 0x8e212188:7:M2:0x12:0x00000000:0x00000000:2333:1092:pass_not_member
+  cap 57558 0x8e1dc258 0x5 - 0x8e1edfb0:18:-:0x0:0x00000000:0x00000000:4485:1105:pass_not_resolved
+  cap 57893 0xa908da10 0x0 - 0x8e223c48:7:M1:0x12:0x00000000:0x00000000:1778:1022:pass_not_member
+  cap 57929 0xa908da10 0x0 - 0x8e223c48:7:M1:0x12:0x00000000:0x00000000:1557:1022:pass_not_member
+  cap 58773 0x8e1c9418 0x0 - 0xa90936b0:7:M6:0x12:0x00000000:0x00000000:1418:91:pass_not_fresh
+  cap 58773 0x8e1c9418 0x0 - 0xa9090fb0:7:M6:0x12:0x00000000:0x00000000:1584:91:pass_not_fresh
+  cap 58773 0x8e1c9418 0x0 - 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1116:1105:pass_not_fresh
+  cap 59173 0x8e212188 0x5 - 0x8e223c48:7:M1:0x1f:0x8e1edfb0:0x00000000:2419:1022:pass_not_member
+  cap 59173 0x8e212188 0x5 - 0x8e1edfb0:18:-:0x0:0x00000000:0x00000000:5240:1105:pass_not_resolved
+  cap 59384 0xa9091e50 0x0 - 0x336f53b8:7:M6:0x12:0x00000000:0x00000000:346:64:pass_not_fresh
+  cap 59403 0x8e223c48 0x5 - 0x8e1edfb0:18:-:0x0:0x00000000:0x00000000:4303:1105:pass_not_resolved
+  cap 60574 0xa9091e50 0x5 - 0x8e1edfb0:18:-:0x0:0x00000000:0x00000000:3777:1105:pass_not_resolved
+  cap 60865 0xa908da10 0x5 - 0x8e1edfb0:18:-:0x0:0x00000000:0x00000000:4031:1105:pass_not_resolved
+=== pre rows matched to a warn row one frame later
+matched pre rows 42 entries 42
+ other class/code {('18', '-'): 11, ('5', '-'): 1, ('7', 'M6'): 5, ('7', 'TS'): 6, ('6', '-'): 3, ('7', 'M1'): 8, ('7', 'M2'): 4, ('7', 'M7'): 4}
+ other order {'0x0': 17, '0x12': 8, '0x4': 8, '0x15': 3, '0x14': 5, '0x1f': 1} leader!=0 20 member!=0 0
+ e_verdict {'pass_not_resolved': 29, 'pass_not_fresh': 2, 'pass_not_member': 9, 'pass_not_transient': 2}
+ class/code/order/verdict [(('18', '-', '0x0', 'pass_not_resolved'), 9), (('7', 'M6', '0x4', 'pass_not_resolved'), 3), (('7', 'TS', '0x15', 'pass_not_resolved'), 3), (('6', '-', '0x0', 'pass_not_resolved'), 3), (('7', 'M6', '0x12', 'pass_not_resolved'), 2), (('7', 'TS', '0x12', 'pass_not_resolved'), 2), (('18', '-', '0x0', 'pass_not_fresh'), 2), (('7', 'M1', '0x14', 'pass_not_member'), 2), (('7', 'M2', '0x12', 'pass_not_member'), 2), (('7', 'M7', '0x0', 'pass_not_transient'), 2), (('7', 'M1', '0x12', 'pass_not_member'), 2), (('7', 'M7', '0x14', 'pass_not_resolved'), 2), (('7', 'M1', '0x4', 'pass_not_resolved'), 2), (('5', '-', '0x0', 'pass_not_resolved'), 1), (('7', 'TS', '0x4', 'pass_not_resolved'), 1), (('7', 'M2', '0x14', 'pass_not_member'), 1), (('7', 'M1', '0x4', 'pass_not_member'), 1), (('7', 'M1', '0x1f', 'pass_not_member'), 1), (('7', 'M2', '0x4', 'pass_not_resolved'), 1)]
+ other is a gate (class 18): 11

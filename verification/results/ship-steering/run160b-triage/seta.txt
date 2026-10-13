@@ -1,0 +1,3 @@
+all {'0': 10420, '1': 52756} seta share 0.84
+arrival+transit {'1': 12072, '0': 2828} seta share 0.81
+exit crowd {'1': 8021, '0': 379} seta share 0.95

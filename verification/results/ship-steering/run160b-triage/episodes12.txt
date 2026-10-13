@@ -1,0 +1,26 @@
+obj class | start-end frame game_s dur_s | prev order | phase | warn other class/code d_m | other entry at warn_pre (other:class:code:order:leader:member:d:r:E)
+0x8e1d0090 M2 | 38245-38750 24274.3 26.3 | 0x4 | arrival | 0x8e1ef948 18/- 1138.1 | 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1130:1105:pass_not_fresh
+0x8e1dc258 M1 | 39469-39771 24342.4 18.3 | 0x1e | arrival | 0x8e1d1548 7/M6 3271.4 | -
+0x8e1dc258 M1 | 40066-40238 24378.9 10.7 | 0x14 | arrival | 0x8e1d07e0 7/M6 4034.9 | -
+0x8e1dc258 M1 | 45408-45759 24733.6 22.6 | 0x14 | escort/transit leg (prev 0x14) | 0x8e1f4e98 6/- 3938.6 | 0x8e1f4e98:6:-:0x0:0x00000000:0x00000000:3944:1580:pass_not_resolved
+0x8e1dc258 M1 | 46329-46571 24789.1 14.5 | 0x14 | escort/transit leg (prev 0x14) | 0x8e212188 7/M2 2109.6 | 0x8e212188:7:M2:0x12:0x00000000:0x00000000:2112:1092:pass_not_member
+0x8e1dc258 M1 | 56248-56752 25240.3 38.7 | 0x4 | exit-approach | 0x8e223c48 7/M1 2684.7 | 0x8e223c48:7:M1:0x12:0x00000000:0x00000000:2693:1022:pass_not_member
+0x8e212188 M2 | 40439-40741 24402.7 21.5 | 0x1e | arrival | 0x8e1ef948 18/- 1599.5 | -
+0x8e212188 M2 | 46270-46700 24785.7 26.6 | 0x14 | escort/transit leg (prev 0x14) | 0x8e1dc258 7/M1 2322.6 | 0x8e1dc258:7:M1:0x14:0x8e1d0090:0x00000000:2326:1022:pass_not_member
+0x8e212188 M2 | 53963-54725 25118.3 40.8 | 0x14 | escort/transit leg (prev 0x14) | 0x00000000 0/- 0.0 | 0x8e223c48:7:M1:0x4:0x8e1edfb0:0x00000000:2991:1022:pass_not_member
+0x8e212188 M2 | 57426-57929 25333.3 41.0 | 0x4 | exit-approach | 0x8e1dc258 7/M1 3442.0 | 0x8e1dc258:7:M1:0x1f:0x8e1edfb0:0x00000000:3449:1022:pass_not_member
+0x8e223c48 M1 | 41239-41559 24459.1 24.6 | 0x4 | arrival | 0x8e1ef948 18/- 1131.4 | 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1122:1105:pass_not_fresh
+0x8e223c48 M1 | 46700-46941 24812.3 14.1 | 0x4 | exit-approach | 0xa908da10 7/M7 2217.4 | 0xa908da10:7:M7:0x0:0x8e223c48:0x00000000:2220:760:pass_not_transient
+0x8e223c48 M1 | 47649-48022 24860.8 18.1 | 0x4 | exit-approach | 0x8e1f4e98 6/- 3534.2 | 0x8e1f4e98:6:-:0x0:0x00000000:0x00000000:3538:1580:pass_not_resolved
+0x8e223c48 M1 | 48489-48879 24900.8 18.3 | 0x4 | exit-approach | 0x8e212188 7/M2 3499.6 | 0x8e212188:7:M2:0x14:0x8e1d0090:0x00000000:3500:1092:pass_not_member
+0x8e223c48 M1 | 56154-56679 25233.1 40.2 | 0x4 | exit-approach |x-G| dfb0 10231, f948 84663 | 0xa908da10 7/M7 2321.3 | 0xa908da10:7:M7:0x0:0x8e223c48:0x00000000:2323:760:pass_not_transient
+0x8e223c48 M1 | 57500-58148 25339.2 51.2 | 0x4 | exit-approach |x-G| dfb0 7116, f948 87980 | 0x8e212188 7/M2 2329.7 | 0x8e212188:7:M2:0x12:0x00000000:0x00000000:2333:1092:pass_not_member
+0xa908da10 M7 | 42061-42213 24523.8 12.0 | 0x1e | arrival | 0x8e1ef948 18/- 1121.6 | 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1055:1105:pass_not_fresh
+0xa908da10 M7 | 42281-42358 24541.1 5.8 | 0x12 | arrival | 0xa908ae30 7/M6 749.6 | 0xa908ae30:7:M6:0x14:0x8e223c48:0x00000000:753:81:pass_not_fresh
+0xa908da10 M7 | 47689-48112 24862.7 20.4 | 0x14 | escort/transit leg (prev 0x14) | 0x8e1f4e98 6/- 4047.8 | 0x8e1f4e98:6:-:0x0:0x00000000:0x00000000:4052:1580:pass_not_resolved
+0xa908da10 M7 | 49009-50822 24925.4 30.6 | 0x14 | escort/transit leg (prev 0x14) | 0x8e1dc258 7/M1 2820.0 | 0x8e1dc258:7:M1:0x14:0x8e1d0090:0x00000000:2825:1022:pass_not_member
+0xa908da10 M7 | 56670-56773 25272.6 8.2 | 0x14 | escort/transit leg (prev 0x14) | 0x8e1e1c88 7/M6 1951.2 | -
+0xa908da10 M7 | 57930-58149 25374.4 16.1 | 0x14 | escort/transit leg (prev 0x14) | 0x00000000 0/- 0.0 | 0x8e223c48:7:M1:0x12:0x00000000:0x00000000:1557:1022:pass_not_member
+0xa9091e50 M7 | 42965-43533 24596.0 19.3 | 0x1e | arrival | 0x8e1ef948 18/- 1121.4 | 0x8e1ef948:18:-:0x0:0x00000000:0x00000000:1074:1105:pass_not_fresh
+0x8e1c9418 M1 | 58857-59111 25442.5 19.8 | - | arrival | 0xa90936b0 7/M6 872.6 | -
+totals by phase (game s): {'arrival': 158.4, 'escort/transit': 179.7, 'exit-approach': 221.6} episodes {'arrival': 9, 'escort/transit': 8, 'exit-approach': 7} all 559.7 s 24

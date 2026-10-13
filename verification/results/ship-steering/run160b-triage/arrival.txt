@@ -1,0 +1,31 @@
+== 0x8e1d0090 M2 first row frame 38244 game 24274.3; order runs in 60 s: 0x4@0.0 0x12@0.1 0x4@26.4
+   d(gate) m over t (s): 1130@0 1697@5 2254@10 2818@15 3397@21 3938@26 4606@32 5147@37 5677@42 6210@47 6734@52
+   traced +26.4 s order 0x4 s -4037 m lateral 22 m |x-G| 4038 v 108 fwd.F -1.00
+   traced +37.0 s order 0x4 s -5162 m lateral 92 m |x-G| 5163 v 108 fwd.F -0.95
+   traced +47.4 s order 0x4 s -6219 m lateral 470 m |x-G| 6236 v 108 fwd.F -0.93
+   traced +57.2 s order 0x4 s -7199 m lateral 853 m |x-G| 7249 v 108 fwd.F -0.93
+   traced +68.2 s order 0x4 s -8308 m lateral 1288 m |x-G| 8407 v 108 fwd.F -0.93
+   traced +79.2 s order 0x4 s -9408 m lateral 1719 m |x-G| 9564 v 108 fwd.F -0.93
+== 0x8e1dc258 M1 first row frame 39353 game 24335.5; order runs in 60 s: 0x1e@0.0 0x0@0.7 0x12@7.0 0x14@25.3 0x0@40.8 0x12@43.4 0x14@54.1
+   d(gate) m over t (s): 1122@1 1675@6 2168@11 2744@16 3314@21 3886@26 4463@32 5022@37 5541@42 6031@47 6574@52
+   nearest capital in 60 s: 0x8e1d0090 M2 min d 6627 m at +2.8 s orders 0x0/0x4 verdict pass_not_fresh
+== 0x8e212188 M2 first row frame 40364 game 24397.3; order runs in 60 s: 0x1e@0.0 0x0@0.2 0x12@5.4 0x14@26.8 0x0@36.2 0x14@39.3
+   d(gate) m over t (s): 1121@0 1596@5 2060@10 2629@16 3195@21 3765@26 4345@31 4907@36 5358@42 5875@47 6406@52 6947@57
+   nearest capital in 60 s: 0x8e1dc258 M1 min d 6538 m at +1.2 s orders 0x0/0x14 verdict pass_not_fresh
+== 0x8e223c48 M1 first row frame 41228 game 24458.2; order runs in 60 s: 0x1e@0.0 0x4@0.8 0x12@0.8 0x4@25.5
+   d(gate) m over t (s): 1122@1 1713@6 2294@11 2881@16 3472@22 4049@27 4632@32 5204@37 5757@42 6316@47 6875@53
+   nearest capital in 60 s: 0x8e212188 M2 min d 6230 m at +14.3 s orders 0x12/0x14 verdict pass_a_avoid
+== 0xa908da10 M7 first row frame 42054 game 24523.2; order runs in 60 s: 0x1e@0.0 0x12@0.6 0x0@12.5 0x12@17.9 0x14@23.8 0x0@48.4 0x14@51.7
+   d(gate) m over t (s): 1055@0 1330@2 1667@4 2065@6 2479@8 2897@10 3329@13 3711@15 4037@17 4299@19 4608@21 4984@23 5389@25 5718@27 6021@29
+   nearest capital in 60 s: 0x8e223c48 M1 min d 5115 m at +60.0 s orders 0x14/0x4 verdict pass_not_member
+== 0xa9091e50 M7 first row frame 42960 game 24595.7; order runs in 60 s: 0x1e@0.0 0x12@0.4 0x0@19.7 0x14@25.8
+   d(gate) m over t (s): 1074@0 1678@5 2271@10 2876@16 3452@21 3661@26 3957@31 4498@36 5059@41 5617@47 6188@52
+== 0x8e1c9418 M1 first row frame 58773 game 25436.5; order runs in 60 s: 0x0@0.0 0x12@5.9 0x4@25.8
+   d(gate) m over t (s): 1116@0 1464@3 1775@6 2080@9 4946@38 5150@41 5459@46 5659@49 5859@52 6058@55 6259@58
+   traced +67.3 s order 0x4 s -6803 m lateral 800 m |x-G| 6850 v 69 fwd.F -0.93
+   traced +71.2 s order 0x4 s -7052 m lateral 897 m |x-G| 7109 v 69 fwd.F -0.93
+   traced +74.9 s order 0x4 s -7286 m lateral 989 m |x-G| 7353 v 69 fwd.F -0.93
+   traced +78.6 s order 0x4 s -7522 m lateral 1081 m |x-G| 7600 v 69 fwd.F -0.93
+   traced +82.2 s order 0x4 s -7757 m lateral 1172 m |x-G| 7845 v 69 fwd.F -0.93
+   traced +86.0 s order 0x4 s -7996 m lateral 1266 m |x-G| 8095 v 69 fwd.F -0.93
+   traced +89.8 s order 0x4 s -8242 m lateral 1362 m |x-G| 8354 v 69 fwd.F -0.93
