@@ -77,6 +77,22 @@ STOP_BYTES = bytes.fromhex('894314894310')
 P2_VA, P4_VA, P5_VA = 0x00454b91, 0x00454700, 0x0045526f
 P2_WINDOW, P4_WINDOW, P5_WINDOW = (0x00454b74, 0x00454ba1), (0x004546f1, 0x00454728), (0x0045523c, 0x004552a0)
 P2_RESUME, P4_RESUME, P5_RESUME = 0x00454b97, 0x00454706, 0x00455281
+# Stage B (gate-traffic-controller.md B.1, D.12; ship-navigation-ai.md 10.11 Q4): the P2 handler zeroes the three turn remainders
+# obj+0x30/+0x34/+0x38 on a kept stage-B hand-over (EBX = obj at P2: `mov esi,ebx` in p2_registers). Pinned: they are the remainders
+# the autopilot integrator consumes, order 0 under autopilot writes none of them, 0x1f's aligned first frame zeroes the roll only,
+# and P2's window writes the speeds only (nothing between P2 and the integrator rewrites them).
+P2_REMAINDER_FACTS = (
+    ('integrator_roll_read', 0x00459980, bytes.fromhex('8b4338' '33ff' '3bc7' '7e7a')),
+    ('integrator_roll_write', 0x004599f4, bytes.fromhex('894338')),
+    ('integrator_pitch_write', 0x00459b0e, bytes.fromhex('894334')),
+    ('integrator_yaw_write', 0x00459c2c, bytes.fromhex('894330')),
+    ('order0_autopilot_no_remainder', 0x00458f8e, bytes.fromhex('f7434000000800' '7416' '33ff' 'f6434404' '7503' '897b14' '89be24020000' 'e933010000')),
+    ('order0_tail_no_remainder', 0x004590e0, bytes.fromhex('8b5350' '39ba18020000')),  # the jmp +0x133 target: f+0x218 test
+    ('rotate_aligned_test', 0x004592d9, bytes.fromhex('3d70fd0000' '0f8c7c000000')),       # 0x1f: nose within 8.11 deg ...
+    ('rotate_no_roll_target', 0x004592e4, bytes.fromhex('8b8748020000' '3d00000080' '751d')),  # ... no roll target ...
+    ('rotate_first_frame_roll_only', 0x004592f4, bytes.fromhex('33c0' '894338' '6a01')),
+    ('p2_speeds_then_wake', 0x00454b91, bytes.fromhex('894314' '894310' 'e8c4b90000')),
+)
 # Step 4: site W, the SA_WarpObjectIn case 0x00465b22 (order 0x21), decoded as the whole case; the stub continues into
 # the claim tail at 0x00465bb2 (the position copy). The capital alignment facts: SA_RotateToAngles and the 0x1f handler.
 W_VA, W_WINDOW, W_RESUME = 0x00465bac, (0x00465b22, 0x00465cac), 0x00465bb2
@@ -348,6 +364,18 @@ def verify(exe=DEFAULT_EXE, whole_text=True):
     #     the window of P4 lies before the join 0x00454710, and no branch anywhere targets a window interior or a resume
     #     other than as an instruction start (the join into 0x00454710 is after P4's resume)
     gate_facts = {name: image.read(at, len(b)) == b for name, at, b in GATE_FACTS}
+    p2_rem = {name: image.read(at, len(b)) == b for name, at, b in P2_REMAINDER_FACTS}
+    # review F10: order 0's `jmp rel32` (e9 33 01 00 00 at 0x00458fa8) lands on the tail pinned above (0x004590e0), and the aligned
+    # first frame of 0x1f falls through to the roll-only zeroing (the jl over it is the not-aligned path)
+    jmp_at = 0x00458fa8
+    jmp_target = jmp_at + 5 + int.from_bytes(image.read(jmp_at + 1, 4), 'little', signed=True) if image.read(jmp_at, 1) == b'\xe9' else None
+    p2_rem['order0_jmp_targets_the_tail'] = jmp_target == 0x004590e0
+    jne_at = 0x004592ef  # the `jne +0x1d` after the roll-target test: falls through to 0x004592f1 (the roll-only path's first bytes)
+    p2_rem['rotate_no_roll_target_falls_into_roll_only'] = image.read(jne_at, 2) == bytes.fromhex('751d')
+    checks['p2_remainder_contract'] = {'ok': all(p2_rem.values()) and gate_facts.get('p2_registers', False), 'facts': p2_rem,
+                                       'pinned': 'the P2 handler may write [obj+0x30/+0x34/+0x38] (EBX = ESI = obj): the integrator\'s three '
+                                                 'remainders; order 0 and a first-frame 0x1f leave yaw and pitch, so a kept stage-B hand-over '
+                                                 'zeroes all three (ship_steering_sites.h (h))'}
     resumes = {}
     for name, (lo, hi), resume, va in (('p2', P2_WINDOW, P2_RESUME, P2_VA), ('p4', P4_WINDOW, P4_RESUME, P4_VA), ('p5', P5_WINDOW, P5_RESUME, P5_VA),
                                        ('w', W_WINDOW, W_RESUME, W_VA)):

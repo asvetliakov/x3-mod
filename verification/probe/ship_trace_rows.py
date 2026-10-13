@@ -13,6 +13,7 @@ One row per frame per followed ship:
       emg=<0|1: the avoidance braking ramp was active at the last leaf call> omega_cmd=y,p,r (the commanded rate per
       axis at the last leaf call, deg/s) obst=0x<the current detour's obstacle, 0 = none>
       slip=x,y,z (amendment 14: obj+0x60..+0x68 at site B, units/s: the integrator's slip, the velocity is v fwd + slip)
+      cap_ms=<the traffic controller's yield cap, m/s; -1 none> cap_age_ms=<its age, ms; -1 none> (stage B, Run161 item 4)
 
 The replay tool feeds a row's inputs (pos, fwd, up, rate, v, des, given, dt, W, rot, rot_pct, vmax, acc) to the
 fixture's engine model and compares the model's next state with the next row of the same ship (the oracle).
@@ -27,7 +28,7 @@ _ROW = re.compile(
     r'e=(?P<e>-|-?\d+,-?\d+,-?\d+) dt_ms=(?P<dt_ms>\d+) W=(?P<W>-?\d+,-?\d+,-?\d+) rot=0x(?P<rot>[0-9a-f]{8}) '
     r'rot_pct=(?P<rot_pct>-?\d+) vmax=(?P<vmax>-?\d+) acc=(?P<acc>-?\d+)'
     r'(?: emg=(?P<emg>[01]) omega_cmd=(?P<omega_cmd>-?[\d.]+,-?[\d.]+,-?[\d.]+|nan,nan,nan) obst=0x(?P<obst>[0-9a-f]{8})'
-    r'(?: slip=(?P<slip>-?\d+,-?\d+,-?\d+))?)?$')
+    r'(?: slip=(?P<slip>-?\d+,-?\d+,-?\d+)(?: cap_ms=(?P<cap>-?[\d.]+) cap_age_ms=(?P<cap_age>-?\d+))?)?)?$')
 
 INT3 = ('pos', 'rate', 'point', 'given', 'W')
 FLOAT3 = ('fwd', 'up', 'omega_cmd')
@@ -52,6 +53,9 @@ def parse_row(line):
     for k in FLOAT3:
         out[k] = tuple(float(v) for v in d[k].split(',')) if d[k] is not None else None
     out['slip'] = tuple(int(v) for v in d['slip'].split(',')) if d['slip'] is not None else None
+    # the traffic controller's yield cap and its age (stage B; rows before it lack them)
+    out['cap'] = float(d['cap']) if d['cap'] is not None else None
+    out['cap_age_ms'] = int(d['cap_age']) if d['cap_age'] is not None else None
     out['e'] = None if d['e'] == '-' else tuple(int(v) for v in d['e'].split(','))
     out['leaf_call'] = out['e'] is not None
     return out
@@ -89,8 +93,13 @@ def by_ship(rows):
 #     l_r= capsule_L_m= (the gate traffic controller: l / r and the capsule half-length max(r, l))
 # The gate traffic controller, stage A (gate-traffic-controller.md D.7, A.1; ship_steering_gates_traffic, --debug):
 #   ship_gate_ctl frame= t_ms= gate= ship= id= seq= order= from= to=none|committed|escort|arrival|evicted why= rank=   (role transitions)
+#     stage B: key= (the sequence key) stage=<from>><to> (none|hold|funnel|handover|dock|launch) petal= (-1 none); why= also
+#     hold|release|go_around|dock|launch (the stage transitions)
 #   ship_gate_ctl_pair frame= t_ms= gate= a= b= seq=<a>,<b> rank=<a>,<b> verdict=none|clear|unresolved before= t_c_s= (-1: none)
 #     yielder=none|a|b cap_ms= (-1: none) d_m=   (a member pair's verdict change, at most once per pair per second)
+#     stage B: kind=verdict|e_pass|order0 why=- or the E reason none|unresolved|stale|starved|on_0x12|rows|order0|not_member
+#     (e_pass: site E passed the pair, at most once per pair per second; order0: every order-0 frame of a member, each partner
+#     within 5 km)
 #   ship_gate_launch frame= t_ms= ship= gate= class= capital= slot= gate_type= kind=vanilla|capital_offset|small_side|small_unseparated
 #     p_m=<x>,<y>,<z> off_r_m= off_u_m= r_gate_m= r_m= w_m=   (one per launch at 0x00444606)
 # The docking approach, amendment 18 (docking-approach.md; ship_steering_dock, --debug), 1 Hz per ship on order 4 / 0x1d to a container:

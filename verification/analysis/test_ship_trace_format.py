@@ -64,6 +64,12 @@ class ShipTraceFormat(unittest.TestCase):
         self.assertEqual(rows[1]['obst'], 0)
         self.assertIsNone(st.parse_row(ROWS[0].replace(' slip=-123456,7890,-45678', ' slip=1,2')))
 
+    def test_rows_with_the_traffic_controllers_cap(self):
+        row = st.parse_row(ROWS[0] + ' cap_ms=25.0 cap_age_ms=340')
+        self.assertEqual((row['cap'], row['cap_age_ms']), (25.0, 340))
+        self.assertEqual(st.parse_row(ROWS[0] + ' cap_ms=-1.0 cap_age_ms=-1')['cap_age_ms'], -1)
+        self.assertIsNone(st.parse_row(ROWS[0])['cap'])
+
     def test_a_malformed_row_is_not_a_trace_row(self):
         self.assertIsNone(st.parse_row('ship_trace frame=1 obj=0x1 pos=1,2'))
         self.assertIsNone(st.parse_row(ROWS[0].replace(' e=-1200,300,0', ' e=1,2')))

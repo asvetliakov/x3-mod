@@ -1,7 +1,7 @@
 {
   "result": "PASS",
   "exe": "/mnt/c/X3/X3AP.exe",
-  "checks": 19,
+  "checks": 20,
   "exe_identity": true,
   "pe": true,
   "sites": true,
@@ -24,6 +24,7 @@
   },
   "no_text_branch_into_span_interior": true,
   "no_data_dword_into_window": true,
+  "p2_remainder_contract": true,
   "gate_sites": true,
   "arrival_launch_site": true,
   "snapshot_walk_facts": true,

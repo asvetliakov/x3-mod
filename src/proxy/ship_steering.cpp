@@ -325,6 +325,9 @@ struct GateState { // per table slot: the approach's last call, the crossing (se
     // max |o_z| + e_z of that read (the census's l_m)
     std::uint32_t w_read_ms;
     float w_len;
+    // stage B (D.5): the small ship's last f+0x240 rewrite (units), so a field still holding it is left alone and a KC re-issue
+    // (a new theta) is rewritten again
+    x3m::ship_avoidance::ctl::SmallBWrite b_w;
 };
 struct GateTransition { // --debug: one row per order 4 -> 0 -> 5 transition at a gate (<= 8 per boundary)
     std::uint32_t obj, code, ms_since_p2;
@@ -548,6 +551,8 @@ struct TraceRow {
     std::int32_t slip[3]; // amendment 14: obj+0x60..+0x68 at site B (units/s), the integrator's slip the law reads
     float fwd[3], up[3], omega_cmd[3];
     std::uint8_t has_e, emergency;
+    float cap;             // Run161 item 4: the traffic controller's yield cap on this ship (m/s, < 0 none) and its age (ms, -1 none)
+    std::int32_t cap_age_ms;
 };
 TraceRow trace_ring_[kTraceRing];
 // review F7: every ring and table indexed with a mask is a power of two
@@ -571,8 +576,13 @@ inline TraceSlot* trace_slot_of(std::uint32_t obj) noexcept {
 // with no per-frame rows); the other trace_max_ - 1 slots follow non-capital gate/dock approaches.
 // Amendment 15 (section 15.4): an escort of slot 0's capital (any class, on 0x14/0x15 to it) takes one of the other slots, so the
 // escort side of the cascade gets its warn_pre rows too.
+bool traffic_on_ = false; // the traffic controller live (set at install; defined here for trace_claim, section below)
 inline TraceSlot* trace_claim(std::uint32_t obj, std::uint32_t now, bool capital, bool escort = false) noexcept {
-    const unsigned first = capital && !escort ? 0u : 1u, end = capital && !escort ? 1u : (trace_max_ < kTraceMax ? trace_max_ : kTraceMax);
+    // Run161 item 4 (under ship_steering_gates_traffic): a capital (an escort too) takes any free slot, slot 0 first; a non-capital
+    // slots 1..; with the key off amendment 17's rule (slot 0 for one non-escort capital)
+    const unsigned max = trace_max_ < kTraceMax ? trace_max_ : kTraceMax;
+    const unsigned first = traffic_on_ ? (capital ? 0u : 1u) : (capital && !escort ? 0u : 1u);
+    const unsigned end = traffic_on_ ? max : (capital && !escort ? 1u : max);
     for (unsigned i = first; i < end; ++i)
         if (!trace_slots_[i].obj) {
             trace_slots_[i] = TraceSlot{};
@@ -707,7 +717,6 @@ inline void redirect_target(sites::Frame* f, const std::int32_t point[3]) noexce
 // and the arrival-gate row, the avoidance drops member pairs with a clear verdict, the launch window 0x00444606 places arrivals.
 // Off: amendment 17 exactly (no claim, no board, no E row, no exclusion). Game thread only; no allocation, no lock.
 namespace gc = x3m::ship_avoidance::ctl;
-bool traffic_on_ = false;
 std::atomic<bool> traffic_live_{false};
 engine_patch::Site traffic_patch_;
 const char* traffic_state_ = "off";
@@ -723,6 +732,14 @@ Counter ctl_decisions_, ctl_rollouts_, ctl_sweeps_, ctl_narrow_, ctl_conflicts_,
 Counter ctl_entered_, ctl_left_, ctl_evicted_, ctl_capped_, ctl_deferred_;
 Counter e_suppressed_ctl_, e_pass_ctl_, e_suppressed_arrival_gate_, avoid_ctl_excluded_;
 Counter arr_launches_, arr_offset_capital_, arr_small_side_, arr_small_unseparated_, arr_skipped_;
+// stage B (B.1): releases, go-arounds, KC refusals at X (and their wait beyond 3 s), the decisions the controller flew, the funnel
+// predictions, the guard's frames, the P2 remainder zeroing, the small ships' f+0x240 rewrites (D.5)
+Counter ctl_releases_, ctl_go_around_, ctl_x_refused_, ctl_sb_steered_, ctl_sb_predictions_, ctl_guarded_, ctl_p2_zeroed_, small_b_rewrites_;
+Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed a member pair (not_member: a member against a capital
+                                                    // that is not on its board)
+Counter e_gate_small_gap_, small_b_both_, ctl_seq_skipped_, ctl_go_around_near_, ctl_clock_resets_;                         // Run161 item 5: the small-ship gate row on order 0 in the hand-over gap
+constexpr std::uint32_t kSmallGapMs = 5000;        // ... while the order-4 decision or the lead-in is at most 5 s old
+std::uint32_t ctl_x_wait_ms_ = 0, ctl_sb_max_ticks_ = 0;
 // The widest-part read per capital type (the record index [obj+0x4a]) for the arrival placement: a launched capital has no gate
 // state yet; w and l from the last successful LOD read of a ship of that type (w = r, l = r when the type was never read).
 struct TypeWidth {
@@ -753,17 +770,19 @@ inline bool type_width_get(std::int32_t type, float* w, float* l) noexcept {
 // ship_gate_ctl_pair (a member pair's verdict change, at most once per pair per second, ring 64), ship_gate_launch (one per launch at
 // 0x00444606, ring 8).
 struct CtlRow {
-    std::uint32_t gate, ship, id, seq, t_ms;
+    std::uint32_t gate, ship, id, seq, t_ms, key;
     std::uint16_t order;
-    std::uint8_t from, to, why, rank, pad[2];
+    std::uint8_t from, to, why, rank, sb_from, sb_to;
+    std::int8_t petal;
+    std::uint8_t pad;
 };
 CtlRow ctl_rows_[32];
 std::atomic<std::uint32_t> ctl_row_write_{0};
 std::uint32_t ctl_row_read_ = 0;
 struct CtlPairRow {
     std::uint32_t gate, a, b, t_ms, seq_a, seq_b;
-    std::uint8_t verdict, before, t_c, yielder, rank_a, rank_b, pad[2];
-    float cap, d;
+    std::uint8_t verdict, before, t_c, yielder, rank_a, rank_b, kind, why; // kind: 0 a verdict change, 1 site E passed the pair (why: the
+    float cap, d;                                                          // gc::EWhy), 2 a member's order-0 frame (the pair's E reason)
 };
 CtlPairRow ctl_pair_rows_[64];
 std::atomic<std::uint32_t> ctl_pair_write_{0};
@@ -788,8 +807,8 @@ inline void ctl_row(const gc::Gate& g, const gc::Member& m, gc::Role from, gc::R
         row_dropped(Drop::ctl);
         return;
     }
-    ctl_rows_[w & 31] = CtlRow{g.gate, m.ship, m.id, m.seq, now, m.st.order, std::uint8_t(from), std::uint8_t(to), std::uint8_t(why),
-                               std::uint8_t(gc::rank(m)), {0, 0}};
+    ctl_rows_[w & 31] = CtlRow{g.gate, m.ship, m.id, m.seq, now, m.key, m.st.order, std::uint8_t(from), std::uint8_t(to), std::uint8_t(why),
+                               std::uint8_t(gc::rank(m)), std::uint8_t(m.sb), std::uint8_t(m.sb), m.petal, 0};
     ctl_row_write_.store(w + 1, std::memory_order_release);
 }
 // The ship's board and member index (two loads for a non-member: the bitmap).
@@ -857,6 +876,7 @@ inline void ctl_read_state(gc::Member& m, std::uint32_t obj, std::uint32_t fl, s
     if (st.order == core::kOrderDock || !core::slip_usable(slip, vmax_guess)) slip[0] = slip[1] = slip[2] = 0.0f;
     for (unsigned i = 0; i < 3; ++i) st.u[i] = st.v * st.rows[2][i] + slip[i];
     st.left_ms = std::int32_t(rd32(fl + sites::kFlightDeadline) - now);
+    gc::note_state(m); // Run161: the order-0 gap's steered stamp and plan
 }
 // ---- step 2: the sector snapshot and the station part model ------------------
 // The walk itself is the portable ship_avoidance_walk_core.h (the fixture runs it over a synthetic sector); here it
@@ -1573,11 +1593,13 @@ void ctl_escort(std::uint32_t obj, std::uint32_t leader, const core::Inputs& in,
     if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l)) w = l = 0.0f;
     gc::escort_fill(*m, leader, in, dyn, w, l, cg->r_gate, now);
 }
+inline bool capital_obj(std::uint32_t obj) noexcept; // (below)
 // ---- the steering decision -------------------------------------------
 core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     const std::uint32_t obj = f->obj;
     if (!obj || rd16(obj + sites::kObjClass) != sites::kClassShip) return core::Reason::not_ship;
     const std::uint32_t flags = rd32(obj + sites::kObjFlags);
+    const bool player = (flags & sites::kFlagPlayerObject) != 0; // stage B: the player's own ship is never on a board, sequenced or steered
     if (!(flags & sites::kFlagAutopilot)) return core::Reason::no_autopilot;
     if ((flags & (sites::kFlagDeleted | sites::kFlagAttached)) || rd32(obj + sites::kObjDocked)) return core::Reason::deleted;
     const std::uint32_t fl = rd32(obj + sites::kObjFlight);
@@ -1778,6 +1800,13 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             float omega = core::fmin_f(dyn.W[0] > 0.0f ? dyn.W[0] : 1e30f, dyn.W[1] > 0.0f ? dyn.W[1] : 1e30f);
             if (omega >= 1e29f) omega = 0.0f;
             bool cap_join = true; // a non-capital, or a capital in join mode: the lead-in as before
+            // stage B (D.6): the controller's committed member is entered first; its order-4 leg has no join mode, slow join or aim-at-A
+            // latch (the funnel's feasibility and the go-around replace them); a ship the board refuses keeps amendment 17's path
+            bool sb_member = false;
+            if (capital && traffic_on_ && !player) {
+                const gc::Member* cm = ctl_commit(*gs, obj, in, dyn, &g, G, row0, row1, row2, r_gate, gate_tgt, now);
+                sb_member = cm && gc::sb_managed(*cm); // review F8: else the stage-A / amendment-17 join
+            }
             if (capital) {
                 // Amendment 15 (section 15.3): the join mode of this leg (out beyond 6 r, join, or the latched fallback), the
                 // decision's state in the plane of the lateral offset for the frame-end predictor, the P2 bound's inputs and the row
@@ -1792,6 +1821,10 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                 gs->join_e = e_now;
                 gs->join_carrot = 0.0f;
                 gs->join_code = code;
+                if (sb_member) {
+                    cap_join = false;
+                    gs->join.mode = core::JoinMode::none;
+                } else {
                 const bool converged = gs->last_err_deg >= 0.0f && gs->last_err_deg <= core::kJoinConvergedNoseDeg && e_now <= core::kJoinConvergedLatM;
                 bool changed = false;
                 const core::JoinMode mode = core::join_on_decision(gs->join, order_point, s_now, r_gate, converged, s->order == core::kOrderFlyBefore, now, &changed);
@@ -1831,10 +1864,9 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                 // join's speed both ways instead of the engine's 1 m/s alignment creep (Run158 crowd; fixture scenario M)
                 capital_detour = cap_join && in.detour;
                 // Amendment 16 (section 16.1): this decision's lane entry, the follow cap of a trailing (b) ship, the lane rows
-                if (traffic_on_) // the controller's member table replaces the lane entry (gate-traffic-controller.md D.6)
-                    ctl_commit(*gs, obj, in, dyn, &g, G, row0, row1, row2, r_gate, gate_tgt, now);
-                else
+                if (!traffic_on_) // the controller's member entry ran above (gate-traffic-controller.md D.6)
                     lane_decision(*gs, obj, in, dyn, order_point, G, row0, row1, row2, mode, now, lane);
+                } // not a stage-B member
             }
             if (!v_emergency_bits && in.d_order < 0.0f && cap_join) {
                 bool in_window;
@@ -1868,12 +1900,54 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         // amendment 16 (section 16.1): a capital's order-5 leg on its validated approach keeps its lane entry current (the leg's
         // footprint runs from its lateral position to the gate origin); the engine's speed law stands (no site-B write)
         if (capital_policy && gs->validated == 1) {
-            if (traffic_on_)
-                ctl_commit(*gs, obj, in, dyn, nullptr, G, row0, row1, row2, r_gate, gate_tgt, now);
+            if (traffic_on_) {
+                if (!player) ctl_commit(*gs, obj, in, dyn, nullptr, G, row0, row1, row2, r_gate, gate_tgt, now);
+            }
             else
                 lane_decision(*gs, obj, in, dyn, order_point, G, row0, row1, row2, gs->join.mode, now, lane);
         }
     } else if (gph && order == core::kOrderDock && !capital) {
+        // Stage B (D.5 with D.12): while a capital is in this gate's funnel, a small ship's pass point B (f+0x240, read by the order-5
+        // handler only, every frame, uncached) is mirrored into the free half of the lower arc when it is the engine's arc point on the
+        // capital's side; f+0x230 is not written (unread on a gate leg). This frame's misalignment test and every later trigger test
+        // see the new B; the leaf steers at it from this call. No capital in the funnel: nothing is written.
+        // review: only beyond 0.55 r_gate of B (the trigger may already fire), never on a detour frame, never the player's ship; the side
+        // against every funnel member that reaches the plane before this ship (gc::small_b_decide); both sides taken: no rewrite
+        if (traffic_on_ && !player && !in.detour) {
+            const gc::Gate* cg = gc::gate_of(ctl_, gate_tgt);
+            const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
+            if (cg && !gc::small_b_ours(gs->b_w, cur)) {
+                float d[3], bl[3], o[3];
+                for (unsigned i = 0; i < 3; ++i) d[i] = float(cur[i]) / core::kUnitsPerMetre - G[i];
+                bl[0] = core::dot3(d, row0);
+                bl[1] = core::dot3(d, row1);
+                bl[2] = core::dot3(d, row2);
+                const float dB[3] = {float(cur[0]) / core::kUnitsPerMetre - in.x[0], float(cur[1]) / core::kUnitsPerMetre - in.x[1],
+                                     float(cur[2]) / core::kUnitsPerMetre - in.x[2]};
+                const gc::SmallB v = gc::small_b_decide(*cg, now, bl, core::sqrt_ss(core::dot3(dB, dB)), in.v, dyn.r_own, o);
+                if (v == gc::SmallB::both_taken) small_b_both_.add();
+                if (v == gc::SmallB::mirrored) {
+                    std::int32_t units[3];
+                    bool ok = true;
+                    for (unsigned i = 0; i < 3; ++i) {
+                        const float w = G[i] + o[0] * row0[i] + o[1] * row1[i] + o[2] * row2[i];
+                        ok = ok && core::finite_f(w) && w > -4.0e6f && w < 4.0e6f; // the int32 range guard (units = 500 x m)
+                        units[i] = ok ? core::round_to_int(w * core::kUnitsPerMetre) : 0;
+                    }
+                    if (ok) {
+                        for (unsigned i = 0; i < 3; ++i) {
+                            wr32(fl + sites::kFlightPoint + 4 * i, units[i]);
+                            gs->b_w.w[i] = units[i];
+                            order_point[i] = float(units[i]) / core::kUnitsPerMetre;
+                            in.P[i] = order_point[i];
+                        }
+                        gs->b_w.ok = 1;
+                        redirect_target(f, units);
+                        small_b_rewrites_.add();
+                    }
+                }
+            }
+        }
         // order 5 to a gate: the cornering speed toward B at site B (the chord rule) when B is the pinned pass point of a
         // gate whose frame validates (fail closed to the engine's creep), unless the arc would sweep the ring
         const bool valid = core::gate_pass_point_valid(order_point, G, row0, row1, row2, r_gate, rd16(gate_tgt + sites::kObjType));
@@ -1995,6 +2069,38 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         in.port_leg = tg && rd16(tg + sites::kObjClass) != sites::kClassGate && rds32(fl + sites::kFlightPortIndex) >= 0;
         in.port_hold = in.port_leg && core::port_hold_active(*s, order, now);
     }
+    // Stage B (gate-traffic-controller.md B.1): a member the controller flies (a holder or an escort in its petal, the funnel on order 4,
+    // the capital order-5 leg on Lambda_5) gets the controller's leaf point (an avoidance detour keeps its point) and its speed at site B
+    // in both directions (no arrival ramp, no formation law)
+    bool sb_on = false;
+    gc::SbSteer sbs;
+    if (traffic_on_ && capital && !player &&
+        (order == core::kOrderFlyBefore || order == core::kOrderDock || order == core::kOrderEscort || order == core::kOrderFollow)) {
+        int ci = -1;
+        if (const gc::Gate* cg = ctl_lookup(obj, &ci)) {
+            const gc::Member& cm = cg->m[ci];
+            if (gc::pair_role(cm.role) && cm.id == rd32(obj + sites::kObjId) && (cm.role != gc::Role::committed || gc::sb_managed(cm)))
+                sb_on = gc::sb_steer(*cg, cm, in.x, in.v, order, rd32(fl + sites::kFlightTarget), &sbs);
+        }
+        if (sb_on) {
+            if (!in.detour) {
+                std::int32_t units[3];
+                for (unsigned i = 0; i < 3; ++i) {
+                    in.P[i] = sbs.P[i];
+                    units[i] = core::round_to_int(sbs.P[i] * core::kUnitsPerMetre);
+                }
+                redirect_target(f, units);
+            }
+            const float dd[3] = {order_point[0] - in.x[0], order_point[1] - in.x[1], order_point[2] - in.x[2]};
+            in.d_order = core::sqrt_ss(core::dot3(dd, dd));
+            in.arrival_ramp = false;
+            in.d_arr = 0.0f;
+            in.formation = false;
+            in.v_ref = sbs.v;
+            gate_dock = false;
+            ctl_sb_steered_.add();
+        }
+    }
     core::Command cmd;
     const core::Reason r = core::steer(in, dyn, &cmd);
     if (r != core::Reason::handled) return r;
@@ -2009,7 +2115,9 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     // capital outside the window on a validated approach gets the lowering clamp only (the engine's law stands); any other
     // capital gate leg (orders 4 and 5: the amendment-10 path, order 5 always) gets no site-B write; the order-5 leg
     std::uint16_t speed_flags;
-    if (capital_gate && !capital_window && !capital_fb_write && !capital_detour)
+    if (sb_on)
+        speed_flags = std::uint16_t(core::kShipFlagGate | core::kShipFlagClamp); // stage B: the controller's speed, both ways
+    else if (capital_gate && !capital_window && !capital_fb_write && !capital_detour)
         speed_flags = std::uint16_t(capital_policy && gate_lead && cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0);
     else
         speed_flags = std::uint16_t((in.arrival_ramp && !cmd.formation_speed ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0.0f ? core::kShipFlagClamp : 0) |
@@ -2035,6 +2143,8 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         if (capital_fb_write && capital_fb_v < s->v_ref) s->v_ref = capital_fb_v;
         if (capital_detour) gate_capital_detour_write_.add();
     }
+    if (sb_on) // stage B: the controller's speed under the cornering cap and the large cap (review F3; an emergency lowers it at site B)
+        s->v_ref = core::fmin_f(sbs.v, core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner));
     if (order != core::kOrderFlyBefore && order != core::kOrderRotate && gate_[slot].obj == obj) {
         gate_[slot].handover = 0; // order 5 (or 0x12, any other handled order) ends the hand-over's gate row
         gate_[slot].p2_seen = 0;  // amendment 16: the extended hand-over too
@@ -2068,7 +2178,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     // The gate traffic controller (D.1, stage A): an escort enters on 0x14 / 0x15 behind a committed leader; a member records the
     // module's own speed of this decision before any yield cap (its rollout's plan speed), then the yield cap of its last controller
     // decision is in force at site B (ln::apply_cap: lowering only; the cap is >= 10 m/s by construction).
-    if (traffic_on_ && capital) {
+    if (traffic_on_ && capital && !player) {
         if (order == core::kOrderEscort || order == core::kOrderFollow) {
             const std::uint32_t leader = rd32(fl + sites::kFlightTarget);
             if (leader && ctl_ix_.maybe(leader)) ctl_escort(obj, leader, in, dyn, now);
@@ -2105,8 +2215,10 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                                           : (order == core::kOrderFlyBefore && (tc == sites::kClassGate || tc == sites::kClassStationA || tc == sites::kClassStationB)) ||
                                                 order == core::kOrderDock;
             if (approach) ts = trace_claim(obj, now, capital);
-            else if ((order == core::kOrderEscort || order == core::kOrderFollow) && tg && tg == trace_slots_[0].obj)
-                ts = trace_claim(obj, now, capital, true); // amendment 15: an escort of the traced capital
+            else if ((order == core::kOrderEscort || order == core::kOrderFollow) && tg) { // amendment 15: an escort of a traced capital
+                const TraceSlot* lt = trace_slot_of(tg); // (Run161, under the traffic key: any traced non-escort capital; else slot 0's)
+                if (traffic_on_ ? lt && !lt->escort && capital_obj(tg) : tg == trace_slots_[0].obj) ts = trace_claim(obj, now, capital, true);
+            }
         }
         if (ts) {
             ts->last_seen_ms = now;
@@ -2442,6 +2554,16 @@ inline bool trace_frame(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph, s
     r.accel = ts->accel;
     r.has_e = ts->leaf_this_frame;
     r.emergency = ts->emergency;
+    r.cap = -1.0f;
+    r.cap_age_ms = -1;
+    if (traffic_live_.load(std::memory_order_relaxed) && ctl_ix_.maybe(obj)) {
+        int ci = -1;
+        if (const gc::Gate* cg = gc::locate(ctl_, obj, &ci))
+            if (cg->m[ci].cap >= 0.0f) {
+                r.cap = cg->m[ci].cap;
+                r.cap_age_ms = std::int32_t(now - cg->m[ci].cap_ms);
+            }
+    }
     r.obstacle = ts->obstacle;
     for (unsigned i = 0; i < 3; ++i) r.omega_cmd[i] = ts->omega_cmd[i];
     for (unsigned i = 0; i < 3; ++i) {
@@ -2466,6 +2588,7 @@ namespace {
 // (the launch). An escort keeps it on 0x14 / 0x15 to its leader, or on order 0 while the formation memory holds the pair (the KC's
 // 3 s gaps), behind a committed live leader on the same board. An arrival keeps it for 60 s after its launch while in front of the
 // plane. Anything else leaves the board (the pair falls back to today's rules).
+void ctl_order0_rows(std::uint32_t obj) noexcept; // Run161 item 4 (below)
 inline void ctl_observe(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) noexcept {
     int i = -1;
     gc::Gate* g = gc::locate(ctl_, obj, &i);
@@ -2492,7 +2615,7 @@ inline void ctl_observe(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) n
     }
     const gc::Why why = gc::validity(*g, m, order, target, now, formation_current);
     if (why != gc::Why::count) {
-        ctl_leave(*g, k, false, why, now);
+        ctl_leave(*g, k, why == gc::Why::evict, why, now);
         return;
     }
     ctl_read_state(m, obj, fl, ph, now);
@@ -2507,6 +2630,20 @@ inline void ctl_depart(std::uint32_t obj) noexcept {
     const std::uint32_t now = game_time_ms();
     g->cap_depart_ms = now ? now : 1;
     g->cap_depart_w = g->m[i].w;
+}
+// A member pair's E reason row (Run161 item 3, item 4: kind 1 a pass at E, kind 2 a member's order-0 frame; --debug).
+inline void ctl_pass_row(const gc::Gate& g, unsigned i, unsigned j, std::uint32_t now, std::uint8_t kind, gc::EWhy why) noexcept {
+    const std::uint32_t w = ctl_pair_write_.load(std::memory_order_relaxed);
+    if (w - ctl_pair_read_ >= 64) {
+        row_dropped(Drop::ctl_pair);
+        return;
+    }
+    const gc::Member& m = g.m[i];
+    const gc::Member& b = g.m[j];
+    const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
+    ctl_pair_rows_[w & 63] = CtlPairRow{g.gate, m.ship, b.ship, now, m.seq, b.seq, g.v[i][j], 0, g.tc[i][j], 0, std::uint8_t(gc::rank(m)),
+                                        std::uint8_t(gc::rank(b)), kind, std::uint8_t(why), m.cap, core::sqrt_ss(core::dot3(dx, dx))};
+    ctl_pair_write_.store(w + 1, std::memory_order_release);
 }
 // Site E's controller fields (D.1, D.4): the arrival-gate row for B = A's arrival gate; for B = a ship, whether A and B are live
 // members of one board (the controller owns the pair: certified or handed back), and whether A is a capital arrival (the small-ship
@@ -2534,14 +2671,19 @@ inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std
         const gc::Arrival* r = gc::find_arrival(arrivals_, a, now);
         in.a_arrival = r && r->capital && r->id == rd32(a + sites::kObjId);
     }
-    if (!ctl_ix_.maybe(a) || !ctl_ix_.maybe(b)) return;
+    if (!ctl_ix_.maybe(a) || !ctl_ix_.maybe(b)) {
+        if (ctl_ix_.maybe(a) != ctl_ix_.maybe(b) && capital_obj(a) && capital_obj(b)) e_pass_ctl_why_[unsigned(gc::EWhy::not_member)].add();
+        return;
+    }
     int ia = -1;
     gc::Gate* g = gc::locate(ctl_, a, &ia);
     if (!g) return;
     const int ib = gc::find(*g, b);
     if (ib < 0 || !gc::live(g->m[ia], now) || !gc::live(g->m[ib], now) || g->m[ia].id != rd32(a + sites::kObjId) ||
-        g->m[ib].id != rd32(b + sites::kObjId))
+        g->m[ib].id != rd32(b + sites::kObjId)) {
+        e_pass_ctl_why_[unsigned(gc::EWhy::not_member)].add();
         return;
+    }
     const std::uint32_t fl_b = rd32(b + sites::kObjFlight);
     if (!fl_b) return;
     in.ctl_pair = true;
@@ -2550,8 +2692,17 @@ inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std
         fa[i] = fixed16(rds32(fl + sites::kFlightBasis + 0x20 + 4 * i));
         fb[i] = fixed16(rds32(fl_b + sites::kFlightBasis + 0x20 + 4 * i));
     }
-    in.ctl_certified = gc::e_certified(*g, unsigned(ia), unsigned(ib), now, gc::unit_row(fa), gc::unit_row(fb), in.a_order,
-                                       rd16(fl_b + sites::kFlightOrder));
+    const std::uint16_t b_order = rd16(fl_b + sites::kFlightOrder);
+    in.ctl_certified = gc::e_certified(*g, unsigned(ia), unsigned(ib), now, gc::unit_row(fa), gc::unit_row(fb), in.a_order, b_order);
+    if (!in.ctl_certified) { // Run161 item 3: the reason of every pass_ctl, counted; one row per pair per second (--debug)
+        const gc::EWhy why = gc::e_reason(*g, unsigned(ia), unsigned(ib), now, gc::unit_row(fa), gc::unit_row(fb), in.a_order, b_order);
+        e_pass_ctl_why_[unsigned(why) < unsigned(gc::EWhy::count) ? unsigned(why) : 0u].add();
+        std::uint32_t& last = g->pass_ms[ia][ib];
+        if (debug_ && (!last || now - last >= 1000)) {
+            last = now ? now : 1;
+            ctl_pass_row(*g, unsigned(ia), unsigned(ib), now, 1, why);
+        }
+    }
 }
 // Site B's write for one ship (the clamp from its last decision), split out so the trace row follows it.
 inline void clamp_apply(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) noexcept {
@@ -2600,7 +2751,31 @@ extern "C" void __cdecl x3m_ship_steering_clamp(std::uint32_t obj) {
     // after the write: the row carries des as the module left it; amendment 17: an untraced capital's warn rows
     if (trace_on_ && !trace_frame(obj, fl, ph, des_engine)) capital_warn_watch(obj, fl);
     // the gate traffic controller: a member's live state and role (two loads for any other ship: the bitmap)
-    if (traffic_live_.load(std::memory_order_relaxed) && ctl_ix_.maybe(obj)) ctl_observe(obj, fl, ph);
+    if (traffic_live_.load(std::memory_order_relaxed) && ctl_ix_.maybe(obj)) {
+        ctl_observe(obj, fl, ph);
+        if (debug_ && rd16(fl + sites::kFlightOrder) == core::kOrderNone) ctl_order0_rows(obj);
+    }
+}
+// Run161 item 4 (--debug): at every order-0 frame of a member, the pair's E reason against each live partner within 5 km (the engine's
+// warn range of two capitals; kind 2 rows, the ctl_pair ring).
+namespace {
+void ctl_order0_rows(std::uint32_t obj) noexcept {
+    int i = -1;
+    gc::Gate* g = ctl_lookup(obj, &i);
+    if (!g || !gc::pair_role(g->m[i].role)) return;
+    const std::uint32_t now = game_time_ms();
+    const gc::Member& m = g->m[i];
+    for (unsigned j = 0; j < g->n; ++j) {
+        const gc::Member& b = g->m[j];
+        if (int(j) == i || !gc::live(b, now)) continue;
+        const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
+        if (core::dot3(dx, dx) > 5000.0f * 5000.0f) continue;
+        std::uint32_t& last = g->o0_ms[i][j]; // review F5: at most one row per pair per second
+        if (last && now - last < 1000) continue;
+        last = now ? now : 1;
+        ctl_pass_row(*g, unsigned(i), j, now, 2, gc::e_reason(*g, unsigned(i), j, now, m.st.f_ok != 0, b.st.f_ok != 0, core::kOrderNone, b.st.order));
+    }
+}
 }
 // Step 3: the gate sites' handlers. Each runs on the light envelope inside the order handlers of the command pass
 // (no log, no allocation, no lock); the stubs pass through to the claim tails when the group is not live.
@@ -2710,9 +2885,22 @@ extern "C" void __cdecl x3m_ship_gate_stop_a(std::uint32_t obj) {
                     vel_deg = nose_deg;
             }
         }
-        const bool join_mode = cap && gates_capital_on_ && g->validated == 1 && g->join.mode == core::JoinMode::join;
+        // stage B (D.6): a member of the traffic controller crossing from its funnel takes the join mode's place in the verdict
+        bool sb_funnel = false;
+        if (live && traffic_on_ && cap && g->validated == 1) {
+            int ci = -1;
+            const gc::Gate* cg = ctl_lookup(obj, &ci);
+            sb_funnel = cg && cg->gate == tgt && cg->m[ci].id == rd32(obj + sites::kObjId) && gc::sb_funnel(cg->m[ci]);
+        }
+        const bool join_mode = cap && gates_capital_on_ && g->validated == 1 && (g->join.mode == core::JoinMode::join || sb_funnel);
         const core::JoinKeep why = core::join_keep_verdict(join_mode, nose_deg, vel_deg, v_ms, core::join_coast_bound(g->xg_m, g->r_ship, v_ms, g->a_lin));
         cap_keep = live && why == core::JoinKeep::kept;
+        if (cap_keep && sb_funnel) { // the P2 stub's contract (ship_steering_sites.h (h)): on a kept stage-B hand-over the three turn
+            wr32(obj + sites::kObjRemaining, 0);      // remainders obj+0x30/+0x34/+0x38 are zeroed, so order 0 and a first-frame 0x1f
+            wr32(obj + sites::kObjRemaining + 4, 0);  // hold the attitude the funnel delivered (ship-navigation-ai.md 10.11 Q4, D.12)
+            wr32(obj + sites::kObjRemaining + 8, 0);
+            ctl_p2_zeroed_.add();
+        }
         g->kept = cap_keep ? 1 : 0;
         g->handover = cap_keep ? 1 : 0; // site E's gate row covers 0x1f / order 0 until order 5 (audit G3)
         // amendment 16 (sections 16.1, 16.3): the hand-over after P2 kept or not (E's gate row under the path guard; the lane entry
@@ -2817,6 +3005,10 @@ extern "C" void __cdecl x3m_ship_gate_warp_in(std::uint32_t obj, std::uint32_t t
     Envelope env;
     gate_warp_calls_.add();
     if (!installed_.load(std::memory_order_relaxed)) return;
+    if (traffic_live_.load(std::memory_order_relaxed)) { // stage B (D.6): the old exit spread is deleted under the controller (the
+        gate_warp_skipped_.add();                         // launch window 0x00444606 places arrivals); counted with the skips
+        return;
+    }
     RawMem mem;
     std::int32_t pos[3];
     // the shared rule (core::gate_warp_in_offset, unit-checked by the fixture): class-7 non-capital, class not excluded,
@@ -3109,7 +3301,10 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
         in.b_gate = true;
         in.gates_live = gates_live_.load(std::memory_order_relaxed);
         in.capital_policy = gates_capital_on_;
-        in.gate_state = g.obj == a && g.gate == b && g.validated == 1 && (g.capital || in.a_target == b);
+        // Run161 item 5: under the traffic key a small ship's order 0 (f+0x224 zeroed) in the hand-over gap keeps its gate state
+        in.small_gap_ms = traffic_on_ ? kSmallGapMs : 0u;
+        in.gate_state = g.obj == a && g.gate == b && g.validated == 1 &&
+                        (g.capital || in.a_target == b || (in.small_gap_ms && in.a_order == core::kOrderNone && !in.a_target));
         in.gate_capital = g.capital != 0;
         in.gate_join = g.join.mode == core::JoinMode::join && in.a_target == b;
         in.gate_handover = g.handover != 0;
@@ -3130,7 +3325,7 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
                 in.gate_window_ok = g.join.plane_ms && g.join.plane.s >= -core::kGateCapitalJoinR * g.r_gate;
                 in.gate_p2_seen = g.p2_seen && g.p2_stamp;
                 in.gate_path_ok = pa && ln::path_guard(g.G, x, P, g.r_gate, r_a, ln::kCapitalGuardR);
-            } else if (!g.capital && in.a_order == core::kOrderFlyBefore && pa)
+            } else if (!g.capital && (in.a_order == core::kOrderFlyBefore || (in.small_gap_ms && in.a_order == core::kOrderNone)) && pa)
                 in.gate_small_guard = ln::path_guard(g.G, x, P, g.r_gate, r_a, ln::kSmallGuardR);
         }
     } else if (cls_b == sites::kClassShip && in.dock != av::DockE::none) {
@@ -3201,7 +3396,10 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
     case EV::suppress_small: e_suppressed_small_.add(); return 1;
     case EV::suppress_member: e_suppressed_member_.add(); return 1;
     case EV::suppress_gate: e_suppressed_gate_.add(); return 1;
-    case EV::suppress_gate_small: e_suppressed_gate_small_.add(); return 1;
+    case EV::suppress_gate_small:
+        e_suppressed_gate_small_.add();
+        if (in.a_order == core::kOrderNone) e_gate_small_gap_.add(); // Run161 item 5
+        return 1;
     case EV::suppress_resolved: e_suppressed_.add(); return 1;
     case EV::suppress_lane: e_suppressed_lane_.add(); return 1;
     case EV::suppress_dock: e_suppressed_dock_.add(); return 1;
@@ -3236,8 +3434,49 @@ namespace {
 // The gate traffic controller's frame work (D.1, D.8): member decisions from their stored states (never in a handler), round robin over
 // every board, within the frame bound (gc::frame_room: 6 decisions, 14 rollouts); a member decides at most every kDecideMs and only on a state newer than its
 // last rollout. A pair row (--debug) when a pair's verdict differs from the last one logged, at most once per pair per second.
+// Stage B's sequencer per gate (gc::sb_frame: stages, petals, the release, the funnel's speed and feasibility, the go-around), its
+// counters and its ship_gate_ctl rows (the stage transitions).
+void sb_frame_all(std::uint32_t now) noexcept {
+    const std::uint64_t t0 = timing_ ? qpc() : 0;
+    for (gc::Gate& g : ctl_.g) {
+        if (!g.gate) continue;
+        gc::SbStats st;
+        gc::sb_frame(g, now, &st);
+        if (st.releases) ctl_releases_.add(st.releases);
+        if (st.go_arounds) ctl_go_around_.add(st.go_arounds);
+        if (st.x_refused) ctl_x_refused_.add(st.x_refused);
+        if (st.predictions) ctl_sb_predictions_.add(st.predictions);
+        if (st.guarded) ctl_guarded_.add(st.guarded);
+        if (st.seq_skipped) ctl_seq_skipped_.add(st.seq_skipped);
+        if (st.go_arounds_near) ctl_go_around_near_.add(st.go_arounds_near);
+        if (st.clock_resets) ctl_clock_resets_.add(st.clock_resets);
+        ctl_x_wait_ms_ += st.x_wait_ms;
+        if (st.ev_dropped) for (unsigned k = 0; k < st.ev_dropped; ++k) row_dropped(Drop::ctl);
+        if (!debug_) continue;
+        for (unsigned k = 0; k < st.n_ev; ++k) {
+            const gc::SbEvent& e = st.ev[k];
+            const int i = gc::find(g, e.ship);
+            if (i < 0) continue;
+            const std::uint32_t w = ctl_row_write_.load(std::memory_order_relaxed);
+            if (w - ctl_row_read_ >= 32) {
+                row_dropped(Drop::ctl);
+                break;
+            }
+            const gc::Member& m = g.m[i];
+            ctl_rows_[w & 31] = CtlRow{g.gate, m.ship, m.id, m.seq, now, e.key, m.st.order, std::uint8_t(m.role), std::uint8_t(m.role), e.why,
+                                       std::uint8_t(gc::rank(m)), e.from, e.to, std::int8_t(e.petal == 0xff ? -1 : int(e.petal)), 0};
+            ctl_row_write_.store(w + 1, std::memory_order_release);
+        }
+    }
+    if (timing_) {
+        const std::uint64_t dt = qpc() - t0;
+        const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
+        if (ticks > ctl_sb_max_ticks_) ctl_sb_max_ticks_ = ticks;
+    }
+}
 void ctl_frame() noexcept {
     const std::uint32_t now = game_time_ms();
+    sb_frame_all(now);
     const std::uint64_t t0 = timing_ ? qpc() : 0;
     unsigned done = 0, rollouts = 0;
     constexpr unsigned total = gc::kGates * gc::kMembers;
@@ -3286,7 +3525,7 @@ void ctl_frame() noexcept {
             const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
             const std::uint8_t y = m.cap >= 0.0f && m.cap_ms == now ? 1 : b.cap >= 0.0f && b.cap_ms == now ? 2 : 0;
             ctl_pair_rows_[w & 63] = CtlPairRow{g.gate, m.ship, b.ship, now, m.seq, b.seq, g.v[i][j], g.logged[i][j], g.tc[i][j], y,
-                                                std::uint8_t(gc::rank(m)), std::uint8_t(gc::rank(b)), {0, 0},
+                                                std::uint8_t(gc::rank(m)), std::uint8_t(gc::rank(b)), 0, 0,
                                                 y == 1 ? m.cap : y == 2 ? b.cap : -1.0f, core::sqrt_ss(core::dot3(dx, dx))};
             ctl_pair_write_.store(w + 1, std::memory_order_release);
             g.logged[i][j] = g.logged[j][i] = g.v[i][j];
@@ -3330,19 +3569,23 @@ void ctl_rows(unsigned long long frame) noexcept {
     static const char* const kYielder[3] = {"none", "a", "b"};
     for (std::uint32_t w = ctl_row_write_.load(std::memory_order_acquire); ctl_row_read_ != w; ++ctl_row_read_) {
         const CtlRow& r = ctl_rows_[ctl_row_read_ & 31];
-        x3m::log("ship_gate_ctl frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu seq=%lu order=0x%x from=%s to=%s why=%s rank=%u", frame,
+        x3m::log("ship_gate_ctl frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu seq=%lu key=%lu order=0x%x from=%s to=%s why=%s rank=%u "
+            "stage=%s>%s petal=%d", frame,
             static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
-            static_cast<unsigned long>(r.id), static_cast<unsigned long>(r.seq), unsigned(r.order), gc::role_name(gc::Role(r.from)),
-            gc::role_name(gc::Role(r.to)), gc::why_name(gc::Why(r.why)), unsigned(r.rank));
+            static_cast<unsigned long>(r.id), static_cast<unsigned long>(r.seq), static_cast<unsigned long>(r.key), unsigned(r.order),
+            gc::role_name(gc::Role(r.from)), gc::role_name(gc::Role(r.to)), gc::why_name(gc::Why(r.why)), unsigned(r.rank),
+            gc::sb_name(gc::Sb(r.sb_from)), gc::sb_name(gc::Sb(r.sb_to)), int(r.petal));
     }
     for (std::uint32_t w = ctl_pair_write_.load(std::memory_order_acquire); ctl_pair_read_ != w; ++ctl_pair_read_) {
         const CtlPairRow& r = ctl_pair_rows_[ctl_pair_read_ & 63];
-        x3m::log("ship_gate_ctl_pair frame=%llu t_ms=%lu gate=0x%08lx a=0x%08lx b=0x%08lx seq=%lu,%lu rank=%u,%u verdict=%s before=%s t_c_s=%.1f "
-            "yielder=%s cap_ms=%.1f d_m=%.0f",
+        static const char* const kPairKind[3] = {"verdict", "e_pass", "order0"};
+        x3m::log("ship_gate_ctl_pair frame=%llu t_ms=%lu gate=0x%08lx a=0x%08lx b=0x%08lx seq=%lu,%lu rank=%u,%u kind=%s verdict=%s before=%s "
+            "why=%s t_c_s=%.1f yielder=%s cap_ms=%.1f d_m=%.0f",
             frame, static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.a),
             static_cast<unsigned long>(r.b), static_cast<unsigned long>(r.seq_a), static_cast<unsigned long>(r.seq_b), unsigned(r.rank_a),
-            unsigned(r.rank_b), gc::pair_name(gc::PairV(r.verdict)), gc::pair_name(gc::PairV(r.before)),
-            r.t_c == 255 ? -1.0 : double(r.t_c) * double(gc::kSampleS), kYielder[r.yielder < 3 ? r.yielder : 0], double(r.cap), double(r.d));
+            unsigned(r.rank_b), kPairKind[r.kind < 3 ? r.kind : 0], gc::pair_name(gc::PairV(r.verdict)), gc::pair_name(gc::PairV(r.before)),
+            r.kind ? gc::ewhy_name(gc::EWhy(r.why)) : "-", r.t_c == 255 ? -1.0 : double(r.t_c) * double(gc::kSampleS),
+            kYielder[r.yielder < 3 ? r.yielder : 0], double(r.cap), double(r.d));
     }
     for (std::uint32_t w = launch_row_write_.load(std::memory_order_acquire); launch_row_read_ != w; ++launch_row_read_) {
         const LaunchRow& r = launch_rows_[launch_row_read_ & 7];
@@ -3954,7 +4197,7 @@ void frame_boundary(std::uint64_t frame) {
             if (r.has_e)
                 log("ship_trace frame=%llu t_ms=%lu obj=0x%08lx class=%s order=0x%lx tgt=0x%08lx tgt_class=%u pos=%ld,%ld,%ld "
                     "fwd=%.5f,%.5f,%.5f up=%.5f,%.5f,%.5f rate=%ld,%ld,%ld v=%ld des=%ld des_engine=%ld point=%ld,%ld,%ld given=%ld,%ld,%ld "
-                    "e=%ld,%ld,%ld dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx slip=%ld,%ld,%ld",
+                    "e=%ld,%ld,%ld dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx slip=%ld,%ld,%ld cap_ms=%.1f cap_age_ms=%ld",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj),
                     r.code < core::kClassCount ? core::kClassNames[r.code] : "?", static_cast<unsigned long>(r.order),
                     static_cast<unsigned long>(r.tgt), unsigned(r.tgt_class), long(r.pos[0]), long(r.pos[1]), long(r.pos[2]), double(r.fwd[0]),
@@ -3963,11 +4206,12 @@ void frame_boundary(std::uint64_t frame) {
                     long(r.given[2]), long(r.e[0]), long(r.e[1]), long(r.e[2]), static_cast<unsigned long>(r.dt_ms), long(r.W[0]), long(r.W[1]),
                     long(r.W[2]), static_cast<unsigned long>(r.rot_raw), long(r.rot_pct), long(r.vmax), long(r.accel), unsigned(r.emergency),
                     double(r.omega_cmd[0]), double(r.omega_cmd[1]), double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle), long(r.slip[0]),
-                    long(r.slip[1]), long(r.slip[2]));
+                    long(r.slip[1]), long(r.slip[2]), double(r.cap), long(r.cap_age_ms));
             else
                 log("ship_trace frame=%llu t_ms=%lu obj=0x%08lx class=%s order=0x%lx tgt=0x%08lx tgt_class=%u pos=%ld,%ld,%ld "
                     "fwd=%.5f,%.5f,%.5f up=%.5f,%.5f,%.5f rate=%ld,%ld,%ld v=%ld des=%ld des_engine=%ld point=%ld,%ld,%ld given=%ld,%ld,%ld "
-                    "e=- dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx slip=%ld,%ld,%ld",
+                    "e=- dt_ms=%lu W=%ld,%ld,%ld rot=0x%08lx rot_pct=%ld vmax=%ld acc=%ld emg=%u omega_cmd=%.2f,%.2f,%.2f obst=0x%08lx slip=%ld,%ld,%ld "
+                    "cap_ms=%.1f cap_age_ms=%ld",
                     static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj),
                     r.code < core::kClassCount ? core::kClassNames[r.code] : "?", static_cast<unsigned long>(r.order),
                     static_cast<unsigned long>(r.tgt), unsigned(r.tgt_class), long(r.pos[0]), long(r.pos[1]), long(r.pos[2]), double(r.fwd[0]),
@@ -3975,7 +4219,7 @@ void frame_boundary(std::uint64_t frame) {
                     long(r.rate[2]), long(r.v), long(r.des), long(r.des_engine), long(r.point[0]), long(r.point[1]), long(r.point[2]), long(r.given[0]), long(r.given[1]),
                     long(r.given[2]), static_cast<unsigned long>(r.dt_ms), long(r.W[0]), long(r.W[1]), long(r.W[2]), static_cast<unsigned long>(r.rot_raw),
                     long(r.rot_pct), long(r.vmax), long(r.accel), unsigned(r.emergency), double(r.omega_cmd[0]), double(r.omega_cmd[1]),
-                    double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle), long(r.slip[0]), long(r.slip[1]), long(r.slip[2]));
+                    double(r.omega_cmd[2]), static_cast<unsigned long>(r.obstacle), long(r.slip[0]), long(r.slip[1]), long(r.slip[2]), double(r.cap), long(r.cap_age_ms));
         }
     }
     if (debug_ && gates_on_) {
@@ -4189,7 +4433,10 @@ void frame_boundary(std::uint64_t frame) {
                           "ctl_yields=%lu ctl_capped=%lu ctl_released=%lu ctl_unresolved=%lu ctl_entered=%lu ctl_left=%lu ctl_evicted=%lu "
                           "ctl_full=%u,%u e_suppressed_ctl=%lu e_pass_ctl=%lu e_suppressed_arrival_gate=%lu avoid_ctl_excluded=%lu "
                           "arr_launches=%lu arr_offset_capital=%lu arr_small_side=%lu arr_small_unseparated=%lu arr_skipped=%lu "
-                          "arr_overwritten=%u ctl_decide_us_max=%.1f ctl_frame_us_max=%.1f ctl_frame_decisions_max=%u ctl_arrival_us_max=%.1f",
+                          "arr_overwritten=%u ctl_decide_us_max=%.1f ctl_frame_us_max=%.1f ctl_frame_decisions_max=%u ctl_arrival_us_max=%.1f "
+                          "ctl_releases=%lu ctl_go_around=%lu ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_sb_steered=%lu ctl_sb_pred=%lu ctl_guarded=%lu "
+                          "ctl_p2_zeroed=%lu small_b_rewrites=%lu ctl_sb_us_max=%.1f e_pass_ctl_why=%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu e_gate_small_gap=%lu "
+                          "ctl_sb_misc=%lu,%lu,%lu,%lu",
                           traffic_state_, members, static_cast<unsigned long>(ctl_decisions_.get()), static_cast<unsigned long>(ctl_rollouts_.get()),
                           static_cast<unsigned long>(ctl_sweeps_.get()), static_cast<unsigned long>(ctl_narrow_.get()),
                           static_cast<unsigned long>(ctl_conflicts_.get()), static_cast<unsigned long>(ctl_yields_.get()),
@@ -4201,7 +4448,21 @@ void frame_boundary(std::uint64_t frame) {
                           static_cast<unsigned long>(arr_launches_.get()), static_cast<unsigned long>(arr_offset_capital_.get()),
                           static_cast<unsigned long>(arr_small_side_.get()), static_cast<unsigned long>(arr_small_unseparated_.get()),
                           static_cast<unsigned long>(arr_skipped_.get()), arrivals_.overwritten, ticks_us(ctl_decide_max_ticks_),
-                          ticks_us(ctl_frame_max_ticks_), ctl_frame_max_decisions_, ticks_us(ctl_arrival_max_ticks_));
+                          ticks_us(ctl_frame_max_ticks_), ctl_frame_max_decisions_, ticks_us(ctl_arrival_max_ticks_),
+                          static_cast<unsigned long>(ctl_releases_.get()), static_cast<unsigned long>(ctl_go_around_.get()),
+                          static_cast<unsigned long>(ctl_x_refused_.get()), static_cast<unsigned long>(ctl_x_wait_ms_ / 1000u),
+                          static_cast<unsigned long>(ctl_sb_steered_.get()), static_cast<unsigned long>(ctl_sb_predictions_.get()),
+                          static_cast<unsigned long>(ctl_guarded_.get()), static_cast<unsigned long>(ctl_p2_zeroed_.get()),
+                          static_cast<unsigned long>(small_b_rewrites_.get()), ticks_us(ctl_sb_max_ticks_),
+                          // e_pass_ctl_why: none, unresolved, stale, starved, on_0x12, rows, order0, not_member (gc::EWhy 1..8)
+                          static_cast<unsigned long>(e_pass_ctl_why_[1].get()), static_cast<unsigned long>(e_pass_ctl_why_[2].get()),
+                          static_cast<unsigned long>(e_pass_ctl_why_[3].get()), static_cast<unsigned long>(e_pass_ctl_why_[4].get()),
+                          static_cast<unsigned long>(e_pass_ctl_why_[5].get()), static_cast<unsigned long>(e_pass_ctl_why_[6].get()),
+                          static_cast<unsigned long>(e_pass_ctl_why_[7].get()), static_cast<unsigned long>(e_pass_ctl_why_[8].get()),
+                          static_cast<unsigned long>(e_gate_small_gap_.get()),
+                          // ctl_sb_misc: seq_skipped (the 60 s tie-break), go-arounds within 1 km of X, game-clock resets, small B both sides taken
+                          static_cast<unsigned long>(ctl_seq_skipped_.get()), static_cast<unsigned long>(ctl_go_around_near_.get()),
+                          static_cast<unsigned long>(ctl_clock_resets_.get()), static_cast<unsigned long>(small_b_both_.get()));
         }
     }
     char dock[640] = "";

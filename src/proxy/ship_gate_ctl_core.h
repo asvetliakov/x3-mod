@@ -51,15 +51,54 @@ constexpr std::uint32_t kPlaneArrivalMs = 6000;   // a capital arrival is at the
 constexpr std::uint32_t kPlaneTriggerMs = 3000;   // a departing capital: on order 8, or within 3 s of its order-5 trigger (P4)
 constexpr float kExitSpeedLargeMs = 120.0f, kExitSpeedSmallMs = 240.0f; // order 0x1e: 60000 / 120000 units/s
 constexpr float kWarpInK = 1.665f / sc::kUnitsPerMetre; // order 0x21: p = f+0x240 + 1.665 u^2 F (u ms left, units) -> m per ms^2
+// Stage B (D.2, D.3, D.5, D.8, D.12; gate-traffic-controller.md B.1): the holding petals, the pass point Q and the final lines, the
+// funnel, the sequencer and the through-slot model.
+constexpr unsigned kPetalsPerRing = 7, kRings = 3, kPetals = kPetalsPerRing * kRings; // 7 petals 40 deg apart on the lower 240 deg
+constexpr float kPetalPhi0 = -2.0943951f, kPetalDphi = 0.6981317f; // -120 deg (from -U toward +R), 40 deg
+constexpr float kPetalRh = 1000.0f, kPetalSh = 1500.0f;  // the racetrack's turn radius and straight (m)
+constexpr float kLeadM = 2500.0f;                        // the petal's front lies kLeadM behind the ship's X (D.2.4: L_lead >= 2.5 km)
+constexpr float kPetalVmin = 25.0f, kPetalVmax = 60.0f, kPetalVnom = 40.0f; // the holding speeds (m/s)
+constexpr float kRingGapM = 800.0f;   // two adjacent petals' planes are >= 2 w_max + this apart at the ring radius (the sweep's 30 s
+                                      // margin 50 m + k 30 s, the tracking): rho = (2 w_max + kRingGapM) / (2 sin(dphi / 2))
+constexpr float kRingMinM = 2400.0f;  // the ring radius at least this (D.2.4)
+constexpr float kSinHalfDphi = 0.34202014f; // sin 20 deg
+constexpr float kChordSlackM = 150.0f; // the final line crosses the grid sphere as a chord: |Lambda - A_lat| <= 0.75 r - 150 m (D.2.2)
+constexpr float kTrackM = 100.0f, kFanMarginM = 50.0f, kSmallMaxM = 140.0f; // the trigger's tracking allowance; the upper fan's margin
+constexpr float kFanLowR = 0.38890873f; // the upper small-arrival fan's lowest U (0.55 r cos 45 deg)
+constexpr float kSin3 = 0.05233596f;  // the hull's cross-section with the nose 3 deg off F: w + (L - w) sin 3 deg
+constexpr float kReleaseWindowM = 900.0f; // a holder is released on the last kReleaseWindowM of its inner straight (heading +F)
+constexpr float kReleaseNoseCos = 0.5f;    // ... or anywhere behind it with the nose within 60 deg of F
+constexpr float kFinalAlongM = 2500.0f, kFinalLatM = 150.0f; // the funnel's final straight (the next release may come)
+constexpr float kGuardM = 300.0f;     // the grid sphere guard (D.2.4): a holder never comes within 0.75 r + 300 m (+ its braking) of A
+constexpr std::uint32_t kFunnelGapMs = 2000;    // the funnel's gap after a launch (the KC's hand-over frames)
+constexpr std::uint32_t kSlotCooldownMs = 60000; // the through slot after a change of direction (section 10.2)
+constexpr std::uint32_t kSlotArrivalMs = 61000;  // a capital launch at the gate blocks our side this long (t_a + 60 + 1 s)
+constexpr std::uint32_t kReserveMs = 60000;      // an escort's reserved number holds 60 s after its leader's launch (D.3 had 30 s for an
+                                                 // order 4 at 4.2-4.5 s; D.12: beyond 10 km the script first flies 5 s 0x15 legs)
+constexpr std::uint32_t kBurstMs = 2000;         // members entering within 2 s of each other (a load) are sequenced by distance (D.8)
+constexpr std::uint32_t kGapMs = 5000;
+constexpr std::uint32_t kGapEscortMs = 3000; // the escort template's wait (2-3 s): an escort's gap ends by then           // the script's order-0 re-issue gap (escort legs: 2-3 s waits; committed: <= 5 s)
+constexpr std::uint32_t kFeasMs = 1000;
+constexpr std::uint32_t kHeadSkipMs = 60000;      // a head of the sequence deferred this long with the funnel free re-queues at the tail          // the funnel's feasibility prediction at most once per second per ship
+constexpr std::uint32_t kEscortSwitchMs = 4500;  // an escort's first order-4 chance after its leader's launch (D.12: 2-3 s wait + overhead)
+constexpr float kEscortStageS = 300.0f; // an escort's lap brings it to this point of its inner straight (beyond 10 km) at the script's
+                                        // first order-4 chance: its 0x15 legs then carry it forward, heading +F, inside 10 km (D.12)
+constexpr float kEscortSwitchM = 10000.0f;       // ... within 10 km of the gate (Mayhem.Task.Move, D.12)
+enum class Sb : std::uint8_t { none = 0, hold, funnel, handover, dock, launch, count };
+inline const char* sb_name(Sb s) noexcept {
+    static const char* const n[unsigned(Sb::count)] = {"none", "hold", "funnel", "handover", "dock", "launch"};
+    return unsigned(s) < unsigned(Sb::count) ? n[unsigned(s)] : "?";
+}
 
 enum class Role : std::uint8_t { none = 0, committed, escort, arrival, evicted, count };
 inline const char* role_name(Role r) noexcept {
     static const char* const n[unsigned(Role::count)] = {"none", "committed", "escort", "arrival", "evicted"};
     return unsigned(r) < unsigned(Role::count) ? n[unsigned(r)] : "?";
 }
-enum class Plan : std::uint8_t { drift = 0, line, dock, brake, hold, warp_in, exit, launch, follow, count };
+enum class Plan : std::uint8_t { drift = 0, line, dock, brake, hold, warp_in, exit, launch, follow, petal, line5, count };
 inline const char* plan_name(Plan p) noexcept {
-    static const char* const n[unsigned(Plan::count)] = {"drift", "line", "dock", "brake", "hold", "warp_in", "exit", "launch", "follow"};
+    static const char* const n[unsigned(Plan::count)] = {"drift", "line", "dock", "brake", "hold", "warp_in", "exit", "launch", "follow",
+                                                         "petal", "line5"};
     return unsigned(p) < unsigned(Plan::count) ? n[unsigned(p)] : "?";
 }
 enum class PairV : std::uint8_t { none = 0, clear, unresolved, count };
@@ -68,10 +107,12 @@ inline const char* pair_name(PairV v) noexcept {
     return unsigned(v) < unsigned(PairV::count) ? n[unsigned(v)] : "?";
 }
 // Why a member left the board or changed role (the ship_gate_ctl row).
-enum class Why : std::uint8_t { enter = 0, commit, handover, escort, arrival, evict, order, target, expire, identity, leader, window, reenter, count };
+enum class Why : std::uint8_t { enter = 0, commit, handover, escort, arrival, evict, order, target, expire, identity, leader, window, reenter,
+                                hold, release, go_around, dock, launch, count };
 inline const char* why_name(Why w) noexcept {
     static const char* const n[unsigned(Why::count)] = {"enter", "commit", "handover", "escort", "arrival", "evict", "order", "target",
-                                                        "expire", "identity", "leader", "window", "reenter"};
+                                                        "expire", "identity", "leader", "window", "reenter", "hold", "release",
+                                                        "go_around", "dock", "launch"};
     return unsigned(w) < unsigned(Why::count) ? n[unsigned(w)] : "?";
 }
 
@@ -115,6 +156,23 @@ struct Member {
     float v_roll_max = 0;       // the largest speed over the rollout (the time-offset margin)
     float cap = -1.0f;          // the yield cap (m/s, < 0 none)
     std::uint32_t cap_ms = 0;
+    // stage B (B.1): the stage, the petal, the sequence key (seq << 4; an escort: its leader's key + 1 + its rank), the reservation
+    // (an escort's key holds until res_until; 0 while its leader is present), the release plan, Q and the final lines (gate-frame R, U)
+    Sb sb = Sb::none;
+    std::int8_t petal = -1;
+    std::uint8_t key_res = 0, q_ok = 0, refused = 0;
+    std::uint16_t go_arounds = 0;
+    std::uint32_t key = 0, res_until = 0, pred = 0; // pred: the released ship ahead (its launch frees the funnel)
+    std::uint32_t release_ms = 0, plan_x_ms = 0, plan_launch_ms = 0, o8_ms = 0, feas_ms = 0, x_ms = 0, x_pred_ms = 0;
+    std::uint32_t head_ms = 0, infeas_ms = 0; // the tie-break: head with its slot due since; in its window without a feasible candidate since
+    float enter_d = 0;          // the distance to X at the entry (the burst order, D.8)
+    float zx = 0;               // X along F from G (m, < 0): the grid line's, or the class estimate before order 4
+    float q[2] = {0, 0}, l4[2] = {0, 0}, a_lat[2] = {0, 0}; // Q, Lambda_4 and A (R, U), m
+    float v_sb = -1.0f;         // the controller's speed for this ship (m/s; < 0 none): the hold, the funnel's shaping and feasibility
+    float v_feas = -1.0f;       // the funnel's feasible speed (the predictor's highest candidate within P2's acceptance)
+    // the order-0 gap (Run161): the last state read on the role's steered order (committed 4 / 5, escort 0x14 / 0x15) and its plan
+    std::uint32_t steered_ms = 0;
+    Plan last_plan = Plan::drift;
     Sample s[kSamples];
 };
 struct Gate {
@@ -133,6 +191,14 @@ struct Gate {
     // the plane occupancy the small-ship placement reads (D.4): the last capital launch here, the last departing capital trigger
     std::uint32_t cap_arrival_ms = 0, cap_depart_ms = 0;
     float cap_arrival_w = 0, cap_depart_w = 0;
+    // stage B (B.1): the ring radius from the widest member, the petals' holders, the funnel (the last released ship and the end of
+    // the previous one), the through-slot model (our last slot release; a capital launch here blocks our side until slot_block_ms)
+    float rho = kRingMinM, w_max = 0;
+    std::uint32_t petal_ship[kPetals] = {};
+    std::uint32_t funnel_ship = 0, funnel_end_ms = 0, slot_block_ms = 0, last_arrival_seen = 0;
+    std::uint32_t sb_go_arounds = 0, sb_releases = 0, sb_last_ms = 0, sb_tail_key = 0;
+    std::uint32_t o0_ms[kMembers][kMembers] = {}; // review F5: the last order-0 pair row per pair (one per second; the DLL's --debug)
+    std::uint32_t pass_ms[kMembers][kMembers] = {}; // Run161: the last E pass row per pair (one per second; the DLL's --debug)
 };
 struct Board {
     Gate g[kGates];
@@ -466,17 +532,30 @@ inline void escort_fill(Member& m, std::uint32_t leader, const sc::Inputs& in, c
 // or on order 0 while the formation memory holds the pair (formation_current: the KC's 3 s gaps), behind a committed live leader on
 // the same board. An arrival keeps it for 60 s after its launch (and in front of the plane: the caller, after the state read).
 inline Why validity(const Gate& g, const Member& m, std::uint16_t order, std::uint32_t target, std::uint32_t now, bool formation_current) noexcept {
+    if (order == sc::kOrderAvoid) return Why::evict; // 0x12 evicts any member (an escort with a current formation memory too: review F12)
     if (m.role == Role::committed) {
+        // the script's order-0 re-issue gap (<= kGapMs after the last order-4 / 5 read; order 0 zeroes f+0x224) and the P2 hand-over on
+        // order 0 / 0x1f with the target zeroed keep the member (Run161: eviction only on 0x12)
+        if (order == sc::kOrderNone && (target == g.gate || !target) && m.steered_ms && now - m.steered_ms <= kGapMs) return Why::count;
+        if (!target && (order == sc::kOrderNone || order == sc::kOrderRotate) && m.handover_ms && now - m.handover_ms <= kHandoverMaxMs)
+            return Why::count;
         if (target != g.gate) return Why::target;
-        if (order == sc::kOrderFlyBefore || order == sc::kOrderDock) return now - m.commit_ms > kCommitFreshMs ? Why::expire : Why::count;
+        if (order == sc::kOrderFlyBefore || order == sc::kOrderDock) // (order 5 right after the hand-over: its first leaf call commits)
+            return now - m.commit_ms > kCommitFreshMs && !(order == sc::kOrderDock && m.handover_ms && now - m.handover_ms <= kHandoverMaxMs)
+                       ? Why::expire : Why::count;
         if (order == sc::kOrderNone || order == sc::kOrderRotate) return !m.handover_ms || now - m.handover_ms > kHandoverMaxMs ? Why::order : Why::count;
         return order == sc::kOrderWarpAway ? Why::count : Why::order;
     }
     if (m.role == Role::escort) {
+        // stage B (D.3, D.12): the leader launched (res_until set at its order 8); the escort keeps its petal and its reserved number
+        // on 0x15 to the gate (the script's 5 s legs beyond 10 km) and on order 0 (its waits) until the reservation lapses
+        if (m.key_res && m.res_until && std::int32_t(m.res_until - now) >= 0 && ((order == sc::kOrderFollow && target == g.gate) || order == sc::kOrderNone))
+            return Why::count;
         const int li = find(g, m.leader);
         if (li < 0 || g.m[li].role != Role::committed || !live(g.m[li], now)) return Why::leader;
+        if (formation_current) return Why::count; // Run161: the formation memory current => a member, whatever the live order
         if (order == sc::kOrderEscort || order == sc::kOrderFollow) return target != m.leader ? Why::leader : Why::count;
-        if (order == sc::kOrderNone) return formation_current ? Why::count : Why::order;
+        if (order == sc::kOrderNone) return m.steered_ms && now - m.steered_ms <= kGapMs ? Why::count : Why::order; // the script's waits
         return Why::order;
     }
     if (m.role == Role::arrival) return now - m.launch_ms > kArrivalWindowMs ? Why::window : Why::count;
@@ -487,6 +566,262 @@ __attribute__((always_inline)) inline bool in_front(const Gate& g, const float x
     return sc::dot3(d, g.F) < 0.0f;
 }
 
+// ---- stage B: the geometry (D.2.2, D.2.4) ------------------------------------------------------------------------------------------
+// Gate-frame components of p - G: (R, U, F).
+__attribute__((always_inline)) inline void sb_local(const Gate& g, const float p[3], float* r, float* u, float* z) noexcept {
+    const float d[3] = {p[0] - g.G[0], p[1] - g.G[1], p[2] - g.G[2]};
+    *r = sc::dot3(d, g.R);
+    *u = sc::dot3(d, g.U);
+    *z = sc::dot3(d, g.F);
+}
+// The pass point Q (D.2.2) for a hull (r_s, w, L) at a grid lateral A_lat on a gate of radius r_gate: the point nearest A_lat in
+// {|Q| <= l_max, Q_U <= -l_min}, l_max = r_s + v_t / 10 - 100 m (the order-5 trigger at the ramp's floor speed v_t = v_max / 2,
+// tf 1, the tracking allowance), l_min = w + (L - w) sin 3 deg - (0.389 r_gate - r_small - 50 m) (the hull's cross-section below the
+// upper small-arrival fan); a grid point on the axis column (A_R = 0) is biased toward +R (D.5: the small ships take -R) within the
+// chord limit. An empty window (l_min > l_max) keeps Q = (0, -l_max). Lambda_4 (the order-4 final line) is A_lat + (Q - A_lat) clamped
+// to the chord limit c = 0.75 r_gate - 150 m: one straight line from the funnel through X to the trigger when |Q - A_lat| <= c (the
+// rest, an order-5 lateral S). Returns false for a non-finite input.
+// terran: the gate is a Terran ring (D.2.2's table: l + w <= h r_gate - 50 m, h = 0.663); when no l satisfies it, Q is the axis (the
+// small side spawn covers small arrivals there).
+inline bool q_axis(float r_gate, const float a_lat[2], float q[2], float l4[2]) noexcept;
+inline bool q_point(float r_s, float w, float L, float v_max, float r_gate, const float a_lat[2], float q[2], float l4[2], bool terran = false) noexcept {
+    if (!(r_s > 0.0f) || !(r_gate > 0.0f) || !sc::finite_f(a_lat[0]) || !sc::finite_f(a_lat[1]) || !sc::finite_f(v_max)) return false;
+    const float ww = w > 0.0f && w <= r_s ? w : r_s, LL = L > r_s ? L : r_s;
+    float lmax = r_s + 0.05f * (v_max > 0.0f ? v_max : 0.0f) - kTrackM;
+    if (lmax < 0.0f) lmax = 0.0f;
+    if (terran) {
+        const float ring = kTerranHoleR * r_gate - ww - kTerranMarginM;
+        if (!(ring > 0.0f)) return q_axis(r_gate, a_lat, q, l4);
+        if (ring < lmax) lmax = ring;
+    }
+    float lmin = ww + (LL - ww) * kSin3 - (kFanLowR * r_gate - kSmallMaxM - kFanMarginM);
+    if (lmin < 0.0f) lmin = 0.0f;
+    const float c = sc::kGateCrossFraction * r_gate - kChordSlackM;
+    if (lmin > lmax) {
+        q[0] = 0.0f;
+        q[1] = -lmax;
+    } else {
+        // the nearest point of the convex set: the point itself, its projection on the disc (if below the line), on the line (if
+        // inside the disc), or a corner
+        const float px = a_lat[0], py = a_lat[1];
+        const float dn = sc::sqrt_ss(px * px + py * py);
+        if (dn <= lmax && py <= -lmin) {
+            q[0] = px;
+            q[1] = py;
+        } else {
+            float best = 1e30f, bx = 0.0f, by = -lmin;
+            auto take = [&](float x, float y) {
+                const float d = (x - px) * (x - px) + (y - py) * (y - py);
+                if (d < best) {
+                    best = d;
+                    bx = x;
+                    by = y;
+                }
+            };
+            if (dn > 1e-3f) {
+                const float x = px * lmax / dn, y = py * lmax / dn;
+                if (y <= -lmin) take(x, y);
+            }
+            const float half = sc::sqrt_ss(lmax * lmax - lmin * lmin);
+            if (px >= -half && px <= half) take(px, -lmin);
+            take(half, -lmin);
+            take(-half, -lmin);
+            q[0] = bx;
+            q[1] = by;
+        }
+        if (sc::fabs_f(a_lat[0]) < 1.0f) { // the axis column: biased toward +R (D.5), within the disc and the chord limit
+            const float rest = lmax * lmax - q[1] * q[1];
+            float bias = 0.5f * sc::sqrt_ss(rest > 0.0f ? rest : 0.0f);
+            const float dy = q[1] - a_lat[1], room = c * c - dy * dy;
+            const float lim = room > 0.0f ? sc::sqrt_ss(room) : 0.0f;
+            if (bias > lim) bias = lim;
+            if (bias > q[0]) q[0] = bias;
+        }
+    }
+    const float dx = q[0] - a_lat[0], dy = q[1] - a_lat[1], d = sc::sqrt_ss(dx * dx + dy * dy);
+    const float k = d > c && d > 1e-3f ? c / d : 1.0f;
+    l4[0] = a_lat[0] + dx * k;
+    l4[1] = a_lat[1] + dy * k;
+    return sc::finite_f(q[0]) && sc::finite_f(q[1]) && sc::finite_f(l4[0]) && sc::finite_f(l4[1]);
+}
+// The axis variant of the pass point (B.1, measured 2026-10-13 and rejected: about 2.6 s less cross -> launch per ship, about 80 s more
+// span in scenario T): Q on the axis (l = 0), Lambda_4 = A_lat + (Q - A_lat) within the chord limit, as q_point. Selected only with
+// kQAxisDefault (off) for a gate that is not Terran and a hull the side spawn can clear (w <= 0.68 r_gate); kept for a later experiment.
+constexpr bool kQAxisDefault = false;
+inline bool q_axis(float r_gate, const float a_lat[2], float q[2], float l4[2]) noexcept {
+    if (!(r_gate > 0.0f) || !sc::finite_f(a_lat[0]) || !sc::finite_f(a_lat[1])) return false;
+    q[0] = q[1] = 0.0f;
+    const float c = sc::kGateCrossFraction * r_gate - kChordSlackM, dx = -a_lat[0], dy = -a_lat[1], d = sc::sqrt_ss(dx * dx + dy * dy);
+    const float k = d > c && d > 1e-3f ? c / d : 1.0f;
+    l4[0] = a_lat[0] + dx * k;
+    l4[1] = a_lat[1] + dy * k;
+    return true;
+}
+// X along F of a hull r_s at a gate (the KC's grid: A at -2 (r_gate + r_s) F, X 0.75 r_gate before it): the estimate before order 4.
+__attribute__((always_inline)) inline float zx_estimate(float r_gate, float r_s) noexcept {
+    return -(2.0f * (r_gate + r_s) + sc::kGateCrossFraction * r_gate);
+}
+// The final lines in world space: Lambda_4 (order 4: through the point at the grid X's depth, along F) and Lambda_5 (order 5: through
+// Q on the gate plane, along F).
+__attribute__((always_inline)) inline void lambda4(const Gate& g, const Member& m, float X[3]) noexcept {
+    for (unsigned i = 0; i < 3; ++i) X[i] = g.G[i] + m.zx * g.F[i] + m.l4[0] * g.R[i] + m.l4[1] * g.U[i];
+}
+__attribute__((always_inline)) inline void lambda5(const Gate& g, const Member& m, float X[3]) noexcept {
+    for (unsigned i = 0; i < 3; ++i) X[i] = g.G[i] + m.q[0] * g.R[i] + m.q[1] * g.U[i];
+}
+// The look-ahead of the predictor's pursuit (plant_step, the capital lead-in): max(0.75 v, 2 v / W, 0.3 r_gate).
+__attribute__((always_inline)) inline float pursuit_look(float v, float W, float r_gate) noexcept {
+    const float vv = v > 0.0f ? v : 0.0f;
+    float look = 0.75f * vv;
+    if (W > 1e-4f && 2.0f * vv / W > look) look = 2.0f * vv / W;
+    if (sc::kGateLookMinR * r_gate > look) look = sc::kGateLookMinR * r_gate;
+    return look;
+}
+// The carrot on a line (X, h) for the pursuit at speed v, never beyond a_along from X.
+__attribute__((always_inline)) inline void line_carrot(const float X[3], const float h[3], float a_along, float r_gate, float W, const float x[3],
+                                                       float v, float P[3]) noexcept {
+    const float d[3] = {x[0] - X[0], x[1] - X[1], x[2] - X[2]};
+    float along = sc::dot3(d, h) + pursuit_look(v, W, r_gate);
+    if (along > a_along) along = a_along;
+    for (unsigned i = 0; i < 3; ++i) P[i] = X[i] + h[i] * along;
+}
+// ---- the petals (D.2.4): petal p = ring k (p / 7), index i (p % 7) at phi = -120 deg + 40 deg i from -U toward +R; the racetrack
+// lies in the plane of F and e = sin phi R - cos phi U: the inner straight heads +F at b = rho, the outer one -F at rho + 2 R_h, the
+// front turn's foremost point at zx - kLeadM - k kRingStepM (a, b: the components of p - G along F and e).
+constexpr float kRingStepM = kPetalSh + 2.0f * kPetalRh + 2.0f * 1500.0f + 300.0f; // D_ring = S_h + 2 R_h + 2 L_max + 300 m (L_max 1.5 km)
+constexpr float kLap = 2.0f * kPetalSh + 2.0f * sc::kPi * kPetalRh;
+struct PetalGeom {
+    float e[3] = {0, 0, 0}, n[3] = {0, 0, 0}; // the radial direction and the plane's normal F x e
+    float rho = 0, a1 = 0, a0 = 0;            // the ring radius; the straights' front and back ends along F
+};
+inline void petal_geom(const Gate& g, unsigned p, float zx, PetalGeom* pg) noexcept {
+    const unsigned k = p / kPetalsPerRing, i = p % kPetalsPerRing;
+    float sp, cp;
+    sc::sincos_f(kPetalPhi0 + kPetalDphi * float(i), &sp, &cp);
+    for (unsigned c = 0; c < 3; ++c) pg->e[c] = sp * g.R[c] - cp * g.U[c];
+    pg->n[0] = g.F[1] * pg->e[2] - g.F[2] * pg->e[1];
+    pg->n[1] = g.F[2] * pg->e[0] - g.F[0] * pg->e[2];
+    pg->n[2] = g.F[0] * pg->e[1] - g.F[1] * pg->e[0];
+    pg->rho = g.rho;
+    pg->a1 = zx - kLeadM - float(k) * kRingStepM - kPetalRh;
+    pg->a0 = pg->a1 - kPetalSh;
+}
+// The racetrack's point at arc length s (wrapped into [0, lap)): (a, b) and its unit direction (da, db). s = 0 at the inner straight's
+// back end; the inner straight, the front turn, the outer straight, the back turn.
+inline void petal_at(const PetalGeom& pg, float s, float* a, float* b, float* da, float* db) noexcept {
+    for (int i = 0; i < 4 && s >= kLap; ++i) s -= kLap;
+    for (int i = 0; i < 4 && s < 0.0f; ++i) s += kLap;
+    const float R = kPetalRh, S = kPetalSh, half = sc::kPi * R;
+    if (s < S) {
+        *a = pg.a0 + s;
+        *b = pg.rho;
+        *da = 1.0f;
+        *db = 0.0f;
+    } else if (s < S + half) {
+        float st, ct;
+        sc::sincos_f((s - S) / R, &st, &ct);
+        *a = pg.a1 + R * st;
+        *b = pg.rho + R - R * ct;
+        *da = ct;
+        *db = st;
+    } else if (s < 2.0f * S + half) {
+        *a = pg.a1 - (s - S - half);
+        *b = pg.rho + 2.0f * R;
+        *da = -1.0f;
+        *db = 0.0f;
+    } else {
+        float st, ct;
+        sc::sincos_f((s - 2.0f * S - half) / R, &st, &ct);
+        *a = pg.a0 - R * st;
+        *b = pg.rho + R + R * ct;
+        *da = -ct;
+        *db = -st;
+    }
+}
+// The arc length of the racetrack point nearest (a, b).
+__attribute__((always_inline)) inline float petal_project(const PetalGeom& pg, float a, float b) noexcept {
+    const float R = kPetalRh, S = kPetalSh, half = sc::kPi * R, bc = pg.rho + R;
+    if (a >= pg.a0 && a <= pg.a1) return b <= bc ? a - pg.a0 : S + half + (pg.a1 - a);
+    if (a > pg.a1) {
+        float t = sc::atan2_f(a - pg.a1, bc - b); // 0 at the inner end, pi at the outer end
+        if (t < 0.0f) t = 0.0f;
+        return S + R * t;
+    }
+    float t = sc::atan2_f(pg.a0 - a, b - bc); // 0 at the outer end, pi at the inner end
+    if (t < 0.0f) t = 0.0f;
+    return 2.0f * S + half + R * t;
+}
+// The petal's carrot for a ship at (a, b) flying at v: the racetrack point the pursuit's look-ahead beyond the nearest one.
+__attribute__((always_inline)) inline void petal_carrot(const PetalGeom& pg, float r_gate, float W, float a, float b, float v, float* ta,
+                                                        float* tb) noexcept {
+    float da, db;
+    petal_at(pg, petal_project(pg, a, b) + pursuit_look(v, W, r_gate), ta, tb, &da, &db);
+}
+// The plant step of sc::plant_step toward an explicit target (tx, ty) in the plane (the petal's carrot); the same arithmetic.
+__attribute__((always_inline)) inline void plant_step_to(const sc::JoinParams& p, float v_des, float dt, float k_lag, float tx, float ty, float& x,
+                                                         float& y, float& psi, float& upsi, float& w, float& v) noexcept {
+    const float theta = sc::wrap_pi(sc::atan2_f(ty - y, tx - x) - psi);
+    const float a = sc::fabs_f(theta);
+    float w_cmd = sc::sqrt_ss(p.alpha * a);
+    if (a / sc::kTau < w_cmd) w_cmd = a / sc::kTau;
+    if (p.W < w_cmd) w_cmd = p.W;
+    float e_wr = w_cmd * w_cmd / p.alpha + w_cmd * sc::kJoinServoTickS;
+    if (e_wr > a) e_wr = a;
+    const float sgn = theta >= 0.0f ? 1.0f : -1.0f;
+    float wr = w * sgn;
+    if (wr < 0.0f) {
+        wr += p.alpha * dt;
+        if (wr > 0.0f) wr = 0.0f;
+    } else if (e_wr < wr * wr / p.alpha) {
+        wr -= p.alpha * dt;
+        if (wr < 0.0f) wr = 0.0f;
+    } else {
+        wr += p.alpha * dt;
+        if (wr > p.W) wr = p.W;
+    }
+    float turn = wr * dt;
+    if (turn > 0.0f && turn > a) turn = a;
+    psi = sc::wrap_pi(psi + sgn * turn);
+    w = sgn * wr;
+    if (v < v_des) {
+        v += p.a_lin * dt;
+        if (v > v_des) v = v_des;
+    } else {
+        v -= p.a_lin * dt;
+        if (v < v_des) v = v_des;
+    }
+    upsi = sc::wrap_pi(upsi + sc::wrap_pi(psi - upsi) * k_lag);
+    float su, cu;
+    sc::sincos_f(upsi, &su, &cu);
+    x += v * cu * dt;
+    y += v * su * dt;
+}
+// The planar state of a ship in a fixed plane through G spanned by (h, n) (the petal's F and e): (s, y) = the components of x - G,
+// psi and upsi the nose's and the velocity's angles from h toward n, w the in-plane body rate (join_plane's projection).
+inline bool plane_state(const float G[3], const float h[3], const float n[3], const float x[3], const float rows[3][3], const float w[3],
+                        const float u[3], float v, sc::JoinPlane* out) noexcept {
+    const float d[3] = {x[0] - G[0], x[1] - G[1], x[2] - G[2]};
+    const float psi = sc::atan2_f(sc::dot3(rows[2], n), sc::dot3(rows[2], h));
+    const float uu = sc::sqrt_ss(sc::dot3(u, u));
+    const float upsi = uu > 1e-3f ? sc::atan2_f(sc::dot3(u, n), sc::dot3(u, h)) : psi;
+    float df[3], sp, cp, m[3];
+    for (unsigned i = 0; i < 3; ++i) df[i] = -w[0] * rows[0][i] + w[1] * rows[1][i];
+    sc::sincos_f(psi, &sp, &cp);
+    for (unsigned i = 0; i < 3; ++i) m[i] = -sp * h[i] + cp * n[i];
+    out->s = sc::dot3(d, h);
+    out->y = sc::dot3(d, n);
+    out->psi = psi;
+    out->upsi = upsi;
+    out->w = sc::dot3(df, m);
+    out->v = v > 0.0f ? v : 0.0f;
+    return sc::finite_f(out->s) && sc::finite_f(out->y) && sc::finite_f(out->psi) && sc::finite_f(out->upsi) && sc::finite_f(out->w);
+}
+// The order-5 handler's aligned speed toward the gate origin (section 10.5): vmax at r_gate, vmax / 2 at r_gate / 5, linear between.
+__attribute__((always_inline)) inline float dock_ramp(float d, float r_gate, float v_max) noexcept {
+    if (d >= r_gate) return v_max;
+    if (d <= 0.2f * r_gate) return 0.5f * v_max;
+    return 0.5f * v_max + 0.5f * v_max * (d - 0.2f * r_gate) / (0.8f * r_gate);
+}
 // ---- priority (D.1 "When the test fails") ----------------------------------------------------------------------------------------
 // 1 arrival; 2 the hand-over, order 5 or order 8 (the slot holder); 3 the approach on order 4 (stage B's funnel); 5 escort.
 inline unsigned rank(const Member& m) noexcept {
@@ -512,23 +847,66 @@ inline bool can_yield(const Member& m) noexcept {
 }
 
 // ---- the rollout ------------------------------------------------------------------------------------------------------------------
+// A member on order 0 inside the script's re-issue gap whose last steered plan is one the rollout can continue.
+__attribute__((always_inline)) inline bool gap_plan(const Member& m) noexcept;
+// A member rolling out the script's order-0 gap on its last plan (the drift's gap case).
+__attribute__((always_inline)) inline bool in_gap(const Member& m) noexcept {
+    return m.st.order == sc::kOrderNone && !(m.role == Role::committed && m.handover_ms) && gap_plan(m);
+}
+// The order-0 gap's expected rest (s): the member brakes at a (order 0: desired 0) until the script re-issues its order, at most 3 s after
+// its last steered read for an escort (the template's 2-3 s wait) and 5 s for a committed ship; the rollout then resumes its last plan at
+// the plan's speed. 0 outside the gap.
+__attribute__((always_inline)) inline float gap_brake_s(const Member& m) noexcept {
+    if (!in_gap(m)) return 0.0f;
+    const std::uint32_t gap = m.role == Role::escort ? kGapEscortMs : kGapMs, el = m.st.ms - m.steered_ms;
+    return el < gap ? float(gap - el) * 0.001f : 0.0f;
+}
+__attribute__((always_inline)) inline bool gap_plan(const Member& m) noexcept {
+    if (!m.steered_ms || m.st.ms - m.steered_ms > kGapMs) return false;
+    if (m.last_plan == Plan::petal) return m.petal >= 0;
+    if (m.last_plan == Plan::line) return m.line_ok != 0;
+    return m.last_plan == Plan::follow;
+}
+inline Plan plan_of(const Member& m) noexcept;
+// The state read's bookkeeping (site B, the decision): a read on the role's steered order stamps steered_ms and records its plan.
+inline void note_state(Member& m) noexcept {
+    const std::uint16_t o = m.st.order;
+    const bool steered = (m.role == Role::committed && (o == sc::kOrderFlyBefore || o == sc::kOrderDock)) ||
+                         (m.role == Role::escort && (o == sc::kOrderEscort || o == sc::kOrderFollow));
+    if (!steered) return;
+    m.steered_ms = m.st.ms;
+    m.last_plan = plan_of(m);
+}
 inline Plan plan_of(const Member& m) noexcept {
     const std::uint16_t o = m.st.order;
     if (o == sc::kOrderWarpIn) return Plan::warp_in;
     if (o == sc::kOrderUndock) return Plan::exit;
     if (o == sc::kOrderWarpAway) return Plan::launch;
     if (m.role == Role::committed) {
-        if (o == sc::kOrderFlyBefore) return m.line_ok ? Plan::line : Plan::drift;
-        if (o == sc::kOrderDock) return Plan::dock;
-        if (o == sc::kOrderNone) return Plan::brake;
+        if (o == sc::kOrderFlyBefore) {
+            if (m.sb == Sb::hold && m.petal >= 0) return Plan::petal; // stage B: holding (or entering) its petal
+            return m.line_ok ? Plan::line : Plan::drift;               // the funnel flies Lambda_4 (line_of)
+        }
+        if (o == sc::kOrderDock) return m.sb == Sb::dock && m.q_ok ? Plan::line5 : Plan::dock;
         if (o == sc::kOrderRotate) return Plan::hold;
     }
-    if (o == sc::kOrderNone && (m.role == Role::arrival || m.role == Role::escort)) return Plan::brake; // the KC's order-0 gaps too
-    if (m.role == Role::escort && (o == sc::kOrderEscort || o == sc::kOrderFollow)) return Plan::follow;
+    // order 0 (Run161): the P2 hand-over brakes (order 0 sets the desired speed 0; 0x1f holds); a committed member or an escort in the
+    // script's re-issue gap (<= kGapMs after its last steered read) rolls out on its last steered plan at its current speed (an escort:
+    // its petal, else following its leader; a committed ship: its petal or its funnel line); anything else brakes along the nose
+    if (o == sc::kOrderNone) {
+        if (m.role == Role::committed && m.handover_ms) return Plan::brake;
+        if ((m.role == Role::committed || m.role == Role::escort) && gap_plan(m)) return m.last_plan;
+        return Plan::brake;
+    }
+    if (m.role == Role::escort && (o == sc::kOrderEscort || o == sc::kOrderFollow)) return m.sb == Sb::hold && m.petal >= 0 ? Plan::petal : Plan::follow;
     return Plan::drift;
 }
 // The plan's speed: the module's own speed before a yield cap when known and fresh, else the desired speed site B left.
 inline float plan_speed(const Member& m) noexcept {
+    if (m.st.order == sc::kOrderNone) { // the order-0 gap: the last plan's speed (the rollout brakes for the gap's rest first)
+        if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= kGapMs + kCapMaxAgeMs) return m.v_plan;
+        return m.st.v > 0.0f ? m.st.v : 0.0f;
+    }
     if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= kCapMaxAgeMs) return m.v_plan;
     return m.st.v_des > 0.0f ? m.st.v_des : 0.0f;
 }
@@ -540,25 +918,25 @@ __attribute__((always_inline)) inline void put(Sample& s, const float c[3], cons
 }
 // The state in the plane of the member's line (sc::join_plane), with the plane's lateral unit n (the ship's side); false when the
 // plane is not finite.
-inline bool line_plane(const Member& m, sc::JoinPlane* st, float n[3]) noexcept {
+inline bool line_plane(const Member& m, const float X[3], const float h[3], sc::JoinPlane* st, float n[3]) noexcept {
     sc::GateGeometry g;
     for (unsigned i = 0; i < 3; ++i) {
-        g.X[i] = m.X[i];
-        g.h[i] = m.h[i];
-        g.A[i] = m.X[i] + sc::kGateCrossFraction * m.params.r_gate * m.h[i];
+        g.X[i] = X[i];
+        g.h[i] = h[i];
+        g.A[i] = X[i] + sc::kGateCrossFraction * m.params.r_gate * h[i];
     }
     g.r = m.params.r_gate;
     if (!sc::join_plane(g, m.st.x, m.st.rows, m.st.w, m.st.u, m.st.v, st)) return false;
-    const float dx[3] = {m.st.x[0] - m.X[0], m.st.x[1] - m.X[1], m.st.x[2] - m.X[2]};
-    const float s = sc::dot3(dx, m.h);
-    for (unsigned i = 0; i < 3; ++i) n[i] = dx[i] - s * m.h[i];
+    const float dx[3] = {m.st.x[0] - X[0], m.st.x[1] - X[1], m.st.x[2] - X[2]};
+    const float s = sc::dot3(dx, h);
+    for (unsigned i = 0; i < 3; ++i) n[i] = dx[i] - s * h[i];
     float e = sc::sqrt_ss(sc::dot3(n, n));
     if (e > 1.0f) {
         for (unsigned i = 0; i < 3; ++i) n[i] /= e;
         return true;
     }
-    const float fh = sc::dot3(m.st.rows[2], m.h); // on the line: the plane of the nose (join_plane's choice)
-    for (unsigned i = 0; i < 3; ++i) n[i] = m.st.rows[2][i] - fh * m.h[i];
+    const float fh = sc::dot3(m.st.rows[2], h); // on the line: the plane of the nose (join_plane's choice)
+    for (unsigned i = 0; i < 3; ++i) n[i] = m.st.rows[2][i] - fh * h[i];
     e = sc::sqrt_ss(sc::dot3(n, n));
     if (e > 1e-4f) {
         for (unsigned i = 0; i < 3; ++i) n[i] /= e;
@@ -566,6 +944,19 @@ inline bool line_plane(const Member& m, sc::JoinPlane* st, float n[3]) noexcept 
         for (unsigned i = 0; i < 3; ++i) n[i] = m.st.rows[0][i];
     }
     return true;
+}
+// The order-4 line a member's rollout flies: the grid line (X, h), or in stage B's funnel Lambda_4 (through the point at X's depth,
+// along F).
+inline void line_of(const Member& m, const Gate& g, float X[3], float h[3]) noexcept {
+    if (m.sb == Sb::funnel && m.q_ok) {
+        lambda4(g, m, X);
+        for (unsigned i = 0; i < 3; ++i) h[i] = g.F[i];
+        return;
+    }
+    for (unsigned i = 0; i < 3; ++i) {
+        X[i] = m.X[i];
+        h[i] = m.h[i];
+    }
 }
 // One rollout from the member's state over 30 s (61 samples at 0.5 s from 0.25 s steps). v_cmd < 0: the plan's own speed; >= 0: a
 // yield candidate (the line and drift plans). Returns the samples written; *vmax the largest speed over the rollout. Roles the engine
@@ -591,14 +982,16 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
     switch (plan) {
     case Plan::line: {
         sc::JoinPlane st;
-        float nn[3];
-        if (!line_plane(m, &st, nn)) break;
+        float nn[3], LX[3], Lh[3];
+        line_of(m, g, LX, Lh); // the grid line, or (stage B, in the funnel) Lambda_4
+        if (!line_plane(m, LX, Lh, &st, nn)) break;
         const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(m);
+        const float t_brake = gap_brake_s(m); // the order-0 gap: desired 0 for its expected rest, then the plan (Opus question 5)
         const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau), a_along = sc::kGateCrossFraction * m.params.r_gate;
         float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
         // the nose: the live nose turned about the plane's normal h x n by the plant's in-plane turn (the plant has no out-of-plane
         // axis; the out-of-plane part of the live nose is kept, not projected away: the capsule at sample 0 is the true hull)
-        float ax[3] = {m.h[1] * nn[2] - m.h[2] * nn[1], m.h[2] * nn[0] - m.h[0] * nn[2], m.h[0] * nn[1] - m.h[1] * nn[0]};
+        float ax[3] = {Lh[1] * nn[2] - Lh[2] * nn[1], Lh[2] * nn[0] - Lh[0] * nn[2], Lh[0] * nn[1] - Lh[1] * nn[0]};
         {
             const float an = sc::sqrt_ss(sc::dot3(ax, ax));
             for (float& q : ax) q = an > 1e-6f ? q / an : 0.0f;
@@ -606,18 +999,18 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         const float psi0 = psi;
         bool past = false;
         float dir[3] = {0, 0, 0};
-        for (unsigned i = 0; i < 3; ++i) c[i] = m.X[i] + x * m.h[i] + y * nn[i];
+        for (unsigned i = 0; i < 3; ++i) c[i] = LX[i] + x * Lh[i] + y * nn[i];
         for (unsigned k = 0; k < kSamples; ++k) {
             for (unsigned step = 0; k && step < 2; ++step) {
                 if (!past && x < 0.0f && m.params.W > 1e-4f && m.params.alpha > 1e-6f) {
-                    sc::plant_step(m.params, v_des, kStepS, k_lag, a_along, x, y, psi, upsi, w, v);
-                    for (unsigned i = 0; i < 3; ++i) c[i] = m.X[i] + x * m.h[i] + y * nn[i];
+                    sc::plant_step(m.params, float(k) * kSampleS < t_brake ? 0.0f : v_des, kStepS, k_lag, a_along, x, y, psi, upsi, w, v);
+                    for (unsigned i = 0; i < 3; ++i) c[i] = LX[i] + x * Lh[i] + y * nn[i];
                 } else { // past the crossing plane (P2): the hand-over brakes on its last velocity (order 0, desired 0; 0x1f in place)
                     if (!past) {
                         past = true;
                         float su, cu;
                         sc::sincos_f(upsi, &su, &cu);
-                        for (unsigned i = 0; i < 3; ++i) dir[i] = cu * m.h[i] + su * nn[i];
+                        for (unsigned i = 0; i < 3; ++i) dir[i] = cu * Lh[i] + su * nn[i];
                     }
                     const float a = m.params.a_lin > 0.0f ? m.params.a_lin : 1.0f;
                     const float v1 = v > a * kStepS ? v - a * kStepS : 0.0f;
@@ -633,6 +1026,88 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                                 f0[2] * cp + axf[2] * sp + ax[2] * af * (1.0f - cp)};
             put(out[n++], c, f);
             if (v > *vmax) *vmax = v;
+        }
+        break;
+    }
+    case Plan::petal: { // stage B: the pursuit of the petal's racetrack carrot in its plane (F, e); the out-of-plane offset kept
+        PetalGeom pg;
+        petal_geom(g, unsigned(m.petal), m.zx, &pg);
+        sc::JoinPlane st;
+        if (!plane_state(g.G, g.F, pg.e, m.st.x, m.st.rows, m.st.w, m.st.u, m.st.v, &st) || !(m.params.W > 1e-4f) || !(m.params.alpha > 1e-6f))
+            break;
+        const float off = (m.st.x[0] - g.G[0]) * pg.n[0] + (m.st.x[1] - g.G[1]) * pg.n[1] + (m.st.x[2] - g.G[2]) * pg.n[2];
+        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(m);
+        const float t_brake = gap_brake_s(m);
+        const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau);
+        float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
+        const float psi0 = psi;
+        for (unsigned k = 0; k < kSamples; ++k) {
+            for (unsigned step = 0; k && step < 2; ++step) {
+                float ta, tb;
+                petal_carrot(pg, m.params.r_gate, m.params.W, x, y, v, &ta, &tb);
+                plant_step_to(m.params, float(k) * kSampleS < t_brake ? 0.0f : v_des, kStepS, k_lag, ta, tb, x, y, psi, upsi, w, v);
+            }
+            for (unsigned i = 0; i < 3; ++i) c[i] = g.G[i] + x * g.F[i] + y * pg.e[i] + off * pg.n[i];
+            float sp, cp; // the live nose turned about the plane's normal F x e by the plant's in-plane turn (as the line plan)
+            sc::sincos_f(psi - psi0, &sp, &cp);
+            const float* ax = pg.n;
+            const float axf[3] = {ax[1] * f0[2] - ax[2] * f0[1], ax[2] * f0[0] - ax[0] * f0[2], ax[0] * f0[1] - ax[1] * f0[0]};
+            const float af = sc::dot3(ax, f0);
+            const float f[3] = {f0[0] * cp + axf[0] * sp + ax[0] * af * (1.0f - cp), f0[1] * cp + axf[1] * sp + ax[1] * af * (1.0f - cp),
+                                f0[2] * cp + axf[2] * sp + ax[2] * af * (1.0f - cp)};
+            put(out[n++], c, f);
+            if (v > *vmax) *vmax = v;
+        }
+        break;
+    }
+    case Plan::line5: { // stage B, order 5: the pursuit of Lambda_5 (through Q along F) at the order's aligned ramp (site B's write)
+                        // until the trigger |v| / 10 + r around the gate origin, then order 8 along +F for 0.9 s
+        float LX[3], nn[3];
+        lambda5(g, m, LX);
+        sc::JoinPlane st;
+        if (!line_plane(m, LX, g.F, &st, nn) || !(m.params.W > 1e-4f) || !(m.params.alpha > 1e-6f)) break;
+        const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau), a_along = 2.0f * m.params.r_gate;
+        float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
+        float ax[3] = {g.F[1] * nn[2] - g.F[2] * nn[1], g.F[2] * nn[0] - g.F[0] * nn[2], g.F[0] * nn[1] - g.F[1] * nn[0]};
+        {
+            const float an = sc::sqrt_ss(sc::dot3(ax, ax));
+            for (float& q : ax) q = an > 1e-6f ? q / an : 0.0f;
+        }
+        const float psi0 = psi;
+        float t_launch = -1.0f, v0 = 0.0f;
+        for (unsigned i = 0; i < 3; ++i) c[i] = LX[i] + x * g.F[i] + y * nn[i];
+        for (unsigned k = 0; k < kSamples; ++k) {
+            const float t = float(k) * kSampleS;
+            if (t_launch >= 0.0f) { // order 8: 900 ms along +F, then gone
+                // then the ship is gone: the rollout holds the launch's end point beyond the plane (no hull is there; the pair's overlap stays
+                // complete, review F13)
+                const float tl = t - t_launch > 0.9f ? 0.9f : t - t_launch;
+                const float tm = tl * 1000.0f, z = v0 * tl + kWarpInK * tm * tm;
+                float p[3];
+                for (unsigned i = 0; i < 3; ++i) p[i] = c[i] + z * g.F[i];
+                put(out[n++], p, f0);
+                if (2697.0f / 0.9f + v0 > *vmax) *vmax = 2697.0f / 0.9f + v0;
+                continue;
+            }
+            for (unsigned step = 0; k && step < 2; ++step) {
+                const float dd[3] = {c[0] - g.G[0], c[1] - g.G[1], c[2] - g.G[2]};
+                const float d = sc::sqrt_ss(sc::dot3(dd, dd));
+                sc::plant_step(m.params, dock_ramp(d, m.params.r_gate, m.params.v_max), kStepS, k_lag, a_along, x, y, psi, upsi, w, v);
+                for (unsigned i = 0; i < 3; ++i) c[i] = LX[i] + x * g.F[i] + y * nn[i];
+            }
+            float sp, cp;
+            sc::sincos_f(psi - psi0, &sp, &cp);
+            const float axf[3] = {ax[1] * f0[2] - ax[2] * f0[1], ax[2] * f0[0] - ax[0] * f0[2], ax[0] * f0[1] - ax[1] * f0[0]};
+            const float af = sc::dot3(ax, f0);
+            const float f[3] = {f0[0] * cp + axf[0] * sp + ax[0] * af * (1.0f - cp), f0[1] * cp + axf[1] * sp + ax[1] * af * (1.0f - cp),
+                                f0[2] * cp + axf[2] * sp + ax[2] * af * (1.0f - cp)};
+            put(out[n++], c, f);
+            if (v > *vmax) *vmax = v;
+            const float dd[3] = {c[0] - g.G[0], c[1] - g.G[1], c[2] - g.G[2]};
+            if (k && sc::dot3(dd, dd) <= (v / 10.0f + m.r) * (v / 10.0f + m.r)) { // the trigger: P4, one order-0 frame, order 8
+                t_launch = t;
+                v0 = v;
+            }
         }
         break;
     }
@@ -749,9 +1224,8 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
     case Plan::launch: {
         // order 8: 900 ms along +F from where the trigger fired (at most 2697 m plus v0 t), then the ship leaves the sector
         const float v0 = m.st.v > 0.0f ? m.st.v : 0.0f;
-        for (unsigned k = 0; k < kSamples; ++k) {
-            const float t = float(k) * kSampleS;
-            if (t > 0.9f) break;
+        for (unsigned k = 0; k < kSamples; ++k) { // then gone: the rollout holds the end point (review F13, as line5)
+            const float t = float(k) * kSampleS > 0.9f ? 0.9f : float(k) * kSampleS;
             const float tm = t * 1000.0f, z = v0 * t + kWarpInK * tm * tm;
             for (unsigned i = 0; i < 3; ++i) c[i] = m.st.x[i] + z * g.F[i];
             put(out[n++], c, f0);
@@ -777,7 +1251,8 @@ struct Sweep {
 // uses the per-pair bound (v_A,max + v_B,max) dt / 2 on |u_A - u_B| dt / 2 (no square root); a sample that fails it is retested
 // with the samples' own relative motion, then narrowly.
 inline Sweep sweep(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vmax, float La, float wa, const Sample* sb, unsigned nb,
-                   std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples = kMinOverlapSamples) noexcept {
+                   std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples = kMinOverlapSamples, bool ends = false,
+                   float drift = kDriftMs) noexcept {
     Sweep out;
     const std::int32_t dms = std::int32_t(a_ms - b_ms);
     if (dms > std::int32_t(kRolloutMaxAgeMs) || dms < -std::int32_t(kRolloutMaxAgeMs)) { // the rollouts are too far apart in time
@@ -796,14 +1271,15 @@ inline Sweep sweep(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vm
     const std::int32_t i0 = koff < 0 ? -koff : 0;
     std::int32_t i1 = std::int32_t(na);
     if (std::int32_t(nb) - koff < i1) i1 = std::int32_t(nb) - koff;
-    if (i1 - i0 < std::int32_t(min_samples < kMinOverlapSamples ? kMinOverlapSamples : min_samples)) { // too short an overlap: no
+    // stage B: a rollout that ends because its ship leaves the sector (order 8's 0.9 s, then gone) is complete: one paired sample suffices
+    if (i1 - i0 < (ends ? 1 : std::int32_t(min_samples < kMinOverlapSamples ? kMinOverlapSamples : min_samples))) { // too short: no
         out.stale = true;                                                                                  // certificate (fail closed)
         return out;
     }
     const Sample* B = sb + koff;
     // the drift charges each side from its own rollout's t0: k (t + |t0_A - t0_B|), t from A's t0
-    float base = kMarginM + resid * b_vmax + kDriftMs * (kSampleS * float(i0 > 0 ? i0 : 0) + float(dms >= 0 ? dms : -dms) * 0.001f);
-    for (std::int32_t i = i0; i < i1; ++i, base += kDriftMs * kSampleS) {
+    float base = kMarginM + resid * b_vmax + drift * (kSampleS * float(i0 > 0 ? i0 : 0) + float(dms >= 0 ? dms : -dms) * 0.001f);
+    for (std::int32_t i = i0; i < i1; ++i, base += drift * kSampleS) {
         const Sample& A = sa[i];
         const Sample& Bi = B[i];
         const float d[3] = {A.c[0] - Bi.c[0], A.c[1] - Bi.c[1], A.c[2] - Bi.c[2]};
@@ -878,7 +1354,14 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
         ++st->sweeps;
         // fail closed: no samples on either side, a rollout more than 1 s from the other, too short an overlap -> no verdict (none:
         // the engine's warn and the sphere avoidance), not a conflict to resolve
-        const Sweep w = B.n && n ? sweep(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w, warn_reach_samples(A, B))
+        // a rollout that ends because order 8 is live on the leaving ship is complete with one paired sample; one that ends at the order-5
+        // trigger (line5) keeps the 4-sample minimum but not the warn reach (review F13)
+        const bool launching = (B.n < kSamples && plan_of(B) == Plan::launch) || (n < kSamples && plan_of(A) == Plan::launch);
+        const bool triggering = (B.n < kSamples && plan_of(B) == Plan::line5) || (n < kSamples && plan_of(A) == Plan::line5);
+        // (a member in the order-0 gap brakes in its rollout for the gap's expected rest: gap_brake_s; the drift k stays kDriftMs)
+        const float drift = kDriftMs;
+        const Sweep w = B.n && n ? sweep(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w,
+                                         triggering && !launching ? kMinOverlapSamples : warn_reach_samples(A, B), launching, drift)
                                  : Sweep{false, 255, 1e30f, 0, true};
         st->narrow += w.narrow;
         if (write) {
@@ -901,9 +1384,10 @@ inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st) n
     if (!can_yield(Y)) return false;
     const float v = plan_speed(Y) > 0.0f ? plan_speed(Y) : Y.st.v;
     const float cand[3] = {kYieldFrac * v, kYieldMidMs, kYieldFloorMs};
+    const float floor = plan_of(Y) == Plan::petal ? kPetalVmin : kYieldFloorMs; // stage B: a petal holder never below 25 m/s (D.7 item 6)
     Sample tmp[kSamples];
     for (float c : cand) {
-        if (!(c >= kYieldFloorMs) || !(c < v)) continue;
+        if (!(c >= floor) || !(c < v)) continue;
         ++st->candidates;
         ++st->rollouts;
         float vmax = 0.0f;
@@ -928,6 +1412,7 @@ inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st) n
 inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, PairEvent* ev, unsigned* n_ev) noexcept {
     Member& A = g.m[i];
     A.decided_ms = now ? now : 1;
+    note_state(A); // Run161: the order-0 gap's steered stamp and plan
     std::uint8_t before[kMembers];
     for (unsigned j = 0; j < kMembers; ++j) before[j] = g.v[i][j];
     if (!live(A, now)) {
@@ -1004,6 +1489,29 @@ inline bool e_certified(const Gate& g, unsigned i, unsigned j, std::uint32_t now
                         std::uint16_t b_order) noexcept {
     if (!fa_ok || !fb_ok || a_order == sc::kOrderAvoid || b_order == sc::kOrderAvoid) return false;
     return pair_verdict(g, i, j, now, kCertMaxAgeMs) == PairV::clear;
+}
+// Why site E passes a member pair (Run161; the reason of every pass_ctl, counted): certified (suppress_ctl), none (no verdict: a sweep
+// that failed closed), unresolved (a conflict handed back), stale (the clear verdict older than 250 ms), starved (a member's decisions
+// more than 1 s old), on_0x12, rows (a forward row not a unit vector), order0 (no certificate while one of the pair is on order 0).
+enum class EWhy : std::uint8_t { certified = 0, none, unresolved, stale, starved, on_0x12, rows, order0, not_member, count };
+inline const char* ewhy_name(EWhy w) noexcept {
+    static const char* const n[unsigned(EWhy::count)] = {"certified", "none", "unresolved", "stale", "starved", "on_0x12", "rows", "order0",
+                                                         "not_member"};
+    return unsigned(w) < unsigned(EWhy::count) ? n[unsigned(w)] : "?";
+}
+inline EWhy e_reason(const Gate& g, unsigned i, unsigned j, std::uint32_t now, bool fa_ok, bool fb_ok, std::uint16_t a_order,
+                     std::uint16_t b_order) noexcept {
+    if (a_order == sc::kOrderAvoid || b_order == sc::kOrderAvoid) return EWhy::on_0x12;
+    if (!fa_ok || !fb_ok) return EWhy::rows;
+    if (i >= g.n || j >= g.n || !live(g.m[i], now) || !live(g.m[j], now)) return EWhy::not_member;
+    const PairV v = PairV(g.v[i][j]);
+    if (v == PairV::clear) {
+        if (!g.m[i].decided_ms || !g.m[j].decided_ms || now - g.m[i].decided_ms > kDecisionMaxAgeMs || now - g.m[j].decided_ms > kDecisionMaxAgeMs)
+            return EWhy::starved;
+        return now - g.vms[i][j] > kCertMaxAgeMs ? EWhy::stale : EWhy::certified;
+    }
+    if (a_order == sc::kOrderNone || b_order == sc::kOrderNone) return EWhy::order0;
+    return v == PairV::unresolved ? EWhy::unresolved : EWhy::none;
 }
 __attribute__((always_inline)) inline bool unit_row(const float f[3]) noexcept {
     const float n2 = sc::dot3(f, f);
@@ -1103,5 +1611,645 @@ inline bool arrival_gate_row(const Arrival& a, std::uint32_t gate, std::uint32_t
     const float lat2 = sc::dot3(d, d) - dz * dz;
     const float lat = lat2 > 0.0f ? sc::sqrt_ss(lat2) : 0.0f;
     return sc::finite_f(lat) && lat + a.w <= kTerranHoleR * r_gate - kTerranMarginM;
+}
+
+// ---- stage B: the sequencer, the funnel and the steering (D.2.3-D.2.6, D.3, D.8, D.12; gate-traffic-controller.md B.1) -------------
+// Once per frame per gate (sb_frame, the frame boundary): the keys, Q and the final lines, the stages from the live orders, the petals,
+// the funnel's release, speed shaping and feasibility, the go-around, the holders' lap speeds. Per decision (sb_steer, site A): the
+// leaf point and site B's speed of a member the controller flies (a holder or an escort in its petal, the funnel, the order-5 leg).
+struct SbEvent {
+    std::uint32_t ship = 0, key = 0;
+    std::uint8_t from = 0, to = 0, why = 0, petal = 0xff;
+};
+constexpr unsigned kSbEvents = 16;
+struct SbStats {
+    unsigned releases = 0, go_arounds = 0, predictions = 0, deferred = 0, x_refused = 0, guarded = 0, seq_skipped = 0, clock_resets = 0;
+    unsigned go_arounds_near = 0; // go-arounds decided within 1 km of X
+    std::uint32_t x_wait_ms = 0;
+    unsigned n_ev = 0, ev_dropped = 0;
+    SbEvent ev[kSbEvents];
+};
+__attribute__((always_inline)) inline void sb_event(SbStats* st, const Member& m, Sb from, Sb to, Why why) noexcept {
+    if (!st) return;
+    if (st->n_ev >= kSbEvents) {
+        ++st->ev_dropped;
+        return;
+    }
+    SbEvent& e = st->ev[st->n_ev++];
+    e.ship = m.ship;
+    e.key = m.key;
+    e.from = std::uint8_t(from);
+    e.to = std::uint8_t(to);
+    e.why = std::uint8_t(why);
+    e.petal = m.petal >= 0 ? std::uint8_t(m.petal) : 0xff;
+}
+// The sequence order (D.2.5, D.8): by key (seq << 4; an escort right after its leader); committed members that entered within
+// kBurstMs of each other without a reservation (a load rebuilds the board at the members' next decisions) by their distance to X.
+inline bool seq_before(const Member& a, const Member& b) noexcept {
+    if (!a.key_res && !b.key_res && a.role == Role::committed && b.role == Role::committed) {
+        const std::uint32_t d = a.enter_ms > b.enter_ms ? a.enter_ms - b.enter_ms : b.enter_ms - a.enter_ms;
+        if (d <= kBurstMs && a.enter_d != b.enter_d) return a.enter_d < b.enter_d;
+    }
+    if (a.key != b.key) return a.key < b.key;
+    return a.ship < b.ship;
+}
+// The bearing of a gate-frame lateral (r, u) around the axis: rad from -U toward +R, clamped to the petals' 240 deg.
+__attribute__((always_inline)) inline float sb_bearing(float r, float u) noexcept {
+    float phi = sc::atan2_f(r, -u);
+    if (phi < kPetalPhi0) phi = kPetalPhi0;
+    if (phi > -kPetalPhi0) phi = -kPetalPhi0;
+    return phi;
+}
+// The free petal nearest a bearing, ring 0 first (the back of the shortest column nearest it); a petal with a held neighbour costs
+// kNeighbourCost (one free petal between holders while the ring has room: their planes 60 deg apart); -1 when every petal is held.
+constexpr float kNeighbourCost = 0.35f; // rad (half a petal: a free gap is taken only next to the bearing; a far petal means a
+                                       // crossing of the ring)
+inline int petal_pick(const Gate& g, float phi) noexcept {
+    for (unsigned k = 0; k < kRings; ++k) {
+        int best = -1;
+        float bd = 1e30f;
+        for (unsigned i = 0; i < kPetalsPerRing; ++i) {
+            const unsigned p = k * kPetalsPerRing + i;
+            if (g.petal_ship[p]) continue;
+            const bool nb = (i > 0 && g.petal_ship[p - 1]) || (i + 1 < kPetalsPerRing && g.petal_ship[p + 1]);
+            const float d = sc::fabs_f(kPetalPhi0 + kPetalDphi * float(i) - phi) + (nb ? kNeighbourCost : 0.0f);
+            if (d < bd) {
+                bd = d;
+                best = int(p);
+            }
+        }
+        if (best >= 0) return best;
+    }
+    return -1;
+}
+// The order-5 leg from a centre distance d_gate at speed v0 to the end of order 8 (s): the distance to the trigger at the aligned
+// ramp (v_max, the acceleration from v0 charged), plus order 8's 0.9 s.
+__attribute__((always_inline)) inline float leg5_s(const Member& m, float d_gate, float v0) noexcept {
+    const float vmax = m.params.v_max > 1.0f ? m.params.v_max : 1.0f, a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f;
+    float d = d_gate - (m.r + 0.05f * vmax);
+    if (d < 0.0f) d = 0.0f;
+    float t = d / vmax;
+    if (v0 < vmax) t += (vmax - (v0 > 0.0f ? v0 : 0.0f)) * (vmax - (v0 > 0.0f ? v0 : 0.0f)) / (2.0f * a * vmax);
+    return t + 0.9f;
+}
+// The distance to Lambda_4's point at X's depth (m).
+__attribute__((always_inline)) inline float dist_x(const Gate& g, const Member& m) noexcept {
+    float X[3];
+    lambda4(g, m, X);
+    const float d[3] = {m.st.x[0] - X[0], m.st.x[1] - X[1], m.st.x[2] - X[2]};
+    return sc::sqrt_ss(sc::dot3(d, d));
+}
+// The predicted end of a released member's order 8 (game ms): the funnel to X at its speed (>= 10 m/s), the hand-over (1 s), the
+// order-5 leg and order 8.
+inline std::uint32_t eta_launch(const Gate& g, const Member& m, std::uint32_t now) noexcept {
+    if (m.sb == Sb::launch) return (m.o8_ms ? m.o8_ms : now) + 900u;
+    const float dg[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
+    if (m.sb == Sb::dock || m.sb == Sb::handover)
+        return now + std::uint32_t(1000.0f * (leg5_s(m, sc::sqrt_ss(sc::dot3(dg, dg)), m.st.v) + (m.sb == Sb::handover ? 1.0f : 0.0f)));
+    if (m.sb == Sb::funnel) {
+        float X[3];
+        lambda4(g, m, X);
+        const float dx[3] = {m.st.x[0] - X[0], m.st.x[1] - X[1], m.st.x[2] - X[2]}, xg[3] = {X[0] - g.G[0], X[1] - g.G[1], X[2] - g.G[2]};
+        const float vx = m.v_sb > kYieldFloorMs ? m.v_sb : kYieldFloorMs;
+        std::uint32_t t_x = now + std::uint32_t(1000.0f * sc::sqrt_ss(sc::dot3(dx, dx)) / vx);
+        if (m.x_pred_ms && std::int32_t(m.x_pred_ms - t_x) > 0) t_x = m.x_pred_ms; // the predicted path at the feasible speed
+        return t_x + std::uint32_t(1000.0f * (1.0f + leg5_s(m, sc::sqrt_ss(sc::dot3(xg, xg)), vx)));
+    }
+    return now;
+}
+// The funnel's feasibility (D.2.3: the join predictor on Lambda_4 from the member's state): the highest candidate whose prediction
+// meets the margins, else the highest within P2's acceptance, else -1 (no feasible candidate: no release, or the go-around).
+__attribute__((always_inline)) inline float funnel_feasible(const Gate& g, const Member& m, unsigned* predictions, float* t_x = nullptr) noexcept {
+    sc::GateGeometry geo;
+    lambda4(g, m, geo.X);
+    for (unsigned i = 0; i < 3; ++i) {
+        geo.h[i] = g.F[i];
+        geo.A[i] = geo.X[i] + sc::kGateCrossFraction * g.r_gate * g.F[i];
+    }
+    geo.r = g.r_gate;
+    sc::JoinPlane pl;
+    if (!sc::join_plane(geo, m.st.x, m.st.rows, m.st.w, m.st.u, m.st.v, &pl)) return -1.0f;
+    float best1 = -1.0f, t1 = 0.0f;
+    for (unsigned i = 0; i < sc::kJoinCandidateCount; ++i) {
+        float nose, y;
+        if (predictions) ++*predictions;
+        sc::JoinPred pd;
+        const int gr = sc::join_predict_grade(pl, m.params, sc::kJoinCandidates[i], &nose, &y, &pd);
+        const float c = m.params.v_max > 0.0f && sc::kJoinCandidates[i] > m.params.v_max ? m.params.v_max : sc::kJoinCandidates[i];
+        if (gr == 2) {
+            if (t_x) *t_x = float(pd.steps) * sc::kJoinStepS; // the predicted flight to X's plane at this candidate
+            return c;
+        }
+        if (gr == 1 && best1 < 0.0f) {
+            best1 = c;
+            t1 = float(pd.steps) * sc::kJoinStepS;
+        }
+    }
+    if (t_x) *t_x = t1;
+    return best1;
+}
+// The holder's lap speed so that it reaches the middle of its release window at t_rel (25..60 m/s; nominal without a target).
+__attribute__((always_inline)) inline float lap_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel, float s_target) noexcept {
+    if (!t_rel || m.petal < 0) return kPetalVnom;
+    PetalGeom pg;
+    petal_geom(g, unsigned(m.petal), m.zx, &pg);
+    const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
+    const float s = petal_project(pg, sc::dot3(d, g.F), sc::dot3(d, pg.e));
+    float ds = s_target - s;
+    while (ds < 0.0f) ds += kLap;
+    const std::int32_t dt = std::int32_t(t_rel - now);
+    if (dt <= 100) return kPetalVmax;
+    const float v = ds / (float(dt) * 0.001f);
+    return v < kPetalVmin ? kPetalVmin : v > kPetalVmax ? kPetalVmax : v;
+}
+// One frame of the gate's stage B (the frame boundary, after the decisions). The arena is the board: no allocation.
+inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
+    if (!g.gate || !(g.r_gate > 0.0f)) return;
+    if (g.sb_last_ms && std::int32_t(now - g.sb_last_ms) < 0) { // a backward game-clock jump (a load): the slot state is stale (review F4)
+        g.slot_block_ms = g.funnel_end_ms = g.last_arrival_seen = 0;
+        g.funnel_ship = 0;
+        g.rho = kRingMinM;
+        for (std::uint32_t& p : g.petal_ship) p = 0;
+        for (unsigned i = 0; i < g.n; ++i) {
+            Member& m = g.m[i];
+            m.x_ms = m.o8_ms = m.head_ms = m.feas_ms = m.x_pred_ms = m.release_ms = m.plan_x_ms = m.plan_launch_ms = 0;
+            m.refused = 0;
+            m.petal = -1;
+            if (m.sb == Sb::funnel) m.sb = Sb::hold;
+        }
+        if (st) ++st->clock_resets;
+    }
+    g.sb_last_ms = now ? now : 1;
+    // the ring radius from the widest pair member (it grows while a petal is held, so no holder's petal moves inward)
+    bool held = false;
+    for (std::uint32_t s : g.petal_ship) held = held || s != 0;
+    float w_max = 0.0f;
+    for (unsigned i = 0; i < g.n; ++i)
+        if ((g.m[i].role == Role::committed || g.m[i].role == Role::escort) && g.m[i].w > w_max) w_max = g.m[i].w;
+    float need = (2.0f * w_max + kRingGapM) / (2.0f * kSinHalfDphi);
+    if (need < kRingMinM) need = kRingMinM;
+    if (!held || need > g.rho) g.rho = need;
+    g.w_max = w_max;
+    // a capital launch at the gate (0x00444606): our side is refused 60 s after its transfer (the through slot's direction change)
+    if (g.cap_arrival_ms && g.cap_arrival_ms != g.last_arrival_seen) {
+        g.last_arrival_seen = g.cap_arrival_ms;
+        g.slot_block_ms = g.cap_arrival_ms + kSlotArrivalMs;
+    }
+    // the petals of members that left their petal
+    for (unsigned p = 0; p < kPetals; ++p) {
+        if (!g.petal_ship[p]) continue;
+        const int k = find(g, g.petal_ship[p]);
+        if (k < 0 || g.m[k].petal != int(p) || g.m[k].sb != Sb::hold || !pair_role(g.m[k].role)) g.petal_ship[p] = 0;
+    }
+    // keys, Q and the final lines, the stages from the live orders, the petals
+    for (unsigned i = 0; i < g.n; ++i) {
+        Member& m = g.m[i];
+        if (!m.ship || !(m.role == Role::committed || m.role == Role::escort)) {
+            if (m.ship && m.role != Role::evicted) {
+                m.sb = Sb::none;
+                m.petal = -1;
+            } else if (m.role == Role::evicted) {
+                m.sb = Sb::none;
+                m.petal = -1;
+            }
+            continue;
+        }
+        if (!m.st.ms) continue;
+        if (!m.key) {
+            m.key = m.seq << 4;
+            const float d[3] = {m.st.x[0] - m.X[0], m.st.x[1] - m.X[1], m.st.x[2] - m.X[2]};
+            m.enter_d = m.line_ok ? sc::sqrt_ss(sc::dot3(d, d)) : 0.0f;
+        }
+        const Sb before = m.sb;
+        if (m.role == Role::escort) {
+            const int li = find(g, m.leader);
+            if (!m.key_res && li >= 0 && g.m[li].role == Role::committed && g.m[li].key) { // the reservation, once (D.3)
+                const Member& L = g.m[li];
+                unsigned rank = 0;
+                for (unsigned j = 0; j < g.n; ++j)
+                    if (j != i && g.m[j].role == Role::escort && g.m[j].leader == m.leader && g.m[j].seq < m.seq) ++rank;
+                m.key = L.key + 1u + (rank < 14u ? rank : 14u);
+                m.key_res = 1;
+            }
+            if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb == Sb::launch && g.m[li].o8_ms && !m.res_until)
+                m.res_until = g.m[li].o8_ms + kReserveMs; // the leader's launch: the reservation holds kReserveMs (60 s)
+            m.zx = zx_estimate(g.r_gate, m.r);
+            m.sb = Sb::hold;
+        } else {
+            if (m.line_ok) {
+                float A[3];
+                for (unsigned c = 0; c < 3; ++c) A[c] = m.X[c] + sc::kGateCrossFraction * g.r_gate * m.h[c];
+                float z;
+                sb_local(g, A, &m.a_lat[0], &m.a_lat[1], &z);
+                float xr, xu;
+                sb_local(g, m.X, &xr, &xu, &m.zx);
+                const bool offset = !kQAxisDefault || gate_terran(g.type) || m.w > kSideSpawnMaxWR * g.r_gate; // the offset Q (D.2.2)
+                m.q_ok = (offset ? q_point(m.r, m.w, m.L, m.params.v_max, g.r_gate, m.a_lat, m.q, m.l4, gate_terran(g.type))
+                                 : q_axis(g.r_gate, m.a_lat, m.q, m.l4)) ? 1 : 0;
+            } else if (!m.q_ok)
+                m.zx = zx_estimate(g.r_gate, m.r);
+            const std::uint16_t o = m.st.order;
+            if (o == sc::kOrderFlyBefore) {
+                if (m.sb != Sb::hold && m.sb != Sb::funnel) {
+                    m.sb = Sb::hold;
+                    m.x_ms = m.o8_ms = 0;
+                    m.refused = 0;
+                }
+                if (m.sb == Sb::funnel && !m.q_ok) m.sb = Sb::hold;
+            } else if ((o == sc::kOrderNone || o == sc::kOrderRotate) && m.handover_ms) {
+                if (m.sb != Sb::handover) { // a new hand-over: its own stamps (review F11)
+                    m.sb = Sb::handover;
+                    m.x_ms = m.handover_ms;
+                    m.refused = 0;
+                    m.o8_ms = 0;
+                }
+            } else if (o == sc::kOrderDock) {
+                if (m.sb == Sb::handover && m.x_ms && st) st->x_wait_ms += now - m.x_ms > 3000u ? now - m.x_ms - 3000u : 0u;
+                m.sb = Sb::dock;
+            } else if (o == sc::kOrderWarpAway) {
+                m.sb = Sb::launch;
+                if (!m.o8_ms) m.o8_ms = m.st.ms;
+                const std::uint32_t end = m.o8_ms + 900u;
+                if (!g.funnel_end_ms || std::int32_t(end - g.funnel_end_ms) > 0) g.funnel_end_ms = end;
+            }
+            if (m.sb == Sb::handover && !m.refused && m.x_ms && now - m.x_ms > 5000u) { // waiting at X for the through slot
+                m.refused = 1;
+                if (st) ++st->x_refused;
+            }
+        }
+        if (m.sb != before) sb_event(st, m, before, m.sb, m.sb == Sb::hold ? Why::hold : m.sb == Sb::dock ? Why::dock : m.sb == Sb::launch ? Why::launch : Why::handover);
+        if (m.sb == Sb::hold && m.petal < 0) {
+            float r, u, z;
+            sb_local(g, m.st.x, &r, &u, &z);
+            float phi = sb_bearing(r, u);
+            if (m.role == Role::escort) { // an escort: next to its leader's petal (the leader's column, D.3)
+                const int li = find(g, m.leader);
+                if (li >= 0 && g.m[li].petal >= 0) {
+                    const int lp = g.m[li].petal % int(kPetalsPerRing);
+                    phi = kPetalPhi0 + kPetalDphi * float(lp + (lp + 2 < int(kPetalsPerRing) ? 2 : -2));
+                }
+            }
+            const int p = petal_pick(g, phi);
+            if (p >= 0) {
+                m.petal = std::int8_t(p);
+                g.petal_ship[p] = m.ship;
+            }
+        }
+        if (m.sb != Sb::hold && m.petal >= 0) {
+            if (g.petal_ship[unsigned(m.petal)] == m.ship) g.petal_ship[unsigned(m.petal)] = 0;
+            m.petal = -1;
+        }
+    }
+    // the funnel: the last released ship and the time the next X may come (its launch + the gap, never before a blocked slot frees)
+    int f = g.funnel_ship ? find(g, g.funnel_ship) : -1;
+    if (f >= 0 && (!pair_role(g.m[f].role) || g.m[f].sb == Sb::hold || g.m[f].sb == Sb::none)) f = -1;
+    if (f < 0) g.funnel_ship = 0;
+    auto t_after = [&](int k) -> std::uint32_t {
+        std::uint32_t t = (k >= 0 ? eta_launch(g, g.m[k], now) : (g.funnel_end_ms ? g.funnel_end_ms : now)) + kFunnelGapMs;
+        if (g.slot_block_ms && std::int32_t(g.slot_block_ms - t) > 0) t = g.slot_block_ms;
+        return t;
+    };
+    // the candidate: the first in sequence among the holders (committed on order 4 with Q) and the escorts holding a reservation
+    int c = -1;
+    for (unsigned i = 0; i < g.n; ++i) {
+        const Member& m = g.m[i];
+        if (!live(m, now)) continue;
+        const bool holder = m.role == Role::committed && m.sb == Sb::hold && m.st.order == sc::kOrderFlyBefore && m.q_ok;
+        const bool waiting = m.role == Role::escort && m.key_res;
+        if (!holder && !waiting) continue;
+        if (c < 0 || seq_before(m, g.m[c])) c = int(i);
+    }
+    // the backfill: while the first in sequence is an escort waiting for its order 4 (its leader not yet out of the sector, D.12), the
+    // first committed holder may go ahead when its predicted launch (released now, the funnel at the nominal 60 m/s) plus the gap
+    // comes before the escort's earliest X (its leader's launch, the script's switch, the escort's straight line to X at v_max): the
+    // convoy's order through the gate is kept, the funnel's idle time is used
+    if (c >= 0 && g.m[c].role == Role::escort) {
+        const Member& e = g.m[c];
+        const int li = find(g, e.leader);
+        std::uint32_t t_l = 0;
+        if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::none) t_l = eta_launch(g, g.m[li], now);
+        else if (e.res_until) t_l = e.res_until - kReserveMs;
+        int c2 = -1;
+        for (unsigned i = 0; t_l && i < g.n; ++i) {
+            const Member& m = g.m[i];
+            if (!live(m, now) || !(m.role == Role::committed && m.sb == Sb::hold && m.st.order == sc::kOrderFlyBefore && m.q_ok)) continue;
+            if (c2 < 0 || seq_before(m, g.m[c2])) c2 = int(i);
+        }
+        if (c2 >= 0) {
+            float r, u, z;
+            sb_local(g, e.st.x, &r, &u, &z);
+            const float dz = z - e.zx, d_e = sc::sqrt_ss(dz * dz + r * r + u * u);
+            const float ve = e.params.v_max > kPetalVmax ? e.params.v_max : kPetalVmax;
+            const std::uint32_t e_x = t_l + kEscortSwitchMs + std::uint32_t(1000.0f * d_e / ve);
+            const Member& h = g.m[c2];
+            float X[3];
+            lambda4(g, h, X);
+            const float xg[3] = {X[0] - g.G[0], X[1] - g.G[1], X[2] - g.G[2]};
+            std::uint32_t t_x = now + std::uint32_t(1000.0f * dist_x(g, h) / kPetalVmax);
+            const std::uint32_t t_free = t_after(f);
+            if (std::int32_t(t_free - t_x) > 0) t_x = t_free;
+            const std::uint32_t t_launch = t_x + std::uint32_t(1000.0f * (1.0f + leg5_s(h, sc::sqrt_ss(sc::dot3(xg, xg)), kPetalVmax)));
+            if (std::int32_t(e_x - (t_launch + kFunnelGapMs)) >= 0) c = c2;
+        }
+    }
+    // the funnel's order-4 part holds one ship until it is on its final straight (within kFinalLatM of Lambda_4 and kFinalAlongM of X)
+    // or past P2: two S-curves never share the funnel (D.2.3)
+    bool funnel_busy = false; // review (D.2.6, Fable 1): any committed member waiting at X (the hand-over) or on order 5 / 8
+    for (unsigned i = 0; i < g.n && !funnel_busy; ++i) {
+        const Member& o = g.m[i];
+        if (o.role != Role::committed || !o.ship) continue;
+        funnel_busy = o.sb == Sb::handover || o.sb == Sb::dock || (o.sb == Sb::launch && std::int32_t(now - (o.o8_ms + 900u)) < 0);
+    }
+    if (f >= 0 && g.m[f].sb == Sb::funnel) {
+        const Member& fm = g.m[f];
+        float X[3];
+        lambda4(g, fm, X);
+        const float d[3] = {fm.st.x[0] - X[0], fm.st.x[1] - X[1], fm.st.x[2] - X[2]};
+        const float s_along = sc::dot3(d, g.F), e2 = sc::dot3(d, d) - s_along * s_along;
+        funnel_busy = funnel_busy || !(s_along > -kFinalAlongM && e2 < kFinalLatM * kFinalLatM);
+    }
+    for (unsigned i = 0; i < g.n; ++i)
+        if (int(i) != c) g.m[i].head_ms = g.m[i].infeas_ms = 0; // the tie-break's stamps belong to the head only
+    std::uint32_t t_next = 0; // the next holder's target at its release window
+    if (c >= 0 && g.m[c].role == Role::committed && !funnel_busy) {
+        Member& m = g.m[c];
+        const std::uint32_t t_free = t_after(f);
+        float r, u, z;
+        sb_local(g, m.st.x, &r, &u, &z);
+        const float a1 = m.zx - kLeadM - kPetalRh; // the ring-0 straights' front end
+        // behind the petal's straights, heading within 60 deg of F (no U-turn in the funnel); the prediction decides the rest
+        const bool window = z <= a1 + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos;
+        const float dX = dist_x(g, m);
+        const bool timing = std::int32_t(t_free - now) <= std::int32_t(dX / kPetalVmin * 1000.0f);
+        // the tie-break (review item 1): a head with the funnel free and its slot due that stays in its release window without a feasible
+        // candidate for more than kHeadSkipMs, or whose window never opens within a slowest lap plus kHeadSkipMs, yields its place and
+        // re-queues at the tail (ctl_seq_skipped); a lap in progress is not a deferral
+        if (timing) {
+            if (!m.head_ms) m.head_ms = now ? now : 1;
+        } else
+            m.head_ms = 0;
+        if (timing && window && m.feas_ms && m.v_feas <= 0.0f) {
+            if (!m.infeas_ms) m.infeas_ms = now ? now : 1;
+        } else if (!window || m.v_feas > 0.0f)
+            m.infeas_ms = 0;
+        const std::uint32_t lap_ms = std::uint32_t(1000.0f * kLap / kPetalVmin) + kHeadSkipMs;
+        if ((m.infeas_ms && now - m.infeas_ms > kHeadSkipMs) || (m.head_ms && now - m.head_ms > lap_ms)) {
+            m.infeas_ms = 0;
+            std::uint32_t tail = g.sb_tail_key;
+            for (unsigned i = 0; i < g.n; ++i)
+                if (g.m[i].key > tail) tail = g.m[i].key;
+            m.key = ((tail >> 4) + 1u) << 4;
+            g.sb_tail_key = m.key;
+            m.key_res = 0;
+            m.head_ms = 0;
+            m.enter_ms = now ? now : 1; // out of any entry burst
+            if (st) ++st->seq_skipped;
+        } else if (window && timing && (!m.feas_ms || now - m.feas_ms >= kFeasMs)) {
+            m.feas_ms = now ? now : 1;
+            float t_pred = 0.0f;
+            m.v_feas = funnel_feasible(g, m, st ? &st->predictions : nullptr, &t_pred);
+            if (m.v_feas > 0.0f) { // the release
+                m.x_pred_ms = now + std::uint32_t(1000.0f * t_pred);
+                const Sb before = m.sb;
+                m.sb = Sb::funnel;
+                m.release_ms = now ? now : 1;
+                m.pred = f >= 0 ? g.m[f].ship : 0;
+                if (m.petal >= 0 && g.petal_ship[unsigned(m.petal)] == m.ship) g.petal_ship[unsigned(m.petal)] = 0;
+                sb_event(st, m, before, m.sb, Why::release);
+                m.petal = -1;
+                g.funnel_ship = m.ship;
+                float X[3];
+                lambda4(g, m, X);
+                const float xg[3] = {X[0] - g.G[0], X[1] - g.G[1], X[2] - g.G[2]};
+                std::uint32_t t_x = now + std::uint32_t(1000.0f * dX / m.v_feas);
+                if (std::int32_t(m.x_pred_ms - t_x) > 0) t_x = m.x_pred_ms; // the predicted path (the S-curve), not the chord
+                m.plan_x_ms = std::int32_t(t_free - t_x) > 0 ? t_free : t_x;
+                m.plan_launch_ms = m.plan_x_ms + std::uint32_t(1000.0f * (1.0f + leg5_s(m, sc::sqrt_ss(sc::dot3(xg, xg)), kPetalVmax)));
+                ++g.sb_releases;
+                if (st) ++st->releases;
+                f = c;
+            } else if (st)
+                ++st->deferred;
+        }
+    }
+    // the next holder's lap brings it to its release window one nominal funnel (50 m/s over the petal's lead and ring radius) before the
+    // funnel frees, also while the ship ahead is still on its order-4 final (pre-positioning)
+    if (c >= 0 && g.m[c].role == Role::committed && g.m[c].sb == Sb::hold)
+        t_next = t_after(f) - std::uint32_t(1000.0f * (kLeadM + kPetalRh + g.rho) / 50.0f);
+    // speeds: the funnel's shaping and feasibility (the go-around), the holders' laps, the grid sphere guard
+    for (unsigned i = 0; i < g.n; ++i) {
+        Member& m = g.m[i];
+        if (!live(m, now) || !(m.role == Role::committed || m.role == Role::escort)) continue;
+        if (m.sb == Sb::funnel && m.role == Role::committed && m.st.order == sc::kOrderFlyBefore) {
+            const int pk = m.pred ? find(g, m.pred) : -1;
+            const int pp = pk >= 0 && pair_role(g.m[pk].role) && g.m[pk].sb != Sb::hold && g.m[pk].sb != Sb::none ? pk : -1;
+            const std::uint32_t t_target = t_after(pp);
+            const float dX = dist_x(g, m);
+            const float dt = float(std::int32_t(t_target - now)) * 0.001f;
+            const float vcap = m.params.v_max > kYieldFloorMs ? m.params.v_max : kYieldFloorMs;
+            float v = dt > 0.05f ? dX / dt : vcap;
+            if (v > vcap) v = vcap;
+            if (v < kYieldFloorMs) v = kYieldFloorMs;
+            if (!m.feas_ms || now - m.feas_ms >= kFeasMs) {
+                m.feas_ms = now ? now : 1;
+                float t_pred = 0.0f;
+                m.v_feas = funnel_feasible(g, m, st ? &st->predictions : nullptr, &t_pred);
+                if (m.v_feas > 0.0f) m.x_pred_ms = now + std::uint32_t(1000.0f * t_pred);
+            }
+            if (m.v_feas <= 0.0f || dt - dX / kYieldFloorMs > 10.0f) { // no feasible candidate, or the slot frees too late: go around
+                const Sb before = m.sb;
+                m.sb = Sb::hold;
+                ++m.go_arounds;
+                ++g.sb_go_arounds;
+                if (st) ++st->go_arounds;
+                if (st && dX < 1000.0f) ++st->go_arounds_near;
+                sb_event(st, m, before, m.sb, Why::go_around);
+                if (g.funnel_ship == m.ship) g.funnel_ship = 0;
+                m.v_sb = kPetalVnom;
+                continue;
+            }
+            m.v_sb = v < m.v_feas ? v : m.v_feas;
+            if (g.slot_block_ms && std::int32_t(g.slot_block_ms - m.plan_x_ms) > 0) { // a direction change after the release: the slot
+                const std::uint32_t shift = g.slot_block_ms - m.plan_x_ms;               // frees later (D.7 item 4: + 60 s)
+                m.plan_x_ms += shift;
+                m.plan_launch_ms += shift;
+            }
+            continue;
+        }
+        if (m.sb != Sb::hold) continue;
+        std::uint32_t t_rel = 0;
+        if (int(i) == c && m.role == Role::committed) t_rel = t_next;
+        else if (m.role == Role::escort && m.key_res) { // the escort: at its release window when its order 4 can come (D.12)
+            const int li = find(g, m.leader);
+            if (li >= 0 && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::none) t_rel = eta_launch(g, g.m[li], now) + kEscortSwitchMs;
+            else if (m.res_until) t_rel = m.res_until - kReserveMs + kEscortSwitchMs;
+        }
+        float v = lap_speed(g, m, now, t_rel, m.role == Role::escort ? kEscortStageS : kPetalSh - 0.5f * kReleaseWindowM);
+        if (m.role == Role::committed && m.line_ok) { // the grid sphere guard: order 4 never ends outside X (D.2.4)
+            const float A[3] = {m.X[0] + sc::kGateCrossFraction * g.r_gate * m.h[0], m.X[1] + sc::kGateCrossFraction * g.r_gate * m.h[1],
+                                m.X[2] + sc::kGateCrossFraction * g.r_gate * m.h[2]};
+            const float dA[3] = {A[0] - m.st.x[0], A[1] - m.st.x[1], A[2] - m.st.x[2]};
+            const float d = sc::sqrt_ss(sc::dot3(dA, dA));
+            const float a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f;
+            if (d < sc::kGateCrossFraction * g.r_gate + kGuardM + m.st.v * m.st.v / (2.0f * a) + 200.0f && sc::dot3(dA, m.st.u) > 0.0f) {
+                v = kYieldFloorMs;
+                if (st) ++st->guarded;
+            }
+        }
+        m.v_sb = v;
+    }
+}
+// The controller's leaf point and site B's speed for a member at x flying at v on `order` (site A; the DLL's decide() and the
+// fixture's steer_call): a holder on order 4 or an escort on 0x14 / 0x15 in its petal (the racetrack's carrot, the lap speed), the
+// funnel on order 4 (Lambda_4's carrot, the shaped speed), the order-5 leg (Lambda_5's carrot, the aligned ramp written both ways:
+// D.12, the creep on any off-axis Q). False: the module's other rules.
+struct SbSteer {
+    float P[3] = {0, 0, 0};
+    float v = -1.0f;
+    Sb sb = Sb::none;
+};
+inline bool sb_steer(const Gate& g, const Member& m, const float x[3], float v_now, std::uint16_t order, std::uint32_t target,
+                     SbSteer* out) noexcept {
+    out->sb = m.sb;
+    const float W = m.params.W, rg = g.r_gate;
+    if (!(rg > 0.0f)) return false;
+    // the live target first (review F2): orders 4 / 5 to this gate; 0x14 to the member's leader; 0x15 to its leader, or to this gate
+    // once the leader launched (the reservation)
+    if (order == sc::kOrderFlyBefore || order == sc::kOrderDock) {
+        if (target != g.gate) return false;
+    } else if (order == sc::kOrderEscort) {
+        if (target != m.leader) return false;
+    } else if (order == sc::kOrderFollow) {
+        if (target != m.leader && !(m.res_until && target == g.gate)) return false;
+    }
+    const bool o4 = m.role == Role::committed && order == sc::kOrderFlyBefore;
+    if (o4 || (m.role == Role::escort && (order == sc::kOrderEscort || order == sc::kOrderFollow))) {
+        if (m.sb == Sb::hold && m.petal >= 0) {
+            PetalGeom pg;
+            petal_geom(g, unsigned(m.petal), m.zx, &pg);
+            const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
+            float ta, tb;
+            if (m.role == Role::escort && m.res_until && order == sc::kOrderFollow && sc::dot3(d, d) > kEscortSwitchM * kEscortSwitchM * 0.9f) {
+                // the leader launched and the escort is beyond the script's 10 km: onto its inner straight, heading +F, toward the
+                // release window (the pursuit of the straight b = rho; D.12: order 4 then comes inside 10 km with the nose along F)
+                ta = sc::dot3(d, g.F) + pursuit_look(v_now, W, rg);
+                if (ta < pg.a0) ta = pg.a0;
+                if (ta > pg.a1) ta = pg.a1;
+                tb = pg.rho;
+                for (unsigned i = 0; i < 3; ++i) out->P[i] = g.G[i] + ta * g.F[i] + tb * pg.e[i];
+                out->v = kPetalVmax;
+                return sc::finite_f(out->P[0]) && sc::finite_f(out->P[1]) && sc::finite_f(out->P[2]);
+            }
+            petal_carrot(pg, rg, W, sc::dot3(d, g.F), sc::dot3(d, pg.e), v_now, &ta, &tb);
+            for (unsigned i = 0; i < 3; ++i) out->P[i] = g.G[i] + ta * g.F[i] + tb * pg.e[i];
+            out->v = m.v_sb > 0.0f ? m.v_sb : kPetalVnom;
+            return sc::finite_f(out->P[0]) && sc::finite_f(out->P[1]) && sc::finite_f(out->P[2]);
+        }
+        if (o4 && m.sb == Sb::funnel && m.q_ok) {
+            float X[3];
+            lambda4(g, m, X);
+            line_carrot(X, g.F, sc::kGateCrossFraction * rg, rg, W, x, v_now, out->P);
+            out->v = m.v_sb > 0.0f ? m.v_sb : kYieldFloorMs;
+            return sc::finite_f(out->P[0]) && sc::finite_f(out->P[1]) && sc::finite_f(out->P[2]);
+        }
+        return false;
+    }
+    if (m.role == Role::committed && order == sc::kOrderDock && m.q_ok && (m.sb == Sb::dock || m.sb == Sb::handover || m.sb == Sb::funnel)) {
+        float X[3];
+        lambda5(g, m, X);
+        line_carrot(X, g.F, 2.0f * rg, rg, W, x, v_now, out->P);
+        const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
+        out->v = dock_ramp(sc::sqrt_ss(sc::dot3(d, d)), rg, m.params.v_max);
+        return sc::finite_f(out->P[0]) && sc::finite_f(out->P[1]) && sc::finite_f(out->P[2]) && out->v > 0.0f;
+    }
+    return false;
+}
+// P2 (the order-4 arrival at the grid sphere): the funnel's crossing is the kept hand-over's precondition (D.6: the funnel replaces
+// the join mode of P2's verdict); the stage moves to the hand-over at the next frame from the live order.
+__attribute__((always_inline)) inline bool sb_funnel(const Member& m) noexcept { return m.role == Role::committed && m.sb == Sb::funnel; }
+// Whether stage B owns a committed member's gate legs (review F8): Q known and either a petal held or a released stage. Otherwise the
+// member keeps the stage-A / amendment-17 join (join on, P2 kept when aligned), never "join off + vanilla stop".
+__attribute__((always_inline)) inline bool sb_managed(const Member& m) noexcept {
+    if (m.role != Role::committed || !m.q_ok) return false;
+    if (m.sb == Sb::hold) return m.petal >= 0;
+    return m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch;
+}
+// ---- D.5 (with D.12): a small ship's order-5 pass point while a capital is in the funnel -------------------------------------------
+// The funnel is active (D.5: a member released and not yet launched: on its final, the hand-over, order 5 or 8); *side = the side of
+// that capital's Q along R (+1 when on the axis: the bias of q_point).
+inline bool funnel_active(const Gate& g, float* side) noexcept {
+    for (unsigned i = 0; i < g.n; ++i) {
+        const Member& m = g.m[i];
+        if (m.role != Role::committed || !(m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch)) continue;
+        *side = m.q[0] < 0.0f ? -1.0f : 1.0f;
+        return true;
+    }
+    return false;
+}
+// B in the gate frame (b: R, U, F components of f+0x240 - G, m). True when B is the engine's pass point (SA_FlyObjectIntoContainer,
+// section 10.5: radius 0.55 r_gate, or 0.05 r_gate for subtypes 5..8, on the disc at z = -0.01 r_gate, the lower arc within +-45 deg
+// of -U) on the capital's side (sign of b_R = side, |b_R| >= 1 m): out = B mirrored across U (theta -> -theta), the arc radius, the
+// height and the engine's spread kept, in the free half of the lower arc.
+constexpr float kSmallBTolM = 2.0f, kSmallBTolR = 0.005f;
+inline bool small_b_mirror(float r_gate, const float b[3], float side, float out[3]) noexcept {
+    if (!(r_gate > 0.0f) || !sc::finite_f(b[0]) || !sc::finite_f(b[1]) || !sc::finite_f(b[2])) return false;
+    const float rho = sc::sqrt_ss(b[0] * b[0] + b[1] * b[1]), tol = kSmallBTolM + kSmallBTolR * r_gate;
+    const bool arc = sc::fabs_f(rho - 0.55f * r_gate) <= tol || sc::fabs_f(rho - 0.05f * r_gate) <= tol;
+    if (!arc || sc::fabs_f(b[2] + 0.01f * r_gate) > tol || !(b[1] < 0.0f) || sc::fabs_f(b[0]) > -b[1] + tol) return false;
+    if (sc::fabs_f(b[0]) < 1.0f || (b[0] > 0.0f) != (side > 0.0f)) return false;
+    out[0] = -b[0];
+    out[1] = b[1];
+    out[2] = b[2];
+    return true;
+}
+// The small ship's B decision (D.5 with the review fixes; the DLL's site-A path, unit-checked by the fixture). b: f+0x240 in the gate
+// frame (R, U, F; m); d_order: the small ship's distance to B; v its speed; r_small its radius. The capitals that count are the funnel's
+// members (released, not yet gone) whose predicted plane passage (their launch less order 8's 0.9 s) comes before the small ship's
+// ETA. B stays when it is clear of all of them (w + r_small + 50 m laterally); else its mirror across U when that is clear; else
+// nothing (both sides taken). Nothing within 0.55 r_gate of B (Fable 4: the trigger may already fire) or off the engine's arc.
+enum class SmallB : std::uint8_t { no_funnel = 0, near, not_arc, clear, mirrored, both_taken, count };
+inline const char* small_b_name(SmallB v) noexcept {
+    static const char* const n[unsigned(SmallB::count)] = {"no_funnel", "near", "not_arc", "clear", "mirrored", "both_taken"};
+    return unsigned(v) < unsigned(SmallB::count) ? n[unsigned(v)] : "?";
+}
+constexpr float kSmallBNearR = 0.55f, kSmallBMarginM = 50.0f;
+inline SmallB small_b_decide(const Gate& g, std::uint32_t now, const float b[3], float d_order, float v, float r_small, float out[3]) noexcept {
+    if (!(g.r_gate > 0.0f) || !(d_order > kSmallBNearR * g.r_gate)) return SmallB::near;
+    const std::uint32_t eta = now + std::uint32_t(1000.0f * d_order / (v > 1.0f ? v : 1.0f));
+    const Member* cap[kMembers];
+    unsigned n = 0;
+    for (unsigned i = 0; i < g.n; ++i) {
+        const Member& m = g.m[i];
+        if (m.role != Role::committed || !m.q_ok) continue;
+        if (!(m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch)) continue;
+        const std::uint32_t t_launch = eta_launch(g, m, now);
+        if (std::int32_t(t_launch - now) < 0) continue;                // gone
+        if (std::int32_t(t_launch - 900u - eta) > 0) continue;         // reaches the plane after the small ship
+        cap[n++] = &m;
+    }
+    if (!n) return SmallB::no_funnel;
+    float t[3];
+    if (!small_b_mirror(g.r_gate, b, b[0] > 0.0f ? 1.0f : -1.0f, t)) return SmallB::not_arc;
+    auto clear = [&](const float p[3]) {
+        for (unsigned k = 0; k < n; ++k) {
+            const float dx = p[0] - cap[k]->q[0], dy = p[1] - cap[k]->q[1], need = cap[k]->w + r_small + kSmallBMarginM;
+            if (dx * dx + dy * dy < need * need) return false;
+        }
+        return true;
+    };
+    if (clear(b)) return SmallB::clear;
+    if (clear(t)) {
+        for (unsigned i = 0; i < 3; ++i) out[i] = t[i];
+        return SmallB::mirrored;
+    }
+    return SmallB::both_taken;
+}
+// The DLL's memory of its last write per ship: a field still holding it is ours (left alone); any other value is a KC re-issue.
+struct SmallBWrite {
+    std::int32_t w[3] = {0, 0, 0};
+    std::uint8_t ok = 0;
+};
+__attribute__((always_inline)) inline bool small_b_ours(const SmallBWrite& m, const std::int32_t cur[3]) noexcept {
+    return m.ok && cur[0] == m.w[0] && cur[1] == m.w[1] && cur[2] == m.w[2];
 }
 } // namespace x3m::ship_avoidance::ctl

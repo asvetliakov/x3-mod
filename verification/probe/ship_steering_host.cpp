@@ -651,13 +651,31 @@ struct Model {
         capital_window = false;
         capital_detour = false;
         join_fb_write = false;
+        // stage B (the DLL's decide()): a capital member of the traffic controller is committed first; a committed member's order-4 leg
+        // has no join mode, slow join or aim-at-A latch (D.6); the controller's point and speed (gc::sb_steer) replace the lead-in
+        bool sb_member = false, sb_on = false;
+        gc::SbSteer sbs;
+        if (ctl && capital) {
+            if (gate_mode && (order == core::kOrderFlyBefore || order == core::kOrderDock)) ctl_commit(in, order == core::kOrderFlyBefore ? &gate_geo : nullptr);
+            int mi = -1;
+            if (gc::Gate* cg = gc::locate(*ctl, ptr, &mi)) {
+                const gc::Member& mm = cg->m[mi];
+                if (gc::pair_role(mm.role) && mm.id == native_id()) {
+                    // the DLL: stage B owns a committed member only when it can fly it (gc::sb_managed: Q known, a petal or a released
+                    // stage); the live target (f+0x224) is the gate on orders 4 / 5, the leader on 0x14 / 0x15, the gate on 0x15 alone
+                    sb_member = gc::sb_managed(mm) && gate_mode && (order == core::kOrderFlyBefore || order == core::kOrderDock);
+                    const std::uint32_t tgt = order == core::kOrderEscort || order == core::kOrderFollow ? (leader_ptr ? leader_ptr : gate_ptr) : gate_ptr;
+                    if (mm.role != gc::Role::committed || gc::sb_managed(mm)) sb_on = gc::sb_steer(*cg, mm, in.x, in.v, order, tgt, &sbs);
+                }
+            }
+        }
         if (gate_mode && order == core::kOrderFlyBefore) {
             gate_approach = true;
             in.arrival_ramp = false;
             in.d_arr = 0;
             float lead[3], s_line = 0;
-            bool in_window = false, cap_join = true;
-            if (capital) { // amendment 15: the DLL's join state per order-4 decision (section 15.3)
+            bool in_window = false, cap_join = !sb_member;
+            if (capital && !sb_member) { // amendment 15: the DLL's join state per order-4 decision (section 15.3)
                 const float dX[3] = {in.x[0] - gate_geo.X[0], in.x[1] - gate_geo.X[1], in.x[2] - gate_geo.X[2]};
                 const float s_now = core::dot3(dX, gate_geo.h), e2 = core::dot3(dX, dX) - s_now * s_now;
                 const float e_now = e2 > 0 ? std::sqrt(e2) : 0.0f;
@@ -680,7 +698,7 @@ struct Model {
                 cap_join = mode == core::JoinMode::join || (g_amend16 && mode == core::JoinMode::slow_join);
                 capital_detour = g_amend16 && g_detour_write && cap_join && in.detour; // the DLL's amendment-16 fix: the join's write on a detour
                 if (g_amend16) lane_refresh(in.x, Po, mode); // amendment 16: the lane entry and the follow cap
-                if (ctl) ctl_commit(in, &gate_geo);          // the traffic controller's member entry (replaces the lane entry)
+                // (the traffic controller's member entry ran above: a ship it refused, the board full, keeps this path)
                 if (mode == core::JoinMode::fallback && in.d_order < 0) {
                     const float dA[3] = {Po[0] - in.x[0], Po[1] - in.x[1], Po[2] - in.x[2]};
                     const float d_A = std::sqrt(core::dot3(dA, dA));
@@ -705,7 +723,6 @@ struct Model {
             }
         }
         if (g_amend16 && gate_mode && capital && order == core::kOrderDock) lane_refresh(in.x, Po, join.mode); // amendment 16: the order-5 leg
-        if (ctl && gate_mode && capital && order == core::kOrderDock) ctl_commit(in, nullptr);
         // the Run152 follow-up: order 5 to a gate: the cornering speed replaces the engine's creep unless the chord arc sweeps the ring
         if (gate_dock_mode && order == core::kOrderDock && !capital) {
             gate_dock_blocked = !core::gate_chord_clears_ring(in.x, in.row[2], Po, gate_G, gate_rows[0], gate_rows[1], gate_rows[2], gate_r, dyn.r_own);
@@ -717,6 +734,16 @@ struct Model {
             in.port_leg = true;
             const core::Ship* prev = table->find(obj_id);
             in.port_hold = prev && core::port_hold_active(*prev, order, std::uint32_t(t_ms));
+        }
+        if (sb_on) { // stage B: the controller's leaf point (an avoidance detour keeps its point) and no ramp or formation law
+            if (!in.detour)
+                for (int i = 0; i < 3; ++i) in.P[i] = sbs.P[i];
+            in.d_order = float(dist() / 500.0);
+            in.arrival_ramp = false;
+            in.d_arr = 0;
+            in.formation = false;
+            in.v_ref = sbs.v;
+            gate_dock = false;
         }
         core::Command cmd;
         last_reason = core::steer(in, dyn, &cmd);
@@ -732,7 +759,9 @@ struct Model {
         s->order = order;
         std::uint16_t speed_flags; // the DLL's decide(): a capital's gate legs get no write outside the capital window (the lowering
                                    // clamp on a validated order-4 approach, nothing on order 5 or an unvalidated/policy-off approach)
-        if (capital_gate_leg && !capital_window && !join_fb_write && !capital_detour)
+        if (sb_on)
+            speed_flags = std::uint16_t(core::kShipFlagGate | core::kShipFlagClamp); // stage B: the controller's speed, both ways
+        else if (capital_gate_leg && !capital_window && !join_fb_write && !capital_detour)
             speed_flags = std::uint16_t(gate_mode && order == core::kOrderFlyBefore && cmd.v_cmd > 0 ? core::kShipFlagClamp : 0);
         else
             speed_flags = std::uint16_t((in.arrival_ramp && !cmd.formation_speed ? core::kShipFlagRamp : 0) | (cmd.v_cmd > 0 ? core::kShipFlagClamp : 0) |
@@ -751,6 +780,8 @@ struct Model {
             if ((capital_window || capital_detour) && join.v_cmd < s->v_ref) s->v_ref = join.v_cmd;
             if (join_fb_write && join_fb_v < s->v_ref) s->v_ref = join_fb_v;
         }
+        if (sb_on) // stage B: the controller's speed under the cornering and large caps (the DLL; an emergency lowers it at site B)
+            s->v_ref = std::fmin(sbs.v, core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner));
         last_steer_order = order;
         // amendment 14: the formation law's |N| rides in the cornering slot (no ramp: site B returns it floored); the closing-speed
         // correction applies to the ramp/cornering schedule only (not on the gate approach, whose speed is the cap)
@@ -7998,7 +8029,8 @@ static void ctl_unit_checks() {
         m->st.order = core::kOrderWarpAway;
         m->st.v = 100.0f;
         n = gc::rollout(*m, *g, -1.0f, s, &vmax);
-        check(n == 2, "ctl rollout order 8: two samples (0 and 0.5 s), then the ship leaves the sector");
+        check(n == gc::kSamples && s[2].c[2] == s[60].c[2] && s[2].c[2] > s[1].c[2],
+              "ctl rollout order 8: 0.9 s along +F, then the end point held (stage B, review F13: the ship is gone, the overlap complete)");
         m->role = gc::Role::committed;
         m->st.order = core::kOrderNone;
         m->st.v = 50.0f;
@@ -8422,6 +8454,7 @@ struct TSetup {
     const TStart* s;
     unsigned n;
     double w_r_all = -1;    // > 0: every hull at this w / r (the 0.6 r variant)
+    long refuse_ms = 0;     // > 0: the first departure waiting at X is refused the through slot this long (a hidden partner holder)
 };
 struct TResult {
     unsigned capitals = 0, launched = 0, arrivals = 0, offset_ok = 0, lateral_kept = 0, small = 0, small_side = 0, small_unseparated = 0;
@@ -8451,6 +8484,24 @@ struct TResult {
     double drift_p95[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
     unsigned drift_n[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
     bool nan = false;
+    // stage B (D.7 items 1, 4-7): the crossings at X (P2) and their nose angle, the order-4 ends outside the funnel, the 0x1f frames,
+    // the KC refusals at X, the launches against the sequencer's plan and D.7's 18 s cadence, the escorts' order-4 starts, the
+    // holders' petal speed, the releases and go-arounds, the span from the first crossing to the last launch
+    unsigned crossings = 0, cross_not_kept = 0, o4_outside = 0, rotate_frames_max = 0, x_refused = 0, launches_late = 0;
+    double cross_deg_max = 0, late_max_s = -1e18, late18_max_s = -1e18, span_s = 0, first_cross_s = -1, last_launch_s = -1;
+    unsigned escort_o4 = 0, escort_o4_petal = 0, petal_slow_frames = 0, releases = 0, go_arounds = 0, sb_predictions = 0, guarded = 0;
+    double petal_min_v = 1e18;
+    unsigned launch_order[24] = {}, n_launch = 0, entry_deferred_frames = 0, launches_turned = 0, departures = 0;
+    // Run161: member warns while one of the pair is on order 0 (and those E did not suppress, and those against a non-member), E's pass
+    // reasons (gc::EWhy), the closest two holders in their petals came (capsule gap, m), the most committed members past their X depth at
+    // once (the grid zone)
+    unsigned gap_warns = 0, gap_warn_unsup = 0, gap_warn_nonmember = 0, pass_why[unsigned(gc::EWhy::count)] = {}, grid_zone_max = 0;
+    unsigned go_arounds_near = 0, seq_skipped = 0, release_while_busy = 0; // the review fixes (items 1, 2)
+    unsigned unresolved_refusal = 0; // unresolved pair verdicts from the refusal at X to the refused ship's launch (review item 2)
+    double min_hold_gap = 1e18;
+    double xl_max = 0, xl_min = 1e18, xl_sum = 0; // cross -> launch per ship (s)
+    unsigned xl_n = 0;
+    long launch_t[24] = {};
 };
 struct TShip {
     Model m;
@@ -8465,6 +8516,12 @@ struct TShip {
     std::uint16_t last_order = 0xffff;
     long order_change_ms = 0; // the drift is measured only over a horizon without an order change (a new order is a new plan)
     bool o4_reached10 = false; // D.7 assertion 6: this order-4 leg has reached 10 m/s
+    long plan_launch = -1;     // stage B: the sequencer's planned end of order 8 at the release (D.7 item 4)
+    long release_ms = -1;      // ... and the release
+    long gap_ms = 0;           // the order-0 gap after P2 (Run161)
+    long cross_ms = -1;        // the crossing at X (P2): cross -> launch per ship
+    unsigned rotate_frames = 0;
+    bool petal_reached25 = false;
 };
 static double t_capsule(const TShip& a, const TShip& b) {
     float ca[3], cb[3], fa[3], fb[3];
@@ -8492,9 +8549,14 @@ static void t_observe(gc::Board& b, TShip& c, std::uint32_t now, TResult& r) {
         ++r.evicted;
         return;
     }
-    const bool formation = m.role == gc::Role::escort && c.m.order == core::kOrderNone; // the 20 s membership memory holds in the gaps
-    if (gc::validity(*g, m, c.m.order, c.target, now, formation) != gc::Why::count) {
-        gc::leave(*g, unsigned(i), false, now);
+    // Run161: the escorts left the board on every 0x14 / 0 flip although the 20 s membership memory should hold; the fixture takes the
+    // memory as lapsed (the worst case), so only the controller's own gap rule (gc::validity, kGapMs) keeps an escort through its waits
+    const bool formation = false;
+    if (const gc::Why why = gc::validity(*g, m, c.m.order, c.target, now, formation); why != gc::Why::count) {
+        if (std::getenv("X3M_T_SB"))
+            std::printf("  tsb leave ship %u role %s order 0x%x key %u res_until %u now %u why %s\n", (m.ship - 0x9000) / 0x100, gc::role_name(m.role),
+                        unsigned(c.m.order), m.key, m.res_until, now, gc::why_name(why));
+        gc::leave(*g, unsigned(i), why == gc::Why::evict, now);
         ++r.left;
         return;
     }
@@ -8513,6 +8575,7 @@ static void t_observe(gc::Board& b, TShip& c, std::uint32_t now, TResult& r) {
     s.v_des = float(double(c.m.desired) / 500.0);
     for (int k = 0; k < 3; ++k) s.u[k] = s.v * s.rows[2][k] + (c.m.order == core::kOrderDock ? 0.0f : float(double(c.m.slip[k]) / 500.0));
     s.left_ms = c.m.order == core::kOrderWarpIn ? std::int32_t(900 - (long(now) - c.launch_ms)) : 0;
+    gc::note_state(m); // the DLL's ctl_read_state: the order-0 gap's steered stamp and plan
     if (m.role == gc::Role::arrival && s.order != core::kOrderWarpIn && !gc::in_front(*g, s.x)) { // 0x21 starts behind the plane
         gc::leave(*g, unsigned(i), false, now);
         ++r.left;
@@ -8599,10 +8662,40 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
         c.phase = 0;
         c.phase_t = now_ms;
     };
+    // stage B: a departure (with its escorts' formation slots) enters at its Run160b start once no live capital is within the engine's
+    // close-range warn distance 1.2 (r_A + r_B) + 200 m of those points: the starts are Run160b's, the holders' positions are not (the
+    // petals), so a start may otherwise fall on a holder (entry_deferred_frames counts the frames waited)
+    auto start_clear = [&](unsigned k) -> bool {
+        const TShip& c = ships[k];
+        const double ps = c.st->psi_deg * M_PI / 180;
+        const double u[3] = {std::sin(ps), 0.0, std::cos(ps)};
+        for (unsigned j = 0; j < su.n; ++j) {
+            const bool mine = j == k || (ships[j].st->kind == kTEscort && ships[j].st->leader == int(k));
+            if (!mine) continue;
+            const double back = j == k ? 0.0 : ships[j].st->slot_back_r * c.st->t->r_m;
+            const double p[3] = {c.st->x - u[0] * back, c.st->y - u[1] * back, c.st->z - u[2] * back};
+            for (unsigned q = 0; q < su.n; ++q) {
+                const TShip& o = ships[q];
+                if (!o.alive || !o.m.capital) continue;
+                const double d[3] = {o.m.pos[0] / 500.0 - p[0], o.m.pos[1] / 500.0 - p[1], o.m.pos[2] / 500.0 - p[2]};
+                if (norm3d(d) < 1.2 * (o.st->t->r_m + ships[j].st->t->r_m) + 200.0) return false;
+            }
+        }
+        return true;
+    };
     // the through slot of the gate pair: the holder, the direction of the last grant (+1 departure, -1 arrival) and its release
     int holder = -1, last_dir = 0;
     long release_ms = -1000000, poll_at[24] = {};
+    long refuse_until = -1;
+    int refused_ship = -1;
     auto grant = [&](int k, int dir, long now_ms) {
+        if (su.refuse_ms > 0 && dir > 0) { // a hidden partner holder: the first departure at X is refused for refuse_ms
+            if (refused_ship < 0) {
+                refused_ship = k;
+                refuse_until = now_ms + su.refuse_ms;
+            }
+            if (k == refused_ship && now_ms < refuse_until) return false;
+        }
         if (holder >= 0) return false;
         if (last_dir != 0 && dir != last_dir && now_ms - release_ms < 60000) return false;
         holder = k;
@@ -8631,7 +8724,8 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
     unsigned cursor = 0, rr = 0;
     static bool evading[24][24];
     std::memset(evading, 0, sizeof evading);
-    for (long it = 0; it < 900L * fps; ++it) {
+    for (unsigned k = 0; k < su.n; ++k) res.departures += su.s[k].kind == kTDepart || su.s[k].kind == kTEscort ? 1u : 0u;
+    for (long it = 0; it < 1200L * fps; ++it) { // stage B: 1,200 s (the sequence of 7 departures through one funnel)
         const long dt = clock.step(fps);
         if (!dt) continue;
         const long now_ms = sim_ms;
@@ -8655,6 +8749,10 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 c.pending = false;
                 c.alive = true;
                 c.gap_next = now_ms + 33000 + long(k) * 4000;
+                continue;
+            }
+            if (c.st->kind == kTDepart && now_ms >= c.st->t0_ms && !start_clear(k)) {
+                ++res.entry_deferred_frames;
                 continue;
             }
             if (c.st->kind == kTDepart && now_ms >= c.st->t0_ms) {
@@ -8751,7 +8849,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
             if (c.phase == 10 || c.phase == 11) { // the escort: 0x14 in formation with the KC's 3 s order-0 gaps
                 const TShip& L = ships[c.st->leader];
                 if (L.gone || L.launched) {
-                    c.phase = 12; // the leader launched: 0x15 toward the gate (held 10 km out)
+                    c.phase = 12; // the leader launched: 0x15 toward the gate (Mayhem.Task.Move: 5 s legs beyond 10 km; D.12)
                     c.leader_launch = L.launch_ms >= 0 ? L.launch_ms : now_ms;
                     c.order4_at = c.leader_launch + long(c.st->order4_s * 1000.0);
                     m.order = core::kOrderFollow;
@@ -8759,11 +8857,11 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                     c.target = kLaneGate;
                 } else if (c.phase == 10 && now_ms >= c.gap_next) {
                     c.phase = 11;
-                    c.gap_until = now_ms + 3000;
+                    c.gap_until = now_ms + 2000 + long(c.m.rng.next()) * 1000 / 32768; // the template's 2-3 s wait (Run161)
                     m.order = core::kOrderNone;
                 } else if (c.phase == 11 && now_ms >= c.gap_until) {
                     c.phase = 10;
-                    c.gap_next = now_ms + 33000;
+                    c.gap_next = now_ms + 30000 + long(c.m.rng.next()) * 4000 / 32768; // the 30-34 s 0x14 leg
                     m.order = core::kOrderEscort;
                 }
                 if (c.phase == 10) {
@@ -8784,9 +8882,26 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 }
                 if (c.phase != 12) continue;
             }
-            if (c.phase == 12) { // 0x15 toward the gate, held 10 km out; order 4 at the script's delay
+            if (c.phase == 12) { // 0x15 toward the gate; at each script pass (the first after the delay, then every 5 s leg) order 4 within
+                                 // 10 km of the gate (D.12: FlyThroughNextGate's `fly to sector`)
+                if (now_ms >= c.order4_at && dB / 500.0 > double(gc::kEscortSwitchM)) {
+                    if (std::getenv("X3M_T_SB"))
+                        std::printf("  tsb %s escort %u pass at t=%.1f: %.0f m from the gate (0x15 leg)\n", su.tag, k, double(now_ms) / 1000.0, dB / 500.0);
+                    c.order4_at += 5000;
+                }
                 if (now_ms >= c.order4_at) {
                     start_order4(c, now_ms);
+                    // D.7 item 5: the escort starts order 4 from a petal (behind X - L_lead, the nose within 30 deg of F)
+                    ++res.escort_o4;
+                    if (m.pos[2] / 500.0 <= c.X[2] / 500.0 - double(gc::kLeadM) + 1.0 && m.row[2][2] >= std::cos(30.0 * M_PI / 180.0)) ++res.escort_o4_petal;
+                    else if (std::getenv("X3M_T_SB"))
+                        std::printf("  tsb %s escort %u order 4 outside a petal: z %.0f X %.0f nose %.1f deg\n", su.tag, k, m.pos[2] / 500.0, c.X[2] / 500.0,
+                                    std::acos(std::fmin(1.0, m.row[2][2])) * 180 / M_PI);
+                } else if (m.ctl) { // stage B: the module steers the 0x15 leg (the escort's petal)
+                    m.order = core::kOrderFollow;
+                    for (int i = 0; i < 3; ++i) m.P[i] = 0;
+                    m.frame(dt, c.obj, true, 0, 0);
+                    continue;
                 } else {
                     double H[3], dh = 0;
                     for (int i = 0; i < 3; ++i) {
@@ -8867,6 +8982,33 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                     c.gone = true;
                     c.launch_ms = now_ms;
                     ++res.launched;
+                    // D.7 item 4: the launch against the sequencer's plan at the release, and against D.7's 18 s cadence (reported)
+                    if (c.plan_launch >= 0) {
+                        // D.7 item 4: within 30 s of the plan, + 60 s after a direction change (a capital arrival launched at the gate from
+                        // 60 s before the release to the launch: the through slot changed direction under the plan)
+                        bool turned = false;
+                        for (unsigned q = 0; q < su.n; ++q)
+                            turned = turned || (ships[q].st->kind == kTArrive && ships[q].launch_ms >= 0 && ships[q].launch_ms >= c.release_ms - 60000 &&
+                                                ships[q].launch_ms <= now_ms);
+                        const double late = double(now_ms - c.plan_launch) / 1000.0 - (turned ? 60.0 : 0.0);
+                        res.late_max_s = std::fmax(res.late_max_s, late);
+                        if (turned) ++res.launches_turned;
+                        if (late > 30.0) ++res.launches_late;
+                    } else
+                        ++res.launches_late; // a launch without a release (outside the funnel)
+                    if (res.n_launch) res.late18_max_s = std::fmax(res.late18_max_s, double(now_ms - res.launch_t[res.n_launch - 1] - 18000) / 1000.0);
+                    if (res.n_launch < 24) {
+                        res.launch_order[res.n_launch] = k;
+                        res.launch_t[res.n_launch++] = now_ms;
+                    }
+                    res.last_launch_s = double(now_ms) / 1000.0;
+                    if (c.cross_ms >= 0) { // cross -> launch (Run160b on the axis: 15 s)
+                        const double xl = double(now_ms - c.cross_ms) / 1000.0;
+                        res.xl_max = std::fmax(res.xl_max, xl);
+                        res.xl_min = std::fmin(res.xl_min, xl);
+                        res.xl_sum += xl;
+                        ++res.xl_n;
+                    }
                     release(int(k), now_ms);
                     m.advance(dt);
                     continue;
@@ -8891,33 +9033,52 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                         for (int i = 0; i < 3; ++i) cu += un > 0 ? uv[i] / un * F[i] : 0.0;
                         const double vel_deg = un > 0 ? std::acos(std::fmin(1.0, std::fmax(-1.0, cu))) * 180 / M_PI : err_F;
                         const float v_ms = float(double(m.speed) / 500.0);
-                        const core::JoinKeep why = core::join_keep_verdict(m.gate_mode && m.join.mode == core::JoinMode::join, float(err_F), float(vel_deg),
-                                                                           v_ms, core::join_coast_bound(float(std::sqrt(xg)), float(c.st->t->r_m), v_ms,
-                                                                                                        float(c.st->t->a_ms2)));
+                        int mi = -1;
+                        gc::Gate* pg2 = gc::locate(board, m.ptr, &mi);
+                        const bool funnel = pg2 && gc::sb_funnel(pg2->m[mi]);
+                        const core::JoinKeep why = core::join_keep_verdict(funnel, float(err_F), float(vel_deg), v_ms,
+                                                                           core::join_coast_bound(float(std::sqrt(xg)), float(c.st->t->r_m), v_ms,
+                                                                                                  float(c.st->t->a_ms2)));
                         if (why != core::JoinKeep::kept) m.speed = 0;
-                        int mi = -1; // the DLL's P2: the committed member's hand-over
-                        if (gc::Gate* g = gc::locate(board, m.ptr, &mi))
-                            if (g->m[mi].role == gc::Role::committed) g->m[mi].handover_ms = now ? now : 1;
+                        else m.e[0] = m.e[1] = m.e[2] = 0; // the P2 stub: a kept hand-over zeroes the three turn remainders (D.12)
+                        ++res.crossings;
+                        res.cross_deg_max = std::fmax(res.cross_deg_max, err_F);
+                        if (why != core::JoinKeep::kept) ++res.cross_not_kept;
+                        if (!funnel) ++res.o4_outside;
+                        if (res.first_cross_s < 0) res.first_cross_s = double(now_ms) / 1000.0;
+                        c.cross_ms = now_ms;
+                        if (std::getenv("X3M_T_SB"))
+                            std::printf("  tsb %s %d fps seed %u t=%.1f ship %u P2 funnel %d kept %d nose %.2f vel %.2f v %.1f\n", su.tag, fps, seed,
+                                        double(now_ms) / 1000.0, k, funnel ? 1 : 0, why == core::JoinKeep::kept ? 1 : 0, err_F, vel_deg, double(v_ms));
+                        if (pg2 && pg2->m[mi].role == gc::Role::committed) { // the DLL's P2: the committed member's hand-over
+                            pg2->m[mi].handover_ms = now ? now : 1;
+                            c.plan_launch = pg2->m[mi].plan_launch_ms ? long(pg2->m[mi].plan_launch_ms) : -1;
+                            c.release_ms = pg2->m[mi].release_ms ? long(pg2->m[mi].release_ms) : -1;
+                        }
                         c.phase = 1;
                         c.phase_t = m.t_ms;
+                        c.gap_ms = 2000 + long(m.rng.next()) * 1000 / 32768; // Run161: the script's order-0 re-issue gap after P2
                         m.order = core::kOrderNone;
                     } else
                         m.desired = engine_order4_speed(m, dA, dA_v, true);
                 }
             } else if (c.phase == 1) {
                 m.desired = 0;
-                if (m.t_ms > c.phase_t) {
+                if (m.t_ms >= c.phase_t + c.gap_ms) {
                     c.phase = 5;
                     c.phase_t = m.t_ms;
                     m.order = core::kOrderRotate;
                 }
             } else if (c.phase == 5) {
                 m.desired = 0;
+                ++c.rotate_frames;
                 if (c_F >= kCos0xfd70) {
                     c.phase = 6;
                     c.phase_t = m.t_ms;
                     m.order = core::kOrderNone;
                     poll_at[k] = m.t_ms;
+                    res.rotate_frames_max = std::max(res.rotate_frames_max, c.rotate_frames);
+                    c.rotate_frames = 0;
                 } else {
                     for (int i = 0; i < 3; ++i) m.P[i] = m.pos[i] + F[i] * 1.0e7;
                     m.vanilla_leaf();
@@ -8930,8 +9091,10 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                         c.phase_t = m.t_ms;
                         m.order = core::kOrderDock;
                         for (int i = 0; i < 3; ++i) m.P[i] = 0;
-                    } else
+                    } else {
+                        ++res.x_refused; // the KC refused the through slot at X (D.2.6: ctl_x_refused)
                         poll_at[k] = m.t_ms + 1000 + long(m.rng.next()) * 10000 / 32768;
+                    }
                 }
             } else if (c.phase == 2) {
                 m.steer_call(c.obj, false, 0);
@@ -8975,6 +9138,88 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
         const std::uint32_t now_end = std::uint32_t(sim_ms);
         for (unsigned k = 0; k < su.n; ++k)
             if (ships[k].alive) t_observe(board, ships[k], now_end, res);
+        // stage B: the sequencer (the DLL's ctl_frame: gc::sb_frame per gate, after site B's reads and before the decisions)
+        for (gc::Gate& g : board.g) {
+            if (!g.gate) continue;
+            gc::SbStats sbst;
+            gc::sb_frame(g, now_end, &sbst);
+            res.releases += sbst.releases;
+            res.go_arounds += sbst.go_arounds;
+            res.go_arounds_near += sbst.go_arounds_near;
+            res.seq_skipped += sbst.seq_skipped;
+            for (unsigned q = 0; q < sbst.n_ev; ++q) { // review item 2: no release while the ship ahead waits at X or is on order 5 / 8
+                if (sbst.ev[q].why != std::uint8_t(gc::Why::release)) continue;
+                for (unsigned i = 0; i < g.n; ++i) {
+                    const gc::Member& o = g.m[i];
+                    if (o.ship == sbst.ev[q].ship || o.role != gc::Role::committed) continue;
+                    if (o.sb == gc::Sb::handover || o.sb == gc::Sb::dock || (o.sb == gc::Sb::launch && std::int32_t(now_end - (o.o8_ms + 900u)) < 0)) {
+                        ++res.release_while_busy;
+                        if (std::getenv("X3M_T_SB"))
+                            std::printf("  tsb busy-release %s t=%.1f released %u while ship %u %s o8 %u order 0x%x\n", su.tag, double(now_end) / 1000.0,
+                                        (sbst.ev[q].ship - 0x9000) / 0x100, (o.ship - 0x9000) / 0x100, gc::sb_name(o.sb), o.o8_ms, unsigned(o.st.order));
+                    }
+                }
+            }
+            res.sb_predictions += sbst.predictions;
+            res.guarded += sbst.guarded;
+            if (std::getenv("X3M_T_SB"))
+                for (unsigned q = 0; q < sbst.n_ev; ++q)
+                    std::printf("  tsb %s %d fps seed %u t=%.1f ship %u key %u %s -> %s (%s) petal %d\n", su.tag, fps, seed, double(now_end) / 1000.0,
+                                (sbst.ev[q].ship - 0x9000) / 0x100, sbst.ev[q].key, gc::sb_name(gc::Sb(sbst.ev[q].from)), gc::sb_name(gc::Sb(sbst.ev[q].to)),
+                                gc::why_name(gc::Why(sbst.ev[q].why)), sbst.ev[q].petal == 0xff ? -1 : int(sbst.ev[q].petal));
+            { // Run161 item 3: the petals keep holders apart (capsule gap > the sweep's 50 m), one member at a time in the grid zone
+                unsigned in_zone = 0;
+                for (unsigned i = 0; i < g.n; ++i) {
+                    const gc::Member& ma = g.m[i];
+                    if (!ma.ship || ma.ship < 0x9000 || !gc::pair_role(ma.role)) continue;
+                    const TShip& ca = ships[(ma.ship - 0x9000) / 0x100];
+                    if (!ca.alive) continue;
+                    if (ma.role == gc::Role::committed && ma.q_ok && ca.m.pos[2] / 500.0 >= double(ma.zx)) ++in_zone; // past its X depth
+                    if (ma.sb != gc::Sb::hold || ma.petal < 0) continue;
+                    for (unsigned j = i + 1; j < g.n; ++j) {
+                        const gc::Member& mb = g.m[j];
+                        if (!mb.ship || mb.ship < 0x9000 || mb.sb != gc::Sb::hold || mb.petal < 0) continue;
+                        const TShip& cb = ships[(mb.ship - 0x9000) / 0x100];
+                        if (cb.alive) res.min_hold_gap = std::fmin(res.min_hold_gap, t_capsule(ca, cb));
+                    }
+                }
+                res.grid_zone_max = std::max(res.grid_zone_max, in_zone);
+            }
+            for (unsigned i = 0; i < g.n; ++i) { // D.7 item 6: a holder on its racetrack keeps >= 25 m/s once it has reached it
+                const gc::Member& mm = g.m[i];
+                if (std::getenv("X3M_T_SB2") && fps == 60 && seed == kSeeds[0] && (now_end / 1000) % 20 == 0 && now_end % 1000 < 17)
+                    std::printf("  tsb2 %s t=%.0f ship %u role %s sb %s petal %d q_ok %u v_feas %.0f head %u pos %.0f,%.0f,%.0f zx %.0f order 0x%x v %.0f\n",
+                                su.tag, double(now_end) / 1000.0, (mm.ship - 0x9000) / 0x100, gc::role_name(mm.role), gc::sb_name(mm.sb), mm.petal,
+                                unsigned(mm.q_ok), double(mm.v_feas), mm.head_ms, double(mm.st.x[0]), double(mm.st.x[1]), double(mm.st.x[2]),
+                                double(mm.zx), unsigned(mm.st.order), double(mm.st.v));
+                if (std::getenv("X3M_T_SB") && fps == 60 && seed == kSeeds[0] && mm.sb == gc::Sb::funnel && (now_end / 1000) % 5 == 0 &&
+                    now_end % 1000 < 17)
+                    std::printf("  tsb %s funnel t=%.1f ship %u dX %.0f v %.1f v_sb %.1f v_feas %.1f plan_x %.1f slot_block %.1f order 0x%x\n", su.tag,
+                                double(now_end) / 1000.0, (mm.ship - 0x9000) / 0x100, double(gc::dist_x(g, mm)), double(mm.st.v), double(mm.v_sb),
+                                double(mm.v_feas), double(mm.plan_x_ms) / 1000.0, double(g.slot_block_ms) / 1000.0, unsigned(mm.st.order));
+                if (!mm.ship || mm.ship < 0x9000) continue;
+                TShip& c = ships[(mm.ship - 0x9000) / 0x100];
+                if (!c.alive || mm.sb != gc::Sb::hold || mm.petal < 0 ||
+                    !(c.m.order == core::kOrderFlyBefore || c.m.order == core::kOrderEscort || c.m.order == core::kOrderFollow)) { // the steered orders (not the script's order-0 waits)
+                    c.petal_reached25 = false;
+                    continue;
+                }
+                gc::PetalGeom pg;
+                gc::petal_geom(g, unsigned(mm.petal), mm.zx, &pg);
+                const float x[3] = {float(c.m.pos[0] / 500.0), float(c.m.pos[1] / 500.0), float(c.m.pos[2] / 500.0)};
+                const float a = core::dot3(x, g.F), b = core::dot3(x, pg.e), off = core::dot3(x, pg.n);
+                float ta, tb, da, db;
+                gc::petal_at(pg, gc::petal_project(pg, a, b), &ta, &tb, &da, &db);
+                const bool on = std::sqrt(double((a - ta) * (a - ta) + (b - tb) * (b - tb) + off * off)) < 300.0;
+                const double v = double(c.m.speed) / 500.0;
+                if (!on) continue;
+                if (v >= double(gc::kPetalVmin) - 0.5) c.petal_reached25 = true;
+                else if (c.petal_reached25) {
+                    ++res.petal_slow_frames;
+                    res.petal_min_v = std::fmin(res.petal_min_v, v);
+                }
+            }
+        }
         for (unsigned k = 0; k < su.n; ++k) { // D.7 assertion 6: a committed member on order 4 keeps v >= 10 m/s once it has reached it
             TShip& c = ships[k];
             if (!c.alive || c.m.order != core::kOrderFlyBefore) {
@@ -9023,6 +9268,17 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 res.conflicts += st.conflicts;
                 res.yields += st.yields;
                 res.unresolved += st.unresolved;
+                if (refused_ship >= 0 && !ships[refused_ship].launched) res.unresolved_refusal += st.unresolved; // from the refusal to its launch
+                if (st.unresolved && std::getenv("X3M_T_SB"))
+                    for (unsigned j = 0; j < g.n; ++j)
+                        if (g.v[i][j] == std::uint8_t(gc::PairV::unresolved)) {
+                            const gc::Member& a = g.m[i];
+                            const gc::Member& b = g.m[j];
+                            std::printf("  tsb unresolved %s %d fps seed %u t=%.1f %u(%s %s o 0x%x v %.0f cap %.0f) vs %u(%s %s o 0x%x v %.0f) t_c %u\n", su.tag, fps,
+                                        seed, double(now_end) / 1000.0, (a.ship - 0x9000) / 0x100, gc::role_name(a.role), gc::sb_name(a.sb),
+                                        unsigned(a.st.order), double(a.st.v), double(a.cap), (b.ship - 0x9000) / 0x100, gc::role_name(b.role),
+                                        gc::sb_name(b.sb), unsigned(b.st.order), double(b.st.v), unsigned(g.tc[i][j]));
+                        }
                 cursor = k + 1;
                 ++done;
                 if (n_drift < 4096 && g.m[i].n == gc::kSamples) { // the rollout against the flown path (the drift k)
@@ -9161,6 +9417,28 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                             }
                         }
                     }
+                    if (gap < 0.0 && std::getenv("X3M_T_SB") && fps == 60 && seed == kSeeds[0]) {
+                        static long last_c = -100000;
+                        if (now_ms - last_c >= 3000) {
+                            last_c = now_ms;
+                            int ia3 = -1, ib3 = -1;
+                            gc::Gate* g3 = gc::locate(board, A.m.ptr, &ia3);
+                            gc::Gate* g4 = gc::locate(board, B.m.ptr, &ib3);
+                            auto info = [&](const TShip& S, gc::Gate* gg, int ii) {
+                                std::printf(" [ship %u ph %d o 0x%x pos %.0f,%.0f,%.0f f %.2f,%.2f,%.2f v %.0f", unsigned(&S - ships), S.phase, S.m.order,
+                                            S.m.pos[0] / 500, S.m.pos[1] / 500, S.m.pos[2] / 500, S.m.row[2][0], S.m.row[2][1], S.m.row[2][2],
+                                            double(S.m.speed) / 500);
+                                if (gg && ii >= 0)
+                                    std::printf(" role %s sb %s petal %d key %u v_sb %.0f", gc::role_name(gg->m[ii].role), gc::sb_name(gg->m[ii].sb),
+                                                gg->m[ii].petal, gg->m[ii].key, double(gg->m[ii].v_sb));
+                                std::printf("]");
+                            };
+                            std::printf("  tcontact %s t=%.1f gap %.0f rho %.0f", su.tag, double(now_ms) / 1000.0, gap, g3 ? double(g3->rho) : -1.0);
+                            info(A, g3, ia3);
+                            info(B, g4, ib3);
+                            std::printf("\n");
+                        }
+                    }
                     if (gap < res.min_capsule) {
                         res.min_capsule = gap;
                         res.min_a = int(a);
@@ -9183,6 +9461,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 const int ib = g ? gc::find(*g, B.m.ptr) : -1;
                 if (!g || ib < 0 || !gc::live(g->m[ia], now_end) || !gc::live(g->m[ib], now_end)) {
                     ++res.warn_nonmember;
+                    if (A.m.order == core::kOrderNone || B.m.order == core::kOrderNone) ++res.gap_warn_nonmember;
                     evading[a][b] = false;
                     continue;
                 }
@@ -9196,6 +9475,12 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 in.b_ship = true;
                 in.ctl_pair = true;
                 in.ctl_certified = gc::e_certified(*g, unsigned(ia), unsigned(ib), now_end, gc::unit_row(fa), gc::unit_row(fb), A.m.order, B.m.order);
+                const bool gap = A.m.order == core::kOrderNone || B.m.order == core::kOrderNone;
+                if (gap) ++res.gap_warns;
+                if (!in.ctl_certified) {
+                    ++res.pass_why[unsigned(gc::e_reason(*g, unsigned(ia), unsigned(ib), now_end, gc::unit_row(fa), gc::unit_row(fb), A.m.order, B.m.order))];
+                    if (gap) ++res.gap_warn_unsup;
+                }
                 if (av::site_e_verdict(in) == av::EVerdict::suppress_ctl) {
                     ++res.e_suppress_ctl;
                     evading[a][b] = false;
@@ -9245,8 +9530,8 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
 // The casts (Run160b census hulls; convoy A: M2 leader, M1 and M2 escorts; convoy B: M1 leader, two M7 escorts; a lone M1).
 static const TStart kTDep[7] = {
     {&kCrowdTitan, 0.53, kTDepart, -1, 600, 0, -6200, -8, 100, 0, 0, 0},     // convoy A leader (Run160b 0x8e1d0090)
-    {&kCrowdM1, 0.53, kTEscort, 0, 600, 0, -9000, -8, 100, 0, 2.6, 100.5},   // its M1 escort (0x8e1dc258)
-    {&kCrowdTitan, 0.53, kTEscort, 0, 600, 0, -11800, -8, 100, 0, 5.2, 187.3}, // its M2 escort (0x8e212188)
+    {&kCrowdM1, 0.53, kTEscort, 0, 600, 0, -9000, -8, 100, 0, 2.6, 4.3},     // its M1 escort (0x8e1dc258)
+    {&kCrowdTitan, 0.53, kTEscort, 0, 600, 0, -11800, -8, 100, 0, 5.2, 4.4},  // its M2 escort (0x8e212188)
     {&kCrowdM1, 0.53, kTDepart, -1, 3500, 0, -9500, -20, 100, 150000, 0, 0},  // convoy B leader (0x8e223c48)
     {&kTM7a, 0.50, kTEscort, 3, 0, 0, 0, 0, 0, 0, 2.6, 4.2},                   // its M7 escorts (0xa908da10, 0xa9091e50), placed at
     {&kTM7b, 0.45, kTEscort, 3, 0, 0, 0, 0, 0, 0, 4.4, 4.5},                   //   their slots when the leader enters
@@ -9267,8 +9552,8 @@ static const TStart kTArr[11] = {
 };
 static const TStart kTMix[5] = {
     {&kCrowdTitan, 0.53, kTDepart, -1, 600, 0, -6200, -8, 100, 0, 0, 0},
-    {&kCrowdM1, 0.53, kTEscort, 0, 600, 0, -9000, -8, 100, 0, 2.6, 100.5},
-    {&kCrowdTitan, 0.53, kTEscort, 0, 600, 0, -11800, -8, 100, 0, 5.2, 187.3},
+    {&kCrowdM1, 0.53, kTEscort, 0, 600, 0, -9000, -8, 100, 0, 2.6, 4.3},
+    {&kCrowdTitan, 0.53, kTEscort, 0, 600, 0, -11800, -8, 100, 0, 5.2, 4.4},
     {&kCrowdM1, 0.53, kTDepart, -1, -3000, 0, -9000, 18, 100, 60000, 0, 0},
     {&kCrowdM1, 0.53, kTArrive, -1, 0, 0, 0, 0, 0, 120000, 0, 0},
 };
@@ -9289,18 +9574,390 @@ static void traffic_print(const char* tag, int fps, std::uint32_t seed, const TR
                 r.min_capsule_cert > 1e17 ? -1.0 : r.min_capsule_cert, r.episodes, r.episodes_grid, r.episodes_other, r.slow_frames,
                 r.slow_engine_frames, r.min_o4_speed > 1e17 ? -1.0 : r.min_o4_speed);
 }
+// ---- stage B unit checks and cost (gate-traffic-controller.md B.1) ---------------------------------------------------------------------
+static void sb_unit_checks() {
+    char why[256];
+    const float rg = float(kGateRM);
+    // 1. the pass point Q (D.2.2): the census Titan (r 1092, w 583, L 1092, v_max 110) at the axis column A_lat (0, 0) and at slot 19
+    {
+        const float a0[2] = {0, 0}, a19[2] = {-2 * 666.0f, -3 * 666.0f};
+        float q[2], l4[2], q19[2], l19[2];
+        const bool ok0 = gc::q_point(1092, 583, 1092, 110, rg, a0, q, l4), ok19 = gc::q_point(1092, 583, 1092, 110, rg, a19, q19, l19);
+        const float lmax = 1092 + 5.5f - 100, lmin = 583 + 509 * 0.05233596f - (0.38890873f * rg - 190), c = 0.75f * rg - 150;
+        std::printf("sb Q: Titan axis column Q=(%.0f, %.0f) Lambda4=(%.0f, %.0f) l_min %.0f l_max %.0f; slot 19 Q=(%.0f, %.0f) Lambda4=(%.0f, %.0f) "
+                    "|Lambda4 - A| %.0f m (chord limit %.0f)\n", double(q[0]), double(q[1]), double(l4[0]), double(l4[1]), double(lmin), double(lmax),
+                    double(q19[0]), double(q19[1]), double(l19[0]), double(l19[1]), std::hypot(double(l19[0] - a19[0]), double(l19[1] - a19[1])), double(c));
+        check(ok0 && ok19 && std::fabs(q[1] + lmin) < 1.0f && q[0] > 0.0f && std::hypot(q[0], q[1]) <= lmax + 0.5f && l4[0] == q[0] && l4[1] == q[1],
+              "sb Q: the axis column's Q on the l_min line, biased toward +R, inside l_max; one straight line (Lambda4 = Q)");
+        check(std::hypot(q19[0], q19[1]) <= lmax + 0.5f && q19[1] <= -lmin + 0.5f &&
+                  std::hypot(double(l19[0] - a19[0]), double(l19[1] - a19[1])) <= double(c) + 0.5,
+              "sb Q: slot 19's Q in the window, Lambda4 within the chord limit of A (the rest an order-5 lateral S)");
+    }
+    // 1b. the axis variant (B.1, measured and rejected; gc::kQAxisDefault off): Q on the axis; slot 19's Lambda_4 within the chord limit
+    {
+        const float a0[2] = {0, 0}, a19[2] = {-2 * 666.0f, -3 * 666.0f};
+        float q[2], l4[2], q19[2], l19[2];
+        const bool ok = gc::q_axis(rg, a0, q, l4) && gc::q_axis(rg, a19, q19, l19);
+        const double d19 = std::hypot(double(l19[0] - a19[0]), double(l19[1] - a19[1]));
+        std::printf("sb Q axis variant (off): on the axis; slot 0 Lambda4=(%.0f, %.0f), slot 19 Lambda4=(%.0f, %.0f) %.0f m from A (the rest on order 5)\n",
+                    double(l4[0]), double(l4[1]), double(l19[0]), double(l19[1]), d19);
+        check(ok && q[0] == 0 && q[1] == 0 && l4[0] == 0 && l4[1] == 0 && q19[0] == 0 && q19[1] == 0 && d19 <= 0.75 * kGateRM - 150 + 0.5,
+              "sb Q axis variant (B.1, off by default): Q on the axis, Lambda4 the axis for slot 0 and within the chord limit of A for slot 19");
+    }
+    // 2. the racetrack: point -> projection round trip, the lap length, the carrot ahead of the projection
+    {
+        gc::Gate g{};
+        g.r_gate = rg;
+        g.rho = 2874.0f;
+        gc::PetalGeom pg;
+        gc::petal_geom(g, 3, -5221.0f, &pg);
+        double worst = 0;
+        for (int k = 0; k < 64; ++k) {
+            const float s = float(k) * gc::kLap / 64.0f + 7.0f;
+            float a, b, da, db;
+            gc::petal_at(pg, s, &a, &b, &da, &db);
+            const float s2 = gc::petal_project(pg, a, b);
+            float d = std::fabs(s2 - s);
+            if (d > gc::kLap / 2) d = gc::kLap - d;
+            worst = std::fmax(worst, double(d));
+        }
+        std::snprintf(why, sizeof why, "sb petal: the racetrack's projection inverts its parameter (worst %%.3f m, %%.0f)");
+        checkf(worst < 1.0, why, worst, 0);
+        std::printf("sb petal: rho %.0f m, straights' front %.0f m (X - %.0f m), lap %.0f m, the front at %.0f m from the gate\n", double(pg.rho),
+                    double(pg.a1), double(-5221.0f - pg.a1), double(gc::kLap), std::hypot(double(pg.a1), double(pg.rho)));
+    }
+    // 3. the burst order (D.8): two members entering within 2 s are sequenced by their distance to X, a later one by its key
+    {
+        gc::Member a{}, b{}, c{};
+        a.role = b.role = c.role = gc::Role::committed;
+        a.key = 16, b.key = 32, c.key = 48;
+        a.enter_ms = 1000, b.enter_ms = 2500, c.enter_ms = 9000;
+        a.enter_d = 9000, b.enter_d = 4000, c.enter_d = 100;
+        check(gc::seq_before(b, a) && gc::seq_before(a, c) && gc::seq_before(b, c),
+              "sb burst (D.8): entries within 2 s by distance to X (a load), later entries by key");
+    }
+    // 4. the small ship's B rewrite (D.5): the arc radius and the side
+    {
+        const float th = 0.5235988f, b[3] = {0.55f * rg * std::sin(th), -0.55f * rg * std::cos(th), -0.01f * rg};
+        float o[3] = {0, 0, 0};
+        const bool mirrored = gc::small_b_mirror(rg, b, +1.0f, o);
+        const bool kept = !gc::small_b_mirror(rg, b, -1.0f, o + 0);
+        const float off[3] = {0.7f * rg * std::sin(th), -0.7f * rg * std::cos(th), -0.01f * rg}, up[3] = {b[0], -b[1], b[2]};
+        float t[3];
+        const bool off_arc = !gc::small_b_mirror(rg, off, +1.0f, t), upper = !gc::small_b_mirror(rg, up, +1.0f, t);
+        gc::small_b_mirror(rg, b, +1.0f, o);
+        std::printf("sb B rewrite: B (%.0f, %.0f, %.0f) -> (%.0f, %.0f, %.0f), radius %.1f -> %.1f m\n", double(b[0]), double(b[1]), double(b[2]),
+                    double(o[0]), double(o[1]), double(o[2]), std::hypot(double(b[0]), double(b[1])), std::hypot(double(o[0]), double(o[1])));
+        check(mirrored && kept && off_arc && upper && o[0] < 0 && std::fabs(std::hypot(o[0], o[1]) - 0.55f * rg) < 0.5f && o[2] == b[2],
+              "sb B rewrite (D.5): the capital's side mirrored across U (radius, height and spread kept); the free side, an off-arc and an upper "
+              "point untouched");
+    }
+    // 5. the sweep of a rollout that ends by leaving (order 8, then gone): complete with one paired sample, stale without the rule
+    {
+        gc::Sample a[gc::kSamples], b2[2];
+        for (unsigned k = 0; k < gc::kSamples; ++k)
+            for (int i = 0; i < 3; ++i) {
+                a[k].c[i] = i == 0 ? 4000.0f : 0.0f;
+                a[k].f[i] = i == 2 ? 1.0f : 0.0f;
+            }
+        for (unsigned k = 0; k < 2; ++k)
+            for (int i = 0; i < 3; ++i) {
+                b2[k].c[i] = i == 2 ? 100.0f * float(k) : 0.0f;
+                b2[k].f[i] = i == 2 ? 1.0f : 0.0f;
+            }
+        const gc::Sweep w1 = gc::sweep(a, gc::kSamples, 1000, 60, 1092, 583, b2, 2, 1000, 3000, 1022, 546, 14, true);
+        const gc::Sweep w0 = gc::sweep(a, gc::kSamples, 1000, 60, 1092, 583, b2, 2, 1000, 3000, 1022, 546, 14, false);
+        check(w1.clear && !w1.stale && w0.stale, "sb sweep: a launching partner's 2-sample rollout certifies (it leaves the sector), stale without the rule");
+    }
+    // 6. Run161 item 3: two parked neighbours at adjacent grid points (666 m) with the census hulls overlap on paper, so their pair can never
+    //    be certified (stage A's 13,700 uncertified frames); stage B parks nobody (the petals and the funnel, scenario T's assertions)
+    {
+        static gc::Board bd;
+        bd = gc::Board{};
+        const std::uint32_t now = 100000;
+        gc::Gate* g = ctl_gate(bd, now);
+        const float xa[3] = {0, 0, -4393}, xb[3] = {666, 0, -4393}, F[3] = {0, 0, 1};
+        gc::Member* a = ctl_put(bd, *g, 0x9000, gc::Role::committed, core::kOrderRotate, xa, F, 0.0f, 1092, 583, now);
+        gc::Member* b = ctl_put(bd, *g, 0x9100, gc::Role::committed, core::kOrderRotate, xb, F, 0.0f, 1092, 583, now);
+        if (a && b) {
+            a->handover_ms = b->handover_ms = now;
+            gc::DecideStats st;
+            gc::decide(*g, 0, now, &st, nullptr, nullptr);
+            gc::decide(*g, 1, now, &st, nullptr, nullptr);
+            const float gap = gc::capsule_gap(a->s[0].c, a->s[0].f, a->L, a->w, b->s[0].c, b->s[0].f, b->L, b->w);
+            std::printf("sb parked neighbours: two census Titans held at grid points 666 m apart: capsule gap %.0f m, verdict %s (never certified)\n",
+                        double(gap), gc::pair_name(gc::PairV(g->v[0][1])));
+            check(gap < 0.0f && g->v[0][1] != std::uint8_t(gc::PairV::clear), "sb parked neighbours at 666 m: overlapping on paper, no certificate");
+        } else
+            check(false, "sb parked neighbours: entries");
+    }
+    // 7. Run161 item 1: board persistence through the order-0 gap; 8. the order-0 rollout rule; 9. E's pass reason
+    {
+        static gc::Board bd;
+        bd = gc::Board{};
+        const std::uint32_t now = 200000;
+        gc::Gate* g = ctl_gate(bd, now);
+        const float xl[3] = {0, 0, -9000}, xe[3] = {3000, 0, -9500}, F[3] = {0, 0, 1};
+        gc::Member* L = ctl_put(bd, *g, 0x9000, gc::Role::committed, core::kOrderFlyBefore, xl, F, 40.0f, 1092, 583, now);
+        gc::Member* E = ctl_put(bd, *g, 0x9100, gc::Role::escort, core::kOrderEscort, xe, F, 40.0f, 1022, 546, now);
+        if (L && E) {
+            L->commit_ms = now;
+            L->line_ok = 1;
+            E->leader = 0x9000;
+            E->st.target = 0x9000;
+            gc::note_state(*L);
+            gc::note_state(*E);
+            L->st.ms = now + 3000; // the leader stays live
+            const bool esc_gap = gc::validity(*g, *E, core::kOrderNone, 0, now + 3000, false) == gc::Why::count;
+            const bool com_gap = gc::validity(*g, *L, core::kOrderNone, 0, now + 3000, false) == gc::Why::count;
+            L->st.ms = now + 6000;
+            const bool esc_late = gc::validity(*g, *E, core::kOrderNone, 0, now + 6000, false) == gc::Why::order;
+            const bool esc_mem = gc::validity(*g, *E, core::kOrderNone, 0, now + 6000, true) == gc::Why::count;
+            const bool com_late = gc::validity(*g, *L, core::kOrderNone, 0, now + 6000, false) != gc::Why::count;
+            L->st.ms = now + 2000;
+            check(esc_gap && esc_late && esc_mem && com_gap && com_late,
+                  "sb order-0 gap (Run161 item 1): an escort and a committed member stay through <= 5 s of order 0, an escort while its formation "
+                  "memory holds, neither beyond");
+            E->st.order = core::kOrderNone;
+            E->st.ms = now + 2000;
+            L->st.order = core::kOrderNone;
+            const bool plans = gc::plan_of(*E) == gc::Plan::follow && gc::plan_of(*L) == gc::Plan::line;
+            L->handover_ms = now;
+            const bool hand = gc::plan_of(*L) == gc::Plan::brake;
+            check(plans && hand, "sb order-0 rollout (Run161 item 2): the gap continues the last steered plan (escort follow, committed line); the P2 "
+                                 "hand-over brakes");
+            const bool r0 = gc::e_reason(*g, 0, 1, now + 2000, true, true, core::kOrderNone, core::kOrderEscort) == gc::EWhy::order0;
+            const bool r12 = gc::e_reason(*g, 0, 1, now + 2000, true, true, core::kOrderAvoid, core::kOrderEscort) == gc::EWhy::on_0x12;
+            check(r0 && r12, "sb E pass reasons (Run161 item 3): order0 without a certificate, on_0x12 first");
+        } else
+            check(false, "sb order-0 gap: entries");
+    }
+    // 10. Run161 item 5: the small-ship gate row on order 0 in the hand-over gap (traffic key only; off = amendment 17)
+    {
+        av::SiteE in;
+        in.b_gate = true;
+        in.gates_live = true;
+        in.gate_state = true;
+        in.a_in_table = true;
+        in.a_order = core::kOrderNone;
+        in.a_age_ms = 1500;
+        in.frame_ms = 16;
+        in.lead_age_ms = 1500;
+        const bool off = av::site_e_verdict(in) != av::EVerdict::suppress_gate_small;
+        in.small_gap_ms = 5000;
+        const bool on = av::site_e_verdict(in) == av::EVerdict::suppress_gate_small;
+        in.lead_age_ms = in.a_age_ms = 6000;
+        const bool stale = av::site_e_verdict(in) != av::EVerdict::suppress_gate_small;
+        check(off && on && stale, "sb small-ship gap row (Run161 item 5): order 0 within 5 s of the order-4 decision suppressed under the key only");
+    }
+    // 11. review item 1: a head that is never feasible yields after 60 s in its window; the rest go (the sequencer alone, synthetic states)
+    {
+        static gc::Board bd;
+        bd = gc::Board{};
+        std::uint32_t now = 400000;
+        gc::Gate* g = ctl_gate(bd, now);
+        gc::Member* mm[3] = {nullptr, nullptr, nullptr};
+        for (int k = 0; k < 3; ++k) {
+            double A[3];
+            float Af[3];
+            core::GateGeometry geo;
+            bool valid = false;
+            capital_grid(kCrowdTitan, k, kGateIdentity, 0.0, A, Af, &geo, &valid);
+            const float x[3] = {geo.X[0] + 2000.0f * float(k), geo.X[1] - 2500.0f, geo.X[2] - 4000.0f}, F[3] = {0, 0, 1};
+            mm[k] = ctl_put(bd, *g, 0x9000 + 0x100 * std::uint32_t(k), gc::Role::committed, core::kOrderFlyBefore, x, F, 40.0f, 1092, 583, now);
+            if (!mm[k]) break;
+            for (int i = 0; i < 3; ++i) {
+                mm[k]->X[i] = geo.X[i];
+                mm[k]->h[i] = geo.h[i];
+            }
+            mm[k]->line_ok = 1;
+            mm[k]->params.W = k == 0 ? 0.0f : 0.157f; // the head's plant has no turn: the predictor never finds a candidate
+            mm[k]->params.alpha = mm[k]->params.W * 0.05f;
+            mm[k]->params.a_lin = 10.0f;
+            mm[k]->params.v_max = 110.0f;
+        }
+        unsigned skipped = 0;
+        long released1 = -1, released2 = -1;
+        for (int it = 0; it < 1800 && mm[2]; ++it, now += 100) { // 180 s at 10 Hz
+            for (int k = 0; k < 3; ++k) {
+                gc::Member& m = *mm[k];
+                if (k == 1 && released1 >= 0 && it - released1 > 50) { // the released ship launches 5 s later and leaves
+                    if (it - released1 < 60) m.st.order = core::kOrderWarpAway;
+                    else continue; // gone: no state
+                }
+                m.st.ms = now;
+                m.commit_ms = now;
+            }
+            gc::SbStats st;
+            gc::sb_frame(*g, now, &st);
+            skipped += st.seq_skipped;
+            if (released1 < 0 && mm[1]->sb == gc::Sb::funnel) released1 = it;
+            if (released2 < 0 && mm[2]->sb == gc::Sb::funnel) released2 = it;
+        }
+        std::printf("sb tie-break: the never-feasible head re-queued %u time(s); the second released at %.1f s, the third at %.1f s; the head %s\n",
+                    skipped, released1 / 10.0, released2 / 10.0, gc::sb_name(mm[0] ? mm[0]->sb : gc::Sb::none));
+        check(skipped >= 1 && released1 >= 600 && released2 > released1 && mm[0]->sb == gc::Sb::hold,
+              "sb tie-break (review item 1): a never-feasible head yields after 60 s and re-queues at the tail; the rest launch");
+    }
+    // 12. review item 6: Terran rings (h = 0.663): l + w <= h r_gate - 50 m; none fits -> the axis
+    {
+        const float rt = 3207.5f, a0[2] = {0, 0};
+        float q[2], l4[2], q2[2], l42[2];
+        const bool m2 = gc::q_point(2998, 1499, 2998, 110, rt, a0, q, l4, true);
+        const bool owp = gc::q_point(4583, 2291.5f, 4583, 50, rt, a0, q2, l42, true);
+        const double l_m2 = std::hypot(double(q[0]), double(q[1]));
+        std::printf("sb Terran: M2 r 2998 w 1499: |Q| %.0f m (l + w %.0f <= %.0f); OWP r 4583: Q (%.0f, %.0f) (no l fits: the axis)\n", l_m2, l_m2 + 1499,
+                    0.663 * rt - 50, double(q2[0]), double(q2[1]));
+        check(m2 && owp && l_m2 + 1499 <= 0.663 * rt - 50 + 0.5 && q2[0] == 0 && q2[1] == 0,
+              "sb Terran (review item 6): the M2 2,998 m row keeps l + w inside the ring, the OWP 4,583 m row goes to the axis");
+    }
+    // 13. review item 10: the small ship's B decision (the DLL's path): no funnel, near, clear, mirrored, both sides taken, ours / KC
+    //     re-issue, and a go-around ending the funnel
+    {
+        static gc::Board bd;
+        bd = gc::Board{};
+        const std::uint32_t now = 500000;
+        gc::Gate* g = ctl_gate(bd, now);
+        const float x[3] = {463, -370, -3000}, F[3] = {0, 0, 1};
+        gc::Member* c = ctl_put(bd, *g, 0x9000, gc::Role::committed, core::kOrderDock, x, F, 100.0f, 1092, 583, now);
+        const float th = 0.5235988f, b[3] = {0.55f * rg * std::sin(th), -0.55f * rg * std::cos(th), -0.01f * rg};
+        float o[3] = {0, 0, 0};
+        bool ok = c != nullptr;
+        if (ok) {
+            c->q_ok = 1;
+            c->q[0] = 463;
+            c->q[1] = -370;
+            c->sb = gc::Sb::hold;
+            ok = ok && gc::small_b_decide(*g, now, b, 6000, 200, 64, o) == gc::SmallB::no_funnel; // a holder: no funnel
+            c->sb = gc::Sb::dock;
+            ok = ok && gc::small_b_decide(*g, now, b, 0.5f * rg, 200, 64, o) == gc::SmallB::near;
+            const gc::SmallB v = gc::small_b_decide(*g, now, b, 6000, 200, 64, o);
+            ok = ok && v == gc::SmallB::mirrored && o[0] < 0;
+            const float bm[3] = {o[0], o[1], o[2]};
+            ok = ok && gc::small_b_decide(*g, now, bm, 6000, 200, 64, o) == gc::SmallB::clear; // the free side is left alone
+            c->w = 1000; // a hull over both halves of the arc
+            ok = ok && gc::small_b_decide(*g, now, b, 6000, 200, 64, o) == gc::SmallB::both_taken;
+            c->w = 583;
+            gc::SmallBWrite mem;
+            const std::int32_t w1[3] = {1, 2, 3}, w2[3] = {1, 2, 4};
+            mem.w[0] = 1, mem.w[1] = 2, mem.w[2] = 3, mem.ok = 1;
+            ok = ok && gc::small_b_ours(mem, w1) && !gc::small_b_ours(mem, w2); // our last write left alone; a KC re-issue is new
+            c->sb = gc::Sb::hold; // a go-around: no funnel member, nothing written
+            ok = ok && gc::small_b_decide(*g, now, b, 6000, 200, 64, o) == gc::SmallB::no_funnel;
+        }
+        check(ok, "sb small-ship B (review item 10): no funnel / near / mirrored to the free side / clear / both sides taken / ours vs a KC "
+                  "re-issue / a go-around ends it");
+    }
+}
+static void sb_cost_bench() {
+    using clk = std::chrono::steady_clock;
+    static gc::Board bd;
+    bd = gc::Board{};
+    const std::uint32_t now0 = 300000;
+    gc::Gate* g = ctl_gate(bd, now0);
+    // a full board: 24 committed members on order 4 behind their grid points, spread over the petals' bearings
+    for (unsigned k = 0; k < gc::kMembers; ++k) {
+        const float ang = -2.0f + 4.0f * float(k) / float(gc::kMembers);
+        const float x[3] = {4000.0f * std::sin(ang), -4000.0f * std::cos(ang), -9000.0f - 50.0f * float(k)}, F[3] = {0, 0, 1};
+        gc::Member* m = ctl_put(bd, *g, 0x9000 + 0x100 * k, gc::Role::committed, core::kOrderFlyBefore, x, F, 40.0f, 1092, 583, now0);
+        if (!m) continue;
+        float Af[3];
+        double A[3];
+        core::GateGeometry geo;
+        bool valid = false;
+        capital_grid(kCrowdTitan, int(k % 20), kGateIdentity, 0.0, A, Af, &geo, &valid);
+        for (int i = 0; i < 3; ++i) {
+            m->X[i] = geo.X[i];
+            m->h[i] = geo.h[i];
+        }
+        m->line_ok = 1;
+        m->commit_ms = now0;
+        m->params.W = float(kCrowdTitan.yaw_dps * M_PI / 180.0); // the census Titan's plant (the predictor's inputs)
+        m->params.alpha = m->params.W * 0.05f;
+        m->params.a_lin = 10.0f;
+        m->params.v_max = 110.0f;
+    }
+    gc::SbStats st;
+    gc::sb_frame(*g, now0, &st); // keys, Q, petals
+    double best_frame = 1e9, best_steer = 1e9, best_feas = 1e9;
+    volatile float sink = 0;
+    unsigned preds = 0;
+    for (int rep = 0; rep < 5; ++rep) {
+        auto t0 = clk::now();
+        for (int it = 0; it < 200; ++it) {
+            for (unsigned k = 0; k < g->n; ++k) {
+                g->m[k].st.ms = now0 + 1000 + std::uint32_t(it) * 20;
+                g->m[k].feas_ms = 0; // every frame a prediction for the candidate (the worst)
+            }
+            gc::SbStats s2;
+            gc::sb_frame(*g, now0 + 1000 + std::uint32_t(it) * 20, &s2);
+            preds += s2.predictions;
+        }
+        auto t1 = clk::now();
+        gc::SbSteer out;
+        for (int it = 0; it < 20000; ++it) {
+            const gc::Member& m = g->m[unsigned(it) % g->n];
+            gc::sb_steer(*g, m, m.st.x, 40.0f, core::kOrderFlyBefore, g->gate, &out);
+            sink = sink + out.P[0];
+        }
+        auto t2 = clk::now();
+        for (int it = 0; it < 200; ++it) sink = sink + gc::funnel_feasible(*g, g->m[unsigned(it) % g->n], nullptr);
+        auto t3 = clk::now();
+        best_frame = std::fmin(best_frame, std::chrono::duration<double, std::micro>(t1 - t0).count() / 200.0);
+        best_steer = std::fmin(best_steer, std::chrono::duration<double, std::nano>(t2 - t1).count() / 20000.0);
+        best_feas = std::fmin(best_feas, std::chrono::duration<double, std::micro>(t3 - t2).count() / 200.0);
+    }
+    // a decision on the full board with every member on its petal plan (the rollout's racetrack pursuit, 23 sweeps)
+    unsigned petals = 0;
+    for (unsigned k = 0; k < g->n; ++k) petals += gc::plan_of(g->m[k]) == gc::Plan::petal ? 1u : 0u;
+    double best_dec = 1e9, worst_dec = 0;
+    for (int rep = 0; rep < 5; ++rep) {
+        for (unsigned k = 0; k < g->n; ++k) {
+            const std::uint32_t t = now0 + 50000 + std::uint32_t(rep) * 1000;
+            for (unsigned q = 0; q < g->n; ++q) g->m[q].st.ms = t;
+            auto t0 = clk::now();
+            gc::DecideStats ds;
+            gc::decide(*g, k, t, &ds, nullptr, nullptr);
+            const double us = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
+            best_dec = std::fmin(best_dec, us);
+            worst_dec = std::fmax(worst_dec, us);
+        }
+    }
+    std::printf("sb cost (host): a decision on a full board with %u members on petal plans: best %.1f us, worst %.1f us\n", petals, best_dec, worst_dec);
+    std::printf("sb cost (host): the sequencer on a full board (24 members, a feasibility prediction every frame) %.1f us per frame; sb_steer %.0f ns "
+                "per decision; one funnel feasibility (4 candidates) %.1f us (%u predictions in the frame loop)\n", best_frame, best_steer, best_feas,
+                preds / 5);
+}
+static void traffic_print_b(const char* tag, int fps, std::uint32_t seed, const TResult& r) {
+    std::printf("traffic T %-12s fps=%3d seed=%u stage B: crossings=%u nose_max=%.2f deg not_kept=%u o4_outside=%u rotate_frames_max=%u x_refused=%u "
+                "releases=%u go_arounds=%u guarded=%u predictions=%u launches=%u late_vs_plan_max=%.1f s (over 30 s: %u) late_vs_18s_max=%.1f s "
+                "escort_o4=%u from_petal=%u petal_slow_frames=%u petal_min_v=%.1f span_first_cross_to_last_launch=%.1f s cross_to_launch_min=%.1f "
+                "cross_to_launch_mean=%.1f cross_to_launch_max=%.1f s\n",
+                tag, fps, seed, r.crossings, r.cross_deg_max, r.cross_not_kept, r.o4_outside, r.rotate_frames_max, r.x_refused, r.releases, r.go_arounds,
+                r.guarded, r.sb_predictions, r.n_launch, r.late_max_s < -1e17 ? -1.0 : r.late_max_s, r.launches_late,
+                r.late18_max_s < -1e17 ? -1.0 : r.late18_max_s, r.escort_o4, r.escort_o4_petal, r.petal_slow_frames,
+                r.petal_min_v > 1e17 ? -1.0 : r.petal_min_v, r.first_cross_s >= 0 && r.last_launch_s >= 0 ? r.last_launch_s - r.first_cross_s : -1.0,
+                r.xl_n ? r.xl_min : -1.0, r.xl_n ? r.xl_sum / double(r.xl_n) : -1.0, r.xl_n ? r.xl_max : -1.0);
+    std::printf("traffic T %-12s fps=%3d seed=%u order-0 gap: gap_warns=%u gap_warn_unsup=%u gap_warn_nonmember=%u min_hold_gap=%.0f m grid_zone_max=%u "
+                "release_while_busy=%u go_arounds_near=%u seq_skipped=%u unresolved=%u unresolved_refusal=%u pass_ctl_why=", tag, fps, seed, r.gap_warns,
+                r.gap_warn_unsup, r.gap_warn_nonmember, r.min_hold_gap > 1e17 ? -1.0 : r.min_hold_gap, r.grid_zone_max, r.release_while_busy,
+                r.go_arounds_near, r.seq_skipped, r.unresolved, r.unresolved_refusal);
+    for (unsigned k = 1; k < unsigned(gc::EWhy::count); ++k) std::printf("%s%s:%u", k > 1 ? "," : "", gc::ewhy_name(gc::EWhy(k)), r.pass_why[k]);
+    std::printf("\n");
+}
 static void traffic_scenarios() {
     char why[256];
     const unsigned missed0 = g_crowd_targets_missed;
     unsigned worst_dec = 0, worst_roll = 0;
-    const TSetup setups[5] = {{"departures", kTDep, 7}, {"dep w0.6r", kTDep, 7, 0.6}, {"arrivals", kTArr, 11}, {"arr w0.6r", kTArr, 11, 0.6},
-                              {"mixed", kTMix, 5}};
+    const TSetup setups[6] = {{"departures", kTDep, 7}, {"dep w0.6r", kTDep, 7, 0.6}, {"arrivals", kTArr, 11}, {"arr w0.6r", kTArr, 11, 0.6},
+                              {"mixed", kTMix, 5}, {"dep refused", kTDep, 7, -1, 45000}};
     double drift_worst[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
     for (const TSetup& su : setups)
         for (int fps : kFps)
             for (std::uint32_t seed : kSeeds) {
                 const TResult r = run_traffic(su, fps, seed);
                 traffic_print(su.tag, fps, seed, r);
+                traffic_print_b(su.tag, fps, seed, r);
                 for (int cl = 0; cl < 2; ++cl)
                     for (int h = 0; h < 4; ++h) drift_worst[cl][h] = std::fmax(drift_worst[cl][h], r.drift_p95[cl][h]);
                 // stage A's guarantee: the certificate is sound (no capsule contact on any frame a member pair is certified clear)
@@ -9315,19 +9972,61 @@ static void traffic_scenarios() {
                 const bool no_pairs = r.warn_member == 0 && r.cert_frames == 0;
                 if (no_pairs)
                     std::printf("traffic T %s %d fps seed %u: no member pair in range (member-pair assertions not applicable)\n", su.tag, fps, seed);
-                else {
-                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: no engine evasion between members (%%.0f episodes, %%.0f)", su.tag, fps, seed);
-                    crowd_target(r.episodes == 0, why, r.episodes, 0);
-                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: no capsule contact between capitals (min gap %%.0f m > %%.0f)", su.tag, fps, seed);
-                    if (!std::strcmp(su.tag, "mixed")) checkf(r.min_capsule > 0.0, why, r.min_capsule, 0);
-                    else crowd_target(r.min_capsule > 0.0, why, r.min_capsule, 0);
+                else { // stage B: D.7 items 2 and 3 are hard checks in every variant with member pairs
+                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 item 2: no engine evasion between members (%%.0f episodes, %%.0f)", su.tag,
+                                  fps, seed);
+                    checkf(r.episodes == 0, why, r.episodes, 0);
+                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 item 3: no capsule contact between capitals (min gap %%.0f m > %%.0f; "
+                                  "the box bound is reported)", su.tag, fps, seed);
+                    checkf(r.min_capsule > 0.0, why, r.min_capsule, 0);
+                }
+                // Run161 items 1 and 3: no member warn left to the engine while one of the pair is in its order-0 gap; holders apart in their
+                // petals by more than the sweep's margin; at most one committed member past its X depth (the funnel's occupancy)
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: Run161: 0 member warns unsuppressed in the order-0 gap (%%.0f of %%.0f)", su.tag,
+                              fps, seed);
+                checkf(r.gap_warn_unsup == 0, why, r.gap_warn_unsup, r.gap_warns);
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: Run161: holders in their petals apart by > w_A + w_B + 50 m (closest capsule "
+                              "gap %%.0f m), one member in the grid zone at a time (%%.0f)", su.tag, fps, seed);
+                checkf(r.min_hold_gap > double(gc::kMarginM) && r.grid_zone_max <= 1, why, r.min_hold_gap > 1e17 ? -1.0 : r.min_hold_gap, r.grid_zone_max);
+                if (r.departures) { // stage B: D.7 items 1, 4, 5, 6, 7 on the departure streams
+                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: every departure launched (%%.0f of %%.0f)", su.tag, fps, seed);
+                    checkf(r.launched == r.departures, why, r.launched, r.departures);
+                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 item 1: every crossing at X kept (nose <= 8 deg: max %%.2f deg, not kept %%.0f)",
+                                  su.tag, fps, seed);
+                    checkf(r.crossings == r.departures && r.cross_deg_max <= 8.0 && r.cross_not_kept == 0, why, r.cross_deg_max, r.cross_not_kept);
+                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 item 1: 0x1f ends on its first frame (max %%.0f frames, refusals %%.0f)", su.tag,
+                                  fps, seed);
+                    checkf(r.rotate_frames_max <= 1, why, r.rotate_frames_max, r.x_refused);
+                    if (su.refuse_ms <= 0) {
+                        std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 item 4: every launch within 30 s of its sequence time (+60 s after a "
+                                      "direction change; worst %%.1f s), ctl_x_refused %%.0f", su.tag, fps, seed);
+                        checkf(r.launches_late == 0 && r.x_refused == 0, why, r.late_max_s, r.x_refused);
+                    } else { // review item 2: a 45 s refusal at X (a hidden holder): the follower holds in its petal, nothing unresolved
+                        std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: review 2: refused at X (%%.0f polls), the follower held: releases while the "
+                                      "ship ahead waits at X or is on order 5 / 8 %%.0f", su.tag, fps, seed);
+                        checkf(r.x_refused > 0 && r.release_while_busy == 0, why, r.x_refused, r.release_while_busy);
+                        std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: review 2: 0 unresolved pairs from the refusal to its launch (%%.0f), 0 "
+                                      "go-arounds within 1 km of X (%%.0f)", su.tag, fps, seed);
+                        checkf(r.unresolved_refusal == 0 && r.go_arounds_near == 0, why, r.unresolved_refusal, r.go_arounds_near);
+                    }
+                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: review 2: no release while the ship ahead waits at X or is on order 5 / 8 "
+                                  "(%%.0f), no go-around within 1 km of X (%%.0f)", su.tag, fps, seed);
+                    checkf(r.release_while_busy == 0 && r.go_arounds_near == 0, why, r.release_while_busy, r.go_arounds_near);
+                    if (su.refuse_ms <= 0) { // (under a 45 s refusal the escorts' staging follows a moving launch time: reported)
+                        std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 item 5: escorts start order 4 from a petal (%%.0f of %%.0f)", su.tag, fps,
+                                      seed);
+                        checkf(r.escort_o4_petal == r.escort_o4, why, r.escort_o4_petal, r.escort_o4);
+                    }
+                    std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 item 6: no order 4 ends outside X, holders >= 25 m/s on their petal (%%.0f, "
+                                  "%%.0f frames)", su.tag, fps, seed);
+                    checkf(r.o4_outside == 0 && r.petal_slow_frames == 0, why, r.o4_outside, r.petal_slow_frames);
                 }
                 std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 assertion 6: committed members on order 4 keep v >= 10 m/s once at it "
                               "while the module or the controller sets the speed (frames below %%.0f, %%.0f)", su.tag, fps, seed);
                 checkf(r.slow_frames == 0, why, r.slow_frames, 0);
                 std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: D.7 assertion 6 on the engine's own order-4 law too (the fallback on a "
                               "detour: frames below 10 m/s %%.0f, lowest %%.1f m/s)", su.tag, fps, seed);
-                crowd_target(r.slow_engine_frames == 0, why, r.slow_engine_frames, r.min_o4_speed > 1e17 ? -1.0 : r.min_o4_speed);
+                checkf(r.slow_engine_frames == 0, why, r.slow_engine_frames, r.min_o4_speed > 1e17 ? -1.0 : r.min_o4_speed); // stage B: hard
                 worst_dec = std::max(worst_dec, r.frames_max_decisions);
                 worst_roll = std::max(worst_roll, r.frames_max_rollouts);
                 std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: finite state", su.tag, fps, seed);
@@ -10411,6 +11110,8 @@ int main(int argc, char** argv) {
     if (argc == 2 && !std::strcmp(argv[1], "--traffic")) { // the gate traffic controller alone (an iteration aid; the full run includes it)
         ctl_unit_checks();
         ctl_cost_bench();
+        sb_unit_checks(); // the traffic controller, stage B
+        sb_cost_bench();
         traffic_scenarios();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
@@ -10452,6 +11153,8 @@ int main(int argc, char** argv) {
         amend16_scenarios();
         ctl_unit_checks(); // the gate traffic controller, stage A
         ctl_cost_bench();
+        sb_unit_checks(); // the traffic controller, stage B
+        sb_cost_bench();
         traffic_scenarios();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
@@ -10498,6 +11201,8 @@ int main(int argc, char** argv) {
     amend16_scenarios();
     ctl_unit_checks(); // the gate traffic controller, stage A (gate-traffic-controller.md A.1)
     ctl_cost_bench();
+    sb_unit_checks(); // the traffic controller, stage B
+    sb_cost_bench();
     traffic_scenarios();
     dock_scenarios(); // amendment 18 (docking-approach.md): scenario N
     std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u vanilla_notes=%u\n", checks, failures, slip_gaps, vanilla_notes);

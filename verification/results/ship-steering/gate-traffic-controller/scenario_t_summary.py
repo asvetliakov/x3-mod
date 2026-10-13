@@ -7,7 +7,7 @@ import sys
 def main(path):
     agg = {}
     for line in open(path, errors='replace'):
-        if not line.startswith('traffic T ') or 'fps=' not in line:
+        if not line.startswith('traffic T ') or 'fps=' not in line or ' stage B:' in line or ' order-0 gap:' in line:
             continue
         tag = line[10:23].strip()
 

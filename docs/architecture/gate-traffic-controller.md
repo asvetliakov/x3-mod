@@ -979,3 +979,273 @@ amendment 17's sources extracted from `77ddda08`.
 It finds 0 drops at the new sizes under the retry model: the worst E frame is 16.3 rows (cap 32), the pair table 50 (cap
 128), and the warn watch 9 (cap 32). **[i]**: the log's drop counter counts retries, so the true demand is inferred, and
 the naive bound (every drop its own row) is printed beside it.
+
+### B.1 Implementation (stage B)
+
+Built 2026-10-13 (Opus 5.5) on main `ad0e131a` (stage A + amendment 18, Run161) with `c604ed0a` merged; not flown, not installed.
+Stage B as ratified (D.2, D.3, D.5, D.6, D.8 with the D.12 corrections) plus the Run161 additions (items 1–5 below). Ledger:
+[ship-steering.md](../verification/ship-steering.md), "Gate traffic controller, stage B". Evidence directory:
+[`gate-traffic-controller/`](../../verification/results/ship-steering/gate-traffic-controller/) (`*_b.*`).
+
+**Sources.**
+
+* `ship_gate_ctl_core.h` (shared by the DLL and the fixture): the stage of a member (`Sb`: none, hold, funnel, handover, dock,
+  launch), Q and the final lines, the petals and their pursuit (`plant_step_to`, the predictor's plant toward a given carrot), the
+  rollout plans `petal` and `line5`, the sequencer `sb_frame` (once per gate per frame), the per-decision steering `sb_steer`, the
+  small-ship B mirror, E's pass reasons, and the order-0 gap rules.
+* `ship_steering.cpp`: `decide()` enters a committed capital first and skips the join modes for a member; the controller's point
+  and speed replace the leaf point and site B's speed (`kShipFlagGate`, both directions); `sb_frame_all` before the decisions; P2,
+  the site-W handler, the small-ship rewrite, the rows and the counters.
+* `ship_avoidance_core.h`: `SiteE.small_gap_ms` (Run161 item 5; 0 = amendment 17).
+* `ship_steering_sites.h` (h): the P2 contract; `verify_ship_steering_sites.py` gains `p2_remainder_contract` (20 checks).
+
+**Q and the final lines (D.2.2).** `q_point`: the point nearest the grid lateral A_lat in {|Q| ≤ ℓ_max, Q_U ≤ −ℓ_min},
+ℓ_max = r_s + (v_max / 2) / 10 − 100 m (the trigger at the aligned ramp's floor), ℓ_min = w + (L − w) sin 3° − (0.389 r_gate −
+140 − 50 m). A grid point on the axis column is biased toward +R by half the disc's chord at Q_U, within the chord limit (D.5:
+small ships take −R). Λ4 (order 4) = A_lat + (Q − A_lat) clamped to 0.75 r_gate − 150 m; Λ5 (order 5) passes through Q along F.
+Census Titan: the axis column gives Q = Λ4 = (463, −370) m; slot 19 gives |Λ4 − A| = 679 m, with the rest flown as the order-5
+lateral S.
+
+**The axis variant, measured and rejected (2026-10-13).** `q_axis` puts Q on the axis (ℓ = 0) and moves Λ4 toward it within the
+chord limit. It is kept behind the same selection for a later experiment, off by default (`kQAxisDefault`). The default is the offset
+Q above.
+
+Measured in scenario T (departures, 9 runs) against the offset Q:
+
+| | Cross→launch per ship (min / mean / max) | First crossing to last launch |
+| --- | --- | --- |
+| Axis | 27.5 / 34.8–35.3 / 41.5 s | 779–794 s |
+| Offset Q | 30.1 / 37.4–38.1 / 43.8 s | 700–714 s |
+
+* The axis saves about 2.6 s per ship. The order-5 leg runs 4.4 km from X to the trigger at no more than 110 m/s, and the axis moves
+  the trigger only about 170 m.
+* It costs about 80 s of span: convoy B's leader lost its backfill ahead of convoy A's waiting escorts.
+* Run160b's 15.3–15.5 s cross→launch is taken to be game time under SETA **[i]**.
+
+**Petals (D.2.4).** The ring has 7 petals 40° apart on the lower 240° (the design had 9 at 30°). The reason: the sweep certifies
+only with its 30 s margin (50 m + k·30 s), so adjacent petals need 2 w_max + 800 m between their planes at the ring radius.
+
+* ρ = (2 w_max + 800) / (2 sin 20°), at least 2.4 km. It is 2,874 m for the census and 3,085 m at w 0.6 r, and it only grows while
+  a petal is held.
+* The front turn's foremost point is X − 2.5 km (L_lead at its minimum, so an escort's release window stays inside the script's
+  10 km: 9.2 km measured for the Titan). R_h = 1 km, S_h = 1.5 km, and a lap is 9,283 m at 25–60 m/s.
+* Rings 1–2 lie D_ring = 6.8 km further back.
+* A holder takes the free ring-0 petal nearest its bearing; a petal next to a held one costs 0.35 rad. An escort aims two petals
+  from its leader's.
+* The leaf is the predictor's carrot on the racetrack, max(0.75 v, 2 v / W, 0.3 r_gate) beyond the nearest point.
+* The lap speed brings the next holder to the middle of its release window one nominal funnel (50 m/s) before the funnel frees.
+  An escort is brought to s = 300 m of its inner straight (beyond 10 km) at its leader's predicted launch + 4.5 s; others fly 40 m/s.
+* A committed holder closing on its grid sphere within 0.75 r + 300 m + v²/2a + 200 m is written 10 m/s (the guard; order 4 never
+  ended outside X in the fixture).
+
+**The sequencer and the funnel (D.2.3, D.2.5).**
+
+* Keys: seq << 4. An escort's key is its leader's + 1 + its rank, reserved once. Committed members that entered within 2 s of
+  each other without a reservation are ordered by their distance to X (D.8: a load re-enters the board in one burst).
+* Release of the first in sequence when all of these hold:
+  * it is behind its petal's straights with the nose within 60° of F;
+  * the funnel's order-4 part is free: the last released ship is within 2.5 km along and 150 m laterally of its X, or past P2;
+  * t_free − now ≤ d_X / 25 m/s;
+  * the join predictor on Λ4 (candidates 100/60/40/25 m/s) finds a candidate: the highest at grade 2, else at grade 1.
+* t_free = the predecessor's predicted end of order 8 (its predicted path time to X, 1 s hand-over, the order-5 leg at the aligned
+  ramp, 0.9 s) + 2 s, never before a blocked slot (a capital launch at the gate + 61 s).
+* Backfill: while the first in sequence is an escort still waiting for its order 4, the first committed holder goes ahead if its
+  predicted launch + 2 s comes before the escort's earliest X.
+* Funnel speed: min(d_X / (t_free − now), the feasible candidate), at least 10 m/s. The feasibility is re-predicted once per
+  second.
+* Go-around (back to a petal): no feasible candidate, or the slot frees more than 10 s later than 10 m/s can absorb.
+* The plan at the release is X = max(t_free, the predicted path time) and launch = X + 1 s + the order-5 leg. A capital launch at
+  the gate after the release shifts it (D.7 item 4's "+60 s after a direction change").
+* The capital order-5 leg flies Λ5's carrot. Its speed is the handler's aligned ramp (v_max at r_gate, v_max / 2 at r_gate / 5),
+  written both ways on every off-axis Q (D.12).
+* P2's keep verdict takes the funnel in place of the join mode. A kept stage-B hand-over zeroes `obj+0x30/34/38` (D.12; the stub
+  bytes are unchanged).
+* A rollout that ends by leaving (order 8, `line5` at its trigger) certifies with one paired sample: the ship is gone afterwards.
+
+**Escorts (D.3 with D.12).**
+
+* Petals on 0x14.
+* At the leader's order 8 the reservation runs 60 s (the design had 30 s for an order 4 at 4.2–4.5 s; beyond 10 km the script
+  first flies 5 s 0x15 legs).
+* On 0x15 beyond 10 km the escort pursues its inner straight toward the window, so the order 4 at the script's next pass inside
+  10 km starts on the straight with the nose along F.
+* An escort on 0x15 to the gate or on order 0 keeps its role while the reservation holds.
+
+**D.5.** While a member of the gate is released and not yet launched, a small ship's order-5 `f+0x240` that is the engine's arc
+point (radius 0.55 r or 0.05 r, height −0.01 r, lower ±45°) on the capital's side is mirrored across U, so θ becomes −θ and the
+radius, height and spread are kept. The rewrite comes from site A on the decision that finds it, and the leaf steers at the new B
+from that call. `f+0x230` is not written. A field still holding our last write is left alone; a KC re-issue is rewritten. With no
+capital in the funnel nothing is written (`small_b_rewrites` counts).
+
+**D.6.** For a committed member the join state machine (`join_on_decision`, the slow join, the aim-at-A latch and its rows) does not
+run. The lane verdicts and certificates and the (b) follow cap were already off under the key. Site W's handler returns at once
+while the controller is live, counted with `gate_warp_skipped`; the launch window places arrivals. A ship the board refuses keeps
+amendment 17's path.
+
+**Run161 additions (in scope 2026-10-13).**
+
+1. *Membership through the order-0 gap.* An escort stays while its formation memory is current, whatever the live order, and on
+   order 0 within 5 s of its last 0x14 / 0x15 read. A committed member stays on order 0 within 5 s of its last order-4 / 5 read
+   (`f+0x224` = 0 or its gate), through the P2 hand-over with the target zeroed, and on order 5 right after the hand-over before its
+   first leaf call commits. Eviction is on 0x12 only.
+2. *The order-0 rollout rule.* In the P2 hand-over a committed member brakes along its nose (order 0 sets the desired speed 0;
+   0x1f holds). In the script's re-issue gap (≤ 5 s after its last steered read) a member continues its last steered plan at its
+   current speed: an escort its petal, else following its leader; a committed ship its petal or its funnel line. Otherwise it brakes.
+3. *E's pass reasons* (`gc::EWhy`): none, unresolved, stale, starved, on_0x12, rows, order0, not_member. They are counted
+   (`e_pass_ctl_why=` in the summary, in that order) and logged as `ship_gate_ctl_pair kind=e_pass why=` at most once per pair per
+   second.
+   * The 13,700 uncertified frames reproduce: two census Titans parked at grid points 666 m apart have a capsule gap of −500 m and
+     are never certified (`sb parked neighbours`).
+   * Stage B parks nobody. Asserted in scenario T: the closest two petal holders keep a capsule gap of 302 m (> 50 m), and at most
+     one committed member is past its X depth at a time.
+4. *Trace.*
+   * A capital takes any free trace slot.
+   * An escort of any traced non-escort capital is claimed.
+   * `ship_trace` carries `cap_ms` / `cap_age_ms`, and `ship_trace_rows.py` parses them.
+   * Under `--debug` every order-0 frame of a member writes `ship_gate_ctl_pair kind=order0` with each partner's E reason
+     (partners within 5 km).
+5. *Small ships.* Under the key the gate row (`suppress_gate_small`) also covers order 0, with `f+0x224` zeroed, while the order-4
+   decision or the lead-in is at most 5 s old. It is counted as `e_gate_small_gap`. The M6 escorts evading each other near the gate
+   are not addressed (reported in Run161, left open).
+
+**Rows and counters.**
+
+* `ship_gate_ctl` gains `key=`, `stage=<from>><to>` and `petal=`; the stage transitions are rows with why = hold / release /
+  go_around / dock / launch.
+* `ship_gate_ctl_pair` gains `kind=` and `why=`.
+* New counters: `ctl_releases`, `ctl_go_around`, `ctl_x_refused` (with `ctl_x_wait_s`), `ctl_sb_steered`, `ctl_sb_pred`,
+  `ctl_guarded`, `ctl_p2_zeroed`, `small_b_rewrites`, `ctl_sb_us_max`, `e_pass_ctl_why`, `e_gate_small_gap`.
+* The summary's worst case is 4,007 of 4,096 characters (`summary_bound.py`).
+
+**Scenario T, stage B** (9 runs per variant, the key on; producer
+[`scenario_t_b.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.py) →
+[`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.txt), measured).
+
+Fixture changes:
+
+* The escort script follows D.12: the first pass 4.2–4.5 s after the leader's launch, then 5 s 0x15 legs while beyond 10 km.
+  Convoy A's 100.5 / 187.3 s delays now come from that rule.
+* The 0x14 legs last 30–34 s with 2–3 s order-0 waits.
+* After P2 there is a 2–3 s order-0 re-issue gap.
+* The formation memory is taken as lapsed, so only the gap rule keeps an escort.
+* A departure enters at its Run160b start once no live capital is within 1.2 (r_A + r_B) + 200 m of it or its escorts' slots,
+  because the holders are no longer where Run160b had them.
+* The run lasts 1,200 s.
+
+Hard checks, all pass. The oracle is Run160b; values are the worst over the 9 runs.
+
+| Check | departures (w census) | dep w 0.6 r | mixed | oracle |
+| --- | --- | --- | --- | --- |
+| crossings at X, nose ≤ 8° (all kept) | 5.05° | 4.02° | 4.83° | 79–105° |
+| 0x1f frames | 1 | 1 | 1 | rotates 84 s |
+| 0x12 episodes between members | 0 | 0 | 0 | 195 s chain |
+| member warns unsuppressed in the order-0 gap | 0 of 30,032 | 0 of 18,029 | 0 of 24,434 | Run161: all 104 |
+| capsule contact; closest gap | 0; 302 m | 0; 302 m | 0; 573 m | |
+| launch after its sequence time (≤ 30 s, +60 after a direction change) | 5.1 s | 5.3 s | 10.1 s | |
+| cross→launch per ship (reported) | 30.1–43.8 s | 30.0–43.0 s | 37.3–41.8 s | 15.3–15.5 s (SETA [i]) |
+| `ctl_x_refused` | 0 | 0 | 0 | |
+| escorts' order 4 from a petal | 36 / 36 | 36 / 36 | 18 / 18 | 0x15 92–145 s |
+| order 4 ending outside X; frames < 25 m/s on a petal; < 10 m/s on order 4 | 0; 0; 0 | 0; 0; 0 | 0; 0; 0 | |
+| every departure launched | 7 / 7 | 7 / 7 | 4 / 4 | |
+
+The arrival variants hold no member pair in range, as in stage A. A small arrival's spawn against a capital at the plane keeps a
+surface clearance of at least 554 m (census) and 514 m (w 0.6 r).
+
+These are the values with the offset Q (the default) before the review fixes; the post-fix values are under "Review fixes" below and in the ledger.
+
+Reported, not met:
+
+* **D.7 item 7, the span.** First crossing to last launch is 714 s for 7 departures (719 s at w 0.6 r) before the review fixes, and
+  564.7 s (578.9 s at w 0.6 r) after them, against the 200 s target, Run160b's 484 s for 6, and 565 s for 7 scaled. The axis variant
+  gave 794 s. The gain came with the fixes (the busy rule, the caps, the gap braking) and was not tuned for. The cadence is about 120 s per ship: the funnel from the petal takes about 75 s at the plant's cornering cap,
+  the order-5 leg about 38 s, and the escorts follow serially because their order 4 cannot come before their leader's launch (D.12).
+* **D.7's literal t_seq.** Against t_launch(k−1) + 18 s the worst launch is 152 s late. The 18 s assumed Run160b's 15.3–15.5 s
+  X→launch, which the fixture's tf = 1 legs do not reach (about 38 s). Item 4 is therefore asserted against the sequencer's plan.
+
+**Cost** (host x86-64 -O2, measured; i686 not measured):
+
+* `sb_frame` on a full board is 15.7 µs per frame with a funnel feasibility prediction every frame (one prediction of 4 candidates:
+  14.2 µs);
+* `sb_steer` is 20 ns per decision;
+* a decision on a full board with 21 petal plans is 7.2 µs best and 44.3 µs worst (stage A: 30.1 µs in conflict);
+* the frame bound and the predictor are unchanged: 16.2 / 19.3 µs (stage A 16.1–16.2 / 18.8–19.5).
+* The handler hot path adds one `ctl_lookup` (the bitmap, two loads for a non-member) and `sb_steer` for a capital member. Site B adds
+  only `--debug` rows; E adds `e_reason` on a pass.
+* Static memory: Member 1,792 B, Gate 51,852 B, board 207,416 B (stage A 188,520 B); the controller is 209,984 B
+  ([`static_sizes_b.txt`](../../verification/results/ship-steering/gate-traffic-controller/static_sizes_b.txt)).
+
+**Key off** (`ship_steering_gates_traffic = 0`).
+
+* [`keyoff_identity_b.sh`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b.sh) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b.txt) against main `ad0e131a`: E 0 /
+  400,000; resolve 0 / 60,000 (floats bitwise); steer set 0 / 65,536; site B clamp 0 / 200,000; ship-container flags 0 / 100,000.
+* [`fixture_identity_b.sh`](../../verification/results/ship-steering/gate-traffic-controller/fixture_identity_b.sh) →
+  [`fixture_lines_b.txt`](../../verification/results/ship-steering/gate-traffic-controller/fixture_lines_b.txt): every line outside
+  scenario T and the stage-B unit and cost lines is unchanged in all three modes (326 / 149 / 326 lines, 0 differing).
+
+**Not done, or deviating from the ratified text.**
+
+* The petals are 7 at 40°, not 9 at 30°.
+* The reservation lasts 60 s, not 30 s.
+* D.5's order-4 small lead-in on the free side is not built; only the order-5 `f+0x240` rewrite is.
+* D.4's "funnel closed while an arrival's capsule is in the corridor" is not a rule of its own. The slot block, the sweep's yields
+  and the shifted plan cover it, and the mixed variant has 0 episodes.
+* `ctl_x_refused` in the DLL counts a hand-over waiting more than 5 s, not a KC refusal as such.
+* The small-ship M6 escort pairs (Run161, 164 s) are reported only.
+
+**Review fixes (two reviews of `5c4e85d4`, Opus and Fable, 2026-10-13).**
+
+1. *Tie-break.* A head of the sequence is skipped when, with the funnel free and its slot due, it either stays in its release window
+   with no feasible candidate for more than 60 s, or its window never opens within a slowest lap (371 s) plus 60 s. It then re-queues
+   at the tail (`ctl_sb_misc` [0]). Unit: a never-feasible head yields at 60.3 s and the other two are released.
+2. *Funnel busy.* No release while any committed member waits at X (the hand-over) or is on order 5 or within order 8, besides the
+   final-straight rule.
+   * The `dep refused` variant adds a 45 s refusal of the first departure at X: 6–11 refused polls; the follower held (no release while
+     a ship ahead was busy); 0 unresolved pairs from the refusal to its launch; 0 go-arounds within 1 km of X.
+   * In that variant the escorts' order 4 from a petal (2 of 4) and the plan lateness (≤ 58 s) are reported, not asserted.
+3. `sb_steer` checks the live target first: order 4 / 5 to the gate; 0x14 to the member's leader; 0x15 to the leader, or to the gate
+   once the reservation runs.
+4. Every stage-B speed write is min(the controller's speed, `gate_speed(v_max, large, v_corner)`): the cornering cap and the 100 m/s
+   large cap.
+5. `sb_managed`: stage B owns a committed member only with Q known and a petal held or a released stage. Otherwise the member keeps the
+   stage-A / amendment-17 join (join on, P2 kept when aligned).
+6. Terran rings: `q_point` keeps ℓ + w ≤ 0.663 r_gate − 50 m and falls back to the axis when no ℓ fits. Unit: the M2 2,998 m row gives
+   |Q| = 535 m (2,034 ≤ 2,077 m); the OWP 4,583 m row goes to the axis.
+7. The player's ship (`[obj+0x40] & 2`) is never entered, sequenced, steered or given a B rewrite.
+8. A backward game-clock jump (a load) resets the gate's slot state (`ctl_sb_misc` [2]). A gate entry re-created by `acquire_gate`
+   starts from zero. A new hand-over clears `x_ms`, `refused` and `o8_ms`; a new order 4 clears them too.
+9. 0x12 evicts any member, whatever its formation memory (`validity` returns `evict`).
+   * The launch and `line5` rollouts no longer end at the launch. They hold the launch's end point beyond the plane for the rest of the
+     horizon, so a pair's overlap is never short, and the sweep keeps its 4-sample and warn-reach minimums (F13).
+10. The small-ship B decision is `gc::small_b_decide`, which the DLL calls and the fixture unit-checks.
+    * No rewrite within 0.55 r_gate of B, on a detour frame, or for the player.
+    * Only the funnel members that reach the plane before the small ship's ETA count.
+    * B stays when it is clear of them (w + r_small + 50 m), is mirrored when only the mirror is clear, and is left alone when both
+      sides are taken (`ctl_sb_misc` [3]).
+    * `small_b_ours`: the DLL's last write is left alone; a KC re-issue is evaluated again. A go-around (no funnel member) ends it.
+11. The `kind=order0` pair rows are limited to one per pair per second. The trace-slot change (any slot for a capital) applies under the
+    traffic key only; with the key off amendment 17's rule stands.
+12. Verifier `p2_remainder_contract`: order 0's `jmp +0x133` resolves to the pinned tail 0x004590e0; 0x1f's aligned test, its
+    no-roll-target branch and the roll-only zeroing are pinned (20 checks).
+
+*Opus question 5, the order-0 gap against the margin* **[i]** for the arithmetic, measured for the fixture.
+
+| Case | Gap | Braking a | Error vs the 50 m + 10 m/s·t margin |
+| --- | --- | --- | --- |
+| Titan, rollout continuing at its speed | 5 s | 10 m/s² | ½ a T² = 125 m at 5 s (margin 100 m); a T² ≈ 250 m by about 10 s (margin 150 m): exceeded |
+| M1 Colossus | 5 s | 5 m/s² | 62.5 m at 5 s; about 125 m by 10 s: within |
+
+* Raising k to 25 m/s for gap pairs was tried and rejected. The certificates failed: 84–2,591 unsuppressed gap warns per departure run.
+* Instead the rollout brakes for the gap's expected rest (`gap_brake_s`: 3 s for an escort, from the template's 2–3 s wait; 5 s for a
+  committed ship), then resumes the last plan at its speed. The residual is the gap-length mismatch, at most 2 s, about 40–60 m.
+* Measured with the 2–3 s waits and the 2–3 s re-issue gap: 0 of 149,928 member warns in the gap unsuppressed across the four
+  departure variants. k stays 10 m/s.
+
+**Open: span tuning (after Run162, from flight data).** The span is set by three things:
+
+* the funnel from the petal to X: 60–125 s from release to P2, at the plant's cornering cap from ρ ≈ 2.9 km and X − 3.5 km;
+* the order-5 leg: 30–44 s;
+* the escorts going one after another under D.12.
+
+The knobs are the petal radius and spacing, the release lead (L_lead, the release window, the final-straight overlap of two funnels),
+and pipelining the escorts. Tune them against flown cadences, not the fixture alone.

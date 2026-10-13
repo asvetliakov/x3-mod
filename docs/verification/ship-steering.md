@@ -1716,6 +1716,90 @@ Rerun (measured): clean build 0 warnings, DLL `1ad73e5b…`, 59,066,477 B; `chec
 identity all 0 (E 400,000, resolve 60,000, steer set, clamp 200,000, the dock-bit rule 100,000; question 3: 0 / 50,312 beyond the
 reach, 1,246 / 8,340 within 5 r_C); 63 host tests OK; cost 64 / 282 ns, lookup 51 ns.
 
+## Gate traffic controller, stage B (2026-10-13, Opus 5.5; design [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) §B.1)
+
+Stage B on main `ad0e131a` (Run161) with `c604ed0a` merged: the petals, Q / Λ4 / Λ5, the sequencer and the funnel, the capital
+order-5 write, the escort petals under D.12, the small-ship `f+0x240` mirror, the D.6 deletions, D.8's burst order, the P2 remainder
+zeroing, and the Run161 items 1–5 (order-0 membership and rollout, E's pass reasons, trace slots and the cap, order-0 pair rows, the
+small-ship gap row). Not flown, not installed. Measured on the WSL2 host:
+
+* Build from the worktree, after the review fixes below: 0 warnings, DLL `5fcdeb25…`, 59,298,195 B (unstripped).
+  `check_no_x87.py build/d3d9.dll`: PASS, 995 reachable functions, 0 violations (two float-returning helpers were first returned in
+  ST0, now always_inline).
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, **20 checks** (19 + `p2_remainder_contract`: the integrator's
+  three remainder writes, order 0's autopilot path without one, 0x1f's roll-only zeroing, P2's speeds-only window); stub bytes
+  unchanged ([output](../../verification/results/ship-steering/verify_ship_steering_sites_out.json)).
+* Fixture: full 8873/8873 (main 8520), `--capital` 3215/3215 (2862), `X3M_SEQ_OFF` 8783/8783 (8430); +353 checks: scenario T's
+  hard D.7 and Run161 checks (+342) and the stage-B unit checks (+11). Outputs regenerated (`ship_steering_host.txt`,
+  `fixture_capital.txt`, `ship_steering_host_seq_off.txt`).
+* Fixture identity ([`fixture_identity_b.sh`](../../verification/results/ship-steering/gate-traffic-controller/fixture_identity_b.sh) →
+  [`fixture_lines_b.txt`](../../verification/results/ship-steering/gate-traffic-controller/fixture_lines_b.txt)): every line outside
+  scenario T and the stage-B lines unchanged against `ad0e131a` (full 326, capital 149, seq-off 326; 0 differing).
+* Key-off identity ([`keyoff_identity_b.sh`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b.sh) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b.txt)), `ship_steering_gates_traffic = 0`
+  against `ad0e131a`: E 0 / 400,000, resolve 0 / 60,000 (floats bitwise), steer set 0 / 65,536, site B clamp 0 / 200,000.
+* Scenario T ([`scenario_t_b.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.py) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.txt)): the 54 TARGET MISS rows of stage A are
+  hard checks and pass in departures, departures w 0.6 r and mixed. Worst over 9 runs each:
+  * crossings 5.05° / 4.02° / 4.83° (Run160b 79–105°), all kept;
+  * 0x1f 1 frame;
+  * 0 member episodes (Run160b: the 195 s chain);
+  * 0 of 72,495 member warns in the order-0 gap unsuppressed;
+  * no capsule contact (closest 302 / 302 / 573 m);
+  * launches at most 5.1 / 5.3 / 10.1 s after their sequence time;
+  * `ctl_x_refused` 0;
+  * escorts' order 4 from a petal 90 / 90;
+  * 0 order-4 ends outside X;
+  * 0 frames below 25 m/s on a petal or 10 m/s on order 4;
+  * 7 / 7 / 4 launched.
+  * Reported, not met: the span from the first crossing to the last launch is 714 s for 7 (Run160b 484 s for 6; D.7 target 200 s),
+    and against D.7's literal t_launch(k−1) + 18 s the worst launch is 152 s late (§B.1 gives the reasons).
+* Stage-B units: Q (the Titan's axis column (463, −370) m; slot 19's Λ4 at the chord limit 679 m); the racetrack's projection round
+  trip; D.8's burst order; the D.5 mirror (radius 607.7 m kept); a launching partner certifies; two parked Titans at 666 m have a
+  capsule gap of −500 m and stay uncertified (Run161's 13,700 frames); the order-0 membership, rollout rule and E reasons; the
+  small-ship gap row under the key only.
+* Cost (host): `sb_frame` 15.7 µs per frame with a feasibility prediction every frame (14.2 µs for 4 candidates); `sb_steer` 20 ns;
+  a decision with 21 petal plans 7.2–44.3 µs (stage A: 30.1 µs in conflict); the predictor 16.2 / 19.3 µs (unchanged). Static:
+  board 207,416 B (stage A 188,520 B) ([static_sizes_b.txt](../../verification/results/ship-steering/gate-traffic-controller/static_sizes_b.txt)).
+* **Q on the axis, measured and rejected** (§B.1).
+  * Departures: cross→launch 27.5 / 34.8–35.3 / 41.5 s against 30.1 / 37.4–38.1 / 43.8 s with the offset Q, so about 2.6 s saved
+    per ship.
+  * Span 779–794 s against 700–714 s: about 80 s worse, from a lost backfill.
+  * The default is back to the offset Q; `q_axis` stays behind `kQAxisDefault` (off).
+  * Rerun with the offset default:
+    * build: 0 warnings, DLL `53a9f545…`, 59,274,238 B;
+    * `check_no_x87`: PASS 992 / 0;
+    * verifier: PASS 20, output byte-identical;
+    * fixture: 8874 / 3216 / 8784, every check passing;
+    * key-off identity: 0 differences; fixture identity: 0 lines differing;
+    * host tests: 64 OK;
+    * scenario T: as above (span 714 s, target 565 s not met).
+  * Span tuning is open for after Run162 (§B.1).
+* **Review fixes 1–13** (two reviews of `5c4e85d4`; §B.1). Rerun:
+  * fixture: full 9039 / `--capital` 3381 / seq-off 8949, every check passing; scenario T gains the `dep refused` variant and 3 more
+    stage-B units (the tie-break, the Terran rows, the small-ship B decision);
+  * key-off identity: 0 differences (E 0 / 400,000, resolve 0 / 60,000, steer set 0, site B 0 / 200,000);
+  * fixture identity: 0 lines differing in all three modes;
+  * verifier: PASS 20 (`p2_remainder_contract` extended);
+  * `summary_bound.py`: 4,063 of 4,096;
+  * host tests: 64 OK.
+  * Scenario T, worst over 9 runs, departures / w 0.6 r / mixed:
+    * nose 5.01 / 4.74 / 5.39°, all kept;
+    * 0 episodes;
+    * 0 of 84,509 gap warns unsuppressed;
+    * no contact (302 / 302 / 397 m);
+    * launches ≤ 19.4 / 20.0 / 11.1 s after plan;
+    * span 564.7 / 578.9 / 429.2 s.
+  * `dep refused`: 6–11 polls refused, 0 releases while busy, 0 unresolved during the refusal, 0 go-arounds within 1 km, span ≤ 792 s.
+  * Opus question 5: k = 25 for gap pairs was rejected (84–2,591 unsuppressed gap warns per run); the rollout brakes for the gap
+    instead.
+* Run160b replay ([`replay_identity_b.sh`](../../verification/results/ship-steering/gate-traffic-controller/replay_identity_b.sh) →
+  [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/replay_identity_b.txt)): `ship_trace_rows.py` gained
+  the optional `cap_ms` / `cap_age_ms` tail. `ship_trace_replay.py` → `replay_lag.py` on `run160b-triage/x3m.log`, main's scripts
+  against these: stdout 83,459 B, the 219 MB JSON and the 1,403 B summary byte-identical.
+* Host tests `test_ship_trace_format` (+1: the cap tail), `test_ship_steering_sites`, `test_ship_trace_replay`, `test_ship_steering`,
+  `test_check_no_x87`, `test_config_schema`, `test_launcher_defaults`: 64 OK. `summary_bound.py`: 4,007 of 4,096.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

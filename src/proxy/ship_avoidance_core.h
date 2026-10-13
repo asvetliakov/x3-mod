@@ -833,6 +833,8 @@ struct SiteE {
     bool gate_window_ok = true;      // s >= -6 r_gate along F from X at the last decision (mode `out` passes)
     bool gate_p2_seen = false;       // P2 on this approach, kept or not (the hand-over of section 16.3)
     bool gate_path_ok = true;        // dist(G, segment[x_A, P_A]) >= r_gate + r_A + 0.25 r_gate
+    std::uint32_t small_gap_ms = 0;  // Run161 item 5 (ship_steering_gates_traffic; 0 = off): the small-ship gate row also on order 0 while
+                                     // the order-4 decision (or the lead-in) is at most this old (the hand-over gap)
     bool gate_small_guard = false;   // a validated small approach decided on within the window with dist(G, segment[x, A]) >=
                                      // r_gate + r_ship + 0.1 r_gate (the G1 extension; ship_steering_gates)
     // B = a capital committed to A's gate with A (section 16.1): the pair's lane verdict carries a geometric certificate (the footprint
@@ -881,6 +883,9 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
             if (in.capital_policy && (approach || hand) && in.gate_path_ok) return EVerdict::suppress_gate;
         } else if (in.a_order == sc::kOrderFlyBefore && (in.lead_age_ms <= fresh || (in.gate_small_guard && in.a_age_ms <= fresh)))
             return EVerdict::suppress_gate_small; // G1, and its section-16.4 extension to the whole order-4 leg under the guard
+        else if (in.small_gap_ms && in.a_order == sc::kOrderNone &&
+                 (in.lead_age_ms <= in.small_gap_ms || (in.gate_small_guard && in.a_age_ms <= in.small_gap_ms)))
+            return EVerdict::suppress_gate_small; // Run161 item 5 (traffic key): order 0 in the hand-over gap, the gate state fresh
     }
     // amendment 16 (section 16.1) / 16b: two capitals committed to A's gate whose pair carries a certificate (the commitment carries
     // its own freshness: the hand-over has no decision)

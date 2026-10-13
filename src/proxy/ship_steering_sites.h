@@ -101,6 +101,10 @@
 //     stack; flags dead. The stub (live) calls the handler, which writes `[obj+0x14] = 0` and `[obj+0x10] = 0` unless
 //     the ship is not capital (record +0x14 code outside kCapitalMask, the predicate 0x0043fd50) and `[flight+0x224]`
 //     is class 0x12; then `jmp 0x00454b97` with EAX/ECX/EDX/ESI preserved and ESP exact. Not live: the claim tail.
+//     Stage B of the traffic controller (gate-traffic-controller.md B.1, D.12): on a kept hand-over of a member crossing from its
+//     funnel the handler also writes `[obj+0x30]`, `[obj+0x34]`, `[obj+0x38]` = 0 (the integrator's yaw / pitch / roll remainders,
+//     0x00459c2c / 0x00459b0e / 0x004599f4; order 0 writes none of them and a first-frame 0x1f only the roll, ship-navigation-ai.md
+//     10.11 Q4). The stub bytes are unchanged; verify_ship_steering_sites.py pins the remainder facts (check p2_remainder_contract).
 // (i) P4 `0x00454700`: the order-5 arrival writes the same 6 bytes; EAX = 0 (used at 0x00454717 for the order word),
 //     EBX = obj, ECX = flight; flags dead; the join 0x00454710 (from 0x00459191) lies after the window. The handler
 //     writes `[obj+0x14] = 0`, keeps `[obj+0x10]` and records it for P5 when the target is a gate and the ship is not

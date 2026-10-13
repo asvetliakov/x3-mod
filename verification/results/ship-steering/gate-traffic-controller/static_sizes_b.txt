@@ -1,0 +1,4 @@
+gc::Member 1792 B, gc::Gate 51852 B, gc::Board (4 gates x 24 members) 207416 B
+gc::Arrivals 1544 B, gc::Index 512 B (two: members, arrivals)
+av::Snapshot (capacity 2048) 106516 B; the DLL keeps 4 (kSnapshotSlots): 426064 B; at 1024 it was 53268 B each
+controller total 209984 B; with the snapshot growth 422976 B
