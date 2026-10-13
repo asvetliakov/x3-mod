@@ -1,0 +1,2 @@
+0x91d64f60 M1 frames 65757-66153 game 25303.6 dur 34.4 | orders {'0x0': 2, '0x1f': 395} | gate 0x8fa9eee8 dist 3684 m | v 0.0..0.0 | des<des_engine rows 0 | emg 0 | obst {} | join mode fallback | lane {} v_cap>=0 0
+waits: 1 | capital E rows with A_order 0x1d (SA_Idle): 0

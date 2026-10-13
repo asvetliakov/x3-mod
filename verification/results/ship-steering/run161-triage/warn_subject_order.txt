@@ -1,0 +1,1 @@
+engine warn rows by (subject order at pre, order at warn row): {('0x0', '0x12'): 104, ('no pre', '0x12'): 3}

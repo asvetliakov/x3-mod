@@ -1,0 +1,5 @@
+before arrivals {'ctl_yields': 0, 'ctl_capped': 0, 'ctl_conflicts': 0, 'ctl_unresolved': 0, 'ctl_released': 0, 'e_pass_ctl': 0, 'e_suppressed_ctl': 0, 'e_suppressed_arrival_gate': 32137, 'avoid_ctl_excluded': 10}
+arrivals 0x8fa9d688 {'ctl_yields': 0, 'ctl_capped': 0, 'ctl_conflicts': 22, 'ctl_unresolved': 22, 'ctl_released': 0, 'e_pass_ctl': 201, 'e_suppressed_ctl': 6868, 'e_suppressed_arrival_gate': 29196, 'avoid_ctl_excluded': 10197}
+convoys to 0x8fa9eee8 {'ctl_yields': 77, 'ctl_capped': 450, 'ctl_conflicts': 196, 'ctl_unresolved': 119, 'ctl_released': 25, 'e_pass_ctl': 4529, 'e_suppressed_ctl': 68918, 'e_suppressed_arrival_gate': 8093, 'avoid_ctl_excluded': 90410}
+exit 0x8fa9eee8 {'ctl_yields': 437, 'ctl_capped': 1324, 'ctl_conflicts': 709, 'ctl_unresolved': 272, 'ctl_released': 8, 'e_pass_ctl': 1831, 'e_suppressed_ctl': 10400, 'e_suppressed_arrival_gate': 7459, 'avoid_ctl_excluded': 9205}
+after {'ctl_yields': 0, 'ctl_capped': 0, 'ctl_conflicts': 0, 'ctl_unresolved': 0, 'ctl_released': 0, 'e_pass_ctl': 0, 'e_suppressed_ctl': 0, 'e_suppressed_arrival_gate': 0, 'avoid_ctl_excluded': 0}

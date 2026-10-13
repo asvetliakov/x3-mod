@@ -1,0 +1,14 @@
+ships with rows within 6 r_gate: 8 group capital
+== per (event, cause): game s / count
+  dip/stop   a                           4.0 s     1
+  rotate     a                          34.2 s     1
+== per cause letter (all events, game s): {'a': 38.2}
+== distinct game s per cause (overlaps removed): {'a': 38.4}
+== detour obstacle classes (game s): {}
+== 0x12 other (game s): {}
+== 0x12 game s by the order before it (order, target class): {}
+== per ship (game s)
+  0x91d64f60 M1 {'dip/stop:a': 4.0, 'rotate:a': 34.2}
+== worst witnesses (dur game s, ship, event, cause, frames, gate, |x-G| m, join mode, detail)
+  34.2 0x91d64f60 rotate a 65758-66152 0x8fa9eee8 3684 fallback 
+  4.0 0x91d64f60 dip/stop a 66153-66197 0x8fa9eee8 3684 fallback v 0->0 des 113 eng 113 order 0x0

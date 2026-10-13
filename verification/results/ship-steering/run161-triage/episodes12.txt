@@ -1,0 +1,16 @@
+obj class | start-end frame game_s dur_s | prev order | phase | warn other class/code d_m | other entry at warn_pre (other:class:code:order:leader:member:d:r:E)
+0x8faae540 M2 | 55357-55823 24574.4 22.1 | 0x14 | escort/transit leg (prev 0x14) | 0x8faa4090 6/- 3741.4 | 0x8faa4090:6:-:0x0:0x00000000:0x00000000:3744:1580:pass_not_resolved
+0x8fa99728 M2 | 64752-64939 25211.7 19.0 | 0x15 | escort/transit leg (prev 0x15) | 0x91d5b360 7/M2 2334.2 | 0x91d5b360:7:M2:0x14:0x27f2c8f8:0x00000000:2333:1092:pass_not_member
+0x27f2c8f8 M2 | 61441-61696 24858.6 25.9 | 0x4 | exit-approach | 0x8fa67c60 7/M1 2758.5 | 0x8fa67c60:7:M1:0x4:0x8fa9eee8:0x00000000:2762:1022:pass_ctl
+0x27f2c8f8 M2 | 61818-62085 24897.4 29.4 | 0x4 | exit-approach | 0x91d64f60 7/M1 2104.0 | 0x91d64f60:7:M1:0x12:0x00000000:0x00000000:2114:1022:pass_not_member
+0x27f2c8f8 M2 | 63457-63717 25078.2 29.1 | 0x4 | exit-approach | 0x8fa67c60 7/M1 2676.5 | 0x8fa67c60:7:M1:0x4:0x8fa9eee8:0x00000000:2680:1022:pass_ctl
+0x27f2c8f8 M2 | 63726-64038 25108.3 33.6 | 0x4 | exit-approach | 0x91d64f60 7/M1 2235.3 | 0x91d64f60:7:M1:0x12:0x00000000:0x00000000:2249:1022:pass_not_member
+0x91d64f60 M1 | 50319-50456 24363.0 10.6 | 0x14 | escort/transit leg (prev 0x14) | 0x8fab0280 7/M6 3189.8 | -
+0x91d64f60 M1 | 61817-62088 24897.3 29.8 | 0x14 | escort/transit leg (prev 0x14) | 0x27f2c8f8 7/M2 2114.1 | 0x27f2c8f8:7:M2:0x4:0x8fa9eee8:0x00000000:2125:1092:pass_ctl
+0x91d64f60 M1 | 63697-64016 25105.3 34.3 | 0x14 | escort/transit leg (prev 0x14) | 0x27f2c8f8 7/M2 2618.2 | 0x27f2c8f8:7:M2:0x12:0x00000000:0x00000000:2631:1092:pass_not_member
+0x91d64f60 M1 | 64740-64842 25210.4 10.5 | 0x14 | escort/transit leg (prev 0x14) | 0x8fa86650 7/M6 2924.1 | -
+0x91d64f60 M1 | 64921-65114 25228.9 18.4 | 0x14 | escort/transit leg (prev 0x14) | 0x8fa9eee8 18/- 6327.4 | 0x8fa9eee8:18:-:0x0:0x00000000:0x00000000:6337:1105:pass_not_resolved
+0x91d5b360 M2 | 60235-61073 24810.8 16.2 | 0x14 | escort/transit leg (prev 0x14) | 0x8fa99728 7/M2 2945.5 | -
+0x91d5b360 M2 | 63803-64070 25116.8 29.4 | 0x14 | escort/transit leg (prev 0x14) | 0x91d64f60 7/M1 2927.7 | 0x91d64f60:7:M1:0x12:0x00000000:0x00000000:2924:1022:pass_not_member
+0x91d5b360 M2 | 66195-66379 25341.9 15.2 | 0x4 | exit-approach | 0x8faae540 7/M2 1757.2 | 0x8faae540:7:M2:0x4:0x8fa9eee8:0x00000000:1755:755:pass_ctl
+totals by phase (game s): {'escort/transit': 190.4, 'exit-approach': 133.3} episodes {'escort/transit': 9, 'exit-approach': 5} all 323.7 s 14

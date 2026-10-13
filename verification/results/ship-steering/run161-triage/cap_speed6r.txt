@@ -1,0 +1,16 @@
+0x8fa70618 M2 band 6 r vmax 110 eng_park 0.1 s v 99/100/100 free 14.1 s v 100/100/100 | join v_cmd by mode {'out': '100/100/100', 'join': '100/100/100'}
+0x8fa76ee8 M1 band 6 r vmax 113 eng_park 0.1 s v 100/100/100 free 15.9 s v 100/100/100 | join v_cmd by mode {'join': '100/100/100'}
+0x8fa97ec8 M2 band 6 r vmax 110 eng_park 0.1 s v 99/100/100 free 14.4 s v 100/100/100 | join v_cmd by mode {'join': '100/100/100'}
+0x8fa67c60 M1 band 6 r vmax 113 eng_park 0.2 s v 68/68/69 free 102.3 s v 69/69/120 | join v_cmd by mode {'out': '100/100/100', 'join': '100/100/100'}
+0x27f2c8f8 M2 band 6 r vmax 110 eng_park 0.2 s v 99/100/100 free 13.7 s v 100/100/100 | join v_cmd by mode {'join': '100/100/100'}
+0x91d64f60 M1 band 6 r vmax 113 eng_park 0.2 s v 0/0/0 eng_park_raised 22.2 s v 23/51/79 free 27.6 s v 26/86/100 rotate 34.3 s v 0/0/0 | join v_cmd by mode {'fallback': '100/100/100'}
+0x8faae540 M2 band 6 r vmax 70 eng_park 0.2 s v 69/69/70 free 10.2 s v 60/70/70 ours_lower 14.4 s v 40/46/70 | join v_cmd by mode {'join': '40/60/100'}
+0x8fa99728 M2 band 6 r vmax 70 eng_park 0.1 s v 69/70/70 free 27.7 s v 70/70/70 | join v_cmd by mode {'join': '40/100/100'}
+0x8fa70618 M2 band 10 r vmax 110 eng_park 0.1 s v 99/100/100 eng_park_raised 3.5 s v 100/100/100 free 62.2 s v 100/100/100 | join v_cmd by mode {'out': '100/100/100', 'join': '100/100/100'}
+0x8fa76ee8 M1 band 10 r vmax 113 eng_park 0.3 s v 100/106/113 free 55.2 s v 100/100/113 | join v_cmd by mode {'join': '100/100/100'}
+0x8fa97ec8 M2 band 10 r vmax 110 eng_park 0.1 s v 99/100/100 free 54.8 s v 100/100/110 | join v_cmd by mode {'join': '100/100/100'}
+0x8fa67c60 M1 band 10 r vmax 113 eng_park 0.2 s v 68/68/69 eng_park_raised 16.7 s v 69/69/69 free 224.9 s v 56/69/120 ours_lower 2.6 s v 56/63/69 | join v_cmd by mode {'out': '100/100/100', 'join': '100/100/100'}
+0x27f2c8f8 M2 band 10 r vmax 110 eng_park 0.2 s v 99/100/100 free 56.8 s v 100/100/100 | join v_cmd by mode {'join': '100/100/100'}
+0x91d64f60 M1 band 10 r vmax 113 eng_park 0.2 s v 0/0/0 eng_park_raised 22.2 s v 23/51/79 free 27.6 s v 26/86/100 rotate 34.3 s v 0/0/0 | join v_cmd by mode {'fallback': '100/100/100'}
+0x8faae540 M2 band 10 r vmax 70 eng_park 0.2 s v 69/69/70 free 10.2 s v 60/70/70 ours_lower 14.4 s v 40/46/70 | join v_cmd by mode {'join': '40/60/100'}
+0x8fa99728 M2 band 10 r vmax 70 eng_park 0.1 s v 69/70/70 eng_park_raised 44.8 s v 40/42/70 free 45.8 s v 40/70/70 ours_lower 5.5 s v 40/40/55 | join v_cmd by mode {'join': '40/100/100'}

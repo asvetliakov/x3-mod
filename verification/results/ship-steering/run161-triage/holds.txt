@@ -1,0 +1,4 @@
+cap_orders.txt holds (>= 8 s, dense): 10 total 153.1 s {'0x8faae540 M2': [(62318, 10.8), (62634, 12.1), (62981, 14.8), (63296, 11.4)], '0x8fa99728 M2': [(62505, 10.7), (62794, 19.5), (63098, 21.8), (63715, 22.8)], '0x91d64f60 M1': [(62421, 19.3)], '0x91d5b360 M2': [(63205, 9.9)]}
+   sparse runs (not counted): {'0x8faae540 M2': [(44740, 229.8)], '0x91d64f60 M1': [(50736, 72.5)]}
+../run160b-triage/cap_orders.txt holds (>= 8 s, dense): 1 total 11.7 s {'0xa908da10 M7': [(60654, 11.7)]}
+   sparse runs (not counted): {}

@@ -1,0 +1,35 @@
+capitals seen: 9 {'M2': 6, 'M1': 3}
+capital-vs-capital detour rows 406 of 8388 | by obj order {'0x4': 66, '0x14': 274, '0x15': 66} obstacle order {'0x14': 106, '0x0': 90, '0x12': 108, '0x15': 86, '0x4': 12, '0x8': 4}
+  last lane verdict no lane row (untraced pair) 406  first (51915, '0x27f2c8f8', '0x4', '0x8fa99728', '0x14')  (obj order, obstacle order) {('0x4', '0x14'): 21, ('0x4', '0x0'): 26, ('0x14', '0x0'): 57, ('0x14', '0x14'): 38, ('0x14', '0x12'): 100, ('0x4', '0x12'): 8, ('0x15', '0x14'): 47, ('0x14', '0x15'): 79, ('0x15', '0x0'): 7, ('0x15', '0x4'): 12, ('0x4', '0x15'): 7, ('0x4', '0x8'): 4}
+ pairs (obj, obstacle, obj order, obstacle order) x rows:
+    ('0x91d5b360', '0x8fa99728', '0x14', '0x15') 79 frames 64183-64613
+    ('0x8fa99728', '0x91d5b360', '0x14', '0x12') 64 frames 60300-64056
+    ('0x8fa99728', '0x91d5b360', '0x15', '0x14') 47 frames 64182-64613
+    ('0x91d5b360', '0x8fa99728', '0x14', '0x0') 40 frames 60114-64180
+    ('0x8fa99728', '0x91d5b360', '0x14', '0x14') 36 frames 60138-64112
+    ('0x91d5b360', '0x91d64f60', '0x14', '0x12') 36 frames 63697-63762
+    ('0x27f2c8f8', '0x8fa99728', '0x4', '0x0') 25 frames 53297-54272
+    ('0x27f2c8f8', '0x8fa99728', '0x4', '0x14') 21 frames 51915-52503
+    ('0x8fa99728', '0x91d5b360', '0x14', '0x0') 16 frames 60213-60228
+    ('0x91d5b360', '0x8faae540', '0x15', '0x4') 12 frames 65392-65502
+    ('0x8fa67c60', '0x27f2c8f8', '0x4', '0x12') 8 frames 61467-61474
+    ('0x8fa99728', '0x91d5b360', '0x15', '0x0') 7 frames 64519-64525
+    ('0x8faae540', '0x91d5b360', '0x4', '0x15') 7 frames 65497-65503
+    ('0x91d5b360', '0x8faae540', '0x4', '0x8') 4 frames 66991-66994
+    ('0x91d5b360', '0x8fa99728', '0x14', '0x14') 2 frames 60138-64164
+    ('0x27f2c8f8', '0x91d64f60', '0x4', '0x0') 1 frames 61816-61816
+    ('0x91d5b360', '0x91d64f60', '0x14', '0x0') 1 frames 63696-63696
+E verdict rows capital A vs capital B 3150 {'pass_not_member': 2129, 'pass_not_fresh': 371, 'pass_a_avoid': 620, 'suppress_resolved': 30}
+  by (A_order, B_order, verdict) [(('0x14', '0x0', 'pass_not_member'), 282), (('0x14', '0x14', 'pass_not_member'), 270), (('0x4', '0x12', 'pass_not_member'), 211), (('0x12', '0x4', 'pass_a_avoid'), 211), (('0x12', '0x12', 'pass_a_avoid'), 209), (('0x14', '0x12', 'pass_not_member'), 205), (('0x0', '0x14', 'pass_not_fresh'), 196), (('0x4', '0x0', 'pass_not_member'), 154), (('0x15', '0x14', 'pass_not_member'), 153), (('0x14', '0x15', 'pass_not_member'), 151), (('0x15', '0x15', 'pass_not_member'), 150), (('0x12', '0x14', 'pass_a_avoid'), 121)]
+engine warn rows with a capital subject [('50319', '0x91d64f60', '0x8fab0280', 'M6', '3189.8'), ('55357', '0x8faae540', '0x8faa4090', '-', '3741.4'), ('60235', '0x91d5b360', '0x8fa99728', 'M2', '2945.5'), ('61441', '0x27f2c8f8', '0x8fa67c60', 'M1', '2758.5'), ('61817', '0x91d64f60', '0x27f2c8f8', 'M2', '2114.1'), ('61818', '0x27f2c8f8', '0x91d64f60', 'M1', '2104.0'), ('63457', '0x27f2c8f8', '0x8fa67c60', 'M1', '2676.5'), ('63697', '0x91d64f60', '0x27f2c8f8', 'M2', '2618.2'), ('63726', '0x27f2c8f8', '0x91d64f60', 'M1', '2235.3'), ('63803', '0x91d5b360', '0x91d64f60', 'M1', '2927.7'), ('64740', '0x91d64f60', '0x8fa86650', 'M6', '2924.1'), ('64752', '0x8fa99728', '0x91d5b360', 'M2', '2334.2'), ('64921', '0x91d64f60', '0x8fa9eee8', '-', '6327.4'), ('66195', '0x91d5b360', '0x8faae540', 'M2', '1757.2')]
+0x12 episodes per capital (frames first-last 0x12 observation, game s span; traced ships exact, untraced lower bounds):
+  0x27f2c8f8 M2 n=4 total 114.9 s: 61441-61689(25.2) 61818-62075(28.3) 63457-63710(28.4) 63726-64032(32.9)
+  0x8fa99728 M2 n=1 total 17.9 s: 64753-64928(17.9)
+  0x8faae540 M2 n=1 total 21.6 s: 55359-55815(21.6)
+  0x91d5b360 M2 n=3 total 58.9 s: 60241-61062(15.2) 63803-64064(28.7) 66195-66377(15.1)
+  0x91d64f60 M1 n=5 total 100.7 s: 50323-50443(9.3) 61817-62085(29.5) 63697-64012(33.9) 64740-64839(10.2) 64921-65108(17.9)
+E rows of the capital as A in the 60 frames before each 0x12 onset (frame >= 64000): (B, B code, B_order, verdict, d_m) x n
+  0x8fa99728 onset 64753: {('0x91d5b360', 'M2', '0x14', 'pass_not_member', '2331'): 1, ('0x91d5b360', 'M2', '0x14', 'pass_not_member', '2327'): 1, ('0x91d5b360', 'M2', '0x14', 'pass_not_member', '2328'): 1, ('0x91d5b360', 'M2', '0x14', 'pass_not_member', '2326'): 1}
+  0x91d5b360 onset 66195: {('0x8fa99728', 'M2', '0x15', 'pass_not_member', '5598'): 1, ('0x8fa8b958', '-', '0x0', 'pass_not_resolved', '21464'): 1, ('0x8fa99728', 'M2', '0x15', 'pass_not_member', '5550'): 1, ('0x8fa8b958', '-', '0x0', 'pass_not_resolved', '21447'): 1}
+  0x91d64f60 onset 64740: {('0x8fa6e3f8', 'M6', '0x14', 'pass_not_fresh', '3962'): 2, ('0x8faae540', 'M2', '0x15', 'pass_not_member', '6097'): 1, ('0x8fab0280', 'M6', '0x14', 'suppress_small', '2817'): 1, ('0x91d61270', 'M6', '0x14', 'suppress_small', '4924'): 1}
+  0x91d64f60 onset 64921: {('0x8faae540', 'M2', '0x15', 'pass_not_member', '6271'): 2, ('0x1cd248f8', 'M6', '0x14', 'suppress_small', '5924'): 1, ('0x8fa8b958', '-', '0x0', 'pass_not_resolved', '17920'): 1, ('0x8fa86650', 'M6', '0x14', 'suppress_small', '3110'): 1}

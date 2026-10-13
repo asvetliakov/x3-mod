@@ -1,0 +1,31 @@
+frame A(class,order) B(class,order) d_m E_verdict | role A | role B | last pair row before | 0x12 followed
+60209 0x91d5b360(M2,0x0) 0x8fa99728(M2,0x14) 3002 pass_not_member | none(eee8 seq75 @60208) | escort(eee8 seq77 @60138) | none | False
+61440 0x27f2c8f8(M2,0x0) 0x8fa67c60(M1,0x4) 2762 pass_ctl | none(eee8 seq17 @61440) | committed(eee8 seq1 @40754) | none | True
+61816 0x91d64f60(M1,0x0) 0x27f2c8f8(M2,0x4) 2125 pass_ctl | none(eee8 seq89 @61816) | committed(eee8 seq87 @61697) | (61796, 'none', 'clear', 'none', '-1.0', '-1.0') | True
+61817 0x27f2c8f8(M2,0x0) 0x91d64f60(M1,0x12) 2114 pass_not_member | none(eee8 seq87 @61817) | none(eee8 seq89 @61816) | (61796, 'none', 'clear', 'none', '-1.0', '-1.0') | True
+63456 0x27f2c8f8(M2,0x0) 0x8fa67c60(M1,0x4) 2680 pass_ctl | none(eee8 seq92 @63456) | committed(eee8 seq1 @40754) | (63426, 'clear', 'unresolved', 'a', '60.0', '-1.0') | True
+63696 0x91d64f60(M1,0x0) 0x27f2c8f8(M2,0x12) 2631 pass_not_member | none(eee8 seq111 @63456) | none(eee8 seq92 @63456) | (63064, 'none', 'clear', 'none', '-1.0', '-1.0') | True
+63725 0x27f2c8f8(M2,0x0) 0x91d64f60(M1,0x12) 2249 pass_not_member | none(eee8 seq113 @63725) | none(eee8 seq111 @63456) | (63064, 'none', 'clear', 'none', '-1.0', '-1.0') | True
+63802 0x91d5b360(M2,0x0) 0x91d64f60(M1,0x12) 2924 pass_not_member | none(eee8 seq114 @63725) | none(eee8 seq111 @63456) | (63063, 'none', 'clear', 'none', '-1.0', '-1.0') | True
+64751 0x8fa99728(M2,0x0) 0x91d5b360(M2,0x14) 2333 pass_not_member | none(eee8 seq119 @64164) | escort(eee8 seq122 @64526) | (64134, 'none', 'clear', 'none', '-1.0', '-1.0') | True
+66194 0x91d5b360(M2,0x0) 0x8faae540(M2,0x4) 1755 pass_ctl | committed(eee8 seq127 @65585) | committed(eee8 seq126 @65254) | (64135, 'none', 'clear', 'none', '-1.0', '-1.0') | True
+capital-capital warn entries by (E verdict, 0x12 followed): {('pass_not_member', False): 1, ('pass_ctl', True): 4, ('pass_not_member', True): 5}
+== ctl_pair rows per capital pair: (verdict,before) counts
+['0x8fa70618', '0x8fa76ee8'] {('none', 'clear'): 3} frames 3493-12519
+['0x8fa70618', '0x8fa97ec8'] {('none', 'clear'): 3} frames 3493-12519
+['0x8fa76ee8', '0x8fa97ec8'] {('none', 'clear'): 1} frames 3494-3494
+['0x8fa67c60', '0x8fa99728'] {('none', 'clear'): 6} frames 48377-64158
+['0x8fa99728', '0x8faae540'] {('none', 'clear'): 12} frames 48378-66992
+['0x27f2c8f8', '0x8fa99728'] {('none', 'clear'): 6, ('unresolved', 'none'): 1, ('clear', 'unresolved'): 9, ('unresolved', 'clear'): 8} frames 48378-63259
+['0x8fa99728', '0x91d64f60'] {('none', 'clear'): 29, ('unresolved', 'clear'): 2, ('clear', 'unresolved'): 2} frames 48515-63259
+['0x8faae540', '0x91d5b360'] {('none', 'clear'): 8, ('unresolved', 'clear'): 3, ('clear', 'unresolved'): 2, ('none', 'unresolved'): 1} frames 59436-66992
+['0x8fa67c60', '0x8faae540'] {('none', 'clear'): 6} frames 59436-64158
+['0x8faae540', '0x91d64f60'] {('none', 'clear'): 29, ('unresolved', 'clear'): 2, ('clear', 'unresolved'): 1, ('none', 'unresolved'): 1} frames 59453-66288
+['0x27f2c8f8', '0x8faae540'] {('none', 'clear'): 6, ('unresolved', 'clear'): 1, ('clear', 'unresolved'): 1} frames 59453-63047
+['0x27f2c8f8', '0x91d64f60'] {('none', 'clear'): 27, ('unresolved', 'none'): 1, ('clear', 'unresolved'): 2, ('unresolved', 'clear'): 1} frames 60025-63064
+['0x91d5b360', '0x91d64f60'] {('none', 'clear'): 30} frames 60026-64599
+['0x8fa67c60', '0x91d64f60'] {('none', 'clear'): 28} frames 60026-64158
+['0x8fa99728', '0x91d5b360'] {('unresolved', 'clear'): 2, ('clear', 'unresolved'): 1, ('none', 'clear'): 8, ('none', 'unresolved'): 1} frames 61227-67665
+['0x8fa67c60', '0x91d5b360'] {('none', 'clear'): 8} frames 61433-64158
+['0x27f2c8f8', '0x91d5b360'] {('none', 'clear'): 9} frames 61434-64965
+['0x27f2c8f8', '0x8fa67c60'] {('none', 'clear'): 3, ('unresolved', 'clear'): 1, ('clear', 'unresolved'): 1} frames 62624-64158

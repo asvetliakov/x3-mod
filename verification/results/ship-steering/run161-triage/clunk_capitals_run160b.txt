@@ -1,0 +1,20 @@
+ships with rows within 6 r_gate: 7 group capital
+== per (event, cause): game s / count
+  0x12       d:no warn row              40.7 s     1
+  dip/stop   a                          35.0 s     2
+  dip/stop   b                          11.8 s     1
+  rotate     a                          28.7 s     1
+== per cause letter (all events, game s): {'a': 63.7, 'b': 11.8, 'd': 40.7}
+== distinct game s per cause (overlaps removed): {'a': 63.9, 'b': 11.8, 'd': 40.8}
+== detour obstacle classes (game s): {}
+== 0x12 other (game s): {'no warn row': 40.7}
+== 0x12 game s by the order before it (order, target class): {'- -': 40.7}
+== per ship (game s)
+  0x8e223c48 M1 {'0x12:d': 40.7, 'dip/stop:a': 4.0, 'rotate:a': 28.7}
+  0xa9091e50 M7 {'dip/stop:a': 31.0, 'dip/stop:b': 11.8}
+== worst witnesses (dur game s, ship, event, cause, frames, gate, |x-G| m, join mode, detail)
+  40.7 0x8e223c48 0x12 d 57627-58147 0x8e1edfb0 6626 join other - no warn row prev -
+  31.0 0xa9091e50 dip/stop a 59034-59451 0x8e1edfb0 6074 - v 19->0 des 13 eng 13 order 0x14
+  28.7 0x8e223c48 rotate a 59021-59400 0x8e1edfb0 4303 fallback 
+  11.8 0xa9091e50 dip/stop b 58722-58889 0x8e1edfb0 6330 - v 20->10 des 10 eng 94 order 0x14
+  4.0 0x8e223c48 dip/stop a 59401-59463 0x8e1edfb0 4303 fallback v 0->0 des 113 eng 113 order 0x0

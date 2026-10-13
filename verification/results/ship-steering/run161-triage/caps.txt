@@ -1,0 +1,9 @@
+0x8fa70618 M2 frames 740-12517 {'trace': 11777, 'join': 396, 'approach': 2}
+0x8fa76ee8 M1 frames 4190-17542 {'trace': 13351, 'join': 55, 'approach': 2}
+0x8fa97ec8 M2 frames 17877-19216 {'trace': 1339, 'join': 55, 'approach': 2}
+0x8fa67c60 M1 frames 40754-64157 {'trace': 23403, 'join': 1248, 'E_B': 237, 'warn_other': 23, 'approach': 2}
+0x8faae540 M2 frames 43230-66990 {'E_B': 611, 'warn_other': 1, 'trace': 703, 'join': 26, 'approach': 2}
+0x91d64f60 M1 frames 48308-66286 {'E_B': 577, 'warn_other': 3, 'trace': 1098, 'join': 49, 'approach': 2}
+0x27f2c8f8 M2 frames 48316-64964 {'E_B': 528, 'warn_other': 3, 'trace': 807, 'join': 55, 'approach': 2}
+0x8fa99728 M2 frames 50610-69039 {'E_B': 463, 'warn_other': 1, 'trace': 2049, 'join': 95, 'approach': 2}
+0x91d5b360 M2 frames 58079-67665 {'E_B': 734, 'warn_other': 2, 'approach': 2}

@@ -1,0 +1,2 @@
+circ_cause.txt circlers 20 with engine warns 18 {'-+M4': 1, 'M6': 4, 'gate': 4, 'M6+gate': 3, 'M2+gate': 1, 'M1': 1, '-+M6+M8+TS': 1, 'TS': 2, 'station': 1, 'no warn (detour/avoidance or untraced)': 2}
+../run160b-triage/circ_cause.txt circlers 12 with engine warns 9 {'gate': 1, 'M6+gate': 2, 'no warn (detour/avoidance or untraced)': 3, 'M7': 2, 'M2': 1, 'M6': 2, 'station': 1}

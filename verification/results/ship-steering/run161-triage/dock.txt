@@ -1,0 +1,17 @@
+rows 2622 ships 17 containers 8 pairs 25
+containers (cont, class from rows, E B_class, n_parts, r_c_m, ships):
+   0x8fa89390 row class [('6', 47)] E class ? n_parts {'6'} r_c_m {'822'} ships 1 rows 47
+   0x8fa8b958 row class [('5', 1719)] E class 5 n_parts {'9'} r_c_m {'4610'} ships 7 rows 1719
+   0x8fa8bd00 row class [('6', 255)] E class ? n_parts {'11'} r_c_m {'828'} ships 4 rows 255
+   0x8fa90758 row class [('6', 30)] E class ? n_parts {'11'} r_c_m {'828'} ships 1 rows 30
+   0x8fa91ad8 row class [('6', 232)] E class ? n_parts {'6'} r_c_m {'2030'} ships 4 rows 232
+   0x8faa2bd8 row class [('6', 106)] E class ? n_parts {'7'} r_c_m {'783'} ships 3 rows 106
+   0x8faa6040 row class [('6', 51)] E class ? n_parts {'8'} r_c_m {'904'} ships 2 rows 51
+   0x8faa6a00 row class [('6', 182)] E class 6 n_parts {'9'} r_c_m {'1354'} ships 3 rows 182
+by verdict: {'suppress_dock': 2619, 'pass_dock_path': 3}
+by (order, zone, verdict): [(('0x4', 'out', 'suppress_dock'), 1328), (('0x4', 'near', 'suppress_dock'), 1291), (('0x4', 'near', 'pass_dock_path'), 3)]
+parts valid: {'1': 2622} kept: {'0': 703, '1': 1919} detour: {'0': 2328, '1': 294}
+pass rows: 3 [('41188', '0x8fa76048', 'M4', '0x8fa8bd00', '0x4', 'near', 'pass_dock_path', 'path', '-75', 'ray', '-117', 'reach', '603', 'd_c', '1163', 'v', '200.5'), ('41207', '0x8fa76048', 'M4', '0x8fa8bd00', '0x4', 'near', 'pass_dock_path', 'path', '-61', 'ray', '-124', 'reach', '373', 'd_c', '1031', 'v', '149.5'), ('41227', '0x8fa76048', 'M4', '0x8fa8bd00', '0x4', 'near', 'pass_dock_path', 'path', '-40', 'ray', '17', 'reach', '202', 'd_c', '941', 'v', '100.5')]
+engine warns (0x12) whose other is the ship's own dock container: 0 []
+summary: {'dock': 'active', 'e_suppressed_dock': '71408', 'e_pass_dock_parts': '0', 'e_pass_dock_path': '42', 'e_pass_dock_ray': '0', 'e_pass_dock_zone': '0', 'dock_part_obstacles': '34612', 'dock_detours': '5707', 'dock_models_built': '2', 'dock_no_model': '0', 'dock_rows_dropped': '0', 'dock_parts_evicted': '0', 'dock_e_us_max': '18.9'}
+order 0x1d (queue idle) traced rows per ship: {}

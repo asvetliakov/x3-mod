@@ -1,0 +1,1 @@
+small ships on order 4 to a gate within 6 r: 48 by class {'TS': 21, 'M6': 19, 'M8': 2, 'M4': 6} game s on it 1585 | of them later on 0x12 within 6 r: 18

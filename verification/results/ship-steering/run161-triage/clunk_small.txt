@@ -1,0 +1,77 @@
+ships with rows within 6 r_gate: 67 group small
+== per (event, cause): game s / count
+  0x12       d:M1                        7.3 s     1
+  0x12       d:M2                        7.2 s     2
+  0x12       d:M6                      164.2 s    19
+  0x12       d:M8                        4.0 s     1
+  0x12       d:TS                       22.8 s     3
+  0x12       d:class0                    1.8 s     1
+  0x12       d:class7                    5.3 s     1
+  0x12       d:gate                    153.6 s    21
+  detour     c:M6                       75.8 s    11
+  detour     c:M8                        2.5 s     1
+  detour     c:capital                  18.1 s     4
+  detour     c:gate                     35.1 s     2
+  dip/stop   a                           4.0 s     1
+  dip/stop   d                           7.7 s     2
+  reversal   a                          30.6 s     4
+  reversal   b                          19.1 s     2
+  reversal   d                         347.7 s    36
+== per cause letter (all events, game s): {'a': 34.5, 'b': 19.1, 'c': 131.5, 'd': 721.6}
+== distinct game s per cause (overlaps removed): {'a': 35.1, 'b': 19.3, 'c': 133.0, 'd': 606.6}
+== detour obstacle classes (game s): {'M6': 75.8, 'gate': 35.1, 'capital': 18.1, 'M8': 2.5}
+== 0x12 other (game s): {'M6': 164.2, 'gate': 153.6, 'TS': 22.8, 'M1': 7.3, 'M2': 7.2, 'class7': 5.3, 'M8': 4.0, 'class0': 1.8}
+== 0x12 game s by the order before it (order, target class): {'0x4 gate': 313.4, '0x14 M1': 38.7, '0x14 M2': 14.1}
+== per ship (game s)
+  0x8fa678b8 M6 {'0x12:d': 47.3, 'detour:c': 9.4, 'reversal:d': 49.8}
+  0x91d60c58 M6 {'0x12:d': 45.4, 'detour:c': 12.9, 'dip/stop:d': 3.6, 'reversal:d': 29.7}
+  0x3a11ff18 M6 {'0x12:d': 39.5, 'detour:c': 10.4, 'reversal:d': 19.9}
+  0x8fab0280 M6 {'0x12:d': 22.0, 'detour:c': 6.2, 'reversal:d': 38.2}
+  0x91d61270 M6 {'0x12:d': 36.4, 'reversal:d': 29.6}
+  0x3a116318 M6 {'0x12:d': 5.4, 'detour:c': 40.8, 'reversal:d': 10.0}
+  0x8faae678 M6 {'0x12:d': 24.4, 'detour:c': 1.5, 'reversal:d': 19.7}
+  0x3a12d0b8 M8 {'0x12:d': 17.6, 'reversal:d': 25.3}
+  0x3a130178 M6 {'0x12:d': 16.1, 'detour:c': 16.6, 'reversal:d': 10.0}
+  0x8fa6e3f8 M6 {'0x12:d': 6.5, 'detour:c': 18.6, 'reversal:a': 6.0, 'reversal:d': 10.0}
+  0x8fa68b00 TS {'0x12:d': 17.6, 'reversal:d': 19.9}
+  0x3a135ba8 M6 {'0x12:d': 16.9, 'reversal:d': 20.0}
+  0x3a11b118 M6 {'0x12:d': 15.0, 'reversal:b': 9.8, 'reversal:d': 10.0}
+  0x8faa7a00 M6 {'0x12:d': 14.9, 'reversal:d': 19.9}
+  0x3a11c978 M6 {'0x12:d': 16.4, 'detour:c': 5.4, 'dip/stop:d': 4.1}
+  0x1cd248f8 M6 {'0x12:d': 4.2, 'reversal:a': 8.8, 'reversal:d': 9.9}
+  0x8fa6bcf8 M4 {'0x12:d': 5.0, 'reversal:d': 16.1}
+  0x3a132128 M6 {'0x12:d': 4.1, 'detour:c': 4.1, 'reversal:d': 9.9}
+  0x3a1213d0 M6 {'reversal:a': 9.9}
+  0x3a1207a0 M8 {'dip/stop:a': 4.0, 'reversal:a': 5.9}
+  0x3a1199f0 M6 {'reversal:b': 9.3}
+  0x3a11a758 M6 {'0x12:d': 7.2}
+  0xb63b3b68 M4 {'0x12:d': 1.0, 'detour:c': 3.2}
+  0x8fa86650 M6 {'detour:c': 2.5}
+  0x8fa7c300 TS {'0x12:d': 2.4}
+  0x8fab9868 M4 {'0x12:d': 1.0}
+== worst witnesses (dur game s, ship, event, cause, frames, gate, |x-G| m, join mode, detail)
+  35.7 0x3a116318 detour c 12812-13473 0x8fa9d688 4791 - obstacle 0x3a132128 M6
+  21.0 0x91d60c58 0x12 d 65375-65616 0x8fa9eee8 2392 - other 0x1cd248f8 M6 prev 0x4 tgt gate
+  18.6 0x8fa6e3f8 detour c 64756-64938 0x8fa9eee8 5076 - obstacle 0x8fa9eee8 gate
+  17.6 0x8fa68b00 0x12 d 65798-66000 0x8fa9eee8 2188 - other 0x8fa7c300 TS prev 0x4 tgt gate
+  16.6 0x3a130178 detour c 12313-12572 0x8fa9d688 3268 - obstacle 0x8fa9d688 gate
+  16.4 0x3a11c978 0x12 d 41743-43016 0x8fa9d688 3049 - other 0x3a11ff18 M6 prev 0x14 tgt M1
+  15.4 0x8faae678 0x12 d 64922-65082 0x8fa9eee8 2321 - other 0x8fa6e3f8 M6 prev 0x4 tgt gate
+  14.2 0x8fa678b8 0x12 d 65161-65319 0x8fa9eee8 1298 - other 0x8fa9eee8 gate prev 0x4 tgt gate
+  12.7 0x91d61270 0x12 d 65192-65333 0x8fa9eee8 1571 - other 0x8fa9eee8 gate prev 0x4 tgt gate
+  12.4 0x8fa678b8 0x12 d 65954-66098 0x8fa9eee8 2635 - other 0x1cd248f8 M6 prev 0x4 tgt gate
+  11.7 0x3a135ba8 0x12 d 12913-13133 0x8fa9d688 1402 - other 0x8fa9d688 gate prev 0x4 tgt gate
+  11.5 0x8fab0280 0x12 d 65740-65871 0x8fa9eee8 3062 - other 0x91d60c58 M6 prev 0x4 tgt gate
+  11.0 0x3a11ff18 0x12 d 64767-64874 0x8fa9eee8 1580 - other 0x8fa9eee8 gate prev 0x4 tgt gate
+  10.7 0x8fa678b8 0x12 d 65704-65827 0x8fa9eee8 1338 - other 0x8fa9eee8 gate prev 0x4 tgt gate
+  10.6 0x3a130178 0x12 d 12759-12959 0x8fa9d688 1326 - other 0x8fa9d688 gate prev 0x4 tgt gate
+  10.5 0x91d61270 0x12 d 65579-65703 0x8fa9eee8 1517 - other 0x8fa9eee8 gate prev 0x4 tgt gate
+  10.5 0x8fab0280 0x12 d 65544-65667 0x8fa9eee8 2383 - other 0x8fa678b8 M6 prev 0x4 tgt gate
+  10.4 0x3a11ff18 0x12 d 64217-64492 0x8fa9eee8 2844 - other 0x8fa9eee8 gate prev 0x4 tgt gate
+  10.1 0x91d60c58 0x12 d 65232-65343 0x8fa9eee8 2387 - other 0x8faae678 M6 prev 0x4 tgt gate
+  10.0 0x8fa678b8 reversal d 65823-65937 0x8fa9eee8 1717 - order 0x12->0x4 v 177
+  10.0 0x3a135ba8 reversal d 12562-12749 0x8fa9d688 1426 - order 0x0->0x4 v 72
+  10.0 0x8fa6e3f8 reversal d 64907-65006 0x8fa9eee8 3174 - order 0x14->0x12 v 140
+  10.0 0x8fa678b8 reversal d 65279-65390 0x8fa9eee8 1485 - order 0x12->0x4 v 146
+  10.0 0x3a130178 reversal d 12931-13118 0x8fa9d688 1554 - order 0x12->0x4 v 136
+  10.0 0x3a135ba8 reversal d 13112-13300 0x8fa9d688 1616 - order 0x12->0x4 v 109
