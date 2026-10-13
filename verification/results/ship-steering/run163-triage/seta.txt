@@ -1,0 +1,5 @@
+all {'0': 16058, '1': 65861} seta share 0.80
+outbound convoy at 0x8e7ff9d0 {'0': 7367, '1': 15898} seta share 0.68
+return to 0x8e7ff4f0 until the leader launch {'1': 16592, '0': 1118} seta share 0.94
+escorts after the leader launch {'1': 14705, '0': 315} seta share 0.98
+second convoy at 0x8e7ff9d0 {'1': 10154, '0': 1183} seta share 0.90

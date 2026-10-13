@@ -1,0 +1,13 @@
+0x8e3ad220 release f 11681 game 23001.7 -> dock f 14144 game 23115.5 (113.8 s) | E vs gate {} d_m -..- | engine warn on gate []
+0x8e3b3af0 release f 19143 game 23352.9 -> dock f 20073 game 23406.7 (53.8 s) | E vs gate {} d_m -..- | engine warn on gate []
+0x8e7fa828 release f 20028 game 23404.1 -> dock f 24073 game 23477.9 (73.8 s) | E vs gate {} d_m -..- | engine warn on gate []
+0x37385fc8 release f 63217 game 25111.8 -> dock f 65535 game 25218.2 (106.4 s) | E vs gate {('0x4', 'suppress_gate'): 23} d_m 5015..7107 | engine warn on gate []
+0x8e3b8068 release f 66793 game 25285.8 -> evict f 68943 game 25377.8 (92.0 s) | E vs gate {('0x4', 'suppress_gate'): 21, ('0x4', 'pass_not_fresh'): 1} d_m 5011..6887 | engine warn on gate [(68943, '0x8e3b8068', '4916.5')]
+0x8e3b8068 release f 69421 game 25404.1 -> evict f 74117 game 25677.8 (273.7 s) | E vs gate {('0x4', 'suppress_gate'): 11, ('0x4', 'pass_not_resolved'): 111, ('0x4', 'pass_not_fresh'): 2} d_m 2645..8164 | engine warn on gate [(74117, '0x8e3b8068', '5941.0')]
+0x8e3b8068 release f 72928 game 25610.8 -> evict f 74117 game 25677.8 (67.0 s) | E vs gate {('0x4', 'suppress_gate'): 9, ('0x4', 'pass_not_fresh'): 1} d_m 6036..6899 | engine warn on gate [(74117, '0x8e3b8068', '5941.0')]
+0x8e3b8068 release f 78797 game 25916.7 -> dock f 80510 game 25998.6 (81.8 s) | E vs gate {('0x4', 'suppress_gate'): 20} d_m 4966..6896 | engine warn on gate []
+0x8e81c918 release f 74241 game 25685.3 -> dock f 75724 game 25767.0 (81.8 s) | E vs gate {('0x4', 'suppress_gate'): 20} d_m 5208..7128 | engine warn on gate []
+0x3739d4b8 release f 75102 game 25732.6 -> dock f 77620 game 25860.2 (127.5 s) | E vs gate {} d_m -..- | engine warn on gate []
+0xad460d00 release f 79127 game 25932.6 -> - f 1000000000 game 0.0 (0.0 s) | E vs gate {} d_m -..- | engine warn on gate []
+0xad4675d0 release f 82014 game 26027.2 -> - f 1000000000 game 0.0 (0.0 s) | E vs gate {} d_m -..- | engine warn on gate []
+all E rows vs 0x8e7ff4f0 by verdict {'suppress_gate': 140, 'pass_not_fresh': 4, 'pass_a_avoid': 85, 'pass_not_resolved': 199}

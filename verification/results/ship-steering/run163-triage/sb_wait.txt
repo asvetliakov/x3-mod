@@ -1,0 +1,17 @@
+== escort 0x8e3b8068 (id 4510): leader 4202 launch f 65804 game 25232.8 real 364.6 -> escort launch f 80822 game 26014.2 real 445.3: 781.4 game s 80.7 real s
+   362.0   36.2  head, funnel free, window=0 timing=1 (petal lap) (first f 69470)
+   242.5   26.9  own transit: funnel (first f 66794)
+    89.0    8.8  evicted: engine 0x12 vs own gate (first f 68943)
+    53.0    5.3  escort (reserved key), waiting for the script order 4 [hold] (first f 65804)
+    19.0    1.9  head, funnel busy by 4956 (first f 74869)
+    15.4    1.6  own transit: dock (first f 80517)
+     0.5    0.0  behind head 4956, funnel busy by 4510 (first f 69461)
+== escort 0x8e81c918 (id 4956): leader 4202 launch f 65804 game 25232.8 real 364.6 -> escort launch f 76018 game 25783.3 real 422.2: 550.5 game s 57.6 real s
+   205.0   20.5  behind head 4510 (strict order), funnel free (first f 69470)
+    94.0   12.0  head, funnel busy by 4510 (first f 67291)
+    82.0    8.2  own transit: funnel (first f 74243)
+    72.0    7.2  head, funnel free, window=0 timing=1 (petal lap) (first f 68620)
+    33.5    3.3  escort (reserved key), waiting for the script order 4 [hold] (first f 66314)
+    27.0    2.7  escort (reserved key), waiting for the script order 4 [inbound] (first f 65804)
+    21.0    2.1  not a member: reservation lapsed, before its own order 4 (first f 66931)
+    16.0    1.6  own transit: dock (first f 75730)

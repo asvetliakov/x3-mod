@@ -1,0 +1,12 @@
+0x37385fc8 order-4 samples 17369 first f 48164 game 24315.2 real 262.8 z -87569 lat 31753
+ last order-4 sample f 65532 game 25218.1 real 363.1 z -4973 lat 592 noseF 1.00
+0x8e3b8068 order-4 samples 12137 first f 66793 game 25285.8 real 369.9 z -9541 lat 2868
+ first turn-back (start of holding) f 69950 game 25435.5 real 387.4 z -1840 lat 3208
+ lap 1 end f 73611 game 25648.6 real 408.7 | 213 game s 21.3 real s | z -11141..-1840 lat 829..4867 v 60..100
+ lap 2 end f 79769 game 25963.8 real 440.2 | 315 game s 31.5 real s | z -11130..-1547 lat 61..4867 v 60..113
+ last order-4 sample f 80507 game 25998.4 real 443.7 z -4881 lat 543 noseF 1.00
+0x8e81c918 order-4 samples 8436 first f 67286 game 25314.1 real 372.7 z -9624 lat 2363
+ first turn-back (start of holding) f 69234 game 25393.8 real 383.3 z -8222 lat 4810
+ lap 1 end f 71127 game 25503.2 real 394.2 | 109 game s 10.9 real s | z -11224..-8222 lat 3015..4973 v 40..60
+ lap 2 end f 75098 game 25732.4 real 417.1 | 229 game s 22.9 real s | z -11281..-7718 lat 392..4935 v 40..100
+ last order-4 sample f 75721 game 25766.9 real 420.6 z -5140 lat 765 noseF 1.00
