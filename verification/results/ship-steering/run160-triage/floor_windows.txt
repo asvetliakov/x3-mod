@@ -1,0 +1,2 @@
+frames | game_s of the window | floor_s summed | mean capitals at floor | peak interval | seq-capped decisions
+total floor_s 0.0 (last counter 0 ms)

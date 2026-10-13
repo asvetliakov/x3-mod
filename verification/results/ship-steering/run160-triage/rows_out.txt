@@ -1,0 +1,164 @@
+== 1 identity
+sha256=2356213149e1619eea7ded9265db0d4aac1cd8a4f737425c98d07ccb26b8d18f bytes=58702450
+source_commit=e61890423051e666f7b4706120a4ae615284aeb7
+log_open file=C:\X3\x3m.log source=game previous=renamed session=20261013-041922-33560 stale_removed=0
+session_end frames=84498 elapsed_ms=451417 devices=1 resets=0 exception=0 dropped=0 filter=ours
+exception rows in the whole log: 0
+nonzero overflow fields in the whole log: 1
+name=ship_steer_leaf_yaw_pitch status=active name=ship_steer_leaf_roll_yaw status=active name=ship_steer_leaf_roll_pitch status=active name=ship_steer_loop_continue status=active name=ship_gate_stop_a status=active name=ship_gate_stop_b status=active name=ship_gate_launch status=active name=ship_gate_warp_in status=active 
+ship_steering_gates_capital installed=1 status=active join_r=6.0 inner_r=5.0 look_turns=2.0 tol_deg=8.11 small_ratio=0.333 fresh_ms=250 fresh_frames=4 join_candidates_ms=100,60,40,25 join_eval_ms=1000 join_step_s=0.25 join_margin=4/6/50/50 fallback_entry_ms=25 keep_vel_deg=10 member_capacity=256 member_expiry_ms=20000 lane_gates=8 lane_entries=20 lane_in_m=100 lane_gap_m=50 corridor_m=100 slow_join_nose_deg=20 slow_join_over_m=100 slow_join_offset_m=100 guard_r=0.25/0.10 width=lod_all width_retry_ms=5000 width_retries=3 seq=1 seq_lat_gap_m=50 seq_along_m=50 lane_hold_m=150 lane_hold_deg=12 lane_apart=drop small_dock_legs=1
+seta field:   26220 seta=0   58177 seta=1 
+== 1 intervals 427 interval_ms sum 433891.0
+cumulative counters (last): {'e_suppressed_small': '35730', 'e_suppressed_gate': '2848', 'e_suppressed_gate_small': '51116', 'avoid_excluded_member': '7144', 'member_set': '613', 'member_refresh': '552468', 'member_leader_gone': '30', 'member_cleared': '579', 'gate_capital_join': '6', 'gate_capital_slowed': '3', 'join_evals': '398', 'join_predictions': '500', 'join_eval_us_max': '17.6', 'join_slots_dropped': '6', 'e_suppressed_lane': '1438'}
+per-interval sums: {'calls': 1236379, 'handled': 1229382, 'pass_order_not_steered': 6997, 'clamp_calls': 2429661, 'clamp_applied': 345285, 'clamp_stale': 224915, 'redirected': 77942, 'timed': 1236379, 'avoid_calls': 1146758, 'conflicts': 17196, 'conflict_episodes': 133, 'detours': 16176, 'unresolved': 590, 'unresolved_episodes': 17, 'unresolved_inside_stop': 28, 'unresolved_inside_turn': 102, 'unresolved_behind': 460, 'snapshots': 82503, 'walked': 12139956, 'emergency': 302, 'e_calls': 1847279, 'e_suppressed': 16869, 'part_models': 10, 'part_fallback': 9, 'part_invalid': 9, 'part_unfilled': 10, 'gate_lead_calls': 148437, 'gate_crossings': 91, 'gate_p2': 118, 'gate_stops_skipped': 91, 'gate_p4': 119, 'gate_v0_kept': 90, 'gate_p5': 2060, 'gate_launch_continued': 90, 'gate_speed_writes': 67641, 'gate_spread_offsets': 85, 'gate_capital_aligned': 6, 'gate_lead_validated': 84, 'gate_lead_window_rejected': 64046, 'gate_dock_writes': 16289, 'gate_dock_blocked': 904, 'gate_p2_no_gate_target': 27, 'gate_p4_no_gate_target': 28, 'gate_p4_no_state': 1, 'gate_rows_dropped': 7, 'avoid_excluded_followers': 278973, 'avoid_skipped_small': 406654, 'gate_capital_kept': 6, 'gate_capital_lead_validated': 6, 'gate_capital_detour_write': 5899, 'lane_seq_lat': 99136, 'lane_hysteresis_hold': 12161, 'ship_trace_rows': 285453}
+join_slots peak 2 stuck_total(last) 0 stuck rows 0
+handled_by_order_total(last) 0x4:192066,0x5:75906,0x12:6718,0x14:312784,0x15:503244,0x19:138664
+handler_us p50 med 1.6 p99 med 6.4 p99 max 36.5 p99>5: 421 max_us 36.5 max>50: 0
+refused rows (excl. summary counters) 0
+== 4 transitions 85 small 85 class {'TS': 42, 'M4': 12, 'M6': 24, 'M8': 2, 'M3': 2, 'TM': 3} dock_blocked {'0': 82, '1': 3}
+ err_B_deg n=85 min=4.1 p25=8.4 med=14.3 p75=38.4 p95=79.6 max=174.5 >18.2: 31
+ cross_heading_err n=84 min=0.2 p25=0.7 med=4.0 p75=45.8 p95=88.6 max=116.5 cross_v n=84 min=93.0 p25=100.0 med=124.0 p75=160.0 p95=342.7 max=406.2
+  M3 cross_to_launch_s n=2 min=6.9 p25=6.9 med=8.0 p75=9.2 p95=6.9 max=9.2
+  M4 cross_to_launch_s n=12 min=4.9 p25=6.0 med=6.7 p75=7.2 p95=7.4 max=7.7
+  M6 cross_to_launch_s n=24 min=10.0 p25=11.7 med=11.9 p75=12.9 p95=19.0 max=24.4
+  M8 cross_to_launch_s n=2 min=10.8 p25=10.8 med=11.3 p75=11.8 p95=10.8 max=11.8
+  TM cross_to_launch_s n=2 min=10.2 p25=10.2 med=10.5 p75=10.7 p95=10.2 max=10.7
+  TS cross_to_launch_s n=42 min=12.9 p25=14.1 med=18.0 p75=19.4 p95=22.7 max=25.9
+ engine warn rows 25 other class 18 (gate) 4
+== 5 detours 5138 by kind {'1': 1400, '0': 2916, '2': 32, '3': 790}
+ small-vs-capital detour rows 1284 miss<C 417 miss n=1284 min=524 p25=1105 med=1874 p75=2038 p95=2158 max=2350
+ capital-vs-capital (traced capitals) rows 28 miss<C 15
+ slip present in trace rows with v>0, order 4: |slip|/v n=149010 min=0.000 p25=0.000 med=0.000 p75=0.018 p95=0.190 max=38.218
+ order-4 turning (aim>10 deg) |slip|/v n=28076 min=0.000 p25=0.000 med=0.021 p75=0.132 p95=0.393 max=38.218
+== 3 e_verdict rows 5600 verdicts {'pass_not_fresh': 303, 'pass_not_resolved': 2355, 'suppress_small': 1381, 'suppress_gate': 139, 'pass_a_avoid': 161, 'pass_not_member': 1163, 'pass_not_transient': 1, 'suppress_resolved': 1, 'suppress_lane': 96}
+ by A_order x verdict [(('0x14', 'pass_not_resolved'), 1177), (('0x14', 'pass_not_member'), 1058), (('0x4', 'suppress_small'), 978), (('0x4', 'pass_not_resolved'), 843), (('0x0', 'pass_not_fresh'), 290), (('0x12', 'suppress_small'), 239), (('0x15', 'pass_not_resolved'), 180), (('0x12', 'pass_a_avoid'), 161), (('0x5', 'pass_not_resolved'), 140), (('0x4', 'suppress_gate'), 138), (('0x14', 'suppress_small'), 131), (('0x4', 'suppress_lane'), 81)]
+== census
+frame=802 type=11 class=M2 r_m=1092 w_m=583 w_r=0.535 w_src=lod retries=0 l_m=1092 h_rw_m=1238 len_m=1092 h_m=1238 part_id=20071 part_lod=0 o_x=145 o_y=324 e_x=169 e_y=169
+frame=18679 type=10 class=M1 r_m=1022 w_m=546 w_r=0.534 w_src=lod retries=0 l_m=1022 h_rw_m=1159 len_m=1022 h_m=1159 part_id=20074 part_lod=0 o_x=24 o_y=352 e_x=162 e_y=162
+== station rows (root_r_m)
+frame=802 obj=0x8d6340d8 root_r_m=4609.8
+== latch rows
+== 3 ship_avoid_engine_warn_pre
+pre rows 100 entries 105 subjects 65 subject order {'0x5': 75, '0x0': 25}
+pre rows matching a warn row (same frame,obj) 0 of warn rows 25
+== all entries 105
+ other class/code {('5', '-'): 14, ('18', '-'): 60, ('6', '-'): 13, ('7', 'M6'): 8, ('7', 'TS'): 3, ('7', 'TP'): 2, ('7', 'M2'): 1, ('7', 'TM'): 4}
+ other order {'0x0': 88, '0x12': 6, '0x15': 2, '0x4': 1, '0x5': 1, '0x1e': 1, '0x14': 6} leader!=0 11 member!=0 0 other==subject tgt 74
+ e_verdict {'-': 8, 'pass_not_resolved': 87, 'pass_not_fresh': 10}
+ subj_order/other class/verdict [(('0x5', '18', 'pass_not_resolved'), 48), (('0x5', '6', 'pass_not_resolved'), 12), (('0x0', '7', 'pass_not_resolved'), 10), (('0x5', '18', '-'), 7), (('0x0', '7', 'pass_not_fresh'), 7), (('0x0', '5', 'pass_not_resolved'), 7), (('0x5', '5', 'pass_not_resolved'), 6), (('0x0', '18', 'pass_not_fresh'), 3), (('0x0', '18', 'pass_not_resolved'), 2), (('0x5', '5', '-'), 1), (('0x5', '7', 'pass_not_resolved'), 1), (('0x0', '6', 'pass_not_resolved'), 1)]
+== matched to a 0x12 warn entries 0
+ other class/code {}
+ other order {} leader!=0 0 member!=0 0 other==subject tgt 0
+ e_verdict {}
+ subj_order/other class/verdict []
+  cap 16058 0x8d623838 0x5 - 0x8d647050:18:-:0x0:0x00000000:0x00000000:5205:1105:pass_not_resolved
+  cap 19626 0x8d6294d8 0x5 - 0x8d647050:18:-:0x0:0x00000000:0x00000000:5067:1105:pass_not_resolved
+  cap 21174 0x8d641ea8 0x5 - 0x8d647050:18:-:0x0:0x00000000:0x00000000:5247:1105:pass_not_resolved
+  cap 40784 0x363fbee0 0x0 - 0x8d647050:18:-:0x0:0x00000000:0x00000000:1131:1105:pass_not_fresh
+  cap 41900 0x8d62fa00 0x0 - 0x8d622c08:7:M6:0x14:0x363fbee0:0x00000000:2861:81:pass_not_fresh
+  cap 41900 0x8d62fa00 0x0 - 0x8d62aac8:7:M6:0x14:0x363fbee0:0x00000000:2009:91:pass_not_fresh
+  cap 41900 0x8d62fa00 0x0 - 0x8d629268:7:M6:0x14:0x363fbee0:0x00000000:1783:64:pass_not_fresh
+  cap 41900 0x8d62fa00 0x0 - 0x8d62e8f0:7:M6:0x0:0x00000000:0x00000000:1403:64:pass_not_fresh
+  cap 41900 0x8d62fa00 0x0 - 0x8d647050:18:-:0x0:0x00000000:0x00000000:1116:1105:pass_not_fresh
+  cap 42442 0x8d62fa00 0x0 - 0x8d624468:7:M6:0x14:0x363fbee0:0x00000000:3824:86:pass_not_fresh
+  cap 42442 0x8d62fa00 0x0 - 0x8d62e8f0:7:M6:0x14:0x363fbee0:0x00000000:1341:64:pass_not_fresh
+  cap 42845 0x8d613d28 0x0 - 0x8d647050:18:-:0x0:0x00000000:0x00000000:1112:1105:pass_not_fresh
+  cap 44018 0x8d62fa00 0x0 - 0x8d62e8f0:7:M6:0x14:0x363fbee0:0x00000000:3822:64:pass_not_fresh
+  cap 58512 0x8d62fa00 0x0 - 0x8d64d7e8:6:-:0x0:0x00000000:0x00000000:2103:1580:pass_not_resolved
+  cap 65374 0x363fbee0 0x5 - 0x8d6472c0:18:-:0x0:0x00000000:0x00000000:5204:1105:pass_not_resolved
+  cap 66514 0x8d62fa00 0x5 - 0x8d6472c0:18:-:0x0:0x00000000:0x00000000:5245:1105:pass_not_resolved
+  cap 68096 0x8d613d28 0x5 - 0x8d6472c0:18:-:0x0:0x00000000:0x00000000:5126:1105:pass_not_resolved
+=== pre rows matched to a warn row one frame later
+matched pre rows 20 entries 20
+ other class/code {('18', '-'): 2, ('7', 'M6'): 1, ('7', 'TS'): 3, ('7', 'TP'): 1, ('7', 'M2'): 1, ('5', '-'): 7, ('6', '-'): 1, ('7', 'TM'): 4}
+ other order {'0x0': 10, '0x12': 6, '0x15': 2, '0x5': 1, '0x1e': 1} leader!=0 4 member!=0 0
+ e_verdict {'pass_not_resolved': 20}
+ class/code/order/verdict [(('5', '-', '0x0', 'pass_not_resolved'), 7), (('7', 'TM', '0x12', 'pass_not_resolved'), 4), (('18', '-', '0x0', 'pass_not_resolved'), 2), (('7', 'TS', '0x15', 'pass_not_resolved'), 2), (('7', 'M6', '0x12', 'pass_not_resolved'), 1), (('7', 'TP', '0x5', 'pass_not_resolved'), 1), (('7', 'TS', '0x12', 'pass_not_resolved'), 1), (('7', 'M2', '0x1e', 'pass_not_resolved'), 1), (('6', '-', '0x0', 'pass_not_resolved'), 1)]
+ other is a gate (class 18): 2
+== 2 ship_gate_capital_join crossing rows
+frame=16056 obj=0x8d623838 class=M2 slot=0 mode=join reason=- v_cmd=100 cross_nose_deg=0.45 cross_vel_deg=0.32 cross_v=100.0 kept=1 why_not=- window_s=77.7
+frame=19624 obj=0x8d6294d8 class=M1 slot=0 mode=join reason=- v_cmd=100 cross_nose_deg=6.11 cross_vel_deg=8.44 cross_v=100.0 kept=1 why_not=- window_s=54.5
+frame=21172 obj=0x8d641ea8 class=M2 slot=1 mode=join reason=- v_cmd=100 cross_nose_deg=1.98 cross_vel_deg=3.55 cross_v=100.0 kept=1 why_not=- window_s=53.3
+frame=65372 obj=0x363fbee0 class=M2 slot=0 mode=join reason=- v_cmd=100 cross_nose_deg=0.32 cross_vel_deg=0.07 cross_v=100.0 kept=1 why_not=- window_s=77.6
+frame=66512 obj=0x8d62fa00 class=M2 slot=1 mode=join reason=- v_cmd=100 cross_nose_deg=2.12 cross_vel_deg=2.35 cross_v=100.0 kept=1 why_not=- window_s=53.1
+frame=68094 obj=0x8d613d28 class=M1 slot=2 mode=join reason=- v_cmd=100 cross_nose_deg=3.98 cross_vel_deg=5.58 cross_v=65.3 kept=1 why_not=- window_s=88.6
+== 7 second gate
+seta frames in window {'1': 10454, '0': 5647}
+launch frame 16250 real s 103.6
+launch frame 19882 real s 125.8
+launch frame 21446 real s 134.5
+launch frame 65557 real s 359.6
+launch frame 66745 real s 367.9
+launch frame 68755 real s 378.0
+detours in window touching these caps 103 cap-vs-cap 28 Counter({('0x8d613d28', '0x8d62fa00', '0', '0x8'): 13, ('0x8d62fa00', '0x8d613d28', '0', '0x15'): 11, ('0x8d613d28', '0x8d62fa00', '0', '0x4'): 4})
+ cap-vs-cap miss<C 15 C ['2624.8', '2659.4'] miss min 2608.7
+E verdict rows in window 1058 B class Counter({'7': 494, '5': 439, '18': 125}) B capitals (code M1/M2/...) [(('0x8d613d28', 'M1', '0x14', 'pass_not_member'), 99), (('0x8d62fa00', 'M2', '0x14', 'pass_not_member'), 98), (('0x8d613d28', 'M1', '0x4', 'suppress_lane'), 48), (('0x8d62fa00', 'M2', '0x4', 'suppress_lane'), 33), (('0x8d613d28', 'M1', '0x15', 'pass_not_member'), 25), (('0x8d62fa00', 'M2', '0x4', 'pass_not_member'), 18), (('0x8d62fa00', 'M2', '0x5', 'suppress_lane'), 15), (('0x8d613d28', 'M1', '0x0', 'pass_not_member'), 14), (('0x8d62fa00', 'M2', '0x14', 'pass_not_fresh'), 11), (('0x8d613d28', 'M1', '0x14', 'pass_not_fresh'), 7), (('0x8d62fa00', 'M2', '0x0', 'pass_not_member'), 7), (('0x8d62fa00', 'M2', '0x15', 'pass_not_member'), 6)]
+unresolved gate1 f<30000 sum 368.0 max 111.0
+unresolved gate2 sum 14.0 max 12.0
+unresolved_episodes gate1 f<30000 sum 8.0 max 3.0
+unresolved_episodes gate2 sum 2.0 max 1.0
+unresolved_inside_turn gate1 f<30000 sum 93.0 max 57.0
+unresolved_inside_turn gate2 sum 0.0 max 0.0
+unresolved_behind gate1 f<30000 sum 275.0 max 76.0
+unresolved_behind gate2 sum 12.0 max 12.0
+conflict_episodes gate1 f<30000 sum 46.0 max 4.0
+conflict_episodes gate2 sum 43.0 max 8.0
+emergency gate1 f<30000 sum 156.0 max 111.0
+emergency gate2 sum 0.0 max 0.0
+gate_p2_capital gate1 f<30000 sum 0.0 max 0.0
+gate_p2_capital gate2 sum 0.0 max 0.0
+gate_capital_aligned gate1 f<30000 sum 3.0 max 1.0
+gate_capital_aligned gate2 sum 3.0 max 1.0
+gate_capital_kept gate1 f<30000 sum 3.0 max 1.0
+gate_capital_kept gate2 sum 3.0 max 1.0
+gate_capital_slowed gate1 f<30000 sum 0.0 max 0.0
+gate_capital_slowed gate2 sum 201.0 max 3.0
+gate_capital_fallback_pred gate1 f<30000 sum 0.0 max 0.0
+gate_capital_fallback_pred gate2 sum 0.0 max 0.0
+gate_capital_not_kept_mode gate1 f<30000 sum 0.0 max 0.0
+gate_capital_not_kept_mode gate2 sum 0.0 max 0.0
+join_slots gate1 f<30000 sum 18.0 max 1.0
+join_slots gate2 sum 25.0 max 2.0
+== gate sequence
+obj class | cross frame t_game real_s heading_err cross_v | launch frame t_game cross_to_launch_s | game s since previous launch
+0x8d623838 M2 | 16056 23075.4 102.0 0.3 100.0 | 16250 23090.8 15.4 | -
+0x8d6294d8 M1 | 19624 23297.3 124.2 6.1 100.0 | 19882 23312.8 15.5 | 222.0
+0x8d641ea8 M2 | 21172 23384.8 133.0 2.0 100.0 | 21446 23400.2 15.4 | 87.5
+0x363fbee0 M2 | 65372 25100.3 358.1 0.3 100.0 | 65557 25115.6 15.3 | 1715.4
+0x8d62fa00 M2 | 66512 25183.1 366.4 2.1 100.0 | 66745 25198.5 15.4 | 82.9
+0x8d613d28 M1 | 68094 25237.8 374.8 4.0 65.3 | 68755 25255.6 17.8 | 57.1
+== floor windows
+frames | game_s of the window | floor_s summed | mean capitals at floor | peak interval | seq-capped decisions
+total floor_s 0.0 (last counter 0 ms)
+== capital pairs (capcap.txt, head)
+capitals seen: 6 {'M2': 4, 'M1': 2}
+capital-vs-capital detour rows 28 of 5138 | by obj order {'0x4': 24, '0x15': 4} obstacle order {'0x15': 11, '0x4': 4, '0x8': 13}
+  last lane verdict no lane row (untraced pair) 15  first (65968, '0x8d62fa00', '0x4', '0x8d613d28', '0x15')  (obj order, obstacle order) {('0x4', '0x15'): 11, ('0x15', '0x4'): 4}
+  last lane verdict s/lat recent             13  first (66746, '0x8d613d28', '0x4', '0x8d62fa00', '0x8')  (obj order, obstacle order) {('0x4', '0x8'): 13}
+census w -> r: {583: 1092.0, 546: 1022.0}
+rows 34 verdict/route {'s/lat': 34} watch=1 34
+watch rows by verdict/route {'s/lat': 34}
+w = 0.45 r: (c) watch rows that would pass route (i): 0 of 0
+w = 0.38 r: (c) watch rows that would pass route (i): 0 of 0
+(c) watch rows: lat_gap - (50 + mot) quartiles -
+== 0x8d623838 M2 gate 0x8d647050 P lateral 0 m from the axis, P depth -4392 m; rows 15448 frames 802-16249
+   totals (game s): {'o4:out': 328.5, 'o4:join': 77.7, 'order0': 0.2, 'launch5': 15.2}
+== 0x8d6294d8 M1 gate 0x8d647050 P lateral 0 m from the axis, P depth -4253 m; rows 1203 frames 18679-19881
+   totals (game s): {'o4:out': 0.1, 'o4:join': 54.5, 'order0': 0.2, 'launch5': 15.3}
+== 0x8d641ea8 M2 gate 0x8d647050 P lateral 666 m from the axis, P depth -4392 m; rows 1237 frames 20209-21445
+   totals (game s): {'o4:out': 0.1, 'o4:join': 53.3, 'order0': 0.2, 'launch5': 15.3}
+== 0x363fbee0 M2 gate 0x8d6472c0 P lateral 0 m from the axis, P depth -4392 m; rows 24258 frames 41299-65556
+   totals (game s): {'o4:out': 724.5, 'o4:join': 77.6, 'order0': 0.2, 'launch5': 15.1}
+== 0x8d62fa00 M2 gate 0x8d6472c0 P lateral 666 m from the axis, P depth -4392 m; rows 986 frames 65759-66744
+== 0x8d623838 class M2 gate 0x8d647050 rows 15448 | G_m [-7498, 10774, -57569] F [0.0, 0.0, -1.0] (B-plane(20)) r_gate 1105 m | order-4 givens 1
+   order-4 total 406.2 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.1 s; rows in the 6 r window 1032 of 15254 order-4 rows, lead rows 992
+== 0x8d6294d8 class M1 gate 0x8d647050 rows 1203 | G_m [-7498, 10774, -57569] F [0.0, 0.0, -1.0] (B-plane(20)) r_gate 1105 m | order-4 givens 1
+   order-4 total 54.5 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.3 s; rows in the 6 r window 945 of 945 order-4 rows, lead rows 867
+== 0x8d641ea8 class M2 gate 0x8d647050 rows 1237 | G_m [-7498, 10774, -57569] F [0.0, 0.0, -1.0] (B-plane(20)) r_gate 1105 m | order-4 givens 1
+   order-4 total 53.3 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.2 s; rows in the 6 r window 963 of 963 order-4 rows, lead rows 908
+== 0x363fbee0 class M2 gate 0x8d6472c0 rows 24258 | G_m [4259, -18037, 31134] F [0.0, 0.0, 1.0] (B-plane(20)) r_gate 1105 m | order-4 givens 1
+   order-4 total 802.1 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.0 s; rows in the 6 r window 1009 of 24073 order-4 rows, lead rows 979
+== 0x8d62fa00 class M2 gate 0x8d6472c0 rows 986 | G_m [4259, -18037, 31134] F [0.0, 0.0, 1.0] (B-plane(20)) r_gate 1105 m | order-4 givens 1
+   order-4 total 53.0 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 15.2 s; rows in the 6 r window 753 of 753 order-4 rows, lead rows 708
+== 0x8d613d28 class M1 gate 0x8d6472c0 rows 2010 | G_m [4259, -18037, 31134] F [0.0, 0.0, 1.0] (B-plane(20)) r_gate 1105 m | order-4 givens 1
+   order-4 total 39.2 s in 1 segs; order-0x12 total 0.0 s in 0 segs; 0x1f 0.0 s; 5 17.7 s; rows in the 6 r window 1349 of 1349 order-4 rows, lead rows 788

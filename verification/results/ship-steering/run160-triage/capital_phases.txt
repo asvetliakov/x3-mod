@@ -1,0 +1,46 @@
+== 0x8d623838 M2 gate 0x8d647050 P lateral 0 m from the axis, P depth -4392 m; rows 15448 frames 802-16249
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:out             802-15023 | 22669.2 328.5 73.7 | -44780/-11854 | 15932/2947 | 22/22 | 108..108 | 0 35394
+   o4:join            15024-16055 | 22997.7 77.7 7.8 | -11847/-5226 | 2944/1 | 22/0 | 100..108 | 99 7246
+   order0             16056-16057 | 23075.4 0.1 0.0 | -5220/-5212 | 1/1 | 0/0 | 99..100 | 0 8
+   launch5            16058-16248 | 23075.5 15.2 1.5 | -5205/-3585 | 1/1 | 0/0 | 98..108 | 0 1620
+   order0             16249-16249 | 23090.7 0.1 0.0 | -3577/-3577 | 1/1 | 0/0 | 108..108 | 0 0
+   totals (game s): {'o4:out': 328.5, 'o4:join': 77.7, 'order0': 0.2, 'launch5': 15.2}
+== 0x8d6294d8 M1 gate 0x8d647050 P lateral 0 m from the axis, P depth -4253 m; rows 1203 frames 18679-19881
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            18680-19623 | 23242.8 54.5 5.4 | -9214/-5082 | 3308/76 | 20/6 | 100..112 | 97 5246
+   order0             19624-19625 | 23297.3 0.1 0.0 | -5077/-5072 | 75/75 | 6/6 | 100..100 | 0 5
+   launch5            19626-19880 | 23297.4 15.3 1.5 | -5066/-3361 | 74/27 | 6/0 | 99..113 | 6 1706
+   order0             19881-19881 | 23312.7 0.1 0.0 | -3354/-3354 | 27/27 | 0/0 | 113..113 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 54.5, 'order0': 0.2, 'launch5': 15.3}
+== 0x8d641ea8 M2 gate 0x8d647050 P lateral 666 m from the axis, P depth -4392 m; rows 1237 frames 20209-21445
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            20210-21171 | 23331.5 53.3 5.3 | -9342/-5223 | 2958/30 | 15/2 | 100..109 | 107 5054
+   order0             21172-21173 | 23384.8 0.1 0.0 | -5217/-5212 | 29/29 | 2/2 | 100..100 | 0 5
+   launch5            21174-21444 | 23384.9 15.3 1.5 | -5207/-3554 | 29/172 | 2/8 | 99..110 | 9 1660
+   order0             21445-21445 | 23400.2 0.1 0.0 | -3543/-3543 | 173/173 | 8/8 | 110..110 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 53.3, 'order0': 0.2, 'launch5': 15.3}
+== 0x363fbee0 M2 gate 0x8d6472c0 P lateral 0 m from the axis, P depth -4392 m; rows 24258 frames 41299-65556
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:out             41299-64362 | 24298.2 724.5 124.4 | -84576/-11851 | 31138/2934 | 0/21 | 108..108 | 22 78002
+   o4:join            64363-65371 | 25022.7 77.6 7.8 | -11844/-5231 | 2932/1 | 21/0 | 100..108 | 99 7234
+   order0             65372-65373 | 25100.3 0.1 0.0 | -5220/-5211 | 1/1 | 0/0 | 99..100 | 0 9
+   launch5            65374-65555 | 25100.4 15.1 1.5 | -5204/-3590 | 1/1 | 0/0 | 98..108 | 0 1615
+   order0             65556-65556 | 25115.5 0.1 0.0 | -3581/-3581 | 1/1 | 0/0 | 108..108 | 0 0
+   totals (game s): {'o4:out': 724.5, 'o4:join': 77.6, 'order0': 0.2, 'launch5': 15.1}
+== 0x8d62fa00 M2 gate 0x8d6472c0 P lateral 666 m from the axis, P depth -4392 m; rows 986 frames 65759-66744
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            65760-66511 | 25130.1 53.0 5.3 | -9693/-5225 | 982/31 | 9/2 | 40..109 | 79 4580
+      vs 0x8d613d28 rows 33 {'s/lat': 33} bind=1 0 ds -1909..-284 seq_cap rows 0 min - trail=A 0 | A e_m med 97 theta med 6.0
+   order0             66512-66513 | 25183.1 0.1 0.0 | -5219/-5213 | 31/31 | 2/2 | 99..100 | 0 7
+   launch5            66514-66743 | 25183.2 15.3 1.5 | -5207/-3550 | 31/168 | 2/8 | 99..110 | 10 1662
+   order0             66744-66744 | 25198.5 0.1 0.0 | -3544/-3544 | 169/169 | 8/8 | 110..110 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 53.0, 'order0': 0.2, 'launch5': 15.3}
+== 0x8d613d28 M1 gate 0x8d6472c0 P lateral 666 m from the axis, P depth -4253 m; rows 2010 frames 66745-68754
+   label frames | t_game_s dur_game_s real_s | s_m s/e | e_m s/e | hdg_err s/e | v_ms min..max | turned_deg net_disp_m
+   o4:join            66746-68093 | 25198.6 39.2 6.9 | -6848/-5080 | 1412/46 | 62/4 | 60..65 | 59 2234
+      vs 0x8d62fa00 rows 1 {'s/lat': 1} bind=1 0 ds 3300..3300 seq_cap rows 0 min - trail=A 0 | A e_m med 1415 theta med 62.1
+   order0             68094-68095 | 25237.8 0.0 0.0 | -5080/-5080 | 45/45 | 4/4 | 65..65 | 0 0
+   launch5            68096-68753 | 25237.8 17.8 3.2 | -5079/-3327 | 45/190 | 4/8 | 65..113 | 8 1765
+   order0             68754-68754 | 25255.6 0.1 0.0 | -3322/-3322 | 191/191 | 8/8 | 113..113 | 0 0
+   totals (game s): {'o4:out': 0.1, 'o4:join': 39.2, 'order0': 0.1, 'launch5': 17.8}

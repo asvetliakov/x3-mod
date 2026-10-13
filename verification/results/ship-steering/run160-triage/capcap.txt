@@ -1,0 +1,16 @@
+capitals seen: 6 {'M2': 4, 'M1': 2}
+capital-vs-capital detour rows 28 of 5138 | by obj order {'0x4': 24, '0x15': 4} obstacle order {'0x15': 11, '0x4': 4, '0x8': 13}
+  last lane verdict no lane row (untraced pair) 15  first (65968, '0x8d62fa00', '0x4', '0x8d613d28', '0x15')  (obj order, obstacle order) {('0x4', '0x15'): 11, ('0x15', '0x4'): 4}
+  last lane verdict s/lat recent             13  first (66746, '0x8d613d28', '0x4', '0x8d62fa00', '0x8')  (obj order, obstacle order) {('0x4', '0x8'): 13}
+ pairs (obj, obstacle, obj order, obstacle order) x rows:
+    ('0x8d613d28', '0x8d62fa00', '0x4', '0x8') 13 frames 66746-66758
+    ('0x8d62fa00', '0x8d613d28', '0x4', '0x15') 11 frames 65968-65978
+    ('0x8d613d28', '0x8d62fa00', '0x15', '0x4') 4 frames 65974-65977
+E verdict rows capital A vs capital B 1428 {'pass_not_member': 1163, 'pass_not_fresh': 103, 'pass_a_avoid': 64, 'pass_not_transient': 1, 'suppress_resolved': 1, 'suppress_lane': 96}
+  by (A_order, B_order, verdict) [(('0x14', '0x14', 'pass_not_member'), 924), (('0x14', '0x0', 'pass_not_member'), 86), (('0x0', '0x14', 'pass_not_fresh'), 76), (('0x4', '0x4', 'suppress_lane'), 66), (('0x4', '0x12', 'pass_not_member'), 32), (('0x12', '0x4', 'pass_a_avoid'), 32), (('0x14', '0x12', 'pass_not_member'), 31), (('0x12', '0x14', 'pass_a_avoid'), 29), (('0x4', '0x15', 'pass_not_member'), 19), (('0x15', '0x4', 'pass_not_member'), 18), (('0x14', '0x4', 'pass_not_member'), 16), (('0x5', '0x4', 'suppress_lane'), 15)]
+engine warn rows with a capital subject [('40917', '0x363fbee0', '0x8d647050', '-', '1702.8'), ('41977', '0x8d62fa00', '0x8d622c08', 'M6', '2888.5'), ('42485', '0x8d62fa00', '0x8d624468', 'M6', '3949.6'), ('42923', '0x8d613d28', '0x8d647050', '-', '1688.0'), ('44048', '0x8d62fa00', '0x8d62e8f0', 'M6', '3908.6'), ('58513', '0x8d62fa00', '0x8d64d7e8', '-', '2102.2')]
+0x12 episodes per capital (frames first-last 0x12 observation, game s span; traced ships exact, untraced lower bounds):
+  0x363fbee0 M2 n=1 total 23.2 s: 40922-41295(23.2)
+  0x8d613d28 M1 n=1 total 17.5 s: 42924-43175(17.5)
+  0x8d62fa00 M2 n=4 total 70.2 s: 41977-42303(21.0) 42485-42658(11.2) 44050-44213(10.9) 58530-59064(27.0)
+E rows of the capital as A in the 60 frames before each 0x12 onset (frame >= 64000): (B, B code, B_order, verdict, d_m) x n

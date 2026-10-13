@@ -1,0 +1,3 @@
+('0x363fbee0', '0x8d62fa00') rows 97 min d_m (6514.0, 41916, '0x0', '0x4', 'pass_not_fresh') rA+rB 2184
+('0x8d613d28', '0x8d62fa00') rows 1331 min d_m (3696.0, 66507, '0x4', '0x4', 'suppress_lane') rA+rB 2114
+lane rows 34 lat_gap min (254, 66746, 's', '0x8d613d28') max (2690, 66025, 's', '0x8d62fa00')
