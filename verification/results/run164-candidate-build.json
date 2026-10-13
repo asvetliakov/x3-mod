@@ -1,0 +1,20 @@
+{
+  "dll": "detached worktree /tmp/x3-run164-candidate of 42f7a422, build/d3d9.dll (clean configure + build)",
+  "sha256": "fa0b9812e7c38a4eabe79e97298e855e28a8a56cde1b77eee9f92e9e8242587a",
+  "bytes": 59364614,
+  "commit": "42f7a422",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 997, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites OK (candidate tree); fixture 9600/9600, capital 3942/3942, key-off identities 0 (implementer, same tree, ledger)"
+  },
+  "changes_since_run163": [
+    "f2c01be2 Run163 triage",
+    "42f7a422 controller B.3"
+  ],
+  "trigger": "Run163: funnel escort evicted by the own-gate warn on SETA frames with a game step > 1 s (fixed liveness bounds), 200 s petal laps, escort reservation lapsing at 60 s; frame_step_ms() returning 0 above 1 s",
+  "producer": "main session (Fable 5.1), 2026-10-13"
+}
