@@ -318,6 +318,9 @@ struct Model {
     gc::Board* ctl;
     std::uint16_t ctl_gate_type;
     float hull_l;
+    double sb_v_written; // B.6: stage B's written speed this frame (site B's v_ref under the caps; < 0 none) ...
+    float sb_x_written[3]; // ... and the position sb_steer decided it from (m) ...
+    bool sb_v_fresh;       // ... written by this frame's steer call (think ticks are up to 50 ms apart: the write stands until the next)
     unsigned ctl_capped, ctl_excluded;
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
@@ -417,6 +420,9 @@ struct Model {
         ctl = nullptr;
         ctl_gate_type = 0;
         hull_l = 0.0f;
+        sb_v_written = -1.0;
+        sb_x_written[0] = sb_x_written[1] = sb_x_written[2] = 0.0f;
+        sb_v_fresh = false;
         ctl_capped = ctl_excluded = 0;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
@@ -658,6 +664,7 @@ struct Model {
         // has no join mode, slow join or aim-at-A latch (D.6); the controller's point and speed (gc::sb_steer) replace the lead-in
         bool sb_member = false, sb_on = false;
         gc::SbSteer sbs;
+        sb_v_written = -1.0;
         if (ctl && capital) {
             if (gate_mode && (order == core::kOrderFlyBefore || order == core::kOrderDock)) ctl_commit(in, order == core::kOrderFlyBefore ? &gate_geo : nullptr);
             int mi = -1;
@@ -783,8 +790,12 @@ struct Model {
             if ((capital_window || capital_detour) && join.v_cmd < s->v_ref) s->v_ref = join.v_cmd;
             if (join_fb_write && join_fb_v < s->v_ref) s->v_ref = join_fb_v;
         }
-        if (sb_on) // stage B: the controller's speed under the cornering and large caps (the DLL; an emergency lowers it at site B)
+        if (sb_on) { // stage B: the controller's speed under the cornering and large caps (the DLL; an emergency lowers it at site B)
             s->v_ref = std::fmin(sbs.v, core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner));
+            sb_v_written = double(s->v_ref);
+            for (int i = 0; i < 3; ++i) sb_x_written[i] = in.x[i];
+            sb_v_fresh = true;
+        }
         last_steer_order = order;
         // amendment 14: the formation law's |N| rides in the cornering slot (no ramp: site B returns it floored); the closing-speed
         // correction applies to the ramp/cornering schedule only (not on the gate approach, whose speed is the cap)
@@ -8524,6 +8535,26 @@ struct TResult {
     // ahead): the engine's warns, those site E left to the engine, those B.3's order (freshness first) would have left, the largest
     // decision age of A at such a warn
     unsigned gap_small_warns = 0, gap_small_unsup = 0, gap_small_unsup_b3 = 0, gap_small_age_max = 0;
+    // B.6 (Run166 span tuning): the head's release after the funnel frees (seq: the head committed on its hold, busy_by 0, timing due):
+    // episodes free -> release (any window: the head-out-of-window wait) and free-in-window -> release (the latency against kFeasMs + the
+    // longest step of the episode: over it, ended unreleased without a deferral, with a deferral); the escorts waiting after their leader's
+    // launch with a past lap target inside their window (frames, the highest written speed, frames above 25 m/s; the 0x15 approach beyond
+    // the script's 10 km apart); the holders' lap speed v_sb (frames, at 25, at 60, sum) for escorts [0] and committed [1]
+    unsigned b6_free_eps = 0, b6_free_rel = 0, b6_win_eps = 0, b6_win_rel = 0, b6_win_late = 0, b6_win_missed = 0, b6_win_deferred = 0, b6_rel_outside = 0;
+    double b6_free_wait_max_s = 0, b6_free_wait_sum_s = 0, b6_win_lat_max_s = 0, b6_win_lat_sum_s = 0;
+    unsigned b6_esc_frames = 0, b6_esc_over = 0, b6_esc_approach = 0;
+    double b6_esc_v_max = -1, b6_esc_approach_v_max = -1, b6_esc_approach_v_min = 1e18;
+    // ... (the coordinator's amendment) the approach frames below 60 m/s, the lap frames before the first pass inside 10 km, the frames
+    // after it (above 25 m/s, highest), the frames within 9.7 km without the flag
+    unsigned b6_appr_low = 0, b6_prelap_frames = 0, b6_post_frames = 0, b6_post_over = 0, b6_flag_late = 0;
+    double b6_post_v_max = -1;
+    // ... before the leader's launch (res_until 0; on 0x14 / 0x15 at its ring, inside its window): frames with the leader released (the
+    // target its predicted launch + the switch) and with the leader still holding (no target: the nominal 40 m/s), the frames above 25 m/s
+    // of each, the frames whose write exceeds the lap law at the escort's target, and the 0x15 approach frames before the launch (none)
+    unsigned b6_pre_frames_t = 0, b6_pre_over_t = 0, b6_pre_frames_n = 0, b6_pre_over_n = 0, b6_pre_law_over = 0, b6_pre_approach = 0;
+    double b6_pre_v_max_t = -1, b6_pre_v_max_n = -1;
+    unsigned b6_hold_n[2] = {0, 0}, b6_hold_25[2] = {0, 0}, b6_hold_60[2] = {0, 0};
+    double b6_hold_sum[2] = {0, 0};
 };
 struct TShip {
     Model m;
@@ -8647,6 +8678,169 @@ static void t_live_leaves(gc::Board& b, std::uint32_t now) {
         if (l.launched) ++b5_t_launch_left;
         else ++b5_t_gone_left;
         gc::leave(b.g[l.gate], l.member, false, now);
+    }
+}
+// B.6 (gate-traffic-controller.md B.6): the head's release after the funnel frees. One episode per head: from the first sequencer frame
+// with the head committed on its hold, the funnel free (busy_by 0) and its slot due (timing) to its release; the in-window one from the
+// first such frame inside the release window (seq.window) too. A free-in-window episode is released within kFeasMs + the longest game
+// step of the episode (B.6 verification), unless the predictor deferred it (no feasible candidate: the go-around rule's, counted apart).
+static const float b6_win_open = gc::kLap - gc::kPetalRh * float(M_PI) / 3.0f, b6_win_len = gc::kPetalSh + 2.0f * gc::kPetalRh * float(M_PI) / 3.0f;
+struct B6Head {
+    std::uint32_t ship = 0, free_ms = 0, win_ms = 0;
+    long step_max = 0;
+    bool deferred = false;
+};
+static void b6_head_track(const gc::Gate& g, B6Head& h, const gc::SbStats& st, std::uint32_t now, long step, TResult& r) {
+    std::uint32_t released = 0;
+    for (unsigned q = 0; q < st.n_ev; ++q)
+        if (st.ev[q].why == std::uint8_t(gc::Why::release)) released = st.ev[q].ship;
+    const int ci = st.seq.cand ? gc::find(g, st.seq.cand) : -1;
+    const bool head = ci >= 0 && g.m[ci].role == gc::Role::committed;
+    const bool free_due = head && st.seq.busy_by == 0 && st.seq.timing == 1, in_w = free_due && st.seq.window == 1;
+    auto close_win = [&]() { // an in-window episode ended without its release
+        if (h.win_ms) ++(h.deferred ? r.b6_win_deferred : r.b6_win_missed);
+        h.win_ms = 0;
+        h.deferred = false;
+        h.step_max = 0;
+    };
+    if (h.ship && released != h.ship) {
+        if (st.seq.cand != h.ship || !free_due) {
+            close_win();
+            h = B6Head{};
+        } else if (h.win_ms && !in_w)
+            close_win();
+    }
+    if (free_due && !h.ship) {
+        h.ship = st.seq.cand;
+        h.free_ms = now;
+        ++r.b6_free_eps;
+    }
+    if (h.ship) {
+        if (in_w && !h.win_ms) {
+            h.win_ms = now;
+            h.step_max = 0;
+            ++r.b6_win_eps;
+        }
+        if (h.win_ms) {
+            h.step_max = std::max(h.step_max, step);
+            if (st.deferred) h.deferred = true;
+        }
+    }
+    if (h.ship && released == h.ship) {
+        const double wait = double(now - h.free_ms) * 0.001;
+        r.b6_free_wait_max_s = std::fmax(r.b6_free_wait_max_s, wait);
+        r.b6_free_wait_sum_s += wait;
+        ++r.b6_free_rel;
+        if (h.win_ms && h.deferred) ++r.b6_win_deferred; // released after a deferral (no feasible candidate first): apart
+        else if (h.win_ms) {
+            const double lat = double(now - h.win_ms) * 0.001;
+            r.b6_win_lat_max_s = std::fmax(r.b6_win_lat_max_s, lat);
+            r.b6_win_lat_sum_s += lat;
+            ++r.b6_win_rel;
+            if (lat * 1000.0 > double(gc::kFeasMs) + double(h.step_max) + 0.5) ++r.b6_win_late;
+        } else
+            ++r.b6_rel_outside; // released with the funnel free but never seen in the window by the sequencer's head row (a rejoin, none)
+        h = B6Head{};
+    }
+    for (unsigned i = 0; i < g.n; ++i) { // the holders' lap speed (the controller's v_sb on a ringed petal)
+        const gc::Member& m = g.m[i];
+        if (!m.ship || m.sb != gc::Sb::hold || m.petal < 0 || !m.ringed || !(m.role == gc::Role::escort || m.role == gc::Role::committed)) continue;
+        const int k = m.role == gc::Role::escort ? 0 : 1;
+        ++r.b6_hold_n[k];
+        r.b6_hold_sum[k] += double(m.v_sb);
+        if (m.v_sb <= gc::kPetalVmin + 0.01f) ++r.b6_hold_25[k];
+        if (m.v_sb >= gc::kPetalVmax - 0.01f) ++r.b6_hold_60[k];
+    }
+}
+// B.6 (with the coordinator's amendment): an escort waiting after its leader's launch (reserved, res_until set, the leader off the board or
+// not released, its lap target = the leader's order-8 stamp + the script's switch already past at the last sequencer run). Until its first
+// pass inside the script's 10 km (the controller's esc_in10, as the sequencer planned from): sb_steer's 0x15 approach beyond 9.49 km writes
+// 60 m/s, the lap writes the lap law (<= 25 m/s inside its window: on the lap and in the release window, z and nose). From that pass on it
+// is written <= 25 m/s anywhere on the lap. The flag itself: an escort within 9.7 km of the gate (300 m below the 10 km: the state read's
+// age and a 2 s step at 60 m/s) without it counts as late. Only frames with a fresh write count (the decision's own flag and position).
+static void b6_escort_write(gc::Board& b, TShip& c, std::uint32_t last_sb, TResult& r) {
+    const bool fresh = c.m.sb_v_fresh;
+    c.m.sb_v_fresh = false;
+    if (!fresh || c.m.sb_v_written < 0.0 || !last_sb) return;
+    int i = -1;
+    const gc::Gate* g = gc::locate(b, c.m.ptr, &i);
+    if (!g) return;
+    const gc::Member& m = g->m[i];
+    if (m.role != gc::Role::escort || m.sb != gc::Sb::hold || m.petal < 0 || !m.key_res || !m.res_until) return;
+    const int li = gc::find(*g, m.leader);
+    if (li >= 0 && g->m[li].sb != gc::Sb::hold && g->m[li].sb != gc::Sb::inbound && g->m[li].sb != gc::Sb::none) return;
+    if (std::int32_t(last_sb - (m.res_o8_ms + gc::kEscortSwitchMs)) < 0) return;
+    const double v = c.m.sb_v_written;
+    const double p2 = (c.m.pos[0] * c.m.pos[0] + c.m.pos[1] * c.m.pos[1] + c.m.pos[2] * c.m.pos[2]) / 250000.0;
+    if (!m.esc_in10 && p2 < 9700.0 * 9700.0) ++r.b6_flag_late;
+    if (m.esc_in10) { // after the first pass inside 10 km: 25 m/s over the whole lap
+        ++r.b6_post_frames;
+        r.b6_post_v_max = std::fmax(r.b6_post_v_max, v);
+        if (v > double(gc::kPetalVmin) + 0.01) ++r.b6_post_over;
+        return;
+    }
+    const float* xs = c.m.sb_x_written; // sb_steer's branch from the position it decided from
+    const float dx[3] = {xs[0] - g->G[0], xs[1] - g->G[1], xs[2] - g->G[2]};
+    if (c.m.order == core::kOrderFollow && core::dot3(dx, dx) > gc::kEscortSwitchM * gc::kEscortSwitchM * 0.9f) { // the 0x15 approach
+        ++r.b6_esc_approach;
+        r.b6_esc_approach_v_max = std::fmax(r.b6_esc_approach_v_max, v);
+        r.b6_esc_approach_v_min = std::fmin(r.b6_esc_approach_v_min, v);
+        if (v < double(gc::kPetalVmax) - 0.01) ++r.b6_appr_low;
+        return;
+    }
+    ++r.b6_prelap_frames;
+    gc::PetalGeom pg;
+    gc::petal_geom(*g, unsigned(m.petal), m.zx, &pg);
+    const float d[3] = {m.st.x[0] - g->G[0], m.st.x[1] - g->G[1], m.st.x[2] - g->G[2]};
+    float w = gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e)) - b6_win_open;
+    if (w < 0.0f) w += gc::kLap;
+    if (w >= gc::kLap) w -= gc::kLap;
+    if (w > b6_win_len) return;
+    const float zf = core::dot3(d, g->F);
+    if (!(zf <= m.zx - gc::kLeadM - gc::kPetalRh + 866.0254f + 1.0f && core::dot3(m.st.rows[2], g->F) >= 0.5f)) return;
+    ++r.b6_esc_frames;
+    r.b6_esc_v_max = std::fmax(r.b6_esc_v_max, v);
+    if (v > double(gc::kPetalVmin) + 0.01) ++r.b6_esc_over;
+}
+// B.6 (coordinator, 2026-10-14): an escort waiting before its leader's launch (reserved, res_until 0; on 0x14 / 0x15, at its ring, inside its
+// window as b6_escort_write tests it) is written the lap law at its own target: the leader's predicted launch + the script's switch once the
+// leader is released, none (40 m/s) while the leader holds; sb_steer's 0x15 approach (60 m/s) needs res_until, so it never applies here
+static void b6_escort_pre(gc::Board& b, TShip& c, std::uint32_t last_sb, TResult& r) {
+    const bool fresh = c.m.sb_v_fresh;
+    c.m.sb_v_fresh = false;
+    if (!fresh || c.m.sb_v_written < 0.0 || !last_sb || !c.m.ctl) return;
+    int i = -1;
+    const gc::Gate* g = gc::locate(b, c.m.ptr, &i);
+    if (!g) return;
+    const gc::Member& m = g->m[i];
+    if (m.role != gc::Role::escort || m.sb != gc::Sb::hold || m.petal < 0 || !m.ringed || !m.key_res || m.res_until) return;
+    if (!(c.m.order == core::kOrderEscort || c.m.order == core::kOrderFollow)) return;
+    gc::PetalGeom pg;
+    gc::petal_geom(*g, unsigned(m.petal), m.zx, &pg);
+    const float d[3] = {m.st.x[0] - g->G[0], m.st.x[1] - g->G[1], m.st.x[2] - g->G[2]};
+    float w = gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e)) - b6_win_open;
+    if (w < 0.0f) w += gc::kLap;
+    if (w >= gc::kLap) w -= gc::kLap;
+    if (w > b6_win_len) return;
+    const float zf = core::dot3(d, g->F);
+    if (!(zf <= m.zx - gc::kLeadM - gc::kPetalRh + 866.0254f + 1.0f && core::dot3(m.st.rows[2], g->F) >= 0.5f)) return;
+    const float* xs = c.m.sb_x_written;
+    const float dx[3] = {xs[0] - g->G[0], xs[1] - g->G[1], xs[2] - g->G[2]};
+    if (c.m.order == core::kOrderFollow && core::dot3(dx, dx) > gc::kEscortSwitchM * gc::kEscortSwitchM * 0.9f) ++r.b6_pre_approach;
+    const int li = gc::find(*g, m.leader);
+    const bool released = li >= 0 && g->m[li].sb != gc::Sb::hold && g->m[li].sb != gc::Sb::inbound && g->m[li].sb != gc::Sb::none;
+    std::uint32_t t_rel = released ? gc::eta_launch(*g, g->m[li], last_sb) + gc::kEscortSwitchMs : 0;
+    if (t_rel && std::int32_t(t_rel - last_sb) < 0) t_rel = last_sb;
+    const double v = c.m.sb_v_written, law = double(gc::lap_speed(*g, m, last_sb, t_rel));
+    if (v > law + 0.01) ++r.b6_pre_law_over;
+    if (released) {
+        ++r.b6_pre_frames_t;
+        r.b6_pre_v_max_t = std::fmax(r.b6_pre_v_max_t, v);
+        if (v > double(gc::kPetalVmin) + 0.01) ++r.b6_pre_over_t;
+    } else {
+        ++r.b6_pre_frames_n;
+        r.b6_pre_v_max_n = std::fmax(r.b6_pre_v_max_n, v);
+        if (v > double(gc::kPetalVmin) + 0.01) ++r.b6_pre_over_n;
     }
 }
 static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
@@ -8803,6 +8997,9 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
     std::memset(evading, 0, sizeof evading);
     for (unsigned k = 0; k < su.n; ++k) res.departures += su.s[k].kind == kTDepart || su.s[k].kind == kTEscort ? 1u : 0u;
     std::uint32_t seta_rng = seed * 2654435761u + 12345u;
+    B6Head b6h[gc::kGates];
+    std::uint32_t b6_last_sb = 0; // the last sequencer run (game ms): the speeds written this frame were planned then
+    long b6_step_max = 0;         // the longest game step since the last sequencer run (the episodes' bound)
     for (long it = 0; it < su.run_s * fps; ++it) { // stage B: 1,200 s (the sequence of 7 departures through one funnel); Run162 2,400 s
         long dt = clock.step(fps);
         if (!dt) continue;
@@ -8817,6 +9014,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
         const long now_ms = sim_ms;
         const std::uint32_t now = std::uint32_t(now_ms);
         sim_ms += dt;
+        b6_step_max = std::max(b6_step_max, dt);
         // arrivals request the through slot at their time (partner-side requests); small arrivals come with their capital
         for (unsigned k = 0; k < su.n; ++k) {
             TShip& c = ships[k];
@@ -8940,6 +9138,8 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                     c.order4_at = c.leader_launch + long(c.st->order4_s * 1000.0);
                     m.order = core::kOrderFollow;
                     m.leader_ptr = 0;
+                    m.gate_ptr = kLaneGate; // B.6: the live target f+0x224 on this 0x15 is the gate (the DLL's sb_steer reads it; 0 left the
+                                            // escorts' 0x15 unsteered by stage B before B.6)
                     c.target = kLaneGate;
                 } else if (c.phase == 10 && now_ms >= c.gap_next) {
                     c.phase = 11;
@@ -8962,6 +9162,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                     m.prec_units = 0.25 * m.r_units;
                     m.d_arr_units = m.r_units;
                     m.frame(dt, c.obj, true, 0, 2);
+                    b6_escort_pre(*m.ctl, c, b6_last_sb, res);
                 } else if (c.phase == 11) {
                     m.desired = 0;
                     m.advance(dt);
@@ -8987,6 +9188,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                     m.order = core::kOrderFollow;
                     for (int i = 0; i < 3; ++i) m.P[i] = 0;
                     m.frame(dt, c.obj, true, 0, 0);
+                    b6_escort_write(*m.ctl, c, b6_last_sb, res);
                     continue;
                 } else {
                     double H[3], dh = 0;
@@ -9251,7 +9453,9 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
         for (gc::Gate& g : board.g) {
             if (!g.gate) continue;
             gc::SbStats sbst;
+            sbst.seq_on = true; // B.6: the head's window, timing and busy_by (fills stats only)
             gc::sb_frame(g, now_end, &sbst);
+            b6_head_track(g, b6h[&g - board.g], sbst, now_end, b6_step_max, res);
             res.releases += sbst.releases;
             res.go_arounds += sbst.go_arounds;
             res.go_arounds_near += sbst.go_arounds_near;
@@ -9368,6 +9572,8 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 }
             }
         }
+        b6_last_sb = now_end;
+        b6_step_max = 0;
         t_live_leaves(board, now_end); // B.5: the DLL's ctl_live_leaves (after the sequencer, before the decisions)
         for (unsigned k = 0; k < su.n; ++k) { // D.7 assertion 6: a committed member on order 4 keeps v >= 10 m/s once it has reached it
             TShip& c = ships[k];
@@ -11424,6 +11630,23 @@ static void traffic_print_b(const char* tag, int fps, std::uint32_t seed, const 
     std::printf("traffic T %-12s fps=%3d seed=%u B.4: capital vs own small escort in the order-0 gap: warns=%u unsuppressed=%u (B.3 order: %u) "
                 "a_age_max_ms=%u\n", tag, fps, seed, r.gap_small_warns, r.gap_small_unsup, r.gap_small_unsup_b3, r.gap_small_age_max);
 }
+static void traffic_print_b6(const char* tag, int fps, std::uint32_t seed, const TResult& r) {
+    auto mean = [](double sum, unsigned n) { return n ? sum / double(n) : -1.0; };
+    std::printf("traffic T %-12s fps=%3d seed=%u B.6: free_eps=%u released=%u wait_free_to_release mean=%.1f max=%.1f s | in_window_eps=%u released=%u "
+                "latency mean=%.2f max=%.2f s late=%u missed=%u deferred=%u released_unseen=%u | escort_window_frames=%u v_max=%.1f over25=%u "
+                "approach_frames=%u approach_v_max=%.1f approach_v_min=%.1f approach_below60=%u pre_pass_lap_frames=%u post_pass_frames=%u "
+                "post_pass_v_max=%.1f post_pass_over25=%u flag_late=%u | pre-launch escorts in window: leader released frames=%u v_max=%.1f over25=%u, leader "
+                "holding frames=%u v_max=%.1f over25=%u, above_law=%u approach=%u | hold v_sb escorts n=%u mean=%.1f at25=%u at60=%u committed n=%u mean=%.1f at25=%u at60=%u\n",
+                tag, fps, seed, r.b6_free_eps, r.b6_free_rel, mean(r.b6_free_wait_sum_s, r.b6_free_rel), r.b6_free_wait_max_s,
+                r.b6_win_eps, r.b6_win_rel, mean(r.b6_win_lat_sum_s, r.b6_win_rel), r.b6_win_lat_max_s, r.b6_win_late, r.b6_win_missed,
+                r.b6_win_deferred, r.b6_rel_outside, r.b6_esc_frames, r.b6_esc_v_max, r.b6_esc_over, r.b6_esc_approach, r.b6_esc_approach_v_max,
+                r.b6_esc_approach ? r.b6_esc_approach_v_min : -1.0, r.b6_appr_low, r.b6_prelap_frames, r.b6_post_frames, r.b6_post_v_max,
+                r.b6_post_over, r.b6_flag_late,
+                r.b6_pre_frames_t, r.b6_pre_v_max_t, r.b6_pre_over_t, r.b6_pre_frames_n, r.b6_pre_v_max_n, r.b6_pre_over_n, r.b6_pre_law_over,
+                r.b6_pre_approach,
+                r.b6_hold_n[0], mean(r.b6_hold_sum[0], r.b6_hold_n[0]), r.b6_hold_25[0], r.b6_hold_60[0], r.b6_hold_n[1],
+                mean(r.b6_hold_sum[1], r.b6_hold_n[1]), r.b6_hold_25[1], r.b6_hold_60[1]);
+}
 static void traffic_scenarios() {
     char why[256];
     const unsigned missed0 = g_crowd_targets_missed;
@@ -11432,6 +11655,7 @@ static void traffic_scenarios() {
                               {"mixed", kTMix, 5}, {"dep refused", kTDep, 7, -1, 45000}, {"run162", kTR162, 6, -1, 0, 2400, true},
                               {"run162 seta", kTR162, 6, -1, 0, 2400, true, true}};
     double drift_worst[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+    unsigned b6_pre_frames_all = 0, b6_approach_all = 0, b6_post_all = 0;
     for (const TSetup& su : setups)
         for (int fps : kFps)
             for (std::uint32_t seed : kSeeds) {
@@ -11445,6 +11669,33 @@ static void traffic_scenarios() {
                 };
                 traffic_print(su.tag, fps, seed, r);
                 traffic_print_b(su.tag, fps, seed, r);
+                traffic_print_b6(su.tag, fps, seed, r);
+                // B.6 (Run166 span tuning): a head whose funnel frees inside its release window is released within one feasibility interval
+                // (kFeasMs + the episode's longest game step), unless the predictor deferred it; the escorts waiting after their leader's
+                // launch hold 25 m/s inside their window (the lap; the 0x15 approach beyond the script's 10 km is reported)
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.6: a head whose funnel frees in its window is released within kFeasMs + "
+                              "the frame step (late %%.0f, unreleased %%.0f)", su.tag, fps, seed);
+                checkf(r.b6_win_late == 0 && r.b6_win_missed == 0 && (!r.departures || r.b6_win_eps > 0), why, r.b6_win_late, r.b6_win_missed);
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.6: an escort waiting after its leader's launch is written <= 25 m/s in "
+                              "its window (frames above %%.0f, highest %%.1f m/s)", su.tag, fps, seed);
+                checkf(r.b6_esc_over == 0, why, r.b6_esc_over, r.b6_esc_v_max);
+                // before its leader's launch a waiting escort inside its window is written the lap law at its target (<= 25 m/s once the leader
+                // is released; the nominal 40 m/s while the leader holds: no target) and never the 0x15 approach; after the launch the
+                // approach (60 m/s beyond the script's 10 km) resumes
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.6: before its leader's launch an escort in its window is written the lap "
+                              "law (above it %%.0f; above 25 m/s with the leader released %%.0f), no 0x15 approach", su.tag, fps, seed);
+                checkf(r.b6_pre_law_over == 0 && r.b6_pre_over_t == 0 && r.b6_pre_approach == 0, why, r.b6_pre_law_over, r.b6_pre_over_t);
+                // the coordinator's amendment: after the launch the 0x15 approach writes 60 m/s until the escort's first pass inside the
+                // script's 10 km; from that pass on it is written <= 25 m/s anywhere on the lap; the pass is noted within 9.7 km
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.6: after the launch the 0x15 approach writes 60 m/s until the first pass "
+                              "inside 10 km (%%.0f frames, below 60: %%.0f)", su.tag, fps, seed);
+                checkf(r.b6_appr_low == 0, why, r.b6_esc_approach, r.b6_appr_low);
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.6: after the first pass inside 10 km a waiting escort is written <= 25 m/s "
+                              "on the whole lap (above: %%.0f; within 9.7 km without the pass noted: %%.0f)", su.tag, fps, seed);
+                checkf(r.b6_post_over == 0 && r.b6_flag_late == 0, why, r.b6_post_over, r.b6_flag_late);
+                b6_pre_frames_all += r.b6_pre_frames_t;
+                b6_approach_all += r.b6_esc_approach;
+                b6_post_all += r.b6_post_frames;
                 for (int cl = 0; cl < 2; ++cl)
                     for (int h = 0; h < 4; ++h) drift_worst[cl][h] = std::fmax(drift_worst[cl][h], r.drift_p95[cl][h]);
                 // stage A's guarantee: the certificate is sound (no capsule contact on any frame a member pair is certified clear)
@@ -11578,6 +11829,11 @@ static void traffic_scenarios() {
         std::printf("traffic T rollout drift, %s plans (the worst run's p95, m): 5 s %.0f, 10 s %.0f, 20 s %.0f, 30 s %.0f -> %.1f m/s at 30 s\n",
                     cl ? "engine-moved" : "steered", drift_worst[cl][0], drift_worst[cl][1], drift_worst[cl][2], drift_worst[cl][3], drift_worst[cl][3] / 30.0);
     std::printf("traffic T: %u measured targets missed (TARGET MISS rows: the departure and mixed streams; stage B)\n", g_crowd_targets_missed - missed0);
+    std::snprintf(why, sizeof why, "traffic T B.6: escorts waiting after their leader's launch pass inside 10 km and lap at 25 m/s (%%.0f frames, %%.0f)");
+    checkf(b6_post_all > 0, why, b6_post_all, 0);
+    std::snprintf(why, sizeof why, "traffic T B.6: escorts before their leader's launch (leader released) in their window (%%.0f frames), the 0x15 "
+                                   "approach after it (%%.0f frames)");
+    checkf(b6_pre_frames_all > 0 && b6_approach_all > 0, why, b6_pre_frames_all, b6_approach_all);
     std::printf("traffic T: the worst frame reached %u decisions and %u rollouts (the bound: %u and %u)\n", worst_dec, worst_roll, gc::kDecisionsPerFrame,
                 gc::kRolloutsPerFrame);
 }
@@ -12776,6 +13032,292 @@ static void b5_link(FakeMem& mem, const SectorBuilder& sb, std::uint32_t o, unsi
     mem.put(o, mem.FakeMem::u32(sb.table + 0xc * bucket));
     mem.put(sb.table + 0xc * bucket, o);
 }
+// ---- B.6 (Run166 span tuning; gate-traffic-controller.md B.6): the lap law, the release window, the head's target ------------------
+static void sb_b6_checks() {
+    char why[256];
+    const float L = gc::kLap, so = gc::kWinOpenS, sx = gc::kWinCloseS, wl = sx - so + L;
+    std::printf("sb B.6 window: lap %.1f m, W [%.1f, %.1f] wrapping, |W| %.1f m (%.0f %%)\n", double(L), double(so), double(sx), double(wl),
+                100.0 * double(wl / L));
+    check(std::fabs(L - 9283.19f) < 1.0f && std::fabs(so - 8235.99f) < 1.0f && std::fabs(sx - 2547.20f) < 1.0f && std::fabs(wl - 3594.4f) < 1.0f,
+          "sb B.6 window: the back turn's last 60 deg, the inner straight and the front turn's first 60 deg (3,594 m of 9,283 m)");
+    // 1. the lap law's branches on the real window (wrapping across s = 0) and on a plain one
+    auto law = [&](float s, std::int32_t dt_ms, bool target = true, bool in_ok = true) { return gc::lap_law(s, so, sx, L, dt_ms, target, in_ok); };
+    const float dwell_back = law(8500.0f, 100000), dwell_str = law(0.0f, 60000);          // in W: 3,330 / 2,547 m left >= 25 T
+    const float on_time = law(5000.0f, 100000), early = law(5000.0f, 200000);              // ds 3,236 m: 32.4 m/s; 16.2 -> 25 (dwell there)
+    const float late = law(3000.0f, 30000);                                                // ds 5,236 m in 30 s: 60
+    const float in_short = law(2000.0f, 60000), in_short2 = law(2000.0f, 200000);          // in W, 547 m left: the next opening (6,236 m)
+    const float extra = law(7800.0f, 200000);                                              // ds 436 m: one extra lap (9,719 m / 200 s)
+    const float tie = law(7800.0f, 161600);                                                // no in-window moment at T: 60 (earlier than 25)
+    const float past_in = law(100.0f, -5000), past_in0 = law(2500.0f, 0), past_out = law(4000.0f, -5000);
+    const float none = law(4000.0f, 50000, false);
+    const float plain_dwell = gc::lap_law(2000.0f, 1000.0f, 3000.0f, L, 20000, true), plain_on = gc::lap_law(500.0f, 1000.0f, 3000.0f, L, 10000, true),
+                plain_past = gc::lap_law(3500.0f, 1000.0f, 3000.0f, L, 0, true);
+    const float off_track = law(0.0f, 60000, true, false);                                 // the projection in W, the ship not: no dwell
+    std::printf("sb B.6 lap law: dwell %.1f / %.1f, on time %.2f, early %.1f, late %.1f, in W short %.1f / %.2f, extra lap %.2f, tie-break %.1f, "
+                "T past in W %.1f / %.1f, out %.1f, no target %.1f, plain window %.1f / %.1f / %.1f, off track %.1f m/s\n",
+                double(dwell_back), double(dwell_str), double(on_time), double(early), double(late), double(in_short), double(in_short2), double(extra),
+                double(tie), double(past_in), double(past_in0), double(past_out), double(none), double(plain_dwell), double(plain_on), double(plain_past),
+                double(off_track));
+    check(dwell_back == gc::kPetalVmin && dwell_str == gc::kPetalVmin && std::fabs(on_time - 3236.0f / 100.0f) < 0.05f && early == gc::kPetalVmin &&
+              late == gc::kPetalVmax,
+          "sb B.6 lap law: dwell at 25 m/s in W (across s = 0 too), at the opening on time, early at 25 (dwelling there), late at 60");
+    check(in_short == gc::kPetalVmax && std::fabs(in_short2 - (L - (2000.0f + L - so)) / 200.0f) < 0.05f &&
+              std::fabs(extra - (436.0f + L) / 200.0f) < 0.1f && tie == gc::kPetalVmax,
+          "sb B.6 lap law: in W without the dwell to T the next opening ahead; one extra lap; no in-window moment at T: 60 m/s first (the "
+          "25 m/s option is later by (ds + |W|) (1/25 - 1/60) and never wins)");
+    check(past_in == gc::kPetalVmin && past_in0 == gc::kPetalVmin && past_out == gc::kPetalVmax && none == gc::kPetalVnom && plain_dwell == gc::kPetalVmin &&
+              std::fabs(plain_on - 50.0f) < 0.01f && plain_past == gc::kPetalVmax && off_track == gc::kPetalVmax,
+          "sb B.6 lap law: T past dwells in W and comes to W at 60; no target 40; a plain window the same; an off-track ship does not dwell");
+    // 2. the law's property over the lap and T <= 300 s: in [25, 60]; in W at T whenever a constant speed in [25, 60] can be (T within reach of
+    //    the opening after next at 25 m/s), else 60 m/s (the earliest in-window moment after T)
+    {
+        unsigned n = 0, out_range = 0, missed = 0, slow = 0, reach = 0, skipped = 0;
+        for (float s = 0.0f; s < L; s += 37.0f)
+            for (int t = 0; t <= 300000; t += 700) {
+                const float T = float(t) * 0.001f, v = law(s, t);
+                ++n;
+                if (!(v >= gc::kPetalVmin && v <= gc::kPetalVmax)) ++out_range;
+                float w = s - so; // the ship past the opening; the windows ahead at [k lap, k lap + |W|] in this frame
+                if (w < 0.0f) w += L;
+                if (T > (2.0f * L - w) / gc::kPetalVmin) { // beyond the opening after next at 25 m/s: the law re-plans later
+                    ++skipped;
+                    continue;
+                }
+                bool feasible = false;
+                for (int k = 0; k < 3; ++k)
+                    feasible = feasible || (w + gc::kPetalVmax * T >= float(k) * L && w + gc::kPetalVmin * T <= float(k) * L + wl);
+                float p = std::fmod(w + v * T, L);
+                if (p < 0.0f) p += L;
+                reach += feasible ? 1u : 0u;
+                if (feasible && !(p <= wl + 0.5f || p >= L - 0.5f)) ++missed;
+                if (!feasible && v != gc::kPetalVmax) ++slow;
+            }
+        std::printf("sb B.6 lap law property: %u (s, T) pairs (s every 37 m, T to 300 s every 0.7 s): %u reachable in W at T, %u not, %u beyond "
+                    "the opening after next; out of [25, 60] %u, reachable but missed %u, unreachable not at 60 m/s %u\n", n, reach, n - reach - skipped,
+                    skipped, out_range, missed, slow);
+        std::snprintf(why, sizeof why, "sb B.6 lap law property: over %u (s, T) the speed in [25, 60] (%%.0f out), in W at T whenever reachable (%%.0f "
+                                       "missed), else 60 m/s (%u not)", n, slow);
+        checkf(out_range == 0 && missed == 0 && slow == 0, why, out_range, missed);
+    }
+    // 3. the release window (B.6 item 3): the ring-0 front turn's first 60 deg added (a1 + R_h sin 60 deg along F), the nose within 60 deg
+    {
+        static gc::Board bd;
+        bd = gc::Board{};
+        gc::Gate* g = ctl_gate(bd, 1000);
+        gc::Member m{};
+        m.zx = -5221.0f;
+        auto at = [&](float z, float deg) {
+            const float r = deg * float(M_PI / 180.0);
+            m.st.x[0] = 0.0f;
+            m.st.x[1] = -3000.0f;
+            m.st.x[2] = z;
+            m.st.rows[2][0] = std::sin(r);
+            m.st.rows[2][1] = 0.0f;
+            m.st.rows[2][2] = std::cos(r);
+            return gc::release_window(*g, m);
+        };
+        const float a1 = m.zx - gc::kLeadM - gc::kPetalRh;
+        const bool front = at(a1 + 700.0f, 0.0f), front_turned = at(a1 + 860.0f, 55.0f), beyond = at(a1 + 900.0f, 0.0f), wide = at(a1 - 500.0f, 65.0f),
+                   straight = at(a1 - 500.0f, 0.0f);
+        check(front && front_turned && !beyond && !wide && straight,
+              "sb B.6 release window: up to a1 + 866 m along F with the nose within 60 deg (a1 + 700 m and a1 + 860 m at 55 deg in, a1 + 900 m "
+              "and 65 deg out; the inner straight in)");
+    }
+    // 4. the head's target (B.6 item 2) through the sequencer: O the funnel's occupant, H the committed head holding its petal out of W. O on
+    //    its order-4 funnel 4 km before its final straight at 50 m/s: T = now + 80 s; O at the hand-over under a slot block 120 s on: T = the
+    //    slot block; O on its final straight: the funnel free, T = now (60 m/s to W)
+    {
+        auto put = [](gc::Board& bd, gc::Gate& g, unsigned k, int slot, const float off[3], std::uint32_t now) -> gc::Member* {
+            double A[3];
+            float Af[3];
+            core::GateGeometry geo;
+            bool valid = false;
+            capital_grid(kCrowdTitan, slot, kGateIdentity, 0.0, A, Af, &geo, &valid);
+            const float x[3] = {geo.X[0] + off[0], geo.X[1] + off[1], geo.X[2] + off[2]}, F[3] = {0, 0, 1};
+            gc::Member* m = ctl_put(bd, g, 0x9000 + 0x100 * k, gc::Role::committed, core::kOrderFlyBefore, x, F, 40.0f, 1092, 583, now);
+            if (!m) return nullptr;
+            for (int i = 0; i < 3; ++i) {
+                m->X[i] = geo.X[i];
+                m->h[i] = geo.h[i];
+            }
+            m->line_ok = 1;
+            m->params.W = 0.157f;
+            m->params.alpha = 0.157f * 0.05f;
+            m->params.a_lin = 10.0f;
+            m->params.v_max = 110.0f;
+            return m;
+        };
+        float got[4] = {-1, -1, -1, -1}, want[4] = {-2, -2, -2, -2};
+        bool ok_setup = true;
+        for (int variant = 0; variant < 4; ++variant) { // 3: the funnel free under a slot block (review 2): T = one nominal funnel (50 m/s
+                                                         // over kLeadM + R_h + rho) before the block, as in variant 1
+            static gc::Board bd;
+            bd = gc::Board{};
+            std::uint32_t now = 400000;
+            gc::Gate* g = ctl_gate(bd, now);
+            const float offO[3] = {0.0f, -2500.0f, -4000.0f}, offH[3] = {2000.0f, -2500.0f, -4000.0f};
+            gc::Member* O = put(bd, *g, 0, 0, offO, now);
+            gc::Member* H = put(bd, *g, 3, 3, offH, now);
+            if (!O || !H) {
+                ok_setup = false;
+                break;
+            }
+            O->enter_ms = H->enter_ms = now;
+            gc::SbStats s0;
+            gc::sb_frame(*g, now - 100, &s0);
+            if (H->petal < 0 || !O->q_ok || !H->q_ok) {
+                ok_setup = false;
+                break;
+            }
+            // H on its petal, out of W (s = 5,000 m: the outer straight), heading along its track
+            gc::PetalGeom pg;
+            gc::petal_geom(*g, unsigned(H->petal), H->zx, &pg);
+            float a, b, da, db;
+            gc::petal_at(pg, 5000.0f, &a, &b, &da, &db);
+            for (int i = 0; i < 3; ++i) {
+                H->st.x[i] = g->G[i] + a * g->F[i] + b * pg.e[i];
+                H->st.rows[2][i] = da * g->F[i] + db * pg.e[i];
+            }
+            H->sb = gc::Sb::hold;
+            H->release_ms = 0;
+            // O on its Lambda_4, 6,500 m (variant 0) or 2,000 m (variant 2) before X, at 50 m/s planned; variant 1 at the hand-over
+            float X[3];
+            gc::lambda4(*g, *O, X);
+            const float along = variant >= 2 ? -2000.0f : -6500.0f;
+            for (int i = 0; i < 3; ++i) {
+                O->st.x[i] = X[i] + along * g->F[i];
+                O->st.rows[2][i] = g->F[i];
+            }
+            O->sb = variant == 1 ? gc::Sb::handover : gc::Sb::funnel;
+            O->st.order = variant == 1 ? core::kOrderNone : core::kOrderFlyBefore;
+            O->release_ms = now - 30000;
+            O->v_sb = 50.0f;
+            g->funnel_ship = O->ship;
+            const std::int32_t off = std::int32_t(1000.0f * (gc::kLeadM + gc::kPetalRh + g->rho) / 50.0f); // one nominal funnel
+            const std::int32_t t_blk = variant == 1 ? 120000 : 90000; // T after the offset: on time, not 25 m/s (1: past O's launch, ~101 s)
+            g->slot_block_ms = variant == 1 || variant == 3 ? now + std::uint32_t(off + t_blk) : 0;
+            for (unsigned k = 0; k < g->n; ++k) {
+                g->m[k].st.ms = g->m[k].decided_ms = now;
+                g->m[k].commit_ms = now;
+            }
+            gc::SbStats st;
+            st.seq_on = true;
+            gc::sb_frame(*g, now, &st);
+            const float d[3] = {H->st.x[0] - g->G[0], H->st.x[1] - g->G[1], H->st.x[2] - g->G[2]};
+            const float s = gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e));
+            const std::int32_t dt = variant == 0 ? 80000 : variant == 1 || variant == 3 ? t_blk : 0;
+            if (variant == 1 && std::int32_t(gc::eta_launch(*g, *O, now) - (now + std::uint32_t(t_blk))) >= 0) ok_setup = false; // the block binds
+            got[variant] = H->v_sb;
+            want[variant] = gc::lap_law(s, so, sx, L, dt, true, gc::release_window(*g, *H));
+            if (st.seq.cand != H->ship || (variant < 2) != (st.seq.busy_by == O->ship)) ok_setup = false;
+        }
+        std::printf("sb B.6 head target: H's lap speed %.2f / %.2f / %.2f / %.2f m/s (the law at T = now + 80 s, a nominal funnel before the slot "
+                    "block, now, the same with the funnel free: %.2f / %.2f / %.2f / %.2f)\n", double(got[0]), double(got[1]), double(got[2]), double(got[3]),
+                    double(want[0]), double(want[1]), double(want[2]), double(want[3]));
+        check(ok_setup && std::fabs(got[0] - want[0]) < 0.01f && std::fabs(got[1] - want[1]) < 0.01f && std::fabs(got[2] - want[2]) < 0.01f &&
+                  std::fabs(got[3] - want[3]) < 0.01f && got[2] == gc::kPetalVmax && got[1] > gc::kPetalVmin + 1.0f && got[1] != got[0] &&
+                  got[3] > gc::kPetalVmin + 1.0f,
+              "sb B.6 head target: the predicted funnel-free moment from the occupant's live along-X position at its planned speed, its predicted "
+              "launch never before one nominal funnel before a slot block, now with the funnel free (the same bound)");
+    }
+}
+// B.6 review 1 and 3: the escort's approach on a far petal; the funnel members' yield order
+static void sb_b6_review_checks() {
+    char why[256];
+    // review 1: a ring-0 petal passes inside the script's 10 km (9.49 km), rings 1-2 do not; an escort whose leader launched keeps the
+    // 0x15 approach at 60 m/s beyond 9.49 km on a far petal even with its pass flag set, and laps at 25 m/s only on a near petal
+    {
+        static gc::Board bd;
+        bd = gc::Board{};
+        const std::uint32_t now = 400000;
+        gc::Gate* g = ctl_gate(bd, now);
+        g->rho = 2874.0f;
+        const float zx = -5221.0f;
+        bool near[3];
+        float dmin[3];
+        for (int k = 0; k < 3; ++k) {
+            gc::PetalGeom pg;
+            gc::petal_geom(*g, unsigned(3 + 7 * k), zx, &pg);
+            near[k] = gc::petal_near(pg);
+            dmin[k] = std::sqrt(pg.a1 * pg.a1 + (pg.rho + gc::kPetalRh) * (pg.rho + gc::kPetalRh)) - gc::kPetalRh;
+        }
+        auto escort = [&](int petal, std::uint8_t flag, float s_lap) {
+            gc::Member m{};
+            m.ship = 0x9100;
+            m.role = gc::Role::escort;
+            m.sb = gc::Sb::hold;
+            m.petal = std::int8_t(petal);
+            m.zx = zx;
+            m.leader = 0x9000;
+            m.key_res = 1;
+            m.res_o8_ms = now - 20000;
+            m.res_until = now + 280000;
+            m.esc_in10 = flag;
+            m.ringed = 1;
+            m.v_sb = 25.0f;
+            m.params.W = 0.157f;
+            gc::PetalGeom pg;
+            gc::petal_geom(*g, unsigned(petal), zx, &pg);
+            float a, b, da, db;
+            gc::petal_at(pg, s_lap, &a, &b, &da, &db);
+            for (int i = 0; i < 3; ++i) {
+                m.st.x[i] = g->G[i] + a * g->F[i] + b * pg.e[i];
+                m.st.rows[2][i] = da * g->F[i] + db * pg.e[i];
+            }
+            return m;
+        };
+        // ring 1 (petal 10) on its inner straight, flag forced: the approach (60 m/s); ring 0 (petal 3) at its inner straight's back end
+        // (10.5 km out) with the flag: the lap (v_sb 25), without it: the approach; escort_settled only on the near petal
+        const gc::Member r1 = escort(10, 1, 750.0f), r0f = escort(3, 1, 0.0f), r0 = escort(3, 0, 0.0f);
+        gc::SbSteer o1, o0f, o0;
+        const bool s1 = gc::sb_steer(*g, r1, r1.st.x, 40.0f, core::kOrderFollow, g->gate, &o1);
+        const bool s0f = gc::sb_steer(*g, r0f, r0f.st.x, 40.0f, core::kOrderFollow, g->gate, &o0f);
+        const bool s0 = gc::sb_steer(*g, r0, r0.st.x, 40.0f, core::kOrderFollow, g->gate, &o0);
+        const bool set1 = gc::escort_settled(*g, r1, now, now), set0 = gc::escort_settled(*g, r0f, now, now);
+        std::printf("sb B.6 review 1: petal's closest approach to G ring 0 %.0f m (near %d), ring 1 %.0f m (%d), ring 2 %.0f m (%d); ring-1 escort "
+                    "after its leader's launch, flag set, %.0f m out: written %.1f m/s (settled %d); ring 0 at %.0f m with the flag %.1f m/s (settled "
+                    "%d), without it %.1f m/s\n", double(dmin[0]), int(near[0]), double(dmin[1]), int(near[1]), double(dmin[2]), int(near[2]),
+                    std::sqrt(double(core::dot3(r1.st.x, r1.st.x))), double(o1.v), int(set1), std::sqrt(double(core::dot3(r0f.st.x, r0f.st.x))),
+                    double(o0f.v), int(set0), double(o0.v));
+        check(near[0] && !near[1] && !near[2] && s1 && o1.v == gc::kPetalVmax && !set1 && s0f && o0f.v == gc::kPetalVmin && set0 && s0 &&
+                  o0.v == gc::kPetalVmax,
+              "sb B.6 review 1: only a petal passing inside 9.49 km takes the 25 m/s lap after the pass; a ring-1 escort whose leader launched "
+              "keeps the 0x15 approach at 60 m/s beyond 9.49 km");
+    }
+    // review 3: two funnel members on order 4 (rank 3) yield by release, the later release yields; no stamp ranks as the later release;
+    // equal stamps or none fall to the sequence order; exactly one of each pair yields
+    {
+        auto mem = [](std::uint32_t ship, std::uint32_t seq, std::uint32_t rel) {
+            gc::Member m{};
+            m.ship = ship;
+            m.role = gc::Role::committed;
+            m.st.order = core::kOrderFlyBefore;
+            m.sb = gc::Sb::funnel;
+            m.seq = seq;
+            m.release_ms = rel;
+            return m;
+        };
+        struct Case {
+            std::uint32_t ra, rb, sa, sb;
+            bool b_yields;
+        };
+        // later release yields whatever the sequence; equal stamps: sequence (a's 2 > b's 1: a yields); a without a stamp yields; both
+        // without: sequence; across the clock's wrap b (0x100) is the later release
+        const Case cases[6] = {{1000, 2000, 1, 2, true}, {1000, 2000, 2, 1, true}, {1000, 1000, 2, 1, false},
+                               {0, 1000, 1, 2, false},   {0, 0, 2, 1, false},     {0xfffff000u, 0x100u, 2, 1, true}};
+        unsigned bad = 0, asym = 0;
+        for (const Case& k : cases) {
+            const gc::Member a = mem(0x9000, k.sa, k.ra), b = mem(0x9100, k.sb, k.rb);
+            const bool ab = gc::yields_to(a, b), ba = gc::yields_to(b, a);
+            if (ab == ba) ++asym;
+            if (ba != k.b_yields) ++bad;
+        }
+        std::printf("sb B.6 review 3: yields_to over 6 funnel pairs: wrong %u, not antisymmetric %u\n", bad, asym);
+        std::snprintf(why, sizeof why, "sb B.6 review 3: funnel members yield by release (later, or none, yields; equal or none: sequence; wrap) "
+                                       "(wrong %%.0f of 6, not antisymmetric %%.0f)");
+        checkf(bad == 0 && asym == 0, why, bad, asym);
+    }
+}
 static void b5_checks() {
     static CheckedMem mem;
     mem = CheckedMem{};
@@ -13033,6 +13575,8 @@ int main(int argc, char** argv) {
         sb_b3_checks(); // B.3 (Run163 fixes)
         b4_checks();    // B.4 (Run164)
         b5_checks();    // B.5 (Run165)
+        sb_b6_checks(); // B.6 (Run166 span tuning)
+        sb_b6_review_checks();
         traffic_scenarios();
         b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
@@ -13080,6 +13624,8 @@ int main(int argc, char** argv) {
         sb_b3_checks(); // B.3 (Run163 fixes)
         b4_checks();    // B.4 (Run164)
         b5_checks();    // B.5 (Run165)
+        sb_b6_checks(); // B.6 (Run166 span tuning)
+        sb_b6_review_checks();
         traffic_scenarios();
         b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
@@ -13132,6 +13678,8 @@ int main(int argc, char** argv) {
     sb_b3_checks(); // B.3 (Run163 fixes)
     b4_checks();    // B.4 (Run164)
     b5_checks();    // B.5 (Run165)
+    sb_b6_checks(); // B.6 (Run166 span tuning)
+    sb_b6_review_checks();
     traffic_scenarios();
     b5_traffic_summary();
     dock_scenarios(); // amendment 18 (docking-approach.md): scenario N

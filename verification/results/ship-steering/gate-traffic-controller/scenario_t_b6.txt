@@ -1,0 +1,56 @@
+== before B.6 (pre-B.6 core 73cea4aa, the B.6 fixture adapted by scenario_t_b6_pre_build.py; --traffic)
+variant      runs | funnel free->release: eps released mean max s | free in window: eps released latency_max s late unreleased deferred | escorts waiting in W (lap): frames >25 v_max; 0x15 approach frames | holders v_sb: escorts mean %@25 %@60; committed mean %@25 %@60
+departures      9 |  69  63   31.2  170.3 |  63  63  0.00 0 0 0 |   148 148  60.0;  21367 |  41.1  10   8;  49.3   1  48
+dep w0.6r       9 |  70  63   29.4  173.6 |  63  63  0.00 0 0 0 |   138 138  60.0;  23660 |  41.5  10  10;  49.9   1  51
+arrivals        9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+arr w0.6r       9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+mixed           9 |  72  36   46.2  170.3 |  36  36  0.00 0 0 0 |     0 0  -1.0;   2209 |  36.1  15   2;  53.8   1  71
+dep refused     9 |  90  63   39.5  170.3 |  63  63  0.00 0 0 0 |   362 362  60.0;  14938 |  40.9  20  17;  47.5   4  40
+run162          9 |  87  54    3.2   23.1 |  54  54  0.00 0 0 0 |     0 0  -1.0;   7110 |  54.3   0  62;  54.9  11  83
+run162 seta     9 |  85  54    3.6   25.9 |  54  54  0.00 0 0 0 |     0 0  -1.0;   1819 |  46.3  13  42;  54.2  12  80
+escorts after the launch (fresh writes): 0x15 approach before the first pass inside 10 km: frames below-60 | lap before it: frames | after it: frames v_max >25 | within 9.7 km without the pass noted
+departures    21367 0 |    148 |      0  -1.0 0 | 148
+dep w0.6r     23660 0 |    138 |      0  -1.0 0 | 138
+arrivals          0 0 |      0 |      0  -1.0 0 | 0
+arr w0.6r         0 0 |      0 |      0  -1.0 0 | 0
+mixed          2209 0 |      0 |      0  -1.0 0 | 56
+dep refused   14938 0 |    489 |      0  -1.0 0 | 498
+run162         7110 0 |      0 |      0  -1.0 0 | 0
+run162 seta    1819 0 |      0 |      0  -1.0 0 | 30
+pre-launch escorts in their window: leader released: frames v_max >25 | leader holding (no target): frames v_max >25 | above the lap law | 0x15 approach
+departures    31919  60.0 16332 |  29984  40.0  29984 | 0 | 0
+dep w0.6r     34255  60.0 18320 |  28903  40.0  28903 | 0 | 0
+arrivals          0  -1.0 0 |      0  -1.0      0 | 0 | 0
+arr w0.6r         0  -1.0 0 |      0  -1.0      0 | 0 | 0
+mixed         24215  60.0 12731 |  29984  40.0  29984 | 0 | 0
+dep refused   64911  60.0 26045 |  29984  40.0  29984 | 0 | 0
+run162        24491  60.0 24491 |      0  -1.0      0 | 0 | 0
+run162 seta    8932  60.0 7844 |      0  -1.0      0 | 0 | 0
+== after B.6 (ship_steering_host_b6.txt)
+variant      runs | funnel free->release: eps released mean max s | free in window: eps released latency_max s late unreleased deferred | escorts waiting in W (lap): frames >25 v_max; 0x15 approach frames | holders v_sb: escorts mean %@25 %@60; committed mean %@25 %@60
+departures      9 |  72  63   25.6  170.3 |  63  63  0.00 0 0 0 |     0 0  -1.0;  23206 |  34.1  26   0;  42.4  14  26
+dep w0.6r       9 |  72  63   24.6  173.6 |  63  63  0.00 0 0 0 |     0 0  -1.0;  24284 |  34.0  26   0;  42.4  17  26
+arrivals        9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+arr w0.6r       9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+mixed           9 |  36  36   41.8  170.3 |  36  36  0.00 0 0 0 |     0 0  -1.0;   8710 |  32.8  37   0;  43.5  27  41
+dep refused     9 |  81  63   24.0  170.3 |  63  63  0.00 0 0 0 |     0 0  -1.0;   8957 |  32.2  42   0;  40.3  23  20
+run162          9 |  80  54    1.3   11.5 |  54  54  0.00 0 0 0 |     0 0  -1.0;  23274 |  25.0 100   0;  43.4  44  50
+run162 seta     9 |  80  54    2.1   19.3 |  54  54  0.00 0 0 0 |     0 0  -1.0;   5635 |  25.0 100   0;  43.9  43  52
+escorts after the launch (fresh writes): 0x15 approach before the first pass inside 10 km: frames below-60 | lap before it: frames | after it: frames v_max >25 | within 9.7 km without the pass noted
+departures    23206 0 |      0 |   1856  25.0 0 | 0
+dep w0.6r     24284 0 |      0 |   1985  25.0 0 | 0
+arrivals          0 0 |      0 |      0  -1.0 0 | 0
+arr w0.6r         0 0 |      0 |      0  -1.0 0 | 0
+mixed          8710 0 |      0 |   1470  25.0 0 | 0
+dep refused    8957 0 |      0 |   1749  25.0 0 | 0
+run162        23274 0 |      0 |   2958  25.0 0 | 0
+run162 seta    5635 0 |      0 |    478  25.0 0 | 0
+pre-launch escorts in their window: leader released: frames v_max >25 | leader holding (no target): frames v_max >25 | above the lap law | 0x15 approach
+departures    16497  25.0 0 |  29984  40.0  29984 | 0 | 0
+dep w0.6r     18801  25.0 0 |  28903  40.0  28903 | 0 | 0
+arrivals          0  -1.0 0 |      0  -1.0      0 | 0 | 0
+arr w0.6r         0  -1.0 0 |      0  -1.0      0 | 0 | 0
+mixed         11094  25.0 0 |  29984  40.0  29984 | 0 | 0
+dep refused   51347  25.0 0 |  29984  40.0  29984 | 0 | 0
+run162        11706  25.0 0 |      0  -1.0      0 | 0 | 0
+run162 seta    7823  25.0 0 |      0  -1.0      0 | 0 | 0

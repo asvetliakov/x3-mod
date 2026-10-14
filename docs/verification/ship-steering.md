@@ -2197,6 +2197,72 @@ timed). The entering happens in the walk, the proofs at the boundary. Site B add
 `ctl_read_state` adds three reads per 100 ms per member. The fixture's controller cost lines are unchanged. Static: `LiveSet`
 81,952 B, `Member` +12 B.
 
+### B.6 Span tuning (2026-10-14, Opus 5.5; design and implementation [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) §B.6)
+
+The lap law (`gc::lap_law`), the head's target from the occupant, the escorts' past target clamped to now and the release window
+through the front turn's first 60° are implemented with the deviations listed under §B.6 **Implementation** (among them a funnel-order
+tie-break in stage A's `yields_to` and the fixture's 0x15 escort target), plus the coordinator's escort amendment (§B.6 item 1: after
+the leader's launch the 60 m/s approach only until the first pass inside 10 km, then 25 m/s over the whole lap). Fixture, measured:
+full 10,178 / `--capital` 4,520 / seq-off 10,088, 0 failures (from 9,807 / 4,149 / 9,717; +371 each: 9 `sb B.6` units,
+5 scenario T assertions × 72 runs, 2 coverage checks). The review fixes (Opus and Fable, 2026-10-14) are in this state: the
+25 m/s escort phase only on a petal passing inside 9.49 km, a slot block bounding the head's target at one nominal funnel before it
+(the coordinator's decision), an explicit
+`yields_to` order for missing release stamps, and the before build described exactly
+([`scenario_t_b6_pre_build.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b6_pre_build.py)).
+The units:
+* every lap-law branch;
+* a sweep over 107,679 (s, T) pairs with T ≤ 300 s: the ship is in W at T whenever a constant 25–60 m/s can put it there (89,748), and
+  at 60 m/s otherwise. Beyond one extra lap the law returns 25 m/s and re-plans each frame; the reviewer's closed-loop port at 0.5 s
+  and 2 s steps had 0 misses of 845 feasible pairs up to T = 900 s (the reviewer's measurement, not re-run here);
+* the release window;
+* the head's target through `sb_frame`: the lap speed matches the law at T = now + 80 s (occupant on its funnel, 40.45 m/s), at one
+  nominal funnel before a slot block (occupant at the hand-over, 26.97 m/s), at now (funnel free, 60 m/s) and at one nominal funnel
+  before a slot block with the funnel free (35.96 m/s);
+* a ring-1 escort whose leader launched, its pass flag forced: written 60.0 m/s 16.5 km out and not settled. The petals' closest
+  approach to G is 8,543 m on ring 0 (near), 14,997 m on ring 1 and 21,655 m on ring 2 (far). Ring 0 at 10.6 km with the flag is
+  written 25.0 m/s, without it 60.0 m/s;
+* `yields_to` over 6 funnel pairs (later release, equal stamps, no stamp, both without, the clock's wrap): 0 wrong, 0 not
+  antisymmetric. Scenario T, per variant, before (pre-B.6 core `73cea4aa`, the same fixture) → after, measured
+([`scenario_t_b6.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b6.py) →
+[`scenario_t_b6.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b6.txt)). Escort figures count frames
+with a fresh write (the model's think ticks), departures unless named:
+
+* A head whose funnel frees inside its window is released on that frame in both (333 of 333 episodes, latency 0.00 s, bound
+  kFeasMs + the step).
+* The head's mean wait from the funnel freeing to its release, out of window included:
+  * departures 31.2 → 25.6 s, dep w0.6r 29.4 → 24.6 s;
+  * dep refused 39.5 → 24.0 s, run162 3.2 → 1.3 s, run162 seta 3.6 → 2.1 s.
+  * mixed 46.2 → 41.8 s. It is the variant with a capital arrival's slot block; with the block itself as the free-funnel target it was
+    46.2 s (max 184.1 s), with the nominal-funnel offset 41.8 s (max 170.3 s).
+  * The per-variant maximum (163.6–173.6 s) is unchanged: it is the first head starting ahead of its petal (inferred).
+* Escorts after their leader's launch, by branch:
+  * 0x15 approach before the first pass inside 10 km: 21,367 → 23,206 frames, all at 60 m/s (0 below).
+  * Lap before that pass: 148 frames, all at 60 m/s → 0 frames (the escorts enter 10 km through the approach).
+  * After the pass: none before (the old core has no such phase) → 1,856 frames, at most 25.0 m/s. All variants together: 10,496
+    frames, 0 above 25 m/s.
+  * 0 frames within 9.7 km without the pass noted.
+* Escorts before their leader's launch, inside their window:
+  * leader released (target its predicted launch + the switch): 31,919 frames, 16,332 above 25 m/s, max 60 → 16,497 frames, 0 above;
+  * 0 frames above the lap law at their target and 0 in the approach, in every variant;
+  * leader still holding (no target): 29,984 frames at the nominal 40 m/s, before and after.
+* The escorts' `v_sb` while holding (all phases):
+  * departures mean 41.1 → 34.1 m/s (at 60: 8 → 0 %);
+  * run162 54.3 → 25.0 m/s (100 % at 25).
+* The committed holders' mean `v_sb`: departures 49.3 → 42.4 m/s.
+* Kept, over 72 runs: 0 frames of a holder below 25 m/s, 0 order-4 ends outside X, and the closest holder capsule gap 196 m (201
+  before; margin 50 m). The SETA and run162 variants stay green.
+
+In scenario T the escorts get their order 4 at the script's first pass after entering 10 km, so the 25 m/s phase is short (1,856
+frames against 23,206 in the approach). In flight the script waits 270–520 s, which makes it the longer phase (inferred). Outputs:
+[`ship_steering_host_b6.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b6.txt),
+[`ship_steering_host_b6_capital.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b6_capital.txt),
+pre-B.6 rows
+[`ship_steering_host_b6_pre_rows.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b6_pre_rows.txt).
+`test_ship_steering test_ctl_boundary_reads`: 5 OK. The i686 MinGW probe shows the same x87 set in `sb_frame` before and after
+(4 pre-existing float-to-64-bit conversions), so B.6 adds no x87. The DLL is not built: `check_no_x87.py` stays with the candidate
+build. Cost: the fixture's sequencer bench is 16.4 µs per frame before and 16.4–18.6 µs after, within its noise. Not reviewed, not
+flown, not installed.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

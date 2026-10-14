@@ -1820,6 +1820,16 @@ funnel busy (the predecessor in the funnel, docking or launching), 165.5 s a hea
      (in W again at `(ds + |W|) / 25 + (lap − |W|) / 60`) against 60 m/s (`(ds + lap) / 60`), 25 m/s on a tie.
    * T in the past (an escort whose order 4 may come at any moment, a head whose funnel is free): T = now, so the ship dwells at
      25 m/s in W and otherwise comes to W at 60 m/s. No target: 40 m/s, as before.
+   * **Amendment (coordinator, 2026-10-14): an escort whose leader has launched (`res_until` set)** flies the 0x15 approach at 60 m/s
+     only until its first pass inside the script's order-4 radius of 10 km since `res_until` was set (ship-navigation-ai.md §10.11;
+     the per-member flag `esc_in10`, cleared when `res_until` is set). From then on, with its target past, it flies 25 m/s over the
+     whole lap, not only in W (on a petal that passes inside 10 km; otherwise the approach stays: Implementation). A committed head keeps "60 m/s to W, 25 m/s in W" for T = now. An escort whose leader still holds keeps
+     the nominal 40 m/s (no target). Rationale:
+     * Run166's 721 game s of escorts at 60 m/s were all after the leader's launch: the approach plus "60 m/s to W". The script's
+       order 4 came on its own schedule (270–520 game s) whatever speed was flown.
+     * 25 m/s is the calmest holding, with a third of the turning per game second. The escort still passes inside 10 km once per lap
+       (the front of its inner straight), which the script's ~33 s re-issue catches.
+     * The expected hand-off delay per lap is similar at both speeds (inferred).
 2. **The head's target is the predicted funnel-free moment,** not `t_free` minus a nominal funnel. While the occupant is a funnel
    member on order 4: `now + max(0, −s_along − 2.5 km) / max(v_occ, 10 m/s)` from its live along-X position and planned speed
    (`v_sb`), re-evaluated every frame (the prediction converges as the moment nears; 4059's `x_pred`-based estimate drifted 62 s).
@@ -1846,3 +1856,54 @@ committed inside W within |W| / 25 s of the free moment; escort lap speed 25 m/s
 **Open (separate defects from Run166):** 5748 crossed X at 19.4° after a vertical avoidance detour against arrival 7834 on its
 final straight (release → X 168 s against 84–99 s); the arrival-side corridor clause (D.4) should cover a funnel member on its
 final straight against an arrival of its own gate. Logged in `ship-steering-scenario-audit.md` "Later".
+
+**Implementation.** Only the deviations from the text above are listed here (`ship_gate_ctl_core.h`; measured in
+`docs/verification/ship-steering.md` "B.6 Span tuning").
+
+* **The window's bound along F is `a1 + R_h sin 60°` (866 m, `kReleaseFrontM`), not `a1 + R_h (1 − cos 60°)`.** The 500 m figure is
+  the turn's lateral offset at 60°. Used along F it ends the window 30° into the front turn (3,071 m), against the stated 60°, 1,047 m
+  and 3,594 m. `release_window()` is shared by the release, the head-skip timers and the go-around rejoin.
+* **For a ship in W, `ds` is the arc to the next opening ahead (`lap − w`), not 0.** With `ds = 0`, the second branch returns
+  25 m/s for a ship that the first branch has just shown leaves W before T. With the arc, the law keeps its stated rule: the
+  earliest in-window moment at or after T. A sweep over (s, T) checks it for T ≤ 300 s. Beyond one extra lap the law returns 25 m/s
+  and re-plans each frame. The second review's closed-loop port at 0.5 s and 2 s steps had 0 misses of 845 feasible pairs up to
+  T = 900 s (the reviewer's figure).
+* **The dwell also needs the release window itself (z and nose).** A holder off its track projects into W. Scenario T's first head
+  starts 6.2 km out, ahead of its petal, and projects into the front turn (inferred from its start point). Its dwell at 25 m/s delayed the first release from
+  163.6 to 233.7 s, and "dep refused" then reached a capsule contact of −410 m.
+* **The late tie-break always returns 60 m/s.** The 25 m/s option's next in-window moment is later by
+  `(ds + |W|)(1/25 − 1/60) > 0`, so it cannot win. The branch is implemented as written.
+* **The head's target is the latest predicted free moment over the busy occupants.** An occupant at the hand-over or on order 5 / 8
+  uses its own `eta_launch`, its predicted launch (equal to `t_after(f) − kFunnelGapMs` when it is `f`). With the funnel free, T = now.
+  A slot block bounds the target in both cases at one nominal funnel before it: `slot_block_ms − (kLeadM + R_h + rho) / 50 m/s`,
+  the offset the pre-B.6 `t_next` used (review 2, the coordinator's decision). A capital arrival's block lasts up to 61 s. The head
+  released then passes the timing gate (dX / 25), and the funnel's speed shaping paces it to `t_free`. Aiming at the block itself
+  gave back the gain in scenario T "mixed": a 46.2 s mean wait against 41.8 s with the offset. A funnel
+  occupant's speed in its predicted free moment is last frame's `v_sb` (the speed loop runs after the busy scan). The prediction is
+  re-evaluated every frame and converges frame by frame.
+* **Stage A's `yields_to` (outside the sequencer) now orders two funnel members by release, the later release yielding, because
+  B.6's prompt release left the ship ahead as the yielder by entry order and scenario T "mixed" 60 fps seed 7 failed (1 member
+  evasion, 16 unsuppressed order-0 gap warns).**
+  There the head (the lone M1, entered at 60 s) was ahead of an escort that entered earlier and committed later, and as the yielder
+  it could not clear the pair. A member without a release stamp ranks as the later release; equal stamps or none fall to the
+  sequence order; each pair has exactly one yielder (unit). Site E suppresses on the verdicts `decide()` writes with this one
+  function, so the rollout sweep and site E agree.
+* **Escorts after the leader's launch follow the amendment in item 1.**
+  * `sb_steer`'s 0x15 approach beyond 9.49 km (D.12) requires `res_until` (set at the leader's order 8) and now also `!esc_in10`.
+    `sb_frame` sets `esc_in10` from the member state within 10 km of the gate, and clears it when `res_until` is set.
+  * Once the escort has passed inside 10 km with its target past, its lap speed is 25 m/s (`escort_settled`). A head still uses the
+    law.
+  * **Only on a petal that passes inside the script's radius (review 1).** The petal's closest point to G is on its front turn, toward
+    G from the turn's centre `(a1, rho + R_h)`; it must lie within 9.49 km (`petal_near`), the approach's own threshold. Otherwise the
+    flag is never set and the approach stays (the pre-B.6 behaviour): 60 m/s whenever beyond 9.49 km, the lap law inside. In practice
+    this is ring 0: rings 1–2 lap wholly beyond 10 km (closest approach 15.0 / 21.7 km in the unit's geometry). A gate with
+    `r_gate` above about 2.3 km pushes even ring 0's front past 10 km, which is why the test is geometric, not by ring index. A
+    ring-1 escort with the flag forced is written 60 m/s 16.5 km out (unit).
+  * Before the launch, an escort on 0x14 / 0x15 flies the lap law at its target: the leader's predicted launch + the switch once the
+    leader is released, and the nominal 40 m/s while the leader holds.
+  * In scenario T, escorts reach 10 km through the approach and get their order 4 at the script's first 5 s pass after that (the
+    departure convoys' delay after the launch is 4.2–4.5 s), so the 25 m/s phase is short there. In flight the script's 270–520 s wait makes it the longer phase
+    (inferred).
+* **Fixture: the escort's 0x15 target after its leader's launch is now the gate.** The DLL's live f+0x224 is the gate there; before
+  B.6 the fixture passed 0, so stage B never steered those escorts in scenario T.
+* `kEscortStageS` and `kReleaseWindowM` are removed (unused).

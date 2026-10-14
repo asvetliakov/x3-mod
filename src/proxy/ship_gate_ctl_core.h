@@ -66,8 +66,8 @@ constexpr float kChordSlackM = 150.0f; // the final line crosses the grid sphere
 constexpr float kTrackM = 100.0f, kFanMarginM = 50.0f, kSmallMaxM = 140.0f; // the trigger's tracking allowance; the upper fan's margin
 constexpr float kFanLowR = 0.38890873f; // the upper small-arrival fan's lowest U (0.55 r cos 45 deg)
 constexpr float kSin3 = 0.05233596f;  // the hull's cross-section with the nose 3 deg off F: w + (L - w) sin 3 deg
-constexpr float kReleaseWindowM = 900.0f; // a holder is released on the last kReleaseWindowM of its inner straight (heading +F)
-constexpr float kReleaseNoseCos = 0.5f;    // ... or anywhere behind it with the nose within 60 deg of F
+constexpr float kReleaseNoseCos = 0.5f;    // a holder is released with the nose within 60 deg of F (the release window, B.6 item 3) ...
+constexpr float kReleaseFrontM = 866.02540f; // ... behind the ring-0 front turn's 60-deg point: a1 + R_h sin 60 deg along F
 constexpr float kFinalAlongM = 2500.0f, kFinalLatM = 150.0f; // the funnel's final straight (the next release may come)
 constexpr float kGuardM = 300.0f;     // the grid sphere guard (D.2.4): a holder never comes within 0.75 r + 300 m (+ its braking) of A
 constexpr std::uint32_t kFunnelGapMs = 2000;    // the funnel's gap after a launch (the KC's hand-over frames)
@@ -83,8 +83,6 @@ constexpr std::uint32_t kGapEscortMs = 3000; // the escort template's wait (2-3 
 constexpr std::uint32_t kFeasMs = 1000;
 constexpr std::uint32_t kHeadSkipMs = 60000;      // a head of the sequence deferred this long with the funnel free re-queues at the tail          // the funnel's feasibility prediction at most once per second per ship
 constexpr std::uint32_t kEscortSwitchMs = 4500;  // an escort's first order-4 chance after its leader's launch (D.12: 2-3 s wait + overhead)
-constexpr float kEscortStageS = 300.0f; // an escort's lap brings it to this point of its inner straight (beyond 10 km) at the script's
-                                        // first order-4 chance: its 0x15 legs then carry it forward, heading +F, inside 10 km (D.12)
 constexpr float kEscortSwitchM = 10000.0f;       // ... within 10 km of the gate (Mayhem.Task.Move, D.12)
 // B.2 (Run162): the arrival to the ring, the release window's horizon, the funnel's last stretch
 constexpr float kInboundM = 2000.0f;     // inbound while farther than the ring's extent + 2 km from the gate
@@ -172,6 +170,7 @@ struct Member {
     std::uint8_t key_res = 0, q_ok = 0, refused = 0;
     std::uint8_t ringed = 0;    // B.2: reached its petal ring (within the ring's extent) since it last flew inbound (the head skip's precondition)
     std::uint8_t unburst = 0;   // B.2 review B1: re-keyed by a head skip: out of its entry burst (the distance order no longer applies)
+    std::uint8_t esc_in10 = 0;  // B.6: an escort whose leader launched has come within kEscortSwitchM of the gate since res_until was set
     std::uint32_t burst_key = 0; // B.2 review B1: the lowest key of its entry burst (committed, no reservation, entered within kBurstMs of
                                  // another such member; 0 none), computed per frame by burst_keys()
     std::uint16_t go_arounds = 0;
@@ -755,6 +754,10 @@ __attribute__((always_inline)) inline void line_carrot(const float X[3], const f
 // front turn's foremost point at zx - kLeadM - k kRingStepM (a, b: the components of p - G along F and e).
 constexpr float kRingStepM = kPetalSh + 2.0f * kPetalRh + 2.0f * 1500.0f + 300.0f; // D_ring = S_h + 2 R_h + 2 L_max + 300 m (L_max 1.5 km)
 constexpr float kLap = 2.0f * kPetalSh + 2.0f * sc::kPi * kPetalRh;
+// B.6 item 3: the release window on the lap (petal_at's arc length): the back turn's last 60 deg, the inner straight and the front turn's
+// first 60 deg (3,594 m of 9,283 m), wrapping across s = 0
+constexpr float kWinTurnM = kPetalRh * sc::kPi / 3.0f;
+constexpr float kWinOpenS = kLap - kWinTurnM, kWinCloseS = kPetalSh + kWinTurnM;
 struct PetalGeom {
     float e[3] = {0, 0, 0}, n[3] = {0, 0, 0}; // the radial direction and the plane's normal F x e
     float rho = 0, a1 = 0, a0 = 0;            // the ring radius; the straights' front and back ends along F
@@ -770,6 +773,13 @@ inline void petal_geom(const Gate& g, unsigned p, float zx, PetalGeom* pg) noexc
     pg->rho = g.rho;
     pg->a1 = zx - kLeadM - float(k) * kRingStepM - kPetalRh;
     pg->a0 = pg->a1 - kPetalSh;
+}
+// B.6 (review 1): the petal passes inside the script's order-4 radius: its closest point to G (on the front turn, toward G from the turn's
+// centre (a1, rho + R_h)) within 9.49 km, the 0x15 approach's own threshold (0.9 kEscortSwitchM^2). Ring 0 in practice; rings 1-2 lap
+// wholly beyond it (a1 about -13.7 km and farther).
+__attribute__((always_inline)) inline bool petal_near(const PetalGeom& pg) noexcept {
+    const float bc = pg.rho + kPetalRh, dc = sc::sqrt_ss(pg.a1 * pg.a1 + bc * bc) - kPetalRh;
+    return dc * dc <= kEscortSwitchM * kEscortSwitchM * 0.9f;
 }
 // The racetrack's point at arc length s (wrapped into [0, lap)): (a, b) and its unit direction (da, db). s = 0 at the inner straight's
 // back end; the inner straight, the front turn, the outer straight, the back turn.
@@ -921,10 +931,17 @@ inline unsigned rank(const Member& m) noexcept {
     if (o == sc::kOrderNone || o == sc::kOrderRotate || o == sc::kOrderDock || o == sc::kOrderWarpAway) return 2;
     return 3;
 }
-// Whether a yields to b: the lower rank yields; within a rank the higher sequence number.
+// Whether a yields to b: the lower rank yields; within a rank two funnel members by release (B.6), else the higher sequence number.
 inline bool yields_to(const Member& a, const Member& b) noexcept {
     const unsigned ra = rank(a), rb = rank(b);
     if (ra != rb) return ra > rb;
+    // B.6: two funnel members go in release order, the later release yields (a head released before an escort that entered earlier and
+    // committed later is ahead of it on the final: by entry it would yield to the ship behind it and cannot clear the pair). A member
+    // without a release stamp ranks as the later release; two without one, or equal stamps, fall to the sequence order
+    if (a.sb == Sb::funnel && b.sb == Sb::funnel && a.release_ms != b.release_ms) {
+        if (!a.release_ms || !b.release_ms) return !a.release_ms;
+        return std::int32_t(a.release_ms - b.release_ms) > 0;
+    }
     if (a.seq != b.seq) return a.seq > b.seq;
     return a.ship > b.ship;
 }
@@ -2081,6 +2098,13 @@ __attribute__((always_inline)) inline bool past_last_stretch(const Gate& g, cons
     const float r = kLastStretchR * g.r_gate, along = sc::dot3(d, g.F), d2 = sc::dot3(d, d);
     return d2 - along * along <= r * r && (along > 0.0f || d2 <= r * r);
 }
+// B.6 item 3: the release window (without the predictor's horizon): behind the ring-0 front turn's 60-deg point along F (the ring-0
+// straights' front end a1 = zx - kLeadM - R_h, plus R_h sin 60 deg; ring k > 0 lies wholly behind it) with the nose within 60 deg of F
+__attribute__((always_inline)) inline bool release_window(const Gate& g, const Member& m) noexcept {
+    float r, u, z;
+    sb_local(g, m.st.x, &r, &u, &z);
+    return z <= m.zx - kLeadM - kPetalRh + kReleaseFrontM + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos;
+}
 // B.2 review N2, N3: the funnel is occupied by another committed member that is live and decided within kOccupyDecisionMs: one released
 // and not yet launched (funnel, hand-over, order 5, order 8 until its end). *busy_by: that member. (The release rule's final-straight
 // exception is the caller's.)
@@ -2138,19 +2162,50 @@ __attribute__((always_inline)) inline float funnel_feasible(const Gate& g, const
     if (t_x) *t_x = t1;
     return best1;
 }
-// The holder's lap speed so that it reaches the middle of its release window at t_rel (25..60 m/s; nominal without a target).
-__attribute__((always_inline)) inline float lap_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel, float s_target) noexcept {
+// B.6 (coordinator's amendment, review 1): an escort whose leader launched, after its first pass inside the script's 10 km on a petal
+// that passes inside it, with its lap target past: 25 m/s over the whole lap
+__attribute__((always_inline)) inline bool escort_settled(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel) noexcept {
+    if (m.role != Role::escort || !m.res_until || !m.esc_in10 || m.petal < 0 || !t_rel || std::int32_t(t_rel - now) > 0) return false;
+    PetalGeom pg;
+    petal_geom(g, unsigned(m.petal), m.zx, &pg);
+    return petal_near(pg);
+}
+// B.6 item 1: the lap law, the earliest in-window moment at or after the target T (in [25, 60] m/s). s: the ship on the lap [0, lap);
+// the window [s_open, s_close] (wrapping across 0 when s_open > s_close); dt_ms: T - now (<= 0: T past, T = now); target false: no
+// target (the nominal 40 m/s); in_ok false: the ship off its track is not in its release window whatever its projection (no dwell). ds is
+// the arc to the next window opening ahead (in W: the one after this window; B.6 Implementation).
+__attribute__((always_inline)) inline float lap_law(float s, float s_open, float s_close, float lap, std::int32_t dt_ms, bool target,
+                                                    bool in_ok = true) noexcept {
+    if (!target) return kPetalVnom;
+    float wl = s_close - s_open; // |W|
+    if (wl < 0.0f) wl += lap;
+    float w = s - s_open; // the ship past the opening (mod lap)
+    if (w < 0.0f) w += lap;
+    if (w >= lap) w -= lap;
+    const float T = dt_ms > 0 ? float(dt_ms) * 0.001f : 0.0f, ds = lap - w;
+    if (in_ok && w <= wl && wl - w >= kPetalVmin * T) return kPetalVmin; // in W and still in W at T at 25 m/s: dwell
+    if (ds + wl >= kPetalVmin * T) {                             // the next window reached by T at 25 m/s: at its opening at T (or dwelling)
+        if (ds >= kPetalVmax * T) return kPetalVmax;              // ... or late: there at 60 m/s (T past included)
+        const float v = ds / T;
+        return v < kPetalVmin ? kPetalVmin : v;
+    }
+    if (ds + lap <= kPetalVmax * T) { // one extra lap fits: the opening after next at T
+        const float v = (ds + lap) / T;
+        return v < kPetalVmin ? kPetalVmin : v > kPetalVmax ? kPetalVmax : v;
+    }
+    // no in-window moment at T: the earlier of the next in-window moments, 25 m/s now (through the next window, then 60) against 60 m/s
+    const float t25 = (ds + wl) / kPetalVmin + (lap - wl) / kPetalVmax, t60 = (ds + lap) / kPetalVmax;
+    return t25 <= t60 ? kPetalVmin : kPetalVmax;
+}
+// The holder's lap speed toward its release window at t_rel (B.6: the lap law on the petal; nominal without a target). The dwell needs the
+// release window itself (release_window: an off-track holder, e.g. one still joining its petal from ahead of it, projects into W).
+__attribute__((always_inline)) inline float lap_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel) noexcept {
     if (!t_rel || m.petal < 0) return kPetalVnom;
     PetalGeom pg;
     petal_geom(g, unsigned(m.petal), m.zx, &pg);
     const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
     const float s = petal_project(pg, sc::dot3(d, g.F), sc::dot3(d, pg.e));
-    float ds = s_target - s;
-    while (ds < 0.0f) ds += kLap;
-    const std::int32_t dt = std::int32_t(t_rel - now);
-    if (dt <= 100) return kPetalVmax;
-    const float v = ds / (float(dt) * 0.001f);
-    return v < kPetalVmin ? kPetalVmin : v > kPetalVmax ? kPetalVmax : v;
+    return lap_law(s, kWinOpenS, kWinCloseS, kLap, std::int32_t(t_rel - now), true, release_window(g, m));
 }
 // One frame of the gate's stage B (the frame boundary, after the decisions). The arena is the board: no allocation.
 inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
@@ -2225,6 +2280,13 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             if (li >= 0 && g.m[li].role == Role::committed && g.m[li].sb == Sb::launch && g.m[li].o8_ms && !m.res_until) {
                 m.res_o8_ms = g.m[li].o8_ms;
                 m.res_until = g.m[li].o8_ms + kReserveMs; // the leader's launch: the reservation holds kReserveMs (300 s)
+                m.esc_in10 = 0;
+            }
+            if (m.res_until && !m.esc_in10 && m.petal >= 0) { // B.6: the first pass inside the script's order-4 radius (ship-navigation-ai.md
+                PetalGeom pg;                                  // section 10.11), on a petal that passes inside it (review 1)
+                petal_geom(g, unsigned(m.petal), m.zx, &pg);
+                const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
+                if (petal_near(pg) && sc::dot3(d, d) <= kEscortSwitchM * kEscortSwitchM) m.esc_in10 = 1;
             }
             if (m.res_until && m.key_res) { // B.3 item 4: refreshed while on 0x15 to the gate or within kReserveKeepM of it
                 const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
@@ -2269,10 +2331,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                         const float dx[3] = {m.st.x[0] - X[0], m.st.x[1] - X[1], m.st.x[2] - X[2]};
                         if (past_last_stretch(g, m)) rejoin = sc::dot3(dx, g.F) < sc::kGateCrossFraction * g.r_gate;
                         else {
-                            float r, u, z;
-                            sb_local(g, m.st.x, &r, &u, &z);
-                            const bool window = z <= m.zx - kLeadM - kPetalRh + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos &&
-                                                dist_x(g, m) <= m.params.v_max * kHorizonS;
+                            const bool window = release_window(g, m) && dist_x(g, m) <= m.params.v_max * kHorizonS; // B.6 item 3
                             if (window) {
                                 predicted = true;
                                 rj_v = funnel_feasible(g, m, st ? &st->predictions : nullptr, &rj_t);
@@ -2392,20 +2451,38 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     // or past P2: two S-curves never share the funnel (D.2.3)
     // review (D.2.6, Fable 1): any committed member waiting at X (the hand-over) or on order 5 / 8; B.2: any committed funnel member not yet
     // on its final straight (the last released one, or a ship re-committed past the last stretch)
+    // B.6 item 2: t_busy, the predicted funnel-free moment (the latest over the busy occupants): an order-4 funnel member reaches its final
+    // straight from its live along-X position at its planned speed (>= 10 m/s); one at the hand-over or on order 5 / 8 ends its order 8
+    // (its predicted launch). A slot block bounds the target at one nominal funnel (50 m/s over the lead, R_h and rho) before it: the head
+    // released then passes the timing gate and the funnel's shaping paces it to t_free (the coordinator's decision)
+    const std::uint32_t t_slot = g.slot_block_ms ? g.slot_block_ms - std::uint32_t(std::int32_t(1000.0f * (kLeadM + kPetalRh + g.rho) / 50.0f)) : 0u;
     bool funnel_busy = false;
-    std::uint32_t busy_by = 0;
-    for (unsigned i = 0; i < g.n && !funnel_busy; ++i) { // review N3: only live members decided within 5 s (occupant())
+    std::uint32_t busy_by = 0, t_busy = 0;
+    for (unsigned i = 0; i < g.n; ++i) { // review N3: only live members decided within 5 s (occupant())
         const Member& o = g.m[i];
         if (!occupant(g, o, now)) continue;
-        funnel_busy = o.sb != Sb::funnel;
-        if (!funnel_busy) {
+        bool busy = o.sb != Sb::funnel;
+        std::uint32_t t_o = 0;
+        if (busy) {
+            t_o = eta_launch(g, o, now);
+            if (g.slot_block_ms && std::int32_t(t_slot - t_o) > 0) t_o = t_slot;
+        } else {
             float X[3];
             lambda4(g, o, X);
             const float d[3] = {o.st.x[0] - X[0], o.st.x[1] - X[1], o.st.x[2] - X[2]};
             const float s_along = sc::dot3(d, g.F), e2 = sc::dot3(d, d) - s_along * s_along;
-            funnel_busy = !(s_along > -kFinalAlongM && e2 < kFinalLatM * kFinalLatM);
+            busy = !(s_along > -kFinalAlongM && e2 < kFinalLatM * kFinalLatM);
+            if (busy) {
+                float v = o.v_sb > 0.0f ? o.v_sb : o.v_feas > 0.0f ? o.v_feas : o.st.v;
+                if (v < kYieldFloorMs) v = kYieldFloorMs;
+                const float rest = -s_along - kFinalAlongM;
+                t_o = now + (rest > 0.0f ? std::uint32_t(std::int32_t(1000.0f * rest / v)) : 0u); // (cvttss2si: <= 2^31 ms; no x87)
+            }
         }
-        if (funnel_busy) busy_by = o.ship;
+        if (!busy) continue;
+        if (!funnel_busy) busy_by = o.ship;
+        if (!funnel_busy || std::int32_t(t_o - t_busy) > 0) t_busy = t_o;
+        funnel_busy = true;
     }
     for (unsigned i = 0; i < g.n; ++i) // the tie-break's stamps belong to the head only, and run only while the funnel is free
         if (int(i) != c || funnel_busy) g.m[i].head_ms = g.m[i].infeas_ms = 0;
@@ -2435,13 +2512,10 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     if (c >= 0 && g.m[c].role == Role::committed && !funnel_busy) {
         Member& m = g.m[c];
         const std::uint32_t t_free = t_after(f);
-        float r, u, z;
-        sb_local(g, m.st.x, &r, &u, &z);
-        const float a1 = m.zx - kLeadM - kPetalRh; // the ring-0 straights' front end
         const float dX = dist_x(g, m);
-        // behind the petal's straights, heading within 60 deg of F (no U-turn in the funnel), within the predictor's horizon (B.2: dX <=
-        // v_max * 256 s; an inbound ship is no candidate); the prediction decides the rest
-        const bool window = z <= a1 + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos && dX <= m.params.v_max * kHorizonS;
+        // behind the ring-0 front turn's 60-deg point, heading within 60 deg of F (no U-turn in the funnel; B.6 item 3), within the
+        // predictor's horizon (B.2: dX <= v_max * 256 s; an inbound ship is no candidate); the prediction decides the rest
+        const bool window = release_window(g, m) && dX <= m.params.v_max * kHorizonS;
         const bool timing = std::int32_t(t_free - now) <= std::int32_t(dX / kPetalVmin * 1000.0f);
         if (st && st->seq_on) {
             st->seq.window = window ? 1 : 0;
@@ -2532,10 +2606,12 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
                 ++st->deferred;
         }
     }
-    // the next holder's lap brings it to its release window one nominal funnel (50 m/s over the petal's lead and ring radius) before the
-    // funnel frees, also while the ship ahead is still on its order-4 final (pre-positioning)
-    if (c >= 0 && g.m[c].role == Role::committed && g.m[c].sb == Sb::hold)
-        t_next = t_after(f) - std::uint32_t(1000.0f * (kLeadM + kPetalRh + g.rho) / 50.0f);
+    // B.6 item 2: the head's lap target is the predicted funnel-free moment (re-evaluated every frame; the funnel free: now, never before
+    // one nominal funnel before a slot block)
+    if (c >= 0 && g.m[c].role == Role::committed && g.m[c].sb == Sb::hold) {
+        t_next = funnel_busy ? t_busy : g.slot_block_ms && std::int32_t(t_slot - now) > 0 ? t_slot : now; // review 2, the funnel's offset
+        if (!t_next) t_next = 1;
+    }
     // speeds: the funnel's shaping and feasibility (the go-around), the holders' laps, the grid sphere guard
     for (unsigned i = 0; i < g.n; ++i) {
         Member& m = g.m[i];
@@ -2596,12 +2672,13 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             const int li = find(g, m.leader);
             if (li >= 0 && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::inbound && g.m[li].sb != Sb::none)
                 t_rel = eta_launch(g, g.m[li], now) + kEscortSwitchMs;
-            else if (m.res_until) { // review F1: from live time once the leader's launch + the script's switch is past (its order 4 may come now)
+            else if (m.res_until) // review F1: from live time once the leader's launch + the script's switch is past (its order 4 may come now)
                 t_rel = m.res_o8_ms + kEscortSwitchMs;
-                if (std::int32_t(t_rel - now) < 0) t_rel = now ? now : 1;
-            }
+            if (t_rel && std::int32_t(t_rel - now) < 0) t_rel = now ? now : 1; // B.6: a past target is now (dwell in W, else to W at 60)
         }
-        float v = lap_speed(g, m, now, t_rel, m.role == Role::escort ? kEscortStageS : kPetalSh - 0.5f * kReleaseWindowM);
+        // B.6 (coordinator's amendment): an escort whose leader launched, once inside the script's 10 km and with its target past, laps
+        // at 25 m/s over the whole lap (the calmest holding; the script's order 4 comes on its own schedule); a committed head keeps the law
+        float v = escort_settled(g, m, now, t_rel) ? kPetalVmin : lap_speed(g, m, now, t_rel);
         if (m.role == Role::committed && m.line_ok) { // the grid sphere guard: order 4 never ends outside X (D.2.4)
             const float A[3] = {m.X[0] + sc::kGateCrossFraction * g.r_gate * m.h[0], m.X[1] + sc::kGateCrossFraction * g.r_gate * m.h[1],
                                 m.X[2] + sc::kGateCrossFraction * g.r_gate * m.h[2]};
@@ -2656,7 +2733,8 @@ inline bool sb_steer(const Gate& g, const Member& m, const float x[3], float v_n
             petal_geom(g, unsigned(m.petal), m.zx, &pg);
             const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
             float ta, tb;
-            if (m.role == Role::escort && m.res_until && order == sc::kOrderFollow && sc::dot3(d, d) > kEscortSwitchM * kEscortSwitchM * 0.9f) {
+            if (m.role == Role::escort && m.res_until && (!m.esc_in10 || !petal_near(pg)) && order == sc::kOrderFollow &&
+                sc::dot3(d, d) > kEscortSwitchM * kEscortSwitchM * 0.9f) { // B.6: until its first pass inside 10 km (a far petal: always)
                 // the leader launched and the escort is beyond the script's 10 km: onto its inner straight, heading +F, toward the
                 // release window (the pursuit of the straight b = rho; D.12: order 4 then comes inside 10 km with the nose along F)
                 ta = sc::dot3(d, g.F) + pursuit_look(v_now, W, rg);
