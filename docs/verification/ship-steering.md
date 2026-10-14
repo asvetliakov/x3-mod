@@ -2263,6 +2263,79 @@ pre-B.6 rows
 build. Cost: the fixture's sequencer bench is 16.4 µs per frame before and 16.4–18.6 µs after, within its noise. Not reviewed, not
 flown, not installed.
 
+### B.7 Escort staging (2026-10-14, Opus 5.5; design and implementation [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) §B.7)
+
+An escort's lap-law window now opens at its stage: the first point of its petal within 9.5 km of G (`gc::escort_stage_s`,
+closed form). A far petal keeps B.6's window, and so does a petal whose first such point lies at or past the 60° close (review F1).
+The deviations are under §B.7 **Implementation**.
+
+**Fixture totals (measured).** Full 10,325, `--capital` 4,667 and seq-off 10,235 checks, 0 failures. That is 147 more than B.6's
+10,178 / 4,520 / 10,088 in each: 3 `sb B.7` units plus 2 scenario T assertions × 72 runs.
+
+**Units (measured).**
+* At the fixture gate (ρ 2,874 m, zx −5,221 m), ring 0's stage is at s = 1,166.2 m on the inner straight, 9,500.0 m from G.
+  Rings 1–2 have none.
+* On a turn-only petal (zx −5,800 m) the stage is at s = 1,758.7 m on the front turn.
+* The closed form agrees with a 1 m scan over 42 petals to within 0.84 m, with 0 mismatches.
+* `lap_speed` matches the law at the escort's window for 42 (T, s) pairs per ring, 0 off. Ring 1 keeps B.6's window.
+* A ring-0 escort 500 m short of its stage with its target 10 s away is written 50.0 m/s. B.6's window would hold it at 25.0.
+* Review sweep over 1,656 near ring-0 geometries (ρ 2,000–3,500 m, zx −3,000 to −6,600 m in 10 m steps):
+  * F2: the turn's closest point comes before 60° in 151 of them;
+  * F1: in 3 (for example ρ 2,620 m, zx −6,340 m) the first point within 9.5 km lies at or past the 60° close. All 3 have no
+    stage, and `lap_speed` equals B.6's law there (0 off);
+  * elsewhere the closed form agrees with the scan to within 1.00 m (0 mismatched). On this grid the window stretch never goes
+    beyond 9.5 km; the reviewer's finer grid found up to 7.3 m.
+* `petal_geom` + `escort_stage_s` costs 8 ns per call in the refreshed result files (9 ns in the reviewer's run). The sequencer
+  bench (committed members only) reads 16.5 µs per frame.
+
+**Scenario T, before → after (measured).** The before build is this fixture against B.6's `lap_speed`
+([`scenario_t_b7_pre_build.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b7_pre_build.py)).
+The tables come from [`scenario_t_b7.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b7.py) and are in
+[`scenario_t_b7.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b7.txt).
+
+A parked escort here sits at its ring at the leader's launch and has held there for at least one lap at 60 m/s. Each departure
+variant has 18 parked escorts on a staged petal over its 9 runs. Their order 4 after the leader's launch:
+
+| Variant | Delay mean, before → after | Delay max, before → after | Approach frames, before → after |
+| --- | --- | --- | --- |
+| departures | 32.2 → 4.3 s | 34.4 → 4.4 s | 16,238 → 0 |
+| dep w0.6r | 33.5 → 4.3 s | 34.4 → 4.4 s | 16,807 → 0 |
+| mixed | 22.7 → 4.3 s | 34.4 → 4.4 s | 10,699 → 0 |
+| dep refused | 14.9 → 4.3 s | 19.4 → 4.4 s | 6,908 → 0 |
+
+* Orders beyond the bound (kEscortSwitchMs + 5 s + the frame step): 62 → 0.
+* No escort is parked in run162 or run162 seta: their escorts reach their ring 20–35 s before the launch and are counted as
+  `ringed_late` (36 per variant after).
+* 0x15 approach frames over all escorts: departures 26,169 → 17,424, dep w0.6r 27,283 → 18,194, dep refused 11,950 → 14,616
+  (a rise), run162 27,274 → 773 and run162 seta 6,534 → 192. The fixture now classifies them (review F4). All are on near petals
+  (0 far). After B.7 the 51,199 that remain are 25,732 from escorts not yet ringed and 25,467 from escorts ringed but not parked.
+  Not yet ringed: departures 8,833, dep w0.6r 8,733 and dep refused 8,166, before 3,461 / 3,513 / 0. Ringed but not parked:
+  departures 8,591, dep w0.6r 9,461, dep refused 6,450, run162 773 and run162 seta 192.
+
+**Kept (measured).** The B.6 assertions and the holder capsule gap stay green over all 72 runs.
+* The closest holder gap is 201 m (196 before), against the 50 m margin.
+* Departures' closest holder gap is 312 m (360 before).
+* Released in its window: 333 of 333.
+
+**Side effects (measured; causes inferred).**
+* The head's mean wait from a free funnel to its release grew: departures 25.6 → 30.5 s, dep refused 24.0 → 33.2 s, mixed
+  41.8 → 44.6 s, run162 1.3 → 2.4 s and run162 seta 2.1 → 3.0 s.
+* The maximum is unchanged in the departure variants (170.3 / 173.6 s). It rose in run162, 11.5 → 20.8 s, and fell in run162 seta,
+  19.3 → 18.6 s. Inferred cause: escorts now enter the funnel right after their leader, so the next head waits behind them.
+* Escorts' mean `v_sb` while holding rose: departures 34.1 → 42.7 m/s, and run162 25.0 → 54.7 m/s with 56 % of frames at 60.
+  Inferred cause: ringed-late escorts chase the short stage stretch instead of dwelling in B.6's long window.
+* Before-launch escort-in-window frames with the leader released are 0 in departures and mixed in both builds, so that B.6
+  assertion has no frames to test in those variants.
+
+**Other checks (measured).**
+* `test_ship_steering` and `test_ctl_boundary_reads`: 5 OK.
+* i686 MinGW probe (`-msse2 -mfpmath=sse`): `lap_speed` carries the same 6 x87 `flds` before and after; they are float-return
+  loads. `escort_stage_s` is inlined.
+
+Outputs: [`ship_steering_host_b7.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b7.txt) and
+[`ship_steering_host_b7_capital.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b7_capital.txt).
+Not reviewed, not flown, not installed.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

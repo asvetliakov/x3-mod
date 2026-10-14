@@ -8555,6 +8555,14 @@ struct TResult {
     double b6_pre_v_max_t = -1, b6_pre_v_max_n = -1;
     unsigned b6_hold_n[2] = {0, 0}, b6_hold_25[2] = {0, 0}, b6_hold_60[2] = {0, 0};
     double b6_hold_sum[2] = {0, 0};
+    // B.7 (Run167): the escorts parked at their ring (holding, ringed) when their leader launched, those on a petal with a stage inside
+    // the script's radius, their order 4 after the launch (count, delay mean / max, beyond kEscortSwitchMs + the script's 5 s pass + the
+    // longest game step of the wait), and the fresh writes of sb_steer's 0x15 approach after the launch (parked staged escorts, all)
+    unsigned b7_parked = 0, b7_staged = 0, b7_o4 = 0, b7_late = 0, b7_appr_parked = 0, b7_appr_all = 0;
+    unsigned b7_ring_late = 0; // ... at its ring at the launch but ringed less than a 60 m/s lap before (not parked: reported)
+    // ... the other approach frames by class (review F4): a far petal; a near petal not yet ringed; ringed but not parked
+    unsigned b7_appr_far = 0, b7_appr_unringed = 0, b7_appr_ringed = 0;
+    double b7_delay_sum_s = 0, b7_delay_max_s = 0;
 };
 struct TShip {
     Model m;
@@ -8578,6 +8586,9 @@ struct TShip {
     double start_d = 0;        // ... and the distance to the gate then (m)
     unsigned rotate_frames = 0;
     bool petal_reached25 = false;
+    bool b7_parked = false, b7_staged = false; // B.7: parked at its ring at the leader's launch; its petal passes inside 9.49 km
+    long b7_step_max = 0;                      // ... the longest game step from the launch to its order 4
+    long b7_ring_ms = -1;                      // ... the first frame it held at its ring (hold, ringed) before the launch
 };
 static double t_capsule(const TShip& a, const TShip& b) {
     float ca[3], cb[3], fa[3], fb[3];
@@ -8685,6 +8696,17 @@ static void t_live_leaves(gc::Board& b, std::uint32_t now) {
 // first such frame inside the release window (seq.window) too. A free-in-window episode is released within kFeasMs + the longest game
 // step of the episode (B.6 verification), unless the predictor deferred it (no feasible candidate: the go-around rule's, counted apart).
 static const float b6_win_open = gc::kLap - gc::kPetalRh * float(M_PI) / 3.0f, b6_win_len = gc::kPetalSh + 2.0f * gc::kPetalRh * float(M_PI) / 3.0f;
+// B.7: an escort's window on its petal: from its stage (gc::escort_stage_s) to the release window's close (or the stage itself when it lies
+// past the close); a far petal keeps B.6's. Returns the escort at arc length s past the opening (mod lap) and the window's length.
+static float b7_escort_w(const gc::PetalGeom& pg, float s, float* len) {
+    const float st = gc::escort_stage_s(pg), close = gc::kPetalSh + gc::kPetalRh * float(M_PI) / 3.0f;
+    const float open = st >= 0.0f ? st : b6_win_open;
+    *len = st >= 0.0f ? (close > st ? close - st : 0.0f) : b6_win_len;
+    float w = s - open;
+    if (w < 0.0f) w += gc::kLap;
+    if (w >= gc::kLap) w -= gc::kLap;
+    return w;
+}
 struct B6Head {
     std::uint32_t ship = 0, free_ms = 0, win_ms = 0;
     long step_max = 0;
@@ -8792,15 +8814,41 @@ static void b6_escort_write(gc::Board& b, TShip& c, std::uint32_t last_sb, TResu
     gc::PetalGeom pg;
     gc::petal_geom(*g, unsigned(m.petal), m.zx, &pg);
     const float d[3] = {m.st.x[0] - g->G[0], m.st.x[1] - g->G[1], m.st.x[2] - g->G[2]};
-    float w = gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e)) - b6_win_open;
-    if (w < 0.0f) w += gc::kLap;
-    if (w >= gc::kLap) w -= gc::kLap;
-    if (w > b6_win_len) return;
+    float wl;
+    const float w = b7_escort_w(pg, gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e)), &wl); // B.7: the escort's window
+    if (w > wl) return;
     const float zf = core::dot3(d, g->F);
     if (!(zf <= m.zx - gc::kLeadM - gc::kPetalRh + 866.0254f + 1.0f && core::dot3(m.st.rows[2], g->F) >= 0.5f)) return;
     ++r.b6_esc_frames;
     r.b6_esc_v_max = std::fmax(r.b6_esc_v_max, v);
     if (v > double(gc::kPetalVmin) + 0.01) ++r.b6_esc_over;
+}
+// B.7 (Run167): a fresh write of sb_steer's 0x15 approach (a holder whose leader launched, before its first pass inside 10 km or on a far
+// petal, beyond 9.49 km from the position it decided from) after the leader's launch: all escorts, and the parked ones on a staged petal
+// (the flag is left for b6_escort_write)
+static void b7_escort_approach(gc::Board& b, const TShip& c, TResult& r) {
+    if (!c.m.sb_v_fresh || c.m.sb_v_written < 0.0 || c.m.order != core::kOrderFollow) return;
+    int i = -1;
+    const gc::Gate* g = gc::locate(b, c.m.ptr, &i);
+    if (!g) return;
+    const gc::Member& m = g->m[i];
+    if (m.role != gc::Role::escort || m.sb != gc::Sb::hold || m.petal < 0 || !m.res_until) return;
+    gc::PetalGeom pg;
+    gc::petal_geom(*g, unsigned(m.petal), m.zx, &pg);
+    const float* xs = c.m.sb_x_written;
+    const float dx[3] = {xs[0] - g->G[0], xs[1] - g->G[1], xs[2] - g->G[2]};
+    if ((m.esc_in10 && gc::petal_near(pg)) || core::dot3(dx, dx) <= gc::kEscortSwitchM * gc::kEscortSwitchM * 0.9f) return;
+    ++r.b7_appr_all;
+    if (c.b7_parked && c.b7_staged) ++r.b7_appr_parked;
+    else if (!gc::petal_near(pg)) ++r.b7_appr_far; // review F4: the rest by class
+    else if (!m.ringed) ++r.b7_appr_unringed;
+    else ++r.b7_appr_ringed;
+    if (c.b7_parked && c.b7_staged && std::getenv("X3M_T_B7")) {
+        const float d[3] = {m.st.x[0] - g->G[0], m.st.x[1] - g->G[1], m.st.x[2] - g->G[2]};
+        std::printf("  tb7 approach: ship %08x petal %d t=%u s=%.0f d=%.0f m res_o8=%u\n", unsigned(m.ship), int(m.petal), unsigned(m.st.ms),
+                    double(gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e))), std::sqrt(double(core::dot3(d, d))),
+                    unsigned(m.res_o8_ms));
+    }
 }
 // B.6 (coordinator, 2026-10-14): an escort waiting before its leader's launch (reserved, res_until 0; on 0x14 / 0x15, at its ring, inside its
 // window as b6_escort_write tests it) is written the lap law at its own target: the leader's predicted launch + the script's switch once the
@@ -8818,10 +8866,9 @@ static void b6_escort_pre(gc::Board& b, TShip& c, std::uint32_t last_sb, TResult
     gc::PetalGeom pg;
     gc::petal_geom(*g, unsigned(m.petal), m.zx, &pg);
     const float d[3] = {m.st.x[0] - g->G[0], m.st.x[1] - g->G[1], m.st.x[2] - g->G[2]};
-    float w = gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e)) - b6_win_open;
-    if (w < 0.0f) w += gc::kLap;
-    if (w >= gc::kLap) w -= gc::kLap;
-    if (w > b6_win_len) return;
+    float wl;
+    const float w = b7_escort_w(pg, gc::petal_project(pg, core::dot3(d, g->F), core::dot3(d, pg.e)), &wl); // B.7: the escort's window
+    if (w > wl) return;
     const float zf = core::dot3(d, g->F);
     if (!(zf <= m.zx - gc::kLeadM - gc::kPetalRh + 866.0254f + 1.0f && core::dot3(m.st.rows[2], g->F) >= 0.5f)) return;
     const float* xs = c.m.sb_x_written;
@@ -9132,10 +9179,45 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
             const double err_F = std::acos(c_F) * 180 / M_PI;
             if (c.phase == 10 || c.phase == 11) { // the escort: 0x14 in formation with the KC's 3 s order-0 gaps
                 const TShip& L = ships[c.st->leader];
+                if (c.b7_ring_ms < 0 && m.ctl) { // B.7: the first frame at its ring
+                    int bi = -1;
+                    const gc::Gate* bg = gc::locate(*m.ctl, m.ptr, &bi);
+                    if (bg && bg->m[bi].sb == gc::Sb::hold && bg->m[bi].ringed) c.b7_ring_ms = now_ms;
+                }
                 if (L.gone || L.launched) {
                     c.phase = 12; // the leader launched: 0x15 toward the gate (Mayhem.Task.Move: 5 s legs beyond 10 km; D.12)
                     c.leader_launch = L.launch_ms >= 0 ? L.launch_ms : now_ms;
                     c.order4_at = c.leader_launch + long(c.st->order4_s * 1000.0);
+                    c.b7_step_max = 0;
+                    if (m.ctl) { // B.7: parked = holding at its ring on its petal when the leader launches, and since at least one lap at
+                                 // 60 m/s before its first order-4 chance (the lap law reaches the stage from anywhere on the lap; an escort
+                                 // ringed later, e.g. run162's arriving with the leader, is counted apart)
+                        int bi = -1;
+                        const gc::Gate* bg = gc::locate(*m.ctl, m.ptr, &bi);
+                        const long lap_ms = long(1000.0f * gc::kLap / gc::kPetalVmax);
+                        const bool ring_early = c.b7_ring_ms >= 0 && c.leader_launch + long(gc::kEscortSwitchMs) - c.b7_ring_ms >= lap_ms;
+                        if (bg && bg->m[bi].role == gc::Role::escort && bg->m[bi].sb == gc::Sb::hold && bg->m[bi].ringed && bg->m[bi].petal >= 0 &&
+                            !ring_early)
+                            ++res.b7_ring_late;
+                        if (bg && bg->m[bi].role == gc::Role::escort && bg->m[bi].sb == gc::Sb::hold && bg->m[bi].ringed && bg->m[bi].petal >= 0 &&
+                            ring_early) {
+                            gc::PetalGeom pg;
+                            gc::petal_geom(*bg, unsigned(bg->m[bi].petal), bg->m[bi].zx, &pg);
+                            c.b7_parked = true;
+                            c.b7_staged = gc::petal_near(pg);
+                            if (std::getenv("X3M_T_B7")) {
+                                const gc::Member& bm = bg->m[bi];
+                                const float d[3] = {bm.st.x[0] - bg->G[0], bm.st.x[1] - bg->G[1], bm.st.x[2] - bg->G[2]};
+                                std::printf("  tb7 %s escort %u parked at the launch t=%.1f: petal %d s=%.0f stage=%.0f d=%.0f m v_sb=%.1f in10=%d ringed_since=%.1f "
+                                            "leader_release=%.1f\n", su.tag, k, double(now_ms) / 1000.0, int(bm.petal),
+                                            double(gc::petal_project(pg, core::dot3(d, bg->F), core::dot3(d, pg.e))), double(gc::escort_stage_s(pg)),
+                                            std::sqrt(double(core::dot3(d, d))), double(bm.v_sb), int(bm.esc_in10), double(c.b7_ring_ms) / 1000.0,
+                                            double(L.release_ms) / 1000.0);
+                            }
+                            ++res.b7_parked;
+                            if (c.b7_staged) ++res.b7_staged;
+                        }
+                    }
                     m.order = core::kOrderFollow;
                     m.leader_ptr = 0;
                     m.gate_ptr = kLaneGate; // B.6: the live target f+0x224 on this 0x15 is the gate (the DLL's sb_steer reads it; 0 left the
@@ -9176,8 +9258,16 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                         std::printf("  tsb %s escort %u pass at t=%.1f: %.0f m from the gate (0x15 leg)\n", su.tag, k, double(now_ms) / 1000.0, dB / 500.0);
                     c.order4_at += 5000;
                 }
+                c.b7_step_max = std::max(c.b7_step_max, dt);
                 if (now_ms >= c.order4_at) {
                     start_order4(c, now_ms);
+                    if (c.b7_parked && c.b7_staged) { // B.7: a parked escort on a staged petal: its order 4 after the leader's launch
+                        const double delay = double(now_ms - c.leader_launch) / 1000.0;
+                        ++res.b7_o4;
+                        res.b7_delay_sum_s += delay;
+                        res.b7_delay_max_s = std::max(res.b7_delay_max_s, delay);
+                        if (delay * 1000.0 > double(gc::kEscortSwitchMs) + 5000.0 + double(c.b7_step_max) + 0.5) ++res.b7_late;
+                    }
                     // D.7 item 5: the escort starts order 4 from a petal (behind X - L_lead, the nose within 30 deg of F)
                     ++res.escort_o4;
                     if (m.pos[2] / 500.0 <= c.X[2] / 500.0 - double(gc::kLeadM) + 1.0 && m.row[2][2] >= std::cos(30.0 * M_PI / 180.0)) ++res.escort_o4_petal;
@@ -9188,6 +9278,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                     m.order = core::kOrderFollow;
                     for (int i = 0; i < 3; ++i) m.P[i] = 0;
                     m.frame(dt, c.obj, true, 0, 0);
+                    b7_escort_approach(*m.ctl, c, res);
                     b6_escort_write(*m.ctl, c, b6_last_sb, res);
                     continue;
                 } else {
@@ -11647,6 +11738,13 @@ static void traffic_print_b6(const char* tag, int fps, std::uint32_t seed, const
                 r.b6_hold_n[0], mean(r.b6_hold_sum[0], r.b6_hold_n[0]), r.b6_hold_25[0], r.b6_hold_60[0], r.b6_hold_n[1],
                 mean(r.b6_hold_sum[1], r.b6_hold_n[1]), r.b6_hold_25[1], r.b6_hold_60[1]);
 }
+static void traffic_print_b7(const char* tag, int fps, std::uint32_t seed, const TResult& r) {
+    std::printf("traffic T %-12s fps=%3d seed=%u B.7: parked_at_launch=%u staged=%u order4=%u delay_mean=%.1f delay_max=%.1f s late=%u "
+                "ringed_late=%u | approach_frames parked_staged=%u all=%u far_petal=%u near_unringed=%u near_ringed_unparked=%u\n", tag, fps,
+                seed, r.b7_parked, r.b7_staged, r.b7_o4, r.b7_o4 ? r.b7_delay_sum_s / double(r.b7_o4) : -1.0,
+                r.b7_o4 ? r.b7_delay_max_s : -1.0, r.b7_late, r.b7_ring_late, r.b7_appr_parked, r.b7_appr_all, r.b7_appr_far,
+                r.b7_appr_unringed, r.b7_appr_ringed);
+}
 static void traffic_scenarios() {
     char why[256];
     const unsigned missed0 = g_crowd_targets_missed;
@@ -11670,6 +11768,16 @@ static void traffic_scenarios() {
                 traffic_print(su.tag, fps, seed, r);
                 traffic_print_b(su.tag, fps, seed, r);
                 traffic_print_b6(su.tag, fps, seed, r);
+                traffic_print_b7(su.tag, fps, seed, r);
+                // B.7 (Run167): an escort parked at its ring on a staged petal when its leader launches is inside the script's radius
+                // at its first order-4 chance: its order 4 within kEscortSwitchMs + one 5 s script pass + the wait's longest game step,
+                // and no 0x15 approach after the launch
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.7: a parked staged escort's order 4 within kEscortSwitchMs + 5 s + the "
+                              "frame step of its leader's launch (late %%.0f of %%.0f)", su.tag, fps, seed);
+                checkf(r.b7_late == 0 && r.b7_o4 == r.b7_staged, why, r.b7_late, r.b7_o4);
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.7: parked staged escorts fly no 0x15 approach after the launch "
+                              "(%%.0f frames; all escorts %%.0f)", su.tag, fps, seed);
+                checkf(r.b7_appr_parked == 0, why, r.b7_appr_parked, r.b7_appr_all);
                 // B.6 (Run166 span tuning): a head whose funnel frees inside its release window is released within one feasibility interval
                 // (kFeasMs + the episode's longest game step), unless the predictor deferred it; the escorts waiting after their leader's
                 // launch hold 25 m/s inside their window (the lap; the 0x15 approach beyond the script's 10 km is reported)
@@ -13318,6 +13426,186 @@ static void sb_b6_review_checks() {
         checkf(bad == 0 && asym == 0, why, bad, asym);
     }
 }
+// B.7 (Run167): the escort's stage per ring at the fixture gate (B.6 review 1's rho 2,874 m, zx -5,221 m) and on a turn-only petal
+// (zx -5,800 m: the straight ends 9.73 km out, the turn passes 9.07 km): the closed form against a 1 m scan of the inner straight and
+// the front turn; rings 1-2 have none and keep B.6's window in lap_speed; a ring-0 escort short of its stage arrives there at its target
+static void sb_b7_checks() {
+    char why[256];
+    static gc::Board bd;
+    bd = gc::Board{};
+    const std::uint32_t now = 400000;
+    gc::Gate* g = ctl_gate(bd, now);
+    g->rho = 2874.0f;
+    const float D = gc::kEscortStageM, close = gc::kPetalSh + gc::kPetalRh * float(M_PI) / 3.0f;
+    auto scan_raw = [](const gc::PetalGeom& pg, float D2) { // the first point within D on [0, S + pi R] at 1 m steps (double distances)
+        for (int s = 0; s <= int(gc::kPetalSh + float(M_PI) * gc::kPetalRh); ++s) {
+            float a, b, da, db;
+            gc::petal_at(pg, float(s), &a, &b, &da, &db);
+            if (double(a) * a + double(b) * b <= double(D2)) return float(s);
+        }
+        return -1.0f;
+    };
+    auto scan = [&](const gc::PetalGeom& pg, float D2) { // ... none at or past the window's close (review F1)
+        const float s = scan_raw(pg, D2);
+        return s >= close ? -1.0f : s;
+    };
+    float st[3], dist[3], err_max = 0.0f;
+    unsigned scanned = 0, mism = 0;
+    for (int k = 0; k < 3; ++k) {
+        gc::PetalGeom pg;
+        gc::petal_geom(*g, unsigned(3 + 7 * k), -5221.0f, &pg);
+        st[k] = gc::escort_stage_s(pg);
+        dist[k] = -1.0f;
+        if (st[k] >= 0.0f) {
+            float a, b, da, db;
+            gc::petal_at(pg, st[k], &a, &b, &da, &db);
+            dist[k] = std::sqrt(a * a + b * b);
+        }
+    }
+    // every ring-0 petal at both depths: the closed form against the scan (within 2 m of arc; none where the scan finds none)
+    float st_turn = -1.0f, d_turn = -1.0f;
+    for (float zx : {-5221.0f, -5800.0f})
+        for (unsigned p = 0; p < gc::kPetals; ++p) {
+            gc::PetalGeom pg;
+            gc::petal_geom(*g, p, zx, &pg);
+            const float c = gc::escort_stage_s(pg), sc = gc::petal_near(pg) ? scan(pg, D * D) : -1.0f;
+            ++scanned;
+            if ((c < 0.0f) != (sc < 0.0f)) ++mism;
+            else if (c >= 0.0f) err_max = std::fmax(err_max, std::fabs(c - sc));
+            if (zx == -5800.0f && p == 3) {
+                st_turn = c;
+                float a, b, da, db;
+                gc::petal_at(pg, c, &a, &b, &da, &db);
+                d_turn = std::sqrt(a * a + b * b);
+            }
+        }
+    std::printf("sb B.7: escort stage at rho 2874 m zx -5221 m: ring 0 s=%.1f m (%.1f m from G), ring 1 %.0f, ring 2 %.0f; turn-only petal (zx -5800) "
+                "s=%.1f m (%.1f m from G, the turn from s=%.0f); closed form vs 1 m scan over %u petals: max %.2f m, mismatched %u\n", double(st[0]),
+                double(dist[0]), double(st[1]), double(st[2]), double(st_turn), double(d_turn), double(gc::kPetalSh), scanned, double(err_max), mism);
+    std::snprintf(why, sizeof why, "sb B.7: the escort stage: ring 0 inside 9.5 km on the inner straight (%%.1f m), rings 1-2 none; the turn-only "
+                                   "petal's on its front turn; the closed form within 2 m of the 1 m scan (max %%.2f m)");
+    checkf(st[0] >= 0.0f && st[0] < gc::kPetalSh && dist[0] <= D + 0.5f && st[1] < 0.0f && st[2] < 0.0f && st_turn > gc::kPetalSh &&
+               st_turn < close && d_turn <= D + 0.5f && err_max <= 2.0f && mism == 0,
+           why, double(dist[0]), double(err_max));
+    // review F1, F2: a sweep of ring-0 geometries (rho 2,000-3,500 m, zx -3,000 to -6,600 m in 10 m steps). F1: where the first point
+    // within 9.5 km lies at or past the window's 60-deg close there is no stage, and lap_speed keeps B.6's window (the dwell); F2: where
+    // the turn's closest point to G comes before 60 deg the stage still matches the scan; the window stretch [stage, close] is reported
+    // with its farthest point beyond 9.5 km (it stays inside the 10 km flag radius)
+    {
+        unsigned near_n = 0, past60 = 0, past60_bad = 0, before60 = 0, sweep_bad = 0, law_b6_bad = 0;
+        float sweep_err = 0.0f, over_max = 0.0f, past60_zx = 0.0f, past60_rho = 0.0f;
+        for (float rho : {2000.0f, 2400.0f, 2620.0f, 2874.0f, 3500.0f}) {
+            g->rho = rho;
+            for (int zi = 0; zi <= 360; ++zi) {
+                const float zx = -3000.0f - 10.0f * float(zi);
+                gc::PetalGeom pg;
+                gc::petal_geom(*g, 3u, zx, &pg);
+                if (!gc::petal_near(pg)) continue;
+                ++near_n;
+                const float raw = scan_raw(pg, D * D), c = gc::escort_stage_s(pg);
+                const float phi = std::atan2(-pg.a1, pg.rho + gc::kPetalRh);
+                if (phi < float(M_PI) / 3.0f) ++before60;
+                if (raw >= close) {
+                    ++past60;
+                    if (c >= 0.0f) ++past60_bad;
+                    past60_zx = zx;
+                    past60_rho = rho;
+                    gc::Member m{};
+                    m.role = gc::Role::escort;
+                    m.sb = gc::Sb::hold;
+                    m.petal = 3;
+                    m.zx = zx;
+                    float a, b, da, db;
+                    gc::petal_at(pg, 900.0f, &a, &b, &da, &db);
+                    for (int i = 0; i < 3; ++i) {
+                        m.st.x[i] = g->G[i] + a * g->F[i] + b * pg.e[i];
+                        m.st.rows[2][i] = da * g->F[i] + db * pg.e[i];
+                    }
+                    const float v = gc::lap_speed(*g, m, now, now + 60000);
+                    if (std::fabs(v - gc::lap_law(900.0f, gc::kWinOpenS, gc::kWinCloseS, gc::kLap, 60000, true, gc::release_window(*g, m))) > 0.01f)
+                        ++law_b6_bad;
+                    continue;
+                }
+                if (std::fabs(raw - close) < 2.0f) continue; // the boundary itself: the 1 m scan cannot decide it
+                if ((c < 0.0f) != (raw < 0.0f)) {
+                    ++sweep_bad;
+                    continue;
+                }
+                if (c < 0.0f) continue;
+                sweep_err = std::fmax(sweep_err, std::fabs(c - raw));
+                for (float s = c; s <= close; s += 1.0f) {
+                    float a, b, da, db;
+                    gc::petal_at(pg, s, &a, &b, &da, &db);
+                    over_max = std::fmax(over_max, std::sqrt(a * a + b * b) - D);
+                }
+            }
+        }
+        g->rho = 2874.0f;
+        std::printf("sb B.7 review: %u near ring-0 geometries: the turn's closest point before 60 deg in %u; first point within 9.5 km at or past "
+                    "the 60-deg close in %u (e.g. rho %.0f m zx %.0f m), no stage there %u of them and lap_speed = B.6's law (off %u); elsewhere "
+                    "the closed form vs the scan max %.2f m (mismatched %u); the window stretch reaches %.1f m beyond 9.5 km at most\n",
+                    near_n, before60, past60, double(past60_rho), double(past60_zx), past60 - past60_bad, law_b6_bad, double(sweep_err), sweep_bad,
+                    double(over_max));
+        std::snprintf(why, sizeof why, "sb B.7 review F1/F2: a stage past the 60-deg close falls back to B.6's window (%%.0f of them kept a stage); "
+                                       "the closed form within 2 m of the scan (%%.2f m)");
+        checkf(past60 > 0 && before60 > 0 && past60_bad == 0 && law_b6_bad == 0 && sweep_bad == 0 && sweep_err <= 2.0f &&
+                   over_max < gc::kEscortSwitchM - D,
+               why, double(past60_bad), double(sweep_err));
+    }
+    // lap_speed: a ring-1 escort keeps B.6's window (the law at [kWinOpenS, kWinCloseS]); a ring-0 escort's window opens at its stage
+    auto escort = [&](int petal, float s_lap) {
+        gc::Member m{};
+        m.ship = 0x9100;
+        m.role = gc::Role::escort;
+        m.sb = gc::Sb::hold;
+        m.petal = std::int8_t(petal);
+        m.zx = -5221.0f;
+        m.leader = 0x9000;
+        m.key_res = 1;
+        m.ringed = 1;
+        gc::PetalGeom pg;
+        gc::petal_geom(*g, unsigned(petal), m.zx, &pg);
+        float a, b, da, db;
+        gc::petal_at(pg, s_lap, &a, &b, &da, &db);
+        for (int i = 0; i < 3; ++i) {
+            m.st.x[i] = g->G[i] + a * g->F[i] + b * pg.e[i];
+            m.st.rows[2][i] = da * g->F[i] + db * pg.e[i];
+        }
+        return m;
+    };
+    unsigned law_bad = 0;
+    for (std::int32_t dt : {0, 5000, 10000, 20000, 60000, 200000})
+        for (float s : {0.0f, 400.0f, 800.0f, 1200.0f, 2000.0f, 5000.0f, 8500.0f}) {
+            const gc::Member r1 = escort(10, s), r0 = escort(3, s);
+            const std::uint32_t t_rel = now + std::uint32_t(dt);
+            const float v1 = gc::lap_speed(*g, r1, now, t_rel), v0 = gc::lap_speed(*g, r0, now, t_rel);
+            const float l1 = gc::lap_law(s, gc::kWinOpenS, gc::kWinCloseS, gc::kLap, dt, true, gc::release_window(*g, r1));
+            const float l0 = gc::lap_law(s, st[0], close, gc::kLap, dt, true, gc::release_window(*g, r0));
+            if (std::fabs(v1 - l1) > 0.01f || std::fabs(v0 - l0) > 0.01f) ++law_bad;
+        }
+    // a ring-0 escort 500 m short of its stage, its target 10 s away: 50 m/s (there on time); B.6's window would dwell it at 25 m/s
+    const gc::Member near = escort(3, st[0] - 500.0f);
+    const float v_on = gc::lap_speed(*g, near, now, now + 10000),
+                v_b6 = gc::lap_law(st[0] - 500.0f, gc::kWinOpenS, gc::kWinCloseS, gc::kLap, 10000, true, gc::release_window(*g, near));
+    // the per-call cost (the sequencer calls lap_speed once per holding escort per frame)
+    using clk = std::chrono::steady_clock;
+    double best = 1e9;
+    volatile float sink = 0;
+    for (int rep = 0; rep < 5; ++rep) {
+        const auto t0 = clk::now();
+        for (int it = 0; it < 100000; ++it) {
+            gc::PetalGeom pg;
+            gc::petal_geom(*g, unsigned(it % 7), -5221.0f - float(it & 63), &pg);
+            sink = sink + gc::escort_stage_s(pg);
+        }
+        best = std::fmin(best, std::chrono::duration<double, std::nano>(clk::now() - t0).count() / 100000.0);
+    }
+    std::printf("sb B.7: lap_speed vs the law at the escort's window over 42 (T, s) pairs per ring: %u off; ring-0 escort 500 m short of its stage, "
+                "target in 10 s: %.1f m/s (B.6's window: %.1f); petal_geom + escort_stage_s %.0f ns per call\n", law_bad, double(v_on), double(v_b6), best);
+    std::snprintf(why, sizeof why, "sb B.7: lap_speed: ring 1 keeps B.6's window, ring 0's opens at its stage (off %%.0f); 500 m short with 10 s: "
+                                   "%%.1f m/s");
+    checkf(law_bad == 0 && std::fabs(v_on - 50.0f) < 0.05f && v_b6 == gc::kPetalVmin, why, law_bad, double(v_on));
+}
 static void b5_checks() {
     static CheckedMem mem;
     mem = CheckedMem{};
@@ -13577,6 +13865,7 @@ int main(int argc, char** argv) {
         b5_checks();    // B.5 (Run165)
         sb_b6_checks(); // B.6 (Run166 span tuning)
         sb_b6_review_checks();
+        sb_b7_checks(); // B.7 (Run167 escort staging)
         traffic_scenarios();
         b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
@@ -13626,6 +13915,7 @@ int main(int argc, char** argv) {
         b5_checks();    // B.5 (Run165)
         sb_b6_checks(); // B.6 (Run166 span tuning)
         sb_b6_review_checks();
+        sb_b7_checks(); // B.7 (Run167 escort staging)
         traffic_scenarios();
         b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
@@ -13680,6 +13970,7 @@ int main(int argc, char** argv) {
     b5_checks();    // B.5 (Run165)
     sb_b6_checks(); // B.6 (Run166 span tuning)
     sb_b6_review_checks();
+    sb_b7_checks(); // B.7 (Run167 escort staging)
     traffic_scenarios();
     b5_traffic_summary();
     dock_scenarios(); // amendment 18 (docking-approach.md): scenario N

@@ -781,6 +781,30 @@ __attribute__((always_inline)) inline bool petal_near(const PetalGeom& pg) noexc
     const float bc = pg.rho + kPetalRh, dc = sc::sqrt_ss(pg.a1 * pg.a1 + bc * bc) - kPetalRh;
     return dc * dc <= kEscortSwitchM * kEscortSwitchM * 0.9f;
 }
+// B.7 (Run167): an escort's stage on its petal: the arc length (petal_at's s) of the first point, from the inner straight's back end
+// (s = 0) through the inner straight and the front turn, within kEscortStageM of G (inside the script's order-4 radius with 500 m to
+// spare); -1 on a far petal (!petal_near: no stage; the release window and the 0x15 approach as in B.6) and when that point lies at or
+// past the release window's close (the front turn's 60-deg point: lap_speed then keeps B.6's window). Closed form, no engine reads:
+// on the straight (b = rho, a in [a0, a1]) the points within D satisfy |a| <= sqrt(D^2 - rho^2); on the front turn (centre
+// c = (a1, rho + R_h), angle t in [0, pi] from the straight's end) |p|^2 = |c|^2 + R_h^2 - 2 R_h |c| cos(t - phi), phi = atan2(-a1, rho + R_h).
+constexpr float kEscortStageM = kEscortSwitchM - 500.0f;
+__attribute__((always_inline)) inline float escort_stage_s(const PetalGeom& pg) noexcept {
+    if (!petal_near(pg)) return -1.0f;
+    const float D2 = kEscortStageM * kEscortStageM, r2 = pg.rho * pg.rho;
+    if (r2 <= D2) {
+        const float h = sc::sqrt_ss(D2 - r2), lo = pg.a0 > -h ? pg.a0 : -h, hi = pg.a1 < h ? pg.a1 : h;
+        if (lo <= hi) return lo - pg.a0;
+    }
+    const float R = kPetalRh, bc = pg.rho + R, c2 = pg.a1 * pg.a1 + bc * bc, c = sc::sqrt_ss(c2);
+    float q = (c2 + R * R - D2) / (2.0f * R * c);
+    if (q > 1.0f) return -1.0f; // no turn point within D (petal_near's 9.49 km rules this out)
+    if (q < -1.0f) q = -1.0f;
+    const float phi = sc::atan2_f(-pg.a1, bc), al = sc::atan2_f(sc::sqrt_ss(1.0f - q * q), q);
+    const float t = phi - al > 0.0f ? phi - al : 0.0f;
+    if (t > phi + al || t > sc::kPi) return -1.0f;
+    const float s = kPetalSh + R * t;
+    return s < kWinCloseS ? s : -1.0f; // review F1: a stage past the window's 60-deg close is no stage (B.6's window: the dwell stays)
+}
 // The racetrack's point at arc length s (wrapped into [0, lap)): (a, b) and its unit direction (da, db). s = 0 at the inner straight's
 // back end; the inner straight, the front turn, the outer straight, the back turn.
 inline void petal_at(const PetalGeom& pg, float s, float* a, float* b, float* da, float* db) noexcept {
@@ -2205,7 +2229,12 @@ __attribute__((always_inline)) inline float lap_speed(const Gate& g, const Membe
     petal_geom(g, unsigned(m.petal), m.zx, &pg);
     const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
     const float s = petal_project(pg, sc::dot3(d, g.F), sc::dot3(d, pg.e));
-    return lap_law(s, kWinOpenS, kWinCloseS, kLap, std::int32_t(t_rel - now), true, release_window(g, m));
+    float open = kWinOpenS;
+    if (m.role == Role::escort) { // B.7: an escort's window opens at its stage, inside the script's radius (no stage: W kept)
+        const float st = escort_stage_s(pg);
+        if (st >= 0.0f) open = st;
+    }
+    return lap_law(s, open, kWinCloseS, kLap, std::int32_t(t_rel - now), true, release_window(g, m));
 }
 // One frame of the gate's stage B (the frame boundary, after the decisions). The arena is the board: no allocation.
 inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {

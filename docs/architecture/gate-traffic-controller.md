@@ -1931,5 +1931,27 @@ comes within kEscortSwitchMs + one script period + the frame step of its leader'
 pass inside 10 km), its approach frames at 60 m/s after the launch drop to 0 for parked escorts, the B.6 assertions and the
 capsule gaps stay green. Flight oracle (Run168): `escort_wait.py` order 4 at +5…+15 s for parked escorts.
 
+**Implementation.** Where it deviates from the text above:
+* There is no `kEscortStageS` after B.6. Since B.6 an escort laps toward the release window (`lap_law` toward
+  [`kWinOpenS`, `kWinCloseS`]). B.7 moves only the escort's window opening to its stage: `lap_speed` gives an escort the window
+  [s_stage, `kWinCloseS`]. The law brings the escort to the stage at its target, or keeps it at 25 m/s inside that stretch.
+  A far petal keeps B.6's window, not a 300 m point.
+* The distance to G does not always fall monotonically up to the 60° point. On many petals the turn's closest point comes before
+  60°: in 1,294 of 1,693 near cases (the reviewer's sweep), 151 of 1,656 in the fixture's 10 m sweep. The stretch can then reach
+  slightly beyond 9.5 km near its end: up to 7.3 m in 14 cases of the reviewer's fine grid, none on the fixture's 10 m grid. That is
+  still well inside the 10 km order radius and the escort's pass flag, so the escort stays committable throughout.
+* Review F1: a first point within 9.5 km at or past the 60° close (for example ρ 2,620 m, zx −6,340 m, up to 2.1° past) counts as
+  no stage. Such an escort keeps B.6's window and its dwell, instead of a one-point window where `release_window` is false and the
+  law would lap it at 60 m/s whenever T slips.
+* `escort_stage_s(pg)` is closed-form. On the straight it uses |a| ≤ √(D² − ρ²). On the front turn it uses
+  |p|² = |c|² + R² − 2R|c| cos(t − φ), and the first t is φ − acos(q), clamped to 0. It takes 8–9 ns per call with
+  `petal_geom` (host, measured), so there is no per-member cache.
+* The fixture's "parked" escort sits at its ring when its leader launches and has held there for at least one 60 m/s lap
+  (`kLap`/`kPetalVmax` ≈ 155 s) before launch + `kEscortSwitchMs`. Only such an escort can reach its stage from anywhere on the
+  lap. Escorts that reach their ring later are counted apart as `ringed_late`. In run162 and run162 seta all of them are, because
+  they arrive with their leader 20–35 s before its launch. Those variants therefore do not exercise the parked assertion.
+* The fixture's B.6 "escort in its window" rows (`b6_escort_write`, `b6_escort_pre`) now use the escort's B.7 window
+  (`b7_escort_w`).
+
 **Open.** Release 3071 waited 6.4 s with its nose at 0.490–0.492 of F against the 0.5 threshold (cosmetic). The script re-targets
 waiting escorts to each newly arriving M1 (3725, 3947 lost a release each; script-owned).
