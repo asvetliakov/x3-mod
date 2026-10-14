@@ -330,6 +330,15 @@ struct GateState { // per table slot: the approach's last call, the crossing (se
     // stage B (D.5): the small ship's last f+0x240 rewrite (units), so a field still holding it is left alone and a KC re-issue
     // (a new theta) is rewritten again
     x3m::ship_avoidance::ctl::SmallBWrite b_w;
+    // lane stage 1 (convoy-gate-transit.md section 6.4): a capital's last f+0x240 rewrite (units) and the KC grid point it replaced (m):
+    // a field still holding the write is ours, and the order's grid geometry is the replaced point's
+    x3m::ship_avoidance::ctl::SmallBWrite lane_w;
+    float lane_grid[3];
+    // review item 4: the last order-4 field a committed lane member held that was neither a KC grid point nor ours (units): a grid miss
+    // is counted and rowed once per distinct field value
+    x3m::ship_avoidance::ctl::SmallBWrite lane_miss;
+    // final review item 4: the last order-4 field of this ship with no lane member found not to be its lane point (gc::lane_adopt_memo)
+    x3m::ship_avoidance::ctl::AdoptMemo lane_noadopt;
 };
 struct GateTransition { // --debug: one row per order 4 -> 0 -> 5 transition at a gate (<= 8 per boundary)
     std::uint32_t obj, code, ms_since_p2;
@@ -591,6 +600,8 @@ inline TraceSlot* trace_slot_of(std::uint32_t obj) noexcept {
 // Amendment 15 (section 15.4): an escort of slot 0's capital (any class, on 0x14/0x15 to it) takes one of the other slots, so the
 // escort side of the cascade gets its warn_pre rows too.
 bool traffic_on_ = false; // the traffic controller live (set at install; defined here for trace_claim, section below)
+bool lane_on_ = false;    // lane stage 1 (ship_steering_gates_lane, convoy-gate-transit.md): the departure lane replaces stage B's petals
+const char* lane_state_ = "off";
 inline TraceSlot* trace_claim(std::uint32_t obj, std::uint32_t now, bool capital, bool escort = false, bool member = false) noexcept {
     // Run161 item 4 (under ship_steering_gates_traffic): a capital (an escort too) takes any free slot, slot 0 first; a non-capital
     // slots 1..; with the key off amendment 17's rule (slot 0 for one non-escort capital). B.4 item 2: under the key the last two
@@ -751,6 +762,13 @@ Counter arr_launches_, arr_offset_capital_, arr_small_side_, arr_small_unseparat
 // stage B (B.1): releases, go-arounds, KC refusals at X (and their wait beyond 3 s), the decisions the controller flew, the funnel
 // predictions, the guard's frames, the P2 remainder zeroing, the small ships' f+0x240 rewrites (D.5)
 Counter ctl_releases_, ctl_go_around_, ctl_x_refused_, ctl_sb_steered_, ctl_sb_predictions_, ctl_guarded_, ctl_p2_zeroed_, small_b_rewrites_;
+// lane stage 1 (convoy-gate-transit.md section 6.9): merges started, brief stops, f+0x240 rewrites, site B's lane writes (order-0 holds
+// and stops), the KC refusals at d_end come through ctl_x_refused_
+Counter ctl_merge_yield_, ctl_merge_stop_, ctl_point_rewrites_, ctl_lane_writes_;
+// review item 2: order-0 frames with site B's tick deferral written, and the order-4 points rewritten at site B on a deferred tick;
+// review item 4: fields adopted as the hull's own L_i without a lane member, and grid misses (a lane member's field neither a KC grid
+// point nor ours)
+Counter ctl_lane_defers_, ctl_defer_rewrites_, ctl_point_adopts_, ctl_grid_miss_;
 Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed a member pair (not_member: a member against a capital
                                                     // that is not on its board)
 Counter ctl_evict_ignored_gate_, ctl_budget_cut_; // B.3: 0x12 episodes kept through (item 2); frames cut at the 1 ms ceiling
@@ -775,14 +793,19 @@ struct TypeWidth {
 };
 TypeWidth type_widths_[32];
 unsigned type_width_count_ = 0;
+std::uint32_t type_width_gen_ = 0; // final review item 4: changes with every new or changed width (gc::lane_adopt_memo's key)
 inline void type_width_put(std::int32_t type, float w, float l) noexcept {
     for (unsigned i = 0; i < type_width_count_; ++i)
         if (type_widths_[i].type == type) {
+            if (type_widths_[i].w != w || type_widths_[i].l != l) ++type_width_gen_;
             type_widths_[i].w = w;
             type_widths_[i].l = l;
             return;
         }
-    if (type_width_count_ < 32) type_widths_[type_width_count_++] = TypeWidth{type, w, l};
+    if (type_width_count_ < 32) {
+        type_widths_[type_width_count_++] = TypeWidth{type, w, l};
+        ++type_width_gen_;
+    }
 }
 inline bool type_width_get(std::int32_t type, float* w, float* l) noexcept {
     for (unsigned i = 0; i < type_width_count_; ++i)
@@ -833,6 +856,25 @@ struct SeqRow {
 SeqRow seq_rows_[8];
 std::atomic<std::uint32_t> seq_row_write_{0};
 std::uint32_t seq_row_read_ = 0;
+struct MergeRow { // lane stage 1 (--debug): a merge's start and completion (ship_gate_ctl_merge)
+    std::uint32_t gate, t_ms;
+    gc::LaneEvent e;
+};
+MergeRow merge_rows_[8];
+std::atomic<std::uint32_t> merge_row_write_{0};
+std::uint32_t merge_row_read_ = 0;
+// Review item 9 (--debug): every order-4 point decision of a lane member (ship_gate_ctl_rewrite): site A's rewrite, site B's on a
+// deferred tick, a field adopted as the hull's own L_i, a grid miss; the field before and after in the gate frame (R, U, F; m), the
+// KC slot the field held (-1 none)
+struct RewriteRow {
+    std::uint32_t gate, ship, t_ms;
+    std::int8_t slot;
+    std::uint8_t site; // 0 a, 1 b, 2 adopt, 3 miss
+    float from[3], to[3];
+};
+RewriteRow rewrite_rows_[8];
+std::atomic<std::uint32_t> rewrite_row_write_{0};
+std::uint32_t rewrite_row_read_ = 0;
 // B.4 item 2: ship_gate_ctl_member (--debug): one row per board member (pair role) per game second, traced or not (ring 32; drops
 // count as ctl, as the seq rows). The position and the nose are the member's last state read (site B), in the gate frame (R, U, F; m).
 struct MemberRow {
@@ -848,6 +890,14 @@ struct MemberRow {
     float zx, rho, s, stage_s, d_join;
     std::int32_t t_rel_ms;
     std::uint8_t ringed;
+    // lane stage 1 (convoy-gate-transit.md section 6.9; printed under ship_steering_gates_lane only): along F, the lane rank (255 none),
+    // the gap to the ship ahead (m; < -1e30 none), the law
+    std::uint8_t lane, rank, law;
+    float lane_s, gap;
+    // review item 9: the lateral distance from Lambda (m), Lambda's l_c (R, U; m), the law's speed and site B's last write (m/s; < 0
+    // none) with its kind, on Lambda, merged
+    float lat, lc[2], v_law, v_w;
+    std::uint8_t w_kind, on, merged;
 };
 MemberRow member_rows_[32];
 std::atomic<std::uint32_t> member_row_write_{0};
@@ -867,6 +917,35 @@ inline void ctl_row(const gc::Gate& g, const gc::Member& m, gc::Role from, gc::R
     ctl_rows_[w & 31] = CtlRow{g.gate, m.ship, m.id, m.seq, now, m.key, m.st.order, std::uint8_t(from), std::uint8_t(to), std::uint8_t(why),
                                std::uint8_t(gc::rank(m)), std::uint8_t(m.sb), std::uint8_t(m.sb), m.petal, 0};
     ctl_row_write_.store(w + 1, std::memory_order_release);
+}
+// A ship_gate_ctl_rewrite row (review item 9; --debug): the field before (cur) and after (to; the same for adopt / miss), units.
+inline void lane_rewrite_row(const gc::Gate& g, std::uint32_t ship, float r_s, const std::int32_t cur[3], const std::int32_t to[3], unsigned site,
+                             std::uint32_t now) noexcept {
+    if (!debug_) return;
+    const std::uint32_t w = rewrite_row_write_.load(std::memory_order_relaxed);
+    if (w - rewrite_row_read_ >= 8) {
+        row_dropped(Drop::ctl);
+        return;
+    }
+    RewriteRow& r = rewrite_rows_[w & 7];
+    r.gate = g.gate;
+    r.ship = ship;
+    r.t_ms = now;
+    r.site = std::uint8_t(site);
+    float pc[3], pt[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        pc[i] = float(cur[i]) / core::kUnitsPerMetre;
+        pt[i] = float(to[i]) / core::kUnitsPerMetre;
+    }
+    r.slot = std::int8_t(gc::kc_grid_slot(g.G, g.R, g.U, g.F, g.r_gate, r_s, pc));
+    const float dc[3] = {pc[0] - g.G[0], pc[1] - g.G[1], pc[2] - g.G[2]}, dt[3] = {pt[0] - g.G[0], pt[1] - g.G[1], pt[2] - g.G[2]};
+    r.from[0] = core::dot3(dc, g.R);
+    r.from[1] = core::dot3(dc, g.U);
+    r.from[2] = core::dot3(dc, g.F);
+    r.to[0] = core::dot3(dt, g.R);
+    r.to[1] = core::dot3(dt, g.U);
+    r.to[2] = core::dot3(dt, g.F);
+    rewrite_row_write_.store(w + 1, std::memory_order_release);
 }
 // The ship's board and member index (two loads for a non-member: the bitmap).
 inline gc::Gate* ctl_lookup(std::uint32_t obj, int* index) noexcept {
@@ -1824,6 +1903,60 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     bool capital_fb_write = false; // amendment 15: the fallback's slow entry toward A this call (the site-B write, both ways)
     bool capital_detour = false;   // amendment 16 fix: join / slow_join on an avoidance detour: the join's speed write is kept
     float capital_fb_v = 0.0f;
+    // Lane stage 1 (convoy-gate-transit.md section 6.4): the order-4 point. A field still holding the last rewrite (or, after a slot reset
+    // or a load, this hull's lane point L_i) is ours: the order's grid geometry is the KC grid point it replaced (slot 0's after a reset),
+    // so the validation, the commit and P2 below see the KC's grid as before; a call whose leaf point is not the field (the engine's
+    // container detour, ship-navigation-ai.md section 10.12 item 2) stays the fallback it is today. Reads: the live order's own f+0x240.
+    bool lane_ours = false;
+    if (lane_on_ && traffic_on_ && capital && !player && gph && order == core::kOrderFlyBefore && gs) {
+        const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
+        float cp[3];
+        for (unsigned i = 0; i < 3; ++i) cp[i] = float(cur[i]) / core::kUnitsPerMetre;
+        const float dd[3] = {cp[0] - in.P[0], cp[1] - in.P[1], cp[2] - in.P[2]};
+        if (core::dot3(dd, dd) <= 1.0f) {
+            if (gc::small_b_ours(gs->lane_w, cur)) {
+                lane_ours = true;
+                for (unsigned i = 0; i < 3; ++i) order_point[i] = gs->lane_grid[i];
+            } else {
+                int ci = -1;
+                const gc::Gate* cg = ctl_lookup(obj, &ci);
+                const bool member = cg && cg->gate == gate_tgt && cg->lane && ci >= 0 && cg->m[ci].ln && cg->m[ci].q_ok &&
+                                    cg->m[ci].id == rd32(obj + sites::kObjId);
+                bool adopt = false;
+                if (member) lane_ours = gc::lane_point_ours(*cg, cg->m[ci], cp); // (a tolerance, not the live l_c within 1 m: review item 4)
+                else { // review item 4: no lane member (a load, a slot reset): the hull's own L_i, from its own hull and the gate's frame;
+                       // final review item 4: an escort's L_i on some l_c when the board has none (a load), and a negative result memoised
+                       // per field value (gc::lane_adopt_memo: every non-member capital on order 4 reaches this on every call)
+                    const gc::Gate* bg = gc::gate_of(ctl_, gate_tgt);
+                    const float* lc = bg && bg->lane_c_ok ? bg->lane_c : nullptr;
+                    adopt = gc::lane_adopt_memo(gs->lane_noadopt, cur, type_width_gen_, lc != nullptr, [&]() -> bool {
+                        if (!lc && gc::lane_point_lc_env(G, row0, row1, row2, r_gate, cp)) return true;
+                        float w = 0.0f, l = 0.0f;
+                        if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l)) w = l = 0.0f;
+                        gc::Member hull{};
+                        gc::hull_from(hull, dyn.r_own, w, l);
+                        gc::params_from(hull.params, dyn, r_gate);
+                        return gc::lane_point_own(G, row0, row1, row2, r_gate, hull.r, hull.w, hull.L, hull.params.v_max,
+                                                  gc::gate_terran(rd16(gate_tgt + sites::kObjType)), lc, cp);
+                    });
+                    lane_ours = adopt;
+                }
+                if (lane_ours) { // the order's geometry: the KC's slot-0 grid point (the replaced slot is not known)
+                    for (unsigned i = 0; i < 3; ++i) {
+                        order_point[i] = G[i] - 2.0f * (r_gate + dyn.r_own) * row2[i];
+                        gs->lane_grid[i] = order_point[i];
+                        gs->lane_w.w[i] = cur[i];
+                    }
+                    gs->lane_w.ok = 1;
+                }
+                if (adopt) {
+                    ctl_point_adopts_.add();
+                    const gc::Gate* bg = gc::gate_of(ctl_, gate_tgt);
+                    if (bg) lane_rewrite_row(*bg, obj, dyn.r_own, cur, cur, 2, now);
+                }
+            }
+        }
+    }
     if (gph && order == core::kOrderFlyBefore) {
         core::GateGeometry g;
         float off[3] = {0.0f, 0.0f, 0.0f};
@@ -1888,6 +2021,41 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             if (capital && traffic_on_ && !player) {
                 const gc::Member* cm = ctl_commit(*gs, obj, in, dyn, &g, G, row0, row1, row2, r_gate, gate_tgt, now);
                 sb_member = cm && gc::sb_managed(*cm); // review F8: else the stage-A / amendment-17 join
+                // lane stage 1 (section 6.4): a lane member's f+0x240 on one of the KC's 20 grid points (within 1 m; the closed form of
+                // section 10.2 with this hull's radius) becomes its lane point L_i, d_end - 0.75 r_gate before the plane on its final; the
+                // engine's next re-plan tick (0-49 ms) tests and steers at it (section 10.12 item 2). A KC re-issue writes a grid point
+                // again and is caught again; a field holding our write is left alone. One 12-byte store.
+                if (lane_on_ && cm && cm->ln && cm->q_ok && cm->role == gc::Role::committed && !lane_ours && !in.detour) {
+                    const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
+                    float cp[3];
+                    for (unsigned i = 0; i < 3; ++i) cp[i] = float(cur[i]) / core::kUnitsPerMetre;
+                    const gc::Gate* cg = gc::gate_of(ctl_, gate_tgt);
+                    if (cg && gc::kc_grid_slot(G, row0, row1, row2, r_gate, dyn.r_own, cp) >= 0) {
+                        float L[3];
+                        gc::lane_order_point(*cg, *cm, L);
+                        std::int32_t units[3];
+                        bool ok = true;
+                        for (unsigned i = 0; i < 3; ++i) {
+                            ok = ok && core::finite_f(L[i]) && L[i] > -4.0e6f && L[i] < 4.0e6f; // the int32 range guard (units = 500 x m)
+                            units[i] = ok ? core::round_to_int(L[i] * core::kUnitsPerMetre) : 0;
+                        }
+                        if (ok) {
+                            for (unsigned i = 0; i < 3; ++i) {
+                                wr32(fl + sites::kFlightPoint + 4 * i, units[i]);
+                                gs->lane_w.w[i] = units[i];
+                                gs->lane_grid[i] = cp[i];
+                            }
+                            gs->lane_w.ok = 1;
+                            ctl_point_rewrites_.add();
+                            lane_rewrite_row(*cg, obj, dyn.r_own, cur, units, 0, now);
+                        }
+                    } else if (cg && !gc::small_b_ours(gs->lane_miss, cur)) { // review item 4: neither a grid point nor ours, once per value
+                        for (unsigned i = 0; i < 3; ++i) gs->lane_miss.w[i] = cur[i];
+                        gs->lane_miss.ok = 1;
+                        ctl_grid_miss_.add();
+                        lane_rewrite_row(*cg, obj, dyn.r_own, cur, cur, 3, now);
+                    }
+                }
             }
             if (capital) {
                 // Amendment 15 (section 15.3): the join mode of this leg (out beyond 6 r, join, or the latched fallback), the
@@ -2835,6 +3003,80 @@ inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std
         }
     }
 }
+// Lane stage 1 (convoy-gate-transit.md sections 6.3-6.5, ship-navigation-ai.md section 10.12 item 4): site B's lane write for a lane
+// member after the clamp, on every frame of the update (order 0 zeroes the desired speed every frame): a stop in force writes 0; on order
+// 0 / 0x1f with the nose within 8 deg of F the lane speed stands (gc::lane_site_b). Reads: the ship's own flight block of this update.
+// Review item 2 (gc::lane_defer_step): on a lane escort's order-0 frame in its lost-leader wait, f+0x210 (the re-plan stamp order 0's tail
+// has just set to now) is moved forward; on the next order's first frame its point is rewritten if it is a KC grid point and the stamp
+// is put back, so the order's first tick tests L_i one frame later. Reads and writes: the ship's own flight block of this update.
+inline void lane_clamp(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) noexcept {
+    int ci = -1;
+    gc::Gate* g = ctl_lookup(obj, &ci);
+    if (!g || !g->lane || ci < 0 || g->m[ci].id != rd32(obj + sites::kObjId)) return;
+    const std::uint16_t order = rd16(fl + sites::kFlightOrder);
+    const std::uint32_t now = game_time_ms();
+    if (now && (order == core::kOrderNone || g->m[ci].defer_w)) { // (no clock: no deferral)
+        const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
+        float p[3];
+        for (unsigned i = 0; i < 3; ++i) p[i] = float(cur[i]) / core::kUnitsPerMetre;
+        const std::uint32_t target = rd32(fl + sites::kFlightTarget);
+        const gc::LaneDefer d = gc::lane_defer_step(*g, g->m[ci], order, target, rd32(fl + sites::kFlightReplan), now, p);
+        if (d.rewrite) {
+            std::int32_t units[3];
+            bool ok = true;
+            for (unsigned i = 0; i < 3; ++i) {
+                ok = ok && core::finite_f(d.L[i]) && d.L[i] > -4.0e6f && d.L[i] < 4.0e6f; // the int32 range guard (units = 500 x m)
+                units[i] = ok ? core::round_to_int(d.L[i] * core::kUnitsPerMetre) : 0;
+            }
+            if (ok) {
+                for (unsigned i = 0; i < 3; ++i) wr32(fl + sites::kFlightPoint + 4 * i, units[i]);
+                // final review item 3: the rewrite is recorded as site A's is (the written field and the grid point it replaced), so
+                // site A's next call finds the field ours directly and keeps the replaced slot's geometry; the slot's state is begun for
+                // this ship and gate as site A begins it (its next call keeps it)
+                if (const core::Ship* sh = table_.find(obj)) {
+                    GateState& gs = gate_[unsigned(sh - table_.entries)];
+                    const std::uint32_t id = rd32(obj + sites::kObjId);
+                    if (gs.obj != obj || gs.gate != target || gs.id != id) {
+                        gs = GateState{};
+                        gs.obj = obj;
+                        gs.gate = target;
+                        gs.id = id;
+                        gs.lane_cap = -1.0f;
+                    }
+                    for (unsigned i = 0; i < 3; ++i) {
+                        gs.lane_w.w[i] = units[i];
+                        gs.lane_grid[i] = p[i];
+                    }
+                    gs.lane_w.ok = 1;
+                }
+                ctl_point_rewrites_.add();
+                ctl_defer_rewrites_.add();
+                lane_rewrite_row(*g, obj, g->m[ci].r, cur, units, 1, now);
+            }
+        }
+        if (d.write210) {
+            wr32(fl + sites::kFlightReplan, std::int32_t(d.v210));
+            if (order == core::kOrderNone) ctl_lane_defers_.add();
+        }
+    }
+    float x[3], f[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        x[i] = float(rds32(ph + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+        f[i] = fixed16(rds32(fl + sites::kFlightBasis + 0x20 + 4 * i));
+    }
+    float v = 0.0f;
+    gc::LaneWrite kind = gc::LaneWrite::none;
+    gc::Member& mm = g->m[ci];
+    mm.sb_wv = -1.0f;
+    mm.sb_wk = 0;
+    if (!gc::lane_site_b(*g, mm, order, x, f, float(rds32(obj + sites::kObjSpeed)) / core::kUnitsPerMetre, now, &v, &kind)) return;
+    const float u = v * core::kUnitsPerMetre;
+    if (!(u >= 0.0f) || u >= 2147483520.0f) return;
+    wr32(obj + sites::kObjDesiredSpeed, core::round_to_int(u));
+    mm.sb_wv = v;
+    mm.sb_wk = std::uint8_t(kind);
+    ctl_lane_writes_.add();
+}
 // Site B's write for one ship (the clamp from its last decision), split out so the trace row follows it.
 inline void clamp_apply(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) noexcept {
     const core::Ship* s = table_.find(obj);
@@ -2879,6 +3121,7 @@ extern "C" void __cdecl x3m_ship_steering_clamp(std::uint32_t obj) {
     if (!fl || !ph) return;
     const std::int32_t des_engine = rds32(obj + sites::kObjDesiredSpeed);
     clamp_apply(obj, fl, ph);
+    if (lane_on_ && traffic_live_.load(std::memory_order_relaxed) && ctl_ix_.maybe(obj)) lane_clamp(obj, fl, ph);
     // after the write: the row carries des as the module left it; amendment 17: an untraced capital's warn rows
     if (trace_on_ && !trace_frame(obj, fl, ph, des_engine)) capital_warn_watch(obj, fl);
     // the gate traffic controller: a member's live state and role (two loads for any other ship: the bitmap)
@@ -3026,7 +3269,12 @@ extern "C" void __cdecl x3m_ship_gate_stop_a(std::uint32_t obj) {
             sb_funnel = cg && cg->gate == tgt && cg->m[ci].id == rd32(obj + sites::kObjId) && gc::sb_funnel(cg->m[ci]);
         }
         const bool join_mode = cap && gates_capital_on_ && g->validated == 1 && (g->join.mode == core::JoinMode::join || sb_funnel);
-        const core::JoinKeep why = core::join_keep_verdict(join_mode, nose_deg, vel_deg, v_ms, core::join_coast_bound(g->xg_m, g->r_ship, v_ms, g->a_lin));
+        float keep_bound = core::join_coast_bound(g->xg_m, g->r_ship, v_ms, g->a_lin);
+        if (sb_funnel && lane_on_) { // lane stage 1 (section 6.4): site B's hold and the refusal's brake bound replace the coast bound
+            int ci = -1;
+            if (const gc::Gate* cg = ctl_lookup(obj, &ci)) keep_bound = gc::lane_p2_bound(cg->m[ci], keep_bound);
+        }
+        const core::JoinKeep why = core::join_keep_verdict(join_mode, nose_deg, vel_deg, v_ms, keep_bound);
         cap_keep = live && why == core::JoinKeep::kept;
         if (cap_keep && sb_funnel) { // the P2 stub's contract (ship_steering_sites.h (h)): on a kept stage-B hand-over the three turn
             wr32(obj + sites::kObjRemaining, 0);      // remainders obj+0x30/+0x34/+0x38 are zeroed, so order 0 and a first-frame 0x1f
@@ -3628,6 +3876,19 @@ void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcep
         r.v = m.st.v;
         r.zx = m.zx; // B.8: the board's own fields and geometry (no engine read)
         r.rho = g.rho;
+        r.lane = g.lane;
+        r.rank = m.lane_rank;
+        r.law = std::uint8_t(m.law);
+        r.lane_s = m.lane_s;
+        r.gap = m.lane_gap < 1e30f ? m.lane_gap : -3.4e38f;
+        r.lat = m.lane_lat;
+        r.lc[0] = g.lane_c[0];
+        r.lc[1] = g.lane_c[1];
+        r.v_law = m.v_sb;
+        r.v_w = m.sb_wv;
+        r.w_kind = m.sb_wk;
+        r.on = m.lane_on;
+        r.merged = m.merge_done;
         r.s = r.stage_s = r.d_join = -1.0f;
         if (m.petal >= 0) {
             gc::PetalGeom pg;
@@ -3641,10 +3902,37 @@ void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcep
         member_row_write_.store(w + 1, std::memory_order_release);
     }
 }
+// Lane stage 1 (convoy-gate-transit.md, ship_steering_gates_lane): gc::lane_frame for a lane gate (the board's own state only, no engine
+// read), its counters and the merge rows (--debug).
+void lane_frame_gate(gc::Gate& g, std::uint32_t now) noexcept {
+    gc::LaneStats st;
+    const unsigned stops0 = g.lane_stops;
+    gc::lane_frame(g, now, &st);
+    if (st.merges) ctl_merge_yield_.add(st.merges);
+    if (g.lane_stops != stops0) ctl_merge_stop_.add(g.lane_stops - stops0);
+    if (st.x_refused) ctl_x_refused_.add(st.x_refused);
+    if (st.clock_resets) ctl_clock_resets_.add(st.clock_resets);
+    ctl_x_wait_ms_ += st.x_wait_ms;
+    if (st.ev_dropped) for (unsigned k = 0; k < st.ev_dropped; ++k) row_dropped(Drop::ctl);
+    if (!debug_) return;
+    for (unsigned k = 0; k < st.n_ev; ++k) {
+        const std::uint32_t w = merge_row_write_.load(std::memory_order_relaxed);
+        if (w - merge_row_read_ >= 8) {
+            row_dropped(Drop::ctl);
+            break;
+        }
+        merge_rows_[w & 7] = MergeRow{g.gate, now, st.ev[k]};
+        merge_row_write_.store(w + 1, std::memory_order_release);
+    }
+}
 void sb_frame_all(std::uint32_t now) noexcept {
     const std::uint64_t t0 = timing_ ? qpc() : 0;
     for (gc::Gate& g : ctl_.g) {
         if (!g.gate) continue;
+        if (g.lane) { // ship_steering_gates_lane: the lane replaces the sequencer and the petals
+            lane_frame_gate(g, now);
+            continue;
+        }
         gc::SbStats st;
         st.seq_on = debug_; // review N7: the sequencer's row state only in the debug tier
         gc::sb_frame(g, now, &st);
@@ -3886,6 +4174,31 @@ void ctl_rows(unsigned long long frame) noexcept {
             double(r.v), int(r.petal), static_cast<unsigned long>(r.key), unsigned(r.traced), static_cast<long>(r.st_age_ms),
             static_cast<long>(r.dec_age_ms), unsigned(r.live), double(r.zx), double(r.rho), double(r.s), double(r.stage_s), double(r.d_join),
             static_cast<long>(r.t_rel_ms), unsigned(r.ringed));
+        if (r.lane) { // lane stage 1: the lane's own fields (a separate row: the stage-B format stays as it is)
+            char gap[16] = "na", vw[16] = "na";
+            if (r.gap > -1e30f) std::snprintf(gap, sizeof gap, "%.0f", double(r.gap));
+            if (r.v_w >= 0.0f) std::snprintf(vw, sizeof vw, "%.1f", double(r.v_w));
+            x3m::log("ship_gate_ctl_lane frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx lane_s=%.0f rank=%u gap_m=%s law=%s lat_m=%.0f "
+                     "lc_m=%.0f,%.0f v_law=%.1f v_w=%s w=%s on=%u merged=%u", frame,
+                     static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship), double(r.lane_s),
+                     unsigned(r.rank), gap, gc::law_name(gc::Law(r.law)), double(r.lat), double(r.lc[0]), double(r.lc[1]), double(r.v_law), vw,
+                     gc::lane_write_name(gc::LaneWrite(r.w_kind)), unsigned(r.on), unsigned(r.merged));
+        }
+    }
+    for (std::uint32_t w = merge_row_write_.load(std::memory_order_acquire); merge_row_read_ != w; ++merge_row_read_) { // lane stage 1
+        const MergeRow& r = merge_rows_[merge_row_read_ & 7];
+        x3m::log("ship_gate_ctl_merge frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx pred=0x%08lx event=%s gap_m=%.0f law=%s dur_ms=%lu", frame,
+                 static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.e.ship),
+                 static_cast<unsigned long>(r.e.pred), r.e.finish ? "finish" : "start", double(r.e.gap), gc::law_name(r.e.law),
+                 static_cast<unsigned long>(r.e.ms));
+    }
+    for (std::uint32_t w = rewrite_row_write_.load(std::memory_order_acquire); rewrite_row_read_ != w; ++rewrite_row_read_) { // item 9
+        static const char* const kSite[4] = {"a", "b", "adopt", "miss"};
+        const RewriteRow& r = rewrite_rows_[rewrite_row_read_ & 7];
+        x3m::log("ship_gate_ctl_rewrite frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx site=%s slot=%d from_m=%.0f,%.0f,%.0f to_m=%.0f,%.0f,%.0f", frame,
+                 static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
+                 kSite[r.site < 4 ? r.site : 3], int(r.slot), double(r.from[0]), double(r.from[1]), double(r.from[2]), double(r.to[0]),
+                 double(r.to[1]), double(r.to[2]));
     }
     for (std::uint32_t w = launch_row_write_.load(std::memory_order_acquire); launch_row_read_ != w; ++launch_row_read_) {
         const LaunchRow& r = launch_rows_[launch_row_read_ & 7];
@@ -4100,6 +4413,28 @@ bool initialize() {
             log("ship_steering_gates_traffic_refused reason=%s", tr_why);
         } else
             traffic_state_ = "off";
+    }
+    // Lane stage 1 (convoy-gate-transit.md section 1): X3M_SHIP_STEERING_GATES_LANE (default off: stage B as installed in Run169; needs the
+    // traffic controller active). No site of its own: the lane runs in the controller's frame boundary, its order-4 point rewrite and its
+    // speed in the controller's site A / site B paths. Set without the controller: the refusal row; unset: silently off.
+    {
+        wchar_t ln_text[8]{};
+        const DWORD ln_length = x3m::config::get(L"X3M_SHIP_STEERING_GATES_LANE", ln_text, 8);
+        bool ln_on = false;
+        const char* ln_why = nullptr;
+        if (ln_length && (ln_length >= 8 || !core::parse_switch(ln_text, ln_length, &ln_on))) {
+            ln_on = false;
+            ln_why = "invalid_setting";
+        }
+        if (ln_on && !traffic_on_) {
+            ln_on = false;
+            ln_why = "needs_traffic";
+        }
+        lane_on_ = ln_on;
+        ctl_.lane = ln_on ? 1 : 0; // every gate board acquired from here runs gc::lane_frame (gc::acquire_gate)
+        lane_state_ = ln_on ? "active" : ln_why ? ln_why : "off";
+        if (ln_why) log("ship_steering_gates_lane_refused reason=%s", ln_why);
+        else if (ln_on) log("ship_steering_gates_lane status=active");
     }
     // Amendment 18 (docking-approach.md item 6): X3M_SHIP_STEERING_DOCK (default on; needs X3M_SHIP_AVOIDANCE). No site of its own: the
     // row runs in site E's handler (inert while E is not chained), the part obstacles in the avoidance. Set without the avoidance: the
@@ -4820,6 +5155,15 @@ void frame_boundary(std::uint64_t frame) {
         static_cast<unsigned long>(cstale - rep_clamp_stale_), static_cast<unsigned long>(redirected - rep_redirected_),
         static_cast<unsigned long>(total), clamped(0.5), clamped(0.99), us_max, orders,
         static_cast<unsigned long>(stuck_count_.load(std::memory_order_relaxed)), avoidance, gates, dock, trace);
+    if (lane_on_) // lane stage 1 (convoy-gate-transit.md section 6.9), totals since install: its own row (the summary's gates text is bounded)
+        log("ship_steering_lane_summary frame=%llu lane=%s ctl_merge_yield=%lu ctl_merge_stop=%lu ctl_point_rewrites=%lu ctl_lane_writes=%lu "
+            "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_grid_miss=%lu ctl_point_adopts=%lu ctl_lane_defers=%lu ctl_defer_rewrites=%lu",
+            static_cast<unsigned long long>(frame), lane_state_, static_cast<unsigned long>(ctl_merge_yield_.get()),
+            static_cast<unsigned long>(ctl_merge_stop_.get()), static_cast<unsigned long>(ctl_point_rewrites_.get()),
+            static_cast<unsigned long>(ctl_lane_writes_.get()), static_cast<unsigned long>(ctl_x_refused_.get()),
+            static_cast<unsigned long>(ctl_x_wait_ms_ / 1000u), static_cast<unsigned long>(ctl_grid_miss_.get()),
+            static_cast<unsigned long>(ctl_point_adopts_.get()), static_cast<unsigned long>(ctl_lane_defers_.get()),
+            static_cast<unsigned long>(ctl_defer_rewrites_.get()));
     rep_calls_ = calls;
     rep_handled_ = handled;
     rep_clamp_calls_ = ccalls;

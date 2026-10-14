@@ -42,6 +42,16 @@ class ShipSteeringCore(unittest.TestCase):
             self.assertEqual(len(lines), 5, run.stdout)
             self.assertTrue(all('suppressed=0' in l and 'n_resolved=0' in l for l in lines), run.stdout)
 
+    def test_site_b_rewrite_recorded(self):
+        # final review item 3 (convoy-gate-transit.md section 11): site B's deferred order-4 rewrite records the written field and the
+        # grid point it replaced in the ship's gate state, as site A's rewrite does, so site A finds the field ours without a tolerance
+        src = (ROOT / 'src/proxy/ship_steering.cpp').read_text()
+        start = src.index('inline void lane_clamp(')
+        body = src[start:src.index('\ninline void clamp_apply(', start)]
+        rewrite = body[body.index('if (d.rewrite)'):body.index('if (d.write210)')]
+        for needle in ('gs.lane_w.w[i] = units[i]', 'gs.lane_grid[i] = p[i]', 'gs.lane_w.ok = 1'):
+            self.assertIn(needle, rewrite)
+
 
 if __name__ == '__main__':
     unittest.main()

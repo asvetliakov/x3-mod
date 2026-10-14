@@ -1,0 +1,14 @@
+leader seconds 0..120 with the avoidance detour against the parked M7 (obst 9300): 36..116, 81 of 121
+t=  0 nose 1.00 law join on 0 detour 0
+t= 10 nose 1.00 law join on 0 detour 0
+t= 20 nose 1.00 law lane on 1 detour 0
+t= 30 nose 1.00 law lane on 1 detour 0
+t= 40 nose 1.00 law lane on 1 detour 1
+t= 50 nose 0.83 law lane on 1 detour 1
+t= 60 nose 0.71 law lane on 1 detour 1
+t= 70 nose 0.71 law join on 0 detour 1
+t= 80 nose 0.71 law join on 0 detour 1
+t= 90 nose 0.98 law join on 0 detour 1
+t=100 nose 1.00 law join on 0 detour 1
+t=110 nose 0.99 law join on 0 detour 1
+t=120 nose 0.92 law join on 0 detour 0

@@ -423,6 +423,11 @@ SETTINGS = [
           'ships arriving through the gate above the middle so they do not appear in the departure lane (needs '
           'ship_steering_gates_capital; 0 = capital ships at a gate behave as before). 1 = on, 0 = off.', builtin='1',
           requires=('ship_steering_gates_capital',), since='2026-10-13'),
+    entry('ship_steering_gates_lane', 'bool', 'engine', 'Capital ships bound for the same gate fly one departure lane, one behind the '
+          'other at hull spacing, instead of holding patterns: a ship that would reach the lane level with another eases off (or stops '
+          'briefly) until it is behind it, the ship ahead never slows, and each capital ends its approach about 2.3 km before the gate so '
+          'the next one does not wait for the previous jump (needs ship_steering_gates_traffic; 0 = the traffic controller\'s holding '
+          'patterns as before). 1 = on, 0 = off.', builtin='0', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
     entry('ship_steering_dock', 'bool', 'engine', 'Ships flying to dock at a station or a carrier steer around its parts on the way '
           'to the docking approach point, and the game skips its collision warning against that station or carrier while the ship\'s '
           'path and heading clear every part with room to spare, so the ship no longer stops and flies away from its own dock; ships '

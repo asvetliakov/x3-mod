@@ -1,0 +1,183 @@
+X3AP.exe SHA-256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab OK
+
+1. byte strings
+  ok  004549d7 8b 15 34 6f 60 00 8b 82 18 07 00 00          order 4: now = [[0x606f34]+0x718] (the clock site B reads)
+  ok  004549c2 8b be 24 02 00 00 85 ff                      order 4 head: target f+0x224 ...
+  ok  004549d1 0f 84 2e 07 00 00                            ... null -> 0x455105 (port -1, order 0, wake 3): the only test before the gate
+  ok  004549e3 2b 86 10 02 00 00 0f 88 ee 49 00 00          order 4: sub now - f+0x210; js 0x4593dd (signed, modular)
+  ok  004549ef 8b b6 0c 02 00 00 85 f6 7f 04 33 c0          order 4 tick: n = f+0x20c; n <= 0 -> 0 ...
+  ok  00454a12 03 d0 8b 43 50 89 90 10 02 00 00             ... f+0x210 = now + rand(n)
+  ok  00454b70 3b f0 7f 2d                                  order 4: arrival test, after the gate
+  ok  0045820d 8b 86 24 02 00 00 85 c0                      order 0x14 head: leader tests (every frame) ...
+  ok  0045824c 2b 96 10 02 00 00 0f 88 51 08 00 00          ... sub now - f+0x210; js 0x458aa9
+  ok  00458aa9 8b 43 50 83 b8 8c 02 00 00 00 0f 84 24 09 00 0x14 skip: timeout f+0x28c/f+0x290 test, else site B
+  ok  00458aea 8b 86 24 02 00 00 85 c0                      order 0x15 head: target tests (every frame) ...
+  ok  00458b28 2b 8e 10 02 00 00 0f 88 72 cf ff ff          ... sub now - f+0x210; js 0x455aa6
+  ok  00455aa6 8b 43 50 83 b8 8c 02 00 00 00 0f 84 27 39 00 0x15 skip: timeout test (shared), else site B
+  ok  00455ac8 0f 88 0f 39 00 00 6a 0d                      ... now - f+0x290 < 0 -> site B; else order 0, wake 13
+  ok  00458f8e f7 43 40 00 00 08 00 74 16                   order 0: autopilot bit 0x80000 ...
+  ok  00458fa8 e9 33 01 00 00                               ... autopilot path -> tail 0x4590e0
+  ok  004590de 33 ff 8b 53 50                               order 0: non-autopilot path falls into the tail
+  ok  00459119 89 b8 18 02 00 00 8b 4b 50 89 b9 8c 02 00 00 order 0 tail: f+0x218 = 0, f+0x28c = 0 ...
+  ok  00459128 a1 34 6f 60 00 8b 53 50 8b 88 18 07 00 00 89 ... f+0x210 = now; jmp 0x4593dd (site B), nothing in between
+  ok  004593dd 8b 1b 83 3b 00                               site B (ship_steer_loop_continue)
+  ok  00452adc a1 34 6f 60 00 8b 80 14 07 00 00 3d e8 03 00 interpreter dt = [+0x714] clamped to 1000 (integration only)
+  ok  004404a1 6b c9 32 89 8a 0c 02 00 00                   ship init: f+0x20c = type[+0x50] * 50
+  ok  004404ad 8b 88 0c 02 00 00 8b 15 34 6f 60 00 03 8a 18 ship init: f+0x210 = now + f+0x20c
+  ok  0046537c 89 91 40 02 00 00                            SA_FlyObjectBeforeContainerPos: f+0x240 = x (no f+0x210 write in the case)
+  ok  004653b9 c7 80 50 02 00 00 ff ff ff ff                ... port -1
+  ok  00461925 8b 15 34 6f 60 00 8b 82 18 07 00 00 8b 4e 50 SA_EscortObject: f+0x210 = now
+  ok  004619ca a1 34 6f 60 00 8b 88 18 07 00 00 8b 56 50 89 SA_FollowObject: f+0x210 = now
+  ok  00460c84 8b 0d 34 6f 60 00 8b 43 50 8b 91 18 07 00 00 SA_FlyObjectIntoContainer: f+0x210 = now
+  ok  00460e7d 8b 15 34 6f 60 00 8b 4b 50 8b 82 18 07 00 00 SA_FlyObjectBeforeContainer: f+0x210 = now
+  ok  00461f39 a1 34 6f 60 00 8b 56 50 8b 88 18 07 00 00 89 SA_StopObject: f+0x210 = now
+  ok  00461a95 8b 0d 34 6f 60 00 8b 91 18 07 00 00 8b 4d 08 SA_FollowObjectByCut: f+0x210 = now + rand
+  ok  00463c16 81 c2 60 ea 00 00 89 90 10 02 00 00          SA_SetPlayerLand: f+0x210 = now + 60000
+  ok  004321ec 8b 95 0c 02 00 00 52 56 e8 a7 72 0b 00 8b 85 save 0x4310a0 (class 7, SOBJ): writes f+0x20c, f+0x210 raw
+  ok  00431494 89 95 10 02 00 00                            load 0x4310a0: f+0x210 = the saved value (byte-swapped read, no rebase)
+  ok  00441f8f 8b 53 50 53 6a 01 52 8b c6 e8 03 f1 fe ff    SOBJ writer 0x441e10, class 7: 0x4310a0(flight, 1, obj)
+  ok  004047ed a1 34 6f 60 00 8b 88 18 07 00 00             save routine: the clock [+0x718] is written
+  ok  00404f75 8b 15 34 6f 60 00 89 82 18 07 00 00          load 0x404cc0: the clock [+0x718] is restored
+  ok  004d1f30 81 fe c8 00 00 00 7e 08                      clock 0x4d1df0: real step clamped to <= 200 ms ...
+  ok  004d1f5c 01 81 18 07 00 00                            ... [+0x718] += step * ([+0xcc]*[+0xd0] 16.16, the time factor)
+  ok  004ee1ec 8b 8a 18 07 00 00 8b c1 2b 05 04 91 60 00    0x4ee1e0: [+0x714] = delta of [+0x718] (the frame step) ...
+  ok  004ee216 89 82 14 07 00 00                            ... stored
+  ok  0044412f 8b 0d 34 6f 60 00 8b 43 50 8b 91 18 07 00 00 SA_StartInHangar 0x443920: f+0x210 = now
+  ok  004448e8 a1 34 6f 60 00 8b 53 50 8b 88 18 07 00 00 89 arrival launch 0x444170: f+0x210 = now
+  ok  0045b797 e8 d4 89 fe ff                               post pass calls the arrival launch 0x444170
+  ok  SA 0x009 SA_FlyObjectIntoContainer -> 0046082e
+  ok  SA 0x00a SA_FlyObjectBeforeContainer -> 00460cae
+  ok  SA 0x00c SA_FlyObjectBeforeContainerPos -> 0046533c
+  ok  SA 0x00d SA_ClearObjectFromHangar -> 0046117e
+  ok  SA 0x00e SA_WarpObjectAway -> 0046126a
+  ok  SA 0x00f SA_AvoidObjectCollision -> 0046104c
+  ok  SA 0x010 SA_CaptureObject -> 0046142f
+  ok  SA 0x011 SA_AttackObject -> 004614da
+  ok  SA 0x012 SA_AttackObjectBig -> 004616e0
+  ok  SA 0x013 SA_DefensiveMove -> 004617cf
+  ok  SA 0x014 SA_EscortObject -> 004618a6
+  ok  SA 0x016 SA_TurnToObject -> 00461fdd
+  ok  SA 0x019 SA_StartInHangar -> 004626e2
+  ok  SA 0x01a SA_Idle -> 0046274e
+  ok  SA 0x01b SA_FollowObject -> 0046196f
+  ok  SA 0x01c SA_FollowObjectByCut -> 00461a13
+  ok  SA 0x01d SA_RotateToAngles -> 004653d1
+  ok  SA 0x01e SA_MovePos -> 0046232c
+  ok  SA 0x01f SA_MovePosContinue -> 0046239c
+  ok  SA 0x020 SA_GlidePos -> 004656f3
+  ok  SA 0x021 SA_WarpObjectIn -> 00465b22
+  ok  SA 0x0fa SA_StopObject -> 00461e89
+  ok  SA 0x119 SA_SetPlayerLand -> 00463bc4
+  ok  SA 0x177 SA_CollectDebris -> 00468c96
+
+2. sweep: every [reg+0x210] memory operand in .text
+  0041a381 mov dword ptr [ebp + 0x210], edx         other     cockpit record load 0x419610
+  0041b638 mov eax, dword ptr [ebp + 0x210]         other     cockpit record save 0x419610
+  0041fd64 mov dword ptr [edi + 0x210], eax         other     cockpit record init 0x41f8d0
+  004239bb cmp dword ptr [ebx + 0x210], 0           other     cockpit 0x423960
+  004239e6 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423a34 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423a7f mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423aca mov ecx, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423b03 mov ecx, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423b3c mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423b80 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423e8f mov ecx, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423f39 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423f78 mov edx, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423fa1 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00423fe3 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  0042423f mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  0042426a mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  004242b0 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  004244d3 mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  004244fb mov eax, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  0042451b sub dword ptr [ebx + 0x210], eax         other     cockpit 0x423960
+  00424521 mov ecx, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00424531 mov dword ptr [ebx + 0x210], eax         other     cockpit 0x423960
+  00424556 mov ecx, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  0042457a add dword ptr [ebx + 0x210], eax         other     cockpit 0x423960
+  00424580 mov ecx, dword ptr [ebx + 0x210]         other     cockpit 0x423960
+  00424590 mov dword ptr [ebx + 0x210], eax         other     cockpit 0x423960
+  0042d88c mov dword ptr [eax + 0x210], ecx         other     script case on 0x41cd20 (cockpit)
+  0042d8f1 mov eax, dword ptr [eax + 0x210]         other     script case on 0x41cd20 (cockpit)
+  00431494 mov dword ptr [ebp + 0x210], edx         flight W  load 0x4310a0: saved value
+  004321f9 mov eax, dword ptr [ebp + 0x210]         flight R  save 0x4310a0
+  004378cc mov eax, dword ptr [esp + 0x210]         other     stack local
+  004404c0 mov dword ptr [eax + 0x210], ecx         flight W  ship init 0x43ffa0: now + f+0x20c
+  00443e4f mov dword ptr [ecx + 0x210], eax         flight W  SA_StartInHangar -> 0x443920: now
+  0044413e mov dword ptr [eax + 0x210], edx         flight W  SA_StartInHangar -> 0x443920: now
+  004448f6 mov dword ptr [edx + 0x210], ecx         flight W  arrival launch 0x444170 (post pass 0x45b797): now
+  00453d2d sub eax, dword ptr [esi + 0x210]         flight R  order 0x1d gate
+  00453d63 mov dword ptr [eax + 0x210], edx         flight W  order 0x1d tick
+  004549e3 sub eax, dword ptr [esi + 0x210]         flight R  order 4 gate
+  00454a17 mov dword ptr [eax + 0x210], edx         flight W  order 4 tick
+  00455152 sub eax, dword ptr [esi + 0x210]         flight R  order 0x1b (landing clearance)
+  004554e7 sub eax, dword ptr [esi + 0x210]         flight R  order 6 gate
+  0045551e mov dword ptr [edx + 0x210], ecx         flight W  order 6 tick
+  004556a1 sub ecx, dword ptr [esi + 0x210]         flight R  order 0x22 gate
+  004556d5 mov dword ptr [edx + 0x210], ecx         flight W  order 0x22 tick
+  00455c04 sub edx, dword ptr [eax + 0x210]         flight R  order 0x24 gate
+  00455c3f mov dword ptr [eax + 0x210], edx         flight W  order 0x24 tick
+  00455ecb sub edx, dword ptr [esi + 0x210]         flight R  order 0x10/0x11/0x18 gate
+  00455f09 mov dword ptr [eax + 0x210], edx         flight W  order 0x10/0x11/0x18 tick
+  004564d9 sub edx, dword ptr [esi + 0x210]         flight R  order 0x19 gate
+  00456513 mov dword ptr [eax + 0x210], edx         flight W  order 0x19 tick
+  004565a8 sub edx, dword ptr [esi + 0x210]         flight R  order 0x23 gate
+  004565e2 mov dword ptr [eax + 0x210], edx         flight W  order 0x23 tick
+  00456780 sub edx, dword ptr [eax + 0x210]         flight R  order 0x12 gate
+  0045679e mov dword ptr [eax + 0x210], ecx         flight W  order 0x12 tick (now + 200)
+  0045749d lea ecx, [esp + 0x210]                   other     stack local
+  00457f76 sub esi, dword ptr [edx + 0x210]         flight R  order 0x1e (time since issue)
+  0045824c sub edx, dword ptr [esi + 0x210]         flight R  order 0x14 gate
+  00458283 mov dword ptr [eax + 0x210], edx         flight W  order 0x14 tick
+  00458b28 sub ecx, dword ptr [esi + 0x210]         flight R  order 0x15 gate
+  00458b9e mov dword ptr [eax + 0x210], edx         flight W  order 0x15 tick
+  00459136 mov dword ptr [edx + 0x210], ecx         flight W  order 0 tail: now
+  00460c97 mov dword ptr [eax + 0x210], edx         flight W  SA 0x09 FlyObjectIntoContainer: now
+  00460e8c mov dword ptr [ecx + 0x210], eax         flight W  SA 0x0a FlyObjectBeforeContainer: now
+  00461083 mov dword ptr [edx + 0x210], ecx         flight W  SA 0x0f AvoidObjectCollision: now
+  004611ea mov dword ptr [ecx + 0x210], edx         flight W  SA 0x0d ClearObjectFromHangar: now
+  0046148d mov dword ptr [eax + 0x210], edx         flight W  SA 0x10 CaptureObject: now
+  0046165e mov dword ptr [eax + 0x210], edx         flight W  SA 0x11/0x12 AttackObject(Big) shared tail: now
+  00461839 mov dword ptr [eax + 0x210], edx         flight W  SA 0x13 DefensiveMove: now
+  00461934 mov dword ptr [ecx + 0x210], eax         flight W  SA 0x14 EscortObject: now
+  004619d8 mov dword ptr [edx + 0x210], ecx         flight W  SA 0x1b FollowObject: now
+  00461aa9 mov dword ptr [eax + 0x210], edx         flight W  SA 0x1c FollowObjectByCut: now + rand(1000)
+  00461f47 mov dword ptr [edx + 0x210], ecx         flight W  SA 0xfa StopObject: now
+  004627b9 mov dword ptr [edx + 0x210], ecx         flight W  SA 0x1a Idle: now
+  00463c1c mov dword ptr [eax + 0x210], edx         flight W  SA 0x119 SetPlayerLand: now + 60000
+  00463c58 mov dword ptr [edx + 0x210], eax         flight W  SA 0x119 SetPlayerLand (else): now
+  00468d79 mov dword ptr [eax + 0x210], edx         flight W  SA 0x177 CollectDebris: now
+  00478aa8 mov dword ptr [esp + 0x210], ecx         other     stack local
+  00478b79 mov eax, dword ptr [esi + 0x210]         other     B3D node
+  0047a195 mov eax, dword ptr [esp + 0x210]         other     stack local
+  0047a278 mov dword ptr [ebx + 0x210], ecx         other     B3D node
+  004c1f89 fstp qword ptr [esp + 0x210]             other     stack local
+  004c2041 lea eax, [esp + 0x210]                   other     stack local
+  004c2102 lea ecx, [esp + 0x210]                   other     stack local
+  004c21b7 lea edx, [esp + 0x210]                   other     stack local
+  004c21d8 lea ecx, [esp + 0x210]                   other     stack local
+  004c2205 lea ecx, [esp + 0x210]                   other     stack local
+  004c9474 mov byte ptr [esp + 0x210], 0xc9         other     stack local
+  004d4970 lea eax, [esi + 0x210]                   other     lea
+  004d5b17 lea eax, [esi + 0x210]                   other     lea
+  004d5ce4 lea edi, [esi + 0x210]                   other     lea
+  00461157 mov dword ptr [ecx + edx + 0x210], eax   indexed: SA_AvoidObjectCollision loop, index ecx = 0x30/0x34/0x38 (0x0046112e mov ecx, 0x30; 3 rounds): f+0x240..+0x248
+  004d5ccf mov byte ptr [ecx + esi + 0x210], dl     indexed: byte table [esi+ecx+0x210], ecx < 0xff (not a flight record)
+  004d5db0 test byte ptr [edi + esi + 0x210], 0x80  indexed: byte table [esi+edi+0x210] (same structure as 0x4d5ccf)
+  ok  92 operands: flight writers 32, flight readers 14; unknown []; indexed unknown []; expected but absent []
+
+3. SA cases that can follow order 0 for an escort: f+0x210 written at issue?
+  ok  SA 0x009 SA_FlyObjectIntoContainer        case 0046082e..00460cae writes f+0x210 at ['0x460c97']
+  ok  SA 0x00a SA_FlyObjectBeforeContainer      case 00460cae..00460ea7 writes f+0x210 at ['0x460e8c']
+  ok  SA 0x00c SA_FlyObjectBeforeContainerPos   case 0046533c..004653d1 writes f+0x210 at none
+  ok  SA 0x00e SA_WarpObjectAway                case 0046126a..00461339 writes f+0x210 at none
+  ok  SA 0x00f SA_AvoidObjectCollision          case 0046104c..0046117e writes f+0x210 at ['0x461083']
+  ok  SA 0x014 SA_EscortObject                  case 004618a6..0046196f writes f+0x210 at ['0x461934']
+  ok  SA 0x01a SA_Idle                          case 0046274e..004627e8 writes f+0x210 at ['0x4627b9']
+  ok  SA 0x01b SA_FollowObject                  case 0046196f..00461a13 writes f+0x210 at ['0x4619d8']
+  ok  SA 0x01d SA_RotateToAngles                case 004653d1..00465481 writes f+0x210 at none
+  ok  SA 0x0fa SA_StopObject                    case 00461e89..00461f70 writes f+0x210 at ['0x461f47']
+
+RESULT PASS (0 failures)

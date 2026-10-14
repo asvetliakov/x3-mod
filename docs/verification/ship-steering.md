@@ -2575,6 +2575,111 @@ in [`b9_review_commands.txt`](../../verification/results/ship-steering/gate-traf
 Reviewed (Opus, Fable on 511ffbf5; the first review's fixes reviewed once more on the delta, whose five findings are fixed above and not
 re-reviewed). Not flown, not installed.
 
+### Lane stage 1 (2026-10-14, Opus 5.5; design [convoy-gate-transit.md](../architecture/convoy-gate-transit.md), deviations §11) — scenario C green
+
+`ship_steering_gates_lane` (default off; needs the traffic controller): one departure lane per gate with the merge rule, the order-4
+point rewrite to L_i (d_end − 0.75 r_gate before the plane), site B's lane write (stops, the order-0 / 0x1f hold), the escort gate,
+`lane_frame` in place of `sb_frame`; rows `ship_gate_ctl_lane`, `ship_gate_ctl_merge`, pair `cause=merge|stop`,
+`ship_steering_lane_summary`. Fixture mode `--lane` (scenario C, §6.11): 10 casts (abreast 1+2 and 1+4, formed M2/M1/M2 and M1/M7/M7,
+stragglers near and far, re-departure, crossing, partner block, formed with the stage-2 script) × 3 seeds × SETA tf 1 (60 fps), 6 and
+10 (30 fps, B.3's 1.5–2 s steps), the nine assertions, units (the 20-slot guard, L_i, the three laws, the merge rank, the refusal's
+brake bound) and the executed control (the same casts on the pre-lane core).
+
+First implementer (the WIP state, 5f547394):
+
+* `c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp`: full run checks=10521 failures=0, `--capital`
+  4863/0, `X3M_SEQ_OFF=1` 10431/0, `--b9` 45/0 **[m]**; key-off stdout identical to the pre-lane build (0 differing lines of 1162,
+  991, 1162, 201 after stripping host timing fields: `convoy-gate-transit/keyoff_diff.py`) **[m]**.
+* `--lane`: checks=828 **failures=56** (scenario C not green; open items in the design note §11) **[m]**. Control: the pre-lane core
+  fails the span assertion in 24 of 24 runs **[m]**.
+* Spans, 15 km → last launch (s, 3 seeds; `scenario_c.txt`) **[m]**: formed 1+2 tf 1 202.0–202.1, tf 6 184.7–186.2, tf 10
+  185.4–185.6; abreast 1+2 174.0–179.0 / 154.4–157.4 / 155.7–159.4; abreast 1+4 231.6–232.5 / 215.8–221.9 / 208.4–216.4;
+  stragglers 202.5–203.4 / 189.6–191.5 / 184.6–186.0; partner block 234.3–234.4 / 218.9–221.7 / 217.2–220.7. T_slot 17–21 s at tf 1
+  (design ≈ 14 s), 1.4–10 s under SETA **[m]**.
+* Constants (one changed value each, `scenario_c.py`) **[m]**: g_req 400 m → 70 failures (500 m: 56), partner-block episodes 4 (2),
+  closest capsule 357 m (454 m); τ_m 4 s → abreast merge max 38.0 s (8 s: 51.5 s), failures unchanged; τ_f 5 s → 54 failures, spans
+  within 1 s; T_stop 10 s → no change (no brief stop occurred at the design build); λ_max 6 s → 67 failures, partner-block episodes 0;
+  d_end 1.8 km → T_slot 14.1–14.7 s at tf 1, 51 failures, SETA spans +5 s (formed tf 6 189.7 s).
+* `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads
+  verification.analysis.test_ship_trace_format verification.analysis.test_config_schema`: 36 tests OK **[m]**.
+* `ship_steering.cpp` under i686 MinGW `-fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
+  -mincoming-stack-boundary=2 -fno-exceptions`: clean; a negative control (`-DX3M_LANE_GAP_M=+`) errors **[m]**. No DLL built, no Wine.
+
+Second implementer (2026-10-14): the fixes and bound changes of §11 (lost-leader rollout, the ship at the gate ahead of the lane,
+no in-gap cap keep for the lane, pacing on the join path, the order-0 hold on the join line, the escort's earlier join end, the
+two-sided join loss, τ_m 4 s, `Plan::follow`'s signed liveness); scenario C now ends the full and `--capital` runs (`X3M_LANE_OFF=1`
+skips it for the key-off comparison).
+
+* `c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp -o /tmp/ssh_lane2`: full run checks=11351
+  failures=0, `--capital` 5693/0, `X3M_SEQ_OFF=1` 11261/0, `--b9` 45/0, `--lane` 830/0 **[m]**. Key-off (`X3M_LANE_OFF=1`) stdout
+  against the pre-lane build (9f764d69): 0 differing lines of 1162, 991, 1162, 201 (`convoy-gate-transit/keyoff_diff.py`) **[m]**.
+  Control: the pre-lane core fails the span assertion in 24 of 24 runs **[m]**.
+* Spans, 15 km → last launch (s, 3 seeds, tf 1 / 6 / 10; `scenario_c.txt`, `ship_steering_host_lane.txt`) **[m]**: abreast 1+2
+  172.2–172.4 / 152.0–153.4 / 153.0–153.2; abreast 1+4 220.8–221.5 / 205.6–205.8 / 199.7–201.1; formed 202.0–202.1 / 184.7–186.2 /
+  185.4–185.6; formed M7 198.4–200.4 / 180.3–181.7 / 174.4–177.1; stragglers 201.2–202.5 / 187.6–188.0 / 182.0–183.2; re-departure
+  232.1–233.0 / 212.8–213.6 / 207.4–208.4; crossing 326.8–327.4 / 312.4–314.0 / 306.1–307.5; partner block 234.3–234.4 / 218.9–221.7 /
+  216.9–220.7. 0 member 0x12 episodes and 0 brief stops in 90 runs; merges ≤ 42.7 s; closest capsule 349 m **[m]**.
+* Constants, one changed value each (`scenario_c.py`) **[m]**: g_req 400 m → 19 failures; τ_m 8 s → 0 (merges 50.3 s against 42.7 s);
+  τ_f 5 s → 2; T_stop 10 s → 0; λ_max 6 s → 18; d_end 1.8 km → 7; escort join k 0 → 6, 0.5 → 4.
+* Cost, the 1+4 cast's frame controller block (host x86-64 -O2) **[m]**: lane 2.1 µs mean, 44–52 µs worst frame at tf 1 (stage B 1.9–2.2,
+  73–102 µs); tf 10 21.9–23.1 / 45–54 µs (stage B 20.7–22.2 / 78–99 µs); the check holds the worst under the 1 ms ceiling.
+* `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads
+  verification.analysis.test_ship_trace_format verification.analysis.test_config_schema`: 36 tests OK **[m]**.
+* `ship_steering.cpp` under i686 MinGW `-fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
+  -mincoming-stack-boundary=2 -fno-exceptions`: clean **[m]**. No DLL built, no Wine.
+
+Third implementer (2026-10-14): the two reviews' items 1–10 (convoy-gate-transit.md §11 "Review fixes": the escort gate's braking
+reserve for any latency, the tick deferral for all 20 grid slots, a strict lane order, point adoption after a load, the rollout's
+straight coast and blend, merges completing on the raw gap, the fixture bounds and four new casts, the refusal clock and
+`decide_order`'s flags, the lane and rewrite rows). Each item has a check that fails on the reviewed HEAD (7fb54627) **[m]**: item 1
+36 failures of 830 with λ from 4.1–16.9 s; item 2 15 failures with the deferral off (`X3M_C_NODEFER=1`); items 3–6 the unit cases of
+`convoy-gate-transit/review_head/run.sh` → `run.txt` (slow A ranked behind C and merging at 10 m/s; an escort's L_i not ours after a
+15 m l_c shift; the hold rolled out 94 m off its straight coast and 0 % of the blend; settled at a raw gap of −85 m); item 7's
+assertion 5 70 failing runs before the hold fix.
+
+* `c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp -o /tmp/ssh_lane3`: full run checks=11635
+  failures=0, `--capital` 5977/0, `X3M_SEQ_OFF=1` 11545/0, `--b9` 45/0, `--lane` 1114/0 **[m]**. Key-off (`X3M_LANE_OFF=1`) stdout
+  against the pre-lane build (9f764d69): 0 differing lines of 1164, 991, 1164, 201 (`convoy-gate-transit/keyoff_diff.txt`) **[m]**.
+  Control: the pre-lane core fails the span assertion in 27 of 27 runs **[m]**.
+* Spans, merges, capsules per cast: §11's table (`scenario_c.txt`, `ship_steering_host_lane.txt`) **[m]**. Escort gate cost at tf 1: a
+  median 11.4 s per leader → escort pair over the hull spacing (`convoy-gate-transit/escort_gap_cost.txt`) **[m]**.
+* Constants, one changed value each (`scenario_c.py`) **[m]**: g_req 400 m → 13 failures; τ_m 8 s → 1; τ_f 5 s → 4; T_stop 10 s → 0;
+  λ_max 10 s → 29; crawl 0 → 12; drift bound 100 m → 6; d_end 1.8 km → 3; escort join k 0 → 14, 0.5 → 10.
+* Cost, worst frame of 3 runs (host x86-64 -O2) **[m]**: 1+4 lane 58–68 µs at tf 1, 66–76 µs at tf 10; 24 members 163–1301 µs at tf 1,
+  558–1519 µs at tf 10 (third-worst ≤ 474 µs: the checked figure; single noise frames vary run to run).
+* `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads
+  verification.analysis.test_ship_trace_format verification.analysis.test_config_schema`: 36 tests OK **[m]**.
+* `ship_steering.cpp` under i686 MinGW `-fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
+  -mincoming-stack-boundary=2 -fno-exceptions`: clean **[m]**. No DLL built, no Wine.
+
+Fourth implementer (2026-10-14/15): the final review's items 1–6 (convoy-gate-transit.md §11 "Final review fixes": a strict lane
+order every frame, the tick deferral on the game clock, site B's rewrite recorded, the adoption memo and an escort's point after a
+load, the parked cast's key-off baseline, the bench figures). Each item has a check that fails on the reviewed 69d5b2ee **[m]**:
+items 1, 2, 4 `convoy-gate-transit/final_head/run.sh` → `run.txt` (previous order C, B, A: A merging at 10 m/s behind B, 23 on-lane
+pairs against their positions in 400 random boards; three untailed order-0 frames stacked f+0x210 7533 ms ahead and the late
+restore wrote a stamp 4934 ms in the future; an escort's L_i after a load not adopted), item 3
+`test_ship_steering.test_site_b_rewrite_recorded` (the three stores absent), item 5 the new key-off baseline rows.
+
+* `c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp -o /tmp/ssh_lane4`: full run checks=11643
+  failures=0, `--capital` 5985/0, `X3M_SEQ_OFF=1` 11553/0, `--b9` 45/0, `--lane` 1122/0 **[m]**. Key-off (`X3M_LANE_OFF=1`) stdout
+  against the pre-lane build (9f764d69): 0 differing lines of 1162, 991, 1162, 201 (`convoy-gate-transit/keyoff_diff.txt`) **[m]**.
+  Control: the pre-lane core fails the span assertion in 27 of 27 runs **[m]**.
+* Spans, merges, capsules: unchanged but abreast 1+4 tf 1 227.0–235.0 s (was –234.6) (`scenario_c.txt`, §11's table) **[m]**.
+  Constants, one changed value each (`scenario_c.py`): the same failure counts as the third implementer's **[m]**.
+* Parked cast, seed 1, tf 1 / 6 / 10 (`scenario C parked baseline` rows in `ship_steering_host_lane.txt`) **[m]**: lane 191.4 /
+  187.2 / 192.5° turned from 15 km, 1.9–2.0 km off the axis, 3/3 launched; key-off 873.7 / 994.3 / 983.5°, 4.9 km, 0/3 launched in
+  1000 s, 0 episodes. The detour is the module's avoidance (`parked_detour.sh` → `parked_detour.txt`: seconds 36–116 of the leader),
+  not the lane.
+* Cost (`convoy-gate-transit/bench_figures.py` → `bench_figures.txt`; worst frame of 3 runs and the largest third-worst, host x86-64
+  -O2) **[m]**: 24 members, design rows: tf 1 worst 136–149 µs, third-worst 108–142 µs; tf 10 worst 551–807 µs, third-worst 450–480 µs;
+  all 14 rows (with the 11 constant builds): tf 1 worst 134–1805 µs, tf 10 worst 492–1083 µs, third-worst ≤ 519 µs. The third
+  implementer's sentence (24 members 163–1301 / 558–1519 µs, third-worst ≤ 474 µs) did not match its own files (3490 µs worst and
+  253 µs third-worst at tf 1 in `_lane.txt`; 2032 µs worst and 966 µs third-worst at tf 10 in `_capital.txt`); i686 unmeasured.
+* `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads
+  verification.analysis.test_ship_trace_format verification.analysis.test_config_schema`: 37 tests OK **[m]**.
+* `ship_steering.cpp` under i686 MinGW `-fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
+  -mincoming-stack-boundary=2 -fno-exceptions`: clean **[m]**. No DLL built, no Wine.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

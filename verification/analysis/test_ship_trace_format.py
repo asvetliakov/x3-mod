@@ -164,6 +164,13 @@ CTL_ROWS = [
     'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=hold order=0x15 target=0x8e051030 '
     'p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 petal=3 key=49 traced=1 st_age_ms=50 dec_age_ms=310 live=1 zx=-1800 rho=2400 s=8950 '
     'stage_s=1420 d_join=2310 t_rel=-35 ringed=0',
+    'ship_gate_ctl_lane frame=905 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 lane_s=-9330 rank=1 gap_m=612 law=follow lat_m=140 '
+    'lc_m=0,-929 v_law=92.5 v_w=na w=none on=0 merged=1',
+    'ship_gate_ctl_lane frame=907 t_ms=23273598 gate=0x8e051030 ship=0x8e049da0 lane_s=-9230 rank=1 gap_m=na law=gate lat_m=12 '
+    'lc_m=-3,-931 v_law=40.0 v_w=40.0 w=hold on=1 merged=1',
+    'ship_gate_ctl_rewrite frame=908 t_ms=23274000 gate=0x8e051030 ship=0x8e049da0 site=b slot=5 from_m=0,-666,-4394 to_m=0,-929,-1471',
+    'ship_gate_ctl_rewrite frame=909 t_ms=23275000 gate=0x8e051030 ship=0x8e1d0090 site=miss slot=-1 from_m=310,-80,-3900 to_m=310,-80,-3900',
+    'ship_gate_ctl_merge frame=906 t_ms=23280000 gate=0x8e051030 ship=0x8e049da0 pred=0x8e1d0090 event=finish gap_m=455 law=merge dur_ms=27400',
 ]
 
 
@@ -197,7 +204,18 @@ class GateTrafficRows(unittest.TestCase):
         self.assertEqual(mr['live'], 1)  # B.5: the liveness proof
         self.assertEqual((mr['zx'], mr['rho'], mr['s'], mr['stage_s'], mr['d_join'], mr['t_rel'], mr['ringed']),
                          (-1800, 2400, 8950, 1420, 2310, -35, 0))  # B.8: the petal frame and the join
-        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 7)
+        ln = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_lane')[0]  # lane stage 1: the lane fields of a member
+        self.assertEqual((ln['ship'], ln['lane_s'], ln['rank'], ln['gap_m'], ln['law']), (0x8e049da0, -9330, 1, 612, 'follow'))
+        # review item 9: the lateral, l_c, the law's and the written speed, the write's kind, on Lambda, merged
+        self.assertEqual((ln['lat_m'], ln['lc_m'], ln['v_law'], ln['v_w'], ln['w'], ln['on'], ln['merged']), (140, (0, -929), 92.5, 'na', 'none', 0, 1))
+        ln2 = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_lane')[1]
+        self.assertEqual((ln2['gap_m'], ln2['law'], ln2['v_w'], ln2['w'], ln2['on']), ('na', 'gate', 40.0, 'hold', 1))
+        rw, miss = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_rewrite')  # review item 9: the per-ship order-4 point decisions
+        self.assertEqual((rw['ship'], rw['site'], rw['slot'], rw['from_m'], rw['to_m']), (0x8e049da0, 'b', 5, (0, -666, -4394), (0, -929, -1471)))
+        self.assertEqual((miss['site'], miss['slot'], miss['from_m'] == miss['to_m']), ('miss', -1, True))
+        me = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_merge')[0]  # lane stage 1: a merge's completion
+        self.assertEqual((me['pred'], me['event'], me['gap_m'], me['law'], me['dur_ms']), (0x8e1d0090, 'finish', 455, 'merge', 27400))
+        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 12)
 
 
 # The docking approach (amendment 18, docking-approach.md): the 1 Hz own-container row.

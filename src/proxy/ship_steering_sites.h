@@ -215,6 +215,10 @@ constexpr std::uint32_t kFlagAutopilot = 0x80000, kFlagDeleted = 0x8000000, kFla
 constexpr std::uint32_t kPhysPosition = 0x30, kPhysBasis = 0x40;
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightPoint = 0x240, kFlightOrder = 0x258, kFlightDistance = 0x260;
 constexpr std::uint32_t kFlightPortIndex = 0x250; // dword, -1 = no port (a gate); 0x00453fd9, 0x00454706 (ship-movement.md section 13.1)
+// The order's re-plan stamp (game ms): a handler ticks when now - f+0x210 >= 0 (order 4: 0x004549e3, else the jump to site B); order 0's
+// tail sets it to now on every frame, the SA order issue does not write it (ship-navigation-ai.md sections 10.11 Q4, 10.12 item 2). The
+// lane's tick deferral (convoy-gate-transit.md section 11, review item 2) adds to the value order 0 wrote and restores it a frame later.
+constexpr std::uint32_t kFlightReplan = 0x210;
 constexpr std::uint32_t kFlightRotAccel = 0x2b0, kFlightBasis = 0x870;
 // The engine's own obstacle list of the collision pass (ship-navigation-ai.md section 3.1, 0x0044e552): count at f+0x1e0,
 // up to kFlightObstacleMax objects at f+0x1e4[] and their centre distances (units) at f+0x1f8[]; read only, by the

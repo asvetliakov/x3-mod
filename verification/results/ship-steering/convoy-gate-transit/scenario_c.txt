@@ -1,0 +1,258 @@
+== build design: checks 1122 failures 0; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 173.3..187.8 tf6 153.4..157.1 tf10 154.3..154.6 | T_slot tf1 19.1..25.5 tf6 1.4..3.7 tf10 1.7..1.7 | merge_max 81.4 s stops 0 (max 0.0 s) capsule_min 509 m episodes 0 uncert 0 gap_max 45.7 s
+  abreast5        span tf1 227.0..235.0 tf6 214.0..214.1 tf10 208.0..208.2 | T_slot tf1 18.8..25.1 tf6 1.4..8.4 tf10 1.7..3.3 | merge_max 87.2 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 44.3 s
+  formed          span tf1 203.0..216.6 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.7..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 511 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 198.9..210.0 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..21.9 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.9..209.9 tf6 186.7..186.8 tf10 181.0..182.2 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 237.1..240.2 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..21.7 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.5 s
+  crossing        span tf1 329.6..333.2 tf6 317.8..317.9 tf10 311.4..311.6 | T_slot tf1 18.2..23.6 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 124.9 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.3 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.5 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 279.0..282.4 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.4 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.4 tf6 1.4..12.0 tf10 1.7..2.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 465 m episodes 0 uncert 0 gap_max 54.3 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 201.5..210.7 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.6 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 103 us worst frame, 68 us third-worst (4422 decisions, 5/5 launched); stage B 2.3 us mean, 127 us worst, 107 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 32.0 us mean, 112 us worst frame, 72 us third-worst (2251 decisions, 5/5 launched); stage B 20.2 us mean, 107 us worst, 86 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 11.7 us mean, 134 us worst frame, 127 us third-worst (52213 decisions, 24/24 launched); stage B 13.6 us mean, 339 us worst, 138 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 132.6 us mean, 605 us worst frame, 454 us third-worst (27755 decisions, 24/24 launched); stage B 153.8 us mean, 590 us worst, 488 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+== build g_req=400: checks 1122 failures 13; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 172.3..186.8 tf6 152.4..155.3 tf10 153.3..153.6 | T_slot tf1 19.0..25.5 tf6 1.4..3.9 tf10 1.7..1.7 | merge_max 75.0 s stops 0 (max 0.0 s) capsule_min 409 m episodes 4 uncert 0 gap_max 45.7 s
+  abreast5        span tf1 225.5..233.3 tf6 212.0..212.1 tf10 206.0..206.2 | T_slot tf1 18.8..25.1 tf6 1.4..10.0 tf10 1.7..3.3 | merge_max 86.1 s stops 1 (max 0.2 s) capsule_min 410 m episodes 2 uncert 1 gap_max 44.3 s
+  formed          span tf1 202.5..215.6 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.2..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 416 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 198.9..210.1 tf6 179.1..179.3 tf10 173.4..174.0 | T_slot tf1 18.4..21.9 tf6 1.4..9.0 tf10 1.7..2.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.9..209.6 tf6 185.9..186.8 tf10 179.8..180.0 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..1.7 | merge_max 38.1 s stops 0 (max 0.0 s) capsule_min 412 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 236.7..239.4 tf6 209.6..210.5 tf10 204.8..206.2 | T_slot tf1 17.0..21.8 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 0.0 s stops 2 (max 0.3 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.4 s
+  crossing        span tf1 329.6..333.2 tf6 317.8..317.9 tf10 311.4..311.6 | T_slot tf1 18.2..23.6 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 99.8 s stops 0 (max 0.0 s) capsule_min 422 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 234.5..239.6 tf6 216.7..217.9 tf10 215.6..218.7 | T_slot tf1 19.0..21.2 tf6 1.4..2.6 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 357 m episodes 0 uncert 0 gap_max 35.7 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 277.5..291.5 tf6 243.4..246.0 tf10 244.6..247.0 | T_slot tf1 18.8..31.4 tf6 1.4..8.1 tf10 1.7..3.1 | merge_max 149.7 s stops 3 (max 0.3 s) capsule_min 216 m episodes 0 uncert 0 gap_max 46.0 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.5 tf6 1.4..13.4 tf10 1.7..2.9 | merge_max 0.0 s stops 4 (max 0.3 s) capsule_min 335 m episodes 0 uncert 0 gap_max 54.4 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.3 s
+  small_escort    span tf1 201.5..210.7 tf6 182.9..185.0 tf10 178.0..178.4 | T_slot tf1 18.2..23.6 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 3.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.3 us mean, 81 us worst frame, 61 us third-worst (4399 decisions, 5/5 launched); stage B 2.1 us mean, 164 us worst, 81 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 24.5 us mean, 99 us worst frame, 67 us third-worst (2240 decisions, 5/5 launched); stage B 20.3 us mean, 102 us worst, 84 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 11.5 us mean, 166 us worst frame, 150 us third-worst (53346 decisions, 24/24 launched); stage B 13.4 us mean, 462 us worst, 148 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 135.0 us mean, 606 us worst frame, 519 us third-worst (27137 decisions, 24/24 launched); stage B 154.9 us mean, 1065 us worst, 515 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x2 scenario C abreast3 tf 10: 7 safety
+  FAIL x2 scenario C abreast3 tf 6: 7 safety
+  FAIL x1 scenario C abreast5 tf 10: 7 safety
+  FAIL x1 scenario C abreast5 tf 1: 1 the passer is never capped
+  FAIL x1 scenario C abreast5 tf 6: 5 the escort gate
+  FAIL x1 scenario C abreast5 tf 6: 7 safety
+  FAIL x1 scenario C redeparture tf 10: 5 the escort gate
+  FAIL x2 scenario C slow_hull tf 10: 5 the escort gate
+  FAIL x2 scenario C slow_hull tf 6: 1 the passer is never capped
+== build tau_m=8: checks 1122 failures 1; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 173.6..187.8 tf6 154.4..157.1 tf10 155.2..156.4 | T_slot tf1 19.1..25.4 tf6 1.4..3.5 tf10 1.7..2.8 | merge_max 84.4 s stops 0 (max 0.0 s) capsule_min 511 m episodes 0 uncert 0 gap_max 45.6 s
+  abreast5        span tf1 226.8..234.7 tf6 214.5..215.8 tf10 208.4..208.7 | T_slot tf1 18.8..25.1 tf6 1.4..9.7 tf10 1.7..3.3 | merge_max 87.7 s stops 0 (max 0.0 s) capsule_min 448 m episodes 0 uncert 0 gap_max 44.3 s
+  formed          span tf1 203.0..216.6 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.7..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 511 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 198.9..209.7 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..21.9 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 10.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.5..209.9 tf6 186.7..186.8 tf10 180.7..182.2 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 77.1 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 237.1..240.5 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..21.7 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 10.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.5 s
+  crossing        span tf1 329.4..333.2 tf6 317.7..317.8 tf10 311.1..311.3 | T_slot tf1 18.2..23.6 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 124.0 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.3 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.5 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 279.0..282.4 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 149.8 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.4 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.4 tf6 1.4..12.0 tf10 1.7..2.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 465 m episodes 0 uncert 0 gap_max 54.3 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 200.4..211.8 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.5 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 13.3 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 98 us worst frame, 56 us third-worst (4428 decisions, 5/5 launched); stage B 2.1 us mean, 138 us worst, 89 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 24.2 us mean, 73 us worst frame, 48 us third-worst (2256 decisions, 5/5 launched); stage B 19.8 us mean, 87 us worst, 76 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.6 us mean, 1701 us worst frame, 175 us third-worst (52224 decisions, 24/24 launched); stage B 12.8 us mean, 1708 us worst, 163 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 131.2 us mean, 662 us worst frame, 494 us third-worst (27750 decisions, 24/24 launched); stage B 155.4 us mean, 736 us worst, 504 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x1 scenario C abreast5 tf 1: 5 the escort gate
+== build tau_f=5: checks 1122 failures 4; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 172.9..187.7 tf6 153.0..156.5 tf10 153.7..154.3 | T_slot tf1 19.0..25.5 tf6 1.4..3.7 tf10 1.7..1.7 | merge_max 81.4 s stops 0 (max 0.0 s) capsule_min 501 m episodes 0 uncert 0 gap_max 45.7 s
+  abreast5        span tf1 226.2..234.8 tf6 212.2..212.3 tf10 206.1..206.5 | T_slot tf1 18.8..25.1 tf6 1.4..9.6 tf10 1.7..3.3 | merge_max 92.0 s stops 0 (max 0.0 s) capsule_min 409 m episodes 0 uncert 0 gap_max 44.3 s
+  formed          span tf1 202.7..216.5 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.4..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 501 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 199.2..209.7 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..21.9 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 6.7 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.5..209.5 tf6 186.5..186.8 tf10 180.4..180.7 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..1.7 | merge_max 79.4 s stops 0 (max 0.0 s) capsule_min 495 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 237.2..239.9 tf6 212.0..213.8 tf10 206.5..208.0 | T_slot tf1 17.0..21.5 tf6 1.4..10.2 tf10 1.7..3.3 | merge_max 6.7 s stops 0 (max 0.0 s) capsule_min 270 m episodes 2 uncert 0 gap_max 38.1 s
+  crossing        span tf1 329.6..333.2 tf6 317.8..317.9 tf10 311.4..311.6 | T_slot tf1 18.2..23.6 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 124.9 s stops 0 (max 0.0 s) capsule_min 502 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.9..240.2 tf6 218.9..221.7 tf10 216.9..221.0 | T_slot tf1 19.0..21.1 tf6 1.4..3.0 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 456 m episodes 0 uncert 0 gap_max 35.4 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 278.8..282.3 tf6 246.0..246.8 tf10 246.6..248.1 | T_slot tf1 17.5..31.4 tf6 1.4..7.8 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.5 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.5 tf6 1.4..12.2 tf10 1.7..2.9 | merge_max 0.0 s stops 6 (max 0.3 s) capsule_min 363 m episodes 0 uncert 0 gap_max 55.2 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 201.5..210.7 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.6 tf6 1.4..14.6 tf10 1.7..9.3 | merge_max 8.7 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 94 us worst frame, 62 us third-worst (4416 decisions, 5/5 launched); stage B 2.1 us mean, 232 us worst, 130 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 22.9 us mean, 55 us worst frame, 47 us third-worst (2245 decisions, 5/5 launched); stage B 19.9 us mean, 149 us worst, 86 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.6 us mean, 151 us worst frame, 142 us third-worst (52433 decisions, 24/24 launched); stage B 12.8 us mean, 1819 us worst, 144 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 132.1 us mean, 582 us worst frame, 454 us third-worst (27600 decisions, 24/24 launched); stage B 154.7 us mean, 613 us worst, 582 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x2 scenario C abreast5 tf 1: 1 the passer is never capped
+  FAIL x1 scenario C redeparture tf 6: 3 no holding
+  FAIL x1 scenario C redeparture tf 6: 7 safety
+== build T_stop=10s: checks 1122 failures 0; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 173.3..187.8 tf6 153.4..157.1 tf10 154.3..154.6 | T_slot tf1 19.1..25.5 tf6 1.4..3.7 tf10 1.7..1.7 | merge_max 81.4 s stops 0 (max 0.0 s) capsule_min 509 m episodes 0 uncert 0 gap_max 45.7 s
+  abreast5        span tf1 227.0..235.0 tf6 214.0..214.1 tf10 208.0..208.2 | T_slot tf1 18.8..25.1 tf6 1.4..8.4 tf10 1.7..3.3 | merge_max 87.2 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 44.3 s
+  formed          span tf1 203.0..216.6 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.7..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 511 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 198.9..210.0 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..21.9 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.9..209.9 tf6 186.7..186.8 tf10 181.0..182.2 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 237.1..240.2 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..21.7 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.5 s
+  crossing        span tf1 329.6..333.2 tf6 317.8..317.9 tf10 311.4..311.6 | T_slot tf1 18.2..23.6 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 124.9 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.3 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.5 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 279.0..282.4 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.4 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.4 tf6 1.4..12.0 tf10 1.7..2.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 465 m episodes 0 uncert 0 gap_max 54.3 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 201.5..210.7 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.6 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 85 us worst frame, 51 us third-worst (4422 decisions, 5/5 launched); stage B 2.1 us mean, 105 us worst, 77 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 22.8 us mean, 59 us worst frame, 51 us third-worst (2251 decisions, 5/5 launched); stage B 20.1 us mean, 100 us worst, 90 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.6 us mean, 1020 us worst frame, 144 us third-worst (52227 decisions, 24/24 launched); stage B 12.7 us mean, 606 us worst, 166 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 130.6 us mean, 592 us worst frame, 496 us third-worst (27766 decisions, 24/24 launched); stage B 154.8 us mean, 866 us worst, 476 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+== build lambda_max=10s: checks 1122 failures 29; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 175.6..188.3 tf6 152.6..156.3 tf10 153.3..153.8 | T_slot tf1 19.1..26.3 tf6 1.4..4.7 tf10 1.7..3.3 | merge_max 91.5 s stops 0 (max 0.0 s) capsule_min 458 m episodes 0 uncert 0 gap_max 46.3 s
+  abreast5        span tf1 227.5..235.7 tf6 215.7..217.4 tf10 205.8..211.7 | T_slot tf1 18.8..26.0 tf6 1.4..9.9 tf10 1.7..2.6 | merge_max 101.6 s stops 0 (max 0.0 s) capsule_min 451 m episodes 0 uncert 0 gap_max 44.8 s
+  formed          span tf1 203.0..216.3 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.6..25.5 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 44.4 s
+  formed_m7       span tf1 198.0..210.2 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..22.2 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.8 s
+  stragglers      span tf1 200.9..210.2 tf6 186.7..186.8 tf10 181.0..182.2 | T_slot tf1 18.2..22.3 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 500 m episodes 0 uncert 0 gap_max 41.1 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.9..301.7 tf10 289.9..295.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 236.5..241.0 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..22.2 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.7 s
+  crossing        span tf1 328.1..333.2 tf6 316.3..316.8 tf10 310.8..314.8 | T_slot tf1 18.2..23.8 tf6 1.4..8.8 tf10 1.7..3.0 | merge_max 157.3 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.2 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.4 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 650 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 278.8..282.2 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.1 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.5 tf6 1.4..13.5 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 506 m episodes 0 uncert 0 gap_max 52.5 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 199.9..211.5 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.5 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 41.1 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 118 us worst frame, 61 us third-worst (4425 decisions, 5/5 launched); stage B 2.1 us mean, 189 us worst, 109 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 22.7 us mean, 71 us worst frame, 51 us third-worst (2265 decisions, 5/5 launched); stage B 19.9 us mean, 96 us worst, 80 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.6 us mean, 229 us worst frame, 154 us third-worst (52265 decisions, 24/24 launched); stage B 12.7 us mean, 1844 us worst, 141 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 131.4 us mean, 1083 us worst frame, 482 us third-worst (27977 decisions, 24/24 launched); stage B 154.2 us mean, 752 us worst, 576 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x2 scenario C abreast3 tf 1: 5 the escort gate
+  FAIL x1 scenario C abreast3 tf 6: 5 the escort gate
+  FAIL x2 scenario C abreast5 tf 10: 5 the escort gate
+  FAIL x3 scenario C abreast5 tf 1: 5 the escort gate
+  FAIL x3 scenario C abreast5 tf 6: 5 the escort gate
+  FAIL x3 scenario C crossing tf 10: 5 the escort gate
+  FAIL x3 scenario C crossing tf 10: 6 the short final
+  FAIL x1 scenario C crossing tf 6: 5 the escort gate
+  FAIL x2 scenario C formed_m7 tf 1: 5 the escort gate
+  FAIL x2 scenario C redeparture tf 1: 5 the escort gate
+  FAIL x2 scenario C small_escort tf 1: 5 the escort gate
+  FAIL x2 scenario C stragglers tf 1: 5 the escort gate
+  FAIL x1 scenario C stragglers_far tf 10: 5 the escort gate
+  FAIL x2 scenario C stragglers_far tf 6: 5 the escort gate
+== build crawl=0: checks 1122 failures 12; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 173.1..187.9 tf6 153.4..157.1 tf10 154.3..154.6 | T_slot tf1 19.1..26.2 tf6 1.4..3.7 tf10 1.7..1.7 | merge_max 81.4 s stops 0 (max 0.0 s) capsule_min 508 m episodes 0 uncert 0 gap_max 45.8 s
+  abreast5        span tf1 227.0..234.7 tf6 214.0..214.1 tf10 208.0..208.2 | T_slot tf1 18.8..25.8 tf6 1.4..8.4 tf10 1.7..3.3 | merge_max 87.2 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 44.3 s
+  formed          span tf1 203.0..216.3 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.6..25.5 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 44.4 s
+  formed_m7       span tf1 197.3..210.1 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..22.3 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.8 s
+  stragglers      span tf1 200.9..210.2 tf6 186.7..186.8 tf10 181.0..182.2 | T_slot tf1 18.2..22.3 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 500 m episodes 0 uncert 0 gap_max 41.1 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 236.9..241.0 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..22.4 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.6 s
+  crossing        span tf1 329.6..332.2 tf6 317.8..317.9 tf10 311.4..311.6 | T_slot tf1 18.2..23.8 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 124.9 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.2 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.4 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 650 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 278.8..282.2 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.1 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.4 tf6 1.4..12.0 tf10 1.7..2.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 465 m episodes 0 uncert 0 gap_max 54.3 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 199.7..211.4 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.5 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 41.1 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 62 us worst frame, 54 us third-worst (4417 decisions, 5/5 launched); stage B 2.1 us mean, 91 us worst, 76 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 22.6 us mean, 58 us worst frame, 45 us third-worst (2251 decisions, 5/5 launched); stage B 20.0 us mean, 146 us worst, 109 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.5 us mean, 138 us worst frame, 128 us third-worst (52209 decisions, 24/24 launched); stage B 12.7 us mean, 868 us worst, 481 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 130.1 us mean, 502 us worst frame, 436 us third-worst (27755 decisions, 24/24 launched); stage B 153.9 us mean, 1075 us worst, 507 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x1 lane units: past lambda_max the reserve is the stopping curve to 50 m short of d_end
+  FAIL x1 lane units: the escort gate's braking reserve 500 m before d_end
+  FAIL x1 lane units: the reserve's crawl at the 10 m/s floor before d_end
+  FAIL x2 scenario C formed_m7 tf 1: 5 the escort gate
+  FAIL x3 scenario C redeparture tf 1: 5 the escort gate
+  FAIL x2 scenario C small_escort tf 1: 5 the escort gate
+  FAIL x2 scenario C stragglers tf 1: 5 the escort gate
+== build drift=100: checks 1122 failures 6; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 173.3..187.8 tf6 153.4..157.1 tf10 154.3..154.6 | T_slot tf1 19.1..25.5 tf6 1.4..3.7 tf10 1.7..1.7 | merge_max 81.4 s stops 0 (max 0.0 s) capsule_min 509 m episodes 0 uncert 0 gap_max 45.7 s
+  abreast5        span tf1 227.0..235.0 tf6 214.0..214.1 tf10 208.0..208.2 | T_slot tf1 18.8..25.1 tf6 1.4..8.4 tf10 1.7..3.3 | merge_max 87.2 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 44.3 s
+  formed          span tf1 203.0..216.6 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.7..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 511 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 198.9..210.0 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..21.9 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.9..209.9 tf6 186.7..186.8 tf10 181.0..182.2 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 237.1..240.2 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..21.7 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.5 s
+  crossing        span tf1 329.6..333.2 tf6 317.8..317.9 tf10 311.4..311.6 | T_slot tf1 18.2..23.6 tf6 1.4..8.7 tf10 1.7..3.0 | merge_max 124.9 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.3 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.5 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 279.0..282.4 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.4 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.4 tf6 1.4..12.2 tf10 1.7..2.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 465 m episodes 0 uncert 0 gap_max 54.3 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 201.5..210.7 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.6 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 99 us worst frame, 61 us third-worst (4422 decisions, 5/5 launched); stage B 2.1 us mean, 140 us worst, 123 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 22.9 us mean, 122 us worst frame, 48 us third-worst (2251 decisions, 5/5 launched); stage B 20.3 us mean, 86 us worst, 82 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.7 us mean, 172 us worst frame, 146 us third-worst (52213 decisions, 24/24 launched); stage B 12.8 us mean, 1960 us worst, 164 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 130.2 us mean, 606 us worst frame, 477 us third-worst (27848 decisions, 24/24 launched); stage B 153.9 us mean, 527 us worst, 501 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x3 scenario C abreast3 tf 1: 5 the escort gate
+  FAIL x3 scenario C abreast5 tf 1: 5 the escort gate
+== build d_end=1.8km: checks 1122 failures 3; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 170.4..176.6 tf6 158.1..158.7 tf10 158.7..159.4 | T_slot tf1 11.9..16.5 tf6 1.4..2.8 tf10 1.7..1.7 | merge_max 87.7 s stops 0 (max 0.0 s) capsule_min 508 m episodes 0 uncert 0 gap_max 34.6 s
+  abreast5        span tf1 225.2..226.6 tf6 212.6..212.7 tf10 211.4..212.7 | T_slot tf1 12.2..16.8 tf6 1.4..5.0 tf10 1.7..1.7 | merge_max 87.7 s stops 0 (max 0.0 s) capsule_min 508 m episodes 0 uncert 0 gap_max 34.8 s
+  formed          span tf1 202.0..208.7 tf6 189.7..189.8 tf10 190.4..192.1 | T_slot tf1 14.1..16.8 tf6 1.4..2.9 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 520 m episodes 0 uncert 0 gap_max 36.9 s
+  formed_m7       span tf1 192.5..203.7 tf6 180.3..181.7 tf10 179.4..182.4 | T_slot tf1 14.4..17.6 tf6 1.4..4.8 tf10 1.7..1.7 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 36.4 s
+  stragglers      span tf1 199.2..201.4 tf6 187.0..187.6 tf10 185.9..186.0 | T_slot tf1 14.1..17.1 tf6 1.4..5.4 tf10 1.7..1.7 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 520 m episodes 0 uncert 0 gap_max 35.3 s
+  stragglers_far  span tf1 308.5..308.9 tf6 296.3..297.4 tf10 294.8..296.6 | T_slot tf1 14.4..16.8 tf6 1.4..4.8 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4143 m episodes 0 uncert 0 gap_max 105.3 s
+  redeparture     span tf1 219.5..226.1 tf6 204.0..205.0 tf10 203.4..206.4 | T_slot tf1 14.1..17.4 tf6 1.4..5.1 tf10 1.7..2.5 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 34.8 s
+  crossing        span tf1 329.1..329.6 tf6 317.2..317.9 tf10 315.4..315.6 | T_slot tf1 13.6..16.8 tf6 1.4..4.8 tf10 1.7..1.7 | merge_max 126.3 s stops 0 (max 0.0 s) capsule_min 523 m episodes 0 uncert 0 gap_max 94.5 s
+  partner_block   span tf1 228.4..230.4 tf6 217.9..218.9 tf10 216.2..219.7 | T_slot tf1 13.4..15.8 tf6 1.4..2.4 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 448 m episodes 0 uncert 0 gap_max 32.7 s
+  formed_stage2   span tf1 201.9..201.9 tf6 189.7..189.8 tf10 190.4..192.1 | T_slot tf1 14.1..14.7 tf6 1.4..2.9 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.5 s
+  slow_hull       span tf1 275.4..283.2 tf6 253.8..257.5 tf10 255.3..259.7 | T_slot tf1 14.1..23.1 tf6 1.4..4.9 tf10 1.7..2.9 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 36.5 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 16.9..24.4 tf6 1.4..9.8 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 506 m episodes 0 uncert 0 gap_max 54.1 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 14.2..14.4 tf6 1.4..1.4 tf10 1.7..3.1 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.2 s
+  small_escort    span tf1 193.3..202.7 tf6 185.1..186.0 tf10 179.4..179.7 | T_slot tf1 14.1..18.4 tf6 1.4..11.9 tf10 1.7..4.7 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 35.9 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 193 us worst frame, 62 us third-worst (4301 decisions, 5/5 launched); stage B 2.1 us mean, 140 us worst, 103 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 22.9 us mean, 59 us worst frame, 45 us third-worst (2307 decisions, 5/5 launched); stage B 19.9 us mean, 102 us worst, 75 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.7 us mean, 1737 us worst frame, 117 us third-worst (50729 decisions, 24/24 launched); stage B 12.7 us mean, 767 us worst, 146 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 131.8 us mean, 641 us worst frame, 485 us third-worst (28085 decisions, 24/24 launched); stage B 153.8 us mean, 523 us worst, 486 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x1 lane units: the head stops at d_end while the slot is blocked
+  FAIL x1 lane units: the head's pacing (10 km in 200 s)
+  FAIL x1 scenario C abreast3 tf 1: 5 the escort gate
+== build esc_join=0: checks 1122 failures 14; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 173.0..187.8 tf6 152.0..156.7 tf10 152.7..153.8 | T_slot tf1 19.1..25.5 tf6 1.4..3.1 tf10 1.7..1.7 | merge_max 105.6 s stops 0 (max 0.0 s) capsule_min 430 m episodes 0 uncert 0 gap_max 45.8 s
+  abreast5        span tf1 225.2..234.9 tf6 209.2..209.6 tf10 203.2..203.8 | T_slot tf1 18.8..25.0 tf6 1.4..10.1 tf10 1.7..3.1 | merge_max 107.7 s stops 0 (max 0.0 s) capsule_min 431 m episodes 0 uncert 0 gap_max 44.3 s
+  formed          span tf1 203.0..216.6 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.7..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 511 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 198.9..210.0 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..21.9 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.9..209.5 tf6 186.7..186.8 tf10 181.0..182.2 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 237.1..240.2 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..21.7 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.5 s
+  crossing        span tf1 326.9..334.1 tf6 323.5..333.1 tf10 320.5..329.1 | T_slot tf1 18.2..23.6 tf6 1.4..12.9 tf10 1.7..3.0 | merge_max 255.7 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.3 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.5 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 279.0..282.4 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.4 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.4 tf6 1.4..11.8 tf10 1.7..2.9 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 498 m episodes 0 uncert 0 gap_max 53.6 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 201.5..210.7 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.6 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 52 us worst frame, 51 us third-worst (4433 decisions, 5/5 launched); stage B 2.1 us mean, 93 us worst, 77 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 23.2 us mean, 57 us worst frame, 53 us third-worst (2219 decisions, 5/5 launched); stage B 19.9 us mean, 121 us worst, 78 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.6 us mean, 1805 us worst frame, 116 us third-worst (52217 decisions, 24/24 launched); stage B 12.8 us mean, 1616 us worst, 404 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 130.5 us mean, 492 us worst frame, 446 us third-worst (27755 decisions, 24/24 launched); stage B 154.1 us mean, 603 us worst, 475 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x1 scenario C abreast3 tf 6: 5 the escort gate
+  FAIL x1 scenario C abreast3 tf 6: 6 the short final
+  FAIL x3 scenario C crossing tf 10: 5 the escort gate
+  FAIL x3 scenario C crossing tf 10: 6 the short final
+  FAIL x3 scenario C crossing tf 6: 5 the escort gate
+  FAIL x3 scenario C crossing tf 6: 6 the short final
+== build esc_join=0.5: checks 1122 failures 10; control: span assertion failed in 27 of 27 runs
+  abreast3        span tf1 173.9..188.1 tf6 152.6..155.3 tf10 153.3..153.8 | T_slot tf1 19.0..25.6 tf6 1.4..3.9 tf10 1.7..3.3 | merge_max 92.9 s stops 0 (max 0.0 s) capsule_min 449 m episodes 0 uncert 0 gap_max 46.0 s
+  abreast5        span tf1 225.4..235.3 tf6 211.2..211.5 tf10 205.4..205.5 | T_slot tf1 18.8..25.2 tf6 1.4..8.6 tf10 1.7..2.6 | merge_max 102.6 s stops 0 (max 0.0 s) capsule_min 447 m episodes 0 uncert 0 gap_max 44.6 s
+  formed          span tf1 203.0..216.6 tf6 184.9..186.2 tf10 185.4..185.6 | T_slot tf1 16.7..25.1 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 511 m episodes 0 uncert 0 gap_max 44.7 s
+  formed_m7       span tf1 198.9..210.0 tf6 180.1..181.7 tf10 174.4..174.4 | T_slot tf1 18.4..21.9 tf6 1.4..9.8 tf10 1.7..2.2 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers      span tf1 200.9..209.5 tf6 186.7..186.8 tf10 181.0..182.2 | T_slot tf1 18.2..21.9 tf6 1.4..10.4 tf10 1.7..3.1 | merge_max 42.7 s stops 0 (max 0.0 s) capsule_min 512 m episodes 0 uncert 0 gap_max 40.7 s
+  stragglers_far  span tf1 307.9..307.9 tf6 295.8..295.9 tf10 289.9..291.4 | T_slot tf1 18.4..21.0 tf6 1.4..8.6 tf10 1.7..4.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 4024 m episodes 0 uncert 0 gap_max 109.2 s
+  redeparture     span tf1 237.1..240.2 tf6 212.2..213.2 tf10 207.2..210.4 | T_slot tf1 17.0..21.7 tf6 1.4..9.8 tf10 1.7..3.3 | merge_max 7.0 s stops 0 (max 0.0 s) capsule_min 349 m episodes 0 uncert 0 gap_max 38.5 s
+  crossing        span tf1 327.8..334.1 tf6 316.3..321.4 tf10 312.2..317.8 | T_slot tf1 18.2..23.6 tf6 1.4..12.6 tf10 1.7..3.0 | merge_max 175.4 s stops 0 (max 0.0 s) capsule_min 515 m episodes 0 uncert 0 gap_max 97.0 s
+  partner_block   span tf1 235.8..240.3 tf6 218.9..221.7 tf10 216.9..220.7 | T_slot tf1 19.1..21.1 tf6 1.4..3.2 tf10 1.7..3.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 454 m episodes 0 uncert 0 gap_max 35.5 s
+  formed_stage2   span tf1 201.9..201.9 tf6 184.7..186.2 tf10 185.4..185.6 | T_slot tf1 19.1..19.6 tf6 1.4..2.7 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 647 m episodes 0 uncert 0 gap_max 29.2 s
+  slow_hull       span tf1 279.0..282.4 tf6 246.2..247.2 tf10 247.0..248.1 | T_slot tf1 17.7..31.4 tf6 1.4..7.6 tf10 1.7..1.7 | merge_max 147.1 s stops 0 (max 0.0 s) capsule_min 216 m episodes 0 uncert 0 gap_max 35.4 s
+  parked          span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 21.4..29.5 tf6 1.4..13.5 tf10 1.7..2.2 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 506 m episodes 0 uncert 0 gap_max 52.7 s
+  leader_killed   span tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0 | T_slot tf1 19.1..19.4 tf6 1.4..2.4 tf10 1.7..1.7 | merge_max 0.0 s stops 0 (max 0.0 s) capsule_min 682 m episodes 0 uncert 0 gap_max 34.1 s
+  small_escort    span tf1 201.5..210.7 tf6 183.7..185.0 tf10 179.0..179.4 | T_slot tf1 18.2..23.6 tf6 1.4..14.6 tf10 1.7..9.0 | merge_max 9.0 s stops 0 (max 0.0 s) capsule_min 327 m episodes 0 uncert 0 gap_max 40.4 s
+  lane cost (host) abreast5 tf 1: lane 2.2 us mean, 77 us worst frame, 62 us third-worst (4431 decisions, 5/5 launched); stage B 2.1 us mean, 80 us worst, 74 us third (8486 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 23.7 us mean, 68 us worst frame, 66 us third-worst (2232 decisions, 5/5 launched); stage B 19.8 us mean, 130 us worst, 79 us third (5313 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.6 us mean, 828 us worst frame, 139 us third-worst (52224 decisions, 24/24 launched); stage B 12.7 us mean, 430 us worst, 169 us third (156934 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 10: lane 131.2 us mean, 604 us worst frame, 449 us third-worst (27755 decisions, 24/24 launched); stage B 154.6 us mean, 575 us worst, 420 us third (83835 decisions, 12 launched); worst of 3 runs; ceiling 1000 us
+  FAIL x3 scenario C crossing tf 10: 5 the escort gate
+  FAIL x3 scenario C crossing tf 10: 6 the short final
+  FAIL x3 scenario C crossing tf 6: 5 the escort gate
+  FAIL x1 scenario C crossing tf 6: 6 the short final

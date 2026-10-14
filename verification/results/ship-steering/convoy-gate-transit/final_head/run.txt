@@ -1,0 +1,16 @@
+final1 HEAD:
+C,B,A: A rank 2 law merge v 10.0 | B rank 1 | C rank 0 behind 0
+400 random boards: 0 with a rank missing, 23 on-lane pairs against their positions
+final1 new:
+C,B,A: A rank 0 law lane v 100.0 | B rank 1 | C rank 2 behind 9100
+400 random boards: 0 with a rank missing, 0 on-lane pairs against their positions
+final2 HEAD:
+3 order-0 frames without the tail: f+0x210 7533 ms after the last order-0 frame (one deferral 2533 ms)
+late restore two frames on: write 1, f+0x210 4934 ms from now
+final2 new:
+3 order-0 frames without the tail: f+0x210 2533 ms after the last order-0 frame (one deferral 2533 ms)
+late restore two frames on: write 1, f+0x210 0 ms from now
+final4 HEAD:
+escort L_i (l_c -929) after a load, no board: adopted 0
+final4 new:
+escort L_i (l_c -929) after a load, no board: adopted 1

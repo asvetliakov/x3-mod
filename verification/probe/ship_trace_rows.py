@@ -120,8 +120,20 @@ def by_ship(rows):
 #     0: no engine field read, class=?) zx= (X along F, m) rho= (ring radius) s= (arc of the petal projection; -1 no petal) stage_s=
 #     (an escort's stage arc; -1 none) d_join= (m from its track point at s; -1 no petal) t_rel= (ms to the lap target at the last
 #     sequencer run, negative past; 0 none) ringed=0|1   (B.8: the petal frame from the board state, no engine read)
+# Lane stage 1 (convoy-gate-transit.md section 6.9; ship_steering_gates_lane, --debug): after each member row of a lane gate
+#   ship_gate_ctl_lane frame= t_ms= gate= ship= lane_s= (along F, m) rank= (the lane order, 0 the head; 255 none) gap_m= (tail of the ship
+#     ahead - own nose, m; na none) law=none|join|lane|merge|follow|stop|pace|gate|hold lat_m= (lateral distance from Lambda, m)
+#     lc_m=<R>,<U> (Lambda's l_c, m) v_law= (the law's speed, m/s) v_w= (site B's last lane write, m/s; na none) w=none|stop|kept|hold
+#     (that write's kind: a stop, P2's kept speed, the order-0 hold) on=0|1 (on Lambda) merged=0|1   (review item 9)
+#   ship_gate_ctl_merge frame= t_ms= gate= ship= pred= event=start|finish gap_m= law= dur_ms= (finish: since the start)
+#   ship_gate_ctl_rewrite frame= t_ms= gate= ship= site=a|b|adopt|miss slot= (the KC grid slot the field held; -1 none) from_m=<R>,<U>,<F>
+#     to_m=<R>,<U>,<F> (the order-4 field before and after, gate frame, m): a: site A's rewrite of a grid point to L_i; b: site B's on a
+#     deferred first tick; adopt: a field equal to the hull's own L_i taken as ours without a lane member (a load, a slot reset); miss: a
+#     lane member's field that is neither a grid point nor ours (once per value)   (review items 2, 4, 9)
+#   ship_steering_lane_summary ... ctl_grid_miss= ctl_point_adopts= ctl_lane_defers= ctl_defer_rewrites= (totals since install)
+#   (ship_gate_ctl_pair cause= also takes merge (a lane yielder cleared on the 10 m/s floor) and stop (on the brief stop))
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
-           'ship_avoid_dock', 'ship_gate_ctl_seq', 'ship_gate_ctl_member')
+           'ship_avoid_dock', 'ship_gate_ctl_seq', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite')
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap')
 _KV = re.compile(r'(\S+?)=(\S*)')
 _INT = re.compile(r'-?\d+')

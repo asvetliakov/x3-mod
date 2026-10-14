@@ -1,0 +1,18 @@
+item3 HEAD:
+A rank 1 law merge v 10.0 | B rank 2 | C rank 0
+item3 new:
+A rank 0 law lane v 60.0 | B rank 2 | C rank 1
+item4 HEAD:
+escort L_i after a 15 m l_c drift: ours 0
+item4 new:
+escort L_i after a 15 m l_c drift: ours 1
+item5 HEAD:
+5a: straight-coast deviation over 10 s 94 m (n 61)
+5b: blend moved 0 % (n 61)
+item5 new:
+5a: straight-coast deviation over 10 s 0 m (n 61)
+5b: blend moved 48 % (n 61)
+item6 HEAD:
+raw -85, settling +810: merged 1 law lane v 100.0
+item6 new:
+raw -85, settling +810: merged 0 law merge v 100.0

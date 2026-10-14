@@ -322,6 +322,7 @@ struct Model {
     double sb_v_written; // B.6: stage B's written speed this frame (site B's v_ref under the caps; < 0 none) ...
     float sb_x_written[3]; // ... and the position sb_steer decided it from (m) ...
     bool sb_v_fresh;       // ... written by this frame's steer call (think ticks are up to 50 ms apart: the write stands until the next)
+    double lane_force_ms;  // lane stage 1 (scenario C): the DLL's lane site-B write after the clamp (gc::lane_site_b; < 0 none)
     unsigned ctl_capped, ctl_excluded;
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
@@ -424,6 +425,7 @@ struct Model {
         sb_v_written = -1.0;
         sb_x_written[0] = sb_x_written[1] = sb_x_written[2] = 0.0f;
         sb_v_fresh = false;
+        lane_force_ms = -1.0;
         ctl_capped = ctl_excluded = 0;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
@@ -942,6 +944,7 @@ struct Model {
         }
         // site B, every frame
         if (!done) clamp(obj_id);
+        if (!done && lane_force_ms >= 0.0) desired = std::llround(lane_force_ms * 500.0); // lane stage 1: the lane site-B write
         advance(dt_ms);
     }
     // the slew and pass B of one frame: the speed toward desired at the acceleration, the rotation, the position
@@ -14881,6 +14884,1833 @@ static void sb_b9_checks() {
             }
         }
 }
+// ---- Lane stage 1 (convoy-gate-transit.md section 6.11): scenario C ------------------------------------------------------------------
+// The departure lane under ship_steering_gates_lane on scenario T's plant (the calibrated Model with slip), the KC (first-free grid slots,
+// one through slot per gate pair, the 60 s direction cooldown, the in-sector same-direction exemption, polls every 1-11 s after a refusal,
+// ReleaseFromSlot one frame after order 8's end: ship-navigation-ai.md section 10.12 item 5), the order-5 trigger inflated by the time
+// factor (1 + (tf - 1) / 4), the scripts: a leader's order 4 with the 2-3 s order-0 re-issue gaps every 30-34 s and the 2-3 s order 0
+// after P2, then 0x1f, the through slot, order 5, order 8; an escort's 0x14 with the template's 2-3 s waits every 30-34 s, after its
+// leader's order 8 the lost-leader order 0 and, inside 10 km, order 4 at lambda ~ U(4.3, 9.0) s after the launch (stage 2: U(0.3, 1.0) s),
+// beyond 10 km 5 s 0x15 legs to the gate until a pass inside 10 km. Site A's f+0x240 rewrite (gc::kc_grid_slot, gc::lane_order_point) and
+// site B's lane write (gc::lane_site_b) as the DLL. Variants: abreast (1+2, 1+4 level at 12 km), formed (in line at 15 km), stragglers
+// (Run169's 15 km offsets), re-departure (a capital out of the gate at P, nose -F, with a convoy inbound), crossing (a second convoy from the
+// side merging), partner block (a partner-side capital launch: our side refused 60 s), the stage-2 script; SETA tf 1, 6, 10 (the game step
+// tf x the frame; tf >= 6 with B.3's 1.5-2 s steps on 2 % of frames). The nine assertions of section 6.11; the key-off control runs the same
+// casts on stage B (the pre-lane core) and must fail the span assertion.
+namespace lanec {
+enum Kind { kLead = 0, kEsc, kRedep, kPark }; // kPark: a capital parked on Lambda, never a member (section 6.11; review item 7)
+struct CStart {
+    const ShipType* t;
+    double w_r;
+    int kind, leader;
+    double x, y, z, psi_deg, v; // gate frame (m), the nose's angle off F toward +R (180: -F), m/s
+    long t0_ms;
+};
+struct CSetup {
+    const char* tag;
+    const CStart* s;
+    unsigned n;
+    int span_form = 0;    // assertion 8: 0 report only, 1 formed (leader 15 km -> launch + n c + 10 s), 2 the lane floor + 10 s
+    long block_ms = -1;   // >= 0: a partner-side capital launch at the gate at this game time (our side refused 60 s)
+    bool stage2 = false;  // the stage-2 script model
+    long run_s = 1000;
+    bool kill_leader = false; // section 6.11: the first leader destroyed 2 km before d_end (review item 7)
+    bool obstacle = false;    // a non-member on Lambda: the engine's warn and the sphere avoidance own the detour (section 6.6); only
+                              // every launch, the passer and safety are asserted, the rest is reported (convoy-gate-transit.md section 11)
+};
+struct CResult {
+    bool lane = false;
+    unsigned launched = 0, departures = 0, rewrites = 0, grid_miss = 0;
+    // 1 the passer
+    unsigned merge_frames = 0, ahead_capped = 0, head_capped = 0;
+    // 2 the yielder
+    unsigned merges = 0, merges_done = 0, merge_late = 0, slow_frames = 0, stops = 0, stop_long = 0, lat_converge = 0;
+    double merge_max_s = 0, stop_max_s = 0, merge_gap_min = 1e18;
+    // 3 no holding
+    unsigned petal_frames = 0, nose_away = 0;
+    double turn_max_deg = 0;
+    double turn15_max_deg = 0, axis_off_max_m = 0; // final review item 5: either key: the turn from 15 km, the farthest from the axis
+    // 4 order
+    unsigned leader_after_escort = 0;
+    double launch_gap_min_s = 1e18, launch_gap_max_s = 0, cadence_s = 0, t_slot_min_s = 1e18, t_slot_max_s = 0;
+    // 5 the escort gate
+    unsigned escort_past_dend = 0, escort_o4 = 0, escort_o4_late = 0, dend_stops = 0, o0_frames = 0, o0_low = 0;
+    double escort_o4_max_s = 0, o0_drop_max = 0;
+    // 6 the short final
+    unsigned p2 = 0, p2_not_kept = 0, p2_far = 0, p2_after_gap = 0, rotate_max = 0, x_refused = 0, refusals_max = 0;
+    double p2_err_max = 0, refusal_max_s = 0;
+    // 7 safety
+    unsigned episodes = 0, uncert_frames = 0, warn_nonmember = 0;
+    double min_capsule = 1e18, min_box = 1e18;
+    // 8 the span
+    double leader_t15 = -1, leader_launch = -1, span_s = -1, floor_s = -1, bound_s = -1, t15_launch_s = -1, gap_over_s = -1e18;
+    bool span_ok = true;
+    long step_max = 0;
+    unsigned seta_steps = 0;
+    bool nan = false;
+    // the cost bench (host wall time of the frame's controller block: lane_frame / sb_frame and the decisions)
+    double frame_us_max = 0, frame_us_sum = 0, frame_us_top[3] = {0, 0, 0}; // (the three worst frames, worst first)
+    unsigned frames = 0, decisions = 0;
+    // the consecutive launch pairs (k_prev>k gap/c s, L: an escort behind its own leader); the leader -> escort gaps over the spacing
+    char pairs[400] = {};
+    unsigned slot_max = 0, deferrals = 0, o4_in_sphere = 0; // the highest warp-in slot handed out; order-0 frames with the tick deferral (review item 2)
+    double le_gap_max_s = 0, le_over_max_s = -1e18, le_over_sum_s = 0;
+    unsigned le_pairs = 0;
+};
+constexpr unsigned kCMax = 24; // the largest cast (the 24-member cost bench)
+static long launch_ms_of[kCMax], tslot_ms_of[kCMax];
+// The script's order-4 latency after the leader's launch (ship-navigation-ai.md section 10.12, escort_wait.txt): parked escorts inside
+// 10 km measured +4.1..+16.9 s; the draw covers the whole measured range (review item 1)
+constexpr double kLamLoS = 4.1, kLamHiS = 16.9;
+// The through-slot occupancy from d_end at tf 1 (grant -> order 8 end), measured 16.8-21.1 s in scenario C before review item 1: the
+// reference of the assertion 4/8 bound of an escort behind its launched leader (a constant, not the run's own T_slot; review item 7)
+constexpr double kTSlotRefS = 21.0;
+static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool lane) {
+    const double ru = kGateRM * 500, F[3] = {0, 0, 1};
+    static World w;
+    w = World{};
+    static gc::Board board;
+    board = gc::Board{};
+    board.lane = lane ? 1 : 0;
+    t_live_set.clear();
+    t_live_track = gc::LiveTrack{};
+    core::ShipTable table{};
+    static TShip ships[kCMax];
+    CResult res;
+    res.lane = lane;
+    Lcg rng{seed * 2654435761u + 77u};
+    auto uni = [&](double lo, double hi) { return lo + (hi - lo) * double(rng.next()) / 32767.0; };
+    struct Extra {
+        double p15_extra = 0; // the straight line from the 15 km point to Lambda's d_end point, less the on-axis 15 km - d_end (m)
+        long t15 = -1, o4_ms = -1, grant_ms = -1, release_at = -1, stop_start = -1, o0_start = -1, gap_end = -1;
+        double lam = 0, o0_v0 = 0, o0_f0 = 0, vsb_write = -1, lat_hold = -1, turn = 0, f_prev[3] = {0, 0, 0}, lw[3] = {0, 0, 0};
+        double turn15 = 0, f15[3] = {0, 0, 0}; // final review item 5: the turn from the 15 km point, either key (holding laps excluded)
+        bool lw_ok = false, killed = false;
+        long kill_ms = -1;
+        bool merged_seen = false, on_seen = false, in10 = false, launched_seen = false, gap_o4 = false, cert_on = false;
+        unsigned refusals = 0;
+        long cert_until = -1, refuse_t = -1;
+        std::uint32_t merge_stamp = 0;
+        double merge_y0 = 0, merge_tan = 0;
+        long merge_bound_ms = 40000;
+    };
+    static Extra ex[kCMax];
+    for (unsigned k = 0; k < su.n; ++k) {
+        TShip& c = ships[k];
+        c = TShip{};
+        ex[k] = Extra{};
+        launch_ms_of[k] = tslot_ms_of[k] = -1;
+        const CStart& cs = su.s[k];
+        Model& m = c.m;
+        m.init(*cs.t, seed + 37 * k);
+        m.table = &table;
+        m.ptr = 0x9000 + 0x100 * k;
+        c.obj = 0x1000 + 0x40 * k;
+        m.capital = true;
+        c.w = cs.w_r * cs.t->r_m;
+        c.L = cs.t->r_m;
+        m.hull_w = float(c.w);
+        m.hull_l = float(c.L);
+        m.hull_src = std::uint8_t(ln::WidthSrc::lod);
+        m.ctl = &board;
+        m.gate_r = float(kGateRM);
+        for (int i = 0; i < 3; ++i) {
+            m.gate_G[i] = 0;
+            for (int r = 0; r < 3; ++r) m.gate_rows[r][i] = float(kGateIdentity.R[r][i]);
+        }
+        const double p[3] = {cs.x, cs.y, cs.z}, ps = cs.psi_deg * M_PI / 180;
+        const double u[3] = {std::sin(ps), 0.0, std::cos(ps)};
+        t_place(m, p, u);
+        m.speed = m.desired = std::llround(cs.v * 500.0);
+        w.attach(m);
+        if (cs.kind == kPark) { // parked: alive from the start, order 0, never on order 4 to the gate (no member)
+            c.phase = 20;
+            c.alive = true;
+            c.pending = false;
+            m.order = core::kOrderNone;
+            m.speed = m.desired = 0;
+            continue;
+        }
+        ++res.departures;
+        if (cs.kind == kEsc) {
+            c.phase = 10;
+            c.alive = true;
+            c.pending = false;
+            m.order = core::kOrderEscort;
+            m.leader_ptr = 0x9000 + 0x100 * std::uint32_t(cs.leader);
+            c.target = m.leader_ptr;
+            c.gap_next = 33000 + long(k) * 4000;
+        }
+    }
+    // the KC's warp-in slots (ship-navigation-ai.md section 10.2, RequestWarpInSlot / ReleaseSlot): the first empty slot whose release
+    // stamp has passed; a slot is held from the order-4 issue to ReleaseFromSlot (one frame after order 8) and then blocked 60 s. Other
+    // traffic at the gate holds the lowest slots, by seed: none, 5 (the next slots are in row 1, slot 5 on the axis column) or 10 (rows
+    // 2-3) (review item 2)
+    long slot_free_at[20];
+    for (long& t : slot_free_at) t = -1;
+    const int phantom = seed == kSeeds[1] ? 5 : seed == kSeeds[2] ? 10 : 0;
+    auto free_slot = [&](long now_ms) {
+        for (int s = phantom; s < 20; ++s) {
+            bool held = slot_free_at[s] > now_ms;
+            for (unsigned q = 0; q < su.n && !held; ++q) held = ships[q].alive && ships[q].slot == s && ships[q].phase >= 0 && ships[q].phase <= 6;
+            if (!held) return s;
+        }
+        return 19;
+    };
+    auto start_order4 = [&](TShip& c, long now_ms) {
+        Model& m = c.m;
+        c.slot = free_slot(now_ms);
+        res.slot_max = std::max(res.slot_max, unsigned(c.slot));
+        float Af[3];
+        core::GateGeometry geo;
+        bool valid = false;
+        capital_grid(*su.s[&c - ships].t, c.slot, kGateIdentity, 0.0, c.A, Af, &geo, &valid);
+        for (int i = 0; i < 3; ++i) c.X[i] = c.A[i] - 0.75 * ru * F[i];
+        m.gate_mode = valid;
+        m.gate_geo = geo;
+        m.capital_gate_leg = true;
+        m.gate_ptr = kLaneGate;
+        m.leader_ptr = 0;
+        c.target = kLaneGate;
+        m.order = core::kOrderFlyBefore;
+        for (int i = 0; i < 3; ++i) m.P[i] = c.A[i];
+        m.d_arr_units = 0.75 * ru;
+        if (m.next_think <= m.t_ms) m.next_think = now_ms; // (the order's issue does not write f+0x210: a deferred tick stays deferred)
+        m.join = core::JoinState{};
+        c.phase = 0;
+        c.phase_t = now_ms;
+        c.gap_until = -1;
+        c.gap_next = now_ms + 30000 + long(m.rng.next()) * 4000 / 32768;
+        c.commit_ms = now_ms;
+    };
+    int holder = -1, last_dir = 0;
+    long release_ms = -1000000, poll_at[kCMax] = {};
+    bool blocked = false;
+    auto grant = [&](int k, long now_ms) {
+        if (holder >= 0) return false;
+        if (last_dir != 0 && last_dir != 1 && now_ms - release_ms < 60000) return false;
+        holder = k;
+        last_dir = 1;
+        return true;
+    };
+    Clock clock;
+    long sim_ms = 0;
+    unsigned cursor = 0;
+    static bool evading[kCMax][kCMax];
+    std::memset(evading, 0, sizeof evading);
+    std::uint32_t seta_rng = seed * 2654435761u + 999u;
+    const double trig_k = 1.0 + (double(tf) - 1.0) / 4.0;
+    const double lam_lo = su.stage2 ? 0.3 : kLamLoS, lam_hi = su.stage2 ? 1.0 : kLamHiS, gap_lo = su.stage2 ? 0.1 : 2.0, gap_hi = su.stage2 ? 0.3 : 3.0;
+    long dt_prev = 0, dt_cur = 0; // the previous frame's step: the order-4 test of this frame sees the position after that step's move
+    for (long it = 0; sim_ms < su.run_s * 1000; ++it) {
+        long dt = clock.step(fps) * tf;
+        if (!dt) continue;
+        if (tf >= 6) {
+            seta_rng = seta_rng * 1664525u + 1013904223u;
+            if ((seta_rng >> 8) % 10000u < 200u) {
+                dt = 1500 + long((seta_rng >> 4) % 501u);
+                ++res.seta_steps;
+            }
+        }
+        res.step_max = std::max(res.step_max, dt);
+        dt_prev = dt_cur;
+        dt_cur = dt;
+        const long now_ms = sim_ms;
+        const std::uint32_t now = std::uint32_t(now_ms);
+        sim_ms += dt;
+        for (unsigned k = 0; k < su.n; ++k) // the KC resumes one frame after order 8's end: ReleaseFromSlot
+            if (ex[k].release_at >= 0 && now_ms >= ex[k].release_at) {
+                if (holder == int(k)) {
+                    holder = -1;
+                    release_ms = now_ms;
+                }
+                if (ships[k].slot >= 0) slot_free_at[ships[k].slot] = now_ms + 60000; // ReleaseSlot: the warp-in slot blocked 60 s
+                ex[k].release_at = -1;
+            }
+        if (su.block_ms >= 0 && !blocked && now_ms >= su.block_ms) { // a partner-side capital transfer: our side refused for 60 s
+            blocked = true;
+            last_dir = -1;
+            release_ms = now_ms;
+            gc::Gate* g = ctl_gate(board, now);
+            if (g) {
+                g->cap_arrival_ms = now ? now : 1;
+                g->cap_arrival_w = 580.0f;
+            }
+        }
+        for (unsigned k = 0; k < su.n; ++k) {
+            TShip& c = ships[k];
+            if (!c.pending) continue;
+            if (now_ms >= su.s[k].t0_ms) {
+                c.pending = false;
+                c.alive = true;
+                c.m.t_ms = now_ms;
+                start_order4(c, now_ms);
+            }
+        }
+        Model* live[kCMax + 1];
+        unsigned n_live = 0;
+        for (unsigned k = 0; k < su.n; ++k)
+            if (ships[k].alive) live[n_live++] = &ships[k].m;
+        bool any = false;
+        for (unsigned k = 0; k < su.n; ++k) any = any || ships[k].pending || ships[k].alive;
+        if (!any) break;
+        w.fill(live, n_live, now);
+        for (unsigned k = 0; k < su.n; ++k) {
+            TShip& c = ships[k];
+            Extra& e = ex[k];
+            if (!c.alive) continue;
+            Model& m = c.m;
+            m.frame_dt_ms = dt;
+            // the DLL's lane site-B write (gc::lane_site_b on the live state and the live order: site B runs after the order step, so a
+            // script's order change of this frame is seen; lane_force() re-evaluates it where the order changed)
+            int mi = -1;
+            gc::Gate* mg = gc::locate(board, m.ptr, &mi);
+            auto lane_force = [&]() -> double {
+                m.lane_force_ms = -1.0;
+                e.vsb_write = mg && gc::pair_role(mg->m[mi].role) ? double(mg->m[mi].v_sb) : -1.0; // the law's speed site B reads
+                if (lane && mg && gc::pair_role(mg->m[mi].role)) {
+                    float x[3], f[3], v;
+                    for (int i = 0; i < 3; ++i) {
+                        x[i] = float(m.pos[i] / 500.0);
+                        f[i] = float(m.row[2][i]);
+                    }
+                    if (gc::lane_site_b(*mg, mg->m[mi], m.order, x, f, float(double(m.speed) / 500.0), now, &v)) m.lane_force_ms = double(v);
+                }
+                return m.lane_force_ms;
+            };
+            lane_force(); // (for m.frame on the steered orders: its clamp applies m.lane_force_ms)
+            // site B's tick deferral (gc::lane_defer_step; review item 2): f+0x210 is the plant's re-plan time, f+0x240 the order point
+            auto site_b_defer = [&]() {
+                if (!lane || !mg || !gc::pair_role(mg->m[mi].role) || std::getenv("X3M_C_NODEFER")) return;
+                const float p_m[3] = {float(c.A[0] / 500.0), float(c.A[1] / 500.0), float(c.A[2] / 500.0)};
+                const gc::LaneDefer d = gc::lane_defer_step(*mg, mg->m[mi], m.order, c.target, std::uint32_t(m.next_think), now, p_m);
+                if (d.rewrite) {
+                    for (int i = 0; i < 3; ++i) {
+                        c.A[i] = double(core::round_to_int(d.L[i] * core::kUnitsPerMetre));
+                        c.X[i] = c.A[i] - 0.75 * ru * F[i];
+                        m.P[i] = c.A[i];
+                        e.lw[i] = c.A[i];
+                    }
+                    e.lw_ok = true;
+                    ++res.rewrites;
+                }
+                if (d.write210) {
+                    m.next_think = long(d.v210);
+                    if (m.order == core::kOrderNone) ++res.deferrals;
+                }
+            };
+            double dA_v[3] = {c.A[0] - m.pos[0], c.A[1] - m.pos[1], c.A[2] - m.pos[2]};
+            const double dB_v[3] = {-m.pos[0], -m.pos[1], -m.pos[2]};
+            double dA = norm3d(dA_v);
+            const double dB = norm3d(dB_v);
+            if (e.t15 < 0 && dB / 500.0 <= 15000.0) {
+                e.t15 = now_ms;
+                gc::Gate* g15 = ctl_gate(board, now);
+                const double lc0 = g15 && g15->lane_c_ok ? double(g15->lane_c[0]) : 0.0, lc1 = g15 && g15->lane_c_ok ? double(g15->lane_c[1]) : 0.0;
+                const double q[3] = {m.pos[0] / 500.0 - lc0, m.pos[1] / 500.0 - lc1, m.pos[2] / 500.0 + double(gc::kLaneEndM)};
+                e.p15_extra = std::fmax(0.0, std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]) - (15000.0 - double(gc::kLaneEndM)));
+            }
+            double c_F = std::fmin(1.0, std::fmax(-1.0, m.row[2][2]));
+            const double err_F = std::acos(c_F) * 180 / M_PI;
+            if (c.phase == 20) { // parked (kPark): no order, no member, an obstacle on Lambda
+                m.desired = 0;
+                m.advance(dt);
+                continue;
+            }
+            if (su.kill_leader && k == 0 && !e.killed && m.pos[2] / 500.0 >= -(double(gc::kLaneEndM) + 2000.0)) { // destroyed (section 6.11)
+                e.killed = true;
+                e.kill_ms = now_ms;
+                c.alive = false;
+                c.gone = true;
+                c.launch_ms = now_ms; // (the escorts' lost-leader end: the script's `while $leader exists` ends)
+                --res.departures;
+                continue;
+            }
+            const bool was_esc = c.phase >= 10;
+            if (was_esc) { // the escort script
+                const TShip& L = ships[su.s[k].leader];
+                if (c.phase <= 11 && (L.launched || ex[su.s[k].leader].killed)) { // the leader's order 8 ended (or it was destroyed): 0x14
+                                                                                    // ends (lost leader), the template's wait, CheckLeader
+                    c.phase = 12;
+                    c.leader_launch = L.launch_ms;
+                    e.lam = uni(lam_lo, lam_hi);
+                    c.order4_at = c.leader_launch + long(e.lam * 1000.0);
+                    e.in10 = dB / 500.0 <= 10000.0;
+                    m.order = core::kOrderNone;
+                    m.leader_ptr = 0;
+                    c.target = 0;
+                }
+                if (c.phase == 10 && now_ms >= c.gap_next) {
+                    c.phase = 11;
+                    c.gap_until = now_ms + long(uni(gap_lo, gap_hi) * 1000.0);
+                    m.order = core::kOrderNone;
+                } else if (c.phase == 11 && now_ms >= c.gap_until) {
+                    c.phase = 10;
+                    c.gap_next = now_ms + 30000 + long(uni(0, 4000));
+                    m.order = core::kOrderEscort;
+                }
+                if (c.phase == 10) {
+                    for (int i = 0; i < 3; ++i) {
+                        m.leader_pos[i] = L.m.pos[i];
+                        m.leader_fwd[i] = L.m.row[2][i];
+                        m.leader_nose[i] = L.m.row[2][i] * double(L.m.speed);
+                        m.leader_slip[i] = double(L.m.slip[i]);
+                    }
+                    m.v_lead = double(L.m.speed);
+                    m.slot_back_units = 2.6 * L.m.r_units;
+                    m.prec_units = 0.25 * m.r_units;
+                    m.d_arr_units = m.r_units;
+                    m.frame(dt, c.obj, true, 0, 2);
+                    site_b_defer();
+                } else if (c.phase == 12 || c.phase == 13) { // the script's pass: order 4 inside 10 km (its handler runs in this frame's
+                    if (now_ms >= c.order4_at) {              // sector update: the leaf call below commits it), else a 5 s 0x15 leg
+                        if (dB / 500.0 <= 10000.0) {
+                            start_order4(c, now_ms);
+                            e.o4_ms = now_ms;
+                            // the issue frame's tick tests the KC's grid point (the P2 test below; review item 2): inside its sphere the order
+                            // would end on this tick unless the tick is deferred
+                            for (int i = 0; i < 3; ++i) dA_v[i] = c.A[i] - m.pos[i];
+                            dA = norm3d(dA_v);
+                            if (dA <= 0.75 * ru) ++res.o4_in_sphere;
+                        } else {
+                            c.phase = 13;
+                            c.order4_at = now_ms + 5000;
+                            m.order = core::kOrderFollow;
+                            m.gate_ptr = kLaneGate;
+                            c.target = kLaneGate;
+                        }
+                    }
+                }
+                if (c.phase == 11 || c.phase == 12) {
+                    // order 0's tail sets f+0x210 (the re-plan stamp) to now; site B's tick deferral adds to it (review item 2)
+                    m.next_think = m.t_ms;
+                    site_b_defer();
+                    const double force = lane_force();
+                    m.desired = force >= 0.0 ? std::llround(force * 500.0) : 0;
+                    m.advance(dt);
+                } else if (c.phase == 13) {
+                    m.order = core::kOrderFollow;
+                    for (int i = 0; i < 3; ++i) m.P[i] = 0;
+                    lane_force();
+                    m.frame(dt, c.obj, true, 0, 0);
+                    site_b_defer();
+                }
+                if (c.phase >= 10) continue; // an order 4 started this frame flies on from here (phase 0)
+            }
+            if (c.phase == 4) { // order 8: 900 ms along F, then gone
+                if (m.t_ms - c.phase_t >= 900) {
+                    c.launched = true;
+                    c.alive = false;
+                    c.gone = true;
+                    c.launch_ms = now_ms;
+                    launch_ms_of[k] = now_ms;
+                    ++res.launched;
+                    if (std::getenv("X3M_C_TRACE")) std::printf("  tc %s ev t=%.1f ship %u launch\n", su.tag, double(now_ms) / 1000.0, k);
+                    e.release_at = now_ms + 1; // the next frame
+                    if (e.grant_ms >= 0) {
+                        tslot_ms_of[k] = now_ms - e.grant_ms;
+                        const double ts = double(now_ms - e.grant_ms) / 1000.0;
+                        res.t_slot_min_s = std::fmin(res.t_slot_min_s, ts);
+                        res.t_slot_max_s = std::fmax(res.t_slot_max_s, ts);
+                    }
+                    m.advance(dt);
+                    continue;
+                }
+                for (int i = 0; i < 3; ++i) m.pos[i] += F[i] * double(m.speed) * double(dt) / 1000.0;
+                m.advance(dt);
+                continue;
+            }
+            if (c.phase == 0) { // the script's order-0 re-issue gaps on the order-4 leg
+                if (c.gap_until >= 0 && now_ms >= c.gap_until) {
+                    c.gap_until = -1;
+                    e.gap_end = now_ms;
+                    m.order = core::kOrderFlyBefore;
+                    c.target = kLaneGate;
+                    m.next_think = m.t_ms;
+                    c.gap_next = now_ms + 30000 + long(m.rng.next()) * 4000 / 32768;
+                } else if (c.gap_until < 0 && now_ms >= c.gap_next) {
+                    c.gap_until = now_ms + long(uni(gap_lo, gap_hi) * 1000.0);
+                    m.order = core::kOrderNone;
+                    c.target = 0;
+                }
+                if (c.gap_until >= 0) {
+                    const double f = lane_force();
+                    m.desired = f >= 0.0 ? std::llround(f * 500.0) : 0;
+                    m.advance(dt);
+                    continue;
+                }
+            }
+            if (c.phase == 0) {
+                // site A's f+0x240 rewrite (section 6.4) at a tick, site B's on the frames of a deferred tick (review item 2): a lane
+                // member's order point on a KC grid point becomes its lane point L_i (the P2 test below uses dA from before it)
+                if (lane && mg && gc::pair_role(mg->m[mi].role) && mg->m[mi].ln && mg->m[mi].q_ok) {
+                    const float a_m[3] = {float(c.A[0] / 500.0), float(c.A[1] / 500.0), float(c.A[2] / 500.0)};
+                    // the DLL's memory of its last write (a field still holding it is ours; any other value is the KC's)
+                    const bool ours = e.lw_ok && c.A[0] == e.lw[0] && c.A[1] == e.lw[1] && c.A[2] == e.lw[2];
+                    float Lp[3];
+                    if (!ours && gc::lane_site_b_point(*mg, mg->m[mi], m.order, c.target, a_m, Lp)) {
+                        for (int i = 0; i < 3; ++i) {
+                            c.A[i] = double(core::round_to_int(Lp[i] * core::kUnitsPerMetre)); // the 12-byte store (units)
+                            c.X[i] = c.A[i] - 0.75 * ru * F[i];
+                            m.P[i] = c.A[i];
+                            e.lw[i] = c.A[i];
+                        }
+                        e.lw_ok = true;
+                        ++res.rewrites;
+                    } else if (!ours)
+                        ++res.grid_miss;
+                }
+                m.steer_call(c.obj, true, 0);
+                if (std::getenv("X3M_C_TRACE")) {
+                    int qi = -1;
+                    const gc::Gate* qg = gc::locate(board, m.ptr, &qi);
+                    if (!qg || qg->m[qi].role != gc::Role::committed) std::printf("  tc %s nocommit t=%.2f ship %u gate_mode %d role %s reason %d\n", su.tag, double(now_ms) / 1000.0, k, int(m.gate_mode), qg ? gc::role_name(qg->m[qi].role) : "-", int(m.last_reason));
+                }
+                if (m.t_ms >= m.next_think) {
+                    m.next_think = m.t_ms + m.rng.next() * 50 / 32768;
+                    if (dA <= 0.75 * ru) { // P2
+                        m.desired = 0;
+                        double uv[3], un = 0, cu = 0, xg = 0;
+                        for (int i = 0; i < 3; ++i) {
+                            uv[i] = double(m.vel[i] + m.slip[i]);
+                            un += uv[i] * uv[i];
+                            xg += c.X[i] / 500.0 * c.X[i] / 500.0;
+                        }
+                        un = std::sqrt(un);
+                        for (int i = 0; i < 3; ++i) cu += un > 0 ? uv[i] / un * F[i] : 0.0;
+                        const double vel_deg = un > 0 ? std::acos(std::fmin(1.0, std::fmax(-1.0, cu))) * 180 / M_PI : err_F;
+                        const float v_ms = float(double(m.speed) / 500.0);
+                        int pi = -1;
+                        gc::Gate* pg2 = gc::locate(board, m.ptr, &pi);
+                        const bool funnel = pg2 && gc::sb_funnel(pg2->m[pi]);
+                        const float bound = core::join_coast_bound(float(std::sqrt(xg)), float(su.s[k].t->r_m), v_ms, float(su.s[k].t->a_ms2));
+                        const core::JoinKeep why = core::join_keep_verdict(funnel, float(err_F), float(vel_deg), v_ms,
+                                                                           pg2 ? gc::lane_p2_bound(pg2->m[pi], bound) : bound);
+                        if (why != core::JoinKeep::kept) m.speed = 0;
+                        else m.e[0] = m.e[1] = m.e[2] = 0;
+                        ++res.p2;
+                        if (why != core::JoinKeep::kept) ++res.p2_not_kept;
+                        const double err = std::fabs(-m.pos[2] / 500.0 - double(gc::kLaneEndM));
+                        // (a P2 within 4 s of the end of a script re-issue gap on the leg is late by the gap: the test did not run on order 0)
+                        if (e.gap_end >= 0 && now_ms - e.gap_end < 4000) ++res.p2_after_gap;
+                        else {
+                            res.p2_err_max = std::fmax(res.p2_err_max, err);
+                            if (err > 50.0 + double(m.speed) / 500.0 * double(std::max(dt, dt_prev) + 50) / 1000.0) ++res.p2_far;
+                        }
+                        if (pg2 && pg2->m[pi].role == gc::Role::committed) pg2->m[pi].handover_ms = now ? now : 1;
+                        if (std::getenv("X3M_C_TRACE"))
+                            std::printf("  tc %s ev t=%.1f ship %u P2 depth %.0f lat %.0f,%.0f v %.1f err %.0f kept %d\n", su.tag, double(now_ms) / 1000.0, k,
+                                        -m.pos[2] / 500.0, m.pos[0] / 500.0, m.pos[1] / 500.0, double(v_ms), err, why == core::JoinKeep::kept ? 1 : 0);
+                        c.phase = 1;
+                        c.phase_t = m.t_ms;
+                        c.gap_ms = 0; // the KC task resumes in the next frame and issues 0x1f (ship-navigation-ai.md section 10.12 item 5)
+                        m.order = core::kOrderNone;
+                        c.target = 0;
+                    } else
+                        m.desired = engine_order4_speed(m, dA, dA_v, true);
+                }
+                site_b_defer(); // (after the handler's tick: site B)
+            } else if (c.phase == 1) {
+                m.desired = 0;
+                if (m.t_ms >= c.phase_t + c.gap_ms) {
+                    c.phase = 5;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderRotate;
+                    c.rotate_frames = 0;
+                }
+            } else if (c.phase == 5) {
+                m.desired = 0;
+                ++c.rotate_frames;
+                if (c_F >= kCos0xfd70) {
+                    c.phase = 6;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderNone;
+                    poll_at[k] = m.t_ms;
+                    res.rotate_max = std::max(res.rotate_max, c.rotate_frames);
+                } else {
+                    for (int i = 0; i < 3; ++i) m.P[i] = m.pos[i] + F[i] * 1.0e7;
+                    m.vanilla_leaf();
+                }
+            } else if (c.phase == 6) {
+                m.desired = 0;
+                if (m.t_ms >= poll_at[k]) {
+                    if (grant(int(k), now_ms)) {
+                        if (e.refuse_t >= 0) res.refusal_max_s = std::fmax(res.refusal_max_s, double(now_ms - e.refuse_t) / 1000.0);
+                        c.phase = 2;
+                        c.phase_t = m.t_ms;
+                        e.grant_ms = now_ms;
+                        if (std::getenv("X3M_C_TRACE")) std::printf("  tc %s ev t=%.1f ship %u grant v %.1f\n", su.tag, double(now_ms) / 1000.0, k, double(m.speed) / 500.0);
+                        m.order = core::kOrderDock;
+                        c.target = kLaneGate;
+                        for (int i = 0; i < 3; ++i) m.P[i] = 0;
+                    } else {
+                        ++res.x_refused;
+                        ++e.refusals;
+                        if (e.refuse_t < 0) e.refuse_t = now_ms;
+                        res.refusals_max = std::max(res.refusals_max, e.refusals);
+                        poll_at[k] = m.t_ms + 1000 + long(m.rng.next()) * 10000 / 32768;
+                    }
+                }
+            } else if (c.phase == 2) {
+                m.steer_call(c.obj, false, 0);
+                double cb = 0;
+                for (int i = 0; i < 3; ++i) cb += m.row[2][i] * dB_v[i] / dB;
+                if (cb < 0.95) m.desired = 500;
+                else m.desired = dB <= ru / 5 ? m.vmax / 2 : (dB >= ru ? m.vmax : m.vmax / 2 + std::llround(double(m.vmax / 2) * (dB - ru / 5) / (ru - ru / 5)));
+                if (dB <= (double(m.speed) / 10.0 + m.r_units) * trig_k) { // P4: the trigger (inflated by the time factor)
+                    m.desired = 0;
+                    c.phase = 3;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderNone;
+                }
+            } else if (c.phase == 3) {
+                m.desired = 0;
+                if (m.t_ms > c.phase_t) {
+                    c.phase = 4;
+                    c.phase_t = m.t_ms;
+                    m.order = core::kOrderWarpAway;
+                }
+            }
+            m.clamp(c.obj);
+            if (c.phase == 0 || c.phase == 1 || c.phase == 5 || c.phase == 6) {
+                const double f = lane_force();
+                if (f >= 0.0) m.desired = std::llround(f * 500.0);
+            }
+            m.advance(dt);
+            for (int i = 0; i < 3; ++i)
+                if (!std::isfinite(m.pos[i])) res.nan = true;
+        }
+        // the frame end: site B's reads, the frame boundary, the lane (or stage B), the decisions
+        const std::uint32_t now_end = std::uint32_t(sim_ms);
+        const auto t_frame0 = std::chrono::steady_clock::now();
+        gc::note_step(board, now_end, std::uint32_t(dt));
+        TResult tr;
+        for (unsigned k = 0; k < su.n; ++k)
+            if (ships[k].alive) t_observe(board, ships[k], now_end, tr);
+        t_live_prove(board, ships, su.n, now_end);
+        for (gc::Gate& g : board.g) {
+            if (!g.gate) continue;
+            if (g.lane) {
+                gc::LaneStats ls;
+                gc::lane_frame(g, now_end, &ls);
+                res.merges += ls.merges;
+                res.merges_done += ls.merges_done;
+                for (unsigned q = 0; q < ls.n_ev; ++q)
+                    if (ls.ev[q].finish) {
+                        res.merge_max_s = std::fmax(res.merge_max_s, double(ls.ev[q].ms) / 1000.0);
+                        res.merge_gap_min = std::fmin(res.merge_gap_min, double(ls.ev[q].gap));
+                    }
+            } else {
+                gc::SbStats sbst;
+                gc::sb_frame(g, now_end, &sbst);
+            }
+        }
+        t_live_leaves(board, now_end);
+        {
+            unsigned done = 0, rollouts = 0;
+            std::uint16_t dorder[gc::kGates * gc::kMembers];
+            unsigned n_prio = 0;
+            const unsigned n_order = gc::decide_order(board, cursor, now_end, dorder, &n_prio);
+            const gc::FrameBudget fb = gc::frame_budget(gc::members_live(board), std::uint32_t(dt));
+            for (unsigned q = 0; q < n_order && gc::frame_room(done, rollouts, fb); ++q) {
+                const unsigned k = dorder[q];
+                gc::DecideStats st;
+                gc::decide(board.g[k / gc::kMembers], k % gc::kMembers, now_end, &st, nullptr, nullptr);
+                rollouts += st.rollouts;
+                if (q >= n_prio) cursor = k + 1;
+                ++done;
+            }
+            res.decisions += done;
+        }
+        {
+            const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t_frame0).count();
+            res.frame_us_max = std::fmax(res.frame_us_max, us);
+            res.frame_us_sum += us;
+            if (us > res.frame_us_top[2]) {
+                res.frame_us_top[2] = us;
+                if (res.frame_us_top[2] > res.frame_us_top[1]) std::swap(res.frame_us_top[2], res.frame_us_top[1]);
+                if (res.frame_us_top[1] > res.frame_us_top[0]) std::swap(res.frame_us_top[1], res.frame_us_top[0]);
+            }
+            ++res.frames;
+        }
+        // the assertions' measurements
+        for (unsigned k = 0; k < su.n; ++k) {
+            TShip& c = ships[k];
+            Extra& e = ex[k];
+            if (!c.alive) continue;
+            int mi = -1;
+            gc::Gate* g = gc::locate(board, c.m.ptr, &mi);
+            const gc::Member* mm = g && gc::pair_role(g->m[mi].role) ? &g->m[mi] : nullptr;
+            const double v = double(c.m.speed) / 500.0, z = c.m.pos[2] / 500.0;
+            const bool departing = c.phase == 0 || (c.phase >= 10 && c.phase < 20);
+            if (mm && (mm->sb == gc::Sb::hold || mm->petal >= 0)) ++res.petal_frames; // 3: no petal
+            const bool redep_now = su.s[k].kind == kRedep && !e.on_seen;
+            if (departing && c.m.row[2][2] < 0.0 && !redep_now) ++res.nose_away; // 3: the nose away from the gate
+            if (mm && mm->lane_on) e.on_seen = true;
+            if (departing && e.on_seen && now_ms / 1000 != (now_ms - dt) / 1000) { // 3: the cumulative turn after the merge point (1 s samples)
+                if (e.f_prev[0] != 0 || e.f_prev[1] != 0 || e.f_prev[2] != 0) {
+                    double d = 0;
+                    for (int i = 0; i < 3; ++i) d += e.f_prev[i] * c.m.row[2][i];
+                    const double inc = std::acos(std::fmin(1.0, std::fmax(-1.0, d))) * 180.0 / M_PI;
+                    e.turn += inc;
+                    if (std::getenv("X3M_C_TRACE") && inc > 0.5)
+                        std::printf("  tc %s turn t=%.0f ship %u inc %.1f sum %.1f z %.0f lat %.0f law %s ph %d o 0x%x detour %d role %s x %.0f,%.0f\n", su.tag, double(now_ms) / 1000.0, k, inc, e.turn, z,
+                                    mm ? double(mm->lane_lat) : -1.0, mm ? gc::law_name(mm->law) : "-", c.phase, c.m.order, int(c.m.last_av.adjusted), mm ? gc::role_name(mm->role) : "-", c.m.pos[0] / 500, c.m.pos[1] / 500);
+                    res.turn_max_deg = std::fmax(res.turn_max_deg, e.turn);
+                }
+                for (int i = 0; i < 3; ++i) e.f_prev[i] = c.m.row[2][i];
+            }
+            // final review item 5 (the key-off baseline of the parked cast): the cumulative turn from the 15 km point (1 s samples; a stage-B
+            // holding lap is the design's, not counted) and the farthest from the gate axis, with either key
+            if (departing && e.t15 >= 0) {
+                res.axis_off_max_m = std::fmax(res.axis_off_max_m, std::hypot(c.m.pos[0], c.m.pos[1]) / 500.0);
+                if (mm && (mm->sb == gc::Sb::hold || mm->petal >= 0)) {
+                    e.f15[0] = e.f15[1] = e.f15[2] = 0;
+                } else if (now_ms / 1000 != (now_ms - dt) / 1000) {
+                    if (e.f15[0] != 0 || e.f15[1] != 0 || e.f15[2] != 0) {
+                        double d = 0;
+                        for (int i = 0; i < 3; ++i) d += e.f15[i] * c.m.row[2][i];
+                        e.turn15 += std::acos(std::fmin(1.0, std::fmax(-1.0, d))) * 180.0 / M_PI;
+                        res.turn15_max_deg = std::fmax(res.turn15_max_deg, e.turn15);
+                    }
+                    for (int i = 0; i < 3; ++i) e.f15[i] = c.m.row[2][i];
+                }
+            }
+            if (su.s[k].kind == kEsc && c.phase >= 10 && z > -double(gc::kLaneEndM)) ++res.escort_past_dend; // 5
+            if (departing && v < 1.0 && std::fabs(z + double(gc::kLaneEndM)) < 600.0 && !e.refusals) ++res.dend_stops;
+            if (!lane || !mm) continue;
+            // 1: the head with nobody ahead (no ship at the gate either) is never capped; a merging yielder's predecessor is capped only
+            // while it yields to its own predecessor (its law merge / follow / stop)
+            if (mm->lane_rank == 0 && !mm->lane_pred && gc::cap_in_force(*g, *mm, now_end) >= 0.0f) {
+                ++res.head_capped;
+                if (std::getenv("X3M_C_TRACE"))
+                    std::printf("  tc %s headcap t=%.2f ship %u ph %d o 0x%x cap %.1f age %ld yield_age %ld stop %u law %s v %.1f\n", su.tag, double(now_ms) / 1000.0, k,
+                                c.phase, c.m.order, double(mm->cap), long(now_end - mm->cap_ms), long(now_end - mm->yield_ms), mm->stop_ms, gc::law_name(mm->law), v);
+            }
+            if (mm->lane_rank != 0xff && mm->law == gc::Law::merge) { // 1: the ship ahead of a merging yielder is never capped for the pair
+                ++res.merge_frames;
+                const int pi = gc::find(*g, mm->lane_pred);
+                if (pi >= 0) {
+                    const gc::Member& P = g->m[pi];
+                    if (gc::cap_in_force(*g, P, now_end) >= 0.0f && P.law != gc::Law::merge && P.law != gc::Law::follow && P.law != gc::Law::stop) {
+                    ++res.ahead_capped;
+                    if (std::getenv("X3M_C_TRACE"))
+                        std::printf("  tc %s aheadcap t=%.2f ship %u's pred %x cap %.1f age %ld yield_age %ld law %s sb %s rank %u\n", su.tag, double(now_ms) / 1000.0, k,
+                                    P.ship, double(P.cap), long(now_end - P.cap_ms), long(now_end - P.yield_ms), gc::law_name(P.law), gc::sb_name(P.sb), unsigned(P.lane_rank));
+                }
+                }
+            }
+            // 2: the merge's duration, the floor, the brief stop, the lateral rule
+            // (the bound: 40 s, or the yielder's bang-bang minimum for the opening at the merge's start + 5 s where its acceleration
+            // cannot do 40 s: an M1 at 5 m/s2 level with a Titan opens 2.4 km in no less than 44 s; convoy-gate-transit.md section 11)
+            if (mm->merge_ms && mm->merge_ms != e.merge_stamp) {
+                e.merge_stamp = mm->merge_ms;
+                if (double(mm->lane_lat) > e.merge_y0) { // (review item 6: the lateral the merge started from, and the join's angle: 20 deg,
+                    e.merge_y0 = double(mm->lane_lat); // steeper when the room to its join's end is short, at most 45 deg)
+                    const double room = -double(mm->lane_s) - double(gc::lane_join_end(*mm));
+                    e.merge_tan = 1.0 / std::fmax(1.0, std::fmin(2.75, room / std::fmax(1.0, e.merge_y0)));
+                }
+                const double D = double(gc::kLaneGapM) - double(mm->lane_gap), dv = double(gc::lane_vmax(*mm) - gc::kYieldFloorMs);
+                const double a = su.s[k].t->a_ms2;
+                const double tmin = D <= 0.0 ? 0.0 : D >= dv * dv / a ? 2.0 * dv / a + (D - dv * dv / a) / dv : 2.0 * std::sqrt(D / a);
+                // (review item 6: the merge completes on the raw gap g_req, which a yielder still off Lambda reaches once its join is
+                // flown: + the join from its lateral at the start at the 20 deg join angle and the line's lane speed)
+                double vj = double(gc::lane_vmax(*mm)); // (the line's speed: the slowest lane speed ahead of it in the lane order)
+                for (unsigned q = 0; q < g->n; ++q)
+                    if (g->m[q].ship && g->m[q].lane_rank < mm->lane_rank) vj = std::fmin(vj, double(gc::lane_vmax(g->m[q])));
+                const double tjoin = double(mm->lane_lat) / (vj * std::sin(20.0 * M_PI / 180.0));
+                e.merge_bound_ms = std::max(40000L, long((tmin + 5.0) * 1000.0)) + long(tjoin * 1000.0);
+            }
+            if (mm->merge_ms && !mm->merge_done && now_end - mm->merge_ms > std::uint32_t(e.merge_bound_ms) + std::uint32_t(res.step_max)) {
+                if (!e.merged_seen) ++res.merge_late;
+                e.merged_seen = true;
+            }
+            const bool steered = c.m.order == core::kOrderFlyBefore || c.m.order == core::kOrderEscort || c.m.order == core::kOrderFollow;
+            if (steered && (mm->law == gc::Law::merge || mm->law == gc::Law::follow) && mm->v_sb < gc::kYieldFloorMs - 1e-3f) ++res.slow_frames;
+            const bool stop_now = gc::cap_in_force(*g, *mm, now_end) == 0.0f;
+            if (stop_now && e.stop_start < 0) {
+                e.stop_start = now_ms;
+                ++res.stops;
+            } else if (!stop_now && e.stop_start >= 0) {
+                const double s = double(now_ms - e.stop_start) / 1000.0;
+                res.stop_max_s = std::fmax(res.stop_max_s, s);
+                if (s * 1000.0 > double(gc::kLaneStopMs) + double(res.step_max) + 1000.0) ++res.stop_long;
+                e.stop_start = -1;
+            }
+            // 2: while a merge's yielder is beside its predecessor (the raw gap tail-to-nose < 0 along F, from the two ships' positions) it
+            // never comes laterally nearer to it than the clearance band w_P + w_Y + kLaneSideM (or its separation when it was nearer at the
+            // start), less 100 m of tracking (review item 6: the check reads the positions and hulls, not the controller's predicate)
+            {
+                int kp = -1;
+                for (unsigned q = 0; q < su.n && kp < 0; ++q)
+                    if (q != k && ships[q].alive && ships[q].m.ptr == mm->lane_pred) kp = int(q);
+                bool beside = false;
+                double sep = 0.0, band = 0.0;
+                if (mm->merge_ms && kp >= 0) {
+                    const TShip& P = ships[kp];
+                    const double raw = (P.m.pos[2] / 500.0 - su.s[kp].t->r_m) - (z + su.s[k].t->r_m);
+                    sep = std::hypot((P.m.pos[0] - c.m.pos[0]) / 500.0, (P.m.pos[1] - c.m.pos[1]) / 500.0);
+                    band = P.w + c.w + double(gc::kLaneSideM);
+                    beside = raw < 0.0;
+                }
+                if (beside) {
+                    if (e.lat_hold < 0) e.lat_hold = std::fmin(sep, band);
+                    else if (sep < e.lat_hold - 100.0) ++res.lat_converge;
+                } else
+                    e.lat_hold = -1;
+            }
+            // 5: a trail member's order-0 / 0x1f frames (the script's re-issue gaps, the lost-leader wait): the speed site B writes (0 when it
+            // writes none: order 0 zeroes the desired speed) against the member's trail speed (its law's speed of the frame, v_sb), every
+            // frame (review item 7: frames written 0 included; not the episode's lowest written speed)
+            // (the hand-over after P2 is the refusal's hold, not a trail frame; a nose beyond 45 deg of F, a re-departure's U-turn, has no
+            // trail speed)
+            if ((c.m.order == core::kOrderNone || c.m.order == core::kOrderRotate) && departing && mm->lane_rank != 0xff && e.vsb_write >= 0.0 &&
+                c.m.row[2][2] >= 0.70710678) {
+                ++res.o0_frames;
+                const double written = c.m.lane_force_ms >= 0.0 ? c.m.lane_force_ms : 0.0;
+                const double loss = e.vsb_write - written;
+                res.o0_drop_max = std::fmax(res.o0_drop_max, loss);
+                if (loss > 2.0) {
+                    ++res.o0_low;
+                    if (std::getenv("X3M_C_TRACE"))
+                        std::printf("  tc %s o0loss t=%.1f ship %u ph %d o 0x%x v %.1f written %.1f v_sb %.1f sb %s law %s nose %.3f lat %.0f\n", su.tag,
+                                    double(now_ms) / 1000.0, k, c.phase, c.m.order, v, written, e.vsb_write, gc::sb_name(mm->sb),
+                                    gc::law_name(mm->law), c.m.row[2][2], double(mm->lane_lat));
+                }
+            }
+            // 7: certified from a merge's first certificate to its completion + 30 s
+            if (mm->lane_pred) {
+                const int pi = gc::find(*g, mm->lane_pred);
+                if (pi >= 0) {
+                    const bool merging = mm->merge_ms && !mm->merge_done;
+                    const gc::Member& P = g->m[pi];
+                    const bool cert = gc::e_certified(*g, unsigned(mi), unsigned(pi), now_end, mm->st.f_ok != 0, P.st.f_ok != 0, mm->st.order, P.st.order);
+                    if (merging && cert) e.cert_on = true;
+                    if (merging) e.cert_until = -1;
+                    else if (e.cert_on && e.cert_until < 0) e.cert_until = now_ms + 30000;
+                    if (e.cert_on && (merging || now_ms <= e.cert_until) && !cert && steered) ++res.uncert_frames;
+                    if (e.cert_until >= 0 && now_ms > e.cert_until) e.cert_on = false;
+                }
+            }
+        }
+        // 7: the pairs (capsule, box, the engine's warn between members that E does not suppress)
+        for (unsigned a = 0; a < su.n; ++a) {
+            TShip& A = ships[a];
+            if (!A.alive) continue;
+            for (unsigned b = a + 1; b < su.n; ++b) {
+                TShip& B = ships[b];
+                if (!B.alive) continue;
+                res.min_capsule = std::fmin(res.min_capsule, t_capsule(A, B));
+                res.min_box = std::fmin(res.min_box, crowd_box_sep(A.m, A.w, B.m, B.w));
+                for (int dir = 0; dir < 2; ++dir) {
+                    TShip& X = dir ? B : A;
+                    TShip& Y = dir ? A : B;
+                    const bool x_f = X.m.order == core::kOrderEscort || X.m.order == core::kOrderFollow;
+                    if (x_f && X.m.leader_ptr == Y.m.ptr) continue; // the engine's obstacle filter: the leader of an escort
+                    const bool y_f = Y.m.order == core::kOrderEscort || Y.m.order == core::kOrderFollow;
+                    const bool siblings = x_f && y_f && X.m.leader_ptr && X.m.leader_ptr == Y.m.leader_ptr;
+                    const unsigned xi = unsigned(&X - ships), yi = unsigned(&Y - ships);
+                    if (!crowd_pair_warn(X.m, Y.m, siblings)) {
+                        evading[xi][yi] = false;
+                        continue;
+                    }
+                    int ia = -1;
+                    gc::Gate* g = gc::locate(board, X.m.ptr, &ia);
+                    const int ib = g ? gc::find(*g, Y.m.ptr) : -1;
+                    bool sup = false;
+                    if (!(g && ib >= 0 && gc::live(*g, g->m[ia], now_end) && gc::live(*g, g->m[ib], now_end))) { // not a member pair (scenario
+                        ++res.warn_nonmember;                                                                  // T's rule: reported apart)
+                        evading[xi][yi] = false;
+                        continue;
+                    }
+                    {
+                        float fa[3], fb[3];
+                        for (int i = 0; i < 3; ++i) {
+                            fa[i] = float(X.m.row[2][i]);
+                            fb[i] = float(Y.m.row[2][i]);
+                        }
+                        av::SiteE in;
+                        in.b_ship = true;
+                        in.ctl_pair = true;
+                        in.ctl_certified = gc::e_certified(*g, unsigned(ia), unsigned(ib), now_end, gc::unit_row(fa), gc::unit_row(fb), X.m.order, Y.m.order);
+                        sup = av::site_e_verdict(in) == av::EVerdict::suppress_ctl;
+                    }
+                    if (!sup && !evading[xi][yi] && now_ms >= 2000) { // (the first 2 s: the boards are built from the first decisions)
+                        ++res.episodes;
+                        if (std::getenv("X3M_C_TRACE")) {
+                            std::printf("  tc %s ep t=%.1f %u(ph %d o 0x%x) vs %u(ph %d o 0x%x) capsule %.0f", su.tag, double(now_ms) / 1000.0, xi, X.phase,
+                                        X.m.order, yi, Y.phase, Y.m.order, t_capsule(X, Y));
+                            if (g && ib >= 0)
+                                std::printf(" why %s pair %s cause %s t_c %u plans %s/%s n %u/%u dec %ld/%ld", gc::ewhy_name(gc::e_reason(*g, unsigned(ia), unsigned(ib), now_end, true, true, X.m.order, Y.m.order)),
+                                            gc::pair_name(gc::PairV(g->v[ia][ib])), gc::pair_why_name(g->why[ia][ib]), unsigned(g->tc[ia][ib]),
+                                            gc::plan_name(gc::plan_of(g->m[ia])), gc::plan_name(gc::plan_of(g->m[ib])), unsigned(g->m[ia].n), unsigned(g->m[ib].n),
+                                            long(now_end - g->m[ia].decided_ms), long(now_end - g->m[ib].decided_ms));
+                            if (g && ib >= 0) std::printf(" roles %s/%s sb %s/%s st.order 0x%x/0x%x", gc::role_name(g->m[ia].role), gc::role_name(g->m[ib].role), gc::sb_name(g->m[ia].sb), gc::sb_name(g->m[ib].sb), unsigned(g->m[ia].st.order), unsigned(g->m[ib].st.order));
+                            std::printf("\n");
+                            if (g && ib >= 0 && std::getenv("X3M_C_DUMP")) {
+                                const gc::Member* dm[2] = {&g->m[ia], &g->m[ib]};
+                                for (const gc::Member* q : dm) {
+                                    std::printf("    roll ship %x roll_ms %u st.ms %u pred %x law %s v_sb %.1f gate_ms %u free_ms %u:", q->ship, q->roll_ms, q->st.ms,
+                                                q->lane_pred, gc::law_name(q->law), double(q->v_sb), q->lane_gate_ms, q->lane_free_ms);
+                                    for (unsigned s2 = 0; s2 < q->n; s2 += 4)
+                                        std::printf(" %u:%.0f,%.0f,%.0f", s2, double(q->s[s2].c[0]), double(q->s[s2].c[1]), double(q->s[s2].c[2]));
+                                    std::printf("\n");
+                                }
+                                static gc::Sample re[gc::kSamples];
+                                float vm = 0.0f;
+                                const unsigned nre = gc::rollout(g->m[ia], *g, -1.0f, re, &vm, now_end);
+                                std::printf("    yields %d/%d can %d/%d gap_yield %d/%d line_ok %u/%u lane_rank %u/%u\n", int(gc::yields_to(g->m[ia], g->m[ib])),
+                                            int(gc::yields_to(g->m[ib], g->m[ia])), int(gc::can_yield(g->m[ia])), int(gc::can_yield(g->m[ib])),
+                                            int(gc::gap_yield(g->m[ia])), int(gc::gap_yield(g->m[ib])), unsigned(g->m[ia].line_ok), unsigned(g->m[ib].line_ok),
+                                            unsigned(g->m[ia].lane_rank), unsigned(g->m[ib].lane_rank));
+                                std::printf("    re-rollout %u merged %u gap %.0f plan %s:", nre, unsigned(g->m[ia].merged), double(g->m[ia].lane_gap),
+                                            gc::plan_name(gc::plan_of(g->m[ia])));
+                                for (unsigned s2 = 0; s2 < nre; s2 += 4) std::printf(" %.0f", double(re[s2].c[2]));
+                                std::printf("\n");
+                            }
+                        }
+                    }
+                    evading[xi][yi] = !sup;
+                }
+            }
+        }
+        const char* const one = std::getenv("X3M_C_SHIP"); // an iteration aid: every frame of this ship (with X3M_C_TRACE)
+        const std::uint32_t tseed = std::getenv("X3M_C_SEED") ? std::uint32_t(std::atol(std::getenv("X3M_C_SEED"))) : kSeeds[0];
+        if (std::getenv("X3M_C_TRACE") && seed == tseed && (one || ((now_end / 1000) % 10 == 0 && (now_end % 1000) < std::uint32_t(dt)))) {
+            for (unsigned k = 0; k < su.n; ++k) {
+                const TShip& c = ships[k];
+                if (!c.alive || (one && unsigned(std::atoi(one)) != k)) continue;
+                int mi = -1;
+                const gc::Gate* g = gc::locate(board, c.m.ptr, &mi);
+                const gc::Member* mm = g ? &g->m[mi] : nullptr;
+                std::printf("  tc %s tf %d t=%.0f ship %u ph %d o 0x%x pos %.0f,%.0f,%.0f nose %.2f v %.1f des %.1f", su.tag, tf, double(now_end) / 1000.0, k,
+                            c.phase, c.m.order, c.m.pos[0] / 500, c.m.pos[1] / 500, c.m.pos[2] / 500, c.m.row[2][2], double(c.m.speed) / 500,
+                            double(c.m.desired) / 500);
+                if (mm)
+                    std::printf(" role %s sb %s rank %u law %s on %u redep %u gap %.0f v_sb %.1f cap %.1f lat %.0f eta %.0f", gc::role_name(mm->role),
+                                gc::sb_name(mm->sb), unsigned(mm->lane_rank), gc::law_name(mm->law), unsigned(mm->lane_on), unsigned(mm->redep),
+                                double(mm->lane_gap < 1e30f ? mm->lane_gap : -1.0f), double(mm->v_sb), double(mm->cap), double(mm->lane_lat),
+                                double(mm->lane_eta));
+                if (mm) std::printf(" res %u steered_age %ld leader %x", mm->res_until, long(now_end - mm->steered_ms), mm->leader);
+                std::printf(" av %d obst %x", int(c.m.last_av.adjusted), c.m.last_av.obstacle); // (final review item 5: the module's detour)
+                std::printf("\n");
+            }
+        }
+    }
+    // 4, 5, 8: the launches
+    long last_l = -1;
+    int last_k = -1;
+    double t15_lead = -1;
+    for (unsigned k = 0; k < su.n; ++k) {
+        if (su.s[k].kind == kEsc) {
+            const int L = su.s[k].leader;
+            if (launch_ms_of[k] >= 0 && !ex[L].killed && (launch_ms_of[L] < 0 || launch_ms_of[L] > launch_ms_of[k])) ++res.leader_after_escort;
+            const long t_l = launch_ms_of[L] >= 0 ? launch_ms_of[L] : ex[L].kill_ms;
+            if (ex[k].o4_ms >= 0 && t_l >= 0) {
+                // an escort inside the script's 10 km at its leader's launch gets order 4 at the drawn latency (review item 7: against
+                // its own draw, not the distribution's maximum, so an escort the lane let drift out of 10 km and fly a 0x15 leg first
+                // shows; one already beyond 10 km then flies 5 s legs by the script, section 6.5: a 1+4's last escort under SETA)
+                ++res.escort_o4;
+                const double d = double(ex[k].o4_ms - t_l) / 1000.0;
+                res.escort_o4_max_s = std::fmax(res.escort_o4_max_s, d);
+                if (ex[k].in10 && d > ex[k].lam + double(res.step_max) / 1000.0 + 0.1) ++res.escort_o4_late;
+            }
+        }
+    }
+    // the launch order and gaps; the cadence of a consecutive pair c = (L_P + L_Y + g_req) / v_lane (the trail spacing at the lane
+    // speed) plus the follower's longer order-5 leg (T_slot,Y - T_slot,P when positive: a smaller hull's trigger sphere is smaller); the
+    // pair's gap within its c + 5 s (assertion 4), the span and the lane floor on the pairs' c (assertion 8); cadence_s the largest c
+    unsigned order[kCMax], nl = 0;
+    double cad[kCMax] = {}, gap_over = -1e18;
+    for (unsigned k = 0; k < su.n; ++k)
+        if (launch_ms_of[k] >= 0) order[nl++] = k;
+    std::sort(order, order + nl, [](unsigned a, unsigned b) { return launch_ms_of[a] < launch_ms_of[b]; });
+    for (unsigned q = 0; q < nl; ++q) {
+        const unsigned k = order[q];
+        if (q) {
+            const unsigned kp = order[q - 1];
+            const double gap = double(launch_ms_of[k] - launch_ms_of[kp]) / 1000.0;
+            // (review item 7: no term grows with the run's own T_slot) the follower's longer order-5 leg from d_end to its trigger sphere
+            // at the lane speed (a smaller hull's sphere is smaller; under SETA the inflated sphere may contain d_end: no leg)
+            auto leg_ref = [&](double r) { return std::fmax(0.0, double(gc::kLaneEndM) - (r + 10.0) * trig_k) / 100.0; };
+            const double dts = leg_ref(su.s[k].t->r_m) - leg_ref(su.s[kp].t->r_m);
+            cad[q] = (su.s[k].t->r_m + su.s[kp].t->r_m + double(gc::kLaneGapM)) / 100.0 + (dts > 0.0 ? dts : 0.0);
+            // review item 6: a merge's yielder holds its lateral until it is behind (the raw gap >= 0) and is credited with at most
+            // g_req - 50 m of its join's along-track loss inside the merge: a yielder that started further out than that loss covers
+            // (y0 tan(theta / 2) for the join angle theta) ends that much further back at the shared 100 m/s cap
+            {
+                const double th = std::atan(ex[k].merge_tan);
+                cad[q] += std::fmax(0.0, ex[k].merge_y0 * std::tan(0.5 * th) - (double(gc::kLaneGapM) - 50.0)) / 100.0;
+            }
+            // an escort whose leader launched: its order 4 comes lambda (drawn) after that launch, then its slot occupancy (kTSlotRefS)
+            // and the escort gate's reserve recovery (the order-5 leg starts from the 10 m/s crawl when the order came late: the time lost
+            // accelerating to the lane speed, (v_lane - 10)^2 / (2 a v_lane), 8.1 s for an M1, 4.1 s a Titan, 2.7 s an M7): its launch
+            // is due no later than the leader's launch + lambda + T_slot,ref + 2 s + that, pair by pair (convoy-gate-transit.md section 11)
+            const int Lk = su.s[k].kind == kEsc ? su.s[k].leader : -1;
+            // the escort right ahead flew the same reserve: the follow law keeps its follower a spacing behind a ship accelerating from
+            // the crawl (review item 10's small-escort cast: 1>2 25.4 s against a spacing of 20.2 s)
+            if (Lk >= 0 && su.s[kp].kind == kEsc && su.s[kp].leader == Lk && ex[kp].lam > 0.0)
+                cad[q] += (100.0 - 10.0) * (100.0 - 10.0) / (2.0 * su.s[kp].t->a_ms2 * 100.0);
+            if (Lk >= 0 && launch_ms_of[Lk] >= 0 && ex[k].lam > 0.0) {
+                const double rec = (100.0 - 10.0) * (100.0 - 10.0) / (2.0 * su.s[k].t->a_ms2 * 100.0);
+                cad[q] = std::fmax(cad[q], double(launch_ms_of[Lk] - launch_ms_of[kp]) / 1000.0 + ex[k].lam + kTSlotRefS + 2.0 + rec);
+            }
+            res.launch_gap_min_s = std::fmin(res.launch_gap_min_s, gap);
+            res.launch_gap_max_s = std::fmax(res.launch_gap_max_s, gap);
+            res.cadence_s = std::fmax(res.cadence_s, cad[q]);
+            gap_over = std::fmax(gap_over, gap - (cad[q] + 5.0));
+            const std::size_t used = std::strlen(res.pairs);
+            if (used + 40 < sizeof res.pairs)
+                std::snprintf(res.pairs + used, sizeof res.pairs - used, " %u>%u %.1f/%.1f%s lam %.1f ts %.1f y0 %.0f", kp, k, gap, cad[q],
+                              Lk >= 0 && Lk == int(kp) ? "L" : "", ex[k].lam, double(tslot_ms_of[k]) / 1000.0, ex[k].merge_y0);
+            if (Lk >= 0 && Lk == int(kp)) { // the leader -> escort launch gap against the spacing (review item 1's cost)
+                const double sp = (su.s[k].t->r_m + su.s[kp].t->r_m + double(gc::kLaneGapM)) / 100.0;
+                res.le_gap_max_s = std::fmax(res.le_gap_max_s, gap);
+                res.le_over_max_s = std::fmax(res.le_over_max_s, gap - sp);
+                res.le_pairs += 1;
+                res.le_over_sum_s += gap - sp;
+            }
+        }
+        last_l = launch_ms_of[k];
+        last_k = int(k);
+    }
+    (void)last_k;
+    res.gap_over_s = gap_over;
+    // 8: the span from the (first) leader's 15 km
+    if (ex[0].t15 >= 0 && launch_ms_of[0] >= 0) {
+        t15_lead = double(ex[0].t15) / 1000.0;
+        res.leader_t15 = t15_lead;
+        res.leader_launch = double(launch_ms_of[0]) / 1000.0;
+        res.t15_launch_s = res.leader_launch - t15_lead;
+    }
+    if (nl == su.n && t15_lead >= 0) {
+        res.span_s = double(last_l) / 1000.0 - t15_lead;
+        // the lane floor (convoy_spans.py): each ship its 15 km + the leader's 15 km -> launch, no closer than c to the previous; a ship
+        // that enters the 15 km sphere off Lambda (a crossing convoy) is no earlier than its straight line to Lambda's d_end point at the
+        // lane speed allows (its excess over the leader's, 100 m/s; convoy-gate-transit.md section 11)
+        double arr[kCMax];
+        unsigned na = 0;
+        for (unsigned k = 0; k < su.n; ++k)
+            if (ex[k].t15 >= 0) arr[na++] = double(ex[k].t15) / 1000.0 + std::fmax(0.0, ex[k].p15_extra - ex[0].p15_extra) / 100.0;
+        std::sort(arr, arr + na);
+        double fl = -1, csum = 0;
+        for (unsigned q = 0; q < na; ++q) fl = fl < 0 ? arr[q] + res.t15_launch_s : std::fmax(arr[q] + res.t15_launch_s, fl + cad[q < nl ? q : nl - 1]);
+        for (unsigned q = 1; q < nl; ++q) csum += cad[q];
+        res.floor_s = fl - t15_lead;
+        if (su.span_form == 1) res.bound_s = res.t15_launch_s + csum + 10.0;
+        else if (su.span_form == 2) res.bound_s = res.floor_s + 10.0;
+        res.span_ok = su.span_form == 0 || res.span_s <= res.bound_s;
+    } else
+        res.span_ok = su.span_form == 0 && nl == res.departures;
+    return res;
+}
+// The casts (gate frame, m; Lambda lies about 830 m below the axis): Run169's M2 1092 + M1 1022 + M2 1092 and M1 + M7 760 + M7 778.
+static const CStart kAbreast3[3] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -12000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 2600, -830, -12000, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kEsc, 0, -2600, -830, -12000, 0, 100, 0},
+};
+static const CStart kAbreast5[5] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -12000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 2600, -830, -12000, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kEsc, 0, -2600, -830, -12000, 0, 100, 0},
+    {&kTM7a, 0.50, kEsc, 0, 5000, -830, -12000, 0, 100, 0},
+    {&kTM7b, 0.45, kEsc, 0, -5000, -830, -12000, 0, 100, 0},
+};
+static const CStart kFormed[3] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
+};
+static const CStart kFormedM7[3] = {
+    {&kCrowdM1, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kTM7a, 0.50, kEsc, 0, 0, -830, -18400, 0, 100, 0},
+    {&kTM7b, 0.45, kEsc, 0, 0, -830, -20300, 0, 100, 0},
+};
+static const CStart kStraggle[3] = { // Run168 4900: the escorts 17.8 and 18.6 km out when the leader was at 15 km
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kTM7a, 0.50, kEsc, 0, 2500, -830, -18600, -8, 100, 0},
+    {&kTM7b, 0.45, kEsc, 0, -2500, -830, -19400, 8, 100, 0},
+};
+static const CStart kStraggleFar[3] = { // Run169 5727: 24.9 and 30.3 km out
+    {&kCrowdM1, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kTM7a, 0.50, kEsc, 0, 4000, -830, -25600, -10, 100, 0},
+    {&kTM7b, 0.45, kEsc, 0, -6000, -830, -31000, 12, 100, 0},
+};
+static const CStart kRedepart[4] = { // a capital out of this gate at P (0.6 r up, nose -F, 0x1e's 120 m/s) re-departs; a convoy inbound
+    {&kCrowdTitan, 0.53, kRedep, -1, 0, 663, -1104, 180, 100, 0},
+    {&kCrowdM1, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kTM7a, 0.50, kEsc, 1, 0, -830, -18400, 0, 100, 0},
+    {&kTM7b, 0.45, kEsc, 1, 0, -830, -20300, 0, 100, 0},
+};
+static const CStart kCrossing[5] = { // a second convoy from the side (60 deg off F) merging into the first one's trail
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -15500, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18300, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21100, 0, 100, 0},
+    {&kCrowdM1, 0.53, kLead, -1, -15000, -830, -26000, 45, 100, 0},
+    {&kTM7a, 0.50, kEsc, 3, -17000, -830, -27500, 45, 100, 0},
+};
+// Review item 3: a slow hull (v_max 60) on Lambda ahead of a convoy and a joiner from the side whose ETA lies between theirs: the slow
+// hull is never told to merge, the convoy follows it
+static const ShipType kCrowdTitanSlow = {"M2", "Titan-class M2 (60 m/s)", 60.0, 10.0, 1843.0 / 65536.0 * 360.0, 1092.0, 5, true};
+static const CStart kSlowHull[4] = { // (on l_c, 929 m below the axis: the convoy leader yields at the floor from the first second)
+    {&kCrowdTitanSlow, 0.53, kLead, -1, 0, -929, -12300, 0, 60, 0},
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -929, -14800, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 1, 2600, -929, -15300, 0, 100, 0},
+    {&kTM7a, 0.50, kLead, -1, -3000, -929, -13600, 20, 100, 0},
+};
+// Section 6.11 (review item 7): a non-member capital parked on Lambda 7 km out (order 0, no gate order) in the path of a formed convoy
+static const CStart kParked[4] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
+    {&kTM7a, 0.50, kEsc, 0, 0, -830, -21200, 0, 100, 0},
+    {&kTM7b, 0.45, kPark, -1, 0, -929, -7000, 0, 0, 0},
+};
+// Review item 10: a small escort (r 500 m, under an M7's 760; its l_max window 121-688 m against l_c 929 m below the axis): its order 4
+// ends on l_c at d_end and order 5's Lambda_5 pursuit must bring it inside its trigger sphere ((r + v / 10) x the time factor) before the
+// plane, behind a Titan leader and an M7
+static const ShipType kTSmall = {"M7", "escort 500", 143.0, 15.0, 14.4, 500.0, 5, true};
+static const CStart kSmallEsc[3] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kTM7a, 0.50, kEsc, 0, 0, -830, -18400, 0, 100, 0},
+    {&kTSmall, 0.50, kEsc, 0, 0, -830, -20000, 0, 100, 0},
+};
+static const CSetup kCSetups[] = {
+    {"abreast3", kAbreast3, 3, 1},
+    {"abreast5", kAbreast5, 5, 1},
+    {"formed", kFormed, 3, 1},
+    {"formed_m7", kFormedM7, 3, 1},
+    {"stragglers", kStraggle, 3, 2},
+    {"stragglers_far", kStraggleFar, 3, 2},
+    {"redeparture", kRedepart, 4, 0},
+    {"crossing", kCrossing, 5, 2},
+    {"partner_block", kFormed, 3, 0, 105000},
+    {"formed_stage2", kFormed, 3, 1, -1, true},
+    {"slow_hull", kSlowHull, 4, 0},
+    {"parked", kParked, 4, 0, -1, false, 1000, false, true},
+    {"leader_killed", kFormed, 3, 0, -1, false, 1000, true},
+    {"small_escort", kSmallEsc, 3, 1},
+};
+// Review item 8: the 24-member cost cast (one board's capacity): six 1+3 convoys 3 km apart along F, leaders at -3 / 0 / +3 km laterally,
+// each convoy formed behind its leader (M1, M7, M7)
+static CStart k24[kCMax];
+static const CSetup& cast24() {
+    static CSetup su{"bench24", k24, kCMax, 0};
+    static bool built = false;
+    if (!built) {
+        built = true;
+        for (unsigned c = 0; c < 6; ++c) {
+            const double x = (double(c % 3) - 1.0) * 3000.0, z = -14000.0 - double(c) * 3000.0;
+            k24[c * 4] = CStart{&kCrowdTitan, 0.53, kLead, -1, x, -830, z, 0, 100, 0};
+            k24[c * 4 + 1] = CStart{&kCrowdM1, 0.53, kEsc, int(c * 4), x, -830, z - 2800, 0, 100, 0};
+            k24[c * 4 + 2] = CStart{&kTM7a, 0.50, kEsc, int(c * 4), x, -830, z - 5200, 0, 100, 0};
+            k24[c * 4 + 3] = CStart{&kTM7b, 0.45, kEsc, int(c * 4), x, -830, z - 7100, 0, 100, 0};
+        }
+        su.run_s = 1800;
+    }
+    return su;
+}
+} // namespace lanec
+static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, const lanec::CResult& r) {
+    std::printf("scenario C %s %s tf %d %d fps seed %u: launched %u/%u span %.1f s (bound %.1f, floor %.1f, leader 15 km->launch %.1f, c %.1f, gap-c-5 %.1f) "
+                "launch gaps %.1f..%.1f s T_slot %.1f..%.1f s rewrites %u grid_miss %u slot_max %u deferrals %u o4_in_sphere %u | merges %u done %u max %.1f s late %u gap_min %.0f m "
+                "stops %u max %.1f s long %u slow %u lat %u | merge_frames %u ahead_capped %u head_capped %u | petal %u nose_away %u turn %.1f deg | "
+                "order %u | esc_past_dend %u esc_o4 %u max %.1f s late %u dend_stops %u o0 %u low %u drop %.1f | p2 %u not_kept %u far %u after_gap %u err %.0f m "
+                "rotate %u refused %u (max %u/member, %.1f s) | episodes %u uncert %u nonmember_warns %u capsule %.0f box %.0f | step_max %ld seta %u%s | "
+                "leader->escort over spacing max %.1f s | pairs%s\n",
+                tag, r.lane ? "lane" : "key-off", tf, fps, seed, r.launched, r.departures, r.span_s, r.bound_s, r.floor_s, r.t15_launch_s, r.cadence_s, r.gap_over_s,
+                r.launch_gap_min_s < 1e17 ? r.launch_gap_min_s : -1.0, r.launch_gap_max_s, r.t_slot_min_s < 1e17 ? r.t_slot_min_s : -1.0, r.t_slot_max_s,
+                r.rewrites, r.grid_miss, r.slot_max, r.deferrals, r.o4_in_sphere, r.merges, r.merges_done, r.merge_max_s, r.merge_late, r.merge_gap_min < 1e17 ? r.merge_gap_min : -1.0, r.stops,
+                r.stop_max_s, r.stop_long, r.slow_frames, r.lat_converge, r.merge_frames, r.ahead_capped, r.head_capped, r.petal_frames, r.nose_away,
+                r.turn_max_deg, r.leader_after_escort, r.escort_past_dend, r.escort_o4, r.escort_o4_max_s, r.escort_o4_late, r.dend_stops, r.o0_frames,
+                r.o0_low, r.o0_drop_max, r.p2, r.p2_not_kept, r.p2_far, r.p2_after_gap, r.p2_err_max, r.rotate_max, r.x_refused, r.refusals_max, r.refusal_max_s,
+                r.episodes, r.uncert_frames, r.warn_nonmember, r.min_capsule, r.min_box, r.step_max, r.seta_steps, r.nan ? " NAN" : "",
+                r.le_pairs ? r.le_over_max_s : 0.0, r.pairs);
+}
+// Lane stage 1 units (section 6.11 item 9): the merge rank, the three laws, the lane geometry and pass windows, the section 6.4 guard
+// against all 20 grid points and its re-application after a re-issue, the order-0 hold's brake bound.
+static void lane_c_units() {
+    char why[256];
+    // the guard: every grid point matches its slot, 1.5 m off matches none, L_i matches none and is ours
+    {
+        const float G[3] = {100, -200, 300}, R[3] = {1, 0, 0}, U[3] = {0, 1, 0}, F[3] = {0, 0, 1};
+        const float r_gate = 1105.0f, r_s = 1092.0f;
+        unsigned ok = 0, off = 0;
+        static const int col[5] = {0, 1, -1, 2, -2};
+        for (int slot = 0; slot < 20; ++slot) {
+            const float a = float(col[slot % 5]), b = -float(slot / 5);
+            float p[3];
+            for (int i = 0; i < 3; ++i) p[i] = G[i] - 2.0f * (r_gate + r_s) * F[i] + 666.0f * (a * R[i] + b * U[i]);
+            ok += gc::kc_grid_slot(G, R, U, F, r_gate, r_s, p) == slot ? 1u : 0u;
+            float q[3] = {p[0] + 1.5f, p[1], p[2]};
+            off += gc::kc_grid_slot(G, R, U, F, r_gate, r_s, q) < 0 ? 1u : 0u;
+            q[0] = p[0];
+            q[2] = p[2] + 1.5f;
+            off += gc::kc_grid_slot(G, R, U, F, r_gate, r_s, q) < 0 ? 1u : 0u;
+        }
+        std::snprintf(why, sizeof why, "lane units: the guard matches all 20 grid points (%u) and none 1.5 m off (%u of 40)", ok, off);
+        check(ok == 20 && off == 40, why);
+        gc::Gate g{};
+        for (int i = 0; i < 3; ++i) {
+            g.G[i] = G[i];
+            g.R[i] = R[i];
+            g.U[i] = U[i];
+            g.F[i] = F[i];
+        }
+        g.r_gate = r_gate;
+        gc::Member m{};
+        m.r = r_s;
+        m.w = 0.53f * r_s;
+        m.L = r_s;
+        m.params.v_max = 110.0f;
+        const bool q_ok = gc::lane_q(m.r, m.w, m.L, m.params.v_max, r_gate, false, m.q);
+        m.q_ok = q_ok ? 1 : 0;
+        float L[3];
+        gc::lane_order_point(g, m, L);
+        const float d[3] = {L[0] - G[0], L[1] - G[1], L[2] - G[2]};
+        // order 4's own test (0.75 r_gate around L_i) fires at d_end on the final: the point's depth is d_end - 0.75 r_gate
+        const bool depth = std::fabs(-d[2] - (gc::kLaneEndM - 0.75f * r_gate)) < 0.5f;
+        const bool lower = q_ok && m.q[1] < -500.0f && std::sqrt(m.q[0] * m.q[0] + m.q[1] * m.q[1]) <= m.r + 0.05f * m.params.v_max - 100.0f + 0.5f;
+        std::snprintf(why, sizeof why, "lane units: L_i on the hull's final in the lower half (Q %.0f,%.0f) at depth %.0f m; not a grid point; ours",
+                      double(m.q[0]), double(m.q[1]), double(-d[2]));
+        check(depth && lower && gc::kc_grid_slot(G, R, U, F, r_gate, r_s, L) < 0 && gc::lane_point_ours(g, m, L), why);
+        // the re-application after a re-issue: the KC writes another grid point; the guard catches it again
+        float p[3];
+        for (int i = 0; i < 3; ++i) p[i] = G[i] - 2.0f * (r_gate + r_s) * F[i] + 666.0f * (-2.0f * R[i] - 3.0f * U[i]);
+        check(gc::kc_grid_slot(G, R, U, F, r_gate, r_s, p) == 19 && !gc::lane_point_ours(g, m, p), "lane units: a re-issued grid point (slot 19) is caught again");
+        // review item 4: an escort's L_i on l_c read back after l_c moved 15 m (3 s at kLaneShiftMs) is still ours (HEAD: within 1 m of the
+        // live l_c, a miss); 30 m off is not; a ship without a member adopts a field equal to its own L_i (from its hull and the gate
+        // frame alone), not a grid point, not a point 30 m off
+        {
+            gc::Member e = m;
+            e.lane_esc = 1;
+            g.lane_c[0] = 0.0f;
+            g.lane_c[1] = -929.0f;
+            g.lane_c_ok = 1;
+            float Le[3];
+            gc::lane_order_point(g, e, Le);
+            g.lane_c[1] = -944.0f;
+            const bool drift_ok = gc::lane_point_ours(g, e, Le);
+            g.lane_c[1] = -959.0f;
+            const bool far_no = !gc::lane_point_ours(g, e, Le) || std::fabs(e.q[1] - Le[1] + G[1]) <= 20.0f;
+            float Lo[3];
+            gc::lane_order_point(g, m, Lo); // the hull's own final (a committed member's L_i)
+            const bool own = gc::lane_point_own(G, R, U, F, r_gate, m.r, m.w, m.L, m.params.v_max, false, nullptr, Lo);
+            const bool own_grid = gc::lane_point_own(G, R, U, F, r_gate, m.r, m.w, m.L, m.params.v_max, false, nullptr, p);
+            float Lx[3] = {Lo[0] + 30.0f, Lo[1], Lo[2]};
+            const bool own_off = gc::lane_point_own(G, R, U, F, r_gate, m.r, m.w, m.L, m.params.v_max, false, nullptr, Lx);
+            std::snprintf(why, sizeof why, "lane units (item 4): drifted l_c 15 m ours %d, 30 m %d; own L_i adopted %d, grid %d, 30 m off %d",
+                          int(drift_ok), int(!far_no), int(own), int(own_grid), int(own_off));
+            check(drift_ok && far_no && own && !own_grid && !own_off, why);
+            // final review item 4: (a) an escort's L_i on l_c read back after a load, no board (lc null): its own final is not l_c, so
+            // lane_point_own misses it (HEAD's adoption); the l_c envelope recognises it; neither a grid point nor a point at L_i's depth
+            // above the axis is in the envelope
+            g.lane_c[1] = -929.0f;
+            gc::lane_order_point(g, e, Le);
+            const bool own_miss = !gc::lane_point_own(G, R, U, F, r_gate, m.r, m.w, m.L, m.params.v_max, false, nullptr, Le);
+            float Lup[3];
+            for (int i = 0; i < 3; ++i) Lup[i] = Le[i] + 1858.0f * U[i]; // (929 m above the axis)
+            const bool env = gc::lane_point_lc_env(G, R, U, F, r_gate, Le), env_grid = gc::lane_point_lc_env(G, R, U, F, r_gate, p),
+                       env_up = gc::lane_point_lc_env(G, R, U, F, r_gate, Lup);
+            std::snprintf(why, sizeof why, "lane units (final item 4): an escort's L_i with no board: own %d, l_c envelope %d; grid %d, above the axis %d",
+                          int(!own_miss), int(env), int(env_grid), int(env_up));
+            check(own_miss && env && !env_grid && !env_up, why);
+            // (b) the negative memo: ten calls with one field evaluate once; a new width generation, the board's l_c and another field
+            // evaluate again; a positive result is never memoised
+            gc::AdoptMemo memo{};
+            unsigned evals = 0, yes_evals = 0;
+            auto ev_no = [&]() -> bool {
+                ++evals;
+                return false;
+            };
+            auto ev_yes = [&]() -> bool {
+                ++yes_evals;
+                return true;
+            };
+            const std::int32_t f1[3] = {1, 2, 3}, f2[3] = {1, 2, 4};
+            bool any = false;
+            for (int k = 0; k < 10; ++k) any = gc::lane_adopt_memo(memo, f1, 7, false, ev_no) || any;
+            const unsigned e10 = evals;
+            any = gc::lane_adopt_memo(memo, f1, 8, false, ev_no) || any;
+            any = gc::lane_adopt_memo(memo, f1, 8, true, ev_no) || any;
+            any = gc::lane_adopt_memo(memo, f2, 8, true, ev_no) || any;
+            const bool y1 = gc::lane_adopt_memo(memo, f1, 8, true, ev_yes), y2 = gc::lane_adopt_memo(memo, f1, 8, true, ev_yes);
+            std::snprintf(why, sizeof why, "lane units (final item 4): the adopt memo evaluates %u of 10 calls, %u after 3 key changes; positives %d %d (%u evaluations)",
+                          e10, evals, int(y1), int(y2), yes_evals);
+            check(!any && e10 == 1 && evals == 4 && y1 && y2 && yes_evals == 2, why);
+        }
+        // review item 2: no lane lateral in the lower half clears all 20 grid spheres (0.75 r_gate) at the grid depth: the best lateral
+        // within 2.2 km of the axis on a 10 m raster
+        {
+            double best = 0;
+            for (int ix = -220; ix <= 220; ++ix)
+                for (int iy = -220; iy <= -83; ++iy) {
+                    const double x = ix * 10.0, y = iy * 10.0;
+                    double dmin = 1e18;
+                    for (int sl = 0; sl < 20; ++sl) {
+                        const double a = double(col[sl % 5]) * 666.0, b = -double(sl / 5) * 666.0;
+                        dmin = std::fmin(dmin, std::hypot(x - a, y - b));
+                    }
+                    if (std::hypot(x, y) <= 2200.0) best = std::fmax(best, dmin);
+                }
+            std::snprintf(why, sizeof why, "lane units (item 2): the best lateral within 2.2 km clears the grid points by %.0f m < 0.75 r_gate %.0f m",
+                          best, 0.75 * double(r_gate));
+            check(best < 0.75 * double(r_gate), why);
+        }
+        // review item 2: the tick deferral: an escort in its lost-leader wait on order 0 moves f+0x210 forward; on the next order's first
+        // frame (order 4, f+0x210 still ours) a grid point is rewritten to L_i and f+0x210 put back; a member that is not waiting is left
+        {
+            gc::Member e = m;
+            e.ln = 1;
+            e.role = gc::Role::escort;
+            e.res_until = 5000;
+            e.sb = gc::Sb::funnel;
+            e.lane_esc = 1;
+            g.gate = 0x4000;
+            g.step_ms = 33;
+            float pg[3];
+            for (int i = 0; i < 3; ++i) pg[i] = G[i] - 2.0f * (r_gate + r_s) * F[i] - 666.0f * U[i]; // slot 5
+            const gc::LaneDefer d0 = gc::lane_defer_step(g, e, core::kOrderNone, 0, 100000u, 100000u, pg);
+            const gc::LaneDefer d1 = gc::lane_defer_step(g, e, core::kOrderFlyBefore, 0x4000, d0.v210, 100033u, pg);
+            float Le[3];
+            gc::lane_order_point(g, e, Le);
+            const bool rew = d1.rewrite && std::fabs(d1.L[0] - Le[0]) < 0.01f && std::fabs(d1.L[1] - Le[1]) < 0.01f && std::fabs(d1.L[2] - Le[2]) < 0.01f;
+            gc::Member c = e;
+            c.res_until = 0; // not in the wait: no deferral
+            const gc::LaneDefer d2 = gc::lane_defer_step(g, c, core::kOrderNone, 0, 100000u, 100000u, pg);
+            std::snprintf(why, sizeof why, "lane units (item 2): the tick deferral +%u ms, the first order-4 frame rewrites (%d) and puts f+0x210 to now (%u)",
+                          d0.v210 - 100000u, int(rew), d1.v210);
+            check(d0.write210 && d0.v210 == 100000u + gc::kLaneDeferMs + 33u && rew && d1.write210 && d1.v210 == 100033u && !e.defer_w &&
+                      !d2.write210, why);
+            // final review item 2 (ship-navigation-ai.md section 10.13 items 3 and 6): (a) order-0 frames whose tail did not run (another
+            // order ended into order 0 for site B: f+0x210 still holds the previous deferral) do not stack: the stamp stays now + one
+            // deferral (HEAD: the base was the stamp read, 3 frames gave now + 3 deferrals); (b) the restore is the clock, never a past
+            // deferral (HEAD restored the base, here a stamp in the future); (c) a lost restore (the next order's frames never reach
+            // site B's lane write) leaves the stamp at most one deferral (kLaneDeferMs + the step) after the last order-0 frame
+            {
+                gc::Member q = e;
+                q.defer_w = 0;
+                const std::uint32_t d = gc::kLaneDeferMs + 33u;
+                std::uint32_t f210 = 200000u, now = 200000u;
+                for (int k = 0; k < 3; ++k, now += 33u) {
+                    const gc::LaneDefer w = gc::lane_defer_step(g, q, core::kOrderNone, 0, f210, now, pg);
+                    f210 = w.write210 ? w.v210 : f210; // (the next frame's tail does not run: the stamp stays ours)
+                }
+                const std::uint32_t last0 = now - 33u;
+                const std::int32_t ahead = std::int32_t(f210 - last0); // (c): the stamp a lost restore leaves, after the last order-0 frame
+                const gc::LaneDefer r = gc::lane_defer_step(g, q, core::kOrderFlyBefore, 0x4000, f210, now + 33u, pg); // a frame later
+                std::snprintf(why, sizeof why, "lane units (final item 2): 3 untailed order-0 frames leave f+0x210 %d ms ahead (one deferral %u); "
+                              "the late restore writes %d ms from now",
+                              int(ahead), d, r.write210 ? int(std::int32_t(r.v210 - (now + 33u))) : -99999);
+                check(ahead == std::int32_t(d) && r.write210 && r.v210 == now + 33u && !q.defer_w, why);
+            }
+        }
+    }
+    // the laws
+    {
+        gc::LaneCtx c;
+        c.s = -10000.0f;
+        c.v_lane = 100.0f;
+        c.a = 5.0f;
+        c.pred = true;
+        c.merged = false;
+        c.gap = -2100.0f; // census hulls level at the merge
+        c.v_self = 100.0f; // (both at the lane speed: no settling term)
+        c.v_pred = 100.0f;
+        gc::Law law;
+        bool merged;
+        float v = gc::lane_law(c, &law, &merged);
+        check(law == gc::Law::merge && v == gc::kYieldFloorMs && !merged, "lane units: level hulls: the merge law at the 10 m/s floor");
+        c.gap = gc::kLaneGapM - 200.0f;
+        v = gc::lane_law(c, &law, &merged);
+        check(law == gc::Law::merge && std::fabs(v - (100.0f - 200.0f / gc::kLaneTauMergeS)) < 0.01f, "lane units: the merge law v_P - (g_req - gap) / tau_m");
+        c.gap = gc::kLaneGapM - 40.0f;
+        v = gc::lane_law(c, &law, &merged);
+        check(merged && law == gc::Law::follow && std::fabs(v - (100.0f - 40.0f / gc::kLaneTauFollowS)) < 0.01f,
+              "lane units: complete at g_req - 50 m; then the follow law");
+        c.merged = true;
+        c.gap = 2000.0f;
+        v = gc::lane_law(c, &law, &merged);
+        check(law == gc::Law::lane && v == 100.0f, "lane units: the follow law never above the lane speed");
+        { // review item 6: a yielder at the 10 m/s floor 85 m beside the ship ahead (raw gap -85 m) whose settling gap (+810 m of speed
+          // difference at 5 m/s2) is past g_req does not settle while beside (HEAD: merged, its lateral released onto Lambda)
+            gc::LaneCtx y = c;
+            y.merged = false;
+            y.gap = -85.0f;
+            y.v_self = 10.0f;
+            y.v_pred = 100.0f;
+            bool mg2 = false;
+            gc::Law l2;
+            gc::lane_law(y, &l2, &mg2);
+            y.gap = 5.0f; // behind: it settles
+            bool mg3 = false;
+            gc::lane_law(y, &l2, &mg3);
+            check(!mg2 && mg3, "lane units (item 6): no settling while beside (raw gap -85 m), settled once behind");
+        }
+        c.v_pred = 0.0f;
+        c.gap = 300.0f;
+        v = gc::lane_law(c, &law, &merged);
+        check(law == gc::Law::stop && v == 0.0f, "lane units: behind a stopped ship the follower stops at spacing");
+        gc::LaneCtx h; // the head paces to the slot's free time, then stops at d_end
+        h.s = -12300.0f;
+        h.v_lane = 100.0f;
+        h.a = 5.0f;
+        h.head = true;
+        h.t_free_s = 200.0f;
+        v = gc::lane_law(h, &law, &merged);
+        check(law == gc::Law::pace && std::fabs(v - 50.0f) < 0.01f, "lane units: the head's pacing (10 km in 200 s)");
+        h.s = -2340.0f;
+        v = gc::lane_law(h, &law, &merged);
+        check(law == gc::Law::stop && v == 0.0f, "lane units: the head stops at d_end while the slot is blocked");
+        gc::LaneCtx e; // the escort gate (review item 1): the braking reserve, whatever the leader's launch and the latency
+        e.s = -6000.0f;
+        e.v_lane = 100.0f;
+        e.a = 5.0f;
+        e.gate = true;
+        e.t_gate_s = 100.0f; // the full crawl
+        v = gc::lane_law(e, &law, &merged);
+        check(law == gc::Law::lane && v == 100.0f, "lane units: the escort gate does not bind beyond the reserve (3.7 km to d_end at 5 m/s2)");
+        e.s = -gc::kLaneEndM - 500.0f;
+        v = gc::lane_law(e, &law, &merged);
+        const float vr = std::sqrt(gc::kYieldFloorMs * gc::kYieldFloorMs + 2.0f * 5.0f * (500.0f - 50.0f - gc::kLaneCrawlM));
+        check(law == gc::Law::gate && std::fabs(v - vr) < 0.01f, "lane units: the escort gate's braking reserve 500 m before d_end");
+        e.s = -gc::kLaneEndM - 50.0f - 0.5f * gc::kLaneCrawlM;
+        v = gc::lane_law(e, &law, &merged);
+        check(law == gc::Law::gate && v == gc::kYieldFloorMs, "lane units: the reserve's crawl at the 10 m/s floor before d_end");
+        e.s = -gc::kLaneEndM - 40.0f;
+        v = gc::lane_law(e, &law, &merged);
+        check(law == gc::Law::stop && v == 0.0f, "lane units: the reserve stops 50 m short of d_end");
+        e.s = -gc::kLaneEndM - 50.0f - 0.5f * gc::kLaneCrawlM;
+        e.t_gate_s = -1.0f; // lambda_max passed: no crawl left, the stopping curve
+        v = gc::lane_law(e, &law, &merged);
+        check(law == gc::Law::gate && std::fabs(v - std::sqrt(2.0f * 5.0f * 0.5f * gc::kLaneCrawlM)) < 0.01f, // (dt 0)
+              "lane units: past lambda_max the reserve is the stopping curve to 50 m short of d_end");
+        e.t_gate_s = 100.0f;
+        { // the reserve is flyable: a ship at 100 m/s and 5 m/s2 that follows it on the plant's speed law (no order 4) never passes d_end
+            double x = -10000.0, vv = 100.0, xmax = -1e9;
+            for (double dt : {0.016, 0.1, 0.5, 2.0}) {
+                x = -10000.0;
+                vv = 100.0;
+                for (int i = 0; i < 200000 && x < 0.0; ++i) {
+                    gc::LaneCtx q = e;
+                    q.s = float(x) - gc::kLaneEndM;
+                    q.v_self = float(vv);
+                    q.t_gate_s = float(30.0 - double(i) * dt); // the crawl budget runs out while the ship is on the reserve
+                    q.dt = float(dt);
+                    const double want = gc::lane_law(q, &law, &merged);
+                    vv = want < vv ? std::fmax(want, vv - 5.0 * dt) : std::fmin(want, vv + 5.0 * dt);
+                    x += vv * dt;
+                    if (vv < 1e-3 && want < 1e-3) break;
+                }
+                xmax = std::fmax(xmax, x);
+            }
+            std::snprintf(why, sizeof why, "lane units: the reserve flown at steps 16 ms..2 s stops short of d_end (closest %.0f m)", -xmax);
+            check(xmax < 0.0, why);
+        }
+    }
+    // the merge rank: the tie band (the higher key yields), the leader first, the ETA
+    {
+        gc::Board b{};
+        b.lane = 1;
+        gc::Gate* g = ctl_gate(b, 1000);
+        auto mk = [&](unsigned i, std::uint32_t ship, gc::Role role, float z, float x, std::uint32_t leader) {
+            gc::Member& m = g->m[i];
+            m.ship = ship;
+            m.id = ship;
+            m.role = role;
+            m.seq = i + 1;
+            m.r = 1000.0f;
+            m.w = 530.0f;
+            m.L = 1000.0f;
+            m.params.v_max = 110.0f;
+            m.params.W = 0.1f;
+            m.params.alpha = 0.05f;
+            m.params.a_lin = 5.0f;
+            m.large = 1;
+            m.leader = leader;
+            m.live_ms = 1000;
+            m.proven = 1;
+            m.decided_ms = 1000;
+            m.commit_ms = 1000;
+            m.steered_ms = 1000;
+            m.line_ok = 1;
+            m.st.ms = 1000;
+            m.st.order = role == gc::Role::escort ? core::kOrderEscort : core::kOrderFlyBefore;
+            m.st.target = role == gc::Role::escort ? leader : 0x4000u;
+            m.st.x[0] = x;
+            m.st.x[1] = -830.0f;
+            m.st.x[2] = z;
+            m.st.rows[2][0] = 0;
+            m.st.rows[2][1] = 0;
+            m.st.rows[2][2] = 1;
+            m.st.f_ok = 1;
+            m.st.v = 100.0f;
+            m.st.u[2] = 100.0f;
+            if (i + 1 > g->n) g->n = i + 1;
+        };
+        // (a) level: the leader on Lambda 1 km ahead, its escort and a foreign capital abreast of each other 2.6 km to either side: the
+        // escort's key (the leader's + 1) is lower than the foreign one's, so within the tie band the foreign capital yields; the leader
+        // goes first (review item 3: one score per ship, the ETA at the common speed; HEAD's case put the escort 1 km ahead of its
+        // leader, where the foreign capital's ETA is 6 s earlier than the leader's and it rightly goes first)
+        mk(0, 0x9000, gc::Role::committed, -11000.0f, 0.0f, 0);
+        mk(1, 0x9100, gc::Role::escort, -12000.0f, 2600.0f, 0x9000);
+        mk(2, 0x9200, gc::Role::committed, -12000.0f, -2600.0f, 0);
+        gc::LaneStats ls;
+        gc::lane_frame(*g, 1000, &ls);
+        unsigned r0 = g->m[0].lane_rank, r1 = g->m[1].lane_rank, r2 = g->m[2].lane_rank;
+        std::snprintf(why, sizeof why, "lane units: the tie band and the leader first (leader %u, its escort %u, a foreign capital level with it %u)", r0, r1, r2);
+        check(r0 == 0 && r1 == 1 && r2 == 2 && g->m[2].lane_pred == g->m[1].ship && gc::yields_to(g->m[2], g->m[1]) && !gc::yields_to(g->m[1], g->m[2]) &&
+                  gc::yields_to(g->m[1], g->m[0]), why);
+        check(g->m[1].law == gc::Law::merge && g->m[0].v_sb == 100.0f && g->m[0].law == gc::Law::lane,
+              "lane units: the later ship merges behind; the ship ahead keeps its plan exactly");
+        // (b) a foreign capital with an earlier ETA (beyond the tie band) merges between the leader and its escort; a fresh board
+        b = gc::Board{};
+        b.lane = 1;
+        g = ctl_gate(b, 1000);
+        mk(0, 0x9000, gc::Role::committed, -12000.0f, 0.0f, 0);
+        mk(1, 0x9100, gc::Role::escort, -13000.0f, 2600.0f, 0x9000);
+        mk(2, 0x9200, gc::Role::committed, -12300.0f, -800.0f, 0);
+        gc::lane_frame(*g, 1000, &ls);
+        r0 = g->m[0].lane_rank;
+        r1 = g->m[1].lane_rank;
+        r2 = g->m[2].lane_rank;
+        std::snprintf(why, sizeof why, "lane units: an earlier foreign ETA merges between a leader and its escort (leader %u, escort %u, foreign %u)", r0, r1, r2);
+        check(r0 == 0 && r2 == 1 && r1 == 2, why);
+        // (c) review item 3: a strict order on one scale. A (v_max 60) on Lambda 10 km out, B (v_max 100) on Lambda 2.5 km behind it, C
+        // joining from the side with an ETA at the common speed between theirs. Ranked A, C, B: A is never told to merge, its written
+        // speed is its own plan (60 m/s); C merges behind A, B follows C. (HEAD: on-lane pairs by position, mixed pairs by the ETA at each
+        // ship's own lane speed: A's 128 s against C's 95 s put C ahead of the slower A, which then merged at the 10 m/s floor.)
+        b = gc::Board{};
+        b.lane = 1;
+        g = ctl_gate(b, 1000);
+        mk(0, 0x9000, gc::Role::committed, -10000.0f, 0.0f, 0);              // 7.7 km to d_end: 77 s at 100 m/s (128 s at its 60)
+        mk(1, 0x9100, gc::Role::committed, -12500.0f, 0.0f, 0);              // 102 s
+        mk(2, 0x9200, gc::Role::committed, -11300.0f, -3000.0f, 0);          // path sqrt(9000^2 + 3000^2) = 9.49 km: 95 s
+        g->m[0].params.v_max = 60.0f;
+        for (unsigned i = 0; i < 3; ++i) g->m[i].st.x[1] = -929.0f; // A and B on l_c
+        g->m[2].st.x[1] = -929.0f;
+        g->m[0].st.u[2] = 60.0f;
+        g->m[0].st.v = 60.0f;
+        g->m[2].st.rows[2][0] = 0.3f; // C's nose toward Lambda (not on it)
+        g->m[2].st.rows[2][2] = 0.954f;
+        gc::lane_frame(*g, 1000, &ls);
+        gc::lane_frame(*g, 1100, &ls); // (on Lambda from the first frame's lateral)
+        r0 = g->m[0].lane_rank;
+        r1 = g->m[1].lane_rank;
+        r2 = g->m[2].lane_rank;
+        std::snprintf(why, sizeof why, "lane units (item 3): slow A %u law %s v %.1f, joiner C %u, fast B %u (A, C, B; A at its own 60 m/s)", r0,
+                      gc::law_name(g->m[0].law), double(g->m[0].v_sb), r2, r1);
+        check(r0 == 0 && r2 == 1 && r1 == 2 && g->m[0].law != gc::Law::merge && g->m[0].law != gc::Law::follow && g->m[0].law != gc::Law::stop &&
+                  std::fabs(g->m[0].v_sb - gc::lane_vmax(g->m[0])) < 1e-3f && g->m[2].lane_pred == g->m[0].ship && g->m[1].lane_pred == g->m[2].ship,
+              why);
+        // the order is the same whatever the board's slot order (no dependence on the insertion order: HEAD's comparator gave a cycle)
+        {
+            gc::Board b2{};
+            b2.lane = 1;
+            gc::Gate* g2 = ctl_gate(b2, 1000);
+            const unsigned perm[3] = {2, 0, 1};
+            for (unsigned i = 0; i < 3; ++i) {
+                g2->m[i] = g->m[perm[i]];
+                g2->m[i].lane_rank = 0xff;
+                g2->m[i].lane_pred = 0;
+            }
+            g2->n = 3;
+            g2->lane_n = 0;
+            gc::lane_frame(*g2, 1100, &ls);
+            check(g2->m[1].lane_rank == 0 && g2->m[0].lane_rank == 1 && g2->m[2].lane_rank == 2, "lane units (item 3): the order does not depend on the slot order");
+        }
+        // final review item 1: a strict order every frame. (d) The previous order C, B, A: A and C on Lambda, A 300 m ahead of C; B joining
+        // 2 km to the side with an ETA between theirs (inside the 5 s hysteresis of both). HEAD kept C, B, A (each adjacent pair inside
+        // the hysteresis): A merged at the floor behind B while C closed on A at 100 m/s. Now A first at its own speed, C behind it.
+        b = gc::Board{};
+        b.lane = 1;
+        g = ctl_gate(b, 1000);
+        mk(0, 0x9000, gc::Role::committed, -10000.0f, 0.0f, 0); // A: 77 s
+        mk(1, 0x9100, gc::Role::committed, -9891.0f, 2000.0f, 0); // B: sqrt(7591^2 + 2000^2) = 7850 m: 78.5 s
+        mk(2, 0x9200, gc::Role::committed, -10300.0f, 0.0f, 0); // C: 80 s
+        for (unsigned i = 0; i < 3; ++i) g->m[i].st.x[1] = -929.0f;
+        g->m[1].st.rows[2][0] = -0.26f; // B's nose toward Lambda
+        g->m[1].st.rows[2][2] = 0.966f;
+        gc::lane_frame(*g, 1000, &ls);
+        g->lane_ord[0] = 0x9200; // the previous order C, B, A
+        g->lane_ord[1] = 0x9100;
+        g->lane_ord[2] = 0x9000;
+        g->lane_n = 3;
+        gc::lane_frame(*g, 1100, &ls);
+        r0 = g->m[0].lane_rank;
+        r1 = g->m[1].lane_rank;
+        r2 = g->m[2].lane_rank;
+        std::snprintf(why, sizeof why, "lane units (final item 1): previous C, B, A: A %u (on %u, law %s, %.1f m/s), B %u, C %u (on %u, behind %x)", r0,
+                      unsigned(g->m[0].lane_on), gc::law_name(g->m[0].law), double(g->m[0].v_sb), r1, r2, unsigned(g->m[2].lane_on), g->m[2].lane_pred);
+        check(g->m[0].lane_on && g->m[2].lane_on && !g->m[1].lane_on && r0 == 0 && r2 > r0 && r1 < 3 && r2 < 3 && r1 != r2 &&
+                  g->m[0].law == gc::Law::lane && std::fabs(g->m[0].v_sb - gc::lane_vmax(g->m[0])) < 1e-3f && g->m[2].lane_pred != 0,
+              why);
+        // (e) a sweep: 400 boards of 8 committed members (4-7 on Lambda at random positions, the rest joining 0.5-3 km to the side), the
+        // previous order a random permutation: every rank 0..n-1 once, and every two members on Lambda ranked by their position
+        {
+            std::uint32_t rs = 0x2545f491u;
+            auto rnd = [&]() -> double {
+                rs = rs * 1664525u + 1013904223u;
+                return double(rs >> 8) / double(1u << 24);
+            };
+            unsigned bad_pos = 0, bad_rank = 0;
+            for (int t = 0; t < 400; ++t) {
+                b = gc::Board{};
+                b.lane = 1;
+                g = ctl_gate(b, 1000);
+                const unsigned non = 4 + unsigned(rnd() * 4.0);
+                for (unsigned i = 0; i < 8; ++i) {
+                    const float z = -9000.0f - float(rnd() * 9000.0);
+                    const float x = i < non ? 0.0f : float((rnd() < 0.5 ? -1.0 : 1.0) * (500.0 + rnd() * 2500.0));
+                    mk(i, 0x9000 + 0x100 * i, gc::Role::committed, z, x, 0);
+                    g->m[i].st.x[1] = -929.0f;
+                    if (i >= non) {
+                        g->m[i].st.rows[2][0] = x > 0.0f ? -0.26f : 0.26f;
+                        g->m[i].st.rows[2][2] = 0.966f;
+                    }
+                }
+                gc::lane_frame(*g, 1000, &ls);
+                unsigned perm[8];
+                for (unsigned i = 0; i < 8; ++i) perm[i] = i;
+                for (unsigned i = 7; i > 0; --i) {
+                    const unsigned j = unsigned(rnd() * double(i + 1)) % (i + 1);
+                    const unsigned tmp = perm[i];
+                    perm[i] = perm[j];
+                    perm[j] = tmp;
+                }
+                for (unsigned i = 0; i < 8; ++i) g->lane_ord[i] = g->m[perm[i]].ship;
+                g->lane_n = 8;
+                gc::lane_frame(*g, 1100, &ls);
+                unsigned seen = 0;
+                for (unsigned i = 0; i < 8; ++i)
+                    if (g->m[i].lane_rank < 8) seen |= 1u << g->m[i].lane_rank;
+                if (seen != 0xffu) ++bad_rank;
+                for (unsigned i = 0; i < 8; ++i)
+                    for (unsigned j = 0; j < 8; ++j)
+                        if (g->m[i].lane_on && g->m[j].lane_on && g->m[i].st.x[2] > g->m[j].st.x[2] && g->m[i].lane_rank > g->m[j].lane_rank) ++bad_pos;
+            }
+            std::snprintf(why, sizeof why, "lane units (final item 1): 400 random boards: %u with a rank missing, %u on-lane pairs against their positions",
+                          bad_rank, bad_pos);
+            check(bad_rank == 0 && bad_pos == 0, why);
+        }
+    }
+    // review item 5: the lane rollout flies what the engine does. (a) An escort in its lost-leader wait on order 0, 600 m off Lambda with
+    // the nose 20 deg toward it, held at 100 m/s: the engine flies straight (section 10.11 Q4), so the rollout's samples lie on the
+    // straight line for the hold's horizon (HEAD steered the plant onto the join carrot). (b) A committed member on order 4 inside the
+    // blend (4.2 km out) rolls out the move of its final from l_c to its Q (HEAD kept the member's present lateral).
+    {
+        gc::Board b{};
+        b.lane = 1;
+        gc::Gate* g = ctl_gate(b, 1000);
+        g->lane_c[0] = 0.0f;
+        g->lane_c[1] = -929.0f;
+        g->lane_c_ok = 1;
+        g->step_ms = 17;
+        auto mk = [&](gc::Member& m, gc::Role role, std::uint16_t order) {
+            m.ship = m.id = 0x9100;
+            m.role = role;
+            m.ln = 1;
+            m.q_ok = 1;
+            m.q[0] = 0.0f;
+            m.q[1] = -700.0f; // (an M7's final: the blend 229 m up from l_c)
+            m.r = 1022.0f;
+            m.w = 540.0f;
+            m.L = 1022.0f;
+            m.params.v_max = 113.0f;
+            m.params.W = 0.077f;
+            m.params.alpha = 0.03f;
+            m.params.a_lin = 5.0f;
+            m.params.r_gate = float(kGateRM);
+            m.large = 1;
+            m.sb = gc::Sb::funnel;
+            m.v_sb = 100.0f;
+            m.merged = 1;
+            m.live_ms = m.decided_ms = m.commit_ms = 1000;
+            m.st.ms = 1000;
+            m.st.order = order;
+            m.st.target = order == core::kOrderNone ? 0u : 0x4000u;
+            m.st.f_ok = 1;
+            m.st.v = 100.0f;
+            for (int r = 0; r < 3; ++r)
+                for (int c = 0; c < 3; ++c) m.st.rows[r][c] = r == c ? 1.0f : 0.0f;
+            g->n = 1;
+        };
+        gc::Member& m = g->m[0];
+        mk(m, gc::Role::escort, core::kOrderNone);
+        m.lane_esc = 1;
+        m.res_until = 30000;
+        m.res_o8_ms = 500; // the leader's order 8 began: the wait to 500 + 900 + lambda_max + the step
+        m.steered_ms = 900;
+        const float a = 20.0f * float(M_PI) / 180.0f;
+        m.st.x[0] = 0.0f;
+        m.st.x[1] = -929.0f - 600.0f; // 600 m below Lambda
+        m.st.x[2] = -9000.0f;
+        m.st.rows[2][0] = 0.0f; // the nose 20 deg up toward Lambda (+U)
+        m.st.rows[2][1] = std::sin(a);
+        m.st.rows[2][2] = std::cos(a);
+        m.st.rows[1][1] = std::cos(a);
+        m.st.rows[1][2] = -std::sin(a);
+        for (int i = 0; i < 3; ++i) m.st.u[i] = 100.0f * m.st.rows[2][i];
+        static gc::Sample sm[gc::kSamples];
+        float vmax = 0.0f;
+        const unsigned ns = gc::rollout(m, *g, -1.0f, sm, &vmax, 1000);
+        const gc::LaneHold h = gc::lane_hold_o0(*g, m, m.st.x, m.st.rows[2], 1000);
+        double dev = 0.0;
+        for (unsigned k = 0; k < ns && double(k) * double(gc::kSampleS) < 10.0; ++k) { // the first 10 s (inside the hold's horizon)
+            const double t = double(k) * double(gc::kSampleS);
+            double d2 = 0;
+            for (int i = 0; i < 3; ++i) {
+                const double straight = double(m.st.x[i]) + double(m.st.rows[2][i]) * 100.0 * t;
+                d2 += (double(sm[k].c[i]) - straight) * (double(sm[k].c[i]) - straight);
+            }
+            dev = std::fmax(dev, std::sqrt(d2));
+        }
+        std::snprintf(why, sizeof why, "lane units (item 5): the order-0 hold (%.1f m/s for %.1f s) rolls out the straight coast (max %.0f m off it in 10 s)",
+                      double(h.v), double(h.t_s), dev);
+        check(ns > 20 && h.v > 99.0f && h.t_s > 10.0f && dev < 30.0, why);
+        // (b) the blend
+        gc::Member& c = g->m[0];
+        c = gc::Member{};
+        mk(c, gc::Role::committed, core::kOrderFlyBefore);
+        c.steered_ms = 1000;
+        float lat[2];
+        gc::lane_lat_at(*g, c, -4200.0f, lat);
+        c.st.x[0] = lat[0];
+        c.st.x[1] = lat[1];
+        c.st.x[2] = -4200.0f;
+        c.st.u[2] = 100.0f;
+        const unsigned nb = gc::rollout(c, *g, -1.0f, sm, &vmax, 1000);
+        // (the pursuit of the blended carrot lags the blend as the live leaf does: the rolled-out lateral at d_end has moved toward Q,
+        // not past it)
+        double moved = -1.0, at = 0;
+        for (unsigned k = 0; k < nb; ++k)
+            if (sm[k].c[2] <= -gc::kLaneEndM) {
+                moved = (double(sm[k].c[1]) - double(lat[1])) / (double(c.q[1]) - double(lat[1]));
+                at = double(sm[k].c[2]);
+            }
+        std::snprintf(why, sizeof why, "lane units (item 5): the rollout follows the blend l_c -> Q (%.0f %% of the way to Q at %.0f m)", 100.0 * moved, at);
+        check(nb > 20 && moved > 0.3 && moved < 1.2, why); // (48 %; HEAD's rollout kept the present lateral: 0 %)
+    }
+    // the order-0 hold's brake bound after a refusal
+    {
+        gc::Gate g{};
+        g.r_gate = 1105.0f;
+        g.F[2] = 1.0f;
+        gc::Member m{};
+        m.r = 1092.0f;
+        m.params.a_lin = 5.0f;
+        const float far[3] = {0, -830, -2300}, nearp[3] = {0, -830, -1500};
+        check(gc::lane_refused_hold(g, m, far, 20.0f) == 20.0f, "lane units: a refused ship at d_end keeps a slow speed while the poll fits");
+        const float vb = gc::lane_refused_hold(g, m, nearp, 100.0f);
+        check(vb < 100.0f && vb >= 0.0f, "lane units: the refused ship brakes to stop outside its trigger sphere + 300 m");
+    }
+}
+// The lane's per-frame cost (section 6.10): the frame's controller block (lane_frame, the decisions with their rollouts and sweeps; the
+// fixture's site-E certificate checks and the plant are outside it) on the 1+4 cast against stage B's (the key off) on the same cast; host
+// wall time (x86-64 -O2), best of 3 runs per figure: the mean per frame and the worst frame, against the DLL's 1 ms frame ceiling.
+static void lane_cost_bench() {
+    // (review item 8: the worst frame of 3 runs, not the best; the 1+4 cast and a 24-member board)
+    struct Cast {
+        const lanec::CSetup* su;
+        const char* name;
+    };
+    const Cast casts[2] = {{&lanec::kCSetups[1], "abreast5"}, {&lanec::cast24(), "bench24"}};
+    for (const Cast& cs : casts)
+        for (int tf : {1, 10}) {
+            double mean[2] = {0, 0}, worst[2] = {0, 0}, third[2] = {0, 0};
+            unsigned dec[2] = {0, 0}, launched[2] = {0, 0}, members = 0;
+            for (int lane = 1; lane >= 0; --lane)
+                for (int rep = 0; rep < 3; ++rep) {
+                    const lanec::CResult r = lanec::run_c(*cs.su, tf == 1 ? 60 : 30, tf, kSeeds[0], lane != 0);
+                    mean[lane] = std::fmax(mean[lane], r.frame_us_sum / double(r.frames ? r.frames : 1));
+                    worst[lane] = std::fmax(worst[lane], r.frame_us_max);
+                    third[lane] = std::fmax(third[lane], r.frame_us_top[2]);
+                    dec[lane] = r.decisions;
+                    launched[lane] = r.launched;
+                    members = r.departures;
+                }
+            std::printf("lane cost (host) %s tf %d: lane %.1f us mean, %.0f us worst frame, %.0f us third-worst (%u decisions, %u/%u launched); "
+                        "stage B %.1f us mean, %.0f us worst, %.0f us third (%u decisions, %u launched); worst of 3 runs; ceiling 1000 us\n", cs.name,
+                        tf, mean[1], worst[1], third[1], dec[1], launched[1], members, mean[0], worst[0], third[0], dec[0], launched[0]);
+            char why[200];
+            // (the check reads each run's third-worst frame: a single frame of host scheduling noise reached 1.3-1.5 ms in repeated runs)
+            std::snprintf(why, sizeof why, "lane cost: the %s frame's third-worst controller block %.0f us under the 1 ms ceiling (tf %d)", cs.name,
+                          third[1], tf);
+            check(third[1] < 1000.0, why);
+        }
+}
+static void lane_c_scenarios() {
+    lane_c_units();
+    lane_cost_bench();
+    char why[512];
+    const bool all = std::getenv("X3M_C_ALL") != nullptr; // every seed of every combination printed
+    unsigned control_runs = 0, control_span_fail = 0;
+    for (const lanec::CSetup& su : lanec::kCSetups) {
+        if (std::getenv("X3M_C_ONLY") && std::strcmp(std::getenv("X3M_C_ONLY"), su.tag)) continue; // an iteration aid
+        double span_lo[11], span_hi[11];
+        for (int t = 0; t <= 10; ++t) {
+            span_lo[t] = 1e18;
+            span_hi[t] = -1;
+        }
+        for (int tf : {1, 6, 10}) {
+            if (std::getenv("X3M_C_TF") && std::atoi(std::getenv("X3M_C_TF")) != tf) continue;
+            const int fps = tf == 1 ? 60 : 30;
+            for (std::uint32_t seed : kSeeds) {
+                const lanec::CResult r = lanec::run_c(su, fps, tf, seed, true);
+                if (all || seed == kSeeds[0]) lane_c_print(su.tag, tf, fps, seed, r);
+                span_lo[tf] = std::fmin(span_lo[tf], r.span_s);
+                span_hi[tf] = std::fmax(span_hi[tf], r.span_s);
+                auto ck = [&](bool ok, const char* what) {
+                    std::snprintf(why, sizeof why, "scenario C %s tf %d seed %u: %s", su.tag, tf, seed, what);
+                    check(ok, why);
+                };
+                ck(!r.nan && r.launched == r.departures, "every ship launched");
+                ck(r.ahead_capped == 0 && (su.obstacle || r.head_capped == 0), "1 the passer is never capped");
+                if (su.obstacle) { // (the head's cap comes from its evasion of the non-member, not from a lane pair)
+                    ck(r.episodes == 0 && r.uncert_frames == 0 && r.min_capsule > 0.0 && r.min_box > 0.0, "7 safety");
+                    continue;
+                }
+                ck(r.merge_late == 0 && r.slow_frames == 0 && r.stop_long == 0 && r.lat_converge == 0, "2 the yielder");
+                ck(r.petal_frames == 0 && r.nose_away == 0 && r.turn_max_deg <= 30.0, "3 no holding");
+                ck(r.leader_after_escort == 0 && (su.span_form != 1 || r.gap_over_s <= 0.0) && r.launch_gap_min_s >= r.t_slot_min_s - 1.0,
+                      "4 the order");
+                ck(r.escort_past_dend == 0 && r.escort_o4_late == 0 && r.dend_stops == 0 && r.o0_low == 0 && r.o0_drop_max <= 2.0, "5 the escort gate");
+                ck(r.p2 == r.departures && r.p2_not_kept == 0 && r.p2_far == 0 && r.rotate_max <= 1 && r.rewrites >= r.departures && r.grid_miss == 0 &&
+                          (su.block_ms >= 0 ? r.refusals_max <= 1 && r.refusal_max_s <= 11.0 + double(r.step_max) / 1000.0 : r.x_refused == 0),
+                      "6 the short final");
+                ck(r.episodes == 0 && r.uncert_frames == 0 && r.min_capsule > 0.0 && r.min_box > 0.0, "7 safety");
+                ck(r.span_ok, "8 the span");
+            }
+            // final review item 5: the parked cast's key-off baseline (seed 1): the same cast under stage B, the turn from the 15 km point
+            // and the farthest from the axis under either key; the lane run's launches, passer and safety are asserted above, the key-off
+            // run's safety here (stage B launches none of the three within the cast's 1000 s: recorded)
+            if (su.obstacle) {
+                const int fps2 = tf == 1 ? 60 : 30;
+                const lanec::CResult l = lanec::run_c(su, fps2, tf, kSeeds[0], true), k = lanec::run_c(su, fps2, tf, kSeeds[0], false);
+                std::printf("scenario C %s baseline tf %d seed %u: lane turn %.1f deg (after the merge point), from 15 km %.1f deg, axis_off_max %.0f m, "
+                            "p2_not_kept %u, nonmember_warns %u, capsule %.0f | key-off from 15 km %.1f deg, axis_off_max %.0f m, launched %u/%u, "
+                            "p2_not_kept %u, nonmember_warns %u, episodes %u, capsule %.0f\n",
+                            su.tag, tf, kSeeds[0], l.turn_max_deg, l.turn15_max_deg, l.axis_off_max_m, l.p2_not_kept, l.warn_nonmember, l.min_capsule,
+                            k.turn15_max_deg, k.axis_off_max_m, k.launched, k.departures, k.p2_not_kept, k.warn_nonmember, k.episodes, k.min_capsule);
+                std::snprintf(why, sizeof why, "scenario C %s tf %d: key-off baseline: safety (its launches recorded, not asserted)", su.tag, tf);
+                check(!k.nan && k.episodes == 0 && k.uncert_frames == 0 && k.min_capsule > 0.0, why);
+            }
+            // the executed control: the pre-lane core (stage B, the key off) on the same cast (seed 1)
+            if (su.span_form) {
+                const int fps2 = tf == 1 ? 60 : 30;
+                const lanec::CResult k = lanec::run_c(su, fps2, tf, kSeeds[0], false);
+                lane_c_print(su.tag, tf, fps2, kSeeds[0], k);
+                ++control_runs;
+                const lanec::CResult& l = k; // the bound from the lane run's own cadence and leader time
+                if (!l.span_ok || l.launched < l.departures) ++control_span_fail;
+            }
+        }
+        std::printf("scenario C %s spans (s, 15 km -> last launch): tf1 %.1f..%.1f tf6 %.1f..%.1f tf10 %.1f..%.1f\n", su.tag, span_lo[1], span_hi[1],
+                    span_lo[6], span_hi[6], span_lo[10], span_hi[10]);
+    }
+    std::printf("scenario C control (key off, the pre-lane core): span assertion failed in %u of %u runs\n", control_span_fail, control_runs);
+    check(control_runs && control_span_fail == control_runs, "scenario C: the pre-lane core fails the span assertion in every control run");
+}
 int main(int argc, char** argv) {
     if (std::getenv("X3M_SIBLING_OFF")) g_sibling_warn = false;
     if (std::getenv("X3M_SEQ_OFF")) g_seq = false; // amendment 16b off: amendment 16 with the review fixes (the option-off stdout)
@@ -14901,6 +16731,12 @@ int main(int argc, char** argv) {
         sb_b9_checks(); // B.9 (Run168 column evictions)
         traffic_scenarios();
         b5_traffic_summary();
+        std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
+        std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
+        return failures ? 1 : 0;
+    }
+    if (argc == 2 && !std::strcmp(argv[1], "--lane")) { // lane stage 1 alone: scenario C (convoy-gate-transit.md section 6.11)
+        lane_c_scenarios();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
         return failures ? 1 : 0;
@@ -14959,6 +16795,7 @@ int main(int argc, char** argv) {
         sb_b9_checks(); // B.9 (Run168 column evictions)
         traffic_scenarios();
         b5_traffic_summary();
+        if (!std::getenv("X3M_LANE_OFF")) lane_c_scenarios(); // lane stage 1, scenario C (last; X3M_LANE_OFF=1: the key-off identity run)
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
         return failures ? 1 : 0;
@@ -15017,6 +16854,7 @@ int main(int argc, char** argv) {
     traffic_scenarios();
     b5_traffic_summary();
     dock_scenarios(); // amendment 18 (docking-approach.md): scenario N
+    if (!std::getenv("X3M_LANE_OFF")) lane_c_scenarios(); // lane stage 1, scenario C (last; X3M_LANE_OFF=1: the key-off identity run)
     std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u vanilla_notes=%u\n", checks, failures, slip_gaps, vanilla_notes);
     std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
     return failures ? 1 : 0;

@@ -93,25 +93,25 @@ class 7. Order codes are the values written to the word at `flight+0x258`.
 | --- | --- | --- | --- | --- |
 | 0x1e | `SA_MovePos(ship,x,y,z,prec)` | `0x0046232c` | **0x19** | point `+0x240/4/8` = x,y,z; `+0x260` = precision (arrival radius) |
 | 0x1f | `SA_MovePosContinue` | `0x0046239c` | **0x23** | as MovePos; arrival does not stop the ship (speed kept when aligned) |
-| 0x14 | `SA_EscortObject(ship,leader,dx,dy,dz,prec,t)` | `0x004618a6` | **0x14** | `+0x224` = leader; `+0x240..` = **slot offset in the leader's frame**; `+0x260` = precision; `+0x28c/+0x290` timeout |
-| 0x1b | `SA_FollowObject(ship,target,dist,t)` | `0x0046196f` | **0x15** | `+0x224` = target; `+0x260` = distance; timeout |
+| 0x14 | `SA_EscortObject(ship,leader,dx,dy,dz,prec,t)` | `0x004618a6` | **0x14** | `+0x224` = leader; `+0x240..` = **slot offset in the leader's frame**; `+0x260` = precision; `+0x28c/+0x290` timeout; `+0x210` = now (§10.13) |
+| 0x1b | `SA_FollowObject(ship,target,dist,t)` | `0x0046196f` | **0x15** | `+0x224` = target; `+0x260` = distance; timeout; `+0x210` = now (§10.13) |
 | 0x1c | `SA_FollowObjectByCut` | `0x00461a13` | 0x16 | `+0x224`, `+0x260`, `+0x264` (cut path); `+0x210` = now + rand(1000) |
-| 0x11 / 0x12 | `SA_AttackObject` / `…Big` | `0x004614da` / `0x004616e0` | **0x10** / **0x11** | `+0x224` = target; `+0x240/+0x244` = ring offset, radius `min(r_ship + r_target, 100000)` at a random angle (`0x004ee190`), `+0x248 = 0`; `+0x288` next manoeuvre (now + arg or 50 ms); optional timeout |
-| 0x13 | `SA_DefensiveMove` | `0x004617cf` | 0x22 | `+0x260` = arg; `+0x224` = attacker; `+0x290` = now + (arg or 300000 ms) |
-| 0x0a | `SA_FlyObjectBeforeContainer(ship,cont,port,path)` | `0x00460cae` | **4** | `+0x224` = container; `+0x240..` = container position, or the dock-port approach point (`0x00451f30`) when `port >= 0`; `+0x250/+0x254` = port, path |
+| 0x11 / 0x12 | `SA_AttackObject` / `…Big` | `0x004614da` / `0x004616e0` | **0x10** / **0x11** | `+0x224` = target; `+0x240/+0x244` = ring offset, radius `min(r_ship + r_target, 100000)` at a random angle (`0x004ee190`), `+0x248 = 0`; `+0x288` next manoeuvre (now + arg or 50 ms); optional timeout; `+0x210` = now (§10.13) |
+| 0x13 | `SA_DefensiveMove` | `0x004617cf` | 0x22 | `+0x260` = arg; `+0x224` = attacker; `+0x290` = now + (arg or 300000 ms); `+0x210` = now (§10.13) |
+| 0x0a | `SA_FlyObjectBeforeContainer(ship,cont,port,path)` | `0x00460cae` | **4** | `+0x224` = container; `+0x240..` = container position, or the dock-port approach point (`0x00451f30`) when `port >= 0`; `+0x250/+0x254` = port, path; `+0x210` = now (§10.13) |
 | 0x0c | `SA_FlyObjectBeforeContainerPos(ship,cont,x,y,z)` | `0x0046533c` | 4 | explicit point `+0x240..`; `+0x224` = container |
-| 0x09 | `SA_FlyObjectIntoContainer(ship,cont,port,path)` | `0x0046082e` | **5** | `+0x224`; final point `+0x240..` and rendezvous `+0x230..` (dock port path `0x00451f80`, or a gate-axis point for class `0x12` gates); `+0x250/+0x254` |
-| 0x0d | `SA_ClearObjectFromHangar(ship,cont,port)` | `0x0046117e` | 0x1e (undock) | `+0x224`, `+0x230` = current position, `+0x250`; exit point via `0x00451f30` |
+| 0x09 | `SA_FlyObjectIntoContainer(ship,cont,port,path)` | `0x0046082e` | **5** | `+0x224`; final point `+0x240..` and rendezvous `+0x230..` (dock port path `0x00451f80`, or a gate-axis point for class `0x12` gates); `+0x250/+0x254`; `+0x210` = now (§10.13) |
+| 0x0d | `SA_ClearObjectFromHangar(ship,cont,port)` | `0x0046117e` | 0x1e (undock) | `+0x224`, `+0x230` = current position, `+0x250`; exit point via `0x00451f30`; `+0x210` = now (§10.13) |
 | 0x0e | `SA_WarpObjectAway(ship,gate)` | `0x0046126a` | 8 | `+0x214` = now + 900 ms; `+0x240` = current position; gate flags |
 | 0x21 | `SA_WarpObjectIn(ship,gate)` | `0x00465b22` | 0x21 | **writes the position directly** (`phys+0x30..`) to the gate exit; `+0x214`, `+0x218`. On a KC gate arrival order 0x21 is already running (started by the launch `0x00444170`), so the case only waits (§10.10) |
-| 0x0f | `SA_AvoidObjectCollision(ship,radius,rand)` | `0x0046104c` | **0x12** | `+0x230..` = start position; `+0x260` = radius, default `[obj+0xa4] + 150000` (`0x00461106` `05 f0 49 02 00`); `+0x264` = 0 or 1..10 random; `+0x278 = -1` (speed limit off) |
+| 0x0f | `SA_AvoidObjectCollision(ship,radius,rand)` | `0x0046104c` | **0x12** | `+0x230..` = start position; `+0x260` = radius, default `[obj+0xa4] + 150000` (`0x00461106` `05 f0 49 02 00`); `+0x264` = 0 or 1..10 random; `+0x278 = -1` (speed limit off); `+0x210` = now (§10.13) |
 | 0x16 | `SA_TurnToObject` | `0x00461fdd` | 6 | `+0x260` = arg or 400000 |
 | 0x1d | `SA_RotateToAngles` | `0x004653d1` | 0x1f | `+0x240/4/8` = angles (`0x80000000` = none) |
 | 0x20 | `SA_GlidePos` | `0x004656f3` | 0x20 | point; zeroes `[obj+0x30/0x34/0x38]` |
-| 0x1a | `SA_Idle(ship,ms)` | `0x0046274e` | 0x1d | point = current position; `+0x290` = now + ms |
-| 0x10 / 0x177 | `SA_CaptureObject` / `SA_CollectDebris` | `0x0046142f` / `0x00468c96`¹ | 0x18 / 0x24 | `+0x224` (debris: point from the cell) |
+| 0x1a | `SA_Idle(ship,ms)` | `0x0046274e` | 0x1d | point = current position; `+0x290` = now + ms; `+0x210` = now (§10.13) |
+| 0x10 / 0x177 | `SA_CaptureObject` / `SA_CollectDebris` | `0x0046142f` / `0x00468c96`¹ | 0x18 / 0x24 | `+0x224` (debris: point from the cell); `+0x210` = now (§10.13) |
 | 0x119 | `SA_SetPlayerLand(ship,cont,port)` | `0x00463bc4` | **0x1b** | `+0x224`, `+0x250`; `+0x210` = now + 60000. Not a steering order: landing clearance for a player-flown ship |
-| 0xfa | `SA_StopObject(ship,result)` | `0x00461e89` | **0** | from 0x1b raises `NotifyDockingAbort`; from 0x21 restores the position; `[obj+0x40] &= ~0x80`; wakes the task with `result` |
+| 0xfa | `SA_StopObject(ship,result)` | `0x00461e89` | **0** | from 0x1b raises `NotifyDockingAbort`; from 0x21 restores the position; `[obj+0x40] &= ~0x80`; wakes the task with `result`; `+0x210` = now (§10.13) |
 | 0x42 | `SA_SetDesiredSpeed` | `0x004641c6` | — | `[obj+0x14]` |
 | 0x40 | `SA_SetSpeed` | `0x00464226` | — | `[obj+0x10]` (current speed) |
 | 0x148 / 0x149 | `SA_SetSpeedLimit` / `…MaxSpeedOverride` | `0x00465d1a` / `0x00465d4e` | — | `flight+0x278` / `flight+0x27c` (both read by max speed `0x00450980`) |
@@ -156,7 +156,8 @@ All other codes (and the end of every handler) reach the object-loop continue `0
 at random intervals in `[0, 50·type[+0x50])` ms; with `+0x20c < 1` it re-steers every frame. The avoid
 order uses a fixed 200 ms (`0x00456798` `81 c1 c8 00 00 00`). The interpreter runs once per frame per
 active sector, after the collision pass (`0x0043a38e` `56 e8 bc 2e 02 00 56 e8 36 87 01 00`). Its dt is
-clamped to 1000 ms (`0x00452ae7`).
+clamped to 1000 ms (`0x00452ae7`). The writers and readers of `f+0x210` are listed in §10.13: 15 SA cases write it at
+issue (the table's `+0x210` entries, corrected 2026-10-14; it first listed only 0x1c and 0x119); 0x0c, 0x0e and 0x1d do not.
 
 **MovePos handler, as the canonical goal-to-steering step [m].** At the re-plan time, `0x004564cd` calls
 `0x0044ccc0` with `EDX = flight+0x240` (`0x00456527`); it calls `0x0044d020` (`0x00456530`) only when
@@ -1695,6 +1696,115 @@ P4/P5), whose contracts are unchanged (§10.8, §10.11). `verify_ship_steering_s
 
 ```sh
 python3 -I verification/results/ship-navigation-ai/gates/trail_sites.py > trail_sites_out.txt   # RESULT PASS
+```
+
+### 10.13 The re-plan stamp `f+0x210` and the lane escort's tick deferral
+
+2026-10-14, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`), for the convoy lane's tick deferral at site B
+(`gc::lane_defer_step` in `src/proxy/ship_gate_ctl_core.h`, applied by `lane_clamp` in `src/proxy/ship_steering.cpp`):
+on an order-0 frame of a lane escort in its lost-leader wait, site B sets `f+0x210 += 2500 + step` (since the final review:
+`= now + 2500 + step`, item 6 below); when the script
+then issues order 4, the handler's first frame skips its tick, site B rewrites `f+0x240` to the lane point and puts the
+order-0 frame's stamp back. Nothing was launched and no Wine command ran; capstone listings over the PE map (raw
+listings in the session scratch, untracked). [`replan_stamp_sites.py`](../../verification/results/ship-navigation-ai/gates/replan_stamp_sites.py)
+re-reads every quoted byte string and SA table entry, sweeps every `[reg+0x210]` operand of `.text` (92 operands, 32
+flight-record writers, 14 readers, 3 indexed operands of which none reaches `f+0x210`) and checks which SA cases write
+the stamp at issue (`RESULT PASS`, [`replan_stamp_sites_out.txt`](../../verification/results/ship-navigation-ai/gates/replan_stamp_sites_out.txt)).
+`now` = `[[0x606f34]+0x718]`, the game clock in ms. **[s]** = a byte string re-read by the script, **[m]** = read from
+the listing, **[i]** = inferred.
+
+**Answer.**
+
+* **Item 1. Safe as coded.** `SA_FlyObjectBeforeContainerPos` (`0x0046533c`) does not write `f+0x210`, so site B's
+  deferred stamp is what order 4 sees on its first frame **[s]**. `SA_RotateToAngles` (0x1f) and `SA_WarpObjectAway`
+  (8) do not write it either, and their handlers never read it **[m]** (sweep). `SA_EscortObject` (0x14),
+  `SA_FollowObject` (0x15), `SA_FlyObjectIntoContainer` (5), `SA_FlyObjectBeforeContainer` (4 without a point),
+  `SA_StopObject`, `SA_Idle` and `SA_AvoidObjectCollision` write `f+0x210 = now` at issue **[s]**. That cancels the
+  deferral: the new order ticks on its first frame, and `lane_defer_step` finds `f+0x210 != defer_w` and drops it
+  without a write. The §1.2 table listed only 0x1c and 0x119 as writers; 15 SA cases write the stamp (table below).
+* **Item 2. Safe as coded.** The test is `sub eax, [f+0x210]; js`: the sign of the modular difference, so a stamp up to
+  2^31 ms ahead counts as the future **[s]**. Order 4 tests only `f+0x224 == 0` (container lost: order 0, wake 3) before
+  it; a skipped frame jumps straight to site B with no speed write, no leaf and no arrival test **[s]**. Orders 0x14 and
+  0x15 test the target (null, self, parentless, not in a sector: end with 3) before the stamp, and a skipped frame runs
+  only the timeout test (`f+0x28c`, `f+0x290`: end with 13) before site B **[s]**. Their SA cases write `now`, so their
+  first frame always ticks (`now − now = 0` is not negative) and the deferral cannot reach them **[m]**.
+* **Item 3. Confirmed; safe as coded, with one hardening.** Both order-0 paths (autopilot `0x00458fa8` and the
+  remainder decay, which falls into `0x004590de`) reach the tail, whose last write is `f+0x210 = now` at `0x00459136`,
+  followed directly by `jmp 0x004593dd` (site B) **[s]**. Nothing reads `f+0x210` in between, and nothing advances the
+  clock inside the interpreter, so the stamp equals `now` when site B reads it **[m]**. The deferral is therefore undone
+  on every order-0 frame and must be re-added on every frame, which `lane_defer_step` does. The tail does **not** run on
+  a frame where another order ends and leaves order 0 for site B (the 0x14 lost-leader end `0x00458ad0`, a 0x15 or 0x1d
+  end, the avoid order 0x12). `defer_base` is then that order's last tick stamp, up to `now + 49` ms (`now + 200` for
+  0x12). If the order that ended had not written the stamp at issue (an aligned 0x1f, ending on its first frame), the
+  stamp read would be the DLL's own `defer_w`. The deferral would then compound, and the restore would put back a value
+  2.5 s in the future **[i]** (no such order precedes order 4 in `__EnterHyperspace`, §10.1). Recommended change: take
+  `defer_base` from the game clock (`game_time_ms()`), not from `f+0x210`. The two are equal whenever the tail ran.
+* **Item 4. Safe as coded; a saved deferred stamp costs at most one 2.5 s + step pause after a load.** Only the order
+  handlers and the class-7 save routine read `f+0x210`. No SA case (the script interface) reads it, and neither does the
+  sector post-pass, the warp orders or the arrival placement **[m]** (sweep). The other `+0x210` operands belong to the
+  cockpit record of `[0x608504]` (`0x41cd20`), B3D nodes and stack locals **[i]** by base register provenance.
+  * **Save and load.** The SOBJ writer `0x00441e10` calls `0x004310a0` for class 7. It writes `f+0x20c` and `f+0x210`
+    raw (`0x004321ec`, `0x004321f9`), and the load branch of the same function restores the raw value (`0x00431494`)
+    **[s]**. The clock `[+0x718]` is saved (`0x004047f2`) and restored (`0x00404f7b`) **[s]**, so the stamp keeps its
+    meaning across a load.
+  * **A ship loaded on order 0** gets `now` from the tail on its first frame.
+  * **A ship loaded with order 4 issued and the deferred stamp in place.** Its handler skips until `now` reaches the
+    stamp: at most 2.5 s + step of game time without a tick, coasting at the last speed. Its first tick then tests the
+    KC point, which is the old behaviour **[i]**.
+  * **The clock-reset branches** of the controller (`ship_gate_ctl_core.h` ~3260, ~3818) do not clear `defer_w`. A stale
+    value only matters if it equals the loaded `f+0x210` exactly **[i]**. Clearing it there costs nothing.
+* **Item 5. Safe as coded.**
+  * **The interval.** `f+0x20c` is written only by ship init (`50·type[+0x50]`, `0x004404a1`) and the load **[s]**
+    (the other `+0x20c` writes are the cockpit record and B3D). Every installed capital has 50 ms (§10.12 item 2).
+  * **No collision with the cadence.** The engine's `now + rand(f+0x20c)` is written only by a tick. Under a deferral no
+    tick runs (order 0 has none; order 4's first frame skips), and after the restore the next frame ticks and sets its
+    own stamp.
+  * **One clock.** The handler, the order-0 tail and site B all read `[[0x606f34]+0x718]` **[s]**.
+    * `0x004d1df0` advances it by the real step clamped to ≤ 200 ms, times the 16.16 product `[+0xcc]·[+0xd0]`
+      (`0x004d1f30`, `0x004d1f5c`) **[s]**. That product is the time factor, SETA included **[i]**.
+    * `[+0x714]`, which the DLL reads as the step, is the frame's delta of `[+0x718]` (`0x004ee1ec`, `0x004ee216`) **[s]**.
+    * The interpreter's 1000 ms clamp (`0x00452ae7`) applies to its integration dt only, not to the clock **[s]**.
+  * **The skip holds under SETA.** The issue frame skips iff `step_k < 2500 + min(step_{k−1}, 5000)`. With the step at
+    most 200 ms times the factor (2000 ms at ×10) this always holds **[i]** (factor ceiling not read). A one-shot clock
+    jump through `[0x608a98]` (`0x004d1ed2`) can exceed it; the tick then runs on the issue frame, the old behaviour.
+* **Item 6. Restoring the past value is correct, but writing the current `now` is the more robust choice.** Any stamp
+  ≤ the next frame's `now` makes the next frame tick, and that tick writes `now + rand(f+0x20c)`. So `defer_base` (the
+  previous frame's `now`) and the current `now` behave identically whenever `defer_base` came from the tail. The handler
+  has already run in this frame, so neither value lets a tick happen on the issue frame. Only `now` stays correct when
+  `defer_base` was not the tail's value (item 3's compounding case) **[i]**. Recommended change: restore with
+  `game_time_ms()` (or `min(defer_base, now)` by signed difference).
+* **Applied (2026-10-14, convoy-gate-transit.md §11 "Final review fixes" item 2).** `lane_defer_step` takes the clock from
+  `lane_clamp`: every order-0 frame writes `f+0x210 = now + 2500 + step`, the next order's first frame restores `now`, and
+  both clock-reset branches clear `defer_w`. A lost restore (that frame never reaches site B's lane write) leaves at most
+  one deferral, 2.5 s + step after the last order-0 frame (fixture unit; `final_head/final2.cpp`: 2533 ms, HEAD 7533 ms
+  after three order-0 frames without the tail) **[m]**.
+
+#### Writers and readers of `f+0x210` [m]
+
+| Kind | Sites |
+| --- | --- |
+| order ticks (`now + rand(f+0x20c)`) | 0x1d `0x00453d63`, 4 `0x00454a17`, 6 `0x0045551e`, 0x22 `0x004556d5`, 0x24 `0x00455c3f`, 0x10/0x11/0x18 `0x00455f09`, 0x19 `0x00456513`, 0x23 `0x004565e2`, 0x12 `0x0045679e` (`now + 200`), 0x14 `0x00458283`, 0x15 `0x00458b9e` |
+| order 0 tail (`now`) | `0x00459136` |
+| SA cases at issue (`now` unless noted) | 0x09 `0x00460c97`, 0x0a `0x00460e8c`, 0x0d `0x004611ea`, 0x0f `0x00461083`, 0x10 `0x0046148d`, 0x11/0x12 `0x0046165e` (0x12 reaches it through the shared tail `0x004615ce`), 0x13 `0x00461839`, 0x14 `0x00461934`, 0x1a `0x004627b9`, 0x1b `0x004619d8`, 0x1c `0x00461aa9` (`now + rand(1000)`), 0xfa `0x00461f47`, 0x119 `0x00463c1c` (`now + 60000`) / `0x00463c58`, 0x177 `0x00468d79` |
+| SA cases without a write | 0x0c `FlyObjectBeforeContainerPos`, 0x0e `WarpObjectAway`, 0x1d `RotateToAngles` (case ranges from the SA table, in the script) |
+| other engine writers | ship init `0x004404c0` (`now + f+0x20c`), `SA_StartInHangar` → `0x00443920` (`0x00443e4f`, `0x0044413e`), arrival launch `0x00444170` from the post pass `0x0045b797` (`0x004448f6`), load `0x00431494` |
+| readers | the re-plan tests of 0x1d, 4, 6, 0x22, 0x24, 0x10/0x11/0x18, 0x19, 0x23, 0x12, 0x14, 0x15 (`0x00453d2d` … `0x00458b28`); 0x1b landing clearance `0x00455152`; 0x1e time since issue `0x00457f76`; save `0x004321f9`. Orders 0, 5, 8, 0x16, 0x1f, 0x20, 0x21 do not read it |
+
+**Hook sites.** No new site and no new byte pattern; the deferral uses site B (`0x004593dd`) as in §10.11 Q1. Site B
+runs after the handler's last write to `f+0x210` in the frame and before the next frame's handler, and the stamp is
+the ship's own flight-block field, written only from the sector update and the scheduler pass of the same thread
+**[m]**. `verify_ship_steering_sites.py` was not touched.
+
+**Still inferred or open.**
+
+* The time factor's identity and its ceiling (item 5).
+* The writer of the one-shot clock jump `[0x608a98]`.
+* The struct behind `0x00423960`'s `[ebx+0x210]` (cockpit, by caller).
+* Whether a script path can issue an aligned 0x1f in the lost-leader wait before order 4 (item 3). §10.1 shows none in
+  `__EnterHyperspace`; Mayhem's `Mayhem.Task.Move` was not re-read for it.
+
+```sh
+python3 -I verification/results/ship-navigation-ai/gates/replan_stamp_sites.py > replan_stamp_sites_out.txt   # RESULT PASS
 ```
 
 ## 11. Docking approach
