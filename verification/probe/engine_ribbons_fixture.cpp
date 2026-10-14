@@ -476,8 +476,10 @@ void floor_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineRibbons
     const float pk = row_peak(a.current, t.w, t.h, probe, iy - 8, iy + 8);
     int width = 0;
     for (int y = iy - 8; y <= iy + 8; ++y) width += luma(a.current, t.w, probe, y) >= .1f * pk && pk > 0.f;
-    std::printf("RIBBON_FLOOR width=%u value_px=%.1f nozzle_half_px=%.2f width_px=%d peak=%.4f floored=%u\n", t.w,
-                double(value * t.ppu(Z)), double(er::width_scale * er::nozzle_half_width * value * t.ppu(Z)), width, double(pk),
+    float tip = 0.f; // the ribbon's head half-width: the plume's tip (nozzle widths)
+    ep::width_at_tip(ep::default_look, &tip);
+    std::printf("RIBBON_FLOOR width=%u value_px=%.1f tip_half_px=%.2f width_px=%d peak=%.4f floored=%u\n", t.w,
+                double(value * t.ppu(Z)), double(tip * ep::default_look.nozzle_width * value * t.ppu(Z)), width, double(pk),
                 a.last.stats.floored);
     char label[64];
     std::snprintf(label, sizeof label, "ribbon_floor_3px_%u", t.w);

@@ -281,13 +281,21 @@ phase-3 brief's numbers are built where they differ from section 3 above:
   appended when the nozzle moved at least `max(1.5 m, 0.02 value, L / 15)`: 1.5 m = 7.5 render units at the fog
   look's 5 units per metre; the `L / 15` term (not in the brief) keeps the 16 samples covering `L` when a frame's
   motion exceeds the fixed spacing (at 8 px per frame and value 30 px the fixed spacing alone covers 15 frames, half
-  of `T`). The strip starts at the live nozzle, so there is never a gap at the nozzle.
+  of `T`). The strip starts at the live head, so there is never a gap between the plume and the ribbon. Since
+  2026-10-14 the sampled point and the head are the plume's end `nozzle + axis x L_bar` (`L_bar = max(z,
+  idle_length) x floored value x the travel length`, the plume's length without its pulse;
+  [engine-trail-origin.md](../reverse-engineering/engine-trail-origin.md) section 6), while the jump test and `v_est`
+  keep the nozzle (each sample stores its nozzle too). Samples that fall inside the plume (closer to the nozzle along
+  the axis than `L_bar`, after a throttle rise) are dropped, so the strip never folds. The plume's near-camera cap
+  is not applied to the head (a gap of up to 0.26 `L_bar` in chase view, foreshortened; `engine_ribbons_core.h`
+  header).
 - *Length.* `L = T(value) x preset x v_est x s` with **T 0.5 s below value 2,000, 0.8 s to 20,000, 1.2 s above**
   (the brief's thresholds, not 1,500 / 8,000; value in the record's scene units); `v_est` = the path from the nozzle
   back through the samples of at least the last 0.1 s, never across a pause of more than 0.25 s, over their age. The
   strip is cut at `L` (the last point interpolated) or ends at the oldest sample when the history is shorter (after a
   SETA burst the path flown, not the extrapolated `L`). No `60 x value` cap.
-- *Look.* Half-width `0.6 x the nozzle's half-width` = 0.3 value at the nozzle tapering linearly to 0, held at 1.5 px
+- *Look.* Half-width the plume tip's at the head (`width_at_tip x Look::nozzle_width x floored value`, 0.122 value at the
+  default look; 0.3 value at the nozzle before 2026-10-14) tapering linearly to 0, held at 1.5 px
   (a 3 px strip, no radiance compensation); radiance `I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u)` with
   a `(1 - a^2)^2` profile across (not `0.6 (1 - u)^2`); the plume's near-camera rule per strip point (width held to
   0.12 H, radiance 1 -> 0.5 over the last 20 %); occlusion the halo's SOFT 1.0 value at the centre line's view depth

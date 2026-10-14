@@ -15,7 +15,7 @@
 // none fading it draws its plume only and counts as overflow), each 16 samples
 // of world position + half-width + time, keyed by the record's identity (the object_lifetime node serial when the
 // record carries one, else node handle + model) through a 512-slot open-addressed map rebuilt at each update.
-// - Distance sampling: a sample is appended when the nozzle moved at least
+// - Distance sampling: a sample is appended when the plume's end (Origin below) moved at least
 //   max(1.5 m, 0.02 value, L / 15) since the newest sample (1.5 m = 7.5 render units at 5 units per metre: the fog
 //   look's and the motes' scale, fog-dust-motes.md; L the ribbon's target length, so the 16 samples always cover it).
 //   A frame's displacement never enters except through that distance, so SETA advances the samples and stretches
@@ -27,16 +27,29 @@
 // - Lifetime: a ribbon whose record is missing fades out over 0.3 s at its last positions, then is evicted; every
 //   update first evicts the ribbons not seen for 0.3 s, so a stage gap of 0.3 s (a load screen, a disarm) empties the
 //   pool by itself. Cleared whole on the resolve's camera cut, on a change of the object_lifetime load epoch and on
-//   Reset (the pass's before_reset); a head that moved more than 8 value since the last update restarts its ribbon (a
+//   Reset (the pass's before_reset); a nozzle that moved more than 8 value since the last update restarts its ribbon (a
 //   jump with an unchanged identity: no bridge).
+// Origin (engine-trail-origin.md section 6): the ribbon starts where the plume ends, E = nozzle + axis x L_bar with
+//   L_bar = max(z, idle_length) x the plume's floored value x (1 + (travel_length - 1) travel), the drawn plume's
+//   length without its pulse (engine_plumes_core.h build_nozzle; not its view-dependent near-camera cap or dot floor).
+//   E drives the distance sampling, the sample positions and the head; the nozzle itself drives the jump test and v_est
+//   (each sample keeps the nozzle of its moment), so the plume's end sweeping through a turn or moving along the axis
+//   with the throttle neither lengthens the ribbon nor restarts it. A record without a finite unit axis starts at the
+//   nozzle. No fold: before the append test the newest samples lying closer to the nozzle along the current axis than
+//   L_bar (the plume grew faster than the ship advanced) are dropped, so the strip never runs back up the plume.
+//   The plume's near-camera cap (build_nozzle's k, view-dependent) is not applied to E: a capped plume ends short of
+//   the head (up to 0.26 L_bar in chase view, review estimate). Kept: the cap acts only when the plume's body spans 0.12 H or more,
+//   i.e. the plume points near the camera, so the gap is foreshortened and lies inside the halo; E in world space keeps
+//   one sample path for every view (a k per view would move the samples with the camera and fold the strip).
 // View: the plumes' scene-view filter (engine_plumes_core.h ViewFilter) applies to the records first: a record of
 // another view (a target monitor) takes no ribbon and does not keep one alive.
 // Depth: every strip point carries its own centre-line view z (shape[1]), the per-vertex form of the plumes' corrected
 // nearest-axis depth (a ribbon point lies on its own centre line, so no axis offset applies).
-// Geometry: a camera-facing strip through the nozzle (the live head, so there is never a gap at the nozzle) and the
-// samples, newest first, cut at L (the last point interpolated); half-width 0.6 x the nozzle's half-width (0.5 value)
-// at the nozzle tapering linearly to 0 at the tail, never under 1.5 px (a 3 px strip); radiance
-// I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u) (u 0 at the nozzle, 1 at the tail) x the plumes' distance
+// Geometry: a camera-facing strip through the plume's end (the live head, so there is never a gap at the plume) and the
+// samples, newest first, cut at L (the last point interpolated); half-width the plume tip's (ep::width_at_tip x the
+// plume's nozzle width of the floored value, 0.122 value at the default look) at the head tapering linearly to 0 at
+// the tail, never under 1.5 px (a 3 px strip); radiance
+// I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u) (u 0 at the head, 1 at the tail) x the plumes' distance
 // law (after flight E: engine_plumes_core.h distance_weight on the plume's projected nozzle width at the head, the
 // plume's nozzle being Look::nozzle_width x its floored value); the plume's near-camera
 // rule per point (the projected width held to 0.12 H, radiance 1 -> 0.5 over the last 20 %); the nozzle's fog
@@ -60,9 +73,8 @@ constexpr float min_spacing = 1.5f * units_per_metre;
 constexpr float spacing_value = .02f;        // x value
 constexpr float fade_seconds = .3f;
 constexpr float jump_value = 8.f;            // x value per update: a jump, not flight
+constexpr float fold_tolerance = 1e-3f;      // x value: a sample this far inside the plume's end is kept (rounding)
 constexpr float speed_window = .1f, speed_gap = .25f; // seconds
-constexpr float width_scale = .6f;           // x the nozzle's half-width (0.5 value)
-constexpr float nozzle_half_width = .5f;     // x value
 constexpr float min_width_px = 3.f;          // the strip's full projected width floor
 constexpr float radiance_low = .2f, radiance_high = .9f; // I_ribbon(s) = lerp(0.2, 0.9, s)
 constexpr float soft = 1.f;                  // SOFT x value (the halo's)
@@ -84,15 +96,18 @@ inline unsigned key_slot(std::uint64_t key) noexcept {
 }
 
 struct Sample {
-    float p[3];       // world position (the record's c4-6 origin)
-    float half_width; // world units, at the nozzle when appended
+    float p[3];       // world position: the plume's end E when appended
+    float o[3];       // the nozzle (the record's c4-6 origin) when appended: v_est's path
+    float half_width; // world units: the plume's tip half-width when appended
     float time;       // seconds on the pool's clock
 };
 struct Ribbon {
     std::uint64_t key = 0;
     Sample samples[samples_per_ribbon]{};
     unsigned newest = 0, count = 0; // ring: samples[newest] is the latest, count valid going back
-    float head[3]{};                // the nozzle at its last update
+    float head[3]{};                // the plume's end E at its last update
+    float origin[3]{};              // the nozzle at its last update: the jump test
+    float head_width = 0.f;         // the plume's tip half-width (world) at the last update
     float last_seen = 0.f;          // pool clock
     float value = 0.f, throttle = 0.f;
     float nozzle = 0.f;              // the plume's nozzle width (world): Look::nozzle_width x the floored value
@@ -107,6 +122,7 @@ struct Ribbon {
 struct UpdateStats {
     unsigned records = 0, matched = 0, created = 0, overflow = 0, duplicates = 0, skipped = 0, skipped_other_view = 0;
     unsigned appended = 0, evicted = 0, jumps = 0, live = 0, fading = 0;
+    unsigned dropped = 0; // samples dropped inside the plume (no fold)
     unsigned unfloored = 0; // records at their natural width: a co-located layer of a larger one (ep::merge_layers)
     bool cut_clear = false, load_clear = false;
 };
@@ -189,8 +205,8 @@ inline int oldest_fading(const Pool& pool) noexcept {
 }
 } // namespace detail
 
-// v_est: the path from `head` (at time `now`) back through the samples, over their age (0 without a sample older
-// than now).
+// v_est: the path from the nozzle `head` (at time `now`) back through the samples' nozzles, over their age (0 without
+// a sample older than now).
 inline void estimate_speed(const Ribbon& r, const float head[3], float now, float* out) noexcept {
     float path = 0.f, span = 0.f, previous_time = now;
     const float* previous = head;
@@ -198,10 +214,10 @@ inline void estimate_speed(const Ribbon& r, const float head[3], float now, floa
         const Sample& s = r.at(back);
         if (back > 0 && previous_time - s.time > speed_gap) break; // a pause: the older samples are another motion
         float d = 0.f;
-        detail::distance(previous, s.p, &d);
+        detail::distance(previous, s.o, &d);
         path += d;
         span = now - s.time;
-        previous = s.p;
+        previous = s.o;
         previous_time = s.time;
         if (span >= speed_window) break;
     }
@@ -222,6 +238,8 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
                    const float* radii = nullptr, float travel = 0.f, const std::uint32_t* parents = nullptr) noexcept {
     const ep::Look& k = look ? *look : ep::default_look;
     travel = travel > 0.f ? (travel < 1.f ? travel : 1.f) : 0.f;
+    float tip = 0.f; // the plume's tip half-width in nozzle widths (ep::width_at_tip)
+    ep::width_at_tip(k, &tip);
     const float trail_scale = preset_scale * (1.f + (ep::travel_trail - 1.f) * travel);
     UpdateStats local{};
     UpdateStats& st = stats ? *stats : local;
@@ -332,7 +350,7 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         const float value = rec.size;
         if (r.count) {
             float moved = 0.f;
-            detail::distance(rec.origin, r.head, &moved);
+            detail::distance(rec.origin, r.origin, &moved);
             if (moved > jump_value * value) {
                 r.count = 0; // a jump: the old samples would bridge it
                 ++st.jumps;
@@ -345,8 +363,38 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
             ep::floored_value(k, rec, radii[i], &plume_value);
         r.nozzle = k.nozzle_width * plume_value;
         r.throttle = rec.s < 0.f ? 0.f : rec.s > 1.f ? 1.f : rec.s;
+        // E: the plume's end without its pulse (build_nozzle's L with pulse 1; a main jet, so the idle floor and the
+        // travel length apply).
+        float end[3] = {rec.origin[0], rec.origin[1], rec.origin[2]};
+        float mean_length = 0.f;
+        if (detail::finite3(rec.axis)) {
+            const float axis2 = rec.axis[0] * rec.axis[0] + rec.axis[1] * rec.axis[1] + rec.axis[2] * rec.axis[2];
+            if (axis2 > .99f && axis2 < 1.01f) {
+                float zl = rec.z > 0.f ? rec.z : 0.f; // NaN: 0, then the idle floor
+                if (zl < k.idle_length) zl = k.idle_length;
+                mean_length = zl * plume_value * (1.f + (ep::travel_length - 1.f) * travel);
+                if (!ee::finite_f(mean_length)) mean_length = 0.f;
+                for (unsigned j = 0; j < 3; ++j) end[j] = rec.origin[j] + rec.axis[j] * mean_length;
+            }
+        }
+        const float half_width = tip * r.nozzle; // the plume's tip half-width, of the floored value as L_bar
         float speed = 0.f;
-        estimate_speed(r, rec.origin, now, &speed);
+        estimate_speed(r, rec.origin, now, &speed); // before the drop below: the nozzles' path keeps its history
+        // No fold: the newest samples that now lie closer to the nozzle along the axis than the plume's end (its length
+        // rose faster than the ship advanced, or the ship moved along its own exhaust) are inside the plume; dropped,
+        // the strip runs from the plume's end straight back to the older samples.
+        if (mean_length > 0.f) {
+            const float limit = mean_length - fold_tolerance * value;
+            while (r.count) {
+                const Sample& s = r.at(0);
+                const float along = (s.p[0] - rec.origin[0]) * rec.axis[0] + (s.p[1] - rec.origin[1]) * rec.axis[1] +
+                                    (s.p[2] - rec.origin[2]) * rec.axis[2];
+                if (along >= limit) break;
+                r.newest = (r.newest + samples_per_ribbon - 1) % samples_per_ribbon;
+                --r.count;
+                ++st.dropped;
+            }
+        }
         float t = 0.f;
         trail_seconds(value, &t);
         const float length = t * trail_scale * speed * r.throttle;
@@ -356,19 +404,26 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         bool append = r.count == 0;
         if (!append) {
             float moved = 0.f;
-            detail::distance(rec.origin, r.at(0).p, &moved);
+            detail::distance(end, r.at(0).p, &moved);
             append = moved >= spacing;
         }
         if (append) {
             r.newest = r.count ? (r.newest + 1) % samples_per_ribbon : 0;
             r.count = r.count < samples_per_ribbon ? r.count + 1 : samples_per_ribbon;
             Sample& s = r.samples[r.newest];
-            for (unsigned j = 0; j < 3; ++j) s.p[j] = rec.origin[j];
-            s.half_width = width_scale * nozzle_half_width * value;
+            for (unsigned j = 0; j < 3; ++j) {
+                s.p[j] = end[j];
+                s.o[j] = rec.origin[j];
+            }
+            s.half_width = half_width;
             s.time = now;
             ++st.appended;
         }
-        for (unsigned j = 0; j < 3; ++j) r.head[j] = rec.origin[j];
+        for (unsigned j = 0; j < 3; ++j) {
+            r.head[j] = end[j];
+            r.origin[j] = rec.origin[j];
+        }
+        r.head_width = half_width;
         r.last_seen = now;
         r.speed = speed;
         r.length = length;
@@ -449,9 +504,8 @@ inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& 
     }
     // The polyline: the head, then the samples newest first, cut at L (the last point interpolated).
     float world[points_per_ribbon][3], width[points_per_ribbon], along[points_per_ribbon];
-    const float head_width = width_scale * nozzle_half_width * r.value;
     for (unsigned j = 0; j < 3; ++j) world[0][j] = r.head[j];
-    width[0] = head_width;
+    width[0] = r.head_width;
     along[0] = 0.f;
     unsigned n = 1;
     float total = 0.f;
