@@ -1,0 +1,25 @@
+{
+  "run": 167,
+  "platform": "native Windows 11, C:\\X3",
+  "command": "manual: cp C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run166 (cmp ok); cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp ok",
+  "installed_at": "2026-10-14",
+  "commit": "6b6bb5ce",
+  "candidate_record": "verification/results/run167-candidate-build.json",
+  "installed": {
+    "path": "C:\\X3\\d3d9.dll",
+    "sha256": "252e316932324b7acd3d9602f364b1b05e32c7197ac6a1faf5f4e53121014cf5",
+    "bytes": 59426213,
+    "verified_bytes": true,
+    "method": "cmp"
+  },
+  "previous": {
+    "run": 166,
+    "sha256": "f789f531efaa473e6dd445479af7c9923c536ec6cedae5238916a0952e60886d",
+    "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run166"
+  },
+  "release_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run150 (release 1.2.1)",
+  "x3m_ini": "unchanged (ship_trace_max = 8)",
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "trigger": "controller B.6 span tuning; Run 167 A open",
+  "producer": "main session"
+}

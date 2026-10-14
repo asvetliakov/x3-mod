@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run167-candidate of 6b6bb5ce, build/d3d9.dll (clean configure + build)",
+  "sha256": "252e316932324b7acd3d9602f364b1b05e32c7197ac6a1faf5f4e53121014cf5",
+  "bytes": 59426213,
+  "commit": "6b6bb5ce",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1001, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering: 42 tests OK (candidate tree, 57.9 s); fixture 10178/10178, capital 4520/4520, seq-off 10088/10088 (implementer, ledger B.6)"
+  },
+  "changes_since_run166": [
+    "f03b7438 handoff",
+    "73cea4aa Run166 triage + B.6 design",
+    "6b6bb5ce controller B.6 span tuning"
+  ],
+  "trigger": "Run166 residual circling: escorts at 60 m/s after the leader's launch, heads out of their release window (lap target before the real funnel-free moment)",
+  "producer": "main session (Fable 5.1), 2026-10-14"
+}
