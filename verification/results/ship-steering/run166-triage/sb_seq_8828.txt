@@ -1,0 +1,3 @@
+f  50481- 51410 g  25349.2- 25428.3 r 324.2-332.1 n   77 | cand -      key 0   none      none    ringed 0 busy -      win - tim - | hold 1 inb 1 dx -1.0..-1.0 free_ms 2000.0..2000.0 v_feas -1.0..-1.0 block_ms 0.0..0.0 skips 0 rel 0
+f  51423- 53538 g  25429.3- 25578.9 r 332.2-347.1 n  146 | cand -      key 0   none      none    ringed 0 busy -      win - tim - | hold 2 inb 2 dx -1.0..-1.0 free_ms 2000.0..2000.0 v_feas -1.0..-1.0 block_ms 0.0..0.0 skips 0 rel 0
+f  53554- 57367 g  25579.9- 25746.3 r 347.2-370.7 n  163 | cand -      key 0   none      none    ringed 0 busy -      win - tim - | hold 3 inb 3 dx -1.0..-1.0 free_ms 2000.0..2000.0 v_feas -1.0..-1.0 block_ms 0.0..0.0 skips 0 rel 0

@@ -1,0 +1,5 @@
+busy rows per gate: {'5150': 361, '6878': 279}
+gate 5150 head out of window                                   114 game s   11.8 real s
+gate 5150 no committed candidate (role none)                   231 game s   24.0 real s
+gate 6878 head out of window                                    47 game s    4.8 real s
+gate 6878 no committed candidate (role none)                    57 game s    5.9 real s

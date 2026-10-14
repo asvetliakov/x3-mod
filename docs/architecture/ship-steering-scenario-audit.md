@@ -142,6 +142,9 @@ amendment 15 adds.
     rows showing grazes or neighbours bouncing at the grid.
 11. Capitals jumping in together (exit spread covers non-capitals only); combat flight; save/load mid-approach;
     the "held below des" speed-law gap (replay 61eeb790).
+12. A funnel member on its final straight detouring around an arrival of its own gate (Run166: 5748 took a vertical
+    detour against arrival 7834, fell to 5.8 m/s and crossed X at 19.4°, release → X 168 s against 84–99 s). The D.4
+    arrival corridor clause should cover the final straight; `gate-traffic-controller.md` B.6 "Open".
 
 ## Verification
 

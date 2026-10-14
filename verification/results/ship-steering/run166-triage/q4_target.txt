@@ -1,0 +1,9 @@
+25763 commit 23432.1 (real 122.0) | free_ms@commit 118.5 -> t_free 23550.6 | t_next 23397.4 = commit -34.7 s | v commit->free 60..60 | first free 23494.4 (commit +62.3 s), free_ms there 47.2; first free -> t_free(commit) 56.2 s | actual release 23551.6 (wait from first free 57.2)
+   target P (pred: t_free - 2 - leg5 15.7 - 2500/100) = commit +75.8 s | 4b W: release commit+119.5 wait from first free 57.2 | 4c W+60deg: release commit+119.5 wait from first free 57.2
+   target I (first free) = commit +62.3 s | 4b W: release commit+119.5 wait from first free 57.2 | 4c W+60deg: release commit+119.5 wait from first free 57.2
+5748 commit 25181.5 (real 307.4) | free_ms@commit 66.8 -> t_free 25248.2 | t_next 25109.5 = commit -71.9 s | v commit->free 60..60 | first free 25211.5 (commit +30.0 s), free_ms there 37.5; first free -> t_free(commit) 36.8 s | actual release 25311.2 (wait from first free 99.8)
+   target P (pred: t_free - 2 - leg5 21.4 - 2500/100) = commit +18.4 s | 4b W: release commit+29.5 wait from first free -0.5 | 4c W+60deg: release commit+29.5 wait from first free -0.5
+   target I (first free) = commit +30.0 s | 4b W: release commit+29.5 wait from first free -0.5 | 4c W+60deg: release commit+29.5 wait from first free -0.5
+4059 commit 25359.1 (real 325.2) | free_ms@commit 206.4 -> t_free 25565.5 | t_next 25428.0 = commit +68.8 s | v commit->free 25..61 | first free 25436.6 (commit +77.5 s), free_ms there 94.0; first free -> t_free(commit) 128.9 s | actual release 25514.3 (wait from first free 77.7)
+   target P (pred: t_free - 2 - leg5 28.7 - 2500/70) = commit +139.9 s | 4b W: release commit+144.0 wait from first free 66.5 | 4c W+60deg: release commit+144.0 wait from first free 66.5
+   target I (first free) = commit +77.5 s | 4b W: release commit+144.0 wait from first free 66.5 | 4c W+60deg: release commit+77.0 wait from first free -0.5

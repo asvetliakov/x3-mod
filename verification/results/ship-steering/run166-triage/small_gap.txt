@@ -1,0 +1,19 @@
+last summary (frame, e_small_gap, e_suppressed_small): (57120, 2407, 71563)
+counter increments: 35 intervals, sum 2407, largest [(43109, 374), (43276, 296), (42922, 226), (40213, 150), (40823, 150)]
+traced suppress_small rows 4513, with A_age_ms > 250: 133 (A_age median 1160, max 6940)
+    78 A ? A_order 0x0 | B M6 B_order 0x14 other
+     9 A ? A_order 0x14 | B M6 B_order 0x14 other
+     7 A ? A_order 0x0 | B M6 B_order 0x0 other
+     5 A M2 A_order 0x0 | B M6 B_order 0x14 other
+     4 A M1 A_order 0x4 | B M6 B_order 0x0 other
+     3 A M1 A_order 0x4 | B M6 B_order 0x0 own escort
+     3 A M2 A_order 0x14 | B M6 B_order 0x14 other
+     3 A M2 A_order 0x4 | B M6 B_order 0x14 other
+     2 A M1 A_order 0x4 | B M8 B_order 0x0 other
+     2 A ? A_order 0x0 | B M6 B_order 0x12 other
+     2 A ? A_order 0x0 | B M6 B_order 0x15 other
+     2 A M2 A_order 0x4 | B M6 B_order 0x1e other
+     2 A M2 A_order 0x4 | B M6 B_order 0x0 other
+     2 A M2 A_order 0x4 | B M6 B_order 0x12 other
+     2 A M7 A_order 0x4 | B M6 B_order 0x14 other
+by A: [(('0xa75715c8', '?'), 77), (('0x380dfe78', 'M1'), 11), (('0x8e5b5030', 'M2'), 11), (('0xa7574688', '?'), 10), (('0x4bc66e50', '?'), 10), (('0xa75736b0', 'M2'), 7), (('0x8e5c90b8', '?'), 4), (('0xa7574688', 'M7'), 2), (('0x1dc1aac8', 'M2'), 1)]

@@ -1791,3 +1791,58 @@ call).
 
 Only one reader had no liveness guarantee: the member row, which is fixed and now reads nothing. One reader had a liveness
 guarantee but no identity check: `ctl_escort`, which is fixed. **Limitation:** one active sector per frame is assumed (above).
+
+### B.6 Span tuning (Run166)
+
+Run166 measured (`verification/results/ship-steering/run166-triage/`, `hold_wait.txt`, `window_phase.txt`, `q4_target.txt`,
+`escorts.txt`) 1,125 game s of petal holding across three convoys: 721 s escorts waiting for the script's order 4 (64 %), 239 s
+funnel busy (the predecessor in the funnel, docking or launching), 165.5 s a head out of its release window with the funnel free,
+0 s excess. Every holder lapped at 60 m/s (155 s per lap). Causes, from the rows **[m]**:
+
+* **Head phase.** The lap target `t_next = t_free − (L_lead + R_h + ρ) / 50 m/s` (138–153 s before `t_free`) is earlier than the
+  moment the funnel actually frees (the predecessor within 2.5 km of its X: 37–129 s before `t_free`). For 25763 and 5748 the
+  target was already past at commit (−35 s, −72 s), so `lap_speed` returned the maximum and the holder left its window at 60 m/s;
+  the funnel freed when it was 3.4–6.1 km of arc from the window (57 s, 100 s). 4059 had a future target but passed its target
+  point on the inner straight, the remaining arc wrapped to a whole lap and it sped up to 60 m/s 31 s before the target (78 s).
+* **Escorts.** After the leader's launch the escort's target is "now" (review F1), so `lap_speed` always returns 60 m/s: the fastest
+  possible circling, for 270–520 game s per escort, while nothing we own can shorten the script's wait (level 2, D.9).
+
+**Change (level 1, no hook or write-path change).**
+
+1. **The lap law: the earliest in-window moment at or after the target.** `lap_speed` takes the target time T and the window
+   W = [s_open, s_close] on the lap (the back turn's last 60° and the inner straight, extended by item 3) and returns, in
+   [25, 60] m/s:
+   * in W and still in W at T at 25 m/s (`s + 25 (T − now) ≤ s_close`): **25 m/s** (dwell; a later target still finds the ship in
+     W, an earlier one finds it there already);
+   * otherwise with `ds` = the arc to `s_open` ahead (0 if in W, else modulo the lap): if arriving at `s_open` at 25 m/s and
+     dwelling reaches T (`(ds + |W|) / 25 ≥ T − now`), **`clamp(ds / (T − now), 25, 60)`**; else if one extra lap fits
+     (`(ds + lap) / 60 ≤ T − now`), **`(ds + lap) / (T − now)`**; else the earlier of the two next in-window moments: 25 m/s now
+     (in W again at `(ds + |W|) / 25 + (lap − |W|) / 60`) against 60 m/s (`(ds + lap) / 60`), 25 m/s on a tie.
+   * T in the past (an escort whose order 4 may come at any moment, a head whose funnel is free): T = now, so the ship dwells at
+     25 m/s in W and otherwise comes to W at 60 m/s. No target: 40 m/s, as before.
+2. **The head's target is the predicted funnel-free moment,** not `t_free` minus a nominal funnel. While the occupant is a funnel
+   member on order 4: `now + max(0, −s_along − 2.5 km) / max(v_occ, 10 m/s)` from its live along-X position and planned speed
+   (`v_sb`), re-evaluated every frame (the prediction converges as the moment nears; 4059's `x_pred`-based estimate drifted 62 s).
+   While the occupant is at the hand-over or on order 5 / 8 (docking, launching): `t_after(f) − kFunnelGapMs` (its predicted
+   launch), never before a slot block. Escorts keep their target (the leader's predicted launch + the script's switch), clamped to
+   now once past.
+3. **The window extends 60° into the front turn:** `z ≤ a1 + R_h (1 − cos 60°) = a1 + 500 m` with the nose within 60° of F, 1,047 m
+   more arc (3,594 m, 39 % of the lap). The join predictor still decides the release (no feasible candidate: deferred, the
+   go-around unchanged); the head skip's timers run on the same window.
+
+**Expected (inferred from the Run166 rows, `q4_target.txt`):** the three head waits 57 / 100 / 78 game s become 57 / 0 / 0 with a
+converged target and the extended window (25763 committed inside its window only 62 s before the funnel freed and cannot stay);
+escort laps at 25 m/s instead of 60 (371 s per lap instead of 155: a third of the turning per game second, the wait itself
+unchanged and script-owned). Rejected: a second release window on the outer straight (would save 210 s but needs a U-turn in the
+funnel, which D.2.3 forbids and the Λ4 predictor does not plan); a 500 m turn radius (91 s, turn feasibility unverified).
+
+**Verification.** Units for the lap law (dwell, arrive-on-time, extra lap, the late tie-break, T past, no target, the window wrap);
+scenario T (incl. its SETA and run162 variants): releases, 0 excess, no holder below 25 m/s, no order 4 ending outside X, the
+capsule gaps; a scenario T assertion that a head whose funnel frees while it is in W is released within one feasibility interval
+(1 s + the frame step); `verify_ship_steering_sites.py` 20 checks and `test_ctl_boundary_reads.py` unchanged (no hook touched).
+Flight oracle (Run167): `hold_wait.py` head-out-of-window seconds per release ≤ one feasibility interval except a head that
+committed inside W within |W| / 25 s of the free moment; escort lap speed 25 m/s while waiting.
+
+**Open (separate defects from Run166):** 5748 crossed X at 19.4° after a vertical avoidance detour against arrival 7834 on its
+final straight (release → X 168 s against 84–99 s); the arrival-side corridor clause (D.4) should cover a funnel member on its
+final straight against an arrival of its own gate. Logged in `ship-steering-scenario-audit.md` "Later".
