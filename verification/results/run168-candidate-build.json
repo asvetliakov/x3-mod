@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run168-candidate of ce2f7b5b, build/d3d9.dll (clean configure + build)",
+  "sha256": "cfe49d27add04853556c0e69dd1ca64cb9d2e8163997d55d22d31cc5b7b220c4",
+  "bytes": 59432869,
+  "commit": "ce2f7b5b",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1001, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering: 42 tests OK (candidate tree, 53.7 s); fixture 10325/10325, capital 4667/4667, seq-off 10235/10235 (implementer, ledger B.7)"
+  },
+  "changes_since_run167": [
+    "ecd6238d Run167 triage + B.7 design",
+    
+    "ce2f7b5b controller B.7 escort staging"
+  ],
+  "trigger": "Run167: escorts loop once after the leader launches = the 60 m/s approach from 11-16 km to the script 10 km order radius",
+  "producer": "main session (Fable 5.1), 2026-10-14"
+}
