@@ -103,6 +103,11 @@ def by_ship(rows):
 #     stage B: kind=verdict|e_pass|order0 why=- or the E reason none|unresolved|stale|starved|on_0x12|rows|order0|not_member
 #     (e_pass: site E passed the pair, at most once per pair per second; order0: every order-0 frame of a member, each partner
 #     within 5 km)
+#     B.9: cause=nocert|cert|yield|contact|budget|stale|zero|noyield (the pair's last verdict write: no sweep / clear on both plans /
+#     clear after a yield / a conflict no yield candidate cleared / a conflict whose yield was not tried / rollouts too far apart or too
+#     short / a rollout without samples / a conflict whose yielder could not yield: no steered order or an empty ladder) trig=clock|plan
+#     (plan: the plan of the member whose rollout wrote the entry changed since its previous rollout) gap_m= (the sweep's minimum gap
+#     over the stored rollouts, capsule gap minus margin, m; < 0 below the margin; na: no rollout pair or too short an overlap)
 #   ship_gate_launch frame= t_ms= ship= gate= class= capital= slot= gate_type= kind=vanilla|capital_offset|small_side|small_unseparated
 #     p_m=<x>,<y>,<z> off_r_m= off_u_m= r_gate_m= r_m= w_m=   (one per launch at 0x00444606)
 # The docking approach, amendment 18 (docking-approach.md; ship_steering_dock, --debug), 1 Hz per ship on order 4 / 0x1d to a container:

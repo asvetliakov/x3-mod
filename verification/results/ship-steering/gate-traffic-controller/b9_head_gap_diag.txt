@@ -1,0 +1,46 @@
+# B.9 review item 2: the pre-review controller (511ffbf5) on its 3 bad extra-seed column runs; DBGY rows: the yielder's try_yield
+
+== 60,109 fps,seed ==
+sb B.9 column  60 fps seed 109: frames=32233 warns=28233 unsuppressed=60 episodes=1 uncertified=60 (first 313.6 s) rear_caps=447 front_caps=0 cap_min=57.6 min_capsule=415 m min_scan=-339 m first_warn=0.0 s cert_contact=0 launched=3/3
+  b9uncert t=313.633 v=unresolved why=contact vms_age=0 dec_age=0/0 roll_age=17/17 order=0x14/0x0 tc=43
+  b9uncert t=313.649 v=unresolved why=contact vms_age=16 dec_age=16/16 roll_age=33/33 order=0x14/0x0 tc=43
+  uncertified frames 60 from 313.633 to 314.616 s
+DBGY t=313633 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=313633 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=313833 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=313833 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=314033 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=314033 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=314233 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=314233 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=314433 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=314433 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=314633 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0
+DBGY t=314633 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=60.0
+DBGY t=314833 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=60.0
+DBGY t=315033 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=60.0
+
+== 144,104 fps,seed ==
+sb B.9 column 144 fps seed 104: frames=77105 warns=67420 unsuppressed=29 episodes=1 uncertified=29 (first 323.6 s) rear_caps=297 front_caps=0 cap_min=25.0 min_capsule=361 m min_scan=-21 m first_warn=0.0 s cert_contact=0 launched=3/3
+  b9uncert t=323.645 v=unresolved why=contact vms_age=0 dec_age=0/0 roll_age=97/97 order=0x14/0x0 tc=58
+  b9uncert t=323.652 v=unresolved why=contact vms_age=7 dec_age=7/7 roll_age=104/104 order=0x14/0x14 tc=58
+  uncertified frames 29 from 323.645 to 323.840 s
+DBGY t=323645 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=323847 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0
+DBGY t=323847 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=25.0
+DBGY t=324249 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0
+DBGY t=324652 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0
+DBGY t=325055 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0
+
+== 144,106 fps,seed ==
+sb B.9 column 144 fps seed 106: frames=77846 warns=67397 unsuppressed=29 episodes=1 uncertified=29 (first 313.4 s) rear_caps=355 front_caps=0 cap_min=25.0 min_capsule=343 m min_scan=-417 m first_warn=0.0 s cert_contact=0 launched=3/3
+  b9uncert t=313.374 v=unresolved why=contact vms_age=0 dec_age=0/0 roll_age=34/34 order=0x14/0x0 tc=34
+  b9uncert t=313.381 v=unresolved why=contact vms_age=7 dec_age=7/7 roll_age=41/41 order=0x14/0x0 tc=34
+  uncertified frames 29 from 313.374 to 313.569 s
+DBGY t=313374 ship=9200 cannot_yield order=0x0 in_gap=1
+DBGY t=313576 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0
+DBGY t=313576 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=25.0
+DBGY t=313979 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0
+DBGY t=314180 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=25.0
+DBGY t=314381 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=25.0
+DBGY t=314784 ship=9200 ladder_from=100.0 order=0x14 v_plan=100.0 cap=-1.0

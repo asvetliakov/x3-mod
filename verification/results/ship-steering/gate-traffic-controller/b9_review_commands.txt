@@ -1,0 +1,27 @@
+B.9 review (2026-10-14): the commands that produced this directory's B.9 evidence on the fixed tree (run from the worktree root; scratch
+dirs are local and untracked). The reviewers' one-liners on 511ffbf5 are the first two.
+
+reviewers (511ffbf5: 3 of 36 bad; this tree: 0 of 36):
+  X3M_B9_SEEDS=12 <fixture build> --b9 | grep b9seeds
+  python3 -I verification/results/ship-steering/gate-traffic-controller/column_b9.py <worktree> <scratch> 12
+
+acceptance (ship_steering_host_b9.txt, ship_steering_host_b9_capital.txt; seq-off and --b9 totals in the ledger):
+  c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp -o /tmp/ssh_b9r
+  /tmp/ssh_b9r > ship_steering_host_b9.txt ; /tmp/ssh_b9r --capital > ship_steering_host_b9_capital.txt
+  X3M_SEQ_OFF=1 /tmp/ssh_b9r | tail -2 ; /tmp/ssh_b9r --b9 | tail -2
+  PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads verification.analysis.test_ship_trace_format
+  i686-w64-mingw32-g++-posix -std=c++17 -fsyntax-only -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -fno-exceptions -Isrc/proxy src/proxy/ship_steering.cpp
+
+column_b9.txt:
+  python3 -I verification/results/ship-steering/gate-traffic-controller/column_b9.py <worktree> <scratch> 12 > column_b9.txt
+  (the noyield count on the signed-age revert: X3M_B9_RUN=144,104 X3M_B9_UNCERT=1 <scratch>/noage/host --b9 | grep -c 'why=noyield')
+
+scenario_t_b9.txt (the before / after builds are column_b9.py's <scratch>/before/host and <scratch>/after/host):
+  <scratch>/before/host --traffic > t_before.txt ; X3M_SIBLING_OFF=1 <scratch>/before/host --traffic > t_before_so.txt
+  <scratch>/after/host --traffic > t_after.txt ; X3M_SIBLING_OFF=1 <scratch>/after/host --traffic > t_after_so.txt
+  python3 -I verification/results/ship-steering/gate-traffic-controller/scenario_t_b9.py before_sibling_off=t_before_so.txt before=t_before.txt after_sibling_off=t_after_so.txt after=t_after.txt > scenario_t_b9.txt
+
+b9_head_gap_diag.txt (review item 2):
+  python3 -I verification/results/ship-steering/gate-traffic-controller/b9_head_gap_diag.py <worktree> <scratch> 511ffbf5 > b9_head_gap_diag.txt
+
+b9_rollout_bench.txt: the commands are in the file (old = git show 511ffbf5:src/proxy/{ship_gate_ctl_core.h,ship_steering_core.h}).

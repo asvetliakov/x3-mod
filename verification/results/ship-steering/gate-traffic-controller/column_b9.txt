@@ -1,0 +1,252 @@
+# B.9 column scenario (kTCol9; gate-traffic-controller.md B.9). before = the after tree with every B.9 change reverted (kin, law, hold, gapcap, age, corner, target: column_b9.py SUBS); the no* variants revert one each.
+
+== before: the column runs (--b9) ==
+sb B.9 review rollout: an inbound late escort crosses its boundary at sample 21; 8 s later the rollout flies 100.0 m/s (hold_speed there under the gate speed 100.0; the inbound law alone: 60); settled 100.0 m/s
+sb B.9 review plan_speed: v_plan 50 ms newer 25.0, 2 s older 25.0 (v_des 25); gap resume with the cap in force 100.0, released 100.0, lapsed 100.0
+sb B.9 review try_yield: order 0 outside a gap 0 (swept 0), plan 25 on a petal 0 (swept 0), on 0x14 1 (swept 1, cap 60.0), in its gap 0 (swept 0)
+sb B.9 review gap_scan: 5 paired samples against a reach of 8 ok 0, of 4 ok 1 (min 18930 m); 1 sample at a launch ok 1
+sb B.9 review per-sample speed (10 s): unringed late holder 1.2 km beyond its back turn: written 60.0-82.0 m/s, the rollout within 27.2 m/s (19 samples); ringed late holder in its back turn, W 0.03: written down to 27.4 m/s (the cornering cap), the rollout within 2.6 m/s (19 samples)
+sb B.9 review head target: an inbound committed member alone -400000 ms (the head's target now), behind a committed holder 0; 8 s past its boundary it flies 100.0 m/s
+sb B.9 review decide: in its gap the cap kept 0, released at the first steered decision 0; the yielder on order 0 outside a gap writes noyield, on 0x14 contact
+sb B.9 column  30 fps seed 1: frames=15641 warns=13971 unsuppressed=2292 episodes=1 uncertified=1890 (first 289.3 s) rear_caps=111 front_caps=0 cap_min=60.0 min_capsule=-349 m min_scan=-453 m first_warn=0.1 s cert_contact=0 launched=3/3
+sb B.9 column  30 fps seed 7: frames=15759 warns=13988 unsuppressed=2568 episodes=2 uncertified=2139 (first 238.5 s) rear_caps=110 front_caps=0 cap_min=60.0 min_capsule=-348 m min_scan=-454 m first_warn=0.1 s cert_contact=0 launched=3/3
+sb B.9 column  30 fps seed 1234567: frames=16162 warns=14575 unsuppressed=2880 episodes=3 uncertified=2025 (first 252.5 s) rear_caps=83 front_caps=0 cap_min=43.5 min_capsule=-317 m min_scan=-495 m first_warn=0.1 s cert_contact=0 launched=3/3
+sb B.9 column  60 fps seed 1: frames=32187 warns=28664 unsuppressed=4908 episodes=2 uncertified=3846 (first 287.6 s) rear_caps=134 front_caps=0 cap_min=50.1 min_capsule=-346 m min_scan=-451 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column  60 fps seed 7: frames=32807 warns=29235 unsuppressed=7380 episodes=1 uncertified=4500 (first 274.8 s) rear_caps=76 front_caps=0 cap_min=25.0 min_capsule=-322 m min_scan=-861 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column  60 fps seed 1234567: frames=32238 warns=28707 unsuppressed=4992 episodes=3 uncertified=3924 (first 263.0 s) rear_caps=142 front_caps=0 cap_min=45.9 min_capsule=-338 m min_scan=-433 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column 144 fps seed 1: frames=76491 warns=69049 unsuppressed=17632 episodes=2 uncertified=13787 (first 249.1 s) rear_caps=39 front_caps=0 cap_min=51.5 min_capsule=-327 m min_scan=-426 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column 144 fps seed 7: frames=76241 warns=68529 unsuppressed=13862 episodes=1 uncertified=10237 (first 276.3 s) rear_caps=30 front_caps=0 cap_min=54.6 min_capsule=-322 m min_scan=-416 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column 144 fps seed 1234567: frames=79494 warns=69682 unsuppressed=14384 episodes=1 uncertified=10264 (first 275.7 s) rear_caps=26 front_caps=0 cap_min=46.6 min_capsule=-337 m min_scan=-438 m first_warn=0.0 s cert_contact=0 launched=3/3
+ship_steering_host checks=45 failures=34 slip_gaps=0
+-- the table, every second row (1 s; 60 fps, seed 1) --
+sb B.9 column table (60 fps, seed 1; t_rel from the rear's hold entry at 321.7 s; sb 6 inbound, 1 hold; verdict 1 clear, 2 unresolved, 0 none; scan = gap_scan's minimum gap over the stored rollouts at sample t_min, first contact sample t_c)
+  t_rel   d_m  capsule_m  v_front v_rear  vsb_front vsb_rear cap_front cap_rear sb_f sb_r verdict scan_m t_min_s t_c_s warn unsup
+   -59.7  1952        76    100.0   94.5     113.0    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -58.7  1954        76    100.0   92.5     113.0    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -57.7  1955        76    100.0   98.2     113.0    110.0      -1.0     60.0    6    6       1      0     0.0  -1.0    1     0
+   -56.7  1959        76    100.0   95.5     113.0    110.0      -1.0     -1.0    6    6       1      0     0.0  -1.0    1     0
+   -55.7  1961        77    100.0   97.2     113.0    110.0      -1.0     -1.0    6    6       1      0     0.0  -1.0    1     0
+   -54.7  1963        76    100.0   91.8     113.0    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -53.7  1964        77    100.0  100.0     113.0    110.0      -1.0     -1.0    6    6       1      1     0.0  -1.0    1     0
+   -52.7  1966        76    100.0   92.3     113.0    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -51.7  1967        76    100.0   98.5     112.5    110.0      -1.0     60.0    6    6       1      0     0.0  -1.0    1     0
+   -50.7  1970        77    100.0   95.5     110.3    110.0      -1.0     -1.0    6    6       1      1     0.0  -1.0    1     0
+   -49.7  1971        76    100.0   93.8     108.1    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -48.7  1973        76    100.0   95.8     105.9    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -47.7  1975        77    100.0   97.2     103.7    110.0      -1.0     -1.0    6    6       1      0     0.0  -1.0    1     0
+   -46.7  1977        76    100.0   96.2     101.4    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -45.7  1978        76     99.4   98.5      99.2    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -44.7  1980        76     97.1   95.8      96.9    110.0      -1.0     -1.0    6    6       1      0     0.0  -1.0    1     0
+   -43.7  1980        75     94.9   94.2      94.7    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -42.7  1982        75     92.7   91.2      92.5    110.0      -1.0     -1.0    6    6       1      1     0.0  -1.0    1     0
+   -41.7  1982        74     90.5   85.8      90.3    110.0      -1.0     60.0    6    6       1      1     0.0  -1.0    1     0
+   -40.7  1983        74     88.4   83.8      88.2    110.0      -1.0     -1.0    6    6       1      1     0.0  -1.0    1     0
+   -39.7  1989        77     84.8   73.8      86.0    110.0      -1.0     -1.0    6    6       1      6     0.0  -1.0    1     0
+   -38.7  2000        84     79.9   63.8      84.0    110.0      -1.0     -1.0    6    6       1     13     0.0  -1.0    1     0
+   -37.7  2013        93     74.9   65.2      82.1    110.0      -1.0     -1.0    6    6       1     23     0.0  -1.0    1     0
+   -36.7  2015        94     75.7   75.2      80.2    110.0      -1.0     -1.0    6    6       1     23     0.0  -1.0    1     0
+   -35.7  2012        91     78.4   85.2      78.2    110.0      -1.0     -1.0    6    6       1     19     0.0  -1.0    1     0
+   -34.7  2000        80     76.4   95.2      76.2    110.0      -1.0     -1.0    6    6       1      9     0.0  -1.0    1     0
+   -33.7  1979        65     74.4   93.8      74.3    110.0      -1.0     60.0    6    6       2     -7     0.5   0.0    1     1
+   -32.7  1962        51     72.5   94.5      72.3    110.0      -1.0     -1.0    6    6       2    -21     1.5   0.0    1     1
+   -31.7  1937        33     70.6  100.0      70.4    110.0      -1.0     -1.0    6    6       2    -43     2.0   0.0    1     1
+   -30.7  1909        12     68.6  100.0      68.4    110.0      -1.0     -1.0    6    6       2    -66     2.0   0.0    1     1
+   -29.7  1880        -9     66.7  100.0      66.6    110.0      -1.0     -1.0    6    6       2    -90     2.5   0.0    1     1
+   -28.7  1849       -31     64.9  100.0      64.7    110.0      -1.0     -1.0    6    6       2   -114     2.5   0.0    1     1
+   -27.7  1816       -53     63.0  100.0      62.8    110.0      -1.0     -1.0    6    6       2   -137     2.5   0.0    1     1
+   -26.7  1782       -75     61.2  100.0      61.0    110.0      -1.0     -1.0    6    6       2   -160     2.5   0.0    1     1
+   -25.7  1747       -97     59.7  100.0      59.7    110.0      -1.0     -1.0    1    6       2   -183     2.5   0.0    1     1
+   -24.7  1711      -119     59.8  100.0      59.7    110.0      -1.0     -1.0    1    6       2   -199     2.5   0.0    1     1
+   -23.7  1676      -139     59.8  100.0      59.8    110.0      -1.0     -1.0    1    6       2   -215     2.0   0.0    1     1
+   -22.7  1641      -158     59.8  100.0      59.8    110.0      -1.0     -1.0    1    6       2   -231     1.5   0.0    1     1
+   -21.7  1606      -175     59.9  100.0      59.8    110.0      -1.0     -1.0    1    6       2   -246     1.0   0.0    1     1
+   -20.7  1572      -191     59.9  100.0      59.9    110.0      -1.0     -1.0    1    6       2   -261     0.0   0.0    1     1
+   -19.7  1537      -206     60.0  100.0      59.9    110.0      -1.0     -1.0    1    6       2   -276     0.0   0.0    1     1
+   -18.7  1504      -219     60.7  100.0      60.0    110.0      -1.0     -1.0    1    6       2   -289     0.0   0.0    1     1
+   -17.7  1473      -229     65.4  100.0     113.0    110.0      -1.0     -1.0    1    6       2   -301     0.0   0.0    1     1
+   -16.7  1446      -238     70.3  100.0     113.0    110.0      -1.0     -1.0    1    6       2   -310     0.0   0.0    1     1
+   -15.7  1422      -244     72.2  100.0      60.0    110.0      -1.0     -1.0    1    6       2   -317     0.0   0.0    1     1
+   -14.7  1397      -250     67.8  100.0      59.9    110.0      -1.0     -1.0    1    6       2   -323     0.0   0.0    1     1
+   -13.7  1369      -255     62.9  100.0      59.9    110.0      -1.0     -1.0    1    6       2   -328     0.0   0.0    1     1
+   -12.7  1338      -259     61.6  100.0      60.0    106.5      -1.0     -1.0    1    6       2   -332     0.0   0.0    1     1
+   -11.7  1310      -262     65.7  100.0      59.7    102.6      -1.0     -1.0    1    6       2   -335     0.0   0.0    1     1
+   -10.7  1281      -264     60.8   98.9      59.8     98.5      -1.0     -1.0    1    6       2   -337     0.0   0.0    1     1
+    -9.7  1253      -266     59.9   94.9      59.9     94.5      -1.0     -1.0    1    6       2   -338     0.0   0.0    1     1
+    -8.7  1228      -267     60.0   91.0      59.9     90.6      -1.0     -1.0    1    6       2   -339     0.0   0.0    1     1
+    -7.7  1207      -269     61.1   87.1     113.0     86.7      -1.0     -1.0    1    6       2   -340     0.0   0.0    1     1
+    -6.7  1191      -270     61.6   79.5     113.0     83.3      -1.0     -1.0    1    6       2   -339     0.0   0.0    1     1
+    -5.7  1179      -270     56.7   69.5     113.0     79.8      -1.0     -1.0    1    6       2   -337     0.0   0.0    1     1
+    -4.7  1171      -269     51.7   59.5     113.0     76.7      -1.0     -1.0    1    6       2   -336     0.0   0.0    1     1
+    -3.7  1162      -269     53.9   68.5     113.0     73.6      -1.0     -1.0    1    6       2   -336     0.0   0.0    1     1
+    -2.7  1151      -270     58.8   70.0     113.0     70.0      -1.0     -1.0    1    6       2   -337     0.0   0.0    1     1
+    -1.7  1145      -273     63.8   66.4     113.0     66.4      -1.0     -1.0    1    6       2   -339     0.0   0.0    1     1
+    -0.7  1144      -276     68.8   62.8     113.0     62.8      -1.0     -1.0    1    6       2   -341     0.0   0.0    1     1
+     0.3  1149      -281     73.7   63.1     113.0    110.0      -1.0     -1.0    1    1       2   -347     0.0   0.0    1     1
+     1.3  1152      -286     78.7   73.1     113.0    110.0      -1.0     -1.0    1    1       2   -355     0.0   0.0    1     1
+     2.3  1153      -289     83.6   83.1     113.0    110.0      -1.0     -1.0    1    1       2   -361     0.0   0.0    1     1
+     3.3  1150      -291     88.6   93.1     113.0    110.0      -1.0     -1.0    1    1       2   -366     0.0   0.0    1     1
+     4.3  1144      -293     93.6  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -370     0.0   0.0    1     1
+     5.3  1140      -294     98.5  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -371     0.0   0.0    1     1
+     6.3  1139      -296    100.0  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -373     0.0   0.0    1     1
+     7.3  1138      -297     98.8  100.0      60.0    110.0      -1.0     -1.0    1    1       2   -374     0.0   0.0    1     1
+     8.3  1135      -298     93.8  100.0      59.8    110.0      -1.0     -1.0    1    1       2   -375     0.0   0.0    1     1
+     9.3  1128      -299     88.8  100.0      59.7    110.0      -1.0     -1.0    1    1       2   -375     0.0   0.0    1     1
+    10.3  1118      -300     83.9  100.0      59.7    110.0      -1.0     -1.0    1    1       2   -375     0.0   0.0    1     1
+    11.3  1105      -301     78.9  100.0      59.8    110.0      -1.0     -1.0    1    1       2   -376     0.0   0.0    1     1
+    12.3  1089      -301     74.0  100.0      59.9    110.0      -1.0     -1.0    1    1       2   -376     0.0   0.0    1     1
+    13.3  1070      -302     71.0  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -376     0.0   0.0    1     1
+    14.3  1053      -303     75.9  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -378     0.0   0.0    1     1
+    15.3  1039      -303     80.9  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -379     0.0   0.0    1     1
+    16.3  1028      -304     85.9  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -380     0.0   0.0    1     1
+    17.3  1021      -305     90.8  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -396     0.0   0.0    1     1
+    18.3  1016      -307     95.8  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -399     0.0   0.0    1     1
+    19.3  1015      -310    100.0  100.0     113.0    110.0      -1.0     -1.0    1    1       2   -404     0.0   0.0    1     1
+    20.3  1015      -314    100.0  100.0     111.2    110.0      -1.0     -1.0    1    1       2   -408     0.0   0.0    1     1
+    21.3  1016      -319    100.0  100.0     109.2    110.0      -1.0     -1.0    1    1       2   -412     0.0   0.0    1     1
+    22.3  1018      -324    100.0  100.0     107.3    110.0      -1.0     -1.0    1    1       2   -417     0.0   0.0    1     1
+    23.3  1020      -328    100.0  100.0     105.5    110.0      -1.0     -1.0    1    1       2   -424     0.0   0.0    1     1
+    24.3  1023      -333    100.0  100.0     103.8    110.0      -1.0     -1.0    1    1       2   -431     0.0   0.0    1     1
+    25.3  1028      -337    100.0  100.0     102.1    110.0      -1.0     -1.0    1    1       2   -437     0.0   0.0    1     1
+    26.3  1034      -341    100.0  100.0     100.5    110.0      -1.0     -1.0    1    1       2   -443     0.0   0.0    1     1
+    27.3  1043      -343     99.0   92.2      99.0    110.0      -1.0     -1.0    1    1       2   -444     0.0   0.0    1     1
+    28.3  1058      -344     97.5   82.2      97.5    110.0      -1.0     -1.0    1    1       2   -443     0.0   0.0    1     1
+    29.3  1079      -345     95.7   81.2      96.0    110.0      -1.0     -1.0    1    1       2   -445     0.0   0.0    1     1
+-- the rear's first yield cap on the 500 ms rows (60 fps, seed 1): 259.5 s; rows with a rear cap 62 --
+-- the rollouts' 10 s prediction error before the rear's hold entry (322.0 s): front median 900 m p95 903 m (n 313), rear median 323 m p95 370 m (n 313) --
+
+== after: the column runs (--b9) ==
+sb B.9 review rollout: an inbound late escort crosses its boundary at sample 22; 8 s later the rollout flies 100.0 m/s (hold_speed there under the gate speed 100.0; the inbound law alone: 60); settled 25.0 m/s
+sb B.9 review plan_speed: v_plan 50 ms newer 100.0, 2 s older 25.0 (v_des 25); gap resume with the cap in force 40.0, released 100.0, lapsed 100.0
+sb B.9 review try_yield: order 0 outside a gap 0 (swept 0), plan 25 on a petal 0 (swept 0), on 0x14 1 (swept 1, cap 60.0), in its gap 1 (swept 1)
+sb B.9 review gap_scan: 5 paired samples against a reach of 8 ok 0, of 4 ok 1 (min 18930 m); 1 sample at a launch ok 1
+sb B.9 review per-sample speed (10 s): unringed late holder 1.2 km beyond its back turn: written 60.0-82.0 m/s, the rollout within 2.7 m/s (19 samples); ringed late holder in its back turn, W 0.03: written down to 26.6 m/s (the cornering cap), the rollout within 0.0 m/s (19 samples)
+sb B.9 review head target: an inbound committed member alone 0 ms (the head's target now), behind a committed holder 0; 8 s past its boundary it flies 100.0 m/s
+sb B.9 review decide: in its gap the cap kept 1, released at the first steered decision 1; the yielder on order 0 outside a gap writes noyield, on 0x14 contact
+sb B.9 column  30 fps seed 1: frames=15637 warns=14363 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=274 front_caps=0 cap_min=60.0 min_capsule=357 m min_scan=0 m first_warn=0.1 s cert_contact=0 launched=3/3
+sb B.9 column  30 fps seed 7: frames=15759 warns=13654 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=329 front_caps=0 cap_min=59.1 min_capsule=356 m min_scan=0 m first_warn=0.1 s cert_contact=0 launched=3/3
+sb B.9 column  30 fps seed 1234567: frames=16168 warns=14191 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=514 front_caps=0 cap_min=25.0 min_capsule=219 m min_scan=0 m first_warn=0.1 s cert_contact=0 launched=3/3
+sb B.9 column  60 fps seed 1: frames=31437 warns=29437 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=227 front_caps=0 cap_min=57.6 min_capsule=403 m min_scan=0 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column  60 fps seed 7: frames=32957 warns=28604 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=399 front_caps=0 cap_min=25.0 min_capsule=373 m min_scan=0 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column  60 fps seed 1234567: frames=31606 warns=27583 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=317 front_caps=0 cap_min=60.0 min_capsule=394 m min_scan=0 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column 144 fps seed 1: frames=76507 warns=67616 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=358 front_caps=0 cap_min=25.0 min_capsule=435 m min_scan=0 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column 144 fps seed 7: frames=76267 warns=67758 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=363 front_caps=0 cap_min=25.0 min_capsule=419 m min_scan=0 m first_warn=0.0 s cert_contact=0 launched=3/3
+sb B.9 column 144 fps seed 1234567: frames=80284 warns=69958 unsuppressed=0 episodes=0 uncertified=0 (first -1.0 s) rear_caps=415 front_caps=0 cap_min=25.0 min_capsule=418 m min_scan=0 m first_warn=0.0 s cert_contact=0 launched=3/3
+ship_steering_host checks=45 failures=0 slip_gaps=0
+-- the table, every second row (1 s; 60 fps, seed 1) --
+sb B.9 column table (60 fps, seed 1; t_rel from the rear's hold entry at 340.0 s; sb 6 inbound, 1 hold; verdict 1 clear, 2 unresolved, 0 none; scan = gap_scan's minimum gap over the stored rollouts at sample t_min, first contact sample t_c)
+  t_rel   d_m  capsule_m  v_front v_rear  vsb_front vsb_rear cap_front cap_rear sb_f sb_r verdict scan_m t_min_s t_c_s warn unsup
+   -60.0  3219      1167     90.5   60.0      90.3    110.0      -1.0     60.0    6    6       1    775    30.0  -1.0    1     0
+   -59.0  3245      1191     88.4   59.2      88.2    110.0      -1.0     -1.0    6    6       1    268    30.0  -1.0    1     0
+   -58.0  3276      1220     84.8   49.2      86.0    110.0      -1.0     -1.0    6    6       1    241    30.0  -1.0    1     0
+   -57.0  3312      1255     79.9   39.2      84.0    110.0      -1.0     -1.0    6    6       1    199    30.0  -1.0    1     0
+   -56.0  3350      1291     74.9   40.5      82.1    110.0      -1.0     -1.0    6    6       1    188    30.0  -1.0    1     0
+   -55.0  3377      1316     75.7   50.5      80.2    110.0      -1.0     -1.0    6    6       1    153    30.0  -1.0    1     0
+   -54.0  3397      1336     78.4   60.5      78.2    110.0      -1.0     -1.0    6    6       1    133    30.0  -1.0    1     0
+   -53.0  3408      1346     76.4   70.5      76.2    110.0      -1.0     -1.0    6    6       1    108    30.0  -1.0    1     0
+   -52.0  3407      1345     74.4   80.5      74.3    110.0      -1.0     -1.0    6    6       1     79    30.0  -1.0    1     0
+   -51.0  3395      1333     72.5   90.5      72.3    110.0      -1.0     -1.0    6    6       1     49    30.0  -1.0    1     0
+   -50.0  3371      1310     70.6  100.0      70.4    110.0      -1.0     -1.0    6    6       1     24    30.0  -1.0    1     0
+   -49.0  3343      1282     68.6   97.8      68.4    110.0      -1.0     -1.0    6    6       1      1    30.0  -1.0    1     0
+   -48.0  3317      1257     66.7   88.8      66.6    110.0      -1.0     60.0    6    6       1   1005    26.0  -1.0    1     0
+   -47.0  3299      1240     64.9   78.8      64.7    110.0      -1.0     60.0    6    6       1   1013    25.0  -1.0    1     0
+   -46.0  3287      1228     63.0   73.2      62.8    110.0      -1.0     60.0    6    6       1   1013    25.5  -1.0    1     0
+   -45.0  3275      1217     61.2   71.5      61.0    110.0      -1.0     60.0    6    6       1   1012    24.5  -1.0    1     0
+   -44.0  3265      1207     59.7   69.5      59.7    110.0      -1.0     -1.0    1    6       1      7    30.0  -1.0    1     0
+   -43.0  3256      1198     59.8   67.5      59.7    110.0      -1.0     -1.0    1    6       1      3    30.0  -1.0    1     0
+   -42.0  3246      1188     59.8   68.8      59.8    110.0      -1.0     -1.0    1    6       1      7    30.0  -1.0    1     0
+   -41.0  3237      1179     59.8   71.5      59.8    110.0      -1.0     -1.0    1    6       1     16    30.0  -1.0    1     0
+   -40.0  3224      1167     59.9   77.1      59.8    110.0      -1.0     -1.0    1    6       1     21    30.0  -1.0    1     0
+   -39.0  3207      1150     59.9   79.4      59.9    110.0      -1.0     -1.0    1    6       1     33    30.0  -1.0    1     0
+   -38.0  3183      1127     60.0   89.4      59.9    110.0      -1.0     -1.0    1    6       1     20    30.0  -1.0    1     0
+   -37.0  3150      1095     60.7   99.4      60.0    110.0      -1.0     -1.0    1    6       1     23    30.0  -1.0    1     0
+   -36.0  3114      1060     65.4  100.0     113.0    110.0      -1.0     -1.0    1    6       1     33    30.0  -1.0    1     0
+   -35.0  3083      1031     70.3  100.0     113.0    110.0      -1.0     -1.0    1    6       1     34    28.5  -1.0    1     0
+   -34.0  3055      1004     72.2  100.0      60.0    110.0      -1.0     -1.0    1    6       1     42    27.5  -1.0    1     0
+   -33.0  3026       976     67.8  100.0      59.9    110.0      -1.0     -1.0    1    6       1     35    27.5  -1.0    1     0
+   -32.0  2993       944     62.9  100.0      59.9    110.0      -1.0     -1.0    1    6       1     49    27.5  -1.0    1     0
+   -31.0  2955       908     61.6  100.0      60.0    110.0      -1.0     -1.0    1    6       1     57    29.0  -1.0    1     0
+   -30.0  2920       875     65.7  100.0      59.7    110.0      -1.0     -1.0    1    6       1     62    25.0  -1.0    1     0
+   -29.0  2885       841     60.8  100.0      59.8    110.0      -1.0     -1.0    1    6       1     34    25.5  -1.0    1     0
+   -28.0  2846       805     59.9  100.0      59.9    110.0      -1.0     -1.0    1    6       1     46    26.5  -1.0    1     0
+   -27.0  2807       768     60.0  100.0      59.9    110.0      -1.0     -1.0    1    6       1     56    25.5  -1.0    1     0
+   -26.0  2769       732     61.1  100.0     113.0    110.0      -1.0     -1.0    1    6       1     66    24.5  -1.0    1     0
+   -25.0  2735       700     61.6   94.0     113.0    110.0      -1.0     -1.0    1    6       1     88    24.0  -1.0    1     0
+   -24.0  2707       674     56.7   84.0     113.0    110.0      -1.0     -1.0    1    6       1    113    23.0  -1.0    1     0
+   -23.0  2683       651     51.7   74.0     113.0    110.0      -1.0     -1.0    1    6       1    109    22.0  -1.0    1     0
+   -22.0  2657       628     53.9   83.0     113.0    110.0      -1.0     -1.0    1    6       1    128    21.0  -1.0    1     0
+   -21.0  2627       600     58.8   93.0     113.0    110.0      -1.0     -1.0    1    6       1    138    20.0  -1.0    1     0
+   -20.0  2592       567     63.8  100.0     113.0    110.0      -1.0     -1.0    1    6       1    148    19.0  -1.0    1     0
+   -19.0  2560       538     68.8  100.0     113.0    110.0      -1.0     -1.0    1    6       1    157    18.0  -1.0    1     0
+   -18.0  2532       512     73.7  100.0     113.0    110.0      -1.0     -1.0    1    6       1    166    17.0  -1.0    1     0
+   -17.0  2509       491     78.7  100.0     113.0    110.0      -1.0     -1.0    1    6       1    176    16.0  -1.0    1     0
+   -16.0  2491       474     83.6  100.0     113.0    110.0      -1.0     -1.0    1    6       1    185    15.0  -1.0    1     0
+   -15.0  2477       461     88.6  100.0     113.0    110.0      -1.0     -1.0    1    6       1    194    14.0  -1.0    1     0
+   -14.0  2469       453     93.6  100.0     113.0    110.0      -1.0     -1.0    1    6       1    204    13.0  -1.0    1     0
+   -13.0  2464       449     98.5  100.0     113.0    109.5      -1.0     -1.0    1    6       1    214    12.0  -1.0    1     0
+   -12.0  2463       448    100.0  100.0     113.0    105.7      -1.0     -1.0    1    6       1    224    11.0  -1.0    1     0
+   -11.0  2462       447     97.5  100.0      59.9    101.7      -1.0     -1.0    1    6       1    242    10.0  -1.0    1     0
+   -10.0  2458       442     92.6   97.7      59.8     97.7      -1.0     -1.0    1    6       1    253     9.0  -1.0    1     0
+    -9.0  2452       436     87.6   93.7      59.7     93.7      -1.0     -1.0    1    6       1    264     8.0  -1.0    1     0
+    -8.0  2445       430     82.6   89.8      59.7     89.8      -1.0     -1.0    1    6       1    275     7.0  -1.0    1     0
+    -7.0  2437       423     77.7   85.9      59.8     85.9      -1.0     -1.0    1    6       1    270     6.0  -1.0    1     0
+    -6.0  2429       415     72.7   82.1      59.9     82.1      -1.0     -1.0    1    6       1    281     5.0  -1.0    1     0
+    -5.0  2419       406     70.4   78.3     113.0     78.3      -1.0     -1.0    1    6       1    295     4.0  -1.0    1     0
+    -4.0  2416       403     75.4   74.6     113.0     74.6      -1.0     -1.0    1    6       1    319     3.0  -1.0    1     0
+    -3.0  2420       407     80.3   70.9     113.0     70.9      -1.0     -1.0    1    6       1    329     2.0  -1.0    1     0
+    -2.0  2433       418     85.3   67.2     113.0     67.2      -1.0     -1.0    1    6       1    339     1.0  -1.0    1     0
+    -1.0  2454       436     90.2   63.6     113.0     63.6      -1.0     -1.0    1    6       1    348     0.0  -1.0    1     0
+    -0.0  2483       461     95.2   60.1     113.0     60.1      -1.0     -1.0    1    6       1    370     0.0  -1.0    1     0
+     1.0  2513       487    100.0   69.6     113.0    110.0      -1.0     -1.0    1    1       1    393     0.0  -1.0    1     0
+     2.0  2537       507    100.0   79.6     111.3    110.0      -1.0     -1.0    1    1       1    387     4.5  -1.0    1     0
+     3.0  2551       517    100.0   89.6     109.4    110.0      -1.0     -1.0    1    1       1    367     6.0  -1.0    1     0
+     4.0  2557       520    100.0   99.6     107.5    110.0      -1.0     -1.0    1    1       1    327    11.0  -1.0    1     0
+     5.0  2557       518    100.0  100.0     105.8    110.0      -1.0     -1.0    1    1       1    283    11.0  -1.0    1     0
+     6.0  2558       516    100.0  100.0     104.1    110.0      -1.0     -1.0    1    1       1    242    10.5  -1.0    1     0
+     7.0  2559       516    100.0  100.0     102.6    110.0      -1.0     -1.0    1    1       1    204    10.5  -1.0    1     0
+     8.0  2560       516    100.0  100.0     101.2    110.0      -1.0     -1.0    1    1       1    171    10.0  -1.0    1     0
+     9.0  2564       521     99.8   92.2      99.8    110.0      -1.0     -1.0    1    1       1    168    10.5  -1.0    1     0
+    10.0  2577       536     98.6   82.2      98.6    110.0      -1.0     -1.0    1    1       1    140    10.5  -1.0    1     0
+    11.0  2596       559     97.0   81.2      97.3    110.0      -1.0     -1.0    1    1       1    110    10.0  -1.0    1     0
+    12.0  2605       574     92.0   91.2      96.2    110.0      -1.0     -1.0    1    1       1     82    10.0  -1.0    1     0
+    13.0  2599       578     87.0  100.0      95.1    110.0      -1.0     -1.0    1    1       1     64    10.0  -1.0    1     0
+    14.0  2587       578     88.4  100.0      94.0    110.0      -1.0     -1.0    1    1       1     49    10.0  -1.0    1     0
+    15.0  2577       585     92.7  100.0      92.7    110.0      -1.0     -1.0    1    1       1     38    10.0  -1.0    1     0
+    16.0  2567       594     91.3  100.0      91.3    110.0      -1.0     -1.0    1    1       1     34    10.0  -1.0    1     0
+    17.0  2555       600     89.8  100.0      89.8    110.0      -1.0     -1.0    1    1       1     35     9.5  -1.0    1     0
+    18.0  2540       605     88.2  100.0      88.2    110.0      -1.0     -1.0    1    1       1     41     9.5  -1.0    1     0
+    19.0  2522       607     86.5  100.0      86.5    110.0      -1.0     -1.0    1    1       1     55     9.0  -1.0    1     0
+    20.0  2502       606     84.7  100.0      84.7    110.0      -1.0     -1.0    1    1       1     76     8.5  -1.0    1     0
+    21.0  2480       604     82.9  100.0      82.9    110.0      -1.0     -1.0    1    1       1    101     8.0  -1.0    1     0
+    22.0  2456       599     80.9  100.0      80.9    110.0      -1.0     -1.0    1    1       1    134     8.0  -1.0    1     0
+    23.0  2431       593     78.8  100.0      78.8    110.0      -1.0     -1.0    1    1       1    169     7.5  -1.0    1     0
+    24.0  2404       586     76.6  100.0      76.6    110.0      -1.0     -1.0    1    1       1    211     7.0  -1.0    1     0
+    25.0  2377       578     74.4  100.0      74.4    110.0      -1.0     -1.0    1    1       1    252     6.5  -1.0    1     0
+    26.0  2350       570     72.0  100.0      72.0    110.0      -1.0     -1.0    1    1       1    299     6.5  -1.0    1     0
+    27.0  2324       562     69.5  100.0      69.5    110.0      -1.0     -1.0    1    1       1    343     6.0  -1.0    1     0
+    28.0  2297       556     65.2  100.0      60.0    110.0      -1.0     -1.0    1    1       1    374     5.5  -1.0    1     0
+    29.0  2271       549     60.3  100.0      60.0    110.0      -1.0     -1.0    1    1       1    395     4.5  -1.0    1     0
+    30.0  2246       544     60.0  100.0      60.0    110.0      -1.0     -1.0    1    1       1    415     3.5  -1.0    1     0
+-- the rear's first yield cap on the 500 ms rows (60 fps, seed 1): 136.5 s; rows with a rear cap 105 --
+-- the rollouts' 10 s prediction error before the rear's hold entry (340.5 s): front median 18 m p95 36 m (n 331), rear median 19 m p95 228 m (n 331) --
+
+== the extra-seed sweep (X3M_B9_SEEDS=12: seeds 100.. at 30 / 60 / 144 fps; a run is bad on a 0x12 episode, an uncertified frame, no rear yield or a capsule contact) ==
+after     b9seeds bad 0 of 36 (with capsule contact 0)
+before    b9seeds bad 36 of 36 (with capsule contact 34)
+nokin     b9seeds bad 29 of 36 (with capsule contact 19)
+nolaw     b9seeds bad 0 of 36 (with capsule contact 0)
+nohold    b9seeds bad 0 of 36 (with capsule contact 0)
+nogapcap  b9seeds bad 30 of 36 (with capsule contact 0)
+noage     b9seeds bad 12 of 36 (with capsule contact 0)
+nocorner  b9seeds bad 0 of 36 (with capsule contact 0)
+notarget  b9seeds bad 0 of 36 (with capsule contact 0)
+
+== the 10 s prediction error per variant (60 fps, seed 1; median / p95, m): before the rear's hold entry, and from it to 30 s after (the predictions made there whose 10 s fall inside) ==
+after     rear hold entry 340.5 s  before: front 18 / 36  rear 19 / 228  (n 331)  after: front 734 / 965  rear 21 / 37  (n 20)
+before    rear hold entry 322.0 s  before: front 900 / 903  rear 323 / 370  (n 313)  after: front 899 / 1041  rear 320 / 346  (n 21)
+nokin     rear hold entry 336.5 s  before: front 900 / 903  rear 322 / 370  (n 327)  after: front 850 / 982  rear 229 / 575  (n 20)
+nolaw     rear hold entry 342.0 s  before: front 19 / 117  rear 20 / 263  (n 333)  after: front 672 / 957  rear 18 / 40  (n 21)
+nohold    rear hold entry 347.0 s  before: front 18 / 67  rear 20 / 275  (n 338)  after: front 545 / 922  rear 18 / 156  (n 21)
+nogapcap  rear hold entry 340.5 s  before: front 18 / 36  rear 19 / 199  (n 331)  after: front 734 / 965  rear 20 / 37  (n 20)
+noage     rear hold entry 340.5 s  before: front 18 / 36  rear 19 / 228  (n 331)  after: front 734 / 965  rear 21 / 37  (n 20)
+nocorner  rear hold entry 340.5 s  before: front 18 / 36  rear 19 / 228  (n 331)  after: front 734 / 965  rear 21 / 37  (n 20)
+notarget  rear hold entry 340.5 s  before: front 18 / 36  rear 19 / 228  (n 331)  after: front 734 / 965  rear 21 / 37  (n 20)

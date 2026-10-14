@@ -809,7 +809,8 @@ std::uint32_t ctl_row_read_ = 0;
 struct CtlPairRow {
     std::uint32_t gate, a, b, t_ms, seq_a, seq_b;
     std::uint8_t verdict, before, t_c, yielder, rank_a, rank_b, kind, why; // kind: 0 a verdict change, 1 site E passed the pair (why: the
-    float cap, d;                                                          // gc::EWhy), 2 a member's order-0 frame (the pair's E reason)
+    std::uint8_t cause;                                                    // gc::EWhy), 2 a member's order-0 frame (the pair's E reason);
+    float cap, d, gap;                                                     // B.9: cause = g.why (gc::PairWhy | kPairWhyPlan), gap = pair_gap
 };
 CtlPairRow ctl_pair_rows_[64];
 std::atomic<std::uint32_t> ctl_pair_write_{0};
@@ -2271,7 +2272,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             if (gc::pair_role(m.role) && m.id == rd32(obj + sites::kObjId)) {
                 m.v_plan = (s->flags & core::kShipFlagGate) ? s->v_ref : (s->flags & core::kShipFlagClamp) && s->v_corner > 0.0f ? s->v_corner : -1.0f;
                 m.v_plan_ms = now ? now : 1;
-                if (m.cap >= 0.0f && now - m.cap_ms <= gc::age_bound(*cg, gc::kCapMaxAgeMs) && gc::can_yield(m) && ln::apply_cap(*s, m.cap)) ctl_capped_.add();
+                if (m.cap >= 0.0f && now - m.cap_ms <= gc::age_bound(*cg, gc::kCapMaxAgeMs) && gc::can_yield_on(m, order) && ln::apply_cap(*s, m.cap)) ctl_capped_.add();
             }
         }
     }
@@ -2752,7 +2753,8 @@ inline void ctl_pass_row(const gc::Gate& g, unsigned i, unsigned j, std::uint32_
     const gc::Member& b = g.m[j];
     const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
     ctl_pair_rows_[w & 63] = CtlPairRow{g.gate, m.ship, b.ship, now, m.seq, b.seq, g.v[i][j], 0, g.tc[i][j], 0, std::uint8_t(gc::rank(m)),
-                                        std::uint8_t(gc::rank(b)), kind, std::uint8_t(why), m.cap, core::sqrt_ss(core::dot3(dx, dx))};
+                                        std::uint8_t(gc::rank(b)), kind, std::uint8_t(why), g.why[i][j], m.cap, core::sqrt_ss(core::dot3(dx, dx)),
+                                        gc::pair_gap(g, i, j)};
     ctl_pair_write_.store(w + 1, std::memory_order_release);
 }
 // Site E's controller fields (D.1, D.4): the arrival-gate row for B = A's arrival gate; for B = a ship, whether A and B are live
@@ -3794,10 +3796,10 @@ void ctl_frame() noexcept {
             }
             const gc::Member& b = g.m[j];
             const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
-            const std::uint8_t y = m.cap >= 0.0f && m.cap_ms == now ? 1 : b.cap >= 0.0f && b.cap_ms == now ? 2 : 0;
+            const std::uint8_t y = m.cap >= 0.0f && m.yield_ms == now ? 1 : b.cap >= 0.0f && b.yield_ms == now ? 2 : 0;
             ctl_pair_rows_[w & 63] = CtlPairRow{g.gate, m.ship, b.ship, now, m.seq, b.seq, g.v[i][j], g.logged[i][j], g.tc[i][j], y,
-                                                std::uint8_t(gc::rank(m)), std::uint8_t(gc::rank(b)), 0, 0,
-                                                y == 1 ? m.cap : y == 2 ? b.cap : -1.0f, core::sqrt_ss(core::dot3(dx, dx))};
+                                                std::uint8_t(gc::rank(m)), std::uint8_t(gc::rank(b)), 0, 0, g.why[i][j],
+                                                y == 1 ? m.cap : y == 2 ? b.cap : -1.0f, core::sqrt_ss(core::dot3(dx, dx)), gc::pair_gap(g, i, j)};
             ctl_pair_write_.store(w + 1, std::memory_order_release);
             g.logged[i][j] = g.logged[j][i] = g.v[i][j];
             g.logged_ms[i][j] = g.logged_ms[j][i] = now ? now : 1;
@@ -3851,13 +3853,16 @@ void ctl_rows(unsigned long long frame) noexcept {
     for (std::uint32_t w = ctl_pair_write_.load(std::memory_order_acquire); ctl_pair_read_ != w; ++ctl_pair_read_) {
         const CtlPairRow& r = ctl_pair_rows_[ctl_pair_read_ & 63];
         static const char* const kPairKind[3] = {"verdict", "e_pass", "order0"};
+        char gap[16] = "na"; // B.9: the sweep's minimum gap over the stored rollouts (na: no rollout pair)
+        if (r.gap < 1e29f) std::snprintf(gap, sizeof gap, "%.0f", double(r.gap));
         x3m::log("ship_gate_ctl_pair frame=%llu t_ms=%lu gate=0x%08lx a=0x%08lx b=0x%08lx seq=%lu,%lu rank=%u,%u kind=%s verdict=%s before=%s "
-            "why=%s t_c_s=%.1f yielder=%s cap_ms=%.1f d_m=%.0f",
+            "why=%s t_c_s=%.1f yielder=%s cap_ms=%.1f d_m=%.0f cause=%s trig=%s gap_m=%s",
             frame, static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.a),
             static_cast<unsigned long>(r.b), static_cast<unsigned long>(r.seq_a), static_cast<unsigned long>(r.seq_b), unsigned(r.rank_a),
             unsigned(r.rank_b), kPairKind[r.kind < 3 ? r.kind : 0], gc::pair_name(gc::PairV(r.verdict)), gc::pair_name(gc::PairV(r.before)),
             r.kind ? gc::ewhy_name(gc::EWhy(r.why)) : "-", r.t_c == 255 ? -1.0 : double(r.t_c) * double(gc::kSampleS),
-            kYielder[r.yielder < 3 ? r.yielder : 0], double(r.cap), double(r.d));
+            kYielder[r.yielder < 3 ? r.yielder : 0], double(r.cap), double(r.d), gc::pair_why_name(r.cause),
+            (r.cause & gc::kPairWhyPlan) ? "plan" : "clock", gap);
     }
     for (std::uint32_t w = seq_row_write_.load(std::memory_order_acquire); seq_row_read_ != w; ++seq_row_read_) {
         const SeqRow& r = seq_rows_[seq_row_read_ & 7];

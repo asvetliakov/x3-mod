@@ -1,0 +1,31 @@
+B.9 cost and size checks after both review rounds (2026-10-14, WSL2 host, g++ 15.2 x86-64 -O2 -msse2 for the benches; i686-w64-mingw32-g++
+16-posix for sizes and x87). "old" = 511ffbf5's ship_gate_ctl_core.h and ship_steering_core.h (git show 511ffbf5:src/proxy/<file> into a
+scratch dir: B.9 before the review, B.8 merged); "new" = this tree's src/proxy.
+
+1. One petal rollout (b9_rollout_bench.cpp; best of 7 x 20,000; x86-64 host; 3 runs each):
+   c++ -std=c++17 -O2 -msse2 [-DBENCH_V=40.0f] -I <old dir> b9_rollout_bench.cpp -o rbo
+   c++ -std=c++17 -O2 -msse2 [-DBENCH_V=40.0f] -DHOLD_LAW -I src/proxy b9_rollout_bench.cpp -o rbn
+   plan 110 m/s  inbound (crossing, law's reach)  ringed holder, no target  ringed, target 60 s  unringed, late
+   old           3237-3241 ns                     4532-4538 ns              4529-4550 ns          2909-2924 ns
+   new           3623-3638 ns                     6284-6308 ns              6530-6606 ns          4814-4868 ns
+   plan 40 m/s (the holders' plan speed equal in both cores)
+   old           3436-3449 ns                     5939-5943 ns              5919-5965 ns          3432-3478 ns
+   new           3661-3695 ns                     6254-6280 ns              6665-6692 ns          4867-4874 ns
+   hold_law alone (new, -DHOLD_LAW): 16.9 ns per call; a holder's rollout calls it once per sample (60) and at a stage or ring change.
+   The second review adds the cornering cap once per sample for every petal rollout the module writes (a dot product, a square root
+   and a division). The new rollouts fly the written law and the cornering cap (40-100 m/s, lower in turns) instead of the plan speed,
+   so their paths, and the plant's per-step cost, differ from the old ones; no row isolates the added work exactly.
+
+2. The fixture's cost rows (3 runs each, 511ffbf5's fixture build against this tree's after the second review, --traffic): a decision
+   on a full board with 21 members on petal plans best 7.3-7.6 / 7.7-8.1 us; the sequencer on a full board 16.5-16.6 / 16.5-17.0 us
+   per frame; SETA x10 30 fps decisions 522-526 / 525-537 us per frame mean.
+
+3. Static sizes, i686 (b9_sizes.cpp: i686-w64-mingw32-g++-posix -std=c++17 -fsyntax-only -msse2 -I <dir> b9_sizes.cpp; the sizes are in
+   the error text Size<N>): Member 1,860 B in both (the review replaces cap_v, a float, with yield_ms, a uint32); Gate 56,388 ->
+   56,392 B and Board 225,572 -> 225,588 B (the second review's head_t_ms); static, no allocation.
+
+4. x87 in the i686 code (b9_x87.cpp: -O2 -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -S, f* mnemonics per function):
+   rollout and decide 0 in both; plan_speed 3 flds in both; pair_gap 1 flds + 1 fstps in both; capsule_gap 1 flds in both;
+   hold_speed (the noinline float-returning wrapper) 2 -> 11: the cdecl float return on each of its return paths (flds of the
+   constants 40 / 25 and of the result slot, one fsts/fstp spill pair); its arithmetic is SSE. sb_frame inlines hold_speed and stores
+   to v_sb, so the return path does not exist there.

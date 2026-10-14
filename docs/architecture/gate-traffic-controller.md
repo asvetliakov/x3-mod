@@ -2021,18 +2021,169 @@ order 4 at +5…+15 s for every escort in hold at the launch; the member row's `
 * Scenario T no longer has any 0x15 approach frames after a launch. The B.6 aggregate coverage check therefore requires only the
   before-launch window frames and reports the approach frames. The approach's 60 m/s is still checked per run whenever it occurs.
 
-### B.9 Column evictions at hold entry (Run168, open)
+### B.9 Column evictions at hold entry (Run168)
 
 Run168 gate 6db0 (`run168-triage/x12_pairs.txt`) **[m]**: two escorts inbound in column at 100 m/s, 1.3–2.0 km apart (closer than the
 sum of their engine radii, 2,114 m), stayed "certified clear" for 16 s while the front one braked on the inbound profile (100 → 60 m/s
 over 10 s) and the rear one kept 100 m/s on its plan; the pair verdict turned unresolved (contact predicted in 3 s) 0.14 s before
 the engine's warn, both got 0x12 and the leader 7087 behind them too (3 evictions, 23 s rejoin each, the release 23 s late). The
-first episode (56 km out, all inbound, 4454 on a 1 s order-0 gap at 100 m/s) turned unresolved 1 s before the warn. Pair rows
-log no reason beyond "unresolved" and no sweep gap. Hypothesis (inferred): the certificate rollout models both inbound members
-with the same braking law toward their own boundary, so a column whose members brake at different distances (their ring
-extents differ, or one is still beyond its boundary) is certified clear until the front one's plan has already dropped; the
-yield then comes too late for a 40 m/s closing rate at a ~100 m capsule gap. To settle: a fixture scenario (two escorts inbound
-in column at 100 m/s, 1.5 km apart, the front one reaching its boundary 10 s earlier), the sweep's minimum gap and the reason
-on every verdict change in the pair row, and the fix (the rear member's inbound plan capped at the front member's plan speed
-while within the sweep margin, or the yield applied at the first rollout that shows the gap shrinking below the margin
-within the horizon). Queued after B.8.
+first episode (56 km out, all inbound, 4454 on a 1 s order-0 gap at 100 m/s) turned unresolved 1 s before the warn.
+
+**Geometry (Run168 `ship_gate_ctl_member` rows, gate frame; positions [m], derived figures [i]).** Not a column in line: 0.6 s
+before the eviction the front (4248, petal 3) was at (−2,444, −2,338, −13,521) m and the rear (4454, petal 4) at
+(−3,713, −1,680, −15,015) m, both at 100 m/s with nose · F 0.31 and 0.40, i.e. crossing behind the ring from −R toward their
+petals' lines, mostly along the petal planes' normals (petal 3's is +R).
+They were 1.65 km apart along the track and 1.24 km across, 2.07 km centre to centre. With the census hulls (r 1,022 / 1,092 m,
+w 546 / 583 m, L = r) the capsule gap there is about 270 m, under the sweep's 30 s margin (50 m + 10 m/s × 30 s = 350 m) unless the
+rollouts predict the pair diverging. A 1.5 km column in line is a capsule overlap for these hulls (L_A + L_B = 2,114 m) and can never be
+certified.
+
+**Cause (fixture, `column_b9.txt`) [m].** The column scenario (below) reproduces the eviction: in all 9 runs the pair stays certified
+while the front brakes, then the verdict turns unresolved (in the table's run with the contact already at sample 0), E passes and
+the capsules touch (−317 to −349 m). The faults below are each measured by reverting it alone on the reviewed tree (36 runs: 3 frame
+rates × 12 seeds; the review's figures are under **Review fixes**):
+
+1. **The entering member's in-plane advance.** The rollout of an inbound (or not yet ringed) member flies its petal plane at the full
+   speed and lets the out-of-plane offset decay by the step's travel (B.2 review N4). A ship crossing toward its petal from the side
+   moves mostly along the plane's normal, so the rollout put it up to its whole speed too far along F and e: the front's 10 s prediction
+   was off by a median 900 m (p95 903 m), the rear's 322 m. The sweep saw the pair diverging (its minimum gap always at sample 0) while
+   the real column converged at a few m/s, so the certificate held until the present gap reached the margin, where no yield can clear
+   sample 0. Reverted alone: 29 of 36 runs bad, 20 with contact.
+2. **The inbound law.** The rollout held the plan speed constant for 30 s; sb_frame's law brakes an inbound member from v_max to
+   60 m/s over its last (v² − 60²) / 2a before its boundary. The front's braking entered only as each decision's lower constant
+   speed. Reverted alone: 0 of 36 bad on the reviewed tree (10 of 36 before the merge with B.8 and the review); it still halves the
+   front's p95 prediction error before the rear's hold entry (76 → 36 m).
+3. **The order-0 gap of a yielding member.** In the script's 2–3 s re-issue gap the rollout resumes the member's uncapped plan speed
+   (`v_plan`), and nothing could yield on order 0, so a capped rear in its gap behind a slower front is unresolved for the gap: E passes
+   and the engine evicts (Run168's first episode). Reverted alone (the reviewed gap handling, below): 30 of 36 runs bad, none with
+   contact.
+
+The freshness bounds are not involved: the verdict was re-swept every 200–250 ms throughout and the flip came from fresh sweeps. Run168
+logged the flip with `t_c_s=3.0` 0.14 s after the front's hold entry and 0.14 s before the warn; the fixture's flip comes with the contact
+at sample 0 (inferred: the same misprediction, the flight geometry nearer the margin when the front's plan dropped).
+
+**Change (stage A/B invariants kept; rollout and diagnostics only, no new engine read, no allocation, SSE2 float).**
+* The petal rollout of an entering member splits each step's travel along the 3-D line to its carrot: d_in / d0 in the plane
+  (`plant_step_to`'s `k_in`), off / d0 out of it (the existing decay). One more square root per step for entering members.
+* An inbound member's petal rollout flies sb_frame's inbound law, min(plan or candidate speed, √(60² + 2a(d − lim))), with d the
+  rolled-out distance to G and lim its ring's extent + 2 km. The square root runs only inside the law's reach. Past lim, and for a
+  holder from the start, it flies `hold_law` (review item 1, below).
+* The order-0 gap resumes at the speed site B writes after it (review items 2 and 3, below).
+* Unchanged: the sweep, its margins and freshness bounds, the yield candidates (0.6 v, 25, 10 m/s; 25 m/s floor on a petal), the
+  priority (the rear has the higher sequence number in Run168 and the fixture), the symmetric matrix.
+* Not adopted: a decision triggered by a plan change. Measured in the column scenario before the review it made 3–4 of 36 runs bad
+  against 0 of 36 on the refresh clock: `plan_speed`'s own fallbacks (the gap past its window falling back to the braking `st.v`, a
+  capped `v_des`) flip by more than 5 m/s every ~100 ms, and each flip re-decided a member inside an order-0 gap where it could not
+  yield. The capped `v_des` fallback was the unsigned age below (review item 2). The plan change is kept as a diagnostic (`trig=plan`).
+
+**Review fixes (2026-10-14; reviews on Opus and Fable of 511ffbf5).**
+1. **The rollout flies the speed site B writes.** `hold_speed` is factored into `hold_law` on a `HoldState` (the components along F, e
+   and n from G, the nose · F, ringed; board state only). `sb_frame` calls it on the live state, and the petal rollout on its own
+   rolled-out state, once per sample and at each stage or ring change. Inbound → hold at lim, ringed within the ring's extent (the carrot
+   follows: inbound carrot until ringed). The target's time advances with the rollout; the target is the one `sb_frame` gives the member
+   (`rollout_target`, second review below). So a late unringed holder flies B.8's join profile up to v_max, the lap law once on its
+   track, and 25 m/s where the plan dwells or the escort settled. The ceiling is the candidate (a yield), else site B's gate speed with
+   the cornering cap evaluated on the rollout's own state (second review), under the yield cap in force through an order-0 gap. An escort
+   beyond the script's radius after its leader's launch on 0x15 flies `sb_steer`'s 60 m/s there. A member whose speed the module does not
+   write (no fresh `v_plan`) flies the desired speed site B left. Measured (60 fps, seed 1, after the second review): the rear's 10 s
+   prediction error in the 30 s after its hold entry, median / p95, is 21 / 37 m against 18 / 156 m with this reverted; the front's p95
+   before the rear's hold entry is 36 m against 67 m.
+2. **The 3 bad extra-seed runs (60 fps seed 109, 144 fps seeds 104 and 106; `b9_head_gap_diag.txt`).** The contacts are real
+   predictions of what the module would write, not prediction errors. In each run the rear was uncapped and on its last order-0 frame
+   of a gap. Its rollout resumed at its 100 m/s plan behind a front braking on its own law, and found a contact 17–29 s ahead
+   (`t_c` samples 34, 43 and 58). It could not yield on order 0. The first steered decision 0.2–1.0 s later yielded (25 or 60 m/s) and
+   cleared the pair. The pair was uncertified for those 29–60 frames, and E passed one warn: one 0x12 episode each. The yield came in
+   time for the contact but not for the certificate. Fix, within the invariants: a member in its order-0 gap on a steered plan yields
+   too, deferred (`gap_yield`). Nothing is written on order 0; site B applies a cap only on the steered order. The candidate's rollout
+   brakes for the gap's rest, then flies the candidate. A second defect showed while fixing it: `plan_speed`'s age test was unsigned.
+   Site A records `v_plan` after site B's last state read, so a fresh `v_plan` is often newer than `st.ms`. Unsigned, that wrapped and
+   fell back to the capped `v_des`, and the yielder's ladder started from its own cap. At 25 m/s on a petal that ladder is empty (0.6 ×
+   25 and 25 are not below 25 [i]). With that reverted alone (after the second review), 12 of 36 runs are bad, all 12 at 144 fps with
+   18–32 episodes each; 144 fps seed 104 has 3,132 uncertified frames, all `cause=noyield`. Signed now.
+3. **The gap's resume is the speed site B will write.** `plan_speed` in the gap is `v_plan` under the yield cap only while it is in
+   force (`cap_in_force`: not released, within the cap's age). A decision in the gap whose rollout cleared on that cap keeps it in force
+   (re-stamped `cap_ms`, never released on order 0), so site B applies it at the re-issue; the first steered decision releases or
+   re-yields. The B.9 `cap_v` (the last cap, even released) is gone; `yield_ms` stamps the decision that set a cap (the pair row's
+   yielder). `leave()` resets the cap, its stamps and `v_plan` for a member that re-enters.
+4. **Diagnostics.** `cause=noyield` is a conflict whose designated yielder could not yield (no steered order outside its gap, or an
+   empty ladder); `contact` means a candidate was rolled out and none cleared. The rows a yield writes carry the yielder's own
+   `plan_changed` flag; the deciding member's flag is or-ed into their shared pair. `gap_scan` takes the sweep's own overlap minimum
+   (`overlap_min`: the warn reach, 4 samples at an order-5 trigger, 1 at a launch), so `gap_m` is `na` where the verdict is stale.
+
+**Second review fixes (2026-10-14, one reviewer on the delta; the optimistic directions).**
+1. **The head's target.** `sb_frame` keeps the head's lap target on the gate every frame (`head_t_ms`, t_next's rule: the funnel-free
+   moment, a slot block's bound, else now). The petal rollout's target is `rollout_target`, the one `sb_frame` gives the member. A holder
+   gets its last `t_rel_ms` and an inbound escort its `escort_target`. An inbound committed member on order 4 with Q gets `head_t_ms` when
+   no live committed holder on order 4 precedes it in sequence, since it is the head once in hold. Otherwise it gets none (40 m/s).
+   Before, such a member flew 40 m/s past its boundary while the real head runs the lap law at 60 and, unringed, B.8's profile. Unit:
+   alone, the target is the head's; 8 s past its boundary it flies 100.0 m/s (40.0 with this reverted); behind a committed holder it
+   has none.
+2. **The cornering cap.** Site B writes min(the law, `gate_speed(v_max, large, v_corner)`), with `core::steer`'s cornering cap: omega d /
+   (2 sin θ) toward the steering point, omega d / 2 behind the nose. The petal rollout evaluates it once per sample, and at each stage or
+   ring change, on the last sample's nose toward the step's carrot. omega is `params.W` (the slower axis) bounded by the slip's corner
+   rate 0.43 rad/s, so it is exact while slip is in use and conservative (lower) for a ship with W above 0.43 without slip. Unit (the
+   rollout's per-sample speed against `hold_speed` under `core::steer`'s cap at the rolled-out state, toward `sb_steer`'s carrot, over
+   10 s): an unringed late holder beyond its back turn is written 60.0–82.0 m/s and the rollout stays within 2.7 m/s; a ringed late holder
+   in its back turn with W 0.03 rad/s is written down to 26.6 m/s and the rollout stays within 0.0 m/s (within 26.3 m/s with the cap
+   reverted).
+3. **The cap at site B.** Site A tests the cap against the live order of its call (`can_yield_on`), not the last observed state's
+   order, so the first steered write after an order-0 gap applies the cap. `cap_in_force`, `plan_speed` and the rollout take the
+   decision's `now`, site B's clock, so the rollout counts a cap exactly when site B's test (now − cap_ms ≤ 1 s + step) passes. The
+   rollout flies the cap over its horizon while site B holds it only until cap_ms + 1 s + step. No certificate outlives that: a cap's
+   stamp is never older than its yielder's last decision, and site E needs that decision within 1 s + step (kDecisionMaxAgeMs). The
+   certificate lapses no later than the cap, so a lapse fails closed. Remaining exposure [i, not measured]: the frames between the
+   script's re-issue of the steered order and the ship's first site-A call on it, when the engine flies its own speed for that order.
+   That is at most one site-A call interval of the hook. The old window (the first steered write uncapped, one frame or a whole SETA
+   step) is closed.
+4. **A backward clock jump** (a load) clears every member's cap, `cap_ms`, `yield_ms` and `v_plan_ms`, and the gate's `head_t_ms`, in
+   `sb_frame`'s reset. Stamps from the future would otherwise pass the signed age tests.
+5. **Units.** `sb_b9_review_units` holds 9 checks:
+   * the rollout's per-sample speed against the written speed (B.8's profile below the gate speed; the cornering cap in a turn);
+   * the head's target;
+   * `decide`: alone in its gap with a cap in force it keeps the cap (re-stamped, `yield_ms` unchanged, nothing released) and releases
+     it at the first steered decision; a pair at one point writes `noyield` with the yielder on order 0 outside a gap and `contact` on
+     0x14.
+
+**Diagnostics.** `ship_gate_ctl_pair` gains `cause=` (the pair's last verdict write: `nocert` no sweep, `cert` clear on both plans,
+`yield` clear after a yield, `contact` a conflict no yield candidate cleared, `budget` a conflict whose yield was not tried, `stale`
+rollouts too far apart or too short, `zero` a rollout without samples, `noyield` a conflict whose yielder could not yield), `trig=clock|plan`
+(the plan, stage or plan speed (> 5 m/s) of the member whose rollout wrote the entry changed since its previous rollout) and `gap_m=`
+(`gc::pair_scan` over the stored rollouts: the minimum over the paired samples of the capsule gap minus the sweep's margin, m; `na`
+without a rollout pair or with too short an overlap). The scan runs only when a row is written (`--debug`, at most once per pair per
+second).
+
+**Verification [m].**
+* Fixture model: the engine's obstacle filter now tests two escorts of one leader with the braking term halved
+  (ship-navigation-ai.md §3.1; Run168: siblings of 7087 on 0x14 warned each other); the old [i] skip is `X3M_SIBLING_OFF=1`.
+* Column scenario (`sb_b9_checks`, `kTCol9`, 3 frame rates × 3 seeds, after 9 review units): a Titan leader crossing behind the ring
+  78° off F with its escorts in a loose column (front M1 2.6 r behind it, rear Titan 1.65 km behind the front and 2.0 km to its side);
+  the pair converges to 1.9–2.0 km centre to centre while the front brakes. Asserted: the members warn each other and E suppresses
+  every warn (0 episodes), certified on every frame from the first certificate to the rear's hold entry + 30 s, the rear yields at
+  ≥ 10 m/s, no capsule contact. Before (every B.9 change reverted): 34 of 45 checks fail (27 column assertions, 7 review units);
+  after: 45 of 45 pass, closest capsule gap 219–435 m, rear yields 227–514 per run with the lowest cap 25.0–60.0 m/s. On the 500 ms
+  rows of 60 fps, seed 1 the rear's first yield is at 136.5 s (before 259.5 s) and its hold entry at 340.0 s (before 321.7 s).
+* Extra seeds (`X3M_B9_SEEDS=12`): 0 of 36 runs bad after, 36 of 36 before (34 with contact). Reverted alone: in-plane share 29 (19 with
+  contact), inbound law 0, `hold_law` 0, gap handling 30, signed age 12, cornering cap 0, head target 0. 10 s prediction error before the
+  rear's hold entry: front median / p95 900 / 903 → 18 / 36 m, rear 323 / 370 → 19 / 228 m.
+* Scenario T (`scenario_t_b9.txt`): every assertion green in all 72 runs. Sibling warns on, before → after: yields 797 → 758 departures,
+  1,000 → 908 dep w0.6r, 3,121 → 3,100 dep refused, 228 → 209 run162; hand-backs 9 → 0 departures and dep refused, 18 → 0 dep w0.6r
+  and run162, 23 → 1 run162 seta;
+  0x12 episodes 2 → 1 run162 seta; closest capsule 145 → 136 m departures, 132 → 168 m dep w0.6r; certified contact
+  0 in both.
+
+**Open.** The rear's yield is the stage-A ladder (0.6 v, then 25 m/s), so in a converging column it chatters between 25 and 60 m/s
+(lowest cap 25.0–60.0 m/s per run); a cap at the highest speed that keeps the gap is a refinement. The front, if it held the higher
+sequence number, would be the designated yielder and cannot open a gap closing from behind (unresolved; the fixture and Run168 have the
+rear yielding). Residual: in the 30 s after the rear's hold entry the front, an unringed holder crossing its petal plane along the normal
+at 100 m/s, overshoots the plane by about 0.9 km (the turn rate limits it), which the rollout's straight 3-D line to the carrot does not
+model. Its 10 s prediction error there is 734 / 965 m, median / p95 (545 / 922 m with `hold_law` reverted, 899 / 1,041 m before B.9;
+`column_b9.txt`). No run is bad on it. Two state flags stay as at the rollout's start [i, bounds from the laws]:
+* **Hold to inbound.** A holder is never returned to inbound. `sb_frame` does that beyond lim + 1 km (kInboundHystM) and then writes
+  √(60² + 2a(d − lim)). This matters only for a holder whose predicted path leaves lim + 1 km within the 30 s. Its speed is
+  under-predicted by at most v_max − 25 m/s there.
+* **`esc_in10` and `settles`.** An escort whose leader launched and that comes within the script's 10 km during the rollout is written
+  25 m/s for the whole lap from then on. The rollout keeps the lap law (at most 60 m/s on its track), an over-prediction of at most
+  35 m/s, that is 1,050 m over the 30 s (v_max − 25 unringed).
+
+Flight oracle (next run): `x12_pairs.py` 0 column episodes at hold entry; the pair rows'
+`cause`/`gap_m` at any flip.

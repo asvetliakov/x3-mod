@@ -1,0 +1,36 @@
+== before_sibling_off (checks=2276 failures=34; TARGET MISS rows 8)
+  departures   runs 9  warn member 284817  E suppress_ctl 284817  episodes 0  yields 797  unresolved 9  contact 0  min_capsule 145 m
+  dep w0.6r    runs 9  warn member 218524  E suppress_ctl 218524  episodes 0  yields 1000  unresolved 18  contact 0  min_capsule 132 m
+  arrivals     runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2560 m
+  arr w0.6r    runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2558 m
+  mixed        runs 9  warn member 157312  E suppress_ctl 157312  episodes 0  yields 19  unresolved 0  contact 0  min_capsule 600 m
+  dep refused  runs 9  warn member 381833  E suppress_ctl 381833  episodes 0  yields 3121  unresolved 9  contact 0  min_capsule 145 m
+  run162       runs 9  warn member 243706  E suppress_ctl 243706  episodes 0  yields 228  unresolved 18  contact 0  min_capsule 283 m
+  run162 seta  runs 9  warn member 68731  E suppress_ctl 68702  episodes 1  yields 103  unresolved 23  contact 0  min_capsule 245 m
+== before (checks=2276 failures=34; TARGET MISS rows 9)
+  departures   runs 9  warn member 453553  E suppress_ctl 453553  episodes 0  yields 797  unresolved 9  contact 0  min_capsule 145 m
+  dep w0.6r    runs 9  warn member 356411  E suppress_ctl 356411  episodes 0  yields 1000  unresolved 18  contact 0  min_capsule 132 m
+  arrivals     runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2560 m
+  arr w0.6r    runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2558 m
+  mixed        runs 9  warn member 302975  E suppress_ctl 302975  episodes 0  yields 19  unresolved 0  contact 0  min_capsule 600 m
+  dep refused  runs 9  warn member 613411  E suppress_ctl 613411  episodes 0  yields 3121  unresolved 9  contact 0  min_capsule 145 m
+  run162       runs 9  warn member 877655  E suppress_ctl 877655  episodes 0  yields 228  unresolved 18  contact 0  min_capsule 283 m
+  run162 seta  runs 9  warn member 215152  E suppress_ctl 215117  episodes 2  yields 103  unresolved 23  contact 0  min_capsule 245 m
+== after_sibling_off (checks=2276 failures=0; TARGET MISS rows 6)
+  departures   runs 9  warn member 285276  E suppress_ctl 285276  episodes 0  yields 758  unresolved 0  contact 0  min_capsule 136 m
+  dep w0.6r    runs 9  warn member 219011  E suppress_ctl 219011  episodes 0  yields 908  unresolved 0  contact 0  min_capsule 168 m
+  arrivals     runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2560 m
+  arr w0.6r    runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2558 m
+  mixed        runs 9  warn member 157312  E suppress_ctl 157312  episodes 0  yields 19  unresolved 0  contact 0  min_capsule 600 m
+  dep refused  runs 9  warn member 381490  E suppress_ctl 381490  episodes 0  yields 3100  unresolved 0  contact 0  min_capsule 136 m
+  run162       runs 9  warn member 242290  E suppress_ctl 242290  episodes 0  yields 209  unresolved 0  contact 0  min_capsule 302 m
+  run162 seta  runs 9  warn member 68458  E suppress_ctl 68458  episodes 0  yields 104  unresolved 1  contact 0  min_capsule 272 m
+== after (checks=2276 failures=0; TARGET MISS rows 7)
+  departures   runs 9  warn member 454288  E suppress_ctl 454288  episodes 0  yields 758  unresolved 0  contact 0  min_capsule 136 m
+  dep w0.6r    runs 9  warn member 356714  E suppress_ctl 356714  episodes 0  yields 908  unresolved 0  contact 0  min_capsule 168 m
+  arrivals     runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2560 m
+  arr w0.6r    runs 9  warn member 0  E suppress_ctl 0  episodes 0  yields 0  unresolved 0  contact 0  min_capsule 2558 m
+  mixed        runs 9  warn member 302975  E suppress_ctl 302975  episodes 0  yields 19  unresolved 0  contact 0  min_capsule 600 m
+  dep refused  runs 9  warn member 613344  E suppress_ctl 613344  episodes 0  yields 3100  unresolved 0  contact 0  min_capsule 136 m
+  run162       runs 9  warn member 876320  E suppress_ctl 876320  episodes 0  yields 209  unresolved 0  contact 0  min_capsule 302 m
+  run162 seta  runs 9  warn member 214884  E suppress_ctl 214878  episodes 1  yields 104  unresolved 1  contact 0  min_capsule 272 m

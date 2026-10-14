@@ -113,6 +113,20 @@ inline const char* pair_name(PairV v) noexcept {
     static const char* const n[unsigned(PairV::count)] = {"none", "clear", "unresolved"};
     return unsigned(v) < unsigned(PairV::count) ? n[unsigned(v)] : "?";
 }
+// B.9: why a pair's verdict is what it is (the last write of its matrix entry; the pair row's cause=): nocert (no sweep: the pair was
+// reset, a member left or was not live at its decision), cert (clear on both plans), yield (clear after a yield), contact (the sweep found
+// a conflict and no yield candidate cleared it), budget (a conflict whose yield was not tried: the decision's yields were spent), stale
+// (the rollouts too far apart in time or too short an overlap), zero (a rollout without samples), noyield (B.9 review: a conflict whose
+// designated yielder could not yield: no steered order (can_yield) or no candidate on its ladder). kPairWhyPlan is or-ed in when the
+// member whose rollout wrote the entry (the deciding member; a yielder's own for the rows its yield wrote, with the decider's or-ed into
+// their shared pair) changed its plan since its previous rollout (plan_changed; the row's trig=plan, else clock).
+enum class PairWhy : std::uint8_t { nocert = 0, cert, yield, contact, budget, stale, zero, noyield, count };
+constexpr std::uint8_t kPairWhyPlan = 0x80;
+inline const char* pair_why_name(std::uint8_t w) noexcept {
+    static const char* const n[unsigned(PairWhy::count)] = {"nocert", "cert", "yield", "contact", "budget", "stale", "zero", "noyield"};
+    w &= std::uint8_t(~kPairWhyPlan);
+    return w < unsigned(PairWhy::count) ? n[w] : "?";
+}
 // Why a member left the board or changed role (the ship_gate_ctl row).
 enum class Why : std::uint8_t { enter = 0, commit, handover, escort, arrival, evict, order, target, expire, identity, leader, window, reenter,
                                 hold, release, go_around, dock, launch, inbound, skip, rejoin, gone, sector, count };
@@ -160,9 +174,13 @@ struct Member {
     State st;
     std::uint32_t roll_ms = 0;  // the rollout's t0 (= the state's ms)
     std::uint32_t decided_ms = 0;
+    float roll_v = -1.0f;       // B.9: the plan speed, plan and stage the member's own rollout was made on (plan_changed)
+    Plan roll_plan = Plan::drift;
+    Sb roll_sb = Sb::none;
     float v_roll_max = 0;       // the largest speed over the rollout (the time-offset margin)
     float cap = -1.0f;          // the yield cap (m/s, < 0 none)
     std::uint32_t cap_ms = 0;
+    std::uint32_t yield_ms = 0; // B.9 review: the decision that set the cap (try_yield); cap_ms is also refreshed while an order-0 gap keeps it
     // stage B (B.1): the stage, the petal, the sequence key (seq << 4; an escort: its leader's key + 1 + its rank), the reservation
     // (an escort's key holds until res_until; 0 while its leader is present), the release plan, Q and the final lines (gate-frame R, U)
     Sb sb = Sb::none;
@@ -207,6 +225,8 @@ struct Gate {
     Member m[kMembers];
     std::uint8_t v[kMembers][kMembers] = {};  // PairV
     std::uint8_t tc[kMembers][kMembers] = {}; // the first conflict sample of the last sweep (255 none)
+    std::uint8_t why[kMembers][kMembers] = {}; // B.9: PairWhy of the last write (| kPairWhyPlan: its decision's member had a plan change)
+    std::uint8_t why_plan = 0;                 // B.9: kPairWhyPlan during a decision whose member's plan changed (decide), else 0
     std::uint32_t vms[kMembers][kMembers] = {};
     std::uint8_t logged[kMembers][kMembers] = {}; // the last PairV a ship_gate_ctl_pair row carried
     std::uint32_t logged_ms[kMembers][kMembers] = {};
@@ -219,6 +239,7 @@ struct Gate {
     std::uint32_t petal_ship[kPetals] = {};
     std::uint32_t funnel_ship = 0, funnel_end_ms = 0, slot_block_ms = 0, last_arrival_seen = 0;
     std::uint32_t sb_go_arounds = 0, sb_releases = 0, sb_last_ms = 0, sb_tail_key = 0;
+    std::uint32_t head_t_ms = 0; // B.9 review 2: the lap target sb_frame gives the head this frame (t_next's rule; 0 before its first run)
     std::uint32_t sb_skips = 0, seq_row_ms = 0; // B.2: head skips at this gate; the DLL's last ship_gate_ctl_seq row (one per game second)
     std::uint32_t o0_ms[kMembers][kMembers] = {}; // review F5: the last order-0 pair row per pair (one per second; the DLL's --debug)
     std::uint32_t pass_ms[kMembers][kMembers] = {}; // Run161: the last E pass row per pair (one per second; the DLL's --debug)
@@ -403,6 +424,7 @@ inline void clear_pairs(Gate& g, unsigned i) noexcept {
     for (unsigned j = 0; j < kMembers; ++j) {
         g.v[i][j] = g.v[j][i] = 0;
         g.tc[i][j] = g.tc[j][i] = 255;
+        g.why[i][j] = g.why[j][i] = std::uint8_t(PairWhy::nocert);
         g.vms[i][j] = g.vms[j][i] = 0;
         g.logged[i][j] = g.logged[j][i] = 0;
         g.logged_ms[i][j] = g.logged_ms[j][i] = 0;
@@ -509,6 +531,9 @@ inline void leave(Gate& g, unsigned i, bool evict, std::uint32_t now) noexcept {
     clear_pairs(g, i);
     m.n = 0;
     m.cap = -1.0f;
+    m.cap_ms = m.yield_ms = 0; // B.9 review (item 3): a re-entering member resumes no old cap or plan speed
+    m.v_plan = -1.0f;
+    m.v_plan_ms = 0;
     m.decided_ms = 0;
     if (evict) {
         m.role = Role::evicted;
@@ -862,6 +887,12 @@ __attribute__((always_inline)) inline float petal_join(const Gate& g, const Peta
     *d_join = sc::sqrt_ss((a - ta) * (a - ta) + (b - tb) * (b - tb) + o * o);
     return s;
 }
+// B.9 review: the holder's state the speed laws read (lap_at, hold_law): its components along F, the petal's e and the plane's normal n
+// from G, its nose . F, and whether it reached its ring. hold_state takes it from the live state; the petal rollout from its samples.
+struct HoldState {
+    float a = 0, b = 0, o = 0, f_F = 1.0f;
+    bool ringed = false;
+};
 // The petal's carrot for a ship at (a, b) flying at v: the racetrack point the pursuit's look-ahead beyond the nearest one.
 __attribute__((always_inline)) inline void petal_carrot(const PetalGeom& pg, float r_gate, float W, float a, float b, float v, float* ta,
                                                         float* tb) noexcept {
@@ -893,9 +924,11 @@ __attribute__((always_inline)) inline float ring_extent(const Gate& g, const Mem
     const float bc = pg.rho + kPetalRh;
     return sc::sqrt_ss(pg.a0 * pg.a0 + bc * bc) + kPetalRh;
 }
-// The plant step of sc::plant_step toward an explicit target (tx, ty) in the plane (the petal's carrot); the same arithmetic.
+// The plant step of sc::plant_step toward an explicit target (tx, ty) in the plane (the petal's carrot); the same arithmetic. k_in (B.9):
+// the in-plane share of the step's travel (1 in the plane; an entering ship flying the 3-D line to an in-plane carrot moves d_in / d0 of it
+// in the plane and the rest out of it).
 __attribute__((always_inline)) inline void plant_step_to(const sc::JoinParams& p, float v_des, float dt, float k_lag, float tx, float ty, float& x,
-                                                         float& y, float& psi, float& upsi, float& w, float& v) noexcept {
+                                                         float& y, float& psi, float& upsi, float& w, float& v, float k_in = 1.0f) noexcept {
     const float theta = sc::wrap_pi(sc::atan2_f(ty - y, tx - x) - psi);
     const float a = sc::fabs_f(theta);
     float w_cmd = sc::sqrt_ss(p.alpha * a);
@@ -929,8 +962,8 @@ __attribute__((always_inline)) inline void plant_step_to(const sc::JoinParams& p
     upsi = sc::wrap_pi(upsi + sc::wrap_pi(psi - upsi) * k_lag);
     float su, cu;
     sc::sincos_f(upsi, &su, &cu);
-    x += v * cu * dt;
-    y += v * su * dt;
+    x += k_in * v * cu * dt;
+    y += k_in * v * su * dt;
 }
 // The planar state of a ship in a fixed plane through G spanned by (h, n) (the petal's F and e): (s, y) = the components of x - G,
 // psi and upsi the nose's and the velocity's angles from h toward n, w the in-plane body rate (join_plane's projection).
@@ -983,11 +1016,14 @@ inline bool yields_to(const Member& a, const Member& b) noexcept {
 }
 // The yield needs a steered order whose speed site B writes: a committed approach on order 4 (the line plan) or an escort on
 // 0x14 / 0x15.
-inline bool can_yield(const Member& m) noexcept {
-    if (m.role == Role::committed) return m.st.order == sc::kOrderFlyBefore && m.line_ok;
-    if (m.role == Role::escort) return m.st.order == sc::kOrderEscort || m.st.order == sc::kOrderFollow;
+// B.9 review: site B tests it on the live order of its call (can_yield_on), not the last observed state's order: the first steered
+// write after an order-0 gap applies the cap.
+inline bool can_yield_on(const Member& m, std::uint16_t order) noexcept {
+    if (m.role == Role::committed) return order == sc::kOrderFlyBefore && m.line_ok;
+    if (m.role == Role::escort) return order == sc::kOrderEscort || order == sc::kOrderFollow;
     return false;
 }
+inline bool can_yield(const Member& m) noexcept { return can_yield_on(m, m.st.order); }
 
 // ---- the rollout ------------------------------------------------------------------------------------------------------------------
 // A member on order 0 inside the script's re-issue gap whose last steered plan is one the rollout can continue.
@@ -1011,6 +1047,28 @@ __attribute__((always_inline)) inline bool gap_plan(const Member& m) noexcept {
     return m.last_plan == Plan::follow;
 }
 inline Plan plan_of(const Member& m) noexcept;
+// B.9 review: the holder's speed law (defined with sb_frame's hold_speed) the petal rollout flies
+__attribute__((always_inline)) inline float hold_law(const Member& m, const PetalGeom& pg, float open, bool settles, const HoldState& h,
+                                                     std::uint32_t t_rel, std::int32_t dt_ms) noexcept;
+__attribute__((always_inline)) inline float hold_open(const Member& m, const PetalGeom& pg) noexcept;
+__attribute__((always_inline)) inline bool escort_settles(const Member& m, const PetalGeom& pg) noexcept;
+__attribute__((always_inline)) inline std::uint32_t escort_target(const Gate& g, const Member& m, std::uint32_t now) noexcept;
+inline bool seq_before(const Gate& g, const Member& a, const Member& b) noexcept;
+// B.9 review: the lap target sb_frame gives the member, for its petal rollout: a holder's last (t_rel_ms); an inbound escort's own
+// (escort_target); an inbound committed member on order 4 with Q that no live committed holder on order 4 precedes in sequence (it is the
+// head once in hold) the head's target (head_t_ms); else none (the nominal 40 m/s).
+inline std::uint32_t rollout_target(const Gate& g, const Member& m) noexcept {
+    if (m.sb == Sb::hold) return m.t_rel_ms;
+    if (m.sb != Sb::inbound) return 0;
+    if (m.role == Role::escort) return escort_target(g, m, m.st.ms);
+    if (m.role != Role::committed || m.st.order != sc::kOrderFlyBefore || !m.q_ok) return 0;
+    for (unsigned i = 0; i < g.n; ++i) {
+        const Member& o = g.m[i];
+        if (&o == &m || !live(g, o, m.st.ms)) continue;
+        if (o.role == Role::committed && o.sb == Sb::hold && o.st.order == sc::kOrderFlyBefore && o.q_ok && seq_before(g, o, m)) return 0;
+    }
+    return g.head_t_ms;
+}
 // The state read's bookkeeping (site B, the decision): a read on the role's steered order stamps steered_ms and records its plan.
 inline void note_state(Member& m) noexcept {
     const std::uint16_t o = m.st.order;
@@ -1045,15 +1103,38 @@ inline Plan plan_of(const Member& m) noexcept {
         return (m.sb == Sb::hold || m.sb == Sb::inbound) && m.petal >= 0 ? Plan::petal : Plan::follow;
     return Plan::drift;
 }
+// B.9 review (item 3): the yield cap in force at the state's read (set within the cap's age and not released; -1 none). In the order-0
+// gap a decision whose rollout cleared on it keeps it in force (decide: re-stamped, never released there), so site B applies it when the
+// script re-issues the steered order: the speed the gap's rollout resumes at is the speed site B will write.
+// The age is taken at now, site B's clock (its test: now - cap_ms <= the cap's age); now 0: the state's read (the fixture's units).
+__attribute__((always_inline)) inline float cap_in_force(const Gate& g, const Member& m, std::uint32_t now = 0) noexcept {
+    const std::uint32_t t = now ? now : m.st.ms;
+    return m.cap >= 0.0f && m.cap_ms && std::int32_t(t - m.cap_ms) <= std::int32_t(age_bound(g, kCapMaxAgeMs)) ? m.cap : -1.0f;
+}
 // The plan's speed: the module's own speed before a yield cap when known and fresh, else the desired speed site B left.
-inline float plan_speed(const Gate& g, const Member& m) noexcept {
+inline float plan_speed(const Gate& g, const Member& m, std::uint32_t now = 0) noexcept {
     const std::uint32_t cap_age = age_bound(g, kCapMaxAgeMs); // B.3 item 1
     if (m.st.order == sc::kOrderNone) { // the order-0 gap: the last plan's speed (the rollout brakes for the gap's rest first)
-        if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= kGapMs + cap_age) return m.v_plan;
+        // B.9: the resume speed is the one site B writes once the script re-issues the order: the module's plan speed, under the yield
+        // cap when it is still in force (cap_in_force; the first decision on the steered order after the gap re-yields or releases it)
+        if (m.v_plan > 0.0f && m.v_plan_ms && std::int32_t(m.st.ms - m.v_plan_ms) <= std::int32_t(kGapMs + cap_age)) {
+            const float c = cap_in_force(g, m, now);
+            return c >= 0.0f && c < m.v_plan ? c : m.v_plan;
+        }
         return m.st.v > 0.0f ? m.st.v : 0.0f;
     }
-    if (m.v_plan > 0.0f && m.v_plan_ms && m.st.ms - m.v_plan_ms <= cap_age) return m.v_plan;
+    // B.9 review: the age is signed: site A records v_plan at each decision, after site B's last state read (st.ms, every 100 ms), so
+    // a fresh v_plan is often newer than the state; unsigned, that wrapped and fell back to the capped v_des (the yielder's ladder then
+    // started from its own cap: empty at 25 m/s on a petal)
+    if (m.v_plan > 0.0f && m.v_plan_ms && std::int32_t(m.st.ms - m.v_plan_ms) <= std::int32_t(cap_age)) return m.v_plan;
     return m.st.v_des > 0.0f ? m.st.v_des : 0.0f;
+}
+// B.9 review: whether plan_speed takes the module's own v_plan (fresh: the module writes this member's speed), not the desired speed site
+// B left or the braking state's.
+__attribute__((always_inline)) inline bool plan_written(const Gate& g, const Member& m) noexcept {
+    const std::uint32_t cap_age = age_bound(g, kCapMaxAgeMs);
+    const std::uint32_t lim = m.st.order == sc::kOrderNone ? kGapMs + cap_age : cap_age;
+    return m.v_plan > 0.0f && m.v_plan_ms && std::int32_t(m.st.ms - m.v_plan_ms) <= std::int32_t(lim);
 }
 __attribute__((always_inline)) inline void put(Sample& s, const float c[3], const float f[3]) noexcept {
     for (unsigned i = 0; i < 3; ++i) {
@@ -1108,7 +1189,7 @@ inline void line_of(const Member& m, const Gate& g, float X[3], float h[3]) noex
 // moves follow its kinematics (section 10.10): 0x21 the warp-in path to f+0x240, then 0x1e; 0x1e axis-parallel out at 120 / 240 m/s
 // until |dz| > r (r / 4 for small hulls), then straight on; order 8 along +F for 0.9 s, then gone; order 0 braking along the nose at
 // a; 0x1f in place; order 5 at its speed toward f+0x240 until the order's arrival radius (|v| / 10 + r), then gone.
-inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out, float* vmax) noexcept {
+inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out, float* vmax, std::uint32_t now = 0) noexcept {
     const Plan plan = plan_of(m);
     float f0[3] = {m.st.rows[2][0], m.st.rows[2][1], m.st.rows[2][2]};
     {
@@ -1130,7 +1211,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         float nn[3], LX[3], Lh[3];
         line_of(m, g, LX, Lh); // the grid line, or (stage B, in the funnel) Lambda_4
         if (!line_plane(m, LX, Lh, &st, nn)) break;
-        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(g, m);
+        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(g, m, now);
         const float t_brake = gap_brake_s(m); // the order-0 gap: desired 0 for its expected rest, then the plan (Opus question 5)
         const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau), a_along = sc::kGateCrossFraction * m.params.r_gate;
         float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
@@ -1182,21 +1263,103 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         if (!plane_state(g.G, g.F, pg.e, m.st.x, m.st.rows, m.st.w, m.st.u, m.st.v, &st) || !(m.params.W > 1e-4f) || !(m.params.alpha > 1e-6f))
             break;
         float off = (m.st.x[0] - g.G[0]) * pg.n[0] + (m.st.x[1] - g.G[1]) * pg.n[1] + (m.st.x[2] - g.G[2]) * pg.n[2];
-        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(g, m);
+        const float v_des = v_cmd >= 0.0f ? v_cmd : plan_speed(g, m, now);
         const float t_brake = gap_brake_s(m);
         const float k_lag = sc::one_minus_exp_neg(kStepS / sc::kSlipTau);
         float x = st.s, y = st.y, psi = st.psi, upsi = st.upsi, w = st.w, v = st.v;
         const float psi0 = psi;
+        // B.9 (Run168 column evictions): an inbound member's plan speed is sb_frame's law of its distance d to G, v_max braking at a_lin
+        // to the petals' 60 m/s at its boundary lim (its ring's extent + kInboundM), where it turns to hold: the rollout flies that law
+        // along its path. The square root only inside the law's reach: d^2 < (lim + (v^2 - 60^2) / 2a)^2. B.9 review: past lim (and for a
+        // holder from the start) the rollout flies hold_law, the speed sb_frame's hold_speed writes, on its own rolled-out state (arc, join
+        // distance, nose . F, ringed once within the ring's extent; the target's time advancing with the rollout), once per sample and at
+        // each stage or ring change: B.8's join profile up to v_max for a late unringed holder, the lap law once on its track, 25 m/s where
+        // the plan dwells or the escort settled. Site B writes either under the gate speed with the cornering cap (core::steer's rule on
+        // the steering point: omega d / (2 sin theta), omega d / 2 behind the nose; omega the slower axis, at most the slip's corner rate),
+        // which the rollout evaluates on its own nose and carrot with the law; under the candidate (a yield) or the yield cap in force
+        // through an order-0 gap. An escort beyond the script's radius after its leader's launch on 0x15 flies sb_steer's 60 m/s there. The
+        // target: the one sb_frame gives the member (rollout_target). A member whose speed the module does not write (no fresh v_plan) flies
+        // the desired speed site B left, under the inbound law.
+        bool inb = m.sb == Sb::inbound, ringed = m.ringed != 0 && !inb, eval = true;
+        const float bc = pg.rho + kPetalRh, ext = sc::sqrt_ss(pg.a0 * pg.a0 + bc * bc) + kPetalRh; // ring_extent
+        const float lim = ext + kInboundM, lim2 = lim * lim, ext2 = ext * ext;
+        const float a_law = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f;
+        const bool writes = v_cmd >= 0.0f || plan_written(g, m);
+        float top = sc::gate_speed(m.params.v_max, m.large != 0, 0.0f);
+        if (v_cmd >= 0.0f) top = v_cmd;
+        else if (in_gap(m)) {
+            const float cf = cap_in_force(g, m, now);
+            if (cf >= 0.0f && cf < top) top = cf;
+        }
+        const float v_top = writes ? top : v_des;
+        const float reach = lim + (v_top > kPetalVmax ? (v_top * v_top - kPetalVmax * kPetalVmax) / (2.0f * a_law) : 0.0f), reach2 = reach * reach;
+        const std::uint32_t t_rel = rollout_target(g, m);
+        const std::int32_t dt0 = std::int32_t(t_rel - m.st.ms);
+        const float open = t_rel ? hold_open(m, pg) : kWinOpenS;
+        const bool settles = escort_settles(m, pg);
+        const bool far = m.role == Role::escort && m.res_until && (!m.esc_in10 || !petal_near(pg)) && m.st.order == sc::kOrderFollow;
+        const float omega = m.params.W < sc::kSlipCornerRate ? m.params.W : sc::kSlipCornerRate;
+        float v_hold = top, v_corner = top, f_F = sc::dot3(f0, g.F), f_e = sc::dot3(f0, pg.e), f_n = sc::dot3(f0, pg.n);
         for (unsigned k = 0; k < kSamples; ++k) {
             for (unsigned step = 0; k && step < 2; ++step) {
+                const float d2 = x * x + y * y + off * off; // c - G in the orthonormal (F, e, n)
+                if (inb && d2 <= lim2) { // the boundary: hold
+                    inb = false;
+                    eval = true;
+                }
+                if (!inb && !ringed && d2 <= ext2) { // at its ring
+                    ringed = true;
+                    eval = true;
+                }
                 float ta, tb;
-                const bool entering = m.sb == Sb::inbound || !m.ringed;
+                const bool entering = inb || !ringed;
                 if (entering) inbound_carrot(pg, m.params.r_gate, m.params.W, x, y, off, v, &ta, &tb);
                 else petal_carrot(pg, m.params.r_gate, m.params.W, x, y, v, &ta, &tb);
                 // review N4: sb_steer's carrot lies in the petal's plane, so an entering ship's out-of-plane offset decays along its path:
-                // the 3-D line to the carrot shrinks it with the in-plane distance (the rollout predicts the flown path)
-                const float d0 = sc::sqrt_ss((ta - x) * (ta - x) + (tb - y) * (tb - y) + off * off);
-                plant_step_to(m.params, float(k) * kSampleS < t_brake ? 0.0f : v_des, kStepS, k_lag, ta, tb, x, y, psi, upsi, w, v);
+                // the 3-D line to the carrot shrinks it with the in-plane distance (the rollout predicts the flown path). B.9 (Run168): the
+                // step's travel splits along that line, d_in / d0 in the plane and off / d0 out of it (the in-plane advance at the full speed
+                // flew a ship crossing toward its petal's plane, e.g. an escort arriving from the side on the plane's normal, up to its
+                // whole speed too far along F and e: 0.8 km in 10 s for the fixture's column front, the sweep then certified a closing pair)
+                const float din2 = (ta - x) * (ta - x) + (tb - y) * (tb - y), d0 = sc::sqrt_ss(din2 + off * off);
+                const float k_in = entering && d0 > 1.0f ? sc::sqrt_ss(din2) / d0 : 1.0f;
+                if (writes && (eval || step == 0)) {
+                    if (!inb) {
+                        HoldState h;
+                        h.a = x;
+                        h.b = y;
+                        h.o = off;
+                        h.f_F = f_F;
+                        h.ringed = ringed;
+                        const std::int32_t t_ms = std::int32_t(k - 1u) * std::int32_t(kSampleMs) + std::int32_t(step) * std::int32_t(kSampleMs / 2u);
+                        v_hold = far && d2 > kEscortSwitchM * kEscortSwitchM * 0.9f ? kPetalVmax : hold_law(m, pg, open, settles, h, t_rel, dt0 - t_ms);
+                    }
+                    v_corner = top; // the cornering cap on the last sample's nose toward this step's carrot (core::steer; floored as gate_speed)
+                    if (d0 > 1.0f) {
+                        const float cs = (f_F * (ta - x) + f_e * (tb - y) - f_n * off) / d0;
+                        float vc = 3.4e38f;
+                        if (cs < 0.0f) vc = omega * d0 * 0.5f;
+                        else {
+                            const float sn2 = 1.0f - cs * cs, sn = sn2 > 0.0f ? sc::sqrt_ss(sn2) : 0.0f;
+                            if (sn > sc::kCornerSinMin) vc = omega * d0 / (2.0f * sn);
+                        }
+                        if (vc < sc::kFloorMs) vc = sc::kFloorMs;
+                        if (vc < v_corner) v_corner = vc;
+                    }
+                    eval = false;
+                }
+                float vd;
+                if (float(k) * kSampleS < t_brake) vd = 0.0f;
+                else if (!writes) vd = v_des;
+                else {
+                    vd = inb ? top : v_hold < top ? v_hold : top;
+                    if (v_corner < vd) vd = v_corner;
+                }
+                if (inb && vd > kPetalVmax && d2 < reach2) {
+                    const float dd = sc::sqrt_ss(d2) - lim;
+                    const float vl = dd > 0.0f ? sc::sqrt_ss(kPetalVmax * kPetalVmax + 2.0f * a_law * dd) : kPetalVmax;
+                    if (vl < vd) vd = vl;
+                }
+                plant_step_to(m.params, vd, kStepS, k_lag, ta, tb, x, y, psi, upsi, w, v, k_in);
                 if (entering && d0 > 1.0f) {
                     const float travel = v * kStepS;
                     off *= travel < d0 ? 1.0f - travel / d0 : 0.0f;
@@ -1210,6 +1373,9 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
             const float af = sc::dot3(ax, f0);
             const float f[3] = {f0[0] * cp + axf[0] * sp + ax[0] * af * (1.0f - cp), f0[1] * cp + axf[1] * sp + ax[1] * af * (1.0f - cp),
                                 f0[2] * cp + axf[2] * sp + ax[2] * af * (1.0f - cp)};
+            f_F = sc::dot3(f, g.F);
+            f_e = sc::dot3(f, pg.e);
+            f_n = sc::dot3(f, pg.n);
             put(out[n++], c, f);
             if (v > *vmax) *vmax = v;
         }
@@ -1482,6 +1648,45 @@ inline Sweep sweep_seta(const Sample* sa, unsigned na, std::uint32_t a_ms, float
                         std::uint32_t max_dms) noexcept {
     return sweep_impl<0>(sa, na, a_ms, a_vmax, La, wa, sb, nb, b_ms, b_vmax, Lb, wb, min_samples, ends, drift, max_dms);
 }
+// B.9 (diagnostic, off the decision path): the sweep's minimum gap over the paired samples of two stored rollouts, every sample narrow:
+// min over i of (the capsules' surface gap - the sweep's margin at i: kMarginM + the residual offset x B's largest speed + the drift
+// k (t + |t0_A - t0_B|) + |du|_1 dt / 2), its sample, and the first sample below 0 (255 none). ok = false when the rollouts are too far
+// apart in time (max_dms) or share fewer paired samples than the sweep needs (min_samples, never below kMinOverlapSamples; one with ends:
+// overlap_min; B.9 review: gap_m is na where the verdict is stale). The pair row (on a verdict change) and the fixture call it (pair_scan);
+// ~61 capsule tests.
+struct GapScan {
+    bool ok = false;
+    unsigned i_min = 255, t_c = 255;
+    float min_gap = 1e30f;
+};
+inline GapScan gap_scan(const Sample* sa, unsigned na, std::uint32_t a_ms, float La, float wa, const Sample* sb, unsigned nb, std::uint32_t b_ms,
+                        float b_vmax, float Lb, float wb, std::uint32_t max_dms, unsigned min_samples, bool ends, float drift = kDriftMs) noexcept {
+    GapScan out;
+    const std::int32_t dms = std::int32_t(a_ms - b_ms), lim = std::int32_t(max_dms);
+    if (dms > lim || dms < -lim) return out;
+    const std::int32_t koff = dms >= 0 ? (dms + std::int32_t(kSampleMs / 2)) / std::int32_t(kSampleMs)
+                                       : -((-dms + std::int32_t(kSampleMs / 2)) / std::int32_t(kSampleMs));
+    const float resid = sc::fabs_f(float(dms - koff * std::int32_t(kSampleMs))) * 0.001f;
+    const std::int32_t i0 = koff < 0 ? -koff : 0;
+    std::int32_t i1 = std::int32_t(na);
+    if (std::int32_t(nb) - koff < i1) i1 = std::int32_t(nb) - koff;
+    if (i1 - i0 < (ends ? 1 : std::int32_t(min_samples < kMinOverlapSamples ? kMinOverlapSamples : min_samples))) return out;
+    out.ok = true;
+    const Sample* B = sb + koff;
+    float base = kMarginM + resid * b_vmax + drift * (kSampleS * float(i0) + float(dms >= 0 ? dms : -dms) * 0.001f);
+    for (std::int32_t i = i0; i < i1; ++i, base += drift * kSampleS) {
+        const std::int32_t nx = i + 1 < i1 ? i + 1 : i > i0 ? i - 1 : i;
+        const float du1 = sc::fabs_f((sa[nx].c[0] - sa[i].c[0]) - (B[nx].c[0] - B[i].c[0])) + sc::fabs_f((sa[nx].c[1] - sa[i].c[1]) - (B[nx].c[1] - B[i].c[1])) +
+                          sc::fabs_f((sa[nx].c[2] - sa[i].c[2]) - (B[nx].c[2] - B[i].c[2]));
+        const float gap = capsule_gap(sa[i].c, sa[i].f, La, wa, B[i].c, B[i].f, Lb, wb) - base - 0.5f * du1;
+        if (gap < out.min_gap) {
+            out.min_gap = gap;
+            out.i_min = unsigned(i);
+        }
+        if (gap < 0.0f && out.t_c == 255) out.t_c = unsigned(i);
+    }
+    return out;
+}
 
 // ---- one decision --------------------------------------------------------------------------------------------------------------
 // A verdict change for the pair rows (the DLL logs it at most once per pair per second; the fixture counts it).
@@ -1492,6 +1697,7 @@ struct PairEvent {
 };
 struct DecideStats {
     unsigned rollouts = 0, sweeps = 0, narrow = 0, conflicts = 0, yields = 0, unresolved = 0, candidates = 0, released = 0;
+    unsigned replans = 0; // B.9: decisions whose member's plan changed since its previous rollout (plan_changed)
 };
 constexpr unsigned kMaxEvents = 2 * kMembers;
 // The paired samples a sweep needs (fail closed below it): the engine's warn reach in time, 1 s plus its braking term min(600 m, v^2 / 2a)
@@ -1510,11 +1716,20 @@ inline unsigned warn_reach_samples(const Member& a, const Member& b) noexcept {
     if (n < kMinOverlapSamples) n = kMinOverlapSamples;
     return n > kSamples ? kSamples : n;
 }
+// The paired samples a sweep of A's rollout (na samples) against B's needs (sweep_all; pair_scan uses the same): a rollout that ends because
+// order 8 is live on the leaving ship is complete with one paired sample (*ends); one that ends at the order-5 trigger (line5) keeps the
+// 4-sample minimum but not the warn reach (review F13); else the warn reach.
+inline unsigned overlap_min(const Member& A, unsigned na, const Member& B, bool* ends) noexcept {
+    const bool launching = (B.n < kSamples && plan_of(B) == Plan::launch) || (na < kSamples && plan_of(A) == Plan::launch);
+    const bool triggering = (B.n < kSamples && plan_of(B) == Plan::line5) || (na < kSamples && plan_of(A) == Plan::line5);
+    *ends = launching;
+    return triggering && !launching ? kMinOverlapSamples : warn_reach_samples(A, B);
+}
 // Every pair of member i with the other live members, swept against the rollout s (n samples, t0 = i's state). write: the matrix row
 // of i takes the verdicts (clear, or none for a conflict) and *conflicts the bit of each conflicting partner; !write (a yield
 // candidate): stops at the first conflict. Returns whether every pair cleared.
 inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vmax, std::uint32_t now, bool write, std::uint32_t* conflicts,
-                      DecideStats* st) noexcept {
+                      DecideStats* st, PairWhy clear_why = PairWhy::cert) noexcept {
     const Member& A = g.m[i];
     bool all = true;
     for (unsigned j = 0; j < g.n; ++j) {
@@ -1523,14 +1738,12 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
         ++st->sweeps;
         // fail closed: no samples on either side, a rollout more than 1 s from the other, too short an overlap -> no verdict (none:
         // the engine's warn and the sphere avoidance), not a conflict to resolve
-        // a rollout that ends because order 8 is live on the leaving ship is complete with one paired sample; one that ends at the order-5
-        // trigger (line5) keeps the 4-sample minimum but not the warn reach (review F13)
-        const bool launching = (B.n < kSamples && plan_of(B) == Plan::launch) || (n < kSamples && plan_of(A) == Plan::launch);
-        const bool triggering = (B.n < kSamples && plan_of(B) == Plan::line5) || (n < kSamples && plan_of(A) == Plan::line5);
+        // the overlap's minimum (overlap_min: one sample when a rollout ends at a launch, review F13)
+        bool launching;
+        const unsigned min_s = overlap_min(A, n, B, &launching);
         // (a member in the order-0 gap brakes in its rollout for the gap's expected rest: gap_brake_s; the drift k stays kDriftMs)
         const float drift = kDriftMs;
         // B.3: the rollouts' time offset bound is SETA-aware; the nominal bound keeps the constant sweep (sweep_impl)
-        const unsigned min_s = triggering && !launching ? kMinOverlapSamples : warn_reach_samples(A, B);
         // review F5: the bound is nominal + step on every frame; at normal steps (bound <= kSweepNormalMs) the exact bound is checked here
         // and the sweep compiled for the constant kSweepNormalMs runs (its own check never fires then)
         const std::uint32_t max_dms = age_bound(g, kRolloutMaxAgeMs);
@@ -1545,6 +1758,8 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
         if (write) {
             g.v[i][j] = g.v[j][i] = std::uint8_t(w.clear ? PairV::clear : PairV::none);
             g.tc[i][j] = g.tc[j][i] = std::uint8_t(w.t_c);
+            const PairWhy why = w.clear ? clear_why : !(B.n && n) ? PairWhy::zero : w.stale ? PairWhy::stale : PairWhy::contact; // B.9
+            g.why[i][j] = g.why[j][i] = std::uint8_t(std::uint8_t(why) | g.why_plan);
             g.vms[i][j] = g.vms[j][i] = now ? now : 1;
         }
         if (!w.clear) {
@@ -1555,12 +1770,22 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
     }
     return all;
 }
+// B.9 review (item 2): a member in the script's order-0 re-issue gap on a steered plan (in_gap) yields too, deferred: nothing is written
+// on order 0 (site B applies a cap only on the steered order, can_yield), the cap holds the gap's resume, which site B writes once the
+// script re-issues the order; the candidate's rollout brakes for the gap's rest, then flies the candidate (and decide keeps a cap the
+// gap's rollout cleared on in force through the gap). A committed member needs its validated line (can_yield's).
+__attribute__((always_inline)) inline bool gap_yield(const Member& m) noexcept {
+    return in_gap(m) && (m.role == Role::escort || (m.role == Role::committed && m.line_ok));
+}
 // Y's yield by speed: Y's current plan at 0.6 v, then 25 m/s, then the 10 m/s floor (each below the plan's speed); a new rollout
-// and sweeps against every member each; the first that clears every pair is taken (Y's rollout, Y's cap, Y's row of the matrix).
-inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st) noexcept {
+// and sweeps against every member each; the first that clears every pair is taken (Y's rollout, Y's cap, Y's row of the matrix; the
+// row's entries carry plan_flag, Y's own plan change). *swept (B.9 review): whether a candidate was rolled out at all (false: Y cannot
+// yield, no steered order or an empty ladder).
+inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st, std::uint8_t plan_flag, bool* swept) noexcept {
     Member& Y = g.m[y];
-    if (!can_yield(Y)) return false;
-    const float v = plan_speed(g, Y) > 0.0f ? plan_speed(g, Y) : Y.st.v;
+    *swept = false;
+    if (!can_yield(Y) && !gap_yield(Y)) return false;
+    const float vp = plan_speed(g, Y, now), v = vp > 0.0f ? vp : Y.st.v;
     const float cand[3] = {kYieldFrac * v, kYieldMidMs, kYieldFloorMs};
     const float floor = plan_of(Y) == Plan::petal ? kPetalVmin : kYieldFloorMs; // stage B: a petal holder never below 25 m/s (D.7 item 6)
     Sample tmp[kSamples];
@@ -1568,20 +1793,34 @@ inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st) n
         if (!(c >= floor) || !(c < v)) continue;
         ++st->candidates;
         ++st->rollouts;
+        *swept = true;
         float vmax = 0.0f;
-        const unsigned n = rollout(Y, g, c, tmp, &vmax);
+        const unsigned n = rollout(Y, g, c, tmp, &vmax, now);
         if (!n || !sweep_all(g, y, tmp, n, vmax, now, false, nullptr, st)) continue;
         for (unsigned k = 0; k < n; ++k) Y.s[k] = tmp[k];
         Y.n = std::uint8_t(n);
         Y.roll_ms = Y.st.ms;
         Y.v_roll_max = vmax;
         Y.cap = c;
-        Y.cap_ms = now ? now : 1;
-        sweep_all(g, y, Y.s, Y.n, Y.v_roll_max, now, true, nullptr, st);
+        Y.cap_ms = Y.yield_ms = now ? now : 1;
+        const std::uint8_t decider_flag = g.why_plan;
+        g.why_plan = plan_flag;
+        sweep_all(g, y, Y.s, Y.n, Y.v_roll_max, now, true, nullptr, st, PairWhy::yield);
+        g.why_plan = decider_flag;
         ++st->yields;
         return true;
     }
     return false;
+}
+// B.9 (diagnostic): whether a member's plan changed since its own rollout: another plan or stage (inbound -> hold: the lap law replaces
+// the inbound law's 60 m/s), or a plan speed more than kPlanDeltaMs from the rollout's (a lap-law step, the order-0 gap's resume). The
+// verdicts its next decision writes carry kPairWhyPlan (the pair row's trig=plan). It schedules no decision (gate-traffic-controller.md
+// B.9: the plan speed's fallbacks flip it every ~100 ms). The inbound law's own decrease (a_lin x 250 ms <= 2.5 m/s) stays under it.
+constexpr float kPlanDeltaMs = 5.0f;
+inline bool plan_changed(const Gate& g, const Member& m, std::uint32_t now = 0) noexcept {
+    if (!m.n || !m.decided_ms) return false;
+    if (plan_of(m) != m.roll_plan || m.sb != m.roll_sb) return true;
+    return sc::fabs_f(plan_speed(g, m, now) - m.roll_v) > kPlanDeltaMs;
 }
 // Member i's decision (D.1): its rollout on its plan's speed (a yield cap lapses when that clears every pair), the sweeps against every
 // live member, the yield of the lower-priority ship of each conflict pair (at most kMaxYieldsPerDecision resolutions; i itself at most
@@ -1589,6 +1828,7 @@ inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st) n
 // i's row go to ev (at most kMaxEvents).
 inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, PairEvent* ev, unsigned* n_ev) noexcept {
     Member& A = g.m[i];
+    const bool replan = plan_changed(g, A, now); // B.9: before this decision's stamps
     A.decided_ms = now ? now : 1;
     note_state(A); // Run161: the order-0 gap's steered stamp and plan
     std::uint8_t before[kMembers];
@@ -1598,16 +1838,25 @@ inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, Pair
         A.n = 0;
         return;
     }
+    if (replan) ++st->replans;
+    g.why_plan = replan ? kPairWhyPlan : 0;
     ++st->rollouts;
     float vmax = 0.0f;
-    A.n = std::uint8_t(rollout(A, g, -1.0f, A.s, &vmax));
+    A.n = std::uint8_t(rollout(A, g, -1.0f, A.s, &vmax, now));
     A.roll_ms = A.st.ms;
     A.v_roll_max = vmax;
+    A.roll_v = plan_speed(g, A, now); // B.9: the plan the rollout flew (plan_changed)
+    A.roll_plan = plan_of(A);
+    A.roll_sb = A.sb;
     std::uint32_t conflicts = 0;
     sweep_all(g, i, A.s, A.n, vmax, now, true, &conflicts, st); // A.n == 0 (a refused plane, a NaN state): every pair none
     if (!conflicts && A.cap >= 0.0f) {
-        A.cap = -1.0f;
-        ++st->released;
+        if (in_gap(A) && cap_in_force(g, A, now) >= 0.0f) // B.9 review (item 3): the gap's rollout resumed at the cap and cleared: kept in force
+            A.cap_ms = now ? now : 1;                // for site B's first write after the gap (no release on order 0)
+        else {
+            A.cap = -1.0f;
+            ++st->released;
+        }
     }
     unsigned tries = 0;
     bool self_tried = false;
@@ -1616,18 +1865,28 @@ inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, Pair
         ++st->conflicts;
         if (g.v[i][j] == std::uint8_t(PairV::clear)) continue; // a yield earlier in this decision already cleared it
         const bool a_yields = yields_to(A, g.m[j]);
-        bool ok = false;
-        if (tries < kMaxYieldsPerDecision && (!a_yields || !self_tried)) {
+        bool ok = false, swept = false;
+        const bool tried = tries < kMaxYieldsPerDecision && (!a_yields || !self_tried);
+        if (tried) {
             ++tries;
             if (a_yields) self_tried = true;
-            ok = try_yield(g, a_yields ? i : j, now, st);
+            // B.9 review (item 4): a partner's yield writes its row with its own plan flag; the shared pair keeps the decider's too
+            const std::uint8_t flag = a_yields ? g.why_plan : plan_changed(g, g.m[j], now) ? kPairWhyPlan : std::uint8_t(0);
+            ok = try_yield(g, a_yields ? i : j, now, st, flag, &swept);
+            if (ok && !a_yields) {
+                g.why[i][j] |= g.why_plan;
+                g.why[j][i] |= g.why_plan;
+            }
         }
         if (!ok || g.v[i][j] != std::uint8_t(PairV::clear)) {
             g.v[i][j] = g.v[j][i] = std::uint8_t(PairV::unresolved);
             g.vms[i][j] = g.vms[j][i] = now ? now : 1;
+            const PairWhy why = !tried ? PairWhy::budget : swept ? PairWhy::contact : PairWhy::noyield; // B.9 (review item 4: noyield)
+            g.why[i][j] = g.why[j][i] = std::uint8_t(std::uint8_t(why) | g.why_plan);
             ++st->unresolved;
         }
     }
+    g.why_plan = 0;
     if (!ev || !n_ev) return;
     for (unsigned j = 0; j < g.n; ++j) {
         if (j == i || g.v[i][j] == before[j] || *n_ev >= kMaxEvents) continue;
@@ -1636,7 +1895,7 @@ inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, Pair
         e.b = g.m[j].ship;
         e.verdict = g.v[i][j];
         e.t_c = g.tc[i][j];
-        e.yielder = A.cap >= 0.0f && A.cap_ms == now ? 1 : g.m[j].cap >= 0.0f && g.m[j].cap_ms == now ? 2 : 0;
+        e.yielder = A.cap >= 0.0f && A.yield_ms == now ? 1 : g.m[j].cap >= 0.0f && g.m[j].yield_ms == now ? 2 : 0;
         e.cap = e.yielder == 1 ? A.cap : e.yielder == 2 ? g.m[j].cap : -1.0f;
     }
 }
@@ -1734,6 +1993,20 @@ inline TraceRange trace_slot_range(unsigned max, bool traffic, bool capital, boo
 }
 
 // ---- reads for site E and the avoidance ---------------------------------------------------------------------------------------
+// B.9: gap_scan over the two members' stored rollouts with the sweep's own bounds (overlap_min, the SETA-aware time offset); pair_gap is
+// the pair row's gap_m (m; 1e30 when either has none, they are too far apart or overlap too little: a stale verdict).
+inline GapScan pair_scan(const Gate& g, unsigned i, unsigned j) noexcept {
+    const Member& a = g.m[i];
+    const Member& b = g.m[j];
+    if (!a.n || !b.n) return GapScan{};
+    bool ends;
+    const unsigned min_s = overlap_min(a, a.n, b, &ends);
+    return gap_scan(a.s, a.n, a.roll_ms, a.L, a.w, b.s, b.n, b.roll_ms, b.v_roll_max, b.L, b.w, age_bound(g, kRolloutMaxAgeMs), min_s, ends);
+}
+inline float pair_gap(const Gate& g, unsigned i, unsigned j) noexcept {
+    const GapScan sc = pair_scan(g, i, j);
+    return sc.ok ? sc.min_gap : 1e30f;
+}
 // The pair verdict for (i, j) as site E takes it: clear only while at most kCertMaxAgeMs old.
 inline PairV pair_verdict(const Gate& g, unsigned i, unsigned j, std::uint32_t now, std::uint32_t max_age_ms) noexcept {
     if (i >= g.n || j >= g.n || i == j || !live(g, g.m[i], now) || !live(g, g.m[j], now)) return PairV::none;
@@ -2136,10 +2409,14 @@ __attribute__((always_inline)) inline bool past_last_stretch(const Gate& g, cons
 }
 // B.6 item 3: the release window (without the predictor's horizon): behind the ring-0 front turn's 60-deg point along F (the ring-0
 // straights' front end a1 = zx - kLeadM - R_h, plus R_h sin 60 deg; ring k > 0 lies wholly behind it) with the nose within 60 deg of F
+// (release_window_at: the same test on a state, z along F from G and the nose's f . F; the B.9 review's rollout calls it on its samples)
+__attribute__((always_inline)) inline bool release_window_at(const Member& m, float z, float f_F) noexcept {
+    return z <= m.zx - kLeadM - kPetalRh + kReleaseFrontM + 1.0f && f_F >= kReleaseNoseCos;
+}
 __attribute__((always_inline)) inline bool release_window(const Gate& g, const Member& m) noexcept {
     float r, u, z;
     sb_local(g, m.st.x, &r, &u, &z);
-    return z <= m.zx - kLeadM - kPetalRh + kReleaseFrontM + 1.0f && sc::dot3(m.st.rows[2], g.F) >= kReleaseNoseCos;
+    return release_window_at(m, z, sc::dot3(m.st.rows[2], g.F));
 }
 // B.2 review N2, N3: the funnel is occupied by another committed member that is live and decided within kOccupyDecisionMs: one released
 // and not yet launched (funnel, hand-over, order 5, order 8 until its end). *busy_by: that member. (The release rule's final-straight
@@ -2200,11 +2477,15 @@ __attribute__((always_inline)) inline float funnel_feasible(const Gate& g, const
 }
 // B.6 (coordinator's amendment, review 1): an escort whose leader launched, after its first pass inside the script's 10 km on a petal
 // that passes inside it, with its lap target past: 25 m/s over the whole lap
+// (escort_settles: the member's part, the target's time aside)
+__attribute__((always_inline)) inline bool escort_settles(const Member& m, const PetalGeom& pg) noexcept {
+    return m.role == Role::escort && m.res_until && m.esc_in10 && m.petal >= 0 && petal_near(pg);
+}
 __attribute__((always_inline)) inline bool escort_settled(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel) noexcept {
     if (m.role != Role::escort || !m.res_until || !m.esc_in10 || m.petal < 0 || !t_rel || std::int32_t(t_rel - now) > 0) return false;
     PetalGeom pg;
     petal_geom(g, unsigned(m.petal), m.zx, &pg);
-    return petal_near(pg);
+    return escort_settles(m, pg);
 }
 // B.6 item 1: the lap law, the earliest in-window moment at or after the target T (in [25, 60] m/s). s: the ship on the lap [0, lap);
 // the window [s_open, s_close] (wrapping across 0 when s_open > s_close); dt_ms: T - now (<= 0: T past, T = now); target false: no
@@ -2238,18 +2519,40 @@ __attribute__((always_inline)) inline float lap_law(float s, float s_open, float
 // The holder's lap speed toward its release window at t_rel (B.6: the lap law on the petal; nominal without a target). The dwell needs the
 // release window itself (release_window: an off-track holder, e.g. one still joining its petal from ahead of it, projects into W). B.8: and
 // counts the join distance (escorts and committed heads alike).
+// B.9 review: the holder's state from the live state (the petal rollout builds it from its samples).
+__attribute__((always_inline)) inline HoldState hold_state(const Gate& g, const PetalGeom& pg, const Member& m) noexcept {
+    const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
+    HoldState h;
+    h.a = sc::dot3(d, g.F);
+    h.b = sc::dot3(d, pg.e);
+    h.o = sc::dot3(d, pg.n);
+    h.f_F = sc::dot3(m.st.rows[2], g.F);
+    h.ringed = m.ringed != 0;
+    return h;
+}
+// The release window's opening arc: B.7, an escort's window opens at its stage, inside the script's radius (no stage: W kept).
+__attribute__((always_inline)) inline float hold_open(const Member& m, const PetalGeom& pg) noexcept {
+    if (m.role == Role::escort) {
+        const float st = escort_stage_s(pg);
+        if (st >= 0.0f) return st;
+    }
+    return kWinOpenS;
+}
+// The lap law on a state (petal_join's arc and join from (a, b, o); release_window_at): *d_join the join distance.
+__attribute__((always_inline)) inline float lap_at(const Member& m, const PetalGeom& pg, float open, const HoldState& h, std::int32_t dt_ms,
+                                                   float* d_join) noexcept {
+    const float s = petal_project(pg, h.a, h.b);
+    float ta, tb, da, db;
+    petal_at(pg, s, &ta, &tb, &da, &db);
+    *d_join = sc::sqrt_ss((h.a - ta) * (h.a - ta) + (h.b - tb) * (h.b - tb) + h.o * h.o);
+    return lap_law(s, open, kWinCloseS, kLap, dt_ms, true, release_window_at(m, h.a, h.f_F), *d_join);
+}
 __attribute__((always_inline)) inline float lap_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel) noexcept {
     if (!t_rel || m.petal < 0) return kPetalVnom;
     PetalGeom pg;
     petal_geom(g, unsigned(m.petal), m.zx, &pg);
     float d_join;
-    const float s = petal_join(g, pg, m.st.x, &d_join);
-    float open = kWinOpenS;
-    if (m.role == Role::escort) { // B.7: an escort's window opens at its stage, inside the script's radius (no stage: W kept)
-        const float st = escort_stage_s(pg);
-        if (st >= 0.0f) open = st;
-    }
-    return lap_law(s, open, kWinCloseS, kLap, std::int32_t(t_rel - now), true, release_window(g, m), d_join);
+    return lap_at(m, pg, hold_open(m, pg), hold_state(g, pg, m), std::int32_t(t_rel - now), &d_join);
 }
 // An escort's lap target (D.12; B.6 review F1; B.8 lead): its leader's predicted launch + the script's switch once the leader is released,
 // its order-8 stamp + the switch once it launched; 0 (no target: the nominal 40 m/s) while the leader holds. B.8 (coordinator's decision):
@@ -2271,16 +2574,29 @@ __attribute__((always_inline)) inline std::uint32_t escort_target(const Gate& g,
 // B.8 (Run168 departures): a late holder still joining on the inbound carrot (not at its ring) flies the inbound profile on its join
 // distance instead of the petals' 60 m/s cap, braking to 60 m/s kInboundLatM from its line and never above its v_max; then the grid
 // sphere guard for a committed member on a validated line (it overrides every speed above)
-__attribute__((always_inline)) inline float hold_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel, SbStats* st) noexcept {
-    float v = escort_settled(g, m, now, t_rel) ? kPetalVmin : lap_speed(g, m, now, t_rel);
-    if (v >= kPetalVmax && t_rel && !m.ringed && m.petal >= 0) { // B.8 (Run168 departures): late and still joining on the inbound carrot
-        PetalGeom pg;                                               // (not at its ring): the inbound profile on the join distance, braking
-        petal_geom(g, unsigned(m.petal), m.zx, &pg);                // to the petals' top speed kInboundLatM from its line
-        float dj;
-        petal_join(g, pg, m.st.x, &dj);
+// B.9 review: hold_speed's law before the grid guard, on a state h (sb_frame on the live state, the petal rollout on its samples; board
+// state only, no engine read, no allocation): settles (escort_settles) with its target past: 25 m/s; else the lap law (nominal without a
+// target), and B.8's join profile for a late unringed holder. open: hold_open; dt_ms = t_rel - now.
+__attribute__((always_inline)) inline float hold_law(const Member& m, const PetalGeom& pg, float open, bool settles, const HoldState& h,
+                                                     std::uint32_t t_rel, std::int32_t dt_ms) noexcept {
+    if (!t_rel || m.petal < 0) return kPetalVnom;
+    if (settles && dt_ms <= 0) return kPetalVmin;
+    float dj;
+    float v = lap_at(m, pg, open, h, dt_ms, &dj);
+    if (v >= kPetalVmax && !h.ringed) { // B.8 (Run168 departures): late and still joining on the inbound carrot (not at its ring): the
+                                        // inbound profile on the join distance, braking to the petals' top speed kInboundLatM from its line
         const float a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f, vmax = m.params.v_max > kPetalVmax ? m.params.v_max : kPetalVmax;
         const float vj = sc::sqrt_ss(kPetalVmax * kPetalVmax + 2.0f * a * (dj > kInboundLatM ? dj - kInboundLatM : 0.0f));
         v = vj < vmax ? vj : vmax;
+    }
+    return v;
+}
+__attribute__((always_inline)) inline float hold_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel, SbStats* st) noexcept {
+    float v = kPetalVnom;
+    if (t_rel && m.petal >= 0) {
+        PetalGeom pg;
+        petal_geom(g, unsigned(m.petal), m.zx, &pg);
+        v = hold_law(m, pg, hold_open(m, pg), escort_settles(m, pg), hold_state(g, pg, m), t_rel, std::int32_t(t_rel - now));
     }
     if (m.role == Role::committed && m.line_ok) { // the grid sphere guard: order 4 never ends outside X (D.2.4)
         const float A[3] = {m.X[0] + sc::kGateCrossFraction * g.r_gate * m.h[0], m.X[1] + sc::kGateCrossFraction * g.r_gate * m.h[1],
@@ -2299,7 +2615,7 @@ __attribute__((always_inline)) inline float hold_speed(const Gate& g, const Memb
 inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     if (!g.gate || !(g.r_gate > 0.0f)) return;
     if (g.sb_last_ms && std::int32_t(now - g.sb_last_ms) < 0) { // a backward game-clock jump (a load): the slot state is stale (review F4)
-        g.slot_block_ms = g.funnel_end_ms = g.last_arrival_seen = 0;
+        g.slot_block_ms = g.funnel_end_ms = g.last_arrival_seen = g.head_t_ms = 0;
         g.funnel_ship = 0;
         g.rho = kRingMinM;
         for (std::uint32_t& p : g.petal_ship) p = 0;
@@ -2307,6 +2623,8 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
             Member& m = g.m[i];
             m.x_ms = m.o8_ms = m.head_ms = m.feas_ms = m.x_pred_ms = m.release_ms = m.plan_x_ms = m.plan_launch_ms = 0;
             m.refused = 0;
+            m.cap = -1.0f; // B.9 review: stamps from the future would pass the signed age tests (cap_in_force, plan_speed)
+            m.cap_ms = m.yield_ms = m.v_plan_ms = 0;
             m.petal = -1;
             m.ringed = 0;
             if (m.sb == Sb::funnel) m.sb = Sb::hold;
@@ -2696,10 +3014,10 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     }
     // B.6 item 2: the head's lap target is the predicted funnel-free moment (re-evaluated every frame; the funnel free: now, never before
     // one nominal funnel before a slot block)
-    if (c >= 0 && g.m[c].role == Role::committed && g.m[c].sb == Sb::hold) {
-        t_next = funnel_busy ? t_busy : g.slot_block_ms && std::int32_t(t_slot - now) > 0 ? t_slot : now; // review 2, the funnel's offset
-        if (!t_next) t_next = 1;
-    }
+    // (B.9 review 2: kept on the gate for every frame, so the rollout of an inbound committed member that will be the head flies it)
+    g.head_t_ms = funnel_busy ? t_busy : g.slot_block_ms && std::int32_t(t_slot - now) > 0 ? t_slot : now; // review 2, the funnel's offset
+    if (!g.head_t_ms) g.head_t_ms = 1;
+    if (c >= 0 && g.m[c].role == Role::committed && g.m[c].sb == Sb::hold) t_next = g.head_t_ms;
     // speeds: the funnel's shaping and feasibility (the go-around), the holders' laps, the grid sphere guard
     for (unsigned i = 0; i < g.n; ++i) {
         Member& m = g.m[i];

@@ -2457,7 +2457,123 @@ adds no detour: the escort is only ~0.7 km behind its back point along F. After 
 
 Outputs: [`ship_steering_host_b8.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b8.txt) and
 [`ship_steering_host_b8_capital.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b8_capital.txt).
-Not reviewed, not flown, not installed.
+Reviewed (Opus), not flown, not installed.
+
+### B.9 Column evictions at hold entry (2026-10-14, Opus 5.5; cause and change [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) §B.9)
+
+The petal rollout of an inbound or not yet ringed member splits each step's travel along its 3-D line to the carrot (in-plane share
+d_in / d0) and flies sb_frame's inbound law toward its boundary. After the review (Opus, Fable) it flies `hold_law` past the boundary
+and for a holder: the speed `hold_speed` writes, on its own rolled-out state. A member in its order-0 gap yields, deferred, and keeps a
+cap its gap rollout cleared on in force; the gap resumes at `v_plan` under that cap only. `plan_speed`'s `v_plan` age is signed. After
+the second review the rollout also flies `core::steer`'s cornering cap and the head's target for an inbound committed member that will be
+the head. Site A applies a cap on the live order of its call and ages it on the same clock as the rollout. A backward clock jump clears
+caps and plan stamps.
+`ship_gate_ctl_pair` gains `cause=` (with `noyield`), a per-row `trig=` and `gap_m=` (`na` on a stale overlap). The fixture's engine
+model tests two escorts of one leader (the braking term halved; Run168 [m]).
+
+**Fixture totals (measured, this tree).** Full 10,521, `--capital` 4,863, seq-off 10,431 and `--b9` 45 checks, 0 failures. That is 45
+more than B.8's 10,476 / 4,818 / 10,386 in each: 4 `B.9 column` assertions × 9 runs and 9 `sb B.9 review` units. Command:
+`c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp -o /tmp/ssh_b9r && /tmp/ssh_b9r` (and `--capital`,
+`X3M_SEQ_OFF=1`, `--b9`). Focused tests `test_ship_steering`, `test_ctl_boundary_reads` and `test_ship_trace_format`: 17 OK.
+`ship_steering.cpp` syntax-only (i686-w64-mingw32-g++-posix 16, C++17, `-Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
+-mincoming-stack-boundary=2 -fno-exceptions`): 0 diagnostics.
+
+**Review units (measured; `--b9`).**
+* An inbound late escort 1 km beyond its boundary, heading in at 100 m/s, crosses it at sample 22. 8 s later its rollout flies 100.0
+  m/s: the join profile under the large hulls' 100 m/s, equal to `hold_speed` there. With the inbound law alone it was 60 m/s. Settled,
+  it flies 25.0 m/s.
+* `plan_speed` with a `v_plan` 50 ms newer than the state: 100.0 (25.0 before, the capped `v_des`). The gap's resume: 40.0 with the
+  cap in force, 100.0 once released or lapsed.
+* `leave()` resets the cap, `cap_ms`, `yield_ms` and `v_plan`.
+* `try_yield` rolls out no candidate on order 0 outside a gap or from a 25 m/s petal plan (`noyield`), and yields 60.0 on 0x14 and in
+  its gap.
+* `gap_scan` with 5 paired samples: `na` against a warn reach of 8, a value against 4; one sample at a launch suffices.
+* Second review, per-sample speed over 10 s (the rollout against `hold_speed` under `core::steer`'s cornering cap at the rolled-out
+  state, toward `sb_steer`'s carrot):
+  * an unringed late holder beyond its back turn is written 60.0–82.0 m/s; the rollout stays within 2.7 m/s;
+  * a ringed late holder in its back turn with W 0.03 rad/s is written down to 26.6 m/s; the rollout stays within 0.0 m/s (26.3 m/s with
+    the cap reverted).
+* Second review, the head's target: an inbound committed member alone gets the head's target and flies 100.0 m/s 8 s past its boundary
+  (40.0 with this reverted); behind a committed holder it gets none.
+* Second review, `decide`: in its gap a cap in force is kept (re-stamped, `yield_ms` unchanged, nothing released) and released at the
+  first steered decision; a pair at one point writes `noyield` with the yielder on order 0 outside a gap, `contact` on 0x14.
+
+**Column scenario, before → after (measured; [`column_b9.py`](../../verification/results/ship-steering/gate-traffic-controller/column_b9.py) →
+[`column_b9.txt`](../../verification/results/ship-steering/gate-traffic-controller/column_b9.txt)).** Before = this fixture against this core with every B.9 change reverted by asserted
+substitution (`kin`, `law`, `hold`, `gapcap`, `age`, `corner`, `target`).
+
+| 9 runs (30 / 60 / 144 fps × 3 seeds) | before | after |
+| --- | --- | --- |
+| 0x12 episodes between the column members | 1–3 per run | 0 |
+| uncertified frames (first certificate → rear hold + 30 s) | 1,890–13,787 per run | 0 |
+| closest capsule gap | −317 to −349 m | 219–435 m |
+| rear yields per run (lowest cap) | 26–142 (25.0–60.0 m/s) | 227–514 (25.0–60.0 m/s) |
+| checks failed | 34 of 45 (27 column, 7 review units) | 0 of 45 |
+
+* Table run (60 fps, seed 1): the rear enters hold at 340.0 s (before 321.7 s). On the 500 ms rows its first yield is at 136.5 s
+  (before 259.5 s). Before, the pair is clear with the sweep's minimum at sample 0 while the front brakes, turns unresolved with the
+  contact at sample 0, E passes and the capsules touch.
+* Extra seeds (`X3M_B9_SEEDS=12`, 36 runs): bad after 0, before 36 (34 with contact). One change reverted at a time:
+  * in-plane share 29 (19 with contact);
+  * inbound law 0;
+  * `hold_law` 0;
+  * gap handling 30 (0 with contact);
+  * signed age 12 (0 with contact, all 12 at 144 fps, 18–32 episodes each);
+  * cornering cap 0;
+  * head target 0.
+* 10 s prediction error, median / p95, 60 fps seed 1:
+  * before the rear's hold entry: front 900 / 903 → 18 / 36 m, rear 323 / 370 → 19 / 228 m;
+  * in the 30 s after it: rear 320 / 346 → 21 / 37 m (18 / 156 m with `hold_law` reverted), front 899 / 1,041 → 734 / 965 m (545 / 922 m
+    with `hold_law` reverted).
+
+  The front's error after the rear's hold entry is a residual of the in-plane share: crossing its plane along the normal at 100 m/s,
+  it overshoots the plane by about 0.9 km [m, the b9all rows]. The straight 3-D line to the carrot does not model that turn. No run is
+  bad on it (the note's Open).
+
+**The 3 bad extra-seed runs on 511ffbf5 (measured; [`b9_head_gap_diag.py`](../../verification/results/ship-steering/gate-traffic-controller/b9_head_gap_diag.py) →
+[`b9_head_gap_diag.txt`](../../verification/results/ship-steering/gate-traffic-controller/b9_head_gap_diag.txt)).** 60 fps seed 109, 144 fps seeds 104 and 106. The rear, uncapped on the last
+order-0 frame of a gap, predicted a contact 21.5, 29 and 17 s ahead. It could not yield on order 0 (`cannot_yield order=0x0 in_gap=1`).
+The first steered decision 1.0, 0.2 and 0.2 s later yielded 60, 25 and 25 m/s and cleared the pair. Each run had 60, 29 and 29 uncertified
+frames and one 0x12 episode; the closest capsule gap was 415, 361 and 343 m. So the contacts were real predictions under the module's
+writes, the yield came in time for them, and the certificate lapsed. The deferred gap yield removes all three. The signed-age defect
+showed while that was being fixed. With it alone reverted, 3 of 36 runs were bad after the first review and 12 of 36 after the second
+(all at 144 fps). On 144 fps seed 104 all 3,132 uncertified frames are `cause=noyield`:
+`X3M_B9_RUN=144,104 X3M_B9_UNCERT=1 <column_b9.py scratch>/noage/host --b9`.
+
+**Scenario T (measured; [`scenario_t_b9.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b9.py) →
+[`scenario_t_b9.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b9.txt), `--traffic` of the before and after builds, sibling warns on and off).** Every
+assertion is green in all 72 runs after (`--traffic` 2,276 checks, 0 failures; before 34, all B.9's). That includes the B.6/B.7/B.8
+escort assertions, 0 holders below 25 m/s, no order 4 outside X, capsule gaps ≥ 50 m, and the SETA and run162 variants.
+
+| Sibling warns on | yields | hand-backs | 0x12 episodes | closest capsule |
+| --- | --- | --- | --- | --- |
+| departures | 797 → 758 | 9 → 0 | 0 → 0 | 145 → 136 m |
+| dep w0.6r | 1,000 → 908 | 18 → 0 | 0 → 0 | 132 → 168 m |
+| dep refused | 3,121 → 3,100 | 9 → 0 | 0 → 0 | 145 → 136 m |
+| run162 | 228 → 209 | 18 → 0 | 0 → 0 | 283 → 302 m |
+| run162 seta | 103 → 104 | 23 → 1 | 2 → 1 | 245 → 272 m |
+
+Certified contact is 0 in both. TARGET MISS rows: 9 → 7.
+
+**Cost and size (measured; [`b9_rollout_bench.txt`](../../verification/results/ship-steering/gate-traffic-controller/b9_rollout_bench.txt)).**
+* One petal rollout, old (511ffbf5) → new, x86-64 host, at the same 40 m/s plan:
+  * inbound 3.44 → 3.68 µs;
+  * ringed holder 5.94 → 6.27 µs;
+  * ringed holder with a target 5.94 → 6.68 µs;
+  * unringed late holder 3.45 → 4.87 µs.
+
+  The paths differ: the new rollouts fly the law and the cornering cap.
+* `hold_law` costs 16.9 ns per call, 60 calls per holder rollout; the cornering cap is evaluated once per sample.
+* The fixture's decision bench on a petal board is 7.3–7.6 → 7.7–8.1 µs (best of 3 runs); the sequencer 16.5–16.6 → 16.5–17.0 µs.
+* i686 sizes: Member 1,860 B unchanged; Gate 56,388 → 56,392 B and Board 225,572 → 225,588 B (`head_t_ms`).
+* x87 in i686 code: none in rollout or decide. The `hold_speed` wrapper's float-return paths 2 → 11 (constants and the result slot;
+  inlined in `sb_frame`).
+
+Outputs: [`ship_steering_host_b9.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b9.txt) and
+[`ship_steering_host_b9_capital.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b9_capital.txt); every command, the reviewers' one-liners included,
+in [`b9_review_commands.txt`](../../verification/results/ship-steering/gate-traffic-controller/b9_review_commands.txt).
+Reviewed (Opus, Fable on 511ffbf5; the first review's fixes reviewed once more on the delta, whose five findings are fixed above and not
+re-reviewed). Not flown, not installed.
 
 ## Open flight runs (native Windows, the user; the rows that decide them)
 

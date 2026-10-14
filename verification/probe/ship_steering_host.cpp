@@ -40,6 +40,7 @@ static bool g_amend16 = true; // amendment 16 (capital-gate-transit.md section 1
                                // option-off A/B checks clear it (ship_steering_gates_capital off = no capital lane, join or gate row)
 static unsigned g_emerg_cap = 0, g_emerg_cap_floor = 0; // amendment 16b: capped decisions under an avoidance emergency (the gate write is
                                                          // the emergency ramp: the cap is not applied there), and those whose cap < 10 m/s
+static bool g_sibling_warn = true; // B.9 (Run168 [m]): two escorts of one leader warn each other (b halved); X3M_SIBLING_OFF=1: the old [i] filter
 static bool g_seq = true; // amendment 16b (section 16.10): ship_steering_gates_capital_seq; X3M_SEQ_OFF=1 clears it (the option-off stdout)
 static unsigned checks = 0, failures = 0;
 static bool g_amend12 = true; // amendment 12 (the port hold and the smooth stops) in every Model; the A/B checks clear it
@@ -818,7 +819,7 @@ struct Model {
                 if (gc::pair_role(mm.role) && mm.id == native_id()) {
                     mm.v_plan = (s->flags & core::kShipFlagGate) ? s->v_ref : (s->flags & core::kShipFlagClamp) && s->v_corner > 0.0f ? s->v_corner : -1.0f;
                     mm.v_plan_ms = now ? now : 1;
-                    if (mm.cap >= 0.0f && now - mm.cap_ms <= gc::age_bound(*cg, gc::kCapMaxAgeMs) && gc::can_yield(mm) && ln::apply_cap(*s, mm.cap)) ++ctl_capped;
+                    if (mm.cap >= 0.0f && now - mm.cap_ms <= gc::age_bound(*cg, gc::kCapMaxAgeMs) && gc::can_yield_on(mm, order) && ln::apply_cap(*s, mm.cap)) ++ctl_capped;
                 }
             }
         }
@@ -6864,7 +6865,7 @@ struct CrowdResult {
     bool forced = false;
 };
 // The engine's warn test (ship-navigation-ai.md section 3.1) for A against B, both ships (m units -> m).
-static bool crowd_pair_warn(const Model& a, const Model& b) {
+static bool crowd_pair_warn(const Model& a, const Model& b, bool same_leader = false) {
     const double va = double(a.speed) / 500.0;
     if (va <= 0) return false;
     double dx[3], d = 0;
@@ -6884,7 +6885,8 @@ static bool crowd_pair_warn(const Model& a, const Model& b) {
     if (c <= 0) return false;
     const double vc = va * c + (c > 0.8 ? vb_toward : 0.0);
     const double acc = double(a.accel) / 500.0;
-    const double bb = std::fmin(600.0, acc > 0 ? vc * vc / (2 * acc) : 600.0);
+    double bb = std::fmin(600.0, acc > 0 ? vc * vc / (2 * acc) : 600.0);
+    if (same_leader) bb *= 0.5; // section 3.1: b is halved when A and B escort or follow the same leader or each other
     const double L = std::fmin(std::fmax(ra + rb / 10, 30.0), 1000.0) + (ra + rb) + ra * c;
     if (bb + L + (ra + rb) < d) return false;
     if (d <= bb) return true;
@@ -8462,6 +8464,7 @@ struct TStart {
     double slot_back_r;  // escorts: the formation slot behind the leader (in the leader's r)
     double order4_s;     // escorts: the order-4 delay after the leader's launch (Run160b)
     int exit_slot = -1;  // small arrivals: the warp-out slot index
+    double slot_side_r = 0; // escorts (B.9): the formation slot's lateral offset along the leader's right row (in the leader's r)
 };
 struct TSetup {
     const char* tag;
@@ -8472,6 +8475,7 @@ struct TSetup {
     long run_s = 1200;      // the run's length (game s)
     bool o4_gaps = false;   // B.2 (Run162): the script's order-0 re-issue gaps (2-3 s every 30-34 s, f+0x224 zeroed) on the order-4 legs too
     bool seta = false;      // B.3 (Run163): game steps of 1,500-2,000 ms on 2 % of frames (Run163: 6 steps > 1 s in 82k frames, up to 2,000 ms)
+    int col_a = -1, col_b = -1; // B.9 (Run168): the column pair (front, rear escort) recorded per frame (b9_* and the column table)
 };
 struct TResult {
     unsigned capitals = 0, launched = 0, arrivals = 0, offset_ok = 0, lateral_kept = 0, small = 0, small_side = 0, small_unseparated = 0;
@@ -8560,6 +8564,12 @@ struct TResult {
     // longest game step of the wait), and the fresh writes of sb_steer's 0x15 approach after the launch (parked staged escorts, all)
     unsigned b7_parked = 0, b7_staged = 0, b7_o4 = 0, b7_late = 0, b7_appr_parked = 0, b7_appr_all = 0;
     unsigned b7_ring_late = 0; // ... at its ring at the launch but ringed less than a 60 m/s lap before (not parked: reported)
+    // B.9 (Run168 column evictions): the column pair (su.col_a front, su.col_b rear) while both are live members of the board: the frames,
+    // the engine's warns between them (either direction, siblings' b halved) and those E left to the engine (0x12 episodes), the frames
+    // without a fresh clear verdict from its first one to the rear's hold entry + 30 s, the yields (cap set) of the rear and the front,
+    // the lowest cap, the closest true capsule gap, the lowest rollout gap_scan seen
+    unsigned b9_frames = 0, b9_warns = 0, b9_unsup = 0, b9_episodes = 0, b9_uncert = 0, b9_rear_caps = 0, b9_front_caps = 0;
+    double b9_cap_min = 1e18, b9_min_capsule = 1e18, b9_min_scan = 1e18, b9_warn_first_s = -1, b9_uncert_first_s = -1;
     // ... the other approach frames by class (review F4): a far petal; a near petal not yet ringed; ringed but not parked
     unsigned b7_appr_far = 0, b7_appr_unringed = 0, b7_appr_ringed = 0;
     double b7_delay_sum_s = 0, b7_delay_max_s = 0;
@@ -9050,6 +9060,109 @@ static void b8_join_track(gc::Board& b, TShip* ships, unsigned n, std::uint32_t 
                         int(m->petal), double(d_join), double(w), double(wl), double(T));
     }
 }
+// B.9 (Run168 column evictions): the column pair's frame (both live members of one board): the engine's warns between them (the
+// obstacle filter passes two escorts of one leader, b halved: ship-navigation-ai.md section 3.1, Run168 [m]) and site E's member row,
+// the fresh clear verdict, the true capsule gap, the stored rollouts' gap_scan (the sweep's minimum gap and its first contact sample);
+// the table (one run: 60 fps, the first seed) every 500 ms of game time from 60 s before the rear's hold entry to 30 s after it.
+struct B9Row {
+    double t, d, cap_gap, va, vb, vsb_a, vsb_b, cap_a, cap_b, scan_gap;
+    int sb_a, sb_b, verdict, t_min, t_c, warn, unsup, petal_a, petal_b;
+    double pa[3], pb[3], qa[3], qb[3]; // the positions; the rollouts' sample 20 (10 s ahead of roll_ms)
+    double ra, rb;
+};
+static B9Row b9_rows[4096];
+static unsigned b9_n = 0;
+static long b9_rear_hold_ms = -1, b9_first_cert_ms = -1;
+static bool b9_table_run = false, b9_evading = false;
+static long b9_next_row_ms = 0;
+static int b9_table_fps = 60; // the table's run (X3M_B9_RUN=<fps>,<seed>: that run alone, with its table; an iteration aid)
+static std::uint32_t b9_table_seed = 1;
+static void b9_record(const TSetup& su, gc::Board& board, TShip& A, TShip& B, std::uint32_t now, int fps, std::uint32_t seed, TResult& r) {
+    (void)su;
+    if (!A.alive || !B.alive) return;
+    int ia = -1;
+    gc::Gate* g = gc::locate(board, A.m.ptr, &ia);
+    const int ib = g ? gc::find(*g, B.m.ptr) : -1;
+    if (!g || ib < 0 || !gc::live(*g, g->m[ia], now) || !gc::live(*g, g->m[ib], now)) return;
+    const gc::Member& ma = g->m[ia];
+    const gc::Member& mb = g->m[ib];
+    if (mb.sb == gc::Sb::hold && b9_rear_hold_ms < 0) b9_rear_hold_ms = long(now);
+    ++r.b9_frames;
+    const bool clear = gc::pair_verdict(*g, unsigned(ia), unsigned(ib), now, gc::kCertMaxAgeMs) == gc::PairV::clear;
+    if (clear && b9_first_cert_ms < 0) b9_first_cert_ms = long(now);
+    if (!clear && b9_first_cert_ms >= 0 && (b9_rear_hold_ms < 0 || long(now) <= b9_rear_hold_ms + 30000)) {
+        if (std::getenv("X3M_B9_UNCERT") && fps == b9_table_fps && seed == b9_table_seed)
+            std::printf("  b9uncert t=%.3f v=%s why=%s vms_age=%ld dec_age=%ld/%ld roll_age=%ld/%ld order=0x%x/0x%x tc=%u\n", double(now) / 1000.0,
+                        gc::pair_name(gc::PairV(g->v[ia][ib])), gc::pair_why_name(g->why[ia][ib]), long(now - g->vms[ia][ib]), long(now - ma.decided_ms),
+                        long(now - mb.decided_ms), long(now - ma.roll_ms), long(now - mb.roll_ms), unsigned(ma.st.order), unsigned(mb.st.order),
+                        unsigned(g->tc[ia][ib]));
+        ++r.b9_uncert;
+        if (r.b9_uncert_first_s < 0) r.b9_uncert_first_s = double(now) / 1000.0;
+    }
+    const double gap = t_capsule(A, B);
+    r.b9_min_capsule = std::fmin(r.b9_min_capsule, gap);
+    const std::uint32_t now_cap = gc::age_bound(*g, gc::kCapMaxAgeMs);
+    const bool cap_a = ma.cap >= 0.0f && now - ma.cap_ms <= now_cap, cap_b = mb.cap >= 0.0f && now - mb.cap_ms <= now_cap;
+    if (cap_b && mb.yield_ms == now) { ++r.b9_rear_caps; r.b9_cap_min = std::fmin(r.b9_cap_min, double(mb.cap)); } // a yield (not a gap's keep)
+    if (cap_a && ma.yield_ms == now) { ++r.b9_front_caps; r.b9_cap_min = std::fmin(r.b9_cap_min, double(ma.cap)); }
+    const gc::GapScan sc = gc::pair_scan(*g, unsigned(ia), unsigned(ib));
+    if (sc.ok) r.b9_min_scan = std::fmin(r.b9_min_scan, double(sc.min_gap));
+    // the engine's warn in either direction (the obstacle filter passes siblings on 0x14 / 0x15 with b halved; order 0: b whole) and E
+    const bool sib = (A.m.order == core::kOrderEscort || A.m.order == core::kOrderFollow) && (B.m.order == core::kOrderEscort || B.m.order == core::kOrderFollow);
+    const bool warn = crowd_pair_warn(A.m, B.m, sib) || crowd_pair_warn(B.m, A.m, sib);
+    bool unsup = false;
+    if (warn) {
+        ++r.b9_warns;
+        if (r.b9_warn_first_s < 0) r.b9_warn_first_s = double(now) / 1000.0;
+        float fa[3], fb[3];
+        for (int i = 0; i < 3; ++i) {
+            fa[i] = float(A.m.row[2][i]);
+            fb[i] = float(B.m.row[2][i]);
+        }
+        av::SiteE in;
+        in.b_ship = true;
+        in.ctl_pair = true;
+        in.ctl_certified = gc::e_certified(*g, unsigned(ia), unsigned(ib), now, gc::unit_row(fa), gc::unit_row(fb), A.m.order, B.m.order);
+        unsup = av::site_e_verdict(in) != av::EVerdict::suppress_ctl;
+    }
+    if (unsup) {
+        ++r.b9_unsup;
+        if (!b9_evading) ++r.b9_episodes;
+    }
+    b9_evading = unsup;
+    if (!b9_table_run || fps != b9_table_fps || seed != b9_table_seed || b9_n >= 4096 || long(now) < b9_next_row_ms) return;
+    b9_next_row_ms = long(now) - long(now) % 500 + 500;
+    B9Row& w = b9_rows[b9_n++];
+    w.petal_a = ma.petal;
+    w.petal_b = mb.petal;
+    for (int i = 0; i < 3; ++i) {
+        w.pa[i] = A.m.pos[i] / 500.0;
+        w.pb[i] = B.m.pos[i] / 500.0;
+        w.qa[i] = ma.n > 20 ? double(ma.s[20].c[i]) : 0.0;
+        w.qb[i] = mb.n > 20 ? double(mb.s[20].c[i]) : 0.0;
+    }
+    w.ra = double(ma.roll_ms) / 1000.0;
+    w.rb = double(mb.roll_ms) / 1000.0;
+    w.t = double(now) / 1000.0;
+    double d2 = 0;
+    for (int i = 0; i < 3; ++i) d2 += (A.m.pos[i] - B.m.pos[i]) * (A.m.pos[i] - B.m.pos[i]);
+    w.d = std::sqrt(d2) / 500.0;
+    w.cap_gap = gap;
+    w.va = double(A.m.speed) / 500.0;
+    w.vb = double(B.m.speed) / 500.0;
+    w.vsb_a = double(ma.v_sb);
+    w.vsb_b = double(mb.v_sb);
+    w.cap_a = cap_a ? double(ma.cap) : -1.0;
+    w.cap_b = cap_b ? double(mb.cap) : -1.0;
+    w.scan_gap = sc.ok ? double(sc.min_gap) : 1e9;
+    w.sb_a = int(ma.sb);
+    w.sb_b = int(mb.sb);
+    w.verdict = clear ? 1 : int(g->v[ia][ib]) == int(gc::PairV::unresolved) ? 2 : 0;
+    w.t_min = sc.ok ? int(sc.i_min) : -1;
+    w.t_c = sc.ok && sc.t_c != 255 ? int(sc.t_c) : -1;
+    w.warn = warn ? 1 : 0;
+    w.unsup = unsup ? 1 : 0;
+}
 static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
     const double ru = kGateRM * 500;
     static World w;
@@ -9059,6 +9172,10 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
     t_live_set.clear(); // B.5
     t_live_track = gc::LiveTrack{};
     ++b5_t_runs;
+    b9_rear_hold_ms = b9_first_cert_ms = -1; // B.9
+    b9_evading = false;
+    if (b9_table_run && fps == b9_table_fps && seed == b9_table_seed) b9_n = 0;
+    b9_next_row_ms = 0;
     core::ShipTable table{};
     static TShip ships[24];
     TResult res;
@@ -9150,8 +9267,8 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
         for (unsigned j = 0; j < su.n; ++j) {
             const bool mine = j == k || (ships[j].st->kind == kTEscort && ships[j].st->leader == int(k));
             if (!mine) continue;
-            const double back = j == k ? 0.0 : ships[j].st->slot_back_r * c.st->t->r_m;
-            const double p[3] = {c.st->x - u[0] * back, c.st->y - u[1] * back, c.st->z - u[2] * back};
+            const double back = j == k ? 0.0 : ships[j].st->slot_back_r * c.st->t->r_m, side = j == k ? 0.0 : ships[j].st->slot_side_r * c.st->t->r_m;
+            const double p[3] = {c.st->x - u[0] * back + u[2] * side, c.st->y - u[1] * back, c.st->z - u[2] * back - u[0] * side};
             for (unsigned q = 0; q < su.n; ++q) {
                 const TShip& o = ships[q];
                 if (!o.alive || !o.m.capital) continue;
@@ -9231,7 +9348,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 double p[3], u[3];
                 for (int i = 0; i < 3; ++i) {
                     u[i] = L.m.row[2][i];
-                    p[i] = (L.m.pos[i] - L.m.row[2][i] * c.st->slot_back_r * L.m.r_units) / 500.0;
+                    p[i] = (L.m.pos[i] - L.m.row[2][i] * c.st->slot_back_r * L.m.r_units + L.m.row[0][i] * c.st->slot_side_r * L.m.r_units) / 500.0;
                 }
                 t_place(c.m, p, u);
                 c.m.speed = c.m.desired = L.m.speed;
@@ -9957,6 +10074,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 }
             }
         }
+        if (su.col_a >= 0 && su.col_b >= 0) b9_record(su, board, ships[su.col_a], ships[su.col_b], now_end, fps, seed, res);
         static gc::Index own_ix; // B.2 review N8: the DLL's membership bitmap for the own-gate model (gc::e_gate_row)
         gc::rebuild(own_ix, board);
         // the pairs: the warn test with site E's member row, the capsules, the boxes; the arrival-gate row
@@ -10160,11 +10278,13 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                     res.min_box = std::fmin(res.min_box, crowd_box_sep(A.m, A.w, B.m, B.w));
                 }
                 // the engine's obstacle filter (ship-navigation-ai.md section 3.1): A's escort / follow partners are not tested: B on 0x14 /
-                // 0x15 to A, A on 0x14 / 0x15 to B, and two escorts of one leader [i] (an escort on order 0 is tested)
+                // 0x15 to A, A on 0x14 / 0x15 to B. B.9: two escorts of one leader are tested with the braking term halved (section 3.1;
+                // Run168 [m]: two escorts of 7087 on 0x14 warned each other; the [i] filter that skipped them is X3M_SIBLING_OFF=1)
                 const bool a_f = A.m.order == core::kOrderEscort || A.m.order == core::kOrderFollow, b_f = B.m.order == core::kOrderEscort || B.m.order == core::kOrderFollow;
-                if ((b_f && B.m.leader_ptr == A.m.ptr) || (a_f && A.m.leader_ptr == B.m.ptr) || (a_f && b_f && A.m.leader_ptr && A.m.leader_ptr == B.m.leader_ptr))
-                    continue;
-                if (!crowd_pair_warn(A.m, B.m)) {
+                if ((b_f && B.m.leader_ptr == A.m.ptr) || (a_f && A.m.leader_ptr == B.m.ptr)) continue;
+                const bool siblings = a_f && b_f && A.m.leader_ptr && A.m.leader_ptr == B.m.leader_ptr;
+                if (siblings && !g_sibling_warn) continue;
+                if (!crowd_pair_warn(A.m, B.m, siblings)) {
                     evading[a][b] = false;
                     continue;
                 }
@@ -10320,6 +10440,18 @@ static const TStart kTR162[6] = {
     {&kCrowdM1, 0.53, kTDepart, -1, -2000, 0, -90000, 0, 100, 30000, 0, 0},
     {&kTM7a, 0.50, kTEscort, 3, 0, 0, 0, 0, 0, 0, 2.6, 4.2},
     {&kTM7b, 0.45, kTEscort, 3, 0, 0, 0, 0, 0, 0, 4.4, 4.5},
+};
+// B.9 (Run168 gate 6db0, ship_gate_ctl_member rows): a Titan leader inbound at 100 m/s crossing behind the ring from -R (78 deg off F
+// toward +R; Run168's escorts flew with nose . F 0.30-0.40, mostly along their petals' plane normals) with two escorts of it in a loose
+// column: the front (M1 Colossus, r 1,022 m, w 0.53 r) 2.6 r behind the leader, the rear (Titan, r 1,092 m) 1.65 km behind the front
+// and 2.0 km to its side (toward -F). Each heads for its own petal (3 and 4, Run168's), the column converges to Run168's geometry
+// (1.6-1.7 km along, about 1.0-1.2 km across, 1.9-2.0 km centre to centre, inside the engine radii's 2,114 m), the front reaches its hold
+// boundary first and brakes on the inbound profile while the rear keeps 100 m/s. (A 1.5 km column in line is a capsule overlap for
+// these hulls, L_A + L_B = 2,114 m: never certifiable, so the scenario takes the measured geometry.)
+static const TStart kTCol9[3] = {
+    {&kCrowdTitan, 0.53, kTDepart, -1, -30000, -1500, -15000, 78, 100, 0, 0, 0},
+    {&kCrowdM1, 0.53, kTEscort, 0, 0, 0, 0, 0, 0, 0, 2.6, 4.3},
+    {&kCrowdTitan, 0.53, kTEscort, 0, 0, 0, 0, 0, 0, 0, 2.6 + 1650.0 / 1092.0, 4.4, -1, 2000.0 / 1092.0},
 };
 static void traffic_print(const char* tag, int fps, std::uint32_t seed, const TResult& r) {
     std::printf("traffic T %-12s fps=%3d seed=%u: capitals=%u launched=%u arrivals=%u offset_ok=%u lateral_kept=%u small=%u side=%u unseparated=%u "
@@ -14267,7 +14399,490 @@ static void b5_traffic_summary() {
     check(b5_t_runs == 0 || (b5_t_proven > 0 && (b5_t_launch_left > 0 || b5_no_leave)), "b5 T: the crowds' members are proven and the launched leave");
     check(b5_t_resets == 0 && b5_t_gone_left == 0, "b5 T: one sector (no reset); every member alive until its launch (none left as gone)");
 }
+// B.9 review units: (1) the petal rollout of an inbound escort flies the speed site B will write past its boundary (hold_law on its own
+// rolled-out state: B.8's join profile up to the gate speed for a late unringed holder, 25 m/s for a settled escort; the inbound law
+// alone: 60 m/s); (2) plan_speed's age is signed (a v_plan newer than the state read is fresh); (3) the order-0 gap resumes at the plan speed under the
+// yield cap only while it is in force; (4) leave() resets the cap and the plan speed; (5) try_yield's swept flag (noyield: no steered
+// order outside the gap, an empty ladder; a member in its gap yields, deferred); (6) gap_scan honours the sweep's overlap minimum. The
+// second review: (7) the rollout's per-sample speed against the written one (B.8's profile below the gate speed; core::steer's cornering
+// cap in a turn); (8) the head's target for an inbound committed member; (9) decide's keep in the gap, its release on the steered order,
+// and the noyield / contact causes.
+static void sb_b9_review_units() {
+    char why[256];
+    static gc::Board bd;
+    bd = gc::Board{};
+    const std::uint32_t now = 400000;
+    gc::Gate* g = ctl_gate(bd, now);
+    g->rho = 2874.0f;
+    g->step_ms = 0;
+    auto escort = [&]() {
+        gc::Member m{};
+        m.ship = 0x9100;
+        m.id = 1;
+        m.role = gc::Role::escort;
+        m.sb = gc::Sb::inbound;
+        m.petal = 3;
+        m.zx = -5221.0f;
+        m.leader = 0x9000;
+        m.key_res = 1;
+        m.res_until = now + 60000; // the leader launched 10 s ago: the target is now (late)
+        m.res_o8_ms = now - 10000;
+        m.params.W = 1843.0f / 65536.0f * 6.2831853f;
+        m.params.alpha = m.params.W * 0.05f;
+        m.params.v_max = 110.0f;
+        m.params.a_lin = 10.0f;
+        m.params.r_gate = g->r_gate;
+        m.large = 1;
+        m.r = m.L = 1092.0f;
+        m.w = 583.0f;
+        m.st.ms = now;
+        m.st.order = core::kOrderEscort;
+        m.st.target = 0x9000;
+        m.st.v = m.st.v_des = 100.0f;
+        m.v_plan = 100.0f;
+        m.v_plan_ms = now;
+        m.st.rows[0][0] = 1.0f;
+        m.st.rows[1][1] = 1.0f;
+        for (int i = 0; i < 3; ++i) m.st.rows[2][i] = g->F[i];
+        return m;
+    };
+    // 1. an inbound escort on the gate's axis, 1 km beyond its boundary (ring extent + 2 km), heading +F at 100 m/s: past the boundary its
+    //    rollout's speed follows the join profile up to the large hulls' 100 m/s; settled (esc_in10) it drops to 25 m/s
+    float v_late = 0.0f, v_set = 0.0f, want_late = 0.0f;
+    int k_cross = -1;
+    for (int settled = 0; settled < 2; ++settled) {
+        gc::Member m = escort();
+        m.esc_in10 = std::uint8_t(settled);
+        const float lim = gc::ring_extent(*g, m) + gc::kInboundM;
+        for (int i = 0; i < 3; ++i) {
+            m.st.x[i] = g->G[i] - (lim + 1000.0f) * g->F[i];
+            m.st.u[i] = 100.0f * g->F[i];
+        }
+        gc::Sample s[gc::kSamples];
+        float vmax = 0.0f;
+        const unsigned n = gc::rollout(m, *g, -1.0f, s, &vmax);
+        int kc = -1;
+        for (unsigned k = 0; k < n && kc < 0; ++k) {
+            const float d[3] = {s[k].c[0] - g->G[0], s[k].c[1] - g->G[1], s[k].c[2] - g->G[2]};
+            if (gc::sc::dot3(d, d) <= lim * lim) kc = int(k);
+        }
+        const int k8 = kc + 16; // 8 s past the boundary
+        float v_imp = -1.0f;
+        if (kc > 0 && k8 < int(n)) {
+            const float d[3] = {s[k8].c[0] - s[k8 - 1].c[0], s[k8].c[1] - s[k8 - 1].c[1], s[k8].c[2] - s[k8 - 1].c[2]};
+            v_imp = std::sqrt(gc::sc::dot3(d, d)) / gc::kSampleS;
+            if (!settled) { // the written speed there: hold_speed of the member at that sample (hold, unringed), under the gate speed
+                gc::Member p = m;
+                p.sb = gc::Sb::hold;
+                for (int i = 0; i < 3; ++i) {
+                    p.st.x[i] = s[k8].c[i];
+                    p.st.rows[2][i] = s[k8].f[i];
+                }
+                const std::uint32_t t8 = now + std::uint32_t(k8) * gc::kSampleMs;
+                want_late = std::fmin(gc::hold_speed(*g, p, t8, gc::escort_target(*g, m, now), nullptr), 100.0f);
+            }
+        }
+        (settled ? v_set : v_late) = v_imp;
+        if (!settled) k_cross = kc;
+    }
+    std::printf("sb B.9 review rollout: an inbound late escort crosses its boundary at sample %d; 8 s later the rollout flies %.1f m/s (hold_speed "
+                "there under the gate speed %.1f; the inbound law alone: 60); settled %.1f m/s\n", k_cross, double(v_late), double(want_late), double(v_set));
+    std::snprintf(why, sizeof why, "sb B.9 review: the petal rollout past the boundary flies hold_law (late unringed %%.1f m/s against %%.1f; "
+                  "settled 25 m/s)");
+    checkf(k_cross > 0 && v_late > 85.0f && std::fabs(v_late - want_late) < 3.0f && std::fabs(v_set - gc::kPetalVmin) < 2.0f, why, v_late, want_late);
+    // 2. plan_speed: a v_plan 50 ms newer than the state read is the plan (not the capped desired speed); 2 s older it is not
+    gc::Member m = escort();
+    m.sb = gc::Sb::hold;
+    m.st.v_des = 25.0f;
+    m.v_plan_ms = now + 50;
+    const float p_new = gc::plan_speed(*g, m);
+    m.v_plan_ms = now - 2000;
+    const float p_old = gc::plan_speed(*g, m);
+    // 3. the order-0 gap: the resume is v_plan under a cap in force (300 ms old), v_plan once it is released or lapsed (1.5 s old)
+    m.st.order = core::kOrderNone;
+    m.steered_ms = now - 1000;
+    m.last_plan = gc::Plan::petal;
+    m.v_plan_ms = now - 500;
+    m.cap = 40.0f;
+    m.cap_ms = now - 300;
+    const float g_cap = gc::plan_speed(*g, m);
+    m.cap = -1.0f;
+    const float g_rel = gc::plan_speed(*g, m);
+    m.cap = 40.0f;
+    m.cap_ms = now - 1500;
+    const float g_lapsed = gc::plan_speed(*g, m);
+    std::printf("sb B.9 review plan_speed: v_plan 50 ms newer %.1f, 2 s older %.1f (v_des 25); gap resume with the cap in force %.1f, released "
+                "%.1f, lapsed %.1f\n", double(p_new), double(p_old), double(g_cap), double(g_rel), double(g_lapsed));
+    check(p_new == 100.0f && p_old == 25.0f, "sb B.9 review: plan_speed's age is signed (a v_plan newer than the state is fresh)");
+    check(g_cap == 40.0f && g_rel == 100.0f && g_lapsed == 100.0f, "sb B.9 review: the order-0 gap resumes at the speed site B writes (v_plan "
+                                                                  "under the cap only while it is in force)");
+    // 4. leave(): an evicted member keeps no cap or plan speed for its re-entry
+    g->m[0] = escort();
+    g->m[0].cap = 40.0f;
+    g->m[0].cap_ms = g->m[0].yield_ms = now;
+    g->n = 1;
+    gc::leave(*g, 0, true, now);
+    const gc::Member& ev = g->m[0];
+    check(ev.cap < 0.0f && ev.cap_ms == 0 && ev.yield_ms == 0 && ev.v_plan < 0.0f && ev.v_plan_ms == 0,
+          "sb B.9 review: leave() resets the cap, its stamps and the plan speed");
+    // 5. try_yield: no steered order outside the gap and an empty ladder (plan 25 m/s on a petal) roll out no candidate (noyield); on 0x14
+    //    and in its gap it yields (0.6 v = 60 m/s; alone on the board every sweep clears)
+    gc::DecideStats ds;
+    bool sw_order = true, sw_ladder = true, sw_ok = false, sw_gap = false;
+    g->m[0] = escort();
+    g->m[0].sb = gc::Sb::hold;
+    g->m[0].ringed = 1;
+    g->m[0].st.order = core::kOrderNone; // order 0, no steered stamp: not in a gap
+    const bool y_order = gc::try_yield(*g, 0, now, &ds, 0, &sw_order);
+    g->m[0].st.order = core::kOrderEscort;
+    g->m[0].v_plan = 25.0f;
+    const bool y_ladder = gc::try_yield(*g, 0, now, &ds, 0, &sw_ladder);
+    g->m[0].v_plan = 100.0f;
+    const bool y_ok = gc::try_yield(*g, 0, now, &ds, 0, &sw_ok);
+    const float cap_ok = g->m[0].cap;
+    const bool yms_ok = g->m[0].yield_ms == now;
+    g->m[0].cap = -1.0f;
+    g->m[0].st.order = core::kOrderNone;
+    g->m[0].steered_ms = now - 1000;
+    g->m[0].last_plan = gc::Plan::petal;
+    g->m[0].v_plan_ms = now - 500;
+    const bool y_gap = gc::try_yield(*g, 0, now, &ds, 0, &sw_gap);
+    g->n = 0;
+    std::printf("sb B.9 review try_yield: order 0 outside a gap %d (swept %d), plan 25 on a petal %d (swept %d), on 0x14 %d (swept %d, cap %.1f), in "
+                "its gap %d (swept %d)\n", int(y_order), int(sw_order), int(y_ladder), int(sw_ladder), int(y_ok), int(sw_ok), double(cap_ok),
+                int(y_gap), int(sw_gap));
+    check(!y_order && !sw_order && !y_ladder && !sw_ladder && y_ok && sw_ok && std::fabs(cap_ok - 60.0f) < 0.01f && yms_ok && y_gap && sw_gap,
+          "sb B.9 review: try_yield rolls out no candidate without a steered order or ladder (noyield); a member in its gap yields");
+    // 6. gap_scan: 5 paired samples are too few for a warn reach of 8 (na, the sweep's stale), enough for 4; one ends a launch
+    gc::Sample a[gc::kSamples], b[gc::kSamples];
+    for (unsigned k = 0; k < gc::kSamples; ++k)
+        for (int i = 0; i < 3; ++i) {
+            a[k].c[i] = i == 2 ? 50.0f * float(k) : 0.0f;
+            b[k].c[i] = i == 0 ? 20000.0f : i == 2 ? 50.0f * float(k) : 0.0f;
+            a[k].f[i] = b[k].f[i] = i == 2 ? 1.0f : 0.0f;
+        }
+    const gc::GapScan s8 = gc::gap_scan(a, gc::kSamples, now, 1000.0f, 500.0f, b, 5, now, 100.0f, 1000.0f, 500.0f, 1000, 8, false);
+    const gc::GapScan s4 = gc::gap_scan(a, gc::kSamples, now, 1000.0f, 500.0f, b, 5, now, 100.0f, 1000.0f, 500.0f, 1000, 4, false);
+    const gc::GapScan s1 = gc::gap_scan(a, gc::kSamples, now, 1000.0f, 500.0f, b, 1, now, 100.0f, 1000.0f, 500.0f, 1000, 8, true);
+    std::printf("sb B.9 review gap_scan: 5 paired samples against a reach of 8 ok %d, of 4 ok %d (min %.0f m); 1 sample at a launch ok %d\n",
+                int(s8.ok), int(s4.ok), double(s4.min_gap), int(s1.ok));
+    check(!s8.ok && s4.ok && s4.min_gap > 15000.0f && s1.ok, "sb B.9 review: gap_scan needs the sweep's overlap (gap_m na on a stale verdict)");
+    // 7. (second review) the rollout's per-sample speed against the speed site A / B would write at the rolled-out state: hold_speed
+    //    there (the probe member at the sample, hold, the target's time advanced) under the gate speed with core::steer's cornering cap
+    //    toward sb_steer's carrot from the sample's nose. a: an unringed late holder outside its ring's extent, 1.2 km beyond its back
+    //    turn (B.8's join profile below the gate speed, 87 m/s down to 60 at its ring); b: a ringed late holder entering its back turn
+    //    with a slow turn rate (W 0.03 rad/s: the cornering cap binds below the lap law's 60 m/s)
+    auto written = [&](const gc::Member& m0, const gc::Sample& smp, float v_now, std::uint32_t t, bool ringed) {
+        gc::Member p = m0;
+        p.sb = gc::Sb::hold;
+        p.ringed = ringed ? 1 : 0;
+        p.st.ms = t;
+        for (int i = 0; i < 3; ++i) {
+            p.st.x[i] = smp.c[i];
+            p.st.rows[2][i] = smp.f[i];
+        }
+        const float law = gc::hold_speed(*g, p, t, m0.t_rel_ms, nullptr);
+        gc::SbSteer sbs;
+        if (!gc::sb_steer(*g, p, smp.c, v_now, core::kOrderEscort, p.leader, &sbs)) return -1.0f;
+        core::Inputs in;
+        const float* f = smp.f;
+        float r0[3] = {f[1] * 0.0f - f[2] * 1.0f, f[2] * 0.0f - f[0] * 0.0f, f[0] * 1.0f - f[1] * 0.0f}; // f x (0, 1, 0) ... completed below
+        float nr = std::sqrt(r0[0] * r0[0] + r0[1] * r0[1] + r0[2] * r0[2]);
+        if (nr < 1e-3f) {
+            r0[0] = 1.0f; r0[1] = r0[2] = 0.0f; nr = 1.0f;
+        }
+        for (int i = 0; i < 3; ++i) r0[i] /= nr;
+        const float r1[3] = {f[1] * r0[2] - f[2] * r0[1], f[2] * r0[0] - f[0] * r0[2], f[0] * r0[1] - f[1] * r0[0]};
+        for (int i = 0; i < 3; ++i) {
+            in.x[i] = smp.c[i];
+            in.P[i] = sbs.P[i];
+            in.row[0][i] = r0[i];
+            in.row[1][i] = r1[i];
+            in.row[2][i] = f[i];
+        }
+        in.v = v_now;
+        in.order = core::kOrderEscort;
+        core::Dynamics dyn;
+        dyn.W[0] = dyn.W[1] = dyn.W[2] = m0.params.W;
+        dyn.k = m0.params.alpha / m0.params.W;
+        dyn.v_max = m0.params.v_max;
+        dyn.a_lin = m0.params.a_lin;
+        dyn.large = m0.large != 0;
+        core::Command cmd;
+        core::steer(in, dyn, &cmd);
+        const float gate = core::gate_speed(m0.params.v_max, m0.large != 0, cmd.v_corner);
+        return law < gate ? law : gate;
+    };
+    auto implied = [&](const gc::Sample* s, unsigned k) {
+        const float d[3] = {s[k].c[0] - s[k - 1].c[0], s[k].c[1] - s[k - 1].c[1], s[k].c[2] - s[k - 1].c[2]};
+        return std::sqrt(gc::sc::dot3(d, d)) / gc::kSampleS;
+    };
+    gc::PetalGeom pg3;
+    gc::petal_geom(*g, 3u, -5221.0f, &pg3);
+    float err_a = 0.0f, err_b = 0.0f, wa_min = 1e9f, wa_max = 0.0f, wb_min = 1e9f;
+    unsigned na = 0, nb = 0;
+    for (int which = 0; which < 2; ++which) {
+        gc::Member h = escort();
+        h.sb = gc::Sb::hold;
+        h.params.a_lin = 10.0f;
+        h.t_rel_ms = now; // late: the lap law's 60, B.8's profile while unringed
+        float a, b, da, db;
+        if (which == 0) { // outside the ring's extent, 1.2 km beyond the back turn's outer side along G's line through its centre
+            h.ringed = 0;
+            const float bc = pg3.rho + gc::kPetalRh, cn = std::sqrt(pg3.a0 * pg3.a0 + bc * bc), ua = pg3.a0 / cn, ub = bc / cn;
+            a = pg3.a0 + (gc::kPetalRh + 1200.0f) * ua;
+            b = bc + (gc::kPetalRh + 1200.0f) * ub;
+            da = -ua; // heading for G
+            db = -ub;
+        } else { // on the back turn (outside the release window: late is 60 m/s), 100 m into it
+            h.ringed = 1;
+            h.params.W = 0.03f;
+            h.params.alpha = h.params.W * 0.05f;
+            gc::petal_at(pg3, 2.0f * gc::kPetalSh + core::kPi * gc::kPetalRh + 100.0f, &a, &b, &da, &db);
+        }
+        for (int i = 0; i < 3; ++i) {
+            h.st.x[i] = g->G[i] + a * g->F[i] + b * pg3.e[i];
+            h.st.rows[2][i] = da * g->F[i] + db * pg3.e[i];
+        }
+        gc::Sample s0;
+        for (int i = 0; i < 3; ++i) {
+            s0.c[i] = h.st.x[i];
+            s0.f[i] = h.st.rows[2][i];
+        }
+        float v0 = 60.0f;
+        for (int it = 0; it < 3; ++it) v0 = written(h, s0, v0, now, h.ringed != 0); // start at the written speed
+        h.st.v = h.st.v_des = v0;
+        h.v_plan = v0;
+        for (int i = 0; i < 3; ++i) h.st.u[i] = v0 * h.st.rows[2][i];
+        gc::Sample s[gc::kSamples];
+        float vmax = 0.0f;
+        const unsigned n = gc::rollout(h, *g, -1.0f, s, &vmax, now);
+        const float ext = gc::ring_extent(*g, h);
+        bool ringed = h.ringed != 0;
+        for (unsigned k = 2; k < 21 && k < n; ++k) { // the first 10 s
+            const float d[3] = {s[k - 1].c[0] - g->G[0], s[k - 1].c[1] - g->G[1], s[k - 1].c[2] - g->G[2]};
+            if (gc::sc::dot3(d, d) <= ext * ext) ringed = true;
+            const float w = written(h, s[k - 1], implied(s, k - 1), now + (k - 1) * gc::kSampleMs, ringed);
+            const float e = std::fabs(implied(s, k) - w);
+            if (which == 0) {
+                err_a = std::fmax(err_a, e);
+                wa_min = std::fmin(wa_min, w);
+                wa_max = std::fmax(wa_max, w);
+                ++na;
+            } else {
+                err_b = std::fmax(err_b, e);
+                wb_min = std::fmin(wb_min, w);
+                ++nb;
+            }
+        }
+    }
+    std::printf("sb B.9 review per-sample speed (10 s): unringed late holder 1.2 km beyond its back turn: written %.1f-%.1f m/s, the rollout within "
+                "%.1f m/s (%u samples); ringed late holder in its back turn, W 0.03: written down to %.1f m/s (the cornering cap), the rollout within "
+                "%.1f m/s (%u samples)\n", double(wa_min), double(wa_max), double(err_a), na, double(wb_min), double(err_b), nb);
+    check(na > 10 && wa_max < 99.0f && wa_min < wa_max - 5.0f && err_a < 3.0f && nb > 10 && wb_min < 55.0f && err_b < 3.0f,
+          "sb B.9 review: the petal rollout flies the written speed per sample (B.8's profile below the gate speed; the cornering cap in a turn)");
+    // 8. (second review) an inbound committed member that will be the head flies the head's target (late: 60 and the profile), not the
+    //    nominal 40; with a committed holder ahead of it in sequence it has none
+    {
+        gc::Member c = escort();
+        c.role = gc::Role::committed;
+        c.st.order = core::kOrderFlyBefore;
+        c.st.target = g->gate;
+        c.q_ok = 1;
+        c.key_res = 0;
+        c.res_until = 0;
+        c.seq = 5;
+        c.key = 5u << 4;
+        g->head_t_ms = now;
+        const float lim = gc::ring_extent(*g, c) + gc::kInboundM;
+        for (int i = 0; i < 3; ++i) {
+            c.st.x[i] = g->G[i] - (lim + 1000.0f) * g->F[i];
+            c.st.u[i] = 100.0f * g->F[i];
+        }
+        g->m[0] = c;
+        g->n = 1;
+        const std::uint32_t t_alone = gc::rollout_target(*g, g->m[0]);
+        gc::Sample s[gc::kSamples];
+        float vmax = 0.0f;
+        const unsigned n = gc::rollout(g->m[0], *g, -1.0f, s, &vmax, now);
+        float v8 = -1.0f;
+        for (unsigned k = 1; k + 16 < n; ++k) {
+            const float d[3] = {s[k].c[0] - g->G[0], s[k].c[1] - g->G[1], s[k].c[2] - g->G[2]};
+            if (gc::sc::dot3(d, d) <= lim * lim) {
+                v8 = implied(s, k + 16);
+                break;
+            }
+        }
+        gc::Member hd = escort(); // a committed holder on order 4 ahead in sequence
+        hd.ship = 0x9300;
+        hd.role = gc::Role::committed;
+        hd.sb = gc::Sb::hold;
+        hd.st.order = core::kOrderFlyBefore;
+        hd.q_ok = 1;
+        hd.seq = 2;
+        hd.key = 2u << 4;
+        for (int i = 0; i < 3; ++i) hd.st.x[i] = g->G[i] - 9000.0f * g->F[i];
+        g->m[1] = hd;
+        g->n = 2;
+        const std::uint32_t t_behind = gc::rollout_target(*g, g->m[0]);
+        g->n = 0;
+        g->head_t_ms = 0;
+        std::printf("sb B.9 review head target: an inbound committed member alone %d ms (the head's target now), behind a committed holder %u; "
+                    "8 s past its boundary it flies %.1f m/s\n", int(t_alone - now), unsigned(t_behind), double(v8));
+        check(t_alone == now && t_behind == 0 && v8 > 70.0f, "sb B.9 review: an inbound committed member that will be the head flies the head's "
+                                                             "target past its boundary (the lap law's 60 and B.8's profile, not 40)");
+    }
+    // 9. (second review) decide: alone on the board in its order-0 gap with a cap in force, the decision keeps it (re-stamped, the yield's
+    //    stamp unchanged, nothing released); the first decision on its steered order releases it. Two members at one point (a conflict no
+    //    candidate clears): the yielder on order 0 outside a gap writes cause noyield, on 0x14 contact
+    {
+        gc::Member a = escort();
+        a.sb = gc::Sb::hold;
+        a.ringed = 1;
+        float pa_, pb_, da_, db_;
+        gc::petal_at(pg3, 20.0f, &pa_, &pb_, &da_, &db_);
+        for (int i = 0; i < 3; ++i) {
+            a.st.x[i] = g->G[i] + pa_ * g->F[i] + pb_ * pg3.e[i];
+            a.st.rows[2][i] = g->F[i];
+            a.st.u[i] = 60.0f * g->F[i];
+        }
+        a.st.v = 60.0f;
+        a.v_plan = 60.0f;
+        a.v_plan_ms = now - 200;
+        a.st.order = core::kOrderNone;
+        a.steered_ms = now - 1000;
+        a.last_plan = gc::Plan::petal;
+        a.cap = 30.0f;
+        a.cap_ms = a.yield_ms = now - 300;
+        a.seq = 1;
+        g->m[0] = a;
+        g->n = 1;
+        gc::DecideStats d1;
+        gc::decide(*g, 0, now, &d1, nullptr, nullptr);
+        const bool kept = g->m[0].cap == 30.0f && g->m[0].cap_ms == now && g->m[0].yield_ms == now - 300 && d1.released == 0;
+        g->m[0].st.order = core::kOrderEscort;
+        g->m[0].st.ms = now + 250;
+        g->m[0].v_plan_ms = now + 250;
+        gc::DecideStats d2;
+        gc::decide(*g, 0, now + 250, &d2, nullptr, nullptr);
+        const bool released = g->m[0].cap < 0.0f && d2.released == 1;
+        // the pair: B 100 m behind A on its line, B the higher sequence number (the yielder)
+        std::uint8_t why[2] = {0, 0};
+        for (int steered = 0; steered < 2; ++steered) {
+            gc::Member b = a;
+            b.ship = 0x9200;
+            b.id = 2;
+            b.seq = 2;
+            b.cap = -1.0f;
+            b.cap_ms = b.yield_ms = 0;
+            for (int i = 0; i < 3; ++i) b.st.x[i] = a.st.x[i] - 100.0f * g->F[i];
+            b.st.order = steered ? core::kOrderEscort : core::kOrderNone;
+            b.steered_ms = 0; // not in a gap
+            b.v_plan_ms = now;
+            gc::Member a2 = a;
+            a2.st.order = core::kOrderEscort;
+            a2.cap = -1.0f;
+            a2.v_plan_ms = now;
+            g->m[0] = a2;
+            g->m[1] = b;
+            g->n = 2;
+            for (unsigned i = 0; i < 2; ++i)
+                for (unsigned j = 0; j < 2; ++j) g->v[i][j] = g->why[i][j] = 0;
+            gc::DecideStats d3;
+            gc::decide(*g, 1, now, &d3, nullptr, nullptr); // B's rollout first (A has none: no conflict)
+            gc::decide(*g, 0, now, &d3, nullptr, nullptr); // A's: the conflict, B designated
+            why[steered] = std::uint8_t(g->why[0][1] & ~gc::kPairWhyPlan);
+        }
+        g->n = 0;
+        std::printf("sb B.9 review decide: in its gap the cap kept %d, released at the first steered decision %d; the yielder on order 0 outside a "
+                    "gap writes %s, on 0x14 %s\n", int(kept), int(released), gc::pair_why_name(why[0]), gc::pair_why_name(why[1]));
+        check(kept && released && why[0] == std::uint8_t(gc::PairWhy::noyield) && why[1] == std::uint8_t(gc::PairWhy::contact),
+              "sb B.9 review: decide keeps a cap in the gap, releases it on the steered order, and writes noyield / contact");
+    }
+}
+// B.9 (Run168 column evictions at hold entry): the review units (sb_b9_review_units), then scenario T's column variant (kTCol9) at every
+// frame rate and seed. Asserted: no engine warn between the column members left to the engine (0x12 episodes), the pair certified on every
+// frame from its first certificate to the rear's hold entry + 30 s, the rear member yields (a cap >= 10 m/s), no capsule contact while
+// certified; the column table (60 fps, the first seed) every 500 ms around the rear's hold entry.
+static void sb_b9_checks() {
+    char why[256];
+    sb_b9_review_units();
+    const TSetup su = {"column b9", kTCol9, 3, -1, 0, 1200, true, false, 1, 2};
+    if (const char* e = std::getenv("X3M_B9_RUN")) {
+        unsigned f = 0, sd = 0;
+        if (std::sscanf(e, "%u,%u", &f, &sd) == 2) {
+            b9_table_fps = int(f);
+            b9_table_seed = sd;
+        }
+    }
+    if (const char* e = std::getenv("X3M_B9_SEEDS")) { // an iteration aid: n more seeds (100..) at each frame rate, the failing runs only
+        const int n = std::atoi(e);
+        unsigned bad = 0, runs = 0;
+        for (int fps : kFps)
+            for (int q = 0; q < n; ++q) {
+                const TResult r = run_traffic(su, fps, std::uint32_t(100 + q));
+                ++runs;
+                const bool ok = r.b9_episodes == 0 && r.b9_uncert == 0 && r.b9_rear_caps > 0 && r.b9_min_capsule > 0.0;
+                if (!ok) {
+                    ++bad;
+                    std::printf("b9seeds fps %d seed %d: episodes %u uncert %u (first %.1f) caps %u min_capsule %.0f\n", fps, 100 + q, r.b9_episodes, r.b9_uncert,
+                                r.b9_uncert_first_s, r.b9_rear_caps, r.b9_min_capsule);
+                }
+            }
+        std::printf("b9seeds bad %u of %u\n", bad, runs);
+        return;
+    }
+    const bool one = std::getenv("X3M_B9_RUN") != nullptr; // an iteration aid: that run alone, with its table
+    for (int fps : kFps)
+        for (std::uint32_t seed0 : kSeeds) {
+            if (one && (fps != b9_table_fps || seed0 != kSeeds[0])) continue;
+            const std::uint32_t seed = one ? b9_table_seed : seed0;
+            b9_table_run = true;
+            const TResult r = run_traffic(su, fps, seed);
+            b9_table_run = false;
+            std::printf("sb B.9 column %3d fps seed %u: frames=%u warns=%u unsuppressed=%u episodes=%u uncertified=%u (first %.1f s) rear_caps=%u "
+                        "front_caps=%u cap_min=%.1f min_capsule=%.0f m min_scan=%.0f m first_warn=%.1f s cert_contact=%u launched=%u/%u\n", fps, seed,
+                        r.b9_frames, r.b9_warns, r.b9_unsup, r.b9_episodes, r.b9_uncert, r.b9_uncert_first_s, r.b9_rear_caps, r.b9_front_caps,
+                        r.b9_cap_min > 1e17 ? -1.0 : r.b9_cap_min, r.b9_min_capsule, r.b9_min_scan > 1e17 ? -1.0 : r.b9_min_scan, r.b9_warn_first_s,
+                        r.cert_contact, r.launched, r.departures);
+            std::snprintf(why, sizeof why, "B.9 column %d fps seed %u: the column members warn each other and E suppresses every warn (0x12 episodes %%.0f of "
+                          "%%.0f warn frames)", fps, seed);
+            checkf(r.b9_frames > 0 && r.b9_warns > 0 && r.b9_episodes == 0 && r.b9_unsup == 0, why, r.b9_episodes, r.b9_warns);
+            std::snprintf(why, sizeof why, "B.9 column %d fps seed %u: the pair certified on every frame to the rear's hold entry + 30 s (uncertified %%.0f, "
+                          "the first at %%.1f s)", fps, seed);
+            checkf(r.b9_uncert == 0, why, r.b9_uncert, r.b9_uncert_first_s);
+            std::snprintf(why, sizeof why, "B.9 column %d fps seed %u: the rear member yields at >= 10 m/s (%%.0f yields, lowest cap %%.1f m/s)", fps, seed);
+            checkf(r.b9_rear_caps > 0 && r.b9_cap_min >= double(gc::kYieldFloorMs), why, r.b9_rear_caps, r.b9_cap_min > 1e17 ? -1.0 : r.b9_cap_min);
+            std::snprintf(why, sizeof why, "B.9 column %d fps seed %u: no capsule contact while certified (%%.0f), the column's closest capsule gap %%.0f m > 0",
+                          fps, seed);
+            checkf(r.cert_contact == 0 && r.b9_min_capsule > 0.0, why, r.cert_contact, r.b9_min_capsule);
+            if (fps == b9_table_fps && seed == b9_table_seed) {
+                std::printf("sb B.9 column table (60 fps, seed %u; t_rel from the rear's hold entry at %.1f s; sb 6 inbound, 1 hold; verdict 1 clear, 2 "
+                            "unresolved, 0 none; scan = gap_scan's minimum gap over the stored rollouts at sample t_min, first contact sample t_c)\n",
+                            seed, double(b9_rear_hold_ms) / 1000.0);
+                std::printf("  t_rel   d_m  capsule_m  v_front v_rear  vsb_front vsb_rear cap_front cap_rear sb_f sb_r verdict scan_m t_min_s t_c_s warn unsup\n");
+                for (unsigned q = 0; q < b9_n; ++q) {
+                    const B9Row& w = b9_rows[q];
+                    const double tr = w.t - double(b9_rear_hold_ms) / 1000.0;
+                    if (b9_rear_hold_ms >= 0 && (tr < -60.0 || tr > 30.0)) continue;
+                    std::printf("  %6.1f %5.0f %9.0f %8.1f %6.1f %9.1f %8.1f %9.1f %8.1f %4d %4d %7d %6.0f %7.1f %5.1f %4d %5d\n", tr, w.d, w.cap_gap, w.va,
+                                w.vb, w.vsb_a, w.vsb_b, w.cap_a, w.cap_b, w.sb_a, w.sb_b, w.verdict, w.scan_gap > 1e8 ? -1.0 : w.scan_gap,
+                                w.t_min >= 0 ? double(w.t_min) * double(gc::kSampleS) : -1.0, w.t_c >= 0 ? double(w.t_c) * double(gc::kSampleS) : -1.0,
+                                w.warn, w.unsup);
+                }
+                if (std::getenv("X3M_B9_ALL"))
+                    for (unsigned q = 0; q < b9_n; ++q) {
+                        const B9Row& w = b9_rows[q];
+                        std::printf("  b9all t=%.1f d=%.0f cap=%.0f v=%.1f/%.1f vsb=%.1f/%.1f sb=%d/%d petal=%d/%d ver=%d scan=%.0f tmin=%d tc=%d warn=%d unsup=%d "
+                                    "pa=%.0f,%.0f,%.0f pb=%.0f,%.0f,%.0f capab=%.0f/%.0f qa=%.0f,%.0f,%.0f@%.2f qb=%.0f,%.0f,%.0f@%.2f\n", w.t, w.d, w.cap_gap, w.va, w.vb, w.vsb_a, w.vsb_b, w.sb_a, w.sb_b, w.petal_a,
+                                    w.petal_b, w.verdict, w.scan_gap > 1e8 ? -1.0 : w.scan_gap, w.t_min, w.t_c, w.warn, w.unsup, w.pa[0], w.pa[1], w.pa[2], w.pb[0],
+                                    w.pb[1], w.pb[2], w.cap_a, w.cap_b, w.qa[0], w.qa[1], w.qa[2], w.ra, w.qb[0], w.qb[1], w.qb[2], w.rb);
+                    }
+            }
+        }
+}
 int main(int argc, char** argv) {
+    if (std::getenv("X3M_SIBLING_OFF")) g_sibling_warn = false;
     if (std::getenv("X3M_SEQ_OFF")) g_seq = false; // amendment 16b off: amendment 16 with the review fixes (the option-off stdout)
     if (argc == 3 && !std::strcmp(argv[1], "--emit-trace")) return emit_trace(argv[2]);
     if (argc == 3 && !std::strcmp(argv[1], "--emit-controller")) return emit_controller(argv[2]);
@@ -14283,8 +14898,15 @@ int main(int argc, char** argv) {
         sb_b6_review_checks();
         sb_b7_checks(); // B.7 (Run167 escort staging)
         sb_b8_checks(); // B.8 (Run168 join distance)
+        sb_b9_checks(); // B.9 (Run168 column evictions)
         traffic_scenarios();
         b5_traffic_summary();
+        std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
+        std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
+        return failures ? 1 : 0;
+    }
+    if (argc == 2 && !std::strcmp(argv[1], "--b9")) { // B.9 alone (an iteration aid; the full run includes it)
+        sb_b9_checks();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
         return failures ? 1 : 0;
@@ -14334,6 +14956,7 @@ int main(int argc, char** argv) {
         sb_b6_review_checks();
         sb_b7_checks(); // B.7 (Run167 escort staging)
         sb_b8_checks(); // B.8 (Run168 join distance)
+        sb_b9_checks(); // B.9 (Run168 column evictions)
         traffic_scenarios();
         b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
@@ -14390,6 +15013,7 @@ int main(int argc, char** argv) {
     sb_b6_review_checks();
     sb_b7_checks(); // B.7 (Run167 escort staging)
     sb_b8_checks(); // B.8 (Run168 join distance)
+    sb_b9_checks(); // B.9 (Run168 column evictions)
     traffic_scenarios();
     b5_traffic_summary();
     dock_scenarios(); // amendment 18 (docking-approach.md): scenario N
