@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run166-candidate of f0fb46ad, build/d3d9.dll (clean configure + build)",
+  "sha256": "f789f531efaa473e6dd445479af7c9923c536ec6cedae5238916a0952e60886d",
+  "bytes": 59416485,
+  "commit": "f0fb46ad",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1001, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads OK (candidate tree); fixture 9807/9807, capital 4149/4149, freed-memory aborts 0, key-off identities 0 (implementer, same tree, ledger)"
+  },
+  "changes_since_run165": [
+    "d6c611d3 Run165 triage (crash)",
+    "447008ab rollback to Run164",
+    "f0fb46ad controller B.5"
+  ],
+  "trigger": "Run165 crash: the B.4 member row read a freed ship through the board (launched ships kept on the board)",
+  "producer": "main session (Fable 5.1), 2026-10-14"
+}
