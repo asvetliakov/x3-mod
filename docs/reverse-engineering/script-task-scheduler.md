@@ -114,8 +114,10 @@ before the `input_part=0` region `0x00403b09`) and `0x00497296`. It never scans 
 suspended list; only the task-kill helper `0x004a2520` (from opcode handler
 `0x004a3009`) and a task-dump native in `0x004ab880` (`0x004ae0fc`, `0x004ae233`) walk
 both lists. So tasks are **not** all ticked every frame: runnable tasks run, suspended
-ones sit on `VM+0x12e4`. How a suspended task is made runnable again (due times, which
-native wakes it) was **not** traced.
+ones sit on `VM+0x12e4`. A suspended task is made runnable again by `0x004a4740`, called from
+the VM's own native-group callback `0x004a4910`. It links the task at the head of the runnable
+list, so the task runs in the next scheduler pass. This is the SA order-end path
+([ship-navigation-ai.md](ship-navigation-ai.md) §10.12 Item 5); TI due times were not traced.
 
 **Synchronous calls.** `0x0049f4c0`, `0x0049f570` and `0x0049f680` (cdecl; `0x0049f680`
 takes `(0, 0, object_id, method_name, 1, argc, cell...)`, 8 dwords at the CutEvent
@@ -283,7 +285,7 @@ without bound), the lever is at the creator, which the same counts would name.
   §4-§5 decide it in one flight.
 * That every live node is on one of the walked lists (the equality in §1 is inferred
   from the create/attach/detach/destroy code; site 3 checks it).
-* How suspended tasks are woken; per-task wait/due fields.
+* Per-task wait/due fields of the TI waits (the SA order-end wake is settled, §2).
 * The names behind `[class+0]` and row `+4` are char pointers (inferred from the task
   dump's conversion calls).
 * `0x00460630`'s signature and the owner of `0x0045f180` cut instances in a battle.

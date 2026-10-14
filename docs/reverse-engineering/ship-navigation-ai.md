@@ -74,10 +74,12 @@ through `[cmd*4 + 0x004690f0]` at `0x0046067a`. The first argument is stored as 
 without pushing a result cell (the value path is `0x00462df9` → `0x004a47f0`). The calling task therefore
 waits **[i]**. When the order ends, the interpreter or `SA_StopObject` calls `0x00460560` with
 `ESI = obj` and one stack argument, the result. That function calls the module callback
-`[*0x006085e4 + 0x34 + slot*0x18](task_id, result)` and clears `[obj+0x7c]`/`[obj+0x80]`. For `SA_` the
-callback is `0x004604d0`. It looks the task id up in the hash at `[[0x0060850c]+0x14]`, sets
-`task+0x84 = 1` (`0x00460510`) and stores the result as an int cell at `task+0x8c`. The path that puts the
-task back on the runnable list was not traced (open in the scheduler note as well).
+`[*0x006085e4 + 0x34 + slot*0x18](task_id, result)` and clears `[obj+0x7c]`/`[obj+0x80]`. For a call from a
+script the slot is the VM's own native group (`[VM+0x1454]`) and the callback is `0x004a4910`. It finds the task in the
+VM hash, sets `task+0x20 = 1` and the result cell, and links the task at the head of the runnable list. The task runs
+in the next frame's scheduler pass (§10.12 Item 5, corrected 2026-10-14). `0x004604d0`, read here earlier as the SA
+callback, is SA's own slot: it marks an engine object (`+0x84`, `+0x8c`) and is used only when the game calls SA
+itself.
 Observed result values: **1** = arrived (e.g. `0x00456587 push 1` for MovePos), **3** on the
 container-lost exits of orders 4/5 (`0x004549ab`, `0x00455115`; "target lost" **[i]**), and the caller-supplied value for `SA_StopObject` (KC passes **2**,
 "interrupted").
@@ -514,8 +516,8 @@ entirely and would disable the fallback.
 
 Open points:
 
-* How a woken task (`task+0x84 = 1`) returns to the runnable list. The one-frame `CollisionWarn` →
-  avoid latency in §3.2 depends on it **[i]**.
+* ~~How a woken task returns to the runnable list.~~ Settled in §10.12 Item 5: the next frame's scheduler pass
+  **[m]**.
 * KC stack semantics are read from opcode patterns, not executed. Open as a result: the `member41`
   test (player ship), the meaning of `member45` bits `0x80000`/`0x40000` and `member46`, the
   `ReorgFormation` per-type slot geometry, the `__EscortObject` fallback slot, the timeout and precision
@@ -1204,7 +1206,7 @@ before the launch **[i]**, and the ship reaches its exit point 900 ms after the 
 * The sin/cos reading of the run-time tables `0x005b6998`… (the 15° fan geometry depends on it).
 * The −F facing (the 0x8000 angle is read; its axis is inferred from `0x004f0270`'s use in order 0x1f).
 * `0x00443620` (the player-capital neighbour pass) and `0x00449510` beyond "enters the sector".
-* Whether the KC resumes the woken task in the next iteration.
+* Whether the KC resumes the woken task in the next iteration: yes, §10.12 Item 5.
 * The lead of the through slot for out-of-sector capitals.
 * Site W's zero count in Run159 corroborates the static finding. It does not prove it: that run has no row that counts
   arrivals into the sector. A `ship_gate_launch` row at `0x00444606` (ship, class code, slot index, P, gate) would settle
@@ -1476,12 +1478,223 @@ distance to a slot or to a leader.
 * The distance metric of `get distance between`.
 * Whether every Mayhem capital escort runs `!move.follow.template`. `Mayhem.Squadron.Add` and the squadron task
   scripts start it; others (`!ship.cmd.protect.std`) also reach it. The Run160 order pattern matches it.
-* The order-0x14 end on a lost leader (§1.3) is taken from the handler table, not re-listed here.
+* The order-0x14 end on a lost leader (§1.3) is listed in §10.12 Item 3.
 
 ```sh
 python3 -I verification/results/ship-navigation-ai/gates/stageb_sites.py     # RESULT PASS (97 checks)
 python3 -I verification/results/ship-navigation-ai/gates/kc_escort_flow.py   # KC escort/sector methods + MSCI lines
 python3 -I verification/results/ship-navigation-ai/gates/stageb_creep.py     # creep-zone model [i]
+```
+
+### 10.12 Trail line questions
+
+2026-10-14, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`), both `x3story.obj` versions and the installed
+TShips, for the convoy gate transit design ([convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §8
+items 2, 3, 4, 5, 8 and 1). Nothing was launched and no Wine command ran. Engine facts come from capstone listings
+over the PE map (raw listings stayed in the session scratch, untracked; no Ghidra decompile was needed).
+[`trail_sites.py`](../../verification/results/ship-navigation-ai/gates/trail_sites.py) re-reads every quoted byte
+string and SA table entry, runs three `.text` sweeps (`[obj+0x44]` bit 2, `0x2000000` on `[obj+0x40]`, non-indexed
+`+0x180`), prints the KC bytecode and statements quoted below for stock and Mayhem, and the TShips column-10 census
+(`RESULT PASS`, [`trail_sites_out.txt`](../../verification/results/ship-navigation-ai/gates/trail_sites_out.txt)).
+Symbols as in §10.10: `f = [obj+0x50]`, `r` = `[gate+0xa4]`, `S` the ship centre, `C` the gate centre, `P` the order
+point. **[s]** = a site byte string re-read by the script, **[m]** = read from the listing, **[i]** = inferred.
+"Frame N" is one main-loop iteration: the KC scheduler pass, then the sector update with the order handlers.
+
+**Answer.**
+
+* **Item 2. The order-4 point is read live, at every re-plan tick, and nowhere else.** The capital case
+  `SA_FlyObjectBeforeContainerPos` writes `f+0x240..+0x248` from the script's cells and nothing else of the point.
+  The handler copies the live field into a stack local at each tick, tests arrival (`|P − S| ≤ 3r/4`) on that copy,
+  and only then runs the container detour and the leaf. The detour writes only the stack local. It cannot engage
+  while the ship and `P` are both on an axis-parallel line in front of the gate plane, nor anywhere beyond
+  `√5·r` (2.47 km) from the gate centre. Every installed capital re-plans every 0–49 ms of game time **[m]**.
+* **Item 3. The escort order ends one frame after the leader's order 8, with result 3; `__EscortObject` returns 8
+  one frame later.** The leader's `Remove()` frees its engine object. The free path clears every class-7 `f+0x224`
+  that names it. The escort's 0x14 handler tests for a null leader on every frame **[m]**.
+* **Item 4. Order 0 zeroes the desired speed on every frame, and site B runs after it on every frame.** Site B's
+  write then stands through the slew loop. The only caps are vmax, `f+0x278` and the carrier freeze. The `[obj+0x44] & 4` exemption is set only
+  for decoupled or scene-started objects **[m]**.
+* **Item 5. A woken KC task runs in the next frame's scheduler pass.** The leader's `ReleaseFromSlot` and `Remove()`
+  therefore run one frame after its order 8 ends, before that frame's order handlers **[m]**. This closes the §7 and
+  [script-task-scheduler.md](script-task-scheduler.md) §2 open point: script SA calls complete through the VM's own
+  callback `0x004a4910`, not through `0x004604d0`.
+* **Item 8. Player-owned is `(int16)[obj+0x3c] == 10`. The piloted ship is `[obj+0x40] & 2`.** The KC writes the
+  owner's race id into the native group, and the player race's id is 10 **[m]**.
+* **Item 1. The engine has no per-gate exclusivity for orders 5 and 8.** `SA_WarpObjectAway` cannot refuse. The
+  per-gate state the two orders write is a per-frame animation flag, and `[gate.f+0x180]` gates only that animation.
+  The KC through slot is the only serialiser **[m]**.
+
+#### Item 2: the order-4 point, the arrival test and the detour [m]
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| issue | `SA_FlyObjectBeforeContainerPos(ship, gate, x, y, z)` (SA 0x0c): `f+0x240/+0x244/+0x248` = the raw cells (world units, no transform), order 4, `f+0x224` = gate, port `f+0x250 = −1`, `[obj+0x7c]/[obj+0x80]` = the caller's completion slot and task. No write to `f+0x230`, `f+0x24c`, `f+0x210` or a speed | `0x0046537c` [s], `0x00465388` [s], `0x00465394` [s], `0x0046539d` [s], `0x004653ac` [s], `0x004653b9` [s] |
+| re-plan gate | `now − f+0x210 < 0` → `jmp 0x4593dd` (site B). Between ticks the handler does nothing: no leaf, no arrival test, no speed write | `0x004549e3` [s] |
+| interval | `f+0x210 = now + rand(f+0x20c)`, `f+0x20c = 50·type[+0x50]` ms. TShips column 10 is 1 on every installed row (M1 27, M2 45, M7 46, TL 13, M0 1 rows), so the next tick comes 0–49 ms after the last | `0x004549ef` [s], `0x00454a17` [s], `0x004404a1` [s]; census in `trail_sites_out.txt` |
+| point | port < 0: `[esp+0x360] = f+0x240..+0x24c`, rebuilt from the live field at every tick; nothing else holds it | `0x00454a20` [s], `0x00454a86` [s], `0x00454a99` [s] |
+| distance | `d = \|P − S\|` (`0x412490`, length `0x469b80`, xyz only) into `[esp+0x2c8]` | `0x00454acf` [s], `0x00454b02` [s] |
+| arrival | class-0x12 target: radius `3r/4`; `d ≤ radius` → P2: port −1, order 0, `[obj+0x14] = [obj+0x10] = 0`, wake 1 | `0x00454b09` [s], `0x00454b1a` [s], `0x00454b70` [s], `0x00454b91` [s] |
+| detour | conditions a–e of §11.1 with `r_C` = `0x488170(gate)` = `[gate+0xa4]` when ≥ 0. The replacement `P'` goes to `[esp+0x360]` only; `d` is recomputed for the speed law | `0x00454c2c`…`0x00454d0a` [s], `0x00454ed5` [s], `0x00454efc` [s], `0x00488176` [s] |
+| leaf | `0x44d020(obj, &[esp+0x360])` (site A below it), after the arrival test | `0x00454f81` [s] |
+
+* **When a rewrite takes effect.** Site A runs inside the leaf call, after that tick's arrival test. A rewrite of
+  `f+0x240` from site A is therefore first used by the next tick, for both the arrival test and the goal. That is
+  ≤ 50 ms of game time later: at 60 fps every 1–3 frames, every frame once a frame step reaches 50 ms (SETA)
+  **[i]** arithmetic. The first tick of every leg (the issue and every KC re-issue) tests the KC's grid point.
+* **No other writer during order 4.** The handler writes `f+0x240` only on the port ≥ 0 path, through a stack
+  local, not the field. The other `+0x240` writers are SA cases that set a different order (§10.11 Q2 sweep).
+  `SA_SetDestination` writes `f+0x224` only.
+* **When the detour can engage [i] from rules a, b, d.** Rules a and d put the projection of `C` on the ship's line
+  between `S` and `P`, within `r` of the line. Rule b adds `|P − S| < 2r`. Together they give
+  `|C − S|² < |P − S|² + r² < 5r²`, so there is no detour while `|S − C| ≥ √5·r` (2.47 km at r = 1105 m). On an
+  axis-parallel line Λ with `S` behind `P` and `P` in front of the plane, `u` is F and `u·(P − C) = z_P < 0`, so rule a
+  fails at any distance. Only a ship that joins Λ from the side (a merge or a re-departure U-turn) within 2.47 km of
+  the gate centre can be detoured. Its leaf then steers at `S + r·m̂` (a tangent of length r, with y halved), while
+  the arrival test still uses `P`.
+* **Answer: yes on all three counts.** `f+0x240` is read uncached at every tick, no copy is taken at the issue, and
+  the detour never touches the field.
+  * **Constraint 1.** A write takes effect at the next tick, not on the frame of the write.
+  * **Constraint 2.** Keep the rewritten point in front of the gate plane, with the ship behind it on Λ. A member
+    that merges from the side must still be ≥ √5·r from the gate centre when its point is rewritten, or accept that
+    the engine's tangent replaces its goal until it is on the line.
+  * **Constraint 3.** The `f+0x224 == Γ` guard holds only while order 4 runs: order 0 clears `f+0x224` on every
+    frame (Item 4).
+
+#### Item 3: the escort order's lost-leader end, and the return-8 path [m]
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| test (every frame, before the re-plan gate) | `L = f+0x224`; end if `L == 0`, `L == ship`, `[L+0x54] == 0` (no parent), or `[[L+0x54]+0x48] != 1` (parent not a sector, e.g. docked) | `0x0045820d` [s], `0x0045821c` [s], `0x0045822a` [s], `0x00458252` [s] |
+| end | order 0, wake with **3**; no speed write on that frame | `0x00458ad0` [s] |
+| timeout | `f+0x28c ≠ 0` and `now ≥ f+0x290`: order 0, wake with **13**, also tested every frame | `0x00458aac` [s], `0x00455ac8` [s] |
+| leader pointer | `SA_EscortObject` stores the leader's object pointer in `f+0x224` at issue | `0x004618ef` [s] |
+| free | `SA_FreeObject` → `0x430840(obj, 1)` → `0x43fca0` → teardown `0x43f990`. That wakes a task waiting on the freed object with 8, then calls `0x44aab0`, which walks the sector list `[[0x60850c]+8]` through `0x44a7c0`. For every class-7 object, `f+0x224 == freed` becomes 0 | `0x0046074a` [s], `0x0043084b` [s], `0x0043fcc3` [s], `0x0043f9e1` [s], `0x0043fb24` [s], `0x0044aad4` [s], `0x0044a88d` [s] |
+
+**The frame sequence for a leader leaving through a gate.**
+
+1. **Frame N, sector update.** The leader's order 8 ends and its task is woken with 1 (`0x0045520a`, `0x00455228`
+   [s]).
+2. **Frame N+1, scheduler pass (Item 5).**
+   * `__EnterHyperspace` returns 3.
+   * `ReleaseFromSlot()` runs, then `Remove()` (`this != g9`), which calls `Deactivate()`.
+   * `Deactivate()` calls `SA_StopObject(m3, 6)` … `SA_FreeObject(m3)` and `304::Add(this)`.
+   * `Remove()` then calls `m1.RemoveShip(this)`, which calls `SetEnvironment(0)`. The KC object itself survives.
+   * The statements are identical in stock and Mayhem (`trail_sites_out.txt` §3).
+3. **Frame N+1, sector update.** The escort's 0x14 handler finds `f+0x224 == 0` and ends with 3.
+4. **Frame N+2, scheduler pass.**
+   * `__EscortObject` resumes. A result other than 13 goes back to the loop head (b8c7e / d124b).
+   * `m1 != leader.GetEnvironment()` holds there: `GetEnvironment` returns `m1` (`0f 00 01`), which is now 0, or the
+     destination gate once `__LeaveHyperspace` has run.
+   * The method returns **8** (b8cf4).
+   * `SE_ObjectExists(leader)` stays true because `Deactivate` keeps the KC object **[i]**.
+
+An escort that is in its 2–3 s order-0 gap at that moment reaches the same `return 8` at the head of its next
+`escort ship` call, without issuing 0x14. From there the MSCI path of §10.11 Q3 takes over: the template's 2–3 s
+wait, `CheckLeader`, `!move.jump`, then `Mayhem.Task.Move`.
+
+* **Answer.** The test is a null, self, parentless or non-sector leader, run on every frame. It fires in the sector
+  update of frame N+1, one frame after the leader's order-8 end, with result 3. `__EscortObject` returns 8 in frame
+  N+2. The engine plus KC part of λ is therefore 2 frames, and the rest is the MSCI part (§10.11 Q3).
+* **Constraint.** From frame N+1 the escort's `f+0x224` is 0, and it stays 0 through its order-0 gap (Item 4). The
+  board must hold the escort role in its own state, not read it from `f+0x224`.
+
+#### Item 4: order 0 under autopilot and site B [m]
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| order 0, `[obj+0x40] & 0x80000` | every frame (no re-plan gate): `[obj+0x14] = 0` unless `[obj+0x44] & 4`; `f+0x224 = 0` | `0x00458f8e` [s] |
+| tail | `f+0x218` cleanup, `f+0x28c = 0`, `f+0x210 = now`, `jmp 0x4593dd` (site B) | `0x00459136` [s] |
+| `[obj+0x44] & 4` | the only setters are `0x43b0b0` (from `SA_DecoupleShips`), `0x43bb00`/`0x43c2d0` (`SA_StartInGameScene`/`…2`) and `0x43b750` (two calls in the interpreter's type-table model path `0x004534e6`/`0x00453ac3`). No and-mask on `[obj+0x44]` clears bit 2 (sweep) | `0x0043b216`, `0x0043c048`, `0x0043c3bd`, `0x0043b8a2` (sweep); `0x00466df1` [s], `0x00466e37` [s], `0x00466e54` [s] |
+| slew loop, after the object loop | no slew at all if `[obj+0x40] & 0x800200` or `[obj+0x44] & 0x2000000`. Otherwise desired is capped at vmax `0x450980`, then for class 7 at `f+0x278 ≥ 0`, then the carrier freeze applies (`0x100000` and `0x80000` and (`0x10000000` or `now < f+0x180`) → desired 0, remainders 0). After that `[obj+0x10]` slews toward desired | `0x004594ca` [s], `0x004594d7` [s], `0x004594ef` [s], `0x0045950d` [s], `0x00459533` [s] |
+
+* A KC ship (`2004::Activate` → `SA_AllocObject`) passes through none of the bit-2 setters, so AI capitals do not
+  carry it **[i]**: their order 0 zeroes the desired speed on every frame. Between site B and the slew nothing else
+  writes `[obj+0x14]` (§10.11 Q1, integrator listing).
+* **Answer.** Order 0 writes `[obj+0x14] = 0` on every frame, then reaches site B on every frame. Site B's write
+  stands through the slew loop on every order-0 frame, subject only to vmax, `f+0x278` and the carrier freeze.
+* **Constraint.** The hold must be written on every order-0 frame, because a single write is undone by `0x00458f9f`
+  on the next frame. `f+0x224` is 0 during the gap. A speed limit set by a refused warp-in slot (`f+0x278`, §8 item 9)
+  caps the hold. Hook-site contract unchanged: site B as in §10.11 Q1.
+
+#### Item 5: the KC task's resume after an order ends [m]
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| wake | `0x460560(obj, result)`: slot = `[obj+0x7c]`, callback = `[VM + 0x34 + slot·0x18]` (task id `[obj+0x80]`, result) | `0x00460560` [s], `0x0046057c` [s], `0x00460587` [s] |
+| which callback | every native call from a script gets `ctx = [VM+0x1454]` as its first argument, and the SA case stores it as the slot. `[VM+0x1454]` is the VM's own native group, whose callback is **`0x004a4910`**. `0x004604d0` is SA's own slot, used only when the game calls SA itself | `0x004a38ff` [s], `0x0049cf72` [s], `0x0049cf2e` [s], `0x004653a9` [s] |
+| resume | `0x4a4910`: task by id in the VM hash `[VM+0]`; `task+0x20 = 1`; return cell = (int, result); `0x4a4740`: a suspended task (state 2) gets its arguments popped, the result pushed, state 1, and is linked at the **head** of the runnable list `VM+0x12d8` | `0x004a4910` [s], `0x004a494b` [s], `0x004a4968` [s], `0x004a4740` [s], `0x004a47b5` [s], `0x004a47c9` [s] |
+| run | scheduler `0x49f770` runs the runnable list from its head until it is empty (or a native returns 0). The main loop calls it once per iteration (`0x00403aff`) before the sector driver (`0x00403b17`); back edge `0x004041d8` → `0x00403ab0`. The fourth caller, `0x497200`, runs once before the loop (`0x004039ab`) | `0x0049f777` [s], `0x00403aff` [s], `0x00403b17` [s], `0x004041d8` [s], `0x004039ab` [s] |
+
+* **The order-8 end to the slot release.** Order 8 ends in frame N's sector update (`0x0045520a`, `0x00455228` [s]).
+  The leader's task runs in frame N+1's scheduler pass. Everything up to `Remove()` (`ReleaseFromSlot` →
+  `gate.ReleaseSlot`) is KC code plus non-blocking natives, so the through slot and the warp-in slot are released in
+  that pass, before frame N+1's order handlers.
+* **Order within a pass.** Each wake links its task at the head, so tasks woken in the same frame run
+  last-woken-first. Take a follower whose 0x1f ended later in the same sector update (later in the object walk) than
+  the leader's order 8. Its `RequestWarpThroughSlot` runs before the leader's release and is refused (1–11 s wait,
+  §10.2).
+* **Answer.** The slot release follows the engine's order-8 end by exactly one frame: one game frame step,
+  SETA-scaled.
+* **Constraint.** A follower's request runs two frames after its P2 frame: P2 in frame k, its task issues 0x1f in
+  k+1, 0x1f ends in k+1 when aligned, and the loop head requests in k+2.
+  * It is granted (other rules permitting, §10.2) when its P2 frame is not earlier than the leader's order-8 end
+    frame N.
+  * P2 in frame N−1 is decided by list order.
+  * The design's two-frame margin is therefore one frame more than needed. With a misaligned 0x1f, add its turn time.
+
+#### Item 8: recognising a player-owned ship [m]
+
+| Fact | Rule | Site |
+| --- | --- | --- |
+| native owner group | int16 `[obj+0x3c]`: −1 at object init; written only through `SA_SetGroup` (SA 0x6f → `0x450730`) from script; read by `SA_GetGroup` (SA 0x70, `movsx`), relations `0x450790`/`0x450810` | `0x0044001a` [s], `0x00462bc9` [s], `0x00450730` [s], `0x00462bf3` [s] |
+| KC writer | every `SA_SetGroup` call passes the owner's id: `2004::Activate`, `2004::SetOwner` and `2004::__SetCoverRaceRecursive` pass `GetOwner().GetID()`; `2016::Activate2`/`SetOwner` (stations) pass the owner member's id. 5 call sites in stock and in Mayhem | `trail_sites_out.txt` §3 |
+| player id | `402::GetID` = `6e 00 01 05 0a 83` (push 10, return) in both versions. `0x450730` special-cases group 10 (a different scene callback, `0x4871b0` vs `0x4871a0`; meaning **[i]**) | `trail_sites_out.txt` §3, `0x00450730` [s] |
+| piloted ship | `[obj+0x40] & 2`, set only by `SA_SetAsPlayerObject` (§10.10 Q1) | `0x0044ada1` |
+
+* `2004::GetOwner` returns a member (`m41` stock, `m43` Mayhem). `__SetCoverRaceRecursive` re-sends that same owner
+  id, so a cover race does not change the group **[i]**: the method was read only as far as the call.
+* Other native writers of `+0x3c` were not traced (`0x0042ff39`, `0x004465a8`, `0x00448d0c`, `0x0044a1ce`,
+  `0x004421d1` = −1, `0x004f7f90`), so their object kinds are unknown. A ship's group could in principle be rewritten
+  by one of them **[i]**.
+* **Answer.** A ship is player-owned iff `(int16)[obj+0x3c] == 10`. The player's piloted ship is `[obj+0x40] & 2`.
+* **Constraint.** Read the group at each decision, because ownership changes through `SetOwner`, and before KC
+  `Activate` the value is −1. Excluding both tests covers the player's own capitals and the piloted ship.
+
+#### Item 1: two capitals on order 5 / order 8 at one gate [m]
+
+| Fact | Rule | Site |
+| --- | --- | --- |
+| `SA_WarpObjectAway` (case 0x0e) | resolves ship and gate, requires class 7, then writes order 8, `f+0x218 = −1`, `f+0x214 = now + 900`, `f+0x240` = position, and for a class-0x12 target `[gate+0x40] \|= 0x2000000`, `[ship+0x40] \|= 0x400`, `f+0x224` = gate. **No test of the gate or of other ships; it cannot refuse** | `0x004612a7` [s], `0x004612cc` [s], `0x00461302` [s], `0x00461322` [s] |
+| order 8 | per frame: `[gate+0x40] \|= 0x2000000`, `[ship+0x40] \|= 0x400`, kinematic position, speeds 0. At the deadline: `0x400` cleared, order 0, wake 1. No per-gate counter or owner | `0x00455252` [s], `0x0045520a` [s] |
+| `0x2000000` on `[obj+0x40]` | setters: order 5 aligned `0x004548cf`, order 8 `0x00455252`, `SA_WarpObjectAway` `0x00461309`, pair loop `0x0045d811` (the player's `CanWarp` path **[i]**). **One reader**: the gate post-pass update `0x0044b0c0` at `0x0044b124`. Cleared for every object every frame by the post pass (mask `0xedffffff`) | sweep; `0x0044b124` [s], `0x0045b741` [s] |
+| `0x0044b0c0` | counts the gate's flagged parts and steps the part animation `0x44aee0` every 150 ms. It runs the opening branch only while `[gate.f+0x180] < now`, and the other branch while `0 < [gate.f+0x180] − now < 40 s`. It changes no ship and no order | `0x0044b134` [s], `0x0044b30f` [s], `0x0044b155` [s] |
+| `[gate.f+0x180]` | written by the arrival launch (`now + 10000`). Read only at `0x0044b134`/`0x0044b30f`. The other 12 non-indexed `+0x180` sites in `0x440000..0x46a000` belong to ship flight blocks or object init (`0x00459545` is the slew loop's carrier freeze on the ship's own `f+0x180`; `0x0045b7f3` is the post-pass stamp of non-gate classes) **[i]** attribution by address | `0x004441c3` [s]; sweep list in `trail_sites_out.txt` |
+
+* **Answer: yes.** The engine has no per-gate exclusivity for orders 5 and 8. Two capitals can be on order 5 or order
+  8 at one gate in the same frames, as small ships already are.
+  * The per-gate writes are a per-frame animation flag, and the arrival stamp `[gate.f+0x180]` only delays the
+    animation; nothing reads it before a launch.
+  * The only serialiser is the KC through slot, one per gate pair (§10.2).
+  * The pair filter is per ship (`0x0045c7b3..0x0045c7e3`).
+* **Constraint for the abreast refinement.** It must hold or bypass the KC through slot for the second hull. `ReleaseSlot`
+  `0x90c9c` with two holders was not studied here: it is KC, §8 item 1's remaining part. It must also keep the two
+  900 ms launches clear of each other itself, because order 8 moves the ship kinematically along the axis from
+  wherever its trigger fired (§10.5).
+
+**Hook sites.** No new site and no new byte pattern. The implementation claims only the installed sites A, B, P2 (and
+P4/P5), whose contracts are unchanged (§10.8, §10.11). `verify_ship_steering_sites.py` was not touched.
+
+**Still inferred or open.**
+
+* The meaning of group 10's scene callback.
+* The untraced `+0x3c` writers.
+* That `SE_ObjectExists` stays true after `Deactivate`. It does not change the result: a false would return 8 one
+  statement earlier.
+* The MSCI part of λ (§10.11 Q3, measured +4.1…+16.9 s).
+* KC `ReleaseSlot` with two holders (Item 1).
+
+```sh
+python3 -I verification/results/ship-navigation-ai/gates/trail_sites.py > trail_sites_out.txt   # RESULT PASS
 ```
 
 ## 11. Docking approach
