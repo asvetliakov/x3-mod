@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run172-candidate of a40566ac, build/d3d9.dll (clean configure + build)",
+  "sha256": "dde7ebf7134b380ecbfa3f573e5d8aad379e1224138a2da4c356ac44135cb9a6",
+  "bytes": 59559581,
+  "commit": "a40566ac",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1002, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads OK + discover test_engine_plumes 14 OK, test_engine_ribbons 5/6 (Wine record-hash check stale: no Wine on this host; harness 71/71)"
+  },
+  "trigger": "user: disable trails for the ship being piloted",
+  "producer": "main session (Fable 5.1), 2026-10-14",
+  "changes_since_run171": [
+    "fadfa8a2 Run 171 A completed",
+    "22cd55d7 no ribbon on the own ship (engine_ribbons_own_ship default 0)",
+    "a40566ac plumes wiring assertion"
+  ]
+}
