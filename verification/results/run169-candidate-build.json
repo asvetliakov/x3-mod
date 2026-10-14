@@ -1,0 +1,22 @@
+{
+  "dll": "detached worktree /tmp/x3-run169-candidate of 5886b96a, build/d3d9.dll (clean configure + build)",
+  "sha256": "8c5b870d2ccb86b21fcf5c69db26a32deec0d1046aed10c4778ee5364fe3bc9a",
+  "bytes": 59524209,
+  "commit": "5886b96a",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1002, violations 0 (a first build of 62c2fff0 had 2: capsule_gap's out-of-line cdecl float return; forced inline in 5886b96a)",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering: 42 tests OK (candidate tree, 57.2 s); fixture 10521/10521, capital 4863/4863, seq-off 10431/10431, column --b9 45/45, 36-run sweep 0 bad (implementer, ledger B.8/B.9)"
+  },
+  "trigger": "Run168: B.7 inert (escorts enter hold 1.8-2.8 km off their track; the lap law ignored the join) and 5 column evictions at hold entry (the certificate rollout predicted the wrong path)",
+  "producer": "main session (Fable 5.1), 2026-10-14",
+  "changes_since_run168": [
+    "2e3fda5e Run168 triage + B.8/B.9 design",
+    "ad0bc7fc controller B.8 join distance",
+    "62c2fff0 controller B.9 column evictions",
+    "5886b96a capsule_gap inline (x87 audit)"
+  ]
+}
