@@ -1,0 +1,60 @@
+gate a b kind verdict why yielder before | rows game first..last | d_m min
+f478 25763 25287 order0 clear certified none none | 64 23119.1..23431.0 | 2730
+f478 25287 25763 order0 clear certified none none | 59 23131.1..23408.6 | 2730
+0450 3861 4120 order0 clear certified none none | 32 24114.7..25114.0 | 3747
+0450 4120 3861 order0 clear certified none none | 47 24120.8..25114.0 | 3741
+f478 5001 4673 order0 clear certified none none | 25 24359.5..24856.7 | 3637
+f478 5476 5001 verdict unresolved - none none | 1 24419.9..24419.9 | 2840
+f478 5476 5001 order0 unresolved order0 none none | 2 24420.8..24421.8 | 2814
+f478 5001 5476 e_pass unresolved order0 none none | 2 24421.1..24422.1 | 2802
+f478 5476 5001 e_pass unresolved order0 none none | 2 24421.1..24422.1 | 2802
+f478 5476 5001 verdict clear - none unresolved | 1 24422.5..24422.5 | 2773
+f478 5476 5001 order0 clear certified none none | 51 24422.9..24983.7 | 1971
+f478 5001 5476 order0 clear certified none none | 52 24432.6..24920.0 | 1970
+f478 5727 5476 order0 clear certified none none | 1 24519.2..24519.2 | 4325
+f478 5476 4673 order0 clear certified none none | 23 24532.9..24840.6 | 2943
+f478 4673 5001 verdict none - none clear | 1 24581.2..24581.2 | 3721
+f478 4673 5476 verdict none - none clear | 1 24581.2..24581.2 | 2406
+0450 3097 3861 verdict none - none clear | 1 24581.2..24581.2 | 11939
+0450 3097 4120 verdict none - none clear | 1 24581.2..24581.2 | 16842
+0450 3861 4120 verdict none - none clear | 1 24581.2..24581.2 | 5146
+f478 5001 5476 verdict none - none clear | 1 24581.2..24581.2 | 3680
+0450 3861 4120 e_pass clear stale none none | 1 24703.1..24703.1 | 5220
+0450 4120 3861 e_pass clear stale none none | 1 24703.1..24703.1 | 5220
+f478 4120 3861 order0 clear certified none none | 147 25150.4..26864.6 | 2383
+f478 3861 4120 order0 clear certified none none | 158 25151.3..26786.9 | 2007
+de88 6185 6439 order0 clear certified none none | 10 25480.2..25639.3 | 3783
+de88 6439 6185 order0 clear certified none none | 18 25482.7..25570.0 | 3010
+f478 3861 8846 order0 clear certified none none | 42 25808.5..26258.0 | 2300
+f478 4120 8846 order0 clear certified none none | 18 26043.2..26219.5 | 2354
+f478 12244 8846 verdict unresolved - none none | 1 26212.7..26212.7 | 5602
+f478 8846 12244 verdict clear - none unresolved | 1 26213.7..26213.7 | 5565
+f478 12244 8846 order0 clear certified none none | 1 26218.9..26218.9 | 4990
+f478 4120 12699 order0 clear certified none none | 22 26422.2..26733.6 | 2567
+f478 3861 12699 order0 clear certified none none | 10 26636.4..26710.2 | 4293
+f478 12699 4120 order0 clear certified none none | 1 26734.6..26734.6 | 4195
+0450 11613 11357 e_pass clear on_0x12 none none | 1 26878.8..26878.8 | 7409
+de88 12594 11959 order0 clear certified none none | 12 26921.2..27023.2 | 1718
+0450 11613 12244 order0 clear certified none none | 7 26927.0..26933.2 | 3941
+0450 12244 11613 order0 clear certified none none | 14 26927.0..26985.9 | 3933
+de88 12401 11959 order0 clear certified none none | 10 26929.4..27005.2 | 2310
+de88 12594 12401 order0 clear certified none none | 8 26955.5..27023.2 | 4140
+de88 12401 12594 order0 clear certified none none | 6 26966.6..27005.2 | 4226
+0450 14310 11613 verdict unresolved - none none | 1 26998.1..26998.1 | 4112
+0450 11613 14310 order0 unresolved order0 none none | 1 26998.1..26998.1 | 4102
+0450 14310 11613 order0 unresolved order0 none none | 1 26999.0..26999.0 | 4022
+0450 11613 14310 order0 clear certified none none | 1 26999.1..26999.1 | 4006
+de88 12594 11959 verdict unresolved - none clear | 1 26999.1..26999.1 | 1838
+de88 12594 11959 e_pass unresolved unresolved none none | 1 26999.2..26999.2 | 1838
+de88 11959 12594 verdict clear - none unresolved | 1 27000.3..27000.3 | 1857
+== committed pairs in funnel/handover/dock at once (game s)
+('f478', ('5001', '5476')) 24 s 24959 .. 24982
+('de88', ('6185', '6439')) 45 s 25593 .. 25638
+('f478', ('3861', '4120')) 59 s 26834 .. 26894
+('0450', ('11613', '12244')) 6 s 26997 .. 27002
+== both in stage funnel at once (the B.6 yields_to release-order clause applies only there)
+('f478', ('5001', '5476')) 9 s 24959 .. 24967
+('de88', ('6185', '6439')) 26 s 25593 .. 25619
+('f478', ('3861', '4120')) 30 s 26834 .. 26864
+('0450', ('11613', '12244')) 6 s 26997 .. 27002
+pairs 4

@@ -1,0 +1,8 @@
+busy rows per gate: {'f478': 878, '0450': 302, 'de88': 171}
+gate 0450 head out of window                                    12 game s    1.2 real s
+gate 0450 no committed candidate (role none)                    89 game s   21.1 real s
+gate de88 free, window+timing ok (release that second)           1 game s    0.1 real s
+gate de88 no committed candidate (role none)                    54 game s    7.9 real s
+gate f478 head out of window                                   359 game s   48.2 real s
+gate f478 no committed candidate (role none)                   237 game s   26.5 real s
+gate f478 slot block                                           297 game s   41.1 real s

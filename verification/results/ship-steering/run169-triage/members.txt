@@ -1,0 +1,159 @@
+== per member: stage segments (game s / real s); hold segments with petal laps, radius, speed
+0x8ff46c58 id 24965 class ? gate f478 rows 450 (post-launch 0, classes then {})
+  f478 committed inbound  game  22669.2 + 332.4 real  38.4 + 49.4 rows  324 orders 0x4 | v 64..108 d_G 14462..47529
+  f478 committed funnel   game  23002.6 + 112.7 real  87.9 + 11.3 rows  111 orders 0x4 | v 63..100 d_G 5008..14401
+  f478 committed dock     game  23116.3 +  13.3 real  99.2 +  1.3 rows   14 orders 0x5 | v 85..100 d_G 3620..4925
+  f478 committed launch   game  23130.7 +   0.0 real 100.7 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 2458..2458
+0x8ff4f748 id 25287 class ? gate f478 rows 797 (post-launch 0, classes then {})
+  f478 escort    inbound  game  22669.8 + 410.6 real  38.8 + 56.8 rows  400 orders 0x0,0x14 | v 87..103 d_G 33461..73778
+  f478 escort    inbound  game  23115.1 + 216.9 real  99.1 + 28.6 rows  213 orders 0x0,0x14,0x15 | v 64..102 d_G 14344..33496
+  f478 escort    hold     game  23333.0 +  75.0 real 127.8 +  7.5 rows   74 orders 0x15 | petal 2 turns 0.51 (path 4.5 km = 0.49 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 1142 m centre -2665,-3376,-11312 v med 60 (60..60) d_G 9986..14287
+  f478 committed funnel   game  23409.0 +  95.3 real 135.4 +  9.5 rows   94 orders 0x4 | v 59..100 d_G 4924..9932
+  f478 committed dock     game  23505.3 +  14.3 real 145.0 +  1.4 rows   15 orders 0x5 | v 100..100 d_G 3406..4825
+  f478 committed launch   game  23520.7 +   0.0 real 146.5 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 2864..2864
+0x90378a70 id 25763 class ? gate f478 rows 980 (post-launch 0, classes then {})
+  f478 escort    inbound  game  22671.6 + 676.9 real  40.6 + 88.7 rows  660 orders 0x0,0x14,0x15 | v 70..101 d_G 14498..80913
+  f478 escort    hold     game  23349.5 +  81.1 real 129.4 +  8.1 rows   80 orders 0x15 | petal 3 turns 0.51 (path 4.8 km = 0.51 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 1228 m centre -102,-4341,-11257 v med 60 (25..62) d_G 9843..14433
+  f478 committed hold     game  23431.7 + 143.1 real 137.6 + 14.3 rows  141 orders 0x4 | petal 3 turns 0.76 (path 6.9 km = 0.74 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 1395 m centre -0,-5273,-9057 v med 60 (25..60) d_G 9151..12465
+  f478 committed funnel   game  23575.8 +  84.8 real 152.0 +  8.6 rows   82 orders 0x4 | v 62..100 d_G 5195..12142
+  f478 committed dock     game  23661.6 +  15.3 real 160.7 +  1.5 rows   16 orders 0x5 | v 100..100 d_G 3584..5090
+  f478 committed launch   game  23677.9 +   0.0 real 162.3 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 1167..1167
+0x8ff3dc88 id 3097 class ? gate f478 rows 1131 (post-launch 0, classes then {})
+  f478 arrival   none     game  23850.3 +   7.2 real 179.6 +  0.6 rows    8 orders 0x0,0x21 | v 0..118 d_G 1239..1824
+  0450 committed inbound  game  23858.2 + 968.8 real 180.4 +118.4 rows  933 orders 0x4 | v 62..89 d_G 14012..77226
+  0450 committed hold     game  24828.0 +   3.2 real 298.9 +  0.3 rows    4 orders 0x4 | petal 0 turns 0.50 (path 0.2 km = 0.02 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 70 m centre -3890,2067,-13169 v med 68 (63..69) d_G 13808..13963
+  0450 committed funnel   game  24832.3 + 166.9 real 299.3 + 19.6 rows  163 orders 0x4 | v 49..69 d_G 4932..13750
+  0450 committed dock     game  25000.3 +  22.3 real 319.0 +  2.2 rows   22 orders 0x5 | v 58..69 d_G 3364..4872
+  0450 committed launch   game  25023.6 +   0.0 real 321.3 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 2163..2163
+0x3a3eb038 id 3861 class ? gate f478 rows 2872 (post-launch 0, classes then {})
+  f478 arrival   none     game  24005.2 +   9.8 real 195.2 +  0.8 rows   10 orders 0x0,0x1e,0x21 | v 0..120 d_G 1028..1696
+  0450 escort    inbound  game  24015.9 +1021.1 real 196.1 +126.5 rows  984 orders 0x0,0x14,0x15 | v 11..70 d_G 13539..77364
+  0450 escort    hold     game  25038.0 +  65.2 real 322.8 + 18.5 rows   65 orders 0x0,0x15 | petal 2 turns 0.54 (path 3.9 km = 0.42 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 985 m centre -2696,-2337,-11259 v med 60 (58..60) d_G 9986..13498
+  0450 committed funnel   game  25104.3 +  10.2 real 341.4 +  1.0 rows   11 orders 0x0,0x4 | v 0..45 d_G 9671..9936
+  f478 escort    inbound  game  25118.4 + 928.3 real 342.8 +120.4 rows  905 orders 0x0,0x14 | v 0..70 d_G 13295..72675
+  f478 escort    hold     game  26047.9 + 294.6 real 463.3 + 31.1 rows  283 orders 0x0,0x14,0x15 | petal 3 turns 1.27 (path 12.6 km = 1.36 racetrack laps of 9.28 km) nose-laps 1 (lap s -) radius 1586 m centre 120,-3420,-9832 v med 46 (0..60) d_G 7858..13235
+  f478 committed hold     game  26343.5 +  42.5 real 494.5 +  4.3 rows   42 orders 0x0,0x4 | petal 3 turns 0.51 (path 1.0 km = 0.11 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 267 m centre -1,-2775,-8987 v med 25 (0..54) d_G 8978..9943
+  f478 escort    hold     game  26392.0 + 394.9 real 499.4 + 45.1 rows  385 orders 0x0,0x14,0x15 | petal 3 turns 1.87 (path 17.7 km = 1.91 racetrack laps of 9.28 km) nose-laps 2 (lap s 174) radius 1445 m centre 0,-3822,-8784 v med 40 (0..61) d_G 7831..11298
+  f478 committed hold     game  26788.0 +  45.3 real 544.6 +  4.5 rows   45 orders 0x4 | petal 3 turns 0.50 (path 1.1 km = 0.12 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 290 m centre 1,-2767,-8852 v med 25 (25..25) d_G 8735..9817
+  f478 committed funnel   game  26834.3 + 113.7 real 549.2 + 11.4 rows  111 orders 0x4 | v 25..70 d_G 4600..8710
+  f478 committed dock     game  26949.0 +  29.6 real 560.7 +  3.0 rows   30 orders 0x5 | v 70..70 d_G 2497..4529
+  f478 committed launch   game  26979.6 +   0.0 real 563.8 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 1523..1523
+0x2ead1200 id 4120 class ? gate f478 rows 2722 (post-launch 0, classes then {})
+  f478 arrival   none     game  24079.2 +   9.3 real 202.5 +  0.9 rows   10 orders 0x0,0x1e,0x21 | v 0..120 d_G 1028..1676
+  0450 escort    inbound  game  24088.9 +1000.9 real 203.4 +136.3 rows  965 orders 0x0,0x14,0x15 | v 25..70 d_G 13550..77383
+  0450 escort    hold     game  25090.8 +  27.8 real 339.9 +  2.9 rows   28 orders 0x0,0x15 | petal 1 turns 0.55 (path 1.5 km = 0.16 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 419 m centre -3968,-294,-12159 v med 60 (0..62) d_G 12131..13501
+  f478 escort    inbound  game  25119.5 + 875.7 real 342.9 +115.2 rows  854 orders 0x0,0x14 | v 0..70 d_G 13310..69631
+  f478 escort    hold     game  25996.2 + 325.2 real 458.1 + 34.2 rows  313 orders 0x0,0x14,0x15 | petal 4 turns 1.17 (path 16.0 km = 1.73 racetrack laps of 9.28 km) nose-laps 1 (lap s -) radius 1748 m centre 2251,-2480,-9213 v med 54 (3..60) d_G 7417..13246
+  f478 committed funnel   game  26322.5 +  63.5 real 492.4 +  6.3 rows   62 orders 0x0,0x4 | v 0..40 d_G 8351..9823
+  f478 escort    hold     game  26391.9 + 369.4 real 499.4 + 42.5 rows  360 orders 0x0,0x14 | petal 4 turns 1.15 (path 11.7 km = 1.26 racetrack laps of 9.28 km) nose-laps 1 (lap s -) radius 1539 m centre 2093,-2428,-8661 v med 40 (0..41) d_G 7672..11251
+  f478 committed funnel   game  26762.3 + 102.2 real 542.0 + 10.2 rows  100 orders 0x4 | v 9..70 d_G 4561..8305
+  f478 committed dock     game  26865.6 +  28.9 real 552.4 +  2.9 rows   29 orders 0x5 | v 70..70 d_G 2499..4491
+  f478 committed launch   game  26895.5 +   0.0 real 555.3 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 1457..1457
+0xae9d4530 id 4673 class ? gate f478 rows 584 (post-launch 0, classes then {})
+  f478 arrival   none     game  24296.0 +   7.2 real 230.1 +  0.7 rows    8 orders 0x0,0x1e,0x21 | v 0..120 d_G 1298..1788
+  f478 committed hold     game  24304.3 + 199.2 real 230.9 + 26.2 rows  192 orders 0x4 | petal 6 turns 0.56 (path 11.9 km = 1.29 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 2888 m centre 2560,1709,-6755 v med 60 (60..60) d_G 1843..11943
+  f478 committed funnel   game  24504.5 + 114.2 real 257.2 + 11.4 rows  110 orders 0x4 | v 25..100 d_G 6593..11675
+  f478 committed hold     game  24619.7 + 186.6 real 268.7 + 28.0 rows  179 orders 0x4 | petal -1,2 turns 0.67 (path 10.9 km = 1.18 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 2465 m centre -1949,-2715,-8352 v med 60 (25..60) d_G 5699..12116
+  f478 committed funnel   game  24807.3 +  80.4 real 296.8 +  8.0 rows   79 orders 0x4 | v 60..100 d_G 5062..11990
+  f478 committed dock     game  24888.7 +  14.3 real 305.0 +  1.4 rows   15 orders 0x5 | v 78..100 d_G 3595..4985
+  f478 committed launch   game  24904.0 +   0.0 real 306.5 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 1539..1539
+0xae9c2e18 id 5001 class ? gate f478 rows 680 (post-launch 0, classes then {})
+  f478 arrival   none     game  24358.6 +   7.3 real 236.3 +  0.7 rows    8 orders 0x0,0x1e,0x21 | v 0..120 d_G 1239..1830
+  f478 escort    hold     game  24366.9 + 552.3 real 237.2 + 73.7 rows  531 orders 0x0,0x14,0x15 | petal 4 turns 1.40 (path 23.3 km = 2.51 racetrack laps of 9.28 km) nose-laps 2 (lap s 226) radius 2579 m centre 2091,-2368,-8001 v med 40 (20..86) d_G 1923..11776
+  f478 committed hold     game  24920.2 +  37.8 real 311.0 +  3.8 rows   38 orders 0x4 | petal 4 turns 0.51 (path 0.9 km = 0.10 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 242 m centre 1851,-2205,-8937 v med 25 (25..33) d_G 8948..9843
+  f478 committed funnel   game  24959.0 +  87.1 real 314.9 +  8.7 rows   84 orders 0x4 | v 28..82 d_G 5128..8925
+  f478 committed dock     game  25047.2 +  17.3 real 324.3 +  7.7 rows   18 orders 0x5 | v 88..100 d_G 3367..5040
+  f478 committed launch   game  25065.5 +   0.0 real 332.1 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 3009..3009
+0xaeba5748 id 5476 class ? gate f478 rows 543 (post-launch 0, classes then {})
+  f478 arrival   none     game  24419.9 +   6.2 real 242.5 +  0.6 rows    7 orders 0x0,0x1e,0x21 | v 0..120 d_G 1298..1732
+  f478 escort    hold     game  24427.2 + 484.0 real 243.2 + 65.7 rows  465 orders 0x0,0x14,0x15 | petal 3 turns 0.62 (path 20.4 km = 2.20 racetrack laps of 9.28 km) nose-laps 2 (lap s 175) radius 2962 m centre -22,-3194,-8200 v med 40 (13..60) d_G 1794..11925
+  f478 committed funnel   game  24912.1 +  55.2 real 309.5 +  6.3 rows   55 orders 0x4 | v 58..100 d_G 5193..9968
+  f478 committed dock     game  24968.3 +  14.6 real 315.8 +  1.5 rows   15 orders 0x5 | v 100..100 d_G 3652..5089
+  f478 committed launch   game  24984.1 +   0.0 real 317.4 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 3373..3373
+0xaeba96a8 id 5727 class ? gate f478 rows 913 (post-launch 0, classes then {})
+  f478 arrival   none     game  24518.2 +   1.0 real 258.6 +  0.1 rows    2 orders 0x0,0x21 | v 0..0 d_G 1239..1239
+  de88 committed inbound  game  24520.0 + 814.3 real 258.7 +125.5 rows  788 orders 0x4 | v 62..119 d_G 14039..93158
+  de88 committed funnel   game  25335.3 + 108.0 real 384.3 + 10.8 rows  106 orders 0x4 | v 63..100 d_G 4947..13976
+  de88 committed dock     game  25444.4 +  15.5 real 395.2 +  1.6 rows   16 orders 0x5 | v 83..100 d_G 3359..4863
+  de88 committed launch   game  25460.8 +   0.0 real 396.9 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 1167..1167
+0xaebc01d8 id 6185 class ? gate f478 rows 1029 (post-launch 0, classes then {})
+  f478 arrival   none     game  24579.2 +   8.3 real 264.8 +  0.6 rows    8 orders 0x0,0x1e,0x21 | v 0..120 d_G 1045..1584
+  de88 escort    inbound  game  24588.5 + 863.0 real 265.6 +130.3 rows  837 orders 0x0,0x14 | v 10..100 d_G 13585..92853
+  de88 escort    hold     game  25452.6 +  63.3 real 396.0 +  8.7 rows   63 orders 0x0,0x14,0x15 | petal 2 turns 0.50 (path 3.8 km = 0.41 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 961 m centre -2310,-2322,-11288 v med 60 (24..100) d_G 10023..13523
+  de88 committed funnel   game  25516.9 + 102.3 real 404.9 + 10.2 rows  101 orders 0x4 | v 60..100 d_G 4552..9968
+  de88 committed dock     game  25620.3 +  18.3 real 415.2 +  1.8 rows   19 orders 0x5 | v 100..100 d_G 2630..4449
+  de88 committed launch   game  25639.6 +   0.0 real 417.1 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 2401..2401
+0xaebcc268 id 6439 class ? gate f478 rows 1009 (post-launch 0, classes then {})
+  f478 arrival   none     game  24648.4 +   9.5 real 271.7 +  0.9 rows   10 orders 0x0,0x1e,0x21 | v 0..120 d_G 1031..1736
+  de88 escort    inbound  game  24658.2 + 844.3 real 272.6 +130.9 rows  821 orders 0x0,0x14,0x15 | v 23..100 d_G 13579..92708
+  de88 escort    hold     game  25503.5 +  65.6 real 403.5 +  6.6 rows   65 orders 0x15 | petal 1 turns 0.50 (path 3.8 km = 0.41 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 997 m centre -3457,-321,-11108 v med 60 (25..60) d_G 9874..13520
+  de88 committed hold     game  25570.1 +  22.6 real 410.2 +  2.3 rows   23 orders 0x4 | petal 1 turns 0.50 (path 0.6 km = 0.06 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 147 m centre -3394,-592,-8944 v med 25 (25..25) d_G 9323..9849
+  de88 committed funnel   game  25593.7 +  69.4 real 412.5 +  6.9 rows   69 orders 0x4 | v 25..100 d_G 4582..9299
+  de88 committed dock     game  25664.1 +  20.0 real 419.6 +  2.0 rows   20 orders 0x5 | v 100..100 d_G 2531..4482
+  de88 committed launch   game  25685.0 +   0.0 real 421.7 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 1218..1218
+0xaeb9e110 id 8846 class ? gate 0450 rows 1163 (post-launch 0, classes then {})
+  0450 arrival   none     game  25109.9 +   7.3 real 341.9 +  0.7 rows    8 orders 0x0,0x1e,0x21 | v 0..120 d_G 1239..1838
+  f478 committed inbound  game  25118.1 + 950.1 real 342.8 +122.6 rows  926 orders 0x4 | v 64..86 d_G 13807..77133
+  f478 committed funnel   game  26069.3 + 204.3 real 465.4 + 22.1 rows  196 orders 0x4 | v 24..69 d_G 4867..13747
+  f478 committed handover game  26274.6 +   3.1 real 487.6 +  0.3 rows    4 orders 0x1f | v 0..0 d_G 4836..4836
+  f478 committed dock     game  26278.7 +  28.1 real 488.1 +  2.8 rows   28 orders 0x5 | v 0..69 d_G 3380..4836
+  f478 committed launch   game  26307.9 +   0.0 real 491.0 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 3092..3092
+0xae9c8e60 id 11357 class ? gate f478 rows 783 (post-launch 0, classes then {})
+  f478 arrival   none     game  26085.6 +   7.2 real 467.1 +  0.7 rows    8 orders 0x0,0x21 | v 0..119 d_G 1298..1788
+  0450 committed inbound  game  26093.4 + 686.3 real 467.9 + 75.9 rows  664 orders 0x4 | v 52..100 d_G 13967..77276
+  0450 committed hold     game  26780.8 +   3.1 real 543.9 +  0.3 rows    4 orders 0x4 | petal 0 turns 0.50 (path 0.2 km = 0.03 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 79 m centre -3412,1863,-13282 v med 77 (61..92) d_G 13751..13920
+  0450 committed funnel   game  26784.9 +  86.9 real 544.3 +  8.7 rows   85 orders 0x0,0x4 | v 56..100 d_G 6941..13682
+  0450 committed hold     game  26874.9 +   3.1 real 553.3 +  0.3 rows    4 orders 0x4 | petal 4 turns 0.50 (path 0.1 km = 0.01 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 43 m centre 464,-370,-6734 v med 41 (25..56) d_G 6691..6818
+  0450 committed dock     game  26908.8 +  16.4 real 556.7 +  1.6 rows   17 orders 0x5 | v 0..100 d_G 3640..4782
+  0450 committed launch   game  26926.3 +   0.0 real 558.4 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 3120..3120
+0xaeb9a900 id 11613 class ? gate f478 rows 792 (post-launch 0, classes then {})
+  f478 arrival   none     game  26150.3 +   8.3 real 473.6 +  0.8 rows    9 orders 0x0,0x1e,0x21 | v 0..120 d_G 1239..1922
+  0450 escort    inbound  game  26158.7 + 712.1 real 474.4 + 78.5 rows  689 orders 0x0,0x14 | v 61..100 d_G 13811..77187
+  0450 escort    hold     game  26871.8 +   6.2 real 553.0 +  0.6 rows    5 orders 0x14 | petal 2,6 turns 0.50 (path 0.3 km = 0.04 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 94 m centre -2877,-1645,-13234 v med 50 (40..63) d_G 13569..13771
+  0450 escort    hold     game  26911.9 +  20.7 real 557.0 +  2.1 rows   21 orders 0x0,0x14 | petal 2 turns 0.55 (path 1.2 km = 0.13 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 317 m centre -1835,-486,-10025 v med 60 (30..85) d_G 9702..10811
+  0450 committed funnel   game  26933.6 +  68.6 real 559.2 +  6.9 rows   68 orders 0x0,0x4 | v 26..100 d_G 4721..9679
+0xaebbee58 id 11959 class ? gate de88 rows 170 (post-launch 0, classes then {})
+  de88 arrival   none     game  26189.6 +  59.6 real 477.5 +  7.6 rows   58 orders 0x0,0x19,0x21 | v 0..118 d_G 1239..7633
+  de88 committed inbound  game  26911.7 + 113.7 real 557.0 + 17.5 rows  112 orders 0x4 | v 0..100 d_G 29196..39183
+0x8ff3e648 id 12244 class ? gate f478 rows 736 (post-launch 0, classes then {})
+  f478 arrival   none     game  26212.7 +   7.1 real 481.5 +  0.7 rows    8 orders 0x0,0x1e,0x21 | v 0..120 d_G 1298..1779
+  0450 escort    inbound  game  26219.9 + 658.7 real 482.2 + 71.5 rows  636 orders 0x0,0x14 | v 58..101 d_G 17377..77305
+  0450 escort    hold     game  26908.8 +  87.2 real 556.7 +  8.7 rows   86 orders 0x0,0x14,0x15 | petal 0 turns 0.61 (path 5.9 km = 0.64 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 1327 m centre -2810,1488,-11689 v med 60 (25..100) d_G 9828..14579
+  0450 committed funnel   game  26997.1 +   5.1 real 565.5 +  0.5 rows    6 orders 0x0,0x4 | v 2..42 d_G 9678..9800
+0x8ff53df8 id 12401 class ? gate de88 rows 170 (post-launch 0, classes then {})
+  de88 arrival   none     game  26252.0 +  59.3 real 485.5 +  5.9 rows   58 orders 0x0,0x14,0x1e,0x21 | v 0..120 d_G 1045..6858
+  de88 escort    inbound  game  26911.7 + 113.7 real 557.0 + 17.5 rows  112 orders 0x0,0x14 | v 0..100 d_G 28778..38766
+0x3a3d8f60 id 12594 class ? gate de88 rows 171 (post-launch 0, classes then {})
+  de88 arrival   none     game  26322.9 +  60.1 real 492.5 +  6.0 rows   59 orders 0x0,0x14,0x1e,0x21 | v 0..201 d_G 1031..10666
+  de88 escort    inbound  game  26911.7 + 113.7 real 557.0 + 17.5 rows  112 orders 0x0,0x14 | v 13..100 d_G 30636..39997
+0x3a3e6718 id 12699 class ? gate f478 rows 367 (post-launch 0, classes then {})
+  f478 arrival   none     game  26381.6 +   8.2 real 498.4 +  0.8 rows    9 orders 0x0,0x1e,0x21 | v 0..120 d_G 1239..1911
+  f478 committed hold     game  26390.8 + 226.7 real 499.3 + 28.3 rows  221 orders 0x4 | petal 6 turns 0.55 (path 11.6 km = 1.25 racetrack laps of 9.28 km) nose-laps 0 (lap s -) radius 2899 m centre 2215,1562,-6271 v med 60 (10..82) d_G 1996..11760
+  f478 committed funnel   game  26618.6 + 115.8 real 527.7 + 11.6 rows  114 orders 0x4 | v 60..69 d_G 4910..11515
+  f478 committed dock     game  26735.5 +  21.6 real 539.3 +  2.2 rows   22 orders 0x5 | v 69..69 d_G 3369..4840
+  f478 committed launch   game  26758.2 +   0.0 real 541.6 +  0.0 rows    1 orders 0x8 | v 0..0 d_G 2521..2521
+0x90395268 id 14310 class ? gate 0450 rows 6 (post-launch 0, classes then {})
+  0450 arrival   none     game  26998.1 +   1.0 real 565.6 +  0.1 rows    2 orders 0x0,0x21 | v 0..120 d_G 1298..1303
+  de88 committed inbound  game  26999.1 +   3.1 real 565.7 +  0.3 rows    4 orders 0x4 | v 100..119 d_G 63322..63610
+
+== board per gate: per game second, live pair-role members before their launch (st_age <= 5 s) and holders at once
+gate de88 live committed/escort  per-second histogram {1: 110, 2: 242, 3: 887, 4: 4}; max 4 first at game 26999 (11959,12401,12594,14310)
+gate de88 holders                per-second histogram {1: 125, 2: 13}; max 2 first at game 25503 (6185,6439)
+gate de88 all member rows        per-second histogram {1: 285, 2: 242, 3: 887, 4: 4}; max 4 first at game 26999 (11959,12401,12594,14310)
+gate f478 live committed/escort  per-second histogram {1: 390, 2: 768, 3: 2373}; max 3 first at game 22671 (24965,25287,25763)
+gate f478 holders                per-second histogram {1: 483, 2: 731, 3: 468}; max 3 first at game 24427 (4673,5001,5476)
+gate f478 all member rows        per-second histogram {1: 426, 2: 763, 3: 2342, 4: 43}; max 4 first at game 24518 (4673,5001,5476,5727)
+gate f478 seconds with >= 3 holders: 468 game s, real 67.8 s (game 24427..26617)
+gate 0450 live committed/escort  per-second histogram {1: 237, 2: 304, 3: 1539}; max 3 first at game 24088 (3097,3861,4120)
+gate 0450 holders                per-second histogram {1: 143, 2: 37}; max 2 first at game 25090 (3861,4120)
+gate 0450 all member rows        per-second histogram {1: 234, 2: 300, 3: 1546}; max 3 first at game 24088 (3097,3861,4120)
+
+post-launch member rows (stale slots; class read through the old pointer): {} max st_age_ms 1637
+gate 0450 hold+funnel >= 2 capitals: 113 game s (game 25090..27002)
+gate 0450 hold+funnel >= 3 capitals: 0 game s
+gate 0450 hold+funnel >= 4 capitals: 0 game s
+gate 0450 hold+funnel >= 5 capitals: 0 game s
+gate f478 hold+funnel >= 2 capitals: 1512 game s (game 23349..26864)
+gate f478 hold+funnel >= 3 capitals: 767 game s (game 24427..26734)
+gate f478 hold+funnel >= 4 capitals: 0 game s
+gate f478 hold+funnel >= 5 capitals: 0 game s

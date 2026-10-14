@@ -1,0 +1,823 @@
+id | per convoy: per ship summary; --detail adds the events (+game s / +real s from the convoy start)
+== convoy leader 24965 (M2) gate f478 escorts ['25287', '25763'] | start (leader 15 km) game 22996.0 | end 23677.0 all launched | first commit 22669.2
+  -- 24965 leader trace: samples 136, v flown med 100 (min 0), written med 100, stops 0, turns>30 2 (120 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x4
+     +    5.8 g +   0.6 r  hold committed>committed inbound>hold
+     +    5.8 g +   0.6 r  release committed>committed hold>funnel
+     +    7.0 g +   0.7 r  TURN 63 deg over 19 s at d_G 14.4 km, nose-to-gate 10 -> max 54 -> 56 [controller: funnel approach]
+     +   45.0 g +   4.5 r  TURN 57 deg over 32 s at d_G 11.7 km, nose-to-gate 52 -> max 52 -> 5 [controller: funnel approach]
+     +  119.4 g +  11.9 r  handover committed>committed funnel>funnel
+     +  119.5 g +  11.9 r  handover committed>committed funnel>handover
+     +  119.5 g +  11.9 r  dock committed>committed handover>dock
+     +  120.0 g +  12.0 r  order 0x5
+     +  134.1 g +  13.4 r  launch committed>committed dock>launch
+     +  135.0 g +  13.5 r  gone committed>none launch>launch
+     +  135.0 g +  13.5 r  order 0x0
+  -- 25287 escort trace: samples 492, v flown med 100 (min 0), written med 100, stops 0, turns>30 3 (275 deg total) | detours 65
+     +    0.0 g +   0.0 r  order 0x14
+     +   17.0 g +   1.7 r  order 0x0
+     +   20.1 g +   2.0 r  order 0x14
+     +   52.0 g +   5.2 r  order 0x0
+     +   54.0 g +   5.4 r  order 0x14
+     +   63.2 g +   6.3 r  DETOURS 65 rows (order, obstacle) {('0x14', '0x903892e8'): 65}, first..last 19 s
+     +   84.8 g +   8.5 r  evict escort>evicted inbound>inbound
+     +  119.0 g +  11.9 r  escort evicted>escort none>none
+     +  119.0 g +  11.9 r  inbound escort>escort none>inbound
+     +  121.0 g +  12.1 r  TURN 138 deg over 34 s at d_G 32.8 km, nose-to-gate 138 -> max 138 -> 5 [script: escort before leader launch (leader-first)]
+     +  136.0 g +  13.6 r  order 0x0
+     +  141.0 g +  14.1 r  order 0x15
+     +  151.0 g +  15.1 r  order 0x0
+     +  152.0 g +  15.2 r  order 0x15
+     +  248.0 g +  31.7 r  order 0x0
+     +  249.0 g +  31.8 r  order 0x15
+     +  289.1 g +  35.8 r  order 0x0
+     +  290.0 g +  35.9 r  order 0x15
+     +  325.0 g +  39.4 r  order 0x0
+     +  326.0 g +  39.5 r  order 0x15
+     +  336.3 g +  40.5 r  hold escort>escort inbound>hold
+     +  392.0 g +  46.1 r  order 0x0
+     +  393.0 g +  46.2 r  order 0x15
+     +  412.7 g +  48.1 r  commit escort>committed hold>hold
+     +  412.7 g +  48.1 r  release committed>committed hold>funnel
+     +  413.0 g +  48.2 r  order 0x4
+     +  415.0 g +  48.4 r  TURN 75 deg over 22 s at d_G 9.8 km, nose-to-gate 24 -> max 51 -> 55 [controller: funnel approach]
+     +  468.0 g +  53.7 r  TURN 62 deg over 38 s at d_G 7.6 km, nose-to-gate 54 -> max 54 -> 6 [engine: order-5 ramp]
+     +  508.5 g +  57.7 r  handover committed>committed funnel>funnel
+     +  508.6 g +  57.7 r  handover committed>committed funnel>handover
+     +  508.6 g +  57.7 r  dock committed>committed handover>dock
+     +  509.0 g +  57.8 r  order 0x5
+     +  524.3 g +  59.3 r  launch committed>committed dock>launch
+     +  525.0 g +  59.4 r  order 0x8
+     +  525.2 g +  59.4 r  gone committed>none launch>launch
+  -- 25763 escort trace: samples 680, v flown med 100 (min 25), written med 100, stops 0, turns>30 3 (384 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x14
+     +   19.0 g +   1.9 r  order 0x0
+     +   22.0 g +   2.2 r  order 0x14
+     +   52.0 g +   5.2 r  order 0x0
+     +   56.0 g +   5.6 r  order 0x14
+     +   87.0 g +   8.7 r  order 0x0
+     +   90.0 g +   9.0 r  order 0x14
+     +  124.0 g +  12.4 r  order 0x0
+     +  126.0 g +  12.6 r  order 0x14
+     +  136.0 g +  13.6 r  order 0x0
+     +  138.0 g +  13.8 r  order 0x15
+     +  168.0 g +  16.8 r  order 0x0
+     +  169.0 g +  16.9 r  order 0x15
+     +  219.0 g +  28.7 r  order 0x0
+     +  220.0 g +  28.9 r  order 0x15
+     +  260.0 g +  32.9 r  order 0x0
+     +  261.0 g +  33.0 r  order 0x15
+     +  296.0 g +  36.5 r  order 0x0
+     +  297.0 g +  36.6 r  order 0x15
+     +  332.0 g +  40.1 r  order 0x0
+     +  333.0 g +  40.2 r  order 0x15
+     +  353.3 g +  42.2 r  hold escort>escort inbound>hold
+     +  435.0 g +  50.4 r  order 0x0
+     +  435.1 g +  50.4 r  commit escort>committed hold>hold
+     +  436.0 g +  50.5 r  order 0x4
+     +  444.0 g +  51.3 r  TURN 178 deg over 79 s at d_G 9.6 km, nose-to-gate 33 -> max 179 -> 139 [funnel: one at a time (occupied)]
+     +  540.0 g +  60.9 r  TURN 147 deg over 58 s at d_G 11.6 km, nose-to-gate 144 -> max 144 -> 52 [controller: head out of window (petal phase)]
+     +  579.5 g +  64.8 r  release committed>committed hold>funnel
+     +  610.0 g +  67.9 r  TURN 59 deg over 34 s at d_G 10.0 km, nose-to-gate 49 -> max 49 -> 7 [controller: funnel approach]
+     +  664.6 g +  73.4 r  handover committed>committed funnel>funnel
+     +  664.6 g +  73.4 r  handover committed>committed funnel>handover
+     +  664.7 g +  73.4 r  dock committed>committed handover>dock
+     +  665.0 g +  73.4 r  order 0x5
+     +  681.0 g +  75.0 r  launch committed>committed dock>launch
+== convoy leader 3097 (M1) gate 0450 escorts ['3861', '4120'] | start (leader 15 km) game 24809.0 | end 26979.0 all launched | first commit 23858.2
+  -- 3097 leader trace: samples 214, v flown med 69 (min 49), written med 100, stops 0, turns>30 1 (55 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x4
+     +   18.4 g +   1.8 r  hold committed>committed inbound>hold
+     +   22.7 g +   2.3 r  release committed>committed hold>funnel
+     +   82.0 g +   8.2 r  TURN 55 deg over 33 s at d_G 11.7 km, nose-to-gate 54 -> max 54 -> 4 [controller: funnel approach]
+     +  190.7 g +  22.0 r  handover committed>committed funnel>funnel
+     +  190.7 g +  22.0 r  handover committed>committed funnel>handover
+     +  190.9 g +  22.0 r  dock committed>committed handover>dock
+     +  191.0 g +  22.0 r  order 0x5
+     +  214.0 g +  24.3 r  launch committed>committed dock>launch
+     +  214.9 g +  24.4 r  gone committed>none launch>launch
+  -- 3861 escort trace: samples 1485, v flown med 60 (min 0), written med 70, stops 3, turns>30 7 (961 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x14
+     +   33.0 g +   3.3 r  order 0x0
+     +   35.0 g +   3.5 r  order 0x14
+     +   67.0 g +   6.7 r  order 0x0
+     +   69.0 g +   6.9 r  order 0x14
+     +  102.0 g +  11.8 r  order 0x0
+     +  105.0 g +  13.0 r  order 0x14
+     +  136.0 g +  16.5 r  order 0x0
+     +  139.0 g +  16.8 r  order 0x14
+     +  171.1 g +  20.0 r  order 0x0
+     +  173.0 g +  20.2 r  order 0x14
+     +  206.0 g +  23.5 r  order 0x0
+     +  209.0 g +  23.8 r  order 0x14
+     +  215.0 g +  24.4 r  order 0x0
+     +  218.0 g +  24.7 r  order 0x15
+     +  228.9 g +  25.8 r  hold escort>escort inbound>hold
+     +  230.0 g +  25.9 r  TURN 42 deg over 16 s at d_G 13.5 km, nose-to-gate 52 -> max 52 -> 18 [script: escort, no leader (0x0 gap / re-target)]
+     +  233.0 g +  26.2 r  order 0x0
+     +  234.0 g +  26.3 r  order 0x15
+     +  284.0 g +  43.2 r  order 0x0
+     +  285.0 g +  43.3 r  order 0x15
+     +  294.7 g +  44.3 r  commit escort>committed hold>hold
+     +  294.7 g +  44.3 r  release committed>committed hold>funnel
+     +  305.9 g +  45.4 r  target committed>none funnel>funnel
+     +  309.4 g +  45.8 r  escort none>escort none>none @f478
+     +  309.4 g +  45.8 r  inbound escort>escort none>inbound @f478
+     +  707.4 g + 107.8 r  order 0x14
+     +  726.0 g + 109.7 r  order 0x0
+     +  729.0 g + 110.0 r  order 0x14
+     +  759.0 g + 113.0 r  order 0x0
+     +  762.0 g + 113.3 r  order 0x14
+     +  796.0 g + 116.7 r  order 0x0
+     +  798.0 g + 116.9 r  order 0x14
+     +  829.0 g + 120.0 r  order 0x0
+     +  831.0 g + 120.2 r  order 0x14
+     +  861.0 g + 123.2 r  order 0x0
+     +  864.0 g + 123.5 r  order 0x14
+     +  896.0 g + 130.5 r  order 0x0
+     +  899.0 g + 130.9 r  order 0x14
+     +  929.0 g + 133.9 r  order 0x0
+     +  932.0 g + 134.2 r  order 0x14
+     +  963.0 g + 137.3 r  order 0x0
+     +  966.0 g + 137.6 r  order 0x14
+     + 1000.0 g + 141.0 r  order 0x0
+     + 1002.0 g + 141.2 r  order 0x14
+     + 1033.0 g + 145.7 r  order 0x0
+     + 1036.0 g + 146.0 r  order 0x14
+     + 1069.0 g + 149.3 r  order 0x0
+     + 1072.0 g + 149.6 r  order 0x14
+     + 1105.0 g + 152.9 r  order 0x0
+     + 1107.0 g + 153.1 r  order 0x14
+     + 1138.0 g + 156.2 r  order 0x0
+     + 1140.1 g + 156.4 r  order 0x14
+     + 1170.0 g + 159.4 r  order 0x0
+     + 1173.0 g + 159.7 r  order 0x14
+     + 1206.0 g + 163.0 r  order 0x0
+     + 1208.0 g + 163.2 r  order 0x14
+     + 1238.3 g + 166.3 r  hold escort>escort inbound>hold @f478
+     + 1241.0 g + 166.5 r  order 0x0
+     + 1243.0 g + 166.7 r  order 0x14
+     + 1274.0 g + 169.8 r  order 0x0
+     + 1275.0 g + 169.9 r  STOP v<15 m/s 3 s at d_G 12.1 km
+     + 1276.0 g + 170.0 r  order 0x14
+     + 1307.0 g + 173.1 r  order 0x0
+     + 1308.0 g + 173.2 r  STOP v<15 m/s 3 s at d_G 11.4 km
+     + 1310.0 g + 173.4 r  order 0x14
+     + 1343.0 g + 176.7 r  order 0x0
+     + 1346.1 g + 177.0 r  order 0x14
+     + 1377.1 g + 180.1 r  order 0x0
+     + 1380.0 g + 180.4 r  order 0x14
+     + 1393.0 g + 183.0 r  TURN 180 deg over 61 s at d_G 8.8 km, nose-to-gate 21 -> max 179 -> 147 [script: escort before leader launch (leader-first)]
+     + 1411.0 g + 185.2 r  order 0x0
+     + 1414.0 g + 185.5 r  order 0x14
+     + 1447.0 g + 188.8 r  order 0x0
+     + 1450.0 g + 189.1 r  order 0x14
+     + 1475.0 g + 191.6 r  TURN 145 deg over 48 s at d_G 10.4 km, nose-to-gate 152 -> max 152 -> 15 [script: escort before leader launch (leader-first)]
+     + 1484.1 g + 192.5 r  order 0x0
+     + 1486.0 g + 192.7 r  order 0x14
+     + 1500.1 g + 194.1 r  order 0x0
+     + 1503.0 g + 194.4 r  order 0x15
+     + 1533.9 g + 197.5 r  commit escort>committed hold>hold @f478
+     + 1577.6 g + 201.9 r  target committed>none hold>hold @f478
+     + 1583.0 g + 202.4 r  escort none>escort none>none @f478
+     + 1583.0 g + 202.4 r  hold escort>escort none>hold @f478
+     + 1722.4 g + 221.9 r  order 0x14
+     + 1723.1 g + 222.0 r  TURN 167 deg over 83 s at d_G 10.7 km, nose-to-gate 144 -> max 144 -> 15 [script: escort before leader launch (leader-first)]
+     + 1723.1 g + 222.0 r  order 0x0
+     + 1726.0 g + 222.3 r  order 0x14
+     + 1758.0 g + 225.5 r  order 0x0
+     + 1761.0 g + 225.8 r  order 0x14
+     + 1794.0 g + 229.1 r  order 0x0
+     + 1795.0 g + 229.2 r  STOP v<15 m/s 3 s at d_G 10.3 km
+     + 1797.0 g + 229.4 r  order 0x14
+     + 1828.0 g + 232.5 r  order 0x0
+     + 1830.0 g + 232.7 r  order 0x14
+     + 1833.0 g + 233.0 r  TURN 181 deg over 59 s at d_G 8.6 km, nose-to-gate 20 -> max 179 -> 146 [script: escort before leader launch (leader-first)]
+     + 1864.0 g + 236.1 r  order 0x0
+     + 1866.0 g + 236.3 r  order 0x14
+     + 1899.0 g + 239.6 r  order 0x0
+     + 1902.0 g + 239.9 r  order 0x14
+     + 1913.0 g + 241.0 r  TURN 177 deg over 62 s at d_G 10.4 km, nose-to-gate 151 -> max 151 -> 15 [script: escort before leader launch (leader-first)]
+     + 1935.0 g + 243.2 r  order 0x0
+     + 1937.0 g + 243.4 r  order 0x14
+     + 1950.0 g + 244.7 r  order 0x0
+     + 1953.0 g + 245.0 r  order 0x15
+     + 1978.0 g + 247.5 r  commit escort>committed hold>hold @f478
+     + 2025.2 g + 252.2 r  release committed>committed hold>funnel @f478
+     + 2063.2 g + 256.0 r  order 0x4
+     + 2085.0 g + 258.2 r  TURN 69 deg over 31 s at d_G 7.3 km, nose-to-gate 60 -> max 60 -> 8 [controller: funnel approach]
+     + 2139.6 g + 263.7 r  handover committed>committed funnel>funnel @f478
+     + 2139.6 g + 263.7 r  handover committed>committed funnel>handover @f478
+     + 2139.7 g + 263.7 r  dock committed>committed handover>dock @f478
+     + 2140.0 g + 263.7 r  order 0x5
+     + 2170.0 g + 266.7 r  launch committed>committed dock>launch @f478
+  -- 4120 escort trace: samples 1800, v flown med 70 (min 0), written med 70, stops 4, turns>30 6 (968 deg total) | detours 42
+     +    0.0 g +   0.0 r  order 0x14
+     +   18.1 g +   1.8 r  order 0x0
+     +   21.0 g +   2.1 r  order 0x14
+     +   53.0 g +   5.3 r  order 0x0
+     +   56.0 g +   5.6 r  order 0x14
+     +   88.0 g +   8.8 r  order 0x0
+     +   91.0 g +   9.1 r  order 0x14
+     +  123.0 g +  15.2 r  order 0x0
+     +  126.0 g +  15.5 r  order 0x14
+     +  157.0 g +  18.6 r  order 0x0
+     +  160.0 g +  18.9 r  order 0x14
+     +  190.0 g +  21.9 r  order 0x0
+     +  193.1 g +  22.2 r  order 0x14
+     +  215.0 g +  24.4 r  order 0x0
+     +  218.0 g +  24.7 r  order 0x15
+     +  228.0 g +  25.7 r  order 0x0
+     +  229.0 g +  25.8 r  order 0x15
+     +  281.8 g +  42.9 r  hold escort>escort inbound>hold
+     +  283.0 g +  43.1 r  TURN 47 deg over 17 s at d_G 13.4 km, nose-to-gate 43 -> max 43 -> 10 [script: escort, no leader (0x0 gap / re-target)]
+     +  305.0 g +  45.3 r  order 0x0
+     +  310.5 g +  45.9 r  escort none>escort none>none @f478
+     +  310.5 g +  45.9 r  inbound escort>escort none>inbound @f478
+     +  310.5 g +  45.9 r  leader escort>none hold>hold
+     +  311.0 g +  45.9 r  order 0x14
+     +  312.0 g +  46.0 r  TURN 136 deg over 29 s at d_G 69.4 km, nose-to-gate 131 -> max 131 -> 5 [script: escort before leader launch (leader-first)]
+     +  342.0 g +  52.1 r  order 0x0
+     +  344.0 g +  53.8 r  order 0x14
+     +  375.0 g +  61.4 r  order 0x0
+     +  377.0 g +  61.6 r  order 0x14
+     +  410.0 g +  64.9 r  order 0x0
+     +  413.0 g +  65.3 r  order 0x14
+     +  444.0 g +  72.3 r  order 0x0
+     +  447.0 g +  72.6 r  order 0x14
+     +  480.0 g +  79.6 r  order 0x0
+     +  483.0 g +  79.9 r  order 0x14
+     +  513.0 g +  86.0 r  order 0x0
+     +  516.1 g +  86.3 r  order 0x14
+     +  550.0 g +  89.7 r  order 0x0
+     +  552.0 g +  89.9 r  order 0x14
+     +  583.0 g +  93.0 r  order 0x0
+     +  586.0 g +  93.3 r  order 0x14
+     +  617.0 g +  96.4 r  order 0x0
+     +  620.0 g +  96.7 r  order 0x14
+     +  651.0 g +  99.8 r  order 0x0
+     +  653.0 g + 100.0 r  order 0x14
+     +  687.0 g + 105.8 r  order 0x0
+     +  689.0 g + 106.0 r  order 0x14
+     +  723.0 g + 109.4 r  order 0x0
+     +  726.0 g + 109.7 r  order 0x14
+     +  756.0 g + 112.7 r  order 0x0
+     +  759.0 g + 113.0 r  order 0x14
+     +  793.0 g + 116.4 r  order 0x0
+     +  796.0 g + 116.7 r  order 0x14
+     +  827.0 g + 119.8 r  order 0x0
+     +  829.0 g + 120.0 r  order 0x14
+     +  861.0 g + 123.2 r  order 0x0
+     +  864.0 g + 123.5 r  order 0x14
+     +  895.0 g + 130.4 r  order 0x0
+     +  898.0 g + 130.8 r  order 0x14
+     +  930.0 g + 134.0 r  order 0x0
+     +  933.0 g + 134.3 r  order 0x14
+     +  964.0 g + 137.4 r  order 0x0
+     +  967.1 g + 137.7 r  order 0x14
+     + 1000.0 g + 141.0 r  order 0x0
+     + 1003.0 g + 141.3 r  order 0x14
+     + 1035.0 g + 145.9 r  order 0x0
+     + 1038.0 g + 146.2 r  order 0x14
+     + 1068.0 g + 149.2 r  order 0x0
+     + 1070.0 g + 149.4 r  order 0x14
+     + 1102.0 g + 152.6 r  order 0x0
+     + 1105.0 g + 152.9 r  order 0x14
+     + 1135.1 g + 155.9 r  order 0x0
+     + 1137.0 g + 156.1 r  order 0x14
+     + 1168.0 g + 159.2 r  order 0x0
+     + 1171.1 g + 159.5 r  order 0x14
+     + 1186.9 g + 161.1 r  hold escort>escort inbound>hold @f478
+     + 1202.0 g + 162.6 r  order 0x0
+     + 1204.0 g + 162.8 r  order 0x14
+     + 1235.0 g + 165.9 r  order 0x0
+     + 1237.0 g + 166.1 r  order 0x14
+     + 1268.0 g + 169.2 r  order 0x0
+     + 1271.0 g + 169.5 r  order 0x14
+     + 1293.0 g + 171.7 r  TURN 499 deg over 124 s at d_G 8.8 km, nose-to-gate 20 -> max 179 -> 149 [script: escort before leader launch (leader-first)]
+     + 1299.6 g + 172.4 r  DETOURS 42 rows (order, obstacle) {('0x14', '11357'): 42}, first..last 21 s
+     + 1303.0 g + 172.7 r  order 0x0
+     + 1306.0 g + 173.0 r  order 0x14
+     + 1339.1 g + 176.3 r  order 0x0
+     + 1341.0 g + 176.5 r  order 0x14
+     + 1375.0 g + 179.9 r  order 0x0
+     + 1378.1 g + 180.2 r  order 0x14
+     + 1409.0 g + 185.0 r  order 0x0
+     + 1411.0 g + 185.2 r  order 0x14
+     + 1442.0 g + 188.3 r  order 0x0
+     + 1445.1 g + 188.6 r  order 0x14
+     + 1447.0 g + 188.8 r  TURN 177 deg over 63 s at d_G 10.6 km, nose-to-gate 150 -> max 150 -> 18 [script: escort before leader launch (leader-first)]
+     + 1476.0 g + 191.7 r  order 0x0
+     + 1478.0 g + 191.9 r  order 0x14
+     + 1500.1 g + 194.1 r  order 0x0
+     + 1503.0 g + 194.4 r  order 0x15
+     + 1512.6 g + 195.3 r  commit escort>committed hold>hold @f478
+     + 1512.6 g + 195.3 r  release committed>committed hold>funnel @f478
+     + 1533.9 g + 197.5 r  order 0x4
+     + 1573.0 g + 201.4 r  order 0x0
+     + 1575.0 g + 201.6 r  STOP v<15 m/s 246 s at d_G 8.4 km
+     + 1577.6 g + 201.9 r  target committed>none funnel>funnel @f478
+     + 1582.9 g + 202.4 r  escort none>escort none>none @f478
+     + 1582.9 g + 202.4 r  hold escort>escort none>hold @f478
+     + 1820.9 g + 231.8 r  order 0x14
+     + 1822.0 g + 231.9 r  order 0x0
+     + 1823.0 g + 232.0 r  STOP v<15 m/s 3 s at d_G 11.0 km
+     + 1825.0 g + 232.2 r  order 0x14
+     + 1827.0 g + 232.4 r  TURN 39 deg over 29 s at d_G 11.0 km, nose-to-gate 45 -> max 45 -> 7 [script: escort before leader launch (leader-first)]
+     + 1855.0 g + 235.2 r  order 0x0
+     + 1858.0 g + 235.5 r  order 0x14
+     + 1890.0 g + 238.7 r  order 0x0
+     + 1891.0 g + 238.8 r  STOP v<15 m/s 3 s at d_G 9.6 km
+     + 1893.0 g + 239.0 r  order 0x14
+     + 1923.0 g + 242.0 r  order 0x0
+     + 1925.0 g + 242.2 r  order 0x14
+     + 1950.0 g + 244.7 r  order 0x0
+     + 1951.0 g + 244.8 r  STOP v<15 m/s 27 s at d_G 8.3 km
+     + 1952.7 g + 245.0 r  commit escort>committed hold>hold @f478
+     + 1952.7 g + 245.0 r  release committed>committed hold>funnel @f478
+     + 1978.0 g + 247.5 r  order 0x4
+     + 2007.0 g + 250.4 r  TURN 70 deg over 31 s at d_G 7.0 km, nose-to-gate 56 -> max 56 -> 10 [controller: funnel approach]
+     + 2055.6 g + 255.3 r  handover committed>committed funnel>funnel @f478
+     + 2055.6 g + 255.3 r  handover committed>committed funnel>handover @f478
+     + 2055.8 g + 255.3 r  dock committed>committed handover>dock @f478
+     + 2056.1 g + 255.3 r  order 0x5
+     + 2085.9 g + 258.3 r  launch committed>committed dock>launch @f478
+     + 2086.0 g + 258.3 r  order 0x8
+     + 2086.8 g + 258.4 r  gone committed>none launch>launch @f478
+== convoy leader 4673 (M2) gate f478 escorts ['5001', '5476'] | start (leader 15 km) game 24296.0 | end 25065.2 all launched | first commit 24303.5
+  -- 4673 leader member rows: samples 584, v flown med 60 (min 0), written med -, stops 0, turns>30 8 (855 deg total) | detours 167
+     +    0.0 g +   0.0 r  arrival none>arrival none>none
+     +    0.0 g +   0.0 r  order 0x21
+     +    1.0 g +   0.1 r  order 0x1e
+     +    2.0 g +   0.2 r  order 0x0
+     +    7.5 g +   0.7 r  commit arrival>committed none>none
+     +    7.5 g +   0.7 r  hold committed>committed none>hold
+     +    8.2 g +   0.8 r  order 0x4
+     +   10.3 g +   1.0 r  TURN 42 deg over 25 s at d_G 2.0 km, nose-to-gate 160 -> max 165 -> 158 [controller: head slot block]
+     +  133.8 g +  13.3 r  TURN 39 deg over 20 s at d_G 9.1 km, nose-to-gate 171 -> max 179 -> 153 [controller: head slot block]
+     +  170.2 g +  17.0 r  TURN 126 deg over 44 s at d_G 11.1 km, nose-to-gate 151 -> max 151 -> 36 [controller: head slot block]
+     +  207.9 g +  27.0 r  release committed>committed hold>funnel
+     +  217.8 g +  28.0 r  TURN 84 deg over 56 s at d_G 11.0 km, nose-to-gate 36 -> max 65 -> 53 [controller: funnel approach]
+     +  240.5 g +  30.3 r  DETOURS 167 rows (order, obstacle) {('0x4', '6439'): 75, ('0x4', '5727'): 71, ('0x4', '6185'): 21}, first..last 248 s
+     +  277.0 g +  33.9 r  TURN 261 deg over 90 s at d_G 8.4 km, nose-to-gate 52 -> max 145 -> 147 [controller: funnel approach]
+     +  323.7 g +  38.6 r  go_around committed>committed funnel>hold
+     +  410.9 g +  53.2 r  TURN 56 deg over 32 s at d_G 8.7 km, nose-to-gate 155 -> max 176 -> 151 [controller: head slot block]
+     +  453.2 g +  60.9 r  TURN 69 deg over 32 s at d_G 11.0 km, nose-to-gate 150 -> max 150 -> 94 [controller: head out of window (petal phase)]
+     +  491.8 g +  64.8 r  TURN 179 deg over 74 s at d_G 12.1 km, nose-to-gate 95 -> max 97 -> 5 [controller: head out of window (petal phase)]
+     +  510.8 g +  66.7 r  release committed>committed hold>funnel
+     +  592.5 g +  74.8 r  handover committed>committed funnel>funnel
+     +  592.6 g +  74.8 r  handover committed>committed funnel>handover
+     +  592.6 g +  74.8 r  dock committed>committed handover>dock
+     +  592.7 g +  74.8 r  order 0x5
+     +  607.2 g +  76.3 r  launch committed>committed dock>launch
+     +  608.0 g +  76.4 r  order 0x8
+     +  608.1 g +  76.4 r  gone committed>none launch>launch
+  -- 5001 escort trace: samples 44, v flown med 72 (min 60), written med 100, stops 0, turns>30 1 (39 deg total) | detours 6
+     +   62.6 g +   6.2 r  arrival none>arrival none>none
+     +   70.2 g +   7.0 r  escort arrival>escort none>none
+     +   70.2 g +   7.0 r  hold escort>escort none>hold
+     +  125.1 g +  12.5 r  DETOURS 6 rows (order, obstacle) {('0x14', '5476'): 6}, first..last 1 s
+     +  624.1 g +  80.8 r  commit escort>committed hold>hold
+     +  662.4 g +  84.7 r  release committed>committed hold>funnel
+     +  726.9 g +  91.2 r  order 0x4
+     +  727.1 g +  91.2 r  TURN 39 deg over 22 s at d_G 6.4 km, nose-to-gate 41 -> max 41 -> 10 [engine: order-5 ramp]
+     +  751.0 g +  94.0 r  handover committed>committed funnel>funnel
+     +  751.0 g +  94.0 r  dock committed>committed funnel>dock
+     +  751.0 g +  94.1 r  order 0x5
+     +  769.2 g + 102.0 r  launch committed>committed dock>launch
+  -- 5476 escort member rows: samples 543, v flown med 40 (min 0), written med -, stops 0, turns>30 5 (824 deg total) | detours 182
+     +  123.8 g +  12.3 r  arrival none>arrival none>none
+     +  123.8 g +  12.3 r  order 0x21
+     +  124.9 g +  12.4 r  order 0x1e
+     +  125.9 g +  12.5 r  order 0x0
+     +  130.7 g +  13.0 r  escort arrival>escort none>none
+     +  130.7 g +  13.0 r  hold escort>escort none>hold
+     +  131.2 g +  13.1 r  order 0x14
+     +  133.2 g +  13.3 r  TURN 50 deg over 33 s at d_G 1.9 km, nose-to-gate 157 -> max 157 -> 141 [script: escort before leader launch (leader-first)]
+     +  162.5 g +  16.2 r  order 0x0
+     +  165.6 g +  16.5 r  order 0x14
+     +  198.6 g +  26.1 r  order 0x0
+     +  201.8 g +  26.4 r  order 0x14
+     +  235.1 g +  29.7 r  order 0x0
+     +  238.2 g +  30.0 r  order 0x14
+     +  269.6 g +  33.2 r  order 0x0
+     +  272.7 g +  33.5 r  order 0x14
+     +  298.8 g +  36.1 r  TURN 46 deg over 27 s at d_G 8.9 km, nose-to-gate 163 -> max 179 -> 149 [script: escort before leader launch (leader-first)]
+     +  301.9 g +  36.4 r  order 0x0
+     +  305.0 g +  36.7 r  order 0x14
+     +  337.0 g +  39.9 r  order 0x0
+     +  340.2 g +  40.2 r  order 0x14
+     +  351.7 g +  41.4 r  TURN 432 deg over 153 s at d_G 11.2 km, nose-to-gate 151 -> max 177 -> 149 [script: escort before leader launch (leader-first)]
+     +  373.0 g +  43.5 r  order 0x0
+     +  376.1 g +  43.8 r  order 0x14
+     +  387.3 g +  45.3 r  DETOURS 182 rows (order, obstacle) {('0x14', '6439'): 114, ('0x14', '6185'): 68}, first..last 61 s
+     +  406.7 g +  52.8 r  order 0x0
+     +  408.8 g +  53.0 r  order 0x14
+     +  442.9 g +  59.9 r  order 0x0
+     +  446.0 g +  60.2 r  order 0x14
+     +  477.2 g +  63.3 r  order 0x0
+     +  479.2 g +  63.5 r  order 0x14
+     +  509.3 g +  66.5 r  TURN 186 deg over 99 s at d_G 11.1 km, nose-to-gate 148 -> max 150 -> 16 [script: escort, no leader (0x0 gap / re-target)]
+     +  509.3 g +  66.5 r  order 0x0
+     +  511.3 g +  66.7 r  order 0x14
+     +  543.4 g +  69.9 r  order 0x0
+     +  545.5 g +  70.1 r  order 0x14
+     +  578.4 g +  73.4 r  order 0x0
+     +  581.4 g +  73.7 r  order 0x14
+     +  609.1 g +  76.5 r  order 0x0
+     +  611.1 g +  76.7 r  order 0x15
+     +  616.0 g +  79.3 r  commit escort>committed hold>hold
+     +  616.0 g +  79.3 r  release committed>committed hold>funnel
+     +  616.1 g +  79.3 r  order 0x4
+     +  619.2 g +  80.1 r  TURN 110 deg over 55 s at d_G 9.8 km, nose-to-gate 15 -> max 44 -> 10 [engine: order-5 ramp]
+     +  671.3 g +  85.6 r  handover committed>committed funnel>funnel
+     +  671.4 g +  85.6 r  handover committed>committed funnel>handover
+     +  671.5 g +  85.6 r  dock committed>committed handover>dock
+     +  672.3 g +  85.7 r  order 0x5
+     +  687.8 g +  87.2 r  launch committed>committed dock>launch
+     +  688.1 g +  87.3 r  order 0x8
+     +  688.9 g +  87.4 r  gone committed>none launch>launch
+== convoy leader 5727 (M1) gate de88 escorts ['6185', '6439'] | start (leader 15 km) game 25323.1 | end 25684.4 all launched | first commit 24520.0
+  -- 5727 leader trace: samples 137, v flown med 100 (min 62), written med 100, stops 0, turns>30 2 (114 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x4
+     +   11.6 g +   1.2 r  hold committed>committed inbound>hold
+     +   11.6 g +   1.2 r  release committed>committed hold>funnel
+     +   13.0 g +   1.3 r  TURN 60 deg over 20 s at d_G 13.9 km, nose-to-gate 10 -> max 53 -> 56 [controller: funnel approach]
+     +   48.0 g +   4.8 r  TURN 54 deg over 34 s at d_G 11.4 km, nose-to-gate 52 -> max 52 -> 6 [controller: funnel approach]
+     +  120.8 g +  12.1 r  handover committed>committed funnel>funnel
+     +  120.8 g +  12.1 r  handover committed>committed funnel>handover
+     +  120.9 g +  12.1 r  dock committed>committed handover>dock
+     +  121.0 g +  12.1 r  order 0x5
+     +  137.0 g +  13.7 r  launch committed>committed dock>launch
+     +  137.9 g +  13.8 r  gone committed>none launch>launch
+  -- 6185 escort trace: samples 293, v flown med 100 (min 20), written med 100, stops 0, turns>30 1 (74 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x14
+     +   26.9 g +   2.7 r  order 0x0
+     +   29.0 g +   2.9 r  order 0x14
+     +   61.0 g +   6.1 r  order 0x0
+     +   62.9 g +   6.3 r  order 0x14
+     +   95.9 g +   9.6 r  order 0x0
+     +   99.0 g +   9.9 r  order 0x14
+     +  128.8 g +  12.9 r  hold escort>escort inbound>hold
+     +  129.9 g +  13.0 r  order 0x0
+     +  132.9 g +  13.3 r  order 0x14
+     +  138.0 g +  13.8 r  order 0x0
+     +  141.9 g +  14.2 r  order 0x15
+     +  146.9 g +  14.7 r  order 0x0
+     +  147.9 g +  14.8 r  order 0x15
+     +  188.0 g +  21.2 r  order 0x0
+     +  188.9 g +  21.3 r  order 0x15
+     +  193.2 g +  21.7 r  commit escort>committed hold>hold
+     +  193.2 g +  21.7 r  release committed>committed hold>funnel
+     +  218.7 g +  24.2 r  order 0x4
+     +  243.9 g +  26.8 r  TURN 74 deg over 23 s at d_G 8.5 km, nose-to-gate 66 -> max 66 -> 3 [controller: funnel approach]
+     +  296.4 g +  32.0 r  handover committed>committed funnel>funnel
+     +  296.5 g +  32.0 r  handover committed>committed funnel>handover
+     +  296.5 g +  32.0 r  dock committed>committed handover>dock
+     +  296.9 g +  32.1 r  order 0x5
+     +  316.3 g +  34.0 r  launch committed>committed dock>launch
+     +  317.2 g +  34.1 r  gone committed>none launch>launch
+  -- 6439 escort trace: samples 362, v flown med 100 (min 25), written med 100, stops 0, turns>30 2 (151 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x0
+     +    0.9 g +   0.1 r  order 0x14
+     +   33.0 g +   3.3 r  order 0x0
+     +   34.9 g +   3.5 r  order 0x14
+     +   65.0 g +   6.5 r  order 0x0
+     +   67.9 g +   6.8 r  order 0x14
+     +  100.0 g +  10.0 r  order 0x0
+     +  102.9 g +  10.3 r  order 0x14
+     +  137.0 g +  13.7 r  order 0x0
+     +  139.9 g +  14.0 r  order 0x15
+     +  180.1 g +  20.4 r  hold escort>escort inbound>hold
+     +  210.9 g +  23.5 r  order 0x0
+     +  211.9 g +  23.6 r  order 0x15
+     +  247.0 g +  27.1 r  order 0x0
+     +  247.0 g +  27.1 r  commit escort>committed hold>hold
+     +  247.9 g +  27.2 r  order 0x4
+     +  270.6 g +  29.4 r  release committed>committed hold>funnel
+     +  271.9 g +  29.6 r  TURN 77 deg over 21 s at d_G 9.3 km, nose-to-gate 21 -> max 58 -> 61 [controller: funnel approach]
+     +  298.0 g +  32.2 r  TURN 74 deg over 40 s at d_G 7.6 km, nose-to-gate 61 -> max 61 -> 10 [engine: order-5 ramp]
+     +  340.0 g +  36.4 r  handover committed>committed funnel>funnel
+     +  340.1 g +  36.4 r  dock committed>committed funnel>dock
+     +  340.9 g +  36.5 r  order 0x5
+     +  361.3 g +  38.5 r  launch committed>committed dock>launch
+== convoy leader 8846 (M1) gate f478 escorts ['3861', '4120'] | start (leader 15 km) game 26049.0 | end 26979.0 all launched | first commit 25103.7
+  -- 8846 leader trace: samples 259, v flown med 60 (min 0), written med 60, stops 1, turns>30 5 (353 deg total) | detours 89
+     +    0.0 g +   0.0 r  order 0x4
+     +   16.0 g +   1.6 r  TURN 57 deg over 28 s at d_G 14.0 km, nose-to-gate 28 -> max 51 -> 54 [controller: inbound speed law]
+     +   20.0 g +   2.0 r  hold committed>committed inbound>hold
+     +   20.0 g +   2.0 r  release committed>committed hold>funnel
+     +   60.0 g +   6.0 r  TURN 54 deg over 32 s at d_G 11.7 km, nose-to-gate 49 -> max 49 -> 3 [controller: funnel approach]
+     +  109.7 g +  11.0 r  DETOURS 89 rows (order, obstacle) {('0x4', '11613'): 58, ('0x4', '12244'): 31}, first..last 84 s
+     +  112.0 g +  11.2 r  TURN 32 deg over 15 s at d_G 8.6 km, nose-to-gate 5 -> max 35 -> 39 [controller: funnel approach]
+     +  147.0 g +  14.7 r  TURN 102 deg over 40 s at d_G 7.1 km, nose-to-gate 42 -> max 43 -> 44 [controller: funnel approach]
+     +  190.1 g +  20.7 r  TURN 109 deg over 42 s at d_G 5.9 km, nose-to-gate 44 -> max 44 -> 5 [engine: order-5 ramp]
+     +  225.0 g +  24.2 r  STOP v<15 m/s 8 s at d_G 4.8 km
+     +  225.0 g +  24.2 r  handover committed>committed funnel>funnel
+     +  225.0 g +  24.2 r  handover committed>committed funnel>handover
+     +  225.0 g +  24.2 r  order 0x0
+     +  226.0 g +  24.3 r  order 0x1f
+     +  229.6 g +  24.6 r  dock committed>committed handover>dock
+     +  230.0 g +  24.7 r  order 0x5
+     +  258.6 g +  27.5 r  launch committed>committed dock>launch
+     +  259.6 g +  27.6 r  gone committed>none launch>launch
+  -- 3861 escort trace: samples 657, v flown med 60 (min 0), written med 60, stops 3, turns>30 6 (919 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x14
+     +    1.0 g +   0.1 r  order 0x0
+     +    3.0 g +   0.3 r  order 0x14
+     +   34.0 g +   3.4 r  order 0x0
+     +   35.0 g +   3.5 r  STOP v<15 m/s 3 s at d_G 12.1 km
+     +   36.0 g +   3.6 r  order 0x14
+     +   67.0 g +   6.7 r  order 0x0
+     +   68.0 g +   6.8 r  STOP v<15 m/s 3 s at d_G 11.4 km
+     +   70.0 g +   7.0 r  order 0x14
+     +  103.0 g +  10.3 r  order 0x0
+     +  106.0 g +  10.6 r  order 0x14
+     +  137.0 g +  13.7 r  order 0x0
+     +  140.0 g +  14.0 r  order 0x14
+     +  153.0 g +  16.5 r  TURN 180 deg over 61 s at d_G 8.8 km, nose-to-gate 21 -> max 179 -> 147 [script: escort before leader launch (leader-first)]
+     +  171.0 g +  18.8 r  order 0x0
+     +  174.0 g +  19.1 r  order 0x14
+     +  207.0 g +  22.4 r  order 0x0
+     +  210.0 g +  22.7 r  order 0x14
+     +  235.0 g +  25.2 r  TURN 145 deg over 48 s at d_G 10.4 km, nose-to-gate 152 -> max 152 -> 15 [script: escort before leader launch (leader-first)]
+     +  244.0 g +  26.1 r  order 0x0
+     +  246.0 g +  26.3 r  order 0x14
+     +  260.0 g +  27.7 r  order 0x0
+     +  263.0 g +  28.0 r  order 0x15
+     +  293.9 g +  31.1 r  commit escort>committed hold>hold
+     +  337.6 g +  35.4 r  target committed>none hold>hold
+     +  343.0 g +  36.0 r  escort none>escort none>none
+     +  343.0 g +  36.0 r  hold escort>escort none>hold
+     +  482.4 g +  55.5 r  order 0x14
+     +  483.0 g +  55.6 r  TURN 167 deg over 83 s at d_G 10.7 km, nose-to-gate 144 -> max 144 -> 15 [script: escort before leader launch (leader-first)]
+     +  483.0 g +  55.6 r  order 0x0
+     +  486.0 g +  55.9 r  order 0x14
+     +  518.0 g +  59.1 r  order 0x0
+     +  521.0 g +  59.4 r  order 0x14
+     +  554.0 g +  62.7 r  order 0x0
+     +  555.0 g +  62.8 r  STOP v<15 m/s 3 s at d_G 10.3 km
+     +  557.0 g +  63.0 r  order 0x14
+     +  588.0 g +  66.1 r  order 0x0
+     +  590.0 g +  66.3 r  order 0x14
+     +  593.0 g +  66.6 r  TURN 181 deg over 59 s at d_G 8.6 km, nose-to-gate 20 -> max 179 -> 146 [script: escort before leader launch (leader-first)]
+     +  624.0 g +  69.7 r  order 0x0
+     +  626.0 g +  69.9 r  order 0x14
+     +  659.0 g +  73.2 r  order 0x0
+     +  662.0 g +  73.5 r  order 0x14
+     +  673.0 g +  74.6 r  TURN 177 deg over 62 s at d_G 10.4 km, nose-to-gate 151 -> max 151 -> 15 [script: escort before leader launch (leader-first)]
+     +  695.0 g +  76.8 r  order 0x0
+     +  697.0 g +  77.0 r  order 0x14
+     +  710.0 g +  78.3 r  order 0x0
+     +  713.0 g +  78.6 r  order 0x15
+     +  738.0 g +  81.1 r  commit escort>committed hold>hold
+     +  785.2 g +  85.8 r  release committed>committed hold>funnel
+     +  823.1 g +  89.6 r  order 0x4
+     +  845.0 g +  91.8 r  TURN 69 deg over 31 s at d_G 7.3 km, nose-to-gate 60 -> max 60 -> 8 [controller: funnel approach]
+     +  899.5 g +  97.2 r  handover committed>committed funnel>funnel
+     +  899.6 g +  97.2 r  handover committed>committed funnel>handover
+     +  899.6 g +  97.2 r  dock committed>committed handover>dock
+     +  900.0 g +  97.3 r  order 0x5
+     +  930.0 g + 100.3 r  launch committed>committed dock>launch
+  -- 4120 escort trace: samples 560, v flown med 40 (min 0), written med 47, stops 4, turns>30 4 (785 deg total) | detours 42
+     +    0.0 g +   0.0 r  order 0x14
+     +   28.0 g +   2.8 r  order 0x0
+     +   31.0 g +   3.1 r  order 0x14
+     +   53.0 g +   5.3 r  TURN 499 deg over 124 s at d_G 8.8 km, nose-to-gate 20 -> max 179 -> 149 [script: escort before leader launch (leader-first)]
+     +   59.6 g +   6.0 r  DETOURS 42 rows (order, obstacle) {('0x14', '11357'): 42}, first..last 21 s
+     +   63.0 g +   6.3 r  order 0x0
+     +   66.0 g +   6.6 r  order 0x14
+     +   99.0 g +   9.9 r  order 0x0
+     +  101.0 g +  10.1 r  order 0x14
+     +  135.0 g +  13.5 r  order 0x0
+     +  138.0 g +  13.8 r  order 0x14
+     +  169.0 g +  18.6 r  order 0x0
+     +  171.0 g +  18.8 r  order 0x14
+     +  202.0 g +  21.9 r  order 0x0
+     +  205.0 g +  22.2 r  order 0x14
+     +  207.0 g +  22.4 r  TURN 177 deg over 63 s at d_G 10.6 km, nose-to-gate 150 -> max 150 -> 18 [script: escort before leader launch (leader-first)]
+     +  236.0 g +  25.3 r  order 0x0
+     +  238.0 g +  25.5 r  order 0x14
+     +  260.0 g +  27.7 r  order 0x0
+     +  263.0 g +  28.0 r  order 0x15
+     +  272.6 g +  28.9 r  commit escort>committed hold>hold
+     +  272.6 g +  28.9 r  release committed>committed hold>funnel
+     +  293.9 g +  31.1 r  order 0x4
+     +  333.0 g +  35.0 r  order 0x0
+     +  335.0 g +  35.2 r  STOP v<15 m/s 246 s at d_G 8.4 km
+     +  337.6 g +  35.4 r  target committed>none funnel>funnel
+     +  342.8 g +  35.9 r  escort none>escort none>none
+     +  342.8 g +  35.9 r  hold escort>escort none>hold
+     +  580.8 g +  65.4 r  order 0x14
+     +  582.0 g +  65.5 r  order 0x0
+     +  583.0 g +  65.6 r  STOP v<15 m/s 3 s at d_G 11.0 km
+     +  585.0 g +  65.8 r  order 0x14
+     +  587.0 g +  66.0 r  TURN 39 deg over 29 s at d_G 11.0 km, nose-to-gate 45 -> max 45 -> 7 [script: escort before leader launch (leader-first)]
+     +  615.0 g +  68.8 r  order 0x0
+     +  618.0 g +  69.1 r  order 0x14
+     +  650.0 g +  72.3 r  order 0x0
+     +  651.0 g +  72.4 r  STOP v<15 m/s 3 s at d_G 9.6 km
+     +  653.0 g +  72.6 r  order 0x14
+     +  683.0 g +  75.6 r  order 0x0
+     +  685.0 g +  75.8 r  order 0x14
+     +  710.0 g +  78.3 r  order 0x0
+     +  711.0 g +  78.4 r  STOP v<15 m/s 27 s at d_G 8.3 km
+     +  712.7 g +  78.5 r  commit escort>committed hold>hold
+     +  712.7 g +  78.5 r  release committed>committed hold>funnel
+     +  738.0 g +  81.1 r  order 0x4
+     +  767.0 g +  84.0 r  TURN 70 deg over 31 s at d_G 7.0 km, nose-to-gate 56 -> max 56 -> 10 [controller: funnel approach]
+     +  815.6 g +  88.8 r  handover committed>committed funnel>funnel
+     +  815.6 g +  88.8 r  handover committed>committed funnel>handover
+     +  815.8 g +  88.9 r  dock committed>committed handover>dock
+     +  816.0 g +  88.9 r  order 0x5
+     +  845.9 g +  91.9 r  launch committed>committed dock>launch
+     +  846.0 g +  91.9 r  order 0x8
+     +  846.8 g +  92.0 r  gone committed>none launch>launch
+== convoy leader 11357 (M2) gate 0450 escorts ['11613', '12244'] | start (leader 15 km) game 26765.0 | end 27003.0 OPEN at log end | first commit 26093.4
+  -- 11357 leader trace: samples 131, v flown med 100 (min 1), written med 100, stops 0, turns>30 1 (60 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x4
+     +   15.6 g +   1.6 r  hold committed>committed inbound>hold
+     +   19.5 g +   2.0 r  release committed>committed hold>funnel
+     +   46.0 g +   4.6 r  TURN 60 deg over 34 s at d_G 12.2 km, nose-to-gate 55 -> max 55 -> 3 [controller: funnel approach]
+     +  103.0 g +  10.3 r  order 0x0
+     +  107.4 g +  10.7 r  target committed>none funnel>funnel
+     +  109.8 g +  11.0 r  commit none>committed none>none
+     +  109.8 g +  11.0 r  hold committed>committed none>hold
+     +  109.8 g +  11.0 r  order 0x4
+     +  113.8 g +  11.4 r  evict committed>evicted hold>hold
+     +  143.8 g +  14.4 r  commit evicted>committed none>none
+     +  143.8 g +  14.4 r  dock committed>committed none>dock
+     +  143.9 g +  14.4 r  order 0x5
+     +  160.9 g +  16.1 r  launch committed>committed dock>launch
+     +  161.9 g +  16.2 r  gone committed>none launch>launch
+  -- 11613 escort trace: samples 138, v flown med 100 (min 40), written med 100, stops 0, turns>30 0 (0 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x14
+     +   18.0 g +   1.8 r  order 0x0
+     +   21.0 g +   2.1 r  order 0x14
+     +   52.0 g +   5.2 r  order 0x0
+     +   55.0 g +   5.5 r  order 0x14
+     +   88.1 g +   8.8 r  order 0x0
+     +   91.0 g +   9.1 r  order 0x14
+     +  106.1 g +  10.6 r  hold escort>escort inbound>hold
+     +  107.4 g +  10.7 r  leader escort>none hold>hold
+     +  109.9 g +  11.0 r  escort none>escort none>none
+     +  109.9 g +  11.0 r  hold escort>escort none>hold
+     +  113.9 g +  11.4 r  leader escort>none hold>hold
+     +  146.9 g +  14.7 r  escort none>escort none>none
+     +  146.9 g +  14.7 r  hold escort>escort none>hold
+     +  168.4 g +  16.8 r  commit escort>committed hold>hold
+     +  168.4 g +  16.8 r  release committed>committed hold>funnel
+     +  214.0 g +  21.4 r  order 0x4
+     +  234.0 g +  23.4 r  order 0x0
+  -- 12244 escort trace: samples 198, v flown med 100 (min 25), written med 100, stops 0, turns>30 1 (88 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x14
+     +   10.0 g +   1.0 r  order 0x0
+     +   13.0 g +   1.3 r  order 0x14
+     +   43.0 g +   4.3 r  order 0x0
+     +   46.0 g +   4.6 r  order 0x14
+     +   76.0 g +   7.6 r  order 0x0
+     +   79.0 g +   7.9 r  order 0x14
+     +  107.0 g +  10.7 r  order 0x0
+     +  107.1 g +  10.7 r  leader escort>none inbound>inbound
+     +  110.5 g +  11.1 r  escort none>escort none>none
+     +  110.5 g +  11.1 r  inbound escort>escort none>inbound
+     +  113.9 g +  11.4 r  leader escort>none inbound>inbound
+     +  113.9 g +  11.4 r  order 0x14
+     +  143.8 g +  14.4 r  escort none>escort none>none
+     +  143.8 g +  14.4 r  hold escort>escort none>hold
+     +  162.0 g +  16.2 r  order 0x0
+     +  164.0 g +  16.4 r  TURN 88 deg over 28 s at d_G 13.3 km, nose-to-gate 65 -> max 65 -> 23 [script: escort, no leader (0x0 gap / re-target)]
+     +  165.0 g +  16.5 r  order 0x15
+     +  190.0 g +  19.0 r  order 0x0
+     +  191.0 g +  19.1 r  order 0x15
+     +  221.0 g +  22.1 r  order 0x0
+     +  222.0 g +  22.2 r  order 0x15
+     +  231.2 g +  23.1 r  commit escort>committed hold>hold
+     +  231.2 g +  23.1 r  release committed>committed hold>funnel
+== convoy leader 11959 (M1) gate de88 escorts ['12401', '12594'] | start (leader 15 km) game 26926.0 | end 27023.0 OPEN at log end | first commit 26911.7
+  -- 11959 leader trace: samples 99, v flown med 100 (min 72), written med 100, stops 0, turns>30 0 (0 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x4
+  -- 12401 escort trace: samples 28, v flown med 100 (min 54), written med 100, stops 0, turns>30 0 (0 deg total) | detours 0
+     +   70.3 g +   7.0 r  order 0x14
+     +   78.0 g +   7.8 r  order 0x0
+     +   80.1 g +   8.0 r  order 0x14
+  -- 12594 escort trace: samples 21, v flown med 80 (min 60), written med 60, stops 0, turns>30 0 (0 deg total) | detours 0
+     +   77.2 g +   7.7 r  order 0x14
+     +   97.0 g +  12.4 r  order 0x0
+== convoy leader 12699 (M1) gate f478 escorts ['3861', '4120'] | start (leader 15 km) game 26386.7 | end 26979.0 all launched | first commit 26321.6
+  -- 12699 leader trace: samples 373, v flown med 60 (min 0), written med 60, stops 1, turns>30 4 (250 deg total) | detours 0
+     +    0.0 g +   0.0 r  order 0x0
+     +    3.4 g +   0.3 r  commit arrival>committed none>none
+     +    3.4 g +   0.3 r  hold committed>committed none>hold
+     +    4.3 g +   0.4 r  order 0x4
+     +    5.3 g +   0.5 r  TURN 33 deg over 15 s at d_G 2.1 km, nose-to-gate 161 -> max 166 -> 152 [controller: head slot block]
+     +   43.3 g +   4.3 r  STOP v<15 m/s 24 s at d_G 3.6 km
+     +  155.3 g +  21.1 r  TURN 36 deg over 21 s at d_G 8.7 km, nose-to-gate 170 -> max 179 -> 152 [controller: head out of window (petal phase)]
+     +  191.3 g +  24.7 r  TURN 127 deg over 45 s at d_G 10.8 km, nose-to-gate 151 -> max 151 -> 34 [controller: head out of window (petal phase)]
+     +  231.7 g +  28.8 r  release committed>committed hold>funnel
+     +  268.3 g +  32.4 r  TURN 53 deg over 32 s at d_G 9.8 km, nose-to-gate 49 -> max 49 -> 4 [controller: funnel approach]
+     +  347.9 g +  40.4 r  handover committed>committed funnel>funnel
+     +  347.9 g +  40.4 r  handover committed>committed funnel>handover
+     +  348.0 g +  40.4 r  dock committed>committed handover>dock
+     +  348.3 g +  40.4 r  order 0x5
+     +  370.9 g +  42.7 r  launch committed>committed dock>launch
+     +  371.3 g +  42.7 r  order 0x8
+     +  371.8 g +  42.8 r  gone committed>none launch>launch
+  -- 3861 escort trace: samples 363, v flown med 60 (min 0), written med 60, stops 1, turns>30 4 (594 deg total) | detours 0
+     +    5.3 g +   0.5 r  escort none>escort none>none
+     +    5.3 g +   0.5 r  hold escort>escort none>hold
+     +  144.7 g +  20.1 r  order 0x14
+     +  145.4 g +  20.1 r  TURN 167 deg over 83 s at d_G 10.7 km, nose-to-gate 144 -> max 144 -> 15 [script: escort before leader launch (leader-first)]
+     +  145.4 g +  20.1 r  order 0x0
+     +  148.3 g +  20.4 r  order 0x14
+     +  180.3 g +  23.6 r  order 0x0
+     +  183.3 g +  23.9 r  order 0x14
+     +  216.3 g +  27.2 r  order 0x0
+     +  217.3 g +  27.3 r  STOP v<15 m/s 3 s at d_G 10.3 km
+     +  219.3 g +  27.5 r  order 0x14
+     +  250.3 g +  30.6 r  order 0x0
+     +  252.3 g +  30.8 r  order 0x14
+     +  255.3 g +  31.1 r  TURN 181 deg over 59 s at d_G 8.6 km, nose-to-gate 20 -> max 179 -> 146 [script: escort before leader launch (leader-first)]
+     +  286.3 g +  34.2 r  order 0x0
+     +  288.3 g +  34.4 r  order 0x14
+     +  321.3 g +  37.7 r  order 0x0
+     +  324.3 g +  38.0 r  order 0x14
+     +  335.3 g +  39.1 r  TURN 177 deg over 62 s at d_G 10.4 km, nose-to-gate 151 -> max 151 -> 15 [script: escort before leader launch (leader-first)]
+     +  357.3 g +  41.3 r  order 0x0
+     +  359.3 g +  41.5 r  order 0x14
+     +  372.3 g +  42.8 r  order 0x0
+     +  375.3 g +  43.1 r  order 0x15
+     +  400.3 g +  45.6 r  commit escort>committed hold>hold
+     +  447.5 g +  50.4 r  release committed>committed hold>funnel
+     +  485.5 g +  54.2 r  order 0x4
+     +  507.3 g +  56.3 r  TURN 69 deg over 31 s at d_G 7.3 km, nose-to-gate 60 -> max 60 -> 8 [controller: funnel approach]
+     +  561.9 g +  61.8 r  handover committed>committed funnel>funnel
+     +  561.9 g +  61.8 r  handover committed>committed funnel>handover
+     +  562.0 g +  61.8 r  dock committed>committed handover>dock
+     +  562.3 g +  61.8 r  order 0x5
+     +  592.3 g +  64.8 r  launch committed>committed dock>launch
+  -- 4120 escort trace: samples 242, v flown med 25 (min 0), written med 25, stops 3, turns>30 2 (109 deg total) | detours 0
+     +    5.2 g +   0.5 r  escort none>escort none>none
+     +    5.2 g +   0.5 r  hold escort>escort none>hold
+     +  243.2 g +  29.9 r  order 0x14
+     +  244.3 g +  30.0 r  order 0x0
+     +  245.3 g +  30.1 r  STOP v<15 m/s 3 s at d_G 11.0 km
+     +  247.3 g +  30.3 r  order 0x14
+     +  249.3 g +  30.5 r  TURN 39 deg over 29 s at d_G 11.0 km, nose-to-gate 45 -> max 45 -> 7 [script: escort before leader launch (leader-first)]
+     +  277.3 g +  33.3 r  order 0x0
+     +  280.3 g +  33.6 r  order 0x14
+     +  312.3 g +  36.8 r  order 0x0
+     +  313.3 g +  36.9 r  STOP v<15 m/s 3 s at d_G 9.6 km
+     +  315.3 g +  37.1 r  order 0x14
+     +  345.3 g +  40.1 r  order 0x0
+     +  347.3 g +  40.3 r  order 0x14
+     +  372.3 g +  42.8 r  order 0x0
+     +  373.3 g +  42.9 r  STOP v<15 m/s 27 s at d_G 8.3 km
+     +  375.0 g +  43.1 r  commit escort>committed hold>hold
+     +  375.0 g +  43.1 r  release committed>committed hold>funnel
+     +  400.3 g +  45.6 r  order 0x4
+     +  429.3 g +  48.5 r  TURN 70 deg over 31 s at d_G 7.0 km, nose-to-gate 56 -> max 56 -> 10 [controller: funnel approach]
+     +  477.9 g +  53.4 r  handover committed>committed funnel>funnel
+     +  477.9 g +  53.4 r  handover committed>committed funnel>handover
+     +  478.1 g +  53.4 r  dock committed>committed handover>dock
+     +  478.4 g +  53.4 r  order 0x5
+     +  508.2 g +  56.4 r  launch committed>committed dock>launch
+     +  508.3 g +  56.4 r  order 0x8
+     +  509.1 g +  56.5 r  gone committed>none launch>launch
+== critical-path attribution (user target, 2026-10-14): ideal = leader d15 / vmax + n_esc x 3 s launch gap + n_esc x 7.5 s merge yield
+   (merge yield inferred: one 3 s trail spacing at v_max = 3 v_max m opened at a 0.4 v_max speed difference). Every game second of the window is
+   charged to the next ship to launch (convoy launch order): flight at >= 0.9 v_max toward the gate = ideal flight, else its bucket.
+24965 f478: span 681 game s, ideal 157, excess 524 | script: escort, no leader (0x0 gap / re-target) 277 g/35 r; controller: funnel approach (below 0.9 v_max) 251 g/25 r; controller: head out of window (petal phase) 54 g/5 r; engine: order-5 ramp 47 g/5 r; ideal flight (>= 0.9 v_max toward the gate) 44 g/4 r; controller: inbound speed law (below 0.9 v_max) 5 g/1 r; script: escort straggling inbound after leader launch (follow distance) 1 g/0 r; funnel: one at a time (occupied) 1 g/0 r; no sample (untraced gap) 1 g/0 r
+3097 0450: span 2170 game s, ideal 153, excess 2017 | script: escort before leader launch (leader-first) 1216 g/149 r; controller: funnel approach (below 0.9 v_max) 291 g/32 r; no sample (untraced gap) 287 g/34 r; script: escort, no leader (0x0 gap / re-target) 211 g/35 r; engine: order-5 ramp 83 g/8 r; ideal flight (>= 0.9 v_max toward the gate) 54 g/5 r; controller: inbound speed law (below 0.9 v_max) 19 g/2 r; controller: head out of window (petal phase) 4 g/0 r; script: escort after leader launch, no order 4 (10 km pass) 3 g/0 r; script: escort straggling inbound after leader launch (follow distance) 2 g/0 r
+4673 f478: span 769 game s, ideal 34, excess 735 | controller: head slot block 246 g/35 r; controller: funnel approach (below 0.9 v_max) 207 g/22 r; controller: head out of window (petal phase) 123 g/18 r; no sample (untraced gap) 65 g/7 r; ideal flight (>= 0.9 v_max toward the gate) 63 g/7 r; engine: order-5 ramp 48 g/11 r; unmanaged (arrival/none) 7 g/1 r; script: escort, no leader (0x0 gap / re-target) 6 g/3 r; script: escort after leader launch, no order 4 (10 km pass) 2 g/0 r; unmanaged (none/none) 1 g/0 r; controller: hold, other 1 g/0 r
+5727 de88: span 361 game s, ideal 154, excess 208 | controller: funnel approach (below 0.9 v_max) 201 g/20 r; engine: order-5 ramp 56 g/6 r; script: escort, no leader (0x0 gap / re-target) 55 g/8 r; no sample (untraced gap) 25 g/3 r; ideal flight (>= 0.9 v_max toward the gate) 12 g/1 r; controller: inbound speed law (below 0.9 v_max) 11 g/1 r; script: escort after leader launch, no order 4 (10 km pass) 1 g/0 r
+8846 f478: span 930 game s, ideal 153, excess 777 | controller: funnel approach (below 0.9 v_max) 328 g/34 r; no sample (untraced gap) 287 g/34 r; script: escort before leader launch (leader-first) 119 g/12 r; engine: order-5 ramp 93 g/9 r; ideal flight (>= 0.9 v_max toward the gate) 54 g/5 r; script: escort, no leader (0x0 gap / re-target) 25 g/2 r; controller: inbound speed law (below 0.9 v_max) 21 g/2 r; script: escort after leader launch, no order 4 (10 km pass) 3 g/0 r
+11357 0450: span 238 game s, ideal 157, excess 81 | controller: funnel approach (below 0.9 v_max) 99 g/10 r; no sample (untraced gap) 83 g/8 r; engine: order-5 ramp 18 g/2 r; controller: inbound speed law (below 0.9 v_max) 16 g/2 r; ideal flight (>= 0.9 v_max toward the gate) 13 g/1 r; controller: head out of window (petal phase) 8 g/1 r; unmanaged (none/funnel) 1 g/0 r
+11959 de88: span 97 game s, ideal 363, excess -266 | controller: inbound speed law (below 0.9 v_max) 93 g/12 r; ideal flight (>= 0.9 v_max toward the gate) 5 g/1 r
+12699 f478: span 592 game s, ideal 36, excess 557 | controller: funnel approach (below 0.9 v_max) 194 g/19 r; controller: head out of window (petal phase) 176 g/23 r; engine: order-5 ramp 83 g/8 r; ideal flight (>= 0.9 v_max toward the gate) 54 g/5 r; controller: head slot block 52 g/5 r; no sample (untraced gap) 25 g/2 r; unmanaged (arrival/none) 5 g/1 r; script: escort after leader launch, no order 4 (10 km pass) 2 g/0 r; script: escort, no leader (0x0 gap / re-target) 2 g/0 r
+== span per convoy: leader gate escorts | leader d at start km, vmax m/s | ideal game s (d/vmax + n x 10.5 s) | span start->last launch game / real s | first commit->last launch game s | closed
+24965 f478 ['25287', '25763'] | 14.9 110 | 157 | 681 / 75 | 1008 | True
+3097 0450 ['3861', '4120'] | 14.9 113 | 153 | 2170 / 267 | 3121 | True
+4673 f478 ['5001', '5476'] | 1.3 100 | 34 | 769 / 102 | 762 | True
+5727 de88 ['6185', '6439'] | 15.0 113 | 154 | 361 / 39 | 1164 | True
+8846 f478 ['3861', '4120'] | 15.0 113 | 153 | 930 / 100 | 1875 | True
+11357 0450 ['11613', '12244'] | 15.0 110 | 157 | 238 / 24 | 910 | False
+11959 de88 ['12401', '12594'] | 38.7 113 | 363 | 97 / 12 | 111 | False
+12699 f478 ['3861', '4120'] | 1.6 113 | 36 | 592 / 65 | 657 | True
+== not progressing toward the gate while the gate line is free (game s, d_G > 1.5 km, not launched; each ship-second once): game s, real s, bucket, per ship
+    324   44.6 controller: head out of window (petal phase) {'12699': 165, '4673': 107, '25763': 51, '11357': 1}
+    278   39.2 controller: head slot block {'4673': 226, '12699': 52}
+    250   35.0 script: escort before leader launch (leader-first) {'5476': 162, '3861': 71, '4120': 14, '25287': 2, '11613': 1}
+     36    3.7 script: escort, no leader (0x0 gap / re-target) {'5476': 16, '3861': 14, '4120': 6}
+     23    2.4 unmanaged (arrival/none) {'3861': 5, '3097': 5, '4673': 4, '12699': 3, '5476': 3, '4120': 3}
+      7    0.7 engine: order-5 ramp {'8846': 6, '11357': 1}
+      4    0.4 controller: funnel approach {'4120': 3, '4673': 1}
+      2    0.3 controller: inbound speed law {'11959': 1, '5727': 1}
+== nose turned away from the gate (> 90 deg; same filter, gate busy included): game s, real s, bucket, per ship
+    606   71.9 script: escort before leader launch (leader-first) {'5476': 292, '3861': 183, '4120': 118, '25287': 13}
+    313   43.4 controller: head out of window (petal phase) {'12699': 162, '4673': 103, '25763': 48}
+    278   39.2 controller: head slot block {'4673': 226, '12699': 52}
+     48    5.0 script: escort, no leader (0x0 gap / re-target) {'5476': 27, '3861': 14, '4120': 7}
+     34    3.5 funnel: one at a time (occupied) {'25763': 34}
+     30    3.1 unmanaged (arrival/none) {'12699': 5, '3861': 5, '3097': 5, '11357': 5, '4673': 4, '5476': 3, '4120': 3}
+      1    0.1 script: escort after leader launch, no order 4 (10 km pass) {'3861': 1}

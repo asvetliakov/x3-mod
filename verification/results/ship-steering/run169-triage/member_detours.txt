@@ -1,0 +1,19 @@
+== member detour rows by (id, role, stage)
+('11357', 'committed', 'inbound') 70
+('11613', 'escort', 'inbound') 54
+('12244', 'escort', 'inbound') 34
+('25287', 'escort', 'inbound') 65
+('4120', 'escort', 'hold') 42
+('4673', 'committed', 'funnel') 84
+('4673', 'committed', 'hold') 83
+('5001', 'escort', 'hold') 6
+('5476', 'escort', 'hold') 182
+('5727', 'committed', 'inbound') 67
+('6185', 'escort', 'inbound') 79
+('6439', 'escort', 'inbound') 143
+('8846', 'committed', 'funnel') 89
+== funnel/handover detours: (member, obstacle, vertical): rows, frames, game s, min miss m
+('4673', '5727', '1') 71 37828 - 38484 24536.5-24596.8 2000
+('4673', '6185', '1') 13 38587 - 38703 24606.2-24616.6 2965
+('8846', '11613', '1') 58 71803 - 72593 26158.6-26213.1 2311
+('8846', '12244', '1') 31 72668 - 72876 26221.8-26242.8 1817

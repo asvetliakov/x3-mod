@@ -1,0 +1,21 @@
+0x8ff46c58 M2 frames 772-12266 {'trace': 11494, 'join': 1, 'approach': 2}
+0x8ff4f748 M1 frames 854-20678 {'trace': 19266, 'E_B': 16, 'join': 2, 'approach': 2}
+0x90378a70 M2 frames 1255-23448 {'trace': 22192, 'E_B': 16, 'warn_other': 1, 'join': 2, 'approach': 2}
+0x8ff3dc88 M1 frames 27101-45902 {'trace': 18790, 'join': 2, 'approach': 2}
+0x3a3eb038 M2 frames 29828-84333 {'trace': 38639, 'E_B': 326, 'join': 4, 'approach': 2}
+0x2ead1200 M2 frames 30847-82847 {'trace': 46971, 'E_B': 462, 'warn_other': 2, 'join': 3, 'approach': 2}
+0xaeba96a8 M1 frames 37640-59498 {'E_B': 438, 'trace': 11695, 'join': 1, 'approach': 2}
+0xae9c2e18 M1 frames 37640-47955 {'E_B': 381, 'trace': 2053, 'join': 1, 'approach': 2}
+0xaeba5748 M2 frames 37640-45589 {'E_B': 422, 'approach': 2}
+0xae9d4530 M2 frames 37813-43672 {'E_B': 442, 'join': 1, 'approach': 2}
+0xaebc01d8 M7 frames 38314-63173 {'E_B': 389, 'trace': 14782, 'join': 2, 'approach': 2}
+0xaebcc268 M7 frames 39141-64087 {'E_B': 427, 'trace': 14338, 'join': 2, 'approach': 2}
+0xaeb9e110 M1 frames 52158-73532 {'trace': 21374, 'E_B': 300, 'join': 1, 'approach': 2}
+0xae9c8e60 M2 frames 70910-83400 {'trace': 11940, 'join': 2, 'E_B': 408, 'approach': 2}
+0xaeb9a900 M1 frames 71720-85889 {'E_B': 447, 'trace': 9299, 'warn_other': 1}
+0x8ff3e648 M2 frames 72596-85889 {'E_B': 387, 'trace': 3208, 'join': 1}
+0x3a3d8f60 M7 frames 74351-85950 {'E_B': 344, 'warn_other': 1, 'trace': 1163}
+0x8ff53df8 M7 frames 74351-85950 {'E_B': 321, 'warn_other': 1, 'trace': 1294}
+0x3a3e6718 M1 frames 74524-80836 {'trace': 6312, 'join': 2, 'approach': 2}
+0xaebbee58 M1 frames 76339-85950 {'E_B': 703, 'warn_other': 1, 'trace': 2551}
+0x90395268 M2 frames 84712-85904 {'E_B': 33, 'warn_other': 1}

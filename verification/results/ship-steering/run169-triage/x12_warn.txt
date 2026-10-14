@@ -1,0 +1,12 @@
+f11442 ~game 23080.4 | 25287 [M1 escort inbound 0x14 f478] | other 0x903892e8 [-] code - | d_m 3145.0 r_m 1353.8 | count 1 | cap-cap members False
+f11444 ~game 23080.4 | 25287 [M1 escort inbound 0x14 f478] | other 0x903892e8 [-] code - | d_m 3135.0 r_m 1353.8 | count 1 | cap-cap members False
+f19129 ~game 23427.6 | 0x903a5ae0 [-] | other 25763 [M2 escort hold 0x15 f478] code M2 | d_m 1919.5 r_m 1091.5 | count 1 | cap-cap members False
+f71124 ~game 26102.6 | 0x8ff3d190 [-] | other 4120 [M2 escort hold 0x14 f478] code M2 | d_m 859.0 r_m 755.0 | count 1 | cap-cap members False
+f72417 ~game 26201.9 | 0x8ff3e3d8 [-] | other 4120 [M2 escort hold 0x14 f478] code M2 | d_m 979.5 r_m 755.0 | count 1 | cap-cap members False
+f79818 ~game 26692.4 | 12594 [M7 arrival none 0x14 de88] | other 11959 [M1 arrival none 0x19 de88] code M1 | d_m 2267.2 r_m 1022.2 | count 1 | cap-cap members True
+f80203 ~game 26717.1 | 11959 [M1 arrival none 0x19 de88] | other 12401 [M7 arrival none 0x14 de88] code M7 | d_m 2099.4 r_m 778.2 | count 1 | cap-cap members True
+f80644 ~game 26745.9 | 11959 [M1 arrival none 0x19 de88] | other 12594 [M7 arrival none 0x14 de88] code M7 | d_m 2847.4 r_m 759.5 | count 1 | cap-cap members True
+f82567 ~game 26878.6 | 11357 [? committed hold 0x4 0450] | other 0x00000000 [-] code - | d_m 0.0 r_m 0.0 | count 0 | cap-cap members False
+f82568 ~game 26878.6 | 11357 [? committed hold 0x4 0450] | other 0x90380450 [-] code - | d_m 6634.9 r_m 1104.5 | count 1 | cap-cap members False
+f84774 ~game 27002.2 | 14310 [? committed inbound 0x4 de88] | other 11613 [M1 committed funnel 0x0 0450] code M1 | d_m 3395.8 r_m 1022.2 | count 1 | cap-cap members True
+f84877 ~game 27007.1 | 11613 [M1 committed funnel 0x0 0450] | other 14310 [? committed inbound 0x4 de88] code M2 | d_m 2725.1 r_m 1091.5 | count 2 | cap-cap members True

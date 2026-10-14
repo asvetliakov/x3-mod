@@ -1,0 +1,70 @@
+id | per convoy: per ship summary; --detail adds the events (+game s / +real s from the convoy start)
+== convoy leader 24965 (M2) gate f478 escorts ['25287', '25763'] | start (leader 15 km) game 22996.0 | end 23677.0 all launched | first commit 22669.2
+  -- 24965 leader trace: samples 136, v flown med 100 (min 0), written med 100, stops 0, turns>30 2 (120 deg total) | detours 0
+  -- 25287 escort trace: samples 492, v flown med 100 (min 0), written med 100, stops 0, turns>30 3 (275 deg total) | detours 65
+  -- 25763 escort trace: samples 680, v flown med 100 (min 25), written med 100, stops 0, turns>30 3 (384 deg total) | detours 0
+== convoy leader 3097 (M1) gate 0450 escorts ['3861', '4120'] | start (leader 15 km) game 24809.0 | end 26979.0 all launched | first commit 23858.2
+  -- 3097 leader trace: samples 214, v flown med 69 (min 49), written med 100, stops 0, turns>30 1 (55 deg total) | detours 0
+  -- 3861 escort trace: samples 1485, v flown med 60 (min 0), written med 70, stops 3, turns>30 7 (961 deg total) | detours 0
+  -- 4120 escort trace: samples 1800, v flown med 70 (min 0), written med 70, stops 4, turns>30 6 (968 deg total) | detours 42
+== convoy leader 4673 (M2) gate f478 escorts ['5001', '5476'] | start (leader 15 km) game 24296.0 | end 25065.2 all launched | first commit 24303.5
+  -- 4673 leader member rows: samples 584, v flown med 60 (min 0), written med -, stops 0, turns>30 8 (855 deg total) | detours 167
+  -- 5001 escort trace: samples 44, v flown med 72 (min 60), written med 100, stops 0, turns>30 1 (39 deg total) | detours 6
+  -- 5476 escort member rows: samples 543, v flown med 40 (min 0), written med -, stops 0, turns>30 5 (824 deg total) | detours 182
+== convoy leader 5727 (M1) gate de88 escorts ['6185', '6439'] | start (leader 15 km) game 25323.1 | end 25684.4 all launched | first commit 24520.0
+  -- 5727 leader trace: samples 137, v flown med 100 (min 62), written med 100, stops 0, turns>30 2 (114 deg total) | detours 0
+  -- 6185 escort trace: samples 293, v flown med 100 (min 20), written med 100, stops 0, turns>30 1 (74 deg total) | detours 0
+  -- 6439 escort trace: samples 362, v flown med 100 (min 25), written med 100, stops 0, turns>30 2 (151 deg total) | detours 0
+== convoy leader 8846 (M1) gate f478 escorts ['3861', '4120'] | start (leader 15 km) game 26049.0 | end 26979.0 all launched | first commit 25103.7
+  -- 8846 leader trace: samples 259, v flown med 60 (min 0), written med 60, stops 1, turns>30 5 (353 deg total) | detours 89
+  -- 3861 escort trace: samples 657, v flown med 60 (min 0), written med 60, stops 3, turns>30 6 (919 deg total) | detours 0
+  -- 4120 escort trace: samples 560, v flown med 40 (min 0), written med 47, stops 4, turns>30 4 (785 deg total) | detours 42
+== convoy leader 11357 (M2) gate 0450 escorts ['11613', '12244'] | start (leader 15 km) game 26765.0 | end 27003.0 OPEN at log end | first commit 26093.4
+  -- 11357 leader trace: samples 131, v flown med 100 (min 1), written med 100, stops 0, turns>30 1 (60 deg total) | detours 0
+  -- 11613 escort trace: samples 138, v flown med 100 (min 40), written med 100, stops 0, turns>30 0 (0 deg total) | detours 0
+  -- 12244 escort trace: samples 198, v flown med 100 (min 25), written med 100, stops 0, turns>30 1 (88 deg total) | detours 0
+== convoy leader 11959 (M1) gate de88 escorts ['12401', '12594'] | start (leader 15 km) game 26926.0 | end 27023.0 OPEN at log end | first commit 26911.7
+  -- 11959 leader trace: samples 99, v flown med 100 (min 72), written med 100, stops 0, turns>30 0 (0 deg total) | detours 0
+  -- 12401 escort trace: samples 28, v flown med 100 (min 54), written med 100, stops 0, turns>30 0 (0 deg total) | detours 0
+  -- 12594 escort trace: samples 21, v flown med 80 (min 60), written med 60, stops 0, turns>30 0 (0 deg total) | detours 0
+== convoy leader 12699 (M1) gate f478 escorts ['3861', '4120'] | start (leader 15 km) game 26386.7 | end 26979.0 all launched | first commit 26321.6
+  -- 12699 leader trace: samples 373, v flown med 60 (min 0), written med 60, stops 1, turns>30 4 (250 deg total) | detours 0
+  -- 3861 escort trace: samples 363, v flown med 60 (min 0), written med 60, stops 1, turns>30 4 (594 deg total) | detours 0
+  -- 4120 escort trace: samples 242, v flown med 25 (min 0), written med 25, stops 3, turns>30 2 (109 deg total) | detours 0
+== critical-path attribution (user target, 2026-10-14): ideal = leader d15 / vmax + n_esc x 3 s launch gap + n_esc x 7.5 s merge yield
+   (merge yield inferred: one 3 s trail spacing at v_max = 3 v_max m opened at a 0.4 v_max speed difference). Every game second of the window is
+   charged to the next ship to launch (convoy launch order): flight at >= 0.9 v_max toward the gate = ideal flight, else its bucket.
+24965 f478: span 681 game s, ideal 157, excess 524 | script: escort, no leader (0x0 gap / re-target) 277 g/35 r; controller: funnel approach (below 0.9 v_max) 251 g/25 r; controller: head out of window (petal phase) 54 g/5 r; engine: order-5 ramp 47 g/5 r; ideal flight (>= 0.9 v_max toward the gate) 44 g/4 r; controller: inbound speed law (below 0.9 v_max) 5 g/1 r; script: escort straggling inbound after leader launch (follow distance) 1 g/0 r; funnel: one at a time (occupied) 1 g/0 r; no sample (untraced gap) 1 g/0 r
+3097 0450: span 2170 game s, ideal 153, excess 2017 | script: escort before leader launch (leader-first) 1216 g/149 r; controller: funnel approach (below 0.9 v_max) 291 g/32 r; no sample (untraced gap) 287 g/34 r; script: escort, no leader (0x0 gap / re-target) 211 g/35 r; engine: order-5 ramp 83 g/8 r; ideal flight (>= 0.9 v_max toward the gate) 54 g/5 r; controller: inbound speed law (below 0.9 v_max) 19 g/2 r; controller: head out of window (petal phase) 4 g/0 r; script: escort after leader launch, no order 4 (10 km pass) 3 g/0 r; script: escort straggling inbound after leader launch (follow distance) 2 g/0 r
+4673 f478: span 769 game s, ideal 34, excess 735 | controller: head slot block 246 g/35 r; controller: funnel approach (below 0.9 v_max) 207 g/22 r; controller: head out of window (petal phase) 123 g/18 r; no sample (untraced gap) 65 g/7 r; ideal flight (>= 0.9 v_max toward the gate) 63 g/7 r; engine: order-5 ramp 48 g/11 r; unmanaged (arrival/none) 7 g/1 r; script: escort, no leader (0x0 gap / re-target) 6 g/3 r; script: escort after leader launch, no order 4 (10 km pass) 2 g/0 r; unmanaged (none/none) 1 g/0 r; controller: hold, other 1 g/0 r
+5727 de88: span 361 game s, ideal 154, excess 208 | controller: funnel approach (below 0.9 v_max) 201 g/20 r; engine: order-5 ramp 56 g/6 r; script: escort, no leader (0x0 gap / re-target) 55 g/8 r; no sample (untraced gap) 25 g/3 r; ideal flight (>= 0.9 v_max toward the gate) 12 g/1 r; controller: inbound speed law (below 0.9 v_max) 11 g/1 r; script: escort after leader launch, no order 4 (10 km pass) 1 g/0 r
+8846 f478: span 930 game s, ideal 153, excess 777 | controller: funnel approach (below 0.9 v_max) 328 g/34 r; no sample (untraced gap) 287 g/34 r; script: escort before leader launch (leader-first) 119 g/12 r; engine: order-5 ramp 93 g/9 r; ideal flight (>= 0.9 v_max toward the gate) 54 g/5 r; script: escort, no leader (0x0 gap / re-target) 25 g/2 r; controller: inbound speed law (below 0.9 v_max) 21 g/2 r; script: escort after leader launch, no order 4 (10 km pass) 3 g/0 r
+11357 0450: span 238 game s, ideal 157, excess 81 | controller: funnel approach (below 0.9 v_max) 99 g/10 r; no sample (untraced gap) 83 g/8 r; engine: order-5 ramp 18 g/2 r; controller: inbound speed law (below 0.9 v_max) 16 g/2 r; ideal flight (>= 0.9 v_max toward the gate) 13 g/1 r; controller: head out of window (petal phase) 8 g/1 r; unmanaged (none/funnel) 1 g/0 r
+11959 de88: span 97 game s, ideal 363, excess -266 | controller: inbound speed law (below 0.9 v_max) 93 g/12 r; ideal flight (>= 0.9 v_max toward the gate) 5 g/1 r
+12699 f478: span 592 game s, ideal 36, excess 557 | controller: funnel approach (below 0.9 v_max) 194 g/19 r; controller: head out of window (petal phase) 176 g/23 r; engine: order-5 ramp 83 g/8 r; ideal flight (>= 0.9 v_max toward the gate) 54 g/5 r; controller: head slot block 52 g/5 r; no sample (untraced gap) 25 g/2 r; unmanaged (arrival/none) 5 g/1 r; script: escort after leader launch, no order 4 (10 km pass) 2 g/0 r; script: escort, no leader (0x0 gap / re-target) 2 g/0 r
+== span per convoy: leader gate escorts | leader d at start km, vmax m/s | ideal game s (d/vmax + n x 10.5 s) | span start->last launch game / real s | first commit->last launch game s | closed
+24965 f478 ['25287', '25763'] | 14.9 110 | 157 | 681 / 75 | 1008 | True
+3097 0450 ['3861', '4120'] | 14.9 113 | 153 | 2170 / 267 | 3121 | True
+4673 f478 ['5001', '5476'] | 1.3 100 | 34 | 769 / 102 | 762 | True
+5727 de88 ['6185', '6439'] | 15.0 113 | 154 | 361 / 39 | 1164 | True
+8846 f478 ['3861', '4120'] | 15.0 113 | 153 | 930 / 100 | 1875 | True
+11357 0450 ['11613', '12244'] | 15.0 110 | 157 | 238 / 24 | 910 | False
+11959 de88 ['12401', '12594'] | 38.7 113 | 363 | 97 / 12 | 111 | False
+12699 f478 ['3861', '4120'] | 1.6 113 | 36 | 592 / 65 | 657 | True
+== not progressing toward the gate while the gate line is free (game s, d_G > 1.5 km, not launched; each ship-second once): game s, real s, bucket, per ship
+    324   44.6 controller: head out of window (petal phase) {'12699': 165, '4673': 107, '25763': 51, '11357': 1}
+    278   39.2 controller: head slot block {'4673': 226, '12699': 52}
+    250   35.0 script: escort before leader launch (leader-first) {'5476': 162, '3861': 71, '4120': 14, '25287': 2, '11613': 1}
+     36    3.7 script: escort, no leader (0x0 gap / re-target) {'5476': 16, '3861': 14, '4120': 6}
+     23    2.4 unmanaged (arrival/none) {'3097': 5, '3861': 5, '4673': 4, '4120': 3, '5476': 3, '12699': 3}
+      7    0.7 engine: order-5 ramp {'8846': 6, '11357': 1}
+      4    0.4 controller: funnel approach {'4120': 3, '4673': 1}
+      2    0.3 controller: inbound speed law {'11959': 1, '5727': 1}
+== nose turned away from the gate (> 90 deg; same filter, gate busy included): game s, real s, bucket, per ship
+    606   71.9 script: escort before leader launch (leader-first) {'5476': 292, '3861': 183, '4120': 118, '25287': 13}
+    313   43.4 controller: head out of window (petal phase) {'12699': 162, '4673': 103, '25763': 48}
+    278   39.2 controller: head slot block {'4673': 226, '12699': 52}
+     48    5.0 script: escort, no leader (0x0 gap / re-target) {'5476': 27, '3861': 14, '4120': 7}
+     34    3.5 funnel: one at a time (occupied) {'25763': 34}
+     30    3.1 unmanaged (arrival/none) {'3097': 5, '11357': 5, '3861': 5, '12699': 5, '4673': 4, '4120': 3, '5476': 3}
+      1    0.1 script: escort after leader launch, no order 4 (10 km pass) {'3861': 1}
