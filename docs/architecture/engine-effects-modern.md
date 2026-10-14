@@ -281,22 +281,32 @@ phase-3 brief's numbers are built where they differ from section 3 above:
   appended when the nozzle moved at least `max(1.5 m, 0.02 value, L / 15)`: 1.5 m = 7.5 render units at the fog
   look's 5 units per metre; the `L / 15` term (not in the brief) keeps the 16 samples covering `L` when a frame's
   motion exceeds the fixed spacing (at 8 px per frame and value 30 px the fixed spacing alone covers 15 frames, half
-  of `T`). The strip starts at the live head, so there is never a gap between the plume and the ribbon. Since
-  2026-10-14 the sampled point and the head are the plume's end `nozzle + axis x L_bar` (`L_bar = max(z,
-  idle_length) x floored value x the travel length`, the plume's length without its pulse;
-  [engine-trail-origin.md](../reverse-engineering/engine-trail-origin.md) section 6), while the jump test and `v_est`
-  keep the nozzle (each sample stores its nozzle too). Samples that fall inside the plume (closer to the nozzle along
-  the axis than `L_bar`, after a throttle rise) are dropped, so the strip never folds. The plume's near-camera cap
-  is not applied to the head (a gap of up to 0.26 `L_bar` in chase view, foreshortened; `engine_ribbons_core.h`
-  header).
+  of `T`). The strip starts at the live head. Since 2026-10-14 (second change that day, after Run 170's "plume
+  ends, then empty space, then the trail") the ribbon is anchored inside the plume: the sampled point and the head
+  are `A = nozzle + axis x 0.6 L_vis`, with `L_vis = u_vis x L_bar` the plume's visible length (`L_bar = max(z,
+  idle_length) x floored value x the travel length`, the plume's length without its pulse; `u_vis` = 0.848 at the
+  default look, where the plume's tail law falls to 0.1 of its peak; `A` = 0.509 `L_bar`;
+  [engine-trail-origin.md](../reverse-engineering/engine-trail-origin.md) section 6). The jump test and `v_est` keep
+  the nozzle (each sample stores its nozzle too). Samples closer to the nozzle along the axis than `A` (after a
+  throttle rise) are dropped, so the strip never folds. The plume's near-camera cap applies to the head: the builder
+  computes `build_nozzle`'s factor `k` in its own view and draws the head at `nozzle + axis x k A` (down to k 0.28
+  in the chase case of the harness), so it stays inside the shrunk plume; only the live head moves with the view,
+  the samples keep one world path for every view.
 - *Length.* `L = T(value) x preset x v_est x s` with **T 0.5 s below value 2,000, 0.8 s to 20,000, 1.2 s above**
   (the brief's thresholds, not 1,500 / 8,000; value in the record's scene units); `v_est` = the path from the nozzle
   back through the samples of at least the last 0.1 s, never across a pause of more than 0.25 s, over their age. The
   strip is cut at `L` (the last point interpolated) or ends at the oldest sample when the history is shorter (after a
-  SETA burst the path flown, not the extrapolated `L`). No `60 x value` cap.
-- *Look.* Half-width the plume tip's at the head (`width_at_tip x Look::nozzle_width x floored value`, 0.122 value at the
-  default look; 0.3 value at the nozzle before 2026-10-14) tapering linearly to 0, held at 1.5 px
-  (a 3 px strip, no radiance compensation); radiance `I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u)` with
+  SETA burst the path flown, not the extrapolated `L`). No `60 x value` cap. Since the anchor moved inside the plume
+  the strip is cut at the fade-in's nominal length (`(L_vis - A) x k`) plus `L`, so the trail behind the plume keeps
+  `L`; the samples' spacing term is `(L + L_vis - A) / 15`.
+- *Look.* Half-width the plume's at the anchor (`law::width(u_anchor) x Look::nozzle_width x floored value x k`,
+  0.226 value at the default look; 0.3 value at the nozzle before 2026-10-14, the plume tip's 0.122 in Run 170)
+  tapering linearly to 0, held at 1.5 px
+  (a 3 px strip, no radiance compensation); a fade-in from 0 at the head to 1 where the strip's centre line leaves the
+  plume's visible body (the axis to `k L_vis`, radius the plume's half-width, linear from `A` to `L_vis`) or at
+  `k L_vis`, whichever comes first (a point inserted there, so the fade is linear in arc length; a hard turn carries
+  the strip out through the plume's side); radiance `I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u) x
+  fade-in` with
   a `(1 - a^2)^2` profile across (not `0.6 (1 - u)^2`); the plume's near-camera rule per strip point (width held to
   0.12 H, radiance 1 -> 0.5 over the last 20 %); occlusion the halo's SOFT 1.0 value at the centre line's view depth
   (per vertex: a strip point lies on its own centre line, the corrected plume depth law without an axis offset). Only

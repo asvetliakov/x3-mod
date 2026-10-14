@@ -29,27 +29,31 @@
 //   pool by itself. Cleared whole on the resolve's camera cut, on a change of the object_lifetime load epoch and on
 //   Reset (the pass's before_reset); a nozzle that moved more than 8 value since the last update restarts its ribbon (a
 //   jump with an unchanged identity: no bridge).
-// Origin (engine-trail-origin.md section 6): the ribbon starts where the plume ends, E = nozzle + axis x L_bar with
+// Origin (engine-trail-origin.md section 6): the ribbon is anchored inside the plume and fades in under it. With
 //   L_bar = max(z, idle_length) x the plume's floored value x (1 + (travel_length - 1) travel), the drawn plume's
-//   length without its pulse (engine_plumes_core.h build_nozzle; not its view-dependent near-camera cap or dot floor).
-//   E drives the distance sampling, the sample positions and the head; the nozzle itself drives the jump test and v_est
-//   (each sample keeps the nozzle of its moment), so the plume's end sweeping through a turn or moving along the axis
-//   with the throttle neither lengthens the ribbon nor restarts it. A record without a finite unit axis starts at the
-//   nozzle. No fold: before the append test the newest samples lying closer to the nozzle along the current axis than
-//   L_bar (the plume grew faster than the ship advanced) are dropped, so the strip never runs back up the plume.
-//   The plume's near-camera cap (build_nozzle's k, view-dependent) is not applied to E: a capped plume ends short of
-//   the head (up to 0.26 L_bar in chase view, review estimate). Kept: the cap acts only when the plume's body spans 0.12 H or more,
-//   i.e. the plume points near the camera, so the gap is foreshortened and lies inside the halo; E in world space keeps
-//   one sample path for every view (a k per view would move the samples with the camera and fold the strip).
+//   length without its pulse (engine_plumes_core.h build_nozzle), the plume's visible length is L_vis = u_vis x L_bar,
+//   u_vis where its tail law (ep::law::tail) drops below visible_tail (0.1) of its peak (0.847 at the default look),
+//   and the anchor A = nozzle + axis x anchor_fraction (0.6) x L_vis. A drives the distance sampling, the sample
+//   positions and the head; the nozzle itself drives the jump test and v_est (each sample keeps the nozzle of its
+//   moment). A record without a finite unit axis starts at the nozzle. No fold: before the append test the newest
+//   samples lying closer to the nozzle along the current axis than A are dropped. The strip's radiance ramps linearly
+//   from 0 at the head to full at L_vis (a point inserted there) and its target length is that fade-in plus L, so the
+//   trail behind the plume keeps L; the head's half-width is the plume's at A (ep::law::width at u_anchor).
+//   Near-camera cap: build_nozzle shrinks a plume about its nozzle by k (down to 0.26 in chase view); the builder
+//   computes the same k for the ribbon's L_bar in its view (near_cap_factor) and draws the head at nozzle + axis x
+//   k A with the fade-in x k, so the head stays inside the capped plume. Only the live head moves with the view: the
+//   samples keep their world positions (one sample path for every view) and lie beyond the uncapped A, so the strip
+//   runs from the capped head along the axis to them without a fold.
 // View: the plumes' scene-view filter (engine_plumes_core.h ViewFilter) applies to the records first: a record of
 // another view (a target monitor) takes no ribbon and does not keep one alive.
 // Depth: every strip point carries its own centre-line view z (shape[1]), the per-vertex form of the plumes' corrected
 // nearest-axis depth (a ribbon point lies on its own centre line, so no axis offset applies).
-// Geometry: a camera-facing strip through the plume's end (the live head, so there is never a gap at the plume) and the
-// samples, newest first, cut at L (the last point interpolated); half-width the plume tip's (ep::width_at_tip x the
-// plume's nozzle width of the floored value, 0.122 value at the default look) at the head tapering linearly to 0 at
-// the tail, never under 1.5 px (a 3 px strip); radiance
-// I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u) (u 0 at the head, 1 at the tail) x the plumes' distance
+// Geometry: a camera-facing strip through the anchor (the live head, inside the plume) and the samples, newest first,
+// cut at the fade-in plus L (the last point interpolated); half-width the plume's at the anchor (ep::law::width at
+// u_anchor x the plume's nozzle width of the floored value) at the head tapering linearly to 0 at the tail, never
+// under 1.5 px (a 3 px strip); radiance
+// I_ribbon(s) = lerp(0.2, 0.9, s) x preset x tint x (1 - u) (u 0 at the head, 1 at the tail) x the fade-in x the
+// plumes' distance
 // law (after flight E: engine_plumes_core.h distance_weight on the plume's projected nozzle width at the head, the
 // plume's nozzle being Look::nozzle_width x its floored value); the plume's near-camera
 // rule per point (the projected width held to 0.12 H, radiance 1 -> 0.5 over the last 20 %); the nozzle's fog
@@ -62,11 +66,11 @@ namespace ep = x3m::engine_plumes;
 constexpr unsigned max_ribbons = 256;
 constexpr unsigned samples_per_ribbon = 16;
 constexpr unsigned map_slots = 512;           // power of two, 2 x the pool
-constexpr unsigned points_per_ribbon = samples_per_ribbon + 1; // the head and the samples
-constexpr unsigned vertices_per_ribbon = 2 * points_per_ribbon; // 34
-constexpr unsigned triangles_per_ribbon = 2 * (points_per_ribbon - 1); // 32
-constexpr unsigned indices_per_ribbon = 3 * triangles_per_ribbon;      // 96
-constexpr unsigned max_vertices = max_ribbons * vertices_per_ribbon;   // 8,704: 16-bit indices
+constexpr unsigned points_per_ribbon = samples_per_ribbon + 2; // the head, the end of the fade-in and the samples
+constexpr unsigned vertices_per_ribbon = 2 * points_per_ribbon; // 36
+constexpr unsigned triangles_per_ribbon = 2 * (points_per_ribbon - 1); // 34
+constexpr unsigned indices_per_ribbon = 3 * triangles_per_ribbon;      // 102
+constexpr unsigned max_vertices = max_ribbons * vertices_per_ribbon;   // 9,216: 16-bit indices
 static_assert(max_vertices <= 65536u, "16-bit indices");
 constexpr float units_per_metre = 5.f;       // 5 render units = 1 m (the fog look's 5,000 per km)
 constexpr float min_spacing = 1.5f * units_per_metre;
@@ -82,6 +86,65 @@ constexpr float cull_length_px = 3.f;        // a ribbon projecting shorter is n
 constexpr float value_short = 2000.f, value_long = 20000.f; // T's value thresholds
 constexpr float t_short = .5f, t_mid = .8f, t_long = 1.2f;  // seconds
 constexpr float time_rebase = 1024.f;        // seconds: the pool's clock is re-based past this (float precision)
+constexpr float anchor_fraction = .6f;       // the head: x the plume's visible length (inside the plume)
+constexpr float visible_tail = .1f;          // the plume's visible end: its tail law at this fraction of its peak
+
+// The plume's visible length as a fraction of its L: the largest u past the peak of the plumes' tail law
+// (ep::law::tail, the axial fade engine_plume_ps.hlsl draws, without the tongues' noise) at which it still reaches
+// visible_tail x its peak; 0.847 at the default look (the fade starts at u 0.4, peak 0.79 at u 0.27). The peak from 65
+// samples of u, the crossing by 24 bisections: about 90 law evaluations, once per update (not per record).
+inline void visible_fraction(const ep::Look& k, float* out) noexcept {
+    float peak = 0.f, u_peak = 0.f;
+    for (unsigned i = 0; i <= 64; ++i) {
+        const float u = float(i) * (1.f / 64.f);
+        float t = 0.f;
+        ep::law::tail(k, u, &t);
+        if (t > peak) {
+            peak = t;
+            u_peak = u;
+        }
+    }
+    float t1 = 0.f;
+    ep::law::tail(k, 1.f, &t1);
+    if (!(peak > 0.f) || t1 >= visible_tail * peak) { // no fade (or no plume): the whole quad
+        *out = 1.f;
+        return;
+    }
+    float lo = u_peak, hi = 1.f; // tail(lo) >= the threshold > tail(hi)
+    for (unsigned i = 0; i < 24; ++i) {
+        const float mid = .5f * (lo + hi);
+        float t = 0.f;
+        ep::law::tail(k, mid, &t);
+        (t >= visible_tail * peak ? lo : hi) = mid;
+    }
+    *out = lo;
+}
+// The plumes' near-camera cap factor k (engine_plumes_core.h build_nozzle, the same arithmetic): the body's half-width
+// spread x line0 x nozzle_width x value at the axis point nearest the camera, over chase_cap x H, past 1 shrinks the
+// axial quad about the nozzle by k. `o_z` the nozzle's view z, `a_z` the unit axis's view z, `length` the plume's L
+// (here L_bar: the ribbon has no pulse), `value` the floored value. 1 below the cap. Kept in step with build_nozzle by
+// the host harness (a pulse-free look: the plume's drawn L over L_bar).
+inline void near_cap_factor(const ep::Look& look, const ep::View& view, float o_z, float a_z, float length, float value,
+                            float* out) noexcept {
+    float line0 = 0.f;
+    ep::width_line(look, 0.f, &line0);
+    const float ring_outer = .46f * look.bulge + 3.f * .0645497f;
+    float spread = 1.f + .48f * look.erode;
+    if (spread * line0 < ring_outer) spread = ring_outer / line0;
+    const float half = spread * line0 * look.nozzle_width * value;
+    const float f = view.m11 * view.height * .5f, cap = ep::chase_cap * view.height;
+    const float toward = a_z < 0.f ? -a_z : 0.f;
+    float near_depth = o_z - toward * length;
+    if (near_depth < view.near_z) near_depth = view.near_z;
+    const float q = 2.f * half * f / near_depth / cap;
+    float k = 1.f;
+    if (q > 1.f) {
+        const float denominator = 2.f * half * f + cap * toward * length;
+        k = denominator > 0.f && o_z > view.near_z ? cap * o_z / denominator : 0.f;
+        if (!(k > 0.f) || k > 1.f) k = 1.f / q;
+    }
+    *out = ee::finite_f(k) && k > 0.f && k <= 1.f ? k : 1.f;
+}
 
 // T(value) in seconds.
 inline void trail_seconds(float value, float* out) noexcept {
@@ -96,18 +159,24 @@ inline unsigned key_slot(std::uint64_t key) noexcept {
 }
 
 struct Sample {
-    float p[3];       // world position: the plume's end E when appended
+    float p[3];       // world position: the anchor A when appended
     float o[3];       // the nozzle (the record's c4-6 origin) when appended: v_est's path
-    float half_width; // world units: the plume's tip half-width when appended
+    float half_width; // world units: the plume's half-width at the anchor when appended
     float time;       // seconds on the pool's clock
 };
 struct Ribbon {
     std::uint64_t key = 0;
     Sample samples[samples_per_ribbon]{};
     unsigned newest = 0, count = 0; // ring: samples[newest] is the latest, count valid going back
-    float head[3]{};                // the plume's end E at its last update
+    float head[3]{};                // the anchor A at its last update (uncapped)
     float origin[3]{};              // the nozzle at its last update: the jump test
-    float head_width = 0.f;         // the plume's tip half-width (world) at the last update
+    float axis[3]{};                // the record's unit axis at its last update (0 without one)
+    float head_width = 0.f;         // the plume's half-width (world) at the anchor at the last update (uncapped)
+    float visible_width = 0.f;      // the plume's half-width (world) at L_vis (uncapped): the fade-in's body
+    float anchor = 0.f;             // world: the anchor's distance from the nozzle along the axis (0 without an axis)
+    float visible = 0.f;            // world: the plume's visible length L_vis (0 without an axis)
+    float plume_length = 0.f;       // world: L_bar, the near-camera cap's input
+    float plume_value = 0.f;        // the plume's floored value, the near-camera cap's input
     float last_seen = 0.f;          // pool clock
     float value = 0.f, throttle = 0.f;
     float nozzle = 0.f;              // the plume's nozzle width (world): Look::nozzle_width x the floored value
@@ -122,7 +191,7 @@ struct Ribbon {
 struct UpdateStats {
     unsigned records = 0, matched = 0, created = 0, overflow = 0, duplicates = 0, skipped = 0, skipped_other_view = 0;
     unsigned appended = 0, evicted = 0, jumps = 0, live = 0, fading = 0;
-    unsigned dropped = 0; // samples dropped inside the plume (no fold)
+    unsigned dropped = 0; // samples dropped closer to the nozzle than the anchor (no fold)
     unsigned unfloored = 0; // records at their natural width: a co-located layer of a larger one (ep::merge_layers)
     bool cut_clear = false, load_clear = false;
 };
@@ -238,8 +307,13 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
                    const float* radii = nullptr, float travel = 0.f, const std::uint32_t* parents = nullptr) noexcept {
     const ep::Look& k = look ? *look : ep::default_look;
     travel = travel > 0.f ? (travel < 1.f ? travel : 1.f) : 0.f;
-    float tip = 0.f; // the plume's tip half-width in nozzle widths (ep::width_at_tip)
-    ep::width_at_tip(k, &tip);
+    // The anchor's place on the plume (fractions of L_bar) and the plume's half-width there (nozzle widths), once per
+    // update: u_vis from the tail law, u_anchor = anchor_fraction x u_vis.
+    float u_vis = 1.f, w_anchor = 0.f, w_vis = 0.f;
+    visible_fraction(k, &u_vis);
+    const float u_anchor = anchor_fraction * u_vis;
+    ep::law::width(k, u_anchor, &w_anchor);
+    ep::law::width(k, u_vis, &w_vis);
     const float trail_scale = preset_scale * (1.f + (ep::travel_trail - 1.f) * travel);
     UpdateStats local{};
     UpdateStats& st = stats ? *stats : local;
@@ -363,28 +437,32 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
             ep::floored_value(k, rec, radii[i], &plume_value);
         r.nozzle = k.nozzle_width * plume_value;
         r.throttle = rec.s < 0.f ? 0.f : rec.s > 1.f ? 1.f : rec.s;
-        // E: the plume's end without its pulse (build_nozzle's L with pulse 1; a main jet, so the idle floor and the
-        // travel length apply).
+        // L_bar: the plume's length without its pulse (build_nozzle's L with pulse 1; a main jet, so the idle floor and
+        // the travel length apply); the anchor A = nozzle + axis x u_anchor L_bar (anchor_fraction x L_vis).
         float end[3] = {rec.origin[0], rec.origin[1], rec.origin[2]};
-        float mean_length = 0.f;
+        float mean_length = 0.f, anchor = 0.f;
+        bool has_axis = false;
         if (detail::finite3(rec.axis)) {
             const float axis2 = rec.axis[0] * rec.axis[0] + rec.axis[1] * rec.axis[1] + rec.axis[2] * rec.axis[2];
             if (axis2 > .99f && axis2 < 1.01f) {
+                has_axis = true;
                 float zl = rec.z > 0.f ? rec.z : 0.f; // NaN: 0, then the idle floor
                 if (zl < k.idle_length) zl = k.idle_length;
                 mean_length = zl * plume_value * (1.f + (ep::travel_length - 1.f) * travel);
                 if (!ee::finite_f(mean_length)) mean_length = 0.f;
-                for (unsigned j = 0; j < 3; ++j) end[j] = rec.origin[j] + rec.axis[j] * mean_length;
+                anchor = u_anchor * mean_length;
+                for (unsigned j = 0; j < 3; ++j) end[j] = rec.origin[j] + rec.axis[j] * anchor;
             }
         }
-        const float half_width = tip * r.nozzle; // the plume's tip half-width, of the floored value as L_bar
+        const float half_width = w_anchor * r.nozzle; // the plume's half-width at the anchor, of the floored value
+        const float fade_in = (u_vis - u_anchor) * mean_length; // the strip's fade-in: the anchor to L_vis
         float speed = 0.f;
         estimate_speed(r, rec.origin, now, &speed); // before the drop below: the nozzles' path keeps its history
-        // No fold: the newest samples that now lie closer to the nozzle along the axis than the plume's end (its length
-        // rose faster than the ship advanced, or the ship moved along its own exhaust) are inside the plume; dropped,
-        // the strip runs from the plume's end straight back to the older samples.
-        if (mean_length > 0.f) {
-            const float limit = mean_length - fold_tolerance * value;
+        // No fold: the newest samples that now lie closer to the nozzle along the axis than the anchor (the plume grew
+        // faster than the ship advanced, or the ship moved along its own exhaust) are dropped; the strip runs from the
+        // anchor straight back to the older samples.
+        if (anchor > 0.f) {
+            const float limit = anchor - fold_tolerance * value;
             while (r.count) {
                 const Sample& s = r.at(0);
                 const float along = (s.p[0] - rec.origin[0]) * rec.axis[0] + (s.p[1] - rec.origin[1]) * rec.axis[1] +
@@ -400,7 +478,9 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         const float length = t * trail_scale * speed * r.throttle;
         float spacing = spacing_value * value;
         spacing = spacing > min_spacing ? spacing : min_spacing;
-        spacing = length / float(samples_per_ribbon - 1) > spacing ? length / float(samples_per_ribbon - 1) : spacing;
+        // The 16 samples cover the strip: the fade-in inside the plume and L behind it.
+        const float reach = (length + fade_in) / float(samples_per_ribbon - 1);
+        spacing = reach > spacing ? reach : spacing;
         bool append = r.count == 0;
         if (!append) {
             float moved = 0.f;
@@ -422,8 +502,14 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         for (unsigned j = 0; j < 3; ++j) {
             r.head[j] = end[j];
             r.origin[j] = rec.origin[j];
+            r.axis[j] = has_axis ? rec.axis[j] : 0.f;
         }
         r.head_width = half_width;
+        r.visible_width = w_vis * r.nozzle;
+        r.anchor = anchor;
+        r.visible = u_vis * mean_length;
+        r.plume_length = mean_length;
+        r.plume_value = plume_value;
         r.last_seen = now;
         r.speed = speed;
         r.length = length;
@@ -441,8 +527,8 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
 // 48 bytes (FLOAT3, 2 x FLOAT4, D3DCOLOR).
 struct Vertex {
     float position[3]; // view space
-    float strip[4];    // u (0 nozzle .. 1 tail), across (-1 .. 1), unused x2
-    float shape[4];    // radiance (I x preset x (1 - u) x fade x near weight), centre-line view depth, value, unused
+    float strip[4];    // u (0 head .. 1 tail), across (-1 .. 1), the fade-in (in the radiance already), unused
+    float shape[4];    // radiance (I x preset x (1 - u) x fade x near weight x fade-in), centre-line view depth, value, unused
     std::uint32_t tint; // 0xAARRGGBB of the mean colour x the fog transmittance
 };
 static_assert(sizeof(Vertex) == 48, "the ribbon stride");
@@ -451,8 +537,9 @@ struct BuildStats {
     unsigned fading = 0, capped = 0, floored = 0, culled_short = 0, culled_behind = 0, culled_capacity = 0;
     unsigned fogged = 0;
     unsigned far_ribbons = 0; // ribbons whose radiance the distance law scaled
+    unsigned anchor_capped = 0; // ribbons whose head followed the plume's near-camera cap (k < 1) in this view
 };
-// The static index list: per ribbon 16 segments x 2 triangles over its 34 vertices (point k: vertices 2k, 2k + 1).
+// The static index list: per ribbon 17 segments x 2 triangles over its 36 vertices (point k: vertices 2k, 2k + 1).
 inline void write_indices(std::uint16_t* out, unsigned ribbons) noexcept {
     for (unsigned r = 0; r < ribbons; ++r)
         for (unsigned k = 0; k + 1 < points_per_ribbon; ++k) {
@@ -485,7 +572,7 @@ inline void to_view(const ep::View& v, const float p[3], float out[3]) noexcept 
 }
 } // namespace detail
 
-// One ribbon's 34 vertices (`seen`: its record was in the latest update, else it fades); false: not drawn.
+// One ribbon's 36 vertices (`seen`: its record was in the latest update, else it fades); false: not drawn.
 inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& view, float preset_scale, Vertex* out,
                          BuildStats* stats, const ep::Look& look = ep::default_look) noexcept {
     float fade = 1.f;
@@ -502,23 +589,41 @@ inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& 
         ++stats->culled_short;
         return false;
     }
-    // The polyline: the head, then the samples newest first, cut at L (the last point interpolated).
+    // The head in this view: the anchor, moved toward the nozzle with the plume's near-camera cap (build_nozzle shrinks
+    // the drawn plume about the nozzle by k: the head stays inside it). Only the live head moves with the view; the
+    // samples keep their world positions (the drop rule kept them beyond the uncapped anchor, so the strip runs from
+    // the capped head along the axis to them without a fold). The fade-in (anchor to L_vis) shrinks with it.
+    float cap_k = 1.f;
+    if (r.anchor > 0.f) {
+        float o[3], a[3], al = 0.f;
+        detail::to_view(view, r.origin, o);
+        ep::detail::rotate(view, r.axis, a);
+        detail::normalise(a, &al);
+        if (al > 0.f) near_cap_factor(look, view, o[2], a[2], r.plume_length, r.plume_value, &cap_k);
+        if (cap_k < 1.f) ++stats->anchor_capped;
+    }
+    const float ramp = (r.visible - r.anchor) * cap_k; // the fade-in's nominal length along the strip (0: none)
+    const float target = L + ramp;                      // the fade-in inside the plume, then L behind it
+    // The polyline: the head, then the samples newest first, cut at the target (the last point interpolated).
     float world[points_per_ribbon][3], width[points_per_ribbon], along[points_per_ribbon];
-    for (unsigned j = 0; j < 3; ++j) world[0][j] = r.head[j];
-    width[0] = r.head_width;
+    if (cap_k < 1.f)
+        for (unsigned j = 0; j < 3; ++j) world[0][j] = r.origin[j] + r.axis[j] * (r.anchor * cap_k);
+    else
+        for (unsigned j = 0; j < 3; ++j) world[0][j] = r.head[j];
+    width[0] = r.head_width * cap_k;
     along[0] = 0.f;
     unsigned n = 1;
     float total = 0.f;
-    for (unsigned back = 0; back < r.count && n < points_per_ribbon && total < L; ++back) {
+    for (unsigned back = 0; back < r.count && n + 1 < points_per_ribbon && total < target; ++back) {
         const Sample& s = r.at(back);
         float d = 0.f;
         detail::distance(s.p, world[n - 1], &d);
         if (!(d > 1e-4f * r.value)) continue; // the sample at the head (appended this update)
-        if (total + d >= L) {
-            const float f = (L - total) / d;
+        if (total + d >= target) {
+            const float f = (target - total) / d;
             for (unsigned j = 0; j < 3; ++j) world[n][j] = world[n - 1][j] + (s.p[j] - world[n - 1][j]) * f;
             width[n] = width[n - 1] + (s.half_width - width[n - 1]) * f;
-            total = L;
+            total = target;
         } else {
             for (unsigned j = 0; j < 3; ++j) world[n][j] = s.p[j];
             width[n] = s.half_width;
@@ -530,6 +635,58 @@ inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& 
     if (n < 2 || !(total > 0.f)) {
         ++stats->culled_short;
         return false;
+    }
+    // The fade-in ends at L_vis or where the centre line leaves the plume's visible body first (a turn carries the
+    // strip out through the plume's side): the body is the axis from the head to k L_vis, its radius the plume's
+    // half-width, constant to the anchor and linear from the anchor's to L_vis's (x k): a convex body, so a segment
+    // whose end is inside lies inside; the first segment inside the nominal fade-in whose end is outside is bisected 8
+    // times (1/256 of it). A point is inserted at the fade-in's end (one point of room is kept above), so the strip's
+    // alpha is linear in arc length from 0 at the head to 1 there.
+    float fade_in = ramp;
+    if (ramp > 0.f) {
+        const float a0 = r.anchor * cap_k, a1 = r.visible * cap_k, h0 = r.head_width * cap_k, h1 = r.visible_width * cap_k;
+        const auto inside = [&](const float* p) {
+            float d[3], ax = 0.f, d2 = 0.f;
+            for (unsigned j = 0; j < 3; ++j) {
+                d[j] = p[j] - r.origin[j];
+                ax += d[j] * r.axis[j];
+                d2 += d[j] * d[j];
+            }
+            if (ax > a1 || ax < 0.f) return false;
+            float t = (ax - a0) / (a1 - a0);
+            t = t > 0.f ? (t < 1.f ? t : 1.f) : 0.f;
+            const float h = h0 + (h1 - h0) * t;
+            return d2 - ax * ax <= h * h;
+        };
+        for (unsigned k = 0; k + 1 < n && along[k] < fade_in; ++k) {
+            if (inside(world[k + 1])) continue;
+            float lo = 0.f, hi = 1.f; // world[k] is inside (the head, or a point that passed)
+            for (unsigned i = 0; i < 8; ++i) {
+                const float t = .5f * (lo + hi);
+                float p[3];
+                for (unsigned j = 0; j < 3; ++j) p[j] = world[k][j] + (world[k + 1][j] - world[k][j]) * t;
+                (inside(p) ? lo : hi) = t;
+            }
+            const float exit = along[k] + (along[k + 1] - along[k]) * hi;
+            if (exit < fade_in) fade_in = exit;
+            break;
+        }
+        fade_in = fade_in > 1e-6f * r.value ? fade_in : 1e-6f * r.value;
+        // The fade-in's end point, inside a segment (on a point: nothing to insert).
+        for (unsigned k = 0; k + 1 < n; ++k) {
+            if (!(along[k] < fade_in && fade_in < along[k + 1])) continue;
+            const float f = (fade_in - along[k]) / (along[k + 1] - along[k]);
+            for (unsigned m = n; m > k + 1; --m) {
+                for (unsigned j = 0; j < 3; ++j) world[m][j] = world[m - 1][j];
+                width[m] = width[m - 1];
+                along[m] = along[m - 1];
+            }
+            for (unsigned j = 0; j < 3; ++j) world[k + 1][j] = world[k][j] + (world[k + 2][j] - world[k][j]) * f;
+            width[k + 1] = width[k] + (width[k + 2] - width[k]) * f;
+            along[k + 1] = fade_in;
+            ++n;
+            break;
+        }
     }
     float v[points_per_ribbon][3];
     bool any_front = false;
@@ -610,14 +767,17 @@ inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& 
         } else if (k > 0 && side[0] * previous_side[0] + side[1] * previous_side[1] + side[2] * previous_side[2] < 0.f)
             for (float& c : side) c = -c;
         for (unsigned j = 0; j < 3; ++j) previous_side[j] = side[j];
-        const float radiance = i0 * (1.f - u) * near_weight;
+        // The fade-in: 0 at the head (inside the plume), 1 from L_vis on.
+        const float in = ramp > 0.f && along[k] < fade_in ? along[k] / fade_in : 1.f;
+        const float radiance = i0 * (1.f - u) * near_weight * in;
         for (unsigned edge = 0; edge < 2; ++edge) {
             Vertex& x = out[2 * k + edge];
             const float sign = edge ? 1.f : -1.f;
             for (unsigned j = 0; j < 3; ++j) x.position[j] = v[k][j] + side[j] * hw * sign;
             x.strip[0] = u;
             x.strip[1] = sign;
-            x.strip[2] = x.strip[3] = 0.f;
+            x.strip[2] = in;
+            x.strip[3] = 0.f;
             x.shape[0] = radiance;
             x.shape[1] = v[k][2];
             x.shape[2] = r.value;
@@ -635,7 +795,7 @@ inline bool build_ribbon(const Ribbon& r, bool seen, float now, const ep::View& 
     return true;
 }
 
-// The pool's drawable ribbons into `out` (capacity in ribbons, 34 vertices each); `now_seconds` the update's clock.
+// The pool's drawable ribbons into `out` (capacity in ribbons, 36 vertices each); `now_seconds` the update's clock.
 inline unsigned build(const Pool& pool, const ep::View& view, ep::Preset preset, double now_seconds, Vertex* out,
                       unsigned capacity, BuildStats* stats, const ep::Look* look = nullptr) noexcept {
     const ep::Look& k = look ? *look : ep::default_look;

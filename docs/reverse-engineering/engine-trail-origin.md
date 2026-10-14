@@ -177,6 +177,21 @@ of the ship's speed; the end of a long plume sweeps faster in a turn and would l
 width may then follow the plume's tip width rather than the nozzle's. No engine hook, no Wine-specific path, and the
 particle VB stays untouched (it cannot be filtered per ship anyway). Missiles would need H1 or the same ribbon.
 
+Revised 2026-10-14 after Run 170 (flown: "plume ends, then empty space, then the trail starts"). Two causes, read from
+`engine_plumes_core.h`: the plume's axial alpha (`law::tail`, the pixel program's fade) starts falling at u 0.4 and
+reaches 0.1 of its peak at u 0.848, so the visible plume ends near 0.85 L̄, not at L̄; and in chase view
+`build_nozzle` shrinks the plume about its nozzle by the near-camera factor k (0.28 in the harness's chase case),
+while E stayed at the uncapped L̄. The ribbon is now anchored inside the plume and fades in under it, as modern
+engines attach thruster trails: `A = rec.origin + rec.axis · 0.6 L_vis` (`L_vis = u_vis L̄`, u_vis from the tail law
+at 0.1 of its peak, so A = 0.509 L̄ at the default look) replaces E in the append test, the sample write, the drop
+rule and `r.head`; the head's half-width is the plume's at A (`law::width`, 0.226 value). The strip's radiance ramps
+from 0 at the head to full at L_vis, or earlier where its centre line leaves the plume's visible body (a hard turn
+carries it out through the side). For the cap the builder evaluates build_nozzle's k in its own view (the same
+arithmetic, `near_cap_factor`, checked against build_nozzle in the host harness) and draws only the live head at
+`origin + axis · k A`, the fade-in × k; the samples keep their world positions, so the per-view factor does not move
+them with the camera. The plume's pulse (L × 1 ± 0.25) is not followed: at its minimum the visible end lies where
+the ribbon's fade-in is 0.375 [i].
+
 ## Unknown
 
 - Whether `0x004596e0` writes `node+0x88` before the `0x0045ac7d` call in the same pass (decides whether a stub-side

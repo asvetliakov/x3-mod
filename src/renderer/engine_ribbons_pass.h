@@ -2,7 +2,7 @@
 // Engine ribbons, phase 3 (docs/architecture/engine-effects-modern.md sections 3-5): the GPU side of the proxy's ribbon
 // trails and the ring buffers they draw from. One class owns the vs_3_0 / ps_3_0 pair (src/effects/
 // engine_ribbon_{vs,ps}.hlsl), their declaration, one dynamic vertex buffer (DEFAULT, DYNAMIC | WRITEONLY, 256 ribbons
-// x 34 vertices x 48 B, one DISCARD lock per frame), the static strip index buffer, and the CPU pool of 256 ribbons
+// x 36 vertices x 48 B, one DISCARD lock per frame), the static strip index buffer, and the CPU pool of 256 ribbons
 // (engine_ribbons_core.h). The device objects are created at attach (the arming latch) and released before Reset,
 // which also clears the pool; ensure_resources() recreates them after a successful Reset.
 //

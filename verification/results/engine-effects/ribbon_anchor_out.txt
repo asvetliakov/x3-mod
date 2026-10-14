@@ -1,0 +1,8 @@
+ANCHOR u_vis=0.8479 u_anchor=0.5088 tail_at_u_vis=0.1000 of_peak
+ANCHOR straight frames=150 capped=0 min_k=1.000 k_err=0 head_over_visible_max=0.600 head_outside=0 exit_alpha_min=1.000 exit_frames=150 contained_frames=0 end_alpha_min=1.000 end_frames=150 folded=0 samples_inside=0
+ANCHOR turn frames=150 capped=0 min_k=1.000 k_err=0 head_over_visible_max=0.600 head_outside=0 exit_alpha_min=1.000 exit_frames=150 contained_frames=0 end_alpha_min=2.000 end_frames=0 folded=0 samples_inside=0
+ANCHOR throttle_up frames=150 capped=0 min_k=1.000 k_err=0 head_over_visible_max=0.600 head_outside=0 exit_alpha_min=1.000 exit_frames=145 contained_frames=5 end_alpha_min=1.000 end_frames=145 folded=0 samples_inside=0
+ANCHOR throttle_down frames=150 capped=0 min_k=1.000 k_err=0 head_over_visible_max=0.600 head_outside=0 exit_alpha_min=1.000 exit_frames=150 contained_frames=0 end_alpha_min=1.000 end_frames=150 folded=0 samples_inside=0
+ANCHOR chase_own frames=150 capped=150 min_k=0.278 k_err=0 head_over_visible_max=0.600 head_outside=0 exit_alpha_min=1.000 exit_frames=150 contained_frames=0 end_alpha_min=1.000 end_frames=150 folded=0 samples_inside=0
+tree engine_ribbons_core checks=93 failed=0; COST median of 5 (us) {30: 10.47, 100: 35.04}
+base 959e6435 engine_ribbons_core checks=80 failed=0; COST median of 5 (us) {30: 6.69, 100: 18.28}

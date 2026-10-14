@@ -41,10 +41,13 @@ static ee::Record rec(float x, float y, float z, float value, float s, std::uint
     r.body = -1; r.flags = std::uint16_t((unsigned(ee::white) << ee::cluster_shift) | (serial ? unsigned(ee::flag_serial) : 0u));
     r.serial = serial; r.node_handle = handle; r.model = 20000; return r;
 }
-// The plume's end without its pulse (no radii, no travel): max(z, idle_length) x value along the record's axis.
+// The plume's length without its pulse (no radii, no travel): max(z, idle_length) x value along the record's axis;
+// its visible fraction u_vis (the tail law) and the anchor 0.6 u_vis L_bar.
 static float lbar(const ee::Record& r) { return std::max(r.z, ep::default_look.idle_length) * r.size; }
-static bool at_end(const float p[3], const ee::Record& r, double rel) { const float L = lbar(r); bool ok = true; for (int j = 0; j < 3; ++j) ok = ok && std::fabs(p[j] - (r.origin[j] + r.axis[j] * L)) <= rel * L; return ok; }
-static float tip_half(float value) { float w = 0.f; ep::width_at_tip(ep::default_look, &w); return w * ep::default_look.nozzle_width * value; }
+static float uvis() { float u = 0.f; visible_fraction(ep::default_look, &u); return u; }
+static float anchor_of(const ee::Record& r) { return anchor_fraction * uvis() * lbar(r); }
+static bool at_end(const float p[3], const ee::Record& r, double rel) { const float L = anchor_of(r); bool ok = true; for (int j = 0; j < 3; ++j) ok = ok && std::fabs(p[j] - (r.origin[j] + r.axis[j] * L)) <= rel * L; return ok; }
+static float tip_half(float value) { float w = 0.f; ep::law::width(ep::default_look, anchor_fraction * uvis(), &w); return w * ep::default_look.nozzle_width * value; }
 // The reviewer's fold counter on the built strip: a run of the centre line toward the nozzle along the record's axis.
 // Returns -1 when nothing is drawn, else the number of forward runs.
 static int folds(const Ribbon& q, const Pool& p, const ee::Record& r, const ep::View& v, double now) {
@@ -126,7 +129,8 @@ int main() {
         std::printf("LENGTH value=%.0f T=%.1f speed=%.1f v_est=%.1f target=%.1f drawn=%.1f samples=%u min_gap=%.1f\n", double(value), double(T), double(speed), double(r->speed), double(r->length), drawn, r->count, double(min_gap));
         expect(near(r->speed, speed, 1e-3), "v_est: the samples' distance over their age");
         expect(near(r->length, T * speed, 1e-3), "L = T(value) x v x s");
-        expect(near(drawn, r->length, 1e-3), "the strip is cut at L");
+        float kc = 1.f; near_cap_factor(ep::default_look, v, 50000.f, 0.f, r->plume_length, r->plume_value, &kc); // the 30,000's plume is capped at 50,000
+        expect(near(drawn, r->length + (r->visible - r->anchor) * kc, 1e-3), "the strip is cut at the fade-in (x the plume's cap) + L");
         expect(r->count == samples_per_ribbon && spaced, "16 samples, spaced at least max(1.5 m, 0.02 value, L / 15)");
     }
     {
@@ -158,7 +162,7 @@ int main() {
     {
         // Straight at constant throttle: the head is the plume's end, the first sample L_bar behind the nozzle on the axis.
         static Pool pool; pool.clear(); double now = 0.0; UpdateStats st{}; const float value = 1000.f, speed = 4000.f;
-        ee::Record r = rec(0, 0, 40000.f, value, .6f); const float L = lbar(r); // z 1.3: 1,300
+        ee::Record r = rec(0, 0, 40000.f, value, .6f); const float L = anchor_of(r); // z 1.3: L_bar 1,300, anchor 661
         update(pool, &r, 1, now, false, 0, nullptr, 1.f, &st);
         const Ribbon* q = only(pool);
         const bool first = q && q->count == 1 && q->at(0).p[0] == -L && q->at(0).p[1] == 0.f && q->at(0).p[2] == 40000.f && q->at(0).o[0] == 0.f;
@@ -166,27 +170,27 @@ int main() {
         for (unsigned f = 1; f < 120; ++f) { now += dt; r.origin[0] = speed * float(f) * dt; update(pool, &r, 1, now, false, 0, nullptr, 1.f, &st); jumps += st.jumps; heads = heads && at_end(only(pool)->head, r, 1e-5); }
         q = only(pool);
         for (unsigned b = 0; b < q->count; ++b) { float d; detail::distance(q->at(b).p, q->at(b).o, &d); offsets = offsets && near(d, L, 1e-5) && near(q->at(b).o[0] - q->at(b).p[0], L, 1e-5); }
-        std::printf("ORIGIN straight L_bar=%.1f head_x=%.1f nozzle_x=%.1f v_est=%.1f length=%.1f samples=%u\n", double(L), double(q->head[0]), double(r.origin[0]), double(q->speed), double(q->length), q->count);
-        expect(first, "straight: the first sample lies L_bar behind the nozzle on the axis");
-        expect(heads && offsets && jumps == 0, "straight: the head is the plume's end every frame, every sample L_bar behind its nozzle");
+        std::printf("ORIGIN straight anchor=%.1f head_x=%.1f nozzle_x=%.1f v_est=%.1f length=%.1f samples=%u\n", double(L), double(q->head[0]), double(r.origin[0]), double(q->speed), double(q->length), q->count);
+        expect(first, "straight: the first sample lies the anchor behind the nozzle on the axis");
+        expect(heads && offsets && jumps == 0, "straight: the head is the anchor every frame, every sample the anchor behind its nozzle");
         expect(near(q->speed, speed, 1e-3) && near(q->length, .5 * speed * .6, 1e-3), "straight: v_est and L unchanged by the offset");
         std::vector<Vertex> out(vertices_per_ribbon); BuildStats bs{};
         const bool built = build_ribbon(*q, true, float(now - pool.origin), v, 1.f, out.data(), &bs);
         float hw = 0.f; for (int j = 0; j < 3; ++j) { const float c = out[1].position[j] - out[0].position[j]; hw += c * c; } hw = .5f * std::sqrt(hw);
         std::printf("ORIGIN head_half_width=%.2f tip_half_width=%.2f\n", double(hw), double(tip_half(value)));
-        expect(built && near(hw, tip_half(value), 1e-4) && near(q->head_width, tip_half(value), 1e-6) && near(q->at(0).half_width, tip_half(value), 1e-6), "straight: the head's half-width is the plume tip's at the same frame");
+        expect(built && near(hw, tip_half(value), 1e-4) && near(q->head_width, tip_half(value), 1e-6) && near(q->at(0).half_width, tip_half(value), 1e-6), "straight: the head's half-width is the plume's at the anchor");
     }
     {
         // Turning: a circle of radius R = L_bar (the plume's end sweeps sqrt(2) x faster than the nozzle).
         static Pool pool; pool.clear(); double now = 0.0; UpdateStats st{}; const float value = 1000.f, R = 2000.f, w = 2.f;
-        ee::Record r = rec(R, 0, 40000.f, value, 1.f); const float L = lbar(r); // z 2: 2,000
+        ee::Record r = rec(R, 0, 40000.f, value, 1.f); const float L = anchor_of(r); // z 2: L_bar 2,000, anchor 1,017
         bool heads = true, clear = true; unsigned jumps = 0; float worst = 1e30f;
         for (unsigned f = 0; f < 120; ++f, now += dt) {
             const float a = w * float(f) * dt;
             r.origin[0] = R * std::cos(a); r.origin[1] = R * std::sin(a); r.axis[0] = std::sin(a); r.axis[1] = -std::cos(a); r.axis[2] = 0.f;
             update(pool, &r, 1, now, false, 0, nullptr, 1.f, &st); jumps += st.jumps;
             const Ribbon* q = only(pool); heads = heads && at_end(q->head, r, 1e-4);
-            // No sample on the segment from the nozzle to the plume's end (its last 1 % excepted: the newest sample).
+            // No sample on the segment from the nozzle to the anchor (its last 1 % excepted: the newest sample).
             for (unsigned b = 0; b < q->count; ++b) {
                 const float* p = q->at(b).p; float t = 0.f; for (int j = 0; j < 3; ++j) t += (p[j] - r.origin[j]) * r.axis[j];
                 t = std::min(std::max(t, 0.f), .99f * L); float d2 = 0.f; for (int j = 0; j < 3; ++j) { const float c = p[j] - (r.origin[j] + r.axis[j] * t); d2 += c * c; }
@@ -194,13 +198,13 @@ int main() {
             }
         }
         const Ribbon* q = only(pool);
-        std::printf("ORIGIN turn L_bar=%.1f nozzle_speed=%.1f end_speed=%.1f v_est=%.1f length=%.1f min_dist_to_segment=%.2f jumps=%u\n", double(L), double(R * w), double(std::sqrt(R * R + L * L) * w), double(q->speed), double(q->length), double(worst), jumps);
-        expect(heads && jumps == 0, "turn: the head follows the plume's end, no restart");
-        expect(clear, "turn: no sample between the nozzle and the plume's end");
-        expect(near(q->speed, R * w, .01) && near(q->length, .5 * R * w, .01), "turn: v_est and L from the nozzle's path, not the faster plume end");
+        std::printf("ORIGIN turn anchor=%.1f nozzle_speed=%.1f end_speed=%.1f v_est=%.1f length=%.1f min_dist_to_segment=%.2f jumps=%u\n", double(L), double(R * w), double(std::sqrt(R * R + L * L) * w), double(q->speed), double(q->length), double(worst), jumps);
+        expect(heads && jumps == 0, "turn: the head follows the anchor, no restart");
+        expect(clear, "turn: no sample between the nozzle and the anchor");
+        expect(near(q->speed, R * w, .01) && near(q->length, .5 * R * w, .01), "turn: v_est and L from the nozzle's path, not the faster anchor");
     }
     {
-        // Throttle change: L_bar 0.6 -> 2 value along the axis, no restart, v_est still the ship's.
+        // Throttle change: L_bar 0.6 -> 2 value along the axis (the anchor with it), no restart, v_est still the ship's.
         static Pool pool; pool.clear(); double now = 0.0; UpdateStats st{}; const float speed = 4000.f;
         unsigned jumps = 0, created = 0; ee::Record r = rec(0, 0, 40000.f, 1000.f, .2f);
         float before = 0.f, step_head[3] = {};
@@ -211,12 +215,13 @@ int main() {
         }
         const Ribbon* q = only(pool);
         std::printf("ORIGIN throttle before=%.1f after=%.1f v_est=%.1f samples=%u jumps=%u\n", double(before), double(step_head[0] - speed * 60.f * dt), double(q->speed), q->count, jumps);
-        expect(near(before, -600., 1e-4) && near(step_head[0] - speed * 60.f * dt, -2000., 1e-4) && step_head[1] == 0.f && step_head[2] == 40000.f, "throttle: the head moves along the axis with L_bar");
+        const double ua = double(anchor_fraction) * uvis();
+        expect(near(before, -600. * ua, 1e-4) && near(step_head[0] - speed * 60.f * dt, -2000. * ua, 1e-4) && step_head[1] == 0.f && step_head[2] == 40000.f, "throttle: the head moves along the axis with the anchor");
         expect(jumps == 0 && created == 1 && q->count == samples_per_ribbon && near(q->speed, speed, 1e-3), "throttle: no restart, v_est the nozzle's");
         // A stationary nozzle whose plume end moves 9.5 value (z 0.5 -> 10): no jump (the test is on the nozzle).
         static Pool still; still.clear(); ee::Record s = rec(0, 0, 40000.f, 1000.f, 0.f); s.z = .5f;
         update(still, &s, 1, 0.0, false, 0, nullptr, 1.f, &st); s.z = 10.f; update(still, &s, 1, dt, false, 0, nullptr, 1.f, &st);
-        expect(st.jumps == 0 && at_end(only(still)->head, s, 1e-6) && only(still)->speed == 0.f, "a plume end moved past 8 value with the nozzle still: no jump, v_est 0");
+        expect(st.jumps == 0 && at_end(only(still)->head, s, 1e-6) && only(still)->speed == 0.f, "an anchor moved past 8 value x 0.51 with the nozzle still: no jump, v_est 0");
         // No fold: a step 0.2 -> 1 at 4,000 u/s and a 1 s ramp 0.2 -> 1 at 500 u/s.
         for (const bool ramp : {false, true}) {
             static Pool fp; fp.clear(); double t0 = 0.0; UpdateStats fs{}; const float sp = ramp ? 500.f : 4000.f, Z = ramp ? 5000.f : 20000.f;
@@ -239,7 +244,78 @@ int main() {
         for (unsigned f = 0; f < 30; ++f, now += dt) { r.origin[0] = 3000.f * float(f) * dt; update(pool, &r, 1, now, false, 0, nullptr, 1.f, &st); jumps += st.jumps; }
         r.origin[1] += 9000.f; update(pool, &r, 1, now, false, 0, nullptr, 1.f, &st);
         const Ribbon* q = only(pool);
-        expect(jumps == 0 && st.jumps == 1 && q->count == 1 && at_end(q->head, r, 1e-6) && at_end(q->at(0).p, r, 1e-6) && q->origin[1] == r.origin[1], "teleport: the nozzle's jump restarts the ribbon at the new plume end");
+        expect(jumps == 0 && st.jumps == 1 && q->count == 1 && at_end(q->head, r, 1e-6) && at_end(q->at(0).p, r, 1e-6) && q->origin[1] == r.origin[1], "teleport: the nozzle's jump restarts the ribbon at the new anchor");
+    }
+    // ------------------------------------------------------------------ the anchor inside the plume (engine-trail-origin.md 6)
+    {
+        float u = uvis(), t_peak = 0.f, t_vis = 0.f; for (unsigned i = 0; i <= 64; ++i) { float t; ep::law::tail(ep::default_look, float(i) / 64.f, &t); t_peak = std::max(t_peak, t); }
+        ep::law::tail(ep::default_look, u, &t_vis);
+        std::printf("ANCHOR u_vis=%.4f u_anchor=%.4f tail_at_u_vis=%.4f of_peak\n", double(u), double(anchor_fraction * u), double(t_vis / t_peak));
+        expect(u > .84f && u < .86f && near(t_vis / t_peak, visible_tail, 1e-3), "u_vis: the tail law at 0.1 of its peak (0.85 at the default look)");
+        // Per case, frames 30..179: the plume drawn by build_nozzle (a pulse-free look: its L is k x L_bar) and the strip.
+        ep::Look nl = ep::default_look; nl.pulse = 0.f;
+        static ep::LookTables tables; ep::look_tables(nl, &tables);
+        const char* names[5] = {"straight", "turn", "throttle_up", "throttle_down", "chase_own"};
+        for (int kind = 0; kind < 5; ++kind) {
+            static Pool pool; pool.clear(); double now = 0.0; UpdateStats st{};
+            unsigned frames = 0, measured = 0, contained = 0, ended = 0, folded = 0, inside = 0, head_out = 0, capped = 0;
+            float min_exit = 2.f, min_end = 2.f, max_head = 0.f, k_err = 0.f, min_k = 1.f;
+            for (unsigned f = 0; f < 180; ++f, now += dt) {
+                ee::Record r = rec(0, 0, 40000.f, 1000.f, .6f); ep::View w = v; const float t = float(f) * dt;
+                if (kind == 0) r.origin[0] = 4000.f * t;
+                else if (kind == 1) { const float R = 2000.f, a = 2.f * t; r.s = 1.f; r.z = 2.f; r.origin[0] = R * std::cos(a); r.origin[1] = R * std::sin(a); r.axis[0] = std::sin(a); r.axis[1] = -std::cos(a); }
+                else if (kind == 2 || kind == 3) { const float s1 = (f >= 90) == (kind == 2) ? 1.f : .2f; r.s = s1; r.z = .25f + 1.75f * s1; r.origin[0] = 4000.f * t; }
+                else { r = rec(0, -150.f, 800.f + 500.f * t, 400.f, 1.f); r.axis[0] = 0.f; r.axis[2] = -1.f; w.rows[11] = -500.f * t; } // the camera 800 behind, 150 above, flying +z at 500 u/s
+                update(pool, &r, 1, now, false, 0, nullptr, 1.f, &st, nullptr, &nl);
+                const Ribbon* q = only(pool); if (!q) continue;
+                for (unsigned b = 0; b < q->count; ++b) { // a sample on the segment nozzle .. 0.99 anchor
+                    const float* p = q->at(b).p; float a = 0.f; for (int j = 0; j < 3; ++j) a += (p[j] - r.origin[j]) * r.axis[j];
+                    a = std::min(std::max(a, 0.f), .99f * q->anchor); float d2 = 0.f; for (int j = 0; j < 3; ++j) { const float c = p[j] - (r.origin[j] + r.axis[j] * a); d2 += c * c; }
+                    inside += std::sqrt(d2) < .005f * q->anchor;
+                }
+                if (f < 30) continue;
+                ++frames;
+                std::vector<Vertex> out(vertices_per_ribbon); BuildStats bs{};
+                if (!build_ribbon(*q, true, float(now - pool.origin), w, 1.f, out.data(), &bs, nl)) continue;
+                ep::Vertex pv[ep::vertices_per_nozzle]; ep::BuildStats ps{};
+                if (!ep::build_nozzle(r, nullptr, w, nl, tables, 1.f, float(now), 0.f, pv, &ps)) continue;
+                float o[3], a[3]; ep::detail::to_view(w, r.origin, o); ep::detail::rotate(w, r.axis, a);
+                const float kp = pv[0].local[2] / q->plume_length; // the drawn plume's cap factor
+                float kr = 1.f; near_cap_factor(nl, w, o[2], a[2], q->plume_length, q->plume_value, &kr);
+                k_err = std::max(k_err, std::fabs(kr - kp) / kp); min_k = std::min(min_k, kp); capped += kp < 1.f;
+                const float vis = kp * q->visible, Lp = kp * q->plume_length;
+                float mid[points_per_ribbon][3]{}, along[points_per_ribbon]{};
+                for (unsigned k = 0; k < bs.points; ++k) { along[k] = 0.f; for (int j = 0; j < 3; ++j) { mid[k][j] = .5f * (out[2 * k].position[j] + out[2 * k + 1].position[j]); along[k] += (mid[k][j] - o[j]) * a[j]; } }
+                max_head = std::max(max_head, along[0] / vis); head_out += !(along[0] > 0.f && along[0] < vis);
+                // A fold: the strip doubling back (consecutive segments over 90 degrees apart) or running back toward the
+                // nozzle while inside the plume's reach (a turn's far tail curving back on its circle is not one).
+                bool fold = false;
+                for (unsigned k = 1; k < bs.points; ++k) { fold = fold || (along[k - 1] < vis && along[k] < along[k - 1] - 1e-3f * r.size); if (k + 1 < bs.points) { float dd = 0.f; for (int j = 0; j < 3; ++j) dd += (mid[k][j] - mid[k - 1][j]) * (mid[k + 1][j] - mid[k][j]); fold = fold || dd < 0.f; } }
+                folded += fold;
+                // Along the centre line: the fade-in where the strip leaves the drawn plume's visible body (axial past
+                // k L_vis or radial past its half-width), and at the point nearest to the plume's visible end.
+                float exit_alpha = -1.f, best = 1e30f, end_alpha = 0.f;
+                for (unsigned k = 0; k + 1 < bs.points; ++k) for (unsigned i = 0; i < 64; ++i) {
+                    const float sfrac = float(i) / 64.f; float pt[3], ax = 0.f, rho2 = 0.f;
+                    for (int j = 0; j < 3; ++j) { pt[j] = mid[k][j] + (mid[k + 1][j] - mid[k][j]) * sfrac; ax += (pt[j] - o[j]) * a[j]; }
+                    for (int j = 0; j < 3; ++j) { const float c = pt[j] - o[j] - a[j] * ax; rho2 += c * c; }
+                    const float al = out[2 * k].strip[2] + (out[2 * k + 2].strip[2] - out[2 * k].strip[2]) * sfrac;
+                    float wu = 0.f; ep::law::width(nl, std::min(std::max(ax / Lp, 0.f), 1.f), &wu); const float half = wu * nl.nozzle_width * q->plume_value * kp;
+                    if (exit_alpha < 0.f && (ax > vis || ax < 0.f || rho2 > half * half)) exit_alpha = al;
+                    float d2 = 0.f; for (int j = 0; j < 3; ++j) { const float c = pt[j] - (o[j] + a[j] * vis); d2 += c * c; }
+                    if (d2 < best) { best = d2; end_alpha = al; }
+                }
+                if (exit_alpha >= 0.f) { ++measured; min_exit = std::min(min_exit, exit_alpha); } else ++contained; // all of it inside the plume
+                if (std::sqrt(best) < .05f * vis && along[bs.points - 1] > vis) { ++ended; min_end = std::min(min_end, end_alpha); } // it runs on past the end
+            }
+            std::printf("ANCHOR %s frames=%u capped=%u min_k=%.3f k_err=%.2g head_over_visible_max=%.3f head_outside=%u exit_alpha_min=%.3f exit_frames=%u contained_frames=%u end_alpha_min=%.3f end_frames=%u folded=%u samples_inside=%u\n",
+                        names[kind], frames, capped, double(min_k), double(k_err), double(max_head), head_out, double(min_exit), measured, contained, double(min_end), ended, folded, inside);
+            // The turn carries the strip out through the plume's side, never past its visible end (end_frames 0).
+            expect(frames == 150 && measured + contained == frames && measured >= 140 && min_exit >= .8f && (kind == 1 ? ended == 0 : ended >= 140 && min_end >= .8f),
+                   "anchor: the strip's fade-in >= 0.8 where it leaves the visible plume and at the plume's visible end");
+            expect(head_out == 0 && max_head < .61f && folded == 0 && inside == 0 && k_err < 1e-5f, "anchor: the head inside the visible plume (0.6 L_vis, the plume's k), 0 folded frames, no sample between the nozzle and the anchor");
+            if (kind == 4) expect(capped == frames && min_k < .3f, "chase own ship: the plume capped every frame (k < 0.3), the head follows it");
+        }
     }
     // ------------------------------------------------------------------ SETA: 20x for 10 frames, continuous
     {
@@ -291,7 +367,9 @@ int main() {
         for (unsigned f = 0; f < 60; ++f, now += dt) { const ee::Record r = rec(3000.f * float(f) * dt, 0, 40000.f, 1000.f, 1.f); update(pool, &r, 1, now, false, 0, nullptr, 1.f, &st); }
         std::vector<Vertex> out(vertices_per_ribbon); BuildStats bs{};
         build(pool, v, ep::Preset::standard, now - dt, out.data(), 1, &bs);
-        const float full = out[0].shape[0];
+        // The radiance at the first point past the fade-in (the geometry stands still while it fades).
+        auto lit = [&]() { unsigned k = 0; while (k + 1 < points_per_ribbon && out[2 * k].strip[2] < 1.f) ++k; return out[2 * k].shape[0]; };
+        const float full = lit();
         unsigned fading_frames = 0; float half = 0.f; double evicted_at = -1;
         const double lost = now - dt;
         for (unsigned f = 0; f < 40; ++f, now += dt) {
@@ -299,7 +377,7 @@ int main() {
             if (st.evicted) { evicted_at = now - lost; break; }
             fading_frames += st.fading;
             build(pool, v, ep::Preset::standard, now, out.data(), 1, &bs);
-            if (f == 8) half = out[0].shape[0] / full; // 9 frames = 0.15 s after the last record
+            if (f == 8) half = lit() / full; // 9 frames = 0.15 s after the last record
         }
         std::printf("FADE full=%.4f at_0.15s=%.4f fading_frames=%u evicted_after=%.4f evictions=%llu\n", double(full), double(half), fading_frames, evicted_at, (unsigned long long)pool.evictions);
         expect(near(half, .5, .02), "fade: linear over 0.3 s (half at 0.15 s)");
@@ -364,23 +442,31 @@ int main() {
         const unsigned n = build(pool, v, ep::Preset::standard, now - dt, out.data(), 1, &bs);
         const float ppu = 1.7f * 540.f / Z;
         auto width_px = [&](unsigned k) { float d = 0; for (int j = 0; j < 3; ++j) { const float c = out[2 * k + 1].position[j] - out[2 * k].position[j]; d += c * c; } return std::sqrt(d) * ppu; };
-        const float head_px = width_px(0), want_head = 2.f * tip_half(value) * ppu;
+        const float head_px = width_px(0), want_head = std::max(2.f * tip_half(value) * ppu, 3.f);
         const unsigned last = bs.points - 1;
         std::printf("STRIP points=%u head_px=%.2f want=%.2f tail_px=%.2f radiance_head=%.3f radiance_tail=%.3f floored=%u\n", bs.points, double(head_px), double(want_head), double(width_px(last)), double(out[0].shape[0]), double(out[2 * last].shape[0]), bs.floored);
-        expect(n == 1 && bs.vertices == vertices_per_ribbon && near(head_px, want_head, 1e-3), "the head's half-width: the plume tip's");
+        expect(n == 1 && bs.vertices == vertices_per_ribbon && near(head_px, want_head, 1e-3), "the head's half-width: the plume's at the anchor");
         expect(near(width_px(last), 3.f, 1e-3) && bs.floored >= 1, "the tail held at the 3 px floor");
         // After flight E the plumes' distance law: the nozzle (0.5 x 300 = 150 units) projects 6.9 px at 20,000.
         float fw = 0.f;
         ep::distance_weight(ep::default_look, .5f * value * ppu, &fw);
         expect(fw > .5f && fw < .6f && bs.far_ribbons == 1, "the nozzle under 12 px: the distance law's factor, counted far_ribbons");
-        expect(near(out[0].shape[0], .9f * fw, 1e-5) && out[2 * last].shape[0] == 0.f && out[0].strip[0] == 0.f && near(out[2 * last].strip[0], 1.f, 1e-6), "I_ribbon(1) = 0.9 x the distance law at the nozzle, 0 at the tail");
+        // The fade-in: 0 at the head, linear in arc length to 1 at the inserted point (L_vis), 1 past it; there
+        // I_ribbon(1) x (1 - u).
+        unsigned kr = 0; while (kr < last && out[2 * kr].strip[2] < 1.f) ++kr;
+        const float ramp_world = (only(pool)->visible - only(pool)->anchor);
+        double arc = 0.; bool linear = true;
+        for (unsigned k = 1; k <= kr; ++k) { double d = 0; for (int j = 0; j < 3; ++j) { const double c = out[2 * k].position[j] + out[2 * k + 1].position[j] - out[2 * k - 2].position[j] - out[2 * k - 1].position[j]; d += .25 * c * c; } arc += std::sqrt(d); linear = linear && near(out[2 * k].strip[2], std::min(1., arc / ramp_world), 1e-3); }
+        std::printf("STRIP fade_in_point=%u arc=%.1f fade_in_world=%.1f\n", kr, arc, double(ramp_world));
+        expect(kr > 0 && kr < last && linear && near(arc, ramp_world, 1e-3), "the fade-in: linear from 0 at the head to 1 at L_vis (a point there)");
+        expect(out[0].shape[0] == 0.f && out[0].strip[2] == 0.f && near(out[2 * kr].shape[0], .9f * fw * (1.f - out[2 * kr].strip[0]), 1e-5) && out[2 * last].shape[0] == 0.f && out[0].strip[0] == 0.f && near(out[2 * last].strip[0], 1.f, 1e-6), "I_ribbon(1) = 0.9 x the distance law x (1 - u) past the fade-in, 0 at the head and the tail");
         bool degenerate = true; for (unsigned k = bs.points; k < points_per_ribbon; ++k) degenerate = degenerate && !std::memcmp(&out[2 * k], &out[2 * last], sizeof(Vertex));
         expect(degenerate, "unused points repeat the last (zero-area triangles)");
         expect(out[0].shape[1] == Z && out[0].shape[2] == value && out[0].strip[1] == -1.f && out[1].strip[1] == 1.f, "centre depth, SOFT base, across");
-        std::uint16_t ix[96 * 2]; write_indices(ix, 2);
-        expect(ix[0] == 0 && ix[1] == 1 && ix[2] == 2 && ix[5] == 3 && ix[96] == 34 && ix[96 + 5] == 37, "the strip's indices");
+        std::uint16_t ix[indices_per_ribbon * 2]; write_indices(ix, 2);
+        expect(ix[0] == 0 && ix[1] == 1 && ix[2] == 2 && ix[5] == 3 && ix[indices_per_ribbon] == vertices_per_ribbon && ix[indices_per_ribbon + 5] == vertices_per_ribbon + 3, "the strip's indices");
         // strong preset: x1.5 radiance
-        build(pool, v, ep::Preset::strong, now - dt, out.data(), 1, &bs); expect(near(out[0].shape[0], 1.35f * fw, 1e-5), "preset strong: x1.5");
+        build(pool, v, ep::Preset::strong, now - dt, out.data(), 1, &bs); expect(near(out[2 * kr].shape[0], 1.35f * fw * (1.f - out[2 * kr].strip[0]), 1e-5), "preset strong: x1.5");
         // The plume's nozzle is the floored value's (the plumes' look and ship radii): a 100 secondary of a radius-5,000
         // ship (scale 0.5 x k 0.1 x 5,000 = 250) carries the nozzle 125; without radii its own 50.
         {
@@ -393,7 +479,8 @@ int main() {
             update(fp, &q, 1, 1.0, false, 0, nullptr, 1.f, &fs);
             for (const auto& r : fp.ribbons) if (r.live) without = r.nozzle;
             float tip = 0.f; ep::width_at_tip(ep::default_look, &tip); fp.clear(); update(fp, &q, 1, 1.0, false, 0, nullptr, 1.f, &fs, nullptr, &ep::default_look, &rad);
-            expect(near(only(fp)->head_width, tip * 125.f, 1e-5), "the head's tip half-width of the floored value");
+            float wa = 0.f; ep::law::width(ep::default_look, anchor_fraction * uvis(), &wa); (void)tip;
+            expect(near(only(fp)->head_width, wa * 125.f, 1e-5), "the head's half-width at the anchor, of the floored value");
             expect(near(with, 125.f, 1e-5) && near(without, 50.f, 1e-5), "the ribbon's nozzle: Look::nozzle_width x the floored value (125), else x its own (50)");
         }
         // After Run 129 A: a smaller co-located layer of one parent (100 and 50, 30 apart on one axis) takes its own
@@ -414,9 +501,10 @@ int main() {
                        ls.unfloored == 0 && near(big_np, 125.f, 1e-5) && near(small_np, 100.f, 1e-5),
                    "a co-located layer: its own ribbon at its natural nozzle (25), the larger floored (125); no parents: both floored (125, 100)");
         }
-        // the chase cap: a ribbon passing close to the camera is held to 0.12 H with radiance down to 0.5
+        // the chase cap: a ribbon passing close to the camera is held to 0.12 H with radiance down to 0.5 (a record
+        // without an axis: its head is the nozzle, the plume's own cap does not shrink it)
         static Pool close; close.clear(); now = 0.0;
-        for (unsigned f = 0; f < 60; ++f, now += dt) { const ee::Record r = rec(30.f, 0, 40.f + 600.f * float(f) * dt, 400.f, 1.f); update(close, &r, 1, now, false, 0, nullptr, 1.f, &st); }
+        for (unsigned f = 0; f < 60; ++f, now += dt) { ee::Record r = rec(30.f, 0, 40.f + 600.f * float(f) * dt, 400.f, 1.f); r.axis[0] = 0.f; update(close, &r, 1, now, false, 0, nullptr, 1.f, &st); }
         build(close, v, ep::Preset::standard, now - dt, out.data(), 1, &bs);
         float widest = 0; for (unsigned k = 0; k < bs.points; ++k) { const float z = std::max(out[2 * k].shape[1], 1.f); float d = 0; for (int j = 0; j < 3; ++j) { const float c = out[2 * k + 1].position[j] - out[2 * k].position[j]; d += c * c; } widest = std::max(widest, std::sqrt(d) * 1.7f * 540.f / z); }
         std::printf("CHASE capped=%u widest_px=%.1f cap_px=%.1f\n", bs.capped, double(widest), double(.12f * 1080.f));
