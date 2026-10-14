@@ -356,7 +356,7 @@ __attribute__((always_inline)) inline float capsule_d2(const float ca[3], const 
     return d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
 }
 // The capsule distance (surface to surface, m; < 0 = overlap) of two hulls at a sample: segments c +- (L - w) f, radii w.
-inline float capsule_gap(const float ca[3], const float fa[3], float La, float wa, const float cb[3], const float fb[3], float Lb, float wb) noexcept {
+__attribute__((always_inline)) inline float capsule_gap(const float ca[3], const float fa[3], float La, float wa, const float cb[3], const float fb[3], float Lb, float wb) noexcept {
     const float ha = La > wa ? La - wa : 0.0f, hb = Lb > wb ? Lb - wb : 0.0f;
     float p1[3], q1[3], p2[3], q2[3];
     for (unsigned i = 0; i < 3; ++i) {
