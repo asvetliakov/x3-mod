@@ -1,0 +1,31 @@
+== run168
+leader gate | leader 15km | leader launch (15km->launch, straight@100) | escort launches +s after leader | 15km->last launch
+   escorts: 25287: 15km 23317.045 d@L15 41.7 km; 25763: 15km 23344.825 d@L15 49.3 km
+   lane floor (inferred): last launch 23478.8, span 482.7 s, escort offsets +320.9 +348.7
+24965 62b8 | 22996.115 | 23130.1 (134.0, 114.1 at d_launch 3589 m) | +389.8 +547.3 (escorts 25287 25763) | 681.3
+   escorts: 4248: 15km 25049.211 d@L15 22.2 km; 4454: 15km 25095.323 d@L15 26.9 km
+   lane floor (inferred): last launch 25229.3, span 272.7 s, escort offsets +92.5 +138.7
+3920 94b0 | 24956.671 | 25099.0 (142.3, 113.6 at d_launch 3636 m) |  (escorts 4248 4454) | 142.3
+   escorts: 5412: 15km 25374.444 d@L15 17.8 km; 5612: 15km 25382.594 d@L15 18.6 km
+   lane floor (inferred): last launch 25533.4, span 198.9 s, escort offsets +39.9 +64.9
+4900 94b0 | 25334.504 | 25466.0 (131.5, 115.9 at d_launch 3414 m) | +123.9 +198.5 (escorts 5412 5612) | 330.0
+   escorts: 10149: 15km 26625.207 d@L15 29.4 km; 10048: 15km 26588.557 d@L15 26.0 km
+   lane floor (inferred): last launch 26759.2, span 285.0 s, escort offsets +114.4 +151.0
+10107 7de8 | 26474.207 | 26604.9 (130.7, 113.6 at d_launch 3644 m) | +206.6 +144.7 (escorts 10149 10048) | 337.3
+== run169
+leader gate | leader 15km | leader launch (15km->launch, straight@100) | escort launches +s after leader | 15km->last launch
+   escorts: 25287: 15km 23324.774 d@L15 41.7 km; 25763: 15km 23343.444 d@L15 49.3 km
+   lane floor (inferred): last launch 23483.8, span 488.3 s, escort offsets +329.3 +354.3
+24965 f478 | 22995.492 | 23130.1 (134.6, 113.8 at d_launch 3620 m) | +390.2 +546.9 (escorts 25287 25763) | 681.5
+   escorts: 3861: 15km 25003.429 d@L15 25.9 km; 4120: 15km 25063.418 d@L15 30.3 km
+   lane floor (inferred): last launch 25197.4, span 389.1 s, escort offsets +195.1 +255.1
+3097 0450 | 24808.364 | 25023.0 (214.6, 116.4 at d_launch 3364 m) |  (escorts 3861 4120) | 214.6
+   escorts: 5001: 15km 24358.591 d@L15 nan km; 5476: 15km 24419.851 d@L15 nan km
+   lane floor (inferred): last launch 24553.9, span 257.8 s, escort offsets +62.6 +123.8
+4673 f478 | 24296.001 | 24903.2 (607.2, 114.0 at d_launch 3595 m) | +162.0 +80.6 (escorts 5001 5476) | 769.2
+   escorts: 6185: 15km 25436.068 d@L15 24.9 km; 6439: 15km 25487.224 d@L15 30.3 km
+   lane floor (inferred): last launch 25621.2, span 297.2 s, escort offsets +112.0 +163.2
+5727 de88 | 25324.038 | 25460.0 (136.0, 116.4 at d_launch 3359 m) | +179.4 +224.4 (escorts 6185 6439) | 360.4
+   escorts: 11613: 15km 26849.847 d@L15 21.5 km; 12244: 15km 26908.847 d@L15 27.2 km
+   lane floor (inferred): last launch 27042.8, span 277.4 s, escort offsets +84.4 +143.4
+11357 0450 | 26765.407 | 26926.0 (160.6, 113.6 at d_launch 3640 m) | - - (escorts 11613 12244) | 160.6

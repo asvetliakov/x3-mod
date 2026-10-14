@@ -157,6 +157,10 @@ existing object scope). The **emitter sprite** (`objects/v/00011` or `00213`: a 
 scene; how the legacy-material sprite is drawn (which pair) is not traced [u]. The **trail** is particle renderer
 geometry, one draw per material per view [i].
 
+Where a trail particle is placed (the root's interpolated pose plus the jet's model-frame offset `gen+0x10`, the
+ship's −z as direction), the generator and particle layouts and the hook site for moving the origin along the nozzle
+axis: [engine-trail-origin.md](engine-trail-origin.md).
+
 What drives trail length and alpha: particles are left behind at the emitter's world positions; length ≈ lifetime ×
 ship speed, width = the speed-interpolated size, fade from lifetime and `fadeduration` [i]. No trail exists below the
 camera distance gate or when the engine-flag bit is clear [i]; which option sets the bit (`0x00497c4d` writes the

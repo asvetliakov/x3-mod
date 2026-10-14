@@ -1,0 +1,24 @@
+X3AP.exe sha256 fdbf3418d8f0a897
+PASS 0x0041481d  20 B  site B: push &pos ([esp+0x20] local), obj, trail, k; call 0x00412d70
+PASS 0x00412e3c  29 B  0x00412d70 refresh: gen = link+8; gen+0x10..+0x1c = *pos (4 dwords)
+PASS 0x00412e5e   3 B  0x00412d70 ret 0x10 (stdcall, 4 args)
+PASS 0x00416d20  16 B  0x00416750: EAX = root+0x40 (rotation rows) -> 0x004f2470 -> quaternion [esp+0x30]
+PASS 0x00416da1  28 B  0x00416750: call 0x0046c170(gen, root+0x30, &quat, root+0x100, obj+0x10, rot term, now)
+PASS 0x0046c1d4  33 B  emit: state = gen+0xa4 + k*0x20; dt = now - gen+0x80, clamped to 0..1000
+PASS 0x0046c374  13 B  emit: denominator = |obj speed| + initial speed + rotation term
+PASS 0x0046c5c2  35 B  emit: previous velocity gen+0x70 x dt / 1000 (tangent 0)
+PASS 0x0046c5e5  30 B  emit: current velocity root+0x100 x dt / 1000 (tangent 1)
+PASS 0x0046c603  41 B  emit: 0x004f2c80 cubic Hermite(gen+0x60, root pos, tangents, u) -> [esp+0x50]
+PASS 0x0046c62c  22 B  emit: 0x004f2920 slerp(gen+0x90 previous quat, current quat, u)
+PASS 0x0046c645  14 B  emit: 0x004f2300 quaternion -> rotation rows [esp+0x80]
+PASS 0x0046c7f2  22 B  emit: 0x004f0da0 rotates gen+0x10 (emitter offset) -> [esp+0x40]
+PASS 0x0046c80f  33 B  emit: particle+0x10 = Hermite position + rotated offset (x)
+PASS 0x0046c8cd  16 B  emit: PEDF_TRAIL state+0x10..+0x1c = new position
+PASS 0x0046c97d  20 B  emit epilogue: gen+0x80 = now, gen+0x60 = root pos
+PASS 0x0046c9ed   3 B  0x0046c170 ret 0x1c (stdcall, 7 args)
+PASS 0x00469b70   7 B  0x00469b70 = abs(EAX)
+E8 callers of 0x00412d70 (trail generator find-or-create): 0x004146fa 0x0041482c 0x004151c3
+E8 callers of 0x0046c170 (emit): 0x00416db8 0x004785b5
+E8 callers of 0x004be7d0 (particle vertex fill): 0x00472141
+E8 callers of 0x0046bec0 (particle move/age): 0x00416dd6 0x0047861f
+18/18 PASS
