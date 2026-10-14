@@ -1,0 +1,109 @@
+== per capital: hold seconds by reason (game s, real s)
+0x8e89b750 id 24965: hold 0.0 game s 0.0 real s
+0x8e8a45e8 id 25287: hold 79.6 game s 8.0 real s
+      79.6    8.0  escort waiting for order 4 (leader gate -)
+0x8ed220e8 id 25763: hold 226.2 game s 22.6 real s
+      78.9    7.9  escort waiting for order 4 (leader gate -)
+      65.8    6.6  head, out of window (petal phase)
+      62.5    6.3  funnel busy (occupant funnel)
+      15.0    1.5  funnel busy (occupant dock)
+       2.5    0.3  escort waiting for order 4 (leader - -)
+       1.5    0.1  funnel busy (occupant launch)
+0x8e8a0f10 id 3920: hold 4.5 game s 0.5 real s
+       3.5    0.4  head, out of window (petal phase)
+       1.0    0.1  no candidate (seq cand -)
+0x8e8b0408 id 4248: hold 247.7 game s 31.3 real s
+     104.5   10.5  escort waiting for order 4 (leader 7087 committed/funnel)
+      54.6   10.2  escort waiting for order 4 (leader gate -)
+      22.2    2.2  committed hold, no seq row
+      17.0    1.9  escort waiting for order 4 (leader - -)
+      15.5    3.2  escort waiting for order 4 (leader 3920 committed/funnel)
+      15.0    1.5  escort waiting for order 4 (leader 3920 committed/dock)
+      15.0    1.5  escort waiting for order 4 (leader 7087 committed/dock)
+       1.0    0.1  escort waiting for order 4 (leader 3920 committed/launch)
+       1.0    0.1  no candidate (seq cand -)
+       0.5    0.1  escort waiting for order 4 (leader 3920 none/launch)
+       0.5    0.0  escort waiting for order 4 (leader 7087 committed/launch)
+       0.5    0.0  escort waiting for order 4 (leader 7087 none/launch)
+       0.3    0.0  escort waiting for order 4 (leader 7087 committed/inbound)
+0x8e897448 id 4454: hold 176.9 game s 17.9 real s
+      79.8    8.2  escort waiting for order 4 (leader gate -)
+      46.0    4.6  escort waiting for order 4 (leader 7087 committed/funnel)
+      22.6    2.3  funnel busy (occupant funnel)
+      15.0    1.5  escort waiting for order 4 (leader 7087 committed/dock)
+      13.5    1.4  escort waiting for order 4 (leader - -)
+0x8ed13208 id 4900: hold 0.0 game s 0.0 real s
+0xa6c94620 id 5412: hold 107.4 game s 13.9 real s
+      44.5    4.6  escort waiting for order 4 (leader 4900 committed/funnel)
+      35.4    4.0  escort waiting for order 4 (leader gate -)
+      17.0    1.7  escort waiting for order 4 (leader 4900 committed/dock)
+       8.5    2.3  escort waiting for order 4 (leader - -)
+       1.0    0.7  escort waiting for order 4 (leader 4900 committed/launch)
+       0.5    0.0  escort waiting for order 4 (leader 4900 committed/handover)
+       0.5    0.5  escort waiting for order 4 (leader 4900 none/launch)
+0xa6ca5fa8 id 5612: hold 150.9 game s 18.0 real s
+      48.1    4.8  funnel busy (occupant funnel)
+      39.5    3.9  escort waiting for order 4 (leader 4900 committed/funnel)
+      35.3    3.9  escort waiting for order 4 (leader gate -)
+      17.0    1.7  escort waiting for order 4 (leader 4900 committed/dock)
+       9.0    2.4  escort waiting for order 4 (leader - -)
+       1.0    0.7  escort waiting for order 4 (leader 4900 committed/launch)
+       0.5    0.0  escort waiting for order 4 (leader 4900 committed/handover)
+       0.5    0.5  escort waiting for order 4 (leader 4900 none/launch)
+0xb474e090 id 7087: hold 23.4 game s 2.3 real s
+      22.1    2.2  committed hold, no seq row
+       1.3    0.1  no candidate (seq cand -)
+0xb47714d8 id 10107: hold 0.0 game s 0.0 real s
+0xb4773350 id 10149: hold 86.7 game s 8.7 real s
+      66.2    6.6  escort waiting for order 4 (leader gate -)
+      19.0    1.9  funnel busy (occupant funnel)
+       1.0    0.1  escort waiting for order 4 (leader - -)
+       0.5    0.0  committed hold, no seq row
+0xb476c468 id 10048: hold 70.4 game s 7.0 real s
+      61.4    6.1  escort waiting for order 4 (leader gate -)
+       4.5    0.4  escort waiting for order 4 (leader 10107 committed/dock)
+       3.0    0.3  escort waiting for order 4 (leader - -)
+       1.0    0.1  escort waiting for order 4 (leader 10107 committed/launch)
+       0.5    0.0  escort waiting for order 4 (leader 10107 none/launch)
+== ALL capitals
+   491.3   54.9  escort waiting for order 4 (leader gate -)
+   152.2   15.3  funnel busy (occupant funnel)
+   150.5   15.1  escort waiting for order 4 (leader 7087 committed/funnel)
+    84.0    8.6  escort waiting for order 4 (leader 4900 committed/funnel)
+    69.3    6.9  head, out of window (petal phase)
+    54.5    8.6  escort waiting for order 4 (leader - -)
+    44.9    4.5  committed hold, no seq row
+    34.0    3.4  escort waiting for order 4 (leader 4900 committed/dock)
+    30.0    3.0  escort waiting for order 4 (leader 7087 committed/dock)
+    15.5    3.2  escort waiting for order 4 (leader 3920 committed/funnel)
+    15.0    1.5  funnel busy (occupant dock)
+    15.0    1.5  escort waiting for order 4 (leader 3920 committed/dock)
+     4.5    0.4  escort waiting for order 4 (leader 10107 committed/dock)
+     3.3    0.3  no candidate (seq cand -)
+     2.0    1.4  escort waiting for order 4 (leader 4900 committed/launch)
+     1.5    0.1  funnel busy (occupant launch)
+     1.0    0.1  escort waiting for order 4 (leader 3920 committed/launch)
+     1.0    0.1  escort waiting for order 4 (leader 4900 committed/handover)
+     1.0    1.0  escort waiting for order 4 (leader 4900 none/launch)
+     1.0    0.1  escort waiting for order 4 (leader 10107 committed/launch)
+     0.5    0.1  escort waiting for order 4 (leader 3920 none/launch)
+     0.5    0.0  escort waiting for order 4 (leader 7087 committed/launch)
+     0.5    0.0  escort waiting for order 4 (leader 7087 none/launch)
+     0.5    0.0  escort waiting for order 4 (leader 10107 none/launch)
+     0.3    0.0  escort waiting for order 4 (leader 7087 committed/inbound)
+EXCESS samples 0 []
+== per gate: each release, the previous occupant's launch (order 8) and the gap launch -> release (negative = pipelined)
+gate 62b8 release 24965 game  23001.8 real  78.9 | prev released -     launched - | launch->release - game s - real s
+gate 62b8 release 25287 game  23404.4 real 119.1 | prev released 24965 launched 23130.1 | launch->release 274.2 game s 27.4 real s
+gate 62b8 release 25763 game  23576.9 real 136.4 | prev released 25287 launched 23519.9 | launch->release 57.0 game s 5.7 real s
+gate 94b0 release 3920  game  24975.9 real 314.0 | prev released -     launched - | launch->release - game s - real s
+gate 94b0 release 4248  game  25154.5 real 340.0 | prev released 3920  launched 25099.0 | launch->release 55.4 game s 10.2 real s
+gate 94b0 release 4900  game  25347.0 real 372.7 | prev released 4248  launched - | launch->release - game s - real s
+gate 94b0 release 5412  game  25506.0 real 396.7 | prev released 4900  launched 25466.0 | launch->release 40.0 game s 6.9 real s
+gate 94b0 release 5612  game  25555.0 real 401.6 | prev released 5412  launched 25589.9 | launch->release -34.8 game s -3.5 real s
+gate 6db0 release 7087  game  25738.4 real 423.3 | prev released -     launched - | launch->release - game s - real s
+gate 6db0 release 4248  game  25875.1 real 437.0 | prev released 7087  launched 25866.5 | launch->release 8.6 game s 0.9 real s
+gate 6db0 release 4454  game  25921.2 real 441.6 | prev released 4248  launched 25947.0 | launch->release -25.8 game s -2.6 real s
+gate 7de8 release 10107 game  26485.1 real 553.2 | prev released -     launched - | launch->release - game s - real s
+gate 7de8 release 10048 game  26670.9 real 571.8 | prev released 10107 launched 26604.9 | launch->release 66.1 game s 6.6 real s
+gate 7de8 release 10149 game  26725.3 real 577.2 | prev released 10048 launched 26749.6 | launch->release -24.3 game s -2.4 real s

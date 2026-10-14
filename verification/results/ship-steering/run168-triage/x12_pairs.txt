@@ -1,0 +1,53 @@
+== ep1 inbound t0 25206.844
+  pair -3.58 4248-4454 kind order0 verdict clear before none why certified t_c_s -1.0 yielder none cap_ms -1.0 d_m 1424
+  pair -2.52 4248-4454 kind order0 verdict clear before none why certified t_c_s -1.0 yielder none cap_ms -1.0 d_m 1400
+  pair -1.51 4248-4454 kind order0 verdict clear before none why certified t_c_s -1.0 yielder none cap_ms -1.0 d_m 1385
+  pair -1.16 4454-4248 kind order0 verdict clear before none why certified t_c_s -1.0 yielder none cap_ms -1.0 d_m 1374
+  pair -1.01 4248-4454 kind verdict verdict unresolved before clear why - t_c_s 0.0 yielder none cap_ms -1.0 d_m 1372
+  pair -0.16 4454-4248 kind order0 verdict clear before none why certified t_c_s -1.0 yielder none cap_ms -1.0 d_m 1355
+  pair +0.00 4248-4454 kind e_pass verdict unresolved before none why order0 t_c_s 0.0 yielder none cap_ms -1.0 d_m 1353
+  pair +0.00 4454-4248 kind e_pass verdict unresolved before none why order0 t_c_s 0.0 yielder none cap_ms -1.0 d_m 1353
+  pair +0.00 4248-4454 kind order0 verdict unresolved before none why order0 t_c_s 0.0 yielder none cap_ms -1.0 d_m 1353
+  pair +0.01 4248-7087 kind e_pass verdict clear before none why on_0x12 t_c_s -1.0 yielder none cap_ms -1.0 d_m 5592
+  pair +0.01 7087-4248 kind e_pass verdict clear before none why on_0x12 t_c_s -1.0 yielder none cap_ms -1.0 d_m 5592
+  last 4248-4454 pair row before window: -39.4 s kind order0 verdict clear why certified d_m 2989
+  E verdicts: {('4248', '4454', '0x12', 'pass_a_avoid'): 1, ('4454', '4248', '0x0', 'pass_not_fresh'): 1, ('4248', '7087', '0x12', 'pass_a_avoid'): 1, ('7087', '4248', '0x4', 'suppress_member'): 1}
+  warn +0.01 A(obj, got 0x12) 4248 B(other) 4454 d_m 1351.8 r_m 1022.2
+  4248 first 0x12 +508.41 | 
+    ctl +0.02 escort>evicted why evict stage inbound>inbound petal 3
+    after: +25.5 evicted>escort escort none>none; +25.5 escort>escort inbound none>inbound; +508.1 escort>escort hold inbound>hold; +508.4 escort>evicted evict hold>hold
+  4454 first 0x12 +1.31 | -10: 0x14 v 50000 des 50000 eng 50534 | -5: 0x14 v 50000 des 50000 eng 51266 | -2: 0x14 v 50000 des 50000 eng 50000 | -1: 0x0 v 49611 des 0 eng 0 | -0.3: 0x0 v 47897 des 0 eng 0 | +0: 0x0 v 47158 des 0 eng 0
+    after: +1.3 escort>evicted evict inbound>inbound; +26.0 evicted>escort escort none>none; +26.0 escort>escort inbound none>inbound; +508.4 escort>evicted evict inbound>inbound
+  7087 first 0x12 +508.48 | 
+    after: +508.2 committed>committed hold inbound>hold; +508.5 committed>evicted evict hold>hold; +531.6 evicted>committed commit none>none; +531.6 committed>committed hold none>hold
+== ep2 hold entry t0 25715.253
+  pair -0.14 4248-4454 kind verdict verdict unresolved before clear why - t_c_s 3.0 yielder none cap_ms -1.0 d_m 2052
+  pair -0.07 4248-4454 kind e_pass verdict unresolved before none why unresolved t_c_s 3.0 yielder none cap_ms -1.0 d_m 2052
+  pair -0.07 4454-4248 kind e_pass verdict unresolved before none why unresolved t_c_s 3.0 yielder none cap_ms -1.0 d_m 2052
+  pair -0.07 4248-7087 kind order0 verdict clear before none why certified t_c_s -1.0 yielder none cap_ms -1.0 d_m 2885
+  pair -0.07 4248-4454 kind order0 verdict unresolved before none why order0 t_c_s 3.0 yielder none cap_ms -1.0 d_m 2052
+  pair -0.07 4454-7087 kind order0 verdict clear before none why certified t_c_s -1.0 yielder none cap_ms -1.0 d_m 2394
+  pair -0.07 4454-4248 kind order0 verdict unresolved before none why order0 t_c_s 3.0 yielder none cap_ms -1.0 d_m 2052
+  pair +0.00 4248-7087 kind e_pass verdict clear before none why on_0x12 t_c_s -1.0 yielder none cap_ms -1.0 d_m 2882
+  pair +0.00 7087-4248 kind e_pass verdict clear before none why on_0x12 t_c_s -1.0 yielder none cap_ms -1.0 d_m 2882
+  pair +0.00 4454-7087 kind e_pass verdict clear before none why on_0x12 t_c_s -1.0 yielder none cap_ms -1.0 d_m 2394
+  pair +0.00 7087-4454 kind e_pass verdict clear before none why on_0x12 t_c_s -1.0 yielder none cap_ms -1.0 d_m 2394
+  last 4248-4454 pair row before window: -16.1 s kind order0 verdict clear why certified d_m 2290
+  E verdicts: {('4454', '4248', '0x12', 'pass_a_avoid'): 1, ('4248', '4454', '0x12', 'pass_a_avoid'): 1, ('4248', '7087', '0x12', 'pass_a_avoid'): 1, ('7087', '4248', '0x12', 'pass_a_avoid'): 1, ('4454', '7087', '0x12', 'pass_a_avoid'): 1, ('7087', '4454', '0x12', 'pass_a_avoid'): 1}
+  warn +0.00 A(obj, got 0x12) 4248 B(other) 4454 d_m 2047.3 r_m 1022.2
+  warn +0.00 A(obj, got 0x12) 4454 B(other) 4248 d_m 2047.3 r_m 1091.5
+  warn +0.07 A(obj, got 0x12) 4248 B(other) 4454 d_m 2044.9 r_m 1022.2
+  warn +0.07 A(obj, got 0x12) 4454 B(other) 4248 d_m 2044.9 r_m 1091.5
+  warn +0.07 A(obj, got 0x12) 7087 B(other) 4248 d_m 2885.8 r_m 1091.5
+  warn +0.16 A(obj, got 0x12) 7087 B(other) 4248 d_m 2886.0 r_m 1091.5
+  4248 first 0x12 +0.00 | -10: 0x14 v 50000 des 50000 eng 46571 | -5: 0x14 v 40796 des 40484 eng 46910 | -2: 0x14 v 34160 des 33812 eng 47092 | -1: 0x14 v 31888 des 31888 eng 47121 | -0.3: 0x14 v 30233 des 30233 eng 47133 | +0: 0x12 v 29183 des 55000 eng 55000
+    ctl -0.28 escort>escort why hold stage inbound>hold petal 3
+    ctl +0.00 escort>evicted why evict stage hold>hold petal 3
+    after: +23.2 evicted>escort escort none>none; +23.2 escort>escort hold none>hold; +159.9 escort>committed commit hold>hold; +159.9 committed>committed release hold>funnel
+  4454 first 0x12 +0.00 | -10: 0x14 v 50000 des 50000 eng 55652 | -5: 0x14 v 50000 des 50000 eng 54787 | -2: 0x14 v 50000 des 50000 eng 44478 | -1: 0x14 v 50000 des 50000 eng 40900 | -0.3: 0x14 v 50000 des 30000 eng 38045 | +0: 0x12 v 49300 des 0 eng 0
+    ctl +0.00 escort>evicted why evict stage inbound>inbound petal 4
+    after: +51.9 evicted>escort escort none>none; +51.9 escort>escort inbound none>inbound; +87.6 escort>escort hold inbound>hold; +183.4 escort>committed commit hold>hold
+  7087 first 0x12 +0.07 | -10: 0x4 v 50000 des 50000 eng 55000 | -5: 0x4 v 44449 des 44240 eng 55000 | -2: 0x4 v 35474 des 35268 eng 55000 | -1: 0x4 v 32661 des 32428 eng 55000 | -0.3: 0x4 v 30414 des 30239 eng 55000 | +0: 0x0 v 30000 des 0 eng 0
+    ctl -0.21 committed>committed why hold stage inbound>hold petal 1
+    ctl +0.07 committed>evicted why evict stage hold>hold petal 1
+    after: +23.2 evicted>committed commit none>none; +23.2 committed>committed hold none>hold; +23.2 committed>committed release hold>funnel; +136.4 committed>committed handover funnel>funnel

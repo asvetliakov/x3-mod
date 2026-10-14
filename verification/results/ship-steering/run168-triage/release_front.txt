@@ -1,0 +1,15 @@
+gate id | release game | stage before | zx (src) | z - a1 m (window bound 866) | in front turn | nose.F | nose at X deg | later funnel>hold
+62b8 24965  | 23001.8 | hold>funnel | -4960 (own) | -5241 | no | 0.986 | 0.3 | 0
+62b8 25287  | 23404.4 | hold>funnel | -4814 (own) | -615 | no | 1.000 | 0.8 | 0
+62b8 25763  | 23576.9 | hold>funnel | -5099 (own) | -2613 | no | 0.482 | 0.3 | 0
+94b0 3920   | 24975.9 | hold>funnel | -4926 (own) | -4806 | no | 0.493 | 0.3 | 0
+94b0 4248   | 25154.5 | hold>funnel | -4733 (gate median) | -1105 | no | 0.987 | 0.3 | 0
+94b0 4900   | 25347.0 | hold>funnel | -5003 (own) | -4925 | no | 0.825 | 0.3 | 0
+94b0 5412   | 25506.0 | hold>funnel | -4407 (own) | -1332 | no | 0.998 | 1.2 | 0
+94b0 5612   | 25555.0 | hold>funnel | -4540 (own) | -18 | no | 0.988 | 0.3 | 0
+6db0 7087   | 25738.4 | hold>funnel | -4935 (own) | -3574 | no | 0.575 | 0.7 | 0
+6db0 4248   | 25875.1 | hold>funnel | -5122 (own) | -910 | no | 1.000 | 0.3 | 0
+6db0 4454   | 25921.2 | hold>funnel | -5032 (own) | -348 | no | 1.000 | 3.2 | 0
+7de8 10107  | 26485.1 | hold>funnel | -4922 (own) | -5232 | no | 0.995 | 0.3 | 0
+7de8 10048  | 26670.9 | hold>funnel | -4957 (own) | -1054 | no | 1.000 | 0.9 | 0
+7de8 10149  | 26725.3 | hold>funnel | -5057 (own) | -394 | no | 1.000 | 2.8 | 0

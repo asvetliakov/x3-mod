@@ -1,0 +1,490 @@
+frame 910 game_s 22670.3 real_s 22.9 | ctl_sb_us_max 7.5->5.2 dock_e_us_max 0.0->1.2
+frame 1137 game_s 22671.3 real_s 23.8 | ctl_sb_us_max 5.2->1.8
+frame 1352 game_s 22672.3 real_s 24.8 | ctl_sb_us_max 1.8->1.7 ctl_frame_us_max 10.6->11.3
+frame 1554 game_s 22673.3 real_s 25.8 | ctl_sb_us_max 1.7->1.4 ctl_frame_us_max 11.3->11.9
+frame 1940 game_s 22675.3 real_s 27.8 | ctl_sb_us_max 1.4->1.9 dock_e_us_max 1.2->1.3
+frame 2155 game_s 22676.3 real_s 28.8 | ctl_sb_us_max 1.9->1.3
+frame 2371 game_s 22677.3 real_s 29.8 | ctl_sb_us_max 1.3->13.6
+frame 2593 game_s 22678.3 real_s 30.9 | ctl_sb_us_max 13.6->1.4
+frame 3007 game_s 22684.7 real_s 32.8 | ctl_sb_us_max 1.4->2.2 ctl_frame_us_max 11.9->15.7
+frame 3159 game_s 22693.0 real_s 33.9 | ctl_sb_us_max 2.2->2.4 ctl_frame_us_max 15.7->16.6
+frame 3361 game_s 22697.5 real_s 34.8 | ctl_sb_us_max 2.4->1.1
+frame 3577 game_s 22698.5 real_s 35.9 | ctl_sb_us_max 1.1->1.6
+frame 3794 game_s 22699.5 real_s 36.9 | ctl_sb_us_max 1.6->1.3
+frame 4010 game_s 22700.5 real_s 37.8 | ctl_sb_us_max 1.3->1.2
+frame 4227 game_s 22701.5 real_s 38.8 | ctl_sb_us_max 1.2->1.3
+frame 4434 game_s 22704.2 real_s 39.8 | ctl_sb_us_max 1.3->1.4
+frame 4799 game_s 22719.8 real_s 41.9 | ctl_frame_us_max 16.6->25.5 ctl_decide_us_max 9.9->16.7
+frame 5132 game_s 22739.8 real_s 43.8 | ctl_sb_us_max 1.4->1.2
+frame 5291 game_s 22749.8 real_s 44.8 | ctl_sb_us_max 1.2->1.7
+frame 5458 game_s 22759.8 real_s 45.8 | ctl_sb_us_max 1.7->1.1
+frame 5594 game_s 22769.0 real_s 46.9 | ctl_sb_us_max 1.1->1.2
+frame 5759 game_s 22780.1 real_s 47.9 | ctl_sb_us_max 1.2->1.7
+frame 5930 game_s 22790.1 real_s 48.9 | ctl_sb_us_max 1.7->1.5
+frame 6099 game_s 22800.2 real_s 49.9 | ctl_sb_us_max 1.5->1.4
+frame 6254 game_s 22810.1 real_s 50.9 | ctl_sb_us_max 1.4->1.5
+frame 6402 game_s 22820.1 real_s 51.9 | ctl_sb_us_max 1.5->1.3
+frame 6556 game_s 22830.1 real_s 52.9 | ctl_sb_us_max 1.3->1.4
+frame 7563 game_s 22880.1 real_s 57.9 | ctl_sb_us_max 1.4->1.7
+frame 7775 game_s 22890.1 real_s 58.9 | ctl_sb_us_max 1.7->2.1
+frame 7987 game_s 22900.1 real_s 59.9 | ctl_sb_us_max 2.1->1.5
+frame 8201 game_s 22910.2 real_s 60.9 | ctl_sb_us_max 1.5->2.2
+frame 8409 game_s 22920.1 real_s 61.9 | ctl_sb_us_max 2.2->12.8
+frame 8613 game_s 22930.1 real_s 62.9 | ctl_sb_us_max 12.8->2.3
+frame 8831 game_s 22932.7 real_s 63.9 | ctl_sb_us_max 2.3->2.0
+frame 9051 game_s 22935.5 real_s 64.9 | ctl_sb_us_max 2.0->1.6
+frame 9269 game_s 22941.4 real_s 65.9 | ctl_sb_us_max 1.6->15.8
+frame 9491 game_s 22942.4 real_s 66.9 | ctl_sb_us_max 15.8->1.8
+frame 9710 game_s 22943.4 real_s 67.9 | ctl_sb_us_max 1.8->1.6
+frame 9924 game_s 22944.4 real_s 68.9 | ctl_sb_us_max 1.6->1.9 ctl_frame_us_max 25.5->29.8 ctl_decide_us_max 16.7->18.5
+frame 10137 game_s 22945.4 real_s 69.9 | ctl_sb_us_max 1.9->1.6
+frame 10949 game_s 22953.6 real_s 73.9 | ctl_sb_us_max 1.6->11.1
+frame 11119 game_s 22961.8 real_s 74.9 | ctl_sb_us_max 11.1->1.4
+frame 11280 game_s 22971.8 real_s 75.9 | ctl_sb_us_max 1.4->1.3
+frame 11437 game_s 22981.8 real_s 76.9 | ctl_sb_us_max 1.3->1.7
+frame 11592 game_s 22991.8 real_s 77.9 | ctl_sb_us_max 1.7->1.6
+frame 11751 game_s 23001.8 real_s 78.9 | ctl_releases 0->1 ctl_sb_pred 0->1 ctl_sb_us_max 1.6->15.2 dock_e_us_max 1.3->6.2
+frame 11915 game_s 23011.8 real_s 79.9 | ctl_sb_pred 1->10 ctl_sb_us_max 15.2->14.4
+frame 12071 game_s 23021.8 real_s 80.9 | ctl_sb_pred 10->20 ctl_sb_us_max 14.4->13.0
+frame 12223 game_s 23031.8 real_s 81.9 | ctl_sb_pred 20->30 ctl_sb_us_max 13.0->12.3
+frame 12381 game_s 23041.8 real_s 82.9 | ctl_sb_pred 30->40 ctl_sb_us_max 12.3->11.0
+frame 12542 game_s 23051.8 real_s 83.9 | ctl_sb_pred 40->49 ctl_sb_us_max 11.0->10.1
+frame 12701 game_s 23061.8 real_s 84.9 | ctl_sb_pred 49->59 ctl_sb_us_max 10.1->8.3
+frame 12859 game_s 23071.8 real_s 85.9 | ctl_sb_pred 59->69 ctl_sb_us_max 8.3->7.1
+frame 13012 game_s 23081.8 real_s 86.9 | ctl_evicted 0->1 ctl_sb_pred 69->78 ctl_sb_us_max 7.1->6.0
+frame 13175 game_s 23091.8 real_s 87.9 | ctl_sb_pred 78->88 ctl_sb_us_max 6.0->4.7
+frame 13325 game_s 23101.8 real_s 88.9 | ctl_sb_pred 88->98 ctl_sb_us_max 4.7->4.0
+frame 13482 game_s 23111.8 real_s 89.9 | ctl_sb_pred 98->108 ctl_sb_us_max 4.0->7.3
+frame 13632 game_s 23121.8 real_s 90.9 | ctl_p2_zeroed 0->1 ctl_sb_pred 108->111 ctl_sb_us_max 7.3->2.4
+frame 13785 game_s 23131.8 real_s 91.9 | ctl_sb_us_max 2.4->2.8
+frame 13984 game_s 23141.8 real_s 92.9 | ctl_sb_us_max 2.8->1.5
+frame 14174 game_s 23151.8 real_s 93.9 | ctl_sb_us_max 1.5->1.6
+frame 14538 game_s 23171.8 real_s 95.9 | ctl_sb_us_max 1.6->2.0
+frame 14910 game_s 23191.8 real_s 97.9 | ctl_sb_us_max 2.0->5.7
+frame 15091 game_s 23201.8 real_s 98.9 | ctl_sb_us_max 5.7->1.5
+frame 15259 game_s 23211.8 real_s 99.9 | ctl_sb_us_max 1.5->1.6
+frame 15436 game_s 23221.8 real_s 100.9 | ctl_sb_us_max 1.6->1.5
+frame 15608 game_s 23231.8 real_s 101.9 | ctl_sb_us_max 1.5->1.3
+frame 15781 game_s 23241.8 real_s 102.9 | ctl_sb_us_max 1.3->1.8
+frame 15959 game_s 23251.8 real_s 103.9 | ctl_sb_us_max 1.8->1.5
+frame 16133 game_s 23261.8 real_s 104.9 | ctl_sb_us_max 1.5->1.3
+frame 16468 game_s 23281.8 real_s 106.9 | ctl_sb_us_max 1.3->1.4
+frame 16638 game_s 23291.8 real_s 107.9 | ctl_sb_us_max 1.4->1.5
+frame 16809 game_s 23301.8 real_s 108.9 | ctl_sb_us_max 1.5->1.3
+frame 16978 game_s 23311.8 real_s 109.9 | ctl_sb_us_max 1.3->1.4
+frame 17146 game_s 23321.8 real_s 110.9 | ctl_sb_us_max 1.4->1.6
+frame 17306 game_s 23331.8 real_s 111.9 | ctl_sb_us_max 1.6->1.9
+frame 17466 game_s 23341.8 real_s 112.9 | ctl_sb_us_max 1.9->2.2
+frame 17626 game_s 23351.8 real_s 113.9 | ctl_sb_us_max 2.2->1.8
+frame 17965 game_s 23371.8 real_s 115.9 | ctl_sb_us_max 1.8->2.3
+frame 18136 game_s 23381.8 real_s 116.9 | ctl_sb_us_max 2.3->1.8
+frame 18301 game_s 23391.8 real_s 117.9 | ctl_sb_us_max 1.8->2.1
+frame 18465 game_s 23401.8 real_s 118.9 | ctl_sb_us_max 2.1->1.7
+frame 18627 game_s 23411.8 real_s 119.9 | ctl_releases 1->2 ctl_sb_pred 111->127 ctl_sb_us_max 1.7->22.0
+frame 18795 game_s 23421.8 real_s 120.9 | ctl_sb_pred 127->147 ctl_sb_us_max 22.0->20.9
+frame 18968 game_s 23431.8 real_s 121.9 | ctl_sb_pred 147->165 ctl_sb_us_max 20.9->18.5
+frame 19137 game_s 23441.8 real_s 122.9 | ctl_sb_pred 165->185 ctl_sb_us_max 18.5->16.9
+frame 19301 game_s 23451.8 real_s 123.9 | ctl_sb_pred 185->205 ctl_sb_us_max 16.9->15.3
+frame 19464 game_s 23461.8 real_s 124.9 | ctl_sb_pred 205->225 ctl_sb_us_max 15.3->13.7
+frame 19634 game_s 23471.8 real_s 125.9 | ctl_sb_pred 225->239 ctl_sb_us_max 13.7->11.6 dock_e_us_max 6.2->6.3
+frame 19802 game_s 23481.8 real_s 126.9 | ctl_sb_pred 239->259 ctl_sb_us_max 11.6->10.1
+frame 19971 game_s 23491.8 real_s 127.9 | ctl_sb_pred 259->274 ctl_sb_us_max 10.1->7.8
+frame 20137 game_s 23501.8 real_s 128.9 | ctl_sb_pred 274->284 ctl_sb_us_max 7.8->3.6
+frame 20303 game_s 23511.8 real_s 129.9 | ctl_p2_zeroed 1->2 ctl_sb_pred 284->286 ctl_sb_us_max 3.6->2.1
+frame 20467 game_s 23521.8 real_s 130.9 | ctl_sb_us_max 2.1->15.1
+frame 20652 game_s 23531.8 real_s 131.9 | ctl_sb_us_max 15.1->1.8
+frame 20830 game_s 23541.8 real_s 132.9 | ctl_sb_us_max 1.8->1.6
+frame 21018 game_s 23551.8 real_s 133.9 | ctl_sb_us_max 1.6->2.1
+frame 21206 game_s 23561.8 real_s 134.9 | ctl_sb_us_max 2.1->2.8
+frame 21392 game_s 23571.8 real_s 135.9 | ctl_sb_us_max 2.8->1.9
+frame 21575 game_s 23581.8 real_s 136.9 | ctl_releases 2->3 ctl_sb_pred 286->291 ctl_sb_us_max 1.9->12.0
+frame 21760 game_s 23591.8 real_s 137.9 | ctl_sb_pred 291->301 ctl_sb_us_max 12.0->10.8
+frame 21949 game_s 23601.8 real_s 138.9 | ctl_sb_pred 301->311 ctl_sb_us_max 10.8->9.6
+frame 22141 game_s 23611.8 real_s 139.9 | ctl_sb_pred 311->321 ctl_sb_us_max 9.6->8.7
+frame 22331 game_s 23621.8 real_s 140.9 | ctl_sb_pred 321->330 ctl_sb_us_max 8.7->7.6
+frame 22523 game_s 23631.8 real_s 141.9 | ctl_sb_pred 330->340 ctl_sb_us_max 7.6->6.4
+frame 22706 game_s 23641.8 real_s 142.9 | ctl_sb_pred 340->350 ctl_sb_us_max 6.4->5.0
+frame 22888 game_s 23651.8 real_s 143.9 | ctl_sb_pred 350->360 ctl_sb_us_max 5.0->3.5
+frame 23078 game_s 23661.8 real_s 144.9 | ctl_p2_zeroed 2->3 ctl_sb_pred 360->369 ctl_sb_us_max 3.5->2.7
+frame 23262 game_s 23671.8 real_s 145.9 | ctl_sb_us_max 2.7->1.4
+frame 23460 game_s 23681.8 real_s 146.9 | ctl_sb_us_max 1.4->1.5
+frame 23683 game_s 23691.8 real_s 147.9 | ctl_sb_us_max 1.5->1.0
+frame 23905 game_s 23701.8 real_s 148.9 | ctl_sb_us_max 1.0->0.6
+frame 24117 game_s 23711.8 real_s 149.9 | ctl_sb_us_max 0.6->0.9
+frame 24332 game_s 23721.8 real_s 150.9 | ctl_sb_us_max 0.9->0.8
+frame 24553 game_s 23731.8 real_s 151.9 | ctl_sb_us_max 0.8->0.6
+frame 24773 game_s 23741.8 real_s 152.9 | ctl_sb_us_max 0.6->0.8
+frame 24990 game_s 23751.8 real_s 153.9 | ctl_sb_us_max 0.8->0.7
+frame 25210 game_s 23761.8 real_s 154.9 | ctl_sb_us_max 0.7->0.9
+frame 25428 game_s 23771.8 real_s 155.9 | ctl_sb_us_max 0.9->0.7
+frame 25649 game_s 23781.8 real_s 156.9 | ctl_sb_us_max 0.7->0.8
+frame 26084 game_s 23801.8 real_s 158.9 | ctl_sb_us_max 0.8->0.9
+frame 26305 game_s 23808.3 real_s 159.9 | ctl_sb_us_max 0.9->0.7
+frame 26537 game_s 23809.3 real_s 160.9 | ctl_sb_us_max 0.7->0.8
+frame 26769 game_s 23810.3 real_s 161.9 | ctl_sb_us_max 0.8->0.9
+frame 27004 game_s 23811.3 real_s 162.9 | dock_e_us_max 6.3->11.6
+frame 27240 game_s 23812.3 real_s 163.9 | ctl_sb_us_max 0.9->0.8
+frame 28415 game_s 23817.3 real_s 168.9 | ctl_sb_us_max 0.8->0.9
+frame 28647 game_s 23818.3 real_s 169.9 | dock_e_us_max 11.6->15.0
+frame 29116 game_s 23820.3 real_s 171.9 | ctl_sb_us_max 0.9->0.8
+frame 30285 game_s 23825.3 real_s 176.9 | ctl_sb_us_max 0.8->1.4
+frame 30521 game_s 23826.3 real_s 177.9 | ctl_sb_us_max 1.4->0.7
+frame 30737 game_s 23827.3 real_s 178.9 | ctl_sb_us_max 0.7->0.9
+frame 30968 game_s 23828.3 real_s 179.9 | ctl_sb_us_max 0.9->0.8
+frame 31434 game_s 23830.3 real_s 181.9 | ctl_sb_us_max 0.8->0.6
+frame 31667 game_s 23831.3 real_s 182.9 | ctl_sb_us_max 0.6->0.8
+frame 31899 game_s 23832.3 real_s 183.9 | ctl_sb_us_max 0.8->0.7
+frame 32133 game_s 23833.3 real_s 184.9 | ctl_sb_us_max 0.7->1.2
+frame 32370 game_s 23834.3 real_s 185.9 | ctl_sb_us_max 1.2->0.9
+frame 32604 game_s 23835.7 real_s 186.9 | ctl_sb_us_max 0.9->1.0
+frame 32832 game_s 23840.2 real_s 187.9 | ctl_sb_us_max 1.0->0.9
+frame 33059 game_s 23848.2 real_s 188.9 | ctl_sb_us_max 0.9->0.7
+frame 33279 game_s 23858.2 real_s 189.9 | ctl_sb_us_max 0.7->0.8
+frame 33935 game_s 23888.2 real_s 192.9 | ctl_sb_us_max 0.8->1.2
+frame 34155 game_s 23898.2 real_s 193.9 | ctl_sb_us_max 1.2->0.9
+frame 34374 game_s 23908.2 real_s 194.9 | ctl_sb_us_max 0.9->0.7
+frame 34818 game_s 23922.9 real_s 196.9 | ctl_sb_us_max 0.7->0.9
+frame 35949 game_s 23958.2 real_s 201.9 | ctl_sb_us_max 0.9->0.6
+frame 36169 game_s 23968.2 real_s 202.9 | ctl_sb_us_max 0.6->0.9
+frame 36395 game_s 23978.2 real_s 203.9 | ctl_sb_us_max 0.9->0.7
+frame 36612 game_s 23988.2 real_s 204.9 | ctl_sb_us_max 0.7->0.9
+frame 36835 game_s 23998.2 real_s 205.9 | ctl_sb_us_max 0.9->0.8
+frame 37262 game_s 24018.2 real_s 207.9 | ctl_sb_us_max 0.8->1.0
+frame 37476 game_s 24028.2 real_s 208.9 | ctl_sb_us_max 1.0->0.8
+frame 37700 game_s 24038.2 real_s 209.9 | ctl_sb_us_max 0.8->0.7
+frame 37910 game_s 24048.2 real_s 210.9 | ctl_sb_us_max 0.7->0.8
+frame 38563 game_s 24078.2 real_s 213.9 | ctl_sb_us_max 0.8->1.2
+frame 38989 game_s 24098.2 real_s 215.9 | ctl_sb_us_max 1.2->1.5
+frame 39198 game_s 24108.2 real_s 216.9 | ctl_sb_us_max 1.5->0.7
+frame 39393 game_s 24118.2 real_s 217.9 | ctl_sb_us_max 0.7->1.5
+frame 39606 game_s 24128.2 real_s 218.9 | ctl_sb_us_max 1.5->1.3
+frame 39796 game_s 24138.2 real_s 219.9 | dock_e_us_max 15.0->16.2
+frame 40006 game_s 24148.2 real_s 220.9 | ctl_sb_us_max 1.3->9.9
+frame 40206 game_s 24158.2 real_s 221.9 | ctl_sb_us_max 9.9->1.3
+frame 40631 game_s 24178.2 real_s 223.9 | ctl_sb_us_max 1.3->1.2
+frame 41052 game_s 24198.2 real_s 225.9 | ctl_sb_us_max 1.2->1.3
+frame 41685 game_s 24228.1 real_s 228.9 | ctl_sb_us_max 1.3->1.4
+frame 41899 game_s 24238.2 real_s 229.9 | ctl_sb_us_max 1.4->1.3
+frame 42119 game_s 24248.2 real_s 230.9 | ctl_sb_us_max 1.3->1.4
+frame 42326 game_s 24258.2 real_s 231.9 | ctl_sb_us_max 1.4->1.3
+frame 42946 game_s 24288.2 real_s 234.9 | ctl_sb_us_max 1.3->2.0
+frame 43118 game_s 24298.2 real_s 235.9 | arr_offset_capital 0->1 ctl_sb_us_max 2.0->2.6
+frame 43300 game_s 24308.2 real_s 236.9 | ctl_sb_us_max 2.6->1.8
+frame 43487 game_s 24318.2 real_s 237.9 | ctl_sb_us_max 1.8->2.1
+frame 43633 game_s 24328.0 real_s 238.9 | ctl_sb_us_max 2.1->2.0
+frame 43782 game_s 24338.2 real_s 239.9 | ctl_sb_us_max 2.0->1.8
+frame 43943 game_s 24348.2 real_s 240.9 | ctl_sb_us_max 1.8->1.9
+frame 44109 game_s 24358.2 real_s 241.9 | ctl_sb_us_max 1.9->6.9
+frame 44257 game_s 24368.1 real_s 242.9 | arr_offset_capital 1->2 ctl_sb_us_max 6.9->2.1
+frame 44407 game_s 24378.2 real_s 243.9 | ctl_sb_us_max 2.1->2.0
+frame 44556 game_s 24388.2 real_s 244.9 | ctl_sb_us_max 2.0->1.9
+frame 44703 game_s 24398.2 real_s 245.9 | ctl_sb_us_max 1.9->2.0
+frame 44850 game_s 24408.2 real_s 246.9 | ctl_sb_us_max 2.0->2.1
+frame 44991 game_s 24418.1 real_s 247.9 | ctl_sb_us_max 2.1->2.0
+frame 45111 game_s 24428.2 real_s 248.9 | arr_offset_capital 2->3 ctl_sb_us_max 2.0->2.4
+frame 45238 game_s 24438.1 real_s 249.9 | ctl_sb_us_max 2.4->2.0
+frame 45370 game_s 24448.2 real_s 250.9 | ctl_sb_us_max 2.0->2.2
+frame 45507 game_s 24458.2 real_s 251.9 | ctl_sb_us_max 2.2->2.1
+frame 45641 game_s 24468.1 real_s 252.9 | ctl_sb_us_max 2.1->2.3
+frame 45772 game_s 24478.2 real_s 253.9 | ctl_sb_us_max 2.3->2.2
+frame 45895 game_s 24488.2 real_s 254.9 | arr_offset_capital 3->4 ctl_sb_us_max 2.2->2.1
+frame 46006 game_s 24498.1 real_s 255.9 | ctl_sb_us_max 2.1->2.8
+frame 46117 game_s 24508.2 real_s 256.9 | ctl_sb_us_max 2.8->2.6
+frame 46236 game_s 24518.1 real_s 257.9 | ctl_sb_us_max 2.6->2.4
+frame 46361 game_s 24528.2 real_s 258.9 | ctl_sb_us_max 2.4->2.7
+frame 46490 game_s 24538.2 real_s 259.9 | ctl_sb_us_max 2.7->2.5
+frame 46622 game_s 24548.1 real_s 261.1 | arr_offset_capital 4->5 ctl_sb_us_max 2.5->4.7
+frame 46744 game_s 24560.0 real_s 262.1 | ctl_sb_us_max 4.7->3.3
+frame 46872 game_s 24570.0 real_s 263.1 | ctl_sb_us_max 3.3->1.9
+frame 46997 game_s 24580.0 real_s 264.1 | ctl_sb_us_max 1.9->2.5
+frame 47127 game_s 24590.0 real_s 265.1 | ctl_sb_us_max 2.5->1.8
+frame 47267 game_s 24600.0 real_s 266.1 | ctl_sb_us_max 1.8->1.9
+frame 47411 game_s 24610.0 real_s 267.1 | ctl_sb_us_max 1.9->2.3
+frame 47553 game_s 24620.0 real_s 268.1 | ctl_sb_us_max 2.3->1.9
+frame 47687 game_s 24629.4 real_s 269.1 | arr_offset_capital 5->6 ctl_sb_us_max 1.9->2.3
+frame 47818 game_s 24640.5 real_s 270.1 | ctl_sb_us_max 2.3->2.0
+frame 48101 game_s 24660.5 real_s 272.1 | ctl_sb_us_max 2.0->1.9
+frame 48241 game_s 24670.5 real_s 273.1 | ctl_sb_us_max 1.9->3.0
+frame 48394 game_s 24680.5 real_s 274.1 | ctl_sb_us_max 3.0->1.9
+frame 48536 game_s 24690.5 real_s 275.1 | ctl_sb_us_max 1.9->2.3
+frame 48703 game_s 24696.0 real_s 276.1 | ctl_sb_us_max 2.3->1.8
+frame 48850 game_s 24697.0 real_s 277.1 | ctl_sb_us_max 1.8->2.5
+frame 48997 game_s 24698.0 real_s 278.1 | ctl_sb_us_max 2.5->1.8
+frame 49147 game_s 24699.0 real_s 279.1 | ctl_sb_us_max 1.8->2.7 dock_e_us_max 16.2->17.2
+frame 49294 game_s 24700.8 real_s 280.1 | ctl_sb_us_max 2.7->2.1
+frame 49430 game_s 24706.1 real_s 281.1 | ctl_sb_us_max 2.1->2.9
+frame 49552 game_s 24714.8 real_s 282.1 | ctl_sb_us_max 2.9->1.9
+frame 49668 game_s 24724.8 real_s 283.1 | ctl_sb_us_max 1.9->2.3
+frame 49785 game_s 24734.8 real_s 284.1 | ctl_sb_us_max 2.3->1.8
+frame 49906 game_s 24744.8 real_s 285.1 | ctl_sb_us_max 1.8->2.4
+frame 50025 game_s 24754.8 real_s 286.1 | ctl_sb_us_max 2.4->2.1
+frame 50272 game_s 24774.8 real_s 288.1 | ctl_sb_us_max 2.1->2.4
+frame 50397 game_s 24784.8 real_s 289.1 | ctl_sb_us_max 2.4->1.8
+frame 50493 game_s 24794.4 real_s 290.2 | ctl_sb_us_max 1.8->3.4
+frame 50609 game_s 24804.7 real_s 291.1 | ctl_sb_us_max 3.4->2.5
+frame 50741 game_s 24811.8 real_s 292.1 | ctl_sb_us_max 2.5->1.9
+frame 51094 game_s 24813.8 real_s 294.1 | ctl_sb_us_max 1.9->2.0
+frame 51250 game_s 24814.9 real_s 295.1 | ctl_sb_us_max 2.0->1.9
+frame 51400 game_s 24818.5 real_s 296.1 | ctl_sb_us_max 1.9->2.0
+frame 51547 game_s 24825.6 real_s 297.1 | ctl_sb_us_max 2.0->1.9
+frame 51681 game_s 24835.5 real_s 298.1 | ctl_sb_us_max 1.9->2.0
+frame 51957 game_s 24842.7 real_s 300.1 | ctl_sb_us_max 2.0->1.8
+frame 52094 game_s 24848.4 real_s 301.1 | ctl_sb_us_max 1.8->2.6
+frame 52204 game_s 24857.4 real_s 302.1 | ctl_sb_us_max 2.6->2.1
+frame 52324 game_s 24867.5 real_s 303.1 | ctl_sb_us_max 2.1->5.5
+frame 52442 game_s 24877.4 real_s 304.1 | ctl_sb_us_max 5.5->1.9
+frame 52571 game_s 24887.5 real_s 305.1 | ctl_sb_us_max 1.9->15.9
+frame 52700 game_s 24897.4 real_s 306.1 | ctl_sb_us_max 15.9->2.0
+frame 52828 game_s 24907.4 real_s 307.1 | ctl_sb_us_max 2.0->1.9
+frame 52957 game_s 24917.4 real_s 308.1 | ctl_frame_us_max 29.8->60.3 ctl_decide_us_max 18.5->49.2
+frame 53086 game_s 24927.4 real_s 309.1 | ctl_sb_us_max 1.9->3.5
+frame 53226 game_s 24937.4 real_s 310.1 | ctl_sb_us_max 3.5->1.9
+frame 53503 game_s 24957.4 real_s 312.1 | ctl_sb_us_max 1.9->2.3
+frame 53639 game_s 24967.4 real_s 313.1 | ctl_sb_us_max 2.3->2.5
+frame 53771 game_s 24977.4 real_s 314.1 | ctl_releases 3->4 ctl_sb_pred 369->371 ctl_sb_us_max 2.5->13.9
+frame 53899 game_s 24987.4 real_s 315.1 | ctl_sb_pred 371->381 ctl_sb_us_max 13.9->14.2
+frame 54039 game_s 24997.4 real_s 316.1 | ctl_sb_pred 381->390 ctl_sb_us_max 14.2->12.4
+frame 54197 game_s 25007.4 real_s 317.1 | ctl_sb_pred 390->400 ctl_sb_us_max 12.4->11.4
+frame 54365 game_s 25017.4 real_s 318.1 | ctl_sb_pred 400->410 ctl_sb_us_max 11.4->10.2
+frame 54532 game_s 25027.4 real_s 319.1 | ctl_sb_pred 410->420 ctl_sb_us_max 10.2->8.5
+frame 54732 game_s 25037.4 real_s 320.1 | ctl_sb_pred 420->429 ctl_sb_us_max 8.5->7.3
+frame 54937 game_s 25047.4 real_s 321.1 | ctl_sb_pred 429->439 ctl_sb_us_max 7.3->6.7
+frame 55139 game_s 25057.5 real_s 322.1 | ctl_sb_pred 439->449 ctl_sb_us_max 6.7->5.1
+frame 55353 game_s 25064.8 real_s 323.1 | ctl_sb_pred 449->456 ctl_sb_us_max 5.1->4.6
+frame 55579 game_s 25065.8 real_s 324.1 | ctl_sb_pred 456->457 ctl_sb_us_max 4.6->25.9
+frame 55768 game_s 25068.6 real_s 325.1 | ctl_sb_pred 457->460 ctl_sb_us_max 25.9->4.5
+frame 55953 game_s 25070.3 real_s 326.1 | ctl_sb_pred 460->462 ctl_sb_us_max 4.5->4.4
+frame 56124 game_s 25075.0 real_s 327.1 | ctl_sb_pred 462->466 ctl_sb_us_max 4.4->4.2
+frame 56279 game_s 25083.3 real_s 328.1 | ctl_sb_pred 466->475 ctl_sb_us_max 4.2->3.4
+frame 56416 game_s 25093.3 real_s 329.1 | ctl_p2_zeroed 3->4 ctl_sb_pred 475->476 ctl_sb_us_max 3.4->2.3
+frame 56567 game_s 25103.3 real_s 330.1 | ctl_sb_us_max 2.3->2.1
+frame 56967 game_s 25106.3 real_s 332.1 | ctl_sb_us_max 2.1->2.0
+frame 57358 game_s 25108.3 real_s 334.1 | ctl_sb_us_max 2.0->1.9
+frame 57547 game_s 25110.7 real_s 335.1 | ctl_sb_us_max 1.9->2.0
+frame 57728 game_s 25116.8 real_s 336.1 | ctl_sb_us_max 2.0->2.9
+frame 57887 game_s 25126.2 real_s 337.1 | ctl_sb_us_max 2.9->2.7
+frame 58049 game_s 25136.2 real_s 338.1 | ctl_sb_us_max 2.7->2.8
+frame 58387 game_s 25156.2 real_s 340.1 | ctl_releases 4->5 ctl_sb_pred 476->480 ctl_sb_us_max 2.8->20.2
+frame 58545 game_s 25166.2 real_s 341.1 | ctl_sb_pred 480->491 arr_offset_capital 6->7 ctl_sb_us_max 20.2->20.3
+frame 58688 game_s 25176.2 real_s 342.1 | ctl_sb_us_max 20.3->2.6
+frame 58840 game_s 25186.2 real_s 343.1 | ctl_released 0->6 ctl_yields 0->17 ctl_conflicts 0->17 ctl_sb_us_max 2.6->2.4
+frame 58987 game_s 25196.2 real_s 344.1 | ctl_released 6->9 ctl_yields 17->20 ctl_conflicts 17->20
+frame 59132 game_s 25204.7 real_s 345.1 | ctl_released 9->32 ctl_yields 20->43 ctl_conflicts 20->43 ctl_sb_us_max 2.4->2.7
+frame 59310 game_s 25205.7 real_s 346.1 | ctl_released 32->37 ctl_yields 43->48 ctl_conflicts 43->48 ctl_sb_us_max 2.7->2.5
+frame 59530 game_s 25206.7 real_s 347.1 | ctl_conflicts 48->53 ctl_sb_us_max 2.5->11.9
+frame 59750 game_s 25208.1 real_s 348.1 | ctl_conflicts 53->55 ctl_evicted 1->2 ctl_sb_us_max 11.9->3.0
+frame 59967 game_s 25212.5 real_s 349.1 | ctl_evicted 2->3 ctl_sb_us_max 3.0->3.2
+frame 60187 game_s 25214.6 real_s 350.1 | ctl_sb_us_max 3.2->2.4
+frame 60411 game_s 25215.6 real_s 351.1 | ctl_sb_us_max 2.4->12.5
+frame 60633 game_s 25216.8 real_s 352.1 | ctl_sb_us_max 12.5->3.5
+frame 60813 game_s 25217.8 real_s 353.1 | ctl_sb_us_max 3.5->2.6
+frame 60987 game_s 25220.7 real_s 354.1 | ctl_sb_us_max 2.6->2.4
+frame 61142 game_s 25227.2 real_s 355.1 | ctl_sb_us_max 2.4->2.6
+frame 61294 game_s 25236.0 real_s 356.1 | ctl_sb_us_max 2.6->2.3
+frame 61472 game_s 25237.2 real_s 357.1 | ctl_sb_us_max 2.3->2.4
+frame 61639 game_s 25241.2 real_s 358.1 | ctl_sb_us_max 2.4->2.5
+frame 61942 game_s 25258.7 real_s 360.1 | ctl_sb_us_max 2.5->2.4
+frame 62253 game_s 25273.4 real_s 362.1 | ctl_sb_us_max 2.4->2.6
+frame 62456 game_s 25274.4 real_s 363.1 | ctl_sb_us_max 2.6->2.5
+frame 62679 game_s 25275.4 real_s 364.1 | ctl_sb_us_max 2.5->2.4
+frame 62899 game_s 25277.2 real_s 365.1 | ctl_sb_us_max 2.4->3.3
+frame 63114 game_s 25282.3 real_s 366.1 | ctl_sb_us_max 3.3->12.4
+frame 63317 game_s 25291.0 real_s 367.1 | ctl_sb_us_max 12.4->2.8
+frame 63517 game_s 25301.0 real_s 368.1 | ctl_sb_us_max 2.8->2.4
+frame 63902 game_s 25321.0 real_s 370.1 | ctl_sb_us_max 2.4->2.8
+frame 64099 game_s 25331.0 real_s 371.1 | ctl_sb_us_max 2.8->2.4
+frame 64292 game_s 25341.0 real_s 372.2 | ctl_sb_us_max 2.4->2.8
+frame 64484 game_s 25351.0 real_s 373.1 | ctl_releases 5->6 ctl_sb_pred 491->496 ctl_sb_us_max 2.8->14.0
+frame 64687 game_s 25361.0 real_s 374.1 | ctl_sb_pred 496->505 ctl_sb_us_max 14.0->13.1
+frame 64890 game_s 25371.0 real_s 375.1 | ctl_sb_pred 505->515 ctl_sb_us_max 13.1->11.9
+frame 65098 game_s 25381.0 real_s 376.1 | ctl_sb_pred 515->525 ctl_sb_us_max 11.9->10.9
+frame 65308 game_s 25388.6 real_s 377.1 | ctl_conflicts 55->57 ctl_sb_pred 525->532 ctl_sb_us_max 10.9->9.7
+frame 65526 game_s 25389.6 real_s 378.1 | ctl_sb_pred 532->533 ctl_sb_us_max 9.7->9.0
+frame 65735 game_s 25390.7 real_s 379.1 | ctl_sb_pred 533->534 ctl_sb_us_max 9.0->8.9
+frame 65950 game_s 25391.9 real_s 380.1 | ctl_sb_pred 534->536 ctl_sb_us_max 8.9->8.8
+frame 66155 game_s 25392.9 real_s 381.1 | ctl_sb_pred 536->537
+frame 66347 game_s 25395.1 real_s 382.1 | ctl_sb_pred 537->539 ctl_sb_us_max 8.8->8.6
+frame 66514 game_s 25400.9 real_s 383.1 | ctl_sb_pred 539->545 ctl_sb_us_max 8.6->8.4
+frame 66654 game_s 25410.0 real_s 384.1 | ctl_sb_pred 545->553 ctl_sb_us_max 8.4->8.0
+frame 66786 game_s 25420.0 real_s 385.1 | ctl_sb_pred 553->563 ctl_sb_us_max 8.0->6.9
+frame 66918 game_s 25430.0 real_s 386.1 | ctl_sb_pred 563->573 ctl_sb_us_max 6.9->6.1
+frame 67036 game_s 25439.9 real_s 387.1 | ctl_sb_pred 573->582 ctl_sb_us_max 6.1->5.5
+frame 67153 game_s 25450.0 real_s 388.1 | ctl_p2_zeroed 4->5 ctl_sb_pred 582->590 ctl_sb_us_max 5.5->4.4
+frame 67273 game_s 25460.0 real_s 389.1 | ctl_sb_us_max 4.4->2.9
+frame 67548 game_s 25467.8 real_s 391.1 | ctl_sb_us_max 2.9->6.4
+frame 67695 game_s 25469.0 real_s 392.1 | ctl_sb_us_max 6.4->2.6
+frame 67830 game_s 25473.1 real_s 393.1 | ctl_sb_us_max 2.6->2.8
+frame 68070 game_s 25490.8 real_s 395.2 | ctl_sb_us_max 2.8->2.6
+frame 68181 game_s 25500.8 real_s 396.1 | ctl_sb_us_max 2.6->4.3
+frame 68296 game_s 25510.8 real_s 397.1 | ctl_releases 6->7 ctl_sb_pred 590->595 ctl_sb_us_max 4.3->10.9
+frame 68407 game_s 25520.8 real_s 398.2 | ctl_sb_pred 595->605 ctl_sb_us_max 10.9->10.6
+frame 68524 game_s 25530.8 real_s 399.1 | ctl_sb_pred 605->614 ctl_sb_us_max 10.6->9.4
+frame 68646 game_s 25540.8 real_s 400.2 | ctl_sb_pred 614->624 ctl_sb_us_max 9.4->8.1
+frame 68765 game_s 25550.8 real_s 401.1 | ctl_sb_pred 624->633 ctl_sb_us_max 8.1->6.6
+frame 68884 game_s 25560.8 real_s 402.1 | ctl_releases 7->8 ctl_sb_pred 633->655 ctl_sb_us_max 6.6->22.0
+frame 69004 game_s 25570.8 real_s 403.2 | ctl_p2_zeroed 5->6 ctl_sb_pred 655->684 ctl_sb_us_max 22.0->23.0
+frame 69124 game_s 25580.8 real_s 404.1 | ctl_sb_pred 684->704 ctl_sb_us_max 23.0->18.5
+frame 69245 game_s 25590.8 real_s 405.2 | ctl_sb_pred 704->722 ctl_sb_us_max 18.5->16.9
+frame 69370 game_s 25600.8 real_s 406.1 | ctl_sb_pred 722->742 ctl_sb_us_max 16.9->15.1
+frame 69496 game_s 25610.8 real_s 407.1 | ctl_sb_pred 742->762 ctl_sb_us_max 15.1->15.5
+frame 69618 game_s 25620.8 real_s 408.1 | ctl_sb_pred 762->780 ctl_sb_us_max 15.5->9.8
+frame 69747 game_s 25630.8 real_s 409.1 | ctl_sb_pred 780->793 ctl_sb_us_max 9.8->9.5
+frame 69878 game_s 25640.5 real_s 410.1 | ctl_sb_pred 793->802 ctl_sb_us_max 9.5->4.5
+frame 70063 game_s 25641.5 real_s 411.1 | ctl_sb_pred 802->803 ctl_sb_us_max 4.5->3.3
+frame 70272 game_s 25642.5 real_s 412.1 | ctl_sb_pred 803->804 ctl_sb_us_max 3.3->3.1
+frame 70478 game_s 25643.9 real_s 413.1 | ctl_p2_zeroed 6->7 ctl_sb_pred 804->805 ctl_sb_us_max 3.1->3.3
+frame 70643 game_s 25648.4 real_s 414.1 | ctl_sb_us_max 3.3->2.7
+frame 70911 game_s 25666.5 real_s 416.1 | ctl_sb_us_max 2.7->3.2
+frame 71042 game_s 25676.5 real_s 417.1 | ctl_sb_us_max 3.2->2.3
+frame 71167 game_s 25686.5 real_s 418.1 | ctl_sb_us_max 2.3->2.0
+frame 71300 game_s 25696.5 real_s 419.2 | ctl_sb_us_max 2.0->2.1
+frame 71564 game_s 25716.5 real_s 421.1 | ctl_released 37->38 ctl_yields 48->49 ctl_conflicts 57->59 ctl_evicted 3->6 ctl_sb_us_max 2.1->2.5
+frame 71703 game_s 25726.5 real_s 422.1 | ctl_sb_us_max 2.5->1.3
+frame 71975 game_s 25746.5 real_s 424.1 | ctl_releases 8->9 ctl_sb_pred 805->813 ctl_sb_us_max 1.3->15.9
+frame 72101 game_s 25756.5 real_s 425.1 | ctl_sb_pred 813->823 ctl_sb_us_max 15.9->14.4
+frame 72234 game_s 25766.5 real_s 426.1 | ctl_sb_pred 823->832 ctl_sb_us_max 14.4->15.0
+frame 72365 game_s 25776.5 real_s 427.2 | ctl_sb_pred 832->842 ctl_sb_us_max 15.0->12.7
+frame 72502 game_s 25786.5 real_s 428.1 | ctl_sb_pred 842->852 ctl_sb_us_max 12.7->11.8
+frame 72632 game_s 25796.5 real_s 429.1 | ctl_sb_pred 852->862 ctl_sb_us_max 11.8->10.2
+frame 72763 game_s 25806.5 real_s 430.1 | ctl_sb_pred 862->871 ctl_sb_us_max 10.2->10.6
+frame 72896 game_s 25816.5 real_s 431.1 | ctl_sb_pred 871->881 ctl_sb_us_max 10.6->9.8
+frame 73028 game_s 25826.5 real_s 432.1 | ctl_sb_pred 881->891 ctl_sb_us_max 9.8->6.6
+frame 73158 game_s 25836.5 real_s 433.1 | ctl_sb_pred 891->900 ctl_sb_us_max 6.6->5.0
+frame 73287 game_s 25846.5 real_s 434.1 | ctl_sb_pred 900->910 ctl_sb_us_max 5.0->4.1
+frame 73413 game_s 25856.5 real_s 435.1 | ctl_p2_zeroed 7->8 ctl_sb_pred 910->915 ctl_sb_us_max 4.1->3.3
+frame 73540 game_s 25866.5 real_s 436.1 | ctl_sb_us_max 3.3->3.2
+frame 73690 game_s 25876.5 real_s 437.1 | ctl_releases 9->10 ctl_sb_pred 915->917 ctl_sb_us_max 3.2->9.5
+frame 73843 game_s 25886.5 real_s 438.1 | ctl_sb_pred 917->927 ctl_sb_us_max 9.5->9.2
+frame 73985 game_s 25896.5 real_s 439.1 | ctl_sb_pred 927->936 ctl_sb_us_max 9.2->8.6
+frame 74129 game_s 25906.5 real_s 440.1 | ctl_sb_pred 936->946 ctl_sb_us_max 8.6->6.7
+frame 74274 game_s 25916.5 real_s 441.1 | ctl_sb_pred 946->956 ctl_sb_us_max 6.7->28.3
+frame 74420 game_s 25926.5 real_s 442.1 | ctl_releases 10->11 ctl_sb_pred 956->972 ctl_sb_us_max 28.3->18.4
+frame 74569 game_s 25936.5 real_s 443.1 | ctl_p2_zeroed 8->9 ctl_sb_pred 972->985 ctl_sb_us_max 18.4->7.6
+frame 74721 game_s 25946.5 real_s 444.2 | ctl_sb_pred 985->995 ctl_sb_us_max 7.6->7.0
+frame 74904 game_s 25956.5 real_s 445.1 | ctl_sb_pred 995->1005 ctl_sb_us_max 7.0->5.1
+frame 75089 game_s 25966.5 real_s 446.1 | ctl_sb_pred 1005->1015 ctl_sb_us_max 5.1->4.7
+frame 75269 game_s 25976.5 real_s 447.1 | ctl_p2_zeroed 9->10 ctl_sb_pred 1015->1021 ctl_sb_us_max 4.7->2.7
+frame 75445 game_s 25986.5 real_s 448.1 | ctl_sb_us_max 2.7->6.5
+frame 75637 game_s 25996.5 real_s 449.1 | ctl_sb_us_max 6.5->1.6 dock_e_us_max 17.2->18.5
+frame 75855 game_s 25998.9 real_s 450.1 | ctl_sb_us_max 1.6->1.4
+frame 76324 game_s 26000.9 real_s 452.1 | ctl_sb_us_max 1.4->1.5
+frame 76559 game_s 26001.9 real_s 453.1 | ctl_sb_us_max 1.5->1.4
+frame 76794 game_s 26002.9 real_s 454.1 | ctl_sb_us_max 1.4->1.6
+frame 77032 game_s 26003.9 real_s 455.1 | ctl_sb_us_max 1.6->1.4
+frame 77270 game_s 26004.9 real_s 456.1 | ctl_sb_us_max 1.4->1.5
+frame 77508 game_s 26005.9 real_s 457.1 | ctl_sb_us_max 1.5->1.4
+frame 77747 game_s 26006.9 real_s 458.1 | ctl_sb_us_max 1.4->1.6
+frame 77985 game_s 26007.9 real_s 459.1 | ctl_sb_us_max 1.6->5.7
+frame 78216 game_s 26008.9 real_s 460.1 | ctl_sb_us_max 5.7->1.7
+frame 78437 game_s 26009.9 real_s 461.1 | ctl_sb_us_max 1.7->1.8
+frame 78652 game_s 26010.9 real_s 462.1 | ctl_sb_us_max 1.8->1.5
+frame 79081 game_s 26019.8 real_s 464.1 | ctl_sb_us_max 1.5->1.4
+frame 79484 game_s 26033.4 real_s 466.1 | ctl_sb_us_max 1.4->1.9
+frame 79703 game_s 26035.7 real_s 467.1 | ctl_sb_us_max 1.9->1.4
+frame 79915 game_s 26041.5 real_s 468.1 | ctl_sb_us_max 1.4->2.2
+frame 80124 game_s 26050.7 real_s 469.1 | ctl_sb_us_max 2.2->1.4
+frame 80336 game_s 26060.7 real_s 470.1 | ctl_sb_us_max 1.4->1.5
+frame 80540 game_s 26068.5 real_s 471.1 | ctl_sb_us_max 1.5->1.7
+frame 80687 game_s 26069.1 real_s 473.4 | ctl_sb_us_max 1.7->2.7
+frame 80822 game_s 26070.3 real_s 474.4 | ctl_sb_us_max 2.7->4.3
+frame 80990 game_s 26071.3 real_s 475.4 | ctl_sb_us_max 4.3->3.9
+frame 81162 game_s 26072.3 real_s 476.4 | ctl_sb_us_max 3.9->2.8
+frame 81339 game_s 26073.3 real_s 477.4 | ctl_sb_us_max 2.8->2.0
+frame 81517 game_s 26074.6 real_s 478.4 | ctl_sb_us_max 2.0->2.2
+frame 81683 game_s 26078.8 real_s 479.4 | ctl_sb_us_max 2.2->4.9
+frame 81835 game_s 26086.6 real_s 480.4 | ctl_sb_us_max 4.9->1.8
+frame 82114 game_s 26104.4 real_s 482.4 | ctl_sb_us_max 1.8->1.9
+frame 82277 game_s 26105.4 real_s 483.4 | ctl_sb_us_max 1.9->1.7
+frame 82451 game_s 26106.4 real_s 484.4 | ctl_sb_us_max 1.7->3.1
+frame 82629 game_s 26107.4 real_s 485.4 | ctl_sb_us_max 3.1->1.9
+frame 82970 game_s 26109.4 real_s 487.4 | ctl_sb_us_max 1.9->2.0
+frame 83129 game_s 26111.4 real_s 488.4 | ctl_sb_us_max 2.0->1.9
+frame 83267 game_s 26116.7 real_s 489.4 | ctl_sb_us_max 1.9->1.8
+frame 83521 game_s 26135.5 real_s 491.4 | ctl_sb_us_max 1.8->1.9
+frame 83646 game_s 26145.6 real_s 492.4 | ctl_sb_us_max 1.9->1.7
+frame 83781 game_s 26155.6 real_s 493.4 | ctl_sb_us_max 1.7->1.9
+frame 83930 game_s 26165.6 real_s 494.4 | ctl_sb_us_max 1.9->3.1
+frame 84076 game_s 26175.6 real_s 495.4 | ctl_sb_us_max 3.1->2.0
+frame 84356 game_s 26195.6 real_s 497.4 | ctl_sb_us_max 2.0->1.6
+frame 84520 game_s 26205.6 real_s 498.4 | ctl_sb_us_max 1.6->1.9
+frame 84693 game_s 26215.6 real_s 499.4 | ctl_sb_us_max 1.9->2.0
+frame 84870 game_s 26224.9 real_s 500.4 | ctl_sb_us_max 2.0->2.5
+frame 85054 game_s 26225.9 real_s 501.4 | ctl_sb_us_max 2.5->2.0
+frame 85429 game_s 26228.5 real_s 503.4 | ctl_sb_us_max 2.0->1.9
+frame 86165 game_s 26261.8 real_s 507.4 | ctl_sb_us_max 1.9->2.0
+frame 86532 game_s 26281.8 real_s 509.4 | ctl_sb_us_max 2.0->2.5
+frame 86715 game_s 26291.8 real_s 510.4 | ctl_sb_us_max 2.5->1.8
+frame 86907 game_s 26294.4 real_s 511.4 | ctl_sb_us_max 1.8->2.0
+frame 87101 game_s 26296.4 real_s 512.4 | ctl_sb_us_max 2.0->1.9
+frame 87291 game_s 26302.0 real_s 513.4 | ctl_sb_us_max 1.9->2.4
+frame 87473 game_s 26311.1 real_s 514.4 | ctl_sb_us_max 2.4->2.7
+frame 87654 game_s 26321.1 real_s 515.4 | ctl_sb_us_max 2.7->2.4
+frame 87838 game_s 26330.9 real_s 516.4 | ctl_sb_us_max 2.4->1.7
+frame 88030 game_s 26331.9 real_s 517.4 | ctl_sb_us_max 1.7->1.9
+frame 88222 game_s 26333.8 real_s 518.4 | ctl_sb_us_max 1.9->2.3
+frame 88413 game_s 26334.8 real_s 519.4 | ctl_sb_us_max 2.3->1.9
+frame 88800 game_s 26336.8 real_s 521.4 | ctl_sb_us_max 1.9->11.5
+frame 88991 game_s 26337.8 real_s 522.4 | ctl_sb_us_max 11.5->1.9
+frame 89763 game_s 26341.8 real_s 526.4 | ctl_sb_us_max 1.9->2.4
+frame 89950 game_s 26342.8 real_s 527.4 | ctl_sb_us_max 2.4->2.5
+frame 90339 game_s 26344.8 real_s 529.4 | ctl_sb_us_max 2.5->1.9
+frame 90530 game_s 26345.8 real_s 530.4 | ctl_sb_us_max 1.9->2.0
+frame 90722 game_s 26346.8 real_s 531.4 | ctl_sb_us_max 2.0->2.2
+frame 90914 game_s 26347.8 real_s 532.4 | ctl_sb_us_max 2.2->2.4
+frame 91109 game_s 26348.8 real_s 533.4 | ctl_sb_us_max 2.4->2.2
+frame 91489 game_s 26356.3 real_s 535.4 | ctl_sb_us_max 2.2->2.0
+frame 91675 game_s 26365.3 real_s 536.4 | ctl_sb_us_max 2.0->1.9
+frame 91858 game_s 26375.3 real_s 537.4 | ctl_sb_us_max 1.9->2.0
+frame 92043 game_s 26385.3 real_s 538.4 | ctl_sb_us_max 2.0->1.9
+frame 92230 game_s 26395.3 real_s 539.4 | ctl_sb_us_max 1.9->2.2
+frame 92421 game_s 26397.4 real_s 540.4 | ctl_sb_us_max 2.2->1.9
+frame 92592 game_s 26398.4 real_s 541.4 | ctl_sb_us_max 1.9->2.3
+frame 92749 game_s 26401.8 real_s 542.4 | ctl_sb_us_max 2.3->1.9
+frame 93084 game_s 26407.8 real_s 544.4 | ctl_sb_us_max 1.9->2.8
+frame 93263 game_s 26410.8 real_s 545.4 | ctl_sb_us_max 2.8->1.7
+frame 93429 game_s 26417.3 real_s 546.4 | ctl_sb_us_max 1.7->14.1
+frame 93584 game_s 26427.0 real_s 547.4 | ctl_sb_us_max 14.1->1.7
+frame 93737 game_s 26437.0 real_s 548.4 | ctl_sb_us_max 1.7->2.1
+frame 93891 game_s 26447.0 real_s 549.4 | ctl_sb_us_max 2.1->1.7
+frame 94046 game_s 26457.0 real_s 550.4 | ctl_sb_us_max 1.7->2.3
+frame 94206 game_s 26467.0 real_s 551.4 | ctl_sb_us_max 2.3->1.8
+frame 94368 game_s 26477.0 real_s 552.4 | ctl_sb_us_max 1.8->2.1
+frame 94527 game_s 26487.0 real_s 553.4 | ctl_releases 11->12 ctl_sb_pred 1021->1023 ctl_sb_us_max 2.1->14.2
+frame 94683 game_s 26497.0 real_s 554.4 | ctl_sb_pred 1023->1033 ctl_sb_us_max 14.2->14.4
+frame 94815 game_s 26507.0 real_s 555.4 | ctl_sb_pred 1033->1043 ctl_sb_us_max 14.4->14.2
+frame 94938 game_s 26516.9 real_s 556.4 | ctl_sb_pred 1043->1053 ctl_sb_us_max 14.2->11.1
+frame 95059 game_s 26526.9 real_s 557.4 | ctl_sb_pred 1053->1062 ctl_sb_us_max 11.1->10.1
+frame 95185 game_s 26537.0 real_s 558.4 | ctl_sb_pred 1062->1072 ctl_sb_us_max 10.1->8.7
+frame 95312 game_s 26547.0 real_s 559.4 | ctl_sb_pred 1072->1081 ctl_sb_us_max 8.7->7.9
+frame 95436 game_s 26556.9 real_s 560.4 | ctl_sb_pred 1081->1091 ctl_sb_us_max 7.9->6.2
+frame 95547 game_s 26566.9 real_s 561.4 | ctl_sb_pred 1091->1101 ctl_sb_us_max 6.2->4.9
+frame 95661 game_s 26576.9 real_s 562.4 | ctl_sb_pred 1101->1110 ctl_sb_us_max 4.9->4.7
+frame 95779 game_s 26587.0 real_s 563.4 | ctl_sb_pred 1110->1120 ctl_sb_us_max 4.7->3.5
+frame 95898 game_s 26597.0 real_s 564.4 | ctl_p2_zeroed 10->11 ctl_sb_pred 1120->1123 ctl_sb_us_max 3.5->2.4
+frame 96017 game_s 26607.0 real_s 565.4 | ctl_sb_us_max 2.4->2.2
+frame 96273 game_s 26627.0 real_s 567.4 | ctl_sb_us_max 2.2->3.2
+frame 96417 game_s 26637.0 real_s 568.4 | ctl_sb_us_max 3.2->3.4
+frame 96558 game_s 26647.0 real_s 569.4 | ctl_sb_us_max 3.4->2.7
+frame 96696 game_s 26657.0 real_s 570.4 | ctl_sb_us_max 2.7->3.7
+frame 96847 game_s 26667.0 real_s 571.4 | ctl_sb_us_max 3.7->2.1
+frame 97006 game_s 26677.0 real_s 572.4 | ctl_releases 12->13 ctl_sb_pred 1123->1135 ctl_sb_us_max 2.1->21.9
+frame 97160 game_s 26686.9 real_s 573.4 | ctl_sb_pred 1135->1146 ctl_sb_us_max 21.9->19.2
+frame 97321 game_s 26697.0 real_s 574.4 | ctl_sb_pred 1146->1156 ctl_sb_us_max 19.2->8.6
+frame 97489 game_s 26707.0 real_s 575.4 | ctl_sb_pred 1156->1167 ctl_sb_us_max 8.6->10.8
+frame 97659 game_s 26717.0 real_s 576.4 | ctl_sb_pred 1167->1178 ctl_sb_us_max 10.8->9.2
+frame 97804 game_s 26727.0 real_s 577.4 | ctl_releases 13->14 ctl_sb_pred 1178->1193 ctl_sb_us_max 9.2->20.7
+frame 97969 game_s 26737.0 real_s 578.4 | ctl_p2_zeroed 11->12 ctl_sb_pred 1193->1221 ctl_sb_us_max 20.7->19.3
+frame 98130 game_s 26747.0 real_s 579.4 | ctl_sb_pred 1221->1238 ctl_sb_us_max 19.3->17.2
+frame 98309 game_s 26756.9 real_s 580.4 | ctl_sb_pred 1238->1249 ctl_sb_us_max 17.2->15.4
+frame 98485 game_s 26767.0 real_s 581.4 | ctl_sb_pred 1249->1264 ctl_sb_us_max 15.4->12.4
+frame 98674 game_s 26776.9 real_s 582.4 | ctl_sb_pred 1264->1278 ctl_sb_us_max 12.4->9.6
+frame 98865 game_s 26787.0 real_s 583.4 | ctl_sb_pred 1278->1294 ctl_sb_us_max 9.6->8.2
+frame 99057 game_s 26797.0 real_s 584.4 | ctl_p2_zeroed 12->13 ctl_sb_pred 1294->1300 ctl_sb_us_max 8.2->2.8
+frame 99245 game_s 26807.0 real_s 585.4 | ctl_sb_us_max 2.8->1.7
+frame 99436 game_s 26817.0 real_s 586.4 | ctl_sb_us_max 1.7->1.6
+frame 99636 game_s 26818.4 real_s 587.4 | ctl_sb_us_max 1.6->1.4
+frame 100031 game_s 26820.4 real_s 589.4 | ctl_sb_us_max 1.4->1.7
+frame 100231 game_s 26821.4 real_s 590.4 | ctl_sb_us_max 1.7->1.3
+frame 100435 game_s 26822.4 real_s 591.4 | ctl_sb_us_max 1.3->1.1
+frame 100643 game_s 26823.4 real_s 592.4 | ctl_sb_us_max 1.1->1.8
+frame 100652 game_s 26823.5 real_s 594.1 | ctl_sb_us_max 1.8->2.1

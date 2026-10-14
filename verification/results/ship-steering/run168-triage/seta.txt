@@ -1,0 +1,6 @@
+all {'0': 27690, '1': 73307} seta share 0.73
+gate 62b8 convoy (24965/25287/25763) entry..last launch {'0': 4485, '1': 18182} seta share 0.80
+gate 94b0 (3920; 4900/5412/5612) entry..last launch {'1': 22336, '0': 5495} seta share 0.80
+gate 6db0 (7087/4248/4454, re-targeted from 94b0) entry..last launch {'1': 25795, '0': 5495} seta share 0.82
+gate 7de8 convoy (10107/10048/10149) entry..last launch {'0': 5866, '1': 12777} seta share 0.69
+last launch .. log end {'1': 174, '0': 1501} seta share 0.10

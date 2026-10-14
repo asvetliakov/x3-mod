@@ -1,0 +1,41 @@
+gate a b kind verdict why yielder before | rows game first..last | d_m min
+62b8 25763 25287 order0 clear certified none none | 64 23121.8..23432.0 | 2819
+62b8 25287 25763 order0 clear certified none none | 58 23131.1..23404.2 | 3126
+94b0 3920 4248 verdict none - none clear | 2 24550.1..24794.4 | 7234
+94b0 3920 4454 verdict none - none clear | 2 24550.1..24794.4 | 13162
+94b0 4248 4454 verdict none - none clear | 2 24550.1..24794.4 | 5847
+94b0 4454 4248 order0 clear certified none none | 21 25086.0..25167.4 | 2989
+94b0 4248 4454 order0 clear certified none none | 19 25100.0..25166.8 | 3008
+94b0 5412 4900 order0 clear certified none none | 26 25126.9..25408.9 | 2784
+6db0 4248 4454 order0 clear certified none none | 43 25203.3..25946.9 | 1385
+6db0 4454 4248 order0 clear certified none none | 44 25205.7..25898.5 | 1355
+6db0 4248 4454 verdict unresolved - none clear | 2 25205.8..25715.1 | 1372
+6db0 4248 4454 e_pass unresolved order0 none none | 1 25206.8..25206.8 | 1353
+6db0 4454 4248 e_pass unresolved order0 none none | 1 25206.8..25206.8 | 1353
+6db0 4248 4454 order0 unresolved order0 none none | 2 25206.8..25715.2 | 1353
+6db0 4248 7087 e_pass clear on_0x12 none none | 2 25206.8..25715.3 | 2882
+6db0 7087 4248 e_pass clear on_0x12 none none | 2 25206.8..25715.3 | 2882
+6db0 4454 7087 e_pass clear on_0x12 none none | 2 25208.2..25715.3 | 2394
+6db0 7087 4454 e_pass clear on_0x12 none none | 2 25208.2..25715.3 | 2394
+6db0 4248 7087 order0 clear certified none none | 48 25239.2..25806.9 | 2815
+94b0 5612 5412 order0 clear certified none none | 20 25367.6..25506.7 | 2365
+94b0 5412 5612 order0 clear certified none none | 20 25369.8..25569.9 | 2365
+6db0 4248 7087 verdict unresolved - none clear | 1 25383.5..25383.5 | 3157
+6db0 4248 7087 e_pass unresolved unresolved none none | 1 25383.5..25383.5 | 3157
+6db0 7087 4248 verdict clear - none unresolved | 1 25384.6..25384.6 | 3131
+94b0 5612 4900 order0 clear certified none none | 3 25403.0..25405.1 | 4589
+6db0 4454 7087 order0 clear certified none none | 19 25518.5..25715.2 | 2394
+6db0 4248 4454 e_pass unresolved unresolved none none | 1 25715.2..25715.2 | 2052
+6db0 4454 4248 e_pass unresolved unresolved none none | 1 25715.2..25715.2 | 2052
+6db0 4454 4248 order0 unresolved order0 none none | 1 25715.2..25715.2 | 2052
+7de8 10048 10149 order0 clear certified none none | 47 26277.9..26749.5 | 2734
+7de8 10149 10048 order0 clear certified none none | 56 26282.2..26705.8 | 2732
+== committed pairs in funnel/handover/dock at once (game s)
+('94b0', ('5412', '5612')) 33 s 25556 .. 25589
+('6db0', ('4248', '4454')) 25 s 25921 .. 25946
+('7de8', ('10048', '10149')) 23 s 26725 .. 26748
+== both in stage funnel at once (the B.6 yields_to release-order clause applies only there)
+('94b0', ('5412', '5612')) 14 s 25556 .. 25569
+('6db0', ('4248', '4454')) 9 s 25921 .. 25929
+('7de8', ('10048', '10149')) 10 s 26725 .. 26735
+pairs 3

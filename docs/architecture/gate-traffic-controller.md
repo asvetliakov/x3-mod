@@ -1955,3 +1955,47 @@ capsule gaps stay green. Flight oracle (Run168): `escort_wait.py` order 4 at +5�
 
 **Open.** Release 3071 waited 6.4 s with its nose at 0.490–0.492 of F against the 0.5 threshold (cosmetic). The script re-targets
 waiting escorts to each newly arriving M1 (3725, 3947 lost a release each; script-owned).
+
+### B.8 The lap law counts the join distance (Run168)
+
+Run168 (`verification/results/ship-steering/run168-triage/escort_wait.txt`, `stage_at_launch_design.txt`) **[m]**: B.7 changed
+nothing in flight because no escort was parked. Escorts arrive with their leader, switch from inbound to hold by distance to the
+gate (ring extent + 2 km) while still 1.8–2.8 km off their petal track, and `lap_speed` measures only the arc from the ship's
+*projection* onto the track to the stage: it chose 25–28 m/s for escorts that still had ~4.5 km to fly in ~60 s, so at the
+launch 6 of 10 escorts were in hold 10.2–13.7 km out and 4 still inbound; order 4 came 8.6–66 s after the launch for the
+hold ones (Run167 40–96 s) and 101–302 s for the inbound ones. Pre-launch holding was a slow join (0.02–0.37 lap, mostly
+25–40 m/s), not circling.
+
+**Change (level 1, no hook).** The lap law's distance to go is the arc **plus the join**: `d_join` = the distance from the ship
+to its track point at s (in-plane lateral and out-of-plane), so `ds_eff = ds + d_join` for the arrive-on-time, extra-lap and late
+branches, and the dwell branch applies only when `d_join ≤ 300 m` (on the track). Same for committed heads (their joins are
+shorter but the same law). The inbound carrot's point behind the back turn (B.2) is unchanged; the speed while inbound is
+unchanged (v_max braking to 60 at the boundary). Expected (inferred from the rows): an escort entering hold 2.8 km off-track
+60 s before T gets ~60 m/s instead of 25–28 and reaches its stage by T; order 4 within one script pass of the launch for every
+escort that was within the ring extent + 2 km at the leader's release.
+
+**Diagnostics.** The 1 Hz `ship_gate_ctl_member` row gains `zx`, `rho`, `s` (arc), `stage_s`, `d_join`, `t_rel` (ms to the
+member's target, 0 none), `ringed`, so the next triage measures the window phase and the join directly instead of fitting the
+petal from a lap (Run168's fit marked 8 of 10 petals "far" from < 0.5 lap of rows).
+
+**Verification.** Units: `lap_law` with `d_join` (dwell refused off-track, arrive-on-time with the join, late with the join);
+scenario T: an escort that enters hold off its track with its target reachable at ≤ 60 m/s is on its track (`d_join ≤ 300 m`) and
+inside its window at T + the frame step; the B.6/B.7 assertions, 0 holders below 25 m/s, the capsule gaps ≥ 50 m stay green; the
+run162 variants (escorts ringing 20–35 s before the launch) now exercise the join. Flight oracle (Run169): `escort_wait.py`
+order 4 at +5…+15 s for every escort in hold at the launch; the member row's `d_join` at the launch ≤ 300 m for them.
+
+### B.9 Column evictions at hold entry (Run168, open)
+
+Run168 gate 6db0 (`run168-triage/x12_pairs.txt`) **[m]**: two escorts inbound in column at 100 m/s, 1.3–2.0 km apart (closer than the
+sum of their engine radii, 2,114 m), stayed "certified clear" for 16 s while the front one braked on the inbound profile (100 → 60 m/s
+over 10 s) and the rear one kept 100 m/s on its plan; the pair verdict turned unresolved (contact predicted in 3 s) 0.14 s before
+the engine's warn, both got 0x12 and the leader 7087 behind them too (3 evictions, 23 s rejoin each, the release 23 s late). The
+first episode (56 km out, all inbound, 4454 on a 1 s order-0 gap at 100 m/s) turned unresolved 1 s before the warn. Pair rows
+log no reason beyond "unresolved" and no sweep gap. Hypothesis (inferred): the certificate rollout models both inbound members
+with the same braking law toward their own boundary, so a column whose members brake at different distances (their ring
+extents differ, or one is still beyond its boundary) is certified clear until the front one's plan has already dropped; the
+yield then comes too late for a 40 m/s closing rate at a ~100 m capsule gap. To settle: a fixture scenario (two escorts inbound
+in column at 100 m/s, 1.5 km apart, the front one reaching its boundary 10 s earlier), the sweep's minimum gap and the reason
+on every verdict change in the pair row, and the fix (the rear member's inbound plan capped at the front member's plan speed
+while within the sweep margin, or the yield applied at the first rollout that shows the gap shrinking below the margin
+within the horizon). Queued after B.8.

@@ -1,0 +1,6 @@
+0x8ed262b8 -7498.0,10774.0,-57569.0 0.0000,0.0000,-1.0000 1104.5 capital_o5 nB=23 fit_centre_err_m=0 fit_r_gate=1104
+0x8ed26db0 4259.0,-18037.0,31134.0 -0.0000,-0.0000,1.0000 1104.5 capital_o5 nB=19 fit_centre_err_m=22 fit_r_gate=1104
+0x8ed294b0 -53031.0,-11511.0,2177.0 -1.0000,0.0000,0.0000 1104.5 capital_o5 nB=19 fit_centre_err_m=0 fit_r_gate=1104
+0xb4737de8 5237.0,3238.0,31909.0 -0.0000,-0.0000,1.0000 1104.5 capital_o5 nB=7 fit_centre_err_m=22 fit_r_gate=1104
+0xb4775300 insufficient
+0xb4776410 39784.9,7228.0,693.0 1.0000,-0.0000,-0.0000 1091.1 circle_fit nB=3 fit_centre_err_m=0 fit_r_gate=1104

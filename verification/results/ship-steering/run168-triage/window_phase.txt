@@ -1,0 +1,16 @@
+Lap 9283 m, window 3594 m (39%); out-of-window arc 5689 m; at 60 m/s lap 155 s, at 40 232 s, at 25 371 s
+gate 62b8 release 24965 game  23001.8 real  78.9 | commit 22669.2 | no hold rows / never free while head: released on commit, wait 0
+gate 62b8 release 25287 game  23404.4 real 119.1 | commit 23404.4 | no hold rows / never free while head: released on commit, wait 0
+gate 62b8 release 25763 game  23576.9 real 136.4 | commit 23432.1 | petal 3 rho 4160 a1 -8699 | s@commit 1280 (W) v 25..60 | first free 23494.5 (free_ms 47822) s 3340 (out) | release s 8112 z-a1 -2513 nose 0.48 | wait free->release 82.4 game s 8.2 real s, funnel-free out-of-window rows 65, arc to window at free 4896 m, v med 60 | lap 155 s | (a) 4.2 s saves 78.1 | (b) 54.0 s saves 28.4 | (a+b) 0.0 s | (c) 50.4 s saves 32.0
+gate 94b0 release 3920  game  24975.9 real 314.0 | commit 24294.5 | petal 0 rho 3787 a1 -14232 | s@commit 2325 (W) v 60..60 | first free 24972.2 (free_ms 2000) s 2325 (W) | release s 2285 z-a1 1000 nose 0.49 | wait free->release 3.7 game s 0.4 real s, funnel-free out-of-window rows 4, arc to window at free 0 m, v med 60 | lap 155 s | (a) 0.0 s saves 3.7 | (b) 0.0 s saves 3.7 | (a+b) 0.0 s | (c) 0.0 s saves 3.7
+gate 94b0 release 4248  game  25154.5 real 340.0 | commit 25154.5 | no hold rows / never free while head: released on commit, wait 0
+gate 94b0 release 4900  game  25347.0 real 372.7 | commit 25126.2 | no hold rows / never free while head: released on commit, wait 0
+gate 94b0 release 5412  game  25506.0 real 396.7 | commit 25506.0 | no hold rows / never free while head: released on commit, wait 0
+gate 94b0 release 5612  game  25555.0 real 401.6 | commit 25506.9 | no hold rows / never free while head: released on commit, wait 0
+gate 6db0 release 7087  game  25738.4 real 423.3 | commit 25738.4 | no hold rows / never free while head: released on commit, wait 0
+gate 6db0 release 4248  game  25875.1 real 437.0 | commit 25875.1 | no hold rows / never free while head: released on commit, wait 0
+gate 6db0 release 4454  game  25921.2 real 441.6 | commit 25898.6 | no hold rows / never free while head: released on commit, wait 0
+gate 7de8 release 10107 game  26485.1 real 553.2 | commit 26069.3 | no hold rows / never free while head: released on commit, wait 0
+gate 7de8 release 10048 game  26670.9 real 571.8 | commit 26670.9 | no hold rows / never free while head: released on commit, wait 0
+gate 7de8 release 10149 game  26725.3 real 577.2 | commit 26705.9 | no hold rows / never free while head: released on commit, wait 0
+totals (game s): window wait 86.1 | saved (a) 81.8 (b) 32.1 (a+b) 86.1 (c) 35.7

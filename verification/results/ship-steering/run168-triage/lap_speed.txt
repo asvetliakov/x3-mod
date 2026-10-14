@@ -1,0 +1,50 @@
+== v_ms histogram per phase (1 Hz member rows, stage hold; game s)
+escort after launch, after 10 km pass      n    23  {'26-39': 5, '41-59': 11, '<=26': 4, '>=59': 3}
+escort after launch, before 10 km pass     n   494  {'26-39': 15, '39-41': 2, '41-59': 25, '<=26': 6, '>=59': 446}
+escort after launch, inbound (0x15 approach) n   451  {'>=59': 451}
+escort, leader not launched                n   344  {'26-39': 106, '39-41': 9, '41-59': 66, '<=26': 127, '>=59': 36}
+head in W                                  n    62  {'26-39': 3, '41-59': 4, '<=26': 55}
+head out of W                              n   169  {'26-39': 3, '41-59': 5, '<=26': 65, '>=59': 96}
+== escort per leader launch: launch game | order 4 +game s | hold rows after launch | mean v | first 10 km pass +s | rows >26 m/s after the pass | min |p| m | petal ring
+25287  leader 24965  | 23130.1 | 274.2 | 267 | 87.2 | 271 | 3 | 9851 | 2 ring 0
+25763  leader 24965  | 23130.1 | 302.0 | 294 | 88.3 | 298 | 4 | 9842 | 3 ring 0
+4248   leader 3920   | 25099.0 | 55.4 | 54 | 57.9 | 54 | 2 | 9927 | 2 ring 0
+4454   leader 3920   | 25099.0 | 799.6 | 72 | 63.2 | never | 0 | 10748 | 1 ring 0
+5412   leader 4900   | 25466.0 | 40.0 | 39 | 54.4 | 36 | 3 | 9856 | 4 ring 0
+5612   leader 4900   | 25466.0 | 40.9 | 40 | 52.4 | 38 | 3 | 9881 | 3 ring 0
+4248   leader 7087   | 25866.5 | 8.6 | 9 | 33.6 | 8 | 1 | 9957 | 3 ring 0
+4454   leader 7087   | 25866.5 | 32.1 | 31 | 53.2 | never | 0 | 10023 | 2 ring 0
+10149  leader 10107  | 26604.9 | 101.0 | 98 | 69.4 | 101 | 1 | 9947 | 2 ring 0
+10048  leader 10107  | 26604.9 | 66.1 | 64 | 58.8 | 65 | 2 | 9936 | 1 ring 0
+== per ship, gate, phase (hold rows; the inbound approach rows are in the totals only)
+25287  62b8 escort after launch, before 10 km pass     n   74 {'>=59': 74}
+25287  62b8 escort after launch, after 10 km pass      n    3 {'41-59': 3}
+25763  62b8 escort after launch, before 10 km pass     n   75 {'>=59': 75}
+25763  62b8 escort after launch, after 10 km pass      n    5 {'26-39': 2, '41-59': 1, '<=26': 1, '>=59': 1}
+25763  62b8 head in W                                  n   46 {'<=26': 46}
+25763  62b8 head out of W                              n   95 {'26-39': 1, '41-59': 2, '>=59': 92}
+4248   6db0 escort, leader not launched                n  124 {'26-39': 33, '41-59': 1, '<=26': 84, '>=59': 6}
+4248   6db0 escort after launch, before 10 km pass     n    8 {'26-39': 4, '41-59': 2, '<=26': 2}
+4248   6db0 escort after launch, after 10 km pass      n    1 {'41-59': 1}
+4454   6db0 escort, leader not launched                n   61 {'26-39': 27, '39-41': 3, '41-59': 22, '>=59': 9}
+4454   6db0 escort after launch, before 10 km pass     n   31 {'26-39': 5, '41-59': 8, '>=59': 18}
+4454   6db0 head in W                                  n   16 {'26-39': 3, '41-59': 4, '<=26': 9}
+4454   6db0 head out of W                              n    6 {'<=26': 6}
+10048  7de8 escort, leader not launched                n    4 {'>=59': 4}
+10048  7de8 escort after launch, before 10 km pass     n   62 {'39-41': 2, '41-59': 2, '>=59': 58}
+10048  7de8 escort after launch, after 10 km pass      n    2 {'41-59': 1, '>=59': 1}
+10149  7de8 escort after launch, before 10 km pass     n   65 {'>=59': 65}
+10149  7de8 escort after launch, after 10 km pass      n    1 {'41-59': 1}
+10149  7de8 head out of W                              n   18 {'26-39': 2, '41-59': 3, '<=26': 13}
+3920   94b0 head out of W                              n    4 {'>=59': 4}
+4248   94b0 escort, leader not launched                n   31 {'26-39': 3, '39-41': 1, '41-59': 13, '<=26': 1, '>=59': 13}
+4248   94b0 escort after launch, before 10 km pass     n   52 {'26-39': 2, '41-59': 4, '>=59': 46}
+4248   94b0 escort after launch, after 10 km pass      n    2 {'41-59': 2}
+4454   94b0 escort after launch, before 10 km pass     n   57 {'26-39': 1, '41-59': 4, '>=59': 52}
+5412   94b0 escort, leader not launched                n   65 {'26-39': 22, '39-41': 2, '41-59': 16, '<=26': 23, '>=59': 2}
+5412   94b0 escort after launch, before 10 km pass     n   34 {'26-39': 1, '41-59': 3, '<=26': 1, '>=59': 29}
+5412   94b0 escort after launch, after 10 km pass      n    5 {'26-39': 1, '41-59': 1, '<=26': 2, '>=59': 1}
+5612   94b0 escort, leader not launched                n   59 {'26-39': 21, '39-41': 3, '41-59': 14, '<=26': 19, '>=59': 2}
+5612   94b0 escort after launch, before 10 km pass     n   36 {'26-39': 2, '41-59': 2, '<=26': 3, '>=59': 29}
+5612   94b0 escort after launch, after 10 km pass      n    4 {'26-39': 2, '41-59': 1, '<=26': 1}
+5612   94b0 head out of W                              n   46 {'<=26': 46}

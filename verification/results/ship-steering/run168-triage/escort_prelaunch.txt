@@ -1,0 +1,12 @@
+4248   leader 3920   94b0 | hold rows before launch 31 (game 25067.5..25098.4) | path 1.6 km = 0.17 laps | v {'26-39': 3, '39-41': 1, '41-59': 13, '<=26': 1, '>=59': 13} | |p| km {'12-13': 5, '13-14': 26}
+4248   leader 7087   6db0 | hold rows before launch 124 (game 25738.5..25865.6) | path 3.4 km = 0.37 laps | v {'26-39': 33, '41-59': 1, '<=26': 84, '>=59': 6} | |p| km {'10-11': 31, '11-12': 44, '12-13': 45, '13-14': 4}
+4454   leader 7087   6db0 | hold rows before launch 61 (game 25803.5..25865.6) | path 2.7 km = 0.29 laps | v {'26-39': 27, '39-41': 3, '41-59': 22, '>=59': 9} | |p| km {'11-12': 6, '12-13': 19, '13-14': 36}
+5412   leader 4900   94b0 | hold rows before launch 65 (game 25398.8..25465.2) | path 2.2 km = 0.24 laps | v {'26-39': 22, '39-41': 2, '41-59': 16, '<=26': 23, '>=59': 2} | |p| km {'11-12': 3, '12-13': 27, '13-14': 35}
+5612   leader 4900   94b0 | hold rows before launch 59 (game 25404.9..25465.2) | path 2.0 km = 0.22 laps | v {'26-39': 21, '39-41': 3, '41-59': 14, '<=26': 19, '>=59': 2} | |p| km {'11-12': 4, '12-13': 29, '13-14': 26}
+10048  leader 10107  7de8 | hold rows before launch 4 (game 26601.0..26604.0) | path 0.2 km = 0.02 laps | v {'>=59': 4} | |p| km {'13-14': 4}
+total v {'26-39': 106, '39-41': 9, '41-59': 66, '<=26': 127, '>=59': 36} | total |p| km {'10-11': 31, '11-12': 57, '12-13': 125, '13-14': 131}
+== script re-targets (why=leader/target)
+f 44228 game 24366.2 gate 62b8 id 4248 arrival>none why leader stage none>none
+f 45133 game 24430.0 gate 62b8 id 4454 arrival>none why leader stage none>none
+f 58564 game 25167.8 gate 94b0 id 4248 committed>none why target stage funnel>funnel
+f 58638 game 25172.8 gate 94b0 id 4454 escort>none why leader stage hold>hold
