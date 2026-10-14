@@ -1,0 +1,38 @@
+max ctl_decide_us_max 30.9
+max ctl_frame_us_max 52.7
+max ctl_live_us_max 13.2
+max ctl_sb_us_max 13.9
+max handler_us_max 47.4
+max handler_us_p99 47.4
+max join_eval_us_max 13.3
+last ctl_live 0,2,0,0,0,0
+last ctl_evicted 6
+last ctl_budget_cut 0
+last ctl_go_around 0
+last ctl_x_refused 1
+last ctl_x_wait_s 0
+last ctl_releases 0
+last ctl_yields 0
+last ctl_unresolved 0
+last rows_dropped gate_event:0,join:0,latch:0,lane:0,gate_trans:0,warn_pre:0,engine_warn:0,warn_watch:0,e_table:0,e_ring:0,ctl:0,ctl_pair:0,launch:0
+last ship_trace_dropped 0
+last member_leader_gone 12
+last handled_by_order_total 0x4:77874,0x5:22047,0x12:2503,0x14:111758,0x15:167894,0x19:47092
+last e_pass_ctl_why 0,0,0,0,4,0,0,4597
+last gate_capital_not_kept_nose 1
+ctl why {('L', 'commit'): 2, ('E1', 'escort'): 2, ('E2', 'escort'): 2, ('L', 'evict'): 1, ('E1', 'leader'): 1, ('E2', 'leader'): 1, ('L', 'handover'): 1, ('L', 'order'): 1, ('E1', 'commit'): 19, ('E1', 'evict'): 3, ('E2', 'commit'): 4, ('E2', 'target'): 1, ('E2', 'evict'): 2, ('E1', 'target'): 15, ('E2', 'handover'): 1, ('E2', 'gone'): 1, ('E1', 'handover'): 1, ('E1', 'gone'): 1}
+engine 0x12 warn rows (ship, obstacle class) {('L', '18'): 2, ('other', '18'): 7, ('other', '0'): 1, ('other', '7'): 9, ('E1', '18'): 6, ('E2', '18'): 5}
+all-convoy frames 718-24763 real 31.3-165.1 s (133.8) game 22669.2-23787.2 s (1118.1) seta share 0.835 max step 1310 ms
+15 km (L ~f10000) .. last launch (E1 f23704) frames 10000-23704 real 79.2-158.8 s (79.6) game 22976.8-23772.6 s (795.8) seta share 1.000 max step 850 ms
+L handover .. L order 8 frames 12431-14104 real 93.7-105.7 s (12.0) game 23121.8-23241.4 s (119.7) seta share 1.000 max step 850 ms
+event f=718 real=31.30 game=22669.152
+event f=10000 real=79.23 game=22976.752
+event f=11696 real=89.07 game=23075.192
+event f=12052 real=91.18 game=23096.322
+event f=12431 real=93.73 game=23121.762
+event f=12515 real=94.27 game=23127.152
+event f=14104 real=105.70 game=23241.432
+event f=15269 real=112.65 game=23310.962
+event f=16543 real=119.97 game=23384.172
+event f=21536 real=148.33 game=23667.762
+event f=23686 real=158.72 game=23771.722

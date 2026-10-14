@@ -1,0 +1,42 @@
+#!/bin/sh
+# Run169 triage (controller B.8 join distance + B.9 column evictions, main 073a2a33): scripts copied from ../run168-triage. Run169 gates 0x9037de88,
+# 0x9037f478, 0x90380450 (gates.txt). Rows file kept outside the tree (439 MB): sh rows.sh x3m.log <rows>.
+# Run168 triage (controller B.7 escort staging, main 1969716d): scripts copied from ../run167-triage. Run168 gates 0x8ed262b8, 0x8ed26db0,
+# 0x8ed294b0, 0xb4737de8 (gates.txt; same sector positions as Run167 faf8/0ad0/3a58). Rows file kept outside the tree (466 MB): sh rows.sh x3m.log <rows>.
+# Run166 triage (controller B.5, main f0fb46ad): "still a little circling?". Copied from ../run165-triage (hold_funnel.py made
+# gate-generic; ctl_live.py and window_phase.py added). Run167 gates: 0x8ea0faf8, 0x8ea10ad0, 0x8ea13a58 (gates.txt); rows file kept outside the tree (425 MB).
+# Usage: sh rows.sh [log] [pre-extracted rows file].
+D=$(cd "$(dirname "$0")" && pwd); L=${1:-$D/x3m.log}
+if [ -n "$2" ]; then T=$2; else T=$(mktemp); trap 'rm -f "$T"' EXIT
+LC_ALL=C grep -aE '^(ship_|proxy_identity|log_open|session_end|frame_end |engine_stage )' "$L" > "$T"; fi
+cd "$D" || exit 1
+python3 -I caps.py "$T" > caps.txt && python3 -I gates.py "$T" > gates.txt
+python3 -I ctl_rows.py "$T" > ctl_rows.txt                         # Q1 membership transitions
+python3 -I cap_orders.py "$T" --min-s 3 > cap_orders.txt           # Q1/Q3 order timelines, 0x12 episodes
+python3 -I crowd.py "$T" > crowd.txt && python3 -I transits.py "$T" > transits.txt   # Q1/Q4 crossings, commit->launch, span
+python3 -I sb_timeline.py "$T" > sb_timeline.txt
+for g in de88 f478 0450; do python3 -I sb_seq.py "$T" $g > sb_seq_$g.txt; done   # Q2 sequencer per game second
+python3 -I sb_laps_all.py "$T" > sb_laps_all.txt
+python3 -I members.py "$T" > members.txt && python3 -I hold_funnel.py "$T" >> members.txt   # Q1 per-member stages, petal laps/radius, board counts
+python3 -I hold_wait.py "$T" > hold_wait.txt                       # Q2 every hold second by reason; launch -> next release
+python3 -I funnel_idle.py "$T" > funnel_idle.txt                   # Q2 funnel free with holders, by reason
+python3 -I window_runs.py "$T" > window_runs.txt                   # Q2 funnel free, head out of window: runs
+python3 -I e_evict.py "$T" > e_evict.txt && python3 -I x12_real.py "$T" > x12_real.txt   # Q3 evictions, own-gate E rows, 0x12
+python3 -I small_gap.py "$T" > small_gap.txt                       # Q3 e_small_gap
+python3 -I game_steps.py "$T" > game_steps.txt && python3 -I seta.py "$T" > seta.txt && python3 -I sb_counters.py "$T" > sb_counters.txt
+python3 -I ctl_live.py "$T" > ctl_live.txt && python3 -I window_phase.py "$T" > window_phase.txt   # Q3 release-window phase, Q4 ctl_live
+python3 -I escorts.py "$T" > escorts.txt                                 # Q1/Q5 escorts after the leader launch
+# q4_target.py is Run166-specific (hard-coded holders); not run for Run167
+python3 -I lap_speed.py "$T" > lap_speed.txt && python3 -I escort_wait.py "$T" > escort_wait.txt   # Run167 Q3/Q8 lap-law phases, escort waits
+python3 -I hold_totals.py hold_wait.txt > hold_totals.txt && python3 -I release_wait.py "$T" > release_wait.txt   # Run167 Q2
+python3 -I release_front.py "$T" > release_front.txt && python3 -I pairs.py "$T" > pairs.txt   # Run167 Q4 extended window, Q5 yields_to
+python3 -I stuck.py "$T" > stuck.txt && python3 -I member_detours.py "$T" > member_detours.txt   # Run167 Q5 stuck, Q6 final-straight detours
+# head_track.py: Run167-specific ship ids; not run for Run168
+python3 -I stage_at_launch.py "$T" > stage_at_launch.txt && python3 -I stage_at_launch.py "$T" --design > stage_at_launch_design.txt   # Run168 Q1 B.7 stage vs escort position
+python3 -I escort_prelaunch.py "$T" > escort_prelaunch.txt                                   # Run168 Q3 escort holding before the leader's launch, re-targets
+# Run169 (B.8/B.9 oracles, convoy clunk): seta.py/x12_pairs.py/head_track.py carry Run168 hard-coded ids (seta.txt 'all' line only is valid)
+python3 -I b8_oracle.py "$T" > b8_oracle.txt                                   # Q1 escort member row at the leader's launch: d_join t_rel ringed, order 4
+python3 -I x12_any.py "$T" > x12_any.txt; python3 -I x12_warn.py "$T" > x12_warn.txt   # Q2 0x12 / engine warns on members, cap-vs-cap
+python3 -I pair_flips.py "$T" > pair_flips.txt                                 # Q2 pair rows: cause/trig/gap_m on every verdict change
+python3 -I convoy_timeline.py "$T" > convoy_summary.txt && python3 -I convoy_timeline.py "$T" --detail > convoy_timeline.txt   # Q4 per convoy
+python3 -I funnel_serial.py "$T" > funnel_serial.txt                           # Q4/Q5 release->X->launch, d_G at release, funnel overlap

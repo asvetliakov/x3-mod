@@ -1,0 +1,16 @@
+aec8 f=12310-12360 game=23114.1-23117.2 (3.2 s) order=0x4 nose_max=31 nose_end=30 turn_sum=21 deg s=-2888..-2611 m v=100..100
+1db0 f=16052-16229 game=23356.4-23366.5 (10.2 s) order=0x4 nose_max=60 nose_end=30 turn_sum=80 deg s=-5192..-4593 m v=100..113
+1db0 f=16450-16684 game=23378.9-23392.4 (13.5 s) order=0x4 nose_max=45 nose_end=38 turn_sum=92 deg s=-3444..-2387 m v=100..100
+1db0 f=16685-16685 game=23392.5-23392.5 (0.0 s) order=0x0 nose_max=38 nose_end=38 turn_sum=0 deg s=-2383..-2383 m v=100..100
+1db0 f=16686-16686 game=23392.5-23392.5 (0.0 s) order=0x12 nose_max=38 nose_end=38 turn_sum=0 deg s=-2379..-2379 m v=100..100
+1db0 f=17920-18135 game=23462.9-23474.9 (12.0 s) order=0x4 nose_max=64 nose_end=30 turn_sum=97 deg s=-2623..-1950 m v=100..113
+1db0 f=18901-22884 game=23518.0-23733.1 (215.0 s) order=0x4 nose_max=168 nose_end=30 turn_sum=1509 deg s=703..-6031 m v=0..113
+35f0 f=17184-17828 game=23421.4-23457.7 (36.3 s) order=0x12 nose_max=166 nose_end=166 turn_sum=298 deg s=-6143..-6843 m v=17..110
+35f0 f=17829-17829 game=23457.8-23457.8 (0.0 s) order=0x0 nose_max=166 nose_end=166 turn_sum=0 deg s=-6850..-6850 m v=110..110
+35f0 f=17830-18370 game=23457.9-23487.9 (30.1 s) order=0x4 nose_max=169 nose_end=30 turn_sum=263 deg s=-6855..-8015 m v=100..110
+35f0 f=19003-19096 game=23523.9-23529.4 (5.5 s) order=0x4 nose_max=41 nose_end=30 turn_sum=38 deg s=-4592..-4164 m v=100..110
+35f0 f=19322-19460 game=23542.6-23550.3 (7.8 s) order=0x4 nose_max=44 nose_end=44 turn_sum=59 deg s=-2936..-2300 m v=100..100
+35f0 f=19461-19461 game=23550.4-23550.4 (0.0 s) order=0x0 nose_max=44 nose_end=44 turn_sum=0 deg s=-2296..-2296 m v=100..100
+35f0 f=19462-19462 game=23550.5-23550.5 (0.0 s) order=0x12 nose_max=44 nose_end=44 turn_sum=0 deg s=-2291..-2291 m v=100..100
+35f0 f=20086-20821 game=23586.2-23627.4 (41.2 s) order=0x4 nose_max=172 nose_end=30 turn_sum=343 deg s=-3800..-6029 m v=100..110
+35f0 f=21095-21198 game=23643.3-23649.0 (5.7 s) order=0x4 nose_max=32 nose_end=30 turn_sum=42 deg s=-4554..-4058 m v=100..100
