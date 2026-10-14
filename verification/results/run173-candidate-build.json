@@ -1,0 +1,20 @@
+{
+  "dll": "detached worktree /tmp/x3-run173-candidate of 8171827f, build/d3d9.dll (clean configure + build)",
+  "sha256": "e93696ae835765d797156bfdee64a3f7f74df10e360fc13abc44c9e64d09ac33",
+  "bytes": 59776039,
+  "commit": "8171827f",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1011, violations 0",
+    "site_verifier": "PASS, 20 checks (no new byte pattern: the f+0x210 write goes through the existing site B)",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering OK (candidate tree); fixture full 11643/11643, capital 5985/5985, seq-off 11553/11553, column 45/45, lane scenario C 1122/1122, key-off identical to 9f764d69 (implementer, ledger 'Lane stage 1')"
+  },
+  "trigger": "user: gate transitions still clunky -> convoy-gate-transit.md ratified (one departure lane per gate, car-merge rule)",
+  "producer": "main session (Fable 5.1), 2026-10-14",
+  "changes_since_run172": [
+    "513077b1 Run 172 A accepted",
+    "8171827f convoy lane stage 1"
+  ]
+}
