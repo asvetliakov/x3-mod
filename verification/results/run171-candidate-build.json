@@ -1,0 +1,21 @@
+{
+  "dll": "detached worktree /tmp/x3-run171-candidate of 4b4e2eaf, build/d3d9.dll (clean configure + build)",
+  "sha256": "26a1836351bbc805ab372b66a40eb8e67911c38414907a0c1f6dc719dce1d213",
+  "bytes": 59557249,
+  "commit": "4b4e2eaf",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1002, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads OK + discover test_engine_plumes 14 OK, test_engine_ribbons 5/6 (the Wine record-hash check stale: no Wine on this host; harness 93/93)"
+  },
+  "trigger": "Run170 flown: the trail floated past the plume's visible end (the plume fades to 0.1 at 0.848 L; chase-view cap k 0.278)",
+  "producer": "main session (Fable 5.1), 2026-10-14",
+  "changes_since_run170": [
+    "fe9b2961 RE 10.12 trail line questions",
+    "959e6435 convoy design ratification items 6-7",
+    "4b4e2eaf ribbon anchored inside the plume"
+  ]
+}
