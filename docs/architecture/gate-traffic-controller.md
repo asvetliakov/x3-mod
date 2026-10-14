@@ -1637,3 +1637,157 @@ read per decision **[i]**. Static: Member 1,828 B (+20), Gate 55,044 B (+488), b
 **Key off.** Everything above runs only while the controller is live (`traffic_live_`): `note_step`, `ctl_note_warn`, the 0x12 branch,
 the budget. The E row's tail is written only for a member's gate verdict. Key-off identity against `f2c01be2`: 0 differences. Fixture
 lines outside scenario T and the stage-B lines: 0 differing in all three modes (ledger).
+
+### B.5 Pointer liveness (Run165 crash)
+
+Built 2026-10-14 (Opus 5.5) on main `447008ab`; not reviewed, not flown, not installed. Triage:
+[`run165-triage/`](../../verification/results/ship-steering/run165-triage/) (`members.txt`, `transits.txt`). Ledger:
+[ship-steering.md](../verification/ship-steering.md), "B.5 Run165 crash fix". Sources: `ship_gate_ctl_live_core.h` (new: `LiveSet`,
+`prove`, `live_track`, `live_prove`, `live_leaves`, `reset_boards`, `member_code`), `ship_gate_ctl_core.h` (`Member.proven / live_ms /
+live_sector / code`, `Why::gone`, `Why::sector`), `ship_steering.cpp` (the set's fills in `snapshot_for` and site B, `ctl_read_state`'s
+class code, `ctl_live_prove`, `ctl_live_leaves`, `ctl_frame`'s order, `ctl_member_frame`, `ctl_escort`, the summary's `ctl_live`).
+
+**The crash.** Run165 died with `c0000005` at frame 60285 in `ctl_member_frame` (`rd16(m.ship + 0x4a)`), called from the frame
+boundary. Launched capitals stay on their board as committed on order 8 (`validity` keeps order 8), and nothing removed them once the
+ship had left the sector. The B.4 member row read every board member once per game second through its stored pointer. Of its rows,
+2,191 came from launched ships: the class flipped to TL/TS (address reused) and the state was up to 619 s old. The read that faulted
+came 44 frames after the player's sector was torn down.
+
+**The invariant.** The controller dereferences only pointers the engine passed to the module in the same frame's update, and only
+in that update. The frame-boundary controller (`ctl_frame`: the proofs, the sequencer, the member rows, the leaves, the decisions)
+reads no engine memory. The one read left there is the game clock, as before B.5. `test_ctl_boundary_reads.py` scans the source for
+this: from `ctl_member_frame` through `ctl_rows`, `frame_boundary`, and both `ship_gate_ctl*_core.h` headers, any `rd8` / `rd16` /
+`rd32` / `rds32`, `RawMem` or `call_e*x` fails it. The B.4 source gives 3 hits, the B.5 source 0.
+
+**Why the boundary is safe** (engine-side ordering).
+
+1. The main loop runs the per-sector update `0x0043a360` (`0x00403b17`). The command pass, the walks and site B run inside it.
+2. Then comes the deferred-delete sweep `0x0045b660` (`region_sweep`, `0x00403b1c`). It unlinks and frees every object flagged
+   `0x08000000`
+   ([main-loop-input-region.md](../reverse-engineering/main-loop-input-region.md) §1 table and the region table, lines 64–65 and
+   281–282).
+3. Then render, Present, and the frame boundary that runs `ctl_frame`.
+
+The steering handlers run on the engine's thread, and no object is freed on their path; the sweep is elsewhere
+([ship-steering-and-avoidance.md](ship-steering-and-avoidance.md) §1.2, lines 322–323). So every pointer in the set was valid while
+the engine handed it over. The sweep may free it before the boundary, and the boundary does not read it.
+
+**The controller requires the avoidance.** `traffic_live_` needs `avoidance_on_`: the walks fill the live set, and without them no
+member would ever be proven. With the traffic key on and the avoidance off, the controller stays off and logs one
+`ship_steering_gates_traffic_refused reason=needs_avoidance` row when it arms.
+
+**The live set** (`gc::LiveSet`). It is filled during the update, only from objects the engine hands over there, and emptied at the
+end of each controller frame, so every entry belongs to this frame:
+
+* **The avoidance snapshot walks** (`snapshot_for` → `add_snapshot`). The walk follows the engine's sector lists. It drops objects
+  that are deleted (0x8000000), attached (0x200), docked (`[obj+0xf8]`) or flagged NoPair (`[obj+0x44] & 0x20000`). Each ship enters
+  with the `[obj+0x08]` id the walk read. The walk's sector, its gate objects and whether it overflowed are recorded too. While no
+  board has an entry, only the sector and the gates are recorded.
+* **Site B's steering calls of board members** (`x3m_ship_steering_clamp`, behind the member bitmap). The hook hands over the object,
+  its flags have already passed the deleted/attached/docked test, and its id is read in that call. Site B returns before this point for
+  a docked, deleted or attached ship.
+
+A member the walk excludes (docked, or NoPair) and site B does not add is unproven. It leaves once it has gone without a proof for
+`kStateMaxAgeMs` while its sector is walked completely.
+
+The table is open addressing over 8,192 slots and holds at most 4,096 entries (load <= 1/2). It is cleared in O(inserted), allocates
+nothing and is 81,952 B static. A pointer entered twice with two ids in one frame gets id 0 and proves nothing. Past 4,096 entries
+the set marks itself overflowed. Nothing is proven that frame and no leave is decided (fail closed); the summary counts such frames.
+
+**The proof** (`gc::prove`) is a lookup: the member's pointer is in this frame's set with the member's stored id. Every entry was
+flags-OK when the engine handed it over. It is enforced in `gc::live_prove`, and through `Member.proven` everywhere below.
+`ctl_read_state` (site B, engine-provided object) records the member's class code (`Member.code`); the member row shows that stored
+code and reads nothing.
+
+**Frame order** (`ctl_frame`):
+
+1. `note_step`.
+2. `ctl_live_prove`: clear every `proven`, then the sector check, then the proofs.
+3. `sb_frame_all`, which includes the member rows.
+4. `ctl_live_leaves`.
+5. The decisions.
+6. `live_set_.clear()`.
+
+The sequencer runs before the leaves, so it has seen a launched member's order 8 at least once (`o8_ms`, `funnel_end_ms`, the
+escorts' `res_until`) before that member can leave.
+
+**Leaves** (`gc::live_leaves`, `Why::gone`). A member that was neither walked nor steered this frame is unproven. It is not read,
+and the sequencer and the decisions use its stored state until it leaves. Its trace slot, if it holds one, is kept but reads nothing:
+a trace slot's reads happen only at site B with the engine's object. A new slot is claimed only for a proven member.
+
+* A launched member (committed, stage launch) leaves at whichever comes first:
+  * its order-8 leg ends (`o8_ms + 900 ms`), proven or not;
+  * a complete walk of its sector misses it.
+* Any other unproven pair-role member leaves when a complete walk of its sector misses it and its last proof is older than
+  `age_bound(kStateMaxAgeMs)`. The last proof is the latest of the set's proof (`live_ms`), site B's state read (`st.ms`) and the
+  entry time.
+* No leave is decided for a member whose sector had no walk this frame or only an overflowed one.
+
+`ctl_leave` clears the slot, writes the row (`why=gone`) and rebuilds the index. The member's sequence and funnel occupancy end with
+it; `funnel_end_ms` keeps the funnel's timing.
+
+**Sector change** (`gc::sector_check`; Fable review 1: the walk is on demand per sector, so a frame may walk only another active
+sector). `LiveTrack.sector` is the sector whose walk listed a board's gate object (a pointer compare, no read), or else the sector the
+members were proven in.
+
+* A frame without a walk changes nothing.
+* A walked frame that lists the controller's sector, or any board's gate, clears the miss count.
+* Two consecutive walked frames listing neither reset every board: one `why=sector` row per entry, then `reset_boards` and the index
+  rebuilt.
+
+Walks that alternate with another sector keep the boards; a fixture unit checks this. **Limitation:** one active sector per frame is
+still assumed. If another sector were walked on two consecutive frames while ours and its gate were not, the boards would reset. That
+fails closed: the members re-enter on their next commit.
+
+**`ctl_escort`.** The leader is this call's `f+0x224`, which the engine handed over in the update, so reading it is safe. Its board
+entry was matched by pointer alone. It now also needs the entry's id to equal `[leader+0x08]` (`gc::leader_entry_current`): a reused
+address keeps a stale entry under another id until the frame boundary removes it.
+
+**Cost** (host -O2, x86-64; the i686 build was not timed). Entering 2,048 walked ships, 96 proofs and the leave pass take 2.9–3.3 µs
+per frame over the fixture runs **[m]**. The entering now happens in the walk, the proofs at the boundary. Site B adds one id read
+and one set insert per board member per call; `ctl_read_state` adds three reads per state read (every 100 ms). The DLL logs
+`ctl_live_us_max` (proofs, timing tier). Static: `Member` 1,840 B (+12), `LiveSet` 81,952 B **[m]**. The controller's own costs are
+unchanged: the fixture's cost lines match `447008ab`'s within run-to-run noise.
+
+**Scenario T baseline (accepted 2026-10-14).**
+
+* With the proofs alone (`X3M_B5_NO_LEAVE=1`), every fixture line equals `447008ab`'s, scenario T included.
+* With the leaves, launched members stop being decided and swept in their last frames on the board. Over the 72 runs:
+  * decisions 842,628 → 842,357 and sweeps −0.16 %;
+  * the last launch moves by at most 8.1 s and nose_max by at most +1.2° (11 lines);
+  * every scenario T assertion holds, and no member left as gone.
+* This is the new scenario T baseline: [`scenario_t_b.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.txt)
+  is regenerated, and [`scenario_t_b5.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b5.txt) holds the
+  per-field shift.
+
+### B.5 Pointer liveness audit
+
+The invariant: **the controller dereferences only pointers the engine passed to the module in the same frame's update, and only in
+that update.** Every place the module reads, or could read, an engine object through a pointer it stored is listed below.
+"Engine-provided" means the engine hands over the object in this call (a hook argument, or a field of such an object read in that
+call).
+
+| Reader | Stored pointer | Where read | Liveness guarantee before B.5 | B.5 |
+| --- | --- | --- | --- | --- |
+| `ship_gate_ctl_member` row (`ctl_member_frame`) | board member `m.ship` | frame boundary: `[ship+0x4a]`, the type record | **none** | no read: the class is site B's `Member.code`, shown only for a member proven this frame; `live=0`, `class=?` otherwise |
+| the proof (`live_prove`) | board members | — | (new) | set lookup only, no engine read; the set holds only objects handed over in this update |
+| member trace slot claim (`ctl_member_frame`) | `m.ship` into `trace_slots_` | no read (the slot's reads happen at site B with the engine's object) | n/a | claimed only for a proven member; an unproven member's slot is kept and reads nothing |
+| sequencer, decisions, rollouts, yield caps, pair rows (`sb_frame_all`, `gc::decide`, `decide_order`, `ctl_pass_row`) | members' stored state | no engine read | n/a | unproven members unread, decided on stored state until they leave; gone and launched members leave |
+| site B (`ctl_observe`, `ctl_read_state`, `ctl_note_warn`) | board entry found by pointer | the hook's `obj` in the update; id compared before any use | engine-provided | adds the member to the set; records the class code |
+| site E (`ctl_e_fields`, `e_gate_row`, member pairs) | board and arrival entries by pointer | the warn test's A and B in the update; ids compared to `[a+8]` / `[b+8]` | engine-provided | unchanged |
+| `ctl_commit`, the v_plan / cap block, `sb_steer` | board entry by pointer | the call's `obj`, gate = its `f+0x224`; id compared | engine-provided | unchanged |
+| `ctl_escort` | leader's board entry by pointer | the call's `f+0x224` (read through it is safe) | engine-provided read, **identity not checked** | id compared to `[leader+0x08]` |
+| `ctl_depart` (P4/P5) | board entry by pointer | the hook's `obj`; id compared | engine-provided | unchanged |
+| arrival list (`arrivals_`, `arr_ix_`) | ship, id, gate | never read; matched at E by id against the engine's A | n/a (no dereference) | unchanged |
+| lane board, `GateState`, `JoinRegistry` (`join_evaluate16`, `join_row`, `latch_row`) | per table slot (`g.obj`) | stored state only; `g.obj` compared, not read | n/a | unchanged |
+| formation membership memory (`members_`) | (ptr, id) pairs | filled by the walk; `current()` compares stored ids with ids read from engine-provided objects | engine list / engine-provided | unchanged |
+| station part cache (`part_cache_`) | station pointer, generation, stamp | rebuilt by the walk and by `dock_model(cont)`, `cont` = this call's order target or E's B | engine-provided | unchanged (a reused address with the same radius bits and stamp reuses the model: data only) |
+| width cache (`type_widths_`) | none (type index) | n/a | n/a | unchanged |
+| dock container state (`dock_models_`) | container pointer | read only when the call passes `cont` | engine-provided | unchanged (a reused address with the same radius reuses the model for up to 250 ms: data only) |
+| trace slots (`trace_slots_`) | `obj` | read only when site B or the leaf hands over `obj` | engine-provided | unchanged (a reused address is traced as the new object: identity, not liveness) |
+| capital warn watch (`cap_warn_`) | `obj` | read only in `capital_warn_watch(obj, fl)` at site B | engine-provided | unchanged |
+| board gate `g.gate` | gate pointer | compared; read only in `acquire_gate`'s call (engine-provided `f+0x224`) | engine-provided | unchanged |
+| sector snapshots (`snaps_`) | sector pointer | the walk reads `obj+0x54` of the call's ship in the update | engine-provided | a cached snapshot from an earlier frame does not enter the set |
+
+Only one reader had no liveness guarantee: the member row, which is fixed and now reads nothing. One reader had a liveness
+guarantee but no identity check: `ctl_escort`, which is fixed. **Limitation:** one active sector per frame is assumed (above).

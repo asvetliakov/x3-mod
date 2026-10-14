@@ -17,6 +17,7 @@
 #include "../../src/proxy/ship_avoidance_core.h"
 #include "../../src/proxy/ship_avoidance_walk_core.h"
 #include "../../src/proxy/ship_gate_ctl_core.h"
+#include "../../src/proxy/ship_gate_ctl_live_core.h"
 #include <unordered_map>
 #include <chrono>
 #include <cmath>
@@ -28,6 +29,7 @@
 #include <initializer_list>
 #include <limits>
 #include <cstring>
+#include <functional>
 
 namespace core = x3m::ship_steering::core;
 namespace av = x3m::ship_avoidance::core;
@@ -1831,7 +1833,7 @@ struct SectorBuilder {
     FakeMem& mem;
     std::uint32_t next_addr = 0x01000000, sector, table;
     std::uint32_t heads[32] = {}, tails[32] = {};
-    explicit SectorBuilder(FakeMem& m) : mem(m) {
+    explicit SectorBuilder(FakeMem& m, std::uint32_t base = 0x01000000) : mem(m), next_addr(base) {
         sector = alloc(0x100);
         table = alloc(0x200);
         mem.put(sector + 0x50, table);
@@ -8604,12 +8606,58 @@ static void t_observe(gc::Board& b, TShip& c, std::uint32_t now, TResult& r) {
         ++r.left;
     }
 }
+// B.5 (ship_gate_ctl_live_core.h): the DLL's frame boundary over the scenario's ships. This frame's walk lists every ship alive in the
+// update (one sector, complete); a launched or vanished ship is not listed. The boundary reads no engine memory (the proofs are set
+// lookups). The proofs run before the sequencer, the leaves after it (the DLL's ctl_live_prove / ctl_live_leaves).
+static unsigned long b5_t_runs = 0, b5_t_proven = 0, b5_t_unproven = 0, b5_t_launch_left = 0, b5_t_gone_left = 0, b5_t_rows = 0, b5_t_resets = 0;
+static gc::LiveSet t_live_set;
+static gc::LiveTrack t_live_track;
+static gc::LiveOut t_live_out;
+static void t_live_prove(gc::Board& b, const TShip* ships, unsigned n, std::uint32_t now) {
+    static av::Snapshot snap;
+    snap.sector = 0x7000;
+    snap.epoch = now;
+    snap.overflow = 0;
+    snap.count = 0;
+    for (unsigned k = 0; k < n; ++k)
+        if (ships[k].alive) {
+            av::Obstacle& o = snap.items[snap.count++];
+            o = av::Obstacle{};
+            o.ptr = ships[k].m.ptr;
+            o.id = ships[k].m.ptr ^ 0x5a000000u;
+            o.kind = std::uint8_t(av::Kind::ship);
+        }
+    t_live_set.clear();
+    t_live_set.add_snapshot(snap);
+    gc::live_prove(b, t_live_track, t_live_set, now, &t_live_out);
+    if (t_live_out.reset) ++b5_t_resets;
+    b5_t_proven += t_live_out.proven;
+    b5_t_unproven += t_live_out.unproven;
+    for (const gc::Gate& g : b.g) // the member rows with live=1 (every frame here; the DLL's are 1 Hz)
+        for (unsigned i = 0; i < g.n; ++i)
+            if (g.m[i].ship && gc::pair_role(g.m[i].role) && g.m[i].proven) ++b5_t_rows;
+}
+// X3M_B5_NO_LEAVE=1: the proofs only (the set check without the leaves): scenario T's outputs equal the base's byte for byte
+static const bool b5_no_leave = std::getenv("X3M_B5_NO_LEAVE") != nullptr;
+static void t_live_leaves(gc::Board& b, std::uint32_t now) {
+    if (b5_no_leave) return;
+    gc::live_leaves(b, t_live_track, t_live_set, now, &t_live_out);
+    for (unsigned k = 0; k < t_live_out.n_leave; ++k) {
+        const gc::LiveLeave& l = t_live_out.leave[k];
+        if (l.launched) ++b5_t_launch_left;
+        else ++b5_t_gone_left;
+        gc::leave(b.g[l.gate], l.member, false, now);
+    }
+}
 static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
     const double ru = kGateRM * 500;
     static World w;
     w = World{};
     static gc::Board board;
     board = gc::Board{};
+    t_live_set.clear(); // B.5
+    t_live_track = gc::LiveTrack{};
+    ++b5_t_runs;
     core::ShipTable table{};
     static TShip ships[24];
     TResult res;
@@ -9198,6 +9246,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
         gc::note_step(board, now_end, std::uint32_t(dt)); // B.3 item 1: the frame's game step (the DLL's [root+0x714])
         for (unsigned k = 0; k < su.n; ++k)
             if (ships[k].alive) t_observe(board, ships[k], now_end, res);
+        t_live_prove(board, ships, su.n, now_end); // B.5: the DLL's ctl_live_prove (before the sequencer)
         // stage B: the sequencer (the DLL's ctl_frame: gc::sb_frame per gate, after site B's reads and before the decisions)
         for (gc::Gate& g : board.g) {
             if (!g.gate) continue;
@@ -9319,6 +9368,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 }
             }
         }
+        t_live_leaves(board, now_end); // B.5: the DLL's ctl_live_leaves (after the sequencer, before the decisions)
         for (unsigned k = 0; k < su.n; ++k) { // D.7 assertion 6: a committed member on order 4 keeps v >= 10 m/s once it has reached it
             TShip& c = ships[k];
             if (!c.alive || c.m.order != core::kOrderFlyBefore) {
@@ -12699,6 +12749,278 @@ static void b4_checks() {
     check(s3.first == 1 && s3.end == 3, "b4: nothing reserved below 4 slots");
     check(k0.first == 0 && k0.end == 1 && k1.first == 1 && k1.end == 8 && k0.res_end == 0 && k1.res_end == 0, "b4: key off: amendment 17's slots");
 }
+// ---- B.5 (Run165): the board members' pointer liveness (ship_gate_ctl_live_core.h; gate-traffic-controller.md "B.5") -----------------
+// The engine memory of the walk, with a freed-page check: a read inside a freed block aborts the fixture (the DLL would read freed or
+// reused memory there: Run165's crash). reads counts every read: the frame boundary must make none (the proofs are set lookups).
+struct CheckedMem : FakeMem {
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> freed; // [lo, hi)
+    std::uint32_t u32(std::uint32_t at) {
+        for (const auto& r : freed)
+            if (at >= r.first && at < r.second) {
+                std::fflush(stdout);
+                std::fprintf(stderr, "FAIL b5: read of freed memory at 0x%08x (block 0x%08x..0x%08x)\n", at, r.first, r.second);
+                std::abort();
+            }
+        return FakeMem::u32(at);
+    }
+    std::int32_t s32(std::uint32_t at) { return std::int32_t(u32(at)); }
+    std::uint16_t u16(std::uint32_t at) { return std::uint16_t(u32(at & ~3u) >> (8 * (at & 3))); }
+};
+// the object leaves its bucket's list (the engine unlinks a destroyed or transferred object)
+static void b5_unlink(FakeMem& mem, const SectorBuilder& sb, std::uint32_t o, unsigned bucket) {
+    std::uint32_t cell = sb.table + 0xc * bucket;
+    while (mem.FakeMem::u32(cell) && mem.FakeMem::u32(cell) != o) cell = mem.FakeMem::u32(cell);
+    if (mem.FakeMem::u32(cell) == o) mem.put(cell, mem.FakeMem::u32(o));
+}
+static void b5_link(FakeMem& mem, const SectorBuilder& sb, std::uint32_t o, unsigned bucket) {
+    mem.put(o, mem.FakeMem::u32(sb.table + 0xc * bucket));
+    mem.put(sb.table + 0xc * bucket, o);
+}
+static void b5_checks() {
+    static CheckedMem mem;
+    mem = CheckedMem{};
+    SectorBuilder s1(mem);
+    const std::uint32_t tt = 0x00700000; // the type table: game-global memory (outside both sectors)
+    mem.put(wk::kShipTypeTableSlot, tt);
+    constexpr std::uint16_t kTypeM2 = 3, kTypeTL = 9;
+    mem.put(tt + kTypeM2 * wk::kRecordStride + wk::kRecordClassCode, 4); // M2
+    mem.put(tt + kTypeTL * wk::kRecordStride + wk::kRecordClassCode, 0); // TL
+    const std::int32_t pg[3] = {0, 0, 0};
+    const std::uint32_t gate = s1.object(18, pg, 1105 * 500);
+    auto ship = [&](SectorBuilder& sb, std::int32_t x_m, std::uint32_t id, std::uint16_t type) {
+        const std::int32_t p[3] = {x_m * 500, 0, -20000 * 500};
+        const std::uint32_t o = sb.object(7, p, 1092 * 500);
+        mem.put(o + wk::kObjId, id);
+        mem.put(o + 0x48, 7u | (std::uint32_t(type) << 16));
+        return o;
+    };
+    // the crowd at one gate: A launched (stage launch, order 8), R committed (its address is reused), C committed, D escort, E arrival
+    const std::uint32_t A = ship(s1, 0, 0x101, kTypeM2), R = ship(s1, 3000, 0x102, kTypeM2), C = ship(s1, 6000, 0x103, kTypeM2),
+                        D = ship(s1, 9000, 0x104, kTypeM2), E = ship(s1, 12000, 0x105, kTypeM2);
+    static gc::Board b;
+    b = gc::Board{};
+    gc::Gate& g = b.g[0];
+    g.gate = gate;
+    const std::uint32_t t0 = 1000;
+    gc::Role before = gc::Role::count;
+    const std::uint32_t ships[5] = {A, R, C, D, E};
+    const gc::Role roles[5] = {gc::Role::committed, gc::Role::committed, gc::Role::committed, gc::Role::escort, gc::Role::arrival};
+    for (unsigned k = 0; k < 5; ++k) {
+        gc::Member* m = gc::enter(b, g, ships[k], 0x101 + k, roles[k], t0, &before);
+        m->st.ms = t0;
+        m->st.order = k == 0 ? core::kOrderWarpAway : core::kOrderFlyBefore;
+    }
+    g.m[gc::find(g, D)].leader = C;
+    gc::Member& ma = g.m[gc::find(g, A)];
+    ma.sb = gc::Sb::launch;
+    ma.o8_ms = t0;
+    static gc::LiveSet set;
+    set.clear();
+    gc::LiveTrack trk;
+    static gc::LiveOut out;
+    static av::Snapshot snap;
+    static wk::PartCache cache;
+    cache = wk::PartCache{};
+    wk::Stats st;
+    // one frame: the update (the walk: nullptr none; between: what happens after the walk and before the boundary), then the
+    // controller frame (the proofs and the member rows) with every engine read counted: the boundary must make none
+    unsigned rows_live = 0, rows_unproven = 0, boundary_reads = 0;
+    auto frame = [&](const SectorBuilder* sb, std::uint32_t now, bool partial = false, const std::function<void()>& between = nullptr) {
+        set.clear();
+        if (sb) {
+            wk::fill_snapshot(mem, sb->sector, now, snap, cache, st, nullptr);
+            if (partial) snap.overflow = 1;
+            set.add_snapshot(snap);
+        }
+        if (between) between();
+        const unsigned r0 = mem.reads;
+        gc::live_prove(b, trk, set, now, &out);
+        for (const gc::Gate& gg : b.g)
+            for (unsigned i = 0; i < gg.n; ++i)
+                if (gg.m[i].ship && gc::pair_role(gg.m[i].role)) {
+                    const std::uint32_t code = gc::member_code(gg.m[i]);
+                    if (gg.m[i].proven) {
+                        ++rows_live;
+                        check(code == gg.m[i].code, "b5: a proven member's row shows site B's class");
+                    } else {
+                        ++rows_unproven;
+                        check(code == 0xffffffffu, "b5: an unproven member's row shows no class");
+                    }
+                }
+        boundary_reads += mem.reads - r0;
+    };
+    auto leaves = [&](std::uint32_t now) {
+        gc::live_leaves(b, trk, set, now, &out);
+        for (unsigned k = 0; k < out.n_leave; ++k) gc::leave(b.g[out.leave[k].gate], out.leave[k].member, false, now);
+        return out.n_leave;
+    };
+    auto on_board = [&](std::uint32_t p) {
+        int i = -1;
+        return gc::locate(b, p, &i) != nullptr && i >= 0;
+    };
+    // frame 1: every member listed, proven
+    frame(&s1, t0);
+    check(!out.reset && trk.sector == s1.sector && out.proven == 5 && out.unproven == 0, "b5: frame 1 proves the five members");
+    check(leaves(t0) == 0, "b5: frame 1: nobody leaves");
+    // between frames: A (launched) is destroyed and its block freed; R's object is destroyed and the address reused by a TL of another id
+    b5_unlink(mem, s1, A, 7);
+    mem.freed.push_back({A, A + 0x200});
+    b5_unlink(mem, s1, R, 7);
+    mem.put(R + wk::kObjId, 0x777);
+    mem.put(R + 0x48, 7u | (std::uint32_t(kTypeTL) << 16));
+    b5_link(mem, s1, R, 7);
+    frame(&s1, t0 + 100);
+    const bool a_proven = g.m[gc::find(g, A)].proven, r_proven = g.m[gc::find(g, R)].proven;
+    check(out.proven == 3 && out.unproven == 2 && !a_proven && !r_proven, "b5: frame 2: the freed and the reused pointer are not proven");
+    const unsigned left2 = leaves(t0 + 100);
+    check(left2 == 1 && !on_board(A) && on_board(R), "b5: frame 2: the launched member missing from the snapshot leaves; the other stays (unread)");
+    const std::uint32_t r_st_ms = g.m[gc::find(g, R)].st.ms;
+    frame(&s1, t0 + 500);
+    check(leaves(t0 + 500) == 0 && on_board(R) && g.m[gc::find(g, R)].st.ms == r_st_ms, "b5: frame 3: R stays, unread (no proof 500 ms)");
+    frame(&s1, t0 + 1100);
+    check(leaves(t0 + 1100) == 1 && !on_board(R), "b5: frame 4: R leaves 1,100 ms after its last proof (gone)");
+    // the residual window: D is walked in this frame's update, then destroyed and freed before the frame boundary. The boundary proves
+    // it from the walk (the engine handed it over in this update) and reads nothing; the next frame's walk misses it
+    const unsigned dr0 = boundary_reads;
+    frame(&s1, 2200, false, [&] {
+        b5_unlink(mem, s1, D, 7);
+        mem.freed.push_back({D, D + 0x200});
+    });
+    check(g.m[gc::find(g, D)].proven && boundary_reads == dr0, "b5: a member freed after the walk, before the boundary: 0 reads");
+    frame(&s1, 2300);
+    check(!g.m[gc::find(g, D)].proven && leaves(2300) == 0 && on_board(D), "b5: ... unproven the next frame (unread, stays)");
+    // C launched (order 8 seen at 2,000): still listed, it leaves when the leg ends (o8 + 900 ms)
+    gc::Member& mc = g.m[gc::find(g, C)];
+    mc.sb = gc::Sb::launch;
+    mc.o8_ms = 2000;
+    frame(&s1, 2850);
+    check(mc.proven && leaves(2850) == 0 && on_board(C), "b5: a launched member stays until its leg ends");
+    frame(&s1, 2900);
+    check(leaves(2900) == 1 && !on_board(C), "b5: a launched member leaves when its order-8 leg ends, listed or not");
+    frame(&s1, 3300);
+    check(leaves(3300) == 1 && !on_board(D), "b5: the member freed after the walk leaves 1,100 ms after its last proof");
+    // a frame without a snapshot and one with an overflowed snapshot missing E: no proof, no leave (unknown); E unproven past 1 s stays
+    const std::uint32_t e_last = g.m[gc::find(g, E)].live_ms;
+    frame(nullptr, 5000);
+    check(!out.reset && out.proven == 0 && leaves(5000) == 0 && out.unknown == 1 && on_board(E), "b5: no snapshot this frame: nothing proven, nobody leaves");
+    b5_unlink(mem, s1, E, 7);
+    frame(&s1, 5100, true);
+    check(out.proven == 0 && leaves(5100) == 0 && on_board(E) && e_last == 3300, "b5: an overflowed snapshot missing E: no leave decided");
+    b5_link(mem, s1, E, 7);
+    // site B's add path: no walk this frame, site B handed E over (its id read in the call): proven, its walk sector kept
+    frame(nullptr, 5150, false, [&] { set.add(E, 0x105, gc::kLiveNoSector); });
+    check(g.m[gc::find(g, E)].proven && g.m[gc::find(g, E)].live_sector == s1.sector && g.m[gc::find(g, E)].live_ms == 5150,
+          "b5: site B's add proves the member it was handed (sector kept)");
+    // one pointer handed over with two ids in one frame (reused within the update): id 0, neither proves
+    frame(nullptr, 5160, false, [&] {
+        set.add(E, 0x105, gc::kLiveNoSector);
+        set.add(E, 0x999, gc::kLiveNoSector);
+    });
+    std::uint32_t id_seen = 1;
+    std::uint8_t sec_seen = 0;
+    check(set.find(E, &id_seen, &sec_seen) && id_seen == 0 && !g.m[gc::find(g, E)].proven && !gc::prove(set, E, 0x999, &sec_seen),
+          "b5: a pointer entered with two ids keeps id 0: neither id proves");
+    // the set overflows past kLiveMax entries: nothing proven that frame (fail closed), counted, no leave
+    frame(&s1, 5170, false, [&] {
+        for (std::uint32_t k = 0; k <= gc::kLiveMax; ++k) set.add(0x30000000u + 0x100u * k, k + 1, gc::kLiveNoSector);
+    });
+    check(out.overflow && out.proven == 0 && set.overflow && set.n == gc::kLiveMax && leaves(5170) == 0 && on_board(E),
+          "b5: an overflowed set proves nothing and decides no leave");
+    // ctl_escort's id check (the DLL reads the leader's id in the call)
+    const gc::Member& em = g.m[gc::find(g, E)];
+    check(gc::leader_entry_current(em, 0x105) && !gc::leader_entry_current(em, 0x777) && !gc::leader_entry_current(gc::Member{}, 0),
+          "b5: ctl_escort accepts the leader entry only under the live id");
+    // the crowd grows (four more committed); another active sector's ships request walks on alternate frames: the boards stay
+    for (unsigned k = 0; k < 4; ++k) {
+        const std::uint32_t o = ship(s1, 15000 + 3000 * int(k), 0x200 + k, kTypeM2);
+        gc::Member* m = gc::enter(b, g, o, 0x200 + k, gc::Role::committed, 5200, &before);
+        m->st.ms = 5200;
+    }
+    frame(&s1, 5300);
+    check(!out.reset && out.proven == 5, "b5: the crowd of five proven before the sector change");
+    SectorBuilder s2(mem, 0x02000000u);
+    const std::uint32_t gate2 = s2.object(18, pg, 1105 * 500);
+    const std::uint32_t N = ship(s2, 0, 0x301, kTypeM2);
+    ship(s2, 4000, 0x302, kTypeM2);
+    bool kept = true;
+    for (unsigned k = 0; k < 6; ++k) {
+        frame(k % 2 ? &s1 : &s2, 5310 + 10 * k);
+        kept = kept && !out.reset && leaves(5310 + 10 * k) == 0 && (k % 2 ? out.proven == 5 : out.proven == 0);
+    }
+    check(kept && trk.sector == s1.sector && on_board(E), "b5: walks alternating with another sector keep the boards (no reset)");
+    // the player changes sector: every object of the old sector is freed; one walked frame without it is a miss, the second resets
+    mem.freed.push_back({0x01000000u, s1.next_addr});
+    frame(&s2, 5390);
+    check(!out.reset && out.proven == 0 && on_board(E), "b5: one walked frame without the controller's sector: no reset yet");
+    frame(nullptr, 5395);
+    check(!out.reset, "b5: a frame without a walk never resets");
+    frame(&s2, 5400);
+    check(out.reset && out.from == s1.sector && out.to == s2.sector && trk.sector == s2.sector && out.proven == 0,
+          "b5: the second walked frame without it (no board gate listed) resets the boards, no proof");
+    const unsigned dropped = gc::reset_boards(b);
+    bool empty = true;
+    for (const gc::Gate& gg : b.g) empty = empty && !gg.gate && !gg.n;
+    check(dropped == 5 && empty && boundary_reads == 0, "b5: the reset drops every entry of the old sector; the boundary read nothing");
+    gc::Gate& g2 = b.g[0];
+    g2.gate = gate2;
+    gc::enter(b, g2, N, 0x301, gc::Role::committed, 5400, &before)->st.ms = 5400;
+    frame(&s2, 5500);
+    check(!out.reset && out.proven == 1 && g2.m[gc::find(g2, N)].proven, "b5: the new sector's member is proven the next frame");
+    std::printf("b5 liveness: launched freed: left at frame 2; reused address (TL, other id): unproven, left after 1,100 ms; freed after "
+                "the walk before the boundary: proven from the walk, 0 reads, left when unproven past 1 s; leg end leave; no-snapshot and "
+                "overflow frames: no leave; site B add proves; two ids: neither proves; set overflow: nothing proven, no leave; ctl_escort id "
+                "check; alternating sector walks: boards kept; sector change: reset on the 2nd walked frame, %u entries dropped; freed-page "
+                "aborts 0; frame-boundary engine reads %u; "
+                "member rows %u live, %u unproven\n",
+                dropped, boundary_reads, rows_live, rows_unproven);
+    // the live set's cost (host -O2): 2048 ship items in one snapshot, 96 members on four boards, every member listed and proven
+    static av::Snapshot big;
+    big = av::Snapshot{};
+    big.sector = 0x5000;
+    big.count = av::kSnapshotCapacity;
+    for (unsigned k = 0; k < big.count; ++k) {
+        big.items[k].ptr = 0x10000000u + 0x100u * k;
+        big.items[k].id = big.items[k].ptr ^ 0x5a000000u;
+        big.items[k].kind = std::uint8_t(av::Kind::ship);
+    }
+    static gc::Board bb;
+    bb = gc::Board{};
+    for (unsigned gi = 0; gi < gc::kGates; ++gi) {
+        bb.g[gi].gate = 0x4000 + gi;
+        for (unsigned i = 0; i < gc::kMembers; ++i) {
+            const std::uint32_t p = big.items[(gi * gc::kMembers + i) * 21].ptr;
+            gc::Member* m = gc::enter(bb, bb.g[gi], p, p ^ 0x5a000000u, gc::Role::committed, 10, &before);
+            m->st.ms = 10;
+        }
+    }
+    gc::LiveTrack bt;
+    bt.sector = 0x5000;
+    double best_us = 1e9;
+    unsigned proven = 0;
+    for (int rep = 0; rep < 5; ++rep) {
+        constexpr int kIters = 2000;
+        const auto t_a = std::chrono::steady_clock::now();
+        for (int it = 0; it < kIters; ++it) {
+            set.clear();
+            set.add_snapshot(big);
+            gc::live_prove(bb, bt, set, 20 + std::uint32_t(it), &out);
+            gc::live_leaves(bb, bt, set, 20 + std::uint32_t(it), &out);
+            proven += out.proven;
+        }
+        const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t_a).count() / kIters;
+        if (us < best_us) best_us = us;
+    }
+    check(out.proven == gc::kGates * gc::kMembers && out.n_leave == 0 && set.n == av::kSnapshotCapacity, "b5 cost: 96 proven, 2048 listed");
+    std::printf("b5 cost (host): live set from 2048 ships + 96 proofs + the leave pass %.2f us per frame (best of 5 x 2000; %u proofs)\n",
+                best_us, proven);
+}
+// B.5 over the scenario-T runs: every proof and leave of the crowds
+static void b5_traffic_summary() {
+    std::printf("b5 T: runs=%lu member-frames proven=%lu unproven=%lu launched_left=%lu gone_left=%lu live_rows=%lu\n", b5_t_runs,
+                b5_t_proven, b5_t_unproven, b5_t_launch_left, b5_t_gone_left, b5_t_rows);
+    check(b5_t_runs == 0 || (b5_t_proven > 0 && (b5_t_launch_left > 0 || b5_no_leave)), "b5 T: the crowds' members are proven and the launched leave");
+    check(b5_t_resets == 0 && b5_t_gone_left == 0, "b5 T: one sector (no reset); every member alive until its launch (none left as gone)");
+}
 int main(int argc, char** argv) {
     if (std::getenv("X3M_SEQ_OFF")) g_seq = false; // amendment 16b off: amendment 16 with the review fixes (the option-off stdout)
     if (argc == 3 && !std::strcmp(argv[1], "--emit-trace")) return emit_trace(argv[2]);
@@ -12710,7 +13032,9 @@ int main(int argc, char** argv) {
         sb_cost_bench();
         sb_b3_checks(); // B.3 (Run163 fixes)
         b4_checks();    // B.4 (Run164)
+        b5_checks();    // B.5 (Run165)
         traffic_scenarios();
+        b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
         return failures ? 1 : 0;
@@ -12755,7 +13079,9 @@ int main(int argc, char** argv) {
         sb_cost_bench();
         sb_b3_checks(); // B.3 (Run163 fixes)
         b4_checks();    // B.4 (Run164)
+        b5_checks();    // B.5 (Run165)
         traffic_scenarios();
+        b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
         std::printf(failures ? "checks FAIL\n" : "checks PASS\n");
         return failures ? 1 : 0;
@@ -12805,7 +13131,9 @@ int main(int argc, char** argv) {
     sb_cost_bench();
     sb_b3_checks(); // B.3 (Run163 fixes)
     b4_checks();    // B.4 (Run164)
+    b5_checks();    // B.5 (Run165)
     traffic_scenarios();
+    b5_traffic_summary();
     dock_scenarios(); // amendment 18 (docking-approach.md): scenario N
     std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u vanilla_notes=%u\n", checks, failures, slip_gaps, vanilla_notes);
     std::printf(failures ? "checks FAIL\n" : "checks PASS\n");

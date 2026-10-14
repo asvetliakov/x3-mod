@@ -1,0 +1,24 @@
+traffic T lines 391 / 391, differing 126
+decisions: lines 54, sum 842628 -> 842357, largest change 32
+rollouts: lines 54, sum 849972 -> 849695, largest change 32
+sweeps: lines 54, sum 2.90517e+06 -> 2.90051e+06, largest change 132
+o4: lines 23, sum 250090 -> 248799, largest change 548
+gap/hand-over: lines 22, sum 41864 -> 41933, largest change 99
+warns: lines 22, sum 321408 -> 321476, largest change 99
+last_launch: lines 21, sum 21214.4 -> 21206.3, largest change 8.1
+span_first_cross_to_last_launch: lines 20, sum 13661 -> 13652.7, largest change 8
+frames: lines 19, sum 8.55836e+06 -> 8.55815e+06, largest change 256
+predictions: lines 15, sum 11305 -> 11302, largest change 7
+cross_to_launch_mean: lines 13, sum 593.6 -> 592.6, largest change 0.4
+excluded: lines 11, sum 5.67642e+06 -> 5.67626e+06, largest change 155
+nose_max: lines 11, sum 40.88 -> 42.5, largest change 1.2
+member: lines 10, sum 608607 -> 608557, largest change 63
+cross_to_launch_min: lines 10, sum 408.3 -> 403.9, largest change 2.3
+cross_to_launch_max: lines 7, sum 324.2 -> 321.7, largest change 1.5
+capped: lines 5, sum 39521 -> 39366, largest change 58
+narrow: lines 4, sum 510079 -> 510074, largest change 6
+conflicts: lines 4, sum 1489 -> 1483, largest change 2
+yields: lines 4, sum 1485 -> 1479, largest change 2
+late_vs_18s_max: lines 3, sum 559.3 -> 563.5, largest change 5.5
+a_age_max_ms: lines 1, sum 3000 -> 2986, largest change 14
+seta_steps: lines 1, sum 522 -> 525, largest change 3

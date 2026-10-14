@@ -1,7 +1,7 @@
 departures (9 runs)
   D.7.2 0x12 episodes between members per run                                                max 0
   certified frames with capsule contact                                                      max 0
-  D.7.1 nose at X, deg (oracle 79-105)                                                       max 5.04
+  D.7.1 nose at X, deg (oracle 79-105)                                                       max 5.07
   D.7.1 crossings not kept at P2                                                             max 0
   D.7.1 0x1f frames (oracle: rotates 84 s)                                                   max 1
   D.7.4 ctl_x_refused                                                                        max 0
@@ -126,8 +126,8 @@ mixed (9 runs)
   Run161: member warns unsuppressed in the order-0 gap                                       max 0
   Run161: committed members past their X depth at once                                       max 1
   reported: launch after t_launch(k-1) + 18 s (D.7 literal), s                               max 139.8
-  D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 437.7
-  reported: cross (P2) -> launch per ship, s, max                                            max 47.1
+  D.7.7 reported: first crossing to last launch, s (oracle 484 for 6)                        max 436.7
+  reported: cross (P2) -> launch per ship, s, max                                            max 47.6
   reported: cross (P2) -> launch per ship, s, min                                            min 41
   reported: ... the runs' lowest mean, s                                                     min 43.2
   D.4: a small arrival's spawn against the capital at the plane, surface clearance m         min -1

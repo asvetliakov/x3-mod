@@ -1,0 +1,5 @@
+base 447008ab (447008ab) vs working tree 4eb8058f-dirty; log x3m.log 952369147 B
+out: byte-identical (81834 B)
+json: byte-identical (223972150 B)
+lag: byte-identical (1325 B)
+RESULT PASS

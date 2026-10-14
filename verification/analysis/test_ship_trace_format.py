@@ -160,7 +160,7 @@ CTL_ROWS = [
     'ship_gate_ctl_seq frame=903 t_ms=24470000 gate=0x8e4fbdb0 holders=3 inbound=1 cand=0x4b9cfd08 key=16 role=committed stage=hold ringed=1 '
     'busy_by=0x00000000 window=1 timing=- free_ms=-1200 dx_m=8350 v_feas=100 block_ms=0 skips=0 releases=2',
     'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=hold order=0x15 target=0x8e051030 '
-    'p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 petal=3 key=49 traced=1 st_age_ms=50 dec_age_ms=310',
+    'p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 petal=3 key=49 traced=1 st_age_ms=50 dec_age_ms=310 live=1',
 ]
 
 
@@ -188,6 +188,7 @@ class GateTrafficRows(unittest.TestCase):
                          (0x8e051030, 0x8e049da0, 'M2', 'escort', 'hold', 0x15, 0x8e051030))
         self.assertEqual((mr['p_m'], mr['nose_f'], mr['v_ms'], mr['petal'], mr['key'], mr['traced'], mr['st_age_ms'], mr['dec_age_ms']),
                          ((-1200, 450, -9330), 0.94, 60.0, 3, 49, 1, 50, 310))
+        self.assertEqual(mr['live'], 1)  # B.5: the liveness proof
         self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 6)
 
 

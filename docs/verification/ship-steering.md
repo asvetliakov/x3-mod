@@ -2097,6 +2097,106 @@ are unchanged: the codes and radii were already read for a capital A. A stale `s
 not measured). The member row and the slot keeping cost one `trace_slot_of` per member per frame (8 compares), and only with
 `ship_trace` or `--debug`.
 
+### B.5 Run165 crash fix (2026-10-14, Opus 5.5; design and implementation [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) §B.5)
+
+Run165 crashed with `c0000005` in `ctl_member_frame`: the B.4 member row read `[ship+0x4a]` of a launched capital whose object had
+been freed and the address reused. Triage: [`run165-triage/`](../../verification/results/ship-steering/run165-triage/).
+
+The invariant: **the controller dereferences only pointers the engine passed to the module in the same frame's update, and only in
+that update.**
+
+* **The live set** is filled during the update by the avoidance walks and by site B's calls of board members.
+  * The walks enter ships that are linked and neither deleted, attached, docked nor NoPair, with the id read at the walk.
+  * Site B enters the hook's object, with its flags tested and its id read.
+
+  It is emptied after each controller frame. The ordering is update → deferred-delete sweep → Present → `ctl_frame`
+  (main-loop-input-region.md lines 64–65 and 281–282; ship-steering-and-avoidance.md lines 322–323). The controller requires the
+  avoidance: with it off, the traffic key logs `reason=needs_avoidance` and stays off.
+* **At the frame boundary** the proof is a set lookup (pointer and stored id), and the controller reads no engine memory. The member
+  row shows the class code site B recorded. An overflowed set (more than 4,096 entries) proves nothing that frame and decides no
+  leave; the summary counts such frames.
+* **Leaves.**
+  * A member neither walked nor steered this frame is unread and decided on its stored state until it leaves. It leaves after
+    `kStateMaxAgeMs` without a proof. An unproven member keeps its trace slot, which reads nothing.
+  * A launched member leaves when its order-8 leg ends or when a complete walk misses it, whichever first.
+  * Two consecutive walked frames that list neither the controller's sector nor any board's gate reset every board. A frame without
+    a walk never resets. Limitation: one active sector per frame is assumed.
+* **`ctl_escort`** also checks the leader entry's id (`gc::leader_entry_current`).
+
+Scenario T's shift from launched members leaving is the accepted new baseline (2026-10-14). Not reviewed, not flown, not installed.
+
+**Pointer liveness audit** (the full table: gate-traffic-controller.md "B.5 Pointer liveness audit"):
+
+| Reader | Guarantee before B.5 | B.5 |
+| --- | --- | --- |
+| `ship_gate_ctl_member` row | **none** (stored pointer read at the frame boundary) | no engine read: site B's class, shown when proven; `live=0`, `class=?` otherwise |
+| the proof (`live_prove`) | (new) | set lookup only; entries handed over in this frame's update |
+| member trace slot claim | n/a (no read) | proven members only; an unproven member's slot is kept, reads nothing |
+| sequencer, decisions, rollouts, caps, pair rows | n/a (stored state only) | unproven: unread, decided on stored state until they leave; gone and launched leave |
+| site B, site E, `ctl_commit`, cap block, `sb_steer`, `ctl_depart` | engine-provided in the update, id compared | site B adds its member to the set |
+| `ctl_escort` | engine-provided read, identity unchecked | id compared |
+| arrival list, lane board, `GateState`, `JoinRegistry` | n/a (no dereference) | unchanged |
+| formation memory, station part cache, dock container state | engine list / engine-provided | unchanged |
+| width cache, trace slots, capital warn watch, board gate | n/a / engine-provided | unchanged |
+| sector snapshots | engine-provided | a snapshot cached from an earlier frame does not enter the set |
+
+**Acceptance (measured, WSL2 host, MinGW GCC 16.2):**
+
+* Build: fresh `build/` (configure and build) → 0 warnings over 126 C++ objects; DLL `4bbb4808…`, 59,434,991 B (unstripped worktree
+  build, dirty; not a candidate).
+* `check_no_x87.py build/d3d9.dll`: PASS, 1,001 reachable functions, 0 violations.
+* `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe`: PASS, 20 checks.
+* `summary_bound.py`: 4,239 (declared 4,239, buffer 8,192), PASS. The summary gained
+  `ctl_live=gone,launched,resets,dropped,unproven,overflow` and `ctl_live_us_max`.
+* No engine read at the frame boundary
+  ([`test_ctl_boundary_reads.py`](../../verification/analysis/test_ctl_boundary_reads.py)). It scans `ship_steering.cpp` from
+  `ctl_member_frame` through `ctl_rows`, `frame_boundary`, and both `ship_gate_ctl*_core.h` headers. Hits for
+  `rd8|rd16|rd32|rds32|RawMem|call_e*x`: 0 (the B.4 source gives 3). The game clock is read through `game_time_ms` /
+  `frame_step_ms`, as before.
+* Fixture: full 9807 / `--capital` 4149 / seq-off 9717, 0 failures (from 9692 / 4034 / 9602; +115 each). The new checks are 113
+  `b5` units (25 explicit, 88 on the member rows) and 2 on the scenario T summary. Regenerated:
+  [`ship_steering_host.txt`](../../verification/results/ship-steering/ship_steering_host.txt),
+  [`ship_steering_host_seq_off.txt`](../../verification/results/ship-steering/capital-crowd/ship_steering_host_seq_off.txt),
+  [`scenario_t_b.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b.txt) (the new baseline).
+* Freed-page fixture: `CheckedMem` aborts the run on any read inside a freed block and counts every read. Results:
+  * A launched member's block is freed and unlinked: it is unproven and leaves that frame.
+  * An address reused by a TL with another id: unproven, frozen at 500 ms, gone at 1,100 ms.
+  * **A member freed after the walk and before the boundary:** proven from the walk, **0 reads**, unproven the next frame, gone at
+    1,100 ms.
+  * A launched member still listed leaves at `o8 + 900 ms`.
+  * Frames without a walk, or with an overflowed walk missing a member: no leave.
+  * Site B's add path proves the member and keeps its walk sector.
+  * One pointer entered with two ids gets id 0, and neither id proves.
+  * A set overflowed past 4,096 entries proves nothing and decides no leave.
+  * The `ctl_escort` id check.
+  * Walks alternating with another sector over six frames keep the boards.
+  * Sector change with a crowd of five and the old sector freed: the first walked frame without the sector is a miss, a no-walk frame
+    changes nothing, and the second walked frame resets (5 entries dropped).
+  * The new sector's member is proven the next frame.
+  * Frame-boundary engine reads over the whole sequence: **0**. Aborts: 0. Member rows: 46 live, 42 unproven.
+
+  Scenario T over 72 runs: 13,296,150 member-frames proven, 306 unproven, 333 launched members left, 0 left as gone.
+* Fixture identity ([`fixture_identity_b5.sh`](../../verification/results/ship-steering/gate-traffic-controller/fixture_identity_b5.sh)
+  → [`fixture_lines_b5.txt`](../../verification/results/ship-steering/gate-traffic-controller/fixture_lines_b5.txt), against
+  `447008ab`, every line including scenario T, timings and the host targets' met/MISSED masked):
+  * The proofs alone (`X3M_B5_NO_LEAVE=1`): 0 differing lines in all three modes (757 / 580 / 757 compared).
+  * With the leaves: 126 scenario T lines differ, 0 elsewhere. Decisions 842,628 → 842,357, sweeps −0.16 %, last launch at most
+    8.1 s, nose_max at most +1.2°; every scenario T assertion holds
+    ([`scenario_t_b5.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b5.py) →
+    [`.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b5.txt)).
+* Key-off identity ([`keyoff_identity_b5.txt`](../../verification/results/ship-steering/gate-traffic-controller/keyoff_identity_b5.txt),
+  `keyoff_identity_b.sh 447008ab`): 0 differences in every sweep; the known B.4 E gap case is 233, as in B.4.
+* Run165 replay ([`replay_identity_b5.txt`](../../verification/results/ship-steering/gate-traffic-controller/replay_identity_b5.txt),
+  `replay_identity_b.sh` on the 952,369,147 B Run165 log against `447008ab`): stdout 81,834 B, JSON 223,972,150 B and the 1,325 B lag
+  summary byte-identical.
+* Host tests (`test_ship_trace_format test_ship_steering_sites test_ship_trace_replay test_ship_steering test_check_no_x87
+  test_config_schema test_launcher_defaults test_ctl_boundary_reads`): 67 OK. The format test parses the member row's `live=`.
+
+**Cost.** Entering 2,048 walked ships, 96 proofs and the leave pass take 2.9–3.3 µs per frame (host -O2; the i686 build is not
+timed). The entering happens in the walk, the proofs at the boundary. Site B adds one id read and one insert per member call;
+`ctl_read_state` adds three reads per 100 ms per member. The fixture's controller cost lines are unchanged. Static: `LiveSet`
+81,952 B, `Member` +12 B.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

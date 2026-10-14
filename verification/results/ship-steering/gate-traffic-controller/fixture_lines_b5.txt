@@ -1,0 +1,61 @@
+base 447008ab (447008ab) vs working tree 4eb8058f-dirty
+mode full, proofs only (X3M_B5_NO_LEAVE=1):
+lines before 758 after 761; compared 757 vs 757 (timings masked, scenario T 391 lines included); differing 0 (scenario T 0); new b5 lines 3
+count before: ship_steering_host checks=9692 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=9807 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS
+mode full, B.5 (proofs and leaves):
+lines before 758 after 761; compared 757 vs 757 (timings masked, scenario T 391 lines included); differing 126 (scenario T 126); new b5 lines 3
+difference:
+  - traffic T departures   fps= 30 seed=1: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14372 rollouts=14478 sweeps=46079 narrow=81701 conflicts=104 yields=103 capped=536
+  + traffic T departures   fps= 30 seed=1: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14367 rollouts=14473 sweeps=45964 narrow=81701 conflicts=104 yields=103 capped=536
+difference:
+  - traffic T departures   fps= 30 seed=7: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14387 rollouts=14474 sweeps=45983 narrow=80901 conflicts=87 yields=86 capped=463 u
+  + traffic T departures   fps= 30 seed=7: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14381 rollouts=14468 sweeps=45864 narrow=80901 conflicts=87 yields=86 capped=463 u
+differing fields (lines): decisions 54, rollouts 54, sweeps 54, o4 23, gap/hand-over 22, warns 22, last_launch 21, span_first_cross_to_last_launch 20, frames 19, predictions 15, cross_to_launch_mean 13, excluded 11, nose_max 11, member 10, cross_to_launch_min 10, field19 9, field20 9, cross_to_launch_max 7, capped 5, field21 4, field28 4, narrow 4, conflicts 4, yields 4, field27 3, field29 3, late_vs_18s_max 3, a_age_max_ms 1, seta_steps 1
+count before: ship_steering_host checks=9692 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=9807 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS (scenario T may differ)
+b5 liveness: launched freed: left at frame 2; reused address (TL, other id): unproven, left after 1,100 ms; freed after the walk before the boundary: proven from the walk, 0 reads, left when unproven 
+b5 cost (host): live set from 2048 ships + 96 proofs + the leave pass 3.13 us per frame (best of 5 x 2000; 960000 proofs)
+b5 T: runs=72 member-frames proven=13296150 unproven=306 launched_left=333 gone_left=0 live_rows=13296150
+mode capital, proofs only (X3M_B5_NO_LEAVE=1):
+lines before 581 after 584; compared 580 vs 580 (timings masked, scenario T 391 lines included); differing 0 (scenario T 0); new b5 lines 3
+count before: ship_steering_host checks=4034 failures=0 slip_gaps=0
+count after:  ship_steering_host checks=4149 failures=0 slip_gaps=0
+RESULT PASS
+mode capital, B.5 (proofs and leaves):
+lines before 581 after 584; compared 580 vs 580 (timings masked, scenario T 391 lines included); differing 126 (scenario T 126); new b5 lines 3
+difference:
+  - traffic T departures   fps= 30 seed=1: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14372 rollouts=14478 sweeps=46079 narrow=81701 conflicts=104 yields=103 capped=536
+  + traffic T departures   fps= 30 seed=1: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14367 rollouts=14473 sweeps=45964 narrow=81701 conflicts=104 yields=103 capped=536
+difference:
+  - traffic T departures   fps= 30 seed=7: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14387 rollouts=14474 sweeps=45983 narrow=80901 conflicts=87 yields=86 capped=463 u
+  + traffic T departures   fps= 30 seed=7: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14381 rollouts=14468 sweeps=45864 narrow=80901 conflicts=87 yields=86 capped=463 u
+differing fields (lines): decisions 54, rollouts 54, sweeps 54, o4 23, gap/hand-over 22, warns 22, last_launch 21, span_first_cross_to_last_launch 20, frames 19, predictions 15, cross_to_launch_mean 13, excluded 11, nose_max 11, member 10, cross_to_launch_min 10, field19 9, field20 9, cross_to_launch_max 7, capped 5, field21 4, field28 4, narrow 4, conflicts 4, yields 4, field27 3, field29 3, late_vs_18s_max 3, a_age_max_ms 1, seta_steps 1
+count before: ship_steering_host checks=4034 failures=0 slip_gaps=0
+count after:  ship_steering_host checks=4149 failures=0 slip_gaps=0
+RESULT PASS (scenario T may differ)
+b5 liveness: launched freed: left at frame 2; reused address (TL, other id): unproven, left after 1,100 ms; freed after the walk before the boundary: proven from the walk, 0 reads, left when unproven 
+b5 cost (host): live set from 2048 ships + 96 proofs + the leave pass 3.17 us per frame (best of 5 x 2000; 960000 proofs)
+b5 T: runs=72 member-frames proven=13296150 unproven=306 launched_left=333 gone_left=0 live_rows=13296150
+mode seqoff, proofs only (X3M_B5_NO_LEAVE=1):
+lines before 758 after 761; compared 757 vs 757 (timings masked, scenario T 391 lines included); differing 0 (scenario T 0); new b5 lines 3
+count before: ship_steering_host checks=9602 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=9717 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS
+mode seqoff, B.5 (proofs and leaves):
+lines before 758 after 761; compared 757 vs 757 (timings masked, scenario T 391 lines included); differing 126 (scenario T 126); new b5 lines 3
+difference:
+  - traffic T departures   fps= 30 seed=1: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14372 rollouts=14478 sweeps=46079 narrow=81701 conflicts=104 yields=103 capped=536
+  + traffic T departures   fps= 30 seed=1: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14367 rollouts=14473 sweeps=45964 narrow=81701 conflicts=104 yields=103 capped=536
+difference:
+  - traffic T departures   fps= 30 seed=7: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14387 rollouts=14474 sweeps=45983 narrow=80901 conflicts=87 yields=86 capped=463 u
+  + traffic T departures   fps= 30 seed=7: capitals=7 launched=7 arrivals=0 offset_ok=0 lateral_kept=0 small=0 side=0 unseparated=0 decisions=14381 rollouts=14468 sweeps=45864 narrow=80901 conflicts=87 yields=86 capped=463 u
+differing fields (lines): decisions 54, rollouts 54, sweeps 54, o4 23, gap/hand-over 22, warns 22, last_launch 21, span_first_cross_to_last_launch 20, frames 19, predictions 15, cross_to_launch_mean 13, excluded 11, nose_max 11, member 10, cross_to_launch_min 10, field19 9, field20 9, cross_to_launch_max 7, capped 5, field21 4, field28 4, narrow 4, conflicts 4, yields 4, field27 3, field29 3, late_vs_18s_max 3, a_age_max_ms 1, seta_steps 1
+count before: ship_steering_host checks=9602 failures=0 slip_gaps=0 vanilla_notes=2
+count after:  ship_steering_host checks=9717 failures=0 slip_gaps=0 vanilla_notes=2
+RESULT PASS (scenario T may differ)
+b5 liveness: launched freed: left at frame 2; reused address (TL, other id): unproven, left after 1,100 ms; freed after the walk before the boundary: proven from the walk, 0 reads, left when unproven 
+b5 cost (host): live set from 2048 ships + 96 proofs + the leave pass 3.21 us per frame (best of 5 x 2000; 960000 proofs)
+b5 T: runs=72 member-frames proven=13296150 unproven=306 launched_left=333 gone_left=0 live_rows=13296150

@@ -111,7 +111,8 @@ def by_ship(rows):
 #     0.8 r of a carrier) zone=out|near|in|inner (> 2 r_C, > r_C, <= r_C, a carrier within 0.8 r_C) d_c_m= r_c_m= v_ms= kept= detour=
 #   ship_gate_ctl_member frame= t_ms= gate= ship= class= role= stage= order= target= p_m=<R>,<U>,<F> (the last state read, gate frame, m)
 #     nose_f= (the nose . F) v_ms= petal= (-1 none) key= traced=0|1 st_age_ms= dec_age_ms= (-1 none)   (B.4: one per board member per
-#     game second, traced or not; ring 32, drops in rows_dropped's ctl)
+#     game second, traced or not; ring 32, drops in rows_dropped's ctl) live=0|1 (B.5: the member passed the liveness proof this frame;
+#     0: no engine field read, class=?)
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
            'ship_avoid_dock', 'ship_gate_ctl_seq', 'ship_gate_ctl_member')
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap')

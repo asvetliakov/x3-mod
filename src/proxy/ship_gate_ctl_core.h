@@ -117,11 +117,11 @@ inline const char* pair_name(PairV v) noexcept {
 }
 // Why a member left the board or changed role (the ship_gate_ctl row).
 enum class Why : std::uint8_t { enter = 0, commit, handover, escort, arrival, evict, order, target, expire, identity, leader, window, reenter,
-                                hold, release, go_around, dock, launch, inbound, skip, rejoin, count };
+                                hold, release, go_around, dock, launch, inbound, skip, rejoin, gone, sector, count };
 inline const char* why_name(Why w) noexcept {
     static const char* const n[unsigned(Why::count)] = {"enter", "commit", "handover", "escort", "arrival", "evict", "order", "target",
                                                         "expire", "identity", "leader", "window", "reenter", "hold", "release",
-                                                        "go_around", "dock", "launch", "inbound", "skip", "rejoin"};
+                                                        "go_around", "dock", "launch", "inbound", "skip", "rejoin", "gone", "sector"};
     return unsigned(w) < unsigned(Why::count) ? n[unsigned(w)] : "?";
 }
 
@@ -191,6 +191,10 @@ struct Member {
     // the order-0 gap (Run161): the last state read on the role's steered order (committed 4 / 5, escort 0x14 / 0x15) and its plan
     std::uint32_t steered_ms = 0;
     Plan last_plan = Plan::drift;
+    // B.5 (ship_gate_ctl_live_core.h): proven live this frame (the frame boundary's live_prove), the last proof (game ms), the sector
+    // of the snapshot that listed it, and the record class code site B read in the update (the member row's class; 0xffffffff unread)
+    std::uint8_t proven = 0;
+    std::uint32_t live_ms = 0, live_sector = 0, code = 0xffffffffu;
     Sample s[kSamples];
 };
 struct Gate {

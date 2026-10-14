@@ -3,6 +3,7 @@
 #include "ship_avoidance_core.h"
 #include "ship_avoidance_walk_core.h"
 #include "ship_gate_ctl_core.h"
+#include "ship_gate_ctl_live_core.h"
 #include "ship_steering_sites.h"
 #include "config.h"
 #include "cpu_state.h"
@@ -499,7 +500,7 @@ inline void row_dropped(Drop d) noexcept {
 // The summary's gates text (frame boundary): its worst case, every conversion at its widest, as summary_bound.py computes it from
 // this file (the host test keeps the constant equal to the computed figure); the buffer must hold it. It held 4,096 B up to B.3,
 // below the 4,123-character worst case: the tail truncated.
-constexpr std::size_t kSummaryGatesWorstCase = 4123;
+constexpr std::size_t kSummaryGatesWorstCase = 4239;
 constexpr std::size_t kSummaryGatesBytes = 8192;
 static_assert(kSummaryGatesWorstCase < kSummaryGatesBytes, "the summary's gates text fits its buffer (summary_bound.py)");
 std::uint32_t rep_gate_[32] = {};
@@ -755,6 +756,14 @@ Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed
 Counter ctl_evict_ignored_gate_, ctl_budget_cut_; // B.3: 0x12 episodes kept through (item 2); frames cut at the 1 ms ceiling
 std::uint64_t ctl_ceiling_ticks_ = 0;             // B.3: gc::kFrameCeilingUs in QPC ticks (0: no ceiling, no QPC)
 Counter e_small_gap_; // B.4: suppress_small with A's decision older than the fresh window (the order-0 gap)
+// B.5 (ship_gate_ctl_live_core.h): the per-frame live set, the controller's sector, the frame's proofs and leaves; counters: members left
+// unproven (gone), launched members left (leg over or missing from the snapshot), sector resets and the entries they dropped, member-frames
+// without a proof, frames whose set overflowed (nothing proven); the proofs' longest frame (QPC ticks, timing tier)
+gc::LiveSet live_set_;
+gc::LiveTrack live_track_;
+gc::LiveOut live_out_;
+Counter ctl_live_gone_, ctl_live_launch_, ctl_sector_resets_, ctl_sector_dropped_, ctl_unproven_, ctl_live_overflow_;
+std::uint32_t ctl_live_max_ticks_ = 0;
 Counter e_gate_small_gap_, small_b_both_, ctl_seq_skipped_, ctl_go_around_near_, ctl_clock_resets_;                         // Run161 item 5: the small-ship gate row on order 0 in the hand-over gap
 constexpr std::uint32_t kSmallGapMs = 5000;        // ... while the order-4 decision or the lead-in is at most 5 s old
 std::uint32_t ctl_x_wait_ms_ = 0, ctl_sb_max_ticks_ = 0;
@@ -832,6 +841,7 @@ struct MemberRow {
     std::uint8_t role, stage, traced;
     std::int8_t petal;
     float p[3], nose_f, v;
+    std::uint8_t live; // B.5: the member passed the liveness proof this frame (0: no engine field read; class=?)
 };
 MemberRow member_rows_[32];
 std::atomic<std::uint32_t> member_row_write_{0};
@@ -924,6 +934,17 @@ inline void ctl_read_state(gc::Member& m, std::uint32_t obj, std::uint32_t fl, s
     for (unsigned i = 0; i < 3; ++i) st.u[i] = st.v * st.rows[2][i] + slip[i];
     st.left_ms = std::int32_t(rd32(fl + sites::kFlightDeadline) - now);
     gc::note_state(m); // Run161: the order-0 gap's steered stamp and plan
+    // B.5: the record class code for the member row, read here (the engine handed obj to this call), never at the frame boundary
+    const std::uint32_t tt = rd32(sites::kShipTypeTableSlot);
+    const std::int32_t type = std::int16_t(rd16(obj + sites::kObjType));
+    m.code = tt && type >= 0 ? rd32(tt + std::uint32_t(type) * sites::kRecordStride + sites::kRecordClassCode) : 0xffffffffu;
+}
+// B.5: board entries exist (the live set enters a walk's ships only then; its sector always)
+inline bool ctl_any_member() noexcept {
+    for (const gc::Gate& g : ctl_.g)
+        for (unsigned i = 0; i < g.n; ++i)
+            if (g.m[i].ship && g.m[i].role != gc::Role::none) return true;
+    return false;
 }
 // ---- step 2: the sector snapshot and the station part model ------------------
 // The walk itself is the portable ship_avoidance_walk_core.h (the fixture runs it over a synthetic sector); here it
@@ -954,6 +975,9 @@ const av::Snapshot* snapshot_for(std::uint32_t sector, std::uint32_t now) noexce
     RawMem mem;
     wk::Stats stats;
     wk::fill_snapshot(mem, sector, now, s, part_cache_, stats, census, &members_, &member_stats_); // amendment 15: the membership pass
+    // B.5: the walk is this frame's update handing the sector's objects over: its ships enter the live set (the frame boundary proves
+    // board members from it without reading engine memory)
+    if (traffic_live_.load(std::memory_order_relaxed)) live_set_.add_snapshot(s, ctl_any_member());
     av_snapshots_.add();
     av_walk_objects_.add(stats.visited);
     if (s.overflow) av_overflow_.add();
@@ -1633,6 +1657,9 @@ void ctl_escort(std::uint32_t obj, std::uint32_t leader, const core::Inputs& in,
     int li = -1;
     gc::Gate* cg = ctl_lookup(leader, &li);
     if (!cg || cg->m[li].role != gc::Role::committed || !gc::live(*cg, cg->m[li], now)) return;
+    // B.5: the leader is the engine's f+0x224 of this call (live); its board entry must be the same object (a reused address keeps a
+    // stale entry under another id until the frame boundary removes it)
+    if (!gc::leader_entry_current(cg->m[li], rd32(leader + sites::kObjId))) return;
     int ei = -1;
     gc::Gate* own = ctl_lookup(obj, &ei);
     if (own && own != cg && ei >= 0) ctl_leave(*own, unsigned(ei), false, gc::Why::leader, now); // another gate's member: it follows
@@ -2849,6 +2876,7 @@ extern "C" void __cdecl x3m_ship_steering_clamp(std::uint32_t obj) {
     if (trace_on_ && !trace_frame(obj, fl, ph, des_engine)) capital_warn_watch(obj, fl);
     // the gate traffic controller: a member's live state and role (two loads for any other ship: the bitmap)
     if (traffic_live_.load(std::memory_order_relaxed) && ctl_ix_.maybe(obj)) {
+        live_set_.add(obj, rd32(obj + sites::kObjId), gc::kLiveNoSector); // B.5: handed over in this update, flags tested above
         ctl_note_warn(obj, fl);
         ctl_observe(obj, fl, ph);
         if (debug_ && rd16(fl + sites::kFlightOrder) == core::kOrderNone) ctl_order0_rows(obj);
@@ -3546,6 +3574,9 @@ namespace {
 // counters and its ship_gate_ctl rows (the stage transitions).
 // B.4 item 2 (ship_trace / --debug only): every board member (pair role) holds a trace slot while on the board, the reserved ones
 // first (trace_claim; the idle sweep never frees it: last_seen is the board's frame), and one ship_gate_ctl_member row per game second.
+// B.5 (Run165 crash: the row read [ship+0x4a] of a launched member whose object was freed and reused): the row reads no engine
+// memory; the class is site B's (Member.code), shown for a member proven this frame (live=1); an unproven one gets live=0, class=? and
+// no trace slot.
 void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcept {
     for (unsigned i = 0; i < g.n && i < gc::kMembers; ++i) {
         const gc::Member& m = g.m[i];
@@ -3553,7 +3584,7 @@ void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcep
         TraceSlot* ts = nullptr;
         if (trace_on_) {
             ts = trace_slot_of(m.ship);
-            if (!ts) ts = trace_claim(m.ship, now, true, m.role == gc::Role::escort, true);
+            if (!ts && m.proven) ts = trace_claim(m.ship, now, true, m.role == gc::Role::escort, true); // B.5: a slot only for a proven member
             if (ts) {
                 ts->last_seen_ms = now;
                 ts->member = 1; // held as a member from now on: released when it leaves the board
@@ -3573,10 +3604,8 @@ void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcep
         r.t_ms = now;
         r.target = m.st.target;
         r.key = m.key;
-        r.code = 0xffffffffu;
-        const std::uint32_t tt = rd32(sites::kShipTypeTableSlot);
-        const std::int32_t type = std::int16_t(rd16(m.ship + sites::kObjType));
-        if (tt && type >= 0) r.code = rd32(tt + std::uint32_t(type) * sites::kRecordStride + sites::kRecordClassCode);
+        r.code = gc::member_code(m); // B.5: site B's code of a member proven this frame (no engine read here); 0xffffffff otherwise
+        r.live = m.proven;
         r.st_age_ms = m.st.ms ? std::int32_t(now - m.st.ms) : -1;
         r.dec_age_ms = m.decided_ms ? std::int32_t(now - m.decided_ms) : -1;
         r.order = m.st.order;
@@ -3647,11 +3676,54 @@ void sb_frame_all(std::uint32_t now) noexcept {
         for (unsigned gi = 0; gi < gc::kGates; ++gi)
             if (ctl_.g[gi].gate) ctl_member_frame(ctl_.g[gi], gi, now);
 }
+// B.5 step 1 (before the sequencer): the sector check (a frame whose walks do not include the controller's sector resets every board:
+// the player changed sector) and each member's proof against the live set the update filled (the walks, site B). The controller frame
+// reads no engine memory: it dereferences only pointers the engine passed to the module in this frame's update, in that update
+// (ship_gate_ctl_live_core.h).
+void ctl_live_prove(std::uint32_t now) noexcept {
+    if (!ctl_any_member()) { // no board entry: only the sector is tracked
+        gc::live_track(live_track_, live_set_);
+        return;
+    }
+    const std::uint64_t t0 = timing_ ? qpc() : 0;
+    gc::live_prove(ctl_, live_track_, live_set_, now, &live_out_); // a lookup per member: no engine read at the frame boundary
+    if (live_out_.reset) {
+        for (const gc::Gate& g : ctl_.g)
+            if (g.gate)
+                for (unsigned i = 0; i < g.n; ++i)
+                    if (g.m[i].ship && g.m[i].role != gc::Role::none) ctl_row(g, g.m[i], g.m[i].role, gc::Role::none, gc::Why::sector, now);
+        ctl_sector_dropped_.add(gc::reset_boards(ctl_));
+        ctl_sector_resets_.add();
+        gc::rebuild(ctl_ix_, ctl_);
+    }
+    if (live_out_.unproven) ctl_unproven_.add(live_out_.unproven);
+    if (live_out_.overflow) ctl_live_overflow_.add(); // the set overflowed: nothing proven this frame (fail closed)
+    if (timing_) {
+        const std::uint64_t dt = qpc() - t0;
+        const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
+        if (ticks > ctl_live_max_ticks_) ctl_live_max_ticks_ = ticks;
+    }
+}
+// B.5 step 2 (after the sequencer, before the decisions): launched members whose leg ended or that a complete snapshot misses, and
+// members without a proof for kStateMaxAgeMs, leave the board (their sequence and funnel occupancy end; funnel_end_ms stays).
+void ctl_live_leaves(std::uint32_t now) noexcept {
+    gc::live_leaves(ctl_, live_track_, live_set_, now, &live_out_);
+    for (unsigned k = 0; k < live_out_.n_leave; ++k) {
+        const gc::LiveLeave& l = live_out_.leave[k];
+        gc::Gate& g = ctl_.g[l.gate];
+        if (!gc::pair_role(g.m[l.member].role)) continue;
+        if (l.launched) ctl_live_launch_.add();
+        else ctl_live_gone_.add();
+        ctl_leave(g, l.member, false, l.why, now);
+    }
+}
 void ctl_frame() noexcept {
     const std::uint32_t now = game_time_ms();
     const std::uint32_t step = frame_step_ms();
     gc::note_step(ctl_, now, step); // B.3 item 1
+    ctl_live_prove(now);            // B.5
     sb_frame_all(now);
+    ctl_live_leaves(now);
     const std::uint64_t t0 = timing_ || ctl_ceiling_ticks_ ? qpc() : 0;
     unsigned done = 0, rollouts = 0;
     // review F2: the funnel's occupants first (their decision stamps keep the occupancy), then the round robin (gc::decide_order)
@@ -3720,6 +3792,7 @@ void ctl_frame() noexcept {
         if (ticks > ctl_frame_max_ticks_) ctl_frame_max_ticks_ = ticks;
     }
     if (done > ctl_frame_max_decisions_) ctl_frame_max_decisions_ = done;
+    live_set_.clear(); // B.5: the next update fills the next frame's set
     if (now - arr_ix_rebuilt_ms_ >= 1000) { // the arrival bitmap keeps only the records of the last 60 s
         arr_ix_rebuilt_ms_ = now;
         for (std::uint32_t& w : arr_ix_.bits) w = 0;
@@ -3783,12 +3856,12 @@ void ctl_rows(unsigned long long frame) noexcept {
     for (std::uint32_t w = member_row_write_.load(std::memory_order_acquire); member_row_read_ != w; ++member_row_read_) { // B.4 item 2
         const MemberRow& r = member_rows_[member_row_read_ & 31];
         x3m::log("ship_gate_ctl_member frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx class=%s role=%s stage=%s order=0x%x target=0x%08lx "
-            "p_m=%.0f,%.0f,%.0f nose_f=%.3f v_ms=%.1f petal=%d key=%lu traced=%u st_age_ms=%ld dec_age_ms=%ld",
+            "p_m=%.0f,%.0f,%.0f nose_f=%.3f v_ms=%.1f petal=%d key=%lu traced=%u st_age_ms=%ld dec_age_ms=%ld live=%u",
             frame, static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
             r.code < core::kClassCount ? core::kClassNames[r.code] : "?", gc::role_name(gc::Role(r.role)), gc::sb_name(gc::Sb(r.stage)),
             unsigned(r.order), static_cast<unsigned long>(r.target), double(r.p[0]), double(r.p[1]), double(r.p[2]), double(r.nose_f),
             double(r.v), int(r.petal), static_cast<unsigned long>(r.key), unsigned(r.traced), static_cast<long>(r.st_age_ms),
-            static_cast<long>(r.dec_age_ms));
+            static_cast<long>(r.dec_age_ms), unsigned(r.live));
     }
     for (std::uint32_t w = launch_row_write_.load(std::memory_order_acquire); launch_row_read_ != w; ++launch_row_read_) {
         const LaunchRow& r = launch_rows_[launch_row_read_ & 7];
@@ -3964,6 +4037,10 @@ bool initialize() {
         if (tr_on && !gates_capital_on_) {
             tr_on = false;
             if (tr_length) tr_why = "needs_gates_capital";
+        }
+        if (tr_on && !avoidance_on_) { // B.5: the live set is filled by the avoidance walks; without them no member is ever proven
+            tr_on = false;
+            tr_why = "needs_avoidance";
         }
         if (tr_on && !engine_patch::install_window_open()) {
             tr_on = false;
@@ -4646,7 +4723,8 @@ void frame_boundary(std::uint64_t frame) {
                           "arr_overwritten=%u ctl_decide_us_max=%.1f ctl_frame_us_max=%.1f ctl_frame_decisions_max=%u ctl_arrival_us_max=%.1f "
                           "ctl_releases=%lu ctl_go_around=%lu ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_sb_steered=%lu ctl_sb_pred=%lu ctl_guarded=%lu "
                           "ctl_p2_zeroed=%lu small_b_rewrites=%lu ctl_sb_us_max=%.1f e_pass_ctl_why=%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu e_gate_small_gap=%lu "
-                          "ctl_sb_misc=%lu,%lu,%lu,%lu ctl_evict_ignored_gate=%lu ctl_budget_cut=%lu",
+                          "ctl_sb_misc=%lu,%lu,%lu,%lu ctl_evict_ignored_gate=%lu ctl_budget_cut=%lu ctl_live=%lu,%lu,%lu,%lu,%lu,%lu "
+                          "ctl_live_us_max=%.1f",
                           traffic_state_, members, static_cast<unsigned long>(ctl_decisions_.get()), static_cast<unsigned long>(ctl_rollouts_.get()),
                           static_cast<unsigned long>(ctl_sweeps_.get()), static_cast<unsigned long>(ctl_narrow_.get()),
                           static_cast<unsigned long>(ctl_conflicts_.get()), static_cast<unsigned long>(ctl_yields_.get()),
@@ -4674,7 +4752,13 @@ void frame_boundary(std::uint64_t frame) {
                           static_cast<unsigned long>(ctl_seq_skipped_.get()), static_cast<unsigned long>(ctl_go_around_near_.get()),
                           static_cast<unsigned long>(ctl_clock_resets_.get()), static_cast<unsigned long>(small_b_both_.get()),
                           // B.3: 0x12 episodes kept through (item 2), frames whose decisions stopped at the 1 ms ceiling
-                          static_cast<unsigned long>(ctl_evict_ignored_gate_.get()), static_cast<unsigned long>(ctl_budget_cut_.get()));
+                          static_cast<unsigned long>(ctl_evict_ignored_gate_.get()), static_cast<unsigned long>(ctl_budget_cut_.get()),
+                          // B.5 ctl_live: members left unproven (gone), launched members left, sector resets, entries they dropped,
+                          // member-frames without a proof, frames whose set overflowed; the proofs' longest frame
+                          static_cast<unsigned long>(ctl_live_gone_.get()), static_cast<unsigned long>(ctl_live_launch_.get()),
+                          static_cast<unsigned long>(ctl_sector_resets_.get()), static_cast<unsigned long>(ctl_sector_dropped_.get()),
+                          static_cast<unsigned long>(ctl_unproven_.get()), static_cast<unsigned long>(ctl_live_overflow_.get()),
+                          ticks_us(ctl_live_max_ticks_));
             ctl_sb_max_ticks_ = 0; // B.2 item 5: ctl_sb_us_max is the summary interval's maximum (the other maxima stay session-lifetime)
         }
     }
