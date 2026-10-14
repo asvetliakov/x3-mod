@@ -1,3 +1,5 @@
+> Input note (Opus 5.5), 2026-10-14. Superseded by the ratified merge [convoy-gate-transit.md](convoy-gate-transit.md); kept as one of its two sources.
+
 # Convoy gate transit: one lane, merge like cars, no holding
 
 Design note, 2026-10-14, for ratification by the main session (opus variant). Question: how capital convoys (a leader
