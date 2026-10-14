@@ -1,0 +1,31 @@
+gate a b kind verdict why yielder before | rows game first..last | d_m min
+faf8 25763 25287 order0 clear certified none none | 63 23122.5..23427.7 | 2842
+faf8 25287 25763 order0 clear certified none none | 59 23131.1..23405.4 | 2940
+3a58 3725 3947 order0 clear certified none none | 107 24079.9..25142.5 | 2446
+3a58 3947 3725 order0 clear certified none none | 106 24109.9..25142.5 | 2446
+faf8 3947 3725 verdict unresolved - none clear | 1 25148.4..25148.4 | 2422
+faf8 3725 3947 e_pass unresolved unresolved none none | 1 25148.5..25148.5 | 2422
+faf8 3947 3725 e_pass unresolved unresolved none none | 1 25148.5..25148.5 | 2422
+faf8 3725 3947 verdict clear - none unresolved | 1 25149.5..25149.5 | 2408
+faf8 3947 3725 order0 clear certified none none | 113 25177.2..26385.2 | 1852
+faf8 3725 3947 order0 clear certified none none | 114 25179.4..26385.2 | 1843
+faf8 6010 5549 order0 clear certified none none | 15 25202.9..25345.5 | 3582
+0ad0 4908 5361 order0 clear certified none none | 18 25239.6..25363.5 | 2831
+0ad0 5361 4908 order0 clear certified none none | 21 25239.6..25334.3 | 2789
+faf8 3947 7527 e_pass clear stale none none | 1 25347.8..25347.8 | 6469
+faf8 3725 7527 order0 clear certified none none | 58 25591.2..26223.3 | 2415
+faf8 6168 5549 order0 clear certified none none | 3 25854.7..25856.8 | 4699
+faf8 6010 6168 order0 clear certified none none | 2 26072.0..26093.4 | 3946
+faf8 3947 7527 order0 clear certified none none | 11 26083.6..26190.9 | 4260
+faf8 3947 6168 order0 clear certified none none | 6 26117.7..26154.8 | 4902
+0ad0 3725 3947 order0 clear certified none none | 9 26421.3..26492.2 | 3855
+0ad0 3947 3725 order0 clear certified none none | 9 26421.5..26489.3 | 3871
+== committed pairs in funnel/handover/dock at once (game s)
+('0ad0', ('4908', '5361')) 23 s 25355 .. 25378
+('faf8', ('6010', '6168')) 31 s 26061 .. 26093
+('faf8', ('6168', '7527')) 39 s 26141 .. 26181
+== both in stage funnel at once (the B.6 yields_to release-order clause applies only there)
+('0ad0', ('4908', '5361')) 8 s 25355 .. 25363
+('faf8', ('6010', '6168')) 11 s 26061 .. 26072
+('faf8', ('6168', '7527')) 22 s 26141 .. 26163
+pairs 3

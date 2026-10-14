@@ -1,0 +1,3 @@
+== member detour rows by (id, role, stage)
+('25287', 'escort', 'inbound') 32
+== funnel/handover detours: (member, obstacle, vertical): rows, frames, game s, min miss m

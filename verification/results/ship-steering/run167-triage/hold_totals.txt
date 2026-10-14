@@ -1,0 +1,9 @@
+   869.4   111.6  escort waiting for order 4, leader not launched
+   543.4    99.5  escort waiting for order 4, leader launched
+   245.2    30.7  funnel busy (occupant funnel)
+    75.0    10.9  head, out of window (petal phase)
+    22.0     2.2  funnel busy (occupant dock)
+     2.6     0.3  other: committed hold, no seq row
+     2.5     0.3  funnel busy (occupant launch)
+     1.0     0.1  other: no candidate (seq cand -)
+  1761.1   255.6  total

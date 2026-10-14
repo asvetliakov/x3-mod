@@ -1,0 +1,28 @@
+ctl_live 0,0,0,0,0,0 at f 1347 game 22669.2 real 56.7 (ctl_entered 1 ctl_left 0 ctl_evicted 0)
+ctl_live 0,1,0,0,0,0 at f 16180 game 23135.1 real 135.7 (ctl_entered 4 ctl_left 1 ctl_evicted 1)
+ctl_live 0,2,0,0,0,0 at f 22476 game 23525.2 real 174.7 (ctl_entered 6 ctl_left 2 ctl_evicted 1)
+ctl_live 0,3,0,0,0,0 at f 25400 game 23685.2 real 190.7 (ctl_entered 6 ctl_left 3 ctl_evicted 1)
+ctl_live 0,3,0,0,1,0 at f 29999 game 23895.2 real 211.7 (ctl_entered 7 ctl_left 3 ctl_evicted 1)
+ctl_live 0,3,0,0,2,0 at f 31878 game 24005.1 real 222.7 (ctl_entered 9 ctl_left 3 ctl_evicted 1)
+ctl_live 0,3,0,0,3,0 at f 32905 game 24075.1 real 229.7 (ctl_entered 11 ctl_left 4 ctl_evicted 1)
+ctl_live 0,3,0,0,4,0 at f 36274 game 24325.1 real 254.7 (ctl_entered 14 ctl_left 5 ctl_evicted 1)
+ctl_live 0,3,0,0,5,0 at f 37002 game 24385.1 real 260.7 (ctl_entered 15 ctl_left 5 ctl_evicted 1)
+ctl_live 0,3,0,0,6,0 at f 37747 game 24445.1 real 266.7 (ctl_entered 17 ctl_left 6 ctl_evicted 1)
+ctl_live 0,3,0,0,7,0 at f 39089 game 24505.1 real 277.7 (ctl_entered 19 ctl_left 7 ctl_evicted 1)
+ctl_live 0,3,0,0,8,0 at f 39625 game 24565.0 real 283.9 (ctl_entered 20 ctl_left 8 ctl_evicted 1)
+ctl_live 0,3,0,0,9,0 at f 42165 game 24627.6 real 305.9 (ctl_entered 21 ctl_left 9 ctl_evicted 1)
+ctl_live 0,4,0,0,10,0 at f 52591 game 25070.2 real 369.9 (ctl_entered 21 ctl_left 11 ctl_evicted 1)
+ctl_live 0,4,0,0,11,0 at f 56638 game 25144.8 real 393.9 (ctl_entered 24 ctl_left 12 ctl_evicted 1)
+ctl_live 0,5,0,0,11,0 at f 58946 game 25243.1 real 408.9 (ctl_entered 29 ctl_left 14 ctl_evicted 1)
+ctl_live 0,6,0,0,11,0 at f 63431 game 25383.3 real 435.9 (ctl_entered 31 ctl_left 15 ctl_evicted 1)
+ctl_live 0,7,0,0,11,0 at f 64548 game 25453.3 real 442.9 (ctl_entered 31 ctl_left 16 ctl_evicted 1)
+ctl_live 0,8,0,0,11,0 at f 74765 game 25962.9 real 519.9 (ctl_entered 31 ctl_left 17 ctl_evicted 1)
+ctl_live 0,9,0,0,11,0 at f 77566 game 26100.6 real 539.9 (ctl_entered 33 ctl_left 18 ctl_evicted 1)
+ctl_live 0,10,0,0,11,0 at f 78707 game 26190.6 real 548.9 (ctl_entered 33 ctl_left 19 ctl_evicted 1)
+ctl_live 0,11,0,0,11,0 at f 80050 game 26290.6 real 558.9 (ctl_entered 33 ctl_left 20 ctl_evicted 1)
+ctl_live 0,11,0,0,12,0 at f 81562 game 26390.6 real 568.9 (ctl_entered 39 ctl_left 22 ctl_evicted 1)
+session_end: session_end frames=85726 elapsed_ms=597265 devices=1 resets=0 exception=0 dropped=0 filter=ours
+last summary f 85295: ctl_live 0,11,0,0,12,0 ctl_live_us_max 19.4 | ctl_evicted 1 ctl_budget_cut 0 ctl_releases 13 ctl_x_refused 0 ctl_go_around 0 | gate_rows_dropped 0 rows_dropped gate_event:0,join:0,latch:0,lane:0,gate_trans:0,warn_pre:0,engine_warn:0,warn_watch:0,e_table:0,e_ring:0,ctl:0,ctl_pair:0,launch:0
+pass_* > 0: {} | stuck_total 0 unresolved 0 snapshot_overflow 0 ctl_full 0,0
+handler_us_p99 max 49.60 at f 1347, median 7.40 over 538 summaries; ctl_frame_us_max 71.2 ctl_decide_us_max 62.5 ctl_sb_us_max(last) 3.2
+sector values in rows: {'4ad2bb08': 2}

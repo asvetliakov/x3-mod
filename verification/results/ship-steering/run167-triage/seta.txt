@@ -1,0 +1,6 @@
+all {'0': 24873, '1': 60776} seta share 0.71
+gate faf8 convoy 1 (24965/25287/25763) entry..last X {'0': 6433, '1': 17133} seta share 0.73
+gate 3a58 3071 entry..X {'1': 16559, '0': 5642} seta share 0.75
+gate 0ad0 convoy (4579/4908/5361) entry..last X {'1': 16861, '0': 11189} seta share 0.60
+gate faf8 convoy 2 (5549/6010/6168, 7527) entry..last X {'1': 26284, '0': 14252} seta share 0.65
+last X .. log end (3725/3947 re-targeted, 10962) {'1': 3732, '0': 2391} seta share 0.61

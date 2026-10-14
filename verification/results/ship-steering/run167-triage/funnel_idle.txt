@@ -1,0 +1,7 @@
+busy rows per gate: {'faf8': 592, '3a58': 164, '0ad0': 142}
+gate 0ad0 no committed candidate (role none)                    84 game s   26.8 real s
+gate 3a58 head out of window                                     6 game s    4.2 real s
+gate 3a58 no committed candidate (role none)                    69 game s   25.3 real s
+gate faf8 free, window+timing ok (release that second)           1 game s    0.1 real s
+gate faf8 head out of window                                    68 game s    7.0 real s
+gate faf8 no committed candidate (role none)                   318 game s   34.4 real s

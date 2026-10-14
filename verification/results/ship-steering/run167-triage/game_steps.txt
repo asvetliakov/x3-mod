@@ -1,0 +1,8 @@
+game step histogram (ms bucket: frames, consecutive traced frames): {0: 83898, 250: 22, 500: 17, 750: 5, 1000: 3, 1250: 2, 1750: 1}
+steps > 1000 ms in window: 6
+f 7379 step_ms 1300 seta 1 real dt prev 129 this 27
+f 9439 step_ms 1030 seta 1 real dt prev 102 this 23
+f 30672 step_ms 1020 seta 1 real dt prev 101 this 17
+f 31853 step_ms 1490 seta 1 real dt prev 148 this 30
+f 39626 step_ms 1810 seta 1 real dt prev 180 this 36
+f 81595 step_ms 1070 seta 1 real dt prev 107 this 27

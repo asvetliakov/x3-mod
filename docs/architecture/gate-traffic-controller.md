@@ -1907,3 +1907,29 @@ final straight against an arrival of its own gate. Logged in `ship-steering-scen
 * **Fixture: the escort's 0x15 target after its leader's launch is now the gate.** The DLL's live f+0x224 is the gate there; before
   B.6 the fixture passed 0, so stage B never steered those escorts in scenario T.
 * `kEscortStageS` and `kReleaseWindowM` are removed (unused).
+
+### B.7 Escort staging inside the script's radius (Run167)
+
+Run167 (`verification/results/ship-steering/run167-triage/escort_wait.txt`, `hold_totals.txt`) **[m]**: every escort received its
+order 4 at the first script pass with the escort within about 10 km of the gate (closest 9.8–10.2 km at the pass), and the script
+re-issues its order every ~5 s (7–57 passes per escort), not every 33 s as D.3 inferred. What bound the wait after the leader's
+launch was distance: parked escorts sat 11.2–16.2 km out (the petal's inner straight spans 9.3–10.75 km from the gate, the stage
+point `kEscortStageS` = 300 m of it at ~10.7 km, by design "beyond 10 km") and approached at 60 m/s for 40–96 game s before the
+order came; escorts still inbound from 33–36 km took 275–298 s. After the order, no escort looped more than 0.75 lap, and only
+while the funnel was busy. Escorts waiting on a launched leader: 543 game s; on a leader not yet launched: 869 s (serialization,
+the script never orders before the launch).
+
+**Change (level 1, no hook).** The escort's stage point is the first point of its petal, from the inner straight's start through
+the front turn, that lies within `kEscortSwitchM − 500 m` (9.5 km) of the gate; a petal with no such point (far petal) keeps the
+300 m stage and the approach. The lap law brings the escort there at the leader's predicted launch + `kEscortSwitchMs`, and from
+that moment the escort is inside the script's radius: the next pass (≤ 5 s) commits it, with no approach leg. `esc_in10` is set
+at once when the escort is inside the radius after the launch (as now), so the 25 m/s dwell follows. Expected saving (inferred
+from the Run167 rows): 40–96 game s per parked escort, the "one lap after the leader" the user sees; inbound escorts unchanged.
+
+**Verification.** Unit: the stage point per ring (ring 0 within 9.5 km, ring 1–2 none); scenario T: a parked escort's order 4
+comes within kEscortSwitchMs + one script period + the frame step of its leader's launch (the fixture's script orders at the first
+pass inside 10 km), its approach frames at 60 m/s after the launch drop to 0 for parked escorts, the B.6 assertions and the
+capsule gaps stay green. Flight oracle (Run168): `escort_wait.py` order 4 at +5…+15 s for parked escorts.
+
+**Open.** Release 3071 waited 6.4 s with its nose at 0.490–0.492 of F against the 0.5 threshold (cosmetic). The script re-targets
+waiting escorts to each newly arriving M1 (3725, 3947 lost a release each; script-owned).

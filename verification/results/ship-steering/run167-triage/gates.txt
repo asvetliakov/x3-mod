@@ -1,0 +1,3 @@
+0x8ea0faf8 -7498.0,10774.0,-57569.0 -0.0000,-0.0000,-1.0000 1104.5 capital_o5 nB=29 fit_centre_err_m=22 fit_r_gate=1104
+0x8ea10ad0 4259.0,-18037.0,31134.0 -0.0000,-0.0000,1.0000 1104.5 capital_o5 nB=12 fit_centre_err_m=22 fit_r_gate=1105
+0x8ea13a58 -53031.0,-11511.0,2177.0 -1.0000,0.0000,0.0000 1104.5 capital_o5 nB=15 fit_centre_err_m=0 fit_r_gate=1105
