@@ -1,0 +1,22 @@
+{
+  "dll": "detached worktree /tmp/x3-run170-candidate of 809ad68e, build/d3d9.dll (clean configure + build)",
+  "sha256": "bdfd16c44a9996e4b2943e4ea22b10cfd8f54b0aed62a30d5d14c6df6db237d1",
+  "bytes": 59529317,
+  "commit": "809ad68e",
+  "dirty": false,
+  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+  "gates": {
+    "warnings": "0",
+    "x87_audit": "PASS, reachable_functions 1002, violations 0",
+    "site_verifier": "PASS, 20 checks",
+    "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads (39 OK) + discover test_engine_plumes, test_engine_effects_sites OK, test_engine_ribbons 5/6 (the Wine record-hash check fails: no Wine on this host; harness 80/80)"
+  },
+  "trigger": "user: trails should start at the end of the plumes, not at the engine (the curving trail was the proxy's own ribbon sampled at the nozzle)",
+  "producer": "main session (Fable 5.1), 2026-10-14",
+  "changes_since_run169": [
+    "70f5618e Run169 triage",
+    "87adcb41 RE engine trail origin + Opus design",
+    "9f764d69 convoy gate transit design ratified",
+    "809ad68e ribbon starts at the plume end"
+  ]
+}
