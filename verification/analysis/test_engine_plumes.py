@@ -1375,7 +1375,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('float pixel[12+engine_plumes::pixel_constant_floats]={1.f/float(f.width),1.f/float(f.height),0.f,0.f,', passes)
         self.assertIn('{0,72,D3DDECLTYPE_D3DCOLOR,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_COLOR,3},', passes)
         ribbon_pass = source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp')
-        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel,f.parents);', ribbon_pass)
+        self.assertIn('f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel,f.parents,frame.own_ship?nullptr:f.own);', ribbon_pass)  # own-ship flags since Run172
         ps = (ROOT / 'src/effects/engine_plume_ps.hlsl').read_text()
         self.assertIn(': float3(q.x - phase, q.y * 4.5, seed);', ps)
         self.assertIn('const float S2 = fbm(p * 2.2 + float3(5.0, 2.0, 1.0)) - 0.4375;', ps)
