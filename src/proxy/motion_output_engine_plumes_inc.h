@@ -43,6 +43,17 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
             engine_nozzle::core::source_name(engine_nozzle_source_), unsigned(plumes_requested_),
             engine_nozzle::core::walk_bound, engine_nozzle::core::RootSet::capacity);
     }
+    // The own ship's ribbon (engine_ribbons_core.h update's `own`): X3M_ENGINE_RIBBONS_OWN_SHIP=0|1, unset = 0 (no
+    // ribbon behind the player's ship, its plume stays); anything else refused to 0. One row per configure.
+    {
+        wchar_t text[8]{};
+        const DWORD n = x3m::config::get(L"X3M_ENGINE_RIBBONS_OWN_SHIP", text, 8);
+        const bool ok = !n || (n == 1 && (text[0] == L'0' || text[0] == L'1'));
+        ribbons_own_ship_ = ok && n == 1 && text[0] == L'1';
+        log("engine_ribbons_own_ship device=%llu setting=%s status=%s own_ship=%u", id_,
+            !n ? "-" : !ok ? "?" : ribbons_own_ship_ ? "1" : "0", ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting",
+            unsigned(ribbons_own_ship_));
+    }
     plumes_preset_ = preset;
     // The look: the chosen constants with the configured nozzle width (engine_effects::plume_nozzle(): parsed and
     // range-checked there); out of range here (no caller does that) keeps the default.

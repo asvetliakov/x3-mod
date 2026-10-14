@@ -354,6 +354,9 @@ SETTINGS = [
           'ships\' main engines stay as they are. This number scales those shares: 1 = the shares as first chosen, 0 turns '
           'it off; 0 to 3, default 0.5. Read when the game starts.',
           builtin='0.5', range=(0.0, 3.0), launcher='--engine-plume-floor', since='2026-10-03'),
+    entry('engine_ribbons_own_ship', 'bool', 'engine', 'Engine trails behind your own ship (engine_effects = plumes): 0 = '
+          'no trail behind the ship you fly, its plumes stay; 1 = a trail like every other ship\'s. Read when the game '
+          'starts.', builtin='0', since='2026-10-14'),
     entry('engine_light', 'enum', 'engine', 'Engine light on the hull (engine_effects = plumes): each ship\'s brightest main '
           'engine lights the hull plates around its nozzles in the engine\'s colour, brighter at full throttle. on or off. '
           'Read when the game starts.', builtin='on', choices=('on', 'off'), launcher='--engine-light', since='2026-10-03'),

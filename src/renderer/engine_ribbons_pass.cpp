@@ -224,9 +224,10 @@ HRESULT EngineRibbonsPass::run(const EngineRibbonsFrame& frame, EngineRibbonsRep
     engine_plumes::preset_scale(f.preset, &scale);
     engine_ribbons::update(pool_, f.records, f.record_count, frame.seconds, frame.cut || cut_pending_, frame.load_epoch, f.body,
                            // the plumes' view filter, then their look and ship radii (the plume's nozzle width: the
-                           // distance law's input) and the SETA travel weight (T x up to 2)
+                           // distance law's input), the SETA travel weight (T x up to 2) and, unless the setting keeps
+                           // them, the own ship's flags (no ribbon behind the player's ship)
                            scale, &r.update, f.filter.camera && f.filter.scene ? &f.filter : nullptr, f.look, f.radii,
-                           f.travel, f.parents);
+                           f.travel, f.parents, frame.own_ship ? nullptr : f.own);
     cut_pending_ = false;
     r.updated = true;
     if (reset_pending_) return refuse(EngineRibbonsStep::Validate, E_FAIL);

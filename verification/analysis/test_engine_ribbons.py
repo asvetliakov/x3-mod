@@ -426,6 +426,44 @@ int main() {
         update(pool, rs, 3, 1.0, false, 0, nullptr, 1.f, &st, &filter);
         expect(st.created == 1 && st.skipped_other_view == 2 && pool.live == 1 && only(pool)->origin[0] == 0.f && at_end(only(pool)->head, rs[0], 1e-6), "only the scene view's records take a ribbon");
     }
+    // ------------------------------------------------------------------ the own ship (engine_ribbons_own_ship)
+    {
+        // Three moving nozzles, the middle one the own ship's: no ribbon and no sample over 100 frames, the other two as
+        // without flags; the setting on (the pass hands null) gives all three their ribbon.
+        static Pool with_own, without, kept, pair; with_own.clear(); without.clear(); kept.clear(); pair.clear();
+        const std::uint8_t own[3] = {0, 1, 0}; UpdateStats st{}, sn{}, sk{}, sp{}; double now = 3.0;
+        unsigned own_skipped = 0, appended_with = 0, appended_pair = 0, appended_all = 0; bool never = true;
+        for (unsigned f = 0; f < 100; ++f, now += dt) {
+            ee::Record rs[3]; for (unsigned i = 0; i < 3; ++i) rs[i] = rec(2000.f * float(i) + 3000.f * float(f) * dt, 0, 40000.f, 1000.f, 1.f, 11 + i);
+            update(with_own, rs, 3, now, false, 0, nullptr, 1.f, &st, nullptr, nullptr, nullptr, 0.f, nullptr, own);
+            update(without, rs, 3, now, false, 0, nullptr, 1.f, &sn);
+            update(kept, rs, 3, now, false, 0, nullptr, 1.f, &sk, nullptr, nullptr, nullptr, 0.f, nullptr, nullptr);
+            const ee::Record two[2] = {rs[0], rs[2]}; update(pair, two, 2, now, false, 0, nullptr, 1.f, &sp);
+            own_skipped += st.own_skipped; appended_with += st.appended; appended_pair += sp.appended; appended_all += sn.appended;
+            never = never && detail::find(with_own, record_key(rs[1])) < 0;
+        }
+        const ee::Record r0 = rec(0, 0, 40000.f, 1000.f, 1.f, 11), r2 = rec(0, 0, 40000.f, 1000.f, 1.f, 13);
+        bool same = true;
+        for (const ee::Record* q : {&r0, &r2}) {
+            const int a = detail::find(with_own, record_key(*q)), b = detail::find(without, record_key(*q));
+            same = same && a >= 0 && b >= 0 && with_own.ribbons[a].count == without.ribbons[b].count && with_own.ribbons[a].length == without.ribbons[b].length &&
+                   !std::memcmp(with_own.ribbons[a].samples, without.ribbons[b].samples, sizeof without.ribbons[b].samples);
+        }
+        std::printf("OWN live=%u own_skipped=%u appended=%u pair=%u unflagged=%u kept_live=%u\n", with_own.live, own_skipped, appended_with, appended_pair, appended_all, kept.live);
+        expect(never && with_own.live == 2 && own_skipped == 100 && st.created == 0 && st.evicted == 0, "the own ship's record: no ribbon over 100 frames, counted own_skipped");
+        expect(same && appended_with == appended_pair && appended_all > appended_with, "the other two unchanged; the own one appended no sample");
+        expect(kept.live == 3 && sk.own_skipped == 0, "the setting on (null flags): all three take a ribbon");
+        // The flag turns onto a record with a ribbon (the player changed ship): released in that one update.
+        const std::uint8_t flipped[3] = {1, 0, 0};
+        ee::Record rs[3]; for (unsigned i = 0; i < 3; ++i) rs[i] = rec(2000.f * float(i) + 3000.f * float(100) * dt, 0, 40000.f, 1000.f, 1.f, 11 + i);
+        const std::uint64_t evictions = kept.evictions;
+        update(kept, rs, 3, now, false, 0, nullptr, 1.f, &sk, nullptr, nullptr, nullptr, 0.f, nullptr, flipped);
+        expect(detail::find(kept, record_key(rs[0])) < 0 && kept.live == 2 && sk.evicted == 1 && sk.own_skipped == 1 && kept.evictions == evictions + 1 && sk.matched == 2,
+               "the flag on an existing ribbon: released within one update, the others matched");
+        unsigned live_slots = 0; for (const auto& r : kept.ribbons) live_slots += r.live;
+        now += dt; update(kept, rs, 3, now, false, 0, nullptr, 1.f, &sk);
+        expect(live_slots == 2 && sk.created == 1 && sk.matched == 2 && kept.live == 3, "the released slot is free again: the identity starts afresh without the flag");
+    }
     // ------------------------------------------------------------------ the clock re-base
     {
         static Pool pool; pool.clear(); UpdateStats st{}; double now = 7.0; float x = 0.f;
@@ -581,10 +619,14 @@ class Wiring(unittest.TestCase):
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
                       '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
         # the ribbons take the plumes' scene-view filter
-        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel,f.parents);',
+        self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel,f.parents,'
+                      'frame.own_ship?nullptr:f.own);',
                       source_text(ROOT / 'src/renderer/engine_ribbons_pass.cpp'))
         self.assertIn('if(ribbons_)taa_call([&]{ribbons_->before_reset();});', motion)
         self.assertIn('if(ribbons_)ribbons_->after_reset(result);', motion)
+        # engine_ribbons_own_ship: read once at configure, carried by every frame
+        self.assertIn('f.own_ship=ribbons_own_ship_;', source_text(ROOT / 'src/proxy/motion_output_engine_ribbons_inc.h'))
+        self.assertIn('x3m::config::get(L"X3M_ENGINE_RIBBONS_OWN_SHIP",text,8);', source_text(ROOT / 'src/proxy/motion_output_engine_plumes_inc.h'))
         self.assertIn('#include "motion_output_engine_ribbons_inc.h"', motion)
         plumes = source_text(ROOT / 'src/proxy/motion_output_engine_plumes_inc.h')
         self.assertIn('engine_plumes_fog(&in.view.fog);', plumes)

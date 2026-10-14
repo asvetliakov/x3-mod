@@ -53,6 +53,7 @@ HRESULT MotionOutput::run_engine_ribbons(const renderer::EnginePlumesFrame& in) 
     f.seconds = engine_clock_.seconds; // the stage's clock (run_engine_plumes stepped it): a capture stall is not a gap
     f.cut = false; // note_cut at the resolve
     f.load_epoch = engine_load_epoch_;
+    f.own_ship = ribbons_own_ship_; // X3M_ENGINE_RIBBONS_OWN_SHIP, read at configure_engine_plumes
     return ribbons_->run(f, &ribbons_report_);
 }
 // The fog law of this frame: on only when the density composite applied this frame (run_volumetric_fog runs before

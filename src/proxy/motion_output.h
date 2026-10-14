@@ -1930,6 +1930,7 @@ private:
     // transmittance is on only then).
     std::unique_ptr<renderer::EngineRibbonsPass> ribbons_;
     bool ribbons_attach_failed_ = false;
+    bool ribbons_own_ship_ = false; // X3M_ENGINE_RIBBONS_OWN_SHIP=1: the own ship's jets take ribbons (default 0: none)
     renderer::EngineRibbonsReport ribbons_report_{};
     std::uint64_t engine_load_epoch_ = 0;
     std::uint64_t fog_density_applied_frame_ = ~std::uint64_t(0);

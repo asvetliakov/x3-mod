@@ -292,6 +292,8 @@ phase-3 brief's numbers are built where they differ from section 3 above:
   computes `build_nozzle`'s factor `k` in its own view and draws the head at `nozzle + axis x k A` (down to k 0.28
   in the chase case of the harness), so it stays inside the shrunk plume; only the live head moves with the view,
   the samples keep one world path for every view.
+  The own ship's records (the plumes' `Ring::own` flags) take no ribbon by default (`engine_ribbons_own_ship = 0`, after
+  Run 171; its plume stays), and a ribbon their identity still holds is released at the next update.
 - *Length.* `L = T(value) x preset x v_est x s` with **T 0.5 s below value 2,000, 0.8 s to 20,000, 1.2 s above**
   (the brief's thresholds, not 1,500 / 8,000; value in the record's scene units); `v_est` = the path from the nozzle
   back through the samples of at least the last 0.1 s, never across a pause of more than 0.25 s, over their age. The

@@ -28,6 +28,7 @@ struct EngineRibbonsFrame {
     double seconds = 0.;                     // the pool's clock (monotonic seconds, any epoch)
     bool cut = false;                        // the resolve's camera cut this frame
     std::uint64_t load_epoch = 0;            // object_lifetime load epoch, 0 unknown
+    bool own_ship = false; // engine_ribbons_own_ship: true = the own ship's jets (base->own) take ribbons too
 };
 enum class EngineRibbonsStep : unsigned { None, Validate, Resources, Lock, State, Draw };
 struct EngineRibbonsReport {

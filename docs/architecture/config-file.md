@@ -620,6 +620,16 @@ point; no sign, exponent or padding); anything else is refused to 0.5 with `floo
 `plumes`. The launcher sends it only when given (finite 0..3, as a plain decimal); an inherited shell value is
 dropped, and it is refused under `--vanilla`.
 
+## `engine_ribbons_own_ship` (2026-10-14, after Run 171)
+
+Key `engine_ribbons_own_ship`, environment `X3M_ENGINE_RIBBONS_OWN_SHIP`, no launcher option
+([engine-effects-modern.md](engine-effects-modern.md), "Pool and sampling"). Whether the proxy's engine trail ribbon is
+drawn behind the player's own ship under `engine_effects = plumes`: **0** (the default, the user's decision after Run
+171) draws none, the own ship's plumes stay; **1** draws it as on every other ship. The own ship's jets are the
+plumes' own flags (`Ring::own`); a ribbon the own ship's identity still holds (after a ship change) is released at the
+next update. The read site takes `0` or `1` (the file's on/off words normalise to them); anything else is refused to 0
+with `status=invalid_setting` on the one `engine_ribbons_own_ship` row per configure. Read once at load.
+
 ## `engine_light` (2026-10-03, engine light on the hull)
 
 Key `engine_light`, environment `X3M_ENGINE_LIGHT`, launcher `--engine-light on|off`

@@ -130,6 +130,19 @@ per-pixel march), the stage's in-game cost (`engine_stage stage_us` with `--gpu-
 `implement` task) are closed: phase 2 already draws the RCS records as short quads (radiance x z, unlengthened); they
 take no ribbon. Native Windows: cross-compiled only.
 
+**No ribbon on the own ship (2026-10-14, user decision after Run 171; worktree, not built or flown).** `engine_ribbons::update`
+takes the plumes' own-ship flags (`EnginePlumesFrame::own`, `Ring::own`): an own record takes no ribbon and appends no
+sample, a live ribbon of its identity (a ship change) is released in that update like a full pool's early eviction,
+counted `UpdateStats::own_skipped` (and `evicted` for the release); the plume stays. New key `engine_ribbons_own_ship`
+(`X3M_ENGINE_RIBBONS_OWN_SHIP`, bool, default 0; 1 = the pass hands null flags, ribbons as before), read once in
+`configure_engine_plumes` with one `engine_ribbons_own_ship` row and carried on every `EngineRibbonsFrame`. Host,
+measured: `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_engine_ribbons.py'`
+71 harness checks 0 failed (the own case: 2 live of 3, `own_skipped` 100 over 100 frames, 87 samples appended as by the
+other two alone against 132 unflagged, the flag on an existing ribbon releases it in one update, null flags give 3); the
+fixture-record hash test fails as expected (the production sources changed; `run_engine_ribbons.py` not rerun);
+`test_config_schema.py` 18 OK. i686 MinGW `-fsyntax-only -Werror` of `engine_ribbons_pass.cpp` and
+`engine_ribbons_fixture.cpp` (`-DX3M_ENGINE_PLUMES_FIXTURE`) and of `motion_output.cpp` clean. Not flown.
+
 ## Flight A (Run 118 A, run401 `off` / run402 `native`, 2026-10-03)
 
 User verdict: "don't see engines, trails etc"; accepted, Run119 installed. Triage ([results](../../verification/results/run401-402-engine-effects/), measured):

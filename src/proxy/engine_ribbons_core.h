@@ -193,6 +193,7 @@ struct UpdateStats {
     unsigned appended = 0, evicted = 0, jumps = 0, live = 0, fading = 0;
     unsigned dropped = 0; // samples dropped closer to the nozzle than the anchor (no fold)
     unsigned unfloored = 0; // records at their natural width: a co-located layer of a larger one (ep::merge_layers)
+    unsigned own_skipped = 0; // the own ship's records (`own`): no ribbon; a live one of theirs released (evicted counts it)
     bool cut_clear = false, load_clear = false;
 };
 struct Pool {
@@ -299,12 +300,15 @@ inline void estimate_speed(const Ribbon& r, const float head[3], float now, floa
 // default_look) and `radii` (null: no floor) the plumes' look and ship radii, for the plume's nozzle width (the
 // distance law's input); `travel` the plumes' SETA travel weight (0..1): T x (1 + (travel_trail - 1) travel), gap 7;
 // `parents` (null: none; Ring::parent) the plumes' co-located layer rule (ep::merge_layers): an unfloored layer takes
-// its own ribbon at its natural nozzle width, as its plume draws at its natural value.
+// its own ribbon at its natural nozzle width, as its plume draws at its natural value; `own` (null: none; Ring::own,
+// the plumes' own-ship flags) the own ship's records: no ribbon and no sample (engine_ribbons_own_ship = 0), a live
+// ribbon of that identity (the player changed ship) released at once as a full pool's early eviction.
 using BodyLookup = ep::BodyLookup;
 inline void update(Pool& pool, const ee::Record* records, unsigned count, double now_seconds, bool cut,
                    std::uint64_t load_epoch, BodyLookup body, float preset_scale, UpdateStats* stats,
                    const ep::ViewFilter* filter = nullptr, const ep::Look* look = nullptr,
-                   const float* radii = nullptr, float travel = 0.f, const std::uint32_t* parents = nullptr) noexcept {
+                   const float* radii = nullptr, float travel = 0.f, const std::uint32_t* parents = nullptr,
+                   const std::uint8_t* own = nullptr) noexcept {
     const ep::Look& k = look ? *look : ep::default_look;
     travel = travel > 0.f ? (travel < 1.f ? travel : 1.f) : 0.f;
     // The anchor's place on the plume (fractions of L_bar) and the plume's half-width there (nozzle widths), once per
@@ -375,6 +379,20 @@ inline void update(Pool& pool, const ee::Record* records, unsigned count, double
         ++st.records;
         if (filter && (!filter->scene[i] || filter->camera[i] != filter->handle)) {
             ++st.skipped_other_view;
+            continue;
+        }
+        if (own && own[i]) {
+            ++st.own_skipped;
+            const int held = detail::find(pool, record_key(rec));
+            if (held >= 0) { // a ribbon of this identity from before (a ship change): released now, not faded
+                detail::erase(pool, unsigned(held));
+                pool.ribbons[held].live = false;
+                pool.ribbons[held].count = 0;
+                --pool.live;
+                ++st.evicted;
+                ++pool.evictions;
+                free_hint = unsigned(held) < free_hint ? unsigned(held) : free_hint;
+            }
             continue;
         }
         if ((rec.flags & (ee::flag_rows_unknown | ee::flag_steering)) || !detail::finite3(rec.origin) ||
