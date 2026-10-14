@@ -27,6 +27,11 @@ moment, the launches, the escorts' distances then, the no-wait lane floor). **[m
    `ReleaseFromSlot`, `Remove()`, `__LeaveHyperspace`); the module steers, times and places the script's own orders.
 5. **Stage 1 without script patches first.** Stage 2 (the x3story.obj and MSCI constants, §6.6) only if the flown script
    latency is still visible after stage 1.
+6. **Player-owned ships are members like any other** (2026-10-14, later the same day): lane membership, the merge rule and
+   the point rewrite apply to every AI-controlled capital whatever its owner; the owner field is not a criterion (this
+   supersedes §6.7's "player-owned convoys never fly the lane" and §8 item 8's owner guard). The only exclusion is the ship
+   the player is flying manually (the existing player-object flag), which stays an obstacle under the existing rules.
+7. **No cruise-speed change between gates** in stage 1 (§10): stragglers join the lane when they arrive; revisit after Run171.
 
 **Outcome.** One departure lane per gate: capitals join it like cars at a lane merge (the ship that would reach the merge point
 later yields until its nose is 400 m behind the other's tail; the ship ahead never slows; a leader is always ahead of its own
