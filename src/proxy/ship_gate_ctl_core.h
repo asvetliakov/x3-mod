@@ -190,6 +190,7 @@ struct Member {
     // the order-0 gap (Run161): the last state read on the role's steered order (committed 4 / 5, escort 0x14 / 0x15) and its plan
     std::uint32_t steered_ms = 0;
     Plan last_plan = Plan::drift;
+    std::uint32_t t_rel_ms = 0; // B.8 (diagnostics): the holder's lap target at the last sequencer run (game ms; 0 none or not holding)
     // B.5 (ship_gate_ctl_live_core.h): proven live this frame (the frame boundary's live_prove), the last proof (game ms), the sector
     // of the snapshot that listed it, and the record class code site B read in the update (the member row's class; 0xffffffff unread)
     std::uint8_t proven = 0;
@@ -849,6 +850,17 @@ __attribute__((always_inline)) inline float petal_project(const PetalGeom& pg, f
     float t = sc::atan2_f(pg.a0 - a, b - bc); // 0 at the outer end, pi at the inner end
     if (t < 0.0f) t = 0.0f;
     return 2.0f * S + half + R * t;
+}
+// B.8 (Run168): the ship at x on its petal: the arc length of its projection (returned) and the join distance *d_join, the 3D distance from
+// x to the racetrack point at that arc (in-plane, along F and e, plus the out-of-plane offset along n). Board state only.
+constexpr float kJoinOnM = 300.0f; // on its track: the lap law's dwell applies
+__attribute__((always_inline)) inline float petal_join(const Gate& g, const PetalGeom& pg, const float x[3], float* d_join) noexcept {
+    const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
+    const float a = sc::dot3(d, g.F), b = sc::dot3(d, pg.e), o = sc::dot3(d, pg.n), s = petal_project(pg, a, b);
+    float ta, tb, da, db;
+    petal_at(pg, s, &ta, &tb, &da, &db);
+    *d_join = sc::sqrt_ss((a - ta) * (a - ta) + (b - tb) * (b - tb) + o * o);
+    return s;
 }
 // The petal's carrot for a ship at (a, b) flying at v: the racetrack point the pursuit's look-ahead beyond the nearest one.
 __attribute__((always_inline)) inline void petal_carrot(const PetalGeom& pg, float r_gate, float W, float a, float b, float v, float* ta,
@@ -2197,17 +2209,19 @@ __attribute__((always_inline)) inline bool escort_settled(const Gate& g, const M
 // B.6 item 1: the lap law, the earliest in-window moment at or after the target T (in [25, 60] m/s). s: the ship on the lap [0, lap);
 // the window [s_open, s_close] (wrapping across 0 when s_open > s_close); dt_ms: T - now (<= 0: T past, T = now); target false: no
 // target (the nominal 40 m/s); in_ok false: the ship off its track is not in its release window whatever its projection (no dwell). ds is
-// the arc to the next window opening ahead (in W: the one after this window; B.6 Implementation).
+// the arc to the next window opening ahead (in W: the one after this window; B.6 Implementation). B.8 (Run168): d_join, the distance from
+// the ship to its track point at s (petal_join), adds to ds in the arrive-on-time, extra-lap and late branches, and the dwell needs the
+// ship on its track (d_join <= kJoinOnM); d_join 0 is B.7's law.
 __attribute__((always_inline)) inline float lap_law(float s, float s_open, float s_close, float lap, std::int32_t dt_ms, bool target,
-                                                    bool in_ok = true) noexcept {
+                                                    bool in_ok = true, float d_join = 0.0f) noexcept {
     if (!target) return kPetalVnom;
     float wl = s_close - s_open; // |W|
     if (wl < 0.0f) wl += lap;
     float w = s - s_open; // the ship past the opening (mod lap)
     if (w < 0.0f) w += lap;
     if (w >= lap) w -= lap;
-    const float T = dt_ms > 0 ? float(dt_ms) * 0.001f : 0.0f, ds = lap - w;
-    if (in_ok && w <= wl && wl - w >= kPetalVmin * T) return kPetalVmin; // in W and still in W at T at 25 m/s: dwell
+    const float T = dt_ms > 0 ? float(dt_ms) * 0.001f : 0.0f, ds = lap - w + d_join; // B.8: the distance to go counts the join
+    if (in_ok && d_join <= kJoinOnM && w <= wl && wl - w >= kPetalVmin * T) return kPetalVmin; // in W (on track) and still in W at T at 25 m/s: dwell
     if (ds + wl >= kPetalVmin * T) {                             // the next window reached by T at 25 m/s: at its opening at T (or dwelling)
         if (ds >= kPetalVmax * T) return kPetalVmax;              // ... or late: there at 60 m/s (T past included)
         const float v = ds / T;
@@ -2222,19 +2236,64 @@ __attribute__((always_inline)) inline float lap_law(float s, float s_open, float
     return t25 <= t60 ? kPetalVmin : kPetalVmax;
 }
 // The holder's lap speed toward its release window at t_rel (B.6: the lap law on the petal; nominal without a target). The dwell needs the
-// release window itself (release_window: an off-track holder, e.g. one still joining its petal from ahead of it, projects into W).
+// release window itself (release_window: an off-track holder, e.g. one still joining its petal from ahead of it, projects into W). B.8: and
+// counts the join distance (escorts and committed heads alike).
 __attribute__((always_inline)) inline float lap_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel) noexcept {
     if (!t_rel || m.petal < 0) return kPetalVnom;
     PetalGeom pg;
     petal_geom(g, unsigned(m.petal), m.zx, &pg);
-    const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
-    const float s = petal_project(pg, sc::dot3(d, g.F), sc::dot3(d, pg.e));
+    float d_join;
+    const float s = petal_join(g, pg, m.st.x, &d_join);
     float open = kWinOpenS;
     if (m.role == Role::escort) { // B.7: an escort's window opens at its stage, inside the script's radius (no stage: W kept)
         const float st = escort_stage_s(pg);
         if (st >= 0.0f) open = st;
     }
-    return lap_law(s, open, kWinCloseS, kLap, std::int32_t(t_rel - now), true, release_window(g, m));
+    return lap_law(s, open, kWinCloseS, kLap, std::int32_t(t_rel - now), true, release_window(g, m), d_join);
+}
+// An escort's lap target (D.12; B.6 review F1; B.8 lead): its leader's predicted launch + the script's switch once the leader is released,
+// its order-8 stamp + the switch once it launched; 0 (no target: the nominal 40 m/s) while the leader holds. B.8 (coordinator's decision):
+// kStageLeadMs plus the last game-time frame step (g.step_ms, SETA-aware) earlier, so the escort reaches its stage a few seconds early and
+// dwells there at 25 m/s instead of arriving exactly at the first order-4 chance. A past target is now (B.6: dwell in W, else to W at 60).
+constexpr std::uint32_t kStageLeadMs = 5000;
+__attribute__((always_inline)) inline std::uint32_t escort_target(const Gate& g, const Member& m, std::uint32_t now) noexcept {
+    if (m.role != Role::escort || !m.key_res) return 0;
+    const int li = find(g, m.leader);
+    std::uint32_t t;
+    if (li >= 0 && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::inbound && g.m[li].sb != Sb::none) t = eta_launch(g, g.m[li], now) + kEscortSwitchMs;
+    else if (m.res_until) t = m.res_o8_ms + kEscortSwitchMs; // review F1: from live time once the leader launched
+    else return 0;
+    t -= kStageLeadMs + g.step_ms;
+    if (std::int32_t(t - now) < 0 || !t) t = now ? now : 1;
+    return t;
+}
+// A holder's speed at its lap target t_rel (sb_frame's hold branch): the lap law (B.6; an escort settled after its leader's launch at 25 m/s);
+// B.8 (Run168 departures): a late holder still joining on the inbound carrot (not at its ring) flies the inbound profile on its join
+// distance instead of the petals' 60 m/s cap, braking to 60 m/s kInboundLatM from its line and never above its v_max; then the grid
+// sphere guard for a committed member on a validated line (it overrides every speed above)
+__attribute__((always_inline)) inline float hold_speed(const Gate& g, const Member& m, std::uint32_t now, std::uint32_t t_rel, SbStats* st) noexcept {
+    float v = escort_settled(g, m, now, t_rel) ? kPetalVmin : lap_speed(g, m, now, t_rel);
+    if (v >= kPetalVmax && t_rel && !m.ringed && m.petal >= 0) { // B.8 (Run168 departures): late and still joining on the inbound carrot
+        PetalGeom pg;                                               // (not at its ring): the inbound profile on the join distance, braking
+        petal_geom(g, unsigned(m.petal), m.zx, &pg);                // to the petals' top speed kInboundLatM from its line
+        float dj;
+        petal_join(g, pg, m.st.x, &dj);
+        const float a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f, vmax = m.params.v_max > kPetalVmax ? m.params.v_max : kPetalVmax;
+        const float vj = sc::sqrt_ss(kPetalVmax * kPetalVmax + 2.0f * a * (dj > kInboundLatM ? dj - kInboundLatM : 0.0f));
+        v = vj < vmax ? vj : vmax;
+    }
+    if (m.role == Role::committed && m.line_ok) { // the grid sphere guard: order 4 never ends outside X (D.2.4)
+        const float A[3] = {m.X[0] + sc::kGateCrossFraction * g.r_gate * m.h[0], m.X[1] + sc::kGateCrossFraction * g.r_gate * m.h[1],
+                            m.X[2] + sc::kGateCrossFraction * g.r_gate * m.h[2]};
+        const float dA[3] = {A[0] - m.st.x[0], A[1] - m.st.x[1], A[2] - m.st.x[2]};
+        const float d = sc::sqrt_ss(sc::dot3(dA, dA));
+        const float a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f;
+        if (d < sc::kGateCrossFraction * g.r_gate + kGuardM + m.st.v * m.st.v / (2.0f * a) + 200.0f && sc::dot3(dA, m.st.u) > 0.0f) {
+            v = kYieldFloorMs;
+            if (st) ++st->guarded;
+        }
+    }
+    return v;
 }
 // One frame of the gate's stage B (the frame boundary, after the decisions). The arena is the board: no allocation.
 inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
@@ -2644,6 +2703,7 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
     // speeds: the funnel's shaping and feasibility (the go-around), the holders' laps, the grid sphere guard
     for (unsigned i = 0; i < g.n; ++i) {
         Member& m = g.m[i];
+        m.t_rel_ms = 0; // B.8 (diagnostics): set below for a holder with a lap target
         if (!live(g, m, now) || !(m.role == Role::committed || m.role == Role::escort)) continue;
         if (m.sb == Sb::funnel && m.role == Role::committed && m.st.order == sc::kOrderFlyBefore) {
             const int pk = m.pred ? find(g, m.pred) : -1;
@@ -2697,29 +2757,12 @@ inline void sb_frame(Gate& g, std::uint32_t now, SbStats* st) noexcept {
         if (m.sb != Sb::hold) continue;
         std::uint32_t t_rel = 0;
         if (int(i) == c && m.role == Role::committed) t_rel = t_next;
-        else if (m.role == Role::escort && m.key_res) { // the escort: at its release window when its order 4 can come (D.12)
-            const int li = find(g, m.leader);
-            if (li >= 0 && g.m[li].sb != Sb::hold && g.m[li].sb != Sb::inbound && g.m[li].sb != Sb::none)
-                t_rel = eta_launch(g, g.m[li], now) + kEscortSwitchMs;
-            else if (m.res_until) // review F1: from live time once the leader's launch + the script's switch is past (its order 4 may come now)
-                t_rel = m.res_o8_ms + kEscortSwitchMs;
-            if (t_rel && std::int32_t(t_rel - now) < 0) t_rel = now ? now : 1; // B.6: a past target is now (dwell in W, else to W at 60)
-        }
+        else if (m.role == Role::escort && m.key_res) // the escort: at its stage before its order 4 can come (D.12; B.8: kStageLeadMs early)
+            t_rel = escort_target(g, m, now);
+        m.t_rel_ms = t_rel;
         // B.6 (coordinator's amendment): an escort whose leader launched, once inside the script's 10 km and with its target past, laps
         // at 25 m/s over the whole lap (the calmest holding; the script's order 4 comes on its own schedule); a committed head keeps the law
-        float v = escort_settled(g, m, now, t_rel) ? kPetalVmin : lap_speed(g, m, now, t_rel);
-        if (m.role == Role::committed && m.line_ok) { // the grid sphere guard: order 4 never ends outside X (D.2.4)
-            const float A[3] = {m.X[0] + sc::kGateCrossFraction * g.r_gate * m.h[0], m.X[1] + sc::kGateCrossFraction * g.r_gate * m.h[1],
-                                m.X[2] + sc::kGateCrossFraction * g.r_gate * m.h[2]};
-            const float dA[3] = {A[0] - m.st.x[0], A[1] - m.st.x[1], A[2] - m.st.x[2]};
-            const float d = sc::sqrt_ss(sc::dot3(dA, dA));
-            const float a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f;
-            if (d < sc::kGateCrossFraction * g.r_gate + kGuardM + m.st.v * m.st.v / (2.0f * a) + 200.0f && sc::dot3(dA, m.st.u) > 0.0f) {
-                v = kYieldFloorMs;
-                if (st) ++st->guarded;
-            }
-        }
-        m.v_sb = v;
+        m.v_sb = hold_speed(g, m, now, t_rel, st);
     }
 }
 // The controller's leaf point and site B's speed for a member at x flying at v on `order` (site A; the DLL's decide() and the

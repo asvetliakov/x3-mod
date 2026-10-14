@@ -112,7 +112,9 @@ def by_ship(rows):
 #   ship_gate_ctl_member frame= t_ms= gate= ship= class= role= stage= order= target= p_m=<R>,<U>,<F> (the last state read, gate frame, m)
 #     nose_f= (the nose . F) v_ms= petal= (-1 none) key= traced=0|1 st_age_ms= dec_age_ms= (-1 none)   (B.4: one per board member per
 #     game second, traced or not; ring 32, drops in rows_dropped's ctl) live=0|1 (B.5: the member passed the liveness proof this frame;
-#     0: no engine field read, class=?)
+#     0: no engine field read, class=?) zx= (X along F, m) rho= (ring radius) s= (arc of the petal projection; -1 no petal) stage_s=
+#     (an escort's stage arc; -1 none) d_join= (m from its track point at s; -1 no petal) t_rel= (ms to the lap target at the last
+#     sequencer run, negative past; 0 none) ringed=0|1   (B.8: the petal frame from the board state, no engine read)
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
            'ship_avoid_dock', 'ship_gate_ctl_seq', 'ship_gate_ctl_member')
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap')

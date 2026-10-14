@@ -8563,6 +8563,24 @@ struct TResult {
     // ... the other approach frames by class (review F4): a far petal; a near petal not yet ringed; ringed but not parked
     unsigned b7_appr_far = 0, b7_appr_unringed = 0, b7_appr_ringed = 0;
     double b7_delay_sum_s = 0, b7_delay_max_s = 0;
+    // B.8 (Run168): the escorts in hold with a future lap target first seen off their track (d_join > 300 m) and the target reachable at
+    // 60 m/s (arc to the window + d_join <= 60 (T - now)): tracked, then at the first sequencer frame at or past T + the frame step on the
+    // track and in the window (ok), already on order 4 (o4), off the track or out of the window (miss), off the board (gone); not
+    // reachable (unreach, not tracked); short of the window with an order-0 gap (unsteered) within kB8GapS before T (gap: counted apart,
+    // its shortfall reported); the largest d_join at the first frame and at T. At T the ship's own position (site B's state lags <= 100 ms)
+    unsigned b8_join_n = 0, b8_join_ok = 0, b8_join_o4 = 0, b8_join_miss = 0, b8_join_gone = 0, b8_join_unreach = 0, b8_join_gap = 0;
+    double b8_join_d0_max = 0, b8_join_d_end_max = 0, b8_join_gap_short_max = 0;
+    // ... the tracked escorts again at their first order-4 chance (the leader's launch + kEscortSwitchMs + the frame step; B.8's target is
+    // kStageLeadMs + the step before it): on their track and in their window or already on order 4 (ok), else short (count, largest m)
+    unsigned b8_chance_ok = 0, b8_chance_short = 0;
+    double b8_chance_short_max = 0;
+    // ... every escort's order 4 after its leader's launch (count, mean, max), the ringed-late ones apart (B.7's ringed_late: Run168's case);
+    // the escorts in hold at the launch (count, on their track, the largest d_join) and those still inbound
+    unsigned b8_o4_n = 0, b8_rl_o4_n = 0, b8_launch_hold = 0, b8_launch_on = 0, b8_launch_inbound = 0;
+    double b8_o4_sum_s = 0, b8_o4_max_s = 0, b8_rl_o4_sum_s = 0, b8_rl_o4_max_s = 0, b8_launch_djoin_max = -1;
+    // ... the escorts off their track or not in hold at the launch, by cause: still inbound; entered hold after its last target; the
+    // stage not reachable at 60 m/s from the hold entry (distance to go > 60 x the target's lead then); other
+    unsigned b8d_inbound = 0, b8d_hold_late = 0, b8d_unreach = 0, b8d_other = 0;
 };
 struct TShip {
     Model m;
@@ -8589,6 +8607,18 @@ struct TShip {
     bool b7_parked = false, b7_staged = false; // B.7: parked at its ring at the leader's launch; its petal passes inside 9.49 km
     long b7_step_max = 0;                      // ... the longest game step from the launch to its order 4
     long b7_ring_ms = -1;                      // ... the first frame it held at its ring (hold, ringed) before the launch
+    bool b8_ring_late = false;                 // B.8: at its ring at the launch but ringed less than a 60 m/s lap before (B.7's ringed_late)
+    int b8_state = 0;                          // ... the join assertion: 0 not yet seen with a future target in hold, 1 tracked, 2 done
+    std::uint32_t b8_T = 0;                    // ... its lap target (the last future value the sequencer planned with)
+    long b8_o0_ms = -1;                        // ... its last frame on the template's order 0 (unsteered: the 2-3 s gap of the 0x14 legs)
+    bool b8_tracked = false, b8_chance_done = false; // ... tracked by the join assertion; evaluated at its first order-4 chance
+    // B.8 diagnosis (X3M_T_B8D): its first hold frame (game ms; the distance to go, arc to the window + d_join, and the target's lead then,
+    // s, -1 none), its state at the leader's release (stage, d_join, distance to G) and its last target before the launch
+    long b8d_hold_ms = -1, b8d_rel_ms = -1;
+    float b8d_hold_need = -1, b8d_hold_t = -1, b8d_hold_dg = -1, b8d_rel_dj = -1, b8d_rel_dg = -1;
+    int b8d_rel_sb = -1;
+    long b8d_last_T = -1;
+    bool b8d_done = false;
 };
 static double t_capsule(const TShip& a, const TShip& b) {
     float ca[3], cb[3], fa[3], fb[3];
@@ -8876,8 +8906,7 @@ static void b6_escort_pre(gc::Board& b, TShip& c, std::uint32_t last_sb, TResult
     if (c.m.order == core::kOrderFollow && core::dot3(dx, dx) > gc::kEscortSwitchM * gc::kEscortSwitchM * 0.9f) ++r.b6_pre_approach;
     const int li = gc::find(*g, m.leader);
     const bool released = li >= 0 && g->m[li].sb != gc::Sb::hold && g->m[li].sb != gc::Sb::inbound && g->m[li].sb != gc::Sb::none;
-    std::uint32_t t_rel = released ? gc::eta_launch(*g, g->m[li], last_sb) + gc::kEscortSwitchMs : 0;
-    if (t_rel && std::int32_t(t_rel - last_sb) < 0) t_rel = last_sb;
+    const std::uint32_t t_rel = gc::escort_target(*g, m, last_sb); // B.8: the controller's own target (kStageLeadMs + the step early)
     const double v = c.m.sb_v_written, law = double(gc::lap_speed(*g, m, last_sb, t_rel));
     if (v > law + 0.01) ++r.b6_pre_law_over;
     if (released) {
@@ -8888,6 +8917,137 @@ static void b6_escort_pre(gc::Board& b, TShip& c, std::uint32_t last_sb, TResult
         ++r.b6_pre_frames_n;
         r.b6_pre_v_max_n = std::fmax(r.b6_pre_v_max_n, v);
         if (v > double(gc::kPetalVmin) + 0.01) ++r.b6_pre_over_n;
+    }
+}
+// B.8 diagnosis: the history of an escort that is off its track at its leader's launch (one row then, X3M_T_B8D), and the counts by cause
+static void b8_diag(gc::Board& b, TShip* ships, TShip& c, unsigned k, std::uint32_t now, const char* tag, TResult& r) {
+    int i = -1;
+    const gc::Gate* g = gc::locate(b, c.m.ptr, &i);
+    if (!g || c.st->leader < 0) return;
+    const gc::Member& m = g->m[i];
+    if (m.role != gc::Role::escort) return;
+    const TShip& L = ships[c.st->leader];
+    float dj = -1.0f, w = 0.0f, wl = 0.0f;
+    if (m.petal >= 0) {
+        gc::PetalGeom pg;
+        gc::petal_geom(*g, unsigned(m.petal), m.zx, &pg);
+        w = b7_escort_w(pg, gc::petal_join(*g, pg, m.st.x, &dj), &wl);
+    }
+    const float dg = std::sqrt(core::dot3(m.st.x, m.st.x) - 2.0f * core::dot3(m.st.x, g->G) + core::dot3(g->G, g->G));
+    if (m.sb == gc::Sb::hold && c.b8d_hold_ms < 0) {
+        c.b8d_hold_ms = long(now);
+        c.b8d_hold_need = (w <= wl ? 0.0f : gc::kLap - w) + dj;
+        c.b8d_hold_t = m.t_rel_ms ? float(std::int32_t(m.t_rel_ms - now)) * 0.001f : -1.0f;
+        c.b8d_hold_dg = dg;
+    }
+    if (L.release_ms >= 0 && c.b8d_rel_ms < 0) {
+        c.b8d_rel_ms = long(now);
+        c.b8d_rel_sb = int(m.sb);
+        c.b8d_rel_dj = dj;
+        c.b8d_rel_dg = dg;
+    }
+    if (m.t_rel_ms && !L.launched) c.b8d_last_T = long(m.t_rel_ms);
+    if (!L.launched && !L.gone) return;
+    c.b8d_done = true;
+    if (m.sb == gc::Sb::hold && dj <= gc::kJoinOnM) return;
+    // off its track (or not in hold) at the launch: the cause class
+    const long lm = L.launch_ms >= 0 ? L.launch_ms : long(now);
+    unsigned* cls;
+    if (m.sb == gc::Sb::inbound) cls = &r.b8d_inbound;                                        // still inbound at the launch
+    else if (c.b8d_hold_ms >= 0 && c.b8d_last_T >= 0 && c.b8d_hold_ms > c.b8d_last_T) cls = &r.b8d_hold_late; // entered hold after its target
+    else if (c.b8d_hold_t > 0.0f && c.b8d_hold_need > gc::kPetalVmax * c.b8d_hold_t) cls = &r.b8d_unreach; // not reachable at 60 m/s from the entry
+    else cls = &r.b8d_other;
+    ++*cls;
+    if (std::getenv("X3M_T_B8D"))
+        std::printf("  tb8d %s escort %u off at the launch t=%.1f: sb=%s d_join=%.0f dG=%.0f | at the release t=%+.1f s: sb=%s d_join=%.0f dG=%.0f | "
+                    "hold entered t=%+.1f s dG=%.0f need=%.0f m target in %.1f s | last T %+.1f s | ext+2km=%.0f\n", tag, k, double(lm) / 1000.0,
+                    gc::sb_name(m.sb), double(dj), double(dg), c.b8d_rel_ms >= 0 ? double(c.b8d_rel_ms - lm) / 1000.0 : 0.0,
+                    c.b8d_rel_sb >= 0 ? gc::sb_name(gc::Sb(c.b8d_rel_sb)) : "-", double(c.b8d_rel_dj), double(c.b8d_rel_dg),
+                    c.b8d_hold_ms >= 0 ? double(c.b8d_hold_ms - lm) / 1000.0 : 0.0, double(c.b8d_hold_dg), double(c.b8d_hold_need),
+                    double(c.b8d_hold_t), c.b8d_last_T >= 0 ? double(c.b8d_last_T - lm) / 1000.0 : 0.0,
+                    double(gc::ring_extent(*g, m) + gc::kInboundM));
+}
+// B.8 (Run168): an escort that enters hold off its track (d_join > 300 m at its first sequencer frame in hold with a future lap target) with
+// the target reachable at 60 m/s is on its track and inside its window (b7_escort_w) at T + the frame step; T follows the sequencer's
+// re-predictions while it lies ahead. Board state only (the controller's t_rel_ms, the stored state).
+constexpr long kB8GapS = 10; // an order-0 gap this close before T excuses a shortfall (the speed lost in it is not recovered at 60 m/s)
+static void b8_join_track(gc::Board& b, TShip* ships, unsigned n, std::uint32_t now, long step, const char* tag, TResult& r) {
+    for (unsigned k = 0; k < n; ++k) {
+        TShip& c = ships[k];
+        if (c.st->leader < 0) continue;
+        if (!c.b8d_done && c.alive && c.m.ctl) b8_diag(b, ships, c, k, now, tag, r);
+        if (c.b8_tracked && !c.b8_chance_done && c.leader_launch >= 0 && long(now) >= c.leader_launch + long(gc::kEscortSwitchMs) + step) {
+            c.b8_chance_done = true; // B.8 lead: the escort at its first order-4 chance (its own position)
+            int ci = -1;
+            const gc::Gate* cg = c.m.ctl ? gc::locate(b, c.m.ptr, &ci) : nullptr;
+            if (cg && cg->m[ci].sb == gc::Sb::hold && cg->m[ci].petal >= 0) {
+                gc::PetalGeom pg;
+                gc::petal_geom(*cg, unsigned(cg->m[ci].petal), cg->m[ci].zx, &pg);
+                const float x[3] = {float(c.m.pos[0] / 500.0), float(c.m.pos[1] / 500.0), float(c.m.pos[2] / 500.0)};
+                float dj, wl;
+                const float w = b7_escort_w(pg, gc::petal_join(*cg, pg, x, &dj), &wl);
+                if (dj <= gc::kJoinOnM && w <= wl) ++r.b8_chance_ok;
+                else {
+                    ++r.b8_chance_short;
+                    r.b8_chance_short_max = std::fmax(r.b8_chance_short_max, double(w > wl ? gc::kLap - w : 0.0f) + double(dj));
+                }
+            } else
+                ++r.b8_chance_ok; // committed (order 4) or off the board
+        }
+        if (c.b8_state == 2) continue;
+        if (c.alive && c.m.order == core::kOrderNone) c.b8_o0_ms = long(now);
+        int i = -1;
+        const gc::Gate* g = c.m.ctl ? gc::locate(b, c.m.ptr, &i) : nullptr;
+        const gc::Member* m = g ? &g->m[i] : nullptr;
+        float d_join = -1.0f, w = 0.0f, wl = 0.0f;
+        if (m && m->petal >= 0) {
+            gc::PetalGeom pg;
+            gc::petal_geom(*g, unsigned(m->petal), m->zx, &pg);
+            w = b7_escort_w(pg, gc::petal_join(*g, pg, m->st.x, &d_join), &wl);
+        }
+        if (c.b8_state == 1) {
+            if (m && m->sb == gc::Sb::hold && m->t_rel_ms && std::int32_t(m->t_rel_ms - now) > 0) c.b8_T = m->t_rel_ms;
+            if (std::int32_t(now - (c.b8_T + std::uint32_t(step))) < 0) continue;
+            c.b8_state = 2;
+            if (!m) ++r.b8_join_gone;
+            else if (m->sb != gc::Sb::hold) ++(m->role == gc::Role::committed ? r.b8_join_o4 : r.b8_join_gone);
+            else {
+                gc::PetalGeom pg; // the ship's own position now (site B's stored state is up to 100 ms old: 5 m at 50 m/s)
+                gc::petal_geom(*g, unsigned(m->petal), m->zx, &pg);
+                const float x[3] = {float(c.m.pos[0] / 500.0), float(c.m.pos[1] / 500.0), float(c.m.pos[2] / 500.0)};
+                w = b7_escort_w(pg, gc::petal_join(*g, pg, x, &d_join), &wl);
+                r.b8_join_d_end_max = std::fmax(r.b8_join_d_end_max, double(d_join));
+                const bool gap = c.b8_o0_ms >= 0 && long(c.b8_T) - c.b8_o0_ms <= kB8GapS * 1000;
+                if (d_join <= gc::kJoinOnM && w <= wl) ++r.b8_join_ok;
+                else if (d_join <= gc::kJoinOnM && gap) {
+                    ++r.b8_join_gap;
+                    r.b8_join_gap_short_max = std::fmax(r.b8_join_gap_short_max, double(gc::kLap - w));
+                } else {
+                    ++r.b8_join_miss;
+                    if (std::getenv("X3M_T_B8"))
+                        std::printf("  tb8 %s escort %u miss at t=%.1f (T %.1f): petal %d d_join=%.0f w=%.0f |W|=%.0f v_sb=%.1f\n", tag, k,
+                                    double(now) / 1000.0, double(c.b8_T) / 1000.0, int(m->petal), double(d_join), double(w), double(wl), double(m->v_sb));
+                }
+            }
+            continue;
+        }
+        if (!m || m->role != gc::Role::escort || m->sb != gc::Sb::hold || d_join < 0.0f || !m->t_rel_ms || std::int32_t(m->t_rel_ms - now) <= 0)
+            continue;
+        c.b8_state = 2;
+        if (d_join <= gc::kJoinOnM) continue; // on its track at its first targeted frame: not the join case
+        const float ds = (w <= wl ? 0.0f : gc::kLap - w) + d_join, T = float(m->t_rel_ms - now) * 0.001f;
+        if (ds > gc::kPetalVmax * T) {
+            ++r.b8_join_unreach;
+            continue;
+        }
+        c.b8_state = 1;
+        c.b8_tracked = true;
+        c.b8_T = m->t_rel_ms;
+        ++r.b8_join_n;
+        r.b8_join_d0_max = std::fmax(r.b8_join_d0_max, double(d_join));
+        if (std::getenv("X3M_T_B8"))
+            std::printf("  tb8 %s escort %u tracked at t=%.1f: petal %d d_join=%.0f w=%.0f |W|=%.0f T in %.1f s\n", tag, k, double(now) / 1000.0,
+                        int(m->petal), double(d_join), double(w), double(wl), double(T));
     }
 }
 static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
@@ -9197,8 +9357,20 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                         const long lap_ms = long(1000.0f * gc::kLap / gc::kPetalVmax);
                         const bool ring_early = c.b7_ring_ms >= 0 && c.leader_launch + long(gc::kEscortSwitchMs) - c.b7_ring_ms >= lap_ms;
                         if (bg && bg->m[bi].role == gc::Role::escort && bg->m[bi].sb == gc::Sb::hold && bg->m[bi].ringed && bg->m[bi].petal >= 0 &&
-                            !ring_early)
+                            !ring_early) {
                             ++res.b7_ring_late;
+                            c.b8_ring_late = true;
+                        }
+                        if (bg && bg->m[bi].role == gc::Role::escort && bg->m[bi].sb == gc::Sb::hold && bg->m[bi].petal >= 0) { // B.8: d_join at the launch
+                            gc::PetalGeom pg;
+                            gc::petal_geom(*bg, unsigned(bg->m[bi].petal), bg->m[bi].zx, &pg);
+                            float dj;
+                            gc::petal_join(*bg, pg, bg->m[bi].st.x, &dj);
+                            ++res.b8_launch_hold;
+                            if (dj <= gc::kJoinOnM) ++res.b8_launch_on;
+                            res.b8_launch_djoin_max = std::fmax(res.b8_launch_djoin_max, double(dj));
+                        } else if (bg && bg->m[bi].sb == gc::Sb::inbound)
+                            ++res.b8_launch_inbound;
                         if (bg && bg->m[bi].role == gc::Role::escort && bg->m[bi].sb == gc::Sb::hold && bg->m[bi].ringed && bg->m[bi].petal >= 0 &&
                             ring_early) {
                             gc::PetalGeom pg;
@@ -9261,6 +9433,17 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 c.b7_step_max = std::max(c.b7_step_max, dt);
                 if (now_ms >= c.order4_at) {
                     start_order4(c, now_ms);
+                    { // B.8: every escort's order 4 after its leader's launch; the ringed-late ones apart
+                        const double delay = double(now_ms - c.leader_launch) / 1000.0;
+                        ++res.b8_o4_n;
+                        res.b8_o4_sum_s += delay;
+                        res.b8_o4_max_s = std::max(res.b8_o4_max_s, delay);
+                        if (c.b8_ring_late) {
+                            ++res.b8_rl_o4_n;
+                            res.b8_rl_o4_sum_s += delay;
+                            res.b8_rl_o4_max_s = std::max(res.b8_rl_o4_max_s, delay);
+                        }
+                    }
                     if (c.b7_parked && c.b7_staged) { // B.7: a parked escort on a staged petal: its order 4 after the leader's launch
                         const double delay = double(now_ms - c.leader_launch) / 1000.0;
                         ++res.b7_o4;
@@ -9663,6 +9846,7 @@ static TResult run_traffic(const TSetup& su, int fps, std::uint32_t seed) {
                 }
             }
         }
+        b8_join_track(board, ships, su.n, now_end, dt, su.tag, res); // B.8 (Run168): the join assertion's tracking
         b6_last_sb = now_end;
         b6_step_max = 0;
         t_live_leaves(board, now_end); // B.5: the DLL's ctl_live_leaves (after the sequencer, before the decisions)
@@ -11745,6 +11929,17 @@ static void traffic_print_b7(const char* tag, int fps, std::uint32_t seed, const
                 r.b7_o4 ? r.b7_delay_max_s : -1.0, r.b7_late, r.b7_ring_late, r.b7_appr_parked, r.b7_appr_all, r.b7_appr_far,
                 r.b7_appr_unringed, r.b7_appr_ringed);
 }
+static void traffic_print_b8(const char* tag, int fps, std::uint32_t seed, const TResult& r) {
+    std::printf("traffic T %-12s fps=%3d seed=%u B.8: join tracked=%u ok=%u o4=%u miss=%u gap=%u (short_max %.0f m) gone=%u unreach=%u "
+                "d_join0_max=%.0f d_join_T_max=%.0f | escort order4=%u delay_mean=%.1f delay_max=%.1f s ringed_late order4=%u delay_mean=%.1f delay_max=%.1f s | at the launch hold=%u "
+                "on_track=%u d_join_max=%.0f inbound=%u | off at the launch: inbound=%u hold_after_T=%u unreachable=%u other=%u | at the order-4 chance: ok=%u "
+                "short=%u (max %.0f m)\n", tag, fps, seed, r.b8_join_n, r.b8_join_ok, r.b8_join_o4, r.b8_join_miss, r.b8_join_gap,
+                r.b8_join_gap_short_max, r.b8_join_gone,
+                r.b8_join_unreach, r.b8_join_d0_max, r.b8_join_d_end_max, r.b8_o4_n, r.b8_o4_n ? r.b8_o4_sum_s / double(r.b8_o4_n) : -1.0,
+                r.b8_o4_n ? r.b8_o4_max_s : -1.0, r.b8_rl_o4_n, r.b8_rl_o4_n ? r.b8_rl_o4_sum_s / double(r.b8_rl_o4_n) : -1.0,
+                r.b8_rl_o4_n ? r.b8_rl_o4_max_s : -1.0, r.b8_launch_hold, r.b8_launch_on, r.b8_launch_djoin_max, r.b8_launch_inbound,
+                r.b8d_inbound, r.b8d_hold_late, r.b8d_unreach, r.b8d_other, r.b8_chance_ok, r.b8_chance_short, r.b8_chance_short_max);
+}
 static void traffic_scenarios() {
     char why[256];
     const unsigned missed0 = g_crowd_targets_missed;
@@ -11769,6 +11964,18 @@ static void traffic_scenarios() {
                 traffic_print_b(su.tag, fps, seed, r);
                 traffic_print_b6(su.tag, fps, seed, r);
                 traffic_print_b7(su.tag, fps, seed, r);
+                traffic_print_b8(su.tag, fps, seed, r);
+                // B.8 (Run168): an escort entering hold off its track with its target reachable at <= 60 m/s is on its track and inside its
+                // window at T + the frame step (or already on its order 4); one short of its window after the template's unsteered order-0
+                // gap within kB8GapS before T is on its track and reported (gap, shortfall)
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.8: an escort joining its track with a reachable target is on it and in its "
+                              "window at T + the frame step (miss %%.0f of %%.0f)", su.tag, fps, seed);
+                checkf(r.b8_join_miss == 0, why, r.b8_join_miss, r.b8_join_n);
+                // B.8 (departures): every escort in hold at its leader's launch is on its track (a late unringed holder flies the inbound
+                // profile on its join)
+                std::snprintf(why, sizeof why, "traffic T %s %d fps seed %u: B.8: every escort in hold at its leader's launch is on its track (off %%.0f, "
+                              "largest d_join %%.0f m)", su.tag, fps, seed);
+                checkf(r.b8_launch_on == r.b8_launch_hold, why, double(r.b8_launch_hold - r.b8_launch_on), r.b8_launch_djoin_max);
                 // B.7 (Run167): an escort parked at its ring on a staged petal when its leader launches is inside the script's radius
                 // at its first order-4 chance: its order 4 within kEscortSwitchMs + one 5 s script pass + the wait's longest game step,
                 // and no 0x15 approach after the launch
@@ -11941,7 +12148,8 @@ static void traffic_scenarios() {
     checkf(b6_post_all > 0, why, b6_post_all, 0);
     std::snprintf(why, sizeof why, "traffic T B.6: escorts before their leader's launch (leader released) in their window (%%.0f frames), the 0x15 "
                                    "approach after it (%%.0f frames)");
-    checkf(b6_pre_frames_all > 0 && b6_approach_all > 0, why, b6_pre_frames_all, b6_approach_all);
+    checkf(b6_pre_frames_all > 0, why, b6_pre_frames_all, b6_approach_all); // B.8: the late joiners' profile leaves no escort beyond 10 km at
+                                                                             // the launch in scenario T, so the approach frames may be 0 (reported)
     std::printf("traffic T: the worst frame reached %u decisions and %u rollouts (the bound: %u and %u)\n", worst_dec, worst_roll, gc::kDecisionsPerFrame,
                 gc::kRolloutsPerFrame);
 }
@@ -13606,6 +13814,214 @@ static void sb_b7_checks() {
                                    "%%.1f m/s");
     checkf(law_bad == 0 && std::fabs(v_on - 50.0f) < 0.05f && v_b6 == gc::kPetalVmin, why, law_bad, double(v_on));
 }
+// B.8 (Run168): the lap law counts the join distance. d_join 0 is B.7's law bit for bit; the dwell needs the ship on its track (d_join <=
+// 300 m); the arrive-on-time, extra-lap and late branches add d_join to the arc; petal_join's distance in and out of the plane; lap_speed
+// passes it for an escort and a committed head alike
+// B.7's lap_law as committed before B.8 (1969716d), kept verbatim for the d_join 0 comparison (review F2)
+static float b7_lap_law(float s, float s_open, float s_close, float lap, std::int32_t dt_ms, bool target, bool in_ok = true) {
+    if (!target) return gc::kPetalVnom;
+    float wl = s_close - s_open; // |W|
+    if (wl < 0.0f) wl += lap;
+    float w = s - s_open; // the ship past the opening (mod lap)
+    if (w < 0.0f) w += lap;
+    if (w >= lap) w -= lap;
+    const float T = dt_ms > 0 ? float(dt_ms) * 0.001f : 0.0f, ds = lap - w;
+    if (in_ok && w <= wl && wl - w >= gc::kPetalVmin * T) return gc::kPetalVmin;
+    if (ds + wl >= gc::kPetalVmin * T) {
+        if (ds >= gc::kPetalVmax * T) return gc::kPetalVmax;
+        const float v = ds / T;
+        return v < gc::kPetalVmin ? gc::kPetalVmin : v;
+    }
+    if (ds + lap <= gc::kPetalVmax * T) {
+        const float v = (ds + lap) / T;
+        return v < gc::kPetalVmin ? gc::kPetalVmin : v > gc::kPetalVmax ? gc::kPetalVmax : v;
+    }
+    const float t25 = (ds + wl) / gc::kPetalVmin + (lap - wl) / gc::kPetalVmax, t60 = (ds + lap) / gc::kPetalVmax;
+    return t25 <= t60 ? gc::kPetalVmin : gc::kPetalVmax;
+}
+static void sb_b8_checks() {
+    char why[256];
+    static gc::Board bd;
+    bd = gc::Board{};
+    const std::uint32_t now = 400000;
+    gc::Gate* g = ctl_gate(bd, now);
+    g->rho = 2874.0f;
+    const float L = gc::kLap, so = gc::kWinOpenS, sx = gc::kWinCloseS;
+    gc::PetalGeom pg0;
+    gc::petal_geom(*g, 3u, -5221.0f, &pg0);
+    const float st0 = gc::escort_stage_s(pg0);
+    // 1. d_join 0 reproduces B.7 exactly (against the fixture's verbatim copy of B.7's lap_law): the B.6 window and the ring-0 stage
+    //    window, in_ok both ways, s every 37 m, T -5..300 s every 0.7 s
+    unsigned n0 = 0, diff0 = 0;
+    for (float open : {so, st0})
+        for (bool in_ok : {true, false})
+            for (float sl = 0.0f; sl < L; sl += 37.0f)
+                for (std::int32_t t = -5000; t <= 300000; t += 700) {
+                    ++n0;
+                    if (b7_lap_law(sl, open, sx, L, t, true, in_ok) != gc::lap_law(sl, open, sx, L, t, true, in_ok, 0.0f)) ++diff0;
+                }
+    // 2. the branches with the join on the B.6 window (s, T, d_join)
+    auto law = [&](float sl, std::int32_t dt_ms, float dj) { return gc::lap_law(sl, so, sx, L, dt_ms, true, true, dj); };
+    const float dwell_on = law(0.0f, 60000, 300.0f), dwell_off = law(0.0f, 60000, 301.0f), dwell_b7 = law(0.0f, 60000, 0.0f);
+    const float back_off = law(8500.0f, 100000, 1000.0f);                                  // in W at the back turn, 1 km off: no dwell
+    const float on_b7 = law(5000.0f, 100000, 0.0f), on_join = law(5000.0f, 100000, 1500.0f); // ds 3,236 m: 32.4; + 1.5 km: 47.4
+    const float late_b7 = law(5000.0f, 60000, 0.0f), late_join = law(5000.0f, 60000, 1000.0f); // 53.9; 4,236 m in 60 s: late, 60
+    const float extra_b7 = law(7800.0f, 200000, 0.0f), extra_join = law(7800.0f, 200000, 200.0f); // (436 + lap) / 200; (636 + lap) / 200
+    const float past_off = law(100.0f, 0, 500.0f);                                          // T past, in W by projection, 500 m off: 60
+    std::printf("sb B.8 lap law: d_join 0 vs B.7 over %u (window, in_ok, s, T): %u differ; dwell at 300 m %.1f, at 301 m %.1f (B.7 %.1f); back "
+                "turn 1 km off %.1f; on time %.2f -> %.2f with 1.5 km; late %.2f -> %.1f with 1 km; extra lap %.2f -> %.2f with 200 m; T past "
+                "500 m off %.1f m/s\n", n0, diff0, double(dwell_on), double(dwell_off), double(dwell_b7), double(back_off), double(on_b7), double(on_join),
+                double(late_b7), double(late_join), double(extra_b7), double(extra_join), double(past_off));
+    std::snprintf(why, sizeof why, "sb B.8 lap law: d_join 0 is B.7's law exactly (%%.0f of %%.0f differ)");
+    checkf(diff0 == 0 && n0 > 100000, why, diff0, n0);
+    check(dwell_on == gc::kPetalVmin && dwell_b7 == gc::kPetalVmin && dwell_off == gc::kPetalVmax && back_off == gc::kPetalVmax &&
+              past_off == gc::kPetalVmax,
+          "sb B.8 lap law: the dwell needs d_join <= 300 m (refused off the track in W, at T past too)");
+    check(std::fabs(on_b7 - 3236.0f / 100.0f) < 0.05f && std::fabs(on_join - 4736.0f / 100.0f) < 0.05f && late_b7 < gc::kPetalVmax &&
+              late_join == gc::kPetalVmax && std::fabs(extra_b7 - (436.0f + L) / 200.0f) < 0.1f && std::fabs(extra_join - (636.0f + L) / 200.0f) < 0.1f,
+          "sb B.8 lap law: the join adds to the arc in the arrive-on-time, late and extra-lap branches");
+    // 3. petal_join: on the track 0 (s every 10 m), 777 m out of the plane 777, on the inner straight 1.5 km inward and 2 km out of the plane
+    //    2.5 km with the same arc
+    float on_max = 0.0f, s_err = 0.0f, off_err = 0.0f;
+    for (float sl = 5.0f; sl < L - 5.0f; sl += 10.0f) {
+        float a, b, da, db, dj;
+        gc::petal_at(pg0, sl, &a, &b, &da, &db);
+        float x[3];
+        for (int i = 0; i < 3; ++i) x[i] = g->G[i] + a * g->F[i] + b * pg0.e[i];
+        const float sp = gc::petal_join(*g, pg0, x, &dj);
+        on_max = std::fmax(on_max, dj);
+        s_err = std::fmax(s_err, std::fabs(sp - sl));
+        for (int i = 0; i < 3; ++i) x[i] += 777.0f * pg0.n[i];
+        gc::petal_join(*g, pg0, x, &dj);
+        off_err = std::fmax(off_err, std::fabs(dj - 777.0f));
+    }
+    auto ship = [&](gc::Role role, float sl, float lat, float out) { // a holder at arc sl, lat m inward of the track (along -e), out along n
+        gc::Member m{};
+        m.ship = 0x9100;
+        m.role = role;
+        m.sb = gc::Sb::hold;
+        m.petal = 3;
+        m.zx = -5221.0f;
+        m.leader = 0x9000;
+        m.key_res = 1;
+        m.ringed = 1;
+        float a, b, da, db;
+        gc::petal_at(pg0, sl, &a, &b, &da, &db);
+        for (int i = 0; i < 3; ++i) {
+            m.st.x[i] = g->G[i] + a * g->F[i] + (b - lat) * pg0.e[i] + out * pg0.n[i];
+            m.st.rows[2][i] = da * g->F[i] + db * pg0.e[i];
+        }
+        return m;
+    };
+    const float s_in = 20.0f; // on the inner straight (s in [0, S]), 1.1 km short of the stage
+    const gc::Member e_off = ship(gc::Role::escort, s_in, 1500.0f, 2000.0f), e_on = ship(gc::Role::escort, s_in, 0.0f, 0.0f);
+    float dj_off, dj_on;
+    const float sp_off = gc::petal_join(*g, pg0, e_off.st.x, &dj_off), sp_on = gc::petal_join(*g, pg0, e_on.st.x, &dj_on);
+    // 4. lap_speed: the Run168 case (an escort 2.5 km off its track, the stage st0 - 20 m of arc ahead, its target 90 s away): (arc + join) /
+    //    90 instead of B.7's arc / 90 (25 m/s); a committed head the same on B.6's window; in its window off the track no dwell
+    const std::uint32_t t90 = now + 90000;
+    const float v_off = gc::lap_speed(*g, e_off, now, t90), v_on = gc::lap_speed(*g, e_on, now, t90);
+    const float l_off = gc::lap_law(sp_off, st0, sx, L, 90000, true, gc::release_window(*g, e_off), dj_off);
+    const float l_b7 = gc::lap_law(sp_off, st0, sx, L, 90000, true, gc::release_window(*g, e_off));
+    const gc::Member h_off = ship(gc::Role::committed, s_in, 1500.0f, 2000.0f);
+    const float vh_off = gc::lap_speed(*g, h_off, now, t90), lh_off = gc::lap_law(sp_off, so, sx, L, 90000, true, gc::release_window(*g, h_off), dj_off);
+    const gc::Member w_on = ship(gc::Role::escort, st0 + 200.0f, 0.0f, 0.0f), w_off = ship(gc::Role::escort, st0 + 200.0f, 0.0f, 1000.0f);
+    const float vw_on = gc::lap_speed(*g, w_on, now, now + 30000), vw_off = gc::lap_speed(*g, w_off, now, now + 30000);
+    std::printf("sb B.8 petal_join: on the track <= %.2f m (arc within %.2f m), 777 m out of the plane within %.2f m; 1.5 km in + 2 km out: %.1f m, "
+                "arc %.1f vs %.1f; lap_speed (stage %.0f m, target 90 s): escort off %.2f (law %.2f, B.7 %.1f), on %.1f; head off %.2f (law %.2f); "
+                "in its window 30 s: on %.1f, 1 km out of the plane %.1f m/s\n", double(on_max), double(s_err), double(off_err), double(dj_off),
+                double(sp_off), double(sp_on), double(st0), double(v_off), double(l_off), double(l_b7), double(v_on), double(vh_off), double(lh_off),
+                double(vw_on), double(vw_off));
+    check(on_max < 0.5f && s_err < 0.5f && off_err < 0.5f && std::fabs(dj_off - 2500.0f) < 0.5f && std::fabs(sp_off - sp_on) < 0.01f && dj_on < 0.5f,
+          "sb B.8 petal_join: 0 on the track, the 3D distance off it (in-plane lateral and out of the plane), the arc of the projection kept");
+    check(st0 > s_in && v_off == l_off && std::fabs(v_off - (st0 - s_in + dj_off) / 90.0f) < 0.05f && l_b7 == gc::kPetalVmin && v_on == gc::kPetalVmin &&
+              vh_off == lh_off && vh_off > gc::kPetalVmin && vw_on == gc::kPetalVmin && vw_off > gc::kPetalVmin,
+          "sb B.8 lap_speed: an escort off its track flies (arc + join) / T (B.7: 25 m/s), a committed head the same law; no dwell off the track");
+    // 5. the per-call cost of lap_speed (the sequencer calls it once per holder per frame; petal_join adds one petal_at)
+    using clk = std::chrono::steady_clock;
+    double best = 1e9;
+    volatile float sink = 0;
+    gc::Member mv = e_off;
+    for (int rep = 0; rep < 5; ++rep) {
+        const auto t0 = clk::now();
+        for (int it = 0; it < 100000; ++it) {
+            mv.st.x[0] = e_off.st.x[0] + float(it & 255);
+            sink = sink + gc::lap_speed(*g, mv, now, t90 + std::uint32_t(it & 1023));
+        }
+        best = std::fmin(best, std::chrono::duration<double, std::nano>(clk::now() - t0).count() / 100000.0);
+    }
+    std::printf("sb B.8 lap_speed: %.0f ns per call (escort, petal_geom + petal_join + escort_stage_s + release_window + lap_law)\n", best);
+    // 6. the escort's target lead (coordinator's decision): before the launch the leader's predicted launch + kEscortSwitchMs - kStageLeadMs
+    //    - the last game step; none while the leader holds. After the launch the engine's res_o8_ms is a past stamp (the leader's order 8
+    //    began before it left), so the target is now at once and escort_settled (25 m/s over the whole lap) starts at the launch (review F5)
+    {
+        gc::Member* L = &g->m[0];
+        *L = gc::Member{};
+        L->ship = 0x9000;
+        L->role = gc::Role::committed;
+        L->sb = gc::Sb::hold;
+        gc::Member* E = &g->m[1];
+        *E = e_on;
+        g->n = 2;
+        g->step_ms = 1500; // a SETA step
+        const std::uint32_t t_hold = gc::escort_target(*g, *E, now);
+        L->sb = gc::Sb::launch; // released and on order 8 since now + 20 s (predicted): its launch at o8 + 0.9 s
+        L->o8_ms = now + 20000;
+        const std::uint32_t t_pre = gc::escort_target(*g, *E, now);
+        L->sb = gc::Sb::none; // launched and gone: the escort's reservation from its order-8 stamp, 1 s in the past
+        E->res_until = now + 60000;
+        E->res_o8_ms = now - 1000;
+        E->esc_in10 = 1;
+        const std::uint32_t t_post = gc::escort_target(*g, *E, now);
+        const bool settled = gc::escort_settled(*g, *E, now, t_post);
+        g->n = 0;
+        std::printf("sb B.8 escort target: leader holding %u; before the launch (o8 + 20 s, step 1.5 s) now + %d ms; after it (o8 1 s past) now + %d "
+                    "ms, settled %d\n", unsigned(t_hold), int(t_pre - now), int(t_post - now), int(settled));
+        check(t_hold == 0 && t_pre == now + 20000 + 900 + gc::kEscortSwitchMs - gc::kStageLeadMs - 1500 && t_post == now && settled,
+              "sb B.8 escort target: the predicted launch + kEscortSwitchMs - kStageLeadMs - the game step; none while the leader holds; after "
+              "the launch now (settled at once)");
+    }
+    // 7. hold_speed's join profile (review F3): a late unringed holder off its track flies sqrt(60^2 + 2 a (d_join - 1 km)), at most its
+    //    v_max, exactly 60 within 1 km; a ringed one, one without a target and one the law keeps below 60 are unchanged; the grid sphere
+    //    guard overrides it for a committed member on its line
+    {
+        auto holder = [&](gc::Role role, float out, bool ringed, float a_lin, float v_max) {
+            gc::Member m = ship(role, s_in, 0.0f, out);
+            m.ringed = ringed ? 1 : 0;
+            m.params.a_lin = a_lin;
+            m.params.v_max = v_max;
+            m.st.ms = now;
+            return m;
+        };
+        const std::uint32_t late = now + 1000; // the law says 60
+        const float v_cap = gc::hold_speed(*g, holder(gc::Role::escort, 5000.0f, false, 2.0f, 100.0f), now, late, nullptr);
+        const float v_slow = gc::hold_speed(*g, holder(gc::Role::escort, 5000.0f, false, 0.2f, 100.0f), now, late, nullptr);
+        const float v_in1k = gc::hold_speed(*g, holder(gc::Role::escort, 900.0f, false, 2.0f, 100.0f), now, late, nullptr);
+        const float v_ring = gc::hold_speed(*g, holder(gc::Role::escort, 5000.0f, true, 2.0f, 100.0f), now, late, nullptr);
+        const float v_none = gc::hold_speed(*g, holder(gc::Role::escort, 5000.0f, false, 2.0f, 100.0f), now, 0, nullptr);
+        const float v_far = gc::hold_speed(*g, holder(gc::Role::escort, 5000.0f, false, 2.0f, 100.0f), now, now + 600000, nullptr);
+        gc::Member h = holder(gc::Role::committed, 5000.0f, false, 2.0f, 100.0f);
+        const float v_head = gc::hold_speed(*g, h, now, late, nullptr);
+        for (int i = 0; i < 3; ++i) { // its order-4 line just ahead of it along its velocity
+            h.st.u[i] = h.st.rows[2][i];
+            h.h[i] = h.st.u[i];
+            h.X[i] = h.st.x[i] + 100.0f * h.st.u[i];
+        }
+        h.st.v = 60.0f;
+        h.line_ok = 1;
+        gc::SbStats gst;
+        const float v_guard = gc::hold_speed(*g, h, now, late, &gst);
+        const float want_slow = std::sqrt(60.0f * 60.0f + 2.0f * 0.2f * 4000.0f);
+        std::printf("sb B.8 hold_speed join profile: 5 km off a_lin 2 -> %.1f (v_max 100), a_lin 0.2 -> %.2f (%.2f), 900 m off %.1f; ringed %.1f, no "
+                    "target %.1f, target 600 s %.2f; committed head %.1f, on its line by A %.1f (guarded %u)\n", double(v_cap), double(v_slow),
+                    double(want_slow), double(v_in1k), double(v_ring), double(v_none), double(v_far), double(v_head), double(v_guard),
+                    unsigned(gst.guarded));
+        check(v_cap == 100.0f && std::fabs(v_slow - want_slow) < 0.01f && v_in1k == gc::kPetalVmax && v_ring == gc::kPetalVmax &&
+                  v_none == gc::kPetalVnom && v_far < gc::kPetalVmax && v_head == 100.0f && v_guard == gc::kYieldFloorMs && gst.guarded == 1,
+              "sb B.8 hold_speed: a late unringed holder flies the inbound profile on its join (<= v_max, 60 within 1 km); ringed, no target or "
+              "below 60 unchanged; the grid sphere guard after it");
+    }
+}
 static void b5_checks() {
     static CheckedMem mem;
     mem = CheckedMem{};
@@ -13866,6 +14282,7 @@ int main(int argc, char** argv) {
         sb_b6_checks(); // B.6 (Run166 span tuning)
         sb_b6_review_checks();
         sb_b7_checks(); // B.7 (Run167 escort staging)
+        sb_b8_checks(); // B.8 (Run168 join distance)
         traffic_scenarios();
         b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
@@ -13916,6 +14333,7 @@ int main(int argc, char** argv) {
         sb_b6_checks(); // B.6 (Run166 span tuning)
         sb_b6_review_checks();
         sb_b7_checks(); // B.7 (Run167 escort staging)
+        sb_b8_checks(); // B.8 (Run168 join distance)
         traffic_scenarios();
         b5_traffic_summary();
         std::printf("ship_steering_host checks=%u failures=%u slip_gaps=%u\n", checks, failures, slip_gaps);
@@ -13971,6 +14389,7 @@ int main(int argc, char** argv) {
     sb_b6_checks(); // B.6 (Run166 span tuning)
     sb_b6_review_checks();
     sb_b7_checks(); // B.7 (Run167 escort staging)
+    sb_b8_checks(); // B.8 (Run168 join distance)
     traffic_scenarios();
     b5_traffic_summary();
     dock_scenarios(); // amendment 18 (docking-approach.md): scenario N

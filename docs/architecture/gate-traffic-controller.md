@@ -1984,6 +1984,43 @@ inside its window at T + the frame step; the B.6/B.7 assertions, 0 holders below
 run162 variants (escorts ringing 20–35 s before the launch) now exercise the join. Flight oracle (Run169): `escort_wait.py`
 order 4 at +5…+15 s for every escort in hold at the launch; the member row's `d_join` at the launch ≤ 300 m for them.
 
+**Implementation.** Where it deviates from the text above (`ship_gate_ctl_core.h`, `ship_steering.cpp`; measured in
+`docs/verification/ship-steering.md` "B.8"):
+* The join enters `ds` once (`ds = lap − w + d_join`), so the late tie-break's two candidates count it too. An off-track ship whose
+  projection lies in W keeps B.6's `ds` (the arc to the next opening) plus the join. In practice that is 60 m/s until it is on its
+  track, and then it dwells. The dwell still also needs `release_window` (B.6).
+* The member row's `t_rel` comes from the sequencer's previous run, because `ctl_member_frame` runs before `sb_frame_all`. The
+  value is negative when the target is past, −1 when the target falls in this millisecond, and 0 when there is none. `s` and
+  `d_join` are −1 without a petal. `stage_s` is −1 for a committed head and for an escort without a stage. The target is stored per
+  member (`Member::t_rel_ms`), so the row reads no engine memory.
+* The scenario T assertion is evaluated at the ship's own position, because site B's stored state lags by up to 100 ms (about 5 m
+  at 50 m/s). That lag alone left one escort 0.4 m short of its stage. An escort that is on its track at T + the frame step but
+  short of its window is counted apart as `gap` when the template's unsteered order-0 gap (the 2–3 s pauses in the 0x14 legs) fell
+  within 10 s before T. The law cannot recover the speed lost in such a gap. With the lead there are 5 such escorts in run162
+  (at most 31 m short) and 5 in run162 seta (51 m). The table reports them; they are not missed. A second evaluation at the first
+  order-4 chance (the launch + `kEscortSwitchMs` + the step) finds 0 of them short.
+* **The escort's target leads by `kStageLeadMs` (5 s) plus the last game step (coordinator's decision, 2026-10-14).**
+  `escort_target()` gives the leader's predicted launch + `kEscortSwitchMs` − 5 s − `g.step_ms`. The core has no `frame_step_ms()`;
+  `Gate::step_ms` is the SETA-aware last step that `note_step` keeps. The lead also applies to the target from the order-8 stamp
+  after the launch. The engine's order-8 stamp is a past stamp (the leader's order 8 began before it left), so after the launch the
+  target is now at once. `escort_settled` (25 m/s over the whole lap) therefore starts at the launch rather than about 4.5 s later
+  (review F5; unit). Before the launch the escort reaches its stage early and dwells there.
+  Measured: at the first order-4 chance the tracked escorts still short drop to 0 (run162 1 → 0, seta 1 → 0). The `gap` count
+  at T itself does not drop (5 → 5, 1 → 5), because T moved earlier with it. The order-4 delays are unchanged.
+* **A late holder that is not yet ringed flies the inbound profile on its join (departures, an addition).** When the law says 60
+  m/s, the holder has a target and it is not yet at its ring (so it still flies the inbound carrot), `v_sb = min(v_max, √(60² +
+  2 a_lin (d_join − kInboundLatM)))`. That is the inbound braking curve measured on the join instead of on the distance to G.
+  Cause, measured in the before build: one escort per departure run arrives with its leader on the far side of the gate axis from
+  its petal. At the hold boundary it is 6.8 km from its line and needs 75–78 m/s, but hold caps it at 60. It was 2.3–3.7 km off
+  its track at the launch, with order 4 up to 69.5 s after it. The inbound carrot adds no detour there. After the change, all 36
+  departure escorts are on their track at the launch (`d_join` ≤ 25 m) and order 4 comes at 4.3–4.5 s. Holders already on their
+  ring are unaffected. The holder's speed is `hold_speed()`: the law, then this profile, then the grid sphere guard (unit).
+  Nothing geometric keeps an unringed late holder flying above 60 m/s inside the ring extent + 2 km out of the shell between rings.
+  The pair certificate rolls out the written speed (`inbound_carrot` at `v_plan`), and the closest holder capsule gap in scenario T
+  is 239 m. Flagged for Run169 (review F7).
+* Scenario T no longer has any 0x15 approach frames after a launch. The B.6 aggregate coverage check therefore requires only the
+  before-launch window frames and reports the approach frames. The approach's 60 m/s is still checked per run whenever it occurs.
+
 ### B.9 Column evictions at hold entry (Run168, open)
 
 Run168 gate 6db0 (`run168-triage/x12_pairs.txt`) **[m]**: two escorts inbound in column at 100 m/s, 1.3–2.0 km apart (closer than the

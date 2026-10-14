@@ -842,6 +842,11 @@ struct MemberRow {
     std::int8_t petal;
     float p[3], nose_f, v;
     std::uint8_t live; // B.5: the member passed the liveness proof this frame (0: no engine field read; class=?)
+    // B.8 (Run168): the petal frame from the stored board state: X along F (zx), the ring radius, the arc of the projection, the escort's
+    // stage (-1 none), the join distance (-1 without a petal), ms to the lap target (0 none) and ringed
+    float zx, rho, s, stage_s, d_join;
+    std::int32_t t_rel_ms;
+    std::uint8_t ringed;
 };
 MemberRow member_rows_[32];
 std::atomic<std::uint32_t> member_row_write_{0};
@@ -3619,6 +3624,18 @@ void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcep
         r.p[2] = core::dot3(d, g.F);
         r.nose_f = core::dot3(m.st.rows[2], g.F);
         r.v = m.st.v;
+        r.zx = m.zx; // B.8: the board's own fields and geometry (no engine read)
+        r.rho = g.rho;
+        r.s = r.stage_s = r.d_join = -1.0f;
+        if (m.petal >= 0) {
+            gc::PetalGeom pg;
+            gc::petal_geom(g, unsigned(m.petal), m.zx, &pg);
+            r.s = gc::petal_join(g, pg, m.st.x, &r.d_join);
+            if (m.role == gc::Role::escort) r.stage_s = gc::escort_stage_s(pg);
+        }
+        r.t_rel_ms = m.t_rel_ms ? std::int32_t(m.t_rel_ms - now) : 0;
+        if (m.t_rel_ms && !r.t_rel_ms) r.t_rel_ms = -1; // a target due now is not "none"
+        r.ringed = m.ringed;
         member_row_write_.store(w + 1, std::memory_order_release);
     }
 }
@@ -3856,12 +3873,14 @@ void ctl_rows(unsigned long long frame) noexcept {
     for (std::uint32_t w = member_row_write_.load(std::memory_order_acquire); member_row_read_ != w; ++member_row_read_) { // B.4 item 2
         const MemberRow& r = member_rows_[member_row_read_ & 31];
         x3m::log("ship_gate_ctl_member frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx class=%s role=%s stage=%s order=0x%x target=0x%08lx "
-            "p_m=%.0f,%.0f,%.0f nose_f=%.3f v_ms=%.1f petal=%d key=%lu traced=%u st_age_ms=%ld dec_age_ms=%ld live=%u",
+            "p_m=%.0f,%.0f,%.0f nose_f=%.3f v_ms=%.1f petal=%d key=%lu traced=%u st_age_ms=%ld dec_age_ms=%ld live=%u zx=%.0f rho=%.0f "
+            "s=%.0f stage_s=%.0f d_join=%.0f t_rel=%ld ringed=%u",
             frame, static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
             r.code < core::kClassCount ? core::kClassNames[r.code] : "?", gc::role_name(gc::Role(r.role)), gc::sb_name(gc::Sb(r.stage)),
             unsigned(r.order), static_cast<unsigned long>(r.target), double(r.p[0]), double(r.p[1]), double(r.p[2]), double(r.nose_f),
             double(r.v), int(r.petal), static_cast<unsigned long>(r.key), unsigned(r.traced), static_cast<long>(r.st_age_ms),
-            static_cast<long>(r.dec_age_ms), unsigned(r.live));
+            static_cast<long>(r.dec_age_ms), unsigned(r.live), double(r.zx), double(r.rho), double(r.s), double(r.stage_s), double(r.d_join),
+            static_cast<long>(r.t_rel_ms), unsigned(r.ringed));
     }
     for (std::uint32_t w = launch_row_write_.load(std::memory_order_acquire); launch_row_read_ != w; ++launch_row_read_) {
         const LaunchRow& r = launch_rows_[launch_row_read_ & 7];

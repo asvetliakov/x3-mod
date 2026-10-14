@@ -1,0 +1,106 @@
+# Scenario T, B.8 (Run168: the lap law counts the join distance; the escort target's lead; a late unringed holder's join profile),
+# 72 runs per build (8 variants x 3 fps x 3 seeds). All three builds compile the same final ship_steering_host.cpp; only the B.8 core
+# is stubbed (scenario_t_b8_pre_build.py; --traffic, which runs the sb units and scenario T).
+# Before (mode b7, B.7's controller): 2,231 checks, 41 failures executed = 11 "B.8: an escort joining its track ... at T + the frame step",
+#   27 "B.8: every escort in hold at its leader's launch is on its track" (departures, dep w0.6r, dep refused: 9 each), and the units
+#   "sb B.8 lap_speed", "sb B.8 escort target", "sb B.8 hold_speed" (1 each).
+# No lead (mode nolead): 2,231 checks, 1 failure executed = the unit "sb B.8 escort target".
+# After: ship_steering_host_b8.txt (full run, 10,476/10,476). Tables: python3 -I scenario_t_b8.py <before> <after> <nolead>.
+# Guards, after (before): petal_slow_frames 0 over 72 runs (0); closest holder capsule gap 239 m (201).
+
+variant      runs | escort order 4 after the launch: n mean max s | ringed late: n mean max s | 0x15 approach frames after the launch   (before -> after B.8)
+departures      9 |  36->36   19.8->  4.3  69.5->4.5   |   9->18    4.2->  4.3   4.2->4.5   |  17424->0     
+dep w0.6r       9 |  36->36   20.6->  4.3  69.5->4.5   |   9->18    4.2->  4.3   4.2->4.5   |  18194->0     
+arrivals        9 |   0->0      -1->   -1  -1.0->-1.0  |   0->0      -1->   -1  -1.0->-1.0  |      0->0     
+arr w0.6r       9 |   0->0      -1->   -1  -1.0->-1.0  |   0->0      -1->   -1  -1.0->-1.0  |      0->0     
+mixed           9 |  18->18    4.3->  4.3   4.4->4.4   |   0->0      -1->   -1  -1.0->-1.0  |      0->0     
+dep refused     9 |  36->36   17.3->  4.3  59.5->4.5   |   9->18    4.2->  4.3   4.2->4.5   |  14616->0     
+run162          9 |  36->36    4.3->  4.3   4.5->4.5   |  36->36    4.3->  4.3   4.5->4.5   |    773->0     
+run162 seta     9 |  36->36    4.9->  4.9   9.5->6.1   |  36->36    4.9->  4.9   9.5->6.1   |    192->0     
+variant      | escorts at the launch: in hold, on track (d_join <= 300 m), max d_join m, inbound | join assertion: tracked ok order4 gap (max short m) miss unreach; max d_join m at the first frame / at T   (before -> after)
+departures   | 36->36 27->36  3588->23     0->0  |  9  9->9  0->0 0->0 (0->0)  0->0  9->9; 1168->1168 / 4->4
+dep w0.6r    | 36->36 27->36  3697->19     0->0  |  9  9->9  0->0 0->0 (0->0)  0->0  9->9; 1162->1162 / 3->3
+arrivals     |  0->0   0->0     -1->-1     0->0  |  0  0->0  0->0 0->0 (0->0)  0->0  0->0; 0->0 / 0->0
+arr w0.6r    |  0->0   0->0     -1->-1     0->0  |  0  0->0  0->0 0->0 (0->0)  0->0  0->0; 0->0 / 0->0
+mixed        | 18->18 18->18     3->2      0->0  |  0  0->0  0->0 0->0 (0->0)  0->0  0->0; 0->0 / 0->0
+dep refused  | 36->36 27->36  2498->25     0->0  |  9  9->9  0->0 0->0 (0->0)  0->0  9->9; 1168->1168 / 22->25
+run162       | 36->36 36->36    26->5      0->0  | 21  3->16 0->0 12->5 (554->31) 14->0  7->15; 2683->2671 / 8->5
+run162 seta  | 36->36 36->36    37->2      0->0  | 26 14->21 4->0 7->5 (6364->51)  4->0  7->10; 2666->2666 / 46->2
+variant      | off track or not in hold at the launch, by cause: inbound / hold after T / unreachable from the hold entry / other (before -> after)
+departures   | 0->0 / 0->0 / 9->0 / 0->0
+dep w0.6r    | 0->0 / 0->0 / 9->0 / 0->0
+arrivals     | 0->0 / 0->0 / 0->0 / 0->0
+arr w0.6r    | 0->0 / 0->0 / 0->0 / 0->0
+mixed        | 0->0 / 0->0 / 0->0 / 0->0
+dep refused  | 0->0 / 0->0 / 9->0 / 0->0
+run162       | 0->0 / 0->0 / 0->0 / 0->0
+run162 seta  | 0->0 / 0->0 / 0->0 / 0->0
+the target lead (kStageLeadMs + the step), no lead -> lead: tracked escorts at T + step: ok, gap (max short m), missed | at the first order-4 chance: ok, short (max m) | escort order 4 after the launch: mean max s
+departures   |  9->9  0->0 (0->0) 0->0 |  9->9  0->0 (0->0) |   4.3->  4.3   4.5->4.5  
+dep w0.6r    |  9->9  0->0 (0->0) 0->0 |  9->9  0->0 (0->0) |   4.3->  4.3   4.5->4.5  
+arrivals     |  0->0  0->0 (0->0) 0->0 |  0->0  0->0 (0->0) |    -1->   -1  -1.0->-1.0 
+arr w0.6r    |  0->0  0->0 (0->0) 0->0 |  0->0  0->0 (0->0) |    -1->   -1  -1.0->-1.0 
+mixed        |  0->0  0->0 (0->0) 0->0 |  0->0  0->0 (0->0) |   4.3->  4.3   4.4->4.4  
+dep refused  |  9->9  0->0 (0->0) 0->0 |  9->9  0->0 (0->0) |   4.3->  4.3   4.5->4.5  
+run162       | 24->16 5->5 (71->31) 0->0 | 28->21 1->0 (36->0) |   4.3->  4.3   4.5->4.5  
+run162 seta  | 22->21 1->5 (23->51) 0->0 | 27->26 1->0 (24->0) |   4.8->  4.9   5.8->6.1  
+
+== before B.8 (mode b7, --traffic): python3 -I scenario_t_b6.py <before>
+== /tmp/claude-1000/b8/pre/pre.traffic
+variant      runs | funnel free->release: eps released mean max s | free in window: eps released latency_max s late unreleased deferred | escorts waiting in W (lap): frames >25 v_max; 0x15 approach frames | holders v_sb: escorts mean %@25 %@60; committed mean %@25 %@60
+departures      9 |  72  63   30.5  170.3 |  63  63  0.00 0 0 0 |     0 0  -1.0;  16434 |  42.7   6   5;  45.0   8  32
+dep w0.6r       9 |  72  63   29.8  173.6 |  63  63  0.00 0 0 0 |     0 0  -1.0;  17191 |  42.8  11   5;  44.8   8  31
+arrivals        9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+arr w0.6r       9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+mixed           9 |  45  36   44.6  170.3 |  36  36  0.00 0 0 0 |     0 0  -1.0;      0 |  37.9   4   0;  47.4  19  53
+dep refused     9 |  72  63   33.2  170.3 |  63  63  0.00 0 0 0 |     0 0  -1.0;  13615 |  37.5  32   3;  42.2  16  23
+run162          9 |  78  54    2.4   20.8 |  54  54  0.00 0 0 0 |     0 0  -1.0;     16 |  54.7   2  56;  41.4  50  44
+run162 seta     9 |  92  54    3.0   18.6 |  54  54  0.00 0 0 0 |     0 0  -1.0;     43 |  42.7  29  26;  44.7  39  53
+escorts after the launch (fresh writes): 0x15 approach before the first pass inside 10 km: frames below-60 | lap before it: frames | after it: frames v_max >25 | within 9.7 km without the pass noted
+departures    16434 0 |      0 |    978  25.0 0 | 0
+dep w0.6r     17191 0 |      0 |   1024  25.0 0 | 0
+arrivals          0 0 |      0 |      0  -1.0 0 | 0
+arr w0.6r         0 0 |      0 |      0  -1.0 0 | 0
+mixed             0 0 |      0 |    362  25.0 0 | 0
+dep refused   13615 0 |      0 |    924  25.0 0 | 0
+run162           16 0 |      0 |    699  25.0 0 | 0
+run162 seta      43 0 |      0 |    425  25.0 0 | 0
+pre-launch escorts in their window: leader released: frames v_max >25 | leader holding (no target): frames v_max >25 | above the lap law | 0x15 approach
+departures        0  -1.0 0 |  13132  40.0  13132 | 0 | 0
+dep w0.6r       217  25.0 0 |  12523  40.0  12523 | 0 | 0
+arrivals          0  -1.0 0 |      0  -1.0      0 | 0 | 0
+arr w0.6r         0  -1.0 0 |      0  -1.0      0 | 0 | 0
+mixed             0  -1.0 0 |  13132  40.0  13132 | 0 | 0
+dep refused   18611  25.0 0 |  13132  40.0  13132 | 0 | 0
+run162            0  -1.0 0 |      0  -1.0      0 | 0 | 0
+run162 seta     365  25.0 0 |      0  -1.0      0 | 0 | 0
+
+== after B.8 (ship_steering_host_b8.txt): python3 -I scenario_t_b6.py <after>
+== /tmp/ssh_b8.full
+variant      runs | funnel free->release: eps released mean max s | free in window: eps released latency_max s late unreleased deferred | escorts waiting in W (lap): frames >25 v_max; 0x15 approach frames | holders v_sb: escorts mean %@25 %@60; committed mean %@25 %@60
+departures      9 |  72  63   30.5  170.3 |  63  63  0.00 0 0 0 |     0 0  -1.0;      0 |  42.7   8  14;  44.6  14  33
+dep w0.6r       9 |  73  63   29.0  173.6 |  63  63  0.00 0 0 0 |     0 0  -1.0;      0 |  42.7  12  15;  44.7  14  34
+arrivals        9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+arr w0.6r       9 |   0   0   -1.0    0.0 |   0   0  0.00 0 0 0 |     0 0  -1.0;      0 |  -1.0  -1  -1;  -1.0  -1  -1
+mixed           9 |  45  36   42.9  170.3 |  36  36  0.00 0 0 0 |     0 0  -1.0;      0 |  38.2   5   0;  47.4  18  51
+dep refused     9 |  72  63   32.7  170.3 |  63  63  0.00 0 0 0 |     0 0  -1.0;      0 |  37.6  33   6;  42.8  15  25
+run162          9 |  81  54    0.7   13.2 |  54  54  0.00 0 0 0 |     0 0  -1.0;      0 |  40.0  11   0;  46.0  35  56
+run162 seta     9 |  91  54    1.1   11.9 |  54  54  0.00 0 0 0 |     0 0  -1.0;      0 |  38.6  13   1;  47.0  32  58
+escorts after the launch (fresh writes): 0x15 approach before the first pass inside 10 km: frames below-60 | lap before it: frames | after it: frames v_max >25 | within 9.7 km without the pass noted
+departures        0 0 |      0 |    726  25.0 0 | 0
+dep w0.6r         0 0 |      0 |    720  25.0 0 | 0
+arrivals          0 0 |      0 |      0  -1.0 0 | 0
+arr w0.6r         0 0 |      0 |      0  -1.0 0 | 0
+mixed             0 0 |      0 |    362  25.0 0 | 0
+dep refused       0 0 |      0 |    713  25.0 0 | 0
+run162            0 0 |      0 |    715  25.0 0 | 0
+run162 seta       0 0 |      0 |    274  25.0 0 | 0
+pre-launch escorts in their window: leader released: frames v_max >25 | leader holding (no target): frames v_max >25 | above the lap law | 0x15 approach
+departures      756  25.0 0 |  13132  40.0  13132 | 0 | 0
+dep w0.6r      1229  25.0 0 |  12523  40.0  12523 | 0 | 0
+arrivals          0  -1.0 0 |      0  -1.0      0 | 0 | 0
+arr w0.6r         0  -1.0 0 |      0  -1.0      0 | 0 | 0
+mixed           163  25.0 0 |  13132  40.0  13132 | 0 | 0
+dep refused   23566  25.0 0 |  13132  40.0  13132 | 0 | 0
+run162          129  25.0 0 |      0  -1.0      0 | 0 | 0
+run162 seta     176  25.0 0 |      0  -1.0      0 | 0 | 0

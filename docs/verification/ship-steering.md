@@ -2336,6 +2336,129 @@ Outputs: [`ship_steering_host_b7.txt`](../../verification/results/ship-steering/
 [`ship_steering_host_b7_capital.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b7_capital.txt).
 Not reviewed, not flown, not installed.
 
+### B.8 The lap law counts the join distance (2026-10-14, Opus 5.5; design and implementation [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) §B.8)
+
+Three controller changes:
+* `lap_law` takes `d_join`, the 3D distance from the holder to its track point at its projected arc (`gc::petal_join`). The join is
+  added to the arc in the arrive-on-time, extra-lap and late branches, and the dwell needs `d_join <= 300 m` (`kJoinOnM`).
+  `lap_speed` passes it for escorts and committed heads alike.
+* The escort's target leads the order-4 chance by `kStageLeadMs` (5 s) plus the last game step (`gc::escort_target`; the
+  coordinator's decision).
+* A late holder that is not yet ringed flies the inbound braking profile on its join distance, down to 60 m/s at 1 km from its
+  line. This is the departures fix.
+
+The 1 Hz `ship_gate_ctl_member` row gains `zx rho s stage_s d_join t_rel ringed` from the board state. The deviations are under §B.8
+**Implementation**.
+
+**Fixture totals (measured).** Full 10,476, `--capital` 4,818 and seq-off 10,386 checks, 0 failures. That is 151 more than B.7's
+10,325 / 4,667 / 10,235 in each: 7 `sb B.8` units plus 2 scenario T assertions × 72 runs. One aggregate B.6 coverage check was
+relaxed (Implementation).
+
+**Fail-before (measured, executed).** Both control builds compile the final fixture unchanged and stub only the B.8 core
+(`scenario_t_b8_pre_build.py`, `--traffic`):
+* Before (mode `b7`, B.7's controller): 2,231 checks, 41 failures. 11 are the join assertion (failing in 7 run162 runs and 4 run162 seta runs); 27 are "every
+  escort in hold at its leader's launch is on its track" (departures, dep w0.6r and dep refused, 9 each); 3 are the units
+  `lap_speed`, `escort target` and `hold_speed`.
+* No lead (mode `nolead`): 1 failure, the `escort target` unit.
+
+**Units (measured).**
+* `d_join` 0 reproduces B.7's law bit for bit over 437,744 (window, in_ok, s, T) cases, compared with a verbatim copy of B.7's
+  `lap_law` kept in the fixture (`b7_lap_law`): 0 differ.
+* Dwell: 25.0 m/s at 300 m off the track, 60.0 at 301 m. At the back turn 1 km off, and at T past 500 m off, 60.0.
+* Arrive on time: 32.36 → 47.36 m/s with a 1.5 km join. Late: 53.93 → 60.0 with 1 km. Extra lap: 48.60 → 49.60 with 200 m.
+* `petal_join`: 0.00 m on the track (s every 10 m), within 0.00 m of 777 m out of the plane, and 2,500.0 m for 1.5 km inward
+  plus 2 km out of the plane, with the arc unchanged.
+* `lap_speed` for the Run168 case (a ring-0 escort 2.5 km off its track, 1,146 m of arc to its stage, target 90 s): 40.51 m/s,
+  equal to the law. B.7 gave 25.0. A committed head at the same point gets the same law (60.0). In its window with 30 s to go:
+  25.0 on the track, 60.0 when 1 km out of the plane.
+* `escort_target`: none while the leader holds. Before the launch (the leader on order 8 since now + 20 s, launch predicted at
+  o8 + 0.9 s, step 1.5 s) the target is now + 18,900 ms. After the launch, with the order-8 stamp 1 s in the past as the engine
+  produces it, the target is now, and `escort_settled` is true at once.
+* `hold_speed`, the late unringed holder:
+  * 5 km off its track with a_lin 2 it gets 100.0 m/s, its v_max; with a_lin 0.2, 72.11 (√(60² + 0.4 × 4,000)); 900 m off, 60.0.
+  * Unchanged in the other cases: ringed 60.0, no target 40.0, the law below 60 (target 600 s ahead) 25.72.
+  * A committed head gets 100.0 off its line and 10.0 on it near A, where the grid sphere guard applies after the profile
+    (`guarded` 1).
+* `lap_speed` costs 16 ns per call.
+
+**Scenario T (measured).** The tables below are unchanged by the review's units and assertions. There are three builds:
+* before: B.7's controller ([`scenario_t_b8_pre_build.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b8_pre_build.py)
+  mode `b7`);
+* no lead: B.8 without the target lead (mode `nolead`);
+* after: B.8 as implemented.
+
+The tables come from [`scenario_t_b8.py`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b8.py) and
+`scenario_t_b6.py`, and are in
+[`scenario_t_b8.txt`](../../verification/results/ship-steering/gate-traffic-controller/scenario_t_b8.txt).
+
+Escorts' order 4 after the leader's launch, and the 0x15 approach frames after the launch, before → after:
+
+| Variant (escorts) | Delay mean | Delay max | Approach frames | In hold at the launch on their track (max `d_join`) |
+| --- | --- | --- | --- | --- |
+| departures (36) | 19.8 → 4.3 s | 69.5 → 4.5 s | 17,424 → 0 | 27 → 36 (3,588 → 23 m) |
+| dep w0.6r (36) | 20.6 → 4.3 s | 69.5 → 4.5 s | 18,194 → 0 | 27 → 36 (3,697 → 19 m) |
+| dep refused (36) | 17.3 → 4.3 s | 59.5 → 4.5 s | 14,616 → 0 | 27 → 36 (2,498 → 25 m) |
+| mixed (18) | 4.3 → 4.3 s | 4.4 → 4.4 s | 0 → 0 | 18 → 18 |
+| run162 (36, ringed late) | 4.3 → 4.3 s | 4.5 → 4.5 s | 773 → 0 | 36 → 36 (26 → 5 m) |
+| run162 seta (36, ringed late) | 4.9 → 4.9 s | 9.5 → 6.1 s | 192 → 0 | 36 → 36 (37 → 2 m) |
+
+**Join assertion.** It tracks each escort at its first sequencer frame in hold with a future target, when the escort is more than
+300 m off its track and the target is reachable at 60 m/s. Entry `d_join` is 2.57–2.68 km in run162. Before → after:
+
+| Variant | Tracked | In window at T + step | Gap (max short) | Missed | Unreachable at entry |
+| --- | --- | --- | --- | --- | --- |
+| run162 | 21 | 3 → 16 | 12 → 5 (554 → 31 m) | 14 → 0 | 7 → 15 |
+| run162 seta | 26 | 14 → 21 | 7 → 5 (6,364 → 51 m) | 4 → 0 (4 → 0 already on order 4) | 7 → 10 |
+
+The tracked count is the after build's. The departure variants track 9 per variant, all in their window in both builds.
+
+**The lead, no lead → lead (measured).** Evaluated at the controller's own target T, the `gap` cases do not drop: run162 5 → 5
+(max short 71 → 31 m) and run162 seta 1 → 5 (23 → 51 m). T itself moved 5 s plus the step earlier, and the order-0 gap still costs
+the same speed. More escorts are unreachable at their entry, because the target is earlier: run162 7 → 15, seta 7 → 10.
+
+At the first order-4 chance (launch + `kEscortSwitchMs` + the step), the tracked escorts that are short drop: run162 1 → 0
+(36 → 0 m) and run162 seta 1 → 0 (24 → 0 m). The order-4 delays are unchanged: 4.3 / 4.5 s, seta 4.8 / 5.8 → 4.9 / 6.1 s.
+
+**Departures diagnosis (measured, before build;
+[`departures_join_b8.txt`](../../verification/results/ship-steering/gate-traffic-controller/departures_join_b8.txt)).**
+The 9 off-track escorts per departure variant are all escort 5 of each run, 27 rows. In each:
+* At the hold boundary (ring extent + 2 km, 13.3–13.4 km from G), 119–172 s before the launch, its distance to go was
+  7,970–8,296 m against a target 106–109 s away. That is 75–78 m/s, above the 60 m/s hold cap.
+* At the leader's release, 44–47 s before the launch, it was still 4.0–5.5 km off its track.
+* At the launch it was 2.3–3.7 km off its track, 12.3–12.4 km from G and in hold. 0 were still inbound and 0 entered hold
+  after their target.
+
+A trace of one run gives the geometry. The escort arrives with its leader on the far side of the gate axis from its own petal: b
+−2.4 km against ρ 2.9 km, and 3.3 km out of the plane, which is a 6.8 km join. From the boundary it is capped at 60 m/s while it
+crosses sideways on the inbound carrot. It stays unringed (12.3 km from G against the ring extent of 11.3 km) until the launch.
+
+The cause is the hold switch, which measures distance to G only, combined with the hold cap; it is not the template. The carrot
+adds no detour: the escort is only ~0.7 km behind its back point along F. After B.8 the cause classes are 0 in every variant.
+
+**Kept (measured).** The B.6 and B.7 assertions and the holder capsule gap stay green over all 72 runs.
+* `petal_slow_frames` is 0 in every run: no holder falls below 25 m/s once at it.
+* The closest holder capsule gap is 239 m (201 before), against the 50 m margin.
+* Released in its window: 333 of 333.
+
+**Side effects (measured; causes inferred).**
+* The head's mean wait from a free funnel to its release: run162 2.4 → 0.7 s (max 20.8 → 13.2 s), run162 seta 3.0 → 1.1 s
+  (18.6 → 11.9 s), mixed 44.6 → 42.9 s, dep w0.6r 29.8 → 29.0 s. Departures and dep refused are unchanged within 0.5 s.
+* Escorts' mean `v_sb` while holding: run162 54.7 → 40.0 m/s (at 60: 56 → 0 %), run162 seta 42.7 → 38.6 m/s. Departures
+  42.7 → 42.7 m/s (at 60: 5 → 14 %): the join profile and the lead.
+
+**Other checks (measured).**
+* `test_ship_steering`, `test_ctl_boundary_reads` and `test_ship_trace_format`: OK. The format test pins the new member-row fields.
+  `hold_speed` is the holder's speed factored out of `sb_frame` (the law, the join profile, then the guard), so the unit tests it
+  directly.
+* `ship_steering.cpp` under i686 MinGW `-fsyntax-only -std=c++17 -Wall -Wextra -Werror` with SSE2, `-mstackrealign
+  -mincoming-stack-boundary=2` and `-fno-exceptions`: clean. A negative control errors.
+* i686 MinGW probe (`-O2 -msse2 -mfpmath=sse`): `sb_frame` carries the same x87 before and after (4 `fistpq`, 8 `fldcw`, 4
+  `flds`: the existing float-to-integer conversions). `petal_join`, `lap_law` and `escort_target` contain none.
+
+Outputs: [`ship_steering_host_b8.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b8.txt) and
+[`ship_steering_host_b8_capital.txt`](../../verification/results/ship-steering/gate-traffic-controller/ship_steering_host_b8_capital.txt).
+Not reviewed, not flown, not installed.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),
