@@ -62,6 +62,23 @@ class BoundaryReads(unittest.TestCase):
         for name in names:
             self.assertEqual(hits((PROXY / name).read_text()), [], name)
 
+    def test_launch_hook_decision_rows_and_budget(self):
+        # review of rounds A-C item 8: the launch hook's first decision of an arrival writes its pair rows (--debug) through the frame's own
+        # helper, which reads only the board, and its time and rollouts are charged to the next frame (ceiling, budget, figures)
+        src = (PROXY / 'ship_gate_ctl_glue.cpp').read_text()
+        helper = function_body(src, '\nvoid ctl_pair_rows_of(')
+        self.assertEqual(hits(helper), [])
+        hook = strip_comments(function_body(src, '\nextern "C" void __cdecl x3m_ship_gate_arrival('))
+        decide = hook.index('gc::decide(')
+        self.assertGreater(hook.index('ctl_pair_rows_of('), decide)
+        self.assertGreater(hook.index('launch_pend_ticks_ +='), decide)
+        self.assertGreater(hook.index('launch_pend_rollouts_ +='), decide)
+        self.assertIn('ctl_decide_max_ticks_', hook)
+        frame = strip_comments(function_body(src, '\nvoid ctl_frame('))
+        for name in ('launch_pend_ticks_', 'launch_pend_rollouts_', 'launch_pend_decisions_', 'ctl_pair_rows_of('):
+            self.assertIn(name, frame)
+        self.assertLess(frame.index('launch_pend_rollouts_'), frame.index('gc::frame_room('))
+
 
 if __name__ == '__main__':
     unittest.main()

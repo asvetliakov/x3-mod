@@ -257,10 +257,12 @@ inline bool small_clear(const Member* const cap[], const std::uint32_t t[], cons
     const float sx = p0 ? p1[0] - p0[0] : 0.0f, sy = p0 ? p1[1] - p0[1] : 0.0f, ss = sx * sx + sy * sy;
     if (f_in) *f_in = 1.0f;
     for (unsigned k = 0; k < n; ++k) {
-        float dx = p1[0] - ql[k][0], dy = p1[1] - ql[k][1], u = 0.0f;
-        if (ss > 1.0f) { // the segment's closest point to the lateral
-            u = -(dx * sx + dy * sy) / ss; // (from p1 back toward p0)
-            u = u < 0.0f ? 0.0f : u > 1.0f ? 1.0f : u;
+        const float ex = p1[0] - ql[k][0], ey = p1[1] - ql[k][1];
+        float dx = ex, dy = ey, u = 0.0f, ul = 0.0f;
+        if (ss > 1.0f) { // the segment's closest point to the lateral (u from p1 back toward p0; review of rounds A-C item 3: the sign was
+                         // reversed and took p0 for the closest point whenever the line's closest point lay beyond p1)
+            ul = (ex * sx + ey * sy) / ss;
+            u = ul < 0.0f ? 0.0f : ul > 1.0f ? 1.0f : ul;
             dx -= u * sx;
             dy -= u * sy;
         }
@@ -268,14 +270,28 @@ inline bool small_clear(const Member* const cap[], const std::uint32_t t[], cons
         if (d2 < need * need) {
             if (t_last && (ok || std::int32_t(t[k] - *t_last) > 0)) *t_last = t[k];
             ok = false;
-            if (f_in && ss > 1.0f) {
-                float f = 1.0f - u - sc::sqrt_ss((need * need - d2) / ss); // the chord's entry
-                f = f < 0.0f ? 0.0f : f;
+            if (f_in && ss > 1.0f) { // the chord's entry on the line (its closest point ul, half-chord h; review item 3: the clamped u and
+                                     // the end point's distance gave a negative entry for an end point inside the circle)
+                const float lx = ex - ul * sx, ly = ey - ul * sy, h2 = (need * need - (lx * lx + ly * ly)) / ss;
+                float f = 1.0f - ul - (h2 > 0.0f ? sc::sqrt_ss(h2) : 0.0f);
+                f = f < 0.0f ? 0.0f : f > 1.0f ? 1.0f : f;
                 if (f < *f_in) *f_in = f;
             }
         }
     }
     return ok;
+}
+// Review of rounds A-C item 3: whether a small ship at the lateral xl (gate frame R, U; m) is inside a counted capital's warn zone
+// (kSmallZoneBox (w + r_small) + kSmallZoneM) or its path margin (w + r_small + kSmallPathMarginM) about the lateral it passes the plane
+// at: held there it would sit in that capital's way (fixture: a TS on order 5 held at 820 m beside the column, 11 m of lateral clearance
+// to the passing Titan as it braked); it goes on instead (order 5: to its B, the edge; order 4: small_zone_hold, to its side line).
+__attribute__((always_inline)) inline bool small_inside(const Member* const cap[], const float ql[][2], unsigned n, const float xl[2], float r_small) noexcept {
+    for (unsigned k = 0; k < n; ++k) {
+        const float zone = kSmallZoneBox * (cap[k]->w + r_small) + kSmallZoneM, path = cap[k]->w + r_small + kSmallPathMarginM;
+        const float need = zone > path ? zone : path, dx = xl[0] - ql[k][0], dy = xl[1] - ql[k][1];
+        if (!(dx * dx + dy * dy >= need * need)) return true;
+    }
+    return false;
 }
 // The free side's arc edge for a pass radius rho (m): (side rho sin 45, -rho cos 45).
 __attribute__((always_inline)) inline void small_edge_point(float rho, float side, float e[2]) noexcept {
@@ -320,6 +336,9 @@ inline SmallB small_b_decide(const Gate& g, std::uint32_t now, const float b[3],
     std::uint32_t last = now;
     float f = 1.0f;
     if (small_clear(cap, tl, ql, n, p0, e, r_small, &last, &f)) return SmallB::edge;
+    // (review of rounds A-C item 3: the path's first taken circle begins where the ship is (f_in 0), or the ship is inside a counted
+    // capital's warn zone: not held there; the edge written, it goes on)
+    if (!(f > 0.0f) || small_inside(cap, ql, n, xl, r_small)) return SmallB::edge;
     if (t_launch) *t_launch = last;
     if (f_in) *f_in = f;
     return SmallB::hold;
@@ -336,6 +355,7 @@ inline bool small_path_hold(const Gate& g, std::uint32_t now, const float xl[2],
     const unsigned n = small_caps(g, now, small_eta(now, d, v), r_small, true, cap, tl, ql);
     std::uint32_t last = now;
     if (!n || small_clear(cap, tl, ql, n, xl, b, r_small, &last, f_in)) return false;
+    if (!(*f_in > 0.0f) || small_inside(cap, ql, n, xl, r_small)) return false; // (review of rounds A-C item 3: never held inside)
     *t_launch = last;
     return true;
 }
@@ -352,10 +372,7 @@ inline bool small_zone_hold(const Gate& g, std::uint32_t now, float side, const 
     const unsigned n = small_caps(g, now, small_eta(now, d, v), r_small, true, cap, tl, ql);
     const float x = side * kSmallSideR * g.r_gate, y = sc::kGateApproachY * g.r_gate;
     bool hold = false;
-    for (unsigned k = 0; k < n; ++k) {
-        const float zone = kSmallZoneBox * (cap[k]->w + r_small) + kSmallZoneM, sx = xl[0] - ql[k][0], sy = xl[1] - ql[k][1];
-        if (!(sx * sx + sy * sy >= zone * zone)) return false;
-    }
+    if (small_inside(cap, ql, n, xl, r_small)) return false; // (review of rounds A-C item 3: the zone or the path margin)
     for (unsigned k = 0; k < n; ++k) {
         const float zone = kSmallZoneBox * (cap[k]->w + r_small) + kSmallZoneM, dx = x - ql[k][0], dy = y - ql[k][1];
         if (!(dx * dx + dy * dy < zone * zone)) continue;
@@ -384,6 +401,15 @@ __attribute__((always_inline)) inline void small_hold_carrot(const sc::GateGeome
     for (unsigned i = 0; i < 3; ++i) P[i] = x[i] + kSmallHoldLookM * geo.h[i];
 }
 constexpr std::uint32_t kSmallHoldMaxMs = 60000, kSmallHoldAfterMs = 5000;
+// Review of rounds A-C item 4: a hold whose 60 s + the step end finds the way still taken (this decision's re-test: order 4 the lead-in's
+// end in a counted capital's warn zone, order 5 its path) is extended once, to kSmallHoldExtMs + the step from its start (fixture: a
+// five-capital convoy with refused slots still passing at 60 s; released there, the small ship flew at full speed toward a lead-in end
+// inside a passing capital's zone); a way free at the bound's end ends the holds for good as before. (X3M_SMALL_HOLD_EXT_MS: the fixture's
+// A/B; 60000 is the behaviour before.)
+#ifndef X3M_SMALL_HOLD_EXT_MS
+#define X3M_SMALL_HOLD_EXT_MS 150000u
+#endif
+constexpr std::uint32_t kSmallHoldExtMs = X3M_SMALL_HOLD_EXT_MS;
 constexpr float kSmallHoldFloorMs = 1.0f;
 // The release is staggered per ship (kSmallStaggerMs times the spread index's bit 2, the bit the U level above does not use): the
 // small ships held behind one
@@ -394,10 +420,14 @@ struct SmallHold {
     std::uint32_t start_ms = 0, release_ms = 0;
     std::uint8_t done = 0, active = 0; // active: the last decision held (an order-4 hold in progress stays past the park)
 };
-inline float small_hold_cap(SmallHold& h, const Gate& g, std::uint32_t now, bool hold, std::uint32_t t_launch, unsigned k) noexcept {
+__attribute__((always_inline)) inline float small_hold_cap(SmallHold& h, const Gate& g, std::uint32_t now, bool hold, std::uint32_t t_launch, unsigned k) noexcept {
     const bool was = h.active != 0;
     h.active = 0;
     if (h.done) return -1.0f;
+    if (!hold && h.start_ms && now - h.start_ms > age_bound(g, kSmallHoldMaxMs)) { // (review item 4: the way free past the bound: for good)
+        h.done = 1;
+        return -1.0f;
+    }
     if (!hold) {
         const std::uint32_t delay = ((k >> 2) & 1u) * kSmallStaggerMs;
         if (was && !h.release_ms && delay) h.release_ms = (now + delay) | 1u; // (| 1: never 0)
@@ -405,7 +435,8 @@ inline float small_hold_cap(SmallHold& h, const Gate& g, std::uint32_t now, bool
     } else
         h.release_ms = 0;
     if (!h.start_ms) h.start_ms = now ? now : 1;
-    if (now - h.start_ms > age_bound(g, kSmallHoldMaxMs)) {
+    const std::uint32_t held = now - h.start_ms;
+    if (held > age_bound(g, kSmallHoldMaxMs) && (!hold || held > age_bound(g, kSmallHoldExtMs))) { // (review item 4: extended once while taken)
         h.done = 1;
         return -1.0f;
     }

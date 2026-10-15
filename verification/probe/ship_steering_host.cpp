@@ -312,6 +312,8 @@ struct Model {
     const gc::Gate* sm_hold_gate; // ... and its gate while its previous decision held (the DLL's avoid_adjust: the lane's capitals not avoided)
     unsigned ctl_capped, ctl_excluded;
     unsigned prof_skip, prof_det; // section 12.3: statics left to the lane profile; detours against a body the profile listed (lane members)
+    std::uint32_t watch_ptr = 0;   // review of rounds A-C item 5: the static whose detour frames are counted (watch_det)
+    unsigned watch_det = 0;
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
     // section 13: order 5 to a port (the engine's port-roll match after the leaf, 0x0045474a..0x004547d6), the port's roll
@@ -521,6 +523,7 @@ struct Model {
         prof_skip += last_av.lane_skipped; // (section 12.3: the statics left to the lane profile; a detour against one of its bodies counted)
         for (unsigned i = 0; i < prof_list_n && last_av.adjusted; ++i)
             if (prof_list[i] == last_av.obstacle) ++prof_det;
+        if (watch_ptr && last_av.adjusted && last_av.obstacle == watch_ptr) ++watch_det;
         if (last_av.unresolved) ++unresolved;
         excluded_followers += last_av.excluded_followers;
         skipped_small += last_av.skipped_small;
@@ -5800,6 +5803,67 @@ static void ctl_unit_checks() {
               "ctl rollout 0x21: the first sample 2697 m behind P on the ship's own axis-parallel line");
         check(std::fabs(s[2].c[2] - (-1109.0f - 120.0f * 0.1f)) < 0.5f && std::fabs(s[60].c[1] - 685.0f) < 0.01f,
               "ctl rollout 0x21 -> 0x1e: at rest at P after 0.9 s, then out at 120 m/s, the lateral offset kept");
+        { // review of rounds A-C item 1: an arrival filled as the DLL's launch hook fills it (gc::arrival_fill from the hull's dynamics) rolls
+          // its 0x1e leg's order-0 brake out at the hull's a_lin: a Titan (10 m/s^2) at rest 720 m past |dz| = r_gate; with the hook's
+          // JoinParams{} before the fix, the 1 m/s^2 fallback, still at 90 m/s 3 km out at the horizon
+            static gc::Board b1;
+            b1 = gc::Board{};
+            gc::Gate* g1 = ctl_gate(b1, 1000);
+            gc::Role before = gc::Role::count;
+            gc::Member* a1 = gc::enter(b1, *g1, 0x9100, 0x9100 ^ 0x5a000000u, gc::Role::arrival, 1000, &before);
+            core::Dynamics dt;
+            dt.W[0] = dt.W[1] = 1843.0f / 65536.0f * 2.0f * float(M_PI);
+            dt.k = 0.05f;
+            dt.v_max = 110.0f;
+            dt.a_lin = 10.0f;
+            dt.r_own = 1092.0f;
+            dt.large = true;
+            const float Pa[3] = {0, 685, -1109}, gR[3] = {1, 0, 0}, gU[3] = {0, 1, 0}, gF[3] = {0, 0, 1};
+            bool fill_ok = false, rest_ok = false, zero_far = false;
+            if (a1) {
+                gc::arrival_fill(*a1, dt, 583.0f, 1092.0f, g1->r_gate, Pa, Pa, gR, gU, gF, g1->gate, 1000);
+                core::JoinParams want;
+                gc::params_from(want, dt, g1->r_gate);
+                fill_ok = a1->params.a_lin == 10.0f && a1->params.W == want.W && a1->params.alpha == want.alpha && a1->params.v_max == 110.0f &&
+                          a1->st.order == core::kOrderWarpIn && a1->st.rows[2][2] == -1.0f && a1->st.point[1] == 685.0f && a1->launch_ms == 1000;
+                gc::Sample sa[gc::kSamples];
+                float vm = 0.0f;
+                const unsigned na = gc::rollout(*a1, *g1, -1.0f, sa, &vm);
+                rest_ok = na == gc::kSamples && std::fabs(sa[na - 1].c[2] - (-1109.0f - 720.0f)) < 25.0f && sa[na - 1].c[2] == sa[na - 2].c[2];
+                a1->params = core::JoinParams{};
+                a1->params.r_gate = g1->r_gate;
+                const unsigned nz = gc::rollout(*a1, *g1, -1.0f, sa, &vm);
+                zero_far = nz == gc::kSamples && sa[nz - 1].c[2] < -3000.0f;
+            }
+            check(fill_ok && rest_ok && zero_far,
+                  "ctl arrival fill (review A-C item 1): the hook's plant is params_from of the hull's dynamics; the 0x1e brake rests 720 m past r_gate (JoinParams{}: > 3 km)");
+        }
+        { // review of rounds A-C item 2: the brief stop's bound stored at the yield (gc::yield_stop_end), flown by the rollout (lane_stop_rest_s)
+            gc::Gate gg{};
+            gg.step_ms = 33;
+            gc::Member Y{}, A1{}, C{};
+            A1.role = gc::Role::arrival;
+            A1.launch_ms = 100000;
+            C.role = gc::Role::committed;
+            const std::uint32_t e1 = gc::yield_stop_end(gg, Y, A1, 110000); // a new stop 10 s after the arrival's launch: its window + the step
+            Y.stop_ms = 110000;
+            Y.stop_end_ms = e1;
+            gc::Member A2 = A1;
+            A2.launch_ms = 150000; // a second arrival: the member's own bound (60 s + the step from 110 s), not the second window (to 210 s)
+            const std::uint32_t e2 = gc::yield_stop_end(gg, Y, A2, 160000);
+            Y.stop_end_ms = e2;
+            const std::uint32_t e3 = gc::yield_stop_end(gg, Y, A2, 171000); // past it: refused (before: allowed to 210 s + the step)
+            const std::uint32_t e4 = gc::yield_stop_end(gg, Y, C, 125000);  // a member partner inside it: the episode's end kept
+            const std::uint32_t e5 = gc::yield_stop_end(gg, Y, C, 131000);  // ... and past its own 20 s + the step: refused
+            Y.st.ms = 120000;
+            const float rest = gc::lane_stop_rest_s(gg, Y); // the rollout's stop to the stored end (before: kLaneStopMs + the step from 110 s)
+            gc::Member Z{};
+            Z.st.ms = 5000;
+            const float rest0 = gc::lane_stop_rest_s(gg, Z); // a first candidate: kLaneStopMs + the step from the state
+            check(e1 == 160033u && e2 == 170033u && e3 == 0u && e4 == 170033u && e5 == 0u && std::fabs(rest - 50.033f) < 1e-3f &&
+                      std::fabs(rest0 - float(gc::kLaneStopMs + 33) * 0.001f) < 1e-3f,
+                  "ctl stop bound (review A-C item 2): stored at the yield; an arrival's window, at most 60 s + the step per member; the rollout flies it");
+        }
         m->st.order = core::kOrderWarpAway;
         m->st.v = 100.0f;
         n = gc::rollout(*m, *g, -1.0f, s, &vmax);
@@ -7907,6 +7971,7 @@ struct CResult {
     // shifted builds), the longest build (us, host), every build's time summed; the members' module detours against a body the profile
     // listed (none expected) and the statics their avoidance left to the profile
     unsigned prof_builds = 0, prof_shifted = 0, prof_det = 0, prof_skipped = 0;
+    unsigned watch_det = 0; // review of rounds A-C item 5: the members' sphere-detour frames against the cast's watched static
     double prof_max_m = 0, prof_clear_min = 1e18, prof_us_max = 0, prof_us_sum = 0;
     // section 12.4 (round C): members that flew the loop-back join (Member::loop seen), the outermost s of a loop until it is back on
     // Lambda or launched and its bound (the core's turn point + kLaneOverApexR R), the largest lateral off Lambda at the turn-in, the
@@ -7920,6 +7985,14 @@ struct CResult {
                             // edge, hold: section 12.2)
     unsigned sm_side = 0, sm_held = 0; // section 12.2: order-4 frames on the side lead-in; small ships held (any frame under the hold cap)
     double sm_hold_s_max = 0;          // ... the longest held time of one small ship (s)
+    unsigned arr_params_bad = 0;       // review of rounds A-C item 1: an arrival member whose plant is not params_from of its dynamics
+    double arr_mem_gap = 1e18;         // ... the closest capsule of a departing hull to an arrival on any of its legs (0x1e on)
+    double arr53_gap = 1e18;           // ... and to an arrival on its drift-free legs (0x1e, the order-0 brake to rest: phases 52, 53)
+    long arr53_capped_ms = 0;          // ... the game time a departing member flew a yield cap while an arrival was on those legs
+    double sm_held_clear_min = 1e18, sm_held_zone_min = 1e18; // review of rounds A-C item 3: a held small ship's lateral clearance (m)
+    unsigned sm_rel_zone = 0; // review of rounds A-C item 4: order-4 holds released with the lead-in's end in a passing capital's zone
+    unsigned ystops = 0, ystop_over = 0, ystop_bound_over = 0; // review of rounds A-C item 2: site B's yield-stop write episodes, those
+    double ystop_max_s = 0, ystop_bound_max_s = 0;             // beyond their stored bound + the step, bounds beyond 60 s + the step
     // item E: arrivals launched, those resting at P (0x1e ended on its first frame), the 0x1e exit speed (m/s), the closest a departing
     // hull on order 8 came to a parked arrival (capsule, m), a departing hull on 4 / 0 / 0x1f / 5 to it, two arrivals to each other
     unsigned arr_n = 0, arr_rest = 0, arr_dep8_close = 0, arr_overlap = 0;
@@ -8014,6 +8087,26 @@ static void add_obstacles(World& w, int kind) {
         }
         const float posf[3] = {float(c[0]), float(c[1]), float(c[2])};
         if (av::build_parts(w.parts[w.n_parts], 0x7600, 43000.0f, posf, centres, radii, 8)) w.eng_ps[w.n_static - 1] = std::uint8_t(++w.n_parts);
+    } else if (kind == 8) { // review of rounds A-C item 5: a small station on the final whose walk falls back (bounding sphere 2 km holding
+                            // d_end, centred on Lambda 3.8 km out; the module's fallback body max(0.35 r, 500 m) = 700 m); the engine's box
+                            // test sees its two 300 m parts 400 m apart along F
+        const double c[3] = {0.0, -929.0, -3800.0};
+        av::Obstacle& o = w.statics[w.n_static++];
+        o = av::Obstacle{};
+        for (int i = 0; i < 3; ++i) o.x[i] = float(c[i]);
+        o.r = 2000.0f;
+        o.ptr = 0x7800;
+        o.kind = std::uint8_t(av::Kind::station);
+        o.flags = 0; // (the fallback body: no part model)
+        float centres[2][3], radii[2];
+        for (unsigned i = 0; i < 2; ++i) {
+            centres[i][0] = float(c[0]);
+            centres[i][1] = float(c[1]);
+            centres[i][2] = float(c[2] + (i ? 200.0 : -200.0));
+            radii[i] = 300.0f;
+        }
+        const float posf[3] = {float(c[0]), float(c[1]), float(c[2])};
+        if (av::build_parts(w.parts[w.n_parts], 0x7800, 2000.0f, posf, centres, radii, 2)) w.eng_ps[w.n_static - 1] = std::uint8_t(++w.n_parts);
     } else if (kind == 7) { // ... a rock belt across the column 10 km out: four 250 m rocks 1.3 km apart across R, alternating 400 m above
                             // and below Lambda (a hull on Lambda touches the two nearest: it must detour a few hundred metres)
         static const double a[4][3] = {{-2000, -529, -10000}, {-700, -1329, -10300}, {600, -529, -9700}, {1900, -1329, -10000}};
@@ -8410,6 +8503,18 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         sm_latch[k] = 0;
         sm_was[k] = false;
     }
+    // review of rounds A-C item 3: a held small ship's lateral (gate frame R, U; m) against every departing capital in front of the plane (its
+    // live lateral: the column it passes the plane in): the clearance beyond w + r_small, and beyond the warn zone 1.2 (w + r_small) + 150 m
+    auto sm_held_check = [&](unsigned k) {
+        const double rs = su.s[k].t->r_m, x = ships[k].m.pos[0] / 500.0, y = ships[k].m.pos[1] / 500.0;
+        for (unsigned q = 0; q < su.n; ++q) {
+            const TShip& C = ships[q];
+            if (q == k || !C.alive || !C.m.capital || !(su.s[q].kind == kLead || su.s[q].kind == kEsc) || !(C.m.pos[2] < 0.0)) continue;
+            const double dx = x - C.m.pos[0] / 500.0, dy = y - C.m.pos[1] / 500.0, d = std::sqrt(dx * dx + dy * dy);
+            res.sm_held_clear_min = std::fmin(res.sm_held_clear_min, d - C.w - rs);
+            res.sm_held_zone_min = std::fmin(res.sm_held_zone_min, d - (double(gc::kSmallZoneBox) * (C.w + rs) + double(gc::kSmallZoneM)));
+        }
+    };
     static std::vector<TrackPt> track[kCMax]; // lane fix round 2 item 1: the flown path of each ship (the oracle below)
     for (auto& tv : track) tv.clear();
     static std::vector<ObstEvent> obst_events;
@@ -8433,6 +8538,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         // lane fix round 2 item 3d: site B's stop write of this frame (LaneWrite::stop); the episode of consecutive stop-write frames (its
         // first and last frame, game ms) and the ship ahead at its start (the cast index; -1 none)
         bool wk_stop = false, wk_law = false;
+        long ystop_start = -1, ystop_bound = 0; // review of rounds A-C item 2: site B's yield-stop write episode, its stored bound
         long sw_start = -1, sw_last = -1;
         int sw_pred = -1;
         bool sw_law = false; // (its last frame's write was the law's stop, the queue hold; else the yield's cap 0, the brief stop)
@@ -8473,6 +8579,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         m.ctl = &board;
         m.gate_r = float(kGateRM);
         m.ctl_gate_type = su.gate_type;
+        m.watch_ptr = su.obst == 8 ? 0x7800u : 0u; // (review of rounds A-C item 5: the small fallback station's detour frames)
         for (int i = 0; i < 3; ++i) {
             m.gate_G[i] = 0;
             for (int r = 0; r < 3; ++r) m.gate_rows[r][i] = float(kGateIdentity.R[r][i]);
@@ -8766,28 +8873,28 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     g->cap_arrival_w = float(c.w);
                     gc::Role before;
                     if (gc::Member* mb = gc::enter(board, *g, c.m.ptr, c.m.ptr ^ 0x5a000000u, gc::Role::arrival, now, &before)) {
-                        gc::hull_from(*mb, float(r_s), float(c.w), float(c.L));
-                        mb->launch_ms = now ? now : 1;
-                        mb->large = 1;
-                        mb->params.r_gate = float(kGateRM);
-                        mb->params.a_lin = float(su.s[k].t->a_ms2);
-                        // (round A: the DLL's launch hook fills the member's state at the launch (ship_gate_ctl_glue.cpp): on 0x21 at the
-                        // start of the warp-in path, the point P, the nose -F; without it the first decision at a SETA step came before the
-                        // frame's state read and left the pair without a rollout: cause=zero, the leader's eviction at tf 10)
-                        gc::State& ms = mb->st;
-                        ms = gc::State{};
-                        ms.ms = now ? now : 1;
-                        ms.order = core::kOrderWarpIn;
-                        ms.target = kLaneGate;
-                        for (int i = 0; i < 3; ++i) {
-                            ms.x[i] = float(st[i]);
-                            ms.point[i] = float(arr_P[k][i]);
-                            ms.rows[0][i] = i == 0 ? -1.0f : 0.0f; // (the gate frame: R = x, U = y, F = z)
-                            ms.rows[1][i] = i == 1 ? 1.0f : 0.0f;
-                            ms.rows[2][i] = -float(F[i]);
+                        // (round A: the DLL's launch hook fills the member's state at the launch: on 0x21 at the start of the warp-in path,
+                        // the point P, the nose -F; without it the first decision at a SETA step came before the frame's state read and left
+                        // the pair without a rollout: cause=zero, the leader's eviction at tf 10. Review of rounds A-C item 1: the hull, the
+                        // plant and the state through the DLL's own gc::arrival_fill from the ship's dynamics, as ctl_commit's commit_fill;
+                        // X3M_C_ARR_PARAMS0=1 models the DLL before the fix, JoinParams{} with r_gate only)
+                        core::Dynamics ad = c.m.dyn;
+                        ad.r_own = float(r_s);
+                        const float xs[3] = {float(st[0]), float(st[1]), float(st[2])}, Ps[3] = {float(arr_P[k][0]), float(arr_P[k][1]), float(arr_P[k][2])};
+                        const float gR[3] = {1, 0, 0}, gU[3] = {0, 1, 0}, gF[3] = {float(F[0]), float(F[1]), float(F[2])};
+                        gc::arrival_fill(*mb, ad, float(c.w), float(c.L), float(kGateRM), xs, Ps, gR, gU, gF, kLaneGate, now);
+                        if (std::getenv("X3M_C_ARR_PARAMS0")) {
+                            mb->params = core::JoinParams{};
+                            mb->params.r_gate = float(kGateRM);
                         }
-                        ms.f_ok = 1;
-                        ms.left_ms = 900;
+                        // the DLL path and the fixture's agree: the arrival's plant is the commit path's params_from of its dynamics
+                        {
+                            core::JoinParams want;
+                            gc::params_from(want, ad, float(kGateRM));
+                            if (!std::getenv("X3M_C_ARR_PARAMS0") && !(mb->params.a_lin == want.a_lin && mb->params.W == want.W && mb->params.alpha == want.alpha &&
+                                                                       mb->params.v_max == want.v_max && mb->params.a_lin > 0.0f && mb->params.W > 0.0f))
+                                ++res.arr_params_bad;
+                        }
                         gc::DecideStats ds; // (the hook's first decision of the arrival, as the DLL's: its rollout before any E verdict against it)
                         gc::decide(*g, unsigned(mb - g->m), now, &ds, nullptr, nullptr);
                     }
@@ -9067,6 +9174,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 if (c.phase == 41) { // order 4: the leaf every frame, the arrival test and the speed law at the think tick (section 10.3)
                     // the DLL's gate_decide (section 12.2, round B): the side lead-in while the lane gate's funnel is active (else the
                     // spread), and the hold when even the free side's arc edge is taken
+                    const bool held_before = m.sm_cap >= 0.0;
                     m.sm_cap = -1.0;
                     m.sm_hold_gate = sm_hold[k].active ? gc::gate_of(board, kLaneGate) : nullptr; // (the previous decision's, as the DLL)
                     if (m.gate_mode) {
@@ -9085,10 +9193,34 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                             const float xl4[2] = {float(m.pos[0] / 500.0), float(m.pos[1] / 500.0)};
                             const bool hold = (sm_hold[k].active || (d_along > double(gc::kSmallParkBackM) && d_along < double(gc::kSmallHoldRangeR) * kGateRM)) &&
                                               gc::small_zone_hold(*sg, now, side, xl4, float(d_eta), float(v_eta), float(su.s[k].t->r_m), &t_l);
+                            const bool done_before = sm_hold[k].done != 0;
                             m.sm_cap = gc::small_hold_cap(sm_hold[k], *sg, now, hold, t_l, core::gate_spread_index(c.obj));
+                            // review of rounds A-C item 4: a release by the hold's bound (the holds ended for good at this decision), against
+                            // the capitals still passing (a release into a gap between two capitals, the core's counting, is not this)
+                            if (held_before && m.sm_cap < 0.0 && !done_before && sm_hold[k].done) {
+                                const double rs = su.s[k].t->r_m;
+                                for (unsigned q = 0; q < su.n; ++q) {
+                                    const TShip& C = ships[q];
+                                    if (q == k || !C.alive || !C.m.capital || !(su.s[q].kind == kLead || su.s[q].kind == kEsc)) continue;
+                                    const double zq = C.m.pos[2] / 500.0;
+                                    if (!(zq < 0.0 && zq > -3000.0)) continue;
+                                    const double dx = double(m.gate_geo.X[0]) - C.m.pos[0] / 500.0, dy = double(m.gate_geo.X[1]) - C.m.pos[1] / 500.0;
+                                    if (std::sqrt(dx * dx + dy * dy) < double(gc::kSmallZoneBox) * (C.w + rs) + double(gc::kSmallZoneM)) {
+                                        ++res.sm_rel_zone;
+                                        if (std::getenv("X3M_C_TRACE"))
+                                            std::printf("  tc %s smrelzone t=%.1f ship %u cap %u at %.0f,%.0f,%.0f X %.0f,%.0f held %.1f s\n", su.tag,
+                                                        double(now_ms) / 1000.0, k, q, C.m.pos[0] / 500.0, C.m.pos[1] / 500.0, zq, double(m.gate_geo.X[0]),
+                                                        double(m.gate_geo.X[1]), double(sm_hold_ms[k]) / 1000.0);
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
-                    if (m.sm_cap >= 0.0) sm_hold_ms[k] += dt;
+                    if (m.sm_cap >= 0.0) {
+                        sm_hold_ms[k] += dt;
+                        sm_held_check(k);
+                    }
                     if (std::getenv("X3M_C_TRACE") && (m.sm_cap >= 0.0) != sm_was[k]) {
                         sm_was[k] = m.sm_cap >= 0.0;
                         std::printf("  tc %s smhold t=%.1f ship %u ph %d %s pos %.0f,%.0f,%.0f v %.0f total %.1f\n", su.tag, double(now_ms) / 1000.0, k, c.phase,
@@ -9157,7 +9289,10 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                             }
                         }
                     }
-                    if (m.sm_cap >= 0.0) sm_hold_ms[k] += dt;
+                    if (m.sm_cap >= 0.0) {
+                        sm_hold_ms[k] += dt;
+                        sm_held_check(k);
+                    }
                     if (std::getenv("X3M_C_TRACE") && (m.sm_cap >= 0.0) != sm_was[k]) {
                         sm_was[k] = m.sm_cap >= 0.0;
                         std::printf("  tc %s smhold t=%.1f ship %u ph %d %s pos %.0f,%.0f,%.0f v %.0f total %.1f\n", su.tag, double(now_ms) / 1000.0, k, c.phase,
@@ -10170,6 +10305,30 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             const bool steered = c.m.order == core::kOrderFlyBefore || c.m.order == core::kOrderEscort || c.m.order == core::kOrderFollow;
             if (steered && (mm->law == gc::Law::merge || mm->law == gc::Law::follow) && mm->v_sb < gc::kYieldFloorMs - 1e-3f) ++res.slow_frames;
             const bool stop_now = gc::cap_in_force(*g, *mm, now_end) == 0.0f;
+            { // review of rounds A-C item 2: site B's write of a yield's stop (not the law's), each episode against the bound its yield stored
+                const bool ys = e.wk_stop && !e.wk_law;
+                if (ys) {
+                    if (e.ystop_start < 0) {
+                        e.ystop_start = now_ms;
+                        e.ystop_bound = 0;
+                        ++res.ystops;
+                    }
+                    if (mm->stop_end_ms && mm->stop_ms) e.ystop_bound = std::max(e.ystop_bound, long(std::int32_t(mm->stop_end_ms - mm->stop_ms)));
+                } else if (e.ystop_start >= 0) {
+                    const long d = now_ms - e.ystop_start;
+                    res.ystop_max_s = std::fmax(res.ystop_max_s, double(d) / 1000.0);
+                    res.ystop_bound_max_s = std::fmax(res.ystop_bound_max_s, double(e.ystop_bound) / 1000.0);
+                    if (d > e.ystop_bound + res.step_max) ++res.ystop_over;
+                    if (e.ystop_bound > long(gc::kArrivalWindowMs) + res.step_max) ++res.ystop_bound_over;
+                    e.ystop_start = -1;
+                }
+            }
+            if (su.eng == 4 && gc::cap_in_force(*g, *mm, now_end) >= 0.0f) // review of rounds A-C item 1: capped while an arrival brakes out
+                for (unsigned q = 0; q < su.n; ++q)
+                    if (su.s[q].kind == kArrive && ships[q].alive && (ships[q].phase == 52 || ships[q].phase == 53)) {
+                        res.arr53_capped_ms += dt;
+                        break;
+                    }
             if (stop_now && e.stop_start < 0) {
                 e.stop_start = now_ms;
                 ++res.stops;
@@ -10294,6 +10453,8 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     } else if (aa != ab) {
                         const TShip& R = aa ? A : B;
                         const unsigned dk = aa ? b : a;
+                        if (dep(dk)) res.arr_mem_gap = std::fmin(res.arr_mem_gap, gap);
+                        if (dep(dk) && (R.phase == 52 || R.phase == 53)) res.arr53_gap = std::fmin(res.arr53_gap, gap);
                         if (R.phase == 53 && R.m.speed < 500 && dep(dk)) { // a parked arrival (order 0, at rest)
                             if (ships[dk].phase == 4) {
                                 res.arr_dep8_gap = std::fmin(res.arr_dep8_gap, gap);
@@ -10580,6 +10741,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
     for (unsigned k = 0; k < su.n; ++k) {
         res.prof_skipped += ships[k].m.prof_skip;
         res.prof_det += ships[k].m.prof_det;
+        res.watch_det += ships[k].m.watch_det;
     }
     for (unsigned k = 0; k < su.n; ++k)
         if (sm_hold_ms[k] > 0) {
@@ -10742,6 +10904,18 @@ static const CStart kSmallGate[6] = {
     {&kShips[3], 0.5, kSmEsc, 0, -1400, -830, -17400, 0, 100, 0},
     {&kShips[3], 0.5, kSmTrade, -1, 2000, -4000, -8000, 0, 100, 100000, true},
 };
+// Review of rounds A-C item 4: small_gate with a five-capital convoy (Titan, M1, Titan, M1, Titan) and the through slot refused for 60 s
+// 140-160 s (the column still passing when the 60 s hold bound ends)
+static const CStart kSmallGate5[8] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -24400, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -27200, 0, 100, 0},
+    {&kShips[3], 0.5, kSmEsc, 0, 1400, -830, -17400, 0, 100, 0},
+    {&kShips[3], 0.5, kSmEsc, 0, -1400, -830, -17400, 0, 100, 0},
+    {&kShips[3], 0.5, kSmTrade, -1, 2000, -4000, -8000, 0, 100, 100000, true},
+};
 static const CStart kSmallGateM6[6] = {
     {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
     {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
@@ -10767,6 +10941,21 @@ static const CStart kArrPass[5] = {
     {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
     {&kCrowdTitan, 0.53, kArrive, -1, 0, 0, 0, 0, 0, 100000, false, 5000},
     {&kCrowdTitan, 0.53, kArrive, -1, 0, 0, 0, 0, 0, 160000, false, 5000},
+};
+// Review of rounds A-C item 1: arrival_pass with one arrival resting at its real rest point (0x1e at 120 m/s from |dz| = r_gate, the order-0
+// brake at a Titan's 10 m/s^2: 720 m on, (0, 685, -1825); held there 40 s, its script's next order later) and a joiner (a Titan on order
+// 4 from 3.5 km above the column 5 km out, its join descending across the arrival's line near that point while the arrival rests there)
+// Review of rounds A-C item 2: arrival_pass with the two arrivals 35 s apart (a run of arrivals: the second inside the first one's window)
+static const CStart kArrPass2[5] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
+    {&kCrowdTitan, 0.53, kArrive, -1, 0, 0, 0, 0, 0, 100000, false, 5000},
+    {&kCrowdTitan, 0.53, kArrive, -1, 0, 0, 0, 0, 0, 135000, false, 5000},
+};
+static const CStart kArrCross[2] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, 3500, -9500, 0, 100, 80000, true},
+    {&kCrowdTitan, 0.53, kArrive, -1, 0, 0, 0, 0, 0, 100000, false, 40000},
 };
 static const CSetup kCSetups[] = {
     {"abreast3", kAbreast3, 3, 1},
@@ -10822,6 +11011,12 @@ static const CSetup kCSetups[] = {
     // ~5 km off Lambda, P2 not kept 19.7-31.3 deg, the span exceeded in 9 of 9, two runs at tf 1 never launching the M1; section 12.3's
     // enclosing-fallback rule: neither detoured nor shifted, the engine's warn the backstop)
     {"lane_fallback", kFormed, 3, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 6, -1, -1, -1, 0, 0, false, 2},
+    // PARKED (review of rounds A-C item 5: a small station whose walk fails on Lambda 3.8 km out, its 2 km sphere holding d_end, the module's
+    // fallback body 700 m): the members detour around it in 9 of 9 runs and never touch it (the enclosing rule no longer takes it; before,
+    // X3M_LANE_ENCLOSE_MIN_M=0: listed for every member, left to the profile on 1,440-36,330 member frames, the station touched in 4 of 9,
+    // to -595 m), but a body on the final is lane_station's class: the detoured members meet each other (9 of 9) and launches go missing
+    // (9 of 9); the unit `round B profile units` (a small one not listed) carries the item; review_abc/parked_lane_fb_small.txt
+    // PARKED: {"lane_fb_small", kFormed, 3, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 8, -1, -1, -1, 0, 0, false, 2},
     // PARKED (item C, a rock belt across the column 10 km out): one run of 9 over the span (tf 6, 245.8 s; a member at 2 m/s on Lambda);
     // no contact, P2 kept 0.3-2.3 deg. Round B (section 12.3): the lateral profile (X3M_C_PROFSHIFT=1: -U 898-932 m at the 50 m margin)
     // regresses it (site E's suppression of the profiled rocks fails closed on SETA frames, the members' 0x12 meet each other; a rock
@@ -10834,6 +11029,8 @@ static const CSetup kCSetups[] = {
     // (item D with an M6 escort: as small_gate, parked until round B with contacts in 4 of 9 runs, to -501 m; the members' warns against
     // the M6 all suppressed by site E's small-ship row, 0 member 0x12)
     {"small_gate_m6", kSmallGateM6, 6, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
+    // review of rounds A-C item 4: five capitals, the through slot refused 140-160 s (unknown to the board)
+    {"small_gate5", kSmallGate5, 8, 0, -1, false, 1200, false, false, -1.0, false, false, 140000, 160000, 0, -1, -1, -1, 0, 0, false, 3},
     // PARKED (item E, an M1 of r_s 1135 m resting at P, a Titan 60 s later): the two arrivals overlap (capsule -1180 m: no arrival fan,
     // section 6.7); the departing leader near d_end is warned by the arriving hull's box, the pair uncertified, the eviction flown, then the
     // members collide (to -1120 m); 5 of 9 runs launch fewer than 3 in 1000 s
@@ -10842,6 +11039,10 @@ static const CSetup kCSetups[] = {
     // the arrival's terms along F, the pair certifies on the exit point's lateral clearance; before: the leader's eviction by the arriving
     // hull and member contacts to -1157 m in 8 of 9 runs)
     {"arrival_pass", kArrPass, 5, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
+    // review of rounds A-C item 1: a joiner crossing the arrival's line near its real rest point (the DLL's arrival plant before the fix:
+    // X3M_C_ARR_PARAMS0=1)
+    {"arrival_pass2", kArrPass2, 5, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
+    {"arrival_cross", kArrCross, 2, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
 };
 // Lane fix round 2 item 6: the nose off F at the 7 km crossing, asserted in every cast: 5 deg, or the cast's own bound where its geometry
 // cannot reach 5 deg (the measured maximum over 3 seeds x tf 1/6/10 + about 1.5 deg; reasons in convoy-gate-transit.md section 11 "Lane fix
@@ -10909,6 +11110,15 @@ static void lane_c_print_eng(const char* tag, int tf, std::uint32_t seed, const 
                 r.prof_builds, r.prof_shifted, r.prof_max_m, r.prof_clear_min < 1e17 ? r.prof_clear_min : -1.0, r.prof_us_max,
                 r.prof_builds ? r.prof_us_sum / double(r.prof_builds) : 0.0, r.prof_skipped, r.prof_det, r.obst_avoidable, r.obst_x12, r.loops,
                 r.loop_min_s < 1e17 ? r.loop_min_s : 0.0, r.loop_bound, r.loop_turn_lat_max, r.fol_v_min < 1e17 ? r.fol_v_min : -1.0);
+}
+// Review of rounds A-C: the figures its checks read, one row per run of an engine cast
+static void lane_c_print_rev(const char* tag, int tf, std::uint32_t seed, const lanec::CResult& r) {
+    std::printf("scenario C %s review tf %d seed %u: arr_mem %.0f params_bad %u arr53_gap %.0f arr53_capped %.1f s | ystops %u max %.1f s bound_max %.1f s "
+                "over %u bound_over %u | sm_held clear %.0f zone %.0f rel_zone %u hold_max %.1f s | watch_det %u skip %u obst_clear %.0f\n", tag, tf, seed,
+                r.arr_mem_gap < 1e17 ? r.arr_mem_gap : -1.0, r.arr_params_bad, r.arr53_gap < 1e17 ? r.arr53_gap : -1.0, double(r.arr53_capped_ms) / 1000.0,
+                r.ystops, r.ystop_max_s, r.ystop_bound_max_s, r.ystop_over, r.ystop_bound_over, r.sm_held_clear_min < 1e17 ? r.sm_held_clear_min : -1.0,
+                r.sm_held_zone_min < 1e17 ? r.sm_held_zone_min : -1.0, r.sm_rel_zone, r.sm_hold_s_max, r.watch_det, r.prof_skipped,
+                r.obst_min_clear < 1e17 ? r.obst_min_clear : -1.0);
 }
 static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, const lanec::CResult& r) {
     std::printf("scenario C %s %s tf %d %d fps seed %u: launched %u/%u span %.1f s (bound %.1f, floor %.1f, leader 15 km->launch %.1f, c %.1f, gap-c-5 %.1f) "
@@ -11693,6 +11903,15 @@ static void lane_c_units() {
         check(gc::lane_hand_bound(g, m, far, 20.0f) == 20.0f, "lane units: a ship in the hand-over at d_end keeps a slow speed while the poll fits");
         const float vb = gc::lane_hand_bound(g, m, nearp, 100.0f);
         check(vb < 100.0f && vb >= 0.0f, "lane units: the hand-over's brake bound stops the ship outside its trigger sphere + 300 m");
+        // review of rounds A-C item 6: the step's travel off the room: 2.6 km out at 100 m/s (a 2 m/s^2 brake) the poll fits a 100 ms step
+        // (room 1,198 m against 1,100 m) and not a 2 s SETA step (1,008 m: the brake, sqrt(2 a room) = 63.5 m/s); before: 100 m/s at both
+        m.params.a_lin = 2.0f;
+        const float p26[3] = {0, 0, -2600};
+        g.step_ms = 17;
+        const float v_n = gc::lane_hand_bound(g, m, p26, 100.0f);
+        g.step_ms = 2000;
+        const float v_s = gc::lane_hand_bound(g, m, p26, 100.0f);
+        check(v_n == 100.0f && std::fabs(v_s - 63.5f) < 0.5f, "lane units: the hand-over's brake bound takes the game step's travel (SETA)");
     }
 }
 // The lane's per-frame cost (section 6.10): the frame's controller block (lane_frame, the decisions with their rollouts and sweeps; the
@@ -12202,7 +12421,7 @@ static void lane_r2_units() {
 }
 // Convoy-gate-transit.md section 12.2 (round B): the small ships' side lead-in, D.5's edge and the bounded hold, unit by unit
 static void round_b_small_units() {
-    char why[400];
+    char why[560];
     static gc::Board b;
     b = gc::Board{};
     b.lane = 1;
@@ -12240,8 +12459,18 @@ static void round_b_small_units() {
     const float bm[3] = {0.55f * r * 0.17365f, -0.55f * r * 0.98481f, -0.01f * r}, xs[2] = {0.68f * r, -0.8f * r}; // (B at theta = 10 deg)
     float o[3] = {0, 0, 0}, f_in = 1.0f;
     std::uint32_t tl = 0;
-    const gc::SmallB v_hold = gc::small_b_decide(*g, 1000, bm, 1500.0f, 124.0f, 38.5f, xs, 1, o, &tl, &f_in);
-    const bool hold_ok = v_hold == gc::SmallB::hold && o[0] > 0.0f && std::fabs(o[0] - 0.55f * r * 0.70710678f) < 1.0f && tl > 1000u;
+    // (review of rounds A-C item 3: X_s itself lies 760 m from the Titan's column, inside its warn zone (891 m): not held there, the edge
+    // written; the hold from a lateral outside every zone, (0.68 r, -0.3 r) at 1,004 m)
+    const float xo[2] = {0.68f * r, -0.3f * r};
+    const gc::SmallB v_hold = gc::small_b_decide(*g, 1000, bm, 1500.0f, 124.0f, 38.5f, xo, 1, o, &tl, &f_in);
+    const bool hold_ok = v_hold == gc::SmallB::hold && o[0] > 0.0f && std::fabs(o[0] - 0.55f * r * 0.70710678f) < 1.0f && tl > 1000u && f_in > 0.0f;
+    const gc::SmallB v_in = gc::small_b_decide(*g, 1000, bm, 1500.0f, 124.0f, 38.5f, xs, 1, o, &tl, &f_in);
+    const float e2[2] = {o[0], o[1]};
+    std::uint32_t tl2 = 0;
+    float f2 = 1.0f;
+    const bool in_ok = v_in == gc::SmallB::edge && std::fabs(o[0] - 0.55f * r * 0.70710678f) < 1.0f &&
+                       !gc::small_path_hold(*g, 1000, xs, e2, 1500.0f, 124.0f, 38.5f, &tl2, &f2) &&
+                       gc::small_path_hold(*g, 1000, xo, e2, 1500.0f, 124.0f, 38.5f, &tl2, &f2);
     t->w = 300.0f;
     const gc::SmallB v_edge = gc::small_b_decide(*g, 1000, bm, 1500.0f, 124.0f, 38.5f, xs, 1, o, &tl, &f_in);
     t->w = 579.0f;
@@ -12257,7 +12486,14 @@ static void round_b_small_units() {
     gc::SmallHold h;
     g->step_ms = 2000;
     bool bound_ok = gc::small_hold_cap(h, *g, 1000, true, 200000, 0) == gc::kSmallHoldFloorMs;
-    bound_ok = bound_ok && gc::small_hold_cap(h, *g, 62900, true, 200000, 0) >= 0.0f && gc::small_hold_cap(h, *g, 63100, true, 200000, 0) < 0.0f && h.done;
+    // (review of rounds A-C item 4: the way still taken at the bound's end: extended once, to kSmallHoldExtMs + the step; free there: ended
+    // for good, a later taken way included)
+    const std::uint32_t ext_end = 1000u + gc::kSmallHoldExtMs + 2000u;
+    bound_ok = bound_ok && gc::small_hold_cap(h, *g, 62900, true, 200000, 0) >= 0.0f && gc::small_hold_cap(h, *g, 63100, true, 200000, 0) >= 0.0f &&
+               gc::small_hold_cap(h, *g, ext_end - 100u, true, 200000, 0) >= 0.0f && gc::small_hold_cap(h, *g, ext_end + 100u, true, 200000, 0) < 0.0f && h.done;
+    gc::SmallHold hf;
+    gc::small_hold_cap(hf, *g, 1000, true, 200000, 0);
+    bound_ok = bound_ok && gc::small_hold_cap(hf, *g, 63100, false, 0, 0) < 0.0f && hf.done && gc::small_hold_cap(hf, *g, 64000, true, 200000, 0) < 0.0f;
     gc::SmallHold s4;
     gc::small_hold_cap(s4, *g, 1000, true, 200000, 4);
     const bool stagger_ok = gc::small_hold_cap(s4, *g, 2000, false, 0, 4) >= 0.0f && gc::small_hold_cap(s4, *g, 3400, false, 0, 4) >= 0.0f &&
@@ -12266,10 +12502,12 @@ static void round_b_small_units() {
     gc::small_hold_cap(s0, *g, 1000, true, 200000, 3);
     const bool nostagger_ok = gc::small_hold_cap(s0, *g, 2000, false, 0, 3) < 0.0f;
     std::snprintf(why, sizeof why, "round B small units: free side %d; no member no lead-in %d; lead-in end <= %.0f m from A (< 0.75 r = %.0f) and "
-                  ">= %.0f m from the column, side kept %d; D.5 lane: Titan %s, w 300 %s, key off %s, beyond the axis %s; hold bound %d, stagger %d/%d",
-                  int(side_ok), int(none), double(worst_in), double(0.75f * r), double(worst_col), int(kept), gc::small_b_name(v_hold),
+                  ">= %.0f m from the column, side kept %d; D.5 lane: Titan %s (from X_s inside its zone %s, path %d), w 300 %s, key off %s, beyond the "
+                  "axis %s; hold bound %d, stagger %d/%d",
+                  int(side_ok), int(none), double(worst_in), double(0.75f * r), double(worst_col), int(kept), gc::small_b_name(v_hold), gc::small_b_name(v_in),
+                  int(in_ok),
                   gc::small_b_name(v_edge), gc::small_b_name(v_off), gc::small_b_name(v_own), int(bound_ok), int(stagger_ok), int(nostagger_ok));
-    check(side_ok && none && lead_ok && worst_in < 0.75f * r - 50.0f && worst_col >= 0.68f * r && kept && hold_ok && v_edge == gc::SmallB::edge &&
+    check(side_ok && none && lead_ok && worst_in < 0.75f * r - 50.0f && worst_col >= 0.68f * r && kept && hold_ok && in_ok && v_edge == gc::SmallB::edge &&
               v_off == gc::SmallB::both_taken && own_ok && bound_ok && stagger_ok && nostagger_ok,
           why);
     std::printf("%s\n", why);
@@ -12319,6 +12557,13 @@ static void round_b_prof_units() {
     const gc::LaneBody fb = body(0, -929, -8650, 5250, 15000, 0x7600);
     gc::lane_profile_build(*g, &fb, 1, false, 5000, true);
     const bool fb_ok = g->prof.n == 0 && g->prof.nb == 1 && g->prof.ne == 1 && g->prof.body[0] == 0x7600;
+    // review of rounds A-C item 5: a small station whose walk failed (its 2 km bounding sphere holds d_end; the module's fallback body 700 m)
+    // on the final: not listed, the members detour around it (before: listed as an enclosing fallback)
+    const gc::LaneBody fs = body(0, -929, -3800, 700, 2000, 0x7650);
+    gc::lane_profile_build(*g, &fs, 1, false, 5500, true);
+    const bool fs_ok = g->prof.nb == 0 && g->prof.ne == 0;
+    gc::lane_profile_build(*g, &fs, 1, false, 5600);
+    const bool fs_off_ok = g->prof.nb == 0 && g->prof.ne == 0;
     gc::lane_profile_build(*g, belt, 4, false, 6000);
     const bool off_ok = !gc::kLaneProfShiftOn && g->prof.n == 0 && g->prof.nb == 0;
     // the host cost of one build with the shift over 64 bodies (the belt repeated along Lambda)
@@ -12344,11 +12589,11 @@ static void round_b_prof_units() {
         ns_lat[with] = std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - l0).count() / 2e6;
     }
     std::snprintf(why, sizeof why, "round B profile units: belt n %u d (%.0f, %.0f) m knots %.0f/%.0f/%.0f/%.0f slope %.3f (tan 15 %.3f) blend start %.0f, "
-                  "clearance %.0f m (margin kept %.0f), listed %u; +U 8 km %d, 7 km refused %d; enclosing fallback %d; shift off %d; one build of 64 "
+                  "clearance %.0f m (margin kept %.0f), listed %u; +U 8 km %d, 7 km refused %d; enclosing fallback %d (a small one not listed %d/%d); shift off %d; one build of 64 "
                   "bodies with the shift %.1f us (host); lane_lat_at %.2f ns without a profile, %.2f ns with (sink %.0f)", unsigned(pb.n), double(pb.d[1][0]), double(pb.d[1][1]), double(pb.s[0]), double(pb.s[1]),
                   double(pb.s[2]), double(pb.s[3]), double(slope), double(gc::kLaneProfTan), double(s_fin), double(worst), double(pb.clear_m),
-                  unsigned(pb.nb), int(up8_ok), int(up7_ok), int(fb_ok), int(off_ok), us, ns_lat[0], ns_lat[1], sink > 0 ? 1.0 : 0.0);
-    check(belt_ok && up8_ok && up7_ok && fb_ok && off_ok, why);
+                  unsigned(pb.nb), int(up8_ok), int(up7_ok), int(fb_ok), int(fs_ok), int(fs_off_ok), int(off_ok), us, ns_lat[0], ns_lat[1], sink > 0 ? 1.0 : 0.0);
+    check(belt_ok && up8_ok && up7_ok && fb_ok && fs_ok && fs_off_ok && off_ok, why);
     std::printf("%s\n", why);
 }
 static void lane_cost_bench() {
@@ -12513,6 +12758,35 @@ static void round_c_units() {
                   "loop %u", loop_b, loop_c, double(side_c), loop_d);
     std::printf("%s\n", why);
     check(!loop_b && loop_c && side_c <= 0.0f && !loop_d, why);
+    { // review of rounds A-C item 9: a loop's U-turn apex (the law's s, a follower's block) allows the script's order-0 gap's coast (3 s at the
+      // lane speed) beyond the turn point + 3 R; an overshoot's stays turn point + 3 R; the loop's row state
+        gc::Member L{};
+        L.params.v_max = 113.0f;
+        L.large = 1;
+        L.redep_out = 4000.0f;
+        L.redep_r = 600.0f;
+        L.loop = 1;
+        L.loop_conv = 1;
+        L.lane_s = -(gc::dend(L) + 4000.0f) - 10.0f;
+        const float vl = gc::lane_vmax(L), ap_loop = gc::lane_apex_s(L);
+        const unsigned st_turn = gc::lane_loop_state(L);
+        L.lane_s = -3000.0f;
+        const unsigned st_out = gc::lane_loop_state(L);
+        L.loop_conv = 0;
+        const unsigned st_leg = gc::lane_loop_state(L);
+        L.loop = 0;
+        L.over = 1;
+        const float ap_over = gc::lane_apex_s(L);
+        const unsigned st_none = gc::lane_loop_state(L);
+        const float base = -(gc::dend(L) + 4000.0f + 3.0f * 600.0f);
+        std::snprintf(why, sizeof why, "round C units (review A-C item 9): the loop's apex %.0f m (turn point + 3 R %.0f m - 3 s x %.1f m/s), an overshoot's "
+                      "%.0f m; loop states %s/%s/%s/%s", double(ap_loop), double(base), double(vl), double(ap_over), gc::lane_loop_name(st_leg),
+                      gc::lane_loop_name(st_out), gc::lane_loop_name(st_turn), gc::lane_loop_name(st_none));
+        std::printf("%s\n", why);
+        check(std::fabs(ap_loop - (base - 3.0f * vl)) < 0.5f && vl > 50.0f && std::fabs(ap_over - base) < 0.5f && st_leg == 1u && st_out == 2u &&
+                  st_turn == 3u && st_none == 0u,
+              why);
+    }
 #endif
 }
 static void lane_c_scenarios() {
@@ -12541,6 +12815,7 @@ static void lane_c_scenarios() {
                 if (all || seed == kSeeds[0]) lane_c_print(su.tag, tf, fps, seed, r);
                 if ((all || seed == kSeeds[0]) && (su.eng || r.x12_flown)) lane_c_print_eng(su.tag, tf, seed, r);
                 if (std::getenv("X3M_C_ENGALL") && seed != kSeeds[0] && (su.eng || r.x12_flown)) lane_c_print_eng(su.tag, tf, seed, r);
+                if (su.eng) lane_c_print_rev(su.tag, tf, seed, r);
                 span_lo[tf] = std::fmin(span_lo[tf], r.span_s);
                 span_hi[tf] = std::fmax(span_hi[tf], r.span_s);
                 auto ck = [&](bool ok, const char* what) {
@@ -12566,6 +12841,9 @@ static void lane_c_scenarios() {
                         ck(r.fol_v_min >= double(gc::kYieldFloorMs), "Bx2 the follower's lane v_min >= 10 m/s");
                         ck(su.span_max_s < 0.0 || r.span_s <= su.span_max_s + 5.0 + double(r.step_max) / 1000.0,
                            "Bx2 the span within the measured maximum + 5 s + the step");
+                    } else if (su.eng == 2 && su.obst == 8) { // review of rounds A-C item 5: a small station with a failed walk on the final
+                        ck(r.obst_min_clear > 0.0 && r.obst_unsafe == 0, "Cx no contact with the station or a rock; no unsafe suppression");
+                        ck(r.watch_det > 0 && r.prof_skipped == 0, "Cx5 the members detour around a small fallback station on the final (never left to the profile)");
                     } else if (su.eng == 2) { // item C: a station / the fallback body / a rock belt on Lambda
                         ck(r.obst_min_clear > 0.0 && r.obst_unsafe == 0, "Cx no contact with the station or a rock; no unsafe suppression");
                         ck(r.span_ok, "Cx the span (the formed bound)");
@@ -12582,9 +12860,19 @@ static void lane_c_scenarios() {
                         // lane, every hold within 60 s + the step (game time; the trace's held time also counts the frame it ends on)
                         ck(r.sm_side > 0 && r.sm_launched == r.sm_n, "Dx2 the side lead-in flown, every small ship launched");
                         ck(r.sm_bv[unsigned(gc::SmallB::both_taken)] == 0, "Dx2 no D.5 both_taken on the lane");
-                        ck(r.sm_hold_s_max <= 60.0 + 2.0 * double(r.step_max) / 1000.0, "Dx2 every hold within 60 s + the step");
+                        ck(r.sm_hold_s_max <= double(gc::kSmallHoldExtMs) / 1000.0 + 2.0 * double(r.step_max) / 1000.0,
+                           "Dx2 every hold within 60 s + the step (once extended: 120 s + the step)");
+                        // review of rounds A-C item 4: no order-4 hold ends at its bound with the lead-in's end inside the warn zone of a
+                        // departing capital within 3 km of the plane (the column still passing)
+                        ck(r.sm_rel_zone == 0, "Dx4 no hold ended by its bound toward a lead-in end inside a passing capital's warn zone");
+                        // review of rounds A-C item 3: no small ship held inside a departing capital's warn zone, and none within the path
+                        // margin (w + r_small + kSmallPathMarginM) of one
+                        ck(r.sm_held_zone_min >= 0.0 && r.sm_held_clear_min >= double(gc::kSmallPathMarginM),
+                           "Dx3 no held small ship inside a capital's warn zone or its path margin");
                     } else if (su.eng == 4) { // item E: arrivals at P during the lane pass
-                        ck(r.arr_n == 2, "Ex both arrivals launched");
+                        unsigned n_arr = 0;
+                        for (unsigned q = 0; q < su.n; ++q) n_arr += su.s[q].kind == lanec::kArrive ? 1u : 0u;
+                        ck(r.arr_n == n_arr, "Ex both arrivals launched");
                         ck(r.arr_dep8_close == 0, "Ex no departing hull on order 8 within 500 m of a parked arrival");
                         ck(r.arr_overlap == 0, "Ex no two arrivals overlapping");
                         ck(r.arr_dep_gap > 0.0, "Ex no departing hull in contact with a parked arrival");
@@ -12592,6 +12880,14 @@ static void lane_c_scenarios() {
                         // a yield's stop against an arrival (the hull-fit fallback) lasts at most the arrival window + the step
                         ck(r.arr_pair_contact == 0, "Ex no member-arrival pair handed back on contact while the hull-fit holds");
                         ck(r.stop_max_s <= 60.0 + double(r.step_max) / 1000.0, "Ex a stop against an arrival within the arrival window + the step");
+                        ck(r.arr_params_bad == 0, "Ex the arrival's plant is the commit path's (gc::arrival_fill: params_from of its dynamics)");
+                        ck(r.arr_mem_gap > 0.0, "Ex no departing hull in contact with an arrival on any leg");
+                        // (the arrival's 0x1e leg and order-0 brake rolled out at its a_lin: a member whose real track clears the arrival on
+                        // those legs by 1 km is never capped for it; before the fix the 1 m/s^2 fallback coasted the arrival 7.2 km on)
+                        ck(!(r.arr53_gap > 1000.0) || r.arr53_capped_ms == 0, "Ex no member capped against an arrival braking out that its real track clears by 1 km");
+                        // review of rounds A-C item 2: every yield-stop episode site B writes ends within the bound its yield stored + the step,
+                        // and no stored bound exceeds the arrival window + the step from the stop's start (a run of arrivals included)
+                        ck(r.ystop_over == 0 && r.ystop_bound_over == 0, "Ex2 no member stop beyond its stored bound + the step (<= 60 s + the step)");
                     }
                     continue;
                 }

@@ -122,7 +122,8 @@ def by_ship(rows):
 #     lc_m=<R>,<U> (Lambda's l_c, m) v_law= (the law's speed, m/s) v_w= (site B's last lane write, m/s; na none)
 #     w=none|stop|kept|hold (that write's kind: a stop, P2's kept speed under the brake bound from P2, the order-0 hold; round A: a
 #     hand-over P2 did not keep gets no write, the `unkept` kind of lane fix round 1 is gone) on=0|1 (on Lambda) merged=0|1 (the merge's
-#     completion, the raw gap >= g_req - 50 m)
+#     completion, the raw gap >= g_req - 50 m) loop=none|leg|out|turn (round C's loop-back join after a flown 0x12: onto its out-leg,
+#     out along it to the turn point, the U-turn past it; review of rounds A-C item 9)
 #   ship_gate_ctl_merge frame= t_ms= gate= ship= pred= event=start|finish gap_m= law= dur_ms= (finish: since the start)
 #   ship_gate_ctl_rewrite frame= t_ms= gate= ship= site=a|b|adopt|miss slot= (the KC grid slot the field held; -1 none) from_m=<R>,<U>,<F>
 #     to_m=<R>,<U>,<F> (the order-4 field before and after, gate frame, m): a: site A's rewrite of a grid point to L_i; b: site B's on a

@@ -676,17 +676,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     const std::int32_t rot_pct = rds32(rec + sites::kRecordRotAccel);
     if (rot_pct <= 0) return core::Reason::no_angular_accel;
     core::Dynamics dyn;
-    dyn.W[0] = float(call_eax(sites::kGetYawCap, obj)) * core::kRadPerBinary;
-    dyn.W[1] = float(call_eax(sites::kGetPitchCap, obj)) * core::kRadPerBinary;
-    dyn.W[2] = float(call_eax(sites::kGetRollCap, obj)) * core::kRadPerBinary;
-    for (float& w : dyn.W)
-        if (w < 0.0f) w = 0.0f;
-    dyn.k = fixed16(rds32(fl + sites::kFlightRotAccel)) * float(rot_pct) * 0.01f;
-    dyn.v_max = float(call_eax(sites::kGetMaxSpeed, obj)) / core::kUnitsPerMetre;
-    dyn.a_lin = float(call_ecx(sites::kGetAccel, obj)) / core::kUnitsPerMetre;
-    if (dyn.a_lin < 0.0f) dyn.a_lin = 0.0f;
-    dyn.r_own = float(rds32(obj + sites::kObjRadius)) / core::kUnitsPerMetre;
-    dyn.large = code < core::kClassCount && ((core::kLargeMask >> code) & 1u);
+    read_dynamics(obj, fl, rot_pct, code, dyn);
     const bool capital = code < core::kClassCount && ((core::kCapitalMask >> code) & 1u); // 0x0043fd50 (class 7 checked above)
     core::Inputs in;
     for (unsigned i = 0; i < 3; ++i) in.x[i] = float(rds32(ph + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;

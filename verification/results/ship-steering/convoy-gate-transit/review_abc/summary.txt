@@ -1,0 +1,128 @@
+== arrival_cross
+  tf1  x12 1, mem_gap -1, arr_overlap 0, launched 1, span 232.2..236.3, loops 0, arr_mem 542..550, arr53_capped 0, ystop_max 0, ystop_bound 0
+  tf6  x12 1, mem_gap -1, arr_overlap 0, launched 1, span 218..221.6, loops 0, arr_mem 539..569, arr53_capped 0, ystop_max 0, ystop_bound 0
+  tf10 x12 1, mem_gap -1, arr_overlap 0, launched 1, span 219.1..231.4, loops 0, arr_mem 549..559, arr53_capped 0, ystop_max 0, ystop_bound 0
+== arrival_pass
+  tf1  x12 0, mem_gap 496..497, arr_overlap 0, launched 3, span 298.2..299, loops 0, arr_mem 467..468, arr53_capped 0, ystop_max 0.1, ystop_bound 20
+  tf6  x12 0, mem_gap 481..497, arr_overlap 0, launched 3, span 279.3..279.5, loops 0, arr_mem 467..468, arr53_capped 0, ystop_max 0..0.2, ystop_bound 0
+  tf10 x12 0, mem_gap 486..496, arr_overlap 0, launched 3, span 281.6..281.7, loops 0, arr_mem 467..473, arr53_capped 0..1.6, ystop_max 0..1, ystop_bound 0..20.3
+== arrival_pass2
+  tf1  x12 0, mem_gap 437..438, arr_overlap 0, launched 3, span 274.2..279.4, loops 0, arr_mem 591..592, arr53_capped 0, ystop_max 0, ystop_bound 0
+  tf6  x12 0, mem_gap 438..446, arr_overlap 0, launched 3, span 253.8..255.8, loops 0, arr_mem 559..583, arr53_capped 0, ystop_max 0, ystop_bound 0
+  tf10 x12 0, mem_gap 435..447, arr_overlap 0, launched 3, span 255.6..256.6, loops 0, arr_mem 565..575, arr53_capped 0, ystop_max 0, ystop_bound 0
+== before_arrival_cross
+  tf1  x12 1, mem_gap -1, arr_overlap 0, launched 1, span 220.6..224.7, loops 0, arr_mem 530..538, arr53_capped 6.8, ystop_max 0, ystop_bound 0
+  tf6  x12 1, mem_gap -1, arr_overlap 0, launched 1, span 204.8..208, loops 0, arr_mem 532..544, arr53_capped 7.8..8, ystop_max 0..0.4, ystop_bound 0..49.9
+  tf10 x12 1, mem_gap -1, arr_overlap 0, launched 1, span 206.2..208.3, loops 0, arr_mem 525..552, arr53_capped 8..9, ystop_max 0, ystop_bound 0
+  FAIL 3 arrival_cross tf10: Ex no member capped against an arrival braking out that its real track clears by 1 km
+  FAIL 3 arrival_cross tf1: Ex no member capped against an arrival braking out that its real track clears by 1 km
+  FAIL 3 arrival_cross tf6: Ex no member capped against an arrival braking out that its real track clears by 1 km
+== before_lane_fb_small
+  tf1  x12 12..15, v_min 72.2..77.8, slow_s 0, p2_not_kept 0, p2_nose 0, mem_gap -1148..-1039, launched 0, span -1, avoidable 0..1, loops 1..4, watch_det 6366..6991, skip 30173..36330, obst_clear -228..1296
+  tf6  x12 9..21, v_min 21.2..100, slow_s 0, p2_not_kept 0, p2_nose 0, mem_gap -1066..-793, launched 0, span -1, avoidable 0, loops 0..6, watch_det 617..1289, skip 1440..3305, obst_clear 522..1026
+  tf10 x12 12..18, v_min 19.9..76.6, slow_s 0, p2_not_kept 0, p2_nose 0..1.7, mem_gap -1120..-936, launched 0..1, span -1, avoidable 0, loops 2..6, watch_det 29..645, skip 1883..2755, obst_clear -595..1235
+  FAIL 2 lane_fb_small tf10: Cx no contact with the station or a rock; no unsafe suppression
+  FAIL 3 lane_fb_small tf10: Cx5 the members detour around a small fallback station on the final
+  FAIL 3 lane_fb_small tf10: Ex no contact between the departing capitals
+  FAIL 3 lane_fb_small tf10: Ex no member 0x12 episode between members
+  FAIL 3 lane_fb_small tf10: every ship launched
+  FAIL 2 lane_fb_small tf1: Cx no contact with the station or a rock; no unsafe suppression
+  FAIL 3 lane_fb_small tf1: Cx5 the members detour around a small fallback station on the final
+  FAIL 3 lane_fb_small tf1: Ex no contact between the departing capitals
+  FAIL 2 lane_fb_small tf1: Ex no member 0x12 episode between members
+  FAIL 3 lane_fb_small tf1: every ship launched
+  FAIL 3 lane_fb_small tf6: Cx5 the members detour around a small fallback station on the final
+  FAIL 3 lane_fb_small tf6: Ex no contact between the departing capitals
+  FAIL 3 lane_fb_small tf6: Ex no member 0x12 episode between members
+  FAIL 3 lane_fb_small tf6: every ship launched
+== before_small_gate
+  tf1  mem_gap 518, launched 3, span 209.8..216.9, sm_gap 45..168, sm_x12_s 0, held_clear 306..584, held_zone 32..310, rel_zone 1..2, hold_max 60
+  tf6  mem_gap 570..601, launched 3, span 189.4..189.6, sm_gap 178..269, sm_x12_s 0, held_clear 570..583, held_zone 296..309, rel_zone 0, hold_max 55.5..56.5
+  tf10 mem_gap 567..569, launched 3, span 190.5..192.7, sm_gap 295..321, sm_x12_s 0, held_clear 583..860, held_zone 309..587, rel_zone 0, hold_max 57.2..59.1
+  FAIL 3 small_gate tf1: Dx4 no hold ended by its bound toward a lead-in end inside a passing capital's warn zone
+== before_small_gate5
+  tf1  mem_gap 476..486, launched 5, span 273.1..276.3, sm_gap -211..88, sm_x12_s 8.6..73.4, held_clear 524..584, held_zone 250..310, rel_zone 1..2, hold_max 60
+  tf6  mem_gap 506..513, launched 5, span 249.6..250.3, sm_gap 49..201, sm_x12_s 3..11.8, held_clear 583..634, held_zone 309..360, rel_zone 0, hold_max 60.3..60.4
+  tf10 mem_gap 510..516, launched 5, span 251..251.9, sm_gap 8..42, sm_x12_s 7.3..30.3, held_clear 574..817, held_zone 301..543, rel_zone 0, hold_max 60.5
+  FAIL 1 small_gate5 tf1: Dx no contact with a small ship
+  FAIL 3 small_gate5 tf1: Dx4 no hold ended by its bound toward a lead-in end inside a passing capital's warn zone
+== lane_fallback
+  tf1  x12 0, v_min 41.6..70.8, slow_s 0, p2_not_kept 0, p2_nose 1..1.1, mem_gap 518, launched 3, span 209.8..216.9, avoidable 0, loops 0, watch_det 0, skip 19089..19213, obst_clear 9888
+  tf6  x12 0, v_min 74.2..75.5, slow_s 0, p2_not_kept 0, p2_nose 0.1..0.3, mem_gap 570..601, launched 3, span 189.4..189.6, avoidable 0, loops 0, watch_det 0, skip 1821..2059, obst_clear 9888
+  tf10 x12 0, v_min 73.9..77, slow_s 0, p2_not_kept 0, p2_nose 0.2..0.3, mem_gap 567..569, launched 3, span 190.5..192.7, avoidable 0, loops 0, watch_det 0, skip 1227..1298, obst_clear 9888
+== parked_arrival_parked
+  tf1  x12 3..7, mem_gap -946..-809, arr_overlap 1313, launched 0..3, span -1..643, loops 2..3, arr_mem -1059..84, arr53_capped 0..12.2, ystop_max 0..0.2, ystop_bound 0..20
+  tf6  x12 5..12, mem_gap -1111..-954, arr_overlap 89..111, launched 0..3, span -1..665.7, loops 2..4, arr_mem -397..138, arr53_capped 0.4..24.6, ystop_max 0, ystop_bound 0
+  tf10 x12 5..6, mem_gap -1116..-1049, arr_overlap 55..68, launched 2..3, span -1..974.7, loops 2..4, arr_mem -268..93, arr53_capped 0.7..1.8, ystop_max 0..2.3, ystop_bound 0..22
+  FAIL 3 arrival_parked tf10: Ex no contact between the departing capitals
+  FAIL 1 arrival_parked tf10: Ex no departing hull in contact with an arrival on any leg
+  FAIL 3 arrival_parked tf10: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf10: Ex no two arrivals overlapping
+  FAIL 1 arrival_parked tf10: every ship launched
+  FAIL 3 arrival_parked tf1: Ex no contact between the departing capitals
+  FAIL 2 arrival_parked tf1: Ex no departing hull in contact with an arrival on any leg
+  FAIL 3 arrival_parked tf1: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf1: Ex no two arrivals overlapping
+  FAIL 1 arrival_parked tf1: every ship launched
+  FAIL 1 arrival_parked tf6: Ex a stop against an arrival within the arrival window + the step
+  FAIL 3 arrival_parked tf6: Ex no contact between the departing capitals
+  FAIL 1 arrival_parked tf6: Ex no departing hull in contact with a parked arrival
+  FAIL 1 arrival_parked tf6: Ex no departing hull in contact with an arrival on any leg
+  FAIL 3 arrival_parked tf6: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf6: Ex no two arrivals overlapping
+  FAIL 1 arrival_parked tf6: every ship launched
+== parked_lane_belt
+  tf1  x12 0, v_min 73.8..77, slow_s 0, p2_not_kept 0, p2_nose 0.7..2.1, mem_gap 537, launched 3, span 227.4..229, avoidable 0, loops 0, watch_det 0, skip 0, obst_clear 757..790
+  tf6  x12 0..1, v_min 2..65.3, slow_s 0..14.6, p2_not_kept 0, p2_nose 1..5.6, mem_gap 537..540, launched 3, span 233.6..245.8, avoidable 0, loops 0, watch_det 0, skip 0, obst_clear 631..687
+  tf10 x12 0, v_min 74.1..80.1, slow_s 0, p2_not_kept 0, p2_nose 0.5..1.1, mem_gap 536..539, launched 3, span 212.7..214.2, avoidable 0, loops 0, watch_det 0, skip 0, obst_clear 761..785
+  FAIL 1 lane_belt tf6: Cx no lane braked: a member on Lambda at <= 15 m/s at most 10 s + the step
+  FAIL 3 lane_belt tf6: Cx the span
+== parked_lane_fb_small
+  tf1  x12 13..17, v_min 49.4..72.2, slow_s 0, p2_not_kept 0, p2_nose 0, mem_gap -1120..-686, launched 0, span -1, avoidable 0, loops 1..4, watch_det 19288..24235, skip 0, obst_clear 530..1426
+  tf6  x12 13..20, v_min 20.5..66.8, slow_s 0, p2_not_kept 0, p2_nose 0, mem_gap -1099..-760, launched 0, span -1, avoidable 0, loops 0..2, watch_det 1998..2355, skip 0, obst_clear 204..1068
+  tf10 x12 9..11, v_min 60.4..73.3, slow_s 0, p2_not_kept 0, p2_nose 0, mem_gap -1120..-996, launched 0, span -1, avoidable 0, loops 0..2, watch_det 1176..1203, skip 0, obst_clear 378..1045
+  FAIL 3 lane_fb_small tf10: Ex no contact between the departing capitals
+  FAIL 3 lane_fb_small tf10: Ex no member 0x12 episode between members
+  FAIL 3 lane_fb_small tf10: every ship launched
+  FAIL 3 lane_fb_small tf1: Ex no contact between the departing capitals
+  FAIL 3 lane_fb_small tf1: Ex no member 0x12 episode between members
+  FAIL 3 lane_fb_small tf1: every ship launched
+  FAIL 3 lane_fb_small tf6: Ex no contact between the departing capitals
+  FAIL 3 lane_fb_small tf6: Ex no member 0x12 episode between members
+  FAIL 3 lane_fb_small tf6: every ship launched
+== parked_lane_station
+  tf1  x12 0, v_min 48..71.8, slow_s 0, p2_not_kept 0..1, p2_nose 3.9..17.9, mem_gap 533, launched 1..3, span -1..245.6, avoidable 0..1, loops 0, watch_det 0, skip 0, obst_clear 1131..1132
+  tf6  x12 0, v_min 2..40, slow_s 0..1.4, p2_not_kept 0..1, p2_nose 4.7..15.4, mem_gap 531..533, launched 3, span 225.4..326.7, avoidable 0..1, loops 0, watch_det 0, skip 0, obst_clear 408..1148
+  tf10 x12 0..4, v_min 0..43.9, slow_s 0..19.6, p2_not_kept 0..2, p2_nose 3.1..30.2, mem_gap -623..531, launched 3, span 226.3..423.6, avoidable 0..1, loops 0, watch_det 0, skip 0, obst_clear 1146..1150
+  FAIL 1 lane_station tf10: Cx no lane braked: a member on Lambda at <= 15 m/s at most 10 s + the step
+  FAIL 2 lane_station tf10: Cx2 P2 kept within 8 deg of F
+  FAIL 2 lane_station tf10: Cx2 no avoidable eviction
+  FAIL 1 lane_station tf10: Ex no contact between the departing capitals
+  FAIL 1 lane_station tf10: Ex no member 0x12 episode between members
+  FAIL 1 lane_station tf1: Cx the span
+  FAIL 2 lane_station tf1: Cx2 P2 kept within 8 deg of F
+  FAIL 2 lane_station tf1: Cx2 no avoidable eviction
+  FAIL 1 lane_station tf1: every ship launched
+  FAIL 1 lane_station tf6: Cx the span
+  FAIL 1 lane_station tf6: Cx2 P2 kept within 8 deg of F
+  FAIL 2 lane_station tf6: Cx2 no avoidable eviction
+== small_gate
+  tf1  mem_gap 518, launched 3, span 209.8..216.9, sm_gap 134..419, sm_x12_s 0, held_clear 306..584, held_zone 32..310, rel_zone 0, hold_max 76.7..83.8
+  tf6  mem_gap 570..601, launched 3, span 189.4..189.6, sm_gap 178..269, sm_x12_s 0, held_clear 570..583, held_zone 296..309, rel_zone 0, hold_max 55.5..56.5
+  tf10 mem_gap 567..569, launched 3, span 190.5..192.7, sm_gap 295..321, sm_x12_s 0, held_clear 583..860, held_zone 309..587, rel_zone 0, hold_max 57.2..59.1
+== small_gate5
+  tf1  mem_gap 476..486, launched 5, span 273.1..276.3, sm_gap 42..347, sm_x12_s 0, held_clear 524..584, held_zone 250..310, rel_zone 0, hold_max 139.9..143.2
+  tf6  mem_gap 506..513, launched 5, span 249.6..250.3, sm_gap 170..342, sm_x12_s 0, held_clear 583..633, held_zone 309..360, rel_zone 0, hold_max 115.6..117
+  tf10 mem_gap 510..516, launched 5, span 251..251.9, sm_gap 225..371, sm_x12_s 0, held_clear 574..816, held_zone 301..543, rel_zone 0, hold_max 118..118.4
+== small_gate_m6
+  tf1  mem_gap 518, launched 3, span 209.8..216.9, sm_gap 134..257, sm_x12_s 6.8..11.6, held_clear 296..558, held_zone 17..279, rel_zone 0, hold_max 76.7..83.8
+  tf6  mem_gap 570..601, launched 3, span 189.4..189.6, sm_gap 178..328, sm_x12_s 1.4..4.2, held_clear 403..557, held_zone 125..278, rel_zone 0, hold_max 55.5..56.5
+  tf10 mem_gap 567..569, launched 3, span 190.5..192.7, sm_gap 277..321, sm_x12_s 1.7..4.3, held_clear 394..555, held_zone 116..277, rel_zone 0, hold_max 57.2..59.1
+== x12_far
+  tf1  x12 1, p2_not_kept 0, p2_nose 0.4..0.5, v_min 85.2..87, mem_gap 812..831, launched 2, span 210.9..214.8, loops 1, loop_min_s -10719..-10180, loop_bound 10964..11382
+  tf6  x12 1, p2_not_kept 0, p2_nose 0.1..0.2, v_min 86..87, mem_gap 779..812, launched 2, span 197..206.5, loops 1, loop_min_s -11347..-10502, loop_bound 11200..11828
+  tf10 x12 1, p2_not_kept 0, p2_nose 0.1, v_min 86.7..88.4, mem_gap 776..813, launched 2, span 195.2..197.7, loops 1, loop_min_s -10804..-10652, loop_bound 11377..11432
+== x12_near
+  tf1  x12 1, p2_not_kept 0, p2_nose 0.7..0.8, v_min 85.4..87.3, mem_gap 586..718, launched 2, span 217.1..223.8, loops 1, loop_min_s -8393..-8139, loop_bound 8627
+  tf6  x12 1, p2_not_kept 0, p2_nose 0.3..0.5, v_min 84.7..87, mem_gap 554..655, launched 2, span 197.6..203.6, loops 1, loop_min_s -8164..-7921, loop_bound 8627
+  tf10 x12 1, p2_not_kept 0, p2_nose 0.3, v_min 86.7..88.3, mem_gap 591..616, launched 2, span 197..198.6, loops 1, loop_min_s -8022..-7923, loop_bound 8627

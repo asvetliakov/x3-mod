@@ -135,6 +135,13 @@ inline void line_of(const Member& m, const Gate& g, float X[3], float h[3]) noex
         h[i] = m.h[i];
     }
 }
+// Review of rounds A-C item 2: what is left at m's state of its brief stop (s): to the end its yield stored (Member::stop_end_ms), else
+// kLaneStopMs + the step from its start (a candidate before the yield stores one: from the state)
+__attribute__((always_inline)) inline float lane_stop_rest_s(const Gate& g, const Member& m) noexcept {
+    const std::int32_t ms = m.stop_end_ms ? std::int32_t(m.stop_end_ms - m.st.ms)
+                                          : std::int32_t(m.stop_ms ? m.stop_ms + kLaneStopMs + g.step_ms - m.st.ms : kLaneStopMs + g.step_ms);
+    return float(ms) * 0.001f;
+}
 // moves follow its kinematics (section 10.10): 0x21 the warp-in path to f+0x240, then 0x1e; 0x1e axis-parallel out at 120 / 240 m/s
 // until |dz| > r (r / 4 for small hulls), then straight on; order 8 along +F for 0.9 s, then gone; order 0 braking along the nose at
 // a; 0x1f in place; order 5 at its speed toward f+0x240 until the order's arrival radius (|v| / 10 + r), then gone.
@@ -279,11 +286,11 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         // and the U-turn, as lane_steer flies it, never the hand-over's straight run past d_end; its law runs from its U-turn's apex, where
         // it rejoins, as lane_frame's)
         bool redep = m.redep != 0 || (m.over && !m.over_in), past = false, band = m.band != 0;
-        const float s_ov_ap = -(dend(m) + m.redep_out + kLaneOverApexR * m.redep_r);
+        const float s_ov_ap = lane_apex_s(m);
         const bool escort = m.role == Role::escort;
         const float join_end = lane_join_end(m);
         const float loop_nn = m.loop ? m.loop_n[0] * nR + m.loop_n[1] * nU : 0.0f; // (round C: the loop's side in the rollout's plane)
-        const float stop_rest = v_cmd == 0.0f ? float(std::int32_t(m.stop_ms ? m.stop_ms + kLaneStopMs + g.step_ms - m.st.ms : kLaneStopMs + g.step_ms)) * 0.001f : 0.0f;
+        const float stop_rest = v_cmd == 0.0f ? lane_stop_rest_s(g, m) : 0.0f;
         // (lane fix round 1 item 4: the law's stop episode, lane_frame's lstop_ms: what is left of T_stop + the step at the state)
         const float stop_left0 = float(std::int32_t((m.lstop_ms ? m.lstop_ms : m.st.ms) + kLaneStopMs + g.step_ms - m.st.ms)) * 0.001f;
         const float omega = m.params.W < sc::kSlipCornerRate ? m.params.W : sc::kSlipCornerRate;
@@ -363,8 +370,9 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                                        : 3.4e38f;
                     if (cx.v_pred < 0.0f) cx.v_pred = 0.0f;
                     // (lane fix round 1 item 4: an overshoot ahead turns back no farther out than its U-turn's apex: no nearer than that)
-                    const bool p_ret = (P->over || P->loop) && sp > -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r); // (round C: a loop too)
-                    const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), spp = p_ret ? s_rj : sp;
+                    const float s_rj = lane_apex_s(*P); // (review of rounds A-C item 9: a loop's apex with the order-0 gap's coast)
+                    const bool p_ret = (P->over || P->loop) && sp > s_rj; // (round C: a loop too)
+                    const float spp = p_ret ? s_rj : sp;
                     cx.gap = (spp + (p_ret ? 0.0f : (sp1 - sp) * float(step) * 0.5f) - P->L) - (cx.s + m.L);
                 }
                 cx.pred = P != nullptr && !(m.loop && redep); // (round C: a loop flies its out-leg and U-turn at the lane speed, as lane_frame)
@@ -749,7 +757,9 @@ inline Sweep sweep_seta(const Sample* sa, unsigned na, std::uint32_t a_ms, float
     return sweep_impl<0>(sa, na, a_ms, a_vmax, La, wa, sb, nb, b_ms, b_vmax, Lb, wb, min_samples, ends, drift, max_dms, axial);
 }
 // Round A (section 12.1a): whether a member's rollout moves along its own axis only, so the sweep charges its terms along it (axial above):
-// an arrival on a drift-free plan (0x21 to the exit point, 0x1e out, the order-0 brake, 0x1f in place: its lateral is the exit point's), or a
+// an arrival on a drift-free plan (0x21 to the exit point, 0x1e out, the order-0 brake: its lateral is the exit point's; review of rounds
+// A-C item 11d: plan_of gives Plan::hold to a committed member only, so an arrival on 0x1f falls to Plan::drift and is not axial, and the
+// hold term below never matches an arrival), or a
 // lane member on Lambda within kLaneOnM or past d_end (the hand-over, order 5, order 8: the lane's lateral). Anything else (a joiner, an
 // arrival given a steered order, a non-lane member): the isotropic drift as before (fail closed: the engine's warn where it does not clear).
 __attribute__((always_inline)) inline bool axial_plan(const Member& m) noexcept {
@@ -897,10 +907,29 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
 __attribute__((always_inline)) inline bool gap_yield(const Member& m) noexcept {
     return in_gap(m) && (m.role == Role::escort || (m.role == Role::committed && m.line_ok));
 }
+// Review of rounds A-C item 2: the end of Y's brief stop (game ms; 0: refused) for a yield to Pm at now, stored at the yield
+// (Member::stop_end_ms) so that the rollout flies the bound site B writes: against a committed or escort member kLaneStopMs + the step from
+// the stop's start (now for a new one); against an arrival (the hull-fit fallback, section 12.1a) the arrival's window + the step from its
+// launch, and for the member at most kArrivalWindowMs + the step from the stop's start (before: an arrival's stop was written to its window
+// while the rollout ended it at kLaneStopMs + the step, and a run of arrivals kept a member stopped one window per arrival). An episode's
+// stored end never shrinks (a later stop yield to a member inside a longer arrival stop keeps the arrival's).
+__attribute__((always_inline)) inline std::uint32_t yield_stop_end(const Gate& g, const Member& Y, const Member& Pm, std::uint32_t now) noexcept {
+    const std::uint32_t t0 = Y.stop_ms ? Y.stop_ms : now;
+    std::uint32_t end = t0 + kLaneStopMs + g.step_ms;
+    if (Pm.role == Role::arrival) {
+        end = Pm.launch_ms + kArrivalWindowMs + g.step_ms;
+        const std::uint32_t own = t0 + kArrivalWindowMs + g.step_ms;
+        if (std::int32_t(own - end) < 0) end = own;
+    }
+    if (std::int32_t(now - end) > 0) return 0;
+    if (Y.stop_ms && Y.stop_end_ms && std::int32_t(Y.stop_end_ms - end) > 0) end = Y.stop_end_ms;
+    return end ? end : 1u;
+}
 // Y's yield by speed against its conflict partner p: one candidate, one rollout (round A, rank 4; ship-steering-holistic-review.md
 // section 2 c). Under the lane: the law at its floor (10 m/s: the gap target raised past the horizon; a candidate's cap, which site B
 // applies and the rollout flies) while Y's plan speed is above the floor; else the brief stop (cap 0), which lasts at most kLaneStopMs + the
-// game step from its start, or against an arrival (the hull-fit fallback, section 12.1a) the arrival window + the step from its launch;
+// game step from its start, or against an arrival (the hull-fit fallback, section 12.1a) the arrival window + the step from its launch, at
+// most that window + the step per member episode (yield_stop_end, stored at the yield and flown by the rollout);
 // a member past the bound hands the pair back (cause=noyield). (Deviation from the design's raised-target law: measured in
 // overshoot_near, the law of a yielder whose settling gap is wide is the lane speed with any target raise, and the conflict 26 s out
 // cleared only on the floor.) Key off: the 10 m/s floor. The candidate's sweeps against every member; clearing takes it (Y's rollout,
@@ -914,10 +943,11 @@ inline bool try_yield(Gate& g, unsigned y, unsigned p, std::uint32_t now, Decide
     const float vp = plan_speed(g, Y, now), v = vp > 0.0f ? vp : Y.st.v;
     const bool lane = plan_of(Y) == Plan::lane;
     float c = kYieldFloorMs;
-    if (lane && !(c < v)) { // (the plan already at or under the floor: the stop)
-        const bool ok = Pm.role == Role::arrival ? std::int32_t(now - Pm.launch_ms) <= std::int32_t(kArrivalWindowMs + g.step_ms)
-                                                 : !Y.stop_ms || std::int32_t(now - Y.stop_ms) <= std::int32_t(kLaneStopMs + g.step_ms);
-        if (!ok) return false;
+    const std::uint32_t end_was = Y.stop_end_ms;
+    if (lane && !(c < v)) { // (the plan already at or under the floor: the stop, to the bound stored here: yield_stop_end)
+        const std::uint32_t end = yield_stop_end(g, Y, Pm, now);
+        if (!end) return false;
+        Y.stop_end_ms = end; // (the candidate's rollout flies it; restored when the candidate fails)
         c = 0.0f;
     }
     if (!(c < v || c == 0.0f)) return false;
@@ -927,7 +957,10 @@ inline bool try_yield(Gate& g, unsigned y, unsigned p, std::uint32_t now, Decide
     *swept = true;
     float vmax = 0.0f;
     const unsigned n = rollout(Y, g, c, tmp, &vmax, now);
-    if (!n || !sweep_all(g, y, tmp, n, vmax, now, false, nullptr, st, PairWhy::cert, lane)) return false;
+    if (!n || !sweep_all(g, y, tmp, n, vmax, now, false, nullptr, st, PairWhy::cert, lane)) {
+        Y.stop_end_ms = end_was;
+        return false;
+    }
     for (unsigned k = 0; k < n; ++k) Y.s[k] = tmp[k];
     Y.n = std::uint8_t(n);
     Y.roll_ms = Y.st.ms;
@@ -990,7 +1023,7 @@ inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, Pair
             A.cap_ms = now ? now : 1;
         else {
             A.cap = -1.0f;
-            A.stop_ms = 0; // lane stage 1: the brief stop is over
+            A.stop_ms = A.stop_end_ms = 0; // lane stage 1: the brief stop is over
             ++st->released;
         }
     }

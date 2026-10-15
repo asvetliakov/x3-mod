@@ -261,6 +261,14 @@ Estimated from that **[i]**:
 These pairs keep today's sphere avoidance, E's resolved set and the engine's warn. Small ships under r/3 keep the
 amendment-17 rule.
 
+**Limits of the one-candidate yield (review of rounds A–C, 2026-10-15; [convoy-gate-transit.md](convoy-gate-transit.md) §12.7).**
+Since round A a yielder gets one candidate: the 10 m/s floor while its plan speed is above it, the brief stop only once it is at or
+below it. A fast yielder whose conflict only a stop would clear is therefore handed back (`unresolved`), and the engine's warn and
+0x12 take over; the host conflict bench (24 non-lane members on a 6 km ring, 100 m/s, converging: the floor their only
+candidate) leaves 96 of 96 conflicts unresolved (measured). A committed member in its hand-over (order 0 / 0x1f after P2) cannot yield at all (`can_yield` needs the steered
+order), so against an arrival the hull-fit fallback of §12.1a is unreachable for the member at d_end: only the axial sweep can
+certify that pair, else it fails closed to the engine's warn.
+
 ### D.2 Outgoing funnel and sequencer (question 2)
 
 #### D.2.1 Disc layout

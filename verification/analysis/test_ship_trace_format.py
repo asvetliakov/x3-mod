@@ -4,6 +4,7 @@ engine model needs plus the next row as its oracle. The format string in the DLL
 verification/probe/ship_trace_rows.py are kept in step by the sample rows below (copied from the DLL's two printf
 formats with synthetic values)."""
 import unittest
+from pathlib import Path
 
 import ship_trace_rows as st
 
@@ -164,9 +165,9 @@ CTL_ROWS = [
     'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=funnel order=0x15 '
     'target=0x8e051030 p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 key=49 traced=1 st_age_ms=50 dec_age_ms=310 live=1 zx=-1800',
     'ship_gate_ctl_lane frame=905 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 lane_s=-9330 rank=1 gap_m=612 law=follow lat_m=140 '
-    'lc_m=0,-929 v_law=92.5 v_w=na w=none on=0 merged=1',
+    'lc_m=0,-929 v_law=92.5 v_w=na w=none on=0 merged=1 loop=out',
     'ship_gate_ctl_lane frame=907 t_ms=23273598 gate=0x8e051030 ship=0x8e049da0 lane_s=-9230 rank=1 gap_m=na law=gate lat_m=12 '
-    'lc_m=-3,-931 v_law=40.0 v_w=40.0 w=hold on=1 merged=1',
+    'lc_m=-3,-931 v_law=40.0 v_w=40.0 w=hold on=1 merged=1 loop=none',
     'ship_gate_ctl_rewrite frame=908 t_ms=23274000 gate=0x8e051030 ship=0x8e049da0 site=b slot=5 from_m=0,-666,-4394 to_m=0,-929,-1471',
     'ship_gate_ctl_rewrite frame=909 t_ms=23275000 gate=0x8e051030 ship=0x8e1d0090 site=miss slot=-1 from_m=310,-80,-3900 to_m=310,-80,-3900',
     'ship_gate_ctl_merge frame=906 t_ms=23280000 gate=0x8e051030 ship=0x8e049da0 pred=0x8e1d0090 event=finish gap_m=455 law=merge dur_ms=27400',
@@ -208,6 +209,9 @@ class GateTrafficRows(unittest.TestCase):
         self.assertEqual((ln['lat_m'], ln['lc_m'], ln['v_law'], ln['v_w'], ln['w'], ln['on'], ln['merged']), (140, (0, -929), 92.5, 'na', 'none', 0, 1))
         ln2 = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_lane')[1]
         self.assertEqual((ln2['gap_m'], ln2['law'], ln2['v_w'], ln2['w'], ln2['on']), ('na', 'gate', 40.0, 'hold', 1))
+        self.assertEqual((ln['loop'], ln2['loop']), ('out', 'none'))  # review of rounds A-C item 9: the loop-back join's state
+        glue = (Path(__file__).resolve().parents[2] / 'src/proxy/ship_gate_ctl_glue.cpp').read_text()
+        self.assertIn('merged=%u loop=%s', glue)  # (the DLL's row carries it)
         rw, miss = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_rewrite')  # review item 9: the per-ship order-4 point decisions
         self.assertEqual((rw['ship'], rw['site'], rw['slot'], rw['from_m'], rw['to_m']), (0x8e049da0, 'b', 5, (0, -666, -4394), (0, -929, -1471)))
         self.assertEqual((miss['site'], miss['slot'], miss['from_m'] == miss['to_m']), ('miss', -1, True))

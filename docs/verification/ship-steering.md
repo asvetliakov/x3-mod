@@ -3120,6 +3120,40 @@ after `y_lane` was made always_inline: it had gone out of line returning through
 (decisions 30,596 → 31,561 at tf 10). i686 cost not measured. Evidence: [`round_c/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_c/run.sh),
 [`round_c/bench.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_c/bench.sh).
 
+### Rounds A–C review fixes (2026-10-15, Opus 5.5; changes and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Rounds A–C review fixes", open design limits §12.7)
+
+**What changed.** Worktree `agent-a8149e66014f6f765` on main e7a7120c, one commit per group (items 1; 2; 3, 4, 7; 5; 6; 8; 9; docs). The
+arrival member's plant from the hull's dynamics (`gc::arrival_fill`, the DLL's `read_dynamics`); the brief stop's bound stored at the yield and
+flown by the rollout (`yield_stop_end`, at most 60 s + the step per member episode against arrivals); no small-ship hold inside a capital's warn
+zone or path margin (`small_inside`; `small_clear`'s closest-point sign and chord entry fixed); the hold extended once to 150 s + the step while
+the way is still taken; the enclosing-fallback rule only for a fallback body larger than 1,500 m; `lane_hand_bound` on the game step;
+`small_hold_cap` always_inline; the launch hook's decision with pair rows and charged to the next frame; `loop=` on `ship_gate_ctl_lane` and a
+loop's apex with the order-0 gap's coast. New casts `arrival_cross`, `arrival_pass2`, `small_gate5`; `lane_fb_small` parked.
+
+**Fail-before → after [m]** (3 seeds × tf 1/6/10; `review_abc/summary.txt`, the `before_*` files through the fixture's A/B switches):
+
+| Item | Before | After |
+| --- | --- | --- |
+| 1 `arrival_cross` (`X3M_C_ARR_PARAMS0=1`) | joiner capped 6.8–9.0 s in 9 of 9 against an arrival its track clears by 1,166–1,438 m | 0 s in 9 of 9; unit: rest 720 m past r_gate |
+| 2 stop bound | unit: a second arrival's window kept a stop to 210 s | refused at 60 s + the step from the stop; `arrival_pass` / `arrival_pass2` Ex2 9 of 9 each (no arrival stop occurs there) |
+| 3 held inside a zone | `small_gate` / `_m6` tf 1 seed 1: held 11 m clear, 263 m inside the zone (development run on 5cd7efb2's core) | Dx3 9 of 9 each: clearance ≥ 296 m, zone ≥ 17 m |
+| 4 hold bound (`-DX3M_SMALL_HOLD_EXT_MS=60000u`) | `small_gate5` Dx4 3 of 3 at tf 1 and a small-ship contact −211 m; `small_gate` Dx4 3 of 3 at tf 1 | 9 of 9 each; holds to 143.2 s |
+| 5 enclosing rule (`-DX3M_LANE_ENCLOSE_MIN_M=0`) | unit: a 700 m fallback body holding d_end listed; `lane_fb_small` touched in 4 of 9 | not listed; `lane_fb_small` (parked) detours 9 of 9, untouched |
+| 6 hand bound | unit: 100 m/s kept at a 2 s step | braked to 63.5 m/s |
+| 8 launch-hook rows | `test_ctl_boundary_reads`: no helper | OK |
+| 9 apex, `loop=` | unit: apex at turn point + 3 R; no field | + 3 s at the lane speed; `test_ship_trace_format` OK |
+
+**Parked casts on the final tree [m]**: `lane_station` round C's failing checks (P2 > 8° 5 of 9, avoidable eviction 6 of 9, span 2 of 9, one
+contact at tf 10); `lane_belt` span 3 of 3 at tf 6 and one member at 2 m/s (as round C's run); `arrival_parked` overlap 9 of 9, member contact
+and 0x12 9 of 9, 3 of 9 short of a launch; `lane_fb_small` members meet each other 9 of 9.
+
+**Acceptance [m]** (host x86-64, `-std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 4,378 / 0 (one of three runs on the final source failed
+only the host-timing bench check: 1,043 µs third-worst against 1 ms), full 11,725 / 0, `--capital` 6,103 / 0; unittests
+`test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 22 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143
+roots, 1,007 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Cost (`review_abc/bench.txt`, alternating
+three times): bench24 tf 10 mean 97.7–103.0 µs e7a7120c against 98.8–101.5 µs, tf 1 9.1–9.3 against 9.3 µs. Not installed; i686 cost not measured.
+Evidence: [`review_abc/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/review_abc/run.sh) → `summary.py` → `summary.txt`.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

@@ -480,6 +480,22 @@ inline float sc_max(float a, float b) noexcept {
 inline float fixed16(std::int32_t v) noexcept {
     return float(v) * (1.0f / 65536.0f);
 }
+// The plant of a ship from its engine getters and its type record (record = its row of the ship type table, code = its class code;
+// rot_pct = record+0xd0 > 0 and fl = its flight object, else k = 0): the steering decision's and the launch hook's (review of rounds A-C
+// item 1: an arrival member's JoinParams from the same read as a commit's).
+inline void read_dynamics(std::uint32_t obj, std::uint32_t fl, std::int32_t rot_pct, std::uint32_t code, core::Dynamics& dyn) noexcept {
+    dyn.W[0] = float(call_eax(sites::kGetYawCap, obj)) * core::kRadPerBinary;
+    dyn.W[1] = float(call_eax(sites::kGetPitchCap, obj)) * core::kRadPerBinary;
+    dyn.W[2] = float(call_eax(sites::kGetRollCap, obj)) * core::kRadPerBinary;
+    for (float& w : dyn.W)
+        if (w < 0.0f) w = 0.0f;
+    dyn.k = fl && rot_pct > 0 ? fixed16(rds32(fl + sites::kFlightRotAccel)) * float(rot_pct) * 0.01f : 0.0f;
+    dyn.v_max = float(call_eax(sites::kGetMaxSpeed, obj)) / core::kUnitsPerMetre;
+    dyn.a_lin = float(call_ecx(sites::kGetAccel, obj)) / core::kUnitsPerMetre;
+    if (dyn.a_lin < 0.0f) dyn.a_lin = 0.0f;
+    dyn.r_own = float(rds32(obj + sites::kObjRadius)) / core::kUnitsPerMetre;
+    dyn.large = code < core::kClassCount && ((core::kLargeMask >> code) & 1u);
+}
 // ---- step 2: the sector snapshot and the station part model ------------------
 // The walk itself is the portable ship_avoidance_walk_core.h (the fixture runs it over a synthetic sector); here it
 // reads the engine's memory directly. Census rows (--debug): at most one per sector per session.

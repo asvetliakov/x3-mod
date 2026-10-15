@@ -233,6 +233,7 @@ struct Member {
     std::uint8_t lane_ord_ok = 0;  // final review item 1: lane_ord_ms holds the joiner's sticky order moment (lane_frame's lane order)
     std::uint32_t lane_ord_ms = 0; // (game ms: now + its score when last taken)
     std::uint32_t lane_pred = 0, merge_ms = 0, stop_ms = 0;
+    std::uint32_t stop_end_ms = 0; // review of rounds A-C item 2: the brief stop's end the yield stored (game ms; 0 none): rollout, site B
     std::uint32_t lane_free_ms = 0, lane_gate_ms = 0; // the head's slot free moment; an escort's gate moment (game ms, 0 none)
     float lane_s = 0, lane_gap = 3.4e38f, lane_eta = 0, lane_lat = 0;
     // review item 2 (lane_defer_step): the game clock of the last deferral write and the deferred value site B wrote over f+0x210, the
@@ -700,6 +701,35 @@ inline void escort_fill(Member& m, std::uint32_t leader, const sc::Inputs& in, c
     params_from(m.params, dyn, r_gate);
     m.line_ok = 0;
     if (!m.st.ms) state_from(m.st, in, leader, now);
+}
+// An arrival member's fill at the launch hook (D.4; round A, section 12.1a): the hull, the plant parameters of its type (params_from, as
+// a commit's: the 0x1e leg's order-0 brake rolls out at the hull's a_lin; with JoinParams{} it rolled out at the 1 m/s^2 fallback, 7.2 km
+// of coast from 120 m/s against the ~720 m of a capital's ~10 m/s^2, ship-navigation-ai.md section 10.14 Q5) and its state on 0x21: at x,
+// the order's point P, the nose out of the gate face (the launch's 180 deg yaw: rows -R, U, -F). The DLL's launch hook and the fixture's
+// launch model both fill through here (review of rounds A-C item 1: the fixture filled a_lin itself and masked the DLL's zero).
+inline void arrival_fill(Member& m, const sc::Dynamics& dyn, float w, float l, float r_gate, const float x[3], const float P[3], const float R[3],
+                         const float U[3], const float F[3], std::uint32_t gate, std::uint32_t now) noexcept {
+    m.launch_ms = now ? now : 1;
+    hull_from(m, dyn.r_own, w, l);
+    m.large = 1;
+    m.line_ok = 0;
+    m.leader = 0;
+    params_from(m.params, dyn, r_gate);
+    m.cap = -1.0f;
+    State& st = m.st;
+    st = State{};
+    st.ms = now ? now : 1;
+    st.order = sc::kOrderWarpIn;
+    st.target = gate;
+    for (unsigned i = 0; i < 3; ++i) {
+        st.x[i] = x[i];
+        st.point[i] = P[i];
+        st.rows[0][i] = -R[i];
+        st.rows[1][i] = U[i];
+        st.rows[2][i] = -F[i];
+    }
+    st.f_ok = 1;
+    st.left_ms = 900;
 }
 // The role's validity from the live order and target (D.1), read at site B every kStateMs: Why::count = the role holds; else why it
 // ends (0x12 is the caller's: eviction). A committed member keeps its role to its gate on order 4 / 5 with a commit refresh within

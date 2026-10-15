@@ -1435,6 +1435,85 @@ disabled the base's counts return); its cost alternating base / tree three times
 warnings, `check_no_x87.py` PASS (143 roots, 1,005 reachable, 0 violations; the rollout's `y_lane` lambda went out of line with a float
 return through st(0) until marked always_inline), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20.
 
+### Rounds A–C review fixes (2026-10-15, Opus 5.5; each item with a check that fails before it where one is possible)
+
+Worktree `agent-a8149e66014f6f765` on main e7a7120c (rounds A–C merged), one commit per group. Units: `ship_gate_board_core.h`
+(`arrival_fill`, `Member::stop_end_ms`), `ship_gate_certificate_core.h` (`yield_stop_end`, `lane_stop_rest_s`, the apex), `ship_gate_arrival_core.h`
+(`small_inside`, `small_clear`, the hold's extension), `ship_gate_geometry_core.h` (the enclosing rule), `ship_gate_lane_core.h` (`lane_hand_bound`,
+`lane_apex_s`, `lane_loop_state`), `ship_gate_ctl_glue.cpp` (the launch hook), `ship_steering_internal.h` / `ship_steering_decide.cpp`
+(`read_dynamics`), the fixture, `ship_trace_rows.py` and two unittests. Every figure **[m]** from
+[`review_abc/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/review_abc/run.sh) (`summary.txt`, `lane.txt`, `bench.txt`, the
+`before_*` files through the fixture's A/B switches) unless marked **[i]**.
+
+1. **The arrival's plant.** The launch hook filled the arrival member with `JoinParams{}`: a_lin 0, so the 0x1e leg's order-0 brake rolled out at
+   the 1 m/s² fallback (7.2 km of coast against ~720 m at a Titan's 10 m/s²), while the fixture filled the true a_lin and masked it.
+   `gc::arrival_fill` now fills the hull, the plant through `params_from` (the commit path's) and the 0x21 state; the DLL reads the plant with
+   `read_dynamics` (the getters `decide()` uses, now shared), the fixture's launch model fills through the same function (`X3M_C_ARR_PARAMS0=1`
+   restores the hook's old fill). Checks: unit `ctl arrival fill` (rest 720 m past r_gate; `JoinParams{}` > 3 km on); `Ex the arrival's plant
+   is the commit path's`; new cast `arrival_cross` (a joiner from 3.5 km above the column crossing the arrival's line ~1 km beyond its real rest
+   point while it rests): member capped against the braking arrival 0 s in 9 of 9 (before: 6.8–9.0 s in 9 of 9 with its real track 1,166–1,438 m
+   clear: `Ex no member capped against an arrival braking out that its real track clears by 1 km`).
+2. **The stop's bound stored at the yield.** `yield_stop_end` computes the stop's end once (against a member kLaneStopMs + the step from the stop's
+   start; against an arrival its window + the step from its launch, at most 60 s + the step from the member's stop start; an episode's end never
+   shrinks), `Member::stop_end_ms` keeps it, the rollout flies it (`lane_stop_rest_s`; before, 20 s + the step whatever the yield allowed) and site
+   B's stop write ends at it. Checks: unit `ctl stop bound` (fails on the old rule: a second arrival 50 s later allowed the stop to 210 s);
+   `Ex2 no member stop beyond its stored bound + the step (<= 60 s + the step)` on `arrival_pass` and the new `arrival_pass2` (arrivals 35 s
+   apart; 15 s apart the arrivals overlap: §12.1b's fan). No arrival stop occurs in either cast (yield stops 0–1.0 s, bounds 0–20.3 s: member
+   stops), so the casts guard and the unit fails before.
+3. **No hold inside a zone.** A small ship on order 5 was held where it stood inside a capital's warn zone (the order-4 path refused it; `f_in` was
+   computed and unused). `small_inside` (the warn zone 1.2 (w + r) + 150 m or the path margin w + r + 200 m) refuses the hold on order 5 (the edge is
+   written and the ship goes on) and on order 4; `f_in` 0 refuses it too. Two defects in `small_clear` the rule needed were fixed: the closest
+   point's sign (it took the segment's start whenever the line's closest point lay beyond its end) and the chord's entry (computed from the clamped
+   point). Check `Dx3 no held small ship inside a capital's warn zone or its path margin` (live laterals of the departing capitals in front of the
+   plane): `small_gate` / `small_gate_m6` held clearance ≥ 296 m, zone ≥ 17 m in 9 of 9 each (before, on 5cd7efb2's core during development
+   **[m]**, not in run.sh: 11 m and −263 m at tf 1 seed 1 in both). Unit: D.5 from X_s (760 m from the Titan's column, inside its 891 m zone)
+   gives `edge`, from (0.68 r, −0.3 r) `hold`.
+4. **The hold's bound with the convoy still passing.** At its 60 s + the step bound the hold now re-tests the way (the decision's own test) and is
+   extended once to 150 s + the step while it is taken; a way free at or after the bound ends the holds for good. Deviation: the brief's 120 s did
+   not cover the new five-capital cast at tf 1 (the trader held from 143.5 s, the last launch at 283.7 s: released at 120 s with the fifth capital
+   2.4 km out, its lead-in end inside that capital's zone). Check `Dx4 no hold ended by its bound toward a lead-in end inside a passing
+   capital's warn zone` (departing capitals within 3 km of the plane); new cast `small_gate5` (Titan, M1, Titan, M1, Titan, two TS escorts, a TS
+   trader; the through slot refused 140–160 s): 9 of 9 green, holds to 139.9–143.2 s at tf 1, 115.6–118.4 s under SETA, closest small pair 42 m
+   (before, `-DX3M_SMALL_HOLD_EXT_MS=60000u`: Dx4 3 of 3 at tf 1 and a small-ship contact −211 m; `small_gate` Dx4 3 of 3 at tf 1). The `Dx2`
+   hold bound is 150 s + the step.
+5. **The enclosing-fallback rule takes size into account.** Only a fallback body whose detour sphere exceeds kLaneProfMaxM (1,500 m) is listed
+   (`X3M_LANE_ENCLOSE_MIN_M=0` restores the old rule). Unit `round B profile units`: a station with a 2 km bounding sphere holding d_end (fallback
+   body 700 m) is not listed (fails before). Cast `lane_fb_small` (that station on Λ 3.8 km out) **parked**: the members detour around it in 9
+   of 9 and never touch it (before: left to the profile on 1,440–36,330 member frames, touched in 4 of 9 to −595 m), but a body on the final is
+   `lane_station`'s class: the detoured members meet each other (9 of 9, to −1,120 m) and launch none. `lane_fallback` unchanged (its 5,250 m body
+   still listed; rows identical).
+6. **`lane_hand_bound` takes the game step.** The room loses v times the step (clamped to 5 s, 100 ms the floor) instead of v × 0.1 s. Unit: 2.6 km
+   out at 100 m/s and 2 m/s² the speed stands at a 17 ms step and is braked to 63.5 m/s at a 2 s step (before: 100 m/s at both). One run's row
+   changed (`formed_m7` tf 6 seed 1: span 183.9 → 184.7 s).
+7. **x87.** `small_hold_cap` is `always_inline`; the rounds' and this review's other float-returning helpers on hook paths already were
+   (`lane_stop_rest_s`, `lane_apex_ext`, `lane_apex_s` added so). `check_no_x87.py` PASS: 143 roots, 1,007 reachable, 0 violations.
+8. **The launch hook's decision.** Its pair verdicts now produce rows (`ctl_pair_rows_of`, ctl_frame's own helper, board only); its time goes to
+   `ctl_decide_max`, and its time, rollouts and count are charged to the next `ctl_frame` (the 1 ms ceiling, the rollout budget,
+   `ctl_frame_max_us` / `_decisions`; the first regular decision still runs). Check: `test_ctl_boundary_reads` (the hook's rows and charge; the
+   helper reads nothing). DLL glue: no host run.
+9. **Round C's loop in flight and its apex.** `ship_gate_ctl_lane` carries `loop=none|leg|out|turn` (`lane_loop_state`; `ship_trace_rows.py`,
+   `test_ship_trace_format` bound to the DLL's format string). A loop's U-turn apex (`lane_apex_s`: the law's s while it re-departs, a follower's
+   block, the loop's room against the statics) allows the script's order-0 gap's straight coast, 3 s at the lane speed, beyond the turn point +
+   3 R (round C measured 66 m beyond it in x12_near at tf 1). Unit `round C units (review A-C item 9)`. `x12_near` / `x12_far` 9 of 9 each,
+   their merge maxima 3.1–3.3 s shorter at seed 1, spans unchanged.
+10. **The parked casts on the final tree** (`review_abc/parked_<cast>.txt`, 3 seeds × tf 1 / 6 / 10):
+
+| Cast | Final tree |
+| --- | --- |
+| `lane_station` | P2 not kept or > 8° in 5 of 9 (to 30.2°), an avoidable eviction in 6 of 9, the span over the bound in 2 of 9 (tf 1, tf 6), a member on Λ ≤ 15 m/s beyond 10 s in 1 of 9 (tf 10), one run short of a launch (tf 1), one member contact and member 0x12 (tf 10, −623 m) |
+| `lane_belt` | span over the formed bound in 3 of 3 at tf 6 (233.6–245.8 s) and a member on Λ at 2 m/s beyond 10 s in 1 of 3 (tf 6); tf 1 / 10 green; no contact (rocks ≥ 631 m) |
+| `arrival_parked` | the arrivals overlap in 9 of 9, member contact and member 0x12 in 9 of 9 (to −1,116 m), 3 of 9 short of a launch; the new `Ex ... an arrival on any leg` fails in 4 of 9 (to −1,059 m) |
+| `lane_fb_small` (new) | above (item 5) |
+
+Round B's "lane_belt stays at 71b1536d's 1 of 9" no longer holds on the merged tree: round C's parked run already shows the span over the
+bound in 3 of 3 at tf 6 and the member at 2 m/s (`round_c/summary.txt`), identical here; `lane_station`'s failing checks are round C's.
+
+**Acceptance [m]** (host x86-64, `c++ -std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 4,378 / 0 (one further run failed only the host-timing bench check, 1,043 µs third-worst at tf 10 against the 1 ms ceiling), full 11,725 / 0, `--capital` 6,103 / 0;
+`test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 22 tests OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS
+(143 roots, 1,007 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Cost (`bench.txt`, alternating
+e7a7120c and the tree three times): bench24 tf 10 mean 97.7–103.0 µs base against 98.8–101.5 µs, tf 1 9.1–9.3 against 9.3 µs. i686 cost not
+measured.
+
 ### Open
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
@@ -1488,9 +1567,8 @@ return through st(0) until marked always_inline), `verify_ship_steering_sites.py
   `engine_paths/run.sh`):
   * **B** (`x12_near`, `x12_far`): after a flown eviction the re-issued member's re-departure reaches its final off it (P2 not kept or above
     8° in 2 and 5 of 9 runs), and its rejoin ahead of a follower leaves that pair uncertified (a second, member 0x12 in 2 of 9). Un-parked
-    in round C (above). Left: the U-turn can exceed kLaneOverApexR R by the script's order-0 gap (66 m measured), which the law's apex and
-    a follower's s_rj do not count; no row names the loop (`ship_gate_ctl_lane` shows it only through lane_s / lat); without a fresh
-    profile (no snapshot of the sector) no loop is flown, today's join then.
+    in round C (above). The apex's order-0 overrun and the row (`loop=`) are the review's item 9 (above). Left: without a fresh profile
+    (no snapshot of the sector) no loop is flown, today's join then.
   * **C** (`lane_station`, `lane_fallback`, `lane_belt`): the module's sphere detour (§1 rows 5 / 11 of the holistic review) — spans over the
     formed bound, a fallback body detouring the lane ~5 km off Λ with P2 never kept and an order-5 pass outside the trigger; the lane-aware
     lateral shift (holistic rank 7) is the fix to try.
@@ -1834,3 +1912,46 @@ per gate), 0 member 0x12 against a static or an arrival, and the span against th
 or a flight row. (ii) Q5's hold times (a flight row). (iii) The part-walk failure of Mayhem's hollow bases (a part census). (iv) The arc-edge
 margins per census pair (the fixture). (v) The loop-back's span cost (the fixture). (vi) i686 cost of the static scan (the flight's
 `ctl_frame_us_max`).
+
+### 12.7 Open after the review of rounds A–C (2026-10-15)
+
+Design limits the review named; none is changed by its fixes (§11 "Rounds A–C review fixes"). Figures **[m]** from the host fixture unless
+marked **[i]**.
+
+**(a) One candidate: a fast yielder's stop is unreachable.** Round A gives a yielder one candidate: the 10 m/s floor while its plan speed is
+above the floor, the brief stop (cap 0) only once the plan is already at or below 10 m/s (`try_yield`). A conflict that only a stop clears,
+against a yielder still above the floor, therefore gets no candidate that clears: the pair is handed back (`unresolved`, cause=contact) and
+site E passes, so the engine's warn and its 0x12 take over — the eviction the lane exists to avoid. The host conflict bench (24 committed
+members on a 6 km ring at 100 m/s, converging; not lane members, so the floor is their only candidate; `ctl cost (host) ... in conflict`,
+the full run) shows the same shape: 96 conflicts, 0 yields, 96 unresolved over 24 decisions **[m]**; no lane cast measures how often a lane
+conflict ends this way. A second candidate (the stop after the
+floor fails, at most one more rollout per conflict, inside kMaxRolloutsPerDecision 3) is the design item; its cost is one rollout and up to 23
+sweeps per such conflict.
+
+**(b) A hand-over member cannot yield to an arrival.** `can_yield` needs the steered order; a committed member in its hand-over is on order
+0 / 0x1f after P2 (`Plan::lane`, `handover_ms`), so `try_yield` returns before any candidate. §12.1a's hull-fit fallback (the arrival-window
+stop) is therefore unreachable for the member at d_end, which is the pair round A set out to certify: only the axial sweep (the arrival's
+terms along F, the member's on Λ past d_end) can certify it; a hull pair that fails that fit is handed back and the engine's warn evicts the
+member as before. No cast exercises hulls that fail the fit (`arrival_pass`'s Titans clear the exit point's lateral by 467–473 m **[m]**,
+`review_abc/arrival_pass.txt`); a cast with a wider arrival on a 1,105 m gate, and the decision whether site B may brake a hand-over for an
+arrival (a write on order 0 the KC does not expect), are open.
+
+**(c) The kept hand-over's rollout and site B diverge.** The rollout keeps a kept hand-over at its held speed (round A item 3: the grant
+predicted) while site B writes `lane_hand_bound`, which brakes it at a toward a stop outside the trigger sphere when the poll would not fit.
+The predicted position then runs ahead of the flown one by ½ a t²; the sweep's drift allowance is k t with k = kDriftMs 10 m/s, so the
+prediction leaves the allowance after t = 2 k / a = 2 s at a = 10 m/s² **[i]**. The prediction is never used that long: each decision
+(kDecideMs 200 ms, the frame budget's 4 per member per game second) re-rolls from the live state, which carries site B's braked speed, and
+site E takes a verdict at most kCertMaxAgeMs 250 ms + the step old. At a normal step the divergence over a verdict's life is ½ · 10 ·
+0.27² = 0.4 m against k · 0.27 = 2.7 m **[i]**; at a 2 s SETA step 25 m against 22.5 m, 2.8 m over the allowance, and only while site B
+is braking (the poll short of the trigger) **[i]**. The refresh carries it at normal steps; under SETA the excess is the step's, as for
+every member (the margin's step term, B.3).
+
+**(d)** `axial_plan`'s comment named 0x1f for an arrival; `plan_of` gives `Plan::hold` to a committed member only, so an arrival on 0x1f
+is `Plan::drift` (not axial, the isotropic terms) and the hold term never matches an arrival. The comment is corrected; the code is
+unchanged.
+
+**(e) The small-ship hold's extension is a bound, not a solution.** Item 4 extends a hold once, to 150 s + the step, while the way is still
+taken at its 60 s bound; a convoy whose pass from the small ship's first hold takes longer (more than five capitals, or a longer refusal)
+still releases it toward a lead-in end inside a passing capital's zone (**[m]**, the trace of `small_gate5` at tf 1 with a 120 s bound: the trader held from 143.5 s, the column's last launch at 283.7 s, released
+at 263.5 s with the fifth capital 2.4 km out, its lead-in end inside that capital's zone; 150 s covers the cast's 140–143 s). A side line outside the column's warn zone (X_s at 0.68 r lies 757 m
+from Λ against a Titan's 891 m zone) or a re-route to the free side at the bound is the later item.

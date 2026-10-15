@@ -56,6 +56,7 @@ struct MemberRow {
     // none) with its kind, on Lambda, merged
     float lat, lc[2], v_law, v_w;
     std::uint8_t w_kind, on, merged;
+    std::uint8_t loop; // review of rounds A-C item 9: the loop-back join (gc::lane_loop_state: none, leg, out, turn)
 };
 MemberRow member_rows_[32];
 std::atomic<std::uint32_t> member_row_write_{0};
@@ -65,6 +66,40 @@ static_assert(pow2(sizeof ctl_rows_ / sizeof ctl_rows_[0]) && pow2(sizeof ctl_pa
                   pow2(sizeof launch_rows_ / sizeof launch_rows_[0]) &&
                   pow2(sizeof member_rows_ / sizeof member_rows_[0]),
               "masked rings are powers of two");
+// Review of rounds A-C item 8: the launch hook's decisions (outside ctl_frame) charged to the next frame: their measured time against the
+// 1 ms ceiling and the frame's figures, their rollouts against the frame's budget, their count in its decisions
+std::uint64_t launch_pend_ticks_ = 0;
+unsigned launch_pend_decisions_ = 0, launch_pend_rollouts_ = 0;
+// The pair rows (--debug) of member i's row of the matrix after its decision (ctl_frame's, and the launch hook's first decision of an
+// arrival; review of rounds A-C item 8: before, the hook's verdicts produced no row, and an "unresolved" there that the next decision
+// cleared stayed invisible): a row when a pair's verdict differs from the last one logged, at most once per pair per second; the edges worth
+// a row are into or out of a hand-back and a certificate lost (clear -> none); a first certificate (none -> clear) is recorded silently.
+// Reads the board only.
+void ctl_pair_rows_of(gc::Gate& g, unsigned i, std::uint32_t now) noexcept {
+    const gc::Member& m = g.m[i];
+    for (unsigned j = 0; j < g.n; ++j) {
+        if (j == i || g.v[i][j] == g.logged[i][j] || (g.logged_ms[i][j] && now - g.logged_ms[i][j] < 1000)) continue;
+        const std::uint8_t unres = std::uint8_t(gc::PairV::unresolved), clear = std::uint8_t(gc::PairV::clear);
+        if (g.v[i][j] == clear && g.logged[i][j] != unres) {
+            g.logged[i][j] = g.logged[j][i] = clear;
+            continue;
+        }
+        const std::uint32_t w = ctl_pair_write_.load(std::memory_order_relaxed);
+        if (w - ctl_pair_read_ >= 64) {
+            row_dropped(Drop::ctl_pair);
+            break;
+        }
+        const gc::Member& b = g.m[j];
+        const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
+        const std::uint8_t y = m.cap >= 0.0f && m.yield_ms == now ? 1 : b.cap >= 0.0f && b.yield_ms == now ? 2 : 0;
+        ctl_pair_rows_[w & 63] = CtlPairRow{g.gate, m.ship, b.ship, now, m.seq, b.seq, g.v[i][j], g.logged[i][j], g.tc[i][j], y,
+                                            std::uint8_t(gc::rank(m)), std::uint8_t(gc::rank(b)), 0, 0, g.why[i][j],
+                                            y == 1 ? m.cap : y == 2 ? b.cap : -1.0f, core::sqrt_ss(core::dot3(dx, dx)), gc::pair_gap(g, i, j)};
+        ctl_pair_write_.store(w + 1, std::memory_order_release);
+        g.logged[i][j] = g.logged[j][i] = g.v[i][j];
+        g.logged_ms[i][j] = g.logged_ms[j][i] = now ? now : 1;
+    }
+}
 inline gc::Member* ctl_enter(gc::Gate& g, std::uint32_t obj, std::uint32_t id, gc::Role role, gc::Why why, std::uint32_t now) noexcept {
     gc::Role before = gc::Role::count;
     gc::Member* m = gc::enter(ctl_, g, obj, id, role, now, &before);
@@ -278,35 +313,30 @@ extern "C" void __cdecl x3m_ship_gate_arrival(std::uint32_t obj, std::uint32_t g
     if (capital && g) {
         gc::Member* m = ctl_enter(*g, obj, id, gc::Role::arrival, gc::Why::arrival, now);
         if (m) {
-            m->launch_ms = now ? now : 1;
-            m->r = r;
-            m->w = w;
-            m->L = l;
-            m->large = 1;
-            m->line_ok = 0;
-            m->leader = 0;
-            m->params = core::JoinParams{};
-            m->params.r_gate = r_gate;
-            m->cap = -1.0f;
-            gc::State& st = m->st;
-            st = gc::State{};
-            st.ms = now ? now : 1;
-            st.order = core::kOrderWarpIn;
-            st.target = gate;
-            for (unsigned i = 0; i < 3; ++i) { // facing out of the gate face (the launch's 180 deg yaw): rows (-R, U, -F)
-                st.x[i] = st.point[i] = P[i];
-                st.rows[0][i] = -R[i];
-                st.rows[1][i] = U[i];
-                st.rows[2][i] = -F[i];
-            }
-            st.f_ok = 1;
-            st.left_ms = 900;
+            // review of rounds A-C item 1: the plant from the same read as a commit's (gc::params_from through gc::arrival_fill), so the
+            // 0x1e leg's order-0 brake rolls out at the hull's a_lin (before: JoinParams{}, the 1 m/s^2 fallback); the state at P facing
+            // out of the gate face
+            core::Dynamics dyn;
+            const std::int32_t rot_pct = table && stype >= 0 ? rds32(table + std::uint32_t(stype) * sites::kRecordStride + sites::kRecordRotAccel) : 0;
+            read_dynamics(obj, rd32(obj + sites::kObjFlight), rot_pct, code, dyn);
+            dyn.r_own = r;
+            gc::arrival_fill(*m, dyn, w, l, r_gate, P, P, R, U, F, gate, now);
             // round A (convoy-gate-transit.md section 12.1a): the arrival's first decision at the launch itself (its rollout on 0x21 and the
             // sweeps against the board), so a departing member's site E verdict against it on the launch frame finds the pair certified
             // or handed back, never without a rollout (cause=zero: measured at a SETA step in the fixture's arrival_pass, the leader's
             // eviction 0.4 s after the launch). One rollout and up to 23 sweeps once per capital launch
             gc::DecideStats ds;
+            const std::uint64_t td = timing_ || ctl_ceiling_ticks_ ? qpc() : 0;
             gc::decide(*g, unsigned(m - g->m), now, &ds, nullptr, nullptr);
+            if (td) { // review of rounds A-C item 8: the decision's time in ctl_decide_max and charged to the next frame (ctl_frame)
+                const std::uint64_t dt = qpc() - td;
+                const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
+                if (timing_ && ticks > ctl_decide_max_ticks_) ctl_decide_max_ticks_ = ticks;
+                launch_pend_ticks_ += dt;
+            }
+            ++launch_pend_decisions_;
+            launch_pend_rollouts_ += ds.rollouts;
+            if (debug_) ctl_pair_rows_of(*g, unsigned(m - g->m), now); // (its verdicts' rows, as a frame decision's)
             ctl_decisions_.add();
             ctl_rollouts_.add(ds.rollouts);
             ctl_sweeps_.add(ds.sweeps);
@@ -398,6 +428,7 @@ void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcep
         r.w_kind = m.sb_wk;
         r.on = m.lane_on;
         r.merged = m.merge_done;
+        r.loop = std::uint8_t(gc::lane_loop_state(m));
         member_row_write_.store(w + 1, std::memory_order_release);
     }
 }
@@ -527,8 +558,15 @@ void ctl_frame() noexcept {
     ctl_live_prove(now);            // B.5
     lane_frame_all(now);
     ctl_live_leaves(now);
-    const std::uint64_t t0 = timing_ || ctl_ceiling_ticks_ ? qpc() : 0;
+    std::uint64_t t0 = timing_ || ctl_ceiling_ticks_ ? qpc() : 0;
     unsigned done = 0, rollouts = 0;
+    // review of rounds A-C item 8: the launch hook's decisions since the last frame count against this one (their time against the ceiling,
+    // their rollouts against the budget); the first regular decision still runs (frame_room's), so the funnel's occupants are decided
+    const unsigned launch_dec = launch_pend_decisions_;
+    if (t0 && launch_pend_ticks_ < t0) t0 -= launch_pend_ticks_;
+    rollouts = launch_pend_rollouts_;
+    launch_pend_ticks_ = 0;
+    launch_pend_decisions_ = launch_pend_rollouts_ = 0;
     // review F2: the funnel's occupants first (their decision stamps keep the occupancy), then the round robin (gc::decide_order)
     std::uint16_t order[gc::kGates * gc::kMembers];
     unsigned n_prio = 0;
@@ -543,7 +581,6 @@ void ctl_frame() noexcept {
         const unsigned k = order[q];
         gc::Gate& g = ctl_.g[k / gc::kMembers];
         const unsigned i = k % gc::kMembers;
-        gc::Member& m = g.m[i];
         const std::uint64_t td = timing_ ? qpc() : 0;
         gc::DecideStats st;
         gc::decide(g, i, now, &st, nullptr, nullptr);
@@ -563,38 +600,14 @@ void ctl_frame() noexcept {
         if (st.released) ctl_released_.add(st.released);
         if (q >= n_prio) ctl_cursor_ = k + 1;
         ++done;
-        if (!debug_) continue;
-        for (unsigned j = 0; j < g.n; ++j) {
-            if (j == i || g.v[i][j] == g.logged[i][j] || (g.logged_ms[i][j] && now - g.logged_ms[i][j] < 1000)) continue;
-            // the edges worth a row: into or out of a hand-back, and a certificate lost (clear -> none); a first certificate (none ->
-            // clear) is recorded silently (a member's first decision would otherwise write a row per partner)
-            const std::uint8_t unres = std::uint8_t(gc::PairV::unresolved), clear = std::uint8_t(gc::PairV::clear);
-            if (g.v[i][j] == clear && g.logged[i][j] != unres) {
-                g.logged[i][j] = g.logged[j][i] = clear;
-                continue;
-            }
-            const std::uint32_t w = ctl_pair_write_.load(std::memory_order_relaxed);
-            if (w - ctl_pair_read_ >= 64) {
-                row_dropped(Drop::ctl_pair);
-                break;
-            }
-            const gc::Member& b = g.m[j];
-            const float dx[3] = {m.st.x[0] - b.st.x[0], m.st.x[1] - b.st.x[1], m.st.x[2] - b.st.x[2]};
-            const std::uint8_t y = m.cap >= 0.0f && m.yield_ms == now ? 1 : b.cap >= 0.0f && b.yield_ms == now ? 2 : 0;
-            ctl_pair_rows_[w & 63] = CtlPairRow{g.gate, m.ship, b.ship, now, m.seq, b.seq, g.v[i][j], g.logged[i][j], g.tc[i][j], y,
-                                                std::uint8_t(gc::rank(m)), std::uint8_t(gc::rank(b)), 0, 0, g.why[i][j],
-                                                y == 1 ? m.cap : y == 2 ? b.cap : -1.0f, core::sqrt_ss(core::dot3(dx, dx)), gc::pair_gap(g, i, j)};
-            ctl_pair_write_.store(w + 1, std::memory_order_release);
-            g.logged[i][j] = g.logged[j][i] = g.v[i][j];
-            g.logged_ms[i][j] = g.logged_ms[j][i] = now ? now : 1;
-        }
+        if (debug_) ctl_pair_rows_of(g, i, now);
     }
-    if (timing_ && done) {
+    if (timing_ && (done || launch_dec)) {
         const std::uint64_t dt = qpc() - t0;
         const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
         if (ticks > ctl_frame_max_ticks_) ctl_frame_max_ticks_ = ticks;
     }
-    if (done > ctl_frame_max_decisions_) ctl_frame_max_decisions_ = done;
+    if (done + launch_dec > ctl_frame_max_decisions_) ctl_frame_max_decisions_ = done + launch_dec;
     live_set_.clear(); // B.5: the next update fills the next frame's set
     if (now - arr_ix_rebuilt_ms_ >= 1000) { // the arrival bitmap keeps only the records of the last 60 s
         arr_ix_rebuilt_ms_ = now;
@@ -644,10 +657,10 @@ void ctl_rows(unsigned long long frame) noexcept {
             if (r.gap > -1e30f) std::snprintf(gap, sizeof gap, "%.0f", double(r.gap));
             if (r.v_w >= 0.0f) std::snprintf(vw, sizeof vw, "%.1f", double(r.v_w));
             x3m::log("ship_gate_ctl_lane frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx lane_s=%.0f rank=%u gap_m=%s law=%s lat_m=%.0f "
-                     "lc_m=%.0f,%.0f v_law=%.1f v_w=%s w=%s on=%u merged=%u", frame,
+                     "lc_m=%.0f,%.0f v_law=%.1f v_w=%s w=%s on=%u merged=%u loop=%s", frame,
                      static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship), double(r.lane_s),
                      unsigned(r.rank), gap, gc::law_name(gc::Law(r.law)), double(r.lat), double(r.lc[0]), double(r.lc[1]), double(r.v_law), vw,
-                     gc::lane_write_name(gc::LaneWrite(r.w_kind)), unsigned(r.on), unsigned(r.merged));
+                     gc::lane_write_name(gc::LaneWrite(r.w_kind)), unsigned(r.on), unsigned(r.merged), gc::lane_loop_name(r.loop));
         }
     }
     for (std::uint32_t w = merge_row_write_.load(std::memory_order_acquire); merge_row_read_ != w; ++merge_row_read_) { // lane stage 1

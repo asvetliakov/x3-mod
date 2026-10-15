@@ -521,6 +521,14 @@ constexpr unsigned kLaneProfScan = 64;            // bodies one build takes (mor
 // lane_station has no feasible shift (its 929 m clearance cannot ramp back at 15 deg before the blend: 133 m short at the 50 m margin);
 // convoy-gate-transit.md section 11 "Round B". The enclosing-fallback rule is on.
 constexpr bool kLaneProfShiftOn = false;
+// Review of rounds A-C item 5: the enclosing-fallback rule takes only a fallback body the lane could not detour around within its largest
+// shift (the module's fallback sphere's radius above kLaneProfMaxM): a small station whose part walk failed and whose bounding sphere holds
+// d_end (a 700 m fallback body on the final) keeps the members' sphere detour (before: listed for every member, no detour, the engine's
+// warn the only backstop). (X3M_LANE_ENCLOSE_MIN_M: the fixture's A/B; 0 is the behaviour before.)
+#ifndef X3M_LANE_ENCLOSE_MIN_M
+#define X3M_LANE_ENCLOSE_MIN_M kLaneProfMaxM
+#endif
+constexpr float kLaneEncloseMinM = X3M_LANE_ENCLOSE_MIN_M;
 // The build (1 Hz). bd: the bodies near Lambda (overflow: more than the scan takes: no profile, fail closed to today's detour).
 inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool overflow, std::uint32_t now, bool shift = kLaneProfShiftOn) noexcept {
     LaneProfile& p = g.prof;
@@ -551,7 +559,8 @@ inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool ov
         const float d[3] = {b.c[0] - g.G[0], b.c[1] - g.G[1], b.c[2] - g.G[2]};
         const float s = sc::dot3(d, g.F), eR = sc::dot3(d, g.R) - g.lane_c[0], eU = sc::dot3(d, g.U) - g.lane_c[1];
         if (!sc::finite_f(s) || !sc::finite_f(eR) || !sc::finite_f(eU) || !(b.r > 0.0f)) continue;
-        if (b.rs > 0.0f) { // a fallback body containing Lambda's d_end point or the gate: neither shifted nor detoured
+        if (b.rs > 0.0f && b.r > kLaneEncloseMinM) { // a large fallback body containing Lambda's d_end point or the gate: neither shifted nor
+                                                    // detoured (review item 5: a small one keeps the detour)
             const float sd = s + d_end, in_end = sd * sd + eR * eR + eU * eU;
             if (in_end < b.rs * b.rs || sc::dot3(d, d) < b.rs * b.rs) {
                 if (p.nb < kLaneProfBodies) p.body[p.nb++] = b.ptr;
