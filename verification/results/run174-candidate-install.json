@@ -1,0 +1,25 @@
+{
+ "run": 174,
+ "platform": "native Windows 11, C:\\X3",
+ "command": "manual: cp C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run173 (cmp ok); cp build/d3d9.dll C:\\X3\\d3d9.dll; cmp ok; x3m.ini unchanged (ship_steering_gates_lane = 1 stays)",
+ "installed_at": "2026-10-15",
+ "commit": "564b3df8",
+ "candidate_record": "verification/results/run174-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "052b76cb283caa8ad65175fd283e618d740ca9be18870293e66b94621ae0cc05",
+  "bytes": 59956644,
+  "verified_bytes": true,
+  "method": "cmp"
+ },
+ "previous": {
+  "run": 173,
+  "sha256": "e93696ae835765d797156bfdee64a3f7f74df10e360fc13abc44c9e64d09ac33",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run173"
+ },
+ "release_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run150 (release 1.2.1)",
+ "x3m_ini": "unchanged: ship_steering_gates_lane = 1 (line 544)",
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "trigger": "convoy lane fix round 2; Run 174 A open",
+ "producer": "main session"
+}

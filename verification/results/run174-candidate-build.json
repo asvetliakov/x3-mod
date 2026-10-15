@@ -1,0 +1,22 @@
+{
+ "dll": "detached worktree /tmp/x3-run174-candidate of 564b3df8, build/d3d9.dll (clean configure + build)",
+ "sha256": "052b76cb283caa8ad65175fd283e618d740ca9be18870293e66b94621ae0cc05",
+ "bytes": 59956644,
+ "commit": "564b3df8",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0",
+  "x87_audit": "PASS, reachable_functions 1018, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe)",
+  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87: 51 tests OK (candidate tree); engine discover modules 106 tests, 2 known Wine record-hash failures (engine_effects, engine_ribbons: no Wine on this host), 6 skipped; fixture on main 564b3df8 --lane 3344/3344, unittests 45 OK; worktree d9a270bc: full 13865/0, capital 8207/0, seq-off 13775/0, b9 45/0, key-off 0 lines (ledger 'Lane fix round 2' + 'review fixes')"
+ },
+ "trigger": "Run173 flight: leader crawl at d_end through a slot refusal, escorts circling (engine's own gate 0x12 off-axis) -> lane fix rounds 1 and 2 (convoy-gate-transit.md section 11)",
+ "producer": "main session (Fable 5.1), 2026-10-15, autonomous overnight run",
+ "changes_since_run173": [
+  "dd07e95e Run173 triage",
+  "12570c7b handoff",
+  "a8e38093 holistic design review (ratified ranks 1-5)",
+  "564b3df8 convoy lane fix rounds 1+2 (squash of 77f9e88e..d9a270bc; Opus + Fable reviews applied)"
+ ]
+}
