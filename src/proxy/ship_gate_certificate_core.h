@@ -238,7 +238,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         // review item 5: Lambda's lateral moves from l_c to the member's Q over the blend (lane_lat_at, as lane_steer flies it live): in
         // the plane, Lambda lies at yL(s) = (lat(s) - lat0) . n (the out-of-plane part of the blend is not rolled out)
         const float nR = sc::dot3(nn, g.R), nU = sc::dot3(nn, g.U);
-        auto y_lane = [&](float s_abs) {
+        auto y_lane = [&](float s_abs) __attribute__((always_inline)) { // inline: a float return through st(0) out of line fails the x87 audit
             float l[2];
             lane_lat_at(g, m, s_abs, l);
             return (l[0] - lat0[0]) * nR + (l[1] - lat0[1]) * nU;
