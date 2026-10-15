@@ -1242,6 +1242,86 @@ The cast asserts no departing hull on order 8 within 500 m (capsule) of a parked
 
 The order-8 bound (500 m) is never reached: in `arrival_parked` no departing hull is on order 8 while an arrival is parked, except one tf-6 run at 1,218 m. The closest departing hull on 4 / 0 / 0x1f / 5 to the parked M1 is 58–297 m.
 
+### Round A (rank 4 + arrival pair) (2026-10-15, Fable 5.1; §12 ratification, §12.1a, §12.5; holistic review §2 b–d, §5 rank 4)
+
+Worktree `agent-a62ac571bfdfe5b38` on main `71b1536d`. Units: `ship_gate_lane_core.h` (the laws, the hand-over), `ship_gate_certificate_core.h`
+(the sweep, the yield), `ship_gate_board_core.h` (the fields), `ship_gate_ctl_glue.cpp` (the launch hook's first decision), the fixture.
+Every figure **[m]** from `round_a/run.sh` (`lane.txt`, `rows.txt`, `spans_diff.md`, `arrival_pass.txt`, `arrival_parked.txt`, `bench.txt`)
+unless marked **[i]**.
+
+**1. One gap law + lateral band** (`lane_law`, `lane_band_free`, `Member::band`). The merge and follow regimes, τ_m, the `merged` latch,
+the credit cap and `kLaneBesideM` are gone: `v = min(v_lane, v_P + (gap − g_req) / τ)`, τ = τ_f 10 s, floor 10 m/s, with
+gap = the raw gap + the joins' along-track cost − the own closing distance (v_self − v_P)² / 2a when this member is the faster. "merge" is
+the row label while the raw gap is short of g_req − 50 m, "follow" after; the `ship_gate_ctl_merge` rows and `merge_done` keep the merge's
+start/finish as before. The lateral rule is a per-pair latch (`band`): the clearance band holds until the yielder is behind (raw gap ≥ 0
+with the law's gap ≥ 0) or the raw gap is g_req − 100 m, and never re-engages for that pair. Deviations from §2 b's wording, each
+measured on the way: (a) the design's `gap_settle` with the full speed-difference term let a yielder at the floor re-accelerate 1.2 km
+before it was behind, so it joined at the lane speed from 1.4 km beside — abreast3's nose at 7 km 17.7 → 21.8°, terran_abreast's
+17.4 → 25.2° and, on the Terran ring, a hand-over nose of 7.4° whose hull sweep reached the ring's hole (an own-gate 0x12); the law keeps
+only the closing half of the term (a follower behind a stopped or returning ship still brakes on its stopping distance: without it
+`redeparture` tf 6 passed at a box gap of −10 m); (b) a band that releases only at g_req − 100 m held every abreast yielder off Λ to
+P2 (6/6b failed in 9 of 9 abreast runs); the release at "behind and staying behind" is the moment the merge law released before.
+Result: merge completion maxima abreast3 79.7 → 77.4 s, abreast5 100.8 → 77.0 s, slow_hull 117.8 → 125.8 s, crossing 189.7 → 191.7 s (the
+design expected ≤ +8 s per merge); assertion 2's bound holds in every run; 0 member 0x12 episodes and 0 uncertified frames in 243 lane
+runs; the nose at 7 km abreast3 15.7°, terran_abreast 16.9° (the bounds unchanged); every span within 7.8 s of the table before
+(`spans_diff.md`: 24 of 27 casts within 3.3 s; `p2_miss` / `p2_miss_near` +7.8 s at tf 6, the from-rest launch of item 3; `parked`
++3.2 s at tf 6, the engine's detour).
+
+**2. One yield candidate** (`try_yield(g, y, partner, …)`). One rollout per conflict: under the lane the law at its floor (10 m/s, the
+cap site B applies) while the plan is above the floor, else the brief stop (cap 0; T_stop + the step from its start, or against an
+arrival the arrival window + the step from its launch); key off the floor. `kYieldFrac` / `kYieldMidMs` and the three-rung ladder are
+gone; `kMaxRolloutsPerDecision` 7 → 3, `kRolloutsPerFrame` 14 → 6. Deviation from §2 c: the design's "law with the gap target raised by
+the sweep's margin" is the lane speed for any yielder whose gap is wide (measured in `overshoot_near`: a conflict 26 s out behind a
+returning ship, the law at v_lane under any raise; 432 uncertified frames at tf 1 in 3 of 3 runs), so the candidate is the law's floor,
+the raise taken past the horizon. Cost (`ctl cost (host)`, the 24-member ring in conflict): a decision 25.9 → 11.9 µs mean, 31.1 → 13.5 µs
+worst, 165 → 71 rollouts per 24 decisions; the worst admitted frame 67.6 → 36.1 µs; bench24 (the lane cost bench, 5 runs) mean
+tf 1 10.0–10.3 µs (before 10.3–11.4), tf 10 99.6–111.6 µs (before 128.9–139.8); third-worst frames tf 10 426–1,011 µs against
+406–609 before on a host whose runs also gave 10,772 µs under load; a quiet alternation (base and this tree three times each) tf 10
+mean 128.5–130.9 → 100.3–102.8 µs, third-worst 513–580 → 379–473 µs.
+
+**3. The hand-over** (`lane_site_b`, `lane_hand_bound`, the rollout's hand-over branch). P2 kept: the live speed under the brake bound
+from P2 (the poll horizon's stop 300 m outside the trigger sphere) on every hand-over frame; P2 not kept: no write (`LaneWrite::unkept`
+is gone; the vanilla stop, 0x1f, order 5 from rest); the `refused` timer is a counter (`x_counted`: `ctl_x_refused` once per hand-over
+beyond 5 s + the step, `ctl_x_wait_s` accrued from the hand-over's 3 s). The lane's hand-over bound is `kLaneRefusedMaxMs` for every lane
+hand-over (no flag). Two consequences measured and handled: (a) the design's "the bound cannot bind on a granted slot" does not hold at
+d_end (room 898 m for a Titan against 1,100 m of poll travel: 94.8 m/s written at d_end, the curve below as it coasts); a rollout that
+followed the bound's stop made every follower behind a hand-over yield at the floor and brake 30 m/s for a launch that came 10 s later
+(`formed_stage2`: 0.2 s brief stops, order-0 losses of 100 m/s), so the rollout keeps the kept hand-over at its held speed (the grant
+predicted; a refusal shows in the live state the next rollout starts from) while site B writes the bound; (b) with the instant stop of
+a P2 not kept, a follower on the 3b gap law ran at 69 m/s 667 m behind and its stop at spacing left 177 m, under the sweep's margin
+(`p2_miss_near`: the escort's 0x12 in 9 of 9 runs) — a follower behind a predecessor on its final before its P2 now stays on the braking
+curve to a stop g_req behind the predecessor's tail at d_end (`LaneCtx::stop_room`, lifted at the predecessor's P2; in the rollout at its
+sample's d_end, since a bound kept past d_end rolled every follower of a ship in its final out to a stop at spacing, `slow_hull`'s joiner
+into a conflict). Checks: `3e no site-B write on the hand-over of a P2 not kept` (0 writes in 18 of 18 runs; before: the unit asserted
+the write, `v_unkept > 50`), `3e order 5 from rest: the launch within T_slot + 25 s + the step` (18 of 18), the queue hold `3d2` as
+before (release within the step of the grant), `7 safety` in `p2_miss_near` (capsule ≥ 369 m).
+
+**4. The arrival pair** (§12.1a). The sweep's axial mode (`sweep_impl(..., axial)`, `axial_plan`): for a pair with an arrival on a
+drift-free plan (0x21, 0x1e, the order-0 brake, 0x1f) each axial side's terms — the drift k (t + offset), B's time-offset term, half its
+own inter-sample motion — extend its capsule's segment along its own axis instead of the pair's isotropic margin, which keeps kMarginM and
+the other side's share; a lane member on Λ within kLaneOnM or past d_end is axial too, a joiner or an arrival on a steered order is not
+(fail closed). The 0x1e rollout brakes at a to rest after |dz| > r_gate (r_gate / 4 for a small hull; an unknown radius: straight on).
+The DLL's launch hook decides the arrival at once (its rollout before any E verdict against it: at a SETA step the leader's verdict came
+one frame before the arrival's first decision, cause=zero, and the leader was evicted 0.4 s after the launch); the fixture's launch models
+it and fills the member's state (point P, nose −F) as the hook does — before, the fixture's arrival rolled out along the axis at U 0.
+E's verdict for the arrival as A needs no change (`e_certified` has no role filter). The hull-fit fallback is item 2's stop with the
+arrival-window bound. `arrival_pass` un-parked: 9 of 9 green (checks: `Ex` contact, member 0x12, `no member-arrival pair handed back on
+contact`, `a stop against an arrival within the arrival window + the step`): 0 member 0x12, 0 pair hand-backs, departing capsule ≥ 481 m,
+3/3 launched, spans 298.2–299.0 / 279.0–279.5 / 281.6–282.0 s (before: 8 of 9 runs with member 0x12 and contact to −1,157 m, 2 with
+launches missing). `arrival_parked` stays parked (the fan, §12.1b): with the change still 3 of 3 runs per tf with the two arrivals
+overlapping (−1,180 m), member 0x12 (3–12 flown per run), contact (−809…−1,116 m), launches 0–3 of 3; `pair_contact` 0 in 9 of 9 (the
+hull-fit pair is never handed back; the overlap and the resting M1 at P are the fan's class).
+
+**5. Retired** (the ledger lists them): `Member::merged`, `Member::refused` (→ `x_counted`, a counter's state), `LaneWrite::unkept`,
+`lane_refused_hold` (→ `lane_hand_bound`), `kLaneTauMergeS` / `X3M_LANE_TAU_MERGE_S`, `kLaneBesideM`, `kYieldFrac`, `kYieldMidMs`,
+`lane_law`'s `merged` parameter; new: `Member::band`, `LaneCtx::stop_room`, `lane_band_free`, `axial_plan`, the sweep's `axial`
+argument, `try_yield`'s partner, the launch hook's decision. Rows: `ship_gate_ctl_lane` unchanged in form (`w=` without `unkept`,
+`merged=` the merge's completion), `ship_gate_ctl_merge` and `ship_gate_ctl_pair` unchanged; the install row's `yield=` carries the one
+floor.
+
+**Fixture bounds re-taken.** `parked`'s nose at 7 km 25 → 27° (the engine's sphere detour around the M7 parked at the 7 km point:
+12.9–25.5° over 9 runs, 19.8–23.5° before). The stage-A unit `ctl decide: the lower-priority approach yields ... (cap = the floor)`.
+
 ### Open
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
@@ -1387,6 +1467,17 @@ certification was stale (> 250 ms + step) falls back to the engine by `validity`
 velocity `[B+0x60..0x68]` to be 0, and what the kinematic `p+0x30` writes leave there is **[i]**; a `ship_avoid_engine_warn_pre` row with
 B on 0x21, or a read of the 0x21 handler's velocity writes, settles it. (ii) Q5's hold times in flight (`ship_gate_ctl` rows with
 `role=arrival` and the orders seen after 0x1e). (iii) The fan (1b, 12.5).
+
+**Implemented (round A, 2026-10-15; §11 "Round A" item 4).** The sweep's axial mode (the arrival's drift, time-offset and inter-sample
+terms along its own axis; a lane member on Λ or past d_end axial too; a joiner or an arrival on a steered order isotropic, fail closed),
+the 0x1e brake-to-rest after |dz| > r_gate, the hull-fit fallback as the single yield candidate's stop with the arrival-window bound;
+`arrival_pass` 9 of 9 green, `arrival_parked` parked for the fan. Deviations: (a) E's verdict for the arrival as A needed no change
+(`e_certified` has no role filter); (b) the DLL's launch hook decides the arrival at once (one rollout and the sweeps per capital launch,
+~12 µs **[i]** from the 24-member bench's conflict decision) — without it a departing member's verdict against the arrival on the launch
+frame found no rollout (cause=zero) at a SETA step and the leader was evicted 0.4 s after the launch; (c) the fixture's arrival model
+gained the hook's state fill (the point P, the nose −F; before, its warp-in rolled out along the gate axis at U 0, 685 m off P) and the
+launch-frame decision. The DLL's arrival member has no a_lin (`JoinParams{}`: the brake models 1 m/s², 7.2 km of coast along −F, which
+keeps the lateral exact and the along-F reach conservative); open (iv).
 
 ### 12.2 Class 2: small ships at the same gate (`small_gate`, `small_gate_m6`)
 
@@ -1548,7 +1639,12 @@ non-gate B (`x12_pairs.py`), else the row's reach is the first thing to check, n
 * **Rank 4 goes first (round A)**, not after 2–3: it is ratified, it removes the latches that produced the crawl class, and 1a's fallback
   and 4's near case are written on its hand-over and yield; writing them on the three-candidate ladder and the `refused` timer first would
   be work done twice. Its fail-before checks are the holistic review's (the merge bound, `p2_miss` / `3c`, the stop law), expected cost
-  ≤ 8 s per merge **[i]**.
+  ≤ 8 s per merge **[i]**. **Implemented (round A, 2026-10-15; §11 "Round A" items 1–3, 5)** with four deviations, each measured there:
+  the one law reads the raw gap + the joins' cost − the own closing distance (the full settling term re-accelerated the yielder beside its
+  passer); the lateral band is a per-pair latch released once behind, not the raw g_req − 100 m alone; the single yield candidate is the
+  law's floor (the raised-target law is the lane speed for a wide gap), else the stop; the brake bound from P2 binds at d_end (room 898 m
+  for a Titan against 11 s of poll travel), is written by site B but not rolled out, and the no-write hand-over needs the follower on a
+  braking curve to g_req behind the predecessor's tail at d_end before its P2 (`stop_room`). Merges cost −2 to +8 s, spans ≤ 7.8 s.
 * **2 and 3 are independent of the laws and of each other** (different units) and run in parallel with A in worktrees; the brief's lean
   "2–3 first" is kept in the sense that they do not wait for A.
 * **4 after A** (it needs the no-write hand-over), **1a inside A** (the sweep branch and E's coverage are law-independent, the fallback

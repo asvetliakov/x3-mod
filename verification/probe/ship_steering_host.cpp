@@ -5838,8 +5838,9 @@ static void ctl_unit_checks() {
         gc::DecideStats st;
         gc::decide(*g, 1, 1000, &st, nullptr, nullptr); // B (hold): its rollout first
         gc::decide(*g, 0, 1100, &st, nullptr, nullptr); // A (order 4, rank 3) closes on B (the hand-over, rank 2): A yields
-        std::snprintf(why, sizeof why, "ctl decide: the lower-priority approach yields to a hand-over by speed (cap %%.1f m/s = 0.6 v, yields %%.0f)");
-        checkf(A->cap > 59.9f && A->cap < 60.1f && st.yields == 1 && g->v[0][1] == std::uint8_t(gc::PairV::clear), why, double(A->cap), st.yields);
+        // (round A, rank 4: the one candidate; key off it is the 10 m/s floor, the ladder's 0.6 v and 25 m/s rungs are gone)
+        std::snprintf(why, sizeof why, "ctl decide: the lower-priority approach yields to a hand-over by speed (cap %%.1f m/s = the floor, yields %%.0f)");
+        checkf(A->cap == gc::kYieldFloorMs && st.yields == 1 && g->v[0][1] == std::uint8_t(gc::PairV::clear), why, double(A->cap), st.yields);
         check(gc::e_certified(*g, 0, 1, 1200, true, true, core::kOrderFlyBefore, core::kOrderRotate), "ctl E: a clear verdict 100 ms old suppresses the warn");
         check(!gc::e_certified(*g, 0, 1, 1400, true, true, core::kOrderFlyBefore, core::kOrderRotate), "ctl E: a verdict older than 250 ms: the engine's warn");
         check(!gc::e_certified(*g, 0, 1, 1200, false, true, core::kOrderFlyBefore, core::kOrderRotate), "ctl E: an unreadable forward row: the engine's warn");
@@ -7870,6 +7871,12 @@ struct CResult {
     unsigned arr_n = 0, arr_rest = 0, arr_dep8_close = 0, arr_overlap = 0;
     double mem_capsule = 1e18, sm_capsule = 1e18; // the departing capitals' closest pair; a small ship's closest pair (capsule, m)
     double arr_exit_v = -1, arr_dep8_gap = 1e18, arr_dep_gap = 1e18, arr_arr_gap = 1e18, arr_hold_out_m = 0;
+    // round A (section 12.1a): frames a live (member, arrival) pair stood unresolved on cause=contact
+    unsigned arr_pair_contact = 0;
+    // round A (rank 4, the hand-over): site-B lane writes on the hand-over frames of a ship whose P2 did not keep (must be 0: no write),
+    // that ship's grant -> launch time (s; < 0 none) and the longest of the kept ships' (the reference T_slot; < 0 none)
+    unsigned p2_unkept_writes = 0;
+    double unkept_slot_s = -1, t_slot_kept_max_s = -1;
 };
 constexpr unsigned kCMax = 24; // the largest cast (the 24-member cost bench)
 static long launch_ms_of[kCMax], tslot_ms_of[kCMax];
@@ -8353,6 +8360,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         double turn15 = 0, f15[3] = {0, 0, 0}; // final review item 5: the turn from the 15 km point, either key (holding laps excluded)
         double z_prev = -1e18;                 // lane fix round 1: the previous frame's depth (the 7 km crossing)
         bool obst_ep = false; // lane fix round 2 item 1: an unsuppressed obstacle warn on the previous frame
+        bool p2_unkept = false; // round A: this ship's P2 did not keep (its hand-over gets no lane write)
         bool gate_ep = false, past_plane = false, past_seen = false; // ... an unsuppressed own-gate warn on the previous frame; past the
                                                                      // plane (not yet back on Lambda), ever
         long law_stop_start = -1, law_stop_last = -1;
@@ -8680,6 +8688,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 c.m.speed = c.m.desired = 0;
                 c.m.order = core::kOrderWarpIn;
                 c.target = kLaneGate;
+                for (int i = 0; i < 3; ++i) c.P[i] = arr_P[k][i] * 500.0; // (0x21's f+0x240: the exit point; the member state's point, round A)
                 c.phase = 50;
                 c.phase_t = now_ms;
                 ++res.arr_n;
@@ -8693,6 +8702,25 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         mb->large = 1;
                         mb->params.r_gate = float(kGateRM);
                         mb->params.a_lin = float(su.s[k].t->a_ms2);
+                        // (round A: the DLL's launch hook fills the member's state at the launch (ship_gate_ctl_glue.cpp): on 0x21 at the
+                        // start of the warp-in path, the point P, the nose -F; without it the first decision at a SETA step came before the
+                        // frame's state read and left the pair without a rollout: cause=zero, the leader's eviction at tf 10)
+                        gc::State& ms = mb->st;
+                        ms = gc::State{};
+                        ms.ms = now ? now : 1;
+                        ms.order = core::kOrderWarpIn;
+                        ms.target = kLaneGate;
+                        for (int i = 0; i < 3; ++i) {
+                            ms.x[i] = float(st[i]);
+                            ms.point[i] = float(arr_P[k][i]);
+                            ms.rows[0][i] = i == 0 ? -1.0f : 0.0f; // (the gate frame: R = x, U = y, F = z)
+                            ms.rows[1][i] = i == 1 ? 1.0f : 0.0f;
+                            ms.rows[2][i] = -float(F[i]);
+                        }
+                        ms.f_ok = 1;
+                        ms.left_ms = 900;
+                        gc::DecideStats ds; // (the hook's first decision of the arrival, as the DLL's: its rollout before any E verdict against it)
+                        gc::decide(*g, unsigned(mb - g->m), now, &ds, nullptr, nullptr);
                     }
                 }
                 if (std::getenv("X3M_C_TRACE"))
@@ -9247,6 +9275,8 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         const double ts = double(now_ms - e.grant_ms) / 1000.0;
                         res.t_slot_min_s = std::fmin(res.t_slot_min_s, ts);
                         res.t_slot_max_s = std::fmax(res.t_slot_max_s, ts);
+                        if (e.p2_unkept) res.unkept_slot_s = std::fmax(res.unkept_slot_s, ts); // (round A: order 5 from rest)
+                        else res.t_slot_kept_max_s = std::fmax(res.t_slot_kept_max_s, ts);
                     }
                     m.advance(dt);
                     continue;
@@ -9338,6 +9368,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         e.x_since = now_ms;
                         ++res.p2;
                         if (why != core::JoinKeep::kept) ++res.p2_not_kept;
+                        if (why != core::JoinKeep::kept) e.p2_unkept = true;
                         if (su.s[k].z > 0.0) res.back_p2_nose_deg = std::fmax(res.back_p2_nose_deg, err_F); // (item C)
                         else if (why != core::JoinKeep::kept) ++res.p2_front_not_kept;
                         const double err = std::fabs(-m.pos[2] / 500.0 - kLaneEndM);
@@ -9490,6 +9521,34 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 const unsigned k = dorder[q];
                 gc::DecideStats st;
                 gc::decide(board.g[k / gc::kMembers], k % gc::kMembers, now_end, &st, nullptr, nullptr);
+                if (std::getenv("X3M_C_TRACE") && st.yields) { // (round A: every yield of this decision: the yielder, its cap, its law)
+                    const gc::Gate& dg = board.g[k / gc::kMembers];
+                    for (unsigned q2 = 0; q2 < dg.n; ++q2) {
+                        const gc::Member& Y = dg.m[q2];
+                        if (!Y.ship || Y.yield_ms != now_end) continue;
+                        int ks = -1;
+                        for (unsigned q3 = 0; q3 < su.n && ks < 0; ++q3)
+                            if (ships[q3].m.ptr == Y.ship) ks = int(q3);
+                        const unsigned di = k % gc::kMembers;
+                        const gc::GapScan gs = di != q2 ? gc::pair_scan(dg, di, q2) : gc::GapScan{};
+                        std::printf("  tc %s yield t=%.1f decider %u ship %d cap %.1f law %s v_sb %.1f plan %s v_plan %.1f st.v %.1f order 0x%x rank %u pred %x stop_ms %u conflicts %u"
+                                    " | pair with decider: gap_m %.0f at %u t_c %u band %u lat %.0f y_gap %.0f\n",
+                                    su.tag, double(now_ms) / 1000.0, di, ks, double(Y.cap), gc::law_name(Y.law), double(Y.v_sb),
+                                    gc::plan_name(gc::plan_of(Y)), double(Y.v_plan), double(Y.st.v), unsigned(Y.st.order), unsigned(Y.lane_rank), Y.lane_pred,
+                                    Y.stop_ms, st.conflicts, gs.ok ? double(gs.min_gap) : -9999.0, gs.i_min, gs.t_c, unsigned(Y.band), double(Y.lane_lat), double(Y.lane_gap));
+                        if (std::getenv("X3M_C_DUMP")) {
+                            for (unsigned q4 = 0; q4 < dg.n; ++q4) {
+                                const gc::Member* q = &dg.m[q4];
+                                if (!q->ship) continue;
+                                std::printf("    roll ship %x roll_ms %u pred %x law %s v_sb %.1f sb %s rank %u band %u n %u:", q->ship, q->roll_ms, q->lane_pred, gc::law_name(q->law),
+                                            double(q->v_sb), gc::sb_name(q->sb), unsigned(q->lane_rank), unsigned(q->band), unsigned(q->n));
+                                for (unsigned s2 = 0; s2 < q->n; s2 += 6)
+                                    std::printf(" %u:%.0f,%.0f,%.0f", s2, double(q->s[s2].c[0]), double(q->s[s2].c[1]), double(q->s[s2].c[2]));
+                                std::printf("\n");
+                            }
+                        }
+                    }
+                }
                 rollouts += st.rollouts;
                 if (q >= n_prio) cursor = k + 1;
                 ++done;
@@ -9651,10 +9710,23 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                             const double d = std::sqrt(std::pow(c.m.pos[0] / 500.0 - o->x[0], 2) + std::pow(c.m.pos[1] / 500.0 - o->x[1], 2) +
                                                        std::pow(c.m.pos[2] / 500.0 - o->x[2], 2));
                             res.obst_x12_dmin = std::fmin(res.obst_x12_dmin, d);
-                            if (std::getenv("X3M_C_TRACE"))
+                            if (std::getenv("X3M_C_TRACE")) {
                                 std::printf("  tc %s obst0x12 t=%.1f ship %u ph %d o 0x%x obst %x kind %u d %.0f verdict %s row %s detour %x\n", su.tag,
                                             double(now_ms) / 1000.0, k, c.phase, c.m.order, o->ptr, unsigned(o->kind), d, av::e_verdict_name(v),
                                             kObstRowNames[why < 4u ? why : 3u], c.m.astate.obstacle);
+                                int oi = -1;
+                                const gc::Gate* og = gc::locate(board, c.m.ptr, &oi);
+                                if (std::getenv("X3M_C_DUMP") && og && oi >= 0) { // (round A: the member's rollout behind the row's verdict)
+                                    const gc::Member& q = og->m[oi];
+                                    std::printf("    obst %x at %.0f,%.0f,%.0f r %.0f | ship pos %.0f,%.0f,%.0f v %.1f law %s v_sb %.1f sb %s rank %u pred %x band %u "
+                                                "roll age %ld n %u:", o->ptr, double(o->x[0]), double(o->x[1]), double(o->x[2]), double(o->r), c.m.pos[0] / 500.0,
+                                                c.m.pos[1] / 500.0, c.m.pos[2] / 500.0, double(c.m.speed) / 500.0, gc::law_name(q.law), double(q.v_sb), gc::sb_name(q.sb),
+                                                unsigned(q.lane_rank), q.lane_pred, unsigned(q.band), long(now_end - q.roll_ms), unsigned(q.n));
+                                    for (unsigned s2 = 0; s2 < q.n; s2 += 6)
+                                        std::printf(" %u:%.0f,%.0f,%.0f", s2, double(q.s[s2].c[0]), double(q.s[s2].c[1]), double(q.s[s2].c[2]));
+                                    std::printf("\n");
+                                }
+                            }
                         }
                         obst_unsup = true;
                     }
@@ -9968,6 +10040,15 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             // frame (review item 7: frames written 0 included; not the episode's lowest written speed)
             // (the hand-over after P2 is the refusal's hold, not a trail frame; a nose beyond 45 deg of F, a re-departure's U-turn, has no
             // trail speed)
+            // round A (rank 4): a hand-over P2 did not keep gets no lane write on order 0 / 0x1f (the vanilla stop, order 5 from rest)
+            if (e.p2_unkept && (c.phase == 1 || c.phase == 5 || c.phase == 6) && c.m.lane_force_ms >= 0.0) {
+                ++res.p2_unkept_writes;
+                if (std::getenv("X3M_C_TRACE"))
+                    std::printf("  tc %s unkeptwrite t=%.1f ship %u ph %d o 0x%x written %.1f stop %d law %d sb %s law %s v_sb %.1f cap %.1f stop_ms %u handover_ms %u\n", su.tag,
+                                double(now_ms) / 1000.0, k, c.phase, c.m.order, c.m.lane_force_ms, int(e.wk_stop), int(e.wk_law), mm ? gc::sb_name(mm->sb) : "-",
+                                mm ? gc::law_name(mm->law) : "-", mm ? double(mm->v_sb) : -1.0, mm ? double(mm->cap) : -1.0, mm ? mm->stop_ms : 0u,
+                                mm ? mm->handover_ms : 0u);
+            }
             if ((c.m.order == core::kOrderNone || c.m.order == core::kOrderRotate) && departing && mm->lane_rank != 0xff && e.vsb_write >= 0.0 &&
                 c.m.row[2][2] >= 0.70710678 && !((su.overshoot && k == 0) || su.s[k].z > 0.0 ? !e.on_seen : false)) { // (an overshoot's turn back is not a trail)
                 ++res.o0_frames;
@@ -9982,6 +10063,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                                     gc::law_name(mm->law), c.m.row[2][2], double(mm->lane_lat));
                 }
             }
+            if (std::getenv("X3M_C_TRACE_ST") && now_ms / 1000 != (now_ms - dt) / 1000) // (round A: a per-second state line per ship)
+                std::printf("  tc %s st t=%.0f ship %u ph %d o 0x%x pos %.0f,%.0f,%.0f v %.1f law %s v_sb %.1f sb %s rank %u pred %x band %u gap %.0f lat %.0f cap %.1f\n",
+                            su.tag, double(now_ms) / 1000.0, k, c.phase, c.m.order, c.m.pos[0] / 500.0, c.m.pos[1] / 500.0, c.m.pos[2] / 500.0,
+                            double(c.m.speed) / 500.0, gc::law_name(mm->law), double(mm->v_sb), gc::sb_name(mm->sb), unsigned(mm->lane_rank), mm->lane_pred,
+                            unsigned(mm->band), double(mm->lane_gap), double(mm->lane_lat), double(mm->cap));
             // 7: certified from a merge's first certificate to its completion + 30 s
             if (mm->lane_pred) {
                 const int pi = gc::find(*g, mm->lane_pred);
@@ -9992,7 +10078,16 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     if (merging && cert) e.cert_on = true;
                     if (merging) e.cert_until = -1;
                     else if (e.cert_on && e.cert_until < 0) e.cert_until = now_ms + 30000;
-                    if (e.cert_on && (merging || now_ms <= e.cert_until) && !cert && steered) ++res.uncert_frames;
+                    if (e.cert_on && (merging || now_ms <= e.cert_until) && !cert && steered) {
+                        ++res.uncert_frames;
+                        if (std::getenv("X3M_C_TRACE") && now_ms / 1000 != (now_ms - dt) / 1000)
+                            std::printf("  tc %s uncert t=%.1f ship %u pred %u why %s pair %s cause %s t_c %u law %s v_sb %.1f cap %.1f gap %.0f lat %.0f band %u "
+                                        "plans %s/%s P law %s v_sb %.1f\n", su.tag, double(now_ms) / 1000.0, k, unsigned(pi),
+                                        gc::ewhy_name(gc::e_reason(*g, unsigned(mi), unsigned(pi), now_end, true, true, mm->st.order, P.st.order)),
+                                        gc::pair_name(gc::PairV(g->v[mi][pi])), gc::pair_why_name(g->why[mi][pi]), unsigned(g->tc[mi][pi]), gc::law_name(mm->law),
+                                        double(mm->v_sb), double(mm->cap), double(mm->lane_gap), double(mm->lane_lat), unsigned(mm->band),
+                                        gc::plan_name(gc::plan_of(*mm)), gc::plan_name(gc::plan_of(P)), gc::law_name(P.law), double(P.v_sb));
+                    }
                     if (e.cert_until >= 0 && now_ms > e.cert_until) e.cert_on = false;
                 }
             }
@@ -10005,7 +10100,14 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 TShip& B = ships[b];
                 if (!B.alive) continue;
                 res.min_capsule = std::fmin(res.min_capsule, t_capsule(A, B));
-                res.min_box = std::fmin(res.min_box, crowd_box_sep(A.m, A.w, B.m, B.w));
+                {
+                    const double bx = crowd_box_sep(A.m, A.w, B.m, B.w);
+                    if (bx < 0.0 && res.min_box >= 0.0 && std::getenv("X3M_C_TRACE"))
+                        std::printf("  tc %s boxcontact t=%.1f %u(ph %d o 0x%x v %.0f) vs %u(ph %d o 0x%x v %.0f) box %.0f capsule %.0f\n", su.tag,
+                                    double(now_ms) / 1000.0, a, A.phase, A.m.order, double(A.m.speed) / 500.0, b, B.phase, B.m.order, double(B.m.speed) / 500.0,
+                                    bx, t_capsule(A, B));
+                    res.min_box = std::fmin(res.min_box, bx);
+                }
                 { // fixture engine paths: the departing capitals' pairs alone; small ships against anything; the arrivals (item E)
                     auto dep = [&](unsigned q) { return su.s[q].kind == kLead || su.s[q].kind == kEsc || su.s[q].kind == kRedep; };
                     const double gap = t_capsule(A, B);
@@ -10047,6 +10149,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                             ++res.cert_frames;
                             if (t_capsule(A, B) <= 0.0) ++res.cert_contact;
                         }
+                        // round A (section 12.1a): a (member, arrival) pair handed back on contact (the sweep's isotropic drift ate the exit
+                        // point's lateral clearance before this round)
+                        if ((su.s[a].kind == kArrive) != (su.s[b].kind == kArrive) && cg->v[ia][ib] == std::uint8_t(gc::PairV::unresolved) &&
+                            (cg->why[ia][ib] & std::uint8_t(~gc::kPairWhyPlan)) == std::uint8_t(gc::PairWhy::contact))
+                            ++res.arr_pair_contact;
                     }
                 }
                 for (int dir = 0; dir < 2; ++dir) {
@@ -10126,7 +10233,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                                             int(gc::yields_to(g->m[ib], g->m[ia])), int(gc::can_yield(g->m[ia])), int(gc::can_yield(g->m[ib])),
                                             int(gc::gap_yield(g->m[ia])), int(gc::gap_yield(g->m[ib])), unsigned(g->m[ia].line_ok), unsigned(g->m[ib].line_ok),
                                             unsigned(g->m[ia].lane_rank), unsigned(g->m[ib].lane_rank));
-                                std::printf("    re-rollout %u merged %u gap %.0f plan %s:", nre, unsigned(g->m[ia].merged), double(g->m[ia].lane_gap),
+                                std::printf("    re-rollout %u merge_done %u gap %.0f plan %s:", nre, unsigned(g->m[ia].merge_done), double(g->m[ia].lane_gap),
                                             gc::plan_name(gc::plan_of(g->m[ia])));
                                 for (unsigned s2 = 0; s2 < nre; s2 += 4) std::printf(" %.0f", double(re[s2].c[2]));
                                 std::printf("\n");
@@ -10549,22 +10656,25 @@ static const CSetup kCSetups[] = {
     // section 6.7); the departing leader near d_end is warned by the arriving hull's box, the pair uncertified, the eviction flown, then the
     // members collide (to -1120 m); 5 of 9 runs launch fewer than 3 in 1000 s
     // PARKED: {"arrival_parked", kArrParked, 5, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
-    // PARKED (item E, two Titans 60 s apart, 0x1e at 120 m/s, order 0 ~5 s, 476-512 m out): no overlap (3.5 km), but the leader's eviction
-    // by the arriving hull (as arrival_parked) and member contacts (to -1157 m) in 8 of 9 runs
-    // PARKED: {"arrival_pass", kArrPass, 5, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
+    // item E, two Titans 60 s apart (0x1e at 120 m/s, order 0 ~5 s, 476-512 m out): un-parked in round A (section 12.1a: the sweep charges
+    // the arrival's terms along F, the pair certifies on the exit point's lateral clearance; before: the leader's eviction by the arriving
+    // hull and member contacts to -1157 m in 8 of 9 runs)
+    {"arrival_pass", kArrPass, 5, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
 };
 // Lane fix round 2 item 6: the nose off F at the 7 km crossing, asserted in every cast: 5 deg, or the cast's own bound where its geometry
 // cannot reach 5 deg (the measured maximum over 3 seeds x tf 1/6/10 + about 1.5 deg; reasons in convoy-gate-transit.md section 11 "Lane fix
 // round 2" item 6): a merging yielder holds its lateral while level with its predecessor (the car-merge rule), so the abreast and crossing
 // joiners are still joining at 7 km; a join from far out and wide starts at the steepest 45 deg and merges at its join's end, inside 7 km
-// (run173_15km: 5.3 km off Lambda 15.9 km out, the parabola itself 13 deg at 7 km); the obstacle casts' detours
+// (run173_15km: 5.3 km off Lambda 15.9 km out, the parabola itself 13 deg at 7 km); the obstacle casts' detours. (Round A, the one
+// gap law on the raw gap: abreast3 15.7 deg, terran_abreast 16.9 deg measured, within the bounds; parked, the engine's sphere detour
+// around the M7 parked at the 7 km point, 12.9-25.5 deg over 9 runs (19.8-23.5 before): its bound re-taken at 27)
 struct Nose7Bound {
     const char* tag;
     double deg;
 };
 static const Nose7Bound kNose7Bounds[] = {
     {"abreast3", 19.5}, {"abreast5", 38.0}, {"terran_abreast", 19.0}, {"crossing", 16.0}, {"slow_hull", 13.0}, {"stragglers_far", 10.0},
-    {"run173_15km", 18.5}, {"parked", 25.0}, {"join_field", 27.5}, {"join_block", 24.0}, // (join_block: its 0x12 flown since the fixture
+    {"run173_15km", 18.5}, {"parked", 27.0}, {"join_field", 27.5}, {"join_block", 24.0}, // (join_block: its 0x12 flown since the fixture
                                                                                          // engine paths round, 6.7-22.3 deg; counted 7.5-10.7)
 };
 static double nose7_bound(const char* tag) {
@@ -10604,12 +10714,12 @@ static void lane_c_print_eng(const char* tag, int tf, std::uint32_t seed, const 
     std::printf("scenario C %s engine paths tf %d seed %u: x12 flown %u (cap %u small %u forced %u) turn %.0f deg dur %.1f s out %.0f m reissue %u "
                 "remerged %u (max %.1f s) | lane v_min %.1f m/s slow %.1f s | small %u launched %u mirrored %u warns %u stops %u x12_s %.1f "
                 "mem_warns %u mem_x12 %u capsule %.0f | arrivals %u rest %u exit_v %.1f hold_out %.0f dep8_gap %.0f close %u dep_gap %.0f "
-                "arr_gap %.0f overlap %u | members capsule %.0f launched %u/%u span %.1f (bound %.1f) p2 not_kept %u nose %.1f | D.5 %u/%u/%u/%u/%u/%u\n",
+                "arr_gap %.0f overlap %u pair_contact %u | members capsule %.0f launched %u/%u span %.1f (bound %.1f) p2 not_kept %u nose %.1f | D.5 %u/%u/%u/%u/%u/%u\n",
                 tag, tf, seed, r.x12_flown, r.x12_cap, r.x12_small, r.x12_forced, r.x12_turn_max, r.x12_dur_max_s, r.x12_out_max_m, r.x12_reissue,
                 r.x12_remerged, r.x12_remerge_max_s, r.lane_v_min < 1e17 ? r.lane_v_min : -1.0, r.lane_slow_s_max, r.sm_n, r.sm_launched,
                 r.sm_mirrored, r.sm_warns, r.sm_stops, r.x12_small_s, r.mem_sm_warns, r.mem_sm_x12, r.sm_capsule < 1e17 ? r.sm_capsule : -1.0,
                 r.arr_n, r.arr_rest, r.arr_exit_v, r.arr_hold_out_m, r.arr_dep8_gap < 1e17 ? r.arr_dep8_gap : -1.0, r.arr_dep8_close,
-                r.arr_dep_gap < 1e17 ? r.arr_dep_gap : -1.0, r.arr_arr_gap < 1e17 ? r.arr_arr_gap : -1.0, r.arr_overlap,
+                r.arr_dep_gap < 1e17 ? r.arr_dep_gap : -1.0, r.arr_arr_gap < 1e17 ? r.arr_arr_gap : -1.0, r.arr_overlap, r.arr_pair_contact,
                 r.mem_capsule < 1e17 ? r.mem_capsule : -1.0, r.launched, r.departures, r.span_s, r.bound_s, r.p2_not_kept, r.p2_nose_max_deg,
                 r.sm_bv[0], r.sm_bv[1], r.sm_bv[2], r.sm_bv[3], r.sm_bv[4], r.sm_bv[5]);
 }
@@ -10821,50 +10931,50 @@ static void lane_c_units() {
             }
         }
     }
-    // the laws
+    // the laws (round A, rank 4: one gap law, v = min(v_lane, v_P + (gap_settle - g_req) / tau), the merge a label short of g_req - 50 m)
     {
         gc::LaneCtx c;
         c.s = -10000.0f;
         c.v_lane = 100.0f;
         c.a = 5.0f;
         c.pred = true;
-        c.merged = false;
         c.gap = -2100.0f; // census hulls level at the merge
         c.v_self = 100.0f; // (both at the lane speed: no settling term)
         c.v_pred = 100.0f;
         gc::Law law;
-        bool merged;
-        float v = gc::lane_law(c, &law, &merged);
-        check(law == gc::Law::merge && v == gc::kYieldFloorMs && !merged, "lane units: level hulls: the merge law at the 10 m/s floor");
+        float v = gc::lane_law(c, &law);
+        check(law == gc::Law::merge && v == gc::kYieldFloorMs, "lane units: level hulls: the one gap law at the 10 m/s floor (the merge label)");
         c.gap = gc::kLaneGapM - 200.0f;
-        v = gc::lane_law(c, &law, &merged);
-        check(law == gc::Law::merge && std::fabs(v - (100.0f - 200.0f / gc::kLaneTauMergeS)) < 0.01f, "lane units: the merge law v_P - (g_req - gap) / tau_m");
+        v = gc::lane_law(c, &law);
+        check(law == gc::Law::merge && std::fabs(v - (100.0f - 200.0f / gc::kLaneTauFollowS)) < 0.01f,
+              "lane units (round A): v_P + (gap - g_req) / tau short of g_req - 50 m, the merge label");
         c.gap = gc::kLaneGapM - 40.0f;
-        v = gc::lane_law(c, &law, &merged);
-        check(merged && law == gc::Law::follow && std::fabs(v - (100.0f - 40.0f / gc::kLaneTauFollowS)) < 0.01f,
-              "lane units: complete at g_req - 50 m; then the follow law");
-        c.merged = true;
+        v = gc::lane_law(c, &law);
+        check(law == gc::Law::follow && std::fabs(v - (100.0f - 40.0f / gc::kLaneTauFollowS)) < 0.01f,
+              "lane units (round A): the same law from g_req - 50 m on, the follow label");
         c.gap = 2000.0f;
-        v = gc::lane_law(c, &law, &merged);
-        check(law == gc::Law::lane && v == 100.0f, "lane units: the follow law never above the lane speed");
-        { // review item 6: a yielder at the 10 m/s floor 85 m beside the ship ahead (raw gap -85 m) whose settling gap (+810 m of speed
-          // difference at 5 m/s2) is past g_req does not settle while beside (HEAD: merged, its lateral released onto Lambda)
+        v = gc::lane_law(c, &law);
+        check(law == gc::Law::lane && v == 100.0f, "lane units: the gap law never above the lane speed");
+        { // round A: a yielder at the 10 m/s floor 85 m beside the ship ahead (raw gap -85 m) stays at the floor whatever the speed
+          // difference once the raw gap is short of g_req - tau x (v_P - floor) = -400 m (the one law reads the raw gap and the joins' cost,
+          // no settling term: review item 6's deadlock cannot arise), 41.5 m/s at -85 m and 20 m/s at -300 m, and its lateral stays in the
+          // clearance band until it is behind (Member::band, lane_band_free)
             gc::LaneCtx y = c;
-            y.merged = false;
             y.gap = -85.0f;
             y.v_self = 10.0f;
             y.v_pred = 100.0f;
-            bool mg2 = false;
             gc::Law l2;
-            gc::lane_law(y, &l2, &mg2);
-            y.gap = 5.0f; // behind: it settles
-            bool mg3 = false;
-            gc::lane_law(y, &l2, &mg3);
-            check(!mg2 && mg3, "lane units (item 6): no settling while beside (raw gap -85 m), settled once behind");
+            const float v2 = gc::lane_law(y, &l2);
+            y.gap = -300.0f;
+            gc::Law l3;
+            const float v3 = gc::lane_law(y, &l3);
+            check(l2 == gc::Law::merge && std::fabs(v2 - 41.5f) < 0.01f && l3 == gc::Law::merge && std::fabs(v3 - 20.0f) < 0.01f &&
+                      !gc::lane_band_free(-85.0f, -85.0f) && gc::lane_band_free(5.0f, 5.0f),
+                  "lane units (round A): beside the ship ahead the one law reads the raw gap (41.5 m/s at -85 m, 20 m/s at -300 m); the band holds until behind");
         }
         c.v_pred = 0.0f;
         c.gap = 300.0f;
-        v = gc::lane_law(c, &law, &merged);
+        v = gc::lane_law(c, &law);
         check(law == gc::Law::stop && v == 0.0f, "lane units: behind a stopped ship the follower stops at spacing");
         gc::LaneCtx h; // the head paces to the slot's free time, then stops at d_end
         h.s = -12300.0f;
@@ -10872,10 +10982,10 @@ static void lane_c_units() {
         h.a = 5.0f;
         h.head = true;
         h.t_free_s = 200.0f;
-        v = gc::lane_law(h, &law, &merged);
+        v = gc::lane_law(h, &law);
         check(law == gc::Law::pace && std::fabs(v - 50.0f) < 0.01f, "lane units: the head's pacing (10 km in 200 s)");
         h.s = -2340.0f;
-        v = gc::lane_law(h, &law, &merged);
+        v = gc::lane_law(h, &law);
         check(law == gc::Law::stop && v == 0.0f, "lane units: the head stops at d_end while the slot is blocked");
         gc::LaneCtx e; // the escort gate (review item 1): the braking reserve, whatever the leader's launch and the latency
         e.s = -6000.0f;
@@ -10883,21 +10993,21 @@ static void lane_c_units() {
         e.a = 5.0f;
         e.gate = true;
         e.t_gate_s = 100.0f; // the full crawl
-        v = gc::lane_law(e, &law, &merged);
+        v = gc::lane_law(e, &law);
         check(law == gc::Law::lane && v == 100.0f, "lane units: the escort gate does not bind beyond the reserve (3.7 km to d_end at 5 m/s2)");
         e.s = -gc::kLaneEndM - 500.0f;
-        v = gc::lane_law(e, &law, &merged);
+        v = gc::lane_law(e, &law);
         const float vr = std::sqrt(gc::kYieldFloorMs * gc::kYieldFloorMs + 2.0f * 5.0f * (500.0f - 50.0f - gc::kLaneCrawlM));
         check(law == gc::Law::gate && std::fabs(v - vr) < 0.01f, "lane units: the escort gate's braking reserve 500 m before d_end");
         e.s = -gc::kLaneEndM - 50.0f - 0.5f * gc::kLaneCrawlM;
-        v = gc::lane_law(e, &law, &merged);
+        v = gc::lane_law(e, &law);
         check(law == gc::Law::gate && v == gc::kYieldFloorMs, "lane units: the reserve's crawl at the 10 m/s floor before d_end");
         e.s = -gc::kLaneEndM - 40.0f;
-        v = gc::lane_law(e, &law, &merged);
+        v = gc::lane_law(e, &law);
         check(law == gc::Law::stop && v == 0.0f, "lane units: the reserve stops 50 m short of d_end");
         e.s = -gc::kLaneEndM - 50.0f - 0.5f * gc::kLaneCrawlM;
         e.t_gate_s = -1.0f; // lambda_max passed: no crawl left, the stopping curve
-        v = gc::lane_law(e, &law, &merged);
+        v = gc::lane_law(e, &law);
         check(law == gc::Law::gate && std::fabs(v - std::sqrt(2.0f * 5.0f * 0.5f * gc::kLaneCrawlM)) < 0.01f, // (dt 0)
               "lane units: past lambda_max the reserve is the stopping curve to 50 m short of d_end");
         e.t_gate_s = 100.0f;
@@ -10912,7 +11022,7 @@ static void lane_c_units() {
                     q.v_self = float(vv);
                     q.t_gate_s = float(30.0 - double(i) * dt); // the crawl budget runs out while the ship is on the reserve
                     q.dt = float(dt);
-                    const double want = gc::lane_law(q, &law, &merged);
+                    const double want = gc::lane_law(q, &law);
                     vv = want < vv ? std::fmax(want, vv - 5.0 * dt) : std::fmin(want, vv + 5.0 * dt);
                     x += vv * dt;
                     if (vv < 1e-3 && want < 1e-3) break;
@@ -11139,7 +11249,6 @@ static void lane_c_units() {
             m.large = 1;
             m.sb = gc::Sb::funnel;
             m.v_sb = 100.0f;
-            m.merged = 1;
             m.live_ms = m.decided_ms = m.commit_ms = 1000;
             m.st.ms = 1000;
             m.st.order = order;
@@ -11308,27 +11417,26 @@ static void lane_c_units() {
         check(w0 == gc::GateRow::roll && w1 == gc::GateRow::lane && w2 == gc::GateRow::roll && w3 == gc::GateRow::stage && w4 == gc::GateRow::lane &&
                   w5 == gc::GateRow::guard && w6 == gc::GateRow::guard,
               why);
-        // item 3: site B on the hand-over (nose along F, 60 m past d_end, the live speed 12.2 m/s): P2 kept writes the live speed; P2 not kept
-        // never: the lane speed under the refusal's brake bound before the refusal, the stop at d_end (0 past it) once refused
+        // item 3 (round A, rank 4): site B on the hand-over (nose along F, 60 m past d_end): P2 kept writes the live speed under the brake
+        // bound from P2 (12.2 m/s stands: 11 s of it fit the room; 100 m/s is bounded to the brake curve to a stop 300 m outside the trigger
+        // sphere); P2 not kept writes nothing (the vanilla stop); no refused timer
         const float f[3] = {0.0f, 0.0f, 1.0f};
         m->sb = gc::Sb::handover;
         m->v_sb = gc::lane_vmax(*m);
-        float v_kept = -1, v_unkept = -1, v_ref = -1, v_ref_back = -1;
-        gc::LaneWrite k_kept = gc::LaneWrite::none, k_un = k_kept, k_ref = k_kept;
+        float v_kept = -1, v_unkept = -1, v_fast = -1;
+        gc::LaneWrite k_kept = gc::LaneWrite::none, k_un = k_kept, k_fast = k_kept;
         m->p2_kept = 1;
-        gc::lane_site_b(*g, *m, core::kOrderNone, xh, f, 12.2f, 1000, &v_kept, &k_kept);
+        const bool w_kept = gc::lane_site_b(*g, *m, core::kOrderNone, xh, f, 12.2f, 1000, &v_kept, &k_kept);
+        const bool w_fast = gc::lane_site_b(*g, *m, core::kOrderNone, xh, f, 100.0f, 1000, &v_fast, &k_fast);
         m->p2_kept = 0;
-        gc::lane_site_b(*g, *m, core::kOrderNone, xh, f, 12.2f, 1000, &v_unkept, &k_un);
-        m->refused = 1;
-        gc::lane_site_b(*g, *m, core::kOrderNone, xh, f, 12.2f, 1000, &v_ref, &k_ref);
-        const float xb[3] = {0.0f, -997.0f, -2800.0f}; // (500 m before d_end: the brake curve to a stop 50 m short of it)
-        gc::lane_site_b(*g, *m, core::kOrderNone, xb, f, 12.2f, 1000, &v_ref_back, nullptr);
-        m->refused = 0;
-        std::snprintf(why, sizeof why, "lane round 1 units (item 3): hand-over kept %.1f (%s), not kept %.1f (%s), refused %.1f (%s), refused 500 m "
-                      "before d_end %.1f m/s", double(v_kept), gc::lane_write_name(k_kept), double(v_unkept), gc::lane_write_name(k_un), double(v_ref),
-                      gc::lane_write_name(k_ref), double(v_ref_back));
-        check(v_kept == 12.2f && v_unkept > 50.0f && k_un == gc::LaneWrite::unkept && v_ref == 0.0f &&
-                  std::fabs(double(v_ref_back) - std::sqrt(2.0 * 10.0 * 450.0)) < 0.5,
+        const bool w_unkept = gc::lane_site_b(*g, *m, core::kOrderNone, xh, f, 12.2f, 1000, &v_unkept, &k_un);
+        const float room = std::sqrt(xh[0] * xh[0] + xh[1] * xh[1] + xh[2] * xh[2]) - (m->r + 10.0f) - gc::kLaneTrigMarginM;
+        const float v_bound = room > 0.0f ? std::sqrt(2.0f * m->params.a_lin * room) : 0.0f;
+        std::snprintf(why, sizeof why, "lane units (round A, item 3): hand-over kept %.1f (%s, written %d), kept at 100 m/s %.1f (bound %.1f), not kept "
+                      "written %d (%s)", double(v_kept), gc::lane_write_name(k_kept), int(w_kept), double(v_fast), double(v_bound), int(w_unkept),
+                      gc::lane_write_name(k_un));
+        check(w_kept && v_kept == 12.2f && k_kept == gc::LaneWrite::kept && w_fast && std::fabs(double(v_fast - (v_bound < 100.0f ? v_bound : 100.0f))) < 0.5 &&
+                  !w_unkept && k_un == gc::LaneWrite::none,
               why);
         // item 3: ctl_x_wait_s accrues every frame from the refusal (HEAD: only on an observed order 5)
         m->sb = gc::Sb::inbound;
@@ -11348,8 +11456,8 @@ static void lane_c_units() {
             if (ls.x_wait_ms) ++frames_wait;
         }
         std::snprintf(why, sizeof why, "lane round 1 units (item 3): a 20 s refusal without order 5 accrues %.1f s (beyond 3 s: 17 s) over %u frames, "
-                      "refused %u", double(acc) / 1000.0, frames_wait, unsigned(m->refused));
-        check(m->refused == 1 && acc >= 16800 && acc <= 17000 && frames_wait > 100, why);
+                      "counted %u", double(acc) / 1000.0, frames_wait, unsigned(m->x_counted));
+        check(m->x_counted == 1 && acc >= 16800 && acc <= 17000 && frames_wait > 100, why);
         // item 4: the re-commit hysteresis: a ship that left on Why::target re-commits after kRecommitMs + the step, not before; a committed
         // member's refresh is never held
         gc::note_target_leave(b, 0x9200, 30000);
@@ -11370,17 +11478,16 @@ static void lane_c_units() {
         cx.a = 5.0f;
         cx.v_self = 0.0f;
         cx.pred = true;
-        cx.merged = false;
         cx.gap = 200.0f;
         cx.v_pred = 0.0f;
         gc::Law l1, l2, l3;
-        bool mg = false, c1 = false, c2 = false, c3 = false;
+        bool c1 = false, c2 = false, c3 = false;
         cx.stop_left_s = 5.0f;
-        const float v1 = gc::lane_law(cx, &l1, &mg, &c1);
+        const float v1 = gc::lane_law(cx, &l1, &c1);
         cx.stop_left_s = -0.1f;
-        const float v2 = gc::lane_law(cx, &l2, &mg, &c2);
+        const float v2 = gc::lane_law(cx, &l2, &c2);
         cx.block = true;
-        const float v3 = gc::lane_law(cx, &l3, &mg, &c3);
+        const float v3 = gc::lane_law(cx, &l3, &c3);
         std::snprintf(why, sizeof why, "lane round 1 units (item 4): the law's stop %.1f (%s), after T_stop + the step %.1f (%s), a block %.1f (%s)",
                       double(v1), gc::law_name(l1), double(v2), gc::law_name(l2), double(v3), gc::law_name(l3));
         check(v1 == 0.0f && l1 == gc::Law::stop && v2 == gc::kYieldFloorMs && l2 == gc::Law::merge && v3 == 0.0f && l3 == gc::Law::stop && c1 && c2 && c3,
@@ -11396,9 +11503,9 @@ static void lane_c_units() {
         m.r = 1092.0f;
         m.params.a_lin = 5.0f;
         const float far[3] = {0, -830, -2300}, nearp[3] = {0, -830, -1500};
-        check(gc::lane_refused_hold(g, m, far, 20.0f) == 20.0f, "lane units: a refused ship at d_end keeps a slow speed while the poll fits");
-        const float vb = gc::lane_refused_hold(g, m, nearp, 100.0f);
-        check(vb < 100.0f && vb >= 0.0f, "lane units: the refused ship brakes to stop outside its trigger sphere + 300 m");
+        check(gc::lane_hand_bound(g, m, far, 20.0f) == 20.0f, "lane units: a ship in the hand-over at d_end keeps a slow speed while the poll fits");
+        const float vb = gc::lane_hand_bound(g, m, nearp, 100.0f);
+        check(vb < 100.0f && vb >= 0.0f, "lane units: the hand-over's brake bound stops the ship outside its trigger sphere + 300 m");
     }
 }
 // The lane's per-frame cost (section 6.10): the frame's controller block (lane_frame, the decisions with their rollouts and sweeps; the
@@ -11495,7 +11602,8 @@ static void lane_r2_review_units(const gc::Member& m0, const float x0[3], const 
         std::printf("%s\n", why);
     }
 #endif
-    // Item 5: a refused hand-over's 300 s bound is game time + the step: kept at kLaneRefusedMaxMs + half a step, ended past + the step
+    // Item 5: a lane hand-over's 300 s bound is game time + the step: kept at kLaneRefusedMaxMs + half a step, ended past + the step
+    // (round A: the bound applies to every lane hand-over, no refused flag)
     {
         gc::Board br{};
         br.lane = 1;
@@ -11504,7 +11612,6 @@ static void lane_r2_review_units(const gc::Member& m0, const float x0[3], const 
         gc::Role bf = gc::Role::count;
         gc::Member* M = gc::enter(br, *gr, 0x9700, 0x9700 ^ 0x5a000000u, gc::Role::committed, 1000, &bf);
         M->handover_ms = 1000;
-        M->refused = 1;
         const gc::Why w_in = gc::validity(*gr, *M, core::kOrderNone, 0, 1000 + gc::kLaneRefusedMaxMs + 16, false);
         const gc::Why w_out = gc::validity(*gr, *M, core::kOrderNone, 0, 1000 + gc::kLaneRefusedMaxMs + 34, false);
         std::snprintf(why, sizeof why, "lane round 2 review units (item 5): a refused hand-over at 300 s + 16 ms (step 33 ms) %s, + 34 ms %s",
@@ -11819,20 +11926,18 @@ static void lane_r2_units() {
         c.a = 5.0f;
         c.v_self = 100.0f;
         c.pred = true;
-        c.merged = true;
         c.gap = 600.0f;
         c.v_pred = 100.0f;
         gc::Law l1, l2, l3;
-        bool mg = true;
-        const float v_open = gc::lane_law(c, &l1, &mg);
+        const float v_open = gc::lane_law(c, &l1);
         c.pred_final = true;
-        const float v_final = gc::lane_law(c, &l2, &mg);
+        const float v_final = gc::lane_law(c, &l2);
         c.pred_final = false;
         c.gap = 300.0f;
         c.v_pred = 0.0f;
         c.closing = true;
         c.stop_left_s = -1.0f; // (past T_stop + the step)
-        const float v_back = gc::lane_law(c, &l3, &mg);
+        const float v_back = gc::lane_law(c, &l3);
         std::snprintf(why, sizeof why, "lane round 2 units (items 3b, 5): follow at 600 m %.1f m/s, behind a final %.1f m/s (%s); a predecessor flying back "
                       "inside g_req past T_stop %.1f m/s (%s)", double(v_open), double(v_final), gc::law_name(l2), double(v_back), gc::law_name(l3));
         check(v_open >= 99.0f && v_final <= 11.0f && l2 == gc::Law::follow && v_back == 0.0f && l3 == gc::Law::stop, why);
@@ -11991,6 +12096,10 @@ static void lane_c_scenarios() {
                         ck(r.arr_dep8_close == 0, "Ex no departing hull on order 8 within 500 m of a parked arrival");
                         ck(r.arr_overlap == 0, "Ex no two arrivals overlapping");
                         ck(r.arr_dep_gap > 0.0, "Ex no departing hull in contact with a parked arrival");
+                        // round A (section 12.1a): the pair certifies on the exit point's real lateral clearance (the arrival's terms along F);
+                        // a yield's stop against an arrival (the hull-fit fallback) lasts at most the arrival window + the step
+                        ck(r.arr_pair_contact == 0, "Ex no member-arrival pair handed back on contact while the hull-fit holds");
+                        ck(r.stop_max_s <= 60.0 + double(r.step_max) / 1000.0, "Ex a stop against an arrival within the arrival window + the step");
                     }
                     continue;
                 }
@@ -12036,6 +12145,11 @@ static void lane_c_scenarios() {
                     // the brief stops (the yield's cap 0) stay within T_stop + the step
                     ck(r.qh_over_ms <= r.step_max && r.qh_rel_ms <= r.step_max, "3d2 the queue hold ends with the refusal (within the step of the grant)");
                     ck(r.stop_long == 0, "3d2 no brief stop beyond T_stop + the step");
+                    // round A (rank 4, holistic review section 2 d): P2 not kept = no write (the vanilla stop); order 5 from rest launches within
+                    // the kept ships' T_slot + 25 s + the step of its grant
+                    ck(r.p2_unkept_writes == 0, "3e no site-B write on the hand-over of a P2 not kept");
+                    ck(r.unkept_slot_s >= 0.0 && r.t_slot_kept_max_s >= 0.0 && r.unkept_slot_s <= r.t_slot_kept_max_s + 25.0 + double(r.step_max) / 1000.0,
+                       "3e order 5 from rest: the launch within T_slot + 25 s + the step of the grant");
                     ck(r.episodes == 0 && r.uncert_frames == 0 && r.min_capsule > 0.0 && r.min_box > 0.0, "7 safety");
                     continue;
                 }

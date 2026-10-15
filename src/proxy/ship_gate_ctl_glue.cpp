@@ -301,6 +301,19 @@ extern "C" void __cdecl x3m_ship_gate_arrival(std::uint32_t obj, std::uint32_t g
             }
             st.f_ok = 1;
             st.left_ms = 900;
+            // round A (convoy-gate-transit.md section 12.1a): the arrival's first decision at the launch itself (its rollout on 0x21 and the
+            // sweeps against the board), so a departing member's site E verdict against it on the launch frame finds the pair certified
+            // or handed back, never without a rollout (cause=zero: measured at a SETA step in the fixture's arrival_pass, the leader's
+            // eviction 0.4 s after the launch). One rollout and up to 23 sweeps once per capital launch
+            gc::DecideStats ds;
+            gc::decide(*g, unsigned(m - g->m), now, &ds, nullptr, nullptr);
+            ctl_decisions_.add();
+            ctl_rollouts_.add(ds.rollouts);
+            ctl_sweeps_.add(ds.sweeps);
+            ctl_narrow_.add(ds.narrow);
+            if (ds.conflicts) ctl_conflicts_.add(ds.conflicts);
+            if (ds.yields) ctl_yields_.add(ds.yields);
+            if (ds.unresolved) ctl_unresolved_.add(ds.unresolved);
         }
     }
     if (debug_) {

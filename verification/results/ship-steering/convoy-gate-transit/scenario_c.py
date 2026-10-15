@@ -12,10 +12,10 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 for _ in range(4):
     ROOT = os.path.dirname(ROOT)
 SRC = os.path.join(ROOT, 'verification', 'probe', 'ship_steering_host.cpp')
-BUILDS = [  # (name, -D macros): the design values (g_req 500 m and tau_m 4 s since the lane stage 1 measurement; the design note said 400 m
+BUILDS = [  # (name, -D macros): the design values (g_req 500 m since the lane stage 1 measurement; the design note said 400 m; round A: one
+            # gap law at tau_f, the merge law's tau_m is gone)
     ('design', []),  # and 8 s; the escort's earlier join end, X3M_LANE_ESC_JOIN_K x lambda_max at the lane speed, is new in stage 1)
     ('g_req=400', ['-DX3M_LANE_GAP_M=400.0f']),
-    ('tau_m=8', ['-DX3M_LANE_TAU_MERGE_S=8.0f']),
     ('tau_f=5', ['-DX3M_LANE_TAU_FOLLOW_S=5.0f']),
     ('T_stop=10s', ['-DX3M_LANE_STOP_MS=10000u']),
     ('lambda_max=10s', ['-DX3M_LANE_LAMBDA_MAX_MS=10000u']),  # review item 1: the hold horizon of HEAD's value (the reserve is the gate)

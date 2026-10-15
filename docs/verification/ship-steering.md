@@ -3017,6 +3017,59 @@ Bench (the controller block, unchanged code): bench24 tf 1 mean 10.4–10.8 µs,
 
 Evidence: [`engine_paths/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/engine_paths/run.sh) (builds the tree and the parked variant, about 4.5 min) → `item_a.txt`, `<cast>.txt`; `summary.py` → `summary.txt`; `ship_steering_host_lane.txt` refreshed. `scenario_c.txt` (the constants sweep) was not rerun.
 
+### Round A: rank 4 + the arrival pair (2026-10-15, Fable 5.1; design [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §12 (ratification, §12.1a, §12.5) and [ship-steering-holistic-review.md](../architecture/ship-steering-holistic-review.md) §2 b–d; changes, deviations and figures in §11 "Round A (rank 4 + arrival pair)")
+
+**What changed.** Worktree `agent-a62ac571bfdfe5b38` on main `71b1536d`; `src/proxy/ship_gate_lane_core.h`, `ship_gate_certificate_core.h`,
+`ship_gate_board_core.h`, `ship_gate_geometry_core.h`, `ship_gate_ctl_glue.cpp`, `ship_steering_install.cpp` (the install row's `yield=`), the
+fixture, `ship_trace_rows.py` (a comment), `scenario_c.py` (the τ_m build dropped).
+
+1. One gap law + lateral band in place of the merge/follow regimes with latches (`lane_law`, `lane_band_free`, `Member::band`).
+2. One yield candidate, one rollout per conflict (`try_yield` with the conflict partner; `kMaxRolloutsPerDecision` 7 → 3).
+3. The hand-over: P2 kept writes the live speed under the brake bound from P2, P2 not kept writes nothing; the refused timer is a counter
+   (`x_counted`); a follower behind a predecessor on its final before its P2 holds the braking curve to g_req behind its tail at d_end.
+4. The arrival pair (§12.1a): the sweep's axial mode for a pair with an arrival on a drift-free plan, the 0x1e brake-to-rest, the launch
+   hook's first decision of the arrival, the hull-fit fallback as the single candidate's stop with the arrival-window bound.
+5. Retired: `Member::merged`, `Member::refused`, `LaneWrite::unkept`, `lane_refused_hold` (→ `lane_hand_bound`), `kLaneTauMergeS` /
+   `X3M_LANE_TAU_MERGE_S`, `kLaneBesideM`, `kYieldFrac`, `kYieldMidMs`, `lane_law`'s `merged` parameter. Rows parse as before
+   (`test_ship_trace_format`): `ship_gate_ctl_lane`'s `w=` no longer emits `unkept`, `merged=` is the merge's completion.
+
+**Checks that fail before the change** **[m]** (the base `71b1536d` fixture, `round_a/` and the engine_paths runner):
+
+| Item | Check | Before | After |
+| --- | --- | --- | --- |
+| 1 | `lane units (round A): ... 41.5 m/s at -85 m` (the one law on the raw gap) | the merge law gave the lane speed at −85 m beside (its settling term; the old unit asserted the latch, not the speed) **[i]** | passes; merge maxima −2…+8 s, assertion 2 and 7 green in 243 runs |
+| 2 | `ctl cost (host) ... in conflict` rollouts per 24 decisions | 165 (the three-rung ladder) | 71; a conflict decision 25.9 → 11.9 µs mean, 31.1 → 13.5 µs worst |
+| 3 | `3e no site-B write on the hand-over of a P2 not kept` | the unit `hand-over not kept ... k_un == unkept, v > 50 m/s` asserted the write | 0 writes in 18 of 18 runs; `3e order 5 from rest` within T_slot + 25 s + the step in 18 of 18; `3d2` the queue hold as before |
+| 4 | `arrival_pass` `Ex` (member 0x12, contact; new: `no member-arrival pair handed back on contact`, `a stop against an arrival within the arrival window + the step`) | 8 of 9 runs failed (member 0x12 3–5 flown, contact to −1,157 m), 2 with launches missing | 9 of 9 green; 0 member 0x12, departing capsule ≥ 481 m, 3/3 launched |
+| 4 | `arrival_parked` (stays parked: the fan, §12.1b) | 9 of 9 failed | 9 of 9 still fail (two arrivals overlap −1,180 m, member 0x12 3–12 per run, contact −809…−1,116 m); `pair_contact` 0 in 9 of 9 |
+
+**Acceptance** **[m]** (host x86-64, `c++ -std=c++17 -O2 -Wall -Wextra -Werror`, no Wine, no game; the i686 build `cmake -S . -B build -G Ninja
+-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo`):
+
+| Check | Result |
+| --- | --- |
+| `--lane` (every seed) | 3,506 checks, 0 failures |
+| full | 10,851 checks, 0 failures (the quiet rerun; a run during the i686 build failed only the host-timing bench, bench24 tf 10 third-worst 1,011 µs) |
+| `--capital` | 5,229 checks, 0 failures |
+| `arrival_pass` un-parked | green in 9 of 9 |
+| `arrival_parked` (parked, rerun) | 35 failures of 137 checks: as before the round |
+| host unit tests (`test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering`) | 21 tests OK (the quiet rerun; a run during the i686 build failed `test_host_fixture` on the same host-timing bench) |
+| i686 build | 0 warnings |
+| `check_no_x87.py build/d3d9.dll` | PASS (a first build failed on two x87 stores: `float(k - 1u)` in the 0x1e rollout and `lane_law`'s float return once emitted out of line; fixed by `t - kSampleS` and `always_inline`) |
+| `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` | PASS, 20 checks |
+
+Spans (`round_a/spans_diff.md`, 3 seeds × tf 1/6/10 before → after): the largest shift of either end 7.8 s (`p2_miss`, `p2_miss_near` at
+tf 6: the from-rest launch of a P2 not kept), 24 of 27 casts within 3.3 s. bench24 (the lane cost bench, 5 runs of this tree): mean
+tf 1 10.0–10.3 µs (before 10.3–11.4), tf 10 99.6–111.6 µs (before 128.9–139.8); third-worst frames tf 1 570–760 µs, tf 10 426–1,011 µs
+(before 406–609 µs today, 499–673 µs in the previous entry). Quiet alternation, base and this tree three times each, bench only: tf 10
+mean 128.5–130.9 → 100.3–102.8 µs, third-worst 513–580 → 379–473 µs; tf 1 mean 10.2–10.7 → 9.7–9.8 µs, third-worst 322–706 → 305–624 µs
+(`qbench` runs, this session's scratch; the figures are host timings, not game FPS).
+
+Evidence: [`round_a/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_a/run.sh) (builds the tree and the parked
+variant, runs `--lane` with every seed, the two arrival casts and `--traffic`; about 2 min) → `lane.txt`, `arrival_pass.txt`,
+`arrival_parked.txt`, `rows.txt`, `bench.txt`, and with a base stdout `spans_diff.md`; `summarise.py`, `rows.py`, `spans_diff.py` are the
+one-liners behind the figures above.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

@@ -1,0 +1,8 @@
+ctl cost (host): pair sweep 61 samples broad only 74 ns, 61 narrow samples (the worst clear sweep) 441 ns
+ctl cost (host): the worst pair sweep 441 ns, target <= 500 ns: met
+ctl cost (host): a decision on a full board (24 members, 23 pairs) spread (broad) mean 4.3 us, worst 4.3 us (24 decisions: rollouts 24 sweeps 552 narrow 0 conflicts 0 yields 0 unresolved 0)
+ctl cost (host): a decision on a full board (24 members, 23 pairs) packed (narrow) mean 6.6 us, worst 7.5 us (24 decisions: rollouts 24 sweeps 552 narrow 8296 conflicts 0 yields 0 unresolved 0)
+ctl cost (host): a decision on a full board (24 members, 23 pairs) in conflict (yields) mean 11.9 us, worst 13.5 us (24 decisions: rollouts 71 sweeps 1062 narrow 2915 conflicts 96 yields 0 unresolved 96)
+ctl cost (host): the frame bound (6 decisions, 6 rollouts; a decision with every yield 3): the worst admitted frame 3 plain + 1 in conflict = 36.1 us (plain 7.5 us, in conflict 13.5 us, measured)
+ctl cost (host): site E's member-pair lookup on a full board 7 ns per call (game-memory reads not included)
+ctl cost (host): site E's member-pair lookup target <= 200 ns: met

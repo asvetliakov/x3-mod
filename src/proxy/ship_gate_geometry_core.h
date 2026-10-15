@@ -170,9 +170,6 @@ __attribute__((always_inline)) inline float dock_ramp(float d, float r_gate, flo
 #ifndef X3M_LANE_GAP_M
 #define X3M_LANE_GAP_M 500.0f // design 400 m; measured (scenario C): at 400 m the sweep's own margin at its 30 s horizon (50 m + 10 m/s x 30 s
 #endif                        // + the rollouts' offset terms, 360-410 m) leaves a follower at g_req unresolved: site E passes the pair
-#ifndef X3M_LANE_TAU_MERGE_S
-#define X3M_LANE_TAU_MERGE_S 4.0f
-#endif
 #ifndef X3M_LANE_TAU_FOLLOW_S
 #define X3M_LANE_TAU_FOLLOW_S 10.0f
 #endif
@@ -192,9 +189,8 @@ __attribute__((always_inline)) inline float dock_ramp(float d, float r_gate, flo
 #define X3M_LANE_ESC_JOIN_K 1.0f // an escort's join completes this x lambda_max at the lane speed earlier (lane_join_end)
 #endif
 constexpr float kLaneGapM = X3M_LANE_GAP_M;                // g_req: tail(P) - nose(Y) along F once merged
-constexpr float kLaneTauMergeS = X3M_LANE_TAU_MERGE_S;     // tau_m: v_Y = v_P - (g_req - gap) / tau_m during the merge (floor 10 m/s);
-                                                           // 4 s (design 8 s): the level M1's merge at its bang-bang limit (scenario C)
-constexpr float kLaneTauFollowS = X3M_LANE_TAU_FOLLOW_S;   // tau_f: v_Y = min(v_lane, v_P + (gap - g_req) / tau_f) after it (floor 10 m/s)
+constexpr float kLaneTauFollowS = X3M_LANE_TAU_FOLLOW_S;   // tau: v_Y = min(v_lane, v_P + (gap_settle - g_req) / tau), floor 10 m/s: the one
+                                                           // gap law (round A, rank 4; the merge law's tau_m 4 s and its latch are gone)
 constexpr std::uint32_t kLaneStopMs = X3M_LANE_STOP_MS;    // T_stop: a brief stop lasts at most this + the game step (Gate::step_ms)
 constexpr std::uint32_t kLaneLambdaMaxMs = X3M_LANE_LAMBDA_MAX_MS; // lambda_max: the script's order 4 comes at most this (+ the frame
                                                                     // step) after the leader's launch (measured +4.1..+16.9 s, section 10.12):
@@ -266,9 +262,6 @@ constexpr std::uint32_t kLanePollMs = 11000;       // the KC's longest poll afte
 constexpr float kLaneTrigMarginM = 300.0f;         // ... which keeps the refused ship this far outside its trigger sphere
 constexpr float kLaneStopV = 0.5f;                 // a predecessor slower than this is stopped (its follower stops at spacing)
 constexpr std::uint32_t kLaneRefuseMs = 5000;      // a member at the hand-over this long without order 5 counts as refused (+ the step)
-// Review item 6: a merging yielder is beside the ship ahead while the raw gap (tail to nose along F) is short of this: its speed law does
-// not settle (nor its lateral leave the clearance band) before it is behind
-constexpr float kLaneBesideM = 0.0f;
 // The lane speed: the large cap (100 m/s) under the hull's v_max (site B's gate speed without the cornering term).
 __attribute__((always_inline)) inline float lane_vmax(const Member& m) noexcept { return sc::gate_speed(m.params.v_max, m.large != 0, 0.0f); }
 // A hull's final Q (section 6.1): q_point's window nearest straight below the axis (A_lat far down -U), the lower half of the disc.

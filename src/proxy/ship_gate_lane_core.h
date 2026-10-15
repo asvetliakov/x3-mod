@@ -1,17 +1,20 @@
 #pragma once
 // The gate traffic controller: the departure lane (convoy-gate-transit.md). The lane laws (LaneCtx, lane_reserve, lane_law,
-// lane_refused_hold, lane_hold_o0), the lane member's path against an obstacle and the gate's solid (lane_path*, lane_obst_*, solid_gap_*,
+// lane_hand_bound, lane_hold_o0), the lane member's path against an obstacle and the gate's solid (lane_path*, lane_obst_*, solid_gap_*,
 // lane_gate_why), the predicted launch, the lane frame (lane_frame), site B's lane write (lane_site_b, lane_defer_*) and site A's lane
 // steer (lane_steer).
 #include "ship_gate_geometry_core.h"
 namespace x3m::ship_avoidance::ctl {
 // One member's law at one moment (lane_frame on the live state, the rollout on its samples): its along position s, the lane speed, the
 // predecessor's gap and along speed, the head's pacing (seconds until the through slot is free) and an escort's gate (seconds until its
-// leader's launch + lambda_max). Returns the speed (0: a stop) and the law; *merged (the law's state) becomes true once the settling gap is g_req - 50 m.
+// leader's launch + lambda_max). Returns the speed (0: a stop) and the law. Round A (rank 4, ship-steering-holistic-review.md section 2 b):
+// one gap law, no merge state: v = min(v_lane, v_P + (gap - g_req) / tau), floor 10 m/s, gap = the raw gap + the joins' cost - the own
+// closing distance; "merge" is the row label while the raw gap is short of g_req - 50 m (a yield is the law at its floor: try_yield's
+// single candidate).
 struct LaneCtx {
     float s = 0, v_lane = 0, a = 1.0f, v_self = 0, y = 0; // y: the lateral still to join (m; 0 on Lambda)
     float loss = 0; // the along-track distance the pair's joins will still cost the gap: the member's own less its predecessor's (lane_join_loss)
-    bool pred = false, merged = true;
+    bool pred = false;
     float gap = 3.4e38f, v_pred = 0;
     bool head = false, gate = false;
     float t_free_s = 0, t_gate_s = 0; // t_gate_s: until the escort's latest expected order 4 (its leader's launch + lambda_max + the step)
@@ -26,6 +29,10 @@ struct LaneCtx {
     // (item 5); it is inside its final (past d_end - its settling distance, or in the hand-over): the follow gap covers the follower's own
     // stop, g_req + v^2 / 2a, so a P2 that drops its speed at d_end leaves a resolvable pair (item 3b)
     bool closing = false, pred_final = false;
+    // round A (the no-write hand-over): the ship ahead is on its final before its P2, which may stop it at d_end within a frame (P2 not
+    // kept: the vanilla stop): the room from this member's nose to g_req behind the ship ahead's tail at d_end (m; 3.4e38 none): the
+    // member stays on the braking curve to a stop there (lane_law's stop-room bound) so an instant stop ahead leaves g_req
+    float stop_room = 3.4e38f;
     // lane fix round 2 item 3d: the ship ahead has its grant (order 5 or 8 seen): it leaves along F, so its standstill is no stop at
     // spacing (the queue hold behind a refused leader ends within the step of its grant, not once its speed passes kLaneStopV)
     bool granted = false;
@@ -51,37 +58,42 @@ __attribute__((always_inline)) inline float lane_reserve(float dist, float a, fl
     const float vc = rest > crawl ? sc::sqrt_ss(ad * ad + 2.0f * am * (rest - crawl) + kYieldFloorMs * kYieldFloorMs) - ad : kYieldFloorMs;
     return vc < vb ? vc : vb;
 }
-inline float lane_law(const LaneCtx& c, Law* law, bool* merged, bool* stop_cond = nullptr) noexcept {
+// (*settle, optional: the gap the law read, m; 3.4e38 without a predecessor. always_inline: a float return on i686 goes through st(0)
+// when the function is emitted out of line, which the x87 audit refuses on the hook paths; its two callers inline it)
+__attribute__((always_inline)) inline float lane_law(const LaneCtx& c, Law* law, bool* stop_cond = nullptr, float* settle = nullptr) noexcept {
     float v = c.v_lane;
     if (stop_cond) *stop_cond = false;
+    if (settle) *settle = 3.4e38f;
     *law = Law::lane;
-    *merged = c.merged;
     if (c.pred) {
-        // the gap the pair settles at once the speeds match (the speed difference's distance at a: a yielder still slower than the ship
-        // ahead keeps losing ground while it re-accelerates; the large cap is both ships' top speed, so a gap opened too wide never closes)
-        // ... and the along-track distance the joins onto Lambda will still cost at the shared cap (its own less the predecessor's)
-        const float am = c.a > 0.1f ? c.a : 0.1f, dv = c.v_pred - c.v_self;
-        const float gap_v = c.gap + dv * (dv > 0.0f ? dv : -dv) / (2.0f * am), gap = gap_v + c.loss;
-        // the speed law moves from merge to follow (and the yielder's lateral is released onto Lambda) once the settling gap is
-        // g_req - 50 m and the yielder is no longer beside the ship ahead (the raw gap >= kLaneBesideM: review item 6; HEAD settled at a raw
-        // gap of -85 m on the speed term of a yielder at the floor). While merging, the joins' loss is credited only up to what keeps the
-        // settled raw gap >= kLaneBesideM (the yielder holds its lateral until then). *merged is the law's state; the merge's completion
-        // for the row and the bounds is the raw gap's g_req - 50 m (lane_frame)
-        const float credit_max = kLaneGapM - 50.0f - kLaneBesideM;
-        const float gap_m = gap_v + (c.loss < credit_max ? c.loss : credit_max);
-        if (!*merged && gap_m >= kLaneGapM - 50.0f && c.gap >= kLaneBesideM) *merged = true;
-        if (!*merged) { // the merge law: open the gap at tau_m, the yielder's floor 10 m/s
-            float vm = c.v_pred - (kLaneGapM - gap_m) / kLaneTauMergeS;
-            if (vm < kYieldFloorMs) vm = kYieldFloorMs;
-            if (vm < v) v = vm;
-            *law = Law::merge;
-        } else { // the follow law (lane fix round 2 item 3b: behind a predecessor inside its final the gap also covers the own stop)
-            const float g_need = c.pred_final ? kLaneGapM + c.v_self * (c.v_self > 0.0f ? c.v_self : 0.0f) / (2.0f * am) : kLaneGapM;
-            float vf = c.v_pred + (gap - g_need) / kLaneTauFollowS;
-            if (vf < kYieldFloorMs) vf = kYieldFloorMs;
-            if (vf < v - 0.5f) {
-                v = vf;
-                *law = Law::follow;
+        // the gap the law reads: the raw gap (tail of the ship ahead to the own nose along F) plus the along-track distance the joins onto
+        // Lambda will still cost at the shared cap (its own less the predecessor's), less the own closing distance when this member is the
+        // faster (the braking at a to the ship ahead's speed: a follower behind a stopped or returning ship brakes on its stopping
+        // distance, measured in redeparture). Round A: no credit for the ship ahead's speed advantage (the merge law's settling term let a
+        // yielder at the floor re-accelerate while still level with its passer, 1.2 km before it was behind, so it joined at the lane
+        // speed from 1.4 km beside: a 23-25 deg nose at 7 km and, on the Terran ring, the hand-over's hull swept into the ring's hole)
+        const float am = c.a > 0.1f ? c.a : 0.1f, dv = c.v_self - c.v_pred;
+        const float gap = c.gap + c.loss - (dv > 0.0f ? dv * dv / (2.0f * am) : 0.0f);
+        if (settle) *settle = gap;
+        // the one gap law (round A, rank 4): behind a predecessor inside its final the gap also covers the own stop (lane fix round 2 item
+        // 3b). The label: merge while the raw gap is short of g_req - 50 m, follow after
+        const float g_need = c.pred_final ? kLaneGapM + c.v_self * (c.v_self > 0.0f ? c.v_self : 0.0f) / (2.0f * am) : kLaneGapM;
+        const Law bound = c.gap < kLaneGapM - 50.0f ? Law::merge : Law::follow;
+        float vf = c.v_pred + (gap - g_need) / kLaneTauFollowS;
+        if (vf < kYieldFloorMs) vf = kYieldFloorMs;
+        if (vf < v - 0.5f) {
+            v = vf;
+            *law = bound;
+        }
+        if (c.stop_room < 3.0e38f) { // the ship ahead before its P2 on its final (round A's no-write hand-over: it may stop at d_end within a
+                                     // frame): the braking curve to a stop g_req behind its tail at d_end (measured in p2_miss_near: the gap
+                                     // law alone let the follower run at 69 m/s 667 m behind, and its stop at spacing left 177 m, under the
+                                     // sweep's margin)
+            float vr = c.stop_room > 0.0f ? sc::sqrt_ss(2.0f * am * c.stop_room) : 0.0f;
+            if (vr > 0.0f && vr < kYieldFloorMs) vr = kYieldFloorMs; // (the law's floor, as the gap law's; the room has g_req behind it)
+            if (vr < v) {
+                v = vr;
+                *law = v > 0.0f ? bound : Law::stop;
             }
         }
         if (((c.v_pred < kLaneStopV && !c.granted) || c.closing) && gap < kLaneGapM) { // the ship ahead stopped (a block) or flying back: stop at spacing
@@ -91,7 +103,7 @@ inline float lane_law(const LaneCtx& c, Law* law, bool* merged, bool* stop_cond 
                 *law = Law::stop;
             } else if (v > kYieldFloorMs) { // (lane fix round 1 item 4: not a block, past T_stop + the step: the floor)
                 v = kYieldFloorMs;
-                if (*law == Law::lane) *law = *merged ? Law::follow : Law::merge;
+                if (*law == Law::lane) *law = bound;
             }
         }
     }
@@ -120,9 +132,17 @@ inline float lane_law(const LaneCtx& c, Law* law, bool* merged, bool* stop_cond 
     }
     return v;
 }
-// The order-0 / 0x1f hold of a member in the hand-over refused at the through slot (section 6.4): the speed stands while the longest poll
-// keeps the ship outside its trigger sphere + kLaneTrigMarginM, else the brake at a to a stop there.
-__attribute__((always_inline)) inline float lane_refused_hold(const Gate& g, const Member& m, const float x[3], float v) noexcept {
+// The lateral rule's release (Member::band; lane_frame on the live state, the rollout on its samples): the yielder is behind its
+// predecessor (the raw gap >= 0; the law then never demands more than the ship ahead's speed while the gap is short of g_req, so it
+// stays behind), or the raw gap is g_req - 100 m. (Before round A the merge latch released at a settling gap of g_req - 50 m with the
+// raw gap >= 0, the same moment under the merge law.) gap_law: the gap the law read (the joins' cost included).
+__attribute__((always_inline)) inline bool lane_band_free(float gap_raw, float gap_law) noexcept {
+    return (gap_raw >= 0.0f && gap_law >= 0.0f) || gap_raw >= kLaneGapM - 100.0f;
+}
+// The order-0 / 0x1f hold of a member in the hand-over after P2 (section 6.4; round A, rank 4: from P2 on, not only once refused): the
+// speed stands while the KC's longest poll keeps the ship outside its trigger sphere + kLaneTrigMarginM, else the brake at a to a stop
+// there (a refused through slot never carries the ship through the gate; a granted one starts order 5 within the poll).
+__attribute__((always_inline)) inline float lane_hand_bound(const Gate& g, const Member& m, const float x[3], float v) noexcept {
     const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
     const float room = sc::sqrt_ss(sc::dot3(d, d)) - (m.r + v * 0.1f) - kLaneTrigMarginM;
     if (room > v * float(kLanePollMs) * 0.001f) return v;
@@ -176,7 +196,7 @@ inline LaneHold lane_hold_o0(const Gate& g, const Member& m, const float x[3], c
         const float v_far = disc >= 0.0f ? (-B + sc::sqrt_ss(disc)) / A : 0.0f;
         if (v_far < vh) vh = v_far;
         // level with its predecessor: the run's closest approach to Lambda stays outside the clearance band (the smaller root)
-        if (!m.merged && m.lane_gap < kLaneGapM - 100.0f && m.lane_pred && en < 0.0f && ee > kLaneOnM * kLaneOnM) { // (beside it, off Lambda)
+        if (m.band && m.lane_pred && en < 0.0f && ee > kLaneOnM * kLaneOnM) { // (beside it in the band, off Lambda)
             const int pi = find(g, m.lane_pred);
             const float y_min = pi >= 0 ? g.m[pi].w + m.w + kLaneSideM : kLaneOnM;
             const float perp2 = ee - en * en / nn; // the closest approach of the whole line
@@ -723,12 +743,12 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         for (unsigned i = 0; i < g.n; ++i) {
             Member& m = g.m[i];
             m.x_ms = m.o8_ms = 0;
-            m.refused = 0;
+            m.x_counted = 0;
             m.cap = -1.0f;
             m.cap_ms = m.yield_ms = m.v_plan_ms = 0;
             m.merge_ms = m.stop_ms = m.lane_free_ms = m.lane_gate_ms = 0;
-            m.merged = 0;
             m.lane_pred = 0;
+            m.band = 0;
             m.lstop_ms = m.lstop_last_ms = m.x_acc_ms = 0; // (lane fix round 1)
             m.defer_w = 0;      // final review item 2 (ship-navigation-ai.md section 10.13 item 4): no deferral survives a load
             m.lane_ord_ok = 0; // final review item 1: the sticky order moments are of the old clock
@@ -839,14 +859,14 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             if (o == sc::kOrderFlyBefore) {
                 if (m.sb != Sb::inbound && m.sb != Sb::funnel) {
                     m.x_ms = m.o8_ms = 0;
-                    m.refused = 0;
+                    m.x_counted = 0;
                     m.sb = Sb::inbound;
                 }
             } else if ((o == sc::kOrderNone || o == sc::kOrderRotate) && m.handover_ms) {
                 if (m.sb != Sb::handover) {
                     m.sb = Sb::handover;
                     m.x_ms = m.handover_ms;
-                    m.refused = 0;
+                    m.x_counted = 0;
                     m.o8_ms = 0;
                     m.x_acc_ms = 0;
                 }
@@ -854,23 +874,25 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
                 if (m.sb == Sb::handover && m.x_ms) lane_x_wait(m, now, st); // (the rest of the wait)
                 m.sb = Sb::dock;
                 m.handover_ms = m.x_ms = 0;
-                m.refused = 0;
+                m.x_counted = 0;
             } else if (o == sc::kOrderWarpAway) {
                 m.sb = Sb::launch;
                 m.handover_ms = m.x_ms = 0;
-                m.refused = 0;
+                m.x_counted = 0;
                 if (!m.o8_ms) m.o8_ms = m.st.ms;
                 const std::uint32_t end = m.o8_ms + 900u;
                 if (!g.funnel_end_ms || std::int32_t(end - g.funnel_end_ms) > 0) g.funnel_end_ms = end;
             }
-            // waiting at d_end for the through slot (review item 8: a signed game-time bound plus the frame step)
-            if (m.sb == Sb::handover && !m.refused && m.x_ms && std::int32_t(now - m.x_ms) > std::int32_t(age_bound(g, kLaneRefuseMs))) {
-                m.refused = 1;
-                if (st) ++st->x_refused;
+            // waiting at d_end for the through slot: a refusal is counted once beyond kLaneRefuseMs + the step (review item 8: a signed
+            // game-time bound plus the frame step; round A, rank 4: a counter, no law reads it) and the wait beyond 3 s accrues every frame
+            // of the hand-over (lane fix round 1 item 3: Run173's 116 s refusal left ctl_x_wait_s at 0)
+            if (m.sb == Sb::handover && m.x_ms) {
+                if (!m.x_counted && std::int32_t(now - m.x_ms) > std::int32_t(age_bound(g, kLaneRefuseMs))) {
+                    m.x_counted = 1;
+                    if (st) ++st->x_refused;
+                }
+                lane_x_wait(m, now, st);
             }
-            // lane fix round 1 item 3 (Run173: a 116 s refusal left ctl_x_wait_s at 0, the wait was counted only on an observed order 5):
-            // the wait beyond 3 s accrues every frame from the refusal
-            if (m.sb == Sb::handover && m.refused && m.x_ms) lane_x_wait(m, now, st);
         }
         const float d[3] = {m.st.x[0] - g.G[0], m.st.x[1] - g.G[1], m.st.x[2] - g.G[2]};
         m.lane_s = sc::dot3(d, g.F);
@@ -1133,13 +1155,16 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             cx.granted = P->sb == Sb::dock || P->sb == Sb::launch;
             cx.block = (sc::dot3(P->st.u, P->st.u) < kLaneStopV * kLaneStopV && !cx.granted) || over_block;
             cx.pred_final = P->sb == Sb::handover || P->lane_s > -(dend(*P) + lane_blend_settle(g, *P));
+            // (round A: before its P2 on its final, the room to g_req behind its tail at d_end: the stop-room bound)
+            if ((P->sb == Sb::inbound || P->sb == Sb::funnel) && cx.pred_final && !(k && P->over) && P->lane_s < -dend(*P))
+                cx.stop_room = (-dend(*P) - P->L - kLaneGapM) - (s_self + m.L);
         }
-        if (m.lane_pred != (P ? P->ship : 0u)) { // a new pair: a merge when the gap is short
+        if (m.lane_pred != (P ? P->ship : 0u)) { // a new pair: a merge (the row label and its bound) when the raw gap is short
             m.lane_pred = P ? P->ship : 0u;
-            m.merged = !P || gap >= kLaneGapM - 50.0f ? 1 : 0;
-            m.merge_done = m.merged;
+            m.merge_done = !P || gap >= kLaneGapM - 50.0f ? 1 : 0;
+            m.band = P && gap < kLaneGapM - 100.0f ? 1 : 0; // (the lateral rule: the band until the raw gap is g_req - 100 m)
             m.merge_ms = 0;
-            if (!m.merged) {
+            if (!m.merge_done) {
                 m.merge_ms = now ? now : 1;
                 ++g.lane_merges;
                 if (st) ++st->merges;
@@ -1147,11 +1172,10 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
                 lane_event(st, m, false, gap, 0);
             }
         }
-        // a merge behind a ship that is itself still merging starts when that one settles (its speed is the floor until then; the
+        // a merge behind a ship that is itself still merging starts when that one completes (its speed is near the floor until then; the
         // follower's 40 s bound of section 6.11 item 2 runs from there): the start is re-stamped meanwhile
-        if (!m.merged && m.merge_ms && P && P->lane_rank != 0xff && !P->merged && P->merge_ms) m.merge_ms = now ? now : 1;
+        if (!m.merge_done && m.merge_ms && P && P->lane_rank != 0xff && !P->merge_done && P->merge_ms) m.merge_ms = now ? now : 1;
         if (!P) m.merge_done = 1;
-        cx.merged = m.merged != 0;
         m.lane_free_ms = k == 0 ? t_free : 0u;
         cx.head = m.lane_free_ms != 0;
         cx.t_free_s = cx.head ? float(std::int32_t(m.lane_free_ms - now)) * 0.001f : 0.0f;
@@ -1173,8 +1197,9 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         // (the follow law flickers across the stop's threshold while it brakes)
         cx.stop_left_s = float(std::int32_t((m.lstop_ms ? m.lstop_ms : now) + kLaneStopMs + g.step_ms - now)) * 0.001f;
         Law law;
-        bool merged, stop_cond;
-        m.v_sb = lane_law(cx, &law, &merged, &stop_cond);
+        bool stop_cond;
+        float settle;
+        m.v_sb = lane_law(cx, &law, &stop_cond, &settle);
         if (stop_cond) {
             if (!m.lstop_ms) {
                 m.lstop_ms = now ? now : 1;
@@ -1186,9 +1211,9 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         if (law == Law::lane && !m.lane_on) law = Law::join;
         m.law = law;
         m.lane_gap = gap;
-        if (merged && !m.merged) m.merged = 1;
-        if (!m.merge_done && m.merged && gap >= kLaneGapM - 50.0f) { // review item 6: the merge completes on the raw gap (the finish
-                                                                       // row; the follow law settles a few m short of g_req at the cap)
+        if (m.band && lane_band_free(gap, settle)) m.band = 0;
+        if (!m.merge_done && gap >= kLaneGapM - 50.0f) { // review item 6: the merge completes on the raw gap (the finish row; the law
+                                                         // settles a few m short of g_req at the cap)
             m.merge_done = 1;
             if (st) ++st->merges_done;
             lane_event(st, m, true, gap, m.merge_ms ? now - m.merge_ms : 0u);
@@ -1198,11 +1223,12 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
 }
 // Site B's lane write on a member's frame (section 6.3-6.5; the DLL's clamp hook, the fixture's site B): a stop in force (the law's
 // stop, or the brief stop's cap 0) writes 0 on the steered orders and order 0; on order 0 / 0x1f with the live nose f within 8 deg of F
-// the lane speed stands (the script's re-issue gaps, the lost-leader wait, the hand-over; the refusal's brake bound). False: no write.
-// (*kind, optional: the write's LaneWrite for the lane row)
-enum class LaneWrite : std::uint8_t { none = 0, stop, kept, hold, unkept, count };
+// the lane speed stands (the script's re-issue gaps, the lost-leader wait; the hand-over P2 kept under the brake bound from P2). Round A
+// (rank 4, holistic review section 2 d): a hand-over P2 did not keep gets no write (the vanilla stop: 0x1f rotates, order 5 from rest);
+// the refused timer and its accelerate-then-brake are gone. False: no write. (*kind, optional: the write's LaneWrite for the lane row)
+enum class LaneWrite : std::uint8_t { none = 0, stop, kept, hold, count };
 inline const char* lane_write_name(LaneWrite w) noexcept {
-    static const char* const n[unsigned(LaneWrite::count)] = {"none", "stop", "kept", "hold", "unkept"};
+    static const char* const n[unsigned(LaneWrite::count)] = {"none", "stop", "kept", "hold"};
     return unsigned(w) < unsigned(LaneWrite::count) ? n[unsigned(w)] : "?";
 }
 inline bool lane_site_b(const Gate& g, const Member& m, std::uint16_t order, const float x[3], const float f[3], float v_now, std::uint32_t now,
@@ -1219,23 +1245,12 @@ inline bool lane_site_b(const Gate& g, const Member& m, std::uint16_t order, con
         return true;
     }
     if (order != sc::kOrderNone && order != sc::kOrderRotate) return false;
-    if (m.role == Role::committed && m.handover_ms && (m.sb == Sb::handover || m.sb == Sb::funnel)) { // the hand-over after P2
-        if (!(sc::dot3(f, g.F) >= kLaneHoldCos)) return false;
-        if (m.p2_kept) { // P2 kept the speed: it stands (the refusal's brake bound)
-            *v = m.refused ? lane_refused_hold(g, m, x, v_now) : v_now;
-            if (kind) *kind = LaneWrite::kept;
-            return true;
-        }
-        // lane fix round 1 item 3 (Run173: P2 did not keep the leader's speed, the nose 22 deg off F; 0x1f and order 0 left it at 12.2 m/s
-        // and this branch held that for the whole 116 s refusal, a crawl): never the live speed of a hand-over P2 did not keep: the lane
-        // speed under the refusal's brake bound, refused the brake to a stop at d_end
-        if (m.refused) {
-            const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
-            const float dist = -dend(m) - sc::dot3(d, g.F), a = m.params.a_lin > 0.1f ? m.params.a_lin : 0.1f;
-            *v = dist > kLaneStopShortM ? sc::sqrt_ss(2.0f * a * (dist - kLaneStopShortM)) : 0.0f;
-        } else
-            *v = lane_refused_hold(g, m, x, m.v_sb >= 0.0f ? m.v_sb : lane_vmax(m));
-        if (kind) *kind = LaneWrite::unkept;
+    if (m.role == Role::committed && m.handover_ms && m.sb != Sb::dock && m.sb != Sb::launch) { // the hand-over after P2 (from P2's own
+                                                                                                 // frame: lane_frame moves the stage next)
+        if (!m.p2_kept || !(sc::dot3(f, g.F) >= kLaneHoldCos)) return false; // P2 not kept (lane fix round 1 item 3, Run173's 12.2 m/s
+                                                                             // crawl; round A): no write, order 0 brakes it
+        *v = lane_hand_bound(g, m, x, v_now); // P2 kept the speed: it stands under the brake bound
+        if (kind) *kind = LaneWrite::kept;
         return true;
     }
     if (!lane || !(m.v_sb >= 0.0f)) return false;
@@ -1354,7 +1369,7 @@ inline bool lane_steer(const Gate& g, const Member& m, const float x[3], float v
         lane_lat_at(g, m, s, lat);
         const float er = sc::dot3(d, g.R) - lat[0], eu = sc::dot3(d, g.U) - lat[1];
         const float y = sc::sqrt_ss(er * er + eu * eu);
-        const bool hold_lat = !m.merged && m.lane_gap < kLaneGapM - 100.0f && y > kLaneOnM;
+        const bool hold_lat = m.band && y > kLaneOnM; // (the lateral rule: the band until the raw gap is g_req - 100 m, once per pair)
         const int pi = hold_lat && m.lane_pred ? find(g, m.lane_pred) : -1;
         float sc_c, yc;
         lane_carrot(s, y, v_now, m.params.W, rg, hold_lat, m.redep != 0, &sc_c, &yc, pi >= 0 ? g.m[pi].w + m.w + kLaneSideM : 0.0f,
@@ -1394,7 +1409,7 @@ __attribute__((always_inline)) inline bool sb_funnel(const Member& m) noexcept {
     return m.role == Role::committed && (m.sb == Sb::funnel || (m.ln && m.sb == Sb::inbound));
 }
 // Lane stage 1 (section 6.4): P2's coast bound (stop before the inflated trigger on a refusal) is replaced for a lane member by site B's
-// hold with the refusal's brake bound (lane_refused_hold): its speed bound is open, the nose and velocity tolerances stay.
+// hold with the brake bound from P2 (lane_hand_bound): its speed bound is open, the nose and velocity tolerances stay.
 __attribute__((always_inline)) inline float lane_p2_bound(const Member& m, float bound) noexcept {
     return m.role == Role::committed && m.ln && (m.sb == Sb::funnel || m.sb == Sb::inbound) ? 3.4e38f : bound;
 }

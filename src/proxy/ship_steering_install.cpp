@@ -580,7 +580,7 @@ bool initialize() {
             gates_capital_on_ ? 1u : 0u);
         log("ship_steering_gates_traffic installed=%u status=%s site=0x%08lx name=%s write=%s stub=0x%08lx tail=0x%08lx resume=0x%08lx "
             "boards=%u members=%u samples=%u step_s=%.2f sample_s=%.2f margin_m=%.0f drift_ms=%.1f cert_ms=%lu exclude_ms=%lu decide_ms=%lu "
-            "state_ms=%lu decisions_per_frame=%u rollouts_per_frame=%u yield=%.1fv,%.0f,%.0f arrival_window_ms=%lu evict_keep_ms=%lu arrival_offset_r=%.2f "
+            "state_ms=%lu decisions_per_frame=%u rollouts_per_frame=%u yield=%.0f arrival_window_ms=%lu evict_keep_ms=%lu arrival_offset_r=%.2f "
             "terran_h_r=%.3f side_spawn_r=%.2f,%.2f side_spawn_max_w_r=%.2f snapshot_capacity=%u e_rows=%u e_pairs=%u warn_slots=%u "
             "handler=0x%08lx",
             traffic_live_.load(std::memory_order_relaxed) ? 1u : 0u, traffic_state_, static_cast<unsigned long>(sites::kArrivalSite.address),
@@ -589,8 +589,8 @@ bool initialize() {
             static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(x3m_ship_gate_next_t)), static_cast<unsigned long>(sites::kArrivalResume),
             gc::kGates, gc::kMembers, gc::kSamples, double(gc::kStepS), double(gc::kSampleS), double(gc::kMarginM), double(gc::kDriftMs),
             static_cast<unsigned long>(gc::kCertMaxAgeMs), static_cast<unsigned long>(gc::kExcludeMaxAgeMs),
-            static_cast<unsigned long>(gc::kDecideMs), static_cast<unsigned long>(gc::kStateMs), gc::kDecisionsPerFrame, gc::kRolloutsPerFrame, double(gc::kYieldFrac),
-            double(gc::kYieldMidMs), double(gc::kYieldFloorMs), static_cast<unsigned long>(gc::kArrivalWindowMs),
+            static_cast<unsigned long>(gc::kDecideMs), static_cast<unsigned long>(gc::kStateMs), gc::kDecisionsPerFrame, gc::kRolloutsPerFrame,
+            double(gc::kYieldFloorMs), static_cast<unsigned long>(gc::kArrivalWindowMs),
             static_cast<unsigned long>(gc::kEvictKeepMs), double(gc::kArrivalOffsetR), double(gc::kTerranHoleR), double(gc::kSideSpawnR),
             double(gc::kSideSpawnUpR), double(gc::kSideSpawnMaxWR), av::kSnapshotCapacity, kERows, kELogged, kCapWarnSlots,
             static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(&x3m_ship_gate_arrival)));

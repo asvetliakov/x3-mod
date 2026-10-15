@@ -23,20 +23,21 @@ constexpr std::uint32_t kDecideMs = 200;          // one decision per member eve
 constexpr std::uint32_t kCapMaxAgeMs = 1000;      // a yield cap lapses 1 s after the decision that set it
 constexpr std::uint32_t kCommitFreshMs = 1000;    // a committed member on order 4/5 needs a commit refresh this recent
 constexpr std::uint32_t kHandoverMaxMs = 120000;  // the hand-over bound after P2 (the lane board's)
-// lane fix round 2 item 3d: under the lane key a hand-over the board has flagged refused (Member::refused) stays a member this long after
-// P2 (the KC's through-slot refusal, unknown to the board: Run173 116 s; the cast p2_miss_near's 112-122 s crossed kHandoverMaxMs, the
-// leader left the board before its grant and its escort's queue hold ended with it, the escort then flying the engine's 0x14 at the
-// stopped leader); key off, or not refused: kHandoverMaxMs
+// lane fix round 2 item 3d: under the lane key a hand-over stays a member this long after P2 (the KC's through-slot refusal, unknown to
+// the board: Run173 116 s; the cast p2_miss_near's 112-122 s crossed kHandoverMaxMs, the leader left the board before its grant and its
+// escort's queue hold ended with it, the escort then flying the engine's 0x14 at the stopped leader); key off: kHandoverMaxMs. Round A
+// (rank 4): the bound no longer waits for a refusal flag (the refused timer is gone: the refusal is a counter, Member::x_counted)
 constexpr std::uint32_t kLaneRefusedMaxMs = 300000;
 constexpr std::uint32_t kLaneExitMs = 60000;      // lane fix round 2 item 2: a handed escort's exit from the lane lasts at most this (+ the step)
 constexpr float kMarginM = 50.0f;                 // m_i's constant
 constexpr float kDriftMs = 10.0f;                 // k (m/s): the rollout drift allowance (gate-traffic-controller.md A.1: 10 m/s, decided
                                                   // 2026-10-13 over the 5 m/s placeholder; measured drift p95 436 m at 5 s, 2,230 m at 30 s)
-constexpr float kYieldFrac = 0.6f, kYieldMidMs = 25.0f, kYieldFloorMs = 10.0f; // the speed candidates (D.1, stage A)
+constexpr float kYieldFloorMs = 10.0f;            // the yield's speed floor (D.1; round A, rank 4: the one candidate under the lane is the
+                                                  // law with its gap target raised, else the stop; key off the floor itself)
 constexpr unsigned kMaxYieldsPerDecision = 2;     // yield resolutions tried per decision (the rest: handed back until the next)
 // The frame's bound (D.8): at most kDecisionsPerFrame decisions and kRolloutsPerFrame rollouts per frame (a decision needs 1 rollout,
 // up to kMaxRolloutsPerDecision with its yields): measured host worst 2 conflict decisions or 6 plain ones per frame.
-constexpr unsigned kMaxRolloutsPerDecision = 1 + kMaxYieldsPerDecision * 3;
+constexpr unsigned kMaxRolloutsPerDecision = 1 + kMaxYieldsPerDecision; // round A (rank 4): one yield candidate, one rollout per yield
 constexpr unsigned kDecisionsPerFrame = 6, kRolloutsPerFrame = 2 * kMaxRolloutsPerDecision;
 // D.4: the arrival placement and the arrival-gate row.
 constexpr float kArrivalOffsetR = 0.6f;           // a capital's exit point P += 0.6 r_gate U
@@ -168,8 +169,10 @@ struct Member {
     // an escort: its leader's key + 1 + its rank), the reservation (an escort's key holds until res_until; 0 while its leader is present),
     // Q and the final lines (gate-frame R, U)
     Sb sb = Sb::none;
-    std::uint8_t key_res = 0, q_ok = 0, refused = 0;
-    std::uint8_t p2_kept = 0;   // lane fix round 1 item 3: P2 kept the speed at the hand-over (handover_ms); site B never latches one it did not keep
+    std::uint8_t key_res = 0, q_ok = 0;
+    std::uint8_t x_counted = 0; // round A (rank 4): the hand-over's refusal counted once (ctl_x_refused, kLaneRefuseMs + the step after P2); no
+                                // law reads it (the refused timer of lane fix round 1 is gone: the brake bound applies from P2)
+    std::uint8_t p2_kept = 0;   // lane fix round 1 item 3: P2 kept the speed at the hand-over (handover_ms); round A: P2 not kept = no write
     std::uint32_t key = 0, res_until = 0, pred = 0; // pred: the ship ahead on the final (its launch frees the funnel)
     std::uint32_t res_o8_ms = 0; // B.3 item 4: the leader's order-8 stamp the reservation started from (res_until is refreshed)
     // B.3 item 2: the KC's last warn of this member (site B's warned frame: the obstacle list named its own gate) and a 0x12 episode
@@ -188,11 +191,15 @@ struct Member {
     std::uint8_t proven = 0;
     std::uint32_t live_ms = 0, live_sector = 0, code = 0xffffffffu;
     // Lane stage 1 (convoy-gate-transit.md, ship_steering_gates_lane; lane_frame): lane-managed (its board's lane key), on Lambda (merged
-    // laterally), re-departing (out along -F before its U-turn), the follow pair's speed law settled (the settling gap >= g_req - 50 m), the
-    // law of this frame, its place in the lane order (0 the head; 0xff not in it) and the ship ahead (lane_pred); the merge's start, the
-    // brief stop's start (0 none); along F from G (m, < 0 before the plane), the gap tail(pred) - nose(self) along F (m; 3.4e38 none),
-    // the ETA to d_end the order ranks by (s), the lateral distance from Lambda (m)
-    std::uint8_t ln = 0, lane_on = 0, redep = 0, merged = 0;
+    // laterally), re-departing (out along -F before its U-turn), the law of this frame, its place in the lane order (0 the head; 0xff not
+    // in it) and the ship ahead (lane_pred); the merge's start, the brief stop's start (0 none); along F from G (m, < 0 before the
+    // plane), the gap tail(pred) - nose(self) along F (m; 3.4e38 none), the ETA to d_end the order ranks by (s), the lateral distance
+    // from Lambda (m). (Round A, rank 4: the speed law has no merge state; `merged` (the latch) is retired, the merge is a row label)
+    std::uint8_t ln = 0, lane_on = 0, redep = 0;
+    // the lateral rule's state (round A, as before it): a yielder level with its predecessor holds the clearance band (w_P + w_Y +
+    // kLaneSideM) until it is behind (the raw gap >= 0) with a settling gap of g_req - 50 m, or the raw gap is g_req - 100 m; once per
+    // pair (set at a new pair with a short gap, cleared at the release, never re-engaged for that pair: lane_band_free)
+    std::uint8_t band = 0;
     // lane fix round 1 item 4: past the plane without launching (an 0x12 overshoot; until back on Lambda or out of the lane stages), the
     // re-departure's out distance beyond d_end (kLaneRedepM; an overshoot's: its settling distance + its turn radius), the lane law's stop
     // episode (its start; 0 none: lane_law's T_stop bound), the hand-over's refusal wait already counted (ctl_x_wait_s, item 3)
@@ -211,7 +218,7 @@ struct Member {
     std::uint32_t over_ms = 0, over_ret_ms = 0; // (over_ret_ms: its predicted return to its apex, set when it begins)
     std::uint32_t over_ahead_of = 0; // items 3a / 5: the overshoot this member was inside the return zone of when it began (it stays ahead)
     std::uint32_t lstop_ms = 0, lstop_last_ms = 0, x_acc_ms = 0; // (lstop_last_ms: the episode's last frame with the stop's condition)
-    std::uint8_t merge_done = 1; // review item 6: the merge's completion, the raw gap >= g_req - 50 m (merged is the speed law's state)
+    std::uint8_t merge_done = 1; // review item 6: the merge's completion, the raw gap >= g_req - 50 m (the merge row's label, no law state)
     Law law = Law::none;
     std::uint8_t lane_rank = 0xff, lane_esc = 0; // lane_esc: entered as an escort (its final stays on l_c: lane_lat_at)
     std::uint8_t lane_ord_ok = 0;  // final review item 1: lane_ord_ms holds the joiner's sticky order moment (lane_frame's lane order)
@@ -671,7 +678,7 @@ inline Why validity(const Gate& g, const Member& m, std::uint16_t order, std::ui
     if (order == sc::kOrderAvoid) return Why::evict; // 0x12 evicts any member (an escort with a current formation memory too: review F12)
     if (m.role == Role::committed) {
         // (lane fix round 2 item 3d; round 2 review item 5: the refused bound is game time + the step)
-        const std::uint32_t hand_max = g.lane && m.refused ? kLaneRefusedMaxMs + g.step_ms : kHandoverMaxMs;
+        const std::uint32_t hand_max = g.lane ? kLaneRefusedMaxMs + g.step_ms : kHandoverMaxMs; // (round A: no refused flag)
         // the script's order-0 re-issue gap (<= kGapMs after the last order-4 / 5 read; order 0 zeroes f+0x224) and the P2 hand-over on
         // order 0 / 0x1f with the target zeroed keep the member (Run161: eviction only on 0x12)
         const std::uint32_t gap = age_bound(g, kGapMs);

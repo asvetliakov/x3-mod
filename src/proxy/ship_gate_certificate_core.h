@@ -268,7 +268,6 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         LaneCtx cx;
         cx.v_lane = lane_vmax(m);
         cx.a = m.params.a_lin;
-        cx.merged = m.merged != 0;
         cx.pred = P != nullptr; // (lane fix round 2 item 3d: cx.granted stays false: a granted predecessor's rollout shows its order-5 run, and
                                 // at a SETA step's trigger order 8's lane rollout holds its point (v0 0): the follower's rollout stops there)
         cx.head = m.lane_free_ms != 0;
@@ -277,7 +276,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         // (lane fix round 2 item 3c: an overshoot that has not turned in flies its re-departure in the rollout, the out-leg to its turn point
         // and the U-turn, as lane_steer flies it, never the hand-over's straight run past d_end; its law runs from its U-turn's apex, where
         // it rejoins, as lane_frame's)
-        bool redep = m.redep != 0 || (m.over && !m.over_in), past = false, merged = cx.merged;
+        bool redep = m.redep != 0 || (m.over && !m.over_in), past = false, band = m.band != 0;
         const float s_ov_ap = -(dend(m) + m.redep_out + kLaneOverApexR * m.redep_r);
         const bool escort = m.role == Role::escort;
         const float join_end = lane_join_end(m);
@@ -290,8 +289,10 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         for (unsigned i = 0; i < 3; ++i) c[i] = LX[i] + x * g.F[i] + y * nn[i];
         // lane fix round 2 item 3d: a member already in its hand-over (past d_end after P2) rolls out the hand-over from its state (not one
         // plant step of its lane law first: a refused leader stopped at d_end crept 2.5 m/s in its rollout and its follower's floor ran into
-        // it); the speed site B writes there (lane_site_b): P2 kept, the held speed (the refusal's brake bound); P2 not kept, the lane speed
-        // under the refusal's brake bound, refused the brake to a stop at d_end (0 past it), reached at a_lin
+        // it); the speed site B writes there (lane_site_b): P2 kept, the held speed (the live one, which site B keeps under the brake bound
+        // from P2; the rollout predicts the grant, not the bound's stop: measured in round A, a leader rolled out braking to the bound's
+        // stop made every follower yield at the floor and brake 30 m/s for a launch that came 10 s later); P2 not kept (round A, rank 4),
+        // no write: order 0 brakes it at a_lin to rest. A refused slot shows in the live state the next rollout starts from
         const bool hand = !escort && m.role == Role::committed && m.handover_ms && m.sb == Sb::handover;
         if (hand && x >= 0.0f) {
             past = true;
@@ -313,19 +314,9 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
             }
             for (unsigned step = 0; k && step < 2; ++step) {
                 const float ts = float(k - 1u) * kSampleS + float(step) * kStepS; // the step's start (s from the state)
-                if (past) { // the hand-over: the held speed along the last velocity (the refusal's brake), to the trigger
-                    if (hand && !m.p2_kept) { // (item 3d: P2 not kept: site B's unkept write, approached at a_lin)
-                        float vt;
-                        if (m.refused) {
-                            const float dd[3] = {cpast[0] - g.G[0], cpast[1] - g.G[1], cpast[2] - g.G[2]};
-                            const float dist = -dend(m) - sc::dot3(dd, g.F);
-                            vt = dist > kLaneStopShortM ? sc::sqrt_ss(2.0f * a_hand * (dist - kLaneStopShortM)) : 0.0f;
-                        } else
-                            vt = lane_refused_hold(g, m, cpast, m.v_sb >= 0.0f ? m.v_sb : lane_vmax(m));
-                        const float dv = a_hand * kStepS;
-                        v = v > vt + dv ? v - dv : v < vt - dv ? v + dv : vt;
-                    } else if (m.refused)
-                        v = lane_refused_hold(g, m, cpast, v);
+                if (past) { // the hand-over: the held speed along the last velocity to the trigger; P2 not kept: no write, order 0's brake
+                            // to rest
+                    if (hand && !m.p2_kept) v = v > a_hand * kStepS ? v - a_hand * kStepS : 0.0f;
                     for (unsigned i = 0; i < 3; ++i) cpast[i] += dir[i] * v * kStepS;
                     continue;
                 }
@@ -359,20 +350,29 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                     }
                     cx.v_pred = (sp1 - sp) / kSampleS;
                     cx.block = (cx.v_pred < kLaneStopV && cx.v_pred > -kLaneStopV) || (P->over && P->redep);
+                    // (round A: the ship ahead before its P2 on its final: the stop-room bound, as lane_frame's, on its live stage, until its
+                    // sample reaches d_end: its P2 there is rolled out as kept (a P2 not kept shows in the live state the next rollout
+                    // starts from); measured in slow_hull, a bound kept past d_end rolled every follower of a ship in its final out to a
+                    // stop at spacing, and the joiner behind them into a conflict)
+                    cx.stop_room = (P->sb == Sb::inbound || P->sb == Sb::funnel) && !P->over && sp > -(dend(*P) + lane_blend_settle(g, *P)) &&
+                                           sp < -dend(*P)
+                                       ? (-dend(*P) - P->L - kLaneGapM) - (cx.s + m.L)
+                                       : 3.4e38f;
                     if (cx.v_pred < 0.0f) cx.v_pred = 0.0f;
                     // (lane fix round 1 item 4: an overshoot ahead turns back no farther out than its U-turn's apex: no nearer than that)
                     const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), spp = P->over && sp > s_rj ? s_rj : sp;
                     cx.gap = (spp + (P->over && sp > s_rj ? 0.0f : (sp1 - sp) * float(step) * 0.5f) - P->L) - (cx.s + m.L);
                 }
-                cx.merged = merged;
                 cx.t_free_s = cx.head ? float(std::int32_t(m.lane_free_ms - m.st.ms)) * 0.001f - ts : 0.0f;
                 cx.t_gate_s = cx.gate ? float(std::int32_t(m.lane_gate_ms - m.st.ms)) * 0.001f - ts : 0.0f;
                 cx.stop_left_s = stop_left0 - ts;
                 Law law;
-                float vd = lane_law(cx, &law, &merged);
+                float settle;
+                float vd = lane_law(cx, &law, nullptr, &settle);
                 if (v_cmd > 0.0f && v_cmd < vd) vd = v_cmd;
                 if (v_cmd == 0.0f && ts < stop_rest) vd = 0.0f;
-                const bool hold_lat = !merged && cx.gap < kLaneGapM - 100.0f && !(cx.y <= kLaneOnM);
+                if (band && lane_band_free(cx.gap, settle)) band = false; // (the lateral rule's release, as lane_frame)
+                const bool hold_lat = band && !(cx.y <= kLaneOnM);
                 float sc_c, yc;
                 lane_carrot(s_act, cx.y, v, m.params.W, m.params.r_gate, hold_lat, redep, &sc_c, &yc,
                             redep ? (s_act > -(dend(m) + m.redep_out) ? -m.redep_side : kLaneTurnM) * sc::dot3(g.U, nn)
@@ -579,22 +579,40 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         break;
     case Plan::warp_in: case Plan::exit: {
         // 0x21: p = point + 1.665 u^2 F (u = ms left) until the deadline, at rest at the point; then 0x1e out along the ship's own
-        // axis-parallel line, away from the plane, at 120 / 240 m/s until |dz| > r (r / 4), then straight on at that velocity
+        // axis-parallel line, away from the plane, at 120 / 240 m/s until |dz| > r_gate (r_gate / 4 for a small hull), where the order
+        // ends with no speed write and order 0 brakes it at a to rest (round A, section 12.1a; ship-navigation-ai.md section 10.14 Q5).
+        // The whole plan moves along F only (its lateral is the exit point's: the sweep's axial drift, sweep_all). An unknown gate radius
+        // (fail closed): straight on at the exit speed
         const float ve = m.large ? kExitSpeedLargeMs : kExitSpeedSmallMs;
         float t_left = plan == Plan::warp_in && m.st.left_ms > 0 ? float(m.st.left_ms) * 0.001f : 0.0f;
         if (t_left > 1.0f) t_left = 1.0f;
         const float* P = plan == Plan::warp_in ? m.st.point : m.st.x;
         const float dz0 = (P[0] - g.G[0]) * g.F[0] + (P[1] - g.G[1]) * g.F[1] + (P[2] - g.G[2]) * g.F[2];
         const float sgn = dz0 > 0.0f ? 1.0f : -1.0f; // away from the plane on the side it is on
+        const float r_end = m.params.r_gate > 0.0f ? (m.large ? m.params.r_gate : 0.25f * m.params.r_gate) : 3.4e38f;
+        const float a_e = m.params.a_lin > 0.0f ? m.params.a_lin : 1.0f;
         if (ve > *vmax) *vmax = ve;
+        float s_out = 0.0f, v_e = ve; // the 0x1e leg's run from P (m) and its speed
         for (unsigned k = 0; k < kSamples; ++k) {
             const float t = float(k) * kSampleS;
             if (t < t_left) {
                 const float u = (t_left - t) * 1000.0f, z = kWarpInK * u * u;
                 for (unsigned i = 0; i < 3; ++i) c[i] = P[i] + z * g.F[i];
             } else {
-                const float te = t - t_left;
-                for (unsigned i = 0; i < 3; ++i) c[i] = P[i] + sgn * ve * te * g.F[i]; // the order's end changes no velocity here
+                const float te = t - t_left, t_prev = k ? t - kSampleS : 0.0f; // (t - kSampleS, not float(k - 1): x87 audit)
+                float dt = te - (t_prev > t_left ? t_prev - t_left : 0.0f); // this sample's share of the leg
+                while (dt > 0.0f) { // the leg at ve until |dz| > r_end, then the brake at a (plant steps)
+                    const float h = dt > kStepS ? kStepS : dt;
+                    const float dz = dz0 + sgn * s_out;
+                    if ((dz > 0.0f ? dz : -dz) > r_end) {
+                        const float v1 = v_e > a_e * h ? v_e - a_e * h : 0.0f;
+                        s_out += 0.5f * (v_e + v1) * h;
+                        v_e = v1;
+                    } else
+                        s_out += v_e * h;
+                    dt -= h;
+                }
+                for (unsigned i = 0; i < 3; ++i) c[i] = P[i] + sgn * s_out * g.F[i];
             }
             put(out[n++], c, f0);
         }
@@ -632,10 +650,14 @@ struct Sweep {
 // with the samples' own relative motion, then narrowly.
 // B.3: kLim > 0 compiles the sweep for a constant time-offset bound, which bounds the sample offset for the compiler (measured on the
 // host: 73 ns per broad-only sweep against 130 ns compiled for a runtime bound); kLim 0 takes the runtime max_dms (a long step).
+// Round A (convoy-gate-transit.md section 12.1a): axial (bit 0: A, bit 1: B) marks a side whose plan moves along its own axis only (an
+// arrival on 0x21 / 0x1e / the order-0 brake at the exit point; a lane member on Lambda or past d_end): its share of the margin (the
+// drift k (t + offset), B's time-offset term, half its own inter-sample motion) extends its capsule's segment along its axis instead of
+// widening the pair's isotropic margin, which keeps kMarginM and the other side's share. Neither axial: the isotropic sweep as before.
 template <std::int32_t kLim> // kLim > 0: a compile-time bound; 0: the runtime max_dms
 inline Sweep sweep_impl(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vmax, float La, float wa, const Sample* sb, unsigned nb,
                         std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples, bool ends, float drift,
-                        std::uint32_t max_dms) noexcept {
+                        std::uint32_t max_dms, unsigned axial = 0) noexcept {
     Sweep out;
     const std::int32_t dms = std::int32_t(a_ms - b_ms), lim = kLim > 0 ? kLim : std::int32_t(max_dms);
     if (dms > lim || dms < -lim) { // the rollouts are too far apart in time
@@ -673,19 +695,33 @@ inline Sweep sweep_impl(const Sample* sa, unsigned na, std::uint32_t a_ms, float
         // |segment_A - segment_B| >= w_A + w_B + base + |du| dt / 2, |du| taken as its L1 norm (an upper bound within sqrt 3: the
         // margin errs wide, never narrow), on squares without a square root
         const std::int32_t nx = i + 1 < i1 ? i + 1 : i > i0 ? i - 1 : i;
-        const float du1 = sc::fabs_f((sa[nx].c[0] - A.c[0]) - (B[nx].c[0] - Bi.c[0])) + sc::fabs_f((sa[nx].c[1] - A.c[1]) - (B[nx].c[1] - Bi.c[1])) +
-                          sc::fabs_f((sa[nx].c[2] - A.c[2]) - (B[nx].c[2] - Bi.c[2]));
-        const float rn = wsum + base + 0.5f * du1;
         ++out.narrow;
-        float g2;
-        if (caps)
-            g2 = capsule_d2(A.c, A.f, ha, inv2ha, Bi.c, Bi.f, hb, inv2hb);
-        else { // a sphere hull (L = w): the general segment distance
-            const float p1[3] = {A.c[0] - ha * A.f[0], A.c[1] - ha * A.f[1], A.c[2] - ha * A.f[2]};
-            const float q1[3] = {A.c[0] + ha * A.f[0], A.c[1] + ha * A.f[1], A.c[2] + ha * A.f[2]};
-            const float p2[3] = {Bi.c[0] - hb * Bi.f[0], Bi.c[1] - hb * Bi.f[1], Bi.c[2] - hb * Bi.f[2]};
-            const float q2[3] = {Bi.c[0] + hb * Bi.f[0], Bi.c[1] + hb * Bi.f[1], Bi.c[2] + hb * Bi.f[2]};
+        float g2, rn;
+        if (axial) { // an axial side: its terms along its segment (the drift and the offset charged to each side, never less than before)
+            const float dA1 = sc::fabs_f(sa[nx].c[0] - A.c[0]) + sc::fabs_f(sa[nx].c[1] - A.c[1]) + sc::fabs_f(sa[nx].c[2] - A.c[2]);
+            const float dB1 = sc::fabs_f(B[nx].c[0] - Bi.c[0]) + sc::fabs_f(B[nx].c[1] - Bi.c[1]) + sc::fabs_f(B[nx].c[2] - Bi.c[2]);
+            const float drift_t = base - kMarginM - resid * b_vmax; // the pair's drift at this sample
+            const float tA = drift_t + 0.5f * dA1, tB = drift_t + resid * b_vmax + 0.5f * dB1;
+            const float hai = ha + ((axial & 1u) ? tA : 0.0f), hbi = hb + ((axial & 2u) ? tB : 0.0f);
+            rn = wsum + kMarginM + ((axial & 1u) ? 0.0f : tA) + ((axial & 2u) ? 0.0f : tB);
+            const float p1[3] = {A.c[0] - hai * A.f[0], A.c[1] - hai * A.f[1], A.c[2] - hai * A.f[2]};
+            const float q1[3] = {A.c[0] + hai * A.f[0], A.c[1] + hai * A.f[1], A.c[2] + hai * A.f[2]};
+            const float p2[3] = {Bi.c[0] - hbi * Bi.f[0], Bi.c[1] - hbi * Bi.f[1], Bi.c[2] - hbi * Bi.f[2]};
+            const float q2[3] = {Bi.c[0] + hbi * Bi.f[0], Bi.c[1] + hbi * Bi.f[1], Bi.c[2] + hbi * Bi.f[2]};
             g2 = seg_seg_d2(p1, q1, p2, q2);
+        } else {
+            const float du1 = sc::fabs_f((sa[nx].c[0] - A.c[0]) - (B[nx].c[0] - Bi.c[0])) + sc::fabs_f((sa[nx].c[1] - A.c[1]) - (B[nx].c[1] - Bi.c[1])) +
+                              sc::fabs_f((sa[nx].c[2] - A.c[2]) - (B[nx].c[2] - Bi.c[2]));
+            rn = wsum + base + 0.5f * du1;
+            if (caps)
+                g2 = capsule_d2(A.c, A.f, ha, inv2ha, Bi.c, Bi.f, hb, inv2hb);
+            else { // a sphere hull (L = w): the general segment distance
+                const float p1[3] = {A.c[0] - ha * A.f[0], A.c[1] - ha * A.f[1], A.c[2] - ha * A.f[2]};
+                const float q1[3] = {A.c[0] + ha * A.f[0], A.c[1] + ha * A.f[1], A.c[2] + ha * A.f[2]};
+                const float p2[3] = {Bi.c[0] - hb * Bi.f[0], Bi.c[1] - hb * Bi.f[1], Bi.c[2] - hb * Bi.f[2]};
+                const float q2[3] = {Bi.c[0] + hb * Bi.f[0], Bi.c[1] + hb * Bi.f[1], Bi.c[2] + hb * Bi.f[2]};
+                g2 = seg_seg_d2(p1, q1, p2, q2);
+            }
         }
         if (!(g2 >= rn * rn)) {
             out.t_c = unsigned(i);
@@ -704,8 +740,21 @@ inline Sweep sweep(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vm
 constexpr std::uint32_t kSweepNormalMs = kRolloutMaxAgeMs + 250; // the constant-bound sweep's reach (normal steps up to 250 ms)
 inline Sweep sweep_seta(const Sample* sa, unsigned na, std::uint32_t a_ms, float a_vmax, float La, float wa, const Sample* sb, unsigned nb,
                         std::uint32_t b_ms, float b_vmax, float Lb, float wb, unsigned min_samples, bool ends, float drift,
-                        std::uint32_t max_dms) noexcept {
-    return sweep_impl<0>(sa, na, a_ms, a_vmax, La, wa, sb, nb, b_ms, b_vmax, Lb, wb, min_samples, ends, drift, max_dms);
+                        std::uint32_t max_dms, unsigned axial = 0) noexcept {
+    return sweep_impl<0>(sa, na, a_ms, a_vmax, La, wa, sb, nb, b_ms, b_vmax, Lb, wb, min_samples, ends, drift, max_dms, axial);
+}
+// Round A (section 12.1a): whether a member's rollout moves along its own axis only, so the sweep charges its terms along it (axial above):
+// an arrival on a drift-free plan (0x21 to the exit point, 0x1e out, the order-0 brake, 0x1f in place: its lateral is the exit point's), or a
+// lane member on Lambda within kLaneOnM or past d_end (the hand-over, order 5, order 8: the lane's lateral). Anything else (a joiner, an
+// arrival given a steered order, a non-lane member): the isotropic drift as before (fail closed: the engine's warn where it does not clear).
+__attribute__((always_inline)) inline bool axial_plan(const Member& m) noexcept {
+    if (m.role == Role::arrival) {
+        const Plan p = plan_of(m);
+        return p == Plan::warp_in || p == Plan::exit || p == Plan::brake || p == Plan::hold;
+    }
+    if (!m.ln || !(m.role == Role::committed || m.role == Role::escort)) return false;
+    if (m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch) return true;
+    return m.lane_on && m.lane_lat <= kLaneOnM;
 }
 // B.9 (diagnostic, off the decision path): the sweep's minimum gap over the paired samples of two stored rollouts, every sample narrow:
 // min over i of (the capsules' surface gap - the sweep's margin at i: kMarginM + the residual offset x B's largest speed + the drift
@@ -812,11 +861,14 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
         const std::uint32_t max_dms = age_bound(g, kRolloutMaxAgeMs);
         const std::int32_t dms = std::int32_t(A.st.ms - B.roll_ms);
         const bool apart = dms > std::int32_t(max_dms) || dms < -std::int32_t(max_dms);
+        // round A (section 12.1a): a pair with an arrival on its drift-free plan is swept with each axial side's terms along its axis
+        const unsigned axial = (A.role == Role::arrival || B.role == Role::arrival) ? (axial_plan(A) ? 1u : 0u) | (axial_plan(B) ? 2u : 0u) : 0u;
         const Sweep w = !(B.n && n) || apart ? Sweep{false, 255, 1e30f, 0, true}
                         : max_dms <= kSweepNormalMs
                             ? sweep_impl<std::int32_t(kSweepNormalMs)>(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w,
-                                                                        min_s, launching, drift, 0)
-                            : sweep_seta(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w, min_s, launching, drift, max_dms);
+                                                                        min_s, launching, drift, 0, axial)
+                            : sweep_seta(s, n, A.st.ms, vmax, A.L, A.w, B.s, B.n, B.roll_ms, B.v_roll_max, B.L, B.w, min_s, launching, drift, max_dms,
+                                         axial);
         st->narrow += w.narrow;
         if (write) {
             g.v[i][j] = g.v[j][i] = std::uint8_t(w.clear ? PairV::clear : PairV::none);
@@ -840,49 +892,53 @@ inline bool sweep_all(Gate& g, unsigned i, const Sample* s, unsigned n, float vm
 __attribute__((always_inline)) inline bool gap_yield(const Member& m) noexcept {
     return in_gap(m) && (m.role == Role::escort || (m.role == Role::committed && m.line_ok));
 }
-// Y's yield by speed: Y's current plan at 0.6 v, then 25 m/s, then the 10 m/s floor (each below the plan's speed); a new rollout
-// and sweeps against every member each; the first that clears every pair is taken (Y's rollout, Y's cap, Y's row of the matrix; the
-// row's entries carry plan_flag, Y's own plan change). *swept (B.9 review): whether a candidate was rolled out at all (false: Y cannot
-// yield, no steered order or an empty ladder).
-inline bool try_yield(Gate& g, unsigned y, std::uint32_t now, DecideStats* st, std::uint8_t plan_flag, bool* swept) noexcept {
+// Y's yield by speed against its conflict partner p: one candidate, one rollout (round A, rank 4; ship-steering-holistic-review.md
+// section 2 c). Under the lane: the law at its floor (10 m/s: the gap target raised past the horizon; a candidate's cap, which site B
+// applies and the rollout flies) while Y's plan speed is above the floor; else the brief stop (cap 0), which lasts at most kLaneStopMs + the
+// game step from its start, or against an arrival (the hull-fit fallback, section 12.1a) the arrival window + the step from its launch;
+// a member past the bound hands the pair back (cause=noyield). (Deviation from the design's raised-target law: measured in
+// overshoot_near, the law of a yielder whose settling gap is wide is the lane speed with any target raise, and the conflict 26 s out
+// cleared only on the floor.) Key off: the 10 m/s floor. The candidate's sweeps against every member; clearing takes it (Y's rollout,
+// Y's cap, Y's row of the matrix; the row's entries carry plan_flag, Y's own plan change). *swept (B.9 review): whether a candidate was
+// rolled out at all (false: Y cannot yield, no steered order or no candidate).
+inline bool try_yield(Gate& g, unsigned y, unsigned p, std::uint32_t now, DecideStats* st, std::uint8_t plan_flag, bool* swept) noexcept {
     Member& Y = g.m[y];
+    const Member& Pm = g.m[p];
     *swept = false;
     if (!can_yield(Y) && !gap_yield(Y)) return false;
     const float vp = plan_speed(g, Y, now), v = vp > 0.0f ? vp : Y.st.v;
-    // lane stage 1 (section 6.3): the yielder's ladder is the merge floor (10 m/s), then the brief stop (0) while its stop lasts at most
-    // kLaneStopMs + the game step from its start; a member past that hands the pair back (cause=contact)
     const bool lane = plan_of(Y) == Plan::lane;
-    const bool stop_ok = lane && (!Y.stop_ms || std::int32_t(now - Y.stop_ms) <= std::int32_t(kLaneStopMs + g.step_ms));
-    const float cand[3] = {lane ? kYieldFloorMs : kYieldFrac * v, lane ? 0.0f : kYieldMidMs, lane ? -1.0f : kYieldFloorMs};
-    const float floor = lane ? 0.0f : kYieldFloorMs;
-    Sample tmp[kSamples];
-    for (float c : cand) {
-        if (!(c >= floor) || !(c < v || (lane && c == 0.0f))) continue;
-        if (lane && c == 0.0f && !stop_ok) continue;
-        ++st->candidates;
-        ++st->rollouts;
-        *swept = true;
-        float vmax = 0.0f;
-        const unsigned n = rollout(Y, g, c, tmp, &vmax, now);
-        if (!n || !sweep_all(g, y, tmp, n, vmax, now, false, nullptr, st, PairWhy::cert, lane)) continue;
-        for (unsigned k = 0; k < n; ++k) Y.s[k] = tmp[k];
-        Y.n = std::uint8_t(n);
-        Y.roll_ms = Y.st.ms;
-        Y.v_roll_max = vmax;
-        Y.cap = c;
-        Y.cap_ms = Y.yield_ms = now ? now : 1;
-        if (lane && c == 0.0f && !Y.stop_ms) {
-            Y.stop_ms = now ? now : 1;
-            ++g.lane_stops;
-        }
-        const std::uint8_t decider_flag = g.why_plan;
-        g.why_plan = plan_flag;
-        sweep_all(g, y, Y.s, Y.n, Y.v_roll_max, now, true, nullptr, st, !lane ? PairWhy::yield : c > 0.0f ? PairWhy::merge : PairWhy::stop, lane);
-        g.why_plan = decider_flag;
-        ++st->yields;
-        return true;
+    float c = kYieldFloorMs;
+    if (lane && !(c < v)) { // (the plan already at or under the floor: the stop)
+        const bool ok = Pm.role == Role::arrival ? std::int32_t(now - Pm.launch_ms) <= std::int32_t(kArrivalWindowMs + g.step_ms)
+                                                 : !Y.stop_ms || std::int32_t(now - Y.stop_ms) <= std::int32_t(kLaneStopMs + g.step_ms);
+        if (!ok) return false;
+        c = 0.0f;
     }
-    return false;
+    if (!(c < v || c == 0.0f)) return false;
+    Sample tmp[kSamples];
+    ++st->candidates;
+    ++st->rollouts;
+    *swept = true;
+    float vmax = 0.0f;
+    const unsigned n = rollout(Y, g, c, tmp, &vmax, now);
+    if (!n || !sweep_all(g, y, tmp, n, vmax, now, false, nullptr, st, PairWhy::cert, lane)) return false;
+    for (unsigned k = 0; k < n; ++k) Y.s[k] = tmp[k];
+    Y.n = std::uint8_t(n);
+    Y.roll_ms = Y.st.ms;
+    Y.v_roll_max = vmax;
+    Y.cap = c;
+    Y.cap_ms = Y.yield_ms = now ? now : 1;
+    if (lane && c == 0.0f && !Y.stop_ms) {
+        Y.stop_ms = now ? now : 1;
+        ++g.lane_stops;
+    }
+    const std::uint8_t decider_flag = g.why_plan;
+    g.why_plan = plan_flag;
+    sweep_all(g, y, Y.s, Y.n, Y.v_roll_max, now, true, nullptr, st, !lane ? PairWhy::yield : c > 0.0f ? PairWhy::merge : PairWhy::stop, lane);
+    g.why_plan = decider_flag;
+    ++st->yields;
+    return true;
 }
 // B.9 (diagnostic): whether a member's plan changed since its own rollout: another plan or stage, or a plan speed more than kPlanDeltaMs
 // from the rollout's (a law step, the order-0 gap's resume). The
@@ -947,7 +1003,7 @@ inline void decide(Gate& g, unsigned i, std::uint32_t now, DecideStats* st, Pair
             if (a_yields) self_tried = true;
             // B.9 review (item 4): a partner's yield writes its row with its own plan flag; the shared pair keeps the decider's too
             const std::uint8_t flag = a_yields ? g.why_plan : plan_changed(g, g.m[j], now) ? kPairWhyPlan : std::uint8_t(0);
-            ok = try_yield(g, a_yields ? i : j, now, st, flag, &swept);
+            ok = try_yield(g, a_yields ? i : j, a_yields ? j : i, now, st, flag, &swept);
             if (ok && !a_yields) {
                 g.why[i][j] |= g.why_plan;
                 g.why[j][i] |= g.why_plan;

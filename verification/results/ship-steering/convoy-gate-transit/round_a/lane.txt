@@ -1,0 +1,33 @@
+ship_steering_host checks=3506 failures=0 slip_gaps=0
+  spans abreast3        tf1 179.7..187.5 tf6 158.7..158.8 tf10 160.0..161.9
+  spans abreast5        tf1 231.8..238.2 tf6 214.1..214.4 tf10 208.7..211.1
+  spans formed          tf1 209.8..216.9 tf6 189.4..189.6 tf10 190.5..192.7
+  spans formed_m7       tf1 198.6..210.1 tf6 183.7..185.0 tf10 177.7..179.0
+  spans stragglers      tf1 200.6..210.1 tf6 188.2..188.4 tf10 182.0..184.9
+  spans stragglers_far  tf1 307.5..307.9 tf6 295.6..295.9 tf10 289.5..290.4
+  spans redeparture     tf1 237.4..241.2 tf6 219.3..220.3 tf10 213.4..213.7
+  spans crossing        tf1 335.7..341.2 tf6 323.7..325.1 tf10 317.2..317.4
+  spans partner_block   tf1 241.8..244.4 tf6 222.6..223.9 tf10 223.0..226.3
+  spans formed_stage2   tf1 209.7..209.7 tf6 189.3..189.6 tf10 190.4..192.7
+  spans slow_hull       tf1 285.4..292.6 tf6 254.2..255.4 tf10 253.3..254.0
+  spans parked          tf1 254.7..256.2 tf6 241.2..247.2 tf10 237.0..241.0
+  spans leader_killed   tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0
+  spans small_escort    tf1 199.2..210.9 tf6 187.6..188.1 tf10 182.7..183.9
+  spans run173          tf1 487.5..487.7 tf6 470.4..471.5 tf10 470.1..471.6
+  spans run173_15km     tf1 487.0..487.1 tf6 469.2..471.7 tf10 469.6..471.0
+  spans overshoot       tf1 186.5..187.1 tf6 163.0..163.9 tf10 165.0..166.8
+  spans p2_miss         tf1 300.8..303.5 tf6 281.1..289.7 tf10 278.3..279.7
+  spans station         tf1 209.8..216.9 tf6 189.4..189.6 tf10 190.5..192.7
+  spans join_field      tf1 385.6..417.5 tf6 358.8..393.0 tf10 358.7..398.1
+  spans join_block      tf1 342.9..374.5 tf6 321.1..337.1 tf10 324.8..339.8
+  spans m7_cross        tf1 209.8..216.9 tf6 189.4..189.6 tf10 190.5..192.7
+  spans terran          tf1 259.7..266.1 tf6 194.3..201.6 tf10 179.4..179.7
+  spans terran_abreast  tf1 227.7..240.0 tf6 165.1..173.7 tf10 149.3..151.8
+  spans retarget        tf1 -1.0..-1.0 tf6 -1.0..-1.0 tf10 -1.0..-1.0
+  spans p2_miss_near    tf1 300.9..303.5 tf6 281.1..289.7 tf10 278.7..279.7
+  spans overshoot_near  tf1 155.0..155.2 tf6 133.1..134.8 tf10 134.6..139.0
+  spans arrival_pass    tf1 298.2..299.0 tf6 279.3..279.5 tf10 281.6..281.7
+  lane cost (host) abreast5 tf 1: lane 2.6 us mean, 832 us worst frame, 64 us third-worst (4483 decisions, 5/5 launched); key off 0.6 us mean, 84 us worst, 26 us third (5189 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 24.7 us mean, 65 us worst frame, 59 us third-worst (2291 decisions, 5/5 launched); key off 6.6 us mean, 111 us worst, 31 us third (2215 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.2 us mean, 866 us worst frame, 660 us third-worst (59318 decisions, 24/24 launched); key off 4.4 us mean, 1085 us worst, 879 us third (53121 decisions, 24 launched); worst of 3 runs; ceiling 
+  lane cost (host) bench24 tf 10: lane 107.8 us mean, 1048 us worst frame, 788 us third-worst (30596 decisions, 24/24 launched); key off 49.6 us mean, 976 us worst, 228 us third (18687 decisions, 24 launched); worst of 3 runs; ceili

@@ -1,0 +1,31 @@
+ship_steering_host checks=137 failures=35 slip_gaps=0
+  FAIL 1 - tf0: FAIL scenario C: the key off (stage A): no contact on a certified frame in any control run
+  FAIL 1 arrival_parked tf1: Ex a stop against an arrival within the arrival window + the step
+  FAIL 3 arrival_parked tf1: Ex no contact between the departing capitals
+  FAIL 3 arrival_parked tf1: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf1: Ex no two arrivals overlapping
+  FAIL 2 arrival_parked tf1: every ship launched
+  FAIL 1 arrival_parked tf6: Ex a stop against an arrival within the arrival window + the step
+  FAIL 3 arrival_parked tf6: Ex no contact between the departing capitals
+  FAIL 1 arrival_parked tf6: Ex no departing hull in contact with a parked arrival
+  FAIL 3 arrival_parked tf6: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf6: Ex no two arrivals overlapping
+  FAIL 1 arrival_parked tf6: every ship launched
+  FAIL 3 arrival_parked tf10: Ex no contact between the departing capitals
+  FAIL 3 arrival_parked tf10: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf10: Ex no two arrivals overlapping
+  FAIL 1 arrival_parked tf10: every ship launched
+  spans arrival_parked  tf1 -1.0..839.7 tf6 -1.0..690.1 tf10 -1.0..925.2
+  eng arrival_parked tf 1 seed 1: x12 flown 6 (cap 6 small 0 forced 0) turn 128 deg dur 96.4 s out 3980 m reissue 2 remerged 2 (max 0.0 s) | lane v_min 0.0 m/s slow 9.0 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 476 dep8_gap -1 close 0 dep_gap 239 arr_gap -1180 overlap 1313 pair_contact 0 | members capsule -809 launched 1/3 spa
+  eng arrival_parked tf 1 seed 7: x12 flown 9 (cap 9 small 0 forced 0) turn 140 deg dur 102.2 s out 3417 m reissue 3 remerged 3 (max 0.0 s) | lane v_min 44.2 m/s slow 0.0 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 476 dep8_gap -1 close 0 dep_gap 276 arr_gap -1180 overlap 1313 pair_contact 0 | members capsule -908 launched 3/3 s
+  eng arrival_parked tf 1 seed 1234567: x12 flown 9 (cap 9 small 0 forced 0) turn 135 deg dur 112.8 s out 3234 m reissue 4 remerged 4 (max 0.0 s) | lane v_min 10.0 m/s slow 3.8 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 476 dep8_gap -1 close 0 dep_gap 289 arr_gap -1180 overlap 1313 pair_contact 0 | members capsule -1074 launche
+  eng arrival_parked tf 6 seed 1: x12 flown 6 (cap 6 small 0 forced 0) turn 176 deg dur 202.7 s out 2812 m reissue 3 remerged 3 (max 0.2 s) | lane v_min 59.4 m/s slow 0.0 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 508 dep8_gap -1 close 0 dep_gap 273 arr_gap -1180 overlap 111 pair_contact 0 | members capsule -966 launched 1/3 sp
+  eng arrival_parked tf 6 seed 7: x12 flown 3 (cap 3 small 0 forced 0) turn 179 deg dur 100.6 s out 1898 m reissue 1 remerged 1 (max 0.2 s) | lane v_min 1.0 m/s slow 3.0 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 494 dep8_gap -1 close 0 dep_gap -208 arr_gap -1180 overlap 111 pair_contact 0 | members capsule -1111 launched 3/3 s
+  eng arrival_parked tf 6 seed 1234567: x12 flown 4 (cap 4 small 0 forced 0) turn 157 deg dur 96.7 s out 2193 m reissue 2 remerged 2 (max 0.2 s) | lane v_min 0.0 m/s slow 10.5 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 507 dep8_gap 1241 close 0 dep_gap 297 arr_gap -1180 overlap 89 pair_contact 0 | members capsule -954 launched 
+  eng arrival_parked tf 10 seed 1: x12 flown 12 (cap 12 small 0 forced 0) turn 151 deg dur 243.1 s out 3156 m reissue 5 remerged 5 (max 0.3 s) | lane v_min 56.7 m/s slow 0.0 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 512 dep8_gap -1 close 0 dep_gap 136 arr_gap -1180 overlap 65 pair_contact 0 | members capsule -1091 launched 0/3
+  eng arrival_parked tf 10 seed 7: x12 flown 6 (cap 6 small 0 forced 0) turn 176 deg dur 248.2 s out 3090 m reissue 2 remerged 2 (max 1.7 s) | lane v_min 0.0 m/s slow 34.3 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 506 dep8_gap -1 close 0 dep_gap 50 arr_gap -1180 overlap 68 pair_contact 0 | members capsule -1116 launched 3/3 sp
+  eng arrival_parked tf 10 seed 1234567: x12 flown 8 (cap 8 small 0 forced 0) turn 176 deg dur 143.4 s out 2487 m reissue 6 remerged 6 (max 0.3 s) | lane v_min 0.0 m/s slow 40.9 s | small 0 launched 0 mirrored 0 warns 0 stops 0 x12_s 0.0 mem_warns 0 mem_x12 0 capsule -1 | arrivals 2 rest 1 exit_v 120.0 hold_out 507 dep8_gap 1247 close 0 dep_gap 299 arr_gap -1180 overlap 55 pair_contact 0 | members capsule -1049 launch
+  lane cost (host) abreast5 tf 1: lane 2.8 us mean, 430 us worst frame, 113 us third-worst (4483 decisions, 5/5 launched); key off 0.6 us mean, 672 us worst, 70 us third (5189 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) abreast5 tf 10: lane 24.7 us mean, 72 us worst frame, 65 us third-worst (2291 decisions, 5/5 launched); key off 6.5 us mean, 29 us worst, 24 us third (2215 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+  lane cost (host) bench24 tf 1: lane 10.2 us mean, 1089 us worst frame, 843 us third-worst (59318 decisions, 24/24 launched); key off 4.4 us mean, 767 us worst, 728 us third (53121 decisions, 24 launched); worst of 3 runs; ceiling 
+  lane cost (host) bench24 tf 10: lane 108.9 us mean, 1121 us worst frame, 405 us third-worst (30596 decisions, 24/24 launched); key off 51.9 us mean, 1144 us worst, 366 us third (18687 decisions, 24 launched); worst of 3 runs; ceil

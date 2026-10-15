@@ -120,8 +120,9 @@ def by_ship(rows):
 #   ship_gate_ctl_lane frame= t_ms= gate= ship= lane_s= (along F, m) rank= (the lane order, 0 the head; 255 none) gap_m= (tail of the ship
 #     ahead - own nose, m; na none) law=none|join|lane|merge|follow|stop|pace|gate|hold lat_m= (lateral distance from Lambda, m)
 #     lc_m=<R>,<U> (Lambda's l_c, m) v_law= (the law's speed, m/s) v_w= (site B's last lane write, m/s; na none)
-#     w=none|stop|kept|hold|unkept (that write's kind: a stop, P2's kept speed, the order-0 hold, the hand-over P2 did not keep: the lane
-#     speed under the refusal's brake bound, the stop at d_end once refused; lane fix round 1 item 3) on=0|1 (on Lambda) merged=0|1
+#     w=none|stop|kept|hold (that write's kind: a stop, P2's kept speed under the brake bound from P2, the order-0 hold; round A: a
+#     hand-over P2 did not keep gets no write, the `unkept` kind of lane fix round 1 is gone) on=0|1 (on Lambda) merged=0|1 (the merge's
+#     completion, the raw gap >= g_req - 50 m)
 #   ship_gate_ctl_merge frame= t_ms= gate= ship= pred= event=start|finish gap_m= law= dur_ms= (finish: since the start)
 #   ship_gate_ctl_rewrite frame= t_ms= gate= ship= site=a|b|adopt|miss slot= (the KC grid slot the field held; -1 none) from_m=<R>,<U>,<F>
 #     to_m=<R>,<U>,<F> (the order-4 field before and after, gate frame, m): a: site A's rewrite of a grid point to L_i; b: site B's on a
