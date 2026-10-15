@@ -76,3 +76,17 @@
   order 8; order 0 zeroes speed, site B's write stands; KC resumes one frame after an order; owner int16 [obj+0x3c]==10; two capitals may
   be on order 5/8 at a gate) and §10.13 (f+0x210 re-plan stamp: 15 SA writers; signed compare; the deferral safe when based on the game
   clock). The engine's own gate warn: a lane member ~1 km below the axis is inside the cone from ~7 km regardless of the join.
+
+## Overnight continuation (2026-10-15, autonomous; the user asleep, standing instruction "finish, review the whole work, improve/refactor, don't wait")
+
+Done, in order (main): round 2 finished (two implementers), reviewed (Opus round; Fable suppression geometry), fixes applied,
+squash-merged as `564b3df8`; **Run174 installed** (`71118dd7`, DLL `052b76cb…`, rollback `d3d9.dll.run173`, lane key on; Run 174 A
+open); holistic design review ratified (`a8e38093`, `ship-steering-holistic-review.md`, ranks 1–5); engine paths disassembled
+(`7cfd0fd6`, ship-navigation-ai.md §10.14: the box test is a distance test, M6/TM/M8 are tested, warn on 0x14/0x15, jump arrivals
+through the gate launch, Mayhem re-target scripts); **stage B deleted** (`bf12aaa2`: key 1 = lane (now the schema/launcher default),
+0 = stage A only; lane-on output identical; reviewed on Opus, findings applied). In flight when this was written: the source split
+(rank 3, worktree agent-ab040198cf619261b, plus the DLL-side default flip of the lane key) and the fixture engine paths (rank 5,
+worktree agent-a33727fb5cfd876aa: §10.14 model corrections, the 0x12 flight, stations/asteroids on Λ, small ships at the gate, the
+arrival hull). Decision: Run174 stays installed for the user's flight; the deletion/split build becomes Run175 only after Run174 is
+flown (lane-on identical; a second DLL before the flight would confound the triage). Open after these: rank 4 (one gap law, no-write
+hand-over), behind_start (a commit from behind the gate plane), the parked cast's 30 s horizon, the arrival fan.
