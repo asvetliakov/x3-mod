@@ -1652,6 +1652,7 @@ against 9.1-9.4 µs, tf 10 94.6-100.5 µs against 95.4-100.8 µs (host; noisy wo
 roots, 1,010 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20.
 
 ### Open
+* **Statics on Λ are not a flown case** (the user, 2026-10-15): the installed map has no stations and the user sees no rocks on gate approaches either; `lane_station`, `lane_belt` and `lane_fb_small` stay parked at the bottom of the list (the one large asteroid 2.4 km from the gate in sector (12,1) is the only candidate; checked if a convoy ever stalls there).
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
   for λ near 17 s) stays until stage 2 (λ ≤ 1 s) or a shorter order-5 leg; the flight decides whether it is visible.
