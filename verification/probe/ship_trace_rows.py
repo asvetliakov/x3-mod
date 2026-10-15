@@ -158,6 +158,9 @@ def by_ship(rows):
 #     once per gate: site E's collision-tree read under the positive guard; why = the first guard that failed (ok, gate_ptr, class, root,
 #     scene, node_ptr, parent, chain, depth, budget, no_scene_node); verdict none = no solid, ring = the TGates row's ring; item 1)
 #   ship_steering_lane_summary ... ctl_mouth_expired= (gate-mouth holds ended by their game-time bound; item 3)
+# The arrival side is vanilla (convoy-gate-transit.md section 13): ship_gate_ctl_arr frame t_ms gate ship id since_launch_ms (an
+#   approach latched vanilla: its order 4 to the gate it came through within 900 s + the step); ship_steering_lane_summary ... ctl_arr_mode=
+#   (such approaches)
 #   ship_avoid_e_verdict ... verdict=pass_player (B is the player's ship: no suppression row; item 2)
 # Run175 round (convoy-gate-transit.md section 11 "Run175 round"):
 #   ship_gate_ctl_member ... w_m= (the hull's lateral half-width, m) w_ok=0|1 (it came from a read; 0: unread, a body for the sweep only)
@@ -184,7 +187,7 @@ def by_ship(rows):
 #     node_rows= (the ship_gate_ring_node rows queued for the read, its first 8 nodes at most; item 2)
 LEGACY_KV_ROWS = ('ship_gate_ctl_seq',)  # rows the DLL no longer prints (stage B's sequencer, deleted 2026-10-15); still parsed in old logs
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
-           'ship_avoid_dock', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',
+           'ship_avoid_dock', 'ship_gate_ctl_member', 'ship_gate_ctl_arr', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',
            'ship_gate_ctl_defer', 'ship_steering_lane_summary', 'ship_avoid_engine_warn_pre', 'ship_player_pos',
            'ship_gate_ring_read', 'ship_gate_ring_node', 'ship_gate_ring_reread', 'ship_steering_handler_slow') + LEGACY_KV_ROWS
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap',

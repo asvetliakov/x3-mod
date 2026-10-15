@@ -3250,6 +3250,42 @@ violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. C
 switches on [i]; off, about 17 instructions and no call (decide() 3,610 → 3,734 static instructions, the TU's out-of-line functions
 unchanged). Not installed; the split is read on the next `--debug` flight.
 
+### Arrival side vanilla (2026-10-16, Opus 5.5; design and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §13, implementation §13.11, the orchestrator's decisions A–E)
+
+**What changed.** Worktree `agent-af9cd0020bde59ebc` on 1c563443 (f6e31d47 casts, 0961c1db the mode as designed, dae76cdc statistics,
+dae77294 / 05777bad decisions A–D, then E). A capital's order 4 to the gate it came through within 900 s + the step of its own launch
+there is latched vanilla for the approach (`GateState::arr_vanilla` before the capital policy): no lead-in, no commit, so no lane rule,
+write or certificate of ours; an escort with such a record is never an escort member; a pair of two arrivals is never certified; site E's
+ring row stays. Row `ship_gate_ctl_arr`, summary `ctl_arr_mode=`. `Member::arr_mode` and decision A's pure-body terms are gone (A's
+measurement, the lead-in (c) as the mode's only difference from the twin, decided E). The funnel's far bound is parked
+(`-DX3M_LANE_FAR=1`: it fails `side_commit`, member 0x12 7 of 9 and spans 233-588 s against 199-225 s, and `third_gate`, 319-338 s against
+246-293 s); Fx2 and `third_gate`'s span bound are reported, not asserted. Fx's crawl check skips the first floor / a_lin + the step of a
+steered leg (`return_pass` tf 6 seed 7: a 1.92 s SETA step across an escort's order-0 gap end braked it to 2.2 m/s; no write of ours).
+
+**Fail-before → after [m]** (`convoy-gate-transit/arr_mode/`): the identity check Mid (the arrival-side ships' 0x12, contacts, launches,
+span and last launch equal the level-0 twin's, per run) and M1 / M3a on 1c563443's core: 210 failures in the full run (Mid 45 of 45 runs)
+→ 0. 20 seeds × tf 1 / 6 / 10 (`stat_compare.txt`): 300 of 300 runs identical to the twin over `return_trip`, `return_pass`, `rt_titan`,
+`rt_titan_rest`, `rt_hub`. `laneon_diff.py --base 1c563443` by cast (`laneon_diff.txt`): 0 differing lines on every departure-side cast
+(full, `--lane`, `--capital`); the five arrival-side casts differ. `kill_criterion.py` on Run176 (`kill_criterion_run176.txt`): the
+departure baseline at 0x90a178e8, span 471.2 s, 0 stops, 0 turn-aways; the return trip 575.7 s, 9 member 0x12, 57 lane writes, 16 board
+entries (the lane before this state).
+
+**Acceptance [m]**: `--lane` 6,057 / 0, full 13,404 / 0, `--capital` 7,782 / 0 (the host-timing bench check flaked under load in the base,
+the before-core and this state alike; green on rerun); bench24 tf 10 lane mean 107.2-118.0 µs against 108.9-110.6 µs on the base and
+before-core in the same session; `test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 27 tests OK; i686
+RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014), `verify_ship_steering_sites.py` PASS 20. Not flown; the Run177 flight judges the
+departure side against Run176's and whether vanilla arrivals look acceptable (§13.0).
+
+**Review fixes [m]** (§13.11 "Review fixes"): two arrivals are never each other's excluded partner in the avoidance (check 13a fails on
+1c563443's core in `arrival_pass` 4 / `arrival_pass2` 9 of 9 runs, 0 now); the escort refusal latched and carried into the escort's own
+approach (cast `rt_trail`: M1, M3a and Mid fail 9 of 9 without it, pass with it; its vanilla escort touches its laned leader in 9 of 9
+runs, the twin the same); the latches clear on an order 4 / 5 to a non-gate (DLL only, untested on the host); `arr_overwritten_cap=`;
+`EWhy::arrival_pair`; `kill_criterion.py` keyed on (ship, gate, arrival) with the row-count cross-check. Acceptance: `--lane` 6,543 / 0,
+full 13,890 / 0, `--capital` 8,268 / 0; departure-side `laneon_diff` 0; 27 unit tests OK; i686 0 warnings, x87 PASS, sites PASS 20.
+**Host condition:** bench24's 1 ms third-worst ceiling fails on 1c563443 (base) as on this state when the host is loaded (alternating 3 + 3
+runs in two sets, another project's jobs running: over 1 ms in 2 of 6 base and 2 of 6 head runs at tf 10); means base 9.8 / head 10.1 µs
+at tf 1, 107.3 / 110.5 µs at tf 10 (`arr_mode/bench_alt.txt`). It is not a gate on this change; rerun it on a quiet host before install.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

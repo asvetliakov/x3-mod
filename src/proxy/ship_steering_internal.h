@@ -153,7 +153,10 @@ struct GateState { // per table slot: the approach's last call, the crossing (se
     // it), P2 seen kept or not (the extended hand-over; cleared like `handover`), the hull half-width cached per ship with the
     // radius bits, and the follow cap of the last decision
     std::uint32_t id;
-    std::uint8_t p2_seen, w_src, w_tries, pad16; // w_tries: the width reads retried after a failure (review F4)
+    std::uint8_t p2_seen, w_src, w_tries; // w_tries: the width reads retried after a failure (review F4)
+    std::uint8_t arr_vanilla; // convoy-gate-transit.md section 13: this approach is an arrival-side one, flown vanilla (latched, decide())
+    std::uint32_t esc_vanilla_gate; // ... an escort refused at this gate's board as arrival-side (latched, ctl_escort; carried into its own
+                                    // order-4 approach to the same gate; cleared with the latch above)
     std::int32_t w_gen;        // the radius bits [obj+0xa4] the width was read with
     std::uint32_t w_root;      // and the root node [obj+0x70] (a regenerated model re-walks)
     float w;                   // the lateral half-width, m

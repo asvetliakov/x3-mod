@@ -76,6 +76,7 @@ def norm(path, lane_on_only=False):
         if lane_on_only and (re.search(r'key-off|key off', line) or line.startswith('ship_steering_host checks=')):
             continue  # (the totals: the key-off control's checks changed with stage B's deletion; both runs' totals are printed below)
         line = re.sub(r'[A-Za-z_0-9]*us[A-Za-z_0-9 /]*=[0-9.e+/-]+', '', line)
+        line = re.sub(r'\bus [0-9.]+/[0-9.]+', '', line)  # (the lane profile build's host timing on the 'engine paths' row, 2026-10-16)
         line = re.sub(r'[0-9.]+ (us|ns)\b', '', line)
         if lane_on_only:
             line = re.sub(r'\| petal \d+ nose_away', '| nose_away', line)

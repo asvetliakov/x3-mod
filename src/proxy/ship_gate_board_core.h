@@ -11,6 +11,19 @@ constexpr unsigned kGates = 4, kMembers = 24, kSamples = 61;
 constexpr float kStepS = 0.25f, kSampleS = 0.5f; // the plant's step and the stored sample interval (2 steps per sample)
 constexpr std::uint32_t kSampleMs = 500;
 constexpr std::uint32_t kArrivalWindowMs = 60000; // an arrival is a member for 60 s after its launch (D.1)
+// Convoy-gate-transit.md section 13 (the arrival side is vanilla, the orchestrator's decision of 2026-10-16): a capital whose order 4 to
+// gate X comes within kArrModeMs + the step of its own launch at X (its arrival record) is flown by the engine and the script for that
+// approach (no capital lead-in, no board entry as committed or escort: gc::arr_record_mode, GateState::arr_vanilla). The arrival records
+// of capitals are kept this long (their reuse threshold; the arrival-gate row's own 60 s test unchanged). A leader's order 4 comes 7.9-9.3 s
+// after its launch; an escort of a vanilla leader gets its own order 4 after the leader's launch: 431 s and 366 s after its own arrival in
+// Run176 [m], 305 s in rt_titan_rest after a 228 s 0x12; Run174's return trip spanned about 840 s [m]. 900 s covers them; a capital that
+// arrives through X and departs through X within 15 minutes is taken as a return trip.
+// -DX3M_LANE_ARR_MODE=0 builds the controller before it (every capital on today's path).
+constexpr std::uint32_t kArrModeMs = 900000;
+#ifndef X3M_LANE_ARR_MODE
+#define X3M_LANE_ARR_MODE 1
+#endif
+#define X3M_GC_HAS_ARR_MODE 1 // (gc::arr_record_mode exists: the host fixture's build switch)
 constexpr std::uint32_t kEvictKeepMs = 30000;     // an evicted member's sequence number is kept 30 s (D.1)
 constexpr std::uint32_t kCertMaxAgeMs = 250;      // site E: the pair's clear verdict at most 250 ms old (D.1)
 constexpr std::uint32_t kDecisionMaxAgeMs = 1000; // ... and both members decided within 1 s (a starved decision loses its certificate)

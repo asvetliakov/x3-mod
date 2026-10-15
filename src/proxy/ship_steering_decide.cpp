@@ -136,7 +136,8 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     DockRow dock_row;
     const bool dock_row_due = dock_on_ && dock_bind(self, obj, in, dyn.a_lin, dyn.r_own, slot, now, dock_row);
     // the gate traffic controller (D.1): a capital member's partners with a clear verdict (at most kExcludeMaxAgeMs old) are not
-    // obstacles; a handed-back (unresolved), unknown or stale pair keeps today's sphere avoidance
+    // obstacles; a handed-back (unresolved), unknown or stale pair keeps today's sphere avoidance; two arrivals are never each other's
+    // excluded partner (convoy-gate-transit.md section 13: the arrival side is vanilla, gc::arrival_pair)
     std::uint32_t ctl_ptr[gc::kMembers], ctl_id[gc::kMembers];
     if (self.capital && traffic_live_.load(std::memory_order_relaxed)) {
         int mi = -1;
@@ -145,7 +146,7 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
             for (unsigned j = 0; j < cg->n; ++j)
                 // review F4: neither ship on the engine's own avoid order (A's live order, B's last read)
                 if (int(j) != mi && in.order != core::kOrderAvoid && cg->m[j].st.order != core::kOrderAvoid &&
-                    gc::pair_verdict(*cg, unsigned(mi), j, now, gc::kExcludeMaxAgeMs) == gc::PairV::clear) {
+                    gc::pair_verdict(*cg, unsigned(mi), j, now, gc::kExcludeMaxAgeMs) == gc::PairV::clear && !gc::arrival_pair(*cg, unsigned(mi), j)) {
                     ctl_ptr[self.n_ctl] = cg->m[j].ship;
                     ctl_id[self.n_ctl] = cg->m[j].id;
                     ++self.n_ctl;
@@ -804,10 +805,16 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         // another ship in the slot, or another gate: a new approach; amendment 16: under the capital policy also another object
         // behind the same pointer (the lane entry and E's gate row key on the id)
         if (gs->obj != obj || gs->gate != gate_tgt || (capital && gates_capital_on_ && gs->id != obj_id)) {
+            // (convoy-gate-transit.md section 13: an escort latched vanilla at this gate keeps it into its own approach to it)
+            const bool esc_keep = gs->obj == obj && gs->id == obj_id && gs->esc_vanilla_gate == gate_tgt;
             *gs = GateState{};
             gs->obj = obj;
             gs->gate = gate_tgt;
             gs->id = obj_id;
+            if (esc_keep) {
+                gs->esc_vanilla_gate = gate_tgt;
+                gs->arr_vanilla = 1;
+            }
         }
         gs->capital = capital ? 1 : 0;
         gs->r_gate = r_gate;
@@ -826,7 +833,26 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     // is crossed at the large cap and P2 keeps the speed when the crossing is within the 0x1f tolerance. Outside the window
     // the engine's law stands (the clamp lowers only). Its alignment at the crossing feeds `gate_capital_aligned`.
     const bool capital_gate = capital && gph != 0;
-    const bool capital_policy = capital_gate && gates_capital_on_;
+    // (section 13, review item 3: an order 4 or 5 to a target that is no gate ends the approach: the vanilla latches clear; a 0x12, an
+    // order-0 wait or an escort leg between keeps them. Not the 2 r reset below: on an unvalidated approach it fires on every call far from A)
+    if (!gph && (order == core::kOrderFlyBefore || order == core::kOrderDock) && gate_[slot].obj == obj) {
+        gate_[slot].arr_vanilla = 0;
+        gate_[slot].esc_vanilla_gate = 0;
+    }
+    // Convoy-gate-transit.md section 13 (the orchestrator's decision of 2026-10-16: the arrival side is vanilla): a capital's order 4 to the
+    // gate it came through within kArrModeMs + the step (its own launch record) latches this approach vanilla: no capital lead-in, so no
+    // commit (and no escort entry, ctl_escort): the engine and the script fly it, as with ship_steering_gates_capital off; site E's ring row
+    // stays. Latched for the approach (GateState: the same ship and gate), so the record's age never hands a running approach to the lane.
+    if (capital_gate && gs && X3M_LANE_ARR_MODE && traffic_on_ && gates_capital_on_ && !player && !gs->arr_vanilla &&
+        order == core::kOrderFlyBefore && arr_mode_ix_.maybe(obj) && gc::arr_record_mode(arrivals_, obj, gs->id, gate_tgt, now, frame_step_ms())) {
+        gs->arr_vanilla = 1;
+        ctl_arr_mode_.add();
+        std::uint32_t since = 0;
+        for (const gc::Arrival& a : arrivals_.a)
+            if (a.ship == obj && a.id == gs->id && a.gate == gate_tgt) since = now - a.launch_ms;
+        arr_vanilla_row(gate_tgt, obj, gs->id, now, since);
+    }
+    const bool capital_policy = capital_gate && gates_capital_on_ && !(gs && gs->arr_vanilla);
     bool capital_window = false; // this call's point came from the capital lead-in (inside its window): the site-B write
     bool capital_fb_write = false; // amendment 15: the fallback's slow entry toward A this call (the site-B write, both ways)
     bool capital_detour = false;   // amendment 16 fix: a join on an avoidance detour: the join's speed write is kept

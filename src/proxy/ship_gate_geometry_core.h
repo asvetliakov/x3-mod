@@ -502,6 +502,28 @@ constexpr float kLaneFunnelHyst = 1.25f; // a member inside stays inside to this
 #ifndef X3M_LANE_FUNNEL
 #define X3M_LANE_FUNNEL 1 // (0: the controller before the round: every lane-stage member owned, the laws along F)
 #endif
+// Convoy-gate-transit.md section 13.6 (orchestrator decision C, 2026-10-16): the funnel's far bound. The lane's laws (the floor, the stop,
+// the reserves), its steer and its rewrites own a lane-stage member only inside the 15 km commit sphere plus its join room (kLaneOwnM along
+// F, kLaneFarM + 5 km: a 30 deg join from the 2.9 km lateral spans about 5 km); farther out it keeps its rank (the ETA, the common-clock
+// re-take) and is a body for the sweep, and the engine's legs fly it (Run176 C4: escorts on 0x14 57 km out stopped at the floor by the
+// gap law). Tested at the entry (lane_far_entry: site A's rewrite runs in the commit's own call) and on every lane_frame.
+// PARKED, off by default (-DX3M_LANE_FAR=1 builds it): measured 2026-10-16 (arr_mode/far_bound_c.sh) it removes every lane write, steer
+// and rewrite beyond 20 km, but side_commit's convoy then joins on the engine's legs and fails Ex (member 0x12 in 7 of 9 runs, contact in
+// 4) with spans of 233-588 s against 199-225 s owned, and third_gate's span grows from 246-293 s to 319-338 s (Fx's bound); third_gate's
+// floor crawl beyond 20 km is the same with and without it (42 / 3 / 2 frames at tf 1 / 6 / 10), side_commit's grows (610 -> 1,618 at
+// tf 1): an escort on 0x14 3-4 km from its leader with no cap and no write of ours (the module's own escort law).
+#ifndef X3M_LANE_FAR
+#define X3M_LANE_FAR 0
+#endif
+#define X3M_GC_HAS_LANE_FAR 1 // (gc::lane_far_entry exists: the host fixture's build switch)
+constexpr float kLaneOwnM = kLaneFarM + 5000.0f;
+__attribute__((always_inline)) inline bool lane_far(const Gate& g, const float x[3]) noexcept {
+    const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
+    return X3M_LANE_FUNNEL && X3M_LANE_FAR && sc::dot3(d, g.F) < -kLaneOwnM;
+}
+inline void lane_far_entry(const Gate& g, Member& m) noexcept {
+    if (lane_far(g, m.st.x)) m.funnel = 0;
+}
 __attribute__((always_inline)) inline float lane_funnel_y30(float D, float R) noexcept {
     if (!(D > 0.0f)) return 0.0f;
     float y = 0.5f * D * kLaneJoinTan;

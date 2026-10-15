@@ -1215,20 +1215,27 @@ inline PairV pair_verdict(const Gate& g, unsigned i, unsigned j, std::uint32_t n
         return PairV::none; // a stale verdict, or a member whose decisions starved beyond 1 s: no certificate
     return v;
 }
+// Convoy-gate-transit.md section 13 (the arrival side is vanilla, 2026-10-16): a pair of two arrivals (Role::arrival, the 60 s after each
+// launch) is never certified; an arrival against a departing member stays the departure side's (12.1a). (rt_hub: arrivals 70 s apart
+// certified clear suppressed warns the level-0 twin flies.)
+__attribute__((always_inline)) inline bool arrival_pair(const Gate& g, unsigned i, unsigned j) noexcept {
+    return i < g.n && j < g.n && g.m[i].role == Role::arrival && g.m[j].role == Role::arrival;
+}
 // Site E for a member pair (D.1): suppress iff the verdict is clear and fresh (<= 250 ms, both members decided within 1 s), both live
 // forward rows are readable unit vectors and neither ship is on 0x12 (the live orders).
 inline bool e_certified(const Gate& g, unsigned i, unsigned j, std::uint32_t now, bool fa_ok, bool fb_ok, std::uint16_t a_order,
                         std::uint16_t b_order) noexcept {
     if (!fa_ok || !fb_ok || a_order == sc::kOrderAvoid || b_order == sc::kOrderAvoid) return false;
+    if (arrival_pair(g, i, j)) return false; // (section 13: two arrivals: the arrival side is vanilla, the engine's warn stands)
     return pair_verdict(g, i, j, now, kCertMaxAgeMs) == PairV::clear;
 }
 // Why site E passes a member pair (Run161; the reason of every pass_ctl, counted): certified (suppress_ctl), none (no verdict: a sweep
 // that failed closed), unresolved (a conflict handed back), stale (the clear verdict older than 250 ms), starved (a member's decisions
 // more than 1 s old), on_0x12, rows (a forward row not a unit vector), order0 (no certificate while one of the pair is on order 0).
-enum class EWhy : std::uint8_t { certified = 0, none, unresolved, stale, starved, on_0x12, rows, order0, not_member, count };
+enum class EWhy : std::uint8_t { certified = 0, none, unresolved, stale, starved, on_0x12, rows, order0, not_member, arrival_pair, count };
 inline const char* ewhy_name(EWhy w) noexcept {
     static const char* const n[unsigned(EWhy::count)] = {"certified", "none", "unresolved", "stale", "starved", "on_0x12", "rows", "order0",
-                                                         "not_member"};
+                                                         "not_member", "arrival_pair"};
     return unsigned(w) < unsigned(EWhy::count) ? n[unsigned(w)] : "?";
 }
 inline EWhy e_reason(const Gate& g, unsigned i, unsigned j, std::uint32_t now, bool fa_ok, bool fb_ok, std::uint16_t a_order,
@@ -1236,6 +1243,7 @@ inline EWhy e_reason(const Gate& g, unsigned i, unsigned j, std::uint32_t now, b
     if (a_order == sc::kOrderAvoid || b_order == sc::kOrderAvoid) return EWhy::on_0x12;
     if (!fa_ok || !fb_ok) return EWhy::rows;
     if (i >= g.n || j >= g.n || !live(g, g.m[i], now) || !live(g, g.m[j], now)) return EWhy::not_member;
+    if (arrival_pair(g, i, j)) return EWhy::arrival_pair; // (section 13: two arrivals, never certified)
     const PairV v = PairV(g.v[i][j]);
     if (v == PairV::clear) {
         const std::uint32_t dec = age_bound(g, kDecisionMaxAgeMs);

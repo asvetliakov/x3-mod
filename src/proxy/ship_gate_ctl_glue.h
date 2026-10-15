@@ -16,6 +16,7 @@ inline gc::Board ctl_;
 inline gc::Index ctl_ix_;      // member ships (every board, every role but none)
 inline gc::Arrivals arrivals_; // every launch at a gate within 60 s (the arrival-gate row; capital arrivals for the small-ship row)
 inline gc::Index arr_ix_;      // their ships (rebuilt once per second)
+inline gc::Index arr_mode_ix_; // convoy-gate-transit.md section 13: the ships with a launch record within kArrModeMs + the step (the vanilla test)
 inline std::uint32_t ctl_decide_max_ticks_ = 0, ctl_frame_max_ticks_ = 0, ctl_arrival_max_ticks_ = 0;
 // Run176 diagnostics item 1 (--debug with timing): the ctl_decide_us_max holder's thread cycles (0: not read) and its gate and member
 inline std::uint64_t ctl_decide_max_cycles_ = 0;
@@ -45,6 +46,7 @@ inline Counter ctl_merge_yield_, ctl_merge_stop_, ctl_point_rewrites_, ctl_lane_
 inline Counter ctl_lane_defers_, ctl_defer_rewrites_, ctl_point_adopts_, ctl_grid_miss_;
 inline Counter ctl_recommit_held_; // lane fix round 1 item 4: commits held by the re-commit hysteresis
 inline Counter ctl_mouth_expired_; // review of the arrival round item 3: gate-mouth holds ended by their game-time bound
+inline Counter ctl_arr_mode_;      // convoy-gate-transit.md section 13: arrival-side approaches latched vanilla (GateState::arr_vanilla)
 inline Counter e_gate_ring_, e_gate_ring_kept_; // the arrival round item 4: site E's ring row (suppressed; kept: refused_hull / roll)
 inline Counter e_lane_obst_, e_lane_obst_roll_; // lane fix round 2 item 1: site E's lane obstacle row (suppressed; passed: the path does not clear)
 inline Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed a member pair (not_member: a member against a capital
@@ -128,6 +130,24 @@ struct DeferRow {
 inline DeferRow defer_rows_[8];
 inline std::atomic<std::uint32_t> defer_row_write_{0};
 inline std::uint32_t defer_row_read_ = 0;
+// Convoy-gate-transit.md section 13 (--debug): ship_gate_ctl_arr, once per approach latched vanilla (an arrival-side capital's order 4 to
+// the gate it came through within kArrModeMs + the step: the engine and the script fly it), ring 8 (drops count as ctl).
+struct ArrRow {
+    std::uint32_t gate, ship, id, t_ms, since_ms;
+};
+inline ArrRow arr_rows_[8];
+inline std::atomic<std::uint32_t> arr_row_write_{0};
+inline std::uint32_t arr_row_read_ = 0;
+inline void arr_vanilla_row(std::uint32_t gate, std::uint32_t ship, std::uint32_t id, std::uint32_t now, std::uint32_t since_ms) noexcept {
+    if (!debug_) return;
+    const std::uint32_t w = arr_row_write_.load(std::memory_order_relaxed);
+    if (w - arr_row_read_ >= 8) {
+        row_dropped(Drop::ctl);
+        return;
+    }
+    arr_rows_[w & 7] = ArrRow{gate, ship, id, now, since_ms};
+    arr_row_write_.store(w + 1, std::memory_order_release);
+}
 inline void ctl_row(const gc::Gate& g, const gc::Member& m, gc::Role from, gc::Role to, gc::Why why, std::uint32_t now) noexcept {
     if (!debug_) return;
     const std::uint32_t w = ctl_row_write_.load(std::memory_order_relaxed);

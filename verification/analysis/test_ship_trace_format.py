@@ -410,6 +410,30 @@ class Run176DiagnosticsRows(unittest.TestCase):
         self.assertIn('unsigned budget = kGateTreeBudget;', walk)
         self.assertIn('kRingNodeRowsPerRead = 8', (root / 'ship_steering_internal.h').read_text())
 
+# The arrival side is vanilla (convoy-gate-transit.md section 13, 2026-10-16): ship_gate_ctl_arr once per approach latched vanilla, the lane
+# summary's ctl_arr_mode= (such approaches); the member and lane rows carry no mode field
+ARR_MODE_ROWS = [
+    'ship_gate_ctl_arr frame=990 t_ms=24313239 gate=0x90a178e8 ship=0x905b2760 id=4418 since_launch_ms=8530',
+    'ship_steering_lane_summary frame=992 lane=active ctl_merge_yield=0 ctl_merge_stop=1 ctl_point_rewrites=0 ctl_lane_writes=4 ctl_x_refused=0 '
+    'ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=0 ctl_defer_rewrites=0 ctl_recommit_held=0 e_lane_obst=2 '
+    'e_lane_obst_roll=0 e_gate_ring=10 e_gate_ring_kept=0 ctl_mouth_expired=0 ctl_arr_mode=3 gates_gate:F:G:r=-',
+]
+
+
+class ArrModeRows(unittest.TestCase):
+    def test_mode_fields(self):
+        ar = st.parse_kv_rows(ARR_MODE_ROWS, 'ship_gate_ctl_arr')[0]
+        self.assertEqual((ar['ship'], ar['gate'], ar['id'], ar['since_launch_ms']), (0x905b2760, 0x90a178e8, 4418, 8530))
+        s = st.parse_kv_rows(ARR_MODE_ROWS, 'ship_steering_lane_summary')[0]
+        self.assertEqual(s['ctl_arr_mode'], 3)
+        root = Path(__file__).resolve().parents[2] / 'src/proxy'
+        glue = (root / 'ship_gate_ctl_glue.cpp').read_text()
+        self.assertIn('"ship_gate_ctl_arr frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu"', glue)
+        self.assertIn('w_m=%.0f w_ok=%u funnel=%u",', glue)  # (no arr= on the member row)
+        self.assertIn('pt=%s own=%u", frame,', glue)  # (no mode= on the lane row)
+        self.assertIn('ctl_mouth_expired=%lu ctl_arr_mode=%lu gates_gate:F:G:r=%s', (root / 'ship_steering_rows.cpp').read_text())
+
+
 
 class ArrivalRoundRows(unittest.TestCase):
     def test_ring_row_and_player_rows(self):
@@ -424,7 +448,7 @@ class ArrivalRoundRows(unittest.TestCase):
         self.assertEqual((p0['member'], p0['d_member_m']), (0, -1))
         root = Path(__file__).resolve().parents[2] / 'src/proxy'
         rows = (root / 'ship_steering_rows.cpp').read_text()  # (the DLL's formats carry them)
-        self.assertIn('e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu gates_gate:F:G:r=%s', rows)
+        self.assertIn('e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu ctl_arr_mode=%lu gates_gate:F:G:r=%s', rows)
         self.assertIn('ship_player_pos frame=%llu t_ms=%lu obj=0x%08lx pos=%.0f,%.0f,%.0f gate=0x%08lx d_gate_m=%.0f member=0x%08lx d_member_m=%.0f', rows)
         lane = (root / 'ship_gate_lane_core.h').read_text()
         for kind in ('"escort"', '"arrival"', '"other"', '"refused_hull"'):

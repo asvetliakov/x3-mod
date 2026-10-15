@@ -6,7 +6,7 @@ std::uint32_t join_eval_max_ticks_ = 0, join_evals_ = 0, join_predictions_ = 0;
 // The summary's gates text (frame boundary): its worst case, every conversion at its widest, as summary_bound.py computes it from
 // this file (the host test keeps the constant equal to the computed figure); the buffer must hold it. It held 4,096 B up to B.3,
 // below the 4,123-character worst case: the tail truncated.
-constexpr std::size_t kSummaryGatesWorstCase = 3658;
+constexpr std::size_t kSummaryGatesWorstCase = 3900; // measured 3,831 after the Run176 diagnostics + the arrival mode merged (summary_bound.py)
 constexpr std::size_t kSummaryGatesBytes = 8192;
 static_assert(kSummaryGatesWorstCase < kSummaryGatesBytes, "the summary's gates text fits its buffer (summary_bound.py)");
 std::uint32_t rep_gate_[29] = {};
@@ -527,9 +527,9 @@ void frame_boundary(std::uint64_t frame) {
                           "ctl_yields=%lu ctl_capped=%lu ctl_released=%lu ctl_unresolved=%lu ctl_entered=%lu ctl_left=%lu ctl_evicted=%lu "
                           "ctl_full=%u,%u e_suppressed_ctl=%lu e_pass_ctl=%lu e_suppressed_arrival_gate=%lu avoid_ctl_excluded=%lu "
                           "arr_launches=%lu arr_offset_capital=%lu arr_small_side=%lu arr_small_unseparated=%lu arr_skipped=%lu "
-                          "arr_overwritten=%u ctl_decide_us_max=%.1f ctl_frame_us_max=%.1f ctl_frame_decisions_max=%u ctl_arrival_us_max=%.1f "
+                          "arr_overwritten=%u arr_overwritten_cap=%u ctl_decide_us_max=%.1f ctl_frame_us_max=%.1f ctl_frame_decisions_max=%u ctl_arrival_us_max=%.1f "
                           "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_sb_steered=%lu "
-                          "ctl_p2_zeroed=%lu small_b_rewrites=%lu ctl_sb_us_max=%.1f e_pass_ctl_why=%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu e_gate_small_gap=%lu "
+                          "ctl_p2_zeroed=%lu small_b_rewrites=%lu ctl_sb_us_max=%.1f e_pass_ctl_why=%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu e_gate_small_gap=%lu "
                           "ctl_misc=%lu,%lu ctl_small=%lu,%lu,%lu ctl_prof=%lu,%lu,%lu ctl_prof_us_max=%.1f ctl_evict_ignored_gate=%lu ctl_budget_cut=%lu ctl_live=%lu,%lu,%lu,%lu,%lu,%lu "
                           "ctl_live_us_max=%.1f ctl_decide_cyc_max=%llu ctl_decide_max_gate=0x%08lx ctl_decide_max_ship=0x%08lx ctl_decide_max_id=%lu",
                           traffic_state_, members, static_cast<unsigned long>(ctl_decisions_.get()), static_cast<unsigned long>(ctl_rollouts_.get()),
@@ -542,16 +542,17 @@ void frame_boundary(std::uint64_t frame) {
                           static_cast<unsigned long>(e_suppressed_arrival_gate_.get()), static_cast<unsigned long>(avoid_ctl_excluded_.get()),
                           static_cast<unsigned long>(arr_launches_.get()), static_cast<unsigned long>(arr_offset_capital_.get()),
                           static_cast<unsigned long>(arr_small_side_.get()), static_cast<unsigned long>(arr_small_unseparated_.get()),
-                          static_cast<unsigned long>(arr_skipped_.get()), arrivals_.overwritten, ticks_us(ctl_decide_max_ticks_),
+                          static_cast<unsigned long>(arr_skipped_.get()), arrivals_.overwritten, arrivals_.overwritten_cap, ticks_us(ctl_decide_max_ticks_),
                           ticks_us(ctl_frame_max_ticks_), ctl_frame_max_decisions_, ticks_us(ctl_arrival_max_ticks_),
                           static_cast<unsigned long>(ctl_x_refused_.get()), static_cast<unsigned long>(ctl_x_wait_ms_ / 1000u),
                           static_cast<unsigned long>(ctl_sb_steered_.get()), static_cast<unsigned long>(ctl_p2_zeroed_.get()),
                           static_cast<unsigned long>(small_b_rewrites_.get()), ticks_us(ctl_sb_max_ticks_),
-                          // e_pass_ctl_why: none, unresolved, stale, starved, on_0x12, rows, order0, not_member (gc::EWhy 1..8)
+                          // e_pass_ctl_why: none, unresolved, stale, starved, on_0x12, rows, order0, not_member, arrival_pair (gc::EWhy 1..9)
                           static_cast<unsigned long>(e_pass_ctl_why_[1].get()), static_cast<unsigned long>(e_pass_ctl_why_[2].get()),
                           static_cast<unsigned long>(e_pass_ctl_why_[3].get()), static_cast<unsigned long>(e_pass_ctl_why_[4].get()),
                           static_cast<unsigned long>(e_pass_ctl_why_[5].get()), static_cast<unsigned long>(e_pass_ctl_why_[6].get()),
                           static_cast<unsigned long>(e_pass_ctl_why_[7].get()), static_cast<unsigned long>(e_pass_ctl_why_[8].get()),
+                          static_cast<unsigned long>(e_pass_ctl_why_[9].get()),
                           static_cast<unsigned long>(e_gate_small_gap_.get()),
                           // ctl_misc: game-clock resets, small B both sides taken
                           static_cast<unsigned long>(ctl_clock_resets_.get()), static_cast<unsigned long>(small_b_both_.get()),
@@ -623,7 +624,8 @@ void frame_boundary(std::uint64_t frame) {
         }
         log("ship_steering_lane_summary frame=%llu lane=%s ctl_merge_yield=%lu ctl_merge_stop=%lu ctl_point_rewrites=%lu ctl_lane_writes=%lu "
             "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_grid_miss=%lu ctl_point_adopts=%lu ctl_lane_defers=%lu ctl_defer_rewrites=%lu "
-            "ctl_recommit_held=%lu e_lane_obst=%lu e_lane_obst_roll=%lu e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu gates_gate:F:G:r=%s",
+            "ctl_recommit_held=%lu e_lane_obst=%lu e_lane_obst_roll=%lu "
+            "e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu ctl_arr_mode=%lu gates_gate:F:G:r=%s",
             static_cast<unsigned long long>(frame), lane_state_, static_cast<unsigned long>(ctl_merge_yield_.get()),
             static_cast<unsigned long>(ctl_merge_stop_.get()), static_cast<unsigned long>(ctl_point_rewrites_.get()),
             static_cast<unsigned long>(ctl_lane_writes_.get()), static_cast<unsigned long>(ctl_x_refused_.get()),
@@ -632,7 +634,7 @@ void frame_boundary(std::uint64_t frame) {
             static_cast<unsigned long>(ctl_defer_rewrites_.get()), static_cast<unsigned long>(ctl_recommit_held_.get()),
             static_cast<unsigned long>(e_lane_obst_.get()), static_cast<unsigned long>(e_lane_obst_roll_.get()),
             static_cast<unsigned long>(e_gate_ring_.get()), static_cast<unsigned long>(e_gate_ring_kept_.get()),
-            static_cast<unsigned long>(ctl_mouth_expired_.get()), frames);
+            static_cast<unsigned long>(ctl_mouth_expired_.get()), static_cast<unsigned long>(ctl_arr_mode_.get()), frames);
         // the arrival round item 6: the piloted ship within 15 km of a gate, once per report: its position (the freshest snapshot of the
         // last 2 s of game time that holds it), the nearest gate of that snapshot and the nearest board member (its state), m
         const std::uint32_t t_now = game_time_ms();

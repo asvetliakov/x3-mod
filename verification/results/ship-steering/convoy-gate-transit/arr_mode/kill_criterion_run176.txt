@@ -1,0 +1,18 @@
+# x3m-run176.log; arrival-side ships inferred (no ship_gate_ctl_arr rows: an entry within 900 s of the own launch); 3 arrival-side (ship, gate, arrival) keys
+# ship_gate_ctl_arr rows 0, the last summary's ctl_arr_mode= -
+gate 0x90a178e8 departure 22669.2 members 3: span 15 km -> last launch 471.2 s, stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x905a50e0 15km 23003.7 launch 23130.3 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x905ac718 15km 23274.8 launch 23402.0 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x90a14e40 15km 23348.1 launch 23474.9 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x90a178e8 return trip 24304.7 ships 3: span arrival -> last launch 575.7 s, 0x12 9, plane crossings without a jump 0, lane writes 57, board entries as committed or escort 16 (not vanilla: a build before the latch)
+     0x905b2760 arrived 24304.7 jump 24793.9 | 0x12 3 ['24405.6:M2(eff8)', '24551.3:M1(cf60)', '24661.4:M1(cf60)'] | plane crossings 0 [] | traced rows 0 | lane writes 1, board entries 5
+     0x30edeff8 arrived 24367.0 jump 24833.2 | 0x12 3 ['24409.6:M2(2760)', '24563.8:M1(cf60)', '24667.3:M1(cf60)'] | plane crossings 0 [] | traced rows 0 | lane writes 53, board entries 6
+     0xa89ccf60 arrived 24434.5 jump 24880.5 | 0x12 3 ['24442.6:M2(eff8)', '24551.2:M2(2760)', '24661.3:M2(2760)'] | plane crossings 0 [] | traced rows 0 | lane writes 3, board entries 5
+gate 0x90a18038 departure 23812.8 members 3: span 15 km -> last launch open (1 of 3 launched), stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x90598ca8 15km 24991.3 launch 25176.8 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x39fcdc10 15km 25138.6 launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x90a39150 15km 25232.6 launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x90a1c340 departure 25267.7 members 3: span 15 km -> last launch open (0 of 3 launched), stops 3, turn-aways 0, lane stop writes 6, member 0x12 0 -> CHECK against the baseline
+     0xa9042380 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x90a39150 15km - launch - | stops 1 ['25272.9+110.9'] | turn-aways 0 [] | lane stop writes 4 | 0x12 0 []
+     0x39fcdc10 15km - launch - | stops 2 ['25270.0+27.1', '25330.2+53.6'] | turn-aways 0 [] | lane stop writes 2 | 0x12 0 []

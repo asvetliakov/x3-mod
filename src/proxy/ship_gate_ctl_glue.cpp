@@ -191,6 +191,7 @@ gc::Member* ctl_commit(GateState& g, std::uint32_t obj, const core::Inputs& in, 
     // width is unread is a body, never w = r as a member)
     const bool w_read = g.w_src == std::uint8_t(ln::WidthSrc::lod);
     gc::commit_fill(*m, in, dyn, geo, w_read ? g.w : 0.0f, w_read ? g.w_len : 0.0f, r_gate, gate, now);
+    gc::lane_far_entry(*cg, *m); // (section 13.6: beyond the far bound site A's rewrite below does not run)
     return m;
 }
 // An escort (D.1): a capital on 0x14 / 0x15 whose leader is a committed member; it joins the leader's board (role escort). On order 0
@@ -206,6 +207,27 @@ void ctl_escort(GateState& g, std::uint32_t obj, std::uint32_t code, std::uint32
     // B.5: the leader is the engine's f+0x224 of this call (live); its board entry must be the same object (a reused address keeps a
     // stale entry under another id until the frame boundary removes it)
     if (!gc::leader_entry_current(cg->m[li], rd32(leader + sites::kObjId))) return;
+    // convoy-gate-transit.md section 13 (the arrival side is vanilla): an escort that came through the leader's gate within kArrModeMs + the
+    // step is no member (its own launch record; the bitmap first, then at most 64 compares), latched in its GateState for that gate so the
+    // record's age never hands a trailing escort to the lane (review: an escort trailing a departing leader for more than 905 s)
+    if (X3M_LANE_ARR_MODE) {
+        const std::uint32_t id = rd32(obj + sites::kObjId);
+        if (g.obj == obj && g.id == id && g.esc_vanilla_gate == cg->gate) return;
+        if (arr_mode_ix_.maybe(obj) && gc::arr_record_mode(arrivals_, obj, id, cg->gate, now, frame_step_ms())) {
+            if (g.obj != obj || g.id != id) { // (another ship's slot state, or none: this ship's, as decide() starts one)
+                g = GateState{};
+                g.obj = obj;
+                g.id = id;
+            }
+            g.esc_vanilla_gate = cg->gate;
+            ctl_arr_mode_.add();
+            std::uint32_t since = 0;
+            for (const gc::Arrival& a : arrivals_.a)
+                if (a.ship == obj && a.id == id && a.gate == cg->gate) since = now - a.launch_ms;
+            arr_vanilla_row(cg->gate, obj, id, now, since);
+            return;
+        }
+    }
     int ei = -1;
     gc::Gate* own = ctl_lookup(obj, &ei);
     if (own && own != cg && ei >= 0) ctl_leave(*own, unsigned(ei), false, gc::Why::leader, now); // another gate's member: it follows
@@ -222,6 +244,7 @@ void ctl_escort(GateState& g, std::uint32_t obj, std::uint32_t code, std::uint32
     } else if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l))
         w = l = 0.0f;
     gc::escort_fill(*m, leader, in, dyn, w, l, cg->r_gate, now);
+    gc::lane_far_entry(*cg, *m); // (section 13.6)
 }
 } // namespace x3m_ship_steering_rt
 // The gate traffic controller's launch window 0x00444606 (D.4; ship_steering_sites.h (n)): the exit point P (phys+0x30, already
@@ -338,6 +361,7 @@ extern "C" void __cdecl x3m_ship_gate_arrival(std::uint32_t obj, std::uint32_t g
     const std::uint32_t id = rd32(obj + sites::kObjId);
     gc::record_arrival(arrivals_, obj, id, gate, now, w, capital);
     arr_ix_.set(obj);
+    arr_mode_ix_.set(obj);
     if (capital && g) {
         gc::Member* m = ctl_enter(*g, obj, id, gc::Role::arrival, gc::Why::arrival, now);
         if (m) {
@@ -648,8 +672,11 @@ void ctl_frame() noexcept {
     if (now - arr_ix_rebuilt_ms_ >= 1000) { // the arrival bitmap keeps only the records of the last 60 s
         arr_ix_rebuilt_ms_ = now;
         for (std::uint32_t& w : arr_ix_.bits) w = 0;
-        for (const gc::Arrival& a : arrivals_.a)
+        for (std::uint32_t& w : arr_mode_ix_.bits) w = 0;
+        for (const gc::Arrival& a : arrivals_.a) {
             if (a.ship && now - a.launch_ms <= gc::kArrivalWindowMs) arr_ix_.set(a.ship);
+            if (a.ship && now - a.launch_ms <= gc::kArrModeMs + gc::kStepClampMs) arr_mode_ix_.set(a.ship); // (section 13's vanilla test)
+        }
     }
 }
 // The --debug rows of the controller (D.7), drained at the frame boundary.
@@ -664,6 +691,12 @@ void ctl_rows(unsigned long long frame) noexcept {
             static_cast<unsigned long>(r.id), static_cast<unsigned long>(r.seq), static_cast<unsigned long>(r.key), unsigned(r.order),
             gc::role_name(gc::Role(r.from)), gc::role_name(gc::Role(r.to)), gc::why_name(gc::Why(r.why)), unsigned(r.rank),
             gc::sb_name(gc::Sb(r.sb_from)), gc::sb_name(gc::Sb(r.sb_to)));
+    }
+    for (std::uint32_t w = arr_row_write_.load(std::memory_order_acquire); arr_row_read_ != w; ++arr_row_read_) { // section 13
+        const ArrRow& r = arr_rows_[arr_row_read_ & 7];
+        x3m::log("ship_gate_ctl_arr frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu", frame,
+                 static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
+                 static_cast<unsigned long>(r.id), static_cast<unsigned long>(r.since_ms));
     }
     for (std::uint32_t w = ctl_pair_write_.load(std::memory_order_acquire); ctl_pair_read_ != w; ++ctl_pair_read_) {
         const CtlPairRow& r = ctl_pair_rows_[ctl_pair_read_ & 63];

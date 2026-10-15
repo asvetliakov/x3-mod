@@ -1,0 +1,12 @@
+# python3 -I laneon_diff.py --base 1c563443 --out DIR; python3 -I arr_mode/laneon_by_cast.py DIR (2026-10-16, the arrival side vanilla with the review fixes on top of 1c563443's core; sequential runs)
+before.txt vs after.txt: lines 969 / 969; arrival-side differing {'checks': 2, 'return_pass': 48, 'return_trip': 72, 'rt_hub': 54, 'rt_titan': 54, 'rt_titan_rest': 52, 'rt_trail': 36, 'ship_steering_host': 2}; departure-side differing 0
+before__lane.txt vs after__lane.txt: lines 742 / 742; arrival-side differing {'checks': 2, 'return_pass': 48, 'return_trip': 72, 'rt_hub': 54, 'rt_titan': 54, 'rt_titan_rest': 52, 'rt_trail': 36, 'ship_steering_host': 2}; departure-side differing 0
+before__capital.txt vs after__capital.txt: lines 798 / 798; arrival-side differing {'checks': 2, 'return_pass': 48, 'return_trip': 72, 'rt_hub': 54, 'rt_titan': 54, 'rt_titan_rest': 52, 'rt_trail': 36, 'ship_steering_host': 2}; departure-side differing 0
+before: ship_steering_host checks=13890 failures=261 slip_gaps=0 vanilla_notes=2; FAIL rows 261
+after: ship_steering_host checks=13890 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+before--lane: ship_steering_host checks=6543 failures=259 slip_gaps=0; FAIL rows 259
+after--lane: ship_steering_host checks=6543 failures=0 slip_gaps=0; FAIL rows 0
+base--lane: ship_steering_host checks=5760 failures=0 slip_gaps=0; FAIL rows 0
+before--capital: ship_steering_host checks=8268 failures=259 slip_gaps=0; FAIL rows 259
+after--capital: ship_steering_host checks=8268 failures=0 slip_gaps=0; FAIL rows 0
+before: 1c563443's core fails the arrival-side casts' own checks (M1, M3a, Mid) and 13a (two arrivals excluded from each other's avoidance); its full run also flaked the host-timing bench check; stdouts in a local scratch directory (untracked)

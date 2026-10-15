@@ -1,0 +1,5 @@
+return_pass    runs 60 | all launched mode 60 twin 60 | mode fewer launches 0 | both launched 60: mode span longer 0, delta median 0 p90 0 max 0 | ep 0/0 contact 0/0 ours 0 | runs ep>=3 0/0 | identical to the twin 60/60
+return_trip    runs 60 | all launched mode 60 twin 60 | mode fewer launches 0 | both launched 60: mode span longer 0, delta median 0 p90 0 max 0 | ep 81/81 contact 64/64 ours 0 | runs ep>=3 0/0 | identical to the twin 60/60
+rt_hub         runs 60 | all launched mode 55 twin 55 | mode fewer launches 0 | both launched 55: mode span longer 0, delta median 0 p90 0 max 0 | ep 118/118 contact 280/280 ours 0 | runs ep>=3 17/17 | identical to the twin 60/60
+rt_titan       runs 60 | all launched mode 56 twin 56 | mode fewer launches 0 | both launched 56: mode span longer 0, delta median 0 p90 0 max 0 | ep 148/148 contact 100/100 ours 0 | runs ep>=3 9/9 | identical to the twin 60/60
+rt_titan_rest  runs 60 | all launched mode 47 twin 47 | mode fewer launches 0 | both launched 47: mode span longer 0, delta median 0 p90 0 max 0 | ep 196/196 contact 152/152 ours 0 | runs ep>=3 30/30 | identical to the twin 60/60

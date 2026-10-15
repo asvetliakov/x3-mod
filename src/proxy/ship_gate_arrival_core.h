@@ -63,18 +63,22 @@ struct Arrival {
 };
 struct Arrivals {
     Arrival a[kArrivals];
-    unsigned next = 0, overwritten = 0;
+    unsigned next = 0, overwritten = 0, overwritten_cap = 0; // (overwritten_cap: of them a capital's record: section 13's test lost, counted)
 };
 inline void record_arrival(Arrivals& t, std::uint32_t ship, std::uint32_t id, std::uint32_t gate, std::uint32_t now, float w, bool capital) noexcept {
     unsigned k = kArrivals;
     for (unsigned i = 0; i < kArrivals && k == kArrivals; ++i)
         if (t.a[i].ship == ship) k = i;
+    // (section 13: a capital's record is reused only past the vanilla test's reach, kArrModeMs + the largest step; any other past the
+    // arrival-gate row's 60 s, as before)
     for (unsigned i = 0; i < kArrivals && k == kArrivals; ++i)
-        if (!t.a[i].ship || now - t.a[i].launch_ms > kArrivalWindowMs) k = i;
-    if (k == kArrivals) { // the oldest live record goes (counted): its row falls back to the engine's warn
+        if (!t.a[i].ship || now - t.a[i].launch_ms > (t.a[i].capital ? kArrModeMs + kStepClampMs : kArrivalWindowMs)) k = i;
+    if (k == kArrivals) { // a live record goes, round-robin over the slots (not the oldest; counted): its row falls back to the engine's warn,
+                          // a capital's also its arrival-side test (that ship back on today's lane)
         k = t.next;
         t.next = (t.next + 1) % kArrivals;
         ++t.overwritten;
+        if (t.a[k].capital) ++t.overwritten_cap;
     }
     t.a[k] = Arrival{ship, id, gate, now ? now : 1, w, std::uint8_t(capital ? 1 : 0)};
 }
@@ -82,6 +86,17 @@ inline const Arrival* find_arrival(const Arrivals& t, std::uint32_t ship, std::u
     for (const Arrival& a : t.a)
         if (a.ship == ship && now - a.launch_ms <= kArrivalWindowMs) return &a;
     return nullptr;
+}
+// Convoy-gate-transit.md section 13.1 (orchestrator decision 2026-10-16: the arrival side is vanilla): whether the ship (its object id)
+// launched at this gate within kArrModeMs + the step of now (its own arrival record). The DLL's decide() latches it per approach
+// (GateState::arr_vanilla): such a capital takes the vanilla path (no capital lead-in, no commit, no escort entry: never a board member as
+// committed or escort). A backward clock or no record: false. <= 64 compares, behind the arr_mode_ix_ bitmap's test.
+inline bool arr_record_mode(const Arrivals& t, std::uint32_t ship, std::uint32_t id, std::uint32_t gate, std::uint32_t now,
+                            std::uint32_t step_ms) noexcept {
+    const std::uint32_t reach = kArrModeMs + (step_ms < kStepClampMs ? step_ms : kStepClampMs);
+    for (const Arrival& a : t.a)
+        if (a.ship == ship && a.id == id && a.gate == gate && a.capital && now - a.launch_ms <= reach) return true;
+    return false;
 }
 // The arrival-gate row (D.4): A launched at B within 60 s, in front of the plane ((x - G) . F < 0) and not closing on it (u . F <= 0),
 // and the gate has no collision mesh (rows 0..3, 5..14), or the Terran ring with A's lateral offset + w <= h r - 50 m.

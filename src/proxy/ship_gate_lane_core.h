@@ -1091,7 +1091,10 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             m.lane_on = 1;
         // Run175 round item 3: the join funnel (lane_funnel_y, with hysteresis) decides whether the lane owns the member on a lane stage;
         // on Lambda, re-departing (the overshoot, the loop, the gate mouth) or past the lane stages the ownership stands
-        if (!X3M_LANE_FUNNEL || m.lane_on || m.over || m.loop || !(m.sb == Sb::inbound || m.sb == Sb::funnel)) m.funnel = 1;
+        // (section 13.6, decision C: beyond kLaneOwnM along F a lane-stage member is not owned, whatever its lateral, Lambda or loop)
+        const bool lane_stage_now = m.sb == Sb::inbound || m.sb == Sb::funnel;
+        if (X3M_LANE_FUNNEL && X3M_LANE_FAR && lane_stage_now && m.lane_s < -kLaneOwnM) m.funnel = 0;
+        else if (!X3M_LANE_FUNNEL || m.lane_on || m.over || m.loop || !lane_stage_now) m.funnel = 1;
         else {
             const float yf = lane_funnel_y(m, m.lane_s), yo = yf + kLaneOffM > kLaneFunnelHyst * yf ? yf + kLaneOffM : kLaneFunnelHyst * yf;
             if (m.funnel) {
