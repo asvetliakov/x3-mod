@@ -1,0 +1,88 @@
+== item A: the engine model before this round -> the corrected model, the 0x12 counted (seed 1, every active lane cast)
+cast tf | ep unc nonmem caps gw gunsup gx12 ow ounsup ox12 avoid unsafe   (old -> new where different)
+abreast3 tf1: nonmem 1->0, gw 5850->5844
+abreast3 tf6: nonmem 1->0
+abreast3 tf10: nonmem 1->0, gw 318->317
+abreast5 tf1: nonmem 1->0, gw 9911->9877
+abreast5 tf6: nonmem 2->0, gw 823->820
+abreast5 tf10: nonmem 1->0, gw 511->509
+crossing tf1: nonmem 1->0, gw 8681->8676
+crossing tf6: nonmem 1->0
+crossing tf10: nonmem 1->0
+formed tf1: nonmem 1->0, gw 5668->5662
+formed tf6: nonmem 1->0
+formed tf10: nonmem 1->0, gw 312->311
+formed_stage2 tf1: nonmem 1->0, gw 6163->6157
+formed_stage2 tf6: nonmem 1->0
+formed_stage2 tf10: nonmem 1->0, gw 343->342
+join_block tf1: gw 7556->7550, ow 1351->1872, ounsup 289->545, ox12 2->3, avoid 0->1
+join_block tf6: ow 105->141, ounsup 11->18, ox12 2->5, avoid 0->3
+join_block tf10: gw 390->389, ow 65->88, ounsup 8->13, ox12 1->2, avoid 0->1
+join_field tf1: gw 7149->7143, ow 1857->2503, ounsup 887->1329
+join_field tf6: ow 174->220, ounsup 54->84
+join_field tf10: gw 383->382, ow 121->152, ounsup 33->55
+leader_killed tf1: nonmem 242->0, gw 7090->7079
+leader_killed tf6: nonmem 15->0, gw 534->533
+leader_killed tf10: nonmem 13->0, gw 327->325
+m7_cross tf1: nonmem 1->0, gw 5668->5662, ow 1684->1306
+m7_cross tf6: nonmem 1->0, ow 137->102
+m7_cross tf10: nonmem 1->0, gw 312->311, ow 80->62
+overshoot tf1: gw 5029->5023
+overshoot tf6: gw 351->350
+p2_miss tf1: gw 3709->3703
+p2_miss tf10: gw 216->215
+p2_miss_near tf1: gw 3719->3713
+p2_miss_near tf10: gw 216->215
+parked tf1: nonmem 6377->0, gw 4842->4776, ow 12898->0, ounsup 205->0, ox12 2->0, avoid 2->0
+parked tf6: nonmem 583->0, gw 431->424, ow 1024->0, ounsup 19->0, ox12 2->0, avoid 2->0
+parked tf10: nonmem 371->0, gw 276->273, ow 637->0, ounsup 13->0, ox12 3->0, avoid 3->0
+partner_block tf1: nonmem 1->0, gw 7261->7255
+partner_block tf6: nonmem 1->0
+partner_block tf10: nonmem 1->0, gw 415->414
+redeparture tf1: gw 7229->7865
+redeparture tf6: gw 603->675
+redeparture tf10: gw 399->440
+retarget tf1: nonmem 2195->0, gw 4838->4832
+retarget tf6: nonmem 161->0
+retarget tf10: nonmem 114->0, gw 266->265
+run173 tf1: gw 8249->8235
+run173 tf10: gw 406->405
+run173_15km tf1: gw 8214->8209
+slow_hull tf1: nonmem 2->1, gw 11165->11155
+slow_hull tf6: nonmem 2->1
+slow_hull tf10: nonmem 2->1
+small_escort tf1: gw 4771->4765
+station tf1: nonmem 1->0, gw 5668->5662, ow 11009->0
+station tf6: nonmem 1->0, ow 853->0
+station tf10: nonmem 1->0, gw 312->311, ow 539->0
+stragglers tf1: gw 5077->5072
+stragglers_far tf1: gw 6882->6871
+stragglers_far tf6: gw 490->488
+stragglers_far tf10: gw 327->326
+terran tf1: nonmem 1->0, gw 7643->7640
+terran tf6: nonmem 1->0
+terran tf10: nonmem 1->0
+terran_abreast tf1: nonmem 1->0, gw 8502->8496
+terran_abreast tf6: nonmem 1->0, gw 533->532
+terran_abreast tf10: nonmem 1->0
+== ... the corrected model counted -> flown
+cast tf | ep unc nonmem caps gw gunsup gx12 ow ounsup ox12 avoid unsafe   (old -> new where different)
+join_block tf1: caps 3809->3812, gw 7550->7282, ow 1872->339, ounsup 545->1, ox12 3->1, avoid 1->0
+join_block tf6: gw 587->573, ow 141->29, ounsup 18->1, ox12 5->1, avoid 3->0
+join_block tf10: gw 389->373, ow 88->17, ounsup 13->1, ox12 2->1, avoid 1->0
+join_field tf1: caps 3809->3813, gw 7143->6954, ow 2503->671, ounsup 1329->1, ox12 3->1
+join_field tf6: gw 582->588, ow 220->141, ounsup 84->16, ox12 2->3, avoid 0->2
+join_field tf10: gw 382->386, ow 152->10, ounsup 55->2
+== failures, old (host-timing bench checks left out)
+ship_steering_host checks=3389 failures=0 slip_gaps=0
+== failures, nofly (host-timing bench checks left out)
+ship_steering_host checks=3389 failures=0 slip_gaps=0
+== failures, fly (host-timing bench checks left out)
+ship_steering_host checks=3389 failures=0 slip_gaps=0
+== the flown 0x12 in the active casts (seed 1)
+scenario C join_field engine paths tf 1 seed 1: x12 flown 1 (cap 1 small 0 forced 0) turn 129 deg dur 68.0 s out 1483 m reissue 0 remerged 0 (max 0.0 s) | lane v_min 100.0 m/s slow 0.0 s | small 0 lau
+scenario C join_field engine paths tf 6 seed 1: x12 flown 1 (cap 1 small 0 forced 0) turn 93 deg dur 64.9 s out 1769 m reissue 0 remerged 0 (max 0.0 s) | lane v_min 100.0 m/s slow 0.0 s | small 0 laun
+scenario C join_field engine paths tf 10 seed 1: x12 flown 2 (cap 2 small 0 forced 0) turn 95 deg dur 64.0 s out 1868 m reissue 0 remerged 0 (max 0.0 s) | lane v_min 100.0 m/s slow 0.0 s | small 0 lau
+scenario C join_block engine paths tf 1 seed 1: x12 flown 1 (cap 1 small 0 forced 0) turn 111 deg dur 26.2 s out 1604 m reissue 0 remerged 0 (max 0.0 s) | lane v_min 100.0 m/s slow 0.0 s | small 0 lau
+scenario C join_block engine paths tf 6 seed 1: x12 flown 1 (cap 1 small 0 forced 0) turn 104 deg dur 21.9 s out 1537 m reissue 0 remerged 0 (max 0.0 s) | lane v_min 100.0 m/s slow 0.0 s | small 0 lau
+scenario C join_block engine paths tf 10 seed 1: x12 flown 1 (cap 1 small 0 forced 0) turn 111 deg dur 22.7 s out 1538 m reissue 0 remerged 0 (max 0.0 s) | lane v_min 100.0 m/s slow 0.0 s | small 0 la

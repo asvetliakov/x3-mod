@@ -2968,6 +2968,55 @@ bf12aaa2's.
 on whenever the traffic controller is. The `needs_traffic` refusal row is logged only when the key resolves to 1 with traffic 0. The
 resolver's schema default 1 still counts as resolved, so a default config with traffic 0 still logs the row; only bare is silent.
 
+### Fixture engine paths (2026-10-15, Opus 5.5; [ship-steering-holistic-review.md](../architecture/ship-steering-holistic-review.md) rank 5, changes and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Fixture engine paths")
+
+**What changed.** The fixture's engine model only (`verification/probe/ship_steering_host.cpp`; `src/proxy` and the trace rows are unchanged).
+Worktree `agent-a33727fb5cfd876aa` on main `bf12aaa2`.
+
+* **A.** The warn test follows [ship-navigation-ai.md](../reverse-engineering/ship-navigation-ai.md) §10.14:
+  * M6/TM/M8 are tested by a capital A;
+  * the B term is doubled for a large approaching B, and b = w when cos ≤ 0;
+  * a ship at speed 0 with a non-zero desired speed is tested;
+  * mesh B takes the box test with no close range; the gate takes the close range;
+  * the escort filter now runs the way Q2 reads it.
+* **B.** The 0x12 is flown: the avoid leaf for the episode, then the KC's re-issue at the held slot, and the DLL's keep-through-avoid in `t_observe`.
+* **C, D, E.** New world and ship kinds: a station, a fallback body and a rock belt on Λ; small ships at the gate with D.5; arrivals at P with 0x21 / 0x1e / order 0.
+
+The nine new casts all fail on this controller. They are parked (`// PARKED:` in `kCSetups`, each with its numbers and cause).
+
+**Checks that changed** **[m]** (`engine_paths/item_a.txt`):
+
+* Under the corrected model, `station`'s 1r2 failed with 0 warns to suppress. A mesh station has no close range, and its parts are beyond the box's reach. The check now asserts the suppressions for the M7 alone.
+* With the 0x12 flown, `join_block`'s 1b6 nose bound went from 12.5° to 24° (measured 6.7–22.3°).
+* Round 2's avoidable oracle no longer judges a flown eviction. `X3M_C_NOFLY=1` keeps it.
+* Avoidable and unsafe, old → corrected (counted): `parked` 2–3 → 0, `join_block` 0 → 1–3 (bound 3), every other cast 0; unsafe 0 everywhere.
+
+**Acceptance** **[m]** (host x86-64, `c++ -std=c++17 -O2 -Wall -Wextra -Werror`, no Wine, no game; the committed tree, parked casts commented out):
+
+| Run | Checks | Failures |
+| --- | --- | --- |
+| `--lane` | 3,389 | 0 |
+| full | 10,734 | 0 |
+| `--capital` | 5,112 | 0 (one earlier run failed the host-timing bench at 1,427 µs third-worst with a host load average of 4.8; the rerun passed) |
+
+Bench (the controller block, unchanged code): bench24 tf 1 mean 10.4–10.8 µs, third-worst 215–576 µs; tf 10 mean 130–135 µs, third-worst 499–673 µs. Old model, flights off: the `--lane` stdout equals the base's apart from the host timings and a now-reported `parked` span (`n_dep` counts only departing capitals).
+
+**Parked casts** **[m]** (3 seeds × tf 1/6/10, `engine_paths/summary.txt`). Each failure is the controller item it models:
+
+| Cast | Item | Failed runs (of 9) |
+| --- | --- | --- |
+| `x12_near` | B | 2 (P2 not kept or above 8°) |
+| `x12_far` | B | 5 (P2), 2 (a second, member 0x12) |
+| `lane_station` | C | 2 (span), 2 (member 0x12), 1 (contact) |
+| `lane_fallback` | C | 9 (span), 2 (launches) |
+| `lane_belt` | C | 1 (span) |
+| `small_gate` | D | 4 (small-ship contact) |
+| `small_gate_m6` | D | 4 (small-ship contact) |
+| `arrival_parked` | E | 9 (arrival overlap, member 0x12, contact), 5 (launches) |
+| `arrival_pass` | E | 8 (member 0x12 and contact), 2 (launches) |
+
+Evidence: [`engine_paths/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/engine_paths/run.sh) (builds the tree and the parked variant, about 4.5 min) → `item_a.txt`, `<cast>.txt`; `summary.py` → `summary.txt`; `ship_steering_host_lane.txt` refreshed. `scenario_c.txt` (the constants sweep) was not rerun.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

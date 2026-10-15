@@ -1,0 +1,76 @@
+== arrival_parked
+  tf1  x12 4..9, arr_rest 1, exit_v 120, hold_out 476, arr_gap -1180, dep8_gap -1, dep_gap 239..289, mem_gap -944..-807, launched 2..3, span -1..903.7, slow 0..41
+  tf6  x12 5..6, arr_rest 1, exit_v 120, hold_out 494..508, arr_gap -1180, dep8_gap -1..1218, dep_gap 231..297, mem_gap -1120..-955, launched 0..3, span -1..708.5, slow 0..32.9
+  tf10 x12 6..8, arr_rest 1, exit_v 120, hold_out 506..512, arr_gap -1180, dep8_gap -1, dep_gap 58..142, mem_gap -1118..-1087, launched 0..3, span -1..856.4, slow 0..7.7
+  FAIL 3 arrival_parked tf10: Ex no contact between the departing capitals
+  FAIL 3 arrival_parked tf10: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf10: Ex no two arrivals overlapping
+  FAIL 2 arrival_parked tf10: every ship launched
+  FAIL 3 arrival_parked tf1: Ex no contact between the departing capitals
+  FAIL 3 arrival_parked tf1: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf1: Ex no two arrivals overlapping
+  FAIL 1 arrival_parked tf1: every ship launched
+  FAIL 3 arrival_parked tf6: Ex no contact between the departing capitals
+  FAIL 3 arrival_parked tf6: Ex no member 0x12 episode between members
+  FAIL 3 arrival_parked tf6: Ex no two arrivals overlapping
+  FAIL 2 arrival_parked tf6: every ship launched
+== arrival_pass
+  tf1  x12 3..5, arr_rest 0, exit_v 120, hold_out 476, arr_gap 3519..3521, dep8_gap -1, dep_gap -1, mem_gap -957..-935, launched 1..3, span -1..598.2, slow 0..61.4
+  tf6  x12 3..4, arr_rest 0, exit_v 120, hold_out 494..508, arr_gap 3464..3754, dep8_gap -1, dep_gap -1, mem_gap -1157..-1100, launched 3, span 447.5..554.1, slow 15.8..51.8
+  tf10 x12 0..4, arr_rest 0, exit_v 120, hold_out 506..512, arr_gap 3518..3625, dep8_gap -1, dep_gap -1, mem_gap -1079..496, launched 3, span 280.6..638.1, slow 0..54.3
+  FAIL 2 arrival_pass tf10: Ex no contact between the departing capitals
+  FAIL 2 arrival_pass tf10: Ex no member 0x12 episode between members
+  FAIL 3 arrival_pass tf1: Ex no contact between the departing capitals
+  FAIL 3 arrival_pass tf1: Ex no member 0x12 episode between members
+  FAIL 2 arrival_pass tf1: every ship launched
+  FAIL 3 arrival_pass tf6: Ex no contact between the departing capitals
+  FAIL 3 arrival_pass tf6: Ex no member 0x12 episode between members
+== lane_belt
+  tf1  x12 0, v_min 73.8..77, slow 0, p2_not_kept 0, p2_nose 0.7..2.2, mem_gap 537, launched 3, span 226.9..228.8
+  tf6  x12 0, v_min 2..78, slow 0..1.4, p2_not_kept 0, p2_nose 0.3..2.3, mem_gap 537..540, launched 3, span 211.1..245.8
+  tf10 x12 0, v_min 47.9..76.6, slow 0, p2_not_kept 0, p2_nose 0.3..1, mem_gap 536..539, launched 3, span 212.5..230.7
+  FAIL 1 lane_belt tf6: Cx the span
+== lane_fallback
+  tf1  x12 0, v_min 70.2..71.8, slow 0, p2_not_kept 1..2, p2_nose 31..31.3, mem_gap 686, launched 1..3, span -1..304.8
+  tf6  x12 0, v_min 72, slow 0, p2_not_kept 3, p2_nose 19.7..28, mem_gap 684, launched 3, span 286.9..290.2
+  tf10 x12 0, v_min 73.3..73.4, slow 0, p2_not_kept 2..3, p2_nose 28.5..29, mem_gap 682, launched 3, span 287.3..291.4
+  FAIL 3 lane_fallback tf10: Cx the span
+  FAIL 3 lane_fallback tf1: Cx the span
+  FAIL 2 lane_fallback tf1: every ship launched
+  FAIL 3 lane_fallback tf6: Cx the span
+== lane_station
+  tf1  x12 0, v_min 43..71.8, slow 0, p2_not_kept 0..1, p2_nose 4.1..18.7, mem_gap 533, launched 3, span 236.5..246.5
+  tf6  x12 0, v_min 2..40, slow 0..2.2, p2_not_kept 0..1, p2_nose 4.9..15.4, mem_gap 531..533, launched 3, span 224.2..332.1
+  tf10 x12 0..8, v_min 8.3..48.5, slow 0..1.7, p2_not_kept 0..2, p2_nose 4.2..165.8, mem_gap -918..531, launched 3, span 226..759.6
+  FAIL 1 lane_station tf10: Cx the span
+  FAIL 1 lane_station tf10: Ex no contact between the departing capitals
+  FAIL 2 lane_station tf10: Ex no member 0x12 episode between members
+  FAIL 1 lane_station tf6: Cx the span
+== small_gate
+  tf1  sm_launch 3, sm_stops 1..3, sm_x12_s 15.8..57.4, sm_gap -506..-314, mem_sm_w 0, D5(no_funnel/near/not_arc/clear/mirrored/both) 520/1868/0/299/0/713 969/1448/0/0/0/1400 1018/1457/0/732/0/1012, x12 1..3, mem_gap 518, launched 3, span 209.3..217
+  tf6  sm_launch 3, sm_stops 1..3, sm_x12_s 4..31.2, sm_gap 40..133, mem_sm_w 0, D5(no_funnel/near/not_arc/clear/mirrored/both) 111/109/0/25/0/47 100/92/0/4/0/45 102/108/0/0/0/74, x12 1..3, mem_gap 570..597, launched 3, span 188.8..189.3
+  tf10 sm_launch 3, sm_stops 1..3, sm_x12_s 10.2..31, sm_gap -500..129, mem_sm_w 0, D5(no_funnel/near/not_arc/clear/mirrored/both) 81/57/0/21/0/4 80/55/0/16/0/8 98/51/0/0/0/18, x12 1..3, mem_gap 566..569, launched 3, span 189.9..192.1
+  FAIL 1 small_gate tf10: Dx no contact with a small ship
+  FAIL 3 small_gate tf1: Dx no contact with a small ship
+== small_gate_m6
+  tf1  sm_launch 3, sm_stops 3..5, sm_x12_s 76.8..84, sm_gap -437..-1, mem_sm_w 14398..18282, D5(no_funnel/near/not_arc/clear/mirrored/both) 1441/1278/0/299/0/709 1399/1280/0/0/0/1453 1358/1279/0/474/0/0, x12 3..5, mem_gap 518, launched 3, span 209.3..217
+  tf6  sm_launch 3, sm_stops 3..5, sm_x12_s 12.4..52.7, sm_gap 44..218, mem_sm_w 1015..1220, D5(no_funnel/near/not_arc/clear/mirrored/both) 142/96/0/25/0/20 119/85/0/34/0/35 174/96/0/0/0/73, x12 3..5, mem_gap 570..597, launched 3, span 188.8..189.3
+  tf10 sm_launch 3, sm_stops 2..4, sm_x12_s 10..31.1, sm_gap -501..45, mem_sm_w 663..777, D5(no_funnel/near/not_arc/clear/mirrored/both) 81/48/0/38/0/0 92/44/0/16/0/15 62/45/0/0/0/30, x12 2..4, mem_gap 566..569, launched 3, span 189.9..192.1
+  FAIL 1 small_gate_m6 tf10: Dx no contact with a small ship
+  FAIL 3 small_gate_m6 tf1: Dx no contact with a small ship
+== x12_far
+  tf1  x12 1..2, turn 103..125, dur 27.4..33.2, reissue 1..2, p2_not_kept 0..1, p2_nose 2.8..22.6, mem_gap 605..813, launched 2, span 178.3..275.5
+  tf6  x12 1, turn 111..120, dur 27.5..31.5, reissue 1, p2_not_kept 0, p2_nose 3..5.2, mem_gap 848..907, launched 2, span 155.4..158.7
+  tf10 x12 1..2, turn 98..128, dur 24.6..28.7, reissue 1..2, p2_not_kept 1, p2_nose 8.1..27.6, mem_gap 630..863, launched 2, span 151..235.3
+  FAIL 3 x12_far tf10: Bx P2 kept within 8 deg of F after the re-merge
+  FAIL 1 x12_far tf10: Bx no further eviction after the re-issue
+  FAIL 1 x12_far tf10: Ex no member 0x12 episode between members
+  FAIL 2 x12_far tf1: Bx P2 kept within 8 deg of F after the re-merge
+  FAIL 1 x12_far tf1: Bx no further eviction after the re-issue
+  FAIL 1 x12_far tf1: Ex no member 0x12 episode between members
+== x12_near
+  tf1  x12 1, turn 53..55, dur 17, reissue 1, p2_not_kept 0..1, p2_nose 4.7..8.7, mem_gap 1284..1290, launched 2, span 185.1..200.4
+  tf6  x12 1, turn 62..67, dur 17.8..18.6, reissue 1, p2_not_kept 0, p2_nose 5.5..7.4, mem_gap 1183..1606, launched 2, span 159.3..170.2
+  tf10 x12 1, turn 61..71, dur 17.7..19, reissue 1, p2_not_kept 0..1, p2_nose 4.2..7.4, mem_gap 1224..1554, launched 2, span 158..170.1
+  FAIL 1 x12_near tf10: Bx P2 kept within 8 deg of F after the re-merge
+  FAIL 1 x12_near tf1: Bx P2 kept within 8 deg of F after the re-merge

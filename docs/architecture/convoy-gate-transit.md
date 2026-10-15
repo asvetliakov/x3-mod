@@ -1153,6 +1153,95 @@ fixed at 2.3 km, 2 runs passer capped, 1 order); escort join k 0 → 6, 0.5 → 
 controller block): lane 2.1 µs mean / 44–52 µs worst frame at tf 1, 21.9–23.1 / 45–54 µs at tf 10; stage B 1.9–2.2 / 73–102 µs and
 20.7–22.2 / 78–99 µs; ceiling 1 ms (i686 figures come from the first flight's `ctl_sb_us_max`).
 
+### Fixture engine paths (2026-10-15; holistic review rank 5, ship-navigation-ai.md §10.14)
+
+The host fixture's engine model gains the paths a green scenario C could not speak for ([ship-steering-holistic-review.md](ship-steering-holistic-review.md) §4 items 1, 3, 4, 6) and the corrections of [ship-navigation-ai.md](../reverse-engineering/ship-navigation-ai.md) §10.14. Fixture only (`verification/probe/ship_steering_host.cpp`); `src/proxy` unchanged, no row changed. Every new cast fails on this controller and is parked in `kCSetups` (`// PARKED:` lines, each with its numbers). Evidence: [`engine_paths/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/engine_paths/run.sh) → `item_a.txt` and one `<cast>.txt` per parked cast; `summary.py` → `summary.txt` (per cast and time factor, three seeds). Switches: `X3M_C_OLDWARN=1` restores the old warn model, `X3M_C_NOFLY=1` counts the 0x12 without flying it (the round-2 oracle), `X3M_C_ENGALL=1` prints every seed's engine-path row.
+
+**A. The engine's warn** (`eng_warn`, which replaces `gate_warn_cone`, `obst_warn_engine` and `crowd_pair_warn` in scenario C):
+
+* A capital A ignores only small ships (TS/M3/M4/M5/TP) and expendables. It tests M6/TM/M8 (Q2).
+* Close range, d ≤ 1.2 rr, applies to a non-mesh B with r_B ≥ 0.75 r_A, a rock or a B that cannot move. The gate qualifies; a station or a capital (mesh) does not.
+* The margin L is followed by B-behind, the B term w (doubled for a large approaching B; for cos < −0.8 against a ship), b = (w + v cos)² / 2a for cos > 0, else b = w (a speed used as a distance), capped at 600 m and halved for escort pairs. Then the range gate and the cone.
+* A ship at speed 0 with a non-zero desired speed is tested.
+* Mesh B (a station, a capital) takes the box test. A station's parts use the radius superset 1.2 (r_part + √3 r_A) + |v_A| + b, with r_part ≥ the box's half-diagonal by construction. A ship's hull, whose box (w, w, L) and rows the fixture knows, takes the per-axis test itself. The sphere superset would reach 3.8 km for a Titan and warn an escort on its leader at the 2.8 km trail spacing.
+* The pair filter runs the way Q2 reads it: X ignores a Y that escorts or follows X. X tests the leader it escorts, and a co-escort, with b halved. Before this, the escort's warn on its leader was skipped.
+
+Measured **[m]** (`item_a.txt`, seed 1, old → corrected, the 0x12 counted):
+
+| Cast | Change | Cause |
+| --- | --- | --- |
+| `station` | warns 11,009 / 853 / 539 → 0 | A mesh station has no close range. Its parts, 3 km beside Λ, are beyond the box's reach |
+| `parked` | warns 12,898 → 859; 0x12 2–3 → 0; avoidable 2–3 → 0 | The range gate and cone come before the box |
+| `join_field` / `join_block` | warns +35 % / +38 %; `join_block` avoidable 0 → 1–3 (within its bound of 3) | Rocks take the close range |
+| `m7_cross` | 1,684 → 1,306 | b uses v cos |
+| `redeparture` | gate warns 7,229 → 7,865 | The close range at P |
+| own-gate warns, every other cast | −0.1 % | b uses v cos |
+| `retarget` | non-member warns 2,195 → 26,573 (counted only) | The handed escort now tests its new leader |
+
+0 unsafe suppressions in every cast. One asserted check changed: `station`'s 1r2 failed with no warns to suppress. It now asserts no 0x12 for both casts and the suppressions for the M7 alone.
+
+**B. The 0x12 flown** (`X12`, `x12_begin`, phase 31). An unsuppressed warn opens the KC's CollisionWarn, then 0x12 from the next frame. It starts only where the script loop issues it (§10.1 / §10.14 Q3):
+
+* order 4 (`__EnterHyperspace` phase 0, end radius f+0x260 = r_s + 300 m);
+* 0x14 / 0x15 (r_s + 100 m);
+* not after P2, where a warn re-runs the rotate.
+
+The handler (§3.3):
+
+* **Re-score.** Every 200 ms the list is every gate, static or ship that the warn test still flags (L + r_A on 0x12), at most 5.
+* **Escape direction [i].** It starts from a basis perpendicular to the nearest obstacle and steps 2.8° up to 169° at a random elevation. A must-turn-away obstacle blocks a candidate unless it points away (dot ≤ −0.8, −0.9 for a gate); this reproduces Run173's 166–172° turn-aways at 6.9 km. Any other obstacle blocks inside its cone. The first unblocked candidate wins, else the one with the highest weight. Site A steers the escape point.
+* **Speed.** The slowest listed obstacle's speed, floor 10 m/s; with the list empty, the cruise speed **[i]**.
+* **End.** The list is empty and the ship is beyond the end radius of the start point (refreshed while the list stands **[i]**).
+* **After the end.** The KC re-issues order 4 at the grid slot the ship still holds. §10.1's loop releases no slot across a 0x12, so this is the held slot, not "a free slot". A member's site-A rewrite to L_i follows. An escort gets 0x14 again.
+* **DLL model.** The fixture's `t_observe` now models the DLL's `keep_through_avoid` / `avoid_over` (B.3 item 2: a member whose 0x12 list held only its own gate in funnel or hand-over is kept).
+
+Flights only under the lane key: the key-off controls keep the counted model. With flights, `crossing` tf 10's key-off control launches 4 of 5 in 1000 s (Open). Round 2's "avoidable" oracle does not judge a flown eviction, because its track is the 0x12, not the lane plan; `X3M_C_NOFLY=1` keeps that oracle. In the active casts the flown 0x12 are `join_field`'s escort (turn 93–129°, 64–68 s) and `join_block`'s (turn 104–111°, 22–26 s). `join_block`'s 1b6 bound was 12.5°; it becomes 24°, since the measured range is now 6.7–22.3° (counted: 7.5–10.7°).
+
+**C. Stations and rocks on Λ** (`add_obstacles` 5–7):
+
+* a station on Λ 8 km out (sphere 1.5 km, four 300 m parts);
+* a 43 km hollow base. The module walks it to its fallback body, 15 km radius (30 km across) on Λ, enclosing Λ. The engine sees eight 1.5 km parts on a 12 km ring; contact and the oracle are measured against the parts;
+* four 250 m rocks across the column 10 km out.
+
+The cast asserts launches, no contact, the formed span, and no lane braked (a member at ≤ 15 m/s on Λ for at most 10 s + the step). Member speeds are reported.
+
+**D. Small ships at the gate** (`kSmEsc`, `kSmTrade`, phases 40–46):
+
+* TS escorts fly 0x14 to a slot 1.2 km beside the leader's axis **[i]**. After the leader's launch they wait λ, then fly their own order 4 to A = G + (0, −0.8, −1) r with the module's lead-in and spread, P2 keeping the speed, and order 5 to B on the lower arc (θ within ±45° **[i]**).
+* Site A applies `small_b_decide` (D.5) at their order 5, then P4 and order 8.
+* A TS trader flies the same legs from t0 = 100 s.
+* Small ships take their own engine warn against every ship (site E: the resolved set) and fly their 0x12.
+* The members' warn against a small ship goes through the obstacle row: a TS is ignored, an M6 is tested and suppressed by the small-ship row.
+
+The cast asserts members' launches and span, no contact with a small ship, and no member 0x12 against one. It reports the small ships' stops, 0x12 seconds and D.5 verdicts.
+
+**E. Arrivals at P** (`kArrive`, phases 50–54; §10.10, §10.14 Q4/Q5):
+
+* The partner side's through-slot request (polls 1–11 s; our side refused 60 s after).
+* P = (0, 22.2 m + `capital_offset`, −0.01 r − r_s).
+* The board's arrival member, as the DLL's launch hook enters it.
+* 0x21 for 900 ms from 2697 m behind P, then one order-0 frame.
+* 0x1e at 120 m/s along −F until |z| > r. A hull with r_s > 0.99 r ends it on its first frame at speed 0 and rests at P.
+* Order 0 braking at a for `hold_ms`, then MovePos 9 km out.
+
+The cast asserts no departing hull on order 8 within 500 m (capsule) of a parked arrival, no two arrivals overlapping, and no departing hull in contact with a parked arrival.
+
+**The parked casts** **[m]** (`summary.txt`; 3 seeds × tf 1/6/10; each fails on this controller for the path it models):
+
+| Cast | Item | Fails (of 9 runs) | What the controller does wrong |
+| --- | --- | --- | --- |
+| `x12_near` (Run173 E1 at f 18193, 1.7 km out, the engine's gate warn left to the KC) | B | P2 not kept / > 8°: 2 (P2 4.2–8.7°) | After the flown eviction (turn 53–71°, 17–19 s, re-committed at once) the re-departure reaches its final short of its settling distance |
+| `x12_far` (Run173 E1 at f 15537, the warn at 6.95 km) | B | P2 not kept / > 8°: 5 (to 27.6°); member 0x12: 2 | After turn-aways of 98–128° (25–33 s) the re-issued member rejoins ahead of its follower: the pair is uncertified, and a second eviction is flown |
+| `lane_station` (station on Λ 8 km) | C | span: 2 (to 759.6 s); member 0x12: 2, contact: 1 (tf 10: 8 flown, −918 m, P2 165.8°) | The module's sphere detour around a station on Λ (no lane-aware shift); lane v_min 2–71.8 m/s |
+| `lane_fallback` (30 km fallback body) | C | span: 9; launches: 2 (tf 1) | No brake (v_min 70–73 m/s), but the fallback-sphere detour carries members ~5 km off Λ. P2 is never kept (19.7–31.3°). An M1's order 5 passes the plane outside its trigger and stays 2.1 km behind the gate at 10 m/s, its follower held at d_end |
+| `lane_belt` (rock belt 10 km) | C | span: 1 (tf 6, 245.8 s) | One run brakes a member to 2 m/s at the belt; no contact, P2 0.3–2.3° |
+| `small_gate` (two TS escorts, a TS trader) | D | small-ship contact: 4 (to −506 m) | A TS on its order-5 lower-arc leg meets a capital on order 5 (the engine's ignore mode on both). D.5 never mirrors: both sides are taken or clear, because the lane's final at l_c lies within w + r + 50 m of the arc's middle. Small ships: 1–5 stops and 4–84 s on 0x12 per run |
+| `small_gate_m6` (one escort an M6) | D | small-ship contact: 4 (to −501 m) | As `small_gate`; the members' 663–18,282 warns per run against the M6 are all suppressed (small-ship row), 0 member 0x12 |
+| `arrival_parked` (M1 r_s 1135 m resting at P, Titan 60 s later) | E | arrivals overlap: 9 (capsule −1180 m); member 0x12 and contact: 9; launches: 5 | No arrival fan (§6.7): the second hull lands in the first. The departing leader near d_end is warned by the arriving hull's box during 0x21. The board's pair is uncertified (contact predicted), the eviction is flown and the column collides |
+| `arrival_pass` (two Titans 60 s apart, 0x1e 120 m/s, ~5 s order 0, 476–512 m out) | E | member 0x12 and contact: 8 (to −1157 m); launches: 2 | No overlap (3.5 km). The leader's eviction by the arriving hull, as `arrival_parked` |
+
+The order-8 bound (500 m) is never reached: in `arrival_parked` no departing hull is on order 8 while an arrival is parked, except one tf-6 run at 1,218 m. The closest departing hull on 4 / 0 / 0x1f / 5 to the parked M1 is 58–297 m.
+
 ### Open
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
@@ -1202,3 +1291,18 @@ controller block): lane 2.1 µs mean / 44–52 µs worst frame at tf 1, 21.9–2
   ship changing course. Cost: a per-ship per-frame path cache at site E (the obstacle row builds the member's path on every warn call:
   1.9 µs host for a detour turn).
 * Next: the arrival fan (§6.7), the cross-board certificate (§6.6).
+* (fixture engine paths, "Fixture engine paths" above) **Nine parked casts, each a controller item** (`// PARKED:` in `kCSetups`, re-run by
+  `engine_paths/run.sh`):
+  * **B** (`x12_near`, `x12_far`): after a flown eviction the re-issued member's re-departure reaches its final off it (P2 not kept or above
+    8° in 2 and 5 of 9 runs), and its rejoin ahead of a follower leaves that pair uncertified (a second, member 0x12 in 2 of 9).
+  * **C** (`lane_station`, `lane_fallback`, `lane_belt`): the module's sphere detour (§1 rows 5 / 11 of the holistic review) — spans over the
+    formed bound, a fallback body detouring the lane ~5 km off Λ with P2 never kept and an order-5 pass outside the trigger; the lane-aware
+    lateral shift (holistic rank 7) is the fix to try.
+  * **D** (`small_gate`, `small_gate_m6`): small ships' order-5 lower-arc legs cross the capitals' order-5 line (contact in 4 of 9 runs);
+    D.5 finds both sides taken on the lane's final.
+  * **E** (`arrival_parked`, `arrival_pass`): no arrival fan (two arrivals overlap at P) and an arriving hull's box warns the departing
+    leader at d_end while the board's pair is uncertified (eviction, then the column's contacts).
+* (fixture engine paths) Model items left **[i]**: the avoid order's escape-direction rule (a must-turn-away obstacle blocks unless the
+  candidate points away), the start-point refresh, the 0x0042fb20 speed map (taken as the cruise speed), the small escorts' formation slot,
+  the lower arc's θ draw, a capital's hull box (w, w, L) as its first model record; the small ships' own-gate warn is not modelled; the
+  key-off controls stay on the counted 0x12 (with flights `crossing` tf 10's key-off control launches 4 of 5 in 1000 s).
