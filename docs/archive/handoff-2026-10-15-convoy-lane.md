@@ -101,3 +101,17 @@ rounds A–C (worktree agent-a8149e66014f6f765; Opus + Fable findings: the arriv
 bound in the rollout, the small-ship hold inside a warn zone and at its bound's end, the enclosing-fallback size rule, rows for
 the launch hook's first decision and the loop, §11 parked numbers on the final tree). Then: rebuild the Run175 candidate from
 the result, gate it, and install it only after the user's Run174 flight is triaged (or if the user asks for the newest build).
+
+## 2026-10-16: Runs 174–177
+
+Run174 (lane fix rounds 1–2): departures clean, an arriving group that turned back circled (our out-leg, a board leave on our
+own detour). Run175 (the overnight set + the arrival round; two sessions): arrivals clean, a late escort's grid miss, the width
+fallback, lane laws along F on far-off escorts. Run176 (the Run175 round): departures clean, the return trip collapsed on the
+gate-mouth hold's rest point. The user's question ("is predictive avoidance causing it, disable near gates?") answered no with
+evidence; the user chose simplicity: **the minimal arrival mode** (§13, measured: with our cap and lead-in the mode was worse
+than vanilla on the return-trip cast; without them identical, 300/300): an arrival ordered back through its gate within 900 s is
+vanilla for the approach, departures byte-identical. **Run177 installed** (`b54c0689`, DLL `76252ce0…`, rollback run176; Run 177 A
+open): the flight judges departures unchanged (kill_criterion.py) and whether vanilla arrivals look acceptable. Parked: the funnel
+far bound (escorts far out governed by the lane: two bounding rules measured worse), rt_cross, statics, behind_start, formed_size2.
+Open diagnostics: the 4–5 ms handler chunk on a ship's first call after a gate (per-phase cycles now logged), the 1↔33 gate
+effect nodes (parts=/effects= now logged). Memory: prefer-simplicity.
