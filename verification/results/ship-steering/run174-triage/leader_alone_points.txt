@@ -1,0 +1,13 @@
+g=23849.1 ord=0x0 pos 0,685,s=-1033 | leaf point 0,685,s=-1033 | field 0,685,s=-1033
+g=23857.1 ord=0x4 pos 0,685,s=-1851 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23866.0 ord=0x4 pos 0,666,s=-2342 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23874.1 ord=0x4 pos 0,556,s=-2665 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23882.1 ord=0x4 pos 0,378,s=-3005 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23890.3 ord=0x4 pos 0,143,s=-3442 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23898.4 ord=0x4 pos 0,-134,s=-3958 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23906.4 ord=0x4 pos 0,-394,s=-4443 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23914.4 ord=0x4 pos 0,-655,s=-4929 | leaf point 0,-1928,s=-7300 | field 0,-928,s=-1472
+g=23922.5 ord=0x4 pos 0,-916,s=-5414 | leaf point 0,84,s=-4414 | field 0,-928,s=-1472
+g=23931.3 ord=0x4 pos 0,-1117,s=-5873 | leaf point 0,-117,s=-4873 | field 0,-928,s=-1472
+g=23939.3 ord=0x4 pos 0,-1103,s=-6298 | leaf point 0,-103,s=-5298 | field 0,-928,s=-1472
+g=23947.4 ord=0x4 pos 0,-681,s=-6559 | leaf point 0,319,s=-5559 | field 0,-928,s=-1472

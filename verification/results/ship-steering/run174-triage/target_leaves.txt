@@ -1,0 +1,7 @@
+f=29591 t=24120766 ship=0x39e43950 gate=9090 order=0x4 trace=('0x4', '0x9045d390', True, '0x90429090') prev=('0x4', '0x00000000', True, '0x90429090')
+f=30029 t=24157786 ship=0x39e43950 gate=9090 order=0x4 trace=('0x4', '0x9045d390', True, '0x90429090') prev=('0x4', '0x00000000', True, '0x90429090')
+f=31613 t=24288296 ship=0x39e43950 gate=9090 order=0x4 trace=('0x4', '0x9045d390', True, '0x90429090') prev=('0x4', '0x00000000', True, '0x90429090')
+f=32369 t=24360816 ship=0x39e2f3e8 gate=8bb0 order=0x4 trace=('0x4', '0x9045d390', True, '0x90428bb0') prev=('0x4', '0x00000000', True, '0x90428bb0')
+f=32567 t=24381696 ship=0x39e43950 gate=9090 order=0x4 trace=('0x4', '0x2f1a9290', True, '0x90429090') prev=('0x4', '0x00000000', True, '0x90429090')
+why=target leaves: {'obst': 5}
+{}

@@ -1,0 +1,31 @@
+g=23849.1 ord=0x0 d_gate=1240 nose_to_gate=146 deg s=1033 lat=685 v=0.0 des=0.0 des_eng=0.0 detour=0 obst=0000 cap=-1.0
+g=23853.2 ord=0x0 d_gate=1633 nose_to_gate=155 deg s=1482 lat=685 v=102.9 des=0.0 des_eng=0.0 detour=0 obst=0000 cap=-1.0
+g=23857.2 ord=0x4 d_gate=1978 nose_to_gate=160 deg s=1855 lat=685 v=82.8 des=0.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23861.2 ord=0x4 d_gate=2217 nose_to_gate=159 deg s=2109 lat=683 v=65.6 des=0.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23866.0 ord=0x4 d_gate=2435 nose_to_gate=150 deg s=2342 lat=666 v=44.1 des=0.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23870.0 ord=0x4 d_gate=2587 nose_to_gate=142 deg s=2510 lat=624 v=39.3 des=39.7 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23874.1 ord=0x4 d_gate=2722 nose_to_gate=141 deg s=2665 lat=556 v=43.5 des=43.6 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23878.1 ord=0x4 d_gate=2867 nose_to_gate=142 deg s=2827 lat=473 v=48.1 des=48.2 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23882.1 ord=0x4 d_gate=3029 nose_to_gate=145 deg s=3005 lat=378 v=53.6 des=54.7 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23886.2 ord=0x4 d_gate=3233 nose_to_gate=147 deg s=3222 lat=261 v=65.3 des=65.5 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23890.3 ord=0x4 d_gate=3445 nose_to_gate=149 deg s=3442 lat=143 v=68.6 des=80.9 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23894.3 ord=0x4 d_gate=3714 nose_to_gate=152 deg s=3714 lat=3 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23898.4 ord=0x4 d_gate=3960 nose_to_gate=154 deg s=3958 lat=134 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23902.4 ord=0x4 d_gate=4211 nose_to_gate=155 deg s=4202 lat=265 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23906.4 ord=0x4 d_gate=4464 nose_to_gate=157 deg s=4446 lat=396 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23910.4 ord=0x4 d_gate=4717 nose_to_gate=158 deg s=4687 lat=526 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23914.4 ord=0x4 d_gate=4972 nose_to_gate=159 deg s=4929 lat=655 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23918.5 ord=0x4 d_gate=5233 nose_to_gate=160 deg s=5173 lat=786 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23922.5 ord=0x4 d_gate=5494 nose_to_gate=162 deg s=5417 lat=917 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23926.5 ord=0x4 d_gate=5757 nose_to_gate=170 deg s=5662 lat=1039 v=68.6 des=100.0 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23931.3 ord=0x4 d_gate=5978 nose_to_gate=179 deg s=5873 lat=1117 v=68.6 des=10.0 des_eng=1.0 detour=1 obst=0000 cap=10.0
+g=23935.3 ord=0x4 d_gate=6248 nose_to_gate=153 deg s=6141 lat=1153 v=44.0 des=10.0 des_eng=1.0 detour=1 obst=0000 cap=10.0
+g=23939.3 ord=0x4 d_gate=6394 nose_to_gate=127 deg s=6298 lat=1103 v=49.8 des=77.7 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+g=23943.4 ord=0x4 d_gate=6529 nose_to_gate=103 deg s=6462 lat=931 v=68.6 des=87.8 des_eng=1.0 detour=1 obst=0000 cap=-1.0
+lane law/write runs (law, w, v_law if stop; from..to game s): [(('none', 'none', ''), 23848.086, 23856.366), (('stop', 'stop', '0.0'), 23857.376, 23866.016), (('pace', 'none', ''), 23867.026, 23891.666), (('join', 'none', ''), 23892.746, 23928.766), (('pace', 'none', ''), 23931.336, 23943.836)]
+events:
+   ship_gate_ctl frame=25826 t_ms=23848086 order=0x0 from=none to=arrival why=arrival
+   ship_gate_launch frame=25826 t_ms=23848086 kind=capital_offset
+   ship_gate_ctl frame=25965 t_ms=23856616 order=0x0 from=arrival to=committed why=commit
+   ship_gate_ctl_rewrite frame=25966 t_ms=23856686 site=a from_m=0,0,-4253 to_m=0,-928,-1472
+row kinds naming the leader, frames 25826-27300: {'ship_gate_ctl(B)': 2, 'ship_gate_ctl_member(B)': 96, 'ship_gate_ctl_lane(B)': 92, 'ship_gate_launch(B)': 1, 'ship_trace': 1462, 'ship_avoid_e_verdict(A)': 361, 'ship_gate_capital_join': 1, 'ship_gate_ctl_rewrite(B)': 1, 'ship_avoid_detour(B)': 47, 'ship_trace(B)': 290, 'ship_avoid_e_verdict(B)': 61, 'ship_gate_ctl_merge(B)': 1}

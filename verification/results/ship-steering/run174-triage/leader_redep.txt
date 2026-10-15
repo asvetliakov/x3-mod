@@ -1,0 +1,18 @@
+redep leg 23856.7-23858.6 (1.9 s) ship s -1812 -> -1966, point y,s -1928,-7300
+redep leg 23858.7-23859.0 (0.3 s) ship s -1972 -> -1997, point y,s -1928,-7300
+redep leg 23859.1-23859.7 (0.6 s) ship s -2004 -> -2048, point y,s -1928,-7300
+redep leg 23859.8-23859.8 (0.0 s) ship s -2055 -> -2055, point y,s -1928,-7300
+redep leg 23859.9-23860.2 (0.4 s) ship s -2061 -> -2084, point y,s -1928,-7300
+redep leg 23860.3-23860.5 (0.1 s) ship s -2090 -> -2100, point y,s -1928,-7300
+redep leg 23860.6-23862.0 (1.4 s) ship s -2105 -> -2193, point y,s -1928,-7300
+redep leg 23862.1-23874.1 (12.0 s) ship s -2199 -> -2665, point y,s -1928,-7300
+redep leg 23874.1-23875.8 (1.7 s) ship s -2668 -> -2735, point y,s -1928,-7300
+redep leg 23875.9-23876.3 (0.3 s) ship s -2739 -> -2752, point y,s -1928,-7300
+redep leg 23876.4-23880.3 (3.9 s) ship s -2756 -> -2924, point y,s -1928,-7300
+redep leg 23880.4-23881.4 (1.0 s) ship s -2928 -> -2975, point y,s -1928,-7300
+redep leg 23882.0-23889.0 (7.0 s) ship s -2979 -> -3394, point y,s -1928,-7300
+redep leg 23889.1-23894.9 (5.8 s) ship s -3399 -> -3752, point y,s -1928,-7300
+redep leg 23895.0-23920.5 (25.5 s) ship s -3757 -> -5296, point y,s -1928,-7300
+redep leg 24041.6-24084.9 (43.3 s) ship s -2514 -> -5293, point y,s -1928,-7300
+redep leg 24203.5-24264.3 (60.8 s) ship s -1649 -> -5296, point y,s -1928,-7300
+legs 17 total 166.1 s game
