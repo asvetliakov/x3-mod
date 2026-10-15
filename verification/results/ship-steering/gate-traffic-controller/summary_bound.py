@@ -3,16 +3,18 @@ every format string appended to gates[], each conversion at its widest (%lu / %u
 with %.1f is 21 characters, %s 48: the longest state string is 40), the per-source drop list included. B.4: the source declares the
 figure (kSummaryGatesWorstCase, static_assert'ed below the buffer); this script checks the declaration equals the computed worst case
 and the buffer holds it (test_ship_steering runs it).
-Usage: python3 -I summary_bound.py src/proxy/ship_steering.cpp"""
+Usage: python3 -I summary_bound.py src/proxy/ship_steering_internal.h src/proxy/ship_steering_rows.cpp
+(the source split of 2026-10-15: the drop names are in the internal header, the summary in the rows unit; the files are read as one
+text in the order given; a single ship_steering.cpp of before the split still works)"""
 import re
 import sys
 
 WIDTH = {'lu': 10, 'u': 10, 'ld': 11, 'f': 24, 's': 48, 'llu': 20, 'x': 8, 'lx': 8}
 
 
-def bound(path):
+def bound(*paths):
     """(computed worst case, declared kSummaryGatesWorstCase, buffer kSummaryGatesBytes, drop sources)"""
-    src = open(path).read()
+    src = '\n'.join(open(p).read() for p in paths)
     declared = int(re.search(r'constexpr std::size_t kSummaryGatesWorstCase = (\d+);', src).group(1))
     buffer = int(re.search(r'constexpr std::size_t kSummaryGatesBytes = (\d+);', src).group(1))
     start = src.index('char gates[kSummaryGatesBytes] = "";')
@@ -31,8 +33,8 @@ def bound(path):
     return total_with_loop, declared, buffer, drops
 
 
-def main(path):
-    worst, declared, buffer, drops = bound(path)
+def main(*paths):
+    worst, declared, buffer, drops = bound(*paths)
     ok = worst == declared and worst < buffer
     print('gates[] worst case %d characters (declared %d, buffer %d, %d drop sources) %s' % (worst, declared, buffer, drops,
                                                                                             'PASS' if ok else 'FAIL'))
@@ -40,4 +42,4 @@ def main(path):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1]))
+    sys.exit(main(*sys.argv[1:]))

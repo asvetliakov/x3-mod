@@ -1,0 +1,71 @@
+# Step 3 (2026-10-15): decide()'s gate branch extracted as gate_decide() (ship_steering_decide.cpp). STEP2 = the build of step 2
+# (08d74981), BASE = bf12aaa2, AFTER = this tree's build/d3d9.dll. build warnings: 0
+# The branch's top-level statements (the lane's order-4 point; the order-4 / order-5 chain) each test gph, so decide() calls
+# gate_decide only when gph != 0 (equivalent). Tried first, measured with the same scripts and not kept: gate_decide always_inline,
+# unguarded: decide 5291 -> 4979 instructions and hook-entry calls 109 -> 117 (GCC stopped inlining ctl_lookup x2, ctl_on_board,
+# dock_container_state, trace_slot_of x3, Counter::add +3, redirect_target +1 into decide's common path).
+
+# python3 -I verification/results/ship-steering/source-split/fn_diff.py STEP2 AFTER --match 'decide|x3m_ship_steering_enter'
+functions before 11 after 11; identical 8, differing 2, only before 1, only after 1
+  DIFF (anonymous namespace)::decide(x3m::ship_steering::sites::Frame*, unsigned int) (5291 -> 3520 instructions)
+  DIFF x3m_ship_steering_enter (151 -> 167 instructions)
+  ONLY BEFORE (anonymous namespace)::decide(x3m::ship_steering::sites::Frame*, unsigned int)::{lambda()#1}::operator()() const (365 instructions)
+  ONLY AFTER (anonymous namespace)::gate_decide(x3m::ship_steering::sites::Frame*&, unsigned int, bool, unsigned int, unsigned short, unsigned int, x3m::ship_steer (3596 
+
+# python3 -I verification/results/ship-steering/source-split/call_sites.py STEP2 AFTER
+call edges from the hook entries: before 75 (109 calls), after 71 (96 calls)
+only after: 20
+    anon::decide -> anon::dock_container_state (1)
+    anon::decide -> anon::dock_model (2)
+    anon::decide -> anon::gate_decide (1)
+    anon::decide -> anon::snapshot_for (1)
+    anon::decide -> x3m::ship_avoidance::core::dock_clearance (1)
+    anon::decide -> x3m::ship_avoidance::core::resolve (1)
+    anon::gate_decide -> anon::Counter::add (2)
+    anon::gate_decide -> anon::ctl_commit (1)
+    anon::gate_decide -> anon::ctl_leave (1)
+    anon::gate_decide -> anon::lane_rewrite_row (3)
+    anon::gate_decide -> x3m::ship_avoidance::ctl::lane_order_point (1)
+    anon::gate_decide -> x3m::ship_avoidance::ctl::q_point (1)
+    anon::gate_decide -> x3m::ship_avoidance::ctl::small_b_decide (1)
+    anon::gate_decide -> x3m::ship_steering::core::gate_chord_clears_ring (1)
+    anon::gate_decide -> x3m::ship_steering::core::gate_geometry (1)
+    anon::gate_decide -> x3m::ship_steering::core::gate_geometry_capital (1)
+    anon::gate_decide -> x3m::ship_steering::core::gate_pass_point_valid (1)
+    anon::gate_decide -> x3m::ship_steering::core::join_plane (1)
+    anon::snapshot_for -> x3m::ship_avoidance::core::update_members (1)
+    anon::snapshot_for -> x3m::ship_avoidance::ctl::LiveSet::add_snapshot (1)
+only before: 24
+    anon::avoid_adjust -> anon::dock_container_state (1)
+    anon::avoid_adjust -> anon::dock_model (2)
+    anon::avoid_adjust -> x3m::ship_avoidance::core::dock_clearance (1)
+    anon::avoid_adjust -> x3m::ship_avoidance::core::resolve (1)
+    anon::avoid_adjust -> x3m::ship_avoidance::core::update_members (1)
+    anon::avoid_adjust -> x3m::ship_avoidance::ctl::LiveSet::add_snapshot (1)
+    anon::decide -> anon::avoid_adjust (1)
+    anon::decide -> anon::ctl_commit (2)
+    anon::decide -> anon::ctl_leave (1)
+    anon::decide -> anon::decide (1)
+    anon::decide -> anon::join_row (1)
+    anon::decide -> anon::lane_rewrite_row (3)
+    anon::decide -> anon::redirect_target (2)
+    anon::decide -> x3m::ship_avoidance::ctl::kc_grid_slot (1)
+    anon::decide -> x3m::ship_avoidance::ctl::lane_order_point (1)
+    anon::decide -> x3m::ship_avoidance::ctl::lane_point_ours (1)
+    anon::decide -> x3m::ship_avoidance::ctl::q_point (1)
+    anon::decide -> x3m::ship_avoidance::ctl::small_b_decide (1)
+    anon::decide -> x3m::ship_steering::core::gate_chord_clears_ring (1)
+    anon::decide -> x3m::ship_steering::core::gate_geometry (1)
+    anon::decide -> x3m::ship_steering::core::gate_geometry_capital (1)
+    anon::decide -> x3m::ship_steering::core::gate_lead_in (1)
+    anon::decide -> x3m::ship_steering::core::gate_pass_point_valid (1)
+    anon::decide -> x3m::ship_steering::core::join_plane (1)
+count changed: 1
+    anon::decide -> anon::Counter::add (10 -> 2)
+
+# python3 -I verification/results/ship-steering/source-split/call_sites.py BASE AFTER (totals)
+call edges from the hook entries: before 76 (111 calls), after 71 (96 calls)
+
+# python3 verification/results/ship-steering/source-split/x87_reach_diff.py BASE AFTER
+before: PASS, reachable 999, violations 0
+after:  PASS, reachable 996, violations 0

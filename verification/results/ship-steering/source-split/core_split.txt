@@ -1,0 +1,50 @@
+# python3 -I verification/results/ship-steering/convoy-gate-transit/laneon_diff.py --base bf12aaa2 --out <scratch> (2026-10-15; step 1, the
+# core header split; sequential runs)
+1 full run, before-core vs after: lines before 397 after 397 differing 0
+1 --lane, before-core vs after: lines before 170 after 170 differing 0
+1c --capital, before-core vs after: lines before 226 after 226 differing 0
+2 --lane lane-on rows, bf12aaa2 fixture+core vs after: lines before 118 after 118 differing 0
+before: ship_steering_host checks=10734 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+after: ship_steering_host checks=10734 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+before--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+after--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+base--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+before--capital: ship_steering_host checks=5112 failures=0 slip_gaps=0; FAIL rows 0
+after--capital: ship_steering_host checks=5112 failures=0 slip_gaps=0; FAIL rows 0
+stdouts in a local scratch directory (untracked)
+
+# python3 -I verification/results/ship-steering/source-split/bench_lines.py <scratch> (bench24 of the --lane runs above; host timing, one run each, the fixture's worst of 3)
+before  tf 1: mean 11.5 us, worst 458 us, third-worst 152 us | tf 10: mean 148.8 us, worst 1126 us, third-worst 594 us
+base    tf 1: mean 11.5 us, worst 933 us, third-worst 147 us | tf 10: mean 136.2 us, worst 702 us, third-worst 527 us
+after   tf 1: mean 11.7 us, worst 781 us, third-worst 203 us | tf 10: mean 138.4 us, worst 784 us, third-worst 540 us
+
+# python3 -I verification/results/ship-steering/source-split/fn_diff.py <scratch>/before/host <scratch>/after/host --objdump objdump (the fixture builds above)
+functions before 285 after 285; identical 274, differing 11, only before 0, only after 0
+  DIFF lane_r2_units()::{lambda(unsigned int, unsigned int)#1}::operator()(unsigned int, unsigned int) const [clone .isra] (12 -> 13 instructions)
+  DIFF t_observe(x3m::ship_avoidance::ctl::Board&, TShip&, unsigned int, TResult&) [clone .constprop] (266 -> 265 instructions)
+  DIFF lane_r2_units()::{lambda(x3m::ship_avoidance::ctl::ObstBound const&, float const*, unsigned short, unsigned int, bool, unsigned int)#1}::operator()(x3 (85 -> 84 instructions)
+  DIFF lane_r2_units()::{lambda(float, float, unsigned short, unsigned short, float const*)#1}::operator()(float, float, unsigned short, unsigned short, floa (97 -> 95 instructions)
+  DIFF lane_r2_units() (4240 -> 4237 instructions)
+  DIFF x3m::ship_avoidance::ctl::line_plane(x3m::ship_avoidance::ctl::Member const&, float const*, float const*, x3m::ship_steering::core::JoinPlane*, float* (160 -> 163 instructions)
+  DIFF x3m::ship_avoidance::ctl::lane_hold_o0(x3m::ship_avoidance::ctl::Gate const&, x3m::ship_avoidance::ctl::Member const&, float const*, float const*, uns (321 -> 320 instructions)
+  DIFF x3m::ship_avoidance::ctl::sb_gate_why(x3m::ship_avoidance::ctl::Gate const&, x3m::ship_avoidance::ctl::Member const&, unsigned int, unsigned short, un (302 -> 304 instructions)
+  DIFF x3m::ship_avoidance::ctl::arrival_gate_row(x3m::ship_avoidance::ctl::Arrival const&, unsigned int, unsigned int, float const*, float const*, float con (70 -> 71 instructions)
+  DIFF x3m::ship_avoidance::ctl::eta_launch(x3m::ship_avoidance::ctl::Gate const&, x3m::ship_avoidance::ctl::Member const&, unsigned int) (202 -> 200 instructions)
+  DIFF x3m::ship_avoidance::ctl::reset_boards(x3m::ship_avoidance::ctl::Board&) (89 -> 93 instructions)
+
+# sh verification/results/ship-steering/source-split/header_alone.sh (step 1: the core headers)
+ship_gate_board_core.h i686 PASS
+ship_gate_board_core.h host PASS
+ship_gate_geometry_core.h i686 PASS
+ship_gate_geometry_core.h host PASS
+ship_gate_lane_core.h i686 PASS
+ship_gate_lane_core.h host PASS
+ship_gate_certificate_core.h i686 PASS
+ship_gate_certificate_core.h host PASS
+ship_gate_arrival_core.h i686 PASS
+ship_gate_arrival_core.h host PASS
+ship_gate_ctl_core.h i686 PASS
+ship_gate_ctl_core.h host PASS
+
+# python3 -I verification/results/ship-steering/source-split/linecheck.py <bf12aaa2 ship_gate_ctl_core.h> src/proxy <the five unit headers> ship_gate_ctl_core.h
+orig lines 3909, generated 3945; missing 0, extra 36 (the prologues: 5 #pragma once, 16 intro comment lines, 4 includes, 4 namespace openings, 2 umbrella comment lines, 5 umbrella includes)

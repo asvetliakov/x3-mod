@@ -1,6 +1,8 @@
 """B.5 (gate-traffic-controller.md "B.5 Pointer liveness"): the gate traffic controller's frame boundary reads no engine memory. Scans
-ship_steering.cpp from ctl_member_frame (the first function ctl_frame runs) through ctl_rows, and frame_boundary's body, and both
-ship_gate_ctl*_core.h headers, for the engine readers (rd8/rd16/rd32/rds32, RawMem, call_eax/call_ecx): 0 hits."""
+ship_gate_ctl_glue.cpp from ctl_member_frame (the first function ctl_frame runs) through ctl_rows, frame_boundary's body
+(ship_steering_rows.cpp), and the controller's core headers (ship_gate_*core.h: the umbrella ship_gate_ctl_core.h, its unit headers
+and ship_gate_ctl_live_core.h), for the engine readers (rd8/rd16/rd32/rds32, RawMem, call_eax/call_ecx): 0 hits. (ship_steering.cpp
+was split into these units on 2026-10-15.)"""
 import re
 import unittest
 from pathlib import Path
@@ -36,25 +38,28 @@ def hits(text):
 
 class BoundaryReads(unittest.TestCase):
     def test_controller_frame_reads_nothing(self):
-        src = (PROXY / 'ship_steering.cpp').read_text()
+        src = (PROXY / 'ship_gate_ctl_glue.cpp').read_text()
         start = src.index('\nvoid ctl_member_frame(')
         end_fn = function_body(src, '\nvoid ctl_rows(')
         span = src[start:src.index(end_fn) + len(end_fn)]
         for name in ('ctl_member_frame', 'lane_frame_all', 'ctl_live_prove', 'ctl_live_leaves', 'ctl_frame', 'ctl_rows'):
             self.assertIn('void %s(' % name, span)  # the scanned span holds the boundary's functions
         self.assertEqual(hits(span), [])
-        self.assertEqual(hits(function_body(src, '\nvoid frame_boundary(')), [])
+        self.assertEqual(hits(function_body((PROXY / 'ship_steering_rows.cpp').read_text(), '\nvoid frame_boundary(')), [])
 
     def test_e_obst_never_the_player_ship(self):
         # lane fix round 2 review item 4: site E's lane obstacle row returns before any bound when B is the player's ship (the member
         # exclusion's flag test, [obj+0x40] & kFlagPlayerObject), not only for A
-        body = strip_comments(function_body((PROXY / 'ship_steering.cpp').read_text(), '\ninline void ctl_e_obst('))
+        body = strip_comments(function_body((PROXY / 'ship_steering_warn.cpp').read_text(), '\ninline void ctl_e_obst('))
         test = re.search(r'if \(cls_b == sites::kClassShip && \(rd32\(b \+ sites::kObjFlags\) & sites::kFlagPlayerObject\)\) return;', body)
         self.assertIsNotNone(test)
         self.assertLess(test.start(), body.index('gc::ObstBound o;'))
 
     def test_core_headers_read_nothing(self):
-        for name in ('ship_gate_ctl_core.h', 'ship_gate_ctl_live_core.h'):
+        names = sorted(p.name for p in PROXY.glob('ship_gate_*core.h'))
+        for name in ('ship_gate_ctl_core.h', 'ship_gate_ctl_live_core.h', 'ship_gate_board_core.h', 'ship_gate_lane_core.h'):
+            self.assertIn(name, names)
+        for name in names:
             self.assertEqual(hits((PROXY / name).read_text()), [], name)
 
 

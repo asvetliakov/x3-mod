@@ -1,0 +1,56 @@
+# The final tree of the source split (steps 1-3 and the lane-default commit), 2026-10-15.
+
+# python3 -I verification/results/ship-steering/convoy-gate-transit/laneon_diff.py --base bf12aaa2 --out <scratch> (sequential runs)
+1 full run, before-core vs after: lines before 397 after 397 differing 0
+1 --lane, before-core vs after: lines before 170 after 170 differing 0
+1c --capital, before-core vs after: lines before 226 after 226 differing 0
+2 --lane lane-on rows, bf12aaa2 fixture+core vs after: lines before 118 after 118 differing 0
+before: ship_steering_host checks=10734 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+after: ship_steering_host checks=10734 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+before--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+after--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+base--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+before--capital: ship_steering_host checks=5112 failures=0 slip_gaps=0; FAIL rows 0
+after--capital: ship_steering_host checks=5112 failures=0 slip_gaps=0; FAIL rows 0
+stdouts in a local scratch directory (untracked)
+
+# python3 -I verification/results/ship-steering/source-split/bench_lines.py <scratch> (bench24, one --lane run per build; another agent ran fixtures on this host at the time)
+before  tf 1: mean 12.1 us, worst 953 us, third-worst 550 us | tf 10: mean 139.1 us, worst 1090 us, third-worst 647 us
+base    tf 1: mean 11.9 us, worst 999 us, third-worst 230 us | tf 10: mean 151.0 us, worst 1145 us, third-worst 593 us
+after   tf 1: mean 11.8 us, worst 1096 us, third-worst 276 us | tf 10: mean 136.2 us, worst 1016 us, third-worst 552 us
+# step 1's run (core_split.txt), the same builds' code:
+before  tf 1: mean 11.5 us, worst 458 us, third-worst 152 us | tf 10: mean 148.8 us, worst 1126 us, third-worst 594 us
+base    tf 1: mean 11.5 us, worst 933 us, third-worst 147 us | tf 10: mean 136.2 us, worst 702 us, third-worst 527 us
+after   tf 1: mean 11.7 us, worst 781 us, third-worst 203 us | tf 10: mean 138.4 us, worst 784 us, third-worst 540 us
+
+# i686 clean build (rm -rf build; cmake ... RelWithDebInfo; ninja -C build d3d9): 0 warnings, 124/124 steps
+# python3 verification/probe/check_no_x87.py build/d3d9.dll
+PASS reachable_functions 996 violations 0
+# python3 verification/probe/verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe
+PASS checks 20
+# python3 -I verification/results/ship-steering/source-split/call_sites.py <bf12aaa2 DLL> build/d3d9.dll (totals)
+call edges from the hook entries: before 76 (111 calls), after 71 (96 calls)
+# python3 -I verification/results/ship-steering/source-split/install_order.py <bf12aaa2 ship_steering.cpp> src/proxy/ship_steering_install.cpp (the DLL's call addresses moved with the block layout after the lane-default edit; call_order.py was identical through step 2, cpp_split.txt)
+install order (install_all, initialize, shutdown): 88 events before, 88 after; identical
+# sh verification/results/ship-steering/source-split/header_alone.sh
+ship_gate_board_core.h i686 PASS
+ship_gate_board_core.h host PASS
+ship_gate_geometry_core.h i686 PASS
+ship_gate_geometry_core.h host PASS
+ship_gate_lane_core.h i686 PASS
+ship_gate_lane_core.h host PASS
+ship_gate_certificate_core.h i686 PASS
+ship_gate_certificate_core.h host PASS
+ship_gate_arrival_core.h i686 PASS
+ship_gate_arrival_core.h host PASS
+ship_gate_ctl_core.h i686 PASS
+ship_gate_ctl_core.h host PASS
+ship_steering_internal.h i686 PASS
+ship_gate_ctl_glue.h i686 PASS
+ship_dock_glue.h i686 PASS
+# PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_trace_format verification.analysis.test_config_schema
+#   verification.analysis.test_ctl_boundary_reads verification.analysis.test_ship_steering_sites verification.analysis.test_check_no_x87
+Ran 49 tests in 3.874s  OK 
+# PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering: Ran 4 tests, OK (run separately)
+# python3 tools/config/generate.py --check
+PASS 273 settings, 123 in the template

@@ -664,10 +664,12 @@ are refused under `--vanilla`.
 
 Key `ship_steering_gates_lane`, environment `X3M_SHIP_STEERING_GATES_LANE`, no launcher option, default **1** (since 2026-10-15;
 `tools/manage.py launch` sends it on every launch with `setdefault`, like the motion-cut defaults, so the bare DLL equals the
-launcher flight; the read site's own builtin with nothing resolved stays 0, as under `X3M_CONFIG=bare`), requires
+launcher flight; the read site's own builtin with nothing resolved, as under `X3M_CONFIG=bare`, is 1 too since 2026-10-15, the
+last commit of the source split, rank 3 of [ship-steering-holistic-review.md](ship-steering-holistic-review.md)), requires
 `ship_steering_gates_traffic` ([convoy-gate-transit.md](convoy-gate-transit.md) §11). **1 = the departure lane (default), 0 = stage
-A certificate only.** With the traffic key at 0 the default 1 logs `ship_steering_gates_lane_refused reason=needs_traffic` and the
-lane stays off.
+A certificate only.** With the traffic key at 0 a resolved 1 (the file, the environment or the resolver's default) logs
+`ship_steering_gates_lane_refused reason=needs_traffic` and the lane stays off; with nothing resolved the lane stays off without
+the row.
 Until 2026-10-15 the value 0 meant the traffic controller's stage B (holding petals). Stage B was deleted with
 [ship-steering-holistic-review.md](ship-steering-holistic-review.md) rank 2, together with the key `ship_steering_gates_capital_seq`
 (amendment 16b). A file that still sets that key gets the unknown-key row and nothing else. `ship_steering_gates_traffic` stays,

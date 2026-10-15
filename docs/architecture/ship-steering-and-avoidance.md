@@ -861,6 +861,38 @@ python3 tools/manage.py launch --dry-run --ship-steering                        
 
 then the flight runs of §7.3 recorded in the ledger.
 
+### 8.1 Source layout (2026-10-15)
+
+`ship_steering.cpp` and `ship_gate_ctl_core.h` were split into the units below ([ship-steering-holistic-review.md](ship-steering-holistic-review.md)
+§3, rank 3; pure moves, except `gate_decide` extracted from `decide()`; line counts and evidence in the ledger
+[ship-steering.md](../verification/ship-steering.md) "Source split"). The gate controller's cores (namespace `ctl`) are portable and
+shared with the host fixture, which includes the umbrella `ship_gate_ctl_core.h`; the DLL units are i686-only, all built with the
+same flags (`-fno-exceptions` like the other hook sources).
+
+| Unit | Owns |
+| --- | --- |
+| `ship_gate_ctl_core.h` | the umbrella: includes the five units below in dependency order (every existing include keeps working) |
+| `ship_gate_board_core.h` | the controller's constants, `Sample/State/Member/Gate/Board/Index`, roles and `Why`, `enter/leave/locate/acquire_gate`, `validity`, `note_step/age_bound`, `state_from/hull_from/commit_fill/escort_fill`, the priority (`rank`, `yields_to`, `can_yield`) and `cap_in_force` |
+| `ship_gate_geometry_core.h` | `q_point/q_axis`, `lambda4/5`, `line_carrot`, `plant_step_to`, `dock_ramp`, the lane's design constants and `gate_solid`, `lane_q`, `lane_lat_at/point_at/order_point`, `kc_grid_slot`, `lane_point_*`, `lane_join_*`, `lane_carrot`, `unit_row` |
+| `ship_gate_lane_core.h` | `LaneCtx`, `lane_reserve`, `lane_law`, `lane_refused_hold`, `lane_hold_o0`, the obstacle row (`ObstBound`, `lane_path*`, `lane_obst_*`), `GateRow` with the solid tests (`solid_gap_*`, `lane_gate_why`), the predicted launch (`leg5_s`, `eta_launch`), `lane_frame`, `lane_site_b`, `lane_defer_*`, `lane_steer` |
+| `ship_gate_certificate_core.h` | the plans (`plan_of`, `plan_speed`, `line_of`), `rollout`, `sweep*`, `gap_scan`, `decide`, `try_yield`, `decide_order`, `frame_budget`, `trace_slot_range`, `e_certified/e_reason`, `e_obst_row`, `sb_gate_why/e_gate_row`, `note_warn/keep_through_avoid` |
+| `ship_gate_arrival_core.h` | D.4 (`capital_offset`, `small_side_spawn`, `capital_at_plane`), `Arrivals`, `arrival_gate_row`, D.5 (`funnel_active`, `small_b_*`), `lane_adopt_memo` |
+| `ship_gate_ctl_live_core.h` | unchanged (the live proof) |
+| `ship_steering_internal.h` | the state the DLL units share (the former anonymous namespace: inline variables in `x3m_ship_steering_rt`, nominated by a using-directive), the stubs' slots (extern), the row structs and rings, the counters, the engine readers (`rd32` ..., `fixed16`), `trace_slot_of`, `trace_claim`, `capital_obj`, `join_row`; the declarations of the out-of-line functions another unit calls |
+| `ship_gate_ctl_glue.h` | the controller's state (`ctl_`, the indexes, the live set), its row rings and the inline board helpers several units call (`ctl_row`, `ctl_lookup`, `ctl_leave`, `gate_frame`, `ctl_read_state`, `ctl_pass_row`, ...) |
+| `ship_dock_glue.h` | amendment 18's state and inline helpers (`dock_container_state`, `dock_model`, `dock_e` for site E, `dock_bind` for site A) |
+| `ship_steering_install.cpp` | the assembled stubs and their slots, `install_all`, `initialize` (the key parsing) / `installed` / `state` / `shutdown` |
+| `ship_steering_decide.cpp` | site A: `x3m_ship_steering_enter`, `decide()`, `gate_decide()` (the gate branch: the lane's order-4 point, order 4 / 5 to a gate), `avoid_adjust`, `snapshot_for`, `gate_event`, `join_register`, `grid_slot_of`, the step-2 target ring (`adjust_target`, `redirect_target`) |
+| `ship_steering_clamp.cpp` | site B: `x3m_ship_steering_clamp`, `clamp_apply`, `lane_clamp`, `ctl_observe`, `trace_frame`, `capital_warn_watch`; P2 / P4 / P5 (`x3m_ship_gate_stop_a`, `_stop_b`, `_launch`) |
+| `ship_steering_warn.cpp` | site E: `x3m_ship_avoid_suppress`, `e_verdict`, `e_record`, `ctl_e_fields`, `ctl_e_obst`, `push_warn_pre`, `push_engine_warn` |
+| `ship_gate_ctl_glue.cpp` | `ctl_commit`, `ctl_escort`, the arrival handler `x3m_ship_gate_arrival`, `ctl_member_frame`, `lane_frame_all`, the live proof, `ctl_frame`, `ctl_rows`, the capital widths (`width_ensure`, `type_width_put`) |
+| `ship_dock_glue.cpp` | `dock_rows` |
+| `ship_steering_rows.cpp` | `frame_boundary` (the join predictor, the controller's frame, the --debug rows, the trace rows, the 1 Hz summary) |
+
+Rule of the split: a helper more than one unit calls stays `inline` in a header (no call the single unit inlined becomes a call
+because of the split; `dock_e` / `dock_bind` carry `always_inline` for that); state and helpers one unit alone uses stay in its
+anonymous namespace; no float-returning function is out of line on a hook path (the x87 audit; `ctl::lane_law` and `rollout` are out of line under the frame boundary's CPU call boundary), and float→unsigned conversions go through `int` (GCC emits x87 `fistpll` for `unsigned(float)` in cold placement).
+
 ## 9. Interface for a path planner
 
 The steering layer takes a **polyline, not a point**: `const int32 (*points)[3], unsigned count`, the last

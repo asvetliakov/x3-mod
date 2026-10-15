@@ -2898,6 +2898,76 @@ and leaves the rest to the engine's warn and 0x12, as A.1 shipped.
   fallback in their main run, where it was the A/B run before. They pass.
 * With `ship_steering_gates_traffic` = 0 there is no lane board and no exit spread. On the defaults neither changes anything.
 
+### Source split (2026-10-15, Opus 5.5; [ship-steering-holistic-review.md](../architecture/ship-steering-holistic-review.md) rank 3, layout [ship-steering-and-avoidance.md](../architecture/ship-steering-and-avoidance.md) §8.1)
+
+**What changed.** Worktree `agent-ab040198cf619261b` on main bf12aaa2, five commits: (1) `ship_gate_ctl_core.h` into five unit
+headers behind the umbrella; (2) `ship_steering.cpp` into seven units and three internal headers, generated mechanically; (3)
+`decide()`'s gate branch extracted as `gate_decide()`; (4) behaviour: the DLL's own default of `ship_steering_gates_lane` is 1
+([config-file.md](../architecture/config-file.md)); (5) these docs and the final evidence. Steps 1 and 2 are pure moves, except `always_inline` on `dock_e` / `dock_bind`
+and the dropped forward declaration of `capital_obj`. The other agent's fixture casts are not in this worktree; the fixture is
+bf12aaa2's.
+
+**Lines** **[m]** (`wc -l`; before: `ship_gate_ctl_core.h` 4,084, `ship_steering.cpp` 4,905):
+
+| Core unit | Lines | DLL unit | Lines |
+| --- | --- | --- | --- |
+| `ship_gate_ctl_core.h` (umbrella) | 24 | `ship_steering_internal.h` | 538 |
+| `ship_gate_board_core.h` | 767 | `ship_gate_ctl_glue.h` | 243 |
+| `ship_gate_geometry_core.h` | 455 | `ship_dock_glue.h` | 259 |
+| `ship_gate_lane_core.h` | 1,408 | `ship_steering_install.cpp` | 633 |
+| `ship_gate_certificate_core.h` | 1,268 | `ship_steering_decide.cpp` | 1,007 |
+| `ship_gate_arrival_core.h` | 201 | `ship_steering_clamp.cpp` | 596 |
+| | | `ship_steering_warn.cpp` | 494 |
+| | | `ship_steering_rows.cpp` | 588 |
+| | | `ship_gate_ctl_glue.cpp` | 638 |
+| | | `ship_dock_glue.cpp` | 17 |
+| total | 4,123 | total | 5,013 |
+
+**Acceptance** **[m]** (no Wine, no game). Producers and outputs in
+[`verification/results/ship-steering/source-split/`](../../verification/results/ship-steering/source-split/) (`core_split.txt`,
+`cpp_split.txt`, `gate_decide.txt`, `final.txt`):
+
+* **Moves only.** `linecheck.py`: every line of bf12aaa2's `ship_gate_ctl_core.h` is present once, plus 36 prologue lines. At step 2,
+  every line of `ship_steering.cpp` is present too, except the two lines that gained `always_inline` and the forward declaration; 67
+  lines were added (prologues, declarations, wrappers). The stubs' instruction identity and the export table were checked at step 2;
+  steps 3 and 4 do not touch them.
+* **Fixture identity.** `laneon_diff.py --base bf12aaa2` (now over every `ship_*_core.h`, with `--capital` added) on the final tree:
+  full run 397 lines, `--lane` 170, `--capital` 226 and lane-on 118, 0 differing lines. Checks 10,734 / 3,389 / 5,112, 0 failures, the
+  same totals as bf12aaa2. Of the fixture's 285 functions, 274 compile identical; 11 differ by 1–4 instructions from the definition
+  order (`fn_diff.py`).
+* **Headers alone.** `header_alone.sh`: each of the five core headers and the umbrella compiles from a one-line TU with the i686
+  MinGW project flags and with host `c++`; the three internal headers compile with i686. 15 PASS.
+* **DLL.** The i686 clean build (RelWithDebInfo) has 0 warnings in 124 steps. `check_no_x87.py` passes: reachable 999 → 1,001
+  after step 2 → 996 after step 3, 0 violations. `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` passes with 20 checks. The
+  9 assembled stubs are instruction-identical, and the exports are identical. The install order is identical in the source
+  (`install_order.py`: 88 events in `install_all`, `initialize` and `shutdown`, in statement order). The DLL's call addresses in
+  `initialize` were in the same order through step 2 (`call_order.py`); the lane-default edit changed their block layout.
+* **Hot path.** `call_sites.py` lists the direct calls reachable from the seven hook entries: 111 before, 109 after step 2, 96 after
+  step 3. After step 2 these are newly out of line: `dock_self` (site E, dock containers only), `ctl::e_certified` (site E; GCC: "call
+  is unlikely"), `ctl::leave` and `LiveSet::add_snapshot`. These are newly inlined: `Counter::add`, `Members::current`,
+  `lane_obst_why`, `join_row` and `lane_order_point`. Step 3 calls `gate_decide` only when the target is a gate; `decide` shrinks
+  from 5,291 to 3,520 instructions, and `avoid_adjust` is now inlined into it. Two variants were measured and not kept:
+  `gate_decide` forced inline cost `decide`'s common path 8 more helper calls (109 → 117). Header helpers in an anonymous namespace
+  inlined `ctl_pass_row` into site E's and site B's cold paths, where GCC converted `float` → `unsigned` with x87 `fistpll`
+  (`check_no_x87` FAIL, 2 violations). That latent hazard is in `warn_reach_samples` (Open issues).
+* **Lane cost.** bench24 with the same fixture and core code (reordered), one `--lane` run per build, third-worst frame at tf 1 / tf 10:
+
+  | Run | bf12aaa2 (identical code) | Before-core | After |
+  | --- | --- | --- | --- |
+  | Step 1 | 147 / 527 µs | 152 / 594 µs | 203 / 540 µs |
+  | Final | 230 / 593 µs | 550 / 647 µs | 276 / 552 µs |
+
+  The means are 11.5–12.1 µs at tf 1 and 136–151 µs at tf 10 for all three builds. The spread between identical builds (147–550 µs)
+  covers the after figures. Another agent was running fixtures on this host during the final run.
+* **Tests.** `test_ship_trace_format`, `test_config_schema`, `test_ctl_boundary_reads`, `test_ship_steering_sites` and
+  `test_check_no_x87` pass: 49 tests OK. `test_ship_steering` passes 4 tests. `generate.py --check` passes (273 settings). The tests
+  now read the units: `test_ctl_boundary_reads` scans `ship_gate_ctl_glue.cpp`, `ship_steering_rows.cpp`, `ship_steering_warn.cpp` and
+  every `ship_gate_*core.h`; `summary_bound.py` takes `ship_steering_internal.h` and `ship_steering_rows.cpp`.
+
+**Behaviour change (commit 4).** The lane key's read site now starts from on. With nothing resolved (`X3M_CONFIG=bare`) the lane is
+on whenever the traffic controller is. The `needs_traffic` refusal row is logged only when the key resolves to 1 with traffic 0. The
+resolver's schema default 1 still counts as resolved, so a default config with traffic 0 still logs the row; only bare is silent.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

@@ -24,7 +24,8 @@ class ShipSteeringCore(unittest.TestCase):
     def test_summary_gates_bound(self):
         # B.4: the summary's gates text at its widest fits its buffer, and the source's declared figure (static_assert'ed) is current
         run = subprocess.run(['python3', '-I', str(ROOT / 'verification/results/ship-steering/gate-traffic-controller/summary_bound.py'),
-                              str(ROOT / 'src/proxy/ship_steering.cpp')], capture_output=True, text=True)
+                              str(ROOT / 'src/proxy/ship_steering_internal.h'), str(ROOT / 'src/proxy/ship_steering_rows.cpp')],
+                             capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertIn('PASS', run.stdout)
 
@@ -45,7 +46,7 @@ class ShipSteeringCore(unittest.TestCase):
     def test_site_b_rewrite_recorded(self):
         # final review item 3 (convoy-gate-transit.md section 11): site B's deferred order-4 rewrite records the written field and the
         # grid point it replaced in the ship's gate state, as site A's rewrite does, so site A finds the field ours without a tolerance
-        src = (ROOT / 'src/proxy/ship_steering.cpp').read_text()
+        src = (ROOT / 'src/proxy/ship_steering_clamp.cpp').read_text()
         start = src.index('inline void lane_clamp(')
         body = src[start:src.index('\ninline void clamp_apply(', start)]
         rewrite = body[body.index('if (d.rewrite)'):body.index('if (d.write210)')]

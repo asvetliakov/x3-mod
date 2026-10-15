@@ -1,0 +1,85 @@
+# step 2, ship_steering.cpp into seven units (2026-10-15). BEFORE = bf12aaa2 built in a scratch tree, AFTER = this tree's build/d3d9.dll; both
+# cmake -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo (i686-w64-mingw32-g++ 16-posix)
+build warnings: 0 (ninja -C build d3d9)
+
+# python3 verification/results/ship-steering/source-split/x87_reach_diff.py BEFORE AFTER (check_no_x87.py's walk from its roots)
+before: PASS, reachable 999, violations 0
+after:  PASS, reachable 1001, violations 0
+only before: 6
+    (anonymous namespace)::dock_container_state(unsigned int, unsigned short, float*, float*, float*, float*) [clone .part] [clone .constprop]
+    (anonymous namespace)::Counter::add(unsigned int) [clone .constprop]
+    x3m::ship_avoidance::ctl::lane_obst_why(x3m::ship_avoidance::ctl::Gate const&, x3m::ship_avoidance::ctl::Member const&, unsigned short, unsigned int, float cons
+    unsigned int x3m::ship_avoidance::walk::station_parts<(anonymous namespace)::RawMem>((anonymous namespace)::RawMem&, x3m::ship_avoidance::walk::PartCache&, unsi
+    bool x3m::ship_avoidance::walk::part_walk<(anonymous namespace)::RawMem>((anonymous namespace)::RawMem&, unsigned int, float const*, float, x3m::ship_avoidance:
+    x3m::ship_avoidance::core::Members::current(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int) const
+only after: 8
+    (anonymous namespace)::dock_container_state(unsigned int, unsigned short, float*, float*, float*, float*)
+    (anonymous namespace)::Counter::add(unsigned int)
+    (anonymous namespace)::dock_self(unsigned int, unsigned int, (anonymous namespace)::DockSelf&)
+    x3m::ship_avoidance::ctl::e_certified(x3m::ship_avoidance::ctl::Gate const&, unsigned int, unsigned int, unsigned int, bool, bool, unsigned short, unsigned shor
+    x3m::ship_avoidance::ctl::leave(x3m::ship_avoidance::ctl::Gate&, unsigned int, bool, unsigned int)
+    x3m::ship_avoidance::ctl::LiveSet::add_snapshot(x3m::ship_avoidance::core::Snapshot const&, bool)
+    unsigned int x3m::ship_avoidance::walk::station_parts<(anonymous namespace)::RawMem>((anonymous namespace)::RawMem&, x3m::ship_avoidance::walk::PartCache&, unsi
+    bool x3m::ship_avoidance::walk::part_walk<(anonymous namespace)::RawMem>((anonymous namespace)::RawMem&, unsigned int, float const*, float, x3m::ship_avoidance:
+
+# python3 -I verification/results/ship-steering/source-split/call_sites.py BEFORE AFTER (direct calls reachable from the seven hook entries)
+call edges from the hook entries: before 76 (111 calls), after 75 (109 calls)
+only after: 6
+    anon::avoid_adjust -> x3m::ship_avoidance::ctl::LiveSet::add_snapshot (1)
+    anon::ctl_leave -> x3m::ship_avoidance::ctl::leave (1)
+    x3m_ship_avoid_suppress -> anon::dock_self (1)
+    x3m_ship_avoid_suppress -> x3m::ship_avoidance::ctl::e_certified (1)
+    x3m_ship_avoid_suppress -> x3m::ship_avoidance::ctl::lane_obst_clear (1)
+    x3m_ship_avoid_suppress -> x3m::ship_avoidance::ctl::lane_path (1)
+only before: 7
+    x3m::ship_avoidance::ctl::lane_obst_why -> x3m::ship_avoidance::ctl::lane_obst_clear (1)
+    x3m::ship_avoidance::ctl::lane_obst_why -> x3m::ship_avoidance::ctl::lane_path (1)
+    x3m_ship_avoid_suppress -> anon::Counter::add (1)
+    x3m_ship_avoid_suppress -> x3m::ship_avoidance::core::Members::current (1)
+    x3m_ship_avoid_suppress -> x3m::ship_avoidance::ctl::lane_obst_why (1)
+    x3m_ship_gate_stop_a -> anon::join_row (1)
+    x3m_ship_steering_clamp -> x3m::ship_avoidance::ctl::lane_order_point (1)
+count changed: 1
+    x3m_ship_avoid_suppress -> anon::dock_model (3 -> 2)
+
+# python3 -I verification/results/ship-steering/source-split/call_order.py BEFORE AFTER 'x3m::ship_steering::initialize()' (the hook install order) and shutdown()
+x3m::ship_steering::initialize(): 20 calls before, 20 after; sequence identical
+x3m::ship_steering::shutdown(): 4 calls before, 4 after; sequence identical
+
+# python3 -I verification/results/ship-steering/source-split/fn_diff.py BEFORE AFTER --match '^x3m_ship_.*_stub$' (the assembled stubs)
+functions before 9 after 9; identical 9, differing 0, only before 0, only after 0
+
+# python3 verification/probe/verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe
+PASS checks 20
+
+# linecheck.py <bf12aaa2 ship_steering.cpp> src/proxy <the three internal headers and seven units>
+orig lines 4777, generated 4841; missing 3, extra 67
+MISSING 1: inline av::DockE dock_e(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std::uint16_t cls_b, const core::Ship& s) noexcept {
+MISSING 1: inline bool dock_bind(av::Self& self, std::uint32_t obj, const core::Inputs& in, float a_lin, float r_own, unsigned slot, std::uint32_t now,
+MISSING 1: inline bool capital_obj(std::uint32_t obj) noexcept; // (below)
+
+# sh verification/results/ship-steering/source-split/header_alone.sh (the internal headers)
+ship_steering_internal.h i686 PASS
+ship_gate_ctl_glue.h i686 PASS
+ship_dock_glue.h i686 PASS
+
+# wc -l (lines per unit)
+   538 src/proxy/ship_steering_internal.h
+   243 src/proxy/ship_gate_ctl_glue.h
+   259 src/proxy/ship_dock_glue.h
+   632 src/proxy/ship_steering_install.cpp
+   989 src/proxy/ship_steering_decide.cpp
+   596 src/proxy/ship_steering_clamp.cpp
+   494 src/proxy/ship_steering_warn.cpp
+   588 src/proxy/ship_steering_rows.cpp
+   638 src/proxy/ship_gate_ctl_glue.cpp
+    17 src/proxy/ship_dock_glue.cpp
+  4994 total
+
+# Notes. linecheck: the three missing lines are dock_e and dock_bind (both now carry __attribute__((always_inline)): the single TU inlined
+# them, called once; with external linkage in the split GCC no longer did) and the forward declaration of capital_obj (its definition is
+# in ship_steering_internal.h, ahead of every user). The extra lines are the prologues, the out-of-line functions declarations, the stubs
+# slots extern declarations and the namespace wrappers. Calls: the newly out-of-line callees are dock_self (site E, only for a dock
+# container B), ctl::e_certified (site E; GCC: "call is unlikely"), ctl::leave (a member leaving its board) and LiveSet::add_snapshot
+# (an avoidance snapshot built at site A); the newly inlined ones are Counter::add and Members::current (site E), lane_obst_why (site E),
+# join_row (P2) and lane_order_point (site B).

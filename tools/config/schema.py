@@ -423,7 +423,7 @@ SETTINGS = [
           'other at hull spacing, instead of each approaching the gate on its own: a ship that would reach the lane level with another '
           'eases off (or stops briefly) until it is behind it, the ship ahead never slows, and each capital ends its approach about 2.3 km before '
           'the gate so the next one does not wait for the previous jump (needs ship_steering_gates_traffic). 1 = the departure lane '
-          '(default), 0 = stage A certificate only.', '1', builtin='0', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
+          '(default), 0 = stage A certificate only.', '1', builtin='1', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
     entry('ship_steering_dock', 'bool', 'engine', 'Ships flying to dock at a station or a carrier steer around its parts on the way '
           'to the docking approach point, and the game skips its collision warning against that station or carrier while the ship\'s '
           'path and heading clear every part with room to spare, so the ship no longer stops and flies away from its own dock; ships '

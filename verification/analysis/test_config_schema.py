@@ -205,11 +205,11 @@ class ConfigSchema(unittest.TestCase):
         self.assertEqual((capital['type'], capital['default'], capital['builtin'], capital['requires'], capital['launcher']),
                          ('bool', None, '1', ('ship_steering_gates',), '--ship-steering-gates-capital'))
         # amendment 16b's sequencing key was deleted with stage B (2026-10-15); the lane key stays, on by default since then (the
-        # resolver's default; the read site's own builtin with nothing resolved is off, the stage-A certificate only)
+        # resolver's default and, since the source split, the read site's own builtin with nothing resolved too)
         self.assertNotIn('ship_steering_gates_capital_seq', schema.BY_KEY)
         lane = schema.BY_KEY['ship_steering_gates_lane']
         self.assertEqual((lane['type'], lane['default'], lane['builtin'], lane['requires']),
-                         ('bool', '1', '0', ('ship_steering_gates_traffic',)))
+                         ('bool', '1', '1', ('ship_steering_gates_traffic',)))
         template = TEMPLATE.read_text()
         self.assertIn(';ship_steering = 0\n', template)
         self.assertIn(';ship_steering_classes =\n', template)
