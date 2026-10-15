@@ -6,7 +6,7 @@ std::uint32_t join_eval_max_ticks_ = 0, join_evals_ = 0, join_predictions_ = 0;
 // The summary's gates text (frame boundary): its worst case, every conversion at its widest, as summary_bound.py computes it from
 // this file (the host test keeps the constant equal to the computed figure); the buffer must hold it. It held 4,096 B up to B.3,
 // below the 4,123-character worst case: the tail truncated.
-constexpr std::size_t kSummaryGatesWorstCase = 3900; // measured 3,831 after the Run176 diagnostics + the arrival mode merged (summary_bound.py)
+constexpr std::size_t kSummaryGatesWorstCase = 3831; // exact: the Run176 diagnostics + the arrival mode merged (summary_bound.py)
 constexpr std::size_t kSummaryGatesBytes = 8192;
 static_assert(kSummaryGatesWorstCase < kSummaryGatesBytes, "the summary's gates text fits its buffer (summary_bound.py)");
 std::uint32_t rep_gate_[29] = {};
