@@ -13422,8 +13422,8 @@ static void arrival_round_units() {
         deep3.add(deep3.add(deep3.add(deep3.root)));
         GateImg deep4; // ... with a child below the depth limit: not seen, unknown
         deep4.add(deep4.add(deep4.add(deep4.add(deep4.root))));
-        GateImg wide; // 65 parts: the budget exhausted
-        for (int i = 0; i < 65; ++i) wide.add(wide.root);
+        GateImg wide; // 257 parts: the budget exhausted (Run176 diagnostics item 2: wk::kGateTreeBudget 256, was kRadiusBudget 64)
+        for (int i = 0; i < 257; ++i) wide.add(wide.root);
         GateImg chain; // a chain ending at another node's sentinel
         chain.mem.put(chain.add(chain.root), 0x01009010);
         const wk::GateTreeRead r_b = rd(bubble), r_t = rd(terran), r_o = rd(off), r_f = rd(foreign), r_bk = rd(back), r_n = rd(noscene);
@@ -13447,6 +13447,28 @@ static void arrival_round_units() {
                     wk::tree_why_name(r_c.why), r_u.state, wk::tree_why_name(r_u.why), r_l.state, wk::tree_why_name(r_l.why), r_d4.state,
                     wk::tree_why_name(r_d4.why), r_w.state, wk::tree_why_name(r_w.why), r_ch.state, wk::tree_why_name(r_ch.why), r_null.state,
                     wk::tree_why_name(r_null.why));
+        // Run176 diagnostics item 2: the gate's scene part (flags 0x1002) and N identical depth-1 effect leaves as Run176 logged them (scene
+        // id 0, part index 0, body 0xc8, flags 0x5000): 40 and 200 leaves stay none under the gate budget, the effects counted apart; a
+        // tree flag on one effect leaf is a tree; the --debug records stop at the buffer's 8 (the node rows of one read)
+        auto fx = [](GateImg& g, int n, int tree_at) {
+            g.add(g.root, 0x1002);
+            for (int i = 0; i < n; ++i) g.mem.put(g.add(g.root, i == tree_at ? 0x5000 | 0x1000000 : 0x5000, 0) + 0x140, 0xc8);
+        };
+        GateImg e40, e200, etree, erec;
+        fx(e40, 40, -1);
+        fx(e200, 200, -1);
+        fx(etree, 33, 20);
+        fx(erec, 40, -1);
+        wk::GateTreeNode recs[8];
+        const wk::GateTreeRead r_e40 = rd(e40), r_e200 = rd(e200), r_et = rd(etree), r_er = wk::gate_tree_read(erec.mem, erec.gate, recs, 8);
+        check(r_e40.state == gc::kGateRingNone && r_e40.nodes == 41 && r_e40.effects == 40 && r_e200.state == gc::kGateRingNone &&
+                  r_e200.nodes == 201 && r_e200.effects == 200 && r_et.state == gc::kGateRingTree && r_er.state == gc::kGateRingNone &&
+                  r_er.nodes == 41 && recs[0].scene == erec.scene && recs[7].scene == 0 && recs[7].f140 == 0xc8 && recs[7].flags == 0x5000 &&
+                  r_w.nodes == wk::kGateTreeBudget,
+              "Run176 diagnostics item 2: effect leaves (40 none, 200 none, counted apart; a tree flag on an effect leaf tree; 8 records of 41)");
+        std::printf("Run176 diagnostics item 2: effect leaves 40 %u (%u nodes, %u effects), 200 %u (%u nodes, %u effects), tree on a leaf %u, "
+                    "budget %u nodes at the cut\n", r_e40.state, unsigned(r_e40.nodes), unsigned(r_e40.effects), r_e200.state,
+                    unsigned(r_e200.nodes), unsigned(r_e200.effects), r_et.state, unsigned(r_w.nodes));
         const gc::GateFrame fr = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
         const float u[3] = {0, 0, 100}, f[3] = {0, 0, 1}, xin[3] = {0, -900, -3000}, xrim[3] = {0, -1900, -3000}, xnan[3] = {0, NAN, -3000};
         const float xo[3] = {0, -900, -2000}; // (the 1,104.5 m gate: its 1 s + v / a run of 2.1 km reaches the ring's band)

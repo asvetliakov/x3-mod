@@ -3236,6 +3236,20 @@ bind in the fixture); `parked` kept green by the funnel's + kLaneOffM hysteresis
 
 **Acceptance [m]** (after the review fixes): `--lane` 5,760 / 0, full 13,107 / 0, `--capital` 7,485 / 0; `test_ship_trace_format` (18), `test_ctl_boundary_reads`, `test_ship_steering` OK alone; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143 roots, 1,013 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Bench24 alternating a01815d4 and the tree three times (`bench.txt`): tf 1 mean 9.2-10.1 against 9.2-9.8 us, tf 10 mean 98-117.3 against 100.3-110.5 us (third-worst frames 298-2202 against 308-518 us: host timing, noisy). Not installed; i686 cost not measured. Evidence: [`run175_round/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/run175_round/run.sh).
 
+### Run176 diagnostics (2026-10-15, Opus 5.5; changes [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Run176 diagnostics")
+
+**What changed.** Worktree on d88128e0. (1) `ship_steering_handler_slow` carries the thread cycles per `decide()` phase (`cyc_dyn
+cyc_find cyc_avoid cyc_gate cyc_steer cyc_ctl cyc_tail`), `prev_order= new_slot= snap_n= conflicts=`; the summary carries the
+`ctl_decide_us_max` holder's cycles, gate, ship and id (`--debug` with timing only). (2) The gate tree read's own budget 256
+(`wk::kGateTreeBudget`), `ship_gate_ring_read` `parts= effects= node_rows=`, at most 8 node rows per first read (the `e_ring` drop).
+
+**Acceptance [m]**: `--lane` 5,761 / 0 (one new check: the effect-leaf units); `test_ship_trace_format` + `test_ctl_boundary_reads` OK
+(23 tests, `Run176DiagnosticsRows`); i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143 roots, 1,013 reachable, 0
+violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Cost (`ship-steering/run176-diag/cost.txt`,
+`qtct_bench.cpp`): `QueryThreadCycleTime` 248-252 ns per call on native Windows, six added reads about 1.5 us per handler call with the
+switches on [i]; off, about 17 instructions and no call (decide() 3,610 → 3,734 static instructions, the TU's out-of-line functions
+unchanged). Not installed; the split is read on the next `--debug` flight.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

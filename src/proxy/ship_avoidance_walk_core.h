@@ -372,7 +372,7 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
 // ---- The arrival round item 4: whether a gate's body carries a collision tree (convoy-gate-transit.md section 12.6) -------------------
 // The gate's root scene node [gate+0x70] (the station walk's layout, ship-navigation-ai.md section 10.9 "Collision-tree read": children
 // head [n+0xc], sentinel n+0x10 whose first dword is 0, sibling link [c], parent [c+0x18], scene id [c+0x258]) and the nodes below it
-// (depth <= kGateTreeDepth, at most kRadiusBudget nodes, a sibling chain at most kChildLimit): one with [c+0x12c] & 0x1000000 (the part
+// (depth <= kGateTreeDepth, at most kGateTreeBudget nodes, a sibling chain at most kChildLimit): one with [c+0x12c] & 0x1000000 (the part
 // builder's collision tree) and without 0x8000000 is the solid ("tree": the fail-closed side, no guard). "None" only under the positive
 // guard of section 10.9 (review of the arrival round item 1): the object is a gate (class 0x12) with a root and a scene id; every visited
 // child's [c+0x18] is its parent; every chain ends exactly at its parent's sentinel; a child at the depth limit has no children; the
@@ -384,6 +384,10 @@ constexpr std::uint32_t kNodeFlagTree = 0x1000000, kNodeSentinel = 0x10, kNodePa
 constexpr std::uint32_t kObjScene = 0x98; // [gate+0x98]: the TGates +0x44 scene id (0x00441686..0x004416a1)
 constexpr std::uint32_t kGateObjBytes = 0x100;
 constexpr unsigned kGateTreeDepth = 3;
+// Run176 diagnostics item 2: the gate read's own node budget (the station part walk keeps kRadiusBudget). Run176 measured gates whose depth-1
+// children alternate 1 <-> 33 at runtime, the extra 32 identical effect leaves (scene id 0, part index 0, body 0xc8, flags 0x5000); the
+// budget leaves room for that count to grow without exhausting the read into unknown (the ring). Effect nodes are counted apart.
+constexpr unsigned kGateTreeBudget = 256;
 // A user-mode pointer of a 32-bit process, 4-aligned, with span bytes readable in range: [0x10000, 0xFFFF0000) covers a large-address-aware
 // process on 64-bit Windows (X3AP.exe has IMAGE_FILE_LARGE_ADDRESS_AWARE); the range is a plausibility test, not a mapping test
 constexpr std::uint32_t kPtrLo = 0x10000u, kPtrHi = 0xffff0000u;
@@ -407,6 +411,7 @@ struct GateTreeRead {
     TreeWhy why = TreeWhy::ok; // the first guard that failed (ok: none or tree)
     std::uint8_t seen = 0;    // a visited node carried the gate's scene id
     std::uint16_t nodes = 0;  // nodes visited
+    std::uint16_t effects = 0; // of them effect nodes: scene id [c+0x258] 0 and part index [c+0x25c] 0 (Run176 diagnostics item 2)
     std::uint32_t scene = 0;  // [gate+0x98]
     GateTreeNode* out = nullptr; // (item 6: the node records, at most cap; nullptr: none)
     unsigned cap = 0;
@@ -436,10 +441,12 @@ inline int gate_tree_walk(Mem& mem, std::uint32_t n, unsigned depth, unsigned& b
             rd.why = TreeWhy::parent;
             return -1;
         }
-        if (mem.u32(c + kNodeSceneId) == rd.scene) rd.seen = 1;
+        const std::uint32_t sid = mem.u32(c + kNodeSceneId), part = mem.u32(c + kNodeSceneId + 4);
+        if (sid == rd.scene) rd.seen = 1;
+        if (!sid && !part) ++rd.effects;
         const std::uint32_t fl = mem.u32(c + kNodeFlags);
         if (rd.out && rd.nodes <= rd.cap) // (item 6: the record; the reads are plain loads inside the node's checked span)
-            rd.out[rd.nodes - 1] = GateTreeNode{mem.u32(c + kNodeSceneId), mem.u32(c + kNodeSceneId + 4), mem.u32(c + 0x140), fl, std::uint8_t(depth + 1)};
+            rd.out[rd.nodes - 1] = GateTreeNode{sid, part, mem.u32(c + 0x140), fl, std::uint8_t(depth + 1)};
         if ((fl & kNodeFlagTree) && !(fl & kNodeFlagNoTree)) return 1;
         if (depth + 1 < kGateTreeDepth) {
             const int r = gate_tree_walk(mem, c, depth + 1, budget, rd);
@@ -476,7 +483,7 @@ inline GateTreeRead gate_tree_read(Mem& mem, std::uint32_t gate, GateTreeNode* o
         rd.why = TreeWhy::scene;
         return rd;
     }
-    unsigned budget = kRadiusBudget;
+    unsigned budget = kGateTreeBudget;
     const int r = gate_tree_walk(mem, root, 0, budget, rd);
     if (r > 0) rd.state = 2;
     else if (r == 0) {

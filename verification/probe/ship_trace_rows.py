@@ -174,6 +174,14 @@ def by_ship(rows):
 #     the warn path: the node count before and after; the verdict stays the first one unless a tree appears; item 6)
 #   ship_steering_handler_slow frame= t_ms= site=A obj= leaf= order= us= cycles= snap_walk=0|1 snap_us= (--debug with timing: a handler
 #     call beyond 500 us: its QPC delta, its QueryThreadCycleTime delta, whether snapshot_for walked the sector and that walk's us; item 6)
+# Run176 diagnostics (convoy-gate-transit.md section 11 "Run176 diagnostics"):
+#   ship_steering_handler_slow ... cyc_dyn= cyc_find= cyc_avoid= cyc_gate= cyc_steer= cyc_ctl= cyc_tail= (thread cycles per decide() phase,
+#     0 not reached) prev_order= (the table entry's order before the call; 0xffff not reached) new_slot=0|1 (the entry had no previous call)
+#     snap_n= conflicts= (avoid_adjust's snapshot count and av::resolve's conflicts; -1 not reached; item 1)
+#   ship_steering_summary ... ctl_decide_cyc_max= ctl_decide_max_gate= ctl_decide_max_ship= ctl_decide_max_id= (the ctl_decide_us_max holder's
+#     thread cycles, its gate and member; item 1)
+#   ship_gate_ring_read ... parts= effects= (the visited nodes but the effect nodes; effect nodes: scene id 0 and part index 0)
+#     node_rows= (the ship_gate_ring_node rows queued for the read, its first 8 nodes at most; item 2)
 LEGACY_KV_ROWS = ('ship_gate_ctl_seq',)  # rows the DLL no longer prints (stage B's sequencer, deleted 2026-10-15); still parsed in old logs
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
            'ship_avoid_dock', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',

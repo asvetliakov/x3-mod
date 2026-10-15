@@ -373,15 +373,13 @@ inline void ring_read_row(std::uint32_t b, std::uint32_t id, const wk::GateTreeR
         return;
     }
     const std::uint32_t t = game_time_ms();
-    RingReadRow& r = ring_read_rows_[w & 7];
-    r = RingReadRow{t, b, id, rd.scene, rd16(b + sites::kObjType), rd.nodes, rd.state, std::uint8_t(rd.why), rd.seen,
-                    std::uint8_t(board ? 1 : 0)};
-    ring_read_write_.store(w + 1, std::memory_order_release);
-    // Run175 round item 6: the visited nodes' fields, once per gate with more than kRingNodeRowsMin nodes (the ring holds one read)
+    // Run175 round item 6: the visited nodes' fields, once per gate with more than kRingNodeRowsMin nodes; Run176 diagnostics item 2: the
+    // first kRingNodeRowsPerRead of them (rd.cap), their count on the read row (node_rows; nodes= and effects= give the rest)
+    unsigned queued = 0;
     if (rd.out && rd.nodes > kRingNodeRowsMin) {
         const unsigned n = rd.nodes < rd.cap ? rd.nodes : rd.cap;
         std::uint32_t wn = ring_node_write_.load(std::memory_order_relaxed);
-        for (unsigned i = 0; i < n; ++i, ++wn) {
+        for (unsigned i = 0; i < n; ++i, ++wn, ++queued) {
             if (wn - ring_node_read_ >= kRingNodeRows) {
                 row_dropped(Drop::e_ring);
                 break;
@@ -391,6 +389,10 @@ inline void ring_read_row(std::uint32_t b, std::uint32_t id, const wk::GateTreeR
         }
         ring_node_write_.store(wn, std::memory_order_release);
     }
+    RingReadRow& r = ring_read_rows_[w & 7];
+    r = RingReadRow{t, b, id, rd.scene, rd16(b + sites::kObjType), rd.nodes, rd.effects, rd.state, std::uint8_t(rd.why), rd.seen,
+                    std::uint8_t(board ? 1 : 0), std::uint8_t(queued)};
+    ring_read_write_.store(w + 1, std::memory_order_release);
 }
 // Run175 round item 6: a gate's tree re-read every kRingRereadMs + the step (on the warn path, the live gate pointer): the node count
 // before and after and a row; the verdict stays the first one unless a tree appears (then the ring: fail closed). Returns the state to keep.
@@ -416,8 +418,8 @@ inline std::uint8_t ring_reread(std::uint32_t b, std::uint32_t id, std::uint8_t 
 inline wk::GateTreeRead ring_first_read(std::uint32_t b, bool board, std::uint32_t id) noexcept { // (the node records under --debug)
     RawMem mem;
     if (!debug_) return wk::gate_tree_read(mem, b);
-    wk::GateTreeNode nodes[kRingNodeRows];
-    const wk::GateTreeRead rd = wk::gate_tree_read(mem, b, nodes, kRingNodeRows);
+    wk::GateTreeNode nodes[kRingNodeRowsPerRead];
+    const wk::GateTreeRead rd = wk::gate_tree_read(mem, b, nodes, kRingNodeRowsPerRead);
     ring_read_row(b, id, rd, board);
     return rd;
 }

@@ -1,0 +1,21 @@
+Run176 diagnostics item 1: the cost of the per-phase cycle reads (2026-10-15, on d88128e0 + the change; WSL2 host, native Windows)
+
+1. QueryThreadCycleTime per call, native Windows, i686 (qtct_bench.cpp beside this file; built with
+   i686-w64-mingw32-g++ -O2 -msse2 -mfpmath=sse -static, GCC 16, run from WSL2 interop, not Wine, not the game):
+   rep 0: QueryThreadCycleTime 248.4 ns/call, QueryPerformanceCounter 20.0 ns/call, 8 QTCT calls 12690 thread cycles
+   rep 1: QueryThreadCycleTime 248.9 ns/call, QueryPerformanceCounter 20.2 ns/call, 8 QTCT calls 12220 thread cycles
+   rep 2: QueryThreadCycleTime 252.3 ns/call, QueryPerformanceCounter 19.8 ns/call, 8 QTCT calls 10810 thread cycles
+   => with --debug timing on, a handler call adds 6 reads (the phase boundaries dyn, find, avoid, gate, steer, ctl; the entry read
+      and the slow call's end read existed before): 6 x ~250 ns = ~1.5 us per call (inferred from the per-call figure), under the 2 us
+      bound. Each read also lands ~1.4-1.6 k thread cycles inside the phase it closes (12-13 k / 8), negligible against the 18.8 M chunk.
+
+2. Off (no --debug or no timing): the i686 build's added work on the handler path, from
+   i686-w64-mingw32-objdump -d --no-show-raw-insn build/d3d9.dll | grep 70676c30   (hs_cyc_on_'s address from nm -C)
+   8 reads of hs_cyc_on_ (7 `cmpb $0x0`, 1 `movzbl`) each with a branch in decide() (the marks dyn, avoid, gate, steer, ctl; the find
+   block; avoid_adjust's snapshot-count guard, inlined), and 1 store (`movb $0x0,hs_cyc_on_`) after decide() in
+   x3m_ship_steering_enter: ~17 instructions, no call.
+   Static size (objdump -d of the decide TU, HEAD vs change, same compile command): decide() 3610 -> 3734 instructions,
+   x3m_ship_steering_enter 350 -> 431 (the debug-only branches and the row fill); the TU's 69 out-of-line functions unchanged (nm).
+
+3. ctl_decide_us_max holder: one QueryThreadCycleTime before each gc::decide only under --debug with timing (~250 ns per controller
+   decision), a second only when a new maximum is set.

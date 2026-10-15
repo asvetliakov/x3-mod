@@ -250,17 +250,18 @@ inline std::atomic<std::uint32_t> warn_pre_write_{0};
 inline std::uint32_t warn_pre_read_ = 0;
 struct RingReadRow { // review of the arrival round item 1 (--debug): ship_gate_ring_read, the gate's collision-tree read, once per gate
     std::uint32_t t_ms, gate, id, scene;
-    std::uint16_t type, nodes;
-    std::uint8_t state, why, seen, board;
+    std::uint16_t type, nodes, effects; // (effects: Run176 diagnostics item 2, the read's effect nodes; parts = nodes - effects)
+    std::uint8_t state, why, seen, board, node_rows; // (node_rows: the ship_gate_ring_node rows queued for this read)
 };
 inline RingReadRow ring_read_rows_[8];
 inline std::atomic<std::uint32_t> ring_read_write_{0};
 inline std::uint32_t ring_read_read_ = 0;
 // Run175 round item 6 (--debug): ship_gate_ring_node, one row per visited node of a gate's first read when it visited more than
-// kRingNodeRowsMin nodes (at most kRingNodeRows per read; the ring holds one read); ship_gate_ring_reread, a gate's re-read every
+// kRingNodeRowsMin nodes (Run176 diagnostics item 2: the first kRingNodeRowsPerRead nodes of a read, the ring holds kRingNodeRows / 8 reads;
+// before, a read queued every node and two 33-node first reads overran the 64-row ring); ship_gate_ring_reread, a gate's re-read every
 // kRingRereadMs + the step with the node count before and after; ship_steering_handler_slow, a handler call beyond kHandlerSlowUs (its
 // QPC and QueryThreadCycleTime deltas, whether snapshot_for walked the sector and that walk's ticks)
-constexpr unsigned kRingNodeRows = 64, kRingNodeRowsMin = 3;
+constexpr unsigned kRingNodeRows = 64, kRingNodeRowsMin = 3, kRingNodeRowsPerRead = 8;
 constexpr std::uint32_t kRingRereadMs = 60000;
 constexpr std::uint32_t kHandlerSlowUs = 500;
 struct RingNodeRow {
@@ -279,11 +280,20 @@ struct RingRereadRow {
 inline RingRereadRow ring_reread_rows_[8];
 inline std::atomic<std::uint32_t> ring_reread_write_{0};
 inline std::uint32_t ring_reread_read_ = 0;
+// Run176 diagnostics item 1: decide()'s phases, each the thread cycles from the previous boundary to its end (0: the call returned before it):
+// dyn (the entry checks and read_dynamics), find (the inputs and table_.find_or_insert), avoid (avoid_adjust: av::resolve and a sector walk),
+// gate (the gate frame and gate_decide), steer (the arrival parameters, the lane's sb_steer, core::steer and the write), ctl (the traffic
+// controller block: ctl_escort, the cap), tail (the stuck witness, the trace and sample blocks, the counters)
+enum class HsPhase : unsigned { dyn, find, avoid, gate, steer, ctl, count };
 struct HandlerSlowRow {
     std::uint32_t t_ms, obj, us, snap_us;
     std::uint64_t cycles;
     std::uint16_t order;
     std::uint8_t leaf, snap_walk;
+    std::uint64_t phase[unsigned(HsPhase::count) + 1]; // (the last: tail)
+    std::uint16_t prev_order; // the table entry's order before this call (s->order; 0xffff: not reached)
+    std::uint8_t new_slot;    // the entry had no previous call (s->last_call_ms == 0; 0xff: not reached)
+    std::uint16_t snap_n, conflicts; // avoid_adjust's snapshot count and av::resolve's conflicts (0xffff: not reached)
 };
 inline HandlerSlowRow handler_slow_rows_[8];
 inline std::atomic<std::uint32_t> handler_slow_write_{0};
@@ -500,6 +510,12 @@ inline std::int32_t call_ecx(std::uintptr_t fn, std::uint32_t obj) noexcept {
 inline std::uint64_t qpc() noexcept {
     LARGE_INTEGER v{};
     return QueryPerformanceCounter(&v) ? std::uint64_t(v.QuadPart) : 0;
+}
+// Run176 diagnostics item 1 (--debug with timing only): the calling thread's cycle count (QueryThreadCycleTime: documented Win32, kernel32;
+// the pseudo-handle never fails, a failure reads 0). The callers sit inside a hook's Envelope or on the frame path, as qpc() does.
+inline std::uint64_t thread_cycles() noexcept {
+    ULONG64 c = 0;
+    return QueryThreadCycleTime(GetCurrentThread(), &c) ? std::uint64_t(c) : 0;
 }
 // The light envelope plus the default MXCSR control bits for the SSE
 // arithmetic (the game runs x87 code; an unusual MXCSR would only come from

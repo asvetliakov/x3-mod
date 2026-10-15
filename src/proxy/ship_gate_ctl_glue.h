@@ -17,6 +17,17 @@ inline gc::Index ctl_ix_;      // member ships (every board, every role but none
 inline gc::Arrivals arrivals_; // every launch at a gate within 60 s (the arrival-gate row; capital arrivals for the small-ship row)
 inline gc::Index arr_ix_;      // their ships (rebuilt once per second)
 inline std::uint32_t ctl_decide_max_ticks_ = 0, ctl_frame_max_ticks_ = 0, ctl_arrival_max_ticks_ = 0;
+// Run176 diagnostics item 1 (--debug with timing): the ctl_decide_us_max holder's thread cycles (0: not read) and its gate and member
+inline std::uint64_t ctl_decide_max_cycles_ = 0;
+inline std::uint32_t ctl_decide_max_gate_ = 0, ctl_decide_max_ship_ = 0, ctl_decide_max_id_ = 0;
+inline void ctl_decide_max_note(std::uint32_t ticks, std::uint64_t cyc0, const gc::Gate& g, unsigned i) noexcept {
+    ctl_decide_max_ticks_ = ticks;
+    const std::uint64_t cyc1 = cyc0 ? thread_cycles() : 0;
+    ctl_decide_max_cycles_ = cyc1 > cyc0 ? cyc1 - cyc0 : 0;
+    ctl_decide_max_gate_ = g.gate;
+    ctl_decide_max_ship_ = g.m[i].ship;
+    ctl_decide_max_id_ = g.m[i].id;
+}
 inline unsigned ctl_frame_max_decisions_ = 0;
 inline Counter ctl_decisions_, ctl_rollouts_, ctl_sweeps_, ctl_narrow_, ctl_conflicts_, ctl_yields_, ctl_unresolved_, ctl_released_;
 inline Counter ctl_entered_, ctl_left_, ctl_evicted_, ctl_capped_, ctl_deferred_;

@@ -11,6 +11,16 @@ std::uint32_t hs_obj_ = 0;
 std::uint16_t hs_order_ = 0;
 std::uint8_t hs_snap_walk_ = 0;
 std::uint64_t hs_snap_ticks_ = 0;
+// Run176 diagnostics item 1 (--debug with timing): the thread cycle count at the end of each decide() phase (HsPhase; 0 not reached), one
+// QueryThreadCycleTime per boundary, read only while hs_cyc_on_; the table entry's previous order and newness; avoid_adjust's snapshot
+// count and conflicts. Printed on a slow call only (ship_steering_handler_slow).
+bool hs_cyc_on_ = false;
+std::uint64_t hs_cyc_[unsigned(HsPhase::count)];
+std::uint16_t hs_prev_order_ = 0xffff, hs_snap_n_ = 0xffff, hs_conflicts_ = 0xffff;
+std::uint8_t hs_new_slot_ = 0xff;
+__attribute__((always_inline)) inline void hs_mark(HsPhase p) noexcept {
+    if (hs_cyc_on_) hs_cyc_[unsigned(p)] = thread_cycles();
+}
 inline void record_time(std::uint64_t ticks) noexcept {
     const std::uint32_t t = ticks > 0xffffffffull ? 0xffffffffu : std::uint32_t(ticks);
     const unsigned bucket = t ? 31u - unsigned(__builtin_clz(t)) : 0u;
@@ -169,6 +179,10 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     state.obj = obj;
     const bool was_unresolved = state.unresolved;
     const av::Result r = av::resolve(*snap, part_cache_.sets, part_cache_.count, self, P, state, now);
+    if (hs_cyc_on_) { // (Run176 diagnostics item 1)
+        hs_snap_n_ = std::uint16_t(snap->count);
+        hs_conflicts_ = std::uint16_t(r.conflicts);
+    }
     if (r.conflicts) av_conflicts_.add(r.conflicts);
     if (r.unresolved) {
         av_unresolved_.add();
@@ -708,6 +722,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     if (rot_pct <= 0) return core::Reason::no_angular_accel;
     core::Dynamics dyn;
     read_dynamics(obj, fl, rot_pct, code, dyn);
+    hs_mark(HsPhase::dyn);
     const bool capital = code < core::kClassCount && ((core::kCapitalMask >> code) & 1u); // 0x0043fd50 (class 7 checked above)
     core::Inputs in;
     for (unsigned i = 0; i < 3; ++i) in.x[i] = float(rds32(ph + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
@@ -731,6 +746,11 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     const std::uint32_t now = game_time_ms();
     core::Ship* s = table_.find_or_insert(obj, now);
     if (!s) return core::Reason::table_full;
+    if (hs_cyc_on_) {
+        hs_mark(HsPhase::find);
+        hs_prev_order_ = s->order;
+        hs_new_slot_ = s->last_call_ms == 0 ? 1 : 0;
+    }
     const unsigned slot = unsigned(s - table_.entries);
     // The servo budget (core::servo_tick): the measured interval since this ship's previous call for an order that
     // calls the leaf every frame, 50 ms for a gated one (Run151: per-frame orders carried a 50 ms rate surplus).
@@ -759,6 +779,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         }
     } else if (adjusted != point)
         redirect_target(f, adjusted);
+    hs_mark(HsPhase::avoid);
     // Step 3, P1: a non-capital ship on order 4 to a gate is steered along the lead-in line (core::gate_lead_in) with
     // no arrival ramp and the module's approach speed; the engine's point A in f+0x240 is never written. The gate
     // frame is read from the target's phys block; a layout other than the pinned one keeps the vanilla point.
@@ -815,6 +836,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         gate_decide(f, obj, player, fl, order, code, dyn, capital, in, now, s, slot, v_emergency_bits, order_point, gate_approach,
                     gate_lead, gate_dock, gs, gate_tgt, gph, G, row0, row1, row2, r_gate, capital_policy, capital_window, capital_fb_write,
                     capital_detour, capital_fb_v, lane_ours);
+    hs_mark(HsPhase::gate);
     // Arrival parameters (section 2.5).
     float dock_w_new[3] = {0.0f, 0.0f, 0.0f}; // amendment 18: order 4 to a moving container; written with the decision (review 7)
     in.arrival_ramp = policy.arrival_ramp && !gate_approach;
@@ -972,6 +994,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     // The gate traffic controller (D.1, stage A): an escort enters on 0x14 / 0x15 behind a committed leader; a member records the
     // module's own speed of this decision before any yield cap (its rollout's plan speed), then the yield cap of its last controller
     // decision is in force at site B (ln::apply_cap: lowering only; the cap is >= 10 m/s by construction).
+    hs_mark(HsPhase::steer);
     if (traffic_on_ && capital && !player) {
         if (order == core::kOrderEscort || order == core::kOrderFollow) {
             const std::uint32_t leader = rd32(fl + sites::kFlightTarget);
@@ -987,6 +1010,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
             }
         }
     }
+    hs_mark(HsPhase::ctl);
     s->last_call_ms = now;
     if (order == core::kOrderMovePos) {
         if (core::stuck_update(*s, cmd.d_order, now)) {
@@ -1094,9 +1118,15 @@ extern "C" int __cdecl x3m_ship_steering_enter(sites::Frame* frame, int leaf) {
         hs_order_ = 0;
         hs_snap_walk_ = 0;
         hs_snap_ticks_ = 0;
+        // Run176 diagnostics item 1: the phase boundaries (hs_mark) read only with a good first read
+        hs_cyc_on_ = cyc_ok;
+        for (unsigned i = 0; i < unsigned(HsPhase::count); ++i) hs_cyc_[i] = 0;
+        hs_prev_order_ = hs_snap_n_ = hs_conflicts_ = 0xffff;
+        hs_new_slot_ = 0xff;
     }
     const std::uint64_t t0 = timing_ ? qpc() : 0;
     const core::Reason r = decide(frame, unsigned(leaf) < 3 ? unsigned(leaf) : 0u);
+    hs_cyc_on_ = false;
     calls_.add();
     leaf_calls_[unsigned(leaf) < 3 ? unsigned(leaf) : 0u].add();
     if (r == core::Reason::handled)
@@ -1111,9 +1141,20 @@ extern "C" int __cdecl x3m_ship_steering_enter(sites::Frame* frame, int leaf) {
             const bool ok1 = cyc_ok && QueryThreadCycleTime(GetCurrentThread(), &cyc1) != 0;
             const std::uint32_t w = handler_slow_write_.load(std::memory_order_relaxed);
             if (w - handler_slow_read_ < 8) {
-                handler_slow_rows_[w & 7] = HandlerSlowRow{game_time_ms(), hs_obj_, std::uint32_t(dt * 1000000ull / qpc_frequency_),
-                                                           std::uint32_t(hs_snap_ticks_ * 1000000ull / qpc_frequency_), ok1 ? std::uint64_t(cyc1 - cyc0) : 0ull,
-                                                           hs_order_, std::uint8_t(unsigned(leaf) < 3 ? unsigned(leaf) : 0u), hs_snap_walk_};
+                HandlerSlowRow& hr = handler_slow_rows_[w & 7];
+                hr = HandlerSlowRow{game_time_ms(), hs_obj_, std::uint32_t(dt * 1000000ull / qpc_frequency_),
+                                    std::uint32_t(hs_snap_ticks_ * 1000000ull / qpc_frequency_), ok1 ? std::uint64_t(cyc1 - cyc0) : 0ull,
+                                    hs_order_, std::uint8_t(unsigned(leaf) < 3 ? unsigned(leaf) : 0u), hs_snap_walk_, {},
+                                    hs_prev_order_, hs_new_slot_, hs_snap_n_, hs_conflicts_};
+                // Run176 diagnostics item 1: each reached phase from the previous reached boundary (the first from cyc0); the tail from
+                // the last reached boundary to cyc1 (0 when the cycle reads failed)
+                std::uint64_t prev = cyc0;
+                for (unsigned i = 0; i < unsigned(HsPhase::count); ++i)
+                    if (ok1 && hs_cyc_[i] >= prev && hs_cyc_[i]) {
+                        hr.phase[i] = hs_cyc_[i] - prev;
+                        prev = hs_cyc_[i];
+                    }
+                hr.phase[unsigned(HsPhase::count)] = ok1 && cyc1 >= prev ? std::uint64_t(cyc1 - prev) : 0ull;
                 handler_slow_write_.store(w + 1, std::memory_order_release);
             }
         }

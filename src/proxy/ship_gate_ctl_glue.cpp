@@ -354,12 +354,13 @@ extern "C" void __cdecl x3m_ship_gate_arrival(std::uint32_t obj, std::uint32_t g
             // or handed back, never without a rollout (cause=zero: measured at a SETA step in the fixture's arrival_pass, the leader's
             // eviction 0.4 s after the launch). One rollout and up to 23 sweeps once per capital launch
             gc::DecideStats ds;
+            const std::uint64_t cd = timing_ && debug_ ? thread_cycles() : 0; // (Run176 diagnostics item 1)
             const std::uint64_t td = timing_ || ctl_ceiling_ticks_ ? qpc() : 0;
             gc::decide(*g, unsigned(m - g->m), now, &ds, nullptr, nullptr);
             if (td) { // review of rounds A-C item 8: the decision's time in ctl_decide_max and charged to the next frame (ctl_frame)
                 const std::uint64_t dt = qpc() - td;
                 const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
-                if (timing_ && ticks > ctl_decide_max_ticks_) ctl_decide_max_ticks_ = ticks;
+                if (timing_ && ticks > ctl_decide_max_ticks_) ctl_decide_max_note(ticks, cd, *g, unsigned(m - g->m));
                 launch_pend_ticks_ += dt;
             }
             ++launch_pend_decisions_;
@@ -615,13 +616,14 @@ void ctl_frame() noexcept {
         const unsigned k = order[q];
         gc::Gate& g = ctl_.g[k / gc::kMembers];
         const unsigned i = k % gc::kMembers;
+        const std::uint64_t cd = timing_ && debug_ ? thread_cycles() : 0; // (Run176 diagnostics item 1)
         const std::uint64_t td = timing_ ? qpc() : 0;
         gc::DecideStats st;
         gc::decide(g, i, now, &st, nullptr, nullptr);
         if (timing_) {
             const std::uint64_t dt = qpc() - td;
             const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
-            if (ticks > ctl_decide_max_ticks_) ctl_decide_max_ticks_ = ticks;
+            if (ticks > ctl_decide_max_ticks_) ctl_decide_max_note(ticks, cd, g, i);
         }
         ctl_decisions_.add();
         rollouts += st.rollouts;

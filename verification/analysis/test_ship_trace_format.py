@@ -378,6 +378,39 @@ class Run175RoundRows(unittest.TestCase):
         self.assertEqual(len(st.parse_kv_rows(RUN175_ROWS)), 7)
 
 
+# Run176 diagnostics (convoy-gate-transit.md section 11 "Run176 diagnostics"), copied from the DLL's formats with synthetic values.
+RUN176_ROWS = [
+    'ship_steering_handler_slow frame=31626 t_ms=23500000 site=A obj=0x9127ebb8 leaf=0 order=0x4 us=4375 cycles=18800000 snap_walk=0 snap_us=0 '
+    'cyc_dyn=12000 cyc_find=3000 cyc_avoid=40000 cyc_gate=18700000 cyc_steer=30000 cyc_ctl=2000 cyc_tail=13000 prev_order=0x0 new_slot=1 '
+    'snap_n=57 conflicts=0',
+    'ship_steering_handler_slow frame=31627 t_ms=23500050 site=A obj=0x9127ebb8 leaf=0 order=0x12 us=610 cycles=0 snap_walk=0 snap_us=0 '
+    'cyc_dyn=0 cyc_find=0 cyc_avoid=0 cyc_gate=0 cyc_steer=0 cyc_ctl=0 cyc_tail=0 prev_order=0xffff new_slot=-1 snap_n=-1 conflicts=-1',
+    'ship_gate_ring_read frame=847 t_ms=22669000 gate=0x90a1c340 id=24209 type=2 board=1 state=none why=ok nodes=33 scene=50252 seen=1 '
+    'verdict=none parts=1 effects=32 node_rows=8',
+]
+
+
+class Run176DiagnosticsRows(unittest.TestCase):
+    def test_handler_phases_and_ring_counts(self):
+        a, b = st.parse_kv_rows(RUN176_ROWS, 'ship_steering_handler_slow')
+        phases = ('cyc_dyn', 'cyc_find', 'cyc_avoid', 'cyc_gate', 'cyc_steer', 'cyc_ctl', 'cyc_tail')
+        self.assertEqual(sum(a[k] for k in phases), a['cycles'])  # the phases cover the call
+        self.assertEqual((a['prev_order'], a['new_slot'], a['snap_n'], a['conflicts']), (0, 1, 57, 0))
+        self.assertEqual((b['prev_order'], b['new_slot'], b['snap_n'], b['conflicts'], b['cyc_gate']), (0xffff, -1, -1, -1, 0))
+        r = st.parse_kv_rows(RUN176_ROWS, 'ship_gate_ring_read')[0]
+        self.assertEqual((r['nodes'], r['parts'], r['effects'], r['node_rows'], r['verdict']), (33, 1, 32, 8, 'none'))
+        root = Path(__file__).resolve().parents[2] / 'src/proxy'
+        rows = (root / 'ship_steering_rows.cpp').read_text()
+        self.assertIn('"cyc_dyn=%llu cyc_find=%llu cyc_avoid=%llu cyc_gate=%llu cyc_steer=%llu cyc_ctl=%llu cyc_tail=%llu prev_order=0x%x new_slot=%d "\n'
+                      '                "snap_n=%d conflicts=%d"', rows)
+        self.assertIn('"parts=%u effects=%u node_rows=%u"', rows)
+        self.assertIn('ctl_decide_cyc_max=%llu ctl_decide_max_gate=0x%08lx ctl_decide_max_ship=0x%08lx ctl_decide_max_id=%lu', rows)
+        walk = (root / 'ship_avoidance_walk_core.h').read_text()
+        self.assertIn('constexpr unsigned kGateTreeBudget = 256;', walk)
+        self.assertIn('unsigned budget = kGateTreeBudget;', walk)
+        self.assertIn('kRingNodeRowsPerRead = 8', (root / 'ship_steering_internal.h').read_text())
+
+
 class ArrivalRoundRows(unittest.TestCase):
     def test_ring_row_and_player_rows(self):
         s = st.parse_kv_rows(ARRIVAL_ROWS, 'ship_steering_lane_summary')[0]

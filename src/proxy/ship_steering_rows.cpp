@@ -173,11 +173,14 @@ void frame_boundary(std::uint64_t frame) {
         for (std::uint32_t w = ring_read_write_.load(std::memory_order_acquire); ring_read_read_ != w; ++ring_read_read_) {
             static const char* const kState[3] = {"unknown", "none", "tree"};
             const RingReadRow& r = ring_read_rows_[ring_read_read_ & 7];
-            log("ship_gate_ring_read frame=%llu t_ms=%lu gate=0x%08lx id=%lu type=%u board=%u state=%s why=%s nodes=%u scene=%lu seen=%u verdict=%s",
+            // (Run176 diagnostics item 2: parts= the visited nodes but the effect nodes, effects= scene id 0 and part index 0, node_rows=
+            // the ship_gate_ring_node rows of this read, at most 8)
+            log("ship_gate_ring_read frame=%llu t_ms=%lu gate=0x%08lx id=%lu type=%u board=%u state=%s why=%s nodes=%u scene=%lu seen=%u verdict=%s "
+                "parts=%u effects=%u node_rows=%u",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate),
                 static_cast<unsigned long>(r.id), unsigned(r.type), unsigned(r.board), kState[r.state < 3 ? r.state : 0],
                 wk::tree_why_name(wk::TreeWhy(r.why)), unsigned(r.nodes), static_cast<unsigned long>(r.scene), unsigned(r.seen),
-                r.state == 1 ? "none" : "ring");
+                r.state == 1 ? "none" : "ring", unsigned(r.nodes - r.effects), unsigned(r.effects), unsigned(r.node_rows));
         }
         // Run175 round item 6: the visited nodes of a gate's first read (more than 3 nodes), the 60 s re-reads, the slow handler calls
         for (std::uint32_t w = ring_node_write_.load(std::memory_order_acquire); ring_node_read_ != w; ++ring_node_read_) {
@@ -197,10 +200,19 @@ void frame_boundary(std::uint64_t frame) {
         }
         for (std::uint32_t w = handler_slow_write_.load(std::memory_order_acquire); handler_slow_read_ != w; ++handler_slow_read_) {
             const HandlerSlowRow& r = handler_slow_rows_[handler_slow_read_ & 7];
-            log("ship_steering_handler_slow frame=%llu t_ms=%lu site=A obj=0x%08lx leaf=%u order=0x%x us=%lu cycles=%llu snap_walk=%u snap_us=%lu",
+            // Run176 diagnostics item 1: the cycles per decide() phase (HsPhase, then the tail), the entry's previous order and newness
+            // (prev_order=0xffff / new_slot=-1: not reached), avoid_adjust's snapshot count and conflicts (-1: not reached)
+            const auto opt = [](unsigned v, unsigned none) { return v == none ? -1 : int(v); };
+            log("ship_steering_handler_slow frame=%llu t_ms=%lu site=A obj=0x%08lx leaf=%u order=0x%x us=%lu cycles=%llu snap_walk=%u snap_us=%lu "
+                "cyc_dyn=%llu cyc_find=%llu cyc_avoid=%llu cyc_gate=%llu cyc_steer=%llu cyc_ctl=%llu cyc_tail=%llu prev_order=0x%x new_slot=%d "
+                "snap_n=%d conflicts=%d",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj), unsigned(r.leaf),
                 unsigned(r.order), static_cast<unsigned long>(r.us), static_cast<unsigned long long>(r.cycles), unsigned(r.snap_walk),
-                static_cast<unsigned long>(r.snap_us));
+                static_cast<unsigned long>(r.snap_us), static_cast<unsigned long long>(r.phase[0]), static_cast<unsigned long long>(r.phase[1]),
+                static_cast<unsigned long long>(r.phase[2]), static_cast<unsigned long long>(r.phase[3]),
+                static_cast<unsigned long long>(r.phase[4]), static_cast<unsigned long long>(r.phase[5]),
+                static_cast<unsigned long long>(r.phase[6]), unsigned(r.prev_order), opt(r.new_slot, 0xff), opt(r.snap_n, 0xffff),
+                opt(r.conflicts, 0xffff));
         }
         for (std::uint32_t w = width_census_write_.load(std::memory_order_acquire); width_census_read_ != w; ++width_census_read_) {
             const WidthCensus& c = width_census_[width_census_read_ & 7];
@@ -519,7 +531,7 @@ void frame_boundary(std::uint64_t frame) {
                           "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_sb_steered=%lu "
                           "ctl_p2_zeroed=%lu small_b_rewrites=%lu ctl_sb_us_max=%.1f e_pass_ctl_why=%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu e_gate_small_gap=%lu "
                           "ctl_misc=%lu,%lu ctl_small=%lu,%lu,%lu ctl_prof=%lu,%lu,%lu ctl_prof_us_max=%.1f ctl_evict_ignored_gate=%lu ctl_budget_cut=%lu ctl_live=%lu,%lu,%lu,%lu,%lu,%lu "
-                          "ctl_live_us_max=%.1f",
+                          "ctl_live_us_max=%.1f ctl_decide_cyc_max=%llu ctl_decide_max_gate=0x%08lx ctl_decide_max_ship=0x%08lx ctl_decide_max_id=%lu",
                           traffic_state_, members, static_cast<unsigned long>(ctl_decisions_.get()), static_cast<unsigned long>(ctl_rollouts_.get()),
                           static_cast<unsigned long>(ctl_sweeps_.get()), static_cast<unsigned long>(ctl_narrow_.get()),
                           static_cast<unsigned long>(ctl_conflicts_.get()), static_cast<unsigned long>(ctl_yields_.get()),
@@ -557,7 +569,10 @@ void frame_boundary(std::uint64_t frame) {
                           static_cast<unsigned long>(ctl_live_gone_.get()), static_cast<unsigned long>(ctl_live_launch_.get()),
                           static_cast<unsigned long>(ctl_sector_resets_.get()), static_cast<unsigned long>(ctl_sector_dropped_.get()),
                           static_cast<unsigned long>(ctl_unproven_.get()), static_cast<unsigned long>(ctl_live_overflow_.get()),
-                          ticks_us(ctl_live_max_ticks_));
+                          ticks_us(ctl_live_max_ticks_),
+                          // Run176 diagnostics item 1: the ctl_decide_us_max holder (--debug with timing): its thread cycles, gate, member
+                          static_cast<unsigned long long>(ctl_decide_max_cycles_), static_cast<unsigned long>(ctl_decide_max_gate_),
+                          static_cast<unsigned long>(ctl_decide_max_ship_), static_cast<unsigned long>(ctl_decide_max_id_));
             ctl_sb_max_ticks_ = 0; // B.2 item 5: ctl_sb_us_max is the summary interval's maximum (the other maxima stay session-lifetime)
         }
     }

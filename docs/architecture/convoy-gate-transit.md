@@ -1760,6 +1760,28 @@ a first "none" falls to the ring (fail closed); a "none" never lifts a first tre
 
 **Acceptance [m]** (host x86-64, `c++ -std=c++17 -O2 -Wall -Wextra -Werror`; `lane.txt`, re-taken after the review fixes): `--lane` 5,760 / 0, full 13,107 / 0, `--capital` 7,485 / 0 (a01815d4: 4,961 / 12,308 / 6,686; the new casts, checks and units); `test_ship_trace_format` (18, with `Run175RoundRows`), `test_ctl_boundary_reads`, `test_ship_steering` OK alone (the host-timing bench check fails under the load of a concurrent build); i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143 roots, 1,013 reachable, 0 violations; `kc_size_m` always_inline), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Bench24 alternating a01815d4 and the tree three times (`bench.txt`): tf 1 mean 9.2-10.1 against 9.2-9.8 us, tf 10 mean 98-117.3 against 100.3-110.5 us (third-worst frames 298-2202 against 308-518 us: host timing, noisy). The `return_pass` lane line's `esc_past_dend` counts the escorts 45 km beside the gate at s -3 / -5 km (a metric along F); not a reserve question. Not installed; i686 cost not measured.
 
+### Run176 diagnostics (2026-10-15, Opus 5.5; for the Run176 cost triage, `verification/results/ship-steering/run176-triage/cost_*.txt`)
+
+Two diagnostic changes, no steering change. (1) Under `--debug` with timing, `x3m_ship_steering_enter` reads the thread cycle counter
+(`QueryThreadCycleTime`, documented kernel32, inside the hook's Envelope) at six boundaries of `decide()` besides its entry: `dyn` (the
+entry checks and `read_dynamics`), `find` (the inputs and `table_.find_or_insert`), `avoid` (`avoid_adjust`: `av::resolve` and any sector
+walk), `gate` (the gate frame and `gate_decide`), `steer` (the arrival parameters, the lane's `sb_steer`, `core::steer`, the write), `ctl`
+(the traffic controller block: `ctl_escort`, the cap), and `tail` to the end. `ship_steering_handler_slow` (> 500 us) carries them as
+`cyc_dyn= cyc_find= cyc_avoid= cyc_gate= cyc_steer= cyc_ctl= cyc_tail=` (a phase the call returned before reads 0; the phases sum to
+`cycles=`), with `prev_order=` (the table entry's order before the call), `new_slot=` (`s->last_call_ms == 0`: the ship's first steered
+call since its entry was taken) and `snap_n= conflicts=` (the snapshot avoid_adjust resolved against). The summary's
+`ctl_decide_us_max` gets its holder: `ctl_decide_cyc_max= ctl_decide_max_gate= ctl_decide_max_ship= ctl_decide_max_id=` (cycles read
+around each `gc::decide` under the same switches, so a 4.6 ms maximum shows whether it ran or was preempted). Cost [m]
+(`verification/results/ship-steering/run176-diag/cost.txt`): `QueryThreadCycleTime` 248-252 ns per call natively (i686, the WSL2 host's
+Windows), so about 1.5 us per handler call with the switches on [i]; off, about 17 instructions (8 tests of one byte, one store) and no
+call. (2) The gate tree read has its own node budget, `wk::kGateTreeBudget` 256 (the station part walk keeps `kRadiusBudget` 64), so
+the Run176 gates whose depth-1 effect leaves alternate 1 ↔ 33 (scene id 0, part index 0, body 0xc8, flags 0x5000) cannot exhaust the
+read into unknown, which fails closed to the ring. `ship_gate_ring_read` adds `parts= effects=` (effect = `[c+0x258]` 0 and `[c+0x25c]`
+0) and `node_rows=`: a first read queues its first 8 node rows only (`kRingNodeRowsPerRead`), so two 33-node reads no longer overrun
+the 64-row ring (the Run176 `e_ring` drop). The verdict rule is unchanged: none only under the §10.9 positive guard, a tree flag on
+any visited node is a tree. Fixture units (`arrival_round_units`): 40 and 200 effect leaves beside the scene part read none (41 / 201
+nodes, 40 / 200 effects), a tree flag on one effect leaf reads tree, 257 parts exhaust the budget at 256.
+
 ### Open
 * (Run175 round) **A body's pair fails closed.** A member the lane does not own (outside the join funnel, its width unread, on an
   unrewritten script point) is swept but never yielded for: a conflict with it is handed back and the engine's warn stands (the module's
