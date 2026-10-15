@@ -90,3 +90,14 @@ worktree agent-a33727fb5cfd876aa: §10.14 model corrections, the 0x12 flight, st
 arrival hull). Decision: Run174 stays installed for the user's flight; the deletion/split build becomes Run175 only after Run174 is
 flown (lane-on identical; a second DLL before the flight would confound the triage). Open after these: rank 4 (one gap law, no-write
 hand-over), behind_start (a commit from behind the gate plane), the parked cast's 30 s horizon, the arrival fan.
+
+Later the same day (main, in order): the source split merged (`358c0f06`; the DLL's lane default 1), a Run175 candidate gated from
+it (`b8695eb1`, not installed); the fixture engine paths merged (`305aa2b6`: the §10.14 warn model, the flown 0x12, statics on Λ, small
+ships at the gate, the arrival hull; nine casts parked); §12 design (Fable) ratified (`71b1536d`); round A (one gap law + band,
+one yield candidate, no-write hand-over, the arrival pair: `fd3f67d1`), round B (small ships, the lateral profile with the shift
+off, the enclosing-fallback rule: `d2871285`), the x87 fix (`c6b4a88b`), round C (the loop-back join after a flown 0x12:
+`e7a7120c`). Still parked: arrival_parked (the fan), lane_station, lane_belt, behind_start. In flight: the review-fix round for
+rounds A–C (worktree agent-a8149e66014f6f765; Opus + Fable findings: the arrival's a_lin at the launch hook, the arrival stop's
+bound in the rollout, the small-ship hold inside a warn zone and at its bound's end, the enclosing-fallback size rule, rows for
+the launch hook's first decision and the loop, §11 parked numbers on the final tree). Then: rebuild the Run175 candidate from
+the result, gate it, and install it only after the user's Run174 flight is triaged (or if the user asks for the newest build).
