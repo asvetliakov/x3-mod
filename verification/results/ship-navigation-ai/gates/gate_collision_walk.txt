@@ -1,0 +1,183 @@
+Gate collision walk (owning note: docs/reverse-engineering/ship-navigation-ai.md section 10.9)
+EXE /mnt/c/X3/X3AP.exe sha256 fdbf3418d8f0a897
+  ok   0x0048a92f f7 c1 00 00 00 01                        narrow phase: node A has a collision tree
+  ok   0x0048a94c f7 c1 00 00 00 08                        narrow phase: node A not 0x8000000
+  ok   0x0044126d 0f bf 44 24 10                           object create (generic class branch, incl. 0x12): root body id = type row column 0
+  ok   0x00441276 e8 b5 6b 04 00                           ... call 0x00487e30 (set body on the new root node)
+  ok   0x0044127e 53 51 e8 0b d9 03 00                     ... push 0, push root; call 0x0047eb90 (collision tree from LOD 0)
+  ok   0x0047eb9b 8b 87 40 01 00 00                        tree build: body id [+0x140] (< 0 or unloadable -> no tree)
+  ok   0x0047ebd8 f7 87 2c 01 00 00 00 00 00 08            tree build: node 0x8000000 -> no tree
+  ok   0x0047ebed 83 f8 ff                                 tree build: body slot [+4] == -1 -> no tree
+  ok   0x0047ec95 f6 46 60 a0                              tree build: part flags & 0xa0 -> part skipped
+  ok   0x0047ecb4 f6 40 0c 01                              tree build: group [+0xc] & 1 -> group skipped
+  ok   0x00482adb a9 86 04 00 00                           binary body: material flags & 0x486 -> group [+0xc] = 1
+  ok   0x0048586b f6 42 50 10                              text body: model +0x50 & 0x10 (per-body materials) ? file material : Materials row
+  ok   0x00485886 a1 b0 8d 60 00                           text body: Materials table 0x00608db0 ...
+  ok   0x0048588b 8b 44 90 10                              ... row flags +0x10 (row stride 0x3c)
+  ok   0x0048588f a9 86 04 00 00                           ... & 0x486
+  ok   0x00485896 c7 43 0c 01 00 00 00                     ... -> group [+0xc] = 1 (not colliding)
+  ok   0x004f72c3 66 3b 54 2e 0c                           MATERIAL3 match 0x004f71f0: only rows whose texture id +0x0c equals the record texture
+  ok   0x0046fb06 89 74 8a 14                              types/BodyDummies (0x0046f9c0): listed body -> slot +0x14 = 1
+  ok   0x0048411c e8 1f 9f fe ff 85 c0 74 04 83 4f 50 40   body load: slot +0x14 (0x0046e040) -> model +0x50 |= 0x40
+  ok   0x00487eea 81 8e 2c 01 00 00 00 00 10 08            body set: model +0x50 & 0x40 -> node 0x8100000 (no collision)
+  ok   0x0043d0f3 3d ac 03 00 00                           scene build 0x0043ce30: root body 0x3ac (or -1) -> 0x8000000; nothing else
+
+==== stock view: TGates from addon/01.cat (sha 64ce4c764b74), 25 rows
+  types/BodyDummies (addon/01.cat): ['ships\\props\\cameradummy']
+
+-- rows 0,1,2,3 (SS_WG_EAST/SS_WG_NORTH/SS_WG_SOUTH/SS_WG_WEST)  root body col0 = 0  scene others\argon_gate_scene  r = 681001 units = 1362.0 m
+   scene members: 01.cat:argon_gate_scene.pbd; engine winner 01.cat:argon_gate_scene.pbd
+   part 0 body others\argon_gate offset (209, -2632, 2136)
+      WIN TREE      01.cat:argon_gate.pbb  BOB1 5 LOD  LOD0 value 678369, collision LOD 4, 1240 tris, mats 0:effect blend=0 atest=0:in 2:effect blend=0 atest=0:in 3:effect blend=0 atest=0:in 4:effect blend=0 atest=0:in 7:effect blend=0 atest=0:in 8:effect blend=0 atest=0:in 9:effect blend=0 atest=0:in 10:effect blend=0 atest=0:in 12:effect blend=0 atest=0:in 13:effect blend=0 atest=0:in 14:effect blend=0 atest=0:in 15:effect blend=0 atest=0:in; collision hole 824 m outer 1357 m z -883..+892 m; visual hole 823 m outer 1357 m z -883..+892 m
+          as fraction of r: hole 0.605 outer 0.996 z -0.648..+0.655
+   part 1 body others\argon_gate_effect offset (0, 0, 49802)
+      WIN no tree   01.cat:argon_gate_effect.pbb  BOB1 1 LOD  LOD0 value 483135, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out 1:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 968 m z -9..+208 m
+
+-- rows 4 (SS_WG_XENON)  root body col0 = 477  scene others\argon_gate_destroyed_scene  r = 1248973 units = 2497.9 m
+   scene members: 01.cat:argon_gate_destroyed_scene.pbd; engine winner 01.cat:argon_gate_destroyed_scene.pbd
+   part 0 body others\argon_gate_destroyed offset (0, 0, 0)
+      WIN TREE      01.cat:argon_gate_destroyed.pbb  BOB1 1 LOD  LOD0 value 1248973, collision LOD 0, 20478 tris, mats 0:effect blend=0 atest=0:in 1:effect blend=1 atest=1:in 2:effect blend=0 atest=0:in 3:effect blend=0 atest=0:in 4:effect blend=0 atest=0:in 5:effect blend=0 atest=0:in 6:effect blend=0 atest=0:in 7:effect blend=0 atest=0:in 8:effect blend=0 atest=0:in 9:effect blend=0 atest=0:in 10:effect blend=0 atest=0:in 11:effect blend=1 atest=1:in 12:effect blend=0 atest=0:in 13:effect blend=0 atest=0:in 14:effect blend=0 atest=0:in 15:effect blend=0 atest=0:in 16:effect blend=1 atest=1:in; collision hole 0 m outer 2532 m z -1026..+614 m; visual hole 0 m outer 2532 m z -1026..+614 m
+          as fraction of r: hole 0.000 outer 1.013 z -0.411..+0.246
+
+-- rows 5,6,7,8 (SS_WG_T_EAST/SS_WG_T_NORTH/SS_WG_T_SOUTH/SS_WG_T_WEST)  root body col0 = 0  scene others\terran_catapult_gate_scene  r = 3590659 units = 7181.3 m
+   scene members: 01.cat:terran_catapult_gate_scene.pbd; engine winner 01.cat:terran_catapult_gate_scene.pbd
+   part 0 body others\terran_catapult_gate offset (0, 0, 1793560)
+      WIN TREE      01.cat:terran_catapult_gate.pbb  BOB1 4 LOD  LOD0 value 1797099, collision LOD 3, 818 tris, mats 0:effect blend=0 atest=0:in 1:effect blend=0 atest=0:in; collision hole 912 m outer 1217 m z -5..+3871 m; visual hole 0 m outer 1237 m z -7..+7181 m
+          as fraction of r: hole 0.127 outer 0.169 z -0.001..+0.539
+
+-- rows 9,10,11,12,13,14 (SS_WG_HUB_DOWN/SS_WG_HUB_EAST/SS_WG_HUB_NORTH/SS_WG_HUB_SOUT)  root body col0 = 0  scene others\terraformer_gate_active_scene  r = 679472 units = 1358.9 m
+   scene members: 01.cat:terraformer_gate_active_scene.pbd; engine winner 01.cat:terraformer_gate_active_scene.pbd
+   part 0 body others\terraformer_gate offset (0, 0, 0)
+      WIN TREE      01.cat:terraformer_gate.pbb  BOB1 4 LOD  LOD0 value 679472, collision LOD 3, 581 tris, mats 0:effect blend=0 atest=0:in 2:effect blend=0 atest=0:in 3:effect blend=0 atest=0:in 4:effect blend=0 atest=0:in 7:effect blend=0 atest=0:in 8:effect blend=0 atest=0:in 9:effect blend=0 atest=0:in 10:effect blend=0 atest=0:in 12:effect blend=0 atest=0:in 13:effect blend=0 atest=0:in 14:effect blend=0 atest=0:in 15:effect blend=0 atest=0:in; collision hole 825 m outer 1359 m z -885..+408 m; visual hole 824 m outer 1359 m z -888..+426 m
+          as fraction of r: hole 0.607 outer 1.000 z -0.651..+0.300
+   part 1 body others\argon_gate_effect offset (0, 0, 47500)
+      WIN no tree   01.cat:argon_gate_effect.pbb  BOB1 1 LOD  LOD0 value 483135, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out 1:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 968 m z -13..+203 m
+
+-- rows 15,16,17,18,19,20 (SS_WG_HUB_INACTIVE_DOWN/SS_WG_HUB_INACTIVE_EAST/SS_WG_HUB_IN)  root body col0 = 0  scene others\terraformer_gate_inactive_scene  r = 679472 units = 1358.9 m
+   scene members: 01.cat:terraformer_gate_inactive_scene.pbd; engine winner 01.cat:terraformer_gate_inactive_scene.pbd
+   part 0 body others\terraformer_gate offset (0, 0, 0)
+      WIN TREE      01.cat:terraformer_gate.pbb  BOB1 4 LOD  LOD0 value 679472, collision LOD 3, 581 tris, mats 0:effect blend=0 atest=0:in 2:effect blend=0 atest=0:in 3:effect blend=0 atest=0:in 4:effect blend=0 atest=0:in 7:effect blend=0 atest=0:in 8:effect blend=0 atest=0:in 9:effect blend=0 atest=0:in 10:effect blend=0 atest=0:in 12:effect blend=0 atest=0:in 13:effect blend=0 atest=0:in 14:effect blend=0 atest=0:in 15:effect blend=0 atest=0:in; collision hole 825 m outer 1359 m z -885..+408 m; visual hole 824 m outer 1359 m z -888..+426 m
+          as fraction of r: hole 0.607 outer 1.000 z -0.651..+0.300
+
+-- rows 21,22,23,24 (SS_WG_TJ_EAST/SS_WG_TJ_NORTH/SS_WG_TJ_SOUTH/SS_WG_TJ_WEST)  root body col0 = 0  scene patch20\terran_gate_scene  r = 714242 units = 1428.5 m
+   scene members: 07.cat:terran_gate_scene.pbd; engine winner 07.cat:terran_gate_scene.pbd
+   part 0 body 100000 offset (0, 0, 0)
+      no member in this view: no body, no tree
+   part 1 body others\argon_gate_effect offset (0, 0, 53844)
+      WIN no tree   01.cat:argon_gate_effect.pbb  BOB1 1 LOD  LOD0 value 483135, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out 1:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 968 m z -1..+216 m
+   part 2 body patch20\terran_gate offset (209, -2632, 2136)
+      WIN TREE      07.cat:terran_gate.pbb  BOB1 3 LOD  LOD0 value 711610, collision LOD 2, 10035 tris, mats 0:effect blend=0 atest=0:in 1:effect blend=0 atest=0:in 2:effect blend=0 atest=0:in 3:effect blend=1 atest=0:out; collision hole 934 m outer 1463 m z -708..+257 m; visual hole 942 m outer 1466 m z -708..+258 m
+          as fraction of r: hole 0.654 outer 1.024 z -0.495..+0.180
+
+  -- gate root bodies (TGates column 0)
+   body 0 = 01.cat:objects/v/00000.pbd (10881 B): record value 47 units, 125 points, L-inf extent 47 units (0.094 m), central cube half-side 10.0 units (0.020 m)
+      part flags ['0x11'], LOD flags 0x0 (0x10 all-groups: False), faces per material {0: 60}
+      MATERIAL3 records (idx, texture, Materials rows with that texture (row, flags, &0x486), blend): [(0, 324, [(324, '0x0', '0x0')], 0)]
+      BodyDummies listed: False; body 0x3ac/-1: False
+      -> root node collision tree: YES (a 0.19 m object at the gate origin)
+   body 477: no member (v/00477): 0x0047eb90 finds no model -> no tree
+
+==== installed view: TGates from addon/10.cat (sha d76b8e437ac8), 25 rows
+  types/BodyDummies (addon/01.cat): ['ships\\props\\cameradummy']
+
+-- rows 0,1,2,3,5,6,7,8,9,10,11,12,13,14 (SS_WG_EAST/SS_WG_HUB_DOWN/SS_WG_HUB_EAST/SS_WG_HUB_NORTH/SS_)  root body col0 = 0  scene others\terraformer_gate_active_scene  r = 552274 units = 1104.5 m
+   scene members: 01.cat:terraformer_gate_active_scene.pbd, addon/06.cat:terraformer_gate_active_scene.pbd; engine winner addon/06.cat:terraformer_gate_active_scene.pbd
+   part 0 body others\terraformer_gate_effect offset (0, 0, 47500)
+      WIN no tree   addon/06.cat:terraformer_gate_effect.bob  BOB1 1 LOD  LOD0 value 504774, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 1010 m z -915..+1105 m
+
+-- rows 4 (SS_WG_XENON)  root body col0 = 477  scene others\argon_gate_scene  r = 1449877 units = 2899.8 m
+   scene members: 01.cat:argon_gate_scene.pbd, addon/06.cat:argon_gate_scene.pbd; engine winner addon/06.cat:argon_gate_scene.pbd
+   commented-out parts: ['others\\argon_gate']
+   part 0 body others\argon_gate_effect offset (0, 0, 0)
+          no tree   01.cat:argon_gate_effect.pbb  BOB1 1 LOD  LOD0 value 483135, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out 1:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 968 m z -108..+108 m
+          no tree   addon/06.cat:argon_gate_effect.bob  BOB1 1 LOD  LOD0 value 504774, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 1010 m z -1010..+1010 m
+      WIN no tree   addon/11.cat:argon_gate_effect.pbd  text 1 LOD  LOD0 value 1449877, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out 1:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 2906 m z -264..+386 m
+
+-- rows 15,16,17,18,19,20 (SS_WG_HUB_INACTIVE_DOWN/SS_WG_HUB_INACTIVE_EAST/SS_WG_HUB_IN)  root body col0 = 0  scene others\terraformer_gate_inactive_scene  r = 47 units = 0.1 m
+   scene members: 01.cat:terraformer_gate_inactive_scene.pbd; engine winner 01.cat:terraformer_gate_inactive_scene.pbd
+   part 0 body others\terraformer_gate offset (0, 0, 0)
+          TREE      01.cat:terraformer_gate.pbb  BOB1 4 LOD  LOD0 value 679472, collision LOD 3, 581 tris, mats 0:effect blend=0 atest=0:in 2:effect blend=0 atest=0:in 3:effect blend=0 atest=0:in 4:effect blend=0 atest=0:in 7:effect blend=0 atest=0:in 8:effect blend=0 atest=0:in 9:effect blend=0 atest=0:in 10:effect blend=0 atest=0:in 12:effect blend=0 atest=0:in 13:effect blend=0 atest=0:in 14:effect blend=0 atest=0:in 15:effect blend=0 atest=0:in; collision hole 825 m outer 1359 m z -885..+408 m; visual hole 824 m outer 1359 m z -888..+426 m
+      WIN no tree   addon/11.cat:terraformer_gate.bob  comment-only stub (28 B): no model [i]  
+
+-- rows 21,22,23,24 (SS_WG_TJ_EAST/SS_WG_TJ_NORTH/SS_WG_TJ_SOUTH/SS_WG_TJ_WEST)  root body col0 = 0  scene patch20\terran_gate_scene  r = 1603754 units = 3207.5 m
+   scene members: 07.cat:terran_gate_scene.pbd; engine winner 07.cat:terran_gate_scene.pbd
+   part 0 body 100000 offset (0, 0, 0)
+      no member in this view: no body, no tree
+   part 1 body others\argon_gate_effect offset (0, 0, 53844)
+          no tree   01.cat:argon_gate_effect.pbb  BOB1 1 LOD  LOD0 value 483135, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out 1:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 968 m z -1..+216 m
+          no tree   addon/06.cat:argon_gate_effect.bob  BOB1 1 LOD  LOD0 value 504774, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 1010 m z -902..+1117 m
+      WIN no tree   addon/11.cat:argon_gate_effect.pbd  text 1 LOD  LOD0 value 1449877, collision LOD 0, 0 tris, mats 0:effect blend=1 atest=0:out 1:effect blend=1 atest=0:out; collision -; visual hole 0 m outer 2906 m z -156..+494 m
+   part 2 body patch20\terran_gate offset (209, -2632, 2136)
+          TREE      07.cat:terran_gate.pbb  BOB1 3 LOD  LOD0 value 711610, collision LOD 2, 10035 tris, mats 0:effect blend=0 atest=0:in 1:effect blend=0 atest=0:in 2:effect blend=0 atest=0:in 3:effect blend=1 atest=0:out; collision hole 934 m outer 1463 m z -708..+257 m; visual hole 942 m outer 1466 m z -708..+258 m
+      WIN TREE      addon/11.cat:terran_gate.bob  BOB1 1 LOD  LOD0 value 1601122, collision LOD 0, 74544 tris, mats 0:effect blend=0 atest=0:in 1:effect blend=0 atest=0:in 2:effect blend=0 atest=0:in 3:effect blend=1 atest=0:out; collision hole 2125 m outer 3290 m z -1597..+575 m; visual hole 2125 m outer 3295 m z -1597..+575 m
+          as fraction of r: hole 0.663 outer 1.026 z -0.498..+0.179
+
+  -- gate root bodies (TGates column 0)
+   body 0 = 01.cat:objects/v/00000.pbd (10881 B): record value 47 units, 125 points, L-inf extent 47 units (0.094 m), central cube half-side 10.0 units (0.020 m)
+      part flags ['0x11'], LOD flags 0x0 (0x10 all-groups: False), faces per material {0: 60}
+      MATERIAL3 records (idx, texture, Materials rows with that texture (row, flags, &0x486), blend): [(0, 324, [(324, '0x0', '0x0')], 0)]
+      BodyDummies listed: False; body 0x3ac/-1: False
+      -> root node collision tree: YES (a 0.19 m object at the gate origin)
+   body 477: no member (v/00477): 0x0047eb90 finds no model -> no tree
+
+==== body members across catalogues (both views merged; the installed engine winner marked *)
+  others\argon_gate
+     01.cat             argon_gate.pbb                           TREE       BOB1 5 LOD, collision 1240 tris, hole 824 m outer 1357 m z -883..+892 m
+   * addon/11.cat       argon_gate.pbd                           no tree    comment-only stub (28 B): no model [i]
+  others\argon_gate_destroyed
+     01.cat             argon_gate_destroyed.pbb                 TREE       BOB1 1 LOD, collision 20478 tris, hole 0 m outer 2532 m z -1026..+614 m
+   * addon/13.cat       argon_gate_destroyed.pbb                 TREE       BOB1 3 LOD, collision 20478 tris, hole 0 m outer 2532 m z -1026..+614 m
+  others\argon_gate_effect
+     01.cat             argon_gate_effect.pbb                    no tree    BOB1 1 LOD, collision 0 tris, -
+     addon/06.cat       argon_gate_effect.bob                    no tree    BOB1 1 LOD, collision 0 tris, -
+   * addon/11.cat       argon_gate_effect.pbd                    no tree    text 1 LOD, collision 0 tris, -
+  others\terraformer_gate
+     01.cat             terraformer_gate.pbb                     TREE       BOB1 4 LOD, collision 581 tris, hole 825 m outer 1359 m z -885..+408 m
+   * addon/11.cat       terraformer_gate.bob                     no tree    comment-only stub (28 B): no model [i]
+  others\terraformer_gate_effect
+   * addon/06.cat       terraformer_gate_effect.bob              no tree    BOB1 1 LOD, collision 0 tris, -
+  others\terran_catapult_gate
+     01.cat             terran_catapult_gate.pbb                 TREE       BOB1 4 LOD, collision 818 tris, hole 912 m outer 1217 m z -5..+3871 m
+     addon/11.cat       terran_catapult_gate.bob                 TREE       BOB1 1 LOD, collision 35568 tris, hole 0 m outer 3864 m z -5929..+16003 m
+   * addon/13.cat       terran_catapult_gate.bob                 TREE       BOB1 3 LOD, collision 35568 tris, hole 0 m outer 3864 m z -5929..+16003 m
+  patch20\terran_gate
+     07.cat             terran_gate.pbb                          TREE       BOB1 3 LOD, collision 10035 tris, hole 934 m outer 1463 m z -708..+257 m
+   * addon/11.cat       terran_gate.bob                          TREE       BOB1 1 LOD, collision 74544 tris, hole 2125 m outer 3290 m z -1597..+575 m
+
+==== gate objects in the universe map (t=18, s = TGates row)
+  stock: addon/02.cat (sha 567c125e42c7), 239 sectors, 557 gates
+    subtypes: 0 SS_WG_NORTH x128, 1 SS_WG_SOUTH x129, 2 SS_WG_WEST x116, 3 SS_WG_EAST x117, 4 SS_WG_XENON x5, 5 SS_WG_T_NORTH x14, 6 SS_WG_T_SOUTH x15, 7 SS_WG_T_WEST x17, 8 SS_WG_T_EAST x14, 21 SS_WG_TJ_NORTH x1, 22 SS_WG_TJ_SOUTH x1
+    map objects t=5 within 10 km of a gate centre: 3; nearest 8660 m; within 2 km: 0, within 5 km: 0
+    map objects t=6 within 10 km of a gate centre: 16; nearest 5356 m; within 2 km: 0, within 5 km: 0
+    map objects t=7 within 10 km of a gate centre: 33; nearest 4270 m; within 2 km: 0, within 5 km: 4
+    map objects t=10 within 10 km of a gate centre: 1; nearest 8963 m; within 2 km: 0, within 5 km: 0
+    map objects t=16 within 10 km of a gate centre: 1; nearest 5094 m; within 2 km: 0, within 5 km: 0
+    map objects t=17 within 10 km of a gate centre: 46; nearest 4683 m; within 2 km: 0, within 5 km: 2
+    map objects t=20 within 10 km of a gate centre: 23; nearest 3750 m; within 2 km: 0, within 5 km: 7
+    map objects t=28 within 10 km of a gate centre: 20; nearest 5821 m; within 2 km: 0, within 5 km: 0
+    asteroid surface (centre distance - TAsteroids body radius) to a gate centre: min 2650 m (centre 4683 m, radius 2033 m); within 1.5 km: 0
+  installed: loose:addon/maps/x3_universe.xml (sha 4ae3b60a8c0b), 247 sectors, 600 gates
+    subtypes: 0 SS_WG_NORTH x149, 1 SS_WG_SOUTH x149, 2 SS_WG_WEST x151, 3 SS_WG_EAST x151
+    map objects t=17 within 10 km of a gate centre: 629; nearest 1443 m; within 2 km: 10, within 5 km: 97
+    asteroid surface (centre distance - TAsteroids body radius) to a gate centre: min -1085 m (centre 2427 m, radius 3512 m); within 1.5 km: 7
+      sector 12,1 gate gid 3 (row 3): asteroid row 0 (asteroid_A_ClassMine) centre 2427 m away; LOD-0 L-inf 3512 m, max vertex radius 4175 m, surface planes no closer than 157 m to its centre -> surface between -1748 and 2269 m of the gate centre depending on orientation (negative: may enclose it)
+      sector 7,3 gate gid 2 (row 2): asteroid row 0 (asteroid_A_ClassMine) centre 4250 m away; LOD-0 L-inf 3512 m, max vertex radius 4175 m, surface planes no closer than 157 m to its centre -> surface between 75 and 4092 m of the gate centre depending on orientation (negative: may enclose it)
+      sector 16,11 gate gid 1 (row 1): asteroid row 5 (asteroid_F_ClassTwo) centre 1568 m away; LOD-0 L-inf 190 m, max vertex radius 211 m, surface planes no closer than 37 m to its centre -> surface between 1357 and 1531 m of the gate centre depending on orientation (negative: may enclose it)
+      sector 16,11 gate gid 1 (row 1): asteroid row 6 (asteroid_G_ClassTwo) centre 1501 m away; LOD-0 L-inf 112 m, max vertex radius 131 m, surface planes no closer than 24 m to its centre -> surface between 1370 and 1477 m of the gate centre depending on orientation (negative: may enclose it)
+      sector 16,11 gate gid 1 (row 1): asteroid row 8 (asteroid_I_ClassThree) centre 1443 m away; LOD-0 L-inf 29 m, max vertex radius 33 m, surface planes no closer than 5 m to its centre -> surface between 1411 and 1438 m of the gate centre depending on orientation (negative: may enclose it)
+      sector 16,11 gate gid 1 (row 1): asteroid row 5 (asteroid_F_ClassTwo) centre 1632 m away; LOD-0 L-inf 190 m, max vertex radius 211 m, surface planes no closer than 37 m to its centre -> surface between 1421 and 1594 m of the gate centre depending on orientation (negative: may enclose it)
+      sector 16,11 gate gid 1 (row 1): asteroid row 8 (asteroid_I_ClassThree) centre 1519 m away; LOD-0 L-inf 29 m, max vertex radius 33 m, surface planes no closer than 5 m to its centre -> surface between 1486 and 1514 m of the gate centre depending on orientation (negative: may enclose it)
+  mayhem_galaxies/My map identical to the loose addon/maps map: True
+
+==== summary: winning scene parts with a collision tree (excludes the root testbody, see above)
+  stock     rows 0,1,2,3                others\argon_gate_scene                  r   1362 m  SOLID (tree)
+  stock     rows 4                      others\argon_gate_destroyed_scene        r   2498 m  SOLID (tree)
+  stock     rows 5,6,7,8                others\terran_catapult_gate_scene        r   7181 m  SOLID (tree)
+  stock     rows 9,10,11,12,13,14       others\terraformer_gate_active_scene     r   1359 m  SOLID (tree)
+  stock     rows 15,16,17,18,19,20      others\terraformer_gate_inactive_scene   r   1359 m  SOLID (tree)
+  stock     rows 21,22,23,24            patch20\terran_gate_scene                r   1428 m  SOLID (tree)
+  installed rows 0,1,2,3,5,6,7,8,9,10,11,12,13,14 others\terraformer_gate_active_scene     r   1105 m  no tree
+  installed rows 4                      others\argon_gate_scene                  r   2900 m  no tree
+  installed rows 15,16,17,18,19,20      others\terraformer_gate_inactive_scene   r      0 m  no tree
+  installed rows 21,22,23,24            patch20\terran_gate_scene                r   3208 m  SOLID (tree)
+RESULT PASS (21 of 21 EXE byte strings match)

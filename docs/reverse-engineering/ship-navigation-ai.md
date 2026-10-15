@@ -878,6 +878,9 @@ collision mesh projected along z, over the whole axial extent. A ship that moves
   collision mesh. The pair loop never raises `"CanWarp"` for subtypes 4 and 0xf..0x14 (`0x0045d73b..0x0045d77b`) **[m]**.
 * Stock AP, for reference: Argon ring (rows 0–3) **0.605 r**, terraformer ring (9–20) **0.607 r**, Terran ring (21–24)
   **0.654 r**, catapult (5–8) a tube of inner radius **0.127 r**, destroyed gate (4) no hole **[m]**.
+* **Installed universe (2026-10-15, collision walk below): every one of the 600 map gates is a TGates row 0–3**, the
+  bubble with no collision tree. No Terran (21–24), Xenon (4) or hub (9–20) gate is placed by the map. The only collision
+  tree on these gate objects is the root node's 0.19 m `testbody` at the gate origin **[m]**.
 * Consequence for amendment 8: `kGateHoleFraction = 0.55` and the 0.5 r chord bound are conservative in the installed
   game. The ordinary gates impose no physical limit. On a Terran gate a chord crossing at ≤ 0.5 r, 34° off the axis,
   with r_ship = 140 m still clears the rim by 0.026 r (83 m) **[i]** (arithmetic below).
@@ -983,6 +986,66 @@ mesh; the rim band is the triangles within 0.05 r of the hole, i.e. the inner li
   * on an ordinary installed gate it cannot collide and ends inside the bubble;
   * on a Terran gate it clears the ring by 1023 m at r_ship = 140 m.
 
+**Collision walk (2026-10-15).** Static, read-only on the installed folder, the same `X3AP.exe` (SHA-256 `fdbf3418…`).
+[`gate_collision_walk.py`](../../verification/results/ship-navigation-ai/gates/gate_collision_walk.py) re-reads 21 EXE
+byte strings (`RESULT PASS`). For every TGates row it resolves the scene and every body member in every mounted
+catalogue: vanilla `01–13`, `addon/01–04`, the Mayhem 4 catalogues `addon/05–12` and the x3m LOD overlay `addon/13–15`.
+It applies the engine's resolver and collision-tree rules to each member, walks the gate root body and counts the map's
+gate subtypes. Output: [`gate_collision_walk.txt`](../../verification/results/ship-navigation-ai/gates/gate_collision_walk.txt).
+Decompiles stayed in the session scratchpad.
+
+| Rows | Installed scene (winner) | Winning collidable body | Tree | Vanilla body (`01`/`07.cat`) | Vanilla tree | Placed in the installed map |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0–3 | `terraformer_gate_active_scene` (`addon/06`; vanilla scene in `01` points at a ring) | none: `terraformer_gate_effect` (`addon/06` `.bob`, blended) | **no** | `argon_gate.pbb` (`01`): hole 0.605 r | yes | **600** (149/149/151/151) |
+| 4 | `argon_gate_scene` (`addon/06`, ring part commented out) | none: `argon_gate_effect` (`addon/11` `.pbd`, blended) | **no** | `argon_gate_destroyed.pbb` (`01`): debris | yes | 0 |
+| 5–8 | `terraformer_gate_active_scene` (`addon/06`) | none (as rows 0–3) | **no** | `terran_catapult_gate.pbb` (`01`): tube 0.127 r | yes | 0 |
+| 9–14 | `terraformer_gate_active_scene` (`addon/06`) | none (as rows 0–3) | **no** | `terraformer_gate.pbb` (`01`): hole 0.607 r | yes | 0 |
+| 15–20 | `terraformer_gate_inactive_scene` (`01`) | `terraformer_gate`: winner `addon/11` `.bob`, a 28-byte comment-only stub | **no** | `terraformer_gate.pbb` (`01`) | yes | 0 |
+| 21–24 | `patch20\terran_gate_scene` (`07`) | `patch20\terran_gate` (`addon/11` `.bob`, 74,544 collision triangles): hole 0.663 r (2125 m), outer 1.026 r, z −0.498..+0.179 r, r = 3207.5 m | **yes** | `terran_gate.pbb` (`07`): hole 0.654 r, r = 1428.5 m | yes | 0 |
+
+All values in the table are **[m]**. Notes:
+
+* **Q1/Q2: resolution.** TGates comes from `addon/10.cat` (vanilla `addon/01.cat`), with no loose override. Scenes and
+  bodies resolve by the highest mounted catalogue holding the stem, as in body-format-bob1.md §7.1. The ring stubs in
+  `addon/11.cat` (`others\argon_gate.pbd`, `others\terraformer_gate.bob`) carry the comment "NoAdsign-mod by
+  Killjaeden". The scene override and the bubble effect are in `addon/06.cat`. Which upstream mod (Mayhem itself or the
+  bundled Litcube's Universe content) authored them cannot be told from the catalogues **[i]**. A comment-only stub
+  gives no tree whether or not the text loader yields a model, because a model with no group has no colliding group
+  (`0x0047ece2`) **[i]**. The installed radii (bounding sphere, `r` = `[gate+0xa4]` by the radius rule) are those in
+  the Q1 table: 1104.5 m (bubble rows), 2899.8 m (row 4), 0.1 m (rows 15–20, the root body only), 3207.5 m (Terran).
+* **Q3: vanilla vs installed.** Every vanilla gate body has a collision tree: the Argon ring (1240 triangles in LOD 4),
+  the destroyed gate (20,478, LOD 0), the catapult tube (818, LOD 3), the terraformer ring (581, LOD 3) and the Terran
+  ring (10,035, LOD 2). Vanilla's `argon_gate_effect` disc is non-colliding as well. The vanilla files are still installed
+  under the overrides. So the user's hypothesis holds for every row the installed universe uses: Mayhem 4 replaced
+  the rows' rings with a blended, tree-less bubble (rows 0–3, 5–14) or stubbed the ring body (rows 15–20). Rows 4 and
+  21–24 are the exceptions: row 4 has no ring in either view, and the Terran ring survives as a bigger, still solid
+  body. The x3m overlay copies (`addon/13.cat`: `argon_gate_destroyed.pbb`, 3 LODs; `terran_catapult_gate.bob`, 3 LODs)
+  keep the source's collision triangle counts (20,478 and 35,568) in their coarsest LOD. No installed gate scene
+  references them **[m]**.
+* **Q4: map.** The installed universe is the loose `addon/maps/x3_universe.xml` (byte-identical to
+  `mayhem_galaxies/My/addon/maps/x3_universe.xml`; gamestarts name no other map), with 247 sectors and 600 gates, all
+  `s` 0–3. The stock map has 557 gates: rows 0–3 ×490, 4 ×5, 5–8 ×60, 21 ×1, 22 ×1 **[m]**. The installed map places no stations
+  (`t` 5/6); the only map objects within 10 km of a gate centre are 629 asteroids. Six of the seven asteroids within 1.5 km
+  of a gate centre (radius-rule surface) keep their whole mesh at least 1357 m from it, outside the 1104.5 m sphere.
+  The seventh is an `asteroid_A_ClassMine` (largest vertex radius 4175 m) centred 2427 m from gate gid 3 of sector
+  (12, 1). Depending on its orientation it can enclose that gate's centre; the map's `a/b/g` convention is not traced,
+  so this is open **[m]** for the distances, **[i]** for the consequence. Stations and gates that Mayhem's scripts create at
+  run time are not in the map and were not checked; `addon/director` holds no station creation.
+* **Q5: the gate root node collides, as a 0.19 m object at the gate origin.** `0x0043ffa0` takes the generic branch
+  for class 0x12: new root node, body = TGates column 0 (`0x0044126d`, `0x00441276`), then `0x0047eb90(root, 0)`
+  (`0x0044127e`). The class-0x12 path adds no 0x8000000 (its `local_140` stays 0). `0x0043ce30` flags a root 0x8000000
+  only for body 0x3ac or −1 (`0x0043d0f3`). Body 0 is `objects\v\00000.pbd` (`01.cat`, the `testbody`): one MATERIAL3
+  record (texture 324), value 47, part flags 0x11 (not & 0xa0), LOD flags 0, 60 faces. A text body without per-body
+  materials takes its group flag from the Materials row (`0x0048586b..0x00485896`). The MATERIAL3 match only
+  considers rows with the record's texture (`0x004f72c3`), and the only such row, 324, has flags `MPF_NULL`, so the
+  group collides. `types/BodyDummies` lists only `ships\props\cameradummy` (slot +0x14 → `0x8100000`:
+  `0x0046fb06`, `0x0048411c`, `0x00487eea`). Result: the root carries a tree **[m]**. Its mesh lies within 47 units
+  (0.094 m) of the origin on every axis: a ±10-unit cube with spikes. Row 4's body 477 has no member, so that root
+  has no tree. The narrow phase's descent tests the root node against each ship part with a tree once the ship is
+  inside the gate's radius (`0x0048a890` head uses the recursive node radius) **[i]**. A contact therefore needs a hull triangle to cross a
+  0.19 m object at the gate centre on an order the pair filter does not exempt (not 5/0x1e to this gate) **[i]**. The
+  contact response for such a hit was not traced.
+
 **Q4: still inferred or open:**
 
 * The point scale `value / 65536` ([body-format-bob1.md](body-format-bob1.md) §3). Supporting evidence: the Mayhem
@@ -990,16 +1053,17 @@ mesh; the rim band is the triangles within 0.05 r of the hole, i.e. the inner li
   `"CanWarp"` radii sit just inside the stock holes (0.605 r, and 0.127–0.14 r for the catapult).
 * The effect-parameter object layout read at `0x00481a44..0x00481a63`: `+0` semantic, `+0x20` type word (0 = LONG),
   `+0x24` value.
-* That a 28-byte comment-only text body loads as no model. The engine's text loader was not traced for this case;
-  `bob1.parse` refuses it.
 * That named bodies keep the BodyData slot `+0x04` = −2 (default LOD, no "all groups"), per body-format §6.
-* The gate root node (TGates column 0: body 0, the 47-unit test body, or 477, missing). It may carry a ≤ 0.1 m
-  collision mesh at the origin; not traced.
+* ~~The gate root node (TGates column 0)~~: traced in the collision walk above. Body 0 carries a collision tree
+  (0.19 m at the origin); body 477 is missing and has none.
 * ~~The ship's position `P` at `SA_WarpObjectIn`~~: traced in §10.10. The launch `0x00444170` places the ship, and
   site W is not reached on KC arrivals.
 * No runtime `[gate+0xa4]` on record. A Run 153 `ship_gate_approach` row (`offset_m` = 0.25 r) would measure it.
-* Whether Mayhem places other colliding objects at its gates (stations, debris from the director or the map) was not
-  checked.
+* Other colliding objects at Mayhem gates: the map places only asteroids. One `asteroid_A_ClassMine` (sector 12,1,
+  gate gid 3, centre 2427 m) may enclose the gate centre depending on its orientation (map rotation convention not
+  traced). Script-created stations or gates at run time are not checked.
+* That a 28-byte comment-only body (`addon/11` ring stubs) loads as no model is still untraced, but it gives no tree
+  either way.
 
 ### 10.10 The transfer trigger, the arrival placement and arrival signals
 
