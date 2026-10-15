@@ -1,21 +1,30 @@
 {
- "dll": "detached worktree /tmp/x3-run175-candidate of 358c0f06, build/d3d9.dll (clean configure + build); NOT installed yet (Run174 stays for the user's flight; lane-on behaviour identical by laneon_diff)",
- "sha256": "f965a6e2961d8c4e08e1503d231de4307fa8b5c76126cf4b59e181d922122f0e",
- "bytes": 61534335,
- "commit": "358c0f06",
+ "dll": "detached worktree /tmp/x3-run175-candidate of 6c3b18f9, build/d3d9.dll (clean configure + build)",
+ "sha256": "a7241137998af4562e481e90e0f8bbdc69238848914463ece04251e07460163b",
+ "bytes": 61851899,
+ "commit": "6c3b18f9",
  "dirty": false,
  "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
  "gates": {
   "warnings": "0",
-  "x87_audit": "PASS, reachable_functions 996, violations 0",
-  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe; site W removed, GateCount 3)",
-  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87 test_launcher_defaults OK (candidate tree); fixture full 10734/0, --lane 3389/0, --capital 5112/0; laneon_diff 0 lines vs 564b3df8 (deletion) and vs bf12aaa2 (split)"
+  "x87_audit": "PASS, reachable_functions 1010, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe)",
+  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87 test_launcher_defaults OK (candidate tree); engine discover modules: 2 known Wine record-hash failures (engine_effects, engine_ribbons), 6 skipped; fixture on main 6c3b18f9: --lane 4961/0, full 12308/0, --capital 6686/0"
  },
- "trigger": "holistic review ranks 2-3: stage B deletion (bf12aaa2) and the source split (358c0f06); the DLL's lane default 1",
- "producer": "main session (Fable 5.1), 2026-10-15, autonomous overnight run",
+ "trigger": "Run174 flight (departures clean; an arriving group circled) -> the arrival round; plus the overnight set: stage B deletion, source split, fixture engine paths, rounds A-C and their review fixes",
+ "producer": "main session (Fable 5.1), 2026-10-15",
  "changes_since_run174": [
-  "7cfd0fd6 ship-navigation-ai 10.14",
+  "7cfd0fd6 10.14 engine paths",
   "bf12aaa2 stage B deletion",
-  "358c0f06 source split + lane default 1"
+  "358c0f06 source split + lane default 1",
+  "305aa2b6 fixture engine paths",
+  "fd3f67d1 round A",
+  "d2871285 round B",
+  "c6b4a88b x87 fix",
+  "e7a7120c round C",
+  "98a21d7c rounds A-C review fixes",
+  "928ebbad Run174 triage",
+  "a907ffb8/5c894b83 gate collision walk + tree read",
+  "6c3b18f9 arrival round"
  ]
 }
